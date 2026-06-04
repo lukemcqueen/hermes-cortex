@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+"""heartbeat.py — System health watchdog for Hermes/gbrain stack.
+
+Checks critical daemons and services:
+  - Ollama (LLM server)
+  - gbrain sync daemon
+  - Hermes gateway
+  - Memory-to-brain sync freshness
+  - Disk space
+  - Cron job health
+
+Outputs a concise health report. Designed for cron integration:
+  - Non-empty stdout on FAILURE → cron delivers alert
+  - Empty stdout when healthy → silent (watchdog pattern)
+  - Use --report to force output regardless of health
+"""
+
+import json
+import os
+import subprocess
+import sys
+from datetime import datetime, timedelta
+from pathlib import Path
+
+HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
+BRAIN_SHARED = Path.home() / "brain" / "shared"
+NOW = datetime.now()
+
+
+def check_launchd(job_label: str) -> dict:
+    """Check if a launchd job is running and healthy (macOS 12 plist format)."""
+    try:
+        result = subprocess.run(
+            ["launchctl", "list", job_label],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode != 0:
+            return {"status": "DOWN", "detail": f"launchctl list failed: {result.stderr.strip()}"}
+
+        # macOS 12 outputs plist format; older macOS tab-separated.
+        # Handle both by checking for PID key in plist or tab format.
+        stdout = result.stdout.strip()
+
+        # Try plist format (macOS 12+)
+        import re
+        pid_match = re.search(r'"PID"\s*=\s*(\d+);', stdout)
+        exit_match = re.search(r'"LastExitStatus"\s*=\s*(\d+);', stdout)
+
+        if pid_match:
+            pid = pid_match.group(1)
+            exit_code = int(exit_match.group(1)) if exit_match else 0
+            if exit_code != 0:
+                return {"status": "DEGRADED", "detail": f"Running (PID {pid}) but last exit was {exit_code}"}
+            return {"status": "UP", "detail": f"PID {pid}"}
+
+        # Fallback: tab-separated format (older macOS)
+        parts = stdout.split("\t")
+        if len(parts) >= 2:
+            pid = parts[0]
+            exit_code = parts[1]
+            if pid == "-":
+                return {"status": "DOWN", "detail": f"No PID (exit code: {exit_code})"}
+            if exit_code not in ("0", "-"):
+                return {"status": "DEGRADED", "detail": f"Running (PID {pid}) but last exit was {exit_code}"}
+            return {"status": "UP", "detail": f"PID {pid}"}
+
+        return {"status": "ERROR", "detail": f"Unrecognized launchctl output: {stdout[:200]}"}
+    except Exception as e:
+        return {"status": "ERROR", "detail": str(e)}
+
+
+def check_process(name: str, grep_pattern: str) -> dict:
+    """Check if a process is running via pgrep."""
+    try:
+        result = subprocess.run(
+            ["pgrep", "-f", grep_pattern],
+            capture_output=True, text=True, timeout=10,
+        )
+        pids = result.stdout.strip().split("\n") if result.stdout.strip() else []
+        if pids:
+            return {"status": "UP", "detail": f"PID(s): {', '.join(pids[:5])}"}
+        return {"status": "DOWN", "detail": "Not found running"}
+    except Exception as e:
+        return {"status": "ERROR", "detail": str(e)}
+
+
+def check_disk_usage(path: str = "/") -> dict:
+    """Check disk usage."""
+    try:
+        result = subprocess.run(
+            ["df", "-h", path], capture_output=True, text=True, timeout=10,
+        )
+        lines = result.stdout.strip().split("\n")
+        if len(lines) >= 2:
+            fields = lines[1].split()
+            used_pct = fields[4] if len(fields) >= 5 else "?"
+            # Extract number from "XX%"
+            pct_str = used_pct.rstrip("%")
+            try:
+                pct = int(pct_str)
+                status = "UP" if pct < 85 else "DEGRADED" if pct < 95 else "DOWN"
+                return {"status": status, "detail": f"{used_pct} used on {path}"}
+            except ValueError:
+                return {"status": "UP", "detail": f"{used_pct} used on {path} (unparseable)"}
+        return {"status": "ERROR", "detail": "Could not parse df output"}
+    except Exception as e:
+        return {"status": "ERROR", "detail": str(e)}
+
+
+def check_memory_sync_freshness() -> dict:
+    """Check when memory was last synced to brain."""
+    current = BRAIN_SHARED / "hermes-memory" / "current.md"
+    if not current.exists():
+        return {"status": "UNKNOWN", "detail": "No current.md — sync may not have run yet"}
+    mtime = datetime.fromtimestamp(current.stat().st_mtime)
+    age = NOW - mtime
+    if age < timedelta(hours=8):
+        return {"status": "UP", "detail": f"Last sync: {age.total_seconds() / 60:.0f}m ago"}
+    elif age < timedelta(hours=24):
+        return {"status": "DEGRADED", "detail": f"Last sync: {age.total_seconds() / 3600:.1f}h ago"}
+    else:
+        return {"status": "DOWN", "detail": f"Last sync: {age.total_seconds() / 3600:.1f}h ago — stale!"}
+
+
+def check_gateway_log() -> dict:
+    """Quick check if gateway has logged recently."""
+    log_dir = HERMES_HOME / "logs"
+    if not log_dir.exists():
+        return {"status": "UNKNOWN", "detail": "No log directory"}
+    
+    # Check if any log was modified in the last 30 min
+    recent = False
+    for f in log_dir.glob("*.log*"):
+        age = NOW - datetime.fromtimestamp(f.stat().st_mtime)
+        if age < timedelta(minutes=30):
+            recent = True
+            break
+    
+    if recent:
+        return {"status": "UP", "detail": "Activity in last 30 min"}
+    return {"status": "DEGRADED", "detail": "No log activity in 30+ min"}
+
+
+def run() -> str:
+    """Run all checks and return report. Empty string = all healthy."""
+    checks = {
+        "Ollama": check_launchd("com.ollama.serve"),
+        "gbrain sync daemon": check_launchd("com.gbrain.sync-watch"),
+        "Gateway activity": check_gateway_log(),
+        "Memory→brain sync": check_memory_sync_freshness(),
+        "Disk usage": check_disk_usage(),
+    }
+
+    # Determine overall status
+    status_counts = {"UP": 0, "DEGRADED": 0, "DOWN": 0, "ERROR": 0, "UNKNOWN": 0}
+    for name, result in checks.items():
+        s = result["status"]
+        status_counts[s] = status_counts.get(s, 0) + 1
+
+    overall = "HEALTHY"
+    if status_counts.get("DOWN", 0) > 0:
+        overall = "CRITICAL"
+    elif status_counts.get("ERROR", 0) > 0:
+        overall = "ERROR"
+    elif status_counts.get("DEGRADED", 0) > 0:
+        overall = "DEGRADED"
+
+    # Build report
+    now_str = NOW.strftime("%Y-%m-%d %H:%M:%S %Z")
+    report = f"📡 Hermes Heartbeat — {now_str}\n"
+    report += f"Overall: {overall}\n\n"
+
+    for name, result in checks.items():
+        icon = {"UP": "✅", "DEGRADED": "⚠️", "DOWN": "❌", "ERROR": "🔴", "UNKNOWN": "❓"}
+        report += f"{icon.get(result['status'], '❓')} {name}: {result['status']} — {result['detail']}\n"
+
+    # If overall healthy and not forced, return empty for silent cron
+    if overall == "HEALTHY" and "--report" not in sys.argv:
+        return ""
+
+    return report
+
+
+if __name__ == "__main__":
+    output = run()
+    if output:
+        print(output)
+        sys.exit(0 if "HEALTHY" in output else 1)
+    # Empty output = silent (watchdog pattern)
