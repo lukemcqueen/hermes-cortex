@@ -14,6 +14,7 @@ hermes-cortex/
 ├── skills/         # Custom skills & workflows
 ├── docs/           # Architecture & setup docs
 ├── .clawmetry/     # ClawMetry observability setup
+├── install.sh      # 🚀 Full-system installer
 └── plans/          # Agent-generated plans & roadmaps
 ```
 
