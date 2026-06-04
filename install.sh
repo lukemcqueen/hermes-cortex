@@ -183,7 +183,9 @@ step "Installing gbrain (knowledge brain)"
 if command -v gbrain &>/dev/null || [[ -x "${CORTEX_HOME}/.bun/bin/gbrain" ]]; then
   skip "already installed — $(gbrain --version 2>/dev/null || echo 'gbrain found')"
 else
-  bun install -g gbrain
+  # NOTE: plain 'gbrain' on npm is a different package (stormcolor GPU JS, no CLI).
+  # garrytan/gbrain is the actual knowledge brain tool with 20k+ stars.
+  bun install -g github:garrytan/gbrain
   ok
 fi
 
