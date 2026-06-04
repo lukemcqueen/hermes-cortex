@@ -218,7 +218,7 @@ fi
 step "Creating brain directory structure"
 
 # Default MECE structure for each source
-MECE_DIRS="archive companies concepts conversations deals household ideas inbox index.md media meetings org people personal programs projects prompts sources writing"
+MECE_DIRS="archive civic companies concepts conversations deals hiring household ideas inbox media meetings org people personal programs projects prompts sources writing"
 
 for source in "${SOURCES[@]}"; do
   source_dir="${BRAIN_DIR}/${source}"
@@ -240,10 +240,12 @@ for source in "${SOURCES[@]}"; do
 | Directory | Purpose |
 |-----------|---------|
 | archive/ | Old / resolved items |
+| civic/ | Civic, community, volunteering |
 | companies/ | Companies, vendors, orgs |
 | concepts/ | Ideas, frameworks, mental models |
 | conversations/ | Chat transcripts, meeting notes |
 | deals/ | Deals, contracts, agreements |
+| hiring/ | Hiring, candidates, interviews |
 | household/ | Home, family, chores, logistics |
 | ideas/ | Raw ideas, brainstorming |
 | inbox/ | Capture zone — unprocessed notes |
