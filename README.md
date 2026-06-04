@@ -1,39 +1,26 @@
 # 🧠 Hermes Cortex
 
-> *The config, skills, memory, and observability layer for my personal Hermes AI agent.*
+> *The config, skills, memory, and observability layer for a personal Hermes AI agent.*
 
 ![Hermes Cortex](avatar.png)
 
-**Hermes Cortex** is the persistent brain and mission control for my autonomous AI agent. It holds everything that makes my agent smarter, more visible, and more capable over time.
+**Hermes Cortex** is a self-contained system installer and public skill set for the [Hermes Agent](https://hermes-agent.nousresearch.com) runtime. It sets up:
 
-## 🦞 What's Inside
-
-```
-hermes-cortex/
-├── config/         # Hermes Agent configuration
-├── skills/         # Custom skills & workflows
-├── docs/           # Architecture & setup docs
-├── .clawmetry/     # ClawMetry observability setup
-├── install.sh      # 🚀 Full-system installer
-└── plans/          # Agent-generated plans & roadmaps
-```
-
-## 🔧 Stack
-
-| Layer | Tool | Purpose |
-|-------|------|---------|
-| **Agent Runtime** | [Hermes Agent](https://hermes-agent.nousresearch.com) | Self-improving autonomous agent |
-| **Observability** | [ClawMetry](https://clawmetry.com) | Real-time dashboard for agent activity |
-| **Memory** | [GBrain](https://github.com/garrytan/gbrain) | Long-term persistent knowledge graph |
-| **Code** | GitHub | Version-controlled config, skills & brain |
+- **Ollama** — Local LLM server (free embeddings)
+- **Bun** + **GBrain** — Persistent knowledge brain (PGLite, zero-config)
+- **ClawMetry** — Real-time observability dashboard
+- **Brain directory structure** — MECE-organized knowledge sources
+- **gbrain sync daemon** — Automatic 2-minute sync
+- **Hermes plugin** — `/brain` slash command
+- **Utility scripts** — Heartbeat watchdog, memory sync, system health
 
 ## 🚀 One-Command Install
 
 ```bash
-# Clone the cortex
+# Clone the public system
 git clone https://github.com/lukemcqueen/hermes-cortex.git ~/hermes-cortex
 
-# Run the installer (safe to re-run — it's idempotent)
+# Run the installer (idempotent — safe to re-run)
 bash ~/hermes-cortex/install.sh
 
 # ⚡ Then give your Hermes agent the prompt it prints out
@@ -68,14 +55,39 @@ export CORTEX_USER="$USER"                  # Your name for plugin metadata
 
 ### Multi-Person Setup
 
-The installer supports any number of brain sources. For a two-person household:
+The installer supports any number of brain sources:
 
 ```bash
 export CORTEX_SOURCES="luke,amy,shared,default"
 bash ~/hermes-cortex/install.sh
 ```
 
-This creates isolated sources (`luke`, `amy`), a federated shared source (`shared`), and a default. The `/brain` slash command adapts to whatever sources you configure.
+This creates isolated sources, a federated shared source, and a default. The `/brain` slash command adapts to whatever sources you configure.
+
+## 🗄️ Private Configuration
+
+Personal config, secrets, API keys, and private skills live in a **separate private repo**:
+
+```
+git clone git@github.com:lukemcqueen/hermes-cortex-private.git ~/hermes-cortex-private
+```
+
+This repository holds:
+
+| What | Location |
+|------|----------|
+| Full personal config.yaml | `config/config.yaml` |
+| Environment secrets (API keys, tokens) | `.env` |
+| Utility & monitoring scripts | `scripts/` |
+| Private skills & workflows | `skills/` |
+| Private data | `data/` |
+
+After running the public installer, apply your private config:
+
+```bash
+cp ~/hermes-cortex-private/config/config.yaml ~/.hermes/config.yaml
+# Source your .env, copy scripts, etc.
+```
 
 ## 🎯 Philosophy
 
