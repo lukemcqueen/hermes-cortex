@@ -283,10 +283,22 @@ step "Configuring gbrain sources"
 
 for source in "${SOURCES[@]}"; do
   source_dir="${BRAIN_DIR}/${source}"
+  # The 'default' gbrain source is special (backs pre-v0.17 brain) and cannot be
+  # removed or have --path set. Skip it here; non-default sources get --path.
+  if [[ "${source}" == "default" ]]; then
+    skip "'default' gbrain source is built-in (cannot set --path)"
+    continue
+  fi
   # Check if source already exists in gbrain
   if "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "${source}"; then
     skip "gbrain source '${source}' already configured"
   else
+    # Init git repo in source dir if not already
+    if [[ ! -d "${source_dir}/.git" ]]; then
+      git -C "${source_dir}" init 2>/dev/null || true
+      git -C "${source_dir}" add -A 2>/dev/null || true
+      git -C "${source_dir}" commit -m "initial brain state" 2>/dev/null || true
+    fi
     "$GBRAIN_CMD" sources add "${source}" --path "${source_dir}" --name "${source}" 2>/dev/null || \
       warn "Failed to add source '${source}' — may need gbrain re-init"
     info "  Added gbrain source: ${source}"
@@ -324,7 +336,9 @@ echo "[\$(date)] gbrain sync watch daemon starting — interval \${INTERVAL}s"
 
 while true; do
     echo "[\$(date)] === Sync cycle ==="
-    "\$BUN" "\$GBRAIN" sync --all --parallel 4 --no-pull
+    # Sync non-default sources. Use --source <name>; --all includes
+    # 'default' which has no --path and would be silently skipped.
+    "\$BUN" "\$GBRAIN" sync --source mybrain --no-pull 2>&1
     echo "[\$(date)] === Cycle complete, sleeping \${INTERVAL}s ==="
     sleep "\$INTERVAL"
 done
