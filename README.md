@@ -2,6 +2,8 @@
 
 > *The config, skills, memory, and observability layer for a personal Hermes AI agent.*
 
+**Version: 1.0.0** · ![GitHub](https://img.shields.io/github/license/fleet-operator/hermes-cortex) · [Hermes Agent](https://hermes-agent.nousresearch.com)
+
 ![Hermes Cortex](avatar.png)
 
 **Hermes Cortex** is a self-contained system installer and public skill set for the [Hermes Agent](https://hermes-agent.nousresearch.com) runtime. It sets up:
@@ -95,4 +97,4 @@ cp ~/hermes-cortex-private/config/config.yaml ~/.hermes/config.yaml
 
 ---
 
-*Built by [@fleet-operator](https://github.com/fleet-operator) · Powered by 🦞 Hermes Agent*
+*Built by [@fleet-operator](https://github.com/fleet-operator) · Powered by 🦞 Hermes Agent · Version `v1.0.0`*
