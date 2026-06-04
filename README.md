@@ -23,17 +23,58 @@ hermes-cortex/
 |-------|------|---------|
 | **Agent Runtime** | [Hermes Agent](https://hermes-agent.nousresearch.com) | Self-improving autonomous agent |
 | **Observability** | [ClawMetry](https://clawmetry.com) | Real-time dashboard for agent activity |
-| **Memory** | GBrain *(coming soon)* | Long-term persistent knowledge graph |
-| **Code** | GitHub | Version control for agent config & skills |
+| **Memory** | [GBrain](https://github.com/garrytan/gbrain) | Long-term persistent knowledge graph |
+| **Code** | GitHub | Version-controlled config, skills & brain |
 
-## 🚀 Quick Start
+## 🚀 One-Command Install
 
 ```bash
-# ClawMetry dashboard (local)
-pip install clawmetry
-clawmetry --workspace ~/.hermes
-# → http://localhost:8900
+# Clone the cortex
+git clone https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex
+
+# Run the installer (safe to re-run — it's idempotent)
+bash ~/hermes-cortex/install.sh
+
+# ⚡ Then give your Hermes agent the prompt it prints out
+# to set up cron jobs and activate the /brain command
 ```
+
+### What `install.sh` does
+
+| Step | What | Why |
+|------|------|-----|
+| 1 | **Ollama** | Local LLM server for free embeddings |
+| 2 | **Bun** | JavaScript runtime for gbrain |
+| 3 | **gbrain** | Persistent knowledge brain (PGLite, zero-config) |
+| 4 | **Brain dirs** | `~/brain/{default,…}` with MECE directory schema |
+| 5 | **gbrain sync** | Launchd daemon — syncs brain every 2 minutes |
+| 6 | **ClawMetry** | Dashboard at `localhost:8900` |
+| 7 | **`/brain` plugin** | Hermes slash command for gbrain queries |
+| 8 | **Scripts** | `heartbeat.py` + `memory-to-brain.py` |
+| 9 | **Plugin enable** | Auto-activates in Hermes config |
+| 10 | **Cron prompt** | Instructions for Hermes agent setup |
+
+### Configuration
+
+Set these environment variables before running for a custom setup:
+
+```bash
+export CORTEX_SOURCES="me,shared,default"   # Brain source names (default: "default")
+export CORTEX_HOME="$HOME"                  # User home directory
+export HERMES_HOME="$HOME/.hermes"          # Hermes config directory
+export CORTEX_USER="$USER"                  # Your name for plugin metadata
+```
+
+### Multi-Person Setup
+
+The installer supports any number of brain sources. For a two-person household:
+
+```bash
+export CORTEX_SOURCES="luke,amy,shared,default"
+bash ~/hermes-cortex/install.sh
+```
+
+This creates isolated sources (`luke`, `amy`), a federated shared source (`shared`), and a default. The `/brain` slash command adapts to whatever sources you configure.
 
 ## 🎯 Philosophy
 
