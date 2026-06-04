@@ -3,7 +3,7 @@
 # 
 # Run with: docker compose -f docker-compose.langfuse.yml up -d
 # Access at: http://localhost:3000
-# External via nginx: https://fleet-operator.com:11002
+# External via nginx: https://example.com:11002
 
 services:
   langfuse-worker:

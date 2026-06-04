@@ -961,7 +961,7 @@ elif [[ -f "$NGINX_SRC" ]]; then
   sudo mkdir -p "$(dirname "$NGINX_CONF")"
   sudo cp "$NGINX_SRC" "$NGINX_CONF"
   info "  Copied config to $NGINX_CONF"
-  info "  NOTE: Requires SSL certs at /usr/local/etc/nginx/ssl/fleet-operator.com/"
+  info "  NOTE: Requires SSL certs at /usr/local/etc/nginx/ssl/example.com/"
   info "  To skip SSL for local-only access, edit the config and remove ssl directives"
 else
   # Create basic config without SSL for local-only use

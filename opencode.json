@@ -1,0 +1,86 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  
+  "instructions": [
+    "AGENTS.md",
+    "opencode-instructions.md",
+    ".agentkore/prompts/system.md"
+  ],
+  
+  "permission": {
+    "bash": {
+      "./run *": "allow",
+      "cat .env": "deny",
+      "cat .env.*": "deny",
+      "cat *": "allow",
+      "curl *": "allow",
+      "dirname *": "allow",
+      "docker logs *": "allow",
+      "docker *": "deny",
+      "echo *": "allow",
+      "env": "deny",
+      "git add": "allow",
+      "git add *": "allow",
+      "git branch": "allow",
+      "git branch *": "allow",
+      "git checkout": "allow",
+      "git checkout *": "allow",
+      "git commit": "allow",
+      "git commit *": "allow",
+      "git diff": "allow",
+      "git diff *": "allow",
+      "git log": "allow",
+      "git log *": "allow",
+      "git status": "allow",
+      "git status *": "allow",
+      "go build": "allow",
+      "go build *": "allow",
+      "go test": "allow",
+      "go test *": "allow",
+      "grep": "allow",
+      "grep *": "allow",
+      "head *": "allow",
+      "kill *": "deny",
+      "less .env": "deny",
+      "less .env.*": "deny",
+      "ls *": "allow",
+      "more .env": "deny",
+      "more .env.*": "deny",
+      "pgrep *": "deny",
+      "pkill *": "deny",
+      "printenv": "deny",
+      "ps aux *": "allow",
+      "set": "deny",
+      "sleep *": "allow",
+      "sort *": "allow",
+      "tail *": "allow",
+      "uniq *": "allow",
+      "which *": "allow",
+      "wc *": "allow",
+      "git push": "ask",
+      "git push *": "ask",
+      "*": "ask"
+    },
+    "grep": {
+      ".env": "deny",
+      ".env.*": "deny",
+      "*.env": "deny",
+      "*.env.*": "deny",
+      ".env.example": "allow",
+      "*": "allow"
+    },
+    "todowrite": "allow",
+    "edit": "allow",
+    "read": {
+      ".env": "deny",
+      ".env.*": "deny",
+      "*.env": "deny",
+      "*.env.*": "deny",
+      ".env.example": "allow",
+      "*": "allow"
+    },
+    "skill": {
+      "*": "allow"
+    }
+  }
+}
