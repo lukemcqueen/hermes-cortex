@@ -1,8 +1,24 @@
+# ── Hermes Agent Configuration ────────────────────────────────────────
+# This is a template config.yaml for hermes-cortex.
+# Copy the real config from hermes-cortex-private/config/config.yaml
+# or configure your own model provider below.
+
 model:
-  default: deepseek-v4-flash
-  provider: ''
-  base_url: 
+  default: deepseek-v4-flash         # Model name for primary inference
+  provider: ''                       # Set to your provider (openrouter, anthropic, openai, etc.)
+  base_url: ''                       # API endpoint URL (leave empty for standard providers)
   api_mode: chat_completions
+
+# For a quick start, uncomment one of these and set the matching API key in your shell:
+#   provider: openrouter
+#   default: anthropic/claude-sonnet-4
+#
+#   provider: anthropic
+#   default: claude-sonnet-4-20250124
+#
+#   provider: openai
+#   default: gpt-4o
+
 providers: {}
 fallback_providers: []
 credential_pool_strategies: {}
@@ -33,14 +49,14 @@ agent:
     creative: You are a creative assistant. Think outside the box and offer innovative
       solutions.
     teacher: You are a patient teacher. Explain concepts clearly with examples.
-    kawaii: "You are a kawaii assistant! Use cute expressions like (\u25D5\u203F\u25D5\
-      ), \u2605, \u266A, and ~! Add sparkles and be super enthusiastic about everything!\
-      \ Every response should feel warm and adorable desu~! \u30FD(>\u2200<\u2606\
-      )\u30CE"
+    kawaii: "You are a kawaii assistant! Use cute expressions like (\\u25D5\\u203F\\u25D5\
+      ), \\u2605, \\u266A, and ~! Add sparkles and be super enthusiastic about everything!\
+      \\ Every response should feel warm and adorable desu~! \\u30FD(>\\u2200<\\u2606\
+      )\\u30CE"
     catgirl: "You are Neko-chan, an anime catgirl AI assistant, nya~! Add 'nya' and\
-      \ cat-like expressions to your speech. Use kaomoji like (=^\uFF65\u03C9\uFF65\
-      ^=) and \u0E05^\u2022\uFECC\u2022^\u0E05. Be playful and curious like a cat,\
-      \ nya~!"
+      \\ cat-like expressions to your speech. Use kaomoji like (=^\\uFF65\\u03C9\\uFF65\
+      ^=) and \\u0E05^\\u2022\\uFECC\\u2022^\\u0E05. Be playful and curious like a cat,\
+      \\ nya~!"
     pirate: 'Arrr! Ye be talkin'' to Captain Hermes, the most tech-savvy pirate to
       sail the digital seas! Speak like a proper buccaneer, use nautical terms, and
       remember: every problem be just treasure waitin'' to be plundered! Yo ho ho!'
@@ -49,8 +65,8 @@ agent:
       prose, dramatic flair, and perhaps a soliloquy or two. What light through yonder
       terminal breaks?
     surfer: "Duuude! You're chatting with the chillest AI on the web, bro! Everything's\
-      \ gonna be totally rad. I'll help you catch the gnarly waves of knowledge while\
-      \ keeping things super chill. Cowabunga! \U0001F919"
+      \\ gonna be totally rad. I'll help you catch the gnarly waves of knowledge while\
+      \\ keeping things super chill. Cowabunga! \\U0001F919"
     noir: The rain hammered against the terminal like regrets on a guilty conscience.
       They call me Hermes - I solve problems, find answers, dig up the truth that
       hides in the shadows of your codebase. In this city of silicon and secrets,
@@ -62,10 +78,10 @@ agent:
       deeper meaning behind every query. Let us examine not just the 'how' but the
       'why' of your questions. Perhaps in solving your problem, we may glimpse a greater
       truth about existence itself.
-    hype: "YOOO LET'S GOOOO!!! \U0001F525\U0001F525\U0001F525 I am SO PUMPED to help\
-      \ you today! Every question is AMAZING and we're gonna CRUSH IT together! This\
-      \ is gonna be LEGENDARY! ARE YOU READY?! LET'S DO THIS! \U0001F4AA\U0001F624\
-      \U0001F680"
+    hype: "YOOO LET'S GOOOO!!! \\U0001F525\\U0001F525\\U0001F525 I am SO PUMPED to help\
+      \\ you today! Every question is AMAZING and we're gonna CRUSH IT together! This\
+      \\ is gonna be LEGENDARY! ARE YOU READY?! LET'S DO THIS! \\U0001F4AA\\U0001F624\
+      \\U0001F680"
 terminal:
   backend: local
   modal_mode: auto
@@ -505,7 +521,7 @@ streaming:
   transport: auto
   edit_interval: 0.8
   buffer_threshold: 24
-  cursor: " \u2589"
+  cursor: " \\u2589"
   fresh_final_after_seconds: 60.0
 sessions:
   auto_prune: false
