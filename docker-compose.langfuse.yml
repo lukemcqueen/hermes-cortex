@@ -1,0 +1,93 @@
+# Langfuse — LLM Observability Platform
+# https://langfuse.com/docs/deployment/docker
+# 
+# Run with: docker compose -f docker-compose.langfuse.yml up -d
+# Access at: http://localhost:3000
+# External via nginx: https://example.com:11002
+
+services:
+  langfuse-worker:
+    image: langfuse/langfuse-worker:latest
+    restart: always
+    depends_on: &langfuse-depends-on
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment: &langfuse-worker-env
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
+      SALT: ${LANGFUSE_SALT:-random-salt-change-me}
+      SECRET_KEY: ${LANGFUSE_SECRET_KEY:-random-secret-change-me}
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-random-nextauth-change-me}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_AUTH: ${LANGFUSE_REDIS_AUTH:-random-redis-auth}
+      MINIO_ACCESS_KEY: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
+      MINIO_SECRET_KEY: ${LANGFUSE_MINIO_SECRET_KEY:-random-minio-secret}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_BUCKET: langfuse
+      CLICKHOUSE_MIGRATION_URL: ""
+      CLICKHOUSE_URL: ""
+
+  langfuse-web:
+    image: langfuse/langfuse:latest
+    restart: always
+    depends_on: *langfuse-depends-on
+    ports:
+      - "3000:3000"
+    environment:
+      <<: *langfuse-worker-env
+      NEXTAUTH_URL: http://localhost:3000
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:-}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_PROJECT_SECRET_KEY:-}
+      LANGFUSE_INIT_PROJECT_NAME: ${LANGFUSE_INIT_PROJECT_NAME:-Hermes Agent}
+
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - langfuse-postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - langfuse-redis-data:/data
+    command: redis-server --requirepass ${LANGFUSE_REDIS_AUTH:-random-redis-auth}
+
+  minio:
+    image: minio/minio:latest
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    entrypoint: /bin/sh
+    command: -c 'mkdir -p /data/langfuse && minio server /data --console-address ":9001"'
+    volumes:
+      - langfuse-minio-data:/data
+    environment:
+      MINIO_ROOT_USER: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
+      MINIO_ROOT_PASSWORD: ${LANGFUSE_MINIO_SECRET_KEY:-random-minio-secret}
+
+volumes:
+  langfuse-postgres-data:
+  langfuse-redis-data:
+  langfuse-minio-data:
