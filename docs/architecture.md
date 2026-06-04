@@ -22,7 +22,6 @@
        ▼                   ▼                    ▼
 ┌──────────────────────────────────────────────────────┐
 │           nginx Reverse Proxy (macOS Host)            │
-│  :11001 → Clawmetry (legacy dashboard, port 8900)     │
 │  :11002 → Langfuse (LLM observability, port 3000)     │
 │  :11003 → Cortex Dashboard (companion, port 8901)     │
 │  TLS + Basic Auth on all external ports               │
@@ -34,8 +33,7 @@
 | Layer | Tool | Purpose |
 |-------|------|---------|
 | **Agent** | Hermes Agent | Self-improving runtime with learning loop, subagents, cron, Telegram interface |
-| **Observability** | Langfuse (primary) + Cortex Dashboard (companion) | Trace inspection, session replay, LLM evaluation scoring, system health monitoring |
-| **Legacy Dashboard** | Clawmetry | Previous-gen dashboard — still running alongside Langfuse |
+| **Observability** | Langfuse + Cortex Dashboard | Trace inspection, session replay, LLM evaluation scoring, system health monitoring |
 | **Memory** | GBrain | Long-term knowledge graph via Markdown files across 4 sources (luke, amy, shared, default). PGLite engine with Ollama embeddings. Sync daemon + dream cycle |
 | **Config** | GitHub (two-repo system) | Public repo: installer, skeleton, docs. Private repo: full config, scripts, dashboard, nginx config. Brain content on private branches |
 
@@ -53,9 +51,8 @@
 |---------|------|---------|-------|
 | Ollama | 11434 | Local LLM serving | Native macOS, launchd-managed |
 | Hermes Gateway | — | Agent runtime | Python, gateway.run, launchd |
-| Langfuse | 3000 | LLM trace observability | Docker (6 containers via colima) |
+| Langfuse | 3000 | LLM trace observability | Docker Desktop (6 containers) |
 | Cortex Dashboard | 8901 | System + Langfuse companion | Flask + pure JS/HTML |
-| Clawmetry | 8900 | Legacy dashboard | Flask (Python), launchd |
 | nginx | 80/443 | Reverse proxy for all services | Homebrew, launchd |
 | GBrain Sync | — | Memory sync daemon | Bun, PGLite, launchd (2min interval) |
 
@@ -65,9 +62,8 @@ All external services are accessed via nginx on custom ports with TLS + basic au
 
 | Port | Service | Auth Required |
 |------|---------|--------------|
-| 11001 | Clawmetry (legacy) | Yes |
 | 11002 | Langfuse (primary) | Yes |
-| 11003 | Cortex Dashboard | Yes (`dashboard` / `Hermes!Cortex2026`) |
+| 11003 | Cortex Dashboard | Yes |
 
 ## Design Principles
 

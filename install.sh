@@ -3,7 +3,7 @@
 #  Hermes Cortex — Full System Installer
 #  https://github.com/fleet-operator/hermes-cortex
 #
-#  Installs: Ollama · Bun · gbrain · ClawMetry ·
+#  Installs: Ollama · Bun · gbrain ·
 #            Brain directory structure · Hermes plugins ·
 #            Launchd services · Cron jobs (via agent)
 #
@@ -375,84 +375,7 @@ PLISTEOF
 fi
 
 # ─────────────────────────────────────────────────────────────
-#  6. ClawMetry — Real-time dashboard
-# ─────────────────────────────────────────────────────────────
-step "Installing ClawMetry (dashboard)"
-if command -v clawmetry &>/dev/null; then
-  skip "already installed — $(clawmetry --version 2>/dev/null || echo 'clawmetry found')"
-else
-  pip install clawmetry 2>/dev/null || pip3 install clawmetry
-  ok
-fi
-
-# Find clawmetry binary
-CLAWMETRY_BIN=""
-for candidate in "${HERMES_HOME}/hermes-agent/venv/bin/clawmetry" "/usr/local/bin/clawmetry" "${CORTEX_HOME}/.local/bin/clawmetry" "$(which clawmetry 2>/dev/null || true)"; do
-  if [[ -x "$candidate" ]]; then
-    CLAWMETRY_BIN="$candidate"
-    break
-  fi
-done
-
-# Create launchd plist for ClawMetry dashboard
-step "Configuring ClawMetry launchd service"
-CLAWMETRY_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.clawmetry.dashboard.plist"
-if launchctl list com.clawmetry.dashboard &>/dev/null 2>&1; then
-  skip "already loaded"
-elif [[ -z "$CLAWMETRY_BIN" ]]; then
-  warn "ClawMetry binary not found — can't create launchd service. Install manually after setup."
-else
-  # Get the python from the same venv as clawmetry
-  PYTHON_BIN="$(dirname "$CLAWMETRY_BIN")/python3"
-  if [[ ! -x "$PYTHON_BIN" ]]; then
-    PYTHON_BIN="$(dirname "$CLAWMETRY_BIN")/python"
-  fi
-
-  mkdir -p "${CORTEX_HOME}/.clawmetry"
-  cat > "$CLAWMETRY_PLIST" <<PLISTEOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.clawmetry.dashboard</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>${PYTHON_BIN}</string>
-        <string>${CLAWMETRY_BIN}</string>
-        <string>--host</string>
-        <string>127.0.0.1</string>
-        <string>--port</string>
-        <string>8900</string>
-        <string>--workspace</string>
-        <string>${HERMES_HOME}</string>
-        <string>--fleet-db</string>
-        <string>${CORTEX_HOME}/.clawmetry/fleet.db</string>
-        <string>--no-debug</string>
-    </array>
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>CLAWMETRY_NO_CLOUD</key>
-        <string>1</string>
-    </dict>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>StandardOutPath</key>
-    <string>/tmp/clawmetry.log</string>
-    <key>StandardErrorPath</key>
-    <string>/tmp/clawmetry.log</string>
-</dict>
-</plist>
-PLISTEOF
-  launchctl load "$CLAWMETRY_PLIST"
-  info "ClawMetry dashboard: http://localhost:8900"
-  ok
-fi
-
-# ─────────────────────────────────────────────────────────────
-#  7. Hermes gbrain Plugin (/brain slash command)
+#  6. Hermes gbrain Plugin (/brain slash command)
 # ─────────────────────────────────────────────────────────────
 step "Installing gbrain Hermes plugin (/brain command)"
 
