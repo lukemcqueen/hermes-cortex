@@ -10,7 +10,9 @@
 
 - **Ollama** — Local LLM server (free embeddings)
 - **Bun** + **GBrain** — Persistent knowledge brain (PGLite, zero-config)
-- **ClawMetry** — Real-time observability dashboard
+- **ClawMetry** — Real-time observability dashboard (legacy)
+- **Langfuse** — LLM trace evaluation and scoring (primary observability)
+- **Cortex Dashboard** — Companion dashboard for Langfuse + system health
 - **Brain directory structure** — MECE-organized knowledge sources
 - **gbrain sync daemon** — Automatic 2-minute sync
 - **Hermes plugin** — `/brain` slash command
@@ -38,9 +40,9 @@ bash ~/hermes-cortex/install.sh
 | 3 | **gbrain** | Persistent knowledge brain (PGLite, zero-config) |
 | 4 | **Brain dirs** | `~/brain/{default,…}` with MECE directory schema |
 | 5 | **gbrain sync** | Launchd daemon — syncs brain every 2 minutes |
-| 6 | **ClawMetry** | Dashboard at `localhost:8900` |
+| 6 | **Observability** | Langfuse + Cortex Dashboard + ClawMetry (legacy) |
 | 7 | **`/brain` plugin** | Hermes slash command for gbrain queries |
-| 8 | **Scripts** | `heartbeat.py` + `memory-to-brain.py` |
+| 8 | **Scripts** | Heartbeat, memory sync, Langfuse scoring, dashboard |
 | 9 | **Plugin enable** | Auto-activates in Hermes config |
 | 10 | **Cron prompt** | Instructions for Hermes agent setup |
 
@@ -79,16 +81,18 @@ This repository holds:
 | What | Location |
 |------|----------|
 | Full personal config.yaml | `config/config.yaml` |
-| Environment secrets (API keys, tokens) | `.env` |
-| Utility & monitoring scripts | `scripts/` |
-| Private skills & workflows | `skills/` |
-| Private data | `data/` |
+| Environment secrets (API keys, tokens) | `.env` (not committed) |
+| Utility & monitoring scripts (13) | `scripts/` |
+| Cortex Dashboard (Flask + JS) | `dashboard/` |
+| nginx reverse proxy config | `nginx/` |
+| Brain content | Private `brain-*` branches (not on `main`) |
 
 After running the public installer, apply your private config:
 
 ```bash
 cp ~/hermes-cortex-private/config/config.yaml ~/.hermes/config.yaml
 # Source your .env, copy scripts, etc.
+git clone git@github.com:lukemcqueen/hermes-cortex-private.git ~/hermes-cortex-private
 ```
 
 ## 🎯 Philosophy

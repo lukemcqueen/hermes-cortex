@@ -3,33 +3,77 @@
 ## Overview
 
 ```
-  You (Telegram/CLI)
+  You (Telegram / CLI)
        │
        ▼
-┌─────────────────────┐     ┌─────────────────┐
-│   Hermes Agent      │────▶│   ClawMetry     │
-│   (Runtime)         │     │   (Dashboard)   │
-│                     │     │   localhost:8900 │
-│  • Tools & Skills   │     └─────────────────┘
-│  • Cron Jobs        │
-│  • Memory           │     ┌─────────────────┐
-│  • Subagents        │     │   GBrain        │
-│                     │────▶│   (Memory Graph)│
-└─────────────────────┘     └─────────────────┘
+┌──────────────────────────────────────────────────────┐
+│                  Hermes Agent (Runtime)               │
+│  • Tools & Skills  • Cron Jobs  • Memory  • Subagents │
+└──────┬──────────────────────────────────┬────────────┘
+       │                                  │
+       ▼                                  ▼
+┌──────────────┐  ┌──────────────────┐  ┌──────────────┐
+│   Langfuse   │  │  Cortex Dashboard│  │   GBrain     │
+│  (LLM Obs.)  │  │   (Flask + JS)   │  │ (Knowledge)  │
+│ local:3000   │  │  local:8901      │  │ PGLite       │
+│ ext:11002    │  │  ext:11003       │  │ 4 sources    │
+└──────────────┘  └──────────────────┘  └──────────────┘
+       │                   │                    │
+       ▼                   ▼                    ▼
+┌──────────────────────────────────────────────────────┐
+│           nginx Reverse Proxy (macOS Host)            │
+│  :11001 → Clawmetry (legacy dashboard, port 8900)     │
+│  :11002 → Langfuse (LLM observability, port 3000)     │
+│  :11003 → Cortex Dashboard (companion, port 8901)     │
+│  TLS + Basic Auth on all external ports               │
+└──────────────────────────────────────────────────────┘
 ```
 
 ## Layers
 
-| Layer | What | Why |
-|-------|------|-----|
-| **Agent** | Hermes Agent | Self-improving runtime with learning loop, subagents, cron |
-| **Observability** | ClawMetry | Real-time dashboard: live trace, session replay, costs, cron history, alerts |
-| **Memory** | GBrain *(planned)* | Long-term knowledge graph via Markdown + hybrid search |
-| **Config** | GitHub | Version-controlled skills, configs, and workflows |
+| Layer | Tool | Purpose |
+|-------|------|---------|
+| **Agent** | Hermes Agent | Self-improving runtime with learning loop, subagents, cron, Telegram interface |
+| **Observability** | Langfuse (primary) + Cortex Dashboard (companion) | Trace inspection, session replay, LLM evaluation scoring, system health monitoring |
+| **Legacy Dashboard** | Clawmetry | Previous-gen dashboard — still running alongside Langfuse |
+| **Memory** | GBrain | Long-term knowledge graph via Markdown files across 4 sources (luke, amy, shared, default). PGLite engine with Ollama embeddings. Sync daemon + dream cycle |
+| **Config** | GitHub (two-repo system) | Public repo: installer, skeleton, docs. Private repo: full config, scripts, dashboard, nginx config. Brain content on private branches |
+
+## Repository Architecture
+
+| Repo | Visibility | Contents |
+|------|-----------|----------|
+| `hermes-cortex` | **Public** | Installer (`install.sh`), skeleton config, architecture docs, bump-version script. No secrets or brain data |
+| `hermes-cortex-private` | **Private** | Full system config (`config.yaml`), dashboard (Flask + JS), nginx config, 13 utility scripts, all cron setups |
+| `brain-*` branches on private repo | **Private** | Brain content on `brain-luke`, `brain-amy`, `brain-shared`, `brain-default` branches. Each is a clean single-commit orphan branch synced via gbrain |
+
+## Services
+
+| Service | Port | Purpose | Stack |
+|---------|------|---------|-------|
+| Ollama | 11434 | Local LLM serving | Native macOS, launchd-managed |
+| Hermes Gateway | — | Agent runtime | Python, gateway.run, launchd |
+| Langfuse | 3000 | LLM trace observability | Docker (6 containers via colima) |
+| Cortex Dashboard | 8901 | System + Langfuse companion | Flask + pure JS/HTML |
+| Clawmetry | 8900 | Legacy dashboard | Flask (Python), launchd |
+| nginx | 80/443 | Reverse proxy for all services | Homebrew, launchd |
+| GBrain Sync | — | Memory sync daemon | Bun, PGLite, launchd (2min interval) |
+
+## External Access
+
+All external services are accessed via nginx on custom ports with TLS + basic auth:
+
+| Port | Service | Auth Required |
+|------|---------|--------------|
+| 11001 | Clawmetry (legacy) | Yes |
+| 11002 | Langfuse (primary) | Yes |
+| 11003 | Cortex Dashboard | Yes (`dashboard` / `Hermes!Cortex2026`) |
 
 ## Design Principles
 
 1. **Thin harness, fat skills** — The agent framework stays lean; the value lives in well-crafted skills and memory
-2. **Visibility first** — Every agent action should be observable, traceable, and auditable
-3. **Persistence by design** — Nothing is lost. Config, skills, and memory are version-controlled
-4. **Self-improving loop** — The agent creates skills from patterns, optimizes them over time
+2. **Visibility first** — Every agent action is observable via Langfuse traces + evaluation scores
+3. **Persistence by design** — Config, skills, memory, and brain content are all version-controlled
+4. **Self-improving loop** — The agent creates skills from patterns, optimizes through cron-driven analysis
+5. **Separation of concerns** — Public (installer/docs) ≠ Private (config/scripts) ≠ Brain (content on branches)
+6. **No PII in history** — Both repos have been surgically scrubbed via git-filter-repo; brain data only on private branches
