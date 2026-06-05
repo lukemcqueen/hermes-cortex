@@ -10,7 +10,6 @@
 
 - **Ollama** — Local LLM server (free embeddings)
 - **Bun** + **GBrain** — Persistent knowledge brain (PGLite, zero-config)
-- **ClawMetry** — Real-time observability dashboard (legacy)
 - **Langfuse** — LLM trace evaluation and scoring (primary observability)
 - **Cortex Dashboard** — Companion dashboard for Langfuse + system health
 - **Brain directory structure** — MECE-organized knowledge sources
@@ -40,7 +39,7 @@ bash ~/hermes-cortex/install.sh
 | 3 | **gbrain** | Persistent knowledge brain (PGLite, zero-config) |
 | 4 | **Brain dirs** | `~/brain/{default,…}` with MECE directory schema |
 | 5 | **gbrain sync** | Launchd daemon — syncs brain every 2 minutes |
-| 6 | **Observability** | Langfuse + Cortex Dashboard + ClawMetry (legacy) |
+| 6 | **Observability** | Langfuse + Cortex Dashboard |
 | 7 | **`/brain` plugin** | Hermes slash command for gbrain queries |
 | 8 | **Scripts** | Heartbeat, memory sync, Langfuse scoring, dashboard |
 | 9 | **Plugin enable** | Auto-activates in Hermes config |
