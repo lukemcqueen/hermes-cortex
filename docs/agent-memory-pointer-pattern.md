@@ -1,5 +1,8 @@
 # Memory Architecture: The Pointer Pattern
 
+> **Version 1.0.0** — Published 2026-06-05
+> Part of the [Hermes Cortex](https://github.com/fleet-operator/hermes-cortex) documentation suite.
+
 **Keep your agent's short-term memory lean while preserving full detail on demand.**
 
 ## The Problem
@@ -214,3 +217,11 @@ Docker essential (observability). 3 GB VM stable.
 **No separate brain repo?** Keep reference files anywhere the agent can read them. The key is separation of concerns — pointers in memory, detail in files.
 
 **Multiple agents?** Each agent gets its own brain directory. gbrain supports multiple sources with `--source` filtering.
+
+---
+
+## Changelog
+
+| Version | Date | Changes |
+|---|---|---|
+| 1.0.0 | 2026-06-05 | Initial release — pointer pattern, setup steps, pruning strategy |
