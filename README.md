@@ -18,6 +18,7 @@
 
 ### What you get
 
+**▸ Core Platform**
 - **Ollama** — Local LLM server (free embeddings + Qwen2.5-Coder for offline code RAG)
 - **Bun** + **GBrain** — Persistent knowledge brain (PGLite, zero-config)
 - **Langfuse** — LLM trace evaluation and scoring (primary observability)
@@ -26,10 +27,14 @@
 - **gbrain sync daemon** — Automatic 2-minute sync
 - **Hermes plugin** — `/brain` slash command
 - **8 shared skills** — Subagent orchestration, debugging, TDD, planning, memory architecture, code review, spikes
-- **Web Cache** — Local semantic cache for web search/extract results (sqlite-vec + Ollama embeddings). Reduces API costs, enables offline operation.
+
+**▸ Offline Stack**
+||- **Web Cache** — Local semantic cache for web search/extract results (sqlite-vec + Ollama embeddings). Reduces API costs, enables offline operation.
 ||- **Offline Knowledge** — Cascade knowledge lookup: web-cache → kiwix ZIM (Wikipedia, WikiMed, Wikivoyage) → gbrain → LLM. Works identically online (saves API costs) and offline (no internet needed).
 ||- **Offline Code Assistant** — 386 curated code snippets across 26 languages (Python, JS/TS, Go, Rust, Java, C/C++, C#, PHP, Ruby, Swift, Kotlin, Zig, Dart, Elixir, Lua, R, SQL, Shell, Docker, Terraform, K8s, Nix, PowerShell). Semantic search + RAG-powered code generation via Ollama — all offline. Run `offline_code search "flask api"` or `offline_code gen "worker pool go"`.
 ||- **Offline Reader** — Lightweight web UI (`python3 offline/offline-reader.py`) for browsing Bible, hymns, and wiki reference in any browser — zero dependencies, works offline.
+
+**▸ Extras**
 ||- **Bible Content** — 55+ language translations (KJV, WEB, Korean, Arabic, Chinese, Russian, more). Search via `offline_knowledge bible`. Auto-parsed to JSON.
 ||- **Hymn Collection** — Public domain hymnal: PDF scores, ABC notation, MIDI, searchable lyrics. Search via `offline_knowledge hymns`.
 
@@ -37,7 +42,8 @@
 
 > *"The more we get to know about our universe, the more the hypothesis that there is a Creator God, who designed the universe for a purpose, gains in credibility as the best explanation of why we are here."* — John Lennox
 
-- **Auto-Update**
+**▸ Operations**
+- **Auto-Update** — Silent cron-based updater (`auto-update.sh`) that checks for content updates only when online. Set-and-forget via `hermes cron`.
 - **Computer Specs Guide** — Hardware-aware recommendations for models and ZIM content bundles based on your RAM.
 - **Pre-Flight Tool** — `prep-offline.sh` downloads ZIM content, seeds cache, starts kiwix-serve. One command to prepare for no-internet scenarios.
 - **Utility scripts** — Heartbeat watchdog, memory sync, system health
