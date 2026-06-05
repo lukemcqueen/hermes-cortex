@@ -52,6 +52,9 @@ CORTEX_HOME="${CORTEX_HOME:-$HOME}"
 BRAIN_DIR="${CORTEX_HOME}/brain"
 HERMES_HOME="${HERMES_HOME:-${CORTEX_HOME}/.hermes}"
 
+# Detect script directory (repo root when run from install.sh)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Brain sources — default is 'default' + optionally more
 if [[ -z "${CORTEX_SOURCES:-}" ]]; then
   # Single-user default
@@ -62,7 +65,7 @@ if [[ -z "${CORTEX_SOURCES:-}" ]]; then
 fi
 
 IFS=',' read -ra SOURCES <<< "$CORTEX_SOURCES"
-TOTAL_STEPS=13
+TOTAL_STEPS=15
 STEP=0
 
 # Ensure Hermes is installed
@@ -277,7 +280,45 @@ INDEXEOF
 done
 
 # ─────────────────────────────────────────────────────────────
-#  5. gbrain Sources & Sync Daemon
+#  5. Brain .gitignore — Protect memory and secrets per source
+# ─────────────────────────────────────────────────────────────
+step "Adding .gitignore to brain sources"
+GITIGNORE_TEMPLATE="${SCRIPT_DIR}/docs/templates/gitignore.brain"
+GITIGNORE_SRC=""
+if [[ -f "$GITIGNORE_TEMPLATE" ]]; then
+  GITIGNORE_SRC="$GITIGNORE_TEMPLATE"
+fi
+for source in "${SOURCES[@]}"; do
+  source_dir="${BRAIN_DIR}/${source}"
+  if [[ ! -d "$source_dir" ]]; then
+    continue
+  fi
+  if [[ -f "${source_dir}/.gitignore" ]]; then
+    skip "${source} — .gitignore already exists"
+  elif [[ -n "$GITIGNORE_SRC" ]]; then
+    cp "$GITIGNORE_SRC" "${source_dir}/.gitignore"
+    info "  Added .gitignore to ${source}/"
+  else
+    # Write inline fallback
+    cat > "${source_dir}/.gitignore" <<GITEOF
+# Hermes Cortex brain source — never commit per-instance memory or secrets
+MEMORY.md
+USER.md
+.env
+.env.*
+*.pem
+*.key
+*.cert
+.DS_Store
+Thumbs.db
+GITEOF
+    info "  Created inline .gitignore for ${source}/"
+  fi
+done
+ok
+
+# ─────────────────────────────────────────────────────────────
+#  6. gbrain Sources & Sync Daemon
 # ─────────────────────────────────────────────────────────────
 step "Configuring gbrain sources"
 
@@ -391,7 +432,7 @@ PLISTEOF
 fi
 
 # ─────────────────────────────────────────────────────────────
-#  6. Hermes gbrain Plugin (/brain slash command)
+#  7. Hermes gbrain Plugin (/brain slash command)
 # ─────────────────────────────────────────────────────────────
 step "Installing gbrain Hermes plugin (/brain command)"
 
@@ -812,7 +853,39 @@ M2BPY
 fi
 
 # ─────────────────────────────────────────────────────────────
-#  9. Langfuse — LLM Observability (Docker Compose)
+#  9. Seed Memory Files — Bootstrapping templates
+# ─────────────────────────────────────────────────────────────
+step "Seeding initial memory files (MEMORY.md, USER.md)"
+
+# Find the template seed files
+SEED_MEMORY="${SCRIPT_DIR}/docs/templates/MEMORY.seed.md"
+SEED_USER="${SCRIPT_DIR}/docs/templates/USER.seed.md"
+HERMES_MEMORIES="${HERMES_HOME}/memories"
+
+# Create memory directory if it doesn't exist
+mkdir -p "$HERMES_MEMORIES"
+
+# Copy seed files only if they don't already exist (don't overwrite)
+if [[ -f "$SEED_MEMORY" ]] && [[ ! -f "${HERMES_MEMORIES}/MEMORY.md" ]]; then
+  cp "$SEED_MEMORY" "${HERMES_MEMORIES}/MEMORY.md"
+  info "  Created MEMORY.md from seed template"
+else
+  skip "MEMORY.md already exists or template not found"
+fi
+
+if [[ -f "$SEED_USER" ]] && [[ ! -f "${HERMES_MEMORIES}/USER.md" ]]; then
+  cp "$SEED_USER" "${HERMES_MEMORIES}/USER.md"
+  info "  Created USER.md from seed template"
+else
+  skip "USER.md already exists or template not found"
+fi
+
+# Create an empty .gitkeep so the directory is clean (not git-tracked anyway)
+touch "$HERMES_MEMORIES/.gitkeep"
+ok
+
+# ─────────────────────────────────────────────────────────────
+#  10. Langfuse — LLM Observability (Docker Compose)
 # ─────────────────────────────────────────────────────────────
 step "Installing Langfuse (LLM observability)"
 
@@ -868,7 +941,7 @@ ENVFILE
 fi
 
 # ─────────────────────────────────────────────────────────────
-#  10. Cortex Dashboard — Flask companion app
+#  11. Cortex Dashboard — Flask companion app
 # ─────────────────────────────────────────────────────────────
 step "Installing Cortex Dashboard"
 
@@ -942,7 +1015,7 @@ PLIST
 fi
 
 # ─────────────────────────────────────────────────────────────
-#  11. nginx — Reverse proxy for Langfuse + Dashboard
+#  12. nginx — Reverse proxy for Langfuse + Dashboard
 # ─────────────────────────────────────────────────────────────
 step "Installing nginx reverse proxy"
 
@@ -1027,7 +1100,7 @@ fi
 ok
 
 # ─────────────────────────────────────────────────────────────
-#  12. Enable Hermes Plugin
+#  13. Enable Hermes Plugin
 # ─────────────────────────────────────────────────────────────
 step "Enabling gbrain-command plugin in Hermes config"
 
@@ -1056,7 +1129,7 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────
-#  13. Summary & Next Steps
+#  14. Summary & Next Steps
 # ─────────────────────────────────────────────────────────────
 header "INSTALLATION SUMMARY"
 
@@ -1071,6 +1144,7 @@ printf "  ${GREEN}•${RESET} Brain sources    → ${BRAIN_DIR}/{%s}\n" "$(echo 
 printf "  ${GREEN}•${RESET} gbrain plugin    → /brain slash command\n"
 printf "  ${GREEN}•${RESET} heartbeat.py     → system health watchdog\n"
 printf "  ${GREEN}•${RESET} memory-to-brain.py → memory sync to gbrain\n"
+printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\n"
 printf "  ${GREEN}•${RESET} Launchd services:\n"
 printf "                   com.ollama.serve\n"
 printf "                   com.gbrain.sync-watch\n"
@@ -1083,8 +1157,9 @@ cat <<PROMPT
 
 I've installed the Hermes Cortex system. Please finish the setup by:
 
-1. Loading the hermes-agent skill and verifying the gbrain-command plugin
-2. Setting up these cron jobs (use the cronjob tool):
+1. Open ~/.hermes/memories/MEMORY.md and ~/.hermes/memories/USER.md — fill in your system topology and user profile so I know your context
+2. Loading the hermes-agent skill and verifying the gbrain-command plugin
+3. Setting up these cron jobs (use the cronjob tool):
 
    a) gbrain-nightly-dream — daily at 3am:
       Schedule: 0 3 * * *
@@ -1105,8 +1180,8 @@ I've installed the Hermes Cortex system. Please finish the setup by:
       Schedule: 0 4 * * *
       Prompt: Read your current MEMORY.md and USER.md from ~/.hermes/memories/ and prune/consolidate entries that are stale, redundant, or no longer relevant. Keep useful durable facts. Report what you removed and why.
 
-3. Run /reset or /new to activate the /brain slash command
-4. Verify: run /brain hello-world to test
+4. Run /reset or /new to activate the /brain slash command
+5. Verify: run /brain hello-world to test
 
 PROMPT
 printf "${RESET}${BOLD}${CYAN}───────────────────────────────────────────────────${RESET}\n"
