@@ -1,0 +1,18 @@
+# Hermes Cortex brain source — .gitignore
+#
+# MEMORY.md and USER.md are private to each Hermes instance.
+# They contain per-machine topology, agent identity, and user preferences.
+# Never share them across machines or commit to shared repos.
+MEMORY.md
+USER.md
+
+# Never commit secrets
+.env
+.env.*
+*.pem
+*.key
+*.cert
+
+# OS junk
+.DS_Store
+Thumbs.db
