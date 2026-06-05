@@ -102,6 +102,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    environment:
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:?Missing LANGFUSE_CLICKHOUSE_PASSWORD in .env}
     volumes:
       - langfuse-clickhouse-data:/var/lib/clickhouse
     ulimits:
