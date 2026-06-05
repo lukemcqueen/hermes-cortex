@@ -3,17 +3,18 @@
 import json, urllib.request, os
 from base64 import b64encode
 
-# Read secret key from langfuse .env file
-# Example: replace with your own path to the .env file
+# Read keys from langfuse .env file
 env_path = os.path.expanduser('~/langfuse/.env')
+pk = sk = None
 with open(env_path, 'r') as f:
     for line in f:
-        if 'LANGFUSE_INIT_PROJECT_SECRET_KEY' in line:
+        if 'LANGFUSE_INIT_PROJECT_PUBLIC_KEY' in line:
+            pk = line.strip().split('=', 1)[1]
+        elif 'LANGFUSE_INIT_PROJECT_SECRET_KEY' in line:
             sk = line.strip().split('=', 1)[1]
-            break
 
 # Build auth
-pk = "pk-lf-QQruh3wQ0dqoMzIzCkYjpNmtS5rlIXnP"
+assert pk and sk, "Could not read Langfuse API keys from ~/langfuse/.env"
 auth = b64encode(f"{pk}:{sk}".encode()).decode()
 
 req = urllib.request.Request(

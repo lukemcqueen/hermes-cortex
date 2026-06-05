@@ -27,14 +27,14 @@ services:
         condition: service_healthy
     environment: &langfuse-env-base
       # ── Database ──
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
+      DATABASE_URL: postgresql://postgres:${LANGFUSE_POSTGRES_PASSWORD:?Missing LANGFUSE_POSTGRES_PASSWORD in .env}@postgres:5432/postgres
 
       # ── ClickHouse (required by v3) ──
-      CLICKHOUSE_URL: http://clickhouse:8123
-      CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+      CLICKHOUSE_URL: http://default:${LANGFUSE_CLICKHOUSE_PASSWORD:?}@clickhouse:8123
+      CLICKHOUSE_MIGRATION_URL: clickhouse://default:${LANGFUSE_CLICKHOUSE_PASSWORD:?}@clickhouse:9000
       CLICKHOUSE_CLUSTER_ENABLED: "false"
       CLICKHOUSE_USER: default
-      CLICKHOUSE_PASSWORD: ""
+      CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:?Missing LANGFUSE_CLICKHOUSE_PASSWORD in .env}
 
       # ── Redis ──
       REDIS_HOST: redis
@@ -52,6 +52,10 @@ services:
       NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-}
       # Generate with: openssl rand -hex 32
       LANGFUSE_ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-}
+
+      # ── Telemetry / Privacy ──
+      NEXT_TELEMETRY_DISABLED: "1"
+      LANGFUSE_TELEMETRY_ENABLED: "false"
 
       # ── S3 Event Upload (required by v3 — uses local MinIO) ──
       LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
@@ -82,7 +86,7 @@ services:
     restart: always
     depends_on: *langfuse-depends-on
     ports:
-      - "${LANGFUSE_PORT:-3000}:3000"
+      - "127.0.0.1:${LANGFUSE_PORT:-3000}:3000"
     environment:
       <<: *langfuse-env-base
       NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3000}
@@ -116,8 +120,8 @@ services:
     volumes:
       - langfuse-postgres-data:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${LANGFUSE_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${LANGFUSE_POSTGRES_PASSWORD:?Missing LANGFUSE_POSTGRES_PASSWORD in .env}
       POSTGRES_DB: postgres
 
   redis:
@@ -133,6 +137,9 @@ services:
     command: redis-server --requirepass ${LANGFUSE_REDIS_AUTH:-random-redis-auth}
 
   minio:
+    # ⚠️ PIN RECOMMENDED: Check https://hub.docker.com/r/minio/minio/tags
+    #    for a stable release (e.g. minio/minio:RELEASE.2025-04-08T15-22-15Z).
+    #    Pinning avoids unexpected breaking changes on `docker compose pull`.
     image: minio/minio:latest
     restart: always
     healthcheck:
