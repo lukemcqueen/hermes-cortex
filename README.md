@@ -7,7 +7,7 @@
 
 ![Hermes Cortex](avatar.png)
 
-**Hermes Cortex** is a self-contained system installer and public skill set for the [Hermes Agent](https://hermes-agent.nousresearch.com) runtime. It sets up:
+**Hermes Cortex** is a self-contained system installer and public skill set for the [Hermes Agent](https://hermes-agent.nousresearch.com) runtime:
 
 ### Who is this for?
 
