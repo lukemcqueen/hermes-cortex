@@ -185,6 +185,7 @@ download_pg_bible() {
 
     info "Downloading $name (PG #$pg_id)..."
     local url="https://www.gutenberg.org/cache/epub/${pg_id}/pg${pg_id}.txt"
+    local tmp_txt=$(mktemp)
 
     if curl -sL --max-time 30 "$url" -o "$tmp_txt" 2>/dev/null; then
         # Strip PG header/footer, extract just the Bible text
@@ -208,6 +209,7 @@ download_ebible() {
     # eBible.org provides downloadable files. We try a few common patterns.
     # Most have a simple text download at {url}.txt or similar
     local downloaded=0
+    local tmp_txt=$(mktemp)
 
     # Try several known download patterns
     for suffix in ".txt" "/download" "/plain"; do
