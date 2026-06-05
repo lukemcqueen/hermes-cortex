@@ -3,9 +3,15 @@
 #  Hermes Cortex — Full System Installer
 #  https://github.com/fleet-operator/hermes-cortex
 #
-#  Installs: Ollama · Bun · gbrain · Langfuse · Cortex Dashboard ·
-#            nginx · Brain directory structure · Hermes plugins ·
-#            Launchd services · Cron jobs (via agent)
+#  Installs: Ollama · Bun · gbrain · Langfuse† · Cortex Dashboard† ·
+#            nginx† · Brain directory structure · Hermes plugins ·
+#            Web Cache · Offline Knowledge (kiwix ZIM) · Skills
+#  † Server profile only (CORTEX_PROFILE=server). Laptop profile
+#    (CORTEX_PROFILE=laptop) skips Docker-dependent services.
+#
+#  Platforms: macOS (native) · Linux (systemd) · Windows (scheduled tasks)
+#  Set CORTEX_OS to override auto-detection: darwin, linux, windows
+#  Launchd services · Cron jobs (via agent)
 #
 #  Idempotent — safe to re-run. Skips already-installed steps.
 # ─────────────────────────────────────────────────────────────
@@ -35,15 +41,45 @@ skip() { printf "  ${YELLOW}skip${RESET} — %s\n" "$1"; }
 # ── Abort handler ───────────────────────────────────────────
 trap 'printf "\n${RED}Installation aborted at step $STEP${RESET}\n"' EXIT
 
+# ── Source OS Abstraction Layer ─────────────────────────────
+source "${SCRIPT_DIR}/scripts/os-config.sh"
+source "${SCRIPT_DIR}/scripts/service-writer.sh"
+
 # ─────────────────────────────────────────────────────────────
-#  0. Prerequisites & Configuration
+#  0. System Verification Check
+# ─────────────────────────────────────────────────────────────
+header "SYSTEM VERIFICATION"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
+CHECK_SCRIPT="${SCRIPT_DIR}/check-system.sh"
+
+if [[ -f "$CHECK_SCRIPT" ]]; then
+  bash "$CHECK_SCRIPT" || {
+    error "System verification failed. Review the issues above."
+    error "Fix them and re-run install.sh"
+    exit 1
+  }
+  printf "\n"
+else
+  warn "check-system.sh not found — skipping verification"
+  printf "\n"
+fi
+
+# ─────────────────────────────────────────────────────────────
+#  Prerequisites & Configuration
 # ─────────────────────────────────────────────────────────────
 header "PREREQUISITES"
 
-# macOS check
-if [[ "$(uname)" != "Darwin" ]]; then
-  warn "This script is optimized for macOS. Some steps (launchd, Homebrew) may not work on Linux."
-  warn "Continuing anyway — but launchd services will be skipped."
+# OS-specific notes
+if [[ "$CORTEX_OS" == "macos" ]]; then
+  :  # Native — full support
+elif [[ "$CORTEX_OS" == "linux" ]]; then
+  warn "Linux detected — using systemd services. Some macOS-specific paths adjusted."
+elif [[ "$CORTEX_OS" == "windows" ]]; then
+  warn "Windows detected — using scheduled tasks. Some features (Dashboard, nginx) limited."
+fi
+info "Profile: ${CORTEX_PROFILE}"
+if [[ "$CORTEX_PROFILE" == "laptop" ]]; then
+  info "  Laptop mode: skipping nginx, Langfuse, Dashboard (Docker not required)"
 fi
 
 # User info
@@ -52,8 +88,8 @@ CORTEX_HOME="${CORTEX_HOME:-$HOME}"
 BRAIN_DIR="${CORTEX_HOME}/brain"
 HERMES_HOME="${HERMES_HOME:-${CORTEX_HOME}/.hermes}"
 
-# Detect script directory (repo root when run from install.sh)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Detect script directory
+SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 
 # Brain sources — default is 'default' + optionally more
 if [[ -z "${CORTEX_SOURCES:-}" ]]; then
@@ -65,7 +101,7 @@ if [[ -z "${CORTEX_SOURCES:-}" ]]; then
 fi
 
 IFS=',' read -ra SOURCES <<< "$CORTEX_SOURCES"
-TOTAL_STEPS=16
+TOTAL_STEPS=22
 STEP=0
 
 # Ensure Hermes is installed
@@ -74,11 +110,15 @@ if ! command -v hermes &>/dev/null && [[ ! -x "${HERMES_HOME}/hermes-agent/venv/
   warn "The script will install everything else, but you'll need Hermes for the final agent-side setup."
 fi
 
-# Ensure Homebrew
-if ! command -v brew &>/dev/null; then
+# Ensure package manager
+if [[ "$CORTEX_OS" == "macos" ]] && ! command -v brew &>/dev/null; then
   step "Installing Homebrew…"
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || echo 'export PATH=/usr/local/bin:$PATH')"
+  if [[ "$(uname -m)" == "arm64" ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  else
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
   ok
 fi
 
@@ -86,80 +126,23 @@ fi
 #  1. Ollama — local LLM server for embeddings
 # ─────────────────────────────────────────────────────────────
 step "Installing Ollama (local LLM server)"
-if command -v ollama &>/dev/null; then
-  skip "already installed — $(ollama --version 2>/dev/null || echo 'ollama')"
-else
-  brew install --cask ollama
-  ok
-fi
+bash "${SCRIPT_DIR}/scripts/install-ollama.sh" install
+ok
 
-# Start Ollama via launchd if not already
-if ! launchctl list com.ollama.serve &>/dev/null 2>&1; then
-  step "Configuring Ollama launchd service"
-  mkdir -p "${CORTEX_HOME}/.ollama"
-  cat > "${CORTEX_HOME}/Library/LaunchAgents/com.ollama.serve.plist" <<PLISTEOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.ollama.serve</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/usr/local/bin/ollama</string>
-        <string>serve</string>
-    </array>
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>PATH</key>
-        <string>/usr/local/bin:/usr/bin:/bin</string>
-        <key>HOME</key>
-        <string>${CORTEX_HOME}</string>
-        <key>OLLAMA_HOST</key>
-        <string>127.0.0.1</string>
-    </dict>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>ThrottleInterval</key>
-    <integer>10</integer>
-    <key>StandardOutPath</key>
-    <string>${CORTEX_HOME}/.ollama/serve.log</string>
-    <key>StandardErrorPath</key>
-    <string>${CORTEX_HOME}/.ollama/serve.err</string>
-    <key>WorkingDirectory</key>
-    <string>${CORTEX_HOME}</string>
-</dict>
-</plist>
-PLISTEOF
-  launchctl load "${CORTEX_HOME}/Library/LaunchAgents/com.ollama.serve.plist"
-  ok
-else
-  skip "launchd service already loaded"
-fi
+# Configure Ollama service
+step "Configuring Ollama service"
+bash "${SCRIPT_DIR}/scripts/install-ollama.sh" service
+ok
 
 # Wait for Ollama to be ready
 step "Waiting for Ollama to respond…"
-for i in {1..30}; do
-  if curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-    info "Ollama ready at 127.0.0.1:11434"
-    break
-  fi
-  if [[ $i -eq 30 ]]; then
-    warn "Ollama didn't start in time. Continue anyway (run 'launchctl start com.ollama.serve' manually)."
-  fi
-  sleep 2
-done
+bash "${SCRIPT_DIR}/scripts/install-ollama.sh" wait
+ok
 
 # Pull embedding model
 step "Pulling embedding model (nomic-embed-text)"
-if ollama list 2>/dev/null | grep -q "nomic-embed-text"; then
-  skip "already pulled"
-else
-  ollama pull nomic-embed-text
-  ok
-fi
+bash "${SCRIPT_DIR}/scripts/install-ollama.sh" embed nomic-embed-text
+ok
 
 # ─────────────────────────────────────────────────────────────
 #  2. Bun — JavaScript runtime for gbrain
@@ -352,84 +335,10 @@ if "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "shared"; then
   info "  Federated 'shared' source (auto-searched)"
 fi
 
-# Create sync-watch daemon script
-step "Creating gbrain sync-watch daemon (launchd)"
-SYNC_SCRIPT="${CORTEX_HOME}/.gbrain/sync-watch.sh"
-if [[ -f "$SYNC_SCRIPT" ]]; then
-  skip "sync script already exists"
-else
-  mkdir -p "${CORTEX_HOME}/.gbrain"
-  cat > "$SYNC_SCRIPT" <<SCRIPTEOF
-#!/bin/bash
-# gbrain sync watch daemon
-# Polls gbrain sync every 120 seconds
-# Launchd manages this via KeepAlive
-
-BUN="${CORTEX_HOME}/.bun/bin/bun"
-GBRAIN="${CORTEX_HOME}/.bun/bin/gbrain"
-LOG="${CORTEX_HOME}/.gbrain/sync-watch.log"
-ERR_LOG="${CORTEX_HOME}/.gbrain/sync-watch.err"
-INTERVAL=120
-
-exec >> "\$LOG" 2>> "\$ERR_LOG"
-
-echo "[\$(date)] gbrain sync watch daemon starting — interval \${INTERVAL}s"
-
-while true; do
-    echo "[\$(date)] === Sync cycle ==="
-    # Sync non-default sources. Use --source <name>; --all includes
-    # 'default' which has no --path and would be silently skipped.
-    "\$BUN" "\$GBRAIN" sync --source mybrain --no-pull 2>&1
-    echo "[\$(date)] === Cycle complete, sleeping \${INTERVAL}s ==="
-    sleep "\$INTERVAL"
-done
-SCRIPTEOF
-  chmod +x "$SYNC_SCRIPT"
-  ok
-fi
-
-# Create launchd plist for sync daemon
-SYNC_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.gbrain.sync-watch.plist"
-if launchctl list com.gbrain.sync-watch &>/dev/null 2>&1; then
-  skip "sync-watch launchd already loaded"
-else
-  cat > "$SYNC_PLIST" <<PLISTEOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.gbrain.sync-watch</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/bin/bash</string>
-        <string>${SYNC_SCRIPT}</string>
-    </array>
-    <key>WorkingDirectory</key>
-    <string>${CORTEX_HOME}</string>
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>PATH</key>
-        <string>${CORTEX_HOME}/.bun/bin:/usr/local/bin:/usr/bin:/bin</string>
-        <key>HOME</key>
-        <string>${CORTEX_HOME}</string>
-    </dict>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>ThrottleInterval</key>
-    <integer>30</integer>
-    <key>StandardOutPath</key>
-    <string>${CORTEX_HOME}/.gbrain/sync-watch-stdout.log</string>
-    <key>StandardErrorPath</key>
-    <string>${CORTEX_HOME}/.gbrain/sync-watch-stderr.log</string>
-</dict>
-</plist>
-PLISTEOF
-  launchctl load "$SYNC_PLIST"
-  ok
-fi
+# Create gbrain sync daemon
+step "Creating gbrain sync-watch daemon ($SERVICE_MANAGER)"
+bash "${SCRIPT_DIR}/scripts/install-gbrain-sync.sh"
+ok
 
 # ─────────────────────────────────────────────────────────────
 #  7. Hermes gbrain Plugin (/brain slash command)
@@ -920,8 +829,43 @@ fi
 ok
 
 # ─────────────────────────────────────────────────────────────
-#  11. Langfuse — LLM Observability (Docker Compose)
+#  11. Web Cache — Local Semantic Web Cache
 # ─────────────────────────────────────────────────────────────
+step "Installing Web Cache (semantic web result cache)"
+WEB_CACHE_REPO="${SCRIPT_DIR}/web-cache"
+WEB_CACHE_DEST="${HERMES_HOME}/web-cache"
+HERMES_BIN="${HERMES_HOME}/bin"
+if [[ -d "$WEB_CACHE_REPO" ]]; then
+  mkdir -p "$WEB_CACHE_DEST" "$HERMES_BIN"
+  # Copy the Python tool
+  cp "${WEB_CACHE_REPO}/web_cache.py" "$WEB_CACHE_DEST/"
+  chmod +x "${WEB_CACHE_DEST}/web_cache.py"
+  # Copy the wrapper script
+  cp "${WEB_CACHE_REPO}/web_cache.sh" "$WEB_CACHE_DEST/"
+  chmod +x "${WEB_CACHE_DEST}/web_cache.sh"
+  # Create symlink in hermes bin directory
+  ln -sf "${WEB_CACHE_DEST}/web_cache.sh" "${HERMES_BIN}/web_cache"
+  info "  Installed web cache tool"
+  # Create the venv if not exists
+  if [[ ! -d "${WEB_CACHE_DEST}/.venv" ]]; then
+    python3 -m venv "${WEB_CACHE_DEST}/.venv" 2>/dev/null
+    "${WEB_CACHE_DEST}/.venv/bin/pip" install sqlite-vec requests 2>/dev/null && \
+      info "  Created venv with sqlite-vec + requests"
+  else
+    skip "  venv already exists"
+  fi
+  # Initialize the cache DB
+  "${WEB_CACHE_DEST}/.venv/bin/python3" "${WEB_CACHE_DEST}/web_cache.py" stats >/dev/null 2>&1 && \
+    info "  Cache DB initialized"
+else
+  skip "no web-cache/ directory in repo"
+fi
+ok
+
+# ─────────────────────────────────────────────────────────────
+#  12. Langfuse — LLM Observability (Docker Compose)
+# ─────────────────────────────────────────────────────────────
+if [[ "$CORTEX_PROFILE" == "server" ]]; then
 step "Installing Langfuse (LLM observability)"
 
 LANGFUSE_DIR="${CORTEX_HOME}/langfuse"
@@ -976,7 +920,7 @@ ENVFILE
 fi
 
 # ─────────────────────────────────────────────────────────────
-#  12. Cortex Dashboard — Flask companion app
+#  13. Cortex Dashboard — Flask companion app
 # ─────────────────────────────────────────────────────────────
 step "Installing Cortex Dashboard"
 
@@ -1000,16 +944,18 @@ else
     curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/dashboard/static/index.html" -o "$DASHBOARD_DEST/static/index.html"
   fi
   
-  # Install Flask if needed
-  if ! python3 -c "import flask" 2>/dev/null; then
-    info "  Installing Flask…"
-    pip3 install flask --quiet
+  # Create dedicated dashboard venv + install Flask
+  if [[ ! -f "${DASHBOARD_DEST}/venv/bin/python3" ]]; then
+    info "  Creating dedicated dashboard venv…"
+    python3 -m venv "${DASHBOARD_DEST}/venv"
+    "${DASHBOARD_DEST}/venv/bin/pip" install flask --quiet
+    info "  Dashboard venv ready"
   fi
-  
+
   # Install launchd plist
   if [[ ! -f "$DASHBOARD_PLIST" ]]; then
     # Update paths in plist for current user
-    sed "s|CORTEX_HOME_PLACEHOLDER|${CORTEX_HOME}|g" "${REPO_DASHBOARD}/com.hermes.cortex-dashboard.plist" > "$DASHBOARD_PLIST" 2>/dev/null || \
+    sed "s|CORTEX_HOME|${CORTEX_HOME}|g" "${REPO_DASHBOARD}/com.hermes.cortex-dashboard.plist" > "$DASHBOARD_PLIST" 2>/dev/null || \
     cat > "$DASHBOARD_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -1019,7 +965,7 @@ else
     <string>com.hermes.cortex-dashboard</string>
     <key>ProgramArguments</key>
     <array>
-        <string>python3</string>
+        <string>${DASHBOARD_DEST}/venv/bin/python3</string>
         <string>${DASHBOARD_DEST}/server.py</string>
     </array>
     <key>WorkingDirectory</key>
@@ -1030,6 +976,11 @@ else
     <true/>
     <key>ThrottleInterval</key>
     <integer>5</integer>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
     <key>StandardOutPath</key>
     <string>${HERMES_HOME}/logs/cortex-dashboard.log</string>
     <key>StandardErrorPath</key>
@@ -1048,94 +999,78 @@ PLIST
     warn "Failed to load dashboard launchd service"
   fi
 fi
+else
+  skip "Langfuse + Dashboard (laptop profile — Docker not required)"
+fi
 
 # ─────────────────────────────────────────────────────────────
-#  13. nginx — Reverse proxy for Langfuse + Dashboard
+#  13. Offline Knowledge Tools — cache cascade + ZIM content
 # ─────────────────────────────────────────────────────────────
+step "Installing offline knowledge tools (cache cascade + ZIM viewer)"
+
+OFFLINE_REPO="${SCRIPT_DIR}/offline"
+OFFLINE_DEST="${HERMES_HOME}/offline"
+
+if [[ -d "$OFFLINE_REPO" ]]; then
+  mkdir -p "$OFFLINE_DEST" "$HERMES_BIN"
+
+  # Copy offline knowledge cascade tool
+  cp "${OFFLINE_REPO}/offline_knowledge.py" "$OFFLINE_DEST/"
+  chmod +x "${OFFLINE_DEST}/offline_knowledge.py"
+  cp "${OFFLINE_REPO}/offline_knowledge.sh" "$OFFLINE_DEST/"
+  chmod +x "${OFFLINE_DEST}/offline_knowledge.sh"
+  ln -sf "${OFFLINE_DEST}/offline_knowledge.sh" "${HERMES_BIN}/offline_knowledge"
+  info "  Installed offline knowledge cascade tool"
+
+  # Copy kiwix Docker compose file
+  cp "${OFFLINE_REPO}/kiwix-docker-compose.yml" "$OFFLINE_DEST/"
+  info "  Installed kiwix-serve Docker compose"
+
+  # Copy prep-offline script
+  cp "${OFFLINE_REPO}/prep-offline.sh" "$OFFLINE_DEST/"
+  chmod +x "${OFFLINE_DEST}/prep-offline.sh"
+  ln -sf "${OFFLINE_DEST}/prep-offline.sh" "${HERMES_BIN}/prep-offline"
+  info "  Installed prep-offline content downloader"
+
+  # Copy SKILL.md for Hermes agent
+  SKILL_DEST="${HERMES_SKILLS}/software-development"
+  mkdir -p "$SKILL_DEST"
+  if [[ ! -f "${SKILL_DEST}/SKILL.md" ]] || ! grep -q "offline-knowledge" "${SKILL_DEST}/SKILL.md" 2>/dev/null; then
+    cp "${OFFLINE_REPO}/SKILL.md" "${SKILL_DEST}/offline-knowledge.SKILL.md" 2>/dev/null || true
+  fi
+  info "  Installed offline-knowledge skill"
+
+  # Create offline directories for ZIM content
+  mkdir -p "${HOME}/offline/zim"
+
+  # Prompt user to run prep-offline
+  printf "\n"
+  info "  Offline tools installed."
+  info "  To download ZIM content (Wikipedia, WikiMed, Wikivoyage, etc.), run:"
+  info "    ${HERMES_BIN}/prep-offline"
+  info "  Or with a preset:"
+  info "    ${HERMES_BIN}/prep-offline --mode=travel    # Jungle/vacation bundle (~6 GB)"
+  info "    ${HERMES_BIN}/prep-offline --mode=build     # Dev offline bundle (~7 GB)"
+  info "    ${HERMES_BIN}/prep-offline --mode=education  # Kid learning bundle (~5 GB)"
+  printf "\n"
+  ok
+else
+  skip "no offline/ directory in repo"
+fi
+
+# ─────────────────────────────────────────────────────────────
+#  14. nginx — Reverse proxy for Langfuse + Dashboard
+# ─────────────────────────────────────────────────────────────
+if [[ "$CORTEX_PROFILE" == "server" ]]; then
 step "Installing nginx reverse proxy"
-
-if ! command -v nginx &>/dev/null; then
-  brew install nginx 2>&1 | tail -3
-fi
-
-NGINX_CONF="/usr/local/etc/nginx/servers/hermes-services.conf"
-NGINX_SRC="${CORTEX_HOME}/Developer/AI/hermes-cortex/nginx/hermes-services.conf"
-
-# Check if config already exists
-if [[ -f "$NGINX_CONF" ]]; then
-  skip "nginx config already exists"
-elif [[ -f "$NGINX_SRC" ]]; then
-  # Copy from repo
-  sudo mkdir -p "$(dirname "$NGINX_CONF")"
-  sudo cp "$NGINX_SRC" "$NGINX_CONF"
-  info "  Copied config to $NGINX_CONF"
-  info "  NOTE: Requires SSL certs at /usr/local/etc/nginx/ssl/example.com/"
-  info "  To skip SSL for local-only access, edit the config and remove ssl directives"
-else
-  # Create basic config without SSL for local-only use
-  sudo mkdir -p "$(dirname "$NGINX_CONF")"
-  cat <<'NGINXCONF' | sudo tee "$NGINX_CONF" > /dev/null
-# Hermes reverse proxy: Langfuse (3000), Cortex Dashboard (8901)
-# Local-only (no SSL) — for production, add SSL certs and enable HTTPS
-
-upstream cortex_dashboard_backend {
-    server 127.0.0.1:8901;
-}
-
-upstream langfuse_backend {
-    server 127.0.0.1:3000;
-}
-
-# Cortex Dashboard - port 11003
-server {
-    listen 11003;
-    server_name localhost;
-
-    access_log  /usr/local/var/log/nginx/cortex-dashboard-access.log;
-    error_log   /usr/local/var/log/nginx/cortex-dashboard-error.log;
-
-    location / {
-        proxy_pass http://cortex_dashboard_backend;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-
-# Langfuse - port 11002
-server {
-    listen 11002;
-    server_name localhost;
-
-    access_log  /usr/local/var/log/nginx/langfuse-access.log;
-    error_log   /usr/local/var/log/nginx/langfuse-error.log;
-
-    location / {
-        proxy_pass http://langfuse_backend;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_read_timeout 86400s;
-    }
-}
-NGINXCONF
-  info "  Created local-only config (no SSL)"
-fi
-
-# Start/restart nginx
-if pgrep -x nginx > /dev/null; then
-  brew services restart nginx 2>&1 | tail -2
-else
-  brew services start nginx 2>&1 | tail -2
-fi
+bash "${SCRIPT_DIR}/scripts/install-nginx.sh"
 ok
+else
+  skip "nginx (laptop profile — not needed)"
+fi
 
 # ─────────────────────────────────────────────────────────────
-#  14. Enable Hermes Plugin
+#  15. Enable Hermes Plugin
 # ─────────────────────────────────────────────────────────────
 step "Enabling gbrain-command plugin in Hermes config"
 
@@ -1164,7 +1099,7 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────
-#  15. Summary & Next Steps
+#  16. Summary & Next Steps
 # ─────────────────────────────────────────────────────────────
 header "INSTALLATION SUMMARY"
 
@@ -1172,20 +1107,27 @@ printf "\n${BOLD}✅ System components installed${RESET}\n"
 printf "  ${GREEN}•${RESET} Ollama           — LLM server (embedding: nomic-embed-text)\n"
 printf "  ${GREEN}•${RESET} Bun              — JS runtime\n"
 printf "  ${GREEN}•${RESET} gbrain           — Knowledge brain (PGLite)\n"
+if [[ "$CORTEX_PROFILE" == "server" ]]; then
 printf "  ${GREEN}•${RESET} Langfuse         — LLM observability (Docker, port 3000)\n"
 printf "  ${GREEN}•${RESET} Cortex Dashboard — Flask companion app (port 8901)\n"
 printf "  ${GREEN}•${RESET} nginx            — Reverse proxy (ports 11002, 11003)\n"
+fi
 printf "  ${GREEN}•${RESET} Brain sources    → ${BRAIN_DIR}/{%s}\n" "$(echo "${SOURCES[*]}" | tr ' ' ',')"
 printf "  ${GREEN}•${RESET} gbrain plugin    → /brain slash command\n"
 printf "  ${GREEN}•${RESET} heartbeat.py     → system health watchdog\n"
 printf "  ${GREEN}•${RESET} memory-to-brain.py → memory sync to gbrain\n"
 printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\n"
 printf "  ${GREEN}•${RESET} Hermes skills    → 8 shared skills in ~/.hermes/skills/\n"
+printf "  ${GREEN}•${RESET} Web Cache       → semantic web result cache (sqlite-vec + Ollama)\n"
+printf "  ${GREEN}•${RESET} Offline Knowledge → cascade cache + kiwix ZIM content viewer\n"
 printf "  ${GREEN}•${RESET} Launchd services:\n"
 printf "                   com.ollama.serve\n"
 printf "                   com.gbrain.sync-watch\n"
+if [[ "$CORTEX_PROFILE" == "server" ]]; then
 printf "                   com.hermes.cortex-dashboard\n"
-printf "                   homebrew.mxcl.nginx\n\n"
+printf "                   homebrew.mxcl.nginx\n"
+fi
+printf "\n"
 
 printf "${BOLD}${YELLOW}⚠ Next Steps — give this prompt to your Hermes Agent:${RESET}\n"
 printf "%s${BOLD}${CYAN}" "───────────────────────────────────────────────────"
@@ -1224,16 +1166,20 @@ PROMPT
 printf "${RESET}${BOLD}${CYAN}───────────────────────────────────────────────────${RESET}\n"
 
 printf "\n${BOLD}📚 Quick Reference${RESET}\n"
+if [[ "$CORTEX_PROFILE" == "server" ]]; then
 printf "  ${GREEN}•${RESET} Langfuse:        http://localhost:3000 (nginx: :11002)\n"
 printf "  ${GREEN}•${RESET} Cortex Dashboard: http://localhost:8901 (nginx: :11003)\n"
+fi
 printf "  ${GREEN}•${RESET} /brain query     — search your knowledge brain\n"
+printf "  ${GREEN}•${RESET} Offline query:   offline_knowledge query \"question\"\n"
+printf "  ${GREEN}•${RESET} Download ZIM:    prep-offline\n"
 printf "  ${GREEN}•${RESET} Brain dirs:      %s\n" "${BRAIN_DIR}"
 printf "  ${GREEN}•${RESET} Logs:            %s/logs/\n" "${HERMES_HOME}"
 printf "  ${GREEN}•${RESET} Scripts:         %s/scripts/\n" "${SCRIPTS_DIR}"
 
 printf "\n${BOLD}🐚 For daily use in shell:${RESET}\n"
 printf "  Add to ~/.zshrc or ~/.bash_profile:\n"
-printf "${YELLOW}  export PATH=\"\$HOME/.bun/bin:\$PATH\"${RESET}\n"
+printf "${YELLOW}  export PATH=\"\$HOME/.bun/bin:\$HOME/.hermes/bin:\$PATH\"${RESET}\n"
 
 printf "\n${GREEN}${BOLD}Hermes Cortex v${VERSION} installed. Enjoy! 🧠${RESET}\n"
 

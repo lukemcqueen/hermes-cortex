@@ -1,4 +1,6 @@
 .agentkore/
+.web-cache/
+*.cache.db
 
 # Secrets & credentials
 .env
@@ -18,6 +20,10 @@ state.db
 # OS junk
 .DS_Store
 Thumbs.db
+
+# Offline ZIM content (large downloads — don't commit)
+offline/zim/
+*.zim
 
 # Python
 __pycache__/

@@ -1,0 +1,39 @@
+# ─────────────────────────────────────────────────────────────
+#  Kiwix-Serve — Offline ZIM Content Server (Docker)
+#  Part of Hermes Cortex offline knowledge stack
+# ─────────────────────────────────────────────────────────────
+# Usage: docker compose -f kiwix-docker-compose.yml up -d
+# Serves ZIM files at http://localhost:8080
+#
+# To add content: place .zim files in ~/offline/zim/
+# and restart: docker compose -f kiwix-docker-compose.yml restart
+# ─────────────────────────────────────────────────────────────
+
+version: "3.8"
+
+services:
+  kiwix-serve:
+    image: ghcr.io/kiwix/kiwix-serve:3.8.2
+    container_name: kiwix-serve
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      # Mount the ZIM files directory — add .zim files here
+      - "${HOME}/offline/zim:/zim:ro"
+      # Library XML for multi-ZIM serving
+      - "${HOME}/offline/kiwix-library.xml:/library.xml:ro"
+    command:
+      - "--port=8080"
+      - "--library=/library.xml"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

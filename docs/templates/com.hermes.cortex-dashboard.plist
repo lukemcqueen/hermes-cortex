@@ -1,27 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hermes Cortex — Dashboard Launchd Plist Template
+
+  Two common configurations:
+
+  1. DEDICATED VENV (recommended for production/isolated setups):
+     Keeps dashboard deps separate from gateway deps.
+     Create venv: python3 -m venv ~/.hermes/dashboard/venv
+     Install:     ~/.hermes/dashboard/venv/bin/pip install flask
+
+  2. SHARED VENV (simpler, uses gateway's venv):
+     Uses the Hermes Agent venv to avoid a second venv.
+
+  Replace CORTEX_HOME with the actual home path (e.g. /Users/luke).
+  Copy to: ~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist
+  Load:    launchctl load ~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist
+-->
 <plist version="1.0">
 <dict>
     <key>Label</key>
     <string>com.hermes.cortex-dashboard</string>
+
+    <!--
+      OPTION A: Dedicated venv (isolated)
+      ProgramArguments:
+        <string>CORTEX_HOME/.hermes/dashboard/venv/bin/python3</string>
+
+      OPTION B: Shared gateway venv (simpler)
+      ProgramArguments:
+        <string>CORTEX_HOME/.hermes/hermes-agent/venv/bin/python3</string>
+    -->
     <key>ProgramArguments</key>
     <array>
         <string>CORTEX_HOME/.hermes/dashboard/venv/bin/python3</string>
         <string>CORTEX_HOME/.hermes/dashboard/server.py</string>
     </array>
+
     <key>WorkingDirectory</key>
     <string>CORTEX_HOME/.hermes/dashboard</string>
+
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <true/>
     <key>ThrottleInterval</key>
     <integer>5</integer>
+
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
         <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
+
     <key>StandardOutPath</key>
     <string>CORTEX_HOME/.hermes/logs/cortex-dashboard.log</string>
     <key>StandardErrorPath</key>
