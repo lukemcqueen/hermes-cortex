@@ -815,6 +815,16 @@ Examples:
         else:
             print(f"\n🎵 Hymns:      ❌ Not found")
 
+        # Code corpus stats
+        code_index = HOME / "offline" / "code-index.json"
+        if code_index.exists():
+            import json
+            with open(code_index) as _cf:
+                _cd = json.load(_cf)
+            print(f"\n💻 Code:        ✅ {_cd.get('count', '?')} snippets ({_cd.get('dim', '?')}d vectors)")
+        else:
+            print(f"\n💻 Code:        ⚪ Not indexed (run: prep-code.sh)")
+
         print()
 
     elif args.command == "bible":
