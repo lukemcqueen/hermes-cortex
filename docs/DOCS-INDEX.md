@@ -43,8 +43,11 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/offline-travel-stack.md` | Offline knowledge scenarios — jungle travel, development, kid learning |
 | `docs/research/first-install-prompt-log.md` | First install prompt log |
 || `offline/SKILL.md` | Offline-knowledge skill — cascade cache + kiwix ZIM usage protocol |
-||| `offline/prep-bible.sh` | Bible translation downloader — 55+ languages, small (4-10 MB per translation) |
+||| `offline/prep-bible.sh` | Bible translation downloader — 55+ languages, small (4-10 MB per translation). Auto-parses to structured JSON via `bible-parse.py` |
 ||| `offline/prep-hymns.sh` | Public domain hymn downloader — scores (PDF), notation (ABC), lyrics (XML), audio (MIDI) |
+||| `offline/bible-parse.py` | Multi-strategy Bible text parser — PG, eBible, raw verse formats. Tries all, picks best. Generates structured JSON for the reader |
+||| `offline/offline-reader.py` | Local web UI for browsing Bible, hymns, and reference — zero dependencies, dark theme, works fully offline |
+||| `offline/auto-update.sh` | Silent auto-update for offline content — online-aware, set-and-forget via cron |
 | `web-cache/SKILL.md` | Web cache skill — local semantic cache for web_search and web_extract |
 | `memory/patterns.md` | Recurring code and design patterns |
 
