@@ -18,6 +18,12 @@ docker compose -f docker-compose.langfuse.yml up -d
 - `LANGFUSE_MINIO_ACCESS_KEY`, `LANGFUSE_MINIO_SECRET_KEY`
 - `LANGFUSE_INIT_PROJECT_PUBLIC_KEY`, `LANGFUSE_INIT_PROJECT_SECRET_KEY`
 
+**First-time admin access:** Set these in `.env` before first deploy to auto-create an admin user:
+- `LANGFUSE_INIT_USER_EMAIL` (e.g. `admin@langfuse.local`)
+- `LANGFUSE_INIT_USER_NAME` (e.g. `admin`)
+- `LANGFUSE_INIT_USER_PASSWORD`
+If omitted, use the **Sign up** link on the login page (`localhost:3001`) to create the first admin account.
+
 **ClickHouse migration URL** must use Go driver TCP protocol: `clickhouse://clickhouse:9000` (not HTTP port 8123).
 
 **Startup failure diagnosis:** Check `docker logs langfuse-langfuse-web-1` for ZodError — it means missing env var. Full recreate required on config changes (`down` + `up -d`, not just `restart`).
