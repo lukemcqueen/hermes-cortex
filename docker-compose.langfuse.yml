@@ -95,10 +95,10 @@ services:
       LANGFUSE_INIT_PROJECT_NAME: ${LANGFUSE_INIT_PROJECT_NAME:-Hermes Agent}
 
   clickhouse:
-    image: clickhouse/clickhouse-server:24-alpine
+    image: clickhouse/clickhouse-server:25.5-alpine
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "clickhouse client --query 'SELECT 1'"]
+      test: ["CMD-SHELL", "clickhouse client -h localhost --query 'SELECT 1'"]
       interval: 5s
       timeout: 5s
       retries: 5
