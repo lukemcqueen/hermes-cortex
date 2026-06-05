@@ -65,7 +65,7 @@ if [[ -z "${CORTEX_SOURCES:-}" ]]; then
 fi
 
 IFS=',' read -ra SOURCES <<< "$CORTEX_SOURCES"
-TOTAL_STEPS=15
+TOTAL_STEPS=16
 STEP=0
 
 # Ensure Hermes is installed
@@ -885,7 +885,42 @@ touch "$HERMES_MEMORIES/.gitkeep"
 ok
 
 # ─────────────────────────────────────────────────────────────
-#  10. Langfuse — LLM Observability (Docker Compose)
+#  10. Install Hermes Skills — Shared skills from the repo
+# ─────────────────────────────────────────────────────────────
+step "Installing Hermes skills from repo"
+SKILLS_REPO="${SCRIPT_DIR}/skills"
+HERMES_SKILLS="${HERMES_HOME}/skills"
+if [[ -d "$SKILLS_REPO" ]]; then
+  count=0
+  while IFS= read -r -d '' skill_file; do
+    # Compute destination path relative to skills/ dir
+    rel_path="${skill_file#$SKILLS_REPO/}"
+    dest="${HERMES_SKILLS}/${rel_path}"
+    dest_dir="$(dirname "$dest")"
+    if [[ ! -f "$dest" ]]; then
+      mkdir -p "$dest_dir"
+      cp "$skill_file" "$dest"
+      count=$((count + 1))
+    fi
+  done < <(find "$SKILLS_REPO" -name "SKILL.md" -type f -print0)
+  # Also copy reference files
+  while IFS= read -r -d '' ref_file; do
+    rel_path="${ref_file#$SKILLS_REPO/}"
+    dest="${HERMES_SKILLS}/${rel_path}"
+    dest_dir="$(dirname "$dest")"
+    if [[ ! -f "$dest" ]]; then
+      mkdir -p "$dest_dir"
+      cp "$ref_file" "$dest"
+    fi
+  done < <(find "$SKILLS_REPO" -path "*/references/*" -type f -print0)
+  info "  Installed ${count} skills (skipped existing)"
+else
+  skip "no skills/ directory in repo"
+fi
+ok
+
+# ─────────────────────────────────────────────────────────────
+#  11. Langfuse — LLM Observability (Docker Compose)
 # ─────────────────────────────────────────────────────────────
 step "Installing Langfuse (LLM observability)"
 
@@ -941,7 +976,7 @@ ENVFILE
 fi
 
 # ─────────────────────────────────────────────────────────────
-#  11. Cortex Dashboard — Flask companion app
+#  12. Cortex Dashboard — Flask companion app
 # ─────────────────────────────────────────────────────────────
 step "Installing Cortex Dashboard"
 
@@ -1015,7 +1050,7 @@ PLIST
 fi
 
 # ─────────────────────────────────────────────────────────────
-#  12. nginx — Reverse proxy for Langfuse + Dashboard
+#  13. nginx — Reverse proxy for Langfuse + Dashboard
 # ─────────────────────────────────────────────────────────────
 step "Installing nginx reverse proxy"
 
@@ -1100,7 +1135,7 @@ fi
 ok
 
 # ─────────────────────────────────────────────────────────────
-#  13. Enable Hermes Plugin
+#  14. Enable Hermes Plugin
 # ─────────────────────────────────────────────────────────────
 step "Enabling gbrain-command plugin in Hermes config"
 
@@ -1129,7 +1164,7 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────
-#  14. Summary & Next Steps
+#  15. Summary & Next Steps
 # ─────────────────────────────────────────────────────────────
 header "INSTALLATION SUMMARY"
 
@@ -1145,6 +1180,7 @@ printf "  ${GREEN}•${RESET} gbrain plugin    → /brain slash command\n"
 printf "  ${GREEN}•${RESET} heartbeat.py     → system health watchdog\n"
 printf "  ${GREEN}•${RESET} memory-to-brain.py → memory sync to gbrain\n"
 printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\n"
+printf "  ${GREEN}•${RESET} Hermes skills    → 8 shared skills in ~/.hermes/skills/\n"
 printf "  ${GREEN}•${RESET} Launchd services:\n"
 printf "                   com.ollama.serve\n"
 printf "                   com.gbrain.sync-watch\n"
@@ -1158,8 +1194,9 @@ cat <<PROMPT
 I've installed the Hermes Cortex system. Please finish the setup by:
 
 1. Open ~/.hermes/memories/MEMORY.md and ~/.hermes/memories/USER.md — fill in your system topology and user profile so I know your context
-2. Loading the hermes-agent skill and verifying the gbrain-command plugin
-3. Setting up these cron jobs (use the cronjob tool):
+2. Load the shared skills from ~/.hermes/skills/ (use skill_view(name) to browse them — includes subagent-driven-development, systematic-debugging, test-driven-development, spike, plan, writing-plans, memory-architecture, requesting-code-review)
+3. Loading the hermes-agent skill and verifying the gbrain-command plugin
+4. Setting up these cron jobs (use the cronjob tool):
 
    a) gbrain-nightly-dream — daily at 3am:
       Schedule: 0 3 * * *
@@ -1180,8 +1217,8 @@ I've installed the Hermes Cortex system. Please finish the setup by:
       Schedule: 0 4 * * *
       Prompt: Read your current MEMORY.md and USER.md from ~/.hermes/memories/ and prune/consolidate entries that are stale, redundant, or no longer relevant. Keep useful durable facts. Report what you removed and why.
 
-4. Run /reset or /new to activate the /brain slash command
-5. Verify: run /brain hello-world to test
+5. Run /reset or /new to activate the /brain slash command
+6. Verify: run /brain hello-world to test
 
 PROMPT
 printf "${RESET}${BOLD}${CYAN}───────────────────────────────────────────────────${RESET}\n"

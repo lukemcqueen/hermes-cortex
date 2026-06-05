@@ -15,6 +15,7 @@
 - **Brain directory structure** — MECE-organized knowledge sources
 - **gbrain sync daemon** — Automatic 2-minute sync
 - **Hermes plugin** — `/brain` slash command
+- **8 shared skills** — Subagent orchestration, debugging, TDD, planning, memory architecture, code review, spikes
 - **Utility scripts** — Heartbeat watchdog, memory sync, system health
 
 ## 🚀 One-Command Install
