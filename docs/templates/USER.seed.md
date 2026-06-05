@@ -1,3 +1,4 @@
+<!-- Part of Hermes Cortex. See docs/SECURITY.md for privacy. -->
 # User Profile — USER.md
 
 Your agent reads this on every message turn. It helps the agent understand *who you are* — your preferences, habits, and context.

@@ -73,3 +73,7 @@ All external services are accessed via nginx on custom ports with TLS + basic au
 4. **Self-improving loop** — The agent creates skills from patterns, optimizes through cron-driven analysis
 5. **Separation of concerns** — Public (installer/docs) ≠ Private (config/scripts) ≠ Brain (content on branches)
 6. **No PII in history** — Both repos have been surgically scrubbed via git-filter-repo; brain data only on private branches
+
+---
+
+**See also:** [Security Guide → `docs/SECURITY.md`](./SECURITY.md)

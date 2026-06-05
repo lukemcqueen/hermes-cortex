@@ -37,7 +37,7 @@ python3 ~/.hermes/web-cache/web_cache.py pre-seed \
 
 ### Daily Usage
 
-| Need | Ask Moses | Source |
+| **Need** | Ask Your Agent | Source |
 |---|---|---|
 | **Medical emergency** | `"What are the symptoms of dengue fever?"` | WikiMed |
 | **First aid** | `"How do I treat a deep cut in the jungle?"` | WikiMed |
@@ -51,9 +51,9 @@ python3 ~/.hermes/web-cache/web_cache.py pre-seed \
 ### Sample Sessions
 
 ```
-You: "Moses, my wife has a fever, headache, and joint pain. What should we do?"
+You: "Hermes, my wife has a fever, headache, and joint pain. What should we do?"
 
-Moses →
+Hermes →
   [Cascade: cache miss → kiwix/WikiMed hit]
   
   WikiMed says: These symptoms match **dengue fever**.
@@ -71,9 +71,9 @@ Moses →
 ```
 
 ```
-Your wife: "Moses, what local plants can I use for an antiseptic?"
+Your wife: "Hermes, what local plants can I use for an antiseptic?"
 
-Moses →
+Hermes →
   [Cascade: cache miss → kiwix/Simple Wikipedia hit]
   
   Based on the region's flora, these plants have antiseptic properties:
@@ -124,7 +124,7 @@ python3 ~/.hermes/web-cache/web_cache.py pre-seed \
 pip install --no-index --find-links ~/offline/pip-cache/ flask
 
 # If the package isn't cached:
-# Moses can help find an alternative or work around it
+# Your agent can help find an alternative or work around it
 ```
 
 ---
@@ -133,7 +133,7 @@ pip install --no-index --find-links ~/offline/pip-cache/ flask
 
 **Who:** Children learning during long offline periods.
 
-**Goal:** Engaging educational content with Moses as an interactive tutor.
+**Goal:** Engaging educational content with your agent as an interactive tutor.
 
 ### Pre-Flight Checklist
 
@@ -144,7 +144,7 @@ hermes-cortex/offline/prep-offline.sh --mode=education
 
 ### Daily Usage
 
-| Kid asks | Moses does | Source |
+| Kid asks | Your Agent does | Source |
 |---|---|---|
 | `"Why is the sky blue?"` | Explains Rayleigh scattering | Simple Wikipedia |
 | `"How do I multiply fractions?"` | Finds lesson, gives examples | Wikibooks |
@@ -157,7 +157,7 @@ hermes-cortex/offline/prep-offline.sh --mode=education
 ```
 Kid: "Why do volcanoes erupt?"
 
-Moses →
+Hermes →
   [Cascade: Simple Wikipedia → Wikibooks]
   
   Great question! Let me explain in simple terms:
@@ -184,7 +184,7 @@ Moses →
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                      AGENT (Moses)                               │
+│                      AGENT (Hermes)                               │
 │  Receives question → runs cascade → synthesizes answer           │
 └──────────┬───────────────────────────────────────┬────────────────┘
            │                                       │

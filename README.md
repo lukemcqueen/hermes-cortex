@@ -1,12 +1,23 @@
 # 🧠 Hermes Cortex
 
-> *The config, skills, memory, and observability layer for a personal Hermes AI agent.*
+> *An open-source installer and skill set for your personal Hermes AI agent.
+> Privacy-first, offline-capable, built for non-technical users.*
 
 **Version: 1.0.0** · ![GitHub](https://img.shields.io/github/license/lukemcqueen/hermes-cortex) · [Hermes Agent](https://hermes-agent.nousresearch.com)
 
 ![Hermes Cortex](avatar.png)
 
 **Hermes Cortex** is a self-contained system installer and public skill set for the [Hermes Agent](https://hermes-agent.nousresearch.com) runtime. It sets up:
+
+### Who is this for?
+
+- **You want a personal AI agent** that runs on your own computer (no cloud dependency)
+- **You care about privacy** — everything stays on your machine
+- **You travel or have unreliable internet** — the offline stack works without connectivity
+- **You're not a developer** — the one-command installer handles everything
+- **You want observability** — see what your agent is doing with Langfuse tracing
+
+### What you get
 
 - **Ollama** — Local LLM server (free embeddings)
 - **Bun** + **GBrain** — Persistent knowledge brain (PGLite, zero-config)
@@ -202,8 +213,20 @@ chmod +x ~/hermes-cortex/install.sh
 ```
 
 ### "I don't have macOS"
-The installer is optimized for macOS. Linux users can run individual steps manually.
+The installer is optimized for macOS. Linux users can run individual steps manually. See the [Troubleshooting Guide](docs/troubleshooting.md) for more help.
+
+## 📚 More Documentation
+
+| Document | What it covers |
+|----------|---------------|
+| [Security Guide](docs/SECURITY.md) | 🔒 Port risks, file permissions, firewall setup, recovery — essential reading |
+| [Architecture](docs/architecture.md) | System diagram, services, port map, design principles |
+| [Troubleshooting](docs/troubleshooting.md) | 20+ common issues and fixes |
+| [Computer Specs](docs/computer-specs.md) | Hardware recommendations by RAM tier |
+| [Offline Scenarios](docs/offline-travel-stack.md) | Using Hermes without internet (travel, dev, education) |
+| [Third-Party Licenses](docs/THIRD_PARTY_LICENSES.md) | Attribution for all open-source components used |
+| [Docs Index](docs/DOCS-INDEX.md) | Full list of every document in this repo |
 
 ---
 
-*Built by [@lukemcqueen](https://github.com/lukemcqueen) · Powered by 🦞 Hermes Agent · Version `v1.0.0`*
+*Built by [@lukemcqueen](https://github.com/lukemcqueen) · Powered by 🦞 [Hermes Agent](https://hermes-agent.nousresearch.com) · Version `v1.0.0` · [MIT License](LICENSE) · See [Third-Party Licenses](docs/THIRD_PARTY_LICENSES.md) for component attributions*
