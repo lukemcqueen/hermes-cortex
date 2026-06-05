@@ -3,8 +3,11 @@
 #  Hermes Cortex — Full System Installer
 #  https://github.com/lukemcqueen/hermes-cortex
 #
-#  Installs: Ollama · Bun · gbrain · Langfuse · Cortex Dashboard ·
-#            nginx · Brain directory structure · Hermes plugins ·
+#  Installs: Ollama · Bun · gbrain · Langfuse† · Cortex Dashboard† ·
+#            nginx† · Brain directory structure · Hermes plugins ·
+#            Web Cache · Offline Knowledge (kiwix ZIM) · Skills
+#  † Server profile only (CORTEX_PROFILE=server). Laptop profile
+#    (CORTEX_PROFILE=laptop) skips Docker-dependent services.
 #            Launchd services · Cron jobs (via agent)
 #
 #  Idempotent — safe to re-run. Skips already-installed steps.
@@ -72,7 +75,19 @@ BRAIN_DIR="${CORTEX_HOME}/brain"
 HERMES_HOME="${HERMES_HOME:-${CORTEX_HOME}/.hermes}"
 
 # Detect script directory (repo root when run from install.sh)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
+
+# Installation profile — 'server' or 'laptop'
+#   server: Full stack — Ollama, gbrain, Langfuse, Dashboard, nginx, Web Cache, Offline
+#   laptop: Lean stack — Ollama, gbrain, Web Cache, Offline Knowledge (no nginx/Docker)
+CORTEX_PROFILE="${CORTEX_PROFILE:-server}"
+info "Installation profile: ${CORTEX_PROFILE}"
+if [[ "$CORTEX_PROFILE" == "laptop" ]]; then
+  info "  Laptop mode: skipping nginx, Langfuse, Dashboard (Docker not required)"
+elif [[ "$CORTEX_PROFILE" != "server" ]]; then
+  warn "Unknown profile '${CORTEX_PROFILE}'. Defaulting to 'server'."
+  CORTEX_PROFILE="server"
+fi
 
 # Brain sources — default is 'default' + optionally more
 if [[ -z "${CORTEX_SOURCES:-}" ]]; then
@@ -975,6 +990,7 @@ ok
 # ─────────────────────────────────────────────────────────────
 #  12. Langfuse — LLM Observability (Docker Compose)
 # ─────────────────────────────────────────────────────────────
+if [[ "$CORTEX_PROFILE" == "server" ]]; then
 step "Installing Langfuse (LLM observability)"
 
 LANGFUSE_DIR="${CORTEX_HOME}/langfuse"
@@ -1101,6 +1117,9 @@ PLIST
     warn "Failed to load dashboard launchd service"
   fi
 fi
+else
+  skip "Langfuse + Dashboard (laptop profile — Docker not required)"
+fi
 
 # ─────────────────────────────────────────────────────────────
 #  13. Offline Knowledge Tools — cache cascade + ZIM content
@@ -1160,6 +1179,7 @@ ok
 # ─────────────────────────────────────────────────────────────
 #  14. nginx — Reverse proxy for Langfuse + Dashboard
 # ─────────────────────────────────────────────────────────────
+if [[ "$CORTEX_PROFILE" == "server" ]]; then
 step "Installing nginx reverse proxy"
 
 if ! command -v nginx &>/dev/null; then
@@ -1241,6 +1261,9 @@ else
   brew services start nginx 2>&1 | tail -2
 fi
 ok
+else
+  skip "nginx (laptop profile — not needed)"
+fi
 
 # ─────────────────────────────────────────────────────────────
 #  15. Enable Hermes Plugin
@@ -1280,9 +1303,11 @@ printf "\n${BOLD}✅ System components installed${RESET}\n"
 printf "  ${GREEN}•${RESET} Ollama           — LLM server (embedding: nomic-embed-text)\n"
 printf "  ${GREEN}•${RESET} Bun              — JS runtime\n"
 printf "  ${GREEN}•${RESET} gbrain           — Knowledge brain (PGLite)\n"
+if [[ "$CORTEX_PROFILE" == "server" ]]; then
 printf "  ${GREEN}•${RESET} Langfuse         — LLM observability (Docker, port 3000)\n"
 printf "  ${GREEN}•${RESET} Cortex Dashboard — Flask companion app (port 8901)\n"
 printf "  ${GREEN}•${RESET} nginx            — Reverse proxy (ports 11002, 11003)\n"
+fi
 printf "  ${GREEN}•${RESET} Brain sources    → ${BRAIN_DIR}/{%s}\n" "$(echo "${SOURCES[*]}" | tr ' ' ',')"
 printf "  ${GREEN}•${RESET} gbrain plugin    → /brain slash command\n"
 printf "  ${GREEN}•${RESET} heartbeat.py     → system health watchdog\n"
@@ -1294,8 +1319,11 @@ printf "  ${GREEN}•${RESET} Offline Knowledge → cascade cache + kiwix ZIM co
 printf "  ${GREEN}•${RESET} Launchd services:\n"
 printf "                   com.ollama.serve\n"
 printf "                   com.gbrain.sync-watch\n"
+if [[ "$CORTEX_PROFILE" == "server" ]]; then
 printf "                   com.hermes.cortex-dashboard\n"
-printf "                   homebrew.mxcl.nginx\n\n"
+printf "                   homebrew.mxcl.nginx\n"
+fi
+printf "\n"
 
 printf "${BOLD}${YELLOW}⚠ Next Steps — give this prompt to your Hermes Agent:${RESET}\n"
 printf "%s${BOLD}${CYAN}" "───────────────────────────────────────────────────"
@@ -1334,9 +1362,13 @@ PROMPT
 printf "${RESET}${BOLD}${CYAN}───────────────────────────────────────────────────${RESET}\n"
 
 printf "\n${BOLD}📚 Quick Reference${RESET}\n"
+if [[ "$CORTEX_PROFILE" == "server" ]]; then
 printf "  ${GREEN}•${RESET} Langfuse:        http://localhost:3000 (nginx: :11002)\n"
 printf "  ${GREEN}•${RESET} Cortex Dashboard: http://localhost:8901 (nginx: :11003)\n"
+fi
 printf "  ${GREEN}•${RESET} /brain query     — search your knowledge brain\n"
+printf "  ${GREEN}•${RESET} Offline query:   offline_knowledge query \"question\"\n"
+printf "  ${GREEN}•${RESET} Download ZIM:    prep-offline\n"
 printf "  ${GREEN}•${RESET} Brain dirs:      %s\n" "${BRAIN_DIR}"
 printf "  ${GREEN}•${RESET} Logs:            %s/logs/\n" "${HERMES_HOME}"
 printf "  ${GREEN}•${RESET} Scripts:         %s/scripts/\n" "${SCRIPTS_DIR}"
