@@ -39,4 +39,5 @@ def decrypt_message(key, token):
 # Constant-time comparison (prevents timing attacks)
 def secure_compare(a, b):
     return secrets.compare_digest(a, b)
+
 ```

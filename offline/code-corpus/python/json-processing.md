@@ -40,4 +40,5 @@ def filter_json(data, predicate):
 
 def pretty_print(data, sort_keys=True):
     return json.dumps(data, indent=2, sort_keys=sort_keys, ensure_ascii=False)
+
 ```

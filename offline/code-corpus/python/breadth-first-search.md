@@ -21,4 +21,5 @@ def bfs(graph, start, target):
                 visited.add(neighbor)
                 queue.append((neighbor, dist + 1))
     return -1
+
 ```

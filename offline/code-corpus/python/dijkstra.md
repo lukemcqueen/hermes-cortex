@@ -23,4 +23,5 @@ def dijkstra(graph, start):
                 distances[neighbor] = new_dist
                 heapq.heappush(pq, (new_dist, neighbor))
     return distances
+
 ```

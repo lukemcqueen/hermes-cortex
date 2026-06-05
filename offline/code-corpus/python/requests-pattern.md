@@ -37,4 +37,5 @@ try:
         print(resp.read()[:100])
 except urllib.error.URLError as e:
     print(f'Request failed: {e}')
+
 ```

@@ -78,7 +78,7 @@ def parse_snippet(content):
             meta[key] = value
 
     # Extract first code block
-    code_match = re.search(r"```\w*\n(.*?)```", content, re.DOTALL)
+    code_match = re.search(r"```[a-zA-Z0-9_+#]*\n(.*?)```", content, re.DOTALL)
     code = code_match.group(1).strip() if code_match else ""
 
     return meta, code
@@ -87,23 +87,35 @@ def parse_snippet(content):
 # ── Embedding (Ollama) ──────────────────────────────────────
 
 def _ollama_embed(texts):
-    """Get embeddings from Ollama for a list of texts."""
+    """Get embeddings from Ollama for a list of texts (batched)."""
     if isinstance(texts, str):
         texts = [texts]
-    try:
-        import urllib.request
-        body = json.dumps({"model": EMBED_MODEL, "input": texts}).encode()
-        req = urllib.request.Request(
-            f"{OLLAMA_URL}/api/embed",
-            data=body,
-            headers={"Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read().decode())
-        return data.get("embeddings", [])
-    except Exception as e:
-        print(f"  Embedding error: {e}", file=sys.stderr)
-        return []
+
+    BATCH_SIZE = 10
+    all_embeddings = []
+
+    import urllib.request
+
+    for i in range(0, len(texts), BATCH_SIZE):
+        batch = texts[i:i + BATCH_SIZE]
+        try:
+            body = json.dumps({"model": EMBED_MODEL, "input": batch}).encode()
+            req = urllib.request.Request(
+                f"{OLLAMA_URL}/api/embed",
+                data=body,
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                data = json.loads(resp.read().decode())
+            batch_embeddings = data.get("embeddings", [])
+            all_embeddings.extend(batch_embeddings)
+            print(f"  Embedded batch {i//BATCH_SIZE + 1}/{(len(texts) + BATCH_SIZE - 1)//BATCH_SIZE} ({len(batch_embeddings)} embeddings)", end="\r", file=sys.stderr)
+        except Exception as e:
+            print(f"\n  Embedding error at batch {i//BATCH_SIZE + 1}: {e}", file=sys.stderr)
+            return []
+
+    print(file=sys.stderr)  # newline after progress
+    return all_embeddings
 
 
 def _ensure_embed_model():
@@ -228,7 +240,11 @@ def cmd_search(query, limit=5, lang=None):
     snippets = index.get("snippets", [])
     terms = query.lower().split()
 
-    # Score each snippet by keyword match + optional semantic
+    # Embed the query ONCE for semantic search
+    q_emb = _ollama_embed(query)
+    q_emb = q_emb[0] if q_emb else None
+
+    # Score each snippet by keyword match + semantic
     results = []
     for s in snippets:
         if lang and s["language"] != lang:
@@ -236,13 +252,11 @@ def cmd_search(query, limit=5, lang=None):
         text = f"{s['title']} {s['tags']} {s['description']} {s['code']}".lower()
         kw_score = sum(1 for t in terms if t in text)
 
-        # Try semantic score if we have embeddings
+        # Semantic score using pre-computed query embedding
         sem_score = 0
-        if s.get("embedding"):
+        if q_emb and s.get("embedding"):
             try:
-                emb = _ollama_embed(query)
-                if emb:
-                    sem_score = _cosine_similarity(s["embedding"], emb[0])
+                sem_score = _cosine_similarity(s["embedding"], q_emb)
             except Exception:
                 pass
 

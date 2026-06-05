@@ -32,4 +32,5 @@ def fetch_data(url):
     import urllib.request
     with urllib.request.urlopen(url, timeout=5) as resp:
         return resp.read()
+
 ```

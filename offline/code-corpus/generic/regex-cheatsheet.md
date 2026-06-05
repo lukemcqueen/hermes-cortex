@@ -43,7 +43,7 @@ source: reference
 ## Common Patterns
 | Pattern                     | Matches                      |
 |----------------------------|------------------------------|
-| `^[\w.-]+@[\w.-]+\.\w{2,}$` | Email address            |
+| `^[\w.-]+@[\w.-]+\\.\w{2,}$` | Email address            |
 | `https?://[^\s]+`           | URL                          |
 | `\d{3}-\d{3}-\d{4}`       | US phone (123-456-7890)      |
 | `^#([0-9a-fA-F]{6})\b`     | Hex color (#ff0000)          |

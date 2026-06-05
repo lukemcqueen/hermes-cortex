@@ -38,4 +38,5 @@ docker stats                                    # live resource usage
 # ======= Copy files =======
 docker cp <container_id>:/app/output.txt ./
 docker cp ./input.txt <container_id>:/app/
+
 ```

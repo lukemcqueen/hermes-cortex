@@ -37,4 +37,5 @@ source: reference
 | BST (balanced) | O(log n) | O(log n) | O(log n) | O(log n) |
 | Heap        | O(1)¹  | O(n)   | O(log n) | O(log n) |
 ¹ Only min/max
+
 ```
