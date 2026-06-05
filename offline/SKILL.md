@@ -114,6 +114,12 @@ offline_knowledge query "how to treat a snake bite in the jungle"
 | `python3 offline/offline-reader.py` | Launch local web UI for browsing Bible, hymns, and reference |
 | `./offline/auto-update.sh` | Check for content updates (silent if offline) |
 | `offline_knowledge stats` | Full system status |
+| `offline_code search <query>` | Semantic + keyword search over 386 code snippets, 26 languages |
+| `offline_code search "<query>" --lang go` | Search filtered by language |
+| `offline_code gen "<prompt>"` | RAG code generation using Ollama (context from matching snippets) |
+| `offline_code gen "<prompt>" --model qwen2.5-coder:7b` | Code gen with a larger model |
+| `offline_code index --force` | Rebuild the embedding index (after adding snippets) |
+| `offline_code stats` | Corpus statistics |
 
 ## Available ZIM Content
 
@@ -224,7 +230,71 @@ Behavior:
 - **Only changes when needed** — HEAD checks before downloading
 - **Bible** — parses any unparsed `.txt` files to `.json`
 - **Hymns** — checks Open Hymnal PDF/XML for size changes
-- **Silent** — only produces output when something actually changed
+|- **Silent** — only produces output when something actually changed
+
+---
+
+## 💻 Offline Code Assistant
+
+A curated corpus of **386 code snippets** across **26 languages** with semantic search and RAG-powered code generation — all running locally via Ollama.
+
+### What's Included
+
+| Tier | Languages | Snippets |
+|------|-----------|----------|
+| **Tier 1** — Production core | Python (26), JavaScript (22), TypeScript (15), Go (22), Rust (21), Java (20), SQL (12), Shell (8) | 146 |
+| **Tier 2** — Major ecosystems | C (18), C++ (22), C# (18), PHP (15), Ruby (15), Swift (15), Kotlin (15) | 118 |
+| **Tier 3** — Growing/admired | Zig (12), Dart (15), Elixir (10), Lua (10), R (12) | 59 |
+| **Tier 4** — Infra DSLs | Docker (5), Terraform (10), K8s (5), Nix (10), PowerShell (10) | 40 |
+
+### Quick Start
+
+```bash
+# Index is pre-built; if needed, rebuild:
+offline_code index --force
+
+# Search for snippets
+offline_code search "goroutine channel buffered"
+offline_code search "spring boot rest api" --lang java
+
+# Generate code from context
+offline_code gen "worker pool pattern in go"
+
+# See stats
+offline_code stats
+```
+
+### How It Works
+
+- **Corpus source:** `offline/code-corpus/snippets/*.py` — per-language Python modules export snippet definitions
+- **Generator:** `python3 offline/code-corpus/generate.py` writes formatted `.md` files with YAML frontmatter
+- **Embedding:** `offline_code index` batches snippets into groups of 10, embeds with Ollama `nomic-embed-text` (768-dim)
+- **Search:** single-embed query → cosine similarity against stored embeddings + keyword boost
+- **Generation:** top-3 matching snippets injected as context → `qwen2.5-coder:1.5b` (or your model)
+
+### Adding Snippets
+
+```bash
+# 1. Create a new module or edit an existing one in:
+#    offline/code-corpus/snippets/<language>_snippets.py
+#
+# Each module exports SNIPPETS — a list of 7-tuples:
+#   (rel_path, language, tags, title, description, source, code)
+
+# 2. Regenerate .md files
+python3 offline/code-corpus/generate.py
+
+# 3. Rebuild index
+offline_code index --force
+```
+
+### Resource Usage
+
+| Component | RAM | Notes |
+|-----------|-----|-------|
+| nomic-embed-text | ~300 MB | Shared with other offline tools |
+| qwen2.5-coder:1.5b | ~1 GB | Optional — only loaded during `gen` |
+| Corpus files | 3 MB disk | Text + 768-dim embeddings |
 
 ## Architecture
 

@@ -31,6 +31,7 @@
 |- **Offline Knowledge** — Cascade knowledge lookup: web-cache → kiwix ZIM (Wikipedia, WikiMed, Wikivoyage) → gbrain → LLM. Works identically online (saves API costs) and offline (no internet needed).
 |- **Bible Content** — Download Bible translations in 55+ languages (KJV, WEB, Spanish, Korean, Arabic, Chinese, Russian, and more). Searchable via `offline_knowledge bible search`. Auto-parsed to structured JSON for the offline reader.
 |- **Hymn Collection** — Public domain hymnody from the Open Hymnal Project: full hymnal PDF with scores, ABC music notation, MIDI audio, and searchable lyrics. Searchable via `offline_knowledge hymns search`.
+|- **Offline Code Assistant** — 386 curated code snippets across 26 languages (Python, JS/TS, Go, Rust, Java, C/C++, C#, PHP, Ruby, Swift, Kotlin, Zig, Dart, Elixir, Lua, R, SQL, Shell, Docker, Terraform, K8s, Nix, PowerShell). Semantic search + RAG-powered code generation via Ollama — all offline. Run `offline_code search "flask api"` or `offline_code gen "worker pool go"`.
 |- **Offline Reader** — Lightweight web UI (`python3 offline/offline-reader.py`) for browsing Bible, hymns, and wiki reference in any browser — zero dependencies, works offline.
 |- **Auto-Update** — Silent cron-based updater (`auto-update.sh`) that checks for content updates only when online. Set-and-forget via `hermes cron`.
 - **Computer Specs Guide** — Hardware-aware recommendations for models and ZIM content bundles based on your RAM.
@@ -80,9 +81,10 @@ CORTEX_OS=windows bash ~/hermes-cortex/install.sh
 | 11 | **Web Cache** | Semantic web result cache (sqlite-vec + Ollama) |
 | 12 | **Offline Knowledge** | Cascade tool + kiwix ZIM Docker + prep-offline + prep-bible + prep-hymns scripts |
 | 13 | **Offline Reader** | `python3 offline/offline-reader.py` — web UI for Bible, hymns, reference |
-| 14 | **Auto-Update** | `auto-update.sh` — silent cron-based content updater |
-| 15 | **nginx** † | Reverse proxy for Langfuse + Dashboard |
-| 16 | **Cron prompt** | Instructions for Hermes agent setup |
+| 14 | **Code Corpus** | 386 snippets shipped in-repo. Index for RAG search: `offline/prep-code.sh` builds embeddings via Ollama |
+| 15 | **Auto-Update** | `auto-update.sh` — silent cron-based content updater |
+| 16 | **nginx** † | Reverse proxy for Langfuse + Dashboard |
+| 17 | **Cron prompt** | Instructions for Hermes agent setup |
 | | *† Server profile only* | |
 
 ### Configuration
