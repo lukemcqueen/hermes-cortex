@@ -18,7 +18,7 @@
 
 ### What you get
 
-- **Ollama** — Local LLM server (free embeddings)
+- **Ollama** — Local LLM server (free embeddings + Qwen2.5-Coder for offline code RAG)
 - **Bun** + **GBrain** — Persistent knowledge brain (PGLite, zero-config)
 - **Langfuse** — LLM trace evaluation and scoring (primary observability)
 - **Cortex Dashboard** — Companion dashboard for Langfuse + system health
