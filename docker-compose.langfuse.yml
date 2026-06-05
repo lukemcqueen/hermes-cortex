@@ -142,7 +142,7 @@ services:
 
   minio:
     # ⚠️ PIN RECOMMENDED: Check https://hub.docker.com/r/minio/minio/tags
-    #    for a stable release (e.g. minio/minio:RELEASE.2025-04-08T15-22-15Z).
+    #    for a stable release (e.g. minio/minio:RELEASE.2026-04-08T15-22-15Z).
     #    Pinning avoids unexpected breaking changes on `docker compose pull`.
     image: minio/minio:latest
     restart: always
