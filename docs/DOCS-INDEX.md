@@ -52,6 +52,7 @@ A lightweight map of important project documents.
 | Doc | Description |
 |---|---|
 | `docs/agent-memory-pointer-pattern.md` | v1.0.0 — Step-by-step guide: compressed pointers + agent brain for unlimited context |
+| `docs/cron-job-recipes.md` | v1.0.0 — 10 reusable cron recipes: Bible reading, system alerts, memory pruning, morning briefing, and more |
 | `memory/patterns.md` | Recurring code/design patterns |
 | `memory/decisions.md` | Key technical decisions |
 | `memory/mistakes.md` | Lessons learned |
