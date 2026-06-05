@@ -29,9 +29,9 @@
 - **Web Cache** — Local semantic cache for web search/extract results (sqlite-vec + Ollama embeddings). Reduces API costs, enables offline operation.
 ||- **Offline Knowledge** — Cascade knowledge lookup: web-cache → kiwix ZIM (Wikipedia, WikiMed, Wikivoyage) → gbrain → LLM. Works identically online (saves API costs) and offline (no internet needed).
 ||- **Offline Code Assistant** — 386 curated code snippets across 26 languages (Python, JS/TS, Go, Rust, Java, C/C++, C#, PHP, Ruby, Swift, Kotlin, Zig, Dart, Elixir, Lua, R, SQL, Shell, Docker, Terraform, K8s, Nix, PowerShell). Semantic search + RAG-powered code generation via Ollama — all offline. Run `offline_code search "flask api"` or `offline_code gen "worker pool go"`.
+||- **Offline Reader** — Lightweight web UI (`python3 offline/offline-reader.py`) for browsing Bible, hymns, and wiki reference in any browser — zero dependencies, works offline.
 ||- **Bible Content** — 55+ language translations (KJV, WEB, Korean, Arabic, Chinese, Russian, more). Search via `offline_knowledge bible`. Auto-parsed to JSON.
 ||- **Hymn Collection** — Public domain hymnal: PDF scores, ABC notation, MIDI, searchable lyrics. Search via `offline_knowledge hymns`.
-||- **Offline Reader** — Lightweight web UI (`python3 offline/offline-reader.py`) for browsing Bible, hymns, and wiki reference in any browser — zero dependencies, works offline.
 |- **Auto-Update** — Silent cron-based updater (`auto-update.sh`) that checks for content updates only when online. Set-and-forget via `hermes cron`.
 - **Computer Specs Guide** — Hardware-aware recommendations for models and ZIM content bundles based on your RAM.
 - **Pre-Flight Tool** — `prep-offline.sh` downloads ZIM content, seeds cache, starts kiwix-serve. One command to prepare for no-internet scenarios.
