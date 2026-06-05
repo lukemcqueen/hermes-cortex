@@ -260,7 +260,37 @@ The installer is optimized for macOS (uses launchd, Homebrew). On Linux:
 
 ---
 
-### 18. Worker logs show "Queue job errored: socketTimeout" every 30s
+### 19. Can't log in — no admin user created on first startup
+
+**Symptom:** You navigate to `localhost:3001` (or your nginx URL) and see the login page, but there's no "Sign Up" / "Create Account" link, and no admin user was created.
+
+**Root cause:** Langfuse v3 can auto-create the first admin account at startup if you provide `LANGFUSE_INIT_USER_EMAIL`, `LANGFUSE_INIT_USER_NAME`, and `LANGFUSE_INIT_USER_PASSWORD` in your `.env` file. If these are missing, the web container starts but no admin user is provisioned.
+
+**Fix:** Add these to your `.env` before the **first** startup (they only apply on initial deploy):
+
+```bash
+# ~/langfuse/.env  (or wherever your docker-compose reads env vars)
+LANGFUSE_INIT_USER_EMAIL=admin@langfuse.local
+LANGFUSE_INIT_USER_NAME=admin
+LANGFUSE_INIT_USER_PASSWORD=<choose-a-strong-password>
+```
+
+Then recreate containers:
+```bash
+docker compose down
+docker compose up -d
+```
+
+If containers were already started without these vars, the init routine has already run and won't re-run — you'll need to either:
+- **Navigate to the login page** and use the "Sign up" link if available (the default Langfuse login page includes one), or
+- **Manually create a user** in the Postgres database, or
+- **Reset** by wiping the Postgres volume (`docker compose down -v` — ⚠️ destroys all data)
+
+If no `LANGFUSE_INIT_USER_*` vars are set, the login page's "Sign up" link should still be visible. Use it to register the first admin account normally.
+
+---
+
+### 20. Worker logs show "Queue job errored: socketTimeout" every 30s
 
 **Symptom:** `docker logs langfuse-langfuse-worker-1` shows ~2 errors per minute:
 ```
@@ -306,4 +336,5 @@ hermes cron run <id>  # Test a job immediately
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.1.0 | 2026-06-06 | Added entry #19 — first-time admin access (LANGFUSE_INIT_USER_*) |
 | 1.0.0 | 2026-06-05 | Initial release — 18 troubleshooting entries covering Docker, Dashboard, install, nginx, memory, Linux, and Redis idle timeouts |
