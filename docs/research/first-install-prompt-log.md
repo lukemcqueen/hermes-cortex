@@ -7,7 +7,7 @@ properly.
   ┊ 🔍 preparing web_search…
   ┊ 💻 preparing terminal…
   ┊ 🌐 preparing browser_navigate…
-  ┊ 💻 $         ls /Users/luke/Developer/AI/hermes-cortex/  0.2s
+  ┊ 💻 $         ls ~/hermes-cortex/  0.2s
   ┊ 🌐 navigate  github.com  9.4s
 
 ╭─ ⚕ Hermes ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
@@ -17,8 +17,8 @@ properly.
   ┊ 📖 preparing read_file…
   ┊ 📖 preparing read_file…
   ┊ 🌐 navigate  github.com  2.7s
-  ┊ 📖 read      /Users/luke/Developer/AI/hermes-cortex/opencode-instructions.md  0.1s
-  ┊ 📖 read      /Users/luke/Developer/AI/hermes-cortex/opencode.json  0.1s
+  ┊ 📖 read      ~/hermes-cortex/opencode-instructions.md  0.1s
+  ┊ 📖 read      ~/hermes-cortex/opencode.json  0.1s
 
 ╭─ ⚕ Hermes ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
     Good, I can see the repo structure. Let me read the README, install.sh, and explore more.
@@ -26,9 +26,9 @@ properly.
   ┊ 📖 preparing read_file…
   ┊ 📖 preparing read_file…
   ┊ 📖 preparing read_file…
-  ┊ 📖 read      /Users/luke/Developer/AI/hermes-cortex/README.md  0.0s [File not found: README.md]
-  ┊ 📖 read      /Users/luke/Developer/AI/hermes-cortex/install.sh  0.0s [File not found: install.sh]
-  ┊ 📖 read      /Users/luke/Developer/AI/hermes-cortex/AGENTS.md  0.1s
+  ┊ 📖 read      ~/hermes-cortex/README.md  0.0s [File not found: README.md]
+  ┊ 📖 read      ~/hermes-cortex/install.sh  0.0s [File not found: install.sh]
+  ┊ 📖 read      ~/hermes-cortex/AGENTS.md  0.1s
 
 ╭─ ⚕ Hermes ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
     Let me check the git state and explore the repo more.
@@ -37,9 +37,9 @@ properly.
   ┊ 💻 preparing terminal…
   ┊ 💻 preparing terminal…
   ┊ 👆 preparing browser_click…
-  ┊ 💻 $         cd /Users/luke/Developer/AI/hermes-cortex && git status --short  0.1s [exit 128]
-  ┊ 💻 $         cd /Users/luke/Developer/AI/hermes-cortex && ls -la  0.1s
-  ┊ 💻 $         cd /Users/luke/Developer/AI/hermes-cortex && git log --oneline -5  0.1s [exit 128]
+  ┊ 💻 $         cd ~/hermes-cortex && git status --short  0.1s [exit 128]
+  ┊ 💻 $         cd ~/hermes-cortex && ls -la  0.1s
+  ┊ 💻 $         cd ~/hermes-cortex && git log --oneline -5  0.1s [exit 128]
   ┊ 👆 click     e194  0.4s
   ┊ 📸 preparing browser_snapshot…
   ┊ 💻 preparing terminal…
@@ -181,12 +181,12 @@ properly.
 
     Patched and committed locally. Here's what I did:
 
-    Patch applied to /Users/luke/Developer/AI/hermes-cortex/install.sh — line 186 changed from bun install -g gbrain to bun install -g github:garrytan/gbrain with a comment explaining the npm name collision.
+    Patch applied to ~/hermes-cortex/install.sh — line 186 changed from bun install -g gbrain to bun install -g github:garrytan/gbrain with a comment explaining the npm name collision.
 
     The local repo already has it committed at 9f6da13. You'll need to push it — no GitHub auth available from this session:
 
 
-    cd /Users/luke/Developer/AI/hermes-cortex
+    cd ~/hermes-cortex
     git push origin main
 
 
