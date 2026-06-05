@@ -42,4 +42,5 @@ class LinkedList:
             result.append(curr.val)
             curr = curr.next
         return result
+
 ```

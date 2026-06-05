@@ -53,4 +53,5 @@ def delete_item(path, item_id):
     with closing(sqlite3.connect(path)) as conn:
         conn.execute('DELETE FROM items WHERE id = ?', (item_id,))
         conn.commit()
+
 ```

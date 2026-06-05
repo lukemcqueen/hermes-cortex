@@ -14,7 +14,7 @@ email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
 re.match(email_pattern, 'user@example.com')
 
 # URL extraction
-url_pattern = r'https?://[^\s<>"']+'
+url_pattern = r'https?://[^\s<>"\']+'
 re.findall(url_pattern, 'Visit https://example.com today!')
 
 # Phone number (US)
@@ -28,4 +28,5 @@ csv_split = re.findall(r'(?:[^,"]|"[^"]*")+', 'a,"b,c",d')
 
 # Replace multiple spaces with one
 re.sub(r'\s+', ' ', 'hello   world')
+
 ```

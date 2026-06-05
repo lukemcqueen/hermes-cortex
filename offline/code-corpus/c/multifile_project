@@ -1,0 +1,67 @@
+---
+language: c
+tags: [multi-file, header-guards, extern, static, global, makefile]
+title: Multi-file Projects
+description: Header guards, extern declarations, static vs global scope, and a minimal Makefile. Files: main.c, util.h, util.c, Makefile.
+source: pattern
+---
+
+```c
+
+/* ─── util.h ─── */
+#ifndef UTIL_H_
+#define UTIL_H_
+
+extern int global_counter;     /* defined in util.c */
+int    add(int a, int b);      /* function declaration */
+double circle_area(double r);
+
+#endif /* UTIL_H_ */
+
+/* ─── util.c ─── */
+#include "util.h"
+#include <math.h>
+
+int global_counter = 0;
+
+static void log_call(const char *fn) {   /* file-scoped helper */
+    global_counter++;
+    /* ... */
+}
+
+int add(int a, int b) {
+    log_call("add");
+    return a + b;
+}
+
+double circle_area(double r) {
+    return M_PI * r * r;
+}
+
+/* ─── main.c ─── */
+#include <stdio.h>
+#include "util.h"
+
+int main(void) {
+    printf("add(3,4)=%d\n", add(3, 4));
+    printf("area(2.5)=%.2f\n", circle_area(2.5));
+    printf("called %d functions\n", global_counter);
+    return 0;
+}
+
+/* ─── Makefile ─── */
+CFLAGS  = -std=c99 -Wall -Wextra -O2
+LDFLAGS = -lm
+
+OBJS = main.o util.o
+
+app: $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+%.o: %.c util.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -f *.o app
+
+```

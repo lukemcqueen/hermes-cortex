@@ -45,4 +45,5 @@ git branch --merged main | grep -v '\*\|main' | xargs -r git branch -d
 
 # ======= Show file from another branch =======
 git show other-branch:path/to/file.py
+
 ```

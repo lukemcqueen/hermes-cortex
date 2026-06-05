@@ -49,4 +49,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn process_content(content: &str, _limit: usize) -> String {
     content.to_uppercase()
 }
+
 ```

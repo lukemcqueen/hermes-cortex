@@ -43,4 +43,5 @@ tail -f /var/log/system.log | grep --line-buffered ERROR
 
 # CPU/memory per process
 ps aux --sort=-%cpu | head -5
+
 ```

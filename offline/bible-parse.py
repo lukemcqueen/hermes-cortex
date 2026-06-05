@@ -83,11 +83,11 @@ NT_ABBRS = set(a for a, _ in CANON["NT"])
 
 BOOK_PATTERNS = [
     # OT Books — full header forms
-    (r"THE FIRST BOOK OF MOSES,?\s*(?:CALLED\s+)?GENESIS", "GEN"),
-    (r"THE SECOND BOOK OF MOSES,?\s*(?:CALLED\s+)?EXODUS", "EXO"),
-    (r"THE THIRD BOOK OF MOSES,?\s*(?:CALLED\s+)?LEVITICUS", "LEV"),
-    (r"THE FOURTH BOOK OF MOSES,?\s*(?:CALLED\s+)?NUMBERS", "NUM"),
-    (r"THE FIFTH BOOK OF MOSES,?\s*(?:CALLED\s+)?DEUTERONOMY", "DEU"),
+    (r"THE FIRST BOOK OF MOSES[,:]?\s(?:CALLED\s+)?GENESIS", "GEN"),
+    (r"THE SECOND BOOK OF MOSES[,:]?\s(?:CALLED\s+)?EXODUS", "EXO"),
+    (r"THE THIRD BOOK OF MOSES[,:]?\s(?:CALLED\s+)?LEVITICUS", "LEV"),
+    (r"THE FOURTH BOOK OF MOSES[,:]?\s(?:CALLED\s+)?NUMBERS", "NUM"),
+    (r"THE FIFTH BOOK OF MOSES[,:]?\s(?:CALLED\s+)?DEUTERONOMY", "DEU"),
     (r"THE BOOK OF JOSHUA", "JOS"),
     (r"THE BOOK OF JUDGES", "JDG"),
     (r"THE BOOK OF RUTH", "RUT"),
@@ -140,10 +140,10 @@ BOOK_PATTERNS = [
     (r"MALACHI", "MAL"),
     (r"THE BOOK OF MALACHI", "MAL"),
     # NT Books
-    (r"(?:THE\s+)?GOSPEL\s+ACCORDING\s+TO\s+(?:ST\.?\s*)?MATTHEW", "MAT"),
-    (r"(?:THE\s+)?GOSPEL\s+ACCORDING\s+TO\s+(?:ST\.?\s*)?MARK", "MRK"),
-    (r"(?:THE\s+)?GOSPEL\s+ACCORDING\s+TO\s+(?:ST\.?\s*)?LUKE", "LUK"),
-    (r"(?:THE\s+)?GOSPEL\s+ACCORDING\s+TO\s+(?:ST\.?\s*)?JOHN", "JHN"),
+    (r"(?:THE\s+)?GOSPEL\s+ACCORDING\s+TO\s+(?:SAINT|ST\.?)?\sMATTHEW", "MAT"),
+    (r"(?:THE\s+)?GOSPEL\s+ACCORDING\s+TO\s+(?:SAINT|ST\.?)?\sMARK", "MRK"),
+    (r"(?:THE\s+)?GOSPEL\s+ACCORDING\s+TO\s+(?:SAINT|ST\.?)?\sLUKE", "LUK"),
+    (r"(?:THE\s+)?GOSPEL\s+ACCORDING\s+TO\s+(?:SAINT|ST\.?)?\sJOHN", "JHN"),
     (r"THE ACTS OF THE APOSTLES", "ACT"),
     (r"THE EPISTLE OF PAUL(?: THE APOSTLE)? TO THE ROMANS", "ROM"),
     (r"THE FIRST EPISTLE OF PAUL(?: THE APOSTLE)? TO THE CORINTHIANS", "1CO"),
@@ -159,20 +159,23 @@ BOOK_PATTERNS = [
     (r"THE EPISTLE OF PAUL(?: THE APOSTLE)? TO TITUS", "TIT"),
     (r"THE EPISTLE OF PAUL(?: THE APOSTLE)? TO PHILEMON", "PHM"),
     (r"THE EPISTLE OF PAUL(?: THE APOSTLE)? TO THE HEBREWS", "HEB"),
-    (r"THE EPISTLE OF JAMES", "JAS"),
-    (r"THE FIRST EPISTLE OF PETER", "1PE"),
-    (r"THE SECOND EPISTLE OF PETER", "2PE"),
-    (r"THE FIRST EPISTLE OF JOHN", "1JN"),
-    (r"THE SECOND EPISTLE OF JOHN", "2JN"),
-    (r"THE THIRD EPISTLE OF JOHN", "3JN"),
-    (r"THE EPISTLE OF JUDE", "JUD"),
-    (r"THE REVELATION OF (?:ST\.?\s*)?JOHN(?: THE DIVINE)?", "REV"),
+    (r"THE\s+(?:GENERAL\s+)?EPISTLE\s+OF\s+JAMES", "JAS"),
+    (r"THE\s+FIRST\s+EPISTLE\s+(?:GENERAL\s+)?OF\s+PETER", "1PE"),
+    (r"THE\s+SECOND\s+(?:GENERAL\s+)?EPISTLE\s+OF\s+PETER", "2PE"),
+    (r"THE\s+FIRST\s+EPISTLE\s+(?:GENERAL\s+)?OF\s+JOHN", "1JN"),
+    (r"THE\s+SECOND\s+EPISTLE\s+(?:GENERAL\s+)?OF\s+JOHN", "2JN"),
+    (r"THE\s+THIRD\s+EPISTLE\s+(?:GENERAL\s+)?OF\s+JOHN", "3JN"),
+    (r"THE\s+(?:GENERAL\s+)?EPISTLE\s+OF\s+JUDE", "JUD"),
+    (r"THE REVELATION OF (?:SAINT|ST\.?)?\sJOHN(?: THE DIVINE)?", "REV"),
     (r"THE REVELATION OF JESUS CHRIST", "REV"),
     (r"THE REVELATION", "REV"),
 ]
 
 # Compiled patterns
 COMPILED_BOOK_PATTERNS = [(re.compile(p, re.IGNORECASE), a) for p, a in BOOK_PATTERNS]
+
+# Compiled pattern for "Book NN Name" numbered headers (resolved via WEB_BOOK_NUMBERS)
+BOOK_NUMBERED_RE = re.compile(r"^Book\s+(\d{1,2})\s+\w+", re.IGNORECASE)
 
 # Simple book name matcher (for eBible format: all-caps book names)
 SIMPLE_BOOK_NAMES = [
@@ -206,6 +209,25 @@ SIMPLE_BOOK_NAMES = [
 ]
 
 COMPILED_SIMPLE_BOOK = [(re.compile(p, re.IGNORECASE), a) for p, a in SIMPLE_BOOK_NAMES]
+
+# WEB format book number mapping (PG #8294 World English Bible)
+# Uses "Book NN Name" headers with 66-book Protestant canon order
+WEB_BOOK_NUMBERS = {
+    "01": "GEN", "02": "EXO", "03": "LEV", "04": "NUM", "05": "DEU",
+    "06": "JOS", "07": "JDG", "08": "RUT", "09": "1SA", "10": "2SA",
+    "11": "1KI", "12": "2KI", "13": "1CH", "14": "2CH", "15": "EZR",
+    "16": "NEH", "17": "EST", "18": "JOB", "19": "PSA", "20": "PRO",
+    "21": "ECC", "22": "SON", "23": "ISA", "24": "JER", "25": "LAM",
+    "26": "EZK", "27": "DAN", "28": "HOS", "29": "JOL", "30": "AMO",
+    "31": "OBA", "32": "JON", "33": "MIC", "34": "NAM", "35": "HAB",
+    "36": "ZEP", "37": "HAG", "38": "ZEC", "39": "MAL",
+    "40": "MAT", "41": "MRK", "42": "LUK", "43": "JHN", "44": "ACT",
+    "45": "ROM", "46": "1CO", "47": "2CO", "48": "GAL", "49": "EPH",
+    "50": "PHP", "51": "COL", "52": "1TH", "53": "2TH", "54": "1TI",
+    "55": "2TI", "56": "TIT", "57": "PHM", "58": "HEB", "59": "JAS",
+    "60": "1PE", "61": "2PE", "62": "1JN", "63": "2JN", "64": "3JN",
+    "65": "JUD", "66": "REV",
+}
 
 
 # ── Text Cleaning ───────────────────────────────────────────
@@ -296,6 +318,11 @@ def detect_book_header(line):
     for pattern, abbr in COMPILED_BOOK_PATTERNS:
         if pattern.match(line.strip()):
             return abbr
+    # Fallback: "Book NN Name" numbered header format
+    bm = BOOK_NUMBERED_RE.match(line.strip())
+    if bm:
+        num = bm.group(1).zfill(2)
+        return WEB_BOOK_NUMBERS.get(num)
     return None
 
 
@@ -398,6 +425,71 @@ def parse_pg_format(text, debug=False):
 
     if debug:
         print(f"  [PG] Parsed: {len(result)} books, "
+              f"{sum(len(b['chapters']) for b in result)} chapters, "
+              f"{sum(sum(len(c['v']) for c in b['chapters']) for b in result)} verses",
+              file=sys.stderr)
+
+    return result if result else None
+
+
+def parse_web_format(text, debug=False):
+    """
+    Strategy 2: For World English Bible (WEB) and similar PG texts
+    using "Book NN Name" headers and NNN:NNN verse numbering.
+    Also handles uppercase "BOOK NN NAME" variants seamlessly.
+    """
+    lines = clean_text(text)
+    verses = []
+    current_book = None
+    found_book = False
+
+    # Match "Book NN Name" (case-insensitive, captures book name)
+    web_book_re = re.compile(r"^Book\s+(\d+)\s+(\w+)", re.IGNORECASE)
+    # Match "NNN:NNN text" — exactly 3-digit chapter:verse, captures remaining text
+    verse_re = re.compile(r"^(\d{3}):(\d{3})\s+(.*)")
+    # Also accept 1–2 digit chapter:verse (e.g., 1:1 or 01:001)
+    verse_re_fallback = re.compile(r"^(\d{1,2}):(\d{1,3})\s+(.*)")
+
+    for line in lines:
+        if not line:
+            continue
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if is_noise_line(stripped):
+            continue
+
+        # Book header: "Book NN Name"
+        bm = web_book_re.match(stripped)
+        if bm:
+            num = bm.group(1).zfill(2)
+            book_name = bm.group(2)
+            if num in WEB_BOOK_NUMBERS:
+                current_book = WEB_BOOK_NUMBERS[num]
+                found_book = True
+                if debug:
+                    print(f"  [WEB] Book {num}: {ABBR_TO_NAME.get(current_book, current_book)}", file=sys.stderr)
+            continue
+
+        # Verse: try 3-digit NNN:NNN first, then fallback
+        vm = verse_re.match(stripped)
+        if not vm and current_book:
+            vm = verse_re_fallback.match(stripped)
+        if vm and current_book:
+            ch = int(vm.group(1))
+            vs = int(vm.group(2))
+            vtext = vm.group(3).strip()
+            if vtext:
+                verses.append((current_book, ch, vs, vtext))
+            continue
+
+    if not found_book or not verses:
+        return None
+
+    result = _organize_verses(verses)
+
+    if debug:
+        print(f"  [WEB] Parsed: {len(result)} books, "
               f"{sum(len(b['chapters']) for b in result)} chapters, "
               f"{sum(sum(len(c['v']) for c in b['chapters']) for b in result)} verses",
               file=sys.stderr)
@@ -616,6 +708,7 @@ def detect_parser(text, debug=False):
     """Try each parser strategy in order, return the best result."""
     strategies = [
         ("pg", "Project Gutenberg format", parse_pg_format),
+        ("web", "World English Bible format", parse_web_format),
         ("ebible", "eBible.org format", parse_ebible_format),
         ("raw", "Raw chapter:verse extraction", parse_raw_verses),
     ]

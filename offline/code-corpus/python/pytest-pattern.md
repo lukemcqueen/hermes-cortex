@@ -45,4 +45,5 @@ def test_output(capsys):
 def test_error():
     with pytest.raises(ValueError, match='invalid'):
         raise ValueError('invalid input')
+
 ```

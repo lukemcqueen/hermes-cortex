@@ -24,4 +24,5 @@ def timer(func):
 def slow_function():
     time.sleep(1)
     return 'done'
+
 ```

@@ -67,4 +67,5 @@ func handleItems(w http.ResponseWriter, r *http.Request) {
 func handleItemByID(w http.ResponseWriter, r *http.Request) {
     writeJSON(w, http.StatusOK, map[string]interface{}{"id": 1})
 }
+
 ```
