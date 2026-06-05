@@ -51,6 +51,7 @@ A lightweight map of important project documents.
 
 | Doc | Description |
 |---|---|
+| `docs/agent-memory-pointer-pattern.md` | v1.0.0 — Step-by-step guide: compressed pointers + agent brain for unlimited context |
 | `memory/patterns.md` | Recurring code/design patterns |
 | `memory/decisions.md` | Key technical decisions |
 | `memory/mistakes.md` | Lessons learned |
