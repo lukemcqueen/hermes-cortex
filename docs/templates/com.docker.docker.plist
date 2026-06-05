@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hermes Cortex — Docker Desktop Launchd Agent
+
+  Auto-starts Docker Desktop on login so all containers with
+  restart:always or unless-stopped come back automatically.
+
+  Copy to: ~/Library/LaunchAgents/com.docker.docker.plist
+  Load:    launchctl load ~/Library/LaunchAgents/com.docker.docker.plist
+
+  Note: --unattended suppresses the Docker Desktop UI prompt on launch.
+  Docker manages its own lifecycle after that — KeepAlive is not needed.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.docker.docker</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/Docker.app/Contents/MacOS/Docker</string>
+        <string>--unattended</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>CORTEX_HOME/.hermes/logs/docker-launch.log</string>
+    <key>StandardErrorPath</key>
+    <string>CORTEX_HOME/.hermes/logs/docker-launch.log</string>
+</dict>
+</plist>
