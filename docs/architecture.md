@@ -15,15 +15,15 @@
 ┌──────────────┐  ┌──────────────────┐  ┌──────────────┐
 │   Langfuse   │  │  Cortex Dashboard│  │   GBrain     │
 │  (LLM Obs.)  │  │   (Flask + JS)   │  │ (Knowledge)  │
-│ local:3000   │  │  local:8901      │  │ PGLite       │
-│ ext:11002    │  │  ext:11003       │  │ 4 sources    │
+│ local:3001   │  │  local:8901      │  │ PGLite       │
+│ ext:13002    │  │  ext:13001       │  │ 4 sources    │
 └──────────────┘  └──────────────────┘  └──────────────┘
        │                   │                    │
        ▼                   ▼                    ▼
 ┌──────────────────────────────────────────────────────┐
 │           nginx Reverse Proxy (macOS Host)            │
-│  :11002 → Langfuse (LLM observability, port 3000)     │
-│  :11003 → Cortex Dashboard (companion, port 8901)     │
+│  :13002 → Langfuse (LLM observability, port 3001)     │
+│  :13001 → Cortex Dashboard (companion, port 8901)     │
 │  TLS + Basic Auth on all external ports               │
 └──────────────────────────────────────────────────────┘
 ```
@@ -51,7 +51,7 @@
 |---------|------|---------|-------|
 | Ollama | 11434 | Local LLM serving | Native macOS, launchd-managed |
 | Hermes Gateway | — | Agent runtime | Python, gateway.run, launchd |
-| Langfuse | 3000 | LLM trace observability | Docker Desktop (6 containers) |
+| Langfuse | 3001 | LLM trace observability | Docker Desktop (6 containers) |
 | Cortex Dashboard | 8901 | System + Langfuse companion | Flask + pure JS/HTML |
 | nginx | 80/443 | Reverse proxy for all services | Homebrew, launchd |
 | GBrain Sync | — | Memory sync daemon | Bun, PGLite, launchd (2min interval) |

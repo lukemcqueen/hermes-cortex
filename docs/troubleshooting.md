@@ -260,6 +260,20 @@ The installer is optimized for macOS (uses launchd, Homebrew). On Linux:
 
 ---
 
+### 18. Worker logs show "Queue job errored: socketTimeout" every 30s
+
+**Symptom:** `docker logs langfuse-langfuse-worker-1` shows ~2 errors per minute:
+```
+Queue job X errored: socketTimeout: 30000
+```
+Usually for queues like `trace-delete`, `evaluation-execution`, `dataset-delete`.
+
+**Root cause:** Langfuse configures a 30-second ioredis socket timeout. When no LLM traces are flowing, the worker's Bull queues have nothing to do. Every 30s the idle Redis connection times out, Bull logs an error, then reconnects automatically. The worker process stays alive and healthy.
+
+**Assessment:** This is **normal idle behavior**. The errors stop once LLM trace data flows. No action needed.
+
+---
+
 ## 📋 Quick Reference: Common Commands
 
 ```bash
@@ -292,4 +306,4 @@ hermes cron run <id>  # Test a job immediately
 
 | Version | Date | Changes |
 |---|---|---|
-| 1.0.0 | 2026-06-05 | Initial release — 17 troubleshooting entries covering Docker, Dashboard, install, nginx, memory, and Linux |
+| 1.0.0 | 2026-06-05 | Initial release — 18 troubleshooting entries covering Docker, Dashboard, install, nginx, memory, Linux, and Redis idle timeouts |
