@@ -53,6 +53,8 @@ A lightweight map of important project documents.
 |---|---|
 | `docs/agent-memory-pointer-pattern.md` | v1.0.0 — Step-by-step guide: compressed pointers + agent brain for unlimited context |
 | `docs/cron-job-recipes.md` | v1.0.0 — 10 reusable cron recipes: Bible reading, system alerts, memory pruning, morning briefing, and more |
+| `docs/templates/gitignore.brain` | v1.0.0 — Standard .gitignore for brain sources |
+| `docs/templates/com.hermes.cortex-dashboard.plist` | v1.0.0 — Launchd plist for dashboard (dedicated or shared venv) |
 | `docs/troubleshooting.md` | v1.0.0 — 17 common issues and fixes for Docker, Dashboard, install, nginx, memory, and Linux |
 | `docs/offline-travel-stack.md` | v1.0.0 — Offline knowledge scenarios: jungle travel, development, kid learning |
 | `docs/computer-specs.md` | v1.0.0 — Hardware specs guide: RAM tiers, recommended models, ZIM content bundles |

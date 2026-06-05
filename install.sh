@@ -944,16 +944,18 @@ else
     curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/dashboard/static/index.html" -o "$DASHBOARD_DEST/static/index.html"
   fi
   
-  # Install Flask if needed
-  if ! python3 -c "import flask" 2>/dev/null; then
-    info "  Installing Flask…"
-    pip3 install flask --quiet
+  # Create dedicated dashboard venv + install Flask
+  if [[ ! -f "${DASHBOARD_DEST}/venv/bin/python3" ]]; then
+    info "  Creating dedicated dashboard venv…"
+    python3 -m venv "${DASHBOARD_DEST}/venv"
+    "${DASHBOARD_DEST}/venv/bin/pip" install flask --quiet
+    info "  Dashboard venv ready"
   fi
-  
+
   # Install launchd plist
   if [[ ! -f "$DASHBOARD_PLIST" ]]; then
     # Update paths in plist for current user
-    sed "s|CORTEX_HOME_PLACEHOLDER|${CORTEX_HOME}|g" "${REPO_DASHBOARD}/com.hermes.cortex-dashboard.plist" > "$DASHBOARD_PLIST" 2>/dev/null || \
+    sed "s|CORTEX_HOME|${CORTEX_HOME}|g" "${REPO_DASHBOARD}/com.hermes.cortex-dashboard.plist" > "$DASHBOARD_PLIST" 2>/dev/null || \
     cat > "$DASHBOARD_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -963,7 +965,7 @@ else
     <string>com.hermes.cortex-dashboard</string>
     <key>ProgramArguments</key>
     <array>
-        <string>python3</string>
+        <string>${DASHBOARD_DEST}/venv/bin/python3</string>
         <string>${DASHBOARD_DEST}/server.py</string>
     </array>
     <key>WorkingDirectory</key>
@@ -974,6 +976,11 @@ else
     <true/>
     <key>ThrottleInterval</key>
     <integer>5</integer>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
     <key>StandardOutPath</key>
     <string>${HERMES_HOME}/logs/cortex-dashboard.log</string>
     <key>StandardErrorPath</key>
