@@ -28,9 +28,11 @@
 - **Hermes plugin** — `/brain` slash command
 - **8 shared skills** — Subagent orchestration, debugging, TDD, planning, memory architecture, code review, spikes
 - **Web Cache** — Local semantic cache for web search/extract results (sqlite-vec + Ollama embeddings). Reduces API costs, enables offline operation.
-- **Offline Knowledge** — Cascade knowledge lookup: web-cache → kiwix ZIM (Wikipedia, WikiMed, Wikivoyage) → gbrain → LLM. Works identically online (saves API costs) and offline (no internet needed).
-|- **Bible Content** — Download Bible translations in 55+ languages (KJV, WEB, Spanish, Korean, Arabic, Chinese, Russian, and more). Searchable via `offline_knowledge bible search`.
+|- **Offline Knowledge** — Cascade knowledge lookup: web-cache → kiwix ZIM (Wikipedia, WikiMed, Wikivoyage) → gbrain → LLM. Works identically online (saves API costs) and offline (no internet needed).
+|- **Bible Content** — Download Bible translations in 55+ languages (KJV, WEB, Spanish, Korean, Arabic, Chinese, Russian, and more). Searchable via `offline_knowledge bible search`. Auto-parsed to structured JSON for the offline reader.
 |- **Hymn Collection** — Public domain hymnody from the Open Hymnal Project: full hymnal PDF with scores, ABC music notation, MIDI audio, and searchable lyrics. Searchable via `offline_knowledge hymns search`.
+|- **Offline Reader** — Lightweight web UI (`python3 offline/offline-reader.py`) for browsing Bible, hymns, and wiki reference in any browser — zero dependencies, works offline.
+|- **Auto-Update** — Silent cron-based updater (`auto-update.sh`) that checks for content updates only when online. Set-and-forget via `hermes cron`.
 - **Computer Specs Guide** — Hardware-aware recommendations for models and ZIM content bundles based on your RAM.
 - **Pre-Flight Tool** — `prep-offline.sh` downloads ZIM content, seeds cache, starts kiwix-serve. One command to prepare for no-internet scenarios.
 - **Utility scripts** — Heartbeat watchdog, memory sync, system health
@@ -77,8 +79,10 @@ CORTEX_OS=windows bash ~/hermes-cortex/install.sh
 | 10 | **Skills** | 8 shared skills installed to `~/.hermes/skills/` |
 | 11 | **Web Cache** | Semantic web result cache (sqlite-vec + Ollama) |
 | 12 | **Offline Knowledge** | Cascade tool + kiwix ZIM Docker + prep-offline + prep-bible + prep-hymns scripts |
-| 13 | **nginx** † | Reverse proxy for Langfuse + Dashboard |
-| 14 | **Cron prompt** | Instructions for Hermes agent setup |
+| 13 | **Offline Reader** | `python3 offline/offline-reader.py` — web UI for Bible, hymns, reference |
+| 14 | **Auto-Update** | `auto-update.sh` — silent cron-based content updater |
+| 15 | **nginx** † | Reverse proxy for Langfuse + Dashboard |
+| 16 | **Cron prompt** | Instructions for Hermes agent setup |
 | | *† Server profile only* | |
 
 ### Configuration

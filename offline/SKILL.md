@@ -107,7 +107,12 @@ offline_knowledge query "how to treat a snake bite in the jungle"
 | `offline_knowledge generate-library` | Regenerate library XML from ZIM files |
 | `offline_knowledge bible search "verse" --lang en` | Search Bible translations |
 | `offline_knowledge bible list` | List available translations |
+| `offline_knowledge hymns search "Amazing Grace"` | Search hymn lyrics across all hymns |
+| `offline_knowledge hymns list` | List hymn resources (PDF, ABC, XML) |
 | `./offline/prep-bible.sh --langs=all` | Download all Bible translations |
+| `./offline/prep-hymns.sh` | Download public domain hymns from Open Hymnal Project |
+| `python3 offline/offline-reader.py` | Launch local web UI for browsing Bible, hymns, and reference |
+| `./offline/auto-update.sh` | Check for content updates (silent if offline) |
 | `offline_knowledge stats` | Full system status |
 
 ## Available ZIM Content
@@ -147,6 +152,79 @@ offline_knowledge bible list
 ```
 
 Bible texts are small (4-10 MB per translation) and work without Docker.
+
+### 🎵 Hymn Content
+
+Public domain hymns from the [Open Hymnal Project](https://openhymnal.org). Includes:
+
+- **Full hymnal PDF** with music scores (8 MB)
+- **ABC notation files** — text-based music notation (2 MB)
+- **MIDI audio files** — play hymns on any device (336 kB)
+- **ThML XML** with structured lyrics and metadata (2 MB)
+- **Seasonal editions** — Christmas, Easter, Visitation (bonus)
+
+```bash
+# Download the core hymnal:
+./offline/prep-hymns.sh
+
+# Download with seasonal editions:
+./offline/prep-hymns.sh --editions=all
+
+# Combine with offline prep:
+./offline/prep-offline.sh --mode=travel --include-hymns
+```
+
+Search hymns:
+```bash
+offline_knowledge hymns search "Amazing Grace"
+offline_knowledge hymns search "rock of ages"
+offline_knowledge hymns list
+```
+
+Hymn content is ~35 MB total and works without Docker. View the PDF in any reader for printable scores.
+
+### 📖 Offline Reader — Visual Browsing
+
+For non-technical users, a local web UI provides point-and-click access to all offline content:
+
+```bash
+python3 offline/offline-reader.py
+# Opens http://localhost:8081 in your browser
+```
+
+Features:
+- **Bible reader** — select translation → pick book → read chapter by chapter
+- **Hymn browser** — search by title/lyrics, view full text
+- **Reference search** — queries kiwix-serve (Wikipedia, WikiMed, etc.)
+- **Global search** — searches all sources at once from the home page
+- Dark theme, zero dependencies, works completely offline
+
+### 🔄 Auto-Update
+
+A silent cron-friendly script that checks for content updates:
+
+```bash
+# Manual check:
+./offline/auto-update.sh
+
+# Dry run:
+./offline/auto-update.sh --check
+
+# As a weekly cron job (no_agent, zero token cost):
+hermes cron create \
+  --name "offline-content-update" \
+  --schedule "0 9 * * 0" \
+  --script "auto-update.sh" \
+  --no-agent \
+  --deliver "origin"
+```
+
+Behavior:
+- **Offline aware** — exits silently if no internet (no spam)
+- **Only changes when needed** — HEAD checks before downloading
+- **Bible** — parses any unparsed `.txt` files to `.json`
+- **Hymns** — checks Open Hymnal PDF/XML for size changes
+- **Silent** — only produces output when something actually changed
 
 ## Architecture
 
