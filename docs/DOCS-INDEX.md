@@ -1,71 +1,70 @@
 # Documentation Index
 
-A lightweight map of important project documents.
+A lightweight map of all project documents. Files are grouped by topic.
 
-## PRDs
+---
 
-(Add PRD documents here as they're created.)
-
-## Architecture
+## Getting Started
 
 | Doc | Description |
-|---|---|
-| `docs/architecture/ARCHITECTURE-NOTE-TEMPLATE.md` | Template for architecture notes |
-| `docs/architecture/KORE-COUNCIL-TEMPLATE.md` | Multi-role architecture review template |
+|-----|-------------|
+| `README.md` | Project overview, quick start, and links |
+| `AGENTS.md` | Agent guidelines — read by AI tools on session start |
+| `install.sh` | Single-command installer (idempotent, safe to re-run) |
+| `check-system.sh` | System compatibility check before installing |
 
-## Design
-
-| Doc | Description |
-|---|---|
-| `docs/design/DESIGN.md` | Typography, color, spacing, and UI conventions |
-
-## Research
+## Security
 
 | Doc | Description |
-|---|---|
-| `docs/research/RESEARCH-NOTE-TEMPLATE.md` | Template for research notes |
-| `docs/research/AGENTKORE-REBUILD-PROMPT.md` | Prompt for recreating/extending AgentKore |
+|-----|-------------|
+| `docs/SECURITY.md` | Security guide — ports, permissions, passwords, firewall, recovery |
 
-## Decisions
-
-| Doc | Description |
-|---|---|
-| `docs/decisions/ADR-TEMPLATE.md` | Architecture Decision Record template |
-
-## Tasks
+## Architecture & Design
 
 | Doc | Description |
-|---|---|
-| `docs/tasks/TASK-PLAN-TEMPLATE.md` | Standard task plan template |
+|-----|-------------|
+| `docs/architecture.md` | System architecture overview — layers, services, design principles |
+| `docs/design/DESIGN.md` | Design conventions — typography, color, spacing, UI |
 
-## System
-
-| Doc | Description |
-|---|---|
-| `docs/agent_initialization_guide.md` | Agent init sequence on session start |
-| `docs/project_structure.md` | Full project directory breakdown |
-| `docs/DOCS-INDEX.md` | This file |
-| `docs/README.md` | Docs landing page |
-
-## Memory
+## Operations
 
 | Doc | Description |
-|---|---|
-| `docs/agent-memory-pointer-pattern.md` | v1.0.0 — Step-by-step guide: compressed pointers + agent brain for unlimited context |
-| `docs/cron-job-recipes.md` | v1.0.0 — 10 reusable cron recipes: Bible reading, system alerts, memory pruning, morning briefing, and more |
-| `docs/templates/gitignore.brain` | v1.0.0 — Standard .gitignore for brain sources |
-| `docs/templates/com.hermes.cortex-dashboard.plist` | v1.0.0 — Launchd plist for dashboard (dedicated or shared venv) |
-| `docs/templates/com.docker.docker.plist` | v1.0.0 — Launchd plist for Docker Desktop auto-start on login (--unattended) |
-| `docs/troubleshooting.md` | v1.0.0 — 17 common issues and fixes for Docker, Dashboard, install, nginx, memory, and Linux |
-| `docs/offline-travel-stack.md` | v1.0.0 — Offline knowledge scenarios: jungle travel, development, kid learning |
-| `docs/computer-specs.md` | v1.0.0 — Hardware specs guide: RAM tiers, recommended models, ZIM content bundles |
-| `offline/SKILL.md` | v1.0.0 — offline-knowledge skill: cascade cache + kiwix ZIM usage protocol |
-| `memory/patterns.md` | Recurring code/design patterns |
-| `memory/decisions.md` | Key technical decisions |
-| `memory/mistakes.md` | Lessons learned |
-| `memory/commands.md` | Useful CLI commands |
-| `memory/index.md` | Memory index |
+|-----|-------------|
+| `docs/troubleshooting.md` | 17 common issues and fixes for Docker, Dashboard, install, nginx, memory, and Linux |
+| `docs/cron-job-recipes.md` | 10 reusable cron recipes — Bible reading, system alerts, memory pruning, morning briefing, and more |
+| `docs/computer-specs.md` | Hardware specs guide — RAM tiers, recommended models, ZIM content bundles |
+| `docker-compose.langfuse.yml` | Langfuse v3 Docker stack — ClickHouse, MinIO, Redis, Postgres |
 
-## Superseded Docs
+## Knowledge & Offline
 
-(Archive outdated docs here instead of deleting them.)
+| Doc | Description |
+|-----|-------------|
+| `docs/agent-memory-pointer-pattern.md` | Compressed pointers + agent brain for unlimited context |
+| `docs/offline-travel-stack.md` | Offline knowledge scenarios — jungle travel, development, kid learning |
+| `docs/research/first-install-prompt-log.md` | First install prompt log |
+| `offline/SKILL.md` | Offline-knowledge skill — cascade cache + kiwix ZIM usage protocol |
+| `web-cache/SKILL.md` | Web cache skill — local semantic cache for web_search and web_extract |
+| `memory/patterns.md` | Recurring code and design patterns |
+
+## Templates
+
+| Doc | Description |
+|-----|-------------|
+| `docs/templates/MEMORY.seed.md` | Memory file seed template — pointer pattern starter |
+| `docs/templates/USER.seed.md` | User profile seed template — preferences, context, projects |
+| `docs/templates/gitignore.brain` | Standard .gitignore for brain sources |
+| `docs/templates/com.hermes.cortex-dashboard.plist` | Launchd plist for Cortex Dashboard |
+| `docs/templates/com.docker.docker.plist` | Launchd plist for Docker Desktop auto-start |
+
+## Legal & Compliance
+
+| Doc | Description |
+|-----|-------------|
+| `docs/THIRD_PARTY_LICENSES.md` | Third-party licenses for all referenced Docker images, installed software, PyPI packages, and offline content |
+
+## Development
+
+| Doc | Description |
+|-----|-------------|
+| `scripts/` | OS abstraction scripts (`os-config.sh`, `service-writer.sh`, `install-ollama.sh`, `install-nginx.sh`, `install-gbrain-sync.sh`) plus utility scripts (heartbeat, memory sync, health checks, scoring) |
+| `.gitignore` | Gitignore — excludes .agentkore, .env, secrets, brain data |

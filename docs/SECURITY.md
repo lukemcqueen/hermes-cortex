@@ -5,6 +5,8 @@
 > This guide explains how to keep your Hermes Cortex installation secure.
 > You don't need to be a security expert to follow it.
 
+> **💡 This guide applies to the latest version of the installer.** Run `git pull` and re-run `install.sh` to apply all security fixes.
+
 ---
 
 ## Table of Contents
@@ -79,8 +81,8 @@ openssl rand -hex 32   # Redis, MinIO secret, encryption keys
 
 # Update ~/langfuse/.env with new values
 # Then restart Langfuse:
-docker compose -f ~/langfuse/docker-compose.langfuse.yml down
-docker compose -f ~/langfuse/docker-compose.langfuse.yml up -d
+docker compose -f ~/hermes-cortex/docker-compose.langfuse.yml down
+docker compose -f ~/hermes-cortex/docker-compose.langfuse.yml up -d
 ```
 
 ---
@@ -111,11 +113,11 @@ These services are accessible from other computers on your network:
 
 | Port | Service | Risk | How to fix |
 |------|---------|------|------------|
-| **11434** | Ollama API | 🔴 **HIGH** — Anyone can run AI models | ✅ **Already fixed in v2 install** — bound to localhost |
-| **8080** | nginx default | 🟡 MEDIUM — Shows server info | ✅ **Fixed in v2 install** — tokens hidden |
+| **11434** | Ollama API | 🔴 **HIGH** — Anyone can run AI models | ✅ **Automatically secured by the installer** — bound to localhost |
+| **8080** | nginx default | 🟡 MEDIUM — Shows server info | ✅ **Automatically secured by the installer** — tokens hidden |
 | **11002** | Langfuse (via nginx) | 🟡 MEDIUM — Requires password | Uses Basic Auth (username/password) |
 | **11003** | Dashboard (via nginx) | 🟡 MEDIUM — Requires password | Uses Basic Auth (username/password) |
-| **9090** | MinIO S3 storage | 🟡 MEDIUM — Requires password | ✅ **Fixed in v2 install** — strong password generated |
+| **9090** | MinIO S3 storage | 🟡 MEDIUM — Requires password | ✅ **Automatically secured by the installer** — strong password generated |
 
 ### 📋 Quick port check
 
@@ -282,6 +284,8 @@ Your machine is more exposed on public networks. Take extra precautions:
 
 ## 8. Recovery — What To Do If Something Goes Wrong
 
+> **📖 Also see [`docs/troubleshooting.md`](./troubleshooting.md)** for 17 common issues and step-by-step fixes covering Docker, Dashboard, install, nginx, memory, and Linux.
+
 ### 🚨 I think someone accessed my Hermes
 
 1. **Disconnect from the internet** — unplug ethernet or turn off WiFi
@@ -309,7 +313,7 @@ launchctl kickstart gui/$(id -u)/com.docker.docker
 docker ps -a
 
 # Restart Langfuse stack
-docker compose -f ~/langfuse/docker-compose.langfuse.yml restart
+docker compose -f ~/hermes-cortex/docker-compose.langfuse.yml restart
 ```
 
 ### 💻 I can't access the Dashboard
@@ -379,7 +383,7 @@ The installer preserves your existing passwords (doesn't overwrite `.env` files)
 | Check open ports | `lsof -i -P \| grep LISTEN` |
 | Check file permissions | `ls -la ~/.hermes/.env` |
 | View Langfuse credentials | `cat ~/langfuse/.env` (but don't share!) |
-| Restart Langfuse | `docker compose -f ~/langfuse/docker-compose.langfuse.yml restart` |
+| Restart Langfuse | `docker compose -f ~/hermes-cortex/docker-compose.langfuse.yml restart` |
 | View system logs | `cat ~/.hermes/logs/gateway.log` |
 | Check Ollama status | `launchctl list \| grep ollama` |
 | Lock a file to your user | `chmod 600 filename` |

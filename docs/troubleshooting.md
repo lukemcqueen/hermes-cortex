@@ -260,6 +260,43 @@ The installer is optimized for macOS (uses launchd, Homebrew). On Linux:
 
 ---
 
+### 18. Ollama listening on all network interfaces (0.0.0.0)
+
+**Symptom:** Running `lsof -i -P | grep LISTEN` shows `ollama *:11434` — it's accessible from any device on your network.
+
+**Root cause:** Ollama defaults to binding on all interfaces. This means anyone on your WiFi can run models on your machine without authentication.
+
+**Fix:** The installer now fixes this automatically. To fix a running installation:
+
+**macOS:**
+```bash
+# Stop Ollama
+launchctl bootout gui/$(id -u)/com.ollama.serve 2>/dev/null
+
+# Update the plist
+sed -i '' 's|0.0.0.0|127.0.0.1|' ~/Library/LaunchAgents/com.ollama.serve.plist
+
+# Start Ollama (now on localhost only)
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ollama.serve.plist
+
+# Verify
+lsof -i -P | grep ollama | grep LISTEN
+# Should show: ollama ... localhost:11434 (LISTEN)
+```
+
+**Linux (systemd):**
+```bash
+sudo systemctl stop ollama
+sudo sed -i 's|0.0.0.0|127.0.0.1|' /etc/systemd/system/ollama.service
+sudo systemctl daemon-reload && sudo systemctl start ollama
+```
+
+**Verify:** Run `lsof -i -P | grep ollama` — it should show `localhost:11434`, not `*:11434`.
+
+**Prevention:** The installer now hardens this automatically. Re-run `install.sh` or see the [Security Guide](SECURITY.md) for more details.
+
+---
+
 ### 19. Can't log in — no admin user created on first startup
 
 **Symptom:** You navigate to `localhost:3001` (or your nginx URL) and see the login page, but there's no "Sign Up" / "Create Account" link, and no admin user was created.
@@ -336,5 +373,5 @@ hermes cron run <id>  # Test a job immediately
 
 | Version | Date | Changes |
 |---|---|---|
-| 1.1.0 | 2026-06-06 | Added entry #19 — first-time admin access (LANGFUSE_INIT_USER_*) |
-| 1.0.0 | 2026-06-05 | Initial release — 18 troubleshooting entries covering Docker, Dashboard, install, nginx, memory, Linux, and Redis idle timeouts |
+| 1.1.0 | 2026-06-06 | Added entry #18 (Ollama 0.0.0.0 fix), #19 (first-time admin access), #20 (Redis timeout) |
+| 1.0.0 | 2026-06-05 | Initial release — 17 entries covering Docker, Dashboard, install, nginx, memory, and Linux |

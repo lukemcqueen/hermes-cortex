@@ -1,3 +1,4 @@
+<!-- Part of Hermes Cortex. See docs/SECURITY.md for privacy. -->
 # Hermes Agent — MEMORY.md
 
 Your agent reads this file on every message turn. Keep it under **2,200 characters**.
