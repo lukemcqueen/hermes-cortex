@@ -1,3 +1,5 @@
+.agentkore/
+
 # Secrets & credentials
 .env
 .env.local
