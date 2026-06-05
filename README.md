@@ -32,7 +32,9 @@
 ||- **Offline Reader** — Lightweight web UI (`python3 offline/offline-reader.py`) for browsing Bible, hymns, and wiki reference in any browser — zero dependencies, works offline.
 ||- **Bible Content** — 55+ language translations (KJV, WEB, Korean, Arabic, Chinese, Russian, more). Search via `offline_knowledge bible`. Auto-parsed to JSON.
 ||- **Hymn Collection** — Public domain hymnal: PDF scores, ABC notation, MIDI, searchable lyrics. Search via `offline_knowledge hymns`.
-|- **Auto-Update** — Silent cron-based updater (`auto-update.sh`) that checks for content updates only when online. Set-and-forget via `hermes cron`.
+
+||> *"The more we get to know about our universe, the more the hypothesis that there is a Creator God, who designed the universe for a purpose, gains in credibility as the best explanation of why we are here."* — John Lennox
+||- **Auto-Update**
 - **Computer Specs Guide** — Hardware-aware recommendations for models and ZIM content bundles based on your RAM.
 - **Pre-Flight Tool** — `prep-offline.sh` downloads ZIM content, seeds cache, starts kiwix-serve. One command to prepare for no-internet scenarios.
 - **Utility scripts** — Heartbeat watchdog, memory sync, system health
