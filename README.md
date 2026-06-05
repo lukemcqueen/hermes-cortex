@@ -37,7 +37,7 @@
 
 > *"The more we get to know about our universe, the more the hypothesis that there is a Creator God, who designed the universe for a purpose, gains in credibility as the best explanation of why we are here."* — John Lennox
 
-||- **Auto-Update**
+- **Auto-Update**
 - **Computer Specs Guide** — Hardware-aware recommendations for models and ZIM content bundles based on your RAM.
 - **Pre-Flight Tool** — `prep-offline.sh` downloads ZIM content, seeds cache, starts kiwix-serve. One command to prepare for no-internet scenarios.
 - **Utility scripts** — Heartbeat watchdog, memory sync, system health
