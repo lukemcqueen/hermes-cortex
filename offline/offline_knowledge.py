@@ -52,6 +52,7 @@ ZIM_DIR = HOME / "offline" / "zim"
 LIBRARY_FILE = HOME / "offline" / "kiwix-library.xml"
 KIWIX_URL = "http://localhost:8080"
 BIBLE_DIR = HOME / "offline" / "bible"
+HYMNS_DIR = HOME / "offline" / "hymns"
 GBRAIN_CMD = HOME / ".bun" / "bin" / "gbrain"
 BUN_CMD = HOME / ".bun" / "bin" / "bun"
 
@@ -474,6 +475,142 @@ def bible_search(query, lang=None):
     }
 
 
+# ── Hymn Search ──────────────────────────────────────────────
+
+def hymns_list_translations():
+    """List available hymn resources in the hymns directory."""
+    if not HYMNS_DIR.exists():
+        return {"status": "not_found", "resources": []}
+
+    resources = []
+    for f in sorted(HYMNS_DIR.glob("*")):
+        if not f.is_file():
+            continue
+        name = f.name
+        # Skip generated index/corpus files for the resource list
+        if name.startswith("00-") or name in ("INDEX.md",):
+            continue
+        size_kb = f.stat().st_size // 1024
+        size_mb = f.stat().st_size / (1024**2)
+        # Determine type
+        ext = f.suffix.lower()
+        if ext == ".pdf":
+            rtype = "📄 Scores (PDF)"
+        elif ext == ".abc":
+            rtype = "🎵 Notation (ABC)"
+        elif ext == ".mid" or ext == ".midi":
+            rtype = "🎶 Audio (MIDI)"
+        elif ext == ".xml":
+            rtype = "📋 Lyrics (XML)"
+        elif ext == ".zip":
+            rtype = "📦 Archive"
+        elif ext == ".txt":
+            rtype = "📝 Lyrics"
+        elif ext == ".gif":
+            rtype = "🖼️ Score Image"
+        else:
+            rtype = "📄 File"
+
+        size_str = f"{size_mb:.1f} MB" if size_mb > 1 else f"{size_kb} KB"
+        resources.append({"file": name, "type": rtype, "size": size_str})
+
+    return {
+        "status": "ready" if resources else "empty",
+        "dir": str(HYMNS_DIR),
+        "count": len(resources),
+        "resources": resources,
+    }
+
+
+def hymns_search(query):
+    """Search hymn lyrics across all available text sources."""
+    if not HYMNS_DIR.exists():
+        return {"status": "not_found", "error": "Hymn directory not found. Run prep-hymns.sh first."}
+
+    results = []
+
+    # Search in the corpus text file (fastest)
+    corpus_file = HYMNS_DIR / "00-hymns-corpus.txt"
+    if corpus_file.exists():
+        query_lower = query.lower()
+        hymn_blocks = []
+        current_block = []
+        current_title = ""
+        in_hymn = False
+        try:
+            with open(corpus_file, "r", encoding="utf-8", errors="replace") as f:
+                for line in f:
+                    if line.startswith("=== HYMN "):
+                        # Save previous block
+                        if current_block:
+                            hymn_blocks.append({"title": current_title, "lines": current_block})
+                        current_block = []
+                        current_title = ""
+                        in_hymn = True
+                    elif line.startswith("Title:"):
+                        current_title = line[6:].strip()
+                        current_block.append(line.strip())
+                    else:
+                        current_block.append(line.strip())
+
+                # Last hymn
+                if current_block:
+                    hymn_blocks.append({"title": current_title, "lines": current_block})
+
+            # Search
+            for hymn in hymn_blocks:
+                title = hymn["title"]
+                lines = hymn["lines"]
+                matching_lines = [l for l in lines if query_lower in l.lower()]
+                if matching_lines:
+                    results.append({
+                        "title": title,
+                        "matches": len(matching_lines),
+                        "lines": matching_lines[:8],
+                    })
+
+        except Exception as e:
+            results.append({"error": f"Error reading corpus: {e}"})
+
+    # Fallback: search raw ThML XML
+    if not results:
+        thml_file = HYMNS_DIR / "openhymnal.201406.xml"
+        if thml_file.exists():
+            try:
+                with open(thml_file, "r", encoding="utf-8", errors="replace") as f:
+                    content = f.read()
+                query_lower = query.lower()
+                # Simple line-by-line search
+                lines = content.split("\n")
+                matches = [l.strip() for l in lines if query_lower in l.lower() and len(l.strip()) > 10]
+                if matches:
+                    results.append({
+                        "title": "Raw ThML XML",
+                        "matches": len(matches),
+                        "lines": matches[:8],
+                    })
+            except Exception as e:
+                results.append({"error": f"Error reading ThML: {e}"})
+
+    # Fallback: search PDF metadata (basic filename match)
+    if not results:
+        pdf_files = list(HYMNS_DIR.glob("*.pdf"))
+        if pdf_files:
+            results.append({
+                "title": "Hymn PDFs available",
+                "matches": len(pdf_files),
+                "lines": [f.name for f in pdf_files[:5]],
+            })
+
+    total_matches = sum(r.get("matches", 0) for r in results)
+    return {
+        "status": "ok" if results else "empty",
+        "query": query,
+        "total_matches": total_matches,
+        "results": results,
+    }
+
+
 # ── CLI ──────────────────────────────────────────────────────
 
 def main():
@@ -527,7 +664,16 @@ Examples:
     bs.add_argument("--lang", "-l", default=None, help="Filter by language code (e.g. en, es, ko)")
 
     bible_sub.add_parser("list", help="List available Bible translations")
-    
+
+    # hymns
+    hymns = subparsers.add_parser("hymns", help="Search hymn lyrics and resources")
+    hymns_sub = hymns.add_subparsers(dest="hymns_command")
+
+    hs = hymns_sub.add_parser("search", help="Search hymn lyrics")
+    hs.add_argument("query", nargs="+", help="Search text (title, phrase, or lyric line)")
+
+    hymns_sub.add_parser("list", help="List available hymn resources")
+
     args = parser.parse_args()
     
     if not args.command:
@@ -616,6 +762,15 @@ Examples:
         else:
             print(f"\n📖 Bible:      ❌ Not found")
 
+        # Hymn stats
+        hymn_info = hymns_list_translations()
+        if hymn_info["status"] == "ready":
+            print(f"\n🎵 Hymns:      ✅ {hymn_info['count']} resources")
+        elif hymn_info["status"] == "empty":
+            print(f"\n🎵 Hymns:      ⚪ Empty (run: prep-hymns.sh)")
+        else:
+            print(f"\n🎵 Hymns:      ❌ Not found")
+
         print()
 
     elif args.command == "bible":
@@ -648,6 +803,42 @@ Examples:
                     print(f"  · {t['name']:30s} {t['size_kb']:>6} KB")
             else:
                 print(f"📖 No Bible translations found. Run: prep-bible.sh")
+
+    elif args.command == "hymns":
+        if args.hymns_command == "search":
+            query = " ".join(args.query)
+            result = hymns_search(query)
+            if result["status"] == "not_found":
+                print(f"❌ {result.get('error', 'Hymn directory not found')}")
+                print("   Run: offline/prep-hymns.sh")
+                sys.exit(1)
+
+            print(f"\n🎵 Hymn Search: \"{result['query']}\"")
+            print(f"   {result['total_matches']} matches in {len(result['results'])} hymn(s)\n")
+            for r in result["results"]:
+                if "error" in r:
+                    print(f"  ⚠️  {r['error']}")
+                    continue
+                print(f"  🎵 {r['title']} — {r['matches']} match(es)")
+                for line in r["lines"][:6]:
+                    print(f"     · {line[:140]}")
+                if r["matches"] > len(r["lines"]):
+                    print(f"     … ({r['matches']} total matches)")
+                print()
+            if not result.get("results"):
+                print("   No matches found.\n")
+                print("   Tip: For now, search also works on PDF/ABC filenames.")
+                print("   Run 'prep-hymns.sh --lyrics-only' for full lyric search.\n")
+
+        elif args.hymns_command == "list":
+            result = hymns_list_translations()
+            if result["status"] == "ready":
+                print(f"\n🎵 Hymn Resources ({result['count']} files)")
+                print(f"   Directory: {result['dir']}\n")
+                for r in result["resources"]:
+                    print(f"  · {r['type']:20s} {r['file']:40s} {r['size']}")
+            else:
+                print(f"🎵 No hymn resources found. Run: prep-hymns.sh")
 
 
 if __name__ == "__main__":

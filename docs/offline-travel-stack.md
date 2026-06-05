@@ -15,10 +15,12 @@ cultural navigation, language help, and geography.
 ### Pre-Flight Checklist
 
 ```bash
-# 1. Download the travel bundle (~6 GB, or + Bible with --include-bible)
+# 1. Download the travel bundle (~6 GB, or + Bible with --include-bible, + hymns with --include-hymns)
 hermes-cortex/offline/prep-offline.sh --mode=travel
 # Add --include-bible to also download Bible translations (55+ languages):
 # hermes-cortex/offline/prep-offline.sh --mode=travel --include-bible
+# Add --include-hymns for public domain hymns (scores + lyrics, ~35 MB):
+# hermes-cortex/offline/prep-offline.sh --mode=travel --include-hymns
 
 # 2. Verify everything is loaded
 offline_knowledge stats
@@ -101,10 +103,12 @@ reference.
 ### Pre-Flight Checklist
 
 ```bash
-# 1. Download the build bundle (~7 GB, or + Bible with --include-bible)
+# 1. Download the build bundle (~7 GB, or + Bible with --include-bible, + hymns with --include-hymns)
 hermes-cortex/offline/prep-offline.sh --mode=build
 # Add --include-bible to also download Bible translations:
 # hermes-cortex/offline/prep-offline.sh --mode=build --include-bible
+# Add --include-hymns for public domain hymns (scores + lyrics, ~35 MB):
+# hermes-cortex/offline/prep-offline.sh --mode=build --include-hymns
 
 # 2. Cache pip wheels for your projects
 pip download -r your-project/requirements.txt -d ~/offline/pip-cache/
@@ -146,6 +150,8 @@ hermes-cortex/offline/prep-offline.sh --mode=education
 # Downloads: Simple Wikipedia (3.4 GB) + Wikibooks (1.5 GB) + Wikivoyage (232 MB)
 # Add --include-bible to also download Bible translations:
 # hermes-cortex/offline/prep-offline.sh --mode=education --include-bible
+# Add --include-hymns for public domain hymns (scores + lyrics, ~35 MB):
+# hermes-cortex/offline/prep-offline.sh --mode=education --include-hymns
 ```
 
 ### Daily Usage
