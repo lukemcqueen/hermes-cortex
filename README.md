@@ -17,6 +17,9 @@
 - **Hermes plugin** — `/brain` slash command
 - **8 shared skills** — Subagent orchestration, debugging, TDD, planning, memory architecture, code review, spikes
 - **Web Cache** — Local semantic cache for web search/extract results (sqlite-vec + Ollama embeddings). Reduces API costs, enables offline operation.
+- **Offline Knowledge** — Cascade knowledge lookup: web-cache → kiwix ZIM (Wikipedia, WikiMed, Wikivoyage) → gbrain → LLM. Works identically online (saves API costs) and offline (no internet needed).
+- **Computer Specs Guide** — Hardware-aware recommendations for models and ZIM content bundles based on your RAM.
+- **Pre-Flight Tool** — `prep-offline.sh` downloads ZIM content, seeds cache, starts kiwix-serve. One command to prepare for no-internet scenarios.
 - **Utility scripts** — Heartbeat watchdog, memory sync, system health
 
 ## 🚀 One-Command Install
@@ -45,7 +48,10 @@ bash ~/hermes-cortex/install.sh
 | 7 | **`/brain` plugin** | Hermes slash command for gbrain queries |
 | 8 | **Scripts** | Heartbeat, memory sync, Langfuse scoring, dashboard |
 | 9 | **Plugin enable** | Auto-activates in Hermes config |
-| 10 | **Cron prompt** | Instructions for Hermes agent setup |
+| 10 | **Skills** | 8 shared skills installed to `~/.hermes/skills/` |
+| 11 | **Web Cache** | Semantic web result cache (sqlite-vec + Ollama) |
+| 12 | **Offline Knowledge** | Cascade tool + kiwix ZIM Docker + prep-offline script |
+| 13 | **Cron prompt** | Instructions for Hermes agent setup |
 
 ### Configuration
 
@@ -68,6 +74,48 @@ bash ~/hermes-cortex/install.sh
 ```
 
 This creates isolated sources, a federated shared source, and a default. The `/brain` slash command adapts to whatever sources you configure.
+
+## 🧠 Offline Knowledge Stack
+
+The offline knowledge system makes Hermes useful **with or without internet**:
+
+- **Online mode:** Cascade cache → ZIM → web → LLM. Saves API costs — cache hits skip web_search entirely.
+- **Offline mode:** Same cascade, but kiwix ZIM files become your "internet." Wikipedia, WikiMed (medical), Wikivoyage (travel guides), and Wikibooks all available locally.
+
+### Three Scenarios
+
+| Scenario | `prep-offline` mode | Content | Size |
+|---|---|---|---|
+| 🌴 **Jungle Travel** | `--mode=travel` | WikiMed + Wikivoyage + Simple Wiki + Wiktionary | ~6 GB |
+| 🏗️ **Offline Dev** | `--mode=build` | Simple Wiki + Wikibooks + Wiktionary | ~7 GB |
+| 📚 **Kid Learning** | `--mode=education` | Simple Wiki + Wikibooks + Wikivoyage | ~5 GB |
+
+### Quick Start for Offline
+
+```bash
+# After install.sh, download content:
+prep-offline --mode=travel
+
+# Check system status:
+offline_knowledge stats
+
+# Query anything (works same online/offline):
+offline_knowledge query "symptoms of malaria"
+```
+
+### Hardware Guide
+
+See [docs/computer-specs.md](docs/computer-specs.md) for model and content recommendations
+based on your RAM tier (8 GB → 64+ GB).
+
+### Architecture
+
+```
+Agent question → web_cache (fastest) → kiwix ZIM (local) → gbrain (RAG) → LLM (always)
+                      │                    │                    │              │
+                 50μs hit ✅           localhost:8080      personal KB     model knows it
+                 skip web_call         free, private        your data      fallback
+```
 
 ## 🗄️ Private Configuration
 

@@ -65,7 +65,7 @@ if [[ -z "${CORTEX_SOURCES:-}" ]]; then
 fi
 
 IFS=',' read -ra SOURCES <<< "$CORTEX_SOURCES"
-TOTAL_STEPS=17
+TOTAL_STEPS=18
 STEP=0
 
 # Ensure Hermes is installed
@@ -1084,6 +1084,61 @@ PLIST
 fi
 
 # ─────────────────────────────────────────────────────────────
+#  13. Offline Knowledge Tools — cache cascade + ZIM content
+# ─────────────────────────────────────────────────────────────
+step "Installing offline knowledge tools (cache cascade + ZIM viewer)"
+
+OFFLINE_REPO="${SCRIPT_DIR}/offline"
+OFFLINE_DEST="${HERMES_HOME}/offline"
+
+if [[ -d "$OFFLINE_REPO" ]]; then
+  mkdir -p "$OFFLINE_DEST" "$HERMES_BIN"
+
+  # Copy offline knowledge cascade tool
+  cp "${OFFLINE_REPO}/offline_knowledge.py" "$OFFLINE_DEST/"
+  chmod +x "${OFFLINE_DEST}/offline_knowledge.py"
+  cp "${OFFLINE_REPO}/offline_knowledge.sh" "$OFFLINE_DEST/"
+  chmod +x "${OFFLINE_DEST}/offline_knowledge.sh"
+  ln -sf "${OFFLINE_DEST}/offline_knowledge.sh" "${HERMES_BIN}/offline_knowledge"
+  info "  Installed offline knowledge cascade tool"
+
+  # Copy kiwix Docker compose file
+  cp "${OFFLINE_REPO}/kiwix-docker-compose.yml" "$OFFLINE_DEST/"
+  info "  Installed kiwix-serve Docker compose"
+
+  # Copy prep-offline script
+  cp "${OFFLINE_REPO}/prep-offline.sh" "$OFFLINE_DEST/"
+  chmod +x "${OFFLINE_DEST}/prep-offline.sh"
+  ln -sf "${OFFLINE_DEST}/prep-offline.sh" "${HERMES_BIN}/prep-offline"
+  info "  Installed prep-offline content downloader"
+
+  # Copy SKILL.md for Hermes agent
+  SKILL_DEST="${HERMES_SKILLS}/software-development"
+  mkdir -p "$SKILL_DEST"
+  if [[ ! -f "${SKILL_DEST}/SKILL.md" ]] || ! grep -q "offline-knowledge" "${SKILL_DEST}/SKILL.md" 2>/dev/null; then
+    cp "${OFFLINE_REPO}/SKILL.md" "${SKILL_DEST}/offline-knowledge.SKILL.md" 2>/dev/null || true
+  fi
+  info "  Installed offline-knowledge skill"
+
+  # Create offline directories for ZIM content
+  mkdir -p "${HOME}/offline/zim"
+
+  # Prompt user to run prep-offline
+  printf "\n"
+  info "  Offline tools installed."
+  info "  To download ZIM content (Wikipedia, WikiMed, Wikivoyage, etc.), run:"
+  info "    ${HERMES_BIN}/prep-offline"
+  info "  Or with a preset:"
+  info "    ${HERMES_BIN}/prep-offline --mode=travel    # Jungle/vacation bundle (~6 GB)"
+  info "    ${HERMES_BIN}/prep-offline --mode=build     # Dev offline bundle (~7 GB)"
+  info "    ${HERMES_BIN}/prep-offline --mode=education  # Kid learning bundle (~5 GB)"
+  printf "\n"
+else
+  skip "no offline/ directory in repo"
+fi
+ok
+
+# ─────────────────────────────────────────────────────────────
 #  14. nginx — Reverse proxy for Langfuse + Dashboard
 # ─────────────────────────────────────────────────────────────
 step "Installing nginx reverse proxy"
@@ -1216,6 +1271,7 @@ printf "  ${GREEN}•${RESET} memory-to-brain.py → memory sync to gbrain\n"
 printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\n"
 printf "  ${GREEN}•${RESET} Hermes skills    → 8 shared skills in ~/.hermes/skills/\n"
 printf "  ${GREEN}•${RESET} Web Cache       → semantic web result cache (sqlite-vec + Ollama)\n"
+printf "  ${GREEN}•${RESET} Offline Knowledge → cascade cache + kiwix ZIM content viewer\n"
 printf "  ${GREEN}•${RESET} Launchd services:\n"
 printf "                   com.ollama.serve\n"
 printf "                   com.gbrain.sync-watch\n"

@@ -21,6 +21,10 @@ state.db
 .DS_Store
 Thumbs.db
 
+# Offline ZIM content (large downloads — don't commit)
+offline/zim/
+*.zim
+
 # Python
 __pycache__/
 *.pyc
