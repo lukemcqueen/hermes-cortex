@@ -45,6 +45,36 @@ trap 'printf "\n${RED}Installation aborted at step $STEP${RESET}\n"' EXIT
 source "${SCRIPT_DIR}/scripts/os-config.sh"
 source "${SCRIPT_DIR}/scripts/service-writer.sh"
 
+# ── Python version probe ────────────────────────────────────
+# Find the newest Python 3.10+ with working sqlite3 extension support.
+# macOS ships 3.9.6 whose sqlite3 can't enable_load_extension — breaks sqlite-vec.
+find_best_python() {
+  local candidates="python3.12 python3.11 python3.10 python3"
+  local found=""
+  for candidate in $candidates; do
+    if command -v "$candidate" &>/dev/null; then
+      local ver
+      ver=$("$candidate" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null)
+      local major="${ver%.*}"
+      local minor="${ver#*.}"
+      if [[ "$major" -ge 3 && "$minor" -ge 10 ]] 2>/dev/null; then
+        # Verify sqlite3 extension support
+        if "$candidate" -c 'import sqlite3; sqlite3.connect(":memory:").enable_load_extension(True)' 2>/dev/null; then
+          found="$candidate"
+          break
+        fi
+      fi
+    fi
+  done
+  if [[ -z "$found" ]]; then
+    # Fallback: use whatever python3 is available, warn
+    found="python3"
+    warn "No Python 3.10+ with sqlite3 extension support found — web_cache may fail"
+    warn "Install with: brew install python@3.12"
+  fi
+  echo "$found"
+}
+
 # ─────────────────────────────────────────────────────────────
 #  0. System Verification Check
 # ─────────────────────────────────────────────────────────────
@@ -925,7 +955,9 @@ if [[ -d "$WEB_CACHE_REPO" ]]; then
   info "  Installed web cache tool"
   # Create the venv if not exists
   if [[ ! -d "${WEB_CACHE_DEST}/.venv" ]]; then
-    python3 -m venv "${WEB_CACHE_DEST}/.venv" 2>/dev/null
+    BEST_PY=$(find_best_python)
+    info "  Using $BEST_PY for web-cache venv"
+    $BEST_PY -m venv "${WEB_CACHE_DEST}/.venv" 2>/dev/null
     "${WEB_CACHE_DEST}/.venv/bin/pip" install sqlite-vec requests 2>/dev/null && \
       info "  Created venv with sqlite-vec + requests"
   else
