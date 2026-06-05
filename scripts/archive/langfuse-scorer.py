@@ -31,7 +31,7 @@ MAX_CONTENT_CHARS = 2000
 
 # ── Langfuse auth ──────────────────────────────────────────────────────
 def _get_langfuse_keys():
-    with open('/Users/luke/langfuse/.env', 'rb') as f:
+    with open('~/.env', 'rb') as f:  # Example path — replace with your Langfuse .env location
         raw = f.read()
     pk = sk = None
     for line in raw.split(b'\n'):

@@ -2,7 +2,7 @@
 """Check Langfuse sessions."""
 import urllib.request, json, base64
 
-with open('/Users/luke/langfuse/.env', 'rb') as f:
+with open('~/.env', 'rb') as f:  # Example path — replace with your Langfuse .env location
     content = f.read()
 pk = sk = None
 for line in content.split(b'\n'):

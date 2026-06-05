@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Test MinIO and S3 access."""
+import os
 import urllib.request
 import json
 
@@ -12,7 +13,9 @@ except Exception as e:
     print(f"MinIO health failed: {e}")
 
 # Read minio root creds
-with open('/Users/luke/langfuse/.env', 'rb') as f:
+# Example: replace with your own path to the .env file
+env_path = os.path.expanduser('~/langfuse/.env')
+with open(env_path, 'rb') as f:
     content = f.read()
 
 minio_pass = None
@@ -37,7 +40,8 @@ print(f"Credentials match: {minio_pass == s3_event_secret}")
 try:
     import base64
     # Use the Langfuse project keys for auth
-    with open('/Users/luke/langfuse/.env', 'rb') as f:
+    # Example: replace with your own path to the .env file
+    with open(env_path, 'rb') as f:
         content = f.read()
     pk = None
     sk = None
