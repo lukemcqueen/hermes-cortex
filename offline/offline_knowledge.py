@@ -53,8 +53,52 @@ LIBRARY_FILE = HOME / "offline" / "kiwix-library.xml"
 KIWIX_URL = "http://localhost:8080"
 BIBLE_DIR = HOME / "offline" / "bible"
 HYMNS_DIR = HOME / "offline" / "hymns"
-GBRAIN_CMD = HOME / ".bun" / "bin" / "gbrain"
-BUN_CMD = HOME / ".bun" / "bin" / "bun"
+
+# ── Bun/GBrain path detection ────────────────────────────────
+# Try multiple locations: install.sh default, PATH, and Homebrew
+def _find_bun():
+    """Locate bun binary across common install locations."""
+    candidates = [
+        HOME / ".bun" / "bin" / "bun",           # install.sh default
+    ]
+    # Check PATH
+    import shutil
+    path_bun = shutil.which("bun")
+    if path_bun:
+        candidates.insert(0, Path(path_bun))
+    # Check Homebrew
+    try:
+        import subprocess
+        brew_bun = subprocess.run(
+            ["brew", "--prefix", "bun"], capture_output=True, text=True, timeout=5
+        )
+        if brew_bun.returncode == 0:
+            bp = Path(brew_bun.stdout.strip()) / "bin" / "bun"
+            if bp.exists():
+                candidates.insert(0, bp)
+    except Exception:
+        pass
+
+    for c in candidates:
+        if c.exists():
+            return c
+    return candidates[-1]  # return default anyway, will fail gracefully later
+
+def _find_gbrain():
+    """Locate gbrain binary based on bun location."""
+    bun = _find_bun()
+    # gbrain is always in the same dir as bun
+    gbrain = bun.parent / "gbrain"
+    if gbrain.exists():
+        return gbrain
+    # Also try ~/.bun/bin/gbrain directly
+    fallback = HOME / ".bun" / "bin" / "gbrain"
+    if fallback.exists():
+        return fallback
+    return gbrain  # return best guess
+
+BUN_CMD = _find_bun()
+GBRAIN_CMD = _find_gbrain()
 
 
 # ── Kiwix Helpers ───────────────────────────────────────────

@@ -38,26 +38,37 @@ header(){ printf "\n${CYAN}${BOLD}━━━ %s ━━━${RESET}\n" "$1"; }
 # ── ZIM Download URLs (Kiwix official mirror) ───────────────
 BASE_URL="https://download.kiwix.org/zim"
 
-declare -A ZIM_FILES
-ZIM_FILES["wikivoyage_en_nopic"]="$BASE_URL/wikivoyage/wikivoyage_en_all_nopic_2026-03.zim"
-ZIM_FILES["wikivoyage_en_maxi"]="$BASE_URL/wikivoyage/wikivoyage_en_all_maxi_2026-03.zim"
-ZIM_FILES["medicine_en"]="$BASE_URL/wikipedia/wikipedia_en_medicine_maxi_2026-01.zim"
-ZIM_FILES["simple_wikipedia"]="$BASE_URL/wikipedia/wikipedia_en_simple_all_maxi_2026-02.zim"
-ZIM_FILES["wikipedia_mini"]="$BASE_URL/wikipedia/wikipedia_en_all_mini_2026-02.zim"
-ZIM_FILES["wikibooks_en"]="$BASE_URL/wikibooks/wikibooks_en_all_maxi_2026-04.zim"
-ZIM_FILES["wiktionary_en"]="$BASE_URL/wiktionary/wiktionary_en_all_maxi_2026-04.zim"
+# Parallel arrays: key, url, label (indexed by position)
+ZIM_KEYS=()
+ZIM_URLS=()
+ZIM_LABELS=()
 
-# Friendly labels
-declare -A ZIM_LABELS
-ZIM_LABELS["wikivoyage_en_nopic"]="🌍  Wikivoyage (text-only, 232 MB) — travel guides, phrasebooks, safety"
-ZIM_LABELS["wikivoyage_en_maxi"]="🌍  Wikivoyage (with images, 1.1 GB) — travel guides, photos"
-ZIM_LABELS["medicine_en"]="🏥  WikiMed (2.1 GB) — medical encyclopedia, diseases, treatments"
-ZIM_LABELS["simple_wikipedia"]="🔤  Simple Wikipedia (3.4 GB) — plain English encyclopedia"
-ZIM_LABELS["wikipedia_mini"]="📚  Wikipedia Mini (12.4 GB) — full encyclopedia, compressed"
-ZIM_LABELS["wikibooks_en"]="📖  Wikibooks (1.5 GB) — free textbooks, STEM, programming"
-ZIM_LABELS["wiktionary_en"]="📝  Wiktionary (2.2 GB) — dictionary, thesaurus, etymology"
+_zim_add() {
+  ZIM_KEYS+=("$1")
+  ZIM_URLS+=("$2")
+  ZIM_LABELS+=("$3")
+}
 
-# Bundle definitions
+_zim_add "wikivoyage_en_nopic" "$BASE_URL/wikivoyage/wikivoyage_en_all_nopic_2026-03.zim" \
+  "🌍  Wikivoyage (text-only, 232 MB) — travel guides, phrasebooks, safety"
+_zim_add "wikivoyage_en_maxi" "$BASE_URL/wikivoyage/wikivoyage_en_all_maxi_2026-03.zim" \
+  "🌍  Wikivoyage (with images, 1.1 GB) — travel guides, photos"
+_zim_add "medicine_en" "$BASE_URL/wikipedia/wikipedia_en_medicine_maxi_2026-01.zim" \
+  "🏥  WikiMed (2.1 GB) — medical encyclopedia, diseases, treatments"
+_zim_add "simple_wikipedia" "$BASE_URL/wikipedia/wikipedia_en_simple_all_maxi_2026-02.zim" \
+  "🔤  Simple Wikipedia (3.4 GB) — plain English encyclopedia"
+_zim_add "wikipedia_mini" "$BASE_URL/wikipedia/wikipedia_en_all_mini_2026-02.zim" \
+  "📚  Wikipedia Mini (12.4 GB) — full encyclopedia, compressed"
+_zim_add "wikibooks_en" "$BASE_URL/wikibooks/wikibooks_en_all_maxi_2026-04.zim" \
+  "📖  Wikibooks (1.5 GB) — free textbooks, STEM, programming"
+_zim_add "wiktionary_en" "$BASE_URL/wiktionary/wiktionary_en_all_maxi_2026-04.zim" \
+  "📝  Wiktionary (2.2 GB) — dictionary, thesaurus, etymology"
+
+# Lookup helper — echoes the value for a given key from a named array set
+zim_get_url()   { local i; for i in "${!ZIM_KEYS[@]}"; do [[ "${ZIM_KEYS[$i]}" == "$1" ]] && { echo "${ZIM_URLS[$i]}"; return 0; }; done; return 1; }
+zim_get_label() { local i; for i in "${!ZIM_KEYS[@]}"; do [[ "${ZIM_KEYS[$i]}" == "$1" ]] && { echo "${ZIM_LABELS[$i]}"; return 0; }; done; return 1; }
+
+# Bundle definitions (keys only)
 TRAVEL_BUNDLE=(wikivoyage_en_nopic medicine_en simple_wikipedia wiktionary_en)
 BUILD_BUNDLE=(simple_wikipedia wikibooks_en wiktionary_en)
 EDUCATION_BUNDLE=(simple_wikipedia wikibooks_en wikivoyage_en_nopic)
@@ -86,8 +97,8 @@ check_deps() {
 
 download_zim() {
     local key="$1"
-    local url="${ZIM_FILES[$key]}"
-    local label="${ZIM_LABELS[$key]}"
+    local url=$(zim_get_url "$key")
+    local label=$(zim_get_label "$key")
     local filename=$(basename "$url")
     local dest="$ZIM_DIR/$filename"
 
@@ -321,12 +332,12 @@ main() {
             header "INTERACTIVE MODE"
             printf "  Select content to download:\n\n"
 
-            local keys=("${!ZIM_LABELS[@]}")
             local i=1
             declare -a key_order
-            for key in "${keys[@]}"; do
+            for key in "${ZIM_KEYS[@]}"; do
                 key_order[$i]="$key"
-                printf "  %d. %s\n" $i "${ZIM_LABELS[$key]}"
+                local lbl=$(zim_get_label "$key")
+                printf "  %d. %s\n" $i "$lbl"
                 i=$((i + 1))
             done
             printf "  %d. All of the above\n" $i
