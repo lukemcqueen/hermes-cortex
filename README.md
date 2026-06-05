@@ -10,7 +10,6 @@
 
 - **Ollama** — Local LLM server (free embeddings)
 - **Bun** + **GBrain** — Persistent knowledge brain (PGLite, zero-config)
-- **ClawMetry** — Real-time observability dashboard (legacy)
 - **Langfuse** — LLM trace evaluation and scoring (primary observability)
 - **Cortex Dashboard** — Companion dashboard for Langfuse + system health
 - **Brain directory structure** — MECE-organized knowledge sources
@@ -40,7 +39,7 @@ bash ~/hermes-cortex/install.sh
 | 3 | **gbrain** | Persistent knowledge brain (PGLite, zero-config) |
 | 4 | **Brain dirs** | `~/brain/{default,…}` with MECE directory schema |
 | 5 | **gbrain sync** | Launchd daemon — syncs brain every 2 minutes |
-| 6 | **Observability** | Langfuse + Cortex Dashboard + ClawMetry (legacy) |
+| 6 | **Observability** | Langfuse + Cortex Dashboard |
 | 7 | **`/brain` plugin** | Hermes slash command for gbrain queries |
 | 8 | **Scripts** | Heartbeat, memory sync, Langfuse scoring, dashboard |
 | 9 | **Plugin enable** | Auto-activates in Hermes config |
@@ -98,6 +97,36 @@ git clone git@github.com:fleet-operator/hermes-cortex-private.git ~/hermes-corte
 ## 🎯 Philosophy
 
 **Thin harness, fat skills.** The agent is the runtime — the real value lives in well-crafted skills, persistent memory, and deep observability. Every tool, config tweak, and workflow is tracked here so nothing is ever lost.
+
+## 🛠️ Troubleshooting
+
+### "Install fails at 'brew install'"
+Make sure Homebrew is installed, or install it manually:
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+### "gbrain command not found after install"
+Make sure `~/.bun/bin` is in your PATH:
+```bash
+export PATH="$HOME/.bun/bin:$PATH"
+```
+Add the same line to your shell profile (`~/.zshrc`, `~/.bashrc`, etc.) to make it permanent.
+
+### "Ollama won't start on macOS"
+Check if it's blocked by Gatekeeper: go to **System Settings → Privacy & Security** and allow it.
+
+### "docker compose command not found"
+Make sure Docker Desktop is running.
+
+### "Permission denied when running install.sh"
+You might need to make the script executable:
+```bash
+chmod +x ~/hermes-cortex/install.sh
+```
+
+### "I don't have macOS"
+The installer is optimized for macOS. Linux users can run individual steps manually.
 
 ---
 

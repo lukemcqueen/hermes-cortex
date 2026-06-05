@@ -4,6 +4,7 @@
 # Run with: docker compose -f docker-compose.langfuse.yml up -d
 # Access at: http://localhost:3000
 # External via nginx: https://example.com:11002
+# NOTE: Replace example.com with your own domain, or use localhost for local-only setups.
 
 services:
   langfuse-worker:

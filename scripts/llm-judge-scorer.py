@@ -8,6 +8,7 @@ Usage:
   python3 ~/.hermes/scripts/llm-judge-scorer.py
   python3 ~/.hermes/scripts/llm-judge-scorer.py --trace-id <id>
   python3 ~/.hermes/scripts/llm-judge-scorer.py --dry-run
+  python3 ~/.hermes/scripts/llm-judge-scorer.py --env-path ~/langfuse/.env
 """
 
 import json, os, re, sys, time, urllib.request, urllib.error
@@ -27,7 +28,21 @@ FETCH_BATCH = 20  # Fetch this many, filter to unscored
 
 # ── Langfuse auth ──────────────────────────────────────────────────────
 def _get_langfuse_keys():
-    with open('/Users/luke/langfuse/.env', 'rb') as f:
+    """Read Langfuse project keys from a configurable .env file.
+
+    Priority: --env-path CLI arg > LANGFUSE_ENV_PATH env var > ~/.hermes/.env
+    """
+    env_path = None
+    for arg in sys.argv[1:]:
+        if arg.startswith("--env-path="):
+            env_path = arg.split("=", 1)[1]
+            break
+    if not env_path:
+        env_path = os.environ.get("LANGFUSE_ENV_PATH")
+    if not env_path:
+        env_path = os.path.expanduser("~/.hermes/.env")
+
+    with open(env_path, 'rb') as f:
         raw = f.read()
     pk = sk = None
     for line in raw.split(b'\n'):
