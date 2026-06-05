@@ -42,7 +42,8 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/agent-memory-pointer-pattern.md` | Compressed pointers + agent brain for unlimited context |
 | `docs/offline-travel-stack.md` | Offline knowledge scenarios — jungle travel, development, kid learning |
 | `docs/research/first-install-prompt-log.md` | First install prompt log |
-| `offline/SKILL.md` | Offline-knowledge skill — cascade cache + kiwix ZIM usage protocol |
+|| `offline/SKILL.md` | Offline-knowledge skill — cascade cache + kiwix ZIM usage protocol |
+|| `offline/prep-bible.sh` | Bible translation downloader — 55+ languages, small (4-10 MB per translation) |
 | `web-cache/SKILL.md` | Web cache skill — local semantic cache for web_search and web_extract |
 | `memory/patterns.md` | Recurring code and design patterns |
 

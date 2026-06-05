@@ -9,6 +9,8 @@
 #    ./prep-offline.sh --mode=build       # Development offline bundle
 #    ./prep-offline.sh --mode=education   # Kid learning bundle
 #    ./prep-offline.sh --mode=all         # Everything
+#    ./prep-offline.sh --mode=travel --include-bible  # Add Bible translations
+#    ./prep-offline.sh --include-bible    # Interactive + Bible
 #
 #  Requirements: docker (for kiwix-serve), python3, curl
 # ─────────────────────────────────────────────────────────────
@@ -240,6 +242,10 @@ print_summary() {
     printf "  📂  ZIM directory:   %s\n" "$ZIM_DIR"
     printf "  🌐  kiwix-serve:     http://localhost:8080\n"
     printf "  📦  web_cache:       %s\n" "$HOME/.hermes/web-cache/cache.db"
+    if [[ -d "$HOME/offline/bible" ]] && [[ "$(ls -A "$HOME/offline/bible" 2>/dev/null)" ]]; then
+        local bible_count=$(find "$HOME/offline/bible" -name "*.txt" 2>/dev/null | wc -l)
+        printf "  📖  Bible texts:    %d translations in ~/offline/bible/\n" "$bible_count"
+    fi
     printf "\n"
     printf "  Commands:\n"
     printf "    offline_knowledge stats                — system status\n"
@@ -266,6 +272,14 @@ main() {
     check_deps
 
     local mode="${1:-interactive}"
+    local include_bible=0
+
+    # Parse flags before --mode=
+    for arg in "$@"; do
+        case "$arg" in
+            --include-bible) include_bible=1 ;;
+        esac
+    done
 
     # Parse --mode= argument
     if [[ "$mode" == --mode=* ]]; then
@@ -333,6 +347,18 @@ main() {
         for key in "${selected_keys[@]}"; do
             download_zim "$key"
         done
+    fi
+
+    # Download Bible content (if requested)
+    if [[ $include_bible -eq 1 ]]; then
+        header "DOWNLOADING BIBLE CONTENT"
+        local bible_script="$HOME/hermes-cortex/offline/prep-bible.sh"
+        if [[ -f "$bible_script" ]]; then
+            info "Downloading major language Bible translations…"
+            bash "$bible_script" --langs=major 2>&1 || warn "Bible download had some failures"
+        else
+            warn "prep-bible.sh not found at $bible_script"
+        fi
     fi
 
     # Generate library XML
