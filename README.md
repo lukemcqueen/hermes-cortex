@@ -1,7 +1,7 @@
 # 🧠 Hermes Cortex
 
 > *An open-source installer and skill set for your personal Hermes AI agent.
-> Privacy-first, offline-capable, built for non-technical users.*
+> Privacy-first, offline-capable, built for non-technical users with an AI agent.*
 
 **Version: 1.0.0** · ![GitHub](https://img.shields.io/github/license/fleet-operator/hermes-cortex) · [Hermes Agent](https://hermes-agent.nousresearch.com)
 
