@@ -39,6 +39,7 @@ bash ~/hermes-cortex/install.sh
 
 | Step | What | Why |
 |------|------|-----|
+| 0 | **System Check** | Verifies OS, RAM, disk, Docker, network, dependencies before touching anything |
 | 1 | **Ollama** | Local LLM server for free embeddings |
 | 2 | **Bun** | JavaScript runtime for gbrain |
 | 3 | **gbrain** | Persistent knowledge brain (PGLite, zero-config) |

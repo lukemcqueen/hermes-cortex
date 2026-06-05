@@ -36,7 +36,26 @@ skip() { printf "  ${YELLOW}skip${RESET} — %s\n" "$1"; }
 trap 'printf "\n${RED}Installation aborted at step $STEP${RESET}\n"' EXIT
 
 # ─────────────────────────────────────────────────────────────
-#  0. Prerequisites & Configuration
+#  0. System Verification Check
+# ─────────────────────────────────────────────────────────────
+header "SYSTEM VERIFICATION"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
+CHECK_SCRIPT="${SCRIPT_DIR}/check-system.sh"
+
+if [[ -f "$CHECK_SCRIPT" ]]; then
+  bash "$CHECK_SCRIPT" || {
+    error "System verification failed. Review the issues above."
+    error "Fix them and re-run install.sh"
+    exit 1
+  }
+  printf "\n"
+else
+  warn "check-system.sh not found — skipping verification"
+  printf "\n"
+fi
+
+# ─────────────────────────────────────────────────────────────
+#  Prerequisites & Configuration
 # ─────────────────────────────────────────────────────────────
 header "PREREQUISITES"
 
