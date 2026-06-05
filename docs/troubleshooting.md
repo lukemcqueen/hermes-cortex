@@ -1,0 +1,295 @@
+# Troubleshooting Guide
+
+> **Version 1.0.0** — Published 2026-06-05
+> Common issues and fixes for Hermes Cortex installation and operation.
+
+---
+
+## 🐳 Docker / Langfuse Issues
+
+### 1. Containers crash immediately after startup
+
+**Symptom:** `docker ps` shows containers restarting repeatedly. `docker logs <name>` shows ZodError or missing env var errors.
+
+**Fix:** Langfuse v3 requires several env vars that v2 didn't. Ensure your `docker-compose.langfuse.yml` includes all of these:
+
+```yaml
+# Required by v3 — ClickHouse
+CLICKHOUSE_URL: http://clickhouse:8123
+CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+CLICKHOUSE_CLUSTER_ENABLED: "false"
+CLICKHOUSE_USER: default
+CLICKHOUSE_PASSWORD: ""
+
+# Required by v3 — Encryption
+LANGFUSE_ENCRYPTION_KEY: <32-byte-hex>   # Generate: openssl rand -hex 32
+
+# Required by v3 — S3 (point to local MinIO if not using external S3)
+LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY}
+LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_SECRET_KEY}
+LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+# ... (see docker-compose.langfuse.yml for full list)
+```
+
+### 2. "docker compose restart" doesn't pick up config changes
+
+**Symptom:** You update `.env` or `docker-compose.yml`, run `docker compose restart`, but containers still fail with the same old errors.
+
+**Root cause:** Docker Compose only evaluates env vars when containers are **created**, not when they're restarted. `up -d` is a no-op if the containers already exist.
+
+**Fix — always recreate after config changes:**
+```bash
+docker compose -f docker-compose.langfuse.yml down
+docker compose -f docker-compose.langfuse.yml up -d
+```
+
+### 3. Port 3000 already in use
+
+**Symptom:** Docker fails with `port is already allocated` or `address already in use`.
+
+**Fix — change the host port:**
+```bash
+# Run on a different port
+LANGFUSE_PORT=3001 docker compose -f docker-compose.langfuse.yml up -d
+```
+
+Then update your nginx config and dashboard `LANGFUSE_HOST` to match.
+
+### 4. ClickHouse won't start (insufficient ulimits)
+
+**Symptom:** ClickHouse container exits with `max file descriptors` error.
+
+**Fix:** Add ulimits to the ClickHouse service in docker-compose:
+```yaml
+clickhouse:
+  ulimits:
+    nofile:
+      soft: 262144
+      hard: 262144
+```
+
+(This is already included in the provided docker-compose.langfuse.yml.)
+
+### 5. MinIO bucket doesn't exist
+
+**Symptom:** Langfuse worker logs show S3 errors like `NoSuchBucket`.
+
+**Fix:** The MinIO entrypoint must create the required buckets on startup:
+```yaml
+command: -c 'mkdir -p /data/langfuse /data/langfuse-media /data/langfuse-export && minio server /data --console-address ":9001"'
+```
+
+If containers were already running, exec in and create them manually:
+```bash
+docker exec -it langfuse-minio-1 sh
+mkdir -p /data/langfuse /data/langfuse-media /data/langfuse-export
+exit
+docker restart langfuse-minio-1
+```
+
+---
+
+## 🖥️ Dashboard Issues
+
+### 6. "No module named 'flask'"
+
+**Symptom:** Running `python3 server.py` fails with `ModuleNotFoundError: No module named 'flask'`.
+
+**Fix — create a virtual environment:**
+```bash
+python3 -m venv ~/.hermes/dashboard/.venv
+source ~/.hermes/dashboard/.venv/bin/activate
+pip install flask
+# Run the dashboard from within the venv:
+python3 ~/.hermes/dashboard/server.py
+```
+
+Or use the system Python with pip install:
+```bash
+pip3 install flask
+```
+
+### 7. Dashboard links go to wrong URL
+
+**Symptom:** Clicking "Langfuse ↗" or "View All →" on the dashboard opens a broken link.
+
+**Fix:** Edit `dashboard/static/index.html` and update the `LANGFUSE_HOST` and `LANGFUSE_EXTERNAL` constants at the top of the `<script>` section:
+
+```javascript
+const LANGFUSE_HOST = 'http://localhost:3000';      // Your internal Langfuse URL
+const LANGFUSE_EXTERNAL = 'http://localhost:13002';  // Your external/proxy URL
+```
+
+---
+
+## 🔧 Installation Issues
+
+### 8. "brew: command not found"
+
+**Symptom:** Install script fails at Homebrew step.
+
+**Fix:** Install Homebrew first:
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+### 9. "gbrain: command not found"
+
+**Symptom:** After install, `gbrain` isn't found.
+
+**Fix:** Add Bun's bin directory to your PATH:
+```bash
+export PATH="$HOME/.bun/bin:$PATH"
+```
+
+Add it permanently to your shell profile:
+```bash
+echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+### 10. "Permission denied" running install.sh
+
+**Fix:**
+```bash
+chmod +x ~/hermes-cortex/install.sh
+bash ~/hermes-cortex/install.sh   # Run with bash, not ./
+```
+
+### 11. Ollama blocked by macOS Gatekeeper
+
+**Symptom:** Ollama installs but won't start on macOS.
+
+**Fix:**
+1. Go to **System Settings → Privacy & Security**
+2. Scroll down to the "Security" section
+3. Click "Allow" next to Ollama
+4. Or run: `spctl --master-disable` (temporarily disable Gatekeeper)
+
+### 12. Install script runs but nothing seems to happen
+
+**Symptom:** The install script completes quickly but services aren't running.
+
+**Fix:** The installer is idempotent — it skips already-installed steps. Check what's actually installed:
+```bash
+# Check brew packages
+brew list | grep -E "ollama|nginx"
+
+# Check services
+brew services list
+
+# Check Docker
+docker ps
+
+# Check gbrain
+ls ~/.gbrain/
+```
+
+---
+
+## 🔐 nginx / TLS Issues
+
+### 13. Self-signed certificate warnings
+
+**Symptom:** Browser shows "Your connection is not private" warning.
+
+**Fix:** This is expected for self-signed certs. Click "Advanced" → "Proceed" to continue. For production, use Let's Encrypt:
+```bash
+brew install certbot
+sudo certbot certonly --nginx -d your-domain.com
+```
+
+### 14. "dh key too small" SSL error
+
+**Symptom:** nginx fails to start with SSL errors about DH key size.
+
+**Fix:** Add or update the SSL config in nginx:
+```nginx
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_ciphers HIGH:!aNULL:!MD5;
+```
+
+### 15. nginx auth popup keeps appearing
+
+**Symptom:** You enter the username/password but the login prompt keeps coming back.
+
+**Fix:** The `.htpasswd` file may need to be regenerated:
+```bash
+htpasswd -c /usr/local/etc/nginx/.htpasswd your-username
+# Enter your password when prompted
+nginx -s reload
+```
+
+---
+
+## 🧠 Memory / Agent Issues
+
+### 16. "Memory tool doesn't work in cron"
+
+**Symptom:** Cron jobs error with `RuntimeError: [Errno 32] Broken pipe` when using the `memory` tool.
+
+**Root cause:** The `memory` tool requires an interactive Hermes session. Cron jobs run without one.
+
+**Fix:** Use file I/O instead. Read/write `~/.hermes/memories/MEMORY.md` directly:
+```python
+# Instead of memory(action="read")
+with open(os.path.expanduser("~/.hermes/memories/MEMORY.md")) as f:
+    content = f.read()
+```
+
+### 17. MEMORY.md keeps hitting the 2,200 char limit
+
+**Symptom:** `memory(action="add")` fails with "would exceed the limit".
+
+**Fix:** Use the pointer pattern — keep only compact pointers in MEMORY.md and store full detail in a brain directory:
+```
+docker: 3 GB VM, stable with 6 containers → /brain m docker
+```
+See `docs/agent-memory-pointer-pattern.md` for the full guide.
+
+---
+
+## 🐧 Linux-Specific Issues
+
+The installer is optimized for macOS (uses launchd, Homebrew). On Linux:
+
+- **launchd services are skipped** — use systemd instead
+- **Homebrew is not available** — use your distro's package manager (apt, yum, etc.)
+- **Ollama** — install manually from [ollama.ai](https://ollama.ai)
+- **gbrain** — works the same (Bun runs on Linux)
+
+---
+
+## 📋 Quick Reference: Common Commands
+
+```bash
+# Langfuse management
+docker compose -f docker-compose.langfuse.yml logs -f langfuse-web
+docker compose -f docker-compose.langfuse.yml logs -f langfuse-worker
+docker compose -f docker-compose.langfuse.yml down && docker compose -f docker-compose.langfuse.yml up -d
+
+# Dashboard
+cd ~/.hermes/dashboard && source .venv/bin/activate && python3 server.py
+
+# nginx
+nginx -t              # Test config
+nginx -s reload       # Reload config
+nginx -s stop         # Stop
+
+# gbrain
+gbrain doctor --fast  # Health check
+gbrain sync --all     # Resync all sources
+gbrain dream          # Knowledge consolidation
+
+# Cron jobs
+hermes cron list      # List all cron jobs
+hermes cron run <id>  # Test a job immediately
+```
+
+---
+
+## Changelog
+
+| Version | Date | Changes |
+|---|---|---|
+| 1.0.0 | 2026-06-05 | Initial release — 17 troubleshooting entries covering Docker, Dashboard, install, nginx, memory, and Linux |
