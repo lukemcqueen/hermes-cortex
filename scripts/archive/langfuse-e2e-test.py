@@ -4,8 +4,10 @@ import os, sys, time
 
 os.environ['HERMES_LANGFUSE_BASE_URL'] = 'http://localhost:3000'
 
-# Read actual secret key
-with open('/Users/luke/langfuse/.env', 'r') as f:
+# Read actual secret key from langfuse .env file
+# Example: replace with your own path to the .env file
+env_path = os.path.expanduser('~/langfuse/.env')
+with open(env_path, 'r') as f:
     for line in f:
         if 'LANGFUSE_INIT_PROJECT_SECRET_KEY' in line:
             sk = line.strip().split('=', 1)[1]
