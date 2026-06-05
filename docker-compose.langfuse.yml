@@ -1,10 +1,18 @@
 # Langfuse — LLM Observability Platform
 # https://langfuse.com/docs/deployment/docker
-# 
+#
+# Langfuse v3+ configuration.
+#
 # Run with: docker compose -f docker-compose.langfuse.yml up -d
 # Access at: http://localhost:3000
 # External via nginx: https://example.com:11002
-# NOTE: Replace example.com with your own domain, or use localhost for local-only setups.
+#
+# NOTE: Replace example.com with your own domain, or use localhost for local-only.
+#
+# IMPORTANT: After changing env vars or this file, ALWAYS run:
+#   docker compose -f docker-compose.langfuse.yml down
+#   docker compose -f docker-compose.langfuse.yml up -d
+# (docker compose restart does NOT re-read env vars)
 
 services:
   langfuse-worker:
@@ -17,33 +25,85 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    environment: &langfuse-worker-env
+    environment: &langfuse-env-base
+      # ── Database ──
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
-      SALT: ${LANGFUSE_SALT:-random-salt-change-me}
-      SECRET_KEY: ${LANGFUSE_SECRET_KEY:-random-secret-change-me}
-      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-random-nextauth-change-me}
+
+      # ── ClickHouse (required by v3) ──
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+      CLICKHOUSE_CLUSTER_ENABLED: "false"
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+
+      # ── Redis ──
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_AUTH: ${LANGFUSE_REDIS_AUTH:-random-redis-auth}
+
+      # ── MinIO (local S3) ──
       MINIO_ACCESS_KEY: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
       MINIO_SECRET_KEY: ${LANGFUSE_MINIO_SECRET_KEY:-random-minio-secret}
       MINIO_ENDPOINT: minio:9000
-      MINIO_BUCKET: langfuse
-      CLICKHOUSE_MIGRATION_URL: ""
-      CLICKHOUSE_URL: ""
+
+      # ── Auth / Encryption ──
+      SALT: ${LANGFUSE_SALT:-}
+      SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-}
+      # Generate with: openssl rand -hex 32
+      LANGFUSE_ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-}
+
+      # ── S3 Event Upload (required by v3 — uses local MinIO) ──
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_SECRET_KEY:-random-minio-secret}
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: us-east-1
+      LANGFUSE_S3_EVENT_UPLOAD_USE_SSL: "false"
+
+      # ── S3 Media Upload (required by v3 — uses local MinIO) ──
+      LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
+      LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_SECRET_KEY:-random-minio-secret}
+      LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse-media
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_MEDIA_UPLOAD_REGION: us-east-1
+      LANGFUSE_S3_MEDIA_UPLOAD_USE_SSL: "false"
+
+      # ── S3 Batch Export (required by v3 — uses local MinIO) ──
+      LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
+      LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_SECRET_KEY:-random-minio-secret}
+      LANGFUSE_S3_BATCH_EXPORT_BUCKET: langfuse-export
+      LANGFUSE_S3_BATCH_EXPORT_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_BATCH_EXPORT_REGION: us-east-1
+      LANGFUSE_S3_BATCH_EXPORT_USE_SSL: "false"
 
   langfuse-web:
     image: langfuse/langfuse:latest
     restart: always
     depends_on: *langfuse-depends-on
     ports:
-      - "3000:3000"
+      - "${LANGFUSE_PORT:-3000}:3000"
     environment:
-      <<: *langfuse-worker-env
-      NEXTAUTH_URL: http://localhost:3000
+      <<: *langfuse-env-base
+      NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3000}
       LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:-}
       LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_PROJECT_SECRET_KEY:-}
       LANGFUSE_INIT_PROJECT_NAME: ${LANGFUSE_INIT_PROJECT_NAME:-Hermes Agent}
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24-alpine
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse client --query 'SELECT 1'"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - langfuse-clickhouse-data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
 
   postgres:
     image: postgres:16-alpine
@@ -81,7 +141,7 @@ services:
       timeout: 5s
       retries: 5
     entrypoint: /bin/sh
-    command: -c 'mkdir -p /data/langfuse && minio server /data --console-address ":9001"'
+    command: -c 'mkdir -p /data/langfuse /data/langfuse-media /data/langfuse-export && minio server /data --console-address ":9001"'
     volumes:
       - langfuse-minio-data:/data
     environment:
@@ -89,6 +149,7 @@ services:
       MINIO_ROOT_PASSWORD: ${LANGFUSE_MINIO_SECRET_KEY:-random-minio-secret}
 
 volumes:
+  langfuse-clickhouse-data:
   langfuse-postgres-data:
   langfuse-redis-data:
   langfuse-minio-data:

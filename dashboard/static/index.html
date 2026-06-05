@@ -230,7 +230,7 @@
     <h2>⚕️ System Health</h2>
     <div id="health-content"><div class="loading">loading...</div></div>
     <div class="links">
-      <a href="https://example.com:11002/" target="_blank">Langfuse ↗</a>
+      <a href="#" id="langfuse-link" onclick="event.preventDefault(); window.open(document.getElementById('langfuse-link').href, '_blank'); return false;">Langfuse ↗</a>
     </div>
   </div>
 
@@ -293,7 +293,7 @@
     <h2>🔄 Recent Traces</h2>
     <div id="traces-content"><div class="loading">loading...</div></div>
     <div class="links">
-      <a href="https://example.com:11002/traces" target="_blank">View All →</a>
+      <a href="#" id="langfuse-traces-link" onclick="event.preventDefault(); window.open(document.getElementById('langfuse-traces-link').href, '_blank'); return false;">View All →</a>
     </div>
   </div>
 
@@ -322,8 +322,19 @@
 </div>
 
 <script>
+// ── Configuration ──
+// Change these to match your setup
+const LANGFUSE_HOST = 'http://localhost:3000';     // Internal Langfuse URL
+const LANGFUSE_EXTERNAL = 'http://localhost:13002'; // External Langfuse URL (for links)
+
 (async function() {
   const $ = id => document.getElementById(id);
+
+  // Set dynamic Langfuse links
+  const lfLink = $('langfuse-link');
+  const tracesLink = $('langfuse-traces-link');
+  if (lfLink) lfLink.href = LANGFUSE_EXTERNAL;
+  if (tracesLink) tracesLink.href = LANGFUSE_EXTERNAL + '/traces';
 
   async function fetchAll() {
     try {
