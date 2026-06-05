@@ -1,4 +1,5 @@
 .agentkore/
+.opencode/
 .web-cache/
 *.cache.db
 
