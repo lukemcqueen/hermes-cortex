@@ -30,7 +30,7 @@ if lf_path.exists():
             elif line.startswith("LANGFUSE_INIT_PROJECT_SECRET_KEY="):
                 sk = line.split("=", 1)[1].strip()
 
-LANGFUSE_HOST = os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
+LANGFUSE_HOST = os.environ.get("LANGFUSE_HOST", "http://localhost:3001")
 LANGFUSE_AUTH = None
 if pk and sk:
     LANGFUSE_AUTH = base64.b64encode(f"{pk}:{sk}".encode()).decode()

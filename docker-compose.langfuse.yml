@@ -1,14 +1,14 @@
-# Langfuse — LLM Observability Platform
-# https://langfuse.com/docs/deployment/docker
-# 
+# Langfuse v3 — LLM Observability Platform
+# Official compose reference: https://github.com/langfuse/langfuse
+#
 # Run with: docker compose -f docker-compose.langfuse.yml up -d
-# Access at: http://localhost:3000
+# Access at: http://localhost:3001
 # External via nginx: https://example.com:11002
 # NOTE: Replace example.com with your own domain, or use localhost for local-only setups.
 
 services:
   langfuse-worker:
-    image: langfuse/langfuse-worker:latest
+    image: langfuse/langfuse-worker:3
     restart: always
     depends_on: &langfuse-depends-on
       postgres:
@@ -17,33 +17,79 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      clickhouse:
+        condition: service_healthy
     environment: &langfuse-worker-env
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
-      SALT: ${LANGFUSE_SALT:-random-salt-change-me}
-      SECRET_KEY: ${LANGFUSE_SECRET_KEY:-random-secret-change-me}
-      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-random-nextauth-change-me}
+      NEXTAUTH_URL: http://localhost:3001
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres
+      SALT: ${LANGFUSE_SALT:?required}
+      ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      TELEMETRY_ENABLED: false
+
+      # ClickHouse
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-clickhouse}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-clickhouse}
+      CLICKHOUSE_CLUSTER_ENABLED: false
+      CLICKHOUSE_DB: default
+
+      # Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_AUTH: ${LANGFUSE_REDIS_AUTH:-random-redis-auth}
-      MINIO_ACCESS_KEY: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
-      MINIO_SECRET_KEY: ${LANGFUSE_MINIO_SECRET_KEY:-random-minio-secret}
-      MINIO_ENDPOINT: minio:9000
-      MINIO_BUCKET: langfuse
-      CLICKHOUSE_MIGRATION_URL: ""
-      CLICKHOUSE_URL: ""
+      REDIS_AUTH: ${LANGFUSE_REDIS_AUTH:?required}
+
+      # MinIO / S3 for event uploads
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:-minioadmin}
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_SECRET_KEY:-minioadmin}
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: true
+      LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+
+      # MinIO / S3 for media uploads
+      LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+      LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:-minioadmin}
+      LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_SECRET_KEY:-minioadmin}
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: true
+      LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+
+      # Batch export (disabled by default)
+      LANGFUSE_S3_BATCH_EXPORT_ENABLED: false
+      LANGFUSE_S3_BATCH_EXPORT_BUCKET: langfuse
+      LANGFUSE_S3_BATCH_EXPORT_PREFIX: exports/
+      LANGFUSE_S3_BATCH_EXPORT_REGION: auto
+      LANGFUSE_S3_BATCH_EXPORT_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_BATCH_EXPORT_EXTERNAL_ENDPOINT: http://localhost:9001
+      LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:-minioadmin}
+      LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_SECRET_KEY:-minioadmin}
+      LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE: true
+
+      # Ingestion tuning
+      LANGFUSE_INGESTION_QUEUE_DELAY_MS: 100
+      LANGFUSE_INGESTION_CLICKHOUSE_WRITE_INTERVAL_MS: 1000
 
   langfuse-web:
-    image: langfuse/langfuse:latest
+    image: langfuse/langfuse:3
     restart: always
     depends_on: *langfuse-depends-on
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       <<: *langfuse-worker-env
-      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:?required}
+      LANGFUSE_INIT_ORG_ID: hermes-cortex
+      LANGFUSE_INIT_ORG_NAME: Hermes Cortex
+      LANGFUSE_INIT_PROJECT_ID: hermes-agent
+      LANGFUSE_INIT_PROJECT_NAME: ${LANGFUSE_INIT_PROJECT_NAME:-Hermes Agent}
       LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:-}
       LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_PROJECT_SECRET_KEY:-}
-      LANGFUSE_INIT_PROJECT_NAME: ${LANGFUSE_INIT_PROJECT_NAME:-Hermes Agent}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:-}
+      LANGFUSE_INIT_USER_NAME: ${LANGFUSE_INIT_USER_NAME:-}
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-}
 
   postgres:
     image: postgres:16-alpine
@@ -57,7 +103,7 @@ services:
       - langfuse-postgres-data:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: postgres
 
   redis:
@@ -70,7 +116,7 @@ services:
       retries: 5
     volumes:
       - langfuse-redis-data:/data
-    command: redis-server --requirepass ${LANGFUSE_REDIS_AUTH:-random-redis-auth}
+    command: redis-server --requirepass ${LANGFUSE_REDIS_AUTH:?required} --maxmemory-policy noeviction
 
   minio:
     image: minio/minio:latest
@@ -85,10 +131,30 @@ services:
     volumes:
       - langfuse-minio-data:/data
     environment:
-      MINIO_ROOT_USER: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
-      MINIO_ROOT_PASSWORD: ${LANGFUSE_MINIO_SECRET_KEY:-random-minio-secret}
+      MINIO_ROOT_USER: ${LANGFUSE_MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${LANGFUSE_MINIO_SECRET_KEY:-minioadmin}
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - langfuse-clickhouse-data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-clickhouse}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-clickhouse}
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
 
 volumes:
   langfuse-postgres-data:
   langfuse-redis-data:
   langfuse-minio-data:
+  langfuse-clickhouse-data:

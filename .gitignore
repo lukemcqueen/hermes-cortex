@@ -33,3 +33,6 @@ node_modules/
 .vscode/
 *.swp
 *.swo
+
+# Git filter-repo artifacts
+.git-filter-repo-replacements.txt
