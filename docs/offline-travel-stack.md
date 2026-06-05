@@ -61,7 +61,7 @@ Hermes →
   [Cascade: cache miss → kiwix/WikiMed hit]
   
   WikiMed says: These symptoms match **dengue fever**.
-  
+
   Key facts for this region:
   • Dengue is transmitted by daytime mosquitoes
   • Incubation: 4-10 days after bite
@@ -97,29 +97,27 @@ Hermes →
 
 **Who:** Developers coding offline for extended periods.
 
-**Goal:** Full offline dev environment with docs, package cache, and knowledge
-reference.
+**Goal:** Full offline dev environment with code examples, docs, RAG-powered code generation, and package cache.
 
 ### Pre-Flight Checklist
 
 ```bash
 # 1. Download the build bundle (~7 GB, or + Bible with --include-bible, + hymns with --include-hymns)
 hermes-cortex/offline/prep-offline.sh --mode=build
-# Add --include-bible to also download Bible translations:
-# hermes-cortex/offline/prep-offline.sh --mode=build --include-bible
-# Add --include-hymns for public domain hymns (scores + lyrics, ~35 MB):
-# hermes-cortex/offline/prep-offline.sh --mode=build --include-hymns
 
-# 2. Cache pip wheels for your projects
+# 2. Index the offline code corpus (386 snippets, 26 languages)
+hermes-cortex/offline/prep-code.sh
+
+# 3. Cache pip wheels for your projects
 pip download -r your-project/requirements.txt -d ~/offline/pip-cache/
 # Or for all commonly used packages:
 pip download --dest ~/offline/pip-cache/ \
   flask fastapi requests sqlalchemy pytest black mypy numpy pandas
 
-# 3. Clone working repos (full history)
+# 4. Clone working repos (full history)
 git clone --depth=10000 https://github.com/your/project ~/offline/repos/project
 
-# 4. Seed cache with dev-specific queries
+# 5. Seed cache with dev-specific queries
 python3 ~/.hermes/web-cache/web_cache.py pre-seed \
   --topics="python async patterns, sqlite optimization, Docker networking, \
             macOS development, JavaScript async, CSS grid, git workflows"
