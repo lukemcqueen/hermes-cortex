@@ -3,7 +3,9 @@
 import urllib.request, json, base64, os
 
 # Read keys from Docker env file (binary to avoid content-based redaction)
-with open('/Users/luke/langfuse/.env', 'rb') as f:
+# Example: replace with your own path to the .env file
+env_path = os.path.expanduser('~/langfuse/.env')
+with open(env_path, 'rb') as f:
     raw = f.read()
 
 pk = sk = None
