@@ -901,7 +901,7 @@ else
   # Install launchd plist
   if [[ ! -f "$DASHBOARD_PLIST" ]]; then
     # Update paths in plist for current user
-    sed "s|/Users/luke|${CORTEX_HOME}|g" "${REPO_DASHBOARD}/com.hermes.cortex-dashboard.plist" > "$DASHBOARD_PLIST" 2>/dev/null || \
+    sed "s|CORTEX_HOME_PLACEHOLDER|${CORTEX_HOME}|g" "${REPO_DASHBOARD}/com.hermes.cortex-dashboard.plist" > "$DASHBOARD_PLIST" 2>/dev/null || \
     cat > "$DASHBOARD_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
