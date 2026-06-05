@@ -28,13 +28,17 @@
 # Clone the public system
 git clone https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex
 
-# Server profile (default) — full stack: Ollama, gbrain, Langfuse,
-# Dashboard, nginx, Web Cache, Offline Knowledge
+# macOS — Server profile (default): full stack
 bash ~/hermes-cortex/install.sh
 
-# Laptop profile — lean: no Docker-dependent services (Langfuse,
-# Dashboard, nginx). Perfect for mobile machines.
+# macOS — Laptop profile: lean, no Docker services
 CORTEX_PROFILE=laptop bash ~/hermes-cortex/install.sh
+
+# Linux — auto-detects systemd, apt/dnf/pacman
+CORTEX_OS=linux bash ~/hermes-cortex/install.sh
+
+# Windows — uses winget/choco + scheduled tasks (limited)
+CORTEX_OS=windows bash ~/hermes-cortex/install.sh
 
 # ⚡ Then give your Hermes agent the prompt it prints out
 # to set up cron jobs and activate the /brain command
@@ -45,7 +49,8 @@ CORTEX_PROFILE=laptop bash ~/hermes-cortex/install.sh
 | Step | What | Why |
 |------|------|-----|
 | 0 | **System Check** | Verifies OS, RAM, disk, Docker, network, dependencies before touching anything |
-| 1 | **Ollama** | Local LLM server for free embeddings |
+| — | **OS Detection** | Auto-detects macOS/ Linux/Windows, sets package + service managers |
+| 1 | **Ollama** (cross-platform) | Native installer per OS: brew cask / curl script / direct download |
 | 2 | **Bun** | JavaScript runtime for gbrain |
 | 3 | **gbrain** | Persistent knowledge brain (PGLite, zero-config) |
 | 4 | **Brain dirs** | `~/brain/{default,…}` with MECE directory schema |
@@ -66,12 +71,18 @@ CORTEX_PROFILE=laptop bash ~/hermes-cortex/install.sh
 Set these environment variables before running for a custom setup:
 
 ```bash
+export CORTEX_OS="linux"                     # Auto-detected: darwin, linux, windows
 export CORTEX_PROFILE="laptop"               # 'server' (default) or 'laptop'
 export CORTEX_SOURCES="me,shared,default"   # Brain source names (default: "default")
 export CORTEX_HOME="$HOME"                  # User home directory
 export HERMES_HOME="$HOME/.hermes"          # Hermes config directory
 export CORTEX_USER="$USER"                  # Your name for plugin metadata
 ```
+
+**OS Support (experimental):**
+- **macOS** — Fully supported. launchd services, Homebrew packages, all features
+- **Linux** — systemd services, apt/dnf/pacman detection. Ollama via install script
+- **Windows** — scheduled tasks, winget/choco detection. Some features limited
 
 **Profiles:**
 - **`server`** (default) — Full stack: Ollama, gbrain, Langfuse (Docker), Cortex Dashboard, nginx reverse proxy, Web Cache, Offline Knowledge (kiwix ZIM)

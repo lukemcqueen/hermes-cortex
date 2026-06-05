@@ -8,7 +8,10 @@
 #            Web Cache · Offline Knowledge (kiwix ZIM) · Skills
 #  † Server profile only (CORTEX_PROFILE=server). Laptop profile
 #    (CORTEX_PROFILE=laptop) skips Docker-dependent services.
-#            Launchd services · Cron jobs (via agent)
+#
+#  Platforms: macOS (native) · Linux (systemd) · Windows (scheduled tasks)
+#  Set CORTEX_OS to override auto-detection: darwin, linux, windows
+#  Launchd services · Cron jobs (via agent)
 #
 #  Idempotent — safe to re-run. Skips already-installed steps.
 # ─────────────────────────────────────────────────────────────
@@ -38,6 +41,10 @@ skip() { printf "  ${YELLOW}skip${RESET} — %s\n" "$1"; }
 # ── Abort handler ───────────────────────────────────────────
 trap 'printf "\n${RED}Installation aborted at step $STEP${RESET}\n"' EXIT
 
+# ── Source OS Abstraction Layer ─────────────────────────────
+source "${SCRIPT_DIR}/scripts/os-config.sh"
+source "${SCRIPT_DIR}/scripts/service-writer.sh"
+
 # ─────────────────────────────────────────────────────────────
 #  0. System Verification Check
 # ─────────────────────────────────────────────────────────────
@@ -62,10 +69,17 @@ fi
 # ─────────────────────────────────────────────────────────────
 header "PREREQUISITES"
 
-# macOS check
-if [[ "$(uname)" != "Darwin" ]]; then
-  warn "This script is optimized for macOS. Some steps (launchd, Homebrew) may not work on Linux."
-  warn "Continuing anyway — but launchd services will be skipped."
+# OS-specific notes
+if [[ "$CORTEX_OS" == "macos" ]]; then
+  :  # Native — full support
+elif [[ "$CORTEX_OS" == "linux" ]]; then
+  warn "Linux detected — using systemd services. Some macOS-specific paths adjusted."
+elif [[ "$CORTEX_OS" == "windows" ]]; then
+  warn "Windows detected — using scheduled tasks. Some features (Dashboard, nginx) limited."
+fi
+info "Profile: ${CORTEX_PROFILE}"
+if [[ "$CORTEX_PROFILE" == "laptop" ]]; then
+  info "  Laptop mode: skipping nginx, Langfuse, Dashboard (Docker not required)"
 fi
 
 # User info
@@ -74,20 +88,8 @@ CORTEX_HOME="${CORTEX_HOME:-$HOME}"
 BRAIN_DIR="${CORTEX_HOME}/brain"
 HERMES_HOME="${HERMES_HOME:-${CORTEX_HOME}/.hermes}"
 
-# Detect script directory (repo root when run from install.sh)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
-
-# Installation profile — 'server' or 'laptop'
-#   server: Full stack — Ollama, gbrain, Langfuse, Dashboard, nginx, Web Cache, Offline
-#   laptop: Lean stack — Ollama, gbrain, Web Cache, Offline Knowledge (no nginx/Docker)
-CORTEX_PROFILE="${CORTEX_PROFILE:-server}"
-info "Installation profile: ${CORTEX_PROFILE}"
-if [[ "$CORTEX_PROFILE" == "laptop" ]]; then
-  info "  Laptop mode: skipping nginx, Langfuse, Dashboard (Docker not required)"
-elif [[ "$CORTEX_PROFILE" != "server" ]]; then
-  warn "Unknown profile '${CORTEX_PROFILE}'. Defaulting to 'server'."
-  CORTEX_PROFILE="server"
-fi
+# Detect script directory
+SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 
 # Brain sources — default is 'default' + optionally more
 if [[ -z "${CORTEX_SOURCES:-}" ]]; then
@@ -99,7 +101,7 @@ if [[ -z "${CORTEX_SOURCES:-}" ]]; then
 fi
 
 IFS=',' read -ra SOURCES <<< "$CORTEX_SOURCES"
-TOTAL_STEPS=18
+TOTAL_STEPS=22
 STEP=0
 
 # Ensure Hermes is installed
@@ -108,11 +110,15 @@ if ! command -v hermes &>/dev/null && [[ ! -x "${HERMES_HOME}/hermes-agent/venv/
   warn "The script will install everything else, but you'll need Hermes for the final agent-side setup."
 fi
 
-# Ensure Homebrew
-if ! command -v brew &>/dev/null; then
+# Ensure package manager
+if [[ "$CORTEX_OS" == "macos" ]] && ! command -v brew &>/dev/null; then
   step "Installing Homebrew…"
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || echo 'export PATH=/usr/local/bin:$PATH')"
+  if [[ "$(uname -m)" == "arm64" ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  else
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
   ok
 fi
 
@@ -120,80 +126,23 @@ fi
 #  1. Ollama — local LLM server for embeddings
 # ─────────────────────────────────────────────────────────────
 step "Installing Ollama (local LLM server)"
-if command -v ollama &>/dev/null; then
-  skip "already installed — $(ollama --version 2>/dev/null || echo 'ollama')"
-else
-  brew install --cask ollama
-  ok
-fi
+bash "${SCRIPT_DIR}/scripts/install-ollama.sh" install
+ok
 
-# Start Ollama via launchd if not already
-if ! launchctl list com.ollama.serve &>/dev/null 2>&1; then
-  step "Configuring Ollama launchd service"
-  mkdir -p "${CORTEX_HOME}/.ollama"
-  cat > "${CORTEX_HOME}/Library/LaunchAgents/com.ollama.serve.plist" <<PLISTEOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.ollama.serve</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/usr/local/bin/ollama</string>
-        <string>serve</string>
-    </array>
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>PATH</key>
-        <string>/usr/local/bin:/usr/bin:/bin</string>
-        <key>HOME</key>
-        <string>${CORTEX_HOME}</string>
-        <key>OLLAMA_HOST</key>
-        <string>127.0.0.1</string>
-    </dict>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>ThrottleInterval</key>
-    <integer>10</integer>
-    <key>StandardOutPath</key>
-    <string>${CORTEX_HOME}/.ollama/serve.log</string>
-    <key>StandardErrorPath</key>
-    <string>${CORTEX_HOME}/.ollama/serve.err</string>
-    <key>WorkingDirectory</key>
-    <string>${CORTEX_HOME}</string>
-</dict>
-</plist>
-PLISTEOF
-  launchctl load "${CORTEX_HOME}/Library/LaunchAgents/com.ollama.serve.plist"
-  ok
-else
-  skip "launchd service already loaded"
-fi
+# Configure Ollama service
+step "Configuring Ollama service"
+bash "${SCRIPT_DIR}/scripts/install-ollama.sh" service
+ok
 
 # Wait for Ollama to be ready
 step "Waiting for Ollama to respond…"
-for i in {1..30}; do
-  if curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-    info "Ollama ready at 127.0.0.1:11434"
-    break
-  fi
-  if [[ $i -eq 30 ]]; then
-    warn "Ollama didn't start in time. Continue anyway (run 'launchctl start com.ollama.serve' manually)."
-  fi
-  sleep 2
-done
+bash "${SCRIPT_DIR}/scripts/install-ollama.sh" wait
+ok
 
 # Pull embedding model
 step "Pulling embedding model (nomic-embed-text)"
-if ollama list 2>/dev/null | grep -q "nomic-embed-text"; then
-  skip "already pulled"
-else
-  ollama pull nomic-embed-text
-  ok
-fi
+bash "${SCRIPT_DIR}/scripts/install-ollama.sh" embed nomic-embed-text
+ok
 
 # ─────────────────────────────────────────────────────────────
 #  2. Bun — JavaScript runtime for gbrain
@@ -386,84 +335,10 @@ if "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "shared"; then
   info "  Federated 'shared' source (auto-searched)"
 fi
 
-# Create sync-watch daemon script
-step "Creating gbrain sync-watch daemon (launchd)"
-SYNC_SCRIPT="${CORTEX_HOME}/.gbrain/sync-watch.sh"
-if [[ -f "$SYNC_SCRIPT" ]]; then
-  skip "sync script already exists"
-else
-  mkdir -p "${CORTEX_HOME}/.gbrain"
-  cat > "$SYNC_SCRIPT" <<SCRIPTEOF
-#!/bin/bash
-# gbrain sync watch daemon
-# Polls gbrain sync every 120 seconds
-# Launchd manages this via KeepAlive
-
-BUN="${CORTEX_HOME}/.bun/bin/bun"
-GBRAIN="${CORTEX_HOME}/.bun/bin/gbrain"
-LOG="${CORTEX_HOME}/.gbrain/sync-watch.log"
-ERR_LOG="${CORTEX_HOME}/.gbrain/sync-watch.err"
-INTERVAL=120
-
-exec >> "\$LOG" 2>> "\$ERR_LOG"
-
-echo "[\$(date)] gbrain sync watch daemon starting — interval \${INTERVAL}s"
-
-while true; do
-    echo "[\$(date)] === Sync cycle ==="
-    # Sync non-default sources. Use --source <name>; --all includes
-    # 'default' which has no --path and would be silently skipped.
-    "\$BUN" "\$GBRAIN" sync --source mybrain --no-pull 2>&1
-    echo "[\$(date)] === Cycle complete, sleeping \${INTERVAL}s ==="
-    sleep "\$INTERVAL"
-done
-SCRIPTEOF
-  chmod +x "$SYNC_SCRIPT"
-  ok
-fi
-
-# Create launchd plist for sync daemon
-SYNC_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.gbrain.sync-watch.plist"
-if launchctl list com.gbrain.sync-watch &>/dev/null 2>&1; then
-  skip "sync-watch launchd already loaded"
-else
-  cat > "$SYNC_PLIST" <<PLISTEOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.gbrain.sync-watch</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/bin/bash</string>
-        <string>${SYNC_SCRIPT}</string>
-    </array>
-    <key>WorkingDirectory</key>
-    <string>${CORTEX_HOME}</string>
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>PATH</key>
-        <string>${CORTEX_HOME}/.bun/bin:/usr/local/bin:/usr/bin:/bin</string>
-        <key>HOME</key>
-        <string>${CORTEX_HOME}</string>
-    </dict>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>ThrottleInterval</key>
-    <integer>30</integer>
-    <key>StandardOutPath</key>
-    <string>${CORTEX_HOME}/.gbrain/sync-watch-stdout.log</string>
-    <key>StandardErrorPath</key>
-    <string>${CORTEX_HOME}/.gbrain/sync-watch-stderr.log</string>
-</dict>
-</plist>
-PLISTEOF
-  launchctl load "$SYNC_PLIST"
-  ok
-fi
+# Create gbrain sync daemon
+step "Creating gbrain sync-watch daemon ($SERVICE_MANAGER)"
+bash "${SCRIPT_DIR}/scripts/install-gbrain-sync.sh"
+ok
 
 # ─────────────────────────────────────────────────────────────
 #  7. Hermes gbrain Plugin (/brain slash command)
@@ -1171,95 +1046,17 @@ if [[ -d "$OFFLINE_REPO" ]]; then
   info "    ${HERMES_BIN}/prep-offline --mode=build     # Dev offline bundle (~7 GB)"
   info "    ${HERMES_BIN}/prep-offline --mode=education  # Kid learning bundle (~5 GB)"
   printf "\n"
+  ok
 else
   skip "no offline/ directory in repo"
 fi
-ok
 
 # ─────────────────────────────────────────────────────────────
 #  14. nginx — Reverse proxy for Langfuse + Dashboard
 # ─────────────────────────────────────────────────────────────
 if [[ "$CORTEX_PROFILE" == "server" ]]; then
 step "Installing nginx reverse proxy"
-
-if ! command -v nginx &>/dev/null; then
-  brew install nginx 2>&1 | tail -3
-fi
-
-NGINX_CONF="/usr/local/etc/nginx/servers/hermes-services.conf"
-NGINX_SRC="${CORTEX_HOME}/Developer/AI/hermes-cortex/nginx/hermes-services.conf"
-
-# Check if config already exists
-if [[ -f "$NGINX_CONF" ]]; then
-  skip "nginx config already exists"
-elif [[ -f "$NGINX_SRC" ]]; then
-  # Copy from repo
-  sudo mkdir -p "$(dirname "$NGINX_CONF")"
-  sudo cp "$NGINX_SRC" "$NGINX_CONF"
-  info "  Copied config to $NGINX_CONF"
-  info "  NOTE: Requires SSL certs at /usr/local/etc/nginx/ssl/example.com/"
-  info "  To skip SSL for local-only access, edit the config and remove ssl directives"
-else
-  # Create basic config without SSL for local-only use
-  sudo mkdir -p "$(dirname "$NGINX_CONF")"
-  cat <<'NGINXCONF' | sudo tee "$NGINX_CONF" > /dev/null
-# Hermes reverse proxy: Langfuse (3000), Cortex Dashboard (8901)
-# Local-only (no SSL) — for production, add SSL certs and enable HTTPS
-
-upstream cortex_dashboard_backend {
-    server 127.0.0.1:8901;
-}
-
-upstream langfuse_backend {
-    server 127.0.0.1:3000;
-}
-
-# Cortex Dashboard - port 11003
-server {
-    listen 11003;
-    server_name localhost;
-
-    access_log  /usr/local/var/log/nginx/cortex-dashboard-access.log;
-    error_log   /usr/local/var/log/nginx/cortex-dashboard-error.log;
-
-    location / {
-        proxy_pass http://cortex_dashboard_backend;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-
-# Langfuse - port 11002
-server {
-    listen 11002;
-    server_name localhost;
-
-    access_log  /usr/local/var/log/nginx/langfuse-access.log;
-    error_log   /usr/local/var/log/nginx/langfuse-error.log;
-
-    location / {
-        proxy_pass http://langfuse_backend;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_read_timeout 86400s;
-    }
-}
-NGINXCONF
-  info "  Created local-only config (no SSL)"
-fi
-
-# Start/restart nginx
-if pgrep -x nginx > /dev/null; then
-  brew services restart nginx 2>&1 | tail -2
-else
-  brew services start nginx 2>&1 | tail -2
-fi
+bash "${SCRIPT_DIR}/scripts/install-nginx.sh"
 ok
 else
   skip "nginx (laptop profile — not needed)"
