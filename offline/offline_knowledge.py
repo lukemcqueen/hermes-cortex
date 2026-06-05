@@ -51,6 +51,7 @@ CACHE_SCRIPT = HOME / ".hermes" / "web-cache" / "web_cache.py"
 ZIM_DIR = HOME / "offline" / "zim"
 LIBRARY_FILE = HOME / "offline" / "kiwix-library.xml"
 KIWIX_URL = "http://localhost:8080"
+BIBLE_DIR = HOME / "offline" / "bible"
 GBRAIN_CMD = HOME / ".bun" / "bin" / "gbrain"
 BUN_CMD = HOME / ".bun" / "bin" / "bun"
 
@@ -391,6 +392,88 @@ def system_stats():
     return stats
 
 
+# ── Bible Search ──────────────────────────────────────────────
+
+def bible_list_translations():
+    """List available Bible translations in the bible directory."""
+    if not BIBLE_DIR.exists():
+        return {"status": "not_found", "translations": []}
+
+    translations = []
+    for f in sorted(BIBLE_DIR.glob("*.txt")):
+        name = f.stem
+        size_kb = f.stat().st_size // 1024
+        translations.append({"file": f.name, "name": name, "size_kb": size_kb})
+
+    return {
+        "status": "ready" if translations else "empty",
+        "dir": str(BIBLE_DIR),
+        "count": len(translations),
+        "total_size_mb": sum(t["size_kb"] for t in translations) // 1024,
+        "translations": translations,
+    }
+
+
+def bible_search(query, lang=None):
+    """Search Bible translations. Returns verses matching the query."""
+    if not BIBLE_DIR.exists():
+        return {"status": "not_found", "error": "Bible directory not found. Run prep-bible.sh first."}
+
+    results = []
+    files_to_search = list(BIBLE_DIR.glob("*.txt"))
+
+    if not files_to_search:
+        return {"status": "empty", "error": "No Bible text files found. Run: prep-bible.sh"}
+
+    total_searched = 0
+    total_matches = 0
+    query_lower = query.lower()
+
+    for f in files_to_search:
+        # Filter by language code if specified
+        if lang:
+            # Match language code anywhere in filename (e.g. pg10_en.txt → en)
+            if lang not in f.stem.split("_"):
+                continue
+
+        total_searched += 1
+        local_matches = 0
+        verses = []
+
+        try:
+            with open(f, "r", encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if query_lower in line.lower():
+                        local_matches += 1
+                        if len(results) < 50:  # cap total results
+                            # Show ~100 chars of context
+                            excerpt = line[:200]
+                            verses.append(excerpt)
+        except Exception as e:
+            verses.append(f"[Error reading: {e}]")
+
+        if verses:
+            results.append({
+                "file": f.name,
+                "size_kb": f.stat().st_size // 1024,
+                "matches": local_matches,
+                "verses": verses[:10],  # max 10 per translation
+            })
+        total_matches += local_matches
+
+    return {
+        "status": "ok",
+        "query": query,
+        "lang_filter": lang or "all",
+        "files_searched": total_searched,
+        "total_matches": total_matches,
+        "results": results,
+    }
+
+
 # ── CLI ──────────────────────────────────────────────────────
 
 def main():
@@ -434,6 +517,16 @@ Examples:
     
     # stats
     subparsers.add_parser("stats", help="Show offline knowledge system status")
+
+    # bible
+    bible = subparsers.add_parser("bible", help="Search Bible translations")
+    bible_sub = bible.add_subparsers(dest="bible_command")
+
+    bs = bible_sub.add_parser("search", help="Search Bible verses across translations")
+    bs.add_argument("query", nargs="+", help="Search text (word, phrase, or reference)")
+    bs.add_argument("--lang", "-l", default=None, help="Filter by language code (e.g. en, es, ko)")
+
+    bible_sub.add_parser("list", help="List available Bible translations")
     
     args = parser.parse_args()
     
@@ -513,7 +606,48 @@ Examples:
         gb = stats["gbrain"]
         gi = "✅" if gb["status"] == "ready" else "❌"
         print(f"\n🧠 gbrain:     {gi} {gb['status']}")
+
+        # Bible stats
+        bible_info = bible_list_translations()
+        if bible_info["status"] == "ready":
+            print(f"\n📖 Bible:      ✅ {bible_info['count']} translations ({bible_info['total_size_mb']} MB)")
+        elif bible_info["status"] == "empty":
+            print(f"\n📖 Bible:      ⚪ Empty (run: prep-bible.sh)")
+        else:
+            print(f"\n📖 Bible:      ❌ Not found")
+
         print()
+
+    elif args.command == "bible":
+        if args.bible_command == "search":
+            query = " ".join(args.query)
+            result = bible_search(query, lang=args.lang)
+            if result["status"] != "ok":
+                print(f"❌ {result.get('error', 'Unknown error')}")
+                sys.exit(1)
+
+            print(f"\n📖 Bible Search: \"{result['query']}\" ({result['lang_filter']})")
+            print(f"   {result['total_matches']} matches across {result['files_searched']} files\n")
+            for r in result["results"]:
+                print(f"  📄 {r['file']} ({r['size_kb']} KB) — {r['matches']} matches")
+                for v in r["verses"][:5]:
+                    print(f"     · {v[:120]}")
+                if r["matches"] > len(r["verses"]):
+                    print(f"     … ({r['matches']} total matches)")
+                print()
+            if not result["results"]:
+                print("   No matches found.\n")
+
+        elif args.bible_command == "list":
+            result = bible_list_translations()
+            if result["status"] == "ready":
+                print(f"\n📖 Bible Translations ({result['count']} files, {result['total_size_mb']} MB total)")
+                print(f"   Directory: {result['dir']}\n")
+                for t in result["translations"]:
+                    lang_code = t["name"].split("_")[-1] if "_" in t["name"] else "?"
+                    print(f"  · {t['name']:30s} {t['size_kb']:>6} KB")
+            else:
+                print(f"📖 No Bible translations found. Run: prep-bible.sh")
 
 
 if __name__ == "__main__":

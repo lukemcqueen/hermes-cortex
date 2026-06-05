@@ -105,6 +105,9 @@ offline_knowledge query "how to treat a snake bite in the jungle"
 | `offline_knowledge kiwix-status` | Check if kiwix-serve is running |
 | `offline_knowledge kiwix-list` | List all loaded ZIM content |
 | `offline_knowledge generate-library` | Regenerate library XML from ZIM files |
+| `offline_knowledge bible search "verse" --lang en` | Search Bible translations |
+| `offline_knowledge bible list` | List available translations |
+| `./offline/prep-bible.sh --langs=all` | Download all Bible translations |
 | `offline_knowledge stats` | Full system status |
 
 ## Available ZIM Content
@@ -117,6 +120,33 @@ offline_knowledge query "how to treat a snake bite in the jungle"
 | `wikipedia_en_all_mini` | 12.4 GB | Full English Wikipedia (compressed, no images) |
 | `wikibooks_en_all_maxi` | 1.5 GB | Free textbooks — math, science, programming |
 | `wiktionary_en_all_maxi` | 2.2 GB | Dictionary, thesaurus, etymology |
+
+### 📖 Bible Content
+
+Bible translations can be downloaded alongside wiki content. Available in 55+ languages
+including English (KJV, WEB, ASV, YLT), Spanish, French, German, Korean, Japanese, Chinese,
+Arabic, Russian, and many more.
+
+```bash
+# Download major world language translations:
+./offline/prep-bible.sh --langs=major
+
+# Download all 55+ translations:
+./offline/prep-bible.sh --langs=all
+
+# Combine with offline prep:
+./offline/prep-offline.sh --mode=travel --include-bible
+```
+
+Search Bible verses:
+```bash
+offline_knowledge bible search "John 3:16"
+offline_knowledge bible search "faith" --lang en
+offline_knowledge bible search "사랑" --lang ko
+offline_knowledge bible list
+```
+
+Bible texts are small (4-10 MB per translation) and work without Docker.
 
 ## Architecture
 
