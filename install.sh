@@ -999,6 +999,45 @@ PLIST
     warn "Failed to load dashboard launchd service"
   fi
 fi
+
+# Install Docker Desktop launchd agent (auto-start on login)
+DOCKER_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.docker.docker.plist"
+if launchctl list com.docker.docker &>/dev/null 2>&1; then
+  info "  Docker launch agent already loaded"
+elif [[ ! -f "$DOCKER_PLIST" ]]; then
+  DOCKER_TEMPLATE="${SCRIPT_DIR}/docs/templates/com.docker.docker.plist"
+  if [[ -f "$DOCKER_TEMPLATE" ]]; then
+    sed "s|CORTEX_HOME|${CORTEX_HOME}|g" "$DOCKER_TEMPLATE" > "$DOCKER_PLIST"
+  else
+    cat > "$DOCKER_PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.docker.docker</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/Docker.app/Contents/MacOS/Docker</string>
+        <string>--unattended</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>${CORTEX_HOME}/.hermes/logs/docker-launch.log</string>
+    <key>StandardErrorPath</key>
+    <string>${CORTEX_HOME}/.hermes/logs/docker-launch.log</string>
+</dict>
+</plist>
+PLIST
+  fi
+  chmod 644 "$DOCKER_PLIST"
+  launchctl load "$DOCKER_PLIST" 2>&1
+  info "  Docker Desktop auto-start on login configured"
+fi
+
 else
   skip "Langfuse + Dashboard (laptop profile — Docker not required)"
 fi
@@ -1124,6 +1163,7 @@ printf "  ${GREEN}•${RESET} Launchd services:\n"
 printf "                   com.ollama.serve\n"
 printf "                   com.gbrain.sync-watch\n"
 if [[ "$CORTEX_PROFILE" == "server" ]]; then
+printf "                   com.docker.docker\n"
 printf "                   com.hermes.cortex-dashboard\n"
 printf "                   homebrew.mxcl.nginx\n"
 fi
