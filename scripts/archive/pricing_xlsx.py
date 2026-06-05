@@ -139,7 +139,7 @@ ws.freeze_panes = "A4"
 # Auto-filter
 ws.auto_filter.ref = f"A3:E{3 + len(rows)}"
 
-output_path = "/Users/luke/Desktop/Model_Pricing.xlsx"
+output_path = "~/Desktop/Model_Pricing.xlsx"
 wb.save(output_path)
 print(f"Done \u2014 saved to {output_path}")
 print(f"Rows: {len(rows)} models")
