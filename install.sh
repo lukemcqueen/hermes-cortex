@@ -65,7 +65,7 @@ if [[ -z "${CORTEX_SOURCES:-}" ]]; then
 fi
 
 IFS=',' read -ra SOURCES <<< "$CORTEX_SOURCES"
-TOTAL_STEPS=16
+TOTAL_STEPS=17
 STEP=0
 
 # Ensure Hermes is installed
@@ -920,7 +920,41 @@ fi
 ok
 
 # ─────────────────────────────────────────────────────────────
-#  11. Langfuse — LLM Observability (Docker Compose)
+#  11. Web Cache — Local Semantic Web Cache
+# ─────────────────────────────────────────────────────────────
+step "Installing Web Cache (semantic web result cache)"
+WEB_CACHE_REPO="${SCRIPT_DIR}/web-cache"
+WEB_CACHE_DEST="${HERMES_HOME}/web-cache"
+HERMES_BIN="${HERMES_HOME}/bin"
+if [[ -d "$WEB_CACHE_REPO" ]]; then
+  mkdir -p "$WEB_CACHE_DEST" "$HERMES_BIN"
+  # Copy the Python tool
+  cp "${WEB_CACHE_REPO}/web_cache.py" "$WEB_CACHE_DEST/"
+  chmod +x "${WEB_CACHE_DEST}/web_cache.py"
+  # Copy the wrapper script
+  cp "${WEB_CACHE_REPO}/web_cache.sh" "$WEB_CACHE_DEST/"
+  chmod +x "${WEB_CACHE_DEST}/web_cache.sh"
+  # Create symlink in hermes bin directory
+  ln -sf "${WEB_CACHE_DEST}/web_cache.sh" "${HERMES_BIN}/web_cache"
+  info "  Installed web cache tool"
+  # Create the venv if not exists
+  if [[ ! -d "${WEB_CACHE_DEST}/.venv" ]]; then
+    python3 -m venv "${WEB_CACHE_DEST}/.venv" 2>/dev/null
+    "${WEB_CACHE_DEST}/.venv/bin/pip" install sqlite-vec requests 2>/dev/null && \
+      info "  Created venv with sqlite-vec + requests"
+  else
+    skip "  venv already exists"
+  fi
+  # Initialize the cache DB
+  "${WEB_CACHE_DEST}/.venv/bin/python3" "${WEB_CACHE_DEST}/web_cache.py" stats >/dev/null 2>&1 && \
+    info "  Cache DB initialized"
+else
+  skip "no web-cache/ directory in repo"
+fi
+ok
+
+# ─────────────────────────────────────────────────────────────
+#  12. Langfuse — LLM Observability (Docker Compose)
 # ─────────────────────────────────────────────────────────────
 step "Installing Langfuse (LLM observability)"
 
@@ -976,7 +1010,7 @@ ENVFILE
 fi
 
 # ─────────────────────────────────────────────────────────────
-#  12. Cortex Dashboard — Flask companion app
+#  13. Cortex Dashboard — Flask companion app
 # ─────────────────────────────────────────────────────────────
 step "Installing Cortex Dashboard"
 
@@ -1050,7 +1084,7 @@ PLIST
 fi
 
 # ─────────────────────────────────────────────────────────────
-#  13. nginx — Reverse proxy for Langfuse + Dashboard
+#  14. nginx — Reverse proxy for Langfuse + Dashboard
 # ─────────────────────────────────────────────────────────────
 step "Installing nginx reverse proxy"
 
@@ -1135,7 +1169,7 @@ fi
 ok
 
 # ─────────────────────────────────────────────────────────────
-#  14. Enable Hermes Plugin
+#  15. Enable Hermes Plugin
 # ─────────────────────────────────────────────────────────────
 step "Enabling gbrain-command plugin in Hermes config"
 
@@ -1164,7 +1198,7 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────
-#  15. Summary & Next Steps
+#  16. Summary & Next Steps
 # ─────────────────────────────────────────────────────────────
 header "INSTALLATION SUMMARY"
 
@@ -1181,6 +1215,7 @@ printf "  ${GREEN}•${RESET} heartbeat.py     → system health watchdog\n"
 printf "  ${GREEN}•${RESET} memory-to-brain.py → memory sync to gbrain\n"
 printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\n"
 printf "  ${GREEN}•${RESET} Hermes skills    → 8 shared skills in ~/.hermes/skills/\n"
+printf "  ${GREEN}•${RESET} Web Cache       → semantic web result cache (sqlite-vec + Ollama)\n"
 printf "  ${GREEN}•${RESET} Launchd services:\n"
 printf "                   com.ollama.serve\n"
 printf "                   com.gbrain.sync-watch\n"
@@ -1233,7 +1268,7 @@ printf "  ${GREEN}•${RESET} Scripts:         %s/scripts/\n" "${SCRIPTS_DIR}"
 
 printf "\n${BOLD}🐚 For daily use in shell:${RESET}\n"
 printf "  Add to ~/.zshrc or ~/.bash_profile:\n"
-printf "${YELLOW}  export PATH=\"\$HOME/.bun/bin:\$PATH\"${RESET}\n"
+printf "${YELLOW}  export PATH=\"\$HOME/.bun/bin:\$HOME/.hermes/bin:\$PATH\"${RESET}\n"
 
 printf "\n${GREEN}${BOLD}Hermes Cortex v${VERSION} installed. Enjoy! 🧠${RESET}\n"
 
