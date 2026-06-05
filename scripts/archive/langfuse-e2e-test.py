@@ -4,22 +4,25 @@ import os, sys, time
 
 os.environ['HERMES_LANGFUSE_BASE_URL'] = 'http://localhost:3000'
 
-# Read actual secret key from langfuse .env file
-# Example: replace with your own path to the .env file
+# Read keys from langfuse .env file
 env_path = os.path.expanduser('~/langfuse/.env')
+pk = sk = None
 with open(env_path, 'r') as f:
     for line in f:
-        if 'LANGFUSE_INIT_PROJECT_SECRET_KEY' in line:
+        if 'LANGFUSE_INIT_PROJECT_PUBLIC_KEY' in line:
+            pk = line.strip().split('=', 1)[1]
+        elif 'LANGFUSE_INIT_PROJECT_SECRET_KEY' in line:
             sk = line.strip().split('=', 1)[1]
-            break
+
+assert pk and sk, "Could not read Langfuse API keys from ~/langfuse/.env"
 
 os.environ['HERMES_LANGFUSE_SECRET_KEY'] = sk
-os.environ['HERMES_LANGFUSE_PUBLIC_KEY'] = 'pk-lf-QQruh3wQ0dqoMzIzCkYjpNmtS5rlIXnP'
+os.environ['HERMES_LANGFUSE_PUBLIC_KEY'] = pk
 
 from langfuse import Langfuse
 
 client = Langfuse(
-    public_key='pk-lf-QQruh3wQ0dqoMzIzCkYjpNmtS5rlIXnP',
+    public_key=pk,
     secret_key=sk,
     base_url='http://localhost:3000',
     debug=True,

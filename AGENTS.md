@@ -21,7 +21,7 @@ Hermes Cortex is a **public installer and skill set** for
 
 | Path | Purpose |
 |---|---|
-| `docs/` | Troubleshooting, guides, templates |
+| `docs/` | Troubleshooting, guides, templates, SECURITY.md |
 | `docs/templates/` | Seed MEMORY.md, USER.md, brain .gitignore |
 | `install.sh` | Single-command installer (idempotent) |
 | `docker-compose.langfuse.yml` | Langfuse v3 with ClickHouse, MinIO, Redis |

@@ -24,6 +24,8 @@
 
 ## 🚀 One-Command Install
 
+> **🔒 Before installing:** Read the [Security Guide](docs/SECURITY.md) to understand how your system is protected.
+
 ```bash
 # Clone the public system
 git clone https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex

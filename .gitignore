@@ -5,12 +5,14 @@
 # Secrets & credentials
 .env
 .env.local
+.env.*
 *.pem
 *.key
 **/creds/**
 **/credentials*
 
 # Hermes state databases (session data, not config)
+.hermes/
 state.db
 *.db
 *.db-journal
