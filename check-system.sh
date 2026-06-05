@@ -13,6 +13,7 @@ set -euo pipefail
 # ── Config ──────────────────────────────────────────────────
 HOME="${HOME:-$(echo ~)}"
 VERSION="1.0.0"
+CORTEX_PROFILE="${CORTEX_PROFILE:-server}"
 
 # Colors
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -190,6 +191,10 @@ check_docker() {
                 json_append "docker_vm" "info" "VM: $vm_mem" ""
             fi
         fi
+    elif [[ "$CORTEX_PROFILE" == "laptop" ]]; then
+        info "$MODE" "Docker not installed (optional for laptop profile — kiwix needs it for ZIM viewer)"
+        info "$MODE" "  Offline knowledge works without Docker (cascade falls through to gbrain + LLM)"
+        json_append "docker" "info" "Not installed" "Optional for laptop"
     else
         warn "$MODE" "Docker not installed — required for kiwix-serve (ZIM content) and Langfuse"
         json_append "docker" "warn" "Not installed" "Required for ZIM server + Langfuse"
@@ -398,6 +403,7 @@ main() {
     echo ""
     echo "  ╔══════════════════════════════════════════════════════╗"
     echo "  ║     Hermes Cortex — System Verification v${VERSION}       ║"
+    echo "  ║     Profile: ${CORTEX_PROFILE}                           ║"
     echo "  ║     Run this before install.sh to check readiness     ║"
     echo "  ╚══════════════════════════════════════════════════════╝"
     

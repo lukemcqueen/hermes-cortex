@@ -28,8 +28,13 @@
 # Clone the public system
 git clone https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex
 
-# Run the installer (idempotent — safe to re-run)
+# Server profile (default) — full stack: Ollama, gbrain, Langfuse,
+# Dashboard, nginx, Web Cache, Offline Knowledge
 bash ~/hermes-cortex/install.sh
+
+# Laptop profile — lean: no Docker-dependent services (Langfuse,
+# Dashboard, nginx). Perfect for mobile machines.
+CORTEX_PROFILE=laptop bash ~/hermes-cortex/install.sh
 
 # ⚡ Then give your Hermes agent the prompt it prints out
 # to set up cron jobs and activate the /brain command
@@ -45,25 +50,32 @@ bash ~/hermes-cortex/install.sh
 | 3 | **gbrain** | Persistent knowledge brain (PGLite, zero-config) |
 | 4 | **Brain dirs** | `~/brain/{default,…}` with MECE directory schema |
 | 5 | **gbrain sync** | Launchd daemon — syncs brain every 2 minutes |
-| 6 | **Observability** | Langfuse + Cortex Dashboard |
+| 6 | **Observability** † | Langfuse + Cortex Dashboard |
 | 7 | **`/brain` plugin** | Hermes slash command for gbrain queries |
 | 8 | **Scripts** | Heartbeat, memory sync, Langfuse scoring, dashboard |
 | 9 | **Plugin enable** | Auto-activates in Hermes config |
 | 10 | **Skills** | 8 shared skills installed to `~/.hermes/skills/` |
 | 11 | **Web Cache** | Semantic web result cache (sqlite-vec + Ollama) |
 | 12 | **Offline Knowledge** | Cascade tool + kiwix ZIM Docker + prep-offline script |
-| 13 | **Cron prompt** | Instructions for Hermes agent setup |
+| 13 | **nginx** † | Reverse proxy for Langfuse + Dashboard |
+| 14 | **Cron prompt** | Instructions for Hermes agent setup |
+| | *† Server profile only* | |
 
 ### Configuration
 
 Set these environment variables before running for a custom setup:
 
 ```bash
+export CORTEX_PROFILE="laptop"               # 'server' (default) or 'laptop'
 export CORTEX_SOURCES="me,shared,default"   # Brain source names (default: "default")
 export CORTEX_HOME="$HOME"                  # User home directory
 export HERMES_HOME="$HOME/.hermes"          # Hermes config directory
 export CORTEX_USER="$USER"                  # Your name for plugin metadata
 ```
+
+**Profiles:**
+- **`server`** (default) — Full stack: Ollama, gbrain, Langfuse (Docker), Cortex Dashboard, nginx reverse proxy, Web Cache, Offline Knowledge (kiwix ZIM)
+- **`laptop`** — Lean stack: Ollama, gbrain, Web Cache, Offline Knowledge. Skips Docker-dependent services (Langfuse, Dashboard, nginx). Perfect for mobile machines where Docker isn't always available.
 
 ### Multi-Person Setup
 
