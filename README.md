@@ -9,6 +9,8 @@
 
 **Hermes Cortex** is a self-contained system installer and public skill set for the [Hermes Agent](https://hermes-agent.nousresearch.com) runtime:
 
+> **Prerequisite:** [Hermes Agent](https://hermes-agent.nousresearch.com) must be installed first. This project adds skills, offline content, and system services on top of it — it is not a standalone agent.
+
 ### Who is this for?
 
 - **You want a personal AI agent** that runs on your own computer (no cloud dependency)
