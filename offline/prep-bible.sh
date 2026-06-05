@@ -284,6 +284,42 @@ for code in "${LANG_CODES[@]}"; do
     fi
 done
 
+# ── Post-process: Parse to JSON ────────────────────────────
+header "PARSING TO STRUCTURED JSON"
+PARSE_SCRIPT="$HOME/hermes-cortex/offline/bible-parse.py"
+parse_ok=0
+parse_fail=0
+
+if [[ ! -f "$PARSE_SCRIPT" ]]; then
+    warn "bible-parse.py not found — skipping JSON generation"
+else
+    for txt_file in "$BIBLE_DIR"/*.txt; do
+        [[ -f "$txt_file" ]] || continue
+        local json_file="${txt_file%.txt}.json"
+        # Skip if JSON already exists and is newer than the txt
+        if [[ -f "$json_file" && "$json_file" -nt "$txt_file" ]]; then
+            info "JSON already up-to-date: $(basename "$json_file")"
+            ((parse_ok++))
+            continue
+        fi
+        printf "  Parsing %s … " "$(basename "$txt_file")"
+        if python3 "$PARSE_SCRIPT" "$txt_file" --output "$json_file" 2>/dev/null; then
+            printf "✓\n"
+            ((parse_ok++))
+        else
+            printf "✗\n"
+            warn "  Failed to parse: $(basename "$txt_file")"
+            ((parse_fail++))
+        fi
+    done
+    if [[ $parse_ok -gt 0 ]]; then
+        info "Parsed $parse_ok translation(s) to JSON"
+    fi
+    if [[ $parse_fail -gt 0 ]]; then
+        warn "$parse_fail translation(s) could not be parsed — raw .txt still available"
+    fi
+fi
+
 # ── Create index ────────────────────────────────────────────
 header "Creating Bible Index"
 INDEX_FILE="$BIBLE_DIR/INDEX.md"

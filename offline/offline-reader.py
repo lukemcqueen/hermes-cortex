@@ -30,271 +30,87 @@ BIBLE_DIR = HOME / "offline" / "bible"
 HYMNS_DIR = HOME / "offline" / "hymns"
 PORT = 8081
 
-# ── Bible Parsers ───────────────────────────────────────────
 
-# Book name mappings (abbreviation → full name)
-BOOK_NAMES = {
-    # Old Testament
-    "GEN": "Genesis", "EXO": "Exodus", "LEV": "Leviticus", "NUM": "Numbers",
-    "DEU": "Deuteronomy", "JOS": "Joshua", "JDG": "Judges", "RUT": "Ruth",
-    "1SA": "1 Samuel", "2SA": "2 Samuel", "1KI": "1 Kings", "2KI": "2 Kings",
-    "1CH": "1 Chronicles", "2CH": "2 Chronicles", "EZR": "Ezra", "NEH": "Nehemiah",
-    "EST": "Esther", "JOB": "Job", "PSA": "Psalms", "PRO": "Proverbs",
-    "ECC": "Ecclesiastes", "SON": "Song of Solomon", "ISA": "Isaiah",
-    "JER": "Jeremiah", "LAM": "Lamentations", "EZK": "Ezekiel", "DAN": "Daniel",
-    "HOS": "Hosea", "JOL": "Joel", "AMO": "Amos", "OBA": "Obadiah",
-    "JON": "Jonah", "MIC": "Micah", "NAM": "Nahum", "HAB": "Habakkuk",
-    "ZEP": "Zephaniah", "HAG": "Haggai", "ZEC": "Zechariah", "MAL": "Malachi",
-    # New Testament
-    "MAT": "Matthew", "MRK": "Mark", "LUK": "Luke", "JHN": "John",
-    "ACT": "Acts", "ROM": "Romans", "1CO": "1 Corinthians", "2CO": "2 Corinthians",
-    "GAL": "Galatians", "EPH": "Ephesians", "PHP": "Philippians", "COL": "Colossians",
-    "1TH": "1 Thessalonians", "2TH": "2 Thessalonians", "1TI": "1 Timothy",
-    "2TI": "2 Timothy", "TIT": "Titus", "PHM": "Philemon", "HEB": "Hebrews",
-    "JAS": "James", "1PE": "1 Peter", "2PE": "2 Peter", "1JN": "1 John",
-    "2JN": "2 John", "3JN": "3 John", "JUD": "Jude", "REV": "Revelation",
-}
-# Reverse: full name → abbreviation
-FULL_TO_ABBR = {v.lower(): k for k, v in BOOK_NAMES.items()}
+# ── Bible JSON Loader ────────────────────────────────────────
 
-# Common book name patterns in PG text (used by parser)
-PG_BOOK_PATTERNS = [
-    (r"THE FIRST BOOK OF MOSES,?\s*(?:CALLED\s+)?GENESIS", "GEN"),
-    (r"THE SECOND BOOK OF MOSES,?\s*(?:CALLED\s+)?EXODUS", "EXO"),
-    (r"THE THIRD BOOK OF MOSES,?\s*(?:CALLED\s+)?LEVITICUS", "LEV"),
-    (r"THE FOURTH BOOK OF MOSES,?\s*(?:CALLED\s+)?NUMBERS", "NUM"),
-    (r"THE FIFTH BOOK OF MOSES,?\s*(?:CALLED\s+)?DEUTERONOMY", "DEU"),
-    (r"THE BOOK OF JOSHUA", "JOS"),
-    (r"THE BOOK OF JUDGES", "JDG"),
-    (r"THE BOOK OF RUTH", "RUT"),
-    (r"THE FIRST BOOK OF SAMUEL", "1SA"),
-    (r"THE SECOND BOOK OF SAMUEL", "2SA"),
-    (r"THE FIRST BOOK OF THE KINGS", "1KI"),
-    (r"THE SECOND BOOK OF THE KINGS", "2KI"),
-    (r"THE FIRST BOOK OF THE CHRONICLES", "1CH"),
-    (r"THE SECOND BOOK OF THE CHRONICLES", "2CH"),
-    (r"THE BOOK OF EZRA", "EZR"),
-    (r"THE BOOK OF NEHEMIAH", "NEH"),
-    (r"THE BOOK OF ESTHER", "EST"),
-    (r"THE BOOK OF JOB", "JOB"),
-    (r"THE PSALMS?", "PSA"),
-    (r"THE PROVERBS?", "PRO"),
-    (r"ECCLESIASTES", "ECC"),
-    (r"THE SONG OF SOLOMON", "SON"),
-    (r"THE SONG OF SONGS", "SON"),
-    (r"THE BOOK OF THE PROPHET ISAIAH", "ISA"),
-    (r"THE BOOK OF JEREMIAH", "JER"),
-    (r"THE LAMENTATIONS OF JEREMIAH", "LAM"),
-    (r"THE BOOK OF EZEKIEL", "EZK"),
-    (r"THE BOOK OF DANIEL", "DAN"),
-    (r"HOSEA", "HOS"),
-    (r"JOEL", "JOL"),
-    (r"AMOS", "AMO"),
-    (r"OBADIAH", "OBA"),
-    (r"JONAH", "JON"),
-    (r"MICAH", "MIC"),
-    (r"NAHUM", "NAM"),
-    (r"HABAKKUK", "HAB"),
-    (r"ZEPHANIAH", "ZEP"),
-    (r"HAGGAI", "HAG"),
-    (r"ZECHARIAH", "ZEC"),
-    (r"MALACHI", "MAL"),
-    (r"THE GOSPEL ACCORDING TO ST\s*\.?\s*MATTHEW", "MAT"),
-    (r"THE GOSPEL ACCORDING TO ST\s*\.?\s*MARK", "MRK"),
-    (r"THE GOSPEL ACCORDING TO ST\s*\.?\s*LUKE", "LUK"),
-    (r"THE GOSPEL ACCORDING TO ST\s*\.?\s*JOHN", "JHN"),
-    (r"THE GOSPEL ACCORDING TO MATTHEW", "MAT"),
-    (r"THE GOSPEL ACCORDING TO MARK", "MRK"),
-    (r"THE GOSPEL ACCORDING TO LUKE", "LUK"),
-    (r"THE GOSPEL ACCORDING TO JOHN", "JHN"),
-    (r"THE ACTS OF THE APOSTLES", "ACT"),
-    (r"THE EPISTLE OF PAUL THE APOSTLE TO THE ROMANS", "ROM"),
-    (r"THE FIRST EPISTLE OF PAUL THE APOSTLE TO THE CORINTHIANS", "1CO"),
-    (r"THE SECOND EPISTLE OF PAUL THE APOSTLE TO THE CORINTHIANS", "2CO"),
-    (r"THE EPISTLE OF PAUL THE APOSTLE TO THE GALATIANS", "GAL"),
-    (r"THE EPISTLE OF PAUL THE APOSTLE TO THE EPHESIANS", "EPH"),
-    (r"THE EPISTLE OF PAUL THE APOSTLE TO THE PHILIPPIANS", "PHP"),
-    (r"THE EPISTLE OF PAUL THE APOSTLE TO THE COLOSSIANS", "COL"),
-    (r"THE FIRST EPISTLE OF PAUL THE APOSTLE TO THE THESSALONIANS", "1TH"),
-    (r"THE SECOND EPISTLE OF PAUL THE APOSTLE TO THE THESSALONIANS", "2TH"),
-    (r"THE FIRST EPISTLE OF PAUL THE APOSTLE TO TIMOTHY", "1TI"),
-    (r"THE SECOND EPISTLE OF PAUL THE APOSTLE TO TIMOTHY", "2TI"),
-    (r"THE EPISTLE OF PAUL THE APOSTLE TO TITUS", "TIT"),
-    (r"THE EPISTLE OF PAUL THE APOSTLE TO PHILEMON", "PHM"),
-    (r"THE EPISTLE OF PAUL THE APOSTLE TO THE HEBREWS", "HEB"),
-    (r"THE EPISTLE OF JAMES", "JAS"),
-    (r"THE FIRST EPISTLE OF PETER", "1PE"),
-    (r"THE SECOND EPISTLE OF PETER", "2PE"),
-    (r"THE FIRST EPISTLE OF JOHN", "1JN"),
-    (r"THE SECOND EPISTLE OF JOHN", "2JN"),
-    (r"THE THIRD EPISTLE OF JOHN", "3JN"),
-    (r"THE EPISTLE OF JUDE", "JUD"),
-    (r"THE REVELATION OF ST\s*\.?\s*JOHN THE DIVINE", "REV"),
-    (r"THE REVELATION OF JESUS CHRIST", "REV"),
-    (r"THE REVELATION", "REV"),
-]
-
-
-def parse_pg_bible(filepath):
-    """Parse a Project Gutenberg Bible text file into structured book/chapter/verse data."""
-    with open(filepath, "r", encoding="utf-8", errors="replace") as f:
-        text = f.read()
-
-    # Strip PG headers and footers
-    text = re.sub(
-        r"\*\*\* START OF (THE |THIS )?PROJECT GUTENBERG EBOOK.*?\*\*\*",
-        "", text, flags=re.DOTALL
-    )
-    text = re.sub(
-        r"\*\*\* END OF (THE |THIS )?PROJECT GUTENBERG EBOOK.*",
-        "", text, flags=re.DOTALL
-    )
-
-    lines = text.split("\n")
-
-    books = []
-    current_book = None
-    current_chapter = 0
-    current_verses = []
-
-    in_ot = False
-    in_nt = False
-    found_testament = False
-
-    for line in lines:
-        stripped = line.strip()
-        if not stripped:
-            continue
-
-        # Skip obvious non-verse lines
-        upper = stripped.upper().strip()
-
-        # Detect testament headers
-        if re.search(r"THE OLD TESTAMENT", stripped, re.IGNORECASE):
-            in_ot = True
-            found_testament = True
-            continue
-        if re.search(r"THE NEW TESTAMENT", stripped, re.IGNORECASE):
-            in_nt = True
-            found_testament = True
-            continue
-
-        # Skip header/footer noise
-        if any(skip in upper for skip in [
-            "PRODUCED BY", "Transcriber's Notes",
-            "End of the Project", "End of Project",
-            "*** START", "***END",
-            "All rights reserved", "Public Domain",
-        ]):
-            continue
-
-        # Check for book headers
-        book_match = None
-        for pattern, abbr in PG_BOOK_PATTERNS:
-            if re.match(pattern, stripped, re.IGNORECASE):
-                book_match = abbr
-                break
-
-        if book_match:
-            # Save previous book
-            if current_book and current_verses:
-                books.append({
-                    "abbr": current_book,
-                    "name": BOOK_NAMES.get(current_book, current_book),
-                    "chapters": _build_chapters(current_verses),
-                })
-
-            current_book = book_match
-            current_chapter = 0
-            current_verses = []
-            continue
-
-        # Check for chapter marker: "Chapter X" or "Psalm X"
-        chapter_match = re.match(r"(?:Chapter|Psalm)\s+(\d+)", stripped, re.IGNORECASE)
-        if chapter_match:
-            current_chapter = int(chapter_match.group(1))
-            continue
-
-        # Check for verse pattern: "1:1 text" or just verse number + text
-        verse_match = re.match(r"(\d+):(\d+)\s+(.*)", stripped)
-        if verse_match:
-            ch = int(verse_match.group(1))
-            vs = int(verse_match.group(2))
-            vtext = verse_match.group(3).strip()
-            current_verses.append({
-                "book": current_book or "GEN",
-                "chapter": ch,
-                "verse": vs,
-                "text": vtext,
-            })
-            continue
-
-        # Some translations use just "1 text" within chapters
-        verse_only = re.match(r"(\d+)\s+(.*)", stripped)
-        if verse_only and current_chapter > 0 and current_book:
-            vs = int(verse_only.group(1))
-            vtext = verse_only.group(2).strip()
-            current_verses.append({
-                "book": current_book,
-                "chapter": current_chapter,
-                "verse": vs,
-                "text": vtext,
-            })
-
-    # Don't forget the last book
-    if current_book and current_verses:
-        books.append({
-            "abbr": current_book,
-            "name": BOOK_NAMES.get(current_book, current_book),
-            "chapters": _build_chapters(current_verses),
-        })
-
-    return books
-
-
-def _build_chapters(verses):
-    """Group verses into chapters."""
-    chapters = {}
-    for v in verses:
-        ch = v["chapter"]
-        if ch not in chapters:
-            chapters[ch] = []
-        chapters[ch].append({"verse": v["verse"], "text": v["text"]})
-    # Sort by chapter number, then by verse number
-    result = []
-    for ch_num in sorted(chapters.keys()):
-        chapters[ch_num].sort(key=lambda x: x["verse"])
-        result.append({
-            "chapter": ch_num,
-            "verses": chapters[ch_num],
-        })
-    return result
+def load_bible_json(filepath):
+    """Load a structured Bible JSON file. Returns the full data dict or None."""
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
 
 
 def scan_bible_translations():
-    """Find all Bible text files and return metadata."""
+    """Find all Bible files and return metadata. Prefers .json, falls back to .txt."""
     if not BIBLE_DIR.exists():
         return {"status": "not_found", "translations": []}
 
     translations = []
-    for f in sorted(BIBLE_DIR.glob("*.txt")):
+    seen_stems = set()
+
+    # First pass: JSON files (structured, preferred)
+    for f in sorted(BIBLE_DIR.glob("*.json")):
+        stem = f.stem
+        if stem in seen_stems:
+            continue
+        seen_stems.add(stem)
         size_kb = f.stat().st_size // 1024
         size_mb = f.stat().st_size / (1024**2)
-        name = f.stem
-        # Try to detect language from filename (e.g. pg10_en.txt → en)
+        # Try to read metadata from JSON
+        lang_code = "en"
+        translation_name = stem
+        books = 0
+        chapters = 0
+        verses = 0
+        try:
+            with open(f, "r", encoding="utf-8") as jf:
+                meta = json.load(jf).get("meta", {})
+            if meta.get("lang"):
+                lang_code = meta["lang"]
+            if meta.get("translation"):
+                translation_name = meta["translation"]
+            books = meta.get("total_books", 0)
+            chapters = meta.get("total_chapters", 0)
+            verses = meta.get("total_verses", 0)
+        except Exception:
+            pass
+
+        translations.append({
+            "file": f.name,
+            "name": translation_name,
+            "lang": lang_code,
+            "size_kb": size_kb,
+            "size_mb": round(size_mb, 1),
+            "format": "json",
+            "books": books,
+            "chapters": chapters,
+            "verses": verses,
+        })
+
+    # Second pass: .txt files not already covered by a .json
+    for f in sorted(BIBLE_DIR.glob("*.txt")):
+        stem = f.stem
+        if stem in seen_stems:
+            continue
+        seen_stems.add(stem)
+        size_kb = f.stat().st_size // 1024
+        size_mb = f.stat().st_size / (1024**2)
+        name = stem
         lang_code = "en"
         parts = name.split("_")
         if len(parts) > 1:
             code = parts[-1]
             if len(code) <= 5:
                 lang_code = code
-
         translations.append({
             "file": f.name,
             "name": name,
             "lang": lang_code,
             "size_kb": size_kb,
             "size_mb": round(size_mb, 1),
+            "format": "txt",
         })
 
     return {"status": "ready", "translations": translations}
@@ -325,48 +141,18 @@ def _parse_language_label(code):
 
 
 def load_bible_books(filepath):
-    """Parse a Bible file and return just the book list (fast, no verse data)."""
-    with open(filepath, "r", encoding="utf-8", errors="replace") as f:
-        text = f.read()
-    text = re.sub(r"\*\*\* START OF (THE |THIS )?PROJECT GUTENBERG EBOOK.*?\*\*\*", "", text, flags=re.DOTALL)
-    text = re.sub(r"\*\*\* END OF (THE |THIS )?PROJECT GUTENBERG EBOOK.*", "", text, flags=re.DOTALL)
+    """Load book list from a Bible JSON file (fast, no verse data)."""
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return None
 
-    books = []
-    in_ot = False
-    in_nt = False
-
-    for line in text.split("\n"):
-        stripped = line.strip()
-        if not stripped:
-            continue
-        upper = stripped.upper()
-
-        if "THE OLD TESTAMENT" in upper:
-            in_ot = True
-            continue
-        if "THE NEW TESTAMENT" in upper:
-            in_nt = True
-            continue
-
-        for pattern, abbr in PG_BOOK_PATTERNS:
-            if re.match(pattern, stripped, re.IGNORECASE):
-                name = BOOK_NAMES.get(abbr, abbr)
-                testament = "old" if (in_ot and not in_nt) or (
-                    abbr in {"MAT", "MRK", "LUK", "JHN", "ACT", "ROM", "1CO", "2CO", "GAL",
-                             "EPH", "PHP", "COL", "1TH", "2TH", "1TI", "2TI", "TIT", "PHM",
-                             "HEB", "JAS", "1PE", "2PE", "1JN", "2JN", "3JN", "JUD", "REV"}
-                ) else "new"
-                # Better testament detection
-                if abbr in {"MAT", "MRK", "LUK", "JHN", "ACT", "ROM", "1CO", "2CO", "GAL",
-                            "EPH", "PHP", "COL", "1TH", "2TH", "1TI", "2TI", "TIT", "PHM",
-                            "HEB", "JAS", "1PE", "2PE", "1JN", "2JN", "3JN", "JUD", "REV"}:
-                    testament = "new"
-                else:
-                    testament = "old"
-                books.append({"abbr": abbr, "name": name, "testament": testament})
-                break
-
-    return books
+    books = data.get("books", [])
+    return [
+        {"abbr": b["abbr"], "name": b["name"], "testament": b.get("testament", "old")}
+        for b in books
+    ]
 
 
 # ── Hymn Parsers ────────────────────────────────────────────
@@ -529,24 +315,50 @@ class ReaderHandler(http.server.BaseHTTPRequestHandler):
 
             try:
                 chapter_num = int(chapter_str)
-                books = parse_pg_bible(fp)
-                # Find the book
-                for b in books:
-                    if b["abbr"] == book_abbr:
-                        for ch in b["chapters"]:
-                            if ch["chapter"] == chapter_num:
-                                self._send_json({
-                                    "status": "ok",
-                                    "book": b["name"],
-                                    "abbr": b["abbr"],
-                                    "chapter": chapter_num,
-                                    "verses": ch["verses"],
-                                    "total_chapters": len(b["chapters"]),
-                                })
+
+                # Try JSON first
+                if fp.suffix.lower() == ".json":
+                    data = load_bible_json(fp)
+                    if data:
+                        for b in data.get("books", []):
+                            if b["abbr"] == book_abbr:
+                                for ch in b.get("chapters", []):
+                                    if ch["n"] == chapter_num:
+                                        self._send_json({
+                                            "status": "ok",
+                                            "book": b["name"],
+                                            "abbr": b["abbr"],
+                                            "chapter": chapter_num,
+                                            "verses": [{"verse": v["n"], "text": v["t"]} for v in ch["v"]],
+                                            "total_chapters": len(b["chapters"]),
+                                        })
+                                        return
+                                self._send_json({"error": f"Chapter {chapter_num} not found"}, 404)
                                 return
-                        self._send_json({"error": f"Chapter {chapter_num} not found in {book_abbr}"}, 404)
+                        self._send_json({"error": f"Book {book_abbr} not found"}, 404)
                         return
-                self._send_json({"error": f"Book {book_abbr} not found"}, 404)
+
+                # Fallback: try .txt with same stem
+                txt_fp = fp.with_suffix(".txt")
+                if txt_fp.exists():
+                    from bible_parse import parse_bible_file
+                    data = parse_bible_file(str(txt_fp))
+                    if data:
+                        for b in data.get("books", []):
+                            if b["abbr"] == book_abbr:
+                                for ch in b.get("chapters", []):
+                                    if ch["n"] == chapter_num:
+                                        self._send_json({
+                                            "status": "ok",
+                                            "book": b["name"],
+                                            "abbr": b["abbr"],
+                                            "chapter": chapter_num,
+                                            "verses": [{"verse": v["n"], "text": v["t"]} for v in ch["v"]],
+                                            "total_chapters": len(b["chapters"]),
+                                        })
+                                        return
+
+                self._send_json({"error": "Could not load translation"}, 500)
             except Exception as e:
                 self._send_json({"error": str(e)}, 500)
             return
@@ -560,18 +372,48 @@ class ReaderHandler(http.server.BaseHTTPRequestHandler):
                 return
             try:
                 results = []
-                files_to_search = [BIBLE_DIR / file_name] if file_name else sorted(BIBLE_DIR.glob("*.txt"))
+                if file_name:
+                    files_to_search = [BIBLE_DIR / file_name]
+                else:
+                    # Prefer JSON files, fall back to txt
+                    files_to_search = sorted(BIBLE_DIR.glob("*.json")) or sorted(BIBLE_DIR.glob("*.txt"))
                 for fp in files_to_search:
                     if not fp.exists() or not fp.is_file():
                         continue
-                    with open(fp, "r", encoding="utf-8", errors="replace") as f:
-                        text = f.read()
+
                     matches = []
-                    for line in text.split("\n"):
-                        if q.lower() in line.lower():
-                            matches.append(line.strip()[:200])
-                            if len(matches) >= 10:
-                                break
+                    ql = q.lower()
+
+                    # Search JSON files
+                    if fp.suffix.lower() == ".json":
+                        try:
+                            data = json.loads(fp.read_text(encoding="utf-8"))
+                            for book in data.get("books", []):
+                                for ch in book.get("chapters", []):
+                                    for v in ch.get("v", []):
+                                        if ql in v.get("t", "").lower():
+                                            matches.append({
+                                                "ref": f"{book['abbr']} {ch['n']}:{v['n']}",
+                                                "text": v["t"][:200]
+                                            })
+                                            if len(matches) >= 20:
+                                                break
+                                    if len(matches) >= 20:
+                                        break
+                                if len(matches) >= 20:
+                                    break
+                        except Exception:
+                            pass
+
+                    # Search TXT files (grep)
+                    if not matches and fp.suffix.lower() == ".txt":
+                        with open(fp, "r", encoding="utf-8", errors="replace") as f:
+                            for line in f:
+                                if ql in line.lower():
+                                    matches.append(line.strip()[:200])
+                                    if len(matches) >= 10:
+                                        break
+
                     if matches:
                         results.append({"file": fp.name, "matches": matches})
                 self._send_json({"status": "ok", "query": q, "results": results})
