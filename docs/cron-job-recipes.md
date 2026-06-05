@@ -784,6 +784,44 @@ hermes cron create \
 
 ---
 
+## 🔄 Offline Content Auto-Update (no_agent)
+
+Check for updates to downloaded Bible, hymns, and reference content.
+Runs as a no_agent script job — zero token cost, only produces output
+when something actually changes.
+
+**Schedule:** Weekly on Sunday at 09:00
+
+**Script:** Save `hermes-cortex/offline/auto-update.sh` to `~/.hermes/scripts/auto-update.sh`
+
+**Setup:**
+
+```bash
+cp ~/hermes-cortex/offline/auto-update.sh ~/.hermes/scripts/auto-update.sh
+chmod +x ~/.hermes/scripts/auto-update.sh
+```
+
+**Cron creation:**
+
+```bash
+hermes cron create \
+  --name "offline-content-update" \
+  --schedule "0 9 * * 0" \
+  --script "auto-update.sh" \
+  --no-agent \
+  --deliver "origin"
+```
+
+**Behavior:**
+- Checks internet connectivity first — if offline, exits silently
+- **Bible:** Parses any `.txt` files that lack `.json` (completing partial downloads)
+- **Hymns:** Checks Open Hymnal Project PDF/ABC/XML for size changes via HEAD request — downloads only if different
+- **ZIM:** Lists current files (actual download skipped — multi-GB files are user-initiated)
+- Only produces output when something was actually updated
+- Logs changes to `~/offline/auto-update.log`
+
+---
+
 ## 📊 Layout at a Glance
 
 | Time (24h) | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
