@@ -14,7 +14,6 @@
 - **You want a personal AI agent** that runs on your own computer (no cloud dependency)
 - **You care about privacy** — everything stays on your machine
 - **You travel or have unreliable internet** — the offline stack works without connectivity
-- **You're not a developer** — the one-command installer handles everything
 - **You want observability** — see what your agent is doing with Langfuse tracing
 
 ### What you get
