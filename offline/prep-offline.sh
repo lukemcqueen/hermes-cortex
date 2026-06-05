@@ -10,7 +10,9 @@
 #    ./prep-offline.sh --mode=education   # Kid learning bundle
 #    ./prep-offline.sh --mode=all         # Everything
 #    ./prep-offline.sh --mode=travel --include-bible  # Add Bible translations
+#    ./prep-offline.sh --mode=travel --include-bible --include-hymns  # Add Bible + hymns
 #    ./prep-offline.sh --include-bible    # Interactive + Bible
+#    ./prep-offline.sh --include-hymns    # Interactive + hymns
 #
 #  Requirements: docker (for kiwix-serve), python3, curl
 # ─────────────────────────────────────────────────────────────
@@ -246,6 +248,10 @@ print_summary() {
         local bible_count=$(find "$HOME/offline/bible" -name "*.txt" 2>/dev/null | wc -l)
         printf "  📖  Bible texts:    %d translations in ~/offline/bible/\n" "$bible_count"
     fi
+    if [[ -d "$HOME/offline/hymns" ]] && [[ "$(ls -A "$HOME/offline/hymns" 2>/dev/null)" ]]; then
+        local hymn_count=$(find "$HOME/offline/hymns" -type f 2>/dev/null | wc -l)
+        printf "  🎵  Hymns:          %d files in ~/offline/hymns/\n" "$hymn_count"
+    fi
     printf "\n"
     printf "  Commands:\n"
     printf "    offline_knowledge stats                — system status\n"
@@ -273,11 +279,13 @@ main() {
 
     local mode="${1:-interactive}"
     local include_bible=0
+    local include_hymns=0
 
     # Parse flags before --mode=
     for arg in "$@"; do
         case "$arg" in
             --include-bible) include_bible=1 ;;
+            --include-hymns) include_hymns=1 ;;
         esac
     done
 
@@ -358,6 +366,18 @@ main() {
             bash "$bible_script" --langs=major 2>&1 || warn "Bible download had some failures"
         else
             warn "prep-bible.sh not found at $bible_script"
+        fi
+    fi
+
+    # Download hymn content (if requested)
+    if [[ $include_hymns -eq 1 ]]; then
+        header "DOWNLOADING HYMNS"
+        local hymn_script="$HOME/hermes-cortex/offline/prep-hymns.sh"
+        if [[ -f "$hymn_script" ]]; then
+            info "Downloading public domain hymns from Open Hymnal Project…"
+            bash "$hymn_script" 2>&1 || warn "Hymn download had some failures"
+        else
+            warn "prep-hymns.sh not found at $hymn_script"
         fi
     fi
 
