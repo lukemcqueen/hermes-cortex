@@ -16,6 +16,7 @@
 - **gbrain sync daemon** — Automatic 2-minute sync
 - **Hermes plugin** — `/brain` slash command
 - **8 shared skills** — Subagent orchestration, debugging, TDD, planning, memory architecture, code review, spikes
+- **Web Cache** — Local semantic cache for web search/extract results (sqlite-vec + Ollama embeddings). Reduces API costs, enables offline operation.
 - **Utility scripts** — Heartbeat watchdog, memory sync, system health
 
 ## 🚀 One-Command Install

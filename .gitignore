@@ -1,4 +1,6 @@
 .agentkore/
+.web-cache/
+*.cache.db
 
 # Secrets & credentials
 .env
