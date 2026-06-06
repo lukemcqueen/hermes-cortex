@@ -373,100 +373,67 @@ hermes cron run <id>  # Test a job immediately
 
 ### 21. Dashboard shows "Unexpected Error"
 
-**Symptom:** The Cortex Dashboard loads but shows "Unexpected Error" or "The string did not match the expected pattern" instead of traces or observations.
+**Prompt your agent:** "Fix the Langfuse fromTimestamp error in my dashboard"
 
-**Root cause:** Langfuse v3.178+ requires a `fromTimestamp` parameter on all API queries that return trace data. Without it, the API rejects the request with a pattern-match error.
+**Symptom:** Dashboard loads but shows "Unexpected Error" or "The string did not match the expected pattern" instead of traces.
 
-**Fix — update the dashboard's Langfuse client:**
-```python
-# In dashboard/server.py, update the _lf() function to auto-append fromTimestamp:
-def _lf(path, timeout=10):
-    if not LANGFUSE_AUTH:
-        return None
-    try:
-        sep = "&" if "?" in path else "?"
-        if "fromTimestamp" not in path:
-            from_ts = ((datetime.now(timezone.utc) - timedelta(days=7)).isoformat()[:19] + "Z")
-            path = f"{path}{sep}fromTimestamp={from_ts}"
-        req = Request(f"{LANGFUSE_HOST}/api/public{path}")
-        req.add_header("Authorization", f"Basic {LANGFUSE_AUTH}")
-        ...
-```
+**Root cause:** Langfuse v3.178+ requires a `fromTimestamp` parameter on trace API queries. If your dashboard's `_lf()` function doesn't send one, Langfuse rejects the request.
 
-**Quick fix — disable date range requirement:**
-```bash
-echo "LANGFUSE_API_TRACES_REJECT_NO_DATE_RANGE=false" >> ~/langfuse/.env
-docker compose -f ~/langfuse/docker-compose.yml down
-docker compose -f ~/langfuse/docker-compose.yml up -d
-```
+**What your agent should do:**
+1. Check if `~/.hermes/dashboard/server.py` has the `fromTimestamp` auto-append in its `_lf()` function (look for `"fromTimestamp" not in path`)
+2. If missing, add it: before building the request URL, append `?fromTimestamp={7_days_ago_ISO}` when `fromTimestamp` isn't already in the path
+3. Restart the dashboard: `launchctl kickstart gui/$(id -u)/com.hermes.cortex-dashboard`
 
-> **Note:** Disabling date range rejection is less secure (allows unbounded queries). The dashboard fix is preferred.
+**Alternative (if dashboard code change is too invasive):**
+Your agent can disable Langfuse's date range rejection by adding `LANGFUSE_API_TRACES_REJECT_NO_DATE_RANGE=false` to `~/langfuse/.env` and recreating the Docker containers. Note: this allows unbounded queries and is less secure than fixing the dashboard.
 
 ---
 
 ### 22. Dashboard shows no traces or wrong data
 
-**Symptom:** The Cortex Dashboard loads and shows connectivity, but Langfuse sections show "0 traces" or stale data.
+**Prompt your agent:** "Fix my dashboard — it shows zero traces"
 
-**Root cause — misconfigured `LANGFUSE_HOST`:** The dashboard reads `LANGFUSE_HOST` from its environment (defaults to `http://localhost:3000`). If Langfuse is on a different port or behind nginx, the dashboard can't reach it.
+**Symptom:** Dashboard loads but Langfuse sections show "0 traces" or stale data.
 
-**Fix:**
-```bash
-# 1. Find which port Langfuse is actually on
-docker ps --format '{{.Names}} {{.Ports}}' | grep langfuse-web
+**Root cause — your agent should check these in order:**
 
-# 2. Test direct connectivity
-curl -s http://localhost:3000/api/public/health
+1. **Wrong Langfuse port** — Dashboard defaults to `localhost:3000`. If Langfuse is on `3001` or behind nginx at `13002`, it can't connect.
+2. **Invalid API keys** — The dashboard reads `LANGFUSE_INIT_PROJECT_PUBLIC_KEY` and `LANGFUSE_INIT_PROJECT_SECRET_KEY` from `~/langfuse/.env`.
+3. **Cache stale** — Dashboard caches for 60 seconds.
 
-# 3. Set the correct host
-echo "LANGFUSE_HOST=http://localhost:3000" >> ~/.hermes/.env
-
-# 4. Restart dashboard
-launchctl kickstart gui/$(id -u)/com.hermes.cortex-dashboard
-```
-
-**Fix — check Langfuse auth keys:**
-```bash
-grep -E "LANGFUSE_INIT_PROJECT_(PUBLIC|SECRET)_KEY" ~/langfuse/.env
-source ~/langfuse/.env
-curl -u "${LANGFUSE_INIT_PROJECT_PUBLIC_KEY}:${LANGFUSE_INIT_PROJECT_SECRET_KEY}" \
-  http://localhost:3000/api/public/traces
-```
+**What your agent should do:**
+1. Run `docker ps --format '{{.Names}} {{.Ports}}' | grep langfuse-web` to find the actual port
+2. Test connectivity: `curl -s http://localhost:{PORT}/api/public/health`
+3. Verify auth: read `LANGFUSE_INIT_PROJECT_PUBLIC_KEY` and `LANGFUSE_INIT_PROJECT_SECRET_KEY` from `~/langfuse/.env`, test with `curl -u "key:secret" http://localhost:{PORT}/api/public/traces`
+4. Set `LANGFUSE_HOST=http://localhost:{PORT}` in `~/.hermes/.env`
+5. Restart dashboard: `launchctl kickstart gui/$(id -u)/com.hermes.cortex-dashboard`
 
 ---
 
 ### 23. Langfuse costs show $0.00
 
-**Symptom:** Traces and observations appear in Langfuse and the dashboard, but costs are always $0.00.
+**Prompt your agent:** "My Langfuse costs are all zero — fix the pricing"
 
-**Root cause — one of these:**
+**Symptom:** Traces and observations appear in Langfuse, but costs are always $0.00.
 
-**A) Missing model pricing in Langfuse (most common):**
-Langfuse only calculates costs for models it has pricing data for. If your model (e.g., `deepseek-v4-flash`) isn't in Langfuse's pricing table, costs stay $0.
+**Root cause — one of two things:**
 
-**Fix — add the model's pricing:**
-```bash
-# Run against the Langfuse Postgres container:
-docker exec -it langfuse-postgres-1 psql -U postgres -d postgres -c "
-INSERT INTO langfuse.\"models\" (id, model_name, match_pattern, input_price, output_price, total_price, unit, tokenizer_config, tokenizer_config_json)
-SELECT gen_random_uuid()::text, 'deepseek-v4-flash', 'deepseek-v4-flash', 0.00000014, 0.00000028, 0, 'TOKENS', '{\"tokensPerMessage\": 1, \"tokensPerName\": 1, \"tokenizer\": \"openai\"}', '{\"tokensPerMessage\": 1, \"tokensPerName\": 1, \"tokenizer\": \"openai\"}'
-WHERE NOT EXISTS (SELECT 1 FROM langfuse.\"models\" WHERE match_pattern = 'deepseek-v4-flash');
-"
-```
-Replace `deepseek-v4-flash` and prices (per-token, decimal) with your actual model. Prices are in USD per token (e.g., $0.14/M tokens = 0.00000014).
+**A) Missing model pricing (most common):**
+Langfuse only calculates costs for models it knows. Your agent should:
+1. Check what models are sending traces: query `GET /api/public/observations?limit=5` and look at `model` fields
+2. Check if those models exist in Langfuse's pricing table: `docker exec langfuse-postgres-1 psql -U postgres -d postgres -c "SELECT model_name, match_pattern, input_price, output_price FROM langfuse.models;"`
+3. For any missing model, insert its pricing:
+   ```sql
+   INSERT INTO langfuse."models" (id, model_name, match_pattern, input_price, output_price, total_price, unit, tokenizer_config, tokenizer_config_json)
+   VALUES (gen_random_uuid()::text, '{model_name}', '{model_name}', {input_price_per_token}, {output_price_per_token}, 0, 'TOKENS', '{"tokensPerMessage": 1, "tokensPerName": 1, "tokenizer": "openai"}', '{"tokensPerMessage": 1, "tokensPerName": 1, "tokenizer": "openai"}');
+   ```
+   Prices are in USD per token (e.g., $0.14/M tokens = 0.00000014).
 
-**B) Agent provider doesn't report token counts:**
-Some Hermes providers instrument Langfuse but don't populate `input`/`output` token fields. If observations show `input=None, output=None`, Langfuse can't calculate cost.
-
-**Check:**
-```bash
-curl -u "pk-...:sk-..." http://localhost:3000/api/public/observations?limit=3 | python3 -m json.tool
-# Look for "input" and "output" fields — if null or 0, tokens aren't being sent.
-```
-
-**Fix — provider-side:** This must be fixed in your Hermes agent's provider configuration. Ensure the provider populates `inputTokens` and `outputTokens` on generation observations.
-
-**C) Stale cache:** The dashboard caches for 60 seconds. Wait 1 minute or restart the dashboard (`launchctl kickstart gui/$(id -u)/com.hermes.cortex-dashboard`).
+**B) Provider doesn't report token counts:**
+If observations show `inputTokens: null` or `outputTokens: null`, the Hermes provider isn't populating them. Your agent should:
+1. Check: `GET /api/public/observations?limit=3` and inspect `inputTokens`, `outputTokens` fields
+2. If they're null/0, this needs fixing in your provider's Langfuse instrumentation — ensure `inputTokens` and `outputTokens` are set on generation observations
+3. This is provider-specific (e.g., opencode-go, anthropic, openai) and can't be fixed in Langfuse or the dashboard alone
 
 ---
 

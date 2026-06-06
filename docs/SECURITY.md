@@ -511,131 +511,70 @@ The installer preserves your existing passwords (doesn't overwrite `.env` files)
 
 ## 10. Post-Install Security Hardening
 
-The installer covers the basics. For a **production-ready security posture**, apply these additional hardening steps in order:
+The installer covers the basics. For a **production-ready security posture**, prompt your Hermes agent with any of these:
 
-### 10.1 Three-Tier Access Architecture
+### 10.1 Set up three-tier access
 
-If you're exposing services beyond your local network (e.g., via nginx), structure access in three tiers:
+**Prompt your agent:** "Set up three-tier access: SSH direct, SSH via nginx proxy, and web HTTPS"
 
-| Tier | Access method | Auth | Use case |
-|------|--------------|------|----------|
-| **1** | SSH direct via port forwarding | None (SSH key only) | **Primary daily driver** — most secure |
-| **2** | SSH tunnel → nginx proxy | Basic Auth | Backup when SSH forwarding breaks |
-| **3** | Web HTTPS (public internet) | TLS + Basic Auth | Tertiary emergency access |
+**What your agent should do:**
+Configure nginx to bind on two ports:
+- **127.0.0.1:13001-13002** — Local-only (HTTP + Basic Auth), reachable via SSH tunnel
+- ***:13001-13002** — HTTPS + Basic Auth (if you have a public domain), reachable from the web
 
-Commands:
-```bash
-# Tier 1 — SSH direct (localhost:8901 = dashboard, localhost:3000 = Langfuse)
-ssh -L 13001:localhost:8901 -L 13002:localhost:3000 user@your-server
+Configure TLS if using web access: generate a self-signed cert or use Let's Encrypt.
 
-# Tier 2 — SSH via nginx proxy
-ssh -L 13001:localhost:13001 -L 13002:localhost:13002 user@your-server
+### 10.2 Harden nginx
 
-# Tier 3 — Web HTTPS
-# https://your-domain:13001 (dashboard)  — self-signed cert warning expected
-# https://your-domain:13002 (Langfuse)
-```
+**Prompt your agent:** "Harden my nginx — rate limits, security headers, connection limits"
 
-### 10.2 nginx Hardening
+**What your agent should do:**
+- Add rate limit zones to the `http` block: 20 req/s general, 5 req/s auth, burst
+- Add connection limit zone: 10 connections per IP
+- Add security headers: X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Referrer-Policy
+- Hide nginx version (`server_tokens off`)
+- Harden buffers and timeouts
+- Test config with `nginx -t` and reload
 
-The installer configures basic nginx security. For additional hardening:
+### 10.3 Set up pf firewall
 
-**Rate limits (already configured by default):**
-```nginx
-# Limit request rate per IP
-limit_req_zone $binary_remote_addr zone=general:10m rate=20r/s;
-limit_req_zone $binary_remote_addr zone=auth:10m rate=5r/s;
+**Prompt your agent:** "Set up the pf firewall with default-deny rules"
 
-# Limit connections per IP
-limit_conn_zone $binary_remote_addr zone=conn:10m;
-```
+**What your agent should do:**
+1. Create `/etc/pf.anchors/hermes` with default-deny, allow only ports 22 (SSH, rate-limited), 990 (FTPS, optional), 13001-13099 (nginx proxies)
+2. Add SSH rate limiting: max 5 connections in 60 seconds per source
+3. Add fail2ban anchor: `anchor "f2b/*"`
+4. Append include lines to `/etc/pf.conf`
+5. Load with `sudo pfctl -f /etc/pf.conf && sudo pfctl -e`
+6. Verify with `sudo pfctl -s rules`
 
-**Security headers (already configured by default):**
-```nginx
-add_header X-Frame-Options "SAMEORIGIN" always;
-add_header X-Content-Type-Options "nosniff" always;
-add_header X-XSS-Protection "1; mode=block" always;
-add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-```
+### 10.4 Install fail2ban
 
-### 10.3 Hardened pf Firewall Rules
+**Prompt your agent:** "Install and configure fail2ban with 4 nginx jails"
 
-Create `/etc/pf.anchors/hermes` with these rules for a production server:
-```
-# ── Hermes Cortex pf rules ──────────────────────────────
-# Default: deny all incoming connections
-block in log all
+**What your agent should do:**
+1. Install fail2ban via Homebrew
+2. Create `/usr/local/etc/fail2ban/jail.local` with 4 jails:
+   - `nginx-http-auth` — Basic Auth brute force, escalates 1h→2h→4h→4wk
+   - `nginx-limit-req` — Rate limit violations
+   - `nginx-botsearch` — Admin/exploit URL probing
+   - `nginx-bad-request` — Malformed HTTP requests
+3. Use `pf` as the ban action (creates pf anchor)
+4. Create the run directory and start the service
+5. Verify all 4 jails are active
 
-# Allow established connections
-pass in proto tcp from any to any keep state
+### 10.5 Verify your security posture
 
-# Local loopback — unrestricted
-pass quick on lo0 all
+**Prompt your agent:** "Run a security posture check"
 
-# Allowed external services
-pass in proto tcp to any port 22           # SSH (rate-limited)
-pass in proto tcp to any port 990          # FTPS (if needed)
-
-# nginx proxy ports
-pass in proto tcp to any port 13001:13099
-
-# SSH rate limiting
-pass in proto tcp to any port 22 \
-    max-src-nodes 10 \
-    max-src-states 5 \
-    max-src-conn-rate 5/60 \
-    overload <bruteforce> flush global
-
-# fail2ban integration
-anchor "f2b/*"
-
-# Block overloaded IPs
-block drop log quick from <bruteforce> to any
-```
-
-Load:
-```bash
-echo 'anchor "hermes"' | sudo tee -a /etc/pf.conf
-echo 'load anchor "hermes" from "/etc/pf.anchors/hermes"' | sudo tee -a /etc/pf.conf
-sudo pfctl -f /etc/pf.conf
-sudo pfctl -e
-```
-
-### 10.4 fail2ban — 4 Jails
-
-fail2ban adds auto-ban on top of nginx rate limiting. Install and enable:
-```bash
-brew install fail2ban
-
-# Create /usr/local/etc/fail2ban/jail.local (see pf/fail2ban section above)
-sudo mkdir -p /usr/local/var/lib/fail2ban
-sudo launchctl load /usr/local/opt/fail2ban/homebrew.mxcl.fail2ban.plist
-```
-
-### 10.5 Verify Your Security Posture
-
-Run these checks after hardening:
-```bash
-# 1. Firewall is active
-sudo pfctl -s info | grep "Status"
-
-# 2. Only expected ports are open
-lsof -i -P | grep LISTEN
-
-# 3. Ollama is localhost-only
-lsof -iTCP:11434 -sTCP:LISTEN -P -n
-
-# 4. fail2ban jails are active
-sudo fail2ban-client status
-
-# 5. nginx config is valid
-nginx -t
-
-# 6. Secrets are locked down
-ls -la ~/langfuse/.env        # Should be -rw------- (600)
-ls -la ~/.hermes/.env         # Should be -rw------- (600)
-ls -la ~/.ssh/                # Should be drwx------ (700)
-```
+**What your agent should do:**
+Check each of these and report status:
+1. Firewall active: `sudo pfctl -s info | grep "Status"`
+2. Only expected ports open: `lsof -i -P | grep LISTEN` (should show 22, 990, 13001-13099, and localhost services)
+3. Ollama is localhost-only: `lsof -iTCP:11434 -sTCP:LISTEN -P -n` (should show `localhost`, not `*`)
+4. fail2ban jails active: `sudo fail2ban-client status` (should list 4 jails)
+5. nginx config valid: `nginx -t`
+6. Secrets locked down: check permissions on `~/langfuse/.env`, `~/.hermes/.env`, `~/.ssh/`
 
 ---
 
