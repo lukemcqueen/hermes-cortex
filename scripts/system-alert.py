@@ -15,23 +15,39 @@ details = []
 
 # ── Memory ──────────────────────────────────────────────────
 try:
-    r = subprocess.run(["top", "-l", "1", "-n", "0"], capture_output=True, text=True, timeout=10)
-    m = re.search(r'PhysMem:\s+([\d.]+)([KMG])\s+used\s+\((\d+)([KMG])\s+wired\),\s+([\d.]+)([KMG])\s+unused', r.stdout)
-    if m:
-        def to_mb(val, unit):
-            v = float(val)
-            if unit == 'K': return v / 1024
-            if unit == 'G': return v * 1024
-            return v
-        used_mb = round(to_mb(m.group(1), m.group(2)), 1)
-        tr = subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True, timeout=5)
-        total_mb = round(int(tr.stdout.strip()) / 1048576, 1)
-        pct = round(used_mb / total_mb * 100, 1)
-        details.append(f"Memory: {pct}% ({used_mb}MB / {total_mb}MB)")
-        if pct > MEM_PCT_WARN:
-            alerts.append(f"⚠️ Memory at {pct}% — exceeds {MEM_PCT_WARN}% threshold")
-except Exception:
-    details.append("Memory: error reading")
+    # Use vm_stat for accurate breakdown (top inflates by counting compressed as used)
+    page_size = 4096
+    tr = subprocess.run(["vm_stat"], capture_output=True, text=True, timeout=5)
+
+    def _vm_val(key, text):
+        m = re.search(rf'^{key}:\s+([\d.]+)\.', text, re.MULTILINE)
+        return int(m.group(1)) if m else 0
+
+    free_pg = _vm_val("Pages free", tr.stdout)
+    active_pg = _vm_val("Pages active", tr.stdout)
+    inactive_pg = _vm_val("Pages inactive", tr.stdout)
+    wired_pg = _vm_val("Pages wired down", tr.stdout)
+    compressed = _vm_val("Pages occupied by compressor", tr.stdout) or 0
+
+    total_pg = _vm_val("Pages", tr.stdout)  # fallback
+    if not total_pg:
+        tr2 = subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True, timeout=5)
+        total_bytes = int(tr2.stdout.strip())
+        total_mb = round(total_bytes / 1048576, 1)
+    else:
+        total_mb = round(total_pg * page_size / 1048576, 1)
+
+    # Truly in-use: active + wired pages
+    used_mb = round((active_pg + wired_pg) * page_size / 1048576, 1)
+    # Available for reclaim: free + inactive
+    avail_mb = round((free_pg + inactive_pg) * page_size / 1048576, 1)
+
+    pct = round(used_mb / total_mb * 100, 1) if total_mb else 0
+    details.append(f"Memory: {pct}% ({used_mb}MB used + {avail_mb}MB available / {total_mb}MB total)")
+    if pct > MEM_PCT_WARN:
+        alerts.append(f"⚠️ Memory at {pct}% — exceeds {MEM_PCT_WARN}% threshold")
+except Exception as e:
+    details.append(f"Memory: error ({e})")
 
 # ── Swap ─────────────────────────────────────────────────────
 try:

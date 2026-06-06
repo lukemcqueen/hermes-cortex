@@ -482,26 +482,33 @@ def _get_detailed_memory() -> dict:
             free_mb = parse_val(m.group(5), m.group(6))
     except Exception:
         pass
-    # Fallback: vm_stat for breakdown
+    # vm_stat for accurate breakdown (handles multi-word keys)
     compressed_mb = 0
     active_mb = 0
+    inactive_mb = 0
     try:
         r2 = subprocess.run(["vm_stat"], capture_output=True, text=True, timeout=5)
         pages = {}
         for line in r2.stdout.strip().split("\n"):
-            mm = re.match(r'^(\w+(?:\s+\w+)?):\s+(\d+)', line)
+            # Capture full key before colon (may have multiple words/special chars)
+            mm = re.match(r'^(.+?):\s+(\d+)', line)
             if mm:
-                pages[mm.group(1).lower()] = int(mm.group(2))
+                key = mm.group(1).strip().lower()
+                pages[key] = int(mm.group(2))
         page_size = _get_page_size()
         def mb(val):
             return round(val * page_size / 1048576, 1)
-        active_mb = mb(pages.get("pages active", 0))
+
+        # Read raw counters
+        active_mb     = mb(pages.get("pages active", 0))
         compressed_mb = mb(pages.get("pages stored in compressor", 0))
-        if not used_mb:
-            free_v = pages.get("pages free", 0)
-            speculative = pages.get("pages speculative", 0)
-            free_mb = mb(free_v + speculative)
-            used_mb = round(total_mb - free_mb, 1) if total_mb else 0
+        inactive_mb   = mb(pages.get("pages inactive", 0))
+        free_v        = pages.get("pages free", 0)
+        speculative   = pages.get("pages speculative", 0)
+        free_mb       = mb(free_v + speculative)
+
+        # True used = wired + active + compressed (excludes inactive which is available)
+        used_mb = wired_mb + active_mb + compressed_mb
     except Exception:
         pass
     return {
@@ -511,6 +518,7 @@ def _get_detailed_memory() -> dict:
         "wired_mb": round(wired_mb, 1),
         "active_mb": round(active_mb, 1),
         "compressed_mb": round(compressed_mb, 1),
+        "inactive_mb": round(inactive_mb, 1),
         "pct": round(used_mb / total_mb * 100, 1) if total_mb else 0,
     }
 
