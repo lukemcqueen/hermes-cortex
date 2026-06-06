@@ -2,7 +2,7 @@
 """Cortex Dashboard v2 — Enriched companion dashboard for Langfuse + Hermes."""
 import base64, json, os, re, sqlite3, subprocess, sys, time
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Lock
 from urllib.error import URLError
@@ -30,7 +30,7 @@ if lf_path.exists():
             elif line.startswith("LANGFUSE_INIT_PROJECT_SECRET_KEY="):
                 sk = line.split("=", 1)[1].strip()
 
-LANGFUSE_HOST = os.environ.get("LANGFUSE_HOST", "http://localhost:3001")
+LANGFUSE_HOST = os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
 LANGFUSE_AUTH = None
 if pk and sk:
     LANGFUSE_AUTH = base64.b64encode(f"{pk}:{sk}".encode()).decode()
@@ -75,6 +75,11 @@ def _lf(path, timeout=10):
     if not LANGFUSE_AUTH:
         return None
     try:
+        # v3 API requires fromTimestamp - default to 7 days ago
+        sep = "&" if "?" in path else "?"
+        if "fromTimestamp" not in path:
+            from_ts = ((datetime.now(timezone.utc) - timedelta(days=7)).isoformat()[:19] + "Z")
+            path = f"{path}{sep}fromTimestamp={from_ts}"
         req = Request(f"{LANGFUSE_HOST}/api/public{path}")
         req.add_header("Authorization", f"Basic {LANGFUSE_AUTH}")
         req.add_header("User-Agent", "Hermes-Cortex-Dashboard/2.0")
