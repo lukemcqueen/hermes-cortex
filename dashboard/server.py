@@ -16,7 +16,7 @@ LANGFUSE_ENV = Path.home() / "langfuse" / ".env"
 SCRIPTS_DIR = HERMES_HOME / "scripts"
 LOGS_DIR = HERMES_HOME / "logs"
 DASHBOARD_DIR = Path(__file__).parent / "static"
-PORT = int(os.environ.get("CORTEX_DASHBOARD_PORT", "8901"))
+PORT = int(os.environ.get("CORTEX_DASHBOARD_PORT", "13703"))
 
 # ── Langfuse credentials ──────────────────────────────────────────────
 pk = sk = None

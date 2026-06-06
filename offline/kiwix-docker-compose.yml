@@ -23,9 +23,11 @@ services:
       - "${HOME}/offline/zim:/zim:ro"
       # Library XML for multi-ZIM serving
       - "${HOME}/offline/kiwix-library.xml:/library.xml:ro"
+    environment:
+      PORT: "8080"
     command:
-      - "--port=8080"
-      - "--library=/library.xml"
+      - "--library"
+      - "/library.xml"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
       interval: 30s
