@@ -241,7 +241,7 @@ The installer is optimized for macOS. Linux users can run individual steps manua
 |----------|---------------|
 | [Security Guide](docs/SECURITY.md) | 🔒 Port risks, file permissions, firewall setup, recovery — essential reading |
 | [Architecture](docs/architecture.md) | System diagram, services, port map, design principles |
-| [Troubleshooting](docs/troubleshooting.md) | 20+ common issues and fixes |
+| [Troubleshooting](docs/troubleshooting.md) | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse data, memory, Linux |
 | [Computer Specs](docs/computer-specs.md) | Hardware recommendations by RAM tier |
 | [Offline Scenarios](docs/offline-travel-stack.md) | Using Hermes without internet (travel, dev, education) |
 | [Third-Party Licenses](docs/THIRD_PARTY_LICENSES.md) | Attribution for all open-source components used |

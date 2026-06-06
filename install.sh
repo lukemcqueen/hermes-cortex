@@ -1286,7 +1286,7 @@ printf "  ${GREEN}•${RESET} gbrain           — Knowledge brain (PGLite)\n"
 if [[ "$CORTEX_PROFILE" == "server" ]]; then
 printf "  ${GREEN}•${RESET} Langfuse         — LLM observability (Docker, port 3000)\n"
 printf "  ${GREEN}•${RESET} Cortex Dashboard — Flask companion app (port 8901)\n"
-printf "  ${GREEN}•${RESET} nginx            — Reverse proxy (ports 11002, 11003)\n"
+printf "  ${GREEN}•${RESET} nginx            — Reverse proxy (ports 13001-13002)\\n"
 fi
 printf "  ${GREEN}•${RESET} Brain sources    → ${BRAIN_DIR}/{%s}\n" "$(echo "${SOURCES[*]}" | tr ' ' ',')"
 printf "  ${GREEN}•${RESET} gbrain plugin    → /brain slash command\n"
@@ -1344,8 +1344,9 @@ printf "${RESET}${BOLD}${CYAN}────────────────�
 
 printf "\n${BOLD}📚 Quick Reference${RESET}\n"
 if [[ "$CORTEX_PROFILE" == "server" ]]; then
-printf "  ${GREEN}•${RESET} Langfuse:        http://localhost:3000 (nginx: :11002)\n"
-printf "  ${GREEN}•${RESET} Cortex Dashboard: http://localhost:8901 (nginx: :11003)\n"
+printf "  ${GREEN}•${RESET} Langfuse:        http://localhost:3000 (nginx: :13002)\\n"
+printf "  ${GREEN}•${RESET} Cortex Dashboard: http://localhost:8901 (nginx: :13001)\\n"
+printf "  ${GREEN}•${RESET} 🔒 Security:      Read docs/SECURITY.md for firewall + hardening\\n"
 fi
 printf "  ${GREEN}•${RESET} /brain query     — search your knowledge brain\n"
 printf "  ${GREEN}•${RESET} Offline query:   offline_knowledge query \"question\"\n"

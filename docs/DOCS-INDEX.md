@@ -30,7 +30,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
-| `docs/troubleshooting.md` | 17 common issues and fixes for Docker, Dashboard, install, nginx, memory, and Linux |
+| `docs/troubleshooting.md` | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse data, memory, Linux, pf firewall, fail2ban |
 | `docs/cron-job-recipes.md` | 10 reusable cron recipes — Bible reading, system alerts, memory pruning, morning briefing, and more |
 | `docs/computer-specs.md` | Hardware specs guide — RAM tiers, recommended models, ZIM content bundles |
 | `docker-compose.langfuse.yml` | Langfuse v3 Docker stack — ClickHouse, MinIO, Redis, Postgres |
