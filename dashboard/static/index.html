@@ -528,7 +528,7 @@ const LANGFUSE_EXTERNAL = 'http://localhost:13002'; // External Langfuse URL (fo
       <div class="gauge-wrap">
         <div class="lbl">🧠 Memory — ${m.used_mb}/${m.total_mb} MB (${memPct}%)</div>
         <div class="gauge-bar"><div class="gauge-fill ${memColor}" style="width:${Math.min(memPct,100)}%"></div></div>
-        <div class="gauge-stats"><span>wired ${m.wired_mb}M</span><span class="${memPct>90?'crit':'warn'}">active ${m.active_mb}M</span><span>comp ${m.compressed_mb}M</span><span>free ${m.free_mb}M</span></div>
+        <div class="gauge-stats"><span>wired ${m.wired_mb}M</span><span class="${memPct>90?'crit':'warn'}">active ${m.active_mb}M</span><span>comp ${m.compressed_mb}M</span><span>inactive ${m.inactive_mb||0}M</span><span>free ${m.free_mb}M</span></div>
       </div>
       <div class="gauge-wrap">
         <div class="lbl">💾 Swap — ${sw.used_mb||0}/${sw.total_mb||0} MB (${swPct}%)</div>
