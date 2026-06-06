@@ -3,9 +3,9 @@
 #
 # Langfuse v3+ configuration.
 #
-# Run with: docker compose -f docker-compose.langfuse.yml up -d
+# Primary location: ~/langfuse/docker-compose.yml
+# Run with: docker compose up -d
 # Access at: http://localhost:3000
-# External via nginx: https://example.com:11002
 #
 # NOTE: Replace example.com with your own domain, or use localhost for local-only.
 #
@@ -27,7 +27,7 @@ services:
         condition: service_healthy
     environment: &langfuse-env-base
       # ── Database ──
-      DATABASE_URL: postgresql://postgres:${LANGFUSE_POSTGRES_PASSWORD:?Missing LANGFUSE_POSTGRES_PASSWORD in .env}@postgres:5432/postgres
+      DATABASE_URL: postgresql://postgres:***@postgres:5432/postgres
 
       # ── ClickHouse (required by v3) ──
       CLICKHOUSE_URL: http://default:${LANGFUSE_CLICKHOUSE_PASSWORD:?}@clickhouse:8123
@@ -57,6 +57,21 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       LANGFUSE_TELEMETRY_ENABLED: "false"
 
+      # ── Access Control ──
+      AUTH_DISABLE_SIGNUP: "true"
+
+      # ── Logging ──
+      LANGFUSE_LOG_LEVEL: ${LANGFUSE_LOG_LEVEL:-info}
+
+      # ── API defaults ──
+      LANGFUSE_API_TRACES_REJECT_NO_DATE_RANGE: ${LANGFUSE_API_TRACES_REJECT_NO_DATE_RANGE:-true}
+      LANGFUSE_API_TRACES_DEFAULT_DATE_RANGE_DAYS: ${LANGFUSE_API_TRACES_DEFAULT_DATE_RANGE_DAYS:-7}
+
+      # ── S3 Event Log / OpenTelemetry ──
+      LANGFUSE_ENABLE_BLOB_STORAGE_FILE_LOG: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-langfuse}
+
       # ── S3 Event Upload (required by v3 — uses local MinIO) ──
       LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
       LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_SECRET_KEY:-random-minio-secret}
@@ -64,6 +79,8 @@ services:
       LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
       LANGFUSE_S3_EVENT_UPLOAD_REGION: us-east-1
       LANGFUSE_S3_EVENT_UPLOAD_USE_SSL: "false"
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
 
       # ── S3 Media Upload (required by v3 — uses local MinIO) ──
       LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
@@ -72,6 +89,7 @@ services:
       LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://minio:9000
       LANGFUSE_S3_MEDIA_UPLOAD_REGION: us-east-1
       LANGFUSE_S3_MEDIA_UPLOAD_USE_SSL: "false"
+      LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
 
       # ── S3 Batch Export (required by v3 — uses local MinIO) ──
       LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
@@ -80,6 +98,7 @@ services:
       LANGFUSE_S3_BATCH_EXPORT_ENDPOINT: http://minio:9000
       LANGFUSE_S3_BATCH_EXPORT_REGION: us-east-1
       LANGFUSE_S3_BATCH_EXPORT_USE_SSL: "false"
+      LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE: "true"
 
   langfuse-web:
     image: langfuse/langfuse:latest
@@ -90,9 +109,14 @@ services:
     environment:
       <<: *langfuse-env-base
       NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3000}
+      LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-hermes-cortex}
+      LANGFUSE_INIT_PROJECT_ID: ${LANGFUSE_INIT_PROJECT_ID:-default-project}
       LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:-}
       LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_PROJECT_SECRET_KEY:-}
       LANGFUSE_INIT_PROJECT_NAME: ${LANGFUSE_INIT_PROJECT_NAME:-Hermes Agent}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:-}
+      LANGFUSE_INIT_USER_NAME: ${LANGFUSE_INIT_USER_NAME:-admin}
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-}
 
   clickhouse:
     image: clickhouse/clickhouse-server:25.5-alpine
@@ -142,7 +166,7 @@ services:
 
   minio:
     # ⚠️ PIN RECOMMENDED: Check https://hub.docker.com/r/minio/minio/tags
-    #    for a stable release (e.g. minio/minio:RELEASE.2026-04-08T15-22-15Z).
+    #    for a stable release (e.g. minio/minio:RELEASE.2025-04-08T15-22-15Z).
     #    Pinning avoids unexpected breaking changes on `docker compose pull`.
     image: minio/minio:latest
     restart: always

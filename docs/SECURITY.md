@@ -18,8 +18,11 @@
 5. [Secrets & Passwords — Where They Live](#5-secrets--passwords--where-they-live)
 6. [Docker Security](#6-docker-security)
 7. [Network & Firewall](#7-network--firewall)
+   - [pf Firewall (packet filter)](#-advanced-pf-firewall-packet-filter)
+   - [fail2ban — Auto-ban Attacks](#-fail2ban--auto-ban-brute-force-attacks)
 8. [Recovery — What To Do If Something Goes Wrong](#8-recovery--what-to-do-if-something-goes-wrong)
 9. [Security FAQ](#9-security-faq)
+10. [Post-Install Security Hardening](#10-post-install-security-hardening)
 
 ---
 
@@ -115,8 +118,8 @@ These services are accessible from other computers on your network:
 |------|---------|------|------------|
 | **11434** | Ollama API | 🔴 **HIGH** — Anyone can run AI models | ✅ **Automatically secured by the installer** — bound to localhost |
 | **8080** | nginx default | 🟡 MEDIUM — Shows server info | ✅ **Automatically secured by the installer** — tokens hidden |
-| **11002** | Langfuse (via nginx) | 🟡 MEDIUM — Requires password | Uses Basic Auth (username/password) |
-| **11003** | Dashboard (via nginx) | 🟡 MEDIUM — Requires password | Uses Basic Auth (username/password) |
+| **13001** | Dashboard (via nginx) | 🟡 MEDIUM — Requires Basic Auth | Uses username/password |
+| **13002** | Langfuse (via nginx) | 🟡 MEDIUM — Requires Basic Auth | Uses username/password |
 | **9090** | MinIO S3 storage | 🟡 MEDIUM — Requires password | ✅ **Automatically secured by the installer** — strong password generated |
 
 ### 📋 Quick port check
@@ -270,6 +273,137 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
 sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on
 ```
 
+### 🛡️ Advanced: pf Firewall (packet filter)
+
+The built-in macOS firewall only controls **application-level** access. For defense-in-depth, use **pf (packet filter)** — the kernel-level firewall that macOS uses internally. This is **not** installed by default but recommended for server deployments.
+
+**What pf adds over the app firewall:**
+- Default-deny rules — block everything except explicitly allowed ports
+- Port ranges — open only the ports you need (e.g., `13001-13099`)
+- Rate limiting — prevent brute-force attacks on SSH or web auth
+- fail2ban integration — auto-block IPs that trigger too many auth failures
+
+**Basic pf setup:**
+
+Create `/etc/pf.anchors/hermes`:
+```conf
+# ── Hermes Cortex pf rules ──────────────────────────────
+# Default: deny all incoming connections
+block in log all
+
+# ── Allow established connections ──
+pass in proto tcp from any to any keep state
+
+# ── Local loopback — unrestricted ──
+pass quick on lo0 all
+
+# ── Allowed external services ──
+pass in proto tcp to any port 22           # SSH (rate-limited below)
+pass in proto tcp to any port 990          # FTPS (if needed)
+
+# ── nginx proxy ports (web access via HTTPS) ──
+pass in proto tcp to any port 13001:13099
+
+# ── SSH rate limiting (max 10 conn, max 5 in 60s) ──
+pass in proto tcp to any port 22 \
+    max-src-nodes 10 \
+    max-src-states 5 \
+    max-src-conn-rate 5/60 \
+    overload <bruteforce> flush global
+
+# ── fail2ban integration ──
+anchor "f2b/*"
+
+# ── Block overloaded IPs ──
+block drop log quick from <bruteforce> to any
+```
+
+Load it:
+```bash
+# Include in pf.conf:
+echo 'anchor "hermes"' | sudo tee -a /etc/pf.conf
+echo 'load anchor "hermes" from "/etc/pf.anchors/hermes"' | sudo tee -a /etc/pf.conf
+
+# Apply:
+sudo pfctl -f /etc/pf.conf
+
+# Enable pf (starts at boot on macOS):
+sudo pfctl -e
+```
+
+**Verify pf is loaded:**
+```bash
+sudo pfctl -s rules
+sudo pfctl -s info
+```
+
+> ⚠️ **Warning:** pf rules apply immediately. Always test via a second SSH session before closing your current one, or you could lock yourself out.
+
+### 🤖 fail2ban — Auto-ban Brute-Force Attacks
+
+fail2ban monitors log files for repeated auth failures and temporarily bans offending IPs using pf anchors. It provides an extra layer of defense beyond nginx's built-in rate limiting.
+
+**What it protects:**
+
+| Jail | Trigger | Ban escalation |
+|------|---------|---------------|
+| `nginx-http-auth` | Multiple Basic Auth failures | 1h → 2h → 4h → 4wk |
+| `nginx-limit-req` | Exceeding nginx rate limits | 1h → 2h → 4h → 4wk |
+| `nginx-botsearch` | Probing admin/exploit URLs | 1h → 2h → 4h → 4wk |
+| `nginx-bad-request` | Malformed HTTP requests | 1h → 2h → 4h → 4wk |
+
+**Installation:**
+```bash
+# Install fail2ban
+brew install fail2ban
+
+# Create jail.local with macOS paths
+cat > /usr/local/etc/fail2ban/jail.local << 'F2B'
+[DEFAULT]
+ignoreip = 127.0.0.1/8 ::1
+bantime = 1h
+findtime = 10m
+maxretry = 5
+banaction = pf
+banaction_allports = pf
+action = %(action_)s
+
+[nginx-http-auth]
+enabled = true
+logpath = /usr/local/var/log/nginx/error.log
+
+[nginx-limit-req]
+enabled = true
+logpath = /usr/local/var/log/nginx/error.log
+
+[nginx-botsearch]
+enabled = true
+logpath = /usr/local/var/log/nginx/access.log
+
+[nginx-bad-request]
+enabled = true
+logpath = /usr/local/var/log/nginx/error.log
+F2B
+
+# Ensure pf anchor includes fail2ban
+echo 'anchor "f2b/*"' | sudo tee -a /etc/pf.anchors/hermes
+
+# Create fail2ban run directory
+sudo mkdir -p /usr/local/var/lib/fail2ban
+
+# Start fail2ban
+sudo launchctl load /usr/local/opt/fail2ban/homebrew.mxcl.fail2ban.plist
+
+# Verify
+sudo fail2ban-client status
+```
+
+**Check banned IPs:**
+```bash
+sudo fail2ban-client status nginx-http-auth
+sudo pfctl -a "f2b/nginx-http-auth" -s table
+```
+
 ### 🛡️ On public WiFi (coffee shop, airport, hotel)
 
 Your machine is more exposed on public networks. Take extra precautions:
@@ -284,7 +418,7 @@ Your machine is more exposed on public networks. Take extra precautions:
 
 ## 8. Recovery — What To Do If Something Goes Wrong
 
-> **📖 Also see [`docs/troubleshooting.md`](./troubleshooting.md)** for 17 common issues and step-by-step fixes covering Docker, Dashboard, install, nginx, memory, and Linux.
+> **📖 Also see [`docs/troubleshooting.md`](./troubleshooting.md)** for many common issues and step-by-step fixes covering Docker, Dashboard, install, nginx, memory, Langfuse data, and Linux.
 
 ### 🚨 I think someone accessed my Hermes
 
@@ -372,6 +506,136 @@ bash install.sh  # Safe to re-run — it's idempotent
 ```
 
 The installer preserves your existing passwords (doesn't overwrite `.env` files).
+
+---
+
+## 10. Post-Install Security Hardening
+
+The installer covers the basics. For a **production-ready security posture**, apply these additional hardening steps in order:
+
+### 10.1 Three-Tier Access Architecture
+
+If you're exposing services beyond your local network (e.g., via nginx), structure access in three tiers:
+
+| Tier | Access method | Auth | Use case |
+|------|--------------|------|----------|
+| **1** | SSH direct via port forwarding | None (SSH key only) | **Primary daily driver** — most secure |
+| **2** | SSH tunnel → nginx proxy | Basic Auth | Backup when SSH forwarding breaks |
+| **3** | Web HTTPS (public internet) | TLS + Basic Auth | Tertiary emergency access |
+
+Commands:
+```bash
+# Tier 1 — SSH direct (localhost:8901 = dashboard, localhost:3000 = Langfuse)
+ssh -L 13001:localhost:8901 -L 13002:localhost:3000 user@your-server
+
+# Tier 2 — SSH via nginx proxy
+ssh -L 13001:localhost:13001 -L 13002:localhost:13002 user@your-server
+
+# Tier 3 — Web HTTPS
+# https://your-domain:13001 (dashboard)  — self-signed cert warning expected
+# https://your-domain:13002 (Langfuse)
+```
+
+### 10.2 nginx Hardening
+
+The installer configures basic nginx security. For additional hardening:
+
+**Rate limits (already configured by default):**
+```nginx
+# Limit request rate per IP
+limit_req_zone $binary_remote_addr zone=general:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=auth:10m rate=5r/s;
+
+# Limit connections per IP
+limit_conn_zone $binary_remote_addr zone=conn:10m;
+```
+
+**Security headers (already configured by default):**
+```nginx
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-XSS-Protection "1; mode=block" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+```
+
+### 10.3 Hardened pf Firewall Rules
+
+Create `/etc/pf.anchors/hermes` with these rules for a production server:
+```
+# ── Hermes Cortex pf rules ──────────────────────────────
+# Default: deny all incoming connections
+block in log all
+
+# Allow established connections
+pass in proto tcp from any to any keep state
+
+# Local loopback — unrestricted
+pass quick on lo0 all
+
+# Allowed external services
+pass in proto tcp to any port 22           # SSH (rate-limited)
+pass in proto tcp to any port 990          # FTPS (if needed)
+
+# nginx proxy ports
+pass in proto tcp to any port 13001:13099
+
+# SSH rate limiting
+pass in proto tcp to any port 22 \
+    max-src-nodes 10 \
+    max-src-states 5 \
+    max-src-conn-rate 5/60 \
+    overload <bruteforce> flush global
+
+# fail2ban integration
+anchor "f2b/*"
+
+# Block overloaded IPs
+block drop log quick from <bruteforce> to any
+```
+
+Load:
+```bash
+echo 'anchor "hermes"' | sudo tee -a /etc/pf.conf
+echo 'load anchor "hermes" from "/etc/pf.anchors/hermes"' | sudo tee -a /etc/pf.conf
+sudo pfctl -f /etc/pf.conf
+sudo pfctl -e
+```
+
+### 10.4 fail2ban — 4 Jails
+
+fail2ban adds auto-ban on top of nginx rate limiting. Install and enable:
+```bash
+brew install fail2ban
+
+# Create /usr/local/etc/fail2ban/jail.local (see pf/fail2ban section above)
+sudo mkdir -p /usr/local/var/lib/fail2ban
+sudo launchctl load /usr/local/opt/fail2ban/homebrew.mxcl.fail2ban.plist
+```
+
+### 10.5 Verify Your Security Posture
+
+Run these checks after hardening:
+```bash
+# 1. Firewall is active
+sudo pfctl -s info | grep "Status"
+
+# 2. Only expected ports are open
+lsof -i -P | grep LISTEN
+
+# 3. Ollama is localhost-only
+lsof -iTCP:11434 -sTCP:LISTEN -P -n
+
+# 4. fail2ban jails are active
+sudo fail2ban-client status
+
+# 5. nginx config is valid
+nginx -t
+
+# 6. Secrets are locked down
+ls -la ~/langfuse/.env        # Should be -rw------- (600)
+ls -la ~/.hermes/.env         # Should be -rw------- (600)
+ls -la ~/.ssh/                # Should be drwx------ (700)
+```
 
 ---
 

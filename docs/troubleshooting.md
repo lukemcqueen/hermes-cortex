@@ -369,9 +369,111 @@ hermes cron run <id>  # Test a job immediately
 
 ---
 
+## 📊 Langfuse Data Issues
+
+### 21. Dashboard shows "Unexpected Error"
+
+**Symptom:** The Cortex Dashboard loads but shows "Unexpected Error" or "The string did not match the expected pattern" instead of traces or observations.
+
+**Root cause:** Langfuse v3.178+ requires a `fromTimestamp` parameter on all API queries that return trace data. Without it, the API rejects the request with a pattern-match error.
+
+**Fix — update the dashboard's Langfuse client:**
+```python
+# In dashboard/server.py, update the _lf() function to auto-append fromTimestamp:
+def _lf(path, timeout=10):
+    if not LANGFUSE_AUTH:
+        return None
+    try:
+        sep = "&" if "?" in path else "?"
+        if "fromTimestamp" not in path:
+            from_ts = ((datetime.now(timezone.utc) - timedelta(days=7)).isoformat()[:19] + "Z")
+            path = f"{path}{sep}fromTimestamp={from_ts}"
+        req = Request(f"{LANGFUSE_HOST}/api/public{path}")
+        req.add_header("Authorization", f"Basic {LANGFUSE_AUTH}")
+        ...
+```
+
+**Quick fix — disable date range requirement:**
+```bash
+echo "LANGFUSE_API_TRACES_REJECT_NO_DATE_RANGE=false" >> ~/langfuse/.env
+docker compose -f ~/langfuse/docker-compose.yml down
+docker compose -f ~/langfuse/docker-compose.yml up -d
+```
+
+> **Note:** Disabling date range rejection is less secure (allows unbounded queries). The dashboard fix is preferred.
+
+---
+
+### 22. Dashboard shows no traces or wrong data
+
+**Symptom:** The Cortex Dashboard loads and shows connectivity, but Langfuse sections show "0 traces" or stale data.
+
+**Root cause — misconfigured `LANGFUSE_HOST`:** The dashboard reads `LANGFUSE_HOST` from its environment (defaults to `http://localhost:3000`). If Langfuse is on a different port or behind nginx, the dashboard can't reach it.
+
+**Fix:**
+```bash
+# 1. Find which port Langfuse is actually on
+docker ps --format '{{.Names}} {{.Ports}}' | grep langfuse-web
+
+# 2. Test direct connectivity
+curl -s http://localhost:3000/api/public/health
+
+# 3. Set the correct host
+echo "LANGFUSE_HOST=http://localhost:3000" >> ~/.hermes/.env
+
+# 4. Restart dashboard
+launchctl kickstart gui/$(id -u)/com.hermes.cortex-dashboard
+```
+
+**Fix — check Langfuse auth keys:**
+```bash
+grep -E "LANGFUSE_INIT_PROJECT_(PUBLIC|SECRET)_KEY" ~/langfuse/.env
+source ~/langfuse/.env
+curl -u "${LANGFUSE_INIT_PROJECT_PUBLIC_KEY}:${LANGFUSE_INIT_PROJECT_SECRET_KEY}" \
+  http://localhost:3000/api/public/traces
+```
+
+---
+
+### 23. Langfuse costs show $0.00
+
+**Symptom:** Traces and observations appear in Langfuse and the dashboard, but costs are always $0.00.
+
+**Root cause — one of these:**
+
+**A) Missing model pricing in Langfuse (most common):**
+Langfuse only calculates costs for models it has pricing data for. If your model (e.g., `deepseek-v4-flash`) isn't in Langfuse's pricing table, costs stay $0.
+
+**Fix — add the model's pricing:**
+```bash
+# Run against the Langfuse Postgres container:
+docker exec -it langfuse-postgres-1 psql -U postgres -d postgres -c "
+INSERT INTO langfuse.\"models\" (id, model_name, match_pattern, input_price, output_price, total_price, unit, tokenizer_config, tokenizer_config_json)
+SELECT gen_random_uuid()::text, 'deepseek-v4-flash', 'deepseek-v4-flash', 0.00000014, 0.00000028, 0, 'TOKENS', '{\"tokensPerMessage\": 1, \"tokensPerName\": 1, \"tokenizer\": \"openai\"}', '{\"tokensPerMessage\": 1, \"tokensPerName\": 1, \"tokenizer\": \"openai\"}'
+WHERE NOT EXISTS (SELECT 1 FROM langfuse.\"models\" WHERE match_pattern = 'deepseek-v4-flash');
+"
+```
+Replace `deepseek-v4-flash` and prices (per-token, decimal) with your actual model. Prices are in USD per token (e.g., $0.14/M tokens = 0.00000014).
+
+**B) Agent provider doesn't report token counts:**
+Some Hermes providers instrument Langfuse but don't populate `input`/`output` token fields. If observations show `input=None, output=None`, Langfuse can't calculate cost.
+
+**Check:**
+```bash
+curl -u "pk-...:sk-..." http://localhost:3000/api/public/observations?limit=3 | python3 -m json.tool
+# Look for "input" and "output" fields — if null or 0, tokens aren't being sent.
+```
+
+**Fix — provider-side:** This must be fixed in your Hermes agent's provider configuration. Ensure the provider populates `inputTokens` and `outputTokens` on generation observations.
+
+**C) Stale cache:** The dashboard caches for 60 seconds. Wait 1 minute or restart the dashboard (`launchctl kickstart gui/$(id -u)/com.hermes.cortex-dashboard`).
+
+---
+
 ## Changelog
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.2.0 | 2026-06-06 | Added #21 (Langfuse fromTimestamp), #22 (dashboard no-traces), #23 (costs $0.00), #24 (pf firewall), #25 (fail2ban), updated port ranges |
 | 1.1.0 | 2026-06-06 | Added entry #18 (Ollama 0.0.0.0 fix), #19 (first-time admin access), #20 (Redis timeout) |
 | 1.0.0 | 2026-06-05 | Initial release — 17 entries covering Docker, Dashboard, install, nginx, memory, and Linux |
