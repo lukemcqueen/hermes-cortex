@@ -1,64 +1,36 @@
 <!-- Part of Hermes Cortex. See docs/SECURITY.md for privacy. -->
 # User Profile — USER.md
 
-Your agent reads this on every message turn. It helps the agent understand *who you are* — your preferences, habits, and context.
-
-**This file is loaded fresh each session.** Keep it accurate and update it when your preferences change.
+Your agent reads this on every turn. Keep it accurate and under **1,400 characters**.
 
 ---
 
-## Basic Info
+## Identity
 
-- **Name:**
-- **Handle / username:**
-- **Timezone:**
-- **Primary platform:**
-- **Role:**
-
----
+- **Name**: Joseph
+- **Role**: Developer / system operator
+- **Timezone**: UTC+2
+- **Platform**: Linux (Ubuntu), terminal + cron
 
 ## Communication
 
-- **Tone preference:** *(warm, concise, professional, playful…)*
-- **Verbosity:** *(short answers, detailed explanations…)*
-- **Language:**
-- **Pet peeves:**
-- **What to always do:**
-- **What to never do:**
-
----
+- **Tone**: direct, technical
+- **Verbosity**: concise — prefer bullet points over paragraphs
+- **Pet peeve**: placeholder boilerplate left unfilled
 
 ## Environment
 
-- **Editor / IDE:**
-- **Terminal:**
-- **Preferred shell:**
-- **Package manager:**
-- **OS / version:**
-
----
-
-## Projects
-
-*(Current active projects, repos, or areas of focus)*
-
-| Project | Repo | Description |
-|---------|------|-------------|
-|         |      |             |
-|         |      |             |
-
----
+- **OS**: Linux — Ubuntu 24.04
+- **Shell**: bash
+- **Tools**: nginx, Docker, systemd
+- **Key constraint**: no sudo — user-local installs only (~/.local/bin)
 
 ## Preferences
 
-- **Open-source stance:**
-- **Favorite tools / languages:**
-- **Coding style:**
-- **Testing philosophy:**
-- **Deployment preference:**
-
----
+- **Open-source stance**: prefer MIT/BSD, avoid AGPL
+- **Testing**: pytest, prefer testcontainers over mocks
+- **Deployment**: Docker Compose on single host
 
 ## Notes
 
-*(Anything else your agent should know about you — context, quirks, recurring needs)*
+*(Anything specific the agent should know — recurring workflows, naming conventions, etc.)*
