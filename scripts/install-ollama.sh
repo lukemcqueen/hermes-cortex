@@ -16,8 +16,15 @@ info()  { printf "${GREEN}✓${RESET} %s\n" "$*"; }
 warn()  { printf "${YELLOW}⚠${RESET} %s\n" "$*"; }
 
 install_ollama() {
+  # Check common locations even if not on PATH (Linux ~/.local/bin/ scenario)
   if command -v ollama &>/dev/null; then
     info "Ollama already installed — $(ollama --version 2>/dev/null || echo 'ollama')"
+    return 0
+  fi
+  if [[ -x "${HOME}/.local/bin/ollama" ]]; then
+    info "Ollama already installed at ~/.local/bin/ollama"
+    # Ensure it's on PATH for subsequent steps
+    export PATH="${HOME}/.local/bin:$PATH"
     return 0
   fi
 
@@ -88,6 +95,12 @@ install_ollama() {
 setup_ollama_service() {
   local ollama_bin="${OLLAMA_BIN}"
   local workdir="${HOME}"
+
+  # Quick check: if Ollama is already responding on its API port, skip service setup
+  if curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+    info "Ollama already running at 127.0.0.1:11434 — service config skipped"
+    return 0
+  fi
 
   if service_running "$OLLAMA_SERVICE_NAME"; then
     info "Ollama service already running"
