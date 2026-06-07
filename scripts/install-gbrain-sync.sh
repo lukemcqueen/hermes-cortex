@@ -6,8 +6,9 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 source "${SCRIPT_DIR}/os-config.sh"
+source "${SCRIPT_DIR}/service-writer.sh"
 
 GREEN="${GREEN:-'\033[0;32m'}"; YELLOW="${YELLOW:-'\033[1;33m'}"; RESET="${RESET:-'\033[0m'}"
 info()  { printf "${GREEN}✓${RESET} %s\n" "$*"; }

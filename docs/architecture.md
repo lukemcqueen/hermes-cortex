@@ -6,26 +6,34 @@
   You (Telegram / CLI)
        │
        ▼
-┌──────────────────────────────────────────────────────┐
-│                  Hermes Agent (Runtime)               │
-│  • Tools & Skills  • Cron Jobs  • Memory  • Subagents │
-└──────┬──────────────────────────────────┬────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                  Hermes Agent (Runtime)                       │
+│  • Tools & Skills  • Cron Jobs  • Memory  • Subagents        │
+└──────┬──────────────────────────────────┬────────────────────┘
        │                                  │
        ▼                                  ▼
-┌──────────────┐  ┌──────────────────┐  ┌──────────────┐
-│   Langfuse   │  │  Cortex Dashboard│  │   GBrain     │
-│  (LLM Obs.)  │  │   (Flask + JS)   │  │ (Knowledge)  │
-│ local:3001   │  │  local:8901      │  │ PGLite       │
-│ ext:13002    │  │  ext:13001       │  │ 4 sources    │
-└──────────────┘  └──────────────────┘  └──────────────┘
-       │                   │                    │
-       ▼                   ▼                    ▼
-┌──────────────────────────────────────────────────────┐
-│           nginx Reverse Proxy (macOS Host)            │
-│  :13002 → Langfuse (LLM observability, port 3001)     │
-│  :13001 → Cortex Dashboard (companion, port 8901)     │
-│  TLS + Basic Auth on all external ports               │
-└──────────────────────────────────────────────────────┘
+┌──────────────┐  ┌──────────────────┐  ┌────────────┐  ┌──────────────┐
+│   Langfuse   │  │  Cortex Dashboard│  │  Web Cache │  │   GBrain     │
+│  (LLM Obs.)  │  │   (Flask + JS)   │  │ (sqlite-vec│  │ (Knowledge)  │
+│ local:3000   │  │  local:8901      │  │  + Ollama) │  │ PGLite       │
+│ ext:13002    │  │  ext:13001       │  │  ~200MB    │  │ 4 sources    │
+└──────────────┘  └──────────────────┘  └────────────┘  └──────────────┘
+       │                   │                    │              │
+       ▼                   ▼                    ▼              ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│              nginx Reverse Proxy (macOS Host)                        │
+│  :13002 → Langfuse (LLM observability, port 3000)                   │
+│  :13001 → Cortex Dashboard (companion, port 8901)                   │
+│  TLS + Basic Auth on all external ports, rate-limited               │
+└──────────────────────────────────────────────────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                    Offline Knowledge Layer                           │
+│  kiwix-serve (Docker, :8080) · prep-bible · prep-hymns              │
+│  386 code snippets (26 langs) · offline-reader (:8081)              │
+│  ZIM content: WikiMed, Wikivoyage, Simple Wiki, Wiktionary          │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Layers
@@ -34,14 +42,16 @@
 |-------|------|---------|
 | **Agent** | Hermes Agent | Self-improving runtime with learning loop, subagents, cron, Telegram interface |
 | **Observability** | Langfuse + Cortex Dashboard | Trace inspection, session replay, LLM evaluation scoring, system health monitoring |
+| **Cache** | Web Cache (sqlite-vec) | Local semantic cache for web_search results. Cuts API costs, enables offline fallback |
 | **Memory** | GBrain | Long-term knowledge graph via Markdown files across 4 sources (luke, amy, shared, default). PGLite engine with Ollama embeddings. Sync daemon + dream cycle |
+| **Offline** | kiwix ZIM + Code Corpus | Zero-internet operation: medical, travel, education, language, code generation. All local |
 | **Config** | GitHub (two-repo system) | Public repo: installer, skeleton, docs. Private repo: full config, scripts, dashboard, nginx config. Brain content on private branches |
 
 ## Repository Architecture
 
 | Repo | Visibility | Contents |
 |------|-----------|----------|
-| `hermes-cortex` | **Public** | Installer (`install.sh`), skeleton config, architecture docs, bump-version script. No secrets or brain data |
+| `hermes-cortex` | **Public** | Installer (`install.sh`), skeleton config, architecture docs, skills (8), offline content, bump-version script. No secrets or brain data |
 | `hermes-cortex-private` | **Private** | Full system config (`config.yaml`), dashboard (Flask + JS), nginx config, 13 utility scripts, all cron setups |
 | `brain-*` branches on private repo | **Private** | Brain content on `brain-luke`, `brain-amy`, `brain-shared`, `brain-default` branches. Each is a clean single-commit orphan branch synced via gbrain |
 
@@ -49,31 +59,43 @@
 
 | Service | Port | Purpose | Stack |
 |---------|------|---------|-------|
-| Ollama | 11434 | Local LLM serving | Native macOS, launchd-managed |
+| Ollama | 11434 | Local LLM serving (localhost-only) | Native macOS, launchd-managed |
 | Hermes Gateway | — | Agent runtime | Python, gateway.run, launchd |
-| Langfuse | 3001 | LLM trace observability | Docker Desktop (6 containers) |
+| Langfuse | 3000 | LLM trace observability | Docker Desktop (6 containers) |
 | Cortex Dashboard | 8901 | System + Langfuse companion | Flask + pure JS/HTML |
 | nginx | 80/443 | Reverse proxy for all services | Homebrew, launchd |
+| kiwix-serve | 8080 | ZIM content server (offline) | Docker, launchd |
+| Offline Reader | 8081 | Bible/hymns/reference browser | stdlib Python |
 | GBrain Sync | — | Memory sync daemon | Bun, PGLite, launchd (2min interval) |
 
 ## External Access
 
-All external services are accessed via nginx on custom ports with TLS + basic auth:
+All external services are accessed via nginx on custom ports with TLS + basic auth,
+rate-limited by nginx + fail2ban (4 jails, ban escalation 1h→4wk):
 
-| Port | Service | Auth Required |
-|------|---------|--------------|
-| 11002 | Langfuse (primary) | Yes |
-| 11003 | Cortex Dashboard | Yes |
+| Port | Service | Auth Required | Hardening |
+|------|---------|--------------|-----------|
+| 13001 | Cortex Dashboard | Yes (Basic Auth) | nginx rate-limit 20/5r/s + conn-limit 10/IP |
+| 13002 | Langfuse (primary) | Yes (Basic Auth) | nginx rate-limit 20/5r/s + conn-limit 10/IP |
+
+## Security Stack
+
+| Layer | Tool | What it does |
+|-------|------|-------------|
+| Application | nginx rate limiting | 20 req/5s per IP, max 10 concurrent connections per IP |
+| Firewall | pf (packet filter) | Default-deny, port-range rules (22, 990, 13001-13099), SSH rate limit (5/60s) |
+| Auto-ban | fail2ban (4 jails) | nginx-http-auth, nginx-limit-req, nginx-botsearch, nginx-bad-request |
+| Network | macOS app firewall | Stealth mode, blocks incoming by default |
 
 ## Design Principles
 
 1. **Thin harness, fat skills** — The agent framework stays lean; the value lives in well-crafted skills and memory
 2. **Visibility first** — Every agent action is observable via Langfuse traces + evaluation scores
 3. **Persistence by design** — Config, skills, memory, and brain content are all version-controlled
-4. **Self-improving loop** — The agent creates skills from patterns, optimizes through cron-driven analysis
+4. **Offline-first** — Cache + ZIM + code corpus work identically with or without internet
 5. **Separation of concerns** — Public (installer/docs) ≠ Private (config/scripts) ≠ Brain (content on branches)
-6. **No PII in history** — Both repos have been surgically scrubbed via git-filter-repo; brain data only on private branches
+6. **No PII in public** — Both repos surgically scrubbed via git-filter-repo; brain data only on private branches
 
 ---
 
-**See also:** [Security Guide → `docs/SECURITY.md`](./SECURITY.md)
+**See also:** [Security Guide → `docs/SECURITY.md`](./SECURITY.md) | [Troubleshooting → `docs/troubleshooting.md`](./troubleshooting.md)

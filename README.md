@@ -22,33 +22,36 @@
 
 **▸ Core Platform**
 - **Ollama** — Local LLM server (free embeddings + Qwen2.5-Coder for offline code RAG)
-- **Bun** + **GBrain** — Persistent knowledge brain (PGLite, zero-config)
-- **Langfuse** — LLM trace evaluation and scoring (primary observability)
-- **Cortex Dashboard** — Companion dashboard for Langfuse + system health
-- **Brain directory structure** — MECE-organized knowledge sources
+- **Bun** + **GBrain** — Persistent knowledge brain (PGLite, zero-config, 4 sources)
+- **Langfuse** — LLM trace evaluation and scoring (6 Docker containers: ClickHouse, MinIO, Redis, Postgres)
+- **Cortex Dashboard** — Companion dashboard for Langfuse + system health (Flask, dark-theme, drag-and-drop)
+- **Web Cache** — Semantic search cache (sqlite-vec + Ollama embeddings, ~200MB LRU)
 - **gbrain sync daemon** — Automatic 2-minute sync
 - **Hermes plugin** — `/brain` slash command
-- **8 shared skills** — Subagent orchestration, debugging, TDD, planning, memory architecture, code review, spikes
+- **8 shared skills** — Subagent orchestration, debugging, TDD, planning, memory architecture, code review, spikes, systematic debugging
+- **Brain directory structure** — MECE-organized knowledge sources with .gitignore isolation
 
 **▸ Offline Stack**
-||- **Web Cache** — Local semantic cache for web search/extract results (sqlite-vec + Ollama embeddings). Reduces API costs, enables offline operation.
-||- **Offline Knowledge** — Cascade knowledge lookup: web-cache → kiwix ZIM (Wikipedia, WikiMed, Wikivoyage) → gbrain → LLM. Works identically online (saves API costs) and offline (no internet needed).
-||- **Offline Code Assistant** — 386 curated code snippets across 26 languages (Python, JS/TS, Go, Rust, Java, C/C++, C#, PHP, Ruby, Swift, Kotlin, Zig, Dart, Elixir, Lua, R, SQL, Shell, Docker, Terraform, K8s, Nix, PowerShell). Semantic search + RAG-powered code generation via Ollama — all offline. Run `offline_code search "flask api"` or `offline_code gen "worker pool go"`.
-||- **Offline Reader** — Lightweight web UI (`python3 offline/offline-reader.py`) for browsing Bible, hymns, and wiki reference in any browser — zero dependencies, works offline.
+- **Offline Knowledge** — Cascade lookup: web-cache → kiwix ZIM (Wikipedia, WikiMed, Wikivoyage free locally) → gbrain → LLM. Saves API costs online, works without internet.
+- **Offline Code Assistant** — 386 curated code snippets across 26 languages. Semantic search + RAG-powered code generation via Ollama. Run `offline_code search "flask api"` or `offline_code gen "worker pool go"`.
+- **Offline Reader** — Single-file web UI (`python3 offline/offline-reader.py`) for browsing Bible (55+ languages), hymns (public domain), and wiki reference in any browser — zero dependencies.
 
-**▸ Extras**
-||- **Bible Content** — 55+ language translations (KJV, WEB, Korean, Arabic, Chinese, Russian, more). Search via `offline_knowledge bible`. Auto-parsed to JSON.
-||- **Hymn Collection** — Public domain hymnal: PDF scores, ABC notation, MIDI, searchable lyrics. Search via `offline_knowledge hymns`.
+**▸ Security**
+- **nginx reverse proxy** — TLS + Basic Auth on all external ports (13001/13002), rate-limited (20 req/5s)
+- **pf firewall** — Default-deny, port-range rules, SSH rate-limiting
+- **fail2ban** — 4 jails with ban escalation (1h→4wk): http-auth, limit-req, botsearch, bad-request
+- **Ollama** — Bound to localhost only (hardened during install)
+
+**▸ Operations**
+- **Auto-Update** — Silent cron-based updater for content updates
+- **Computer Specs Guide** — Hardware-aware recommendations per RAM tier
+- **Multi-person setup** — Federated brain sources with isolated memory per user
 
 ---
 
 > *"The more we get to know about our universe, the more the hypothesis that there is a Creator God, who designed the universe for a purpose, gains in credibility as the best explanation of why we are here."* — John Lennox
 
-**▸ Operations**
-- **Auto-Update** — Silent cron-based updater (`auto-update.sh`) that checks for content updates only when online. Set-and-forget via `hermes cron`.
-- **Computer Specs Guide** — Hardware-aware recommendations for models and ZIM content bundles based on your RAM.
-- **Pre-Flight Tool** — `prep-offline.sh` downloads ZIM content, seeds cache, starts kiwix-serve. One command to prepare for no-internet scenarios.
-- **Utility scripts** — Heartbeat watchdog, memory sync, system health
+---
 
 ## 🚀 One-Command Install
 
@@ -58,10 +61,10 @@
 # Clone the public system
 git clone https://github.com/lukemcqueen/hermes-cortex.git ~/hermes-cortex
 
-# macOS — Server profile (default): full stack
+# macOS — Server profile (default): full stack with Docker services
 bash ~/hermes-cortex/install.sh
 
-# macOS — Laptop profile: lean, no Docker services
+# macOS — Laptop profile: lean, no Docker (Langfuse, Dashboard, nginx skipped)
 CORTEX_PROFILE=laptop bash ~/hermes-cortex/install.sh
 
 # Linux — auto-detects systemd, apt/dnf/pacman
@@ -78,12 +81,12 @@ CORTEX_OS=windows bash ~/hermes-cortex/install.sh
 
 | Step | What | Why |
 |------|------|-----|
-| 0 | **System Check** | Verifies OS, RAM, disk, Docker, network, dependencies before touching anything |
-| — | **OS Detection** | Auto-detects macOS/ Linux/Windows, sets package + service managers |
-| 1 | **Ollama** (cross-platform) | Native installer per OS: brew cask / curl script / direct download |
+| 0 | **System Check** | Verifies OS, RAM, disk, Docker, network before touching anything |
+| — | **OS Detection** | Auto-detects macOS/Linux/Windows, sets package + service managers |
+| 1 | **Ollama** (cross-platform) | Native installer per OS; bound to localhost |
 | 2 | **Bun** | JavaScript runtime for gbrain |
 | 3 | **gbrain** | Persistent knowledge brain (PGLite, zero-config) |
-| 4 | **Brain dirs** | `~/brain/{default,…}` with MECE directory schema |
+| 4 | **Brain dirs** | `~/brain/{default,…}` with MECE directory schema + .gitignore + git init |
 | 5 | **gbrain sync** | Launchd daemon — syncs brain every 2 minutes |
 | 6 | **Observability** † | Langfuse + Cortex Dashboard |
 | 7 | **`/brain` plugin** | Hermes slash command for gbrain queries |
@@ -91,11 +94,11 @@ CORTEX_OS=windows bash ~/hermes-cortex/install.sh
 | 9 | **Plugin enable** | Auto-activates in Hermes config |
 | 10 | **Skills** | 8 shared skills installed to `~/.hermes/skills/` |
 | 11 | **Web Cache** | Semantic web result cache (sqlite-vec + Ollama) |
-| 12 | **Offline Knowledge** | Cascade tool + kiwix ZIM Docker + prep-offline + prep-bible + prep-hymns scripts |
-| 13 | **Offline Reader** | `python3 offline/offline-reader.py` — web UI for Bible, hymns, reference |
-| 14 | **Code Corpus** | 386 snippets shipped in-repo. Index for RAG search: `offline/prep-code.sh` builds embeddings via Ollama |
+| 12 | **Offline Knowledge** | Cascade tool + kiwix ZIM Docker + prep scripts |
+| 13 | **Offline Reader** | `python3 offline/offline-reader.py` — zero-dependency web UI |
+| 14 | **Code Corpus** | 386 snippets across 26 languages; RAG index via Ollama |
 | 15 | **Auto-Update** | `auto-update.sh` — silent cron-based content updater |
-| 16 | **nginx** † | Reverse proxy for Langfuse + Dashboard |
+| 16 | **nginx** † | Reverse proxy for Langfuse + Dashboard + hardening |
 | 17 | **Cron prompt** | Instructions for Hermes agent setup |
 | | *† Server profile only* | |
 
@@ -106,20 +109,20 @@ Set these environment variables before running for a custom setup:
 ```bash
 export CORTEX_OS="linux"                     # Auto-detected: darwin, linux, windows
 export CORTEX_PROFILE="laptop"               # 'server' (default) or 'laptop'
-export CORTEX_SOURCES="me,shared,default"   # Brain source names (default: "default")
+export CORTEX_SOURCES="me,shared,default"    # Brain source names (default: "default")
 export CORTEX_HOME="$HOME"                  # User home directory
 export HERMES_HOME="$HOME/.hermes"          # Hermes config directory
 export CORTEX_USER="$USER"                  # Your name for plugin metadata
 ```
 
-**OS Support (experimental):**
+**OS Support:**
 - **macOS** — Fully supported. launchd services, Homebrew packages, all features
 - **Linux** — systemd services, apt/dnf/pacman detection. Ollama via install script
 - **Windows** — scheduled tasks, winget/choco detection. Some features limited
 
 **Profiles:**
-- **`server`** (default) — Full stack: Ollama, gbrain, Langfuse (Docker), Cortex Dashboard, nginx reverse proxy, Web Cache, Offline Knowledge (kiwix ZIM)
-- **`laptop`** — Lean stack: Ollama, gbrain, Web Cache, Offline Knowledge. Skips Docker-dependent services (Langfuse, Dashboard, nginx). Perfect for mobile machines where Docker isn't always available.
+- **`server`** (default) — Full stack: Ollama, gbrain, Langfuse (Docker), Dashboard, nginx, Web Cache, Offline Knowledge
+- **`laptop`** — Lean: Ollama, gbrain, Web Cache, Offline Knowledge. Skips Docker-dependent services. Ideal for mobile machines.
 
 ### Multi-Person Setup
 
@@ -130,7 +133,7 @@ export CORTEX_SOURCES="luke,amy,shared,default"
 bash ~/hermes-cortex/install.sh
 ```
 
-This creates isolated sources, a federated shared source, and a default. The `/brain` slash command adapts to whatever sources you configure.
+Each source has isolated memory and .gitignore. The `/brain` slash command adapts to whatever sources you configure. Federated sources (like `shared`) are auto-searched on every query.
 
 ## 🧠 Offline Knowledge Stack
 
@@ -162,14 +165,13 @@ offline_knowledge query "symptoms of malaria"
 
 ### Hardware Guide
 
-See [docs/computer-specs.md](docs/computer-specs.md) for model and content recommendations
-based on your RAM tier (8 GB → 64+ GB).
+See [docs/computer-specs.md](docs/computer-specs.md) for model and content recommendations based on your RAM tier (8 GB → 64+ GB). Intel Macs benefit from lighter quantized models.
 
 ### Architecture
 
 ```
 Agent question → web_cache (fastest) → kiwix ZIM (local) → gbrain (RAG) → LLM (always)
-                      │                    │                    │              │
+                      │                      │                    │              │
                  50μs hit ✅           localhost:8080      personal KB     model knows it
                  skip web_call         free, private        your data      fallback
 ```
@@ -178,7 +180,7 @@ Agent question → web_cache (fastest) → kiwix ZIM (local) → gbrain (RAG) �
 
 Personal config, secrets, API keys, and private skills live in a **separate private repo**:
 
-```
+```bash
 git clone git@github.com:lukemcqueen/hermes-cortex-private.git ~/hermes-cortex-private
 ```
 
@@ -198,51 +200,47 @@ After running the public installer, apply your private config:
 ```bash
 cp ~/hermes-cortex-private/config/config.yaml ~/.hermes/config.yaml
 # Source your .env, copy scripts, etc.
-git clone git@github.com:lukemcqueen/hermes-cortex-private.git ~/hermes-cortex-private
 ```
 
 ## 🎯 Philosophy
 
-**Thin harness, fat skills.** The agent is the runtime — the real value lives in well-crafted skills, persistent memory, and deep observability. Every tool, config tweak, and workflow is tracked here so nothing is ever lost.
+**Thin harness, fat skills.** The agent is the runtime — the real value lives in well-crafted skills, persistent memory, and deep observability.
 
 ## 🛠️ Troubleshooting
 
 ### "Install fails at 'brew install'"
-Make sure Homebrew is installed, or install it manually:
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
 ### "gbrain command not found after install"
-Make sure `~/.bun/bin` is in your PATH:
 ```bash
 export PATH="$HOME/.bun/bin:$PATH"
 ```
-Add the same line to your shell profile (`~/.zshrc`, `~/.bashrc`, etc.) to make it permanent.
+Add to `~/.zshrc` or equivalent.
 
 ### "Ollama won't start on macOS"
-Check if it's blocked by Gatekeeper: go to **System Settings → Privacy & Security** and allow it.
+Check **System Settings → Privacy & Security** — Gatekeeper may block it.
 
 ### "docker compose command not found"
 Make sure Docker Desktop is running.
 
 ### "Permission denied when running install.sh"
-You might need to make the script executable:
 ```bash
 chmod +x ~/hermes-cortex/install.sh
 ```
 
 ### "I don't have macOS"
-The installer is optimized for macOS. Linux users can run individual steps manually. See the [Troubleshooting Guide](docs/troubleshooting.md) for more help.
+See the [Troubleshooting Guide](docs/troubleshooting.md) for Linux and Windows notes.
 
 ## 📚 More Documentation
 
 | Document | What it covers |
 |----------|---------------|
 | [Security Guide](docs/SECURITY.md) | 🔒 Port risks, file permissions, firewall setup, recovery — essential reading |
-| [Architecture](docs/architecture.md) | System diagram, services, port map, design principles |
+| [Architecture](docs/architecture.md) | System diagram, services, port map, design principles, security stack |
 | [Troubleshooting](docs/troubleshooting.md) | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse data, memory, Linux |
-| [Computer Specs](docs/computer-specs.md) | Hardware recommendations by RAM tier |
+| [Computer Specs](docs/computer-specs.md) | Hardware recommendations by RAM tier, model selection for Intel/Apple Silicon |
 | [Offline Scenarios](docs/offline-travel-stack.md) | Using Hermes without internet (travel, dev, education) |
 | [Third-Party Licenses](docs/THIRD_PARTY_LICENSES.md) | Attribution for all open-source components used |
 | [Docs Index](docs/DOCS-INDEX.md) | Full list of every document in this repo |

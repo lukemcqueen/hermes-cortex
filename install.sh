@@ -19,6 +19,9 @@ set -euo pipefail
 IFS=$'\n\t'
 VERSION="1.0.0"
 
+# Script root directory — must be set before any source calls
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # ── Colors ──────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BLUE='\033[0;34m'; MAGENTA='\033[0;35m'; CYAN='\033[0;36m'
@@ -26,7 +29,7 @@ BOLD='\033[1m'; RESET='\033[0m'
 STEP=0
 
 info()  { printf "${GREEN}✓${RESET} %s\n" "$1"; }
-warn()  { printf "${YELLOW}⚠${RESET} %s\n" "$1"; }
+warn()  { printf "${YELLOW}⚠${RESET} %s\n" "$1" >&2; }
 error() { printf "${RED}✗${RESET} %s\n" "$1"; }
 header() {
   printf "\n${CYAN}${BOLD}━━━ %s ━━━${RESET}\n" "$1"
@@ -79,7 +82,6 @@ find_best_python() {
 #  0. System Verification Check
 # ─────────────────────────────────────────────────────────────
 header "SYSTEM VERIFICATION"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 CHECK_SCRIPT="${SCRIPT_DIR}/check-system.sh"
 
 if [[ -f "$CHECK_SCRIPT" ]]; then
@@ -118,8 +120,7 @@ CORTEX_HOME="${CORTEX_HOME:-$HOME}"
 BRAIN_DIR="${CORTEX_HOME}/brain"
 HERMES_HOME="${HERMES_HOME:-${CORTEX_HOME}/.hermes}"
 
-# Detect script directory
-SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+# SCRIPT_DIR is already set at the top of the script
 
 # Brain sources — default is 'default' + optionally more
 if [[ -z "${CORTEX_SOURCES:-}" ]]; then
@@ -131,7 +132,7 @@ if [[ -z "${CORTEX_SOURCES:-}" ]]; then
 fi
 
 IFS=',' read -ra SOURCES <<< "$CORTEX_SOURCES"
-TOTAL_STEPS=22
+TOTAL_STEPS=26
 STEP=0
 
 # Ensure Hermes is installed
@@ -307,6 +308,23 @@ else
   ok
 fi
 
+# ── Ensure bun + gbrain are in PATH via ~/.local/bin ───────
+step "Adding bun/gbrain symlinks to ~/.local/bin/"
+LOCAL_BIN="${CORTEX_HOME}/.local/bin"
+BUN_BIN="${CORTEX_HOME}/.bun/bin"
+if [[ -d "$BUN_BIN" ]]; then
+  mkdir -p "$LOCAL_BIN"
+  for _tool in bun gbrain; do
+    if [[ -f "${BUN_BIN}/${_tool}" ]] && [[ ! -f "${LOCAL_BIN}/${_tool}" ]]; then
+      ln -sf "${BUN_BIN}/${_tool}" "${LOCAL_BIN}/${_tool}" 2>/dev/null || true
+      info "  Linked ${_tool} → ${LOCAL_BIN}/${_tool}"
+    fi
+  done
+  # Ensure ~/.local/bin is in PATH for the rest of the script
+  export PATH="${LOCAL_BIN}:$PATH"
+fi
+ok
+
 # ─────────────────────────────────────────────────────────────
 #  4. Brain Directory Structure
 # ─────────────────────────────────────────────────────────────
@@ -366,6 +384,10 @@ for source in "${SOURCES[@]}"; do
 INDEXEOF
     fi
     info "  Created ${source_dir}/"
+    # Init git repo — gbrain requires git for each brain source
+    git -C "${source_dir}" init 2>/dev/null || true
+    git -C "${source_dir}" add -A 2>/dev/null || true
+    git -C "${source_dir}" commit -m "init: ${source} brain source" 2>/dev/null || true
   fi
 done
 
@@ -491,7 +513,11 @@ default_sources_parts = [f'--source {s}' for s in sources if s != 'default']
 default_source = ' '.join(default_sources_parts)
 
 # Help text
-help_parts = [f'  /brain {s} <query>          {s}\'s brain only\n' for s in sources if s != 'default']
+help_parts = []
+for s in sources:
+    if s != 'default':
+        brain_name = f"{s}'s brain"
+        help_parts.append(f'  /brain {s} <query>          {brain_name} only\\n')
 source_help = ''.join(help_parts)
 
 lines = []
@@ -521,7 +547,8 @@ lines.append('}')
 lines.append('')
 lines.append('_DESCRIPTIONS = {')
 for s in sources:
-    lines.append(f'    {shlex.quote(s)}: {shlex.quote(f"{s}\'s brain")},')
+    brain_name = f"{s}'s brain"
+    lines.append(f'    {shlex.quote(s)}: {shlex.quote(brain_name)},')
 lines.append('}')
 lines.append('')
 lines.append(f'_DEFAULT_SOURCE = {shlex.quote(default_source)}')
@@ -696,6 +723,39 @@ def check_launchd(job_label):
         return {"status": "ERROR", "detail": str(e)}
 
 
+def check_systemd(unit_name):
+    """Check a systemd user service status — for Linux hosts."""
+    try:
+        result = subprocess.run(["systemctl", "--user", "is-active", unit_name],
+                                capture_output=True, text=True, timeout=10)
+        status = result.stdout.strip()
+        if status == "active":
+            detail_result = subprocess.run(["systemctl", "--user", "show",
+                                            "--property=MainPID,SubState", unit_name],
+                                           capture_output=True, text=True, timeout=10)
+            detail = detail_result.stdout.strip().replace("\\n", ", ") or status
+            return {"status": "UP", "detail": detail}
+        elif status == "failed":
+            return {"status": "DOWN", "detail": f"Unit {unit_name} is in failed state"}
+        elif status in ("inactive", "dead"):
+            return {"status": "DOWN", "detail": f"Unit {unit_name} is {status}"}
+        else:
+            return {"status": "DEGRADED", "detail": f"Unit {unit_name}: {status}"}
+    except FileNotFoundError:
+        return {"status": "ERROR", "detail": "systemctl not found — not a systemd system"}
+    except Exception as e:
+        return {"status": "ERROR", "detail": str(e)}
+
+
+def check_service(label):
+    """Auto-detect platform and check service using launchd or systemd."""
+    try:
+        subprocess.run(["launchctl", "list"], capture_output=True, timeout=5)
+        return check_launchd(label)
+    except FileNotFoundError:
+        return check_systemd(label)
+
+
 def check_gateway_log():
     log_dir = HERMES_HOME / "logs"
     if not log_dir.exists():
@@ -724,8 +784,8 @@ def check_disk_usage(path="/"):
 
 def run():
     checks = {
-        "Ollama": check_launchd("com.ollama.serve"),
-        "gbrain sync daemon": check_launchd("com.gbrain.sync-watch"),
+        "Ollama": check_service("com.ollama.serve"),
+        "gbrain sync daemon": check_service("com.gbrain.sync-watch"),
         "Gateway activity": check_gateway_log(),
         "Disk usage": check_disk_usage(),
     }
@@ -833,8 +893,8 @@ def git_commit(path, message):
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    memory_file = MEMORY_DIR / "memory.txt"
-    user_file = MEMORY_DIR / "user.txt"
+    memory_file = MEMORY_DIR / "MEMORY.md"
+    user_file = MEMORY_DIR / "USER.md"
 
     memory_entries = read_entries(memory_file)
     user_entries = read_entries(user_file)
@@ -1044,7 +1104,7 @@ else
   mkdir -p "$DASHBOARD_DEST"
   
   # Copy from repo
-  REPO_DASHBOARD="${CORTEX_HOME}/Developer/AI/hermes-cortex/dashboard"
+  REPO_DASHBOARD="${SCRIPT_DIR}/dashboard"
   if [[ -d "$REPO_DASHBOARD" ]]; then
     cp -r "$REPO_DASHBOARD/"* "$DASHBOARD_DEST/"
   else
@@ -1063,11 +1123,13 @@ else
     info "  Dashboard venv ready"
   fi
 
-  # Install launchd plist
-  if [[ ! -f "$DASHBOARD_PLIST" ]]; then
-    # Update paths in plist for current user
-    sed "s|CORTEX_HOME|${CORTEX_HOME}|g" "${REPO_DASHBOARD}/com.hermes.cortex-dashboard.plist" > "$DASHBOARD_PLIST" 2>/dev/null || \
-    cat > "$DASHBOARD_PLIST" <<PLIST
+  # Install service (launchd on macOS, systemd on Linux)
+  if [[ "$CORTEX_OS" == "macos" ]]; then
+    DASHBOARD_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist"
+    if [[ ! -f "$DASHBOARD_PLIST" ]]; then
+      # Update paths in plist for current user
+      sed "s|CORTEX_HOME|${CORTEX_HOME}|g" "${REPO_DASHBOARD}/com.hermes.cortex-dashboard.plist" > "$DASHBOARD_PLIST" 2>/dev/null || \
+      cat > "$DASHBOARD_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -1099,28 +1161,64 @@ else
 </dict>
 </plist>
 PLIST
-  fi
-  
-  # Load launchd service
-  launchctl unload "$DASHBOARD_PLIST" 2>/dev/null || true
-  if launchctl load "$DASHBOARD_PLIST" 2>&1; then
-    ok
-    info "  Dashboard running at http://localhost:8901"
-  else
-    warn "Failed to load dashboard launchd service"
+    fi
+
+    # Load launchd service
+    launchctl unload "$DASHBOARD_PLIST" 2>/dev/null || true
+    if launchctl load "$DASHBOARD_PLIST" 2>&1; then
+      ok
+      info "  Dashboard running at http://localhost:8901"
+    else
+      warn "Failed to load dashboard launchd service"
+    fi
+
+  elif [[ "$CORTEX_OS" == "linux" ]]; then
+    DASHBOARD_SERVICE_DIR="${HOME}/.config/systemd/user"
+    DASHBOARD_SERVICE="${DASHBOARD_SERVICE_DIR}/hermes-cortex-dashboard.service"
+    mkdir -p "$DASHBOARD_SERVICE_DIR"
+    if [[ ! -f "$DASHBOARD_SERVICE" ]]; then
+      cat > "$DASHBOARD_SERVICE" <<SYSTEMDEOF
+[Unit]
+Description=Hermes Cortex Dashboard
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=${DASHBOARD_DEST}/venv/bin/python3 ${DASHBOARD_DEST}/server.py
+WorkingDirectory=${DASHBOARD_DEST}
+Restart=always
+RestartSec=5
+Environment=PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+StandardOutput=append:${HERMES_HOME}/logs/cortex-dashboard.log
+StandardError=append:${HERMES_HOME}/logs/cortex-dashboard.log
+
+[Install]
+WantedBy=default.target
+SYSTEMDEOF
+    fi
+    systemctl --user daemon-reload 2>/dev/null || true
+    systemctl --user enable hermes-cortex-dashboard 2>/dev/null || true
+    systemctl --user restart hermes-cortex-dashboard 2>/dev/null || true
+    if systemctl --user is-active --quiet hermes-cortex-dashboard; then
+      ok
+      info "  Dashboard running at http://localhost:8901"
+    else
+      warn "Dashboard service may not be running — check: systemctl --user status hermes-cortex-dashboard"
+    fi
   fi
 fi
 
-# Install Docker Desktop launchd agent (auto-start on login)
-DOCKER_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.docker.docker.plist"
-if launchctl list com.docker.docker &>/dev/null 2>&1; then
-  info "  Docker launch agent already loaded"
-elif [[ ! -f "$DOCKER_PLIST" ]]; then
-  DOCKER_TEMPLATE="${SCRIPT_DIR}/docs/templates/com.docker.docker.plist"
-  if [[ -f "$DOCKER_TEMPLATE" ]]; then
-    sed "s|CORTEX_HOME|${CORTEX_HOME}|g" "$DOCKER_TEMPLATE" > "$DOCKER_PLIST"
-  else
-    cat > "$DOCKER_PLIST" <<PLIST
+if [[ "$CORTEX_OS" == "macos" ]]; then
+  # Install Docker Desktop launchd agent (auto-start on login)
+  DOCKER_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.docker.docker.plist"
+  if launchctl list com.docker.docker &>/dev/null 2>&1; then
+    info "  Docker launch agent already loaded"
+  elif [[ ! -f "$DOCKER_PLIST" ]]; then
+    DOCKER_TEMPLATE="${SCRIPT_DIR}/docs/templates/com.docker.docker.plist"
+    if [[ -f "$DOCKER_TEMPLATE" ]]; then
+      sed "s|CORTEX_HOME|${CORTEX_HOME}|g" "$DOCKER_TEMPLATE" > "$DOCKER_PLIST"
+    else
+      cat > "$DOCKER_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -1143,10 +1241,18 @@ elif [[ ! -f "$DOCKER_PLIST" ]]; then
 </dict>
 </plist>
 PLIST
+    fi
+    chmod 644 "$DOCKER_PLIST"
+    launchctl load "$DOCKER_PLIST" 2>&1
+    info "  Docker Desktop auto-start on login configured"
   fi
-  chmod 644 "$DOCKER_PLIST"
-  launchctl load "$DOCKER_PLIST" 2>&1
-  info "  Docker Desktop auto-start on login configured"
+elif [[ "$CORTEX_OS" == "linux" ]]; then
+  # Docker daemon is managed by the system's init — just verify it's available
+  if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
+    info "  Docker daemon is running (managed by systemd)"
+  else
+    warn "Docker not detected or not running. Install it: https://docs.docker.com/engine/install/"
+  fi
 fi
 
 else
