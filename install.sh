@@ -52,7 +52,7 @@ source "${SCRIPT_DIR}/scripts/service-writer.sh"
 # Find the newest Python 3.10+ with working sqlite3 extension support.
 # macOS ships 3.9.6 whose sqlite3 can't enable_load_extension — breaks sqlite-vec.
 find_best_python() {
-  local candidates="python3.12 python3.11 python3.10 python3"
+  local candidates="python3 python3.12 python3.11 python3.10"
   local found=""
   for candidate in $candidates; do
     if command -v "$candidate" &>/dev/null; then
