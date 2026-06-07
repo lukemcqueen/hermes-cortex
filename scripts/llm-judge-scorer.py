@@ -13,15 +13,15 @@ Usage:
 
 import json, os, re, sys, time, urllib.request, urllib.error
 from base64 import b64encode
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 # ── Config ──────────────────────────────────────────────────────────────
 LANGFUSE_BASE = "http://localhost:3000"
 OLLAMA_URL = "http://localhost:11434/api/chat"
-JUDGE_MODEL = "Qwen3.5:4b"
+JUDGE_MODEL = "qwen2.5-coder:1.5b"
 
 SCORE_CRITERIA = ["helpfulness", "clarity", "depth"]
-MAX_TRACES_PER_RUN = 5  # 5 per run ~15min on Intel, catches up in ~3 days
+MAX_TRACES_PER_RUN = 5  # ~2min on Intel with qwen2.5-coder:1.5b
 MAX_CONTENT_CHARS = 800  # Keep small for CPU-bound inference
 FETCH_BATCH = 20  # Fetch this many, filter to unscored
 
@@ -46,12 +46,17 @@ def _get_langfuse_keys():
         raw = f.read()
     pk = sk = None
     for line in raw.split(b'\n'):
+        line = line.strip()
+        if b'#' in line:
+            line = line[:line.index(b'#')].strip()
         parts = line.split(b'=', 1)
         if len(parts) == 2:
-            key, val = parts[0].decode(), parts[1].decode()
-            if key == 'LANGFUSE_INIT_PROJECT_PUBLIC_KEY':
+            key, val = parts[0].decode().strip(), parts[1].decode().strip()
+            # Strip optional quotes
+            val = val.strip("'\"")
+            if key == 'LANGFUSE_INIT_PROJECT_PUBLIC_KEY' or key == 'HERMES_LANGFUSE_PUBLIC_KEY':
                 pk = val
-            elif key == 'LANGFUSE_INIT_PROJECT_SECRET_KEY':
+            elif key == 'LANGFUSE_INIT_PROJECT_SECRET_KEY' or key == 'HERMES_LANGFUSE_SECRET_KEY':
                 sk = val
     return pk, sk
 
@@ -233,7 +238,8 @@ def main():
         all_traces = []
         seen_ids = set()
         limit = min(FETCH_BATCH, 50)
-        traces_data = _lf_get(f"/api/public/traces?limit={limit}")
+        from_ts = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()[:19] + "Z"
+        traces_data = _lf_get(f"/api/public/traces?fromTimestamp={from_ts}&limit={limit}")
         candidates = traces_data.get("data", []) if traces_data else []
         for t in candidates:
             tid = t.get("id")

@@ -20,15 +20,24 @@ PORT = int(os.environ.get("CORTEX_DASHBOARD_PORT", "13703"))
 
 # ── Langfuse credentials ──────────────────────────────────────────────
 pk = sk = None
-lf_path = LANGFUSE_ENV
-if lf_path.exists():
-    with open(lf_path) as f:
-        for line in f:
-            line = line.strip()
-            if line.startswith("LANGFUSE_INIT_PROJECT_PUBLIC_KEY="):
-                pk = line.split("=", 1)[1].strip()
-            elif line.startswith("LANGFUSE_INIT_PROJECT_SECRET_KEY="):
-                sk = line.split("=", 1)[1].strip()
+# Try ~/langfuse/.env first, then ~/.hermes/.env as fallback
+for _env_candidate in [LANGFUSE_ENV, HERMES_HOME / ".env"]:
+    if _env_candidate.exists():
+        with open(_env_candidate) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    key, val = line.split("=", 1)
+                    key = key.strip()
+                    val = val.strip().strip("'\"")
+                    if key in ("LANGFUSE_INIT_PROJECT_PUBLIC_KEY", "HERMES_LANGFUSE_PUBLIC_KEY"):
+                        pk = val
+                    elif key in ("LANGFUSE_INIT_PROJECT_SECRET_KEY", "HERMES_LANGFUSE_SECRET_KEY"):
+                        sk = val
+        if pk and sk:
+            break
 
 LANGFUSE_HOST = os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
 LANGFUSE_AUTH = None
@@ -66,7 +75,9 @@ def _clear_cache(prefix=None):
         if prefix is None:
             _cache.clear()
         else:
-            _cache = {k: v for k, v in _cache.items() if not k.startswith(prefix)}
+            for k in list(_cache.keys()):
+                if k.startswith(prefix):
+                    del _cache[k]
 
 
 # ── Langfuse API ────────────────────────────────────────────────────────
@@ -86,6 +97,7 @@ def _lf(path, timeout=10):
         with urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode())
     except Exception as e:
+        print(f"[lf] GET {path}: {e}", file=sys.stderr)
         return None
 
 
@@ -265,7 +277,6 @@ def _lf_traces():
             cost_daily[day] += cost
 
     recent = []
-    seen_obs = {o["id"] for o in all_obs}
     for t in traces[:15]:
         recent.append({
             "id": t.get("id", ""),
@@ -474,7 +485,6 @@ def _get_detailed_memory() -> dict:
     # Output: "PhysMem: 11G used (1937M wired), 4791M unused."
     try:
         r = subprocess.run(["top", "-l", "1", "-n", "0"], capture_output=True, text=True, timeout=10)
-        import re
         m = re.search(r'PhysMem:\s+([\d.]+)([KMG])\s+used\s+\((\d+)([KMG])\s+wired\),\s+([\d.]+)([KMG])\s+unused', r.stdout)
         if m:
             def parse_val(val, unit):

@@ -227,7 +227,7 @@
 
   <!-- System Health -->
   <div class="card">
-    <h2>⚕️ System Health</h2>
+    <h2>System Health</h2>
     <div id="health-content"><div class="loading">loading...</div></div>
     <div class="links">
       <a href="#" id="langfuse-link" onclick="event.preventDefault(); window.open(document.getElementById('langfuse-link').href, '_blank'); return false;">Langfuse ↗</a>
@@ -236,61 +236,61 @@
 
   <!-- System Metrics (load, memory, disk) -->
   <div class="card">
-    <h2>📈 System Metrics</h2>
+    <h2>System Metrics</h2>
     <div id="metrics-content"><div class="loading">loading...</div></div>
   </div>
 
   <!-- Langfuse Overview -->
   <div class="card">
-    <h2>📊 Langfuse Overview</h2>
+    <h2>Langfuse Overview</h2>
     <div id="langfuse-stats"><div class="loading">loading...</div></div>
   </div>
 
   <!-- Cost Trends -->
   <div class="card">
-    <h2>💰 Cost Trends (7d)</h2>
+    <h2>Cost Trends (7d)</h2>
     <div id="cost-content"><div class="loading">loading...</div></div>
   </div>
 
   <!-- System Pulse -->
   <div class="card">
-    <h2>⚡ System Pulse</h2>
+    <h2>System Pulse</h2>
     <div id="sys-pulse-content"><div class="loading">loading...</div></div>
   </div>
 
   <!-- Top Processes -->
   <div class="card full-width">
-    <h2>🔍 Top Processes</h2>
+    <h2>Top Processes</h2>
     <div id="proc-content"><div class="loading">loading...</div></div>
   </div>
 
   <!-- Containers -->
   <div class="card">
-    <h2>🐳 Containers</h2>
+    <h2>Containers</h2>
     <div id="container-content"><div class="loading">loading...</div></div>
   </div>
 
   <!-- Network & Disk -->
   <div class="card">
-    <h2>🌐 Network & Disk</h2>
+    <h2>Network & Disk</h2>
     <div id="net-content"><div class="loading">loading...</div></div>
   </div>
 
   <!-- Model Usage -->
   <div class="card">
-    <h2>🤖 Model Usage</h2>
+    <h2>Model Usage</h2>
     <div id="model-content"><div class="loading">loading...</div></div>
   </div>
 
   <!-- Session Timeline -->
   <div class="card">
-    <h2>📅 Session Activity (7d)</h2>
+    <h2>Session Activity (7d)</h2>
     <div id="timeline-content"><div class="loading">loading...</div></div>
   </div>
 
   <!-- Recent Traces -->
   <div class="card">
-    <h2>🔄 Recent Traces</h2>
+    <h2>Recent Traces</h2>
     <div id="traces-content"><div class="loading">loading...</div></div>
     <div class="links">
       <a href="#" id="langfuse-traces-link" onclick="event.preventDefault(); window.open(document.getElementById('langfuse-traces-link').href, '_blank'); return false;">View All →</a>
@@ -299,19 +299,19 @@
 
   <!-- Cron Jobs -->
   <div class="card">
-    <h2>⏰ Cron Jobs</h2>
+    <h2>Cron Jobs</h2>
     <div id="cron-content"><div class="loading">loading...</div></div>
   </div>
 
   <!-- Hermes Sessions -->
   <div class="card">
-    <h2>💬 Hermes Sessions</h2>
+    <h2>Hermes Sessions</h2>
     <div id="session-content"><div class="loading">loading...</div></div>
   </div>
 
   <!-- Evaluation Scores -->
   <div class="card">
-    <h2>📝 Evaluation Scores</h2>
+    <h2>Evaluation Scores</h2>
     <div id="scores-content"><div class="loading">loading...</div></div>
   </div>
 
@@ -389,8 +389,14 @@ const LANGFUSE_EXTERNAL = 'http://localhost:13002'; // External Langfuse URL (fo
       <div class="stat"><div class="num yellow">${sc}</div><div class="label">Scores</div></div>
       <div class="stat"><div class="num" style="color:var(--text)">${s.total}</div><div class="label">DB Sessions</div></div>
       <div class="stat"><div class="num" style="color:var(--text-dim)">${Math.round(s.tokens/1000)}K</div><div class="label">Tokens</div></div>
-      <div class="stat"><div class="num" style="color:var(--text-dim)">$${cost.toFixed(4)}</div><div class="label">Total Cost</div></div>
+      <div class="stat"><div class="num" style="color:var(--text-dim)">${formatCost(cost)}</div><div class="label">Total Cost</div></div>
     </div>`;
+  }
+
+  function formatCost(val) {
+    if (val >= 0.001) return '$' + val.toFixed(4);
+    if (val > 0) return '$' + val.toPrecision(2);
+    return '$0.0000';
   }
 
   function renderCostTrends(data) {
@@ -402,12 +408,12 @@ const LANGFUSE_EXTERNAL = 'http://localhost:13002'; // External Langfuse URL (fo
     }
     const max = Math.max(...entries.map(([,v]) => v), 0.001);
     const total = entries.reduce((s,[,v]) => s+v, 0);
-    let html = `<div style="margin-bottom:8px;color:var(--text-dim);font-size:11px">Total: $${total.toFixed(4)} · ~$${(total/entries.length*30).toFixed(4)}/mo projected</div>`;
+    let html = '<div style="margin-bottom:8px;color:var(--text-dim);font-size:11px">Total: ' + formatCost(total) + ' · ~' + formatCost(total/entries.length*30) + '/mo projected</div>';
     html += '<div class="bar-chart">';
     for (const [day, val] of entries) {
       const pct = Math.max((val / max * 100), 3);
       const short = day.slice(5);
-      html += `<div class="bar-col"><div class="bar-val">$${val.toFixed(4)}</div><div class="bar" style="height:${pct}%;background:linear-gradient(to top,var(--accent-dim),var(--accent))"></div><div class="bar-label">${short}</div></div>`;
+      html += '<div class="bar-col"><div class="bar-val">' + formatCost(val) + '</div><div class="bar" style="height:' + pct + '%;background:linear-gradient(to top,var(--accent-dim),var(--accent))"></div><div class="bar-label">' + short + '</div></div>';
     }
     html += '</div>';
     $('cost-content').innerHTML = html;
@@ -426,7 +432,7 @@ const LANGFUSE_EXTERNAL = 'http://localhost:13002'; // External Langfuse URL (fo
         <span class="count">${stats.calls}</span>
         <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
         <span style="color:var(--text-muted);font-size:10px;width:65px;text-align:right">${Math.round(stats.tokens/1000)}K tok</span>
-        <span class="cost">$${stats.cost.toFixed(4)}</span>
+        <span class="cost">${formatCost(stats.cost)}</span>
       </div>`;
     }
     $('model-content').innerHTML = html;
@@ -457,7 +463,7 @@ const LANGFUSE_EXTERNAL = 'http://localhost:13002'; // External Langfuse URL (fo
       const lat = t.latency != null ? `${(t.latency/1000).toFixed(1)}s` : '';
       html += `<div class="trace-item">
         <span><span class="trace-id">${t.id.slice(0,8)}</span> <span class="trace-name">${t.name}</span></span>
-        <span><span class="trace-cost">${t.cost ? '$'+t.cost.toFixed(6) : ''}</span> <span style="color:var(--text-muted);font-size:10px">${lat}</span> <span class="trace-time">${time}</span></span>
+        <span><span class="trace-cost">${t.cost ? formatCost(t.cost) : ''}</span> <span style="color:var(--text-muted);font-size:10px">${lat}</span> <span class="trace-time">${time}</span></span>
       </div>`;
     }
     $('traces-content').innerHTML = html;
@@ -496,9 +502,19 @@ const LANGFUSE_EXTERNAL = 'http://localhost:13002'; // External Langfuse URL (fo
     const scores = data.langfuse?.scores?.score_breakdown || {};
     const entries = Object.entries(scores);
     if (entries.length === 0) { $('scores-content').innerHTML = '<div class="empty">No evaluation scores yet</div>'; return; }
+    // Sort: overall first, then by name
+    const order = ['overall', 'helpfulness', 'clarity', 'depth'];
+    entries.sort((a, b) => {
+      const ai = order.indexOf(a[0]);
+      const bi = order.indexOf(b[0]);
+      if (ai !== -1 && bi !== -1) return ai - bi;
+      if (ai !== -1) return -1;
+      if (bi !== -1) return 1;
+      return a[0].localeCompare(b[0]);
+    });
     const max = Math.max(...entries.map(([,v]) => v.sum/v.count), 1);
     let html = '';
-    for (const [name, stats] of entries.sort((a,b) => a[0].localeCompare(b[0]))) {
+    for (const [name, stats] of entries) {
       const avg = (stats.sum / stats.count).toFixed(1);
       const pct = (parseFloat(avg) / max * 100).toFixed(0);
       html += `<div class="score-row">
@@ -609,8 +625,12 @@ const LANGFUSE_EXTERNAL = 'http://localhost:13002'; // External Langfuse URL (fo
     $('net-content').innerHTML = html;
   }
 
+  let _refreshing = false;
   async function refresh() {
+    if (_refreshing) return;
+    _refreshing = true;
     const data = await fetchAll();
+    _refreshing = false;
     if (!data) {
       for (const id of ['health-content','metrics-content','langfuse-stats','cost-content','sys-pulse-content','proc-content','container-content','net-content','model-content','timeline-content','traces-content','cron-content','session-content','scores-content']) {
         $(id).innerHTML = '<div class="empty">⚠ Connection error</div>';
