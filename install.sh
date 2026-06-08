@@ -1430,7 +1430,7 @@ cat <<PROMPT
 I've installed the Hermes Cortex system. Please finish the setup by:
 
 1. Open ~/.hermes/memories/MEMORY.md and ~/.hermes/memories/USER.md — fill in your system topology and user profile so I know your context
-2. Load the shared skills from ~/.hermes/skills/ (use skill_view(name) to browse them — includes subagent-driven-development, systematic-debugging, test-driven-development, spike, plan, writing-plans, memory-architecture, requesting-code-review)
+2. Load the shared skills from ~/.hermes/skills/ (use skill_view(name) to browse them — includes subagent-driven-development, systematic-debugging, change-test-loop, spike, plan, memory-architecture, requesting-code-review, client-brand-brand-marketing, korean-language-learning)
 3. Loading the hermes-agent skill and verifying the gbrain-command plugin
 4. Setting up these cron jobs (use the cronjob tool):
 

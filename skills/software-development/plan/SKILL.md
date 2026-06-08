@@ -1,14 +1,14 @@
 ---
 name: plan
 description: "Plan mode: write an actionable markdown plan to .hermes/plans/, no execution. Bite-sized tasks, exact paths, complete code."
-version: 2.0.0
+version: 2.1.0
 author: Hermes Agent (writing-craft adapted from obra/superpowers)
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [planning, plan-mode, implementation, workflow, design, documentation]
-    related_skills: [subagent-driven-development, test-driven-development, requesting-code-review]
+    related_skills: [subagent-driven-development, change-test-loop, requesting-code-review]
 ---
 
 # Plan Mode
@@ -243,6 +243,27 @@ Check:
 - [ ] No missing context
 - [ ] DRY, YAGNI, TDD principles applied
 
+### Step 7: Save the Plan
+
+Save the plan using `write_file` under `.hermes/plans/`:
+
+```markdown
+write_file(
+    path=".hermes/plans/YYYY-MM-DD-feature-name.md",
+    content="<full plan markdown content>"
+)
+```
+
+This keeps the plan co-located with the workspace, readable by Hermes tools across all backends.
+
+Optionally commit the plan to version control alongside changes:
+```bash
+git add .hermes/plans/YYYY-MM-DD-feature-name.md
+git commit -m "docs: add implementation plan for [feature]"
+```
+
+> **Note:** Prefer `.hermes/plans/` over `docs/plans/` — it's backend-aware, survives workspace moves, and is the canonical Hermes plan location.
+
 ## Principles
 
 ### DRY (Don't Repeat Yourself)
@@ -279,7 +300,7 @@ Every task that produces code should include the full TDD cycle:
 3. Write minimal code
 4. Run to verify pass
 
-See `test-driven-development` skill for details.
+See `change-test-loop` skill for details.
 
 ### Frequent Commits
 

@@ -1,15 +1,15 @@
 ---
 name: change-test-loop
-version: 1.0.0
+version: 1.1.0
 category: software-development
-description: "RED-GREEN-REFACTOR loop with confidence scoring, retry limits, and coverage requirements per change type."
+description: "RED-GREEN-REFACTOR loop with confidence scoring, retry limits, coverage requirements, and strict TDD discipline."
 author: Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [testing, tdd, red-green-refactor, confidence-scoring, retry, coverage]
-    related_skills: [test-driven-development, systematic-debugging, plan, subagent-driven-development]
+    tags: [testing, tdd, red-green-refactor, confidence-scoring, retry, coverage, discipline]
+    related_skills: [systematic-debugging, plan, subagent-driven-development]
 ---
 
 # Change-Test Loop
@@ -19,6 +19,22 @@ metadata:
 A disciplined RED-GREEN-REFACTOR loop augmented with **confidence scoring**, **retry governance**, and **coverage requirements** per change type. This skill ensures every change — whether a new feature, bug fix, or refactor — follows a repeatable, verifiable cycle with clear success criteria and a hard upper bound on iteration.
 
 **Core principle:** Confidence is measured, not assumed. Each cycle phase scores confidence on a 3/2/1/0 scale. A score of 0 triggers a fallback. Maximum 2 retry iterations per phase before escalation.
+
+## The Iron Law
+
+```
+NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
+```
+
+Write code before the test? Delete it. Start over.
+
+**No exceptions:**
+- Don't keep it as "reference"
+- Don't "adapt" it while writing tests
+- Don't look at it
+- Delete means delete
+
+Implement fresh from tests. Period.
 
 ## The Loop
 
@@ -242,6 +258,68 @@ def register_user(email, password):
 # Next: repeat loop for password hashing, duplicate email check, etc.
 ```
 
+## Why Order Matters
+
+**"I'll write tests after to verify it works"**
+
+Tests written after code pass immediately. Passing immediately proves nothing:
+- Might test the wrong thing
+- Might test implementation, not behavior
+- Might miss edge cases you forgot
+- You never saw it catch the bug
+
+Test-first forces you to see the test fail, proving it actually tests something.
+
+**"I already manually tested all the edge cases"**
+
+Manual testing is ad-hoc. You think you tested everything but:
+- No record of what you tested
+- Can't re-run when code changes
+- Easy to forget cases under pressure
+- "It worked when I tried it" ≠ comprehensive
+
+Automated tests are systematic. They run the same way every time.
+
+**"Deleting X hours of work is wasteful"**
+
+Sunk cost fallacy. The time is already gone. Your choice now:
+- Delete and rewrite with TDD (high confidence)
+- Keep it and add tests after (low confidence, likely bugs)
+
+The "waste" is keeping code you can't trust.
+
+**"TDD is dogmatic, being pragmatic means adapting"**
+
+TDD IS pragmatic:
+- Finds bugs before commit (faster than debugging after)
+- Prevents regressions (tests catch breaks immediately)
+- Documents behavior (tests show how to use code)
+- Enables refactoring (change freely, tests catch breaks)
+
+"Pragmatic" shortcuts = debugging in production = slower.
+
+**"Tests after achieve the same goals — it's spirit not ritual"**
+
+No. Tests-after answer "What does this do?" Tests-first answer "What should this do?"
+
+Tests-after are biased by your implementation. You test what you built, not what's required. Tests-first force edge case discovery before implementing.
+
+## Common Rationalizations
+
+| Excuse | Reality |
+|--------|---------|
+| "Too simple to test" | Simple code breaks. Test takes 30 seconds. |
+| "I'll test after" | Tests passing immediately prove nothing. |
+| "Tests after achieve same goals" | Tests-after = "what does this do?" Tests-first = "what should this do?" |
+| "Already manually tested" | Ad-hoc ≠ systematic. No record, can't re-run. |
+| "Deleting X hours is wasteful" | Sunk cost fallacy. Keeping unverified code is technical debt. |
+| "Keep as reference, write tests first" | You'll adapt it. That's testing after. Delete means delete. |
+| "Need to explore first" | Fine. Throw away exploration, start with TDD. |
+| "Test hard = design unclear" | Listen to the test. Hard to test = hard to use. |
+| "TDD will slow me down" | TDD faster than debugging. Pragmatic = test-first. |
+| "Manual test faster" | Manual doesn't prove edge cases. You'll re-test every change. |
+| "Existing code has no tests" | You're improving it. Add tests for the code you touch. |
+
 ## Integration with Hermes Agent
 
 ### With delegate_task
@@ -286,13 +364,32 @@ The test that reproduced the bug becomes a permanent regression guard.
 - Configuration-only changes (but config loading still needs a test)
 - Generated code (with manual review + integration tests)
 
+## Testing Anti-Patterns
+
+- **Testing mock behavior instead of real behavior** — mocks should verify interactions, not replace the system under test
+- **Testing implementation details** — test behavior/results, not internal method calls
+- **Happy path only** — always test edge cases, errors, and boundaries
+- **Brittle tests** — tests should verify behavior, not structure; refactoring shouldn't break them
+
 ## Red Flags — STOP
 
+If you catch yourself doing any of these, delete the code and restart with TDD:
+
 - Skipping a phase (especially RED)
+- Code written before the test
+- Test passes immediately on first run
+- Test after implementation, or tests added "later"
+- Can't explain why test failed
 - Confidence scored without verification
 - Continuing after exhausting retries without fallback
 - Ignoring failing tests from other parts of the suite
 - Coverage below the minimum for the change type
+- Rationalizing "just this once", "this is different because...", or any of the rationalizations above
+- "I already manually tested it" or "Keep as reference, adapt existing code"
+- "Tests after achieve the same purpose" or "TDD is dogmatic, I'm being pragmatic"
+- "Already spent X hours, deleting is wasteful"
+
+**All of these mean: Delete code. Start over with TDD. No exceptions without the user's explicit permission.**
 
 ## Verification Checklist
 
@@ -307,3 +404,12 @@ Before marking work complete:
 - [ ] REFACTOR: Confidence score ≥ 2 (or fallback invoked)
 - [ ] Coverage meets the minimum requirement for the change type
 - [ ] Retry limit not exceeded (or fallback was escalated)
+
+## Final Rule
+
+```
+Production code → test exists and failed first
+Otherwise → not TDD
+```
+
+No exceptions without the user's explicit permission.
