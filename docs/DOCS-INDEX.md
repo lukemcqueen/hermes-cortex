@@ -24,6 +24,8 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `docs/architecture.md` | System architecture overview — layers, services, port map, security stack |
+| `docs/project-separation-architecture.md` | Project isolation model — federated vs isolated brain sources, Hermes profiles, cortex-profile.sh automation, decision guide |
+| `docs/deploy-registry-pattern.md` | Multi-repo deploy registry — public/private split, brain-* branches, sync workflow |
 | `docs/design/DESIGN.md` | Design conventions — typography, color, spacing, UI (light/dark modes) |
 | `docs/agent-memory-pointer-pattern.md` | Compressed pointers + agent brain for unlimited context |
 
@@ -58,7 +60,9 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
-| `skills/software-development/` | 8 shared skills: plan, spike, TDD, code-review, systematic-debugging, writing-plans, memory-architecture, subagent-driven-development |
+| `docs/SKILLS-MANIFEST.md` | Version manifest for all 9 ported skills — planning pipeline + execution methodology |
+| `skills/software-development/` | 17 shared skills: plan, spike, TDD, code-review, systematic-debugging, writing-plans, memory-architecture, subagent-driven-development + 9 new (hc-elicit, hc-party, agent-flow, agent-contract, change-test-loop, session-manager, state-orchestrator, story-slicing, prd-lite) |
+| `memory/README.md` | Memory scoring rubric — ≥7/12 quality gate for memory entries |
 | `memory/commands.md` | Common command patterns |
 | `memory/decisions.md` | Architecture decisions log |
 | `memory/mistakes.md` | Lessons learned |
@@ -70,6 +74,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 |-----|-------------|
 | `docs/templates/MEMORY.seed.md` | Memory file seed template — pointer pattern starter |
 | `docs/templates/USER.seed.md` | User profile seed template — preferences, context, projects |
+| `docs/templates/memory-readme.seed.md` | Memory scoring rubric seed — compact version of memory/README.md |
 | `docs/templates/gitignore.brain` | Standard .gitignore for brain sources |
 | `docs/templates/com.hermes.cortex-dashboard.plist` | Launchd plist for Cortex Dashboard |
 | `docs/templates/com.docker.docker.plist` | Launchd plist for Docker Desktop auto-start |

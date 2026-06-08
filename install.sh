@@ -956,6 +956,17 @@ else
   skip "USER.md already exists or template not found"
 fi
 
+# Seed memory scoring rubric
+SEED_MEMORY_README="${SCRIPT_DIR}/docs/templates/memory-readme.seed.md"
+MEMORY_DOC_DIR="${HERMES_HOME}/memory"
+if [[ -f "$SEED_MEMORY_README" ]] && [[ ! -f "${MEMORY_DOC_DIR}/README.md" ]]; then
+  mkdir -p "$MEMORY_DOC_DIR"
+  cp "$SEED_MEMORY_README" "${MEMORY_DOC_DIR}/README.md"
+  info "  Created memory/README.md from seed template"
+else
+  skip "memory/README.md already exists or template not found"
+fi
+
 # Create an empty .gitkeep so the directory is clean (not git-tracked anyway)
 touch "$HERMES_MEMORIES/.gitkeep"
 ok
