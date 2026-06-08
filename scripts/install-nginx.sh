@@ -32,6 +32,8 @@ install_nginx() {
 configure_nginx() {
   local langfuse_port="${1:-3000}"
   local dashboard_port="${2:-8901}"
+  local listen_langfuse="${3:-13002}"
+  local listen_dashboard="${4:-13001}"
   local config_file
 
   if [[ "$CORTEX_OS" == "macos" ]]; then
@@ -63,9 +65,9 @@ upstream langfuse_backend {
     server 127.0.0.1:${langfuse_port};
 }
 
-# Cortex Dashboard — port 11003
+# Cortex Dashboard — port ${listen_dashboard}
 server {
-    listen 11003;
+    listen ${listen_dashboard};
     server_name localhost;
 
     location / {
@@ -78,9 +80,9 @@ server {
     }
 }
 
-# Langfuse — port 11002
+# Langfuse — port ${listen_langfuse}
 server {
-    listen 11002;
+    listen ${listen_langfuse};
     server_name localhost;
 
     location / {
@@ -119,6 +121,6 @@ start_nginx() {
 # ── Main ────────────────────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   install_nginx
-  configure_nginx "${2:-3000}" "${3:-8901}"
+  configure_nginx "${2:-3000}" "${3:-8901}" "${4:-13002}" "${5:-13001}"
   start_nginx
 fi
