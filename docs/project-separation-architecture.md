@@ -229,15 +229,15 @@ and gbrain source for each project.
 [
   {
     "project_name": "acme",
-    "location": "/Users/luke/Developer/AI/acme",
-    "brain": "/Users/luke/brain/acme",
+    "location": "~/Developer/AI/acme",
+    "brain": "~/brain/acme",
     "profile": "acme",
     "gbrain_source": "acme"
   },
   {
     "project_name": "client-b",
-    "location": "/Users/luke/Developer/AI/client-b",
-    "brain": "/Users/luke/brain/client-b",
+    "location": "~/Developer/AI/client-b",
+    "brain": "~/brain/client-b",
     "profile": "client-b",
     "gbrain_source": "client-b"
   }

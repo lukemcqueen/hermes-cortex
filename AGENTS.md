@@ -23,9 +23,9 @@ Hermes Cortex is a **public installer and skill set** for
 |---|---|
 | `docs/` | Troubleshooting, guides, templates, SECURITY.md |
 | `docs/templates/` | Seed MEMORY.md, USER.md, brain .gitignore |
-| `install.sh` | Single-command installer (idempotent) |
+| `install.sh` | Single-command installer, 26 steps (idempotent) |
 | `docker-compose.langfuse.yml` | Langfuse v3 with ClickHouse, MinIO, Redis |
-| `.gitignore` | Excludes .agentkore, .env, memory files, secrets |
+| `.gitignore` | Excludes .agentkore, .opencode, .env*, *.pem, *.key, state.db, .hermes/ |
 
 ## Architecture Principles
 
@@ -43,7 +43,7 @@ Hermes Cortex is a **public installer and skill set** for
 
 - **Add a troubleshooting entry:** Edit `docs/troubleshooting.md`, add new numbered section, update changelog
 - **Add a template:** Place in `docs/templates/`, update `install.sh` step 9 to copy it during install
-- **Modify install:** Edit `install.sh` — 14 steps, idempotent, safe to re-run
+- **Modify install:** Edit `install.sh` — 26 steps, idempotent, safe to re-run
 - **Update Docker config:** Edit `docker-compose.langfuse.yml` — Langfuse v3 requires specific env vars (see docs/troubleshooting.md)
 
 ## Rules

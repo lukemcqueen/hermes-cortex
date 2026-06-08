@@ -633,7 +633,7 @@ scenario.
 
 **Correct behavior:**
 1. Use the provided workspace path from the task context.
-2. If the task context provides a home directory (e.g., `/Users/luke`), use
+2. If the task context provides a home directory (e.g., `/home/user`), use
    that as the base.
 3. If no exact local path is provided, discover it first by checking common
    locations or asking the user.

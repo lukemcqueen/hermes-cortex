@@ -39,19 +39,19 @@ services:
       # ── Redis ──
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_AUTH: ${LANGFUSE_REDIS_AUTH:-random-redis-auth}
+      REDIS_AUTH: ${LANGFUSE_REDIS_AUTH:?Missing LANGFUSE_REDIS_AUTH in .env}
 
       # ── MinIO (local S3) ──
-      MINIO_ACCESS_KEY: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
-      MINIO_SECRET_KEY: ${LANGFUSE_MINIO_SECRET_KEY:-random-minio-secret}
+      MINIO_ACCESS_KEY: ${LANGFUSE_MINIO_ACCESS_KEY:?Missing LANGFUSE_MINIO_ACCESS_KEY in .env}
+      MINIO_SECRET_KEY: ${LANGFUSE_MINIO_SECRET_KEY:?Missing LANGFUSE_MINIO_SECRET_KEY in .env}
       MINIO_ENDPOINT: minio:9000
 
       # ── Auth / Encryption ──
-      SALT: ${LANGFUSE_SALT:-}
-      SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
-      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-}
+      SALT: ${LANGFUSE_SALT:?Missing LANGFUSE_SALT in .env}
+      SECRET_KEY: ${LANGFUSE_SECRET_KEY:?Missing LANGFUSE_SECRET_KEY in .env}
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:?Missing LANGFUSE_NEXTAUTH_SECRET in .env}
       # Generate with: openssl rand -hex 32
-      LANGFUSE_ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-}
+      LANGFUSE_ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:?Missing LANGFUSE_ENCRYPTION_KEY in .env}
 
       # ── Telemetry / Privacy ──
       NEXT_TELEMETRY_DISABLED: "1"
@@ -73,8 +73,8 @@ services:
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-langfuse}
 
       # ── S3 Event Upload (required by v3 — uses local MinIO) ──
-      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
-      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_SECRET_KEY:-random-minio-secret}
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:?Missing LANGFUSE_MINIO_ACCESS_KEY in .env}
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_SECRET_KEY:?Missing LANGFUSE_MINIO_SECRET_KEY in .env}
       LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
       LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
       LANGFUSE_S3_EVENT_UPLOAD_REGION: us-east-1
@@ -83,8 +83,8 @@ services:
       LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
 
       # ── S3 Media Upload (required by v3 — uses local MinIO) ──
-      LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
-      LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_SECRET_KEY:-random-minio-secret}
+      LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:?Missing LANGFUSE_MINIO_ACCESS_KEY in .env}
+      LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_SECRET_KEY:?Missing LANGFUSE_MINIO_SECRET_KEY in .env}
       LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse-media
       LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://minio:9000
       LANGFUSE_S3_MEDIA_UPLOAD_REGION: us-east-1
@@ -92,8 +92,8 @@ services:
       LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
 
       # ── S3 Batch Export (required by v3 — uses local MinIO) ──
-      LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
-      LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_SECRET_KEY:-random-minio-secret}
+      LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY:?Missing LANGFUSE_MINIO_ACCESS_KEY in .env}
+      LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_SECRET_KEY:?Missing LANGFUSE_MINIO_SECRET_KEY in .env}
       LANGFUSE_S3_BATCH_EXPORT_BUCKET: langfuse-export
       LANGFUSE_S3_BATCH_EXPORT_ENDPOINT: http://minio:9000
       LANGFUSE_S3_BATCH_EXPORT_REGION: us-east-1
@@ -162,7 +162,7 @@ services:
       retries: 5
     volumes:
       - langfuse-redis-data:/data
-    command: redis-server --requirepass ${LANGFUSE_REDIS_AUTH:-random-redis-auth}
+    command: redis-server --requirepass ${LANGFUSE_REDIS_AUTH:?Missing LANGFUSE_REDIS_AUTH in .env}
 
   minio:
     # ⚠️ PIN RECOMMENDED: Check https://hub.docker.com/r/minio/minio/tags
@@ -180,8 +180,8 @@ services:
     volumes:
       - langfuse-minio-data:/data
     environment:
-      MINIO_ROOT_USER: ${LANGFUSE_MINIO_ACCESS_KEY:-random-minio-access}
-      MINIO_ROOT_PASSWORD: ${LANGFUSE_MINIO_SECRET_KEY:-random-minio-secret}
+      MINIO_ROOT_USER: ${LANGFUSE_MINIO_ACCESS_KEY:?Missing LANGFUSE_MINIO_ACCESS_KEY in .env}
+      MINIO_ROOT_PASSWORD: ${LANGFUSE_MINIO_SECRET_KEY:?Missing LANGFUSE_MINIO_SECRET_KEY in .env}
 
 volumes:
   langfuse-clickhouse-data:
