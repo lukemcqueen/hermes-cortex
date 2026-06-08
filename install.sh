@@ -1059,8 +1059,8 @@ else
   # Copy docker-compose from repo if not exists
   if [[ ! -f "$LANGFUSE_COMPOSE" ]]; then
     # Check if we're in the repo
-    if [[ -f "${CORTEX_HOME}/Developer/AI/hermes-cortex/docker-compose.langfuse.yml" ]]; then
-      cp "${CORTEX_HOME}/Developer/AI/hermes-cortex/docker-compose.langfuse.yml" "$LANGFUSE_COMPOSE"
+    if [[ -f "${SCRIPT_DIR}/docker-compose.langfuse.yml" ]]; then
+      cp "${SCRIPT_DIR}/docker-compose.langfuse.yml" "$LANGFUSE_COMPOSE"
     else
       # Download from GitHub
       curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/docker-compose.langfuse.yml" -o "$LANGFUSE_COMPOSE"

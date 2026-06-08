@@ -20,6 +20,18 @@ state.db
 *.db-wal
 *.db-shm
 
+# Memory files (gitignored per brain source — root level too for safety)
+MEMORY.md
+USER.md
+
+# Logs
+logs/
+*.log
+*.pid
+
+# Auth secrets
+.htpasswd
+
 # OS junk
 .DS_Store
 Thumbs.db
