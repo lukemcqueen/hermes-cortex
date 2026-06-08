@@ -33,6 +33,10 @@ Hermes Cortex is a **public installer and skill set** for
 - **PII-scrubbed:** No personal paths, domains, or credentials in this repo
 - **Pointer memory pattern:** `MEMORY.md` keeps compact pointers (~2,200 chars), full detail lives in brain directories via gbrain
 - **Privacy by default:** Memory files (`MEMORY.md`, `USER.md`) are gitignored in every brain source — never cross-contaminate instances
+- **Memory scoring rubric:** Entries must score ≥7/12 (relevance 4, accuracy 4, conciseness 2, durability 2) before writing — see `memory/README.md`
+- **State routing:** Information flows through a decision matrix — live context → session history → memory → docs, in that priority order — see `skills/software-development/state-orchestrator/`
+- **Project separation:** Each project gets its own Hermes profile, brain source, and gbrain isolation via `scripts/cortex-profile.sh` — see `docs/project-separation-architecture.md`
+- **Agent execution contract:** Non-negotiable rules — real work, verified results, no simulation — see `skills/software-development/agent-contract/`
 
 ## Common Tasks
 
