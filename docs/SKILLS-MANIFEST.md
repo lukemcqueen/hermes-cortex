@@ -5,7 +5,13 @@ recursively copies `src/skills/` to `~/.hermes/skills/`, preserving category
 subdirectories. Skills are distributed across multiple categories matching
 their domain.
 
-## Software Development (19 skills)
+## GitHub (1 skill)
+
+| Skill | Version | Purpose | Load With |
+|-------|---------|---------|-----------|
+| `pr-review` | 1.0.0 | Full PR review pipeline — whole-repo context, architecture analysis, lesson-DB pattern matching, test regression check, and formal review with inline comments. Zero external API costs. | `skill_view(name='pr-review')` |
+
+## Software Development (17 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -18,22 +24,22 @@ their domain.
 | `plan` | 2.1.0 | Plan mode — write actionable markdown plans, no execution | `skill_view(name='plan')` |
 | `change-test-loop` | 1.1.0 | RED-GREEN-REFACTOR with confidence scoring, retry limits, coverage requirements, and strict TDD discipline | `skill_view(name='change-test-loop')` |
 | `public-contribution` | 1.0.0 | After any improvement, evaluate whether it's public-worthy for the Hermes Cortex OSS community, genericize, and contribute | `skill_view(name='public-contribution')` |
-|| `session-manager` | 1.1.0 | Session checkpoint/restore, context compression, progress tracking. Uses `.hermes-cortex/sessions/current.md` for active state | `skill_view(name='session-manager')` |
+| `session-manager` | 1.1.0 | Session checkpoint/restore, context compression, progress tracking. Uses `.hermes-cortex/sessions/current.md` for active state | `skill_view(name='session-manager')` |
 | `state-orchestrator` | 1.0.0 | Info routing — live context vs session vs memory vs docs | `skill_view(name='state-orchestrator')` |
-| `skill-from-lesson` | 1.0.0 | Turn bugs, corrections, and discoveries into durable skills — decision tree, workflow, pitfalls | `skill_view(name='skill-from-lesson')` |
+| `save-lesson` | 1.1.0 | Auto-save bug-fix lessons, promote to skills, handle structured bug reports (P0/P1/P2 triage) | `skill_view(name='save-lesson')` |
 | `subagent-driven-development` | 1.0.0 | Execute plans via delegate_task subagents (2-stage review) | `skill_view(name='subagent-driven-development')` |
 | `systematic-debugging` | 1.0.0 | 4-phase root cause debugging | `skill_view(name='systematic-debugging')` |
 | `requesting-code-review` | 1.0.0 | Pre-commit review: security scan, quality gates, auto-fix | `skill_view(name='requesting-code-review')` |
 | `spike` | 1.0.0 | Throwaway experiments to validate ideas before build | `skill_view(name='spike')` |
 | `memory-architecture` | 1.0.0 | Agent memory system — MEMORY.md structure, privacy, gitignore | `skill_view(name='memory-architecture')` |
 | `ecosystem-audit` | 1.0.0 | Evaluate third-party tools for adoption, integration, or removal | `skill_view(name='ecosystem-audit')` |
-| `documentation-maintenance-audit` | 1.0.0 | Survey docs vs implementation, fix gaps systematically | `skill_view(name='documentation-maintenance-audit')` |
 
-## DevOps (1 skill)
+## DevOps (2 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `nginx-web-app-deployment` | 1.0.0 | Deploy web apps behind nginx — upstream config, SSL, rate limiting, launchd/systemd, multi-layer testing | `skill_view(name='nginx-web-app-deployment')` |
+| `package-security` | 1.0.0 | Age-gated package installation — verifies packages are ≥14 days old before install. Covers PyPI, npm, crates.io, Homebrew. | `skill_view(name='package-security')` |
 
 ## Social Media
 
@@ -61,12 +67,16 @@ references remain.
 - **`test-driven-development`** and **`writing-plans`** have been merged into
   `change-test-loop` (v1.1.0) and `plan` (v2.1.0) respectively — they are no
   longer standalone skills.
+- **`skill-from-lesson`** has been absorbed into `save-lesson` (v1.1.0).
+- **`documentation-maintenance-audit`** has been absorbed into `project-readiness`
+  (local-only, not yet contributed to the public repo).
 - All skills within a category share consistent tooling conventions.
 
 ## Version History
 
 | Date | Change |
 |------|--------|
-| 2026-06-08 | Initial manifest — 9 skills ported from AgentKore |
+| 2026-06-11 | Initial manifest — 9 skills ported from AgentKore |
 | 2026-06-11 | TDD merged into change-test-loop (v1.1.0), writing-plans merged into plan (v2.1.0) |
 | 2026-06-09 | Added public-contribution, skill-from-lesson (software-development), nginx-web-app-deployment (devops), SOUL.md template, updated nginx template |
+| 2026-06-09 | Added pr-review (github), package-security (devops). skill-from-lesson absorbed into save-lesson (v1.1.0). documentation-maintenance-audit absorbed into project-readiness. |
