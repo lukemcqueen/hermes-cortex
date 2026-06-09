@@ -62,13 +62,9 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
-| `docs/SKILLS-MANIFEST.md` | Version manifest for all 9 ported skills — planning pipeline + execution methodology |
-| `skills/software-development/` | 17 shared skills: plan, spike, TDD, code-review, systematic-debugging, writing-plans, memory-architecture, subagent-driven-development + 9 new (hc-elicit, hc-party, agent-flow, agent-contract, change-test-loop, session-manager, state-orchestrator, story-slicing, prd-lite) |
-| `memory/README.md` | Memory scoring rubric — ≥7/12 quality gate for memory entries |
-| `memory/commands.md` | Common command patterns |
-| `memory/decisions.md` | Architecture decisions log |
-| `memory/mistakes.md` | Lessons learned |
-| `memory/patterns.md` | Recurring code and design patterns |
+| `docs/SKILLS-MANIFEST.md` | Version manifest for all 21 skills — planning pipeline + execution methodology |
+| `docs/seeding-brain-content.md` | Brain directory templates and starter content — get from 0 pages to searchable knowledge |
+| `.hermes-cortex/skills/` | Project-specific Hermes skills |
 
 ## Templates
 
