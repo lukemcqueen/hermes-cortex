@@ -40,6 +40,7 @@ SESSION_DB = HERMES_HOME / "sessions.db"  # Hermes session store
 
 # Error/fix patterns to search for in session history
 SEARCH_QUERIES = [
+    # Original FTS patterns
     "error exception traceback failed",
     "bug fix root cause solution resolved",
     "fixed by changing OR fixed by adding OR fixed by removing",
@@ -51,14 +52,25 @@ SEARCH_QUERIES = [
     "import error OR module not found OR no module named",
     "key error OR attribute error OR type error OR value error",
     "permission denied OR access denied OR unauthorized",
+    # Agent reasoning style patterns (matches reasoning column content)
+    "i found a issue OR i found a problem OR the issue is",
+    "two issues OR a few issues OR several issues",
+    "the problem was OR the problem is OR this fails because",
+    "wait OR hmm OR actually OR let me check",
+    "need to fix OR needs to be OR should be OR instead of",
+    "it turns out OR the reason is OR turns out that",
+    "wasn't working OR didn't work OR not working OR wasn't correct",
+    "let me fix OR let me update OR let me change OR fixed the",
+    "i noticed OR i see the OR found that OR realized that",
+    "we need to OR we should OR we have to",
 ]
 
 # Minimum confidence for auto-save
 AUTO_THRESHOLD = 0.7
 
 # Max sessions to scan per run
-MAX_SESSIONS = 50
-MAX_PER_QUERY = 5
+MAX_SESSIONS = 100
+MAX_PER_QUERY = 10
 
 
 # ── Session History Access ──────────────────────────────────
@@ -124,6 +136,7 @@ def _query_sessions_sqlite(query: str, limit: int = 10) -> list:
             # Trigram FTS — handles partial words, no stemming
             sql = """
                 SELECT m.id, m.session_id, m.role, m.content,
+                       m.reasoning, m.reasoning_content,
                        s.id as session_title
                 FROM messages m
                 JOIN messages_fts_trigram f ON m.id = f.rowid
@@ -134,8 +147,21 @@ def _query_sessions_sqlite(query: str, limit: int = 10) -> list:
                 LIMIT ?
             """
             try:
-                # Convert space-separated query to trigram FTS syntax
-                fts_query = " OR ".join(query.split()[:5])
+                # Convert query to trigram FTS syntax
+                # Trigram FTS5 needs quoted phrases for multi-word terms
+                if " OR " in query:
+                    # Split on OR, quote multi-word phrases
+                    parts = []
+                    for part in query.split(" OR "):
+                        part = part.strip()
+                        if " " in part:
+                            parts.append(f'"{part}"')
+                        else:
+                            parts.append(part)
+                    fts_query = " OR ".join(parts)
+                else:
+                    # Space-separated words — OR them individually
+                    fts_query = " OR ".join(query.split()[:5])
                 rows = cur.execute(sql, (fts_query, limit)).fetchall()
             except sqlite3.OperationalError:
                 rows = []
@@ -160,12 +186,17 @@ def _query_sessions_sqlite(query: str, limit: int = 10) -> list:
 
         results = []
         for row in rows:
+            content = str(row[3] or "")
+            reasoning = str(row[4] or "")
+            reasoning_content = str(row[5] or "")
             results.append({
                 "id": row[0],
                 "session_id": row[1],
                 "role": row[2],
-                "content": str(row[3] or ""),
-                "session_title": str(row[4] or ""),
+                "content": content,
+                "reasoning": reasoning,
+                "reasoning_content": reasoning_content,
+                "session_title": str(row[6] or ""),
             })
 
         conn.close()
@@ -209,25 +240,44 @@ def _extract_fix_pattern(text: str) -> Optional[dict]:
     # If no explicit error found, look for broader problem descriptions
     if not result["problem"]:
         problem_patterns = [
+            # Numbered issue lists (agent reasoning style)
+            (r"(?:\d+\.\s*)([^\n]{15,200}?)(?=\n\d+\.|\n\n|\Z)", 1),
+            (r"(?:Two|A few|Several) issues?:\s*\n?((?:.+\n?)*?(?=\n\n|\Z))", "block"),
+            # Natural language problem statements
             (r"(?:the |an |a )?(?:issue|problem|bug|error)[:\s]+(.{10,200}?)(?:\.|$)", 1),
+            (r"(?:the issue|the problem|the bug)\s+is\s+that\s+(.{10,200}?)(?:\.|$)", 1),
+            (r"(?:the issue|the problem|the bug)\s+was\s+that\s+(.{10,200}?)(?:\.|$)", 1),
+            (r"(?:wasn't|weren't|isn't|aren't)\s+(?:working|correct|right|valid)\s*(.{10,200}?)(?:\.,|$)", 1),
+            (r"(?:didn't work|not working|failed to)\s+(.{10,200}?)(?:\.|$)", 1),
+            (r"wait[,.]+(?:\s+this|\s+the|\s+it)?\s+(.{15,200}?)(?:\.|$)(?=(?:\n|$))", 1),
+            # Verb-based problem detection
             (r"(?:returning|returned|getting|throws?)\s+(.{10,200}?(?:error|exception|fail))", 1),
             (r"(?:failed to|unable to|couldn't|cannot)\s+(.{10,200}?)(?:\.|$)", 1),
+            # I noticed / found patterns
+            (r"(?:i found|i noticed|i see)\s+that\s+(.{15,200}?)(?:\.|$)", 1),
+            (r"(?:found|noticed)\s+(?:a|an|the|that)\s+(.{10,200}?)(?:issue|problem|bug)(?:\s|\.|$)", 1),
             (r"(\w+Error|Exception):\s*(.{10,200}?)(?:\.|$)", 2),
         ]
         for pat, group in problem_patterns:
             m = re.search(pat, text, re.IGNORECASE)
             if m:
-                val = m.group(group).strip()
+                val = m.group(group).strip() if isinstance(group, int) else m.group(0).strip()
                 if len(val) > 10:
                     result["problem"] = val[:200]
                     break
 
     # Look for cause indicators
     cause_patterns = [
+        # Explicit reasoning cause patterns
+        (r"(?:the reason|the root cause)\s+is\s+that\s+(.{10,200}?)(?:\.|$)", 1),
+        (r"(?:the reason|the root cause)\s+was\s+that\s+(.{10,200}?)(?:\.|$)", 1),
         (r"(?:root cause|caused by|because|due to|reason)[:\s]+(.{10,200}?)(?:\.|$)", 1),
-        (r"(?:the issue was|the problem was|turns? out)\s+(.{10,200}?)(?:\.|$)", 1),
+        (r"(?:this is|it is|that is)\s+because\s+(.{10,200}?)(?:\.|$)", 1),
+        (r"(?:this was|it was|that was)\s+because\s+(.{10,200}?)(?:\.|$)", 1),
+        (r"(?:it turns out|turns out that)\s+(.{10,200}?)(?:\.|$)", 1),
+        (r"(?:the issue was|the problem was|the bug was)\s+(.{10,200}?)(?:\.|$)", 1),
+        (r"(?:what happened was|the thing was)\s+(.{10,200}?)(?:\.|$)", 1),
         (r"(?:missing|forgot|forgotten|wasn't|weren't|didn't|hadn't)\s+(.{10,200}?)(?:\.|$)", 1),
-        (r"(?:the |this )?(?:config|setting|parameter|flag|option)\s+(.{10,200}?wasn't\s+set)", 1),
     ]
     for pat, group in cause_patterns:
         m = re.search(pat, text, re.IGNORECASE)
@@ -239,9 +289,15 @@ def _extract_fix_pattern(text: str) -> Optional[dict]:
 
     # Look for solution indicators
     solution_patterns = [
+        (r"(?:the fix|the solution|the workaround)\s+is\s+to\s+(.{10,200}?)(?:\.|$)", 1),
+        (r"(?:the fix|the solution|the workaround)\s+was\s+to\s+(.{10,200}?)(?:\.|$)", 1),
         (r"(?:fixed|fix|solution|resolved|solved)\s+(?:by|with|using):?\s*(.+?)(?:\.|$)", 1),
+        (r"(?:i need to|we need to|we should|i should)\s+(.{10,200}?)(?:\.|$)", 1),
         (r"(?:added|changed|updated|modified|replaced|removed|set|enabled|disabled)\s+(.+?)(?:\.|$)", 1),
+        (r"(?:let me fix|let me update|let me change|let me add)\s+(.+?)(?:\.|$)", 1),
+        (r"(?:instead of|rather than)\s+(.+?)(?:\.,|$)", 1),
         (r"(?:solution|fix|workaround):?\s*(.+?)(?:\.|$)", 1),
+        (r"(?:fixed the|fix the|fixing the)\s+(.+?)(?:\.|$)", 1),
     ]
     for pat, group in solution_patterns:
         m = re.search(pat, text, re.IGNORECASE)
@@ -432,23 +488,35 @@ def mine_sessions(days: int = 30, auto: bool = False, dry_run: bool = False,
         results = search_sessions(query, limit=MAX_PER_QUERY)
         for r in results:
             content = r.get("content", "")
-            if not content or len(content) < 100:
+            reasoning = r.get("reasoning", "")
+            reasoning_content = r.get("reasoning_content", "")
+
+            # Use content if substantial, otherwise fall back to reasoning
+            has_content = len(content) >= 100
+            has_reasoning = len(reasoning) >= 100
+            if not has_content and not has_reasoning:
                 continue
 
-            # Simple dedup
-            content_hash = hash(content[:200])
+            text = content if has_content else reasoning
+            # For extraction, merge both (reasoning has the fix narrative)
+            extraction_text = reasoning if has_reasoning else content
+            if has_content and has_reasoning:
+                extraction_text = content + "\n" + reasoning
+
+            # Simple dedup on content text
+            content_hash = hash(text[:200])
             if content_hash in seen_texts:
                 continue
             seen_texts.add(content_hash)
 
-            fix = _extract_fix_pattern(content)
+            fix = _extract_fix_pattern(extraction_text)
             if fix:
                 all_candidates.append({
                     **fix,
                     "session_id": r.get("session_id", ""),
                     "session_title": r.get("session_title", ""),
                     "created_at": r.get("created_at", ""),
-                    "full_text": content[:2000],
+                    "full_text": extraction_text[:2000],
                 })
 
         if len(all_candidates) >= MAX_SESSIONS:
