@@ -11,7 +11,7 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-PROJECT_NAME="${1:?Usage: bash scripts/cortex-profile.sh <name> [path]}"
+PROJECT_NAME="${1:?Usage: bash src/scripts/cortex-profile.sh <name> [path]}"
 PROJECT_PATH="${2:-${HOME}/Developer/AI/${PROJECT_NAME}}"
 BRAIN_BASE="${HOME}/brain"
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"

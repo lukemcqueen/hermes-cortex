@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # update-session-state.sh — Refresh the Repo State section of .hermes-cortex/sessions/current.md
 #
-# Usage: ./scripts/update-session-state.sh
+# Usage: ./src/scripts/update-session-state.sh
 #   Runs silently if nothing changed (watchdog/CRON mode).
 #   Pass --verbose to always print status.
 #
@@ -46,7 +46,7 @@ RECENT_COMMITS=$(git log --oneline -5 --format="| %ad | \`%h\` | %s" --date=form
 PY_COUNT=$(find . -name '*.py' -not -path './.git/*' -not -path './node_modules/*' 2>/dev/null | wc -l | tr -d ' ')
 SH_COUNT=$(find . -name '*.sh' -not -path './.git/*' 2>/dev/null | wc -l | tr -d ' ')
 MD_COUNT=$(find . -name '*.md' -not -path './.git/*' -not -path './node_modules/*' 2>/dev/null | wc -l | tr -d ' ')
-TOTAL_FILES=$(find . -type f -not -path './.git/*' -not -path './node_modules/*' -not -path './offline/code-corpus/*' 2>/dev/null | wc -l | tr -d ' ')
+TOTAL_FILES=$(find . -type f -not -path './.git/*' -not -path './node_modules/*' -not -path './src/offline/code-corpus/*' 2>/dev/null | wc -l | tr -d ' ')
 
 PY_LINES=$(find . -name '*.py' -not -path './.git/*' -not -path './node_modules/*' -exec cat {} + 2>/dev/null | wc -l | tr -d ' ')
 SH_LINES=$(find . -name '*.sh' -not -path './.git/*' -exec cat {} + 2>/dev/null | wc -l | tr -d ' ')

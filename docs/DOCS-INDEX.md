@@ -11,7 +11,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `README.md` | Project overview, quick start, and links |
 | `AGENTS.md` | Agent guidelines — read by AI tools on session start |
 | `install.sh` | Single-command installer (idempotent, safe to re-run) |
-| `check-system.sh` | System compatibility check before installing |
+| `src/scripts/check-system.sh` | System compatibility check before installing |
 
 ## Security
 
@@ -38,25 +38,25 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/troubleshooting.md` | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse, Linux |
 | `docs/cron-job-recipes.md` | 10 reusable cron recipes — Bible reading, system alerts, memory pruning, morning briefing, and more |
 | `docs/computer-specs.md` | Hardware specs guide — RAM tiers, recommended models (Intel vs Apple Silicon), ZIM content bundles |
-| `docker-compose.langfuse.yml` | Langfuse v3 Docker stack — ClickHouse, MinIO, Redis, Postgres |
+| `deploy/docker-compose.langfuse.yml` | Langfuse v3 Docker stack — ClickHouse, MinIO, Redis, Postgres |
 
 ## Knowledge & Offline
 
 | Doc | Description |
 |-----|-------------|
 | `docs/offline-travel-stack.md` | Offline knowledge scenarios — jungle travel, development, kid learning |
-| `docs/offline-code-tutorials/` | Per-language code snippets in `offline/code-corpus/` (26 languages, 386 files) |
-| `offline/SKILL.md` | Offline-knowledge skill — cascade cache + kiwix ZIM usage protocol + Code Assistant |
-| `offline/prep-bible.sh` | Bible translation downloader — 55+ languages |
-| `offline/prep-hymns.sh` | Public domain hymn downloader — scores (PDF), notation (ABC), audio (MIDI) |
-| `offline/bible-parse.py` | Multi-strategy Bible text parser (PG, eBible, WEB formats) → structured JSON |
-| `offline/offline-reader.py` | Local web UI for Bible, hymns, and reference — zero dependencies, dark theme, fully offline |
-| `offline/auto-update.sh` | Silent auto-update for offline content — set-and-forget via cron |
-| `offline/offline_code.py` | Offline code assistant — search/generate from 386 curated code snippets via Ollama RAG |
-| `offline/prep-code.sh` | Build the code snippet corpus and vector index for offline coding |
-| `offline/code-corpus/generate.py` | Auto-discovers snippets modules, writes formatted .md snippet files with YAML frontmatter |
-| `web-cache/SKILL.md` | Web cache skill — local semantic cache for web_search and web_extract |
-| `patches/hermes-langfuse-cost-fixes.patch.md` | Patch notes for Langfuse cost calculation fixes |
+| `docs/offline-code-tutorials/` | Per-language code snippets in `src/offline/code-corpus/` (26 languages, 386 files) |
+| `src/offline/SKILL.md` | Offline-knowledge skill — cascade cache + kiwix ZIM usage protocol + Code Assistant |
+| `src/offline/prep-bible.sh` | Bible translation downloader — 55+ languages |
+| `src/offline/prep-hymns.sh` | Public domain hymn downloader — scores (PDF), notation (ABC), audio (MIDI) |
+| `src/offline/bible-parse.py` | Multi-strategy Bible text parser (PG, eBible, WEB formats) → structured JSON |
+| `src/offline/offline-reader.py` | Local web UI for Bible, hymns, and reference — zero dependencies, dark theme, fully offline |
+| `src/offline/auto-update.sh` | Silent auto-update for offline content — set-and-forget via cron |
+| `src/offline/offline_code.py` | Offline code assistant — search/generate from 386 curated code snippets via Ollama RAG |
+| `src/offline/prep-code.sh` | Build the code snippet corpus and vector index for offline coding |
+| `src/offline/code-corpus/generate.py` | Auto-discovers snippets modules, writes formatted .md snippet files with YAML frontmatter |
+| `src/web-cache/SKILL.md` | Web cache skill — local semantic cache for web_search and web_extract |
+| `deploy/patches/hermes-langfuse-cost-fixes.patch.md` | Patch notes for Langfuse cost calculation fixes |
 
 ## Skills
 
@@ -87,5 +87,5 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
-| `scripts/` | OS abstraction scripts (os-config.sh, service-writer.sh, install-ollama.sh, install-nginx.sh, install-gbrain-sync.sh) + utility scripts (heartbeat, memory sync, bootstrap-brain, check-memory-budget, health checks, scoring) |
+| `src/scripts/` | OS abstraction scripts (os-config.sh, service-writer.sh, install-ollama.sh, install-nginx.sh, install-gbrain-sync.sh) + utility scripts (heartbeat, memory sync, bootstrap-brain, check-memory-budget, health checks, scoring) |
 | `.gitignore` | Gitignore — excludes .agentkore, .env, secrets, brain data |

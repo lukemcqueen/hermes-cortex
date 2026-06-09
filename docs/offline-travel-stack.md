@@ -16,11 +16,11 @@ cultural navigation, language help, and geography.
 
 ```bash
 # 1. Download the travel bundle (~6 GB, or + Bible with --include-bible, + hymns with --include-hymns)
-hermes-cortex/offline/prep-offline.sh --mode=travel
+hermes-cortex/src/offline/prep-offline.sh --mode=travel
 # Add --include-bible to also download Bible translations (55+ languages):
-# hermes-cortex/offline/prep-offline.sh --mode=travel --include-bible
+# hermes-cortex/src/offline/prep-offline.sh --mode=travel --include-bible
 # Add --include-hymns for public domain hymns (scores + lyrics, ~35 MB):
-# hermes-cortex/offline/prep-offline.sh --mode=travel --include-hymns
+# hermes-cortex/src/offline/prep-offline.sh --mode=travel --include-hymns
 
 # 2. Verify everything is loaded
 offline_knowledge stats
@@ -103,10 +103,10 @@ Hermes →
 
 ```bash
 # 1. Download the build bundle (~7 GB, or + Bible with --include-bible, + hymns with --include-hymns)
-hermes-cortex/offline/prep-offline.sh --mode=build
+hermes-cortex/src/offline/prep-offline.sh --mode=build
 
 # 2. Index the offline code corpus (386 snippets, 26 languages)
-hermes-cortex/offline/prep-code.sh
+hermes-cortex/src/offline/prep-code.sh
 
 # 3. Cache pip wheels for your projects
 pip download -r your-project/requirements.txt -d ~/offline/pip-cache/
@@ -144,12 +144,12 @@ pip install --no-index --find-links ~/offline/pip-cache/ flask
 ### Pre-Flight Checklist
 
 ```bash
-hermes-cortex/offline/prep-offline.sh --mode=education
+hermes-cortex/src/offline/prep-offline.sh --mode=education
 # Downloads: Simple Wikipedia (3.4 GB) + Wikibooks (1.5 GB) + Wikivoyage (232 MB)
 # Add --include-bible to also download Bible translations:
-# hermes-cortex/offline/prep-offline.sh --mode=education --include-bible
+# hermes-cortex/src/offline/prep-offline.sh --mode=education --include-bible
 # Add --include-hymns for public domain hymns (scores + lyrics, ~35 MB):
-# hermes-cortex/offline/prep-offline.sh --mode=education --include-hymns
+# hermes-cortex/src/offline/prep-offline.sh --mode=education --include-hymns
 ```
 
 ### Daily Usage
@@ -221,7 +221,7 @@ cp -r ~/offline /Volumes/USB/offline-backup
 
 # On target machine:
 cp -r /Volumes/USB/offline-backup ~/offline
-hermes-cortex/offline/prep-offline.sh  # re-runs setup (skips downloads if files exist)
+hermes-cortex/src/offline/prep-offline.sh  # re-runs setup (skips downloads if files exist)
 ```
 
 ## Resource Budget (for the jungle laptop)

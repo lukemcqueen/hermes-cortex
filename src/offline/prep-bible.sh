@@ -288,7 +288,7 @@ done
 
 # ── Post-process: Parse to JSON ────────────────────────────
 header "PARSING TO STRUCTURED JSON"
-PARSE_SCRIPT="$HOME/hermes-cortex/offline/bible-parse.py"
+PARSE_SCRIPT="$HOME/hermes-cortex/src/offline/bible-parse.py"
 parse_ok=0
 parse_fail=0
 

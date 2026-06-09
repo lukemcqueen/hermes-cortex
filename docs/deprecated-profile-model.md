@@ -22,10 +22,10 @@
 
 ### cortex-profile.sh
 
-The `scripts/cortex-profile.sh` script automated creating a hermetic project profile:
+The `src/scripts/cortex-profile.sh` script automated creating a hermetic project profile:
 
 ```bash
-bash scripts/cortex-profile.sh <project-name> [project-path]
+bash src/scripts/cortex-profile.sh &lt;project-name&gt; [project-path]
 ```
 
 It created:

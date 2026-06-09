@@ -825,12 +825,12 @@ when something actually changes.
 
 **Schedule:** Weekly on Sunday at 09:00
 
-**Script:** Save `hermes-cortex/offline/auto-update.sh` to `~/.hermes/scripts/auto-update.sh`
+**Script:** Save `hermes-cortex/src/offline/auto-update.sh` to `~/.hermes/scripts/auto-update.sh`
 
 **Setup:**
 
 ```bash
-cp ~/hermes-cortex/offline/auto-update.sh ~/.hermes/scripts/auto-update.sh
+cp ~/hermes-cortex/src/offline/auto-update.sh ~/.hermes/scripts/auto-update.sh
 chmod +x ~/.hermes/scripts/auto-update.sh
 ```
 

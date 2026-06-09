@@ -145,7 +145,7 @@ fi
 
 ```bash
 # After install, run:
-hermes-cortex/offline/prep-offline.sh
+hermes-cortex/src/offline/prep-offline.sh
 
 # Check system status
 offline_knowledge stats
