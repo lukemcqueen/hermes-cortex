@@ -519,6 +519,12 @@ def main(args: Optional[list] = None):
 
         print(f"\n🔍 Lesson Search: \"{result['query']}\"")
         print(f"   {result['count']} matches (threshold: {SIMILARITY_THRESHOLD})\n")
+        if result["count"] == 0:
+            index_path = Path(HOME / "offline" / "lessons-index.json")
+            has_lessons = index_path.exists() and _load_index().get("count", 0) > 0
+            if has_lessons:
+                print("   💡 Try broader terms or use --language/--tag to filter.")
+                print()
         for r in result["results"]:
             tags_str = ", ".join(r["tags"]) if r["tags"] else ""
             print(f"  📖 {r['title']}")
