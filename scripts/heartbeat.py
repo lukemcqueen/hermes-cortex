@@ -141,11 +141,84 @@ def check_gateway_log() -> dict:
     return {"status": "DEGRADED", "detail": "No log activity in 30+ min"}
 
 
+def check_gbrain_sources() -> dict:
+    """Check gbrain source health: flag 'never synced' or '0 pages' sources.
+
+    Returns UP if all sources are healthy, DEGRADED if some have issues,
+    or DOWN if critical failures found.
+    """
+    try:
+        bun_path = Path.home() / ".bun" / "bin"
+        gbrain_cmd = str(bun_path / "gbrain")
+        env = os.environ.copy()
+        env["PATH"] = f"{bun_path}:{env.get('PATH', '')}"
+
+        # Try to get source health from gbrain doctor
+        result = subprocess.run(
+            [gbrain_cmd, "doctor", "--json"],
+            capture_output=True, text=True, timeout=30,
+            env=env, cwd=str(Path.home() / "brain"),
+        )
+
+        if result.returncode != 0:
+            # Fallback: just list sources
+            result2 = subprocess.run(
+                [gbrain_cmd, "sources", "list"],
+                capture_output=True, text=True, timeout=15, env=env,
+            )
+            if result2.returncode != 0:
+                return {"status": "DOWN", "detail": "gbrain not responding"}
+            sources = result2.stdout.strip().split("\n")
+            return {"status": "UNKNOWN", "detail": f"{len(sources)} sources found (doctor unavailable)"}
+
+        data = json.loads(result.stdout)
+        checks = data.get("doctor", {}).get("checks", [])
+
+        # Look for source-related issues
+        failures = []
+        for check in checks:
+            name = check.get("name", "")
+            status = check.get("status", "")
+            msg = check.get("message", "")
+
+            if status == "fail" and any(kw in name for kw in ["sync", "embed", "source", "cycle"]):
+                failures.append(f"{name}: {msg[:120]}")
+            elif status == "warn" and name in ("sync_freshness", "cycle_freshness", "orphan_ratio"):
+                failures.append(f"{name}: {msg[:120]}")
+
+        # Also check for "never synced" or "0 pages" in raw output
+        sync_checks = [c for c in checks if c.get("name") == "sync_freshness"]
+        if sync_checks:
+            sync_msg = sync_checks[0].get("message", "")
+            if "never" in sync_msg.lower() or "0 page" in sync_msg.lower():
+                failures.append(f"One or more sources never synced or have 0 pages: {sync_msg[:150]}")
+
+        if failures:
+            detail = "; ".join(failures[:3])
+            more = f" (+{len(failures) - 3} more)" if len(failures) > 3 else ""
+            return {"status": "DEGRADED", "detail": f"{detail}{more}"}
+
+        # Check overall health score
+        overall = data.get("overall_health_score", -1)
+        if overall >= 0 and overall < 50:
+            return {"status": "DEGRADED", "detail": f"Overall health score: {overall}/100"}
+
+        return {"status": "UP", "detail": "All sources healthy"}
+
+    except FileNotFoundError:
+        return {"status": "UNKNOWN", "detail": "gbrain not installed"}
+    except subprocess.TimeoutExpired:
+        return {"status": "UNKNOWN", "detail": "gbrain doctor timed out"}
+    except Exception as e:
+        return {"status": "ERROR", "detail": f"gbrain check: {e}"}
+
+
 def run() -> str:
     """Run all checks and return report. Empty string = all healthy."""
     checks = {
         "Ollama": check_launchd("com.ollama.serve"),
         "gbrain sync daemon": check_launchd("com.gbrain.sync-watch"),
+        "gbrain sources": check_gbrain_sources(),
         "Gateway activity": check_gateway_log(),
         "Memory→brain sync": check_memory_sync_freshness(),
         "Disk usage": check_disk_usage(),

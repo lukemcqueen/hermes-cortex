@@ -132,7 +132,7 @@ if [[ -z "${CORTEX_SOURCES:-}" ]]; then
 fi
 
 IFS=',' read -ra SOURCES <<< "$CORTEX_SOURCES"
-TOTAL_STEPS=26
+TOTAL_STEPS=27
 STEP=0
 
 # Ensure Hermes is installed
@@ -469,6 +469,35 @@ step "Creating gbrain sync-watch daemon ($SERVICE_MANAGER)"
 bash "${SCRIPT_DIR}/scripts/install-gbrain-sync.sh"
 ok
 
+# ── Check for duplicate 'default' gbrain source ──────────
+step "Checking for duplicate gbrain sources"
+DUPLICATE_FOUND=false
+if "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "^default\b.*~/brain/default"; then
+  # Check if there's also a 'mybrain' or manual default pointing elsewhere
+  for dup_source in default mybrain main; do
+    count=$("$GBRAIN_CMD" sources list 2>/dev/null | grep -c "^${dup_source}\b" || true)
+    if [[ "$count" -gt 1 ]]; then
+      warn "Duplicate gbrain source '${dup_source}' detected!"
+      warn "  The 'default' source is built-in and manages ~/brain/default/ automatically."
+      warn "  Remove the duplicate with: gbrain sources remove <duplicate-name>"
+      DUPLICATE_FOUND=true
+    fi
+  done
+  # Also check if user manually added ~/brain/default as a named source
+  if "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "~/brain/default" | head -1; then
+    source_count=$("$GBRAIN_CMD" sources list 2>/dev/null | grep -c "default" || true)
+    if [[ "$source_count" -gt 1 ]]; then
+      warn "Multiple sources reference ~/brain/default/. The 'default' gbrain source"
+      warn "already manages this path. Remove extra entries with: gbrain sources list"
+      DUPLICATE_FOUND=true
+    fi
+  fi
+fi
+if [[ "$DUPLICATE_FOUND" == "false" ]]; then
+  info "No duplicate sources detected"
+fi
+ok
+
 # ─────────────────────────────────────────────────────────────
 #  7. Hermes gbrain Plugin (/brain slash command)
 # ─────────────────────────────────────────────────────────────
@@ -664,7 +693,6 @@ fi
 #  8. Hermes Scripts (heartbeat, memory-to-brain)
 # ─────────────────────────────────────────────────────────────
 step "Installing Hermes utility scripts"
-
 SCRIPTS_DIR="${HERMES_HOME}/scripts"
 mkdir -p "$SCRIPTS_DIR"
 
@@ -680,6 +708,7 @@ else
 Checks critical daemons and services:
   - Ollama (LLM server)
   - gbrain sync daemon
+  - gbrain source health (flagged "never synced" / "0 pages")
   - Hermes gateway
   - Memory-to-brain sync freshness
   - Disk space
@@ -687,6 +716,7 @@ Checks critical daemons and services:
 Outputs a concise health report. Designed for cron integration:
   - Non-empty stdout on FAILURE → cron delivers alert
   - Empty stdout when healthy → silent (watchdog pattern)
+  - Use --report to force output regardless of health
 """
 import json, os, subprocess, sys, re
 from datetime import datetime, timedelta
@@ -730,17 +760,10 @@ def check_systemd(unit_name):
                                 capture_output=True, text=True, timeout=10)
         status = result.stdout.strip()
         if status == "active":
-            detail_result = subprocess.run(["systemctl", "--user", "show",
-                                            "--property=MainPID,SubState", unit_name],
-                                           capture_output=True, text=True, timeout=10)
-            detail = detail_result.stdout.strip().replace("\\n", ", ") or status
-            return {"status": "UP", "detail": detail}
-        elif status == "failed":
-            return {"status": "DOWN", "detail": f"Unit {unit_name} is in failed state"}
-        elif status in ("inactive", "dead"):
+            return {"status": "UP", "detail": unit_name}
+        elif status in ("inactive", "dead", "failed"):
             return {"status": "DOWN", "detail": f"Unit {unit_name} is {status}"}
-        else:
-            return {"status": "DEGRADED", "detail": f"Unit {unit_name}: {status}"}
+        return {"status": "DEGRADED", "detail": f"Unit {unit_name}: {status}"}
     except FileNotFoundError:
         return {"status": "ERROR", "detail": "systemctl not found — not a systemd system"}
     except Exception as e:
@@ -782,10 +805,66 @@ def check_disk_usage(path="/"):
         return {"status": "ERROR", "detail": str(e)}
 
 
+def check_gbrain_sources():
+    """Check gbrain source health: flag 'never synced' or '0 pages' sources."""
+    try:
+        bun_path = Path.home() / ".bun" / "bin"
+        gbrain_cmd = str(bun_path / "gbrain")
+        env = os.environ.copy()
+        env["PATH"] = f"{bun_path}:{env.get('PATH', '')}"
+
+        result = subprocess.run(
+            [gbrain_cmd, "doctor", "--json"],
+            capture_output=True, text=True, timeout=30,
+            env=env, cwd=str(Path.home() / "brain"),
+        )
+        if result.returncode != 0:
+            result2 = subprocess.run(
+                [gbrain_cmd, "sources", "list"],
+                capture_output=True, text=True, timeout=15, env=env,
+            )
+            if result2.returncode != 0:
+                return {"status": "DOWN", "detail": "gbrain not responding"}
+            return {"status": "UNKNOWN", "detail": "doctor unavailable"}
+
+        data = json.loads(result.stdout)
+        checks = data.get("doctor", {}).get("checks", [])
+        failures = []
+        for check in checks:
+            name = check.get("name", "")
+            status = check.get("status", "")
+            msg = check.get("message", "")
+            if status == "fail" and any(kw in name for kw in ["sync", "embed", "source", "cycle"]):
+                failures.append(f"{name}: {msg[:120]}")
+            elif status == "warn" and name in ("sync_freshness", "cycle_freshness", "orphan_ratio"):
+                failures.append(f"{name}: {msg[:120]}")
+
+        sync_checks = [c for c in checks if c.get("name") == "sync_freshness"]
+        if sync_checks:
+            sync_msg = sync_checks[0].get("message", "")
+            if "never" in sync_msg.lower() or "0 page" in sync_msg.lower():
+                failures.append(f"Sources never synced or have 0 pages: {sync_msg[:150]}")
+
+        if failures:
+            detail = "; ".join(failures[:3])
+            more = f" (+{len(failures) - 3} more)" if len(failures) > 3 else ""
+            return {"status": "DEGRADED", "detail": f"{detail}{more}"}
+
+        overall = data.get("overall_health_score", -1)
+        if overall >= 0 and overall < 50:
+            return {"status": "DEGRADED", "detail": f"Health score: {overall}/100"}
+        return {"status": "UP", "detail": "All sources healthy"}
+    except FileNotFoundError:
+        return {"status": "UNKNOWN", "detail": "gbrain not installed"}
+    except Exception as e:
+        return {"status": "ERROR", "detail": f"gbrain check: {e}"}
+
+
 def run():
     checks = {
         "Ollama": check_service("com.ollama.serve"),
         "gbrain sync daemon": check_service("com.gbrain.sync-watch"),
+        "gbrain sources": check_gbrain_sources(),
         "Gateway activity": check_gateway_log(),
         "Disk usage": check_disk_usage(),
     }
@@ -926,6 +1005,72 @@ if __name__ == "__main__":
 M2BPY
   chmod +x "$M2B_PATH"
   ok
+fi
+
+# ── bootstrap-brain.sh ─────────────────────────────────────
+BOOTSTRAP_PATH="${SCRIPTS_DIR}/bootstrap-brain.sh"
+if [[ -f "$BOOTSTRAP_PATH" ]]; then
+  skip "bootstrap-brain.sh already exists"
+else
+  cp "${SCRIPT_DIR}/scripts/bootstrap-brain.sh" "$BOOTSTRAP_PATH" 2>/dev/null || {
+    cat > "$BOOTSTRAP_PATH" <<'BOOTSTRAP'
+#!/usr/bin/env bash
+# bootstrap-brain.sh — Post-install brain verification
+# Auto-generated by install.sh
+set -euo pipefail
+BRAIN_DIR="${HOME}/brain"
+GBRAIN_CMD="${HOME}/.bun/bin/gbrain"
+export PATH="${HOME}/.bun/bin:$PATH"
+echo "━━━ Brain Bootstrap ━━━"
+for dir in "$BRAIN_DIR"/*/; do
+  name=$(basename "$dir")
+  if [[ ! -d "${dir}/.git" ]]; then
+    git -C "$dir" init 2>/dev/null && echo "✓ Git init: ${name}"
+  fi
+  if [[ ! -f "${dir}/.gitignore" ]]; then
+    echo "MEMORY.md\nUSER.md\n.env\n.env.*\n*.pem\n*.key\n.DS_Store" > "${dir}/.gitignore"
+    echo "✓ .gitignore: ${name}"
+  fi
+  if ! "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "^${name}\b"; then
+    "$GBRAIN_CMD" sources add "$name" --path "$dir" --name "$name" 2>/dev/null && echo "✓ gbrain source: ${name}"
+  fi
+  git -C "$dir" add -A 2>/dev/null || true
+  git -C "$dir" commit --allow-empty -m "init: ${name}" 2>/dev/null || true
+  "$GBRAIN_CMD" sync --source "$name" 2>/dev/null && echo "✓ Synced: ${name}"
+  pages=$("$GBRAIN_CMD" query --source "$name" --list-pages 2>/dev/null | wc -l)
+  echo "  ${pages} pages indexed for ${name}"
+done
+BOOTSTRAP
+  }
+  chmod +x "$BOOTSTRAP_PATH"
+  info "  Installed bootstrap-brain.sh"
+fi
+
+# ── check-memory-budget.sh ─────────────────────────────────
+BUDGET_PATH="${SCRIPTS_DIR}/check-memory-budget.sh"
+if [[ -f "$BUDGET_PATH" ]]; then
+  skip "check-memory-budget.sh already exists"
+else
+  cp "${SCRIPT_DIR}/scripts/check-memory-budget.sh" "$BUDGET_PATH" 2>/dev/null || {
+    cat > "$BUDGET_PATH" <<'BUDGET'
+#!/usr/bin/env bash
+# check-memory-budget.sh — MEMORY.md usage monitor
+set -euo pipefail
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; RESET='\033[0m'
+FILE="${HOME}/.hermes/memories/MEMORY.md"
+LIMIT=2200
+[[ ! -f "$FILE" ]] && { echo "No MEMORY.md found"; exit 0; }
+CHARS=$(wc -m < "$FILE" | tr -d ' ')
+PCT=$(( CHARS * 100 / LIMIT ))
+[[ $PCT -ge 95 ]] && ICON="🔴" && STATUS="CRITICAL"
+[[ $PCT -ge 85 && $PCT -lt 95 ]] && ICON="🟡" && STATUS="WARNING"
+[[ $PCT -lt 85 ]] && ICON="🟢" && STATUS="OK"
+echo "${ICON} MEMORY.md: ${PCT}% (${CHARS}/${LIMIT}) — ${STATUS}"
+[[ $PCT -ge 85 ]] && echo "Run: bash ~/.hermes/scripts/bootstrap-brain.sh to compact"
+BUDGET
+  }
+  chmod +x "$BUDGET_PATH"
+  info "  Installed check-memory-budget.sh"
 fi
 
 # ─────────────────────────────────────────────────────────────
@@ -1392,7 +1537,27 @@ info "  All .env files locked down"
 ok
 
 # ─────────────────────────────────────────────────────────────
-#  17. Summary & Next Steps
+#  17. Bootstrap Brain — Verify & Index
+# ─────────────────────────────────────────────────────────────
+step "Bootstrapping brain sources (verify + index)"
+BOOTSTRAP_SCRIPT="${SCRIPTS_DIR}/bootstrap-brain.sh"
+if [[ -f "$BOOTSTRAP_SCRIPT" ]]; then
+  bash "$BOOTSTRAP_SCRIPT" --check-only 2>&1 | sed 's/^/  /'
+  # If some sources have 0 pages, suggest running full bootstrap
+  if bash "$BOOTSTRAP_SCRIPT" --check-only 2>&1 | grep -q "0 pages"; then
+    warn "Some brain sources have 0 indexed pages. Run:"
+    warn "  bash ~/.hermes/scripts/bootstrap-brain.sh"
+    warn "  This will init git repos, register gbrain sources, and sync."
+  else
+    info "All brain sources are healthy and searchable"
+  fi
+else
+  warn "bootstrap-brain.sh not found — skipping"
+fi
+ok
+
+# ─────────────────────────────────────────────────────────────
+#  18. Summary & Next Steps
 # ─────────────────────────────────────────────────────────────
 header "INSTALLATION SUMMARY"
 
@@ -1408,9 +1573,11 @@ fi
 printf "  ${GREEN}•${RESET} Brain sources    → ${BRAIN_DIR}/{%s}\n" "$(echo "${SOURCES[*]}" | tr ' ' ',')"
 printf "  ${GREEN}•${RESET} gbrain plugin    → /brain slash command\n"
 printf "  ${GREEN}•${RESET} heartbeat.py     → system health watchdog\n"
-printf "  ${GREEN}•${RESET} memory-to-brain.py → memory sync to gbrain\n"
-printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\n"
-printf "  ${GREEN}•${RESET} Hermes skills    → 8 shared skills in ~/.hermes/skills/\n"
+printf "  ${GREEN}•${RESET} memory-to-brain.py → memory sync to gbrain\\n"
+printf "  ${GREEN}•${RESET} bootstrap-brain.sh → post-install brain verification\\n"
+printf "  ${GREEN}•${RESET} check-memory-budget.sh → MEMORY.md usage monitor\\n"
+printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\\n"
+printf "  ${GREEN}•${RESET} Hermes skills    → 12+ shared skills in ~/.hermes/skills/\\n"
 printf "  ${GREEN}•${RESET} Web Cache       → semantic web result cache (sqlite-vec + Ollama)\n"
 printf "  ${GREEN}•${RESET} Offline Knowledge → cascade cache + kiwix ZIM content viewer\n"
 printf "  ${GREEN}•${RESET} Launchd services:\n"
@@ -1432,7 +1599,8 @@ I've installed the Hermes Cortex system. Please finish the setup by:
 1. Open ~/.hermes/memories/MEMORY.md and ~/.hermes/memories/USER.md — fill in your system topology and user profile so I know your context
 2. Load the shared skills from ~/.hermes/skills/ (use skill_view(name) to browse them — includes subagent-driven-development, systematic-debugging, change-test-loop, spike, plan, memory-architecture, requesting-code-review, client-brand-brand-marketing, korean-language-learning)
 3. Loading the hermes-agent skill and verifying the gbrain-command plugin
-4. Setting up these cron jobs (use the cronjob tool):
+4. Run ~/.hermes/scripts/bootstrap-brain.sh to ensure all brain sources are initialized, git-enabled, registered in gbrain, and synced. Note which sources have indexed pages (if any show 0 pages, add some .md files and re-sync)
+5. Setting up these cron jobs (use the cronjob tool):
 
    a) gbrain-nightly-dream — daily at 3am:
       Schedule: 0 3 * * *
@@ -1449,12 +1617,18 @@ I've installed the Hermes Cortex system. Please finish the setup by:
       Script: memory-to-brain.py
       no_agent: true
 
-   d) memory-pruning — daily at 4am:
+   d) memory-budget-check — daily at 5am:
+      Schedule: 0 5 * * *
+      Script: check-memory-budget.sh
+      no_agent: true
+
+   e) memory-pruning — daily at 4am:
       Schedule: 0 4 * * *
       Prompt: Read your current MEMORY.md and USER.md from ~/.hermes/memories/ and prune/consolidate entries that are stale, redundant, or no longer relevant. Keep useful durable facts. Report what you removed and why.
 
-5. Run /reset or /new to activate the /brain slash command
-6. Verify: run /brain hello-world to test
+6. Run /reset or /new to activate the /brain slash command
+7. Verify brain ingestion: run "gbrain query hello" then "gbrain query --source <name> hello" — you should see different results per source if sources have content
+8. Check the heartbeat: bash ~/.hermes/scripts/heartbeat.py --report — confirms all services including gbrain sources
 
 PROMPT
 printf "${RESET}${BOLD}${CYAN}───────────────────────────────────────────────────${RESET}\n"

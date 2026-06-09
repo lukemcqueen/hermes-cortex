@@ -24,9 +24,10 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `docs/architecture.md` | System architecture overview — layers, services, port map, security stack |
-| `docs/project-separation-architecture.md` | Project isolation model — federated vs isolated brain sources, Hermes profiles, cortex-profile.sh automation, decision guide |
+| `docs/knowledge-isolation-architecture.md` | Knowledge isolation model — gbrain source isolation, federated vs isolated sources, pointer pattern integration |
 | `docs/deploy-registry-pattern.md` | Multi-repo deploy registry — public/private split, brain-* branches, sync workflow |
 | `docs/design/DESIGN.md` | Design conventions — typography, color, spacing, UI (light/dark modes) |
+| `docs/deprecated-profile-model.md` | Archived v1.x profile-per-project model — legacy migration reference |
 | `docs/agent-memory-pointer-pattern.md` | Compressed pointers + agent brain for unlimited context |
 
 ## Operations
@@ -89,5 +90,5 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
-| `scripts/` | OS abstraction scripts (os-config.sh, service-writer.sh, install-ollama.sh, install-nginx.sh, install-gbrain-sync.sh) + utility scripts (heartbeat, memory sync, health checks, scoring) |
+| `scripts/` | OS abstraction scripts (os-config.sh, service-writer.sh, install-ollama.sh, install-nginx.sh, install-gbrain-sync.sh) + utility scripts (heartbeat, memory sync, bootstrap-brain, check-memory-budget, health checks, scoring) |
 | `.gitignore` | Gitignore — excludes .agentkore, .env, secrets, brain data |

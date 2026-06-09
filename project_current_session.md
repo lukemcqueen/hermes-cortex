@@ -57,16 +57,16 @@
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `e7ff527` — 2026-06-09 11:09:53 |
-| Working tree | dirty (1 files) |
-| Unpushed | 1 commits |
+| Last commit | `3261074` — 2026-06-09 11:09:53 |
+| Working tree | clean |
+| Unpushed | none |
 | Tag | `v1.0.0` |
 
 ### Recent Commits
 
 | Date | Commit | Description |
 |------|--------|-------------|
-| 2026-06-09 | `e7ff527` | feat: auto-save session system — project_current_session.md + cron
+| 2026-06-09 | `3261074` | feat: auto-save session system — project_current_session.md + cron
 | 2026-06-09 | `c8f8071` | feat: add public-contribution meta-skill, SOUL.md template, nginx deployment skill
 | 2026-06-08 | `eae1545` | fix: install-nginx.sh hardcoded ports 11003/11002 → 13001/13002
 | 2026-06-08 | `1492f8d` | fix: dashboard default port 13703→8901
