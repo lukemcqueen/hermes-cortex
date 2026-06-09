@@ -114,7 +114,7 @@ offline_knowledge query "how to treat a snake bite in the jungle"
 | `python3 src/offline/offline-reader.py` | Launch local web UI for browsing Bible, hymns, and reference |
 | `./src/offline/auto-update.sh` | Check for content updates (silent if offline) |
 | `offline_knowledge stats` | Full system status |
-| `offline_code search <query>` | Semantic + keyword search over 386 code snippets, 26 languages |
+| `offline_code search <query>` | Semantic + keyword search over 367 code snippets, 27 languages |
 | `offline_code search "<query>" --lang go` | Search filtered by language |
 | `offline_code gen "<prompt>"` | RAG code generation using Ollama (context from matching snippets) |
 | `offline_code gen "<prompt>" --model qwen2.5-coder:7b` | Code gen with a larger model |
@@ -236,7 +236,7 @@ Behavior:
 
 ## 💻 Offline Code Assistant
 
-A curated corpus of **386 code snippets** across **26 languages** with semantic search and RAG-powered code generation — all running locally via Ollama.
+A curated corpus of **367 code snippets** across **27 languages** with semantic search and RAG-powered code generation — all running locally via Ollama.
 
 ### What's Included
 

@@ -93,6 +93,7 @@ register "docs/templates/USER.seed.md"        "${HERMES_HOME}/memories/USER.md"
 register "docs/templates/memory-readme.seed.md" "${HERMES_HOME}/memory/README.md"
 
 # Langfuse
+register "deploy/nginx/hermes-services.conf" "${HERMES_HOME}/nginx/hermes-services.conf" "nginx" "restart_nginx"
 register "deploy/docker-compose.langfuse.yml"        "${HOME}/langfuse/docker-compose.yml" "langfuse" "restart_langfuse"
 
 # Dashboard
@@ -125,6 +126,20 @@ restart_langfuse() {
     if docker compose -f "${HOME}/langfuse/docker-compose.yml" ps &>/dev/null 2>&1; then
       info "  Recreating Langfuse containers…"
       (cd "${HOME}/langfuse" && docker compose up -d 2>&1) | sed 's/^/    /'
+    fi
+  fi
+}
+
+restart_nginx() {
+  if command -v nginx &>/dev/null; then
+    info "  Reloading nginx…"
+    # Use homebrew nginx on macOS, system nginx on Linux
+    local nginx_cmd="nginx"
+    [[ "$(uname -s)" == "Darwin" ]] && nginx_cmd="$(brew --prefix 2>/dev/null)/bin/nginx" || true
+    if "$nginx_cmd" -t 2>/dev/null; then
+      "$nginx_cmd" -s reload 2>/dev/null && info "  nginx reloaded" || warn "  nginx reload failed — try: sudo nginx -s reload"
+    else
+      warn "  nginx config test failed — not reloading"
     fi
   fi
 }
@@ -358,6 +373,7 @@ main() {
         restart_gbrain_sync) restart_gbrain_sync ;;
         restart_langfuse)    restart_langfuse ;;
         restart_dashboard)   restart_dashboard ;;
+        restart_nginx)       restart_nginx ;;
         *)                   warn "Unknown restart command: $cmd" ;;
       esac
     done

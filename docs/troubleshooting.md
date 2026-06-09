@@ -299,7 +299,7 @@ sudo systemctl daemon-reload && sudo systemctl start ollama
 
 ### 19. Can't log in — no admin user created on first startup
 
-**Symptom:** You navigate to `localhost:3001` (or your nginx URL) and see the login page, but there's no "Sign Up" / "Create Account" link, and no admin user was created.
+**Symptom:** You navigate to `localhost:3000` (or your nginx URL) and see the login page, but there's no "Sign Up" / "Create Account" link, and no admin user was created.
 
 **Root cause:** Langfuse v3 can auto-create the first admin account at startup if you provide `LANGFUSE_INIT_USER_EMAIL`, `LANGFUSE_INIT_USER_NAME`, and `LANGFUSE_INIT_USER_PASSWORD` in your `.env` file. If these are missing, the web container starts but no admin user is provisioned.
 
