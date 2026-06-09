@@ -57,8 +57,8 @@
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `40a272c` — 2026-06-09 13:08:41 |
-| Working tree | clean (+1 untracked: `cleanup_repos.sh`) |
+| Last commit | `5ddcca5` — 2026-06-09 13:38:58 |
+| Working tree | dirty (2 files) |
 | Unpushed | none |
 | Tag | `v1.0.0` |
 
@@ -66,11 +66,11 @@
 
 | Date | Commit | Description |
 |------|--------|-------------|
+| 2026-06-09 | `5ddcca5` | Move agent infra to .hermes-cortex/ (Titus proposal)
+| 2026-06-09 | `5437781` | Drop verse references from public SOUL.md template
+| 2026-06-09 | `5590cfc` | Add Guard Your Speech principle to SOUL.md template
 | 2026-06-09 | `40a272c` | Fix 2 bugs + add gaps found by Titus in real-world testing
 | 2026-06-09 | `8b226a4` | Titus improvements: 6 fixes for out-of-box UX
-| 2026-06-09 | `dbae97d` | Revert "chore: migrate from agentkore/opencode to hermes-cortex"
-| 2026-06-09 | `6df0588` | chore: migrate from agentkore/opencode to hermes-cortex
-| 2026-06-09 | `3261074` | feat: auto-save session system — project_current_session.md + cron
 
 ---
 
@@ -78,12 +78,12 @@
 
 | Layer | What |
 |-------|------|
-| Installer | `install.sh` — 1517 lines, 26 steps, idempotent |
+| Installer | `install.sh` — 1723 lines, 26 steps, idempotent |
 | Skills | 20 skills across 4 categories (software-development, devops, social-media, productivity) |
-| Python files | 42 files (32623 LOC) |
-| Shell files | 19 files (4815 LOC) |
-| Markdown files | 489 files |
-| Total | 185 tracked files |
+| Python files | 42 files (32734 LOC) |
+| Shell files | 21 files (5401 LOC) |
+| Markdown files | 491 files |
+| Total | 193 tracked files |
 | Dashboard | Flask app + nginx proxy — Langfuse traces + system health |
 | Scripts | 16 utility scripts (heartbeat, memory-sync, LLM scoring, service recovery) |
 | OpenCode | 15 commands + 3 agents + 30 optional skills |
@@ -106,4 +106,4 @@
 
 ---
 
-*Last updated: 2026-06-09 13:39 KST*
+*Last updated: 2026-06-09 13:47 KST*
