@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# update-session-state.sh — Refresh the Repo State section of project_current_session.md
+# update-session-state.sh — Refresh the Repo State section of .hermes-cortex/sessions/current.md
 #
 # Usage: ./scripts/update-session-state.sh
 #   Runs silently if nothing changed (watchdog/CRON mode).
@@ -21,7 +21,7 @@ while [[ $# -gt 0 ]]; do
         *) REPO_DIR="$1"; shift ;;
     esac
 done
-SESSION_FILE="$REPO_DIR/project_current_session.md"
+SESSION_FILE="$REPO_DIR/.hermes-cortex/sessions/current.md"
 
 if [ ! -f "$SESSION_FILE" ]; then
     echo "ERROR: $SESSION_FILE not found. Run from the hermes-cortex repo root." >&2

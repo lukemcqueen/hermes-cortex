@@ -59,3 +59,4 @@ node_modules/
 
 # Git filter-repo artifacts
 .git-filter-repo-replacements.txt
+.hermes-cortex/memory/

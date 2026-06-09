@@ -18,7 +18,7 @@ their domain.
 | `plan` | 2.1.0 | Plan mode — write actionable markdown plans, no execution | `skill_view(name='plan')` |
 | `change-test-loop` | 1.1.0 | RED-GREEN-REFACTOR with confidence scoring, retry limits, coverage requirements, and strict TDD discipline | `skill_view(name='change-test-loop')` |
 | `public-contribution` | 1.0.0 | After any improvement, evaluate whether it's public-worthy for the Hermes Cortex OSS community, genericize, and contribute | `skill_view(name='public-contribution')` |
-|| `session-manager` | 1.1.0 | Session checkpoint/restore, context compression, progress tracking. Now uses committed `project_current_session.md` in repo root | `skill_view(name='session-manager')` |
+|| `session-manager` | 1.1.0 | Session checkpoint/restore, context compression, progress tracking. Uses `.hermes-cortex/sessions/current.md` for active state | `skill_view(name='session-manager')` |
 | `state-orchestrator` | 1.0.0 | Info routing — live context vs session vs memory vs docs | `skill_view(name='state-orchestrator')` |
 | `skill-from-lesson` | 1.0.0 | Turn bugs, corrections, and discoveries into durable skills — decision tree, workflow, pitfalls | `skill_view(name='skill-from-lesson')` |
 | `subagent-driven-development` | 1.0.0 | Execute plans via delegate_task subagents (2-stage review) | `skill_view(name='subagent-driven-development')` |
