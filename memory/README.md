@@ -57,7 +57,7 @@ Entries in `MEMORY.md` **must** be:
 
 ```
 - OS: macOS 12.7.6 — Darwin kernel
-- Default model: deepseek-v4-flash (opencode-go provider)
+- Default model: deepseek-v4-flash
 - Project root: ~/hermes-cortex
 - → /brain m docker for Docker Compose service definitions
 ```
