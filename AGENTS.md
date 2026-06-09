@@ -25,7 +25,7 @@ Hermes Cortex is a **public installer and skill set** for
 | `docs/templates/` | Seed MEMORY.md, USER.md, brain .gitignore |
 | `install.sh` | Single-command installer, 26 steps (idempotent) |
 | `docker-compose.langfuse.yml` | Langfuse v3 with ClickHouse, MinIO, Redis |
-| `.gitignore` | Excludes .agentkore, .opencode, .env*, *.pem, *.key, state.db, .hermes/ |
+| `.gitignore` | Excludes .agentkore, .env*, *.pem, *.key, state.db, .hermes/ |
 
 ## Architecture Principles
 
