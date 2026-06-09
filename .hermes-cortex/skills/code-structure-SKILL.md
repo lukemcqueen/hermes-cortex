@@ -116,3 +116,30 @@ New feature? → Write in action first → See repeated ops? → Extract to serv
 ```
 
 Your architecture in one sentence: **Actions orchestrate domain rules, while the service layer centralizes reusable operational mechanics with a composable, explicit-input API.**
+
+## Relationship to Other Skills
+
+### With improve-codebase-architecture (deep modules)
+
+This skill tells you *where* to put things (actions vs services). The `improve-codebase-architecture` skill tells you *how deep* a module's interface should be — a service with a shallow interface (caller must know all internal details) is a poorly designed service even if it's in the right layer.
+
+Use them together:
+1. `improve-codebase-architecture` — apply the **deletion test** to find shallow modules
+2. `code-structure` — extract the repeated mechanics into composable service functions
+
+A module that passes the deletion test (complexity reappears across callers) is a good candidate for service extraction. A module that fails (complexity was just pass-through) should be inlined or deleted, not promoted to a service.
+
+### With change-test-loop (REFACTOR phase)
+
+During REFACTOR, before extracting shared logic:
+1. Apply the deletion test from `improve-codebase-architecture` — is this module shallow?
+2. If it passes (complexity is real), use this skill's migration checklist to extract
+3. If it fails (pass-through), inline it instead — don't create a service for nothing
+
+### With plan (Design Approach)
+
+When planning a new feature, consider both:
+- **Layer**: does this belong in an action or service? (code-structure)
+- **Depth**: is the interface as simple as it could be? (improve-codebase-architecture)
+
+A deep service interface creates leverage for callers and locality for maintainers.
