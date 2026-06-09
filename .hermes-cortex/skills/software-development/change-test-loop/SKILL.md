@@ -102,8 +102,21 @@ baseline → inspect → change → test → fix → retry → fallback (once) �
 When adding **new** functionality (endpoints, frontend pages, services) — not fixing existing code — the workflow extends:
 
 ```
-build → write tests → run tests → full suite → report
+branch → build → write tests → run tests → full suite → push → report
 ```
+
+### Step 0: Create a feature branch
+
+Before writing any code, create a `titus/<slug>` branch:
+
+```bash
+git checkout -b titus/<slug-describing-change>
+git push -u origin titus/<slug-describing-change>
+```
+
+Push early and push often. The repo's auto-PR workflow creates a draft PR from `titus/*` branches — Moses reviews and merges when ready.
+
+**Never push to `main`.** Not even for quick fixes. Every change gets its own branch.
 
 ### Critical Rule: Test Before You Tell
 
