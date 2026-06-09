@@ -1216,6 +1216,19 @@ else
   fi
 fi
 
+# ── cortex-update.sh ───────────────────────────────────────
+CORTEX_UPDATE_PATH="${SCRIPTS_DIR}/cortex-update.sh"
+if [[ -f "$CORTEX_UPDATE_PATH" ]]; then
+  skip "cortex-update.sh already exists"
+else
+  cp "${SCRIPT_DIR}/scripts/cortex-update.sh" "$CORTEX_UPDATE_PATH" 2>/dev/null || \
+    warn "cortex-update.sh not available (only from repo)"
+  if [[ -f "$CORTEX_UPDATE_PATH" ]]; then
+    chmod +x "$CORTEX_UPDATE_PATH"
+    info "  Installed cortex-update.sh"
+  fi
+fi
+
 # ── Scripts list ────────────────────────────────────────────
 info "Scripts directory: ${SCRIPTS_DIR}"
 
@@ -1734,6 +1747,7 @@ printf "  ${GREEN}•${RESET} bootstrap-brain.sh → post-install brain verifica
 printf "  ${GREEN}•${RESET} seed-project-brain.sh → one-command brain seeding from repos\n"
 printf "  ${GREEN}•${RESET} cortex-health.sh   → single green-check system readiness\n"
 printf "  ${GREEN}•${RESET} cortex-setup-langfuse.sh → standalone Langfuse .env generator\n"
+printf "  ${GREEN}•${RESET} cortex-update.sh  → git pull + delta-update + service restart\n"
 printf "  ${GREEN}•${RESET} check-memory-budget.sh → MEMORY.md usage monitor\n"
 printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\\n"
 printf "  ${GREEN}•${RESET} Hermes skills    → 12+ shared skills in ~/.hermes/skills/\\n"
@@ -1788,6 +1802,11 @@ I've installed the Hermes Cortex system. Please finish the setup by:
       Schedule: 0 4 * * *
       Prompt: Read your current MEMORY.md and USER.md from ~/.hermes/memories/ and prune/consolidate entries that are stale, redundant, or no longer relevant. Keep useful durable facts. Report what you removed and why.
 
+   f) cortex-update — weekly on Sunday at 3am (auto-pull + delta-update):
+      Schedule: 0 3 * * 0
+      Prompt: Run cortex-update to keep the system current: bash ~/.hermes/scripts/cortex-update.sh
+      no_agent: true
+
 9. Run /reset or /new to activate the /brain slash command
 10. Verify brain ingestion: run "gbrain query hello" then "gbrain query --source <name> hello" — you should see different results per source if sources have content
 11. (Optional) Check detailed heartbeat: bash ~/.hermes/scripts/heartbeat.py --report — watch how service status changes as you configure things
@@ -1802,6 +1821,7 @@ printf "  ${GREEN}•${RESET} Cortex Dashboard: http://localhost:8901 (nginx: :1
 printf "  ${GREEN}•${RESET} 🔒 Security:      Read docs/SECURITY.md for firewall + hardening\n"
 printf "  ${GREEN}•${RESET} Langfuse setup:   bash cortex-setup-langfuse.sh --start (generates .env + starts)\n"
 printf "  ${GREEN}•${RESET} System health:    bash cortex-health.sh (green-check status)\n"
+printf "  ${GREEN}•${RESET} System update:    bash cortex-update.sh (pull + delta-update)\n"
 fi
 printf "  ${GREEN}•${RESET} /brain query     — search your knowledge brain\n"
 printf "  ${GREEN}•${RESET} Offline query:   offline_knowledge query \"question\"\n"
