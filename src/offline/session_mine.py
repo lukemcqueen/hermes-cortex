@@ -63,14 +63,19 @@ SEARCH_QUERIES = [
     "let me fix OR let me update OR let me change OR fixed the",
     "i noticed OR i see the OR found that OR realized that",
     "we need to OR we should OR we have to",
+    # Additional agent reasoning patterns (Titus)
+    "issue was that OR problem was that OR bug was that",
+    "missing OR forgot OR forgotten OR hadn't",
+    "failed because OR fails because OR failing because",
+    "the fix was OR solution was OR resolved by",
 ]
 
 # Minimum confidence for auto-save
 AUTO_THRESHOLD = 0.7
 
 # Max sessions to scan per run
-MAX_SESSIONS = 100
-MAX_PER_QUERY = 10
+MAX_SESSIONS = 200
+MAX_PER_QUERY = 20
 
 
 # ── Session History Access ──────────────────────────────────
@@ -135,15 +140,20 @@ def _query_sessions_sqlite(query: str, limit: int = 10) -> list:
         if "messages_fts_trigram" in tables:
             # Trigram FTS — handles partial words, no stemming
             sql = """
-                SELECT m.id, m.session_id, m.role, m.content,
-                       m.reasoning, m.reasoning_content,
+                SELECT m.id, m.session_id, m.role,
+                       COALESCE(NULLIF(m.content, ''), m.reasoning, m.reasoning_content, '') as text,
+                       m.content, m.reasoning, m.reasoning_content,
                        s.id as session_title
                 FROM messages m
                 JOIN messages_fts_trigram f ON m.id = f.rowid
                 LEFT JOIN sessions s ON m.session_id = s.id
                 WHERE m.role IN ('user', 'assistant')
+                  AND (s.id IS NULL OR (
+                       s.id NOT LIKE 'auto-save%'
+                   AND s.id NOT LIKE 'mwi-sync%'
+                   AND s.id NOT LIKE 'cron_%'))
                   AND messages_fts_trigram MATCH ?
-                ORDER BY m.id DESC
+                ORDER BY RANDOM()
                 LIMIT ?
             """
             try:
@@ -186,17 +196,19 @@ def _query_sessions_sqlite(query: str, limit: int = 10) -> list:
 
         results = []
         for row in rows:
-            content = str(row[3] or "")
-            reasoning = str(row[4] or "")
-            reasoning_content = str(row[5] or "")
+            text = str(row[3] or "")
+            content = str(row[4] or "")
+            reasoning = str(row[5] or "")
+            reasoning_content = str(row[6] or "")
             results.append({
                 "id": row[0],
                 "session_id": row[1],
                 "role": row[2],
+                "text": text,
                 "content": content,
                 "reasoning": reasoning,
                 "reasoning_content": reasoning_content,
-                "session_title": str(row[6] or ""),
+                "session_title": str(row[7] or ""),
             })
 
         conn.close()
@@ -487,21 +499,16 @@ def mine_sessions(days: int = 30, auto: bool = False, dry_run: bool = False,
     for query in SEARCH_QUERIES:
         results = search_sessions(query, limit=MAX_PER_QUERY)
         for r in results:
+            text = r.get("text", "")
             content = r.get("content", "")
             reasoning = r.get("reasoning", "")
-            reasoning_content = r.get("reasoning_content", "")
 
-            # Use content if substantial, otherwise fall back to reasoning
-            has_content = len(content) >= 100
-            has_reasoning = len(reasoning) >= 100
-            if not has_content and not has_reasoning:
+            # text is already COALESCE'd from SQL — content/reasoning/reasoning_content fallback
+            if not text or len(text) < 100:
                 continue
 
-            text = content if has_content else reasoning
-            # For extraction, merge both (reasoning has the fix narrative)
-            extraction_text = reasoning if has_reasoning else content
-            if has_content and has_reasoning:
-                extraction_text = content + "\n" + reasoning
+            # Use reasoning content for extraction when available (has the fix narrative)
+            extraction_text = reasoning if len(reasoning) >= 200 else text
 
             # Simple dedup on content text
             content_hash = hash(text[:200])
