@@ -58,10 +58,11 @@
 > **🔒 Before installing:** Read the [Security Guide](docs/SECURITY.md) to understand how your system is protected.
 
 ```bash
-# Clone the public system
-git clone https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex
+# One-liner — no clone needed (auto-detects and downloads the repo)
+curl -fsSL https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/install.sh | bash
 
-# macOS — Server profile (default): full stack with Docker services
+# Or clone for offline install / inspection:
+git clone --depth 1 https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex
 bash ~/hermes-cortex/install.sh
 
 # macOS — Laptop profile: lean, no Docker (Langfuse, Dashboard, nginx skipped)

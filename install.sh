@@ -3,6 +3,13 @@
 #  Hermes Cortex — Full System Installer
 #  https://github.com/fleet-operator/hermes-cortex
 #
+#  One-line install:
+#    curl -fsSL https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/install.sh | bash
+#
+#  Or from a local clone:
+#    git clone --depth 1 https://github.com/fleet-operator/hermes-cortex.git
+#    cd hermes-cortex && bash install.sh
+#
 #  Installs: Ollama · Bun · gbrain · Langfuse† · Cortex Dashboard† ·
 #            nginx† · Brain directory structure · Hermes plugins ·
 #            Web Cache · Offline Knowledge (kiwix ZIM) · Skills
@@ -20,7 +27,42 @@ IFS=$'\n\t'
 VERSION="1.0.0"
 
 # Script root directory — must be set before any source calls
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null)" || SCRIPT_DIR=""
+
+# ── Remote install detection ─────────────────────────────────
+# If running from a curl pipe, SCRIPT_DIR will be empty or
+# /dev/stdin and os-config.sh won't exist. In that case,
+# download the repo tarball and extract to a temp directory.
+REMOTE_CLEANUP=""
+if [[ -z "$SCRIPT_DIR" || ! -f "${SCRIPT_DIR}/scripts/os-config.sh" ]]; then
+  if [[ ! -f "${SCRIPT_DIR:-/dev/null}/scripts/os-config.sh" ]]; then
+    printf "📡 Remote install detected — downloading hermes-cortex…\n\n"
+
+    # Check required tools
+    for cmd in curl tar mktemp; do
+      if ! command -v "$cmd" &>/dev/null; then
+        printf "\033[0;31m✗\033[0m Required tool not found: %s\n" "$cmd" >&2
+        printf "  Install it first, then re-run the installer.\n" >&2
+        exit 1
+      fi
+    done
+
+    REMOTE_CLEANUP=$(mktemp -d)
+    REPO_URL="https://github.com/fleet-operator/hermes-cortex/archive/refs/heads/main.tar.gz"
+
+    printf "  Downloading %s …\n" "$REPO_URL"
+    curl -fsSL "$REPO_URL" | tar -xz -C "$REMOTE_CLEANUP" 2>/dev/null || {
+      printf "\033[0;31m✗\033[0m Download failed. Check your internet connection.\n" >&2
+      rm -rf "$REMOTE_CLEANUP"
+      exit 1
+    }
+
+    SCRIPT_DIR="${REMOTE_CLEANUP}/hermes-cortex-main"
+    printf "\033[0;32m✓\033[0m Downloaded and extracted to temp directory\n\n"
+
+    # Cleanup is handled by the existing EXIT trap below
+  fi
+fi
 
 # ── Colors ──────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -42,7 +84,7 @@ ok()   { printf "  ${GREEN}done${RESET}\n"; }
 skip() { printf "  ${YELLOW}skip${RESET} — %s\n" "$1"; }
 
 # ── Abort handler ───────────────────────────────────────────
-trap 'printf "\n${RED}Installation aborted at step $STEP${RESET}\n"' EXIT
+trap 'printf "\n${RED}Installation aborted at step $STEP${RESET}\n"; rm -rf "${REMOTE_CLEANUP}"' EXIT
 
 # ── Source OS Abstraction Layer ─────────────────────────────
 source "${SCRIPT_DIR}/scripts/os-config.sh"
@@ -1871,5 +1913,6 @@ printf "\n"
 
 printf "\n${GREEN}${BOLD}Hermes Cortex v${VERSION} installed. Enjoy! 🧠${RESET}\n"
 
-# Clear the EXIT trap
+# Clear the EXIT trap and clean up remote temp dir
+rm -rf "${REMOTE_CLEANUP}"
 trap - EXIT
