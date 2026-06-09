@@ -1,0 +1,60 @@
+name: Auto PR — titus/* branch
+
+on:
+  push:
+    branches:
+      - 'titus/**'
+
+concurrency:
+  group: pr-titus-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create draft PR to main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          TITLE="$(git log -1 --format=%s)"
+          BODY=$(cat <<EOF
+          ## Summary
+
+          $TITLE
+
+          ---
+          Auto-generated from ${BRANCH} pushed by agent.
+
+          ## Instructions
+
+          - Review changes on this branch
+          - Merge when ready
+          - Delete branch after merge — agent will create a fresh one next time
+          EOF
+          )
+          EXISTING=$(gh pr list \
+            --head "$BRANCH" \
+            --base main \
+            --json number,title,state \
+            --jq '.[] | "\(.number) \(.state) — \(.title)"' 2>/dev/null)
+          if [ -n "$EXISTING" ]; then
+            echo "PR already exists for $BRANCH:"
+            echo "  $EXISTING"
+            echo "Skipping creation."
+          else
+            echo "Creating draft PR for $BRANCH → main..."
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "$TITLE" \
+              --body "$BODY" \
+              --draft
+            echo "Draft PR created."
+          fi
