@@ -117,51 +117,41 @@ def _query_sessions_sqlite(query: str, limit: int = 10) -> list:
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
 
-        # Try to find session messages table
-        tables = cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
-        table_names = [t[0] for t in tables]
+        # Check for trigram FTS (best for partial-word matching)
+        tables = {t[0] for t in cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
 
-        # Look for message/session tables
-        msg_table = None
-        session_table = None
-        for name in table_names:
-            if "message" in name.lower() or "msg" in name.lower():
-                msg_table = name
-            if "session" in name.lower():
-                session_table = name
-
-        if not msg_table:
-            return []
-
-        # Check if FTS5 virtual table exists
-        fts_table = f"{msg_table}_fts"
-        if fts_table in table_names:
-            # FTS5 search
-            sql = f"""
-                SELECT m.id, m.session_id, m.role, m.content, m.created_at,
-                       s.title as session_title
-                FROM {msg_table} m
-                JOIN {fts_table} f ON m.id = f.rowid
-                LEFT JOIN {session_table or f'({msg_table} s2)'} s ON m.session_id = s.id
-                WHERE {fts_table} MATCH ?
-                ORDER BY rank
+        if "messages_fts_trigram" in tables:
+            # Trigram FTS — handles partial words, no stemming
+            sql = """
+                SELECT m.id, m.session_id, m.role, m.content,
+                       s.id as session_title
+                FROM messages m
+                JOIN messages_fts_trigram f ON m.id = f.rowid
+                LEFT JOIN sessions s ON m.session_id = s.id
+                WHERE m.role IN ('user', 'assistant')
+                  AND messages_fts_trigram MATCH ?
+                ORDER BY m.id DESC
                 LIMIT ?
             """
-            # Convert query to FTS5 syntax
-            fts_query = " OR ".join(query.split())
             try:
+                # Convert space-separated query to trigram FTS syntax
+                fts_query = " OR ".join(query.split()[:5])
                 rows = cur.execute(sql, (fts_query, limit)).fetchall()
             except sqlite3.OperationalError:
                 rows = []
         else:
-            # Fallback to LIKE search
-            terms = query.split()
-            conditions = " OR ".join([f"m.content LIKE ?" for _ in terms])
+            rows = []
+
+        # If FTS returns nothing, fallback to LIKE on user messages
+        if not rows:
+            terms = query.split()[:3]
+            conditions = " AND ".join([f"m.content LIKE ?" for _ in terms])
             sql = f"""
-                SELECT m.id, m.session_id, m.role, m.content, m.created_at,
-                       '' as session_title
-                FROM {msg_table} m
-                WHERE {conditions}
+                SELECT m.id, m.session_id, m.role, m.content, s.id as session_title
+                FROM messages m
+                LEFT JOIN sessions s ON m.session_id = s.id
+                WHERE m.role IN ('user', 'assistant')
+                  AND ({conditions})
                 ORDER BY m.id DESC
                 LIMIT ?
             """
@@ -174,9 +164,8 @@ def _query_sessions_sqlite(query: str, limit: int = 10) -> list:
                 "id": row[0],
                 "session_id": row[1],
                 "role": row[2],
-                "content": row[3],
-                "created_at": str(row[4]) if row[4] else "",
-                "session_title": row[5] if len(row) > 5 else "",
+                "content": str(row[3] or ""),
+                "session_title": str(row[4] or ""),
             })
 
         conn.close()
@@ -197,30 +186,48 @@ def _extract_fix_pattern(text: str) -> Optional[dict]:
     if not text or len(text) < 60:
         return None
 
+    # Skip context compaction blocks (no useful fix info)
+    if "[CONTEXT COMPACTION" in text or "Earlier turns were compacted" in text:
+        return None
+
+    # Skip tool output blocks
+    if text.strip().startswith("{") and '"success"' in text[:200]:
+        return None
+
     result = {"problem": "", "cause": "", "solution": ""}
 
-    # Look for problem indicators
-    problem_patterns = [
-        (r"(?:error|exception|failed|failure|failing):?\s*(.+?)(?:\.|$)", 1),
-        (r"(?:the |an |a )?(?:issue|problem|bug):?\s*(.+?)(?:\.|$)", 1),
-        (r"(?:returning|returned|getting)\s+(.+?(?:error|exception|fail))", 1),
-        (r"sqlite3\.\w+Error:\s*(.+?)(?:\.|$)", 1),
-        (r"(\w+Error):\s*(.+?)(?:\.|$)", lambda m: f"{m.group(1)}: {m.group(2)}"),
-        (r"(?:422|500|400|403|404)\s+(.+?)(?:\.|$)", 1),
-    ]
-    for pat, group in problem_patterns:
-        m = re.search(pat, text, re.IGNORECASE)
-        if m:
-            val = m.group(group) if isinstance(group, int) else group(m)
-            if len(val) > 10:
-                result["problem"] = val[:200]
-                break
+    # Look for error messages (highest signal)
+    error_match = re.search(
+        r'(?:(?:Error|Exception|Traceback|Failed|fatal):?\s*([^\n]+))'
+        r'|(?:(?:sqlite3|psycopg2|requests|docker)\.\w+Error:\s*([^\n]+))'
+        r'|(?:(?:HTTP|status)\s+\d{3}\s+[^\n]+)',
+        text, re.IGNORECASE
+    )
+    if error_match:
+        result["problem"] = (error_match.group(1) or error_match.group(2) or error_match.group(0)).strip()[:200]
+
+    # If no explicit error found, look for broader problem descriptions
+    if not result["problem"]:
+        problem_patterns = [
+            (r"(?:the |an |a )?(?:issue|problem|bug|error)[:\s]+(.{10,200}?)(?:\.|$)", 1),
+            (r"(?:returning|returned|getting|throws?)\s+(.{10,200}?(?:error|exception|fail))", 1),
+            (r"(?:failed to|unable to|couldn't|cannot)\s+(.{10,200}?)(?:\.|$)", 1),
+            (r"(\w+Error|Exception):\s*(.{10,200}?)(?:\.|$)", 2),
+        ]
+        for pat, group in problem_patterns:
+            m = re.search(pat, text, re.IGNORECASE)
+            if m:
+                val = m.group(group).strip()
+                if len(val) > 10:
+                    result["problem"] = val[:200]
+                    break
 
     # Look for cause indicators
     cause_patterns = [
-        (r"(?:root cause|caused by|because|due to|reason):?\s*(.+?)(?:\.|$)", 1),
-        (r"(?:the issue was|the problem was|turns? out)\s+(.+?)(?:\.|$)", 1),
-        (r"(?:missing|forgot|forgotten|wasn't|weren't|didn't)\s+(.+?)(?:\.|$)", 1),
+        (r"(?:root cause|caused by|because|due to|reason)[:\s]+(.{10,200}?)(?:\.|$)", 1),
+        (r"(?:the issue was|the problem was|turns? out)\s+(.{10,200}?)(?:\.|$)", 1),
+        (r"(?:missing|forgot|forgotten|wasn't|weren't|didn't|hadn't)\s+(.{10,200}?)(?:\.|$)", 1),
+        (r"(?:the |this )?(?:config|setting|parameter|flag|option)\s+(.{10,200}?wasn't\s+set)", 1),
     ]
     for pat, group in cause_patterns:
         m = re.search(pat, text, re.IGNORECASE)
