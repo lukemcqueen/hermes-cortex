@@ -1190,6 +1190,35 @@ else
   fi
 fi
 
+# ── cortex-health.sh ───────────────────────────────────────
+CORTEX_HEALTH_PATH="${SCRIPTS_DIR}/cortex-health.sh"
+if [[ -f "$CORTEX_HEALTH_PATH" ]]; then
+  skip "cortex-health.sh already exists"
+else
+  cp "${SCRIPT_DIR}/scripts/cortex-health.sh" "$CORTEX_HEALTH_PATH" 2>/dev/null || \
+    warn "cortex-health.sh not available (only from repo)"
+  if [[ -f "$CORTEX_HEALTH_PATH" ]]; then
+    chmod +x "$CORTEX_HEALTH_PATH"
+    info "  Installed cortex-health.sh"
+  fi
+fi
+
+# ── cortex-setup-langfuse.sh ───────────────────────────────
+CORTEX_LANGFUSE_PATH="${SCRIPTS_DIR}/cortex-setup-langfuse.sh"
+if [[ -f "$CORTEX_LANGFUSE_PATH" ]]; then
+  skip "cortex-setup-langfuse.sh already exists"
+else
+  cp "${SCRIPT_DIR}/scripts/cortex-setup-langfuse.sh" "$CORTEX_LANGFUSE_PATH" 2>/dev/null || \
+    warn "cortex-setup-langfuse.sh not available (only from repo)"
+  if [[ -f "$CORTEX_LANGFUSE_PATH" ]]; then
+    chmod +x "$CORTEX_LANGFUSE_PATH"
+    info "  Installed cortex-setup-langfuse.sh"
+  fi
+fi
+
+# ── Scripts list ────────────────────────────────────────────
+info "Scripts directory: ${SCRIPTS_DIR}"
+
 # ─────────────────────────────────────────────────────────────
 #  9. Seed Memory Files — Bootstrapping templates
 # ─────────────────────────────────────────────────────────────
@@ -1701,8 +1730,11 @@ printf "  ${GREEN}•${RESET} Brain sources    → ${BRAIN_DIR}/{%s}\n" "$(echo 
 printf "  ${GREEN}•${RESET} gbrain plugin    → /brain slash command\n"
 printf "  ${GREEN}•${RESET} heartbeat.py     → system health watchdog\n"
 printf "  ${GREEN}•${RESET} memory-to-brain.py → memory sync to gbrain\\n"
-printf "  ${GREEN}•${RESET} bootstrap-brain.sh → post-install brain verification\\n"
-printf "  ${GREEN}•${RESET} check-memory-budget.sh → MEMORY.md usage monitor\\n"
+printf "  ${GREEN}•${RESET} bootstrap-brain.sh → post-install brain verification\n"
+printf "  ${GREEN}•${RESET} seed-project-brain.sh → one-command brain seeding from repos\n"
+printf "  ${GREEN}•${RESET} cortex-health.sh   → single green-check system readiness\n"
+printf "  ${GREEN}•${RESET} cortex-setup-langfuse.sh → standalone Langfuse .env generator\n"
+printf "  ${GREEN}•${RESET} check-memory-budget.sh → MEMORY.md usage monitor\n"
 printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\\n"
 printf "  ${GREEN}•${RESET} Hermes skills    → 12+ shared skills in ~/.hermes/skills/\\n"
 printf "  ${GREEN}•${RESET} Web Cache       → semantic web result cache (sqlite-vec + Ollama)\n"
@@ -1727,8 +1759,10 @@ I've installed the Hermes Cortex system. Please finish the setup by:
 2. Load the shared skills from ~/.hermes/skills/ (use skill_view(name) to browse them — includes subagent-driven-development, systematic-debugging, change-test-loop, spike, plan, memory-architecture, requesting-code-review, client-brand-brand-marketing, korean-language-learning)
 3. Loading the hermes-agent skill and verifying the gbrain-command plugin
 4. Run ~/.hermes/scripts/bootstrap-brain.sh to ensure all brain sources are initialized, git-enabled, registered in gbrain, and synced. Note which sources have indexed pages (if any show 0 pages, add some .md files and re-sync)
-5. Optionally seed project brains from existing repos: ~/.hermes/scripts/seed-project-brain.sh --list to see empty ones, then --all to seed them all
-6. Setting up these cron jobs (use the cronjob tool):
+5. If using Langfuse, run: bash ~/.hermes/scripts/cortex-setup-langfuse.sh --start (generates all required .env secrets and starts Docker Compose — no more failing on :? expansion)
+6. Seed project brains from existing repos: ~/.hermes/scripts/seed-project-brain.sh --all (finds matching repos under ~/Developer/AI/ and fills their brain dirs with README/docs — one command from empty shell to indexed knowledge)
+7. Run cortex-health.sh to confirm everything is green: bash ~/.hermes/scripts/cortex-health.sh (prints a clean status table for Ollama, Langfuse, gbrain, sync daemon, memory freshness, disk usage — exits 0 when all systems go)
+8. Setting up these cron jobs (use the cronjob tool):
 
    a) gbrain-nightly-dream — daily at 3am:
       Schedule: 0 3 * * *
@@ -1754,9 +1788,9 @@ I've installed the Hermes Cortex system. Please finish the setup by:
       Schedule: 0 4 * * *
       Prompt: Read your current MEMORY.md and USER.md from ~/.hermes/memories/ and prune/consolidate entries that are stale, redundant, or no longer relevant. Keep useful durable facts. Report what you removed and why.
 
-7. Run /reset or /new to activate the /brain slash command
-8. Verify brain ingestion: run "gbrain query hello" then "gbrain query --source <name> hello" — you should see different results per source if sources have content
-9. Check the heartbeat: bash ~/.hermes/scripts/heartbeat.py --report — confirms all services including gbrain sources
+9. Run /reset or /new to activate the /brain slash command
+10. Verify brain ingestion: run "gbrain query hello" then "gbrain query --source <name> hello" — you should see different results per source if sources have content
+11. (Optional) Check detailed heartbeat: bash ~/.hermes/scripts/heartbeat.py --report — watch how service status changes as you configure things
 
 PROMPT
 printf "${RESET}${BOLD}${CYAN}───────────────────────────────────────────────────${RESET}\n"
@@ -1764,8 +1798,10 @@ printf "${RESET}${BOLD}${CYAN}────────────────�
 printf "\n${BOLD}📚 Quick Reference${RESET}\n"
 if [[ "$CORTEX_PROFILE" == "server" ]]; then
 printf "  ${GREEN}•${RESET} Langfuse:        http://localhost:3000 (nginx: :13002)\\n"
-printf "  ${GREEN}•${RESET} Cortex Dashboard: http://localhost:8901 (nginx: :13001)\\n"
-printf "  ${GREEN}•${RESET} 🔒 Security:      Read docs/SECURITY.md for firewall + hardening\\n"
+printf "  ${GREEN}•${RESET} Cortex Dashboard: http://localhost:8901 (nginx: :13001)\n"
+printf "  ${GREEN}•${RESET} 🔒 Security:      Read docs/SECURITY.md for firewall + hardening\n"
+printf "  ${GREEN}•${RESET} Langfuse setup:   bash cortex-setup-langfuse.sh --start (generates .env + starts)\n"
+printf "  ${GREEN}•${RESET} System health:    bash cortex-health.sh (green-check status)\n"
 fi
 printf "  ${GREEN}•${RESET} /brain query     — search your knowledge brain\n"
 printf "  ${GREEN}•${RESET} Offline query:   offline_knowledge query \"question\"\n"
