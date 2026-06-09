@@ -1799,6 +1799,17 @@ if [[ -d "$OFFLINE_REPO" ]]; then
   ln -sf "${OFFLINE_DEST}/offline_knowledge.sh" "${HERMES_BIN}/offline_knowledge"
   info "  Installed offline knowledge cascade tool + lesson database"
 
+  # Copy project-map tool
+  PROJECT_MAP_REPO="${SCRIPT_DIR}/src/project-map"
+  if [[ -d "$PROJECT_MAP_REPO" ]]; then
+    cp "${PROJECT_MAP_REPO}/project_map.py" "$OFFLINE_DEST/"
+    chmod +x "${OFFLINE_DEST}/project_map.py"
+    cp "${PROJECT_MAP_REPO}/project_map.sh" "$OFFLINE_DEST/"
+    chmod +x "${OFFLINE_DEST}/project_map.sh"
+    ln -sf "${OFFLINE_DEST}/project_map.sh" "${HERMES_BIN}/project-map"
+    info "  Installed project-map static analyzer"
+  fi
+
   # Copy kiwix Docker compose file
   cp "${OFFLINE_REPO}/kiwix-docker-compose.yml" "$OFFLINE_DEST/"
   info "  Installed kiwix-serve Docker compose"
