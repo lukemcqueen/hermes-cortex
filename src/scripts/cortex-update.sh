@@ -20,7 +20,7 @@ info()  { echo -e "${GREEN}✓${RESET} $*"; }
 warn()  { echo -e "${YELLOW}⚠${RESET} $*"; }
 error() { echo -e "${RED}✗${RESET} $*"; }
 
-REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 STATE_DIR="${HERMES_HOME}/state"
 LAST_COMMIT_FILE="${STATE_DIR}/update-commit"
@@ -64,28 +64,28 @@ register() {
 }
 
 # Scripts → ~/.hermes/scripts/
-register "scripts/heartbeat.py"               "${HERMES_HOME}/scripts/heartbeat.py"
-register "scripts/memory-to-brain.py"         "${HERMES_HOME}/scripts/memory-to-brain.py"
-register "scripts/bootstrap-brain.sh"         "${HERMES_HOME}/scripts/bootstrap-brain.sh"
-register "scripts/check-memory-budget.sh"     "${HERMES_HOME}/scripts/check-memory-budget.sh"
-register "scripts/cortex-profile.sh"          "${HERMES_HOME}/scripts/cortex-profile.sh"
-register "scripts/seed-project-brain.sh"      "${HERMES_HOME}/scripts/seed-project-brain.sh"
-register "scripts/cortex-health.sh"           "${HERMES_HOME}/scripts/cortex-health.sh"
-register "scripts/cortex-setup-langfuse.sh"   "${HERMES_HOME}/scripts/cortex-setup-langfuse.sh"
-register "scripts/cortex-update.sh"           "${HERMES_HOME}/scripts/cortex-update.sh"
-register "scripts/install-gbrain-sync.sh"     "${HERMES_HOME}/scripts/install-gbrain-sync.sh" "gbrain-sync" "restart_gbrain_sync"
-register "scripts/install-ollama.sh"          "${HERMES_HOME}/scripts/install-ollama.sh"
-register "scripts/install-nginx.sh"           "${HERMES_HOME}/scripts/install-nginx.sh"
+register "src/scripts/heartbeat.py"               "${HERMES_HOME}/scripts/heartbeat.py"
+register "src/scripts/memory-to-brain.py"         "${HERMES_HOME}/scripts/memory-to-brain.py"
+register "src/scripts/bootstrap-brain.sh"         "${HERMES_HOME}/scripts/bootstrap-brain.sh"
+register "src/scripts/check-memory-budget.sh"     "${HERMES_HOME}/scripts/check-memory-budget.sh"
+register "src/scripts/cortex-profile.sh"          "${HERMES_HOME}/scripts/cortex-profile.sh"
+register "src/scripts/seed-project-brain.sh"      "${HERMES_HOME}/scripts/seed-project-brain.sh"
+register "src/scripts/cortex-health.sh"           "${HERMES_HOME}/scripts/cortex-health.sh"
+register "src/scripts/cortex-setup-langfuse.sh"   "${HERMES_HOME}/scripts/cortex-setup-langfuse.sh"
+register "src/scripts/cortex-update.sh"           "${HERMES_HOME}/scripts/cortex-update.sh"
+register "src/scripts/install-gbrain-sync.sh"     "${HERMES_HOME}/scripts/install-gbrain-sync.sh" "gbrain-sync" "restart_gbrain_sync"
+register "src/scripts/install-ollama.sh"          "${HERMES_HOME}/scripts/install-ollama.sh"
+register "src/scripts/install-nginx.sh"           "${HERMES_HOME}/scripts/install-nginx.sh"
 
 # Web cache (always force-copied)
-register "web-cache/web_cache.py"             "${HERMES_HOME}/web-cache/web_cache.py"
-register "web-cache/web_cache.sh"             "${HERMES_HOME}/web-cache/web_cache.sh"
+register "src/web-cache/web_cache.py"             "${HERMES_HOME}/web-cache/web_cache.py"
+register "src/web-cache/web_cache.sh"             "${HERMES_HOME}/web-cache/web_cache.sh"
 
 # Offline tools
-register "offline/offline_knowledge.py"       "${HERMES_HOME}/offline/offline_knowledge.py"
-register "offline/offline_knowledge.sh"       "${HERMES_HOME}/offline/offline_knowledge.sh"
-register "offline/kiwix-docker-compose.yml"   "${HERMES_HOME}/offline/kiwix-docker-compose.yml"
-register "offline/prep-offline.sh"            "${HERMES_HOME}/offline/prep-offline.sh"
+register "src/offline/offline_knowledge.py"       "${HERMES_HOME}/offline/offline_knowledge.py"
+register "src/offline/offline_knowledge.sh"       "${HERMES_HOME}/offline/offline_knowledge.sh"
+register "src/offline/kiwix-docker-compose.yml"   "${HERMES_HOME}/offline/kiwix-docker-compose.yml"
+register "src/offline/prep-offline.sh"            "${HERMES_HOME}/offline/prep-offline.sh"
 
 # Templates → ~/.hermes/memories/ (guarded — only if dest missing)
 register "docs/templates/MEMORY.seed.md"      "${HERMES_HOME}/memories/MEMORY.md"
@@ -93,16 +93,16 @@ register "docs/templates/USER.seed.md"        "${HERMES_HOME}/memories/USER.md"
 register "docs/templates/memory-readme.seed.md" "${HERMES_HOME}/memory/README.md"
 
 # Langfuse
-register "docker-compose.langfuse.yml"        "${HOME}/langfuse/docker-compose.yml" "langfuse" "restart_langfuse"
+register "deploy/docker-compose.langfuse.yml"        "${HOME}/langfuse/docker-compose.yml" "langfuse" "restart_langfuse"
 
 # Dashboard
-register "dashboard/server.py"               "${HERMES_HOME}/dashboard/server.py" "dashboard" "restart_dashboard"
-register "dashboard/static/index.html"        "${HERMES_HOME}/dashboard/static/index.html" "dashboard"
-register "dashboard/com.hermes.cortex-dashboard.plist" "${HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist" "dashboard"
+register "src/dashboard/server.py"               "${HERMES_HOME}/dashboard/server.py" "dashboard" "restart_dashboard"
+register "src/dashboard/static/index.html"        "${HERMES_HOME}/dashboard/static/index.html" "dashboard"
+register "src/dashboard/com.hermes.cortex-dashboard.plist" "${HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist" "dashboard"
 
 # Service definitions
-register "scripts/os-config.sh"               "${HERMES_HOME}/scripts/os-config.sh"
-register "scripts/service-writer.sh"          "${HERMES_HOME}/scripts/service-writer.sh"
+register "src/scripts/os-config.sh"               "${HERMES_HOME}/scripts/os-config.sh"
+register "src/scripts/service-writer.sh"          "${HERMES_HOME}/scripts/service-writer.sh"
 
 # ── Service restart helpers ─────────────────────────────────
 

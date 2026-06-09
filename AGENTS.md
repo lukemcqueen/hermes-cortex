@@ -24,7 +24,7 @@ Hermes Cortex is a **public installer and skill set** for
 | `docs/` | Troubleshooting, guides, templates, SECURITY.md |
 | `docs/templates/` | Seed MEMORY.md, USER.md, brain .gitignore |
 | `install.sh` | Single-command installer, 27 steps (idempotent) |
-| `docker-compose.langfuse.yml` | Langfuse v3 with ClickHouse, MinIO, Redis |
+| `deploy/docker-compose.langfuse.yml` | Langfuse v3 with ClickHouse, MinIO, Redis |
 | `.hermes-cortex/sessions/current.md` | Active session state — branch, commits, task context |
 | `.hermes-cortex/sessions/archive/` | Timestamped session snapshots |
 | `.hermes-cortex/skills/` | Project-specific Hermes skills (tracked) |
@@ -66,17 +66,17 @@ Three-layer data model:
 - **Pointer memory pattern:** `MEMORY.md` keeps compact pointers (~2,200 chars), full detail lives in brain directories via gbrain
 - **Privacy by default:** Memory files (`MEMORY.md`, `USER.md`) are gitignored in every brain source — never cross-contaminate instances
 - **Memory scoring rubric:** Entries must score ≥7/12 (relevance 4, accuracy 4, conciseness 2, durability 2) before writing — see `memory/README.md`
-- **State routing:** Information flows through a decision matrix — live context → session history → memory → docs, in that priority order — see `skills/software-development/state-orchestrator/`
+| **State routing:** Information flows through a decision matrix — live context → session history → memory → docs, in that priority order — see `src/skills/software-development/state-orchestrator/`
 - **Project separation:** Each project gets its own gbrain source for isolation — see `docs/knowledge-isolation-architecture.md`
 - **Structured development pipeline:** Work flows through a defined chain — `hc-elicit` → `hc-party` → `prd-lite` → `story-slicing` → `change-test-loop` → code review — each stage consumes the output of the prior one, reducing rework and enforcing quality gates before code is written
-- **Agent execution contract:** Non-negotiable rules — real work, verified results, no simulation — see `skills/software-development/agent-contract/`
+- **Agent execution contract:** Non-negotiable rules — real work, verified results, no simulation — see `src/skills/software-development/agent-contract/`
 
 ## Common Tasks
 
 - **Add a troubleshooting entry:** Edit `docs/troubleshooting.md`, add new numbered section, update changelog
 - **Add a template:** Place in `docs/templates/`, update `install.sh` step 9 to copy it during install
 - **Modify install:** Edit `install.sh` — 26 steps, idempotent, safe to re-run
-- **Update Docker config:** Edit `docker-compose.langfuse.yml` — Langfuse v3 requires specific env vars (see docs/troubleshooting.md)
+- **Update Docker config:** Edit `deploy/docker-compose.langfuse.yml` — Langfuse v3 requires specific env vars (see docs/troubleshooting.md)
 
 ## Rules
 

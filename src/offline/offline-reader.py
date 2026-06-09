@@ -6,9 +6,9 @@ A lightweight local web server for browsing Bible translations and
 hymns completely offline. Zero external dependencies — Python stdlib only.
 
 Usage:
-    python3 offline/offline-reader.py              # Port 8081, open browser
-    python3 offline/offline-reader.py --port 9090  # Custom port
-    python3 offline/offline-reader.py --no-browser # Don't open browser
+    python3 src/offline/offline-reader.py              # Port 8081, open browser
+    python3 src/offline/offline-reader.py --port 9090  # Custom port
+    python3 src/offline/offline-reader.py --no-browser # Don't open browser
 
 Then visit http://localhost:8081 in any browser.
 Works completely offline.

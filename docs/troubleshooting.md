@@ -11,7 +11,7 @@
 
 **Symptom:** `docker ps` shows containers restarting repeatedly. `docker logs <name>` shows ZodError or missing env var errors.
 
-**Fix:** Langfuse v3 requires several env vars that v2 didn't. Ensure your `docker-compose.langfuse.yml` includes all of these:
+**Fix:** Langfuse v3 requires several env vars that v2 didn't. Ensure your `deploy/docker-compose.langfuse.yml` includes all of these:
 
 ```yaml
 # Required by v3 — ClickHouse
@@ -28,7 +28,7 @@ LANGFUSE_ENCRYPTION_KEY: <32-byte-hex>   # Generate: openssl rand -hex 32
 LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ACCESS_KEY}
 LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_SECRET_KEY}
 LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
-# ... (see docker-compose.langfuse.yml for full list)
+# ... (see deploy/docker-compose.langfuse.yml for full list)
 ```
 
 ### 2. "docker compose restart" doesn't pick up config changes
@@ -39,8 +39,8 @@ LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
 
 **Fix — always recreate after config changes:**
 ```bash
-docker compose -f docker-compose.langfuse.yml down
-docker compose -f docker-compose.langfuse.yml up -d
+docker compose -f deploy/docker-compose.langfuse.yml down
+docker compose -f deploy/docker-compose.langfuse.yml up -d
 ```
 
 ### 3. Port 3000 already in use
@@ -50,7 +50,7 @@ docker compose -f docker-compose.langfuse.yml up -d
 **Fix — change the host port:**
 ```bash
 # Run on a different port
-LANGFUSE_PORT=3001 docker compose -f docker-compose.langfuse.yml up -d
+LANGFUSE_PORT=3001 docker compose -f deploy/docker-compose.langfuse.yml up -d
 ```
 
 Then update your nginx config and dashboard `LANGFUSE_HOST` to match.
@@ -68,7 +68,7 @@ clickhouse:
       hard: 262144
 ```
 
-(This is already included in the provided docker-compose.langfuse.yml.)
+(This is already included in the provided deploy/docker-compose.langfuse.yml.)
 
 ### 5. MinIO bucket doesn't exist
 
@@ -113,7 +113,7 @@ pip3 install flask
 
 **Symptom:** Clicking "Langfuse ↗" or "View All →" on the dashboard opens a broken link.
 
-**Fix:** Edit `dashboard/static/index.html` and update the `LANGFUSE_HOST` and `LANGFUSE_EXTERNAL` constants at the top of the `<script>` section:
+**Fix:** Edit `src/dashboard/static/index.html` and update the `LANGFUSE_HOST` and `LANGFUSE_EXTERNAL` constants at the top of the `<script>` section:
 
 ```javascript
 const LANGFUSE_HOST = 'http://localhost:3000';      // Your internal Langfuse URL
@@ -345,9 +345,9 @@ Usually for queues like `trace-delete`, `evaluation-execution`, `dataset-delete`
 
 ```bash
 # Langfuse management
-docker compose -f docker-compose.langfuse.yml logs -f langfuse-web
-docker compose -f docker-compose.langfuse.yml logs -f langfuse-worker
-docker compose -f docker-compose.langfuse.yml down && docker compose -f docker-compose.langfuse.yml up -d
+docker compose -f deploy/docker-compose.langfuse.yml logs -f langfuse-web
+docker compose -f deploy/docker-compose.langfuse.yml logs -f langfuse-worker
+docker compose -f deploy/docker-compose.langfuse.yml down && docker compose -f deploy/docker-compose.langfuse.yml up -d
 
 # Dashboard
 cd ~/.hermes/dashboard && source .venv/bin/activate && python3 server.py

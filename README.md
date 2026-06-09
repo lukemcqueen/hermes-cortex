@@ -34,7 +34,7 @@
 **▸ Offline Stack**
 - **Offline Knowledge** — Cascade lookup: web-cache → kiwix ZIM (Wikipedia, WikiMed, Wikivoyage free locally) → gbrain → LLM. Saves API costs online, works without internet.
 - **Offline Code Assistant** — 386 curated code snippets across 26 languages. Semantic search + RAG-powered code generation via Ollama. Run `offline_code search "flask api"` or `offline_code gen "worker pool go"`.
-- **Offline Reader** — Single-file web UI (`python3 offline/offline-reader.py`) for browsing Bible (55+ languages), hymns (public domain), and wiki reference in any browser — zero dependencies.
+- **Offline Reader** — Single-file web UI (`python3 src/offline/offline-reader.py`) for browsing Bible (55+ languages), hymns (public domain), and wiki reference in any browser — zero dependencies.
 
 **▸ Security**
 - **nginx reverse proxy** — TLS + Basic Auth on all external ports (13001/13002), rate-limited (20 req/5s)
@@ -96,7 +96,7 @@ CORTEX_OS=windows bash ~/hermes-cortex/install.sh
 | 10 | **Skills** | 8 shared skills installed to `~/.hermes/skills/` |
 | 11 | **Web Cache** | Semantic web result cache (sqlite-vec + Ollama) |
 | 12 | **Offline Knowledge** | Cascade tool + kiwix ZIM Docker + prep scripts |
-| 13 | **Offline Reader** | `python3 offline/offline-reader.py` — zero-dependency web UI |
+| 13 | **Offline Reader** | `python3 src/offline/offline-reader.py` — zero-dependency web UI |
 | 14 | **Code Corpus** | 386 snippets across 26 languages; RAG index via Ollama |
 | 15 | **Auto-Update** | `auto-update.sh` — silent cron-based content updater |
 | 16 | **nginx** † | Reverse proxy for Langfuse + Dashboard + hardening |
@@ -189,11 +189,11 @@ This repository holds:
 
 | What | Location |
 |------|----------|
-| Full personal config.yaml | `config/config.yaml` |
+| Full personal config.yaml | `deploy/config/config.yaml` |
 | Environment secrets (API keys, tokens) | `.env` (not committed) |
-| Utility & monitoring scripts (13) | `scripts/` |
-| Cortex Dashboard (Flask + JS) | `dashboard/` |
-| nginx reverse proxy config | `nginx/` |
+| Utility & monitoring scripts (13) | `src/scripts/` |
+| Cortex Dashboard (Flask + JS) | `src/dashboard/` |
+| nginx reverse proxy config | `deploy/nginx/` |
 | Brain content | Private `brain-*` branches (not on `main`) |
 
 After running the public installer, apply your private config:

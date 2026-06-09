@@ -34,8 +34,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null)" || SCRIPT
 # /dev/stdin and os-config.sh won't exist. In that case,
 # download the repo tarball and extract to a temp directory.
 REMOTE_CLEANUP=""
-if [[ -z "$SCRIPT_DIR" || ! -f "${SCRIPT_DIR}/scripts/os-config.sh" ]]; then
-  if [[ ! -f "${SCRIPT_DIR:-/dev/null}/scripts/os-config.sh" ]]; then
+if [[ -z "$SCRIPT_DIR" || ! -f "${SCRIPT_DIR}/src/scripts/os-config.sh" ]]; then
+  if [[ ! -f "${SCRIPT_DIR:-/dev/null}/src/scripts/os-config.sh" ]]; then
     printf "📡 Remote install detected — downloading hermes-cortex…\n\n"
 
     # Check required tools
@@ -87,8 +87,8 @@ skip() { printf "  ${YELLOW}skip${RESET} — %s\n" "$1"; }
 trap 'printf "\n${RED}Installation aborted at step $STEP${RESET}\n"; rm -rf "${REMOTE_CLEANUP}"' EXIT
 
 # ── Source OS Abstraction Layer ─────────────────────────────
-source "${SCRIPT_DIR}/scripts/os-config.sh"
-source "${SCRIPT_DIR}/scripts/service-writer.sh"
+source "${SCRIPT_DIR}/src/scripts/os-config.sh"
+source "${SCRIPT_DIR}/src/scripts/service-writer.sh"
 
 # ── Python version probe ────────────────────────────────────
 # Find the newest Python 3.10+ with working sqlite3 extension support.
@@ -124,7 +124,7 @@ find_best_python() {
 #  0. System Verification Check
 # ─────────────────────────────────────────────────────────────
 header "SYSTEM VERIFICATION"
-CHECK_SCRIPT="${SCRIPT_DIR}/check-system.sh"
+CHECK_SCRIPT="${SCRIPT_DIR}/src/scripts/check-system.sh"
 
 if [[ -f "$CHECK_SCRIPT" ]]; then
   bash "$CHECK_SCRIPT" || {
@@ -134,7 +134,7 @@ if [[ -f "$CHECK_SCRIPT" ]]; then
   }
   printf "\n"
 else
-  warn "check-system.sh not found — skipping verification"
+  warn "src/scripts/check-system.sh not found — skipping verification"
   printf "\n"
 fi
 
@@ -199,22 +199,22 @@ fi
 #  1. Ollama — local LLM server for embeddings
 # ─────────────────────────────────────────────────────────────
 step "Installing Ollama (local LLM server)"
-bash "${SCRIPT_DIR}/scripts/install-ollama.sh" install
+bash "${SCRIPT_DIR}/src/scripts/install-ollama.sh" install
 ok
 
 # Configure Ollama service
 step "Configuring Ollama service"
-bash "${SCRIPT_DIR}/scripts/install-ollama.sh" service
+bash "${SCRIPT_DIR}/src/scripts/install-ollama.sh" service
 ok
 
 # Wait for Ollama to be ready
 step "Waiting for Ollama to respond…"
-bash "${SCRIPT_DIR}/scripts/install-ollama.sh" wait
+bash "${SCRIPT_DIR}/src/scripts/install-ollama.sh" wait
 ok
 
 # Pull embedding model
 step "Pulling embedding model (nomic-embed-text)"
-bash "${SCRIPT_DIR}/scripts/install-ollama.sh" embed nomic-embed-text
+bash "${SCRIPT_DIR}/src/scripts/install-ollama.sh" embed nomic-embed-text
 ok
 
 # ── Ollama security check ──────────────────────────────────
@@ -508,7 +508,7 @@ fi
 
 # Create gbrain sync daemon
 step "Creating gbrain sync-watch daemon ($SERVICE_MANAGER)"
-bash "${SCRIPT_DIR}/scripts/install-gbrain-sync.sh"
+bash "${SCRIPT_DIR}/src/scripts/install-gbrain-sync.sh"
 ok
 
 # ── Check for duplicate 'default' gbrain source ──────────
@@ -745,8 +745,8 @@ if [[ -f "$HEARTBEAT_PATH" ]]; then
   skip "heartbeat.py already exists"
 else
   # Prefer repo copy to prevent divergence
-  if [[ -f "${SCRIPT_DIR}/scripts/heartbeat.py" ]]; then
-    cp "${SCRIPT_DIR}/scripts/heartbeat.py" "$HEARTBEAT_PATH"
+  if [[ -f "${SCRIPT_DIR}/src/scripts/heartbeat.py" ]]; then
+    cp "${SCRIPT_DIR}/src/scripts/heartbeat.py" "$HEARTBEAT_PATH"
     chmod +x "$HEARTBEAT_PATH"
     ok
     info "  Copied heartbeat.py from repo"
@@ -1142,7 +1142,7 @@ BOOTSTRAP_PATH="${SCRIPTS_DIR}/bootstrap-brain.sh"
 if [[ -f "$BOOTSTRAP_PATH" ]]; then
   skip "bootstrap-brain.sh already exists"
 else
-  cp "${SCRIPT_DIR}/scripts/bootstrap-brain.sh" "$BOOTSTRAP_PATH" 2>/dev/null || {
+  cp "${SCRIPT_DIR}/src/scripts/bootstrap-brain.sh" "$BOOTSTRAP_PATH" 2>/dev/null || {
     cat > "$BOOTSTRAP_PATH" <<'BOOTSTRAP'
 #!/usr/bin/env bash
 # bootstrap-brain.sh — Post-install brain verification
@@ -1184,7 +1184,7 @@ BUDGET_PATH="${SCRIPTS_DIR}/check-memory-budget.sh"
 if [[ -f "$BUDGET_PATH" ]]; then
   skip "check-memory-budget.sh already exists"
 else
-  cp "${SCRIPT_DIR}/scripts/check-memory-budget.sh" "$BUDGET_PATH" 2>/dev/null || {
+  cp "${SCRIPT_DIR}/src/scripts/check-memory-budget.sh" "$BUDGET_PATH" 2>/dev/null || {
     cat > "$BUDGET_PATH" <<'BUDGET'
 #!/usr/bin/env bash
 # check-memory-budget.sh — MEMORY.md usage monitor
@@ -1211,7 +1211,7 @@ CORTEX_PROFILE_PATH="${SCRIPTS_DIR}/cortex-profile.sh"
 if [[ -f "$CORTEX_PROFILE_PATH" ]]; then
   skip "cortex-profile.sh already exists"
 else
-  cp "${SCRIPT_DIR}/scripts/cortex-profile.sh" "$CORTEX_PROFILE_PATH" 2>/dev/null || \
+  cp "${SCRIPT_DIR}/src/scripts/cortex-profile.sh" "$CORTEX_PROFILE_PATH" 2>/dev/null || \
     warn "cortex-profile.sh not available (only from repo)"
   if [[ -f "$CORTEX_PROFILE_PATH" ]]; then
     chmod +x "$CORTEX_PROFILE_PATH"
@@ -1224,7 +1224,7 @@ SEED_BRAIN_PATH="${SCRIPTS_DIR}/seed-project-brain.sh"
 if [[ -f "$SEED_BRAIN_PATH" ]]; then
   skip "seed-project-brain.sh already exists"
 else
-  cp "${SCRIPT_DIR}/scripts/seed-project-brain.sh" "$SEED_BRAIN_PATH" 2>/dev/null || \
+  cp "${SCRIPT_DIR}/src/scripts/seed-project-brain.sh" "$SEED_BRAIN_PATH" 2>/dev/null || \
     warn "seed-project-brain.sh not available (only from repo)"
   if [[ -f "$SEED_BRAIN_PATH" ]]; then
     chmod +x "$SEED_BRAIN_PATH"
@@ -1237,7 +1237,7 @@ CORTEX_HEALTH_PATH="${SCRIPTS_DIR}/cortex-health.sh"
 if [[ -f "$CORTEX_HEALTH_PATH" ]]; then
   skip "cortex-health.sh already exists"
 else
-  cp "${SCRIPT_DIR}/scripts/cortex-health.sh" "$CORTEX_HEALTH_PATH" 2>/dev/null || \
+  cp "${SCRIPT_DIR}/src/scripts/cortex-health.sh" "$CORTEX_HEALTH_PATH" 2>/dev/null || \
     warn "cortex-health.sh not available (only from repo)"
   if [[ -f "$CORTEX_HEALTH_PATH" ]]; then
     chmod +x "$CORTEX_HEALTH_PATH"
@@ -1250,7 +1250,7 @@ CORTEX_LANGFUSE_PATH="${SCRIPTS_DIR}/cortex-setup-langfuse.sh"
 if [[ -f "$CORTEX_LANGFUSE_PATH" ]]; then
   skip "cortex-setup-langfuse.sh already exists"
 else
-  cp "${SCRIPT_DIR}/scripts/cortex-setup-langfuse.sh" "$CORTEX_LANGFUSE_PATH" 2>/dev/null || \
+  cp "${SCRIPT_DIR}/src/scripts/cortex-setup-langfuse.sh" "$CORTEX_LANGFUSE_PATH" 2>/dev/null || \
     warn "cortex-setup-langfuse.sh not available (only from repo)"
   if [[ -f "$CORTEX_LANGFUSE_PATH" ]]; then
     chmod +x "$CORTEX_LANGFUSE_PATH"
@@ -1263,7 +1263,7 @@ CORTEX_UPDATE_PATH="${SCRIPTS_DIR}/cortex-update.sh"
 if [[ -f "$CORTEX_UPDATE_PATH" ]]; then
   skip "cortex-update.sh already exists"
 else
-  cp "${SCRIPT_DIR}/scripts/cortex-update.sh" "$CORTEX_UPDATE_PATH" 2>/dev/null || \
+  cp "${SCRIPT_DIR}/src/scripts/cortex-update.sh" "$CORTEX_UPDATE_PATH" 2>/dev/null || \
     warn "cortex-update.sh not available (only from repo)"
   if [[ -f "$CORTEX_UPDATE_PATH" ]]; then
     chmod +x "$CORTEX_UPDATE_PATH"
@@ -1321,7 +1321,7 @@ ok
 #  10. Install Hermes Skills — Shared skills from the repo
 # ─────────────────────────────────────────────────────────────
 step "Installing Hermes skills from repo"
-SKILLS_REPO="${SCRIPT_DIR}/skills"
+SKILLS_REPO="${SCRIPT_DIR}/src/skills"
 HERMES_SKILLS="${HERMES_HOME}/skills"
 if [[ -d "$SKILLS_REPO" ]]; then
   count=0
@@ -1348,7 +1348,7 @@ if [[ -d "$SKILLS_REPO" ]]; then
   done < <(find "$SKILLS_REPO" -path "*/references/*" -type f -print0)
   info "  Installed ${count} skills (skipped existing)"
 else
-  skip "no skills/ directory in repo"
+  skip "no src/skills/ directory in repo"
 fi
 ok
 
@@ -1356,7 +1356,7 @@ ok
 #  11. Web Cache — Local Semantic Web Cache
 # ─────────────────────────────────────────────────────────────
 step "Installing Web Cache (semantic web result cache)"
-WEB_CACHE_REPO="${SCRIPT_DIR}/web-cache"
+WEB_CACHE_REPO="${SCRIPT_DIR}/src/web-cache"
 WEB_CACHE_DEST="${HERMES_HOME}/web-cache"
 HERMES_BIN="${HERMES_HOME}/bin"
 if [[ -d "$WEB_CACHE_REPO" ]]; then
@@ -1384,7 +1384,7 @@ if [[ -d "$WEB_CACHE_REPO" ]]; then
   "${WEB_CACHE_DEST}/.venv/bin/python3" "${WEB_CACHE_DEST}/web_cache.py" stats >/dev/null 2>&1 && \
     info "  Cache DB initialized"
 else
-  skip "no web-cache/ directory in repo"
+  skip "no src/web-cache/ directory in repo"
 fi
 ok
 
@@ -1409,7 +1409,7 @@ else
       cp "${SCRIPT_DIR}/docker-compose.langfuse.yml" "$LANGFUSE_COMPOSE"
     else
       # Download from GitHub
-      curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/docker-compose.langfuse.yml" -o "$LANGFUSE_COMPOSE"
+      curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/deploy/docker-compose.langfuse.yml" -o "$LANGFUSE_COMPOSE"
     fi
   fi
   
@@ -1461,15 +1461,15 @@ else
   mkdir -p "$DASHBOARD_DEST"
   
   # Copy from repo
-  REPO_DASHBOARD="${SCRIPT_DIR}/dashboard"
+  REPO_DASHBOARD="${SCRIPT_DIR}/src/dashboard"
   if [[ -d "$REPO_DASHBOARD" ]]; then
     cp -r "$REPO_DASHBOARD/"* "$DASHBOARD_DEST/"
   else
     # Download minimal version from GitHub
-    curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/dashboard/server.py" -o "$DASHBOARD_DEST/server.py"
-    curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/dashboard/com.hermes.cortex-dashboard.plist" -o "$DASHBOARD_PLIST"
+    curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/src/dashboard/server.py" -o "$DASHBOARD_DEST/server.py"
+    curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/src/dashboard/com.hermes.cortex-dashboard.plist" -o "$DASHBOARD_PLIST"
     mkdir -p "$DASHBOARD_DEST/static"
-    curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/dashboard/static/index.html" -o "$DASHBOARD_DEST/static/index.html"
+    curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/src/dashboard/static/index.html" -o "$DASHBOARD_DEST/static/index.html"
   fi
   
   # Create dedicated dashboard venv + install Flask
@@ -1621,7 +1621,7 @@ fi
 # ─────────────────────────────────────────────────────────────
 step "Installing offline knowledge tools (cache cascade + ZIM viewer)"
 
-OFFLINE_REPO="${SCRIPT_DIR}/offline"
+OFFLINE_REPO="${SCRIPT_DIR}/src/offline"
 OFFLINE_DEST="${HERMES_HOME}/offline"
 
 if [[ -d "$OFFLINE_REPO" ]]; then
@@ -1686,7 +1686,7 @@ fi
 # ─────────────────────────────────────────────────────────────
 if [[ "$CORTEX_PROFILE" == "server" ]]; then
 step "Installing nginx reverse proxy"
-bash "${SCRIPT_DIR}/scripts/install-nginx.sh"
+bash "${SCRIPT_DIR}/src/scripts/install-nginx.sh"
 ok
 else
   skip "nginx (laptop profile — not needed)"
