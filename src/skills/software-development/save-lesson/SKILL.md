@@ -139,3 +139,7 @@ This builds the database passively with normal work.
 - `offline-code-corpus` — curated code snippets (correct examples)
 - `offline-knowledge` — general knowledge cascade
 - `web-cache` — cached web results
+
+## Absorbed Skills
+
+- `skill-from-lesson` — Absorbed into this skill. The decision tree for promoting a lesson to a skill (or saving to memory instead), the "Be ACTIVE" attitude, and structured bug report handling (P0/P1/P2 triage) now live in this skill.
