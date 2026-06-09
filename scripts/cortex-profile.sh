@@ -39,6 +39,13 @@ else
   echo "  ✅ Hermes profile: ${PROFILE_DIR}"
 fi
 
+# 2b. Copy root auth.json into the profile (so profile creds inherit root keys)
+ROOT_AUTH="${HERMES_HOME}/auth.json"
+if [[ -f "$ROOT_AUTH" ]]; then
+  cp "$ROOT_AUTH" "${PROFILE_DIR}/auth.json"
+  echo "  ✅ Auth credentials synced to profile"
+fi
+
 # 3. Create brain source directory
 BRAIN_DIR="${BRAIN_BASE}/${PROJECT_NAME}"
 if [[ -d "$BRAIN_DIR" ]]; then

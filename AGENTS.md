@@ -26,7 +26,7 @@ Hermes Cortex is a **public installer and skill set** for
 | `install.sh` | Single-command installer, 26 steps (idempotent) |
 | `docker-compose.langfuse.yml` | Langfuse v3 with ClickHouse, MinIO, Redis |
 | `project_current_session.md` | Committed session tracker — repo state + agent session notes |
-| `.gitignore` | Excludes .agentkore, .env*, *.pem, *.key, state.db, .hermes/ |
+| `.gitignore` | Excludes .env*, *.pem, *.key, state.db, .hermes/ |
 
 ## Architecture Principles
 
@@ -34,6 +34,7 @@ Hermes Cortex is a **public installer and skill set** for
 - **PII-scrubbed:** No personal paths, domains, or credentials in this repo
 - **Pointer memory pattern:** `MEMORY.md` keeps compact pointers (~2,200 chars), full detail lives in brain directories via gbrain
 - **Privacy by default:** Memory files (`MEMORY.md`, `USER.md`) are gitignored in every brain source — never cross-contaminate instances
+- **Structured development pipeline:** Use skills for planning, execution, and review — `hc-elicit` (requirements) → `hc-party` (architecture) → `prd-lite` / `story-slicing` (spec) → `change-test-loop` (implement) → `code-review` (verify)
 - **Memory scoring rubric:** Entries must score ≥7/12 (relevance 4, accuracy 4, conciseness 2, durability 2) before writing — see `memory/README.md`
 - **State routing:** Information flows through a decision matrix — live context → session history → memory → docs, in that priority order — see `skills/software-development/state-orchestrator/`
 - **Project separation:** Each project gets its own Hermes profile, brain source, and gbrain isolation via `scripts/cortex-profile.sh` — see `docs/project-separation-architecture.md`
@@ -51,6 +52,6 @@ Hermes Cortex is a **public installer and skill set** for
 
 - No secrets in this repo — ever
 - `.env`, `.env.*`, `*.pem`, `*.key` are gitignored
-- `.agentkore/` is removed+gitignored — not part of this project
+- Hermes Cortex is the agent framework for this project
 - Keep docs current when changing install behavior
 - MIT License — be permissive with what's shared
