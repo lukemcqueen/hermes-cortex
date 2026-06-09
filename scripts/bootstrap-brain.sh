@@ -8,12 +8,13 @@
 #    1. Detects all ~/brain/ subdirectories
 #    2. Initializes git repos where missing
 #    3. Syncs each brain directory to gbrain
-#    4. Reports which sources now have indexed pages
+#    4. Reports indexed page counts per source (from gbrain)
 #
 #  Usage:
-#    bash bootstrap-brain.sh              # Verify and fix all
-#    bash bootstrap-brain.sh --check-only # Just report, don't fix
-#    bash bootstrap-brain.sh --source foo # Only process named source
+#    bash bootstrap-brain.sh                # Verify and fix all
+#    bash bootstrap-brain.sh --check-only   # Just report, don't fix
+#    bash bootstrap-brain.sh --source=foo   # Only process named source
+#    bash bootstrap-brain.sh --reindex      # Force full re-sync of all sources
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -23,18 +24,21 @@ BRAIN_DIR="${HOME}/brain"
 GBRAIN_CMD="${HOME}/.bun/bin/gbrain"
 BUN_PATH="${HOME}/.bun/bin"
 CHECK_ONLY=false
+REINDEX=false
 FILTER_SOURCE=""
 
 # Parse args
 for arg in "$@"; do
   case "$arg" in
     --check-only) CHECK_ONLY=true ;;
-    --source=*) FILTER_SOURCE="${arg#*=}" ;;
-    --source) echo "Use --source=<name> (with equals sign)"; exit 1 ;;
+    --reindex)    REINDEX=true ;;
+    --source=*)   FILTER_SOURCE="${arg#*=}" ;;
+    --source)     echo "Use --source=<name> (with equals sign)"; exit 1 ;;
     --help|-h)
-      echo "Usage: bash bootstrap-brain.sh [--check-only] [--source=<name>]"
+      echo "Usage: bash bootstrap-brain.sh [--check-only] [--reindex] [--source=<name>]"
       echo ""
       echo "  --check-only    Only report status, don't fix anything"
+      echo "  --reindex       Force full re-sync of all brain sources"
       echo "  --source=<name> Only process the named brain source"
       exit 0
       ;;
@@ -50,6 +54,44 @@ export PATH="${BUN_PATH}:$PATH"
 echo ""
 echo -e "${BOLD}━━━ Brain Bootstrap — Post-Install Health Check ━━━${RESET}"
 echo ""
+
+# ── Helper: get page count for a source ──────────────────
+# gbrain v0.42+ sources list format:
+#   default               federated          1 pages  never synced
+#   my-source             isolated          12 pages  2m ago
+# 3rd whitespace-delimited field is the page count.
+get_page_count() {
+  local name="$1"
+  local count
+
+  # Try parsing from gbrain sources list (authoritative)
+  count=$("$GBRAIN_CMD" sources list 2>/dev/null | \
+    grep "^  ${name}[[:space:]]" | \
+    awk '{print $3}' | \
+    head -1)
+
+  if [[ -n "$count" ]] && [[ "$count" =~ ^[0-9]+$ ]]; then
+    echo "$count"
+    return 0
+  fi
+
+  # Fallback: count .md files directly (works even if source unregistered)
+  local dir="${BRAIN_DIR}/${name}"
+  if [[ -d "$dir" ]]; then
+    count=$(find "$dir" -name '*.md' -not -path '*/.git/*' -maxdepth 2 2>/dev/null | wc -l | tr -d ' ')
+    echo "${count:-0}"
+    return 0
+  fi
+
+  echo "0"
+}
+
+# ── Helper: check if gbrain source is registered ─────────
+# gbrain sources list output has leading spaces — don't anchor at column 0.
+is_source_registered() {
+  local name="$1"
+  "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "^  ${name}[[:space:]]"
+}
 
 # ── Step 1: Detect brain directories ──────────────────────
 if [[ ! -d "$BRAIN_DIR" ]]; then
@@ -119,7 +161,7 @@ GITEOF
   fi
 
   # Check gbrain registration
-  if ! "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "^${source}\b"; then
+  if ! is_source_registered "$source"; then
     if [[ "$CHECK_ONLY" == "true" ]]; then
       warn "  Not registered as gbrain source"
       NOT_REGISTERED=$((NOT_REGISTERED + 1))
@@ -146,19 +188,29 @@ GITEOF
     fi
   fi
 
-  # Sync
-  if [[ "$CHECK_ONLY" != "true" ]] && "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "^${source}\b"; then
-    echo -n "  Syncing to gbrain... "
-    if "$GBRAIN_CMD" sync --source "$source" 2>/dev/null; then
-      echo -e "${GREEN}done${RESET}"
+  # Sync (or reindex)
+  if [[ "$CHECK_ONLY" != "true" ]] && is_source_registered "$source"; then
+    if [[ "$REINDEX" == "true" ]]; then
+      echo -n "  Reindexing (full sync)... "
+      # Force re-sync by passing --all or explicit source
+      if "$GBRAIN_CMD" sync --source "$source" --force 2>/dev/null || \
+         "$GBRAIN_CMD" sync --source "$source" 2>/dev/null; then
+        echo -e "${GREEN}done${RESET}"
+      else
+        echo -e "${YELLOW}sync done (check output)${RESET}"
+      fi
     else
-      echo -e "${YELLOW}sync done (check output)${RESET}"
+      echo -n "  Syncing to gbrain... "
+      if "$GBRAIN_CMD" sync --source "$source" 2>/dev/null; then
+        echo -e "${GREEN}done${RESET}"
+      else
+        echo -e "${YELLOW}sync done (check output)${RESET}"
+      fi
     fi
   fi
 
-  # Check pages
-  PAGES=$("$GBRAIN_CMD" query --source "$source" --list-pages 2>/dev/null | wc -l | tr -d ' ')
-  PAGES=${PAGES:-0}
+  # Check pages — parse from gbrain sources list, fall back to file counting
+  PAGES=$(get_page_count "$source")
   if [[ "$PAGES" -gt 0 ]]; then
     info "  ${PAGES} page(s) indexed"
     HAS_PAGES=$((HAS_PAGES + 1))
