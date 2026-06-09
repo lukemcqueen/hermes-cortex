@@ -57,8 +57,8 @@
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `3261074` — 2026-06-09 11:09:53 |
-| Working tree | clean |
+| Last commit | `40a272c` — 2026-06-09 13:08:41 |
+| Working tree | clean (+1 untracked: `cleanup_repos.sh`) |
 | Unpushed | none |
 | Tag | `v1.0.0` |
 
@@ -66,11 +66,11 @@
 
 | Date | Commit | Description |
 |------|--------|-------------|
+| 2026-06-09 | `40a272c` | Fix 2 bugs + add gaps found by Titus in real-world testing
+| 2026-06-09 | `8b226a4` | Titus improvements: 6 fixes for out-of-box UX
+| 2026-06-09 | `dbae97d` | Revert "chore: migrate from agentkore/opencode to hermes-cortex"
+| 2026-06-09 | `6df0588` | chore: migrate from agentkore/opencode to hermes-cortex
 | 2026-06-09 | `3261074` | feat: auto-save session system — project_current_session.md + cron
-| 2026-06-09 | `c8f8071` | feat: add public-contribution meta-skill, SOUL.md template, nginx deployment skill
-| 2026-06-08 | `eae1545` | fix: install-nginx.sh hardcoded ports 11003/11002 → 13001/13002
-| 2026-06-08 | `1492f8d` | fix: dashboard default port 13703→8901
-| 2026-06-08 | `59b4025` | security: audit fixes — enforce :? secrets, nginx 127.0.0.1, PII cleanup
 
 ---
 
@@ -106,4 +106,4 @@
 
 ---
 
-*Last updated: 2026-06-09 11:10 KST*
+*Last updated: 2026-06-09 13:39 KST*
