@@ -472,10 +472,11 @@ ok
 # ── Check for duplicate 'default' gbrain source ──────────
 step "Checking for duplicate gbrain sources"
 DUPLICATE_FOUND=false
-if "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "^default\b.*~/brain/default"; then
+# gbrain sources list has leading spaces — don't anchor at column 0
+if "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "^  default[[:space:]].*~/brain/default"; then
   # Check if there's also a 'mybrain' or manual default pointing elsewhere
   for dup_source in default mybrain main; do
-    count=$("$GBRAIN_CMD" sources list 2>/dev/null | grep -c "^${dup_source}\b" || true)
+    count=$("$GBRAIN_CMD" sources list 2>/dev/null | grep -c "^  ${dup_source}[[:space:]]" || true)
     if [[ "$count" -gt 1 ]]; then
       warn "Duplicate gbrain source '${dup_source}' detected!"
       warn "  The 'default' source is built-in and manages ~/brain/default/ automatically."
@@ -484,8 +485,8 @@ if "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "^default\b.*~/brain/default
     fi
   done
   # Also check if user manually added ~/brain/default as a named source
-  if "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "~/brain/default" | head -1; then
-    source_count=$("$GBRAIN_CMD" sources list 2>/dev/null | grep -c "default" || true)
+  if "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "~/brain/default"; then
+    source_count=$("$GBRAIN_CMD" sources list 2>/dev/null | grep -c "^  default[[:space:]]" || true)
     if [[ "$source_count" -gt 1 ]]; then
       warn "Multiple sources reference ~/brain/default/. The 'default' gbrain source"
       warn "already manages this path. Remove extra entries with: gbrain sources list"
@@ -806,58 +807,86 @@ def check_disk_usage(path="/"):
 
 
 def check_gbrain_sources():
-    """Check gbrain source health: flag 'never synced' or '0 pages' sources."""
+    """Check gbrain source health: flag 'never synced' or '0 pages' sources.
+
+    Gracefully degrades when gbrain doctor is unavailable:
+      - Falls back to parsing 'sources list' output
+      - Returns UNKNOWN (not DOWN) when gbrain isn't installed
+    """
+    def _run(args, timeout=15):
+        env = os.environ.copy()
+        env["PATH"] = f"{Path.home() / '.bun/bin'}:{env.get('PATH', '')}"
+        return subprocess.run(
+            args, capture_output=True, text=True, timeout=timeout,
+            env=env, cwd=str(Path.home() / "brain"),
+        )
+    def _parse_sources_list(output):
+        lines = output.strip().split("\n")
+        total = never_synced = zero_pages = 0
+        for line in lines:
+            parts = line.split()
+            if len(parts) >= 3 and parts[2].isdigit():
+                pages = int(parts[2]); total += 1
+                if pages == 0: zero_pages += 1
+                if "never synced" in line.lower(): never_synced += 1
+        return total, never_synced, zero_pages
     try:
         bun_path = Path.home() / ".bun" / "bin"
         gbrain_cmd = str(bun_path / "gbrain")
-        env = os.environ.copy()
-        env["PATH"] = f"{bun_path}:{env.get('PATH', '')}"
-
-        result = subprocess.run(
-            [gbrain_cmd, "doctor", "--json"],
-            capture_output=True, text=True, timeout=30,
-            env=env, cwd=str(Path.home() / "brain"),
-        )
-        if result.returncode != 0:
-            result2 = subprocess.run(
-                [gbrain_cmd, "sources", "list"],
-                capture_output=True, text=True, timeout=15, env=env,
-            )
-            if result2.returncode != 0:
-                return {"status": "DOWN", "detail": "gbrain not responding"}
-            return {"status": "UNKNOWN", "detail": "doctor unavailable"}
-
-        data = json.loads(result.stdout)
-        checks = data.get("doctor", {}).get("checks", [])
-        failures = []
-        for check in checks:
-            name = check.get("name", "")
-            status = check.get("status", "")
-            msg = check.get("message", "")
-            if status == "fail" and any(kw in name for kw in ["sync", "embed", "source", "cycle"]):
-                failures.append(f"{name}: {msg[:120]}")
-            elif status == "warn" and name in ("sync_freshness", "cycle_freshness", "orphan_ratio"):
-                failures.append(f"{name}: {msg[:120]}")
-
-        sync_checks = [c for c in checks if c.get("name") == "sync_freshness"]
-        if sync_checks:
-            sync_msg = sync_checks[0].get("message", "")
-            if "never" in sync_msg.lower() or "0 page" in sync_msg.lower():
-                failures.append(f"Sources never synced or have 0 pages: {sync_msg[:150]}")
-
-        if failures:
-            detail = "; ".join(failures[:3])
-            more = f" (+{len(failures) - 3} more)" if len(failures) > 3 else ""
-            return {"status": "DEGRADED", "detail": f"{detail}{more}"}
-
-        overall = data.get("overall_health_score", -1)
-        if overall >= 0 and overall < 50:
-            return {"status": "DEGRADED", "detail": f"Health score: {overall}/100"}
-        return {"status": "UP", "detail": "All sources healthy"}
+        if not bun_path.exists() or not Path(gbrain_cmd).exists():
+            return {"status": "UNKNOWN", "detail": "gbrain not installed — run install.sh"}
+        # Try 1: gbrain doctor --json
+        try:
+            result = _run([gbrain_cmd, "doctor", "--json"], timeout=30)
+            if result.returncode == 0 and result.stdout.strip():
+                import json as _json
+                data = _json.loads(result.stdout)
+                checks = data.get("doctor", {}).get("checks", [])
+                failures = []
+                for check in checks:
+                    name = check.get("name", ""); status = check.get("status", ""); msg = check.get("message", "")
+                    if status == "fail" and any(kw in name for kw in ["sync", "embed", "source", "cycle"]):
+                        failures.append(f"{name}: {msg[:120]}")
+                    elif status == "warn" and name in ("sync_freshness", "cycle_freshness", "orphan_ratio"):
+                        failures.append(f"{name}: {msg[:120]}")
+                sync_checks = [c for c in checks if c.get("name") == "sync_freshness"]
+                if sync_checks:
+                    sync_msg = sync_checks[0].get("message", "")
+                    if "never" in sync_msg.lower() or "0 page" in sync_msg.lower():
+                        failures.append(f"Sources never synced: {sync_msg[:150]}")
+                if failures:
+                    detail = "; ".join(failures[:3])
+                    more = f" (+{len(failures)-3} more)" if len(failures) > 3 else ""
+                    return {"status": "DEGRADED", "detail": f"{detail}{more}"}
+                overall = data.get("overall_health_score", -1)
+                if 0 <= overall < 50:
+                    return {"status": "DEGRADED", "detail": f"Health score: {overall}/100"}
+                return {"status": "UP", "detail": "All sources healthy"}
+        except (json.JSONDecodeError, ValueError):
+            pass
+        # Try 2: gbrain sources list
+        result2 = _run([gbrain_cmd, "sources", "list"], timeout=15)
+        if result2.returncode == 0 and result2.stdout.strip():
+            total, never_synced, zero_pages = _parse_sources_list(result2.stdout)
+            issues = []
+            if never_synced > 0:
+                issues.append(f"{never_synced} source(s) never synced")
+            if zero_pages > 0 and zero_pages == total:
+                issues.append("all sources have 0 pages")
+            elif zero_pages > 0:
+                issues.append(f"{zero_pages} source(s) have 0 pages")
+            if issues:
+                return {"status": "DEGRADED", "detail": "; ".join(issues[:2])}
+            if total == 0:
+                return {"status": "UNKNOWN", "detail": "no gbrain sources found"}
+            return {"status": "UP", "detail": f"{total} source(s), all synced"}
+        return {"status": "UNKNOWN", "detail": "gbrain available but sources list failed — run bootstrap-brain.sh"}
     except FileNotFoundError:
-        return {"status": "UNKNOWN", "detail": "gbrain not installed"}
+        return {"status": "UNKNOWN", "detail": "gbinary not found in PATH"}
+    except subprocess.TimeoutExpired:
+        return {"status": "UNKNOWN", "detail": "gbrain check timed out"}
     except Exception as e:
-        return {"status": "ERROR", "detail": f"gbrain check: {e}"}
+        return {"status": "UNKNOWN", "detail": f"gbrain check: {e}"}
 
 
 def run():
@@ -1031,13 +1060,16 @@ for dir in "$BRAIN_DIR"/*/; do
     echo "MEMORY.md\nUSER.md\n.env\n.env.*\n*.pem\n*.key\n.DS_Store" > "${dir}/.gitignore"
     echo "✓ .gitignore: ${name}"
   fi
-  if ! "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "^${name}\b"; then
+  # gbrain sources list has leading spaces — don't anchor at column 0
+  if ! "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "^  ${name}[[:space:]]"; then
     "$GBRAIN_CMD" sources add "$name" --path "$dir" --name "$name" 2>/dev/null && echo "✓ gbrain source: ${name}"
   fi
   git -C "$dir" add -A 2>/dev/null || true
   git -C "$dir" commit --allow-empty -m "init: ${name}" 2>/dev/null || true
   "$GBRAIN_CMD" sync --source "$name" 2>/dev/null && echo "✓ Synced: ${name}"
-  pages=$("$GBRAIN_CMD" query --source "$name" --list-pages 2>/dev/null | wc -l)
+  # Get page count from gbrain sources list (3rd field), not a nonexistent --list-pages flag
+  pages=$("$GBRAIN_CMD" sources list 2>/dev/null | grep "^  ${name}[[:space:]]" | awk '{print $3}' | head -1)
+  pages=${pages:-0}
   echo "  ${pages} pages indexed for ${name}"
 done
 BOOTSTRAP

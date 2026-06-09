@@ -25,6 +25,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 |-----|-------------|
 | `docs/architecture.md` | System architecture overview — layers, services, port map, security stack |
 | `docs/knowledge-isolation-architecture.md` | Knowledge isolation model — gbrain source isolation, federated vs isolated sources, pointer pattern integration |
+| `docs/seeding-brain-content.md` | Brain directory templates and starter content — get from 0 pages to searchable knowledge |
 | `docs/deploy-registry-pattern.md` | Multi-repo deploy registry — public/private split, brain-* branches, sync workflow |
 | `docs/design/DESIGN.md` | Design conventions — typography, color, spacing, UI (light/dark modes) |
 | `docs/deprecated-profile-model.md` | Archived v1.x profile-per-project model — legacy migration reference |

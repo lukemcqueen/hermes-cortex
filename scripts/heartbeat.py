@@ -144,73 +144,111 @@ def check_gateway_log() -> dict:
 def check_gbrain_sources() -> dict:
     """Check gbrain source health: flag 'never synced' or '0 pages' sources.
 
-    Returns UP if all sources are healthy, DEGRADED if some have issues,
-    or DOWN if critical failures found.
+    Gracefully degrades when gbrain doctor is unavailable:
+      - Falls back to parsing 'sources list' output
+      - Falls back to file counting if even sources list is unavailable
+      - Returns UNKNOWN (not DOWN) when gbrain isn't installed
     """
-    try:
-        bun_path = Path.home() / ".bun" / "bin"
-        gbrain_cmd = str(bun_path / "gbrain")
-        env = os.environ.copy()
-        env["PATH"] = f"{bun_path}:{env.get('PATH', '')}"
 
-        # Try to get source health from gbrain doctor
-        result = subprocess.run(
-            [gbrain_cmd, "doctor", "--json"],
-            capture_output=True, text=True, timeout=30,
+    def _run(args, timeout=15):
+        env = os.environ.copy()
+        env["PATH"] = f"{Path.home() / '.bun/bin'}:{env.get('PATH', '')}"
+        return subprocess.run(
+            args, capture_output=True, text=True, timeout=timeout,
             env=env, cwd=str(Path.home() / "brain"),
         )
 
-        if result.returncode != 0:
-            # Fallback: just list sources
-            result2 = subprocess.run(
-                [gbrain_cmd, "sources", "list"],
-                capture_output=True, text=True, timeout=15, env=env,
-            )
-            if result2.returncode != 0:
-                return {"status": "DOWN", "detail": "gbrain not responding"}
-            sources = result2.stdout.strip().split("\n")
-            return {"status": "UNKNOWN", "detail": f"{len(sources)} sources found (doctor unavailable)"}
+    def _parse_sources_list(output):
+        """Parse page counts from 'gbrain sources list' output.
 
-        data = json.loads(result.stdout)
-        checks = data.get("doctor", {}).get("checks", [])
+        Format:
+          default               federated          1 pages  never synced
+          my-source             isolated          12 pages  2m ago
+        """
+        lines = output.strip().split("\n")
+        total = 0
+        never_synced = 0
+        zero_pages = 0
+        for line in lines:
+            parts = line.split()
+            if len(parts) >= 3 and parts[2].isdigit():
+                pages = int(parts[2])
+                total += 1
+                if pages == 0:
+                    zero_pages += 1
+                if "never synced" in line.lower():
+                    never_synced += 1
+        return total, never_synced, zero_pages
 
-        # Look for source-related issues
-        failures = []
-        for check in checks:
-            name = check.get("name", "")
-            status = check.get("status", "")
-            msg = check.get("message", "")
+    try:
+        bun_path = Path.home() / ".bun" / "bin"
+        gbrain_cmd = str(bun_path / "gbrain")
 
-            if status == "fail" and any(kw in name for kw in ["sync", "embed", "source", "cycle"]):
-                failures.append(f"{name}: {msg[:120]}")
-            elif status == "warn" and name in ("sync_freshness", "cycle_freshness", "orphan_ratio"):
-                failures.append(f"{name}: {msg[:120]}")
+        if not bun_path.exists() or not Path(gbrain_cmd).exists():
+            return {"status": "UNKNOWN", "detail": "gbrain not installed — run install.sh"}
 
-        # Also check for "never synced" or "0 pages" in raw output
-        sync_checks = [c for c in checks if c.get("name") == "sync_freshness"]
-        if sync_checks:
-            sync_msg = sync_checks[0].get("message", "")
-            if "never" in sync_msg.lower() or "0 page" in sync_msg.lower():
-                failures.append(f"One or more sources never synced or have 0 pages: {sync_msg[:150]}")
+        # Try 1: gbrain doctor --json (authoritative)
+        try:
+            result = _run([gbrain_cmd, "doctor", "--json"], timeout=30)
+            if result.returncode == 0 and result.stdout.strip():
+                import json as _json
+                data = _json.loads(result.stdout)
+                checks = data.get("doctor", {}).get("checks", [])
+                failures = []
+                for check in checks:
+                    name = check.get("name", "")
+                    status = check.get("status", "")
+                    msg = check.get("message", "")
+                    if status == "fail" and any(kw in name for kw in ["sync", "embed", "source", "cycle"]):
+                        failures.append(f"{name}: {msg[:120]}")
+                    elif status == "warn" and name in ("sync_freshness", "cycle_freshness", "orphan_ratio"):
+                        failures.append(f"{name}: {msg[:120]}")
 
-        if failures:
-            detail = "; ".join(failures[:3])
-            more = f" (+{len(failures) - 3} more)" if len(failures) > 3 else ""
-            return {"status": "DEGRADED", "detail": f"{detail}{more}"}
+                sync_checks = [c for c in checks if c.get("name") == "sync_freshness"]
+                if sync_checks:
+                    sync_msg = sync_checks[0].get("message", "")
+                    if "never" in sync_msg.lower() or "0 page" in sync_msg.lower():
+                        failures.append(f"Sources never synced or have 0 pages: {sync_msg[:150]}")
 
-        # Check overall health score
-        overall = data.get("overall_health_score", -1)
-        if overall >= 0 and overall < 50:
-            return {"status": "DEGRADED", "detail": f"Overall health score: {overall}/100"}
+                if failures:
+                    detail = "; ".join(failures[:3])
+                    more = f" (+{len(failures) - 3} more)" if len(failures) > 3 else ""
+                    return {"status": "DEGRADED", "detail": f"{detail}{more}"}
 
-        return {"status": "UP", "detail": "All sources healthy"}
+                overall = data.get("overall_health_score", -1)
+                if 0 <= overall < 50:
+                    return {"status": "DEGRADED", "detail": f"Health score: {overall}/100"}
+                return {"status": "UP", "detail": "All sources healthy"}
+        except (json.JSONDecodeError, ValueError):
+            pass  # Fall through to Try 2
+
+        # Try 2: gbrain sources list (parseable fallback)
+        result2 = _run([gbrain_cmd, "sources", "list"], timeout=15)
+        if result2.returncode == 0 and result2.stdout.strip():
+            total, never_synced, zero_pages = _parse_sources_list(result2.stdout)
+            issues = []
+            if never_synced > 0:
+                issues.append(f"{never_synced} source(s) never synced")
+            if zero_pages > 0 and zero_pages == total:
+                issues.append("all sources have 0 pages")
+            elif zero_pages > 0:
+                issues.append(f"{zero_pages} source(s) have 0 pages")
+
+            if issues:
+                return {"status": "DEGRADED", "detail": "; ".join(issues[:2])}
+            if total == 0:
+                return {"status": "UNKNOWN", "detail": "no gbrain sources found"}
+            return {"status": "UP", "detail": f"{total} source(s), all synced"}
+
+        # Try 3: can't even list sources
+        return {"status": "UNKNOWN", "detail": "gbrain available but sources list failed — run bootstrap-brain.sh"}
 
     except FileNotFoundError:
-        return {"status": "UNKNOWN", "detail": "gbrain not installed"}
+        return {"status": "UNKNOWN", "detail": "gbinary not found in PATH"}
     except subprocess.TimeoutExpired:
-        return {"status": "UNKNOWN", "detail": "gbrain doctor timed out"}
+        return {"status": "UNKNOWN", "detail": "gbrain check timed out"}
     except Exception as e:
-        return {"status": "ERROR", "detail": f"gbrain check: {e}"}
+        return {"status": "UNKNOWN", "detail": f"gbrain check: {e}"}
 
 
 def run() -> str:
