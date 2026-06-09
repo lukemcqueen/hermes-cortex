@@ -29,7 +29,9 @@ setup_gbrain_sync_service() {
     cat > "$sync_script" <<'SCRIPTEOF'
 #!/bin/bash
 # gbrain sync watch daemon
-# Polls gbrain sync every 120 seconds
+# Polls gbrain sync every 120 seconds.
+# Auto-detects sources — skips cycle if none are registered
+# (prevents useless polling on a fresh install before seed-project-brain.sh).
 # Launchd/systemd manages this via KeepAlive
 
 BUN="${HOME}/.bun/bin/bun"
@@ -41,8 +43,20 @@ INTERVAL=120
 exec >> "$LOG" 2>> "$ERR_LOG"
 echo "[$(date)] gbrain sync watch daemon starting — interval ${INTERVAL}s"
 
+# Detect how many non-default sources exist
+count_sources() {
+    "$BUN" "$GBRAIN" sources list 2>/dev/null \
+        | grep -c '^  [^d]' 2>/dev/null || echo 0
+}
+
 while true; do
-    echo "[$(date)] === Sync cycle ==="
+    src_count=$(count_sources)
+    if [[ "$src_count" -eq 0 ]]; then
+        echo "[$(date)] No non-default sources registered — skipping cycle (run seed-project-brain.sh)"
+        sleep "$INTERVAL"
+        continue
+    fi
+    echo "[$(date)] === Sync cycle (${src_count} source(s)) ==="
     "$BUN" "$GBRAIN" sync --all --skip default --no-pull 2>&1
     echo "[$(date)] === Cycle complete, sleeping ${INTERVAL}s ==="
     sleep "$INTERVAL"
