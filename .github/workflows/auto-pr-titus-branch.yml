@@ -22,26 +22,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -e
           BRANCH="${{ github.ref_name }}"
           TITLE="$(git log -1 --format=%s)"
 
-          EXISTING=$(gh pr list \
-            --head "$BRANCH" \
-            --base main \
-            --json number,title,state \
-            --jq '.[] | "\(.number) \(.state) — \(.title)"' 2>/dev/null)
+          # Check for existing PR
+          EXISTING=$(gh pr list --head "$BRANCH" --base main --json number --jq '.[].number' 2>/dev/null || true)
+
           if [ -n "$EXISTING" ]; then
-            echo "PR already exists for $BRANCH:"
-            echo "  $EXISTING"
-            echo "Skipping creation."
-          else
-            echo "Creating draft PR for $BRANCH → main..."
-            gh pr create \
-              --base main \
-              --head "$BRANCH" \
-              --title "$TITLE" \
-              --body "Auto-generated from ${BRANCH}.
-          Merge when ready, then delete the branch." \
-              --draft
-            echo "Draft PR created."
+            echo "PR #$EXISTING already exists for $BRANCH — skipping."
+            exit 0
           fi
+
+          echo "Creating draft PR for $BRANCH → main..."
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "$TITLE" \
+            --body "Auto-generated from ${BRANCH}. Merge when ready, then delete." \
+            --draft
+          echo "Draft PR created."
