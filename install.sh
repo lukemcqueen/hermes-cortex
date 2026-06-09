@@ -1810,6 +1810,16 @@ if [[ -d "$OFFLINE_REPO" ]]; then
     info "  Installed project-map static analyzer"
   fi
 
+  # Copy session-mine tool
+  if [[ -f "${OFFLINE_REPO}/session_mine.py" ]]; then
+    cp "${OFFLINE_REPO}/session_mine.py" "$OFFLINE_DEST/"
+    chmod +x "${OFFLINE_DEST}/session_mine.py"
+    cp "${OFFLINE_REPO}/session_mine.sh" "$OFFLINE_DEST/"
+    chmod +x "${OFFLINE_DEST}/session_mine.sh"
+    ln -sf "${OFFLINE_DEST}/session_mine.sh" "${HERMES_BIN}/session-mine"
+    info "  Installed session-mining tool (lesson bootstrapping)"
+  fi
+
   # Copy kiwix Docker compose file
   cp "${OFFLINE_REPO}/kiwix-docker-compose.yml" "$OFFLINE_DEST/"
   info "  Installed kiwix-serve Docker compose"
