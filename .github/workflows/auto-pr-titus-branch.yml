@@ -24,21 +24,7 @@ jobs:
         run: |
           BRANCH="${{ github.ref_name }}"
           TITLE="$(git log -1 --format=%s)"
-          BODY=$(cat <<EOF
-          ## Summary
 
-          $TITLE
-
-          ---
-          Auto-generated from ${BRANCH} pushed by agent.
-
-          ## Instructions
-
-          - Review changes on this branch
-          - Merge when ready
-          - Delete branch after merge — agent will create a fresh one next time
-          EOF
-          )
           EXISTING=$(gh pr list \
             --head "$BRANCH" \
             --base main \
@@ -54,7 +40,8 @@ jobs:
               --base main \
               --head "$BRANCH" \
               --title "$TITLE" \
-              --body "$BODY" \
+              --body "Auto-generated from ${BRANCH}.
+          Merge when ready, then delete the branch." \
               --draft
             echo "Draft PR created."
           fi
