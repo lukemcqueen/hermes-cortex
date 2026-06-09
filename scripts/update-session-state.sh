@@ -128,6 +128,6 @@ HEADER=$(sed '/^## Repo State/q' "$SESSION_FILE" 2>/dev/null | sed '$d' 2>/dev/n
     echo "$NEW_SECTION"
 } > "$SESSION_FILE"
 
-echo "✅ project_current_session.md updated — ${NOW}"
+echo "✅ .hermes-cortex/sessions/current.md updated — ${NOW}"
 echo "   Last commit: ${LAST_COMMIT_HASH} — ${LAST_COMMIT_MSG}"
 echo "   Branch: ${BRANCH} | ${DIRTY:+dirty ($DIRTY files)}${DIRTY:-clean}"
