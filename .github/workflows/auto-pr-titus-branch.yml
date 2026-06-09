@@ -20,7 +20,7 @@ jobs:
 
       - name: Create draft PR to main
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           set -e
           BRANCH="${{ github.ref_name }}"
