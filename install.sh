@@ -433,6 +433,10 @@ INDEXEOF
   fi
 done
 
+# Create lessons directory for bug-fix lesson database
+mkdir -p "${BRAIN_DIR}/lessons"
+info "  Created ${BRAIN_DIR}/lessons/"
+
 # ─────────────────────────────────────────────────────────────
 #  5. Brain .gitignore — Protect memory and secrets per source
 # ─────────────────────────────────────────────────────────────
@@ -1788,10 +1792,12 @@ if [[ -d "$OFFLINE_REPO" ]]; then
   # Copy offline knowledge cascade tool
   cp "${OFFLINE_REPO}/offline_knowledge.py" "$OFFLINE_DEST/"
   chmod +x "${OFFLINE_DEST}/offline_knowledge.py"
+  cp "${OFFLINE_REPO}/lessons.py" "$OFFLINE_DEST/"
+  chmod +x "${OFFLINE_DEST}/lessons.py" 2>/dev/null
   cp "${OFFLINE_REPO}/offline_knowledge.sh" "$OFFLINE_DEST/"
   chmod +x "${OFFLINE_DEST}/offline_knowledge.sh"
   ln -sf "${OFFLINE_DEST}/offline_knowledge.sh" "${HERMES_BIN}/offline_knowledge"
-  info "  Installed offline knowledge cascade tool"
+  info "  Installed offline knowledge cascade tool + lesson database"
 
   # Copy kiwix Docker compose file
   cp "${OFFLINE_REPO}/kiwix-docker-compose.yml" "$OFFLINE_DEST/"

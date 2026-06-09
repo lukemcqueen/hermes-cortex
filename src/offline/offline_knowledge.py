@@ -43,6 +43,9 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 
+# Import lesson database module
+import lessons
+
 # ── Config ──────────────────────────────────────────────────
 HOME = Path.home()
 CACHE_DIR = HOME / ".hermes" / "web-cache"
@@ -718,7 +721,10 @@ Examples:
 
     hymns_sub.add_parser("list", help="List available hymn resources")
 
-    args = parser.parse_args()
+    # lesson
+    lesson = subparsers.add_parser("lesson", help="Bug-fix lesson database (personal fix memory)")
+
+    args, extra = parser.parse_known_args()
     
     if not args.command:
         parser.print_help()
@@ -825,6 +831,19 @@ Examples:
         else:
             print(f"\n💻 Code:        ⚪ Not indexed (run: prep-code.sh)")
 
+        # Lesson database stats
+        lesson_lessons_dir = HOME / "brain" / "lessons"
+        lesson_lessons_count = len(list(lesson_lessons_dir.glob("*.md"))) if lesson_lessons_dir.exists() else 0
+        lesson_index = HOME / "offline" / "lessons-index.json"
+        if lesson_index.exists():
+            with open(lesson_index) as _lf:
+                _ld = json.load(_lf)
+            print(f"\n📋 Lessons:     ✅ {_ld.get('count', '?')} indexed ({lesson_lessons_count} files)")
+        elif lesson_lessons_count > 0:
+            print(f"\n📋 Lessons:     ⚪ {lesson_lessons_count} files, not indexed (run: offline_knowledge lesson index)")
+        else:
+            print(f"\n📋 Lessons:     ⚪ Empty (run: offline_knowledge lesson create)")
+
         print()
 
     elif args.command == "bible":
@@ -894,6 +913,9 @@ Examples:
             else:
                 print(f"🎵 No hymn resources found. Run: prep-hymns.sh")
 
+    elif args.command == "lesson":
+        # Route to lessons module — pass the extra args that parse_known_args didn't consume
+        sys.exit(lessons.main(extra))
 
 if __name__ == "__main__":
     main()
