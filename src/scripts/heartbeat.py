@@ -17,6 +17,7 @@ Outputs a concise health report. Designed for cron integration:
 
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timedelta
@@ -37,12 +38,7 @@ def check_launchd(job_label: str) -> dict:
         if result.returncode != 0:
             return {"status": "DOWN", "detail": f"launchctl list failed: {result.stderr.strip()}"}
 
-        # macOS 12 outputs plist format; older macOS tab-separated.
-        # Handle both by checking for PID key in plist or tab format.
         stdout = result.stdout.strip()
-
-        # Try plist format (macOS 12+)
-        import re
         pid_match = re.search(r'"PID"\s*=\s*(\d+);', stdout)
         exit_match = re.search(r'"LastExitStatus"\s*=\s*(\d+);', stdout)
 
@@ -69,19 +65,32 @@ def check_launchd(job_label: str) -> dict:
         return {"status": "ERROR", "detail": str(e)}
 
 
-def check_process(name: str, grep_pattern: str) -> dict:
-    """Check if a process is running via pgrep."""
+def check_systemd(unit_name: str) -> dict:
+    """Check a systemd user service status — for Linux hosts."""
     try:
         result = subprocess.run(
-            ["pgrep", "-f", grep_pattern],
+            ["systemctl", "--user", "is-active", unit_name],
             capture_output=True, text=True, timeout=10,
         )
-        pids = result.stdout.strip().split("\n") if result.stdout.strip() else []
-        if pids:
-            return {"status": "UP", "detail": f"PID(s): {', '.join(pids[:5])}"}
-        return {"status": "DOWN", "detail": "Not found running"}
+        status = result.stdout.strip()
+        if status == "active":
+            return {"status": "UP", "detail": unit_name}
+        elif status in ("inactive", "dead", "failed"):
+            return {"status": "DOWN", "detail": f"Unit {unit_name} is {status}"}
+        return {"status": "DEGRADED", "detail": f"Unit {unit_name}: {status}"}
+    except FileNotFoundError:
+        return {"status": "ERROR", "detail": "systemctl not found — not a systemd system"}
     except Exception as e:
         return {"status": "ERROR", "detail": str(e)}
+
+
+def check_service(label: str) -> dict:
+    """Auto-detect platform and check service using launchd or systemd."""
+    try:
+        subprocess.run(["launchctl", "list"], capture_output=True, timeout=5)
+        return check_launchd(label)
+    except FileNotFoundError:
+        return check_systemd(label)
 
 
 def check_disk_usage(path: str = "/") -> dict:
@@ -254,8 +263,8 @@ def check_gbrain_sources() -> dict:
 def run() -> str:
     """Run all checks and return report. Empty string = all healthy."""
     checks = {
-        "Ollama": check_launchd("com.ollama.serve"),
-        "gbrain sync daemon": check_launchd("com.gbrain.sync-watch"),
+        "Ollama": check_service("com.ollama.serve"),
+        "gbrain sync daemon": check_service("com.gbrain.sync-watch"),
         "gbrain sources": check_gbrain_sources(),
         "Gateway activity": check_gateway_log(),
         "Memory→brain sync": check_memory_sync_freshness(),
