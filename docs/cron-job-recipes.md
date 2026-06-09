@@ -30,6 +30,39 @@ hermes cron create \
 
 ---
 
+## 💾 Memory Budget Monitor
+
+Alerts you when MEMORY.md or USER.md approach the 2,200/1,375 character limits. Silent when healthy, warns at ≥85%, alerts at ≥95%.
+
+**Schedule:** `0 5 * * *` (5am daily)
+**Type:** no_agent (script)
+
+### Recipe
+
+```bash
+# Create the cron job:
+hermes cron create \
+  --name "memory-budget-check" \
+  --schedule "0 5 * * *" \
+  --script "check-memory-budget.sh" \
+  --no-agent
+```
+
+The script outputs:
+- `🟢 MEMORY.md: 42% (920/2200) — OK` when healthy → silent (no output)
+- `🟡 MEMORY.md: 87% (1914/2200) — WARNING` at ≥85%
+- `🔴 MEMORY.md: 96% (2112/2200) — CRITICAL` at ≥95%
+
+On warning or critical, it suggests running the pointer pattern compression or `bootstrap-brain.sh`.
+
+### Manual Check
+
+```bash
+bash ~/.hermes/scripts/check-memory-budget.sh --report
+```
+
+---
+
 ## 📖 Daily Bible Reading
 
 Delivers a daily book-of-the-Bible summary with 3 thoughtful insights, saves to a searchable personal brain, and tracks progress through all 66 books.
