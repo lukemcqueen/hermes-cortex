@@ -44,7 +44,7 @@ Save a compact snapshot of session state at key milestones. Each checkpoint capt
 
 Write a checkpoint to one of these locations (prefer first):
 
-1. **`project_current_session.md`** (repo root, committed to git) — for ongoing work tracked in a shared repo. Update the Session Notes section.
+1. **`.hermes-cortex/sessions/current.md`** (repo root, committed to git) — for ongoing work tracked in a shared repo. Update the Session Notes section.
 2. A dedicated `session-checkpoint-{timestamp}.md` file — for private or long-running work.
 3. The session's working MEMORY.md — for quick inline saves.
 

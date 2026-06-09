@@ -20,13 +20,44 @@ Hermes Cortex is a **public installer and skill set** for
 ## Key Directories
 
 | Path | Purpose |
-|---|---|
+|------|---------|
 | `docs/` | Troubleshooting, guides, templates, SECURITY.md |
 | `docs/templates/` | Seed MEMORY.md, USER.md, brain .gitignore |
-| `install.sh` | Single-command installer, 26 steps (idempotent) |
+| `install.sh` | Single-command installer, 27 steps (idempotent) |
 | `docker-compose.langfuse.yml` | Langfuse v3 with ClickHouse, MinIO, Redis |
-| `project_current_session.md` | Committed session tracker — repo state + agent session notes |
-| `.gitignore` | Excludes .agentkore, .env*, *.pem, *.key, state.db, .hermes/ |
+| `.hermes-cortex/sessions/current.md` | Active session state — branch, commits, task context |
+| `.hermes-cortex/sessions/archive/` | Timestamped session snapshots |
+| `.hermes-cortex/skills/` | Project-specific Hermes skills (tracked) |
+| `.hermes-cortex/memory/` | Per-user agent memory (gitignored — each dev has their own) |
+| `.gitignore` | Excludes .agentkore, .env*, *.pem, *.key, state.db, .hermes/, .hermes-cortex/memory/ |
+
+## Cortex Project Directory Convention
+
+This repo uses `.hermes-cortex/` for agent infrastructure, keeping the root
+focused on source code and public docs. If you use Hermes Agent with this
+repo, agents will check for `.hermes-cortex/` first and fall back to repo
+root if absent.
+
+```
+project-root/
+├── .hermes-cortex/           # Agent infrastructure (hidden, near code)
+│   ├── sessions/
+│   │   ├── current.md        # Active session (cron updates this)
+│   │   └── archive/          # Timestamped session snapshots
+│   ├── memory/               # Gitignored — per-user MEMORY.md, USER.md
+│   ├── skills/               # Tracked — project-specific Hermes skills
+│   └── .gitkeep
+├── AGENTS.md                 # Stays at root — tool convention
+└── docs/                     # Stays at root — team docs
+```
+
+Three-layer data model:
+
+| Layer | Location | Content | Update cadence |
+|-------|----------|---------|---------------|
+| Hot session | `.hermes-cortex/sessions/current.md` | Branch, recent commits, task context | Every 30-120 min (cron) |
+| Agent memory | `.hermes-cortex/memory/` | Compact pointers, user profile | Every session |
+| Durable knowledge | `~/brain/<project>/` | Decisions, recipes, lessons | Weekly / as-needed |
 
 ## Architecture Principles
 
