@@ -1043,7 +1043,7 @@ def run():
             else check_service("com.gbrain.sync-watch")
         ),
         "gbrain sources": check_gbrain_sources(),
-        "Gateway activity": check_gateway_log(),
+        # "Gateway activity": check_gateway_log(),  # disabled — too chatty in cron
         "Memory→brain sync": check_memory_sync_freshness(),
         "Disk usage": check_disk_usage(),
     }
