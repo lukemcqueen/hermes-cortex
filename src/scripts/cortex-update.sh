@@ -110,7 +110,11 @@ restart_gbrain_sync() {
   local label="com.gbrain.sync-watch"
   if launchctl list "$label" &>/dev/null 2>&1; then
     info "  Restarting gbrain sync daemon…"
-    # Force re-write the sync-watch.sh script (remove then call installer)
+    # Unload first so install-gbrain-sync.sh doesn't see "already running"
+    # and skip the regeneration of sync-watch.sh
+    launchctl bootout gui/"$(id -u)"/"$label" 2>/dev/null || true
+    sleep 1
+    # Ensure the script dir exists and plist is gone
     rm -f "${HOME}/.gbrain/sync-watch.sh"
     bash "${HERMES_HOME}/scripts/install-gbrain-sync.sh" 2>&1 | sed 's/^/    /'
   fi
