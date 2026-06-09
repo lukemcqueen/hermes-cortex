@@ -43,7 +43,7 @@ echo "[$(date)] gbrain sync watch daemon starting — interval ${INTERVAL}s"
 
 while true; do
     echo "[$(date)] === Sync cycle ==="
-    "$BUN" "$GBRAIN" sync --all --no-pull 2>&1
+    "$BUN" "$GBRAIN" sync --all --skip default --no-pull 2>&1
     echo "[$(date)] === Cycle complete, sleeping ${INTERVAL}s ==="
     sleep "$INTERVAL"
 done
@@ -75,7 +75,7 @@ SCRIPTEOF
 
   elif [[ "$CORTEX_OS" == "windows" ]]; then
     write_service "$label" \
-      "\"${bun_path}\" \"${gbrain_path}\" sync --all --no-pull" \
+      "\"${bun_path}\" \"${gbrain_path}\" sync --all --skip default --no-pull" \
       "${HOME}"
     start_service "$label"
     info "  gbrain sync-watch scheduled"

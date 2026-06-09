@@ -132,8 +132,13 @@ fi
 
 # ── nginx Path ──────────────────────────────────────────────
 if [[ "$CORTEX_OS" == "macos" ]]; then
-  NGINX_CONFIG_DIR="/usr/local/etc/nginx/servers"
-  NGINX_BREW_DIR="/usr/local/etc/nginx"
+  if [[ "$(uname -m)" == "arm64" ]]; then
+    NGINX_CONFIG_DIR="/opt/homebrew/etc/nginx/servers"
+    NGINX_BREW_DIR="/opt/homebrew/etc/nginx"
+  else
+    NGINX_CONFIG_DIR="/usr/local/etc/nginx/servers"
+    NGINX_BREW_DIR="/usr/local/etc/nginx"
+  fi
 elif [[ "$CORTEX_OS" == "linux" ]]; then
   NGINX_CONFIG_DIR="/etc/nginx/sites-enabled"
   NGINX_BREW_DIR="/etc/nginx"
@@ -141,7 +146,11 @@ fi
 
 # ── Ollama Install Path ─────────────────────────────────────
 if [[ "$CORTEX_OS" == "macos" ]]; then
-  OLLAMA_BIN="/usr/local/bin/ollama"
+  if [[ "$(uname -m)" == "arm64" ]]; then
+    OLLAMA_BIN="/opt/homebrew/bin/ollama"
+  else
+    OLLAMA_BIN="/usr/local/bin/ollama"
+  fi
   OLLAMA_SERVICE_NAME="com.ollama.serve"
 elif [[ "$CORTEX_OS" == "linux" ]]; then
   OLLAMA_BIN="/usr/local/bin/ollama"

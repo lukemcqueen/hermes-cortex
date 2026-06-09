@@ -169,7 +169,7 @@ with test("HTML has all expected links"):
     r = urllib.request.urlopen(f"{BASE}/", timeout=10)
     html = r.read().decode()
     for link in [
-        "localhost:3001",  # Langfuse
+        "localhost:3000",  # Langfuse
         
         "127.0.0.1:8901",         # Local
     ]:
