@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "description": "Project-to-repo mapping for Hermes Cortex. Each entry maps a project name to its repository path and brain source.",
+  "projects": [
+    {
+      "name": "example-project",
+      "repo_path": "~/Developer/AI/example-project",
+      "brain_path": "~/brain/example-project",
+      "gbrain_source": "example-project",
+      "description": "An example project — replace with your actual projects"
+    }
+  ],
+  "conventions": {
+    "repo_location": "~/Developer/AI/<project-name>/",
+    "brain_location": "~/brain/<project-name>/",
+    "gbrain_source": "<project-name>",
+    "auto_seed_from": ["README.md", "ARCHITECTURE.md", "ARCH.md", "docs/*.md", ".github/*.md"]
+  }
+}

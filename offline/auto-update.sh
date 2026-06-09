@@ -26,8 +26,14 @@
 set -euo pipefail
 
 HOME="${HOME:-$(echo ~)}"
-HERMES_DIR="$HOME/hermes-cortex"
-OFFLINE_DIR="$HERMES_DIR/offline"
+# Prefer installed offline path, fall back to repo-relative
+if [[ -d "$HOME/.hermes/offline" ]]; then
+  OFFLINE_DIR="$HOME/.hermes/offline"
+elif [[ -d "$HOME/hermes-cortex/offline" ]]; then
+  OFFLINE_DIR="$HOME/hermes-cortex/offline"
+else
+  OFFLINE_DIR="$HOME/hermes-cortex/offline"
+fi
 BIBLE_DIR="$HOME/offline/bible"
 HYMNS_DIR="$HOME/offline/hymns"
 ZIM_DIR="$HOME/offline/zim"

@@ -702,6 +702,13 @@ HEARTBEAT_PATH="${SCRIPTS_DIR}/heartbeat.py"
 if [[ -f "$HEARTBEAT_PATH" ]]; then
   skip "heartbeat.py already exists"
 else
+  # Prefer repo copy to prevent divergence
+  if [[ -f "${SCRIPT_DIR}/scripts/heartbeat.py" ]]; then
+    cp "${SCRIPT_DIR}/scripts/heartbeat.py" "$HEARTBEAT_PATH"
+    chmod +x "$HEARTBEAT_PATH"
+    ok
+    info "  Copied heartbeat.py from repo"
+  else
   cat > "$HEARTBEAT_PATH" <<'HEARTBEAT'
 #!/usr/bin/env python3
 """heartbeat.py — System health watchdog for Hermes/gbrain stack.
@@ -806,6 +813,21 @@ def check_disk_usage(path="/"):
         return {"status": "ERROR", "detail": str(e)}
 
 
+def check_memory_sync_freshness():
+    """Check when memory was last synced to brain."""
+    current = BRAIN_SHARED / "hermes-memory" / "current.md"
+    if not current.exists():
+        return {"status": "UNKNOWN", "detail": "No current.md — sync may not have run yet"}
+    mtime = datetime.fromtimestamp(current.stat().st_mtime)
+    age = NOW - mtime
+    if age < timedelta(hours=8):
+        return {"status": "UP", "detail": f"Last sync: {age.total_seconds() / 60:.0f}m ago"}
+    elif age < timedelta(hours=24):
+        return {"status": "DEGRADED", "detail": f"Last sync: {age.total_seconds() / 3600:.1f}h ago"}
+    else:
+        return {"status": "DOWN", "detail": f"Last sync: {age.total_seconds() / 3600:.1f}h ago — stale!"}
+
+
 def check_gbrain_sources():
     """Check gbrain source health: flag 'never synced' or '0 pages' sources.
 
@@ -895,6 +917,7 @@ def run():
         "gbrain sync daemon": check_service("com.gbrain.sync-watch"),
         "gbrain sources": check_gbrain_sources(),
         "Gateway activity": check_gateway_log(),
+        "Memory→brain sync": check_memory_sync_freshness(),
         "Disk usage": check_disk_usage(),
     }
     status_counts = {}
@@ -926,6 +949,7 @@ if __name__ == "__main__":
     if output:
         print(output)
 HEARTBEAT
+  fi
   chmod +x "$HEARTBEAT_PATH"
   ok
 fi
@@ -941,9 +965,14 @@ else
 
 Reads MEMORY.md and USER.md from the active Hermes profile,
 formats them as searchable gbrain pages under ~/brain/shared/hermes-memory/,
-then writes them for the gbrain sync daemon to pick up.
+then git-commits so the gbrain sync daemon picks them up.
+
+Designed to run as a cron job alongside conversation export.
 """
-import os, subprocess, sys
+
+import os
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -955,78 +984,108 @@ TIMESTAMP = datetime.now().strftime("%Y-%m-%d %H:%M:%S %Z")
 ENTRY_DELIMITER = "\n§\n"
 
 
-def read_entries(filepath):
+def read_entries(filepath: Path) -> list[str]:
+    """Read a §-delimited memory file and return non-empty entries."""
     if not filepath.exists() or filepath.stat().st_size == 0:
         return []
     text = filepath.read_text(encoding="utf-8")
-    return [e.strip() for e in text.split(ENTRY_DELIMITER) if e.strip()]
+    entries = [e.strip() for e in text.split(ENTRY_DELIMITER) if e.strip()]
+    return entries
 
 
-def build_page_content(entries, source_label, color):
+def build_current_md(memory_entries: list[str], user_entries: list[str]) -> str:
+    """Build the full markdown snapshot."""
     lines = [
-        f"# Hermes Memory — {source_label}",
-        f"Last synced: {TIMESTAMP}",
-        f"",
-        f"## Entries",
-        f"",
+        "---",
+        "type: note",
+        "tags: [hermes, memory, agent, automation]",
+        "---",
+        "",
+        "# Hermes Agent Memory Snapshot",
+        "",
+        f"_Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}_",
+        "",
     ]
-    for i, entry in enumerate(entries, 1):
-        lines.append(f"### {i}. {entry.split(chr(10))[0][:80]}")
-        lines.append(entry.strip())
+
+    if memory_entries:
+        lines.append("## Agent Notes (MEMORY.md)")
         lines.append("")
+        for entry in memory_entries:
+            lines.append(entry)
+            lines.append("")
+
+    if user_entries:
+        lines.append("---")
+        lines.append("")
+        lines.append("## User Profile (USER.md)")
+        lines.append("")
+        for entry in user_entries:
+            lines.append(entry)
+            lines.append("")
+
     return "\n".join(lines)
 
 
-def write_page(slug, content):
+def write_snapshot(content: str):
+    """Write current snapshot and archived copy."""
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    path = OUT_DIR / slug
-    old = path.read_text(encoding="utf-8") if path.exists() else ""
-    if old == content:
-        return False
-    path.write_text(content, encoding="utf-8")
-    return True
+
+    # Current authoritative copy
+    current_path = OUT_DIR / "current.md"
+    current_path.write_text(content, encoding="utf-8")
+    print(f"✓ Written: current.md ({len(content)} bytes)")
+
+    # Monthly archive for history
+    archive_dir = OUT_DIR / "archive" / datetime.now().strftime("%Y-%m")
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    archive_path = archive_dir / f"{datetime.now().strftime('%Y-%m-%d')}.md"
+    archive_path.write_text(content, encoding="utf-8")
+    print(f"✓ Archived: {archive_path}")
 
 
-def git_commit(path, message):
-    try:
-        subprocess.run(["git", "-C", str(path), "add", "."],
-                       capture_output=True, timeout=30)
-        subprocess.run(["git", "-C", str(path), "commit", "--allow-empty",
-                        "-m", message],
-                       capture_output=True, timeout=30)
-    except Exception:
-        pass
+def git_commit():
+    """Git commit in the shared brain repo so sync daemon picks it up."""
+    if not (BRAIN_SHARED / ".git").exists():
+        print(f"⚠  {BRAIN_SHARED} is not a git repo — skipping commit")
+        return
+
+    os.chdir(str(BRAIN_SHARED))
+    subprocess.run(["git", "add", "hermes-memory/"], capture_output=True)
+
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--quiet"],
+        capture_output=True,
+    )
+    if result.returncode == 0:
+        print("No changes to commit")
+        return
+
+    msg = f"hermes-memory: auto-sync {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+    subprocess.run(["git", "commit", "-m", msg], capture_output=True)
+    print(f"✓ Git committed to shared brain")
 
 
 def main():
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"[{TIMESTAMP}] === memory-to-brain sync ===\n")
 
     memory_file = MEMORY_DIR / "MEMORY.md"
     user_file = MEMORY_DIR / "USER.md"
 
+    if not memory_file.exists() and not user_file.exists():
+        print("Neither MEMORY.md nor USER.md found — nothing to sync.")
+        return
+
     memory_entries = read_entries(memory_file)
     user_entries = read_entries(user_file)
+    print(f"  Memory entries: {len(memory_entries)}")
+    print(f"  User entries: {len(user_entries)}")
+    print()
 
-    changed = 0
+    content = build_current_md(memory_entries, user_entries)
+    write_snapshot(content)
+    git_commit()
 
-    if memory_entries:
-        content = build_page_content(memory_entries, "MEMORY.md", "blue")
-        if write_page("hermes-memory.md", content):
-            changed += 1
-            print(f"  Updated hermes-memory.md ({len(memory_entries)} entries)")
-
-    if user_entries:
-        content = build_page_content(user_entries, "USER.md", "green")
-        if write_page("hermes-user.md", content):
-            changed += 1
-            print(f"  Updated hermes-user.md ({len(user_entries)} entries)")
-
-    git_commit(BRAIN_SHARED, f"hermes-memory sync: {TIMESTAMP}")
-
-    if changed:
-        print(f"✓ Synced {changed} page(s) to {OUT_DIR}")
-    else:
-        print("No changes — memory already up to date")
+    print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S %Z')}] === memory-to-brain sync complete ===")
 
 
 if __name__ == "__main__":
@@ -1103,6 +1162,32 @@ BUDGET
   }
   chmod +x "$BUDGET_PATH"
   info "  Installed check-memory-budget.sh"
+fi
+
+# ── cortex-profile.sh ─────────────────────────────────────
+CORTEX_PROFILE_PATH="${SCRIPTS_DIR}/cortex-profile.sh"
+if [[ -f "$CORTEX_PROFILE_PATH" ]]; then
+  skip "cortex-profile.sh already exists"
+else
+  cp "${SCRIPT_DIR}/scripts/cortex-profile.sh" "$CORTEX_PROFILE_PATH" 2>/dev/null || \
+    warn "cortex-profile.sh not available (only from repo)"
+  if [[ -f "$CORTEX_PROFILE_PATH" ]]; then
+    chmod +x "$CORTEX_PROFILE_PATH"
+    info "  Installed cortex-profile.sh"
+  fi
+fi
+
+# ── seed-project-brain.sh ──────────────────────────────────
+SEED_BRAIN_PATH="${SCRIPTS_DIR}/seed-project-brain.sh"
+if [[ -f "$SEED_BRAIN_PATH" ]]; then
+  skip "seed-project-brain.sh already exists"
+else
+  cp "${SCRIPT_DIR}/scripts/seed-project-brain.sh" "$SEED_BRAIN_PATH" 2>/dev/null || \
+    warn "seed-project-brain.sh not available (only from repo)"
+  if [[ -f "$SEED_BRAIN_PATH" ]]; then
+    chmod +x "$SEED_BRAIN_PATH"
+    info "  Installed seed-project-brain.sh"
+  fi
 fi
 
 # ─────────────────────────────────────────────────────────────
@@ -1496,7 +1581,17 @@ if [[ -d "$OFFLINE_REPO" ]]; then
   info "    ${HERMES_BIN}/prep-offline --mode=travel    # Jungle/vacation bundle (~6 GB)"
   info "    ${HERMES_BIN}/prep-offline --mode=build     # Dev offline bundle (~7 GB)"
   info "    ${HERMES_BIN}/prep-offline --mode=education  # Kid learning bundle (~5 GB)"
-  printf "\n"
+  printf "\\n"
+
+  # Build offline code search index immediately
+  if [[ -f "${OFFLINE_DEST}/prep-code.sh" ]]; then
+    info "  Building offline code search index…"
+    bash "${OFFLINE_DEST}/prep-code.sh" 2>/dev/null && info "  Code index built" || warn "Code index build skipped (no source files)"
+  elif [[ -f "${OFFLINE_REPO}/prep-code.sh" ]]; then
+    info "  Building offline code search index…"
+    bash "${OFFLINE_REPO}/prep-code.sh" 2>/dev/null && info "  Code index built" || warn "Code index build skipped (no source files)"
+  fi
+  printf "\\n"
   ok
 else
   skip "no offline/ directory in repo"
@@ -1632,7 +1727,8 @@ I've installed the Hermes Cortex system. Please finish the setup by:
 2. Load the shared skills from ~/.hermes/skills/ (use skill_view(name) to browse them — includes subagent-driven-development, systematic-debugging, change-test-loop, spike, plan, memory-architecture, requesting-code-review, kaesa-brand-marketing, korean-language-learning)
 3. Loading the hermes-agent skill and verifying the gbrain-command plugin
 4. Run ~/.hermes/scripts/bootstrap-brain.sh to ensure all brain sources are initialized, git-enabled, registered in gbrain, and synced. Note which sources have indexed pages (if any show 0 pages, add some .md files and re-sync)
-5. Setting up these cron jobs (use the cronjob tool):
+5. Optionally seed project brains from existing repos: ~/.hermes/scripts/seed-project-brain.sh --list to see empty ones, then --all to seed them all
+6. Setting up these cron jobs (use the cronjob tool):
 
    a) gbrain-nightly-dream — daily at 3am:
       Schedule: 0 3 * * *
@@ -1658,9 +1754,9 @@ I've installed the Hermes Cortex system. Please finish the setup by:
       Schedule: 0 4 * * *
       Prompt: Read your current MEMORY.md and USER.md from ~/.hermes/memories/ and prune/consolidate entries that are stale, redundant, or no longer relevant. Keep useful durable facts. Report what you removed and why.
 
-6. Run /reset or /new to activate the /brain slash command
-7. Verify brain ingestion: run "gbrain query hello" then "gbrain query --source <name> hello" — you should see different results per source if sources have content
-8. Check the heartbeat: bash ~/.hermes/scripts/heartbeat.py --report — confirms all services including gbrain sources
+7. Run /reset or /new to activate the /brain slash command
+8. Verify brain ingestion: run "gbrain query hello" then "gbrain query --source <name> hello" — you should see different results per source if sources have content
+9. Check the heartbeat: bash ~/.hermes/scripts/heartbeat.py --report — confirms all services including gbrain sources
 
 PROMPT
 printf "${RESET}${BOLD}${CYAN}───────────────────────────────────────────────────${RESET}\n"
