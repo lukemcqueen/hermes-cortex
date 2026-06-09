@@ -1,7 +1,7 @@
 ---
 name: session-manager
 description: "Session management skill — checkpoint/restore, context compression, progress tracking, and recovery for maintaining continuity across agent sessions."
-version: 1.0.0
+version: 1.1.0
 category: software-development
 source: hermes-cortex
 author: Hermes Agent
@@ -42,7 +42,11 @@ Save a compact snapshot of session state at key milestones. Each checkpoint capt
 
 ### Checkpoint format
 
-Write a checkpoint to either the session's working MEMORY.md or a dedicated `session-checkpoint-{timestamp}.md` file:
+Write a checkpoint to one of these locations (prefer first):
+
+1. **`project_current_session.md`** (repo root, committed to git) — for ongoing work tracked in a shared repo. Update the Session Notes section.
+2. A dedicated `session-checkpoint-{timestamp}.md` file — for private or long-running work.
+3. The session's working MEMORY.md — for quick inline saves.
 
 ```markdown
 ## Session Checkpoint — YYYY-MM-DD HH:MM UTC
