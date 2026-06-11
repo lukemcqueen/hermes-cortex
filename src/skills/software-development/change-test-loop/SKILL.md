@@ -9,7 +9,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [testing, tdd, red-green-refactor, confidence-scoring, retry, coverage, discipline, lesson-aware, memory-compounds]
-    related_skills: [systematic-debugging, plan, subagent-driven-development, code-structure, improve-codebase-architecture, save-lesson, offline-knowledge]
+    related_skills: [systematic-debugging, plan, subagent-driven-development, code-structure, improve-codebase-architecture, save-lesson, offline-knowledge, test-seed-uniqueness]
 ---
 
 # Change-Test Loop (Lesson-Aware)
