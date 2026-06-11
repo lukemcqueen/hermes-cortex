@@ -93,6 +93,7 @@ register "src/scripts/cortex-update.sh"           "${HERMES_HOME}/scripts/cortex
 register "src/scripts/install-gbrain-sync.sh"     "${HERMES_HOME}/scripts/install-gbrain-sync.sh" "gbrain-sync" "restart_gbrain_sync"
 register "src/scripts/install-ollama.sh"          "${HERMES_HOME}/scripts/install-ollama.sh"
 register "src/scripts/install-nginx.sh"           "${HERMES_HOME}/scripts/install-nginx.sh"
+register "src/scripts/prod-watchdog.sh"          "${HERMES_HOME}/scripts/prod-watchdog.sh"
 
 # Lesson-aware scripts (Memory That Compounds)
 register "src/scripts/daily-lesson-mine.sh"      "${HERMES_HOME}/scripts/daily-lesson-mine.sh"
