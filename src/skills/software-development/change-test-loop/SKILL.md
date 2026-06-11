@@ -1,22 +1,22 @@
 ---
 name: change-test-loop
-version: 1.1.0
+version: 2.0.0
 category: software-development
-description: "RED-GREEN-REFACTOR loop with confidence scoring, retry limits, coverage requirements, and strict TDD discipline."
+description: "LEARN-RED-GREEN-REFACTOR loop with lesson-aware memory, confidence scoring, retry limits, coverage requirements, and strict TDD discipline."
 author: Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [testing, tdd, red-green-refactor, confidence-scoring, retry, coverage, discipline]
-    related_skills: [systematic-debugging, plan, subagent-driven-development]
+    tags: [testing, tdd, red-green-refactor, confidence-scoring, retry, coverage, discipline, lesson-aware, memory-compounds]
+    related_skills: [systematic-debugging, plan, subagent-driven-development, code-structure, improve-codebase-architecture, save-lesson, offline-knowledge]
 ---
 
-# Change-Test Loop
+# Change-Test Loop (Lesson-Aware)
 
 ## Overview
 
-A disciplined RED-GREEN-REFACTOR loop augmented with **confidence scoring**, **retry governance**, and **coverage requirements** per change type. This skill ensures every change — whether a new feature, bug fix, or refactor — follows a repeatable, verifiable cycle with clear success criteria and a hard upper bound on iteration.
+A disciplined **LEARN-RED-GREEN-REFACTOR** loop augmented with **lesson-aware memory**, **confidence scoring**, **retry governance**, and **coverage requirements** per change type. Every cycle begins by searching past lessons — so the agent never re-discovers a fix it already knows.
 
 **Core principle:** Confidence is measured, not assumed. Each cycle phase scores confidence on a 3/2/1/0 scale. A score of 0 triggers a fallback. Maximum 2 retry iterations per phase before escalation.
 
@@ -24,9 +24,11 @@ A disciplined RED-GREEN-REFACTOR loop augmented with **confidence scoring**, **r
 
 ```
 NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
+NO BUG FIX WITHOUT CHECKING LESSONS FIRST
 ```
 
 Write code before the test? Delete it. Start over.
+Fix a bug without checking lessons? You might be re-discovering a known fix.
 
 **No exceptions:**
 - Don't keep it as "reference"
@@ -34,24 +36,65 @@ Write code before the test? Delete it. Start over.
 - Don't look at it
 - Delete means delete
 
-Implement fresh from tests. Period.
+Implement fresh from tests. Period. Know what's known before you dig.
 
 ## The Loop
 
 ```
-┌─────────────────────────────────────────────────┐
-│                  CHANGE-TEST LOOP                │
-│                                                   │
-│   RED ──→ GREEN ──→ REFACTOR ──→ [repeat/next]   │
-│    │         │          │                         │
-│    ↓         ↓          ↓                         │
-│  Score     Score      Score                       │
-│  (fail)    (pass)    (quality)                    │
-│                                                   │
-│  If score < threshold → retry (max 2×)            │
-│  If all retries fail  → fallback                  │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│              CHANGE-TEST LOOP (Lesson-Aware)             │
+│                                                           │
+│   LEARN ──→ RED ──→ GREEN ──→ REFACTOR ──→ [repeat/next] │
+│    │          │         │          │                      │
+│    ↓          ↓         ↓          ↓                      │
+│  Search    Score     Score      Score                     │
+│  lessons    (fail)   (pass)    (quality)                  │
+│                                                           │
+│  If know → skip RED-GREEN                                │
+│  If score < threshold → retry (max 2×)                   │
+│  If all retries fail  → fallback                          │
+└─────────────────────────────────────────────────────────┘
 ```
+
+## LEARN — Search Lessons Before You Dig
+
+Before writing any test or changing any code, search the lesson database for known solutions to the problem you're about to solve. **This is step 0 of every cycle.**
+
+### Protocol
+
+```python
+# 1. Search lessons with the error message or problem description
+result = json.loads(terminal("offline_knowledge lesson search 'your error or problem' --limit 3")["output"])
+
+# 2. If match found (similarity ≥ 0.55):
+#    a. Read the full lesson
+#    b. Apply the known fix directly
+#    c. Increment the lesson's success_count
+#    d. Skip directly to REFACTOR (or next if nothing to refactor)
+#    e. Report: "Applied known fix from lesson '<title>' (saved ~N min of debug time)"
+
+# 3. If no match:
+#    a. Proceed to RED-GREEN-REFACTOR as normal
+#    b. After fix is verified, save as a new lesson (see GREEN — Auto-Save)
+```
+
+### Confidence Scoring
+
+| Score | Criterion |
+|-------|-----------|
+| 3 | Found ≥ 1 relevant lesson with similarity ≥ 0.65. Fix confirmed and applied. |
+| 2 | Found lesson with similarity 0.55–0.64. Applied with minor adaptation. |
+| 1 | Found lesson but it's tangential — proceed with RED-GREEN. |
+| 0 | No lessons found for this problem. Proceed fresh. |
+
+**If score ≥ 2:** Apply the fix, increment success_count, skip RED-GREEN.
+**If score < 2:** Proceed to RED — but you now have useful context.
+
+### Why This Matters
+
+- **Every lesson is time saved.** A lesson match at similarity ≥ 0.55 means you skip 15–60 minutes of debugging.
+- **Lessons compound.** The more you accumulate, the more cycles start at LEARN→skip.
+- **No re-discovery.** The most expensive fix is the one you've already made.
 
 ## RED — Write Failing Test
 
@@ -135,6 +178,36 @@ Confirm:
 
 **Other tests fail?** Fix regressions immediately or revert the change.
 
+### GREEN — Auto-Save Lesson (Bug Fixes Only)
+
+After GREEN is confirmed for a **bug fix** (not a new feature), decide whether to save the fix as a lesson:
+
+| Save? | Criteria |
+|-------|----------|
+| ✅ **Yes** | Fix took >2 attempts or >30s. Root cause was non-obvious. Error message was cryptic. You expect this pattern to recur. |
+| ❌ **No** | Simple typo or syntax fix. Trivial config mistake. Environment-specific issue that won't transfer. |
+
+**Auto-save command:**
+
+```bash
+offline_knowledge lesson create \
+  --title "<descriptive title with error code if relevant>" \
+  --problem "<what went wrong>" \
+  --cause "<root cause>" \
+  --solution "<the fix>" \
+  --language <lang> \
+  --framework <framework> \
+  --tags <tag1 tag2>
+```
+
+**Then rebuild the index** so the lesson is immediately searchable:
+
+```bash
+offline_knowledge lesson index
+```
+
+**Auto-save counts toward the compound score.** Each lesson saved is future time saved.
+
 ## REFACTOR — Clean Up
 
 Only after GREEN is confirmed. Remove duplication, improve names, extract helpers, simplify expressions. No new behavior.
@@ -144,6 +217,22 @@ Only after GREEN is confirmed. Remove duplication, improve names, extract helper
 - Keep tests green throughout every refactor step
 - Make small, atomic changes
 - Run the full test suite after each change
+- **If you see the same operational logic across multiple callers, load the `code-structure` skill and extract it into a service layer** — actions should orchestrate domain rules, services should own reusable mechanics
+
+### Service Extraction Flow
+
+When repeated operational logic is found during refactoring, first apply the **deletion test** (from `improve-codebase-architecture`): imagine deleting the module. If complexity reappears across callers, it's a real extraction target. If complexity just vanishes, it was a pass-through — inline or delete it instead.
+
+Then, for real extraction targets:
+
+1. Identify the repeated block across callers
+2. Extract it as a composable capability function with explicit params and structured returns
+3. Replace one caller → run tests → verify
+4. Replace remaining callers → run full suite
+5. Keep domain policy (auth, state transitions, error classification) in the action layer
+
+See the `code-structure` skill for the full pattern, migration checklist, and anti-patterns.
+See the `improve-codebase-architecture` skill for the deep-module vocabulary and deletion test.
 
 ### Confidence Scoring
 
@@ -395,11 +484,15 @@ If you catch yourself doing any of these, delete the code and restart with TDD:
 
 Before marking work complete:
 
+- [ ] **LEARN:** Lessons searched for this problem
+- [ ] **LEARN:** If lesson found (score ≥ 2), fix applied and success_count incremented
+- [ ] **LEARN:** If no lesson found, proceeded to RED
 - [ ] RED: Test written and witnessed failing for the correct reason
 - [ ] RED: Confidence score ≥ 2 (or fallback invoked)
 - [ ] GREEN: Minimal implementation passes the test
 - [ ] GREEN: Full suite passes without regressions
 - [ ] GREEN: Confidence score ≥ 2 (or fallback invoked)
+- [ ] **GREEN:** Bug fix? Lesson auto-saved (if non-trivial) and index rebuilt
 - [ ] REFACTOR: Code cleaned up while keeping tests green
 - [ ] REFACTOR: Confidence score ≥ 2 (or fallback invoked)
 - [ ] Coverage meets the minimum requirement for the change type

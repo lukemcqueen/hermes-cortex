@@ -406,19 +406,74 @@ Then set `LANGFUSE_HOST=http://localhost:{PORT}` and restart dashboard.
 
 **Symptom:** Traces appear but costs are always $0.00.
 
-**Two causes:**
+**Three causes:**
 
-**A) Missing model pricing** — Models not in Langfuse's pricing table:
+**A) Missing model pricing** — The model name reported by the provider isn't in Langfuse's `public.models` table. Langfuse ships with 160+ built-in model entries but custom/open-router models aren't included.
+
 ```sql
--- Check current models:
+-- Check current models for your project (NULL project_id = global, available to all):
 docker exec langfuse-postgres-1 psql -U postgres -d postgres \
-  -c "SELECT model_name, input_price, output_price FROM langfuse.models;"
--- Insert missing model pricing (USD per token):
-INSERT INTO langfuse."models" (id, model_name, match_pattern, input_price, output_price, total_price, unit, tokenizer_config, tokenizer_config_json)
-VALUES (gen_random_uuid()::text, '{model}', '{model}', {input_price}, {output_price}, 0, 'TOKENS', '{"tokensPerMessage": 1, "tokensPerName": 1, "tokenizer": "openai"}', '{"tokensPerMessage": 1, "tokensPerName": 1, "tokenizer": "openai"}');
+  -c "SELECT model_name, input_price, output_price, unit FROM public.models WHERE project_id IS NULL ORDER BY model_name;"
+
+-- Check project-specific models (like custom additions):
+docker exec langfuse-postgres-1 psql -U postgres -d postgres \
+  -c "SELECT model_name, input_price, output_price FROM public.models WHERE project_id IS NOT NULL ORDER BY model_name;"
+
+-- Insert a global model pricing entry (NULL project_id — applies to all projects):
+INSERT INTO public."models" (id, model_name, match_pattern, input_price, output_price, unit, tokenizer_config)
+VALUES (
+  gen_random_uuid()::text,
+  'deepseek-v4-flash-free',
+  '(?i)deepseek-v4-flash-free',
+  0.00000014,   -- $0.14/M input tokens
+  0.00000028,   -- $0.28/M output tokens
+  'TOKENS',
+  NULL
+);
+
+-- To insert project-specific (scoped to one project):
+INSERT INTO public."models" (id, project_id, model_name, match_pattern, input_price, output_price, unit, tokenizer_config)
+VALUES (
+  gen_random_uuid()::text,
+  (SELECT id FROM public.projects WHERE name = 'Hermes Agent' LIMIT 1),
+  'deepseek-v4-flash-free',
+  '(?i)deepseek-v4-flash-free',
+  0.00000014,
+  0.00000028,
+  'TOKENS',
+  NULL
+);
 ```
 
-**B) Provider doesn't report tokens** — Check if `inputTokens` / `outputTokens` are null in observations. If null, the provider's Langfuse instrumentation needs fixing (provider-specific, can't fix in Langfuse/dashboard alone). The dashboard falls back to `state.db` token counts for calculated costs.
+**B) opencode-zen / opencode-go provider** — When using the `opencode-zen` or `opencode-go` provider in Hermes (i.e. `model.provider: opencode-go`, `base_url: https://opencode.ai/zen/go/v1`), the model name reported to Langfuse is whatever `model.default` is set to (e.g. `deepseek-v4-flash` or `deepseek-v4-flash-free`).
+
+| Model name in Langfuse | Default pricing (DeepSeek direct) | Tokens/M |
+|---|---|---|
+| `deepseek-v4-flash` | $0.14 input / $0.28 output | Already in table (project: Hermes Agent) |
+| `deepseek-v4-flash-free` | $0.14 input / $0.28 output | **Not in table — insert required** |
+
+The `deepseek-v4-flash-free` model routes through the same DeepSeek API underneath (OpenCode adds a free daily quota on top). Use the standard DeepSeek pricing as the base rate. Adjust if your OpenCode plan has different rates.
+
+Insert the missing entry:
+```sql
+INSERT INTO public."models" (id, model_name, match_pattern, input_price, output_price, unit)
+VALUES (
+  gen_random_uuid()::text,
+  'deepseek-v4-flash-free',
+  '(?i)deepseek-v4-flash-free',
+  0.00000014,
+  0.00000028,
+  'TOKENS'
+);
+```
+
+**C) Provider doesn't report tokens** — Check if `inputTokens` / `outputTokens` are null in Langfuse observations. If null, the provider's Langfuse instrumentation isn't capturing usage (provider-specific, can't fix in Langfuse/dashboard alone). The dashboard falls back to `state.db` token counts for calculated costs.
+
+To verify tokens are flowing:
+```sql
+docker exec langfuse-postgres-1 psql -U postgres -d postgres \
+  -c "SELECT id, model, input_tokens, output_tokens FROM observations WHERE input_tokens IS NULL LIMIT 5;"
+```
 
 ---
 
@@ -426,7 +481,7 @@ VALUES (gen_random_uuid()::text, '{model}', '{model}', {input_price}, {output_pr
 
 | Version | Date | Changes |
 |---|---|---|
-| 1.3.0 | 2026-06-07 | Tightened entries #21–#23 (Langfuse costs, data, fromTimestamp) — removed verbose agent-prompt style, added SQL for pricing fix |
+|| 1.4.0 | 2026-06-10 | Rewrote #23 (Langfuse costs) — fixed schema from `langfuse.models` to `public.models`, corrected INSERT SQL for v3 schema, added opencode-zen/opencode-go provider subsection with deepseek-v4-flash-free pricing SQL |
 | 1.2.0 | 2026-06-06 | Added #21 (Langfuse fromTimestamp), #22 (dashboard no-traces), #23 (costs $0.00), #24 (pf firewall), #25 (fail2ban), updated port ranges |
 | 1.1.0 | 2026-06-06 | Added entry #18 (Ollama 0.0.0.0 fix), #19 (first-time admin access), #20 (Redis timeout) |
 | 1.0.0 | 2026-06-05 | Initial release — 17 entries covering Docker, Dashboard, install, nginx, memory, and Linux |
