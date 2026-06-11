@@ -35,16 +35,27 @@ configure_nginx() {
   local listen_langfuse="${3:-13002}"
   local listen_dashboard="${4:-13001}"
   local config_file
+  local nginx_conf
 
   if [[ "$CORTEX_OS" == "macos" ]]; then
     config_file="${NGINX_CONFIG_DIR}/hermes-services.conf"
+    nginx_conf="${NGINX_CONFIG_DIR}/../nginx.conf"
     mkdir -p "$NGINX_CONFIG_DIR"
   elif [[ "$CORTEX_OS" == "linux" ]]; then
     config_file="${NGINX_CONFIG_DIR}/hermes-services.conf"
+    nginx_conf="${NGINX_CONFIG_DIR}/nginx.conf"
     mkdir -p "$NGINX_CONFIG_DIR"
   else
     warn "nginx configuration not supported on Windows yet"
     return 0
+  fi
+
+  # Ensure zone-defs include file is installed alongside the main config
+  local zone_defs_src="${SCRIPT_DIR}/../deploy/nginx/hermes-zone-defs.conf"
+  local zone_defs_dst="${NGINX_CONFIG_DIR}/../hermes-zone-defs.conf"
+  if [[ -f "$zone_defs_src" && ! -f "$zone_defs_dst" ]]; then
+    cp "$zone_defs_src" "$zone_defs_dst"
+    info "  Installed hermes-zone-defs.conf"
   fi
 
   if [[ -f "$config_file" ]]; then
