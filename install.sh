@@ -2034,6 +2034,18 @@ I've installed the Hermes Cortex system. Please finish the setup by:
       Prompt: Run cortex-update to keep the system current: bash ~/.hermes/scripts/cortex-update.sh
       no_agent: true
 
+   g) daily-lesson-mine — daily at 2am (auto-mining from last 24h):
+      Schedule: 0 2 * * *
+      Script: daily-lesson-mine.sh
+      no_agent: true
+      Self-muting: only delivers output when new lessons are saved
+
+   h) lesson-compound-stats — daily at 2:30am (report after mining):
+      Schedule: 30 2 * * *
+      Script: lesson-compound-stats.py --brief
+      no_agent: true
+      Output: "📊 135 lessons · 135 applications · ~33.8h saved · 7 languages"
+
 9. Run /reset or /new to activate the /brain slash command
 10. Verify brain ingestion: run "gbrain query hello" then "gbrain query --source <name> hello" — you should see different results per source if sources have content
 11. (Optional) Check detailed heartbeat: bash ~/.hermes/scripts/heartbeat.py --report — watch how service status changes as you configure things

@@ -69,9 +69,10 @@ result = json.loads(terminal("offline_knowledge lesson search 'your error or pro
 # 2. If match found (similarity ≥ 0.55):
 #    a. Read the full lesson
 #    b. Apply the known fix directly
-#    c. Increment the lesson's success_count
-#    d. Skip directly to REFACTOR (or next if nothing to refactor)
-#    e. Report: "Applied known fix from lesson '<title>' (saved ~N min of debug time)"
+#    c. INCREMENT success_count: terminal("bash ~/.hermes/scripts/lesson-hit.sh --search 'lesson title'")
+#    d. Rebuild index: terminal("offline_knowledge lesson index")
+#    e. Skip directly to REFACTOR (or next if nothing to refactor)
+#    f. Report: "Applied known fix from lesson '<title>' (saved ~N min of debug time)"
 
 # 3. If no match:
 #    a. Proceed to RED-GREEN-REFACTOR as normal
