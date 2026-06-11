@@ -322,7 +322,10 @@ main() {
     info "Force mode — re-checking all mapped files…"
     check_each_mapped_file "full"
   else
-    mapfile -t CHANGED < <(get_changed_files "$old_commit")
+    CHANGED=()
+    while IFS= read -r line; do
+      CHANGED+=("$line")
+    done < <(get_changed_files "$old_commit")
     if [[ ${#CHANGED[@]} -eq 0 ]]; then
       info "No file changes detected (commit metadata change?)"
       info "  Saving commit ${new_commit:0:8} as current"
