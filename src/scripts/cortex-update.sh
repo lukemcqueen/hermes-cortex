@@ -20,7 +20,7 @@ info()  { echo -e "${GREEN}✓${RESET} $*"; }
 warn()  { echo -e "${YELLOW}⚠${RESET} $*"; }
 error() { echo -e "${RED}✗${RESET} $*"; }
 
-REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 STATE_DIR="${HERMES_HOME}/state"
 LAST_COMMIT_FILE="${STATE_DIR}/update-commit"
@@ -77,15 +77,20 @@ register "src/scripts/install-gbrain-sync.sh"     "${HERMES_HOME}/scripts/instal
 register "src/scripts/install-ollama.sh"          "${HERMES_HOME}/scripts/install-ollama.sh"
 register "src/scripts/install-nginx.sh"           "${HERMES_HOME}/scripts/install-nginx.sh"
 
-# Web cache (always force-copied)
-register "src/web-cache/web_cache.py"             "${HERMES_HOME}/web-cache/web_cache.py"
-register "src/web-cache/web_cache.sh"             "${HERMES_HOME}/web-cache/web_cache.sh"
+# Lesson-aware scripts (Memory That Compounds)
+register "src/scripts/daily-lesson-mine.sh"      "${HERMES_HOME}/scripts/daily-lesson-mine.sh"
+register "src/scripts/lesson-compound-stats.py"   "${HERMES_HOME}/scripts/lesson-compound-stats.py"
+register "src/scripts/lesson-hit.sh"              "${HERMES_HOME}/scripts/lesson-hit.sh"
 
 # Offline tools
 register "src/offline/offline_knowledge.py"       "${HERMES_HOME}/offline/offline_knowledge.py"
 register "src/offline/offline_knowledge.sh"       "${HERMES_HOME}/offline/offline_knowledge.sh"
 register "src/offline/kiwix-docker-compose.yml"   "${HERMES_HOME}/offline/kiwix-docker-compose.yml"
 register "src/offline/prep-offline.sh"            "${HERMES_HOME}/offline/prep-offline.sh"
+register "src/offline/session_mine.py"            "${HERMES_HOME}/offline/session_mine.py"
+register "src/offline/lessons.py"                 "${HERMES_HOME}/offline/lessons.py"
+register "src/offline/migrate_fts_reasoning.sql"  "${HERMES_HOME}/offline/migrate_fts_reasoning.sql"
+register "src/offline/auto-update.sh"             "${HERMES_HOME}/offline/auto-update.sh"
 
 # Templates → ~/.hermes/memories/ (guarded — only if dest missing)
 register "docs/templates/MEMORY.seed.md"      "${HERMES_HOME}/memories/MEMORY.md"
@@ -93,7 +98,6 @@ register "docs/templates/USER.seed.md"        "${HERMES_HOME}/memories/USER.md"
 register "docs/templates/memory-readme.seed.md" "${HERMES_HOME}/memory/README.md"
 
 # Langfuse
-register "deploy/nginx/hermes-services.conf" "${HERMES_HOME}/nginx/hermes-services.conf" "nginx" "restart_nginx"
 register "deploy/docker-compose.langfuse.yml"        "${HOME}/langfuse/docker-compose.yml" "langfuse" "restart_langfuse"
 
 # Dashboard
@@ -111,11 +115,7 @@ restart_gbrain_sync() {
   local label="com.gbrain.sync-watch"
   if launchctl list "$label" &>/dev/null 2>&1; then
     info "  Restarting gbrain sync daemon…"
-    # Unload first so install-gbrain-sync.sh doesn't see "already running"
-    # and skip the regeneration of sync-watch.sh
-    launchctl bootout gui/"$(id -u)"/"$label" 2>/dev/null || true
-    sleep 1
-    # Ensure the script dir exists and plist is gone
+    # Force re-write the sync-watch.sh script (remove then call installer)
     rm -f "${HOME}/.gbrain/sync-watch.sh"
     bash "${HERMES_HOME}/scripts/install-gbrain-sync.sh" 2>&1 | sed 's/^/    /'
   fi
@@ -126,20 +126,6 @@ restart_langfuse() {
     if docker compose -f "${HOME}/langfuse/docker-compose.yml" ps &>/dev/null 2>&1; then
       info "  Recreating Langfuse containers…"
       (cd "${HOME}/langfuse" && docker compose up -d 2>&1) | sed 's/^/    /'
-    fi
-  fi
-}
-
-restart_nginx() {
-  if command -v nginx &>/dev/null; then
-    info "  Reloading nginx…"
-    # Use homebrew nginx on macOS, system nginx on Linux
-    local nginx_cmd="nginx"
-    [[ "$(uname -s)" == "Darwin" ]] && nginx_cmd="$(brew --prefix 2>/dev/null)/bin/nginx" || true
-    if "$nginx_cmd" -t 2>/dev/null; then
-      "$nginx_cmd" -s reload 2>/dev/null && info "  nginx reloaded" || warn "  nginx reload failed — try: sudo nginx -s reload"
-    else
-      warn "  nginx config test failed — not reloading"
     fi
   fi
 }
@@ -373,7 +359,6 @@ main() {
         restart_gbrain_sync) restart_gbrain_sync ;;
         restart_langfuse)    restart_langfuse ;;
         restart_dashboard)   restart_dashboard ;;
-        restart_nginx)       restart_nginx ;;
         *)                   warn "Unknown restart command: $cmd" ;;
       esac
     done
