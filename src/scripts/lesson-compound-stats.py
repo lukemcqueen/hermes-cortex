@@ -56,7 +56,13 @@ def parse_lesson_metadata(filepath: str) -> dict:
         elif key == "framework":
             meta["framework"] = val
         elif key == "tags":
-            meta["tags"] = [t.strip() for t in val.split() if t.strip()]
+            # Handle both YAML inline-list ([tag1, tag2]) and space-separated (tag1 tag2)
+            raw = val.strip(" []'\",").strip()
+            meta["tags"] = [
+                t.strip(" []'\",").strip()
+                for t in raw.replace(",", " ").split()
+                if t.strip(" []'\",").strip()
+            ]
         elif key == "success_count":
             try:
                 meta["success_count"] = int(val)

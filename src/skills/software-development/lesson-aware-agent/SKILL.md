@@ -35,7 +35,8 @@ if is_non_trivial(problem):
     if result.get("count", 0) > 0:
         lesson = result["results"][0]
         # Apply known fix
-        # Increment success_count in lesson frontmatter
+        # INCREMENT success_count: terminal("bash ~/.hermes/scripts/lesson-hit.sh --search '" + lesson["title"] + "'")
+        # Rebuild index: terminal("offline_knowledge lesson index")
         # Report time saved
 ```
 
