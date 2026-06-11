@@ -20,7 +20,15 @@ info()  { echo -e "${GREEN}✓${RESET} $*"; }
 warn()  { echo -e "${YELLOW}⚠${RESET} $*"; }
 error() { echo -e "${RED}✗${RESET} $*"; }
 
-REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+# Walk up to find repo root (signature file: AGENTS.md at the root)
+while [[ "$REPO_DIR" != "/" && ! -f "$REPO_DIR/AGENTS.md" ]]; do
+  REPO_DIR="$(dirname "$REPO_DIR")"
+done
+# If we hit / without finding AGENTS.md, fall back to dirname logic
+if [[ "$REPO_DIR" == "/" ]]; then
+  REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd || echo "")}"
+fi
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 STATE_DIR="${HERMES_HOME}/state"
 LAST_COMMIT_FILE="${STATE_DIR}/update-commit"
@@ -261,6 +269,46 @@ update_symlinks() {
   fi
 }
 
+# ── Skill Sync ───────────────────────────────────────────────
+# Copies SKILL.md files and references/ from repo src/skills/
+# to ~/.hermes/skills/. Uses the delta engine — only copies
+# files whose checksums differ from installed versions.
+sync_skills() {
+  local skill_repo="${REPO_DIR}/src/skills"
+  local skill_dest="${HERMES_HOME}/skills"
+  [[ -d "$skill_repo" ]] || { info "  No src/skills/ in repo — skipping skill sync"; return 0; }
+
+  local synced=0 skipped=0
+  mkdir -p "$skill_dest"
+
+  # Sync all SKILL.md files
+  while IFS= read -r -d '' skill_file; do
+    local rel_path="${skill_file#$skill_repo/}"
+    local dest="${skill_dest}/${rel_path}"
+    mkdir -p "$(dirname "$dest")"
+
+    if needs_update "$skill_file" "$dest"; then
+      copy_file "$skill_file" "$dest"
+      synced=$((synced + 1))
+    else
+      skipped=$((skipped + 1))
+    fi
+  done < <(find "$skill_repo" -name "SKILL.md" -type f -print0)
+
+  # Sync reference files
+  while IFS= read -r -d '' ref_file; do
+    local rel_path="${ref_file#$skill_repo/}"
+    local dest="${skill_dest}/${rel_path}"
+    mkdir -p "$(dirname "$dest")"
+
+    if needs_update "$ref_file" "$dest"; then
+      copy_file "$ref_file" "$dest"
+    fi
+  done < <(find "$skill_repo" -path "*/references/*" -type f -print0)
+
+  info "  Skills: ${synced} updated, ${skipped} unchanged"
+}
+
 # ── Main ────────────────────────────────────────────────────
 
 main() {
@@ -345,6 +393,9 @@ main() {
 
   # Update symlinks if any web-cache or offline files changed
   update_symlinks
+
+  # Sync skills from repo (all SKILL.md + references/, only changed files)
+  sync_skills
 
   # Restart affected services
   if [[ ${#TO_RESTART[@]} -gt 0 ]]; then
