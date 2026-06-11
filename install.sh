@@ -1433,6 +1433,19 @@ else
   fi
 fi
 
+# ── prod-watchdog.sh ────────────────────────────────────────
+PROD_WATCHDOG_PATH="${SCRIPTS_DIR}/prod-watchdog.sh"
+if [[ -f "$PROD_WATCHDOG_PATH" ]]; then
+  skip "prod-watchdog.sh already exists"
+else
+  cp "${SCRIPT_DIR}/src/scripts/prod-watchdog.sh" "$PROD_WATCHDOG_PATH" 2>/dev/null || \
+    warn "prod-watchdog.sh not available (only from repo)"
+  if [[ -f "$PROD_WATCHDOG_PATH" ]]; then
+    chmod +x "$PROD_WATCHDOG_PATH"
+    info "  Installed prod-watchdog.sh"
+  fi
+fi
+
 # ── Scripts list ────────────────────────────────────────────
 info "Scripts directory: ${SCRIPTS_DIR}"
 
@@ -1975,6 +1988,7 @@ printf "  ${GREEN}•${RESET} seed-project-brain.sh → one-command brain seedin
 printf "  ${GREEN}•${RESET} cortex-health.sh   → single green-check system readiness\n"
 printf "  ${GREEN}•${RESET} cortex-setup-langfuse.sh → standalone Langfuse .env generator\n"
 printf "  ${GREEN}•${RESET} cortex-update.sh  → git pull + delta-update + service restart\n"
+printf "  ${GREEN}•${RESET} prod-watchdog.sh  → production site monitoring with auto-remediation\n"
 printf "  ${GREEN}•${RESET} check-memory-budget.sh → MEMORY.md usage monitor\n"
 printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\\n"
 printf "  ${GREEN}•${RESET} Hermes skills    → 12+ shared skills in ~/.hermes/skills/\\n"

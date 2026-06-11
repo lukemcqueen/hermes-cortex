@@ -213,6 +213,22 @@ def _extract_trace_content(trace: dict) -> tuple:
     return str(inp or "")[:MAX_CONTENT_CHARS], str(out or "")[:MAX_CONTENT_CHARS]
 
 
+# ── Summary persistence ─────────────────────────────────────────────────
+def _save_summary(scored: int, skipped: int, failed: int, model: str):
+    summary = {
+        "timestamp": datetime.now().isoformat(),
+        "scored": scored,
+        "skipped": skipped,
+        "failed": failed,
+        "mode": f"llm-judge-{model}",
+        "elapsed_seconds": 0,
+    }
+    summary_path = os.path.expanduser("~/.hermes/cron/output/_scorer_summary.json")
+    os.makedirs(os.path.dirname(summary_path), exist_ok=True)
+    with open(summary_path, "w") as f:
+        json.dump(summary, f, indent=2)
+
+
 # ── Main ────────────────────────────────────────────────────────────────
 def main():
     dry_run = "--dry-run" in sys.argv
@@ -252,9 +268,13 @@ def main():
                         break
         traces = all_traces[:MAX_TRACES_PER_RUN]
 
+    # Auto-quiet: zero output when there's nothing to score (all traces already scored)
+    if len(traces) == 0:
+        _save_summary(0, 0, 0, JUDGE_MODEL)
+        return
+
     if not quiet:
         print(f"Langfuse traces fetched: {len(traces)}")
-    if not quiet:
         print()
 
     scored = 0
@@ -317,19 +337,7 @@ def main():
         if dry_run:
             print("(Dry run — no scores were actually posted)")
 
-    # Save summary
-    summary = {
-        "timestamp": datetime.now().isoformat(),
-        "scored": scored,
-        "skipped": skipped,
-        "failed": failed,
-        "mode": f"llm-judge-{JUDGE_MODEL}",
-        "elapsed_seconds": 0,
-    }
-    summary_path = os.path.expanduser("~/.hermes/cron/output/_scorer_summary.json")
-    os.makedirs(os.path.dirname(summary_path), exist_ok=True)
-    with open(summary_path, "w") as f:
-        json.dump(summary, f, indent=2)
+    _save_summary(scored, skipped, failed, JUDGE_MODEL)
 
 
 if __name__ == "__main__":
