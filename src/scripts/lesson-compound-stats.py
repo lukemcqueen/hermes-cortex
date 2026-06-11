@@ -107,8 +107,8 @@ def compute_stats(lessons: list[dict]) -> dict:
         for tag in l["tags"]:
             tag_counts[tag] = tag_counts.get(tag, 0) + 1
 
-    # Top tags (sorted by count)
-    top_tags = sorted(tag_counts.items(), key=lambda x: -x[1])[:20]
+    # Top tags (sorted by count) as list of tuples
+    top_tags_list = sorted(tag_counts.items(), key=lambda x: -x[1])[:20]
 
     # Most applied lessons
     most_applied = sorted(lessons, key=lambda x: -x["success_count"])[:10]
@@ -129,7 +129,7 @@ def compute_stats(lessons: list[dict]) -> dict:
             "count": len(frameworks),
             "breakdown": dict(sorted(frameworks.items(), key=lambda x: -x[1])[:10]),
         },
-        "top_tags": dict(top_tags),
+        "top_tags": dict(top_tags_list),
         "most_applied": [
             {"title": l["title"], "count": l["success_count"], "language": l["language"]}
             for l in most_applied
@@ -183,7 +183,7 @@ def main():
     print()
 
     print("── Top Tags ──")
-    for tag, count in stats["top_tags"][:10]:
+    for tag, count in list(stats["top_tags"].items())[:10]:
         print(f"  #{tag:20s}  {count}")
     print()
 
