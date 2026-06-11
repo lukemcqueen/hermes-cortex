@@ -11,7 +11,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `pr-review` | 1.0.0 | Full PR review pipeline — whole-repo context, architecture analysis, lesson-DB pattern matching, test regression check, and formal review with inline comments. Zero external API costs. | `skill_view(name='pr-review')` |
 
-## Software Development (17 skills)
+## Software Development (18 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -22,7 +22,8 @@ their domain.
 | `agent-flow` | 1.0.0 | Workflow router — 12 patterns (simple code, enterprise, debug, etc.) | `skill_view(name='agent-flow')` |
 | `agent-contract` | 1.0.0 | Non-negotiable execution rules — real work, no simulation | `skill_view(name='agent-contract')` |
 | `plan` | 2.1.0 | Plan mode — write actionable markdown plans, no execution | `skill_view(name='plan')` |
-| `change-test-loop` | 1.1.0 | RED-GREEN-REFACTOR with confidence scoring, retry limits, coverage requirements, and strict TDD discipline | `skill_view(name='change-test-loop')` |
+| `change-test-loop` | 2.0.0 | LEARN-RED-GREEN-REFACTOR loop — lesson-aware memory, confidence scoring, retry limits, TDD discipline. Every cycle begins by searching past lessons. | `skill_view(name='change-test-loop')` |
+| `lesson-aware-agent` | 1.0.0 | Universal lesson injection — search lessons before every action, save lessons after every fix. Works across all skills. | `skill_view(name='lesson-aware-agent')` |
 | `public-contribution` | 1.0.0 | After any improvement, evaluate whether it's public-worthy for the Hermes Cortex OSS community, genericize, and contribute | `skill_view(name='public-contribution')` |
 | `session-manager` | 1.1.0 | Session checkpoint/restore, context compression, progress tracking. Uses `.hermes-cortex/sessions/current.md` for active state | `skill_view(name='session-manager')` |
 | `state-orchestrator` | 1.0.0 | Info routing — live context vs session vs memory vs docs | `skill_view(name='state-orchestrator')` |
@@ -65,7 +66,7 @@ references remain.
 ## Notes
 
 - **`test-driven-development`** and **`writing-plans`** have been merged into
-  `change-test-loop` (v1.1.0) and `plan` (v2.1.0) respectively — they are no
+  `change-test-loop` (v2.0.0) and `plan` (v2.1.0) respectively — they are no
   longer standalone skills.
 - **`skill-from-lesson`** has been absorbed into `save-lesson` (v1.1.0).
 - **`documentation-maintenance-audit`** has been absorbed into `project-readiness`
@@ -80,3 +81,4 @@ references remain.
 | 2026-06-11 | TDD merged into change-test-loop (v1.1.0), writing-plans merged into plan (v2.1.0) |
 | 2026-06-09 | Added public-contribution, skill-from-lesson (software-development), nginx-web-app-deployment (devops), SOUL.md template, updated nginx template |
 | 2026-06-09 | Added pr-review (github), package-security (devops). skill-from-lesson absorbed into save-lesson (v1.1.0). documentation-maintenance-audit absorbed into project-readiness. |
+| 2026-06-12 | **Memory That Compounds** — change-test-loop v2.0.0 adds LEARN phase (search lessons before every code change). New lesson-aware-agent skill for universal injection. Daily lesson auto-miner (02:00 KST). Compound stats dashboard (02:30 KST). Replaced weekly mining with daily mining. |
