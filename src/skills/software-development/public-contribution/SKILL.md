@@ -7,7 +7,7 @@ license: MIT
 metadata:
   hermes:
     tags: [meta, oss, contribution, community, sharing]
-    related_skills: [skill-from-lesson, hermes-agent-skill-authoring, soul-authoring]
+    related_skills: [save-lesson, hermes-agent-skill-authoring, soul-authoring]
 ---
 
 # Public Contribution — Sharing Every Improvement
