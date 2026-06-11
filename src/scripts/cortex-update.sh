@@ -25,9 +25,18 @@ REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 while [[ "$REPO_DIR" != "/" && ! -f "$REPO_DIR/AGENTS.md" ]]; do
   REPO_DIR="$(dirname "$REPO_DIR")"
 done
-# If we hit / without finding AGENTS.md, fall back to dirname logic
+# If we hit / without finding AGENTS.md, try common repo locations
 if [[ "$REPO_DIR" == "/" ]]; then
-  REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd || echo "")}"
+  for candidate in \
+    "$HOME/hermes-cortex" \
+    "$HOME/Developer/AI/hermes-cortex" \
+    "$HOME/src/hermes-cortex" \
+    "$HOME/git/hermes-cortex"; do
+    if [[ -f "$candidate/AGENTS.md" ]]; then
+      REPO_DIR="$candidate"
+      break
+    fi
+  done
 fi
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 STATE_DIR="${HERMES_HOME}/state"
