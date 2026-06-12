@@ -125,6 +125,10 @@ register "src/dashboard/server.py"               "${HERMES_HOME}/dashboard/serve
 register "src/dashboard/static/index.html"        "${HERMES_HOME}/dashboard/static/index.html" "dashboard"
 register "src/dashboard/com.hermes.cortex-dashboard.plist" "${HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist" "dashboard"
 
+# Agent Inbox
+register "src/agent-inbox/server.py"              "${HERMES_HOME}/agent-inbox/server.py" "agent-inbox" "restart_agent_inbox"
+register "src/agent-inbox/com.hermes.agent-inbox.plist" "${HOME}/Library/LaunchAgents/com.hermes.agent-inbox.plist" "agent-inbox"
+
 # Service definitions
 register "src/scripts/os-config.sh"               "${HERMES_HOME}/scripts/os-config.sh"
 register "src/scripts/service-writer.sh"          "${HERMES_HOME}/scripts/service-writer.sh"
@@ -165,6 +169,25 @@ restart_dashboard() {
   elif [[ -f "${HOME}/.config/systemd/user/hermes-cortex-dashboard.service" ]]; then
     systemctl --user daemon-reload 2>/dev/null || true
     systemctl --user restart hermes-cortex-dashboard 2>&1 | sed 's/^/    /'
+  fi
+}
+
+restart_agent_inbox() {
+  if launchctl list com.hermes.agent-inbox &>/dev/null 2>&1; then
+    info "  Restarting Agent Inbox…"
+    local plist="${HOME}/Library/LaunchAgents/com.hermes.agent-inbox.plist"
+    launchctl unload "$plist" 2>/dev/null || true
+    # Create venv if missing
+    local inbox_dir="${HERMES_HOME}/agent-inbox"
+    if [[ ! -d "${inbox_dir}/venv" ]]; then
+      python3 -m venv "${inbox_dir}/venv" 2>/dev/null || true
+      "${inbox_dir}/venv/bin/pip" install fastapi uvicorn 2>/dev/null || true
+    fi
+    launchctl load "$plist" 2>&1 | sed 's/^/    /'
+  elif [[ -f "${HOME}/.config/systemd/user/hermes-agent-inbox.service" ]]; then
+    info "  Restarting Agent Inbox (systemd)…"
+    systemctl --user daemon-reload 2>/dev/null || true
+    systemctl --user restart hermes-agent-inbox 2>&1 | sed 's/^/    /'
   fi
 }
 
@@ -575,6 +598,7 @@ main() {
         restart_gbrain_sync) restart_gbrain_sync ;;
         restart_langfuse)    restart_langfuse ;;
         restart_dashboard)   restart_dashboard ;;
+        restart_agent_inbox) restart_agent_inbox ;;
         *)                   warn "Unknown restart command: $cmd" ;;
       esac
     done
