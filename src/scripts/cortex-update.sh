@@ -97,6 +97,15 @@ register "src/scripts/install-cortex-update-cron.sh" "${HERMES_HOME}/scripts/ins
 register "src/scripts/prod-watchdog.sh"          "${HERMES_HOME}/scripts/prod-watchdog.sh"
 register "src/scripts/check-agent-messages.sh"    "${HERMES_HOME}/scripts/check-agent-messages.sh"
 
+# System watchdog scripts (no_agent cron jobs)
+register "src/scripts/system-alert.py"            "${HERMES_HOME}/scripts/system-alert.py"
+register "src/scripts/service-recovery.py"        "${HERMES_HOME}/scripts/service-recovery.py"
+register "src/scripts/langfuse-health-watchdog.py" "${HERMES_HOME}/scripts/langfuse-health-watchdog.py"
+register "src/scripts/llm-judge-scorer.py"         "${HERMES_HOME}/scripts/llm-judge-scorer.py"
+
+# Agent inbox check (used by install.sh for cron setup)
+register "src/agent-inbox/agent-inbox-check.sh"    "${HERMES_HOME}/scripts/agent-inbox-check.sh"
+
 # Lesson-aware scripts (Memory That Compounds)
 register "src/scripts/daily-lesson-mine.sh"      "${HERMES_HOME}/scripts/daily-lesson-mine.sh"
 register "src/scripts/lesson-compound-stats.py"   "${HERMES_HOME}/scripts/lesson-compound-stats.py"

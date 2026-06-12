@@ -11,6 +11,7 @@ No database, no user accounts — just files and nginx basic auth.
 Usage:
     uvicorn server:app --host 127.0.0.1 --port 8903
 """
+import html
 import re
 import uuid
 from datetime import datetime
@@ -257,20 +258,73 @@ STYLES = """<style>
   .flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 
   /* Toolbar */
-  .toolbar { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
-  .toolbar .btn-sm { font-size: 0.8rem; padding: 4px 12px; border-radius: 14px;
-                     cursor: pointer; border: 1px solid var(--border); background: transparent;
+  .toolbar { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap;
+             padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .toolbar .btn-sm { font-size: 0.8rem; padding: 6px 14px; border-radius: 6px;
+                     cursor: pointer; border: 1px solid var(--border); background: var(--surface);
                      color: var(--text); text-decoration: none; display: inline-flex;
-                     align-items: center; gap: 4px; }
-  .toolbar .btn-sm:hover { background: rgba(88,166,255,0.1); border-color: var(--accent); }
+                     align-items: center; gap: 6px; font-weight: 500;
+                     transition: background 0.1s, border-color 0.1s, transform 0.1s; }
+  .toolbar .btn-sm:hover { background: rgba(88,166,255,0.15); border-color: var(--accent); }
+  .toolbar .btn-sm:active { transform: scale(0.96); background: rgba(88,166,255,0.25); }
   .toolbar .btn-sm.active { background: rgba(63,185,80,0.15); border-color: var(--green);
                             color: var(--green); }
   .toolbar .btn-sm.luke-btn { border-color: #d29922; color: #d29922; }
   .toolbar .btn-sm.luke-btn:hover { background: rgba(210,153,34,0.15); }
+  .toolbar .btn-sm .arrow { display: inline-block; transition: transform 0.25s ease; font-size: 0.7rem; }
+  .toolbar .btn-sm .arrow.open { transform: rotate(180deg); }
 
-  /* Compose form card — collapsible */
-  .compose-card { transition: opacity 0.2s, max-height 0.3s; overflow: hidden; }
-  .compose-card.collapsed { max-height: 0; padding: 0 20px; margin: 0; border: none; opacity: 0; }
+  /* Compose form card — collapsible via display toggle */
+  .compose-card {
+    overflow: hidden;
+    padding: 20px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .compose-card.collapsed {
+    display: none;
+  }
+  /* Prevent initial flash on page load */
+  .compose-card.no-animate {
+    transition: none !important;
+  }
+
+  /* Auto-refresh indicator pill */
+  .refresh-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-left: auto;
+  }
+  .refresh-indicator .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    display: inline-block;
+  }
+  .refresh-indicator .dot.active {
+    background: var(--green);
+    box-shadow: 0 0 4px var(--green);
+  }
+
+  /* Mobile: <600px */
+  @media (max-width: 600px) {
+    body { padding: 10px; }
+    .toolbar { gap: 4px; padding: 8px 0; }
+    .toolbar .btn-sm { font-size: 0.75rem; padding: 5px 10px; gap: 4px; }
+    .toolbar .btn-sm .arrow { font-size: 0.6rem; }
+    .tabs { gap: 3px; }
+    .tab { font-size: 0.75rem; padding: 4px 10px; }
+    .msg { padding: 10px 12px 6px; }
+    .msg.reply { margin-left: 12px; }
+    .compose-card { padding: 14px; }
+    /* Stack the topic/subject row */
+    .compose-form-grid { grid-template-columns: 1fr !important; }
+  }
 </style>"""
 
 
@@ -314,8 +368,8 @@ def _render_msg(msg: dict, is_reply: bool = False) -> str:
       {unread_badge}
     </div>
   </div>
-  <div class="msg-subject">{msg["subject"]}</div>
-  <div class="msg-body">{msg["body"]}</div>
+  <div class="msg-subject">{html.escape(msg["subject"])}</div>
+  <div class="msg-body">{html.escape(msg["body"])}</div>
   <div class="msg-actions">
     <a href="{reply_url}">↩ Reply</a>
     {f'<a href="/read/{msg["filename"]}">✓ Mark Read</a>' if msg["status"] == "unread" and not msg.get("is_processed") else ""}
@@ -394,19 +448,21 @@ async def index(
 
 {success_html}
 
-<!-- Preferences Toolbar -->
+<!-- Toolbar: always visible -->
 <div class="toolbar">
-  <button class="btn-sm" id="compose-toggle" onclick="toggleMessageForm()" title="Toggle compose form">✉️ New Message</button>
-  <button class="btn-sm" id="autorefresh-toggle" onclick="toggleAutoRefresh()" title="Toggle auto-refresh">⏱ Auto-refresh</button>
-  <a class="btn-sm luke-btn" onclick="return openLukeForm(event)" href="/?topic=luke">📢 Luke</a>
-  <span style="font-size:0.75rem;color:var(--muted);margin-left:auto;" id="refresh-status"></span>
+<button class="btn-sm" id="compose-toggle" title="Toggle compose form">
+  <span class="arrow" id="compose-arrow">▼</span> <span id="compose-label">New Message</span>
+</button>
+<button class="btn-sm" id="autorefresh-toggle" title="Toggle auto-refresh">⏱ Auto-refresh</button>
+<a class="btn-sm luke-btn" id="luke-btn" href="/?topic=luke">📢 Luke</a>
+<span class="refresh-indicator" id="refresh-indicator">
+  <span class="dot" id="refresh-dot"></span>
+  <span id="refresh-label">off</span>
+</span>
 </div>
 
-<!-- Collapsible Compose Form -->
-<div class="card compose-card" id="compose-form">
-  <h2 style="font-size:1.1rem;color:#fff;margin-bottom:12px;">
-    {'✉️ Reply' if reply_to else '✉️ New Message'}
-  </h2>
+<!-- Collapsible Compose Form (starts collapsed, no animation on page load) -->
+<div class="card compose-card collapsed no-animate" id="compose-form">
   <form action="/send" method="POST">
     <input type="hidden" name="thread" value="{reply_thread}">
     <input type="hidden" name="parent" value="{reply_parent}">
@@ -414,7 +470,7 @@ async def index(
     <label for="from">Your Agent Name</label>
     <input type="text" id="from" name="from" placeholder="titus, gisu, joseph, kustos, luke..." required>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div class="compose-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
       <div>
         <label for="topic">Topic</label>
         <select id="topic" name="topic">{topic_options}</select>
@@ -464,22 +520,42 @@ function setCookie(name, value, days) {{
   document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax';
 }}
 
-// ── Compose form collapse ──
-function toggleMessageForm(forceOpen) {{
-  const card = document.getElementById('compose-form');
-  const toggle = document.getElementById('compose-toggle');
-  const isOpen = forceOpen !== undefined ? forceOpen : (card.style.display === 'none' || card.classList.contains('collapsed'));
+// ── Safe DOM helper ──
+function id(name) {{
+  const el = document.getElementById(name);
+  if (!el) console.warn('Inbox: element #' + name + ' not found');
+  return el;
+}}
 
-  if (isOpen) {{
-    card.style.display = 'block';
-    card.classList.remove('collapsed');
-    toggle.textContent = '✕ Close';
-    setCookie('inbox_form_open', 'true');
-  }} else {{
-    card.style.display = 'none';
-    card.classList.add('collapsed');
-    toggle.textContent = '✉️ New Message';
-    setCookie('inbox_form_open', 'false');
+// ── Compose form collapse (direct style toggle, no CSS transition dependency) ──
+function toggleMessageForm(forceOpen) {{
+  try {{
+    const card = id('compose-form');
+    const arrow = id('compose-arrow');
+    const label = id('compose-label');
+    if (!card || !arrow || !label) return;
+
+    const isHidden = card.style.display === 'none' || card.classList.contains('collapsed');
+    const shouldOpen = forceOpen !== undefined ? forceOpen : isHidden;
+
+    // Remove no-animate so future opens animate
+    card.classList.remove('no-animate');
+
+    if (shouldOpen) {{
+      card.classList.remove('collapsed');
+      card.style.display = '';
+      arrow.classList.add('open');
+      label.textContent = 'Close';
+      setCookie('inbox_form_open', 'true');
+    }} else {{
+      card.classList.add('collapsed');
+      card.style.display = 'none';
+      arrow.classList.remove('open');
+      label.textContent = 'New Message';
+      setCookie('inbox_form_open', 'false');
+    }}
+  }} catch(e) {{
+    console.error('Inbox toggle error:', e);
   }}
 }}
 
@@ -487,48 +563,61 @@ function toggleMessageForm(forceOpen) {{
 let autoRefreshTimer = null;
 
 function toggleAutoRefresh(forceState) {{
-  const btn = document.getElementById('autorefresh-toggle');
-  const status = document.getElementById('refresh-status');
-  const enabled = forceState !== undefined ? forceState : (getCookie('inbox_autorefresh') !== 'false');
+  try {{
+    const btn = id('autorefresh-toggle');
+    const dot = id('refresh-dot');
+    const label = id('refresh-label');
+    if (!btn) return;
 
-  if (autoRefreshTimer) {{
-    clearInterval(autoRefreshTimer);
-    autoRefreshTimer = null;
-  }}
+    const enabled = forceState !== undefined ? forceState : !btn.classList.contains('active');
 
-  if (enabled) {{
-    setCookie('inbox_autorefresh', 'true');
-    btn.textContent = '⏱ Auto-refresh ON';
-    btn.classList.add('active');
-    status.textContent = 'refreshing every 60s';
+    if (autoRefreshTimer) {{
+      clearInterval(autoRefreshTimer);
+      autoRefreshTimer = null;
+    }}
 
-    autoRefreshTimer = setInterval(function() {{
-      // Don't refresh if compose form is open (user might be typing)
-      const form = document.getElementById('compose-form');
-      if (form && form.style.display !== 'none') return;
-      location.reload();
-    }}, 60000);
-  }} else {{
-    setCookie('inbox_autorefresh', 'false');
-    btn.textContent = '⏱ Auto-refresh OFF';
-    btn.classList.remove('active');
-    status.textContent = '';
+    if (enabled) {{
+      setCookie('inbox_autorefresh', 'true');
+      btn.textContent = '⏱ Auto-refresh';
+      btn.classList.add('active');
+      if (dot) dot.classList.add('active');
+      if (label) label.textContent = 'on \u00b7 60s';
+
+      autoRefreshTimer = setInterval(function() {{
+        // Don't refresh if compose form is open (user might be typing)
+        const form = id('compose-form');
+        if (form && !form.classList.contains('collapsed')) return;
+        location.reload();
+      }}, 60000);
+    }} else {{
+      setCookie('inbox_autorefresh', 'false');
+      btn.textContent = '⏱ Auto-refresh';
+      btn.classList.remove('active');
+      if (dot) dot.classList.remove('active');
+      if (label) label.textContent = 'off';
+    }}
+  }} catch(e) {{
+    console.error('Inbox refresh error:', e);
   }}
 }}
 
 // ── Luke quick-post ──
 function openLukeForm(event) {{
-  // Open the compose form
-  toggleMessageForm(true);
-  // Set topic to luke
-  document.getElementById('topic').value = 'luke';
-  // Focus the from field
-  document.getElementById('from').focus();
-  return false;  // Prevent default navigation
+  event.preventDefault();
+  try {{
+    toggleMessageForm(true);
+    const topicEl = id('topic');
+    if (topicEl) topicEl.value = 'luke';
+    const fromEl = id('from');
+    if (fromEl) fromEl.focus();
+  }} catch(e) {{
+    console.error('Inbox Luke form error:', e);
+  }}
 }}
 
 // ── Init on load ──
 window.addEventListener('DOMContentLoaded', function() {{
+  const card = id('compose-form');
   const formOpen = getCookie('inbox_form_open') === 'true';
   const hasReply = {force_open};
   const shouldOpen = formOpen || hasReply;
@@ -537,11 +626,27 @@ window.addEventListener('DOMContentLoaded', function() {{
   const autoRefresh = getCookie('inbox_autorefresh') !== 'false';
   toggleAutoRefresh(autoRefresh);
 
+  // Wire up toolbar buttons with addEventListener — wrap to avoid event object being passed as arg
+  const toggleBtn = id('compose-toggle');
+  if (toggleBtn) toggleBtn.addEventListener('click', function() {{ toggleMessageForm(); }});
+
+  const refreshBtn = id('autorefresh-toggle');
+  if (refreshBtn) refreshBtn.addEventListener('click', function() {{ toggleAutoRefresh(); }});
+
+  const lukeBtn = id('luke-btn');
+  if (lukeBtn) lukeBtn.addEventListener('click', openLukeForm);
+
+  // Enable animations after a short delay (prevents flash on page load)
+  if (card) setTimeout(function() {{
+    card.classList.remove('no-animate');
+  }}, 200);
+
   // If there's a ?topic=luke param but no reply, pre-select topic
   const urlParams = new URLSearchParams(window.location.search);
   const topicParam = urlParams.get('topic');
   if (topicParam && !hasReply) {{
-    document.getElementById('topic').value = topicParam;
+    const topicEl = id('topic');
+    if (topicEl) topicEl.value = topicParam;
   }}
 }});
 </script>
