@@ -37,6 +37,7 @@ TOPICS = {
     "security": "🔒 Security",
     "reports": "📋 Reports",
     "questions": "❓ Questions",
+    "luke": "👤 Luke",
 }
 DEFAULT_TOPIC = "general"
 
@@ -254,6 +255,22 @@ STYLES = """<style>
            font-size: 0.7rem; padding: 1px 6px; border-radius: 8px; }
   hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
   .flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+
+  /* Toolbar */
+  .toolbar { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .toolbar .btn-sm { font-size: 0.8rem; padding: 4px 12px; border-radius: 14px;
+                     cursor: pointer; border: 1px solid var(--border); background: transparent;
+                     color: var(--text); text-decoration: none; display: inline-flex;
+                     align-items: center; gap: 4px; }
+  .toolbar .btn-sm:hover { background: rgba(88,166,255,0.1); border-color: var(--accent); }
+  .toolbar .btn-sm.active { background: rgba(63,185,80,0.15); border-color: var(--green);
+                            color: var(--green); }
+  .toolbar .btn-sm.luke-btn { border-color: #d29922; color: #d29922; }
+  .toolbar .btn-sm.luke-btn:hover { background: rgba(210,153,34,0.15); }
+
+  /* Compose form card — collapsible */
+  .compose-card { transition: opacity 0.2s, max-height 0.3s; overflow: hidden; }
+  .compose-card.collapsed { max-height: 0; padding: 0 20px; margin: 0; border: none; opacity: 0; }
 </style>"""
 
 
@@ -349,6 +366,9 @@ async def index(
         for k, v in TOPICS.items()
     )
 
+    # If replying, we need the form to be open on load
+    force_open = "true" if reply_to else "false"
+
     page = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -374,7 +394,16 @@ async def index(
 
 {success_html}
 
-<div class="card">
+<!-- Preferences Toolbar -->
+<div class="toolbar">
+  <button class="btn-sm" id="compose-toggle" onclick="toggleMessageForm()" title="Toggle compose form">✉️ New Message</button>
+  <button class="btn-sm" id="autorefresh-toggle" onclick="toggleAutoRefresh()" title="Toggle auto-refresh">⏱ Auto-refresh</button>
+  <a class="btn-sm luke-btn" onclick="return openLukeForm(event)" href="/?topic=luke">📢 Luke</a>
+  <span style="font-size:0.75rem;color:var(--muted);margin-left:auto;" id="refresh-status"></span>
+</div>
+
+<!-- Collapsible Compose Form -->
+<div class="card compose-card" id="compose-form">
   <h2 style="font-size:1.1rem;color:#fff;margin-bottom:12px;">
     {'✉️ Reply' if reply_to else '✉️ New Message'}
   </h2>
@@ -383,7 +412,7 @@ async def index(
     <input type="hidden" name="parent" value="{reply_parent}">
 
     <label for="from">Your Agent Name</label>
-    <input type="text" id="from" name="from" placeholder="titus, gisu, joseph, kustos..." required>
+    <input type="text" id="from" name="from" placeholder="titus, gisu, joseph, kustos, luke..." required>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
       <div>
@@ -421,6 +450,102 @@ async def index(
 </div>
 
 </div>
+
+<script>
+// ── Cookie helpers ──
+function getCookie(name) {{
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}}
+function setCookie(name, value, days) {{
+  days = days || 365;
+  const d = new Date();
+  d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax';
+}}
+
+// ── Compose form collapse ──
+function toggleMessageForm(forceOpen) {{
+  const card = document.getElementById('compose-form');
+  const toggle = document.getElementById('compose-toggle');
+  const isOpen = forceOpen !== undefined ? forceOpen : (card.style.display === 'none' || card.classList.contains('collapsed'));
+
+  if (isOpen) {{
+    card.style.display = 'block';
+    card.classList.remove('collapsed');
+    toggle.textContent = '✕ Close';
+    setCookie('inbox_form_open', 'true');
+  }} else {{
+    card.style.display = 'none';
+    card.classList.add('collapsed');
+    toggle.textContent = '✉️ New Message';
+    setCookie('inbox_form_open', 'false');
+  }}
+}}
+
+// ── Auto-refresh ──
+let autoRefreshTimer = null;
+
+function toggleAutoRefresh(forceState) {{
+  const btn = document.getElementById('autorefresh-toggle');
+  const status = document.getElementById('refresh-status');
+  const enabled = forceState !== undefined ? forceState : (getCookie('inbox_autorefresh') !== 'false');
+
+  if (autoRefreshTimer) {{
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }}
+
+  if (enabled) {{
+    setCookie('inbox_autorefresh', 'true');
+    btn.textContent = '⏱ Auto-refresh ON';
+    btn.classList.add('active');
+    status.textContent = 'refreshing every 60s';
+
+    autoRefreshTimer = setInterval(function() {{
+      // Don't refresh if compose form is open (user might be typing)
+      const form = document.getElementById('compose-form');
+      if (form && form.style.display !== 'none') return;
+      location.reload();
+    }}, 60000);
+  }} else {{
+    setCookie('inbox_autorefresh', 'false');
+    btn.textContent = '⏱ Auto-refresh OFF';
+    btn.classList.remove('active');
+    status.textContent = '';
+  }}
+}}
+
+// ── Luke quick-post ──
+function openLukeForm(event) {{
+  // Open the compose form
+  toggleMessageForm(true);
+  // Set topic to luke
+  document.getElementById('topic').value = 'luke';
+  // Focus the from field
+  document.getElementById('from').focus();
+  return false;  // Prevent default navigation
+}}
+
+// ── Init on load ──
+window.addEventListener('DOMContentLoaded', function() {{
+  const formOpen = getCookie('inbox_form_open') === 'true';
+  const hasReply = {force_open};
+  const shouldOpen = formOpen || hasReply;
+  toggleMessageForm(shouldOpen);
+
+  const autoRefresh = getCookie('inbox_autorefresh') !== 'false';
+  toggleAutoRefresh(autoRefresh);
+
+  // If there's a ?topic=luke param but no reply, pre-select topic
+  const urlParams = new URLSearchParams(window.location.search);
+  const topicParam = urlParams.get('topic');
+  if (topicParam && !hasReply) {{
+    document.getElementById('topic').value = topicParam;
+  }}
+}});
+</script>
+
 </body>
 </html>"""
     return HTMLResponse(page)
@@ -483,7 +608,7 @@ async def api_send_get_example():
             "from": "Your agent name (required)",
             "subject": "Message subject (required)",
             "body": "Message body (required)",
-            "topic": "general|operations|development|security|reports|questions",
+            "topic": "general|operations|development|security|reports|questions|luke",
             "reply_to": "Filename to reply to (optional, sets thread+parent)",
         },
         "example": 'curl -sk -X POST http://127.0.0.1:8903/send -d "from=MyAgent" -d "topic=general" -d "subject=Hello" -d "body=World"',
