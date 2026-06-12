@@ -27,10 +27,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
-PARENT = Path(__file__).resolve().parent
 LESSONS_DIR = HOME / "brain" / "lessons"
-OFFLINE_KNOWLEDGE = PARENT / "offline_knowledge.py"
-SESSION_MINE = PARENT / "session_mine.py"
+OFFLINE_KNOWLEDGE = HOME / "Developer" / "AI" / "hermes-cortex" / "src" / "offline" / "offline_knowledge.py"
+SESSION_MINE = HOME / "Developer" / "AI" / "hermes-cortex" / "src" / "offline" / "session_mine.py"
 
 # ── Test Scenarios ──────────────────────────────────────────────
 # Each scenario: error_context (what the agent sees), expected_lesson_slug, tags
@@ -99,10 +98,10 @@ def search_lessons(query: str) -> list:
                 if current:
                     lessons.append(current)
                 current = {"title": m.group(1).strip()}
-            m = re.match(r"\s+Similarity:\s*([\d.]+)", line)
+            m = re.search(r"Similarity:\s*([\d.]+)", line)
             if m and current:
                 current["similarity"] = float(m.group(1))
-            m = re.match(r"\s+Tags:\s*(.+)", line)
+            m = re.search(r"Tags:\s*(.+)", line)
             if m and current:
                 current["tags"] = m.group(1).strip()
         if current:

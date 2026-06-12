@@ -13,7 +13,7 @@ Hermes Cortex is a **public installer and skill set** for
 - **Langfuse** — LLM trace evaluation and scoring
 - **Cortex Dashboard** — companion dashboard for Langfuse + system health
 - **Brain dirs** — MECE-organized knowledge sources per user
-- **gbrain sync daemon** — automatic 2-minute sync
+- **gbrain sync daemon** — automatic 2-minute sync (autopilot preferred; sync-watch fallback if absent)
 - **Hermes plugin** — `/brain` slash command for knowledge queries
 - **Utility scripts** — heartbeat, memory sync, system health, LLM scoring
 
@@ -85,3 +85,32 @@ Three-layer data model:
 - `.agentkore/` is removed+gitignored — not part of this project
 - Keep docs current when changing install behavior
 - MIT License — be permissive with what's shared
+
+## Agent Handoffs
+
+### 2026-06-12 — Titus: gbrain sync-watch vs autopilot conflict
+
+**Problem:** `src/scripts/install-gbrain-sync.sh` creates a sync-watch daemon
+(`com.gbrain.sync-watch`) that runs `gbrain sync --all --skip default` every
+120s. But `gbrain autopilot` (a self-maintaining daemon that handles sync
+internally every ~150s) holds an exclusive PGLite 0.4.x connection. Any
+second process trying to open the same `brain.pglite` crashes with:
+`PGLite failed to initialize its WASM runtime — Aborted()`.
+
+This is NOT a WASM bug — it's a single-connection lock conflict with a
+misleading error message.
+
+**Fix (commit `7f2205d` — not yet pushed):**
+- `install-gbrain-sync.sh` now checks for `com.gbrain.autopilot` first and
+  skips sync-watch setup if autopilot is present
+- `cortex-update.sh` restarts autopilot when present; sync-watch as fallback
+- `cortex-health.sh`, `heartbeat.py`, `dashboard/server.py`, `install.sh`
+  verify script all check autopilot first, fall back to sync-watch
+- After this fix, running `install.sh` on a system with autopilot will
+  output: `gbrain autopilot detected — autopilot handles sync internally,
+  skipping sync-watch`
+
+**For existing installs that already have both daemons:**
+Stop the redundant one: `launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.gbrain.sync-watch.plist`
+Disable it: `mv ~/Library/LaunchAgents/com.gbrain.sync-watch.plist{,.disabled}`
+Or re-run `install.sh` and the new guard will skip re-creating it.
