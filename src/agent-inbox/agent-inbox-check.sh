@@ -37,7 +37,7 @@ for m in d.get('messages', []):
     print()
     print(f\"  From: {m['from']}  |  {m['topic']}  |  {m['timestamp'][:19]}\")
     print(f\"  Re:  {m['subject']}\")
-    print(f\"  ─{'─' * 50}")
+    print(\"  ─\" + \"─\" * 50)
     for line in m['body'].strip().split('\n'):
         print(f\"  {line.strip()}\")
     print(f\"  (id: {m['filename']})\")
@@ -46,12 +46,12 @@ for m in d.get('messages', []):
 # Mark as read if requested
 if [ "${1:-}" = "--mark-read" ]; then
   echo "$DATA" | python3 -c "
-import sys, json, urllib.request
+import sys, json, subprocess
 d = json.load(sys.stdin)
 for m in d.get('messages', []):
-  try:
-    urllib.request.urlopen('${URL}/read/' + m['filename'], timeout=10)
-  except:
-    pass
+    subprocess.run(['curl', '-sk', '--connect-timeout', '10',
+        '-u', '${USER}:${PASS}',
+        '${URL}/read/' + m['filename']],
+        capture_output=True, timeout=10)
 " 2>/dev/null
 fi
