@@ -6,6 +6,7 @@ Checks critical daemons and services:
   - gbrain sync daemon
   - Hermes gateway
   - Memory-to-brain sync freshness
+  - Agent inbox scan freshness
   - Disk space
   - Cron job health
 
@@ -260,6 +261,24 @@ def check_gbrain_sources() -> dict:
         return {"status": "UNKNOWN", "detail": f"gbrain check: {e}"}
 
 
+def check_inbox_staleness() -> dict:
+    """Check if agent inbox was scanned recently (every 10m cron, warn if >25m stale)."""
+    state_file = HERMES_HOME / "state" / "last-message-check"
+    if not state_file.exists():
+        return {"status": "DEGRADED", "detail": "No state file — check-agent-messages may not have run"}
+    try:
+        mtime = datetime.fromtimestamp(state_file.stat().st_mtime)
+        age = NOW - mtime
+        if age < timedelta(minutes=15):
+            return {"status": "UP", "detail": f"Last scan: {age.total_seconds() / 60:.0f}m ago"}
+        elif age < timedelta(minutes=25):
+            return {"status": "DEGRADED", "detail": f"Last scan: {age.total_seconds() / 60:.0f}m ago — may have missed a check"}
+        else:
+            return {"status": "DOWN", "detail": f"Last scan: {age.total_seconds() / 60:.0f}m ago — inbox polling may be stalled!"}
+    except Exception as e:
+        return {"status": "ERROR", "detail": f"Could not read state file: {e}"}
+
+
 def run() -> str:
     """Run all checks and return report. Empty string = all healthy."""
     checks = {
@@ -267,6 +286,7 @@ def run() -> str:
         "gbrain sync daemon": check_service("com.gbrain.sync-watch"),
         "gbrain sources": check_gbrain_sources(),
         "Gateway activity": check_gateway_log(),
+        "Agent inbox scan": check_inbox_staleness(),
         "Memory→brain sync": check_memory_sync_freshness(),
         "Disk usage": check_disk_usage(),
     }
