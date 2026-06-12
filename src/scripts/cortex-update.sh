@@ -181,7 +181,7 @@ restart_agent_inbox() {
     local inbox_dir="${HERMES_HOME}/agent-inbox"
     if [[ ! -d "${inbox_dir}/venv" ]]; then
       python3 -m venv "${inbox_dir}/venv" 2>/dev/null || true
-      "${inbox_dir}/venv/bin/pip" install fastapi uvicorn 2>/dev/null || true
+      "${inbox_dir}/venv/bin/pip" install fastapi uvicorn python-multipart 2>/dev/null || true
     fi
     launchctl load "$plist" 2>&1 | sed 's/^/    /'
   elif [[ -f "${HOME}/.config/systemd/user/hermes-agent-inbox.service" ]]; then
@@ -448,7 +448,7 @@ deploy_nginx_configs() {
 
   # 2. hermes-services.conf — substitute placeholders, then write
   local conf_src="${nginx_src_dir}/hermes-services.conf"
-  local conf_dst="${brew_dir}/hermes-services.conf"
+  local conf_dst="${config_dir}/hermes-services.conf"
   if needs_update "$conf_src" "$conf_dst"; then
     local tmpfile
     tmpfile="$(mktemp)" || return 1
@@ -456,12 +456,12 @@ deploy_nginx_configs() {
       -e "s|__NGINX_CONFIG_DIR__|${config_dir}|g" \
       -e "s|__NGINX_LOG_DIR__|${log_dir}|g" \
       -e "s|__HTPASSWD_FILE__|${htpasswd}|g" > "$tmpfile"
-    if command -v sudo &>/dev/null && [[ "$brew_dir" == /etc/* ]]; then
-      sudo mkdir -p "$brew_dir" 2>/dev/null || true
+    if command -v sudo &>/dev/null && [[ "$config_dir" == /etc/* ]]; then
+      sudo mkdir -p "$(dirname "$conf_dst")" 2>/dev/null || true
       sudo cp "$tmpfile" "$conf_dst"
       sudo chmod 644 "$conf_dst"
     else
-      mkdir -p "$brew_dir" 2>/dev/null || true
+      mkdir -p "$(dirname "$conf_dst")" 2>/dev/null || true
       cp "$tmpfile" "$conf_dst"
     fi
     rm -f "$tmpfile"
