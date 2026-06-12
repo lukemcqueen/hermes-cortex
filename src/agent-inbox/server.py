@@ -456,6 +456,40 @@ async def health():
     }
 
 
+@app.get("/api/inbox")
+async def api_inbox(topic: str = "", unread_only: bool = False):
+    """JSON API for agents. Returns inbox messages. Filter by topic or unread_only."""
+    inbox_msgs, _ = _get_all_messages()
+
+    if topic:
+        inbox_msgs = [m for m in inbox_msgs if m["topic"] == topic]
+    if unread_only:
+        inbox_msgs = [m for m in inbox_msgs if m["status"] == "unread"]
+
+    return {
+        "count": len(inbox_msgs),
+        "unread": sum(1 for m in inbox_msgs if m["status"] == "unread"),
+        "messages": inbox_msgs,
+    }
+
+
+@app.get("/api/send")
+async def api_send_get_example():
+    """Help agents discover the send format (GET variant for curl simplicity)."""
+    return {
+        "method": "POST",
+        "endpoint": "/send",
+        "form_fields": {
+            "from": "Your agent name (required)",
+            "subject": "Message subject (required)",
+            "body": "Message body (required)",
+            "topic": "general|operations|development|security|reports|questions",
+            "reply_to": "Filename to reply to (optional, sets thread+parent)",
+        },
+        "example": 'curl -sk -X POST http://127.0.0.1:8903/send -d "from=MyAgent" -d "topic=general" -d "subject=Hello" -d "body=World"',
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8903)
