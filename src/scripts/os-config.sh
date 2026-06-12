@@ -144,6 +144,29 @@ elif [[ "$CORTEX_OS" == "linux" ]]; then
   NGINX_BREW_DIR="/etc/nginx"
 fi
 
+# ── nginx Log & htpasswd Paths (OS-aware) ────────────────────
+if [[ "$CORTEX_OS" == "macos" ]]; then
+  if [[ "$(uname -m)" == "arm64" ]]; then
+    NGINX_LOG_DIR="/opt/homebrew/var/log/nginx"
+  else
+    NGINX_LOG_DIR="/usr/local/var/log/nginx"
+  fi
+  NGINX_HTPASSWD="${NGINX_BREW_DIR}/.htpasswd"
+elif [[ "$CORTEX_OS" == "linux" ]]; then
+  NGINX_LOG_DIR="/var/log/nginx"
+  NGINX_HTPASSWD="${NGINX_BREW_DIR}/.hermes-htpasswd"
+fi
+
+# ── Path Substitution Helper ─────────────────────────────────
+# Replaces __NGINX_CONFIG_DIR__, __NGINX_LOG_DIR__, __HTPASSWD_FILE__
+# placeholders in a config file with OS-appropriate paths.
+subst_nginx_paths() {
+  sed \
+    -e "s|__NGINX_CONFIG_DIR__|${NGINX_CONFIG_DIR}|g" \
+    -e "s|__NGINX_LOG_DIR__|${NGINX_LOG_DIR}|g" \
+    -e "s|__HTPASSWD_FILE__|${NGINX_HTPASSWD}|g"
+}
+
 # ── Ollama Install Path ─────────────────────────────────────
 if [[ "$CORTEX_OS" == "macos" ]]; then
   if [[ "$(uname -m)" == "arm64" ]]; then
@@ -166,4 +189,4 @@ export CORTEX_OS CORTEX_PROFILE
 export PKG_MANAGER PKG_INSTALL PKG_CASK_INSTALL
 export SERVICE_MANAGER SERVICE_DIR SERVICE_EXT
 export SERVICE_LOAD SERVICE_UNLOAD SERVICE_START SERVICE_STOP SERVICE_LIST
-export NGINX_CONFIG_DIR OLLAMA_BIN
+export NGINX_CONFIG_DIR NGINX_LOG_DIR NGINX_HTPASSWD OLLAMA_BIN

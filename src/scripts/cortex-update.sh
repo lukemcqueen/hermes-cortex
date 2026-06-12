@@ -136,6 +136,13 @@ restart_gbrain_sync() {
     # Force re-write the sync-watch.sh script (remove then call installer)
     rm -f "${HOME}/.gbrain/sync-watch.sh"
     bash "${HERMES_HOME}/scripts/install-gbrain-sync.sh" 2>&1 | sed 's/^/    /'
+  elif systemctl --user list-units --type=service --state=running 2>/dev/null \
+        | grep -q "gbrain-sync"; then
+    info "  Restarting gbrain sync (systemd)…"
+    rm -f "${HOME}/.gbrain/sync-watch.sh"
+    bash "${HERMES_HOME}/scripts/install-gbrain-sync.sh" 2>&1 | sed 's/^/    /'
+    systemctl --user daemon-reload 2>/dev/null || true
+    systemctl --user restart gbrain-sync 2>&1 | sed 's/^/    /'
   fi
 }
 
@@ -319,11 +326,98 @@ sync_skills() {
   info "  Skills: ${synced} updated, ${skipped} unchanged"
 }
 
+# ── nginx Config Deploy ──────────────────────────────────────
+# Deploys hermes-services.conf and hermes-zone-defs.conf with
+# OS-aware path substitution. Uses sudo on Linux for /etc/nginx/.
+deploy_nginx_configs() {
+  local nginx_src_dir="${REPO_DIR}/deploy/nginx"
+  [[ -d "$nginx_src_dir" ]] || return 0
+
+  local config_dir="${NGINX_CONFIG_DIR:-}"
+  local brew_dir="${NGINX_BREW_DIR:-}"
+  local log_dir="${NGINX_LOG_DIR:-}"
+  local htpasswd="${NGINX_HTPASSWD:-}"
+
+  # If OS config not loaded, try to determine paths from REPO_DIR
+  if [[ -z "$config_dir" ]]; then
+    local os_script="${REPO_DIR}/src/scripts/os-config.sh"
+    [[ -f "$os_script" ]] && source "$os_script" 2>/dev/null || true
+    config_dir="${NGINX_CONFIG_DIR:-}"
+    brew_dir="${NGINX_BREW_DIR:-}"
+    log_dir="${NGINX_LOG_DIR:-}"
+    htpasswd="${NGINX_HTPASSWD:-}"
+  fi
+
+  [[ -z "$config_dir" || -z "$brew_dir" ]] && { info "  nginx paths unknown — skipping nginx deploy"; return 0; }
+
+  local files_copied=0
+
+  # 1. hermes-zone-defs.conf — no substitution needed, copy directly
+  local zone_src="${nginx_src_dir}/hermes-zone-defs.conf"
+  local zone_dst="${brew_dir}/hermes-zone-defs.conf"
+  if needs_update "$zone_src" "$zone_dst"; then
+    if command -v sudo &>/dev/null && [[ "$brew_dir" == /etc/* ]]; then
+      sudo mkdir -p "$brew_dir" 2>/dev/null || true
+      sudo cp "$zone_src" "$zone_dst"
+      sudo chmod 644 "$zone_dst"
+    else
+      mkdir -p "$brew_dir" 2>/dev/null || true
+      cp "$zone_src" "$zone_dst"
+    fi
+    info "  Updated: hermes-zone-defs.conf → ${zone_dst}"
+    files_copied=$((files_copied + 1))
+  fi
+
+  # 2. hermes-services.conf — substitute placeholders, then write
+  local conf_src="${nginx_src_dir}/hermes-services.conf"
+  local conf_dst="${brew_dir}/hermes-services.conf"
+  if needs_update "$conf_src" "$conf_dst"; then
+    local tmpfile
+    tmpfile="$(mktemp)" || return 1
+    < "$conf_src" sed \
+      -e "s|__NGINX_CONFIG_DIR__|${config_dir}|g" \
+      -e "s|__NGINX_LOG_DIR__|${log_dir}|g" \
+      -e "s|__HTPASSWD_FILE__|${htpasswd}|g" > "$tmpfile"
+    if command -v sudo &>/dev/null && [[ "$brew_dir" == /etc/* ]]; then
+      sudo mkdir -p "$brew_dir" 2>/dev/null || true
+      sudo cp "$tmpfile" "$conf_dst"
+      sudo chmod 644 "$conf_dst"
+    else
+      mkdir -p "$brew_dir" 2>/dev/null || true
+      cp "$tmpfile" "$conf_dst"
+    fi
+    rm -f "$tmpfile"
+    info "  Updated: hermes-services.conf → ${conf_dst} (OS-aware paths)"
+    files_copied=$((files_copied + 1))
+  fi
+
+  [[ "$files_copied" -eq 0 ]] && return 0
+
+  # 3. Test and reload nginx
+  local nginx_test="nginx -t"
+  local nginx_reload="nginx -s reload"
+  if [[ "$brew_dir" == /etc/* ]]; then
+    nginx_test="sudo nginx -t"
+    nginx_reload="sudo systemctl reload nginx || sudo nginx -s reload"
+  fi
+
+  if eval "$nginx_test" 2>/dev/null; then
+    eval "$nginx_reload" 2>/dev/null || true
+    info "  nginx config test passed — reloaded"
+  else
+    warn "  nginx config test failed — check ${conf_dst}"
+  fi
+}
+
 # ── Main ────────────────────────────────────────────────────
 
 main() {
   parse_args "$@"
   register
+
+  # Source OS config for nginx path variables (NGINX_CONFIG_DIR, NGINX_LOG_DIR, NGINX_HTPASSWD)
+  local os_config="${HERMES_HOME}/scripts/os-config.sh"
+  [[ -f "$os_config" ]] && source "$os_config" 2>/dev/null || true
 
   echo ""
   echo -e "${BOLD}━━━ Cortex Update ━━━${RESET}"
@@ -406,6 +500,9 @@ main() {
 
   # Sync skills from repo (all SKILL.md + references/, only changed files)
   sync_skills
+
+  # Deploy nginx configs (OS-aware path substitution, sudo on Linux)
+  deploy_nginx_configs
 
   # Restart affected services
   if [[ ${#TO_RESTART[@]} -gt 0 ]]; then
