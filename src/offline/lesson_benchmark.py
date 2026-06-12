@@ -27,9 +27,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
+PARENT = Path(__file__).resolve().parent
 LESSONS_DIR = HOME / "brain" / "lessons"
-OFFLINE_KNOWLEDGE = HOME / "hermes-cortex" / "src" / "offline" / "offline_knowledge.py"
-SESSION_MINE = HOME / "hermes-cortex" / "src" / "offline" / "session_mine.py"
+OFFLINE_KNOWLEDGE = PARENT / "offline_knowledge.py"
+SESSION_MINE = PARENT / "session_mine.py"
 
 # ── Test Scenarios ──────────────────────────────────────────────
 # Each scenario: error_context (what the agent sees), expected_lesson_slug, tags
