@@ -1455,7 +1455,7 @@ if [[ -f "$AUTO_UPDATE_SCRIPT" ]]; then
     skip "auto-update cron already registered"
   else
     bash "$AUTO_UPDATE_SCRIPT" 2>&1 | sed 's/^/  /'
-    info "  Registered weekly auto-update cron (Sundays 3am)"
+    info "  Registered daily auto-update cron (3am)"
   fi
 else
   warn "install-cortex-update-cron.sh not found — skipping auto-update setup"
@@ -2003,7 +2003,7 @@ printf "  ${GREEN}•${RESET} seed-project-brain.sh → one-command brain seedin
 printf "  ${GREEN}•${RESET} cortex-health.sh   → single green-check system readiness\n"
 printf "  ${GREEN}•${RESET} cortex-setup-langfuse.sh → standalone Langfuse .env generator\n"
 printf "  ${GREEN}•${RESET} cortex-update.sh  → git pull + delta-update + service restart\\n"
-printf "  ${GREEN}•${RESET} install-cortex-update-cron.sh → auto-update weekly cron (Sundays 3am)\\n"
+printf "  ${GREEN}•${RESET} install-cortex-update-cron.sh → auto-update daily cron (3am)\\n"
 printf "  ${GREEN}•${RESET} prod-watchdog.sh  → production site monitoring with auto-remediation\\n"
 printf "  ${GREEN}•${RESET} check-memory-budget.sh → MEMORY.md usage monitor\n"
 printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\\n"
