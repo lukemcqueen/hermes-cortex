@@ -26,9 +26,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
-PARENT = Path(__file__).resolve().parent
 LESSONS_DIR = HOME / "brain" / "lessons"
-OFFLINE_KNOWLEDGE = PARENT / "offline_knowledge.py"
+OFFLINE_KNOWLEDGE = HOME / "Developer" / "AI" / "hermes-cortex" / "src" / "offline" / "offline_knowledge.py"
 
 # Ollama API for Qwen models
 OLLAMA_URL = "http://localhost:11434/api/generate"
@@ -73,13 +72,13 @@ SCENARIOS = [
 ]
 
 
-def ask_qwen(prompt: str, timeout: int = 60) -> str:
-    """Ask Qwen3-4B via Ollama."""
+def ask_qwen(prompt: str, timeout: int = 300) -> str:
+    """Ask Qwen model via Ollama."""
     body = json.dumps({
         "model": OLLAMA_MODEL,
         "prompt": prompt,
         "stream": False,
-        "options": {"temperature": 0.1, "num_predict": 512},
+        "options": {"temperature": 0.1, "num_predict": 8192},
     }).encode()
     try:
         req = urllib.request.Request(OLLAMA_URL, data=body, headers={"Content-Type": "application/json"})
@@ -112,7 +111,7 @@ def search_lessons(query: str) -> list:
                 if current and current.get("title"):
                     lessons.append(current)
                 current = {"title": m.group(1).strip()}
-            m = re.match(r"\s+Similarity:\s*([\d.]+)", line)
+            m = re.search(r"Similarity:\s*([\d.]+)", line)
             if m and current:
                 current["similarity"] = float(m.group(1))
         if current and current.get("title"):
