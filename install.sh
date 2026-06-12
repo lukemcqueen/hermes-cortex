@@ -971,7 +971,12 @@ def check_gbrain_sources():
 def run():
     checks = {
         "Ollama": check_service("com.ollama.serve"),
-        "gbrain sync daemon": check_service("com.gbrain.sync-watch"),
+        # gbrain autopilot handles sync internally (PGLite single-connection).
+        "gbrain sync daemon": (
+            check_service("com.gbrain.autopilot")
+            if check_service("com.gbrain.autopilot")["status"] != "DOWN"
+            else check_service("com.gbrain.sync-watch")
+        ),
         "gbrain sources": check_gbrain_sources(),
         "Gateway activity": check_gateway_log(),
         "Memory→brain sync": check_memory_sync_freshness(),
@@ -2012,7 +2017,7 @@ printf "  ${GREEN}•${RESET} Web Cache       → semantic web result cache (sql
 printf "  ${GREEN}•${RESET} Offline Knowledge → cascade cache + kiwix ZIM content viewer\n"
 printf "  ${GREEN}•${RESET} Launchd services:\n"
 printf "                   com.ollama.serve\n"
-printf "                   com.gbrain.sync-watch\n"
+printf "                   com.gbrain.sync-watch  (or com.gbrain.autopilot if present)\n"
 if [[ "$CORTEX_PROFILE" == "server" ]]; then
 printf "                   com.docker.docker\n"
 printf "                   com.hermes.cortex-dashboard\n"

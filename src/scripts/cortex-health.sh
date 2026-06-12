@@ -134,8 +134,10 @@ check_gbrain_sources() {
 
 check_sync_daemon() {
   if [[ "$(uname -s)" == "Darwin" ]]; then
+    # Prefer autopilot (self-maintaining daemon); fall back to sync-watch.
     local output
-    output=$(launchctl list com.gbrain.sync-watch 2>/dev/null) || {
+    output=$(launchctl list com.gbrain.autopilot 2>/dev/null) || \
+      output=$(launchctl list com.gbrain.sync-watch 2>/dev/null) || {
       print_row "gbrain sync daemon" "DOWN" "Not registered with launchd"
       return
     }
