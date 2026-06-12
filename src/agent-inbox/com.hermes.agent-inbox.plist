@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.hermes.agent-inbox</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/luke/.hermes/agent-inbox/venv/bin/uvicorn</string>
+        <string>server:app</string>
+        <string>--host</string>
+        <string>127.0.0.1</string>
+        <string>--port</string>
+        <string>8903</string>
+        <string>--no-access-log</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/luke/.hermes/agent-inbox</string>
+    <key>KeepAlive</key>
+    <true/>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/luke/.hermes/agent-inbox/server.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/luke/.hermes/agent-inbox/server.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/luke/.hermes/agent-inbox/venv/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>
