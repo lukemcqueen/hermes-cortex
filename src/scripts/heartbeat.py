@@ -283,7 +283,10 @@ def run() -> str:
     """Run all checks and return report. Empty string = all healthy."""
     checks = {
         "Ollama": check_service("com.ollama.serve"),
-        "gbrain sync daemon": check_service("com.gbrain.sync-watch"),
+        # autopilot preferred; falls back to sync-watch if absent
+        "gbrain sync daemon": check_service("com.gbrain.autopilot")
+        if check_service("com.gbrain.autopilot")["status"] != "DOWN"
+        else check_service("com.gbrain.sync-watch"),
         "gbrain sources": check_gbrain_sources(),
         "Gateway activity": check_gateway_log(),
         "Agent inbox scan": check_inbox_staleness(),

@@ -17,6 +17,20 @@ warn()  { printf "${YELLOW}⚠${RESET} %s\n" "$*"; }
 setup_gbrain_sync_service() {
   local sync_script="${HOME}/.gbrain/sync-watch.sh"
   local label="com.gbrain.sync-watch"
+  local autopilot_label="com.gbrain.autopilot"
+
+  # gbrain autopilot (installed by `gbrain autopilot --install`) is a
+  # self-maintaining daemon that handles sync internally every ~150s.
+  # PGLite 0.4.x only supports one connection at a time, so sync-watch
+  # cannot coexist with autopilot. Skip if autopilot is already present.
+  if service_running "$autopilot_label" 2>/dev/null; then
+    info "gbrain autopilot detected — autopilot handles sync internally, skipping sync-watch"
+    return 0
+  fi
+  if launchctl list "$autopilot_label" &>/dev/null 2>&1; then
+    info "gbrain autopilot plist found — autopilot handles sync internally, skipping sync-watch"
+    return 0
+  fi
 
   if service_running "$label"; then
     info "gbrain sync-watch already running"

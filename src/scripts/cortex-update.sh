@@ -145,8 +145,19 @@ register "src/scripts/service-writer.sh"          "${HERMES_HOME}/scripts/servic
 # ── Service restart helpers ─────────────────────────────────
 
 restart_gbrain_sync() {
-  local label="com.gbrain.sync-watch"
-  if launchctl list "$label" &>/dev/null 2>&1; then
+  local autopilot_label="com.gbrain.autopilot"
+  local sync_label="com.gbrain.sync-watch"
+  # gbrain autopilot is the preferred sync daemon (handles sync internally).
+  # Only restart sync-watch if autopilot is absent.
+  if launchctl list "$autopilot_label" &>/dev/null 2>&1; then
+    info "  gbrain autopilot present — reloading service…"
+    launchctl kickstart "gui/$(id -u)/$autopilot_label" 2>/dev/null || {
+      launchctl unload "$HOME/Library/LaunchAgents/$autopilot_label.plist" 2>/dev/null || true
+      launchctl load "$HOME/Library/LaunchAgents/$autopilot_label.plist" 2>/dev/null || true
+    }
+    return 0
+  fi
+  if launchctl list "$sync_label" &>/dev/null 2>&1; then
     info "  Restarting gbrain sync daemon…"
     # Force re-write the sync-watch.sh script (remove then call installer)
     rm -f "${HOME}/.gbrain/sync-watch.sh"
