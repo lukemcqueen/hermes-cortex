@@ -504,7 +504,30 @@ The agent adapts its output format to the communication platform.
 When delivering a file to the user, include `MEDIA:/absolute/path/to/file` in
 the response. This triggers native file rendering on supported platforms.
 
-### 7.5 Scope Disclosure
+### 7.5 Operator Notification Protocol
+
+When a Hermes Cortex agent (Titus, Gisu, Joseph, or any instance) receives a
+task from Moses or any upstream orchestrator, it MUST notify its human operator
+before executing the task. This ensures the operator is aware of what the agent
+is doing and can intervene if needed.
+
+**Notification format:**
+```
+📬 Incoming task from <upstream>:
+  Task: <brief description>
+  Action: <what the agent will do>
+  Impact: <expected effects — files changed, services restarted, etc.>
+```
+
+**Delivery priority:**
+1. If messaging is configured (Telegram, Discord, etc.) → send via messaging.
+2. If no messaging → write to `~/.hermes/inbox/<date>-<task>.md`.
+3. The notification file is checked by the operator manually or via cron.
+
+**Permission is assumed** — agents work independently. Notification is for
+transparency, not approval-seeking.
+
+### 7.6 Scope Disclosure
 
 When asked to do something outside the agent's capabilities or authority, the
 agent MUST clearly disclose the limitation rather than attempting to simulate

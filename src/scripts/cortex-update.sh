@@ -93,6 +93,7 @@ register "src/scripts/cortex-update.sh"           "${HERMES_HOME}/scripts/cortex
 register "src/scripts/install-gbrain-sync.sh"     "${HERMES_HOME}/scripts/install-gbrain-sync.sh" "gbrain-sync" "restart_gbrain_sync"
 register "src/scripts/install-ollama.sh"          "${HERMES_HOME}/scripts/install-ollama.sh"
 register "src/scripts/install-nginx.sh"           "${HERMES_HOME}/scripts/install-nginx.sh"
+register "src/scripts/install-cortex-update-cron.sh" "${HERMES_HOME}/scripts/install-cortex-update-cron.sh"
 register "src/scripts/prod-watchdog.sh"          "${HERMES_HOME}/scripts/prod-watchdog.sh"
 
 # Lesson-aware scripts (Memory That Compounds)
@@ -326,6 +327,59 @@ sync_skills() {
   info "  Skills: ${synced} updated, ${skipped} unchanged"
 }
 
+# ── Operator Notification ────────────────────────────────────
+# Writes machine-readable and human-readable notification files
+# after an update. Reads state from LAST_COMMIT_FILE and globals.
+write_notification_files() {
+  local timestamp
+  timestamp="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  local hostname="${HOSTNAME:-$(hostname 2>/dev/null || echo 'unknown')}"
+  local old_ref new_ref
+
+  old_ref="$(cat "${LAST_COMMIT_FILE}" 2>/dev/null || echo 'none')"
+  new_ref="$(git -C "${REPO_DIR}" rev-parse HEAD 2>/dev/null || echo 'none')"
+
+  # Build restarted services list from TO_RESTART
+  local services="[]"
+  if [[ ${#TO_RESTART[@]} -gt 0 ]]; then
+    services="["
+    local first=true
+    for s in "${TO_RESTART[@]}"; do
+      $first || services+=", "
+      first=false
+      services+="\"${s#restart_}\""
+    done
+    services+="]"
+  fi
+
+  # last-update.json — machine-readable
+  cat > "${STATE_DIR}/last-update.json" <<JSON
+{
+  "timestamp": "${timestamp}",
+  "hostname": "${hostname}",
+  "before": "${old_ref}",
+  "after": "${new_ref}",
+  "files_updated": ${COPIED:-0},
+  "files_removed": ${REMOVED:-0},
+  "services_restarted": ${services},
+  "dry_run": ${DRY_RUN:-false},
+  "summary_file": "${STATE_DIR}/last-update.txt"
+}
+JSON
+
+  # last-update.txt — human-readable (stdout-friendly format)
+  {
+    echo "━━━ Cortex Update — ${timestamp} ━━━"
+    echo "Host: ${hostname}"
+    echo "Repo: ${new_ref:0:8} (was ${old_ref:0:8})"
+    echo "Files: ${COPIED:-0} updated, ${REMOVED:-0} removed"
+    if [[ ${#TO_RESTART[@]} -gt 0 ]]; then
+      echo "Restarted: ${TO_RESTART[*]#restart_}"
+    fi
+  } > "${STATE_DIR}/last-update.txt"
+  chmod 644 "${STATE_DIR}/last-update.json" "${STATE_DIR}/last-update.txt" 2>/dev/null || true
+}
+
 # ── nginx Config Deploy ──────────────────────────────────────
 # Deploys hermes-services.conf and hermes-zone-defs.conf with
 # OS-aware path substitution. Uses sudo on Linux for /etc/nginx/.
@@ -529,6 +583,9 @@ main() {
   mkdir -p "$STATE_DIR"
   echo "$new_commit" > "$LAST_COMMIT_FILE"
   info "State saved: ${new_commit:0:8}"
+
+  # Write notification files (monitored by operator dashboard / messenger)
+  write_notification_files
 
   # Summary
   echo ""

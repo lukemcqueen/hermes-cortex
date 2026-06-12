@@ -3,7 +3,11 @@
 .web-cache/
 *.cache.db
 
-# Secrets & credentials
+# Personal/local artifacts — PII protection
+cleanup_repos.sh
+patches/
+
+# Secrets and credentials
 .env
 .env.local
 .env.*
