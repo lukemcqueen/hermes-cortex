@@ -1446,6 +1446,21 @@ else
   fi
 fi
 
+# ── Auto-Update Cron ───────────────────────────────────────────
+AUTO_UPDATE_SCRIPT="${SCRIPTS_DIR}/install-cortex-update-cron.sh"
+if [[ -f "$AUTO_UPDATE_SCRIPT" ]]; then
+  if launchctl list com.hermes.cortex-update &>/dev/null 2>&1 || \
+     systemctl --user list-timers 2>/dev/null | grep -q "cortex-update" || \
+     crontab -l 2>/dev/null | grep -q "cortex-update"; then
+    skip "auto-update cron already registered"
+  else
+    bash "$AUTO_UPDATE_SCRIPT" 2>&1 | sed 's/^/  /'
+    info "  Registered weekly auto-update cron (Sundays 3am)"
+  fi
+else
+  warn "install-cortex-update-cron.sh not found — skipping auto-update setup"
+fi
+
 # ── Scripts list ────────────────────────────────────────────
 info "Scripts directory: ${SCRIPTS_DIR}"
 
@@ -1987,8 +2002,9 @@ printf "  ${GREEN}•${RESET} bootstrap-brain.sh → post-install brain verifica
 printf "  ${GREEN}•${RESET} seed-project-brain.sh → one-command brain seeding from repos\n"
 printf "  ${GREEN}•${RESET} cortex-health.sh   → single green-check system readiness\n"
 printf "  ${GREEN}•${RESET} cortex-setup-langfuse.sh → standalone Langfuse .env generator\n"
-printf "  ${GREEN}•${RESET} cortex-update.sh  → git pull + delta-update + service restart\n"
-printf "  ${GREEN}•${RESET} prod-watchdog.sh  → production site monitoring with auto-remediation\n"
+printf "  ${GREEN}•${RESET} cortex-update.sh  → git pull + delta-update + service restart\\n"
+printf "  ${GREEN}•${RESET} install-cortex-update-cron.sh → auto-update weekly cron (Sundays 3am)\\n"
+printf "  ${GREEN}•${RESET} prod-watchdog.sh  → production site monitoring with auto-remediation\\n"
 printf "  ${GREEN}•${RESET} check-memory-budget.sh → MEMORY.md usage monitor\n"
 printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\\n"
 printf "  ${GREEN}•${RESET} Hermes skills    → 12+ shared skills in ~/.hermes/skills/\\n"
