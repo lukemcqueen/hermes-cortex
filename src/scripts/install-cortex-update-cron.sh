@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  install-cortex-update-cron.sh — Register weekly auto-update
+#  install-cortex-update-cron.sh — Register daily auto-update
 #
 #  Creates a system-level cron job (launchd / systemd timer /
-#  crontab) that runs cortex-update.sh every Sunday at 3am.
+#  crontab) that runs cortex-update.sh daily at 3am.
 #  The job is silent when nothing changed and writes
 #  ~/.hermes/state/last-update.{json,txt} on changes.
 #
@@ -65,7 +65,7 @@ uninstall_cron() {
 # ── macOS (launchd) ──────────────────────────────────────────
 _install_launchd() {
   local plist_dest="${HOME}/Library/LaunchAgents/${SERVICE_NAME}.plist"
-  # Weekly Sunday 3am = StartCalendarInterval with Weekday=0, Hour=3, Minute=0
+  # Daily 3am = StartCalendarInterval with Hour=3, Minute=0 (no Weekday = every day)
   cat > "$plist_dest" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -81,8 +81,6 @@ _install_launchd() {
     </array>
     <key>StartCalendarInterval</key>
     <dict>
-        <key>Weekday</key>
-        <integer>0</integer>
         <key>Hour</key>
         <integer>3</integer>
         <key>Minute</key>
@@ -101,7 +99,7 @@ _install_launchd() {
 PLIST
   chmod 644 "$plist_dest"
   launchctl load "$plist_dest" 2>/dev/null || true
-  info "launchd plist installed: ${SERVICE_NAME} (Sundays 3am)"
+  info "launchd plist installed: ${SERVICE_NAME} (daily 3am)"
 }
 
 _uninstall_launchd() {
@@ -129,13 +127,13 @@ StandardOutput=append:${STATE_DIR}/cron-output.log
 StandardError=append:${STATE_DIR}/cron-error.log
 UNIT
 
-  # Timer unit — Sunday 3am
+  # Timer unit — daily 3am
   cat > "${unit_dir}/${SERVICE_NAME}.timer" <<TIMER
 [Unit]
-Description=Hermes Cortex Weekly Update Timer
+Description=Hermes Cortex Daily Update Timer
 
 [Timer]
-OnCalendar=Sun..Sun 03:00:00
+OnCalendar=03:00:00
 Persistent=true
 
 [Install]
@@ -145,7 +143,7 @@ TIMER
   systemctl --user daemon-reload 2>/dev/null || true
   systemctl --user enable "${SERVICE_NAME}.timer" 2>/dev/null || true
   systemctl --user start "${SERVICE_NAME}.timer" 2>/dev/null || true
-  info "systemd timer installed: ${SERVICE_NAME} (Sundays 3am)"
+  info "systemd timer installed: ${SERVICE_NAME} (daily 3am)"
 }
 
 _uninstall_systemd() {
@@ -161,10 +159,10 @@ _uninstall_systemd() {
 _install_windows() {
   powershell -Command "
     \$action = New-ScheduledTaskAction -Execute 'bash.exe' -Argument '${UPDATE_SCRIPT//\//\\}'
-    \$trigger = New-ScheduledTaskTrigger -Weekly -WeeksInterval 1 -DaysOfWeek Sunday -At 3am
+    \$trigger = New-ScheduledTaskTrigger -Daily -At 3am
     \$principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
     Register-ScheduledTask -TaskName '${SERVICE_NAME}' -Action \$action -Trigger \$trigger -Principal \$principal -Force
-  " 2>/dev/null && info "Windows scheduled task installed: ${SERVICE_NAME} (Sundays 3am)" \
+  " 2>/dev/null && info "Windows scheduled task installed: ${SERVICE_NAME} (daily 3am)" \
     || warn "Could not install Windows scheduled task — try running as Administrator"
 }
 
@@ -175,9 +173,9 @@ _uninstall_windows() {
 
 # ── Crontab fallback ─────────────────────────────────────────
 _install_crontab() {
-  local cron_line="0 3 * * 0 ${UPDATE_SCRIPT} >> ${STATE_DIR}/cron-output.log 2>> ${STATE_DIR}/cron-error.log"
+  local cron_line="0 3 * * * ${UPDATE_SCRIPT} >> ${STATE_DIR}/cron-output.log 2>> ${STATE_DIR}/cron-error.log"
   (crontab -l 2>/dev/null | grep -v "${SERVICE_NAME}" || true; echo "${cron_line}") | crontab -
-  info "crontab entry installed: ${SERVICE_NAME} (Sundays 3am)"
+  info "crontab entry installed: ${SERVICE_NAME} (daily 3am)"
 }
 
 _uninstall_crontab() {
