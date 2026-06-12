@@ -95,6 +95,7 @@ register "src/scripts/install-ollama.sh"          "${HERMES_HOME}/scripts/instal
 register "src/scripts/install-nginx.sh"           "${HERMES_HOME}/scripts/install-nginx.sh"
 register "src/scripts/install-cortex-update-cron.sh" "${HERMES_HOME}/scripts/install-cortex-update-cron.sh"
 register "src/scripts/prod-watchdog.sh"          "${HERMES_HOME}/scripts/prod-watchdog.sh"
+register "src/scripts/check-agent-messages.sh"    "${HERMES_HOME}/scripts/check-agent-messages.sh"
 
 # Lesson-aware scripts (Memory That Compounds)
 register "src/scripts/daily-lesson-mine.sh"      "${HERMES_HOME}/scripts/daily-lesson-mine.sh"
