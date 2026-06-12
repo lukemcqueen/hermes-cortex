@@ -54,12 +54,10 @@ OUTPUT=$(python3 "$MINE_SCRIPT" mine --auto --days 1 --limit 20 2>&1)
 NUM_SAVED=$(echo "$OUTPUT" | grep -c "✅" || true)
 
 if [ "$NUM_SAVED" -gt 0 ]; then
-    echo "📚 Daily Lesson Mining — $(echo "$OUTPUT" | grep "Saved:" | wc -l | tr -d ' ') new lessons"
-    echo "$OUTPUT"
+    echo "📚 +$NUM_SAVED lessons mined"
+    echo "$OUTPUT" | grep "Saved:" | head -5
     echo ""
-
-    # Rebuild the search index
-    python3 "$INDEX_SCRIPT" lesson index 2>&1 | tail -2
+    python3 "$INDEX_SCRIPT" lesson index 2>&1 | tail -1
     echo ""
 fi
 
@@ -107,7 +105,6 @@ EOF
 
 # ── Report if anything happened ────────────────────────────────────────
 if [ "$NUM_SAVED" -gt 0 ] || [ "$NEW_COUNT" -gt 0 ]; then
-    echo ""
-    echo "📊 Compound Score: $COUNT_AFTER lessons · $TOTAL_APPLIED applications · ~${EST_HOURS}h saved"
+    echo "📊 $COUNT_AFTER lessons · $TOTAL_APPLIED uses · ~${EST_HOURS}h saved"
 fi
 # If nothing saved, exit silently

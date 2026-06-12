@@ -130,13 +130,10 @@ def main():
             actions.append(f"🔄 {name}: restarted successfully")
 
     if actions:
-        hostname = os.uname().nodename
-        print(f"🔧 *Service Recovery — {hostname}*")
-        print()
+        hostname = os.uname().nodename[:12]
+        print(f"🔧 {hostname}")
         for a in actions:
             print(a)
-        print()
-        print("── Current Status ──")
         for s in statuses:
             print(f"  {s}")
 
