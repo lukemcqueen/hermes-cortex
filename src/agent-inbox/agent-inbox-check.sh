@@ -31,23 +31,25 @@ fi
 
 # Fetch unread messages — silent on failure (network down, etc.)
 DATA=$(curl -sk --connect-timeout 10 -u "${USER}:${PASS}" "${URL}/api/inbox?unread_only=true" 2>/dev/null || true)
+[ -z "$DATA" ] && exit 0
+
 COUNT=$(echo "$DATA" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('unread',0))" 2>/dev/null || echo "0")
 
 [ "$COUNT" -eq 0 ] && exit 0  # Silent exit — no news is good news
 
 echo "━━━ Agent Inbox — ${COUNT} unread ━━━"
-echo "$DATA" | python3 -c "
+python3 -c "
 import sys, json
-d = json.load(sys.stdin)
+d = json.loads(sys.argv[1])
 for m in d.get('messages', []):
     print()
-    print(f\"  From: {m['from']}  |  {m['topic']}  |  {m['timestamp'][:19]}\")
-    print(f\"  Re:  {m['subject']}\")
-    print(\"  ─\" + \"─\" * 50)
+    print('  From: %s  |  %s  |  %s' % (m['from'], m['topic'], m['timestamp'][:19]))
+    print('  Re:  %s' % m['subject'])
+    print('  ' + chr(0x2501) * 52)
     for line in m['body'].strip().split('\n'):
-        print(f\"  {line.strip()}\")
-    print(f\"  (id: {m['filename']})\")
-" 2>/dev/null
+        print('  %s' % line.strip())
+    print('  (id: %s)' % m['filename'])
+" "$DATA"
 
 # Mark as read if requested
 if [ "${1:-}" = "--mark-read" ]; then
@@ -55,7 +57,7 @@ if [ "${1:-}" = "--mark-read" ]; then
 import sys, json, subprocess
 d = json.load(sys.stdin)
 for m in d.get('messages', []):
-    subprocess.run(['curl', '-sk', '--connect-timeout', '10',
+    subprocess.run(['curl', '-sk', '--location-trusted', '--connect-timeout', '10',
         '-u', '${USER}:${PASS}',
         '${URL}/read/' + m['filename'] + '?for=${USER}'],
         capture_output=True, timeout=10)
