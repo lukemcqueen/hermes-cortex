@@ -92,12 +92,9 @@ except Exception:
 
 # ── Output ───────────────────────────────────────────────────
 if alerts:
-    hostname = socket.gethostname()
-    print(f"🚨 *System Alert — {hostname}*")
-    print("")
+    hostname = socket.gethostname()[:12]
+    print(f"🚨 {hostname}")
     for a in alerts:
         print(a)
-    print("")
-    print("── Current State ──")
     for d in details:
         print(f"  {d}")

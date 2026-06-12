@@ -164,9 +164,9 @@ def main():
     if "--brief" in sys.argv:
         print(
             f"📊 {stats['total_lessons']} lessons · "
-            f"{stats['total_applications']} applications · "
-            f"~{stats['estimated_hours_saved']}h saved · "
-            f"{stats['languages']['count']} languages"
+            f"{stats['total_applications']} uses · "
+            f"~{stats['estimated_hours_saved']}h · "
+            f"{stats['languages']['count']} langs"
         )
         return
 
@@ -204,9 +204,7 @@ def main():
         print(f"  {updated}  {l['language']:8s} {l['title'][:55]}")
 
     print()
-    print(f"  💡 Every lesson compounds. "
-          f"At ~{stats['estimated_hours_saved']}h saved, "
-          f"the system has already paid for itself.")
+    print(f"  💡 {stats['estimated_hours_saved']}h saved — system paid for itself.")
 
 
 if __name__ == "__main__":
