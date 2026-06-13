@@ -417,6 +417,7 @@ JSON
 # Deploys hermes-services.conf and hermes-zone-defs.conf with
 # OS-aware path substitution. Uses sudo on Linux for /etc/nginx/.
 deploy_nginx_configs() {
+  [[ -n "${CORTEX_SKIP_NGINX:-}" ]] && { info "CORTEX_SKIP_NGINX set — skipping nginx deploy"; return 0; }
   local nginx_src_dir="${REPO_DIR}/deploy/nginx"
   [[ -d "$nginx_src_dir" ]] || return 0
 
