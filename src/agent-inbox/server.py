@@ -46,12 +46,14 @@ DEFAULT_TOPIC = "general"
 
 def _msg_path(filename: str) -> Path:
     """Return the inbox or processed path for a message file."""
-    p = INBOX_DIR / filename
-    if p.exists():
-        return p
-    p = PROCESSED_DIR / filename
-    if p.exists():
-        return p
+    # Try with .md first, then without
+    for fname in [filename, filename + ".md"]:
+        p = INBOX_DIR / fname
+        if p.exists():
+            return p
+        p = PROCESSED_DIR / fname
+        if p.exists():
+            return p
     return INBOX_DIR / filename
 
 
