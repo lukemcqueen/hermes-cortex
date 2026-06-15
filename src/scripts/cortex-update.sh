@@ -552,12 +552,35 @@ main() {
   fi
 
   if ! $FORCE_ALL; then
-    info "Pulling latest from origin/main…"
-    git -C "$REPO_DIR" pull --ff-only origin main 2>&1 | sed 's/^/  /' || {
-      warn "Git pull failed — check your connection or local changes"
-      warn "  cd ${REPO_DIR} && git status"
-      exit 1
-    }
+    # Fetch latest from remote
+    git -C "$REPO_DIR" fetch origin 2>&1 | sed 's/^/  /' || true
+
+    # Determine relationship with remote to handle ahead/behind/diverged
+    LOCAL=$(git -C "$REPO_DIR" rev-parse HEAD)
+    REMOTE=$(git -C "$REPO_DIR" rev-parse origin/main 2>/dev/null || echo "")
+    if [ -z "$REMOTE" ]; then
+      info "No remote tracking branch (origin/main) — skipping pull"
+    elif [ "$LOCAL" = "$REMOTE" ]; then
+      info "Already up to date with origin/main"
+    elif git -C "$REPO_DIR" merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
+      # We're behind remote — fast-forward possible
+      info "Pulling latest from origin/main…"
+      git -C "$REPO_DIR" pull --ff-only origin main 2>&1 | sed 's/^/  /' || {
+        warn "Git pull failed"
+        exit 1
+      }
+    elif git -C "$REPO_DIR" merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
+      # We're ahead of remote — skip pull gracefully
+      AHEAD=$(git -C "$REPO_DIR" rev-list --count origin/main..HEAD)
+      info "Local ahead of origin/main by ${AHEAD} commit(s) — skipping pull"
+    else
+      # Diverged — attempt merge
+      info "Local and origin/main have diverged — attempting merge…"
+      git -C "$REPO_DIR" merge origin/main --no-edit 2>&1 | sed 's/^/  /' || {
+        warn "Merge failed — manual intervention required (cd ${REPO_DIR} && git status)"
+        exit 1
+      }
+    fi
   fi
 
   new_commit=$(git -C "$REPO_DIR" rev-parse HEAD)
