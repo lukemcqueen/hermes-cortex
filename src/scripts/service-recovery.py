@@ -5,58 +5,148 @@ Checks each service; if down, attempts recovery.
 Silent (empty output) when all services healthy.
 Non-empty output is delivered to user as an incident report.
 """
-import os
-import subprocess
-import sys
-import time
-import hashlib
-import json
+from typing import Optional
+import subprocess, sys, time, os, platform
 from pathlib import Path
 
-# Cross-platform service helpers
-from platform_utils import (
-    service_running,
-    restart_service,
-    docker_container_running,
-    is_macos,
-    is_linux,
-)
-
-UID = os.getuid()
+UID = os.getuid()  # dynamic user ID
 LANGFUSE_DIR = str(Path.home() / "langfuse")
 HERMES_SCRIPTS = Path.home() / ".hermes" / "scripts"
-CORTEX_REPO_ENV = os.environ.get("CORTEX_REPO", "")
-if CORTEX_REPO_ENV:
-    CORTEX_SCRIPTS = Path(CORTEX_REPO_ENV) / "src" / "scripts"
-else:
-    CORTEX_SCRIPTS = Path.home() / "hermes-cortex" / "src" / "scripts"
+CORTEX_SCRIPTS = Path.home() / "hermes-cortex" / "src" / "scripts"
+IS_MACOS = platform.system() == "Darwin"
+IS_LINUX = platform.system() == "Linux"
 
-
-def _make_service(name: str, label: str = "", pgrep: str = "",
-                  docker_sub: str = "", restart_label: str = "",
-                  verify_cmd: list | None = None) -> dict:
-    """Factory: create a service config that works on macOS and Linux."""
-    return {
-        "name": name,
-        "check": lambda lbl=label, pgr=pgrep, ds=docker_sub: (
-            docker_container_running(ds) if ds else
-            service_running(lbl, pgrep_pattern=pgr if not lbl else None)
-        ),
-        "restart_label": restart_label or label or name,
-        "verify_cmd": verify_cmd,
-        "verify_label": name,
-    }
-
+SERVICES = [
+    {
+        "name": "nginx",
+        "check": lambda: bool(subprocess.run(
+            ["pgrep", "-f", "nginx: master"],
+            capture_output=True, timeout=5).stdout.strip()),
+        "restart_cmd": (["systemctl", "--user", "restart", "nginx"]
+                        if IS_LINUX else
+                        ["launchctl", "bootstrap",
+                         f"gui/{UID}",
+                         str(Path.home() / "Library/LaunchAgents/homebrew.mxcl.nginx.plist")]),
+        "fallback_cmd": (["nginx"] if IS_LINUX else
+                         ["launchctl", "bootstrap", f"gui/{UID}",
+                          str(Path.home() / "Library/LaunchAgents/homebrew.mxcl.nginx.plist")]),
+        "verify_cmd": ["nginx", "-t"],
+    },
+    {
+        "name": "Langfuse",
+        "check": lambda: _check_docker("langfuse-langfuse-web"),
+        "restart_cmd": ["docker", "compose", "up", "-d"],
+        "restart_workdir": LANGFUSE_DIR,
+        "verify_label": "langfuse-web container",
+    },
+    {
+        "name": "Ollama",
+        "check": lambda: _check_service("ollama"),
+        "restart_cmd": (["systemctl", "--user", "restart", "ollama"]
+                        if IS_LINUX else
+                        ["launchctl", "kickstart", f"gui/{UID}/com.ollama.serve"]),
+        "fallback_cmd": (["systemctl", "--user", "start", "ollama"]
+                         if IS_LINUX else
+                         ["launchctl", "bootstrap", f"gui/{UID}",
+                          str(Path.home() / "Library/LaunchAgents/com.ollama.serve.plist")]),
+        "verify_label": "Ollama server",
+    },
+    {
+        "name": "gbrain",
+        "check": lambda: _check_service("gbrain-autopilot"),
+        "restart_cmd": (["systemctl", "--user", "restart", "gbrain-autopilot"]
+                        if IS_LINUX else
+                        ["launchctl", "kickstart", f"gui/{UID}/com.gbrain.autopilot"]),
+        "fallback_cmd": (["systemctl", "--user", "start", "gbrain-autopilot"]
+                         if IS_LINUX else
+                         ["launchctl", "bootstrap", f"gui/{UID}",
+                          str(Path.home() / "Library/LaunchAgents/com.gbrain.sync-watch.plist")]),
+        "verify_label": "gbrain autopilot",
+    },
+    {
+        "name": "scripts",
+        "check": lambda: _check_scripts(),
+        "restart_cmd": None,  # handled by _try_restore_scripts
+        "verify_label": "Hermes scripts",
+    },
+]
 
 # Keep track of recent restarts to prevent thrashing
-_last_restart: dict[str, float] = {}
+_last_restart = {}  # service_name -> timestamp
+
+
+def _check_docker(container_substring: str) -> bool:
+    try:
+        r = subprocess.run(
+            ["docker", "ps", "--filter", f"name={container_substring}",
+             "--format", "{{.Names}}"],
+            capture_output=True, text=True, timeout=10,
+        )
+        return r.stdout.strip() != ""
+    except Exception:
+        return False
+
+
+def _check_service(service_name: str) -> bool:
+    """Check if a systemd user service is running (has a PID)."""
+    if IS_MACOS:
+        return _check_launchd(service_name)
+    if service_name == "gbrain-autopilot":
+        # gbrain autopilot runs via cron every 5 minutes on Linux, not as a systemd service
+        # Check if the cron job exists and ran recently
+        try:
+            # Check cron job exists
+            r = subprocess.run(
+                ["crontab", "-l"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if "autopilot-run.sh" not in r.stdout:
+                return False
+            # Check if it ran recently (within last 10 minutes)
+            log_file = Path.home() / ".gbrain" / "autopilot.log"
+            if log_file.exists():
+                import time
+                mtime = log_file.stat().st_mtime
+                if time.time() - mtime < 600:  # 10 minutes
+                    return True
+            return False
+        except Exception:
+            return False
+    try:
+        r = subprocess.run(
+            ["systemctl", "--user", "is-active", service_name],
+            capture_output=True, text=True, timeout=5,
+        )
+        return r.returncode == 0 and r.stdout.strip() == "active"
+    except Exception:
+        return False
+
+
+def _check_launchd(label: str) -> bool:
+    """Check if a launchd service is running (has a PID)."""
+    try:
+        r = subprocess.run(
+            ["launchctl", "list", label],
+            capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode != 0:
+            return False
+        # Check if there's a PID (first field in tab-separated output, or "PID" in plist format)
+        if '"PID"' in r.stdout:
+            import re
+            m = re.search(r'"PID"\s*=\s*(\d+);', r.stdout)
+            return m is not None and m.group(1) != "0"
+        pid = r.stdout.split("\t")[0] if "\t" in r.stdout else "-"
+        return pid != "-"
+    except Exception:
+        return False
 
 
 def _check_scripts() -> bool:
     """Check if critical Hermes scripts are present and executable."""
     critical = [
         "heartbeat.py", "service-recovery.py", "system-alert.py",
-        "orch-check-agent-messages.sh", "cron-auto-remediate.sh",
+        "check-agent-messages.sh", "cron-auto-remediate.sh",
     ]
     for name in critical:
         sp = HERMES_SCRIPTS / name
@@ -67,43 +157,12 @@ def _check_scripts() -> bool:
     return True
 
 
-SERVICES: list[dict] = [
-    _make_service("nginx", pgrep="nginx: master", restart_label="homebrew.mxcl.nginx", verify_cmd=["nginx", "-t"]),
-    # Langfuse: try multiple label formats for compatibility
-    {
-        "name": "Langfuse",
-        "check": lambda lbl="langfuse-langfuse-web": (
-            docker_container_running(lbl) if lbl else False
-        ),
-        "restart_label": "langfuse-langfuse-web",
-        "verify_label": "Langfuse",
-    },
-    _make_service("Ollama", label="com.ollama.serve", pgrep="ollama"),
-    # gbrain: try multiple label formats for compatibility
-    {
-        "name": "gbrain",
-        "check": lambda lbl="com.gbrain.autopilot", pgr="gbrain": (
-            docker_container_running(lbl) if lbl else
-            service_running(lbl, pgrep_pattern=pgr if not lbl else None)
-        ),
-        "restart_label": "com.gbrain.autopilot",
-        "verify_label": "gbrain",
-    },
-    {
-        "name": "scripts",
-        "check": _check_scripts,
-        "restart_label": "",
-        "verify_label": "Hermes scripts",
-    },
-]
-
-
-def _try_restore_scripts() -> str | None:
+def _try_restore_scripts() -> Optional[str]:
     """Try to restore missing scripts from the cortex repo. Returns error or None."""
     restored = []
     critical = [
         "heartbeat.py", "service-recovery.py", "system-alert.py",
-        "orch-check-agent-messages.sh", "cron-auto-remediate.sh",
+        "check-agent-messages.sh", "cron-auto-remediate.sh",
         "daily-lesson-mine.sh", "update-session-state.sh",
         "langfuse-health-watchdog.py", "memory-to-brain.py",
         "web-cache-backup.sh", "web-cache-prune.sh",
@@ -124,16 +183,7 @@ def _try_restore_scripts() -> str | None:
     return "No scripts needed restoration or cortex repo missing"
 
 
-def _status_text(svc: dict) -> str:
-    """Return a short status string for logging."""
-    try:
-        ok = svc["check"]()
-        return "✅ up" if ok else "❌ DOWN"
-    except Exception as e:
-        return f"❓ error ({e})"
-
-
-def _try_restart(svc: dict) -> str | None:
+def _try_restart(svc: dict) -> Optional[str]:
     """Attempt to restart a service. Returns error string or None on success."""
     name = svc["name"]
     now = time.time()
@@ -149,27 +199,45 @@ def _try_restart(svc: dict) -> str | None:
         if r.returncode != 0:
             return f"❌ {name}: pre-flight check failed ({r.stderr.strip()[:200]}) — not restarting"
 
-    # Restart using platform_utils with better error handling
-    restart_label = svc.get("restart_label", name)
-    if restart_label:
+    # Restart
+    workdir = svc.get("restart_workdir")
+    cmds = [svc["restart_cmd"]]
+    if svc.get("fallback_cmd"):
+        cmds.append(svc["fallback_cmd"])
+
+    for idx, cmd in enumerate(cmds):
         try:
-            ok = restart_service(restart_label)
-            if not ok:
-                # Provide more detailed error information
-                if is_macos():
-                    return f"❌ {name} restart failed: service '{restart_label}' not found or permission denied. Try: launchctl list | grep {restart_label}"
-                else:
-                    return f"❌ {name} restart failed: service '{restart_label}' not found or permission denied. Try: sudo systemctl restart {restart_label}"
+            r = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=30,
+                cwd=workdir or None,
+            )
+            if r.returncode == 0:
+                break  # success on this attempt
+            if idx < len(cmds) - 1:
+                # Primary failed, try fallback
+                continue
+            return f"❌ {name} restart failed: {r.stderr.strip()[:200]}"
+        except subprocess.TimeoutExpired:
+            return f"❌ {name} restart timed out (30s)"
         except Exception as e:
-            return f"❌ {name} restart failed with error: {str(e)}"
+            return f"❌ {name} restart error: {e}"
 
     # Wait a moment then verify
     time.sleep(3)
     if svc["check"]():
         _last_restart[name] = now
-        return None
+        return None  # success
     else:
-        return f"⚠️ {name} restart issued but not confirmed up after 3s"
+        return f"⚠️ {name} restart issued but service not confirmed up after 3s"
+
+
+def _status_text(svc: dict) -> str:
+    """Return a short status string for logging."""
+    try:
+        ok = svc["check"]()
+        return "✅ up" if ok else "❌ DOWN"
+    except Exception as e:
+        return f"❓ error ({e})"
 
 
 def main():
@@ -207,11 +275,13 @@ def main():
             actions.append(f"🔄 {name}: restarted successfully")
 
     if actions:
-        from hermes_tz import format_timestamp
         hostname = os.uname().nodename[:12]
-        ts = format_timestamp("%Y-%m-%d %H:%M %Z")
-        print(f"🔧 {hostname} [{ts}]")
+        print(f"🔧 {hostname}")
         for a in actions:
             print(a)
         for s in statuses:
             print(f"  {s}")
+
+
+if __name__ == "__main__":
+    main()
