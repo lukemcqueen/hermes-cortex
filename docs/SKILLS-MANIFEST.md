@@ -35,13 +35,14 @@ their domain.
 | `memory-architecture` | 1.0.0 | Agent memory system — MEMORY.md structure, privacy, gitignore | `skill_view(name='memory-architecture')` |
 | `ecosystem-audit` | 1.0.0 | Evaluate third-party tools for adoption, integration, or removal | `skill_view(name='ecosystem-audit')` |
 
-## DevOps (3 skills)
+## DevOps (4 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `nginx-web-app-deployment` | 1.0.0 | Deploy web apps behind nginx — upstream config, SSL, rate limiting, launchd/systemd, multi-layer testing | `skill_view(name='nginx-web-app-deployment')` |
 | `package-security` | 1.0.0 | Age-gated package installation — verifies packages are ≥14 days old before install. Covers PyPI, npm, crates.io, Homebrew. | `skill_view(name='package-security')` |
 | `weekly-auto-fix` | 1.1.0 | Auto-fix + verify known issues found by the weekly opportunity scan — git pull, branch cleanup, Docker restart, permission fixes, disk cleanup, then verify each fix | `skill_view(name='weekly-auto-fix')` |
+| `moses-inbox-remediation` | 1.0.0 | Auto-remediate hermes-cortex issues reported by peer agents via agent inbox — reads remediation markers, applies fixes, marks done | `skill_view(name='moses-inbox-remediation')` |
 
 ## Social Media
 
@@ -82,5 +83,6 @@ references remain.
 | 2026-06-11 | TDD merged into change-test-loop (v1.1.0), writing-plans merged into plan (v2.1.0) |
 | 2026-06-09 | Added public-contribution, skill-from-lesson (software-development), nginx-web-app-deployment (devops), SOUL.md template, updated nginx template |
 | 2026-06-09 | Added pr-review (github), package-security (devops). skill-from-lesson absorbed into save-lesson (v1.1.0). documentation-maintenance-audit absorbed into project-readiness. |
+|| 2026-06-15 | Added moses-inbox-remediation devops skill v1.0.0 — auto-remediate hermes-cortex issues from agent inbox messages |
 || 2026-06-15 | weekly-auto-fix v1.1.0 — added verification phase: each fix re-checks its condition post-fix with PASS/FAIL/WARN output |
 || 2026-06-12 | **Memory That Compounds** — change-test-loop v2.0.0 adds LEARN phase (search lessons before every code change). New lesson-aware-agent skill for universal injection. Daily lesson auto-miner (02:00 KST). Compound stats dashboard (02:30 KST). Replaced weekly mining with daily mining. |

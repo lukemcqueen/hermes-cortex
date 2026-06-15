@@ -24,7 +24,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `2c73330` — 2026-06-13 10:16:40 |
+| Last commit | `82330a7` — 2026-06-15 09:38:34 |
 | Working tree | dirty (1 files) |
 | Unpushed | none |
 | Tag | `v1.0.0` |
@@ -33,11 +33,11 @@
 
 | Date | Commit | Description |
 |------|--------|-------------|
-| 2026-06-13 | `2c73330` | fix(agent-inbox): _msg_path now tries .md extension
-| 2026-06-13 | `242841a` | feat(cortex-update): CORTEX_SKIP_NGINX env var guard
-| 2026-06-12 | `798acfc` | heartbeat: add agent inbox staleness check
-| 2026-06-12 | `f125f29` | inbox: fix escaping/SSL bugs, add watchdog registration
-| 2026-06-12 | `e029210` | shorter cron output + silent-on-zero guard
+| 2026-06-15 | `82330a7` | fix: Linux compat for memory_pressure + correct threshold direction
+| 2026-06-15 | `f28552e` | feat: add verification phase to weekly auto-fix — each fix re-checks condition post-fix with PASS/FAIL/WARN (#WeeklyAutoFix_v2)
+| 2026-06-15 | `080af0d` | auto-remediation: cron job + agent inbox fix pipeline
+| 2026-06-15 | `ae1da38` | resolve merge conflict in current.md
+| 2026-06-15 | `56b597a` | feat: weekly auto-fix — scan+f+report cycle for opportunity scan, companion script, devops skill (#WeeklyAutoFix)
 
 ---
 
@@ -45,12 +45,12 @@
 
 | Layer | What |
 |-------|------|
-| Installer | `install.sh` — 2145 lines, 26 steps, idempotent |
+| Installer | `install.sh` — 2150 lines, 26 steps, idempotent |
 | Skills | 0 skills across 4 categories (software-development, devops, social-media, productivity) |
-| Python files | 53 files (37141 LOC) |
-| Shell files | 37 files (8307 LOC) |
-| Markdown files | 499 files |
-| Total | 615 tracked files |
+| Python files | 54 files (37628 LOC) |
+| Shell files | 38 files (8620 LOC) |
+| Markdown files | 503 files |
+| Total | 621 tracked files |
 | Dashboard | Flask app + nginx proxy — Langfuse traces + system health |
 | Scripts | 16 utility scripts (heartbeat, memory-sync, LLM scoring, service recovery) |
 | OpenCode | 15 commands + 3 agents + 30 optional skills |
@@ -73,4 +73,4 @@
 
 ---
 
-*Last updated: 2026-06-13 15:27 KST*
+*Last updated: 2026-06-15 09:45 KST*
