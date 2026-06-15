@@ -24,8 +24,8 @@
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `618c46b` — 2026-06-15 09:51:56 |
-| Working tree | dirty (1 files) |
+| Last commit | `db56ccd` — 2026-06-15 10:47:15 |
+| Working tree | clean |
 | Unpushed | none |
 | Tag | `v1.0.0` |
 
@@ -33,11 +33,11 @@
 
 | Date | Commit | Description |
 |------|--------|-------------|
+| 2026-06-15 | `db56ccd` | rename: moses-inbox-processor → process-agent-messages
+| 2026-06-15 | `0c4df89` | fix: register moses-inbox-remediate.sh in deployment map fix: macOS sha256sum → shasum fallback in cortex-update.sh fix: Python 3.9 type hints in service-recovery.py fix: dynamic UID + PATH-based nginx paths in service-recovery.py fix: add missing Path import in system-alert.py
 | 2026-06-15 | `618c46b` | feat: moses inbox remediation processor — auto-fix agent inbox messages within 10m
 | 2026-06-15 | `82330a7` | fix: Linux compat for memory_pressure + correct threshold direction
 | 2026-06-15 | `f28552e` | feat: add verification phase to weekly auto-fix — each fix re-checks condition post-fix with PASS/FAIL/WARN (#WeeklyAutoFix_v2)
-| 2026-06-15 | `080af0d` | auto-remediation: cron job + agent inbox fix pipeline
-| 2026-06-15 | `ae1da38` | resolve merge conflict in current.md
 
 ---
 
@@ -47,8 +47,8 @@
 |-------|------|
 | Installer | `install.sh` — 2150 lines, 26 steps, idempotent |
 | Skills | 0 skills across 4 categories (software-development, devops, social-media, productivity) |
-| Python files | 54 files (37628 LOC) |
-| Shell files | 39 files (8711 LOC) |
+| Python files | 54 files (37630 LOC) |
+| Shell files | 39 files (8727 LOC) |
 | Markdown files | 504 files |
 | Total | 623 tracked files |
 | Dashboard | Flask app + nginx proxy — Langfuse traces + system health |
@@ -73,4 +73,4 @@
 
 ---
 
-*Last updated: 2026-06-15 10:37 KST*
+*Last updated: 2026-06-15 16:00 KST*
