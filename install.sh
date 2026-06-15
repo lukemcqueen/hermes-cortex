@@ -1640,6 +1640,16 @@ ENVFILE
     warn "Docker Compose failed — install Docker Desktop or check daemon"
   fi
   cd - > /dev/null
+
+  # Wire Hermes Agent with Langfuse integration
+  CORTEX_LANGFUSE_PATH="${SCRIPTS_DIR}/cortex-setup-langfuse.sh"
+  if [[ -f "$CORTEX_LANGFUSE_PATH" ]]; then
+    info "  Wiring Hermes Agent with Langfuse integration..."
+    bash "$CORTEX_LANGFUSE_PATH" 2>&1 | sed 's/^/    /'
+    info "  Hermes Agent integration complete"
+  else
+    warn "  cortex-setup-langfuse.sh not available for Hermes integration"
+  fi
 fi
 
 # ─────────────────────────────────────────────────────────────
