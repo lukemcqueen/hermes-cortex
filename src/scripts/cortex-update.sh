@@ -97,6 +97,13 @@ register "src/scripts/install-cortex-update-cron.sh" "${HERMES_HOME}/scripts/ins
 register "src/scripts/prod-watchdog.sh"          "${HERMES_HOME}/scripts/prod-watchdog.sh"
 register "src/scripts/check-agent-messages.sh"    "${HERMES_HOME}/scripts/check-agent-messages.sh"
 
+# Moses inbox remediation
+register "scripts/moses-inbox-remediate.sh"       "${HERMES_HOME}/scripts/moses-inbox-remediate.sh"
+
+# Auto-remediation scripts
+register "src/scripts/cron-auto-remediate.sh"     "${HERMES_HOME}/scripts/cron-auto-remediate.sh"
+register "scripts/weekly-auto-fix.py"              "${HERMES_HOME}/scripts/weekly-auto-fix.py"
+
 # System watchdog scripts (no_agent cron jobs)
 register "src/scripts/system-alert.py"            "${HERMES_HOME}/scripts/system-alert.py"
 register "src/scripts/service-recovery.py"        "${HERMES_HOME}/scripts/service-recovery.py"
@@ -221,8 +228,17 @@ needs_update() {
   [[ ! -f "$src" ]] && return 1
   # Compare checksums
   local src_hash dest_hash
-  src_hash=$(sha256sum "$src" 2>/dev/null | cut -d' ' -f1)
-  dest_hash=$(sha256sum "$dest" 2>/dev/null | cut -d' ' -f1)
+  if command -v sha256sum &>/dev/null; then
+    src_hash=$(sha256sum "$src" 2>/dev/null | cut -d' ' -f1)
+    dest_hash=$(sha256sum "$dest" 2>/dev/null | cut -d' ' -f1)
+  elif command -v shasum &>/dev/null; then
+    src_hash=$(shasum -a 256 "$src" 2>/dev/null | cut -d' ' -f1)
+    dest_hash=$(shasum -a 256 "$dest" 2>/dev/null | cut -d' ' -f1)
+  else
+    # No checksum tool — compare mtime
+    [[ "$src" -nt "$dest" ]] && return 0
+    return 1
+  fi
   [[ "$src_hash" != "$dest_hash" ]] && return 0
   return 1
 }
