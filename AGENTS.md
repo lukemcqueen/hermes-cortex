@@ -73,10 +73,11 @@ Three-layer data model:
 
 ## Common Tasks
 
-- **Add a troubleshooting entry:** Edit `docs/troubleshooting.md`, add new numbered section, update changelog
-- **Add a template:** Place in `docs/templates/`, update `install.sh` step 9 to copy it during install
-- **Modify install:** Edit `install.sh` — 26 steps, idempotent, safe to re-run
-- **Update Docker config:** Edit `deploy/docker-compose.langfuse.yml` — Langfuse v3 requires specific env vars (see docs/troubleshooting.md)
+|- **Add a troubleshooting entry:** Edit `docs/troubleshooting.md`, add new numbered section, update changelog
+|- **Add a template:** Place in `docs/templates/`, update `install.sh` step 9 to copy it during install
+|- **Modify install:** Edit `install.sh` — 26 steps, idempotent, safe to re-run
+|- **Update Docker config:** Edit `deploy/docker-compose.langfuse.yml` — Langfuse v3 requires specific env vars (see docs/troubleshooting.md)
+|- **Upgrade gbrain to v2 taxonomy:** See `docs/gbrain-v2-taxonomy.md` for the 15 canonical types and upgrade instructions for existing brains
 
 ## Rules
 
@@ -87,6 +88,31 @@ Three-layer data model:
 - MIT License — be permissive with what's shared
 
 ## Agent Handoffs
+
+### 2026-06-15 — Auto-remediation system (all agents)
+
+**What:** Every Hermes agent now has an auto-remediation pipeline that catches and fixes cron job failures, resource issues, and agent inbox help requests without user intervention.
+
+**Components (all in `src/scripts/`):**
+
+| Script | Type | Schedule | Purpose |
+|--------|------|----------|---------|
+| `cron-auto-remediate.sh` | Diagnostic shell | On-demand | Structured diagnostics + fix actions (fix-missing, fix-git, fix-perms, fix-purge) |
+| `system-alert.py` | no_agent watchdog | Every 10m | Resource alerts + auto-cleanup (purge at 85% mem, brew/docker prune at 90% disk) |
+| `service-recovery.py` | no_agent watchdog | Every 5m | Auto-restart nginx, Ollama, gbrain, Langfuse, restore missing scripts |
+| `check-agent-messages.sh` | no_agent watchdog | Every 10m | Flags agent error messages with remediation markers |
+| `cron-auto-remediate` (skill) | LLM-driven cron | Every 5m | Orchestrator: checks errored cron jobs + inbox remediation markers, applies fixes |
+
+**Skill location:** `src/skills/devops/auto-remediation/SKILL.md`
+
+**Setting up on a new agent:**
+1. `install.sh` copies all scripts to `~/.hermes/scripts/`
+2. Create a cron job: `cron name=cron-auto-remediate every 5m skill=auto-remediation`
+3. The LLM-driven cron loads the skill and runs the 3-phase workflow:
+   - Phase 1: Check errored cron jobs
+   - Phase 2: Check agent inbox remediation markers
+   - Phase 3: Spot-check system resources
+4. silent when healthy, brief when fixes applied, escalate after 3 failures
 
 ### 2026-06-12 — Titus: gbrain sync-watch vs autopilot conflict
 
