@@ -1,6 +1,6 @@
 # Cron Job Recipes for Hermes Agent
 
-> **Version 1.2.0** — Published 2026-06-15
+> **Version 1.3.0** — Published 2026-06-15
 > A collection of reusable cron job prompts and scripts for Hermes Agent automation.
 
 ---
@@ -895,8 +895,69 @@ hermes cron create \
 | **05:00** | | | | | | | 🗜️ Compress |
 | **06:30** | 🌅 Brief | 🌅 Brief | 🌅 Brief | 🌅 Brief | 🌅 Brief | 🌅 Brief | 🌅 Brief |
 | **07:00** | | | | | | | 📊 Analysis |
-| **08:00** | 💡 Weekly | | | | | | |
-| **Ongoing** | 🚨 Alert (10m), 🔧 Recovery (5m), 💖 Heartbeat (30m), 🔄 Export (6h) |
+|| **08:00** | 💡 Weekly | | | | | | |
+|| **Ongoing** | 🚨 Alert (10m), 🔧 Recovery (5m), 💖 Heartbeat (30m), 🔄 Export (6h), 📬 Inbox Processor (10m) |
+
+---
+
+## 📨 Moses Inbox Remediation Processor
+
+Detects agent-inbox messages from peer agents flagged as needing a fix (by keyword
+match: "error", "broken", "help", etc.) and auto-remediates within ~10 minutes.
+
+**Schedule:** `every 10m`
+**Type:** LLM-driven + companion no_agent script
+**Toolsets:** `terminal`, `file`, `web`
+
+### Recipe
+
+```
+You are Moses. This is your inbox remediation processor.
+
+## Step 1: Check for pending remediation markers
+
+Run the companion script: `~/.hermes/scripts/moses-inbox-remediate.sh`
+If output is `[]`, respond with [SILENT] — nothing needs remediation.
+
+## Step 2: Process each pending item
+
+For each item (sender, subject, body, marker_file), determine what fix
+is needed and apply it using terminal/web tools.
+
+## Step 3: Fix it
+
+Apply the fix. Also run `python3 ~/.hermes/scripts/weekly-auto-fix.py --verbose`
+as a safety net for mechanical patterns.
+
+## Step 4: Mark remediation as done
+
+Run:
+  mkdir -p ~/.hermes/state/remediate/done
+  mv <marker_file> ~/.hermes/state/remediate/done/
+  cd ~/hermes-cortex-private && git add -A && git commit -m "remediation: ..." && git push
+
+## Step 5: Report compact summary — what was fixed and whether it succeeded.
+```
+
+### Setup
+
+```bash
+# 1. Deploy companion scripts
+cp hermes-cortex/scripts/moses-inbox-remediate.sh ~/.hermes/scripts/
+chmod +x ~/.hermes/scripts/moses-inbox-remediate.sh
+
+# 2. Create the cron
+hermes cron create \
+  --name "moses-inbox-processor" \
+  --schedule "every 10m" \
+  --prompt "Paste the recipe above" \
+  --enabled-toolsets terminal,file,web
+```
+
+### Prerequisites
+
+- `check-agent-messages.sh` cron running every 10m (detects messages + writes markers)
+- Peer agents sending fix requests to agent inbox (topics: general, all, luke, <agentname>)
 
 ---
 
@@ -927,5 +988,5 @@ immediately without waiting for the schedule.
 
 | Date | Version | Change |
 |------|---------|--------|
-| 2026-06-15 | 1.2.0 | Added verification phase to Weekly Opportunity Scan — each fix re-checks its condition post-fix (git: behind count + conflict check; Docker: healthy status; perms: stat; disk: dir gone). Companion script outputs structured verify_results with PASS/FAIL/WARN. |
+| 2026-06-15 | 1.3.0 | Added Moses Inbox Remediation Processor recipe — auto-remediate agent-inbox fix requests within 10 min. Companion script, marker-based pipeline, verification-fix cycle. |
 | 2026-06-05 | 1.0.0 | Initial release — 10 recipes |
