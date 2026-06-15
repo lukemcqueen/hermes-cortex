@@ -28,8 +28,24 @@ mkdir -p "$INBOX_DIR" "$PROCESSED_DIR" "$STATE_DIR"
 # Save timestamp of this check
 date -u +"%Y-%m-%dT%H:%M:%SZ" > "$STATE_FILE"
 
-# Known agents (broadcast targets). Messages in these topics stay in inbox.
-# Space-separated, used in a case statement below.
+# Read agent registry for routing targets
+AGENT_REGISTRY="${HOME}/.hermes/state/agent-registry.json"
+BROADCAST_TOPICS="luke|all|general"
+if [ -f "$AGENT_REGISTRY" ]; then
+  # Extract broadcast topics + all agent names from registry
+  REGISTRY_TOPICS=$(python3 -c "
+import json
+with open('${AGENT_REGISTRY}') as f:
+    data = json.load(f)
+topics = data.get('routing', {}).get('broadcast_topics', ['luke', 'all', 'general'])
+if data.get('routing', {}).get('agent_prefix_topics', True):
+    topics.extend(data.get('agents', {}).keys())
+print('|'.join(topics))
+" 2>/dev/null || echo "luke|all|general|moses|titus|joseph|kustos|gisu")
+  if [ -n "$REGISTRY_TOPICS" ]; then
+    BROADCAST_TOPICS="$REGISTRY_TOPICS"
+  fi
+fi
 
 # Find new message files in root inbox (not subfolders)
 shopt -s nullglob
@@ -66,7 +82,7 @@ for msg in "${INBOX_FILES[@]}"; do
   # ── Determine if this is a broadcast message (stays in inbox) ──
   IS_BROADCAST=false
   case "$topic" in
-    luke|all|general|titus|joseph|kustos|gisu|moses)
+    $(echo "$BROADCAST_TOPICS" | sed 's/|/)/g; s/^/    /')
       IS_BROADCAST=true
       ;;
   esac
@@ -87,24 +103,38 @@ for msg in "${INBOX_FILES[@]}"; do
       echo ""
       echo "━━━ End Broadcast ━━━"
 
-      # Detect if this message needs remediation (keywords in subject or body)
+      # Detect priority from frontmatter
+      priority=$(sed -n '/^priority:/s/.*: *//p' "$msg" 2>/dev/null | head -1)
+      priority="${priority:-normal}"
+
+      if [ "$priority" = "critical" ] || [ "$priority" = "urgent" ]; then
+        echo "  ⚠ Priority: $priority"
+      fi
+
+      # Detect if this message needs remediation (keywords in subject or body, or urgent/critical priority)
       NEEDS_FIX=false
-      lower_subject=$(echo "${subject}" | tr '[:upper:]' '[:lower:]')
-      lower_body=$(echo "${BODY}" | tr '[:upper:]' '[:lower:]')
-      for keyword in "error" "failed" "crash" "down" "help" "broken" "stuck" "not working" "issue" "problem" "script failure"; do
-        if echo "${lower_subject}" | grep -q "${keyword}" || echo "${lower_body}" | grep -q "${keyword}"; then
-          NEEDS_FIX=true
-          break
-        fi
-      done
+      if [ "$priority" = "critical" ] || [ "$priority" = "urgent" ]; then
+        NEEDS_FIX=true
+      fi
+      if ! $NEEDS_FIX; then
+        lower_subject=$(echo "${subject}" | tr '[:upper:]' '[:lower:]')
+        lower_body=$(echo "${BODY}" | tr '[:upper:]' '[:lower:]')
+        for keyword in "error" "failed" "crash" "down" "help" "broken" "stuck" "not working" "issue" "problem" "script failure"; do
+          if echo "${lower_subject}" | grep -q "${keyword}" || echo "${lower_body}" | grep -q "${keyword}"; then
+            NEEDS_FIX=true
+            break
+          fi
+        done
+      fi
 
       if $NEEDS_FIX; then
-        # Write a remediation marker for the auto-remediation cron to pick up
+        # Write a remediation marker
         REMEDIATE_DIR="${HOME}/.hermes/state/remediate"
         mkdir -p "${REMEDIATE_DIR}"
         echo "from=${from}" > "${REMEDIATE_DIR}/inbox-$(date +%s).txt"
         echo "subject=${subject}" >> "${REMEDIATE_DIR}/inbox-$(date +%s).txt"
         echo "file=${msg}" >> "${REMEDIATE_DIR}/inbox-$(date +%s).txt"
+        echo "priority=${priority}" >> "${REMEDIATE_DIR}/inbox-$(date +%s).txt"
         echo "  🔧 Flagged for auto-remediation"
       fi
 

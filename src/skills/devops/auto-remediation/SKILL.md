@@ -9,8 +9,12 @@ Detect and fix cron job errors, agent inbox help requests, and service issues wi
 
 ## When to use
 
-This skill is loaded by the `cron-auto-remediate` cron job every 5 minutes.
-You are Moses, the orchestrator. Your job is to check for problems and fix them.
+This skill is loaded by the `cron-auto-remediate` cron job every 30 minutes.
+The companion `remediation-sensor.py` (no_agent, every 5m) gathers diagnostics
+and outputs JSON. This LLM tier only fires when the sensor reports issues.
+
+You are Moses, the orchestrator. Your job is to read the sensor output, fix
+issues, and report briefly.
 
 ## Workflow
 
