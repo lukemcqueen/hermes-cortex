@@ -1,6 +1,6 @@
 # Cron Job Recipes for Hermes Agent
 
-> **Version 1.0.0** — Published 2026-06-05
+> **Version 1.1.0** — Published 2026-06-15
 > A collection of reusable cron job prompts and scripts for Hermes Agent automation.
 
 ---
@@ -604,54 +604,64 @@ hermes cron create \
 
 ---
 
-## 💡 Weekly Opportunity Scan
+## 💡 Weekly Opportunity Scan (with Auto-Fix)
 
-Proactive suggestion mode — scans system metrics, identifies trends, and surfaces actionable ideas to the user.
+Scan-report-fix cycle — checks git, Docker, permissions, disk, and cron health,
+then automatically fixes known recurring issues and reports what was resolved.
 
 **Schedule:** `0 8 * * 1` (Monday 8am)
-**Type:** LLM-driven
+**Type:** LLM-driven + companion no_agent script
 **Toolsets:** `terminal`, `web`
 
 ### Recipe
 
 ```
-You are an AI assistant running a weekly opportunity scan.
+You are an AI assistant running a weekly opportunity scan with auto-fix.
 
-Your job is to check system metrics, identify trends and opportunities,
-and surface actionable suggestions to your user.
+## Phase 1: Scan
 
-## Data to gather
+Check repos, Docker containers, system files, and cron jobs for issues:
+- Git status: is the repo behind origin/main? Stale branches? Unmerged PRs?
+- Docker health: any containers in "unhealthy" or "restarting" state?
+- File permissions: world-readable cron outputs (should be 600)?
+- Disk usage: large caches (>100MB) that should be cleaned?
+- Cron job errors: check for last_status: error in the cron job list.
 
-1. **System resources:** Run `top -l 1 -n 0` and `df -h /` and `memory_pressure | head -5`.
-   Compare with last week — is anything trending worse?
+Also scan ~/brain/*/ and gbrain for incomplete tasks, stale branches,
+or new ideas that need attention.
 
-2. **Docker & services:** Run `docker stats --no-stream --format 'table {{.Name}}\t{{.MemPerc}}\t{{.CPUPerc}}'`.
-   Note any unusual resource consumption.
+## Phase 2: Auto-Fix
 
-3. **Disk growth:** Run `du -sh ~/.hermes/cron/output/` and `du -sh ~/.hermes/logs/` —
-   are logs or cron outputs accumulating?
+After identifying issues, attempt to fix them:
 
-4. **Git status:** Run `for r in ~/your-project-dir ~/your-private-repo; do echo "$r:" && cd "$r" && git status --short; done`
-   — anything unpushed for more than a few days?
+**Git fixes:** `git pull --rebase --autostash` if behind origin/main.
+Delete local branches whose remote tracking refs are gone (`git branch -vv | grep ': gone]'`).
+Merge ready PRs with `gh pr merge --squash`.
 
-## What to produce
+**Docker fixes:** `docker restart <name>` for unhealthy/restarting containers.
 
-A concise (3-5 bullet) scan with:
-• **What's good** — things that are stable, recently improved, worth celebrating
-• **What's trending** — metrics moving in the right/wrong direction
-• **Suggestions** — 1-2 specific, actionable ideas for the coming week
-  - "I noticed X, here's an idea"
-  - Be specific. "We could reduce Docker to 3 GB" is better than "optimize resources"
+**Permission fixes:** `chmod 600` on world-readable scorer summaries.
+`chmod 644` on executable pid files.
 
-## Tone
+**Companion script:** Run `python3 ~/.hermes/scripts/weekly-auto-fix.py --verbose`
+as a safety net that handles additional known patterns.
 
-Calm, clear, forward-looking. Surface things the user might miss.
-If genuinely nothing interesting, say that briefly.
+## Phase 3: Report
+
+Output max 3 items under 200 chars each. For each item, say whether it
+was FIXED automatically or needs manual attention.
+
+If everything was fixed: "✅ All fixed: [items]"
+If nothing needed fixing: exit silently (no output).
 ```
 
 ### Setup
 
 ```bash
+# 1. Deploy companion script
+cp hermes-cortex/scripts/weekly-auto-fix.py ~/.hermes/scripts/weekly-auto-fix.py
+
+# 2. Create the cron
 hermes cron create \
   --name "weekly-scan-opportunities" \
   --schedule "0 8 * * 1" \
@@ -897,6 +907,7 @@ immediately without waiting for the schedule.
 
 ## Changelog
 
-| Version | Date | Changes |
-|---|---|---|
-| 1.0.0 | 2026-06-05 | Initial release — 10 cron recipes with scripts and prompts |
+| Date | Version | Change |
+|------|---------|--------|
+| 2026-06-15 | 1.1.0 | Added Weekly Opportunity Scan (with Auto-Fix) — three-phase scan-fix-report cycle, companion no_agent helper script, auto-fix for git, Docker, permissions, disk |
+| 2026-06-05 | 1.0.0 | Initial release — 10 recipes |
