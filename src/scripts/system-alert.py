@@ -12,6 +12,8 @@ DISK_PCT_WARN = 90
 
 alerts = []
 details = []
+remediations = []
+HOSTNAME = socket.gethostname()[:12]
 
 # ── Memory ──────────────────────────────────────────────────
 try:
@@ -46,6 +48,12 @@ try:
     details.append(f"Memory: {pct}% ({used_mb}MB used + {avail_mb}MB available / {total_mb}MB total)")
     if pct > MEM_PCT_WARN:
         alerts.append(f"⚠️ Memory at {pct}% — exceeds {MEM_PCT_WARN}% threshold")
+        # Auto-remediation: purge inactive memory on macOS
+        try:
+            subprocess.run(["purge"], capture_output=True, timeout=30)
+            remediations.append(f"🔄 Ran purge to free inactive memory")
+        except Exception:
+            pass
 except Exception as e:
     details.append(f"Memory: error ({e})")
 
@@ -77,6 +85,21 @@ try:
                 details.append(f"Disk: {pct}% ({used_str} / {total_str})")
                 if pct > DISK_PCT_WARN:
                     alerts.append(f"⚠️ Disk at {pct}% — exceeds {DISK_PCT_WARN}% threshold")
+                    # Auto-remediation: free disk space
+                    try:
+                        subprocess.run(["brew", "cleanup", "-s"], capture_output=True, timeout=120)
+                        remediations.append("🔄 Ran brew cleanup -s")
+                    except Exception:
+                        pass
+                    try:
+                        subprocess.run(["docker", "system", "prune", "-f"], capture_output=True, timeout=60)
+                        remediations.append("🔄 Ran docker system prune")
+                    except Exception:
+                        pass
+                    # Prune old logs
+                    subprocess.run(
+                        ["find", str(Path.home() / ".hermes/logs"), "-name", "*.log*", "-mtime", "+7", "-delete"],
+                        capture_output=True, timeout=30)
                 break
 except Exception:
     details.append("Disk: error reading")
@@ -92,9 +115,10 @@ except Exception:
 
 # ── Output ───────────────────────────────────────────────────
 if alerts:
-    hostname = socket.gethostname()[:12]
-    print(f"🚨 {hostname}")
+    print(f"🚨 {HOSTNAME}")
     for a in alerts:
-        print(a)
+        print(f"  {a}")
+    for r in remediations:
+        print(f"  {r}")
     for d in details:
         print(f"  {d}")

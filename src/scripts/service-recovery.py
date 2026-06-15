@@ -10,6 +10,8 @@ from pathlib import Path
 
 UID = 501  # luke's user ID
 LANGFUSE_DIR = str(Path.home() / "langfuse")
+HERMES_SCRIPTS = Path.home() / ".hermes" / "scripts"
+CORTEX_SCRIPTS = Path.home() / "hermes-cortex" / "src" / "scripts"
 
 SERVICES = [
     {
@@ -30,6 +32,31 @@ SERVICES = [
         "restart_workdir": LANGFUSE_DIR,
         "verify_label": "langfuse-web container",
     },
+    {
+        "name": "Ollama",
+        "check": lambda: _check_launchd("com.ollama.serve"),
+        "restart_cmd": ["launchctl", "kickstart", f"gui/{UID}/com.ollama.serve"],
+        "fallback_cmd": ["launchctl", "bootstrap", f"gui/{UID}",
+                         str(Path.home() / "Library/LaunchAgents/com.ollama.serve.plist")],
+        "verify_label": "Ollama server",
+    },
+    {
+        "name": "gbrain",
+        "check": lambda: (
+            _check_launchd("com.gbrain.autopilot") or
+            _check_launchd("com.gbrain.sync-watch")
+        ),
+        "restart_cmd": ["launchctl", "kickstart", f"gui/{UID}/com.gbrain.autopilot"],
+        "fallback_cmd": ["launchctl", "bootstrap", f"gui/{UID}",
+                         str(Path.home() / "Library/LaunchAgents/com.gbrain.sync-watch.plist")],
+        "verify_label": "gbrain autopilot/sync-watch",
+    },
+    {
+        "name": "scripts",
+        "check": lambda: _check_scripts(),
+        "restart_cmd": None,  # handled by _try_restore_scripts
+        "verify_label": "Hermes scripts",
+    },
 ]
 
 # Keep track of recent restarts to prevent thrashing
@@ -46,6 +73,67 @@ def _check_docker(container_substring: str) -> bool:
         return r.stdout.strip() != ""
     except Exception:
         return False
+
+
+def _check_launchd(label: str) -> bool:
+    """Check if a launchd service is running (has a PID)."""
+    try:
+        r = subprocess.run(
+            ["launchctl", "list", label],
+            capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode != 0:
+            return False
+        # Check if there's a PID (first field in tab-separated output, or "PID" in plist format)
+        if '"PID"' in r.stdout:
+            import re
+            m = re.search(r'"PID"\s*=\s*(\d+);', r.stdout)
+            return m is not None and m.group(1) != "0"
+        pid = r.stdout.split("\t")[0] if "\t" in r.stdout else "-"
+        return pid != "-"
+    except Exception:
+        return False
+
+
+def _check_scripts() -> bool:
+    """Check if critical Hermes scripts are present and executable."""
+    critical = [
+        "heartbeat.py", "service-recovery.py", "system-alert.py",
+        "check-agent-messages.sh", "cron-auto-remediate.sh",
+    ]
+    for name in critical:
+        sp = HERMES_SCRIPTS / name
+        if not sp.exists():
+            return False
+        if not os.access(str(sp), os.X_OK):
+            return False
+    return True
+
+
+def _try_restore_scripts() -> str | None:
+    """Try to restore missing scripts from the cortex repo. Returns error or None."""
+    restored = []
+    critical = [
+        "heartbeat.py", "service-recovery.py", "system-alert.py",
+        "check-agent-messages.sh", "cron-auto-remediate.sh",
+        "daily-lesson-mine.sh", "update-session-state.sh",
+        "langfuse-health-watchdog.py", "memory-to-brain.py",
+        "web-cache-backup.sh", "web-cache-prune.sh",
+    ]
+    for name in critical:
+        target = HERMES_SCRIPTS / name
+        source = CORTEX_SCRIPTS / name
+        if not target.exists() and source.exists():
+            try:
+                import shutil
+                shutil.copy2(str(source), str(target))
+                os.chmod(str(target), 0o755)
+                restored.append(name)
+            except Exception as e:
+                return f"Failed to restore {name}: {e}"
+    if restored:
+        return None  # success
+    return "No scripts needed restoration or cortex repo missing"
 
 
 def _try_restart(svc: dict) -> str | None:
@@ -123,6 +211,16 @@ def main():
 
         # Service is down — attempt recovery
         statuses.append(f"{name}: ❌ DOWN — recovering...")
+
+        if name == "scripts":
+            # Special handling: restore missing scripts from cortex repo
+            err = _try_restore_scripts()
+            if err:
+                actions.append(f"❌ {name}: {err}")
+            else:
+                actions.append(f"🔄 {name}: restored missing scripts")
+            continue
+
         err = _try_restart(svc)
         if err:
             actions.append(err)
