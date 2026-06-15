@@ -61,7 +61,7 @@ def _parse_message(path: Path) -> dict:
     """Parse a markdown message file with YAML frontmatter."""
     text = path.read_text(encoding="utf-8", errors="replace")
     front = {"from": "?", "subject": "No subject", "topic": DEFAULT_TOPIC,
-             "thread": "", "parent": "", "status": "unread"}
+             "thread": "", "parent": "", "status": "unread", "priority": "normal"}
     body = text
 
     m = re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)", text, re.DOTALL)
@@ -84,6 +84,7 @@ def _parse_message(path: Path) -> dict:
         "thread": front.get("thread", ""),
         "parent": front.get("parent", ""),
         "status": front.get("status", "unread"),
+        "priority": front.get("priority", "normal"),
         "body": body,
         "timestamp": datetime.fromtimestamp(path.stat().st_mtime).isoformat(),
         "filename": filename,
@@ -94,7 +95,8 @@ def _parse_message(path: Path) -> dict:
 def _write_message(from_: str, subject: str, body: str,
                    topic: str = DEFAULT_TOPIC,
                    thread: str = "",
-                   parent: str = "") -> str:
+                   parent: str = "",
+                   priority: str = "normal") -> str:
     """Write a message file to the inbox. Returns the filename."""
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     safe_from = re.sub(r"[^a-zA-Z0-9_-]", "", from_.strip().lower()) or "agent"
@@ -110,6 +112,7 @@ def _write_message(from_: str, subject: str, body: str,
 from: {from_.strip()}
 subject: {subject.strip()}
 topic: {topic}
+priority: {priority}
 thread: {thread}
 parent: {parent}
 status: unread
@@ -256,6 +259,12 @@ STYLES = """<style>
              border-radius: 6px; padding: 12px; margin-bottom: 16px; color: var(--green); }
   .badge { display: inline-block; background: var(--red); color: #fff;
            font-size: 0.7rem; padding: 1px 6px; border-radius: 8px; }
+  .badge-urgent { background: var(--yellow); color: #000; }
+  .badge-critical { background: var(--red); animation: pulse-badge 2s infinite; }
+  @keyframes pulse-badge {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
   hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
   .flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 
@@ -358,16 +367,31 @@ def _render_msg(msg: dict, is_reply: bool = False) -> str:
     topic_label = TOPICS.get(msg["topic"], msg["topic"])
     unread_badge = ' <span class="badge">NEW</span>' if msg["status"] == "unread" and not msg.get("is_processed") else ""
 
+    # Priority badge
+    priority = msg.get("priority", "normal")
+    priority_badge = ""
+    if priority == "urgent":
+        priority_badge = ' <span class="badge badge-urgent">⚠ URGENT</span>'
+    elif priority == "critical":
+        priority_badge = ' <span class="badge badge-critical">🔴 CRITICAL</span>'
+
+    # Priority border coloring
+    border_class = ""
+    if priority == "urgent" and not is_reply:
+        border_class = ' style="border-left-color:var(--yellow);"'
+    elif priority == "critical" and not is_reply:
+        border_class = ' style="border-left-color:var(--red);"'
+
     # Build reply URL with pre-filled thread/parent context
     reply_url = f"/?reply_to={msg['id']}&topic={msg['topic']}"
 
-    return f'''<div class="{cls}">
+    return f'''<div class="{cls}"{border_class}>
   <div class="flex">
     <div>
       <span class="msg-from">{msg["from"]}</span>
       <span class="msg-topic">· {topic_label}</span>
       <span class="msg-time">· {ts}</span>
-      {unread_badge}
+      {unread_badge}{priority_badge}
     </div>
   </div>
   <div class="msg-subject">{html.escape(msg["subject"])}</div>
@@ -666,8 +690,13 @@ async def send_message(
     topic: str = Form(DEFAULT_TOPIC),
     thread: str = Form(""),
     parent: str = Form(""),
+    priority: str = Form("normal"),
 ):
-    _write_message(from_, subject, body, topic=topic, thread=thread, parent=parent)
+    # Validate priority
+    valid_priorities = ["normal", "urgent", "critical"]
+    if priority not in valid_priorities:
+        priority = "normal"
+    _write_message(from_, subject, body, topic=topic, thread=thread, parent=parent, priority=priority)
     return RedirectResponse(url=f"/?topic={topic}&sent=true", status_code=303)
 
 
@@ -689,14 +718,16 @@ async def health():
 
 
 @app.get("/api/inbox")
-async def api_inbox(topic: str = "", unread_only: bool = False):
-    """JSON API for agents. Returns inbox messages. Filter by topic or unread_only."""
+async def api_inbox(topic: str = "", unread_only: bool = False, urgent_only: bool = False):
+    """JSON API for agents. Returns inbox messages. Filter by topic, unread_only, or urgent_only."""
     inbox_msgs, _ = _get_all_messages()
 
     if topic:
         inbox_msgs = [m for m in inbox_msgs if m["topic"] == topic]
     if unread_only:
         inbox_msgs = [m for m in inbox_msgs if m["status"] == "unread"]
+    if urgent_only:
+        inbox_msgs = [m for m in inbox_msgs if m.get("priority", "normal") in ("urgent", "critical")]
 
     return {
         "count": len(inbox_msgs),
@@ -716,9 +747,10 @@ async def api_send_get_example():
             "subject": "Message subject (required)",
             "body": "Message body (required)",
             "topic": "general|operations|development|security|reports|questions|luke",
+            "priority": "normal|urgent|critical (optional, default: normal)",
             "reply_to": "Filename to reply to (optional, sets thread+parent)",
         },
-        "example": 'curl -sk -X POST http://127.0.0.1:8903/send -d "from=MyAgent" -d "topic=general" -d "subject=Hello" -d "body=World"',
+        "example": 'curl -sk -X POST http://127.0.0.1:8903/send -d "from=MyAgent" -d "topic=general" -d "subject=Hello" -d "body=World" -d "priority=urgent"',
     }
 
 
