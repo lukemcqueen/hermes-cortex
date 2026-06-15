@@ -5,10 +5,11 @@ Checks each service; if down, attempts recovery.
 Silent (empty output) when all services healthy.
 Non-empty output is delivered to user as an incident report.
 """
+from typing import Optional
 import subprocess, sys, time, os
 from pathlib import Path
 
-UID = 501  # luke's user ID
+UID = os.getuid()  # dynamic user ID
 LANGFUSE_DIR = str(Path.home() / "langfuse")
 HERMES_SCRIPTS = Path.home() / ".hermes" / "scripts"
 CORTEX_SCRIPTS = Path.home() / "hermes-cortex" / "src" / "scripts"
@@ -22,8 +23,8 @@ SERVICES = [
         "restart_cmd": ["launchctl", "bootstrap",
                         f"gui/{UID}",
                         str(Path.home() / "Library/LaunchAgents/homebrew.mxcl.nginx.plist")],
-        "fallback_cmd": ["/usr/local/opt/nginx/bin/nginx"],
-        "verify_cmd": ["/usr/local/bin/nginx", "-t"],
+        "fallback_cmd": ["nginx"],
+        "verify_cmd": ["nginx", "-t"],
     },
     {
         "name": "Langfuse",
@@ -110,7 +111,7 @@ def _check_scripts() -> bool:
     return True
 
 
-def _try_restore_scripts() -> str | None:
+def _try_restore_scripts() -> Optional[str]:
     """Try to restore missing scripts from the cortex repo. Returns error or None."""
     restored = []
     critical = [
@@ -136,7 +137,7 @@ def _try_restore_scripts() -> str | None:
     return "No scripts needed restoration or cortex repo missing"
 
 
-def _try_restart(svc: dict) -> str | None:
+def _try_restart(svc: dict) -> Optional[str]:
     """Attempt to restart a service. Returns error string or None on success."""
     name = svc["name"]
     now = time.time()

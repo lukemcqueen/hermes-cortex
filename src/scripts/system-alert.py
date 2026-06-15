@@ -5,6 +5,7 @@ Silent (empty stdout) when all metrics within normal range.
 Non-empty stdout is delivered verbatim to the user (Telegram).
 """
 import re, subprocess, sys, socket
+from pathlib import Path
 
 MEM_PCT_WARN = 85
 SWAP_PCT_WARN = 70
