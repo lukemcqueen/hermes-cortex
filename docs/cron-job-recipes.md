@@ -1,6 +1,6 @@
 # Cron Job Recipes for Hermes Agent
 
-> **Version 1.1.0** — Published 2026-06-15
+> **Version 1.2.0** — Published 2026-06-15
 > A collection of reusable cron job prompts and scripts for Hermes Agent automation.
 
 ---
@@ -606,8 +606,9 @@ hermes cron create \
 
 ## 💡 Weekly Opportunity Scan (with Auto-Fix)
 
-Scan-report-fix cycle — checks git, Docker, permissions, disk, and cron health,
-then automatically fixes known recurring issues and reports what was resolved.
+Scan-fix-verify-report cycle — checks git, Docker, permissions, disk, and cron health,
+then automatically fixes known recurring issues, verifies each fix, and reports
+what was resolved and what still needs attention.
 
 **Schedule:** `0 8 * * 1` (Monday 8am)
 **Type:** LLM-driven + companion no_agent script
@@ -616,7 +617,7 @@ then automatically fixes known recurring issues and reports what was resolved.
 ### Recipe
 
 ```
-You are an AI assistant running a weekly opportunity scan with auto-fix.
+You are an AI assistant running a weekly opportunity scan with auto-fix and verification.
 
 ## Phase 1: Scan
 
@@ -646,12 +647,29 @@ Merge ready PRs with `gh pr merge --squash`.
 **Companion script:** Run `python3 ~/.hermes/scripts/weekly-auto-fix.py --verbose`
 as a safety net that handles additional known patterns.
 
-## Phase 3: Report
+## Phase 3: Verify
 
-Output max 3 items under 200 chars each. For each item, say whether it
-was FIXED automatically or needs manual attention.
+After each fix, verify it actually succeeded:
 
-If everything was fixed: "✅ All fixed: [items]"
+**Git verify:** Re-check behind count is now 0. Run `git status --short`
+and check no conflict markers (`UU`, `AA`, `DD`) exist. For deleted branches,
+confirm they're absent from `git branch`.
+
+**Docker verify:** Re-run `docker ps` — the container should show "Up" or
+"healthy", not "unhealthy" or "restarting".
+
+**Permission verify:** `stat -f %p <file>` should show the target mode (600/644).
+
+**Script verify:** The companion script outputs `verify_results` with
+PASS/FAIL/WARN per check — read and incorporate its results.
+
+## Phase 4: Report
+
+Output max 3 items under 200 chars each. For each, say whether it was
+FIXED (fix + verification passed), FAILED (fix or verification failed),
+or WARN (partial success).
+
+If everything was fixed and verified: "✅ All fixed & verified: [items]"
 If nothing needed fixing: exit silently (no output).
 ```
 
@@ -909,5 +927,5 @@ immediately without waiting for the schedule.
 
 | Date | Version | Change |
 |------|---------|--------|
-| 2026-06-15 | 1.1.0 | Added Weekly Opportunity Scan (with Auto-Fix) — three-phase scan-fix-report cycle, companion no_agent helper script, auto-fix for git, Docker, permissions, disk |
+| 2026-06-15 | 1.2.0 | Added verification phase to Weekly Opportunity Scan — each fix re-checks its condition post-fix (git: behind count + conflict check; Docker: healthy status; perms: stat; disk: dir gone). Companion script outputs structured verify_results with PASS/FAIL/WARN. |
 | 2026-06-05 | 1.0.0 | Initial release — 10 recipes |
