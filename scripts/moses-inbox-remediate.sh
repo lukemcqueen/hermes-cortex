@@ -7,7 +7,7 @@
 #
 #  Output: JSON array. Empty [] when nothing pending (silent).
 #
-#  Called by moses-inbox-processor cron every 10 minutes.
+#  Called by process-agent-messages cron every 10 minutes.
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 

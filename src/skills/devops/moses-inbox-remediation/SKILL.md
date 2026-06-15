@@ -15,7 +15,7 @@ metadata:
 ## When to Use
 
 Load this skill when:
-- Setting up the Moses inbox remediation processor cron
+- Setting up the process-agent-messages cron
 - Other agents need to report hermes-cortex issues and have them auto-fixed
 - You want a multi-agent auto-remediation pipeline
 
@@ -32,7 +32,7 @@ Load this skill when:
     ↓  Reads markers + original messages
     ↓  Outputs structured JSON: [{sender, subject, body, marker_file}]
     ↓
-[moses-inbox-processor] LLM-driven cron every 10m
+[process-agent-messages] LLM-driven cron every 10m
     ↓  Reads companion script output
     ↓  Applies fix using terminal/web tools
     ↓  Runs weekly-auto-fix.py as safety net
@@ -51,14 +51,14 @@ cp hermes-cortex/scripts/moses-inbox-remediate.sh ~/.hermes/scripts/
 chmod +x ~/.hermes/scripts/moses-inbox-remediate.sh
 ```
 
-### 2. Create the remediation processor cron
+### 2. Create the process-agent-messages cron
 
 ```bash
 hermes cron create \
-  --name "moses-inbox-processor" \
+  --name "process-agent-messages" \
   --schedule "every 10m" \
   --prompt "$(cat << 'PROMPT'
-You are Moses, the orchestration mind of Hermes. This is your inbox remediation processor.
+You are Moses, the orchestration mind of Hermes. This is your agent message processor.
 
 ## Step 1: Check for pending remediation markers
 

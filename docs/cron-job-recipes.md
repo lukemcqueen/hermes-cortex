@@ -948,7 +948,7 @@ chmod +x ~/.hermes/scripts/moses-inbox-remediate.sh
 
 # 2. Create the cron
 hermes cron create \
-  --name "moses-inbox-processor" \
+  --name "process-agent-messages" \\
   --schedule "every 10m" \
   --prompt "Paste the recipe above" \
   --enabled-toolsets terminal,file,web
