@@ -24,7 +24,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `82330a7` — 2026-06-15 09:38:34 |
+| Last commit | `618c46b` — 2026-06-15 09:51:56 |
 | Working tree | dirty (1 files) |
 | Unpushed | none |
 | Tag | `v1.0.0` |
@@ -33,11 +33,11 @@
 
 | Date | Commit | Description |
 |------|--------|-------------|
+| 2026-06-15 | `618c46b` | feat: moses inbox remediation processor — auto-fix agent inbox messages within 10m
 | 2026-06-15 | `82330a7` | fix: Linux compat for memory_pressure + correct threshold direction
 | 2026-06-15 | `f28552e` | feat: add verification phase to weekly auto-fix — each fix re-checks condition post-fix with PASS/FAIL/WARN (#WeeklyAutoFix_v2)
 | 2026-06-15 | `080af0d` | auto-remediation: cron job + agent inbox fix pipeline
 | 2026-06-15 | `ae1da38` | resolve merge conflict in current.md
-| 2026-06-15 | `56b597a` | feat: weekly auto-fix — scan+f+report cycle for opportunity scan, companion script, devops skill (#WeeklyAutoFix)
 
 ---
 
@@ -48,9 +48,9 @@
 | Installer | `install.sh` — 2150 lines, 26 steps, idempotent |
 | Skills | 0 skills across 4 categories (software-development, devops, social-media, productivity) |
 | Python files | 54 files (37628 LOC) |
-| Shell files | 38 files (8620 LOC) |
-| Markdown files | 503 files |
-| Total | 621 tracked files |
+| Shell files | 39 files (8711 LOC) |
+| Markdown files | 504 files |
+| Total | 623 tracked files |
 | Dashboard | Flask app + nginx proxy — Langfuse traces + system health |
 | Scripts | 16 utility scripts (heartbeat, memory-sync, LLM scoring, service recovery) |
 | OpenCode | 15 commands + 3 agents + 30 optional skills |
@@ -73,4 +73,4 @@
 
 ---
 
-*Last updated: 2026-06-15 09:45 KST*
+*Last updated: 2026-06-15 10:37 KST*
