@@ -1,43 +1,40 @@
-# Session State — 2026-06-09
+# Session State — 2026-06-15
 
 ## Last Actions
-- Created `.github/workflows/auto-pr-titus-branch.yml` — auto-PR on `titus/*` pushes (PRs #6 -> #7 -> merged `be76ddb`)
-- Updated `change-test-loop` SKILL.md — step 0 (branch creation), Test Decision Matrix
-- Updated `agent-contract` SKILL.md — Rule 7 (titus/* branch protocol)
-- Updated PAT to include `workflow` scope; added `GH_TOKEN` repo secret
-- E2E verified: push to `titus/e2e-test-2` → run #6 success → draft PR #8 created
+- Updated `install.sh` with Langfuse to Hermes Agent wiring (Step 5 & --wire flag in `cortex-setup-langfuse.sh`)
+- Updated `cortex-setup-langfuse.sh` with `--wire` option for automated API key generation and plugin setup
 
 ## What's Working
-- `titus/*` push → auto-creates draft PR ✅ (verified)
-- PAT in keychain + repo secret `GH_TOKEN` provides auth
-- Branch protocol committed to memory + agent-contract skill
+- Hermes Cortex installer supports both macOS and Linux systemd services
+- Auto-remediation system checks cron jobs, agent inbox, and system resources
+- gbrain autopilot daemon integration with fallback to sync-watch
 
 ## Cleanup Needed (Moses)
-- Delete remote `titus/e2e-test-2` branch and close PR #8
-- Delete remote `titus/test-workflow`, `titus/workflow-test-2`, `titus/fix-workflow-heredoc` (already cleaned locally)
-- PR #7 is merged; PR #8 is the last test artifact
+- Migrate Langfuse API key insertion to secure environment variables (no plaintext in scripts)
+- Complete the ongoing rebase of personal fork changes
 
 ## Near-term Next Slice
-- Moses merges PRs from `titus/auto-pr-workflow` (skill changes on that branch)
+- Complete install.sh implementation with Langfuse API key generation
+- Update commit history to reflect recent Langfuse wiring implementation
 
 ## Repo State
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `d3bf407` — 2026-06-19 15:58:30 |
+| Last commit | `960b2e0` — 2026-06-15 15:21:26 |
 | Working tree | clean |
-| Unpushed | none |
+| Unpushed | 8 commits |
 | Tag | `v1.0.0` |
 
 ### Recent Commits
 
 | Date | Commit | Description |
 |------|--------|-------------|
-| 2026-06-19 | `d3bf407` | feat: executable bits on scripts + safety net (cisnet02 #eb7e0b0)
-| 2026-06-19 | `6d8e804` | feat: Linux compatibility for cron-auto-remediate.sh (cisnet02 #1757c5d)
-| 2026-06-19 | `69c4b00` | docs: TITUS-ONLY policy for daily priority check-in
-| 2026-06-19 | `c8109e6` | feat: daily priority check-in with Titus inbox integration
-| 2026-06-19 | `7b56c1a` | docs: daily-priority-checkin cron job (8:30am KST)
+| 2026-06-15 | `960b2e0` | fix(service-recovery): support Linux systemd services and gbrain autopilot cron check
+| 2026-06-15 | `9cfaf10` | Merge remote-tracking branch 'origin/main'
+| 2026-06-15 | `db56ccd` | rename: moses-inbox-processor → process-agent-messages
+| 2026-06-15 | `42b694c` | Merge origin/main: resolve conflicts in cortex-update.sh (register section) and cron-auto-remediate.sh (memory pressure check)
+| 2026-06-15 | `ec5e7c3` | fix: cortex-update.sh — handle ahead/behind/diverged git states gracefully instead of hard-failing on git pull --ff-only
 
 ---
 
@@ -45,12 +42,12 @@
 
 | Layer | What |
 |-------|------|
-| Installer | `install.sh` — 2396 lines, 26 steps, idempotent |
+| Installer | `install.sh` — 2150 lines, 26 steps, idempotent |
 | Skills | 0 skills across 4 categories (software-development, devops, social-media, productivity) |
-| Python files | 73 files (41570 LOC) |
-| Shell files | 50 files (11803 LOC) |
-| Markdown files | 524 files |
-| Total | 697 tracked files |
+| Python files | 54 files (37676 LOC) |
+| Shell files | 38 files (8567 LOC) |
+| Markdown files | 433 files |
+| Total | 567 tracked files |
 | Dashboard | Flask app + nginx proxy — Langfuse traces + system health |
 | Scripts | 16 utility scripts (heartbeat, memory-sync, LLM scoring, service recovery) |
 | OpenCode | 15 commands + 3 agents + 30 optional skills |
@@ -73,4 +70,5 @@
 
 ---
 
-*Last updated: 2026-06-19 16:00 KST*
+*Last updated: 2026-06-15 16:39 KST*
+

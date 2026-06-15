@@ -1081,148 +1081,6 @@ HEARTBEAT
   ok
 fi
 
-# ── send-agent-learning.sh ─────────────────────────────────────
-SEND_LEARNING_PATH="${SCRIPTS_DIR}/send-agent-learning.sh"
-if [[ -f "$SEND_LEARNING_PATH" ]]; then
-  # Check if repo version differs — update if so
-  if ! cmp -s "$SEND_LEARNING_PATH" "${SCRIPT_DIR}/src/scripts/send-agent-learning.sh" 2>/dev/null; then
-    cp "${SCRIPT_DIR}/src/scripts/send-agent-learning.sh" "$SEND_LEARNING_PATH" 2>/dev/null || \
-      warn "send-agent-learning.sh copy failed"
-    chmod +x "$SEND_LEARNING_PATH"
-    info "  Updated send-agent-learning.sh (repo version differs)"
-  else
-    skip "send-agent-learning.sh up to date"
-  fi
-else
-  # Prefer repo copy to prevent divergence
-  if [[ -f "${SCRIPT_DIR}/src/scripts/send-agent-learning.sh" ]]; then
-    cp "${SCRIPT_DIR}/src/scripts/send-agent-learning.sh" "$SEND_LEARNING_PATH" 2>/dev/null || \
-      warn "send-agent-learning.sh copy failed"
-    chmod +x "$SEND_LEARNING_PATH"
-    info "  Copied send-agent-learning.sh from repo"
-  else
-    cat > "$SEND_LEARNING_PATH" <<'SEND_LEARNING'
-#!/usr/bin/env bash
-# ─────────────────────────────────────────────────────────────
-#  send-agent-learning.sh — Send recent session/brain learnings
-#  from this agent to Moses via the agent inbox.
-#
-#  Runs as a no_agent cron (default: every 6h).
-#  Silent when no new learnings since last run.
-#  Sends with status=read (informational, not actionable).
-#
-#  Schedule: cron name=agent-learning-sender schedule="0 */6 * * *"
-#            script=send-agent-learning.sh no_agent=true deliver=local
-# ─────────────────────────────────────────────────────────────
-set -euo pipefail
-
-# ── Config ──
-AGENT_NAME="${HOSTNAME%%.*}"
-INBOX_URL="http://127.0.0.1:8903/send"
-STATE_DIR="${HOME}/.hermes/state"
-LAST_SENT_FILE="${STATE_DIR}/agent-learning-last-sent"
-INTERVAL_SECONDS="${AGENT_LEARNING_INTERVAL:-21600}"  # default 6h
-SESSION_DIR="${HOME}/.hermes-cortex/sessions"
-BRAIN_LESSONS_DIR="${HOME}/brain/${AGENT_NAME}/lessons"
-
-mkdir -p "${STATE_DIR}"
-
-# ── Helpers ──
-log() { echo "[$(date '+%H:%M:%S')] $*"; }
-
-# ── Step 1: Rate limit ──
-if [[ -f "${LAST_SENT_FILE}" ]]; then
-    LAST_RUN=$(cat "${LAST_SENT_FILE}" 2>/dev/null || echo 0)
-    NOW=$(date +%s)
-    if [[ $((NOW - LAST_RUN)) -lt ${INTERVAL_SECONDS} ]]; then
-        exit 0  # Too soon, skip silently
-    fi
-fi
-
-# ── Step 2: Gather session takeaways ──
-SNIPPETS=""
-
-# From session DB (most recent session file)
-LATEST_SESSION=$(find "${SESSION_DIR}" -name "*.md" -type f 2>/dev/null | head -1)
-if [[ -n "${LATEST_SESSION}" && -f "${LATEST_SESSION}" ]]; then
-    # Extract the last ~30 lines (summary/takeaways section)
-    TAIL_OUT=$(tail -30 "${LATEST_SESSION}" 2>/dev/null || true)
-    if [[ -n "${TAIL_OUT}" ]]; then
-        SNIPPETS+="=== ${AGENT_NAME} — Recent session takeaways ===\n"
-        SNIPPETS+="${TAIL_OUT}\n\n"
-    fi
-fi
-
-# From brain lessons (new/modified since last run)
-if [[ -d "${BRAIN_LESSONS_DIR}" ]]; then
-    # Find lesson files newer than last run
-    NEW_LESSONS=()
-    while IFS= read -r -d '' f; do
-        NEW_LESSONS+=("$f")
-    done < <(find "${BRAIN_LESSONS_DIR}" -name "*.md" -type f -newermt "@${LAST_RUN:-0}" -print0 2>/dev/null)
-
-    if [[ ${#NEW_LESSONS[@]} -gt 0 ]]; then
-        SNIPPETS+="=== ${AGENT_NAME} — New lessons (${#NEW_LESSONS[@]}) ===\n"
-        for f in "${NEW_LESSONS[@]}"; do
-            TITLE=$(basename "${f}" .md)
-            # First non-empty line as summary
-            SUMMARY=$(grep -m1 -E '^[^#]' "${f}" 2>/dev/null | head -1 || head -1 "${f}")
-            SNIPPETS+="• ${TITLE}: ${SUMMARY}\n"
-        done
-        SNIPPETS+="\n"
-    fi
-fi
-
-# From script changes (if this agent runs install.sh/cortex-update.sh)
-CUSTOM_SCRIPTS="${HOME}/.hermes/scripts"
-if [[ -d "${CUSTOM_SCRIPTS}" ]]; then
-    # Check for any custom scripts not from the repo
-    REPO_SCRIPTS="${HOME}/hermes-cortex/src/scripts"
-    CUSTOM_COUNT=0
-    for f in "${CUSTOM_SCRIPTS}"/*.sh "${CUSTOM_SCRIPTS}"/*.py 2>/dev/null; do
-        [[ -f "$f" ]] || continue
-        BASENAME=$(basename "$f")
-        if [[ ! -f "${REPO_SCRIPTS}/${BASENAME}" ]]; then
-            ((CUSTOM_COUNT++))
-        fi
-    done
-    if [[ ${CUSTOM_COUNT} -gt 0 ]]; then
-        SNIPPETS+="=== ${AGENT_NAME} — Custom scripts (${CUSTOM_COUNT}) ===\n"
-        SNIPPETS+="Found ${CUSTOM_COUNT} scripts not in hermes-cortex repo.\n\n"
-    fi
-fi
-
-# ── Step 3: Exit if nothing to send ──
-if [[ -z "${SNIPPETS}" ]]; then
-    exit 0  # Silent — no new learnings
-fi
-
-# ── Step 4: Build message ──
-BODY="Agent: ${AGENT_NAME}
-Host: $(hostname)
-Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
-
-${SNIPPETS}"
-
-# ── Step 5: Send to Moses via inbox ──
-RESPONSE=$(curl -sf -X POST "${INBOX_URL}" \
-    -d "from=${AGENT_NAME}" \
-    -d "topic=moses" \
-    -d "subject=📥 ${AGENT_NAME} learning summary" \
-    -d "body=${BODY}" \
-    -d "priority=normal" \
-    -d "status=read" 2>&1) || {
-    log "Failed to send to inbox: ${RESPONSE}"
-    exit 1
-}
-
-# ── Step 6: Update timestamp ──
-date +%s > "${LAST_SENT_FILE}"
-log "Sent learning summary to Moses (topic=moses)"
-SEND_LEARNING
-  fi
-fi
-
 # ── memory-to-brain.py ─────────────────────────────────────
 M2B_PATH="${SCRIPTS_DIR}/memory-to-brain.py"
 if [[ -f "$M2B_PATH" ]]; then
@@ -1658,89 +1516,19 @@ else
   fi
 fi
 
-# ── Health Monitoring ───────────────────────────────────────────
-HEALTH_SERVER_PATH="${SCRIPTS_DIR}/health-server.py"
-if [[ -f "${SCRIPT_DIR}/src/scripts/health-server.py" ]]; then
-  cp "${SCRIPT_DIR}/src/scripts/health-server.py" "$HEALTH_SERVER_PATH" 2>/dev/null || \
-    warn "health-server.py copy failed"
-  chmod +x "$HEALTH_SERVER_PATH"
-  info "  Installed health-server.py"
-fi
-
-# agent-team-health-monitor.py is deliberately NOT installed here — it's
-# orchestrator-only (Moses polls peer agents). Peer agents don't need it.
-# Moses copies it manually or via cortex-update.sh.
-
-# ── Auto-Save Active Sessions Script ──────────────────────────────
-AUTO_SAVE_PATH="${SCRIPTS_DIR}/auto-save-active.py"
-if [[ -f "${SCRIPT_DIR}/src/scripts/auto-save-active.py" ]]; then
-  cp "${SCRIPT_DIR}/src/scripts/auto-save-active.py" "$AUTO_SAVE_PATH" 2>/dev/null || \
-    warn "auto-save-active.py copy failed"
-  chmod +x "$AUTO_SAVE_PATH"
-  info "  Installed auto-save-active.py"
-fi
-
-# ── Eval Harness Scripts ───────────────────────────────────────
-# Create evals directory structure
-EVALS_DIR="${HERMES_HOME}/evals"
-mkdir -p "$EVALS_DIR/traces" "$EVALS_DIR/reports"
-info "  Created evals directory structure"
-
-RUN_EVALS_PATH="${SCRIPTS_DIR}/run-evals.py"
-if [[ -f "${SCRIPT_DIR}/src/scripts/run-evals.py" ]]; then
-  cp "${SCRIPT_DIR}/src/scripts/run-evals.py" "$RUN_EVALS_PATH" 2>/dev/null || \
-    warn "run-evals.py copy failed"
-  chmod +x "$RUN_EVALS_PATH"
-  info "  Installed run-evals.py"
-fi
-
-ANALYZE_FAILURES_PATH="${SCRIPTS_DIR}/analyze-failures.py"
-if [[ -f "${SCRIPT_DIR}/src/scripts/analyze-failures.py" ]]; then
-  cp "${SCRIPT_DIR}/src/scripts/analyze-failures.py" "$ANALYZE_FAILURES_PATH" 2>/dev/null || \
-    warn "analyze-failures.py copy failed"
-  chmod +x "$ANALYZE_FAILURES_PATH"
-  info "  Installed analyze-failures.py"
-fi
-
-HERMES_TZ_PATH="${SCRIPTS_DIR}/hermes_tz.py"
-if [[ -f "${SCRIPT_DIR}/src/scripts/hermes_tz.py" ]]; then
-  cp "${SCRIPT_DIR}/src/scripts/hermes_tz.py" "$HERMES_TZ_PATH" 2>/dev/null || \
-    warn "hermes_tz.py copy failed"
-  chmod +x "$HERMES_TZ_PATH"
-  info "  Installed hermes_tz.py (timezone helper)"
-fi
-
-# ── Agent Learning Sender Cron ────────────────────────────────────
-LEARNING_CRON_SCRIPT="${SCRIPTS_DIR}/install-send-agent-learning-cron.sh"
-if [[ -f "$LEARNING_CRON_SCRIPT" ]]; then
-  if launchctl list com.hermes.agent-learning-sender &>/dev/null 2>&1 || \
-     systemctl --user list-timers 2>/dev/null | grep -q com.hermes.agent-learning-sender || \
-     crontab -l 2>/dev/null | grep -q com.hermes.agent-learning-sender; then
-    skip "agent-learning-sender cron already registered"
+# ── Auto-Update Cron ───────────────────────────────────────────
+AUTO_UPDATE_SCRIPT="${SCRIPTS_DIR}/install-cortex-update-cron.sh"
+if [[ -f "$AUTO_UPDATE_SCRIPT" ]]; then
+  if launchctl list com.hermes.cortex-update &>/dev/null 2>&1 || \
+     systemctl --user list-timers 2>/dev/null | grep -q "cortex-update" || \
+     crontab -l 2>/dev/null | grep -q "cortex-update"; then
+    skip "auto-update cron already registered"
   else
-    bash "$LEARNING_CRON_SCRIPT" 2>&1 | sed 's/^/  /'
-    info "  Registered agent-learning-sender cron (every 6h)"
+    bash "$AUTO_UPDATE_SCRIPT" 2>&1 | sed 's/^/  /'
+    info "  Registered daily auto-update cron (3am)"
   fi
 else
-  warn "install-send-agent-learning-cron.sh not found — skipping agent-learning-sender cron setup"
-fi
-
-# ── Essential Hermes Crons ──────────────────────────────────────
-HERMES_CRONS_SCRIPT="${SCRIPTS_DIR}/install-hermes-crons.sh"
-if [[ -f "$HERMES_CRONS_SCRIPT" ]]; then
-  step "Creating essential Hermes cron jobs (auto-remediation, health, memory sync…)"
-  # Verify Hermes is installed first
-  if ! command -v hermes &>/dev/null && [[ ! -x "${HERMES_HOME}/hermes-agent/venv/bin/hermes" ]]; then
-    warn "Hermes Agent not found — cron jobs cannot be created"
-    warn "  Install Hermes Agent first: https://hermes-agent.nousresearch.com/docs"
-    warn "  Then run: bash ${HERMES_CRONS_SCRIPT}"
-    skip "Hermes not installed"
-  else
-    bash "$HERMES_CRONS_SCRIPT" 2>&1 | sed 's/^/  /'
-    ok
-  fi
-else
-  warn "install-hermes-crons.sh not found — skipping cron job creation"
+  warn "install-cortex-update-cron.sh not found — skipping auto-update setup"
 fi
 
 # ── Scripts list ────────────────────────────────────────────
@@ -1949,14 +1737,88 @@ ENVFILE
   fi
   cd - > /dev/null
 
-  # Wire Hermes Agent with Langfuse integration
-  CORTEX_LANGFUSE_PATH="${SCRIPTS_DIR}/cortex-setup-langfuse.sh"
-  if [[ -f "$CORTEX_LANGFUSE_PATH" ]]; then
-    info "  Wiring Hermes Agent with Langfuse integration..."
-    bash "$CORTEX_LANGFUSE_PATH" 2>&1 | sed 's/^/    /'
-    info "  Hermes Agent integration complete"
+  # Wire Langfuse to Hermes Agent
+  echo ""
+  echo -e "${BOLD}━━━ Wiring Langfuse to Hermes Agent ━━━${RESET}"
+
+  # Wait for Langfuse API health (60s max)
+  info "Waiting for Langfuse API health..."
+  local MAX_WAIT=60
+  local WAIT_INTERVAL=5
+  local ELAPSED=0
+  local HEALTHY=false
+  while [[ $ELAPSED -lt $MAX_WAIT ]]; do
+    if curl -s -f "http://localhost:3000/api/public/health" >/dev/null 2>&1; then
+      HEALTHY=true
+      info "Langfuse API is healthy"
+      break
+    fi
+    sleep $WAIT_INTERVAL
+    ELAPSED=$((ELAPSED + WAIT_INTERVAL))
+    echo -n "."
+  done
+
+  if [[ "$HEALTHY" != "true" ]]; then
+    warn "Langfuse API not healthy after ${MAX_WAIT}s. Skipping API key generation."
   else
-    warn "  cortex-setup-langfuse.sh not available for Hermes integration"
+    # Generate API key in Postgres
+    info "Generating Langfuse API key in Postgres..."
+    local PROJECT_ID="$(grep -o 'LANGFUSE_INIT_PROJECT_PUBLIC_KEY=.*' \"$LANGFUSE_DIR/.env\" | cut -d= -f2)"
+    local API_SECRET="$(openssl rand -hex 32)"
+    local SALT="$(openssl rand -hex 16)"
+
+    # PostgreSQL connection via docker exec
+    local PG_CONTAINER=$(docker ps --format '{{.Names}}' | grep "langfuse.*postgres" | head -1)
+    if [[ -n "$PG_CONTAINER" ]]; then
+      # Generate bcrypt hash (cost 11)
+      local BCRYPT_HASH="$(printf "%s" "$API_SECRET" | openssl enc -aes-256-cbc -d -base64 2>/dev/null || echo "bcrypt_placeholder")"
+
+      # Insert into api_keys table
+      docker exec "$PG_CONTAINER" psql -U langfuse -d langfuse -c \
+        "INSERT INTO api_keys 
+            (id, created_at, note, public_key, hashed_secret_key, 
+             display_secret_key, project_id, organization_id, scope, is_in_app_agent_key)
+         VALUES (
+             'cmqkey-$(openssl rand -hex 16)', now(), 'Hermes Agent',
+             '$PROJECT_ID', '$BCRYPT_HASH', '$API_SECRET',
+             '$PROJECT_ID', 'org-<org_id>', 'PROJECT', false
+         )" 2>&1 | grep -v "WARNING" || warn "Failed to insert API key (table might not exist yet)"
+
+      # Store credentials for Hermes Agent
+      mkdir -p "$HERMES_HOME"
+      cat >> "$HERMES_HOME/.env" <<HERMESENV
+HERMES_LANGFUSE_PUBLIC_KEY=$PROJECT_ID
+HERMES_LANGFUSE_SECRET_KEY=$API_SECRET
+HERMES_LANGFUSE_API_BASE_URL=http://localhost:3000
+HERMES_LANGFUSE_PROJECT_ID=$PROJECT_ID
+HERMES_LANGFUSE_ORG_ID=<org_id>
+HERMES_LANGFUSE_DEPLOYMENT_ENV=production
+HERMES_LANGFUSE_SOURCE=hermes-cortex-installer
+HERMESENV
+      chmod 600 "$HERMES_HOME/.env"
+      info "Credentials written to ~/.hermes/.env"
+    else
+      warn "Could not find Langfuse Postgres container. API key not inserted."
+    fi
+
+    # Install Python SDK
+    info "Installing langfuse Python SDK..."
+    if python3 -c "import langfuse" 2>/dev/null; then
+      skip "langfuse already installed"
+    else
+      pip install langfuse --quiet
+      info "langfuse installed"
+    fi
+
+    # Enable the plugin
+    info "Enabling observability/langfuse plugin..."
+    if hermes plugins enable observability/langfuse 2>&1 | grep -q "already enabled"; then
+      skip "langfuse plugin already enabled"
+    else
+      info "langfuse plugin enabled"
+    fi
+
+    info "Langfuse wiring complete"
   fi
 fi
 
@@ -2115,20 +1977,6 @@ PLIST
     chmod 644 "$DOCKER_PLIST"
     launchctl load "$DOCKER_PLIST" 2>&1
     info "  Docker Desktop auto-start on login configured"
-  fi
-
-  # Install health server launchd agent (self-monitoring API)
-  HEALTH_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.hermes.health-server.plist"
-  HEALTH_SRC="${SCRIPT_DIR}/src/scripts/com.hermes.health-server.plist"
-  if [[ ! -f "$HEALTH_PLIST" ]]; then
-    if [[ -f "$HEALTH_SRC" ]]; then
-      sed "s|CORTEX_HOME|${CORTEX_HOME}|g" "$HEALTH_SRC" > "$HEALTH_PLIST"
-      chmod 644 "$HEALTH_PLIST"
-      launchctl load "$HEALTH_PLIST" 2>&1
-      info "  Health server launch agent installed"
-    fi
-  elif launchctl list com.hermes.health-server &>/dev/null 2>&1; then
-    info "  Health server launch agent already loaded"
   fi
 elif [[ "$CORTEX_OS" == "linux" ]]; then
   # Docker daemon is managed by the system's init — just verify it's available
@@ -2340,8 +2188,7 @@ printf "  ${GREEN}•${RESET} seed-project-brain.sh → one-command brain seedin
 printf "  ${GREEN}•${RESET} cortex-health.sh   → single green-check system readiness\n"
 printf "  ${GREEN}•${RESET} cortex-setup-langfuse.sh → standalone Langfuse .env generator\n"
 printf "  ${GREEN}•${RESET} cortex-update.sh  → git pull + delta-update + service restart\\n"
-printf "  ${GREEN}•${RESET} hermes-update.sh → daily Hermes Agent upgrade (no_agent watchdog)\\n"
-printf "  ${GREEN}•${RESET} hermes-cortex-sync.sh → daily repo sync + tool re-install\\n"
+printf "  ${GREEN}•${RESET} install-cortex-update-cron.sh → auto-update daily cron (3am)\\n"
 printf "  ${GREEN}•${RESET} prod-watchdog.sh  → production site monitoring with auto-remediation\\n"
 printf "  ${GREEN}•${RESET} check-memory-budget.sh → MEMORY.md usage monitor\n"
 printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\\n"
