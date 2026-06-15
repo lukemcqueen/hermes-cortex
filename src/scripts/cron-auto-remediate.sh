@@ -78,12 +78,15 @@ case "${ACTION}" in
       issues+=("DISK:${DISK_PCT}%")
     fi
 
-    # Check memory pressure (macOS compatible)
-    MEM_PRESSURE=$(memory_pressure 2>/dev/null | grep "System-wide memory" | sed 's/.* \([0-9]*\)%/\1%/')
-    if [ -n "${MEM_PRESSURE}" ]; then
-      MEM_VAL=${MEM_PRESSURE%\%}
-      if [ "${MEM_VAL}" -gt 85 ] 2>/dev/null; then
-        issues+=("MEMORY:${MEM_PRESSURE}")
+    # Check memory free percentage (macOS only)
+    # memory_pressure reports "free percentage" — flag if below 15% (high pressure)
+    if command -v memory_pressure >/dev/null 2>&1; then
+      MEM_FREE=$(memory_pressure 2>/dev/null | grep "System-wide memory" | sed 's/.* \([0-9]*\)%/\1%/')
+      if [ -n "${MEM_FREE}" ]; then
+        MEM_VAL=${MEM_FREE%\%}
+        if [ "${MEM_VAL}" -lt 15 ] 2>/dev/null; then
+          issues+=("MEMORY:${MEM_FREE} free — high pressure")
+        fi
       fi
     fi
 
