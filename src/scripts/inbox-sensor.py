@@ -93,7 +93,12 @@ def main():
         front = parse_frontmatter(msg_file)
         topic = front.get("topic", "general")
         priority = front.get("priority", "normal")
+        status = front.get("status", "unread")
         msg_id = msg_file.stem
+
+        # Skip already-read messages
+        if status == "read":
+            continue
 
         # Only count broadcast messages (stays in inbox for agents)
         if topic in broadcast_topics:

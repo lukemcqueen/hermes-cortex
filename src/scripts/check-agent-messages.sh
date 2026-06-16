@@ -75,17 +75,23 @@ for msg in "${INBOX_FILES[@]}"; do
   from=$(sed -n '/^from:/s/.*: *//p' "$msg" 2>/dev/null | head -1)
   subject=$(sed -n '/^subject:/s/.*: *//p' "$msg" 2>/dev/null | head -1)
   topic=$(sed -n '/^topic:/s/.*: *//p' "$msg" 2>/dev/null | head -1)
+  status=$(sed -n '/^status:/s/.*: *//p' "$msg" 2>/dev/null | head -1)
   from="${from:-unknown}"
   subject="${subject:-No subject}"
   topic="${topic:-general}"
+  status="${status:-unread}"
+
+  # Skip messages already marked as read — prevents duplicate reporting
+  if [ "$status" = "read" ]; then
+    echo "$id" >> "$SEEN_FILE" 2>/dev/null || true
+    continue
+  fi
 
   # ── Determine if this is a broadcast message (stays in inbox) ──
   IS_BROADCAST=false
-  case "$topic" in
-    $(echo "$BROADCAST_TOPICS" | sed 's/|/)/g; s/^/    /')
-      IS_BROADCAST=true
-      ;;
-  esac
+  if echo "$BROADCAST_TOPICS" | grep -Eq "(^|\|)$topic(\||$)"; then
+    IS_BROADCAST=true
+  fi
 
   if $IS_BROADCAST; then
     # ── Broadcast: leave in inbox for agents, show to Moses once ──

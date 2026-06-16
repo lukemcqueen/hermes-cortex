@@ -96,7 +96,8 @@ def _write_message(from_: str, subject: str, body: str,
                    topic: str = DEFAULT_TOPIC,
                    thread: str = "",
                    parent: str = "",
-                   priority: str = "normal") -> str:
+                   priority: str = "normal",
+                   status: str = "unread") -> str:
     """Write a message file to the inbox. Returns the filename."""
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     safe_from = re.sub(r"[^a-zA-Z0-9_-]", "", from_.strip().lower()) or "agent"
@@ -115,7 +116,7 @@ topic: {topic}
 priority: {priority}
 thread: {thread}
 parent: {parent}
-status: unread
+status: {status}
 ---
 
 {body.strip()}
@@ -691,12 +692,17 @@ async def send_message(
     thread: str = Form(""),
     parent: str = Form(""),
     priority: str = Form("normal"),
+    status: str = Form("unread"),
 ):
     # Validate priority
     valid_priorities = ["normal", "urgent", "critical"]
     if priority not in valid_priorities:
         priority = "normal"
-    _write_message(from_, subject, body, topic=topic, thread=thread, parent=parent, priority=priority)
+    # Validate status
+    valid_statuses = ["unread", "read"]
+    if status not in valid_statuses:
+        status = "unread"
+    _write_message(from_, subject, body, topic=topic, thread=thread, parent=parent, priority=priority, status=status)
     return RedirectResponse(url=f"/?topic={topic}&sent=true", status_code=303)
 
 
