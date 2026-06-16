@@ -524,7 +524,7 @@ deploy_nginx_configs() {
   local nginx_test="nginx -t"
   local nginx_reload="nginx -s reload"
   if [[ "$brew_dir" == /etc/* ]]; then
-    nginx_test="sudo nginx -t"
+    nginx_test="sudo -n nginx -t"
     nginx_reload="sudo systemctl reload nginx || sudo nginx -s reload"
   fi
 

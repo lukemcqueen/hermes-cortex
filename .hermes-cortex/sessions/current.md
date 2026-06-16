@@ -24,7 +24,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `c268513` — 2026-06-16 16:06:29 |
+| Last commit | `c13bf39` — 2026-06-16 22:36:14 |
 | Working tree | dirty (1 files) |
 | Unpushed | none |
 | Tag | `v1.0.0` |
@@ -33,11 +33,11 @@
 
 | Date | Commit | Description |
 |------|--------|-------------|
+| 2026-06-16 | `c13bf39` | fix: prevent nginx zone-defs double-load on Linux
+| 2026-06-16 | `aa48a61` | fix: inbox dedup and spam prevention
 | 2026-06-16 | `c268513` | feat: agent learning sender + agent-inbox skill
 | 2026-06-16 | `801c4e5` | feat: health monitoring system + agent-inbox skill
 | 2026-06-16 | `9fa15f1` | fix: prevent duplicate inbox notifications — send post-commit updates as read
-| 2026-06-16 | `af2408c` | feat: post-commit notification — auto-notify all agents via inbox
-| 2026-06-16 | `afa8e9f` | feat: nginx security pipeline — IP blocking, fail2ban scanner, atomic deploy
 
 ---
 
@@ -48,7 +48,7 @@
 | Installer | `install.sh` — 2348 lines, 26 steps, idempotent |
 | Skills | 0 skills across 4 categories (software-development, devops, social-media, productivity) |
 | Python files | 59 files (38657 LOC) |
-| Shell files | 44 files (9717 LOC) |
+| Shell files | 44 files (9719 LOC) |
 | Markdown files | 508 files |
 | Total | 641 tracked files |
 | Dashboard | Flask app + nginx proxy — Langfuse traces + system health |
@@ -73,4 +73,4 @@
 
 ---
 
-*Last updated: 2026-06-16 20:00 KST*
+*Last updated: 2026-06-17 02:00 KST*

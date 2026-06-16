@@ -177,7 +177,7 @@ case "${ACTION}" in
   fix-docker)
     if command -v docker >/dev/null 2>&1; then
       # Prune unused resources
-      docker system prune -f --volumes 2>/dev/null || true
+      docker system prune -f 2>/dev/null || true
       echo "OK"
     else
       echo "NO-DOCKER"
