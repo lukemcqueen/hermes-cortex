@@ -35,14 +35,15 @@ their domain.
 | `memory-architecture` | 1.0.0 | Agent memory system — MEMORY.md structure, privacy, gitignore | `skill_view(name='memory-architecture')` |
 | `ecosystem-audit` | 1.0.0 | Evaluate third-party tools for adoption, integration, or removal | `skill_view(name='ecosystem-audit')` |
 
-## DevOps (4 skills)
+## DevOps (5 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
+| `moses-inbox-remediation` | 1.0.0 | Auto-remediate hermes-cortex issues reported by peer agents via agent inbox — reads remediation markers, applies fixes, marks done | `skill_view(name='moses-inbox-remediation')` |
+| `nginx-security-pipeline` | 1.0.0 | Self-maintaining nginx security pipeline — IP blocking, fail2ban, atomic deploy, and daily scanner for nginx reverse proxies. Platform-aware (macOS/Linux). | `skill_view(name='nginx-security-pipeline')` |
 | `nginx-web-app-deployment` | 1.0.0 | Deploy web apps behind nginx — upstream config, SSL, rate limiting, launchd/systemd, multi-layer testing | `skill_view(name='nginx-web-app-deployment')` |
 | `package-security` | 1.0.0 | Age-gated package installation — verifies packages are ≥14 days old before install. Covers PyPI, npm, crates.io, Homebrew. | `skill_view(name='package-security')` |
 | `weekly-auto-fix` | 1.1.0 | Auto-fix + verify known issues found by the weekly opportunity scan — git pull, branch cleanup, Docker restart, permission fixes, disk cleanup, then verify each fix | `skill_view(name='weekly-auto-fix')` |
-| `moses-inbox-remediation` | 1.0.0 | Auto-remediate hermes-cortex issues reported by peer agents via agent inbox — reads remediation markers, applies fixes, marks done | `skill_view(name='moses-inbox-remediation')` |
 
 ## Social Media
 
