@@ -67,8 +67,12 @@ for src in "${CORTEX_REPO}/deploy/nginx/hermes-zone-defs.conf" "${CORTEX_REPO}/d
       echo "  ✓ Deployed: ${base}"
     elif [ "$base" = "hermes-services.conf" ]; then
       mkdir -p "${NGINX_DIR}/servers"
-      cp "$src" "${NGINX_DIR}/servers/${base}"
-      echo "  ✓ Deployed: ${base}"
+      < "$src" sed \
+        -e "s|__NGINX_CONFIG_DIR__|${NGINX_DIR}/servers|g" \
+        -e "s|__NGINX_LOG_DIR__|/usr/local/var/log/nginx|g" \
+        -e "s|__HTPASSWD_FILE__|${NGINX_DIR}/.htpasswd|g" \
+        > "${NGINX_DIR}/servers/${base}"
+      echo "  ✓ Deployed: ${base} (paths substituted)"
     fi
   fi
 done
