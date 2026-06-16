@@ -1,0 +1,204 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────
+#  hermes-security-apply — Atomic nginx security deploy script
+#
+#  Deploys: blocked IPs, fail2ban filter, nginx configs.
+#  Atomic: validates before reloading. Safe to re-run.
+#
+#  Sources:
+#    ~/hermes-cortex/deploy/nginx/blocked_ips.add   (IPs to block)
+#    ~/hermes-cortex/deploy/nginx/nginx-badbots.conf (fail2ban filter)
+#
+#  Targets:
+#    /usr/local/etc/nginx/               (nginx configs)
+#    /usr/local/etc/fail2ban/filter.d/   (fail2ban filter)
+#    /usr/local/etc/fail2ban/jail.local  (jail config)
+#
+#  Usage:
+#    sudo hermes-security-apply
+# ─────────────────────────────────────────────────────────────
+set -euo pipefail
+
+# ── Paths ──
+CORTEX_REPO="${HOME}/hermes-cortex"
+NGINX_DIR="/usr/local/etc/nginx"
+FAIL2BAN_DIR="/usr/local/etc/fail2ban"
+BACKUP_DIR="/etc/hermes-cortex-backups/$(date +%Y%m%d-%H%M%S)"
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+
+BLOCKED_IPS="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
+BADBOTS_CONF="${CORTEX_REPO}/deploy/nginx/nginx-badbots.conf"
+ZONE_DEFS="${NGINX_DIR}/hermes-zone-defs.conf"
+SERVICES_CONF="${NGINX_DIR}/servers/hermes-services.conf"
+
+echo "━━━ Hermes Security Deploy — ${TIMESTAMP} ━━━"
+
+# ── Ensure repo exists ──
+if [ ! -d "$CORTEX_REPO" ]; then
+  echo "✗ Cortex repo not found at ${CORTEX_REPO}"
+  exit 1
+fi
+
+# ── Step 1: Backup ──
+echo ""
+echo "── Step 1: Backup ──"
+mkdir -p "$BACKUP_DIR"
+for f in "$ZONE_DEFS" "$SERVICES_CONF" "${FAIL2BAN_DIR}/filter.d/nginx-badbots.conf" "${FAIL2BAN_DIR}/jail.local"; do
+  if [ -f "$f" ]; then
+    cp "$f" "$BACKUP_DIR/"
+    echo "  ✓ Backed up: $f"
+  fi
+done
+echo "  → Backup at: ${BACKUP_DIR}"
+
+# ── Step 2: Deploy nginx configs ──
+echo ""
+echo "── Step 2: Nginx configs ──"
+
+# hermes-zone-defs.conf — include the health rate-limit zone if present
+# (the source file in the repo should already have it)
+for src in "${CORTEX_REPO}/deploy/nginx/hermes-zone-defs.conf" "${CORTEX_REPO}/deploy/nginx/hermes-services.conf"; do
+  base=$(basename "$src")
+  # Only deploy if source file exists in the deploy directory
+  # For now, zone defs and services live in the repo and are managed via git
+  if [ -f "$src" ]; then
+    if [ "$base" = "hermes-zone-defs.conf" ]; then
+      cp "$src" "$ZONE_DEFS"
+      echo "  ✓ Deployed: ${base}"
+    elif [ "$base" = "hermes-services.conf" ]; then
+      mkdir -p "${NGINX_DIR}/servers"
+      cp "$src" "${NGINX_DIR}/servers/${base}"
+      echo "  ✓ Deployed: ${base}"
+    fi
+  fi
+done
+
+# ── Step 3: Deduplicate includes ──
+echo ""
+echo "── Step 3: Deduplicate includes ──"
+for conf in "$ZONE_DEFS" "$SERVICES_CONF"; do
+  if [ -f "$conf" ]; then
+    # Check for duplicate 'include hermes-zone-defs.conf' lines
+    dupes=$(grep -c "^include hermes-zone-defs.conf" "$conf" 2>/dev/null || true)
+    if [ "$dupes" -gt 1 ]; then
+      # Remove all but first occurrence
+      awk '!/^include hermes-zone-defs.conf/ || !seen++' "$conf" > "${conf}.tmp"
+      mv "${conf}.tmp" "$conf"
+      echo "  ✓ Deduped ${conf} (removed $((dupes-1)) duplicate include)"
+    else
+      echo "  ✓ ${conf}: clean"
+    fi
+  fi
+done
+
+# ── Step 4: Append blocked IPs ──
+echo ""
+echo "── Step 4: Blocked IPs ──"
+BLOCK_FILE="${NGINX_DIR}/blocked_ips.conf"
+touch "$BLOCK_FILE"
+
+if [ -f "$BLOCKED_IPS" ]; then
+  ADDED=0
+  SKIPPED=0
+  while IFS= read -r ip; do
+    # Skip blank lines and comments
+    [ -z "$ip" ] && continue
+    [[ "$ip" == \#* ]] && continue
+    # Check for duplicate
+    if grep -q "^deny ${ip};" "$BLOCK_FILE" 2>/dev/null; then
+      SKIPPED=$((SKIPPED + 1))
+    else
+      echo "deny ${ip};" >> "$BLOCK_FILE"
+      ADDED=$((ADDED + 1))
+    fi
+  done < "$BLOCKED_IPS"
+  echo "  ✓ ${ADDED} new IPs added, ${SKIPPED} duplicates skipped"
+fi
+
+# Ensure blocked_ips.conf is included in the services config
+if ! grep -q "include blocked_ips.conf" "$SERVICES_CONF" 2>/dev/null; then
+  # Add it to every server block
+  echo "  ⚠ blocked_ips.conf not yet included in nginx config — add manually or through install.sh"
+fi
+
+# ── Step 5: Install fail2ban filter ──
+echo ""
+echo "── Step 5: fail2ban filter ──"
+if [ -f "$BADBOTS_CONF" ]; then
+  cp "$BADBOTS_CONF" "${FAIL2BAN_DIR}/filter.d/nginx-badbots.conf"
+  echo "  ✓ Filter installed"
+
+  # Ensure jail is configured
+  JAIL_FILE="${FAIL2BAN_DIR}/jail.local"
+  if [ -f "$JAIL_FILE" ]; then
+    if ! grep -q "nginx-badbots" "$JAIL_FILE" 2>/dev/null; then
+      cat >> "$JAIL_FILE" <<'JAIL'
+
+[nginx-badbots]
+enabled  = true
+port     = http,https
+filter   = nginx-badbots
+logpath  = /usr/local/var/log/nginx/*-access.log
+maxretry = 3
+bantime  = 86400
+findtime = 3600
+JAIL
+      echo "  ✓ Jail entry added to jail.local"
+    else
+      echo "  ✓ Jail already configured"
+    fi
+  else
+    cat > "$JAIL_FILE" <<'JAIL'
+[DEFAULT]
+bantime = 1h
+findtime = 10m
+maxretry = 5
+ignoreip = 127.0.0.1 ::1
+
+[nginx-badbots]
+enabled  = true
+port     = http,https
+filter   = nginx-badbots
+logpath  = /usr/local/var/log/nginx/*-access.log
+maxretry = 3
+bantime  = 86400
+findtime = 3600
+JAIL
+    echo "  ✓ jail.local created with nginx-badbots"
+  fi
+fi
+
+# ── Step 6: Validate nginx ──
+echo ""
+echo "── Step 6: Validate ──"
+if nginx -t 2>&1; then
+  echo "  ✓ nginx config valid"
+else
+  echo "  ✗ nginx config INVALID — NOT reloading"
+  echo "  → Rollback: cp ${BACKUP_DIR}/* ${NGINX_DIR}/"
+  exit 1
+fi
+
+# ── Step 7: Reload ──
+echo ""
+echo "── Step 7: Reload ──"
+
+# Reload nginx
+if nginx -s reload 2>&1; then
+  echo "  ✓ nginx reloaded"
+else
+  echo "  ✗ nginx reload failed"
+  exit 1
+fi
+
+# Reload fail2ban
+if which fail2ban-client >/dev/null 2>&1; then
+  if fail2ban-client reload nginx-badbots 2>&1; then
+    echo "  ✓ fail2ban nginx-badbots reloaded"
+  else
+    echo "  ⚠ fail2ban reload failed (jail may not be configured yet)"
+  fi
+fi
+
+echo ""
+echo "━━━ Deploy complete — ${TIMESTAMP} ━━━"

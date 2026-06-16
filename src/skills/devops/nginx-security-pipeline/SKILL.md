@@ -1,0 +1,207 @@
+---
+name: nginx-security-pipeline
+category: devops
+description: >-
+  Set up nginx security with IP blocking, fail2ban integration, daily automated
+  scanning, and atomic deploy. Covers blocked_ips.add input, fail2ban filter,
+  deploy script (backup → validate → reload), and a no_agent daily scanner cron.
+  Platform-aware: macOS (Homebrew) and Linux paths.
+trigger: >-
+  User asks to set up nginx security, block bad IPs, set up fail2ban for nginx,
+  create a daily security scanner, deploy IP blocks, or implement a blocked-IP
+  pipeline. Also when asked to secure nginx against scanners or bots.
+---
+
+# nginx-security-pipeline
+
+Set up nginx security with IP blocking, fail2ban integration, automated daily scanning, and atomic deploy.
+
+## Architecture
+
+```
+blocked_ips.add (input)    nginx-badbots.conf (filter)
+         │                          │
+         └───────┬──────────────────┘
+                 │
+    sudo hermes-security-apply
+         │
+         ├── Backs up old configs
+         ├── Deploys zone-defs + services
+         ├── Deduplicates includes
+         ├── Appends new IPs (skip dups)
+         ├── Installs fail2ban filter + jail
+         ├── nginx -t (validate)
+         └── Reloads fail2ban + nginx
+```
+
+The daily scanner feeds back into `blocked_ips.add`, creating a closed loop: **Logs → Detect → Append → Deploy → Protect**.
+
+## Files
+
+### Source (`deploy/nginx/`)
+
+| File | Purpose |
+|------|---------|
+| `blocked_ips.add` | **Input:** bare IPs to block (one per line, no `deny`, no semicolon) |
+| `nginx-badbots.conf` | fail2ban filter for archive scanners + `/storage/` crawling |
+| `hermes-security-apply` | Deploy script — sudo-installed to `/usr/local/sbin/` |
+| `README.md` | Setup guide with platform notes |
+
+### Scanner (`src/scripts/`)
+
+| File | Purpose |
+|------|---------|
+| `nginx-security-scanner.sh` | Daily scanner — logs → detect → append → deploy |
+
+## Setup Steps
+
+### 1. Create the input files
+
+```bash
+touch ~/hermes-cortex/deploy/nginx/blocked_ips.add
+touch ~/hermes-cortex/deploy/nginx/nginx-badbots.conf
+```
+
+Populate `blocked_ips.add` with known bad IPs (one per line, bare IPs only).
+
+### 2. Install the deploy script
+
+```bash
+sudo install -o root -g wheel -m 0750 hermes-security-apply /usr/local/sbin/hermes-security-apply
+```
+
+### 3. Add passwordless sudo
+
+```bash
+echo '$(whoami) ALL=(root) NOPASSWD: /usr/local/sbin/hermes-security-apply' \
+  | sudo tee /etc/sudoers.d/hermes-security
+sudo chmod 440 /etc/sudoers.d/hermes-security
+sudo visudo -cf /etc/sudoers.d/hermes-security
+```
+
+### 4. Set up fail2ban
+
+Copy the filter to fail2ban's filter directory:
+
+```bash
+cp nginx-badbots.conf /usr/local/etc/fail2ban/filter.d/nginx-badbots.conf
+```
+
+Add a jail entry in `jail.local`:
+
+```ini
+[nginx-badbots]
+enabled  = true
+port     = http,https
+filter   = nginx-badbots
+logpath  = /usr/local/var/log/nginx/*-access.log
+maxretry = 3
+bantime  = 86400
+findtime = 3600
+```
+
+### 5. Activate the jail
+
+```bash
+sudo fail2ban-client reload
+sudo fail2ban-client status nginx-badbots
+```
+
+### 6. Create daily scanner cron
+
+```bash
+cron name=daily-nginx-scanner schedule="0 6 * * *" \
+  script=nginx-security-scanner.sh no_agent=true deliver=local
+```
+
+### 7. First deploy
+
+```bash
+sudo /usr/local/sbin/hermes-security-apply
+```
+
+## Daily Operations
+
+### Block a new IP manually
+
+```bash
+echo "1.2.3.4" >> ~/hermes-cortex/deploy/nginx/blocked_ips.add
+sudo /usr/local/sbin/hermes-security-apply
+```
+
+### What the deploy script does
+
+1. Backs up existing configs to `/etc/hermes-cortex-backups/$(date)/`
+2. Deploys fresh nginx configs
+3. Deduplicates include directives
+4. Appends new IPs (skips duplicates)
+5. Installs fail2ban filter + jail
+6. Runs `nginx -t` to validate
+7. If valid: reloads nginx and fail2ban
+8. If invalid: exits safely (no reload)
+
+## Platform Differences
+
+### macOS (Homebrew)
+
+| Concern | Value |
+|---------|-------|
+| fail2ban service | `homebrew.mxcl.fail2ban` |
+| nginx config dir | `/usr/local/etc/nginx/` |
+| fail2ban config dir | `/usr/local/etc/fail2ban/` |
+| nginx log dir | `/usr/local/var/log/nginx/` |
+| Service manager | `launchctl` |
+| Firewall backend | `pf` (built-in) |
+| Sudoers permissions | `0440` |
+
+Restart fail2ban:
+```bash
+sudo launchctl kickstart system/homebrew.mxcl.fail2ban
+```
+
+### Linux (apt/yum)
+
+| Concern | Value |
+|---------|-------|
+| fail2ban service | `fail2ban.service` |
+| nginx config dir | `/etc/nginx/` |
+| fail2ban config dir | `/etc/fail2ban/` |
+| nginx log dir | `/var/log/nginx/` |
+| Service manager | `systemctl` |
+| Firewall backend | `iptables` / `nftables` |
+| Sudoers permissions | `0440` |
+
+Restart fail2ban:
+```bash
+sudo systemctl reload fail2ban
+```
+
+## Pitfalls
+
+1. **macOS fail2ban service name**: It's `homebrew.mxcl.fail2ban`, NOT `com.fail2ban` or `fail2ban`. Using the wrong name gives "Could not find service" error.
+
+2. **blocked_ips.add format**: Bare IPs only. One per line. No `deny` keyword, no semicolon. The deploy script wraps them in `deny <ip>;` automatically.
+
+3. **nginx -t must pass**: The deploy script refuses to reload if validation fails. Rollback: `cp <backup_dir>/* <nginx_dir>/`.
+
+4. **Sudoers file**: Must be `0440` permissions. `visudo -cf` validates syntax.
+
+5. **fail2ban socket on macOS**: Requires root to access. Always use `sudo fail2ban-client`.
+
+6. **Log paths on Linux**: The jail `logpath` must match your OS — `/var/log/nginx/access.log` on Linux vs `/usr/local/var/log/nginx/*-access.log` on macOS Homebrew.
+
+## Verification
+
+```bash
+# Check jail is active
+sudo fail2ban-client status nginx-badbots
+
+# Check blocked IPs are deployed
+grep "^deny" /usr/local/etc/nginx/blocked_ips.conf
+
+# Check nginx config is valid
+nginx -t
+
+# Verify daily cron exists
+cron list | grep nginx-scanner
+```
