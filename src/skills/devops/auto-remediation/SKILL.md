@@ -39,6 +39,7 @@ For each errored job, diagnose the failure:
 | nginx config invalid | `nginx -t` to validate; revert recent config changes |
 | Memory pressure | Run `purge` on macOS to free memory cache |
 | Network timeout | Retry the job once; check internet with `ping -c1 google.com` |
+| SSL cert expired / expiring soon | Run `cron-auto-remediate.sh fix-certs` — auto-renews via certbot if available; reports cert paths that need manual renewal |
 
 After fixing:
 1. Verify the fix (re-run the failing script or check the service)
