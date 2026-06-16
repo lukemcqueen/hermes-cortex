@@ -97,6 +97,10 @@ register "src/scripts/install-cortex-update-cron.sh" "${HERMES_HOME}/scripts/ins
 register "src/scripts/prod-watchdog.sh"          "${HERMES_HOME}/scripts/prod-watchdog.sh"
 register "src/scripts/check-agent-messages.sh"    "${HERMES_HOME}/scripts/check-agent-messages.sh"
 
+# Post-commit notification + installer
+register "scripts/post-commit-notify.sh"          "${HERMES_HOME}/scripts/post-commit-notify.sh"
+register "scripts/install-post-commit-hook.sh"    "${HERMES_HOME}/scripts/install-post-commit-hook.sh"
+
 # Moses inbox remediation
 register "scripts/moses-inbox-remediate.sh"       "${HERMES_HOME}/scripts/moses-inbox-remediate.sh"
 
