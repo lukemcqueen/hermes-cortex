@@ -60,13 +60,14 @@ Files: ${FILE_COUNT} changed
 ${FILES}
 "
 
-# ── Step 6: Send broadcast to all agents ──
+# ── Step 6: Send broadcast to all agents (marked read — informational, not actionable) ──
 curl -sf -X POST "$INBOX_URL" \
   -d "from=Moses" \
   -d "topic=all" \
   -d "subject=📦 hermes-cortex update: ${SUBJECT}" \
   -d "body=${BODY}" \
   -d "priority=normal" \
+  -d "status=read" \
   >/dev/null 2>&1 && log "notified all agents for ${SHA}" || log "failed to notify for ${SHA}"
 
 # ── Step 7: Save state ──
