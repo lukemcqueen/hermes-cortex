@@ -24,8 +24,8 @@
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `e0a0531` — 2026-06-15 17:14:52 |
-| Working tree | clean |
+| Last commit | `c268513` — 2026-06-16 16:06:29 |
+| Working tree | dirty (1 files) |
 | Unpushed | none |
 | Tag | `v1.0.0` |
 
@@ -33,11 +33,11 @@
 
 | Date | Commit | Description |
 |------|--------|-------------|
-| 2026-06-15 | `e0a0531` | Update session state [auto]
-| 2026-06-15 | `db56ccd` | rename: moses-inbox-processor → process-agent-messages
-| 2026-06-15 | `0c4df89` | fix: register moses-inbox-remediate.sh in deployment map fix: macOS sha256sum → shasum fallback in cortex-update.sh fix: Python 3.9 type hints in service-recovery.py fix: dynamic UID + PATH-based nginx paths in service-recovery.py fix: add missing Path import in system-alert.py
-| 2026-06-15 | `618c46b` | feat: moses inbox remediation processor — auto-fix agent inbox messages within 10m
-| 2026-06-15 | `82330a7` | fix: Linux compat for memory_pressure + correct threshold direction
+| 2026-06-16 | `c268513` | feat: agent learning sender + agent-inbox skill
+| 2026-06-16 | `801c4e5` | feat: health monitoring system + agent-inbox skill
+| 2026-06-16 | `9fa15f1` | fix: prevent duplicate inbox notifications — send post-commit updates as read
+| 2026-06-16 | `af2408c` | feat: post-commit notification — auto-notify all agents via inbox
+| 2026-06-16 | `afa8e9f` | feat: nginx security pipeline — IP blocking, fail2ban scanner, atomic deploy
 
 ---
 
@@ -45,12 +45,12 @@
 
 | Layer | What |
 |-------|------|
-| Installer | `install.sh` — 2150 lines, 26 steps, idempotent |
+| Installer | `install.sh` — 2348 lines, 26 steps, idempotent |
 | Skills | 0 skills across 4 categories (software-development, devops, social-media, productivity) |
-| Python files | 54 files (37630 LOC) |
-| Shell files | 39 files (8727 LOC) |
-| Markdown files | 504 files |
-| Total | 623 tracked files |
+| Python files | 59 files (38657 LOC) |
+| Shell files | 44 files (9717 LOC) |
+| Markdown files | 508 files |
+| Total | 641 tracked files |
 | Dashboard | Flask app + nginx proxy — Langfuse traces + system health |
 | Scripts | 16 utility scripts (heartbeat, memory-sync, LLM scoring, service recovery) |
 | OpenCode | 15 commands + 3 agents + 30 optional skills |
@@ -73,4 +73,4 @@
 
 ---
 
-*Last updated: 2026-06-15 18:00 KST*
+*Last updated: 2026-06-16 20:00 KST*
