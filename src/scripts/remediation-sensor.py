@@ -166,6 +166,88 @@ def check_inbox_markers():
                 add_issue("inbox_marker", "low", f"... and {len(markers) - 5} more pending markers", {})
 
 
+def check_certs():
+    """Check SSL certificate expiry for all nginx-referenced certs.
+    Silent (no issues) when all certs exist and are >30 days from expiry.
+    """
+    now = datetime.now(timezone.utc)
+
+    # Auto-discover nginx SSL cert paths from config files
+    cert_files = set()
+    for d in ["/usr/local/etc/nginx/servers", "/usr/local/etc/nginx",
+              "/opt/homebrew/etc/nginx/servers", "/opt/homebrew/etc/nginx",
+              "/etc/nginx/sites-enabled", "/etc/nginx/conf.d"]:
+        conf_dir = Path(d)
+        if conf_dir.exists():
+            for conf_file in conf_dir.glob("*.conf"):
+                try:
+                    content = conf_file.read_text()
+                    for line in content.splitlines():
+                        stripped = line.strip()
+                        if stripped.startswith("#") or stripped.startswith("//"):
+                            continue
+                        for m in __import__("re").finditer(r'ssl_certificate\s+(\S+);', stripped):
+                            path = m.group(1).strip().rstrip(";")
+                            if path:
+                                cert_files.add(path)
+                except (OSError, IOError):
+                    pass
+
+    if not cert_files:
+        # No ssl_certificate found — nginx may be local-only, no certs needed
+        return
+
+    for cert_path in sorted(cert_files):
+        p = Path(cert_path)
+        domain = p.parent.name if p.parent else "unknown"
+
+        if not p.exists():
+            add_issue("cert_missing", "critical",
+                      f"SSL cert missing: {cert_path}",
+                      {"path": cert_path, "domain": domain})
+            continue
+
+        # Read certificate expiry date
+        out, _, rc = run(
+            f"openssl x509 -in '{cert_path}' -noout -enddate 2>/dev/null | cut -d= -f2"
+        )
+        if rc != 0 or not out.strip():
+            add_issue("cert_unreadable", "high",
+                      f"Cannot read cert expiry: {cert_path}",
+                      {"path": cert_path, "domain": domain})
+            continue
+
+        try:
+            expiry_str = out.strip()
+            # Strip trailing timezone name (e.g. " GMT") and parse as UTC
+            for known_tz in [" GMT", " UTC", " EST", " EDT", " PST", " PDT"]:
+                if expiry_str.endswith(known_tz):
+                    expiry_str = expiry_str[:-len(known_tz)]
+                    break
+            expiry = datetime.strptime(expiry_str, "%b %d %H:%M:%S %Y")
+            # Assume UTC for cert dates (Let's Encrypt uses UTC)
+            expiry = expiry.replace(tzinfo=timezone.utc)
+            days_left = (expiry - now).days
+
+            if days_left < 0:
+                add_issue("cert_expired", "critical",
+                          f"SSL cert expired {abs(days_left)}d ago: {domain}",
+                          {"path": cert_path, "domain": domain, "days_expired": abs(days_left)})
+            elif days_left < 7:
+                add_issue("cert_expiring_soon", "critical",
+                          f"SSL cert expires in {days_left}d: {domain}",
+                          {"path": cert_path, "domain": domain, "days_left": days_left})
+            elif days_left < 30:
+                add_issue("cert_expiring_soon", "high",
+                          f"SSL cert expires in {days_left}d: {domain}",
+                          {"path": cert_path, "domain": domain, "days_left": days_left})
+            # else: >30 days — silent, no issue
+        except ValueError as e:
+            add_issue("cert_unreadable", "low",
+                      f"Cannot parse cert date '{out.strip()}': {e}",
+                      {"path": cert_path, "domain": domain})
+
+
 def check_errored_crons():
     """Check for errored cron jobs by reading jobs.json directly."""
     jobs_json = HOME / ".hermes" / "cron" / "jobs.json"
@@ -195,6 +277,7 @@ def main():
     check_nginx()
     check_web_cache()
     check_inbox_markers()
+    check_certs()
     check_errored_crons()
 
     # Output JSON

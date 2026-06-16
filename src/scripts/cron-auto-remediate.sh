@@ -173,6 +173,55 @@ case "${ACTION}" in
     fi
     ;;
 
+  # ── Fix certs ─────────────────────────────────────────────
+  fix-certs)
+    # Try certbot renewal, then verify certs are valid
+    RENEWED=0
+    if command -v certbot >/dev/null 2>&1; then
+      certbot renew --non-interactive --quiet 2>/dev/null && RENEWED=1
+    fi
+
+    # Verify: check each nginx-referenced cert
+    VERIFIED=0
+    FAILED=0
+    for conf in /usr/local/etc/nginx/servers/*.conf /usr/local/etc/nginx/*.conf \
+                /opt/homebrew/etc/nginx/servers/*.conf /opt/homebrew/etc/nginx/*.conf \
+                /etc/nginx/sites-enabled/*.conf /etc/nginx/conf.d/*.conf; do
+      [ -f "${conf}" ] || continue
+      for cert_path in $(grep -oP 'ssl_certificate\s+\K\S+(?=;)' "${conf}" 2>/dev/null); do
+        if [ -f "${cert_path}" ]; then
+          expires=$(openssl x509 -in "${cert_path}" -noout -enddate 2>/dev/null | cut -d= -f2)
+          if [ -n "${expires}" ]; then
+            # Convert to epoch on macOS
+            expiry_epoch=$(date -j -f "%b %d %H:%M:%S %Y" "${expires% *}" +%s 2>/dev/null || echo 0)
+            now_epoch=$(date +%s)
+            days_left=$(( (expiry_epoch - now_epoch) / 86400 ))
+            if [ "${days_left}" -ge 30 ] 2>/dev/null; then
+              VERIFIED=$((VERIFIED + 1))
+            elif [ "${days_left}" -ge 0 ] 2>/dev/null; then
+              echo "CERT_EXPIRING:${cert_path}:${days_left}d"
+              FAILED=$((FAILED + 1))
+            else
+              echo "CERT_EXPIRED:${cert_path}"
+              FAILED=$((FAILED + 1))
+            fi
+          else
+            echo "CERT_UNREADABLE:${cert_path}"
+            FAILED=$((FAILED + 1))
+          fi
+        else
+          echo "CERT_MISSING:${cert_path}"
+          FAILED=$((FAILED + 1))
+        fi
+      done
+    done
+
+    if [ "${RENEWED}" -eq 1 ]; then
+      echo "RENEWED:1"
+    fi
+    [ "${FAILED}" -eq 0 ] && [ "${RENEWED}" -eq 0 ] && echo "NONE"
+    ;;
+
   # ── Fix docker ────────────────────────────────────────────
   fix-docker)
     if command -v docker >/dev/null 2>&1; then
@@ -218,7 +267,7 @@ case "${ACTION}" in
     ;;
 
   *)
-    echo "usage: cron-auto-remediate.sh <diagnose|fix-missing|fix-perms|fix-git|fix-docker|fix-purge>"
+    echo "usage: cron-auto-remediate.sh <diagnose|fix-missing|fix-perms|fix-git|fix-docker|fix-purge|fix-certs>"
     exit 1
     ;;
 esac
