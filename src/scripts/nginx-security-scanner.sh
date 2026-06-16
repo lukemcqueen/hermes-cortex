@@ -1,144 +1,91 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  nginx-security-scanner.sh — Daily nginx security auto-scan
+#  nginx-security-scanner.sh — Daily IP Ban & Filter Scanner
 #
-#  Scans nginx access logs for suspect IPs, appends new ones
-#  to blocked_ips.add, and auto-deploys if changes found.
+#  Scans nginx access logs for suspicious activity, appends
+#  new IPs to blocked_ips.add, updates fail2ban patterns,
+#  and re-deploys via hermes-security-apply.
 #
-#  Silent when clean (watchdog pattern). Only outputs on changes.
-#
-#  Schedule: daily at 6 AM (cron)
-#  no_agent: true
-#  deliver: local
-#
-#  Depends on: sudo hermes-security-apply at /usr/local/sbin/
+#  Designed to run as a daily cron job.
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
-BLOCKED_IPS="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
+NGINX_LOG="/var/log/nginx"
+BLOCKED_ADD="${HOME}/hermes-cortex/deploy/nginx/blocked_ips.add"
+FILTER_CONF="${HOME}/hermes-cortex/deploy/nginx/nginx-badbots.conf"
 DEPLOY_SCRIPT="/usr/local/sbin/hermes-security-apply"
-LOG_DIR="/usr/local/var/log/nginx"
-STATE_FILE="${HOME}/.hermes/state/nginx-scanner-lastrun"
 
-mkdir -p "$(dirname "$STATE_FILE")"
+# Ensure blocked_ips.add exists
+mkdir -p "$(dirname "$BLOCKED_ADD")"
+touch "$BLOCKED_ADD"
 
-# ── Helpers ──
-log()  { echo "[$(date '+%H:%M:%S')] $*"; }
-error(){ log "✗ $*"; }
+CHANGED=false
 
-# ── Thresholds ──
-MIN_HITS=10        # Min requests from same IP in the window
-WINDOW_MINS=60     # Time window to scan
-BAN_TIME="86400"   # fail2ban-style ban time (not used directly)
+# ── Phase 1: Find /storage/ scanners from today's access logs ──
+if [ -f "${NGINX_LOG}/agent-inbox-access.log" ]; then
+  # Extract IPs hitting /storage/ with 404 in the last 24h
+  SUSPECT_IPS=$(grep "$(date +%d/%b/%Y)" "${NGINX_LOG}/agent-inbox-access.log" 2>/dev/null \
+    | grep '"GET /storage/' \
+    | grep ' 404 ' \
+    | awk '{print $1}' \
+    | sort -u) || true
 
-# ── Step 1: Scan access logs for suspect IPs ──
-NEW_IPS=()
-RECENT_SECONDS=$((WINDOW_MINS * 60))
-
-if [ -d "$LOG_DIR" ]; then
-  for logfile in "$LOG_DIR"/*-access.log; do
-    [ -f "$logfile" ] || continue
-    # Find IPs with high request counts in the recent window
-    # Uses awk to count requests per IP, then filters by threshold
-    while IFS= read -r ip; do
-      [ -z "$ip" ] && continue
-      # Skip IPs already blocked
-      if [ -f "$BLOCKED_IPS" ] && grep -qF "$ip" "$BLOCKED_IPS" 2>/dev/null; then
-        continue
+  if [ -n "$SUSPECT_IPS" ]; then
+    for ip in $SUSPECT_IPS; do
+      if ! grep -qxF "$ip" "$BLOCKED_ADD" 2>/dev/null; then
+        echo "$ip" >> "$BLOCKED_ADD"
+        echo "➕ Blocked new /storage/ scanner: $ip"
+        CHANGED=true
       fi
-      # Skip private/local IPs
-      if [[ "$ip" =~ ^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.) ]]; then
-        continue
-      fi
-      NEW_IPS+=("$ip")
-    done < <(awk -v cutoff="$(date -v-${WINDOW_MINS}M +%d/%b/%Y:%H:%M:%S 2>/dev/null || date -d "-${WINDOW_MINS} min" '+%d/%b/%Y:%H:%M:%S')" '
-      # Parse log lines within time window
-      {
-        match($0, /\[([^\]]+)\]/, ts)
-        if (ts[1] >= cutoff) {
-          ip = $1
-          count[ip]++
-          paths[ip] = paths[ip] " " $7
-        }
-      }
-      END {
-        for (ip in count) {
-          if (count[ip] >= '$MIN_HITS') {
-            print ip
-          }
-        }
-      }
-    ' "$logfile")
-  done
-fi
-
-# Also check fail2ban logs for emerging patterns
-F2B_LOG="/usr/local/var/log/fail2ban.log"
-if [ -f "$F2B_LOG" ]; then
-  while IFS= read -r ip; do
-    [ -z "$ip" ] && continue
-    if [ -f "$BLOCKED_IPS" ] && grep -qF "$ip" "$BLOCKED_IPS" 2>/dev/null; then
-      continue
-    fi
-    # Deduplicate against already-found IPs
-    already=false
-    for existing in "${NEW_IPS[@]:-}"; do
-      [ "$existing" = "$ip" ] && already=true && break
     done
-    $already && continue
-    NEW_IPS+=("$ip")
-  done < <(grep -i "ban.*[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+" "$F2B_LOG" 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | sort -u)
-fi
-
-# ── Step 2: Append new IPs ──
-TOTAL_NEW=${#NEW_IPS[@]}
-if [ "$TOTAL_NEW" -eq 0 ]; then
-  # Silent exit — no news is good news
-  exit 0
-fi
-
-# Deduplicate NEW_IPS
-UNIQUE_IPS=()
-for ip in "${NEW_IPS[@]}"; do
-  already=false
-  for existing in "${UNIQUE_IPS[@]:-}"; do
-    [ "$existing" = "$ip" ] && already=true && break
-  done
-  $already && continue
-  UNIQUE_IPS+=("$ip")
-done
-
-echo "━━━ Nginx Security Scan — $(date '+%Y-%m-%d %H:%M:%S') ━━━"
-echo "  Found ${#UNIQUE_IPS[@]} new suspect IPs"
-echo ""
-
-# Append to blocked_ips.add
-ADDED=0
-for ip in "${UNIQUE_IPS[@]}"; do
-  if grep -qF "$ip" "$BLOCKED_IPS" 2>/dev/null; then
-    continue  # Already in list (race condition safe)
   fi
-  echo "$ip" >> "$BLOCKED_IPS"
-  echo "  + Blocked: ${ip}"
-  ADDED=$((ADDED + 1))
+fi
+
+# ── Phase 2: Find archive file scanners ──
+for logfile in "${NGINX_LOG}"/*-access.log; do
+  [ -f "$logfile" ] || continue
+  ARCHIVE_IPS=$(grep "$(date +%d/%b/%Y)" "$logfile" 2>/dev/null \
+    | grep -E 'GET\s/\S+\.(zip|rar|tar\.gz|tar\.bz2|tar\.xz|7z|zst|sql\.gz|sql\.bz2)\s' \
+    | grep ' 404 ' \
+    | awk '{print $1}' \
+    | sort -u) || true
+
+  if [ -n "$ARCHIVE_IPS" ]; then
+    for ip in $ARCHIVE_IPS; do
+      if ! grep -qxF "$ip" "$BLOCKED_ADD" 2>/dev/null; then
+        echo "$ip" >> "$BLOCKED_ADD"
+        echo "➕ Blocked new archive scanner: $ip"
+        CHANGED=true
+      fi
+    done
+  fi
 done
 
-echo ""
-echo "  ${ADDED} IPs appended to blocked_ips.add"
+# ── Phase 3: Check fail2ban for emerging patterns ──
+# If fail2ban is logging new ban types, flag them for human review
+FAIL2BAN_LOG="/var/log/fail2ban.log"
+if [ -f "$FAIL2BAN_LOG" ]; then
+  NEW_PATTERNS=$(grep "$(date +%Y-%m-%d)" "$FAIL2BAN_LOG" 2>/dev/null \
+    | grep -i "ban\|find" \
+    | grep -oP ']\s+\S+\s+\[.*\]' \
+    | sort -u) || true
+  if [ -n "$NEW_PATTERNS" ]; then
+    echo "📊 New fail2ban patterns today:"
+    echo "$NEW_PATTERNS"
+    # (filters require human review — just report)
+  fi
+fi
 
-# ── Step 3: Auto-deploy if IPs were added ──
-if [ "$ADDED" -gt 0 ] && [ -x "$DEPLOY_SCRIPT" ]; then
+# ── Phase 4: Deploy if anything changed ──
+if [ "$CHANGED" = true ]; then
   echo ""
-  echo "── Deploying... ──"
-  if sudo "$DEPLOY_SCRIPT" 2>&1; then
-    echo ""
-    echo "✓ Security update deployed successfully"
+  echo "🚀 Deploying updated configs..."
+  if sudo "$DEPLOY_SCRIPT"; then
+    echo "✅ Deployment successful"
   else
-    error "Deploy script failed — manual intervention required"
+    echo "❌ Deployment failed — check hermes-security-apply output" >&2
     exit 1
   fi
+else
+  echo "✅ No new threats found today"
 fi
-
-# Save state
-date -u +"%Y-%m-%dT%H:%M:%SZ" > "$STATE_FILE"

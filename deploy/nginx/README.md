@@ -6,47 +6,15 @@ fail2ban filters.
 
 ---
 
-## Platform Notes: macOS vs Linux
-
-The repository defaults to `~/hermes-cortex` (set `CORTEX_REPO` to override).
-
-| Concern | macOS (Homebrew) | Linux (apt/yum) |
-|---------|-----------------|-----------------|
-| fail2ban service | `homebrew.mxcl.fail2ban` | `fail2ban.service` |
-| nginx config dir | `/usr/local/etc/nginx/` | `/etc/nginx/` |
-| fail2ban config dir | `/usr/local/etc/fail2ban/` | `/etc/fail2ban/` |
-| nginx log dir | `/usr/local/var/log/nginx/` | `/var/log/nginx/` |
-| Service manager | `launchctl` | `systemctl` |
-| Firewall backend | `pf` (built-in) | `iptables` / `nftables` |
-| Sudoers permissions | `0440` (no `r--r-----`) | `0440` (same) |
-| Repo location | `$CORTEX_REPO` (default: `~/hermes-cortex`) | `$CORTEX_REPO` (default: `~/hermes-cortex`) |
-
-**Fail2ban service restart on macOS:**
-```bash
-sudo launchctl kickstart system/homebrew.mxcl.fail2ban   # reload
-sudo launchctl bootout system/homebrew.mxcl.fail2ban      # stop
-sudo launchctl bootstrap system /usr/local/opt/fail2ban/homebrew.mxcl.fail2ban.plist  # start
-```
-
-**On Linux**, replace with:
-```bash
-sudo systemctl reload fail2ban
-sudo systemctl restart fail2ban
-```
-
-The deploy script (`hermes-security-apply`) auto-detects `fail2ban-client` and works on both platforms — just ensure the paths in `jail.local` match your OS.
-
----
-
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `hermes-services.conf` | Main nginx reverse proxy config (ports 13001–13006) |
+| `hermes-services.conf` | Main nginx reverse proxy config (ports 13001–13004) |
 | `hermes-zone-defs.conf` | Rate limit zones, CSP maps, direct-IP blocker |
 | `blocked_ips.add` | **Input:** bare IPs to block (one per line, no `deny` keyword, no semicolon) |
-| `nginx-badbots.conf` | fail2ban filter for archive scanners + `/storage/` crawling |
-| `hermes-security-apply` | Deploy script — sudo-installed to `/usr/local/sbin/` |
+| `nginx-badbots.conf` | **Input:** fail2ban filter for archive scanners + `/storage/` crawling |
+| `hermes-security-apply` | Sudo-installed script that deploys all configs atomically |
 | `README.md` | This file |
 
 ---
@@ -56,13 +24,13 @@ The deploy script (`hermes-security-apply`) auto-detects `fail2ban-client` and w
 ### 1. Install the deploy script
 
 ```bash
-sudo install -o root -g wheel -m 0750 hermes-security-apply /usr/local/sbin/hermes-security-apply
+sudo install -o root -g root -m 0750 hermes-security-apply /usr/local/sbin/hermes-security-apply
 ```
 
 ### 2. Add passwordless sudo for the script
 
 ```bash
-echo '$(whoami) ALL=(root) NOPASSWD: /usr/local/sbin/hermes-security-apply' \
+echo '<your-username> ALL=(root) NOPASSWD: /usr/local/sbin/hermes-security-apply' \
   | sudo tee /etc/sudoers.d/hermes-security
 sudo chmod 440 /etc/sudoers.d/hermes-security
 sudo visudo -cf /etc/sudoers.d/hermes-security
@@ -71,14 +39,8 @@ sudo visudo -cf /etc/sudoers.d/hermes-security
 ### 3. Ensure the input files exist
 
 ```bash
-touch "\${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/blocked_ips.add"
-touch "\${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/nginx-badbots.conf"
-```
-
-### 4. Run the deploy for the first time
-
-```bash
-sudo /usr/local/sbin/hermes-security-apply
+touch ~/hermes-cortex/deploy/nginx/blocked_ips.add
+touch ~/hermes-cortex/deploy/nginx/nginx-badbots.conf
 ```
 
 ---
@@ -90,7 +52,7 @@ sudo /usr/local/sbin/hermes-security-apply
 Append bare IPs (one per line) to `blocked_ips.add`:
 
 ```bash
-echo "1.2.3.4" >> "\${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/blocked_ips.add"
+echo "1.2.3.4" >> ~/hermes-cortex/deploy/nginx/blocked_ips.add
 ```
 
 ### Update fail2ban filters
@@ -108,49 +70,21 @@ The script does **all** of this atomically:
 2. Deploys fresh `hermes-services.conf` + `hermes-zone-defs.conf`
 3. Removes any duplicate `include hermes-zone-defs.conf` lines
 4. Appends new IPs from `blocked_ips.add` (skips duplicates)
-5. Installs fail2ban filter + jail config
+5. Replaces `/etc/fail2ban/filter.d/nginx-badbots.conf`
 6. Runs `nginx -t` to validate
-7. Reloads nginx and fail2ban
+7. Reloads fail2ban and nginx
 
 **If nginx -t fails, nothing is reloaded** — the script exits safely.
 
 ---
 
-## Automated Daily Scan
+## Automated Daily Scan (for agents)
 
-A cron job runs at 6 AM daily (`src/scripts/nginx-security-scanner.sh`):
+A cron job should run daily to:
+1. Scan nginx access logs for suspicious IPs (high request rates, `/storage/` hits, archive file scans)
+2. Check fail2ban logs for emerging patterns
+3. Append new IPs to `blocked_ips.add`
+4. Re-run `sudo hermes-security-apply` if changes were made
+5. Commit and push any new IPs/filters to the repository
 
-1. Scans nginx access logs for IPs with ≥10 requests in 60 minutes
-2. Checks fail2ban logs for newly banned IPs
-3. Appends new IPs to `blocked_ips.add`
-4. Re-runs `sudo hermes-security-apply` if changes were made
-5. Silent when no suspect traffic found
-
-Create the cron:
-
-```bash
-cron name=daily-nginx-scanner schedule="0 6 * * *" script=nginx-security-scanner.sh no_agent=true deliver=local
-```
-
----
-
-## Architecture
-
-```
-blocked_ips.add (input)    nginx-badbots.conf (input)
-         │                          │
-         └───────┬──────────────────┘
-                 │
-    sudo hermes-security-apply
-         │
-         ├── Backs up old configs
-         ├── Deploys zone-defs + services
-         ├── Deduplicates includes
-         ├── Appends new IPs (skip dups)
-         ├── Installs fail2ban filter + jail
-         ├── nginx -t (validate)
-         └── Reloads fail2ban + nginx
-```
-
-The daily scanner feeds back into `blocked_ips.add`, creating a closed loop:
-**Logs → Detect → Append → Deploy → Protect**.
+See the Moses instructions for the full agent workflow.
