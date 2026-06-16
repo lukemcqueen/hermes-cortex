@@ -83,7 +83,9 @@ for msg in "${INBOX_FILES[@]}"; do
 
   # Skip messages already marked as read — prevents duplicate reporting
   if [ "$status" = "read" ]; then
-    echo "$id" >> "$SEEN_FILE" 2>/dev/null || true
+    if ! grep -q "^${id}$" "$SEEN_FILE" 2>/dev/null; then
+      echo "$id" >> "$SEEN_FILE" 2>/dev/null || true
+    fi
     continue
   fi
 
