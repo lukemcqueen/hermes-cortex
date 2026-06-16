@@ -1451,6 +1451,23 @@ else
   fi
 fi
 
+# ── Health Monitoring ───────────────────────────────────────────
+HEALTH_SERVER_PATH="${SCRIPTS_DIR}/health-server.py"
+if [[ -f "${SCRIPT_DIR}/src/scripts/health-server.py" ]]; then
+  cp "${SCRIPT_DIR}/src/scripts/health-server.py" "$HEALTH_SERVER_PATH" 2>/dev/null || \
+    warn "health-server.py copy failed"
+  chmod +x "$HEALTH_SERVER_PATH"
+  info "  Installed health-server.py"
+fi
+
+HEALTH_MONITOR_PATH="${SCRIPTS_DIR}/agent-health-monitor.py"
+if [[ -f "${SCRIPT_DIR}/src/scripts/agent-health-monitor.py" ]]; then
+  cp "${SCRIPT_DIR}/src/scripts/agent-health-monitor.py" "$HEALTH_MONITOR_PATH" 2>/dev/null || \
+    warn "agent-health-monitor.py copy failed"
+  chmod +x "$HEALTH_MONITOR_PATH"
+  info "  Installed agent-health-monitor.py"
+fi
+
 # ── Auto-Update Cron ───────────────────────────────────────────
 AUTO_UPDATE_SCRIPT="${SCRIPTS_DIR}/install-cortex-update-cron.sh"
 if [[ -f "$AUTO_UPDATE_SCRIPT" ]]; then
@@ -1807,6 +1824,20 @@ PLIST
     chmod 644 "$DOCKER_PLIST"
     launchctl load "$DOCKER_PLIST" 2>&1
     info "  Docker Desktop auto-start on login configured"
+  fi
+
+  # Install health server launchd agent (self-monitoring API)
+  HEALTH_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.hermes.health-server.plist"
+  HEALTH_SRC="${SCRIPT_DIR}/src/scripts/com.hermes.health-server.plist"
+  if [[ ! -f "$HEALTH_PLIST" ]]; then
+    if [[ -f "$HEALTH_SRC" ]]; then
+      sed "s|CORTEX_HOME|${CORTEX_HOME}|g" "$HEALTH_SRC" > "$HEALTH_PLIST"
+      chmod 644 "$HEALTH_PLIST"
+      launchctl load "$HEALTH_PLIST" 2>&1
+      info "  Health server launch agent installed"
+    fi
+  elif launchctl list com.hermes.health-server &>/dev/null 2>&1; then
+    info "  Health server launch agent already loaded"
   fi
 elif [[ "$CORTEX_OS" == "linux" ]]; then
   # Docker daemon is managed by the system's init — just verify it's available

@@ -114,6 +114,11 @@ register "src/scripts/service-recovery.py"        "${HERMES_HOME}/scripts/servic
 register "src/scripts/langfuse-health-watchdog.py" "${HERMES_HOME}/scripts/langfuse-health-watchdog.py"
 register "src/scripts/llm-judge-scorer.py"         "${HERMES_HOME}/scripts/llm-judge-scorer.py"
 
+# Health monitoring
+register "src/scripts/health-server.py"            "${HERMES_HOME}/scripts/health-server.py"
+register "src/scripts/agent-health-monitor.py"     "${HERMES_HOME}/scripts/agent-health-monitor.py"
+register "src/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist"
+
 # Agent inbox check (used by install.sh for cron setup)
 register "src/agent-inbox/agent-inbox-check.sh"    "${HERMES_HOME}/scripts/agent-inbox-check.sh"
 
