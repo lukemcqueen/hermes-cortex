@@ -11,7 +11,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `pr-review` | 1.0.0 | Full PR review pipeline — whole-repo context, architecture analysis, lesson-DB pattern matching, test regression check, and formal review with inline comments. Zero external API costs. | `skill_view(name='pr-review')` |
 
-## Software Development (18 skills)
+## Software Development (19 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -21,6 +21,7 @@ their domain.
 | `prd-lite` | 1.0.0 | Concise 1-page PRD template — 14 sections | `skill_view(name='prd-lite')` |
 | `agent-flow` | 1.0.0 | Workflow router — 12 patterns (simple code, enterprise, debug, etc.) | `skill_view(name='agent-flow')` |
 | `agent-contract` | 1.0.0 | Non-negotiable execution rules — real work, no simulation | `skill_view(name='agent-contract')` |
+| `agent-inbox` | 1.0.0 | Web-based agent messaging system — topic channels, thread support, priority field, JSON API for agent-to-agent communication. | `skill_view(name='agent-inbox')` |
 | `plan` | 2.1.0 | Plan mode — write actionable markdown plans, no execution | `skill_view(name='plan')` |
 | `change-test-loop` | 2.0.0 | LEARN-RED-GREEN-REFACTOR loop — lesson-aware memory, confidence scoring, retry limits, TDD discipline. Every cycle begins by searching past lessons. | `skill_view(name='change-test-loop')` |
 | `lesson-aware-agent` | 1.0.0 | Universal lesson injection — search lessons before every action, save lessons after every fix. Works across all skills. | `skill_view(name='lesson-aware-agent')` |

@@ -119,6 +119,9 @@ register "src/scripts/health-server.py"            "${HERMES_HOME}/scripts/healt
 register "src/scripts/agent-health-monitor.py"     "${HERMES_HOME}/scripts/agent-health-monitor.py"
 register "src/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist"
 
+# Agent learning sender
+register "src/scripts/send-agent-learning.sh"      "${HERMES_HOME}/scripts/send-agent-learning.sh"
+
 # Agent inbox check (used by install.sh for cron setup)
 register "src/agent-inbox/agent-inbox-check.sh"    "${HERMES_HOME}/scripts/agent-inbox-check.sh"
 
