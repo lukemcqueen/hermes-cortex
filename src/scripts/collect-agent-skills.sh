@@ -6,8 +6,10 @@
 #  upstream hermes-cortex repo and reports them to Moses.
 #
 #  no_agent-safe: silent exit (0) when nothing new to report.
+#  Includes full SKILL.md content so Moses can evaluate quality
+#  without needing to request the file separately.
 #
-#  Relies on one env var:
+#  Relies on two env vars (or ~/.hermes/moses-inbox.conf):
 #    MOSES_INBOX_URL  — Moses inbox POST endpoint (e.g.
 #      https://your-domain.com:13004/send)
 #    MOSES_INBOX_AUTH — "user:pass" for Basic Auth on that
@@ -34,6 +36,7 @@ fi
 # NOT in the upstream repo's src/skills/ directory.
 
 CUSTOM_SKILLS=()
+SKILL_CONTENTS=()
 SKILL_COUNT=0
 
 while IFS= read -r -d '' skill_file; do
@@ -66,7 +69,11 @@ while IFS= read -r -d '' skill_file; do
   age_days=$(( (now - birth) / 86400 ))
   [[ $age_days -lt 0 ]] && age_days=0
 
+  # Read full SKILL.md content for evaluation
+  content=$(cat "$skill_file" 2>/dev/null || echo "(unreadable)")
+
   CUSTOM_SKILLS+=("{\"name\":\"$name\",\"category\":\"$category\",\"lines\":$lines,\"age_days\":$age_days,\"summary\":\"$summary\"}")
+  SKILL_CONTENTS+=("$content")
 done < <(find "$SKILLS_DIR" -name "SKILL.md" -type f -print0 2>/dev/null || true)
 
 # ── Build manifest ───────────────────────────────────────────
@@ -112,25 +119,34 @@ if [[ -n "${MOSES_INBOX_URL:-}" ]]; then
     AUTH_ARGS=(-u "$MOSES_INBOX_AUTH")
   fi
 
-  # Build a concise body for the inbox message
-  SUMMARY_LINES=""
-  for skill in "${CUSTOM_SKILLS[@]}"; do
-    name=$(echo "$skill" | grep -o '"name":"[^"]*"' | cut -d'"' -f4)
-    catg=$(echo "$skill" | grep -o '"category":"[^"]*"' | cut -d'"' -f4)
-    lines=$(echo "$skill" | grep -o '"lines":[0-9]*' | cut -d: -f2)
-    SUMMARY_LINES+="• $name"
-    [[ -n "$catg" ]] && SUMMARY_LINES+=" ($catg)"
-    SUMMARY_LINES+=" — ${lines} lines"$'\n'
-  done
-
+  # Build body: summary overview + full content for each skill
   BODY="━━━ Skill Report — $HOSTNAME ━━━
 Generated: $TIMESTAMP
 Total skills installed: $SKILL_COUNT
 Custom skills (not upstream): $TOTAL
 
-$SUMMARY_LINES
-Full manifest: ~/.hermes/state/skills-manifest.json
 "
+
+  idx=0
+  for skill in "${CUSTOM_SKILLS[@]}"; do
+    name=$(echo "$skill" | grep -o '"name":"[^"]*"' | cut -d'"' -f4)
+    catg=$(echo "$skill" | grep -o '"category":"[^"]*"' | cut -d'"' -f4)
+    lines=$(echo "$skill" | grep -o '"lines":[0-9]*' | cut -d: -f2)
+    summary=$(echo "$skill" | grep -o '"summary":"[^"]*"' | cut -d'"' -f4)
+
+    BODY+="== Skill: $name"
+    [[ -n "$catg" ]] && BODY+=" ($catg)"
+    BODY+=" ==
+Lines: $lines | Age: $(echo "$skill" | grep -o '"age_days":[0-9]*' | cut -d: -f2)d
+Description: $summary
+
+--- Full content ---
+${SKILL_CONTENTS[$idx]:-(unreadable)}
+--- End skill ---
+
+"
+    idx=$((idx + 1))
+  done
 
   curl -sk -X POST "$MOSES_INBOX_URL" \
     "${AUTH_ARGS[@]}" \
