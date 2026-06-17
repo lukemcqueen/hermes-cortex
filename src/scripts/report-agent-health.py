@@ -139,18 +139,17 @@ def build_report(data: dict | None) -> dict:
 # ── Send to Moses inbox ────────────────────────────────────────
 
 def send_report(report: dict) -> bool:
-    """POST health report to Moses's agent inbox via /api/send."""
+    """POST health report to Moses's agent inbox via form-encoded data."""
     try:
-        body = json.dumps(report)
-        # Use /api/send (JSON endpoint)
-        url = inbox_url.rstrip("/")
-        if "/api/send" not in url:
-            # If MOSES_INBOX_URL points to /send, rewrite to /api/send
-            url = url.replace("/send", "/api/send")
-        if "/api/send" not in url:
-            url += "/api/send" if url.endswith("/") else "/api/send"
-        req = Request(url, data=body.encode(), headers={
-            "Content-Type": "application/json",
+        import urllib.parse
+        form_data = urllib.parse.urlencode({
+            "from": "titus",
+            "topic": "health",
+            "subject": f"health-report {report.get('agent', 'unknown')} — {'healthy' if report.get('healthy', False) else 'issues'}",
+            "body": json.dumps(report, indent=2),
+        })
+        req = Request(inbox_url, data=form_data.encode(), headers={
+            "Content-Type": "application/x-www-form-urlencoded",
             "User-Agent": "hermes-health-reporter/1.0",
         })
         if inbox_auth:
