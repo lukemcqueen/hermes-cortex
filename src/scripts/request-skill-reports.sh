@@ -85,13 +85,25 @@ for agent in "${AGENTS[@]}"; do
   [[ "$agent" == "moses" ]] && continue
 
   BODY="━━━ Skill Report Request — $REQUEST_ID ━━━
-Hi $agent,
+Hi all agents,
 Please run collect-agent-skills.sh and share your custom skills.
 This helps Moses discover and evaluate agent-developed skills
 for potential incorporation into the hermes-cortex upstream.
 
 Instructions:
+  # Run once to report current skills:
   bash ~/.hermes/scripts/collect-agent-skills.sh
+
+  # To set up automatic reporting (every 6h, no_agent):
+  hermes cron create \\
+    name=collect-agent-skills \\
+    every 6h \\
+    script=~/.hermes/scripts/collect-agent-skills.sh \\
+    no_agent=true \\
+    deliver=local
+
+  Then fill in ~/.hermes/moses-inbox.conf with your Moses
+  inbox credentials (see the template file).
 
 Reply to this message with a summary of any custom skills found,
 or with 'none' if you have nothing new to report.

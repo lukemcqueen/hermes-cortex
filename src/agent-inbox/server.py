@@ -114,7 +114,7 @@ def _write_message(from_: str, subject: str, body: str,
                    priority: str = "normal",
                    status: str = "unread") -> str:
     """Write a message file to the inbox. Returns the filename."""
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
     safe_from = re.sub(r"[^a-zA-Z0-9_-]", "", from_.strip().lower()) or "agent"
     safe_subj = re.sub(r"[^a-zA-Z0-9_-]", "", subject.strip().lower())[:40] or "message"
     msg_id = f"{timestamp}-{safe_from}"
