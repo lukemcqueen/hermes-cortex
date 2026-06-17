@@ -1,0 +1,13 @@
+# ── Moses Inbox Connection Config ────────────────────────────
+# Fill in your credentials below for reporting skills back to Moses.
+# This file is sourced by collect-agent-skills.sh.
+#
+# These credentials are for Basic Auth on the Moses inbox server.
+# They are NOT stored in the hermes-cortex repo — fill in locally.
+#
+# Example (replace with actual values):
+#   MOSES_INBOX_URL="https://your-domain.com:13004/send"
+#   MOSES_INBOX_AUTH="agent-name:your-inbox-password"
+
+MOSES_INBOX_URL="https://your-domain.com:13004/send"
+MOSES_INBOX_AUTH=""
