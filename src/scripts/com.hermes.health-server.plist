@@ -7,23 +7,23 @@
     <string>com.hermes.health-server</string>
     <key>ProgramArguments</key>
     <array>
-        <string>CORTEX_HOME/.hermes/agent-inbox/venv/bin/python3</string>
-        <string>CORTEX_HOME/.hermes/scripts/health-server.py</string>
+        <string>$HOME/.hermes/agent-inbox/venv/bin/python3</string>
+        <string>$HOME/.hermes/scripts/health-server.py</string>
     </array>
     <key>KeepAlive</key>
     <true/>
     <key>RunAtLoad</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>CORTEX_HOME/.hermes/health-server/server.log</string>
+    <string>$HOME/.hermes/health-server/server.log</string>
     <key>StandardErrorPath</key>
-    <string>CORTEX_HOME/.hermes/health-server/server.log</string>
+    <string>$HOME/.hermes/health-server/server.log</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>CORTEX_HOME/.hermes/agent-inbox/venv/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>$HOME/.hermes/agent-inbox/venv/bin:/usr/local/bin:/usr/bin:/bin</string>
         <key>HEALTH_SERVER_NAME</key>
-        <string>moses</string>
+        <string>auto</string>
         <key>HEALTH_PORT</key>
         <string>8905</string>
     </dict>

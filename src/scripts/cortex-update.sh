@@ -119,9 +119,10 @@ register "src/scripts/langfuse-health-watchdog.py" "${HERMES_HOME}/scripts/langf
 register "src/scripts/llm-judge-scorer.py"         "${HERMES_HOME}/scripts/llm-judge-scorer.py"
 
 # Health monitoring
-register "src/scripts/health-server.py"            "${HERMES_HOME}/scripts/health-server.py"
+register "src/scripts/health-server.py"            "${HERMES_HOME}/scripts/health-server.py" "health-server"
 register "src/scripts/agent-health-monitor.py"     "${HERMES_HOME}/scripts/agent-health-monitor.py"
-register "src/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist"
+register "src/scripts/report-agent-health.py"      "${HERMES_HOME}/scripts/report-agent-health.py"
+register "src/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" "health-server" "restart_health_server"
 
 # Agent learning sender
 register "src/scripts/send-agent-learning.sh"      "${HERMES_HOME}/scripts/send-agent-learning.sh"
@@ -241,6 +242,27 @@ restart_agent_inbox() {
     info "  Restarting Agent Inbox (systemd)…"
     systemctl --user daemon-reload 2>/dev/null || true
     systemctl --user restart hermes-agent-inbox 2>&1 | sed 's/^/    /'
+  fi
+}
+
+restart_health_server() {
+  if launchctl list com.hermes.health-server &>/dev/null 2>&1; then
+    info "  Restarting Health Server…"
+    launchctl unload "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" 2>/dev/null || true
+    # Ensure the log dir exists
+    mkdir -p "${HOME}/.hermes/health-server"
+    launchctl load "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" 2>&1 | sed 's/^/    /'
+    info "  Health Server restarted"
+  elif [[ -f "${HOME}/.config/systemd/user/hermes-health-server.service" ]]; then
+    info "  Restarting Health Server (systemd)…"
+    systemctl --user daemon-reload 2>/dev/null || true
+    systemctl --user restart hermes-health-server 2>&1 | sed 's/^/    /'
+  elif [[ -f "${HOME}/.hermes/scripts/health-server.py" ]]; then
+    # First-time: launchctl not registered yet, load it
+    info "  Loading Health Server for the first time…"
+    mkdir -p "${HOME}/.hermes/health-server"
+    launchctl load "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" 2>&1 | sed 's/^/    /'
+    info "  Health Server loaded"
   fi
 }
 
