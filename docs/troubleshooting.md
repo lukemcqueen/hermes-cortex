@@ -87,6 +87,49 @@ exit
 docker restart langfuse-minio-1
 ```
 
+### 5b. MinIO port conflict with ClickHouse (native setup)
+
+**Symptom:** Langfuse logs show `Failed to upload events to blob storage` with `signature mismatch` or `specified bucket does not exist`.
+
+**Root cause:** Both ClickHouse and MinIO default to port **9000**. ClickHouse uses it for native TCP; MinIO uses it for the S3 API. The AWS SDK resolves via IPv4 and hits ClickHouse instead of MinIO.
+
+**Fix — move MinIO to a different port:**
+```bash
+kill $(pgrep -f "minio server") 2>/dev/null
+# Edit ~/Library/LaunchAgents/com.hermes.minio.plist
+# Change --address :9000 → --address :9002
+sed -i '' 's|:9000|:9002|' ~/Library/LaunchAgents/com.hermes.minio.plist
+launchctl bootstrap gui/501 ~/Library/LaunchAgents/com.hermes.minio.plist
+sed -i '' 's|LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT=.*|LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT=http://localhost:9002|' ~/langfuse/.env
+sed -i '' 's|MINIO_ENDPOINT=.*|MINIO_ENDPOINT=localhost:9002|' ~/langfuse/.env
+launchctl kickstart -k gui/501/com.hermes.langfuse-web
+```
+
+### 5c. S3 signature mismatch (native setup)
+
+**Symptom:** Langfuse logs show `The request signature we calculated does not match the signature you provided`.
+
+**Root cause:** The `LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY` in `.env` doesn't match the actual MinIO root password.
+
+**Fix — sync credentials:**
+```bash
+PASS=$(plutil -p ~/Library/LaunchAgents/com.hermes.minio.plist | grep MINIO_ROOT_PASSWORD | cut -d'"' -f4 -s)
+sed -i '' "s|LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY=.*|LAN...SA|" ~/langfuse/.env
+sed -i '' "s|LANGFUSE_MINIO_SECRET_KEY=.*|LAN...S|" ~/langfuse/.env
+launchctl kickstart -k gui/501/com.hermes.langfuse-web
+```
+
+### 5d. Missing FORCE_PATH_STYLE for MinIO
+
+**Symptom:** Langfuse logs show `The specified bucket does not exist` even though the bucket exists in MinIO.
+
+**Root cause:** AWS SDK defaults to virtual-hosted style URLs, which don't work with localhost MinIO.
+
+**Fix — add to Langfuse .env:**
+```
+LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE=true
+```
+
 ---
 
 ## 🖥️ Dashboard Issues
