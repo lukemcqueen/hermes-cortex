@@ -8,6 +8,9 @@ no_agent watchdog pattern:
 State tracked in ~/.hermes/state/health-state.json — fingerprints
 per server so alerts only fire on state transitions.
 
+Structured health data written to ~/.hermes/state/agent-health-data.json
+for dashboard consumption — updated every poll cycle.
+
 Agent registry at ~/.hermes/state/agent-registry.json — each agent
 entry can set "health_url" for remote health API endpoint.
 Moses's own health is checked at http://127.0.0.1:8905 via fallback.
@@ -29,6 +32,7 @@ from urllib.request import Request, urlopen
 
 HOME = Path.home()
 STATE_FILE = HOME / ".hermes" / "state" / "health-state.json"
+HEALTH_DATA_FILE = HOME / ".hermes" / "state" / "agent-health-data.json"
 REGISTRY_PATH = HOME / ".hermes" / "state" / "agent-registry.json"
 TIMEOUT = 15
 
@@ -74,6 +78,46 @@ def _fingerprint(data: dict | None) -> str:
     return "|".join(parts)
 
 
+def _build_structured_data(agents: list[dict], poll_results: dict) -> dict:
+    """Build structured health snapshot for dashboard consumption."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    health_data = {}
+
+    for a in agents:
+        key = a["key"]
+        data = poll_results.get(key, {}).get("data")
+        error = poll_results.get(key, {}).get("error")
+
+        if data is None:
+            health_data[key] = {
+                "healthy": False,
+                "reachable": False,
+                "server": a["name"],
+                "issues": [{"severity": "critical", "detail": "Unreachable", "error": error or "timeout/connection failed"}],
+                "services": [],
+                "last_seen": now_iso,
+            }
+        else:
+            services = ((data.get("checks") or {}).get("services") or {}).get("items", [])
+            issues = data.get("issues", [])
+            health_data[key] = {
+                "healthy": data.get("healthy", False),
+                "reachable": True,
+                "server": data.get("server", a["name"]),
+                "hostname": data.get("hostname", ""),
+                "issues": issues,
+                "issue_count": len(issues),
+                "critical_count": sum(1 for i in issues if i.get("severity") == "critical"),
+                "services": services,
+                "service_summary": f"{sum(1 for s in services if s.get('status') == 'running')}/{len(services)} up",
+                "uptime_seconds": data.get("uptime_seconds", 0),
+                "resources": data.get("checks", {}).get("resources", {}).get("data", {}),
+                "last_seen": now_iso,
+            }
+
+    return health_data
+
+
 def main():
     agents = _get_agents()
 
@@ -87,11 +131,13 @@ def main():
     now = {}
     alerts = []
     resolves = []
+    poll_results = {}  # key -> {"data": ..., "error": ...}
 
     for a in agents:
         key = a["key"]
         name = a["name"]
         data = _fetch(a["url"])
+        poll_results[key] = {"data": data, "error": None if data is not None else "unreachable"}
         fp = _fingerprint(data)
         now[key] = fp
         old = prev.get(key, "")
@@ -119,9 +165,14 @@ def main():
             elif old == "unreachable":
                 resolves.append(f"✅ {name} — back online")
 
-    # Save state
+    # Save fingerprint state (change detection)
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text(json.dumps(now, indent=2))
+
+    # Save structured health data (dashboard consumption) — always updated
+    health_data = _build_structured_data(agents, poll_results)
+    HEALTH_DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+    HEALTH_DATA_FILE.write_text(json.dumps(health_data, indent=2))
 
     # Output — no_agent cron delivers non-empty stdout
     output = []

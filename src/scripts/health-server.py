@@ -38,7 +38,11 @@ except ImportError:
     sys.exit(1)
 
 # ── Config ────────────────────────────────────────────────────
-SERVER_NAME = os.environ.get("HEALTH_SERVER_NAME", platform.node().split(".")[0])
+_raw_name = os.environ.get("HEALTH_SERVER_NAME", "auto")
+if _raw_name == "auto" or not _raw_name:
+    SERVER_NAME = platform.node().split(".")[0]
+else:
+    SERVER_NAME = _raw_name
 HEALTH_PORT = int(os.environ.get("HEALTH_PORT", "8905"))
 HOME = Path.home()
 
@@ -169,7 +173,7 @@ def _check_services() -> dict:
         services = [
             {"name": "nginx", "launchctl": None, "pgrep": "nginx: master"},
             {"name": "ollama", "launchctl": "com.ollama.serve", "pgrep": None},
-            {"name": "gbrain", "launchctl": "com.gbrain.autopilot", "pgrep": None},
+            {"name": "gbrain", "launchctl": "com.gbrain.autopilot", "pgrep": "gbrain"},
         ]
         # Check agent-inbox server
         inbox_pid_file = HOME / ".hermes" / "agent-inbox" / "server.pid"
@@ -198,13 +202,8 @@ def _check_services() -> dict:
                 if pid_match:
                     pid = int(pid_match)
                     status = "running"
-                else:
-                    # Fallback: check if it says "PID" = 0 or missing
-                    status = "stopped"
-                    healthy = False
-            else:
-                status = "stopped"
-                healthy = False
+                # If launchctl found the service but PID=0, service is registered but not running
+            # If launchctl check failed, fall through to pgrep rather than marking stopped immediately
 
         # Fallback: check via pgrep
         if status == "unknown" and svc.get("pgrep"):

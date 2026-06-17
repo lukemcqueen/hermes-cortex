@@ -1000,6 +1000,33 @@ def api_system():
     return jsonify(_system())
 
 
+# ── Agent Health ──────────────────────────────────────────────
+
+AGENT_HEALTH_FILE = HERMES_HOME / "state" / "agent-health-data.json"
+
+@app.route("/api/agents")
+@_cached("agents", ttl=60)
+def api_agents():
+    """Read structured health data written by agent-health-monitor.py."""
+    if AGENT_HEALTH_FILE.exists():
+        try:
+            data = json.loads(AGENT_HEALTH_FILE.read_text())
+            return jsonify(data)
+        except (json.JSONDecodeError, OSError) as e:
+            return jsonify({"error": str(e)})
+    return jsonify({})
+
+
+def _agents_data() -> dict:
+    """Non-cached helper for /api/all aggregation."""
+    if AGENT_HEALTH_FILE.exists():
+        try:
+            return json.loads(AGENT_HEALTH_FILE.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+    return {}
+
+
 @app.route("/api/all")
 def api_all():
     """Aggregated snapshot — no additional caching (individual endpoints handle it)."""
@@ -1010,6 +1037,7 @@ def api_all():
             "sessions": _lf_sessions(),
             "scores": _lf_scores(),
         },
+        "agents": _agents_data(),
         "crons": _crons(),
         "sessions": _sessions(),
         "session_timeline": _session_timeline(),

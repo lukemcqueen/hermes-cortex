@@ -198,6 +198,37 @@
   .net-card .dir { font-size: 10px; color: var(--text-dim); display: flex; justify-content: space-between; padding: 2px 0; }
   .net-card .vol { color: var(--accent); }
 
+  /* Agent Health */
+  .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+  .agent-card {
+    padding: 12px; border-radius: 8px;
+    border: 1px solid var(--card-border);
+    background: rgba(255,255,255,.03);
+  }
+  .agent-card.healthy { border-left: 3px solid var(--green); }
+  .agent-card.degraded { border-left: 3px solid var(--yellow); }
+  .agent-card.unhealthy { border-left: 3px solid var(--red); }
+  .agent-card.unreachable { border-left: 3px solid var(--red); opacity: 0.7; }
+  .agent-name { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .agent-name .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .agent-name .dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .agent-name .dot.yellow { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+  .agent-name .dot.red { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  .agent-name .dot.gray { background: var(--text-muted); }
+  .agent-meta { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+  .agent-service { font-size: 10px; color: var(--text-dim); padding: 2px 0; display: flex; justify-content: space-between; }
+  .agent-service .svc-up { color: var(--green); }
+  .agent-service .svc-down { color: var(--red); }
+  .agent-issue {
+    font-size: 10px; padding: 2px 6px; border-radius: 3px;
+    margin-top: 4px; display: inline-block;
+  }
+  .agent-issue.critical { background: rgba(239,68,68,.15); color: var(--red); }
+  .agent-issue.warning { background: rgba(234,179,8,.15); color: var(--yellow); }
+  .agent-resource { font-size: 10px; color: var(--text-dim); display: flex; justify-content: space-between; padding: 1px 0; }
+  .agent-resource .warn { color: var(--yellow); }
+  .agent-resource .crit { color: var(--red); }
+
   .disk-row { display: flex; gap: 12px; flex-wrap: wrap; }
   .disk-item { padding: 8px 12px; background: rgba(255,255,255,.03); border-radius: 6px; }
   .disk-item .name { font-size: 11px; font-weight: 600; }
@@ -232,6 +263,12 @@
     <div class="links">
       <a href="#" id="langfuse-link" onclick="event.preventDefault(); window.open(document.getElementById('langfuse-link').href, '_blank'); return false;">Langfuse ↗</a>
     </div>
+  </div>
+
+  <!-- Agent Health -->
+  <div class="card">
+    <h2>Agent Health</h2>
+    <div id="agent-health-content"><div class="loading">loading...</div></div>
   </div>
 
   <!-- System Metrics (load, memory, disk) -->
@@ -373,6 +410,68 @@ const LANGFUSE_EXTERNAL = 'http://localhost:13002'; // External Langfuse URL (fo
       <div class="metric"><div class="val">${mem}%</div><div class="lbl">Memory</div></div>
       <div class="metric"><div class="val">${disk}%</div><div class="lbl">Disk</div></div>
     </div>`;
+  }
+
+  function renderAgentHealth(data) {
+    const agents = data.agents || {};
+    const entries = Object.entries(agents);
+    if (entries.length === 0) { $('agent-health-content').innerHTML = '<div class="empty">No agent health data</div>'; return; }
+    let html = '<div class="agent-grid">';
+    for (const [key, agent] of entries) {
+      const healthy = agent.healthy && agent.reachable !== false;
+      const reachable = agent.reachable !== false;
+      const issueCount = agent.issue_count || 0;
+      const criticalCount = agent.critical_count || 0;
+
+      let cardClass, dotColor, statusText;
+      if (!reachable) {
+        cardClass = 'unreachable'; dotColor = 'gray'; statusText = 'unreachable';
+      } else if (criticalCount > 0) {
+        cardClass = 'unhealthy'; dotColor = 'red'; statusText = 'critical';
+      } else if (issueCount > 0) {
+        cardClass = 'degraded'; dotColor = 'yellow'; statusText = 'degraded';
+      } else {
+        cardClass = 'healthy'; dotColor = 'green'; statusText = 'healthy';
+      }
+
+      const uptime = agent.uptime_seconds ? Math.floor(agent.uptime_seconds / 3600) + 'h' : '—';
+      const services = agent.services || [];
+      const issues = agent.issues || [];
+
+      html += `<div class="agent-card ${cardClass}">
+        <div class="agent-name"><span class="dot ${dotColor}"></span>${agent.server || key}</div>
+        <div class="agent-meta">${statusText} · ${uptime} · ${agent.service_summary || '—'}</div>`;
+
+      // Services
+      for (const svc of services) {
+        const up = svc.status === 'running';
+        html += `<div class="agent-service"><span>${svc.name}</span><span class="${up ? 'svc-up' : 'svc-down'}">${up ? '✓' : '✗'}</span></div>`;
+      }
+
+      // Resources
+      const res = agent.resources || {};
+      if (res.disk_percent != null) {
+        const diskClass = res.disk_percent > 90 ? 'crit' : res.disk_percent > 80 ? 'warn' : '';
+        html += `<div class="agent-resource"><span>💾 Disk</span><span class="${diskClass}">${res.disk_percent}%</span></div>`;
+      }
+      if (res.memory_percent != null) {
+        const memClass = res.memory_percent > 90 ? 'crit' : res.memory_percent > 80 ? 'warn' : '';
+        html += `<div class="agent-resource"><span>🧠 Memory</span><span class="${memClass}">${res.memory_percent}%</span></div>`;
+      }
+
+      // Issues
+      for (const iss of issues.slice(0, 3)) {
+        const sev = iss.severity === 'critical' ? 'critical' : 'warning';
+        html += `<div class="agent-issue ${sev}">${iss.detail}</div>`;
+      }
+      if (issues.length > 3) {
+        html += `<div class="agent-issue warning">+${issues.length - 3} more</div>`;
+      }
+
+      html += '</div>';
+    }
+    html += '</div>';
+    $('agent-health-content').innerHTML = html;
   }
 
   function renderStats(data) {
@@ -639,6 +738,7 @@ const LANGFUSE_EXTERNAL = 'http://localhost:13002'; // External Langfuse URL (fo
     }
     $('timestamp').textContent = data.timestamp ? data.timestamp.slice(11,19) : new Date().toLocaleTimeString();
     renderHealth(data);
+    renderAgentHealth(data);
     renderMetrics(data);
     renderStats(data);
     renderCostTrends(data);
