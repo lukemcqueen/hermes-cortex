@@ -63,7 +63,7 @@ SEARCH_QUERIES = [
     "let me fix OR let me update OR let me change OR fixed the",
     "i noticed OR i see the OR found that OR realized that",
     "we need to OR we should OR we have to",
-    # Additional agent reasoning patterns (Titus)
+    # Additional agent reasoning patterns
     "issue was that OR problem was that OR bug was that",
     "missing OR forgot OR forgotten OR hadn't",
     "failed because OR fails because OR failing because",
