@@ -54,6 +54,9 @@ def _make_service(name: str, label: str = "", pgrep: str = "",
 _last_restart: dict[str, float] = {}
 
 
+SERVICES: list[dict] = []
+
+
 def _check_scripts() -> bool:
     """Check if critical Hermes scripts are present and executable."""
     critical = [
@@ -95,7 +98,7 @@ def _try_restore_scripts() -> str | None:
     return "No scripts needed restoration or cortex repo missing"
 
 
-SERVICES: list[dict] = [
+SERVICES.extend([
     _make_service("nginx", pgrep="nginx: master",
                   restart_label="homebrew.mxcl.nginx",
                   verify_cmd=["nginx", "-t"]),
@@ -109,7 +112,7 @@ SERVICES: list[dict] = [
         "restart_label": "",
         "verify_label": "Hermes scripts",
     },
-]
+])
 
 
 def _try_restart(svc: dict) -> str | None:
