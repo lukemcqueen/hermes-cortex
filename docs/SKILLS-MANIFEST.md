@@ -46,6 +46,14 @@ their domain.
 | `package-security` | 1.0.0 | Age-gated package installation — verifies packages are ≥14 days old before install. Covers PyPI, npm, crates.io, Homebrew. | `skill_view(name='package-security')` |
 | `weekly-auto-fix` | 1.1.0 | Auto-fix + verify known issues found by the weekly opportunity scan — git pull, branch cleanup, Docker restart, permission fixes, disk cleanup, then verify each fix | `skill_view(name='weekly-auto-fix')` |
 
+### Infrastructure Scripts (deployed via cortex-update.sh)
+
+| Script | Type | Purpose | Schedule |
+|--------|------|---------|----------|
+| `collect-agent-skills.sh` | no_agent | Agent-side: diffs local skills against upstream repo, reports custom skills to Moses inbox | every 6h per agent |
+| `request-skill-reports.sh` | no_agent | Moses-side: sends inbox broadcast to all registered agents requesting skill reports | daily 2:05am |
+| `process-skill-reports.py` | no_agent | Moses-side: reads skill-report messages from inbox, compiles digest for review | every 6h (:15) |
+
 ## Social Media
 
 | Skill | Version | Purpose | Load With |
@@ -87,4 +95,5 @@ references remain.
 | 2026-06-09 | Added pr-review (github), package-security (devops). skill-from-lesson absorbed into save-lesson (v1.1.0). documentation-maintenance-audit absorbed into project-readiness. |
 || 2026-06-15 | Added moses-inbox-remediation devops skill v1.0.0 — auto-remediate hermes-cortex issues from agent inbox messages |
 || 2026-06-15 | weekly-auto-fix v1.1.0 — added verification phase: each fix re-checks its condition post-fix with PASS/FAIL/WARN output |
+|| 2026-06-17 | Added skill collection pipeline: collect-agent-skills.sh (agent-side reporter), request-skill-reports.sh (Moses orchestrator), process-skill-reports.py (digest compiler). Inbox server filename collision fix (microsecond precision). |
 || 2026-06-12 | **Memory That Compounds** — change-test-loop v2.0.0 adds LEARN phase (search lessons before every code change). New lesson-aware-agent skill for universal injection. Daily lesson auto-miner (02:00 KST). Compound stats dashboard (02:30 KST). Replaced weekly mining with daily mining. |
