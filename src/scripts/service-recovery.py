@@ -48,24 +48,8 @@ def _make_service(name: str, label: str = "", pgrep: str = "",
     }
 
 
-SERVICES = [
-    _make_service("nginx", pgrep="nginx: master",
-                  restart_label="homebrew.mxcl.nginx",
-                  verify_cmd=["nginx", "-t"]),
-    _make_service("Langfuse", docker_sub="langfuse-langfuse-web"),
-    _make_service("Ollama", label="com.ollama.serve", pgrep="ollama"),
-    _make_service("gbrain", label="com.gbrain.autopilot",
-                  pgrep="gbrain"),
-    {
-        "name": "scripts",
-        "check": _check_scripts,
-        "restart_label": "",
-        "verify_label": "Hermes scripts",
-    },
-]
-
 # Keep track of recent restarts to prevent thrashing
-_last_restart = {}  # service_name -> timestamp
+_last_restart: dict[str, float] = {}
 
 
 def _check_scripts() -> bool:
@@ -81,6 +65,23 @@ def _check_scripts() -> bool:
         if not os.access(str(sp), os.X_OK):
             return False
     return True
+
+
+SERVICES: list[dict] = [
+    _make_service("nginx", pgrep="nginx: master",
+                  restart_label="homebrew.mxcl.nginx",
+                  verify_cmd=["nginx", "-t"]),
+    _make_service("Langfuse", docker_sub="langfuse-langfuse-web"),
+    _make_service("Ollama", label="com.ollama.serve", pgrep="ollama"),
+    _make_service("gbrain", label="com.gbrain.autopilot",
+                  pgrep="gbrain"),
+    {
+        "name": "scripts",
+        "check": _check_scripts,
+        "restart_label": "",
+        "verify_label": "Hermes scripts",
+    },
+]
 
 
 def _try_restore_scripts() -> str | None:
@@ -138,7 +139,7 @@ def _try_restart(svc: dict) -> str | None:
         _last_restart[name] = now
         return None
     else:
-        return f"⚠️ {name} restart issued but service not confirmed up after 3s"
+        return f"⚠️ {name} restart issued but not confirmed up after 3s"
 
 
 def _status_text(svc: dict) -> str:
