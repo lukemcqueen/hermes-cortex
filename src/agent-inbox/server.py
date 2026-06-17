@@ -76,7 +76,8 @@ def _parse_message(path: Path) -> dict:
     """Parse a markdown message file with YAML frontmatter."""
     text = path.read_text(encoding="utf-8", errors="replace")
     front = {"from": "?", "subject": "No subject", "topic": DEFAULT_TOPIC,
-             "thread": "", "parent": "", "status": "unread", "priority": "normal"}
+             "thread": "", "parent": "", "status": "unread", "priority": "normal",
+             "read_by": ""}
     body = text
 
     m = re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)", text, re.DOTALL)
@@ -100,6 +101,7 @@ def _parse_message(path: Path) -> dict:
         "parent": front.get("parent", ""),
         "status": front.get("status", "unread"),
         "priority": front.get("priority", "normal"),
+        "read_by": front.get("read_by", ""),
         "body": body,
         "timestamp": datetime.fromtimestamp(path.stat().st_mtime).isoformat(),
         "filename": filename,
@@ -124,6 +126,9 @@ def _write_message(from_: str, subject: str, body: str,
     if not thread and not parent:
         thread = msg_id
 
+    # Auto-add sender to read_by — they already know what they sent
+    read_by = safe_from
+
     content = f"""---
 from: {from_.strip()}
 subject: {subject.strip()}
@@ -132,6 +137,7 @@ priority: {priority}
 thread: {thread}
 parent: {parent}
 status: {status}
+read_by: {read_by}
 ---
 
 {body.strip()}
@@ -141,16 +147,40 @@ status: {status}
     return filename
 
 
-def _mark_read(filename: str) -> None:
-    """Mark a message as read by updating its frontmatter."""
+def _mark_read(filename: str, reader: str = "") -> None:
+    """Mark a message as read by adding reader to read_by field."""
     path = _msg_path(filename)
     if not path.exists():
         return
     text = path.read_text(encoding="utf-8", errors="replace")
-    # Replace status: unread with status: read
-    updated = re.sub(r"^status:\s*unread", "status: read", text, count=1, flags=re.MULTILINE)
-    if updated != text:
-        path.write_text(updated, encoding="utf-8")
+
+    if reader:
+        # Per-agent read: add agent name to read_by list
+        safe_reader = re.sub(r"[^a-zA-Z0-9_-]", "", reader.strip().lower()) or ""
+        if safe_reader:
+            # Check if already in read_by
+            existing = ""
+            m = re.search(r"^read_by:\s*(.*)$", text, re.MULTILINE)
+            if m:
+                existing = m.group(1).strip()
+            readers = [r.strip() for r in existing.split(",") if r.strip()]
+            if safe_reader not in readers:
+                readers.append(safe_reader)
+                new_val = ", ".join(readers)
+                updated = re.sub(
+                    r"^read_by:.*$",
+                    f"read_by: {new_val}",
+                    text,
+                    count=1,
+                    flags=re.MULTILINE,
+                )
+                if updated != text:
+                    path.write_text(updated, encoding="utf-8")
+    else:
+        # Legacy: mark global status as read
+        updated = re.sub(r"^status:\s*unread", "status: read", text, count=1, flags=re.MULTILINE)
+        if updated != text:
+            path.write_text(updated, encoding="utf-8")
 
 
 def _get_all_messages() -> tuple[list[dict], list[dict]]:
@@ -722,8 +752,9 @@ async def send_message(
 
 
 @app.get("/read/{filename}")
-async def mark_read(filename: str):
-    _mark_read(filename)
+async def mark_read(filename: str, for_: str = Query(default="", alias="for")):
+    """Mark a message as read. If for is set, marks read for that agent only."""
+    _mark_read(filename, reader=for_)
     return RedirectResponse(url="/", status_code=303)
 
 
@@ -739,12 +770,37 @@ async def health():
 
 
 @app.get("/api/inbox")
-async def api_inbox(topic: str = "", unread_only: bool = False, urgent_only: bool = False):
-    """JSON API for agents. Returns inbox messages. Filter by topic, unread_only, or urgent_only."""
+async def api_inbox(
+    topic: str = "",
+    unread_only: bool = False,
+    urgent_only: bool = False,
+    for_: str = Query(default="", alias="for"),
+):
+    """JSON API for agents. Returns inbox messages.
+
+    When for_ is set, filters out messages the agent already knows
+    about (sent by them or read by them via read_by field).
+    """
     inbox_msgs, _ = _get_all_messages()
 
     if topic:
         inbox_msgs = [m for m in inbox_msgs if m["topic"] == topic]
+
+    if for_:
+        # Per-agent filtering: exclude messages the agent sent or already read
+        safe_agent = re.sub(r"[^a-zA-Z0-9_-]", "", for_.strip().lower())
+        if safe_agent:
+            filtered = []
+            for m in inbox_msgs:
+                msg_from = m.get("from", "").strip().lower()
+                read_by_str = m.get("read_by", "")
+                read_by_list = [r.strip().lower() for r in read_by_str.split(",") if r.strip()]
+                # Skip if agent sent it or already read it
+                if safe_agent == msg_from or safe_agent in read_by_list:
+                    continue
+                filtered.append(m)
+            inbox_msgs = filtered
+
     if unread_only:
         inbox_msgs = [m for m in inbox_msgs if m["status"] == "unread"]
     if urgent_only:
