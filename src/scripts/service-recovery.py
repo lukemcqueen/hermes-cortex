@@ -5,95 +5,67 @@ Checks each service; if down, attempts recovery.
 Silent (empty output) when all services healthy.
 Non-empty output is delivered to user as an incident report.
 """
-from typing import Optional
-import subprocess, sys, time, os
+import os
+import subprocess
+import sys
+import time
+import hashlib
+import json
 from pathlib import Path
 
-UID = os.getuid()  # dynamic user ID
+# Cross-platform service helpers
+from platform_utils import (
+    service_running,
+    restart_service,
+    docker_container_running,
+    is_macos,
+    is_linux,
+)
+
+UID = os.getuid()
 LANGFUSE_DIR = str(Path.home() / "langfuse")
 HERMES_SCRIPTS = Path.home() / ".hermes" / "scripts"
-CORTEX_SCRIPTS = Path.home() / "hermes-cortex" / "src" / "scripts"
+CORTEX_REPO_ENV = os.environ.get("CORTEX_REPO", "")
+if CORTEX_REPO_ENV:
+    CORTEX_SCRIPTS = Path(CORTEX_REPO_ENV) / "src" / "scripts"
+else:
+    CORTEX_SCRIPTS = Path.home() / "hermes-cortex" / "src" / "scripts"
+
+
+def _make_service(name: str, label: str = "", pgrep: str = "",
+                  docker_sub: str = "", restart_label: str = "",
+                  verify_cmd: list | None = None) -> dict:
+    """Factory: create a service config that works on macOS and Linux."""
+    return {
+        "name": name,
+        "check": lambda lbl=label, pgr=pgrep, ds=docker_sub: (
+            docker_container_running(ds) if ds else
+            service_running(lbl, pgrep_pattern=pgr if not lbl else None)
+        ),
+        "restart_label": restart_label or label or name,
+        "verify_cmd": verify_cmd,
+        "verify_label": name,
+    }
+
 
 SERVICES = [
-    {
-        "name": "nginx",
-        "check": lambda: bool(subprocess.run(
-            ["pgrep", "-f", "nginx: master"],
-            capture_output=True, timeout=5).stdout.strip()),
-        "restart_cmd": ["launchctl", "bootstrap",
-                        f"gui/{UID}",
-                        str(Path.home() / "Library/LaunchAgents/homebrew.mxcl.nginx.plist")],
-        "fallback_cmd": ["nginx"],
-        "verify_cmd": ["nginx", "-t"],
-    },
-    {
-        "name": "Langfuse",
-        "check": lambda: _check_docker("langfuse-langfuse-web"),
-        "restart_cmd": ["docker", "compose", "up", "-d"],
-        "restart_workdir": LANGFUSE_DIR,
-        "verify_label": "langfuse-web container",
-    },
-    {
-        "name": "Ollama",
-        "check": lambda: _check_launchd("com.ollama.serve"),
-        "restart_cmd": ["launchctl", "kickstart", f"gui/{UID}/com.ollama.serve"],
-        "fallback_cmd": ["launchctl", "bootstrap", f"gui/{UID}",
-                         str(Path.home() / "Library/LaunchAgents/com.ollama.serve.plist")],
-        "verify_label": "Ollama server",
-    },
-    {
-        "name": "gbrain",
-        "check": lambda: (
-            _check_launchd("com.gbrain.autopilot") or
-            _check_launchd("com.gbrain.sync-watch")
-        ),
-        "restart_cmd": ["launchctl", "kickstart", f"gui/{UID}/com.gbrain.autopilot"],
-        "fallback_cmd": ["launchctl", "bootstrap", f"gui/{UID}",
-                         str(Path.home() / "Library/LaunchAgents/com.gbrain.sync-watch.plist")],
-        "verify_label": "gbrain autopilot/sync-watch",
-    },
+    _make_service("nginx", pgrep="nginx: master",
+                  restart_label="homebrew.mxcl.nginx",
+                  verify_cmd=["nginx", "-t"]),
+    _make_service("Langfuse", docker_sub="langfuse-langfuse-web"),
+    _make_service("Ollama", label="com.ollama.serve", pgrep="ollama"),
+    _make_service("gbrain", label="com.gbrain.autopilot",
+                  pgrep="gbrain"),
     {
         "name": "scripts",
-        "check": lambda: _check_scripts(),
-        "restart_cmd": None,  # handled by _try_restore_scripts
+        "check": _check_scripts,
+        "restart_label": "",
         "verify_label": "Hermes scripts",
     },
 ]
 
 # Keep track of recent restarts to prevent thrashing
 _last_restart = {}  # service_name -> timestamp
-
-
-def _check_docker(container_substring: str) -> bool:
-    try:
-        r = subprocess.run(
-            ["docker", "ps", "--filter", f"name={container_substring}",
-             "--format", "{{.Names}}"],
-            capture_output=True, text=True, timeout=10,
-        )
-        return r.stdout.strip() != ""
-    except Exception:
-        return False
-
-
-def _check_launchd(label: str) -> bool:
-    """Check if a launchd service is running (has a PID)."""
-    try:
-        r = subprocess.run(
-            ["launchctl", "list", label],
-            capture_output=True, text=True, timeout=5,
-        )
-        if r.returncode != 0:
-            return False
-        # Check if there's a PID (first field in tab-separated output, or "PID" in plist format)
-        if '"PID"' in r.stdout:
-            import re
-            m = re.search(r'"PID"\s*=\s*(\d+);', r.stdout)
-            return m is not None and m.group(1) != "0"
-        pid = r.stdout.split("\t")[0] if "\t" in r.stdout else "-"
-        return pid != "-"
-    except Exception:
-        return False
 
 
 def _check_scripts() -> bool:
@@ -111,7 +83,7 @@ def _check_scripts() -> bool:
     return True
 
 
-def _try_restore_scripts() -> Optional[str]:
+def _try_restore_scripts() -> str | None:
     """Try to restore missing scripts from the cortex repo. Returns error or None."""
     restored = []
     critical = [
@@ -137,7 +109,7 @@ def _try_restore_scripts() -> Optional[str]:
     return "No scripts needed restoration or cortex repo missing"
 
 
-def _try_restart(svc: dict) -> Optional[str]:
+def _try_restart(svc: dict) -> str | None:
     """Attempt to restart a service. Returns error string or None on success."""
     name = svc["name"]
     now = time.time()
@@ -153,34 +125,18 @@ def _try_restart(svc: dict) -> Optional[str]:
         if r.returncode != 0:
             return f"❌ {name}: pre-flight check failed ({r.stderr.strip()[:200]}) — not restarting"
 
-    # Restart
-    workdir = svc.get("restart_workdir")
-    cmds = [svc["restart_cmd"]]
-    if svc.get("fallback_cmd"):
-        cmds.append(svc["fallback_cmd"])
-
-    for idx, cmd in enumerate(cmds):
-        try:
-            r = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=30,
-                cwd=workdir or None,
-            )
-            if r.returncode == 0:
-                break  # success on this attempt
-            if idx < len(cmds) - 1:
-                # Primary failed, try fallback
-                continue
-            return f"❌ {name} restart failed: {r.stderr.strip()[:200]}"
-        except subprocess.TimeoutExpired:
-            return f"❌ {name} restart timed out (30s)"
-        except Exception as e:
-            return f"❌ {name} restart error: {e}"
+    # Restart using platform_utils
+    restart_label = svc.get("restart_label", name)
+    if restart_label:
+        ok = restart_service(restart_label)
+        if not ok:
+            return f"❌ {name} restart failed (platform_utils returned False)"
 
     # Wait a moment then verify
     time.sleep(3)
     if svc["check"]():
         _last_restart[name] = now
-        return None  # success
+        return None
     else:
         return f"⚠️ {name} restart issued but service not confirmed up after 3s"
 

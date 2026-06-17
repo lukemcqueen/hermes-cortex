@@ -12,7 +12,9 @@ Usage:
     uvicorn server:app --host 127.0.0.1 --port 8903
 """
 import html
+import os
 import re
+import sys
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -21,9 +23,22 @@ from typing import Optional
 from fastapi import FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-PRIVATE_REPO = Path.home() / "hermes-cortex-private"
-INBOX_DIR = PRIVATE_REPO / "messages" / "inbox"
-PROCESSED_DIR = PRIVATE_REPO / "messages" / "processed"
+# ── Configurable inbox directory ────────────────────────────
+# AGENT_INBOX_DIR overrides the default ~/hermes-cortex-private/messages
+AGENT_INBOX_DIR = os.environ.get("AGENT_INBOX_DIR", "")
+if AGENT_INBOX_DIR:
+    PRIVATE_REPO = Path(AGENT_INBOX_DIR)
+    INBOX_DIR = PRIVATE_REPO / "inbox"
+    PROCESSED_DIR = PRIVATE_REPO / "processed"
+else:
+    PRIVATE_REPO = Path.home() / "hermes-cortex-private"
+    INBOX_DIR = PRIVATE_REPO / "messages" / "inbox"
+    PROCESSED_DIR = PRIVATE_REPO / "messages" / "processed"
+    if not PRIVATE_REPO.exists():
+        print(f"WARN: Default inbox dir {PRIVATE_REPO} not found. "
+              f"Set AGENT_INBOX_DIR env var to a custom path, or "
+              f"clone hermes-cortex-private to enable git-backed persistence.",
+              file=sys.stderr)
 
 for d in [INBOX_DIR, PROCESSED_DIR]:
     d.mkdir(parents=True, exist_ok=True)

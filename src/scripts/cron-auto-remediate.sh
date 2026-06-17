@@ -19,7 +19,7 @@
 set -euo pipefail
 
 HERMES_SCRIPTS="${HOME}/.hermes/scripts"
-CORTEX_REPO="${HOME}/hermes-cortex"
+CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 CORTEX_SCRIPTS="${CORTEX_REPO}/src/scripts"
 ACTION="${1:-diagnose}"
 
