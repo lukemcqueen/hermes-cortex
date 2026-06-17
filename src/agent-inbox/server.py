@@ -20,7 +20,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Form, Query, Request
+from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 # ── Configurable inbox directory ────────────────────────────
@@ -59,17 +59,14 @@ DEFAULT_TOPIC = "general"
 
 # ── File helpers ─────────────────────────────────────────────
 
-def _msg_path(filename: str) -> Path:
-    """Return the inbox or processed path for a message file."""
-    # Try with .md first, then without
+def _msg_path(filename: str) -> Optional[Path]:
+    """Return the path to a message file, or None if not found."""
     for fname in [filename, filename + ".md"]:
-        p = INBOX_DIR / fname
-        if p.exists():
-            return p
-        p = PROCESSED_DIR / fname
-        if p.exists():
-            return p
-    return INBOX_DIR / filename
+        for d in [INBOX_DIR, PROCESSED_DIR]:
+            p = d / fname
+            if p.exists():
+                return p
+    return None
 
 
 def _parse_message(path: Path) -> dict:
@@ -148,39 +145,52 @@ read_by: {read_by}
 
 
 def _mark_read(filename: str, reader: str = "") -> None:
-    """Mark a message as read by adding reader to read_by field."""
-    path = _msg_path(filename)
-    if not path.exists():
-        return
-    text = path.read_text(encoding="utf-8", errors="replace")
+    """Mark a message as read by adding reader to read_by field.
 
-    if reader:
-        # Per-agent read: add agent name to read_by list
-        safe_reader = re.sub(r"[^a-zA-Z0-9_-]", "", reader.strip().lower()) or ""
-        if safe_reader:
-            # Check if already in read_by
-            existing = ""
-            m = re.search(r"^read_by:\s*(.*)$", text, re.MULTILINE)
-            if m:
-                existing = m.group(1).strip()
-            readers = [r.strip() for r in existing.split(",") if r.strip()]
-            if safe_reader not in readers:
-                readers.append(safe_reader)
-                new_val = ", ".join(readers)
-                updated = re.sub(
-                    r"^read_by:.*$",
-                    f"read_by: {new_val}",
-                    text,
-                    count=1,
-                    flags=re.MULTILINE,
-                )
-                if updated != text:
-                    path.write_text(updated, encoding="utf-8")
-    else:
-        # Legacy: mark global status as read
-        updated = re.sub(r"^status:\s*unread", "status: read", text, count=1, flags=re.MULTILINE)
-        if updated != text:
-            path.write_text(updated, encoding="utf-8")
+    Uses file locking (fcntl.flock) for safe concurrent access.
+    """
+    path = _msg_path(filename)
+    if not path or not path.exists():
+        return
+
+    import fcntl
+
+    with open(path, "r+") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        text = f.read()
+
+        if reader:
+            # Per-agent read: add agent name to read_by list
+            safe_reader = re.sub(r"[^a-zA-Z0-9_-]", "", reader.strip().lower()) or ""
+            if safe_reader:
+                existing = ""
+                m = re.search(r"^read_by:\s*(.*)$", text, re.MULTILINE)
+                if m:
+                    existing = m.group(1).strip()
+                readers = [r.strip() for r in existing.split(",") if r.strip()]
+                if safe_reader not in readers:
+                    readers.append(safe_reader)
+                    new_val = ", ".join(readers)
+                    updated = re.sub(
+                        r"^read_by:.*$",
+                        f"read_by: {new_val}",
+                        text,
+                        count=1,
+                        flags=re.MULTILINE,
+                    )
+                    if updated != text:
+                        f.seek(0)
+                        f.write(updated)
+                        f.truncate()
+        else:
+            # Legacy: mark global status as read
+            updated = re.sub(r"^status:\s*unread", "status: read", text, count=1, flags=re.MULTILINE)
+            if updated != text:
+                f.seek(0)
+                f.write(updated)
+                f.truncate()
+
+        fcntl.flock(f, fcntl.LOCK_UN)
 
 
 def _get_all_messages() -> tuple[list[dict], list[dict]]:
@@ -542,7 +552,7 @@ async def index(
     <label for="from">Your Agent Name</label>
     <input type="text" id="from" name="from" placeholder="titus, gisu, joseph, kustos, luke..." required>
 
-    <div class="compose-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div class="compose-form-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
       <div>
         <label for="topic">Topic</label>
         <select id="topic" name="topic">{topic_options}</select>
@@ -550,6 +560,14 @@ async def index(
       <div>
         <label for="subject">Subject</label>
         <input type="text" id="subject" name="subject" placeholder="Brief summary" required>
+      </div>
+      <div>
+        <label for="priority">Priority</label>
+        <select id="priority" name="priority">
+          <option value="normal">Normal</option>
+          <option value="urgent">⚠ Urgent</option>
+          <option value="critical">🔴 Critical</option>
+        </select>
       </div>
     </div>
 
@@ -631,8 +649,43 @@ function toggleMessageForm(forceOpen) {{
   }}
 }}
 
-// ── Auto-refresh ──
+// ── Auto-refresh — lightweight AJAX polling ──
 let autoRefreshTimer = null;
+let lastUnreadCount = 0;
+
+function checkNewMessages() {{
+  try {{
+    fetch('/api/inbox?unread_only=true')
+      .then(r => r.json())
+      .then(data => {{
+        const count = data.unread || 0;
+        if (count > lastUnreadCount) {{
+          lastUnreadCount = count;
+          showRefreshNotification(count + ' new message(s)');
+          // Reload page after brief delay so notification is seen
+          setTimeout(function() {{ location.reload(); }}, 1500);
+        }} else if (count < lastUnreadCount) {{
+          lastUnreadCount = count; // Reset if messages were read elsewhere
+        }}
+        // Flash the dot to show activity
+        const dot = id('refresh-dot');
+        if (dot) {{ dot.classList.add('active'); setTimeout(function() {{ dot.classList.remove('active'); }}, 500); }}
+      }})
+      .catch(function() {{}}); // Silent on network errors
+  }} catch(e) {{
+    console.error('Inbox refresh error:', e);
+  }}
+}}
+
+function showRefreshNotification(msg) {{
+  try {{
+    const el = document.createElement('div');
+    el.textContent = '📬 ' + msg;
+    el.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#3fb950;color:#fff;padding:10px 18px;border-radius:8px;font-size:0.9rem;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:opacity 0.3s;';
+    document.body.appendChild(el);
+    setTimeout(function() {{ el.style.opacity = '0'; setTimeout(function() {{ el.remove(); }}, 300); }}, 2000);
+  }} catch(e) {{}}
+}}
 
 function toggleAutoRefresh(forceState) {{
   try {{
@@ -650,20 +703,24 @@ function toggleAutoRefresh(forceState) {{
 
     if (enabled) {{
       setCookie('inbox_autorefresh', 'true');
-      btn.textContent = '⏱ Auto-refresh';
       btn.classList.add('active');
       if (dot) dot.classList.add('active');
-      if (label) label.textContent = 'on \u00b7 60s';
+      if (label) label.textContent = 'on · 10s';
+
+      // Fetch initial unread count
+      fetch('/api/inbox?unread_only=true')
+        .then(r => r.json())
+        .then(data => {{ lastUnreadCount = data.unread || 0; }})
+        .catch(function() {{}});
 
       autoRefreshTimer = setInterval(function() {{
-        // Don't refresh if compose form is open (user might be typing)
+        // Don't poll if compose form is open (user might be typing)
         const form = id('compose-form');
         if (form && !form.classList.contains('collapsed')) return;
-        location.reload();
-      }}, 60000);
+        checkNewMessages();
+      }}, 10000);
     }} else {{
       setCookie('inbox_autorefresh', 'false');
-      btn.textContent = '⏱ Auto-refresh';
       btn.classList.remove('active');
       if (dot) dot.classList.remove('active');
       if (label) label.textContent = 'off';
@@ -739,6 +796,14 @@ async def send_message(
     priority: str = Form("normal"),
     status: str = Form("unread"),
 ):
+    # Validate body size (nginx also enforces 10m at proxy level)
+    MAX_BODY = 100_000  # 100KB
+    if len(body) > MAX_BODY:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Message body too large ({len(body)} bytes, max {MAX_BODY})"
+        )
+
     # Validate priority
     valid_priorities = ["normal", "urgent", "critical"]
     if priority not in valid_priorities:

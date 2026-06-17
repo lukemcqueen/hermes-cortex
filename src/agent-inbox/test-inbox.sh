@@ -150,7 +150,7 @@ HEADERS=$(curl -sk -I $AUTH "$BASE/" 2>/dev/null || true)
 echo "$HEADERS" | grep -qi "Strict-Transport-Security" && pass "HSTS header present" || fail "Missing HSTS header"
 echo "$HEADERS" | grep -qi "X-Content-Type-Options.*nosniff" && pass "X-Content-Type-Options present" || fail "Missing X-Content-Type-Options"
 echo "$HEADERS" | grep -qi "X-Frame-Options.*DENY" && pass "X-Frame-Options present" || fail "Missing X-Frame-Options"
-echo "$HEADERS" | grep -qi "unsafe-inline" && pass "CSP allows inline scripts ('unsafe-inline')" || fail "CSP blocks inline scripts!"
+echo "$HEADERS" | grep -qi "script-src.*unsafe-inline" && pass "CSP allows inline scripts" || fail "CSP blocks inline scripts!"
 
 # ── Summary ──
 echo ""

@@ -24,8 +24,8 @@
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `fd6d728` — 2026-06-17 10:56:55 |
-| Working tree | dirty (1 files) |
+| Last commit | `dded8fa` — 2026-06-17 15:22:35 |
+| Working tree | dirty (7 files) |
 | Unpushed | none |
 | Tag | `v1.0.0` |
 
@@ -33,11 +33,11 @@
 
 | Date | Commit | Description |
 |------|--------|-------------|
-| 2026-06-17 | `fd6d728` | chore: cross-platform CI test + fix unguarded macOS commands
-| 2026-06-17 | `8ccf527` | chore: genericize Titus session-harvesting changes (no PII)
-| 2026-06-17 | `077eb2f` | feat: cross-platform audit + CI foundation
-| 2026-06-17 | `3a9214f` | docs: incorporate 6 operating principles into SOUL.md template
-| 2026-06-17 | `b2a131a` | feat: SSL cert expiry monitoring in auto-remediation
+| 2026-06-17 | `dded8fa` | Per-agent read tracking: read_by frontmatter + ?for=agent filtering in inbox API. Agents auto-see their sent messages as read.
+| 2026-06-17 | `b4e4b1b` | Add pipeline-reference.md: canonical docs for 4 growth pipelines, cadence, and closed-loop flows
+| 2026-06-17 | `7641f86` | Enhance collect-agent-skills.sh: include full SKILL.md content in reports for evaluation
+| 2026-06-17 | `4f9ee11` | Complete skill collection pipeline: request/process transport, inbox microsecond fix, docs
+| 2026-06-17 | `fa51121` | Register skill-report scripts in cortex-update.sh + add config template
 
 ---
 
@@ -47,10 +47,10 @@
 |-------|------|
 | Installer | `install.sh` — 2348 lines, 26 steps, idempotent |
 | Skills | 0 skills across 4 categories (software-development, devops, social-media, productivity) |
-| Python files | 63 files (39606 LOC) |
-| Shell files | 44 files (9773 LOC) |
-| Markdown files | 509 files |
-| Total | 655 tracked files |
+| Python files | 67 files (40136 LOC) |
+| Shell files | 46 files (10092 LOC) |
+| Markdown files | 511 files |
+| Total | 665 tracked files |
 | Dashboard | Flask app + nginx proxy — Langfuse traces + system health |
 | Scripts | 16 utility scripts (heartbeat, memory-sync, LLM scoring, service recovery) |
 | OpenCode | 15 commands + 3 agents + 30 optional skills |
@@ -73,4 +73,4 @@
 
 ---
 
-*Last updated: 2026-06-17 12:00 KST*
+*Last updated: 2026-06-17 16:00 KST*
