@@ -19,7 +19,7 @@
 set -euo pipefail
 
 HERMES_SCRIPTS="${HOME}/.hermes/scripts"
-CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
+CORTEX_REPO="${HOME}/hermes-cortex"
 CORTEX_SCRIPTS="${CORTEX_REPO}/src/scripts"
 ACTION="${1:-diagnose}"
 
@@ -79,9 +79,9 @@ case "${ACTION}" in
     fi
 
     # Check memory free percentage (macOS only)
-    # Check memory free percentage (macOS only)
-        if [[ "$CORTEX_OS" == "macos" ]] && command -v memory_pressure >/dev/null 2>&1; then
-          MEM_FREE=$(memory_pressure 2>/dev/null | grep "System-wide memory" | sed 's/.* \([0-9]*\)%/\1%/')
+    # memory_pressure reports "free percentage" — flag if below 15% (high pressure)
+    if command -v memory_pressure >/dev/null 2>&1; then
+      MEM_FREE=$(memory_pressure 2>/dev/null | grep "System-wide memory" | sed 's/.* \([0-9]*\)%/\1%/')
       if [ -n "${MEM_FREE}" ]; then
         MEM_VAL=${MEM_FREE%\%}
         if [ "${MEM_VAL}" -lt 15 ] 2>/dev/null; then
@@ -90,17 +90,15 @@ case "${ACTION}" in
       fi
     fi
 
-    # Check services (macOS launchd)
-    if [[ "$CORTEX_OS" == "macos" ]]; then
-      for svc_label in com.ollama.serve com.gbrain.autopilot com.gbrain.sync-watch; do
-        if launchctl list "${svc_label}" >/dev/null 2>&1; then
-          PID=$(launchctl list "${svc_label}" 2>/dev/null | awk '{print $1}' || echo "-")
-          if [ "${PID}" = "-" ]; then
-            issues+=("SERVICE:${svc_label}:down")
-          fi
+    # Check services
+    for svc_label in com.ollama.serve com.gbrain.autopilot com.gbrain.sync-watch; do
+      if launchctl list "${svc_label}" >/dev/null 2>&1; then
+        PID=$(launchctl list "${svc_label}" 2>/dev/null | awk '{print $1}' || echo "-")
+        if [ "${PID}" = "-" ]; then
+          issues+=("SERVICE:${svc_label}:down")
         fi
-      done
-    fi
+      fi
+    done
 
     # Check nginx
     if command -v nginx >/dev/null 2>&1; then
@@ -228,7 +226,7 @@ case "${ACTION}" in
   fix-docker)
     if command -v docker >/dev/null 2>&1; then
       # Prune unused resources
-      docker system prune -f 2>/dev/null || true
+      docker system prune -f --volumes 2>/dev/null || true
       echo "OK"
     else
       echo "NO-DOCKER"
