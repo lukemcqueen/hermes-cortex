@@ -11,17 +11,11 @@
 set -euo pipefail
 
 # ── Paths ──────────────────────────────────────────────────────────────
-# Priority: ~/.hermes/offline/ (install.sh destination) >
-#           ~/.hermes/hermes-cortex/ (legacy) >
-#           CORTEX_REPO (configurable env var) >
-#           ~/Developer/AI/hermes-cortex/ (Titus' path) >
-#           ~/hermes-cortex/ (default)
+# Priority: CORTEX_REPO env var > ~/.hermes/offline/ (install.sh dest) > ~/hermes-cortex/
 MINE_SCRIPT=""
 for candidate in \
-  "$HOME/.hermes/offline/session_mine.py" \
-  "$HOME/.hermes/hermes-cortex/src/offline/session_mine.py" \
   "${CORTEX_REPO:-}/src/offline/session_mine.py" \
-  "$HOME/Developer/AI/hermes-cortex/src/offline/session_mine.py" \
+  "$HOME/.hermes/offline/session_mine.py" \
   "$HOME/hermes-cortex/src/offline/session_mine.py"; do
   if [ -f "$candidate" ]; then
     MINE_SCRIPT="$candidate"

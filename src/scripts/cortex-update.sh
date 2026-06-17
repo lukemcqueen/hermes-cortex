@@ -27,16 +27,20 @@ while [[ "$REPO_DIR" != "/" && ! -f "$REPO_DIR/AGENTS.md" ]]; do
 done
 # If we hit / without finding AGENTS.md, try common repo locations
 if [[ "$REPO_DIR" == "/" ]]; then
-  for candidate in \
-    "$HOME/hermes-cortex" \
-    "$HOME/Developer/AI/hermes-cortex" \
-    "$HOME/src/hermes-cortex" \
-    "$HOME/git/hermes-cortex"; do
-    if [[ -f "$candidate/AGENTS.md" ]]; then
-      REPO_DIR="$candidate"
-      break
-    fi
-  done
+  # CORTEX_REPO env var (set by agents) takes priority
+  if [[ -n "${CORTEX_REPO:-}" && -f "$CORTEX_REPO/AGENTS.md" ]]; then
+    REPO_DIR="$CORTEX_REPO"
+  else
+    for candidate in \
+      "$HOME/hermes-cortex" \
+      "$HOME/src/hermes-cortex" \
+      "$HOME/git/hermes-cortex"; do
+      if [[ -f "$candidate/AGENTS.md" ]]; then
+        REPO_DIR="$candidate"
+        break
+      fi
+    done
+  fi
 fi
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 STATE_DIR="${HERMES_HOME}/state"

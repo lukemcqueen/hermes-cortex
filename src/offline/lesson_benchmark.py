@@ -19,6 +19,7 @@ Returns JSON results for comparison.
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -28,8 +29,16 @@ from pathlib import Path
 
 HOME = Path.home()
 LESSONS_DIR = HOME / "brain" / "lessons"
-OFFLINE_KNOWLEDGE = HOME / "Developer" / "AI" / "hermes-cortex" / "src" / "offline" / "offline_knowledge.py"
-SESSION_MINE = HOME / "Developer" / "AI" / "hermes-cortex" / "src" / "offline" / "session_mine.py"
+
+# Discover offline scripts — try standard locations
+_cortex_env = os.environ.get("CORTEX_REPO", "")
+if _cortex_env:
+    _base = Path(_cortex_env)
+else:
+    _base = HOME / "hermes-cortex"
+
+OFFLINE_KNOWLEDGE = _base / "src" / "offline" / "offline_knowledge.py"
+SESSION_MINE = _base / "src" / "offline" / "session_mine.py"
 
 # ── Test Scenarios ──────────────────────────────────────────────
 # Each scenario: error_context (what the agent sees), expected_lesson_slug, tags
