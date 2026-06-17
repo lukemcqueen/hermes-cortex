@@ -24,20 +24,20 @@
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `dded8fa` — 2026-06-17 15:22:35 |
-| Working tree | dirty (7 files) |
-| Unpushed | none |
+| Last commit | `88044de` — 2026-06-17 17:50:05 |
+| Working tree | clean |
+| Unpushed | 2 commits |
 | Tag | `v1.0.0` |
 
 ### Recent Commits
 
 | Date | Commit | Description |
 |------|--------|-------------|
-| 2026-06-17 | `dded8fa` | Per-agent read tracking: read_by frontmatter + ?for=agent filtering in inbox API. Agents auto-see their sent messages as read.
-| 2026-06-17 | `b4e4b1b` | Add pipeline-reference.md: canonical docs for 4 growth pipelines, cadence, and closed-loop flows
-| 2026-06-17 | `7641f86` | Enhance collect-agent-skills.sh: include full SKILL.md content in reports for evaluation
-| 2026-06-17 | `4f9ee11` | Complete skill collection pipeline: request/process transport, inbox microsecond fix, docs
-| 2026-06-17 | `fa51121` | Register skill-report scripts in cortex-update.sh + add config template
+| 2026-06-17 | `88044de` | Merge remote-tracking branch 'origin/titus/auto-pr-workflow'
+| 2026-06-17 | `fd2e032` | feat: split send API — /send (form) for web UI, /api/send (JSON) for agents
+| 2026-06-17 | `0f0440c` | feat: agent inbox — Moses tab and Archived view
+| 2026-06-17 | `2128733` | fix: NameError in service-recovery.py — _check_scripts defined after use
+| 2026-06-17 | `dfb8198` | feat: cross-agent health monitoring pipeline
 
 ---
 
@@ -47,10 +47,10 @@
 |-------|------|
 | Installer | `install.sh` — 2348 lines, 26 steps, idempotent |
 | Skills | 0 skills across 4 categories (software-development, devops, social-media, productivity) |
-| Python files | 67 files (40136 LOC) |
-| Shell files | 46 files (10092 LOC) |
+| Python files | 68 files (40490 LOC) |
+| Shell files | 46 files (10115 LOC) |
 | Markdown files | 511 files |
-| Total | 665 tracked files |
+| Total | 668 tracked files |
 | Dashboard | Flask app + nginx proxy — Langfuse traces + system health |
 | Scripts | 16 utility scripts (heartbeat, memory-sync, LLM scoring, service recovery) |
 | OpenCode | 15 commands + 3 agents + 30 optional skills |
@@ -73,4 +73,4 @@
 
 ---
 
-*Last updated: 2026-06-17 16:00 KST*
+*Last updated: 2026-06-17 18:00 KST*
