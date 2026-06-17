@@ -51,7 +51,7 @@ def _run(cmd: list[str], timeout: int = 10) -> tuple[str, str, int]:
         return "", str(e), -1
 
 
-def service_running(label: str, pgrep_pattern: str | None = None) -> bool:
+def service_running(label: str, pgrep_pattern: "str | None" = None) -> bool:
     """Check if a service is running.
 
     On macOS: checks via launchctl list.
@@ -165,7 +165,7 @@ def pgrep_running(pattern: str) -> bool:
 
 # ── Cert expiry ─────────────────────────────────────────────────
 
-def cert_expiry_days(cert_path: str) -> int | None:
+def cert_expiry_days(cert_path: str) -> "int | None":
     """Return days until certificate expiry, or None if unreadable."""
     from datetime import datetime, timezone
     out, _, rc = _run(

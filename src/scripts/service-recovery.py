@@ -5,6 +5,8 @@ Checks each service; if down, attempts recovery.
 Silent (empty output) when all services healthy.
 Non-empty output is delivered to user as an incident report.
 """
+from __future__ import annotations
+
 import os
 import subprocess
 import sys
@@ -67,23 +69,6 @@ def _check_scripts() -> bool:
     return True
 
 
-SERVICES: list[dict] = [
-    _make_service("nginx", pgrep="nginx: master",
-                  restart_label="homebrew.mxcl.nginx",
-                  verify_cmd=["nginx", "-t"]),
-    _make_service("Langfuse", docker_sub="langfuse-langfuse-web"),
-    _make_service("Ollama", label="com.ollama.serve", pgrep="ollama"),
-    _make_service("gbrain", label="com.gbrain.autopilot",
-                  pgrep="gbrain"),
-    {
-        "name": "scripts",
-        "check": _check_scripts,
-        "restart_label": "",
-        "verify_label": "Hermes scripts",
-    },
-]
-
-
 def _try_restore_scripts() -> str | None:
     """Try to restore missing scripts from the cortex repo. Returns error or None."""
     restored = []
@@ -108,6 +93,23 @@ def _try_restore_scripts() -> str | None:
     if restored:
         return None  # success
     return "No scripts needed restoration or cortex repo missing"
+
+
+SERVICES: list[dict] = [
+    _make_service("nginx", pgrep="nginx: master",
+                  restart_label="homebrew.mxcl.nginx",
+                  verify_cmd=["nginx", "-t"]),
+    _make_service("Langfuse", docker_sub="langfuse-langfuse-web"),
+    _make_service("Ollama", label="com.ollama.serve", pgrep="ollama"),
+    _make_service("gbrain", label="com.gbrain.autopilot",
+                  pgrep="gbrain"),
+    {
+        "name": "scripts",
+        "check": _check_scripts,
+        "restart_label": "",
+        "verify_label": "Hermes scripts",
+    },
+]
 
 
 def _try_restart(svc: dict) -> str | None:
