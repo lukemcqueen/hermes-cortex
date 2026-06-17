@@ -51,7 +51,7 @@ d = json.load(sys.stdin)
 for m in d.get('messages', []):
     subprocess.run(['curl', '-sk', '--connect-timeout', '10',
         '-u', '${USER}:${PASS}',
-        '${URL}/read/' + m['filename']],
+        '${URL}/read/' + m['filename'] + '?for=${USER}'],
         capture_output=True, timeout=10)
 " 2>/dev/null
 fi

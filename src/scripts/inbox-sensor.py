@@ -1,38 +1,32 @@
 #!/usr/bin/env python3
 """inbox-sensor.py — Companion script for process-agent-messages.
 
-Runs every 10m as a no_agent watchdog. Checks the agent inbox for new
-broadcast messages and outputs structured JSON if there's work to do.
-Silent when nothing new (empty JSON array = nothing to process).
+Runs every 10m as a no_agent watchdog. Calls the agent inbox API to check
+for new broadcast messages. Silent when nothing new.
 
-This allows the LLM-tier process-agent-messages cron to skip processing
-when there's nothing to do, saving ~120 LLM calls/day.
-
-Output: JSON object with workload summary on stdout.
+This eliminates the duplicate frontmatter parser and uses the API's
+per-agent read tracking via the ?for=moses parameter.
 
 Output shape:
 {
-  "has_work": false,           # true if there are new broadcasts to process
-  "unread_count": 0,           # total unread messages in inbox
-  "urgent_count": 0,           # messages with urgent/critical priority
-  "new_broadcasts": 0,         # broadcasts not yet seen by Moses
-  "last_check": "2026-06-15T18:30:00Z"
+  "has_work": false,
+  "unread_count": 0,
+  "urgent_count": 0,
+  "new_broadcasts": 0,
+  "last_check": "2026-06-17T18:30:00Z"
 }
-
-Called from process-agent-messages prompt via prompt context injection
-(scheduled as a no_agent cron running every 10m with deliver=local).
 """
 import json
 import os
-import re
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.request import Request, urlopen
+from urllib.error import URLError
 
 HOME = Path.home()
-PRIVATE_REPO = HOME / "hermes-cortex-private"
-INBOX_DIR = PRIVATE_REPO / "messages" / "inbox"
 STATE_DIR = HOME / ".hermes" / "state"
 SEEN_FILE = STATE_DIR / "inbox-broadcast-seen"
+INBOX_API = os.environ.get("AGENT_INBOX_URL", "http://127.0.0.1:8903")
 
 # Read agent registry for broadcast topics
 REGISTRY_PATH = HOME / ".hermes" / "state" / "agent-registry.json"
@@ -53,59 +47,43 @@ def get_broadcast_topics() -> list[str]:
     return default_topics
 
 
-def parse_frontmatter(path: Path) -> dict:
-    """Extract frontmatter fields from a message file."""
-    text = path.read_text(encoding="utf-8", errors="replace")
-    front = {"from": "?", "subject": "No subject", "topic": "general", "priority": "normal"}
-    m = re.match(r"^---\s*\n(.*?)\n---\s*\n", text, re.DOTALL)
-    if m:
-        for line in m.group(1).strip().split("\n"):
-            if ":" in line:
-                k, v = line.split(":", 1)
-                front[k.strip().lower()] = v.strip()
-    return front
-
-
 def main():
-    # Check if inbox directory exists
-    if not INBOX_DIR.exists():
-        print(json.dumps({
-            "has_work": False,
-            "unread_count": 0,
-            "urgent_count": 0,
-            "new_broadcasts": 0,
-            "error": f"Inbox directory not found: {INBOX_DIR}",
-            "last_check": datetime.now(timezone.utc).isoformat(),
-        }))
-        return
-
     broadcast_topics = get_broadcast_topics()
     seen_ids = set()
     if SEEN_FILE.exists():
         seen_ids = set(line.strip() for line in SEEN_FILE.read_text().splitlines() if line.strip())
 
-    inbox_files = sorted(INBOX_DIR.glob("*.md"))
+    # Fetch messages via API with per-agent filtering
+    url = f"{INBOX_API}/api/inbox?for=moses&unread_only=true"
+    try:
+        req = Request(url)
+        with urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+    except (URLError, json.JSONDecodeError, OSError) as e:
+        print(json.dumps({
+            "has_work": False,
+            "unread_count": 0,
+            "urgent_count": 0,
+            "new_broadcasts": 0,
+            "error": str(e),
+            "last_check": datetime.now(timezone.utc).isoformat(),
+        }))
+        return
+
+    messages = data.get("messages", [])
     unread_count = 0
     urgent_count = 0
     new_broadcasts = 0
 
-    for msg_file in inbox_files:
-        front = parse_frontmatter(msg_file)
-        topic = front.get("topic", "general")
-        priority = front.get("priority", "normal")
-        status = front.get("status", "unread")
-        msg_id = msg_file.stem
+    for m in messages:
+        topic = m.get("topic", "general")
+        priority = m.get("priority", "normal")
+        msg_id = m.get("id", "")
 
-        # Skip already-read messages
-        if status == "read":
-            continue
-
-        # Only count broadcast messages (stays in inbox for agents)
         if topic in broadcast_topics:
             unread_count += 1
             if priority in ("urgent", "critical"):
                 urgent_count += 1
-            # New broadcast not yet seen by Moses
             if msg_id not in seen_ids:
                 new_broadcasts += 1
 
