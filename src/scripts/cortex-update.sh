@@ -172,20 +172,24 @@ restart_gbrain_sync() {
   local sync_label="com.gbrain.sync-watch"
   # gbrain autopilot is the preferred sync daemon (handles sync internally).
   # Only restart sync-watch if autopilot is absent.
-  if launchctl list "$autopilot_label" &>/dev/null 2>&1; then
-    info "  gbrain autopilot present — reloading service…"
-    launchctl kickstart "gui/$(id -u)/$autopilot_label" 2>/dev/null || {
-      launchctl unload "$HOME/Library/LaunchAgents/$autopilot_label.plist" 2>/dev/null || true
-      launchctl load "$HOME/Library/LaunchAgents/$autopilot_label.plist" 2>/dev/null || true
-    }
-    return 0
+  if [[ "$CORTEX_OS" == "macos" ]]; then
+    if launchctl list "$autopilot_label" &>/dev/null 2>&1; then
+      info "  gbrain autopilot present — reloading service…"
+      launchctl kickstart "gui/$(id -u)/$autopilot_label" 2>/dev/null || {
+        launchctl unload "$HOME/Library/LaunchAgents/$autopilot_label.plist" 2>/dev/null || true
+        launchctl load "$HOME/Library/LaunchAgents/$autopilot_label.plist" 2>/dev/null || true
+      }
+      return 0
+    fi
+    if launchctl list "$sync_label" &>/dev/null 2>&1; then
+      info "  Restarting gbrain sync daemon…"
+      rm -f "${HOME}/.gbrain/sync-watch.sh"
+      bash "${HERMES_HOME}/scripts/install-gbrain-sync.sh" 2>&1 | sed 's/^/    /'
+      return 0
+    fi
   fi
-  if launchctl list "$sync_label" &>/dev/null 2>&1; then
-    info "  Restarting gbrain sync daemon…"
-    # Force re-write the sync-watch.sh script (remove then call installer)
-    rm -f "${HOME}/.gbrain/sync-watch.sh"
-    bash "${HERMES_HOME}/scripts/install-gbrain-sync.sh" 2>&1 | sed 's/^/    /'
-  elif systemctl --user list-units --type=service --state=running 2>/dev/null \
+  # Linux fallback: systemd
+  if systemctl --user list-units --type=service --state=running 2>/dev/null \
         | grep -q "gbrain-sync"; then
     info "  Restarting gbrain sync (systemd)…"
     rm -f "${HOME}/.gbrain/sync-watch.sh"

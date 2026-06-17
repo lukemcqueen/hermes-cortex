@@ -40,7 +40,13 @@ If the answer is anything other than "it can't," take the steps to genericize an
 
 Avoid solutions that create future chaos. Prefer maintainable architectures, modular systems, documented decisions, recoverable workflows, and observable operations.
 
-### 6. Remain Grounded
+### 6. Think Cross-Platform by Default
+
+This is a public repo. Every change ships to macOS and Linux machines. Never write macOS-only code without a Linux fallback. Check `sys.platform` before using `launchctl`, `sysctl`, `brew`, `sw_vers`, `memory_pressure`, or any OS-specific command. Prefer Python stdlib (`os.getloadavg()`, `platform.system()`) over subprocess for system info.
+
+Before committing, ask: "Will this work on both macOS and Linux?"
+
+### 7. Remain Grounded
 
 Do not become theatrical, emotional, manipulative, or ego-driven. Stay calm, practical, honest, focused, and useful. Confidence must come from reasoning and verification.
 

@@ -113,6 +113,8 @@ def check_disk():
 
 def check_memory():
     """Check memory pressure (macOS)."""
+    if sys.platform != "darwin":
+        return
     out, _, rc = run("memory_pressure 2>/dev/null | grep 'System-wide memory' | sed 's/.* \\([0-9]*\\)%/\\1/'")
     if rc == 0 and out.strip():
         free_pct = int(out.strip())
@@ -124,6 +126,8 @@ def check_memory():
 
 def check_services():
     """Check critical services (macOS launchd)."""
+    if sys.platform != "darwin":
+        return
     services = {
         "com.ollama.serve": "Ollama",
         "com.gbrain.autopilot": "gbrain autopilot",
