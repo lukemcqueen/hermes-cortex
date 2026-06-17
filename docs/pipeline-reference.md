@@ -1,0 +1,73 @@
+# Pipeline Reference — Hermes Cortex
+
+Four growth pipelines that drive continuous system improvement.
+
+## 1. 📖 Learnings (Memory That Compounds)
+
+Captures bug fixes, workflows, and domain knowledge from agent sessions.
+
+| Step | Tool | Schedule | LLM? | Output |
+|------|------|----------|------|--------|
+| Mine | `daily-lesson-mine.sh` | Daily 02:00 | ✗ | Lesson DB |
+| Stats | `lesson-compound-stats-brief.sh` | Daily 02:30 | ✗ | Hit counts → Telegram |
+| Promote | `promote-lessons-to-skills` (LLM cron) | Monthly 1st 09:00 | ✓ | Skill drafts → Telegram |
+
+**Closed loop:** Session work → lesson mined → hit tracked → promoted to skill.
+
+## 2. 💾 Session
+
+Preserves active working context across agent sessions.
+
+| Step | Tool | Schedule | LLM? | Output |
+|------|------|----------|------|--------|
+| Write | `update-session-state.sh` | Every 2h | ✗ | `.hermes-cortex/sessions/` |
+| Archive | `hermes-cortex-session-state` (cron) | Every 2h | ✗ | Archived sessions |
+
+**Closed loop:** Non-negotiable for context continuity.
+
+## 3. 🧠 Skills
+
+Discovers agent-developed skills from remote agents and evaluates them for upstreaming.
+
+| Step | Tool | Schedule | LLM? | Output |
+|------|------|----------|------|--------|
+| Request | `request-skill-reports.sh` | Daily 02:05 | ✗ | Inbox broadcast to agents |
+| Collect | `collect-agent-skills.sh` (agent-side) | Every 6h per agent | ✗ | Full SKILL.md → Moses inbox |
+| Digest | `process-skill-reports.py` | Every 6h at :15 | ✗ | Summary digest → Telegram |
+| Evaluate | `evaluate-skill-reports` (LLM cron) | Daily 03:00 | ✓ | Scored recommendations → Telegram |
+
+**Closed loop:** Request → collect → digest → evaluate → upstream (via `public-contribution` skill).
+
+## 4. 🗄️ Memory
+
+Persists stable facts, preferences, and conventions across sessions.
+
+| Step | Tool | Schedule | LLM? | Output |
+|------|------|----------|------|--------|
+| Write | Session writes via `memory` tool | Per-turn | ✗ | MEMORY.md updates |
+| Sync | `memory-to-brain.py` | Every 6h | ✗ | gbrain sync |
+| Prune | `memory-pruning` (LLM cron) | Daily 04:00 | ✓ | Compacted MEMORY.md |
+| Compress | `memory-compress.py` | Weekly Sun 05:00 | ✗ | Compressed archives |
+| Budget | `check-memory-budget.sh` | Morning briefing | ✗ | Usage % alert |
+
+**Closed loop:** Write → sync → prune → compress. Budget check prevents overflow.
+
+## Consolidated Nightly Window (02:00–05:00 KST)
+
+Most writes happen overnight when the system is idle:
+
+```
+01:00 — Bible reading (LLM)
+02:00 — Lesson mine (no_agent)
+02:05 — Skill report request (no_agent)
+02:10 — Process pending requests (LLM)
+02:15 — Homebrew updates (LLM)
+02:30 — Lesson compound stats (no_agent)
+02:30 — Hermes update check (LLM)
+03:00 — Langfuse LLM judge scorer (no_agent)
+03:00 — Web cache prune (no_agent)
+03:00 — Skill evaluation (LLM)
+04:00 — Memory pruning (LLM)
+04:00 — Web cache backup (no_agent)
+05:00 Sun — Memory compress (no_agent)
+```
