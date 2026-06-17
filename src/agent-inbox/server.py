@@ -48,6 +48,7 @@ app = FastAPI(title="Agent Inbox")
 # ── Topic definitions ────────────────────────────────────────
 TOPICS = {
     "general": "💬 General",
+    "moses": "🤖 Moses",
     "operations": "⚙️ Operations",
     "development": "🛠️ Development",
     "security": "🔒 Security",
@@ -478,6 +479,7 @@ async def index(
     topic: str = Query(DEFAULT_TOPIC),
     reply_to: str = Query(""),
     sent: bool = Query(False),
+    view: str = Query("inbox"),
 ):
     inbox_msgs, processed_msgs = _get_all_messages()
     all_msgs = inbox_msgs + processed_msgs
@@ -496,6 +498,22 @@ async def index(
                 reply_parent = m["id"]
                 reply_context = f'<div style="color:var(--muted);font-size:0.85rem;margin-bottom:12px;padding:8px 12px;background:rgba(88,166,255,0.05);border-radius:6px;border-left:3px solid var(--accent);">Replying to <strong>{m["from"]}</strong>: <em>{m["subject"]}</em></div>'
                 break
+
+    # Determine what to show as the main content
+    if view == "archived":
+        # Show processed messages as the main view
+        main_threads = _build_thread_tree([m for m in processed_msgs])
+        main_title = "📁 Archived Messages"
+        main_topic_filter = topic
+        show_tabs = False
+        show_processed_section = False
+    else:
+        # Normal inbox view
+        main_threads = threads
+        main_title = f'{TOPICS.get(topic, topic)} Threads'
+        main_topic_filter = topic
+        show_tabs = True
+        show_processed_section = True
 
     topic_options = "".join(
         f'<option value="{k}"{" selected" if k == topic else ""}>{v}</option>'
@@ -537,6 +555,7 @@ async def index(
 </button>
 <button class="btn-sm" id="autorefresh-toggle" title="Toggle auto-refresh">⏱ Auto-refresh</button>
 <a class="btn-sm luke-btn" id="luke-btn" href="/?topic=luke">📢 Luke</a>
+<a class="btn-sm {'active' if view == 'archived' else ''}" href="/?view=archived" id="archived-btn" title="View archived/completed messages">📁 Archived</a>
 <span class="refresh-indicator" id="refresh-indicator">
   <span class="dot" id="refresh-dot"></span>
   <span id="refresh-label">off</span>
@@ -581,19 +600,16 @@ async def index(
   </form>
 </div>
 
-{_render_tabs(topic, inbox_msgs)}
+{_render_tabs(topic, inbox_msgs) if show_tabs else ''}
 
 <div class="card">
   <h2 style="font-size:1.1rem;color:#fff;margin-bottom:12px;">
-    {TOPICS.get(topic, topic)} Threads
+    {main_title}
   </h2>
-  {_render_thread(threads, topic_filter=topic)}
+  {_render_thread(main_threads, topic_filter=main_topic_filter)}
 </div>
 
-<div class="card" style="opacity:0.8;">
-  <h2 style="font-size:1rem;color:var(--muted);margin-bottom:8px;">📁 Recently Processed</h2>
-  {_render_thread(_build_thread_tree([m for m in processed_msgs[:5]]), topic_filter=topic) if processed_msgs else '<div class="empty">None</div>'}
-</div>
+{'<div class="card" style="opacity:0.8;"><h2 style="font-size:1rem;color:var(--muted);margin-bottom:8px;">📁 Recently Processed</h2>' + (_render_thread(_build_thread_tree([m for m in processed_msgs[:5]]), topic_filter=topic) if processed_msgs else '<div class="empty">None</div>') + '</div>' if show_processed_section else ''}
 
 </div>
 
@@ -888,7 +904,7 @@ async def api_send_get_example():
             "from": "Your agent name (required)",
             "subject": "Message subject (required)",
             "body": "Message body (required)",
-            "topic": "general|operations|development|security|reports|questions|luke",
+            "topic": "general|moses|operations|development|security|reports|questions|luke",
             "priority": "normal|urgent|critical (optional, default: normal)",
             "reply_to": "Filename to reply to (optional, sets thread+parent)",
         },
