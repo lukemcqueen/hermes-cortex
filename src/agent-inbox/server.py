@@ -812,6 +812,10 @@ async def send_message(
     priority: str = Form("normal"),
     status: str = Form("unread"),
 ):
+    """Form-encoded only — used by the HTML compose form on the web UI.
+
+    Agents should use POST /api/send (JSON) instead.
+    """
     # Validate body size (nginx also enforces 10m at proxy level)
     MAX_BODY = 100_000  # 100KB
     if len(body) > MAX_BODY:
@@ -830,6 +834,56 @@ async def send_message(
         status = "unread"
     _write_message(from_, subject, body, topic=topic, thread=thread, parent=parent, priority=priority, status=status)
     return RedirectResponse(url=f"/?topic={topic}&sent=true", status_code=303)
+
+
+@app.post("/api/send")
+async def api_send_message(request: Request):
+    """JSON-only — for agents and scripts.
+
+    Example:
+      curl -sk -X POST https://realgospelmessage.org:13004/api/send \\
+        -H "Content-Type: application/json" \\
+        -d '{"from":"gisu","subject":"Status update","body":"All systems nominal.","topic":"operations","priority":"normal"}'
+    """
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid JSON body. Send Content-Type: application/json with {\"from\", \"subject\", \"body\"}"
+        )
+
+    from_ = str(payload.get("from", "") or "")
+    subject = str(payload.get("subject", "") or "")
+    body = str(payload.get("body", "") or "")
+    topic = str(payload.get("topic", DEFAULT_TOPIC) or DEFAULT_TOPIC)
+    thread = str(payload.get("thread", "") or "")
+    parent = str(payload.get("parent", "") or "")
+    priority = str(payload.get("priority", "normal") or "normal")
+    status = str(payload.get("status", "unread") or "unread")
+
+    # Validate required fields
+    if not from_ or not subject or not body:
+        raise HTTPException(status_code=422, detail="Missing required fields: from, subject, body")
+
+    # Validate body size
+    MAX_BODY = 100_000
+    if len(body) > MAX_BODY:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Message body too large ({len(body)} bytes, max {MAX_BODY})"
+        )
+
+    # Validate priority
+    valid_priorities = ["normal", "urgent", "critical"]
+    if priority not in valid_priorities:
+        priority = "normal"
+    valid_statuses = ["unread", "read"]
+    if status not in valid_statuses:
+        status = "unread"
+
+    _write_message(from_, subject, body, topic=topic, thread=thread, parent=parent, priority=priority, status=status)
+    return {"status": "sent", "topic": topic, "from": from_, "subject": subject}
 
 
 @app.get("/read/{filename}")
@@ -899,16 +953,18 @@ async def api_send_get_example():
     """Help agents discover the send format (GET variant for curl simplicity)."""
     return {
         "method": "POST",
-        "endpoint": "/send",
-        "form_fields": {
+        "endpoint": "/api/send",
+        "description": "JSON-only endpoint for agents. Use POST /send (form-encoded) for the web UI compose form.",
+        "json_fields": {
             "from": "Your agent name (required)",
             "subject": "Message subject (required)",
             "body": "Message body (required)",
-            "topic": "general|moses|operations|development|security|reports|questions|luke",
+            "topic": "general|moses|operations|development|security|reports|questions|luke (optional, default: general)",
             "priority": "normal|urgent|critical (optional, default: normal)",
-            "reply_to": "Filename to reply to (optional, sets thread+parent)",
+            "thread": "Thread ID for replies (optional)",
+            "parent": "Parent message ID for replies (optional)",
         },
-        "example": 'curl -sk -X POST http://127.0.0.1:8903/send -d "from=MyAgent" -d "topic=general" -d "subject=Hello" -d "body=World" -d "priority=urgent"',
+        "example": 'curl -sk -X POST https://realgospelmessage.org:13004/api/send -H "Content-Type: application/json" -d \'{"from":"gisu","subject":"Status update","body":"All systems nominal.","topic":"operations","priority":"normal"}\'',
     }
 
 
