@@ -24,7 +24,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `c13bf39` — 2026-06-16 22:36:14 |
+| Last commit | `fd6d728` — 2026-06-17 10:56:55 |
 | Working tree | dirty (1 files) |
 | Unpushed | none |
 | Tag | `v1.0.0` |
@@ -33,11 +33,11 @@
 
 | Date | Commit | Description |
 |------|--------|-------------|
-| 2026-06-16 | `c13bf39` | fix: prevent nginx zone-defs double-load on Linux
-| 2026-06-16 | `aa48a61` | fix: inbox dedup and spam prevention
-| 2026-06-16 | `c268513` | feat: agent learning sender + agent-inbox skill
-| 2026-06-16 | `801c4e5` | feat: health monitoring system + agent-inbox skill
-| 2026-06-16 | `9fa15f1` | fix: prevent duplicate inbox notifications — send post-commit updates as read
+| 2026-06-17 | `fd6d728` | chore: cross-platform CI test + fix unguarded macOS commands
+| 2026-06-17 | `8ccf527` | chore: genericize Titus session-harvesting changes (no PII)
+| 2026-06-17 | `077eb2f` | feat: cross-platform audit + CI foundation
+| 2026-06-17 | `3a9214f` | docs: incorporate 6 operating principles into SOUL.md template
+| 2026-06-17 | `b2a131a` | feat: SSL cert expiry monitoring in auto-remediation
 
 ---
 
@@ -47,10 +47,10 @@
 |-------|------|
 | Installer | `install.sh` — 2348 lines, 26 steps, idempotent |
 | Skills | 0 skills across 4 categories (software-development, devops, social-media, productivity) |
-| Python files | 59 files (38657 LOC) |
-| Shell files | 44 files (9719 LOC) |
-| Markdown files | 508 files |
-| Total | 641 tracked files |
+| Python files | 63 files (39606 LOC) |
+| Shell files | 44 files (9773 LOC) |
+| Markdown files | 509 files |
+| Total | 655 tracked files |
 | Dashboard | Flask app + nginx proxy — Langfuse traces + system health |
 | Scripts | 16 utility scripts (heartbeat, memory-sync, LLM scoring, service recovery) |
 | OpenCode | 15 commands + 3 agents + 30 optional skills |
@@ -73,4 +73,4 @@
 
 ---
 
-*Last updated: 2026-06-17 02:00 KST*
+*Last updated: 2026-06-17 12:00 KST*
