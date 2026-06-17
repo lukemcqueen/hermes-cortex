@@ -87,8 +87,16 @@ def _check_resources() -> dict:
         out, _, _ = _run(["cat", "/proc/loadavg"])
         parts = out.split()
         data["load_avg"] = [float(parts[0]), float(parts[1]), float(parts[2])] if len(parts) >= 3 else []
-        out, _, _ = _run(["top", "-bn1", "|", "grep", "'%Cpu'", "|", "awk", "'{print $2}'"])
-        data["cpu_percent"] = float(out) if out else 0.0
+        # Parse /proc/stat for CPU percentage (more reliable than top piping)
+        stat_out, _, _ = _run(["cat", "/proc/stat"])
+        for line in stat_out.split("\n"):
+            if line.startswith("cpu "):
+                vals = [int(x) for x in line.split()[1:]]
+                if vals:
+                    total = sum(vals)
+                    idle = vals[3]  # idle column
+                    data["cpu_percent"] = round(100 * (1 - idle / total), 1) if total else 0.0
+                break
 
     # Memory
     if sys.platform == "darwin":

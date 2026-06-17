@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Cortex Dashboard v2 — Enriched companion dashboard for Langfuse + Hermes."""
-import base64, json, os, re, sqlite3, subprocess, sys, time
+import base64, json, os, platform, re, sqlite3, subprocess, sys, time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -136,6 +136,14 @@ def _pid_running(pid):
 
 def _get_uptime():
     """Return uptime in days."""
+    if sys.platform == 'linux':
+        try:
+            with open('/proc/uptime') as f:
+                sec = float(f.read().split()[0])
+            return round(sec / 86400, 1)
+        except Exception:
+            return 0
+    # macOS
     try:
         boot = subprocess.run(["sysctl", "-n", "kern.boottime"],
                               capture_output=True, text=True, timeout=5).stdout
@@ -163,16 +171,12 @@ def _get_disk():
 
 
 def _get_load():
-    """Return 1/5/15 min load averages."""
+    """Return 1/5/15 min load averages (works on both macOS and Linux)."""
     try:
-        r = subprocess.run(["sysctl", "-n", "vm.loadavg"],
-                           capture_output=True, text=True, timeout=5)
-        parts = r.stdout.strip().strip("{}").split()
-        if len(parts) >= 3:
-            return {"1min": float(parts[0]), "5min": float(parts[1]), "15min": float(parts[2])}
+        avg1, avg5, avg15 = os.getloadavg()
+        return {"1min": round(avg1, 2), "5min": round(avg5, 2), "15min": round(avg15, 2)}
     except Exception:
-        pass
-    return None
+        return None
 
 
 def _get_memory():
@@ -431,6 +435,11 @@ def _session_timeline():
 # ── System Monitor (btop-style) ─────────────────────────────────────────
 def _get_page_size() -> int:
     """Get VM page size in bytes."""
+    if sys.platform == 'linux':
+        try:
+            return os.sysconf('SC_PAGE_SIZE')
+        except Exception:
+            return 4096
     try:
         r = subprocess.run(["sysctl", "-n", "hw.pagesize"], capture_output=True, text=True, timeout=5)
         return int(r.stdout.strip())
@@ -441,10 +450,16 @@ def _get_page_size() -> int:
 def _get_processes() -> dict:
     """Top processes by CPU and memory."""
     try:
-        r = subprocess.run(
-            ["ps", "axo", "pid,pcpu,pmem,rss,comm", "-r"],
-            capture_output=True, text=True, timeout=10,
-        )
+        if sys.platform == 'linux':
+            r = subprocess.run(
+                ["ps", "axo", "pid,pcpu,pmem,rss,comm", "--sort=-pcpu"],
+                capture_output=True, text=True, timeout=10,
+            )
+        else:
+            r = subprocess.run(
+                ["ps", "axo", "pid,pcpu,pmem,rss,comm", "-r"],
+                capture_output=True, text=True, timeout=10,
+            )
         lines = r.stdout.strip().split("\n")
         procs = []
         for line in lines[1:]:  # skip header
@@ -471,6 +486,52 @@ def _get_processes() -> dict:
 
 def _get_detailed_memory() -> dict:
     """Memory from 'top' (Activity Monitor compatible) + vm_stat breakdown."""
+    if sys.platform == 'linux':
+        try:
+            meminfo = {}
+            with open('/proc/meminfo') as f:
+                for line in f:
+                    parts = line.split(':')
+                    if len(parts) == 2:
+                        key = parts[0].strip()
+                        val_str = parts[1].strip()
+                        # Values in kB
+                        num = re.sub(r'[^0-9]', '', val_str.split()[0]) if val_str.split() else '0'
+                        meminfo[key] = int(num) if num.isdigit() else 0
+            total_kb = meminfo.get('MemTotal', 0)
+            # Used = total - MemAvailable if available, else total - free - buffers - cached
+            avail_kb = meminfo.get('MemAvailable', 0)
+            if avail_kb:
+                used_kb = total_kb - avail_kb
+            else:
+                used_kb = total_kb - meminfo.get('MemFree', 0) - meminfo.get('Buffers', 0) - meminfo.get('Cached', 0)
+            total_mb = round(total_kb / 1024, 1)
+            used_mb = round(max(used_kb, 0) / 1024, 1)
+            free_kb = meminfo.get('MemFree', 0)
+            free_mb = round(free_kb / 1024, 1)
+            active_kb = meminfo.get('Active', 0)
+            active_mb = round(active_kb / 1024, 1)
+            inactive_kb = meminfo.get('Inactive', 0)
+            inactive_mb = round(inactive_kb / 1024, 1)
+            # Linux doesn't have "wired" memory — approximate as active + slab
+            slab_kb = meminfo.get('SUnreclaim', meminfo.get('Slab', 0))
+            wired_mb = round(slab_kb / 1024, 1)
+            # SwapCached approximates compressed memory
+            compressed_kb = meminfo.get('SwapCached', 0)
+            compressed_mb = round(compressed_kb / 1024, 1)
+            return {
+                "total_mb": total_mb,
+                "used_mb": used_mb,
+                "free_mb": free_mb,
+                "wired_mb": wired_mb,
+                "active_mb": active_mb,
+                "compressed_mb": compressed_mb,
+                "inactive_mb": inactive_mb,
+                "pct": round(used_mb / total_mb * 100, 1) if total_mb else 0,
+            }
+        except Exception:
+            return {"total_mb": 0, "used_mb": 0, "free_mb": 0, "wired_mb": 0,
+                    "active_mb": 0, "compressed_mb": 0, "inactive_mb": 0, "pct": 0}
     total_mb = 0
     used_mb = 0
     free_mb = 0
@@ -540,6 +601,28 @@ def _get_detailed_memory() -> dict:
 
 def _get_swap() -> dict:
     """Swap usage."""
+    if sys.platform == 'linux':
+        try:
+            total_kb = 0
+            used_kb = 0
+            with open('/proc/swaps') as f:
+                lines = f.read().strip().split('\n')
+                for line in lines[1:]:  # skip header
+                    parts = line.split()
+                    if len(parts) >= 4 and parts[2].isdigit() and parts[3].isdigit():
+                        total_kb += int(parts[2])
+                        used_kb += int(parts[3])
+            total_mb = round(total_kb / 1024, 1)
+            used_mb = round(used_kb / 1024, 1)
+            free_mb = round((total_kb - used_kb) / 1024, 1)
+            return {
+                "total_mb": total_mb,
+                "used_mb": used_mb,
+                "free_mb": free_mb,
+                "pct": round(used_mb / total_mb * 100, 1) if total_mb else 0,
+            }
+        except Exception:
+            return {"total_mb": 0, "used_mb": 0, "free_mb": 0, "pct": 0}
     try:
         r = subprocess.run(["sysctl", "-n", "vm.swapusage"], capture_output=True, text=True, timeout=5)
         # Format: total = 4096.00M  used = 2610.00M  free = 1486.00M  (encrypted)
@@ -559,6 +642,33 @@ def _get_swap() -> dict:
 
 def _get_network_io() -> list:
     """Network I/O per interface since boot."""
+    if sys.platform == 'linux':
+        try:
+            interfaces = []
+            with open('/proc/net/dev') as f:
+                lines = f.read().strip().split('\n')
+                # Skip header lines (first two)
+                for line in lines[2:]:
+                    parts = line.split()
+                    if len(parts) >= 10:
+                        name = parts[0].rstrip(':')
+                        # Only include physical interfaces and loopback
+                        if name.startswith(('eth', 'en', 'wlan', 'lo')):
+                            try:
+                                ibytes = int(parts[1])
+                                obytes = int(parts[9])
+                                interfaces.append({
+                                    "name": name,
+                                    "ibytes": ibytes,
+                                    "obytes": obytes,
+                                    "in_mb": round(ibytes / 1048576, 1) if ibytes else 0,
+                                    "out_mb": round(obytes / 1048576, 1) if obytes else 0,
+                                })
+                            except (ValueError, IndexError):
+                                continue
+            return interfaces
+        except Exception:
+            return []
     try:
         r = subprocess.run(
             ["netstat", "-ib"],
@@ -630,6 +740,32 @@ def _get_network_rates() -> list:
 
 def _get_disk_io() -> dict:
     """Disk I/O statistics."""
+    if sys.platform == 'linux':
+        try:
+            disks = []
+            with open('/proc/diskstats') as f:
+                for line in f:
+                    parts = line.split()
+                    if len(parts) >= 14:
+                        name = parts[2]
+                        # Only physical block devices (sdX, nvmeX, vdX, xvdX)
+                        if re.match(r'^(sd|nvme|vd|xvd|mmcblk)[a-z]', name):
+                            reads = int(parts[3])
+                            reads_sectors = int(parts[5])
+                            writes = int(parts[7])
+                            writes_sectors = int(parts[9])
+                            # Convert sectors (512 bytes) to MB/s estimate: not a rate,
+                            # but we provide cumulative sector count
+                            disks.append({
+                                "name": name,
+                                "reads": reads,
+                                "writes": writes,
+                                "read_sectors": reads_sectors,
+                                "write_sectors": writes_sectors,
+                            })
+            return {"disks": disks}
+        except Exception:
+            return {"disks": []}
     try:
         r = subprocess.run(
             ["iostat", "-d", "-c", "2"],
@@ -686,6 +822,36 @@ def _get_docker_stats() -> list:
 
 def _get_thread_count() -> dict:
     """Total processes and thread count."""
+    if sys.platform == 'linux':
+        try:
+            # Process count
+            r = subprocess.run(["ps", "-eo", "pid"], capture_output=True, text=True, timeout=5)
+            procs = len(r.stdout.strip().split("\n")) - 1  # minus header
+            # Thread count from /proc/stat
+            threads = 0
+            with open('/proc/stat') as f:
+                for line in f:
+                    if line.startswith('processes '):
+                        # Total processes created since boot, not current threads
+                        pass
+                    elif line.startswith('threads '):
+                        try:
+                            threads = int(line.split()[1])
+                        except (ValueError, IndexError):
+                            pass
+            # Fallback: count thread dirs in /proc
+            if not threads:
+                try:
+                    for pid_entry in os.listdir('/proc'):
+                        if pid_entry.isdigit():
+                            task_dir = f'/proc/{pid_entry}/task'
+                            if os.path.isdir(task_dir):
+                                threads += len(os.listdir(task_dir))
+                except Exception:
+                    pass
+            return {"processes": procs, "threads": threads}
+        except Exception:
+            return {"processes": 0, "threads": 0}
     try:
         r = subprocess.run(["ps", "-eo", "pid"], capture_output=True, text=True, timeout=5)
         procs = len(r.stdout.strip().split("\n")) - 1  # minus header
@@ -701,6 +867,33 @@ def _get_thread_count() -> dict:
 
 def _get_temp() -> dict:
     """Temperature and thermal state (no sudo needed)."""
+    if sys.platform == 'linux':
+        try:
+            # Try lm-sensors first
+            r = subprocess.run(
+                ["sensors", "-u"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if r.returncode == 0 and r.stdout.strip():
+                return {"therm_raw": r.stdout.strip()[:200]}
+            # Fallback: try thermal zone files
+            temps = []
+            tz_dir = '/sys/class/thermal'
+            if os.path.isdir(tz_dir):
+                for entry in sorted(os.listdir(tz_dir)):
+                    temp_path = os.path.join(tz_dir, entry, 'temp')
+                    if os.path.isfile(temp_path):
+                        try:
+                            with open(temp_path) as f:
+                                raw = int(f.read().strip())
+                            temps.append(f"{entry}: {raw / 1000:.1f}°C")
+                        except Exception:
+                            continue
+            if temps:
+                return {"therm_raw": ", ".join(temps)[:200]}
+            return {"therm_raw": ""}
+        except Exception:
+            return {"therm_raw": ""}
     try:
         r = subprocess.run(
             ["pmset", "-g", "therm"],
@@ -735,11 +928,28 @@ def _sysinfo():
         "state_db_size": STATE_DB.stat().st_size if STATE_DB.exists() else 0,
         "script_count": len(list(SCRIPTS_DIR.glob("*.py"))),
     }
-    try:
-        r = subprocess.run(["sw_vers", "-productVersion"], capture_output=True, text=True, timeout=5)
-        info["os"] = f"macOS {r.stdout.strip()}"
-    except Exception:
-        info["os"] = "macOS"
+    if sys.platform == 'linux':
+        try:
+            os_release = {}
+            if os.path.exists('/etc/os-release'):
+                with open('/etc/os-release') as f:
+                    for line in f:
+                        if '=' in line:
+                            k, v = line.strip().split('=', 1)
+                            os_release[k] = v.strip('"')
+            pretty = os_release.get('PRETTY_NAME', '')
+            if pretty:
+                info["os"] = pretty
+            else:
+                info["os"] = platform.platform()
+        except Exception:
+            info["os"] = platform.platform()
+    else:
+        try:
+            r = subprocess.run(["sw_vers", "-productVersion"], capture_output=True, text=True, timeout=5)
+            info["os"] = f"macOS {r.stdout.strip()}"
+        except Exception:
+            info["os"] = "macOS"
     try:
         r = subprocess.run(["uname", "-m"], capture_output=True, text=True, timeout=5)
         info["arch"] = r.stdout.strip()

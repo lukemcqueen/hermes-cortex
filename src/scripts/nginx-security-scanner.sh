@@ -15,7 +15,7 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-CORTEX_REPO="${HOME}/hermes-cortex"
+CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 BLOCKED_IPS="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
 DEPLOY_SCRIPT="/usr/local/sbin/hermes-security-apply"
 LOG_DIR="/usr/local/var/log/nginx"
