@@ -209,7 +209,8 @@ def main():
     if actions:
         from datetime import datetime, timezone
         hostname = os.uname().nodename[:12]
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        kst = timezone(__import__("datetime").timedelta(hours=9))
+        ts = datetime.now(kst).strftime("%Y-%m-%d %H:%M KST")
         print(f"🔧 {hostname} [{ts}]")
         for a in actions:
             print(a)

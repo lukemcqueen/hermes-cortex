@@ -115,8 +115,9 @@ except Exception:
 
 # ── Output ───────────────────────────────────────────────────
 from datetime import datetime, timezone
+kst = timezone(__import__("datetime").timedelta(hours=9))
 if alerts:
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    ts = datetime.now(kst).strftime("%Y-%m-%d %H:%M KST")
     print(f"🚨 {HOSTNAME} [{ts}]")
     for a in alerts:
         print(f"  {a}")
