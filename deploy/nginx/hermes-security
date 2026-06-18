@@ -1,0 +1,11 @@
+# Hermes security cron jobs - passwordless sudo for specific tools
+luke ALL=(root) NOPASSWD: /usr/bin/rkhunter
+luke ALL=(root) NOPASSWD: /usr/bin/aide
+luke ALL=(root) NOPASSWD: /usr/bin/lynis
+luke ALL=(root) NOPASSWD: /usr/bin/chkrootkit
+luke ALL=(root) NOPASSWD: /usr/sbin/nginx -t
+luke ALL=(root) NOPASSWD: /usr/sbin/nginx -s reload
+luke ALL=(root) NOPASSWD: /bin/systemctl reload nginx
+luke ALL=(root) NOPASSWD: /usr/bin/fail2ban-client reload
+luke ALL=(root) NOPASSWD: /usr/bin/fail2ban-client status
+luke ALL=(root) NOPASSWD: /usr/local/sbin/hermes-security-apply
