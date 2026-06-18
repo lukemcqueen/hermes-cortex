@@ -90,19 +90,19 @@ case "${ACTION}" in
       fi
     fi
 
-    # Check services
+    # Check services — use command -v launchctl guard for Linux compat
     for svc_label in com.ollama.serve com.gbrain.autopilot com.gbrain.sync-watch; do
-      if launchctl list "${svc_label}" >/dev/null 2>&1; then
-        PID=$(launchctl list "${svc_label}" 2>/dev/null | awk '{print $1}' || echo "-")
+      if command -v launchctl >/dev/null 2>&1 && launchctl list "${svc_label}" >/dev/null 2>&1; then
+        PID=$(launchctl list "${svc_label}" 2>/dev/null | awk '{print $1}' 2>/dev/null || echo "-")
         if [ "${PID}" = "-" ]; then
           issues+=("SERVICE:${svc_label}:down")
         fi
       fi
     done
 
-    # Check nginx
+    # Check nginx — use sudo for system-wide config test
     if command -v nginx >/dev/null 2>&1; then
-      if ! nginx -t >/dev/null 2>&1; then
+      if ! sudo -n nginx -t >/dev/null 2>&1; then
         issues+=("NGINX:config-invalid")
       fi
       if ! pgrep -f "nginx: master" >/dev/null 2>&1; then
@@ -175,6 +175,10 @@ case "${ACTION}" in
 
   # ── Fix certs ─────────────────────────────────────────────
   fix-certs)
+    # SSL cert notes — helps prevent false positives on staging:
+    #   - Check for SSL certificates in real locations, not auto-remediate's fake locations
+    #   - The actual cert locations are in the nginx config (if enabled) or let'sencrypt
+    #   - Don't flag staging as missing if there's no public DNS or Let's Encrypt certs
     # Try certbot renewal, then verify certs are valid
     RENEWED=0
     if command -v certbot >/dev/null 2>&1; then
