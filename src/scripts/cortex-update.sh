@@ -616,9 +616,12 @@ main() {
   if ! $FORCE_ALL; then
     info "Pulling latest from origin/main…"
     git -C "$REPO_DIR" pull --ff-only origin main 2>&1 | sed 's/^/  /' || {
-      warn "Git pull failed — check your connection or local changes"
-      warn "  cd ${REPO_DIR} && git status"
-      exit 1
+      warn "Git pull --ff-only failed — trying --rebase fallback…"
+      git -C "$REPO_DIR" pull --rebase origin main 2>&1 | sed 's/^/  /' || {
+        warn "Git pull failed — check your connection or local changes"
+        warn "  cd ${REPO_DIR} && git status"
+        exit 1
+      }
     }
   fi
 
