@@ -1640,6 +1640,16 @@ else
   warn "install-send-agent-learning-cron.sh not found — skipping agent-learning-sender cron setup"
 fi
 
+# ── Essential Hermes Crons ──────────────────────────────────────
+HERMES_CRONS_SCRIPT="${SCRIPTS_DIR}/install-hermes-crons.sh"
+if [[ -f "$HERMES_CRONS_SCRIPT" ]]; then
+  step "Creating essential Hermes cron jobs (auto-remediation, health, memory sync…)"
+  bash "$HERMES_CRONS_SCRIPT" 2>&1 | sed 's/^/  /'
+  ok
+else
+  warn "install-hermes-crons.sh not found — skipping cron job creation"
+fi
+
 # ── Scripts list ────────────────────────────────────────────
 info "Scripts directory: ${SCRIPTS_DIR}"
 
