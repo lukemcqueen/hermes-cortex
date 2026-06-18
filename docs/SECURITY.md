@@ -404,9 +404,102 @@ sudo fail2ban-client status nginx-http-auth
 sudo pfctl -a "f2b/nginx-http-auth" -s table
 ```
 
-### 🛡️ On public WiFi (coffee shop, airport, hotel)
+---
 
-Your machine is more exposed on public networks. Take extra precautions:
+### 🔐 SSL/TLS Certificates — Let's Encrypt & Certbot
+
+> **Critical:** SSL certificates and private keys are **machine-local secrets**. They must **never** enter the hermes-cortex repo (`.gitignore` blocks `*.pem`, `*.key`, `*.crt`, `*.p12`).
+
+#### How It Works
+
+- **Certbot** (Let's Encrypt client) manages certs via systemd timer (`certbot.timer`) — renews twice daily automatically
+- **Cert locations:** `/etc/letsencrypt/live/<domain>/fullchain.pem` (cert) + `privkey.pem` (private key)
+- **Private key permissions:** `root:root 600` — only root can read
+- **nginx terminates TLS** — upstream services (Hermes, Langfuse, dashboard) receive plain HTTP on localhost
+
+#### Per-Machine Strategy (Default & Recommended)
+
+**Each agent machine runs its own Certbot.** This is the safest approach because:
+
+1. Let's Encrypt validates domain control per-server (HTTP-01 challenge) — copying certs between machines breaks validation
+2. Private keys never leave the machine — zero distribution risk
+3. Renewal is fully automatic and isolated per machine
+4. No rate-limit sharing across machines
+
+```bash
+# On each machine needing HTTPS:
+sudo apt-get update && sudo apt-get install certbot python3-certbot-nginx
+sudo certbot --nginx -d your.domain.com
+```
+
+#### When to Use Wildcard Certs (Advanced)
+
+Only if you have **many subdomains on the same domain** managed by the same team:
+
+```bash
+# Requires DNS-01 challenge (DNS API credentials needed)
+certbot certonly --dns-cloudflare -d "*.yourdomain.com"
+```
+
+**Risks of wildcard:**
+- Single private key protects all subdomains (larger blast radius if compromised)
+- Requires DNS API tokens (additional secret to protect)
+- Let's Encrypt rate limits are stricter for wildcard certs
+
+#### Secure Copy (Exceptional Cases Only)
+
+If you must copy certs between machines (e.g., disaster recovery):
+
+```bash
+# On SOURCE machine (encrypt with age):
+tar -cz /etc/letsencrypt/live/yourdomain.com | age -r <recipient-pubkey> > certs.tar.gz.age
+
+# On DEST machine (decrypt):
+age -d -i <private-key> certs.tar.gz.age | tar -xz -C /
+```
+
+**Audit requirement:** Log who copied, when, which cert, and why.
+
+#### Monitoring & Alerting
+
+Auto-remediation (Phase 3) checks cert expiry daily:
+
+| Threshold | Action |
+|-----------|--------|
+| < 30 days | Warning logged |
+| < 7 days | Critical alert sent |
+| Expired | Emergency alert + auto-remediation attempts renew |
+
+```bash
+# Manual check:
+certbot certificates
+openssl x509 -enddate -noout -in /etc/letsencrypt/live/yourdomain.com/fullchain.pem
+```
+
+#### Emergency: Compromised or Expired Cert
+
+```bash
+# 1. Revoke (if compromised):
+sudo certbot revoke --cert-path /etc/letsencrypt/live/yourdomain.com/fullchain.pem
+
+# 2. Re-issue (Certbot keeps archive of old certs):
+sudo certbot certonly --nginx -d yourdomain.com --force-renewal
+
+# 3. Reload nginx:
+sudo nginx -t && sudo nginx -s reload
+```
+
+#### Repo Boundaries
+
+| In hermes-cortex (public) | Machine-local (private) |
+|---------------------------|-------------------------|
+| `hermes-services.conf` with commented SSL placeholders | `/etc/letsencrypt/` — all certs & keys |
+| Docs explaining how to enable SSL | `~/langfuse/.env` — service passwords |
+| `.gitignore` blocking `*.pem`, `*.key` | SSH keys, API tokens |
+
+---
+
+### 🛡️ On public WiFi (coffee shop, airport, hotel)
 
 1. ✅ **Keep your firewall on** at all times
 2. ✅ **Don't start Docker** unless you need it (stop with `launchctl bootout gui/$(id -u)/com.docker.docker`)

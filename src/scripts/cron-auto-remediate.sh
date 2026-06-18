@@ -108,6 +108,40 @@ case "${ACTION}" in
       fi
     fi
 
+    # Check SSL cert expiry (Linux & macOS)
+    if command -v openssl >/dev/null 2>&1; then
+      for conf in /usr/local/etc/nginx/servers/*.conf /usr/local/etc/nginx/*.conf \
+                  /opt/homebrew/etc/nginx/servers/*.conf /opt/homebrew/etc/nginx/*.conf \
+                  /etc/nginx/sites-enabled/*.conf /etc/nginx/conf.d/*.conf; do
+        [ -f "${conf}" ] || continue
+        for cert_path in $(grep -oP 'ssl_certificate\s+\K\S+(?=;)' "${conf}" 2>/dev/null); do
+          if [ -f "${cert_path}" ]; then
+            expires=$(openssl x509 -in "${cert_path}" -noout -enddate 2>/dev/null | cut -d= -f2)
+            if [ -n "${expires}" ]; then
+              # macOS date parsing
+              if command -v date >/dev/null 2>&1 && date -j >/dev/null 2>&1; then
+                expiry_epoch=$(date -j -f "%b %d %H:%M:%S %Y" "${expires% *}" +%s 2>/dev/null || echo 0)
+              else
+                # Linux date parsing
+                expiry_epoch=$(date -d "${expires}" +%s 2>/dev/null || echo 0)
+              fi
+              now_epoch=$(date +%s)
+              days_left=$(( (expiry_epoch - now_epoch) / 86400 ))
+              if [ "${days_left}" -lt 30 ] 2>/dev/null && [ "${days_left}" -ge 0 ] 2>/dev/null; then
+                issues+=("CERT_EXPIRING:${cert_path}:${days_left}d")
+              elif [ "${days_left}" -lt 0 ] 2>/dev/null; then
+                issues+=("CERT_EXPIRED:${cert_path}")
+              fi
+            else
+              issues+=("CERT_UNREADABLE:${cert_path}")
+            fi
+          else
+            issues+=("CERT_MISSING:${cert_path}")
+          fi
+        done
+      done
+    fi
+
     # Check web cache
     WEB_CACHE="${HOME}/.hermes/data/web_cache.sqlite"
     if [ -f "${WEB_CACHE}" ]; then
