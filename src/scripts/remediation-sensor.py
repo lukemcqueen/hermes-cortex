@@ -69,7 +69,7 @@ def check_scripts():
     """Check for missing or non-executable scripts."""
     required_scripts = [
         "heartbeat.py", "service-recovery.py", "system-alert.py",
-        "orch-check-agent-messages.sh", "cron-auto-remediate.sh",
+        "check-agent-messages.sh", "cron-auto-remediate.sh",
         "daily-lesson-mine.sh", "update-session-state.sh",
     ]
     for script in required_scripts:
@@ -112,73 +112,40 @@ def check_disk():
 
 
 def check_memory():
-    """Check memory pressure (macOS + Linux)."""
-    if sys.platform == "darwin":
-        out, _, rc = run("memory_pressure 2>/dev/null | grep 'System-wide memory' | sed 's/.* \\([0-9]*\\)%/\\1/'")
-        if rc == 0 and out.strip():
-            free_pct = int(out.strip())
-            if free_pct < 10:
-                add_issue("mem_pressure", "critical", f"Memory pressure high: {free_pct}% free", {"free_pct": free_pct})
-            elif free_pct < 15:
-                add_issue("mem_pressure", "high", f"Memory pressure elevated: {free_pct}% free", {"free_pct": free_pct})
-    elif sys.platform.startswith("linux"):
-        out, _, rc = run(r"free -m | awk '/Mem:/ {printf \"%.0f\", $3/$2 * 100}'")
-        if rc == 0 and out.strip():
-            used_pct = int(out.strip())
-            free_pct = 100 - used_pct
-            if free_pct < 10:
-                add_issue("mem_pressure", "critical", f"Memory at {used_pct}% used ({free_pct}% free)", {"used_pct": used_pct})
-            elif free_pct < 15:
-                add_issue("mem_pressure", "high", f"Memory at {used_pct}% used ({free_pct}% free)", {"used_pct": used_pct})
+    """Check memory pressure (macOS)."""
+    if sys.platform != "darwin":
+        return
+    out, _, rc = run("memory_pressure 2>/dev/null | grep 'System-wide memory' | sed 's/.* \\([0-9]*\\)%/\\1/'")
+    if rc == 0 and out.strip():
+        free_pct = int(out.strip())
+        if free_pct < 10:
+            add_issue("mem_pressure", "critical", f"Memory pressure high: {free_pct}% free", {"free_pct": free_pct})
+        elif free_pct < 15:
+            add_issue("mem_pressure", "high", f"Memory pressure elevated: {free_pct}% free", {"free_pct": free_pct})
 
 
 def check_services():
-    """Check critical services (macOS launchd / Linux systemd)."""
-    if sys.platform == "darwin":
-        # Ollama is always required
-        out, _, rc = run("launchctl list com.ollama.serve 2>/dev/null | awk 'NR==2 {print $1}'")
+    """Check critical services (macOS launchd)."""
+    if sys.platform != "darwin":
+        return
+    services = {
+        "com.ollama.serve": "Ollama",
+        "com.gbrain.autopilot": "gbrain autopilot",
+        "com.gbrain.sync-watch": "gbrain sync-watch",
+    }
+    for label, name in services.items():
+        out, _, rc = run(f"launchctl list {label} 2>/dev/null | awk 'NR==2 {{print $1}}'")
         if rc != 0 or not out.strip() or out.strip() == "-":
-            add_issue("service_down", "high", "Ollama is down", {"service": "com.ollama.serve"})
-        # Gbrain: at least ONE of autopilot or sync-watch must be running
-        autopilot_ok = False
-        sync_watch_ok = False
-        out, _, rc = run("launchctl list com.gbrain.autopilot 2>/dev/null | awk 'NR==2 {print $1}'")
-        if rc == 0 and out.strip() and out.strip() != "-":
-            autopilot_ok = True
-        out, _, rc = run("launchctl list com.gbrain.sync-watch 2>/dev/null | awk 'NR==2 {print $1}'")
-        if rc == 0 and out.strip() and out.strip() != "-":
-            sync_watch_ok = True
-        if not autopilot_ok and not sync_watch_ok:
-            add_issue("service_down", "high", "No gbrain sync service running (autopilot or sync-watch)", {"services": ["com.gbrain.autopilot", "com.gbrain.sync-watch"]})
-    elif sys.platform.startswith("linux"):
-        # Ollama user service
-        out, _, rc = run("systemctl --user is-active ollama 2>/dev/null")
-        if out.strip() != "active":
-            add_issue("service_down", "high", f"Ollama is not active (systemd user service)", {"service": "ollama.service", "status": out.strip() or "unknown"})
-        # Gbrain sync-watch user service
-        out, _, rc = run("systemctl --user is-active com.gbrain.sync-watch 2>/dev/null")
-        if rc == 0 and out.strip() != "active":
-            add_issue("service_down", "high", f"gbrain sync-watch is not active (systemd user service)", {"service": "com.gbrain.sync-watch.service", "status": out.strip() or "unknown"})
+            add_issue("service_down", "high", f"{name} is down", {"service": label})
 
 
 def check_nginx():
-    """Check nginx config and process.
-    
-    Uses sudo -n for non-interactive sudo (works if user has NOPASSWD for nginx).
-    Falls back to direct check if sudo unavailable.
-    Skips gracefully if no root/sudo access and nginx -t fails.
-    """
-    # Try sudo -n first (non-interactive, fails fast if no sudo)
-    out, _, rc = run("sudo -n nginx -t 2>&1")
+    """Check nginx config and process."""
+    # Use sudo for nginx -t since cert files need root to read
+    # (user has passwordless NOPASSWD for /usr/sbin/nginx -t)
+    out, _, rc = run("sudo -n /usr/sbin/nginx -t 2>&1")
     if rc != 0:
-        # Try without sudo (might work if user has direct access)
-        out2, _, rc2 = run("nginx -t 2>&1")
-        if rc2 != 0:
-            # Both failed — only report if it looks like a real config error
-            # (not a permission error)
-            if "permission" not in out2.lower() and "permission" not in out.lower():
-                add_issue("nginx_issue", "critical", "Nginx config invalid", {"error": out2})
-    # Check process
+        add_issue("nginx_issue", "critical", "Nginx config invalid", {"error": out})
     out, _, rc = run("pgrep -f 'nginx: master' 2>/dev/null")
     if rc != 0:
         add_issue("nginx_issue", "high", "Nginx not running", {})
@@ -209,6 +176,88 @@ def check_inbox_markers():
                 add_issue("inbox_marker", "low", f"... and {len(markers) - 5} more pending markers", {})
 
 
+def check_certs():
+    """Check SSL certificate expiry for all nginx-referenced certs.
+    Silent (no issues) when all certs exist and are >30 days from expiry.
+    """
+    now = datetime.now(timezone.utc)
+
+    # Auto-discover nginx SSL cert paths from config files
+    cert_files = set()
+    for d in ["/usr/local/etc/nginx/servers", "/usr/local/etc/nginx",
+              "/opt/homebrew/etc/nginx/servers", "/opt/homebrew/etc/nginx",
+              "/etc/nginx/sites-enabled", "/etc/nginx/conf.d"]:
+        conf_dir = Path(d)
+        if conf_dir.exists():
+            for conf_file in conf_dir.glob("*.conf"):
+                try:
+                    content = conf_file.read_text()
+                    for line in content.splitlines():
+                        stripped = line.strip()
+                        if stripped.startswith("#") or stripped.startswith("//"):
+                            continue
+                        for m in __import__("re").finditer(r'ssl_certificate\s+(\S+);', stripped):
+                            path = m.group(1).strip().rstrip(";")
+                            if path:
+                                cert_files.add(path)
+                except (OSError, IOError):
+                    pass
+
+    if not cert_files:
+        # No ssl_certificate found — nginx may be local-only, no certs needed
+        return
+
+    for cert_path in sorted(cert_files):
+        p = Path(cert_path)
+        domain = p.parent.name if p.parent else "unknown"
+
+        if not p.exists():
+            add_issue("cert_missing", "critical",
+                      f"SSL cert missing: {cert_path}",
+                      {"path": cert_path, "domain": domain})
+            continue
+
+        # Read certificate expiry date
+        out, _, rc = run(
+            f"openssl x509 -in '{cert_path}' -noout -enddate 2>/dev/null | cut -d= -f2"
+        )
+        if rc != 0 or not out.strip():
+            add_issue("cert_unreadable", "high",
+                      f"Cannot read cert expiry: {cert_path}",
+                      {"path": cert_path, "domain": domain})
+            continue
+
+        try:
+            expiry_str = out.strip()
+            # Strip trailing timezone name (e.g. " GMT") and parse as UTC
+            for known_tz in [" GMT", " UTC", " EST", " EDT", " PST", " PDT"]:
+                if expiry_str.endswith(known_tz):
+                    expiry_str = expiry_str[:-len(known_tz)]
+                    break
+            expiry = datetime.strptime(expiry_str, "%b %d %H:%M:%S %Y")
+            # Assume UTC for cert dates (Let's Encrypt uses UTC)
+            expiry = expiry.replace(tzinfo=timezone.utc)
+            days_left = (expiry - now).days
+
+            if days_left < 0:
+                add_issue("cert_expired", "critical",
+                          f"SSL cert expired {abs(days_left)}d ago: {domain}",
+                          {"path": cert_path, "domain": domain, "days_expired": abs(days_left)})
+            elif days_left < 7:
+                add_issue("cert_expiring_soon", "critical",
+                          f"SSL cert expires in {days_left}d: {domain}",
+                          {"path": cert_path, "domain": domain, "days_left": days_left})
+            elif days_left < 30:
+                add_issue("cert_expiring_soon", "high",
+                          f"SSL cert expires in {days_left}d: {domain}",
+                          {"path": cert_path, "domain": domain, "days_left": days_left})
+            # else: >30 days — silent, no issue
+        except ValueError as e:
+            add_issue("cert_unreadable", "low",
+                      f"Cannot parse cert date '{out.strip()}': {e}",
+                      {"path": cert_path, "domain": domain})
+
+
 def check_errored_crons():
     """Check for errored cron jobs by reading jobs.json directly."""
     jobs_json = HOME / ".hermes" / "cron" / "jobs.json"
@@ -228,181 +277,6 @@ def check_errored_crons():
             pass
 
 
-def check_gbrain_health():
-    """Check gbrain/PGLite health.
-    
-    Detects PGLite WASM runtime failures (common on Linux with glibc/kernel incompat).
-    Runs gbrain sync --no-pull and checks for WASM abort errors.
-    """
-    # Check if gbrain is installed
-    if not os.path.exists(os.path.expanduser("~/.gbrain")):
-        return  # gbrain not installed, skip
-    
-    # Run gbrain sync and capture output
-    out, err, rc = run("gbrain sync --all --no-pull 2>&1", timeout=60)
-    combined = (out + " " + err).lower()
-    
-    # Check for PGLite WASM failure patterns
-    if "pglite failed to initialize its wasm runtime" in combined:
-        add_issue("gbrain_wasm_failure", "critical", "gbrain PGLite WASM runtime failed to initialize", {
-            "error_snippet": (out + err)[:500],
-            "upstream_issue": "https://github.com/garrytan/gbrain/issues/223",
-        })
-    elif "aborted()" in combined and "wasm" in combined:
-        add_issue("gbrain_wasm_failure", "critical", "gbrain PGLite WASM aborted", {
-            "error_snippet": (out + err)[:500],
-        })
-    elif rc != 0 and "could not connect" in combined:
-        add_issue("gbrain_connection_failure", "high", "gbrain cannot connect to configured database", {
-            "error_snippet": (out + err)[:300],
-        })
-
-
-def check_ssl_certs():
-    """Check SSL certificate renewal capability.
-    
-    SUDOERS ASSUMED: gisu/kustos/joseph have NOPASSWD sudoers for certbot.
-    Verifies sudo -n certbot commands work correctly.
-    
-    NOTE: /etc/letsencrypt/{live,archive} being 700 root:root is CORRECT
-    and SECURE. Certbot should run via sudo, not direct access.
-    """
-    # Check common nginx SSL cert locations
-    cert_dirs = [
-        "/etc/letsencrypt/live",
-        "/etc/ssl/certs",
-        "/usr/local/etc/nginx/servers",
-    ]
-    
-    # Check if certbot systemd timer is active (preferred method)
-    timer_active = False
-    if os.path.exists("/usr/bin/systemctl"):
-        out, _, rc = run("systemctl is-active certbot.timer 2>/dev/null")
-        if out.strip() == "active":
-            timer_active = True
-    
-    # Check if user has sudoers entry for certbot (PRIMARY METHOD for cisnet02)
-    # Test the actual commands in sudoers: certbot certificates and certbot renew
-    has_sudoers = False
-    sudoers_test_failed = False
-    try:
-        # Test certbot certificates (read-only, safe to test)
-        out, _, rc = run("sudo -n certbot certificates 2>&1 | head -3")
-        if rc == 0 or "Certificate Name" in out or "Found" in out:
-            has_sudoers = True
-        else:
-            # Try certbot renew --dry-run as fallback test
-            out2, _, rc2 = run("sudo -n certbot renew --dry-run 2>&1 | head -5")
-            if rc2 == 0 or "dry run" in out2.lower():
-                has_sudoers = True
-            else:
-                sudoers_test_failed = True
-    except:
-        sudoers_test_failed = True
-    
-    # If either method is available, certs are properly configured
-    if timer_active or has_sudoers:
-        return  # Certbot can renew securely
-    
-    # If we get here, certbot renewal may fail
-    # Report as informational — user should configure sudoers or enable timer
-    for cert_dir in cert_dirs:
-        if os.path.exists(cert_dir):
-            issue_data = {
-                "directory": cert_dir,
-                "note": "700 root:root permissions are CORRECT and SECURE",
-                "fix_hint": "Add to sudoers: sudo visudo, then add: " + os.environ.get("USER", "user") + " ALL=(ALL) NOPASSWD: /usr/bin/certbot certificates, /usr/bin/certbot renew --non-interactive",
-                "alternative": "Enable systemd timer: sudo systemctl enable certbot.timer && sudo systemctl start certbot.timer",
-            }
-            if sudoers_test_failed:
-                issue_data["debug"] = "sudo -n certbot test failed — check sudoers configuration"
-            add_issue("ssl_cert_sudoers_missing", "medium", 
-                "Certbot renewal not configured for non-root execution",
-                issue_data)
-            break
-
-
-def check_certbot():
-    """Check certbot execution capability.
-    
-    SUDOERS ASSUMED: gisu/kustos/joseph have NOPASSWD sudoers for certbot.
-    Verifies sudo -n certbot certificates and sudo -n certbot renew work.
-    
-    NOTE: Lock file being root-owned is CORRECT and SECURE.
-    """
-    lock_file = "/var/log/letsencrypt/.certbot.lock"
-    log_dir = "/var/log/letsencrypt"
-    
-    # Check if certbot systemd timer is active
-    timer_active = False
-    if os.path.exists("/usr/bin/systemctl"):
-        out, _, rc = run("systemctl is-active certbot.timer 2>/dev/null")
-        if out.strip() == "active":
-            timer_active = True
-    
-    # Check if user has sudoers entry for certbot (PRIMARY METHOD for cisnet02)
-    # Test the actual commands: certbot certificates and certbot renew
-    has_sudoers = False
-    try:
-        # Test certbot certificates (read-only, safe to test)
-        out, _, rc = run("sudo -n certbot certificates 2>&1 | head -5")
-        if rc == 0 or "Certificate Name" in out or "Found" in out or "No certs" in out:
-            has_sudoers = True
-        else:
-            # Try certbot renew --dry-run as fallback test
-            out2, _, rc2 = run("sudo -n certbot renew --dry-run 2>&1 | head -5")
-            if rc2 == 0 or "dry run" in out2.lower():
-                has_sudoers = True
-    except:
-        pass
-    
-    # If either method works, certbot is properly configured
-    if timer_active or has_sudoers:
-        return  # Certbot can run securely
-    
-    # Check if lock file exists and is owned by root (correct)
-    if os.path.exists(lock_file):
-        owner = run("stat -c '%U' " + lock_file + " 2>/dev/null")[0].strip()
-        if owner == "root":
-            # Lock file permissions are correct — just need sudoers config
-            add_issue("certbot_sudoers_missing", "medium",
-                "Certbot lock file is secure but no renewal method configured",
-                {
-                    "lock_file": lock_file,
-                    "owner": owner,
-                    "note": "Root ownership is CORRECT and SECURE",
-                    "fix_hint": "Add to sudoers: sudo visudo, then add: " + os.environ.get("USER", "user") + " ALL=(ALL) NOPASSWD: /usr/bin/certbot certificates, /usr/bin/certbot renew --non-interactive",
-                    "alternative": "Use systemd timer: sudo systemctl enable certbot.timer",
-                })
-
-
-def check_systemd_services():
-    """Check critical systemd services (Linux only).
-    
-    Complements macOS launchd checks for cross-platform support.
-    """
-    if sys.platform == "darwin":
-        return  # Skip on macOS
-    
-    # Check for systemctl availability
-    if not os.path.exists("/usr/bin/systemctl") and not os.path.exists("/bin/systemctl"):
-        return  # systemd not available
-    
-    services = {
-        "nginx.service": "nginx",
-        "docker.service": "Docker",
-        "fail2ban.service": "fail2ban",
-    }
-    
-    for svc, name in services.items():
-        out, _, rc = run(f"systemctl is-active {svc} 2>/dev/null")
-        if out.strip() != "active":
-            add_issue("service_down", "high", f"{name} is not active (systemd)", {
-                "service": svc,
-                "status": out.strip() or "unknown",
-            })
-
-
 def main():
     # Run all checks
     check_scripts()
@@ -410,13 +284,10 @@ def main():
     check_disk()
     check_memory()
     check_services()
-    check_systemd_services()  # Linux complement to check_services()
     check_nginx()
-    check_ssl_certs()  # NEW: SSL cert permissions
-    check_certbot()  # NEW: certbot execution capability
-    check_gbrain_health()  # NEW: gbrain/PGLite WASM health
     check_web_cache()
     check_inbox_markers()
+    check_certs()
     check_errored_crons()
 
     # Output JSON
