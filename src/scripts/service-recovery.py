@@ -5,8 +5,6 @@ Checks each service; if down, attempts recovery.
 Silent (empty output) when all services healthy.
 Non-empty output is delivered to user as an incident report.
 """
-from __future__ import annotations
-
 import os
 import subprocess
 import sys
@@ -54,9 +52,6 @@ def _make_service(name: str, label: str = "", pgrep: str = "",
 _last_restart: dict[str, float] = {}
 
 
-SERVICES: list[dict] = []
-
-
 def _check_scripts() -> bool:
     """Check if critical Hermes scripts are present and executable."""
     critical = [
@@ -70,6 +65,37 @@ def _check_scripts() -> bool:
         if not os.access(str(sp), os.X_OK):
             return False
     return True
+
+
+SERVICES: list[dict] = [
+    _make_service("nginx", pgrep="nginx: master", restart_label="homebrew.mxcl.nginx", verify_cmd=["nginx", "-t"]),
+    # Langfuse: try multiple label formats for compatibility
+    {
+        "name": "Langfuse",
+        "check": lambda lbl="langfuse-langfuse-web": (
+            docker_container_running(lbl) if lbl else False
+        ),
+        "restart_label": "langfuse-langfuse-web",
+        "verify_label": "Langfuse",
+    },
+    _make_service("Ollama", label="com.ollama.serve", pgrep="ollama"),
+    # gbrain: try multiple label formats for compatibility
+    {
+        "name": "gbrain",
+        "check": lambda lbl="com.gbrain.autopilot", pgr="gbrain": (
+            docker_container_running(lbl) if lbl else
+            service_running(lbl, pgrep_pattern=pgr if not lbl else None)
+        ),
+        "restart_label": "com.gbrain.autopilot",
+        "verify_label": "gbrain",
+    },
+    {
+        "name": "scripts",
+        "check": _check_scripts,
+        "restart_label": "",
+        "verify_label": "Hermes scripts",
+    },
+]
 
 
 def _try_restore_scripts() -> str | None:
@@ -98,21 +124,13 @@ def _try_restore_scripts() -> str | None:
     return "No scripts needed restoration or cortex repo missing"
 
 
-SERVICES.extend([
-    _make_service("nginx", pgrep="nginx: master",
-                  restart_label="homebrew.mxcl.nginx",
-                  verify_cmd=["nginx", "-t"]),
-    _make_service("Langfuse", docker_sub="langfuse-langfuse-web"),
-    _make_service("Ollama", label="com.ollama.serve", pgrep="ollama"),
-    _make_service("gbrain", label="com.gbrain.autopilot",
-                  pgrep="gbrain"),
-    {
-        "name": "scripts",
-        "check": _check_scripts,
-        "restart_label": "",
-        "verify_label": "Hermes scripts",
-    },
-])
+def _status_text(svc: dict) -> str:
+    """Return a short status string for logging."""
+    try:
+        ok = svc["check"]()
+        return "✅ up" if ok else "❌ DOWN"
+    except Exception as e:
+        return f"❓ error ({e})"
 
 
 def _try_restart(svc: dict) -> str | None:
@@ -131,12 +149,19 @@ def _try_restart(svc: dict) -> str | None:
         if r.returncode != 0:
             return f"❌ {name}: pre-flight check failed ({r.stderr.strip()[:200]}) — not restarting"
 
-    # Restart using platform_utils
+    # Restart using platform_utils with better error handling
     restart_label = svc.get("restart_label", name)
     if restart_label:
-        ok = restart_service(restart_label)
-        if not ok:
-            return f"❌ {name} restart failed (platform_utils returned False)"
+        try:
+            ok = restart_service(restart_label)
+            if not ok:
+                # Provide more detailed error information
+                if is_macos():
+                    return f"❌ {name} restart failed: service '{restart_label}' not found or permission denied. Try: launchctl list | grep {restart_label}"
+                else:
+                    return f"❌ {name} restart failed: service '{restart_label}' not found or permission denied. Try: sudo systemctl restart {restart_label}"
+        except Exception as e:
+            return f"❌ {name} restart failed with error: {str(e)}"
 
     # Wait a moment then verify
     time.sleep(3)
@@ -145,15 +170,6 @@ def _try_restart(svc: dict) -> str | None:
         return None
     else:
         return f"⚠️ {name} restart issued but not confirmed up after 3s"
-
-
-def _status_text(svc: dict) -> str:
-    """Return a short status string for logging."""
-    try:
-        ok = svc["check"]()
-        return "✅ up" if ok else "❌ DOWN"
-    except Exception as e:
-        return f"❓ error ({e})"
 
 
 def main():
@@ -191,13 +207,11 @@ def main():
             actions.append(f"🔄 {name}: restarted successfully")
 
     if actions:
+        from datetime import datetime, timezone
         hostname = os.uname().nodename[:12]
-        print(f"🔧 {hostname}")
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        print(f"🔧 {hostname} [{ts}]")
         for a in actions:
             print(a)
         for s in statuses:
             print(f"  {s}")
-
-
-if __name__ == "__main__":
-    main()

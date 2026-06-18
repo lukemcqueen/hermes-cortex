@@ -5,7 +5,6 @@ Silent (empty stdout) when all metrics within normal range.
 Non-empty stdout is delivered verbatim to the user (Telegram).
 """
 import re, subprocess, sys, socket
-from pathlib import Path
 
 MEM_PCT_WARN = 85
 SWAP_PCT_WARN = 70
@@ -115,8 +114,10 @@ except Exception:
     pass
 
 # ── Output ───────────────────────────────────────────────────
+from datetime import datetime, timezone
 if alerts:
-    print(f"🚨 {HOSTNAME}")
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    print(f"🚨 {HOSTNAME} [{ts}]")
     for a in alerts:
         print(f"  {a}")
     for r in remediations:

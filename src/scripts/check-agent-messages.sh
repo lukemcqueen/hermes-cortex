@@ -98,7 +98,8 @@ for msg in "${INBOX_FILES[@]}"; do
   if $IS_BROADCAST; then
     # ── Broadcast: leave in inbox for agents, show to Moses once ──
     if ! grep -q "^${id}$" "$SEEN_FILE" 2>/dev/null; then
-      $HAD_OUTPUT || { echo "━━━ 📬 Agent Inbox — Broadcast ━━━"; HAD_OUTPUT=true; }
+      TS=$(date -u +"%Y-%m-%d %H:%M UTC")
+      $HAD_OUTPUT || { echo "━━━ 📬 Agent Inbox — Broadcast ━━━ [${TS}]"; HAD_OUTPUT=true; }
       echo "  From: ${from}  |  Topic: #${topic}"
       echo "  Subject: ${subject}"
       echo "  (agents will pick this up on next poll)"
@@ -152,8 +153,9 @@ for msg in "${INBOX_FILES[@]}"; do
     # Leave file in inbox — agents need it
   else
     # ── Moses message: move to processed ──
+    TS=$(date -u +"%Y-%m-%d %H:%M UTC")
     echo ""
-    echo "━━━ 📬 Agent Message — ${filename} ━━━"
+    echo "━━━ 📬 Agent Message — ${filename} ━━━ [${TS}]"
     echo "  From: ${from}"
     echo "  Subject: ${subject}"
     echo ""
