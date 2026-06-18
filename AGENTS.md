@@ -107,8 +107,17 @@ Three-layer data model:
 
 **Setting up on a new agent:**
 1. `install.sh` copies all scripts to `~/.hermes/scripts/`
-2. Create a cron job: `cron name=cron-auto-remediate every 5m skill=auto-remediation`
-3. The LLM-driven cron loads the skill and runs the 3-phase workflow:
+2. `install-hermes-crons.sh` (auto-run by install.sh) creates essential cron jobs:
+   - `cron-auto-remediate` (every 5m, skill-based) — checks errors, applies fixes
+   - `remediation-sensor` (every 5m, no_agent) — companion diagnostics sensor
+   - `system-heartbeat` (every 30m, no_agent) — system health monitoring
+   - `agent-health-monitor` (every 10m, no_agent) — agent health polling
+   - `system-alert-watchdog` (every 10m, no_agent) — resource alerting
+   - `service-recovery` (every 5m, no_agent) — auto-restart crashed services
+   - `memory-to-brain-sync` (every 6h, no_agent) — memory persistence
+   - `inbox-sensor` (every 10m, no_agent) — detect new broadcast messages
+   - `check-agent-messages` (every 10m, no_agent) — flag urgent requests
+3. The LLM-driven cron (`cron-auto-remediate`) loads the skill and runs the 3-phase workflow:
    - Phase 1: Check errored cron jobs
    - Phase 2: Check agent inbox remediation markers
    - Phase 3: Spot-check system resources
