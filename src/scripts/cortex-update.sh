@@ -98,6 +98,7 @@ register "src/scripts/install-gbrain-sync.sh"     "${HERMES_HOME}/scripts/instal
 register "src/scripts/install-ollama.sh"          "${HERMES_HOME}/scripts/install-ollama.sh"
 register "src/scripts/install-nginx.sh"           "${HERMES_HOME}/scripts/install-nginx.sh"
 register "src/scripts/install-cortex-update-cron.sh" "${HERMES_HOME}/scripts/install-cortex-update-cron.sh"
+register "src/scripts/install-hermes-crons.sh"       "${HERMES_HOME}/scripts/install-hermes-crons.sh"
 register "src/scripts/prod-watchdog.sh"          "${HERMES_HOME}/scripts/prod-watchdog.sh"
 register "src/scripts/check-agent-messages.sh"    "${HERMES_HOME}/scripts/check-agent-messages.sh"
 
