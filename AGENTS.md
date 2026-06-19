@@ -182,8 +182,8 @@ code review (security scan, quality gate
 
 | Time | Agent | Action |
 |------|-------|--------|
-| 8:00am | Titus | Analyzes repos on Luke's MacBook (all except hermes-cortex). Posts briefing as comment on GitHub issue #1 in fleet-operator/hermes-cortex |
-| 8:30am | Moses | Reads latest comment from GitHub issue #1 via `gh api`. Asks user: "What is your #1 priority for today?" |
+| 8:00am | Titus | Analyzes repos on Luke's MacBook (all except hermes-cortex). Posts briefing as comment on **GitHub issue #11** in fleet-operator/hermes-cortex |
+| 8:30am | Moses | Reads latest comment from **GitHub issue #11** via `gh api`. Asks user: "What is your #1 priority for today?" |
 | 8:30am+ | Moses | Breaks priority into 2-4 actionable tasks. Incorporates Titus's suggestions. Updates memory. Begins execution. |
 
 **Why GitHub Issues:**
