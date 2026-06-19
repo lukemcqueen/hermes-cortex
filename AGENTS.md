@@ -1,6 +1,6 @@
 # Agent Guidelines — Hermes Cortex
 
-This file is read by many agent tools (Claude Code, Copilot, Codex, etc.)
+This file is read by many agent tools (Claude Code, Copilot, Codex, Hermes, etc.)
 on session start. It orients any agent working on this repo.
 
 ## What This Repo Does
@@ -29,7 +29,7 @@ Hermes Cortex is a **public installer and skill set** for
 | `.hermes-cortex/sessions/archive/` | Timestamped session snapshots |
 | `.hermes-cortex/skills/` | Project-specific Hermes skills (tracked) |
 | `.hermes-cortex/memory/` | Per-user agent memory (gitignored — each dev has their own) |
-| `.gitignore` | Excludes .agentkore, .env*, *.pem, *.key, state.db, .hermes/, .hermes-cortex/memory/ |
+| `.gitignore` | Excludes .env*, *.pem, *.key, state.db, .hermes/, .hermes-cortex/memory/ |
 
 ## Cortex Project Directory Convention
 
@@ -69,7 +69,57 @@ Three-layer data model:
 | **State routing:** Information flows through a decision matrix — live context → session history → memory → docs, in that priority order — see `src/skills/software-development/state-orchestrator/`
 - **Project separation:** Each project gets its own gbrain source for isolation — see `docs/knowledge-isolation-architecture.md`
 - **Structured development pipeline:** Work flows through a defined chain — `hc-elicit` → `hc-party` → `prd-lite` → `story-slicing` → `change-test-loop` → code review — each stage consumes the output of the prior one, reducing rework and enforcing quality gates before code is written
-- **Agent execution contract:** Non-negotiable rules — real work, verified results, no simulation — see `src/skills/software-development/agent-contract/`
+- **Agent execution contract:** Non-negotiable rules — real work, verified results, no simulation.
+
+---
+
+## Agent Execution Contract
+
+Every agent working in this repo must follow these non-negotiable rules:
+
+1. **Real execution, no simulation** — run actual commands, write real files, verify with tests. Never fabricate a result.
+2. **Verified deliverables** — every change must be exercised and confirmed working before reporting done. A stub, plan, or single command is not a deliverable.
+3. **Fix root causes, not symptoms** — when finding a bug, check sibling call paths for the same flaw. Fix the class, not just the reported site.
+4. **Touch only what the task needs** — no drive-by refactors, renames, or reformatting. Add only the imports and dependencies your code requires.
+5. **Batch independent lookups** — when several reads or searches don't depend on each other, issue them together in one turn instead of one at a time.
+6. **Report blockers honestly** — if a tool, install, or network call fails, say so directly and try an alternative. Never substitute fabricated output.
+7. **Keep working until done** — don't stop after writing a stub, plan, or single command. Work until you've actually exercised the code or produced the requested result.
+8. **Use tools, not descriptions** — never describe what you would do without actually doing it. Every response must contain tool calls that make progress or deliver a final result.
+
+---
+
+## Structured Development Pipeline
+
+When building new features or making significant changes, use this structured
+workflow. Each stage consumes the output of the prior one, reducing rework
+and enforcing quality gates before code is written:
+
+```
+hc-elicit (requirements elicitation)
+    ↓
+hc-party (multi-role architecture review)
+    ↓
+prd-lite (concise product spec)
+    ↓
+story-slicing (user-visible, testable stories)
+    ↓
+change-test-loop (RED-GREEN-REFACTOR with lessons)
+    ↓
+code review (security scan, quality gates, auto-fix)
+```
+
+| Stage | Skill | Purpose |
+|-------|-------|---------|
+| Elicit | `hc-elicit` | Structured requirements gathering from user goals |
+| Review | `hc-party` | Architecture review with weighted decision matrix |
+| Spec | `prd-lite` | 1-page PRD — problem, solution, constraints, open questions |
+| Slice | `story-slicing` | Break feature into independently deliverable stories |
+| Build | `change-test-loop` | LEARN-RED-GREEN-REFACTOR with lesson-aware memory |
+| Review | `requesting-code-review` | Pre-commit review: security, quality, auto-fix |
+
+Load the relevant skill with `skill_view(name)` when entering each stage. Skills live in `~/.hermes/skills/software-development/<name>/SKILL.md`.
+
+---
 
 ## Common Tasks
 
@@ -83,7 +133,6 @@ Three-layer data model:
 
 - No secrets in this repo — ever
 - `.env`, `.env.*`, `*.pem`, `*.key` are gitignored
-- `.agentkore/` is removed+gitignored — not part of this project
 - Keep docs current when changing install behavior
 - MIT License — be permissive with what's shared
 
