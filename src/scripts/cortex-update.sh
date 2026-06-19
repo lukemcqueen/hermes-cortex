@@ -98,6 +98,7 @@ register "src/scripts/install-gbrain-sync.sh"     "${HERMES_HOME}/scripts/instal
 register "src/scripts/install-ollama.sh"          "${HERMES_HOME}/scripts/install-ollama.sh"
 register "src/scripts/install-nginx.sh"           "${HERMES_HOME}/scripts/install-nginx.sh"
 register "src/scripts/install-cortex-update-cron.sh" "${HERMES_HOME}/scripts/install-cortex-update-cron.sh"
+register "src/scripts/install-hermes-crons.sh"       "${HERMES_HOME}/scripts/install-hermes-crons.sh"
 register "src/scripts/prod-watchdog.sh"          "${HERMES_HOME}/scripts/prod-watchdog.sh"
 register "src/scripts/check-agent-messages.sh"    "${HERMES_HOME}/scripts/check-agent-messages.sh"
 
@@ -616,9 +617,12 @@ main() {
   if ! $FORCE_ALL; then
     info "Pulling latest from origin/main…"
     git -C "$REPO_DIR" pull --ff-only origin main 2>&1 | sed 's/^/  /' || {
-      warn "Git pull failed — check your connection or local changes"
-      warn "  cd ${REPO_DIR} && git status"
-      exit 1
+      warn "Git pull --ff-only failed — trying --rebase fallback…"
+      git -C "$REPO_DIR" pull --rebase origin main 2>&1 | sed 's/^/  /' || {
+        warn "Git pull failed — check your connection or local changes"
+        warn "  cd ${REPO_DIR} && git status"
+        exit 1
+      }
     }
   fi
 

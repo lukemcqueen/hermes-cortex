@@ -176,11 +176,13 @@ def main():
 
     # Output — no_agent cron delivers non-empty stdout
     output = []
+    kst = __import__("datetime").timezone(__import__("datetime").timedelta(hours=9))
+    ts = datetime.now(kst).strftime("%Y-%m-%d %H:%M KST")
     if alerts:
-        output.append(f"━━━ Health Alert — {len(alerts)} issue(s) ━━━")
+        output.append(f"━━━ Health Alert — {len(alerts)} issue(s) ━━━ [{ts}]")
         output.extend(alerts)
     if resolves:
-        output.append(f"━━━ Health Restored ━━━")
+        output.append(f"━━━ Health Restored ━━━ [{ts}]")
         output.extend(resolves)
 
     if output:

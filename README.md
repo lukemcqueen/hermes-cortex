@@ -231,6 +231,32 @@ Make sure Docker Desktop is running.
 chmod +x ~/hermes-cortex/install.sh
 ```
 
+### "Cron jobs not created after install"
+The installer requires Hermes Agent to be installed first. If you see:
+```
+⚠ Hermes Agent not found — cron jobs cannot be created
+```
+
+Then install Hermes Agent first, then run:
+```bash
+bash ~/.hermes/scripts/install-hermes-crons.sh
+```
+
+### "Cron job failing or not running"
+```bash
+# List all crons
+hermes cron list
+
+# Check cron job health
+cat ~/.hermes/cron/jobs.json | python3 -m json.tool
+
+# Recreate all crons (force)
+bash ~/.hermes/scripts/install-hermes-crons.sh --force
+
+# Check script permissions
+ls -la ~/.hermes/scripts/*.py ~/.hermes/scripts/*.sh
+```
+
 ### "I don't have macOS"
 See the [Troubleshooting Guide](docs/troubleshooting.md) for Linux and Windows notes.
 
