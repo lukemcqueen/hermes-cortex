@@ -140,10 +140,23 @@ def check_services():
 
 
 def check_nginx():
-    """Check nginx config and process."""
-    out, _, rc = run("nginx -t 2>&1")
+    """Check nginx config and process.
+    
+    Uses sudo -n for non-interactive sudo (works if user has NOPASSWD for nginx).
+    Falls back to direct check if sudo unavailable.
+    Skips gracefully if no root/sudo access and nginx -t fails.
+    """
+    # Try sudo -n first (non-interactive, fails fast if no sudo)
+    out, _, rc = run("sudo -n nginx -t 2>&1")
     if rc != 0:
-        add_issue("nginx_issue", "critical", "Nginx config invalid", {"error": out})
+        # Try without sudo (might work if user has direct access)
+        out2, _, rc2 = run("nginx -t 2>&1")
+        if rc2 != 0:
+            # Both failed — only report if it looks like a real config error
+            # (not a permission error)
+            if "permission" not in out2.lower() and "permission" not in out.lower():
+                add_issue("nginx_issue", "critical", "Nginx config invalid", {"error": out2})
+    # Check process
     out, _, rc = run("pgrep -f 'nginx: master' 2>/dev/null")
     if rc != 0:
         add_issue("nginx_issue", "high", "Nginx not running", {})

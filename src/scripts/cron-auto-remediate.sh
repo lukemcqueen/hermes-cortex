@@ -265,13 +265,19 @@ except Exception as e:
       domain=$(basename "${domain_dir}")
 
       if [ "${days_left}" -lt 30 ]; then
-        # Renew cert
+        # Renew cert — certbot needs sudo for /etc/letsencrypt
         echo "RENEWING:${domain}:${days_left}d"
-        if certbot renew --cert-name "${domain}" --quiet 2>/dev/null; then
+        if sudo -n certbot renew --cert-name "${domain}" --quiet 2>/dev/null; then
           certs_renewed=$((certs_renewed + 1))
           echo "RENEWED:${domain}"
         else
-          echo "RENEW_FAILED:${domain}"
+          # Try without sudo (might work if user has direct access)
+          if certbot renew --cert-name "${domain}" --quiet 2>/dev/null; then
+            certs_renewed=$((certs_renewed + 1))
+            echo "RENEWED:${domain}"
+          else
+            echo "RENEW_FAILED:${domain}"
+          fi
         fi
       else
         certs_ok=$((certs_ok + 1))

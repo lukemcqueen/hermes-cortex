@@ -24,20 +24,20 @@
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `e3e0822` — 2026-06-19 09:42:08 |
+| Last commit | `78e756e` — 2026-06-19 12:00:32 |
 | Working tree | clean |
-| Unpushed | none |
+| Unpushed | 4 commits |
 | Tag | `v1.0.0` |
 
 ### Recent Commits
 
 | Date | Commit | Description |
 |------|--------|-------------|
-| 2026-06-19 | `e3e0822` | Merge titus/vercel-nextjs-skills: Next.js Docker + React best practices
-| 2026-06-19 | `1b8421c` | feat: add hermes_tz.py timezone helper with config override
-| 2026-06-19 | `14f3c38` | Merge branch 'main' of https://github.com/fleet-operator/hermes-cortex into titus/vercel-nextjs-skills
-| 2026-06-19 | `7e3a035` | fix: cron_exists() was catching SystemExit exception
-| 2026-06-19 | `b30e622` | cron: harden install-hermes-crons.sh with --force, script verification, error tracking
+| 2026-06-19 | `78e756e` | fix: eval scripts clarify intended usage (Hermes agent session required)
+| 2026-06-19 | `c655ee1` | fix: CST key collision in hermes_tz.py + service-recovery.py hardcoded KST - hermes_tz.py: 'CST' was defined twice (8 vs -6), dict overwrite meant   China Standard Time was unreachable. Split into CNST/CST_CN/CST_US. - service-recovery.py: use hermes_tz.format_timestamp() instead of   hardcoded KST, respects HERMES_TIMEZONE env var like siblings
+| 2026-06-19 | `dba865a` | fix: remove --enabled-toolsets flag (not supported by Hermes CLI)
+| 2026-06-19 | `3b837b5` | fix: install-hermes-crons.sh skill-based cron creation
+| 2026-06-19 | `08bc0ff` | fix: hermes-cortex script issues from upstream pull
 
 ---
 
@@ -45,12 +45,12 @@
 
 | Layer | What |
 |-------|------|
-| Installer | `install.sh` — 2366 lines, 26 steps, idempotent |
+| Installer | `install.sh` — 2396 lines, 26 steps, idempotent |
 | Skills | 0 skills across 4 categories (software-development, devops, social-media, productivity) |
-| Python files | 69 files (40620 LOC) |
-| Shell files | 47 files (10444 LOC) |
-| Markdown files | 518 files |
-| Total | 684 tracked files |
+| Python files | 73 files (41396 LOC) |
+| Shell files | 50 files (11626 LOC) |
+| Markdown files | 522 files |
+| Total | 695 tracked files |
 | Dashboard | Flask app + nginx proxy — Langfuse traces + system health |
 | Scripts | 16 utility scripts (heartbeat, memory-sync, LLM scoring, service recovery) |
 | OpenCode | 15 commands + 3 agents + 30 optional skills |
@@ -73,4 +73,4 @@
 
 ---
 
-*Last updated: 2026-06-19 10:00 KST*
+*Last updated: 2026-06-19 12:00 KST*
