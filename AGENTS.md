@@ -165,10 +165,31 @@ story-slicing (user-visible, testable stories)
     ↓
 change-test-loop (RED-GREEN-REFACTOR with lessons)
     ↓
-code review (security scan, quality gates, auto-fix)
+code review (security scan, quality gate
 ```
 
-| Stage | Skill | Purpose |
+---
+
+## Daily Priority Check-in
+
+**Cron job:** `daily-priority-checkin` — runs every day at 8:30am KST
+
+**Purpose:** Start each day with focused alignment on the user's #1 priority.
+
+**Workflow:**
+1. Ask: "What is your #1 priority for today?"
+2. Break it down into 2-4 concrete, actionable tasks
+3. Suggest a starting point (which task first and why)
+4. Update MEMORY.md with their priority and context
+5. Begin execution on the first task
+
+**Why this matters:**
+- Prevents context-switching and reactive work
+- Ensures we're always working on what matters most
+- Builds a historical record of focus areas (via memory)
+- Creates natural daily rhythm for deep work
+
+---
 |-------|-------|---------|
 | Elicit | `hc-elicit` | Structured requirements gathering from user goals |
 | Review | `hc-party` | Architecture review with weighted decision matrix |
