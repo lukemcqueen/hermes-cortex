@@ -113,10 +113,12 @@ case "${ACTION}" in
         fi
       done
     elif command -v systemctl >/dev/null 2>&1; then
-      # Linux — check user services
-      for svc_name in ollama gbrain-sync-watch; do
-        if ! systemctl --user is-active "${svc_name}" >/dev/null 2>&1; then
-          issues+=("SERVICE:${svc_name}:down")
+      # Linux — check user services by actual unit names
+      for svc_name in com.ollama.serve com.gbrain.sync-watch; do
+        if systemctl --user list-unit-files "${svc_name}" >/dev/null 2>&1; then
+          if ! systemctl --user is-active "${svc_name}" >/dev/null 2>&1; then
+            issues+=("SERVICE:${svc_name}:down")
+          fi
         fi
       done
     fi
