@@ -12,6 +12,7 @@
 #  Usage:
 #    bash install-hermes-crons.sh              # create missing crons
 #    bash install-hermes-crons.sh --dry-run    # show what would be created
+#    bash install-hermes-crons.sh --force      # recreate all crons (overwrite)
 #    bash install-hermes-crons.sh --uninstall  # remove all hermes crons
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -21,6 +22,7 @@ source "${SCRIPT_DIR}/os-config.sh"
 
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 CRON_JOBS_FILE="${HERMES_HOME}/cron/jobs.json"
+SCRIPTS_DIR="${HERMES_HOME}/scripts"
 HERMES_CMD=""
 # Try to find hermes command
 for candidate in hermes "${HERMES_HOME}/hermes-agent/venv/bin/hermes"; do
@@ -37,13 +39,16 @@ error() { printf "${RED}✗${RESET} %s\n" "$*"; }
 
 DRY_RUN=false
 UNINSTALL=false
+FORCE=false
 CREATED=0
 SKIPPED=0
+FAILED=0
 
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --dry-run) DRY_RUN=true; shift ;;
+      --force) FORCE=true; shift ;;
       --uninstall) UNINSTALL=true; shift ;;
       *) warn "Unknown option: $1"; shift ;;
     esac
@@ -88,28 +93,66 @@ sys.exit(1)
   return 1
 }
 
+# ── Helper: verify script exists ───────────────────────────
+script_exists() {
+  local script="$1"
+  if [[ -z "$script" ]]; then
+    return 0  # No script required (skill-based cron)
+  fi
+  if [[ -f "${SCRIPTS_DIR}/${script}" ]]; then
+    return 0
+  fi
+  # Also check repo source
+  if [[ -f "${SCRIPT_DIR}/${script}" ]]; then
+    return 0
+  fi
+  return 1
+}
+
 # ── Helper: create a cron job via hermes or prompt ────────
 create_cron() {
   local name="$1" schedule="$2" script="$3" prompt="$4" skill="$5" toolsets="$6" deliver="$7" workdir="$8" no_agent="$9"
 
+  # Check if cron exists
+  local exists=false
   if cron_exists "$name"; then
+    exists=true
+  fi
+
+  if $exists && ! $FORCE; then
     SKIPPED=$((SKIPPED + 1))
     return 0
   fi
 
+  # Verify script exists before creating cron
+  if [[ -n "$script" ]] && ! script_exists "$script"; then
+    warn "Script not found: ${script} — skipping cron '${name}'"
+    FAILED=$((FAILED + 1))
+    return 0
+  fi
+
   if $DRY_RUN; then
-    info "[DRY-RUN] Would create cron: ${name}"
-    printf "  schedule=%s\n" "$schedule"
-    printf "  script=%s\n" "${script:-<none>}"
-    printf "  skill=%s\n" "${skill:-<none>}"
+    local action="Create"
+    if $exists && $FORCE; then
+      action="Recreate (force)"
+    fi
+    info "[DRY-RUN] ${action} cron: ${name}"
+    printf "  schedule=%s\\n" "$schedule"
+    printf "  script=%s\\n" "${script:-<none>}"
+    printf "  skill=%s\\n" "${skill:-<none>}"
     CREATED=$((CREATED + 1))
     return 0
+  fi
+
+  # Remove existing cron if --force
+  if $exists && $FORCE && [[ -n "$HERMES_CMD" ]]; then
+    "$HERMES_CMD" cron remove --name "$name" 2>/dev/null || true
   fi
 
   if [[ -z "$HERMES_CMD" ]]; then
     warn "Hermes not found — cannot create cron '${name}'"
     warn "  Create manually: hermes cron create --name \"${name}\" --schedule \"${schedule}\" ..."
-    SKIPPED=$((SKIPPED + 1))
+    FAILED=$((FAILED + 1))
     return 0
   fi
 
@@ -142,6 +185,7 @@ create_cron() {
     CREATED=$((CREATED + 1))
   else
     warn "Failed to create cron: ${name}"
+    FAILED=$((FAILED + 1))
   fi
 }
 
@@ -285,9 +329,17 @@ if $DRY_RUN; then
 else
   info "Created: ${CREATED} new cron job(s)"
   info "Skipped: ${SKIPPED} existing job(s)"
+  if [[ "$FAILED" -gt 0 ]]; then
+    warn "Failed: ${FAILED} cron job(s) — check warnings above"
+  fi
 fi
 echo ""
 info "Cron jobs are stored in: ${CRON_JOBS_FILE}"
 if [[ "$CREATED" -gt 0 && -n "$HERMES_CMD" ]]; then
   info "Verify with: ${HERMES_CMD} cron list"
+fi
+
+# Exit with error if any crons failed
+if [[ "$FAILED" -gt 0 ]]; then
+  exit 1
 fi
