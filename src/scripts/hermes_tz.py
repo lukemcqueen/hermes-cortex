@@ -18,12 +18,16 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, Any
 
 # Common timezone offsets (hours from UTC)
+# NOTE: CST is ambiguous (China Standard +8 vs Central US -6).
+# We use unambiguous keys. For China Standard Time, prefer "CNST".
+# For China Standard Time alias, use "CST_CN" (Chinese CST) explicitly.
 TIMEZONE_OFFSETS = {
     "UTC": 0,
     "GMT": 0,
     "KST": 9,
     "JST": 9,
-    "CST": 8,
+    "CNST": 8,
+    "CST_CN": 8,
     "HKT": 8,
     "SGT": 8,
     "IST": 5.5,
@@ -36,7 +40,7 @@ TIMEZONE_OFFSETS = {
     "WET": 0,
     "AST": -4,
     "EST": -5,
-    "CST": -6,
+    "CST_US": -6,
     "MST": -7,
     "PST": -8,
     "AKST": -9,
