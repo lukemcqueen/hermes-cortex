@@ -165,6 +165,7 @@ create_cron() {
   # Note: schedule and prompt are POSITIONAL arguments (must come at END)
   # Note: --no-agent uses hyphen, not underscore
   # Order: hermes cron create [FLAGS] schedule [prompt]
+  # Note: --enabled-toolsets is NOT a valid CLI flag (toolsets must be set via API)
   local cmd=("$HERMES_CMD" "cron" "create" "--name" "$name")
   if [[ -n "$script" ]]; then
     cmd+=("--script" "$script")
@@ -172,9 +173,7 @@ create_cron() {
   if [[ -n "$skill" ]]; then
     cmd+=("--skill" "$skill")
   fi
-  if [[ -n "$toolsets" ]]; then
-    cmd+=("--enabled-toolsets" "$toolsets")
-  fi
+  # Skip toolsets - not supported by CLI, must be set via API
   if [[ -n "$deliver" ]]; then
     cmd+=("--deliver" "$deliver")
   fi
