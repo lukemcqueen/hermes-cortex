@@ -88,6 +88,66 @@ Every agent working in this repo must follow these non-negotiable rules:
 
 ---
 
+## Autonomous Agent Reliability Patterns
+
+Based on Karpathy's research showing **41% → 3% mistake rate reduction** with explicit constraints, Hermes Cortex implements these reliability patterns:
+
+### Task Contract (Pre-Execution Specification)
+
+**For tasks with 3+ steps, define a task contract BEFORE execution.**
+
+```markdown
+## Task Contract
+
+**Goal:** [Single sentence]
+
+**Success Criteria:**
+- [ ] [Verifiable outcome 1]
+- [ ] [Verifiable outcome 2]
+
+**Constraints:**
+- Files I may touch: `[list]`
+- Files I must NOT touch: `[list]`
+
+**Checkpoints:**
+1. [ ] After step X, verify Y
+2. [ ] Before proceeding, confirm Z
+```
+
+**Template:** `docs/templates/task-contract.md`
+
+### Checkpoint Verification
+
+**Verify each checkpoint before proceeding to the next step.**
+
+Agents often complete steps 5-6 on top of a broken state from step 4. Checkpoint verification catches failures early.
+
+### Conflict Surfacing
+
+**When detecting multiple patterns in the codebase, surface the conflict — do NOT blend silently.**
+
+Silent pattern blending is how errors get swallowed twice. Surface conflicts explicitly with examples and await pattern choice.
+
+### Read-Before-Write
+
+**Read a file before editing it, unless creating from scratch.**
+
+90% of Claude's mistakes come from missing context, not weak models. Reading before writing ensures the agent operates on actual state.
+
+### Eval-Driven Development
+
+**Define evals BEFORE building. Run capability and regression suites systematically.**
+
+- **Capability evals:** Measure what the agent CAN do (new features)
+- **Regression evals:** Ensure agent MAINTAINS learned tasks (should stay ≥95%)
+- **Holdout gating:** Survivors must pass on unseen data before deployment
+
+**Skill:** `eval-harness`  
+**Scripts:** `run-evals.py`, `analyze-failures.py`  
+**Weekly analysis:** `analyze-failures.py --week last` (Monday 7am cron)
+
+---
+
 ## Structured Development Pipeline
 
 When building new features or making significant changes, use this structured
