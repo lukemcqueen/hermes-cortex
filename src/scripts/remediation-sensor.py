@@ -250,6 +250,9 @@ def check_ssl_certs():
     
     SUDOERS ASSUMED: gisu/kustos/joseph have NOPASSWD sudoers for certbot.
     Verifies sudo -n certbot commands work correctly.
+    
+    NOTE: /etc/letsencrypt/{live,archive} being 700 root:root is CORRECT
+    and SECURE. Certbot should run via sudo, not direct access.
     """
     # Check common nginx SSL cert locations
     cert_dirs = [
@@ -266,13 +269,23 @@ def check_ssl_certs():
             timer_active = True
     
     # Check if user has sudoers entry for certbot (PRIMARY METHOD for cisnet02)
+    # Test the actual commands in sudoers: certbot certificates and certbot renew
     has_sudoers = False
+    sudoers_test_failed = False
     try:
-        out, _, rc = run("sudo -n certbot --version 2>/dev/null")
-        if rc == 0:
+        # Test certbot certificates (read-only, safe to test)
+        out, _, rc = run("sudo -n certbot certificates 2>&1 | head -3")
+        if rc == 0 or "Certificate Name" in out or "Found" in out:
             has_sudoers = True
+        else:
+            # Try certbot renew --dry-run as fallback test
+            out2, _, rc2 = run("sudo -n certbot renew --dry-run 2>&1 | head -5")
+            if rc2 == 0 or "dry run" in out2.lower():
+                has_sudoers = True
+            else:
+                sudoers_test_failed = True
     except:
-        pass
+        sudoers_test_failed = True
     
     # If either method is available, certs are properly configured
     if timer_active or has_sudoers:
@@ -282,13 +295,17 @@ def check_ssl_certs():
     # Report as informational — user should configure sudoers or enable timer
     for cert_dir in cert_dirs:
         if os.path.exists(cert_dir):
+            issue_data = {
+                "directory": cert_dir,
+                "note": "700 root:root permissions are CORRECT and SECURE",
+                "fix_hint": "Add to sudoers: sudo visudo, then add: " + os.environ.get("USER", "user") + " ALL=(ALL) NOPASSWD: /usr/bin/certbot certificates, /usr/bin/certbot renew --non-interactive",
+                "alternative": "Enable systemd timer: sudo systemctl enable certbot.timer && sudo systemctl start certbot.timer",
+            }
+            if sudoers_test_failed:
+                issue_data["debug"] = "sudo -n certbot test failed — check sudoers configuration"
             add_issue("ssl_cert_sudoers_missing", "medium", 
                 "Certbot renewal not configured for non-root execution",
-                {
-                    "directory": cert_dir,
-                    "fix_hint": "Add to sudoers: sudo visudo, then add: " + os.environ.get("USER", "user") + " ALL=(ALL) NOPASSWD: /usr/bin/certbot renew",
-                    "alternative": "Enable systemd timer: sudo systemctl enable certbot.timer && sudo systemctl start certbot.timer",
-                })
+                issue_data)
             break
 
 
@@ -296,7 +313,9 @@ def check_certbot():
     """Check certbot execution capability.
     
     SUDOERS ASSUMED: gisu/kustos/joseph have NOPASSWD sudoers for certbot.
-    Verifies sudo -n certbot renew works.
+    Verifies sudo -n certbot certificates and sudo -n certbot renew work.
+    
+    NOTE: Lock file being root-owned is CORRECT and SECURE.
     """
     lock_file = "/var/log/letsencrypt/.certbot.lock"
     log_dir = "/var/log/letsencrypt"
@@ -309,11 +328,18 @@ def check_certbot():
             timer_active = True
     
     # Check if user has sudoers entry for certbot (PRIMARY METHOD for cisnet02)
+    # Test the actual commands: certbot certificates and certbot renew
     has_sudoers = False
     try:
-        out, _, rc = run("sudo -n certbot renew --dry-run 2>&1 | head -5")
-        if rc == 0 or "dry run" in out.lower():
+        # Test certbot certificates (read-only, safe to test)
+        out, _, rc = run("sudo -n certbot certificates 2>&1 | head -5")
+        if rc == 0 or "Certificate Name" in out or "Found" in out or "No certs" in out:
             has_sudoers = True
+        else:
+            # Try certbot renew --dry-run as fallback test
+            out2, _, rc2 = run("sudo -n certbot renew --dry-run 2>&1 | head -5")
+            if rc2 == 0 or "dry run" in out2.lower():
+                has_sudoers = True
     except:
         pass
     
@@ -331,7 +357,8 @@ def check_certbot():
                 {
                     "lock_file": lock_file,
                     "owner": owner,
-                    "fix_hint": "Add to sudoers: sudo visudo, then add: " + os.environ.get("USER", "user") + " ALL=(ALL) NOPASSWD: /usr/bin/certbot renew --non-interactive",
+                    "note": "Root ownership is CORRECT and SECURE",
+                    "fix_hint": "Add to sudoers: sudo visudo, then add: " + os.environ.get("USER", "user") + " ALL=(ALL) NOPASSWD: /usr/bin/certbot certificates, /usr/bin/certbot renew --non-interactive",
                     "alternative": "Use systemd timer: sudo systemctl enable certbot.timer",
                 })
 
