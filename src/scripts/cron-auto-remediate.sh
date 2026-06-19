@@ -79,9 +79,11 @@ case "${ACTION}" in
       issues+=("DISK:${DISK_PCT}%")
     fi
 
-    # Check memory free percentage (macOS only)
-    # memory_pressure reports "free percentage" — flag if below 15% (high pressure)
+    # Check memory free percentage
+    # macOS: memory_pressure reports "free percentage" — flag if below 15% (high pressure)
+    # Linux: free command — flag if used >85%
     if command -v memory_pressure >/dev/null 2>&1; then
+      # macOS
       MEM_FREE=$(memory_pressure 2>/dev/null | grep "System-wide memory" | sed 's/.* \([0-9]*\)%/\1%/')
       if [ -n "${MEM_FREE}" ]; then
         MEM_VAL=${MEM_FREE%\%}
@@ -89,17 +91,35 @@ case "${ACTION}" in
           issues+=("MEMORY:${MEM_FREE} free — high pressure")
         fi
       fi
+    elif command -v free >/dev/null 2>&1; then
+      # Linux
+      MEM_USED=$(free | awk '/^Mem:/ {printf "%.0f", $3/$2 * 100}')
+      if [ "${MEM_USED}" -gt 85 ] 2>/dev/null; then
+        issues+=("MEMORY:${MEM_USED}% used — high usage")
+      fi
     fi
 
-    # Check services — use command -v launchctl guard for Linux compat
-    for svc_label in com.ollama.serve com.gbrain.autopilot com.gbrain.sync-watch; do
-      if command -v launchctl >/dev/null 2>&1 && launchctl list "${svc_label}" >/dev/null 2>&1; then
-        PID=$(launchctl list "${svc_label}" 2>/dev/null | awk '{print $1}' 2>/dev/null || echo "-")
-        if [ "${PID}" = "-" ]; then
-          issues+=("SERVICE:${svc_label}:down")
+    # Check services — platform-aware dispatch
+    # macOS: launchctl
+    # Linux: systemctl --user (checks sync-watch, not autopilot)
+    if command -v launchctl >/dev/null 2>&1; then
+      # macOS
+      for svc_label in com.ollama.serve com.gbrain.autopilot com.gbrain.sync-watch; do
+        if launchctl list "${svc_label}" >/dev/null 2>&1; then
+          PID=$(launchctl list "${svc_label}" 2>/dev/null | awk '{print $1}' 2>/dev/null || echo "-")
+          if [ "${PID}" = "-" ]; then
+            issues+=("SERVICE:${svc_label}:down")
+          fi
         fi
-      fi
-    done
+      done
+    elif command -v systemctl >/dev/null 2>&1; then
+      # Linux — check user services
+      for svc_name in ollama gbrain-sync-watch; do
+        if ! systemctl --user is-active "${svc_name}" >/dev/null 2>&1; then
+          issues+=("SERVICE:${svc_name}:down")
+        fi
+      done
+    fi
 
     # Check nginx — use sudo for system-wide config test
     if command -v nginx >/dev/null 2>&1; then
