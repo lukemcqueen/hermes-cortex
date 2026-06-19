@@ -246,10 +246,10 @@ def check_gbrain_health():
 
 
 def check_ssl_certs():
-    """Check SSL certificate accessibility for non-root users.
+    """Check SSL certificate renewal capability.
     
-    SECURITY-AWARE: Does NOT suggest widening permissions.
-    Instead, checks if certbot renewal is configured via sudoers or systemd timer.
+    SUDOERS ASSUMED: gisu/kustos/joseph have NOPASSWD sudoers for certbot.
+    Verifies sudo -n certbot commands work correctly.
     """
     # Check common nginx SSL cert locations
     cert_dirs = [
@@ -265,7 +265,7 @@ def check_ssl_certs():
         if out.strip() == "active":
             timer_active = True
     
-    # Check if user has sudoers entry for certbot
+    # Check if user has sudoers entry for certbot (PRIMARY METHOD for cisnet02)
     has_sudoers = False
     try:
         out, _, rc = run("sudo -n certbot --version 2>/dev/null")
@@ -277,11 +277,6 @@ def check_ssl_certs():
     # If either method is available, certs are properly configured
     if timer_active or has_sudoers:
         return  # Certbot can renew securely
-    
-    # Check if nginx can read certs (verifies config is working)
-    out, _, rc = run("sudo -n nginx -t 2>&1")
-    if rc == 0:
-        return  # nginx can validate config via sudo
     
     # If we get here, certbot renewal may fail
     # Report as informational — user should configure sudoers or enable timer
@@ -300,8 +295,8 @@ def check_ssl_certs():
 def check_certbot():
     """Check certbot execution capability.
     
-    SECURITY-AWARE: Does NOT suggest widening lock file permissions.
-    Instead, checks if sudoers or systemd timer is configured.
+    SUDOERS ASSUMED: gisu/kustos/joseph have NOPASSWD sudoers for certbot.
+    Verifies sudo -n certbot renew works.
     """
     lock_file = "/var/log/letsencrypt/.certbot.lock"
     log_dir = "/var/log/letsencrypt"
@@ -313,7 +308,7 @@ def check_certbot():
         if out.strip() == "active":
             timer_active = True
     
-    # Check if user has sudoers entry for certbot
+    # Check if user has sudoers entry for certbot (PRIMARY METHOD for cisnet02)
     has_sudoers = False
     try:
         out, _, rc = run("sudo -n certbot renew --dry-run 2>&1 | head -5")

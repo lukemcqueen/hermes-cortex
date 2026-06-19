@@ -223,8 +223,9 @@ case "${ACTION}" in
 
   # ── Fix SSL certificates ──────────────────────────────────
   fix-certs)
-    # Cross-platform SSL cert check and renewal
-    # Uses Python for date arithmetic (works on macOS and Linux)
+    # SSL cert renewal — sudoers configured for gisu/kustos/joseph
+    # Uses sudo -n for non-interactive sudo (NOPASSWD in sudoers)
+    # Certbot runs as root via sudo, accesses /etc/letsencrypt safely
     certs_ok=0
     certs_renewed=0
     certs_expiring=0

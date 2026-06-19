@@ -24,20 +24,20 @@
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `78e756e` — 2026-06-19 12:00:32 |
+| Last commit | `9257237` — 2026-06-19 13:59:48 |
 | Working tree | clean |
-| Unpushed | 4 commits |
+| Unpushed | none |
 | Tag | `v1.0.0` |
 
 ### Recent Commits
 
 | Date | Commit | Description |
 |------|--------|-------------|
-| 2026-06-19 | `78e756e` | fix: eval scripts clarify intended usage (Hermes agent session required)
-| 2026-06-19 | `c655ee1` | fix: CST key collision in hermes_tz.py + service-recovery.py hardcoded KST - hermes_tz.py: 'CST' was defined twice (8 vs -6), dict overwrite meant   China Standard Time was unreachable. Split into CNST/CST_CN/CST_US. - service-recovery.py: use hermes_tz.format_timestamp() instead of   hardcoded KST, respects HERMES_TIMEZONE env var like siblings
-| 2026-06-19 | `dba865a` | fix: remove --enabled-toolsets flag (not supported by Hermes CLI)
-| 2026-06-19 | `3b837b5` | fix: install-hermes-crons.sh skill-based cron creation
-| 2026-06-19 | `08bc0ff` | fix: hermes-cortex script issues from upstream pull
+| 2026-06-19 | `9257237` | fix: SECURITY — SSL cert monitoring now uses sudoers pattern (never widen permissions)
+| 2026-06-19 | `462c442` | docs: gbrain PGLite → PostgreSQL migration guide + auto-remediation skill update
+| 2026-06-19 | `a2f313f` | feat: enhanced monitoring for Linux production issues (Joseph's cisnet02 feedback)
+| 2026-06-19 | `3a40bd0` | fix: nginx config check false positive in cron-auto-remediate
+| 2026-06-19 | `b70f4ab` | fix: remediation-sensor false positive for gbrain services
 
 ---
 
@@ -47,10 +47,10 @@
 |-------|------|
 | Installer | `install.sh` — 2396 lines, 26 steps, idempotent |
 | Skills | 0 skills across 4 categories (software-development, devops, social-media, productivity) |
-| Python files | 73 files (41396 LOC) |
-| Shell files | 50 files (11626 LOC) |
-| Markdown files | 522 files |
-| Total | 695 tracked files |
+| Python files | 73 files (41575 LOC) |
+| Shell files | 50 files (11782 LOC) |
+| Markdown files | 524 files |
+| Total | 697 tracked files |
 | Dashboard | Flask app + nginx proxy — Langfuse traces + system health |
 | Scripts | 16 utility scripts (heartbeat, memory-sync, LLM scoring, service recovery) |
 | OpenCode | 15 commands + 3 agents + 30 optional skills |
@@ -73,4 +73,4 @@
 
 ---
 
-*Last updated: 2026-06-19 12:00 KST*
+*Last updated: 2026-06-19 14:00 KST*
