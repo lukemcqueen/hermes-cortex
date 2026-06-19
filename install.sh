@@ -1610,6 +1610,36 @@ if [[ -f "${SCRIPT_DIR}/src/scripts/agent-health-monitor.py" ]]; then
   info "  Installed agent-health-monitor.py"
 fi
 
+# ── Eval Harness Scripts ───────────────────────────────────────
+# Create evals directory structure
+EVALS_DIR="${HERMES_HOME}/evals"
+mkdir -p "$EVALS_DIR/traces" "$EVALS_DIR/reports"
+info "  Created evals directory structure"
+
+RUN_EVALS_PATH="${SCRIPTS_DIR}/run-evals.py"
+if [[ -f "${SCRIPT_DIR}/src/scripts/run-evals.py" ]]; then
+  cp "${SCRIPT_DIR}/src/scripts/run-evals.py" "$RUN_EVALS_PATH" 2>/dev/null || \
+    warn "run-evals.py copy failed"
+  chmod +x "$RUN_EVALS_PATH"
+  info "  Installed run-evals.py"
+fi
+
+ANALYZE_FAILURES_PATH="${SCRIPTS_DIR}/analyze-failures.py"
+if [[ -f "${SCRIPT_DIR}/src/scripts/analyze-failures.py" ]]; then
+  cp "${SCRIPT_DIR}/src/scripts/analyze-failures.py" "$ANALYZE_FAILURES_PATH" 2>/dev/null || \
+    warn "analyze-failures.py copy failed"
+  chmod +x "$ANALYZE_FAILURES_PATH"
+  info "  Installed analyze-failures.py"
+fi
+
+HERMES_TZ_PATH="${SCRIPTS_DIR}/hermes_tz.py"
+if [[ -f "${SCRIPT_DIR}/src/scripts/hermes_tz.py" ]]; then
+  cp "${SCRIPT_DIR}/src/scripts/hermes_tz.py" "$HERMES_TZ_PATH" 2>/dev/null || \
+    warn "hermes_tz.py copy failed"
+  chmod +x "$HERMES_TZ_PATH"
+  info "  Installed hermes_tz.py (timezone helper)"
+fi
+
 # ── Auto-Update Cron ───────────────────────────────────────────
 AUTO_UPDATE_SCRIPT="${SCRIPTS_DIR}/install-cortex-update-cron.sh"
 if [[ -f "$AUTO_UPDATE_SCRIPT" ]]; then

@@ -24,8 +24,8 @@
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `f071ff8` — 2026-06-18 22:13:50 |
-| Working tree | dirty (1 files) |
+| Last commit | `e3e0822` — 2026-06-19 09:42:08 |
+| Working tree | clean |
 | Unpushed | none |
 | Tag | `v1.0.0` |
 
@@ -33,11 +33,11 @@
 
 | Date | Commit | Description |
 |------|--------|-------------|
-| 2026-06-18 | `f071ff8` | Merge feat/auto-create-cron-jobs: auto-create essential cron jobs on install
-| 2026-06-18 | `0a5f2a7` | docs: update AGENTS.md — auto-created cron jobs via install-hermes-crons.sh
-| 2026-06-18 | `68b5072` | feat: auto-create essential cron jobs on install
-| 2026-06-18 | `2c30b7d` | Merge gisu/linux-compat-patches: Linux compat fixes + rebase fallback
-| 2026-06-18 | `0c10ade` | fix: cortex-update --rebase fallback when --ff-only fails
+| 2026-06-19 | `e3e0822` | Merge titus/vercel-nextjs-skills: Next.js Docker + React best practices
+| 2026-06-19 | `1b8421c` | feat: add hermes_tz.py timezone helper with config override
+| 2026-06-19 | `14f3c38` | Merge branch 'main' of https://github.com/lukemcqueen/hermes-cortex into titus/vercel-nextjs-skills
+| 2026-06-19 | `7e3a035` | fix: cron_exists() was catching SystemExit exception
+| 2026-06-19 | `b30e622` | cron: harden install-hermes-crons.sh with --force, script verification, error tracking
 
 ---
 
@@ -45,12 +45,12 @@
 
 | Layer | What |
 |-------|------|
-| Installer | `install.sh` — 2358 lines, 26 steps, idempotent |
+| Installer | `install.sh` — 2366 lines, 26 steps, idempotent |
 | Skills | 0 skills across 4 categories (software-development, devops, social-media, productivity) |
-| Python files | 68 files (40494 LOC) |
-| Shell files | 47 files (10424 LOC) |
-| Markdown files | 513 files |
-| Total | 678 tracked files |
+| Python files | 69 files (40620 LOC) |
+| Shell files | 47 files (10444 LOC) |
+| Markdown files | 518 files |
+| Total | 684 tracked files |
 | Dashboard | Flask app + nginx proxy — Langfuse traces + system health |
 | Scripts | 16 utility scripts (heartbeat, memory-sync, LLM scoring, service recovery) |
 | OpenCode | 15 commands + 3 agents + 30 optional skills |
@@ -73,4 +73,4 @@
 
 ---
 
-*Last updated: 2026-06-19 08:00 KST*
+*Last updated: 2026-06-19 10:00 KST*
