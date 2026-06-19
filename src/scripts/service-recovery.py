@@ -207,10 +207,9 @@ def main():
             actions.append(f"🔄 {name}: restarted successfully")
 
     if actions:
-        from datetime import datetime, timezone
+        from hermes_tz import format_timestamp
         hostname = os.uname().nodename[:12]
-        kst = timezone(__import__("datetime").timedelta(hours=9))
-        ts = datetime.now(kst).strftime("%Y-%m-%d %H:%M KST")
+        ts = format_timestamp("%Y-%m-%d %H:%M %Z")
         print(f"🔧 {hostname} [{ts}]")
         for a in actions:
             print(a)
