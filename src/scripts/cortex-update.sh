@@ -116,6 +116,7 @@ register "scripts/weekly-auto-fix.py"              "${HERMES_HOME}/scripts/weekl
 # System watchdog scripts (no_agent cron jobs)
 register "src/scripts/system-alert.py"            "${HERMES_HOME}/scripts/system-alert.py"
 register "src/scripts/service-recovery.py"        "${HERMES_HOME}/scripts/service-recovery.py"
+register "src/scripts/platform_utils.py"          "${HERMES_HOME}/scripts/platform_utils.py"
 register "src/scripts/langfuse-health-watchdog.py" "${HERMES_HOME}/scripts/langfuse-health-watchdog.py"
 register "src/scripts/llm-judge-scorer.py"         "${HERMES_HOME}/scripts/llm-judge-scorer.py"
 
