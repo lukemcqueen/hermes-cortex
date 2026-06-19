@@ -2,13 +2,28 @@
 """
 Eval Harness — Run evaluation suites against Hermes agents.
 
-Usage:
-    python3 run-evals.py --eval <eval-name> [--suite <suite-name>] [--holdout] [--capture-traces]
+INTENDED USAGE:
+    Run via Hermes agent session (execute_code or cron job with eval-harness skill):
     
+    # Via cron job (recommended)
+    hermes cron create --name "eval-daily-regression" --schedule "0 6 * * *" \\
+      --prompt "Run daily regression eval suite using eval-harness skill." \\
+      --skill "eval-harness" --deliver "origin"
+    
+    # Via execute_code in Hermes agent
+    from hermes_tools import execute_code
+    execute_code(code="python3 ~/.hermes/scripts/run-evals.py --eval cron-installation")
+
+NOTES:
+    This script imports from hermes_tools, which is only available inside
+    a running Hermes agent session. Running standalone from shell will fail
+    with ModuleNotFoundError.
+    
+    For standalone testing, use: hermes chat -z "run evals for cron-installation"
+
 Examples:
-    python3 run-evals.py --eval cron-installation
-    python3 run-evals.py --suite regression
-    python3 run-evals.py --eval cron-installation --holdout --capture-traces
+    python3 run-evals.py --eval cron-installation  # Inside Hermes agent session
+    python3 run-evals.py --suite regression        # Inside Hermes agent session
 """
 import argparse
 import json
@@ -19,8 +34,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-# Hermes tools
-from hermes_tools import web_search, terminal, read_file, write_file, search_files
+# Hermes tools — only available inside Hermes agent session
+try:
+    from hermes_tools import web_search, terminal, read_file, write_file, search_files
+except ImportError:
+    print("ERROR: hermes_tools not found.", file=sys.stderr)
+    print("This script must run inside a Hermes agent session.", file=sys.stderr)
+    print("", file=sys.stderr)
+    print("Usage options:", file=sys.stderr)
+    print("  1. Via cron: hermes cron create --skill eval-harness ...", file=sys.stderr)
+    print("  2. Via chat: hermes chat -z 'run evals for cron-installation'", file=sys.stderr)
+    print("  3. Via execute_code in agent session", file=sys.stderr)
+    sys.exit(1)
 
 # Configuration
 HERMES_HOME = Path.home() / ".hermes"

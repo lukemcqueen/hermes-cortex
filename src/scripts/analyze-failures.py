@@ -2,21 +2,50 @@
 """
 Analyze agent failures — cluster by pattern, identify root causes, generate reports.
 
-Usage:
-    python3 analyze-failures.py --week last
-    python3 analyze-failures.py --days 7
-    python3 analyze-failures.py --traces <trace-dir>
+INTENDED USAGE:
+    Run via Hermes agent session (execute_code or cron job with eval-harness skill):
+    
+    # Via cron job (recommended)
+    hermes cron create --name "weekly-failure-analysis" --schedule "0 7 * * MON" \\
+      --prompt "Run weekly failure analysis using eval-harness skill." \\
+      --skill "eval-harness" --deliver "origin"
+    
+    # Via execute_code in Hermes agent
+    from hermes_tools import execute_code
+    execute_code(code="python3 ~/.hermes/scripts/analyze-failures.py --week last")
+
+NOTES:
+    This script imports from hermes_tools, which is only available inside
+    a running Hermes agent session. Running standalone from shell will fail
+    with ModuleNotFoundError.
+    
+    For standalone testing, use: hermes chat -z "analyze failures from last week"
+
+Examples:
+    python3 analyze-failures.py --week last  # Inside Hermes agent session
+    python3 analyze-failures.py --days 7     # Inside Hermes agent session
 """
 import argparse
 import json
 import os
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from collections import defaultdict
 from typing import Any
 
-# Hermes tools
-from hermes_tools import read_file, write_file, search_files, web_search
+# Hermes tools — only available inside Hermes agent session
+try:
+    from hermes_tools import read_file, write_file, search_files, web_search
+except ImportError:
+    print("ERROR: hermes_tools not found.", file=sys.stderr)
+    print("This script must run inside a Hermes agent session.", file=sys.stderr)
+    print("", file=sys.stderr)
+    print("Usage options:", file=sys.stderr)
+    print("  1. Via cron: hermes cron create --skill eval-harness ...", file=sys.stderr)
+    print("  2. Via chat: hermes chat -z 'analyze failures from last week'", file=sys.stderr)
+    print("  3. Via execute_code in agent session", file=sys.stderr)
+    sys.exit(1)
 
 # Configuration
 HERMES_HOME = Path.home() / ".hermes"
