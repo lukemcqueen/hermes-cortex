@@ -183,8 +183,14 @@ code review (security scan, quality gate
 | Time | Agent | Action |
 |------|-------|--------|
 | 8:00am | Titus | Analyzes titus repo (commits, PRs, issues, TODOs). Writes briefing to `~/hermes-cortex-private/messages/inbox/titus-daily-YYYY-MM-DD.md` |
-| 8:30am | Moses | Reads Titus's briefing (if exists). Asks user: "What is your #1 priority for today?" |
+| 8:30am | Moses | Reads **only** `titus-daily-*.md` files. Ignores all other inbox messages (kustos-*, joseph-*, etc.). Asks user: "What is your #1 priority for today?" |
 | 8:30am+ | Moses | Breaks priority into 2-4 actionable tasks. Incorporates Titus's suggestions. Updates memory. Begins execution. |
+
+**TITUS-ONLY POLICY:**
+- Moses reads **only** Titus's daily briefings during the 8:30am check-in
+- Other agents (Kustos, Joseph, Gisu) do NOT have daily inbox-writing cron jobs
+- Other agents can still write to the inbox for urgent matters, but Moses ignores them during priority check-in
+- File naming convention enforces this: `titus-daily-YYYY-MM-DD.md`
 
 **Why this matters:**
 - Prevents context-switching and reactive work
@@ -192,12 +198,13 @@ code review (security scan, quality gate
 - Leverages Titus's repo-specific insights (pending PRs, blockers, recent changes)
 - Builds a historical record of focus areas (via memory)
 - Creates natural daily rhythm for deep work
+- Avoids inbox spam from multiple agents
 
 **Temporary limitation:** Titus's inbox messages won't be found until Moses migrates to Ubuntu (same filesystem). Until then, Moses proceeds without Titus's input — the check-in still works, just without cross-agent collaboration.
 
 **Post-migration:** Once Moses is on Ubuntu, the inbox pattern will work seamlessly:
-- Titus writes to `~/hermes-cortex-private/messages/inbox/`
-- Moses reads it 30 minutes later
+- Titus writes to `~/hermes-cortex-private/messages/inbox/titus-daily-*.md`
+- Moses reads it 30 minutes later (ignores all other files)
 - Full cross-agent context in every morning check-in
 
 ---
