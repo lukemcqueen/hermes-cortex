@@ -304,6 +304,12 @@ copy_file() {
     chmod 644 "$dest"
     # Preserve executable bit
     [[ -x "$src" ]] && chmod +x "$dest"
+    # Fallback: .py and .sh files in scripts dir must be executable for no_agent cron jobs
+    if [[ "$dest" == "${HERMES_HOME}/scripts/"* ]]; then
+      case "$dest" in
+        *.py|*.sh) chmod +x "$dest" ;;
+      esac
+    fi
     COPIED=$((COPIED + 1))
   fi
 }
