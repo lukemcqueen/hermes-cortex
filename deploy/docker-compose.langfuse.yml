@@ -27,7 +27,7 @@ services:
         condition: service_healthy
     environment: &langfuse-env-base
       # ── Database ──
-      DATABASE_URL: postgresql://postgres:***@postgres:5432/postgres
+      DATABASE_URL: postgresql://postgres:${LANGFUSE_POSTGRES_PASSWORD}@postgres:5432/postgres
 
       # ── ClickHouse (required by v3) ──
       CLICKHOUSE_URL: http://default:${LANGFUSE_CLICKHOUSE_PASSWORD:?}@clickhouse:8123
