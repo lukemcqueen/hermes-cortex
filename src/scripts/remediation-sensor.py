@@ -128,15 +128,24 @@ def check_services():
     """Check critical services (macOS launchd)."""
     if sys.platform != "darwin":
         return
-    services = {
-        "com.ollama.serve": "Ollama",
-        "com.gbrain.autopilot": "gbrain autopilot",
-        "com.gbrain.sync-watch": "gbrain sync-watch",
-    }
-    for label, name in services.items():
-        out, _, rc = run(f"launchctl list {label} 2>/dev/null | awk 'NR==2 {{print $1}}'")
-        if rc != 0 or not out.strip() or out.strip() == "-":
-            add_issue("service_down", "high", f"{name} is down", {"service": label})
+    # Ollama is always required
+    out, _, rc = run("launchctl list com.ollama.serve 2>/dev/null | awk 'NR==2 {print $1}'")
+    if rc != 0 or not out.strip() or out.strip() == "-":
+        add_issue("service_down", "high", "Ollama is down", {"service": "com.ollama.serve"})
+    
+    # Gbrain: at least ONE of autopilot or sync-watch must be running
+    # (they are alternative sync strategies, not both required)
+    autopilot_ok = False
+    sync_watch_ok = False
+    out, _, rc = run("launchctl list com.gbrain.autopilot 2>/dev/null | awk 'NR==2 {print $1}'")
+    if rc == 0 and out.strip() and out.strip() != "-":
+        autopilot_ok = True
+    out, _, rc = run("launchctl list com.gbrain.sync-watch 2>/dev/null | awk 'NR==2 {print $1}'")
+    if rc == 0 and out.strip() and out.strip() != "-":
+        sync_watch_ok = True
+    
+    if not autopilot_ok and not sync_watch_ok:
+        add_issue("service_down", "high", "No gbrain sync service running (autopilot or sync-watch)", {"services": ["com.gbrain.autopilot", "com.gbrain.sync-watch"]})
 
 
 def check_nginx():
