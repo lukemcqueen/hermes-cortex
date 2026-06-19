@@ -329,21 +329,24 @@ except Exception as e:
     fi
     ;;
 
-  # ── Fix SSL certificate permissions ─────────────────────────
+  # ── Check SSL certificate permissions (SECURITY-AWARE) ───────────────────
   fix-ssl-perms)
-    # Fix SSL cert directory permissions for non-root access
-    # Requires sudo - this action reports what needs fixing
+    # SSL certs should remain at restrictive permissions (700 root:root)
+    # This check verifies certbot can renew via sudoers, NOT by widening permissions
+    # SECURITY: Never chmod 755/644 on SSL certs — exposes private keys
     echo "SSL_PERM_CHECK:"
     
     cert_dirs=("/etc/letsencrypt/live" "/etc/letsencrypt/archive" "/etc/letsencrypt/renewal")
-    needs_fix=0
+    perms_ok=1
     
     for dir in "${cert_dirs[@]}"; do
       if [ -d "${dir}" ]; then
         perms=$(stat -c "%a" "${dir}" 2>/dev/null || stat -f "%Lp" "${dir}" 2>/dev/null || echo "unknown")
         if [ "${perms}" = "700" ] || [ "${perms}" = "750" ]; then
-          echo "  NEEDS_FIX: ${dir} (current: ${perms}, need: 755)"
-          needs_fix=1
+          echo "  OK: ${dir} (${perms}) — correctly restricted"
+        else
+          echo "  WARNING: ${dir} (${perms}) — should be 700 or 750"
+          perms_ok=0
         fi
       fi
     done
@@ -358,8 +361,10 @@ except Exception as e:
             if [ -f "${cert_path}" ]; then
               perms=$(stat -c "%a" "${cert_path}" 2>/dev/null || stat -f "%Lp" "${cert_path}" 2>/dev/null || echo "unknown")
               if [ "${perms}" = "600" ] || [ "${perms}" = "640" ]; then
-                echo "  NEEDS_FIX: ${cert_path} (current: ${perms}, need: 644)"
-                needs_fix=1
+                echo "  OK: ${cert_path} (${perms}) — correctly restricted"
+              else
+                echo "  WARNING: ${cert_path} (${perms}) — should be 600 or 640"
+                perms_ok=0
               fi
             fi
           done
@@ -367,50 +372,67 @@ except Exception as e:
       done
     fi
     
-    if [ "${needs_fix}" -eq 1 ]; then
+    if [ "${perms_ok}" -eq 1 ]; then
       echo ""
-      echo "  To fix (requires sudo):"
-      echo "    sudo chmod 755 /etc/letsencrypt/live/ /etc/letsencrypt/archive/ /etc/letsencrypt/renewal/"
-      echo "    sudo chmod 644 /etc/letsencrypt/live/*/fullchain.pem /etc/letsencrypt/live/*/privkey.pem"
-      echo "    sudo nginx -t && sudo systemctl reload nginx"
+      echo "  SSL cert permissions are SECURE (restrictive)."
+      echo "  For non-root certbot renewal, add to sudoers (visudo):"
+      echo "    ${USER} ALL=(ALL) NOPASSWD: /usr/bin/certbot renew"
+      echo "    ${USER} ALL=(ALL) NOPASSWD: /usr/sbin/nginx -t"
+      echo "    ${USER} ALL=(ALL) NOPASSWD: /usr/sbin/nginx -s reload"
+      echo ""
+      echo "  Or use certbot's built-in systemd timer (runs as root):"
+      echo "    sudo systemctl enable certbot.timer"
+      echo "    sudo systemctl start certbot.timer"
     else
-      echo "  All SSL cert permissions OK"
+      echo ""
+      echo "  WARNING: Some SSL permissions are too permissive."
+      echo "  To restore secure permissions (requires sudo):"
+      echo "    sudo chmod 700 /etc/letsencrypt/live/ /etc/letsencrypt/archive/ /etc/letsencrypt/renewal/"
+      echo "    sudo chmod 600 /etc/letsencrypt/live/*/fullchain.pem /etc/letsencrypt/live/*/privkey.pem"
+      echo "    sudo chown root:root /etc/letsencrypt/live/*/privkey.pem"
     fi
     ;;
 
-  # ── Fix certbot lock/log permissions ────────────────────────
+  # ── Check certbot lock/log permissions (SECURITY-AWARE) ──────────────────
   fix-certbot-perms)
-    # Fix certbot lock file and log directory permissions
+    # Certbot lock files should remain restricted — use sudoers for non-root renewal
+    # SECURITY: Do not widen lock file permissions; use sudoers or systemd timer
     echo "CERTBOT_PERM_CHECK:"
     
     lock_file="/var/log/letsencrypt/.certbot.lock"
     log_dir="/var/log/letsencrypt"
-    needs_fix=0
     
+    # Check lock file (should be 600 or 640 root:root — this is CORRECT)
     if [ -f "${lock_file}" ]; then
       perms=$(stat -c "%a" "${lock_file}" 2>/dev/null || echo "unknown")
-      if [ "${perms}" = "600" ] || [ "${perms}" = "640" ]; then
-        echo "  NEEDS_FIX: ${lock_file} (current: ${perms}, need: 664)"
-        needs_fix=1
+      owner=$(stat -c "%U" "${lock_file}" 2>/dev/null || echo "unknown")
+      if [ "${owner}" = "root" ]; then
+        echo "  OK: ${lock_file} (${perms}, ${owner}) — correctly restricted"
+        echo "  For non-root certbot, add to sudoers instead of changing permissions."
+      else
+        echo "  WARNING: ${lock_file} owned by ${owner} — should be root"
       fi
     fi
     
+    # Check log directory
     if [ -d "${log_dir}" ]; then
       owner=$(stat -c "%U" "${log_dir}" 2>/dev/null || echo "unknown")
-      if [ "${owner}" != "${USER}" ] && [ "${owner}" != "root" ]; then
-        echo "  NEEDS_FIX: ${log_dir} owner: ${owner}"
-        needs_fix=1
+      if [ "${owner}" = "root" ]; then
+        echo "  OK: ${log_dir} (owner: ${owner}) — correctly restricted"
+      else
+        echo "  INFO: ${log_dir} owned by ${owner}"
       fi
     fi
     
-    if [ "${needs_fix}" -eq 1 ]; then
-      echo ""
-      echo "  To fix (requires sudo):"
-      echo "    sudo chmod 664 /var/log/letsencrypt/.certbot.lock"
-      echo "    sudo chown -R ${USER}: /var/log/letsencrypt"
-    else
-      echo "  Certbot permissions OK"
-    fi
+    echo ""
+    echo "  SECURE APPROACH: Keep restrictive permissions, use sudoers for renewal:"
+    echo "    sudo visudo"
+    echo "    Add: ${USER} ALL=(ALL) NOPASSWD: /usr/bin/certbot renew --non-interactive"
+    echo ""
+    echo "  ALTERNATIVE: Use certbot's systemd timer (runs as root automatically):"
+    echo "    sudo systemctl enable certbot.timer"
+    echo "    sudo systemctl start certbot.timer"
+    echo "    # Timer runs /usr/lib/systemd/system/certbot.service as root"
     ;;
 
   *)

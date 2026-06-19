@@ -42,7 +42,7 @@ docker run -d \
 docker exec gbrain-postgres env | grep POSTGRES_PASSWORD
 
 # Store in secure location
-echo "postgresql://gbrain:YOUR_PASSWORD@localhost:5433/gbrain" > ~/.hermes/private/gbrain-postgres-url.txt
+echo "postgresql://gbrain:PASSWORD@localhost:5433/gbrain" > ~/.hermes/private/gbrain-postgres-url.txt
 chmod 600 ~/.hermes/private/gbrain-postgres-url.txt
 ```
 
@@ -55,7 +55,7 @@ gbrain autopilot stop 2>/dev/null || true
 cp -r ~/.gbrain ~/.gbrain.backup.pglite.$(date +%Y%m%d)
 
 # Reinitialize with PostgreSQL engine
-gbrain init --engine postgres --postgres-url 'postgresql://gbrain:YOUR_PASSWORD@localhost:5433/gbrain'
+gbrain init --engine postgres --postgres-url 'postgresql://gbrain:PASSWORD@localhost:5433/gbrain'
 
 # Verify migration
 gbrain doctor

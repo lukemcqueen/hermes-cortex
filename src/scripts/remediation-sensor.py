@@ -248,8 +248,8 @@ def check_gbrain_health():
 def check_ssl_certs():
     """Check SSL certificate accessibility for non-root users.
     
-    Detects when nginx config references certs that non-root users cannot read.
-    This causes nginx -t to fail without sudo and certbot renewals to fail.
+    SECURITY-AWARE: Does NOT suggest widening permissions.
+    Instead, checks if certbot renewal is configured via sudoers or systemd timer.
     """
     # Check common nginx SSL cert locations
     cert_dirs = [
@@ -258,48 +258,87 @@ def check_ssl_certs():
         "/usr/local/etc/nginx/servers",
     ]
     
+    # Check if certbot systemd timer is active (preferred method)
+    timer_active = False
+    if os.path.exists("/usr/bin/systemctl"):
+        out, _, rc = run("systemctl is-active certbot.timer 2>/dev/null")
+        if out.strip() == "active":
+            timer_active = True
+    
+    # Check if user has sudoers entry for certbot
+    has_sudoers = False
+    try:
+        out, _, rc = run("sudo -n certbot --version 2>/dev/null")
+        if rc == 0:
+            has_sudoers = True
+    except:
+        pass
+    
+    # If either method is available, certs are properly configured
+    if timer_active or has_sudoers:
+        return  # Certbot can renew securely
+    
+    # Check if nginx can read certs (verifies config is working)
+    out, _, rc = run("sudo -n nginx -t 2>&1")
+    if rc == 0:
+        return  # nginx can validate config via sudo
+    
+    # If we get here, certbot renewal may fail
+    # Report as informational — user should configure sudoers or enable timer
     for cert_dir in cert_dirs:
-        if not os.path.exists(cert_dir):
-            continue
-        
-        # Check if directory is readable
-        if not os.access(cert_dir, os.R_OK):
-            add_issue("ssl_cert_permission", "high", f"SSL cert directory not readable: {cert_dir}", {
-                "directory": cert_dir,
-                "fix_hint": "sudo chmod 755 " + cert_dir,
-            })
-            continue
-        
-        # Check for fullchain.pem files and their permissions
-        if os.path.exists(os.path.join(cert_dir, "your-domain.com")):
-            cert_path = os.path.join(cert_dir, "your-domain.com", "fullchain.pem")
-            if os.path.exists(cert_path) and not os.access(cert_path, os.R_OK):
-                add_issue("ssl_cert_permission", "high", f"SSL cert not readable: {cert_path}", {
-                    "certificate": cert_path,
-                    "fix_hint": "sudo chmod 644 " + cert_path,
+        if os.path.exists(cert_dir):
+            add_issue("ssl_cert_sudoers_missing", "medium", 
+                "Certbot renewal not configured for non-root execution",
+                {
+                    "directory": cert_dir,
+                    "fix_hint": "Add to sudoers: sudo visudo, then add: " + os.environ.get("USER", "user") + " ALL=(ALL) NOPASSWD: /usr/bin/certbot renew",
+                    "alternative": "Enable systemd timer: sudo systemctl enable certbot.timer && sudo systemctl start certbot.timer",
                 })
+            break
 
 
 def check_certbot():
     """Check certbot execution capability.
     
-    Detects when certbot cannot run due to permission issues on lock files or logs.
+    SECURITY-AWARE: Does NOT suggest widening lock file permissions.
+    Instead, checks if sudoers or systemd timer is configured.
     """
-    # Check certbot lock file accessibility
     lock_file = "/var/log/letsencrypt/.certbot.lock"
-    if os.path.exists(lock_file) and not os.access(lock_file, os.W_OK):
-        add_issue("certbot_lock_permission", "high", "certbot cannot write to lock file", {
-            "lock_file": lock_file,
-            "fix_hint": "sudo chmod 664 " + lock_file,
-        })
-    
-    # Check certbot log directory
     log_dir = "/var/log/letsencrypt"
-    if os.path.exists(log_dir) and not os.access(log_dir, os.W_OK):
-        add_issue("certbot_log_permission", "medium", "certbot cannot write to log directory", {
-            "log_dir": log_dir,
-            "fix_hint": "sudo chown -R $USER: " + log_dir,
-        })
+    
+    # Check if certbot systemd timer is active
+    timer_active = False
+    if os.path.exists("/usr/bin/systemctl"):
+        out, _, rc = run("systemctl is-active certbot.timer 2>/dev/null")
+        if out.strip() == "active":
+            timer_active = True
+    
+    # Check if user has sudoers entry for certbot
+    has_sudoers = False
+    try:
+        out, _, rc = run("sudo -n certbot renew --dry-run 2>&1 | head -5")
+        if rc == 0 or "dry run" in out.lower():
+            has_sudoers = True
+    except:
+        pass
+    
+    # If either method works, certbot is properly configured
+    if timer_active or has_sudoers:
+        return  # Certbot can run securely
+    
+    # Check if lock file exists and is owned by root (correct)
+    if os.path.exists(lock_file):
+        owner = run("stat -c '%U' " + lock_file + " 2>/dev/null")[0].strip()
+        if owner == "root":
+            # Lock file permissions are correct — just need sudoers config
+            add_issue("certbot_sudoers_missing", "medium",
+                "Certbot lock file is secure but no renewal method configured",
+                {
+                    "lock_file": lock_file,
+                    "owner": owner,
+                    "fix_hint": "Add to sudoers: sudo visudo, then add: " + os.environ.get("USER", "user") + " ALL=(ALL) NOPASSWD: /usr/bin/certbot renew --non-interactive",
+                    "alternative": "Use systemd timer: sudo systemctl enable certbot.timer",
+                })
 
 
 def check_systemd_services():
