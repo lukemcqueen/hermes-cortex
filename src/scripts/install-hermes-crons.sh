@@ -162,17 +162,15 @@ create_cron() {
   fi
 
   # Build the hermes cron create command
-  # Note: schedule is a POSITIONAL argument, not a flag
+  # Note: schedule and prompt are POSITIONAL arguments (must come at END)
   # Note: --no-agent uses hyphen, not underscore
-  local cmd=("$HERMES_CMD" "cron" "create" "--name" "$name" "$schedule")
+  # Order: hermes cron create [FLAGS] schedule [prompt]
+  local cmd=("$HERMES_CMD" "cron" "create" "--name" "$name")
   if [[ -n "$script" ]]; then
     cmd+=("--script" "$script")
   fi
   if [[ -n "$skill" ]]; then
     cmd+=("--skill" "$skill")
-  fi
-  if [[ -n "$prompt" ]]; then
-    cmd+=("--prompt" "$prompt")
   fi
   if [[ -n "$toolsets" ]]; then
     cmd+=("--enabled-toolsets" "$toolsets")
@@ -185,6 +183,11 @@ create_cron() {
   fi
   if [[ "$no_agent" == "true" ]]; then
     cmd+=("--no-agent")
+  fi
+  # Positional arguments MUST come at the end
+  cmd+=("$schedule")
+  if [[ -n "$prompt" ]]; then
+    cmd+=("$prompt")
   fi
 
   if "${cmd[@]}" 2>&1; then
