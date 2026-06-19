@@ -127,6 +127,19 @@ register "src/scripts/report-agent-health.py"      "${HERMES_HOME}/scripts/repor
 register "src/scripts/platform_utils.py"           "${HERMES_HOME}/scripts/platform_utils.py"
 register "src/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" "health-server" "restart_health_server"
 
+# Timezone helper (required by monitoring scripts)
+register "src/scripts/hermes_tz.py"                "${HERMES_HOME}/scripts/hermes_tz.py"
+
+# Remediation sensor (companion to cron-auto-remediate)
+register "src/scripts/remediation-sensor.py"       "${HERMES_HOME}/scripts/remediation-sensor.py"
+
+# Inbox monitoring
+register "src/scripts/inbox-sensor.py"             "${HERMES_HOME}/scripts/inbox-sensor.py"
+
+# Eval harness (agent reliability patterns)
+register "src/scripts/run-evals.py"                "${HERMES_HOME}/scripts/run-evals.py"
+register "src/scripts/analyze-failures.py"         "${HERMES_HOME}/scripts/analyze-failures.py"
+
 # Agent learning sender
 register "src/scripts/send-agent-learning.sh"      "${HERMES_HOME}/scripts/send-agent-learning.sh"
 

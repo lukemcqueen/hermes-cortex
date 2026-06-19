@@ -13,9 +13,7 @@
 #    fix-git      — fix git state in hermes-cortex
 #    fix-docker   — restart docker services
 #    fix-purge    — purge system caches (memory, brew, docker)
-#
-#  Note: SSL certificate management is NOT automated. Certs are
-#  managed manually or by external tools (certbot, cloud providers).
+#    fix-certs    — check and renew SSL certificates (certbot)
 #
 #  Usage: cron-auto-remediate.sh <action>
 # ─────────────────────────────────────────────────────────────
@@ -220,11 +218,81 @@ case "${ACTION}" in
     fi
     ;;
 
+  # ── Fix SSL certificates ──────────────────────────────────
+  fix-certs)
+    # Cross-platform SSL cert check and renewal
+    # Uses Python for date arithmetic (works on macOS and Linux)
+    certs_ok=0
+    certs_renewed=0
+    certs_expiring=0
+
+    CERT_DIR="/etc/letsencrypt/live"
+    if [ ! -d "${CERT_DIR}" ]; then
+      echo "NO-CERT-DIR"
+      exit 0
+    fi
+
+    for domain_dir in "${CERT_DIR}"/*/; do
+      cert_file="${domain_dir}fullchain.pem"
+      if [ ! -f "${cert_file}" ]; then
+        continue
+      fi
+
+      # Get expiry date using openssl (cross-platform)
+      expiry_date=$(openssl x509 -enddate -noout -in "${cert_file}" 2>/dev/null | cut -d= -f2)
+      if [ -z "${expiry_date}" ]; then
+        echo "CERT_ERROR:${domain_dir}:cannot-read-expiry"
+        continue
+      fi
+
+      # Calculate days until expiry using Python (cross-platform)
+      days_left=$(python3 -c "
+from datetime import datetime, timezone
+import sys
+try:
+    expiry = datetime.strptime('${expiry_date}', '%b %d %H:%M:%S %Y %Z').replace(tzinfo=timezone.utc)
+    days = (expiry - datetime.now(timezone.utc)).days
+    print(days)
+except Exception as e:
+    print(-1)
+" 2>/dev/null)
+
+      if [ "${days_left}" -lt 0 ] 2>/dev/null; then
+        echo "CERT_ERROR:${domain_dir}:parse-failed"
+        continue
+      fi
+
+      domain=$(basename "${domain_dir}")
+
+      if [ "${days_left}" -lt 30 ]; then
+        # Renew cert
+        echo "RENEWING:${domain}:${days_left}d"
+        if certbot renew --cert-name "${domain}" --quiet 2>/dev/null; then
+          certs_renewed=$((certs_renewed + 1))
+          echo "RENEWED:${domain}"
+        else
+          echo "RENEW_FAILED:${domain}"
+        fi
+      else
+        certs_ok=$((certs_ok + 1))
+      fi
+    done
+
+    echo "CERTS_OK:${certs_ok}"
+    echo "CERTS_RENEWED:${certs_renewed}"
+    ;;
+
   *)
-    echo "usage: cron-auto-remediate.sh <diagnose|fix-missing|fix-perms|fix-git|fix-docker|fix-purge>"
+    echo "usage: cron-auto-remediate.sh <diagnose|fix-missing|fix-perms|fix-git|fix-docker|fix-purge|fix-certs>"
     echo ""
-    echo "Note: SSL certificate management is NOT automated."
-    echo "  Manage certs manually via certbot, cloud providers, or system admin."
+    echo "Actions:"
+    echo "  diagnose    — check script paths, permissions, deps"
+    echo "  fix-missing — copy missing scripts from hermes-cortex repo"
+    echo "  fix-perms   — fix permissions on .hermes/scripts/"
+    echo "  fix-git     — fix git state in hermes-cortex"
+    echo "  fix-docker  — restart docker services"
+    echo "  fix-purge   — purge system caches (memory, brew, docker)"
+    echo "  fix-certs   — check and renew SSL certificates (certbot)"
     exit 1
     ;;
 esac
