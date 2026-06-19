@@ -14,6 +14,9 @@
 #    fix-docker   — restart docker services
 #    fix-purge    — purge system caches (memory, brew, docker)
 #
+#  Note: SSL certificate management is NOT automated. Certs are
+#  managed manually or by external tools (certbot, cloud providers).
+#
 #  Usage: cron-auto-remediate.sh <action>
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -78,31 +81,33 @@ case "${ACTION}" in
       issues+=("DISK:${DISK_PCT}%")
     fi
 
-    # Check memory pressure (macOS only)
+    # Check memory free percentage (macOS only)
+    # memory_pressure reports "free percentage" — flag if below 15% (high pressure)
     if command -v memory_pressure >/dev/null 2>&1; then
-    MEM_PRESSURE=$(memory_pressure 2>/dev/null | grep "System-wide memory" | sed 's/.* \([0-9]*\)%/\1%/')
-    if [ -n "${MEM_PRESSURE}" ]; then
-      MEM_VAL=${MEM_PRESSURE%\%}
-      if [ "${MEM_VAL}" -gt 85 ] 2>/dev/null; then
-        issues+=("MEMORY:${MEM_PRESSURE}")
+      MEM_FREE=$(memory_pressure 2>/dev/null | grep "System-wide memory" | sed 's/.* \([0-9]*\)%/\1%/')
+      if [ -n "${MEM_FREE}" ]; then
+        MEM_VAL=${MEM_FREE%\%}
+        if [ "${MEM_VAL}" -lt 15 ] 2>/dev/null; then
+          issues+=("MEMORY:${MEM_FREE} free — high pressure")
+        fi
       fi
     fi
-    fi
 
-    # Check services (macOS launchctl only)
-    if command -v launchctl >/dev/null 2>&1; then
+    # Check services — use command -v launchctl guard for Linux compat
     for svc_label in com.ollama.serve com.gbrain.autopilot com.gbrain.sync-watch; do
-      if launchctl list "${svc_label}" >/dev/null 2>&1; then
-        PID=$(launchctl list "${svc_label}" 2>/dev/null | awk '{print $1}' || echo "-")
+      if command -v launchctl >/dev/null 2>&1 && launchctl list "${svc_label}" >/dev/null 2>&1; then
+        PID=$(launchctl list "${svc_label}" 2>/dev/null | awk '{print $1}' 2>/dev/null || echo "-")
         if [ "${PID}" = "-" ]; then
           issues+=("SERVICE:${svc_label}:down")
         fi
       fi
     done
-    fi
 
-    # Check nginx
+    # Check nginx — use sudo for system-wide config test
     if command -v nginx >/dev/null 2>&1; then
+      if ! sudo -n nginx -t >/dev/null 2>&1; then
+        issues+=("NGINX:config-invalid")
+      fi
       if ! pgrep -f "nginx: master" >/dev/null 2>&1; then
         issues+=("NGINX:not-running")
       fi
@@ -205,6 +210,58 @@ case "${ACTION}" in
     fi
     ;;
 
+  # ── Fix certs ─────────────────────────────────────────────
+  fix-certs)
+    # Checks and renews SSL certs via certbot. Reports issues
+    # for any nginx-referenced cert that is expiring or expired.
+    RENEWED=0
+    if command -v certbot >/dev/null 2>&1; then
+      certbot renew --non-interactive --quiet 2>/dev/null && RENEWED=1
+    fi
+
+    # Verify: check each nginx-referenced cert
+    FAILED=0
+    for conf in /etc/nginx/sites-enabled/*.conf /etc/nginx/conf.d/*.conf \
+                /usr/local/etc/nginx/servers/*.conf /usr/local/etc/nginx/*.conf \
+                /opt/homebrew/etc/nginx/servers/*.conf /opt/homebrew/etc/nginx/*.conf; do
+      [ -f "${conf}" ] || continue
+      for cert_path in $(grep -oP 'ssl_certificate\s+\K\S+(?=;)' "${conf}" 2>/dev/null); do
+        if [ -f "${cert_path}" ]; then
+          expires=$(openssl x509 -in "${cert_path}" -noout -enddate 2>/dev/null | cut -d= -f2)
+          if [ -n "${expires}" ]; then
+            if command -v date >/dev/null 2>&1 && date -j >/dev/null 2>&1; then
+              expiry_epoch=$(date -j -f "%b %d %H:%M:%S %Y" "${expires% *}" +%s 2>/dev/null || echo 0)
+            else
+              expiry_epoch=$(date -d "${expires}" +%s 2>/dev/null || echo 0)
+            fi
+            now_epoch=$(date +%s)
+            days_left=$(( (expiry_epoch - now_epoch) / 86400 ))
+            if [ "${days_left}" -ge 30 ] 2>/dev/null; then
+              : # OK
+            elif [ "${days_left}" -ge 0 ] 2>/dev/null; then
+              echo "CERT_EXPIRING:${cert_path}:${days_left}d"
+              FAILED=$((FAILED + 1))
+            else
+              echo "CERT_EXPIRED:${cert_path}"
+              FAILED=$((FAILED + 1))
+            fi
+          else
+            echo "CERT_UNREADABLE:${cert_path}"
+            FAILED=$((FAILED + 1))
+          fi
+        else
+          echo "CERT_MISSING:${cert_path}"
+          FAILED=$((FAILED + 1))
+        fi
+      done
+    done
+
+    if [ "${RENEWED}" -eq 1 ]; then
+      echo "RENEWED:1"
+    fi
+    [ "${FAILED}" -eq 0 ] && [ "${RENEWED}" -eq 0 ] && echo "NONE"
+    ;;
+
   # ── Fix docker ────────────────────────────────────────────
   fix-docker)
     if command -v docker >/dev/null 2>&1; then
@@ -250,7 +307,10 @@ case "${ACTION}" in
     ;;
 
   *)
-    echo "usage: cron-auto-remediate.sh <diagnose|fix-missing|fix-perms|fix-git|fix-docker|fix-purge>"
+    echo "usage: cron-auto-remediate.sh <diagnose|fix-missing|fix-perms|fix-git|fix-certs|fix-docker|fix-purge>"
+    echo ""
+    echo "Note: SSL certificate management is NOT automated."
+    echo "  Manage certs manually via certbot, cloud providers, or system admin."
     exit 1
     ;;
 esac
