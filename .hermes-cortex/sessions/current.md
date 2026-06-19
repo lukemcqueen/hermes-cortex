@@ -24,7 +24,7 @@
 
 | Metric | Value |
 |--------|-------|
-| Last commit | `9257237` — 2026-06-19 13:59:48 |
+| Last commit | `d3bf407` — 2026-06-19 15:58:30 |
 | Working tree | clean |
 | Unpushed | none |
 | Tag | `v1.0.0` |
@@ -33,11 +33,11 @@
 
 | Date | Commit | Description |
 |------|--------|-------------|
-| 2026-06-19 | `9257237` | fix: SECURITY — SSL cert monitoring now uses sudoers pattern (never widen permissions)
-| 2026-06-19 | `462c442` | docs: gbrain PGLite → PostgreSQL migration guide + auto-remediation skill update
-| 2026-06-19 | `a2f313f` | feat: enhanced monitoring for Linux production issues (Joseph's cisnet02 feedback)
-| 2026-06-19 | `3a40bd0` | fix: nginx config check false positive in cron-auto-remediate
-| 2026-06-19 | `b70f4ab` | fix: remediation-sensor false positive for gbrain services
+| 2026-06-19 | `d3bf407` | feat: executable bits on scripts + safety net (cisnet02 #eb7e0b0)
+| 2026-06-19 | `6d8e804` | feat: Linux compatibility for cron-auto-remediate.sh (cisnet02 #1757c5d)
+| 2026-06-19 | `69c4b00` | docs: TITUS-ONLY policy for daily priority check-in
+| 2026-06-19 | `c8109e6` | feat: daily priority check-in with Titus inbox integration
+| 2026-06-19 | `7b56c1a` | docs: daily-priority-checkin cron job (8:30am KST)
 
 ---
 
@@ -47,8 +47,8 @@
 |-------|------|
 | Installer | `install.sh` — 2396 lines, 26 steps, idempotent |
 | Skills | 0 skills across 4 categories (software-development, devops, social-media, productivity) |
-| Python files | 73 files (41575 LOC) |
-| Shell files | 50 files (11782 LOC) |
+| Python files | 73 files (41570 LOC) |
+| Shell files | 50 files (11803 LOC) |
 | Markdown files | 524 files |
 | Total | 697 tracked files |
 | Dashboard | Flask app + nginx proxy — Langfuse traces + system health |
@@ -73,4 +73,4 @@
 
 ---
 
-*Last updated: 2026-06-19 14:00 KST*
+*Last updated: 2026-06-19 16:00 KST*
