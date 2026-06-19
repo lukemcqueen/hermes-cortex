@@ -5,6 +5,14 @@ Silent (empty stdout) when all metrics within normal range.
 Non-empty stdout is delivered verbatim to the user (Telegram).
 """
 import re, subprocess, sys, socket
+from pathlib import Path
+
+# Import timezone helper
+SCRIPT_DIR = Path(__file__).parent
+import sys
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+from hermes_tz import format_timestamp
 
 MEM_PCT_WARN = 85
 SWAP_PCT_WARN = 70
@@ -114,10 +122,8 @@ except Exception:
     pass
 
 # ── Output ───────────────────────────────────────────────────
-from datetime import datetime, timezone
-kst = timezone(__import__("datetime").timedelta(hours=9))
 if alerts:
-    ts = datetime.now(kst).strftime("%Y-%m-%d %H:%M KST")
+    ts = format_timestamp("%Y-%m-%d %H:%M %Z")
     print(f"🚨 {HOSTNAME} [{ts}]")
     for a in alerts:
         print(f"  {a}")

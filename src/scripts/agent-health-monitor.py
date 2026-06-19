@@ -30,6 +30,12 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+# Import timezone helper
+SCRIPT_DIR = Path(__file__).parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+from hermes_tz import format_timestamp
+
 HOME = Path.home()
 STATE_FILE = HOME / ".hermes" / "state" / "health-state.json"
 HEALTH_DATA_FILE = HOME / ".hermes" / "state" / "agent-health-data.json"
@@ -176,8 +182,7 @@ def main():
 
     # Output — no_agent cron delivers non-empty stdout
     output = []
-    kst = __import__("datetime").timezone(__import__("datetime").timedelta(hours=9))
-    ts = datetime.now(kst).strftime("%Y-%m-%d %H:%M KST")
+    ts = format_timestamp("%Y-%m-%d %H:%M %Z")
     if alerts:
         output.append(f"━━━ Health Alert — {len(alerts)} issue(s) ━━━ [{ts}]")
         output.extend(alerts)
