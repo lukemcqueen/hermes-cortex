@@ -103,8 +103,11 @@ case "${ACTION}" in
 
     # Check nginx — use sudo for system-wide config test
     if command -v nginx >/dev/null 2>&1; then
+      # Try sudo -n first (non-interactive), fall back to direct test
       if ! sudo -n nginx -t >/dev/null 2>&1; then
-        issues+=("NGINX:config-invalid")
+        if ! nginx -t >/dev/null 2>&1; then
+          issues+=("NGINX:config-invalid")
+        fi
       fi
       if ! pgrep -f "nginx: master" >/dev/null 2>&1; then
         issues+=("NGINX:not-running")
