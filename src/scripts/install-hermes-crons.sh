@@ -70,23 +70,28 @@ fi
 cron_exists() {
   local name="$1"
   if [[ -f "$CRON_JOBS_FILE" ]]; then
-    # jobs.json is a list of job objects OR a dict keyed by job_id
+    # jobs.json structure: { "jobs": [...] } or [ ... ]
     # Check by name field
-    if python3 -c "
+    python3 -c "
 import json, sys
 try:
     data = json.load(open('$CRON_JOBS_FILE'))
+    # Handle nested structure: { 'jobs': [...] }
+    if isinstance(data, dict) and 'jobs' in data:
+        data = data['jobs']
     if isinstance(data, list):
         for j in data:
-            if j.get('name') == '$name':
+            if isinstance(j, dict) and j.get('name') == '$name':
                 sys.exit(0)
     elif isinstance(data, dict):
         for jid, j in data.items():
             if isinstance(j, dict) and j.get('name') == '$name':
                 sys.exit(0)
-except: pass
+except Exception:
+    pass
 sys.exit(1)
-" 2>/dev/null; then
+"
+    if [ $? -eq 0 ]; then
       return 0
     fi
   fi
