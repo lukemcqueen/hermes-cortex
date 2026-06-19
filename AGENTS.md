@@ -172,22 +172,33 @@ code review (security scan, quality gate
 
 ## Daily Priority Check-in
 
-**Cron job:** `daily-priority-checkin` — runs every day at 8:30am KST
+**Cron jobs:**
+- `titus-daily-briefing` — 8:00am KST, delivers to `local` (inbox)
+- `daily-priority-checkin` — 8:30am KST, delivers to `origin` (Telegram)
 
-**Purpose:** Start each day with focused alignment on the user's #1 priority.
+**Purpose:** Start each day with focused alignment on the user's #1 priority, incorporating cross-agent context from Titus.
 
 **Workflow:**
-1. Ask: "What is your #1 priority for today?"
-2. Break it down into 2-4 concrete, actionable tasks
-3. Suggest a starting point (which task first and why)
-4. Update MEMORY.md with their priority and context
-5. Begin execution on the first task
+
+| Time | Agent | Action |
+|------|-------|--------|
+| 8:00am | Titus | Analyzes titus repo (commits, PRs, issues, TODOs). Writes briefing to `~/hermes-cortex-private/messages/inbox/titus-daily-YYYY-MM-DD.md` |
+| 8:30am | Moses | Reads Titus's briefing (if exists). Asks user: "What is your #1 priority for today?" |
+| 8:30am+ | Moses | Breaks priority into 2-4 actionable tasks. Incorporates Titus's suggestions. Updates memory. Begins execution. |
 
 **Why this matters:**
 - Prevents context-switching and reactive work
 - Ensures we're always working on what matters most
+- Leverages Titus's repo-specific insights (pending PRs, blockers, recent changes)
 - Builds a historical record of focus areas (via memory)
 - Creates natural daily rhythm for deep work
+
+**Temporary limitation:** Titus's inbox messages won't be found until Moses migrates to Ubuntu (same filesystem). Until then, Moses proceeds without Titus's input — the check-in still works, just without cross-agent collaboration.
+
+**Post-migration:** Once Moses is on Ubuntu, the inbox pattern will work seamlessly:
+- Titus writes to `~/hermes-cortex-private/messages/inbox/`
+- Moses reads it 30 minutes later
+- Full cross-agent context in every morning check-in
 
 ---
 |-------|-------|---------|
