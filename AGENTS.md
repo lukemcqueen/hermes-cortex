@@ -89,6 +89,73 @@ Three-layer data model:
 
 ## Agent Handoffs
 
+### 2026-06-19 — Monitoring timestamps switched to KST (Seoul time)
+
+**Change:** All monitoring scripts now output timestamps in KST (UTC+9) instead of UTC.
+
+**Affected scripts:**
+- `agent-health-monitor.py` — Health alerts
+- `system-alert.py` — Resource threshold alerts  
+- `service-recovery.py` — Service restart reports
+- `check-agent-messages.sh` — Inbox message notifications
+
+**Output format:** `[2026-06-19 08:48 KST]`
+
+**Rationale:** User is in Seoul (KST). Timestamps should match user's local time for faster incident response.
+
+---
+
+### 2026-06-19 — Cron installation hardened
+
+**Improvements to `install-hermes-crons.sh`:**
+
+| Feature | Description |
+|---------|-------------|
+| `--force` flag | Recreate all crons (overwrites existing) |
+| Script verification | Checks scripts exist before creating crons |
+| Failure tracking | Exits with error if any cron creation fails |
+| Better error messages | Shows which scripts are missing |
+
+**Install script (`install.sh`) improvements:**
+- Verifies Hermes Agent is installed before attempting cron creation
+- Skips cron step with clear warning if Hermes not found
+- Provides explicit command to run crons manually after Hermes install
+
+**Cron job reference:**
+
+| Cron | Schedule | Type | Script/Skill | Deliver | Purpose |
+|------|----------|------|--------------|---------|---------|
+| `cron-auto-remediate` | `*/5 * * * *` | LLM+skill | `auto-remediation` skill | `local` | Auto-fix cron/inbox/service issues |
+| `remediation-sensor` | `*/5 * * * *` | no_agent | `remediation-sensor.py` | `local` | Companion diagnostics sensor |
+| `service-recovery` | `*/5 * * * *` | no_agent | `service-recovery.py` | `origin` | Auto-restart crashed services |
+| `agent-health-monitor` | `*/10 * * * *` | no_agent | `agent-health-monitor.py` | `origin` | Cross-agent health polling |
+| `system-alert-watchdog` | `*/10 * * * *` | no_agent | `system-alert.py` | `origin` | Resource threshold alerts |
+| `check-agent-messages` | `*/10 * * * *` | no_agent | `check-agent-messages.sh` | `origin` | Flag urgent agent messages |
+| `inbox-sensor` | `*/10 * * * *` | no_agent | `inbox-sensor.py` | `local` | Detect new broadcast messages |
+| `system-heartbeat` | `*/30 * * * *` | no_agent | `heartbeat.py` | `local` | System health check |
+| `memory-to-brain-sync` | `0 */6 * * *` | no_agent | `memory-to-brain.py` | `local` | Memory persistence to gbrain |
+
+**Troubleshooting:**
+
+```bash
+# List all crons
+hermes cron list
+
+# Recreate all crons (force)
+bash ~/.hermes/scripts/install-hermes-crons.sh --force
+
+# Dry-run to see what would change
+bash ~/.hermes/scripts/install-hermes-crons.sh --dry-run
+
+# Remove all crons
+bash ~/.hermes/scripts/install-hermes-crons.sh --uninstall
+
+# Check cron job health
+cat ~/.hermes/cron/jobs.json | python3 -m json.tool
+```
+
+---
+
 ### 2026-06-15 — Auto-remediation system (all agents)
 
 **What:** Every Hermes agent now has an auto-remediation pipeline that catches and fixes cron job failures, resource issues, and agent inbox help requests without user intervention.
@@ -107,8 +174,17 @@ Three-layer data model:
 
 **Setting up on a new agent:**
 1. `install.sh` copies all scripts to `~/.hermes/scripts/`
-2. Create a cron job: `cron name=cron-auto-remediate every 5m skill=auto-remediation`
-3. The LLM-driven cron loads the skill and runs the 3-phase workflow:
+2. `install-hermes-crons.sh` (auto-run by install.sh) creates essential cron jobs:
+   - `cron-auto-remediate` (every 5m, skill-based) — checks errors, applies fixes
+   - `remediation-sensor` (every 5m, no_agent) — companion diagnostics sensor
+   - `system-heartbeat` (every 30m, no_agent) — system health monitoring
+   - `agent-health-monitor` (every 10m, no_agent) — agent health polling
+   - `system-alert-watchdog` (every 10m, no_agent) — resource alerting
+   - `service-recovery` (every 5m, no_agent) — auto-restart crashed services
+   - `memory-to-brain-sync` (every 6h, no_agent) — memory persistence
+   - `inbox-sensor` (every 10m, no_agent) — detect new broadcast messages
+   - `check-agent-messages` (every 10m, no_agent) — flag urgent requests
+3. The LLM-driven cron (`cron-auto-remediate`) loads the skill and runs the 3-phase workflow:
    - Phase 1: Check errored cron jobs
    - Phase 2: Check agent inbox remediation markers
    - Phase 3: Spot-check system resources
