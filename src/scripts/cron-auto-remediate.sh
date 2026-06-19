@@ -291,17 +291,142 @@ except Exception as e:
     echo "CERTS_RENEWED:${certs_renewed}"
     ;;
 
+  # ── Fix gbrain PGLite WASM issues ───────────────────────────
+  fix-gbrain)
+    # PGLite WASM failures on Linux require upstream fix or engine switch
+    # This action provides diagnostics and workaround options
+    echo "GBRAIN_DIAGNOSTIC:"
+    
+    # Check gbrain installation
+    if ! command -v gbrain >/dev/null 2>&1; then
+      echo "  gbrain: not installed"
+      exit 0
+    fi
+    
+    # Check gbrain config
+    GBRAIN_HOME="${HOME}/.gbrain"
+    if [ -f "${GBRAIN_HOME}/config.toml" ]; then
+      engine=$(grep -E "^engine\s*=" "${GBRAIN_HOME}/config.toml" 2>/dev/null | cut -d= -f2 | tr -d ' "')
+      echo "  engine: ${engine:-pglite}"
+    fi
+    
+    # Run gbrain doctor and capture health score
+    health_output=$(gbrain doctor 2>&1 | grep "Overall health score" || echo "unknown")
+    echo "  health: ${health_output}"
+    
+    # Check for WASM error patterns
+    sync_output=$(gbrain sync --all --no-pull 2>&1 || true)
+    if echo "${sync_output}" | grep -qi "pglite failed to initialize its wasm runtime"; then
+      echo "  wasm_status: FAILED - PGLite WASM runtime error"
+      echo "  workaround: Switch to PostgreSQL engine:"
+      echo "    gbrain init --engine postgres --postgres-url 'postgresql://user:pass@host:5432/dbname'"
+      echo "  upstream_issue: https://github.com/garrytan/gbrain/issues/223"
+    elif echo "${sync_output}" | grep -qi "aborted.*wasm"; then
+      echo "  wasm_status: FAILED - WASM aborted"
+      echo "  workaround: Switch to PostgreSQL engine or upgrade glibc"
+    else
+      echo "  wasm_status: OK"
+    fi
+    ;;
+
+  # ── Fix SSL certificate permissions ─────────────────────────
+  fix-ssl-perms)
+    # Fix SSL cert directory permissions for non-root access
+    # Requires sudo - this action reports what needs fixing
+    echo "SSL_PERM_CHECK:"
+    
+    cert_dirs=("/etc/letsencrypt/live" "/etc/letsencrypt/archive" "/etc/letsencrypt/renewal")
+    needs_fix=0
+    
+    for dir in "${cert_dirs[@]}"; do
+      if [ -d "${dir}" ]; then
+        perms=$(stat -c "%a" "${dir}" 2>/dev/null || stat -f "%Lp" "${dir}" 2>/dev/null || echo "unknown")
+        if [ "${perms}" = "700" ] || [ "${perms}" = "750" ]; then
+          echo "  NEEDS_FIX: ${dir} (current: ${perms}, need: 755)"
+          needs_fix=1
+        fi
+      fi
+    done
+    
+    # Check cert files
+    if [ -d "/etc/letsencrypt/live" ]; then
+      for domain_dir in /etc/letsencrypt/live/*/; do
+        if [ -d "${domain_dir}" ]; then
+          domain=$(basename "${domain_dir}")
+          for cert_file in fullchain.pem privkey.pem; do
+            cert_path="${domain_dir}${cert_file}"
+            if [ -f "${cert_path}" ]; then
+              perms=$(stat -c "%a" "${cert_path}" 2>/dev/null || stat -f "%Lp" "${cert_path}" 2>/dev/null || echo "unknown")
+              if [ "${perms}" = "600" ] || [ "${perms}" = "640" ]; then
+                echo "  NEEDS_FIX: ${cert_path} (current: ${perms}, need: 644)"
+                needs_fix=1
+              fi
+            fi
+          done
+        fi
+      done
+    fi
+    
+    if [ "${needs_fix}" -eq 1 ]; then
+      echo ""
+      echo "  To fix (requires sudo):"
+      echo "    sudo chmod 755 /etc/letsencrypt/live/ /etc/letsencrypt/archive/ /etc/letsencrypt/renewal/"
+      echo "    sudo chmod 644 /etc/letsencrypt/live/*/fullchain.pem /etc/letsencrypt/live/*/privkey.pem"
+      echo "    sudo nginx -t && sudo systemctl reload nginx"
+    else
+      echo "  All SSL cert permissions OK"
+    fi
+    ;;
+
+  # ── Fix certbot lock/log permissions ────────────────────────
+  fix-certbot-perms)
+    # Fix certbot lock file and log directory permissions
+    echo "CERTBOT_PERM_CHECK:"
+    
+    lock_file="/var/log/letsencrypt/.certbot.lock"
+    log_dir="/var/log/letsencrypt"
+    needs_fix=0
+    
+    if [ -f "${lock_file}" ]; then
+      perms=$(stat -c "%a" "${lock_file}" 2>/dev/null || echo "unknown")
+      if [ "${perms}" = "600" ] || [ "${perms}" = "640" ]; then
+        echo "  NEEDS_FIX: ${lock_file} (current: ${perms}, need: 664)"
+        needs_fix=1
+      fi
+    fi
+    
+    if [ -d "${log_dir}" ]; then
+      owner=$(stat -c "%U" "${log_dir}" 2>/dev/null || echo "unknown")
+      if [ "${owner}" != "${USER}" ] && [ "${owner}" != "root" ]; then
+        echo "  NEEDS_FIX: ${log_dir} owner: ${owner}"
+        needs_fix=1
+      fi
+    fi
+    
+    if [ "${needs_fix}" -eq 1 ]; then
+      echo ""
+      echo "  To fix (requires sudo):"
+      echo "    sudo chmod 664 /var/log/letsencrypt/.certbot.lock"
+      echo "    sudo chown -R ${USER}: /var/log/letsencrypt"
+    else
+      echo "  Certbot permissions OK"
+    fi
+    ;;
+
   *)
-    echo "usage: cron-auto-remediate.sh <diagnose|fix-missing|fix-perms|fix-git|fix-docker|fix-purge|fix-certs>"
+    echo "usage: cron-auto-remediate.sh <diagnose|fix-missing|fix-perms|fix-git|fix-docker|fix-purge|fix-certs|fix-gbrain|fix-ssl-perms|fix-certbot-perms>"
     echo ""
     echo "Actions:"
-    echo "  diagnose    — check script paths, permissions, deps"
-    echo "  fix-missing — copy missing scripts from hermes-cortex repo"
-    echo "  fix-perms   — fix permissions on .hermes/scripts/"
-    echo "  fix-git     — fix git state in hermes-cortex"
-    echo "  fix-docker  — restart docker services"
-    echo "  fix-purge   — purge system caches (memory, brew, docker)"
-    echo "  fix-certs   — check and renew SSL certificates (certbot)"
+    echo "  diagnose        — check script paths, permissions, deps"
+    echo "  fix-missing     — copy missing scripts from hermes-cortex repo"
+    echo "  fix-perms       — fix permissions on .hermes/scripts/"
+    echo "  fix-git         — fix git state in hermes-cortex"
+    echo "  fix-docker      — restart docker services"
+    echo "  fix-purge       — purge system caches (memory, brew, docker)"
+    echo "  fix-certs       — check and renew SSL certificates (certbot)"
+    echo "  fix-gbrain      — diagnose gbrain/PGLite WASM issues"
+    echo "  fix-ssl-perms   — check SSL cert permissions (reports what needs sudo)"
+    echo "  fix-certbot-perms — check certbot lock/log permissions"
     exit 1
     ;;
 esac
