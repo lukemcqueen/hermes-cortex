@@ -9,3 +9,6 @@ luke ALL=(root) NOPASSWD: /bin/systemctl reload nginx
 luke ALL=(root) NOPASSWD: /usr/bin/fail2ban-client reload
 luke ALL=(root) NOPASSWD: /usr/bin/fail2ban-client status
 luke ALL=(root) NOPASSWD: /usr/local/sbin/hermes-security-apply
+luke ALL=(root) NOPASSWD: /usr/bin/certbot renew --non-interactive
+luke ALL=(root) NOPASSWD: /usr/bin/certbot --version
+luke ALL=(root) NOPASSWD: /usr/bin/certbot renew --dry-run
