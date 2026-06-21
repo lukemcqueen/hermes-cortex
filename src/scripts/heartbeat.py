@@ -85,13 +85,44 @@ def check_systemd(unit_name: str) -> dict:
         return {"status": "ERROR", "detail": str(e)}
 
 
+def check_ollama_via_api() -> dict:
+    """Check Ollama by hitting its HTTP API directly."""
+    import urllib.request
+    try:
+        req = urllib.request.Request("http://localhost:11434/api/tags", method="GET")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            if resp.status == 200:
+                return {"status": "UP", "detail": "API responding on port 11434"}
+            return {"status": "DEGRADED", "detail": f"API returned HTTP {resp.status}"}
+    except Exception as e:
+        return {"status": "DOWN", "detail": f"API unreachable: {e}"}
+
+
+def _platform_service_label(label: str) -> str:
+    """Map macOS launchd labels to the correct systemd unit names on Linux."""
+    import platform
+    if platform.system() != 'Darwin':
+        label_map = {
+            'com.ollama.serve': 'ollama.service',
+            # gbrain services use the same 'com.*' naming on Linux systemd
+        }
+        return label_map.get(label, label)
+    return label
+
+
 def check_service(label: str) -> dict:
     """Auto-detect platform and check service using launchd or systemd."""
+    # Special case: Ollama — try HTTP API first for reliability across platforms
+    if 'ollama' in label.lower():
+        api_result = check_ollama_via_api()
+        if api_result['status'] == 'UP':
+            return api_result
+        # If API fails, fall through to platform-specific check
     try:
-        subprocess.run(["launchctl", "list"], capture_output=True, timeout=5)
+        subprocess.run(['launchctl', 'list'], capture_output=True, timeout=5)
         return check_launchd(label)
     except FileNotFoundError:
-        return check_systemd(label)
+        return check_systemd(_platform_service_label(label))
 
 
 def check_disk_usage(path: str = "/") -> dict:
