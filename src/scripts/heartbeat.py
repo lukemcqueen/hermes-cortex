@@ -118,6 +118,28 @@ def check_service(label: str) -> dict:
         if api_result['status'] == 'UP':
             return api_result
         # If API fails, fall through to platform-specific check
+    
+    # Special case: gbrain autopilot on Linux — check process directly
+    # since it runs via cron, not as a persistent systemd service
+    if label == 'com.gbrain.autopilot':
+        try:
+            result = subprocess.run(
+                ['pgrep', '-f', 'gbrain autopilot'],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return {"status": "UP", "detail": f"Process running (PID: {result.stdout.strip()})"}
+            # Fall back to checking cron entry
+            cron_result = subprocess.run(
+                ['crontab', '-l'],
+                capture_output=True, text=True, timeout=5
+            )
+            if cron_result.returncode == 0 and 'autopilot-run.sh' in cron_result.stdout:
+                return {"status": "UP", "detail": "Scheduled via cron (runs every 5m)"}
+            return {"status": "DOWN", "detail": "No autopilot process or cron entry found"}
+        except Exception as e:
+            return {"status": "ERROR", "detail": str(e)}
+    
     try:
         subprocess.run(['launchctl', 'list'], capture_output=True, timeout=5)
         return check_launchd(label)
