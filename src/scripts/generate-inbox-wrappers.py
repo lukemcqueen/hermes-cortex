@@ -170,7 +170,7 @@ def main():
     print()
     print("Done. To add a new agent:")
     print("  1. Add entry to ~/.hermes/state/agent-registry.json")
-    print("  2. Create htpasswd entry: htpasswd /usr/local/etc/nginx/.htpasswd <user>")
+    print("  2. Create htpasswd entry: htpasswd ${NGINX_HTPASSWD:-/usr/local/etc/nginx/.htpasswd} <user>")
     print("  3. Create config: ~/.hermes/agent-inbox-<agent>.conf")
     print("  4. Run: python3 generate-inbox-wrappers.py --apply-crons")
 
