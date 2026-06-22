@@ -796,9 +796,7 @@ def _get_disk_io() -> dict:
 def _get_docker_stats() -> list:
     """Per-container resource usage via docker stats."""
     try:
-        docker_bin = "/usr/local/bin/docker"
-        if not os.path.exists(docker_bin):
-            docker_bin = "docker"
+        docker_bin = _docker_bin()
         r = subprocess.run(
             [docker_bin, "stats", "--no-stream", "--format",
              '{{json .}}'],

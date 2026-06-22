@@ -150,7 +150,7 @@ Hermes is designed to keep your data private by setting strict file permissions.
 | `~/langfuse/.env` | `-rw-------` (600) | Service passwords |
 | `~/.ssh/` | `drwx------` (700) | SSH keys |
 | `~/.ssh/id_ed25519` | `-rw-------` (600) | Private SSH key |
-| `/usr/local/etc/nginx/.htpasswd` | `-rw-r-----` (640) | Web passwords |
+| `$NGINX_HTPASSWD` (Linux: `/etc/nginx/.htpasswd`, macOS: `/usr/local/etc/nginx/.htpasswd`) | `-rw-r-----` (640) | Web passwords |
 
 ### 🔍 How to check permissions
 
@@ -165,7 +165,7 @@ ls -la ~/.hermes/state.db   # Should show: -rw-------
 ```bash
 chmod 600 ~/.hermes/state.db ~/.hermes/state.db-wal ~/.hermes/state.db-shm
 chmod 600 ~/.hermes/logs/*.log
-chmod 640 /usr/local/etc/nginx/.htpasswd
+chmod 640 ${NGINX_HTPASSWD:-/usr/local/etc/nginx/.htpasswd}
 ```
 
 ---
@@ -179,7 +179,7 @@ chmod 640 /usr/local/etc/nginx/.htpasswd
 | **Langfuse passwords** | `~/langfuse/.env` | Key=Value pairs |
 | **Hermes API keys** | `~/.hermes/.env` | Key=Value pairs |
 | **Auth tokens** | `~/.hermes/auth.json` | JSON |
-| **Web passwords** | `/usr/local/etc/nginx/.htpasswd` | Hashed passwords |
+| **Web passwords** | `$NGINX_HTPASSWD` (Linux: `/etc/nginx/.htpasswd`, macOS: `/usr/local/etc/nginx/.htpasswd`) | Hashed passwords |
 | **SSH keys** | `~/.ssh/id_ed25519` | Private key |
 | **GitHub token** | `~/.config/gh/hosts.yml` | OAuth token |
 

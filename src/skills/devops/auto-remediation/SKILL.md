@@ -28,8 +28,8 @@ For each errored job, diagnose the failure:
 
 | Failure type | Auto-fix action |
 |---|---|
-| Script not found / missing path | Run `~/.bun/bin/bun ~/.bun/bin/gbrain doctor` check; search for script in cortex repo; reinstall via `install.sh` or copy from `~/hermes-cortex/src/scripts/` |
-| Git error (detached HEAD, merge conflict) | `cd ~/hermes-cortex && git checkout main && git pull --ff-only` |
+| Script not found / missing path | Run `bun doctor` check; reinstall or copy from `$CORTEX_REPO/src/scripts/` |
+| Git error (detached HEAD, merge conflict) | `cd "${CORTEX_REPO:-$HOME/hermes-cortex}" && git checkout main && git pull --ff-only` |
 | Permission denied | `chmod +x ~/.hermes/scripts/<script>` |
 | Python import error | Re-activate venv; reinstall deps; check Python version |
 | Disk full / no space | `brew cleanup`, `docker system prune -f`, purge log files >7d old |

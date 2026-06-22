@@ -858,7 +858,7 @@ when something actually changes.
 **Setup:**
 
 ```bash
-cp ~/hermes-cortex/src/offline/auto-update.sh ~/.hermes/scripts/auto-update.sh
+cp "${CORTEX_REPO:-$HOME/hermes-cortex}/src/offline/auto-update.sh" ~/.hermes/scripts/auto-update.sh
 chmod +x ~/.hermes/scripts/auto-update.sh
 ```
 
@@ -934,7 +934,7 @@ as a safety net for mechanical patterns.
 Run:
   mkdir -p ~/.hermes/state/remediate/done
   mv <marker_file> ~/.hermes/state/remediate/done/
-  cd ~/hermes-cortex-private && git add -A && git commit -m "remediation: ..." && git push
+  cd ${CORTEX_REPO:-$HOME/hermes-cortex}-private && git add -A && git commit -m "remediation: ..." && git push
 
 ## Step 5: Report compact summary — what was fixed and whether it succeeded.
 ```

@@ -186,7 +186,7 @@ The entire 140-line CSS stylesheet and 140-line JavaScript application live insi
 **File:** `src/scripts/inbox-sensor.py`
 
 **Description:**
-The sensor reads files directly from `~/hermes-cortex-private/messages/inbox/` rather than using the `/api/inbox` endpoint. This means:
+The sensor reads files directly from `$HOME/hermes-cortex-private/messages/inbox/` rather than using the `/api/inbox` endpoint. This means:
 - It has its own duplicated frontmatter parsing (see A-01)
 - It doesn't benefit from the `for_` per-agent filtering that the API provides
 - It must hardcode the inbox directory path rather than discovering it from the server config

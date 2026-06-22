@@ -228,7 +228,7 @@ Make sure Docker Desktop is running.
 
 ### "Permission denied when running install.sh"
 ```bash
-chmod +x ~/hermes-cortex/install.sh
+chmod +x ${CORTEX_REPO:-$HOME/hermes-cortex}/install.sh
 ```
 
 ### "Cron jobs not created after install"

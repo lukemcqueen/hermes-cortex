@@ -58,8 +58,8 @@ The daily scanner feeds back into `blocked_ips.add`, creating a closed loop: **L
 ### 1. Create the input files
 
 ```bash
-touch ~/hermes-cortex/deploy/nginx/blocked_ips.add
-touch ~/hermes-cortex/deploy/nginx/nginx-badbots.conf
+touch "${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/blocked_ips.add"
+touch "${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/nginx-badbots.conf"
 ```
 
 Populate `blocked_ips.add` with known bad IPs (one per line, bare IPs only).
@@ -125,7 +125,7 @@ sudo /usr/local/sbin/hermes-security-apply
 ### Block a new IP manually
 
 ```bash
-echo "1.2.3.4" >> ~/hermes-cortex/deploy/nginx/blocked_ips.add
+echo "1.2.3.4" >> "${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/blocked_ips.add"
 sudo /usr/local/sbin/hermes-security-apply
 ```
 

@@ -8,7 +8,7 @@ fail2ban filters.
 
 ## Platform Notes: macOS vs Linux
 
-This pipeline was built and tested on **macOS 12 Monterey** with Homebrew-managed nginx and fail2ban. If deploying on Linux, adjust:
+The repository defaults to `~/hermes-cortex` (set `CORTEX_REPO` to override).
 
 | Concern | macOS (Homebrew) | Linux (apt/yum) |
 |---------|-----------------|-----------------|
@@ -19,6 +19,7 @@ This pipeline was built and tested on **macOS 12 Monterey** with Homebrew-manage
 | Service manager | `launchctl` | `systemctl` |
 | Firewall backend | `pf` (built-in) | `iptables` / `nftables` |
 | Sudoers permissions | `0440` (no `r--r-----`) | `0440` (same) |
+| Repo location | `$CORTEX_REPO` (default: `~/hermes-cortex`) | `$CORTEX_REPO` (default: `~/hermes-cortex`) |
 
 **Fail2ban service restart on macOS:**
 ```bash
@@ -70,8 +71,8 @@ sudo visudo -cf /etc/sudoers.d/hermes-security
 ### 3. Ensure the input files exist
 
 ```bash
-touch ~/hermes-cortex/deploy/nginx/blocked_ips.add
-touch ~/hermes-cortex/deploy/nginx/nginx-badbots.conf
+touch "\${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/blocked_ips.add"
+touch "\${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/nginx-badbots.conf"
 ```
 
 ### 4. Run the deploy for the first time
@@ -89,7 +90,7 @@ sudo /usr/local/sbin/hermes-security-apply
 Append bare IPs (one per line) to `blocked_ips.add`:
 
 ```bash
-echo "1.2.3.4" >> ~/hermes-cortex/deploy/nginx/blocked_ips.add
+echo "1.2.3.4" >> "\${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/blocked_ips.add"
 ```
 
 ### Update fail2ban filters
