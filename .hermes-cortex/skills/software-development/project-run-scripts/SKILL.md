@@ -246,7 +246,7 @@ For agent-only repos (hermes-cortex-style, no Docker, no database), use the mini
 
 Every repo with vitest tests MUST include `_cleanup_vitest` and `_run_vitest` functions. Orphaned vitest workers accumulate and block ports. Pattern (exact code in canonical template).
 
-## Rainbow (update workflow)
+## Update Workflow
 
 When writing a `./run` for a repo that lacks one, or updating one that's incomplete:
 1. Read the canonical template: `skill_view(name="project-run-scripts", file_path="templates/run.sh")`
