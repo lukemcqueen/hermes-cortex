@@ -520,6 +520,50 @@ docker exec langfuse-postgres-1 psql -U postgres -d postgres \
 
 ---
 
+## 🇱 Linux Mint / Ubuntu Migration
+
+### 7. Ollama install fails — "sudo: a terminal is required"
+
+**Symptom:** The Ollama install script (`curl ... | sh`) uses sudo non-interactively during `install.sh`.
+
+**Fix:** Download the tarball directly and install locally before running install.sh:
+```bash
+curl -fsSL -o /tmp/ollama.tar.zst https://ollama.com/download/ollama-linux-amd64.tar.zst
+tar -xf /tmp/ollama.tar.zst -C /tmp/ollama-extract
+mkdir -p ~/.local/bin ~/.local/lib/ollama
+cp /tmp/ollama-extract/bin/ollama ~/.local/bin/
+cp -r /tmp/ollama-extract/lib/ollama/* ~/.local/lib/ollama/
+```
+
+### 8. Disk I/O errors on Docker pulls
+
+**Symptom:** `failed commit on ref "layer-sha256:...": failed to perform sync: sync .../data: input/output error`
+
+**Fix:** Bad disk sectors. Run `sudo tune2fs -c 1 /dev/mapper/vgmint-root && sudo reboot`, then `docker system prune -af` and pull images fresh.
+
+### 9. gbrain WASM error
+
+**Symptom:** `[unhandledRejection] WebAssembly.Module doesn't parse at byte N`
+
+**Fix:** The PGLite WASM file landed on a bad block:
+```bash
+bun remove -g gbrain
+rm -rf ~/.bun/install/global/node_modules/@electric-sql
+bun install -g github:garrytan/gbrain
+```
+
+### 10. dpkg post-install failures
+
+**Symptom:** `sync: error syncing '/boot/initrd.img-...': Input/output error`
+
+**Fix:** Remove the bad initramfs and retry:
+```bash
+sudo mv /boot/initrd.img-$(uname -r) /tmp/initrd-backup
+sudo dpkg --configure -a
+```
+
+---
+
 ## Changelog
 
 | Version | Date | Changes |
