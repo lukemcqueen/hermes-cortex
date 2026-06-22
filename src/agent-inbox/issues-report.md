@@ -43,7 +43,7 @@ script-src 'self' 'unsafe-inline';
 **File:** `server.py` lines 112-147 (`_write_message`)
 
 **Description:**
-The `/send` endpoint accepts arbitrary form data. The body text is validated for nothing beyond being a form field. A 100MB body would be written to disk without truncation. HTML/script content is stored raw (only escaped at render time, which is correct XSS protection, but raw storage means file-based readers like `check-agent-messages.sh` work with unescaped content). No Content-Type validation either.
+The `/send` endpoint accepts arbitrary form data. The body text is validated for nothing beyond being a form field. A 100MB body would be written to disk without truncation. HTML/script content is stored raw (only escaped at render time, which is correct XSS protection, but raw storage means file-based readers like `orch-check-agent-messages.sh` work with unescaped content). No Content-Type validation either.
 
 **Suggested fix:** Add size validation:
 ```python
@@ -157,12 +157,12 @@ The processed section renders `_render_thread(..., topic_filter=topic)`. If no p
 **Files:**
 - `server.py` lines 75-109 (`_parse_message`)
 - `inbox-sensor.py` lines 56-66 (`parse_frontmatter`)
-- `check-agent-messages.sh` lines 75-82 (sed/grep extraction)
+- `orch-check-agent-messages.sh` lines 75-82 (sed/grep extraction)
 
 **Description:**
 The YAML frontmatter format is parsed in three completely independent implementations with different field handling. The `server.py` version has 9 fields, `inbox-sensor.py` has 4, and the shell script uses fragile `sed -n '/^from:/s/.*: *//p'` patterns that break if the frontmatter format changes (e.g., quoted values, trailing spaces). Adding a new field (e.g., `tags`) requires updating all three parsers.
 
-**Suggested fix:** Either (a) centralize frontmatter parsing in a shared Python module imported by both server.py and inbox-sensor.py, and have check-agent-messages.sh use `python3 -c` for parsing, or (b) standardize on JSON message files instead of YAML frontmatter in markdown.
+**Suggested fix:** Either (a) centralize frontmatter parsing in a shared Python module imported by both server.py and inbox-sensor.py, and have orch-check-agent-messages.sh use `python3 -c` for parsing, or (b) standardize on JSON message files instead of YAML frontmatter in markdown.
 
 ### A-02 [MEDIUM] — All CSS/JS embedded in Python f-strings
 

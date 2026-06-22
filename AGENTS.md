@@ -239,7 +239,7 @@ Load the relevant skill with `skill_view(name)` when entering each stage. Skills
 - `agent-health-monitor.py` — Health alerts
 - `system-alert.py` — Resource threshold alerts  
 - `service-recovery.py` — Service restart reports
-- `check-agent-messages.sh` — Inbox message notifications
+- `orch-check-agent-messages.sh` — Inbox message notifications
 
 **Output format:** `[2026-06-19 08:48 KST]`
 
@@ -272,7 +272,7 @@ Load the relevant skill with `skill_view(name)` when entering each stage. Skills
 | `service-recovery` | `*/5 * * * *` | no_agent | `service-recovery.py` | `origin` | Auto-restart crashed services |
 | `agent-health-monitor` | `*/10 * * * *` | no_agent | `agent-health-monitor.py` | `origin` | Cross-agent health polling |
 | `system-alert-watchdog` | `*/10 * * * *` | no_agent | `system-alert.py` | `origin` | Resource threshold alerts |
-| `check-agent-messages` | `*/10 * * * *` | no_agent | `check-agent-messages.sh` | `origin` | Flag urgent agent messages |
+| `orch-check-agent-messages` | `*/10 * * * *` | no_agent | `orch-check-agent-messages.sh` | `origin` | Flag urgent agent messages |
 | `inbox-sensor` | `*/10 * * * *` | no_agent | `inbox-sensor.py` | `local` | Detect new broadcast messages |
 | `system-heartbeat` | `*/30 * * * *` | no_agent | `heartbeat.py` | `local` | System health check |
 | `memory-to-brain-sync` | `0 */6 * * *` | no_agent | `memory-to-brain.py` | `local` | Memory persistence to gbrain |
@@ -309,7 +309,7 @@ cat ~/.hermes/cron/jobs.json | python3 -m json.tool
 | `cron-auto-remediate.sh` | Diagnostic shell | On-demand | Structured diagnostics + fix actions (fix-missing, fix-git, fix-perms, fix-purge) |
 | `system-alert.py` | no_agent watchdog | Every 10m | Resource alerts + auto-cleanup (purge at 85% mem, brew/docker prune at 90% disk) |
 | `service-recovery.py` | no_agent watchdog | Every 5m | Auto-restart nginx, Ollama, gbrain, Langfuse, restore missing scripts |
-| `check-agent-messages.sh` | no_agent watchdog | Every 10m | Flags agent error messages with remediation markers |
+| `orch-check-agent-messages.sh` | no_agent watchdog | Every 10m | Flags agent error messages with remediation markers |
 | `cron-auto-remediate` (skill) | LLM-driven cron | Every 5m | Orchestrator: checks errored cron jobs + inbox remediation markers, applies fixes |
 
 **Skill location:** `src/skills/devops/auto-remediation/SKILL.md`
@@ -325,7 +325,7 @@ cat ~/.hermes/cron/jobs.json | python3 -m json.tool
    - `service-recovery` (every 5m, no_agent) — auto-restart crashed services
    - `memory-to-brain-sync` (every 6h, no_agent) — memory persistence
    - `inbox-sensor` (every 10m, no_agent) — detect new broadcast messages
-   - `check-agent-messages` (every 10m, no_agent) — flag urgent requests
+   - `orch-check-agent-messages` (every 10m, no_agent) — flag urgent requests
 3. The LLM-driven cron (`cron-auto-remediate`) loads the skill and runs the 3-phase workflow:
    - Phase 1: Check errored cron jobs
    - Phase 2: Check agent inbox remediation markers

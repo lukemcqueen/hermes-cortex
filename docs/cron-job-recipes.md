@@ -644,7 +644,7 @@ Merge ready PRs with `gh pr merge --squash`.
 **Permission fixes:** `chmod 600` on world-readable scorer summaries.
 `chmod 644` on executable pid files.
 
-**Companion script:** Run `python3 ~/.hermes/scripts/weekly-auto-fix.py --verbose`
+**Companion script:** Run `python3 ~/.hermes/scripts/orch-weekly-auto-fix.py --verbose`
 as a safety net that handles additional known patterns.
 
 ## Phase 3: Verify
@@ -677,7 +677,7 @@ If nothing needed fixing: exit silently (no output).
 
 ```bash
 # 1. Deploy companion script
-cp hermes-cortex/scripts/weekly-auto-fix.py ~/.hermes/scripts/weekly-auto-fix.py
+cp hermes-cortex/scripts/orch-weekly-auto-fix.py ~/.hermes/scripts/orch-weekly-auto-fix.py
 
 # 2. Create the cron
 hermes cron create \
@@ -916,7 +916,7 @@ You are Moses. This is your inbox remediation processor.
 
 ## Step 1: Check for pending remediation markers
 
-Run the companion script: `~/.hermes/scripts/moses-inbox-remediate.sh`
+Run the companion script: `~/.hermes/scripts/orch-moses-inbox-remediate.sh`
 If output is `[]`, respond with [SILENT] — nothing needs remediation.
 
 ## Step 2: Process each pending item
@@ -926,7 +926,7 @@ is needed and apply it using terminal/web tools.
 
 ## Step 3: Fix it
 
-Apply the fix. Also run `python3 ~/.hermes/scripts/weekly-auto-fix.py --verbose`
+Apply the fix. Also run `python3 ~/.hermes/scripts/orch-weekly-auto-fix.py --verbose`
 as a safety net for mechanical patterns.
 
 ## Step 4: Mark remediation as done
@@ -943,8 +943,8 @@ Run:
 
 ```bash
 # 1. Deploy companion scripts
-cp hermes-cortex/scripts/moses-inbox-remediate.sh ~/.hermes/scripts/
-chmod +x ~/.hermes/scripts/moses-inbox-remediate.sh
+cp hermes-cortex/scripts/orch-moses-inbox-remediate.sh ~/.hermes/scripts/
+chmod +x ~/.hermes/scripts/orch-moses-inbox-remediate.sh
 
 # 2. Create the cron
 hermes cron create \
@@ -956,7 +956,7 @@ hermes cron create \
 
 ### Prerequisites
 
-- `check-agent-messages.sh` cron running every 10m (detects messages + writes markers)
+- `orch-check-agent-messages.sh` cron running every 10m (detects messages + writes markers)
 - Peer agents sending fix requests to agent inbox (topics: general, all, luke, <agentname>)
 
 ---

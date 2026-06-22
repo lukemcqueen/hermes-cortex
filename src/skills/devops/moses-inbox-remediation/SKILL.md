@@ -7,7 +7,7 @@ license: MIT
 metadata:
   hermes:
     tags: [cron, remediation, inbox, multi-agent, auto-fix]
-    related_skills: [weekly-auto-fix, agent-inbox, public-contribution]
+    related_skills: [orch-weekly-auto-fix, agent-inbox, public-contribution]
 ---
 
 # Moses Inbox Remediation
@@ -24,18 +24,18 @@ Load this skill when:
 ```
 [Peer Agent] sends message to inbox topic → general/luke/all/<agentname>
     ↓
-[check-agent-messages.sh] runs every 10m (no_agent)
+[orch-check-agent-messages.sh] runs every 10m (no_agent)
     ↓  Detects keywords: error, failed, broken, crash, help, etc.
     ↓  Writes remediation marker to ~/.hermes/state/remediate/
     ↓
-[moses-inbox-remediate.sh] companion script (no_agent)
+[orch-moses-inbox-remediate.sh] companion script (no_agent)
     ↓  Reads markers + original messages
     ↓  Outputs structured JSON: [{sender, subject, body, marker_file}]
     ↓
 [process-agent-messages] LLM-driven cron every 10m
     ↓  Reads companion script output
     ↓  Applies fix using terminal/web tools
-    ↓  Runs weekly-auto-fix.py as safety net
+    ↓  Runs orch-weekly-auto-fix.py as safety net
     ↓  Moves marker to remediate/done/
     ↓  Commits private repo state
     ↓
@@ -47,8 +47,8 @@ Load this skill when:
 ### 1. Deploy the companion script
 
 ```bash
-cp hermes-cortex/scripts/moses-inbox-remediate.sh ~/.hermes/scripts/
-chmod +x ~/.hermes/scripts/moses-inbox-remediate.sh
+cp hermes-cortex/scripts/orch-moses-inbox-remediate.sh ~/.hermes/scripts/
+chmod +x ~/.hermes/scripts/orch-moses-inbox-remediate.sh
 ```
 
 ### 2. Create the process-agent-messages cron
@@ -64,7 +64,7 @@ You are Moses, the orchestration mind of Hermes. This is your agent message proc
 
 Run the companion script:
 ```bash
-~/.hermes/scripts/moses-inbox-remediate.sh
+~/.hermes/scripts/orch-moses-inbox-remediate.sh
 ```
 
 If output is `[]`, respond with `[SILENT]` — nothing needs remediation.
@@ -79,9 +79,9 @@ Read the message body carefully to understand what needs fixing.
 ## Step 3: Fix it
 
 Use terminal and web tools. Check git, Docker, permissions, missing files.
-Run weekly-auto-fix.py as a safety net:
+Run orch-weekly-auto-fix.py as a safety net:
 ```bash
-python3 ~/.hermes/scripts/weekly-auto-fix.py --verbose
+python3 ~/.hermes/scripts/orch-weekly-auto-fix.py --verbose
 ```
 
 ## Step 4: Mark remediation as done
@@ -100,21 +100,21 @@ PROMPT
 
 ### 3. Ensure the message detector is running
 
-The existing `check-agent-messages.sh` cron (every 10m, no_agent) handles step 1 of the pipeline — detecting new messages and writing remediation markers. Verify it's active:
+The existing `orch-check-agent-messages.sh` cron (every 10m, no_agent) handles step 1 of the pipeline — detecting new messages and writing remediation markers. Verify it's active:
 
 ```bash
-hermes cron list | grep check-agent-messages
+hermes cron list | grep orch-check-agent-messages
 ```
 
 If not present, create it:
 ```bash
-cp hermes-cortex/scripts/check-agent-messages.sh ~/.hermes/scripts/
-hermes cron create --name "check-agent-messages" --schedule "every 10m" --script "check-agent-messages.sh" --no-agent --deliver origin
+cp hermes-cortex/scripts/orch-check-agent-messages.sh ~/.hermes/scripts/
+hermes cron create --name "check-agent-messages" --schedule "every 10m" --script "orch-check-agent-messages.sh" --no-agent --deliver origin
 ```
 
 ## Detection Keywords
 
-The `check-agent-messages.sh` script flags messages containing these keywords in the subject or body:
+The `orch-check-agent-messages.sh` script flags messages containing these keywords in the subject or body:
 
 - error
 - failed

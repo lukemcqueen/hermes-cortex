@@ -146,7 +146,7 @@ def main():
             continue
         if agent_data.get("inbox_watch_schedule") is None:
             continue
-        # Skip moses — handled by check-agent-messages.sh
+        # Skip moses — handled by orch-check-agent-messages.sh
         if agent_name == "moses":
             continue
         path = generate_wrapper(agent_name, agent_data, dry_run=dry_run)

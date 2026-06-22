@@ -51,7 +51,7 @@ Messages support three priority levels:
 - `urgent` — yellow badge (⚠ URGENT), yellow border, `urgent_only=true` filter picks it up
 - `critical` — red pulsing badge (🔴 CRITICAL), red border, `urgent_only=true` filter picks it up
 
-Used by `check-agent-messages.sh` to auto-trigger remediation on urgent/critical without keyword matching.
+Used by `orch-check-agent-messages.sh` to auto-trigger remediation on urgent/critical without keyword matching.
 
 ### JSON API
 
@@ -70,7 +70,7 @@ Used by `check-agent-messages.sh` to auto-trigger remediation on urgent/critical
 The registry auto-generates:
 - `~/.hermes/scripts/agent-inbox-<agent>.sh` wrapper
 - A `inbox-<agent>` cron job with the right schedule
-- Routing in `check-agent-messages.sh` (reads dynamically each run)
+- Routing in `orch-check-agent-messages.sh` (reads dynamically each run)
 
 ## Message File Format
 
@@ -106,7 +106,7 @@ Build passed all tests. Ready for staging deploy.
 ├── scripts/
 │   ├── agent-inbox-watch.sh           # Shared watch script
 │   ├── agent-inbox-<agent>.sh         # Per-agent wrappers
-│   ├── check-agent-messages.sh        # Reads registry, routes messages
+│   ├── orch-check-agent-messages.sh        # Reads registry, routes messages
 │   └── generate-inbox-wrappers.py     # Wrapper generator
 └── agent-inbox-<agent>.conf           # Per-agent config
 ```

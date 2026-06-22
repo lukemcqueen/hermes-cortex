@@ -163,6 +163,40 @@ def check_memory_sync_freshness() -> dict:
         return {"status": "DOWN", "detail": f"Last sync: {age.total_seconds() / 3600:.1f}h ago — stale!"}
 
 
+def check_ollama_api() -> dict:
+    """Check Ollama health via its HTTP API — more reliable than launchd on macOS.
+
+    Ollama GUI app starts the serve process outside launchd, so launchctl
+    reports no PID for com.ollama.serve. The actual health check should be
+    the API itself.
+    """
+    try:
+        import urllib.error
+        import urllib.request
+        req = urllib.request.Request(
+            "http://localhost:11434/api/tags",
+            method="GET",
+        )
+        resp = urllib.request.urlopen(req, timeout=10)
+        if resp.status == 200:
+            return {"status": "UP", "detail": "API responding (HTTP 200)"}
+        return {"status": "DEGRADED", "detail": f"API returned HTTP {resp.status}"}
+    except urllib.error.URLError as e:
+        # Connection refused — try pgrep fallback in case it's starting up
+        try:
+            p = subprocess.run(
+                ["pgrep", "-f", "ollama serve"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if p.returncode == 0 and p.stdout.strip():
+                return {"status": "DEGRADED", "detail": f"Process running (PID {p.stdout.strip().splitlines()[0]}) but API unreachable: {e.reason}"}
+        except Exception:
+            pass
+        return {"status": "DOWN", "detail": f"API unreachable: {e.reason}"}
+    except Exception as e:
+        return {"status": "ERROR", "detail": f"API check failed: {e}"}
+
+
 def check_gateway_log() -> dict:
     """Quick check if gateway has logged recently."""
     log_dir = HERMES_HOME / "logs"
@@ -296,7 +330,7 @@ def check_inbox_staleness() -> dict:
     """Check if agent inbox was scanned recently (every 10m cron, warn if >25m stale)."""
     state_file = HERMES_HOME / "state" / "last-message-check"
     if not state_file.exists():
-        return {"status": "DEGRADED", "detail": "No state file — check-agent-messages may not have run"}
+        return {"status": "DEGRADED", "detail": "No state file — orch-check-agent-messages may not have run"}
     try:
         mtime = datetime.fromtimestamp(state_file.stat().st_mtime)
         age = NOW - mtime
@@ -313,7 +347,7 @@ def check_inbox_staleness() -> dict:
 def run() -> str:
     """Run all checks and return report. Empty string = all healthy."""
     checks = {
-        "Ollama": check_service("com.ollama.serve"),
+        "Ollama": check_ollama_api(),
         # autopilot preferred; falls back to sync-watch if absent
         "gbrain sync daemon": check_service("com.gbrain.autopilot")
         if check_service("com.gbrain.autopilot")["status"] != "DOWN"

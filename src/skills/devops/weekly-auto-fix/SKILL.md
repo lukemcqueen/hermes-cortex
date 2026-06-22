@@ -1,5 +1,5 @@
 ---
-name: weekly-auto-fix
+name: orch-weekly-auto-fix
 description: "After the weekly opportunity scan identifies issues, run auto-fix patterns — git pull, branch cleanup, Docker restart, permission fixes, disk cleanup — then verify each fix succeeded. Reduces manual intervention for known recurring problems."
 version: 1.1.0
 author: Moses
@@ -37,10 +37,10 @@ The cron runs in four phases:
 
 ### 1. Deploy the companion script
 
-Copy `scripts/weekly-auto-fix.py` from the hermes-cortex repo to `~/.hermes/scripts/`:
+Copy `scripts/orch-weekly-auto-fix.py` from the hermes-cortex repo to `~/.hermes/scripts/`:
 
 ```bash
-cp hermes-cortex/scripts/weekly-auto-fix.py ~/.hermes/scripts/weekly-auto-fix.py
+cp hermes-cortex/scripts/orch-weekly-auto-fix.py ~/.hermes/scripts/orch-weekly-auto-fix.py
 ```
 
 The script handles known fix patterns with built-in verification:
@@ -76,7 +76,7 @@ Attempt fixes for each issue found:
 
 **Permission fixes:** `chmod 600` / `chmod 644`.
 
-**Companion script:** `python3 ~/.hermes/scripts/weekly-auto-fix.py --verbose` as safety net.
+**Companion script:** `python3 ~/.hermes/scripts/orch-weekly-auto-fix.py --verbose` as safety net.
 
 ## Phase 3: Verify
 

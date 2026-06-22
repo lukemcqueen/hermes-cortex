@@ -31,7 +31,7 @@ case "${ACTION}" in
 
     # Check script presence
     for script in heartbeat.py service-recovery.py system-alert.py \
-                  check-agent-messages.sh cron-auto-remediate.sh \
+                  orch-check-agent-messages.sh cron-auto-remediate.sh \
                   daily-lesson-mine.sh update-session-state.sh; do
       if [ ! -f "${HERMES_SCRIPTS}/${script}" ]; then
         issues+=("MISSING:${HERMES_SCRIPTS}/${script}")
@@ -156,7 +156,7 @@ case "${ACTION}" in
   fix-missing)
     fixed=0
     for script in heartbeat.py service-recovery.py system-alert.py \
-                  check-agent-messages.sh daily-lesson-mine.sh \
+                  orch-check-agent-messages.sh daily-lesson-mine.sh \
                   update-session-state.sh langfuse-health-watchdog.py \
                   langfuse-retention-prune.py lesson-compound-stats-brief.sh \
                   llm-judge-scorer.py memory-to-brain.py memory-compress.py \

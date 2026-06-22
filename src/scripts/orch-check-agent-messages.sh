@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  check-agent-messages.sh — Poll agent message queue
+#  orch-check-agent-messages.sh — Poll agent message queue
 #
 #  Reads new messages from the agent inbox (root inbox/ dir).
 #

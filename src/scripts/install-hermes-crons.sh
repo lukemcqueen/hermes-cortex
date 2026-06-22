@@ -219,7 +219,7 @@ if $UNINSTALL; then
   for job in \
     "cron-auto-remediate" "system-heartbeat" "memory-to-brain-sync" \
     "system-alert-watchdog" "service-recovery" "inbox-sensor" \
-    "check-agent-messages" "agent-health-monitor" "remediation-sensor"; do
+    "orch-check-agent-messages" "agent-health-monitor" "remediation-sensor"; do
     remove_cron "$job"
   done
   info "Uninstall complete"
@@ -319,8 +319,8 @@ create_cron "inbox-sensor" "*/10 * * * *" \
   "" \
   "true"
 
-create_cron "check-agent-messages" "*/10 * * * *" \
-  "check-agent-messages.sh" \
+create_cron "orch-check-agent-messages" "*/10 * * * *" \
+  "orch-check-agent-messages.sh" \
   "" \
   "" \
   "" \

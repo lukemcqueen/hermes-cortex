@@ -7,7 +7,7 @@
 ## Purpose
 
 Centralizes all agent metadata so scripts don't hardcode agent names.
-`check-agent-messages.sh` reads routing targets dynamically from here.
+`orch-check-agent-messages.sh` reads routing targets dynamically from here.
 `generate-inbox-wrappers.py` generates per-agent watch scripts from here.
 
 ## Schema
@@ -42,4 +42,4 @@ Centralizes all agent metadata so scripts don't hardcode agent names.
 The registry auto-generates:
 - `~/.hermes/scripts/agent-inbox-<agent>.sh` wrapper
 - A `inbox-<agent>` cron job with the right schedule
-- Routing in `check-agent-messages.sh` (reads dynamically each run)
+- Routing in `orch-check-agent-messages.sh` (reads dynamically each run)

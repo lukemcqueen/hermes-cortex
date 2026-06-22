@@ -56,7 +56,7 @@ def _check_scripts() -> bool:
     """Check if critical Hermes scripts are present and executable."""
     critical = [
         "heartbeat.py", "service-recovery.py", "system-alert.py",
-        "check-agent-messages.sh", "cron-auto-remediate.sh",
+        "orch-check-agent-messages.sh", "cron-auto-remediate.sh",
     ]
     for name in critical:
         sp = HERMES_SCRIPTS / name
@@ -103,7 +103,7 @@ def _try_restore_scripts() -> str | None:
     restored = []
     critical = [
         "heartbeat.py", "service-recovery.py", "system-alert.py",
-        "check-agent-messages.sh", "cron-auto-remediate.sh",
+        "orch-check-agent-messages.sh", "cron-auto-remediate.sh",
         "daily-lesson-mine.sh", "update-session-state.sh",
         "langfuse-health-watchdog.py", "memory-to-brain.py",
         "web-cache-backup.sh", "web-cache-prune.sh",

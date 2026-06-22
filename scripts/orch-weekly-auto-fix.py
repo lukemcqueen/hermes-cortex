@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-weekly-auto-fix.py — Companion auto-fix runner for the weekly opportunity scan.
+orch-weekly-auto-fix.py — Companion auto-fix runner for the weekly opportunity scan.
 
 Called from the weekly-scan-opportunities cron job after the LLM phase
 identifies issues. Handles known fix patterns:
@@ -15,7 +15,7 @@ After each fix, re-checks the condition to verify the fix succeeded.
 Fails an action if the verification check does not pass.
 
 Usage:
-  python3 weekly-auto-fix.py [--dry-run] [--verbose] [--verify-only]
+  python3 orch-weekly-auto-fix.py [--dry-run] [--verbose] [--verify-only]
 
 Output: JSON with actions_taken, verify_results, and warnings.
 Empty JSON {} on success with nothing to do = silent (watchdog pattern).

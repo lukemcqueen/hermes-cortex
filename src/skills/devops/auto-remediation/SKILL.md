@@ -56,7 +56,7 @@ Check the agent inbox for messages from other agents (Titus, Joseph, Kustos, Gis
 
 **Where to check:**
 - `~/hermes-cortex-private/messages/inbox/` — broadcast messages addressed to `all` or from an agent asking for help
-- The `check-agent-messages.sh` output tells you what's new
+- The `orch-check-agent-messages.sh` output tells you what's new
 
 **How to handle:**
 1. Read the message content
