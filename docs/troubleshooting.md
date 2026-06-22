@@ -114,8 +114,8 @@ launchctl kickstart -k gui/501/com.hermes.langfuse-web
 **Fix — sync credentials:**
 ```bash
 PASS=$(plutil -p ~/Library/LaunchAgents/com.hermes.minio.plist | grep MINIO_ROOT_PASSWORD | cut -d'"' -f4 -s)
-sed -i '' "s|LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY=.*|LAN...SA|" ~/langfuse/.env
-sed -i '' "s|LANGFUSE_MINIO_SECRET_KEY=.*|LAN...S|" ~/langfuse/.env
+sed -i '' "s|LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY=***|LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY=$PASS|" ~/langfuse/.env
+sed -i '' "s|LANGFUSE_MINIO_SECRET_KEY=***|LANGFUSE_MINIO_SECRET_KEY=$PASS|" ~/langfuse/.env
 launchctl kickstart -k gui/501/com.hermes.langfuse-web
 ```
 
@@ -352,7 +352,7 @@ sudo systemctl daemon-reload && sudo systemctl start ollama
 # ~/langfuse/.env  (or wherever your docker-compose reads env vars)
 LANGFUSE_INIT_USER_EMAIL=admin@langfuse.local
 LANGFUSE_INIT_USER_NAME=admin
-LANGFUSE_INIT_USER_PASSWORD=<choose-a-strong-password>
+LANGFUSE_INIT_USER_PASSWORD=<choose a strong password>
 ```
 
 Then recreate containers:
@@ -564,11 +564,40 @@ sudo dpkg --configure -a
 
 ---
 
+### 24. Docker build fails — "Alembic migration failed"
+
+**Symptom:** `docker compose build` succeeds, but `./run up` reports "Alembic migration failed" and the API container exits immediately. Or `./run build` reports multiple heads.
+
+**Root cause:** Multiple Alembic migration heads from parallel work creating migrations from the same parent without merging.
+
+**Prevention (agents, follow this protocol):**
+
+- **Before creating any migration**, run `./run check:alembic`. If >1 head, stop and merge first:
+  ```bash
+  cd apps/api && .venv/bin/alembic merge heads -m "merge_<descriptions>"
+  ```
+
+- **Always use `./run migration:new`** instead of bare `alembic revision`. It checks single head BEFORE and AFTER creation.
+
+- **Docker build has two guards:** `./run build` pre-checks locally, the Dockerfile also checks at docker build time. Either will catch a fork before deploy.
+
+**If you find a fork:**
+```bash
+cd apps/api && .venv/bin/alembic heads          # see the heads
+.venv/bin/alembic merge heads -m "merge_<a>_<b>"  # create merge
+./run build                                       # rebuild
+```
+
+**Diagnostics:** `./run check:alembic` (static, no DB needed), `./run check:migrations` (requires DB), `alembic history` (full lineage).
+
+---
+
 ## Changelog
 
 | Version | Date | Changes |
 |---|---|---|
-|| 1.4.0 | 2026-06-10 | Rewrote #23 (Langfuse costs) — fixed schema from `langfuse.models` to `public.models`, corrected INSERT SQL for v3 schema, added opencode-zen/opencode-go provider subsection with deepseek-v4-flash-free pricing SQL |
+| 1.5.0 | 2026-06-22 | Added #24 (Alembic migration fork troubleshooting, prevention protocol, diagnostics) |
+| 1.4.0 | 2026-06-10 | Rewrote #23 (Langfuse costs) — fixed schema from `langfuse.models` to `public.models`, corrected INSERT SQL for v3 schema, added opencode-zen/opencode-go provider subsection with deepseek-v4-flash-free pricing SQL |
 | 1.2.0 | 2026-06-06 | Added #21 (Langfuse fromTimestamp), #22 (dashboard no-traces), #23 (costs $0.00), #24 (pf firewall), #25 (fail2ban), updated port ranges |
 | 1.1.0 | 2026-06-06 | Added entry #18 (Ollama 0.0.0.0 fix), #19 (first-time admin access), #20 (Redis timeout) |
 | 1.0.0 | 2026-06-05 | Initial release — 17 entries covering Docker, Dashboard, install, nginx, memory, and Linux |

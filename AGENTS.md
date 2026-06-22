@@ -358,3 +358,39 @@ misleading error message.
 Stop the redundant one: `launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.gbrain.sync-watch.plist`
 Disable it: `mv ~/Library/LaunchAgents/com.gbrain.sync-watch.plist{,.disabled}`
 Or re-run `install.sh` and the new guard will skip re-creating it.
+
+---
+
+### 2026-06-22 — Titus: Alembic migration fork prevention (all agents working on Python projects with Alembic)
+
+**Problem:** Parallel agents creating Alembic migrations from the same parent head produce a fork (multiple heads), which causes `docker compose build` to fail at container startup.
+
+**Three-layer defense (every project with Alembic MUST implement ALL layers):**
+
+| Layer | Location | What it guards | Fails at |
+|-------|----------|----------------|----------|
+| **Pre-build check** | `./run build` runs `python3 alembic/check-heads.py` | `docker compose build` via `./run` | Build time |
+| **Dockerfile gate** | `RUN python3 alembic/check-heads.py` in Docker build stage | Direct `docker compose build` (bypassing `./run`) | Docker build time |
+| **Migration creation guard** | `./run migration:new` checks single head BEFORE and AFTER `alembic revision` | Parallel agents both creating from same parent head | Migration creation time |
+
+**Setup:**
+
+1. Create `alembic/check-heads.py` — static-analysis script that parses ALL migration files with correct type-annotation-aware regex (`(?::\s*.*?)?` for both `revision` and `down_revision`). The script auto-discovers versions via `Path(__file__).parent / "versions"`.
+
+2. In the Dockerfile build stage (after `uv sync`):
+   ```dockerfile
+   COPY alembic/ alembic/
+   RUN python3 alembic/check-heads.py
+   ```
+
+3. In `./run`, add `cmd_migration_new()` that wraps `alembic revision --autogenerate` with pre/post single-head verification. Register it as `migration:new` in the case dispatch.
+
+4. In `entrypoint.sh`, pre-check head count with an explicit `HEAD_COUNT` check before `alembic upgrade head` — separate error for multi-head vs upgrade failure.
+
+5. Add `!alembic/check-heads.py` to `.dockerignore` so the script is accessible during build.
+
+**Regex pitfall:** The original regex `(?:\s*\w+)?` silently skipped ALL files using new-style type annotations like `revision: str = "001"` and `down_revision: tuple[str, ...] | None = (...)`. The correct regex is `(?::\s*.*?)?` — the explicit colon anchors the type annotation match.
+
+**Skill:** `project-run-scripts` skill has been updated with all patterns, the fixed script, and template code. Load with `skill_view(name="project-run-scripts")`. The check script is at `scripts/check-alembic-heads.py` in the skill. To use the self-locating variant, place it at `alembic/check-heads.py` in the project.
+
+**Related skills:** `change-test-loop` (use `./run migration:new` instead of bare `alembic revision` during test-driven development).
