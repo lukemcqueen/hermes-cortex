@@ -195,8 +195,8 @@ source ~/.zshrc
 
 **Fix:**
 ```bash
-chmod +x ~/hermes-cortex/install.sh
-bash ~/hermes-cortex/install.sh   # Run with bash, not ./
+chmod +x ${CORTEX_REPO:-$HOME/hermes-cortex}/install.sh
+bash ${CORTEX_REPO:-$HOME/hermes-cortex}/install.sh   # Run with bash, not ./
 ```
 
 ### 11. Ollama blocked by macOS Gatekeeper
@@ -258,7 +258,7 @@ ssl_ciphers HIGH:!aNULL:!MD5;
 
 **Fix:** The `.htpasswd` file may need to be regenerated:
 ```bash
-htpasswd -c /usr/local/etc/nginx/.htpasswd your-username
+htpasswd -c ${NGINX_HTPASSWD:-/usr/local/etc/nginx/.htpasswd} your-username
 # Enter your password when prompted
 nginx -s reload
 ```

@@ -39,8 +39,8 @@ sudo visudo -cf /etc/sudoers.d/hermes-security
 ### 3. Ensure the input files exist
 
 ```bash
-touch ~/hermes-cortex/deploy/nginx/blocked_ips.add
-touch ~/hermes-cortex/deploy/nginx/nginx-badbots.conf
+touch "${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/blocked_ips.add"
+touch "${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/nginx-badbots.conf"
 ```
 
 ---
@@ -52,7 +52,7 @@ touch ~/hermes-cortex/deploy/nginx/nginx-badbots.conf
 Append bare IPs (one per line) to `blocked_ips.add`:
 
 ```bash
-echo "1.2.3.4" >> ~/hermes-cortex/deploy/nginx/blocked_ips.add
+echo "1.2.3.4" >> "${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/blocked_ips.add"
 ```
 
 ### Update fail2ban filters

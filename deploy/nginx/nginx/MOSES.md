@@ -16,7 +16,7 @@
 ### 1. Push to agent-cortex
 
 ```bash
-cd ~/hermes-cortex
+cd ${CORTEX_REPO:-$HOME/hermes-cortex}
 git push origin main
 ```
 
@@ -41,7 +41,7 @@ This runs at 6 AM daily, scans logs for new suspect IPs, and auto-deploys if it 
 If any peer needs it:
 
 ```bash
-cp ~/hermes-cortex/src/scripts/nginx-security-scanner.sh ~/.hermes/scripts/
+cp ${CORTEX_REPO:-$HOME/hermes-cortex}/src/scripts/nginx-security-scanner.sh ~/.hermes/scripts/
 chmod +x ~/.hermes/scripts/nginx-security-scanner.sh
 ```
 

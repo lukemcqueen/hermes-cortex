@@ -3,7 +3,10 @@
 import json, uuid, urllib.request, base64
 
 # Read keys from .env
-with open('/Users/luke/.hermes/.env') as f:
+import json, os, sys, random
+from pathlib import Path
+
+with open(str(Path.home() / '.hermes' / '.env')) as f:
     lines = f.readlines()
 
 pub = secret = ''

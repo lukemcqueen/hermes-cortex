@@ -35,7 +35,7 @@ Centralizes all agent metadata so scripts don't hardcode agent names.
 ## Adding a New Agent
 
 1. Add entry to the registry JSON
-2. Create htpasswd: `htpasswd /usr/local/etc/nginx/.htpasswd <user>`
+2. Create htpasswd: `htpasswd ${NGINX_HTPASSWD:-/usr/local/etc/nginx/.htpasswd} <user>`
 3. Create config: `~/.hermes/agent-inbox-<agent>.conf` with URL, user, pass
 4. Run: `python3 ~/.hermes/scripts/generate-inbox-wrappers.py --apply-crons`
 

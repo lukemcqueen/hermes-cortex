@@ -1,7 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-SRC="/home/luke/hermes-cortex/deploy/nginx"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SRC="$(cd "$SCRIPT_DIR/.." && pwd)"
 BACKUP="/etc/hermes-cortex-backups/$(date +%Y%m%d-%H%M%S)"
 
 mkdir -p "$BACKUP"

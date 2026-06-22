@@ -1610,6 +1610,15 @@ if [[ -f "${SCRIPT_DIR}/src/scripts/agent-health-monitor.py" ]]; then
   info "  Installed agent-health-monitor.py"
 fi
 
+# ── Auto-Save Active Sessions Script ──────────────────────────────
+AUTO_SAVE_PATH="${SCRIPTS_DIR}/auto-save-active.py"
+if [[ -f "${SCRIPT_DIR}/src/scripts/auto-save-active.py" ]]; then
+  cp "${SCRIPT_DIR}/src/scripts/auto-save-active.py" "$AUTO_SAVE_PATH" 2>/dev/null || \
+    warn "auto-save-active.py copy failed"
+  chmod +x "$AUTO_SAVE_PATH"
+  info "  Installed auto-save-active.py"
+fi
+
 # ── Eval Harness Scripts ───────────────────────────────────────
 # Create evals directory structure
 EVALS_DIR="${HERMES_HOME}/evals"

@@ -137,9 +137,7 @@ If you added or modified a skill, update `docs/SKILLS-MANIFEST.md`:
 ### Step 6: Commit and push
 
 ```bash
-cd ~/hermes-cortex
-git add -A
-git commit -m "feat: contribution description"
+cd "${CORTEX_REPO:-$HOME/hermes-cortex}" && git add -A && git commit -m "feat: contribution description"
 git push
 ```
 
