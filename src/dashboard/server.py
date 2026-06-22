@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Cortex Dashboard v2 — Enriched companion dashboard for Langfuse + Hermes."""
-import base64, json, os, platform, re, sqlite3, subprocess, sys, time
+import base64, json, os, platform, re, shutil, sqlite3, subprocess, sys, time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -187,12 +187,17 @@ def _get_memory():
         return None
 
 
+def _docker_bin() -> str:
+    """Locate docker binary, falling back to PATH."""
+    env = os.environ.get("DOCKER_BIN")
+    if env:
+        return env
+    found = shutil.which("docker")
+    return found or "docker"
+
 def _check_docker(name_substring):
     """Check if a Docker container with the given name substring is running."""
-    # Use full path — launchd has a limited PATH
-    docker_bin = "/usr/local/bin/docker"
-    if not os.path.exists(docker_bin):
-        docker_bin = "docker"  # fallback to PATH lookup
+    docker_bin = _docker_bin()
     try:
         r = subprocess.run(
             [docker_bin, "ps", "--filter", f"name={name_substring}",

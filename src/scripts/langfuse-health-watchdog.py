@@ -8,9 +8,9 @@ import subprocess
 import sys
 import time
 import urllib.request
-import urllib.error
+from pathlib import Path
 
-COMPOSE_DIR = "/Users/luke/langfuse"
+COMPOSE_DIR = str(Path.home() / "langfuse")
 WEB_URL = "http://localhost:3000"
 TIMEOUT = 10
 

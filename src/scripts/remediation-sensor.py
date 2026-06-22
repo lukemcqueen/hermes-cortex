@@ -112,40 +112,53 @@ def check_disk():
 
 
 def check_memory():
-    """Check memory pressure (macOS)."""
-    if sys.platform != "darwin":
-        return
-    out, _, rc = run("memory_pressure 2>/dev/null | grep 'System-wide memory' | sed 's/.* \\([0-9]*\\)%/\\1/'")
-    if rc == 0 and out.strip():
-        free_pct = int(out.strip())
-        if free_pct < 10:
-            add_issue("mem_pressure", "critical", f"Memory pressure high: {free_pct}% free", {"free_pct": free_pct})
-        elif free_pct < 15:
-            add_issue("mem_pressure", "high", f"Memory pressure elevated: {free_pct}% free", {"free_pct": free_pct})
+    """Check memory pressure (macOS + Linux)."""
+    if sys.platform == "darwin":
+        out, _, rc = run("memory_pressure 2>/dev/null | grep 'System-wide memory' | sed 's/.* \\([0-9]*\\)%/\\1/'")
+        if rc == 0 and out.strip():
+            free_pct = int(out.strip())
+            if free_pct < 10:
+                add_issue("mem_pressure", "critical", f"Memory pressure high: {free_pct}% free", {"free_pct": free_pct})
+            elif free_pct < 15:
+                add_issue("mem_pressure", "high", f"Memory pressure elevated: {free_pct}% free", {"free_pct": free_pct})
+    elif sys.platform.startswith("linux"):
+        out, _, rc = run(r"free -m | awk '/Mem:/ {printf \"%.0f\", $3/$2 * 100}'")
+        if rc == 0 and out.strip():
+            used_pct = int(out.strip())
+            free_pct = 100 - used_pct
+            if free_pct < 10:
+                add_issue("mem_pressure", "critical", f"Memory at {used_pct}% used ({free_pct}% free)", {"used_pct": used_pct})
+            elif free_pct < 15:
+                add_issue("mem_pressure", "high", f"Memory at {used_pct}% used ({free_pct}% free)", {"used_pct": used_pct})
 
 
 def check_services():
-    """Check critical services (macOS launchd)."""
-    if sys.platform != "darwin":
-        return
-    # Ollama is always required
-    out, _, rc = run("launchctl list com.ollama.serve 2>/dev/null | awk 'NR==2 {print $1}'")
-    if rc != 0 or not out.strip() or out.strip() == "-":
-        add_issue("service_down", "high", "Ollama is down", {"service": "com.ollama.serve"})
-    
-    # Gbrain: at least ONE of autopilot or sync-watch must be running
-    # (they are alternative sync strategies, not both required)
-    autopilot_ok = False
-    sync_watch_ok = False
-    out, _, rc = run("launchctl list com.gbrain.autopilot 2>/dev/null | awk 'NR==2 {print $1}'")
-    if rc == 0 and out.strip() and out.strip() != "-":
-        autopilot_ok = True
-    out, _, rc = run("launchctl list com.gbrain.sync-watch 2>/dev/null | awk 'NR==2 {print $1}'")
-    if rc == 0 and out.strip() and out.strip() != "-":
-        sync_watch_ok = True
-    
-    if not autopilot_ok and not sync_watch_ok:
-        add_issue("service_down", "high", "No gbrain sync service running (autopilot or sync-watch)", {"services": ["com.gbrain.autopilot", "com.gbrain.sync-watch"]})
+    """Check critical services (macOS launchd / Linux systemd)."""
+    if sys.platform == "darwin":
+        # Ollama is always required
+        out, _, rc = run("launchctl list com.ollama.serve 2>/dev/null | awk 'NR==2 {print $1}'")
+        if rc != 0 or not out.strip() or out.strip() == "-":
+            add_issue("service_down", "high", "Ollama is down", {"service": "com.ollama.serve"})
+        # Gbrain: at least ONE of autopilot or sync-watch must be running
+        autopilot_ok = False
+        sync_watch_ok = False
+        out, _, rc = run("launchctl list com.gbrain.autopilot 2>/dev/null | awk 'NR==2 {print $1}'")
+        if rc == 0 and out.strip() and out.strip() != "-":
+            autopilot_ok = True
+        out, _, rc = run("launchctl list com.gbrain.sync-watch 2>/dev/null | awk 'NR==2 {print $1}'")
+        if rc == 0 and out.strip() and out.strip() != "-":
+            sync_watch_ok = True
+        if not autopilot_ok and not sync_watch_ok:
+            add_issue("service_down", "high", "No gbrain sync service running (autopilot or sync-watch)", {"services": ["com.gbrain.autopilot", "com.gbrain.sync-watch"]})
+    elif sys.platform.startswith("linux"):
+        # Ollama user service
+        out, _, rc = run("systemctl --user is-active ollama 2>/dev/null")
+        if out.strip() != "active":
+            add_issue("service_down", "high", f"Ollama is not active (systemd user service)", {"service": "ollama.service", "status": out.strip() or "unknown"})
+        # Gbrain sync-watch user service
+        out, _, rc = run("systemctl --user is-active com.gbrain.sync-watch 2>/dev/null")
+        if rc == 0 and out.strip() != "active":
+            add_issue("service_down", "high", f"gbrain sync-watch is not active (systemd user service)", {"service": "com.gbrain.sync-watch.service", "status": out.strip() or "unknown"})
 
 
 def check_nginx():

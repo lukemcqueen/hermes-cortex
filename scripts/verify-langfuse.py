@@ -2,13 +2,17 @@
 """Verify Langfuse setup - check traces and API keys."""
 import json, urllib.request, base64
 
-with open('/Users/luke/.hermes/.env') as f:
+import os
+from pathlib import Path
+
+with open(str(Path.home() / '.hermes' / '.env')) as f:
     lines = f.readlines()
 pub = secret = ''
 for line in lines:
     if line.startswith('HERMES_LANGFUSE_PUBLIC_KEY='):
         pub = line.strip().split('=', 1)[1]
-    elif line.startswith('HERMES_LANGFUSE_SECRET_KEY=***        secret = line.strip().split('=', 1)[1]
+    elif line.startswith('HERMES_LANGFUSE_SECRET_KEY='):
+        secret = line.strip().split('=', 1)[1]
 
 auth = base64.b64encode(f'{pub}:{secret}'.encode()).decode()
 base = 'http://127.0.0.1:3000'
