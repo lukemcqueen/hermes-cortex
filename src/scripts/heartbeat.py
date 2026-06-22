@@ -208,17 +208,78 @@ def check_gateway_log() -> dict:
     log_dir = HERMES_HOME / "logs"
     if not log_dir.exists():
         return {"status": "UNKNOWN", "detail": "No log directory"}
+def check_disk_usage(path: str = "/") -> dict:
+    """Check disk usage."""
+    try:
+        result = subprocess.run(
+            ["df", "-h", path], capture_output=True, text=True, timeout=10,
+        )
+        lines = result.stdout.strip().split("\n")
+        if len(lines) >= 2:
+            fields = lines[1].split()
+            used_pct = fields[4] if len(fields) >= 5 else "?"
+            pct_str = used_pct.rstrip("%")
+            try:
+                pct = int(pct_str)
+                status = "UP" if pct < 85 else "DEGRADED" if pct < 95 else "DOWN"
+                return {"status": status, "detail": f"{used_pct} used on {path}"}
+            except ValueError:
+                return {"status": "UP", "detail": f"{used_pct} used on {path} (unparseable)"}
+        return {"status": "ERROR", "detail": "Could not parse df output"}
+    except Exception as e:
+        return {"status": "ERROR", "detail": str(e)}
 
-    recent = False
-    for f in log_dir.glob("*.log*"):
-        age = NOW - datetime.fromtimestamp(f.stat().st_mtime, tz=timezone.utc).astimezone()
-        if age < timedelta(minutes=30):
-            recent = True
-            break
 
-    if recent:
-        return {"status": "UP", "detail": "Activity in last 30 min"}
-    return {"status": "DEGRADED", "detail": "No log activity in 30+ min"}
+def check_docker_containers() -> dict:
+    """Check essential Docker containers (ClickHouse, MinIO, Redis) for Langfuse."""
+    containers = {
+        "ClickHouse": "langfuse-clickhouse-1",
+        "MinIO": "langfuse-minio-1",
+        "Redis": "langfuse-redis-1",
+    }
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--format", "{{.Names}}\t{{.Status}}"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode != 0:
+            return {"status": "UNKNOWN", "detail": "Docker not available"}
+
+        running = {}
+        for line in result.stdout.strip().split("\n"):
+            if "\t" in line:
+                name, status = line.split("\t", 1)
+                running[name] = status
+
+        issues = []
+        for label, container_name in containers.items():
+            if container_name not in running:
+                issues.append(f"{label} not running")
+            elif "Up" not in running[container_name]:
+                issues.append(f"{label}: {running[container_name]}")
+
+        if issues:
+            return {"status": "DEGRADED", "detail": "; ".join(issues)}
+        return {"status": "UP", "detail": "all containers healthy"}
+    except FileNotFoundError:
+        return {"status": "UNKNOWN", "detail": "Docker not installed"}
+    except Exception as e:
+        return {"status": "ERROR", "detail": str(e)}
+
+
+def check_memory_sync_freshness() -> dict:
+    """Check when memory was last synced to brain."""
+    current = BRAIN_SHARED / "hermes-memory" / "current.md"
+    if not current.exists():
+        return {"status": "UNKNOWN", "detail": "No current.md — sync may not have run yet"}
+    mtime = datetime.fromtimestamp(current.stat().st_mtime, tz=timezone.utc).astimezone()
+    age = NOW - mtime
+    if age < timedelta(hours=8):
+        return {"status": "UP", "detail": f"Last sync: {age.total_seconds() / 60:.0f}m ago"}
+    elif age < timedelta(hours=24):
+        return {"status": "DEGRADED", "detail": f"Last sync: {age.total_seconds() / 3600:.1f}h ago"}
+    else:
+        return {"status": "DOWN", "detail": f"Last sync: {age.total_seconds() / 3600:.1f}h ago — stale!"}
 
 
 def check_gbrain_sources() -> dict:
