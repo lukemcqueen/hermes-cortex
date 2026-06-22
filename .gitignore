@@ -62,5 +62,6 @@ node_modules/
 *.swo
 
 # Git filter-repo artifacts
-.git-filter-repo-replacements.txt
+# Agent infrastructure
 .hermes-cortex/memory/
+.hermes-cortex/sessions/archive/
