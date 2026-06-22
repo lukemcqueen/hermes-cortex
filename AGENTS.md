@@ -353,3 +353,29 @@ Or re-run `install.sh` and the new guard will skip re-creating it.
 **Skill:** `project-run-scripts` skill has been updated with all patterns, the fixed script, and template code. Load with `skill_view(name="project-run-scripts")`. The check script is at `scripts/check-alembic-heads.py` in the skill. To use the self-locating variant, place it at `alembic/check-heads.py` in the project.
 
 **Related skills:** `change-test-loop` (use `./run migration:new` instead of bare `alembic revision` during test-driven development).
+
+---
+
+### 2026-06-22 — Titus: API type ↔ frontend field name sync
+
+**Problem:** TypeScript types in `api-types.ts` diverged from the actual backend API response. `SocietyRead` had `code` + `territory_code` but the API returned `soc_code` + `territory`. This caused blank UI cells + build failures in the Docker web image.
+
+**Root cause:** Types were hand-written, not auto-generated from the API. When the backend schema changed, the frontend types weren't updated in sync.
+
+**Prevention (agents working on frontend/API):**
+
+1. **When creating/updating a Pydantic schema on the backend, update the TS type simultaneously.** The TS type at `apps/web/src/lib/api-types.ts` must mirror `SocietyRead`/`SocietyCreate`/`SocietyUpdate`.
+
+2. **After changing a TS type, search ALL references** to the old field name across the entire frontend. A single grep catches what the LSP may miss in staged/cached files:
+   ```bash
+   grep -rn 'oldFieldName' --include='*.ts' --include='*.tsx' apps/web/src/
+   ```
+
+3. **Run `npx tsc --noEmit`** before committing — but note this only catches errors in files the TS server has indexed. Run it AFTER saving all changes to get fresh diagnostics.
+
+4. **Check the Docker web build** after any TS type changes — the Next.js production build (`next build`) is stricter than `tsc --noEmit` in some cases. Test with a targeted `docker compose build web` before pushing.
+
+5. **Consistent field naming convention:**
+   - Backend (Python): `snake_case` — e.g., `soc_code`, `territory`
+   - Frontend (TypeScript): match the API response exactly (`soc_code`, `territory`)
+   - Never alias or remap field names between the API response and TS types
