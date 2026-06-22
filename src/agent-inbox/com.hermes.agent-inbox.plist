@@ -7,9 +7,9 @@
     <string>com.hermes.agent-inbox</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/luke/.hermes/agent-inbox/venv/bin/uvicorn</string>
+        <string>${CORTEX_HOME}/.hermes/agent-inbox/venv/bin/uvicorn</string>
         <string>--app-dir</string>
-        <string>/Users/luke/hermes-cortex/src/agent-inbox</string>
+        <string>${CORTEX_HOME}/hermes-cortex/src/agent-inbox</string>
         <string>server:app</string>
         <string>--host</string>
         <string>127.0.0.1</string>
@@ -18,19 +18,19 @@
         <string>--no-access-log</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/luke/hermes-cortex/src/agent-inbox</string>
+    <string>${CORTEX_HOME}/hermes-cortex/src/agent-inbox</string>
     <key>KeepAlive</key>
     <true/>
     <key>RunAtLoad</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/Users/luke/.hermes/agent-inbox/server.log</string>
+    <string>${CORTEX_HOME}/.hermes/agent-inbox/server.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/luke/.hermes/agent-inbox/server.log</string>
+    <string>${CORTEX_HOME}/.hermes/agent-inbox/server.log</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/Users/luke/.hermes/agent-inbox/venv/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>${CORTEX_HOME}/.hermes/agent-inbox/venv/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
 </dict>
 </plist>

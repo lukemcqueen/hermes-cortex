@@ -27,7 +27,7 @@ setup_gbrain_sync_service() {
     info "gbrain autopilot detected — autopilot handles sync internally, skipping sync-watch"
     return 0
   fi
-  if launchctl list "$autopilot_label" &>/dev/null 2>&1; then
+  if [[ "$CORTEX_OS" == "macos" ]] && launchctl list "$autopilot_label" &>/dev/null 2>&1; then
     info "gbrain autopilot plist found — autopilot handles sync internally, skipping sync-watch"
     return 0
   fi
