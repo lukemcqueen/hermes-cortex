@@ -3,6 +3,8 @@
 > **Version 1.3.0** — Published 2026-06-15
 > A collection of reusable cron job prompts and scripts for Hermes Agent automation.
 
+> **🪪 Scope:** Most recipes in this cookbook are **general** — any Hermes user can adapt them. Recipes marked with `⚡` are from **Luke's deployment (Moses server)** and reference his specific setup (Moses as orchestrator, peer agents Titus/Gisu/Joseph, KST timezone, Telegram delivery). Treat those as concrete examples you can customize for your own setup.
+
 ---
 
 This cookbook contains production-tested cron job recipes you can copy, customize, and deploy with your Hermes Agent. Each recipe includes the full prompt, schedule recommendation, required toolsets, and setup instructions.
@@ -746,7 +748,7 @@ hermes cron create \
 
 ---
 
-## 🌅 Daily Morning Briefing
+## ⚡ 🌅 Daily Morning Briefing (Luke's setup — customizable example)
 
 Comprehensive morning briefing covering Korean peninsula news, world Christianity, Bible verses, and system health.
 
@@ -883,7 +885,7 @@ hermes cron create \
 
 ---
 
-## 📊 Layout at a Glance
+## ⚡ 📊 Layout at a Glance (Luke's deployment)
 
 | Time (24h) | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
 |---|---|---|---|---|---|---|---|
@@ -900,7 +902,7 @@ hermes cron create \
 
 ---
 
-## 📨 Moses Inbox Remediation Processor
+## ⚡ 📨 Moses Inbox Remediation Processor
 
 Detects agent-inbox messages from peer agents flagged as needing a fix (by keyword
 match: "error", "broken", "help", etc.) and auto-remediates within ~10 minutes.

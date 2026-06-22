@@ -25,7 +25,7 @@ Preserves active working context across agent sessions.
 
 **Closed loop:** Non-negotiable for context continuity.
 
-## 3. 🧠 Skills
+## ⚡ 3. 📡 Skills (Moses orchestrator — multi-agent pipeline)
 
 Discovers agent-developed skills from remote agents and evaluates them for upstreaming.
 
@@ -52,7 +52,7 @@ Persists stable facts, preferences, and conventions across sessions.
 
 **Closed loop:** Write → sync → prune → compress. Budget check prevents overflow.
 
-## Consolidated Nightly Window (02:00–05:00 KST)
+## ⚡ Consolidated Nightly Window (Luke's deployment — 02:00–05:00 KST)
 
 Most writes happen overnight when the system is idle:
 

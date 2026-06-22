@@ -3,6 +3,12 @@
 This file is read by many agent tools (Claude Code, Copilot, Codex, Hermes, etc.)
 on session start. It orients any agent working on this repo.
 
+> **🪪 Scope:** This file serves two audiences:
+> - **General agents** — the Architecture Principles, Agent Execution Contract, and Structured Development Pipeline below are universal to Hermes Cortex and recommended for every agent.
+> - **Luke's deployment (Moses server)** — sections marked with a `⚡` tag are specific to Luke's multi-machine, multi-agent orchestration setup. They describe how Moses (the orchestrator agent) coordinates with peer agents Titus, Gisu, and Joseph. If you are not running Luke's setup, treat these as examples you can adapt.
+>
+> Everything unmarked is general Hermes Cortex guidance — apply it to any project using this repo.
+
 ## What This Repo Does
 
 Hermes Cortex is a **public installer and skill set** for
@@ -170,7 +176,7 @@ code review (security scan, quality gate
 
 ---
 
-## Daily Priority Check-in
+## ⚡ Daily Priority Check-in (Luke's multi-agent setup)
 
 **Cron jobs:**
 - `titus-daily-briefing` — 8:00am KST, posts to GitHub issue #1
@@ -229,9 +235,9 @@ Load the relevant skill with `skill_view(name)` when entering each stage. Skills
 - Keep docs current when changing install behavior
 - MIT License — be permissive with what's shared
 
-## Agent Handoffs
+## ⚡ Agent Handoffs (Luke's deployment — session-to-session notes)
 
-### 2026-06-19 — Monitoring timestamps switched to KST (Seoul time)
+### ⚡ 2026-06-19 — Monitoring timestamps switched to KST (Seoul time)
 
 **Change:** All monitoring scripts now output timestamps in KST (UTC+9) instead of UTC.
 
@@ -247,7 +253,7 @@ Load the relevant skill with `skill_view(name)` when entering each stage. Skills
 
 ---
 
-### 2026-06-19 — Cron installation hardened
+### ⚡ 2026-06-19 — Cron installation hardened
 
 **Improvements to `install-hermes-crons.sh`:**
 
@@ -298,7 +304,7 @@ cat ~/.hermes/cron/jobs.json | python3 -m json.tool
 
 ---
 
-### 2026-06-15 — Auto-remediation system (all agents)
+### 2026-06-15 — Auto-remediation system (general — applies to all agents)
 
 **What:** Every Hermes agent now has an auto-remediation pipeline that catches and fixes cron job failures, resource issues, and agent inbox help requests without user intervention.
 
@@ -332,7 +338,7 @@ cat ~/.hermes/cron/jobs.json | python3 -m json.tool
    - Phase 3: Spot-check system resources
 4. silent when healthy, brief when fixes applied, escalate after 3 failures
 
-### 2026-06-12 — Titus: gbrain sync-watch vs autopilot conflict
+### ⚡ 2026-06-12 — Titus: gbrain sync-watch vs autopilot conflict
 
 **Problem:** `src/scripts/install-gbrain-sync.sh` creates a sync-watch daemon
 (`com.gbrain.sync-watch`) that runs `gbrain sync --all --skip default` every
@@ -361,7 +367,7 @@ Or re-run `install.sh` and the new guard will skip re-creating it.
 
 ---
 
-### 2026-06-22 — Titus: Alembic migration fork prevention (all agents working on Python projects with Alembic)
+### ⚡ 2026-06-22 — Titus: Alembic migration fork prevention (all agents working on Python projects with Alembic)
 
 **Problem:** Parallel agents creating Alembic migrations from the same parent head produce a fork (multiple heads), which causes `docker compose build` to fail at container startup.
 
