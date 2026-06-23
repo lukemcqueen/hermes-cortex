@@ -114,8 +114,8 @@ case "${ACTION}" in
       done
     elif command -v systemctl >/dev/null 2>&1; then
       # Linux — check user services
-      # Check ollama
-      if ! systemctl --user is-active "ollama" >/dev/null 2>&1; then
+      # Check ollama: prefer user process (not systemd user service)
+      if ! pgrep -f "ollama serve" >/dev/null 2>&1 && ! systemctl --user is-active "ollama" >/dev/null 2>&1; then
         issues+=("SERVICE:ollama:down")
       fi
       # Check gbrain: prefer autopilot via cron (every 5min); sync-watch is fallback
