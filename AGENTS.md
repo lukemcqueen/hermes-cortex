@@ -413,7 +413,7 @@ Or re-run `install.sh` and the new guard will skip re-creating it.
 Titus  → Joseph  → Docker Hub
 Moses  → Joseph  → Docker Hub
 Gisu   → Docker Hub
-Kustos → Gisu     → Docker Hub
+Kustos → Gisu    → Docker Hub
 ```
 
 **Architecture doc:** `docs/registry-cache-architecture.md`
@@ -430,7 +430,7 @@ Kustos → Gisu     → Docker Hub
 | **Joseph** | Docker Hub | `0.0.0.0:5000` | `[localhost:5000]` | ~200 GB |
 | **Moses** | Joseph | `0.0.0.0:5000` | `[joseph:5000]` | ~50 GB |
 | **Gisu** | Docker Hub | `0.0.0.0:5000` | `[localhost:5000]` | ~50 GB |
-| **Titus** | Joseph | `127.0.0.1:5000` | `[localhost:5000, joseph:5000, gisu:5000]` | ~50 GB |
+| **Titus** | Joseph | `127.0.0.1:5000` | `[localhost:5000, joseph:5000]` | ~50 GB |
 | **Kustos** | (none) | — | `[gisu:5000]` | — |
 
 **Deploy commands:**

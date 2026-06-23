@@ -1,10 +1,14 @@
 # Registry Cache Architecture — Tiered Pull-Through
 
-**Titus** (dev laptop, L1) → **Joseph** (personal, L2) → **Docker Hub**
-**Titus** (dev laptop)      → **Gisu** (ACME) → **Docker Hub**
-**Moses** (orchestrator, L1) → **Joseph** (personal server, L2) → **Docker Hub**
+**Titus** (dev laptop, L1) → **Joseph** (L2) → **Docker Hub**
+**Moses** (orchestrator, L1) → **Joseph** (L2) → **Docker Hub**
+**Joseph** (L2 cache, 200GB) → **Docker Hub**
 **Gisu** (ACME staging, L1) → **Docker Hub**
 **Kustos** (ACME prod) → **Gisu** → **Docker Hub**
+
+Two independent islands:
+- **Personal island:** Titus → Joseph → Docker Hub, Moses → Joseph → Docker Hub
+- **ACME island:** Kustos → Gisu → Docker Hub
 
 ## Topology
 
@@ -12,30 +16,29 @@
                     ┌──────────────────────────────────────────────┐
                     │                 Docker Hub                    │
                     │         (registry-1.docker.io)                │
-                    └────────┬────────────┬────────────┬───────────┘
-                             │            │            │
-                    ┌────────┴────┐ ┌─────┴──────┐ ┌──┴────────────┐
-                    │ Joseph      │ │ Gisu       │ │ (direct)      │
-                    │ ~200GB disk │ │ ~50GB disk  │ │              │
-                    │ L2 cache    │ │ L1 cache    │ │              │
-                    │ proxy→Hub   │ │ proxy→Hub   │ │              │
-                    └──────┬──────┘ └─────┬──────┘ └───────────────┘
-                           │              │
-              ┌────────────┴──────┐  ┌────┴──────┐
-              │                  │  │          │
-     ┌────────┴────┐    ┌───────┴──────┐ ┌────┴──────┐
-     │ Titus       │    │ Moses        │ │ Kustos    │
-     │ dev laptop  │    │ orchestrator │ │ ACME    │
-     │ L1 cache    │    │ L1 cache     │ │ no cache  │
+                    └────────┬──────────────────┬──────────────────┘
+                             │                  │
+                    ┌────────┴────┐    ┌────────┴──────┐
+                    │ Joseph      │    │ Gisu          │
+                    │ L2: 200GB   │    │ L1: 50GB      │
+                    │ proxy→Hub   │    │ proxy→Hub     │
+                    └──────┬──────┘    └───────┬───────┘
+                           │                   │
+              ┌────────────┴──────┐    ┌───────┴───────┐
+              │                  │    │               │
+     ┌────────┴────┐    ┌───────┴──────┐ ┌────┴──────┐  │
+     │ Titus       │    │ Moses        │ │ Kustos    │  │
+     │ dev laptop  │    │ orchestrator │ │ ACME    │  │
+     │ L1: local   │    │ L1: local    │ │ no cache  │
      │ proxy→Joseph│    │ proxy→Joseph │ │ mirr→Gisu │
      └─────────────┘    └──────────────┘ └───────────┘
 
 Cache hierarchy:
-  Titus   → Joseph → Docker Hub  (personal/private)
-  Titus   → Gisu   → Docker Hub  (ACME projects)
-  Moses   → Joseph → Docker Hub
-  Gisu    → Docker Hub
-  Kustos  → Gisu   → Docker Hub
+  Titus  → Joseph → Docker Hub
+  Moses  → Joseph → Docker Hub
+  Joseph → Docker Hub
+  Gisu   → Docker Hub
+  Kustos → Gisu   → Docker Hub
 ```
 
 ## Per-Server Config
@@ -130,13 +133,12 @@ No local registry. Points daemon.json mirror to Gisu.
 {
   "registry-mirrors": [
     "http://localhost:5000",
-    "http://joseph:5000",
-    "http://gisu:5000"
+    "http://joseph:5000"
   ]
 }
 ```
 
-Docker tries L1 (Titus cache) first. On miss, falls through to L2 (Joseph) for personal/private images, then L3 (Gisu) for ACME images. On miss there, falls through to Docker Hub natively.
+Docker tries L1 (Titus cache) first. On miss, falls through to L2 (Joseph). On miss there, falls through to Docker Hub natively.
 
 ### Moses (orchestrator server)
 
@@ -179,7 +181,7 @@ On machines that build Docker images, add BuildKit config to route `FROM` pulls 
 ```toml
 debug = true
 [registry."docker.io"]
-  mirrors = ["http://localhost:5000", "http://joseph:5000", "http://gisu:5000"]
+  mirrors = ["http://localhost:5000", "http://joseph:5000"]
 ```
 
 ```bash
@@ -224,7 +226,7 @@ Images that are pulled once and never updated (version-pinned base images) stay 
 
 | Machine | Runs Registry? | Upstream | daemon.json mirror | BuildKit mirror |
 |---------|---------------|----------|--------------------|-----------------|
-| **Titus** | ✅ L1 | Joseph | `[localhost:5000, joseph:5000, gisu:5000]` | same |
+| **Titus** | ✅ L1 | Joseph | `[localhost:5000, joseph:5000]` | same |
 | **Moses** | ✅ L1 | Joseph | `[joseph:5000]` | `[joseph:5000]` |
 | **Joseph** | ✅ L2 | Docker Hub | `[localhost:5000]` | same |
 | **Gisu** | ✅ L1 | Docker Hub | `[localhost:5000]` | same |
