@@ -403,38 +403,55 @@ Or re-run `install.sh` and the new guard will skip re-creating it.
 
 ---
 
-### ⚡ 2026-06-23 — Docker Hub pull-through cache (all agents)
+### ⚡ 2026-06-23 — Tiered Docker Hub pull-through cache (all agents)
 
-**Problem:** Every `docker pull` and `docker build` on every machine fetches layers from Docker Hub — slow on cold hosts, wastes bandwidth across agents.
+**Problem:** Every `docker pull` on every machine fetches from Docker Hub — slow on cold hosts, wastes bandwidth across agents.
 
-**Solution:** Local pull-through cache using `registry:3` as a proxy. Deploy on Moses (always-on server). All machines configure `registry-mirrors` in daemon.json to pull through the cache. Optional BuildKit config for `docker build` coverage.
+**Solution:** Tiered pull-through cache hierarchy using `registry:3`. Each level proxies to the level above, forming a chain:
+
+```
+Titus  → Joseph  → Docker Hub
+Gisu   → Docker Hub
+Kustos → Gisu     → Docker Hub
+```
+
+**Architecture doc:** `docs/registry-cache-architecture.md`
 
 **Files:**
-- `deploy/docker-compose.registry.yml` — docker-compose service definition
-- `src/scripts/setup-registry-cache.sh` — one-shot deploy script
-- `src/scripts/registry-gc.sh` — monthly garbage collection
+- `deploy/docker-compose.registry.yml` — generic docker-compose service (set `UPSTREAM` env var to chain)
+- `src/scripts/setup-registry-cache.sh` — deploy script with `--upstream` support
+- `src/scripts/registry-gc.sh` — monthly garbage collection helper
 
-**Setup (on Moses):**
+**Per-server setup:**
+
+| Server | Upstream | Bind | daemon.json mirrors | Volume |
+|--------|----------|------|--------------------|--------|
+| **Joseph** | Docker Hub | `0.0.0.0:5000` | `[localhost:5000]` | ~200 GB |
+| **Gisu** | Docker Hub | `0.0.0.0:5000` | `[localhost:5000]` | ~50 GB |
+| **Titus** | Joseph | `127.0.0.1:5000` | `[localhost:5000, joseph:5000]` | ~50 GB |
+| **Kustos** | (none) | — | `[gisu:5000]` | — |
+
+**Deploy commands:**
+
 ```bash
+# Joseph / Gisu (direct to Docker Hub):
 docker compose -f deploy/docker-compose.registry.yml up -d
+
+# Titus (chain to Joseph):
+UPSTREAM=http://joseph-host:5000 docker compose -f deploy/docker-compose.registry.yml up -d
 ```
 
-**Client config (every machine):**
-```json
-{ "registry-mirrors": ["http://moses-host:5000"] }
-```
+**Or with the setup script:**
 
-**BuildKit config (machines that build Docker images):**
-```toml
-# /etc/buildkitd.toml
-[registry."docker.io"]
-  mirrors = ["http://moses-host:5000"]
-```
 ```bash
-docker buildx create --use --bootstrap \
-  --name cache-builder \
-  --driver docker-container \
-  --buildkitd-config /etc/buildkitd.toml
+# Joseph / Gisu (direct to Hub, listen on LAN):
+bash ~/.hermes/scripts/setup-registry-cache.sh --dir /data/registry
+
+# Titus (chain to Joseph, localhost-only):
+bash ~/.hermes/scripts/setup-registry-cache.sh \
+  --port 127.0.0.1:5000 \
+  --dir ~/docker/cache \
+  --upstream http://joseph:5000
 ```
 
 **Why `registry:3` over Zot:** Zot converts Docker images to OCI format on pull, changing layer digests and breaking SHA-pinned `FROM image@sha256:...` references. Registry:3 is OCI-native, 19.2MB, battle-tested.
