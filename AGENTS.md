@@ -320,7 +320,7 @@ cat ~/.hermes/cron/jobs.json | python3 -m json.tool
 
 **Skill location:** `src/skills/devops/auto-remediation/SKILL.md`
 
-**Setting up on a new agent:**
+**Setting up on a new agent:** Each agent sets `AGENT_NAME` env var or `~/.hermes/moses-inbox.conf` so health reports identify themselves. Default: hostname.
 1. `install.sh` copies all scripts to `~/.hermes/scripts/`
 2. `install-hermes-crons.sh` (auto-run by install.sh) creates essential cron jobs:
    - `cron-auto-remediate` (every 5m, skill-based) — checks errors, applies fixes

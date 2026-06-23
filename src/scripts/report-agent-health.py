@@ -143,7 +143,7 @@ def send_report(report: dict) -> bool:
     try:
         import urllib.parse
         form_data = urllib.parse.urlencode({
-            "from": "titus",
+            "from": agent_name,
             "topic": "health",
             "subject": f"health-report {report.get('agent', 'unknown')} — {'healthy' if report.get('healthy', False) else 'issues'}",
             "body": json.dumps(report, indent=2),
