@@ -922,9 +922,13 @@ async def api_inbox(
         inbox_msgs = [m for m in inbox_msgs if m["topic"] == topic]
 
     if for_:
-        # Per-agent filtering: exclude messages the agent sent or already read
+        # Per-agent filtering: show messages addressed TO this agent
         safe_agent = re.sub(r"[^a-zA-Z0-9_-]", "", for_.strip().lower())
         if safe_agent:
+            # If no explicit topic filter, filter by recipient (topic == agent name)
+            if not topic:
+                inbox_msgs = [m for m in inbox_msgs if m["topic"].strip().lower() == safe_agent]
+            # Exclude messages the agent sent or already read
             filtered = []
             for m in inbox_msgs:
                 msg_from = m.get("from", "").strip().lower()
