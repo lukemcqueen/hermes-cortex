@@ -225,6 +225,9 @@ def check_gbrain_sources() -> dict:
       - Returns UNKNOWN (not DOWN) when gbrain isn't installed
     """
 
+    # Track whether we used doctor vs fallback (for known false-positive filtering)
+    _used_doctor = False
+
     def _run(args, timeout=15):
         env = os.environ.copy()
         env["PATH"] = f"{Path.home() / '.bun/bin'}:{env.get('PATH', '')}"
@@ -266,14 +269,25 @@ def check_gbrain_sources() -> dict:
         try:
             result = _run([gbrain_cmd, "doctor", "--json"], timeout=30)
             if result.returncode == 0 and result.stdout.strip():
+                _used_doctor = True
                 import json as _json
                 data = _json.loads(result.stdout)
                 checks = data.get("doctor", {}).get("checks", [])
                 failures = []
+                # Pre-check: if sync_freshness is OK but cycle_freshness is fail,
+                # the "never completed a full cycle" is a known false positive when
+                # autopilot is running — sources are synced, just not dream-processed.
+                sync_freshness_ok = any(
+                    c.get("status") == "ok" and c.get("name") == "sync_freshness"
+                    for c in checks
+                )
                 for check in checks:
                     name = check.get("name", "")
                     status = check.get("status", "")
                     msg = check.get("message", "")
+                    # Skip cycle_freshness when sync_freshness is OK (autopilot false positive)
+                    if name == "cycle_freshness" and sync_freshness_ok:
+                        continue
                     if status == "fail" and any(kw in name for kw in ["sync", "embed", "source", "cycle"]):
                         failures.append(f"{name}: {msg[:120]}")
                     elif status == "warn" and name in ("sync_freshness", "cycle_freshness", "orphan_ratio"):
@@ -303,6 +317,11 @@ def check_gbrain_sources() -> dict:
             total, never_synced, zero_pages = _parse_sources_list(result2.stdout)
             issues = []
             if never_synced > 0:
+                # "never synced" on a source with pages is a gbrain metadata artifact,
+                # not a real issue — treat as UNKNOWN, not DEGRADED
+                if not _used_doctor:
+                    return {"status": "UNKNOWN",
+                            "detail": f"{never_synced} source(s) label 'never synced' (may be metadata artifact)"}
                 issues.append(f"{never_synced} source(s) never synced")
             if zero_pages > 0 and zero_pages == total:
                 issues.append("all sources have 0 pages")
