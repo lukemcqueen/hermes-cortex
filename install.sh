@@ -1649,23 +1649,6 @@ if [[ -f "${SCRIPT_DIR}/src/scripts/hermes_tz.py" ]]; then
   info "  Installed hermes_tz.py (timezone helper)"
 fi
 
-# ── Docker Registry Cache Scripts ──────────────────────────────
-REGISTRY_SETUP_PATH="${SCRIPTS_DIR}/setup-registry-cache.sh"
-if [[ -f "${SCRIPT_DIR}/src/scripts/setup-registry-cache.sh" ]]; then
-  cp "${SCRIPT_DIR}/src/scripts/setup-registry-cache.sh" "$REGISTRY_SETUP_PATH" 2>/dev/null || \
-    warn "setup-registry-cache.sh copy failed"
-  chmod +x "$REGISTRY_SETUP_PATH"
-  info "  Installed setup-registry-cache.sh"
-fi
-
-REGISTRY_GC_PATH="${SCRIPTS_DIR}/registry-gc.sh"
-if [[ -f "${SCRIPT_DIR}/src/scripts/registry-gc.sh" ]]; then
-  cp "${SCRIPT_DIR}/src/scripts/registry-gc.sh" "$REGISTRY_GC_PATH" 2>/dev/null || \
-    warn "registry-gc.sh copy failed"
-  chmod +x "$REGISTRY_GC_PATH"
-  info "  Installed registry-gc.sh (monthly GC helper)"
-fi
-
 # ── Auto-Update Cron ───────────────────────────────────────────
 AUTO_UPDATE_SCRIPT="${SCRIPTS_DIR}/install-cortex-update-cron.sh"
 if [[ -f "$AUTO_UPDATE_SCRIPT" ]]; then
