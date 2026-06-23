@@ -1,7 +1,9 @@
 # Registry Cache Architecture — Tiered Pull-Through
 
-Three tiers: **Titus** (dev laptop, L1) → **Joseph** (personal server, L2) → **Docker Hub**
-Two independent islands: **Gisu** (ACME staging) → **Docker Hub**, and **Kustos** → **Gisu** → Docker Hub
+**Titus** (dev laptop, L1) → **Joseph** (personal server, L2) → **Docker Hub**
+**Moses** (orchestrator, L1) → **Joseph** (personal server, L2) → **Docker Hub**
+**Gisu** (ACME staging, L1) → **Docker Hub**
+**Kustos** (ACME prod) → **Gisu** → **Docker Hub**
 
 ## Topology
 
@@ -11,26 +13,27 @@ Two independent islands: **Gisu** (ACME staging) → **Docker Hub**, and **Kusto
                     │         (registry-1.docker.io)                │
                     └────────┬────────────┬────────────┬───────────┘
                              │            │            │
-                             │            │            │
                     ┌────────┴────┐ ┌─────┴──────┐ ┌──┴────────────┐
                     │ Joseph      │ │ Gisu       │ │ (direct)      │
                     │ ~200GB disk │ │ ~50GB disk  │ │              │
                     │ L2 cache    │ │ L1 cache    │ │              │
                     │ proxy→Hub   │ │ proxy→Hub   │ │              │
-                    └────────┬────┘ └─────┬──────┘ └───────────────┘
-                             │            │
-                    ┌────────┴────┐ ┌─────┴──────┐
-                    │ Titus       │ │ Kustos     │
-                    │ dev laptop  │ │ ACME prod│
-                    │ L1 cache    │ │ no cache   │
-                    │ proxy→Joseph│ │ mirror→Gisu│
-                    └─────────────┘ └────────────┘
+                    └──────┬──────┘ └─────┬──────┘ └───────────────┘
+                           │              │
+              ┌────────────┴──────┐  ┌────┴──────┐
+              │                  │  │          │
+     ┌────────┴────┐    ┌───────┴──────┐ ┌────┴──────┐
+     │ Titus       │    │ Moses        │ │ Kustos    │
+     │ dev laptop  │    │ orchestrator │ │ ACME    │
+     │ L1 cache    │    │ L1 cache     │ │ no cache  │
+     │ proxy→Joseph│    │ proxy→Joseph │ │ mirr→Gisu │
+     └─────────────┘    └──────────────┘ └───────────┘
 
 Cache hierarchy:
   Titus   → Joseph → Docker Hub
+  Moses   → Joseph → Docker Hub
   Gisu    → Docker Hub
   Kustos  → Gisu   → Docker Hub
-  Joseph  → Docker Hub
 ```
 
 ## Per-Server Config
@@ -79,6 +82,23 @@ services:
       retries: 3
 ```
 
+### Moses (orchestrator server)
+
+Chains to Joseph. Reduces WAN pulls for the orchestrator that runs the most frequent docker operations (monitoring, auto-remediation, service recovery).
+
+```yaml
+services:
+  registry:
+    image: registry:3
+    restart: always
+    ports: ["5000:5000"]
+    environment:
+      REGISTRY_PROXY_REMOTEURL: http://joseph:5000  # chain to Joseph
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    volumes:
+      - registry-data:/var/lib/registry
+```
+
 ### Titus (dev laptop)
 
 Chains to Joseph. Anything Titus pulls is added to Titus's local cache AND is already cached on Joseph for other machines.
@@ -114,6 +134,14 @@ No local registry. Points daemon.json mirror to Gisu.
 ```
 
 Docker tries L1 (Titus cache) first. On miss, falls through to L2 (Joseph). On miss there, falls through to Docker Hub natively.
+
+### Moses (orchestrator server)
+
+```json
+{
+  "registry-mirrors": ["http://joseph:5000"]
+}
+```
 
 ### Joseph & personal machines
 
@@ -183,6 +211,7 @@ bash ~/.hermes/scripts/registry-gc.sh --apply --report
 | Server | Role | Est. monthly growth | Suggested volume |
 |--------|------|--------------------|-----------------|
 | Joseph | L2 cache (largest) | 5-15 GB | 200 GB |
+| Moses | L1 cache (orchestrator) | 2-5 GB | 50 GB |
 | Gisu | L1 cache (ACME) | 2-5 GB | 50 GB |
 | Titus | L1 cache (local) | 2-5 GB | 50 GB |
 
@@ -192,7 +221,8 @@ Images that are pulled once and never updated (version-pinned base images) stay 
 
 | Machine | Runs Registry? | Upstream | daemon.json mirror | BuildKit mirror |
 |---------|---------------|----------|--------------------|-----------------|
-| Titus | ✅ L1 | Joseph | `[localhost:5000, joseph:5000]` | same |
-| Joseph | ✅ L2 | Docker Hub | `[localhost:5000]` | same |
-| Gisu | ✅ L1 | Docker Hub | `[localhost:5000]` | same |
-| Kustos | ❌ | — | `[gisu:5000]` | `[gisu:5000]` |
+| **Titus** | ✅ L1 | Joseph | `[localhost:5000, joseph:5000]` | same |
+| **Moses** | ✅ L1 | Joseph | `[joseph:5000]` | `[joseph:5000]` |
+| **Joseph** | ✅ L2 | Docker Hub | `[localhost:5000]` | same |
+| **Gisu** | ✅ L1 | Docker Hub | `[localhost:5000]` | same |
+| **Kustos** | ❌ | — | `[gisu:5000]` | `[gisu:5000]` |

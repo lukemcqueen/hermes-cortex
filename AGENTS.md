@@ -407,10 +407,11 @@ Or re-run `install.sh` and the new guard will skip re-creating it.
 
 **Problem:** Every `docker pull` on every machine fetches from Docker Hub — slow on cold hosts, wastes bandwidth across agents.
 
-**Solution:** Tiered pull-through cache hierarchy using `registry:3`. Each level proxies to the level above, forming a chain:
+**Solution:** Tiered pull-through cache hierarchy using `registry:3`. Each level proxies to the level above:
 
 ```
 Titus  → Joseph  → Docker Hub
+Moses  → Joseph  → Docker Hub
 Gisu   → Docker Hub
 Kustos → Gisu     → Docker Hub
 ```
@@ -427,6 +428,7 @@ Kustos → Gisu     → Docker Hub
 | Server | Upstream | Bind | daemon.json mirrors | Volume |
 |--------|----------|------|--------------------|--------|
 | **Joseph** | Docker Hub | `0.0.0.0:5000` | `[localhost:5000]` | ~200 GB |
+| **Moses** | Joseph | `0.0.0.0:5000` | `[joseph:5000]` | ~50 GB |
 | **Gisu** | Docker Hub | `0.0.0.0:5000` | `[localhost:5000]` | ~50 GB |
 | **Titus** | Joseph | `127.0.0.1:5000` | `[localhost:5000, joseph:5000]` | ~50 GB |
 | **Kustos** | (none) | — | `[gisu:5000]` | — |
@@ -434,11 +436,14 @@ Kustos → Gisu     → Docker Hub
 **Deploy commands:**
 
 ```bash
-# Joseph / Gisu (direct to Docker Hub):
+# Joseph and Gisu (direct to Docker Hub):
 docker compose -f deploy/docker-compose.registry.yml up -d
 
-# Titus (chain to Joseph):
-UPSTREAM=http://joseph-host:5000 docker compose -f deploy/docker-compose.registry.yml up -d
+# Moses (chain to Joseph):
+UPSTREAM=http://joseph:5000 docker compose -f deploy/docker-compose.registry.yml up -d
+
+# Titus (chain to Joseph, localhost-only):
+UPSTREAM=http://joseph:5000 REGISTRY_PORT=127.0.0.1:5000 docker compose -f deploy/docker-compose.registry.yml up -d
 ```
 
 **Or with the setup script:**
