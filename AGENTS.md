@@ -427,11 +427,11 @@ Kustos → Gisu    → Docker Hub
 
 | Server | Upstream | Bind | daemon.json mirrors | Volume |
 |--------|----------|------|--------------------|--------|
-| **Joseph** | Docker Hub | `0.0.0.0:21510` | `[localhost:21510]` | ~200 GB |
-| **Moses** | Joseph | `0.0.0.0:21510` | `[joseph:21510]` | ~50 GB |
-| **Gisu** | Docker Hub | `0.0.0.0:21510` | `[localhost:21510]` | ~50 GB |
-| **Titus** | Joseph | `127.0.0.1:21510` | `[localhost:21510]` | ~50 GB |
-| **Kustos** | (none) | — | `[your-gisu-host:21510]` | — |
+| **Joseph** | Docker Hub | `0.0.0.0:5000` | `[localhost:5000]` | ~200 GB |
+| **Moses** | Joseph | `0.0.0.0:5000` | `[joseph:5000]` | ~50 GB |
+| **Gisu** | Docker Hub | `0.0.0.0:5000` | `[localhost:5000]` | ~50 GB |
+| **Titus** | Joseph | `127.0.0.1:5000` | `[localhost:5000, joseph:5000]` | ~50 GB |
+| **Kustos** | (none) | — | `[gisu:5000]` | — |
 
 **Deploy commands:**
 
@@ -440,10 +440,10 @@ Kustos → Gisu    → Docker Hub
 docker compose -f deploy/docker-compose.registry.yml up -d
 
 # Moses (chain to Joseph):
-UPSTREAM=http://joseph:21510 docker compose -f deploy/docker-compose.registry.yml up -d
+UPSTREAM=http://joseph:5000 docker compose -f deploy/docker-compose.registry.yml up -d
 
 # Titus (chain to Joseph, localhost-only):
-UPSTREAM=http://joseph:21510 REGISTRY_PORT=127.0.0.1:21510 docker compose -f deploy/docker-compose.registry.yml up -d
+UPSTREAM=http://joseph:5000 REGISTRY_PORT=127.0.0.1:5000 docker compose -f deploy/docker-compose.registry.yml up -d
 ```
 
 **Or with the setup script:**

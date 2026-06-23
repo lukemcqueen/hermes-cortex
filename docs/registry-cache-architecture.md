@@ -47,30 +47,19 @@ Cache hierarchy:
 
 Registry proxies directly to Docker Hub. This is the shared L2 cache.
 
-**Auth (internet-facing):** Requires basic auth. Only upstream registries (Titus, Moses) need credentials — their proxy config supplies them automatically.
-
-```bash
-# Create htpasswd file
-mkdir -p /auth
-htpasswd -bBc /auth/htpasswd registrycache <password>
-```
-
 ```yaml
 services:
   registry:
     image: registry:3
     restart: always
-    ports: ["21510:5000"]
+    ports: ["5000:5000"]
     environment:
       REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
       REGISTRY_STORAGE_DELETE_ENABLED: "true"
-      REGISTRY_AUTH_HTPASSWD_REALM: Registry
-      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
     volumes:
       - registry-data:/var/lib/registry  # ~200GB volume
-      - /auth:/auth:ro
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:21510/v2/"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/v2/"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -80,29 +69,19 @@ services:
 
 Registry proxies directly to Docker Hub. ACME island's L1 cache.
 
-**Auth (internet-facing):** Same as Joseph — basic auth via htpasswd. Kustos's proxy config supplies credentials automatically.
-
-```bash
-mkdir -p /auth
-htpasswd -bBc /auth/htpasswd registrycache <password>
-```
-
 ```yaml
 services:
   registry:
     image: registry:3
     restart: always
-    ports: ["21510:5000"]
+    ports: ["5000:5000"]
     environment:
       REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
       REGISTRY_STORAGE_DELETE_ENABLED: "true"
-      REGISTRY_AUTH_HTPASSWD_REALM: Registry
-      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
     volumes:
       - registry-data:/var/lib/registry
-      - /auth:/auth:ro
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:21510/v2/"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/v2/"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -110,54 +89,36 @@ services:
 
 ### Moses (orchestrator server)
 
-Chains to Joseph (`your-domain.com:21510`). Reduces WAN pulls for the orchestrator that runs the most frequent docker operations.
-
-**Standalone binary (recommended):**
-```bash
-# Download and install
-wget -qO /tmp/registry.tar.gz \
-  https://github.com/distribution/distribution/releases/download/v3.1.1/registry_3.1.1_linux_amd64.tar.gz
-cd /tmp && tar xzf registry.tar.gz
-sudo install registry /usr/local/bin/registry
-
-# Config at /etc/registry/config.yml
-# (see snippet below)
-
-# systemd service
-# (see below)
-```
+Chains to Joseph. Reduces WAN pulls for the orchestrator that runs the most frequent docker operations (monitoring, auto-remediation, service recovery).
 
 ```yaml
-# /etc/registry/config.yml
-version: 0.1
-storage:
-  cache:
-    blobdescriptor: inmemory
-  filesystem:
-    rootdirectory: /data/registry
-http:
-  addr: :21510
-proxy:
-  remoteurl: http://your-domain.com:21510
-  username: registrycache
-  password: <password>
+services:
+  registry:
+    image: registry:3
+    restart: always
+    ports: ["5000:5000"]
+    environment:
+      REGISTRY_PROXY_REMOTEURL: http://joseph:5000  # chain to Joseph
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    volumes:
+      - registry-data:/var/lib/registry
 ```
 
 ### Titus (dev laptop)
 
-Standalone binary via launchd, port 21510, localhost-only. Startup wrapper at `~/docker/registry/start-registry.sh` checks Joseph first; runs standalone if unreachable for smooth Docker fallback.
+Chains to Joseph. Anything Titus pulls is added to Titus's local cache AND is already cached on Joseph for other machines.
 
 ```yaml
-# ~/docker/registry/config.yml
-version: 0.1
-storage:
-  cache:
-    blobdescriptor: inmemory
-  filesystem:
-    rootdirectory: /Users/luke/docker/cache
-http:
-  addr: :21510
-  net: tcp
+services:
+  registry:
+    image: registry:3
+    restart: always
+    ports: ["127.0.0.1:5000:5000"]  # localhost-only — don't expose dev laptop
+    environment:
+      REGISTRY_PROXY_REMOTEURL: http://joseph-host:5000  # chain to Joseph
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    volumes:
+      - registry-data:/var/lib/registry
 ```
 
 ### Kustos (ACME production server)
@@ -170,41 +131,36 @@ No local registry. Points daemon.json mirror to Gisu.
 
 ```json
 {
-  "registry-mirrors": ["http://localhost:21510"]
+  "registry-mirrors": [
+    "http://localhost:5000",
+    "http://joseph:5000"
+  ]
 }
 ```
 
-Docker tries Titus cache first. If the standalone registry has the image (proxy mode when Joseph is reachable), served instantly. On miss, Docker falls through to Docker Hub directly. If Joseph was unreachable at startup, the registry runs standalone — images aren't cached locally but Docker's native image store handles repeated pulls.
+Docker tries L1 (Titus cache) first. On miss, falls through to L2 (Joseph). On miss there, falls through to Docker Hub natively.
 
 ### Moses (orchestrator server)
 
 ```json
 {
-  "registry-mirrors": ["http://your-domain.com:21510"]
+  "registry-mirrors": ["http://joseph:5000"]
 }
 ```
 
-### Joseph — daemon.json
+### Joseph & personal machines
 
 ```json
 {
-  "registry-mirrors": ["http://localhost:21510"]
+  "registry-mirrors": ["http://joseph-host:5000"]
 }
 ```
 
-### Personal machines (other than Joseph)
+### Gisu (ACME staging)
 
 ```json
 {
-  "registry-mirrors": ["http://your-domain.com:21510"]
-}
-```
-
-### Gisu — daemon.json
-
-```json
-{
-  "registry-mirrors": ["http://localhost:21510"]
+  "registry-mirrors": ["http://localhost:5000"]
 }
 ```
 
@@ -212,7 +168,7 @@ Docker tries Titus cache first. If the standalone registry has the image (proxy 
 
 ```json
 {
-  "registry-mirrors": ["http://your-gisu-host:21510"]
+  "registry-mirrors": ["http://gisu-host:5000"]
 }
 ```
 
@@ -225,7 +181,7 @@ On machines that build Docker images, add BuildKit config to route `FROM` pulls 
 ```toml
 debug = true
 [registry."docker.io"]
-  mirrors = ["http://localhost:21510"]
+  mirrors = ["http://localhost:5000", "http://joseph:5000"]
 ```
 
 ```bash
@@ -240,7 +196,7 @@ docker buildx create --use --bootstrap \
 ```toml
 debug = true
 [registry."docker.io"]
-  mirrors = ["http://localhost:21510"]
+  mirrors = ["http://localhost:5000"]
 ```
 
 ## Garbage Collection
@@ -270,8 +226,8 @@ Images that are pulled once and never updated (version-pinned base images) stay 
 
 | Machine | Runs Registry? | Upstream | daemon.json mirror | BuildKit mirror |
 |---------|---------------|----------|--------------------|-----------------|
-| **Titus** | ✅ L1 | Joseph | `[localhost:21510]` | same |
-| **Moses** | ✅ L1 | Joseph | `[joseph:21510]` | `[joseph:21510]` |
-| **Joseph** | ✅ L2 | Docker Hub | `[localhost:21510]` | same |
-| **Gisu** | ✅ L1 | Docker Hub | `[localhost:21510]` | same |
-| **Kustos** | ❌ | — | `[your-gisu-host:21510]` | `[your-gisu-host:21510]` |
+| **Titus** | ✅ L1 | Joseph | `[localhost:5000, joseph:5000]` | same |
+| **Moses** | ✅ L1 | Joseph | `[joseph:5000]` | `[joseph:5000]` |
+| **Joseph** | ✅ L2 | Docker Hub | `[localhost:5000]` | same |
+| **Gisu** | ✅ L1 | Docker Hub | `[localhost:5000]` | same |
+| **Kustos** | ❌ | — | `[gisu:5000]` | `[gisu:5000]` |
