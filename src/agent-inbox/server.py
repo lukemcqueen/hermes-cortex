@@ -461,14 +461,24 @@ def _render_msg(msg: dict, is_reply: bool = False) -> str:
 
 
 def _render_tabs(active_topic: str, inbox_msgs: list) -> str:
-    """Render topic tab bar with unread counts."""
+    """Render topic tab bar with unread counts — includes dynamic topics."""
     tabs = []
-    for key, label in TOPICS.items():
+    # Collect all topics that actually have messages
+    seen_topics = set(m["topic"] for m in inbox_msgs if m["topic"])
+    # Use predefined order for known topics, append unknown ones alphabetically
+    ordered_topics = []
+    for key in TOPICS:
+        ordered_topics.append(key)
+        seen_topics.discard(key)
+    ordered_topics.extend(sorted(seen_topics))
+    # Generate label: use TOPICS label if known, otherwise capitalize the key
+    for key in ordered_topics:
+        label = TOPICS.get(key, f"#{key}")
         count = sum(1 for m in inbox_msgs
                     if m["topic"] == key and m["status"] == "unread" and not m.get("is_processed"))
-        active = ' active' if key == active_topic else ''
+        active = ' class="tab active"' if key == active_topic else ' class="tab"'
         badge = f'<span class="count">{count}</span>' if count > 0 else ''
-        tabs.append(f'<a class="tab{active}" href="/?topic={key}">{label}{badge}</a>')
+        tabs.append(f'<a{active} href="/?topic={key}">{label}{badge}</a>')
     return f'<div class="tabs">{"".join(tabs)}</div>'
 
 
