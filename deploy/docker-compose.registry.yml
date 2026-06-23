@@ -1,0 +1,62 @@
+# Docker Image Registry — Pull-Through Cache
+# https://distribution.github.io/distribution/
+#
+# Caches Docker Hub images on first pull. Subsequent pulls from any
+# machine configured with registry-mirrors are served from local disk.
+#
+# Deploy on Moses (always-on server). All agents and dev machines
+# configure daemon.json to point here.
+#
+# Usage:
+#   docker compose -f docker-compose.registry.yml up -d
+#   docker compose -f docker-compose.registry.yml logs -f
+#
+# Required client config on every machine (Moses, agents, dev):
+#   /etc/docker/daemon.json (Linux)  or  ~/.docker/daemon.json (macOS)
+#   {
+#     "registry-mirrors": ["http://moses-host:5000"]
+#   }
+#   Then: sudo systemctl restart docker  (Linux)
+#         or Docker Desktop → Settings → Apply & Restart  (macOS)
+#
+# Optional: BuildKit config for docker build support:
+#   /etc/buildkitd.toml
+#   [registry."docker.io"]
+#     mirrors = ["http://moses-host:5000"]
+#
+#   docker buildx create --use --bootstrap \
+#     --name cache-builder \
+#     --driver docker-container \
+#     --buildkitd-config /etc/buildkitd.toml
+
+services:
+  registry-cache:
+    image: registry:3
+    restart: always
+    ports:
+      # Bind to host IP so LAN agents can reach it.
+      # Use 127.0.0.1:5000:5000 for localhost-only access.
+      - "${REGISTRY_PORT:-5000}:5000"
+    environment:
+      # Pull-through proxy: cache passes through to Docker Hub
+      REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
+      # Enable storage delete for garbage collection
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+      # Limit storage to prevent disk exhaustion (in GB)
+      REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR: "inmemory"
+    volumes:
+      - registry-cache:/var/lib/registry
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/v2/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  registry-cache:

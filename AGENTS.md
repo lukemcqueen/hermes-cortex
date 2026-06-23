@@ -400,3 +400,41 @@ Or re-run `install.sh` and the new guard will skip re-creating it.
 **Skill:** `project-run-scripts` skill has been updated with all patterns, the fixed script, and template code. Load with `skill_view(name="project-run-scripts")`. The check script is at `scripts/check-alembic-heads.py` in the skill. To use the self-locating variant, place it at `alembic/check-heads.py` in the project.
 
 **Related skills:** `change-test-loop` (use `./run migration:new` instead of bare `alembic revision` during test-driven development).
+
+---
+
+### ⚡ 2026-06-23 — Docker Hub pull-through cache (all agents)
+
+**Problem:** Every `docker pull` and `docker build` on every machine fetches layers from Docker Hub — slow on cold hosts, wastes bandwidth across agents.
+
+**Solution:** Local pull-through cache using `registry:3` as a proxy. Deploy on Moses (always-on server). All machines configure `registry-mirrors` in daemon.json to pull through the cache. Optional BuildKit config for `docker build` coverage.
+
+**Files:**
+- `deploy/docker-compose.registry.yml` — docker-compose service definition
+- `src/scripts/setup-registry-cache.sh` — one-shot deploy script
+- `src/scripts/registry-gc.sh` — monthly garbage collection
+
+**Setup (on Moses):**
+```bash
+docker compose -f deploy/docker-compose.registry.yml up -d
+```
+
+**Client config (every machine):**
+```json
+{ "registry-mirrors": ["http://moses-host:5000"] }
+```
+
+**BuildKit config (machines that build Docker images):**
+```toml
+# /etc/buildkitd.toml
+[registry."docker.io"]
+  mirrors = ["http://moses-host:5000"]
+```
+```bash
+docker buildx create --use --bootstrap \
+  --name cache-builder \
+  --driver docker-container \
+  --buildkitd-config /etc/buildkitd.toml
+```
+
+**Why `registry:3` over Zot:** Zot converts Docker images to OCI format on pull, changing layer digests and breaking SHA-pinned `FROM image@sha256:...` references. Registry:3 is OCI-native, 19.2MB, battle-tested.
