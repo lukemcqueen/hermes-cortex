@@ -174,6 +174,68 @@ def mine_memory() -> list[dict]:
     return findings
 
 
+def mine_custom_skills() -> list[dict]:
+    """Detect skills installed locally that aren't in the hermes-cortex repo.
+
+    Agents develop their own skills. If they're not in the repo, they're
+    invisible to the fleet. This finds them and surfaces them for review.
+    """
+    findings = []
+    local_skills = Path.home() / ".hermes" / "skills" / "software-development"
+    repo_skills = REPO_ROOT / "src" / "skills" / "software-development"
+
+    if not local_skills.exists():
+        return findings
+
+    # Get list of skills in the repo (for cross-reference)
+    repo_skill_names = set()
+    if repo_skills.exists():
+        for d in repo_skills.iterdir():
+            if d.is_dir() and (d / "SKILL.md").exists():
+                repo_skill_names.add(d.name)
+
+    # Scan local skills for ones not in the repo
+    for skill_dir in sorted(local_skills.iterdir()):
+        if not skill_dir.is_dir():
+            continue
+        if skill_dir.name in repo_skill_names:
+            continue  # already in repo, skip
+
+        skill_md = skill_dir / "SKILL.md"
+        if not skill_md.exists():
+            continue
+
+        try:
+            text = skill_md.read_text(encoding="utf-8", errors="replace")
+
+            # Extract metadata
+            name = ""
+            desc = ""
+            version = ""
+            for line in text.split("\n")[:20]:
+                if line.startswith("name:"):
+                    name = line.split(":", 1)[1].strip()
+                elif line.startswith("description:"):
+                    desc = line.split(":", 1)[1].strip()[:80]
+                elif line.startswith("version:"):
+                    version = line.split(":", 1)[1].strip()
+
+            findings.append({
+                "type": "custom_skill",
+                "skill": skill_dir.name,
+                "name": name or skill_dir.name,
+                "description": desc,
+                "version": version,
+                "confidence": "medium",
+                "score": 0,
+                "content": text,  # full SKILL.md for Moses to evaluate
+            })
+        except Exception:
+            continue
+
+    return findings
+
+
 # ── Scoring ────────────────────────────────────────────────────
 
 def score_finding(finding: dict) -> float:
@@ -221,6 +283,13 @@ def send_to_moses(findings: list[dict]):
         item = f.get("task", f.get("file", f.get("confidence", "?")))
         body_parts.append(f"  {icon} [{t}] {item} — score={f['score']}")
 
+        # For custom skills, include full SKILL.md content
+        if f.get("type") == "custom_skill" and f.get("content"):
+            content = f["content"]
+            if len(content) > 3000:
+                content = content[:3000] + "\n... [truncated — full file on agent machine]"
+            body_parts.append(f"```markdown\n{content}\n```")
+
     try:
         data = urllib.parse.urlencode({
             "from": agent_name,
@@ -252,6 +321,9 @@ def main():
 
     print("  Mining agent memory…")
     all_findings.extend(mine_memory())
+
+    print("  Checking for custom skills not in repo…")
+    all_findings.extend(mine_custom_skills())
 
     for f in all_findings:
         f["score"] = score_finding(f)

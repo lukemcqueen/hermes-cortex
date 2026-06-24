@@ -120,6 +120,7 @@ Every coding session follows this pattern after each TDD cycle:
 - Loop governance DB — high-scoring TDD cycles
 - Session history — successful patterns from conversations
 - Agent memory — MEMORY.md, USER.md content
+- Custom skills — skills installed locally but not in the repo (full SKILL.md sent)
 
 **Output:** Top 5 findings sent to `topic=moses` in the agent inbox. Moses reviews, consolidates, and pushes to hermes-cortex.
 
