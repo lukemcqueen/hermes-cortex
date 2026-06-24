@@ -162,7 +162,7 @@ fi
 if [[ "$CHECK_ONLY" != "1" && "$SYMLINKS_ONLY" != "1" ]]; then
   if command -v hermes &>/dev/null; then
     info "Installing crons from template…"
-    bash "${SOURCE_DIR}/install-crons.sh" 2>&1 | grep -E "✓|⚠|✗|created|updated" || true
+    python3 "${SOURCE_DIR}/install-crons.py" 2>&1 | grep -E "✓|⚠|✗|created|updated" || true
   else
     info "Hermes not found — skip cron install (re-run after Hermes setup)"
   fi

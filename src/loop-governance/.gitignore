@@ -1,8 +1,9 @@
-# Per-machine data — each agent has their own DB and config
+# Per-machine data — each agent has their own DB, config, and cron version
 *.db
 *.db-*
 loop-events/
 loop-governance-config.json
+.cron-version
 
 # Python cache
 __pycache__/
