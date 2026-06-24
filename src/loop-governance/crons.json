@@ -1,16 +1,16 @@
 {
-  "version": 2,
+  "version": 3,
   "description": "Canonical loop-governance cron jobs. Managed by install-crons.py.",
   "crons": [
     {
       "name": "weekly-loop-evaluation",
       "enabled": true,
       "schedule": "0 9 * * 1",
-      "prompt": "Run the loop governance evaluation pipeline for the last 7 days, then auto-apply safe config changes, and finally vacuum old cycles from the database.\n\n1. Generate the evaluation report using the loop-governance skill (last 7 days).\n2. Deliver the evaluation report including summary, trends, decision accuracy, and recommendations.\n3. Run auto-apply: execute `auto-apply --json` and report what was applied or skipped.\n4. Run DB retention (archive cycles older than 90 days).\n5. Deliver a combined message.",
+      "prompt": "Run the loop governance evaluation pipeline for the last 7 days, then run the skill miner, auto-apply safe config changes, and vacuum old cycles.\n\n1. Generate the evaluation report using the loop-governance skill (last 7 days).\n2. Run the skill miner: execute `skill-miner` and report findings (auto-apply ready, needs review, discarded).\n3. Run auto-apply: execute `auto-apply --json`. Report what was applied or skipped.\n4. Run DB retention (archive cycles older than 90 days).\n5. Deliver a combined message: evaluation report + skill miner results + auto-apply + retention.",
       "skills": ["loop-governance"],
       "no_agent": false,
       "deliver": "origin",
-      "description": "Weekly evaluation — report, auto-apply safe patches, vacuum old cycles."
+      "description": "Weekly evaluation — report, skill miner, auto-apply safe patches, vacuum old cycles."
     }
   ]
 }
