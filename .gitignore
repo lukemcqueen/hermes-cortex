@@ -65,3 +65,4 @@ node_modules/
 # Agent infrastructure
 .hermes-cortex/memory/
 .hermes-cortex/sessions/archive/
+IMPROVEMENTS.md
