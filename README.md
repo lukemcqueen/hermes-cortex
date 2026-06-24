@@ -46,6 +46,7 @@
 - **Auto-Update** — Silent cron-based updater for content updates
 - **Computer Specs Guide** — Hardware-aware recommendations per RAM tier
 - **Multi-person setup** — Federated brain sources with isolated memory per user
+- **Loop Governance Crons** — Two automated maintenance jobs (see loop-governance skill)
 
 ---
 
