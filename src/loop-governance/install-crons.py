@@ -11,7 +11,6 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_PATH = os.path.join(SCRIPT_DIR, "crons.json")

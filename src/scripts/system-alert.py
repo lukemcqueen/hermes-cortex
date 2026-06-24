@@ -158,6 +158,54 @@ try:
 except Exception:
     details.append("Disk: error reading")
 
+# ── Loop Governance Health ───────────────────────────────────
+LOOP_DB = Path.home() / ".hermes" / "data" / "loop-governance.db"
+try:
+    # Check Ollama
+    import urllib.request, json as _json
+    ollama_up = False
+    try:
+        req = urllib.request.Request("http://localhost:11434/api/tags")
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            tags = _json.loads(resp.read())
+            ollama_up = True
+            models = [m["name"] for m in tags.get("models", [])]
+            if "nomic-embed-text" not in models:
+                alerts.append("⚠️ nomic-embed-text model not loaded (needed for TDD scoring)")
+                details.append("  Run: ollama pull nomic-embed-text")
+    except Exception:
+        alerts.append("⚠️ Ollama not responding on :11434 — TDD scoring unavailable")
+        details.append("  Attempting auto-restart…")
+        try:
+            import subprocess as _sp
+            _sp.run(["ollama", "serve"], capture_output=True, timeout=5)
+            details.append("  → ollama serve started")
+        except Exception:
+            details.append("  → auto-restart failed (try: ollama serve &)")
+
+    # Check database
+    if LOOP_DB.exists():
+        size_mb = round(LOOP_DB.stat().st_size / 1048576, 1)
+        details.append(f"Loop DB: {size_mb}MB ({LOOP_DB.name})")
+        # Warn if DB is large
+        if size_mb > 100:
+            alerts.append(f"⚠️ Loop DB at {size_mb}MB — run vacuum_old_cycles(days=90)")
+    else:
+        details.append("Loop DB: not yet created (first score-cycle will create it)")
+
+    # Quick functional test: can we score?
+    import sqlite3
+    try:
+        conn = sqlite3.connect(str(LOOP_DB))
+        count = conn.execute("SELECT COUNT(*) FROM loop_cycles").fetchone()[0]
+        conn.close()
+        details.append(f"Scored cycles: {count}")
+    except Exception:
+        pass
+
+except Exception as e:
+    details.append(f"Loop governance: error ({e})")
+
 # ── Output ───────────────────────────────────────────────────
 if alerts:
     ts = format_timestamp("%Y-%m-%d %H:%M %Z")

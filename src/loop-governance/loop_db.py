@@ -41,9 +41,7 @@ EVENTS_DIR = os.path.expanduser("~/.hermes/data/loop-events")
 class LoopDB:
     """Persistent store for loop governance data."""
 
-    def __init__(self, db_path: str = None):
-        if db_path is None:
-            db_path = DEFAULT_DB_PATH
+    def __init__(self, db_path: str = DEFAULT_DB_PATH):
         self.db_path = db_path
         if db_path != ":memory:":
             os.makedirs(os.path.dirname(db_path), exist_ok=True)

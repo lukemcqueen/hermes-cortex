@@ -11,7 +11,10 @@ import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
-SCRIPTS_DIR = REPO_ROOT / "src" / "scripts"
+SCRIPTS_DIRS = [
+    REPO_ROOT / "src" / "scripts",
+    REPO_ROOT / "src" / "loop-governance",
+]
 
 try:
     import pytest
@@ -54,25 +57,29 @@ MACOS_GUARDS_SH = [
 
 
 def _find_py_files():
-    """Find .py files in src/scripts/ (excluding __pycache__/archive)."""
-    if not SCRIPTS_DIR.exists():
-        return []
-    return sorted(
-        p for p in SCRIPTS_DIR.rglob("*.py")
-        if not any(part.startswith("__") or part in ("archive", "__pycache__", "venv") for part in p.parts)
-    )
+    """Find .py files in src/scripts/ and src/loop-governance/ (excluding __pycache__/archive)."""
+    files = []
+    for d in SCRIPTS_DIRS:
+        if d.exists():
+            files.extend(
+                p for p in d.rglob("*.py")
+                if not any(part.startswith("__") or part in ("archive", "__pycache__", "venv", "tests") for part in p.parts)
+            )
+    return sorted(set(files))
 
 
 def _find_sh_files():
-    """Find .sh files in src/scripts/ (excluding sourced-only and __pycache__)."""
-    if not SCRIPTS_DIR.exists():
-        return []
+    """Find .sh files in src/scripts/ and src/loop-governance/."""
     sourced_only = {"os-config.sh", "cortex-profile.sh", "service-writer.sh"}
-    return sorted(
-        p for p in SCRIPTS_DIR.rglob("*.sh")
-        if p.name not in sourced_only
-        and not any(part.startswith("__") or part in ("archive", "__pycache__") for part in p.parts)
-    )
+    files = []
+    for d in SCRIPTS_DIRS:
+        if d.exists():
+            files.extend(
+                p for p in d.rglob("*.sh")
+                if p.name not in sourced_only
+                and not any(part.startswith("__") or part in ("archive", "__pycache__") for part in p.parts)
+            )
+    return sorted(set(files))
 
 
 def _has_any_guard(text: str, guards: list[str]) -> bool:

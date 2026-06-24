@@ -80,7 +80,7 @@ def format_cycle(c, detail=False):
 
 def cmd_list(args):
     """List cycles, defaulting to those needing feedback."""
-    db = LoopDB(args.db or None)
+    db = LoopDB(args.db)
     try:
         if args.all:
             rows = db.conn.execute(
@@ -123,7 +123,7 @@ def cmd_list(args):
 
 def cmd_accept(args):
     """Record that a decision was correct."""
-    db = LoopDB(args.db or None)
+    db = LoopDB(args.db)
     try:
         cycle = db.get_cycle(args.cycle_id)
         if not cycle:
@@ -158,7 +158,7 @@ def cmd_accept(args):
 
 def cmd_override(args):
     """Record that a decision was wrong."""
-    db = LoopDB(args.db or None)
+    db = LoopDB(args.db)
     try:
         cycle = db.get_cycle(args.cycle_id)
         if not cycle:
@@ -192,7 +192,7 @@ def cmd_override(args):
 
 def cmd_stats(args):
     """Show feedback statistics."""
-    db = LoopDB(args.db or None)
+    db = LoopDB(args.db)
     try:
         # Overall stats
         total = db.conn.execute("SELECT COUNT(*) AS c FROM loop_cycles").fetchone()["c"]

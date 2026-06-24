@@ -1,16 +1,7 @@
 {
-  "version": 1,
-  "description": "Canonical loop-governance cron jobs. Managed by install-crons.sh.",
+  "version": 2,
+  "description": "Canonical loop-governance cron jobs. Managed by install-crons.py.",
   "crons": [
-    {
-      "name": "loop-governance-health",
-      "enabled": true,
-      "schedule": "*/10 * * * *",
-      "script": "loop-health-check.sh",
-      "no_agent": true,
-      "deliver": "origin",
-      "description": "Health check — tests Ollama, scoring, DB every 10 min. Silent on success, auto-restarts Ollama on failure, alerts via Telegram."
-    },
     {
       "name": "weekly-loop-evaluation",
       "enabled": true,
