@@ -30,6 +30,7 @@ from pathlib import Path
 
 # ── Configurable paths ─────────────────────────────────────────
 HOME = Path.home()
+REPO_ROOT = HOME / "hermes-cortex"
 HERMES_DATA = HOME / ".hermes" / "data"
 SESSION_DIR = HOME / ".hermes-cortex" / "sessions"
 MEMORY_DIR = HOME / ".hermes-cortex" / "memory"
