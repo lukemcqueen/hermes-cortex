@@ -161,6 +161,7 @@ LINKS["score_cycle.py"]="score-cycle"
 LINKS["loop_feedback.py"]="loop-feedback"
 LINKS["auto_apply.py"]="auto-apply"
 LINKS["loop_config.py"]="loop-config"
+LINKS["skill_miner.py"]="skill-miner"
 
 for src in "${!LINKS[@]}"; do
   dst_name="${LINKS[$src]}"
