@@ -457,6 +457,6 @@ hermes cron create \
 ## Related Skills
 
 - `change-test-loop` — RED-GREEN-REFACTOR for individual tasks
-- `requesting-code-review` — Pre-commit review with quality gates
+- `code-review` — Pre-commit review with quality gates
 - `lesson-aware-agent` — Inject lessons from past failures
 - `auto-remediation` — Auto-fix detected issues

@@ -12,7 +12,7 @@ platforms: [linux, macos]
 metadata:
   hermes:
     tags: [github, pr-review, code-review, architecture, deep-module, inline-comments, quality]
-    related_skills: [github-code-review, github-pr-workflow, project-map, save-lesson, requesting-code-review, change-test-loop]
+    related_skills: [github-code-review, github-pr-workflow, project-map, save-lesson, code-review, change-test-loop]
 ---
 
 # PR Review — Hermes-Native Code Review Pipeline
@@ -284,7 +284,7 @@ done
 
 ## Step 6 — Full Code Review
 
-### 6a — Static Security Scan (from requesting-code-review)
+### 6a — Static Security Scan (from code-review)
 
 ```bash
 # Hardcoded secrets
@@ -663,7 +663,7 @@ gh api repos/$OWNER/$REPO/pulls/{PR_NUMBER}/reviews \
 
 - **github-code-review** — Absorbed into this skill. See `references/github-code-review-absorbed.md` for the review checklist, pre-push workflow, and curl inline-comment examples.
 - **github-pr-workflow** — PR lifecycle management (create, merge, CI)
-- **requesting-code-review** — Pre-commit verification for your own changes
+- **code-review** — Pre-commit verification for your own changes
 - **project-map** — Dependency graph analysis (Step 3)
 - **save-lesson** — Save fix patterns discovered during review (run after fixing)
 - **change-test-loop** — TDD discipline for the auto-fix cycle

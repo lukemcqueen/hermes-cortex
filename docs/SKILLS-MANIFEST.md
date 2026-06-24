@@ -15,14 +15,14 @@ their domain.
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
-| `hc-elicit` | 1.1.0 | Requirements elicitation — deep/fast modes, RICE/MoSCoW, domain question banks | `skill_view(name='hc-elicit')` |
-| `hc-party` | 1.1.0 | Multi-role architecture review — 6 roles, weighted decision matrix | `skill_view(name='hc-party')` |
-| `story-slicing` | 1.0.0 | Break features into user-visible, testable stories with INVEST | `skill_view(name='story-slicing')` |
-| `prd-lite` | 1.0.0 | Concise 1-page PRD template — 14 sections | `skill_view(name='prd-lite')` |
+| `requirements-elicitation` | 1.1.0 | Requirements elicitation — deep/fast modes, RICE/MoSCoW, domain question banks | `skill_view(name='requirements-elicitation')` |
+| `architecture-review` | 1.1.0 | Multi-role architecture review — 6 roles, weighted decision matrix | `skill_view(name='architecture-review')` |
+| `story-decomposition` | 1.0.0 | Break features into user-visible, testable stories with INVEST | `skill_view(name='story-decomposition')` |
+| `product-requirements` | 1.0.0 | Concise 1-page PRD template — 14 sections | `skill_view(name='product-requirements')` |
 | `agent-flow` | 1.0.0 | Workflow router — 12 patterns (simple code, enterprise, debug, etc.) | `skill_view(name='agent-flow')` |
 | `agent-contract` | 1.0.0 | Non-negotiable execution rules — real work, no simulation | `skill_view(name='agent-contract')` |
 | `agent-inbox` | 1.0.0 | Web-based agent messaging system — topic channels, thread support, priority field, JSON API for agent-to-agent communication. | `skill_view(name='agent-inbox')` |
-| `plan` | 2.1.0 | Plan mode — write actionable markdown plans, no execution | `skill_view(name='plan')` |
+| `dev-plan` | 2.1.0 | Plan mode — write actionable markdown plans, no execution | `skill_view(name='dev-plan')` |
 | `change-test-loop` | 2.0.0 | LEARN-RED-GREEN-REFACTOR loop — lesson-aware memory, confidence scoring, retry limits, TDD discipline. Every cycle begins by searching past lessons. | `skill_view(name='change-test-loop')` |
 | `lesson-aware-agent` | 1.0.0 | Universal lesson injection — search lessons before every action, save lessons after every fix. Works across all skills. | `skill_view(name='lesson-aware-agent')` |
 | `public-contribution` | 1.0.0 | After any improvement, evaluate whether it's public-worthy for the Hermes Cortex OSS community, genericize, and contribute | `skill_view(name='public-contribution')` |
@@ -69,8 +69,8 @@ their domain.
 ## Naming Convention
 
 Skills ported from AgentKore were renamed from `ak-*` to `hc-*`:
-- `ak-elicit` → `hc-elicit`
-- `ak-party` → `hc-party`
+- `ak-elicit` → `requirements-elicitation`
+- `ak-party` → `architecture-review`
 
 All cross-references in other skills have been updated. No stale `ak-`
 references remain.

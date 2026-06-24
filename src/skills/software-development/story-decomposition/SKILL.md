@@ -1,5 +1,5 @@
 ---
-name: story-slicing
+name: story-decomposition
 description: "Break features into user-visible, testable stories using vertical slicing patterns."
 version: 1.0.0
 author: Hermes Agent
@@ -7,7 +7,7 @@ license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [story-slicing, agile, user-stories, acceptance-criteria, vertical-slices, invest]
+    tags: [story-decomposition, agile, user-stories, acceptance-criteria, vertical-slices, invest]
     related_skills: [test-driven-development, plan, change-test-loop, writing-plans]
 ---
 

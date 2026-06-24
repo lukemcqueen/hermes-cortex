@@ -1,5 +1,5 @@
 ---
-name: hc-elicit
+name: requirements-elicitation
 description: "Requirements elicitation for Hermes Cortex — structured domain exploration, RICE/MoSCoW prioritization, and user-story output with acceptance criteria. Ported from AgentKore."
 version: 1.1.0
 author: Hermes Agent (ported from AgentKore)
@@ -13,7 +13,7 @@ metadata:
     related_skills: [plan, spike, subagent-driven-development]
 ---
 
-# hc-elicit — Requirements Elicitation
+# requirements-elicitation — Requirements Elicitation
 
 Use this skill when the user says **"elicit requirements"**, **"gather specs"**, or mentions a feature with **unclear scope**. It structures the discovery of what needs to be built, prioritises it, and produces ready-to-use user stories with acceptance criteria.
 

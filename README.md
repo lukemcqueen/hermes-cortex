@@ -57,6 +57,13 @@
 
 > **🔒 Before installing:** Read the [Security Guide](docs/SECURITY.md) to understand how your system is protected.
 
+**Quick start (30 seconds):** If you just want to try the TDD scoring tools:
+```bash
+bash src/loop-governance/setup.sh    # installs deps + symlinks
+score-cycle --help                    # ready to use
+```
+
+**Full install (5-15 min):**
 ```bash
 # One-liner — no clone needed (auto-detects and downloads the repo)
 curl -fsSL https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/install.sh | bash
@@ -64,6 +71,9 @@ curl -fsSL https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/i
 # Or clone for offline install / inspection:
 git clone --depth 1 https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex
 bash ~/hermes-cortex/install.sh
+
+# Check prerequisites only (no install):
+bash ~/hermes-cortex/install.sh --check
 
 # macOS — Laptop profile: lean, no Docker (Langfuse, Dashboard, nginx skipped)
 CORTEX_PROFILE=laptop bash ~/hermes-cortex/install.sh
@@ -77,6 +87,13 @@ CORTEX_OS=windows bash ~/hermes-cortex/install.sh
 # ⚡ Then give your Hermes agent the prompt it prints out
 # to set up cron jobs and activate the /brain command
 ```
+
+### Upgrading
+
+```bash
+cd ~/hermes-cortex && git pull && bash install.sh
+```
+The installer is **idempotent** — safe to re-run. It skips already-installed components and only updates changed files. Check the [changelog](https://github.com/fleet-operator/hermes-cortex/releases) before upgrading.
 
 ### What `install.sh` does
 

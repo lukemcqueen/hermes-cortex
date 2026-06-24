@@ -74,7 +74,7 @@ Three-layer data model:
 - **Memory scoring rubric:** Entries must score ≥7/12 (relevance 4, accuracy 4, conciseness 2, durability 2) before writing — see `memory/README.md`
 | **State routing:** Information flows through a decision matrix — live context → session history → memory → docs, in that priority order — see `src/skills/software-development/state-orchestrator/`
 - **Project separation:** Each project gets its own gbrain source for isolation — see `docs/knowledge-isolation-architecture.md`
-- **Structured development pipeline:** Work flows through a defined chain — `hc-elicit` → `hc-party` → `prd-lite` → `story-slicing` → `change-test-loop` → code review — each stage consumes the output of the prior one, reducing rework and enforcing quality gates before code is written
+- **Structured development pipeline:** Work flows through a defined chain — `requirements-elicitation` → `architecture-review` → `product-requirements` → `story-decomposition` → `change-test-loop` → code review — each stage consumes the output of the prior one, reducing rework and enforcing quality gates before code is written
 - **Agent execution contract:** Non-negotiable rules — real work, verified results, no simulation.
 
 ---
@@ -89,10 +89,26 @@ Every agent working in this repo must follow these non-negotiable rules:
 4. **Touch only what the task needs** — no drive-by refactors, renames, or reformatting. Add only the imports and dependencies your code requires.
 5. **Batch independent lookups** — when several reads or searches don't depend on each other, issue them together in one turn instead of one at a time.
 6. **Report blockers honestly** — if a tool, install, or network call fails, say so directly and try an alternative. Never substitute fabricated output.
-7. **Keep working until done** — don't stop after writing a stub, plan, or single command. Work until you've actually exercised the code or produced the requested result.
-8. **Use tools, not descriptions** — never describe what you would do without actually doing it. Every response must contain tool calls that make progress or deliver a final result.
+7. **State confidence explicitly** — when uncertain, say so and explain what you know vs what you assume. The user needs actual conviction level, not a confident-sounding guess.
+8. **Keep working until done** — don't stop after writing a stub, plan, or single command. Work until you've actually exercised the code or produced the requested result.
+9. **Use tools, not descriptions** — never describe what you would do without actually doing it. Every response must contain tool calls that make progress or deliver a final result.
+10. **Log every TDD cycle** — after every LEARN→RED→GREEN→REFACTOR cycle, run `score-cycle --task <id> --cycle <N> --code-file <file> --prev-code-file <file> --test-file <output> --pass-pct <rate>`. If a decision was wrong, use `loop-feedback override <id>`. No exceptions — without this data the system cannot self-improve.
 
 ---
+
+## TDD Scoring Workflow (Non-Negotiable)
+
+Every coding session follows this pattern after each TDD cycle:
+
+1. Run `score-cycle` after REFACTOR — scores completeness, quality, progress, logs to DB
+2. Check the decision (STOP/LOOP/MOVE ON) — use it to steer the next action
+3. If the decision was wrong → `loop-feedback override <id> --note "..."`
+
+**Setup first time:** `bash ~/hermes-cortex/src/loop-governance/setup.sh` (install deps, symlinks, config)
+
+**Dependencies:** Ollama + nomic-embed-text (for scoring), Python 3.11+, ~/.local/bin/ in PATH
+
+**Verification:** `bash ~/.hermes-cortex/tools/loop-governance/verify.sh` — checks all 12 components
 
 ## Autonomous Agent Reliability Patterns
 
@@ -160,18 +176,18 @@ When building new features or making significant changes, use this structured
 workflow. Each stage consumes the output of the prior one, reducing rework
 and enforcing quality gates before code is written:
 
-```
-hc-elicit (requirements elicitation)
+```text
+requirements-elicitation (structured requirements gathering)
     ↓
-hc-party (multi-role architecture review)
+architecture-review (multi-role architecture review)
     ↓
-prd-lite (concise product spec)
+product-requirements (concise product spec)
     ↓
-story-slicing (user-visible, testable stories)
+story-decomposition (user-visible, testable stories)
     ↓
 change-test-loop (RED-GREEN-REFACTOR with lessons)
     ↓
-code review (security scan, quality gate
+code-review (security scan, quality gate)
 ```
 
 ---
@@ -207,14 +223,14 @@ code review (security scan, quality gate
 - Builds a historical record of focus areas (via memory)
 - Creates natural daily rhythm for deep work
 
----
+|---
 |-------|-------|---------|
-| Elicit | `hc-elicit` | Structured requirements gathering from user goals |
-| Review | `hc-party` | Architecture review with weighted decision matrix |
-| Spec | `prd-lite` | 1-page PRD — problem, solution, constraints, open questions |
-| Slice | `story-slicing` | Break feature into independently deliverable stories |
+| Elicit | `requirements-elicitation` | Structured requirements gathering from user goals |
+| Review | `architecture-review` | Architecture review with weighted decision matrix |
+| Spec | `product-requirements` | 1-page PRD — problem, solution, constraints, open questions |
+| Slice | `story-decomposition` | Break feature into independently deliverable stories |
 | Build | `change-test-loop` | LEARN-RED-GREEN-REFACTOR with lesson-aware memory |
-| Review | `requesting-code-review` | Pre-commit review: security, quality, auto-fix |
+| Review | `code-review` | Pre-commit review: security, quality, auto-fix |
 
 Load the relevant skill with `skill_view(name)` when entering each stage. Skills live in `~/.hermes/skills/software-development/<name>/SKILL.md`.
 

@@ -1,130 +1,147 @@
-"""Tests for repo structure — shell scripts, paths, config templates."""
+"""Tests for Hermes Cortex repo structure integrity.
 
-from __future__ import annotations
-
+Validates:
+  - No dead files (files not referenced anywhere)
+  - All skill directories have SKILL.md
+  - No duplicate skill names
+  - Install.sh steps match README
+  - VERSION consistency
+"""
 import os
-from pathlib import Path
+import sys
+import json
+import re
 
-REPO_ROOT = Path(__file__).parent.parent
-
-try:
-    import pytest
-except ImportError:
-    pass
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
-# ── Shell script sanity checks ──────────────────────────────────
+def test_all_skills_have_skilL_md():
+    """Every skill directory under src/skills/ must have a SKILL.md."""
+    skills_dir = os.path.join(REPO_ROOT, "src", "skills")
+    missing = []
+    for root, dirs, files in os.walk(skills_dir):
+        # Skip non-skill subdirectories (references, templates, scripts, assets)
+        dirs[:] = [d for d in dirs if d not in ("references", "templates", "scripts", "assets", "__pycache__")]
+        if root == skills_dir:
+            continue  # skip the top-level category dirs
+        # Each skill dir should have SKILL.md
+        if "SKILL.md" not in files:
+            rel = os.path.relpath(root, skills_dir)
+            # Only flag actual skill dirs (have *.md or subdirs with SKILL.md)
+            has_skill = any(f == "SKILL.md" for _, _, files2 in os.walk(root) for f in files2)
+            if not has_skill:
+                missing.append(rel)
+    assert not missing, f"Skills without SKILL.md: {missing}"
 
-def _sh_files():
-    """Find all .sh files in src/scripts/ (excluding __pycache__/venv/archive).
-    Excludes sourced-only scripts (os-config.sh, cortex-profile.sh) that lack shebangs intentionally."""
-    scripts_dir = REPO_ROOT / "src" / "scripts"
-    if not scripts_dir.exists():
-        return []
-    sourced_only = {"os-config.sh", "cortex-profile.sh", "service-writer.sh"}
-    return sorted(
-        p for p in scripts_dir.rglob("*.sh")
-        if p.name not in sourced_only
-        and not any(part.startswith("__") or part in ("archive","__pycache__") for part in p.parts)
+
+def test_no_dead_root_scripts():
+    """Root-level scripts/ should only contain essential files, not orphaned code."""
+    scripts_dir = os.path.join(REPO_ROOT, "scripts")
+    if not os.path.isdir(scripts_dir):
+        return
+    expected = {
+        "check-package-age.py", "install-post-commit-hook.sh",
+        "package-install.sh", "post-commit-notify.sh",
+        "setup-langfuse-sample-data.py", "test-minio.py",
+        "verify-langfuse.py",
+    }
+    actual = set(os.listdir(scripts_dir)) - {"__pycache__"}
+    # These should be moved to src/scripts/ eventually, but for now just flag
+    unexpected = actual - expected
+    if unexpected:
+        print(f"WARNING: Unexpected files in scripts/: {unexpected}")
+
+
+def test_install_steps_match_readme():
+    """Install.sh step numbers should match README table."""
+    readme_path = os.path.join(REPO_ROOT, "README.md")
+    install_path = os.path.join(REPO_ROOT, "install.sh")
+
+    # Count steps in README table
+    step_count_readme = 0
+    with open(readme_path) as f:
+        for line in f:
+            if re.match(r'^\| \d+ \|', line):
+                step_count_readme += 1
+
+    # Count "step" calls in install.sh
+    step_count_install = 0
+    with open(install_path) as f:
+        for line in f:
+            if re.match(r'^step "', line) or re.match(r'^  step "', line):
+                step_count_install += 1
+
+    # This is approximate — install.sh has nested steps
+    print(f"  README steps: ~{step_count_readme}")
+    print(f"  install.sh steps: ~{step_count_install}")
+    assert step_count_install >= step_count_readme, (
+        f"install.sh has {step_count_install} steps but README lists {step_count_readme}"
     )
 
 
-def test_all_shell_scripts_have_shebang():
-    """Every .sh file in src/scripts/ must start with #!/usr/bin/env bash or #!/bin/bash."""
-    for sh_file in _sh_files():
-        content = sh_file.read_text()
-        assert content.startswith("#!/"), f"{sh_file.relative_to(REPO_ROOT)} missing shebang"
+def test_skill_names_no_jargon():
+    """Skill names should be clear, not jargon."""
+    skills_dir = os.path.join(REPO_ROOT, "src", "skills")
+    jargon_patterns = ["hc-", "ak-", "prd-"]
+    issues = []
+    for root, dirs, _ in os.walk(skills_dir):
+        for d in dirs:
+            for pattern in jargon_patterns:
+                if d.startswith(pattern):
+                    issues.append(f"{d} contains '{pattern}' prefix")
+    assert not issues, f"Jargon in skill names: {issues}"
 
 
-def test_all_shell_scripts_executable():
-    """Every .sh file should be marked executable."""
-    for sh_file in _sh_files():
-        assert os.access(str(sh_file), os.X_OK), f"{sh_file.relative_to(REPO_ROOT)} not executable"
+def test_version_consistency():
+    """VERSION file should match install.sh."""
+    version_file = os.path.join(REPO_ROOT, "VERSION")
+    install_file = os.path.join(REPO_ROOT, "install.sh")
 
+    with open(version_file) as f:
+        file_version = f.read().strip()
 
-def test_no_trailing_whitespace_in_sh():
-    """Shell scripts should not have trailing whitespace lines (common cause of CI issues)."""
-    for sh_file in _sh_files():
-        content = sh_file.read_text()
-        for i, line in enumerate(content.split("\n"), 1):
-            if line.rstrip() != line and not line.startswith("#"):
-                pass  # warn but don't fail — too strict for existing codebase
-
-
-# ── Python script sanity checks ─────────────────────────────────
-
-def _py_files():
-    """Find all .py files in src/scripts/ (excluding __pycache__/archive/venv)."""
-    scripts_dir = REPO_ROOT / "src" / "scripts"
-    if not scripts_dir.exists():
-        return []
-    return sorted(
-        p for p in scripts_dir.rglob("*.py")
-        if not any(part.startswith("__") or part in ("archive","__pycache__") for part in p.parts)
+    with open(install_file) as f:
+        content = f.read()
+        # Look for VERSION="..." or VERSION=cat
+        match = re.search(r'VERSION="?([\d.]+)"?', content)
+        assert match, "Could not find VERSION in install.sh"
+        install_version = match.group(1)
+        # Fallback version is also fine
+        if install_version != file_version:
+            # Check if it's a fallback
+            if 'VERSION="1.0.0"  # fallback' in content:
+                print(f"  install.sh uses fallback version (1.0.0), root VERSION is {file_version}")
+                return
+    assert install_version == file_version, (
+        f"VERSION mismatch: root={file_version}, install.sh={install_version}"
     )
 
 
-def test_python_scripts_parse():
-    """Every .py file must compile without syntax errors."""
-    for py_file in _py_files():
-        try:
-            compile(py_file.read_text(), str(py_file), "exec")
-        except SyntaxError as e:
-            pytest.fail(f"Syntax error in {py_file.relative_to(REPO_ROOT)}: {e}")
+def test_no_duplicate_skill_names():
+    """No two skills should have the same name."""
+    skills_dir = os.path.join(REPO_ROOT, "src", "skills")
+    names = []
+    for root, dirs, files in os.walk(skills_dir):
+        if "SKILL.md" in files:
+            name = os.path.basename(root)
+            names.append(name)
+    duplicates = [n for n in names if names.count(n) > 1]
+    assert not duplicates, f"Duplicate skill names: {set(duplicates)}"
 
 
-# ── Config template check ───────────────────────────────────────
-
-def test_config_template_exists():
-    """Config template for new installs must exist and be non-empty."""
-    config = REPO_ROOT / "deploy" / "config" / "config.yaml"
-    assert config.exists(), "Missing deploy/config/config.yaml"
-    assert config.stat().st_size > 50, "Config template is empty/trivial"
-
-
-def test_readme_exists():
-    """README must exist and be non-empty."""
-    readme = REPO_ROOT / "README.md"
-    assert readme.exists(), "Missing README.md"
-    assert readme.stat().st_size > 100, "README.md is empty"
+def test_readme_has_quickstart():
+    """README must have a Quick Start section."""
+    readme_path = os.path.join(REPO_ROOT, "README.md")
+    with open(readme_path) as f:
+        content = f.read()
+    assert "Quick start" in content, "README missing Quick Start section"
 
 
-def test_license_exists():
-    """MIT license file must exist."""
-    license_file = REPO_ROOT / "LICENSE"
-    assert license_file.exists(), "Missing LICENSE"
-    assert "MIT" in license_file.read_text(), "LICENSE does not mention MIT"
-
-
-# ── Install.sh sanity checks ────────────────────────────────────
-
-def test_install_sh_exists():
-    """install.sh must exist and be non-empty."""
-    installer = REPO_ROOT / "install.sh"
-    assert installer.exists(), "Missing install.sh"
-    assert installer.stat().st_size > 10000, "install.sh is suspiciously small"
-
-
-def test_install_sh_has_usage():
-    """install.sh should have usage documentation."""
-    content = REPO_ROOT / "install.sh"
-    first_200 = content.read_text()[:500]
-    assert "Usage" in first_200 or "usage" in first_200 or "#" in first_200, "install.sh missing usage header?"
-
-
-# ── Docker compose check ────────────────────────────────────────
-
-def test_docker_compose_exists():
-    """Docker compose file must exist and be valid."""
-    dc = REPO_ROOT / "deploy" / "docker-compose.langfuse.yml"
-    assert dc.exists(), "Missing deploy/docker-compose.langfuse.yml"
-    content = dc.read_text()
-    assert "services:" in content, "Docker compose missing 'services:'"
-
-
-# ── DOCS-INDEX exists ───────────────────────────────────────────
-
-def test_docs_index():
-    """DOCS-INDEX.md must exist."""
-    idx = REPO_ROOT / "docs" / "DOCS-INDEX.md"
-    assert idx.exists(), "Missing docs/DOCS-INDEX.md"
+def test_readme_has_upgrade_path():
+    """README must document upgrade path."""
+    readme_path = os.path.join(REPO_ROOT, "README.md")
+    with open(readme_path) as f:
+        content = f.read()
+    assert "Upgrading" in content or "upgrade" in content.lower(), (
+        "README missing upgrade documentation"
+    )

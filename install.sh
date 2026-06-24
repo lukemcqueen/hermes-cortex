@@ -24,10 +24,14 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 IFS=$'\n\t'
-VERSION="1.0.0"
 
-# Script root directory — must be set before any source calls
+# Read version from VERSION file (single source of truth)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null)" || SCRIPT_DIR=""
+if [[ -n "$SCRIPT_DIR" && -f "${SCRIPT_DIR}/VERSION" ]]; then
+  VERSION="$(cat "${SCRIPT_DIR}/VERSION")"
+else
+  VERSION="1.0.0"  # fallback for remote/curl install
+fi
 
 # ── Remote install detection ─────────────────────────────────
 # If running from a curl pipe, SCRIPT_DIR will be empty or
@@ -68,6 +72,67 @@ fi
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BLUE='\033[0;34m'; MAGENTA='\033[0;35m'; CYAN='\033[0;36m'
 BOLD='\033[1m'; RESET='\033[0m'
+
+# ── Check mode ──────────────────────────────────────────────
+# If --check is passed, run prerequisites check only and exit
+if [[ "${1:-}" == "--check" ]]; then
+  source "${SCRIPT_DIR}/src/scripts/os-config.sh" 2>/dev/null || true
+  echo ""
+  echo "  ${BOLD}Hermes Cortex — Prerequisites Check${RESET}"
+  echo ""
+
+  # Python
+  PYTHON=$(command -v python3 || command -v python || echo "")
+  if [[ -n "$PYTHON" ]]; then
+    VER=$("$PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+    echo "  ${GREEN}✓${RESET} Python ${VER} at ${PYTHON}"
+  else
+    echo "  ${RED}✗${RESET} Python 3 not found"
+  fi
+
+  # Git
+  if command -v git &>/dev/null; then
+    echo "  ${GREEN}✓${RESET} Git: $(git --version 2>&1)"
+  else
+    echo "  ${RED}✗${RESET} Git not found"
+  fi
+
+  # Ollama
+  if command -v ollama &>/dev/null; then
+    echo "  ${GREEN}✓${RESET} Ollama binary found"
+    if curl -sf http://localhost:11434/api/tags &>/dev/null; then
+      echo "  ${GREEN}✓${RESET} Ollama server running"
+      if curl -sf http://localhost:11434/api/tags | grep -q "nomic-embed-text"; then
+        echo "  ${GREEN}✓${RESET} nomic-embed-text model loaded"
+      else
+        echo "  ${YELLOW}⚠${RESET} nomic-embed-text not pulled"
+      fi
+    else
+      echo "  ${YELLOW}⚠${RESET} Ollama server not running"
+    fi
+  else
+    echo "  ${YELLOW}⚠${RESET} Ollama not installed"
+  fi
+
+  # Docker (needed for server profile)
+  if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
+    echo "  ${GREEN}✓${RESET} Docker running"
+  else
+    echo "  ${YELLOW}⚠${RESET} Docker not available (needed for server profile)"
+  fi
+
+  # ~/.local/bin
+  if echo "$PATH" | tr ':' '\n' | grep -q "${HOME}/.local/bin"; then
+    echo "  ${GREEN}✓${RESET} ~/.local/bin in PATH"
+  else
+    echo "  ${YELLOW}⚠${RESET} ~/.local/bin not in PATH"
+  fi
+
+  echo ""
+  echo "  Run without --check to install: bash install.sh"
+  echo ""
+  exit 0
+fi
 STEP=0
 
 info()  { printf "${GREEN}✓${RESET} %s\n" "$1"; }
@@ -143,17 +208,17 @@ fi
 # ─────────────────────────────────────────────────────────────
 header "PREREQUISITES"
 
-# OS-specific notes
-if [[ "$CORTEX_OS" == "macos" ]]; then
-  :  # Native — full support
-elif [[ "$CORTEX_OS" == "linux" ]]; then
-  warn "Linux detected — using systemd services. Some macOS-specific paths adjusted."
-elif [[ "$CORTEX_OS" == "windows" ]]; then
-  warn "Windows detected — using scheduled tasks. Some features (Dashboard, nginx) limited."
-fi
-info "Profile: ${CORTEX_PROFILE}"
-if [[ "$CORTEX_PROFILE" == "laptop" ]]; then
-  info "  Laptop mode: skipping nginx, Langfuse, Dashboard (Docker not required)"
+# Profile: 'core' = minimum (default), 'laptop' = no Docker, 'server' = full stack
+: "${CORTEX_PROFILE:=core}"
+
+if [[ "$CORTEX_PROFILE" == "core" ]]; then
+  info "Profile: core (minimal — loop-governance, Ollama, brain, skills)"
+elif [[ "$CORTEX_PROFILE" == "laptop" ]]; then
+  info "Profile: laptop (lean — no Docker services)"
+elif [[ "$CORTEX_PROFILE" == "server" ]]; then
+  info "Profile: server (full stack — Langfuse, Dashboard, nginx)"
+else
+  info "Profile: ${CORTEX_PROFILE}"
 fi
 
 # User info
@@ -1779,7 +1844,38 @@ fi
 ok
 
 # ─────────────────────────────────────────────────────────────
-#  11. Web Cache — Local Semantic Web Cache
+#  11. Loop Governance — TDD Cycle Scoring & Self-Improvement
+# ─────────────────────────────────────────────────────────────
+step "Installing Loop Governance tools (score-cycle, loop-feedback, auto-apply)"
+LG_SOURCE="${SCRIPT_DIR}/src/loop-governance"
+LG_DEST="${HERMES_HOME}/loop-governance"
+HERMES_BIN="${HERMES_HOME}/bin"
+if [[ -d "$LG_SOURCE" ]]; then
+  mkdir -p "$LG_DEST" "$HERMES_BIN"
+  # Copy all Python modules
+  for f in "$LG_SOURCE"/*.py; do
+    cp "$f" "$LG_DEST/"
+    chmod +x "$LG_DEST/$(basename "$f")" 2>/dev/null || true
+  done
+  # Copy shell scripts
+  for f in "$LG_SOURCE"/*.sh; do
+    cp "$f" "$LG_DEST/"
+    chmod +x "$LG_DEST/$(basename "$f")"
+  done
+  cp "$LG_SOURCE"/VERSION "$LG_DEST/"
+  # Create symlinks for CLI tools
+  ln -sf "${LG_DEST}/score_cycle.py"  "${HERMES_BIN}/score-cycle"
+  ln -sf "${LG_DEST}/loop_feedback.py" "${HERMES_BIN}/loop-feedback"
+  ln -sf "${LG_DEST}/auto_apply.py"   "${HERMES_BIN}/auto-apply"
+  ln -sf "${LG_DEST}/loop_config.py"  "${HERMES_BIN}/loop-config"
+  info "  Installed loop-governance tools (v$(cat ${LG_DEST}/VERSION 2>/dev/null || echo '?'))"
+else
+  skip "no src/loop-governance/ directory in repo"
+fi
+ok
+
+# ─────────────────────────────────────────────────────────────
+#  12. Web Cache — Local Semantic Web Cache
 # ─────────────────────────────────────────────────────────────
 step "Installing Web Cache (semantic web result cache)"
 WEB_CACHE_REPO="${SCRIPT_DIR}/src/web-cache"
@@ -2063,7 +2159,7 @@ elif [[ "$CORTEX_OS" == "linux" ]]; then
 fi
 
 else
-  skip "Langfuse + Dashboard (laptop profile — Docker not required)"
+  skip "Langfuse + Dashboard (non-server profile — Docker not required)"
 fi
 
 # ─────────────────────────────────────────────────────────────
@@ -2162,7 +2258,7 @@ step "Installing nginx reverse proxy"
 bash "${SCRIPT_DIR}/src/scripts/install-nginx.sh"
 ok
 else
-  skip "nginx (laptop profile — not needed)"
+  skip "nginx (non-server profile — not needed)"
 fi
 
 # ─────────────────────────────────────────────────────────────

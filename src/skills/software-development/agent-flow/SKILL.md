@@ -10,7 +10,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [workflow, router, dispatch, patterns, code, debug, ui, api, db, data, pipeline, research, writing, review, planning]
-    related_skills: [plan, spike, test-driven-development, systematic-debugging, requesting-code-review, subagent-driven-development, writing-plans, memory-architecture]
+    related_skills: [dev-plan, spike, test-driven-development, systematic-debugging, code-review, subagent-driven-development, writing-plans, memory-architecture]
 ---
 
 # Agent Flow — Workflow Router

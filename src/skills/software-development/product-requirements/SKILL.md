@@ -1,5 +1,5 @@
 ---
-title: prd-lite
+title: product-requirements
 version: 1.0.0
 type: skill
 description: Concise 1-page PRD template for lightweight product requirements documentation
@@ -7,7 +7,7 @@ author: Hermes Agent
 tags: [prd, product, requirements, template, documentation]
 ---
 
-# prd-lite — PRD Template v1.0.0
+# product-requirements — PRD Template v1.0.0
 
 ## 1. Problem
 What specific problem or opportunity are we solving? What evidence supports this?

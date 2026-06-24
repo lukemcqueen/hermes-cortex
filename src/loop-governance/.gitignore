@@ -1,0 +1,13 @@
+# Per-machine data — each agent has their own DB and config
+*.db
+*.db-*
+loop-events/
+loop-governance-config.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Backup files from update.sh
+.backup-*/

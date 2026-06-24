@@ -1,5 +1,5 @@
 ---
-name: hc-party
+name: architecture-review
 version: 1.1.0
 description: "Multi-role architecture review with weighted decision matrices, conflict resolution, and cost estimation."
 category: software-development
@@ -14,7 +14,7 @@ metadata:
     related_skills: [plan, writing-plans, spike, test-driven-development]
 ---
 
-# HC-Party: Architecture Review
+# architecture-review: Architecture Review
 
 ## Overview
 
