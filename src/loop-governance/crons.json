@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "description": "Canonical loop-governance cron jobs. Managed by install-crons.sh.",
+  "crons": [
+    {
+      "name": "loop-governance-health",
+      "enabled": true,
+      "schedule": "*/10 * * * *",
+      "script": "loop-health-check.sh",
+      "no_agent": true,
+      "deliver": "origin",
+      "description": "Health check — tests Ollama, scoring, DB every 10 min. Silent on success, auto-restarts Ollama on failure, alerts via Telegram."
+    },
+    {
+      "name": "weekly-loop-evaluation",
+      "enabled": true,
+      "schedule": "0 9 * * 1",
+      "prompt": "Run the loop governance evaluation pipeline for the last 7 days, then auto-apply safe config changes, and finally vacuum old cycles from the database.\n\n1. Generate the evaluation report using the loop-governance skill (last 7 days).\n2. Deliver the evaluation report including summary, trends, decision accuracy, and recommendations.\n3. Run auto-apply: execute `auto-apply --json` and report what was applied or skipped.\n4. Run DB retention (archive cycles older than 90 days).\n5. Deliver a combined message.",
+      "skills": ["loop-governance"],
+      "no_agent": false,
+      "deliver": "origin",
+      "description": "Weekly evaluation — report, auto-apply safe patches, vacuum old cycles."
+    }
+  ]
+}

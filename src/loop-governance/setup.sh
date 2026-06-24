@@ -158,6 +158,16 @@ JSONEOF
   pass "Config created"
 fi
 
+# ── Crons ──────────────────────────────────────────────────
+if [[ "$CHECK_ONLY" != "1" && "$SYMLINKS_ONLY" != "1" ]]; then
+  if command -v hermes &>/dev/null; then
+    info "Installing crons from template…"
+    bash "${SOURCE_DIR}/install-crons.sh" 2>&1 | grep -E "✓|⚠|✗|created|updated" || true
+  else
+    info "Hermes not found — skip cron install (re-run after Hermes setup)"
+  fi
+fi
+
 # ── Symlink Hermes skill → repo (so Hermes agents find it) ─
 HERMES_SKILL_DIR="${HOME}/.hermes/skills/software-development/loop-governance"
 if [[ -d "$HERMES_SKILL_DIR" && ! -L "$HERMES_SKILL_DIR" ]]; then
