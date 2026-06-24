@@ -188,30 +188,66 @@ def score_finding(finding: dict) -> float:
     return min(10.0, base)
 
 
-# ── Report Generation ────────────────────────────────────────────
-def generate_report(findings: list[dict]) -> dict:
-    """Score and classify findings into a structured report."""
+# ── Report Generation (IMPROVEMENTS.md) ────────────────────
+def generate_improvements_md(findings: list[dict]) -> str:
+    """Generate a markdown improvements file for the repo root."""
     scored = []
     for f in findings:
         f["score"] = round(score_finding(f), 1)
         scored.append(f)
-
-    # Sort by score descending
     scored.sort(key=lambda x: x["score"], reverse=True)
 
     auto_apply = [f for f in scored if f["score"] >= 7.0 and f["source"] == "loop_db"]
     review = [f for f in scored if 4.0 <= f["score"] < 7.0]
-    discard = [f for f in scored if f["score"] < 4.0]
+    discarded = [f for f in scored if f["score"] < 4.0]
 
-    return {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "total_findings": len(scored),
-        "auto_apply": len(auto_apply),
-        "needs_review": len(review),
-        "discarded": len(discard),
-        "findings": scored,
-        "embedding_available": embed("test") is not None,
-    }
+    lines = []
+    lines.append("# Improvements — Auto-Detected")
+    lines.append(f"")
+    lines.append(f"**Generated:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
+    lines.append(f"**Embeddings:** {'Available' if embed('test') is not None else 'Unavailable (heuristic-only)'}")
+    lines.append(f"")
+    lines.append(f"| Category | Count |")
+    lines.append(f"|----------|-------|")
+    lines.append(f"| Auto-apply ready (score ≥ 7) | {len(auto_apply)} |")
+    lines.append(f"| Needs review (score 4-6.9) | {len(review)} |")
+    lines.append(f"| Discarded (score < 4) | {len(discarded)} |")
+    lines.append(f"")
+
+    if auto_apply:
+        lines.append("## ✅ Auto-Apply Ready")
+        lines.append("")
+        lines.append("| Source | Item | Score | Detail |")
+        lines.append("|--------|------|-------|--------|")
+        for f in auto_apply:
+            item = f.get("task_id", f.get("skill", f.get("subject", "?")))
+            detail = f.get("signals", [f.get("improvement", "?")])
+            detail_str = "; ".join(detail) if isinstance(detail, list) else str(detail)
+            lines.append(f"| {f['source']} | {item} | {f['score']} | {detail_str[:60]} |")
+        lines.append("")
+
+    if review:
+        lines.append("## 📝 Needs Review")
+        lines.append("")
+        lines.append("| Source | Item | Score | Detail |")
+        lines.append("|--------|------|-------|--------|")
+        for f in review:
+            item = f.get("task_id", f.get("skill", f.get("subject", "?")))
+            detail = f.get("signals", [f.get("improvement", "?")])
+            detail_str = "; ".join(detail) if isinstance(detail, list) else str(detail)
+            lines.append(f"| {f['source']} | {item} | {f['score']} | {detail_str[:60]} |")
+        lines.append("")
+
+    if discarded:
+        lines.append("## ⏭ Discarded (Low Confidence)")
+        for f in discarded:
+            item = f.get("task_id", f.get("skill", f.get("subject", "?")))
+            lines.append(f"- {item} — score={f['score']}")
+        lines.append("")
+
+    lines.append("---")
+    lines.append(f"*{len(scored)} total findings processed.*")
+    return "\n".join(lines)
 
 
 # ── Main ─────────────────────────────────────────────────────────
@@ -230,34 +266,32 @@ def main():
     print("  Checking existing skills for staleness…")
     all_findings.extend(mine_existing_skills())
 
-    if not all_findings:
-        print("\n  No findings this cycle.")
-        report = generate_report([])
-        with open(REPORT_FILE, "w") as f:
-            json.dump(report, f, indent=2, default=str)
-        print(f"  Report saved to {REPORT_FILE}")
-        return
-
     print(f"\n  Scored {len(all_findings)} findings with nomic embeddings…")
-    report = generate_report(all_findings)
+    md = generate_improvements_md(all_findings)
 
-    print(f"\n  Results:")
-    print(f"    Auto-apply ready:  {report['auto_apply']}")
-    print(f"    Needs review:      {report['needs_review']}")
-    print(f"    Discarded:         {report['discarded']}")
+    # Write IMPROVEMENTS.md to repo root (reviewed + pushed manually)
+    improvements_path = REPO_ROOT / "IMPROVEMENTS.md"
+    with open(improvements_path, "w") as f:
+        f.write(md)
+    print(f"\n  Written to {improvements_path}")
     print()
 
-    for f in report["findings"]:
-        icon = "✅" if f["score"] >= 7.0 else "📝" if f["score"] >= 4.0 else "⏭"
-        source = f["source"].ljust(15)
-        print(f"  {icon} [{source}] {f.get('task_id', f.get('skill', f.get('subject','?'))):<30} score={f['score']}")
-
-    # Save report
+    # Also save JSON report for programmatic consumption
+    report = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "embedding_available": embed("test") is not None,
+        "findings": all_findings,
+    }
     with open(REPORT_FILE, "w") as f:
         json.dump(report, f, indent=2, default=str)
-    print(f"\n  Full report: {REPORT_FILE}")
 
-    # Embedding status
+    # Print summary
+    auto_count = len([f for f in all_findings if f.get('score', 0) >= 7.0])
+    review_count = len([f for f in all_findings if 4.0 <= f.get('score', 0) < 7.0])
+    discard_count = len([f for f in all_findings if f.get('score', 0) < 4.0])
+    print(f"  Results: {auto_count} auto-apply, {review_count} review, {discard_count} discarded")
+    print()
+
     if not report["embedding_available"]:
         print("  ⚠  Embeddings unavailable — scores use heuristic-only")
         return
