@@ -14,7 +14,7 @@ if str(SCRIPT_DIR) not in sys.path:
 from hermes_tz import format_timestamp
 
 MEM_PCT_WARN = 85
-SWAP_PCT_WARN = 70
+SWAP_PCT_WARN = 90
 DISK_PCT_WARN = 90
 
 alerts = []
