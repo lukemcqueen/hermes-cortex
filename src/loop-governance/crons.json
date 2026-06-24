@@ -8,7 +8,7 @@
       "schedule": "0 6 * * 1",
       "script": "skill-miner",
       "no_agent": true,
-      "deliver": "local",
+      "deliver": "origin",
       "description": "Mines local data (sessions, loop DB, memory) for patterns, sends top findings to Moses via inbox. Runs Monday 6am."
     },
     {
