@@ -104,11 +104,26 @@ Every coding session follows this pattern after each TDD cycle:
 2. Check the decision (STOP/LOOP/MOVE ON) — use it to steer the next action
 3. If the decision was wrong → `loop-feedback override <id> --note "..."`
 
-**Setup first time:** `bash ~/hermes-cortex/src/loop-governance/setup.sh` (install deps, symlinks, config)
+**Setup first time:** `bash ~/hermes-cortex/src/loop-governance/setup.sh` (install deps, symlinks, config, crons)
 
 **Dependencies:** Ollama + nomic-embed-text (for scoring), Python 3.11+, ~/.local/bin/ in PATH
 
 **Verification:** `bash ~/.hermes-cortex/tools/loop-governance/verify.sh` — checks all 12 components
+
+---
+
+## Skill Miner (Automated, Runs Weekly)
+
+`skill-miner` runs every Monday 6am on each agent's machine. It scans local data for reusable patterns, scores them with nomic-embed-text, and sends top findings to Moses via the agent inbox automatically. No manual effort needed.
+
+**What it mines (locally, PII-scrubbed):**
+- Loop governance DB — high-scoring TDD cycles
+- Session history — successful patterns from conversations
+- Agent memory — MEMORY.md, USER.md content
+
+**Output:** Top 5 findings sent to `topic=moses` in the agent inbox. Moses reviews, consolidates, and pushes to hermes-cortex.
+
+**Manual trigger:** `skill-miner` (prints findings + sends to inbox)
 
 ## Autonomous Agent Reliability Patterns
 
