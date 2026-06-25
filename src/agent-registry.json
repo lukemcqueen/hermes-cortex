@@ -9,10 +9,11 @@
       "host": "121.129.5.54",
       "hostname": "moses-server",
       "is_server": true,
+      "is_orchestrator": true,
       "accessible": true,
       "health_url": "http://127.0.0.1:8905/api/v1/health",
       "port_range": "13001-13099",
-      "description": "Moses orchestrator server"
+      "description": "Moses — orchestrator server"
     },
     {
       "name": "gisu",

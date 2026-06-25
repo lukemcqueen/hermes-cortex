@@ -106,10 +106,31 @@ def main():
         print("\n  ℹ Run without --check to apply")
         return
 
+    # Determine if this machine is the orchestrator
+    registry_path = os.path.join(os.path.dirname(TEMPLATE_PATH), "..", "..", "src", "agent-registry.json")
+    is_orchestrator = False
+    try:
+        with open(registry_path) as f:
+            registry = json.load(f)
+        hostname = os.uname().nodename.lower()
+        for entry in registry.get("agents", []):
+            if entry.get("is_orchestrator"):
+                orch_host = entry.get("hostname", "").lower()
+                if orch_host and orch_host in hostname:
+                    is_orchestrator = True
+                break
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        pass
+
     # Step 2: Create fresh crons from template
     for cron in crons:
         name = cron["name"]
         schedule = cron["schedule"]
+
+        # Skip orchestrator-only crons on non-orchestrator machines
+        if cron.get("orchestrator_only") and not is_orchestrator:
+            print(f"  ⏭ '{name}' skipped (orchestrator-only, not this machine)")
+            continue
         deliver = cron.get("deliver", "origin")
         no_agent = cron.get("no_agent", False)
         script = cron.get("script", "")

@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "description": "Canonical loop-governance cron jobs. Managed by install-crons.py.",
   "crons": [
     {
@@ -9,17 +9,18 @@
       "script": "skill-miner",
       "no_agent": true,
       "deliver": "origin",
-      "description": "Mines local data (sessions, loop DB, memory) for patterns, sends top findings to Moses via inbox. Runs Monday 6am."
+      "description": "Mines local data for patterns, sends findings to Moses via inbox. Runs Monday 6am."
     },
     {
       "name": "weekly-loop-evaluation",
       "enabled": true,
       "schedule": "0 9 * * 1",
-      "prompt": "Run the loop governance evaluation pipeline for the last 7 days, then run the skill miner, auto-apply safe config changes, and vacuum old cycles.\n\n1. Generate the evaluation report using the loop-governance skill (last 7 days).\n2. Run the skill miner: execute `skill-miner` and report findings (auto-apply ready, needs review, discarded).\n3. Run auto-apply: execute `auto-apply --json`. Report what was applied or skipped.\n4. Run DB retention (archive cycles older than 90 days).\n5. Deliver a combined message.",
+      "prompt": "Run the loop governance evaluation pipeline for the last 7 days, then run the skill miner, auto-apply safe config changes, and vacuum old cycles.\n\n1. Generate the evaluation report using the loop-governance skill (last 7 days).\n2. Run the skill miner: execute `skill-miner` and report findings.\n3. Run auto-apply: execute `auto-apply --json`. Report what was applied or skipped.\n4. Run DB retention (archive cycles older than 90 days).\n5. Deliver a combined message.",
       "skills": ["loop-governance"],
       "no_agent": false,
       "deliver": "origin",
-      "description": "Weekly evaluation — report, skill miner, auto-apply safe patches, vacuum old cycles."
+      "orchestrator_only": false,
+      "description": "Weekly evaluation — report, skill miner, auto-apply, retention."
     }
   ]
 }
