@@ -129,7 +129,43 @@ def score_progress(previous_output: str, current_output: str) -> float:
         # Ollama unavailable — assume progress (optimistic)
         return 5.0
     sim = cosine_similarity(prev_emb, curr_emb)
-    return round(max(0.0, min(10.0, (1.0 - sim) / 0.5 * 10)), 1)
+    # Boost score if current output matches known-good patterns from cache
+    cache_boost = _cache_boost(current_output[:1000])
+    progress = (1.0 - sim) / 0.5 * 10
+    progress = min(10.0, progress + cache_boost)
+    return round(max(0.0, progress), 1)
+
+
+def _cache_boost(text: str) -> float:
+    """Check embedding cache for similar known-good patterns. Returns 0-2 boost."""
+    cache_path = os.path.expanduser("~/.hermes/data/session-embeddings.db")
+    if not os.path.exists(cache_path):
+        return 0.0
+    try:
+        import sqlite3, json
+        query_emb = embed(text[:1500])
+        if query_emb is None:
+            return 0.0
+        conn = sqlite3.connect(cache_path)
+        rows = conn.execute(
+            "SELECT embedding FROM embeddings WHERE source='skill' OR source='loop_db'"
+        ).fetchall()
+        conn.close()
+        if not rows:
+            return 0.0
+        best_sim = 0.0
+        for (emb_json,) in rows:
+            stored = json.loads(emb_json)
+            sim = cosine_similarity(query_emb, stored)
+            best_sim = max(best_sim, sim)
+        # If very similar to a known-good pattern, boost progress score
+        if best_sim > 0.85:
+            return 2.0
+        elif best_sim > 0.75:
+            return 1.0
+        return 0.0
+    except Exception:
+        return 0.0
 
 
 def composite_score(completeness: float, quality: float, progress: float,
