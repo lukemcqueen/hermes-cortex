@@ -10,7 +10,11 @@
 # Cron imposes a 120s timeout on no_agent scripts, and `hermes update` can
 # take >120s when downloading a new binary.  We wrap the update step with an
 # internal 60s timeout so migrate/doctor still run even if the download is
-# slow — the update will simply be picked up on the next daily cycle.
+# wait — the update will simply be picked up on the next daily cycle.
+#
+# v2: Reduced from 90s to 60s (2026-06-25) — 90s left only 30s for
+# migrate+doctor, which still exceeded the 120s cron cap. 60s gives 60s
+# for remaining steps.
 set -euo pipefail
 
 # Step 1: Update upstream Hermes Agent (with guarded timeout)
