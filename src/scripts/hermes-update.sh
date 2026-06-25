@@ -32,17 +32,30 @@ UPDATE_OUTPUT=$(timeout 30 hermes update -y 2>&1) || {
 }
 
 # Step 2: Migrate config schema (needed after version bumps)
-MIGRATE_OUTPUT=$(hermes config migrate 2>&1) || {
-    echo "[hermes-update] config migrate failed (exit $?)"
-    echo "$MIGRATE_OUTPUT"
-    exit 1
+# v4: Added timeout 40 to migrate (2026-06-25) — without this, migrate+doctor
+# could exceed the remaining 90s and trigger the cron 120s kill.
+MIGRATE_OUTPUT=$(timeout 40 hermes config migrate 2>&1) || {
+    MIGRATE_EXIT=$?
+    if [ "$MIGRATE_EXIT" -eq 124 ]; then
+        echo "[hermes-update] config migrate timed out (>40s), will retry next cycle"
+    else
+        echo "[hermes-update] config migrate failed (exit $MIGRATE_EXIT)"
+        echo "$MIGRATE_OUTPUT"
+        exit 1
+    fi
 }
 
 # Step 3: Verify health
-DOCTOR_OUTPUT=$(hermes doctor --fix 2>&1) || {
-    echo "[hermes-update] doctor check found issues (exit $?)"
-    echo "$DOCTOR_OUTPUT"
-    exit 1
+# v4: Added timeout 40 to doctor for same reason as migrate.
+DOCTOR_OUTPUT=$(timeout 40 hermes doctor --fix 2>&1) || {
+    DOCTOR_EXIT=$?
+    if [ "$DOCTOR_EXIT" -eq 124 ]; then
+        echo "[hermes-update] doctor check timed out (>40s), will retry next cycle"
+    else
+        echo "[hermes-update] doctor check found issues (exit $DOCTOR_EXIT)"
+        echo "$DOCTOR_OUTPUT"
+        exit 1
+    fi
 }
 
 echo "[hermes-update] Hermes Agent updated, config migrated, health verified."
