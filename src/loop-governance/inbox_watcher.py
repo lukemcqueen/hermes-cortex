@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 INBOX_URL = "http://localhost:8903"
-INBOX_DIR = Path.home() / "hermes-cortex-private" / "messages" / "inbox"
+INBOX_DIR = Path.home() / "agent-inbox-private" / "inbox"
 LAST_SEEN_FILE = Path.home() / ".hermes" / "data" / "inbox-last-seen.txt"
 
 

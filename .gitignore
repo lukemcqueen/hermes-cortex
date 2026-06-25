@@ -66,3 +66,4 @@ node_modules/
 .hermes-cortex/memory/
 .hermes-cortex/sessions/archive/
 IMPROVEMENTS.md
+agent-inbox-private/
