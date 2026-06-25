@@ -224,7 +224,7 @@ Load the relevant skill with `skill_view(name)` when entering each stage.
 
 | Cron | Schedule | Type | Script/Skill | Deliver | Purpose |
 |------|----------|------|--------------|---------|---------|
-| `cron-auto-remediate` | `*/5 * * * *` | LLM+skill | `auto-remediation` skill | `local` | Auto-fix cron/inbox/service issues |
+| `auto-remediate` | `*/5 * * * *` | LLM+skill | `auto-remediation` skill | `local` | Auto-fix cron/inbox/service issues |
 | `remediation-sensor` | `*/5 * * * *` | no_agent | `remediation-sensor.py` | `local` | Companion diagnostics sensor |
 | `service-recovery` | `*/5 * * * *` | no_agent | `service-recovery.py` | `origin` | Auto-restart crashed services |
 | `agent-team-health-monitor` | `*/10 * * * *` | no_agent | `agent-team-health-monitor.py` | `origin` | Cross-agent health polling |
