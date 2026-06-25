@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "description": "Agent registry for Hermes Cortex. Server agents have health_url for API polling. Client-only agents (accessible=false) are skipped.",
+
+  "agents": [
+    {
+      "name": "moses",
+      "role": "orchestrator",
+      "host": "121.129.5.54",
+      "hostname": "moses-server",
+      "is_server": true,
+      "accessible": true,
+      "health_url": "http://127.0.0.1:8905/api/v1/health",
+      "port_range": "13001-13099",
+      "description": "Moses orchestrator server"
+    },
+    {
+      "name": "gisu",
+      "role": "operations",
+      "hostname": "cisnet03",
+      "is_server": true,
+      "accessible": true,
+      "description": "Gisu operations server"
+    },
+    {
+      "name": "joseph",
+      "role": "web-infrastructure",
+      "hostname": "joseph-server",
+      "is_server": true,
+      "accessible": true,
+      "description": "Joseph web/infra server"
+    },
+    {
+      "name": "kustos",
+      "role": "security",
+      "hostname": "kustos-server",
+      "is_server": true,
+      "accessible": true,
+      "description": "Kustos security server"
+    },
+    {
+      "name": "titus",
+      "role": "developer",
+      "hostname": "LAM2",
+      "is_server": false,
+      "accessible": false,
+      "platform": "macOS",
+      "description": "Titus — macOS laptop, client-only, communicates via inbox"
+    }
+  ]
+}

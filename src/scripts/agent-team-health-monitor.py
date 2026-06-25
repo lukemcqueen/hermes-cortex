@@ -11,9 +11,9 @@ per server so alerts only fire on state transitions.
 Structured health data written to ~/.hermes/state/agent-health-data.json
 for dashboard consumption — updated every poll cycle.
 
-Agent registry at ~/.hermes/state/agent-registry.json — each agent
+Agent registry at ~/hermes-cortex/src/agent-registry.json — each agent
 entry can set "health_url" for remote health API endpoint.
-Moses's own health is checked at http://127.0.0.1:8905 via fallback.
+Agents with is_server=false are skipped (client-only, no API reachable).
 
 Setup:
   Add to agent-registry.json:
@@ -39,23 +39,27 @@ from hermes_tz import format_timestamp
 HOME = Path.home()
 STATE_FILE = HOME / ".hermes" / "state" / "health-state.json"
 HEALTH_DATA_FILE = HOME / ".hermes" / "state" / "agent-health-data.json"
-REGISTRY_PATH = HOME / ".hermes" / "state" / "agent-registry.json"
+REGISTRY_PATH = HOME / "hermes-cortex" / "src" / "agent-registry.json"
 TIMEOUT = 15
 
 
 def _get_agents() -> list[dict]:
-    """Load health endpoints from registry. Fallback to local Moses health."""
+    """Load server-reachable agents from registry. Skip client-only agents."""
     agents = []
     if REGISTRY_PATH.exists():
         try:
             data = json.loads(REGISTRY_PATH.read_text())
-            for key, val in data.get("agents", {}).items():
-                url = (val.get("health_url") or "").strip()
+            for entry in data.get("agents", []):
+                # Skip client-only machines (no API access)
+                if not entry.get("accessible", False):
+                    continue
+                url = (entry.get("health_url") or "").strip()
+                name = entry.get("name", "?")
                 if url:
-                    agents.append({"key": key, "name": val.get("name", key), "url": url})
+                    agents.append({"key": name, "name": name, "url": url})
         except (json.JSONDecodeError, KeyError):
             pass
-    # Always include Moses local
+    # Always include Moses local health
     if not any(a["key"] == "moses" for a in agents):
         agents.insert(0, {"key": "moses", "name": "Moses", "url": "http://127.0.0.1:8905/api/v1/health"})
     return agents
