@@ -19,7 +19,17 @@ set -euo pipefail
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 STATE_DIR="$HERMES_HOME/state"
 REGISTRY_FILE="$STATE_DIR/agent-registry.json"
-INBOX_URL="http://127.0.0.1:8903/send"
+
+# ── Config: source inbox credentials ──
+INBOX_URL="https://your-domain.com:13004/send"
+INBOX_AUTH=""
+CONFIG_FILE="${HOME}/.hermes/moses-inbox.conf"
+if [[ -f "$CONFIG_FILE" ]]; then
+    source "$CONFIG_FILE"
+    INBOX_URL="${MOSES_INBOX_URL:-$INBOX_URL}/send"
+    INBOX_AUTH="${MOSES_INBOX_AUTH:-}"
+fi
+
 LAST_RUN_FILE="$STATE_DIR/last-skill-report-request.txt"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -80,6 +90,10 @@ SENT=0
 FAILED=0
 REQUEST_ID="skill-req-${TIMESTAMP}"
 
+# Build auth arg for curl
+CURL_AUTH=()
+[[ -n "$INBOX_AUTH" ]] && CURL_AUTH=(-u "$INBOX_AUTH")
+
 for agent in "${AGENTS[@]}"; do
   # Skip self (Moses)
   [[ "$agent" == "moses" ]] && continue
@@ -95,11 +109,11 @@ Instructions:
   bash ~/.hermes/scripts/collect-agent-skills.sh
 
   # To set up automatic reporting (every 6h, no_agent):
-  hermes cron create \\
-    name=collect-agent-skills \\
-    every 6h \\
-    script=~/.hermes/scripts/collect-agent-skills.sh \\
-    no_agent=true \\
+  hermes cron create \
+    name=collect-agent-skills \
+    every 6h \
+    script=~/.hermes/scripts/collect-agent-skills.sh \
+    no_agent=true \
     deliver=local
 
   Then fill in ~/.hermes/moses-inbox.conf with your Moses
@@ -117,6 +131,7 @@ or with 'none' if you have nothing new to report.
   fi
 
   if curl -sk -X POST "$INBOX_URL" \
+    "${CURL_AUTH[@]}" \
     -d "from=moses" \
     -d "to=$agent" \
     -d "topic=operations" \
@@ -125,7 +140,7 @@ or with 'none' if you have nothing new to report.
     -d "priority=normal" \
     --connect-timeout 5 \
     --max-time 10 \
-    -o /dev/null -w "%{http_code}" 2>/dev/null | grep -q "^\\(200\\|302\\|303\\)"; then
+    -o /dev/null -w "%{http_code}" 2>/dev/null | grep -q "^\(200\|302\|303\)"; then
     SENT=$((SENT + 1))
   else
     echo "ERROR: Failed to send to $agent" >&2

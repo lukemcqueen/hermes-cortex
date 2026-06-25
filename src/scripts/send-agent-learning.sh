@@ -12,9 +12,17 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-# ── Config ──
+# ── Config: source inbox credentials ──
+INBOX_URL="https://your-domain.com:13004/send"
+INBOX_AUTH=""
+CONFIG_FILE="${HOME}/.hermes/moses-inbox.conf"
+if [[ -f "$CONFIG_FILE" ]]; then
+    source "$CONFIG_FILE"
+    INBOX_URL="${MOSES_INBOX_URL:-$INBOX_URL}/send"
+    INBOX_AUTH="${MOSES_INBOX_AUTH:-}"
+fi
+
 AGENT_NAME="${HOSTNAME%%.*}"
-INBOX_URL="http://127.0.0.1:8903/send"
 STATE_DIR="${HOME}/.hermes/state"
 LAST_SENT_FILE="${STATE_DIR}/agent-learning-last-sent"
 INTERVAL_SECONDS="${AGENT_LEARNING_INTERVAL:-21600}"  # default 6h
@@ -101,7 +109,10 @@ Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
 ${SNIPPETS}"
 
 # ── Step 5: Send to Moses via inbox ──
+CURL_AUTH=()
+[[ -n "$INBOX_AUTH" ]] && CURL_AUTH=(-u "$INBOX_AUTH")
 RESPONSE=$(curl -sf -X POST "${INBOX_URL}" \
+    "${CURL_AUTH[@]}" \
     -d "from=${AGENT_NAME}" \
     -d "topic=moses" \
     -d "subject=📥 ${AGENT_NAME} learning summary" \

@@ -19,6 +19,7 @@ Output:
   - Local report saved to ~/.hermes/data/skill-miner-report.json
 """
 
+import base64
 import json
 import os
 import re
@@ -36,11 +37,37 @@ SESSION_DIR = HOME / ".hermes-cortex" / "sessions"
 MEMORY_DIR = HOME / ".hermes-cortex" / "memory"
 LOOP_DB = HERMES_DATA / "loop-governance.db"
 REPORT_FILE = HERMES_DATA / "skill-miner-report.json"
-INBOX_URL = "http://localhost:8903/send"
+INBOX_URL = os.environ.get("AGENT_INBOX_URL", "https://your-domain.com:13004")
+INBOX_SEND_PATH = os.environ.get("AGENT_INBOX_SEND", INBOX_URL.rstrip("/") + "/send")
+INBOX_AUTH = os.environ.get("MOSES_INBOX_AUTH", "")
+
+# Read auth from config file if not set via env
+if not INBOX_AUTH:
+    config_path = HOME / ".hermes" / "moses-inbox.conf"
+    if config_path.exists():
+        try:
+            for line in config_path.read_text().splitlines():
+                line = line.strip()
+                if line.startswith("MOSES_INBOX_AUTH="):
+                    val = line.split("=", 1)[1].strip().strip("'\"")
+                    if val:
+                        INBOX_AUTH = val
+                        break
+        except Exception:
+            pass
 
 # ── Embedding (nomic-embed-text via local Ollama) ─────────────
 OLLAMA_URL = "http://localhost:11434/api/embeddings"
 NOMIC_MODEL = "nomic-embed-text"
+
+
+def send_headers() -> dict:
+    """Build HTTP headers for inbox API requests, including auth if configured."""
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    if INBOX_AUTH:
+        encoded = base64.b64encode(INBOX_AUTH.encode()).decode()
+        headers["Authorization"] = "Basic " + encoded
+    return headers
 
 
 def embed(text: str) -> list[float] | None:
@@ -299,7 +326,7 @@ def send_to_moses(findings: list[dict]):
             "priority": "normal",
             "body": "\n".join(body_parts),
         }).encode()
-        req = urllib.request.Request(INBOX_URL, data, {"Content-Type": "application/x-www-form-urlencoded"})
+        req = urllib.request.Request(INBOX_SEND_PATH, data, send_headers())
         urllib.request.urlopen(req, timeout=5)
         print(f"  ✓ Sent {len(top)} findings to Moses via inbox")
     except Exception as e:

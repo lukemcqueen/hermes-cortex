@@ -9,7 +9,11 @@ questions, and anything tagged 'urgent' or 'critical'.
 Usage:
     python3 inbox-watcher.py              # check and report
     python3 inbox-watcher.py --mark-read  # check + mark as processed
+
+Uses AGENT_INBOX_URL env var with fallback to external URL.
+Reads MOSES_INBOX_AUTH from env or ~/.hermes/moses-inbox.conf for Basic Auth.
 """
+import base64
 import json
 import os
 import re
@@ -17,7 +21,33 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-INBOX_URL = "http://localhost:8903"
+# ── Inbox URL ──
+INBOX_URL = os.environ.get(
+    "AGENT_INBOX_URL",
+    "https://your-domain.com:13004",
+)
+
+# ── Auth ──
+INBOX_AUTH = os.environ.get("MOSES_INBOX_AUTH", "")
+if not INBOX_AUTH:
+    config_path = Path.home() / ".hermes" / "moses-inbox.conf"
+    if config_path.exists():
+        try:
+            for line in config_path.read_text().splitlines():
+                line = line.strip()
+                if line.startswith("MOSES_INBOX_AUTH="):
+                    val = line.split("=", 1)[1].strip().strip("'\"")
+                    if val:
+                        INBOX_AUTH = val
+                        break
+        except Exception:
+            pass
+
+AUTH_HEADER = {}
+if INBOX_AUTH and ":" in INBOX_AUTH:
+    encoded = base64.b64encode(INBOX_AUTH.encode()).decode()
+    AUTH_HEADER = {"Authorization": f"Basic {encoded}"}
+
 INBOX_DIR = Path.home() / "agent-inbox-private" / "inbox"
 LAST_SEEN_FILE = Path.home() / ".hermes" / "data" / "inbox-last-seen.txt"
 
@@ -25,7 +55,7 @@ LAST_SEEN_FILE = Path.home() / ".hermes" / "data" / "inbox-last-seen.txt"
 def fetch_inbox_html() -> str:
     """Fetch inbox page and extract message threads."""
     try:
-        req = urllib.request.Request(f"{INBOX_URL}/?topic=moses")
+        req = urllib.request.Request(f"{INBOX_URL}/?topic=moses", headers=AUTH_HEADER)
         with urllib.request.urlopen(req, timeout=10) as resp:
             return resp.read().decode("utf-8", errors="replace")
     except Exception as e:

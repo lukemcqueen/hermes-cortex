@@ -4,7 +4,7 @@
 #
 #  Runs after every git commit to hermes-cortex. Extracts
 #  commit details and sends an inbox broadcast to all agents
-#  via the agent inbox API (localhost:8903).
+#  via the agent inbox API.
 #
 #  Silent when:
 #    - Repo dir doesn't exist
@@ -19,7 +19,16 @@ set -euo pipefail
 # ── Paths ──
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATE_FILE="${HOME}/.hermes/state/post-commit-notify"
-INBOX_URL="http://127.0.0.1:8903/send"
+
+# ── Config: source inbox credentials ──
+INBOX_URL="https://your-domain.com:13004/send"
+INBOX_AUTH=""
+CONFIG_FILE="${HOME}/.hermes/moses-inbox.conf"
+if [[ -f "$CONFIG_FILE" ]]; then
+    source "$CONFIG_FILE"
+    INBOX_URL="${MOSES_INBOX_URL:-$INBOX_URL}/send"
+    INBOX_AUTH="${MOSES_INBOX_AUTH:-}"
+fi
 
 # ── Helpers ──
 log()  { echo "[notify] $*" >> "$STATE_FILE.log"; }
@@ -45,13 +54,7 @@ if [ -f "$STATE_FILE" ]; then
   fi
 fi
 
-# ── Step 4: Check inbox is reachable ──
-if ! curl -sf -o /dev/null --connect-timeout 2 "http://127.0.0.1:8903/health" 2>/dev/null; then
-  log "inbox unreachable — skipping notification"
-  exit 0
-fi
-
-# ── Step 5: Build message body ──
+# ── Step 4: Build message body ──
 BODY="Commited by ${AUTHOR}
 SHA: ${SHA}
 Subject: ${SUBJECT}
@@ -60,8 +63,10 @@ Files: ${FILE_COUNT} changed
 ${FILES}
 "
 
-# ── Step 6: Send broadcast to all agents (marked read — informational, not actionable) ──
-curl -sf -X POST "$INBOX_URL" \
+# ── Step 5: Send broadcast to all agents (marked read — informational, not actionable) ──
+CURL_AUTH=()
+[[ -n "$INBOX_AUTH" ]] && CURL_AUTH=(-u "$INBOX_AUTH")
+curl -sf -X POST "$INBOX_URL" "${CURL_AUTH[@]}" \
   -d "from=Moses" \
   -d "topic=all" \
   -d "subject=📦 hermes-cortex update: ${SUBJECT}" \
@@ -70,5 +75,5 @@ curl -sf -X POST "$INBOX_URL" \
   -d "status=read" \
   >/dev/null 2>&1 && log "notified all agents for ${SHA}" || log "failed to notify for ${SHA}"
 
-# ── Step 7: Save state ──
+# ── Step 6: Save state ──
 echo "$SHA" > "$STATE_FILE"

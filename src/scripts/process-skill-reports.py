@@ -24,7 +24,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-INBOX_URL = os.environ.get("AGENT_INBOX_URL", "http://127.0.0.1:8903")
+INBOX_URL = os.environ.get("AGENT_INBOX_URL", "https://your-domain.com:13004")
 STATE_DIR = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")) / "state"
 PROCESSED_MARKER = STATE_DIR / "last-skill-report-processed.txt"
 
