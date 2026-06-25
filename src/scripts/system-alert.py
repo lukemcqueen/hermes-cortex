@@ -22,6 +22,17 @@ details = []
 remediations = []
 HOSTNAME = socket.gethostname()[:12]
 
+# PII scrubbing — never expose hostname or user paths in output
+def safe_hostname() -> str:
+    """Return generic label instead of actual hostname (PII)."""
+    return "server"
+
+def scrub_pii(text: str) -> str:
+    """Remove PII from detail strings before output."""
+    home = str(Path.home())
+    text = text.replace(home, "~")
+    return text
+
 is_linux = sys.platform.startswith("linux")
 is_macos = sys.platform == "darwin"
 
