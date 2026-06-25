@@ -35,8 +35,8 @@ if not (CLIENT_CERT.exists() and CLIENT_KEY.exists()):
     json.dump({"status": 0, "body": f"Cert not found at {CLIENT_CERT}"}, sys.stdout)
     sys.exit(1)
 
-# Build SSL context with client cert
-ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=str(CA_CERT) if CA_CERT.exists() else None)
+# Build SSL context with client cert (server cert verified by system CA bundle)
+ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
 ctx.load_cert_chain(str(CLIENT_CERT), str(CLIENT_KEY))
 
 # Read request from stdin
