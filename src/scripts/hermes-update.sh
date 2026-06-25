@@ -22,10 +22,10 @@
 set -euo pipefail
 
 # Step 1: Update upstream Hermes Agent (with guarded timeout)
-UPDATE_OUTPUT=$(timeout 25 hermes update -y 2>&1) || {
+UPDATE_OUTPUT=$(timeout 20 hermes update -y 2>&1) || {
     UPDATE_EXIT=$?
     if [ "$UPDATE_EXIT" -eq 124 ]; then
-        echo "[hermes-update] hermes update timed out (>25s), will retry next cycle"
+        echo "[hermes-update] hermes update timed out (>20s), will retry next cycle"
     else
         echo "[hermes-update] hermes update failed (exit $UPDATE_EXIT)"
         echo "$UPDATE_OUTPUT"
@@ -34,12 +34,12 @@ UPDATE_OUTPUT=$(timeout 25 hermes update -y 2>&1) || {
 }
 
 # Step 2: Migrate config schema (needed after version bumps)
-# v4: Added timeout 40 to migrate (2026-06-25) — without this, migrate+doctor
-# could exceed the remaining 90s and trigger the cron 120s kill.
-MIGRATE_OUTPUT=$(timeout 35 hermes config migrate 2>&1) || {
+# v6: Reduced timeouts from 25/35/30 to 20/25/25 (2026-06-26)
+# 20+25+25=70s total, leaving 50s buffer for shell overhead within 120s cron limit.
+MIGRATE_OUTPUT=$(timeout 25 hermes config migrate 2>&1) || {
     MIGRATE_EXIT=$?
     if [ "$MIGRATE_EXIT" -eq 124 ]; then
-        echo "[hermes-update] config migrate timed out (>35s), will retry next cycle"
+        echo "[hermes-update] config migrate timed out (>25s), will retry next cycle"
     else
         echo "[hermes-update] config migrate failed (exit $MIGRATE_EXIT)"
         echo "$MIGRATE_OUTPUT"
@@ -48,11 +48,11 @@ MIGRATE_OUTPUT=$(timeout 35 hermes config migrate 2>&1) || {
 }
 
 # Step 3: Verify health
-# v4: Added timeout 40 to doctor for same reason as migrate.
-DOCTOR_OUTPUT=$(timeout 30 hermes doctor --fix 2>&1) || {
+# v6: Reduced doctor timeout to match new budget.
+DOCTOR_OUTPUT=$(timeout 25 hermes doctor --fix 2>&1) || {
     DOCTOR_EXIT=$?
     if [ "$DOCTOR_EXIT" -eq 124 ]; then
-        echo "[hermes-update] doctor check timed out (>30s), will retry next cycle"
+        echo "[hermes-update] doctor check timed out (>25s), will retry next cycle"
     else
         echo "[hermes-update] doctor check found issues (exit $DOCTOR_EXIT)"
         echo "$DOCTOR_OUTPUT"
