@@ -15,13 +15,15 @@
 # v2: Reduced from 90s to 60s (2026-06-25) — 90s left only 30s for
 # migrate+doctor, which still exceeded the 120s cron cap. 60s gives 60s
 # for remaining steps.
+# v3: Reduced from 60s to 30s (2026-06-25) — 60s still insufficient for
+# migrate+doctor after update timeout. 30s gives 90s for remaining steps.
 set -euo pipefail
 
 # Step 1: Update upstream Hermes Agent (with guarded timeout)
-UPDATE_OUTPUT=$(timeout 60 hermes update -y 2>&1) || {
+UPDATE_OUTPUT=$(timeout 30 hermes update -y 2>&1) || {
     UPDATE_EXIT=$?
     if [ "$UPDATE_EXIT" -eq 124 ]; then
-        echo "[hermes-update] hermes update timed out (>60s), will retry next cycle"
+        echo "[hermes-update] hermes update timed out (>30s), will retry next cycle"
     else
         echo "[hermes-update] hermes update failed (exit $UPDATE_EXIT)"
         echo "$UPDATE_OUTPUT"
