@@ -17,7 +17,9 @@ Tools:
 """
 
 import asyncio
+import importlib.util
 import json
+import logging
 import os
 import sqlite3
 import sys
@@ -26,6 +28,22 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+# ── Dependency Check: mcp package ────────────────────────────
+_HAVE_MCP = importlib.util.find_spec("mcp")
+if _HAVE_MCP is None:
+    msg = (
+        "[mcp-server] ERROR: Required 'mcp' Python package not found.\n"
+        "[mcp-server] Install it with:\n"
+        f"[mcp-server]   {sys.executable} -m pip install mcp\n"
+        "[mcp-server] Or if using system Python:\n"
+        "[mcp-server]   pip install mcp"
+    )
+    print(msg, file=sys.stderr)
+    sys.exit(1)
+
+log = logging.getLogger("loop-governance")
+logging.basicConfig(level=logging.DEBUG, format="[mcp-server] %(levelname)s: %(message)s", stream=sys.stderr, force=True)
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server

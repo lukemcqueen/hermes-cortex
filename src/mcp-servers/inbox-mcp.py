@@ -12,7 +12,9 @@ Tools:
 """
 
 import asyncio
+import importlib.util
 import json
+import logging
 import os
 import re
 import sys
@@ -22,6 +24,22 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+# ── Dependency Check: mcp package ────────────────────────────
+_HAVE_MCP = importlib.util.find_spec("mcp")
+if _HAVE_MCP is None:
+    msg = (
+        "[mcp-server] ERROR: Required 'mcp' Python package not found.\n"
+        "[mcp-server] Install it with:\n"
+        f"[mcp-server]   {sys.executable} -m pip install mcp\n"
+        "[mcp-server] Or if using system Python:\n"
+        "[mcp-server]   pip install mcp"
+    )
+    print(msg, file=sys.stderr)
+    sys.exit(1)
+
+log = logging.getLogger("agent-inbox")
+logging.basicConfig(level=logging.DEBUG, format="[mcp-server] %(levelname)s: %(message)s", stream=sys.stderr, force=True)
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -99,7 +117,7 @@ async def call_tool(name: str, arguments: dict[str, Any] | None) -> CallToolResu
 
 def _inbox_send(args: dict) -> CallToolResult:
     MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
-
+    log.info("inbox_send: to=%s topic=%s", args.get("to"), args.get("topic"))
     body_text = args["body"]
 
     # Handle optional file attachment
