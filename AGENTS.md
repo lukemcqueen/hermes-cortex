@@ -224,7 +224,7 @@ Load the relevant skill with `skill_view(name)` when entering each stage.
 
 | Cron | Schedule | Type | Script/Skill | Deliver | Purpose |
 |------|----------|------|--------------|---------|---------|
-| `auto-remediate` | `*/5 * * * *` | LLM+skill | `auto-remediation` skill | `local` | Auto-fix cron/inbox/service issues |
+| `agent-remediate` | `*/5 * * * *` | LLM+skill | `auto-remediation` skill | `local` | Auto-fix cron/inbox/service issues |
 | `remediation-sensor` | `*/5 * * * *` | no_agent | `remediation-sensor.py` | `local` | Companion diagnostics sensor |
 | `service-recovery` | `*/5 * * * *` | no_agent | `service-recovery.py` | `origin` | Auto-restart crashed services |
 | `agent-team-health-monitor` | `*/10 * * * *` | no_agent | `agent-team-health-monitor.py` | `origin` | Cross-agent health polling |
@@ -267,14 +267,14 @@ cat ~/.hermes/cron/jobs.json | python3 -m json.tool
 | `system-alert.py` | no_agent watchdog | Every 10m | Resource alerts + auto-cleanup (purge at 85% mem, brew/docker prune at 90% disk) |
 | `service-recovery.py` | no_agent watchdog | Every 5m | Auto-restart nginx, Ollama, gbrain, Langfuse, restore missing scripts |
 | `orch-check-agent-messages.sh` | no_agent watchdog | Every 10m | Flags agent error messages with remediation markers |
-| `cron-auto-remediate` (skill) | LLM-driven cron | Every 5m | Orchestrator: checks errored cron jobs + inbox remediation markers, applies fixes |
+| `agent-remediate` (skill) | LLM-driven cron | Every 5m | Orchestrator: checks errored cron jobs + inbox remediation markers, applies fixes |
 
 **Skill location:** `src/skills/devops/auto-remediation/SKILL.md`
 
 **Setting up on a new agent:** Each agent sets `AGENT_NAME` env var or `~/.hermes/moses-inbox.conf` so health reports identify themselves. Default: hostname.
 1. `install.sh` copies all scripts to `~/.hermes/scripts/`
 2. `install-hermes-crons.sh` (auto-run by install.sh) creates essential cron jobs:
-   - `cron-auto-remediate` (every 5m, skill-based) — checks errors, applies fixes
+   - `agent-remediate` (every 5m, skill-based) — checks errors, applies fixes
    - `remediation-sensor` (every 5m, no_agent) — companion diagnostics sensor
    - `system-heartbeat` (every 30m, no_agent) — system health monitoring
    - `agent-team-health-monitor` (every 10m, no_agent) — agent health polling
