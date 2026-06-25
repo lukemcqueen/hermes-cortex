@@ -170,9 +170,10 @@ def main():
     print()
     print("Done. To add a new agent:")
     print("  1. Add entry to ~/.hermes/state/agent-registry.json")
-    print("  2. Create htpasswd entry: htpasswd ${NGINX_HTPASSWD:-/usr/local/etc/nginx/.htpasswd} <user>")
-    print("  3. Create config: ~/.hermes/agent-inbox-<agent>.conf")
-    print("  4. Run: python3 generate-inbox-wrappers.py --apply-crons")
+    print("  2. Create config: ~/.hermes/agent-inbox-<agent>.conf")
+    print("  3. Run: python3 generate-inbox-wrappers.py --apply-crons")
+    print()
+    print("Note: The inbox is now MCP-only. Agents use inbox_send/inbox_read/inbox_watch tools, not the API.")
 
 
 if __name__ == "__main__":

@@ -10,8 +10,7 @@
 #  without needing to request the file separately.
 #
 #  Relies on two env vars (or ~/.hermes/moses-inbox.conf):
-#    MOSES_INBOX_URL  — Moses inbox POST endpoint (e.g.
-#      https://your-domain.com:13004/send)
+#    MOSES_INBOX_URL  — Moses inbox MCP endpoint (POST via internal API)
 #    MOSES_INBOX_AUTH — "user:pass" for Basic Auth on that
 #      endpoint (optional — skips POST if absent)
 #

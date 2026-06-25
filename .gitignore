@@ -15,6 +15,7 @@ patches/
 *.key
 **/creds/**
 **/credentials*
+inbox.conf
 
 # Hermes state databases (session data, not config)
 .hermes/

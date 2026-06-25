@@ -13,7 +13,7 @@ Moses reads these from the inbox and merges them into
 agent-health-data.json.
 
 Configuration (env vars or ~/.hermes/moses-inbox.conf):
-  MOSES_INBOX_URL   — Moses inbox POST endpoint
+  MOSES_INBOX_URL   — Moses inbox MCP endpoint (POST via internal API)
   MOSES_INBOX_AUTH  — "user:pass" for Basic Auth
   AGENT_NAME        — name to report as (default: hostname)
 

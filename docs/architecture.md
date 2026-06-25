@@ -24,8 +24,7 @@
 │              nginx Reverse Proxy (macOS Host)                        │
 │  :13001 → Cortex Dashboard (port 8901, HTTPS)                       │
 │  :13002 → Langfuse (port 3000, HTTPS)                               │
-│  :13003 → Health Server (port 8905, HTTPS)                          │
-│  :13004 → Agent Inbox (port 8903, HTTPS)                            │
+│  :13003 → Health Server (port 8905, HTTPS)                           │
 │  TLS + Basic Auth on all external ports, rate-limited               │
 └──────────────────────────────────────────────────────────────────────┘
        │
@@ -66,8 +65,8 @@
 | Langfuse | 3000 | LLM trace observability | Node.js standalone, launchd |
 | Cortex Dashboard | 8901 | System + Langfuse companion | Flask + pure JS/HTML |
 | Health Server | 8905 | System health endpoint | Flask, launchd |
-| Agent Inbox | **8903 (localhost-only)** | Inter-agent messaging — internal FastAPI (no auth) | External agents use :13004 with Basic Auth |
-| nginx | 13001–13004 | Reverse proxy for all services | Homebrew, launchd |
+| Agent Inbox | **8903 (localhost-only)** | Inter-agent messaging — **MCP-only access via inbox_send/inbox_read/inbox_watch tools**. Internal FastAPI backend for inbox-mcp.py, no external endpoint |
+|| nginx | 13001–13003 | Reverse proxy for all services | Homebrew, launchd |
 | MinIO | 9002 (S3 API), 9001 (console) | S3-compatible blob storage | Native binary, launchd |
 | ClickHouse | 8123 (HTTP), 9000 (native) | OLAP database for Langfuse traces | Native binary |
 | PostgreSQL 16 | 5432 | Primary database | Native, launchd |
@@ -86,7 +85,6 @@ rate-limited by nginx + fail2ban (4 jails, ban escalation 1h→4wk):
 | 13001 | Cortex Dashboard (HTTPS) | Yes (Basic Auth) | nginx rate-limit 20/5r/s + conn-limit 10/IP |
 | 13002 | Langfuse (HTTPS) | Yes (Basic Auth) | nginx rate-limit + _next/static excluded from auth limiter |
 | 13003 | Health Server (HTTPS) | Yes (Basic Auth) | Strict rate-limit 6r/m, conn-limit 5/IP |
-|| 13004 | Agent Inbox (HTTPS) | Yes (Basic Auth) | **External agents use this** — proxies to internal :8903 (localhost-only) |
 
 ## Security Stack
 

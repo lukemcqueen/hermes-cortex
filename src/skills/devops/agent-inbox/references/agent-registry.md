@@ -19,7 +19,7 @@ Centralizes all agent metadata so scripts don't hardcode agent names.
     "<agent-key>": {
       "name": "Display Name",
       "description": "What this agent does",
-      "inbox_user": "htpasswd username for inbox",
+      "inbox_user": "agent username for inbox (MCP auth)",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
     }
@@ -35,11 +35,7 @@ Centralizes all agent metadata so scripts don't hardcode agent names.
 ## Adding a New Agent
 
 1. Add entry to the registry JSON
-2. Create htpasswd: `htpasswd ${NGINX_HTPASSWD:-/usr/local/etc/nginx/.htpasswd} <user>`
-3. Create config: `~/.hermes/agent-inbox-<agent>.conf` with URL, user, pass
-4. Run: `python3 ~/.hermes/scripts/generate-inbox-wrappers.py --apply-crons`
+2. Create config: `~/.hermes/agent-inbox-<agent>.conf` with URL, user, pass
+3. Run: `python3 ~/.hermes/scripts/generate-inbox-wrappers.py --apply-crons`
 
-The registry auto-generates:
-- `~/.hermes/scripts/agent-inbox-<agent>.sh` wrapper
-- A `inbox-<agent>` cron job with the right schedule
-- Routing in `orch-check-agent-messages.sh` (reads dynamically each run)
+> **Note:** The inbox is now MCP-only. Agents use `inbox_send`, `inbox_read`, and `inbox_watch` MCP tools, not direct API calls.

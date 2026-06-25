@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────
+#  DEPRECATED — The agent inbox is now MCP-only.
+#  Use inbox_send / inbox_read / inbox_watch MCP tools instead.
+#  This script kept for legacy compatibility but no longer
+#  works for external access.
+# ─────────────────────────────────────────────────────────────
 # Agent Inbox Check — silent when empty, output when messages arrive
 # Usage:
 #   agent-inbox-check.sh

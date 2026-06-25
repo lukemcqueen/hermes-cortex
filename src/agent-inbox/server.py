@@ -160,6 +160,20 @@ read_by: {read_by}
     return filename
 
 
+def _delete_message(filename: str) -> bool:
+    """Move a message file to the trash directory. Returns True if deleted."""
+    path = _msg_path(filename)
+    if not path or not path.exists():
+        return False
+
+    trash_dir = PRIVATE_REPO / "trash"
+    trash_dir.mkdir(parents=True, exist_ok=True)
+
+    import shutil
+    shutil.move(str(path), str(trash_dir / path.name))
+    return True
+
+
 def _mark_read(filename: str, reader: str = "") -> None:
     """Mark a message as read by adding reader to read_by field.
 
@@ -471,6 +485,7 @@ def _render_msg(msg: dict, is_reply: bool = False) -> str:
   <div class="msg-actions">
     <a href="{reply_url}">↩ Reply</a>
     {f'<a href="/read/{msg["filename"]}">✓ Mark Read</a>' if msg["status"] == "unread" and not msg.get("is_processed") else ""}
+    <a href="/delete/{msg["filename"]}" onclick="return confirm('Delete this message?')">🗑 Delete</a>
   </div>
 </div>'''
 
@@ -501,6 +516,7 @@ def _render_tabs(active_topic: str, inbox_msgs: list) -> str:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(
+    request: Request,
     topic: str = Query(DEFAULT_TOPIC),
     reply_to: str = Query(""),
     sent: bool = Query(False),
@@ -511,6 +527,12 @@ async def index(
     threads = _build_thread_tree(all_msgs)
 
     success_html = '<div class="success">✅ Message sent! Moses will see it within 10 minutes.</div>' if sent else ""
+    if not success_html:
+        deleted_param = request.query_params.get("deleted", "")
+        if deleted_param == "true":
+            success_html = '<div class="success">🗑 Message deleted (moved to trash).</div>'
+        elif deleted_param == "false":
+            success_html = '<div class="success" style="border-color:var(--red);color:var(--red);">⚠️ Message not found or already deleted.</div>'
 
     # Pre-fill reply form
     reply_context = ""
@@ -920,6 +942,25 @@ async def mark_read(filename: str, for_: str = Query(default="", alias="for")):
     """Mark a message as read. If for is set, marks read for that agent only."""
     _mark_read(filename, reader=for_)
     return RedirectResponse(url="/", status_code=303)
+
+
+@app.get("/delete/{filename}")
+async def delete_message_web(filename: str):
+    """Delete a message from the inbox (web UI). Moves to trash/ for recovery."""
+    ok = _delete_message(filename)
+    return RedirectResponse(
+        url=f"/?deleted={'true' if ok else 'false'}",
+        status_code=303,
+    )
+
+
+@app.delete("/api/delete/{filename}")
+async def api_delete_message(filename: str):
+    """Delete a message from the inbox (JSON API for agents/scripts)."""
+    ok = _delete_message(filename)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Message not found: {filename}")
+    return {"status": "deleted", "filename": filename}
 
 
 @app.get("/health")

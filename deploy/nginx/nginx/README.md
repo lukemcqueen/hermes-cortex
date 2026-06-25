@@ -10,7 +10,7 @@ fail2ban filters.
 
 | File | Purpose |
 |------|---------|
-| `hermes-services.conf` | Main nginx reverse proxy config (ports 13001–13004) |
+| `hermes-services.conf` | Main nginx reverse proxy config (ports 13001–13002; inbox is MCP-only, no longer proxied) |
 | `hermes-zone-defs.conf` | Rate limit zones, CSP maps, direct-IP blocker |
 | `blocked_ips.add` | **Input:** bare IPs to block (one per line, no `deny` keyword, no semicolon) |
 | `nginx-badbots.conf` | **Input:** fail2ban filter for archive scanners + `/storage/` crawling |
