@@ -106,6 +106,36 @@ register "src/scripts/system-alert.py"            "${HERMES_HOME}/scripts/system
 register "src/scripts/service-recovery.py"        "${HERMES_HOME}/scripts/service-recovery.py"
 register "src/scripts/llm-judge-scorer.py"         "${HERMES_HOME}/scripts/llm-judge-scorer.py"
 
+# Health monitoring
+register "src/scripts/health-server.py"            "${HERMES_HOME}/scripts/health-server.py" "health-server"
+register "src/scripts/agent-team-health-monitor.py"     "${HERMES_HOME}/scripts/agent-team-health-monitor.py"
+register "src/scripts/report-agent-health.py"      "${HERMES_HOME}/scripts/report-agent-health.py"
+register "src/scripts/platform_utils.py"           "${HERMES_HOME}/scripts/platform_utils.py"
+register "src/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" "health-server" "restart_health_server"
+
+# Timezone helper (required by monitoring scripts)
+register "src/scripts/hermes_tz.py"                "${HERMES_HOME}/scripts/hermes_tz.py"
+
+# Remediation sensor (companion to cron-auto-remediate)
+register "src/scripts/remediation-sensor.py"       "${HERMES_HOME}/scripts/remediation-sensor.py"
+
+# Inbox monitoring
+register "src/scripts/inbox-sensor.py"             "${HERMES_HOME}/scripts/inbox-sensor.py"
+
+# Eval harness (agent reliability patterns)
+register "src/scripts/run-evals.py"                "${HERMES_HOME}/scripts/run-evals.py"
+register "src/scripts/analyze-failures.py"         "${HERMES_HOME}/scripts/analyze-failures.py"
+
+# Agent learning sender
+register "src/scripts/send-agent-learning.sh"      "${HERMES_HOME}/scripts/send-agent-learning.sh"
+
+# Skill collection pipeline
+register "src/scripts/collect-agent-skills.sh"     "${HERMES_HOME}/scripts/collect-agent-skills.sh"
+register "src/scripts/request-skill-reports.sh"    "${HERMES_HOME}/scripts/request-skill-reports.sh"
+register "src/scripts/process-skill-reports.py"    "${HERMES_HOME}/scripts/process-skill-reports.py"
+register "src/scripts/moses-inbox.conf.template"   "${HERMES_HOME}/moses-inbox.conf.template"
+
+
 # Agent inbox check (used by install.sh for cron setup)
 register "src/agent-inbox/agent-inbox-check.sh"    "${HERMES_HOME}/scripts/agent-inbox-check.sh"
 
