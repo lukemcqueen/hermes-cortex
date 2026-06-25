@@ -9,7 +9,7 @@
 #  Actions:
 #    diagnose     — check script paths, permissions, deps
 #    fix-missing  — copy missing scripts from hermes-cortex repo
-#    fix-perms    — fix permissions on .hermes/scripts/
+#    fix-perms    — fix permissions on .hermes-cortex/scripts/
 #    fix-git      — fix git state in hermes-cortex
 #    fix-docker   — restart docker services
 #    fix-purge    — purge system caches (memory, brew, docker)
@@ -19,7 +19,7 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-HERMES_SCRIPTS="${HOME}/.hermes/scripts"
+HERMES_SCRIPTS="${HOME}/.hermes-cortex/scripts"
 CORTEX_REPO="${HOME}/hermes-cortex"
 CORTEX_SCRIPTS="${CORTEX_REPO}/src/scripts"
 ACTION="${1:-diagnose}"
@@ -462,7 +462,7 @@ except Exception as e:
     echo "Actions:"
     echo "  diagnose        — check script paths, permissions, deps"
     echo "  fix-missing     — copy missing scripts from hermes-cortex repo"
-    echo "  fix-perms       — fix permissions on .hermes/scripts/"
+    echo "  fix-perms       — fix permissions on .hermes-cortex/scripts/"
     echo "  fix-git         — fix git state in hermes-cortex"
     echo "  fix-docker      — restart docker services"
     echo "  fix-purge       — purge system caches (memory, brew, docker)"

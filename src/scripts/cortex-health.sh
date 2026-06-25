@@ -23,7 +23,7 @@ BOLD='\033[1m'; CYAN='\033[0;36m'; RESET='\033[0m'
 BUN="${HOME}/.bun/bin/bun"
 GBRAIN="${HOME}/.bun/bin/gbrain"
 BRAIN_DIR="${HOME}/brain"
-HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
+HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes-cortex}"
 JSON_MODE=false
 WATCH_MODE=false
 OVERALL="HEALTHY"

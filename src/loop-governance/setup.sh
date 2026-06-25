@@ -30,7 +30,7 @@ SOURCE_DIR=""
 for dir in \
   "${HOME}/hermes-cortex/src/loop-governance" \
   "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null)" \
-  "${HOME}/.hermes/skills/software-development/loop-governance/scripts"; do
+  "${HOME}/.hermes-cortex/skills/software-development/loop-governance/scripts"; do
   if [[ -n "$dir" && -f "${dir}/loop_scorer.py" ]]; then
     SOURCE_DIR="$dir"
     break
@@ -179,7 +179,7 @@ if [[ "$CHECK_ONLY" != "1" && "$SYMLINKS_ONLY" != "1" ]]; then
 fi
 
 # ── Symlink Hermes skill → repo (so Hermes agents find it) ─
-HERMES_SKILL_DIR="${HOME}/.hermes/skills/software-development/loop-governance"
+HERMES_SKILL_DIR="${HOME}/.hermes-cortex/skills/software-development/loop-governance"
 if [[ -d "$HERMES_SKILL_DIR" && ! -L "$HERMES_SKILL_DIR" ]]; then
   # Only if it's a real directory, not already a symlink
   HERMES_SCRIPTS="${HERMES_SKILL_DIR}/scripts"

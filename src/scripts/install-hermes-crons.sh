@@ -22,7 +22,7 @@ source "${SCRIPT_DIR}/os-config.sh"
 
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 CRON_JOBS_FILE="${HERMES_HOME}/cron/jobs.json"
-SCRIPTS_DIR="${HERMES_HOME}/scripts"
+SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"
 HERMES_CMD=""
 # Try to find hermes command
 for candidate in hermes "${HERMES_HOME}/hermes-agent/venv/bin/hermes"; do

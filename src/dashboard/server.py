@@ -20,7 +20,7 @@ PORT = int(os.environ.get("CORTEX_DASHBOARD_PORT", "8901"))
 
 # ── Langfuse credentials ──────────────────────────────────────────────
 pk = sk = None
-# Try ~/langfuse/.env first, then ~/.hermes/.env as fallback
+# Try ~/langfuse/.env first, then ~/.hermes-cortex/.env as fallback
 for _env_candidate in [LANGFUSE_ENV, HERMES_HOME / ".env"]:
     if _env_candidate.exists():
         with open(_env_candidate) as f:

@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+HERMES_HOME="${HERMES_HOME:-$HOME/.hermes-cortex}"
 BRAIN_SHARED="$HOME/brain/shared"
 MEMORY_DIR="$HERMES_HOME/memories"
 OUT_DIR="$BRAIN_SHARED/hermes-memory"

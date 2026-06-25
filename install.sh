@@ -225,7 +225,7 @@ fi
 CORTEX_USER="${CORTEX_USER:-$USER}"
 CORTEX_HOME="${CORTEX_HOME:-$HOME}"
 BRAIN_DIR="${CORTEX_HOME}/brain"
-HERMES_HOME="${HERMES_HOME:-${CORTEX_HOME}/.hermes}"
+HERMES_HOME="${HERMES_HOME:-${CORTEX_HOME}/.hermes-cortex}"
 
 # SCRIPT_DIR is already set at the top of the script
 
@@ -635,7 +635,7 @@ YAMLEOF
 import os, json, shlex
 
 cortex_home = os.environ.get('CORTEX_HOME', os.path.expanduser('~'))
-hermes_home = os.environ.get('HERMES_HOME', os.path.join(cortex_home, '.hermes'))
+hermes_home = os.environ.get('HERMES_HOME', os.path.join(cortex_home, '.hermes-cortex'))
 sources_str = os.environ.get('CORTEX_SOURCES', 'default')
 sources = [s.strip() for s in sources_str.split(',') if s.strip()]
 
@@ -852,7 +852,7 @@ import json, os, subprocess, sys, re
 from datetime import datetime, timedelta
 from pathlib import Path
 
-HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
+HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes-cortex"))
 BRAIN_SHARED = Path.home() / "brain" / "shared"
 NOW = datetime.now()
 
@@ -1174,7 +1174,7 @@ if [[ -d "${BRAIN_LESSONS_DIR}" ]]; then
 fi
 
 # From script changes (if this agent runs install.sh/cortex-update.sh)
-CUSTOM_SCRIPTS="${HOME}/.hermes/scripts"
+CUSTOM_SCRIPTS="${HOME}/.hermes-cortex/scripts"
 if [[ -d "${CUSTOM_SCRIPTS}" ]]; then
     # Check for any custom scripts not from the repo
     REPO_SCRIPTS="${HOME}/hermes-cortex/src/scripts"
@@ -1245,7 +1245,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
+HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes-cortex"))
 BRAIN_SHARED = Path.home() / "brain" / "shared"
 MEMORY_DIR = HERMES_HOME / "memories"
 OUT_DIR = BRAIN_SHARED / "hermes-memory"
@@ -1388,7 +1388,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
+HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes-cortex"))
 BRAIN_SHARED = Path.home() / "brain" / "shared"
 MEMORY_DIR = HERMES_HOME / "memories"
 OUT_DIR = BRAIN_SHARED / "hermes-memory"
@@ -1564,7 +1564,7 @@ else
 # check-memory-budget.sh — MEMORY.md usage monitor
 set -euo pipefail
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; RESET='\033[0m'
-FILE="${HOME}/.hermes/memories/MEMORY.md"
+FILE="${HOME}/.hermes-cortex/memories/MEMORY.md"
 LIMIT=2200
 [[ ! -f "$FILE" ]] && { echo "No MEMORY.md found"; exit 0; }
 CHARS=$(wc -m < "$FILE" | tr -d ' ')
@@ -1573,7 +1573,7 @@ PCT=$(( CHARS * 100 / LIMIT ))
 [[ $PCT -ge 85 && $PCT -lt 95 ]] && ICON="🟡" && STATUS="WARNING"
 [[ $PCT -lt 85 ]] && ICON="🟢" && STATUS="OK"
 echo "${ICON} MEMORY.md: ${PCT}% (${CHARS}/${LIMIT}) — ${STATUS}"
-[[ $PCT -ge 85 ]] && echo "Run: bash ~/.hermes/scripts/bootstrap-brain.sh to compact"
+[[ $PCT -ge 85 ]] && echo "Run: bash ~/.hermes-cortex/scripts/bootstrap-brain.sh to compact"
 BUDGET
   }
   chmod +x "$BUDGET_PATH"
@@ -2105,9 +2105,9 @@ if [[ "$CORTEX_OS" == "macos" ]]; then
     <key>KeepAlive</key>
     <false/>
     <key>StandardOutPath</key>
-    <string>${CORTEX_HOME}/.hermes/logs/docker-launch.log</string>
+    <string>${CORTEX_HOME}/.hermes-cortex/logs/docker-launch.log</string>
     <key>StandardErrorPath</key>
-    <string>${CORTEX_HOME}/.hermes/logs/docker-launch.log</string>
+    <string>${CORTEX_HOME}/.hermes-cortex/logs/docker-launch.log</string>
 </dict>
 </plist>
 PLIST
@@ -2307,7 +2307,7 @@ if [[ -f "$BOOTSTRAP_SCRIPT" ]]; then
   # If some sources have 0 pages, suggest running full bootstrap
   if bash "$BOOTSTRAP_SCRIPT" --check-only 2>&1 | grep -q "0 pages"; then
     warn "Some brain sources have 0 indexed pages. Run:"
-    warn "  bash ~/.hermes/scripts/bootstrap-brain.sh"
+    warn "  bash ~/.hermes-cortex/scripts/bootstrap-brain.sh"
     warn "  This will init git repos, register gbrain sources, and sync."
   else
     info "All brain sources are healthy and searchable"
@@ -2344,8 +2344,8 @@ printf "  ${GREEN}•${RESET} hermes-update.sh → daily Hermes Agent upgrade (n
 printf "  ${GREEN}•${RESET} hermes-cortex-sync.sh → daily repo sync + tool re-install\\n"
 printf "  ${GREEN}•${RESET} prod-watchdog.sh  → production site monitoring with auto-remediation\\n"
 printf "  ${GREEN}•${RESET} check-memory-budget.sh → MEMORY.md usage monitor\n"
-printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\\n"
-printf "  ${GREEN}•${RESET} Hermes skills    → 12+ shared skills in ~/.hermes/skills/\\n"
+printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes-cortex/memories/{MEMORY,USER}.md\\n"
+printf "  ${GREEN}•${RESET} Hermes skills    → 12+ shared skills in ~/.hermes-cortex/skills/\\n"
 printf "  ${GREEN}•${RESET} Web Cache       → semantic web result cache (sqlite-vec + Ollama)\n"
 printf "  ${GREEN}•${RESET} Offline Knowledge → cascade cache + kiwix ZIM content viewer\n"
 printf "  ${GREEN}•${RESET} Launchd services:\n"
@@ -2364,13 +2364,13 @@ cat <<PROMPT
 
 I've installed the Hermes Cortex system. Please finish the setup by:
 
-1. Open ~/.hermes/memories/MEMORY.md and ~/.hermes/memories/USER.md — fill in your system topology and user profile so I know your context
-2. Load the shared skills from ~/.hermes/skills/ (use skill_view(name) to browse them — includes subagent-driven-development, systematic-debugging, change-test-loop, spike, plan, memory-architecture, requesting-code-review, client-brand-brand-marketing, korean-language-learning)
+1. Open ~/.hermes-cortex/memories/MEMORY.md and ~/.hermes-cortex/memories/USER.md — fill in your system topology and user profile so I know your context
+2. Load the shared skills from ~/.hermes-cortex/skills/ (use skill_view(name) to browse them — includes subagent-driven-development, systematic-debugging, change-test-loop, spike, plan, memory-architecture, requesting-code-review, client-brand-brand-marketing, korean-language-learning)
 3. Loading the hermes-agent skill and verifying the gbrain-command plugin
-4. Run ~/.hermes/scripts/bootstrap-brain.sh to ensure all brain sources are initialized, git-enabled, registered in gbrain, and synced. Note which sources have indexed pages (if any show 0 pages, add some .md files and re-sync)
-5. If using Langfuse, run: bash ~/.hermes/scripts/cortex-setup-langfuse.sh --start (generates all required .env secrets and starts Docker Compose — no more failing on :? expansion)
-6. Seed project brains from existing repos: ~/.hermes/scripts/seed-project-brain.sh --all (finds matching repos under ~/Developer/AI/ and fills their brain dirs with README/docs — one command from empty shell to indexed knowledge)
-7. Run cortex-health.sh to confirm everything is green: bash ~/.hermes/scripts/cortex-health.sh (prints a clean status table for Ollama, Langfuse, gbrain, sync daemon, memory freshness, disk usage — exits 0 when all systems go)
+4. Run ~/.hermes-cortex/scripts/bootstrap-brain.sh to ensure all brain sources are initialized, git-enabled, registered in gbrain, and synced. Note which sources have indexed pages (if any show 0 pages, add some .md files and re-sync)
+5. If using Langfuse, run: bash ~/.hermes-cortex/scripts/cortex-setup-langfuse.sh --start (generates all required .env secrets and starts Docker Compose — no more failing on :? expansion)
+6. Seed project brains from existing repos: ~/.hermes-cortex/scripts/seed-project-brain.sh --all (finds matching repos under ~/Developer/AI/ and fills their brain dirs with README/docs — one command from empty shell to indexed knowledge)
+7. Run cortex-health.sh to confirm everything is green: bash ~/.hermes-cortex/scripts/cortex-health.sh (prints a clean status table for Ollama, Langfuse, gbrain, sync daemon, memory freshness, disk usage — exits 0 when all systems go)
 8. Setting up these cron jobs (use the cronjob tool):
 
    a) gbrain-nightly-dream — daily at 3am:
@@ -2395,11 +2395,11 @@ I've installed the Hermes Cortex system. Please finish the setup by:
 
    e) memory-pruning — daily at 4am:
       Schedule: 0 4 * * *
-      Prompt: Read your current MEMORY.md and USER.md from ~/.hermes/memories/ and prune/consolidate entries that are stale, redundant, or no longer relevant. Keep useful durable facts. Report what you removed and why.
+      Prompt: Read your current MEMORY.md and USER.md from ~/.hermes-cortex/memories/ and prune/consolidate entries that are stale, redundant, or no longer relevant. Keep useful durable facts. Report what you removed and why.
 
    f) cortex-update — weekly on Sunday at 3am (auto-pull + delta-update):
       Schedule: 0 3 * * 0
-      Prompt: Run cortex-update to keep the system current: bash ~/.hermes/scripts/cortex-update.sh
+      Prompt: Run cortex-update to keep the system current: bash ~/.hermes-cortex/scripts/cortex-update.sh
       no_agent: true
 
    g) daily-lesson-mine — daily at 2am (auto-mining from last 24h):
@@ -2416,7 +2416,7 @@ I've installed the Hermes Cortex system. Please finish the setup by:
 
 9. Run /reset or /new to activate the /brain slash command
 10. Verify brain ingestion: run "gbrain query hello" then "gbrain query --source <name> hello" — you should see different results per source if sources have content
-11. (Optional) Check detailed heartbeat: bash ~/.hermes/scripts/heartbeat.py --report — watch how service status changes as you configure things
+11. (Optional) Check detailed heartbeat: bash ~/.hermes-cortex/scripts/heartbeat.py --report — watch how service status changes as you configure things
 
 PROMPT
 printf "${RESET}${BOLD}${CYAN}───────────────────────────────────────────────────${RESET}\n"
@@ -2439,7 +2439,7 @@ printf "  ${GREEN}•${RESET} Scripts:         %s/scripts/\n" "${SCRIPTS_DIR}"
 
 printf "\n${BOLD}🐚 For daily use in shell:${RESET}\n"
 printf "  Add to ~/.zshrc or ~/.bash_profile:\n"
-printf "${YELLOW}  export PATH=\"\$HOME/.bun/bin:\$HOME/.hermes/bin:\$PATH\"${RESET}\n"
+printf "${YELLOW}  export PATH=\"\$HOME/.bun/bin:\$HOME/.hermes-cortex/bin:\$PATH\"${RESET}\n"
 
 # ─────────────────────────────────────────────────────────────
 #  Security Warnings

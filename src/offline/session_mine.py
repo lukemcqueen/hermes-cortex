@@ -32,7 +32,7 @@ from typing import Optional
 
 # ── Config ──────────────────────────────────────────────────
 HOME = Path.home()
-HERMES_HOME = HOME / ".hermes"
+HERMES_HOME = HOME / ".hermes-cortex"
 LESSONS = HOME / "brain" / "lessons"
 INDEX_FILE = HOME / "offline" / "lessons-index.json"
 

@@ -42,7 +42,7 @@ if [[ "$REPO_DIR" == "/" ]]; then
     done
   fi
 fi
-HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
+HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes-cortex}"
 STATE_DIR="${HERMES_HOME}/state"
 LAST_COMMIT_FILE="${STATE_DIR}/update-commit"
 BUN_PATH="${HOME}/.bun/bin"
@@ -84,7 +84,7 @@ register() {
   MAP+=("${s1}|${s2}|${s3}|${s4}")
 }
 
-# Scripts → ~/.hermes/scripts/
+# Scripts → ~/.hermes-cortex/scripts/
 register "src/scripts/heartbeat.py"               "${HERMES_HOME}/scripts/heartbeat.py"
 register "src/scripts/memory-to-brain.py"         "${HERMES_HOME}/scripts/memory-to-brain.py"
 register "src/scripts/bootstrap-brain.sh"         "${HERMES_HOME}/scripts/bootstrap-brain.sh"
@@ -270,17 +270,17 @@ restart_health_server() {
     info "  Restarting Health Server…"
     launchctl unload "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" 2>/dev/null || true
     # Ensure the log dir exists
-    mkdir -p "${HOME}/.hermes/health-server"
+    mkdir -p "${HOME}/.hermes-cortex/health-server"
     launchctl load "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" 2>&1 | sed 's/^/    /'
     info "  Health Server restarted"
   elif [[ -f "${HOME}/.config/systemd/user/hermes-health-server.service" ]]; then
     info "  Restarting Health Server (systemd)…"
     systemctl --user daemon-reload 2>/dev/null || true
     systemctl --user restart hermes-health-server 2>&1 | sed 's/^/    /'
-  elif [[ -f "${HOME}/.hermes/scripts/health-server.py" ]]; then
+  elif [[ -f "${HOME}/.hermes-cortex/scripts/health-server.py" ]]; then
     # First-time: launchctl not registered yet, load it
     info "  Loading Health Server for the first time…"
-    mkdir -p "${HOME}/.hermes/health-server"
+    mkdir -p "${HOME}/.hermes-cortex/health-server"
     launchctl load "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" 2>&1 | sed 's/^/    /'
     info "  Health Server loaded"
   fi

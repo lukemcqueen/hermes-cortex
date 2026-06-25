@@ -48,9 +48,9 @@ import lessons
 
 # ── Config ──────────────────────────────────────────────────
 HOME = Path.home()
-CACHE_DIR = HOME / ".hermes" / "web-cache"
+CACHE_DIR = HOME / ".hermes-cortex" / "web-cache"
 CACHE_DB = CACHE_DIR / "cache.db"
-CACHE_SCRIPT = HOME / ".hermes" / "web-cache" / "web_cache.py"
+CACHE_SCRIPT = HOME / ".hermes-cortex" / "web-cache" / "web_cache.py"
 ZIM_DIR = HOME / "offline" / "zim"
 LIBRARY_FILE = HOME / "offline" / "kiwix-library.xml"
 KIWIX_URL = "http://localhost:8080"

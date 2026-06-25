@@ -19,8 +19,8 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BOLD='\033[1m'; RESET='\033[0m'
 FORCE_REPORT=false
 
-MEMORY_FILE="${HOME}/.hermes/memories/MEMORY.md"
-USER_FILE="${HOME}/.hermes/memories/USER.md"
+MEMORY_FILE="${HOME}/.hermes-cortex/memories/MEMORY.md"
+USER_FILE="${HOME}/.hermes-cortex/memories/USER.md"
 # Character limits from SOUL.md memory architecture
 MEMORY_LIMIT=2200
 USER_LIMIT=1375

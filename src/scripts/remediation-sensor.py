@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
-HERMES_SCRIPTS = HOME / ".hermes" / "scripts"
+HERMES_SCRIPTS = HOME / ".hermes-cortex" / "scripts"
 STATE_DIR = HOME / ".hermes" / "state"
 CORTEX_REPO_ENV = os.environ.get("CORTEX_REPO", "")
 if CORTEX_REPO_ENV:

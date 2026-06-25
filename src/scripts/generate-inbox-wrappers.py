@@ -32,7 +32,7 @@ import sys
 from pathlib import Path
 
 HOME = Path.home()
-SCRIPTS_DIR = HOME / ".hermes" / "scripts"
+SCRIPTS_DIR = HOME / ".hermes-cortex" / "scripts"
 REGISTRY_PATH = HOME / ".hermes" / "state" / "agent-registry.json"
 WATCH_SCRIPT = SCRIPTS_DIR / "agent-inbox-watch.sh"
 STATE_DIR = HOME / ".hermes" / "state"
@@ -56,7 +56,7 @@ def generate_wrapper(agent_name, agent_data, dry_run=False):
     wrapper_path = SCRIPTS_DIR / f"agent-inbox-{agent_name}.sh"
     wrapper_content = f"""#!/bin/bash
 # Auto-generated from agent-registry.json
-CONFIG="${{HOME}}/.hermes/agent-inbox-{agent_name}.conf" exec "${{HOME}}/.hermes/scripts/agent-inbox-watch.sh"
+CONFIG="${{HOME}}/.hermes/agent-inbox-{agent_name}.conf" exec "${{HOME}}/.hermes-cortex/scripts/agent-inbox-watch.sh"
 """
     if dry_run:
         print(f"[DRY RUN] Would create: {wrapper_path}")

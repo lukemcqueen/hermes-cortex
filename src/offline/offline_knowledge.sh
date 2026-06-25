@@ -2,7 +2,7 @@
 # offline_knowledge — CLI for offline knowledge cascade
 # Installed by Hermes Cortex install.sh
 
-SCRIPT_DIR="$HOME/.hermes/offline"
+SCRIPT_DIR="$HOME/.hermes-cortex/offline"
 SCRIPT="$SCRIPT_DIR/offline_knowledge.py"
 
 if [ ! -f "$SCRIPT" ]; then
