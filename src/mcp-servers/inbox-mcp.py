@@ -37,7 +37,7 @@ async def list_tools() -> list[Tool]:
     return [
         Tool(
             name="inbox_send",
-            description="Send a message to the agent inbox.",
+            description="Send a message to the agent inbox, optionally with a file attachment (max 5 MB).",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -46,6 +46,7 @@ async def list_tools() -> list[Tool]:
                     "to": {"type": "string", "description": "Recipient(s) — agent name or 'all' (default)"},
                     "topic": {"type": "string", "description": "Topic channel (default: general)"},
                     "priority": {"type": "string", "enum": ["normal", "urgent", "critical"], "description": "Priority"},
+                    "file_path": {"type": "string", "description": "Optional file path to attach (text embedded inline, binary referenced). Max 5 MB."},
                 },
                 "required": ["subject", "body"],
             },
@@ -95,18 +96,47 @@ async def call_tool(name: str, arguments: dict[str, Any] | None) -> CallToolResu
 
 
 def _inbox_send(args: dict) -> CallToolResult:
-    body = urllib.parse.urlencode({
+    MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+
+    body_text = args["body"]
+
+    # Handle optional file attachment
+    file_path = args.get("file_path", "")
+    if file_path and file_path.strip():
+        fpath = Path(file_path.strip()).expanduser()
+        if not fpath.exists():
+            return CallToolResult(content=[TextContent(type="text", text=f"File not found: {fpath}")])
+        fsize = fpath.stat().st_size
+        if fsize > MAX_FILE_SIZE:
+            return CallToolResult(content=[TextContent(type="text", text=f"File too large ({fsize} bytes). Max 5 MB.")])
+        try:
+            data = fpath.read_bytes()
+            # Check if file is text-like (first 8K contains no null bytes)
+            is_text = b"\x00" not in data[:8192]
+            if is_text:
+                text = data.decode("utf-8", errors="replace")
+                if len(text) > 50000:
+                    text = text[:50000] + "\n... [truncated at 50K chars]"
+                body_text += f"\n\n---\n**Attachment: {fpath.name}**\n```\n{text}\n```"
+            else:
+                body_text += f"\n\n---\n**Attachment: {fpath.name}** ({fsize} bytes, binary)"
+        except Exception as e:
+            body_text += f"\n\n---\n**Attachment: {fpath.name}** (read error: {e})"
+
+    data = urllib.parse.urlencode({
         "from": args.get("from", DEFAULTAGENT),
         "to": args.get("to", "moses"),
         "topic": args.get("topic", "general"),
         "subject": args["subject"],
-        "body": args["body"],
+        "body": body_text,
         "priority": args.get("priority", "normal"),
     }).encode()
-    req = urllib.request.Request(INBOX_URL + "/send", body)
+    req = urllib.request.Request(INBOX_URL + "/send", data)
     try:
         urllib.request.urlopen(req, timeout=10)
-        return CallToolResult(content=[TextContent(type="text", text="Message sent.")])
+        fp = args.get("file_path", "")
+        attached = f" + {Path(fp.strip()).expanduser().name}" if fp and fp.strip() else ""
+        return CallToolResult(content=[TextContent(type="text", text=f"Message sent{attached}.")])
     except Exception as e:
         return CallToolResult(content=[TextContent(type="text", text="Send failed: " + str(e))])
 

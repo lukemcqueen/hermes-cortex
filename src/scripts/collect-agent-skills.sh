@@ -148,15 +148,19 @@ ${SKILL_CONTENTS[$idx]:-(unreadable)}
     idx=$((idx + 1))
   done
 
+  # Write body to temp file to avoid "Argument list too long" on curl -d
+  BODY_FILE=$(mktemp)
+  cat > "$BODY_FILE" <<- BODYEOF
+from=$HOSTNAME&topic=reports&subject=Skill Report: $TOTAL custom skills&body=$BODY&priority=normal
+BODYEOF
+
   curl -sk -X POST "$MOSES_INBOX_URL" \
     "${AUTH_ARGS[@]}" \
-    -d "from=$HOSTNAME" \
-    -d "topic=reports" \
-    -d "subject=Skill Report: $TOTAL custom skills" \
-    -d "body=$BODY" \
-    -d "priority=normal" \
+    --data-binary @"$BODY_FILE" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
     --connect-timeout 10 \
     --max-time 15
 
+  rm -f "$BODY_FILE"
   echo "Sent $TOTAL custom skills to Moses inbox" >&2
 fi
