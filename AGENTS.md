@@ -107,7 +107,7 @@ Every coding session follows this pattern after each TDD cycle:
 
 **Setup first time:** `bash ~/hermes-cortex/src/loop-governance/setup.sh` (install deps, symlinks, config, crons)
 
-**Dependencies:** Ollama + nomic-embed-text (for scoring), Python 3.11+, ~/.local/bin/ in PATH
+**Dependencies:** Ollama + **nomic-embed-text** (for scoring — **the only model required**). 274 MB. No other Ollama models needed. Run `bash src/loop-governance/cleanup-ollama.sh` to remove unnecessary models and free disk space.
 
 **Verification:** `bash ~/.hermes-cortex/tools/loop-governance/verify.sh` — checks all 12 components
 
