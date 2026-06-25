@@ -1667,13 +1667,9 @@ if [[ -f "${SCRIPT_DIR}/src/scripts/health-server.py" ]]; then
   info "  Installed health-server.py"
 fi
 
-HEALTH_MONITOR_PATH="${SCRIPTS_DIR}/agent-team-health-monitor.py"
-if [[ -f "${SCRIPT_DIR}/src/scripts/agent-team-health-monitor.py" ]]; then
-  cp "${SCRIPT_DIR}/src/scripts/agent-team-health-monitor.py" "$HEALTH_MONITOR_PATH" 2>/dev/null || \
-    warn "agent-team-health-monitor.py copy failed"
-  chmod +x "$HEALTH_MONITOR_PATH"
-  info "  Installed agent-team-health-monitor.py"
-fi
+# agent-team-health-monitor.py is deliberately NOT installed here — it's
+# orchestrator-only (Moses polls peer agents). Peer agents don't need it.
+# Moses copies it manually or via cortex-update.sh.
 
 # ── Auto-Save Active Sessions Script ──────────────────────────────
 AUTO_SAVE_PATH="${SCRIPTS_DIR}/auto-save-active.py"

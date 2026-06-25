@@ -122,7 +122,10 @@ register "src/scripts/llm-judge-scorer.py"         "${HERMES_HOME}/scripts/llm-j
 
 # Health monitoring
 register "src/scripts/health-server.py"            "${HERMES_HOME}/scripts/health-server.py" "health-server"
-register "src/scripts/agent-team-health-monitor.py"     "${HERMES_HOME}/scripts/agent-team-health-monitor.py"
+# agent-team-health-monitor.py is orchestrator-only (Moses polls peer agents).
+# Peer agents (Titus, Gisu, Joseph) do NOT need it. Moses copies it manually
+# or runs cortex-update.sh on his own machine.
+# register "src/scripts/agent-team-health-monitor.py"  "${HERMES_HOME}/scripts/agent-team-health-monitor.py"
 register "src/scripts/report-agent-health.py"      "${HERMES_HOME}/scripts/report-agent-health.py"
 register "src/scripts/platform_utils.py"           "${HERMES_HOME}/scripts/platform_utils.py"
 register "src/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" "health-server" "restart_health_server"
