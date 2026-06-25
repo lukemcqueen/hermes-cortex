@@ -134,14 +134,54 @@ log.info("Inbox URL: %s  auth=%s  agent=%s  cert=%s",
          BASE_URL, "yes" if AUTH_HEADER else "no", DEFAULTAGENT,
          "loaded" if SSL_CONTEXT else "none")
 
+PROXY_PATH = "/usr/local/bin/mcp-inbox-proxy"
+
+
+def _call_proxy(url: str, method: str, data: bytes | None, headers: dict) -> tuple[int, str]:
+    """Make HTTPS request via the sudo'd proxy binary.
+    The proxy reads root-owned certs that the agent user can't access."""
+    import subprocess
+    payload = json.dumps({
+        "url": url,
+        "method": method,
+        "data": data.decode() if data else None,
+        "headers": headers,
+    })
+    try:
+        r = subprocess.run(
+            ["sudo", "-n", PROXY_PATH],
+            input=payload,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        if r.returncode == 0 and r.stdout.strip():
+            result = json.loads(r.stdout)
+            return result.get("status", 0), result.get("body", "")
+        return 0, r.stderr or f"Proxy exited {r.returncode}"
+    except FileNotFoundError:
+        return 0, "mcp-inbox-proxy not found"
+    except Exception as e:
+        return 0, str(e)
+
+
 def _request(path: str, data: bytes | None = None, method: str = "POST") -> tuple[int, str]:
-    """Make HTTP request to the inbox API. Returns (status_code, body)."""
+    """Make HTTP request to the inbox API. Returns (status_code, body).
+    Tries sudo'd proxy first (for root-owned certs), falls back to direct SSL."""
     url = BASE_URL.rstrip("/") + "/" + path.lstrip("/")
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     if AUTH_HEADER:
         headers.update(AUTH_HEADER)
-    req = urllib.request.Request(url, data=data or None, headers=headers, method=method)
+
+    # Try proxy first
+    if Path(PROXY_PATH).exists():
+        status, body = _call_proxy(url, method, data, headers)
+        if status != 0:
+            return status, body
+
+    # Fall back to direct SSL
     try:
+        req = urllib.request.Request(url, data=data or None, headers=headers, method=method)
         with urllib.request.urlopen(req, timeout=10, context=SSL_CONTEXT) as resp:
             return resp.status, resp.read().decode()
     except urllib.error.HTTPError as e:

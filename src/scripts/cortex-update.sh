@@ -153,6 +153,9 @@ register "src/scripts/process-skill-reports.py"    "${HERMES_HOME}/scripts/proce
 # Agent inbox connection config — user creates manually from template
 # register "src/scripts/moses-inbox.conf.template"   "${HERMES_HOME}/moses-inbox.conf.template"
 
+# MCP inbox proxy — sudo'd HTTPS proxy with root-owned client cert
+register "src/scripts/mcp-inbox-proxy"              "${HERMES_HOME}/scripts/mcp-inbox-proxy"
+
 # Agent inbox check (used by install.sh for cron setup)
 register "src/agent-inbox/agent-inbox-check.sh"    "${HERMES_HOME}/scripts/agent-inbox-check.sh"
 
