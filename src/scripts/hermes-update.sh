@@ -9,15 +9,15 @@
 #
 # Cron imposes a 120s timeout on no_agent scripts, and `hermes update` can
 # take >120s when downloading a new binary.  We wrap the update step with an
-# internal 90s timeout so migrate/doctor still run even if the download is
+# internal 60s timeout so migrate/doctor still run even if the download is
 # slow — the update will simply be picked up on the next daily cycle.
 set -euo pipefail
 
 # Step 1: Update upstream Hermes Agent (with guarded timeout)
-UPDATE_OUTPUT=$(timeout 90 hermes update -y 2>&1) || {
+UPDATE_OUTPUT=$(timeout 60 hermes update -y 2>&1) || {
     UPDATE_EXIT=$?
     if [ "$UPDATE_EXIT" -eq 124 ]; then
-        echo "[hermes-update] hermes update timed out (>90s), will retry next cycle"
+        echo "[hermes-update] hermes update timed out (>60s), will retry next cycle"
     else
         echo "[hermes-update] hermes update failed (exit $UPDATE_EXIT)"
         echo "$UPDATE_OUTPUT"
