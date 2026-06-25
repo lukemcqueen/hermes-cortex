@@ -321,7 +321,7 @@ def _inbox_read(args: dict) -> CallToolResult:
     if params:
         path += "?" + urllib.parse.urlencode(params)
 
-    status, resp_body = _request(path)
+    status, resp_body = _request(path, method="GET")
     if status == 200:
         try:
             data = json.loads(resp_body)
@@ -345,7 +345,7 @@ def _inbox_watch(args: dict) -> CallToolResult:
     path = f"api/inbox?limit={limit}"
     if DEFAULTAGENT != "moses":
         path += f"&for={urllib.parse.quote(DEFAULTAGENT)}"
-    status, resp_body = _request(path)
+    status, resp_body = _request(path, method="GET")
     if status != 200:
         if status == 401:
             return CallToolResult(content=[TextContent(type="text",
