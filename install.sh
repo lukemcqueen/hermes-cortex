@@ -1710,21 +1710,6 @@ if [[ -f "${SCRIPT_DIR}/src/scripts/hermes_tz.py" ]]; then
   info "  Installed hermes_tz.py (timezone helper)"
 fi
 
-# ── Auto-Update Cron ───────────────────────────────────────────
-AUTO_UPDATE_SCRIPT="${SCRIPTS_DIR}/install-cortex-update-cron.sh"
-if [[ -f "$AUTO_UPDATE_SCRIPT" ]]; then
-  if launchctl list com.hermes.cortex-update &>/dev/null 2>&1 || \
-     systemctl --user list-timers 2>/dev/null | grep -q "cortex-update" || \
-     crontab -l 2>/dev/null | grep -q "cortex-update"; then
-    skip "auto-update cron already registered"
-  else
-    bash "$AUTO_UPDATE_SCRIPT" 2>&1 | sed 's/^/  /'
-    info "  Registered daily auto-update cron (3am)"
-  fi
-else
-  warn "install-cortex-update-cron.sh not found — skipping auto-update setup"
-fi
-
 # ── Agent Learning Sender Cron ────────────────────────────────────
 LEARNING_CRON_SCRIPT="${SCRIPTS_DIR}/install-send-agent-learning-cron.sh"
 if [[ -f "$LEARNING_CRON_SCRIPT" ]]; then
@@ -2355,7 +2340,8 @@ printf "  ${GREEN}•${RESET} seed-project-brain.sh → one-command brain seedin
 printf "  ${GREEN}•${RESET} cortex-health.sh   → single green-check system readiness\n"
 printf "  ${GREEN}•${RESET} cortex-setup-langfuse.sh → standalone Langfuse .env generator\n"
 printf "  ${GREEN}•${RESET} cortex-update.sh  → git pull + delta-update + service restart\\n"
-printf "  ${GREEN}•${RESET} install-cortex-update-cron.sh → auto-update daily cron (3am)\\n"
+printf "  ${GREEN}•${RESET} hermes-update.sh → daily Hermes Agent upgrade (no_agent watchdog)\\n"
+printf "  ${GREEN}•${RESET} hermes-cortex-sync.sh → daily repo sync + tool re-install\\n"
 printf "  ${GREEN}•${RESET} prod-watchdog.sh  → production site monitoring with auto-remediation\\n"
 printf "  ${GREEN}•${RESET} check-memory-budget.sh → MEMORY.md usage monitor\n"
 printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\\n"
