@@ -131,8 +131,8 @@ def _write_message(from_: str, subject: str, body: str,
     # Auto-add sender to read_by — they already know what they sent
     read_by = safe_from
 
-    # Default to_: all (visible to everyone) if not specified
-    to_val = to_.strip() if to_.strip() else "all"
+    # Default to_: moses (goes to Moses) unless explicitly set
+    to_val = to_.strip() if to_.strip() else "moses"
 
     # Every message auto-CCs Luke (the human). Send-to-agent can add Moses.
     cc_vals = [x.strip() for x in cc.split(",") if x.strip()]

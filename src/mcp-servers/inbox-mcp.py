@@ -97,7 +97,7 @@ async def call_tool(name: str, arguments: dict[str, Any] | None) -> CallToolResu
 def _inbox_send(args: dict) -> CallToolResult:
     body = urllib.parse.urlencode({
         "from": args.get("from", DEFAULTAGENT),
-        "to": args.get("to", "all"),
+        "to": args.get("to", "moses"),
         "topic": args.get("topic", "general"),
         "subject": args["subject"],
         "body": args["body"],

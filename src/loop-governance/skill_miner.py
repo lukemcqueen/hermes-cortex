@@ -294,7 +294,6 @@ def send_to_moses(findings: list[dict]):
     try:
         data = urllib.parse.urlencode({
             "from": agent_name,
-            "to": "moses",
             "topic": "moses",
             "subject": f"skill-miner: {len(top)} findings from {agent_name}",
             "priority": "normal",

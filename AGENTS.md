@@ -35,6 +35,7 @@ Hermes Cortex is a **public installer and skill set** for
 | `.hermes-cortex/sessions/archive/` | Timestamped session snapshots |
 | `.hermes-cortex/skills/` | Project-specific Hermes skills (tracked) |
 | `.hermes-cortex/memory/` | Per-user agent memory (gitignored — each dev has their own) |
+| `agent-inbox-private/` | Dedicated inbox repo — all agent messages (git-backed) |
 | `.gitignore` | Excludes .env*, *.pem, *.key, state.db, .hermes/, .hermes-cortex/memory/ |
 
 ## Cortex Project Directory Convention
@@ -122,9 +123,9 @@ Every coding session follows this pattern after each TDD cycle:
 - Agent memory — MEMORY.md, USER.md content
 - Custom skills — skills installed locally but not in the repo (full SKILL.md sent)
 
-**Output:** Top 5 findings sent to `topic=moses` in the agent inbox. Moses reviews, consolidates, and pushes to hermes-cortex.
+**Output:** Top 5 findings sent to `to=moses` (default) with `cc=luke` via the agent inbox. Moses reviews, consolidates, and pushes to hermes-cortex.
 
-**Manual trigger:** `skill-miner` (prints findings + sends to inbox)
+**Addressing:** Messages default to `to=moses`. Use `to=all` for broadcasts, `cc=agent` for carbon copies. Every message auto-CCs Luke.
 
 ## Autonomous Agent Reliability Patterns
 
