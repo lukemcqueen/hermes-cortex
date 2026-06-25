@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """inbox-sensor.py — Companion script for process-agent-messages.
 
-Runs every 10m as a no_agent watchdog. Calls the agent inbox API to check
-for new broadcast messages. Silent when nothing new.
+Runs every 10m as a no_agent watchdog. Calls the agent inbox API
+(via the external MCP backend endpoint) to check for new broadcast
+messages. Silent when nothing new.
 
-This eliminates the duplicate frontmatter parser and uses the API's
-per-agent read tracking via the ?for=moses parameter.
+Uses MOSES_INBOX_AUTH for Basic Auth if set (user:pass format).
 
 Output shape:
 {
@@ -16,6 +16,7 @@ Output shape:
   "last_check": "2026-06-17T18:30:00Z"
 }
 """
+import base64
 import json
 import os
 from datetime import datetime, timezone
@@ -26,7 +27,29 @@ from urllib.error import URLError
 HOME = Path.home()
 STATE_DIR = HOME / ".hermes" / "state"
 SEEN_FILE = STATE_DIR / "inbox-broadcast-seen"
-INBOX_API = os.environ.get("AGENT_INBOX_URL", "http://127.0.0.1:8903")
+INBOX_API = os.environ.get("AGENT_INBOX_URL", "https://your-domain.com:13004")
+INBOX_AUTH = os.environ.get("MOSES_INBOX_AUTH", "")
+
+# Read MOSES_INBOX_AUTH from config file if not set via env
+if not INBOX_AUTH:
+    config_path = HOME / ".hermes" / "moses-inbox.conf"
+    if config_path.exists():
+        try:
+            for line in config_path.read_text().splitlines():
+                line = line.strip()
+                if line.startswith("MOSES_INBOX_AUTH="):
+                    val = line.split("=", 1)[1].strip().strip("'\"")
+                    if val:
+                        INBOX_AUTH = val
+                        break
+        except Exception:
+            pass
+
+# Build auth header if credentials available
+AUTH_HEADER = {}
+if INBOX_AUTH and ":" in INBOX_AUTH:
+    encoded = base64.b64encode(INBOX_AUTH.encode()).decode()
+    AUTH_HEADER = {"Authorization": "Basic " + encoded}
 
 # Read agent registry for broadcast topics
 REGISTRY_PATH = HOME / ".hermes" / "state" / "agent-registry.json"
@@ -56,7 +79,7 @@ def main():
     # Fetch messages via API with per-agent filtering
     url = f"{INBOX_API}/api/inbox?for=moses&unread_only=true"
     try:
-        req = Request(url)
+        req = Request(url, headers=AUTH_HEADER)
         with urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode())
     except (URLError, json.JSONDecodeError, OSError) as e:
