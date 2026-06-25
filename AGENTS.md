@@ -275,7 +275,7 @@ Load the relevant skill with `skill_view(name)` when entering each stage. Skills
 **Change:** All monitoring scripts now output timestamps in KST (UTC+9) instead of UTC.
 
 **Affected scripts:**
-- `agent-health-monitor.py` — Health alerts
+- `agent-team-health-monitor.py` — Health alerts
 - `system-alert.py` — Resource threshold alerts  
 - `service-recovery.py` — Service restart reports
 - `orch-check-agent-messages.sh` — Inbox message notifications
@@ -309,7 +309,7 @@ Load the relevant skill with `skill_view(name)` when entering each stage. Skills
 | `cron-auto-remediate` | `*/5 * * * *` | LLM+skill | `auto-remediation` skill | `local` | Auto-fix cron/inbox/service issues |
 | `remediation-sensor` | `*/5 * * * *` | no_agent | `remediation-sensor.py` | `local` | Companion diagnostics sensor |
 | `service-recovery` | `*/5 * * * *` | no_agent | `service-recovery.py` | `origin` | Auto-restart crashed services |
-| `agent-health-monitor` | `*/10 * * * *` | no_agent | `agent-health-monitor.py` | `origin` | Cross-agent health polling |
+| `agent-team-health-monitor` | `*/10 * * * *` | no_agent | `agent-team-health-monitor.py` | `origin` | Cross-agent health polling |
 | `system-alert-watchdog` | `*/10 * * * *` | no_agent | `system-alert.py` | `origin` | Resource threshold alerts |
 | `orch-check-agent-messages` | `*/10 * * * *` | no_agent | `orch-check-agent-messages.sh` | `origin` | Flag urgent agent messages |
 | `inbox-sensor` | `*/10 * * * *` | no_agent | `inbox-sensor.py` | `local` | Detect new broadcast messages |
@@ -359,7 +359,7 @@ cat ~/.hermes/cron/jobs.json | python3 -m json.tool
    - `cron-auto-remediate` (every 5m, skill-based) — checks errors, applies fixes
    - `remediation-sensor` (every 5m, no_agent) — companion diagnostics sensor
    - `system-heartbeat` (every 30m, no_agent) — system health monitoring
-   - `agent-health-monitor` (every 10m, no_agent) — agent health polling
+   - `agent-team-health-monitor` (every 10m, no_agent) — agent health polling
    - `system-alert-watchdog` (every 10m, no_agent) — resource alerting
    - `service-recovery` (every 5m, no_agent) — auto-restart crashed services
    - `memory-to-brain-sync` (every 6h, no_agent) — memory persistence

@@ -1667,12 +1667,12 @@ if [[ -f "${SCRIPT_DIR}/src/scripts/health-server.py" ]]; then
   info "  Installed health-server.py"
 fi
 
-HEALTH_MONITOR_PATH="${SCRIPTS_DIR}/agent-health-monitor.py"
-if [[ -f "${SCRIPT_DIR}/src/scripts/agent-health-monitor.py" ]]; then
-  cp "${SCRIPT_DIR}/src/scripts/agent-health-monitor.py" "$HEALTH_MONITOR_PATH" 2>/dev/null || \
-    warn "agent-health-monitor.py copy failed"
+HEALTH_MONITOR_PATH="${SCRIPTS_DIR}/agent-team-health-monitor.py"
+if [[ -f "${SCRIPT_DIR}/src/scripts/agent-team-health-monitor.py" ]]; then
+  cp "${SCRIPT_DIR}/src/scripts/agent-team-health-monitor.py" "$HEALTH_MONITOR_PATH" 2>/dev/null || \
+    warn "agent-team-health-monitor.py copy failed"
   chmod +x "$HEALTH_MONITOR_PATH"
-  info "  Installed agent-health-monitor.py"
+  info "  Installed agent-team-health-monitor.py"
 fi
 
 # ── Auto-Save Active Sessions Script ──────────────────────────────

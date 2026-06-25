@@ -1010,7 +1010,7 @@ AGENT_HEALTH_FILE = HERMES_HOME / "state" / "agent-health-data.json"
 @app.route("/api/agents")
 @_cached("agents", ttl=60)
 def api_agents():
-    """Read structured health data written by agent-health-monitor.py."""
+    """Read structured health data written by agent-team-health-monitor.py."""
     if AGENT_HEALTH_FILE.exists():
         try:
             data = json.loads(AGENT_HEALTH_FILE.read_text())

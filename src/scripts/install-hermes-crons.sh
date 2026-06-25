@@ -219,7 +219,7 @@ if $UNINSTALL; then
   for job in \
     "cron-auto-remediate" "system-heartbeat" "memory-to-brain-sync" \
     "system-alert-watchdog" "service-recovery" "inbox-sensor" \
-    "orch-check-agent-messages" "agent-health-monitor" "remediation-sensor"; do
+    "orch-check-agent-messages" "agent-team-health-monitor" "remediation-sensor"; do
     remove_cron "$job"
   done
   info "Uninstall complete"
@@ -268,8 +268,8 @@ create_cron "system-heartbeat" "*/30 * * * *" \
   "true"
 
 # ── 4. Agent Health Monitor ─────────────────────────────────
-create_cron "agent-health-monitor" "*/10 * * * *" \
-  "agent-health-monitor.py" \
+create_cron "agent-team-health-monitor" "*/10 * * * *" \
+  "agent-team-health-monitor.py" \
   "" \
   "" \
   "" \
