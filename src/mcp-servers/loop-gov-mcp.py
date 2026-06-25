@@ -18,8 +18,10 @@ Tools:
 
 import asyncio
 import json
+import os
 import sqlite3
 import sys
+import traceback
 import urllib.request
 from datetime import datetime
 from pathlib import Path
@@ -330,4 +332,8 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception:
+        traceback.print_exc(file=sys.stderr)
+        sys.exit(1)

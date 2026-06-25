@@ -15,6 +15,8 @@ import asyncio
 import json
 import os
 import re
+import sys
+import traceback
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -197,4 +199,8 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception:
+        traceback.print_exc(file=sys.stderr)
+        sys.exit(1)
