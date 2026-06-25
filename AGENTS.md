@@ -275,7 +275,7 @@ Load the relevant skill with `skill_view(name)` when entering each stage. Skills
 **Change:** All monitoring scripts now output timestamps in KST (UTC+9) instead of UTC.
 
 **Affected scripts:**
-- `agent-team-health-monitor.py` — Health alerts
+- `agent-team-health-monitor.py` — Cross-agent health polling (Moses only)
 - `system-alert.py` — Resource threshold alerts  
 - `service-recovery.py` — Service restart reports
 - `orch-check-agent-messages.sh` — Inbox message notifications

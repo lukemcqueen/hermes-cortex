@@ -44,22 +44,41 @@ TIMEOUT = 15
 
 
 def _get_agents() -> list[dict]:
-    """Load server-reachable agents from registry. Skip client-only agents."""
+    """Load server-reachable agents from registry. Only Moses polls cross-agent."""
     agents = []
     if REGISTRY_PATH.exists():
         try:
             data = json.loads(REGISTRY_PATH.read_text())
+
+            # Determine if THIS machine is Moses (the orchestrator)
+            hostname = os.uname().nodename.lower()
+            is_moses = False
+            for entry in data.get("agents", []):
+                if entry.get("name") == "moses":
+                    moses_host = entry.get("hostname", "").lower()
+                    if moses_host and moses_host in hostname:
+                        is_moses = True
+                    break
+
             for entry in data.get("agents", []):
                 # Skip client-only machines (no API access)
                 if not entry.get("accessible", False):
                     continue
-                url = (entry.get("health_url") or "").strip()
                 name = entry.get("name", "?")
-                if url:
+                url = (entry.get("health_url") or "").strip()
+
+                # Only Moses polls other agents; everyone else checks local only
+                if name == "moses":
+                    # Moses checks his own local health server
+                    if url:
+                        agents.append({"key": name, "name": name, "url": url})
+                elif is_moses and url:
+                    # Moses polls server agents
                     agents.append({"key": name, "name": name, "url": url})
-        except (json.JSONDecodeError, KeyError):
+        except (json.JSONDecodeError, KeyError, OSError):
             pass
-    # Always include Moses local health
+
+    # Fallback: always include Moses local health
     if not any(a["key"] == "moses" for a in agents):
         agents.insert(0, {"key": "moses", "name": "Moses", "url": "http://127.0.0.1:8905/api/v1/health"})
     return agents
