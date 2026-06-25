@@ -28,8 +28,11 @@ if ! git log HEAD..origin/main --oneline | grep -q .; then
     exit 0
 fi
 
-PULL_OUTPUT=$(git pull origin main 2>&1) || {
-    echo "[cortex-sync] git pull failed (exit $?)"
+# Use rebase instead of merge to handle local auto-remediation commits
+# that are ahead of origin. Merge would fail when both sides changed
+# the same files (install.sh, scripts, etc.).
+PULL_OUTPUT=$(git pull --rebase origin main 2>&1) || {
+    echo "[cortex-sync] git rebase pull failed (exit $?)"
     echo "$PULL_OUTPUT"
     exit 1
 }
