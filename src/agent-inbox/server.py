@@ -75,7 +75,7 @@ def _parse_message(path: Path) -> dict:
     text = path.read_text(encoding="utf-8", errors="replace")
     front = {"from": "?", "subject": "No subject", "topic": DEFAULT_TOPIC,
              "thread": "", "parent": "", "status": "unread", "priority": "normal",
-             "read_by": ""}
+             "read_by": "", "to": "all", "cc": ""}
     body = text
 
     m = re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)", text, re.DOTALL)
@@ -93,6 +93,8 @@ def _parse_message(path: Path) -> dict:
     return {
         "id": msg_id,
         "from": front.get("from", "?"),
+        "to": front.get("to", "all"),
+        "cc": front.get("cc", ""),
         "subject": front.get("subject", "No subject"),
         "topic": front.get("topic", DEFAULT_TOPIC),
         "thread": front.get("thread", ""),
@@ -109,6 +111,8 @@ def _parse_message(path: Path) -> dict:
 
 def _write_message(from_: str, subject: str, body: str,
                    topic: str = DEFAULT_TOPIC,
+                   to_: str = "",
+                   cc: str = "",
                    thread: str = "",
                    parent: str = "",
                    priority: str = "normal",
@@ -127,8 +131,19 @@ def _write_message(from_: str, subject: str, body: str,
     # Auto-add sender to read_by — they already know what they sent
     read_by = safe_from
 
+    # Default to_: all (visible to everyone) if not specified
+    to_val = to_.strip() if to_.strip() else "all"
+
+    # Every message auto-CCs Luke (the human). Send-to-agent can add Moses.
+    cc_vals = [x.strip() for x in cc.split(",") if x.strip()]
+    if "luke" not in cc_vals:
+        cc_vals.insert(0, "luke")
+    cc_str = ", ".join(cc_vals)
+
     content = f"""---
 from: {from_.strip()}
+to: {to_val}
+cc: {cc_str}
 subject: {subject.strip()}
 topic: {topic}
 priority: {priority}
@@ -817,6 +832,8 @@ async def send_message(
     subject: str = Form(...),
     body: str = Form(...),
     topic: str = Form(DEFAULT_TOPIC),
+    to_: str = Form(alias="to", default=""),
+    cc: str = Form(default=""),
     thread: str = Form(""),
     parent: str = Form(""),
     priority: str = Form("normal"),
@@ -842,7 +859,7 @@ async def send_message(
     valid_statuses = ["unread", "read"]
     if status not in valid_statuses:
         status = "unread"
-    _write_message(from_, subject, body, topic=topic, thread=thread, parent=parent, priority=priority, status=status)
+    _write_message(from_, subject, body, topic=topic, to_=to_, thread=thread, parent=parent, priority=priority, status=status)
     return RedirectResponse(url=f"/?topic={topic}&sent=true", status_code=303)
 
 
@@ -867,6 +884,8 @@ async def api_send_message(request: Request):
     subject = str(payload.get("subject", "") or "")
     body = str(payload.get("body", "") or "")
     topic = str(payload.get("topic", DEFAULT_TOPIC) or DEFAULT_TOPIC)
+    to_ = str(payload.get("to", "") or "")
+    cc = str(payload.get("cc", "") or "")
     thread = str(payload.get("thread", "") or "")
     parent = str(payload.get("parent", "") or "")
     priority = str(payload.get("priority", "normal") or "normal")
@@ -892,7 +911,7 @@ async def api_send_message(request: Request):
     if status not in valid_statuses:
         status = "unread"
 
-    _write_message(from_, subject, body, topic=topic, thread=thread, parent=parent, priority=priority, status=status)
+    _write_message(from_, subject, body, topic=topic, to_=to_, cc=cc, thread=thread, parent=parent, priority=priority, status=status)
     return {"status": "sent", "topic": topic, "from": from_, "subject": subject}
 
 
@@ -932,22 +951,29 @@ async def api_inbox(
         inbox_msgs = [m for m in inbox_msgs if m["topic"] == topic]
 
     if for_:
-        # Per-agent filtering: show messages addressed TO this agent
+        # Per-agent filtering: show messages addressed TO or CC'd to this agent,
+        # plus public messages (to: all)
         safe_agent = re.sub(r"[^a-zA-Z0-9_-]", "", for_.strip().lower())
         if safe_agent:
-            # If no explicit topic filter, filter by recipient (topic == agent name)
-            if not topic:
-                inbox_msgs = [m for m in inbox_msgs if m["topic"].strip().lower() == safe_agent]
-            # Exclude messages the agent sent or already read
             filtered = []
             for m in inbox_msgs:
                 msg_from = m.get("from", "").strip().lower()
                 read_by_str = m.get("read_by", "")
                 read_by_list = [r.strip().lower() for r in read_by_str.split(",") if r.strip()]
-                # Skip if agent sent it or already read it
+
+                # Skip messages the agent sent or already read
                 if safe_agent == msg_from or safe_agent in read_by_list:
                     continue
-                filtered.append(m)
+
+                # Check to/cc fields
+                to_val = m.get("to", "all").strip().lower()
+                cc_val = m.get("cc", "").strip().lower()
+                to_list = [x.strip() for x in to_val.split(",") if x.strip()]
+                cc_list = [x.strip() for x in cc_val.split(",") if x.strip()]
+
+                # Show if: to=all (public), or to includes agent, or cc includes agent
+                if "all" in to_list or safe_agent in to_list or safe_agent in cc_list:
+                    filtered.append(m)
             inbox_msgs = filtered
 
     if unread_only:
