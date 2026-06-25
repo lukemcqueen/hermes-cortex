@@ -47,6 +47,15 @@
       "accessible": false,
       "platform": "macOS",
       "description": "Titus — macOS laptop, client-only, communicates via inbox"
+    },
+    {
+      "name": "esther",
+      "role": "worker",
+      "hostname": "esther-server",
+      "is_server": true,
+      "accessible": true,
+      "platform": "linux",
+      "description": "Esther — Linux server"
     }
   ]
 }
