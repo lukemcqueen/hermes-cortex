@@ -1,3 +1,4 @@
+name: product-requirements
 ---
 title: product-requirements
 version: 1.0.0

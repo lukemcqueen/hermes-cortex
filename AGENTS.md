@@ -129,61 +129,13 @@ Every coding session follows this pattern after each TDD cycle:
 
 ## Autonomous Agent Reliability Patterns
 
-Based on Karpathy's research showing **41% → 3% mistake rate reduction** with explicit constraints, Hermes Cortex implements these reliability patterns:
+Based on Karpathy's research (41% → 3% mistake rate reduction with explicit constraints):
 
-### Task Contract (Pre-Execution Specification)
-
-**For tasks with 3+ steps, define a task contract BEFORE execution.**
-
-```markdown
-## Task Contract
-
-**Goal:** [Single sentence]
-
-**Success Criteria:**
-- [ ] [Verifiable outcome 1]
-- [ ] [Verifiable outcome 2]
-
-**Constraints:**
-- Files I may touch: `[list]`
-- Files I must NOT touch: `[list]`
-
-**Checkpoints:**
-1. [ ] After step X, verify Y
-2. [ ] Before proceeding, confirm Z
-```
-
-**Template:** `docs/templates/task-contract.md`
-
-### Checkpoint Verification
-
-**Verify each checkpoint before proceeding to the next step.**
-
-Agents often complete steps 5-6 on top of a broken state from step 4. Checkpoint verification catches failures early.
-
-### Conflict Surfacing
-
-**When detecting multiple patterns in the codebase, surface the conflict — do NOT blend silently.**
-
-Silent pattern blending is how errors get swallowed twice. Surface conflicts explicitly with examples and await pattern choice.
-
-### Read-Before-Write
-
-**Read a file before editing it, unless creating from scratch.**
-
-90% of Claude's mistakes come from missing context, not weak models. Reading before writing ensures the agent operates on actual state.
-
-### Eval-Driven Development
-
-**Define evals BEFORE building. Run capability and regression suites systematically.**
-
-- **Capability evals:** Measure what the agent CAN do (new features)
-- **Regression evals:** Ensure agent MAINTAINS learned tasks (should stay ≥95%)
-- **Holdout gating:** Survivors must pass on unseen data before deployment
-
-**Skill:** `eval-harness`  
-**Scripts:** `run-evals.py`, `analyze-failures.py`  
-**Weekly analysis:** `analyze-failures.py --week last` (Monday 7am cron)
+- **Task Contract** — For 3+ step tasks, define goal/success criteria/constraints/checkpoints *before* executing. Template: `docs/templates/task-contract.md`
+- **Checkpoint Verification** — Verify each step before proceeding. Fixing state retroactively is 10x harder.
+- **Conflict Surfacing** — When detecting multiple patterns, surface the conflict explicitly. Do NOT blend silently.
+- **Read-Before-Write** — Read a file before editing it unless creating from scratch. 90% of mistakes come from missing context.
+- **Eval-Driven Development** — Define evals BEFORE building. Capability evals (new features) + regression evals (maintain ≥95%). Skill: `eval-harness`. Scripts: `run-evals.py`, `analyze-failures.py`.
 
 ---
 
@@ -225,20 +177,9 @@ code-review (security scan, quality gate)
 | 8:30am | Moses | Reads latest comment from **GitHub issue #11** via `gh api`. Asks user: "What is your #1 priority for today?" |
 | 8:30am+ | Moses | Breaks priority into 2-4 actionable tasks. Incorporates Titus's suggestions. Updates memory. Begins execution. |
 
-**Why GitHub Issues:**
-- Every agent is on a separate physical machine (no shared filesystem)
-- Titus has write access to hermes-cortex repo (can post issue comments)
-- Moses has read access via GitHub CLI token (can read comments)
-- Natural TITUS-ONLY enforcement (only Titus can write)
-- Audit trail in GitHub (visible to humans)
-- Works cross-machine immediately (no migration needed)
+**Why GitHub Issues:** Cross-machine bridge — Titus writes repo comments, Moses reads via `gh api`. Natural audit trail.
 
-**Why this matters:**
-- Prevents context-switching and reactive work
-- Ensures we're always working on what matters most
-- Leverages Titus's repo-specific insights (pending PRs, blockers, recent changes)
-- Builds a historical record of focus areas (via memory)
-- Creates natural daily rhythm for deep work
+**Why this matters:** Prevents context-switching, builds historical record of focus areas, creates natural daily rhythm.
 
 |---
 |-------|-------|---------|
@@ -249,24 +190,23 @@ code-review (security scan, quality gate)
 | Build | `change-test-loop` | LEARN-RED-GREEN-REFACTOR with lesson-aware memory |
 | Review | `code-review` | Pre-commit review: security, quality, auto-fix |
 
-Load the relevant skill with `skill_view(name)` when entering each stage. Skills live in `~/.hermes/skills/software-development/<name>/SKILL.md`.
+Load the relevant skill with `skill_view(name)` when entering each stage.
 
 ---
 
 ## Common Tasks
 
-|- **Add a troubleshooting entry:** Edit `docs/troubleshooting.md`, add new numbered section, update changelog
-|- **Add a template:** Place in `docs/templates/`, update `install.sh` step 9 to copy it during install
-|- **Modify install:** Edit `install.sh` — 26 steps, idempotent, safe to re-run
-|- **Update Docker config:** Edit `deploy/docker-compose.langfuse.yml` — Langfuse v3 requires specific env vars (see docs/troubleshooting.md)
-|- **Upgrade gbrain to v2 taxonomy:** See `docs/gbrain-v2-taxonomy.md` for the 15 canonical types and upgrade instructions for existing brains
+- **Add troubleshooting entry:** Edit `docs/troubleshooting.md`, add numbered section, update changelog
+- **Add a template:** Place in `docs/templates/`, update `install.sh`
+- **Modify install:** Edit `install.sh` — 26 steps, idempotent
+- **Update Docker config:** Edit `deploy/docker-compose.langfuse.yml` (see docs/troubleshooting.md for env vars)
+- **Upgrade gbrain:** See `docs/gbrain-v2-taxonomy.md`
 
 ## Rules
 
-- No secrets in this repo — ever
-- `.env`, `.env.*`, `*.pem`, `*.key` are gitignored
-- Keep docs current when changing install behavior
-- MIT License — be permissive with what's shared
+- No secrets in this repo. `.env`, `*.pem`, `*.key` are gitignored.
+- Keep docs current when changing install behavior.
+- MIT License — be permissive.
 
 ## ⚡ Agent Handoffs (Luke's deployment — session-to-session notes)
 
@@ -274,35 +214,13 @@ Load the relevant skill with `skill_view(name)` when entering each stage. Skills
 
 **Change:** All monitoring scripts now output timestamps in KST (UTC+9) instead of UTC.
 
-**Affected scripts:**
-- `agent-team-health-monitor.py` — Cross-agent health polling (Moses only)
-- `system-alert.py` — Resource threshold alerts  
-- `service-recovery.py` — Service restart reports
-- `orch-check-agent-messages.sh` — Inbox message notifications
-
-**Output format:** `[2026-06-19 08:48 KST]`
+**Affected scripts:** `agent-team-health-monitor.py`, `system-alert.py`, `service-recovery.py`, `orch-check-agent-messages.sh`
 
 **Rationale:** User is in Seoul (KST). Timestamps should match user's local time for faster incident response.
 
 ---
 
-### ⚡ 2026-06-19 — Cron installation hardened
-
-**Improvements to `install-hermes-crons.sh`:**
-
-| Feature | Description |
-|---------|-------------|
-| `--force` flag | Recreate all crons (overwrites existing) |
-| Script verification | Checks scripts exist before creating crons |
-| Failure tracking | Exits with error if any cron creation fails |
-| Better error messages | Shows which scripts are missing |
-
-**Install script (`install.sh`) improvements:**
-- Verifies Hermes Agent is installed before attempting cron creation
-- Skips cron step with clear warning if Hermes not found
-- Provides explicit command to run crons manually after Hermes install
-
-**Cron job reference:**
+### ⚡ 2026-06-19 — Cron reference
 
 | Cron | Schedule | Type | Script/Skill | Deliver | Purpose |
 |------|----------|------|--------------|---------|---------|
