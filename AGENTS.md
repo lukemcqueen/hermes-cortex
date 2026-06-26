@@ -110,6 +110,18 @@ Every agent working in this repo must follow these non-negotiable rules:
     `pass-pct 0` if it failed. No exceptions — without this data the system
     cannot self-improve.
 
+11. **Tests/TDD/scoring are always the default** — every code change assumes
+    RED-GREEN-REFACTOR, loop-governance scoring, and the full discipline.
+    This is not optional. Only explicit opt-out phrases bypass the loop:
+    - `"don't test, do X"` / `"skip tests"` — explicitly waives TDD
+    - `"only review..."` / `"read-only"` — investigation with no code change
+    - `"throwaway prototype"` — explicitly marked as disposable
+    - `"just check..."` / `"look at..."` — read-only, no code change
+    Any ambiguous or permissive phrase (`"sure"`, `"go ahead"`, `"do it"`,
+    `"sounds good"`) still triggers the full loop. Erring on the side of
+    doing it is always correct. The user has explicitly stated they want
+    the full governance loop on every interaction, every time.
+
 ---
 
 ## Loop Governance — Quick Reference
