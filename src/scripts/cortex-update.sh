@@ -99,6 +99,9 @@ register "src/scripts/install-ollama.sh"          "${HERMES_HOME}/scripts/instal
 register "src/scripts/install-nginx.sh"           "${HERMES_HOME}/scripts/install-nginx.sh"
 register "src/scripts/install-cortex-update-cron.sh" "${HERMES_HOME}/scripts/install-cortex-update-cron.sh"
 register "src/scripts/install-hermes-crons.sh"       "${HERMES_HOME}/scripts/install-hermes-crons.sh"
+register "src/scripts/install-score-hook.sh"       "${HERMES_HOME}/scripts/install-score-hook.sh"
+register "src/scripts/pre-commit-score"            "${HERMES_HOME}/scripts/pre-commit-score"
+register "src/scripts/score-auditor.py"            "${HERMES_HOME}/scripts/score-auditor.py"
 register "src/scripts/prod-watchdog.sh"          "${HERMES_HOME}/scripts/prod-watchdog.sh"
 register "src/scripts/orch-check-agent-messages.sh"    "${HERMES_HOME}/scripts/orch-check-agent-messages.sh"
 

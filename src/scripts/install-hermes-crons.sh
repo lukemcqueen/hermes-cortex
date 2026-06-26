@@ -313,6 +313,17 @@ create_cron "inbox-sensor" "*/10 * * * *" \
   "" \
   "true"
 
+# ── 9. Score Auditor (checks for unscored changes) ──────────
+printf "\n${CYAN}  5. Change Scoring Audit${RESET}\n"
+create_cron "score-auditor" "0 */6 * * *" \
+  "score-auditor.py" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
 # ── Orchestrator-only crons ─────────────────────────────────
 # These crons only run on the orchestrator (Moses). Agents check
 # src/agent-registry.json — if this host isn't the orchestrator, skip.
