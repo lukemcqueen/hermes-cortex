@@ -74,7 +74,7 @@ report = {
     "notes": [
         "Qwen3:4b is a thinking model — puts chain-of-thought in `thinking` field, only final answer in `response`.",
         "Each query needs 4000-8000 thinking tokens before producing a response → 80-170s per query on CPU.",
-        "Lesson DB search path was wrong in first runs (used ~/hermes-cortex/ instead of ~/Developer/AI/hermes-cortex/).",
+        "Lesson DB search path was wrong in first runs (used wrong project root directory).",
         "Only S1_with_lessons actually had lesson content injected into the prompt (S1_best run, 5 lessons found).",
         "S2/S3 with_lessons had 0 lesson count (path bug) — those results are equivalent to no-lessons mode.",
         "Temperature 0.1 introduces score noise (0.0-0.25 variation seen across S1 runs).",

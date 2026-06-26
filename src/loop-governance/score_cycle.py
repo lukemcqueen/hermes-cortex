@@ -1,4 +1,4 @@
-#!/Users/luke/.pyenv/versions/3.13.13/bin/python3
+#!/usr/bin/env python3
 """
 Cycle Logger — score a TDD cycle and log it to the DB in one shot.
 

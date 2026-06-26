@@ -6,8 +6,8 @@
     {
       "name": "moses",
       "role": "orchestrator",
-      "host": "121.129.5.54",
-      "hostname": "moses-server",
+      "host": "192.168.1.100",
+      "hostname": "orchestrator-1",
       "is_server": true,
       "is_orchestrator": true,
       "accessible": true,
@@ -18,7 +18,7 @@
     {
       "name": "gisu",
       "role": "operations",
-      "hostname": "cisnet03",
+      "hostname": "worker-1",
       "is_server": true,
       "accessible": true,
       "description": "Gisu operations server"
@@ -26,7 +26,7 @@
     {
       "name": "joseph",
       "role": "web-infrastructure",
-      "hostname": "joseph-server",
+      "hostname": "worker-2",
       "is_server": true,
       "accessible": true,
       "description": "Joseph web/infra server"
@@ -34,7 +34,7 @@
     {
       "name": "kustos",
       "role": "security",
-      "hostname": "kustos-server",
+      "hostname": "worker-3",
       "is_server": true,
       "accessible": true,
       "description": "Kustos security server"
@@ -42,7 +42,7 @@
     {
       "name": "titus",
       "role": "developer",
-      "hostname": "LAM2",
+      "hostname": "worker-4",
       "is_server": false,
       "accessible": false,
       "platform": "macOS",
@@ -51,7 +51,7 @@
     {
       "name": "esther",
       "role": "worker",
-      "hostname": "esther-server",
+      "hostname": "worker-5",
       "is_server": true,
       "accessible": true,
       "platform": "linux",

@@ -28,6 +28,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+# ── Advisory lock (inter-process) ────────────────────────────
+_ADVISORY_LOCK_AVAILABLE = False
+try:
+    import fcntl as _flock_mod
+    _ADVISORY_LOCK_AVAILABLE = True
+except ImportError:
+    _flock_mod = None  # Windows — no advisory locking via fcntl
+
 
 def content_hash(text: str) -> str:
     """Return SHA-256 hex digest of text (content-addressable key)."""
@@ -50,7 +58,34 @@ class LoopDB:
         if db_path != ":memory:":
             self.conn.execute("PRAGMA journal_mode=WAL")
             self.conn.execute("PRAGMA foreign_keys=ON")
+            # Lock file for inter-process advisory locking
+            self._lock_path = db_path + ".lock"
+            self._lock_fd = None
+        else:
+            self._lock_path = None
+            self._lock_fd = None
         self._create_schema()
+
+    def _lock(self) -> None:
+        """Acquire an inter-process advisory lock. Blocks if another process holds it.
+        Uses fcntl.flock on POSIX; no-op on Windows."""
+        if not _ADVISORY_LOCK_AVAILABLE or not self._lock_path:
+            return
+        try:
+            self._lock_fd = open(self._lock_path, "w")
+            _flock_mod.flock(self._lock_fd, _flock_mod.LOCK_EX)
+        except Exception:
+            self._lock_fd = None
+
+    def _unlock(self) -> None:
+        """Release the advisory lock."""
+        if self._lock_fd is not None:
+            try:
+                _flock_mod.flock(self._lock_fd, _flock_mod.LOCK_UN)
+                self._lock_fd.close()
+            except Exception:
+                pass
+            self._lock_fd = None
 
     def _create_schema(self):
         """Create tables if they don't exist."""
@@ -107,7 +142,9 @@ class LoopDB:
                   test_output_hash: str = None,
                   model_name: str = "nomic-embed-text") -> int:
         """Log a scored cycle and return the row ID."""
-        cur = self.conn.execute("""
+        self._lock()
+        try:
+            cur = self.conn.execute("""\
             INSERT INTO loop_cycles
                 (task_id, cycle_num, spec_hash, code_hash, test_output_hash,
                  completeness, quality, progress, composite, no_progress,
@@ -116,13 +153,15 @@ class LoopDB:
         """, (task_id, cycle_num, spec_hash, code_hash, test_output_hash,
               completeness, quality, progress, composite,
               1 if no_progress else 0, decision, model_name))
-        self.conn.commit()
+            self.conn.commit()
 
-        # Write JSON event
-        self._write_event(cur.lastrowid, task_id, cycle_num, completeness,
-                          quality, progress, composite, no_progress, decision)
+            # Write JSON event
+            self._write_event(cur.lastrowid, task_id, cycle_num, completeness,
+                              quality, progress, composite, no_progress, decision)
 
-        return cur.lastrowid
+            return cur.lastrowid
+        finally:
+            self._unlock()
 
     def log_cycle_with_content(self, task_id: str, cycle_num: int,
                                 spec_text: str, code_text: str,

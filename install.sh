@@ -251,7 +251,9 @@ fi
 # Ensure package manager
 if [[ "$CORTEX_OS" == "macos" ]] && ! command -v brew &>/dev/null; then
   step "Installing Homebrew…"
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  curl -fsSL --retry 3 --retry-delay 5 https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o /tmp/homebrew-install.sh
+  /bin/bash /tmp/homebrew-install.sh
+  rm -f /tmp/homebrew-install.sh
   if [[ "$(uname -m)" == "arm64" ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
   else
@@ -366,7 +368,9 @@ step "Installing Bun"
 if command -v bun &>/dev/null || [[ -x "${CORTEX_HOME}/.bun/bin/bun" ]]; then
   skip "already installed — $(bun --version 2>/dev/null || echo 'bun found')"
 else
-  curl -fsSL https://bun.sh/install | bash
+  curl -fsSL --retry 3 --retry-delay 5 https://bun.sh/install -o /tmp/bun-install.sh
+  bash /tmp/bun-install.sh
+  rm -f /tmp/bun-install.sh
   # Ensure bun is in PATH for subsequent steps
   export PATH="${CORTEX_HOME}/.bun/bin:$PATH"
   ok
@@ -710,11 +714,12 @@ lines.append('')
 lines.append('')
 lines.append('async def _run_gbrain_query(query: str, source_flags: str) -> str:')
 lines.append('    """Run gbrain query and return formatted results."""')
-lines.append('    cmd = f"{_GBRAIN_BIN} query {source_flags} {shlex.quote(query)} 2>&1 | head -40"')
-lines.append('    logger.debug("Running gbrain query: %s", cmd)')
+lines.append('    import shlex')
+lines.append('    args = [str(_GBRAIN_BIN), "query"] + shlex.split(source_flags) + [query]')
+lines.append('    logger.debug("Running gbrain query: %s", args)')
 lines.append('')
-lines.append('    proc = await asyncio.create_subprocess_shell(')
-lines.append('        cmd,')
+lines.append('    proc = await asyncio.create_subprocess_exec(')
+lines.append('        *args,')
 lines.append('        stdout=asyncio.subprocess.PIPE,')
 lines.append('        stderr=asyncio.subprocess.PIPE,')
 lines.append('    )')
@@ -727,6 +732,9 @@ lines.append('        return "\u23f1\ufe0f Brain query timed out after 30s."')
 lines.append('')
 lines.append('    output = (stdout.decode("utf-8", errors="replace") or "").strip()')
 lines.append('    err = (stderr.decode("utf-8", errors="replace") or "").strip()')
+lines.append('    # Merge stderr into stdout (replaces shell 2>&1)')
+lines.append('    if err:')
+lines.append('        output = (output + "\\n" + err) if output else err')
 lines.append('')
 lines.append('    if proc.returncode != 0:')
 lines.append('        return f"\u274c Brain query failed (exit {proc.returncode}):\\\n{err or output}"')

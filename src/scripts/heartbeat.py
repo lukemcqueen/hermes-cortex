@@ -45,20 +45,19 @@ def check_launchd(job_label: str) -> dict:
 
         if pid_match:
             pid = pid_match.group(1)
-            exit_code = int(exit_match.group(1)) if exit_match else 0
-            if exit_code != 0:
-                return {"status": "DEGRADED", "detail": f"Running (PID {pid}) but last exit was {exit_code}"}
+            # Process is running — launchd auto-restarts on crash.
+            # LastExitStatus is from the previous instance, not the current one.
             return {"status": "UP", "detail": f"PID {pid}"}
 
         # Fallback: tab-separated format (older macOS)
         parts = stdout.split("\t")
         if len(parts) >= 2:
             pid = parts[0]
-            exit_code = parts[1]
             if pid == "-":
+                exit_code = parts[1]
                 return {"status": "DOWN", "detail": f"No PID (exit code: {exit_code})"}
-            if exit_code not in ("0", "-"):
-                return {"status": "DEGRADED", "detail": f"Running (PID {pid}) but last exit was {exit_code}"}
+            # Process is running — launchd auto-restarts on crash.
+            # Exit code is from the previous instance, not the current one.
             return {"status": "UP", "detail": f"PID {pid}"}
 
         return {"status": "ERROR", "detail": f"Unrecognized launchctl output: {stdout[:200]}"}

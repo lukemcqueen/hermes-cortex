@@ -93,19 +93,80 @@ Every agent working in this repo must follow these non-negotiable rules:
 7. **State confidence explicitly** — when uncertain, say so and explain what you know vs what you assume. The user needs actual conviction level, not a confident-sounding guess.
 8. **Keep working until done** — don't stop after writing a stub, plan, or single command. Work until you've actually exercised the code or produced the requested result.
 9. **Use tools, not descriptions** — never describe what you would do without actually doing it. Every response must contain tool calls that make progress or deliver a final result.
-10. **Score every change** — every code change, config change, or script edit must be logged to the loop-governance DB via `score-cycle`. After any file change, run `score-cycle --task <id> --cycle <N> --code-file <file> --prev-code-file <file> --test-file <output> --pass-pct <rate>`. If a decision was wrong, use `loop-feedback override <id>`. No exceptions — without this data the system cannot self-improve. For changes with no tests, use `pass-pct 100` if verification succeeded, `pass-pct 0` if it failed.
+10. **Score every change** — every code change, config change, script edit,
+    or deployment must be logged to the loop-governance DB. Two paths:
+
+    **Path A — MCP tools (for agents with MCP access):**
+    - Before coding: `mcp_loop_governance_cache_search(query="task description")`
+    - After change: `mcp_loop_governance_cycle_query(task_id="<task>")`
+    - Provide feedback: `mcp_loop_governance_feedback_accept(cycle_id=N)`
+      or `mcp_loop_governance_feedback_override(cycle_id=N, correct_decision="...", note="...")`
+
+    **Path B — CLI tools (for pre-commit hooks, scripts, shell):**
+    `score-cycle --task <id> --cycle <N> --code-file <file> --prev-code-file <file> --pass-pct <rate>`
+    `loop-feedback accept <id>` / `loop-feedback override <id> --note "..."`
+
+    For changes with no tests, use `pass-pct 100` if verification succeeded,
+    `pass-pct 0` if it failed. No exceptions — without this data the system
+    cannot self-improve.
 
 ---
 
-## Change Scoring Workflow (Non-Negotiable)
+## Loop Governance — Quick Reference
 
-Every change — code, config, script, or deployment — follows this pattern after completion:
+### Interface: MCP tools vs CLI
 
-1. Run `score-cycle` — scores completeness, quality, progress, logs to DB
-2. Check the decision (STOP/LOOP/MOVE ON) — use it to steer the next action
-3. If the decision was wrong → `loop-feedback override <id> --note "..."`
+| Situation | Use | Example |
+|-----------|-----|---------|
+| Agent before coding | `cache_search(query)` | `mcp_loop_governance_cache_search(query="build user auth")` |
+| Agent session init | `config_show()` + `cycle_stats()` | At session start, query current thresholds + recent stats |
+| Agent after a cycle | `feedback_accept(id)` / `feedback_override(id, ...)` | Confirm or correct the decision |
+| Agent reviewing cycles | `cycle_query(task_id="...")` | Check what was scored for a task |
+| Pre-commit hook | `score-cycle --task ... --pass-pct ...` | Runs automatically on `git commit` |
+| Script/CI pipeline | `score-cycle --task ... --json` | Programmatic scoring without MCP |
 
-**Scoring guidelines by change type:**
+MCP tools require the loop-governance MCP server to be registered in
+`config.yaml`. CLI tools require the symlinks created by `setup.sh`.
+
+### Session initialization sequence
+
+Every agent session working in this repo should start with:
+
+1. `mcp_loop_governance_config_show()` — check current thresholds/weights
+2. `mcp_loop_governance_cycle_stats(days=7)` — review recent scoring health
+3. `mcp_loop_governance_cache_search(query="<current task description>")`
+   — learn from past similar cycles before coding
+
+The cache grows with each session and becomes more useful over time.
+If the cache DB doesn't exist yet, the first query populates it — just
+keep using it.
+
+### Per-change scoring flow
+
+Every change follows this pattern:
+
+```
+Before coding: cache_search(task_description) ← learn from past
+[Coding work — RED-GREEN-REFACTOR or config change]
+After verifying: cycle_query(task_id="story-name")  ← review the cycle
+                 feedback_accept / feedback_override ← train the model
+```
+
+### Multi-file changes — how to score
+
+When a single change touches multiple files:
+
+| Pattern | What to do |
+|---------|------------|
+| One logical change across N files | Score once. Use the most representative file as `--code-file`. Describe scope in the task name. |
+| Independent changes in same session | Score each logical change separately with distinct task IDs (e.g. `auth-endpoint`, `config-logging`) |
+| Config changes across 2+ files | Score once. Omit `--test-file`. `pass-pct 100` if verified. |
+
+For CLI scoring, `--code-file` should be the file that best represents
+the change's purpose (typically the main implementation file, not config
+or test files).
+
+### Scoring guidelines by change type
 
 | Change Type | `--test-file` | `--pass-pct` |
 |---|---|---|
@@ -114,9 +175,30 @@ Every change — code, config, script, or deployment — follows this pattern af
 | Script edit | Any invocation that proves it works | 100 if ran without error |
 | Deployment | Health check endpoint or proof of life | 100 if healthy |
 
-The goal is not perfection — it's a record of what was changed, how it was verified, and what the system decided. Every logged cycle trains the scoring model. A config change scored at pass-pct 100 with no test file is far more valuable than an unscored config change that silently breaks later.
+The goal is not perfection — it's a record of what was changed, how it was
+verified, and what the system decided. Every logged cycle trains the scoring
+model. A config change scored at pass-pct 100 with no test file is far more
+valuable than an unscored config change that silently breaks later.
 
-**Enforcement layers:**
+### Troubleshooting scoring failures
+
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| `embedding failed` / `Ollama connection refused` | Ollama not running | `ollama serve` or `brew services restart ollama` |
+| `Model nomic-embed-text not found` | Model not pulled | `ollama pull nomic-embed-text` (274 MB) |
+| `DB locked` | Concurrent score-cycle process | Wait and retry, or `rm ~/.hermes/data/loop-governance.db-journal` |
+| `score-cycle not found` | Symlink missing | `bash ~/hermes-cortex/src/loop-governance/setup.sh --symlinks-only` |
+| `warning: all tests failed — score may be inaccurate` | Test suite broken | Fix tests first, then re-score |
+| MCP tool returns `error` | MCP server not registered | `hermes mcp add --command python3 --args ~/hermes-cortex/src/mcp-servers/loop-gov-mcp.py loop-governance` |
+
+**Fallback protocol:** If scoring is genuinely blocked (Ollama down, DB
+corrupt, network unreachable):
+1. Diagnose with `bash ~/.hermes-cortex/tools/loop-governance/verify.sh`
+2. If fix takes > 2 minutes, record the change manually by running
+   `score-cycle` once the issue is resolved
+3. Never skip entirely — the cron auditor will flag unscored changes
+
+### Enforcement layers
 
 | Layer | What | How to install | Bypass |
 |-------|------|---------------|--------|
@@ -124,11 +206,31 @@ The goal is not perfection — it's a record of what was changed, how it was ver
 | SOUL.md directive | Rule appears in every Hermes session's system prompt | Edit `~/.hermes/SOUL.md` (see README) | Remove the directive |
 | Cron auditor | Scans every 6h for unscored changes | Auto-created by `install-hermes-crons.sh` | N/A |
 
-**Setup first time:** `bash ~/hermes-cortex/src/loop-governance/setup.sh` (install deps, symlinks, config, crons)
+### Setup first time
 
-**Dependencies:** Ollama + **nomic-embed-text** (for scoring — **the only model required**). 274 MB. No other Ollama models needed. Run `bash src/loop-governance/cleanup-ollama.sh` to remove unnecessary models and free disk space.
+```bash
+# Full install — deps, symlinks, config, crons
+bash ~/hermes-cortex/src/loop-governance/setup.sh
 
-**Verification:** `bash ~/.hermes-cortex/tools/loop-governance/verify.sh` — checks all 12 components
+# Register the MCP server (so agents can use MCP tools)
+hermes mcp add \
+  --command python3 \
+  --args ~/hermes-cortex/src/mcp-servers/loop-gov-mcp.py \
+  loop-governance
+
+# Pull the embedding model (required for scoring)
+ollama pull nomic-embed-text
+
+# Deploy pre-commit hooks across all repos
+bash ~/.hermes/scripts/install-score-hook.sh --all
+
+# Verify everything
+bash ~/.hermes-cortex/tools/loop-governance/verify.sh
+```
+
+**Dependencies:** Ollama + **nomic-embed-text** (for scoring — the only
+model required). 274 MB. Run `bash src/loop-governance/cleanup-ollama.sh`
+to remove unnecessary models and free disk space.
 
 ---
 

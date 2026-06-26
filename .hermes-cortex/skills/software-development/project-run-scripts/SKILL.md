@@ -232,7 +232,7 @@ Every `./run` follows this structure:
 
 ## Canonical Template (replaces templates/run.sh)
 
-The canonical template is at `/Users/luke/.hermes/skills/software-development/project-run-scripts/templates/run.sh` — it is the definitive starting point for every new project. Customize: PROJECT_ROOT paths, service names, env var defaults, test runner commands.
+The canonical template is at `$HERMES_HOME/skills/software-development/project-run-scripts/templates/run.sh` — it is the definitive starting point for every new project. Customize: PROJECT_ROOT paths, service names, env var defaults, test runner commands.
 
 ## Reference: Multi-Repo Audit
 

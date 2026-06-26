@@ -16,7 +16,7 @@
 
 services:
   langfuse-worker:
-    image: langfuse/langfuse-worker:latest
+    image: langfuse/langfuse-worker:3.1.0
     restart: always
     depends_on: &langfuse-depends-on
       postgres:
@@ -101,7 +101,7 @@ services:
       LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE: "true"
 
   langfuse-web:
-    image: langfuse/langfuse:latest
+    image: langfuse/langfuse:3.1.0
     restart: always
     depends_on: *langfuse-depends-on
     ports:
@@ -169,7 +169,7 @@ services:
     # ⚠️ PIN RECOMMENDED: Check https://hub.docker.com/r/minio/minio/tags
     #    for a stable release (e.g. minio/minio:RELEASE.2025-04-08T15-22-15Z).
     #    Pinning avoids unexpected breaking changes on `docker compose pull`.
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2025-06-01T00-00-00Z
     restart: always
     healthcheck:
       test: ["CMD-SHELL", "mc ready local"]
