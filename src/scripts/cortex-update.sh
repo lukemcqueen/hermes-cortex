@@ -102,6 +102,7 @@ register "src/scripts/install-hermes-crons.sh"       "${HERMES_HOME}/scripts/ins
 register "src/scripts/install-score-hook.sh"       "${HERMES_HOME}/scripts/install-score-hook.sh"
 register "src/scripts/pre-commit-score"            "${HERMES_HOME}/scripts/pre-commit-score"
 register "src/scripts/score-auditor.py"            "${HERMES_HOME}/scripts/score-auditor.py"
+register "src/scripts/seed-project.sh"           "${HERMES_HOME}/scripts/seed-project.sh"
 register "src/scripts/hermes-cortex-sync.sh"      "${HERMES_HOME}/scripts/hermes-cortex-sync.sh"
 register "src/scripts/update-session-state.sh"    "${HERMES_HOME}/scripts/update-session-state.sh"
 
