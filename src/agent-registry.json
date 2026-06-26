@@ -18,9 +18,9 @@
       "is_server": true,
       "is_orchestrator": true,
       "accessible": true,
-      "health_url": "http://127.0.0.1:8905/api/v1/health",
+      "health_url": "http://127.0.0.1:8901/api/health",
       "port_range": "13001-13099",
-      "description": "Moses — orchestrator server",
+      "description": "Moses \u2014 orchestrator server",
       "inbox_user": "moses",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
@@ -65,7 +65,7 @@
       "is_server": false,
       "accessible": false,
       "platform": "macOS",
-      "description": "Titus — macOS laptop, client-only, communicates via inbox",
+      "description": "Titus \u2014 macOS laptop, client-only, communicates via inbox",
       "inbox_user": "titus",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
@@ -78,7 +78,7 @@
       "is_backup_orchestrator": true,
       "accessible": true,
       "platform": "linux",
-      "description": "Esther — backup orchestrator, sustainability & materials expert",
+      "description": "Esther \u2014 backup orchestrator, sustainability & materials expert",
       "inbox_user": "esther",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"

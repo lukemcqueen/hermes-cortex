@@ -5,7 +5,7 @@ no_agent watchdog pattern:
   Empty stdout → silent (healthy, no change since last report)
   Text output  → delivered (health issues or state changes)
 
-Reads local health-server.py at http://127.0.0.1:8905/api/v1/health
+Reads dashboard health at http://127.0.0.1:8901/api/health
 and POSTs the structured result to Moses's agent inbox for
 dashboard consumption.
 
@@ -37,7 +37,7 @@ from urllib.request import Request, urlopen
 
 HOME = Path.home()
 CONFIG_FILE = HOME / ".hermes" / "moses-inbox.conf"
-HEALTH_LOCAL = "http://127.0.0.1:8905/api/v1/health"
+HEALTH_LOCAL = 'http://127.0.0.1:8901/api/health'
 STATE_FILE = HOME / ".hermes" / "state" / "agent-health-push-state.json"
 TIMEOUT = 15
 

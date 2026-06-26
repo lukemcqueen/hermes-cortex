@@ -61,7 +61,7 @@ def _get_agents() -> list[dict]:
 
     # Fallback: always include Moses local health
     if not any(a["key"] == "moses" for a in agents):
-        agents.insert(0, {"key": "moses", "name": "Moses", "url": "http://127.0.0.1:8905/api/v1/health"})
+        agents.insert(0, {"key": "moses", "name": "Moses", "url": "http://127.0.0.1:8901/api/health"})
     return agents
 
 
