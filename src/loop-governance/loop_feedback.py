@@ -306,7 +306,7 @@ Examples:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Global --db flag
-    parser.add_argument("--db", default=None, help="Custom DB path (default: ~/.hermes/data/loop-governance.db)")
+    parser.add_argument("--db", default=os.path.expanduser("~/.hermes/data/loop-governance.db"), help="Custom DB path (default: ~/.hermes/data/loop-governance.db)")
 
     # list
     list_p = subparsers.add_parser("list", help="List cycles needing feedback")

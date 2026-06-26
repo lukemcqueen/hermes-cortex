@@ -1,0 +1,138 @@
+<?xml version="1.0"?>
+<!--
+  Low-memory ClickHouse configuration for single-server / non-production environments.
+  Reduces background thread pools, disables verbose system logging, and caps memory.
+  See: https://clickhouse.com/docs/operations/server-configuration-parameters/settings
+-->
+<clickhouse>
+
+    <!-- ── Thread pools (defaults assume multi-core + high throughput) ── -->
+    <background_pool_size>4</background_pool_size>
+    <!-- merges & mutations; default 16 -->
+    <background_schedule_pool_size>32</background_schedule_pool_size>
+    <!-- periodic ops (replication, DNS, etc.); default 512 (!) -->
+    <background_common_pool_size>2</background_common_pool_size>
+    <!-- GC for MergeTree; default 8 -->
+    <background_buffer_flush_schedule_pool_size>2</background_buffer_flush_schedule_pool_size>
+    <!-- Buffer engine flushes; default 16 -->
+    <background_distributed_schedule_pool_size>4</background_distributed_schedule_pool_size>
+    <!-- distributed sends; default 16 -->
+    <background_fetches_pool_size>2</background_fetches_pool_size>
+    <!-- replica fetches; default 16 -->
+    <background_move_pool_size>2</background_move_pool_size>
+    <!-- data part moves; default 8 -->
+    <background_message_broker_schedule_pool_size>2</background_message_broker_schedule_pool_size>
+    <!-- Kafka/RabbitMQ; default 16 -->
+
+    <!-- Global thread pool (queries) -->
+    <max_thread_pool_size>128</max_thread_pool_size>
+    <!-- default 10000 -->
+    <thread_pool_queue_size>128</thread_pool_queue_size>
+    <!-- default 10000 -->
+
+    <!-- ── Query concurrency ── -->
+    <max_concurrent_queries>50</max_concurrent_queries>
+    <!-- default 1000 -->
+
+    <!-- ── Merge tuning (smaller blocks = less memory per merge) ── -->
+    <merge_max_block_size>2048</merge_max_block_size>
+    <!-- default 8192 -->
+    <merges_mutations_memory_usage_soft_limit>0</merges_mutations_memory_usage_soft_limit>
+    <merges_mutations_memory_usage_to_ram_ratio>0.3</merges_mutations_memory_usage_to_ram_ratio>
+
+    <!-- ── Disable verbose system log tables ── -->
+    <!-- These accumulate CPU + disk with no benefit in a Langfuse-only setup -->
+    <text_log>
+        <database>system</database>
+        <table>text_log</table>
+        <partition_by>toYYYYMM(event_date)</partition_by>
+        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+        <level>error</level>
+        <!-- only errors, not warnings -->
+    </text_log>
+
+    <metric_log>
+        <database>system</database>
+        <table>metric_log</table>
+        <flush_interval_milliseconds>60000</flush_interval_milliseconds>
+        <!-- collect metrics every 60s instead of every second -->
+        <collect_interval_milliseconds>60000</collect_interval_milliseconds>
+    </metric_log>
+
+    <asynchronous_metric_log>
+        <database>system</database>
+        <table>asynchronous_metric_log</table>
+        <flush_interval_milliseconds>60000</flush_interval_milliseconds>
+        <collect_interval_milliseconds>60000</collect_interval_milliseconds>
+    </asynchronous_metric_log>
+
+    <query_log>
+        <database>system</database>
+        <table>query_log</table>
+        <partition_by>toYYYYMM(event_date)</partition_by>
+        <flush_interval_milliseconds>30000</flush_interval_milliseconds>
+    </query_log>
+
+    <query_thread_log>
+        <database>system</database>
+        <table>query_thread_log</table>
+        <flush_interval_milliseconds>30000</flush_interval_milliseconds>
+        <level>error</level>
+    </query_thread_log>
+
+    <query_views_log>
+        <database>system</database>
+        <table>query_views_log</table>
+        <flush_interval_milliseconds>30000</flush_interval_milliseconds>
+        <level>error</level>
+    </query_views_log>
+
+    <trace_log>
+        <database>system</database>
+        <table>trace_log</table>
+        <flush_interval_milliseconds>30000</flush_interval_milliseconds>
+        <level>error</level>
+    </trace_log>
+
+    <part_log>
+        <database>system</database>
+        <table>part_log</table>
+        <flush_interval_milliseconds>60000</flush_interval_milliseconds>
+    </part_log>
+
+    <!-- Disable entirely (Langfuse doesn't use these) -->
+    <processors_profile_log>
+        <database>system</database>
+        <table></table>
+    </processors_profile_log>
+
+    <session_log>
+        <database>system</database>
+        <table></table>
+    </session_log>
+
+    <error_log>
+        <database>system</database>
+        <table></table>
+    </error_log>
+
+    <latency_log>
+        <database>system</database>
+        <table></table>
+    </latency_log>
+
+    <!-- ── User/profile-level defaults ── -->
+    <profiles>
+        <default>
+            <!-- Per-query memory limit: 500MB -->
+            <max_memory_usage>500000000</max_memory_usage>
+            <!-- Spill to disk when group by exceeds 300MB -->
+            <max_bytes_before_external_group_by>300000000</max_bytes_before_external_group_by>
+            <!-- Max threads per query -->
+            <max_threads>2</max_threads>
+            <!-- Max block size for query processing -->
+            <max_block_size>4096</max_block_size>
+        </default>
+    </profiles>
+
+</clickhouse>
