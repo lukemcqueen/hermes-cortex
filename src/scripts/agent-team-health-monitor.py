@@ -49,7 +49,7 @@ def _get_agents() -> list[dict]:
     if REGISTRY_PATH.exists():
         try:
             data = json.loads(REGISTRY_PATH.read_text())
-            for entry in data.get("agents", []):
+            for entry in data.get("agents", {}).values():
                 if not entry.get("accessible", False):
                     continue
                 name = entry.get("name", "?")
