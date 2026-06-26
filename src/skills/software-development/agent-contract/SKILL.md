@@ -115,7 +115,7 @@ supports it.
 **Examples of traceable claims:**
 - ✅ "The file `config.yaml` contains `debug: true` (confirmed via `read_file` lines 12-14)."
 - ✅ "The test suite passed: 12 passed, 0 failed (output of `execute_command`)."
-- ✅ "Python 3.11 is installed (`execute_command: python3 --version` returned 'Python 3.11.4')."
+- ✅ "Python 3.12 is installed (`execute_command: python3 --version` returned 'Python 3.12.3')."
 
 **Examples of untraceable claims (violations):**
 - ❌ "The file looks correct." (No evidence provided.)
@@ -417,7 +417,7 @@ reference the specific tool call or its output.
 **Correct patterns:**
 - "The file `config.yaml` contains `debug: true` (confirmed via `read_file`)."
 - "The test suite passed (output from `execute_command`: '5 passed, 0 failed')."
-- "Python 3.12 is available (`execute_command: python3 --version` returned 'Python 3.12.2')."
+- "Python 3.13 is available (`execute_command: python3 --version` returned 'Python 3.13.13')."
 - "The `requests` package is installed (`pip list | grep requests` → 'requests 2.31.0')."
 
 ### 6.3 No Unsourced Assertions

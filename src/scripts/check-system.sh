@@ -297,12 +297,12 @@ check_python() {
         local py_ver
         py_ver=$(echo "$version" | grep -oE '[0-9]+\.[0-9]+' | head -1 || echo "0")
         
-        if [[ $(echo "$py_ver" | cut -d. -f1) -ge 3 ]] && [[ $(echo "$py_ver" | cut -d. -f2) -ge 10 ]]; then
-            pass "$MODE" "Python $version"
+        if [[ $(echo "$py_ver" | cut -d. -f1) -ge 3 ]] && [[ $(echo "$py_ver" | cut -d. -f2) -ge 12 ]]; then
+            pass "$MODE" "Python $version (3.12+ required)"
             json_append "python" "pass" "$version" ""
         else
-            warn "$MODE" "Python $version — 3.10+ recommended for some features"
-            json_append "python" "warn" "$version" "3.10+ recommended"
+            warn "$MODE" "Python $version — 3.12+ required (brew install python@3.12)"
+            json_append "python" "warn" "$version" "3.12+ required"
         fi
     else
         fail "$MODE" "python3 not found — required for web cache, offline tools, scripts"

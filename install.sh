@@ -156,7 +156,7 @@ source "${SCRIPT_DIR}/src/scripts/os-config.sh"
 source "${SCRIPT_DIR}/src/scripts/service-writer.sh"
 
 # ── Python version probe ────────────────────────────────────
-# Find the newest Python 3.10+ with working sqlite3 extension support.
+# Find the newest Python 3.12+ with working sqlite3 extension support.
 # macOS ships 3.9.6 whose sqlite3 can't enable_load_extension — breaks sqlite-vec.
 find_best_python() {
   local candidates="python3 python3.12 python3.11 python3.10"
@@ -179,8 +179,8 @@ find_best_python() {
   if [[ -z "$found" ]]; then
     # Fallback: use whatever python3 is available, warn
     found="python3"
-    warn "No Python 3.10+ with sqlite3 extension support found — web_cache may fail"
-    warn "Install with: brew install python@3.12"
+    warn "No Python 3.12+ with sqlite3 extension support found — web_cache may fail"
+    warn "Install with: brew install python@3.12  # 3.12 is the default for all Hermes projects"
   fi
   echo "$found"
 }
