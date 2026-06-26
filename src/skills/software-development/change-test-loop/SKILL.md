@@ -448,11 +448,25 @@ Bug found? Use the change-test loop:
 
 The test that reproduced the bug becomes a permanent regression guard.
 
-## When to Skip (ask the user first)
+## When to Skip
 
-- Throwaway prototypes
-- Configuration-only changes (but config loading still needs a test)
-- Generated code (with manual review + integration tests)
+The default is ALWAYS to run the full loop. Only skip when the user
+explicitly opts out with one of these phrases:
+
+| User says | Action |
+|-----------|--------|
+| `"don't test, just X"` / `"skip tests"` | Skip TDD, still score the change |
+| `"only review..."` / `"read-only"` | Read-only investigation, no code change, no scoring needed |
+| `"throwaway prototype"` / `"spike"` | Write code, discard after, no tests needed |
+| `"just check..."` / `"look at..."` | Read-only investigation |
+
+**Ambiguous phrases do NOT skip the loop.** `"sure"`, `"go ahead"`,
+`"do it"`, `"sounds good"`, `"ok"`, `"proceed"`, `"build it"` — all
+assume the full RED-GREEN-REFACTOR + scoring. The user has explicitly
+stated this is ALWAYS the expectation.
+
+If you're unsure whether to skip, DON'T. Run the loop. Erring on the
+side of doing it is always correct.
 
 ## Testing Anti-Patterns
 
@@ -466,6 +480,8 @@ The test that reproduced the bug becomes a permanent regression guard.
 If you catch yourself doing any of these, delete the code and restart with TDD:
 
 - Skipping a phase (especially RED)
+- Skipping the loop for API/UI feature work because "no tests exist yet" — run the verification sub-phase (syntax, import, type-check, full suite) at minimum
+- Skipping the SCORE phase — every change must be scored, even config/docs
 - Code written before the test
 - Test passes immediately on first run
 - Test after implementation, or tests added "later"
