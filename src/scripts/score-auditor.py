@@ -19,6 +19,7 @@ from pathlib import Path
 
 # ── Config ──────────────────────────────────────────────────
 LOOKBACK_HOURS = int(os.environ.get("SCORE_AUDITOR_LOOKBACK", "24"))
+MAX_FILES_SHOWN = 15
 DB_PATH = os.path.expanduser(
     os.environ.get(
         "SCORE_DB_PATH",
@@ -190,9 +191,13 @@ def main() -> None:
 
     for repo_name, files in sorted(by_repo.items()):
         print(f"  📁 {repo_name}/ ({len(files)} files)")
-        for f in files:
+        shown = files[:MAX_FILES_SHOWN]
+        for f in shown:
             mtime_local = f["mtime"].strftime("%H:%M %Z")
             print(f"      {f['path']}  ({mtime_local})")
+        remaining = len(files) - MAX_FILES_SHOWN
+        if remaining > 0:
+            print(f"      … and {remaining} more file(s)")
         print("")
 
     print("  💡 Score them: score-cycle --task <task-id> ...")
