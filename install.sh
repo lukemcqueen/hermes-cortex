@@ -1856,6 +1856,22 @@ fi
 ok
 
 # ─────────────────────────────────────────────────────────────
+#  12a. Score Pre-Commit Hooks — Install scoring hooks to all projects
+# ─────────────────────────────────────────────────────────────
+SCORE_HOOK_SCRIPT="${SCRIPTS_DIR}/install-score-hook.sh"
+if [[ -f "$SCORE_HOOK_SCRIPT" ]]; then
+  step "Installing scoring pre-commit hooks to all projects…"
+  if bash "$SCORE_HOOK_SCRIPT" --all 2>&1 | tail -3; then
+    ok
+  else
+    warn "score hook installation completed with warnings — check above"
+    ok
+  fi
+else
+  skip "install-score-hook.sh not found — run later manually"
+fi
+
+# ─────────────────────────────────────────────────────────────
 #  12. Web Cache — Local Semantic Web Cache
 # ─────────────────────────────────────────────────────────────
 step "Installing Web Cache (semantic web result cache)"

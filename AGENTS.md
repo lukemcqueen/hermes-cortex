@@ -116,6 +116,14 @@ Every change — code, config, script, or deployment — follows this pattern af
 
 The goal is not perfection — it's a record of what was changed, how it was verified, and what the system decided. Every logged cycle trains the scoring model. A config change scored at pass-pct 100 with no test file is far more valuable than an unscored config change that silently breaks later.
 
+**Enforcement layers:**
+
+| Layer | What | How to install | Bypass |
+|-------|------|---------------|--------|
+| Pre-commit hook | Runs `score-cycle` on every `git commit` | `bash ~/.hermes/scripts/install-score-hook.sh --all` | `SKIP_SCORE=1` |
+| SOUL.md directive | Rule appears in every Hermes session's system prompt | Edit `~/.hermes/SOUL.md` (see README) | Remove the directive |
+| Cron auditor | Scans every 6h for unscored changes | Auto-created by `install-hermes-crons.sh` | N/A |
+
 **Setup first time:** `bash ~/hermes-cortex/src/loop-governance/setup.sh` (install deps, symlinks, config, crons)
 
 **Dependencies:** Ollama + **nomic-embed-text** (for scoring — **the only model required**). 274 MB. No other Ollama models needed. Run `bash src/loop-governance/cleanup-ollama.sh` to remove unnecessary models and free disk space.
@@ -212,6 +220,9 @@ Load the relevant skill with `skill_view(name)` when entering each stage.
 - **Modify install:** Edit `install.sh` — 26 steps, idempotent
 - **Update Docker config:** Edit `deploy/docker-compose.langfuse.yml` (see docs/troubleshooting.md for env vars)
 - **Upgrade gbrain:** See `docs/gbrain-v2-taxonomy.md`
+- **Install scoring pre-commit hooks:** `bash ~/.hermes/scripts/install-score-hook.sh --all`
+- **Add SOUL.md directive:** Edit `~/.hermes/SOUL.md` to add "Score every change" (see README)
+- **Verify scoring enforcement:** `bash ~/.hermes/scripts/install-score-hook.sh --list`
 
 ## Rules
 
@@ -246,6 +257,7 @@ Load the relevant skill with `skill_view(name)` when entering each stage.
 | `inbox-sensor` | `*/10 * * * *` | no_agent | `inbox-sensor.py` | `local` | Detect new broadcast messages |
 | `system-heartbeat` | `*/30 * * * *` | no_agent | `heartbeat.py` | `local` | System health check |
 | `memory-to-brain-sync` | `0 */6 * * *` | no_agent | `memory-to-brain.py` | `local` | Memory persistence to gbrain |
+| `score-auditor` | `0 */6 * * *` | no_agent | `score-auditor.py` | `origin` | Scans for unscored file changes (Rule #10) |
 
 **Troubleshooting:**
 

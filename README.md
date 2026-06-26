@@ -64,6 +64,20 @@ bash src/loop-governance/setup.sh    # installs deps + symlinks
 score-cycle --help                    # ready to use
 ```
 
+**Enforce scoring across all projects (run after install):**
+```bash
+# Layer 1 — pre-commit hook (blocks commits without scoring):
+bash ~/.hermes/scripts/install-score-hook.sh --all
+
+# Layer 2 — SOUL.md directive (every Hermes session sees the rule):
+echo -e "\n## Mandatory Directives\n**Score every change** — run \`score-cycle\` after every file edit." >> ~/.hermes/SOUL.md
+
+# Layer 3 — cron auditor (checks every 6h for unscored changes):
+bash ~/.hermes/scripts/install-hermes-crons.sh --force
+```
+
+See [Change Scoring Enforcement](#-change-scoring-enforcement) for details.
+
 **Full install (5-15 min):**
 ```bash
 # One-liner — no clone needed (auto-detects and downloads the repo)
@@ -224,6 +238,63 @@ cp ~/hermes-cortex-private/config/config.yaml ~/.hermes/config.yaml
 ## 🎯 Philosophy
 
 **Thin harness, fat skills.** The agent is the runtime — the real value lives in well-crafted skills, persistent memory, and deep observability.
+
+## 🛠️ Change Scoring Enforcement
+
+Hermes Cortex ships a **three-layer enforcement system** for [Rule #10](AGENTS.md) — score every change via `score-cycle`.
+
+### Layer 1 — Pre-Commit Hook (Hard Gate)
+
+Blocks `git commit` if `score-cycle` fails on staged changes. Bypass with `SKIP_SCORE=1`.
+
+```bash
+# Install to all detected projects
+bash ~/.hermes/scripts/install-score-hook.sh --all
+
+# Install to a specific project
+bash ~/.hermes/scripts/install-score-hook.sh --path ~/my/project
+
+# Check which projects have the hook
+bash ~/.hermes/scripts/install-score-hook.sh --list
+
+# Remove hooks
+bash ~/.hermes/scripts/install-score-hook.sh --remove
+```
+
+**What the hook does:** On every commit, it collects staged files, runs `score-cycle` with the git diff, auto-detects test pass rate if a test suite exists, and logs the cycle to the loop-governance DB. Only blocks on unrecoverable errors — LOOP/STOP/MOVE_ON all pass.
+
+### Layer 2 — SOUL.md Directive (Soft Guidance)
+
+Adds the scoring rule to Hermes Agent's identity prompt — every session sees it:
+
+```bash
+cat >> ~/.hermes/SOUL.md << 'EOF'
+
+## Mandatory Directives
+**Score every change** — after every file change (code or config), run `score-cycle` to log it to the loop-governance DB.
+EOF
+```
+
+### Layer 3 — Cron Auditor (Safety Net)
+
+A no_agent watchdog (`score-auditor`) runs every 6 hours, scans `~/Developer/` for recent file changes, cross-references against the loop-governance DB, and reports any unscored changes via Telegram. Silent when everything is clean.
+
+Created automatically by `install-hermes-crons.sh`. Verify:
+
+```bash
+hermes cron list | grep score-auditor
+```
+
+### Upgrading
+
+After pulling new cortex code, re-deploy the enforcement scripts:
+
+```bash
+cd ~/hermes-cortex && git pull
+bash install.sh
+bash ~/.hermes/scripts/cortex-update.sh --force-all
+bash ~/.hermes/scripts/install-score-hook.sh --all
+```
 
 ## 🛠️ Troubleshooting
 
