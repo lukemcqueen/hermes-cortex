@@ -181,11 +181,11 @@ try:
             tags = _json.loads(resp.read())
             ollama_up = True
             models = [m["name"] for m in tags.get("models", [])]
-            if "nomic-embed-text" not in models:
-                alerts.append("⚠️ nomic-embed-text model not loaded (needed for TDD scoring)")
+            if not any("nomic-embed-text" in m for m in models):
+                alerts.append("⚠️ nomic-embed-text model not pulled — run: ollama pull nomic-embed-text")
                 details.append("  Run: ollama pull nomic-embed-text")
-    except Exception:
-        alerts.append("⚠️ Ollama not responding on :11434 — TDD scoring unavailable")
+    except Exception as e:
+        alerts.append(f"⚠️ Ollama check error: {e}")
         details.append("  Attempting auto-restart…")
         try:
             import subprocess as _sp
