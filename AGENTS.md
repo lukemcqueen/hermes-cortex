@@ -122,6 +122,21 @@ Every agent working in this repo must follow these non-negotiable rules:
     doing it is always correct. The user has explicitly stated they want
     the full governance loop on every interaction, every time.
 
+12. **Tag discovered issues as follow-ups, don't fix them inline** — when
+    you find a pre-existing bug, problem, or improvement opportunity during
+    other work:
+    - **Do NOT fix it right there.** Fixing derails the current slice and
+      creates sprawl. The user has explicitly said this causes stress.
+    - **Do document it immediately** as a specific, actionable follow-up
+      task using the `todo` tool (add it to your active task list with
+      status `pending`).
+    - **Complete the current slice first.** Then return to the documented
+      follow-ups in priority order.
+    - **Never silently skip** a discovered issue. "I saw this problem but
+      didn't do it" without documenting it means it's forgotten forever.
+      Every discovered issue must be tracked, even if it won't be fixed
+      this session.
+
 ---
 
 ## Loop Governance — Quick Reference
