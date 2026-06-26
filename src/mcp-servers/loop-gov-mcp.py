@@ -263,7 +263,7 @@ def _cycle_stats(args: dict) -> CallToolResult:
     }, indent=2))])
 
 
-def _config_show() -> CallToolResult:
+def _config_show(args: dict | None = None) -> CallToolResult:
     return CallToolResult(content=[TextContent(type="text", text=json.dumps(_config(), indent=2))])
 
 

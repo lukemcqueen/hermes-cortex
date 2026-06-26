@@ -108,7 +108,7 @@ Examples:
     data.add_argument("--prev-output", default="",
                        help="[DEPRECATED] Use --prev-code instead")
     data.add_argument("--pass-pct", type=float, default=None,
-                       help="Test pass rate 0.0-1.0 (e.g. 0.95 for 95% pass)")
+                       help="Test pass rate 0.0-1.0 (e.g. 0.95 for 95%% pass)")
 
     # Options
     parser.add_argument("--db", default=DEFAULT_DB_PATH,
