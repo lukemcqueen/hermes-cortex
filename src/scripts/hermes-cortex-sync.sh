@@ -36,7 +36,9 @@ fi
 # Use rebase instead of merge to handle local auto-remediation commits
 # that are ahead of origin. Merge would fail when both sides changed
 # the same files (install.sh, scripts, etc.).
-PULL_OUTPUT=$(timeout 20 git pull --rebase origin main 2>&1) || {
+# GIT_EDITOR=true prevents editor spawn on conflict — conflicts auto-fail
+# instead of hanging indefinitely within the timeout (v2: 2026-06-27).
+PULL_OUTPUT=$(GIT_EDITOR=true timeout 20 git pull --rebase origin main 2>&1) || {
     PULL_EXIT=$?
     if [ "$PULL_EXIT" -eq 124 ]; then
         echo "[cortex-sync] git pull --rebase timed out after 20s, will retry next cycle"
