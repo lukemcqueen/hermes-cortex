@@ -334,13 +334,13 @@ deploy_agents_md() {
   content="${content//"{{SEED_COMMIT}}"/${CORTEX_COMMIT}}"
 
   if [[ "$MODE" == "diff" ]]; then
-    if needs_update <(echo "$content") "$dest" 2>/dev/null || [[ ! -f "$dest" ]]; then
+    if [[ ! -f "$dest" ]] || [[ "$(cat "$dest" 2>/dev/null)" != "$content" ]]; then
       echo "  would update: AGENTS.md"
     fi
     return 0
   fi
 
-  if [[ "$MODE" == "overwrite" ]] || needs_update <(echo "$content") "$dest" 2>/dev/null || [[ ! -f "$dest" ]]; then
+  if [[ "$MODE" == "overwrite" ]] || [[ ! -f "$dest" ]] || [[ "$(cat "$dest" 2>/dev/null)" != "$content" ]]; then
     echo "$content" > "$dest"
     info "  AGENTS.md → ${dest/$HOME/~}"
   else

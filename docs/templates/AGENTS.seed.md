@@ -1,103 +1,75 @@
 <!--
   Hermes Cortex — Seeded AGENTS.md template
-  Placeholders (replaced by seed-project.sh):
-    {{PROJECT_NAME}}     → Project display name
-    {{PROJECT_DESCRIPTION}} → One-line project description
-    {{SEED_DATE}}        → Deployment date
-    {{SEED_COMMIT}}      → Hermes Cortex commit at seed time
+  Placeholders: {{PROJECT_NAME}} {{PROJECT_DESCRIPTION}} {{SEED_DATE}} {{SEED_COMMIT}}
 -->
 # Agent Guidelines — {{PROJECT_NAME}}
 
 *Seeded from Hermes Cortex {{SEED_COMMIT}} on {{SEED_DATE}}*
 
-This file is read by Hermes Agent (and other AI tools) on session start.
-It orients any agent working on this repo.
+Orientation for any agent working on this repo. See `.hermes-cortex/` for installed tooling.
 
 ---
 
-## What This Repo Does
+## Project
 
 {{PROJECT_DESCRIPTION}}
 
----
+## Convention
 
-## Key Directories
+`.hermes-cortex/` holds agent infra (hidden, near code). Agents check here first,
+falling back to repo root if absent.
 
 | Path | Purpose |
 |------|---------|
-| `.hermes-cortex/sessions/` | Session state tracking (hot + archive) |
-| `.hermes-cortex/memory/` | Per-dev agent memory (gitignored) |
+| `.hermes-cortex/sessions/` | Session state (current.md + archive/) |
+| `.hermes-cortex/memory/` | Per-dev MEMORY.md, USER.md (gitignored) |
 | `.hermes-cortex/skills/` | Project-specific Hermes skills (tracked) |
-| `AGENTS.md` | This file — agent orientation (tracked) |
+| `AGENTS.md` | This file — agent orientation |
 
-## Cortex Conventions
+## Commands
 
-```
-project-root/
-├── .hermes-cortex/
-│   ├── sessions/
-│   │   ├── current.md        # Active session state
-│   │   └── archive/          # Timestamped snapshots
-│   ├── memory/               # MEMORY.md, USER.md (gitignored)
-│   ├── skills/               # Project-specific skill overrides
-│   └── .gitkeep
-├── AGENTS.md
+```bash
+./run up        # Start services
+./run down      # Stop services
+./run restart   # Restart services
+./run logs      # Follow logs
+./run build     # Build images
+./run ps        # List running services
+./run test      # Run tests (handles DB, env, permissions)
 ```
 
----
+## Agent Contract
 
-## Agent Execution Contract
+Non-negotiable rules for every agent in this repo:
 
-Non-negotiable rules for every agent working on this project:
+1. Real execution — run actual commands, write real files, verify with tests.
+2. Verified deliverables — exercise every change. A plan/stub is not done.
+3. Fix root causes — check sibling paths for the same flaw.
+4. Touch only what the task needs — no drive-by refactors.
+5. Batch independent lookups — parallelize reads and searches.
+6. Report blockers honestly — never fabricate output.
+7. State confidence explicitly — say what you know vs what you assume.
+8. Keep working until done — every response makes progress or delivers.
+9. Use tools, not descriptions — every response has tool calls.
+10. Score every change — every code/config/script change logs to loop-governance DB.
+11. Tests/TDD are the default — RED-GREEN-REFACTOR. Only explicit opt-out bypasses.
 
-1. **Real execution, no simulation** — run actual commands, write real files, verify with tests.
-2. **Verified deliverables** — exercise every change. A plan or stub is not a deliverable.
-3. **Fix root causes, not symptoms** — check sibling paths for the same flaw.
-4. **Touch only what the task needs** — no drive-by refactors or reformatting.
-5. **Batch independent lookups** — parallelize reads and searches when possible.
-6. **Report blockers honestly** — never substitute fabricated output.
-7. **State confidence explicitly** — say what you know vs what you assume.
-8. **Keep working until done** — every response makes progress or delivers a result.
-9. **Use tools, not descriptions** — act, don't describe. Every response has tool calls or a deliverable.
-10. **Score every change** — every code, config, or script change is logged to loop-governance DB (via `score-cycle` or MCP tools). No exceptions.
-11. **Tests/TDD are the default** — RED-GREEN-REFACTOR for every code change. Only explicit opt-out phrases bypass the loop.
-
----
-
-## Loop Governance Scoring
+## Loop Governance
 
 Every change is scored by the loop-governance system:
 
-**CLI path (hooks/scripts):**
-```bash
-score-cycle --task <id> --cycle <N> --code-file <path> --pass-pct <rate>
-loop-feedback accept <id>
-loop-feedback override <id> --note "reason"
-```
+**CLI (hooks/scripts):** `score-cycle --task <id> --cycle <N> --code-file <path> --pass-pct <rate>`
+**CLI feedback:** `loop-feedback accept <id>` / `loop-feedback override <id> --note "reason"`
 
-**MCP path (agents with MCP access):**
-```
-mcp_loop_governance_cache_search(query="task description")
-mcp_loop_governance_cycle_query(task_id="<task>")
-mcp_loop_governance_feedback_accept(cycle_id=N)
-```
+**MCP (agents):**
+- `mcp_loop_governance_cache_search(query="...")`
+- `mcp_loop_governance_cycle_query(task_id="...")`
+- `mcp_loop_governance_feedback_accept(cycle_id=N)`
 
-Non-negotiable: every commit must be scored. Without this data the system cannot self-improve.
+Non-negotiable: every commit must be scored.
 
 ---
 
-## Project-Specific Guidelines
+## Project Notes
 
-*(Add project-specific conventions, architecture decisions, dev setup, and deployment info here.)*
-
-### Development Setup
-
-### Architecture Decisions
-
-### Deployment
-
-### Testing
-
----
-
-*Generated by seed-project.sh from Hermes Cortex. See `~/.hermes-cortex/` for installed tools.*
+*(Add project-specific conventions, architecture, dev setup, testing, and deployment here.)*
