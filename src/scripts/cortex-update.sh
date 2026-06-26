@@ -102,6 +102,17 @@ register "src/scripts/install-hermes-crons.sh"       "${HERMES_HOME}/scripts/ins
 register "src/scripts/install-score-hook.sh"       "${HERMES_HOME}/scripts/install-score-hook.sh"
 register "src/scripts/pre-commit-score"            "${HERMES_HOME}/scripts/pre-commit-score"
 register "src/scripts/score-auditor.py"            "${HERMES_HOME}/scripts/score-auditor.py"
+register "src/scripts/hermes-cortex-sync.sh"      "${HERMES_HOME}/scripts/hermes-cortex-sync.sh"
+register "src/scripts/update-session-state.sh"    "${HERMES_HOME}/scripts/update-session-state.sh"
+
+# Loop-governance scripts (deployed to scripts/ for cron use)
+register "src/loop-governance/cleanup-ollama.sh"  "${HERMES_HOME}/scripts/cleanup-ollama.sh"
+register "src/loop-governance/inbox_watcher.py"    "${HERMES_HOME}/scripts/inbox_watcher.py"
+register "src/loop-governance/session_cache.py"    "${HERMES_HOME}/scripts/session_cache.py"
+register "src/loop-governance/setup.sh"            "${HERMES_HOME}/scripts/setup.sh"
+register "src/loop-governance/skill_miner.py"      "${HERMES_HOME}/scripts/skill_miner.py"
+register "src/loop-governance/update.sh"           "${HERMES_HOME}/scripts/update.sh"
+
 register "src/scripts/prod-watchdog.sh"          "${HERMES_HOME}/scripts/prod-watchdog.sh"
 register "src/scripts/orch-check-agent-messages.sh"    "${HERMES_HOME}/scripts/orch-check-agent-messages.sh"
 
