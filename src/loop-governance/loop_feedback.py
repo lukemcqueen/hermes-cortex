@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/Users/luke/.pyenv/versions/3.13.13/bin/python3
 """
 Loop Feedback CLI — collect user feedback on STOP/LOOP/MOVE ON decisions.
 
