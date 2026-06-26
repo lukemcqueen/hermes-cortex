@@ -531,3 +531,55 @@ Or re-run `install.sh` and the new guard will skip re-creating it.
    - Backend (Python): `snake_case` — e.g., `soc_code`, `territory`
    - Frontend (TypeScript): match the API response exactly (`soc_code`, `territory`)
    - Never alias or remap field names between the API response and TS types
+
+---
+
+### ⚡ 2026-06-26 — Esther: backup orchestrator setup
+
+**What:** Esther (`worker-5`, hostname `esther`) is set up as a backup orchestrator. If Moses (`moses-server`) goes down, Esther handles agent inbox messages, auto-remediation, and system health.
+
+**Key changes to the repo:**
+
+1. **`src/agent-registry.json` converted from array → dict format (v2).** The original v1 format had `agents` as an array of objects. But `orch-check-agent-messages.sh` calls `data.get('agents', {}).keys()` and `generate-inbox-wrappers.py` calls `agents.items()` — both expect a **dict** keyed by agent name, not an array. The schema doc at `src/skills/devops/agent-inbox/references/agent-registry.md` already documented dict format; the sample file just didn't match. v2 adds:
+   - `routing.broadcast_topics` — topics treated as broadcast channels
+   - `routing.agent_prefix_topics` — when `true`, every agent name auto-becomes a broadcast topic
+   - `inbox_user`, `inbox_watch_schedule`, `inbox_deliver` per agent — used by `generate-inbox-wrappers.py`
+
+2. **`process-agent-messages` cron created** (every 10m, LLM-driven, toolsets: terminal+file+web). Companion script: `orch-moses-inbox-remediate.sh` reads remediation markers and outputs structured JSON.
+
+3. **`orch-moses-inbox-remediate.sh`** — companion script that reads `~/.hermes/state/remediate/` markers (written by `orch-check-agent-messages.sh`) and outputs JSON for the LLM cron to process.
+
+4. **`orch-weekly-auto-fix.py`** — safety-net auto-fix script with built-in verification.
+
+**Cron addition to the standard set:**
+
+| Cron | Schedule | Type | Script/Skill | Deliver | Purpose |
+|------|----------|------|--------------|---------|---------|
+| `process-agent-messages` | `*/10 * * * *` | LLM | terminal+file+web | `local` | Process inbox remediation markers (backup orchestrator) |
+
+**Setup checklist for a new backup orchestrator:**
+
+```bash
+# 1. Copy agent-registry.json to state dir
+cp ~/.hermes-cortex/scripts/agent-registry.json ~/.hermes/state/agent-registry.json
+
+# 2. Install crons
+bash ~/.hermes-cortex/scripts/install-hermes-crons.sh
+
+# 3. Copy orchestrator-specific scripts
+cp ~/hermes-cortex/scripts/orch-moses-inbox-remediate.sh ~/.hermes/scripts/
+cp ~/hermes-cortex/scripts/orch-weekly-auto-fix.py ~/.hermes/scripts/
+
+# 4. Create process-agent-messages cron (replace with actual cron create cmd)
+# See src/agent-registry.json for reference
+
+# 5. Start gbrain autopilot
+gbrain autopilot --repo ~/brain/default --interval 300 &
+
+# 6. Fix score-cycle symlink (verify.sh reports warning otherwise)
+ln -sf ~/.hermes-cortex/tools/loop-governance/score_cycle.py ~/.local/bin/score-cycle
+```
+
+**Expected false positives:**
+- `system-heartbeat` exits code 1 with `❌ gbrain sync daemon: DOWN` on Linux — this is expected because `com.gbrain.sync-watch` is a macOS launchd service. The actual gbrain autopilot daemon runs fine.
+- Loop governance `verify.sh` reports 1 warning about `score-cycle` CLI — the MCP tools work fine; the CLI symlink can be fixed with the `ln` command above.

@@ -1,10 +1,17 @@
 {
-  "version": 1,
+  "version": 2,
   "description": "Agent registry for Hermes Cortex. Server agents have health_url for API polling. Client-only agents (accessible=false) are skipped.",
-
-  "agents": [
-    {
-      "name": "moses",
+  "routing": {
+    "broadcast_topics": [
+      "luke",
+      "all",
+      "general"
+    ],
+    "agent_prefix_topics": true
+  },
+  "agents": {
+    "moses": {
+      "name": "Moses",
       "role": "orchestrator",
       "host": "192.168.1.100",
       "hostname": "orchestrator-1",
@@ -13,49 +20,68 @@
       "accessible": true,
       "health_url": "http://127.0.0.1:8905/api/v1/health",
       "port_range": "13001-13099",
-      "description": "Moses — orchestrator server"
+      "description": "Moses — orchestrator server",
+      "inbox_user": "moses",
+      "inbox_watch_schedule": "every 10m",
+      "inbox_deliver": "local"
     },
-    {
-      "name": "gisu",
+    "gisu": {
+      "name": "Gisu",
       "role": "operations",
       "hostname": "worker-1",
       "is_server": true,
       "accessible": true,
-      "description": "Gisu operations server"
+      "description": "Gisu operations server",
+      "inbox_user": "gisu",
+      "inbox_watch_schedule": "every 10m",
+      "inbox_deliver": "local"
     },
-    {
-      "name": "joseph",
+    "joseph": {
+      "name": "Joseph",
       "role": "web-infrastructure",
       "hostname": "worker-2",
       "is_server": true,
       "accessible": true,
-      "description": "Joseph web/infra server"
+      "description": "Joseph web/infra server",
+      "inbox_user": "joseph",
+      "inbox_watch_schedule": "every 10m",
+      "inbox_deliver": "local"
     },
-    {
-      "name": "kustos",
+    "kustos": {
+      "name": "Kustos",
       "role": "security",
       "hostname": "worker-3",
       "is_server": true,
       "accessible": true,
-      "description": "Kustos security server"
+      "description": "Kustos security server",
+      "inbox_user": "kustos",
+      "inbox_watch_schedule": "every 10m",
+      "inbox_deliver": "local"
     },
-    {
-      "name": "titus",
+    "titus": {
+      "name": "Titus",
       "role": "developer",
       "hostname": "worker-4",
       "is_server": false,
       "accessible": false,
       "platform": "macOS",
-      "description": "Titus — macOS laptop, client-only, communicates via inbox"
+      "description": "Titus — macOS laptop, client-only, communicates via inbox",
+      "inbox_user": "titus",
+      "inbox_watch_schedule": "every 10m",
+      "inbox_deliver": "local"
     },
-    {
-      "name": "esther",
-      "role": "worker",
+    "esther": {
+      "name": "Esther",
+      "role": "orchestrator-backup",
       "hostname": "worker-5",
       "is_server": true,
+      "is_backup_orchestrator": true,
       "accessible": true,
       "platform": "linux",
-      "description": "Esther — Linux server"
+      "description": "Esther — backup orchestrator, sustainability & materials expert",
+      "inbox_user": "esther",
+      "inbox_watch_schedule": "every 10m",
+      "inbox_deliver": "local"
     }
-  ]
+  }
 }
