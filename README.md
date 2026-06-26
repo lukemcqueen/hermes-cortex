@@ -67,7 +67,7 @@ score-cycle --help                    # ready to use
 **Enforce scoring across all projects (run after install):**
 ```bash
 # Layer 1 — pre-commit hook (blocks commits without scoring):
-bash ~/.hermes/scripts/install-score-hook.sh --all
+bash ~/.hermes-cortex/scripts/install-score-hook.sh --all
 
 # Layer 2 — SOUL.md directive (every Hermes session sees the rule):
 echo -e "\n## Mandatory Directives\n**Score every change** — run \`score-cycle\` after every file edit." >> ~/.hermes/SOUL.md
@@ -252,13 +252,13 @@ Blocks `git commit` if `score-cycle` fails on staged changes. Bypass with `SKIP_
 bash ~/.hermes/scripts/install-score-hook.sh --all
 
 # Install to a specific project
-bash ~/.hermes/scripts/install-score-hook.sh --path ~/my/project
+bash ~/.hermes-cortex/scripts/install-score-hook.sh --path ~/my/project
 
 # Check which projects have the hook
-bash ~/.hermes/scripts/install-score-hook.sh --list
+bash ~/.hermes-cortex/scripts/install-score-hook.sh --list
 
 # Remove hooks
-bash ~/.hermes/scripts/install-score-hook.sh --remove
+bash ~/.hermes-cortex/scripts/install-score-hook.sh --remove
 ```
 
 **What the hook does:** On every commit, it collects staged files, runs `score-cycle` with the git diff, auto-detects test pass rate if a test suite exists, and logs the cycle to the loop-governance DB. Only blocks on unrecoverable errors — LOOP/STOP/MOVE_ON all pass.

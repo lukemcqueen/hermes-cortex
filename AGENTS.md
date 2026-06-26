@@ -220,9 +220,9 @@ Load the relevant skill with `skill_view(name)` when entering each stage.
 - **Modify install:** Edit `install.sh` — 26 steps, idempotent
 - **Update Docker config:** Edit `deploy/docker-compose.langfuse.yml` (see docs/troubleshooting.md for env vars)
 - **Upgrade gbrain:** See `docs/gbrain-v2-taxonomy.md`
-- **Install scoring pre-commit hooks:** `bash ~/.hermes/scripts/install-score-hook.sh --all`
+- **Install scoring pre-commit hooks:** `bash ~/.hermes-cortex/scripts/install-score-hook.sh --all`
 - **Add SOUL.md directive:** Edit `~/.hermes/SOUL.md` to add "Score every change" (see README)
-- **Verify scoring enforcement:** `bash ~/.hermes/scripts/install-score-hook.sh --list`
+- **Verify scoring enforcement:** `bash ~/.hermes-cortex/scripts/install-score-hook.sh --list`
 
 ## Rules
 
