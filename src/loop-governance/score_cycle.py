@@ -1,4 +1,18 @@
 #!/usr/bin/env python3
+import sys
+import os
+
+# Minimum Python 3.10 for union type syntax (str | None, list[float] | None)
+if sys.version_info < (3, 10):
+    # Check if pyenv is available but not first in PATH
+    pyenv_root = os.environ.get("PYENV_ROOT", os.path.expanduser("~/.pyenv"))
+    pyenv_python = os.path.join(pyenv_root, "shims", "python3")
+    if os.path.isfile(pyenv_python):
+        sys.exit(f"Python 3.10+ required (got {sys.version_info.major}.{sys.version_info.minor}). "
+                 f"Run: eval \"$({pyenv_root}/bin/pyenv init -)\"")
+    sys.exit(f"Python 3.10+ required (got {sys.version_info.major}.{sys.version_info.minor}). "
+             f"Install Python 3.10+ and ensure it's first in PATH.")
+
 """
 Cycle Logger — score a TDD cycle and log it to the DB in one shot.
 
@@ -94,7 +108,7 @@ Examples:
     data.add_argument("--prev-output", default="",
                        help="[DEPRECATED] Use --prev-code instead")
     data.add_argument("--pass-pct", type=float, default=None,
-                       help="Test pass rate 0.0-1.0 (e.g. 0.95 for 95% pass)")
+                       help="Test pass rate 0.0-1.0 (e.g. 0.95 for 95%% pass)")
 
     # Options
     parser.add_argument("--db", default=DEFAULT_DB_PATH,

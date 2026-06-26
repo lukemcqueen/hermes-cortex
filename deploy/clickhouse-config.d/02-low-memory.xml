@@ -1,0 +1,86 @@
+<?xml version="1.0"?>
+<!--
+  Low-memory ClickHouse configuration for single-server / non-production environments.
+  Reduces background thread pools, disables verbose system logging, and caps memory.
+  See: https://clickhouse.com/docs/operations/server-configuration-parameters/settings
+
+  ⚠️ ClickHouse 25.5-alpine bug: reducing >2 background pool settings simultaneously
+  triggers SIGSEGV (exit code 139) or exit code 36 during initialization. Only the two
+  most impactful settings are reduced here. The rest use their defaults. Tested settings:
+  - background_pool_size >= 13 (floor in CH 25.5 — values <= 12 crash)
+  - background_schedule_pool_size >= 16 (default 512, reducing to 16 saves 496 threads)
+  - max_thread_pool_size / thread_pool_queue_size: keep at defaults (10000) — reducing
+    triggers crash when combined with reduced background pools
+  - All other background pool settings: keep at defaults (same crash-combination bug)
+-->
+<clickhouse>
+
+    <!-- ── Thread pools (defaults assume multi-core + high throughput) ── -->
+    <background_pool_size>13</background_pool_size>
+    <!-- merges & mutations; default 16; floor 13 in CH 25.5 (≤12 crashes) -->
+    <background_schedule_pool_size>16</background_schedule_pool_size>
+    <!-- periodic ops (replication, DNS, etc.); default 512 — biggest savings -->
+
+    <!-- ── Query concurrency ── -->
+    <max_concurrent_queries>50</max_concurrent_queries>
+    <!-- default 1000 -->
+
+    <!-- ── Merge tuning (smaller blocks = less memory per merge) ── -->
+    <merge_tree>
+        <merge_max_block_size>2048</merge_max_block_size>
+        <!-- default 8192 -->
+    </merge_tree>
+    <merges_mutations_memory_usage_soft_limit>0</merges_mutations_memory_usage_soft_limit>
+    <merges_mutations_memory_usage_to_ram_ratio>0.3</merges_mutations_memory_usage_to_ram_ratio>
+
+    <!-- ── Disable verbose system log tables ── -->
+    <text_log>
+        <database>system</database>
+        <table>text_log</table>
+        <partition_by>toYYYYMM(event_date)</partition_by>
+        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+        <level>error</level>
+    </text_log>
+    <metric_log>
+        <database>system</database>
+        <table>metric_log</table>
+        <flush_interval_milliseconds>60000</flush_interval_milliseconds>
+        <collect_interval_milliseconds>60000</collect_interval_milliseconds>
+    </metric_log>
+    <asynchronous_metric_log>
+        <database>system</database>
+        <table>asynchronous_metric_log</table>
+        <flush_interval_milliseconds>60000</flush_interval_milliseconds>
+        <collect_interval_milliseconds>60000</collect_interval_milliseconds>
+    </asynchronous_metric_log>
+    <query_log>
+        <database>system</database>
+        <table>query_log</table>
+        <partition_by>toYYYYMM(event_date)</partition_by>
+        <flush_interval_milliseconds>30000</flush_interval_milliseconds>
+    </query_log>
+    <query_thread_log>
+        <database>system</database>
+        <table>query_thread_log</table>
+        <flush_interval_milliseconds>30000</flush_interval_milliseconds>
+        <level>error</level>
+    </query_thread_log>
+    <query_views_log>
+        <database>system</database>
+        <table>query_views_log</table>
+        <flush_interval_milliseconds>30000</flush_interval_milliseconds>
+        <level>error</level>
+    </query_views_log>
+    <trace_log>
+        <database>system</database>
+        <table>trace_log</table>
+        <flush_interval_milliseconds>30000</flush_interval_milliseconds>
+        <level>error</level>
+    </trace_log>
+    <part_log>
+        <database>system</database>
+        <table>part_log</table>
+        <flush_interval_milliseconds>60000</flush_interval_milliseconds>
+    </part_log>
+
+</clickhouse>

@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!--
+  Profile-level default settings for the 'default' user profile.
+  These live in config.d/ alongside the server-level overrides because
+  ClickHouse merges <profiles> from any XML file under config.d/ or users.d/.
+-->
+<clickhouse>
+    <profiles>
+        <default>
+            <!-- Per-query memory limit: 500MB -->
+            <max_memory_usage>500000000</max_memory_usage>
+            <!-- Spill to disk when GROUP BY exceeds 300MB -->
+            <max_bytes_before_external_group_by>300000000</max_bytes_before_external_group_by>
+            <!-- Max threads per query (1 CPU core allocated) -->
+            <max_threads>2</max_threads>
+            <!-- Smaller blocks = less memory per query -->
+            <max_block_size>4096</max_block_size>
+        </default>
+    </profiles>
+</clickhouse>

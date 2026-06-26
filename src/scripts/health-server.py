@@ -176,7 +176,7 @@ def _check_services() -> dict:
             {"name": "gbrain", "launchctl": "com.gbrain.autopilot", "pgrep": "gbrain"},
         ]
         # Check agent-inbox server
-        inbox_pid_file = HOME / ".hermes" / "agent-inbox" / "server.pid"
+        inbox_pid_file = HOME / ".hermes-cortex" / "agent-inbox" / "server.pid"
         services.append({"name": "agent_inbox", "launchctl": "com.hermes.agent-inbox", "pgrep": None})
     elif sys.platform == "linux":
         services = [

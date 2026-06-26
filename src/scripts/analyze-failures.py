@@ -12,7 +12,7 @@ INTENDED USAGE:
     
     # Via execute_code in Hermes agent
     from hermes_tools import execute_code
-    execute_code(code="python3 ~/.hermes/scripts/analyze-failures.py --week last")
+    execute_code(code="python3 ~/.hermes-cortex/scripts/analyze-failures.py --week last")
 
 NOTES:
     This script imports from hermes_tools, which is only available inside

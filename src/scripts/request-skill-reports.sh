@@ -16,7 +16,7 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+HERMES_HOME="${HERMES_HOME:-$HOME/.hermes-cortex}"
 STATE_DIR="$HERMES_HOME/state"
 REGISTRY_FILE="$STATE_DIR/agent-registry.json"
 

@@ -49,7 +49,7 @@ def _get_agents() -> list[dict]:
     if REGISTRY_PATH.exists():
         try:
             data = json.loads(REGISTRY_PATH.read_text())
-            for entry in data.get("agents", []):
+            for entry in data.get("agents", {}).values():
                 if not entry.get("accessible", False):
                     continue
                 name = entry.get("name", "?")
@@ -61,7 +61,7 @@ def _get_agents() -> list[dict]:
 
     # Fallback: always include Moses local health
     if not any(a["key"] == "moses" for a in agents):
-        agents.insert(0, {"key": "moses", "name": "Moses", "url": "http://127.0.0.1:8905/api/v1/health"})
+        agents.insert(0, {"key": "moses", "name": "Moses", "url": "http://127.0.0.1:8901/api/health"})
     return agents
 
 

@@ -2,7 +2,7 @@
 # session-mine — Mine session history for bug-fix lessons
 # Installed by Hermes Cortex install.sh
 
-SCRIPT_DIR="$HOME/.hermes/offline"
+SCRIPT_DIR="$HOME/.hermes-cortex/offline"
 SCRIPT="$SCRIPT_DIR/session_mine.py"
 
 if [ ! -f "$SCRIPT" ]; then

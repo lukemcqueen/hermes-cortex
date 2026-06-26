@@ -78,7 +78,7 @@ if [[ -d "${BRAIN_LESSONS_DIR}" ]]; then
 fi
 
 # From script changes (if this agent runs install.sh/cortex-update.sh)
-CUSTOM_SCRIPTS="${HOME}/.hermes/scripts"
+CUSTOM_SCRIPTS="${HOME}/.hermes-cortex/scripts"
 if [[ -d "${CUSTOM_SCRIPTS}" ]]; then
     # Check for any custom scripts not from the repo
     REPO_SCRIPTS="${HOME}/hermes-cortex/src/scripts"

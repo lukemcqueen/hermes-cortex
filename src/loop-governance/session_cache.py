@@ -28,7 +28,7 @@ HOME = Path.home()
 CACHE_DB = HOME / ".hermes" / "data" / "session-embeddings.db"
 LOOP_DB = HOME / ".hermes" / "data" / "loop-governance.db"
 SESSION_DIR = HOME / ".hermes-cortex" / "sessions"
-SKILLS_DIR = HOME / ".hermes" / "skills" / "software-development"
+SKILLS_DIR = HOME / ".hermes-cortex" / "skills" / "software-development"
 INBOX_DIR = HOME / "agent-inbox-private" / "inbox"
 
 OLLAMA_URL = "http://localhost:11434/api/embeddings"

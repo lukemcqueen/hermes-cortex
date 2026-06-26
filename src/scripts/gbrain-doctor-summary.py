@@ -2,7 +2,7 @@
 """Run gbrain doctor and output a concise summary for the morning briefing.
 
 Avoids the pipe-to-interpreter security flag by running as a standalone script.
-Usage: PATH="$HOME/.bun/bin:$PATH" python3 ~/.hermes/scripts/gbrain-doctor-summary.py
+Usage: PATH="$HOME/.bun/bin:$PATH" python3 ~/.hermes-cortex/scripts/gbrain-doctor-summary.py
 """
 
 import json

@@ -263,7 +263,7 @@ def _cycle_stats(args: dict) -> CallToolResult:
     }, indent=2))])
 
 
-def _config_show() -> CallToolResult:
+def _config_show(args: dict | None = None) -> CallToolResult:
     return CallToolResult(content=[TextContent(type="text", text=json.dumps(_config(), indent=2))])
 
 
@@ -299,7 +299,7 @@ def _feedback_accept(args: dict) -> CallToolResult:
     conn = _db()
     cycle_id = args["cycle_id"]
     note = args.get("note", "")
-    conn.execute("UPDATE loop_cycles SET user_overrode=0, user_note=? WHERE id=?", (note, cycle_id))
+    conn.execute("UPDATE loop_cycles SET user_overrode=0, outcome_note=? WHERE id=?", (note, cycle_id))
     conn.commit()
     conn.close()
     return CallToolResult(content=[TextContent(type="text", text="Cycle " + str(cycle_id) + " marked as correct.")])
@@ -311,7 +311,7 @@ def _feedback_override(args: dict) -> CallToolResult:
     correct = args.get("correct_decision", "LOOP")
     note = args.get("note", "")
     correct_note = correct + ": " + note
-    conn.execute("UPDATE loop_cycles SET user_overrode=1, user_note=? WHERE id=?", (correct_note, cycle_id))
+    conn.execute("UPDATE loop_cycles SET user_overrode=1, outcome_note=? WHERE id=?", (correct_note, cycle_id))
     conn.commit()
     conn.close()
     text = "Cycle " + str(cycle_id) + " overridden -> " + correct + "."

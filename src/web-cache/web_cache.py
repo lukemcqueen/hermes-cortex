@@ -43,7 +43,7 @@ from pathlib import Path
 
 CACHE_DIR = Path(os.environ.get(
     "WEB_CACHE_DIR",
-    Path.home() / ".hermes" / "web-cache"
+    Path.home() / ".hermes-cortex" / "web-cache"
 ))
 DB_PATH = CACHE_DIR / "cache.db"
 DEFAULT_LIMIT_MB = 200          # Max cache size before LRU eviction
@@ -65,7 +65,7 @@ OLLAMA_MODEL = os.environ.get(
 EMBED_DIMS = int(os.environ.get("WEB_CACHE_EMBED_DIMS", "768"))
 
 # ── Local Venv Python ──────────────────────────────────────────
-VENV_PYTHON = Path.home() / ".hermes" / "web-cache" / ".venv" / "bin" / "python3"
+VENV_PYTHON = Path.home() / ".hermes-cortex" / "web-cache" / ".venv" / "bin" / "python3"
 
 # ── SQLite Schema ──────────────────────────────────────────────
 

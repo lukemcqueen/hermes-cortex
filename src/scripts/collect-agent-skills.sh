@@ -2,7 +2,7 @@
 # ─────────────────────────────────────────────────────────────
 #  collect-agent-skills.sh — Agent-side skill manifest reporter
 #
-#  Finds skills in ~/.hermes/skills/ that are NOT from the
+#  Finds skills in ~/.hermes-cortex/skills/ that are NOT from the
 #  upstream hermes-cortex repo and reports them to Moses.
 #
 #  no_agent-safe: silent exit (0) when nothing new to report.
@@ -19,7 +19,7 @@
 set -euo pipefail
 
 REPO_DIR="${CORTEX_REPO:-$HOME/hermes-cortex}"
-SKILLS_DIR="${HERMES_HOME:-$HOME/.hermes}/skills"
+SKILLS_DIR="${HERMES_HOME:-$HOME/.hermes-cortex}/skills"
 REPO_SKILLS_DIR="$REPO_DIR/src/skills"
 STATE_DIR="${HERMES_HOME:-$HOME/.hermes}/state"
 CONFIG_FILE="$HOME/.hermes/moses-inbox.conf"

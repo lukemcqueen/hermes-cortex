@@ -2,7 +2,7 @@
 # project-map — Project static analysis tool
 # Installed by Hermes Cortex install.sh
 
-SCRIPT_DIR="$HOME/.hermes/offline"
+SCRIPT_DIR="$HOME/.hermes-cortex/offline"
 SCRIPT="$SCRIPT_DIR/project_map.py"
 
 if [ ! -f "$SCRIPT" ]; then

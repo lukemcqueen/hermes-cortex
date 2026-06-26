@@ -2,8 +2,8 @@
 # web_cache — CLI wrapper for the semantic web cache
 # Installed by Hermes Cortex install.sh
 
-VENV_PYTHON="$HOME/.hermes/web-cache/.venv/bin/python3"
-SCRIPT="$HOME/.hermes/web-cache/web_cache.py"
+VENV_PYTHON="$HOME/.hermes-cortex/web-cache/.venv/bin/python3"
+SCRIPT="$HOME/.hermes-cortex/web-cache/web_cache.py"
 
 if [ ! -f "$SCRIPT" ]; then
     # Fallback to repo location

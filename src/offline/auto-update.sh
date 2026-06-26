@@ -27,8 +27,8 @@ set -euo pipefail
 
 HOME="${HOME:-$(echo ~)}"
 # Prefer installed offline path, fall back to repo-relative
-if [[ -d "$HOME/.hermes/offline" ]]; then
-  OFFLINE_DIR="$HOME/.hermes/offline"
+if [[ -d "$HOME/.hermes-cortex/offline" ]]; then
+  OFFLINE_DIR="$HOME/.hermes-cortex/offline"
 elif [[ -d "$HOME/hermes-cortex/offline" ]]; then
   OFFLINE_DIR="$HOME/hermes-cortex/offline"
 else

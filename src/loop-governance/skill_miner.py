@@ -209,7 +209,7 @@ def mine_custom_skills() -> list[dict]:
     invisible to the fleet. This finds them and surfaces them for review.
     """
     findings = []
-    local_skills = Path.home() / ".hermes" / "skills" / "software-development"
+    local_skills = Path.home() / ".hermes-cortex" / "skills" / "software-development"
     repo_skills = REPO_ROOT / "src" / "skills" / "software-development"
 
     if not local_skills.exists():

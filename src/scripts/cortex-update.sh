@@ -38,7 +38,7 @@ if [[ "$REPO_DIR" == "/" ]]; then
     fi
   done
 fi
-HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
+HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes-cortex}"
 STATE_DIR="${HERMES_HOME}/state"
 LAST_COMMIT_FILE="${STATE_DIR}/update-commit"
 BUN_PATH="${HOME}/.bun/bin"
@@ -80,7 +80,7 @@ register() {
   MAP+=("${s1}|${s2}|${s3}|${s4}")
 }
 
-# Scripts → ~/.hermes/scripts/
+# Scripts → ~/.hermes-cortex/scripts/
 register "src/scripts/heartbeat.py"               "${HERMES_HOME}/scripts/heartbeat.py"
 register "src/scripts/memory-to-brain.py"         "${HERMES_HOME}/scripts/memory-to-brain.py"
 register "src/scripts/bootstrap-brain.sh"         "${HERMES_HOME}/scripts/bootstrap-brain.sh"
@@ -95,6 +95,23 @@ register "src/scripts/install-ollama.sh"          "${HERMES_HOME}/scripts/instal
 register "src/scripts/install-nginx.sh"           "${HERMES_HOME}/scripts/install-nginx.sh"
 register "src/scripts/install-cortex-update-cron.sh" "${HERMES_HOME}/scripts/install-cortex-update-cron.sh"
 register "src/scripts/langfuse-health-watchdog.py"  "${HERMES_HOME}/scripts/langfuse-health-watchdog.py"
+register "src/scripts/install-hermes-crons.sh"       "${HERMES_HOME}/scripts/install-hermes-crons.sh"
+register "src/scripts/install-score-hook.sh"       "${HERMES_HOME}/scripts/install-score-hook.sh"
+register "src/scripts/pre-commit-score"            "${HERMES_HOME}/scripts/pre-commit-score"
+register "src/scripts/score-auditor.py"            "${HERMES_HOME}/scripts/score-auditor.py"
+register "src/scripts/seed-project.sh"           "${HERMES_HOME}/scripts/seed-project.sh"
+register "src/scripts/hermes-cortex-sync.sh"      "${HERMES_HOME}/scripts/hermes-cortex-sync.sh"
+register "src/scripts/update-session-state.sh"    "${HERMES_HOME}/scripts/update-session-state.sh"
+
+# Loop-governance scripts (deployed to scripts/ for cron use)
+register "src/loop-governance/cleanup-ollama.sh"  "${HERMES_HOME}/scripts/cleanup-ollama.sh"
+register "src/loop-governance/inbox_watcher.py"    "${HERMES_HOME}/scripts/inbox_watcher.py"
+register "src/loop-governance/session_cache.py"    "${HERMES_HOME}/scripts/session_cache.py"
+register "src/loop-governance/setup.sh"            "${HERMES_HOME}/scripts/setup.sh"
+register "src/loop-governance/skill_miner.py"      "${HERMES_HOME}/scripts/skill_miner.py"
+register "src/loop-governance/skill-miner"         "${HERMES_HOME}/scripts/skill-miner"
+register "src/loop-governance/update.sh"           "${HERMES_HOME}/scripts/update.sh"
+
 register "src/scripts/prod-watchdog.sh"          "${HERMES_HOME}/scripts/prod-watchdog.sh"
 register "src/scripts/check-agent-messages.sh"    "${HERMES_HOME}/scripts/check-agent-messages.sh"
 
@@ -133,7 +150,11 @@ register "src/scripts/send-agent-learning.sh"      "${HERMES_HOME}/scripts/send-
 register "src/scripts/collect-agent-skills.sh"     "${HERMES_HOME}/scripts/collect-agent-skills.sh"
 register "src/scripts/request-skill-reports.sh"    "${HERMES_HOME}/scripts/request-skill-reports.sh"
 register "src/scripts/process-skill-reports.py"    "${HERMES_HOME}/scripts/process-skill-reports.py"
-register "src/scripts/moses-inbox.conf.template"   "${HERMES_HOME}/moses-inbox.conf.template"
+# Agent inbox connection config — user creates manually from template
+# register "src/scripts/moses-inbox.conf.template"   "${HERMES_HOME}/moses-inbox.conf.template"
+
+# MCP inbox proxy — sudo'd HTTPS proxy with root-owned client cert
+register "src/scripts/mcp-inbox-proxy"              "${HERMES_HOME}/scripts/mcp-inbox-proxy"
 
 
 # Agent inbox check (used by install.sh for cron setup)
@@ -241,6 +262,27 @@ restart_agent_inbox() {
     info "  Restarting Agent Inbox (systemd)…"
     systemctl --user daemon-reload 2>/dev/null || true
     systemctl --user restart hermes-agent-inbox 2>&1 | sed 's/^/    /'
+  fi
+}
+
+restart_health_server() {
+  if launchctl list com.hermes.health-server &>/dev/null 2>&1; then
+    info "  Restarting Health Server…"
+    launchctl unload "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" 2>/dev/null || true
+    # Ensure the log dir exists
+    mkdir -p "${HOME}/.hermes-cortex/health-server"
+    launchctl load "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" 2>&1 | sed 's/^/    /'
+    info "  Health Server restarted"
+  elif [[ -f "${HOME}/.config/systemd/user/hermes-health-server.service" ]]; then
+    info "  Restarting Health Server (systemd)…"
+    systemctl --user daemon-reload 2>/dev/null || true
+    systemctl --user restart hermes-health-server 2>&1 | sed 's/^/    /'
+  elif [[ -f "${HOME}/.hermes-cortex/scripts/health-server.py" ]]; then
+    # First-time: launchctl not registered yet, load it
+    info "  Loading Health Server for the first time…"
+    mkdir -p "${HOME}/.hermes-cortex/health-server"
+    launchctl load "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" 2>&1 | sed 's/^/    /'
+    info "  Health Server loaded"
   fi
 }
 

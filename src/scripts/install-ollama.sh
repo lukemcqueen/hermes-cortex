@@ -35,12 +35,16 @@ install_ollama() {
       brew install --cask ollama
     else
       warn "Homebrew not found. Installing Ollama via curl…"
-      curl -fsSL https://ollama.com/install.sh | sh
+      curl -fsSL --retry 3 --retry-delay 5 https://ollama.com/install.sh -o /tmp/ollama-install.sh
+      sh /tmp/ollama-install.sh
+      rm -f /tmp/ollama-install.sh
     fi
 
   elif [[ "$CORTEX_OS" == "linux" ]]; then
     if ! command -v ollama &>/dev/null; then
-      curl -fsSL https://ollama.com/install.sh | sh
+      curl -fsSL --retry 3 --retry-delay 5 https://ollama.com/install.sh -o /tmp/ollama-install.sh
+      sh /tmp/ollama-install.sh
+      rm -f /tmp/ollama-install.sh
     fi
     # gbrain's ollama provider runs llama-server directly (not the HTTP API).
     # Ensure the full Ollama tarball contents are available under ~/.local/lib/ollama/,

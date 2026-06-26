@@ -37,7 +37,7 @@ done
 INSTALL_DIR=""
 for dir in \
   "${HOME}/.hermes-cortex/tools/loop-governance" \
-  "${HOME}/.hermes/skills/software-development/loop-governance/scripts" \
+  "${HOME}/.hermes-cortex/skills/software-development/loop-governance/scripts" \
   "${HOME}/hermes-cortex/src/loop-governance"; do
   if [[ -f "${dir}/VERSION" ]]; then
     INSTALL_DIR="$dir"

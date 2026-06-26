@@ -5,10 +5,10 @@ Replaces the earlier rule-based scorer with actual LLM-based judgment.
 Uses local Ollama model for evaluation, posts scores to Langfuse API.
 
 Usage:
-  python3 ~/.hermes/scripts/llm-judge-scorer.py
-  python3 ~/.hermes/scripts/llm-judge-scorer.py --trace-id <id>
-  python3 ~/.hermes/scripts/llm-judge-scorer.py --dry-run
-  python3 ~/.hermes/scripts/llm-judge-scorer.py --env-path ~/langfuse/.env
+  python3 ~/.hermes-cortex/scripts/llm-judge-scorer.py
+  python3 ~/.hermes-cortex/scripts/llm-judge-scorer.py --trace-id <id>
+  python3 ~/.hermes-cortex/scripts/llm-judge-scorer.py --dry-run
+  python3 ~/.hermes-cortex/scripts/llm-judge-scorer.py --env-path ~/langfuse/.env
 """
 
 import json, os, re, sys, time, urllib.request, urllib.error
@@ -30,7 +30,7 @@ FETCH_BATCH = 20  # Fetch this many, filter to unscored
 def _get_langfuse_keys():
     """Read Langfuse project keys from a configurable .env file.
 
-    Priority: --env-path CLI arg > LANGFUSE_ENV_PATH env var > ~/.hermes/.env
+    Priority: --env-path CLI arg > LANGFUSE_ENV_PATH env var > ~/.hermes-cortex/.env
     """
     env_path = None
     for arg in sys.argv[1:]:
@@ -40,7 +40,7 @@ def _get_langfuse_keys():
     if not env_path:
         env_path = os.environ.get("LANGFUSE_ENV_PATH")
     if not env_path:
-        env_path = os.path.expanduser("~/.hermes/.env")
+        env_path = os.path.expanduser("~/.hermes-cortex/.env")
 
     with open(env_path, 'rb') as f:
         raw = f.read()

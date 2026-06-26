@@ -22,7 +22,7 @@ source "${SCRIPT_DIR}/os-config.sh"
 
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 CRON_JOBS_FILE="${HERMES_HOME}/cron/jobs.json"
-SCRIPTS_DIR="${HERMES_HOME}/scripts"
+SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"
 HERMES_CMD=""
 # Try to find hermes command
 for candidate in hermes "${HERMES_HOME}/hermes-agent/venv/bin/hermes"; do
@@ -313,14 +313,41 @@ create_cron "inbox-sensor" "*/10 * * * *" \
   "" \
   "true"
 
-create_cron "orch-check-agent-messages" "*/10 * * * *" \
-  "orch-check-agent-messages.sh" \
+# ── 9. Score Auditor (checks for unscored changes) ──────────
+printf "\n${CYAN}  5. Change Scoring Audit${RESET}\n"
+create_cron "score-auditor" "0 */6 * * *" \
+  "score-auditor.py" \
   "" \
   "" \
   "" \
   "origin" \
   "" \
   "true"
+
+# ── Orchestrator-only crons ─────────────────────────────────
+# These crons only run on the orchestrator (Moses). Agents check
+# src/agent-registry.json — if this host isn't the orchestrator, skip.
+
+IS_ORCHESTRATOR=false
+REGISTRY="${CORTEX_REPO:-$HOME/hermes-cortex}/src/agent-registry.json"
+if [ -f "$REGISTRY" ]; then
+  ORCH=$(python3 -c "import json; d=json.load(open('$REGISTRY')); print(next((a['name'] for a in d.get('agents',[]) if a.get('is_orchestrator')), 'unknown'))" 2>/dev/null)
+  HOST=$(hostname -s 2>/dev/null || echo "unknown")
+  if [ "$HOST" = "$ORCH" ] || [ "${ORCH}" = "moses" ]; then
+    IS_ORCHESTRATOR=true
+  fi
+fi
+
+if $IS_ORCHESTRATOR; then
+  create_cron "orch-check-agent-messages" "*/10 * * * *" \
+    "orch-check-agent-messages.sh" \
+    "" \
+    "" \
+    "" \
+    "origin" \
+    "" \
+    "true"
+fi
 
 # ── Summary ─────────────────────────────────────────────────
 echo ""
