@@ -93,17 +93,28 @@ Every agent working in this repo must follow these non-negotiable rules:
 7. **State confidence explicitly** — when uncertain, say so and explain what you know vs what you assume. The user needs actual conviction level, not a confident-sounding guess.
 8. **Keep working until done** — don't stop after writing a stub, plan, or single command. Work until you've actually exercised the code or produced the requested result.
 9. **Use tools, not descriptions** — never describe what you would do without actually doing it. Every response must contain tool calls that make progress or deliver a final result.
-10. **Log every TDD cycle** — after every LEARN→RED→GREEN→REFACTOR cycle, run `score-cycle --task <id> --cycle <N> --code-file <file> --prev-code-file <file> --test-file <output> --pass-pct <rate>`. If a decision was wrong, use `loop-feedback override <id>`. No exceptions — without this data the system cannot self-improve.
+10. **Score every change** — every code change, config change, or script edit must be logged to the loop-governance DB via `score-cycle`. After any file change, run `score-cycle --task <id> --cycle <N> --code-file <file> --prev-code-file <file> --test-file <output> --pass-pct <rate>`. If a decision was wrong, use `loop-feedback override <id>`. No exceptions — without this data the system cannot self-improve. For changes with no tests, use `pass-pct 100` if verification succeeded, `pass-pct 0` if it failed.
 
 ---
 
-## TDD Scoring Workflow (Non-Negotiable)
+## Change Scoring Workflow (Non-Negotiable)
 
-Every coding session follows this pattern after each TDD cycle:
+Every change — code, config, script, or deployment — follows this pattern after completion:
 
-1. Run `score-cycle` after REFACTOR — scores completeness, quality, progress, logs to DB
+1. Run `score-cycle` — scores completeness, quality, progress, logs to DB
 2. Check the decision (STOP/LOOP/MOVE ON) — use it to steer the next action
 3. If the decision was wrong → `loop-feedback override <id> --note "..."`
+
+**Scoring guidelines by change type:**
+
+| Change Type | `--test-file` | `--pass-pct` |
+|---|---|---|
+| Code change (TDD cycle) | Test file | Actual test pass rate |
+| Config/IT change | N/A (omit) | 100 if verification passed, 0 if failed |
+| Script edit | Any invocation that proves it works | 100 if ran without error |
+| Deployment | Health check endpoint or proof of life | 100 if healthy |
+
+The goal is not perfection — it's a record of what was changed, how it was verified, and what the system decided. Every logged cycle trains the scoring model. A config change scored at pass-pct 100 with no test file is far more valuable than an unscored config change that silently breaks later.
 
 **Setup first time:** `bash ~/hermes-cortex/src/loop-governance/setup.sh` (install deps, symlinks, config, crons)
 
