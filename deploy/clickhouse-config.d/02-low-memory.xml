@@ -26,8 +26,10 @@
     <!-- default 1000 -->
 
     <!-- ── Merge tuning (smaller blocks = less memory per merge) ── -->
-    <merge_max_block_size>2048</merge_max_block_size>
-    <!-- default 8192 -->
+    <merge_tree>
+        <merge_max_block_size>2048</merge_max_block_size>
+        <!-- default 8192 -->
+    </merge_tree>
     <merges_mutations_memory_usage_soft_limit>0</merges_mutations_memory_usage_soft_limit>
     <merges_mutations_memory_usage_to_ram_ratio>0.3</merges_mutations_memory_usage_to_ram_ratio>
 
@@ -80,15 +82,5 @@
         <table>part_log</table>
         <flush_interval_milliseconds>60000</flush_interval_milliseconds>
     </part_log>
-
-    <!-- ── User/profile-level defaults ── -->
-    <profiles>
-        <default>
-            <max_memory_usage>500000000</max_memory_usage>
-            <max_bytes_before_external_group_by>300000000</max_bytes_before_external_group_by>
-            <max_threads>2</max_threads>
-            <max_block_size>4096</max_block_size>
-        </default>
-    </profiles>
 
 </clickhouse>
