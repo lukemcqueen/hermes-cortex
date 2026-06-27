@@ -48,6 +48,7 @@ if [ -d "$LOG_DIR" ]; then
     [ -f "$logfile" ] || continue
     # Find IPs with high request counts in the recent window
     # Uses awk to count requests per IP, then filters by threshold
+    cutoff="$(date -v-${WINDOW_MINS}M +%d/%b/%Y:%H:%M:%S 2>/dev/null || date -d "-${WINDOW_MINS} min" "+%d/%b/%Y:%H:%M:%S")"
     while IFS= read -r ip; do
       [ -z "$ip" ] && continue
       # Skip IPs already blocked
@@ -59,23 +60,10 @@ if [ -d "$LOG_DIR" ]; then
         continue
       fi
       NEW_IPS+=("$ip")
-    done < <(timeout 10 bash -c '
-    cutoff="$(date -v-${WINDOW_MINS}M +%d/%b/%Y:%H:%M:%S 2>/dev/null || date -d "-${WINDOW_MINS} min" "+%d/%b/%Y:%H:%M:%S")"'
-    awk -v cutoff="$(date -v-${WINDOW_MINS}M +%d/%b/%Y:%H:%M:%S 2>/dev/null || date -d "-${WINDOW_MINS} min" "%d/%b/%Y:%H:%M:%S")" -v MIN_HITS=$MIN_HITS '
-          match($0, /\[([^\]]+)\]/, ts)
-          if (ts[1] >= cutoff) {
-            ip = $1
-            count[ip]++
-            paths[ip] = paths[ip] " " $7
-          }
-        END {
-          for (ip in count) {
-            if (count[ip] >= MIN_HITS) {
-              print ip
-            }
-          }
-        }
-    ' _ "$logfile")
+    done < <(timeout 10 awk -v cutoff="$cutoff" -v MIN_HITS=$MIN_HITS '
+        match($0, /\\[([^\\]]+)\\]/, ts) { if (ts[1] >= cutoff) { ip = $1; count[ip]++ } }
+        END { for (ip in count) if (count[ip] >= MIN_HITS) print ip }
+      ' "$logfile")
   done
 fi
 
@@ -101,7 +89,7 @@ if [ -f "$F2B_LOG" ]; then
     done
     $already && continue
     NEW_IPS+=("$ip")
-  done < <(grep -i "ban.*[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+" "$F2B_LOG" 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | sort -u)
+  done < <(grep -i "ban.*[0-9]\+[0-9]\+[0-9]\+[0-9]\+" "$F2B_LOG" 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | sort -u)
 fi
 
 # ── Step 2: Append new IPs ──
