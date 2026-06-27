@@ -83,6 +83,12 @@ A lightweight map of all project documents. Files are grouped by topic.
 |-----|-------------|
 | `docs/THIRD_PARTY_LICENSES.md` | Third-party licenses for all referenced Docker images, installed software, PyPI packages, and offline content |
 
+## Git Enforcement
+
+| Doc | Description |
+|-----|-------------|
+| `docs/git-enforcement.md` | Pre-commit scoring + pre-push pull-before-push hooks — install, bypass, troubleshooting |
+
 ## Development
 
 | Doc | Description |
