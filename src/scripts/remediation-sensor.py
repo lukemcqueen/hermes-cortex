@@ -401,6 +401,12 @@ def check_systemd_services():
     for svc, name in services.items():
         out, _, rc = run(f"systemctl is-active {svc} 2>/dev/null")
         if out.strip() != "active":
+            # For nginx, also check if it's running as a master process outside systemd
+            if svc == "nginx.service":
+                pg_out, _, pg_rc = run("pgrep -f 'nginx: master' 2>/dev/null")
+                if pg_rc == 0 and pg_out.strip():
+                    # nginx is running as a process, not managed by systemd
+                    continue
             add_issue("service_down", "high", f"{name} is not active (systemd)", {
                 "service": svc,
                 "status": out.strip() or "unknown",
