@@ -1952,6 +1952,7 @@ LANGFUSE_NEXTAUTH_SECRET=$(openssl rand -hex 32)
 LANGFUSE_POSTGRES_PASSWORD=$(openssl rand -hex 20)
 LANGFUSE_CLICKHOUSE_PASSWORD=$(openssl rand -hex 16)
 LANGFUSE_REDIS_AUTH=$(openssl rand -hex 32)
+LANGFUSE_ENCRYPTION_KEY=$(openssl rand -hex 32)
 LANGFUSE_MINIO_ACCESS_KEY=$(openssl rand -hex 16)
 LANGFUSE_MINIO_SECRET_KEY=$(openssl rand -hex 32)
 

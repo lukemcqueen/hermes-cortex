@@ -40,7 +40,7 @@ def _make_service(name: str, label: str = "", pgrep: str = "",
         "name": name,
         "check": lambda lbl=label, pgr=pgrep, ds=docker_sub: (
             docker_container_running(ds) if ds else
-            service_running(lbl, pgrep_pattern=pgr if not lbl else None)
+            service_running(lbl, pgrep_pattern=pgr)
         ),
         "restart_label": restart_label or label or name,
         "verify_cmd": verify_cmd,
@@ -84,7 +84,7 @@ SERVICES: list[dict] = [
         "name": "gbrain",
         "check": lambda lbl="com.gbrain.autopilot", pgr="gbrain": (
             docker_container_running(lbl) if lbl else
-            service_running(lbl, pgrep_pattern=pgr if not lbl else None)
+            service_running(lbl, pgrep_pattern=pgr)
         ),
         "restart_label": "com.gbrain.autopilot",
         "verify_label": "gbrain",
@@ -145,9 +145,12 @@ def _try_restart(svc: dict) -> str | None:
     # Run optional pre-flight verification
     verify = svc.get("verify_cmd")
     if verify:
-        r = subprocess.run(verify, capture_output=True, text=True, timeout=10)
-        if r.returncode != 0:
-            return f"❌ {name}: pre-flight check failed ({r.stderr.strip()[:200]}) — not restarting"
+        try:
+            r = subprocess.run(verify, capture_output=True, text=True, timeout=10)
+            if r.returncode != 0:
+                return f"❌ {name}: pre-flight check failed ({r.stderr.strip()[:200]}) — not restarting"
+        except FileNotFoundError:
+            return f"❌ {name}: binary not found — skipping restart"
 
     # Restart using platform_utils with better error handling
     restart_label = svc.get("restart_label", name)
@@ -215,3 +218,6 @@ def main():
             print(a)
         for s in statuses:
             print(f"  {s}")
+
+if __name__ == "__main__":
+    main()

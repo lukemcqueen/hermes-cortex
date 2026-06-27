@@ -176,7 +176,7 @@ services:
     # ⚠️ PIN RECOMMENDED: Check https://hub.docker.com/r/minio/minio/tags
     #    for a stable release (e.g. minio/minio:RELEASE.2025-04-08T15-22-15Z).
     #    Pinning avoids unexpected breaking changes on `docker compose pull`.
-    image: minio/minio:RELEASE.2025-06-01T00-00-00Z
+    image: minio/minio:latest
     restart: always
     healthcheck:
       test: ["CMD-SHELL", "mc ready local"]
