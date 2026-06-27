@@ -31,7 +31,7 @@ their domain.
 | `save-lesson` | 1.1.0 | Auto-save bug-fix lessons, promote to skills, handle structured bug reports (P0/P1/P2 triage) | `skill_view(name='save-lesson')` |
 | `subagent-driven-development` | 1.0.0 | Execute plans via delegate_task subagents (2-stage review) | `skill_view(name='subagent-driven-development')` |
 | `systematic-debugging` | 1.0.0 | 4-phase root cause debugging | `skill_view(name='systematic-debugging')` |
-| `requesting-code-review` | 1.0.0 | Pre-commit review: security scan, quality gates, auto-fix | `skill_view(name='requesting-code-review')` |
+| `code-review` | 1.0.0 | Pre-commit review: security scan, quality gates, auto-fix | `skill_view(name='code-review')` |
 | `spike` | 1.0.0 | Throwaway experiments to validate ideas before build | `skill_view(name='spike')` |
 | `memory-architecture` | 1.0.0 | Agent memory system — MEMORY.md structure, privacy, gitignore | `skill_view(name='memory-architecture')` |
 | `ecosystem-audit` | 1.0.0 | Evaluate third-party tools for adoption, integration, or removal | `skill_view(name='ecosystem-audit')` |

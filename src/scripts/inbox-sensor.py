@@ -63,7 +63,16 @@ def get_broadcast_topics() -> list[str]:
             data = json.loads(REGISTRY_PATH.read_text())
             topics = data.get("routing", {}).get("broadcast_topics", default_topics)
             if data.get("routing", {}).get("agent_prefix_topics", True):
-                topics.extend(data.get("agents", {}).keys())
+                agents = data.get("agents", {})
+                if isinstance(agents, dict):
+                    topics.extend(agents.keys())
+                elif isinstance(agents, list):
+                    # agents can be ["moses", "titus"] or [{"name": "moses", ...}]
+                    for a in agents:
+                        if isinstance(a, str):
+                            topics.append(a)
+                        elif isinstance(a, dict):
+                            topics.append(a.get("name", str(a)))
             return list(set(topics))
     except (json.JSONDecodeError, KeyError):
         pass

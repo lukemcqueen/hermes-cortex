@@ -22,7 +22,7 @@ set -euo pipefail
 
 # ── Source derivation ───────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CORTEX_REPO="$(cd "$SCRIPT_DIR/../.." && pwd)"
+CORTEX_REPO="${CORTEX_REPO:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 
 # ── OS-aware nginx & fail2ban paths ─────────────────────────
 case "$(uname -s)" in
