@@ -20,6 +20,7 @@ Outputs a concise health report. Designed for cron integration:
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
@@ -208,6 +209,24 @@ def check_gateway_log() -> dict:
     log_dir = HERMES_HOME / "logs"
     if not log_dir.exists():
         return {"status": "UNKNOWN", "detail": "No log directory"}
+    # Find most recently modified log file and report its age
+    try:
+        latest = max(
+            (f for f in log_dir.iterdir() if f.is_file() and f.suffix in (".log", ".json")),
+            key=lambda f: f.stat().st_mtime,
+            default=None
+        )
+        if latest is None:
+            return {"status": "UNKNOWN", "detail": "No log files found"}
+        age = NOW - datetime.fromtimestamp(latest.stat().st_mtime, tz=timezone.utc).astimezone()
+        if age < timedelta(hours=1):
+            return {"status": "UP", "detail": f"Last log entry: {age.total_seconds() / 60:.0f}m ago"}
+        elif age < timedelta(hours=6):
+            return {"status": "DEGRADED", "detail": f"Last log entry: {age.total_seconds() / 60:.0f}m ago"}
+        else:
+            return {"status": "DOWN", "detail": f"Last log entry: {age.total_seconds() / 60:.0f}m ago — gateway may be stalled!"}
+    except Exception as e:
+        return {"status": "ERROR", "detail": str(e)}
 def check_disk_usage(path: str = "/") -> dict:
     """Check disk usage."""
     try:
@@ -431,8 +450,15 @@ def run() -> str:
         if ap["status"] == "DOWN":
             gbrain_service = "com.gbrain.sync-watch"
 
-    checks = {
-        "Ollama": check_service(ollama_service),
+    checks = {}
+
+    # Only check Ollama if the binary is actually installed (prevents false DOWN on non-Ollama hosts)
+    if shutil.which("ollama"):
+        checks["Ollama"] = check_service(ollama_service)
+    else:
+        checks["Ollama"] = {"status": "UP", "detail": "N/A — not installed"}
+
+    checks.update({
         "gbrain sync daemon": check_service(gbrain_service),
         "gbrain sources": check_gbrain_sources(),
         "Docker (Langfuse)": check_docker_containers(),
@@ -440,7 +466,7 @@ def run() -> str:
         "Agent inbox scan": check_inbox_staleness(),
         "Memory→brain sync": check_memory_sync_freshness(),
         "Disk usage": check_disk_usage(),
-    }
+    })
 
     # Determine overall status
     status_counts = {"UP": 0, "DEGRADED": 0, "DOWN": 0, "ERROR": 0, "UNKNOWN": 0}
