@@ -17,8 +17,15 @@ set -euo pipefail
 
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 BLOCKED_IPS="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
-DEPLOY_SCRIPT="/usr/local/sbin/hermes-security-apply"
-LOG_DIR="/usr/local/var/log/nginx"
+DEPLOY_SCRIPT="${CORTEX_REPO}/deploy/nginx/hermes-security-apply"
+# Linux: /var/log/nginx, macOS x86_64: /usr/local/var/log/nginx, macOS arm64: /opt/homebrew/var/log/nginx
+if [ -d "/var/log/nginx" ]; then
+  LOG_DIR="/var/log/nginx"
+elif [ -d "/opt/homebrew/var/log/nginx" ]; then
+  LOG_DIR="/opt/homebrew/var/log/nginx"
+else
+  LOG_DIR="/usr/local/var/log/nginx"
+fi
 STATE_FILE="${HOME}/.hermes/state/nginx-scanner-lastrun"
 
 mkdir -p "$(dirname "$STATE_FILE")"
@@ -52,29 +59,35 @@ if [ -d "$LOG_DIR" ]; then
         continue
       fi
       NEW_IPS+=("$ip")
-    done < <(awk -v cutoff="$(date -v-${WINDOW_MINS}M +%d/%b/%Y:%H:%M:%S 2>/dev/null || date -d "-${WINDOW_MINS} min" '+%d/%b/%Y:%H:%M:%S')" '
-      # Parse log lines within time window
-      {
-        match($0, /\[([^\]]+)\]/, ts)
-        if (ts[1] >= cutoff) {
-          ip = $1
-          count[ip]++
-          paths[ip] = paths[ip] " " $7
-        }
-      }
-      END {
-        for (ip in count) {
-          if (count[ip] >= '$MIN_HITS') {
-            print ip
+    done < <(timeout 10 bash -c '
+    cutoff="$(date -v-${WINDOW_MINS}M +%d/%b/%Y:%H:%M:%S 2>/dev/null || date -d "-${WINDOW_MINS} min" "+%d/%b/%Y:%H:%M:%S")"'
+    awk -v cutoff="$(date -v-${WINDOW_MINS}M +%d/%b/%Y:%H:%M:%S 2>/dev/null || date -d "-${WINDOW_MINS} min" "%d/%b/%Y:%H:%M:%S")" -v MIN_HITS=$MIN_HITS '
+          match($0, /\[([^\]]+)\]/, ts)
+          if (ts[1] >= cutoff) {
+            ip = $1
+            count[ip]++
+            paths[ip] = paths[ip] " " $7
+          }
+        END {
+          for (ip in count) {
+            if (count[ip] >= MIN_HITS) {
+              print ip
+            }
           }
         }
-      }
-    ' "$logfile")
+    ' _ "$logfile")
   done
 fi
 
 # Also check fail2ban logs for emerging patterns
-F2B_LOG="/usr/local/var/log/fail2ban.log"
+# Linux: /var/log/fail2ban.log, macOS: /usr/local/var/log/fail2ban.log
+if [ -f "/var/log/fail2ban.log" ]; then
+  F2B_LOG="/var/log/fail2ban.log"
+elif [ -f "/opt/homebrew/var/log/fail2ban.log" ]; then
+  F2B_LOG="/opt/homebrew/var/log/fail2ban.log"
+else
+  F2B_LOG="/usr/local/var/log/fail2ban.log"
+fi
 if [ -f "$F2B_LOG" ]; then
   while IFS= read -r ip; do
     [ -z "$ip" ] && continue
