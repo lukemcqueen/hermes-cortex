@@ -435,6 +435,27 @@ def check_inbox_staleness() -> dict:
         return {"status": "ERROR", "detail": f"Could not read state file: {e}"}
 
 
+def _service_unit_exists(name: str) -> bool:
+    """Check if a systemd unit file exists for the given service name.
+
+    On Linux: checks /etc/systemd/system/, /usr/lib/systemd/system/,
+    and ~/.config/systemd/user/ for the unit file.
+    On macOS: returns True (launchctl doesn't need unit files).
+    """
+    if not _is_linux():
+        return True  # macOS uses launchctl; no unit file check needed
+    unit = name if name.endswith(".service") else f"{name}.service"
+    search_paths = [
+        os.path.expanduser("~/.config/systemd/user/"),
+        "/etc/systemd/system/",
+        "/usr/lib/systemd/system/",
+    ]
+    for prefix in search_paths:
+        if os.path.isfile(os.path.join(prefix, unit)):
+            return True
+    return False
+
+
 def run() -> str:
     """Run all checks and return report. Empty string = all healthy."""
     linux = _is_linux()
@@ -452,14 +473,19 @@ def run() -> str:
 
     checks = {}
 
-    # Only check Ollama if the binary is actually installed (prevents false DOWN on non-Ollama hosts)
-    if shutil.which("ollama"):
+    # Check Ollama: only report DOWN if the service unit file exists
+    if _service_unit_exists(ollama_service):
         checks["Ollama"] = check_service(ollama_service)
     else:
-        checks["Ollama"] = {"status": "UP", "detail": "N/A — not installed"}
+        checks["Ollama"] = {"status": "UP", "detail": "Skipped — not configured"}
+
+    # Check gbrain: only report DOWN if the service unit file exists
+    if _service_unit_exists(gbrain_service):
+        checks["gbrain sync daemon"] = check_service(gbrain_service)
+    else:
+        checks["gbrain sync daemon"] = {"status": "UP", "detail": "Skipped — not configured"}
 
     checks.update({
-        "gbrain sync daemon": check_service(gbrain_service),
         "gbrain sources": check_gbrain_sources(),
         "Docker (Langfuse)": check_docker_containers(),
         "Gateway activity": check_gateway_log(),
