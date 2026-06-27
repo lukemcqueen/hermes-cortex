@@ -361,7 +361,7 @@ def run() -> str:
 
     if linux:
         ollama_service = "ollama"
-        gbrain_service = "com.gbrain.sync-watch"
+        gbrain_service = "gbrain-autopilot"
     else:
         ollama_service = "com.ollama.serve"
         gbrain_service = "com.gbrain.autopilot"
