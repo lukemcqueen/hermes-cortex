@@ -181,7 +181,7 @@ try:
             with urllib.request.urlopen(req, timeout=3) as resp:
                 tags = _json.loads(resp.read())
                 models = [m["name"] for m in tags.get("models", [])]
-                if "nomic-embed-text" not in models:
+                if not any("nomic-embed-text" in m for m in models):
                     alerts.append("⚠️ nomic-embed-text model not loaded (needed for TDD scoring)")
                     details.append("  Run: ollama pull nomic-embed-text")
         except Exception:
