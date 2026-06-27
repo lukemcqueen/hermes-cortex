@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────
+#  pre-push-pull — Git pre-push hook for rule #12
+#
+#  Before allowing a push, fetches origin and checks whether
+#  the local branch is behind the remote. If behind, rejects
+#  the push with instructions to pull --rebase first.
+#
+#  Prevents accidental pushes that overwrite remote commits
+#  or require a separate pull-rebase cycle.
+#
+#  Installed by: install-score-hook.sh
+#  Set SKIP_PRE_PUSH=1 to bypass:  SKIP_PRE_PUSH=1 git push
+# ─────────────────────────────────────────────────────────────
+set -euo pipefail
+
+if [[ "${SKIP_PRE_PUSH:-}" == "1" ]]; then
+  exit 0
+fi
+
+# Get the remote and branch being pushed
+# Git passes: <local-ref> <local-sha> <remote-ref> <remote-sha>
+# We read from stdin (one line per ref being pushed)
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # Skip deletion pushes
+  if [[ "$local_sha" == "0000000000000000000000000000000000000000" ]]; then
+    continue
+  fi
+
+  # Extract branch name from ref (e.g., refs/heads/main → main)
+  branch="${local_ref#refs/heads/}"
+  remote_branch="${remote_ref#refs/heads/}"
+
+  # Only check pushes to main — feature branches can be messy
+  if [[ "$branch" != "main" ]]; then
+    continue
+  fi
+
+  # Fetch and check
+  if ! git fetch origin "$branch" 2>/dev/null; then
+    echo ""
+    echo "❌  pre-push-pull: git fetch failed — cannot verify remote state."
+    echo "    Push blocked for safety. Set SKIP_PRE_PUSH=1 to bypass."
+    echo ""
+    exit 1
+  fi
+
+  # Check if local is behind remote
+  BEHIND=$(git rev-list --count "$remote_ref..HEAD" 2>/dev/null || echo "0")
+  AHEAD=$(git rev-list --count "HEAD..$remote_ref" 2>/dev/null || echo "0")
+
+  if [[ "$AHEAD" -gt 0 ]]; then
+    echo ""
+    echo "❌  pre-push-pull: Local branch '$branch' is $AHEAD commit(s) behind remote."
+    echo "    Pull before push to avoid conflicts or lost changes:"
+    echo "      git pull --rebase origin $branch"
+    echo "    Set SKIP_PRE_PUSH=1 to bypass:  SKIP_PRE_PUSH=1 git push"
+    echo ""
+    exit 1
+  fi
+done
+
+exit 0

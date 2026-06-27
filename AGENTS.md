@@ -137,6 +137,13 @@ Every agent working in this repo must follow these non-negotiable rules:
       Every discovered issue must be tracked, even if it won't be fixed
       this session.
 
+13. **Pull before push, always** — before any `git push`, fetch and rebase:
+    `git pull --rebase origin <branch>`. Pushing without pulling first
+    can discard remote commits or create merge bubbles. If the remote
+    has new commits, your push will be rejected anyway — pull first and
+    save the round trip. Set `SKIP_PRE_PUSH=1` to bypass on a specific
+    push.
+
 ---
 
 ## Loop Governance — Quick Reference
