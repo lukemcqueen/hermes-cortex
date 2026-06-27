@@ -9,7 +9,7 @@ Detect and fix cron job errors, agent inbox help requests, and service issues wi
 
 ## When to use
 
-This skill is loaded by the `cron-auto-remediate` cron job every 30 minutes.
+This skill is loaded by the `agent-auto-remediate` cron job every 5 minutes.
 The companion `remediation-sensor.py` (no_agent, every 5m) gathers diagnostics
 and outputs JSON. This LLM tier only fires when the sensor reports issues.
 
@@ -39,7 +39,7 @@ For each errored job, diagnose the failure:
 | nginx config invalid | `nginx -t` to validate; revert recent config changes |
 | Memory pressure | Run `purge` on macOS to free memory cache |
 | Network timeout | Retry the job once; check internet with `ping -c1 google.com` |
-| SSL cert expired / expiring soon | Run `cron-auto-remediate.sh fix-certs` — auto-renews via certbot if available; reports cert paths that need manual renewal |
+| SSL cert expired / expiring soon | Run `cron-auto-remediate.sh fix-certs` — auto-renews via certbot if available; reports cert paths that need manual renewal |\n\n> The script `cron-auto-remediate.sh` is a companion diagnostic shell script\n> (not the cron itself). The LLM-driven cron is `agent-auto-remediate`.
 
 After fixing:
 1. Verify the fix (re-run the failing script or check the service)

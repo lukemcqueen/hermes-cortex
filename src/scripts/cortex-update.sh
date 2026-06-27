@@ -139,6 +139,7 @@ register "src/scripts/llm-judge-scorer.py"         "${HERMES_HOME}/scripts/llm-j
 # Health monitoring
 register "src/scripts/health-server.py"            "${HERMES_HOME}/scripts/health-server.py" "health-server"
 # agent-team-health-monitor.py is orchestrator-only (Moses polls peer agents).
+# It is deployed by install-hermes-crons.sh in the orch-* section.
 # Peer agents (Titus, Gisu, Joseph) do NOT need it. Moses copies it manually
 # or runs cortex-update.sh on his own machine.
 # register "src/scripts/agent-team-health-monitor.py"  "${HERMES_HOME}/scripts/agent-team-health-monitor.py"
@@ -149,7 +150,7 @@ register "src/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAge
 # Timezone helper (required by monitoring scripts)
 register "src/scripts/hermes_tz.py"                "${HERMES_HOME}/scripts/hermes_tz.py"
 
-# Remediation sensor (companion to cron-auto-remediate)
+# Remediation sensor (companion to agent-auto-remediate cron)
 register "src/scripts/remediation-sensor.py"       "${HERMES_HOME}/scripts/remediation-sensor.py"
 
 # Inbox monitoring

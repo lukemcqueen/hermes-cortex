@@ -1677,7 +1677,7 @@ fi
 
 # agent-team-health-monitor.py is deliberately NOT installed here — it's
 # orchestrator-only (Moses polls peer agents). Peer agents don't need it.
-# Moses copies it manually or via cortex-update.sh.
+# It is deployed via the orch-* section in install-hermes-crons.sh.
 
 # ── Auto-Save Active Sessions Script ──────────────────────────────
 AUTO_SAVE_PATH="${SCRIPTS_DIR}/auto-save-active.py"

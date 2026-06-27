@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""remediation-sensor.py — Companion script for cron-auto-remediate.
+"""remediation-sensor.py — Companion script for agent-auto-remediate.
 
 Runs every 5m as a no_agent watchdog. Gathers diagnostics and outputs
 structured JSON if issues are found. Silent when healthy.
@@ -17,7 +17,7 @@ Output shape:
   }
 ]
 
-Called from cron-auto-remediate (no_agent cron, every 5m).
+Called from agent-auto-remediate (LLM-driven cron, every 5m).
 """
 import json
 import os

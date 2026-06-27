@@ -108,7 +108,7 @@ hermes-cortex/
 
 | Prefix | Example | Meaning |
 |--------|---------|---------|
-| `agent-*` | `agent-remediate`, `agent-daily-news-brief` | LLM-driven: an AI agent does the work |
+| `agent-*` | `agent-auto-remediate` | LLM-driven: an AI agent does the work |
 | No prefix | `service-recovery`, `system-alert-watchdog` | Script-driven: no agent involvement |
 
 ### Skills
