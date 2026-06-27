@@ -176,12 +176,10 @@ try:
     import shutil as _shutil
     if _shutil.which("ollama"):
         import urllib.request, json as _json
-        ollama_up = False
         try:
             req = urllib.request.Request("http://localhost:11434/api/tags")
             with urllib.request.urlopen(req, timeout=3) as resp:
                 tags = _json.loads(resp.read())
-                ollama_up = True
                 models = [m["name"] for m in tags.get("models", [])]
                 if "nomic-embed-text" not in models:
                     alerts.append("⚠️ nomic-embed-text model not loaded (needed for TDD scoring)")
@@ -194,7 +192,7 @@ try:
                 _sp.run(["ollama", "serve"], capture_output=True, timeout=5)
                 details.append("  → ollama serve started")
             except Exception:
-                details.append("  → auto-restart failed (try: ollama serve &)")
+                details.append("  → auto-restart failed")
 
     # Check database
     if LOOP_DB.exists():
