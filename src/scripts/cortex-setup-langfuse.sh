@@ -138,7 +138,7 @@ BCRYPT_HASH="$(python3 -c "import bcrypt; print(bcrypt.hashpw(b'$HAPI_KEY_SECRET
 if [[ -z "$BCRYPT_HASH" ]]; then
   warn "Could not generate bcrypt hash, trying alternative method..."
   # Fallback to a simple hash if python3 or bcrypt is not available
-  BCRYPT_HASH="$2a$11$$$(echo "$HAPI_KEY_SECRET" | openssl sha256 | cut -d' ' -f2 | fold -w32 | head -1)"
+  BCRYPT_HASH='$2a$11$'"$(echo "$HAPI_KEY_SECRET" | openssl sha256 | cut -d' ' -f2 | fold -w32 | head -1)"
 fi
 
 # Create or update the API key in Postgres
