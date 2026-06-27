@@ -79,16 +79,8 @@ SERVICES: list[dict] = [
         "verify_label": "Langfuse",
     },
     _make_service("Ollama", label="com.ollama.serve", pgrep="ollama"),
-    # gbrain: try multiple label formats for compatibility
-    {
-        "name": "gbrain",
-        "check": lambda lbl="com.gbrain.autopilot", pgr="gbrain": (
-            docker_container_running(lbl) if lbl else
-            service_running(lbl, pgrep_pattern=pgr)
-        ),
-        "restart_label": "com.gbrain.autopilot",
-        "verify_label": "gbrain",
-    },
+    # gbrain: systemd user service (not Docker — don't check Docker)
+    _make_service("gbrain", label="com.gbrain.autopilot", pgrep="gbrain"),
     {
         "name": "scripts",
         "check": _check_scripts,
