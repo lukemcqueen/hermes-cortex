@@ -8,6 +8,7 @@
 #
 #  Actions:
 #    diagnose     — check script paths, permissions, deps
+#    check        — alias for diagnose
 #    fix-missing  — copy missing scripts from hermes-cortex repo
 #    fix-perms    — fix permissions on .hermes-cortex/scripts/
 #    fix-git      — fix git state in hermes-cortex
@@ -25,8 +26,8 @@ CORTEX_SCRIPTS="${CORTEX_REPO}/src/scripts"
 ACTION="${1:-diagnose}"
 
 case "${ACTION}" in
-  # ── Diagnose ──────────────────────────────────────────────
-  diagnose)
+  # ── Diagnose / Check ─────────────────────────────────────
+  diagnose|check)
     issues=()
 
     # Check script presence
@@ -113,12 +114,10 @@ case "${ACTION}" in
         fi
       done
     elif command -v systemctl >/dev/null 2>&1; then
-      # Linux — check user services by actual unit names
+      # Linux — check user services
       for svc_name in com.ollama.serve com.gbrain.sync-watch; do
-        if systemctl --user list-unit-files "${svc_name}" >/dev/null 2>&1; then
-          if ! systemctl --user is-active "${svc_name}" >/dev/null 2>&1; then
-            issues+=("SERVICE:${svc_name}:down")
-          fi
+        if ! systemctl --user is-active "${svc_name}" >/dev/null 2>&1; then
+          issues+=("SERVICE:${svc_name}:down")
         fi
       done
     fi
@@ -459,10 +458,11 @@ except Exception as e:
     ;;
 
   *)
-    echo "usage: cron-auto-remediate.sh <diagnose|fix-missing|fix-perms|fix-git|fix-docker|fix-purge|fix-certs|fix-gbrain|fix-ssl-perms|fix-certbot-perms>"
+    echo "usage: cron-auto-remediate.sh <diagnose|check|fix-missing|fix-perms|fix-git|fix-docker|fix-purge|fix-certs|fix-gbrain|fix-ssl-perms|fix-certbot-perms>"
     echo ""
     echo "Actions:"
     echo "  diagnose        — check script paths, permissions, deps"
+    echo "  check           — alias for diagnose"
     echo "  fix-missing     — copy missing scripts from hermes-cortex repo"
     echo "  fix-perms       — fix permissions on .hermes-cortex/scripts/"
     echo "  fix-git         — fix git state in hermes-cortex"

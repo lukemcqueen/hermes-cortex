@@ -151,11 +151,14 @@ def check_services():
         if not autopilot_ok and not sync_watch_ok:
             add_issue("service_down", "high", "No gbrain sync service running (autopilot or sync-watch)", {"services": ["com.gbrain.autopilot", "com.gbrain.sync-watch"]})
     elif sys.platform.startswith("linux"):
-        # Ollama user service — only report if Ollama is actually installed
-        if os.path.isfile("/usr/bin/ollama") or os.path.isfile("/usr/local/bin/ollama") or any(os.path.isfile(os.path.join(p, "ollama")) for p in os.environ.get("PATH", "").split(os.pathsep)):
-            out, _, rc = run("systemctl --user is-active ollama 2>/dev/null")
-            if out.strip() != "active":
-                add_issue("service_down", "high", f"Ollama is not active (systemd user service)", {"service": "ollama.service", "status": out.strip() or "unknown"})
+        # Ollama user service — check systemd first, then process fallback
+        out, _, rc = run("systemctl --user is-active ollama 2>/dev/null")
+        if out.strip() != "active":
+            # systemd may report inactive when Ollama runs as standalone daemon
+            # (no systemd unit). Fall back to process check.
+            proc_out, _, proc_rc = run("pgrep -f 'ollama serve' 2>/dev/null")
+            if proc_rc != 0 or not proc_out.strip():
+                add_issue("service_down", "high", f"Ollama is not active (systemd user service)", {"service": "ollama.service", "status": out.strip() or "unknown", "note": "process check also failed"})
         # Gbrain sync-watch user service
         out, _, rc = run("systemctl --user is-active com.gbrain.sync-watch 2>/dev/null")
         if rc == 0 and out.strip() != "active":

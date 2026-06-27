@@ -963,6 +963,59 @@ hermes cron create \
 
 ---
 
+## 📱 Telegram Notification Pattern (Quiet When Good)
+
+All cron jobs that monitor systems should follow this notification pattern to avoid spamming Telegram while ensuring issues are never missed.
+
+### The Pattern
+
+| Scenario | Action |
+|----------|--------|
+| **No issues found** | Output minimal status (e.g. "No system alerts.") → saved locally, NO Telegram message |
+| **Issue discovered** | Send Telegram message via `send_message` tool with clear summary |
+| **Issue resolved** | Send follow-up Telegram message confirming resolution with details |
+
+### Implementation
+
+1. **Set `deliver: local`** — prevents cron output from auto-sending to Telegram
+2. **Add `discord` toolset** — enables `send_message` tool for manual Telegram delivery
+3. **Update prompt** — instruct agent to use `send_message` only when issues exist
+
+### Prompt Template
+
+```
+You are Kustos, the production steward on cisnet02. This is your [JOB NAME].
+
+## What to check
+[Describe what the job monitors/checks]
+
+## CRITICAL: Telegram notification rules
+- If NO issues found, output ONLY: "[No issues message]"
+- If issues ARE found, you MUST send a Telegram message to the user using the send_message tool with a clear summary.
+- When you RESOLVE an issue, send a follow-up Telegram message confirming the resolution.
+- Do NOT send a Telegram message when there is nothing to report.
+```
+
+### Example Setup
+
+```bash
+hermes cron create \
+  --name "system-alert-watchdog" \
+  --schedule "every 10m" \
+  --prompt "..." \
+  --deliver "local" \
+  --enabled-toolsets "terminal,file,web,discord"
+```
+
+### Duplicate Issue Suppression
+
+To suppress duplicate notifications:
+- Track issue state in a local file (e.g. `~/.hermes/state/alerts/`)
+- On discovery: check if already notified, skip if same issue
+- On resolution: clear the state file, send resolution message
+
+---
+
 ## Tips & Troubleshooting
 
 **Cron jobs run without user presence** — they cannot use interactive tools,
@@ -990,5 +1043,6 @@ immediately without waiting for the schedule.
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-27 | 1.4.0 | Added Telegram Notification Pattern (Quiet When Good) — standardized cron notification approach: silent when healthy, message on issue, message on resolution. Updated all monitoring crons. |
 | 2026-06-15 | 1.3.0 | Added Moses Inbox Remediation Processor recipe — auto-remediate agent-inbox fix requests within 10 min. Companion script, marker-based pipeline, verification-fix cycle. |
 | 2026-06-05 | 1.0.0 | Initial release — 10 recipes |
