@@ -17,7 +17,9 @@ set -euo pipefail
 
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 BLOCKED_IPS="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
-DEPLOY_SCRIPT="${CORTEX_REPO}/deploy/nginx/hermes-security-apply"
+# Use the sudoers-authorized path for deploy script (not the repo path)
+# sudoers only allows NOPASSWD for /usr/local/sbin/hermes-security-apply
+DEPLOY_SCRIPT="/usr/local/sbin/hermes-security-apply"
 # Linux: /var/log/nginx, macOS x86_64: /usr/local/var/log/nginx, macOS arm64: /opt/homebrew/var/log/nginx
 if [ -d "/var/log/nginx" ]; then
   LOG_DIR="/var/log/nginx"
