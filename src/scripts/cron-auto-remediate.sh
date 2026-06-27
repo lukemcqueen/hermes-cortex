@@ -8,6 +8,7 @@
 #
 #  Actions:
 #    diagnose     — check script paths, permissions, deps
+#    check        — alias for diagnose
 #    fix-missing  — copy missing scripts from hermes-cortex repo
 #    fix-perms    — fix permissions on .hermes-cortex/scripts/
 #    fix-git      — fix git state in hermes-cortex
@@ -25,13 +26,13 @@ CORTEX_SCRIPTS="${CORTEX_REPO}/src/scripts"
 ACTION="${1:-diagnose}"
 
 case "${ACTION}" in
-  # ── Diagnose ──────────────────────────────────────────────
-  diagnose)
+  # ── Diagnose / Check ─────────────────────────────────────
+  diagnose|check)
     issues=()
 
     # Check script presence
     for script in heartbeat.py service-recovery.py system-alert.py \
-                  check-agent-messages.sh cron-auto-remediate.sh \
+                  orch-check-agent-messages.sh cron-auto-remediate.sh \
                   daily-lesson-mine.sh update-session-state.sh; do
       if [ ! -f "${HERMES_SCRIPTS}/${script}" ]; then
         issues+=("MISSING:${HERMES_SCRIPTS}/${script}")
@@ -114,24 +115,17 @@ case "${ACTION}" in
       done
     elif command -v systemctl >/dev/null 2>&1; then
       # Linux — check user services
-      # Check ollama: prefer user process (not systemd user service)
-      if ! pgrep -f "ollama serve" >/dev/null 2>&1 && ! systemctl --user is-active "ollama" >/dev/null 2>&1; then
-        issues+=("SERVICE:ollama:down")
-      fi
-      # Check gbrain: prefer autopilot via cron (every 5min); sync-watch is fallback
-      if pgrep -f "gbrain autopilot" >/dev/null 2>&1 || crontab -l 2>/dev/null | grep -q "autopilot-run.sh"; then
-        # autopilot is running via cron — skip sync-watch check
-        :
-      elif ! systemctl --user is-active "gbrain-sync-watch" >/dev/null 2>&1; then
-        # Neither autopilot nor sync-watch running — flag as down
-        issues+=("SERVICE:gbrain-sync-watch:down")
-      fi
+      for svc_name in com.ollama.serve com.gbrain.sync-watch; do
+        if ! systemctl --user is-active "${svc_name}" >/dev/null 2>&1; then
+          issues+=("SERVICE:${svc_name}:down")
+        fi
+      done
     fi
 
     # Check nginx — use sudo for system-wide config test
     if command -v nginx >/dev/null 2>&1; then
-      # Try sudo -n first with full path (matches sudoers entry: /usr/sbin/nginx -t), fall back to direct test
-      if ! sudo -n /usr/sbin/nginx -t >/dev/null 2>&1; then
+      # Try sudo -n first (non-interactive), fall back to direct test
+      if ! sudo -n nginx -t >/dev/null 2>&1; then
         if ! nginx -t >/dev/null 2>&1; then
           issues+=("NGINX:config-invalid")
         fi
@@ -139,40 +133,6 @@ case "${ACTION}" in
       if ! pgrep -f "nginx: master" >/dev/null 2>&1; then
         issues+=("NGINX:not-running")
       fi
-    fi
-
-    # Check SSL cert expiry (Linux & macOS)
-    if command -v openssl >/dev/null 2>&1; then
-      for conf in /usr/local/etc/nginx/servers/*.conf /usr/local/etc/nginx/*.conf \
-                  /opt/homebrew/etc/nginx/servers/*.conf /opt/homebrew/etc/nginx/*.conf \
-                  /etc/nginx/sites-enabled/*.conf /etc/nginx/conf.d/*.conf; do
-        [ -f "${conf}" ] || continue
-        for cert_path in $(grep -oP 'ssl_certificate\s+\K\S+(?=;)' "${conf}" 2>/dev/null); do
-          if [ -f "${cert_path}" ]; then
-            expires=$(openssl x509 -in "${cert_path}" -noout -enddate 2>/dev/null | cut -d= -f2)
-            if [ -n "${expires}" ]; then
-              # macOS date parsing
-              if command -v date >/dev/null 2>&1 && date -j >/dev/null 2>&1; then
-                expiry_epoch=$(date -j -f "%b %d %H:%M:%S %Y" "${expires% *}" +%s 2>/dev/null || echo 0)
-              else
-                # Linux date parsing
-                expiry_epoch=$(date -d "${expires}" +%s 2>/dev/null || echo 0)
-              fi
-              now_epoch=$(date +%s)
-              days_left=$(( (expiry_epoch - now_epoch) / 86400 ))
-              if [ "${days_left}" -lt 30 ] 2>/dev/null && [ "${days_left}" -ge 0 ] 2>/dev/null; then
-                issues+=("CERT_EXPIRING:${cert_path}:${days_left}d")
-              elif [ "${days_left}" -lt 0 ] 2>/dev/null; then
-                issues+=("CERT_EXPIRED:${cert_path}")
-              fi
-            else
-              issues+=("CERT_UNREADABLE:${cert_path}")
-            fi
-          else
-            issues+=("CERT_MISSING:${cert_path}")
-          fi
-        done
-      done
     fi
 
     # Check web cache
@@ -197,7 +157,7 @@ case "${ACTION}" in
   fix-missing)
     fixed=0
     for script in heartbeat.py service-recovery.py system-alert.py \
-                  check-agent-messages.sh daily-lesson-mine.sh \
+                  orch-check-agent-messages.sh daily-lesson-mine.sh \
                   update-session-state.sh langfuse-health-watchdog.py \
                   langfuse-retention-prune.py lesson-compound-stats-brief.sh \
                   llm-judge-scorer.py memory-to-brain.py memory-compress.py \
@@ -498,10 +458,11 @@ except Exception as e:
     ;;
 
   *)
-    echo "usage: cron-auto-remediate.sh <diagnose|fix-missing|fix-perms|fix-git|fix-docker|fix-purge|fix-certs|fix-gbrain|fix-ssl-perms|fix-certbot-perms>"
+    echo "usage: cron-auto-remediate.sh <diagnose|check|fix-missing|fix-perms|fix-git|fix-docker|fix-purge|fix-certs|fix-gbrain|fix-ssl-perms|fix-certbot-perms>"
     echo ""
     echo "Actions:"
     echo "  diagnose        — check script paths, permissions, deps"
+    echo "  check           — alias for diagnose"
     echo "  fix-missing     — copy missing scripts from hermes-cortex repo"
     echo "  fix-perms       — fix permissions on .hermes-cortex/scripts/"
     echo "  fix-git         — fix git state in hermes-cortex"

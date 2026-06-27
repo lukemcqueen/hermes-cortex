@@ -27,16 +27,20 @@ while [[ "$REPO_DIR" != "/" && ! -f "$REPO_DIR/AGENTS.md" ]]; do
 done
 # If we hit / without finding AGENTS.md, try common repo locations
 if [[ "$REPO_DIR" == "/" ]]; then
-  for candidate in \
-    "$HOME/hermes-cortex" \
-    "$HOME/Developer/AI/hermes-cortex" \
-    "$HOME/src/hermes-cortex" \
-    "$HOME/git/hermes-cortex"; do
-    if [[ -f "$candidate/AGENTS.md" ]]; then
-      REPO_DIR="$candidate"
-      break
-    fi
-  done
+  # CORTEX_REPO env var (set by agents) takes priority
+  if [[ -n "${CORTEX_REPO:-}" && -f "$CORTEX_REPO/AGENTS.md" ]]; then
+    REPO_DIR="$CORTEX_REPO"
+  else
+    for candidate in \
+      "$HOME/hermes-cortex" \
+      "$HOME/src/hermes-cortex" \
+      "$HOME/git/hermes-cortex"; do
+      if [[ -f "$candidate/AGENTS.md" ]]; then
+        REPO_DIR="$candidate"
+        break
+      fi
+    done
+  fi
 fi
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes-cortex}"
 STATE_DIR="${HERMES_HOME}/state"
@@ -94,10 +98,10 @@ register "src/scripts/install-gbrain-sync.sh"     "${HERMES_HOME}/scripts/instal
 register "src/scripts/install-ollama.sh"          "${HERMES_HOME}/scripts/install-ollama.sh"
 register "src/scripts/install-nginx.sh"           "${HERMES_HOME}/scripts/install-nginx.sh"
 register "src/scripts/install-cortex-update-cron.sh" "${HERMES_HOME}/scripts/install-cortex-update-cron.sh"
-register "src/scripts/langfuse-health-watchdog.py"  "${HERMES_HOME}/scripts/langfuse-health-watchdog.py"
 register "src/scripts/install-hermes-crons.sh"       "${HERMES_HOME}/scripts/install-hermes-crons.sh"
 register "src/scripts/install-score-hook.sh"       "${HERMES_HOME}/scripts/install-score-hook.sh"
 register "src/scripts/pre-commit-score"            "${HERMES_HOME}/scripts/pre-commit-score"
+register "src/scripts/pre-push-pull"               "${HERMES_HOME}/scripts/pre-push-pull"
 register "src/scripts/score-auditor.py"            "${HERMES_HOME}/scripts/score-auditor.py"
 register "src/scripts/seed-project.sh"           "${HERMES_HOME}/scripts/seed-project.sh"
 register "src/scripts/hermes-cortex-sync.sh"      "${HERMES_HOME}/scripts/hermes-cortex-sync.sh"
@@ -113,19 +117,33 @@ register "src/loop-governance/skill-miner"         "${HERMES_HOME}/scripts/skill
 register "src/loop-governance/update.sh"           "${HERMES_HOME}/scripts/update.sh"
 
 register "src/scripts/prod-watchdog.sh"          "${HERMES_HOME}/scripts/prod-watchdog.sh"
-register "src/scripts/check-agent-messages.sh"    "${HERMES_HOME}/scripts/check-agent-messages.sh"
+register "src/scripts/orch-check-agent-messages.sh"    "${HERMES_HOME}/scripts/orch-check-agent-messages.sh"
 
-# Self-remediation — cron that auto-fixes common failures
-register "src/scripts/cron-auto-remediate.sh"    "${HERMES_HOME}/scripts/cron-auto-remediate.sh"
+# Post-commit notification + installer
+register "scripts/post-commit-notify.sh"          "${HERMES_HOME}/scripts/post-commit-notify.sh"
+register "scripts/install-post-commit-hook.sh"    "${HERMES_HOME}/scripts/install-post-commit-hook.sh"
+
+# Moses inbox remediation
+register "scripts/orch-moses-inbox-remediate.sh"       "${HERMES_HOME}/scripts/orch-moses-inbox-remediate.sh"
+
+# Auto-remediation scripts
+register "src/scripts/cron-auto-remediate.sh"     "${HERMES_HOME}/scripts/cron-auto-remediate.sh"
+register "scripts/orch-weekly-auto-fix.py"              "${HERMES_HOME}/scripts/orch-weekly-auto-fix.py"
 
 # System watchdog scripts (no_agent cron jobs)
 register "src/scripts/system-alert.py"            "${HERMES_HOME}/scripts/system-alert.py"
 register "src/scripts/service-recovery.py"        "${HERMES_HOME}/scripts/service-recovery.py"
+register "src/scripts/platform_utils.py"          "${HERMES_HOME}/scripts/platform_utils.py"
+register "src/scripts/langfuse-health-watchdog.py" "${HERMES_HOME}/scripts/langfuse-health-watchdog.py"
 register "src/scripts/llm-judge-scorer.py"         "${HERMES_HOME}/scripts/llm-judge-scorer.py"
 
 # Health monitoring
 register "src/scripts/health-server.py"            "${HERMES_HOME}/scripts/health-server.py" "health-server"
-register "src/scripts/agent-team-health-monitor.py"     "${HERMES_HOME}/scripts/agent-team-health-monitor.py"
+# agent-team-health-monitor.py is orchestrator-only (Moses polls peer agents).
+# It is deployed by install-hermes-crons.sh in the orch-* section.
+# Peer agents (Titus, Gisu, Joseph) do NOT need it. Moses copies it manually
+# or runs cortex-update.sh on his own machine.
+# register "src/scripts/agent-team-health-monitor.py"  "${HERMES_HOME}/scripts/agent-team-health-monitor.py"
 register "src/scripts/report-agent-health.py"      "${HERMES_HOME}/scripts/report-agent-health.py"
 register "src/scripts/platform_utils.py"           "${HERMES_HOME}/scripts/platform_utils.py"
 register "src/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" "health-server" "restart_health_server"
@@ -133,7 +151,7 @@ register "src/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAge
 # Timezone helper (required by monitoring scripts)
 register "src/scripts/hermes_tz.py"                "${HERMES_HOME}/scripts/hermes_tz.py"
 
-# Remediation sensor (companion to cron-auto-remediate)
+# Remediation sensor (companion to agent-auto-remediate cron)
 register "src/scripts/remediation-sensor.py"       "${HERMES_HOME}/scripts/remediation-sensor.py"
 
 # Inbox monitoring
@@ -155,7 +173,6 @@ register "src/scripts/process-skill-reports.py"    "${HERMES_HOME}/scripts/proce
 
 # MCP inbox proxy — sudo'd HTTPS proxy with root-owned client cert
 register "src/scripts/mcp-inbox-proxy"              "${HERMES_HOME}/scripts/mcp-inbox-proxy"
-
 
 # Agent inbox check (used by install.sh for cron setup)
 register "src/agent-inbox/agent-inbox-check.sh"    "${HERMES_HOME}/scripts/agent-inbox-check.sh"
@@ -203,20 +220,24 @@ restart_gbrain_sync() {
   local sync_label="com.gbrain.sync-watch"
   # gbrain autopilot is the preferred sync daemon (handles sync internally).
   # Only restart sync-watch if autopilot is absent.
-  if launchctl list "$autopilot_label" &>/dev/null 2>&1; then
-    info "  gbrain autopilot present — reloading service…"
-    launchctl kickstart "gui/$(id -u)/$autopilot_label" 2>/dev/null || {
-      launchctl unload "$HOME/Library/LaunchAgents/$autopilot_label.plist" 2>/dev/null || true
-      launchctl load "$HOME/Library/LaunchAgents/$autopilot_label.plist" 2>/dev/null || true
-    }
-    return 0
+  if [[ "$CORTEX_OS" == "macos" ]]; then
+    if launchctl list "$autopilot_label" &>/dev/null 2>&1; then
+      info "  gbrain autopilot present — reloading service…"
+      launchctl kickstart "gui/$(id -u)/$autopilot_label" 2>/dev/null || {
+        launchctl unload "$HOME/Library/LaunchAgents/$autopilot_label.plist" 2>/dev/null || true
+        launchctl load "$HOME/Library/LaunchAgents/$autopilot_label.plist" 2>/dev/null || true
+      }
+      return 0
+    fi
+    if launchctl list "$sync_label" &>/dev/null 2>&1; then
+      info "  Restarting gbrain sync daemon…"
+      rm -f "${HOME}/.gbrain/sync-watch.sh"
+      bash "${HERMES_HOME}/scripts/install-gbrain-sync.sh" 2>&1 | sed 's/^/    /'
+      return 0
+    fi
   fi
-  if launchctl list "$sync_label" &>/dev/null 2>&1; then
-    info "  Restarting gbrain sync daemon…"
-    # Force re-write the sync-watch.sh script (remove then call installer)
-    rm -f "${HOME}/.gbrain/sync-watch.sh"
-    bash "${HERMES_HOME}/scripts/install-gbrain-sync.sh" 2>&1 | sed 's/^/    /'
-  elif systemctl --user list-units --type=service --state=running 2>/dev/null \
+  # Linux fallback: systemd
+  if systemctl --user list-units --type=service --state=running 2>/dev/null \
         | grep -q "gbrain-sync"; then
     info "  Restarting gbrain sync (systemd)…"
     rm -f "${HOME}/.gbrain/sync-watch.sh"
@@ -296,8 +317,17 @@ needs_update() {
   [[ ! -f "$src" ]] && return 1
   # Compare checksums
   local src_hash dest_hash
-  src_hash=$(sha256sum "$src" 2>/dev/null | cut -d' ' -f1)
-  dest_hash=$(sha256sum "$dest" 2>/dev/null | cut -d' ' -f1)
+  if command -v sha256sum &>/dev/null; then
+    src_hash=$(sha256sum "$src" 2>/dev/null | cut -d' ' -f1)
+    dest_hash=$(sha256sum "$dest" 2>/dev/null | cut -d' ' -f1)
+  elif command -v shasum &>/dev/null; then
+    src_hash=$(shasum -a 256 "$src" 2>/dev/null | cut -d' ' -f1)
+    dest_hash=$(shasum -a 256 "$dest" 2>/dev/null | cut -d' ' -f1)
+  else
+    # No checksum tool — compare mtime
+    [[ "$src" -nt "$dest" ]] && return 0
+    return 1
+  fi
   [[ "$src_hash" != "$dest_hash" ]] && return 0
   return 1
 }
@@ -312,6 +342,12 @@ copy_file() {
     chmod 644 "$dest"
     # Preserve executable bit
     [[ -x "$src" ]] && chmod +x "$dest"
+    # Fallback: .py and .sh files in scripts dir must be executable for no_agent cron jobs
+    if [[ "$dest" == "${HERMES_HOME}/scripts/"* ]]; then
+      case "$dest" in
+        *.py|*.sh) chmod +x "$dest" ;;
+      esac
+    fi
     COPIED=$((COPIED + 1))
   fi
 }
@@ -571,7 +607,7 @@ deploy_nginx_configs() {
   local nginx_test="nginx -t"
   local nginx_reload="nginx -s reload"
   if [[ "$brew_dir" == /etc/* ]]; then
-    nginx_test="sudo nginx -t"
+    nginx_test="sudo -n nginx -t"
     nginx_reload="sudo systemctl reload nginx || sudo nginx -s reload"
   fi
 
@@ -624,35 +660,15 @@ main() {
   fi
 
   if ! $FORCE_ALL; then
-    # Fetch latest from remote
-    git -C "$REPO_DIR" fetch origin 2>&1 | sed 's/^/  /' || true
-
-    # Determine relationship with remote to handle ahead/behind/diverged
-    LOCAL=$(git -C "$REPO_DIR" rev-parse HEAD)
-    REMOTE=$(git -C "$REPO_DIR" rev-parse origin/main 2>/dev/null || echo "")
-    if [ -z "$REMOTE" ]; then
-      info "No remote tracking branch (origin/main) — skipping pull"
-    elif [ "$LOCAL" = "$REMOTE" ]; then
-      info "Already up to date with origin/main"
-    elif git -C "$REPO_DIR" merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
-      # We're behind remote — fast-forward possible
-      info "Pulling latest from origin/main…"
-      git -C "$REPO_DIR" pull --ff-only origin main 2>&1 | sed 's/^/  /' || {
-        warn "Git pull failed"
+    info "Pulling latest from origin/main…"
+    git -C "$REPO_DIR" pull --ff-only origin main 2>&1 | sed 's/^/  /' || {
+      warn "Git pull --ff-only failed — trying --rebase fallback…"
+      git -C "$REPO_DIR" pull --rebase origin main 2>&1 | sed 's/^/  /' || {
+        warn "Git pull failed — check your connection or local changes"
+        warn "  cd ${REPO_DIR} && git status"
         exit 1
       }
-    elif git -C "$REPO_DIR" merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
-      # We're ahead of remote — skip pull gracefully
-      AHEAD=$(git -C "$REPO_DIR" rev-list --count origin/main..HEAD)
-      info "Local ahead of origin/main by ${AHEAD} commit(s) — skipping pull"
-    else
-      # Diverged — attempt merge
-      info "Local and origin/main have diverged — attempting merge…"
-      git -C "$REPO_DIR" merge origin/main --no-edit 2>&1 | sed 's/^/  /' || {
-        warn "Merge failed — manual intervention required (cd ${REPO_DIR} && git status)"
-        exit 1
-      }
-    fi
+    }
   fi
 
   new_commit=$(git -C "$REPO_DIR" rev-parse HEAD)

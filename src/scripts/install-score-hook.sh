@@ -16,9 +16,11 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 HOOK_SOURCE="${SCRIPT_DIR}/pre-commit-score"
 HOOK_NAME="pre-commit"
+PUSH_HOOK_SOURCE="${SCRIPT_DIR}/pre-push-pull"
+PUSH_HOOK_NAME="pre-push"
 AUTO_SCAN_DIRS=(
   "$HOME/Developer"
   "$HOME/hermes-cortex"
@@ -93,6 +95,36 @@ install_hook() {
   chmod +x "$hook_dest"
   info "Installed hook: $(basename "$repo")"
   INSTALLED=$((INSTALLED + 1))
+
+  # Also install pre-push hook (check independently of pre-commit)
+  install_push_hook "$repo"
+}
+
+# ── Install pre-push hook ───────────────────────────────
+install_push_hook() {
+  local repo="$1"
+  local push_dest="${repo}/.git/hooks/${PUSH_HOOK_NAME}"
+
+  if [[ ! -f "$PUSH_HOOK_SOURCE" ]]; then
+    return
+  fi
+
+  if [[ -f "$push_dest" ]]; then
+    if grep -q "pre-push-pull" "$push_dest" 2>/dev/null; then
+      if [[ "$PUSH_HOOK_SOURCE" -nt "$push_dest" ]]; then
+        cp "$PUSH_HOOK_SOURCE" "$push_dest"
+        chmod +x "$push_dest"
+        info "Updated push hook: $(basename "$repo")"
+        INSTALLED=$((INSTALLED + 1))
+      fi
+      return
+    fi
+  fi
+
+  cp "$PUSH_HOOK_SOURCE" "$push_dest"
+  chmod +x "$push_dest"
+  info "Installed push hook: $(basename "$repo")"
+  INSTALLED=$((INSTALLED + 1))
 }
 
 remove_hook() {
@@ -103,6 +135,13 @@ remove_hook() {
     rm "$hook_dest"
     info "Removed hook: $(basename "$repo")"
     REMOVED=$((REMOVED + 1))
+  fi
+
+  # Also remove pre-push hook
+  local push_dest="${repo}/.git/hooks/${PUSH_HOOK_NAME}"
+  if [[ -f "$push_dest" ]] && grep -q "pre-push-pull" "$push_dest" 2>/dev/null; then
+    rm "$push_dest"
+    info "Removed push hook: $(basename "$repo")"
   fi
 }
 
@@ -154,8 +193,9 @@ if [[ "$MODE" == "install-path" ]]; then
     exit 1
   fi
   install_hook "$TARGET_PATH"
+  install_push_hook "$TARGET_PATH"
   echo ""
-  info "Done — installed hook for $(basename "$TARGET_PATH")"
+  info "Done — installed hooks for $(basename "$TARGET_PATH")"
   exit 0
 fi
 
@@ -168,6 +208,11 @@ for dir in "${AUTO_SCAN_DIRS[@]}"; do
   while IFS= read -r repo; do
     install_hook "$repo"
   done < <(find_repos "$dir")
+
+  # Also install pre-push hook in repos that already have pre-commit
+  while IFS= read -r repo; do
+    install_push_hook "$repo"
+  done < <(find_repos "$dir")
 done
 
 echo ""
@@ -177,6 +222,8 @@ if [[ "$INSTALLED" -gt 0 ]]; then
   echo "  Next steps:"
   echo "    - Set SKIP_SCORE=1 to bypass on a specific commit:"
   echo "        SKIP_SCORE=1 git commit -m \"...\""
+  echo "    - Set SKIP_PRE_PUSH=1 to bypass the pre-push pull check:"
+  echo "        SKIP_PRE_PUSH=1 git push"
   echo "    - Re-run this script after cloning new repos"
   echo "    - Run with --check to see current hook status"
 fi

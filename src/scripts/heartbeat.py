@@ -5,6 +5,7 @@ Checks critical daemons and services:
   - Ollama (LLM server)
   - gbrain sync daemon
   - Hermes gateway
+  - Langfuse Docker services (ClickHouse, MinIO, Redis)
   - Memory-to-brain sync freshness
   - Agent inbox scan freshness
   - Disk space
@@ -21,16 +22,78 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
 BRAIN_SHARED = Path.home() / "brain" / "shared"
-NOW = datetime.now()
+NOW = datetime.now().astimezone()
+
+# Platform detection — cached after first call
+_IS_LINUX: bool | None = None
 
 
-def check_launchd(job_label: str) -> dict:
-    """Check if a launchd job is running and healthy (macOS 12 plist format)."""
+def _is_linux() -> bool:
+    global _IS_LINUX
+    if _IS_LINUX is None:
+        try:
+            subprocess.run(["launchctl", "list"], capture_output=True, timeout=5)
+            _IS_LINUX = False
+        except FileNotFoundError:
+            _IS_LINUX = True
+    return _IS_LINUX
+
+
+def check_systemd(unit_name: str) -> dict:
+    """Check systemd service status.
+
+    Tries user scope first, falls back to system scope.
+    Returns UP/ DOWN/ ERROR with detail.
+    """
+    for scope, label in [(["--user"], "user"), ([], "system")]:
+        try:
+            result = subprocess.run(
+                ["systemctl", *scope, "is-active", unit_name],
+                capture_output=True, text=True, timeout=10,
+            )
+            status = result.stdout.strip()
+            # systemctl returns active/inactive/failed — exit 0 only for active
+            if result.returncode == 0 and status == "active":
+                return {"status": "UP", "detail": f"{unit_name} ({label})"}
+            if result.returncode != 0 and status in ("inactive", "dead", "failed"):
+                continue  # try other scope
+            if result.returncode == 0:
+                return {"status": "UP", "detail": f"{unit_name} ({label})"}
+        except FileNotFoundError:
+            return {"status": "ERROR", "detail": "systemctl not found"}
+        except Exception as e:
+            return {"status": "ERROR", "detail": str(e)}
+
+    # Neither scope found it active
+    try:
+        # Last attempt — just check if any process called unit_name is running
+        proc_name = unit_name.split(".")[-1] if "." in unit_name else unit_name
+        pg = subprocess.run(
+            ["pgrep", "-x", proc_name], capture_output=True, timeout=5,
+        )
+        if pg.returncode == 0:
+            return {"status": "DEGRADED", "detail": f"{unit_name} (process found, no systemd unit)"}
+    except Exception:
+        pass
+
+    return {"status": "DOWN", "detail": f"{unit_name} not active in any scope"}
+
+
+def check_service(label: str) -> dict:
+    """Check service using systemd (Linux) or launchd (macOS)."""
+    if _is_linux():
+        return check_systemd(label)
+    # macOS launchd path (unchanged, kept for cross-platform compat)
+    return _check_launchd(label)
+
+
+def _check_launchd(job_label: str) -> dict:
+    """Check if a launchd job is running and healthy (macOS)."""
     try:
         result = subprocess.run(
             ["launchctl", "list", job_label],
@@ -66,87 +129,6 @@ def check_launchd(job_label: str) -> dict:
         return {"status": "ERROR", "detail": str(e)}
 
 
-def check_systemd(unit_name: str) -> dict:
-    """Check a systemd user service status — for Linux hosts."""
-    try:
-        result = subprocess.run(
-            ["systemctl", "--user", "is-active", unit_name],
-            capture_output=True, text=True, timeout=10,
-        )
-        status = result.stdout.strip()
-        if status == "active":
-            return {"status": "UP", "detail": unit_name}
-        elif status in ("inactive", "dead", "failed"):
-            return {"status": "DOWN", "detail": f"Unit {unit_name} is {status}"}
-        return {"status": "DEGRADED", "detail": f"Unit {unit_name}: {status}"}
-    except FileNotFoundError:
-        return {"status": "ERROR", "detail": "systemctl not found — not a systemd system"}
-    except Exception as e:
-        return {"status": "ERROR", "detail": str(e)}
-
-
-def check_ollama_via_api() -> dict:
-    """Check Ollama by hitting its HTTP API directly."""
-    import urllib.request
-    try:
-        req = urllib.request.Request("http://localhost:11434/api/tags", method="GET")
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            if resp.status == 200:
-                return {"status": "UP", "detail": "API responding on port 11434"}
-            return {"status": "DEGRADED", "detail": f"API returned HTTP {resp.status}"}
-    except Exception as e:
-        return {"status": "DOWN", "detail": f"API unreachable: {e}"}
-
-
-def _platform_service_label(label: str) -> str:
-    """Map macOS launchd labels to the correct systemd unit names on Linux."""
-    import platform
-    if platform.system() != 'Darwin':
-        label_map = {
-            'com.ollama.serve': 'ollama.service',
-            # gbrain services use the same 'com.*' naming on Linux systemd
-        }
-        return label_map.get(label, label)
-    return label
-
-
-def check_service(label: str) -> dict:
-    """Auto-detect platform and check service using launchd or systemd."""
-    # Special case: Ollama — try HTTP API first for reliability across platforms
-    if 'ollama' in label.lower():
-        api_result = check_ollama_via_api()
-        if api_result['status'] == 'UP':
-            return api_result
-        # If API fails, fall through to platform-specific check
-    
-    # Special case: gbrain autopilot on Linux — check process directly
-    # since it runs via cron, not as a persistent systemd service
-    if label == 'com.gbrain.autopilot':
-        try:
-            result = subprocess.run(
-                ['pgrep', '-f', 'gbrain autopilot'],
-                capture_output=True, text=True, timeout=5
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                return {"status": "UP", "detail": f"Process running (PID: {result.stdout.strip()})"}
-            # Fall back to checking cron entry
-            cron_result = subprocess.run(
-                ['crontab', '-l'],
-                capture_output=True, text=True, timeout=5
-            )
-            if cron_result.returncode == 0 and 'autopilot-run.sh' in cron_result.stdout:
-                return {"status": "UP", "detail": "Scheduled via cron (runs every 5m)"}
-            return {"status": "DOWN", "detail": "No autopilot process or cron entry found"}
-        except Exception as e:
-            return {"status": "ERROR", "detail": str(e)}
-    
-    try:
-        subprocess.run(['launchctl', 'list'], capture_output=True, timeout=5)
-        return check_launchd(label)
-    except FileNotFoundError:
-        return check_systemd(_platform_service_label(label))
-
-
 def check_disk_usage(path: str = "/") -> dict:
     """Check disk usage."""
     try:
@@ -157,7 +139,6 @@ def check_disk_usage(path: str = "/") -> dict:
         if len(lines) >= 2:
             fields = lines[1].split()
             used_pct = fields[4] if len(fields) >= 5 else "?"
-            # Extract number from "XX%"
             pct_str = used_pct.rstrip("%")
             try:
                 pct = int(pct_str)
@@ -170,12 +151,49 @@ def check_disk_usage(path: str = "/") -> dict:
         return {"status": "ERROR", "detail": str(e)}
 
 
+def check_docker_containers() -> dict:
+    """Check essential Docker containers (ClickHouse, MinIO, Redis) for Langfuse."""
+    containers = {
+        "ClickHouse": "langfuse-clickhouse-1",
+        "MinIO": "langfuse-minio-1",
+        "Redis": "langfuse-redis-1",
+    }
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--format", "{{.Names}}\t{{.Status}}"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode != 0:
+            return {"status": "UNKNOWN", "detail": "Docker not available"}
+
+        running = {}
+        for line in result.stdout.strip().split("\n"):
+            if "\t" in line:
+                name, status = line.split("\t", 1)
+                running[name] = status
+
+        issues = []
+        for label, container_name in containers.items():
+            if container_name not in running:
+                issues.append(f"{label} not running")
+            elif "Up" not in running[container_name]:
+                issues.append(f"{label}: {running[container_name]}")
+
+        if issues:
+            return {"status": "DEGRADED", "detail": "; ".join(issues)}
+        return {"status": "UP", "detail": "all containers healthy"}
+    except FileNotFoundError:
+        return {"status": "UNKNOWN", "detail": "Docker not installed"}
+    except Exception as e:
+        return {"status": "ERROR", "detail": str(e)}
+
+
 def check_memory_sync_freshness() -> dict:
     """Check when memory was last synced to brain."""
     current = BRAIN_SHARED / "hermes-memory" / "current.md"
     if not current.exists():
         return {"status": "UNKNOWN", "detail": "No current.md — sync may not have run yet"}
-    mtime = datetime.fromtimestamp(current.stat().st_mtime)
+    mtime = datetime.fromtimestamp(current.stat().st_mtime, tz=timezone.utc).astimezone()
     age = NOW - mtime
     if age < timedelta(hours=8):
         return {"status": "UP", "detail": f"Last sync: {age.total_seconds() / 60:.0f}m ago"}
@@ -185,54 +203,19 @@ def check_memory_sync_freshness() -> dict:
         return {"status": "DOWN", "detail": f"Last sync: {age.total_seconds() / 3600:.1f}h ago — stale!"}
 
 
-def check_ollama_api() -> dict:
-    """Check Ollama health via its HTTP API — more reliable than launchd on macOS.
-
-    Ollama GUI app starts the serve process outside launchd, so launchctl
-    reports no PID for com.ollama.serve. The actual health check should be
-    the API itself.
-    """
-    try:
-        import urllib.error
-        import urllib.request
-        req = urllib.request.Request(
-            "http://localhost:11434/api/tags",
-            method="GET",
-        )
-        resp = urllib.request.urlopen(req, timeout=10)
-        if resp.status == 200:
-            return {"status": "UP", "detail": "API responding (HTTP 200)"}
-        return {"status": "DEGRADED", "detail": f"API returned HTTP {resp.status}"}
-    except urllib.error.URLError as e:
-        # Connection refused — try pgrep fallback in case it's starting up
-        try:
-            p = subprocess.run(
-                ["pgrep", "-f", "ollama serve"],
-                capture_output=True, text=True, timeout=5,
-            )
-            if p.returncode == 0 and p.stdout.strip():
-                return {"status": "DEGRADED", "detail": f"Process running (PID {p.stdout.strip().splitlines()[0]}) but API unreachable: {e.reason}"}
-        except Exception:
-            pass
-        return {"status": "DOWN", "detail": f"API unreachable: {e.reason}"}
-    except Exception as e:
-        return {"status": "ERROR", "detail": f"API check failed: {e}"}
-
-
 def check_gateway_log() -> dict:
     """Quick check if gateway has logged recently."""
     log_dir = HERMES_HOME / "logs"
     if not log_dir.exists():
         return {"status": "UNKNOWN", "detail": "No log directory"}
-    
-    # Check if any log was modified in the last 30 min
+
     recent = False
     for f in log_dir.glob("*.log*"):
-        age = NOW - datetime.fromtimestamp(f.stat().st_mtime)
+        age = NOW - datetime.fromtimestamp(f.stat().st_mtime, tz=timezone.utc).astimezone()
         if age < timedelta(minutes=30):
             recent = True
             break
-    
+
     if recent:
         return {"status": "UP", "detail": "Activity in last 30 min"}
     return {"status": "DEGRADED", "detail": "No log activity in 30+ min"}
@@ -246,9 +229,6 @@ def check_gbrain_sources() -> dict:
       - Falls back to file counting if even sources list is unavailable
       - Returns UNKNOWN (not DOWN) when gbrain isn't installed
     """
-
-    # Track whether we used doctor vs fallback (for known false-positive filtering)
-    _used_doctor = False
 
     def _run(args, timeout=15):
         env = os.environ.copy()
@@ -264,6 +244,10 @@ def check_gbrain_sources() -> dict:
         Format:
           default               federated          1 pages  never synced
           my-source             isolated          12 pages  2m ago
+
+        Known false positive: the 'default' federated source is auto-created
+        by gbrain at install without a local_path and can never be synced.
+        It is excluded from the 'never synced' / 'zero pages' counts.
         """
         lines = output.strip().split("\n")
         total = 0
@@ -273,6 +257,8 @@ def check_gbrain_sources() -> dict:
             parts = line.split()
             if len(parts) >= 3 and parts[2].isdigit():
                 pages = int(parts[2])
+                if len(parts) >= 2 and parts[0] == "default" and parts[1] == "federated":
+                    continue
                 total += 1
                 if pages == 0:
                     zero_pages += 1
@@ -291,25 +277,14 @@ def check_gbrain_sources() -> dict:
         try:
             result = _run([gbrain_cmd, "doctor", "--json"], timeout=30)
             if result.returncode == 0 and result.stdout.strip():
-                _used_doctor = True
                 import json as _json
                 data = _json.loads(result.stdout)
                 checks = data.get("doctor", {}).get("checks", [])
                 failures = []
-                # Pre-check: if sync_freshness is OK but cycle_freshness is fail,
-                # the "never completed a full cycle" is a known false positive when
-                # autopilot is running — sources are synced, just not dream-processed.
-                sync_freshness_ok = any(
-                    c.get("status") == "ok" and c.get("name") == "sync_freshness"
-                    for c in checks
-                )
                 for check in checks:
                     name = check.get("name", "")
                     status = check.get("status", "")
                     msg = check.get("message", "")
-                    # Skip cycle_freshness when sync_freshness is OK (autopilot false positive)
-                    if name == "cycle_freshness" and sync_freshness_ok:
-                        continue
                     if status == "fail" and any(kw in name for kw in ["sync", "embed", "source", "cycle"]):
                         failures.append(f"{name}: {msg[:120]}")
                     elif status == "warn" and name in ("sync_freshness", "cycle_freshness", "orphan_ratio"):
@@ -339,11 +314,6 @@ def check_gbrain_sources() -> dict:
             total, never_synced, zero_pages = _parse_sources_list(result2.stdout)
             issues = []
             if never_synced > 0:
-                # "never synced" on a source with pages is a gbrain metadata artifact,
-                # not a real issue — treat as UNKNOWN, not DEGRADED
-                if not _used_doctor:
-                    return {"status": "UNKNOWN",
-                            "detail": f"{never_synced} source(s) label 'never synced' (may be metadata artifact)"}
                 issues.append(f"{never_synced} source(s) never synced")
             if zero_pages > 0 and zero_pages == total:
                 issues.append("all sources have 0 pages")
@@ -371,9 +341,9 @@ def check_inbox_staleness() -> dict:
     """Check if agent inbox was scanned recently (every 10m cron, warn if >25m stale)."""
     state_file = HERMES_HOME / "state" / "last-message-check"
     if not state_file.exists():
-        return {"status": "DEGRADED", "detail": "No state file — orch-check-agent-messages may not have run"}
+        return {"status": "DEGRADED", "detail": "No state file — check-agent-messages may not have run"}
     try:
-        mtime = datetime.fromtimestamp(state_file.stat().st_mtime)
+        mtime = datetime.fromtimestamp(state_file.stat().st_mtime, tz=timezone.utc).astimezone()
         age = NOW - mtime
         if age < timedelta(minutes=15):
             return {"status": "UP", "detail": f"Last scan: {age.total_seconds() / 60:.0f}m ago"}
@@ -387,13 +357,24 @@ def check_inbox_staleness() -> dict:
 
 def run() -> str:
     """Run all checks and return report. Empty string = all healthy."""
+    linux = _is_linux()
+
+    if linux:
+        ollama_service = "ollama"
+        gbrain_service = "gbrain-autopilot"
+    else:
+        ollama_service = "com.ollama.serve"
+        gbrain_service = "com.gbrain.autopilot"
+        # Fallback to sync-watch if autopilot isn't running
+        ap = check_service("com.gbrain.autopilot")
+        if ap["status"] == "DOWN":
+            gbrain_service = "com.gbrain.sync-watch"
+
     checks = {
-        "Ollama": check_ollama_api(),
-        # autopilot preferred; falls back to sync-watch if absent
-        "gbrain sync daemon": check_service("com.gbrain.autopilot")
-        if check_service("com.gbrain.autopilot")["status"] != "DOWN"
-        else check_service("com.gbrain.sync-watch"),
+        "Ollama": check_service(ollama_service),
+        "gbrain sync daemon": check_service(gbrain_service),
         "gbrain sources": check_gbrain_sources(),
+        "Docker (Langfuse)": check_docker_containers(),
         "Gateway activity": check_gateway_log(),
         "Agent inbox scan": check_inbox_staleness(),
         "Memory→brain sync": check_memory_sync_freshness(),
@@ -402,7 +383,7 @@ def run() -> str:
 
     # Determine overall status
     status_counts = {"UP": 0, "DEGRADED": 0, "DOWN": 0, "ERROR": 0, "UNKNOWN": 0}
-    for name, result in checks.items():
+    for result in checks.values():
         s = result["status"]
         status_counts[s] = status_counts.get(s, 0) + 1
 
@@ -419,9 +400,9 @@ def run() -> str:
     report = f"📡 Hermes Heartbeat — {now_str}\n"
     report += f"Overall: {overall}\n\n"
 
+    icons = {"UP": "✅", "DEGRADED": "⚠️", "DOWN": "❌", "ERROR": "🔴", "UNKNOWN": "❓"}
     for name, result in checks.items():
-        icon = {"UP": "✅", "DEGRADED": "⚠️", "DOWN": "❌", "ERROR": "🔴", "UNKNOWN": "❓"}
-        report += f"{icon.get(result['status'], '❓')} {name}: {result['status']} — {result['detail']}\n"
+        report += f"{icons.get(result['status'], '❓')} {name}: {result['status']} — {result['detail']}\n"
 
     # If overall healthy and not forced, return empty for silent cron
     if overall == "HEALTHY" and "--report" not in sys.argv:
@@ -435,4 +416,3 @@ if __name__ == "__main__":
     if output:
         print(output)
         sys.exit(0 if "HEALTHY" in output else 1)
-    # Empty output = silent (watchdog pattern)

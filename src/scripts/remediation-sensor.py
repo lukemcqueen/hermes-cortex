@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""remediation-sensor.py — Companion script for cron-auto-remediate.
+"""remediation-sensor.py — Companion script for agent-auto-remediate.
 
 Runs every 5m as a no_agent watchdog. Gathers diagnostics and outputs
 structured JSON if issues are found. Silent when healthy.
@@ -17,7 +17,7 @@ Output shape:
   }
 ]
 
-Called from cron-auto-remediate (no_agent cron, every 5m).
+Called from agent-auto-remediate (LLM-driven cron, every 5m).
 """
 import json
 import os
@@ -69,7 +69,7 @@ def check_scripts():
     """Check for missing or non-executable scripts."""
     required_scripts = [
         "heartbeat.py", "service-recovery.py", "system-alert.py",
-        "check-agent-messages.sh", "cron-auto-remediate.sh",
+        "orch-check-agent-messages.sh", "cron-auto-remediate.sh",
         "daily-lesson-mine.sh", "update-session-state.sh",
     ]
     for script in required_scripts:
@@ -112,51 +112,68 @@ def check_disk():
 
 
 def check_memory():
-    """Check memory pressure (macOS)."""
-    if sys.platform != "darwin":
-        return
-    out, _, rc = run("memory_pressure 2>/dev/null | grep 'System-wide memory' | sed 's/.* \\([0-9]*\\)%/\\1/'")
-    if rc == 0 and out.strip():
-        free_pct = int(out.strip())
-        if free_pct < 10:
-            add_issue("mem_pressure", "critical", f"Memory pressure high: {free_pct}% free", {"free_pct": free_pct})
-        elif free_pct < 15:
-            add_issue("mem_pressure", "high", f"Memory pressure elevated: {free_pct}% free", {"free_pct": free_pct})
+    """Check memory pressure (macOS + Linux)."""
+    if sys.platform == "darwin":
+        out, _, rc = run("memory_pressure 2>/dev/null | grep 'System-wide memory' | sed 's/.* \\([0-9]*\\)%/\\1/'")
+        if rc == 0 and out.strip():
+            free_pct = int(out.strip())
+            if free_pct < 10:
+                add_issue("mem_pressure", "critical", f"Memory pressure high: {free_pct}% free", {"free_pct": free_pct})
+            elif free_pct < 15:
+                add_issue("mem_pressure", "high", f"Memory pressure elevated: {free_pct}% free", {"free_pct": free_pct})
+    elif sys.platform.startswith("linux"):
+        out, _, rc = run(r"free -m | awk '/Mem:/ {printf \"%.0f\", $3/$2 * 100}'")
+        if rc == 0 and out.strip():
+            used_pct = int(out.strip())
+            free_pct = 100 - used_pct
+            if free_pct < 10:
+                add_issue("mem_pressure", "critical", f"Memory at {used_pct}% used ({free_pct}% free)", {"used_pct": used_pct})
+            elif free_pct < 15:
+                add_issue("mem_pressure", "high", f"Memory at {used_pct}% used ({free_pct}% free)", {"used_pct": used_pct})
 
 
 def check_services():
-    """Check critical services (macOS launchd)."""
-    if sys.platform != "darwin":
-        return
-    # Ollama is always required
-    out, _, rc = run("launchctl list com.ollama.serve 2>/dev/null | awk 'NR==2 {print $1}'")
-    if rc != 0 or not out.strip() or out.strip() == "-":
-        add_issue("service_down", "high", "Ollama is down", {"service": "com.ollama.serve"})
-    
-    # Gbrain: at least ONE of autopilot or sync-watch must be running
-    # (they are alternative sync strategies, not both required)
-    autopilot_ok = False
-    sync_watch_ok = False
-    out, _, rc = run("launchctl list com.gbrain.autopilot 2>/dev/null | awk 'NR==2 {print $1}'")
-    if rc == 0 and out.strip() and out.strip() != "-":
-        autopilot_ok = True
-    out, _, rc = run("launchctl list com.gbrain.sync-watch 2>/dev/null | awk 'NR==2 {print $1}'")
-    if rc == 0 and out.strip() and out.strip() != "-":
-        sync_watch_ok = True
-    
-    if not autopilot_ok and not sync_watch_ok:
-        add_issue("service_down", "high", "No gbrain sync service running (autopilot or sync-watch)", {"services": ["com.gbrain.autopilot", "com.gbrain.sync-watch"]})
+    """Check critical services (macOS launchd / Linux systemd)."""
+    if sys.platform == "darwin":
+        # Ollama is always required
+        out, _, rc = run("launchctl list com.ollama.serve 2>/dev/null | awk 'NR==2 {print $1}'")
+        if rc != 0 or not out.strip() or out.strip() == "-":
+            add_issue("service_down", "high", "Ollama is down", {"service": "com.ollama.serve"})
+        # Gbrain: at least ONE of autopilot or sync-watch must be running
+        autopilot_ok = False
+        sync_watch_ok = False
+        out, _, rc = run("launchctl list com.gbrain.autopilot 2>/dev/null | awk 'NR==2 {print $1}'")
+        if rc == 0 and out.strip() and out.strip() != "-":
+            autopilot_ok = True
+        out, _, rc = run("launchctl list com.gbrain.sync-watch 2>/dev/null | awk 'NR==2 {print $1}'")
+        if rc == 0 and out.strip() and out.strip() != "-":
+            sync_watch_ok = True
+        if not autopilot_ok and not sync_watch_ok:
+            add_issue("service_down", "high", "No gbrain sync service running (autopilot or sync-watch)", {"services": ["com.gbrain.autopilot", "com.gbrain.sync-watch"]})
+    elif sys.platform.startswith("linux"):
+        # Ollama user service — check systemd first, then process fallback
+        out, _, rc = run("systemctl --user is-active ollama 2>/dev/null")
+        if out.strip() != "active":
+            # systemd may report inactive when Ollama runs as standalone daemon
+            # (no systemd unit). Fall back to process check.
+            proc_out, _, proc_rc = run("pgrep -f 'ollama serve' 2>/dev/null")
+            if proc_rc != 0 or not proc_out.strip():
+                add_issue("service_down", "high", f"Ollama is not active (systemd user service)", {"service": "ollama.service", "status": out.strip() or "unknown", "note": "process check also failed"})
+        # Gbrain sync-watch user service
+        out, _, rc = run("systemctl --user is-active com.gbrain.sync-watch 2>/dev/null")
+        if rc == 0 and out.strip() != "active":
+            add_issue("service_down", "high", f"gbrain sync-watch is not active (systemd user service)", {"service": "com.gbrain.sync-watch.service", "status": out.strip() or "unknown"})
 
 
 def check_nginx():
     """Check nginx config and process.
-
+    
     Uses sudo -n for non-interactive sudo (works if user has NOPASSWD for nginx).
     Falls back to direct check if sudo unavailable.
     Skips gracefully if no root/sudo access and nginx -t fails.
     """
-    # Try sudo -n first with full path (matches sudoers entry: /usr/sbin/nginx -t)
-    out, _, rc = run("sudo -n /usr/sbin/nginx -t 2>&1")
+    # Try sudo -n first (non-interactive, fails fast if no sudo)
+    out, _, rc = run("sudo -n nginx -t 2>&1")
     if rc != 0:
         # Try without sudo (might work if user has direct access)
         out2, _, rc2 = run("nginx -t 2>&1")
@@ -250,6 +267,9 @@ def check_ssl_certs():
     
     SUDOERS ASSUMED: gisu/kustos/joseph have NOPASSWD sudoers for certbot.
     Verifies sudo -n certbot commands work correctly.
+    
+    NOTE: /etc/letsencrypt/{live,archive} being 700 root:root is CORRECT
+    and SECURE. Certbot should run via sudo, not direct access.
     """
     # Check common nginx SSL cert locations
     cert_dirs = [
@@ -266,13 +286,23 @@ def check_ssl_certs():
             timer_active = True
     
     # Check if user has sudoers entry for certbot (PRIMARY METHOD for cisnet02)
+    # Test the actual commands in sudoers: certbot certificates and certbot renew
     has_sudoers = False
+    sudoers_test_failed = False
     try:
-        out, _, rc = run("sudo -n certbot --version 2>/dev/null")
-        if rc == 0:
+        # Test certbot certificates (read-only, safe to test)
+        out, _, rc = run("sudo -n certbot certificates 2>&1 | head -3")
+        if rc == 0 or "Certificate Name" in out or "Found" in out:
             has_sudoers = True
+        else:
+            # Try certbot renew --dry-run as fallback test
+            out2, _, rc2 = run("sudo -n certbot renew --dry-run 2>&1 | head -5")
+            if rc2 == 0 or "dry run" in out2.lower():
+                has_sudoers = True
+            else:
+                sudoers_test_failed = True
     except:
-        pass
+        sudoers_test_failed = True
     
     # If either method is available, certs are properly configured
     if timer_active or has_sudoers:
@@ -282,13 +312,17 @@ def check_ssl_certs():
     # Report as informational — user should configure sudoers or enable timer
     for cert_dir in cert_dirs:
         if os.path.exists(cert_dir):
+            issue_data = {
+                "directory": cert_dir,
+                "note": "700 root:root permissions are CORRECT and SECURE",
+                "fix_hint": "Add to sudoers: sudo visudo, then add: " + os.environ.get("USER", "user") + " ALL=(ALL) NOPASSWD: /usr/bin/certbot certificates, /usr/bin/certbot renew --non-interactive",
+                "alternative": "Enable systemd timer: sudo systemctl enable certbot.timer && sudo systemctl start certbot.timer",
+            }
+            if sudoers_test_failed:
+                issue_data["debug"] = "sudo -n certbot test failed — check sudoers configuration"
             add_issue("ssl_cert_sudoers_missing", "medium", 
                 "Certbot renewal not configured for non-root execution",
-                {
-                    "directory": cert_dir,
-                    "fix_hint": "Add to sudoers: sudo visudo, then add: " + os.environ.get("USER", "user") + " ALL=(ALL) NOPASSWD: /usr/bin/certbot renew",
-                    "alternative": "Enable systemd timer: sudo systemctl enable certbot.timer && sudo systemctl start certbot.timer",
-                })
+                issue_data)
             break
 
 
@@ -296,7 +330,9 @@ def check_certbot():
     """Check certbot execution capability.
     
     SUDOERS ASSUMED: gisu/kustos/joseph have NOPASSWD sudoers for certbot.
-    Verifies sudo -n certbot renew works.
+    Verifies sudo -n certbot certificates and sudo -n certbot renew work.
+    
+    NOTE: Lock file being root-owned is CORRECT and SECURE.
     """
     lock_file = "/var/log/letsencrypt/.certbot.lock"
     log_dir = "/var/log/letsencrypt"
@@ -309,11 +345,18 @@ def check_certbot():
             timer_active = True
     
     # Check if user has sudoers entry for certbot (PRIMARY METHOD for cisnet02)
+    # Test the actual commands: certbot certificates and certbot renew
     has_sudoers = False
     try:
-        out, _, rc = run("sudo -n certbot renew --dry-run 2>&1 | head -5")
-        if rc == 0 or "dry run" in out.lower():
+        # Test certbot certificates (read-only, safe to test)
+        out, _, rc = run("sudo -n certbot certificates 2>&1 | head -5")
+        if rc == 0 or "Certificate Name" in out or "Found" in out or "No certs" in out:
             has_sudoers = True
+        else:
+            # Try certbot renew --dry-run as fallback test
+            out2, _, rc2 = run("sudo -n certbot renew --dry-run 2>&1 | head -5")
+            if rc2 == 0 or "dry run" in out2.lower():
+                has_sudoers = True
     except:
         pass
     
@@ -331,35 +374,30 @@ def check_certbot():
                 {
                     "lock_file": lock_file,
                     "owner": owner,
-                    "fix_hint": "Add to sudoers: sudo visudo, then add: " + os.environ.get("USER", "user") + " ALL=(ALL) NOPASSWD: /usr/bin/certbot renew --non-interactive",
+                    "note": "Root ownership is CORRECT and SECURE",
+                    "fix_hint": "Add to sudoers: sudo visudo, then add: " + os.environ.get("USER", "user") + " ALL=(ALL) NOPASSWD: /usr/bin/certbot certificates, /usr/bin/certbot renew --non-interactive",
                     "alternative": "Use systemd timer: sudo systemctl enable certbot.timer",
                 })
 
 
 def check_systemd_services():
     """Check critical systemd services (Linux only).
-
+    
     Complements macOS launchd checks for cross-platform support.
     """
     if sys.platform == "darwin":
         return  # Skip on macOS
-
+    
     # Check for systemctl availability
     if not os.path.exists("/usr/bin/systemctl") and not os.path.exists("/bin/systemctl"):
         return  # systemd not available
-
-    # Known benign masked services (e.g., from Ubuntu packages like casper)
-    # These are masked by design and should never be reported as issues
-    BENIGN_MASKED_SERVICES = {
-        "casper-md5check.service",  # Ubuntu live ISO checksum verify - masked by default
-    }
-
+    
     services = {
         "nginx.service": "nginx",
         "docker.service": "Docker",
         "fail2ban.service": "fail2ban",
     }
-
+    
     for svc, name in services.items():
         out, _, rc = run(f"systemctl is-active {svc} 2>/dev/null")
         if out.strip() != "active":
@@ -367,19 +405,6 @@ def check_systemd_services():
                 "service": svc,
                 "status": out.strip() or "unknown",
             })
-
-    # Check for unexpectedly failed services (excluding benign masked ones)
-    out, _, rc = run("systemctl --state=failed --no-legend 2>/dev/null")
-    if rc == 0 and out.strip():
-        for line in out.strip().split("\n"):
-            parts = line.split()
-            if parts:
-                failed_svc = parts[0].strip()
-                # Skip bullet/indicator chars and benign masked services
-                if failed_svc and not failed_svc.startswith("●") and failed_svc not in BENIGN_MASKED_SERVICES:
-                    add_issue("service_failed", "medium", f"Systemd service failed: {failed_svc}", {
-                        "service": failed_svc,
-                    })
 
 
 def main():

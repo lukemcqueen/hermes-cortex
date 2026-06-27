@@ -9,7 +9,7 @@ Detect and fix cron job errors, agent inbox help requests, and service issues wi
 
 ## When to use
 
-This skill is loaded by the `cron-auto-remediate` cron job every 30 minutes.
+This skill is loaded by the `agent-auto-remediate` cron job every 5 minutes.
 The companion `remediation-sensor.py` (no_agent, every 5m) gathers diagnostics
 and outputs JSON. This LLM tier only fires when the sensor reports issues.
 
@@ -20,7 +20,7 @@ issues, and report briefly.
 
 ### Phase 1: Check cron jobs for errors
 
-Use `hermes cron list` to list all jobs. Filter for `last_status=error` or jobs that haven't run recently.
+Use `cronjob(action='list')` to list all jobs. Filter for `last_status=error` or jobs that haven't run recently.
 
 For each errored job, diagnose the failure:
 
@@ -32,17 +32,14 @@ For each errored job, diagnose the failure:
 | Git error (detached HEAD, merge conflict) | `cd "${CORTEX_REPO:-$HOME/hermes-cortex}" && git checkout main && git pull --ff-only` |
 | Permission denied | `chmod +x ~/.hermes/scripts/<script>` |
 | Python import error | Re-activate venv; reinstall deps; check Python version |
-| Disk full / no space | `brew cleanup` (macOS) • For Linux: use distro-specific cleanup (apt-get autoremove, etc.) • `docker system prune -f`, purge log files >7d old |
+| Disk full / no space | `brew cleanup`, `docker system prune -f`, purge log files >7d old |
 | Docker service down | Run `service-recovery.py` manually |
-| gbrain sync error | Restart gbrain autopilot: `launchctl kickstart gui/$(id -u)/com.gbrain.autopilot` (macOS) • For Linux: check for both sync-watch and autopilot processes; if both present, stop sync-watch (e.g., pkill -f sync-watch.sh) and ensure autopilot is running; otherwise restart autopilot service or ~/.gbrain/autopilot-run.sh process or corresponding systemd service |
-| Ollama not running | `launchctl kickstart gui/$(id -u)/com.ollama.serve` (macOS) • For Linux: restart ollama service or `pkill ollama && ~/.local/bin/ollama serve &` |
+| gbrain sync error | Restart gbrain autopilot: `launchctl kickstart gui/$(id -u)/com.gbrain.autopilot` |
+| Ollama not running | `launchctl kickstart gui/$(id -u)/com.ollama.serve` |
 | nginx config invalid | `nginx -t` to validate; revert recent config changes |
-| Memory pressure | Run `purge` on macOS to free memory cache • For Linux: identify and restart memory-intensive processes or adjust swap usage |
+| Memory pressure | Run `purge` on macOS to free memory cache |
 | Network timeout | Retry the job once; check internet with `ping -c1 google.com` |
-| SSL cert expired / expiring soon | Run `cron-auto-remediate.sh fix-certs` — auto-renews via certbot if available; reports cert paths that need manual renewal |
-| Duplicate entries in INDEX.md | Remove duplicate block (if found) and renumber |
-| Nginx permission denied on error log or sites | Fix permissions: chown www-data:adm /var/log/nginx/error.log; chmod 640 /var/log/nginx/error.log; ensure files in /etc/nginx/sites-enabled/ are readable by nginx user (typically chown www-data:www-data or chmod 644). If sudo not available, report for manual fix. |
-| Service deployment blocked by sudo | Deploy the nginx configs directly: `cp ~/hermes-cortex/deploy/nginx/hermes-services.conf /etc/nginx/; cp ~/hermes-cortex/deploy/nginx/hermes-zone-defs.conf /etc/nginx/; nginx -t && systemctl reload nginx` |
+| SSL cert expired / expiring soon | Run `cron-auto-remediate.sh fix-certs` — auto-renews via certbot if available; reports cert paths that need manual renewal |\n\n> The script `cron-auto-remediate.sh` is a companion diagnostic shell script\n> (not the cron itself). The LLM-driven cron is `agent-auto-remediate`.
 
 After fixing:
 1. Verify the fix (re-run the failing script or check the service)

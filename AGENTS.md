@@ -137,6 +137,13 @@ Every agent working in this repo must follow these non-negotiable rules:
       Every discovered issue must be tracked, even if it won't be fixed
       this session.
 
+13. **Pull before push, always** — before any `git push`, fetch and rebase:
+    `git pull --rebase origin <branch>`. Pushing without pulling first
+    can discard remote commits or create merge bubbles. If the remote
+    has new commits, your push will be rejected anyway — pull first and
+    save the round trip. Set `SKIP_PRE_PUSH=1` to bypass on a specific
+    push.
+
 ---
 
 ## Loop Governance — Quick Reference
@@ -375,12 +382,12 @@ Load the relevant skill with `skill_view(name)` when entering each stage.
 
 | Cron | Schedule | Type | Script/Skill | Deliver | Purpose |
 |------|----------|------|--------------|---------|---------|
-| `agent-remediate` | `*/5 * * * *` | LLM+skill | `auto-remediation` skill | `local` | Auto-fix cron/inbox/service issues |
+|| `agent-auto-remediate` | `*/5 * * * *` | LLM+skill | `auto-remediation` skill | `local` | Auto-fix cron/inbox/service issues |
 | `remediation-sensor` | `*/5 * * * *` | no_agent | `remediation-sensor.py` | `local` | Companion diagnostics sensor |
 | `service-recovery` | `*/5 * * * *` | no_agent | `service-recovery.py` | `origin` | Auto-restart crashed services |
 | `hermes-update` | `23 22 * * *` | no_agent | `hermes-update.sh` | `origin` | Daily Hermes Agent upgrade + config migrate + doctor |
 | `hermes-cortex-sync` | `33 22 * * *` | no_agent | `hermes-cortex-sync.sh` | `origin` | Daily repo pull + tool re-sync |
-| `agent-team-health-monitor` | `*/10 * * * *` | no_agent | `agent-team-health-monitor.py` | `origin` | Cross-agent health polling (orchestrator only) |
+|| `orch-team-health-monitor` | `*/10 * * * *` | no_agent | `agent-team-health-monitor.py` | `origin` | Cross-agent health polling (orchestrator only) |
 | `system-alert-watchdog` | `*/10 * * * *` | no_agent | `system-alert.py` | `origin` | Resource threshold alerts |
 | `orch-check-agent-messages` | `*/10 * * * *` | no_agent | `orch-check-agent-messages.sh` | `origin` | Flag urgent agent messages |
 | `inbox-sensor` | `*/10 * * * *` | no_agent | `inbox-sensor.py` | `local` | Detect new broadcast messages |
@@ -421,23 +428,23 @@ cat ~/.hermes/cron/jobs.json | python3 -m json.tool
 | `system-alert.py` | no_agent watchdog | Every 10m | Resource alerts + auto-cleanup (purge at 85% mem, brew/docker prune at 90% disk) |
 | `service-recovery.py` | no_agent watchdog | Every 5m | Auto-restart nginx, Ollama, gbrain, Langfuse, restore missing scripts |
 | `orch-check-agent-messages.sh` | no_agent watchdog | Every 10m | Flags agent error messages with remediation markers |
-| `agent-remediate` (skill) | LLM-driven cron | Every 5m | Orchestrator: checks errored cron jobs + inbox remediation markers, applies fixes |
+|| `agent-auto-remediate` (skill) | LLM-driven cron | Every 5m | Orchestrator: checks errored cron jobs + inbox remediation markers, applies fixes |
 
 **Skill location:** `src/skills/devops/auto-remediation/SKILL.md`
 
 **Setting up on a new agent:** Each agent sets `AGENT_NAME` env var or `~/.hermes/moses-inbox.conf` so health reports identify themselves. Default: hostname.
 1. `install.sh` copies all scripts to `~/.hermes/scripts/`
 2. `install-hermes-crons.sh` (auto-run by install.sh) creates essential cron jobs:
-   - `agent-remediate` (every 5m, skill-based) — checks errors, applies fixes
+   - `agent-auto-remediate` (every 5m, skill-based) — checks errors, applies fixes
    - `remediation-sensor` (every 5m, no_agent) — companion diagnostics sensor
    - `system-heartbeat` (every 30m, no_agent) — system health monitoring
-   - `agent-team-health-monitor` (every 10m, no_agent) — agent health polling _(orchestrator only)_
+   - `orch-team-health-monitor` (every 10m, no_agent) — agent health polling _(orchestrator only)_
    - `system-alert-watchdog` (every 10m, no_agent) — resource alerting
    - `service-recovery` (every 5m, no_agent) — auto-restart crashed services
    - `memory-to-brain-sync` (every 6h, no_agent) — memory persistence
    - `inbox-sensor` (every 10m, no_agent) — detect new broadcast messages
    - `orch-check-agent-messages` (every 10m, no_agent) — flag urgent requests
-3. The LLM-driven cron (`cron-auto-remediate`) loads the skill and runs the 3-phase workflow:
+3. The LLM-driven cron (`agent-auto-remediate`) loads the skill and runs the 3-phase workflow:
    - Phase 1: Check errored cron jobs
    - Phase 2: Check agent inbox remediation markers
    - Phase 3: Spot-check system resources

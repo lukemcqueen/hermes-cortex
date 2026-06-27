@@ -217,7 +217,7 @@ if $UNINSTALL; then
   echo ""
   printf "${CYAN}━━━ Uninstalling Hermes Cron Jobs ━━━${RESET}\n\n"
   for job in \
-    "cron-auto-remediate" "system-heartbeat" "memory-to-brain-sync" \
+    "agent-auto-remediate" "system-heartbeat" "memory-to-brain-sync" \
     "system-alert-watchdog" "service-recovery" "inbox-sensor" \
     "orch-check-agent-messages" "remediation-sensor"; do
     remove_cron "$job"
@@ -237,7 +237,7 @@ fi
 
 # ── 1. Auto-Remediation (LLM-driven, skill-based) ──────────
 printf "${CYAN}  1. Auto-Remediation Pipeline${RESET}\n"
-create_cron "cron-auto-remediate" "*/5 * * * *" \
+create_cron "agent-auto-remediate" "*/5 * * * *" \
   "" \
   "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report." \
   "auto-remediation" \
@@ -267,9 +267,9 @@ create_cron "system-heartbeat" "*/30 * * * *" \
   "" \
   "true"
 
-# agent-team-health-monitor cron is NOT registered here — it is
-# orchestrator-only (Moses polls peer agents). Not needed on peers.
-# Moses adds it manually via `hermes cron create`.
+# orch-team-health-monitor is NOT registered here as a general cron — it is
+# orchestrator-only (Moses polls peer agents). It is created in the
+# orchestrator section below alongside orch-check-agent-messages.
 
 # ── 5. System Alert Watchdog ────────────────────────────────
 create_cron "system-alert-watchdog" "*/10 * * * *" \
@@ -325,8 +325,10 @@ create_cron "score-auditor" "0 */6 * * *" \
   "true"
 
 # ── Orchestrator-only crons ─────────────────────────────────
-# These crons only run on the orchestrator (Moses). Agents check
-# src/agent-registry.json — if this host isn't the orchestrator, skip.
+# These crons only run on the orchestrator (Moses) and backup
+# orchestrator. Worker agents skip them entirely.
+# Agent-registry detection: if this host's hostname matches the
+# orchestrator field, it runs the orch-* crons.
 
 IS_ORCHESTRATOR=false
 REGISTRY="${CORTEX_REPO:-$HOME/hermes-cortex}/src/agent-registry.json"
@@ -341,6 +343,16 @@ fi
 if $IS_ORCHESTRATOR; then
   create_cron "orch-check-agent-messages" "*/10 * * * *" \
     "orch-check-agent-messages.sh" \
+    "" \
+    "" \
+    "" \
+    "origin" \
+    "" \
+    "true"
+
+  # orch-team-health-monitor — cross-agent health polling
+  create_cron "orch-team-health-monitor" "*/10 * * * *" \
+    "agent-team-health-monitor.py" \
     "" \
     "" \
     "" \

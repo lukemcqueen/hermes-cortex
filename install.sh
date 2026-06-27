@@ -1677,7 +1677,7 @@ fi
 
 # agent-team-health-monitor.py is deliberately NOT installed here — it's
 # orchestrator-only (Moses polls peer agents). Peer agents don't need it.
-# Moses copies it manually or via cortex-update.sh.
+# It is deployed via the orch-* section in install-hermes-crons.sh.
 
 # ── Auto-Save Active Sessions Script ──────────────────────────────
 AUTO_SAVE_PATH="${SCRIPTS_DIR}/auto-save-active.py"
@@ -1967,6 +1967,7 @@ LANGFUSE_NEXTAUTH_SECRET=$(openssl rand -hex 32)
 LANGFUSE_POSTGRES_PASSWORD=$(openssl rand -hex 20)
 LANGFUSE_CLICKHOUSE_PASSWORD=$(openssl rand -hex 16)
 LANGFUSE_REDIS_AUTH=$(openssl rand -hex 32)
+LANGFUSE_ENCRYPTION_KEY=$(openssl rand -hex 32)
 LANGFUSE_MINIO_ACCESS_KEY=$(openssl rand -hex 16)
 LANGFUSE_MINIO_SECRET_KEY=$(openssl rand -hex 32)
 
