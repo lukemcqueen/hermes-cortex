@@ -93,6 +93,16 @@ def find_recent_files() -> list[dict]:
                             if r.returncode != 0:
                                 continue  # untracked file
 
+                            # Skip files that match HEAD — they were pulled,
+                            # not locally edited. Only flag dirty files.
+                            r2 = subprocess.run(
+                                ["git", "-C", repo_root, "diff", "--quiet",
+                                 "HEAD", "--", rel],
+                                capture_output=True, timeout=5,
+                            )
+                            if r2.returncode == 0:
+                                continue  # clean vs HEAD → pulled, skip
+
                         results.append({
                             "path": fpath.replace(HOME, "~"),
                             "mtime": datetime.fromtimestamp(mtime,
