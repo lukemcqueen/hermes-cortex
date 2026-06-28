@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 7,
   "description": "Canonical loop-governance cron jobs. Managed by install-crons.py.",
   "crons": [
     {

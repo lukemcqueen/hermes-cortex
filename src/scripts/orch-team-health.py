@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""orch-team-health.py — Cross-server health poller for Moses.
+"""agent-team-health-monitor.py — Cross-server health poller for Moses.
 
 no_agent watchdog pattern:
   Empty stdout → silent (no state change)

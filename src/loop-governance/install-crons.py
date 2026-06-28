@@ -113,12 +113,21 @@ def main():
         with open(registry_path) as f:
             registry = json.load(f)
         hostname = os.uname().nodename.lower()
-        for entry in registry.get("agents", []):
-            if entry.get("is_orchestrator"):
-                orch_host = entry.get("hostname", "").lower()
-                if orch_host and orch_host in hostname:
-                    is_orchestrator = True
-                break
+        agents = registry.get("agents", {})
+        if isinstance(agents, dict):
+            for agent_name, entry in agents.items():
+                if entry.get("is_orchestrator"):
+                    orch_host = entry.get("hostname", "").lower()
+                    if orch_host and orch_host in hostname:
+                        is_orchestrator = True
+                    break
+        elif isinstance(agents, list):
+            for entry in agents:
+                if entry.get("is_orchestrator"):
+                    orch_host = entry.get("hostname", "").lower()
+                    if orch_host and orch_host in hostname:
+                        is_orchestrator = True
+                    break
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         pass
 
