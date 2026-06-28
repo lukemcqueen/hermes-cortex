@@ -511,7 +511,7 @@ deploy_skills() {
       local skill_trimmed="$(echo "$skill" | tr -d ' ')"
       # Search for the skill in ~/.hermes/skills/
       local skill_path
-      skill_path=$(find "$HERMES_CORTEX_SKILLS" -maxdepth 3 -type d -name "$skill_trimmed" 2>/dev/null | head -1)
+      skill_path=$(find -L "$HERMES_CORTEX_SKILLS" -maxdepth 3 -type d -name "$skill_trimmed" 2>/dev/null | head -1)
       local dest="${project_skills}/${skill_trimmed}/SKILL.md"
       if [[ -n "$skill_path" ]]; then
         if [[ -f "$dest" ]]; then
@@ -532,7 +532,7 @@ deploy_skills() {
     local skill_trimmed="$(echo "$skill" | tr -d ' ')"
     [[ -z "$skill_trimmed" ]] && continue
     local skill_path
-    skill_path=$(find "$HERMES_CORTEX_SKILLS" -maxdepth 3 -type d -name "$skill_trimmed" 2>/dev/null | head -1)
+    skill_path=$(find -L "$HERMES_CORTEX_SKILLS" -maxdepth 3 -type d -name "$skill_trimmed" 2>/dev/null | head -1)
     local dest="${project_skills}/${skill_trimmed}"
     if [[ -n "$skill_path" ]] && [[ -f "${skill_path}/SKILL.md" ]]; then
       if [[ ! -d "$dest" ]]; then
