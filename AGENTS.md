@@ -30,7 +30,9 @@ Hermes Cortex is a **public installer and skill set** for
 | `docs/` | Troubleshooting, guides, templates, SECURITY.md |
 | `docs/templates/` | Seed MEMORY.md, USER.md, brain .gitignore |
 | `install.sh` | Single-command installer, 27 steps (idempotent) |
-| `deploy/docker-compose.langfuse.yml` | Langfuse v3 with ClickHouse, MinIO, Redis |
+| `deploy/` | Langfuse + ClickHouse deployment (docker-compose, configs, README) |
+| `deploy/docker-compose.langfuse.yml` | Langfuse v3.200.0 with ClickHouse, MinIO, Redis |
+| `deploy/README-langfuse-clickhouse.md` | **📘 Start here** — Langfuse setup, ClickHouse crash fixes, Hermes wiring |
 | `.hermes-cortex/sessions/current.md` | Active session state — branch, commits, task context |
 | `.hermes-cortex/sessions/archive/` | Timestamped session snapshots |
 | `.hermes-cortex/skills/` | Project-specific Hermes skills (tracked) |

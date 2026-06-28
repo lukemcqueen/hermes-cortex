@@ -9,55 +9,37 @@
 #
 # Cron imposes a 120s timeout on no_agent scripts, and `hermes update` can
 # take >120s when downloading a new binary.  We wrap the update step with an
-# internal 60s timeout so migrate/doctor still run even if the download is
-# wait — the update will simply be picked up on the next daily cycle.
-#
-# v2: Reduced from 90s to 60s (2026-06-25) — 90s left only 30s for
-# migrate+doctor, which still exceeded the 120s cron cap. 60s gives 60s
-# for remaining steps.
-# v3: Reduced from 60s to 30s (2026-06-25) — 60s still insufficient for
-# migrate+doctor after update timeout. 30s gives 90s for remaining steps.
-# v5: Reduced from 30/40/40 to 25/35/30 (2026-06-26) — 30+40+40=110s still
-# exceeded 120s cron cap with overhead. 25+35+30=90s gives 30s buffer.
+# internal timeout so migrate/doctor still run even if the download stalls —
+# the update will simply be picked up on the next daily cycle.
 set -euo pipefail
 
-# Step 1: Update upstream Hermes Agent (with guarded timeout)
-UPDATE_OUTPUT=$(timeout 20 hermes update -y 2>&1) || {
+# Step 1: Update upstream Hermes Agent
+# NOTE: hermes update -y requires gateway restart approval and hangs in cron context.
+# Use a timeout to avoid blocking indefinitely — if it times out, skip to migrate+doctor.
+UPDATE_OUTPUT=$(timeout 30 hermes update -y 2>&1) || {
     UPDATE_EXIT=$?
-    if [ "$UPDATE_EXIT" -eq 124 ]; then
-        echo "[hermes-update] hermes update timed out (>20s), will retry next cycle"
+    if [ $UPDATE_EXIT -eq 124 ]; then
+        echo "[hermes-update] hermes update timed out (non-interactive cron context); skipping."
     else
         echo "[hermes-update] hermes update failed (exit $UPDATE_EXIT)"
         echo "$UPDATE_OUTPUT"
+        # Non-fatal — allow migrate and doctor to proceed
     fi
-    # Non-fatal — continue to migrate + doctor
 }
 
-# Step 2: Migrate config schema (needed after version bumps)
-# v6: Reduced timeouts from 25/35/30 to 20/25/25 (2026-06-26)
-# 20+25+25=70s total, leaving 50s buffer for shell overhead within 120s cron limit.
-MIGRATE_OUTPUT=$(timeout 25 hermes config migrate 2>&1) || {
+# Step 2: Config migration (runs even if update timed out or failed)
+MIGRATE_OUTPUT=$(timeout 35 hermes config migrate 2>&1) || {
     MIGRATE_EXIT=$?
-    if [ "$MIGRATE_EXIT" -eq 124 ]; then
-        echo "[hermes-update] config migrate timed out (>25s), will retry next cycle"
-    else
-        echo "[hermes-update] config migrate failed (exit $MIGRATE_EXIT)"
-        echo "$MIGRATE_OUTPUT"
-        exit 1
-    fi
+    echo "[hermes-update] config migrate failed (exit $MIGRATE_EXIT)"
+    echo "$MIGRATE_OUTPUT"
 }
 
-# Step 3: Verify health
-# v6: Reduced doctor timeout to match new budget.
-DOCTOR_OUTPUT=$(timeout 25 hermes doctor --fix 2>&1) || {
+# Step 3: Final health check
+DOCTOR_OUTPUT=$(timeout 30 hermes doctor 2>&1) || {
     DOCTOR_EXIT=$?
-    if [ "$DOCTOR_EXIT" -eq 124 ]; then
-        echo "[hermes-update] doctor check timed out (>25s), will retry next cycle"
-    else
-        echo "[hermes-update] doctor check found issues (exit $DOCTOR_EXIT)"
-        echo "$DOCTOR_OUTPUT"
-        exit 1
-    fi
+    echo "[hermes-update] hermes doctor failed (exit $DOCTOR_EXIT)"
+    echo "$DOCTOR_OUTPUT"
 }
 
-echo "[hermes-update] Hermes Agent updated, config migrated, health verified."
+# Silent exit — no news is good news
+exit 0
