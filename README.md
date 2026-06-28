@@ -346,6 +346,13 @@ bash ~/.hermes/scripts/install-hermes-crons.sh --force
 ls -la ~/.hermes/scripts/*.py ~/.hermes/scripts/*.sh
 ```
 
+### Cron output convention
+
+All cron job output follows a consistent format:
+- **Script (no_agent) crons**: prefix with `[YYYY-MM-DD HH:MM KST] cron-name: message`
+- **LLM-driven crons**: start with `[YYYY-MM-DD HH:MM KST] cron-name`, end with `📊 Token cost: tracked in session DB | Cron: cron-name`
+- **Silent when good**: no output when everything is healthy — only produce output on state changes, errors, or actionable findings
+
 ### "I don't have macOS"
 See the [Troubleshooting Guide](docs/troubleshooting.md) for Linux and Windows notes.
 

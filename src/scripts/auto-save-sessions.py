@@ -242,7 +242,7 @@ def main():
         "skipped": [r["name"] for r in skipped],
         "failed": [r["name"] for r in failed],
     }
-    summary_path = os.path.expanduser(f"~/.hermes/cron/output/auto-save-active-summary.json")
+    summary_path = os.path.expanduser(f"~/.hermes/cron/output/auto-save-sessions-summary.json")
     os.makedirs(os.path.dirname(summary_path), exist_ok=True)
     with open(summary_path, "w") as f:
         json.dump(summary, f, indent=2, default=str)

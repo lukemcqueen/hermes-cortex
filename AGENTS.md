@@ -374,7 +374,7 @@ Load the relevant skill with `skill_view(name)` when entering each stage.
 
 **Change:** All monitoring scripts now output timestamps in KST (UTC+9) instead of UTC.
 
-**Affected scripts:** `agent-team-health-monitor.py`, `system-alert.py`, `service-recovery.py`, `orch-check-agent-messages.sh`
+**Affected scripts:** `orch-team-health.py`, `system-alert.py`, `service-recovery.py`, `orch-team-messages.sh`
 
 **Rationale:** User is in Seoul (KST). Timestamps should match user's local time for faster incident response.
 
@@ -389,9 +389,9 @@ Load the relevant skill with `skill_view(name)` when entering each stage.
 | `service-recovery` | `*/5 * * * *` | no_agent | `service-recovery.py` | `origin` | Auto-restart crashed services |
 | `hermes-update` | `23 22 * * *` | no_agent | `hermes-update.sh` | `origin` | Daily Hermes Agent upgrade + config migrate + doctor |
 | `hermes-cortex-sync` | `33 22 * * *` | no_agent | `hermes-cortex-sync.sh` | `origin` | Daily repo pull + tool re-sync |
-|| `orch-team-health-monitor` | `*/10 * * * *` | no_agent | `agent-team-health-monitor.py` | `origin` | Cross-agent health polling (orchestrator only) |
+|| `orch-team-health` | `*/10 * * * *` | no_agent | `orch-team-health.py` | `origin` | Cross-agent health polling (orchestrator only) |
 | `system-alert-watchdog` | `*/10 * * * *` | no_agent | `system-alert.py` | `origin` | Resource threshold alerts |
-| `orch-check-agent-messages` | `*/10 * * * *` | no_agent | `orch-check-agent-messages.sh` | `origin` | Flag urgent agent messages |
+| `orch-team-messages` | `*/10 * * * *` | no_agent | `orch-team-messages.sh` | `origin` | Flag urgent agent messages |
 | `inbox-sensor` | `*/10 * * * *` | no_agent | `inbox-sensor.py` | `local` | Detect new broadcast messages |
 | `system-heartbeat` | `*/30 * * * *` | no_agent | `heartbeat.py` | `local` | System health check |
 | `memory-to-brain-sync` | `0 */6 * * *` | no_agent | `memory-to-brain.py` | `local` | Memory persistence to gbrain |
@@ -429,7 +429,7 @@ cat ~/.hermes/cron/jobs.json | python3 -m json.tool
 | `cron-auto-remediate.sh` | Diagnostic shell | On-demand | Structured diagnostics + fix actions (fix-missing, fix-git, fix-perms, fix-purge) |
 | `system-alert.py` | no_agent watchdog | Every 10m | Resource alerts + auto-cleanup (purge at 85% mem, brew/docker prune at 90% disk) |
 | `service-recovery.py` | no_agent watchdog | Every 5m | Auto-restart nginx, Ollama, gbrain, Langfuse, restore missing scripts |
-| `orch-check-agent-messages.sh` | no_agent watchdog | Every 10m | Flags agent error messages with remediation markers |
+|| `orch-team-messages.sh` | no_agent watchdog | Every 10m | Flags agent error messages with remediation markers |
 || `agent-auto-remediate` (skill) | LLM-driven cron | Every 5m | Orchestrator: checks errored cron jobs + inbox remediation markers, applies fixes |
 
 **Skill location:** `src/skills/devops/auto-remediation/SKILL.md`
@@ -440,12 +440,12 @@ cat ~/.hermes/cron/jobs.json | python3 -m json.tool
    - `agent-auto-remediate` (every 5m, skill-based) — checks errors, applies fixes
    - `remediation-sensor` (every 5m, no_agent) — companion diagnostics sensor
    - `system-heartbeat` (every 30m, no_agent) — system health monitoring
-   - `orch-team-health-monitor` (every 10m, no_agent) — agent health polling _(orchestrator only)_
+   - `orch-team-health` (every 10m, no_agent) — agent health polling _(orchestrator only)_
    - `system-alert-watchdog` (every 10m, no_agent) — resource alerting
    - `service-recovery` (every 5m, no_agent) — auto-restart crashed services
    - `memory-to-brain-sync` (every 6h, no_agent) — memory persistence
    - `inbox-sensor` (every 10m, no_agent) — detect new broadcast messages
-   - `orch-check-agent-messages` (every 10m, no_agent) — flag urgent requests
+   - `orch-team-messages` (every 10m, no_agent) — flag urgent requests
 3. The LLM-driven cron (`agent-auto-remediate`) loads the skill and runs the 3-phase workflow:
    - Phase 1: Check errored cron jobs
    - Phase 2: Check agent inbox remediation markers
@@ -549,14 +549,14 @@ Or re-run `install.sh` and the new guard will skip re-creating it.
 
 **Key changes to the repo:**
 
-1. **`src/agent-registry.json` converted from array → dict format (v2).** The original v1 format had `agents` as an array of objects. But `orch-check-agent-messages.sh` calls `data.get('agents', {}).keys()` and `generate-inbox-wrappers.py` calls `agents.items()` — both expect a **dict** keyed by agent name, not an array. The schema doc at `src/skills/devops/agent-inbox/references/agent-registry.md` already documented dict format; the sample file just didn't match. v2 adds:
+1. **`src/agent-registry.json` converted from array → dict format (v2).** The original v1 format had `agents` as an array of objects. But `orch-team-messages.sh` calls `data.get('agents', {}).keys()` and `generate-inbox-wrappers.py` calls `agents.items()` — both expect a **dict** keyed by agent name, not an array. The schema doc at `src/skills/devops/agent-inbox/references/agent-registry.md` already documented dict format; the sample file just didn't match. v2 adds:
    - `routing.broadcast_topics` — topics treated as broadcast channels
    - `routing.agent_prefix_topics` — when `true`, every agent name auto-becomes a broadcast topic
    - `inbox_user`, `inbox_watch_schedule`, `inbox_deliver` per agent — used by `generate-inbox-wrappers.py`
 
 2. **`process-agent-messages` cron created** (every 10m, LLM-driven, toolsets: terminal+file+web). Companion script: `orch-moses-inbox-remediate.sh` reads remediation markers and outputs structured JSON.
 
-3. **`orch-moses-inbox-remediate.sh`** — companion script that reads `~/.hermes/state/remediate/` markers (written by `orch-check-agent-messages.sh`) and outputs JSON for the LLM cron to process.
+3. **`orch-moses-inbox-remediate.sh`** — companion script that reads `~/.hermes/state/remediate/` markers (written by `orch-team-messages.sh`) and outputs JSON for the LLM cron to process.
 
 4. **`orch-weekly-auto-fix.py`** — safety-net auto-fix script with built-in verification.
 

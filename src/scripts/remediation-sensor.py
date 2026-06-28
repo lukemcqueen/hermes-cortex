@@ -68,8 +68,8 @@ def run(cmd, timeout=15):
 def check_scripts():
     """Check for missing or non-executable scripts."""
     required_scripts = [
-        "heartbeat.py", "service-recovery.py", "system-alert.py",
-        "orch-check-agent-messages.sh", "cron-auto-remediate.sh",
+        "service-recovery.py", "system-alert.py",
+        "orch-team-messages.sh", "cron-auto-remediate.sh",
         "daily-lesson-mine.sh", "update-session-state.sh",
     ]
     for script in required_scripts:

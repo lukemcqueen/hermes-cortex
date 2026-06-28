@@ -7,7 +7,7 @@
 ## Purpose
 
 Centralizes all agent metadata so scripts don't hardcode agent names.
-`orch-check-agent-messages.sh` reads routing targets dynamically from here.
+`orch-team-messages.sh` reads routing targets dynamically from here.
 `generate-inbox-wrappers.py` generates per-agent watch scripts from here.
 
 ## Schema

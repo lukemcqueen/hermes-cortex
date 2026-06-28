@@ -33,7 +33,7 @@ SILENT_IS_ZERO = 5  # bytes — output smaller than this when job should produce
 MONITORED_CRONS = [
     "agent-inbox-check",
     "agent-auto-remediate",
-    "weekly-loop-eval",
+    "agent-weekly-loop-eval",
     "local-agent-daily-news-brief",
     "local-agent-daily-system-brief",
     "local-agent-daily-finance-brief",

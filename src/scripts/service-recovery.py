@@ -21,6 +21,7 @@ from platform_utils import (
     is_macos,
     is_linux,
 )
+from state_tracker import StateTracker
 
 UID = os.getuid()
 LANGFUSE_DIR = str(Path.home() / "langfuse")
@@ -56,7 +57,7 @@ def _check_scripts() -> bool:
     """Check if critical Hermes scripts are present and executable."""
     critical = [
         "heartbeat.py", "service-recovery.py", "system-alert.py",
-        "orch-check-agent-messages.sh", "cron-auto-remediate.sh",
+        "orch-team-messages.sh", "cron-auto-remediate.sh",
     ]
     for name in critical:
         sp = HERMES_SCRIPTS / name
@@ -95,7 +96,7 @@ def _try_restore_scripts() -> str | None:
     restored = []
     critical = [
         "heartbeat.py", "service-recovery.py", "system-alert.py",
-        "orch-check-agent-messages.sh", "cron-auto-remediate.sh",
+        "orch-team-messages.sh", "cron-auto-remediate.sh",
         "daily-lesson-mine.sh", "update-session-state.sh",
         "langfuse-health-watchdog.py", "memory-to-brain.py",
         "web-cache-backup.sh", "web-cache-prune.sh",
@@ -201,7 +202,15 @@ def main():
         else:
             actions.append(f"🔄 {name}: restarted successfully")
 
+    # State tracking — suppress duplicates, send resolution
     if actions:
+        fp = "|".join(actions)
+        st = StateTracker("service-recovery")
+        action = st.evaluate(fp)
+
+        if action == "silent":
+            return  # same errors as last time
+
         from hermes_tz import format_timestamp
         hostname = os.uname().nodename[:12]
         ts = format_timestamp("%Y-%m-%d %H:%M %Z")
@@ -210,6 +219,10 @@ def main():
             print(a)
         for s in statuses:
             print(f"  {s}")
+    else:
+        # All services up — clear any prior error state
+        st = StateTracker("service-recovery")
+        st.evaluate("healthy", has_issues=False)
 
 if __name__ == "__main__":
     main()

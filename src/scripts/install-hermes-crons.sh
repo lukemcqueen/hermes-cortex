@@ -219,7 +219,7 @@ if $UNINSTALL; then
   for job in \
     "agent-auto-remediate" "system-heartbeat" "memory-to-brain-sync" \
     "system-alert-watchdog" "service-recovery" "inbox-sensor" \
-    "orch-check-agent-messages" "remediation-sensor"; do
+    "orch-team-messages" "remediation-sensor"; do
     remove_cron "$job"
   done
   info "Uninstall complete"
@@ -256,23 +256,9 @@ create_cron "remediation-sensor" "*/5 * * * *" \
   "" \
   "true"
 
-# ── 3. System Heartbeat ─────────────────────────────────────
+# ── 3. System Alert Watchdog (merged heartbeat) ──────────
 printf "\n${CYAN}  2. System Health Monitoring${RESET}\n"
-create_cron "system-heartbeat" "*/30 * * * *" \
-  "heartbeat.py" \
-  "" \
-  "" \
-  "" \
-  "local" \
-  "" \
-  "true"
-
-# orch-team-health-monitor is NOT registered here as a general cron — it is
-# orchestrator-only (Moses polls peer agents). It is created in the
-# orchestrator section below alongside orch-check-agent-messages.
-
-# ── 5. System Alert Watchdog ────────────────────────────────
-create_cron "system-alert-watchdog" "*/10 * * * *" \
+create_cron "system-alert-watchdog" "*/30 * * * *" \
   "system-alert.py" \
   "" \
   "" \
@@ -333,7 +319,7 @@ create_cron "score-auditor" "0 */6 * * *" \
 IS_ORCHESTRATOR=false
 REGISTRY="${CORTEX_REPO:-$HOME/hermes-cortex}/src/agent-registry.json"
 if [ -f "$REGISTRY" ]; then
-  ORCH=$(python3 -c "import json; d=json.load(open('$REGISTRY')); print(next((a['name'] for a in d.get('agents',[]) if a.get('is_orchestrator')), 'unknown'))" 2>/dev/null)
+  ORCH=$(python3 -c "import json; d=json.load(open('$REGISTRY')); agents = d.get('agents',{}); print(next((a.get('name',k) for k,a in agents.items() if a.get('is_orchestrator')), 'unknown'))" 2>/dev/null || echo "unknown")
   HOST=$(hostname -s 2>/dev/null || echo "unknown")
   if [ "$HOST" = "$ORCH" ] || [ "${ORCH}" = "moses" ]; then
     IS_ORCHESTRATOR=true
@@ -341,8 +327,8 @@ if [ -f "$REGISTRY" ]; then
 fi
 
 if $IS_ORCHESTRATOR; then
-  create_cron "orch-check-agent-messages" "*/10 * * * *" \
-    "orch-check-agent-messages.sh" \
+  create_cron "orch-team-messages" "*/10 * * * *" \
+    "orch-team-messages.sh" \
     "" \
     "" \
     "" \
@@ -350,9 +336,9 @@ if $IS_ORCHESTRATOR; then
     "" \
     "true"
 
-  # orch-team-health-monitor — cross-agent health polling
-  create_cron "orch-team-health-monitor" "*/10 * * * *" \
-    "agent-team-health-monitor.py" \
+  # orch-team-health — cross-agent health polling
+  create_cron "orch-team-health" "*/10 * * * *" \
+    "orch-team-health.py" \
     "" \
     "" \
     "" \

@@ -1203,7 +1203,7 @@ After sending, verify the message landed:
 ls -la ~/hermes-cortex-private/messages/inbox/*titus-to-moses*
 ```
 
-The `orch-check-agent-messages.sh` cron (every 10m) will pick it up and Moses (or the inbox processor) will process it.
+The `orch-team-messages.sh` cron (every 10m) will pick it up and Moses (or the inbox processor) will process it.
 
 ## Maintenance
 

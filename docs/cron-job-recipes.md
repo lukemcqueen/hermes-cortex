@@ -958,7 +958,7 @@ hermes cron create \
 
 ### Prerequisites
 
-- `orch-check-agent-messages.sh` cron running every 10m (detects messages + writes markers)
+- `orch-team-messages.sh` cron running every 10m (detects messages + writes markers)
 - Peer agents sending fix requests to agent inbox (topics: general, all, luke, <agentname>)
 
 ---

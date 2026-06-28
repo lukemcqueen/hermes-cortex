@@ -56,7 +56,7 @@ Check the agent inbox for messages from other agents (Titus, Joseph, Kustos, Gis
 
 **Where to check:**
 - `~/hermes-cortex-private/messages/inbox/` — broadcast messages addressed to `all` or from an agent asking for help
-- The `orch-check-agent-messages.sh` output tells you what's new
+- The `orch-team-messages.sh` output tells you what's new
 
 **How to handle:**
 1. Read the message content
@@ -80,5 +80,9 @@ Don't report if everything is healthy — stay silent (watchdog pattern).
 ## Output rules
 
 - **Silent if nothing to fix** — zero output for healthy system
+- **Silent on duplicate errors** — same issue reported last run is suppressed (uses `state_tracker.py`)
+- **Resolution reporting** — when a previously-reported issue clears, send `✅ {name} restored`
+- **Timestamp prefix** — start with `[YYYY-MM-DD HH:MM KST] agent-auto-remediate`
+- **Token cost footer** — end with `📊 Token cost: tracked in session DB | Cron: agent-auto-remediate`
 - **Brief** when fixes were applied — who, what, result
 - **Escalate** only if remediation failed 3+ times — then flag for user

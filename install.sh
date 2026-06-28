@@ -1675,17 +1675,17 @@ if [[ -f "${SCRIPT_DIR}/src/scripts/health-server.py" ]]; then
   info "  Installed health-server.py"
 fi
 
-# agent-team-health-monitor.py is deliberately NOT installed here — it's
+# orch-team-health.py is deliberately NOT installed here — it's
 # orchestrator-only (Moses polls peer agents). Peer agents don't need it.
 # It is deployed via the orch-* section in install-hermes-crons.sh.
 
 # ── Auto-Save Active Sessions Script ──────────────────────────────
-AUTO_SAVE_PATH="${SCRIPTS_DIR}/auto-save-active.py"
-if [[ -f "${SCRIPT_DIR}/src/scripts/auto-save-active.py" ]]; then
-  cp "${SCRIPT_DIR}/src/scripts/auto-save-active.py" "$AUTO_SAVE_PATH" 2>/dev/null || \
-    warn "auto-save-active.py copy failed"
-  chmod +x "$AUTO_SAVE_PATH"
-  info "  Installed auto-save-active.py"
+AUTO_SAVE_PATH="${SCRIPTS_DIR}/auto-save-sessions.py"
+if [[ -f "${SCRIPT_DIR}/src/scripts/auto-save-sessions.py" ]]; then
+  cp "${SCRIPT_DIR}/src/scripts/auto-save-sessions.py" "$AUTO_SAVE_PATH" 2>/dev/null || \
+    warn "auto-save-sessions.py copy failed"
+  chmod +x "$AUTO_SAVE_PATH" 2>/dev/null || true
+  info "  Installed auto-save-sessions.py"
 fi
 
 # ── Eval Harness Scripts ───────────────────────────────────────

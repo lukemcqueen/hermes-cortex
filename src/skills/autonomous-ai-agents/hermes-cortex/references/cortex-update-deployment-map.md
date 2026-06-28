@@ -22,7 +22,7 @@ Sources under `~/hermes-cortex/` → dest under `~/.hermes/` or `~/`.
 | `src/scripts/install-nginx.sh` | `~/.hermes/scripts/install-nginx.sh` | |
 | `src/scripts/install-cortex-update-cron.sh` | `~/.hermes/scripts/install-cortex-update-cron.sh` | |
 | `src/scripts/prod-watchdog.sh` | `~/.hermes/scripts/prod-watchdog.sh` | |
-| `src/scripts/orch-check-agent-messages.sh` | `~/.hermes/scripts/orch-check-agent-messages.sh` | |
+| `src/scripts/orch-team-messages.sh` | `~/.hermes/scripts/orch-team-messages.sh` | |
 | `src/scripts/os-config.sh` | `~/.hermes/scripts/os-config.sh` | |
 | `src/scripts/service-writer.sh` | `~/.hermes/scripts/service-writer.sh` | |
 

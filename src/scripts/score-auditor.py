@@ -14,8 +14,10 @@ QUIET when nothing to report — only produces output when unscored
 changes are detected.
 """
 import json, os, subprocess, sys, time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
+
+from state_tracker import StateTracker
 
 # ── Config ──────────────────────────────────────────────────
 LOOKBACK_HOURS = int(os.environ.get("SCORE_AUDITOR_LOOKBACK", "24"))
@@ -186,11 +188,21 @@ def main() -> None:
             unscored.append(f)
 
     if not unscored:
+        # Clear prior error state
+        StateTracker("score-auditor").evaluate("healthy", has_issues=False)
         return  # silent — all changes accounted for
 
-    # ── Report ──────────────────────────────────────────────
+    # State tracking — suppress duplicates
     hostname = os.uname().nodename.split(".")[0]
-    print(f"[score-auditor] {hostname} — {len(unscored)} unscored change(s)")
+    fp = f"host={hostname}|count={len(unscored)}"
+    action = StateTracker("score-auditor").evaluate(fp)
+
+    if action == "silent":
+        return  # same unscored count as last time
+
+    # ── Report ──
+    ts = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
+    print(f"[{ts}] [score-auditor] {hostname} — {len(unscored)} unscored change(s)")
     print(f"  Lookback: {LOOKBACK_HOURS}h  |  DB: {DB_PATH}")
     print("")
 

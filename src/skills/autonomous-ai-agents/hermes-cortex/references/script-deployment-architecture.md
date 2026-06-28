@@ -44,7 +44,7 @@ Script runs
 
 - 42 duplicate files in `~/.hermes/scripts/` replaced with symlinks to `~/.hermes-cortex/scripts/`
 - 8 orphaned cortex scripts copied from repo to `~/.hermes-cortex/scripts/` and symlinked back
-- 18 non-cortex files left as regular files (Hermes-native scripts like `auto-save-active.py`, `hermes-update.sh`, gbrain scripts)
+- 18 non-cortex files left as regular files (Hermes-native scripts like `auto-save-sessions.py`, `hermes-update.sh`, gbrain scripts)
 
 ## Pitfalls
 
