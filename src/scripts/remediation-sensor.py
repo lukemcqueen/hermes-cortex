@@ -392,6 +392,13 @@ def check_systemd_services():
     if not os.path.exists("/usr/bin/systemctl") and not os.path.exists("/bin/systemctl"):
         return  # systemd not available
     
+    # Known benign masked/failed services (e.g., from Ubuntu packages like casper)
+    # These are benign for this stack and should never be reported as issues
+    BENIGN_MASKED_SERVICES = {
+        "casper-md5check.service",  # Ubuntu live ISO checksum verify - masked by default
+        "vsftpd.service",           # FTP server not used on this stack
+    }
+    
     services = {
         "nginx.service": "nginx",
         "docker.service": "Docker",
@@ -407,6 +414,9 @@ def check_systemd_services():
                 if pg_rc == 0 and pg_out.strip():
                     # nginx is running as a process, not managed by systemd
                     continue
+            # Skip benign masked/failed services
+            if svc in BENIGN_MASKED_SERVICES:
+                continue
             add_issue("service_down", "high", f"{name} is not active (systemd)", {
                 "service": svc,
                 "status": out.strip() or "unknown",
