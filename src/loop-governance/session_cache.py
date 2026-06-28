@@ -288,11 +288,16 @@ def cmd_search():
 def main():
     print(f"\n═ Session Embedding Cache — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} ═\n")
 
-    if len(sys.argv) < 2 or sys.argv[1] in ("--help", "-h"):
+    if len(sys.argv) < 2:
+        # No args = default to build (no_agent cron usage)
+        cmd_build()
+        return
+
+    if sys.argv[1] in ("--help", "-h"):
         print("  Usage:")
-        print("    session-cache build    Embed all available data")
-        print("    session-cache search   Similarity search")
-        print("    session-cache status   Show cache stats")
+        print("    session-cache-build build    Embed all available data")
+        print("    session-cache-build search   Similarity search")
+        print("    session-cache-build status   Show cache stats")
         print()
         return
 

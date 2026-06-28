@@ -122,6 +122,7 @@ TOOLS["score_cycle.py"]="score-cycle"
 TOOLS["loop_feedback.py"]="loop-feedback"
 TOOLS["auto_apply.py"]="auto-apply"
 TOOLS["loop_config.py"]="loop-config"
+TOOLS["session_cache.py"]="session-cache-build"
 
 CREATED=0
 for src in "${!TOOLS[@]}"; do

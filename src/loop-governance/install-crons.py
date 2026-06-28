@@ -150,7 +150,7 @@ def main():
 
         # Prompt must come immediately after schedule, before any --flags
         if no_agent and script:
-            cmd.extend(["--no-agent", "--script", script])
+            cmd.extend(["--no-agent", "--script", script, "--name", name])
         elif prompt:
             cmd.append(prompt)
             cmd.extend(["--name", name, "--deliver", deliver])
