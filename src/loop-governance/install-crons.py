@@ -16,7 +16,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_PATH = os.path.join(SCRIPT_DIR, "crons.json")
 MARKER_PATH = os.path.join(SCRIPT_DIR, ".cron-version")
 DEFAULT_CRON_PROMPT = {
-    "weekly-loop-evaluation": (
+    "agent-weekly-loop-eval": (
         "Run the loop governance evaluation pipeline for the last 7 days, "
         "then auto-apply safe config changes, and finally vacuum old cycles.\n\n"
         "1. Generate the evaluation report using the loop-governance skill.\n"

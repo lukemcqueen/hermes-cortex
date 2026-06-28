@@ -11,14 +11,18 @@ Designed to run as a cron job alongside conversation export.
 import os
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
+
+KST = timezone(timedelta(hours=9))
+
+def _ts() -> str:
+    return datetime.now(KST).strftime("%Y-%m-%d %H:%M KST")
 
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
 BRAIN_SHARED = Path.home() / "brain" / "shared"
-MEMORY_DIR = HERMES_HOME / "memories"
+MEMORY_DIR = Path(os.environ.get("HERMES_MEMORY_DIR", str(HERMES_HOME / "memories")))
 OUT_DIR = BRAIN_SHARED / "hermes-memory"
-TIMESTAMP = datetime.now().strftime("%Y-%m-%d %H:%M:%S %Z")
 ENTRY_DELIMITER = "\n§\n"
 
 
@@ -104,13 +108,14 @@ def git_commit():
 
 
 def main():
-    print(f"[{TIMESTAMP}] === memory-to-brain sync ===")
+    ts = _ts()
+    print(f"[{ts}] memory-to-brain: starting")
 
     memory_file = MEMORY_DIR / "MEMORY.md"
     user_file = MEMORY_DIR / "USER.md"
 
     if not memory_file.exists() and not user_file.exists():
-        print("Neither MEMORY.md nor USER.md found — nothing to sync.")
+        print(f"[{ts}] Neither MEMORY.md nor USER.md found — nothing to sync.")
         return
 
     memory_entries = read_entries(memory_file)
@@ -122,7 +127,7 @@ def main():
     write_snapshot(content)
     git_commit()
 
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S %Z')}] === memory-to-brain sync complete ===")
+    print(f"[{_ts()}] memory-to-brain: done")
 
 
 if __name__ == "__main__":

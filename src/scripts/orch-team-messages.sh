@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  orch-check-agent-messages.sh — Poll agent message queue
+#  orch-team-messages.sh — Poll agent message queue
 #
 #  ⚠️  ORCHESTRATOR ONLY — This script is designed exclusively
 #     for the Moses orchestrator server. Do NOT install on

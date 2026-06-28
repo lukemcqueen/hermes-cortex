@@ -24,7 +24,7 @@ Load this skill when:
 ```
 [Peer Agent] sends message to inbox topic → general/luke/all/<agentname>
     ↓
-[orch-check-agent-messages.sh] runs every 10m (no_agent)
+[orch-team-messages.sh] runs every 10m (no_agent)
     ↓  Detects keywords: error, failed, broken, crash, help, etc.
     ↓  Writes remediation marker to ~/.hermes/state/remediate/
     ↓
@@ -100,21 +100,21 @@ PROMPT
 
 ### 3. Ensure the message detector is running
 
-The existing `orch-check-agent-messages.sh` cron (every 10m, no_agent) handles step 1 of the pipeline — detecting new messages and writing remediation markers. Verify it's active:
+The existing `orch-team-messages.sh` cron (every 10m, no_agent) handles step 1 of the pipeline — detecting new messages and writing remediation markers. Verify it's active:
 
 ```bash
-hermes cron list | grep orch-check-agent-messages
+hermes cron list | grep orch-team-messages
 ```
 
 If not present, create it:
 ```bash
-cp hermes-cortex/scripts/orch-check-agent-messages.sh ~/.hermes/scripts/
-hermes cron create --name "check-agent-messages" --schedule "every 10m" --script "orch-check-agent-messages.sh" --no-agent --deliver origin
+cp hermes-cortex/scripts/orch-team-messages.sh ~/.hermes/scripts/
+hermes cron create --name "orch-team-messages" --schedule "every 10m" --script "orch-team-messages.sh" --no-agent --deliver origin
 ```
 
 ## Detection Keywords
 
-The `orch-check-agent-messages.sh` script flags messages containing these keywords in the subject or body:
+The `orch-team-messages.sh` script flags messages containing these keywords in the subject or body:
 
 - error
 - failed

@@ -27,7 +27,7 @@ Reads sequentially through the Biblical canon, extracts the single most relevant
 
 **Setup (do once):**
 ```bash
-cronjob create --name "daily-bible-reading" \
+cronjob create --name "agent-daily-bible-reading" \
   --schedule "0 1 * * *" \
   --skills "soul-refinement" \
   --prompt "Load the soul-refinement skill. Read SOUL.md's Scripture Insights to find the last book covered. Read the next canonical book, distill one insight for your character, patch SOUL.md to append it. Report what you added."
@@ -35,13 +35,21 @@ cronjob create --name "daily-bible-reading" \
 
 **Output format:**
 ```markdown
+[2026-06-28 01:04 KST] agent-daily-bible-reading
+
 ### {Book} — *"{Key verse}"*
 
 {2-4 sentence narrative connecting the book's theme to the agent's role.
 The last sentence should name the explicit lesson for the agent.}
+
+📊 Token cost: tracked in session DB | Cron: agent-daily-bible-reading
 ```
 
-Reading order: Genesis → Exodus → Leviticus → Numbers → Deuteronomy → Joshua → Judges → Ruth → 1 Samuel → 2 Samuel → 1 Kings → 2 Kings → 1 Chronicles → 2 Chronicles → Ezra → Nehemiah → Esther → Job → Psalms → Proverbs → Ecclesiastes → Song of Solomon → Isaiah → Jeremiah → Lamentations → Ezekiel → Daniel → Hosea → Joel → Amos → Obadiah → Jonah → Micah → Nahum → Habakkuk → Zephaniah → Haggai → Zechariah → Malachi → Matthew → Mark → Luke → John → Acts → Romans → 1 Corinthians → 2 Corinthians → Galatians → Ephesians → Philippians → Colossians → 1 Thessalonians → 2 Thessalonians → 1 Timothy → 2 Timothy → Titus → Philemon → Hebrews → James → 1 Peter → 2 Peter → 1 John → 2 John → 3 John → Jude → Revelation
+**Output rules:**
+- Start every response with `[YYYY-MM-DD HH:MM KST] agent-daily-bible-reading`
+- End every response with `📊 Token cost: tracked in session DB | Cron: agent-daily-bible-reading`
+- Silent (no output) when all 66 books covered or today is Sunday
+- Silent on duplicate — if same book as last run, suppress output
 
 ### Channel B — Session Mining (recommended cron: 23:00 daily)
 
@@ -49,7 +57,7 @@ Reviews today's sessions for user corrections and distill lessons into principle
 
 **Setup (do once):**
 ```bash
-cronjob create --name "daily-soul-refinement" \
+cronjob create --name "agent-daily-soul-refinement" \
   --schedule "0 23 * * *" \
   --skills "soul-refinement" \
   --prompt "Load the soul-refinement skill. Search today's sessions for user corrections. Distill into principle patches. Report summary or stay silent if nothing changed."

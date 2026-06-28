@@ -69,7 +69,7 @@ Messages support three priority levels:
 - `urgent` — yellow badge (⚠ URGENT), yellow border, `urgent_only=true` filter picks it up
 - `critical` — red pulsing badge (🔴 CRITICAL), red border, `urgent_only=true` filter picks it up
 
-Used by `orch-check-agent-messages.sh` to auto-trigger remediation on urgent/critical without keyword matching.
+Used by `orch-team-messages.sh` to auto-trigger remediation on urgent/critical without keyword matching.
 
 ### JSON API (Backend Only — Not for Direct Agent Use)
 
@@ -93,7 +93,7 @@ The API server on `127.0.0.1:8903` provides these endpoints for the MCP server b
 The registry auto-generates:
 - `~/.hermes/scripts/agent-inbox-<agent>.sh` wrapper
 - A `inbox-<agent>` cron job with the right schedule
-- Routing in `orch-check-agent-messages.sh` (reads dynamically each run)
+- Routing in `orch-team-messages.sh` (reads dynamically each run)
 
 ## Message File Format
 
@@ -129,7 +129,7 @@ Build passed all tests. Ready for staging deploy.
 ├── scripts/
 │   ├── agent-inbox-watch.sh           # Shared watch script
 │   ├── agent-inbox-<agent>.sh         # Per-agent wrappers
-│   ├── orch-check-agent-messages.sh        # Reads registry, routes messages
+│   ├── orch-team-messages.sh        # Reads registry, routes messages
 │   └── generate-inbox-wrappers.py     # Wrapper generator
 └── agent-inbox-<agent>.conf           # Per-agent config
 ```
