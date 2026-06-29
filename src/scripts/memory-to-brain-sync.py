@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""memory-to-brain.py — Sync Hermes agent memory → gbrain (long-term brain)
+"""memory-to-brain-sync.py — Sync Hermes agent memory → gbrain (long-term brain)
 
 Reads MEMORY.md and USER.md from the active Hermes profile,
 formats them as searchable gbrain pages under ~/brain/shared/hermes-memory/,
@@ -109,7 +109,7 @@ def git_commit():
 
 def main():
     ts = _ts()
-    print(f"[{ts}] memory-to-brain: starting")
+    print(f"[{ts}] memory-to-brain-sync: starting")
 
     memory_file = MEMORY_DIR / "MEMORY.md"
     user_file = MEMORY_DIR / "USER.md"
@@ -127,7 +127,7 @@ def main():
     write_snapshot(content)
     git_commit()
 
-    print(f"[{_ts()}] memory-to-brain: done")
+    print(f"[{_ts()}] memory-to-brain-sync: done")
 
 
 if __name__ == "__main__":

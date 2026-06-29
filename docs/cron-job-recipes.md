@@ -149,7 +149,7 @@ Monitors memory, swap, and disk usage. Sends Telegram alerts when thresholds are
 **Schedule:** `every 10m`
 **Type:** no_agent script
 
-### Script (`~/.hermes/scripts/system-alert.py`)
+### Script (`~/.hermes/scripts/system-alert-watchdog.py`)
 
 ```python
 #!/usr/bin/env python3
@@ -218,13 +218,13 @@ if __name__ == "__main__":
 
 ```bash
 # Save the script
-chmod +x ~/.hermes/scripts/system-alert.py
+chmod +x ~/.hermes/scripts/system-alert-watchdog.py
 
 # Create the cron job (adjust thresholds in the script for your system)
 hermes cron create \
   --name "system-alert-watchdog" \
   --schedule "every 10m" \
-  --script "system-alert.py" \
+  --script "system-alert-watchdog.py" \
   --no-agent \
   --deliver "origin"
 ```

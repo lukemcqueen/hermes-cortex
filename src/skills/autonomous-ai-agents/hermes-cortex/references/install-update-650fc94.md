@@ -96,7 +96,7 @@ Updated installer summary to reflect new components:
   • Brain sources    → ~/brain/{default,...}
   • gbrain plugin    → /brain slash command
   • heartbeat.py     → system health watchdog
-  • memory-to-brain.py → memory sync to gbrain
+  • memory-to-brain-sync.py → memory sync to gbrain
   Launchd services:
     com.ollama.serve
     com.gbrain.sync-watch

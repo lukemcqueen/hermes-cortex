@@ -85,8 +85,8 @@ register() {
 }
 
 # Scripts → ~/.hermes-cortex/scripts/
-register "src/scripts/system-alert.py"            "${HERMES_HOME}/scripts/system-alert.py"
-register "src/scripts/memory-to-brain.py"         "${HERMES_HOME}/scripts/memory-to-brain.py"
+register "src/scripts/system-alert-watchdog.py"   "${HERMES_HOME}/scripts/system-alert-watchdog.py"
+register "src/scripts/memory-to-brain-sync.py"    "${HERMES_HOME}/scripts/memory-to-brain-sync.py"
 register "src/scripts/bootstrap-brain.sh"         "${HERMES_HOME}/scripts/bootstrap-brain.sh"
 register "src/scripts/check-memory-budget.sh"     "${HERMES_HOME}/scripts/check-memory-budget.sh"
 register "src/scripts/cortex-profile.sh"          "${HERMES_HOME}/scripts/cortex-profile.sh"
@@ -132,7 +132,7 @@ register "src/scripts/cron-auto-remediate.sh"     "${HERMES_HOME}/scripts/cron-a
 register "scripts/orch-weekly-auto-fix.py"              "${HERMES_HOME}/scripts/orch-weekly-auto-fix.py"
 
 # System watchdog scripts (no_agent cron jobs)
-register "src/scripts/system-alert.py"            "${HERMES_HOME}/scripts/system-alert.py"
+register "src/scripts/system-alert-watchdog.py"   "${HERMES_HOME}/scripts/system-alert-watchdog.py"
 register "src/scripts/service-recovery.py"        "${HERMES_HOME}/scripts/service-recovery.py"
 register "src/scripts/platform_utils.py"          "${HERMES_HOME}/scripts/platform_utils.py"
 register "src/scripts/langfuse-health-watchdog.py" "${HERMES_HOME}/scripts/langfuse-health-watchdog.py"

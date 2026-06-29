@@ -237,7 +237,7 @@ fi
 
 # ── 1. Auto-Remediation (LLM-driven, skill-based) ──────────
 printf "${CYAN}  1. Auto-Remediation Pipeline${RESET}\n"
-create_cron "agent-auto-remediate" "*/5 * * * *" \
+create_cron "agent-auto-remediate" "*/30 * * * *" \
   "" \
   "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report." \
   "auto-remediation" \
@@ -259,7 +259,7 @@ create_cron "remediation-sensor" "*/5 * * * *" \
 # ── 3. System Alert Watchdog (merged heartbeat) ──────────
 printf "\n${CYAN}  2. System Health Monitoring${RESET}\n"
 create_cron "system-alert-watchdog" "*/30 * * * *" \
-  "system-alert.py" \
+  "system-alert-watchdog.py" \
   "" \
   "" \
   "" \
@@ -280,7 +280,7 @@ create_cron "service-recovery" "*/5 * * * *" \
 # ── 7. Memory to Brain Sync ─────────────────────────────────
 printf "\n${CYAN}  3. Knowledge & Memory${RESET}\n"
 create_cron "memory-to-brain-sync" "0 */6 * * *" \
-  "memory-to-brain.py" \
+  "memory-to-brain-sync.py" \
   "" \
   "" \
   "" \

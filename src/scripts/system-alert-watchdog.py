@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-system-alert.py — System health + resource watchdog (merged heartbeat).
+system-alert-watchdog.py — System health + resource watchdog (merged heartbeat).
 
 Silent (empty stdout) when all metrics within normal range.
 Non-empty stdout is delivered verbatim to the user (Telegram).
@@ -277,7 +277,7 @@ def check_gbrain_sources() -> dict:
     except Exception as e:
         return {"status": "UNKNOWN", "detail": f"gbrain check: {e}"}
 
-# ── Legacy resource checks (from original system-alert.py) ──
+# ── Legacy resource checks (from original system-alert-watchdog.py) ──
 
 def check_resources():
     """Memory, swap, load, disk with auto-remediation."""
@@ -498,26 +498,33 @@ def main():
         return  # silent
 
     # Build state fingerprint from alerts
-    fp = "|".join(sorted(a[:60] for a in alerts))
-    st = StateTracker("system-alert")
-    action = st.evaluate(fp)
+    ts = NOW.strftime("%Y-%m-%d %H:%M")
+    output_parts = [f"[{ts} {HOSTNAME}]"]
 
-    if action == "silent":
-        return  # duplicate error, suppress
-
-    ts = format_timestamp("%Y-%m-%d %H:%M %Z")
-    if action == "resolve":
-        print(f"✅ {HOSTNAME} system-health restored [{ts}]")
-        return
-
-    # action == "alert"
-    print(f"🚨 {HOSTNAME} [{ts}]")
     for a in alerts:
-        print(f"  {a}")
-    for r in remediations:
-        print(f"  {r}")
+        output_parts.append(a)
+
+    if remediations:
+        output_parts.append("")
+        output_parts.append("🛠️ Auto-remediation applied:")
+        for r in remediations:
+            output_parts.append(f"  {r}")
+
+    if not alerts:
+        output_parts.append("✅ All systems nominal")
+
+    output_parts.append("")
+    output_parts.append("── Details ──")
     for d in details:
-        print(f"  {d}")
+        output_parts.append(f"  {d}")
+
+    output_parts.append("")
+
+    # Track state — prevent duplicate alerts
+    st = StateTracker("system-alert")
+    st.evaluate("\n".join(output_parts), has_issues=True)
+
+    print("\n".join(output_parts))
 
 if __name__ == "__main__":
     main()

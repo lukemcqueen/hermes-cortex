@@ -374,7 +374,7 @@ Load the relevant skill with `skill_view(name)` when entering each stage.
 
 **Change:** All monitoring scripts now output timestamps in KST (UTC+9) instead of UTC.
 
-**Affected scripts:** `orch-team-health.py`, `system-alert.py`, `service-recovery.py`, `orch-team-messages.sh`
+**Affected scripts:** `orch-team-health.py`, `system-alert-watchdog.py`, `service-recovery.py`, `orch-team-messages.sh`
 
 **Rationale:** User is in Seoul (KST). Timestamps should match user's local time for faster incident response.
 
@@ -390,11 +390,11 @@ Load the relevant skill with `skill_view(name)` when entering each stage.
 | `hermes-update` | `23 22 * * *` | no_agent | `hermes-update.sh` | `origin` | Daily Hermes Agent upgrade + config migrate + doctor |
 | `hermes-cortex-sync` | `33 22 * * *` | no_agent | `hermes-cortex-sync.sh` | `origin` | Daily repo pull + tool re-sync |
 || `orch-team-health` | `*/10 * * * *` | no_agent | `orch-team-health.py` | `origin` | Cross-agent health polling (orchestrator only) |
-| `system-alert-watchdog` | `*/10 * * * *` | no_agent | `system-alert.py` | `origin` | Resource threshold alerts |
+| `system-alert-watchdog` | `*/10 * * * *` | no_agent | `system-alert-watchdog.py` | `origin` | Resource threshold alerts |
 | `orch-team-messages` | `*/10 * * * *` | no_agent | `orch-team-messages.sh` | `origin` | Flag urgent agent messages |
 | `inbox-sensor` | `*/10 * * * *` | no_agent | `inbox-sensor.py` | `local` | Detect new broadcast messages |
 | `system-heartbeat` | `*/30 * * * *` | no_agent | `heartbeat.py` | `local` | System health check |
-| `memory-to-brain-sync` | `0 */6 * * *` | no_agent | `memory-to-brain.py` | `local` | Memory persistence to gbrain |
+| `memory-to-brain-sync` | `0 */6 * * *` | no_agent | `memory-to-brain-sync.py` | `local` | Memory persistence to gbrain |
 | `score-auditor` | `0 */6 * * *` | no_agent | `score-auditor.py` | `origin` | Scans for unscored file changes (Rule #10) |
 
 **Troubleshooting:**
@@ -427,7 +427,7 @@ cat ~/.hermes/cron/jobs.json | python3 -m json.tool
 | Script | Type | Schedule | Purpose |
 |--------|------|----------|---------|
 | `cron-auto-remediate.sh` | Diagnostic shell | On-demand | Structured diagnostics + fix actions (fix-missing, fix-git, fix-perms, fix-purge) |
-| `system-alert.py` | no_agent watchdog | Every 10m | Resource alerts + auto-cleanup (purge at 85% mem, brew/docker prune at 90% disk) |
+| `system-alert-watchdog.py` | no_agent watchdog | Every 10m | Resource alerts + auto-cleanup (purge at 85% mem, brew/docker prune at 90% disk) |
 | `service-recovery.py` | no_agent watchdog | Every 5m | Auto-restart nginx, Ollama, gbrain, Langfuse, restore missing scripts |
 || `orch-team-messages.sh` | no_agent watchdog | Every 10m | Flags agent error messages with remediation markers |
 || `agent-auto-remediate` (skill) | LLM-driven cron | Every 5m | Orchestrator: checks errored cron jobs + inbox remediation markers, applies fixes |
