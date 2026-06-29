@@ -137,6 +137,12 @@ register "src/scripts/service-recovery.py"        "${HERMES_HOME}/scripts/servic
 register "src/scripts/platform_utils.py"          "${HERMES_HOME}/scripts/platform_utils.py"
 register "src/scripts/langfuse-health-watchdog.py" "${HERMES_HOME}/scripts/langfuse-health-watchdog.py"
 register "src/scripts/llm-judge-scorer.py"         "${HERMES_HOME}/scripts/llm-judge-scorer.py"
+register "src/scripts/cron-quality-watchdog.py"    "${HERMES_HOME}/scripts/cron-quality-watchdog.py"
+register "src/scripts/state_tracker.py"             "${HERMES_HOME}/scripts/state_tracker.py"
+register "src/scripts/check-certs.py"               "${HERMES_HOME}/scripts/check-certs.py"
+register "src/scripts/daily-bible-reading.sh"       "${HERMES_HOME}/scripts/daily-bible-reading.sh"
+register "src/scripts/generate-inbox-wrappers.py"   "${HERMES_HOME}/scripts/generate-inbox-wrappers.py"
+register "src/scripts/nginx-security-scanner.sh"    "${HERMES_HOME}/scripts/nginx-security-scanner.sh"
 
 # Health monitoring
 register "src/scripts/health-server.py"            "${HERMES_HOME}/scripts/health-server.py" "health-server"
