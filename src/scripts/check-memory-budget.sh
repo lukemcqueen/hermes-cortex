@@ -97,8 +97,9 @@ check_file() {
 }
 
 # ── Main ───────────────────────────────────────────────────
+TIMESTAMP=$(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M KST')
 echo ""
-echo -e "${BOLD}━━━ Memory Budget Check ━━━${RESET}"
+echo -e "${BOLD}━━━ Memory Budget Check  [${TIMESTAMP}]━━━${RESET}"
 echo ""
 
 MEMORY_RC=0

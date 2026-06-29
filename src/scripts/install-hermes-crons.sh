@@ -246,7 +246,7 @@ create_cron "agent-auto-remediate" "*/30 * * * *" \
   "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report." \
   "auto-remediation" \
   "terminal,file,web" \
-  "local" \
+  "origin" \
   "$HOME" \
   "false"
 
