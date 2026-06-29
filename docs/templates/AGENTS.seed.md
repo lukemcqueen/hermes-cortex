@@ -10,6 +10,15 @@ Orientation for any agent working on this repo. See `.hermes-cortex/` for instal
 
 ---
 
+## Quick Reference
+
+| What | How |
+|------|-----|
+| Hermes Cortex source | `~/hermes-cortex/` — canonical AGENTS.md, skills, scripts |
+| Doc index | `docs/DOCS-INDEX.md` |
+| Skill catalog | `docs/SKILLS-MANIFEST.md` |
+| Troubleshooting | `docs/troubleshooting.md` |
+
 ## Project
 
 {{PROJECT_DESCRIPTION}}
@@ -42,17 +51,19 @@ falling back to repo root if absent.
 
 Non-negotiable rules for every agent in this repo:
 
-1. Real execution — run actual commands, write real files, verify with tests.
-2. Verified deliverables — exercise every change. A plan/stub is not done.
-3. Fix root causes — check sibling paths for the same flaw.
-4. Touch only what the task needs — no drive-by refactors.
-5. Batch independent lookups — parallelize reads and searches.
-6. Report blockers honestly — never fabricate output.
-7. State confidence explicitly — say what you know vs what you assume.
-8. Keep working until done — every response makes progress or delivers.
-9. Use tools, not descriptions — every response has tool calls.
-10. Score every change — every code/config/script change logs to loop-governance DB.
-11. Tests/TDD are the default — RED-GREEN-REFACTOR. Only explicit opt-out bypasses.
+1. **Real execution** — run actual commands, write real files, verify with tests.
+2. **Verified deliverables** — exercise every change. A plan/stub is not done.
+3. **Fix root causes** — check sibling paths for the same flaw.
+4. **Touch only what the task needs** — no drive-by refactors.
+5. **Batch independent lookups** — parallelize reads and searches.
+6. **Report blockers honestly** — never fabricate output.
+7. **State confidence explicitly** — say what you know vs what you assume.
+8. **Keep working until done** — every response makes progress or delivers.
+9. **Use tools, not descriptions** — every response has tool calls.
+10. **Score every change** — every code/config/script change logs to loop-governance DB.
+11. **Tests/TDD are the default** — RED-GREEN-REFACTOR. Only explicit opt-out bypasses.
+12. **Tag discovered issues as follow-ups** — note them with `todo`, finish current slice, then return in priority order.
+13. **Pull before push** — `git pull --rebase origin <branch>` before every push.
 
 ## Loop Governance
 
