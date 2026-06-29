@@ -165,6 +165,10 @@ register "src/scripts/ek-session-snapshot.py"     "${HERMES_HOME}/scripts/ek-ses
 # Orchestrator health polling (Moses primary, Esther backup)
 register "src/scripts/orch-team-health.py"         "${HERMES_HOME}/scripts/orch-team-health.py"
 
+# Cron cost tracking — SQLite store + deployment script
+register "src/scripts/cost_store.py"               "${HERMES_HOME}/scripts/cost_store.py"
+register "src/scripts/install-cron-cost-tracking.py" "${HERMES_HOME}/scripts/install-cron-cost-tracking.py"
+
 # Health monitoring
 register "src/scripts/health-server.py"            "${HERMES_HOME}/scripts/health-server.py" "health-server"
 register "src/scripts/report-agent-health.py"      "${HERMES_HOME}/scripts/report-agent-health.py"
