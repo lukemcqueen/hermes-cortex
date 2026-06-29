@@ -573,6 +573,18 @@ AGENT_NAME=<agent-name>
 
 When Moses is unreachable (connection timeout), the MCP server automatically cascades to the fallback URL.
 
+**Moses (primary orchestrator on the server):**
+
+Moses's inbox server runs locally on `127.0.0.1:13004`, so he connects directly:
+
+```ini
+MOSES_INBOX_URL=http://127.0.0.1:13004                       # Local inbox server
+MOSES_INBOX_AUTH=moses:<redacted>
+AGENT_NAME=moses
+```
+
+No fallback needed — Moses IS the primary. If his server is down, peer agents cascade to Esther.
+
 **Exception — Esther (backup orchestrator):**
 
 Esther's own config uses a different fallback chain since she runs the local inbox server:
