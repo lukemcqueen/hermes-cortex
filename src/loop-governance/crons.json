@@ -6,7 +6,7 @@
       "name": "skill-miner",
       "enabled": true,
       "schedule": "0 6 * * 1",
-      "script": "skill-miner.sh",
+      "script": "skill_miner.py",
       "no_agent": true,
       "deliver": "origin",
       "description": "Mines local data for patterns, sends findings to Moses via inbox."

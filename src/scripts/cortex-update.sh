@@ -114,7 +114,7 @@ register "src/loop-governance/inbox_watcher.py"    "${HERMES_HOME}/scripts/inbox
 register "src/loop-governance/session_cache.py"    "${HERMES_HOME}/scripts/session_cache.py"
 register "src/loop-governance/setup.sh"            "${HERMES_HOME}/scripts/setup.sh"
 register "src/loop-governance/skill_miner.py"      "${HERMES_HOME}/scripts/skill_miner.py"
-register "src/loop-governance/skill-miner"         "${HERMES_HOME}/scripts/skill-miner"
+register "src/loop-governance/skill-miner-wrapper" "${HERMES_HOME}/scripts/skill-miner-wrapper"
 register "src/loop-governance/update.sh"           "${HERMES_HOME}/scripts/update.sh"
 
 register "src/scripts/prod-watchdog.sh"          "${HERMES_HOME}/scripts/prod-watchdog.sh"

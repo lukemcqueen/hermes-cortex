@@ -20,7 +20,7 @@ done
 
 echo ""
 echo "--- ~/.local/bin symlinks ---"
-for t in score-cycle loop-feedback auto-apply loop-config skill-miner inbox-watch session-cache-build; do
+for t in score-cycle loop-feedback auto-apply loop-config skill-miner-wrapper inbox-watch session-cache-build; do
   if [ -L ~/.local/bin/"$t" ]; then
     target=$(readlink ~/.local/bin/"$t")
     if [ -e "$target" ]; then
