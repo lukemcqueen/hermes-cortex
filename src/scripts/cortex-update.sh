@@ -211,6 +211,8 @@ register "src/scripts/lesson-hit.sh"              "${HERMES_HOME}/scripts/lesson
 # Offline tools
 register "src/offline/offline_knowledge.py"       "${HERMES_HOME}/offline/offline_knowledge.py"
 register "src/offline/offline_knowledge.sh"       "${HERMES_HOME}/offline/offline_knowledge.sh"
+register "src/offline/offline_code.py"            "${HERMES_HOME}/offline/offline_code.py"
+register "src/offline/offline_code.sh"            "${HERMES_HOME}/offline/offline_code.sh"
 register "src/offline/kiwix-docker-compose.yml"   "${HERMES_HOME}/offline/kiwix-docker-compose.yml"
 register "src/offline/prep-offline.sh"            "${HERMES_HOME}/offline/prep-offline.sh"
 register "src/offline/session_mine.py"            "${HERMES_HOME}/offline/session_mine.py"
@@ -466,6 +468,15 @@ update_symlinks() {
     ln -sf "$prep_script" "$prep_link"
     info "  Symlink: prep-offline"
   fi
+
+  # Recreate offline_code symlink
+  local code_script="${HERMES_HOME}/offline/offline_code.sh"
+  local code_link="${HERMES_HOME}/bin/offline_code"
+  if [[ -f "$code_script" ]]; then
+    mkdir -p "${HERMES_HOME}/bin"
+    ln -sf "$code_script" "$code_link"
+    info "  Symlink: offline_code"
+  fi
 }
 
 # ── Skill Sync ───────────────────────────────────────────────
@@ -506,6 +517,34 @@ sync_skills() {
   done < <(find "$skill_repo" -path "*/references/*" -type f -print0)
 
   info "  Skills: ${synced} updated, ${skipped} unchanged"
+}
+
+# ── Code Corpus Sync ───────────────────────────────────────
+# Syncs the offline code-corpus directory from repo to agent.
+# Uses rsync-style copy with checksum check. Only updates
+# changed files to minimize unnecessary re-indexing.
+sync_code_corpus() {
+  local corpus_src="${REPO_DIR}/src/offline/code-corpus"
+  local corpus_dest="${HERMES_HOME}/offline/code-corpus"
+  [[ -d "$corpus_src" ]] || { info "  No code-corpus/ in repo — skipping"; return 0; }
+
+  mkdir -p "$corpus_dest"
+  local synced=0 skipped=0
+
+  while IFS= read -r -d '' src_file; do
+    local rel_path="${src_file#$corpus_src/}"
+    local dest="${corpus_dest}/${rel_path}"
+    mkdir -p "$(dirname "$dest")"
+
+    if needs_update "$src_file" "$dest"; then
+      copy_file "$src_file" "$dest"
+      ((synced++))
+    else
+      ((skipped++))
+    fi
+  done < <(find "$corpus_src" -name '*.md' -type f -print0)
+
+  info "  Code corpus: ${synced} new/updated, ${skipped} unchanged"
 }
 
 # ── Operator Notification ────────────────────────────────────
@@ -739,6 +778,9 @@ main() {
 
   # Sync skills from repo (all SKILL.md + references/, only changed files)
   sync_skills
+
+  # Sync offline code corpus from repo
+  sync_code_corpus
 
   # Deploy nginx configs (OS-aware path substitution, sudo on Linux)
   deploy_nginx_configs

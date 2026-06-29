@@ -33,7 +33,7 @@
 
 **▸ Offline Stack**
 - **Offline Knowledge** — Cascade lookup: web-cache → kiwix ZIM (Wikipedia, WikiMed, Wikivoyage free locally) → gbrain → LLM. Saves API costs online, works without internet.
-- **Offline Code Assistant** — 386 curated code snippets across 26 languages. Semantic search + RAG-powered code generation via Ollama. Run `offline_code search "flask api"` or `offline_code gen "worker pool go"`.
+- **Offline Code Assistant** — 518 curated code snippets across 32 categories. Semantic search + RAG-powered code generation via Ollama. Run `offline_code search "flask api"` or `offline_code gen "binary search tree rust"`. Covers 19 programming languages, AWS, Docker/K8s, auth, payments, testing, data science, and more.
 - **Offline Reader** — Single-file web UI (`python3 src/offline/offline-reader.py`) for browsing Bible (55+ languages), hymns (public domain), and wiki reference in any browser — zero dependencies.
 
 **▸ Security**

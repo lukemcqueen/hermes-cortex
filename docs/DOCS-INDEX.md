@@ -52,7 +52,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `src/offline/bible-parse.py` | Multi-strategy Bible text parser (PG, eBible, WEB formats) → structured JSON |
 | `src/offline/offline-reader.py` | Local web UI for Bible, hymns, and reference — zero dependencies, dark theme, fully offline |
 | `src/offline/auto-update.sh` | Silent auto-update for offline content — set-and-forget via cron |
-| `src/offline/offline_code.py` | Offline code assistant — search/generate from 386 curated code snippets via Ollama RAG |
+| `src/offline/offline_code.py` | Offline code assistant — search/generate from 518 curated code snippets across 32 categories via Ollama RAG |
 | `src/offline/prep-code.sh` | Build the code snippet corpus and vector index for offline coding |
 | `src/offline/code-corpus/generate.py` | Auto-discovers snippets modules, writes formatted .md snippet files with YAML frontmatter |
 | `src/web-cache/SKILL.md` | Web cache skill — local semantic cache for web_search and web_extract |

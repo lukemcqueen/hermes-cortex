@@ -52,6 +52,29 @@ Persists stable facts, preferences, and conventions across sessions.
 
 **Closed loop:** Write → sync → prune → compress. Budget check prevents overflow.
 
+## 5. ⚡ Quality (LLM-as-Judge trace scoring)
+
+Evaluates Hermes conversation trace quality using a local LLM judge. Scores are posted to
+Langfuse and serve as a feedback signal for agent behaviour.
+
+| Step | Tool | Schedule | LLM? | Output |
+|------|------|----------|------|--------|
+| Score | `llm-judge-scorer.py` | Weekdays 12:00, 20:00 KST | ✗ (no_agent, calls Ollama internally) | Langfuse scores on unscoped traces |
+|       |                     | Weekends 22:00 KST |      | |
+
+**Closed loop:** Trace generated → judge scored → agent reads score → behaviour adjusts.
+
+## 6. ⚡ Code Corpus (Offline Knowledge)
+
+A 518-snippet code corpus deployed to every agent, searchable entirely offline via `offline_code search`.
+
+| Step | Tool | Schedule | LLM? | Output |
+|------|------|----------|------|--------|
+| Deploy | `cortex-update.sh` (sync_code_corpus) | On each deploy | ✗ | `.md` files synced to `~/.hermes/offline/code-corpus/` |
+| Index | `offline-code-index` (cron) | Weekly Sun 05:00 | ✗ | Vector index refreshed (nomic-embed-text) |
+
+**Agent workflow:** `offline_code search "<question>"` → result found? use it. Not found? fall back to `web_search()`. This saves API costs and works offline. Load the `offline-code` skill for full usage.
+
 ## ⚡ Consolidated Nightly Window (Luke's deployment — 02:00–05:00 KST)
 
 Most writes happen overnight when the system is idle:
@@ -64,7 +87,6 @@ Most writes happen overnight when the system is idle:
 02:15 — Homebrew updates (LLM)
 02:30 — Lesson compound stats (no_agent)
 02:30 — Hermes update check (LLM)
-03:00 — Langfuse LLM judge scorer (no_agent)
 03:00 — Web cache prune (no_agent)
 03:00 — Skill evaluation (LLM)
 04:00 — Memory pruning (LLM)

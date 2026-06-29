@@ -33,14 +33,20 @@ def _get_langfuse_keys():
     Priority: --env-path CLI arg > LANGFUSE_ENV_PATH env var > ~/.hermes-cortex/.env
     """
     env_path = None
-    for arg in sys.argv[1:]:
+    args = sys.argv[1:]
+    for i, arg in enumerate(args):
         if arg.startswith("--env-path="):
             env_path = arg.split("=", 1)[1]
+            break
+        if arg == "--env-path" and i + 1 < len(args):
+            env_path = args[i + 1]
             break
     if not env_path:
         env_path = os.environ.get("LANGFUSE_ENV_PATH")
     if not env_path:
         env_path = os.path.expanduser("~/.hermes-cortex/.env")
+    if env_path:
+        env_path = os.path.expanduser(env_path)
 
     with open(env_path, 'rb') as f:
         raw = f.read()
