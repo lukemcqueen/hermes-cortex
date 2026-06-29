@@ -61,11 +61,11 @@
     "titus": {
       "name": "Titus",
       "role": "developer",
-      "hostname": "worker-4",
-      "is_server": false,
-      "accessible": false,
+      "hostname": "LAM2",
+      "is_server": true,
+      "accessible": true,
       "platform": "macOS",
-      "description": "Titus \u2014 macOS laptop, client-only, communicates via inbox",
+      "description": "Titus — macOS laptop, developer agent",
       "inbox_user": "titus",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
