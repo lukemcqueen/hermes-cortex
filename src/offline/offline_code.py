@@ -161,7 +161,7 @@ def _ollama_embed(texts):
     if isinstance(texts, str):
         texts = [texts]
 
-    BATCH_SIZE = 10
+    BATCH_SIZE = 5
     all_embeddings = []
 
     import urllib.request
@@ -241,7 +241,7 @@ def cmd_index(force=False):
         tag_str = ", ".join(s["tags"]) if isinstance(s["tags"], list) else s["tags"]
         text = f"Language: {s['language']}\nTitle: {s['title']}\n"
         text += f"Tags: {tag_str}\nDescription: {s['description']}\n"
-        text += f"Code:\n{s['code'][:2000]}"
+        text += f"Code:\n{s['code'][:500]}"
         embed_texts.append(text)
 
     print(f"Generating {len(embed_texts)} embeddings with {EMBED_MODEL}...")
