@@ -42,7 +42,7 @@ MACOS_GUARDS_PY = [
     r"try:.*launchctl",  # try/except fallback pattern
     r"except FileNotFoundError",  # launchctl not found → use systemd
     r"try:.*vm_stat",  # try/except fallback for macOS vm_stat
-    r"except.*Exception.*pass",  # guarded fallback (system-alert.py pattern)
+    r"except.*Exception.*pass",  # guarded fallback (system-alert-watchdog.py pattern)
     r"# Use vm_stat.*accurate",  # vm_stat in guarded try/except block
 ]
 

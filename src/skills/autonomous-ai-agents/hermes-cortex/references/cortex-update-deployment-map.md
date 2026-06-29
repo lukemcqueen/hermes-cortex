@@ -12,7 +12,7 @@ Sources under `~/hermes-cortex/` → dest under `~/.hermes/` or `~/`.
 |-------------|---------------|-------|
 | `src/scripts/cortex-update.sh` | `~/.hermes/scripts/cortex-update.sh` | Self-updating |
 | `src/scripts/heartbeat.py` | `~/.hermes/scripts/heartbeat.py` | |
-| `src/scripts/memory-to-brain.py` | `~/.hermes/scripts/memory-to-brain.py` | |
+| `src/scripts/memory-to-brain-sync.py` | `~/.hermes/scripts/memory-to-brain-sync.py` | |
 | `src/scripts/bootstrap-brain.sh` | `~/.hermes/scripts/bootstrap-brain.sh` | |
 | `src/scripts/check-memory-budget.sh` | `~/.hermes/scripts/check-memory-budget.sh` | |
 | `src/scripts/cortex-health.sh` | `~/.hermes/scripts/cortex-health.sh` | |
@@ -27,7 +27,7 @@ Sources under `~/hermes-cortex/` → dest under `~/.hermes/` or `~/`.
 | `src/scripts/service-writer.sh` | `~/.hermes/scripts/service-writer.sh` | |
 
 ### Self-remediation scripts
-| `src/scripts/system-alert.py` | `~/.hermes/scripts/system-alert.py` | |
+| `src/scripts/system-alert-watchdog.py` | `~/.hermes/scripts/system-alert-watchdog.py` | |
 | `src/scripts/service-recovery.py` | `~/.hermes/scripts/service-recovery.py` | |
 | `src/scripts/langfuse-health-watchdog.py` | `~/.hermes/scripts/langfuse-health-watchdog.py` | |
 | `src/scripts/llm-judge-scorer.py` | `~/.hermes/scripts/llm-judge-scorer.py` | |
@@ -109,7 +109,7 @@ On macOS, `shasum -a 256` is the equivalent of `sha256sum` and is available nati
 **VERIFICATION:**
 ```bash
 bash ~/.hermes/scripts/cortex-update.sh --force-all
-diff ~/hermes-cortex/src/scripts/system-alert.py ~/.hermes/scripts/system-alert.py
+diff ~/hermes-cortex/src/scripts/system-alert-watchdog.py ~/.hermes/scripts/system-alert-watchdog.py
 # Should be identical (no diff output)
 ```
 

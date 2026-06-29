@@ -49,7 +49,7 @@ hermes-cortex/
 │
 ├── src/                       # All source code
 │   ├── scripts/               # Runable scripts (watchdogs, utilities)
-│   │   ├── system-alert.py
+│   │   ├── system-alert-watchdog.py
 │   │   ├── service-recovery.py
 │   │   ├── orch-team-health.py
 │   │   └── ...
@@ -98,7 +98,7 @@ hermes-cortex/
 
 | Pattern | Example | When to use |
 |---------|---------|-------------|
-| `kebab-case` | `system-alert.py`, `service-recovery.py` | Source files, scripts, configs — **default** |
+| `kebab-case` | `system-alert-watchdog.py`, `service-recovery.py` | Source files, scripts, configs — **default** |
 | `snake_case` | `loop_scorer.py`, `score_cycle.py` | Python modules (PEP 8). Only for importable modules |
 | `PascalCase` | — | Never in file names. Only for Python classes inside files |
 | Descriptive names | `orch-team-health.py` | Describe WHAT the file does, not how. Human-readable |

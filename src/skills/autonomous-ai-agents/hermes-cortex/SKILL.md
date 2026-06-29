@@ -48,7 +48,7 @@ The installer runs **13 steps**:
 | 7 | Cortex Dashboard | Flask app + launchd service |
 | 8 | nginx | Reverse proxy (SSL or local-only mode) |
 | 9 | Hermes gbrain plugin | `/brain` slash command files |
-| 10 | Hermes scripts | heartbeat.py, memory-to-brain.py, etc. |
+| 10 | Hermes scripts | heartbeat.py, memory-to-brain-sync.py, etc. |
 | 11 | Enable plugin | Add gbrain-command to Hermes config |
 | 12-13 | Summary | Next steps prompt for cron job setup |
 
@@ -181,15 +181,15 @@ The installer embeds several utility scripts inside `install.sh` via heredocs. T
 # Check if heartbeat.py matches the repo version
 diff <(sed -n '/^cat > "$HEARTBEAT_PATH" <<'"'"'HEARTBEAT'"'"'/,/^HEARTBEAT$/p' ~/hermes-cortex/install.sh | tail -n +2 | head -n -1) ~/.hermes/scripts/heartbeat.py
 
-# Check if memory-to-brain.py matches the repo version
-diff <(sed -n '/^cat > "$M2B_PATH" <<'"'"'M2BPY'"'"'/,/^M2BPY$/p' ~/hermes-cortex/install.sh | tail -n +2 | head -n -1) ~/.hermes/scripts/memory-to-brain.py
+# Check if memory-to-brain-sync.py matches the repo version
+diff <(sed -n '/^cat > "$M2B_PATH" <<'"'"'M2BPY'"'"'/,/^M2BPY$/p' ~/hermes-cortex/install.sh | tail -n +2 | head -n -1) ~/.hermes/scripts/memory-to-brain-sync.py
 ```
 
 If either shows differences, the installed script is stale or the installer
 has drifted. Copy the repo version over the installed one:
 ```bash
 cp ~/hermes-cortex/scripts/heartbeat.py ~/.hermes/scripts/heartbeat.py
-cp ~/hermes-cortex/scripts/memory-to-brain.py ~/.hermes/scripts/memory-to-brain.py
+cp ~/hermes-cortex/scripts/memory-to-brain-sync.py ~/.hermes/scripts/memory-to-brain-sync.py
 ```
 
 ### 2. Verify the Sync Daemon / Autopilot Relationship
@@ -675,7 +675,7 @@ Confirmed divergences as of v1.0.0:
 | Script | Difference | Impact |
 |--------|-----------|--------|
 | `heartbeat.py` | Embedded version missing `check_memory_sync_freshness()` and `check_service()` | Memory sync staleness not detected; Linux systemd support absent |
-| `memory-to-brain.py` | Embedded version writes separate `hermes-memory.md` / `hermes-user.md` files; repo version writes `current.md` + monthly archive with YAML frontmatter | Different output format, different gbrain indexing behavior |
+| `memory-to-brain-sync.py` | Embedded version writes separate `hermes-memory.md` / `hermes-user.md` files; repo version writes `current.md` + monthly archive with YAML frontmatter | Different output format, different gbrain indexing behavior |
 
 **SOLUTION:** After install, compare and sync:
 
@@ -685,8 +685,8 @@ diff ~/hermes-cortex/scripts/heartbeat.py ~/.hermes/scripts/heartbeat.py
 # If different: cp ~/hermes-cortex/scripts/heartbeat.py ~/.hermes/scripts/heartbeat.py
 
 # Check memory-to-brain
-diff ~/hermes-cortex/scripts/memory-to-brain.py ~/.hermes/scripts/memory-to-brain.py
-# If different: cp ~/hermes-cortex/scripts/memory-to-brain.py ~/.hermes/scripts/memory-to-brain.py
+diff ~/hermes-cortex/scripts/memory-to-brain-sync.py ~/.hermes/scripts/memory-to-brain-sync.py
+# If different: cp ~/hermes-cortex/scripts/memory-to-brain-sync.py ~/.hermes/scripts/memory-to-brain-sync.py
 ```
 
 **For repo maintainers:** Every time you update one of these scripts in `scripts/`,
@@ -1148,7 +1148,7 @@ If missing, create them per the new skill's setup instructions. Common patterns:
 The most common drift: installed watchdog scripts lag behind the repo. The `--force-all` flag catches these, but verify:
 
 ```bash
-diff ~/hermes-cortex/src/scripts/system-alert.py ~/.hermes/scripts/system-alert.py
+diff ~/hermes-cortex/src/scripts/system-alert-watchdog.py ~/.hermes/scripts/system-alert-watchdog.py
 diff ~/hermes-cortex/src/scripts/service-recovery.py ~/.hermes/scripts/service-recovery.py
 ```
 
@@ -1851,7 +1851,7 @@ Hermes Cortex uses a two-repo architecture:
 - ✅ **Langfuse** (Docker Compose, auto-generated secrets)
 - ✅ **Cortex Dashboard** (Flask app + launchd)
 - ✅ **nginx** reverse proxy (SSL or local-only mode)
-- ✅ Utility scripts (heartbeat.py, memory-to-brain.py, etc.)
+- ✅ Utility scripts (heartbeat.py, memory-to-brain-sync.py, etc.)
 
 **What still lives in private repo:**
 - Full personal `config.yaml` with custom settings

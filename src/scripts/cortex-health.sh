@@ -164,7 +164,7 @@ check_sync_daemon() {
 check_memory_freshness() {
   local current="${BRAIN_DIR}/shared/hermes-memory/current.md"
   if [[ ! -f "$current" ]]; then
-    print_row "Memory sync" "UNKNOWN" "current.md not found — run memory-to-brain.py"
+    print_row "Memory sync" "UNKNOWN" "current.md not found — run memory-to-brain-sync.py"
     return
   fi
   local mtime

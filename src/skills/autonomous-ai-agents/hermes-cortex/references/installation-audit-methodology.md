@@ -83,7 +83,7 @@ For each gap found:
 ```bash
 # 1. Fix diverged scripts
 cp ~/hermes-cortex/scripts/heartbeat.py ~/.hermes/scripts/heartbeat.py
-cp ~/hermes-cortex/scripts/memory-to-brain.py ~/.hermes/scripts/memory-to-brain.py
+cp ~/hermes-cortex/scripts/memory-to-brain-sync.py ~/.hermes/scripts/memory-to-brain-sync.py
 
 # 2. Fix sync daemon (add --skip default)
 sed -i '' 's/sync --all --no-pull/sync --all --no-pull --skip default/' ~/.gbrain/sync-watch.sh

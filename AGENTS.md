@@ -297,13 +297,13 @@ Load the relevant skill with `skill_view(name)` when entering each stage.
 
 | Cron | Schedule | Type | Purpose |
 |------|----------|------|---------|
-| `agent-auto-remediate` | `*/5 * * * *` | LLM+skill | Auto-fix cron/inbox/service issues |
+| `agent-auto-remediate` | `*/30 * * * *` | LLM+skill | Auto-fix cron/inbox/service issues |
 | `remediation-sensor` | `*/5 * * * *` | no_agent | Companion diagnostics sensor |
 | `service-recovery` | `*/5 * * * *` | no_agent | Auto-restart crashed services |
 | `hermes-update` | `23 22 * * *` | no_agent | Daily Hermes upgrade + config migrate |
 | `hermes-cortex-sync` | `33 22 * * *` | no_agent | Daily repo pull + tool re-sync |
 | `orch-team-health` | `*/10 * * * *` | no_agent | Cross-agent health polling |
-| `system-alert-watchdog` | `*/10 * * * *` | no_agent | Resource threshold alerts |
+| `system-alert-watchdog` | `*/30 * * * *` | no_agent | Resource threshold alerts |
 | `orch-team-messages` | `*/10 * * * *` | no_agent | Flag urgent agent messages |
 | `inbox-sensor` | `*/10 * * * *` | no_agent | Detect new broadcast messages |
 | `system-heartbeat` | `*/30 * * * *` | no_agent | System health check |
