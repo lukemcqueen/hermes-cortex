@@ -14,8 +14,12 @@ Usage:
   offline_code gen "binary search tree rust"   → Generate code using Ollama
   offline_code index                           → (Re)build the search index
   offline_code stats                           → Show corpus stats
-  offline_code learn "Title" --lang py --tags "api,flask" \\
+  offline_code check "flask rest api"           → JSON: hit/miss for agent scripting
+  offline_code search --learn-on-miss "flask"  → On miss, output learnable template
+  offline_code learn "Title" --lang py --tags "api,flask" \
       --desc "Description" --code "code here"  → Add learned snippet
+  offline_code learn-from-url "Title" --url https://... --desc "..."
+                                               → Fetch URL, extract code, learn
 
 Requirements: Python 3.10+, Ollama running with nomic-embed-text
 Optional: qwen2.5-coder:1.5b (or higher) for code generation
@@ -233,7 +237,7 @@ def _load_index():
 
 # ── Search ──────────────────────────────────────────────────
 
-def cmd_search(query, limit=5, lang=None):
+def cmd_search(query, limit=5, lang=None, learn_on_miss=False):
     """Search the code corpus for snippets matching a query."""
     index = _load_index()
     if not index:
@@ -270,7 +274,10 @@ def cmd_search(query, limit=5, lang=None):
     results.sort(key=lambda r: r[0], reverse=True)
 
     if not results:
-        print("No matching snippets found.")
+        if learn_on_miss:
+            cmd_learn_on_miss(query)
+        else:
+            print("No matching snippets found.")
         return
 
     print(f"\nFound {len(results)} matching snippet(s)\n")
@@ -292,6 +299,80 @@ def cmd_search(query, limit=5, lang=None):
         if len(code_lines) > 12:
             print(f"    … ({len(code_lines) - 12} more lines)")
         print()
+
+
+# ── Self-Learning ─────────────────────────────────────────────
+
+def cmd_learn_on_miss(query):
+    """Output a learnable template when search finds nothing.
+    
+    Agents can use this to know what to web-search and how to format
+    the result back into the corpus.
+    """
+    slug = re.sub(r'[^a-z0-9]+', '-', query.lower()).strip('-')[:60]
+    print()
+    print("╔═══════════════════════════════════════════════════════════╗")
+    print("║  CORPUS MISS — No snippets matched this query           ║")
+    print("║  Self-learning workflow:                                ║")
+    print("║  1. web_search for the pattern                          ║")
+    print("║  2. offline_code learn with the result                  ║")
+    print("║  3. offline_code index --force to rebuild               ║")
+    print("╚═══════════════════════════════════════════════════════════╝")
+    print()
+    print("Suggested learn command:")
+    print()
+    print(f'  offline_code learn "{slug}" \\')
+    print(f'    --lang "<language>" \\')
+    print(f'    --tags "<tag1>,<tag2>" \\')
+    print(f'    --desc "{query}" \\')
+    print(f'    --code "<paste code here>"')
+    print()
+
+
+# ── Check (agent-friendly JSON) ──────────────────────────────
+
+def cmd_check(query, lang=None):
+    """Check if the corpus covers a query. Returns JSON for agent consumption.
+    
+    Output: {"hit": true/false, "count": N, "top_score": X, "suggestion": "..."}
+    """
+    index = _load_index()
+    if not index:
+        print(json.dumps({"hit": False, "count": 0, "error": "index not found"}))
+        return
+
+    snippets = index.get("snippets", [])
+    terms = query.lower().split()
+
+    # Quick keyword-only check (no embedding needed for performance)
+    results = []
+    for s in snippets:
+        if lang and s["language"] != lang:
+            continue
+        text = f"{s['title']} {s['tags']} {s['description']} {s['code']}".lower()
+        kw_score = sum(1 for t in terms if t in text)
+        if kw_score > 0:
+            results.append((kw_score / len(terms), s["title"]))
+
+    results.sort(key=lambda r: r[0], reverse=True)
+    top_score = results[0][0] if results else 0
+    count = len(results)
+
+    result = {
+        "hit": count > 0,
+        "count": count,
+        "top_score": round(top_score * 100),
+    }
+
+    if not count:
+        slug = re.sub(r'[^a-z0-9]+', '-', query.lower()).strip('-')[:60]
+        result["suggestion"] = (
+            f"Learn it: offline_code learn \"{slug}\" "
+            f"--lang \"<lang>\" --tags \"<tags>\" "
+            f"--desc \"{query}\" --code \"<paste code>\""
+        )
+
+    print(json.dumps(result))
 
 
 # ── Generate ────────────────────────────────────────────────
@@ -479,6 +560,13 @@ def main():
     s.add_argument("query", nargs="+", help="Search terms")
     s.add_argument("--limit", "-n", type=int, default=5, help="Max results")
     s.add_argument("--lang", "-l", help="Filter by language")
+    s.add_argument("--learn-on-miss", "-L", action="store_true",
+                   help="Output learnable template when no results found")
+
+    # Check (agent-friendly JSON)
+    c = sub.add_parser("check", help="Check if corpus covers a query (JSON output)")
+    c.add_argument("query", nargs="+", help="Search terms")
+    c.add_argument("--lang", "-l", help="Filter by language")
 
     # Generate
     g = sub.add_parser("gen", help="Generate code using Ollama + RAG context")
@@ -507,7 +595,10 @@ def main():
         sys.exit(0)
 
     if args.command == "search":
-        cmd_search(" ".join(args.query), limit=args.limit, lang=args.lang)
+        cmd_search(" ".join(args.query), limit=args.limit, lang=args.lang,
+                   learn_on_miss=args.learn_on_miss)
+    elif args.command == "check":
+        cmd_check(" ".join(args.query), lang=args.lang)
     elif args.command == "gen":
         cmd_generate(" ".join(args.query), model=args.model, limit=args.limit)
     elif args.command == "index":
