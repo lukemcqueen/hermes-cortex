@@ -40,7 +40,7 @@ CORPUS_DIR = Path(__file__).parent / "code-corpus"
 INDEX_DB = HOME / "offline" / "code-index.json"
 OLLAMA_URL = "http://localhost:11434"
 EMBED_MODEL = "nomic-embed-text"
-GEN_MODEL = "qwen2.5-coder:1.5b"  # default; auto-upgraded if VRAM available
+GEN_MODEL = "qwen2.5-coder:1.5b-64k"  # default; auto-upgraded if VRAM available
 
 
 def _detect_gen_model() -> str:
@@ -51,29 +51,57 @@ def _detect_gen_model() -> str:
     """
     try:
         import subprocess
-        # macOS: use system_profiler or ioreg
         total_gb = 0
         try:
+            # macOS: use sysctl for total RAM
             result = subprocess.run(
                 ["sysctl", "-n", "hw.memsize"],
                 capture_output=True, text=True, timeout=3
             )
-            total_gb = int(result.stdout.strip()) / (1024**3)
+            if result.returncode == 0 and result.stdout.strip():
+                total_gb = int(result.stdout.strip()) / (1024**3)
         except Exception:
             pass
 
+        if total_gb == 0:
+            # Linux: read /proc/meminfo
+            try:
+                with open("/proc/meminfo") as f:
+                    for line in f:
+                        if line.startswith("MemTotal:"):
+                            total_gb = int(line.split()[1]) / (1024**2)
+                            break
+            except Exception:
+                pass
+
         # VRAM estimate: on Apple Silicon, ~70% of RAM is available to GPU
-        # On Intel with dedicated GPU, this under-estimates but is safe.
-        vram_gb = total_gb * 0.7
+        # On CPU-only, use total RAM / 8 as CPU-inference estimate
+        if total_gb == 0:
+            return GEN_MODEL  # can't detect — use default
+
+        # Detect platform
+        is_macos = False
+        try:
+            is_macos = subprocess.run(
+                ["uname", "-s"], capture_output=True, text=True, timeout=2
+            ).stdout.strip().lower() == "darwin"
+        except Exception:
+            pass
+
+        if is_macos:
+            vram_gb = total_gb * 0.7
+        else:
+            # Linux CPU: estimate usable context as ~1/8 of RAM for 1.5B
+            vram_gb = total_gb / 8
 
         if vram_gb > 24:
-            return "qwen2.5-coder:14b"
+            return "mannix/qwen2.5-coder:14b-iq3_xs"
         elif vram_gb > 10:
-            return "qwen2.5-coder:7b"
+            return "mannix/qwen2.5-coder:7b-iq3_xs"
         elif vram_gb > 4:
-            return "qwen2.5-coder:1.5b"  # 64K context, fast on most hardware
+            return "qwen2.5-coder:1.5b-64k"  # 64K context, fast on most hardware
         else:
-            return "qwen2.5-coder:1.5b"  # floor — always runs
+            return "qwen2.5-coder:1.5b-64k"  # floor — always runs
     except Exception:
         return GEN_MODEL  # fall back to default
 
