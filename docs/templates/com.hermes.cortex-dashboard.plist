@@ -13,7 +13,7 @@
   2. SHARED VENV (simpler, uses gateway's venv):
      Uses the Hermes Agent venv to avoid a second venv.
 
-  Replace CORTEX_HOME with the actual home path (e.g. /Users/luke).
+  Replace CORTEX_HOME with the actual home path (e.g. /home/<username>).
   Copy to: ~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist
   Load:    launchctl load ~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist
 -->

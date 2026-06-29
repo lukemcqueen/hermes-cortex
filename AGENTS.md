@@ -442,6 +442,7 @@ Load the relevant skill with `skill_view(name)` when entering each stage.
 ## Rules
 
 - No secrets in this repo. `.env`, `*.pem`, `*.key` are gitignored.
+- **No PII in this repo.** No personal paths (`/Users/<name>/`), machine hostnames, email addresses, API keys, or tokens. Use `$HOME/`, `~/`, `<username>`, or `/home/<username>/` placeholders. Every agent MUST grep for `/Users/` and personal domains before committing.
 - Keep docs current when changing install behavior.
 - MIT License — be permissive.
 
@@ -706,7 +707,7 @@ ln -sf ~/.hermes-cortex/tools/loop-governance/score_cycle.py ~/.local/bin/score-
 ### Host Configuration
 - macOS 14.8.7 (Apple M1, 16GB unified memory)
 - Hostname: LAM2 (Titus only — developer role, not orchestrator)
-- User home: /Users/luke
+- User home: /home/<username>
 - Shell: zsh
 - Repo: ~/hermes-cortex (public, open-source)
 - Agent inbox: local MCP
