@@ -2,7 +2,8 @@
 """
 Agent Inbox MCP Server — send, read, and watch the agent inbox.
 
-Reads MOSES_INBOX_URL, MOSES_INBOX_AUTH, and AGENT_NAME from:
+Reads MOSES_INBOX_URL, MOSES_INBOX_FALLBACK_URL, MOSES_INBOX_THIRD_URL,
+MOSES_INBOX_AUTH, and AGENT_NAME from:
   1. Environment variables
   2. ~/.hermes/moses-inbox.conf (key=value format)
 
@@ -13,9 +14,8 @@ Reads MOSES_INBOX_URL, MOSES_INBOX_AUTH, and AGENT_NAME from:
 ISOLATION: Each agent can only read their own messages.
      The orchestrator (agent_name=moses) can read all.
 
-FALLBACK: When no config is found, routes to http://localhost:8903
-     (local only — messages won't reach the shared inbox).
-     A WARNING is logged in this case.
+FALLBACK CHAIN: When a URL fails (connection error), the next URL in the chain
+     is tried. Up to 3 levels: primary → fallback → third → localhost:8903.
 
 Tools:
     inbox_send      Send message + optional file attachment (5 MB max)
@@ -54,10 +54,11 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent, CallToolResult
 
 # ── Config Loading ────────────────────────────────────────────
-# Same pattern as report-agent-health.py and collect-agent-skills.sh
 CONFIG_FILE = Path.home() / ".hermes" / "moses-inbox.conf"
 
 inbox_url = os.environ.get("MOSES_INBOX_URL", "")
+inbox_fallback_url = os.environ.get("MOSES_INBOX_FALLBACK_URL", "")
+inbox_third_url = os.environ.get("MOSES_INBOX_THIRD_URL", "")
 inbox_auth = os.environ.get("MOSES_INBOX_AUTH", "")
 agent_name = os.environ.get("AGENT_NAME", "")
 
@@ -73,6 +74,10 @@ if CONFIG_FILE.exists():
                 v = v.strip().strip("'\"")
                 if k == "MOSES_INBOX_URL" and not inbox_url:
                     inbox_url = v
+                elif k == "MOSES_INBOX_FALLBACK_URL" and not inbox_fallback_url:
+                    inbox_fallback_url = v
+                elif k == "MOSES_INBOX_THIRD_URL" and not inbox_third_url:
+                    inbox_third_url = v
                 elif k == "MOSES_INBOX_AUTH" and not inbox_auth:
                     inbox_auth = v
                 elif k == "AGENT_NAME" and not agent_name:
@@ -80,16 +85,25 @@ if CONFIG_FILE.exists():
     except Exception as e:
         log.warning("Failed to read %s: %s", CONFIG_FILE, e)
 
-# Derive base URL: strip /send or /api/inbox from the configured URL
+# Build the URL chain: primary → fallback → third → localhost fallback
+_URL_LIST = []
 if inbox_url:
-    BASE_URL = re.sub(r"/(send|api/inbox).*$", "", inbox_url)
-    IS_LOCAL_FALLBACK = False
-else:
-    BASE_URL = "http://localhost:8903"
-    IS_LOCAL_FALLBACK = True
-    log.warning("❗ MOSES_INBOX_URL not configured — routing to %s (local only). "
-                "Set MOSES_INBOX_URL in ~/.hermes/moses-inbox.conf for external agents.",
-                BASE_URL)
+    _URL_LIST.append(("Moses (primary)", re.sub(r"/(send|api/inbox).*$", "", inbox_url)))
+if inbox_fallback_url:
+    _URL_LIST.append(("Esther (fallback)", re.sub(r"/(send|api/inbox).*$", "", inbox_fallback_url)))
+if inbox_third_url:
+    _URL_LIST.append(("Local (3rd)", re.sub(r"/(send|api/inbox).*$", "", inbox_third_url)))
+# Always append the base localhost fallback as last resort
+_URL_LIST.append(("localhost (last resort)", "http://127.0.0.1:8903"))
+
+IS_LOCAL_FALLBACK = not bool(inbox_url)
+if IS_LOCAL_FALLBACK:
+    log.warning("❗ MOSES_INBOX_URL not configured — using localhost only. "
+                "Set MOSES_INBOX_URL in ~/.hermes/moses-inbox.conf for external agents.")
+
+log.info("Inbox routing chain:")
+for name, url in _URL_LIST:
+    log.info("  %s: %s", name, url)
 
 # Build auth header if credentials available
 AUTH_HEADER = None
@@ -130,8 +144,8 @@ else:
         log.warning("MCP client cert not found at %s — external requests will fail",
                     CLIENT_CERT)
 
-log.info("Inbox URL: %s  auth=%s  agent=%s  cert=%s",
-         BASE_URL, "yes" if AUTH_HEADER else "no", DEFAULTAGENT,
+log.info("Inbox agent=%s  auth=%s  cert=%s",
+         DEFAULTAGENT, "yes" if AUTH_HEADER else "no",
          "loaded" if SSL_CONTEXT else "none")
 
 PROXY_PATH = "/usr/local/bin/mcp-inbox-proxy"
@@ -165,14 +179,8 @@ def _call_proxy(url: str, method: str, data: bytes | None, headers: dict) -> tup
         return 0, str(e)
 
 
-def _request(path: str, data: bytes | None = None, method: str = "POST") -> tuple[int, str]:
-    """Make HTTP request to the inbox API. Returns (status_code, body).
-    Tries sudo'd proxy first (for root-owned certs), falls back to direct SSL."""
-    url = BASE_URL.rstrip("/") + "/" + path.lstrip("/")
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
-    if AUTH_HEADER:
-        headers.update(AUTH_HEADER)
-
+def _do_request(url: str, data: bytes | None, method: str, headers: dict) -> tuple[int, str]:
+    """Try a single HTTP request to the given URL. Returns (status, body)."""
     # Try proxy first
     if Path(PROXY_PATH).exists():
         status, body = _call_proxy(url, method, data, headers)
@@ -189,6 +197,32 @@ def _request(path: str, data: bytes | None = None, method: str = "POST") -> tupl
         return e.code, body
     except Exception as e:
         return 0, str(e)
+
+
+def _request(path: str, data: bytes | None = None, method: str = "POST") -> tuple[int, str]:
+    """Make HTTP request to the inbox API, trying each URL in the chain.
+    Returns (status_code, body) from the first URL that returns a valid HTTP response.
+    Connection errors (status=0) cascade to the next URL in the chain."""
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    if AUTH_HEADER:
+        headers.update(AUTH_HEADER)
+
+    last_error = ""
+    for name, base_url in _URL_LIST:
+        url = base_url.rstrip("/") + "/" + path.lstrip("/")
+        log.info("Trying %s: %s", name, url)
+        status, resp_body = _do_request(url, data, method, headers)
+        if status != 0:
+            # Got a real HTTP response (even 4xx/5xx) — server is alive
+            log.info("  %s responded HTTP %s", name, status)
+            return status, resp_body
+        # Connection error — log and cascade to next URL
+        last_error = resp_body
+        log.warning("  %s unreachable (%s), trying next in chain", name, resp_body)
+
+    # All URLs failed
+    return 0, f"All inbox endpoints unreachable. Last error: {last_error}"
+
 
 # ── Server ────────────────────────────────────────────────────
 server = Server("agent-inbox")

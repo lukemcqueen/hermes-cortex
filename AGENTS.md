@@ -543,6 +543,80 @@ Or re-run `install.sh` and the new guard will skip re-creating it.
 
 ---
 
+### ⚡ 2026-06-29 — Agent inbox routing: 3-tier failover chain
+
+**Architecture:**
+
+| Tier | Target | Host:Port | Route | Notes |
+|------|--------|-----------|-------|-------|
+| 1st | Moses | `your-domain.com:13004` | Remote | Primary orchestrator inbox |
+| 2nd | Esther | **`your-domain.com:23004`** | External → `127.0.0.1:13004` | Backup orchestrator inbox |
+| 3rd | Local | `127.0.0.1:8903` | Local only | Filesystem inbox (same machine) |
+
+**How Moses & Esther share the same IP:**
+
+Both run on machines behind `your-domain.com` (IP `121.129.5.54`):
+- Moses serves the inbox on port **13004**
+- Esther serves the inbox on port **23004** (external) → maps to `127.0.0.1:13004` on Esther's server
+- Standard web ports (80/443) serve the main site, independent of agent inboxes
+
+**For peer agents (Titus, Gisu, Joseph, Kustos):**
+
+Configure `~/.hermes/moses-inbox.conf` with Moses as primary and Esther as fallback:
+
+```ini
+MOSES_INBOX_URL=https://your-domain.com:13004          # 1st: Try Moses
+MOSES_INBOX_FALLBACK_URL=https://your-domain.com:23004 # 2nd: Esther backup
+MOSES_INBOX_AUTH=agent_name:password
+AGENT_NAME=<agent-name>
+```
+
+When Moses is unreachable (connection timeout), the MCP server automatically cascades to the fallback URL.
+
+**Moses (primary orchestrator on the server):**
+
+Moses's inbox server runs locally on `127.0.0.1:13004`, so he connects directly:
+
+```ini
+MOSES_INBOX_URL=http://127.0.0.1:13004                       # Local inbox server
+MOSES_INBOX_AUTH=moses:<redacted>
+AGENT_NAME=moses
+```
+
+No fallback needed — Moses IS the primary. If his server is down, peer agents cascade to Esther.
+
+**Exception — Esther (backup orchestrator):**
+
+Esther's own config uses a different fallback chain since she runs the local inbox server:
+
+```ini
+MOSES_INBOX_URL=https://your-domain.com:13004          # 1st: Try Moses
+MOSES_INBOX_FALLBACK_URL=http://127.0.0.1:13004             # 2nd: Local Esther server
+MOSES_INBOX_THIRD_URL=http://127.0.0.1:8903                 # 3rd: Local fallback port
+MOSES_INBOX_AUTH=esther:<redacted>
+AGENT_NAME=esther
+```
+
+Esther doesn't route to herself via the external IP — she goes direct to localhost for lower latency and independence from external networking.
+
+**Technical implementation:**
+
+- `inbox-mcp.py` reads `MOSES_INBOX_URL`, `_FALLBACK_URL`, and `_THIRD_URL` from config
+- `_request()` iterates through the URL chain in order. If a URL fails with a connection error (timeout, refused), it cascades to the next. HTTP 4xx/5xx responses are NOT connection errors — if the server responds, it's considered alive.
+- Each URL is logged on connection attempt so debugging is transparent
+- Source: `src/mcp-servers/inbox-mcp.py`
+
+**Testing the chain:**
+
+```bash
+# Test each tier
+curl -s --connect-timeout 5 https://your-domain.com:13004/health  # Moses
+curl -s --connect-timeout 5 https://your-domain.com:23004/health  # Esther (ext)
+curl -s http://127.0.0.1:8903/health                                    # Local
+```
+
+---
+
 ### ⚡ 2026-06-26 — Esther: backup orchestrator setup
 
 **What:** Esther (`worker-5`, hostname `esther`) is set up as a backup orchestrator. If Moses (`moses-server`) goes down, Esther handles agent inbox messages, auto-remediation, and system health.
