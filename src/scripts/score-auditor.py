@@ -31,6 +31,8 @@ DB_PATH = os.path.expanduser(
 SCANNED_DIRS = [
     os.path.expanduser("~/Developer"),
     os.path.expanduser("~/hermes-cortex"),
+    os.path.expanduser("~/Sites"),
+    os.path.expanduser("~/Documents/ACME"),
 ]
 EXCLUDE_PATTERNS = [
     "__pycache__", ".venv", "node_modules", ".git",

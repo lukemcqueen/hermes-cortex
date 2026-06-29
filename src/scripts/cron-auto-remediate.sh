@@ -114,12 +114,18 @@ case "${ACTION}" in
         fi
       done
     elif command -v systemctl >/dev/null 2>&1; then
-      # Linux — check user services
-      for svc_name in com.ollama.serve com.gbrain.sync-watch; do
-        if ! systemctl --user is-active "${svc_name}" >/dev/null 2>&1; then
-          issues+=("SERVICE:${svc_name}:down")
+      # Linux — check system-level first, then user-level
+      # Ollama: system-level service on most Linux distros
+      if ! systemctl is-active ollama >/dev/null 2>&1; then
+        # Fallback: user-level unit
+        if ! systemctl --user is-active ollama >/dev/null 2>&1; then
+          issues+=("SERVICE:ollama.service:down")
         fi
-      done
+      fi
+      # Gbrain sync-watch: user-level service
+      if ! systemctl --user is-active com.gbrain.sync-watch >/dev/null 2>&1; then
+        issues+=("SERVICE:com.gbrain.sync-watch:down")
+      fi
     fi
 
     # Check nginx — use sudo for system-wide config test

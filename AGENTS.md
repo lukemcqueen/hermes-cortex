@@ -302,14 +302,21 @@ Load the relevant skill with `skill_view(name)` when entering each stage.
 | `service-recovery` | `*/5 * * * *` | no_agent | Auto-restart crashed services |
 | `hermes-update` | `23 22 * * *` | no_agent | Daily Hermes upgrade + config migrate |
 | `hermes-cortex-sync` | `33 22 * * *` | no_agent | Daily repo pull + tool re-sync |
-| `orch-team-health` | `*/10 * * * *` | no_agent | Cross-agent health polling |
 | `system-alert-watchdog` | `*/30 * * * *` | no_agent | Resource threshold alerts |
-| `orch-team-messages` | `*/10 * * * *` | no_agent | Flag urgent agent messages |
 | `inbox-sensor` | `*/10 * * * *` | no_agent | Detect new broadcast messages |
-| `system-heartbeat` | `*/30 * * * *` | no_agent | System health check |
 | `memory-to-brain-sync` | `0 */6 * * *` | no_agent | Memory persistence to gbrain |
 | `score-auditor` | `0 */6 * * *` | no_agent | Scans for unscored changes |
-| `process-agent-messages` | `*/10 * * * *` | LLM | Process inbox remediation markers (backup orchestrator) |
+| `gbrain-nightly-dream` | `0 3 * * 6` | no_agent | Weekly gbrain knowledge enrichment |
+| `gbrain-update-sync` | `0 2 * * 0` | no_agent | Weekly gbrain update + health check |
+| `harvest-lessons` | `0 5 * * 1` | no_agent | Weekly lesson harvesting |
+| `memory-pruning` | `0 4 * * 1` | LLM+prompt | Weekly memory consolidation |
+| `auto-save-sessions` | `every 360m` | no_agent | Session state auto-save |
+| `agent-daily-bible-reading` | `0 1 * * *` | LLM+skill | Daily Bible reading |
+| `agent-daily-soul-refinement` | `0 23 * * *` | LLM+skill | Daily soul refinement |
+| **Orchestrator-only (Moses primary, Esther backup):** | | | |
+| `orch-team-health` | `*/10 * * * *` | no_agent | Cross-agent health polling |
+| `orch-team-messages` | `*/10 * * * *` | no_agent | Flag urgent agent messages |
+| `process-agent-messages` | `*/10 * * * *` | LLM | Process inbox remediation markers |
 
 **Management:**
 ```bash

@@ -219,7 +219,11 @@ if $UNINSTALL; then
   for job in \
     "agent-auto-remediate" "system-heartbeat" "memory-to-brain-sync" \
     "system-alert-watchdog" "service-recovery" "inbox-sensor" \
-    "orch-team-messages" "remediation-sensor"; do
+    "orch-team-messages" "remediation-sensor" \
+    "hermes-update" "gbrain-nightly-dream" "gbrain-update-sync" \
+    "hermes-cortex-sync" "harvest-lessons" "memory-pruning" \
+    "auto-save-sessions" "agent-daily-bible-reading" \
+    "agent-daily-soul-refinement"; do
     remove_cron "$job"
   done
   info "Uninstall complete"
@@ -242,7 +246,7 @@ create_cron "agent-auto-remediate" "*/30 * * * *" \
   "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report." \
   "auto-remediation" \
   "terminal,file,web" \
-  "local" \
+  "origin" \
   "$HOME" \
   "false"
 
@@ -319,9 +323,21 @@ create_cron "score-auditor" "0 */6 * * *" \
 IS_ORCHESTRATOR=false
 REGISTRY="${CORTEX_REPO:-$HOME/hermes-cortex}/src/agent-registry.json"
 if [ -f "$REGISTRY" ]; then
-  ORCH=$(python3 -c "import json; d=json.load(open('$REGISTRY')); agents = d.get('agents',{}); print(next((a.get('name',k) for k,a in agents.items() if a.get('is_orchestrator')), 'unknown'))" 2>/dev/null || echo "unknown")
   HOST=$(hostname -s 2>/dev/null || echo "unknown")
-  if [ "$HOST" = "$ORCH" ] || [ "${ORCH}" = "moses" ]; then
+  # Check if this hostname matches any orchestrator (primary or backup)
+  PY_RESULT=$(python3 -c "
+import json, sys
+d = json.load(open('$REGISTRY'))
+agents = d.get('agents', {})
+host = '$HOST'
+for name, info in agents.items():
+    if info.get('is_orchestrator') or info.get('is_backup_orchestrator'):
+        if info.get('hostname') == host:
+            print('true')
+            sys.exit(0)
+print('false')
+" 2>/dev/null || echo "false")
+  if [ "$PY_RESULT" = "true" ]; then
     IS_ORCHESTRATOR=true
   fi
 fi
@@ -347,7 +363,60 @@ if $IS_ORCHESTRATOR; then
     "true"
 fi
 
-# ── Summary ─────────────────────────────────────────────────
+# ── Deployment-Specific Crons ─────────────────────────────
+# These are specific to Luke's deployment but tracked in the
+# repo so install-hermes-crons.sh --force can recreate them.
+# (All crons listed in the AGENTS.md reference table.)
+
+printf "\n${CYAN}  6. Deployment-Specific Crons${RESET}\n"
+
+# Daily Hermes Agent self-update
+create_cron "hermes-update" "23 22 * * *" \
+  "hermes-update.sh" \
+  "" "" "" "origin" "" "true"
+
+# Weekly gbrain dream for knowledge enrichment
+create_cron "gbrain-nightly-dream" "0 3 * * 6" \
+  "gbrain-nightly-dream.sh" \
+  "" "" "" "origin" "" "true"
+
+# Weekly gbrain update and health check
+create_cron "gbrain-update-sync" "0 2 * * 0" \
+  "gbrain-update-sync.sh" \
+  "" "" "" "origin" "" "true"
+
+# Daily hermes-cortex sync and update
+create_cron "hermes-cortex-sync" "33 22 * * *" \
+  "hermes-cortex-sync.sh" \
+  "" "" "" "origin" "" "true"
+
+# Weekly lesson harvesting
+create_cron "harvest-lessons" "0 5 * * 1" \
+  "harvest-lessons.sh" \
+  "" "" "" "origin" "" "true"
+
+# Weekly memory pruning and consolidation
+create_cron "memory-pruning" "0 4 * * 1" \
+  "" \
+  "Consolidate Hermes agent memory and project agent instructions. Read MEMORY.md, USER.md from the active profile and project roots. Consolidate into compact pointers. Prune stale entries. Keep under 2,200 chars." \
+  "" "" "origin" "" "false"
+
+# Auto-save sessions every 6 hours
+create_cron "auto-save-sessions" "every 360m" \
+  "auto-save-sessions.py" \
+  "" "" "" "local" "" "true"
+
+# Daily bible reading (LLM with soul-refinement skill)
+create_cron "agent-daily-bible-reading" "0 1 * * *" \
+  "" \
+  "Load the soul-refinement skill. Read ~/.hermes/SOUL.md and find the last book covered in the Scripture schedule. Read and summarize the next book. Add the daily verse to the session log." \
+  "soul-refinement" "" "origin" "" "false"
+
+# Daily soul refinement (LLM with soul-refinement skill)
+create_cron "agent-daily-soul-refinement" "0 23 * * *" \
+  "" \
+  "Load the soul-refinement skill. Use session_search() to find today's sessions. Look for any user corrections, feedback, or behavior patterns worth noting. Update SOUL.md with insights. Keep it under 5KB." \
+  "soul-refinement" "" "origin" "" "false"
 echo ""
 printf "${CYAN}━━━ Summary ━━━${RESET}\n"
 if $DRY_RUN; then
