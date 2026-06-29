@@ -52,6 +52,7 @@ The daily scanner feeds back into `blocked_ips.add`, creating a closed loop: **L
 | File | Purpose |
 |------|---------|
 | `nginx-security-scanner.sh` | Daily scanner — logs → detect → append → deploy |
+| `nginx-threat-pipeline.sh` | **Daily pipeline** — scanner → fail2ban → deploy → git commit → push (wraps scanner, adds fail2ban ban collection and git workflow) |
 
 ## Setup Steps
 
@@ -113,6 +114,23 @@ sudo fail2ban-client status nginx-badbots
 cron name=daily-nginx-scanner schedule="0 6 * * *" \
   script=nginx-security-scanner.sh no_agent=true deliver=local
 ```
+
+### 6b. (Optional) Create threat pipeline cron
+
+Adds fail2ban ban collection and git commit/push on top of the scanner:
+
+```bash
+cron name=threat-pipeline schedule="0 5 * * *" \
+  script=nginx-threat-pipeline.sh no_agent=true deliver=origin
+```
+
+The pipeline:
+1. Runs the scanner for new suspect IPs from nginx logs
+2. Collects new banned IPs from fail2ban logs
+3. Deploys via `sudo -n hermes-security-apply` (requires passwordless sudo)
+4. Git-commits and pushes `blocked_ips.add` changes
+
+> **Note:** This is a deployment-specific cron (Luke's setup). Install via `install-hermes-crons.sh` on each target host.
 
 ### 7. First deploy
 

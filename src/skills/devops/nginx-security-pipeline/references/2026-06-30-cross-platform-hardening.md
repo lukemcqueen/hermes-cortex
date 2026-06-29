@@ -1,0 +1,46 @@
+# Nginx Threat Pipeline — Cross-Platform Hardening (2026-06-30)
+
+**Summary:** Full rewrite of `nginx-threat-pipeline.sh` for cross-platform resilience.
+Handles missing dependencies gracefully (fail2ban, nginx, deploy script, timeout),
+and auto-detects macOS (Intel + ARM) vs Linux paths.
+
+## Changes
+
+### 1. Graceful exits
+
+| Scenario | Behavior |
+|----------|----------|
+| fail2ban not installed | `fail2ban not installed — skipping` |
+| fail2ban log not found | `fail2ban installed but no log file — skipping` |
+| `deploy/nginx/` dir missing | `mkdir -p` before append |
+| cortex repo missing | `cortex repo not found — skipping commit` |
+| deploy script not on any platform path | `hermes-security-apply not found — skipping` |
+| nginx binary not found | `nginx not found — skipping deploy` |
+| no `timeout`/`gtimeout` binary | Runs without timeout instead of failing |
+
+### 2. Cross-platform path detection
+
+| Concern | Detection order |
+|---------|----------------|
+| **timeout** | `timeout` (Linux) → `gtimeout` (macOS brew coreutils) |
+| **hermes-security-apply** | `/usr/local/sbin/` (Linux/Mac Intel) → `/opt/homebrew/sbin/` (Mac ARM) |
+| **nginx binary** | `/usr/sbin/nginx` (Linux) → `/usr/local/bin/nginx` (Mac Intel) → `/opt/homebrew/bin/nginx` (Mac ARM) |
+| **fail2ban log** | `/var/log/fail2ban.log` (Linux) → `/opt/homebrew/var/log/` (Mac ARM) → `/usr/local/var/log/` (Mac Intel) |
+
+### 3. `sudo -n` fix (from earlier cycle)
+
+`sudo bash "$DEPLOY_SCRIPT"` → `sudo -n "$DEPLOY_SCRIPT"`
+- Cron has no TTY (`requiretty` in sudoers)
+- `bash` wrapper made sudo see `bash` instead of the NOPASSWD-authorized script path
+
+## Verification
+
+- Linux (6.8.0-generic): full pipeline runs, 14 IPs found, deployed, nginx reloaded ✅
+- macOS Intel: path resolution order verified by fallback chain
+- macOS ARM: path resolution order verified by fallback chain
+
+## Files
+
+- `src/scripts/nginx-threat-pipeline.sh` — the pipeline script (tracked in repo)
+- `deploy/nginx/hermes-security-apply` — deploy script (already tracked)
+- `src/scripts/nginx-security-scanner.sh` — daily scanner (already tracked)

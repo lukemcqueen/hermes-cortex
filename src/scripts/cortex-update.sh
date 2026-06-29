@@ -143,6 +143,7 @@ register "src/scripts/check-certs.py"               "${HERMES_HOME}/scripts/chec
 register "src/scripts/daily-bible-reading.sh"       "${HERMES_HOME}/scripts/daily-bible-reading.sh"
 register "src/scripts/generate-inbox-wrappers.py"   "${HERMES_HOME}/scripts/generate-inbox-wrappers.py"
 register "src/scripts/nginx-security-scanner.sh"    "${HERMES_HOME}/scripts/nginx-security-scanner.sh"
+register "src/scripts/nginx-threat-pipeline.sh"     "${HERMES_HOME}/scripts/nginx-threat-pipeline.sh"
 
 # Deployment-specific cron scripts
 register "src/scripts/auto-save-sessions.py"      "${HERMES_HOME}/scripts/auto-save-sessions.py"
