@@ -95,13 +95,13 @@ def _detect_gen_model() -> str:
             vram_gb = total_gb / 8
 
         if vram_gb > 24:
-            return "mannix/qwen2.5-coder:14b-iq3_xs"
+            return "qwen2.5-coder:14b"                         # Q4_K_M ~8GB
         elif vram_gb > 10:
-            return "mannix/qwen2.5-coder:7b-iq3_xs"
+            return "qwen2.5-coder:7b"                          # Q4_K_M ~4.5GB (default)
         elif vram_gb > 4:
-            return "qwen2.5-coder:1.5b-64k"  # 64K context, fast on most hardware
+            return "qwen2.5-coder:1.5b"                        # Q4_K_M ~1GB, 64K context
         else:
-            return "qwen2.5-coder:1.5b-64k"  # floor — always runs
+            return "qwen2.5-coder:1.5b"                        # floor — always runs
     except Exception:
         return GEN_MODEL  # fall back to default
 
