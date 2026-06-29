@@ -73,22 +73,26 @@ offline_code index --force    # full rebuild
 offline_code stats            # corpus + index stats
 ```
 
-## Agent Workflow — Check Offline Before Web
+## Agent Workflow — MANDATORY: Check Offline Before Web
 
-When you need code examples, follow this order:
+This workflow is **mandatory** for all LLM cron jobs and coding sessions.
+Before calling `web_search()`, you MUST follow this order:
 
 ```
 1. offline_code search "<your pattern>"
-     └── hit? → Use the snippet directly or adapt it
+     └── hit? → Use the snippet directly or adapt it. ZERO API COST.
      └── miss? → Go to step 2
 
 2. offline_code gen "<your request>"
      └── Generates code using RAG + qwen2.5-coder
      └── Good for: algorithms, patterns, glue code
 
-3. web_search (last resort)
-     └── Only when offline has nothing relevant
+3. web_search (LAST RESORT — only if offline has nothing useful)
 ```
+
+Skipping the offline check and going straight to `web_search()` is a
+**quality gate failure** — it wastes API credits on questions the 518-snippet
+corpus can answer for free.
 
 This saves API costs, works offline, and is faster than web search.
 
