@@ -40,7 +40,42 @@ CORPUS_DIR = Path(__file__).parent / "code-corpus"
 INDEX_DB = HOME / "offline" / "code-index.json"
 OLLAMA_URL = "http://localhost:11434"
 EMBED_MODEL = "nomic-embed-text"
-GEN_MODEL = "mannix/qwen2.5-coder:7b-iq3_xs"
+GEN_MODEL = "qwen2.5-coder:1.5b"  # default; auto-upgraded if VRAM available
+
+
+def _detect_gen_model() -> str:
+    """Auto-select code generation model based on available VRAM.
+
+    Returns the best model slug for the current hardware.
+    Respects the GEN_MODEL constant as minimum floor.
+    """
+    try:
+        import subprocess
+        # macOS: use system_profiler or ioreg
+        total_gb = 0
+        try:
+            result = subprocess.run(
+                ["sysctl", "-n", "hw.memsize"],
+                capture_output=True, text=True, timeout=3
+            )
+            total_gb = int(result.stdout.strip()) / (1024**3)
+        except Exception:
+            pass
+
+        # VRAM estimate: on Apple Silicon, ~70% of RAM is available to GPU
+        # On Intel with dedicated GPU, this under-estimates but is safe.
+        vram_gb = total_gb * 0.7
+
+        if vram_gb > 24:
+            return "qwen2.5-coder:14b"
+        elif vram_gb > 10:
+            return "qwen2.5-coder:7b"
+        elif vram_gb > 4:
+            return "qwen2.5-coder:1.5b"  # 64K context, fast on most hardware
+        else:
+            return "qwen2.5-coder:1.5b"  # floor — always runs
+    except Exception:
+        return GEN_MODEL  # fall back to default
 
 
 # ── Corpus Loading ──────────────────────────────────────────
@@ -379,7 +414,7 @@ def cmd_check(query, lang=None):
 
 def cmd_generate(query, model=None, limit=3):
     """Search corpus, then ask Ollama to generate code based on context."""
-    model = model or GEN_MODEL
+    model = model or _detect_gen_model()
 
     # First, find relevant snippets
     index = _load_index()
@@ -484,7 +519,7 @@ def cmd_stats():
         gen_ok = any("qwen2.5-coder" in m for m in models)
         print(f"\n🤖 Ollama Models")
         print(f"   {EMBED_MODEL}:     {'✅' if emb_ok else '❌'} (pull: ollama pull {EMBED_MODEL})")
-        print(f"   Code gen:   {'✅' if gen_ok else '⚠️  not pulled'} (pull: ollama pull {GEN_MODEL})")
+        print(f"   Code gen:   {'✅' if gen_ok else '⚠️  not pulled'} (detected: {_detect_gen_model()})")
         if models:
             print(f"   Available:  {', '.join(models[:5])}")
     except Exception:
