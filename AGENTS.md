@@ -352,7 +352,8 @@ bash ~/.hermes/scripts/install-hermes-crons.sh --uninstall
 
 ## Offline Code — Local Snippet Search & Generation
 
-A 366-snippet corpus across 25 languages, searchable and generatable entirely offline.
+A **518-snippet corpus** across 32 categories, searchable and generatable entirely offline.
+Agents: load the `offline-code` skill and search offline before reaching for `web_search`.
 
 | Command | What it does |
 |---------|-------------|
@@ -362,7 +363,12 @@ A 366-snippet corpus across 25 languages, searchable and generatable entirely of
 
 **Agent workflow:** Before `web_search` for code patterns, try `offline_code search` first. It's faster, free, and works offline. Load the `offline-code` skill for full usage docs.
 
-**Setup:** Symlink `src/offline/offline_code.sh` → `~/.hermes/bin/offline_code`. Index is auto-built on first `search`/`gen`.
+**tirith MCP server:** When you need to check URLs or verify command safety, use the `tirith_*` MCP tools instead of raw `curl` — they're sandboxed and skip security prompts. Configure with:
+```bash
+hermes mcp add tirith --command tirith --args mcp-server
+```
+
+**Setup:** Symlink `src/offline/offline_code.sh` → `~/.hermes/bin/offline_code`. Index is auto-built on first `search`/`gen`. Deployed automatically by `cortex-update.sh`.
 
 ---
 
