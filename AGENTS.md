@@ -406,9 +406,16 @@ Agents: load the `offline-code` skill and search offline before reaching for `we
 |---------|-------------|
 | `offline_code search "flask rest api"` | Semantic search (nomic-embed-text) → ranked snippets |
 | `offline_code gen "binary search tree rust"` | RAG + qwen2.5-coder → generated code |
+| `offline_code learn "Title" --lang py --tags "api" --desc "..." --code "..."` | Add learned snippet to corpus (self-improvement) |
 | `offline_code stats` | Corpus + index stats |
 
-**Agent workflow:** Before `web_search` for code patterns, try `offline_code search` first. It's faster, free, and works offline. Load the `offline-code` skill for full usage docs.
+**Agent workflow (MANDATORY):**
+1. `offline_code search "<pattern>"` — check the 518-snippet corpus first
+2. **Found?** Use it. Zero API cost.
+3. **Not found?** `web_search()` as last resort
+4. **If web_search succeeded:** `offline_code learn "<title>" ...` to fill the gap
+
+Every gap filled makes the corpus more self-sufficient. The `offline-code` skill documents this as a quality gate requirement. Load the `offline-code` skill for full usage docs.
 
 **tirith MCP server:** When you need to check URLs or verify command safety, use the `tirith_*` MCP tools instead of raw `curl` — they're sandboxed and skip security prompts. Configure with:
 ```bash

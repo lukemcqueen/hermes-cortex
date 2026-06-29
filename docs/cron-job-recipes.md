@@ -1039,10 +1039,53 @@ immediately without waiting for the schedule.
 
 ---
 
+## ⚡ Offline-First Mandate for LLM Crons
+
+All LLM cron jobs MUST use the offline code corpus before making external API calls.
+
+### Workflow (enforced by quality gate)
+
+```
+LLM cron fires
+  → Load the offline-code skill (attached to cron or loaded manually)
+  → offline_code search "<diagnostic question>"   ← MANDATORY
+  → If found: use the offline result. Zero cost.
+  → If not found: web_search() as last resort
+  → If web_search found something useful:
+      offline_code learn "<title>" --lang <lang> --tags "<tags>" --desc "<desc>" --code "<code>"
+      ← This fills the gap permanently
+```
+
+### Setup
+
+```bash
+# Attach offline-code skill to any LLM cron job:
+hermes cron update <job-id> --skills auto-remediation,offline-code
+
+# The quality gate prompt block now includes an offline-first check.
+# See src/skills/devops/cron-quality-gate/SKILL.md for the full block.
+```
+
+### Self-Learning
+
+The `offline_code learn` command creates a properly formatted snippet in the
+code corpus. The weekly index refresh bakes it in automatically. Over time,
+the corpus becomes more complete and API costs decrease with every cycle.
+
+Example:
+```bash
+offline_code learn "PostgreSQL Connection Refused Fix" \
+  --lang sql --tags "postgres,connection,error" \
+  --desc "Fix for connection refused in PostgreSQL" \
+  --code "sudo systemctl start postgresql"
+```
+
+---
+
 ## Changelog
 
 | Date | Version | Change |
 |------|---------|--------|
-| 2026-06-27 | 1.4.0 | Added Telegram Notification Pattern (Quiet When Good) — standardized cron notification approach: silent when healthy, message on issue, message on resolution. Updated all monitoring crons. |
+| 2026-06-29 | 1.5.0 | Added Offline-First Mandate section — all LLM crons must check 518-snippet corpus before external API calls. Self-learning via `offline_code learn` fills gaps permanently. |
 | 2026-06-15 | 1.3.0 | Added Moses Inbox Remediation Processor recipe — auto-remediate agent-inbox fix requests within 10 min. Companion script, marker-based pipeline, verification-fix cycle. |
 | 2026-06-05 | 1.0.0 | Initial release — 10 recipes |
