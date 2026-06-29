@@ -1,4 +1,4 @@
-#!/Users/luke/.pyenv/versions/3.12.13/bin/python3
+#!/usr/bin/env python3
 import sys
 import os
 
