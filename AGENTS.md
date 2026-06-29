@@ -385,8 +385,21 @@ code-review (security scan, quality gate)
 | `orch-team-health` | `*/10 * * * *` | no_agent | Cross-agent health polling |
 | `orch-team-messages` | `*/10 * * * *` | no_agent | Flag urgent agent messages |
 | `process-agent-messages` | `*/10 * * * *` | LLM | Process inbox remediation markers |
-
-**Management:**
+|
+|### Cron naming convention
+|
+|When creating a new cron, prefix it to signal scope so other agents know whether to install it:
+|
+|| Prefix | Meaning | Example |
+||--------|---------|---------|
+| `orch-*` | **Orchestrator-only** — runs only on the orchestrator (Moses) and backup | `orch-team-health` |
+| `agent-*` | **LLM-driven** — agent reasons each tick; installable on any machine | `agent-auto-remediate` |
+| `local-*` | **This server only** — NOT shared with or installed on peer agents. Combine with `agent-` as `local-agent-*` for LLM-driven local crons. | `local-agent-daily-news-brief`, `local-script-name` |
+| no prefix | **General no_agent** — safe for any agent to run, no LLM tokens used | `remediation-sensor` |
+|
+|**Rule:** If a cron should stay on one machine and never appear on Titus, Gisu, or Joseph, prefix it `local-`. When adding a new cron, always ask: *Would another agent on another machine benefit from running this?* If no, use `local-*`.|
+|
+|**Management:**|
 ```bash
 hermes cron list
 bash ~/.hermes/scripts/install-hermes-crons.sh          # install/update all
