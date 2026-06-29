@@ -74,7 +74,7 @@ Example transformation:
 - Active crons: conversation-export (6h→gbrain), memory-to-brain-sync (6h, no_agent),
 - memory-pruning (4am LLM), system-heartbeat (30min), gbrain-dream (3am),
 - daily-morning-briefing (6:30am), briefing-analysis (Sun 7am),
-- langfuse-llm-judge-scorer (twice daily), hermes-update, brew-update.
+- langfuse-llm-judge-scorer (M-F 12/8pm, weekends 10pm), hermes-update, brew-update.
 + Crons: 16 jobs (5min service-recovery → Sun 8am weekly-scan). → /brain m crons
 ```
 

@@ -41,7 +41,10 @@ Sources under `~/hermes-cortex/` → dest under `~/.hermes/` or `~/`.
 
 ### Offline tools
 | `src/offline/offline_knowledge.py` | `~/.hermes/offline/offline_knowledge.py` | |
-| `src/offline/offline_knowledge.sh` | `~/.hermes/offline/offline_knowledge.sh` | |
+| `src/offline/offline_knowledge.sh` | `~/.hermes/bin/offline_knowledge` | Symlink in bin/ for PATH access |
+| `src/offline/offline_code.py` | `~/.hermes/offline/offline_code.py` | |
+| `src/offline/offline_code.sh` | `~/.hermes/bin/offline_code` | Symlink to bin/ for CLI access |
+| `src/offline/code-corpus/` | `~/.hermes/offline/code-corpus/` | 366 snippets, 25 languages |
 | `src/offline/kiwix-docker-compose.yml` | `~/.hermes/offline/kiwix-docker-compose.yml` | |
 | `src/offline/prep-offline.sh` | `~/.hermes/offline/prep-offline.sh` | |
 | `src/offline/session_mine.py` | `~/.hermes/offline/session_mine.py` | |

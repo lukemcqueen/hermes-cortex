@@ -189,6 +189,8 @@ loop-feedback accept <id> / loop-feedback override <id> --note "..."
 1. `mcp_loop_governance_config_show()` — check thresholds/weights
 2. `mcp_loop_governance_cycle_stats(days=7)` — review recent scoring health
 3. `mcp_loop_governance_cache_search(query="<current task>")` — learn from past
+4. **`offline_code search "<current task>"`** — check offline corpus before web
+   (If the task involves code patterns, config, or infrastructure)
 
 ### Multi-file scoring
 
@@ -197,6 +199,22 @@ loop-feedback accept <id> / loop-feedback override <id> --note "..."
 | One logical change across N files | Score once. Most representative file as `--code-file`. |
 | Independent changes in same session | Score each with distinct task IDs. |
 | Config changes across 2+ files | Score once. Omit `--test-file`. `pass-pct 100` if verified. |
+
+### ⚡ LLM Judge Scorer (trace quality evaluation)
+
+In addition to the rule-based `score-cycle`, a separate LLM-as-Judge scorer runs as a `no_agent` cron
+and evaluates conversation trace quality in Langfuse using `qwen2.5-coder:1.5b`.
+
+| Aspect | Detail |
+|--------|--------|
+| What | Scores every unscored Langfuse trace on helpfulness/clarity/depth/overall |
+| When | Weekdays 12pm/8pm KST, weekends 10pm KST |
+| Where | `~/.hermes/scripts/llm-judge-scorer.py` |
+| Skill | `llm-judge-scorer` (load for setup/troubleshooting) |
+
+**For agents:** If you see low `overall` scores on your traces, address the quality gaps
+(conciseness, completeness, verification) before your next task. The scorer is a quality
+feedback loop — it exists to help you improve.
 
 ### Troubleshooting
 
@@ -313,6 +331,9 @@ Load the relevant skill with `skill_view(name)` when entering each stage.
 | `auto-save-sessions` | `every 360m` | no_agent | Session state auto-save |
 | `agent-daily-bible-reading` | `0 1 * * *` | LLM+skill | Daily Bible reading |
 | `agent-daily-soul-refinement` | `0 23 * * *` | LLM+skill | Daily soul refinement |
+| `llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | Weekday trace quality scoring |
+| `llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | Weekend trace quality scoring |
+| `offline-code-index` | `0 5 * * 0` | no_agent | Weekly corpus index refresh |
 | **Orchestrator-only (Moses primary, Esther backup):** | | | |
 | `orch-team-health` | `*/10 * * * *` | no_agent | Cross-agent health polling |
 | `orch-team-messages` | `*/10 * * * *` | no_agent | Flag urgent agent messages |
@@ -326,6 +347,22 @@ bash ~/.hermes/scripts/install-hermes-crons.sh --force  # recreate all
 bash ~/.hermes/scripts/install-hermes-crons.sh --dry-run
 bash ~/.hermes/scripts/install-hermes-crons.sh --uninstall
 ```
+
+---
+
+## Offline Code — Local Snippet Search & Generation
+
+A 366-snippet corpus across 25 languages, searchable and generatable entirely offline.
+
+| Command | What it does |
+|---------|-------------|
+| `offline_code search "flask rest api"` | Semantic search (nomic-embed-text) → ranked snippets |
+| `offline_code gen "binary search tree rust"` | RAG + qwen2.5-coder → generated code |
+| `offline_code stats` | Corpus + index stats |
+
+**Agent workflow:** Before `web_search` for code patterns, try `offline_code search` first. It's faster, free, and works offline. Load the `offline-code` skill for full usage docs.
+
+**Setup:** Symlink `src/offline/offline_code.sh` → `~/.hermes/bin/offline_code`. Index is auto-built on first `search`/`gen`.
 
 ---
 
