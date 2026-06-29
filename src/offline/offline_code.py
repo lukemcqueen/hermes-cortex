@@ -14,6 +14,8 @@ Usage:
   offline_code gen "binary search tree rust"   → Generate code using Ollama
   offline_code index                           → (Re)build the search index
   offline_code stats                           → Show corpus stats
+  offline_code learn "Title" --lang py --tags "api,flask" \\
+      --desc "Description" --code "code here"  → Add learned snippet
 
 Requirements: Python 3.10+, Ollama running with nomic-embed-text
 Optional: qwen2.5-coder:1.5b (or higher) for code generation
@@ -26,6 +28,7 @@ import subprocess
 import sys
 import textwrap
 import unicodedata
+from datetime import datetime
 from pathlib import Path
 
 HOME = Path.home()
@@ -410,6 +413,52 @@ def cmd_stats():
 
 # ── CLI ─────────────────────────────────────────────────────
 
+
+def cmd_learn(title: str, language: str, tags: list, description: str, code: str):
+    """Create a new snippet from a web-learned pattern.
+
+    Agents call this when offline_code search misses and web_search finds
+    something useful. Creates a properly formatted .md snippet so the
+    next index refresh bakes it into the corpus permanently.
+    """
+    slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')[:60]
+    lang_map = {
+        "python": "python", "typescript": "typescript", "javascript": "javascript",
+        "go": "go", "rust": "rust", "ruby": "ruby", "java": "java", "kotlin": "kotlin",
+        "swift": "swift", "c": "c", "c++": "c++", "csharp": "csharp",
+        "dart": "dart", "php": "php", "r": "r", "zig": "zig", "lua": "lua",
+        "shell": "shell", "bash": "shell", "sql": "sql", "yaml": "configuration",
+        "docker": "docker", "terraform": "terraform",
+        "html": "css", "css": "css",
+        "nginx": "nginx", "markdown": "documentation",
+    }
+    lang_dir = CORPUS_DIR / lang_map.get(language, "generic")
+    lang_dir.mkdir(parents=True, exist_ok=True)
+    filepath = lang_dir / f"{slug}.md"
+
+    if filepath.exists():
+        print(f"⚠️  Already exists: {filepath}")
+        return
+
+    frontmatter = (
+        "---\n"
+        f"language: {language}\n"
+        f"tags: [{', '.join(tags)}]\n"
+        f"title: {title}\n"
+        f"description: {description}\n"
+        "source: learned\n"
+        "---\n"
+        "\n"
+        f"```{language}\n"
+        f"{code}\n"
+        "```\n"
+    )
+
+    filepath.write_text(frontmatter, encoding="utf-8")
+    print(f"✅ Learned: {filepath}")
+    print(f"   Next index refresh will include this snippet.")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Offline Code Assistant — search & generate from curated code corpus",
@@ -444,6 +493,14 @@ def main():
     # Stats
     sub.add_parser("stats", help="Show corpus and index statistics")
 
+    # Learn (self-improvement)
+    l = sub.add_parser("learn", help="Add a new snippet learned from the web")
+    l.add_argument("title", help="Snippet title")
+    l.add_argument("--lang", "-l", default="python", help="Programming language")
+    l.add_argument("--tags", "-t", default="", help="Comma-separated tags")
+    l.add_argument("--desc", "-d", default="", help="Short description")
+    l.add_argument("--code", "-c", default="", help="Code content (or pipe via stdin)")
+
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
@@ -457,6 +514,12 @@ def main():
         cmd_index(force=args.force)
     elif args.command == "stats":
         cmd_stats()
+    elif args.command == "learn":
+        tags = [t.strip() for t in args.tags.split(",") if t.strip()]
+        code = args.code
+        if not code and not sys.stdin.isatty():
+            code = sys.stdin.read().strip()
+        cmd_learn(args.title, args.lang, tags, args.desc, code)
 
 
 if __name__ == "__main__":

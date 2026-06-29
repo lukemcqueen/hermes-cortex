@@ -51,7 +51,9 @@ Before delivering, self-check:
 1. Is the output useful, readable, and on-topic?
 2. Did you run actual tools, not fabricate results?
 3. Did you check the offline corpus before making external calls?
-4. Is it the right length (not oversized, not empty)?
+4. If you used web_search because offline had nothing → did you
+   run `offline_code learn` to add the result back to the corpus?
+5. Is it the right length (not oversized, not empty)?
 If ANY answer is NO → output EXACTLY this one line:
 QUALITY_G_BLOCKED
 

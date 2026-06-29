@@ -88,6 +88,15 @@ Before calling `web_search()`, you MUST follow this order:
      └── Good for: algorithms, patterns, glue code
 
 3. web_search (LAST RESORT — only if offline has nothing useful)
+
+### Self-Learning: Fill Gaps
+When `web_search()` finds something useful that the corpus missed:
+1. **`offline_code learn "<title>" --lang <lang> --tags "<tags>" --desc "<desc>" --code "<code>"`**
+2. This creates a new `.md` snippet in the correct language directory
+3. **Next index refresh** (weekly cron or manual `offline_code index --force`) bakes it in
+4. Future searches will find it — the corpus improves over time
+
+Without explicit `--code`, you can pipe via stdin: `echo "code" | offline_code learn "Title"`
 ```
 
 Skipping the offline check and going straight to `web_search()` is a

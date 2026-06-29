@@ -17,6 +17,13 @@ Before calling `web_search()` or any external API during remediation:
 This is **mandatory** — all cron jobs must check the offline corpus before burning API credits.
 The `offline-code` skill is loaded automatically with this cron.
 
+### Self-Learning
+If you found a fix via `web_search()` that wasn't in the corpus:
+```bash
+offline_code learn "<error-title>" --lang shell --tags "error,fix" --desc "<what caused it>" --code "<the fix>"
+```
+Next index refresh will include it — the corpus learns from every fix.
+
 ## When to use
 
 This skill is loaded by the `agent-auto-remediate` cron job every 5 minutes.
