@@ -324,6 +324,157 @@ check_git() {
     fi
 }
 
+check_service_manager() {
+    header "SERVICE MANAGEMENT"
+    
+    local os
+    os=$(uname -s)
+    
+    # Define important cortex services (systemd unit names / launchd labels)
+    local -a SERVICES=()
+    local -a SERVICE_NAMES=()
+    
+    if [[ "$os" == "Darwin" ]]; then
+        # macOS: launchd labels
+        SERVICES=(
+            "com.ollama.serve"
+            "com.gbrain.autopilot"
+            "com.hermes.gateway"
+            "com.hermes.cortex-dashboard"
+            "com.hermes.agent-inbox"
+        )
+        SERVICE_NAMES=(
+            "Ollama"
+            "gbrain autopilot"
+            "Hermes Gateway"
+            "Cortex Dashboard"
+            "Agent Inbox"
+        )
+        local svc_mgr="launchd"
+    elif [[ "$os" == "Linux" ]]; then
+        # Linux: systemd user service names
+        SERVICES=(
+            "ollama"
+            "gbrain-autopilot"
+            "hermes-gateway"
+            "hermes-cortex-dashboard"
+            "hermes-agent-inbox"
+        )
+        SERVICE_NAMES=(
+            "Ollama"
+            "gbrain autopilot"
+            "Hermes Gateway"
+            "Cortex Dashboard"
+            "Agent Inbox"
+        )
+        local svc_mgr="systemd"
+    else
+        info "$MODE" "Unknown OS — cannot check service manager"
+        json_append "service_manager" "info" "Unknown OS" ""
+        return
+    fi
+    
+    local managed=0 unmanaged_found=0 not_installed=0
+    
+    for i in "${!SERVICES[@]}"; do
+        local label="${SERVICES[$i]}"
+        local display="${SERVICE_NAMES[$i]}"
+        
+        if [[ "$os" == "Darwin" ]]; then
+            # Check if launchd service exists
+            local plist_path="$HOME/Library/LaunchAgents/${label}.plist"
+            if launchctl list "$label" &>/dev/null 2>&1; then
+                local pid
+                pid=$(launchctl list "$label" 2>/dev/null | awk '{print $1}' | grep -v '^\s*$')
+                if [[ -n "$pid" && "$pid" != "-" ]]; then
+                    pass "$MODE" "launchd: $display (PID $pid)"
+                else
+                    warn "$MODE" "launchd: $display (registered, not running)"
+                fi
+                managed=$((managed + 1))
+            elif [[ -f "$plist_path" ]]; then
+                info "$MODE" "launchd: $display (plist exists, not loaded)"
+                managed=$((managed + 1))
+            else
+                info "$MODE" "launchd: $display (not yet installed)"
+                not_installed=$((not_installed + 1))
+            fi
+        else
+            # Linux: Check systemd user service
+            local unit_dir="$HOME/.config/systemd/user"
+            local unit_file="${unit_dir}/${label}.service"
+            
+            if systemctl --user is-active --quiet "$label" 2>/dev/null; then
+                local enabled_status
+                enabled_status=$(systemctl --user is-enabled "$label" 2>/dev/null || echo "?")
+                pass "$MODE" "systemd: $display (active, $enabled_status)"
+                managed=$((managed + 1))
+            elif systemctl --user is-enabled --quiet "$label" 2>/dev/null; then
+                warn "$MODE" "systemd: $display (enabled but not active)"
+                managed=$((managed + 1))
+            elif [[ -f "$unit_file" ]]; then
+                info "$MODE" "systemd: $display (unit exists, not enabled)"
+                managed=$((managed + 1))
+            else
+                info "$MODE" "systemd: $display (not yet installed)"
+                not_installed=$((not_installed + 1))
+            fi
+        fi
+    done
+    
+    # Detect unmanaged processes — running without systemd/launchd
+    if [[ "$os" == "Linux" ]]; then
+        local ollama_pid hermes_pid
+        # Check for unmanaged Ollama process (running outside systemd)
+        ollama_pid=$(pgrep -f "ollama serve" 2>/dev/null || true)
+        hermes_pid=$(pgrep -f "hermes_cli.main" 2>/dev/null || true)
+        
+        if [[ -n "$ollama_pid" ]]; then
+            # Check if it's NOT the systemd-managed service
+            if ! systemctl --user is-active --quiet ollama 2>/dev/null; then
+                warn "$MODE" "⚠ Ollama running (PID $ollama_pid) but NOT managed by systemd — no auto-restart, will not survive reboot"
+                unmanaged_found=$((unmanaged_found + 1))
+            fi
+        fi
+        if [[ -n "$hermes_pid" ]]; then
+            if ! systemctl --user is-active --quiet hermes-gateway 2>/dev/null; then
+                warn "$MODE" "⚠ Hermes Gateway running (PID $hermes_pid) but NOT managed by systemd — no auto-restart"
+                unmanaged_found=$((unmanaged_found + 1))
+            fi
+        fi
+    elif [[ "$os" == "Darwin" ]]; then
+        local ollama_pid hermes_pid
+        ollama_pid=$(pgrep -x ollama 2>/dev/null || true)
+        hermes_pid=$(pgrep -f "hermes.*gateway" 2>/dev/null || true)
+        
+        if [[ -n "$ollama_pid" ]]; then
+            if ! launchctl list com.ollama.serve &>/dev/null 2>&1; then
+                warn "$MODE" "⚠ Ollama running (PID $ollama_pid) but NOT managed by launchd"
+                unmanaged_found=$((unmanaged_found + 1))
+            fi
+        fi
+        if [[ -n "$hermes_pid" ]]; then
+            if ! launchctl list com.hermes.gateway &>/dev/null 2>&1; then
+                warn "$MODE" "⚠ Hermes Gateway running (PID $hermes_pid) but NOT managed by launchd"
+                unmanaged_found=$((unmanaged_found + 1))
+            fi
+        fi
+    fi
+    
+    # Summary
+    local summary="$managed managed service(s)"
+    if [[ $not_installed -gt 0 ]]; then
+        summary="$summary, $not_installed not yet installed"
+    fi
+    if [[ $unmanaged_found -gt 0 ]]; then
+        fail "$MODE" "$summary, $unmanaged_found running UNMANAGED — use install.sh to set up service files"
+        json_append "service_manager" "fail" "$summary" "Unmanaged processes detected"
+    else
+        pass "$MODE" "$summary — all services properly managed by $svc_mgr"
+        json_append "service_manager" "pass" "$summary" "All services managed"
+    fi
+}
+
 # ── Recommendations ─────────────────────────────────────────
 
 print_recommendations() {
@@ -417,6 +568,7 @@ main() {
     check_docker
     check_hermes
     check_ollama
+    check_service_manager
     
     print_recommendations
     print_summary

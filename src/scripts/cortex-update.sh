@@ -86,6 +86,7 @@ register() {
 
 # Scripts → ~/.hermes-cortex/scripts/
 register "src/scripts/system-alert-watchdog.py"   "${HERMES_HOME}/scripts/system-alert-watchdog.py"
+register "src/scripts/check-system.sh"             "${HERMES_HOME}/scripts/check-system.sh"
 register "src/scripts/memory-to-brain-sync.py"    "${HERMES_HOME}/scripts/memory-to-brain-sync.py"
 register "src/scripts/bootstrap-brain.sh"         "${HERMES_HOME}/scripts/bootstrap-brain.sh"
 register "src/scripts/check-memory-budget.sh"     "${HERMES_HOME}/scripts/check-memory-budget.sh"
@@ -685,6 +686,55 @@ deploy_nginx_configs() {
   fi
 }
 
+# ── Post-update service verification ─────────────────────────
+
+verify_services() {
+  # After an update, verify important services are still managed and running
+  local os
+  os=$(uname -s)
+
+  if [[ "$os" == "Darwin" ]]; then
+    local any_missing=0
+    for label in com.ollama.serve com.gbrain.autopilot com.hermes.gateway com.hermes.cortex-dashboard com.hermes.agent-inbox; do
+      if ! launchctl list "$label" &>/dev/null 2>&1; then
+        warn "$label: not registered with launchd"
+        any_missing=$((any_missing + 1))
+      fi
+    done
+    if [[ "$any_missing" -eq 0 ]]; then
+      info "All cortex services managed by launchd"
+    else
+      warn "$any_missing service(s) may need reinstall — run install.sh or check ~/Library/LaunchAgents/"
+    fi
+  elif [[ "$os" == "Linux" ]]; then
+    local any_unmanaged=0 any_inactive=0 managed=0
+    for unit in ollama gbrain-autopilot hermes-gateway hermes-cortex-dashboard hermes-agent-inbox; do
+      if systemctl --user is-active --quiet "$unit" 2>/dev/null; then
+        managed=$((managed + 1))
+      elif systemctl --user is-enabled --quiet "$unit" 2>/dev/null; then
+        any_inactive=$((any_inactive + 1))
+        warn "$unit: systemd unit exists but inactive — run: systemctl --user start $unit"
+      else
+        any_unmanaged=$((any_unmanaged + 1))
+        warn "$unit: not managed by systemd — may need: install.sh or service-writer.sh"
+      fi
+    done
+    if [[ "$any_unmanaged" -eq 0 && "$any_inactive" -eq 0 ]]; then
+      info "All $managed cortex services managed by systemd (active)"
+    fi
+    # Detect unmanaged processes
+    local ollama_pid hermes_pid
+    ollama_pid=$(pgrep -f "ollama serve" 2>/dev/null || true)
+    hermes_pid=$(pgrep -f "hermes_cli.main" 2>/dev/null || true)
+    if [[ -n "$ollama_pid" ]] && ! systemctl --user is-active --quiet ollama 2>/dev/null; then
+      warn "⚠ Ollama running (PID $ollama_pid) but NOT managed by systemd — use install.sh"
+    fi
+    if [[ -n "$hermes_pid" ]] && ! systemctl --user is-active --quiet hermes-gateway 2>/dev/null; then
+      warn "⚠ Hermes Gateway running (PID $hermes_pid) but NOT managed by systemd"
+    fi
+  fi
+}
+
 # ── Main ────────────────────────────────────────────────────
 
 main() {
@@ -848,6 +898,10 @@ main() {
     warn "DRY RUN — no files were actually modified."
     warn "Run without --dry-run to apply changes."
   fi
+  echo ""
+
+  # Post-update service verification
+  verify_services
   echo ""
 }
 

@@ -241,6 +241,76 @@ check_cortex_dashboard() {
   fi
 }
 
+check_service_manager() {
+  # Verify important services are managed by systemd (Linux) or launchd (macOS)
+  # This catches processes running ad-hoc without a service manager
+  local os
+  os=$(uname -s)
+
+  if [[ "$os" == "Darwin" ]]; then
+    local -a LABELS=("com.ollama.serve" "com.gbrain.autopilot" "com.hermes.gateway" "com.hermes.cortex-dashboard" "com.hermes.agent-inbox")
+    local -a DISPLAYS=("Ollama (launchd)" "gbrain (launchd)" "Hermes Gateway (launchd)" "Cortex Dashboard (launchd)" "Agent Inbox (launchd)")
+    local all_ok=0 any_down=0
+    for i in "${!LABELS[@]}"; do
+      if launchctl list "${LABELS[$i]}" &>/dev/null 2>&1; then
+        local pid
+        pid=$(launchctl list "${LABELS[$i]}" 2>/dev/null | awk '{print $1}' | grep -v '^\s*$')
+        [[ -n "$pid" && "$pid" != "-" ]] && all_ok=$((all_ok + 1)) || any_down=$((any_down + 1))
+      else
+        any_down=$((any_down + 1))
+      fi
+    done
+    local detail="$all_ok managed, $any_down down/missing"
+    if [[ "$any_down" -eq 0 ]]; then
+      print_row "Service manager (launchd)" "UP" "$detail"
+    elif [[ "$all_ok" -gt 0 ]]; then
+      print_row "Service manager (launchd)" "DEGRADED" "$detail"
+    else
+      print_row "Service manager (launchd)" "DOWN" "$detail"
+    fi
+
+  elif [[ "$os" == "Linux" ]]; then
+    local -a UNITS=("ollama" "gbrain-autopilot" "hermes-gateway" "hermes-cortex-dashboard" "hermes-agent-inbox")
+    local -a DISPLAYS=("Ollama (systemd)" "gbrain (systemd)" "Hermes Gateway (systemd)" "Cortex Dashboard (systemd)" "Agent Inbox (systemd)")
+    local all_ok=0 any_down=0 any_unmanaged=0
+
+    for i in "${!UNITS[@]}"; do
+      if systemctl --user is-active --quiet "${UNITS[$i]}" 2>/dev/null; then
+        all_ok=$((all_ok + 1))
+      else
+        # Check if unit file exists (enabled but not active is still managed)
+        if systemctl --user is-enabled --quiet "${UNITS[$i]}" 2>/dev/null; then
+          any_down=$((any_down + 1))
+        else
+          any_unmanaged=$((any_unmanaged + 1))
+        fi
+      fi
+    done
+
+    # Also detect processes running without systemd
+    local ollama_pid hermes_pid
+    ollama_pid=$(pgrep -f "ollama serve" 2>/dev/null || true)
+    hermes_pid=$(pgrep -f "hermes_cli.main" 2>/dev/null || true)
+    if [[ -n "$ollama_pid" ]] && ! systemctl --user is-active --quiet ollama 2>/dev/null; then
+      any_unmanaged=$((any_unmanaged + 1))
+    fi
+    if [[ -n "$hermes_pid" ]] && ! systemctl --user is-active --quiet hermes-gateway 2>/dev/null; then
+      any_unmanaged=$((any_unmanaged + 1))
+    fi
+
+    local detail="$all_ok active"
+    [[ "$any_down" -gt 0 ]] && detail="$detail, $any_down inactive"
+    [[ "$any_unmanaged" -gt 0 ]] && detail="$detail, $any_unmanaged UNMANAGED"
+    if [[ "$any_unmanaged" -gt 0 ]]; then
+      print_row "Service manager (systemd)" "DOWN" "$detail"
+    elif [[ "$all_ok" -eq ${#UNITS[@]} ]]; then
+      print_row "Service manager (systemd)" "UP" "$detail"
+    else
+      print_row "Service manager (systemd)" "DEGRADED" "$detail"
+    fi
+  fi
+}
+
 # ── Main ────────────────────────────────────────────────────
 
 parse_args() {
@@ -304,6 +374,7 @@ run_checks() {
   run_and_capture check_memory_freshness
   run_and_capture check_cortex_dashboard
   run_and_capture check_disk
+  run_and_capture check_service_manager
 
   # Aggregate from captured statuses
   while IFS= read -r s; do
