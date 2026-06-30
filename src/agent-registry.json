@@ -37,7 +37,8 @@
       "is_server": true,
       "accessible": true,
       "health_method": "http",
-      "description": "Gisu operations server — needs health-vector.py deployed",
+      "health_url": "https://your-gisu-host:13004/",
+      "description": "Gisu — operations server",
       "inbox_user": "gisu",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
@@ -49,7 +50,8 @@
       "is_server": true,
       "accessible": true,
       "health_method": "http",
-      "description": "Joseph web/infra server — needs health-vector.py deployed",
+      "health_url": "https://your-domain.com:12004/",
+      "description": "Joseph — web/infra server",
       "inbox_user": "joseph",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
@@ -61,7 +63,8 @@
       "is_server": true,
       "accessible": true,
       "health_method": "http",
-      "description": "Kustos security server — needs health-vector.py deployed",
+      "health_url": "https://mweb.client-domain.com:13004/",
+      "description": "Kustos — security server",
       "inbox_user": "kustos",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
@@ -88,7 +91,8 @@
       "accessible": true,
       "platform": "linux",
       "health_method": "http",
-      "description": "Esther — backup orchestrator, sustainability & materials expert. Needs health-vector.py deployed.",
+      "health_url": "https://your-domain.com:14004/",
+      "description": "Esther — backup orchestrator, sustainability & materials expert",
       "inbox_user": "esther",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"

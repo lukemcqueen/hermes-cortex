@@ -138,12 +138,14 @@ def _get_agents() -> list[dict]:
 
 # ── Fetching ──
 
-def _fetch_http(url: str) -> dict | None:
-    """HTTP GET to a health-vector endpoint."""
-    req = urllib.request.Request(
-        url,
-        headers={"Accept": "application/json", "User-Agent": "hermes-health-monitor/1.0"},
-    )
+def _fetch_http(url: str, auth: str = "") -> dict | None:
+    """HTTP GET to a health-vector endpoint. Supports Basic Auth."""
+    import base64
+    headers = {"Accept": "application/json", "User-Agent": "hermes-health-monitor/1.0"}
+    if auth:
+        encoded = base64.b64encode(auth.encode()).decode()
+        headers["Authorization"] = f"Basic {encoded}"
+    req = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
             return json.loads(resp.read().decode())
@@ -308,7 +310,7 @@ def main():
         error = None
 
         if a["method"] == "http":
-            data = _fetch_http(a["url"])
+            data = _fetch_http(a["url"], auth=INBOX_CFG["auth"])
             if data and "v" in data:
                 vector = data["v"]
                 hostname = data.get("h", "")
