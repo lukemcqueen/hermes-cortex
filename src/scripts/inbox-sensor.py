@@ -104,11 +104,12 @@ def main():
     if SEEN_FILE.exists():
         seen_ids = set(line.strip() for line in SEEN_FILE.read_text().splitlines() if line.strip())
 
-    # Touch last-message-check before the API call so it fires on every run
-    # (both success and error paths). The system-alert-watchdog checks this
-    # file's mtime to detect inbox polling stalls.
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    (STATE_DIR / "last-message-check").write_text(datetime.now(timezone.utc).isoformat())
+    # Update heartbeat file so system-alert-watchdog knows we're alive
+    def _touch_check():
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        (STATE_DIR / "last-message-check").write_text(
+            datetime.now(timezone.utc).isoformat()
+        )
 
     # Fetch messages via API with per-agent filtering
     url = f"{INBOX_API}/api/inbox?for=moses&unread_only=true"
@@ -117,6 +118,7 @@ def main():
         with urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode())
     except (URLError, json.JSONDecodeError, OSError) as e:
+        _touch_check()
         print(json.dumps({
             "has_work": False,
             "unread_count": 0,
@@ -145,6 +147,8 @@ def main():
                 new_broadcasts += 1
 
     has_work = new_broadcasts > 0 or urgent_count > 0
+
+    _touch_check()
 
     print(json.dumps({
         "has_work": has_work,
