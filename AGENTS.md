@@ -545,10 +545,40 @@ Titus cannot be polled (no inbound). Instead he pushes to Moses' inbox:
 |------|---------|
 | `src/scripts/health-vector.py` | Health vector generator + HTTP server (cross-platform) |
 | `src/scripts/health-vector-push.sh` | Inbox push script for client-only agents |
-| `src/scripts/orch-team-health.py` | Orchestrator poller (no_agent cron) |
-| `src/agent-registry.json` | Agent registry with `health_method`, `health_url` |
-| `docs/templates/com.hermes.health-push.plist` | macOS launchd template for Titus |
-| `docs/templates/health-vector.service` | systemd user service template for server agents |
+|| `src/scripts/orch-team-health.py` | Orchestrator poller (no_agent cron) |
+|| `src/scripts/orch-health-report.py` | Health snapshot report — formatted for Telegram delivery |
+|| `src/agent-registry.json` | Agent registry with `health_method`, `health_url` |
+|| `docs/templates/com.hermes.health-push.plist` | macOS launchd template for Titus |
+|| `docs/templates/health-vector.service` | systemd user service template for server agents |
+
+### Health snapshot report
+
+Moses sends a health snapshot to Luke on schedule via two no_agent crons:
+
+| Cron | Schedule | What it does |
+|------|----------|-------------|
+| `orch-health-report-weekday` | `0 9-18 * * 1-5` | Every hour Mon-Fri 9AM–6PM KST |
+| `orch-health-report-saturday` | `0 11,17 * * 6` | Sat 11AM + 5PM KST |
+
+The script (`orch-health-report.py`) reads the agent registry with local overrides, polls every agent's health endpoint, and outputs compact markdown with emoji status bars — designed for mobile Telegram. No LLM tokens used (no_agent script cron).
+
+**To deploy on Esther (backup orchestrator):**
+
+```bash
+# 1. Copy the script
+cp ~/hermes-cortex/src/scripts/orch-health-report.py ~/.hermes/scripts/orch-health-report.py
+
+# 2. Create the crons
+hermes cron create --name orch-health-report-weekday \
+  --no-agent --script orch-health-report.py \
+  --schedule "0 9-18 * * 1-5"
+
+hermes cron create --name orch-health-report-saturday \
+  --no-agent --script orch-health-report.py \
+  --schedule "0 11,17 * * 6"
+
+# 3. Set up her own agent-registry.local.json (see Moses' version for reference)
+```
 
 ---
 
