@@ -72,6 +72,9 @@ if CONFIG_FILE.exists():
                 k, v = line.split("=", 1)
                 k = k.strip()
                 v = v.strip().strip("'\"")
+                # Strip inline comments (everything after # preceded by whitespace)
+                import re as _re
+                v = _re.sub(r"\s+#.*$", "", v).strip()
                 if k == "MOSES_INBOX_URL" and not inbox_url:
                     inbox_url = v
                 elif k == "MOSES_INBOX_FALLBACK_URL" and not inbox_fallback_url:
@@ -213,7 +216,13 @@ def _request(path: str, data: bytes | None = None, method: str = "POST") -> tupl
         log.info("Trying %s: %s", name, url)
         status, resp_body = _do_request(url, data, method, headers)
         if status != 0:
-            # Got a real HTTP response (even 4xx/5xx) — server is alive
+            # Got a real HTTP response — server is alive
+            # BUT: 401 means auth mismatch, not a usable endpoint — cascade
+            # Also cascade on 403 (forbidden) and 404 (wrong path)
+            if status in (401, 403, 404):
+                log.warning("  %s responded HTTP %s (cascading), trying next in chain", name, status)
+                last_error = f"HTTP {status}"
+                continue
             log.info("  %s responded HTTP %s", name, status)
             return status, resp_body
         # Connection error — log and cascade to next URL
