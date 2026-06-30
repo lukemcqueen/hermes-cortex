@@ -1043,3 +1043,97 @@ These aren't in the canonical `install-hermes-crons.sh` (which keeps generic mod
 
 ### Daily Scripture Schedule
 Daily Bible reading via cron (`agent-daily-bible-reading` at 01:00 KST). Schedule covers one book per day.
+
+---
+
+## ⚡ Inbox Message Decision Framework (All Agents)
+
+Every agent processing inbox messages follows this framework. Documented here so all agents share the same decision matrix.
+
+### Three assessment axes
+
+**Priority** (from message frontmatter):
+| Priority | Means | Response |
+|----------|-------|----------|
+| `critical` | Service down, security issue, data loss | Immediate action, notify user |
+| `urgent` | Needs same-day attention | Handle within current cron tick |
+| `normal` | Standard task or FYI | Handle same cycle or escalate |
+| `notification` | Informational only | Acknowledge and close |
+
+**Actionability:**
+| I have the tools | → AUTO-ACT — run fix, verify, report |
+| Needs another agent | → DELEGATE — send inbox message, CC user |
+| Needs human judgment | → ESCALATE — report to user with context + options |
+| Notification only | → ACKNOWLEDGE — close, no action needed |
+
+**Scope** (how much work):
+| Simple (< 3 calls, < 2 min) | Do in cron session |
+| Moderate (3-10 calls, investigate) | Do now, report result |
+| Complex (> 10 calls, multi-step) | Escalate or offer guidance |
+| Multi-agent | Send inbox message, CC user |
+
+### Decision matrix
+
+| Priority | Simple | Moderate | Complex | Multi-agent |
+|----------|--------|----------|---------|-------------|
+| **critical** | AUTO-ACT | AUTO-ACT | AUTO-ACT + notify | Delegate + notify |
+| **urgent** | AUTO-ACT | AUTO-ACT | AUTO-ACT + report | Delegate + report |
+| **normal** | AUTO-ACT | AUTO-ACT | Escalate | Escalate |
+| **notification** | Acknowledge | Acknowledge | Acknowledge | Forward if needed |
+
+### After-action requirements
+
+Every action (auto-act, delegate, or escalate) must deliver:
+- **What was done** — single-line summary
+- **How it was verified** — tool output or confirmation
+- **Evidence** — relevant output excerpt or status code
+- **Cycle ID** — loop governance cycle for code/config changes
+
+---
+
+## ⚡ Doc Freshness: AGENTS.md + SOUL.md (All Agents)
+
+AGENTS.md and SOUL.md are living documents. This section defines how they stay current.
+
+### Enforcement layers
+
+| Layer | What | Who runs | Frequency |
+|-------|------|----------|-----------|
+| **Weekly audit** | `agents-doc-audit.py` checks all SOUL.md + AGENTS.md for mandatory sections | Moses (orchestrator) | Every Monday 7am KST |
+| **Post-update broadcast** | Moses sends inbox message to all agents after modifying AGENTS.md or his SOUL.md | Moses (orchestrator) | On change |
+| **Daily soul refinement** | `agent-daily-soul-refinement` cron (Channel C) fills mandatory section gaps | Each agent's own cron | Daily 23:00 |
+| **Session-start check** | Every agent reads AGENTS.md + own SOUL.md at session start | Each agent | Every session |
+
+### What the weekly audit checks
+
+**SOUL.md mandatory sections:**
+- Identity
+- Core Mission
+- Behavioral Principles (must include Loop Governance + Inbox Decision Framework)
+- Communication Style
+- Scripture Insights
+
+**AGENTS.md mandatory sections:**
+- Agent Execution Contract
+- Loop Governance
+- Inbox Message Decision Framework
+- Doc Freshness: AGENTS.md + SOUL.md
+
+### Audit script location
+
+`src/scripts/agents-doc-audit.py` — run it anytime:
+
+```bash
+python3 ~/hermes-cortex/src/scripts/agents-doc-audit.py
+# → report with ✅/⚠️/❌ per file
+python3 ~/hermes-cortex/src/scripts/agents-doc-audit.py --json
+# → machine-readable for cron processing
+```
+
+### How agents receive updates
+
+1. Moses modifies AGENTS.md or his SOUL.md
+2. Moses runs `agents-doc-broadcast.sh` (or does it manually via inbox)
+3. All agents get an inbox message: "AGENTS.md section X updated — review and integrate"
+4. Each agent reads the update on their next cron tick
+5. Each agent's `agent-daily-soul-refinement` (Channel C) will fill any mandatory section gaps automatically
