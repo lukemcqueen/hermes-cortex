@@ -6,6 +6,18 @@ fail2ban filters.
 
 ---
 
+## Prerequisites
+
+| Requirement | Notes |
+|-------------|-------|
+| **nginx** | Required. The deploy script installs configs and reloads nginx. |
+| **fail2ban** | Required for automated bans. The pipeline integrates with fail2ban filters. |
+| **sudoers entry** | Passwordless sudo for `/usr/local/sbin/hermes-security-apply` + nginx commands. |
+
+**Agents without nginx/fail2ban** should skip this pipeline entirely.
+The scanner silently exits when nginx logs aren't found, but there's
+no benefit to running it on a host without nginx.
+
 ## Files
 
 | File | Purpose |
@@ -41,6 +53,46 @@ sudo visudo -cf /etc/sudoers.d/hermes-security
 ```bash
 touch ~/hermes-cortex/deploy/nginx/blocked_ips.add
 touch ~/hermes-cortex/deploy/nginx/nginx-badbots.conf
+```
+
+---
+
+## Updating the Deploy Script
+
+Keep `/usr/local/sbin/hermes-security-apply` in sync with the repo source at `deploy/nginx/hermes-security-apply`:
+
+```bash
+# Update installed script
+sudo cp ~/hermes-cortex/deploy/nginx/hermes-security-apply /usr/local/sbin/hermes-security-apply
+sudo chmod 755 /usr/local/sbin/hermes-security-apply
+# Deploy
+sudo /usr/local/sbin/hermes-security-apply
+```
+
+If the script fails with `nginx: [emerg] unexpected end of file` in `blocked_ips.conf`,
+the config has bare IPs (missing `deny ... ;` wrapper). Fix with the helper script:
+
+```bash
+python3 ~/hermes-cortex/deploy/nginx/fix-blocked-ips.py
+sudo cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf      # Linux
+# sudo cp /tmp/blocked_ips.conf.new /usr/local/etc/nginx/blocked_ips.conf  # macOS
+sudo /usr/local/sbin/hermes-security-apply
+```
+
+For cron/agent use, copy the fix script to `~/.hermes/scripts/`:
+```bash
+cp ~/hermes-cortex/deploy/nginx/fix-blocked-ips.py ~/.hermes/scripts/
+```
+
+### Verify
+
+```bash
+# File sizes should match
+ls -la /usr/local/sbin/hermes-security-apply ~/hermes-cortex/deploy/nginx/hermes-security-apply
+# Config valid?
+sudo nginx -t && echo "✓ Config valid"
+# Active blocks
+sudo nginx -T 2>/dev/null | grep 'deny ' | wc -l
 ```
 
 ---

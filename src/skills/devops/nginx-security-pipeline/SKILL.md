@@ -36,6 +36,18 @@ blocked_ips.add (input)    nginx-badbots.conf (filter)
 
 The daily scanner feeds back into `blocked_ips.add`, creating a closed loop: **Logs → Detect → Append → Deploy → Protect**.
 
+## Prerequisites
+
+| Requirement | Notes |
+|-------------|-------|
+| **nginx** | Required. Deploy script installs configs and reloads nginx. |
+| **fail2ban** | Required for automated bans. Pipeline integrates with fail2ban filters. |
+| **sudoers entry** | NOPASSWD for `/usr/local/sbin/hermes-security-apply` + nginx commands. |
+
+**Agents without nginx/fail2ban** — skip this pipeline entirely. The scanner
+silently exits when nginx logs aren't found, but there's no benefit to running
+it on a host without nginx.
+
 ## Files
 
 ### Source (`deploy/nginx/`)
@@ -45,6 +57,7 @@ The daily scanner feeds back into `blocked_ips.add`, creating a closed loop: **L
 | `blocked_ips.add` | **Input:** bare IPs to block (one per line, no `deny`, no semicolon) |
 | `nginx-badbots.conf` | fail2ban filter for archive scanners + `/storage/` crawling |
 | `hermes-security-apply` | Deploy script — sudo-installed to `/usr/local/sbin/` |
+| `fix-blocked-ips.py` | **Recovery:** regenerates `blocked_ips.conf` if corrupted with bare IPs |
 | `README.md` | Setup guide with platform notes |
 
 ### Scanner (`src/scripts/`)

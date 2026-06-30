@@ -11,7 +11,14 @@
 #  no_agent: true
 #  deliver: local
 #
-#  Depends on: sudo hermes-security-apply at /usr/local/sbin/
+#  PREREQUISITES:
+#  - nginx installed and running (access logs exist)
+#  - fail2ban installed (optional — log scanning skipped if absent)
+#  - hermes-security-apply installed at /usr/local/sbin/ with NOPASSWD sudo
+#
+#  AGENTS WITHOUT NGINX: Skip this cron entirely. The scanner silently
+#  exits with no output when nginx logs aren't found (watchdog pattern),
+#  but it's cleaner to not schedule it at all on non-nginx hosts.
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
