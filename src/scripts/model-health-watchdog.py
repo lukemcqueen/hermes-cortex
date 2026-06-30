@@ -1,16 +1,28 @@
 #!/usr/bin/env python3
-"""Model Health Watchdog — checks Ollama models exist and are loadable.
+"""Model Health Watchdog — checks required Ollama models exist.
+
+Always checks: nomic-embed-text:latest (embeddings for gbrain / session cache).
+Checks one or more judge models — defaults to qwen2.5-coder:1.5b, but any
+Ollama model name can be specified via --judge-model or JUDGE_MODEL env var.
 
 Silent (exit 0) when all required models are present.
-Alerts with a descriptive message when models are missing.
-
-Required models:
-  - nomic-embed-text:latest (embeddings for gbrain / session cache)
-  - qwen2.5-coder:1.5b (LLM judge scorer)
+Alerts with a descriptive message when any model is missing.
 
 Usage:
-  python3 ~/.hermes-cortex/scripts/model-health-watchdog.py
-  python3 ~/.hermes-cortex/scripts/model-health-watchdog.py --quiet  # only outputs on failure
+  # Default (nomic-embed-text + qwen2.5-coder:1.5b)
+  python3 model-health-watchdog.py
+
+  # Custom judge model (Titus using mannix/qwen2.5-coder:7b)
+  python3 model-health-watchdog.py --judge-model mannix/qwen2.5-coder:7b-iq3_xs
+
+  # Multiple judge models
+  python3 model-health-watchdog.py --judge-model model-a --judge-model model-b
+
+  # Via env var (comma-separated)
+  JUDGE_MODEL=mannix/qwen2.5-coder:7b-iq3_xs python3 model-health-watchdog.py
+
+  # Quiet mode — only outputs on failure
+  python3 model-health-watchdog.py --quiet
 
 Exit codes:
   0 = all models healthy
@@ -25,16 +37,36 @@ import urllib.request
 
 # ── Config ──────────────────────────────────────────────────────────────
 OLLAMA_TAGS_URL = "http://localhost:11434/api/tags"
-OLLAMA_CHAT_URL = "http://localhost:11434/api/chat"
-REQUIRED_MODELS = [
-    "nomic-embed-text:latest",
-    "qwen2.5-coder:1.5b",
+ALWAYS_REQUIRED = [
+    ("nomic-embed-text:latest", "Embeddings for gbrain knowledge brain and session cache"),
 ]
+DEFAULT_JUDGE_MODEL = "qwen2.5-coder:1.5b"
 
-MODEL_PURPOSE = {
-    "nomic-embed-text:latest": "Embeddings for gbrain knowledge brain and session cache",
-    "qwen2.5-coder:1.5b": "LLM-as-Judge scoring of Langfuse conversation traces",
-}
+
+def _parse_judge_models() -> list:
+    """Read judge models from --judge-model args or JUDGE_MODEL env var.
+
+    Priority: CLI --judge-model > JUDGE_MODEL env var > default.
+    """
+    # Scan CLI for --judge-model flags
+    cli_models = []
+    args = sys.argv[1:]
+    for i, arg in enumerate(args):
+        if arg == "--judge-model" and i + 1 < len(args):
+            cli_models.append(args[i + 1])
+        elif arg.startswith("--judge-model="):
+            cli_models.append(arg.split("=", 1)[1])
+
+    if cli_models:
+        return cli_models
+
+    # Check env var
+    env_models = os.environ.get("JUDGE_MODEL", "").strip()
+    if env_models:
+        return [m.strip() for m in env_models.split(",") if m.strip()]
+
+    # Default
+    return [DEFAULT_JUDGE_MODEL]
 
 
 def check_ollama_reachable() -> bool:
@@ -55,23 +87,28 @@ def check_ollama_reachable() -> bool:
         return False
 
 
-def check_models_exist() -> dict:
-    """Return {model_name: True/False} for each required model."""
+def check_models_exist(models: list) -> dict:
+    """Return {model_name: True/False} for each requested model."""
     try:
         req = urllib.request.Request(OLLAMA_TAGS_URL)
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read().decode())
     except Exception:
-        return {m: False for m in REQUIRED_MODELS}
+        return {m: False for m in models}
 
     available = {m.get("name") for m in data.get("models", [])}
-    return {m: m in available for m in REQUIRED_MODELS}
+    return {m: m in available for m in models}
 
 
 def main():
     quiet = "--quiet" in sys.argv
+    judge_models = _parse_judge_models()
 
-    # ── Check Ollama reachable ─────────────────────────────────────────
+    # Build full model list: always-required + judge models
+    required = list(ALWAYS_REQUIRED)
+    for jm in judge_models:
+        required.append((jm, f"LLM-as-Judge scoring (configured as judge model)"))
+
     if not quiet:
         print("🤖 Ollama Model Health Watchdog")
         print()
@@ -97,17 +134,17 @@ def main():
     if not quiet:
         print("✅ OK")
         print()
-        print(f"Checking {len(REQUIRED_MODELS)} required models...")
+        print(f"Checking {len(required)} required models...")
         print()
 
     # ── Check each model ────────────────────────────────────────────────
-    statuses = check_models_exist()
+    model_names = [m[0] for m in required]
+    statuses = check_models_exist(model_names)
     all_ok = all(statuses.values())
     any_missing = False
 
-    for model in REQUIRED_MODELS:
-        exists = statuses[model]
-        purpose = MODEL_PURPOSE.get(model, "")
+    for model, purpose in required:
+        exists = statuses.get(model, False)
         if exists:
             if not quiet:
                 print(f"  ✅ {model}")
@@ -119,8 +156,8 @@ def main():
     if not all_ok or any_missing:
         print()
         print("Some required models are missing. To install:", file=sys.stderr)
-        for model in REQUIRED_MODELS:
-            if not statuses[model]:
+        for model in model_names:
+            if not statuses.get(model, False):
                 print(f"  ollama pull {model}", file=sys.stderr)
         print()
         print("After installing, verify with:", file=sys.stderr)

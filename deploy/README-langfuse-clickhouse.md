@@ -384,8 +384,15 @@ hermes cron create --name model-health-watchdog \
 # Dry-run the scorer
 python3 ~/.hermes-cortex/scripts/llm-judge-scorer.py --dry-run
 
-# Check model health
+# Check model health (default: nomic-embed-text + qwen2.5-coder:1.5b)
 python3 ~/.hermes-cortex/scripts/model-health-watchdog.py
+
+# Check with a custom judge model (e.g., Titus' model)
+python3 ~/.hermes-cortex/scripts/model-health-watchdog.py --judge-model mannix/qwen2.5-coder:7b-iq3_xs
+
+# Via env var (comma-separated for multiple)
+JUDGE_MODEL="mannix/qwen2.5-coder:7b-iq3_xs,qwen2.5-coder:1.5b" \\
+  python3 ~/.hermes-cortex/scripts/model-health-watchdog.py --quiet
 
 # Verify crons are scheduled
 hermes cron list | grep -E 'llm-judge|model-health'
@@ -404,3 +411,16 @@ The scorer checks prerequisites before starting:
 
 The `model-health-watchdog` cron (daily 7am) alerts you if any models are missing,
 with a descriptive message including the `ollama pull` commands needed.
+
+The watchdog supports custom judge models via:
+- `--judge-model <name>` (CLI flag, repeatable for multiple models)
+- `JUDGE_MODEL` environment variable (comma-separated for multiple)
+- Defaults to `qwen2.5-coder:1.5b` if neither is set
+- `nomic-embed-text:latest` is always required and always checked
+
+Use the `extract_langfuse_env.py` utility to regenerate the `.env` file from the running
+Docker stack if keys ever need updating:
+
+```bash
+python3 ~/hermes-cortex/deploy/extract_langfuse_env.py > ~/.hermes-cortex/.env
+```

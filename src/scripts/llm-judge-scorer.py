@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""LLM-as-Judge Scorer — evaluates Hermes conversation traces using Qwen3.5:4b.
+"""LLM-as-Judge Scorer — evaluates Hermes conversation traces using a local Ollama model.
 
 Replaces the earlier rule-based scorer with actual LLM-based judgment.
-Uses local Ollama model for evaluation, posts scores to Langfuse API.
+Uses local Ollama model (default: qwen2.5-coder:1.5b) for evaluation, posts scores to Langfuse API.
+Configurable via JUDGE_MODEL constant at the top of this file and checked
+at startup via _check_ollama_model().
 
 Usage:
   python3 ~/.hermes-cortex/scripts/llm-judge-scorer.py
