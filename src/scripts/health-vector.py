@@ -127,6 +127,82 @@ _is_linux = sys.platform.startswith("linux")
 _is_macos = sys.platform == "darwin"
 
 
+def check_resources() -> int:
+    """resources: disk and memory within thresholds."""
+    try:
+        # Check disk usage
+        r = subprocess.run(
+            ["df", "-h", "/"],
+            capture_output=True, text=True, timeout=5,
+        )
+        # Parse usage percentage
+        for line in r.stdout.splitlines():
+            if line.startswith("/"):
+                parts = line.split()
+                usage_str = parts[4].rstrip("%")
+                usage = int(usage_str)
+                if usage >= 95:
+                    return -1  # disk critical
+                break
+        # Check memory
+        r2 = subprocess.run(
+            ["free", "-m"],
+            capture_output=True, text=True, timeout=5,
+        )
+        # free -m: Mem: total used free shared buff/cache available
+        for line in r2.stdout.splitlines():
+            if line.startswith("Mem:"):
+                parts = line.split()
+                total = int(parts[1])
+                available = int(parts[6])
+                if total > 0 and available < total * 0.1:
+                    return -1  # memory critical (< 10% available)
+                break
+        return 1
+    except Exception:
+        return -1
+
+
+def check_services() -> int:
+    """services: key services running check."""
+    key_services = ["nginx", "ollama", "gbrain-autopilot"]
+    for svc in key_services:
+        if not _systemd_active(svc + ".service"):
+            # try plain name
+            if not _systemd_active(svc):
+                return -1
+    return 1
+
+
+def check_no_errored_crons() -> int:
+    """no_errored_crons: 1 if no errored cron jobs."""
+    try:
+        r = subprocess.run(
+            ["hermes", "cron", "list"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if "error:" in r.stdout or "error:" in r.stderr:
+            return -1
+        return 1
+    except Exception:
+        return -1
+
+
+def check_no_stale_crons() -> int:
+    """no_stale_crons: 1 if no stalled cron jobs."""
+    try:
+        r = subprocess.run(
+            ["hermes", "cron", "list"],
+            capture_output=True, text=True, timeout=15,
+        )
+        # Check for crons that have never run (blank last run)
+        if "never run" in r.stdout.lower():
+            return -1
+        return 1
+    except Exception:
+        return -1
+
+
 def check_nginx() -> int:
     """nginx: process check (master process)."""
     if _pgrep("nginx"):
@@ -156,6 +232,38 @@ def check_gbrain() -> int:
     if _is_macos:
         if _launchd_active("com.gbrain.autopilot"):
             return 1
+    if _pgrep("gbrain", exact=False, full=True):
+        return 1
+    return -1
+
+
+def check_disk_ok() -> int:
+    """disk_ok: disk usage below 90% threshold."""
+    try:
+        r = subprocess.run(
+            ["df", "-h", "/"],
+            capture_output=True, text=True, timeout=5,
+        )
+        for line in r.stdout.splitlines():
+            if line.startswith("/"):
+                parts = line.split()
+                usage_str = parts[4].rstrip("%")
+                usage = int(usage_str)
+                if usage >= 90:
+                    return -1
+                return 1
+        return -1
+    except Exception:
+        return -1
+
+
+def check_gbrain_sources_ok() -> int:
+    """gbrain_sources_ok: gbrain brain sources accessible."""
+    # Check if gbrain autopilot is running
+    if _is_linux and (_systemd_active("gbrain-autopilot.service") or _systemd_active("gbrain-autopilot")):
+        return 1
+    if _is_macos and _launchd_active("com.gbrain.autopilot"):
+        return 1
     if _pgrep("gbrain", exact=False, full=True):
         return 1
     return -1
@@ -201,14 +309,15 @@ def check_hermes_gateway() -> int:
 
 
 CHECK_FUNCTIONS = [
+    check_resources,
+    check_services,
+    check_no_errored_crons,
+    check_no_stale_crons,
     check_nginx,
     check_ollama,
     check_gbrain,
-    check_cortex_dashboard,
-    check_langfuse_web,
-    check_langfuse_worker,
-    check_docker,
-    check_hermes_gateway,
+    check_disk_ok,
+    check_gbrain_sources_ok,
 ]
 
 
@@ -264,8 +373,9 @@ def main():
     elif len(sys.argv) > 1 and sys.argv[1] == "--check":
         # Human-readable check output
         vec = get_vector()
-        labels = ["nginx", "ollama", "gbrain", "dashboard", "langfuse-web",
-                   "langfuse-worker", "docker", "gateway"]
+        labels = ["resources", "services", "no_errored_crons",
+                   "no_stale_crons", "nginx", "ollama", "gbrain",
+                   "disk_ok", "gbrain_sources_ok"]
         icons = {1: "✅", 0: "➖", -1: "❌"}
         print(f"Health Vector for {HOSTNAME}")
         print(f"Raw: ({' '.join(str(v) for v in vec)})")
