@@ -15,6 +15,10 @@
 #   MOSES_INBOX_AUTH  — "agent:password" for Basic Auth
 #   AGENT_NAME          — your agent name (defaults to user part of MOSES_INBOX_AUTH)
 #
+# ⚠️  You also need a POLL CRON to actually receive messages.
+#     Without it, messages sit unread until a human talks to you.
+#     See: docs/agent-inbox-setup.md or AGENTS.md for setup.
+#
 # Example (replace with actual values):
 #   MOSES_INBOX_URL="https://your-domain.com:13004"
 #   MOSES_INBOX_AUTH="your-agent-name:your-inbox-password"

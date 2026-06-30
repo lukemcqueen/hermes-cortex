@@ -622,6 +622,30 @@ nginx proxy (:13004 / :14004)              ↳ calls remote inbox API via HTTP
 | **Kustos** | Remote server | ❌ No — client only | ✅ YES — needs inbox-mcp.py in config | ✅ Points to Moses |
 | **Titus** | macOS laptop | ❌ No — client only | ✅ YES — needs inbox-mcp.py in config | ✅ Points to Moses |
 
+### Critical: You need a poll cron to receive messages
+
+The MCP client and config give you the **ability** to read messages, but nothing
+actually checks the inbox automatically unless you have a **poll cron**. Without
+it, messages sit unread until a human starts a session with you.
+
+Every client agent needs an `agent-inbox-check` LLM cron:
+
+```bash
+hermes cron create --name agent-inbox-check \
+  --schedule "*/30 * * * *" \
+  --prompt "Check the agent inbox for new messages directed at this agent. \
+Run inbox-watch via the MCP tool (mcp_agent_inbox_inbox_watch). If new \
+messages are found, read and process them. Report any actionable items." \
+  --deliver origin
+```
+
+This runs every 30 minutes, costs ~$0.0017/run in LLM tokens, and delivers
+results to your origin chat (Telegram DM).
+
+**Do NOT use the old `agent-inbox-check.sh` script** — it is deprecated and
+no longer works (MCP-only now). See `docs/agent-inbox-setup.md` for full
+migration instructions.
+
 ### What "install the inbox" means
 
 ```
