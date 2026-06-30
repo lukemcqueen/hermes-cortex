@@ -35,6 +35,36 @@ deploy/
 
 ---
 
+## Resource Limits
+
+All containers have resource limits to prevent CPU/RAM contention with
+other services on the host:
+
+| Container     | CPU cap | Memory cap | Why |
+|---------------|---------|------------|-----|
+| ClickHouse    | 1.0 CPU | 2 GB       | Analytics DB — biggest memory consumer; capped generously |
+| Langfuse Web  | 0.5 CPU | 1 GB       | Next.js UI + API server; generous headroom for dashboard |
+| Langfuse Worker | 0.5 CPU | 512 MB   | Background trace processor; comfortably above idle usage (~400 MB) |
+| Postgres      | —       | —          | Minimal by nature (~47 MB) — no limit needed |
+| Redis         | —       | —          | Minimal (~11 MB) — no limit needed |
+| MinIO         | —       | —          | Minimal outside of large uploads (~143 MB) — no limit needed |
+
+These limits are defined in `docker-compose.langfuse.yml` via
+`cpus:` and `mem_limit:` / `memswap_limit:` on each service.
+To adjust for your hardware, edit those values and restart:
+
+```bash
+cd ~/langfuse
+docker compose down
+# edit docker-compose.yml
+docker compose up -d
+```
+
+> **Note:** `docker compose restart` does NOT re-read resource limits.
+> You must use `down` + `up -d` for changes to take effect.
+
+---
+
 ## ⚠️ Critical: File Permissions
 
 ClickHouse runs as a **non-root user** inside the container. Config files

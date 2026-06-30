@@ -18,6 +18,9 @@ services:
   langfuse-worker:
     image: langfuse/langfuse-worker:3.200.0
     restart: always
+    cpus: 0.5
+    mem_limit: 512m
+    memswap_limit: 512m
     depends_on: &langfuse-depends-on
       postgres:
         condition: service_healthy
@@ -104,6 +107,9 @@ services:
     image: langfuse/langfuse:3.200.0
     restart: always
     depends_on: *langfuse-depends-on
+    cpus: 0.5
+    mem_limit: 1g
+    memswap_limit: 1g
     ports:
       - "127.0.0.1:${LANGFUSE_PORT:-3000}:3000"
     environment:
