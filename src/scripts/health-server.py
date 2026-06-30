@@ -43,6 +43,7 @@ if _raw_name == "auto" or not _raw_name:
     SERVER_NAME = platform.node().split(".")[0]
 else:
     SERVER_NAME = _raw_name
+AGENT_ID = os.environ.get("AGENT_ID", SERVER_NAME[0].lower() if SERVER_NAME else "?")
 HEALTH_PORT = int(os.environ.get("HEALTH_PORT", "8905"))
 HOME = Path.home()
 
@@ -312,12 +313,12 @@ def _build_health() -> dict:
 def _build_compact_health() -> dict:
     """Build minimal compact health response for public endpoint.
 
-    Format: {"v": [...], "h": "k", "t": unix_timestamp}
+    Format: {"v": [...], "h": "j", "t": unix_timestamp}
 
     v array (8 values):
       [resources, services, no_errored_crons, no_stale_crons, nginx, ollama, gbrain, disk_ok]
       1 = healthy, -1 = unhealthy/warning
-    h: "k" = all OK, "d" = degraded (some warnings), "f" = failure
+    h: single-char agent identifier (j = Joseph, m = Moses, t = Titus, g = Gisu)
     t: unix timestamp
     """
     r = _check_resources()
@@ -349,19 +350,8 @@ def _build_compact_health() -> dict:
         1 if disk_ok else -1,
     ]
 
-    # Overall health: all green = k, any -1 = d, any critical = f
-    all_ok = all(x == 1 for x in v)
-    any_critical = any(
-        iss.get("severity") == "critical"
-        for iss in r.get("issues", []) + s.get("issues", []) + c.get("issues", [])
-    )
-
-    if all_ok:
-        h = "k"
-    elif any_critical:
-        h = "f"
-    else:
-        h = "d"
+    # Agent identifier — can be overridden via AGENT_ID env var
+    h = AGENT_ID
 
     return {
         "v": v,
