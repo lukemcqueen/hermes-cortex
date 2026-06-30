@@ -552,6 +552,92 @@ Titus cannot be polled (no inbound). Instead he pushes to Moses' inbox:
 
 ---
 
+## ⚡ Agent Inbox Architecture
+
+The agent inbox is a **Moses-side service** — not something each agent installs locally.
+
+### Where it runs
+
+```
+┌─────────────────────────────────────────┐
+│  Moses' Server                          │
+│                                          │
+│  Port 8903 → Hermes Gateway (inbox API) │
+│  Port 13004 → nginx proxy (SSL + Auth)  │
+│              ↳ Basic Auth required       │
+│              ↳ Proxies to :8903          │
+└─────────────────────────────────────────┘
+         ↑ HTTPS with Basic Auth
+         ↓
+┌───────────┐ ┌───────────┐ ┌──────────┐
+│  Gisu     │ │  Joseph   │ │  Titus   │
+│  (remote) │ │  (remote) │ │  (macOS) │
+└───────────┘ └───────────┘ └──────────┘
+```
+
+### What each agent needs (and doesn't)
+
+| Agent | Runs inbox server? | Needs `~/hermes-cortex`? | Needs `~/.hermes/moses-inbox.conf`? | Needs `agent-inbox-check` cron? |
+|-------|-------------------|-------------------------|-------------------------------------|-------------------------------|
+| **Moses** (orchestrator) | ✅ Yes — runs the inbox API + nginx | ✅ Pulls repo | ✅ Has his own credentials | ✅ Every 30 min (LLM-driven) |
+| **Gisu** (remote server) | ❌ No — talks to Moses' inbox | ✅ Pulls repo (for config + scripts) | ✅ **Yes** — with his own htpasswd user | ✅ If he wants to read his own inbox |
+| **Joseph** (remote server) | ❌ No — talks to Moses' inbox | ✅ Pulls repo | ✅ **Yes** — with his own htpasswd user | ✅ If he wants to read his own inbox |
+| **Kustos** (remote server) | ❌ No — talks to Moses' inbox | ✅ Pulls repo | ✅ **Yes** — with his own htpasswd user | ✅ If he wants to read his own inbox |
+| **Esther** (backup) | ❌ No — talks to Moses' inbox | ✅ Pulls repo | ✅ **Yes** — with his own htpasswd user | ✅ If he wants to read his own inbox |
+| **Titus** (macOS) | ❌ No — talks to Moses' inbox | ✅ Pulls repo | ✅ **Yes** — with his own htpasswd user | ✅ If he wants to read his own inbox |
+
+### Agent inbox = Moses service, agents are clients
+
+```
+Moses server                    Remote agent (Gisu, Titus, …)
+─────────────                   ────────────────────────────
+~/.hermes/gateway/inbox.py      ~/.hermes/moses-inbox.conf
+  ↳ reads AGENT_NAME from           ↳ MOSES_INBOX_URL + MOSES_INBOX_AUTH
+    moses-inbox.conf                 ↳ AGENT_NAME
+  ↳ serves HTTP API on :8903    hermes inbox watch
+  ↳ nginx proxies :13004             ↳ uses MCP tool which reads
+                                       moses-inbox.conf & calls API
+```
+
+### Setup checklist for a remote agent
+
+```bash
+# 1. Pull repo (gets scripts + config templates)
+cd ~/hermes-cortex && git pull
+
+# 2. Create credentials file (⬅️ THIS IS THE KEY FILE)
+#    Use YOUR OWN htpasswd user — Moses' credentials are for Moses only.
+nano ~/.hermes/moses-inbox.conf
+```
+```ini
+MOSES_INBOX_URL="https://your-domain.com:13004"
+MOSES_INBOX_AUTH="your_username:your_password"
+AGENT_NAME="your_agent_name"
+```
+```bash
+chmod 600 ~/.hermes/moses-inbox.conf
+
+# 3. Verify connectivity
+curl -s -u "your_username:your_password" \
+  https://your-domain.com:13004/api/inbox?limit=3
+# → Should return JSON with your messages (empty array if none)
+
+# 4. Create the inbox-check cron (LLM-driven, every 30 min):
+#    Moses can do this, or you can create it yourself via:
+#    hermes cron create ...
+```
+
+### Common confusion to avoid
+
+| ❌ Wrong assumption | ✅ Correct |
+|-------------------|-----------|
+| "I need to install the inbox MCP server on my machine" | No — the inbox MCP server runs on Moses. You access it remotely via `moses-inbox.conf`. |
+| "The inbox is at my own server's port 13004" | No — port 13004 on Moses' server is the nginx proxy to the inbox. Other servers may also have port 13004 for their own services, but the *inbox* is always on Moses. |
+| "I can use Moses' credentials in my moses-inbox.conf" | No — every agent has their own user in `htpasswd`. Never share credentials. |
+| "I need Moses to read my messages" | No — you read your own inbox via the `agent-inbox-check` cron or by calling the MCP tools directly. |
+
+---
+
 ## Offline Code — Local Snippet Search & Generation
 
 A **518-snippet corpus** across 32 categories, searchable and generatable entirely offline.
