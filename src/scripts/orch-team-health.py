@@ -43,8 +43,8 @@ STATE_FILE = HOME / ".hermes" / "state" / "health-state.json"
 HEALTH_DATA_FILE = HOME / ".hermes" / "state" / "agent-health-data.json"
 REGISTRY_PATH = HOME / "hermes-cortex" / "src" / "agent-registry.json"
 INBOX_CONF = HOME / ".hermes" / "moses-inbox.conf"
+TIMEOUT = 3
 HEALTH_TOPIC = "health"
-TIMEOUT = 15
 
 SERVICE_MAP = [
     "nginx", "ollama", "gbrain", "cortex-dashboard",

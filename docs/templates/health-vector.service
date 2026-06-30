@@ -1,0 +1,31 @@
+# health-vector.service — Hermes Cortex Agent Health Vector Server
+#
+# Serve the health vector on the configured port (no auth, no TLS).
+# The orchestrator polls this endpoint to monitor agent health.
+#
+# Usage:
+#   systemctl --user enable health-vector.service
+#   systemctl --user start health-vector.service
+#
+# Override port via drop-in:
+#   systemctl --user edit health-vector.service
+#   [Service]
+#   ExecStart=
+#   ExecStart=/usr/bin/python3 %h/hermes-cortex/src/scripts/health-vector.py --serve 13007
+
+[Unit]
+Description=Hermes Cortex Health Vector Server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/hermes-cortex/src/scripts/health-vector.py --serve 13007
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=default.target

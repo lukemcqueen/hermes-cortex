@@ -452,6 +452,100 @@ bash ~/.hermes/scripts/install-hermes-crons.sh --dry-run
 bash ~/.hermes/scripts/install-hermes-crons.sh --uninstall
 ```
 
+## ⚡ Health Monitoring Pipeline
+
+The orchestrator polls all server agents every 10 minutes for a compact **health vector** — an 8-element binary/ternary status vector with no auth overhead, no secrets, no JSON bloat.
+
+### Service map (shared across all agents)
+
+| Index | Service | Code |
+|-------|---------|------|
+| 0 | nginx | 1=up, -1=down, 0=n/a |
+| 1 | Ollama | same |
+| 2 | gbrain | same |
+| 3 | Cortex Dashboard | same |
+| 4 | Langfuse (web) | same |
+| 5 | Langfuse (worker) | same |
+| 6 | Docker daemon | same |
+| 7 | Hermes Gateway | same |
+
+### Health endpoint (server agents)
+
+Each server agent runs `health-vector.py --serve <port>` as a systemd user service. The endpoint returns a single JSON line:
+```json
+{"v":[1,1,1,1,1,1,1,1],"h":"hostname","t":1700000000}
+```
+No authentication. No TLS. Plain HTTP — the vector contains no secrets, just binary up/down/n/a flags.
+
+### Agent endpoint URLs
+
+| Agent | Health URL | Method | Auth |
+|-------|-----------|--------|------|
+| Moses | `http://127.0.0.1:13007/` | HTTP poll (internal) | none |
+| Gisu | `http://your-gisu-host:13007/` | HTTP poll | none |
+| Kustos | `http://mweb.client-domain.com:13007/` | HTTP poll | none |
+| Joseph | `http://your-domain.com:12007/` | HTTP poll | none |
+| Esther | `http://your-domain.com:14007/` | HTTP poll | none |
+| Titus | pushes to Moses inbox | Inbox push | each agent's own credentials |
+
+### How it works
+
+1. **Server agents** (`health_method: "http"`): Moses' `orch-team-health.py` cron (`*/10 * * * *`) fetches each agent's vector via HTTP.
+2. **Client-only agents** (`health_method: "inbox"`): Titus runs `health-vector-push.sh` via launchd every 10 minutes, POSTing his vector to Moses' inbox API with his own Basic Auth credentials.
+3. **Change detection**: The poller fingerprints each vector. No output = no change. Alerts fire only on state transitions:
+   - `🔴 Titus ❌ ollama` (service went down)
+   - `✅ Titus — all services restored` (back to healthy)
+
+### Deployment (each server agent)
+
+1. Open the firewall port:
+   ```bash
+   sudo ufw allow <PORT>/tcp
+   ```
+2. Run health-vector server (port varies per agent):
+   ```bash
+   python3 ~/hermes-cortex/src/scripts/health-vector.py --serve <PORT>
+   ```
+3. Install the systemd user service (Linux):
+   ```bash
+   systemctl --user enable health-vector.service
+   systemctl --user start health-vector.service
+   ```
+4. Verify:
+   ```bash
+   curl -s http://127.0.0.1:<PORT>/
+   # → {"v":[...], "h":"hostname", "t":...}
+   ```
+5. Moses' `orch-team-health.py` picks it up automatically once the `health_url` is set in `src/agent-registry.json`.
+
+### Deployment (Titus / macOS client-only)
+
+Titus cannot be polled (no inbound). Instead he pushes to Moses' inbox:
+
+1. **Pull hermes-cortex** and set up `~/.hermes/moses-inbox.conf` with his own credentials:
+   ```ini
+   MOSES_INBOX_URL="https://your-domain.com:13004"
+   MOSES_INBOX_AUTH="titus:<password>"
+   AGENT_NAME="titus"
+   ```
+2. Install the launchd agent:
+   ```bash
+   cp ~/hermes-cortex/docs/templates/com.hermes.health-push.plist ~/Library/LaunchAgents/
+   launchctl load ~/Library/LaunchAgents/com.hermes.health-push.plist
+   ```
+3. Test: `AGENT_NAME=titus bash ~/hermes-cortex/src/scripts/health-vector-push.sh`
+
+### Files
+
+| Path | Purpose |
+|------|---------|
+| `src/scripts/health-vector.py` | Health vector generator + HTTP server (cross-platform) |
+| `src/scripts/health-vector-push.sh` | Inbox push script for client-only agents |
+| `src/scripts/orch-team-health.py` | Orchestrator poller (no_agent cron) |
+| `src/agent-registry.json` | Agent registry with `health_method`, `health_url` |
+| `docs/templates/com.hermes.health-push.plist` | macOS launchd template for Titus |
+| `docs/templates/health-vector.service` | systemd user service template for server agents |
+
 ---
 
 ## Offline Code — Local Snippet Search & Generation
