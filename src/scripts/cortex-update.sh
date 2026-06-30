@@ -138,6 +138,7 @@ register "src/scripts/service-recovery.py"        "${HERMES_HOME}/scripts/servic
 register "src/scripts/platform_utils.py"          "${HERMES_HOME}/scripts/platform_utils.py"
 register "src/scripts/langfuse-health-watchdog.py" "${HERMES_HOME}/scripts/langfuse-health-watchdog.py"
 register "src/scripts/llm-judge-scorer.py"         "${HERMES_HOME}/scripts/llm-judge-scorer.py"
+register "src/scripts/model-health-watchdog.py"    "${HERMES_HOME}/scripts/model-health-watchdog.py"
 register "src/scripts/cron-quality-watchdog.py"    "${HERMES_HOME}/scripts/cron-quality-watchdog.py"
 register "src/scripts/state_tracker.py"             "${HERMES_HOME}/scripts/state_tracker.py"
 register "src/scripts/check-certs.py"               "${HERMES_HOME}/scripts/check-certs.py"

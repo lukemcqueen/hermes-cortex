@@ -301,3 +301,106 @@ Only these are actually consumed by the Hermes Langfuse plugin:
 - `HERMES_LANGFUSE_DEBUG`
 
 All other `*_ENABLED=true` vars are inert — leftovers from earlier tooling.
+
+---
+
+## LLM Judge Scorer — Automated Trace Evaluation
+
+A scheduled script that evaluates Hermes conversation traces using a local Ollama model and posts quality scores to Langfuse.
+
+### How It Works
+
+1. **Fetches unscored traces** from Langfuse (last 14 days, up to 5 per run)
+2. **Judges each trace** using `qwen2.5-coder:1.5b` running locally via Ollama
+3. **Posts scores** to Langfuse: `helpfulness` (1-5), `clarity` (1-5), `depth` (1-5), `overall` (1-10)
+
+### Prerequisites
+
+| Requirement | Check | Install |
+|-------------|-------|---------|
+| Ollama running | `curl -s http://localhost:11434/api/tags` | `systemctl start ollama` |
+| Judge model | `ollama list \| grep qwen2.5-coder` | `ollama pull qwen2.5-coder:1.5b` |
+| Embeddings model | `ollama list \| grep nomic-embed-text` | `ollama pull nomic-embed-text:latest` |
+| Langfuse .env | `cat ~/.hermes-cortex/.env` | See "Step 5" below |
+| Langfuse running | `curl -s -o /dev/null -w '%{http_code}' http://localhost:3000` | `docker compose up -d` |
+
+### Setup
+
+**Step 1 — Pull the judge model:**
+
+```bash
+ollama pull qwen2.5-coder:1.5b
+```
+
+**Step 2 — Create the Langfuse `.env` for the scorer:**
+
+The scorer reads Langfuse API keys from `~/.hermes-cortex/.env`. Extract them from your existing Hermes config:
+
+```bash
+grep -E 'HERMES_LANGFUSE_(PUBLIC|SECRET)_KEY' ~/.hermes/.env > ~/.hermes-cortex/.env
+```
+
+Or extract from the running Docker container:
+
+```bash
+python3 ~/hermes-cortex/deploy/extract_langfuse_env.py > ~/.hermes-cortex/.env
+```
+
+**Step 3 — Deploy the script:**
+
+```bash
+# Scripts auto-deploy via cortex-update.sh --force-all
+# Or copy manually:
+cp ~/hermes-cortex/src/scripts/llm-judge-scorer.py ~/.hermes-cortex/scripts/
+chmod +x ~/.hermes-cortex/scripts/llm-judge-scorer.py
+
+# Also deploy the model health watchdog (recommended):
+cp ~/hermes-cortex/src/scripts/model-health-watchdog.py ~/.hermes-cortex/scripts/
+chmod +x ~/.hermes-cortex/scripts/model-health-watchdog.py
+```
+
+**Step 4 — Create the crons:**
+
+```bash
+# Create the LLM judge scorer cron (twice daily on weekdays)
+hermes cron create --name llm-judge-scorer-weekday \
+  --no-agent --script llm-judge-scorer.py \
+  --schedule "0 12,20 * * 1-5" --deliver origin
+
+# Create weekend scorer (once on Saturday/Sunday)
+hermes cron create --name llm-judge-scorer-weekend \
+  --no-agent --script llm-judge-scorer.py \
+  --schedule "0 22 * * 0,6" --deliver origin
+
+# Create model health watchdog (daily 7am — silent when healthy)
+hermes cron create --name model-health-watchdog \
+  --no-agent --script model-health-watchdog.py \
+  --schedule "0 7 * * *" --deliver origin
+```
+
+**Step 5 — Verify everything works:**
+
+```bash
+# Dry-run the scorer
+python3 ~/.hermes-cortex/scripts/llm-judge-scorer.py --dry-run
+
+# Check model health
+python3 ~/.hermes-cortex/scripts/model-health-watchdog.py
+
+# Verify crons are scheduled
+hermes cron list | grep -E 'llm-judge|model-health'
+```
+
+### Error Handling
+
+The scorer checks prerequisites before starting:
+
+| Error | Likely cause | Fix |
+|-------|-------------|-----|
+| `Cannot reach Ollama` | Ollama not running | `systemctl start ollama` |
+| `Judge model 'qwen2.5-coder:1.5b' not found` | Model not pulled | `ollama pull qwen2.5-coder:1.5b` |
+| `Could not read Langfuse project keys` | Missing `.env` | Create `~/.hermes-cortex/.env` |
+| `HTTP 401` on Langfuse POST | Stale API keys | Regenerate in Langfuse UI |
+
+The `model-health-watchdog` cron (daily 7am) alerts you if any models are missing,
+with a descriptive message including the `ollama pull` commands needed.

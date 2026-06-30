@@ -17,13 +17,48 @@ from datetime import datetime, timedelta, timezone
 
 # ── Config ──────────────────────────────────────────────────────────────
 LANGFUSE_BASE = "http://localhost:3000"
-OLLAMA_URL = "http://localhost:11434/api/chat"
+OLLAMA_BASE = "http://localhost:11434"
+OLLAMA_API_TAGS = f"{OLLAMA_BASE}/api/tags"
+OLLAMA_URL = f"{OLLAMA_BASE}/api/chat"
 JUDGE_MODEL = "qwen2.5-coder:1.5b"
 
 SCORE_CRITERIA = ["helpfulness", "clarity", "depth"]
 MAX_TRACES_PER_RUN = 5  # ~2min on Intel with qwen2.5-coder:1.5b
 MAX_CONTENT_CHARS = 800  # Keep small for CPU-bound inference
 FETCH_BATCH = 20  # Fetch this many, filter to unscored
+
+
+# ── Prerequisite checks ────────────────────────────────────────────────
+def _check_ollama_model() -> None:
+    """Verify the judge model exists in Ollama before starting. Exit cleanly if not."""
+    try:
+        req = urllib.request.Request(OLLAMA_API_TAGS)
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        print(f"ERROR: Cannot reach Ollama at {OLLAMA_BASE} (HTTP {e.code})", file=sys.stderr)
+        print(f"  Is Ollama running? Check: systemctl status ollama", file=sys.stderr)
+        sys.exit(1)
+    except urllib.error.URLError as e:
+        print(f"ERROR: Cannot connect to Ollama at {OLLAMA_BASE}: {e.reason}", file=sys.stderr)
+        print(f"  Is Ollama running? Try: ollama serve", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"ERROR: Unexpected error contacting Ollama: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    available = {m.get("name") for m in data.get("models", [])}
+    if JUDGE_MODEL not in available:
+        print(f"ERROR: Judge model '{JUDGE_MODEL}' not found in Ollama", file=sys.stderr)
+        print(f"", file=sys.stderr)
+        print(f"  Available models: {', '.join(sorted(available)) or '(none)'}", file=sys.stderr)
+        print(f"", file=sys.stderr)
+        print(f"  To install:", file=sys.stderr)
+        print(f"    ollama pull {JUDGE_MODEL}", file=sys.stderr)
+        print(f"", file=sys.stderr)
+        print(f"  To verify after install:", file=sys.stderr)
+        print(f"    ollama list | grep {JUDGE_MODEL.replace(':', ' ')}", file=sys.stderr)
+        sys.exit(1)
 
 
 # ── Langfuse auth ──────────────────────────────────────────────────────
@@ -249,6 +284,9 @@ def main():
         print(f"   Model: {JUDGE_MODEL}")
         print(f"   Mode: {'DRY RUN' if dry_run else 'LIVE'}")
         print()
+
+    # Verify prerequisites before starting
+    _check_ollama_model()
 
     # Fetch traces — fetch in bulk to find unscored ones
     if specific_trace:
