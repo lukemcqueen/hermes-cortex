@@ -1,4 +1,5 @@
-# Hermes security cron jobs - passwordless sudo for specific tools
+# Hermes security cron jobs — passwordless sudo for specific tools
+# Luke's deployment
 luke ALL=(root) NOPASSWD: /usr/bin/rkhunter
 luke ALL=(root) NOPASSWD: /usr/bin/aide
 luke ALL=(root) NOPASSWD: /usr/bin/lynis
@@ -12,3 +13,21 @@ luke ALL=(root) NOPASSWD: /usr/local/sbin/hermes-security-apply
 luke ALL=(root) NOPASSWD: /usr/bin/certbot renew --non-interactive
 luke ALL=(root) NOPASSWD: /usr/bin/certbot --version
 luke ALL=(root) NOPASSWD: /usr/bin/certbot renew --dry-run
+
+# Moses (Moses server) deployment
+moses ALL=(root) NOPASSWD: /usr/sbin/nginx -t
+moses ALL=(root) NOPASSWD: /usr/sbin/nginx -s reload
+moses ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx
+moses ALL=(root) NOPASSWD: /usr/bin/systemctl start nginx
+moses ALL=(root) NOPASSWD: /usr/bin/systemctl stop nginx
+moses ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx
+moses ALL=(root) NOPASSWD: /usr/bin/systemctl start docker
+moses ALL=(root) NOPASSWD: /usr/bin/systemctl stop docker
+moses ALL=(root) NOPASSWD: /usr/bin/systemctl restart docker
+moses ALL=(root) NOPASSWD: /usr/bin/apt autoremove
+moses ALL=(root) NOPASSWD: /usr/bin/apt clean
+moses ALL=(root) NOPASSWD: /usr/bin/cp /tmp/hermes-htpasswd /etc/nginx/.hermes-htpasswd
+# Additional rules needed for nginx security pipeline:
+moses ALL=(root) NOPASSWD: /usr/bin/install -o root -g root -m 0755 /home/moses/hermes-cortex/deploy/nginx/hermes-security-apply /usr/local/sbin/hermes-security-apply
+moses ALL=(root) NOPASSWD: /usr/bin/cp /tmp/blocked_ips.conf /etc/nginx/blocked_ips.conf
+moses ALL=(root) NOPASSWD: /usr/local/sbin/hermes-security-apply

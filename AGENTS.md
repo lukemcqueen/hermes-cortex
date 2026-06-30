@@ -425,10 +425,11 @@ code-review (security scan, quality gate)
 | `llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | Weekday trace quality scoring |
 | `llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | Weekend trace quality scoring |
 | `offline-code-index` | `0 5 * * 0` | no_agent | Weekly corpus index refresh |
-| **Orchestrator-only (Moses primary, Esther backup):** | | | |
+|| `process-mcp-agent-inbox-messages` | `*/30 * * * *` | LLM | None | `origin` | Read + process new inbox messages (MCP inbox-watch + Decision Framework) |
+|| **Orchestrator-only (Moses primary, Esther backup):** | | | | ||
 | `orch-team-health` | `*/10 * * * *` | no_agent | Cross-agent health polling |
 | `orch-team-messages` | `*/10 * * * *` | no_agent | Flag urgent agent messages |
-| `process-agent-messages` | `*/10 * * * *` | LLM | Process inbox remediation markers |
+| `orch-process-agent-messages` | `*/10 * * * *` | LLM | Process inbox remediation markers |
 |
 |### Cron naming convention
 |
@@ -779,7 +780,7 @@ bash ~/.hermes-cortex/src/scripts/install-hermes-crons.sh
 # 3. Copy orchestrator-specific scripts
 cp ~/hermes-cortex/src/scripts/orch-moses-inbox-remediate.sh ~/.hermes/scripts/
 cp ~/hermes-cortex/src/scripts/orch-weekly-auto-fix.py ~/.hermes/scripts/
-# 4. Create process-agent-messages cron (see agent-registry.json)
+# 4. Create orch-process-agent-messages cron (see agent-registry.json)
 # 5. Start gbrain autopilot
 gbrain autopilot --repo ~/brain/default --interval 300 &
 # 6. Fix score-cycle symlink (verify.sh expects this)

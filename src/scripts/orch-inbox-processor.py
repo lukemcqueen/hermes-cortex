@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""agent-inbox-processor.py — Companion script for process-agent-messages.
+"""orch-inbox-processor.py — Companion script for orch-process-agent-messages.
 
 Runs every 10m as a no_agent watchdog. Calls the agent inbox API to check
 for new broadcast messages. Silent when nothing new.
