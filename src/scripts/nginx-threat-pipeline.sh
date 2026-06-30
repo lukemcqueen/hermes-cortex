@@ -89,6 +89,8 @@ if [ -n "$F2B_LOG" ]; then
         grep -oP '\'"'"'[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'\'"'"' | sort -u | \
         while IFS= read -r ip; do
           [ -z "$ip" ] && continue
+          # Validate IPv4 format
+          if ! echo "$ip" | grep -qP '^(\d{1,3}\.){3}\d{1,3}$'; then continue; fi
           grep -qF "$ip" "${CORTEX_REPO}/deploy/nginx/blocked_ips.add" 2>/dev/null && continue
           echo "$ip"
         done
@@ -101,6 +103,8 @@ if [ -n "$F2B_LOG" ]; then
         grep -oP '\'"'"'[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'\'"'"' | sort -u | \
         while IFS= read -r ip; do
           [ -z "$ip" ] && continue
+          # Validate IPv4 format
+          if ! echo "$ip" | grep -qP '\'"'"'^(\d{1,3}\.){3}\d{1,3}$'\'"'"'; then continue; fi
           grep -qF "$ip" "${CORTEX_REPO}/deploy/nginx/blocked_ips.add" 2>/dev/null && continue
           echo "$ip"
         done
