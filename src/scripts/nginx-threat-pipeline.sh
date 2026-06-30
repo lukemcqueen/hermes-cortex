@@ -22,7 +22,7 @@ done
 
 # DEPLOY_SCRIPT: linux=/usr/local/sbin, mac intel=/usr/local/sbin, mac arm=/opt/homebrew/sbin
 DEPLOY_SCRIPT=""
-for path in /usr/local/sbin/hermes-security-apply /opt/homebrew/sbin/hermes-security-apply; do
+for path in "${CORTEX_REPO}/deploy/nginx/hermes-security-apply" /usr/local/sbin/hermes-security-apply /opt/homebrew/sbin/hermes-security-apply; do
   if [ -x "$path" ]; then
     DEPLOY_SCRIPT="$path"
     break
@@ -159,19 +159,38 @@ else
     PIPELINE_OUTPUT+="  ✓ Committed ${IP_COUNT} IPs to repo"$'\n'
 
     log "── Step 5: Push ──"
-    if [ -n "$TIMEOUT_CMD" ]; then
-      if $TIMEOUT_CMD 5 git push origin main 2>&1; then
-        PIPELINE_OUTPUT+="  ✓ Pushed to origin"$'\n'
+    for push_attempt in 1 2; do
+      if [ -n "$TIMEOUT_CMD" ]; then
+        if $TIMEOUT_CMD 10 git push origin main 2>&1; then
+          PIPELINE_OUTPUT+="  ✓ Pushed to origin"$'\n'
+          break
+        else
+          PUSH_EXIT=$?
+          if [ $push_attempt -eq 1 ] && [ $PUSH_EXIT -eq 128 ]; then
+            log "  ⚠ Remote ahead — pulling and retrying"
+            $TIMEOUT_CMD 15 git pull --rebase origin main 2>&1 || true
+          elif [ $push_attempt -eq 1 ]; then
+            log "  ⚠ Push failed (code $PUSH_EXIT) — pulling and retrying"
+            $TIMEOUT_CMD 15 git pull --rebase origin main 2>&1 || true
+          else
+            PIPELINE_OUTPUT+="  ⚠ Push failed after retry"$'\n'
+          fi
+        fi
       else
-        PIPELINE_OUTPUT+="  ⚠ Push failed (no credentials/network)"$'\n'
+        if git push origin main 2>&1; then
+          PIPELINE_OUTPUT+="  ✓ Pushed to origin"$'\n'
+          break
+        else
+          PUSH_EXIT=$?
+          if [ $push_attempt -eq 1 ]; then
+            log "  ⚠ Push failed (code $PUSH_EXIT) — pulling and retrying"
+            git pull --rebase origin main 2>&1 || true
+          else
+            PIPELINE_OUTPUT+="  ⚠ Push failed after retry"$'\n'
+          fi
+        fi
       fi
-    else
-      if git push origin main 2>&1; then
-        PIPELINE_OUTPUT+="  ✓ Pushed to origin"$'\n'
-      else
-        PIPELINE_OUTPUT+="  ⚠ Push failed (no credentials/network)"$'\n'
-      fi
-    fi
+    done
   fi
 fi
 
