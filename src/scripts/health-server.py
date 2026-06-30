@@ -309,6 +309,68 @@ def _build_health() -> dict:
 
 
 # ── Routes ────────────────────────────────────────────────────
+def _build_compact_health() -> dict:
+    """Build minimal compact health response for public endpoint.
+
+    Format: {"v": [...], "h": "k", "t": unix_timestamp}
+
+    v array (8 values):
+      [resources, services, no_errored_crons, no_stale_crons, nginx, ollama, gbrain, disk_ok]
+      1 = healthy, -1 = unhealthy/warning
+    h: "k" = all OK, "d" = degraded (some warnings), "f" = failure
+    t: unix timestamp
+    """
+    r = _check_resources()
+    s = _check_services()
+    c = _check_cron_health()
+
+    resources_ok = r["healthy"]
+    services_ok = s["healthy"]
+    no_errored = len(c.get("errored", [])) == 0
+    no_stale = len(c.get("stale", [])) == 0
+
+    # Per-service status
+    svc_map = {item["name"]: item["status"] for item in s.get("items", [])}
+    nginx_ok = svc_map.get("nginx") == "running"
+    ollama_ok = svc_map.get("ollama") == "running"
+    gbrain_ok = svc_map.get("gbrain") == "running"
+
+    # Disk threshold (80%+ = warning)
+    disk_ok = r.get("data", {}).get("disk_percent", 0) < 80
+
+    v = [
+        1 if resources_ok else -1,
+        1 if services_ok else -1,
+        1 if no_errored else -1,
+        1 if no_stale else -1,
+        1 if nginx_ok else -1,
+        1 if ollama_ok else -1,
+        1 if gbrain_ok else -1,
+        1 if disk_ok else -1,
+    ]
+
+    # Overall health: all green = k, any -1 = d, any critical = f
+    all_ok = all(x == 1 for x in v)
+    any_critical = any(
+        iss.get("severity") == "critical"
+        for iss in r.get("issues", []) + s.get("issues", []) + c.get("issues", [])
+    )
+
+    if all_ok:
+        h = "k"
+    elif any_critical:
+        h = "f"
+    else:
+        h = "d"
+
+    return {
+        "v": v,
+        "h": h,
+        "t": int(time.time()),
+    }
+
+
+# ── Routes ────────────────────────────────────────────────────
 @app.get("/api/v1/health")
 async def health_v1():
     return _build_health()
@@ -327,23 +389,14 @@ async def health_services():
 
 
 @app.get("/health")
-async def health_legacy():
-    """Backward-compat alias for /api/v1/health."""
-    return _build_health()
+async def health_public():
+    """Public-facing health endpoint — compact format, no PII."""
+    return _build_compact_health()
 
 
 @app.get("/")
 async def index():
-    return {
-        "service": f"Health Server — {SERVER_NAME}",
-        "version": "1.0.0",
-        "endpoints": {
-            "/api/v1/health": "Consolidated system health",
-            "/api/v1/health/resources": "CPU, memory, disk",
-            "/api/v1/health/services": "Service status",
-            "/health": "Alias for /api/v1/health",
-        },
-    }
+    return _build_compact_health()
 
 
 # ── Main ──────────────────────────────────────────────────────
