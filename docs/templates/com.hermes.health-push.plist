@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.hermes.health-push</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>exec "$HOME/hermes-cortex/src/scripts/health-vector-push.sh"</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>AGENT_NAME</key>
+        <string>titus</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>StartInterval</key>
+    <integer>600</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/com.hermes.health-push.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/com.hermes.health-push.err</string>
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>

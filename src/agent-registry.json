@@ -1,6 +1,10 @@
 {
-  "version": 2,
-  "description": "Agent registry for Hermes Cortex. Server agents have health_url for API polling. Client-only agents (accessible=false) are skipped.",
+  "version": 3,
+  "description": "Agent registry for Hermes Cortex. health_method: 'http' for server agents with reachable health endpoints, 'inbox' for client-only agents that push via inbox.",
+  "health_vector_map": [
+    "nginx", "ollama", "gbrain", "cortex-dashboard",
+    "langfuse-web", "langfuse-worker", "docker", "hermes-gateway"
+  ],
   "routing": {
     "broadcast_topics": [
       "luke",
@@ -18,9 +22,10 @@
       "is_server": true,
       "is_orchestrator": true,
       "accessible": true,
-      "health_url": "http://127.0.0.1:8901/api/health",
+      "health_method": "http",
+      "health_url": "http://127.0.0.1:13006/",
       "port_range": "13001-13099",
-      "description": "Moses \u2014 orchestrator server",
+      "description": "Moses — orchestrator server",
       "inbox_user": "moses",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
@@ -31,7 +36,8 @@
       "hostname": "worker-1",
       "is_server": true,
       "accessible": true,
-      "description": "Gisu operations server",
+      "health_method": "http",
+      "description": "Gisu operations server — needs health-vector.py deployed",
       "inbox_user": "gisu",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
@@ -42,7 +48,8 @@
       "hostname": "worker-2",
       "is_server": true,
       "accessible": true,
-      "description": "Joseph web/infra server",
+      "health_method": "http",
+      "description": "Joseph web/infra server — needs health-vector.py deployed",
       "inbox_user": "joseph",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
@@ -53,7 +60,8 @@
       "hostname": "worker-3",
       "is_server": true,
       "accessible": true,
-      "description": "Kustos security server",
+      "health_method": "http",
+      "description": "Kustos security server — needs health-vector.py deployed",
       "inbox_user": "kustos",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
@@ -64,8 +72,9 @@
       "hostname": "LAM2",
       "is_server": true,
       "accessible": true,
+      "health_method": "inbox",
       "platform": "macOS",
-      "description": "Titus — macOS laptop, developer agent",
+      "description": "Titus — macOS laptop, developer agent (no inbound). Pushes health vector to inbox.",
       "inbox_user": "titus",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
@@ -78,7 +87,8 @@
       "is_backup_orchestrator": true,
       "accessible": true,
       "platform": "linux",
-      "description": "Esther \u2014 backup orchestrator, sustainability & materials expert",
+      "health_method": "http",
+      "description": "Esther — backup orchestrator, sustainability & materials expert. Needs health-vector.py deployed.",
       "inbox_user": "esther",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
