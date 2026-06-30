@@ -80,6 +80,12 @@
 All external services are accessed via nginx on custom ports with TLS + basic auth,
 rate-limited by nginx + fail2ban (4 jails, ban escalation 1h→4wk):
 
+> **Per-agent port ranges (Luke's deployment):** The `13xxx` ports below are the
+> default convention. Individual agents use different ranges to allow multiple
+> agent servers on the same domain — **Moses** uses `13xxx`, **Joseph** uses
+> `12xxx`, **Esther** uses `14xxx`. Each agent's nginx config maps their own
+> services to their own range.
+
 | Port | Service | Auth Required | Notes |
 |------|---------|--------------|-------|
 | 13001 | Cortex Dashboard (HTTPS) | Yes (Basic Auth) | nginx rate-limit 20/5r/s + conn-limit 10/IP |
