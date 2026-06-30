@@ -30,7 +30,7 @@ from hermes_tz import format_timestamp
 from state_tracker import StateTracker
 
 MEM_PCT_WARN = 85
-SWAP_PCT_WARN = 70
+SWAP_PCT_WARN = 90
 DISK_PCT_WARN = 90
 
 alerts = []

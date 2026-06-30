@@ -155,7 +155,7 @@ Monitors memory, swap, and disk usage. Sends Telegram alerts when thresholds are
 #!/usr/bin/env python3
 """System resource alert watchdog.
 
-Checks: memory >85%, swap >70%, disk >90%.
+Checks: memory >85%, swap >90%, disk >90%.
 Sends alerts to Telegram via Hermes delivery system.
 Silent when all clear — only output if there's a problem.
 """
@@ -163,7 +163,7 @@ import json, os, subprocess, sys
 from pathlib import Path
 
 HOME = Path.home()
-THRESHOLDS = {"memory_pct": 85, "swap_pct": 70, "disk_pct": 90}
+THRESHOLDS = {"memory_pct": 85, "swap_pct": 90, "disk_pct": 90}
 
 def run(cmd):
     r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
