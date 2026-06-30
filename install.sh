@@ -1677,7 +1677,7 @@ fi
 
 # orch-team-health.py is deliberately NOT installed here — it's
 # orchestrator-only (Moses polls peer agents). Peer agents don't need it.
-# It is deployed via the orch-* section in install-hermes-crons.sh.
+# It is deployed via the orch-* section in install-crons.sh.
 
 # ── Auto-Save Active Sessions Script ──────────────────────────────
 AUTO_SAVE_PATH="${SCRIPTS_DIR}/auto-save-sessions.py"
@@ -1749,7 +1749,7 @@ else
 fi
 
 # ── Essential Hermes Crons ──────────────────────────────────────
-HERMES_CRONS_SCRIPT="${SCRIPTS_DIR}/install-hermes-crons.sh"
+HERMES_CRONS_SCRIPT="${SCRIPTS_DIR}/install-crons.sh"
 if [[ -f "$HERMES_CRONS_SCRIPT" ]]; then
   step "Creating essential Hermes cron jobs (auto-remediation, health, memory sync…)"
   # Verify Hermes is installed first
@@ -1763,7 +1763,7 @@ if [[ -f "$HERMES_CRONS_SCRIPT" ]]; then
     ok
   fi
 else
-  warn "install-hermes-crons.sh not found — skipping cron job creation"
+  warn "install-crons.sh not found — skipping cron job creation"
 fi
 
 # ── Scripts list ────────────────────────────────────────────

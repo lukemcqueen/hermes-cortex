@@ -143,7 +143,7 @@ The pipeline:
 3. Deploys via `sudo -n hermes-security-apply` (requires passwordless sudo)
 4. Git-commits and pushes `blocked_ips.add` changes
 
-> **Note:** This is a deployment-specific cron (Luke's setup). Install via `install-hermes-crons.sh` on each target host.
+> **Note:** This is a deployment-specific cron (Luke's setup). Install via `install-crons.sh` on each target host.
 
 ### 7. First deploy
 

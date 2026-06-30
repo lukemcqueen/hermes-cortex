@@ -35,7 +35,7 @@ Script runs
    ```bash
    cp ~/.hermes-cortex/scripts/my-script.py ~/.hermes/scripts/my-script.py
    ```
-5. If it's a cron script, register in `install-hermes-crons.sh`:
+5. If it's a cron script, register in `install-crons.sh`:
    ```bash
    create_cron "my-cron" "0 */6 * * *" "my-script.py" "" "" "" "origin" "" "true"
    ```

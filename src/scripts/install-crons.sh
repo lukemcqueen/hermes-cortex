@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  install-hermes-crons.sh — Register essential Hermes Agent cron jobs
+#  install-crons.sh — Register essential Hermes Agent cron jobs
 #
 #  Creates Hermes Agent-level cron jobs (no_agent watchdogs and
 #  LLM-driven crons) for auto-remediation, system health, web
@@ -10,10 +10,10 @@
 #  by job name). Safe to re-run — only creates missing jobs.
 #
 #  Usage:
-#    bash install-hermes-crons.sh              # create missing crons
-#    bash install-hermes-crons.sh --dry-run    # show what would be created
-#    bash install-hermes-crons.sh --force      # recreate all crons (overwrite)
-#    bash install-hermes-crons.sh --uninstall  # remove all hermes crons
+#    bash install-crons.sh              # create missing crons
+#    bash install-crons.sh --dry-run    # show what would be created
+#    bash install-crons.sh --force      # recreate all crons (overwrite)
+#    bash install-crons.sh --uninstall  # remove all hermes crons
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -408,7 +408,7 @@ fi
 
 # ── Deployment-Specific Crons ─────────────────────────────
 # These are specific to Luke's deployment but tracked in the
-# repo so install-hermes-crons.sh --force can recreate them.
+# repo so install-crons.sh --force can recreate them.
 # (All crons listed in the AGENTS.md reference table.)
 
 printf "\n${CYAN}  6. Deployment-Specific Crons${RESET}\n"

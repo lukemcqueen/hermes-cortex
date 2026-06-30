@@ -98,7 +98,7 @@ register "src/scripts/cortex-update.sh"           "${HERMES_HOME}/scripts/cortex
 register "src/scripts/install-ollama.sh"          "${HERMES_HOME}/scripts/install-ollama.sh"
 register "src/scripts/install-nginx.sh"           "${HERMES_HOME}/scripts/install-nginx.sh"
 register "src/scripts/install-cortex-update-cron.sh" "${HERMES_HOME}/scripts/install-cortex-update-cron.sh"
-register "src/scripts/install-hermes-crons.sh"       "${HERMES_HOME}/scripts/install-hermes-crons.sh"
+register "src/scripts/install-crons.sh"       "${HERMES_HOME}/scripts/install-crons.sh"
 register "src/scripts/install-score-hook.sh"       "${HERMES_HOME}/scripts/install-score-hook.sh"
 register "src/scripts/pre-commit-score"            "${HERMES_HOME}/scripts/pre-commit-score"
 register "src/scripts/pre-push-pull"               "${HERMES_HOME}/scripts/pre-push-pull"

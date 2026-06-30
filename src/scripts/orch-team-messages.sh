@@ -5,7 +5,7 @@
 #  ⚠️  ORCHESTRATOR ONLY — This script is designed exclusively
 #     for the Moses orchestrator server. Do NOT install on
 #     worker agents (Titus, Gisu, Joseph, Kustos, Esther).
-#     The install-hermes-crons.sh skips this on non-orchestrators.
+#     The install-crons.sh skips this on non-orchestrators.
 #
 #  Reads new messages from the agent inbox (root inbox/ dir).
 #

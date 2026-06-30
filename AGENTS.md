@@ -240,7 +240,7 @@ corrupt, network unreachable):
 |-------|------|---------------|--------|
 | Pre-commit hook | Runs `score-cycle` on every `git commit` | `bash ~/.hermes/scripts/install-score-hook.sh --all` | `SKIP_SCORE=1` |
 | SOUL.md directive | Rule appears in every Hermes session's system prompt | Edit `~/.hermes/SOUL.md` (see README) | Remove the directive |
-| Cron auditor | Scans every 6h for unscored changes | Auto-created by `install-hermes-crons.sh` | N/A |
+| Cron auditor | Scans every 6h for unscored changes | Auto-created by `install-crons.sh` | N/A |
 
 ### Setup first time
 
@@ -447,10 +447,10 @@ code-review (security scan, quality gate)
 |**Management:**|
 ```bash
 hermes cron list
-bash ~/.hermes/scripts/install-hermes-crons.sh          # install/update all
-bash ~/.hermes/scripts/install-hermes-crons.sh --force  # recreate all
-bash ~/.hermes/scripts/install-hermes-crons.sh --dry-run
-bash ~/.hermes/scripts/install-hermes-crons.sh --uninstall
+bash ~/.hermes/scripts/install-crons.sh          # install/update all
+bash ~/.hermes/scripts/install-crons.sh --force  # recreate all
+bash ~/.hermes/scripts/install-crons.sh --dry-run
+bash ~/.hermes/scripts/install-crons.sh --uninstall
 ```
 
 ## ⚡ Health Monitoring Pipeline
@@ -666,7 +666,7 @@ If you are Gisu, Joseph, Kustos, or Titus (client agents):
   └─ You DO NOT need to run an inbox server or nginx proxy
 ```
 
-This configuration is set up automatically by `install.sh` / `install-hermes-crons.sh`. If you ran the installer, your `config.yaml` already has the `agent-inbox` MCP server entry. If not, add it manually.
+This configuration is set up automatically by `install.sh` / `install-crons.sh`. If you ran the installer, your `config.yaml` already has the `agent-inbox` MCP server entry. If not, add it manually.
 
 ### Setup checklist
 
@@ -757,7 +757,7 @@ Load `skill_view(name="offline-code")` for full usage docs.
 
 ### Auto-remediation components
 
-All in `src/scripts/`, installed by `install.sh` + `install-hermes-crons.sh`:
+All in `src/scripts/`, installed by `install.sh` + `install-crons.sh`:
 
 | Script | Type | Schedule | Purpose |
 |--------|------|----------|---------|
@@ -776,7 +776,7 @@ All in `src/scripts/`, installed by `install.sh` + `install-hermes-crons.sh`:
 # 1. Copy agent registry
 cp ~/.hermes-cortex/src/agent-registry.json ~/.hermes/state/agent-registry.json
 # 2. Install crons
-bash ~/.hermes-cortex/src/scripts/install-hermes-crons.sh
+bash ~/.hermes-cortex/src/scripts/install-crons.sh
 # 3. Copy orchestrator-specific scripts
 cp ~/hermes-cortex/src/scripts/orch-moses-inbox-remediate.sh ~/.hermes/scripts/
 cp ~/hermes-cortex/src/scripts/orch-weekly-auto-fix.py ~/.hermes/scripts/
@@ -909,9 +909,9 @@ Load `skill_view(name="cron-management")` for the full protocol spec.
   
 ### Universal Agent Crons
 
-The following crons are registered by `install-hermes-crons.sh` on every agent.
-Run `bash ~/hermes-cortex/src/scripts/install-hermes-crons.sh --dry-run` to
-see what's missing on any agent, or `bash install-hermes-crons.sh --force` to
+The following crons are registered by `install-crons.sh` on every agent.
+Run `bash ~/hermes-cortex/src/scripts/install-crons.sh --dry-run` to
+see what's missing on any agent, or `bash install-crons.sh --force` to
 recreate all to match the repo definition.
 
 | Cron | Type | Schedule | Script / Skill | Deliver |

@@ -44,7 +44,7 @@ Any time you need to enforce a new rule across all agent sessions and projects:
 
 1. **Pre-commit hook** — Create a hook script, deploy via `install-score-hook.sh --all`
 2. **SOUL.md** — Add a `## Mandatory Directives` section to `~/.hermes/SOUL.md`
-3. **Cron auditor** — Create a no_agent watchdog script, register in `install-hermes-crons.sh`
+3. **Cron auditor** — Create a no_agent watchdog script, register in `install-crons.sh`
 4. **Register** — Add new files to `cortex-update.sh` for auto-deployment
 5. **Commit + push** — Push to origin/main so future installs get it
 6. **Deploy** — Run `cortex-update.sh --force-all` then `install-score-hook.sh --all`
@@ -57,4 +57,4 @@ Any time you need to enforce a new rule across all agent sessions and projects:
 | 1 | Hook installer | `src/scripts/install-score-hook.sh` |
 | 2 | SOUL.md directive | `~/.hermes/SOUL.md` |
 | 3 | Cron auditor | `src/scripts/score-auditor.py` |
-| 4 | Cron registration | `src/scripts/install-hermes-crons.sh` |
+| 4 | Cron registration | `src/scripts/install-crons.sh` |

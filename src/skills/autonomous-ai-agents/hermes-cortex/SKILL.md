@@ -78,7 +78,7 @@ Hermes Cortex uses a **two-directory deployment model**:
 1. Add `register "src/path/to/script" "${HERMES_HOME}/scripts/name"` to `cortex-update.sh`
 2. Run `bash ~/.hermes-cortex/scripts/cortex-update.sh --force-all`
 3. Create symlink: `ln -sf ~/.hermes-cortex/scripts/name ~/.hermes/scripts/name`
-4. Register in `install-hermes-crons.sh` if it's a cron script
+4. Register in `install-crons.sh` if it's a cron script
 
 **Cleanup of stale duplicates:** If both `~/.hermes/scripts/` and `~/.hermes-cortex/scripts/` have a copy of the same file, replace the `~/.hermes/scripts/` copy with a symlink:
 ```bash
@@ -86,7 +86,7 @@ rm ~/.hermes/scripts/<file> && ln -sf ~/.hermes-cortex/scripts/<file> ~/.hermes/
 ```
 This was done for 42 files in June 2026. Any future cortex-update maintenance should follow the same pattern — never leave stale regular-file copies in `~/.hermes/scripts/`.
 
-**Cron job script resolution:** The cron scheduler resolves scripts from `HERMES_HOME/scripts/` (`~/.hermes/scripts/`), resolving symlinks via `.resolve()`. The `install-hermes-crons.sh` function checks `SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"` when verifying script existence during cron creation.
+**Cron job script resolution:** The cron scheduler resolves scripts from `HERMES_HOME/scripts/` (`~/.hermes/scripts/`), resolving symlinks via `.resolve()`. The `install-crons.sh` function checks `SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"` when verifying script existence during cron creation.
 
 **External access (via nginx):**
 - Langfuse: `https://your-domain.com:11002` (TLS + basic auth, upstream `127.0.0.1:3000`)
@@ -509,7 +509,7 @@ If the system's decision was wrong, use `loop-feedback override <id> --note "...
 |-------|------|---------------|--------|
 | Pre-commit hook | Runs `score-cycle` on every `git commit` | `bash ~/.hermes-cortex/scripts/install-score-hook.sh --all` | `SKIP_SCORE=1` |
 | SOUL.md directive | Rule in every Hermes session's system prompt | Edit `~/.hermes/SOUL.md` (add Mandatory Directives section) | Remove the directive |
-| Cron auditor | Scans every 6h for unscored changes | Auto-created by `install-hermes-crons.sh` | N/A |
+| Cron auditor | Scans every 6h for unscored changes | Auto-created by `install-crons.sh` | N/A |
 
 **Dogfood your own rules:** When you introduce a new rule or process that mandates scoring, immediately run `score-cycle` on your own changes to validate the tooling works end-to-end. This catches missing shebangs, Python version mismatches, scoring calibration gaps, and feedback CLI tooling issues before they hit production. The user will call you out if you mandate something and don't do it yourself — it erodes trust in the rule.
 

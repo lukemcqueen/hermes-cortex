@@ -73,7 +73,7 @@ bash ~/.hermes-cortex/scripts/install-score-hook.sh --all
 echo -e "\n## Mandatory Directives\n**Score every change** — run \`score-cycle\` after every file edit." >> ~/.hermes/SOUL.md
 
 # Layer 3 — cron auditor (checks every 6h for unscored changes):
-bash ~/.hermes/scripts/install-hermes-crons.sh --force
+bash ~/.hermes/scripts/install-crons.sh --force
 ```
 
 See [Change Scoring Enforcement](#-change-scoring-enforcement) for details.
@@ -279,7 +279,7 @@ EOF
 
 A no_agent watchdog (`score-auditor`) runs every 6 hours, scans `~/Developer/` for recent file changes, cross-references against the loop-governance DB, and reports any unscored changes via Telegram. Silent when everything is clean.
 
-Created automatically by `install-hermes-crons.sh`. Verify:
+Created automatically by `install-crons.sh`. Verify:
 
 ```bash
 hermes cron list | grep score-auditor
@@ -328,7 +328,7 @@ The installer requires Hermes Agent to be installed first. If you see:
 
 Then install Hermes Agent first, then run:
 ```bash
-bash ~/.hermes/scripts/install-hermes-crons.sh
+bash ~/.hermes/scripts/install-crons.sh
 ```
 
 ### "Cron job failing or not running"
@@ -340,7 +340,7 @@ hermes cron list
 cat ~/.hermes/cron/jobs.json | python3 -m json.tool
 
 # Recreate all crons (force)
-bash ~/.hermes/scripts/install-hermes-crons.sh --force
+bash ~/.hermes/scripts/install-crons.sh --force
 
 # Check script permissions
 ls -la ~/.hermes/scripts/*.py ~/.hermes/scripts/*.sh
