@@ -70,9 +70,12 @@ if [ -d "$LOG_DIR" ]; then
       fi
       NEW_IPS+=("$ip")
     done < <(timeout 10 awk -v cutoff="$cutoff" -v MIN_HITS=$MIN_HITS '
-        match($0, /\\[([^\\]]+)\\]/, ts) { if (ts[1] >= cutoff) { ip = $1; count[ip]++ } }
-        END { for (ip in count) if (count[ip] >= MIN_HITS) print ip }
-      ' "$logfile")
+            if (match($0, /\[[^]]+\]/)) {
+              ts = substr($0, RSTART+1, RLENGTH-2)
+              if (ts >= cutoff) { ip = $1; count[ip]++ }
+            }
+            END { for (ip in count) if (count[ip] >= MIN_HITS) print ip }
+          ' "$logfile")
   done
 fi
 
