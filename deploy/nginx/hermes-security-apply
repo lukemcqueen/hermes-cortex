@@ -22,7 +22,11 @@ set -euo pipefail
 
 # ── Source derivation ───────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
+if [ -n "${SUDO_USER:-}" ]; then
+  CORTEX_REPO="${CORTEX_REPO:-$(getent passwd "$SUDO_USER" | cut -d: -f6)/hermes-cortex}"
+else
+  CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
+fi
 
 # ── OS-aware nginx & fail2ban paths ─────────────────────────
 case "$(uname -s)" in
