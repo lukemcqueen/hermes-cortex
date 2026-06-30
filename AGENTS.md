@@ -479,13 +479,17 @@ No authentication. No TLS. Plain HTTP — the vector contains no secrets, just b
 
 ### Agent endpoint URLs
 
-| Agent | Health URL | Method | Auth |
-|-------|-----------|--------|------|
-| Moses | `http://127.0.0.1:13007/` | HTTP poll (internal) | none |
-| Gisu | `http://your-gisu-host:13007/` | HTTP poll | none |
-| Kustos | `http://mweb.client-domain.com:13007/` | HTTP poll | none |
-| Joseph | `http://your-domain.com:12007/` | HTTP poll | none |
-| Esther | `http://your-domain.com:14007/` | HTTP poll | none |
+> **Private config:** Actual domains are set locally (not committed to the public repo).
+> See `src/agent-registry.json` — each agent's `health_url` must be configured on the
+> orchestrator for the poller to reach it. Port hints are in the description field.
+
+| Agent | Port | Method | Auth |
+|-------|------|--------|------|
+| Moses | `127.0.0.1:13007` | HTTP poll (internal) | none |
+| Gisu | `:13007` | HTTP poll | none |
+| Kustos | `:13007` | HTTP poll | none |
+| Joseph | `:12007` | HTTP poll | none |
+| Esther | `:14007` | HTTP poll | none |
 | Titus | pushes to Moses inbox | Inbox push | each agent's own credentials |
 
 ### How it works

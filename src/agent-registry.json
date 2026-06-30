@@ -37,8 +37,7 @@
       "is_server": true,
       "accessible": true,
       "health_method": "http",
-      "health_url": "https://your-gisu-host:13006/",
-      "description": "Gisu — operations server",
+      "description": "Gisu — operations server (set health_url locally, port 13007)",
       "inbox_user": "gisu",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
@@ -50,8 +49,7 @@
       "is_server": true,
       "accessible": true,
       "health_method": "http",
-      "health_url": "https://your-domain.com:13006/",
-      "description": "Joseph — web/infra server",
+      "description": "Joseph — web/infra server (set health_url locally, port 12007)",
       "inbox_user": "joseph",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
@@ -63,8 +61,7 @@
       "is_server": true,
       "accessible": true,
       "health_method": "http",
-      "health_url": "https://mweb.client-domain.com:13004/",
-      "description": "Kustos — security server",
+      "description": "Kustos — security server (set health_url locally, port 13007)",
       "inbox_user": "kustos",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
@@ -91,8 +88,7 @@
       "accessible": true,
       "platform": "linux",
       "health_method": "http",
-      "health_url": "https://your-domain.com:14004/",
-      "description": "Esther — backup orchestrator, sustainability & materials expert",
+      "description": "Esther — backup orchestrator, sustainability & materials expert (set health_url locally, port 14007)",
       "inbox_user": "esther",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
