@@ -175,6 +175,7 @@ register "src/scripts/install-cron-cost-tracking.py" "${HERMES_HOME}/scripts/ins
 
 # Health monitoring
 register "src/scripts/health-server.py"            "${HERMES_HOME}/scripts/health-server.py" "health-server"
+register "src/scripts/health-vector.py"            "${HERMES_HOME}/scripts/health-vector.py"
 register "src/scripts/report-agent-health.py"      "${HERMES_HOME}/scripts/report-agent-health.py"
 register "src/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" "health-server" "restart_health_server"
 
