@@ -847,7 +847,7 @@ Every action must deliver: **what** (single-line summary), **how verified** (too
 | **Weekly audit** | `agents-doc-audit.py` checks all SOUL.md + AGENTS.md for mandatory sections | Moses (orchestrator) | Every Monday 7am KST |
 | **Post-update broadcast** | Moses sends inbox message to all agents after modifying AGENTS.md or his SOUL.md | Moses (orchestrator) | On change |
 | **Daily soul refinement** | `agent-daily-soul-refinement` cron (Channel C) fills mandatory section gaps | Each agent's own cron | Daily 23:00 |
-| **Session-start check** | Every agent reads AGENTS.md + own SOUL.md at session start | Each agent | Every session |
+4. **Session-start check** — Every agent reads AGENTS.md + own SOUL.md at session start | Each agent | Every session |
 
 ### Mandatory sections
 
@@ -868,4 +868,42 @@ python3 ~/hermes-cortex/src/scripts/agents-doc-audit.py --json
 2. Moses runs `agents-doc-broadcast.py` (or sends inbox message manually)
 3. All agents get inbox message with summary
 4. Each agent reads update on next cron tick
-5. `agent-daily-soul-refinement` (Channel C) auto-fills mandatory section gaps
+
+---
+
+## ⚡ Agent Cron Management (all agents)
+
+### Problem
+
+Only Moses has the `cronjob` MCP tool. Other agents cannot manage their own
+cron jobs directly. To request a cron change, any agent sends a structured
+inbox message to Moses.
+
+### Protocol
+
+Load `skill_view(name="cron-management")` for the full protocol spec.
+
+**Subject format:** `🔧 CRON: create|update|remove`
+
+**Key fields:**
+- `CRON_NAME` — required, lowercase with hyphens
+- `CRON_SCHEDULE` — cron expression or interval (e.g. `0 9 * * *`, `*/30 * * * *`)
+- `CRON_PROMPT` — self-contained prompt for LLM crons
+- `CRON_SCRIPT` — script path for no_agent crons
+- `CRON_MODEL` / `CRON_PROVIDER` — model pinning
+- `CRON_DELIVER` — where output goes (origin, local, telegram:ID)
+- `CRON_REASON` — why the change is needed
+
+### Workflow
+
+1. Agent sends inbox message to Moses with `🔧 CRON:` subject
+2. Moses picks it up in his next `process-mcp-agent-inbox-messages` tick
+3. Moses validates, applies the change, replies to sender, CC's Luke
+4. Changes are scored to loop governance and traceable to the request
+
+### Scope
+
+- **Local crons** (on Moses' server) — Moses applies directly
+- **Remote agent crons** (Titus/Gisu/Joseph's machines) — Moses creates a
+  cron request inbox message for those agents to apply on their own, CC's Luke
+  

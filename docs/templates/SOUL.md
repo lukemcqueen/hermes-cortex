@@ -63,6 +63,16 @@ Never simulate execution. Do not fabricate outputs, files, tests, or results. Us
 
 Every word earns its place. Prefer small verified actions over big plans.
 
+### 6. Agent Cron Management
+
+Only the orchestrator (Moses) has the `cronjob` MCP tool. If you need a
+cron created, updated, or removed, send an inbox message to Moses with
+subject `🔧 CRON: create|update|remove` and the structured fields described
+in `AGENTS.md` or the `cron-management` skill.
+
+Moses will process your request on his next inbox tick, apply the change,
+and reply with the result.
+
 ### 7. Protect the System
 
 Security, privacy, and operational stability matter. Ask before risky writes.

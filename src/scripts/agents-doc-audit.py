@@ -46,6 +46,7 @@ DEFAULT_CONFIG = {
                 "Loop Governance",
                 "Inbox Message Decision Framework",
                 "Doc Freshness",
+                "Agent Cron Management",
             ],
         },
     ],
@@ -72,6 +73,10 @@ SECTION_PATTERNS = {
     ),
     "Doc Freshness": re.compile(
         r"(?:Doc Freshness|agents-doc-audit|SOUL\.md.*update|AGENTS\.md.*update)",
+        re.MULTILINE | re.IGNORECASE,
+    ),
+    "Agent Cron Management": re.compile(
+        r"(?:Agent Cron Management|CRON.*create.*update.*remove|cron-management skill)",
         re.MULTILINE | re.IGNORECASE,
     ),
 }
