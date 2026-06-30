@@ -554,59 +554,65 @@ Titus cannot be polled (no inbound). Instead he pushes to Moses' inbox:
 
 ## ⚡ Agent Inbox Architecture
 
-The agent inbox is a **Moses-side service** — not something each agent installs locally.
+The agent inbox is a **Moses-side service** — but Esther (backup orchestrator) runs her own copy for failover. All other agents are clients only.
 
 ### Where it runs
 
 ```
-┌─────────────────────────────────────────┐
-│  Moses' Server                          │
-│                                          │
-│  Port 8903 → Hermes Gateway (inbox API) │
-│  Port 13004 → nginx proxy (SSL + Auth)  │
-│              ↳ Basic Auth required       │
-│              ↳ Proxies to :8903          │
-└─────────────────────────────────────────┘
-         ↑ HTTPS with Basic Auth
-         ↓
-┌───────────┐ ┌───────────┐ ┌──────────┐
-│  Gisu     │ │  Joseph   │ │  Titus   │
-│  (remote) │ │  (remote) │ │  (macOS) │
-└───────────┘ └───────────┘ └──────────┘
+PRIMARY (Moses)                      BACKUP (Esther)
+Port 8903 → Gateway (inbox API)      Port ?? → Gateway (inbox API)
+Port 13004 → nginx proxy (SSL+Auth)  Port 14004 → nginx proxy (SSL+Auth)
+        ↳ Proxies to :8903                  ↳ Proxies to :8903
+                ↑ HTTPS + Basic Auth
+                ↓
+┌───────────┐ ┌───────────┐ ┌──────────┐ ┌───────────┐
+│  Gisu     │ │  Joseph   │ │  Titus   │ │  Kustos   │
+│  (client) │ │  (client) │ │  (client)│ │  (client) │
+└───────────┘ └───────────┘ └──────────┘ └───────────┘
+All remote agents → talk to Moses' inbox (or Esther's if Moses is down)
 ```
 
-### What each agent needs (and doesn't)
+### What each agent needs
 
-| Agent | Runs inbox server? | Needs `~/hermes-cortex`? | Needs `~/.hermes/moses-inbox.conf`? | Needs `agent-inbox-check` cron? |
-|-------|-------------------|-------------------------|-------------------------------------|-------------------------------|
-| **Moses** (orchestrator) | ✅ Yes — runs the inbox API + nginx | ✅ Pulls repo | ✅ Has his own credentials | ✅ Every 30 min (LLM-driven) |
-| **Gisu** (remote server) | ❌ No — talks to Moses' inbox | ✅ Pulls repo (for config + scripts) | ✅ **Yes** — with his own htpasswd user | ✅ If he wants to read his own inbox |
-| **Joseph** (remote server) | ❌ No — talks to Moses' inbox | ✅ Pulls repo | ✅ **Yes** — with his own htpasswd user | ✅ If he wants to read his own inbox |
-| **Kustos** (remote server) | ❌ No — talks to Moses' inbox | ✅ Pulls repo | ✅ **Yes** — with his own htpasswd user | ✅ If he wants to read his own inbox |
-| **Esther** (backup) | ❌ No — talks to Moses' inbox | ✅ Pulls repo | ✅ **Yes** — with his own htpasswd user | ✅ If he wants to read his own inbox |
-| **Titus** (macOS) | ❌ No — talks to Moses' inbox | ✅ Pulls repo | ✅ **Yes** — with his own htpasswd user | ✅ If he wants to read his own inbox |
+| Agent | Role | Runs inbox server? | Needs `~/hermes-cortex`? | Needs `~/.hermes/moses-inbox.conf`? | Needs `agent-inbox-check` cron? |
+|-------|------|-------------------|-------------------------|-------------------------------------|-------------------------------|
+| **Moses** | Primary orchestrator | ✅ YES — runs inbox API + nginx proxy on :13004 | ✅ Pulls repo | ✅ Has his own credentials | ✅ Every 30 min |
+| **Esther** | Backup orchestrator | ✅ YES — runs inbox API + nginx proxy on :14004 | ✅ Pulls repo | ✅ Points to her OWN inbox URL | ✅ Every 30 min |
+| **Gisu** | Remote server | ❌ No — client only | ✅ Pulls repo | ✅ Points to Moses' inbox | ✅ |
+| **Joseph** | Remote server | ❌ No — client only | ✅ Pulls repo | ✅ Points to Moses' inbox | ✅ |
+| **Kustos** | Remote server | ❌ No — client only | ✅ Pulls repo | ✅ Points to Moses' inbox | ✅ |
+| **Titus** | macOS laptop | ❌ No — client only | ✅ Pulls repo | ✅ Points to Moses' inbox | ✅ |
 
-### Agent inbox = Moses service, agents are clients
+### How remote agents talk to the inbox
 
 ```
-Moses server                    Remote agent (Gisu, Titus, …)
-─────────────                   ────────────────────────────
-~/.hermes/gateway/inbox.py      ~/.hermes/moses-inbox.conf
-  ↳ reads AGENT_NAME from           ↳ MOSES_INBOX_URL + MOSES_INBOX_AUTH
-    moses-inbox.conf                 ↳ AGENT_NAME
-  ↳ serves HTTP API on :8903    hermes inbox watch
-  ↳ nginx proxies :13004             ↳ uses MCP tool which reads
-                                       moses-inbox.conf & calls API
+Moses / Esther (inbox server)          Remote agent (client)
+─────────────────────────              ─────────────────────
+~/.hermes/gateway/inbox.py             ~/.hermes/moses-inbox.conf
+  ↳ reads AGENT_NAME from                  ↳ MOSES_INBOX_URL + MOSES_INBOX_AUTH
+    its own moses-inbox.conf                ↳ AGENT_NAME
+  ↳ serves HTTP API on :8903          hermes inbox watch
+  ↳ nginx proxies to external port         ↳ uses MCP tool which reads
+                                             moses-inbox.conf & calls API
 ```
 
-### Setup checklist for a remote agent
+### For Moses and Esther (inbox servers)
 
 ```bash
-# 1. Pull repo (gets scripts + config templates)
+# You already have this if Hermes is installed — the inbox API is part of the gateway.
+# You just need:
+# 1. nginx proxy (Moses: :13004 → :8903, Esther: :14004 → :8903)
+# 2. Your own moses-inbox.conf for the gateway to identify you
+# 3. The htpasswd file with every agent's credentials
+```
+
+### For remote agents (Gisu, Joseph, Kustos, Titus) — client only
+
+```bash
+# 1. Pull repo
 cd ~/hermes-cortex && git pull
 
-# 2. Create credentials file (⬅️ THIS IS THE KEY FILE)
-#    Use YOUR OWN htpasswd user — Moses' credentials are for Moses only.
+# 2. Create credentials file — YOUR credentials, not Moses'
 nano ~/.hermes/moses-inbox.conf
 ```
 ```ini
@@ -617,13 +623,11 @@ AGENT_NAME="your_agent_name"
 ```bash
 chmod 600 ~/.hermes/moses-inbox.conf
 
-# 3. Verify connectivity
+# 3. Verify
 curl -s -u "your_username:your_password" \
   https://your-domain.com:13004/api/inbox?limit=3
-# → Should return JSON with your messages (empty array if none)
 
-# 4. Create the inbox-check cron (LLM-driven, every 30 min):
-#    Moses can do this, or you can create it yourself via:
+# 4. Create inbox-check cron (every 30 min):
 #    hermes cron create ...
 ```
 
@@ -631,10 +635,10 @@ curl -s -u "your_username:your_password" \
 
 | ❌ Wrong assumption | ✅ Correct |
 |-------------------|-----------|
-| "I need to install the inbox MCP server on my machine" | No — the inbox MCP server runs on Moses. You access it remotely via `moses-inbox.conf`. |
-| "The inbox is at my own server's port 13004" | No — port 13004 on Moses' server is the nginx proxy to the inbox. Other servers may also have port 13004 for their own services, but the *inbox* is always on Moses. |
-| "I can use Moses' credentials in my moses-inbox.conf" | No — every agent has their own user in `htpasswd`. Never share credentials. |
-| "I need Moses to read my messages" | No — you read your own inbox via the `agent-inbox-check` cron or by calling the MCP tools directly. |
+| "I need to install the inbox MCP server on my machine" | Only Moses and Esther run the inbox server. Everyone else is a client. |
+| "The inbox is at my own server's port 13004" | No — port 13004 on Moses is the inbox proxy. Port 14004 on Esther is the backup. Other servers' ports are for their own services. |
+| "I can use Moses' credentials" | No — every agent has their own htpasswd user. Never share. |
+| "I need Moses to read my messages" | No — you read your own inbox via the `agent-inbox-check` cron using MCP tools that call the API remotely. |
 
 ---
 
