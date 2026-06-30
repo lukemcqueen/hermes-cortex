@@ -154,10 +154,10 @@ else
      && git diff --cached --quiet deploy/nginx/blocked_ips.add 2>/dev/null; then
     log "  No changes to commit"
   else
-    git add deploy/nginx/blocked_ips.add
-    IP_COUNT=$(git diff --cached --unified=0 deploy/nginx/blocked_ips.add 2>/dev/null | \
-      grep '^\+[0-9]' | grep -v '^\+\+\+' | wc -l)
-    git commit -m "auto: block ${IP_COUNT} suspect IPs [pipeline]"
+      git add deploy/nginx/blocked_ips.add
+      IP_COUNT=$(git diff --cached --unified=0 deploy/nginx/blocked_ips.add 2>/dev/null | \
+        grep '^\+[0-9]' | grep -v '^+\+\+' | wc -l || true)
+      git commit -m "auto: block ${IP_COUNT} suspect IPs [pipeline]"
     PIPELINE_OUTPUT+="  ✓ Committed ${IP_COUNT} IPs to repo"$'\n'
 
     log "── Step 5: Push ──"
