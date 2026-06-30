@@ -117,6 +117,7 @@ script_exists() {
 # ── Helper: create a cron job via hermes or prompt ────────
 create_cron() {
   local name="$1" schedule="$2" script="$3" prompt="$4" skill="$5" toolsets="$6" deliver="$7" workdir="$8" no_agent="$9"
+  local model="${10:-}" provider="${11:-}"
 
   # Check if cron exists
   local exists=false
@@ -145,6 +146,8 @@ create_cron() {
     printf "  schedule=%s\\n" "$schedule"
     printf "  script=%s\\n" "${script:-<none>}"
     printf "  skill=%s\\n" "${skill:-<none>}"
+    [[ -n "$model"    ]] && printf "  model=%s\\n" "$model"
+    [[ -n "$provider" ]] && printf "  provider=%s\\n" "$provider"
     CREATED=$((CREATED + 1))
     return 0
   fi
@@ -192,10 +195,46 @@ create_cron() {
   if "${cmd[@]}" 2>&1; then
     info "Created cron: ${name} (${schedule})"
     CREATED=$((CREATED + 1))
+    # Pin model/provider post-creation (CLI doesn't support --model/--provider)
+    if [[ -n "$model" || -n "$provider" ]]; then
+      pin_cron_model "$name" "$model" "$provider"
+    fi
   else
     warn "Failed to create cron: ${name}"
     FAILED=$((FAILED + 1))
   fi
+}
+
+# ── Pin Model/Provider ────────────────────────────────────
+# The hermes CLI doesn't support --model/--provider flags, so we
+# patch the jobs.json directly after creating an LLM cron.
+pin_cron_model() {
+  local name="$1" model="$2" provider="$3"
+  if [[ -z "$model" && -z "$provider" ]]; then
+    return 0
+  fi
+  local db="${HERMES_HOME}/cron/jobs.json"
+  if [[ ! -f "$db" ]]; then
+    warn "  Cannot pin model for '${name}' — jobs.json not found"
+    return 0
+  fi
+  python3 -c "
+import json, sys
+with open('$db') as f:
+    data = json.load(f)
+jobs = data.get('jobs', []) if isinstance(data, dict) else data
+patched = False
+for job in jobs:
+    if isinstance(job, dict) and job.get('name') == '$name':
+        if '$model':    job['model'] = '$model'
+        if '$provider': job['provider'] = '$provider'
+        patched = True
+        break
+if patched:
+    with open('$db', 'w') as f:
+        json.dump(data, f, indent=2, default=str)
+    print('PINNED')
+" 2>&1 | grep -q PINNED && info "  Pinned ${name} → ${model:-<default>}/${provider:-<default>}" || true
 }
 
 # ── Remove Cron ─────────────────────────────────────────────
@@ -251,7 +290,8 @@ create_cron "agent-auto-remediate" "*/30 * * * *" \
   "terminal,file,web" \
   "origin" \
   "$HOME" \
-  "false"
+  "false" \
+  "deepseek-v4-flash" "opencode-zen"
 
 # ── 2. Remediation Sensor (no_agent, companion) ────────────
 create_cron "remediation-sensor" "*/5 * * * *" \
@@ -402,7 +442,8 @@ create_cron "harvest-lessons" "0 5 * * 1" \
 create_cron "memory-pruning" "0 4 * * 1" \
   "" \
   "Consolidate Hermes agent memory and project agent instructions. Read MEMORY.md, USER.md from the active profile and project roots. Consolidate into compact pointers. Prune stale entries. Keep under 2,200 chars." \
-  "" "" "origin" "" "false"
+  "" "" "origin" "" "false" \
+  "deepseek-v4-flash" "opencode-zen"
 
 # Auto-save sessions every 6 hours
 create_cron "auto-save-sessions" "every 360m" \
@@ -413,7 +454,8 @@ create_cron "auto-save-sessions" "every 360m" \
 create_cron "agent-daily-bible-reading" "0 1 * * *" \
   "" \
   "Load the soul-refinement skill. Read ~/.hermes/SOUL.md and find the last book covered in the Scripture schedule. Read and summarize the next book. Add the daily verse to the session log." \
-  "soul-refinement" "" "origin" "" "false"
+  "soul-refinement" "" "origin" "" "false" \
+  "deepseek-v4-flash" "opencode-zen"
 
 # Daily threat pipeline — scanner → fail2ban → deploy → commit → push
 create_cron "threat-pipeline" "0 5 * * *" \
@@ -424,7 +466,8 @@ create_cron "threat-pipeline" "0 5 * * *" \
 create_cron "agent-daily-soul-refinement" "0 23 * * *" \
   "" \
   "Load the soul-refinement skill. Use session_search() to find today's sessions. Look for any user corrections, feedback, or behavior patterns worth noting. Update SOUL.md with insights. Keep it under 5KB." \
-  "soul-refinement" "" "origin" "" "false"
+  "soul-refinement" "" "origin" "" "false" \
+  "deepseek-v4-flash" "opencode-zen"
 
 # ── 7. Universal Agent Crons ──────────────────────────────
 printf "\n${CYAN}  7. Universal Agent Crons${RESET}\n"
@@ -453,7 +496,8 @@ create_cron "model-health-watchdog" "0 7 * * *" \
 create_cron "process-mcp-agent-inbox-messages" "0 6-23 * * *" \
   "" \
   "Check the agent inbox for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework. Report actionable items with evidence. Outside 6am-11pm daily, be silent if nothing urgent." \
-  "" "" "origin" "" "false"
+  "" "" "origin" "" "false" \
+  "deepseek-v4-flash" "opencode-zen"
 
 echo ""
 printf "${CYAN}━━━ Summary ━━━${RESET}\n"
