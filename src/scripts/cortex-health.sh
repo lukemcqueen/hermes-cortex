@@ -151,10 +151,12 @@ check_sync_daemon() {
       print_row "gbrain sync daemon" "DOWN" "Registered but exited with error"
     fi
   elif [[ "$(uname -s)" == "Linux" ]]; then
-    if systemctl --user is-active --quiet com.gbrain.sync-watch 2>/dev/null; then
-      print_row "gbrain sync daemon" "UP" "systemd active"
+    if systemctl --user is-active --quiet gbrain-autopilot 2>/dev/null; then
+      print_row "gbrain sync daemon" "UP" "systemd active (autopilot)"
+    elif systemctl --user is-active --quiet com.gbrain.sync-watch 2>/dev/null; then
+      print_row "gbrain sync daemon" "UP" "systemd active (sync-watch, legacy)"
     else
-      print_row "gbrain sync daemon" "DOWN" "systemd service not active"
+      print_row "gbrain sync daemon" "DOWN" "neither autopilot nor sync-watch active"
     fi
   else
     print_row "gbrain sync daemon" "UNKNOWN" "Unsupported OS: $(uname -s)"

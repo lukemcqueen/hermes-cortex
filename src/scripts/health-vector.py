@@ -149,14 +149,12 @@ def check_ollama() -> int:
 def check_gbrain() -> int:
     """gbrain: systemd/launchd or process."""
     if _is_linux:
-        for unit in ["gbrain-autopilot.service", "com.gbrain.autopilot",
-                      "gbrain-sync-watch.service", "com.gbrain.sync-watch"]:
-            if _systemd_active(unit):
-                return 1
+        if _systemd_active("gbrain-autopilot.service") or \
+           _systemd_active("com.gbrain.autopilot"):
+            return 1
     if _is_macos:
-        for label in ["com.gbrain.autopilot", "com.gbrain.sync-watch"]:
-            if _launchd_active(label):
-                return 1
+        if _launchd_active("com.gbrain.autopilot"):
+            return 1
     if _pgrep("gbrain", exact=False, full=True):
         return 1
     return -1

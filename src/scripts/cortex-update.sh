@@ -95,7 +95,6 @@ register "src/scripts/seed-project-brain.sh"      "${HERMES_HOME}/scripts/seed-p
 register "src/scripts/cortex-health.sh"           "${HERMES_HOME}/scripts/cortex-health.sh"
 register "src/scripts/cortex-setup-langfuse.sh"   "${HERMES_HOME}/scripts/cortex-setup-langfuse.sh"
 register "src/scripts/cortex-update.sh"           "${HERMES_HOME}/scripts/cortex-update.sh"
-register "src/scripts/install-gbrain-sync.sh"     "${HERMES_HOME}/scripts/install-gbrain-sync.sh" "gbrain-sync" "restart_gbrain_sync"
 register "src/scripts/install-ollama.sh"          "${HERMES_HOME}/scripts/install-ollama.sh"
 register "src/scripts/install-nginx.sh"           "${HERMES_HOME}/scripts/install-nginx.sh"
 register "src/scripts/install-cortex-update-cron.sh" "${HERMES_HOME}/scripts/install-cortex-update-cron.sh"
@@ -248,33 +247,23 @@ register "src/scripts/service-writer.sh"          "${HERMES_HOME}/scripts/servic
 
 restart_gbrain_sync() {
   local autopilot_label="com.gbrain.autopilot"
-  local sync_label="com.gbrain.sync-watch"
-  # gbrain autopilot is the preferred sync daemon (handles sync internally).
-  # Only restart sync-watch if autopilot is absent.
+  # gbrain autopilot is the preferred sync daemon (handles sync, extract,
+  # embed, lint, and backlinks internally every ~150s).
   if [[ "$CORTEX_OS" == "macos" ]]; then
     if launchctl list "$autopilot_label" &>/dev/null 2>&1; then
-      info "  gbrain autopilot present — reloading service…"
+      info "  Reloading gbrain autopilot…"
       launchctl kickstart "gui/$(id -u)/$autopilot_label" 2>/dev/null || {
         launchctl unload "$HOME/Library/LaunchAgents/$autopilot_label.plist" 2>/dev/null || true
         launchctl load "$HOME/Library/LaunchAgents/$autopilot_label.plist" 2>/dev/null || true
       }
-      return 0
-    fi
-    if launchctl list "$sync_label" &>/dev/null 2>&1; then
-      info "  Restarting gbrain sync daemon…"
-      rm -f "${HOME}/.gbrain/sync-watch.sh"
-      bash "${HERMES_HOME}/scripts/install-gbrain-sync.sh" 2>&1 | sed 's/^/    /'
-      return 0
+    else
+      warn "  gbrain autopilot not registered — run 'gbrain autopilot --install' first"
     fi
   fi
-  # Linux fallback: systemd
-  if systemctl --user list-units --type=service --state=running 2>/dev/null \
-        | grep -q "gbrain-sync"; then
-    info "  Restarting gbrain sync (systemd)…"
-    rm -f "${HOME}/.gbrain/sync-watch.sh"
-    bash "${HERMES_HOME}/scripts/install-gbrain-sync.sh" 2>&1 | sed 's/^/    /'
-    systemctl --user daemon-reload 2>/dev/null || true
-    systemctl --user restart gbrain-sync 2>&1 | sed 's/^/    /'
+  # Linux: restart autopilot systemd service
+  if systemctl --user is-active --quiet gbrain-autopilot 2>/dev/null; then
+    info "  Restarting gbrain autopilot (systemd)…"
+    systemctl --user restart gbrain-autopilot 2>&1 | sed 's/^/    /'
   fi
 }
 

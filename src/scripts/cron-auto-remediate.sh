@@ -102,10 +102,10 @@ case "${ACTION}" in
 
     # Check services — platform-aware dispatch
     # macOS: launchctl
-    # Linux: systemctl --user (checks sync-watch, not autopilot)
+    # Linux: systemctl --user (checks autopilot which handles sync internally)
     if command -v launchctl >/dev/null 2>&1; then
       # macOS
-      for svc_label in com.ollama.serve com.gbrain.autopilot com.gbrain.sync-watch; do
+      for svc_label in com.ollama.serve com.gbrain.autopilot; do
         if launchctl list "${svc_label}" >/dev/null 2>&1; then
           PID=$(launchctl list "${svc_label}" 2>/dev/null | awk '{print $1}' 2>/dev/null || echo "-")
           if [ "${PID}" = "-" ]; then
@@ -122,9 +122,9 @@ case "${ACTION}" in
           issues+=("SERVICE:ollama.service:down")
         fi
       fi
-      # Gbrain sync-watch: user-level service
-      if ! systemctl --user is-active com.gbrain.sync-watch >/dev/null 2>&1; then
-        issues+=("SERVICE:com.gbrain.sync-watch:down")
+      # Gbrain autopilot (handles sync, extract, embed, lint internally)
+      if ! systemctl --user is-active gbrain-autopilot >/dev/null 2>&1; then
+        issues+=("SERVICE:gbrain-autopilot:down")
       fi
     fi
 

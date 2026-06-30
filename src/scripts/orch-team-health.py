@@ -48,8 +48,8 @@ TIMEOUT = 3
 HEALTH_TOPIC = "health"
 
 SERVICE_MAP = [
-    "nginx", "ollama", "gbrain", "cortex-dashboard",
-    "langfuse-web", "langfuse-worker", "docker", "hermes-gateway",
+    "resources", "services", "no_errored_crons", "no_stale_crons",
+    "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok",
 ]
 
 SERVICE_ICONS = {1: "✅", 0: "➖", -1: "❌"}

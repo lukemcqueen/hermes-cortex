@@ -452,13 +452,10 @@ def main():
     # Phase 2: Service availability checks
     if is_linux:
         ollama_svc = "ollama"
-        gbrain_svc = "com.gbrain.sync-watch"
+        gbrain_svc = "gbrain-autopilot"
     else:
         ollama_svc = "com.ollama.serve"
         gbrain_svc = "com.gbrain.autopilot"
-        ap = check_service("com.gbrain.autopilot")
-        if ap["status"] == "DOWN":
-            gbrain_svc = "com.gbrain.sync-watch"
 
     services = {
         "Ollama": check_service(ollama_svc),

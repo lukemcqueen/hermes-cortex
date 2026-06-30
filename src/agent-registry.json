@@ -2,8 +2,8 @@
   "version": 3,
   "description": "Agent registry for Hermes Cortex. health_method: 'http' for server agents with reachable health endpoints, 'inbox' for client-only agents that push via inbox.",
   "health_vector_map": [
-    "nginx", "ollama", "gbrain", "cortex-dashboard",
-    "langfuse-web", "langfuse-worker", "docker", "hermes-gateway"
+    "resources", "services", "no_errored_crons", "no_stale_crons",
+    "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok"
   ],
   "routing": {
     "broadcast_topics": [
