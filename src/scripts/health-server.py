@@ -276,6 +276,128 @@ def _check_cron_health() -> dict:
     }
 
 
+# ── gbrain sources check ───────────────────────────────────────
+def _check_gbrain_sources() -> dict:
+    """Check gbrain source health via gbrain doctor --json.
+
+    Gracefully degrades when gbrain is unavailable:
+      - Try 1: gbrain doctor --json (authoritative, 45s timeout)
+      - Try 2: gbrain sources list (parseable fallback, 15s)
+      - Returns UNKNOWN (not DOWN) when gbrain is unavailable
+    """
+    issues: list[dict] = []
+    sources_ok = True
+
+    def _run_gbrain(args, timeout=15):
+        env = os.environ.copy()
+        bun_bin = HOME / ".bun" / "bin"
+        env["PATH"] = f"{bun_bin}:{env.get('PATH', '')}"
+        try:
+            r = subprocess.run(
+                args, capture_output=True, text=True, timeout=timeout,
+                env=env, cwd=str(HOME / "brain") if (HOME / "brain").exists() else None,
+            )
+            return r.stdout.strip(), r.stderr.strip(), r.returncode
+        except subprocess.TimeoutExpired:
+            return "", "timeout", -1
+        except FileNotFoundError:
+            return "", "command not found", -1
+        except Exception as e:
+            return "", str(e), -1
+
+    def _parse_sources_list(output):
+        """Parse page counts from 'gbrain sources list' output."""
+        lines = output.strip().split("\n")
+        total = 0
+        never_synced = 0
+        zero_pages = 0
+        for line in lines:
+            parts = line.split()
+            if len(parts) >= 3 and parts[2].isdigit():
+                pages = int(parts[2])
+                # Skip the auto-created 'default federated' source
+                if len(parts) >= 2 and parts[0] == "default" and parts[1] == "federated":
+                    continue
+                total += 1
+                if pages == 0:
+                    zero_pages += 1
+                if "never synced" in line.lower():
+                    never_synced += 1
+        return total, never_synced, zero_pages
+
+    bun_path = HOME / ".bun" / "bin"
+    gbrain_cmd = str(bun_path / "gbrain")
+
+    if not bun_path.exists() or not Path(gbrain_cmd).exists():
+        return {"healthy": True, "issues": [], "gbrain_installed": False,
+                "detail": "gbrain not installed"}
+    if not (HOME / "brain").exists():
+        return {"healthy": True, "issues": [], "gbrain_installed": False,
+                "detail": "no brain directory"}
+
+    # Try 1: gbrain doctor --json
+    out, _, rc = _run_gbrain([gbrain_cmd, "doctor", "--json"], timeout=45)
+    if rc == 0 and out:
+        try:
+            data = json.loads(out)
+            checks = data.get("doctor", {}).get("checks", [])
+            failures = []
+            for check in checks:
+                name = check.get("name", "")
+                status = check.get("status", "")
+                msg = check.get("message", "")
+                if status == "fail" and any(kw in name for kw in ["sync", "embed", "source", "cycle"]):
+                    failures.append(f"{name}: {msg[:120]}")
+                elif status == "warn" and name in ("sync_freshness", "cycle_freshness", "orphan_ratio"):
+                    failures.append(f"{name}: {msg[:120]}")
+
+            sync_checks = [c for c in checks if c.get("name") == "sync_freshness"]
+            if sync_checks:
+                sync_msg = sync_checks[0].get("message", "")
+                if "never" in sync_msg.lower() or "0 page" in sync_msg.lower():
+                    failures.append(f"Sources never synced or have 0 pages: {sync_msg[:150]}")
+
+            if failures:
+                for f in failures:
+                    issues.append({"severity": "warning", "check": "gbrain_sources",
+                                   "detail": f, "service": "gbrain"})
+                return {"healthy": False, "issues": issues,
+                        "gbrain_installed": True, "detail": "; ".join(failures[:3])}
+
+            overall = data.get("overall_health_score", -1)
+            if 0 <= overall < 50:
+                return {"healthy": False, "issues": issues,
+                        "gbrain_installed": True, "detail": f"Health score: {overall}/100"}
+
+            return {"healthy": True, "issues": issues,
+                    "gbrain_installed": True, "detail": "All sources healthy"}
+        except json.JSONDecodeError:
+            pass  # Fall through
+
+    # Try 2: gbrain sources list
+    out, _, rc = _run_gbrain([gbrain_cmd, "sources", "list"], timeout=15)
+    if rc == 0 and out:
+        total, never_synced, zero_pages = _parse_sources_list(out)
+        if never_synced > 0:
+            issues.append({"severity": "warning", "check": "gbrain_sources",
+                           "detail": f"{never_synced} source(s) never synced", "service": "gbrain"})
+        if zero_pages > 0 and zero_pages == total:
+            issues.append({"severity": "warning", "check": "gbrain_sources",
+                           "detail": "all sources have 0 pages", "service": "gbrain"})
+        elif zero_pages > 0:
+            issues.append({"severity": "warning", "check": "gbrain_sources",
+                           "detail": f"{zero_pages} source(s) have 0 pages", "service": "gbrain"})
+
+        healthy = len(issues) == 0
+        detail = f"{total} source(s), all synced" if healthy else "; ".join(
+            i["detail"] for i in issues[:2])
+        return {"healthy": healthy, "issues": issues,
+                "gbrain_installed": True, "detail": detail}
+
+    return {"healthy": True, "issues": issues,
+            "gbrain_installed": True, "detail": "gbrain sources check unavailable"}
+
+
 # ── Consolidated health ───────────────────────────────────────
 def _build_health() -> dict:
     """Build the full consolidated health response."""
@@ -283,7 +405,9 @@ def _build_health() -> dict:
     all_issues: list[dict] = []
     healthy = True
 
-    for name, fn in [("resources", _check_resources), ("services", _check_services), ("cron_health", _check_cron_health)]:
+    for name, fn in [("resources", _check_resources), ("services", _check_services),
+                      ("cron_health", _check_cron_health),
+                      ("gbrain_sources", _check_gbrain_sources)]:
         result = fn()
         checks[name] = {
             "healthy": result["healthy"],
@@ -324,6 +448,7 @@ def _build_compact_health() -> dict:
     r = _check_resources()
     s = _check_services()
     c = _check_cron_health()
+    g = _check_gbrain_sources()
 
     resources_ok = r["healthy"]
     services_ok = s["healthy"]
@@ -339,6 +464,9 @@ def _build_compact_health() -> dict:
     # Disk threshold (80%+ = warning)
     disk_ok = r.get("data", {}).get("disk_percent", 0) < 80
 
+    # gbrain sources check
+    gbrain_sources_ok = g.get("healthy", True)
+
     v = [
         1 if resources_ok else -1,
         1 if services_ok else -1,
@@ -348,6 +476,7 @@ def _build_compact_health() -> dict:
         1 if ollama_ok else -1,
         1 if gbrain_ok else -1,
         1 if disk_ok else -1,
+        1 if gbrain_sources_ok else -1,
     ]
 
     # Agent identifier — can be overridden via AGENT_ID env var
@@ -375,6 +504,12 @@ async def health_resources():
 @app.get("/api/v1/health/services")
 async def health_services():
     result = _check_services()
+    return {"server": SERVER_NAME, "timestamp": datetime.now(timezone.utc).isoformat(), **result}
+
+
+@app.get("/api/v1/health/gbrain-sources")
+async def health_gbrain_sources():
+    result = _check_gbrain_sources()
     return {"server": SERVER_NAME, "timestamp": datetime.now(timezone.utc).isoformat(), **result}
 
 
