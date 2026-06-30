@@ -629,18 +629,18 @@ The MCP client and config give you the **ability** to read messages, but nothing
 actually checks the inbox automatically unless you have a **poll cron**. Without
 it, messages sit unread until a human starts a session with you.
 
-Every client agent needs an `agent-inbox-check` LLM cron:
+Every client agent needs a `process-mcp-agent-inbox-messages` LLM cron:
 
 ```bash
-hermes cron create --name agent-inbox-check \
-  --schedule "*/30 * * * *" \
-  --prompt "Check the agent inbox for new messages directed at this agent. \
-Run inbox-watch via the MCP tool (mcp_agent_inbox_inbox_watch). If new \
-messages are found, read and process them. Report any actionable items." \
+hermes cron create --name process-mcp-agent-inbox-messages \
+  --model "deepseek/deepseek-v4-flash" \
+  --provider "openrouter" \
+  --schedule "0 6-23 * * *" \
+  --prompt "Check the agent inbox for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. Outside 6am-11pm daily, be silent if nothing urgent." \
   --deliver origin
 ```
 
-This runs every 30 minutes, costs ~$0.0017/run in LLM tokens, and delivers
+This runs hourly 6am-11pm, costs ~$0.006/run in LLM tokens (~$0.11/day), and delivers
 results to your origin chat (Telegram DM).
 
 **Do NOT use the old `agent-inbox-check.sh` script** — it is deprecated and

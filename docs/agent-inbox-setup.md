@@ -73,15 +73,15 @@ The agent needs a cron job that regularly checks for new messages. Create it
 once on the agent's machine:
 
 ```bash
-hermes cron create --name agent-inbox-check \
-  --schedule "*/30 * * * *" \
-  --prompt "Check the agent inbox for new messages directed at this agent. \
-Run inbox-watch via the MCP tool (mcp_agent_inbox_inbox_watch). If new \
-messages are found, read and process them. Report any actionable items." \
+hermes cron create --name process-mcp-agent-inbox-messages \
+  --model "deepseek/deepseek-v4-flash" \
+  --provider "openrouter" \
+  --schedule "0 6-23 * * *" \
+  --prompt "Check the agent inbox for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. Outside 6am-11pm daily, be silent if nothing urgent." \
   --deliver origin
 ```
 
-This runs every 30 minutes, uses the `inbox_watch` MCP tool, and delivers
+This runs hourly 6am-11pm, uses the `inbox_watch` MCP tool, and delivers
 results back to the agent's origin chat (Telegram DM).
 
 ## Troubleshooting
@@ -91,7 +91,7 @@ results back to the agent's origin chat (Telegram DM).
 | `inbox_watch` returns "Read failed (HTTP 401)" | Wrong auth in `moses-inbox.conf` | Check `MOSES_INBOX_AUTH` value |
 | `inbox_watch` returns "Connection refused" | Inbox MCP server not running | Check `~/.hermes/config.yaml` for `agent-inbox` entry |
 | No new messages found | Agent polling with wrong `AGENT_NAME` | Check `AGENT_NAME` in `moses-inbox.conf` matches the `to:` field of sent messages |
-| Old `agent-inbox-check.sh` not working | Script deprecated, MCP-only now | Remove old cron, create new MCP-based cron |
+|| Old `agent-inbox-check.sh` not working | Script deprecated, MCP-only now | Remove old cron, create `process-mcp-agent-inbox-messages` cron instead |
 | Messages addressed to `all` topic not seen | Agent reads only its own inbox | Orchestrator (moses) reads all; regular agents only see their own messages |
 
 ## Migration from Old Script-Based Inbox
@@ -105,5 +105,5 @@ hermes cron remove --name agent-inbox-watchdog 2>/dev/null
 # 2. Follow the 3-step setup above
 
 # 3. Verify new cron works
-hermes cron run --name agent-inbox-check
+hermes cron run --name process-mcp-agent-inbox-messages
 ```

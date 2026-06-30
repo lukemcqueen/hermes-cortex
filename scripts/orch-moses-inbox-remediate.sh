@@ -7,7 +7,7 @@
 #
 #  Output: JSON array. Empty [] when nothing pending (silent).
 #
-#  Called by process-agent-messages cron every 10 minutes.
+#  Called by orch-process-agent-messages cron every 10 minutes.
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 

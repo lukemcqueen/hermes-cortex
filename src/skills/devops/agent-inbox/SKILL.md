@@ -118,7 +118,7 @@ Build passed all tests. Ready for staging deploy.
 ├── server.py                          # FastAPI server (759 lines)
 ├── references/
 │   └── agent-registry.md              # Registry schema reference
-├── agent-inbox-check.sh               # Health check script
+├── agent-inbox-check.sh               # Health check script (deprecated, MCP-only)
 ├── com.hermes.agent-inbox.plist       # launchd plist
 ├── e2e-test.mjs                       # End-to-end test
 └── test-inbox.sh                      # Test script

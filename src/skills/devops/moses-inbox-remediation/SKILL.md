@@ -15,7 +15,7 @@ metadata:
 ## When to Use
 
 Load this skill when:
-- Setting up the process-agent-messages cron
+- Setting up the orch-process-agent-messages cron
 - Other agents need to report hermes-cortex issues and have them auto-fixed
 - You want a multi-agent auto-remediation pipeline
 
@@ -32,7 +32,7 @@ Load this skill when:
     ↓  Reads markers + original messages
     ↓  Outputs structured JSON: [{sender, subject, body, marker_file}]
     ↓
-[process-agent-messages] LLM-driven cron every 10m
+[orch-process-agent-messages] LLM-driven cron every 10m
     ↓  Reads companion script output
     ↓  Applies fix using terminal/web tools
     ↓  Runs orch-weekly-auto-fix.py as safety net
@@ -51,11 +51,11 @@ cp hermes-cortex/scripts/orch-moses-inbox-remediate.sh ~/.hermes/scripts/
 chmod +x ~/.hermes/scripts/orch-moses-inbox-remediate.sh
 ```
 
-### 2. Create the process-agent-messages cron
+### 2. Create the orch-process-agent-messages cron
 
 ```bash
 hermes cron create \
-  --name "process-agent-messages" \
+  --name "orch-process-agent-messages" \
   --schedule "every 10m" \
   --prompt "$(cat << 'PROMPT'
 You are Moses, the orchestration mind of Hermes. This is your agent message processor.

@@ -950,7 +950,7 @@ chmod +x ~/.hermes/scripts/orch-moses-inbox-remediate.sh
 
 # 2. Create the cron
 hermes cron create \
-  --name "process-agent-messages" \\
+  --name "orch-process-agent-messages" \\
   --schedule "every 10m" \
   --prompt "Paste the recipe above" \
   --enabled-toolsets terminal,file,web

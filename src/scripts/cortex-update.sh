@@ -161,7 +161,7 @@ register "src/scripts/inbox-mcp.sh"               "${HERMES_HOME}/scripts/inbox-
 register "src/scripts/inbox-mcp-updated.py"       "${HERMES_HOME}/scripts/inbox-mcp-updated.py"
 register "src/scripts/loop-gov-mcp.sh"            "${HERMES_HOME}/scripts/loop-gov-mcp.sh"
 register "src/scripts/agent-inbox-monitor.sh"     "${HERMES_HOME}/scripts/agent-inbox-monitor.sh"
-register "src/scripts/agent-inbox-processor.py"   "${HERMES_HOME}/scripts/agent-inbox-processor.py"
+register "src/scripts/orch-inbox-processor.py"   "${HERMES_HOME}/scripts/orch-inbox-processor.py"
 register "src/scripts/check-agent-messages.sh"    "${HERMES_HOME}/scripts/check-agent-messages.sh"
 register "src/scripts/ek-session-snapshot.py"     "${HERMES_HOME}/scripts/ek-session-snapshot.py"
 
