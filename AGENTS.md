@@ -907,3 +907,29 @@ Load `skill_view(name="cron-management")` for the full protocol spec.
 - **Remote agent crons** (Titus/Gisu/Joseph's machines) — Moses creates a
   cron request inbox message for those agents to apply on their own, CC's Luke
   
+### Universal Agent Crons
+
+The following crons are registered by `install-hermes-crons.sh` on every agent.
+Run `bash ~/hermes-cortex/src/scripts/install-hermes-crons.sh --dry-run` to
+see what's missing on any agent, or `bash install-hermes-crons.sh --force` to
+recreate all to match the repo definition.
+
+| Cron | Type | Schedule | Script / Skill | Deliver |
+|------|------|----------|----------------|---------|
+| `agent-auto-remediate` | LLM | `*/30 * * * *` | skill `auto-remediation` | origin |
+| `remediation-sensor` | no_agent | `*/5 * * * *` | `remediation-sensor.py` | local |
+| `system-alert-watchdog` | no_agent | `*/30 * * * *` | `system-alert-watchdog.py` | origin |
+| `service-recovery` | no_agent | `*/5 * * * *` | `service-recovery.py` | origin |
+| `inbox-sensor` | no_agent | `*/10 * * * *` | `inbox-sensor.py` | local |
+| `score-auditor` | no_agent | `0 */6 * * *` | `score-auditor.py` | origin |
+| `memory-to-brain-sync` | no_agent | `0 */6 * * *` | `memory-to-brain-sync.py` | local |
+| `llm-judge-scorer-weekday` | no_agent | `0 12,20 * * 1-5` | `llm-judge-scorer.py` | local |
+| `llm-judge-scorer-weekend` | no_agent | `0 22 * * 0,6` | `llm-judge-scorer.py` | local |
+| `offline-code-index` | no_agent | `0 5 * * 0` | `offline_code_index_cron.sh` | local |
+| `model-health-watchdog` | no_agent | `0 7 * * *` | `model-health-watchdog.py` | origin |
+| `process-mcp-agent-inbox-messages` | LLM | `0 6-23 * * *` | prompt: inbox poll | origin |
+
+LLM crons should be pinned to the provider/model specified in the repo's
+`deploy/config/config.yaml` or the agent's profile. The installer sets
+model/provider for known LLM crons via `pin_cron_model()`.
+  
