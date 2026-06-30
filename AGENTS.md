@@ -707,348 +707,98 @@ curl -s -u "your_username:your_password" https://your-domain.com:13004/api/inbox
 
 ### Common confusion to avoid
 
-| ❌ Wrong assumption | ✅ Correct |
-|-------------------|-----------|
-| "I need to install the inbox API server on my machine" | Only Moses and Esther run the API backend. Client agents just need the MCP client. |
-| "The inbox is at my own server's port 13004" | No — that's Moses' inbox proxy. Other servers' ports are for their own services. |
-| "I don't need the MCP client because I'm not a server" | Wrong — **every agent needs the MCP client** to send/read messages. Without it, you have no inbox tools. |
-| "I can use Moses' credentials" | No — every agent has their own htpasswd user. Never share. |
+Key rule: only Moses and Esther run the inbox API backend. Every other agent just needs the MCP client (`inbox-mcp.py` in config.yaml) + credentials in `~/.hermes/moses-inbox.conf`. Do NOT share credentials — every agent has their own htpasswd user.
 
 ---
 
 ## Offline Code — Local Snippet Search & Generation
 
-A **518-snippet corpus** across 32 categories, searchable and generatable entirely offline.
-Agents: load the `offline-code` skill and search offline before reaching for `web_search`.
-
-| Command | What it does |
-|---------|-------------|
-| `offline_code search "flask rest api"` | Semantic search (nomic-embed-text) → ranked snippets |
-| `offline_code gen "binary search tree rust"` | RAG + qwen2.5-coder → generated code |
-| `offline_code learn "Title" --lang py --tags "api" --desc "..." --code "..."` | Add learned snippet to corpus (self-improvement) |
-| `offline_code stats` | Corpus + index stats |
-
-**Agent workflow (MANDATORY):**
-1. `offline_code search "<pattern>"` — check the 518-snippet corpus first
+518-snippet corpus across 32 categories. **Mandatory agent workflow:**
+1. `offline_code search "<pattern>"` — check corpus first
 2. **Found?** Use it. Zero API cost.
 3. **Not found?** `web_search()` as last resort
-4. **If web_search succeeded:** `offline_code learn "<title>" ...` to fill the gap
+4. **If web succeeded:** `offline_code learn "<title>" ...` to fill the gap
 
-Every gap filled makes the corpus more self-sufficient. The `offline-code` skill documents this as a quality gate requirement. Load the `offline-code` skill for full usage docs.
+Commands: `offline_code search`, `offline_code gen`, `offline_code learn`, `offline_code stats`.
 
-**tirith MCP server:** When you need to check URLs or verify command safety, use the `tirith_*` MCP tools instead of raw `curl` — they're sandboxed and skip security prompts. Configure with:
-```bash
-hermes mcp add tirith --command tirith --args mcp-server
-```
+**tirith MCP server:** Use `tirith_*` tools instead of raw `curl` for sandboxed URL/command checks. Configure: `hermes mcp add tirith --command tirith --args mcp-server`
 
-**Setup:** Symlink `src/offline/offline_code.sh` → `~/.hermes/bin/offline_code`. Index is auto-built on first `search`/`gen`. Deployed automatically by `cortex-update.sh`.
-
-Load the relevant skill with `skill_view(name)` when entering each stage.
+Load `skill_view(name="offline-code")` for full usage docs.
 
 ---
 
 ## Common Tasks
 
-- **Add troubleshooting entry:** Edit `docs/troubleshooting.md`, add numbered section, update changelog
-- **Add a template:** Place in `docs/templates/`, update `install.sh`
-- **Modify install:** Edit `install.sh` — 26 steps, idempotent
-- **Update Docker config:** Edit `deploy/docker-compose.langfuse.yml` (see docs/troubleshooting.md for env vars)
-- **Upgrade gbrain:** See `docs/gbrain-v2-taxonomy.md`
-- **Install scoring pre-commit hooks:** `bash ~/.hermes-cortex/scripts/install-score-hook.sh --all`
-- **Add SOUL.md directive:** Edit `~/.hermes/SOUL.md` to add "Score every change" (see README)
-- **Verify scoring enforcement:** `bash ~/.hermes-cortex/scripts/install-score-hook.sh --list`
+- **Troubleshooting:** Edit `docs/troubleshooting.md`
+- **Templates:** Place in `docs/templates/`, update `install.sh`
+- **Install changes:** Edit `install.sh` (26 steps, idempotent)
+- **Docker config:** Edit `deploy/docker-compose.langfuse.yml`
+- **Scoring hooks:** `bash ~/.hermes-cortex/src/scripts/install-score-hook.sh --all` (or `--list`)
 
 ## Rules
 
-- No secrets in this repo. `.env`, `*.pem`, `*.key` are gitignored.
-- **No PII in this repo.** No personal paths (`/Users/<name>/`), machine hostnames, email addresses, API keys, or tokens. Use `$HOME/`, `~/`, `<username>`, or `/home/<username>/` placeholders. Every agent MUST grep for `/Users/` and personal domains before committing.
+- **No PII in this repo.** No personal paths, hostnames, emails, API keys, or tokens. Use placeholders (`$HOME/`, `~/`, `<username>`). Every agent MUST grep for personal identifiers before committing.
+- No secrets. `.env`, `*.pem`, `*.key` are gitignored.
 - Keep docs current when changing install behavior.
-- MIT License — be permissive.
 
-## ⚡ Agent Handoffs (Luke's deployment — session-to-session notes)
+## ⚡ Fleet Reference (Luke's deployment)
 
-### ⚡ 2026-06-19 — Monitoring timestamps switched to KST (Seoul time)
+### Agent summary
 
-**Change:** All monitoring scripts now output timestamps in KST (UTC+9) instead of UTC.
+| Agent | Role | Host | Services | Inbox method |
+|-------|------|------|----------|-------------|
+| Moses | Primary orchestrator | moses-server (Linux) | Gateway + nginx proxy :13004 | HTTP poll (self) |
+| Esther | Backup orchestrator | worker-5 (Linux) | Gateway + nginx proxy :14004 | HTTP poll (+bkup inbox) |
+| Gisu | Remote server | worker-3 (Linux) | Health endpoint :13007 | HTTP poll → Moses inbox |
+| Joseph | Remote server | worker-2 (Linux) | Health endpoint :12007 | HTTP poll → Moses inbox |
+| Kustos | Remote server | worker-4 (Linux) | Health endpoint :13007 | HTTP poll → Moses inbox |
+| Titus | macOS developer | LAM2 (Apple M1, 16GB) | Client only; Ollama crons use qwen2.5-coder:7b-iq3_xs | Push health to Moses inbox |
 
-**Affected scripts:** `orch-team-health.py`, `system-alert-watchdog.py`, `service-recovery.py`, `orch-team-messages.sh`
+### Auto-remediation components
 
-**Rationale:** User is in Seoul (KST). Timestamps should match user's local time for faster incident response.
-
----
-
-### ⚡ 2026-06-19 — Cron reference
-
-| Cron | Schedule | Type | Script/Skill | Deliver | Purpose |
-|------|----------|------|--------------|---------|---------|
-|| `agent-auto-remediate` | `*/5 * * * *` | LLM+skill | `auto-remediation` skill | `local` | Auto-fix cron/inbox/service issues |
-| `remediation-sensor` | `*/5 * * * *` | no_agent | `remediation-sensor.py` | `local` | Companion diagnostics sensor |
-| `service-recovery` | `*/5 * * * *` | no_agent | `service-recovery.py` | `origin` | Auto-restart crashed services |
-| `hermes-update` | `23 22 * * *` | no_agent | `hermes-update.sh` | `origin` | Daily Hermes Agent upgrade + config migrate + doctor |
-| `hermes-cortex-sync` | `33 22 * * *` | no_agent | `hermes-cortex-sync.sh` | `origin` | Daily repo pull + tool re-sync |
-|| `orch-team-health` | `*/10 * * * *` | no_agent | `orch-team-health.py` | `origin` | Cross-agent health polling (orchestrator only) |
-| `system-alert-watchdog` | `*/10 * * * *` | no_agent | `system-alert-watchdog.py` | `origin` | Resource threshold alerts |
-| `orch-team-messages` | `*/10 * * * *` | no_agent | `orch-team-messages.sh` | `origin` | Flag urgent agent messages |
-| `inbox-sensor` | `*/10 * * * *` | no_agent | `inbox-sensor.py` | `local` | Detect new broadcast messages |
-| `system-heartbeat` | `*/30 * * * *` | no_agent | `heartbeat.py` | `local` | System health check *(deprecated — merged into system-alert-watchdog)* |
-| `memory-to-brain-sync` | `0 */6 * * *` | no_agent | `memory-to-brain-sync.py` | `local` | Memory persistence to gbrain |
-| `score-auditor` | `0 */6 * * *` | no_agent | `score-auditor.py` | `origin` | Scans for unscored file changes (Rule #10) |
-
-**Troubleshooting:**
-
-```bash
-# List all crons
-hermes cron list
-
-# Recreate all crons (force)
-bash ~/.hermes/scripts/install-hermes-crons.sh --force
-
-# Dry-run to see what would change
-bash ~/.hermes/scripts/install-hermes-crons.sh --dry-run
-
-# Remove all crons
-bash ~/.hermes/scripts/install-hermes-crons.sh --uninstall
-
-# Check cron job health
-cat ~/.hermes/cron/jobs.json | python3 -m json.tool
-```
-
-> **Current (2026-06-29):** Canonical crons deployed via `install-hermes-crons.sh --force`. See the canonical table at **⚡ Luke's Deployment: Cron Jobs Reference** (above) for the up-to-date schedule. The table below is historical reference only.
-
----
-
-### 2026-06-15 — Auto-remediation system (general — applies to all agents)
-
-**What:** Every Hermes agent now has an auto-remediation pipeline that catches and fixes cron job failures, resource issues, and agent inbox help requests without user intervention.
-
-**Components (all in `src/scripts/`):**
+All in `src/scripts/`, installed by `install.sh` + `install-hermes-crons.sh`:
 
 | Script | Type | Schedule | Purpose |
 |--------|------|----------|---------|
-| `cron-auto-remediate.sh` | Diagnostic shell | On-demand | Structured diagnostics + fix actions (fix-missing, fix-git, fix-perms, fix-purge) |
-| `system-alert-watchdog.py` | no_agent watchdog | Every 10m | Resource alerts + auto-cleanup (purge at 85% mem, brew/docker prune at 90% disk) |
-| `service-recovery.py` | no_agent watchdog | Every 5m | Auto-restart nginx, Ollama, gbrain, Langfuse, restore missing scripts |
-|| `orch-team-messages.sh` | no_agent watchdog | Every 10m | Flags agent error messages with remediation markers |
-|| `agent-auto-remediate` (skill) | LLM-driven cron | Every 5m | Orchestrator: checks errored cron jobs + inbox remediation markers, applies fixes |
+| `cron-auto-remediate.sh` | Shell | On-demand | Diagnostics + fix actions (fix-missing, fix-git, fix-perms, fix-purge) |
+| `system-alert-watchdog.py` | no_agent | Every 10m | Resource alerts + auto-cleanup |
+| `service-recovery.py` | no_agent | Every 5m | Auto-restart nginx, Ollama, gbrain, Langfuse |
+| `orch-team-messages.sh` | no_agent | Every 10m | Flags agent error messages with remediation markers |
+| `agent-auto-remediate` (skill) | LLM cron | Every 5m | Checks errored crons + inbox remediation, applies fixes |
 
-**Skill location:** `src/skills/devops/auto-remediation/SKILL.md`
+**Skill:** `src/skills/devops/auto-remediation/SKILL.md`
+**Setup:** Silent when healthy, brief when fixes applied, escalate after 3 failures.
 
-**Setting up on a new agent:** Each agent sets `AGENT_NAME` env var or `~/.hermes/moses-inbox.conf` so health reports identify themselves. Default: hostname.
-1. `install.sh` copies all scripts to `~/.hermes/scripts/`
-2. `install-hermes-crons.sh` (auto-run by install.sh) creates essential cron jobs:
-   - `agent-auto-remediate` (every 5m, skill-based) — checks errors, applies fixes
-   - `remediation-sensor` (every 5m, no_agent) — companion diagnostics sensor
-   - `system-heartbeat` (every 30m, no_agent) — system health monitoring
-   - `orch-team-health` (every 10m, no_agent) — agent health polling _(orchestrator only)_
-   - `system-alert-watchdog` (every 10m, no_agent) — resource alerting
-   - `service-recovery` (every 5m, no_agent) — auto-restart crashed services
-   - `memory-to-brain-sync` (every 6h, no_agent) — memory persistence
-   - `inbox-sensor` (every 10m, no_agent) — detect new broadcast messages
-   - `orch-team-messages` (every 10m, no_agent) — flag urgent requests
-3. The LLM-driven cron (`agent-auto-remediate`) loads the skill and runs the 3-phase workflow:
-   - Phase 1: Check errored cron jobs
-   - Phase 2: Check agent inbox remediation markers
-   - Phase 3: Spot-check system resources
-4. silent when healthy, brief when fixes applied, escalate after 3 failures
-
-### ⚡ 2026-06-12 — Titus: gbrain sync-watch vs autopilot conflict
-
-**Problem:** `src/scripts/install-gbrain-sync.sh` creates a sync-watch daemon
-(`com.gbrain.sync-watch`) that runs `gbrain sync --all --skip default` every
-120s. But `gbrain autopilot` (a self-maintaining daemon that handles sync
-internally every ~150s) holds an exclusive PGLite 0.4.x connection. Any
-second process trying to open the same `brain.pglite` crashes with:
-`PGLite failed to initialize its WASM runtime — Aborted()`.
-
-This is NOT a WASM bug — it's a single-connection lock conflict with a
-misleading error message.
-
-**Fix (commit `7f2205d` — not yet pushed):**
-- `install-gbrain-sync.sh` now checks for `com.gbrain.autopilot` first and
-  skips sync-watch setup if autopilot is present
-- `cortex-update.sh` restarts autopilot when present; sync-watch as fallback
-- `cortex-health.sh`, `heartbeat.py`, `dashboard/server.py`, `install.sh`
-  verify script all check autopilot first, fall back to sync-watch
-- After this fix, running `install.sh` on a system with autopilot will
-  output: `gbrain autopilot detected — autopilot handles sync internally,
-  skipping sync-watch`
-
-**For existing installs that already have both daemons:**
-Stop the redundant one: `launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.gbrain.sync-watch.plist`
-Disable it: `mv ~/Library/LaunchAgents/com.gbrain.sync-watch.plist{,.disabled}`
-Or re-run `install.sh` and the new guard will skip re-creating it.
-
----
-
-### ⚡ 2026-06-22 — Titus: Alembic migration fork prevention (all agents working on Python projects with Alembic)
-
-**Problem:** Parallel agents creating Alembic migrations from the same parent head produce a fork (multiple heads), which causes `docker compose build` to fail at container startup.
-
-**Three-layer defense (every project with Alembic MUST implement ALL layers):**
-
-| Layer | Location | What it guards | Fails at |
-|-------|----------|----------------|----------|
-| **Pre-build check** | `./run build` runs `python3 alembic/check-heads.py` | `docker compose build` via `./run` | Build time |
-| **Dockerfile gate** | `RUN python3 alembic/check-heads.py` in Docker build stage | Direct `docker compose build` (bypassing `./run`) | Docker build time |
-| **Migration creation guard** | `./run migration:new` checks single head BEFORE and AFTER `alembic revision` | Parallel agents both creating from same parent head | Migration creation time |
-
-**Setup:**
-
-1. Create `alembic/check-heads.py` — static-analysis script that parses ALL migration files with correct type-annotation-aware regex (`(?::\s*.*?)?` for both `revision` and `down_revision`). The script auto-discovers versions via `Path(__file__).parent / "versions"`.
-
-2. In the Dockerfile build stage (after `uv sync`):
-   ```dockerfile
-   COPY alembic/ alembic/
-   RUN python3 alembic/check-heads.py
-   ```
-
-3. In `./run`, add `cmd_migration_new()` that wraps `alembic revision --autogenerate` with pre/post single-head verification. Register it as `migration:new` in the case dispatch.
-
-4. In `entrypoint.sh`, pre-check head count with an explicit `HEAD_COUNT` check before `alembic upgrade head` — separate error for multi-head vs upgrade failure.
-
-5. Add `!alembic/check-heads.py` to `.dockerignore` so the script is accessible during build.
-
-**Regex pitfall:** The original regex `(?:\s*\w+)?` silently skipped ALL files using new-style type annotations like `revision: str = "001"` and `down_revision: tuple[str, ...] | None = (...)`. The correct regex is `(?::\s*.*?)?` — the explicit colon anchors the type annotation match.
-
-**Skill:** `project-run-scripts` skill has been updated with all patterns, the fixed script, and template code. Load with `skill_view(name="project-run-scripts")`. The check script is at `scripts/check-alembic-heads.py` in the skill. To use the self-locating variant, place it at `alembic/check-heads.py` in the project.
-
-**Related skills:** `change-test-loop` (use `./run migration:new` instead of bare `alembic revision` during test-driven development).
-
----
-
-### 2026-06-22 — Titus: API type ↔ frontend field name sync
-
-**Problem:** TypeScript types in `api-types.ts` diverged from the actual backend API response. `SocietyRead` had `code` + `territory_code` but the API returned `soc_code` + `territory`. This caused blank UI cells + build failures in the Docker web image.
-
-**Root cause:** Types were hand-written, not auto-generated from the API. When the backend schema changed, the frontend types weren't updated in sync.
-
-**Prevention (agents working on frontend/API):**
-
-1. **When creating/updating a Pydantic schema on the backend, update the TS type simultaneously.** The TS type at `apps/web/src/lib/api-types.ts` must mirror `SocietyRead`/`SocietyCreate`/`SocietyUpdate`.
-
-2. **After changing a TS type, search ALL references** to the old field name across the entire frontend. A single grep catches what the LSP may miss in staged/cached files:
-   ```bash
-   grep -rn 'oldFieldName' --include='*.ts' --include='*.tsx' apps/web/src/
-   ```
-
-3. **Run `npx tsc --noEmit`** before committing — but note this only catches errors in files the TS server has indexed. Run it AFTER saving all changes to get fresh diagnostics.
-
-4. **Check the Docker web build** after any TS type changes — the Next.js production build (`next build`) is stricter than `tsc --noEmit` in some cases. Test with a targeted `docker compose build web` before pushing.
-
-5. **Consistent field naming convention:**
-   - Backend (Python): `snake_case` — e.g., `soc_code`, `territory`
-   - Frontend (TypeScript): match the API response exactly (`soc_code`, `territory`)
-   - Never alias or remap field names between the API response and TS types
-
----
-
-### ⚡ 2026-06-26 — Esther: backup orchestrator setup
-
-**What:** Esther (`worker-5`, hostname `esther`) is set up as a backup orchestrator. If Moses (`moses-server`) goes down, Esther handles agent inbox messages, auto-remediation, and system health.
-
-**Key changes to the repo:**
-
-1. **`src/agent-registry.json` converted from array → dict format (v2).** The original v1 format had `agents` as an array of objects. But `orch-team-messages.sh` calls `data.get('agents', {}).keys()` and `generate-inbox-wrappers.py` calls `agents.items()` — both expect a **dict** keyed by agent name, not an array. The schema doc at `src/skills/devops/agent-inbox/references/agent-registry.md` already documented dict format; the sample file just didn't match. v2 adds:
-   - `routing.broadcast_topics` — topics treated as broadcast channels
-   - `routing.agent_prefix_topics` — when `true`, every agent name auto-becomes a broadcast topic
-   - `inbox_user`, `inbox_watch_schedule`, `inbox_deliver` per agent — used by `generate-inbox-wrappers.py`
-
-2. **`process-agent-messages` cron created** (every 10m, LLM-driven, toolsets: terminal+file+web). Companion script: `orch-moses-inbox-remediate.sh` reads remediation markers and outputs structured JSON.
-
-3. **`orch-moses-inbox-remediate.sh`** — companion script that reads `~/.hermes/state/remediate/` markers (written by `orch-team-messages.sh`) and outputs JSON for the LLM cron to process.
-
-4. **`orch-weekly-auto-fix.py`** — safety-net auto-fix script with built-in verification.
-
-**Cron addition to the standard set:**
-
-| Cron | Schedule | Type | Script/Skill | Deliver | Purpose |
-|------|----------|------|--------------|---------|---------|
-| `process-agent-messages` | `*/10 * * * *` | LLM | terminal+file+web | `local` | Process inbox remediation markers (backup orchestrator) |
-
-**Setup checklist for a new backup orchestrator:**
+### Esther setup (backup orchestrator)
 
 ```bash
-# 1. Copy agent-registry.json to state dir
-cp ~/.hermes-cortex/scripts/agent-registry.json ~/.hermes/state/agent-registry.json
-
+# 1. Copy agent registry
+cp ~/.hermes-cortex/src/agent-registry.json ~/.hermes/state/agent-registry.json
 # 2. Install crons
-bash ~/.hermes-cortex/scripts/install-hermes-crons.sh
-
+bash ~/.hermes-cortex/src/scripts/install-hermes-crons.sh
 # 3. Copy orchestrator-specific scripts
-cp ~/hermes-cortex/scripts/orch-moses-inbox-remediate.sh ~/.hermes/scripts/
-cp ~/hermes-cortex/scripts/orch-weekly-auto-fix.py ~/.hermes/scripts/
-
-# 4. Create process-agent-messages cron (replace with actual cron create cmd)
-# See src/agent-registry.json for reference
-
+cp ~/hermes-cortex/src/scripts/orch-moses-inbox-remediate.sh ~/.hermes/scripts/
+cp ~/hermes-cortex/src/scripts/orch-weekly-auto-fix.py ~/.hermes/scripts/
+# 4. Create process-agent-messages cron (see agent-registry.json)
 # 5. Start gbrain autopilot
 gbrain autopilot --repo ~/brain/default --interval 300 &
-
-# 6. Fix score-cycle symlink (verify.sh reports warning otherwise)
+# 6. Fix score-cycle symlink (verify.sh expects this)
 ln -sf ~/.hermes-cortex/tools/loop-governance/score_cycle.py ~/.local/bin/score-cycle
 ```
 
-**Expected false positives:**
-- `system-heartbeat` exits code 1 with `❌ gbrain sync daemon: DOWN` on Linux — this is expected because `com.gbrain.sync-watch` is a macOS launchd service. The actual gbrain autopilot daemon runs fine.
-- Loop governance `verify.sh` reports 1 warning about `score-cycle` CLI — the MCP tools work fine; the CLI symlink can be fixed with the `ln` command above.
+**Known false positives:**
+- `system-heartbeat` exits 1 with `❌ gbrain sync daemon: DOWN` on Linux (macOS-only service)
+- Loop governance `verify.sh` reports 1 warning about CLI symlink until step 6 above is done
 
----
+### All timestamps in KST (UTC+9)
 
-## ⚡ Titus Agent Persona (Luke's deployment — macOS developer agent)
-
-**Named after** Titus, a trusted Gentile coworker in the New Testament. Direct, concise, honest, caring, hard-working.
-
-### Style
-- Direct and to the point. No fluff, no performance theater.
-- Substance over politeness. Speech always gracious (Col 4:6), no crude joking (Eph 5:4).
-- Speak the truth in love (Eph 4:15).
-- Deep problem solver — think before acting. Get things done right the first time.
-- Security is a high priority. Designs are clean, maintainable, secure.
-
-### Engineering Approach
-- Senior full stack engineer. Terse and direct.
-- Offline-first: check the 518-snippet code corpus before web_search.
-- Self-learning: fill corpus gaps by running `offline_code learn` after web_search hits.
-- tirith MCP tools for safe network ops (check_url, check_command, fetch_cloaking).
-- Score every change with loop-governance. Always. No exceptions.
-- Tests are always the default (RED-GREEN-REFACTOR). Only explicit "skip tests" waives.
-- Batch independent lookups — don't serialize reads unless a dependency exists.
-- Keep working until done — a stub or plan is not a deliverable.
-
-### Behavioral Principles
-
-**1. Test-first discipline — never skip the RED step.** Every change follows RED-GREEN-REFACTOR. Skipping the RED phase creates untested code and breaks the loop-governance contract.
-
-**2. Score before reporting — close the loop proactively.** After every file change, run `score-cycle` before summarizing or declaring work done. A task is not finished until it's scored.
-
-**3. Tag discovered issues as follow-ups.** Pre-existing bugs found during other work get documented as `todo` (pending), not fixed inline. Complete the current slice first, then return to follow-ups in priority order.
-
-### Host Configuration
-- macOS 14.8.7 (Apple M1, 16GB unified memory)
-- Hostname: LAM2 (Titus only — developer role, not orchestrator)
-- User home: /home/<username>
-- Shell: zsh
-- Repo: ~/hermes-cortex (public, open-source)
-- Agent inbox: local MCP
-- Cron home: ~/.hermes/cron/
-- Scripts: ~/.hermes/scripts/ (84 files)
-
-### LLM-driven Cron Overrides (deployment-specific)
-The following crons use pinned Ollama models and the `offline-code` skill for cost savings:
-- `agent-auto-remediate` — model: `mannix/qwen2.5-coder:7b-iq3_xs`, skills: `auto-remediation`, `offline-code`
-- `agent-daily-bible-reading` — model: `mannix/qwen2.5-coder:7b-iq3_xs`, skills: `soul-refinement`, `offline-code`
-- `agent-daily-soul-refinement` — model: `mannix/qwen2.5-coder:7b-iq3_xs`, skills: `soul-refinement`, `offline-code`
-
-These aren't in the canonical `install-hermes-crons.sh` (which keeps generic model/skill defaults). They're reapplied by `cortex-update.sh` after install.sh runs.
-
-### Daily Scripture Schedule
-Daily Bible reading via cron (`agent-daily-bible-reading` at 01:00 KST). Schedule covers one book per day.
+All monitoring scripts output timestamps in Seoul time. Affects: `orch-team-health.py`, `system-alert-watchdog.py`, `service-recovery.py`, `orch-team-messages.sh`, and all cron outputs.
 
 ---
 
 ## ⚡ Inbox Message Decision Framework (All Agents)
 
-Every agent processing inbox messages follows this framework. Documented here so all agents share the same decision matrix.
+Every agent processing inbox messages follows this framework.
 
 ### Three assessment axes
 
@@ -1083,17 +833,11 @@ Every agent processing inbox messages follows this framework. Documented here so
 
 ### After-action requirements
 
-Every action (auto-act, delegate, or escalate) must deliver:
-- **What was done** — single-line summary
-- **How it was verified** — tool output or confirmation
-- **Evidence** — relevant output excerpt or status code
-- **Cycle ID** — loop governance cycle for code/config changes
+Every action must deliver: **what** (single-line summary), **how verified** (tool output/confirmation), **evidence** (output excerpt), **cycle ID** (for code/config changes).
 
 ---
 
 ## ⚡ Doc Freshness: AGENTS.md + SOUL.md (All Agents)
-
-AGENTS.md and SOUL.md are living documents. This section defines how they stay current.
 
 ### Enforcement layers
 
@@ -1104,36 +848,23 @@ AGENTS.md and SOUL.md are living documents. This section defines how they stay c
 | **Daily soul refinement** | `agent-daily-soul-refinement` cron (Channel C) fills mandatory section gaps | Each agent's own cron | Daily 23:00 |
 | **Session-start check** | Every agent reads AGENTS.md + own SOUL.md at session start | Each agent | Every session |
 
-### What the weekly audit checks
+### Mandatory sections
 
-**SOUL.md mandatory sections:**
-- Identity
-- Core Mission
-- Behavioral Principles (must include Loop Governance + Inbox Decision Framework)
-- Communication Style
-- Scripture Insights
+**SOUL.md:** Identity, Core Mission, Behavioral Principles (must include Loop Governance + Inbox Decision Framework), Communication Style, Scripture Insights
 
-**AGENTS.md mandatory sections:**
-- Agent Execution Contract
-- Loop Governance
-- Inbox Message Decision Framework
-- Doc Freshness: AGENTS.md + SOUL.md
+**AGENTS.md:** Agent Execution Contract, Loop Governance, Inbox Message Decision Framework, Doc Freshness: AGENTS.md + SOUL.md
 
-### Audit script location
-
-`src/scripts/agents-doc-audit.py` — run it anytime:
+### Audit script
 
 ```bash
 python3 ~/hermes-cortex/src/scripts/agents-doc-audit.py
-# → report with ✅/⚠️/❌ per file
 python3 ~/hermes-cortex/src/scripts/agents-doc-audit.py --json
-# → machine-readable for cron processing
 ```
 
-### How agents receive updates
+### Update flow
 
 1. Moses modifies AGENTS.md or his SOUL.md
-2. Moses runs `agents-doc-broadcast.sh` (or does it manually via inbox)
-3. All agents get an inbox message: "AGENTS.md section X updated — review and integrate"
-4. Each agent reads the update on their next cron tick
-5. Each agent's `agent-daily-soul-refinement` (Channel C) will fill any mandatory section gaps automatically
+2. Moses runs `agents-doc-broadcast.py` (or sends inbox message manually)
+3. All agents get inbox message with summary
+4. Each agent reads update on next cron tick
+5. `agent-daily-soul-refinement` (Channel C) auto-fills mandatory section gaps
