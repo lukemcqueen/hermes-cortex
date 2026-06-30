@@ -109,7 +109,9 @@ if [ -n "$F2B_LOG" ]; then
   NEW_F2B_IPS="$F2B_TIMEOUT_RESULT"
 
   # Validate all extracted IPs — reject garbage from fail2ban log parsing
-  NEW_F2B_IPS=$(echo "$NEW_F2B_IPS" | awk -F. 'NF==4{for(i=1;i<=4;i++)if($i+0<0||$i+0>255)next}1')
+  # Only lines matching IPv4 format (4 dot-separated octets, each 0-255) pass
+  NEW_F2B_IPS=$(echo "$NEW_F2B_IPS" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | \
+    awk -F. '{if($1<=255&&$2<=255&&$3<=255&&$4<=255)print}')
 
   F2B_COUNT=$(echo "$NEW_F2B_IPS" | grep -c '[0-9]' 2>/dev/null || true)
   F2B_COUNT=$((F2B_COUNT + 0))
