@@ -172,4 +172,96 @@ The autopilot is a self-maintaining daemon that already handles sync internally 
 
 - If `gbrain sources list` and `gbrain stats` fail but `gbrain doctor` works, the DB connection is being held by another process (doctor does filesystem-only checks)
 - If no gbrain daemon at all is running, the PGLite database file itself may be corrupt — see references/gbrain-source-migration-export.md for recovery
-- The "macOS 26.3 WASM bug" link in the error message references a GitHub issue that documents a real WASM bug, but on macOS 14.x the same error text usually means lock contention
+
+---
+
+## Linux (systemd) Differences
+
+The existing docs cover macOS (launchd). On Linux, the same PGLite lock contention
+applies, but service management differs.
+
+### Service Management
+
+| Action | macOS (launchd) | Linux (systemd user) |
+|--------|-----------------|---------------------|
+| List services | `launchctl list \| grep gbrain` | `systemctl --user list-units \| grep gbrain` |
+| Check status | `launchctl list com.gbrain.sync-watch` | `systemctl --user is-active com.gbrain.sync-watch` |
+| Stop service | `launchctl bootout gui/$(id -u)/...` | `systemctl --user stop ...` |
+| Disable service | `mv plist{,.disabled}` | `systemctl --user disable ...` |
+| View logs | `tail ~/.gbrain/sync-watch.log` | Same path, or `journalctl --user -u ...` |
+
+### Two Approaches (choose ONE)
+
+**A) sync-watch only (recommended for PGLite)** — Simple bash daemon that
+polls `gbrain sync --all` every 120s. Pre-installed by `install.sh`. Works
+well with PGLite because it opens and releases the database connection quickly.
+
+```bash
+# Enable and start
+systemctl --user enable com.gbrain.sync-watch.service
+systemctl --user start com.gbrain.sync-watch.service
+
+# Verify
+systemctl --user is-active com.gbrain.sync-watch.service
+# Expected: active
+```
+
+**B) Autopilot only (requires Supabase/network Postgres)** — Full self-
+maintaining daemon. **Do NOT use with PGLite** — the exclusive lock blocks
+all other gbrain CLI commands (query, sources list, stats) for ~3min every
+5min cycle.
+
+```bash
+# Install (requires --repo for PGLite brains)
+gbrain autopilot --install --repo ~/brain/default --interval 300
+
+# Uninstall
+gbrain autopilot --uninstall
+systemctl --user stop gbrain-autopilot.service
+```
+
+**Never run both.** PGLite is single-connection — autopilot and sync-watch
+will fight over the lock and fail intermittently with the WASM error.
+
+### Sync-Watch Resilience
+
+The sync-watch script (`~/.gbrain/sync-watch.sh`) includes a `||` fallback
+so transient WASM/PGLite failures don't kill the loop:
+
+```bash
+"$BUN" "$GBRAIN" sync --all --no-pull 2>&1 || \
+  echo "[$(date)] ⚠ sync failed, will retry next cycle"
+```
+
+The service will always be `active (running)` even when an individual sync
+cycle fails — systemd only restarts it on process exit.
+
+### Auto-remediation Alert
+
+The `system-alert-watchdog.py` checks the service status (`systemctl --user
+is-active`), not individual sync results. A healthy sync-watch service
+always reports UP even if a transient WASM error occurred on a cycle.
+
+To verify functional health separately:
+```bash
+# Run one sync cycle manually
+gbrain sync --all --no-pull 2>&1
+# Expected: "synced=0" or "imported=N" — any WASM error means lock contention
+```
+
+### Full Cleanup (switching between approaches)
+
+```bash
+# Stop and disable sync-watch
+systemctl --user stop com.gbrain.sync-watch.service
+systemctl --user disable com.gbrain.sync-watch.service
+
+# Or stop autopilot
+gbrain autopilot --uninstall
+systemctl --user stop gbrain-autopilot.service
+
+# Verify no gbrain services remain
+systemctl --user list-units | grep gbrain
+```
+
+> **Note:** The "macOS 26.3 WASM bug" error message is misleading on Linux too. On both platforms, PGLite lock contention produces the same WASM runtime error text — treat any "PGLite failed to initialize its WASM runtime" error as lock contention first, WASM bug second.
