@@ -248,7 +248,7 @@ def serve_http(port: int = 13006):
         def log_message(self, format, *args):
             pass  # quiet
 
-    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    server = HTTPServer(("127.0.0.1", port), HealthHandler)
     print(f"🧬 Health vector server on :{port}", flush=True)
     try:
         server.serve_forever()

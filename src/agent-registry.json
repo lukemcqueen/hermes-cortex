@@ -23,7 +23,7 @@
       "is_orchestrator": true,
       "accessible": true,
       "health_method": "http",
-      "health_url": "http://127.0.0.1:13007/",
+      "health_url": "http://127.0.0.1:13007/health",
       "port_range": "13001-13099",
       "description": "Moses — orchestrator server",
       "inbox_user": "moses",
