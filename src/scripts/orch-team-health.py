@@ -150,7 +150,7 @@ def _get_agents() -> list[dict]:
     if not any(a["key"] == "moses" for a in agents):
         agents.insert(0, {
             "key": "moses", "name": "Moses",
-            "method": "http", "url": "http://127.0.0.1:13006/",
+            "method": "http", "url": "http://127.0.0.1:13007/",
         })
     return agents
 
