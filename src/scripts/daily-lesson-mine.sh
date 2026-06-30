@@ -44,7 +44,7 @@ COUNT_BEFORE=$(python3 "$INDEX_SCRIPT" lesson stats 2>/dev/null | _extract_int "
 [ -n "$COUNT_BEFORE" ] || COUNT_BEFORE=0
 
 # ── Mine last 24 hours ─────────────────────────────────────────────────
-OUTPUT=$(python3 "$MINE_SCRIPT" mine --auto --days 1 --limit 20 2>&1)
+OUTPUT=$(python3 "$MINE_SCRIPT" mine --auto --days 1 2>&1)
 NUM_SAVED=$(echo "$OUTPUT" | grep -c "✅" || true)
 
 if [ "$NUM_SAVED" -gt 0 ]; then
