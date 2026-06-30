@@ -270,6 +270,50 @@ to remove unnecessary models and free disk space.
 
 ---
 
+## ⚠️ Mandatory Agent Workflow: Loop Governance
+
+**This is not optional.** Every agent working in this repo must follow this sequence for every change. It is not enough to read Rule #10 above — you must execute these calls.
+
+### Before any work — cache_search
+
+```python
+# REQUIRED step before touching any file, config, or cron
+mcp_loop_governance_cache_search(query="<what you are about to do>")
+```
+
+- Even if it returns nothing — the cache grows with use
+- If it returns a similar past cycle, read it. It may save you repeating a mistake.
+- If you skip this, you are flying blind.
+
+### After EACH logical change — cycle_query + feedback
+
+```python
+# AFTER completing and verifying the change
+mcp_loop_governance_cycle_query(task_id="<descriptive-name>")
+# Then IMMEDIATELY:
+mcp_loop_governance_feedback_accept(cycle_id=N, note="verified: <how you verified>")
+# OR if the decision was wrong:
+mcp_loop_governance_feedback_override(cycle_id=N, correct_decision="MOVE_ON", note="...")
+```
+
+### What counts as one logical change
+
+| Situation | Treat as |
+|-----------|----------|
+| N files changed for one purpose | One score |
+| N independent changes in same session | N individual scores |
+| Config + code that depend on each other | One combined score |
+| Batch-scoring the entire session | ❌ Never acceptable |
+
+### Enforcement
+
+- **Pre-commit hook** runs `score-cycle` on every `git commit` in hermes-cortex
+- **`scoring-activity-watchdog`** cron (14:00, 20:00 KST) alerts if too few cycles logged per day
+- **Moses (orchestrator)** is scored on this same contract — no exceptions for the leader
+- **Three un-scored changes** → agent must propose a technical enforcement mechanism
+
+---
+
 ## Skill Miner (Automated, Runs Weekly)
 
 `skill-miner` runs every Monday 6am on each agent's machine. It scans local data for reusable patterns, scores them with nomic-embed-text, and sends top findings to Moses via the agent inbox automatically. No manual effort needed.
