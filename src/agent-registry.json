@@ -55,13 +55,13 @@
       "inbox_deliver": "local"
     },
     "kustos": {
-      "name": "Kustos",
+      "name": "k",
       "role": "security",
       "hostname": "worker-3",
       "is_server": true,
       "accessible": true,
       "health_method": "http",
-      "description": "Kustos — security server (set health_url locally, port 13007)",
+      "description": "k — security server (set health_url locally, port 13007)",
       "inbox_user": "kustos",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"

@@ -44,7 +44,7 @@ SERVICE_MAP = [
     "hermes-gateway",
 ]
 
-HOSTNAME = "m"
+HOSTNAME = os.environ.get("HEALTH_HOSTNAME", os.uname().nodename.split(".")[0])
 
 
 # ── Per-service health checks ──
