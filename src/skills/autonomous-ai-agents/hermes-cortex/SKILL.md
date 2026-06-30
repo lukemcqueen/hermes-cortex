@@ -463,7 +463,7 @@ After running `setup.sh`, register the loop-governance MCP server so agents can 
 
 ```bash
 hermes mcp add \
-  --command /Users/luke/.hermes/mcp-venv/bin/python3 \
+  --command $HOME/.hermes/mcp-venv/bin/python3 \
   --args ~/hermes-cortex/src/mcp-servers/loop-gov-mcp.py \
   loop-governance
 ```
@@ -533,7 +533,7 @@ ls ~/.local/bin/python3.12
 ls ~/.pyenv/versions/ | grep '^3\\.1[2-9]'
 
 # Update shebang:
-sed -i '' '1s|#!/usr/bin/env python3|#!/Users/luke/.local/bin/python3.12|' \
+sed -i '' '1s|#!/usr/bin/env python3|#!/Users/\$(whoami)/.local/bin/python3.12|' \\
   ~/hermes-cortex/src/loop-governance/score_cycle.py \
   ~/hermes-cortex/src/loop-governance/loop_feedback.py
 ```
@@ -553,7 +553,7 @@ hermes cron list | grep "inbox-processor\\|inbox-watchdog"
 
 **PROBLEM:** `cortex-update.sh --force-all` maps `~/.hermes-cortex/bin/offline_knowledge` from the repo's `src/offline/offline_knowledge.py`. If the `~/.hermes-cortex/bin/` directory does not exist, the symlink creation fails with:
 ```
-ln: /Users/luke/.hermes-cortex/bin/offline_knowledge: No such file or directory
+ln: $HOME/.hermes-cortex/bin/offline_knowledge: No such file or directory
 ```
 This is a **non-fatal error by itself**, but if `cortex-update.sh` runs with `set -e` (exit on error), the script stops immediately. Any `register()` lines AFTER the broken symlink — including newly added scripts — never get deployed.
 
@@ -593,7 +593,7 @@ agent-created plists.
 ```bash
 launchctl list com.hermes.health-server
 # Look for: "LastExitStatus" = 78;  (EX_CONFIG)
-# Or: paths showing as literal "$HOME/..." instead of "/Users/luke/..."
+# Or: paths showing as literal "$HOME/..." instead of "/home/<username>/..."
 ```
 
 **FIX:** Use hardcoded absolute paths in ALL plist key values:
@@ -603,7 +603,7 @@ launchctl list com.hermes.health-server
 <string>$HOME/.hermes/scripts/health-server.py</string>
 
 <!-- RIGHT — hardcoded absolute path -->
-<string>/Users/luke/.hermes/scripts/health-server.py</string>
+<string>$HOME/.hermes/scripts/health-server.py</string>
 ```
 
 **Affected files in the cortex repo (fixes applied in commit e1ff1c7):**
@@ -619,7 +619,7 @@ use `/Users/<username>/` explicitly.
 ```bash
 launchctl load ~/Library/LaunchAgents/com.hermes.health-server.plist
 launchctl list com.hermes.health-server
-# Expected: "Program" = "/Users/luke/.hermes/..."  (expanded, not literal "$HOME")
+# Expected: "Program" = "/home/<username>/.hermes/..."  (expanded, not literal "$HOME")
 # Expected: "LastExitStatus" = 0
 ```
 

@@ -89,8 +89,8 @@ lsof -p <autopilot-pid> | grep pglite | head -5
 
 Shows which data files the autopilot has open — confirms exclusive access:
 ```
-bun.exe <pid>  ... /Users/luke/.gbrain/brain.pglite/base/5/16875
-bun.exe <pid>  ... /Users/luke/.gbrain/brain.pglite/base/5/17744
+bun.exe <pid>  ... ~/.gbrain/brain.pglite/base/5/16875
+bun.exe <pid>  ... ~/.gbrain/brain.pglite/base/5/17744
 ```
 
 ## Root Cause

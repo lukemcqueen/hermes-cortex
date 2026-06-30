@@ -67,13 +67,15 @@ Langfuse and serve as a feedback signal for agent behaviour.
 ## 6. ⚡ Code Corpus (Offline Knowledge)
 
 A 518-snippet code corpus deployed to every agent, searchable entirely offline via `offline_code search`.
+The corpus is **self-improving** — agents contribute back when they find missing patterns.
 
 | Step | Tool | Schedule | LLM? | Output |
 |------|------|----------|------|--------|
 | Deploy | `cortex-update.sh` (sync_code_corpus) | On each deploy | ✗ | `.md` files synced to `~/.hermes/offline/code-corpus/` |
 | Index | `offline-code-index` (cron) | Weekly Sun 05:00 | ✗ | Vector index refreshed (nomic-embed-text) |
+| Learn | `offline_code learn` | On demand (when web_search fills a gap) | ✗ | New `.md` snippet created in code-corpus |
 
-**Agent workflow:** `offline_code search "<question>"` → result found? use it. Not found? fall back to `web_search()`. This saves API costs and works offline. Load the `offline-code` skill for full usage.
+**Agent workflow (mandatory):** `offline_code search "<question>"` → hit? use it. Miss? `web_search()`, then `offline_code learn` to fill the gap. Every cron job's quality gate enforces this cycle.
 
 ## ⚡ Consolidated Nightly Window (Luke's deployment — 02:00–05:00 KST)
 

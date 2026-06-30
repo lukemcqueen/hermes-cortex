@@ -410,7 +410,7 @@ If the backend doesn't support sort params yet, remove the clickable sort header
 
 ### Project boundary discipline — stay in the current repo
 
-- **Do not create, edit, or run files outside the current project directory.** The user's current working directory defines the scope of work. If `cwd` is `/Users/luke/Developer/ACME/acme-works/`, do not write files to `/Users/luke/Developer/ACME/acme-platform/` or any other repo.
+- **Do not create, edit, or run files outside the current project directory.** The user's current working directory defines the scope of work. If `cwd` is `~/Developer/ACME/acme-works/`, do not write files to `~/Developer/ACME/acme-platform/` or any other repo.
 - **When the user corrects the project (`wrong project`, `that's not this repo`), don't switch on your own.** Confirm the correct project and only operate there.
 - **If a task requires cross-project work** (e.g. wiring two repos together), the user will explicitly say so or provide the path. Until then, assume single-project scope.
 - **Repo ownership matters — don't push/merge to repos you don't own.** The user has delegated authority differently per repo:

@@ -15,7 +15,7 @@ Story docs (in `docs/tasks/sprint-*.md`) declare files via a "File List" section
 ```python
 import pathlib, re
 
-root = pathlib.Path("/Users/luke/Developer/ACME/acme-royalty")
+root = pathlib.Path("~/Developer/ACME/acme-royalty")
 story_files = sorted(root.glob("docs/tasks/sprint-*.md"))
 
 for f in story_files:

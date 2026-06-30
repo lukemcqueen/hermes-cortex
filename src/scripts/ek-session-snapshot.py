@@ -6,7 +6,7 @@ Silent exit (0) when nothing changed — no output = no notification."""
 import json, os, subprocess, sys
 from datetime import datetime, timezone, timedelta
 
-REPO = "/Users/luke/Developer/PERSONAL/echokorean"
+REPO = os.environ.get("ECHOKOREAN_REPO", os.path.expanduser("~/Developer/PERSONAL/echokorean"))
 SESSION_FILE = os.path.join(REPO, ".hermes-cortex", "sessions", "current.md")
 KST = timezone(timedelta(hours=9))
 

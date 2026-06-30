@@ -44,7 +44,7 @@ except: pass
 [
   {
     "project_name": "acme-works",
-    "location": "/Users/luke/Developer/ACME/acme-works",
+    "location": "~/Developer/ACME/acme-works",
     "brain_source": "acme-works",
     "profile": "acme-works",
     "created": "2026-06-08T..."

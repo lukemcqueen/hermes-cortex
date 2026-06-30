@@ -412,6 +412,11 @@ create_cron "agent-daily-bible-reading" "0 1 * * *" \
   "Load the soul-refinement skill. Read ~/.hermes/SOUL.md and find the last book covered in the Scripture schedule. Read and summarize the next book. Add the daily verse to the session log." \
   "soul-refinement" "" "origin" "" "false"
 
+# Daily threat pipeline — scanner → fail2ban → deploy → commit → push
+create_cron "threat-pipeline" "0 5 * * *" \
+  "nginx-threat-pipeline.sh" \
+  "" "" "" "origin" "" "true"
+
 # Daily soul refinement (LLM with soul-refinement skill)
 create_cron "agent-daily-soul-refinement" "0 23 * * *" \
   "" \

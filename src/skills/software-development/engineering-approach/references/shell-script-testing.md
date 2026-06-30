@@ -74,6 +74,6 @@ Document this clearly: "Run from the migration workspace directory."
 
 Absolute paths to the script itself work regardless of cwd:
 ```bash
-/Users/luke/Developer/ACME/acme-royalty/scripts/migration/restore-backup.sh
+~/Developer/ACME/acme-royalty/scripts/migration/restore-backup.sh
 # ...but the script's own relative paths resolve from cwd, not from script location
 ```

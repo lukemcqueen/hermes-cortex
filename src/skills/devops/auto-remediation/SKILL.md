@@ -7,6 +7,23 @@ description: Auto-remediate cron job failures, agent inbox requests, and service
 
 Detect and fix cron job errors, agent inbox help requests, and service issues without waiting for the user to notice.
 
+## COST-SAVING MANDATE: Offline-first
+
+Before calling `web_search()` or any external API during remediation:
+1. **`offline_code search "<error/diagnostic>"`** — search the 518-snippet corpus first
+2. **If found:** apply the offline solution — zero API cost
+3. **If not found:** fall back to `web_search()` only as last resort
+
+This is **mandatory** — all cron jobs must check the offline corpus before burning API credits.
+The `offline-code` skill is loaded automatically with this cron.
+
+### Self-Learning
+If you found a fix via `web_search()` that wasn't in the corpus:
+```bash
+offline_code learn "<error-title>" --lang shell --tags "error,fix" --desc "<what caused it>" --code "<the fix>"
+```
+Next index refresh will include it — the corpus learns from every fix.
+
 ## When to use
 
 This skill is loaded by the `agent-auto-remediate` cron job every 5 minutes.

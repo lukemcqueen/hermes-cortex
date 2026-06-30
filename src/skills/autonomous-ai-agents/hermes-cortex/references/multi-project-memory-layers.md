@@ -113,9 +113,9 @@ launchctl load ~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist
     <key>KeepAlive</key>       <!-- restart if crashes -->
     <true/>
     <key>StandardOutPath</key>
-    <string>/Users/luke/.hermes/logs/service.log</string>
+    <string>$HOME/.hermes/logs/service.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/luke/.hermes/logs/service.log</string>
+    <string>$HOME/.hermes/logs/service.log</string>
 </dict>
 </plist>
 ```

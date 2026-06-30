@@ -14,6 +14,12 @@ Usage:
   offline_code gen "binary search tree rust"   → Generate code using Ollama
   offline_code index                           → (Re)build the search index
   offline_code stats                           → Show corpus stats
+  offline_code check "flask rest api"           → JSON: hit/miss for agent scripting
+  offline_code search --learn-on-miss "flask"  → On miss, output learnable template
+  offline_code learn "Title" --lang py --tags "api,flask" \
+      --desc "Description" --code "code here"  → Add learned snippet
+  offline_code learn-from-url "Title" --url https://... --desc "..."
+                                               → Fetch URL, extract code, learn
 
 Requirements: Python 3.10+, Ollama running with nomic-embed-text
 Optional: qwen2.5-coder:1.5b (or higher) for code generation
@@ -26,6 +32,7 @@ import subprocess
 import sys
 import textwrap
 import unicodedata
+from datetime import datetime
 from pathlib import Path
 
 HOME = Path.home()
@@ -33,7 +40,70 @@ CORPUS_DIR = Path(__file__).parent / "code-corpus"
 INDEX_DB = HOME / "offline" / "code-index.json"
 OLLAMA_URL = "http://localhost:11434"
 EMBED_MODEL = "nomic-embed-text"
-GEN_MODEL = "qwen2.5-coder:1.5b"
+GEN_MODEL = "qwen2.5-coder:1.5b-64k"  # default; auto-upgraded if VRAM available
+
+
+def _detect_gen_model() -> str:
+    """Auto-select code generation model based on available VRAM.
+
+    Returns the best model slug for the current hardware.
+    Respects the GEN_MODEL constant as minimum floor.
+    """
+    try:
+        import subprocess
+        total_gb = 0
+        try:
+            # macOS: use sysctl for total RAM
+            result = subprocess.run(
+                ["sysctl", "-n", "hw.memsize"],
+                capture_output=True, text=True, timeout=3
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                total_gb = int(result.stdout.strip()) / (1024**3)
+        except Exception:
+            pass
+
+        if total_gb == 0:
+            # Linux: read /proc/meminfo
+            try:
+                with open("/proc/meminfo") as f:
+                    for line in f:
+                        if line.startswith("MemTotal:"):
+                            total_gb = int(line.split()[1]) / (1024**2)
+                            break
+            except Exception:
+                pass
+
+        # VRAM estimate: on Apple Silicon, ~70% of RAM is available to GPU
+        # On CPU-only, use total RAM / 8 as CPU-inference estimate
+        if total_gb == 0:
+            return GEN_MODEL  # can't detect — use default
+
+        # Detect platform
+        is_macos = False
+        try:
+            is_macos = subprocess.run(
+                ["uname", "-s"], capture_output=True, text=True, timeout=2
+            ).stdout.strip().lower() == "darwin"
+        except Exception:
+            pass
+
+        if is_macos:
+            vram_gb = total_gb * 0.7
+        else:
+            # Linux CPU: estimate usable context as ~1/8 of RAM for 1.5B
+            vram_gb = total_gb / 8
+
+        if vram_gb > 24:
+            return "qwen2.5-coder:14b"                         # Q4_K_M ~8GB
+        elif vram_gb > 10:
+            return "qwen2.5-coder:7b"                          # Q4_K_M ~4.5GB (default)
+        elif vram_gb > 4:
+            return "qwen2.5-coder:1.5b"                        # Q4_K_M ~1GB, 64K context
+        else:
+            return "qwen2.5-coder:1.5b"                        # floor — always runs
+    except Exception:
+        return GEN_MODEL  # fall back to default
 
 
 # ── Corpus Loading ──────────────────────────────────────────
@@ -91,7 +161,7 @@ def _ollama_embed(texts):
     if isinstance(texts, str):
         texts = [texts]
 
-    BATCH_SIZE = 10
+    BATCH_SIZE = 5
     all_embeddings = []
 
     import urllib.request
@@ -171,7 +241,7 @@ def cmd_index(force=False):
         tag_str = ", ".join(s["tags"]) if isinstance(s["tags"], list) else s["tags"]
         text = f"Language: {s['language']}\nTitle: {s['title']}\n"
         text += f"Tags: {tag_str}\nDescription: {s['description']}\n"
-        text += f"Code:\n{s['code'][:2000]}"
+        text += f"Code:\n{s['code'][:500]}"
         embed_texts.append(text)
 
     print(f"Generating {len(embed_texts)} embeddings with {EMBED_MODEL}...")
@@ -230,7 +300,7 @@ def _load_index():
 
 # ── Search ──────────────────────────────────────────────────
 
-def cmd_search(query, limit=5, lang=None):
+def cmd_search(query, limit=5, lang=None, learn_on_miss=False):
     """Search the code corpus for snippets matching a query."""
     index = _load_index()
     if not index:
@@ -267,7 +337,10 @@ def cmd_search(query, limit=5, lang=None):
     results.sort(key=lambda r: r[0], reverse=True)
 
     if not results:
-        print("No matching snippets found.")
+        if learn_on_miss:
+            cmd_learn_on_miss(query)
+        else:
+            print("No matching snippets found.")
         return
 
     print(f"\nFound {len(results)} matching snippet(s)\n")
@@ -291,11 +364,85 @@ def cmd_search(query, limit=5, lang=None):
         print()
 
 
+# ── Self-Learning ─────────────────────────────────────────────
+
+def cmd_learn_on_miss(query):
+    """Output a learnable template when search finds nothing.
+    
+    Agents can use this to know what to web-search and how to format
+    the result back into the corpus.
+    """
+    slug = re.sub(r'[^a-z0-9]+', '-', query.lower()).strip('-')[:60]
+    print()
+    print("╔═══════════════════════════════════════════════════════════╗")
+    print("║  CORPUS MISS — No snippets matched this query           ║")
+    print("║  Self-learning workflow:                                ║")
+    print("║  1. web_search for the pattern                          ║")
+    print("║  2. offline_code learn with the result                  ║")
+    print("║  3. offline_code index --force to rebuild               ║")
+    print("╚═══════════════════════════════════════════════════════════╝")
+    print()
+    print("Suggested learn command:")
+    print()
+    print(f'  offline_code learn "{slug}" \\')
+    print(f'    --lang "<language>" \\')
+    print(f'    --tags "<tag1>,<tag2>" \\')
+    print(f'    --desc "{query}" \\')
+    print(f'    --code "<paste code here>"')
+    print()
+
+
+# ── Check (agent-friendly JSON) ──────────────────────────────
+
+def cmd_check(query, lang=None):
+    """Check if the corpus covers a query. Returns JSON for agent consumption.
+    
+    Output: {"hit": true/false, "count": N, "top_score": X, "suggestion": "..."}
+    """
+    index = _load_index()
+    if not index:
+        print(json.dumps({"hit": False, "count": 0, "error": "index not found"}))
+        return
+
+    snippets = index.get("snippets", [])
+    terms = query.lower().split()
+
+    # Quick keyword-only check (no embedding needed for performance)
+    results = []
+    for s in snippets:
+        if lang and s["language"] != lang:
+            continue
+        text = f"{s['title']} {s['tags']} {s['description']} {s['code']}".lower()
+        kw_score = sum(1 for t in terms if t in text)
+        if kw_score > 0:
+            results.append((kw_score / len(terms), s["title"]))
+
+    results.sort(key=lambda r: r[0], reverse=True)
+    top_score = results[0][0] if results else 0
+    count = len(results)
+
+    result = {
+        "hit": count > 0,
+        "count": count,
+        "top_score": round(top_score * 100),
+    }
+
+    if not count:
+        slug = re.sub(r'[^a-z0-9]+', '-', query.lower()).strip('-')[:60]
+        result["suggestion"] = (
+            f"Learn it: offline_code learn \"{slug}\" "
+            f"--lang \"<lang>\" --tags \"<tags>\" "
+            f"--desc \"{query}\" --code \"<paste code>\""
+        )
+
+    print(json.dumps(result))
+
+
 # ── Generate ────────────────────────────────────────────────
 
 def cmd_generate(query, model=None, limit=3):
     """Search corpus, then ask Ollama to generate code based on context."""
-    model = model or GEN_MODEL
+    model = model or _detect_gen_model()
 
     # First, find relevant snippets
     index = _load_index()
@@ -400,7 +547,7 @@ def cmd_stats():
         gen_ok = any("qwen2.5-coder" in m for m in models)
         print(f"\n🤖 Ollama Models")
         print(f"   {EMBED_MODEL}:     {'✅' if emb_ok else '❌'} (pull: ollama pull {EMBED_MODEL})")
-        print(f"   Code gen:   {'✅' if gen_ok else '⚠️  not pulled'} (pull: ollama pull {GEN_MODEL})")
+        print(f"   Code gen:   {'✅' if gen_ok else '⚠️  not pulled'} (detected: {_detect_gen_model()})")
         if models:
             print(f"   Available:  {', '.join(models[:5])}")
     except Exception:
@@ -409,6 +556,52 @@ def cmd_stats():
 
 
 # ── CLI ─────────────────────────────────────────────────────
+
+
+def cmd_learn(title: str, language: str, tags: list, description: str, code: str):
+    """Create a new snippet from a web-learned pattern.
+
+    Agents call this when offline_code search misses and web_search finds
+    something useful. Creates a properly formatted .md snippet so the
+    next index refresh bakes it into the corpus permanently.
+    """
+    slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')[:60]
+    lang_map = {
+        "python": "python", "typescript": "typescript", "javascript": "javascript",
+        "go": "go", "rust": "rust", "ruby": "ruby", "java": "java", "kotlin": "kotlin",
+        "swift": "swift", "c": "c", "c++": "c++", "csharp": "csharp",
+        "dart": "dart", "php": "php", "r": "r", "zig": "zig", "lua": "lua",
+        "shell": "shell", "bash": "shell", "sql": "sql", "yaml": "configuration",
+        "docker": "docker", "terraform": "terraform",
+        "html": "css", "css": "css",
+        "nginx": "nginx", "markdown": "documentation",
+    }
+    lang_dir = CORPUS_DIR / lang_map.get(language, "generic")
+    lang_dir.mkdir(parents=True, exist_ok=True)
+    filepath = lang_dir / f"{slug}.md"
+
+    if filepath.exists():
+        print(f"⚠️  Already exists: {filepath}")
+        return
+
+    frontmatter = (
+        "---\n"
+        f"language: {language}\n"
+        f"tags: [{', '.join(tags)}]\n"
+        f"title: {title}\n"
+        f"description: {description}\n"
+        "source: learned\n"
+        "---\n"
+        "\n"
+        f"```{language}\n"
+        f"{code}\n"
+        "```\n"
+    )
+
+    filepath.write_text(frontmatter, encoding="utf-8")
+    print(f"✅ Learned: {filepath}")
+    print(f"   Next index refresh will include this snippet.")
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -430,6 +623,13 @@ def main():
     s.add_argument("query", nargs="+", help="Search terms")
     s.add_argument("--limit", "-n", type=int, default=5, help="Max results")
     s.add_argument("--lang", "-l", help="Filter by language")
+    s.add_argument("--learn-on-miss", "-L", action="store_true",
+                   help="Output learnable template when no results found")
+
+    # Check (agent-friendly JSON)
+    c = sub.add_parser("check", help="Check if corpus covers a query (JSON output)")
+    c.add_argument("query", nargs="+", help="Search terms")
+    c.add_argument("--lang", "-l", help="Filter by language")
 
     # Generate
     g = sub.add_parser("gen", help="Generate code using Ollama + RAG context")
@@ -444,19 +644,36 @@ def main():
     # Stats
     sub.add_parser("stats", help="Show corpus and index statistics")
 
+    # Learn (self-improvement)
+    l = sub.add_parser("learn", help="Add a new snippet learned from the web")
+    l.add_argument("title", help="Snippet title")
+    l.add_argument("--lang", "-l", default="python", help="Programming language")
+    l.add_argument("--tags", "-t", default="", help="Comma-separated tags")
+    l.add_argument("--desc", "-d", default="", help="Short description")
+    l.add_argument("--code", "-c", default="", help="Code content (or pipe via stdin)")
+
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
         sys.exit(0)
 
     if args.command == "search":
-        cmd_search(" ".join(args.query), limit=args.limit, lang=args.lang)
+        cmd_search(" ".join(args.query), limit=args.limit, lang=args.lang,
+                   learn_on_miss=args.learn_on_miss)
+    elif args.command == "check":
+        cmd_check(" ".join(args.query), lang=args.lang)
     elif args.command == "gen":
         cmd_generate(" ".join(args.query), model=args.model, limit=args.limit)
     elif args.command == "index":
         cmd_index(force=args.force)
     elif args.command == "stats":
         cmd_stats()
+    elif args.command == "learn":
+        tags = [t.strip() for t in args.tags.split(",") if t.strip()]
+        code = args.code
+        if not code and not sys.stdin.isatty():
+            code = sys.stdin.read().strip()
+        cmd_learn(args.title, args.lang, tags, args.desc, code)
 
 
 if __name__ == "__main__":

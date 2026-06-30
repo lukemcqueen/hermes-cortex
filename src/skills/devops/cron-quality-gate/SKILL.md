@@ -35,14 +35,25 @@ Layer 2 — Watchdog (no_agent script, every 10 min)
 
 ## The Quality Gate Prompt Block
 
-Add this to every LLM cron prompt:
+Add this to **every** LLM cron prompt:
 
 ```
 ## QUALITY GATE — CRITICAL
+### Cost-saving: offline-first
+BEFORE calling `web_search()` or making any external API call:
+1. Load the `offline-code` skill (loaded automatically if attached to cron)
+2. Run `offline_code search "<diagnostic question>"` to check the corpus
+3. If offline result is relevant → use it. Zero cost, zero latency.
+4. Only fall back to `web_search()` if offline has nothing useful.
+
+### Self-check
 Before delivering, self-check:
 1. Is the output useful, readable, and on-topic?
 2. Did you run actual tools, not fabricate results?
-3. Is it the right length (not oversized, not empty)?
+3. Did you check the offline corpus before making external calls?
+4. If you used web_search because offline had nothing → did you
+   run `offline_code learn` to add the result back to the corpus?
+5. Is it the right length (not oversized, not empty)?
 If ANY answer is NO → output EXACTLY this one line:
 QUALITY_G_BLOCKED
 
