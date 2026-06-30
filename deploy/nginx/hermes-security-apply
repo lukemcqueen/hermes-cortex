@@ -129,10 +129,16 @@ touch "$BLOCK_FILE"
 if [ -f "$BLOCKED_IPS" ]; then
   ADDED=0
   SKIPPED=0
+  INVALID=0
   while IFS= read -r ip; do
     # Skip blank lines and comments
     [ -z "$ip" ] && continue
     [[ "$ip" == \#* ]] && continue
+    # Validate IPv4 format
+    if ! echo "$ip" | grep -qP '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'; then
+      INVALID=$((INVALID + 1))
+      continue
+    fi
     # Check for duplicate
     if grep -q "^deny ${ip};" "$BLOCK_FILE" 2>/dev/null; then
       SKIPPED=$((SKIPPED + 1))
@@ -141,7 +147,7 @@ if [ -f "$BLOCKED_IPS" ]; then
       ADDED=$((ADDED + 1))
     fi
   done < "$BLOCKED_IPS"
-  echo "  ✓ ${ADDED} new IPs added, ${SKIPPED} duplicates skipped"
+  echo "  ✓ ${ADDED} new IPs added, ${SKIPPED} duplicates skipped${INVALID:+, ${INVALID} invalid skipped}"
 fi
 
 # Ensure blocked_ips.conf is included in the services config
