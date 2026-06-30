@@ -281,8 +281,10 @@ if ! command -v python3 &>/dev/null; then
   exit 1
 fi
 
-# ── 1. Auto-Remediation (LLM-driven, skill-based) ──────────
-printf "${CYAN}  1. Auto-Remediation Pipeline${RESET}\n"
+# ── 1. Auto-Remediation Pipeline ────────────────────────────
+printf "${CYAN}  1. Auto-Remediation Pipeline${RESET}\\n"
+
+# LLM-driven auto-remediation (every 30 min)
 create_cron "agent-auto-remediate" "*/30 * * * *" \
   "" \
   "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report." \
@@ -293,7 +295,7 @@ create_cron "agent-auto-remediate" "*/30 * * * *" \
   "false" \
   "deepseek-v4-flash" "opencode-zen"
 
-# ── 2. Remediation Sensor (no_agent, companion) ────────────
+# Companion sensor (no_agent, every 5 min)
 create_cron "remediation-sensor" "*/5 * * * *" \
   "remediation-sensor.py" \
   "" \
@@ -303,8 +305,9 @@ create_cron "remediation-sensor" "*/5 * * * *" \
   "" \
   "true"
 
-# ── 3. System Alert Watchdog (merged heartbeat) ──────────
-printf "\n${CYAN}  2. System Health Monitoring${RESET}\n"
+# ── 2. System Health Monitoring ──────────────────────────────
+printf "\\n${CYAN}  2. System Health Monitoring${RESET}\\n"
+
 create_cron "system-alert-watchdog" "*/30 * * * *" \
   "system-alert-watchdog.py" \
   "" \
@@ -314,7 +317,6 @@ create_cron "system-alert-watchdog" "*/30 * * * *" \
   "" \
   "true"
 
-# ── 6. Service Recovery ─────────────────────────────────────
 create_cron "service-recovery" "*/5 * * * *" \
   "service-recovery.py" \
   "" \
@@ -324,8 +326,9 @@ create_cron "service-recovery" "*/5 * * * *" \
   "" \
   "true"
 
-# ── 7. Memory to Brain Sync ─────────────────────────────────
-printf "\n${CYAN}  3. Knowledge & Memory${RESET}\n"
+# ── 3. Knowledge & Memory ────────────────────────────────────
+printf "\\n${CYAN}  3. Knowledge & Memory${RESET}\\n"
+
 create_cron "memory-to-brain-sync" "0 */6 * * *" \
   "memory-to-brain-sync.py" \
   "" \
@@ -335,8 +338,9 @@ create_cron "memory-to-brain-sync" "0 */6 * * *" \
   "" \
   "true"
 
-# ── 8. Inbox Monitoring ─────────────────────────────────────
-printf "\n${CYAN}  4. Agent Inbox Processing${RESET}\n"
+# ── 4. Agent Inbox Processing ────────────────────────────────
+printf "\\n${CYAN}  4. Agent Inbox Processing${RESET}\\n"
+
 create_cron "inbox-sensor" "*/10 * * * *" \
   "inbox-sensor.py" \
   "" \
@@ -346,8 +350,9 @@ create_cron "inbox-sensor" "*/10 * * * *" \
   "" \
   "true"
 
-# ── 9. Score Auditor (checks for unscored changes) ──────────
-printf "\n${CYAN}  5. Change Scoring Audit${RESET}\n"
+# ── 5. Change Scoring Audit ──────────────────────────────────
+printf "\\n${CYAN}  5. Change Scoring Audit${RESET}\\n"
+
 create_cron "score-auditor" "0 */6 * * *" \
   "score-auditor.py" \
   "" \
@@ -357,7 +362,7 @@ create_cron "score-auditor" "0 */6 * * *" \
   "" \
   "true"
 
-# ── Orchestrator-only crons ─────────────────────────────────
+# ── Orchestrator-Only Crons ──────────────────────────────────
 # These crons only run on the orchestrator (Moses) and backup
 # orchestrator. Worker agents skip them entirely.
 # Agent-registry detection: if this host's hostname matches the

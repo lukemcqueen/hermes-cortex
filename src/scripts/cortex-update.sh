@@ -121,15 +121,15 @@ register "src/scripts/prod-watchdog.sh"          "${HERMES_HOME}/scripts/prod-wa
 register "src/scripts/orch-team-messages.sh"    "${HERMES_HOME}/scripts/orch-team-messages.sh"
 
 # Post-commit notification + installer
-register "scripts/post-commit-notify.sh"          "${HERMES_HOME}/scripts/post-commit-notify.sh"
-register "scripts/install-post-commit-hook.sh"    "${HERMES_HOME}/scripts/install-post-commit-hook.sh"
+register "src/scripts/post-commit-notify.sh"          "${HERMES_HOME}/scripts/post-commit-notify.sh"
+register "src/scripts/install-post-commit-hook.sh"    "${HERMES_HOME}/scripts/install-post-commit-hook.sh"
 
 # Moses inbox remediation
-register "scripts/orch-moses-inbox-remediate.sh"       "${HERMES_HOME}/scripts/orch-moses-inbox-remediate.sh"
+register "src/scripts/orch-moses-inbox-remediate.sh"  "${HERMES_HOME}/scripts/orch-moses-inbox-remediate.sh"
 
 # Auto-remediation scripts
 register "src/scripts/cron-auto-remediate.sh"     "${HERMES_HOME}/scripts/cron-auto-remediate.sh"
-register "scripts/orch-weekly-auto-fix.py"              "${HERMES_HOME}/scripts/orch-weekly-auto-fix.py"
+register "src/scripts/orch-weekly-auto-fix.py"    "${HERMES_HOME}/scripts/orch-weekly-auto-fix.py"
 
 # System watchdog scripts (no_agent cron jobs)
 register "src/scripts/system-alert-watchdog.py"   "${HERMES_HOME}/scripts/system-alert-watchdog.py"
