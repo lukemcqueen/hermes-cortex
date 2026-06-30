@@ -25,7 +25,7 @@ HOME = Path.home()
 REGISTRY_PATH = HOME / "hermes-cortex" / "src" / "agent-registry.json"
 REGISTRY_LOCAL = HOME / ".hermes" / "agent-registry.local.json"
 TIMEOUT = 3
-SERVICE_MAP = ["nginx", "ollama", "gbrain", "dash", "langfuse-w", "langfuse-b", "docker", "gateway"]
+SERVICE_MAP = ["resources", "services", "no_errored_crons", "no_stale_crons", "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok"]
 ICONS = {1: "🟢", 0: "⚪", -1: "🔴"}
 STATUS_LABEL = {1: "✅", -1: "⚠️"}
 

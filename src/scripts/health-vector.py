@@ -34,14 +34,15 @@ import time
 from pathlib import Path
 
 SERVICE_MAP = [
+    "resources",
+    "services",
+    "no_errored_crons",
+    "no_stale_crons",
     "nginx",
     "ollama",
     "gbrain",
-    "cortex-dashboard",
-    "langfuse-web",
-    "langfuse-worker",
-    "docker",
-    "hermes-gateway",
+    "disk_ok",
+    "gbrain_sources_ok",
 ]
 
 HOSTNAME = os.environ.get("HEALTH_HOSTNAME", os.uname().nodename.split(".")[0])
