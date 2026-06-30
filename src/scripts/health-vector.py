@@ -157,7 +157,7 @@ def check_gbrain() -> int:
         for label in ["com.gbrain.autopilot", "com.gbrain.sync-watch"]:
             if _launchd_active(label):
                 return 1
-    if _pgrep("gbrain"):
+    if _pgrep("gbrain", exact=False, full=True):
         return 1
     return -1
 
