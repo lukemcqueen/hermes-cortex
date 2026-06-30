@@ -277,14 +277,25 @@ def _check_cron_health() -> dict:
 
 
 # ── gbrain sources check ───────────────────────────────────────
+_gbrain_cache: dict | None = None
+_gbrain_cache_ts: float = 0
+_GBRAIN_CACHE_TTL = 300  # 5 minutes
+
 def _check_gbrain_sources() -> dict:
     """Check gbrain source health via gbrain doctor --json.
+
+    Results are cached for 5 minutes to avoid blocking the health server
+    with the 30s+ gbrain doctor subprocess call.
 
     Gracefully degrades when gbrain is unavailable:
       - Try 1: gbrain doctor --json (authoritative, 45s timeout)
       - Try 2: gbrain sources list (parseable fallback, 15s)
       - Returns UNKNOWN (not DOWN) when gbrain is unavailable
     """
+    global _gbrain_cache, _gbrain_cache_ts
+    now = time.time()
+    if _gbrain_cache is not None and (now - _gbrain_cache_ts) < _GBRAIN_CACHE_TTL:
+        return _gbrain_cache
     issues: list[dict] = []
     sources_ok = True
 
@@ -329,11 +340,16 @@ def _check_gbrain_sources() -> dict:
     gbrain_cmd = str(bun_path / "gbrain")
 
     if not bun_path.exists() or not Path(gbrain_cmd).exists():
-        return {"healthy": True, "issues": [], "gbrain_installed": False,
+        result = {"healthy": True, "issues": [], "gbrain_installed": False,
                 "detail": "gbrain not installed"}
+        _gbrain_cache = result
+        _gbrain_cache_ts = time.time()
+        return result
     if not (HOME / "brain").exists():
-        return {"healthy": True, "issues": [], "gbrain_installed": False,
+        _gbrain_cache = {"healthy": True, "issues": [], "gbrain_installed": False,
                 "detail": "no brain directory"}
+        _gbrain_cache_ts = time.time()
+        return _gbrain_cache
 
     # Try 1: gbrain doctor --json
     out, _, rc = _run_gbrain([gbrain_cmd, "doctor", "--json"], timeout=45)
@@ -361,16 +377,25 @@ def _check_gbrain_sources() -> dict:
                 for f in failures:
                     issues.append({"severity": "warning", "check": "gbrain_sources",
                                    "detail": f, "service": "gbrain"})
-                return {"healthy": False, "issues": issues,
+                result = {"healthy": False, "issues": issues,
                         "gbrain_installed": True, "detail": "; ".join(failures[:3])}
+                _gbrain_cache = result
+                _gbrain_cache_ts = time.time()
+                return result
 
             overall = data.get("overall_health_score", -1)
             if 0 <= overall < 50:
-                return {"healthy": False, "issues": issues,
+                result = {"healthy": False, "issues": issues,
                         "gbrain_installed": True, "detail": f"Health score: {overall}/100"}
+                _gbrain_cache = result
+                _gbrain_cache_ts = time.time()
+                return result
 
-            return {"healthy": True, "issues": issues,
+            result = {"healthy": True, "issues": issues,
                     "gbrain_installed": True, "detail": "All sources healthy"}
+            _gbrain_cache = result
+            _gbrain_cache_ts = time.time()
+            return result
         except json.JSONDecodeError:
             pass  # Fall through
 
@@ -391,11 +416,17 @@ def _check_gbrain_sources() -> dict:
         healthy = len(issues) == 0
         detail = f"{total} source(s), all synced" if healthy else "; ".join(
             i["detail"] for i in issues[:2])
-        return {"healthy": healthy, "issues": issues,
+        result = {"healthy": healthy, "issues": issues,
                 "gbrain_installed": True, "detail": detail}
+        _gbrain_cache = result
+        _gbrain_cache_ts = time.time()
+        return result
 
-    return {"healthy": True, "issues": issues,
+    result = {"healthy": True, "issues": issues,
             "gbrain_installed": True, "detail": "gbrain sources check unavailable"}
+    _gbrain_cache = result
+    _gbrain_cache_ts = time.time()
+    return result
 
 
 # ── Consolidated health ───────────────────────────────────────
