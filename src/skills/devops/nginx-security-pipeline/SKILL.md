@@ -165,7 +165,7 @@ sudo /usr/local/sbin/hermes-security-apply
 1. Backs up existing configs to `/etc/hermes-cortex-backups/$(date)/`
 2. Deploys fresh nginx configs
 3. Deduplicates include directives
-4. Appends new IPs (skips duplicates)
+4. Appends new IPs (skips duplicates) — validates IPv4, rejects garbage
 5. Installs fail2ban filter + jail
 6. Runs `nginx -t` to validate
 7. If valid: reloads nginx and fail2ban
@@ -219,7 +219,9 @@ sudo systemctl reload fail2ban
 
 5. **fail2ban socket on macOS**: Requires root to access. Always use `sudo fail2ban-client`.
 
-6. **Log paths on Linux**: The jail `logpath` must match your OS — `/var/log/nginx/access.log` on Linux vs `/usr/local/var/log/nginx/*-access.log` on macOS Homebrew.
+7. **IPv4 validation**: All three scripts (`hermes-security-apply`, `generate-blocked-ips.py`, `fix-blocked-ips.py`) now validate IPv4 format and reject garbage entries. The threat pipeline also filters via `awk` before appending to `blocked_ips.add`. If nginx -t fails with "invalid parameter `00:NN,NNN`", run `fix-blocked-ips.py` to regenerate from clean source.
+
+8. **Log paths on Linux**: The jail `logpath` must match your OS — `/var/log/nginx/access.log` on Linux vs `/usr/local/var/log/nginx/*-access.log` on macOS Homebrew.
 
 ## Verification
 

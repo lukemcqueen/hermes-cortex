@@ -99,7 +99,7 @@ blocked_ips.add (input)    nginx-badbots.conf (input)
          ├── Backs up old configs
          ├── Deploys nginx + zone-defs
          ├── Deduplicates includes
-         ├── Appends new IPs (skip dups) — wrapped as `deny <ip>;`
+         ├── Appends new IPs (skip dups) — wrapped as `deny <ip>;`, validates IPv4
          ├── Installs fail2ban filter
          ├── nginx -t (validate)
          └── Reloads fail2ban + nginx

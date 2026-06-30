@@ -16,8 +16,19 @@ Install to ~/.hermes/scripts/ for agent use:
   cp deploy/nginx/fix-blocked-ips.py ~/.hermes/scripts/
 """
 import os
+import re
 import sys
 import platform
+
+IPV4_RE = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
+
+def is_valid_ip(s):
+    """Return True if s is a valid IPv4 address."""
+    if not IPV4_RE.match(s):
+        return False
+    parts = [int(p) for p in s.split(".")]
+    return all(0 <= p <= 255 for p in parts)
+
 
 # Detect paths
 is_linux = platform.system() == "Linux"
@@ -45,14 +56,23 @@ if os.path.exists(current_conf):
             if line.startswith("allow "):
                 allow_lines.append(line.rstrip())
 
-# Read IPs from source
+# Read and validate IPs from source
 ips = []
+skipped = []
 with open(blocked_ips_add) as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        ips.append(line)
+        if is_valid_ip(line):
+            ips.append(line)
+        else:
+            skipped.append(line)
+
+if skipped:
+    print(f"⚠ Skipped {len(skipped)} invalid entries in blocked_ips.add")
+    for s in skipped[:3]:
+        print(f"   invalid: {s}")
 
 # Write new config
 output = list(allow_lines)
