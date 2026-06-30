@@ -89,8 +89,6 @@ if [ -n "$F2B_LOG" ]; then
         grep -oP '\'"'"'[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'\'"'"' | sort -u | \
         while IFS= read -r ip; do
           [ -z "$ip" ] && continue
-          # Validate IPv4 format
-          if ! echo "$ip" | grep -qP '^(\d{1,3}\.){3}\d{1,3}$'; then continue; fi
           grep -qF "$ip" "${CORTEX_REPO}/deploy/nginx/blocked_ips.add" 2>/dev/null && continue
           echo "$ip"
         done
@@ -103,14 +101,15 @@ if [ -n "$F2B_LOG" ]; then
         grep -oP '\'"'"'[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'\'"'"' | sort -u | \
         while IFS= read -r ip; do
           [ -z "$ip" ] && continue
-          # Validate IPv4 format
-          if ! echo "$ip" | grep -qP '\'"'"'^(\d{1,3}\.){3}\d{1,3}$'\'"'"'; then continue; fi
           grep -qF "$ip" "${CORTEX_REPO}/deploy/nginx/blocked_ips.add" 2>/dev/null && continue
           echo "$ip"
         done
     ' _ "$F2B_LOG" "$CORTEX_REPO") || true
   fi
   NEW_F2B_IPS="$F2B_TIMEOUT_RESULT"
+
+  # Validate all extracted IPs — reject garbage from fail2ban log parsing
+  NEW_F2B_IPS=$(echo "$NEW_F2B_IPS" | awk -F. 'NF==4{for(i=1;i<=4;i++)if($i+0<0||$i+0>255)next}1')
 
   F2B_COUNT=$(echo "$NEW_F2B_IPS" | grep -c '[0-9]' 2>/dev/null || true)
   F2B_COUNT=$((F2B_COUNT + 0))
