@@ -42,6 +42,7 @@ HOME = Path.home()
 STATE_FILE = HOME / ".hermes" / "state" / "health-state.json"
 HEALTH_DATA_FILE = HOME / ".hermes" / "state" / "agent-health-data.json"
 REGISTRY_PATH = HOME / "hermes-cortex" / "src" / "agent-registry.json"
+REGISTRY_LOCAL = HOME / ".hermes" / "agent-registry.local.json"
 INBOX_CONF = HOME / ".hermes" / "moses-inbox.conf"
 TIMEOUT = 3
 HEALTH_TOPIC = "health"
@@ -101,31 +102,49 @@ def _inbox_request(path: str) -> dict | None:
 # ── Agent loading ──
 
 def _get_agents() -> list[dict]:
-    """Load all tracked agents from registry — HTTP-pollable and inbox-based."""
+    """Load all tracked agents from registry — HTTP-pollable and inbox-based.
+
+    Merges local overrides from ~/.hermes/agent-registry.local.json on top of
+    the main registry. Local overrides can set health_url, accessible, etc.
+    without committing to the public repo.
+    """
     agents = []
+    registry = {}
+    local_overrides = {}
     if REGISTRY_PATH.exists():
         try:
-            data = json.loads(REGISTRY_PATH.read_text())
-            for key, entry in data.get("agents", {}).items():
-                if not entry.get("accessible", False):
-                    continue
-                method = entry.get("health_method", "http")
-                name = entry.get("name", key.capitalize())
-
-                if method == "http":
-                    url = (entry.get("health_url") or "").strip()
-                    if url:
-                        agents.append({
-                            "key": key, "name": name,
-                            "method": "http", "url": url,
-                        })
-                elif method == "inbox":
-                    agents.append({
-                        "key": key, "name": name,
-                        "method": "inbox",
-                    })
-        except (json.JSONDecodeError, KeyError, OSError):
+            registry = json.loads(REGISTRY_PATH.read_text())
+        except (json.JSONDecodeError, OSError):
             pass
+    if REGISTRY_LOCAL.exists():
+        try:
+            local_overrides = json.loads(REGISTRY_LOCAL.read_text()).get("agents", {})
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    for key, entry in registry.get("agents", {}).items():
+        # Apply local overrides
+        merged = dict(entry)
+        if key in local_overrides:
+            merged.update(local_overrides[key])
+
+        if not merged.get("accessible", False):
+            continue
+        method = merged.get("health_method", "http")
+        name = merged.get("name", key.capitalize())
+
+        if method == "http":
+            url = (merged.get("health_url") or "").strip()
+            if url:
+                agents.append({
+                    "key": key, "name": name,
+                    "method": "http", "url": url,
+                })
+        elif method == "inbox":
+            agents.append({
+                "key": key, "name": name,
+                "method": "inbox",
+            })
 
     # Fallback: always include Moses local health if not already present
     if not any(a["key"] == "moses" for a in agents):
