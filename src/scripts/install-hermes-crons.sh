@@ -499,6 +499,23 @@ create_cron "process-mcp-agent-inbox-messages" "0 6-23 * * *" \
   "" "" "origin" "" "false" \
   "deepseek-v4-flash" "opencode-zen"
 
+# Scoring activity watchdog — alerts if too few cycles logged today
+create_cron "scoring-activity-watchdog" "0 14,20 * * *" \
+  "scoring-activity-watchdog.py" \
+  "" "" "" "origin" "" "true"
+
+# Loop-governance: skill miner — mines local data, sends findings via inbox
+create_cron "skill-miner" "0 6 * * 1" \
+  "skill_miner.py" \
+  "" "" "" "origin" "" "true"
+
+# Loop-governance: weekly evaluation — report, skill miner, auto-apply, retention
+create_cron "agent-weekly-loop-eval" "0 9 * * 1" \
+  "" \
+  "Run the loop governance evaluation pipeline for the last 7 days, then run the skill miner, auto-apply safe config changes, and vacuum old cycles.\n\n1. Generate the evaluation report using the loop-governance skill (last 7 days).\n2. Run the skill miner: execute `skill-miner` and report findings.\n3. Run auto-apply: execute `auto-apply --json`. Report what was applied or skipped.\n4. Run DB retention (archive cycles older than 90 days).\n5. Deliver a combined message." \
+  "loop-governance" "" "origin" "" "false" \
+  "deepseek-v4-flash" "opencode-zen"
+
 echo ""
 printf "${CYAN}━━━ Summary ━━━${RESET}\n"
 if $DRY_RUN; then
