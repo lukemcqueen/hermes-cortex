@@ -237,6 +237,72 @@ if patched:
 " 2>&1 | grep -q PINNED && info "  Pinned ${name} → ${model:-<default>}/${provider:-<default>}" || true
 }
 
+
+# ── Setup Local Ollama Provider ────────────────────────────
+# Adds the custom:ollama-local provider to Hermes config.yaml
+# so crons can use qwen2.5-coder:3b locally at zero cost.
+setup_ollama_provider() {
+  local config_file="${HERMES_HOME}/config.yaml"
+  if [[ ! -f "$config_file" ]]; then
+    warn "config.yaml not found at ${config_file} — cannot set up ollama provider"
+    return 0
+  fi
+  if grep -q 'custom_providers:' "$config_file" 2>/dev/null && grep -q 'ollama-local' "$config_file" 2>/dev/null; then
+    info "Local Ollama provider custom:ollama-local already configured"
+    return 0
+  fi
+  if $DRY_RUN; then
+    info "[DRY-RUN] Would add custom:ollama-local provider to config.yaml"
+    return 0
+  fi
+  # Insert custom_providers block before fallback_providers
+  python3 << "PYEOF" 2>&1
+import os
+fp = os.path.expanduser("${config_file}")
+with open(fp) as f:
+    text = f.read()
+old_model = (
+    '  default: deepseek-v4-flash\n'
+    '  provider: opencode-zen\n'
+)
+if old_model in text:
+    custom_block = (
+        '  default: deepseek-v4-flash\n'
+        '  provider: opencode-zen\n'
+        'custom_providers:\n'
+        '  ollama-local:\n'
+        '    base_url: http://localhost:11434/v1\n'
+        '    api_key: ""\n'
+        '    api_mode: chat_completions\n'
+    )
+    text = text.replace(old_model, custom_block, 1)
+    with open(fp, 'w') as f:
+        f.write(text)
+    print("ADDED")
+else:
+    # Try inserting before fallback_providers:
+    lines_t = text.split("\n")
+    for i, line in enumerate(lines_t):
+        if line.strip() == "fallback_providers:":
+            custom_block = ('custom_providers:\n'
+                '  ollama-local:\n'
+                '    base_url: http://localhost:11434/v1\n'
+                '    api_key: ""\n'
+                '    api_mode: chat_completions')
+            lines_t.insert(i, custom_block)
+            text = "\n".join(lines_t)
+            with open(fp, 'w') as f:
+                f.write(text)
+            print("ADDED")
+            break
+PYEOF
+  if [[ $? -eq 0 ]] && grep -q ADDED /dev/stdin 2>/dev/null; then
+    info "Added local Ollama provider: custom:ollama-local"
+  else
+    warn "Could not auto-add custom provider — add manually to config.yaml"
+  fi
+}
+
 # ── Remove Cron ─────────────────────────────────────────────
 remove_cron() {
   local name="$1"
@@ -281,6 +347,9 @@ if ! command -v python3 &>/dev/null; then
   exit 1
 fi
 
+# Setup local Ollama provider for qwen crons
+setup_ollama_provider
+
 # ── 1. Auto-Remediation Pipeline ────────────────────────────
 printf "${CYAN}  1. Auto-Remediation Pipeline${RESET}\\n"
 
@@ -293,7 +362,7 @@ create_cron "agent-auto-remediate" "*/30 * * * *" \
   "origin" \
   "$HOME" \
   "false" \
-  "deepseek-v4-flash" "opencode-zen"
+  "qwen2.5-coder:3b" "custom:ollama-local"
 
 # Companion sensor (no_agent, every 5 min)
 create_cron "remediation-sensor" "*/5 * * * *" \
@@ -460,7 +529,7 @@ create_cron "agent-daily-bible-reading" "0 1 * * *" \
   "" \
   "Load the soul-refinement skill. Read ~/.hermes/SOUL.md and find the last book covered in the Scripture schedule. Read and summarize the next book. Add the daily verse to the session log." \
   "soul-refinement" "" "origin" "" "false" \
-  "deepseek-v4-flash" "opencode-zen"
+  "qwen2.5-coder:3b" "custom:ollama-local"
 
 # Daily threat pipeline — scanner → fail2ban → deploy → commit → push
 create_cron "threat-pipeline" "0 5 * * *" \
@@ -472,7 +541,7 @@ create_cron "agent-daily-soul-refinement" "0 23 * * *" \
   "" \
   "Load the soul-refinement skill. Use session_search() to find today's sessions. Look for any user corrections, feedback, or behavior patterns worth noting. Update SOUL.md with insights. Keep it under 5KB." \
   "soul-refinement" "" "origin" "" "false" \
-  "deepseek-v4-flash" "opencode-zen"
+  "qwen2.5-coder:3b" "custom:ollama-local"
 
 # ── 7. Universal Agent Crons ──────────────────────────────
 printf "\n${CYAN}  7. Universal Agent Crons${RESET}\n"

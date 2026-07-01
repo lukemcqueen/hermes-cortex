@@ -40,6 +40,23 @@ This replaces the previous three-model stack (`llama3.2:1b` + `qwen2.5-coder:1.5
 - ✅ Message routing decisions
 - ✅ Fallback when cloud model is rate-limited
 
+### Cron Model Migration
+
+As of July 2026, several LLM-powered crons now default to **qwen2.5-coder:3b** (local, zero cost) instead of deepseek-v4-flash (API):
+
+| Cron | Schedule | Model | Why |
+|------|----------|-------|-----|
+| `agent-daily-bible-reading` | daily @ 1am | qwen2.5-coder:3b | Pure text, no web needed |
+| `agent-daily-soul-refinement` | daily @ 11pm | qwen2.5-coder:3b | Session analysis, file-only |
+| `memory-pruning` | weekly @ Mon 4am | qwen2.5-coder:3b | Memory consolidation, no web |
+
+The `install-crons.sh` script auto-configures the `custom:ollama-local` provider in Hermes config.yaml and pins these crons to qwen. Remaining LLM crons (briefs, evaluation pipelines, inbox processing) stay on deepseek-v4-flash for quality-sensitive tasks.
+
+To run these crons on a fresh Hermes install:
+```bash
+bash src/scripts/install-crons.sh
+```
+
 See `docs/model-tier-strategy.md` for full architecture, RAM budget, and integration points.
 
 ## Key Directories

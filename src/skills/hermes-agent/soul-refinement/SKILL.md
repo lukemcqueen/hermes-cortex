@@ -42,12 +42,13 @@ cronjob create --name "agent-daily-bible-reading" \
 {2-4 sentence narrative connecting the book's theme to the agent's role.
 The last sentence should name the explicit lesson for the agent.}
 
-📊 Token cost: tracked in session DB | Cron: agent-daily-bible-reading
+📊 Model: {actual model name (provider)} | Cost: ${actual_cost} | Cron: agent-daily-bible-reading
 ```
 
 **Output rules:**
 - Start every response with `[YYYY-MM-DD HH:MM KST] agent-daily-bible-reading`
-- End every response with `📊 Token cost: tracked in session DB | Cron: agent-daily-bible-reading`
+- The footer line MUST report the actual model running. Run `ollama ps` if needed to identify the model. Format: `📊 Model: qwen2.5-coder:3b (custom:ollama-local) | Cost: $0.000000 | Cron: agent-daily-bible-reading`
+- End every response with the footer line above.
 - Silent (no output) when all 66 books covered or today is Sunday
 - Silent on duplicate — if same book as last run, suppress output
 
