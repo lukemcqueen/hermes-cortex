@@ -32,6 +32,7 @@ for cmd in timeout gtimeout; do
 done
 
 # DEPLOY_SCRIPT: linux=/usr/local/sbin, mac intel=/usr/local/sbin, mac arm=/opt/homebrew/sbin
+CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 DEPLOY_SCRIPT=""
 for path in "${CORTEX_REPO}/deploy/nginx/hermes-security-apply" /usr/local/sbin/hermes-security-apply /opt/homebrew/sbin/hermes-security-apply; do
   if [ -x "$path" ]; then

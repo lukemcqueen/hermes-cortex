@@ -167,7 +167,7 @@ if [ -f "$BADBOTS_CONF" ]; then
   JAIL_FILE="${FAIL2BAN_DIR}/jail.local"
   if [ -f "$JAIL_FILE" ]; then
     if ! grep -q "nginx-badbots" "$JAIL_FILE" 2>/dev/null; then
-      cat >> "$JAIL_FILE" <<'JAIL'
+      cat >> "$JAIL_FILE" <<JAIL
 
 [nginx-badbots]
 enabled  = true
@@ -183,7 +183,7 @@ JAIL
       echo "  ✓ Jail already configured"
     fi
   else
-    cat > "$JAIL_FILE" <<'JAIL'
+    cat > "$JAIL_FILE" <<JAIL
 [DEFAULT]
 bantime = 1h
 findtime = 10m
