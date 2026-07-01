@@ -232,15 +232,16 @@ ls ~/.gbrain/
 
 ## 🔐 nginx / TLS Issues
 
-### 13. Self-signed certificate warnings
+### 13. TLS certificate warnings
 
 **Symptom:** Browser shows "Your connection is not private" warning.
 
-**Fix:** This is expected for self-signed certs. Click "Advanced" → "Proceed" to continue. For production, use Let's Encrypt:
+**Fix:** Ensure certificates are valid. All servers use Let's Encrypt certs provisioned by certbot:
 ```bash
 brew install certbot
 sudo certbot certonly --nginx -d your-domain.com
 ```
+For Moses/Esther, certs are pulled from Joseph's server — do not generate local certs. Titus uses mkcert for local dev.
 
 ### 14. "dh key too small" SSL error
 

@@ -615,7 +615,7 @@ Configure nginx to bind on two ports:
 - **127.0.0.1:13001-13002** — Local-only (HTTP + Basic Auth), reachable via SSH tunnel
 - ***:13001-13002** — HTTPS + Basic Auth (if you have a public domain), reachable from the web
 
-Configure TLS if using web access: generate a self-signed cert or use Let's Encrypt.
+Configure TLS if using web access: use Let's Encrypt via certbot. Moses/Esther pull certs from Joseph's server — do not generate local certs. Titus uses mkcert for local dev.
 
 ### 10.2 Harden nginx
 
