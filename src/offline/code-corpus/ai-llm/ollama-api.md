@@ -33,7 +33,7 @@ def chat(model: str, prompt: str, system: str = "") -> str:
     with urllib.request.urlopen(req, timeout=60) as resp:
         return json.loads(resp.read())["message"]["content"]
 
-# Usage: chat("qwen2.5-coder:1.5b", "Write a binary search in Rust")
+# Usage: chat("qwen2.5-coder:3b", "Write a binary search in Rust")
 
 # ── Text generation (non-chat) ──
 def generate(model: str, prompt: str) -> str:

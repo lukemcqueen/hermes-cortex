@@ -175,21 +175,20 @@ def _fetch_http(url: str, auth: str = "") -> dict | None:
 def _fetch_inbox(agent_key: str) -> dict | None:
     """Read the latest health push from the inbox for a given agent.
 
-    Looks for the most recent message from this agent containing a
-    ``{"v": [...]}`` vector. Searches both 'health' and 'general' topics
-    since agents push to whichever topic is active.
+    Looks for the most recent message on the 'health' topic from this agent
+    and parses the body as a health vector.
     """
-    for topic in (HEALTH_TOPIC, "general"):
-        data = _inbox_request(f"api/inbox?limit=10&topic={topic}")
-        if not data:
-            continue
-        msgs = data.get("messages", [])
-        for msg in msgs:
-            if msg.get("from", "").lower() == agent_key.lower():
-                body = msg.get("body", "").strip()
-                result = _parse_vector_body(body)
-                if result:
-                    return result
+    data = _inbox_request(f"api/inbox?limit=10&topic={HEALTH_TOPIC}")
+    if not data:
+        return None
+
+    msgs = data.get("messages", [])
+    # Find most recent message from this agent
+    for msg in msgs:
+        if msg.get("from", "").lower() == agent_key.lower():
+            body = msg.get("body", "").strip()
+            return _parse_vector_body(body)
+
     return None
 
 
@@ -200,6 +199,8 @@ def _parse_vector_body(body: str) -> dict | None:
       - Raw parentheses string: (1 1 0 1 -1 1 1 1)
       - Compact JSON: {"v": [1,1,0,...], "h": "hostname", "t": 1234}
       - Full JSON: any format with "v" key
+      - Rich health-report JSON: {"type": "health-report", "healthy": true,
+        "services": [...], "issues": [...], ...}  (Titus format)
     """
     if not body:
         return None
@@ -210,6 +211,9 @@ def _parse_vector_body(body: str) -> dict | None:
             parsed = json.loads(body)
             if "v" in parsed and isinstance(parsed["v"], list):
                 return parsed
+            # Check for Titus' rich health-report format
+            if parsed.get("type") == "health-report":
+                return _parse_rich_report(parsed)
         except json.JSONDecodeError:
             pass
 
@@ -223,6 +227,79 @@ def _parse_vector_body(body: str) -> dict | None:
             pass
 
     return None
+
+
+def _parse_rich_report(report: dict) -> dict:
+    """Convert Titus' rich health-report JSON to compact vector format,
+    preserving extra metadata for the dashboard.
+
+    Maps Titus' services + issues to the SERVICE_MAP vector:
+      0 resources, 1 services, 2 no_errored_crons, 3 no_stale_crons,
+      4 nginx, 5 ollama, 6 gbrain, 7 disk_ok, 8 gbrain_sources_ok
+    """
+    service_map = SERVICE_MAP
+    vec = [0] * len(service_map)
+
+    # Index 0: resources — 1 if resources data present
+    resources = report.get("resources", {})
+    vec[0] = 1 if resources else 0
+
+    # Index 1: services — 1 if service list present
+    services = report.get("services", [])
+    vec[1] = 1 if services else 0
+
+    # Map reported services by name to indices 4-6
+    svc_by_name = {}
+    for s in services:
+        svc_by_name[s.get("name", "").lower()] = s.get("status", "")
+
+    for idx, svc_name in enumerate(service_map):
+        if svc_name in svc_by_name:
+            status = svc_by_name[svc_name].lower()
+            vec[idx] = 1 if status in ("running", "up") else -1 if status in ("down", "stopped") else 0
+
+    # Check issues for cron health
+    issues = report.get("issues", [])
+    has_errored = False
+    has_stale = False
+    for iss in issues:
+        check = iss.get("check", "").lower()
+        detail = iss.get("detail", "").lower()
+        if "errored" in detail or check == "cron_health" and "errored" in detail:
+            has_errored = True
+        if "stale" in detail:
+            has_stale = True
+
+    # Index 2: no_errored_crons
+    vec[2] = -1 if has_errored else 1
+    # Index 3: no_stale_crons
+    vec[3] = -1 if has_stale else 1
+
+    # Index 7: disk_ok
+    disk_pct = resources.get("disk_percent", 0)
+    vec[7] = -1 if (disk_pct and disk_pct >= 90) else 1 if disk_pct else 0
+
+    # Index 8: gbrain_sources_ok — default 1 if gbrain is running
+    vec[8] = 1 if svc_by_name.get("gbrain", "") in ("running", "up") else 0
+
+    hostname = report.get("hostname") or report.get("agent") or report.get("server", "unknown")
+
+    result = {
+        "v": vec,
+        "h": hostname,
+        "t": int(time.time()),
+    }
+    # Preserve rich metadata for dashboard enrichment
+    result["_rich"] = {
+        "issues": report.get("issues", []),
+        "services_raw": services,
+        "resources": resources,
+        "uptime_seconds": report.get("uptime_seconds"),
+        "service_summary": report.get("service_summary", ""),
+        "issue_count": report.get("issue_count", len(report.get("issues", []))),
+        "critical_count": report.get("critical_count", 0),
+    }
+    return result
 
 
 # ── Health data conversion ──
@@ -274,7 +351,8 @@ def _fingerprint(vector: list[int] | None) -> str:
 
 
 def _build_structured_data(poll_results: dict[str, dict]) -> dict:
-    """Build structured health snapshot for dashboard consumption."""
+    """Build structured health snapshot for dashboard consumption.
+    Uses rich metadata from agents that provide it (Titus format)."""
     now_iso = datetime.now(timezone.utc).isoformat()
     health_data = {}
 
@@ -283,6 +361,7 @@ def _build_structured_data(poll_results: dict[str, dict]) -> dict:
         error = result.get("error")
         name = result.get("name", key.capitalize())
         hostname = result.get("hostname", "")
+        rich = result.get("_rich")
 
         if vec is None:
             health_data[key] = {
@@ -296,7 +375,43 @@ def _build_structured_data(poll_results: dict[str, dict]) -> dict:
                 }],
                 "services": [],
                 "last_seen": now_iso,
+                "hostname": hostname,
             }
+        elif rich:
+            # Use rich metadata from Titus-style health-report
+            svc_items = []
+            for s in rich.get("services_raw", []):
+                svc_items.append({
+                    "name": s.get("name", "?"),
+                    "status": s.get("status", "unknown"),
+                    "pid": s.get("pid"),
+                })
+            issues_out = []
+            for iss in rich.get("issues", []):
+                issues_out.append({
+                    "severity": iss.get("severity", "info"),
+                    "check": iss.get("check", ""),
+                    "detail": iss.get("detail", ""),
+                })
+            healthy = (rich.get("issue_count", 0) == 0
+                       and vec is not None
+                       and -1 not in vec)
+
+            entry = _vector_to_health_data(vec, hostname, name)
+            # Override with rich data
+            entry["healthy"] = healthy
+            entry["reachable"] = True
+            entry["issues"] = issues_out
+            entry["issue_count"] = len(issues_out)
+            entry["critical_count"] = rich.get("critical_count", 0)
+            if svc_items:
+                up = sum(1 for s in svc_items if s["status"] in ("running", "up"))
+                entry["services"] = {"items": svc_items, "up": up, "total": len(svc_items)}
+                entry["service_summary"] = rich.get("service_summary", f"{up}/{len(svc_items)} up")
+            entry["resources"] = rich.get("resources", {})
+            if rich.get("uptime_seconds"):
+                entry["uptime_seconds"] = rich["uptime_seconds"]
+            health_data[key] = entry
         else:
             hd = _vector_to_health_data(vec, hostname, name)
             hd["reachable"] = True
@@ -347,6 +462,7 @@ def main():
         poll_results[key] = {
             "vector": vector, "error": error,
             "name": name, "hostname": hostname,
+            "_rich": data.get("_rich") if data else None,
         }
         fp = _fingerprint(vector)
         now[key] = fp

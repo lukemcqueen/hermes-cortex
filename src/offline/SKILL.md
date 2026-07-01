@@ -270,7 +270,7 @@ offline_code stats
 - **Generator:** `python3 src/offline/code-corpus/generate.py` writes formatted `.md` files with YAML frontmatter
 - **Embedding:** `offline_code index` batches snippets into groups of 10, embeds with Ollama `nomic-embed-text` (768-dim)
 - **Search:** single-embed query → cosine similarity against stored embeddings + keyword boost
-- **Generation:** top-3 matching snippets injected as context → `qwen2.5-coder:1.5b` (or your model)
+- **Generation:** top-3 matching snippets injected as context → `qwen2.5-coder:3b` (or your model)
 
 ### Adding Snippets
 
@@ -293,7 +293,7 @@ offline_code index --force
 | Component | RAM | Notes |
 |-----------|-----|-------|
 | nomic-embed-text | ~300 MB | Shared with other offline tools |
-| qwen2.5-coder:1.5b | ~1 GB | Optional — only loaded during `gen` |
+| qwen2.5-coder:3b | ~1.9 GB | Optional — only loaded during `gen` |
 | Corpus files | 3 MB disk | Text + 768-dim embeddings |
 
 ## Architecture

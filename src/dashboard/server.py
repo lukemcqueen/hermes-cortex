@@ -212,16 +212,16 @@ def _check_docker(name_substring):
 def _health():
     services = {
         "Ollama": {
-            "check": lambda: _find_pid(["ollama serve", "[o]llama serve"]),
+            "check": lambda: _find_pid(["ollama serve", "ollama"]),
             "label": "LLM Server"
         },
         "Hermes Gateway": {
             "check": lambda: _find_pid(["hermes_cli.main gateway run",
-                                        "gateway run --replace"]),
+                                        "gateway run --replace", "hermes gateway", "hermes_cli"]),
             "label": "Agent Gateway"
         },
         "GBrain Sync": {
-            "check": lambda: _find_pid(["gbrain.*autopilot", "gbrain.*sync", "sync-watch"]),
+            "check": lambda: _find_pid(["gbrain autopilot", "gbrain sync", "sync-watch", "autopilot"]),
             "label": "Memory Sync"
         },
         "nginx": {
@@ -1021,13 +1021,47 @@ def api_agents():
 
 
 def _agents_data() -> dict:
-    """Non-cached helper for /api/all aggregation."""
+    """Non-cached helper for /api/all aggregation.
+    Enriches the local (Moses) agent with real service status from health check."""
+    agents = {}
     if AGENT_HEALTH_FILE.exists():
         try:
-            return json.loads(AGENT_HEALTH_FILE.read_text())
+            agents = json.loads(AGENT_HEALTH_FILE.read_text())
         except (json.JSONDecodeError, OSError):
             pass
-    return {}
+    # Enrich Moses with real local service status
+    health = _health()
+    moses = agents.get("moses", {"server": "Moses", "hostname": "moses"})
+    svc_items = []
+    issues = []
+    critical_count = 0
+    issue_count = 0
+    up = 0
+    total = 0
+    for name, svc in health.get("services", {}).items():
+        total += 1
+        status = "running" if svc["status"] == "up" else "stopped"
+        if svc["status"] == "up":
+            up += 1
+        else:
+            issue_count += 1
+            critical_count += 1
+            issues.append({"severity": "critical", "detail": f"{name}: {svc['status']}"})
+        svc_items.append({"name": name, "status": status, "pid": svc.get("pid")})
+    moses["services"] = {"items": svc_items, "up": up, "total": total}
+    moses["service_summary"] = f"{up}/{total} up"
+    moses["issues"] = issues
+    moses["issue_count"] = issue_count
+    moses["critical_count"] = critical_count
+    moses["healthy"] = (up == total)
+    moses["reachable"] = True
+    # Add resources from health data
+    moses["resources"] = {
+        "disk_percent": health.get("disk_pct", 0),
+        "memory_percent": health.get("memory_pct", 0),
+    }
+    agents["moses"] = moses
+    return agents
 
 
 @app.route("/api/all")

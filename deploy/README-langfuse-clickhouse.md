@@ -326,7 +326,7 @@ A scheduled script that evaluates Hermes conversation traces using a local Ollam
 ### How It Works
 
 1. **Fetches unscored traces** from Langfuse (last 14 days, up to 5 per run)
-2. **Judges each trace** using `qwen2.5-coder:1.5b` running locally via Ollama
+2. **Judges each trace** using `qwen2.5-coder:3b` running locally via Ollama
 3. **Posts scores** to Langfuse: `helpfulness` (1-5), `clarity` (1-5), `depth` (1-5), `overall` (1-10)
 
 ### Prerequisites
@@ -334,7 +334,7 @@ A scheduled script that evaluates Hermes conversation traces using a local Ollam
 | Requirement | Check | Install |
 |-------------|-------|---------|
 | Ollama running | `curl -s http://localhost:11434/api/tags` | `systemctl start ollama` |
-| Judge model | `ollama list \| grep qwen2.5-coder` | `ollama pull qwen2.5-coder:1.5b` |
+| Judge model | `ollama list \| grep qwen2.5-coder` | `ollama pull qwen2.5-coder:3b` |
 | Embeddings model | `ollama list \| grep nomic-embed-text` | `ollama pull nomic-embed-text:latest` |
 | Langfuse .env | `cat ~/.hermes-cortex/.env` | See "Step 5" below |
 | Langfuse running | `curl -s -o /dev/null -w '%{http_code}' http://localhost:3000` | `docker compose up -d` |
@@ -344,7 +344,7 @@ A scheduled script that evaluates Hermes conversation traces using a local Ollam
 **Step 1 — Pull the judge model:**
 
 ```bash
-ollama pull qwen2.5-coder:1.5b
+ollama pull qwen2.5-coder:3b
 ```
 
 **Step 2 — Create the Langfuse `.env` for the scorer:**
@@ -399,14 +399,14 @@ hermes cron create --name model-health-watchdog \
 # Dry-run the scorer
 python3 ~/.hermes-cortex/scripts/llm-judge-scorer.py --dry-run
 
-# Check model health (default: nomic-embed-text + qwen2.5-coder:1.5b)
+# Check model health (default: nomic-embed-text + qwen2.5-coder:3b)
 python3 ~/.hermes-cortex/scripts/model-health-watchdog.py
 
 # Check with a custom judge model (e.g., Titus' model)
 python3 ~/.hermes-cortex/scripts/model-health-watchdog.py --judge-model mannix/qwen2.5-coder:7b-iq3_xs
 
 # Via env var (comma-separated for multiple)
-JUDGE_MODEL="mannix/qwen2.5-coder:7b-iq3_xs,qwen2.5-coder:1.5b" \\
+JUDGE_MODEL="mannix/qwen2.5-coder:7b-iq3_xs,qwen2.5-coder:3b" \\
   python3 ~/.hermes-cortex/scripts/model-health-watchdog.py --quiet
 
 # Verify crons are scheduled
@@ -420,7 +420,7 @@ The scorer checks prerequisites before starting:
 | Error | Likely cause | Fix |
 |-------|-------------|-----|
 | `Cannot reach Ollama` | Ollama not running | `systemctl start ollama` |
-| `Judge model 'qwen2.5-coder:1.5b' not found` | Model not pulled | `ollama pull qwen2.5-coder:1.5b` |
+| `Judge model 'qwen2.5-coder:3b' not found` | Model not pulled | `ollama pull qwen2.5-coder:3b` |
 | `Could not read Langfuse project keys` | Missing `.env` | Create `~/.hermes-cortex/.env` |
 | `HTTP 401` on Langfuse POST | Stale API keys | Regenerate in Langfuse UI |
 
@@ -430,7 +430,7 @@ with a descriptive message including the `ollama pull` commands needed.
 The watchdog supports custom judge models via:
 - `--judge-model <name>` (CLI flag, repeatable for multiple models)
 - `JUDGE_MODEL` environment variable (comma-separated for multiple)
-- Defaults to `qwen2.5-coder:1.5b` if neither is set
+- Defaults to `qwen2.5-coder:3b` if neither is set
 - `nomic-embed-text:latest` is always required and always checked
 
 Use the `extract_langfuse_env.py` utility to regenerate the `.env` file from the running

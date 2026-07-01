@@ -22,7 +22,7 @@ LANGFUSE_BASE = "http://localhost:3000"
 OLLAMA_BASE = "http://localhost:11434"
 OLLAMA_API_TAGS = f"{OLLAMA_BASE}/api/tags"
 OLLAMA_URL = f"{OLLAMA_BASE}/api/chat"
-JUDGE_MODEL = "qwen2.5-coder:1.5b"
+JUDGE_MODEL = "qwen2.5-coder:3b"
 
 SCORE_CRITERIA = ["helpfulness", "clarity", "depth"]
 MAX_TRACES_PER_RUN = 5  # ~2min on Intel with qwen2.5-coder:1.5b

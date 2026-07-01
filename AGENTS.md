@@ -32,7 +32,7 @@ Hermes Cortex ships a **two-model Ollama stack** for offline/cheap operations:
 | Embedding | `nomic-embed-text` | 274 MB | Vector search (embeddings for search, RAG) |
 | Unified gen/judge | `qwen2.5-coder:3b` | 1.9 GB | Code gen, classification, routing, quality gates |
 
-This replaces the previous three-model stack (`llama3.2:1b` + `qwen2.5-coder:1.5b` + `nomic-embed-text`). **The 3B coder handles both code generation and classification/judging** — agents should use it via `http://localhost:11434/api/generate` or `offline_code gen` for:
+This replaces the previous three-model stack with a unified **qwen2.5-coder:3b** model that handles both code generation and classification/judging. Agents should use it via `http://localhost:11434/api/generate` or `offline_code gen` for:
 
 - ✅ Code generation (RAG-enhanced via offline_code)
 - ✅ Alert/task classification
@@ -49,8 +49,14 @@ As of July 2026, several LLM-powered crons now default to **qwen2.5-coder:3b** (
 | `agent-daily-bible-reading` | daily @ 1am | qwen2.5-coder:3b | Pure text, no web needed |
 | `agent-daily-soul-refinement` | daily @ 11pm | qwen2.5-coder:3b | Session analysis, file-only |
 | `memory-pruning` | weekly @ Mon 4am | qwen2.5-coder:3b | Memory consolidation, no web |
+| `agent-auto-remediate` | every 30min | qwen2.5-coder:3b | Auto-remediation pipeline |
+| `agent-weekly-loop-eval` | weekly @ Mon 9am | qwen2.5-coder:3b | Loop governance eval pipeline |
+| `orch-process-agent-messages` | every 10min | qwen2.5-coder:3b | Inbox remediation processing |
+| `process-mcp-agent-inbox-messages` | every 30min | qwen2.5-coder:3b | Inbox message processing |
+| `llm-judge-scorer-weekday` | Mon-Fri 12:00, 20:00 | qwen2.5-coder:3b | LLM-as-Judge (via script update) |
+| `llm-judge-scorer-weekend` | Sat-Sun 22:00 | qwen2.5-coder:3b | LLM-as-Judge (via script update) |
 
-The `install-crons.sh` script auto-configures the `custom:ollama-local` provider in Hermes config.yaml and pins these crons to qwen. Remaining LLM crons (briefs, evaluation pipelines, inbox processing) stay on deepseek-v4-flash for quality-sensitive tasks.
+The `install-crons.sh` script auto-configures the `custom:ollama-local` provider in Hermes config.yaml and pins these crons to qwen. Quality-sensitive briefs (`system-brief`, `finance-brief`, `news-brief`) remain on deepseek-v4-flash.
 
 To run these crons on a fresh Hermes install:
 ```bash

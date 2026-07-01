@@ -228,9 +228,6 @@
   .agent-resource { font-size: 10px; color: var(--text-dim); display: flex; justify-content: space-between; padding: 1px 0; }
   .agent-resource .warn { color: var(--yellow); }
   .agent-resource .crit { color: var(--red); }
-  .agent-vector { font-size: 14px; letter-spacing: 1px; margin: 4px 0; }
-  .agent-vector-fail { font-size: 9px; color: var(--text-muted); }
-  .agent-vector-fail .name { color: var(--text-dim); }
 
   .disk-row { display: flex; gap: 12px; flex-wrap: wrap; }
   .disk-item { padding: 8px 12px; background: rgba(255,255,255,.03); border-radius: 6px; }
@@ -416,54 +413,34 @@ const LANGFUSE_EXTERNAL = 'http://localhost:13002'; // External Langfuse URL (fo
   }
 
   function renderAgentHealth(data) {
-  const agents = data.agents || {};
-  const entries = Object.entries(agents);
-  if (entries.length === 0) { $('agent-health-content').innerHTML = '<div class="empty">No agent health data</div>'; return; }
-  const SERVICE_MAP = ["resources", "services", "no_errored_crons", "no_stale_crons", "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok"];
-  const VEC_ICONS = {1: '🟢', 0: '⚪', '-1': '🔴'};
-  let html = '<div class="agent-grid">';
-  for (const [key, agent] of entries) {
-    const healthy = agent.healthy && agent.reachable !== false;
-    const reachable = agent.reachable !== false;
-    const issueCount = agent.issue_count || 0;
-    const criticalCount = agent.critical_count || 0;
+    const agents = data.agents || {};
+    const entries = Object.entries(agents);
+    if (entries.length === 0) { $('agent-health-content').innerHTML = '<div class="empty">No agent health data</div>'; return; }
+    let html = '<div class="agent-grid">';
+    for (const [key, agent] of entries) {
+      const healthy = agent.healthy && agent.reachable !== false;
+      const reachable = agent.reachable !== false;
+      const issueCount = agent.issue_count || 0;
+      const criticalCount = agent.critical_count || 0;
 
-    let cardClass, dotColor, statusText;
-    if (!reachable) {
-      cardClass = 'unreachable'; dotColor = 'gray'; statusText = 'unreachable';
-    } else if (criticalCount > 0) {
-      cardClass = 'unhealthy'; dotColor = 'red'; statusText = 'critical';
-    } else if (issueCount > 0) {
-      cardClass = 'degraded'; dotColor = 'yellow'; statusText = 'degraded';
-    } else {
-      cardClass = 'healthy'; dotColor = 'green'; statusText = 'healthy';
-    }
-
-    const uptime = agent.uptime_seconds ? Math.floor(agent.uptime_seconds / 3600) + 'h' : '—';
-    const services = agent.services || [];
-    const issues = agent.issues || [];
-    const vector = agent.vector || null;
-
-    html += `<div class="agent-card ${cardClass}">
-      <div class="agent-name"><span class="dot ${dotColor}"></span>${agent.server || key}</div>
-      <div class="agent-meta">${statusText} · ${uptime} · ${agent.service_summary || '—'}</div>`;
-
-    // Vector bar (matches orch-health-report.py output)
-    if (vector && vector.length > 0) {
-      let bar = '';
-      const failures = [];
-      for (let i = 0; i < vector.length; i++) {
-        const v = vector[i];
-        bar += VEC_ICONS[v] || '⬜';
-        if (v === -1 && i < SERVICE_MAP.length) {
-          failures.push(SERVICE_MAP[i]);
-        }
+      let cardClass, dotColor, statusText;
+      if (!reachable) {
+        cardClass = 'unreachable'; dotColor = 'gray'; statusText = 'unreachable';
+      } else if (criticalCount > 0) {
+        cardClass = 'unhealthy'; dotColor = 'red'; statusText = 'critical';
+      } else if (issueCount > 0) {
+        cardClass = 'degraded'; dotColor = 'yellow'; statusText = 'degraded';
+      } else {
+        cardClass = 'healthy'; dotColor = 'green'; statusText = 'healthy';
       }
-      html += `<div class="agent-vector">${bar}</div>`;
-      if (failures.length > 0) {
-        html += `<div class="agent-vector-fail">${failures.map(f => `<span class="name">🔴 ${f}</span>`).join(' ')}</div>`;
-      }
-    }
+
+      const uptime = agent.uptime_seconds ? Math.floor(agent.uptime_seconds / 3600) + 'h' : '—';
+      const services = (agent.services && agent.services.items) || [];
+      const issues = agent.issues || [];
+
+      html += `<div class="agent-card ${cardClass}">
+        <div class="agent-name"><span class="dot ${dotColor}"></span>${agent.server || key}</div>
+        <div class="agent-meta">${statusText} · ${uptime} · ${agent.service_summary || '—'}</div>`;
 
       // Services
       for (const svc of services) {
