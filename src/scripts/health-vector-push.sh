@@ -66,7 +66,7 @@ fi
 # [1] services — at least one core service running
 SVC_OK=0
 command -v pgrep &>/dev/null && pgrep -x ollama >/dev/null 2>&1 && SVC_OK=1
-command -v pgrep &>/dev/null && pgrep -x nginx >/dev/null 2>&1 && SVC_OK=1
+command -v pgrep &>/dev/null && pgrep nginx >/dev/null 2>&1 && SVC_OK=1
 command -v pgrep &>/dev/null && pgrep -f gbrain >/dev/null 2>&1 && SVC_OK=1
 [[ "$SVC_OK" -eq 0 ]] && V_SERVICES=-1
 
@@ -80,7 +80,7 @@ fi
 
 # [4] nginx
 if command -v pgrep &>/dev/null; then
-    pgrep -x nginx >/dev/null 2>&1 || V_NGINX=-1
+    pgrep nginx >/dev/null 2>&1 || V_NGINX=-1
 else
     V_NGINX=0
 fi
