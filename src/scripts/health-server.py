@@ -226,20 +226,19 @@ def _check_services() -> dict:
 
 
 # ── Cron health check ─────────────────────────────────────────
-def _estimate_interval(schedule: str) -> int:
+def _estimate_interval(schedule: str | dict) -> int:
     """Estimate expected interval in seconds from a cron schedule.
 
-    Uses the most significant constrained field to determine cadence:
-    - Weekday or day-of-month constrained → weekly/monthly
-    - Hour constrained (but no weekday) → daily
-    - Only minute constrained → sub-hourly
-    - Fallback: 86400 (24h)
-
+    Accepts a string ('0 6 * * 1') or dict ({kind, expr, display}).
+    Uses the most significant constrained field to determine cadence.
     Stale check uses: elapsed > 2x expected.
     """
     if not schedule:
         return 86400
-    s = schedule.strip()
+    if isinstance(schedule, dict):
+        s = (schedule.get("expr") or schedule.get("display") or "").strip()
+    else:
+        s = str(schedule).strip()
 
     # 'every Nm' / 'every N min' / 'every Nh' format
     import re as _re
@@ -291,7 +290,10 @@ def _estimate_interval(schedule: str) -> int:
     if hour != '*':
         if ',' in hour:
             vals = sorted(int(x) for x in hour.split(','))
-            min_gap = min(vals[i+1] - vals[i] for i in range(len(vals)-1))
+            # Max gap between scheduled hours (including overnight wrap)
+            gaps = [vals[i+1] - vals[i] for i in range(len(vals)-1)]
+            gaps.append(24 - vals[-1] + vals[0])
+            return max(gaps) * 3600
             return min_gap * 3600
         elif '-' in hour:
             return 3600  # hourly within range

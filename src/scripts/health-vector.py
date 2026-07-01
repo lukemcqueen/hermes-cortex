@@ -28,9 +28,11 @@ from __future__ import annotations
 
 import json
 import os
+import re as _re
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 SERVICE_MAP = [
@@ -174,30 +176,117 @@ def check_services() -> int:
     return 1
 
 
+def _estimate_cron_interval(schedule: str | dict) -> int:
+    """Estimate expected interval in seconds from a cron schedule.
+
+    Accepts a string ('0 6 * * 1') or dict ({kind, expr, display}).
+    Uses the most significant constrained field to determine cadence.
+    Stale check uses: elapsed > 2x expected.
+    """
+    if not schedule:
+        return 86400
+    if isinstance(schedule, dict):
+        s = (schedule.get("expr") or schedule.get("display") or "").strip()
+    else:
+        s = str(schedule).strip()
+
+    # 'every Nm' / 'every N min' / 'every Nh' format
+    m = _re.match(r'every\s+(\d+)\s*(m|min|h)', s, _re.IGNORECASE)
+    if m:
+        val = int(m.group(1))
+        return val * 60 if m.group(2) != 'h' else val * 3600
+
+    parts = s.split()
+    if len(parts) != 5:
+        return 86400
+    minute, hour, day, month, weekday = parts
+
+    def _expand(field: str) -> list[int]:
+        vals: list[int] = []
+        for part in field.split(','):
+            if '-' in part and part != '*':
+                a, b = (int(x) for x in part.split('-', 1))
+                vals.extend(range(a, b + 1))
+            else:
+                try:
+                    vals.append(int(part))
+                except ValueError:
+                    pass
+        return sorted(set(vals))
+
+    if day not in ('*', '?'):
+        return 30 * 86400
+    if weekday not in ('*', '?'):
+        dow = _expand(weekday)
+        if len(dow) > 1:
+            gaps = [(dow[(i+1) % len(dow)] - dow[i]) % 7 for i in range(len(dow))]
+            return max(gaps) * 86400
+        return 7 * 86400
+    if hour != '*':
+        if ',' in hour:
+            vals = sorted(int(x) for x in hour.split(','))
+            # Max gap between scheduled hours (including overnight wrap)
+            gaps = [vals[i+1] - vals[i] for i in range(len(vals)-1)]
+            gaps.append(24 - vals[-1] + vals[0])
+            return max(gaps) * 3600
+        elif '-' in hour:
+            return 3600
+        elif hour.startswith('*/'):
+            return int(hour[2:]) * 3600
+        return 86400
+    if minute != '*':
+        if ',' in minute:
+            vals = sorted(int(x) for x in minute.split(','))
+            gap = min(vals[i+1] - vals[i] for i in range(len(vals)-1)) if len(vals) > 1 else 1
+            return max(gap * 60, 60)
+        elif minute.startswith('*/'):
+            return max(int(minute[2:]) * 60, 60)
+        return 3600
+    return 86400
+
+
 def check_no_errored_crons() -> int:
-    """no_errored_crons: 1 if no errored cron jobs."""
+    """no_errored_crons: 1 if no errored cron jobs (from jobs.json)."""
     try:
-        r = subprocess.run(
-            ["hermes", "cron", "list"],
-            capture_output=True, text=True, timeout=15,
-        )
-        if "error:" in r.stdout or "error:" in r.stderr:
+        jobs_json = Path.home() / ".hermes" / "cron" / "jobs.json"
+        if not jobs_json.exists():
             return -1
+        data = json.loads(jobs_json.read_text())
+        jobs = data if isinstance(data, list) else data.get("jobs", [])
+        for j in jobs:
+            if j.get("last_status") == "error":
+                return -1
         return 1
     except Exception:
         return -1
 
 
 def check_no_stale_crons() -> int:
-    """no_stale_crons: 1 if no stalled cron jobs."""
+    """no_stale_crons: 1 if no stalled cron jobs (schedule-aware).
+
+    Flags a job as stale if elapsed since last run > 2x expected interval.
+    """
     try:
-        r = subprocess.run(
-            ["hermes", "cron", "list"],
-            capture_output=True, text=True, timeout=15,
-        )
-        # Check for crons that have never run (blank last run)
-        if "never run" in r.stdout.lower():
+        jobs_json = Path.home() / ".hermes" / "cron" / "jobs.json"
+        if not jobs_json.exists():
             return -1
+        data = json.loads(jobs_json.read_text())
+        jobs = data if isinstance(data, list) else data.get("jobs", [])
+        now = time.time()
+        for j in jobs:
+            last_run = j.get("last_run_at")
+            if not last_run or "T" not in str(last_run):
+                continue
+            try:
+                last = datetime.fromisoformat(str(last_run)).timestamp()
+                elapsed = now - last
+                sched = j.get("schedule", "")
+                if sched:
+                    expected = _estimate_cron_interval(sched)
+                    if expected > 0 and elapsed > 2 * expected:
+                        return -1
+            except (ValueError, TypeError):
+                continue
         return 1
     except Exception:
         return -1
