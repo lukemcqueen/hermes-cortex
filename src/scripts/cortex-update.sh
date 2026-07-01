@@ -705,12 +705,11 @@ verify_services() {
   elif [[ "$os" == "Linux" ]]; then
     local any_unmanaged=0 any_inactive=0 managed=0
     for unit in ollama gbrain-autopilot hermes-gateway hermes-cortex-dashboard hermes-agent-inbox; do
-      # Check system-level first, fall back to user-level
-      if systemctl is-active --quiet "$unit" 2>/dev/null || systemctl --user is-active --quiet "$unit" 2>/dev/null; then
+      if systemctl --user is-active --quiet "$unit" 2>/dev/null; then
         managed=$((managed + 1))
-      elif systemctl is-enabled --quiet "$unit" 2>/dev/null || systemctl --user is-enabled --quiet "$unit" 2>/dev/null; then
+      elif systemctl --user is-enabled --quiet "$unit" 2>/dev/null; then
         any_inactive=$((any_inactive + 1))
-        warn "$unit: systemd unit exists but inactive — run: systemctl start $unit"
+        warn "$unit: systemd unit exists but inactive — run: systemctl --user start $unit"
       else
         any_unmanaged=$((any_unmanaged + 1))
         warn "$unit: not managed by systemd — may need: install.sh or service-writer.sh"
