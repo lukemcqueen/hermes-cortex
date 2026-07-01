@@ -30,6 +30,7 @@ from __future__ import annotations
 import json
 import os
 import re as _re
+import shutil
 import subprocess
 import sys
 import time
@@ -239,19 +240,29 @@ def check_resources() -> int:
 
 
 def check_services() -> int:
-    """Core services: at least one of the essential daemons is reachable."""
+    """Core services: check that installed services are running.
+
+    On Linux, checks systemd units. Returns 1 if none are installed.
+    On macOS, checks running processes. Returns 0 if none are installed.
+    """
     if _is_linux:
         key_services = ["nginx", "ollama", "gbrain-autopilot"]
+        any_installed = False
+        all_running = True
         for svc in key_services:
-            if not _systemd_active(svc + ".service") and not _systemd_active(svc):
-                return -1
-        return 1
+            if _systemd_active(svc + ".service") or _systemd_active(svc):
+                any_installed = True
+            else:
+                all_running = False
+        if not any_installed:
+            return 0  # none installed — not applicable
+        return 1 if all_running else -1
     else:
-        # macOS: pgrep-based
+        # macOS: pgrep-based — return 1 if any found running, 0 if none installed
         for pat in ["nginx", "ollama", "gbrain"]:
             if _pgrep(pat, exact=True) or _pgrep(pat, exact=False, full=True):
                 return 1
-        return -1
+        return 0
 
 
 def check_no_errored_crons() -> int:
@@ -299,14 +310,18 @@ def check_no_stale_crons() -> int:
 
 
 def check_nginx() -> int:
-    """nginx: process check (master process)."""
+    """nginx: 1 = running, 0 = not installed, -1 = installed but down."""
+    if not shutil.which("nginx"):
+        return 0  # not installed on this system
     if _pgrep("nginx"):
         return 1
     return -1
 
 
 def check_ollama() -> int:
-    """Ollama: systemd/launchd or process."""
+    """Ollama: 1 = running, 0 = not installed, -1 = installed but down."""
+    if not shutil.which("ollama"):
+        return 0  # not installed on this system
     if _is_linux:
         if _systemd_active("ollama.service") or _systemd_active("ollama"):
             return 1
@@ -319,7 +334,9 @@ def check_ollama() -> int:
 
 
 def check_gbrain() -> int:
-    """gbrain: systemd/launchd or process."""
+    """gbrain: 1 = running, 0 = not installed, -1 = installed but down."""
+    if not shutil.which("gbrain"):
+        return 0  # not installed on this system
     if _is_linux:
         if _systemd_active("gbrain-autopilot.service") or \
            _systemd_active("com.gbrain.autopilot"):
