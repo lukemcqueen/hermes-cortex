@@ -44,7 +44,7 @@ Search: `grep -rn "qwen2.5-coder:1.5b\|<old-model>" ~/hermes-cortex/ --include="
 `agent-daily-bible-reading`, `agent-daily-soul-refinement`, `memory-pruning`, `orch-process-agent-messages`, `llm-judge-scorer-weekday/weekend`, `local-agent-agents-doc-audit`
 
 ### deepseek-v4-flash (API, quality-sensitive)
-`agent-auto-remediate`, `agent-weekly-loop-eval`, `process-mcp-agent-inbox-messages`, `local-agent-daily-system-brief`, `local-agent-daily-finance-brief`, `local-agent-daily-news-brief`
+`agent-auto-remediate`, `agent-weekly-loop-eval`, `process-mcp-agent-inbox-messages`
 
 ## Verification
 

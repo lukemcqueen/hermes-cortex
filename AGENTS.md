@@ -53,7 +53,7 @@ As of July 2026, several LLM-powered crons now default to **qwen2.5-coder:3b** (
 | `llm-judge-scorer-weekday` | Mon-Fri 12:00, 20:00 | qwen2.5-coder:3b | LLM-as-Judge (via script update) |
 | `llm-judge-scorer-weekend` | Sat-Sun 22:00 | qwen2.5-coder:3b | LLM-as-Judge (via script update) |
 
-Complex reasoning tasks (`agent-auto-remediate`, `agent-weekly-loop-eval`, `process-mcp-agent-inbox-messages`) and quality-sensitive briefs remain on deepseek-v4-flash.
+Complex reasoning tasks (`agent-auto-remediate`, `agent-weekly-loop-eval`, `process-mcp-agent-inbox-messages`) remain on deepseek-v4-flash.
 
 To run these crons on a fresh Hermes install:
 ```bash
