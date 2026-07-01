@@ -140,6 +140,7 @@ register "src/scripts/llm-judge-scorer.py"         "${HERMES_HOME}/scripts/llm-j
 register "src/scripts/model-health-watchdog.py"    "${HERMES_HOME}/scripts/model-health-watchdog.py"
 register "src/scripts/offline_code_index_cron.sh"  "${HERMES_HOME}/scripts/offline_code_index_cron.sh"
 register "src/scripts/cron-quality-watchdog.py"    "${HERMES_HOME}/scripts/cron-quality-watchdog.py"
+register "src/scripts/agent-cron-failure-scanner.py" "${HERMES_HOME}/scripts/agent-cron-failure-scanner.py"
 register "src/scripts/scoring-activity-watchdog.py" "${HERMES_HOME}/scripts/scoring-activity-watchdog.py"
 register "src/scripts/state_tracker.py"             "${HERMES_HOME}/scripts/state_tracker.py"
 register "src/scripts/check-certs.py"               "${HERMES_HOME}/scripts/check-certs.py"

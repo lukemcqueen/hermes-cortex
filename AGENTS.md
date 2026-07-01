@@ -459,6 +459,7 @@ code-review (security scan, quality gate)
 | `hermes-update` | `23 22 * * *` | no_agent | Daily Hermes upgrade + config migrate |
 | `hermes-cortex-sync` | `33 22 * * *` | no_agent | Daily repo pull + tool re-sync |
 | `system-alert-watchdog` | `*/30 * * * *` | no_agent | Resource threshold alerts |
+| `agent-cron-failure-scanner` | `*/30 * * * *` | no_agent | Scans ALL cron outputs for recent failures (last 90 min) |
 | `inbox-sensor` | `*/10 * * * *` | no_agent | Detect new broadcast messages |
 | `memory-to-brain-sync` | `0 */6 * * *` | no_agent | Memory persistence to gbrain |
 | `score-auditor` | `0 */6 * * *` | no_agent | Scans for unscored changes |
@@ -967,6 +968,7 @@ recreate all to match the repo definition.
 | `agent-auto-remediate` | LLM | `*/30 * * * *` | skill `auto-remediation` | origin |
 | `remediation-sensor` | no_agent | `*/5 * * * *` | `remediation-sensor.py` | local |
 | `system-alert-watchdog` | no_agent | `*/30 * * * *` | `system-alert-watchdog.py` | origin |
+| `agent-cron-failure-scanner` | no_agent | `*/30 * * * *` | `agent-cron-failure-scanner.py` | local |
 | `service-recovery` | no_agent | `*/5 * * * *` | `service-recovery.py` | origin |
 | `inbox-sensor` | no_agent | `*/10 * * * *` | `inbox-sensor.py` | local |
 | `score-auditor` | no_agent | `0 */6 * * *` | `score-auditor.py` | origin |
@@ -975,7 +977,7 @@ recreate all to match the repo definition.
 | `llm-judge-scorer-weekend` | no_agent | `0 22 * * 0,6` | `llm-judge-scorer.py` | local |
 | `offline-code-index` | no_agent | `0 5 * * 0` | `offline_code_index_cron.sh` | local |
 | `model-health-watchdog` | no_agent | `0 7 * * *` | `model-health-watchdog.py` | origin |
-| `process-mcp-agent-inbox-messages` | LLM | `0 6-23 * * *` | prompt: inbox poll | origin |
+| `process-mcp-agent-inbox-messages` | LLM | `0 6-23 * * *` | prompt: inbox poll + cron failure check | origin |
 
 LLM crons should be pinned to the provider/model specified in the repo's
 `deploy/config/config.yaml` or the agent's profile. The installer sets
