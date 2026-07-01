@@ -532,9 +532,9 @@ sync_code_corpus() {
 
     if needs_update "$src_file" "$dest"; then
       copy_file "$src_file" "$dest"
-      ((synced++))
+      synced=$((synced + 1))
     else
-      ((skipped++))
+      skipped=$((skipped + 1))
     fi
   done < <(find "$corpus_src" -name '*.md' -type f -print0)
 
