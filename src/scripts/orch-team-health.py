@@ -44,7 +44,7 @@ HEALTH_DATA_FILE = HOME / ".hermes" / "state" / "agent-health-data.json"
 REGISTRY_PATH = HOME / "hermes-cortex" / "src" / "agent-registry.json"
 REGISTRY_LOCAL = HOME / ".hermes" / "agent-registry.local.json"
 INBOX_CONF = HOME / ".hermes" / "moses-inbox.conf"
-TIMEOUT = 3
+TIMEOUT = 5
 HEALTH_TOPIC = "health"
 
 SERVICE_MAP = [
