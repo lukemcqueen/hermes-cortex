@@ -108,14 +108,14 @@ services:
     restart: always
     depends_on: *langfuse-depends-on
     cpus: 0.5
-    mem_limit: 1g
-    memswap_limit: 1g
+    mem_limit: 1.5g
+    memswap_limit: 1.5g
     ports:
       - "127.0.0.1:${LANGFUSE_PORT:-3000}:3000"
     environment:
       <<: *langfuse-env-base
       HOSTNAME: "0.0.0.0"
-      NODE_OPTIONS: "--max-old-space-size=768"
+      NODE_OPTIONS: "--max-old-space-size=1024"
       NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3000}
       LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-hermes-cortex}
       LANGFUSE_INIT_PROJECT_ID: ${LANGFUSE_INIT_PROJECT_ID:-default-project}

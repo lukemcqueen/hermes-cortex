@@ -43,7 +43,7 @@ other services on the host:
 | Container     | CPU cap | Memory cap | Why |
 |---------------|---------|------------|-----|
 | ClickHouse    | 1.0 CPU | 2 GB       | Analytics DB — biggest memory consumer; capped generously |
-| Langfuse Web  | 0.5 CPU | 1 GB       | Next.js UI + API server; generous headroom for dashboard |
+| Langfuse Web  | 0.5 CPU | 1.5 GB     | Next.js UI + API server; needs extra headroom for ClickHouse model-match cache init |
 | Langfuse Worker | 0.5 CPU | 512 MB   | Background trace processor; comfortably above idle usage (~400 MB) |
 | Postgres      | —       | —          | Minimal by nature (~47 MB) — no limit needed |
 | Redis         | —       | —          | Minimal (~11 MB) — no limit needed |
@@ -278,6 +278,21 @@ Config files are `chmod 600`. Fix: `chmod 644 ~/langfuse/clickhouse-config.d/*.x
 Too many background pool settings reduced simultaneously.
 Fix: Keep only `background_pool_size` and `background_schedule_pool_size`.
 Restore all others to defaults.
+
+### Langfuse Web crashes with OOM / `JavaScript heap out of memory`
+The web container's Node.js process hits the heap limit during startup, typically during ClickHouse model-match cache initialization. The log shows `FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory`.
+
+**Fix:** Increase the memory limits in `~/langfuse/docker-compose.yml`:
+- `mem_limit: 1g` → `1.5g` (container level)
+- Add `NODE_OPTIONS: "--max-old-space-size=1024"` under `langfuse-web.environment`
+
+Then recreate the container:
+```bash
+cd ~/langfuse
+docker compose up -d --force-recreate langfuse-web
+```
+
+Note: 1.5g container + 1024 MB Node heap is the minimum tested fix. If you have more RAM available, `2g` / `1536` is safer.
 
 ### Langfuse shows no traces
 1. Plugin enabled? `hermes plugins list | grep langfuse`

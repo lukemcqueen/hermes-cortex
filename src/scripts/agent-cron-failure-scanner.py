@@ -1,112 +1,125 @@
 #!/usr/bin/env python3
+"""Scan cron output dirs for recent failures and send agent inbox alert.
+
+Runs as a no_agent script every 30 min. Silent when all jobs healthy.
+On failure: sends an inbox message to the agent with job name, error, and time.
+
+Exit codes:
+  0 - all healthy (no output)
+  1 - failures found (output is the inbox message body)
 """
-agent-cron-failure-scanner.py — Scan ALL cron output directories for recent failures.
 
-Scans ~/.hermes/cron/output/ for jobs that ran within the last 90 minutes
-and shows an error indicator. Outputs a concise report to stdout.
-
-Silent (no output, exit 0) when everything is clean.
-"""
-
+import json
+import os
 import re
-from datetime import datetime, timedelta
+import subprocess
+import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 CRON_OUTPUT = Path.home() / ".hermes" / "cron" / "output"
-LOOKBACK_MINUTES = 90
-LOCAL_TZ = datetime.now().astimezone().tzinfo
-NOW = datetime.now(LOCAL_TZ)
-CUTOFF = NOW - timedelta(minutes=LOOKBACK_MINUTES)
+INBOX_API = os.environ.get(
+    "AGENT_INBOX_URL",
+    "http://127.0.0.1:8903/api/messages",
+)
+AGENT_NAME = os.environ.get("AGENT_NAME", "Joseph")
+LOOKBACK_MINUTES = 90  # Check jobs that ran within the last 90 min
 
 
-def parse_timestamp_from_filename(fname: str) -> datetime | None:
-    """Parse local-time timestamp from cron output filename like 2026-07-01_14-01-04.md"""
-    m = re.search(r"(\d{4}-\d{2}-\d{2})_(\d{2})-(\d{2})-(\d{2})", fname)
-    if not m:
-        return None
-    try:
-        dt = datetime.strptime(f"{m.group(1)}T{m.group(2)}:{m.group(3)}:{m.group(4)}", "%Y-%m-%dT%H:%M:%S")
-        return dt.replace(tzinfo=LOCAL_TZ)
-    except ValueError:
-        return None
+def get_latest_output(job_dir: Path) -> tuple[datetime | None, str]:
+    """Get the most recent output file and its content from a job dir."""
+    files = sorted(job_dir.glob("*.md"), reverse=True)
+    if not files:
+        return None, ""
+    latest = files[0]
+    mtime = datetime.fromtimestamp(latest.stat().st_mtime, tz=timezone.utc)
+    content = latest.read_text(encoding="utf-8", errors="replace")
+    return mtime, content
 
 
-def has_error_indicator(content: str) -> str | None:
-    """Check if output content indicates a real failure. Returns a brief reason or None."""
-    tail = "\n".join(content.split("\n")[-20:])
-
-    # Check for explicit non-zero exit
-    m = re.search(r"exit.*?code.*?[1-9]\b|exit.*?status.*?[1-9]\b", content, re.IGNORECASE)
-    if m:
-        return f"non-zero exit: {m.group(0).strip()[:80]}"
-
-    # Check for Python tracebacks
-    if re.search(r"Traceback \(most recent call last\)", content):
-        return "Python traceback"
-
-    # Check for error/fail in the last 20 lines
-    err_lines = re.findall(r"^.*(?:ERROR|FAIL|FAILED|CRITICAL)\s.*$", tail, re.MULTILINE)
-    if err_lines:
-        return f"error/fail in recent output: {err_lines[0].strip()[:100]}"
-
-    # Check for explicit failure patterns
-    fail_patterns = [r"failed with", r"failed to", r"error:", r"error during",
-                     r"cron job.*(?:failed|error)", r"exit code \d+", r"non.?zero"]
-    for pat in fail_patterns:
-        m = re.search(pat, tail, re.IGNORECASE)
-        if m:
-            return f"failure indicator: {m.group(0)[:80]}"
-
+def extract_failure(content: str) -> str | None:
+    """Extract failure reason from cron output doc."""
+    # Check for explicit failure markers
+    if "**Status:** script failed" in content:
+        # Extract stderr or the failure message
+        stderr_match = re.search(r"stderr:\n(.+?)(?=\nstdout:|$)", content, re.DOTALL)
+        if stderr_match:
+            return stderr_match.group(1).strip()[:300]
+        # Fallback: extract the first error-like line
+        for line in content.split("\n"):
+            if "error" in line.lower() or "traceback" in line.lower() or "exit code" in line.lower():
+                return line.strip()[:200]
+        return "Script failed (see output for details)"
+    if "**Status:** silent (wakeAgent=false)" in content:
+        return None  # Not a failure
+    if "**Status:** silent (empty output)" in content:
+        return None  # Not a failure
     return None
 
 
 def main():
     if not CRON_OUTPUT.exists():
-        return
+        return 0
 
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=LOOKBACK_MINUTES)
     failures = []
 
     for job_dir in sorted(CRON_OUTPUT.iterdir()):
         if not job_dir.is_dir():
             continue
 
-        # Get the most recent output file
-        output_files = sorted(job_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)
-        if not output_files:
+        # Skip own output — prevents self-referential loop
+        if job_dir.name == "6f4afc3e62c8":
             continue
 
-        latest = output_files[0]
-        ts = parse_timestamp_from_filename(latest.name)
-        if ts is None or ts < CUTOFF:
-            continue
+        mtime, content = get_latest_output(job_dir)
+        if mtime is None or mtime < cutoff:
+            continue  # Too old, skip
 
-        content = latest.read_text(encoding="utf-8", errors="replace")
-        reason = has_error_indicator(content)
-        if reason:
-            failures.append({
-                "job_id": job_dir.name,
-                "file": latest.name,
-                "timestamp": ts.strftime("%Y-%m-%d %H:%M:%S"),
-                "reason": reason,
-                "ago_min": int((NOW - ts).total_seconds() / 60),
-            })
+        # Try to get the job name from the content header
+        name_match = re.search(r"# Cron Job: (.+)", content)
+        job_name = name_match.group(1) if name_match else job_dir.name
+
+        failure = extract_failure(content)
+        if failure:
+            failures.append((job_name, failure, mtime))
 
     if not failures:
-        return
+        return 0
 
-    print("# Cron Failure Scanner Report")
-    print(f"# {NOW.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"# Lookback: {LOOKBACK_MINUTES} minutes")
-    print(f"# Failures found: {len(failures)}")
-    print()
+    # Build inbox message
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    lines = [f"⚠️ Cron failure scan @ {ts}", ""]
+    for name, reason, when in failures:
+        local_when = when.strftime("%H:%M:%S UTC")
+        lines.append(f"• **{name}** ({local_when}): {reason}")
 
-    for f in failures:
-        print(f"## ❌ Job {f['job_id']}")
-        print(f"- **File:** {f['file']}")
-        print(f"- **When:** {f['timestamp']} ({f['ago_min']} min ago)")
-        print(f"- **Issue:** {f['reason']}")
-        print()
+    body = "\n".join(lines)
+
+    # Send inbox message to self
+    payload = json.dumps({
+        "to": AGENT_NAME,
+        "subject": f"⚠️ Cron failures detected ({len(failures)} job(s))",
+        "body": body,
+        "topic": "system",
+        "priority": "normal",
+    })
+
+    try:
+        subprocess.run(
+            ["curl", "-s", "-X", "POST", INBOX_API,
+             "-H", "Content-Type: application/json",
+             "-d", payload],
+            capture_output=True, timeout=10,
+        )
+    except Exception as e:
+        print(f"Failed to send inbox alert: {e}", file=sys.stderr)
+        return 1
+
+    # Also print to stdout for cron output/delivery
+    print(body)
+    return 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
