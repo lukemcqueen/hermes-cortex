@@ -312,18 +312,20 @@ restart_agent_inbox() {
 
 restart_health_server() {
   if launchctl list com.hermes.health-server &>/dev/null 2>&1; then
-    info "  Restarting Health Server…"
+    info "  Restarting Health Server (launchd)…"
     launchctl unload "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" 2>/dev/null || true
-    # Ensure the log dir exists
     mkdir -p "${HOME}/.hermes-cortex/health-server"
     launchctl load "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" 2>&1 | sed 's/^/    /'
     info "  Health Server restarted"
-  elif [[ -f "${HOME}/.config/systemd/user/hermes-health-server.service" ]]; then
+  elif systemctl --user is-enabled com.hermes.health-server &>/dev/null 2>&1 || \
+       [[ -f "${HOME}/.config/systemd/user/com.hermes.health-server.service" ]]; then
     info "  Restarting Health Server (systemd)…"
     systemctl --user daemon-reload 2>/dev/null || true
-    systemctl --user restart hermes-health-server 2>&1 | sed 's/^/    /'
+    systemctl --user enable com.hermes.health-server 2>/dev/null || true
+    systemctl --user restart com.hermes.health-server 2>&1 | sed 's/^/    /'
+    info "  Health Server restarted"
   elif [[ -f "${HOME}/.hermes-cortex/scripts/health-server.py" ]]; then
-    # First-time: launchctl not registered yet, load it
+    # First-time on macOS: launchctl not registered yet, load it
     info "  Loading Health Server for the first time…"
     mkdir -p "${HOME}/.hermes-cortex/health-server"
     launchctl load "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" 2>&1 | sed 's/^/    /'

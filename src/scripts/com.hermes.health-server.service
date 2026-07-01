@@ -1,10 +1,11 @@
 [Unit]
-Description=Hermes Health Server — self-monitoring API
+Description=Hermes Cortex Health Server — self-monitoring API
 Documentation=https://github.com/fleet-operator/hermes-cortex
 After=network.target
 
 [Service]
 Type=simple
+Environment=PATH=%h/.local/bin:%h/.hermes/hermes-agent/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=%h/.hermes/hermes-agent/venv/bin/python3 %h/.hermes/scripts/health-server.py
 Restart=on-failure
 RestartSec=5
