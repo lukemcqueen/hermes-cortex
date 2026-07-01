@@ -733,6 +733,29 @@ verify_services() {
 
 # ── Main ────────────────────────────────────────────────────
 
+install_precommit_hook() {
+  local hook_src="${HERMES_HOME}/scripts/pre-commit-score"
+  local hook_dest="${REPO_DIR}/.git/hooks/pre-commit"
+
+  [[ ! -f "$hook_src" ]] && return 0  # script not deployed yet, skip
+  [[ ! -d "${REPO_DIR}/.git/hooks" ]] && return 0  # not a git repo
+
+  if needs_update "$hook_src" "$hook_dest"; then
+    cp "$hook_src" "$hook_dest"
+    chmod +x "$hook_dest"
+    info "Installed pre-commit scoring hook: ${hook_dest/$HOME/\\~}"
+  fi
+
+  # Also install pre-push-pull hook if present
+  local push_src="${HERMES_HOME}/scripts/pre-push-pull"
+  local push_dest="${REPO_DIR}/.git/hooks/pre-push"
+  if [[ -f "$push_src" ]] && needs_update "$push_src" "$push_dest"; then
+    cp "$push_src" "$push_dest"
+    chmod +x "$push_dest"
+    info "Installed pre-push safe-pull hook: ${push_dest/$HOME/\\~}"
+  fi
+}
+
 main() {
   parse_args "$@"
   register
@@ -880,6 +903,9 @@ main() {
     ln -sf "$_CORTEX_DEPLOY_SCRIPTS" "$_HERMES_AGENT_SCRIPTS"
     info "Created ~/.hermes/scripts/ → cortex symlink"
   fi
+
+  # Install pre-commit scoring hook in repo
+  install_precommit_hook
 
   # Write notification files (monitored by operator dashboard / messenger)
   write_notification_files
