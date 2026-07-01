@@ -7,6 +7,17 @@
 # Schedule: daily at 5 AM via cron (no_agent: true).
 set -euo pipefail
 
+# ── Guard: abort any stale git operations before proceeding ──
+if git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rev-parse --git-dir &>/dev/null; then
+  if git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rebase --show-current &>/dev/null 2>&1; then
+    echo "[$(date '+%H:%M:%S')] ⚠ Stale rebase detected — aborting"
+    git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rebase --abort 2>/dev/null || true
+  fi
+  # Clear any unfinished merge/revert/cherry-pick state
+  git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" cherry-pick --quit 2>/dev/null || true
+  git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" merge --quit 2>/dev/null || true
+fi
+
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 SCANNER="${CORTEX_REPO}/src/scripts/nginx-security-scanner.sh"
 
@@ -154,10 +165,10 @@ else
      && git diff --cached --quiet deploy/nginx/blocked_ips.add 2>/dev/null; then
     log "  No changes to commit"
   else
-      git add deploy/nginx/blocked_ips.add
-      IP_COUNT=$(git diff --cached --unified=0 deploy/nginx/blocked_ips.add 2>/dev/null | \
-        grep '^\+[0-9]' | grep -v '^+\+\+' | wc -l || true)
-      git commit -m "auto: block ${IP_COUNT} suspect IPs [pipeline]"
+    git add deploy/nginx/blocked_ips.add
+    IP_COUNT=$(git diff --cached --unified=0 deploy/nginx/blocked_ips.add 2>/dev/null | \
+      grep '^\+[0-9]' | grep -v '^+++' | wc -l) || true
+    git commit -m "auto: block ${IP_COUNT} suspect IPs [pipeline]"
     PIPELINE_OUTPUT+="  ✓ Committed ${IP_COUNT} IPs to repo"$'\n'
 
     log "── Step 5: Push ──"
