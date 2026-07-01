@@ -153,6 +153,7 @@ register "src/scripts/auto-save-sessions.py"      "${HERMES_HOME}/scripts/auto-s
 register "src/scripts/agent-health-monitor.py"    "${HERMES_HOME}/scripts/agent-health-monitor.py"
 register "src/scripts/gbrain-nightly-dream.sh"    "${HERMES_HOME}/scripts/gbrain-nightly-dream.sh"
 register "src/scripts/gbrain-update-sync.sh"      "${HERMES_HOME}/scripts/gbrain-update-sync.sh"
+register "src/scripts/gbrain-doctor-summary.py"   "${HERMES_HOME}/scripts/gbrain-doctor-summary.py"
 register "src/scripts/harvest-lessons.sh"         "${HERMES_HOME}/scripts/harvest-lessons.sh"
 register "src/scripts/send-skill-report.py"       "${HERMES_HOME}/scripts/send-skill-report.py"
 register "src/scripts/state_tracker.py"           "${HERMES_HOME}/scripts/state_tracker.py"
