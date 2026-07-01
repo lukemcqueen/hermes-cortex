@@ -1886,7 +1886,7 @@ This generates code snippet files across 20+ languages, builds embeddings with `
 
 **Ollama models needed:**
 - `nomic-embed-text` — embeddings (pulled by install.sh)
-- `qwen2.5-coder:1.5b` — code generation (~986 MB, must pull manually: `ollama pull qwen2.5-coder:1.5b`)
+- `qwen2.5-coder:3b` — code generation (~1.7 GB, must pull manually: `ollama pull qwen2.5-coder:3b`)
 
 ### Usage
 
@@ -1900,7 +1900,7 @@ python3 offline/offline_code.py stats                      # Corpus statistics
 
 **search** — Returns snippets ranked by cosine similarity (nomic-embed-text), with language, tags, and score. Top matches include full code blocks.
 
-**gen** — Finds the most relevant snippets via RAG, injects them as context, then generates code with qwen2.5-coder:1.5b. Falls back gracefully if the model isn't pulled.
+**gen** — Finds the most relevant snippets via RAG, injects them as context, then generates code with qwen2.5-coder:3b. Falls back gracefully if the model isn't pulled.
 
 **Corpus languages:** Python, JavaScript, TypeScript, Go, Rust, C, C++, C#, Java, Kotlin, Swift, Dart, Elixir, PHP, Ruby, Lua, R, Shell, SQL, Terraform, Docker, Nix, Zig, PowerShell, Kubernetes (27 languages, 367 snippet files).
 
@@ -1908,7 +1908,7 @@ python3 offline/offline_code.py stats                      # Corpus statistics
 
 ### Pitfalls
 
-- **Model not found on `gen`** — Run `ollama pull qwen2.5-coder:1.5b` first. The 986 MB download takes 2-3 minutes on broadband.
+- **Model not found on `gen`** — Run `ollama pull qwen2.5-coder:3b` first. The 1.7 GB download takes 2-3 minutes on broadband.
 - **Outdated index** — Rebuild with `offline_code.py index --force` after adding new snippet files.
 |- **Python version** — The corpus generation needs Python 3.12+ (3.9's sqlite3 can't `enable_load_extension`). Use `python3.12` which is the Hermes default.
 

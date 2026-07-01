@@ -23,11 +23,30 @@ Hermes Cortex is a **public installer and skill set** for
 - **Hermes plugin** — `/brain` slash command for knowledge queries
 - **Utility scripts** — heartbeat, memory sync, system health, LLM scoring
 
+## Ollama Model Tier
+
+Hermes Cortex ships a **two-model Ollama stack** for offline/cheap operations:
+
+| Tier | Model | Size | Role |
+|------|-------|------|------|
+| Embedding | `nomic-embed-text` | 274 MB | Vector search (embeddings for search, RAG) |
+| Unified gen/judge | `qwen2.5-coder:3b` | 1.9 GB | Code gen, classification, routing, quality gates |
+
+This replaces the previous three-model stack (`llama3.2:1b` + `qwen2.5-coder:1.5b` + `nomic-embed-text`). **The 3B coder handles both code generation and classification/judging** — agents should use it via `http://localhost:11434/api/generate` or `offline_code gen` for:
+
+- ✅ Code generation (RAG-enhanced via offline_code)
+- ✅ Alert/task classification
+- ✅ Quality gate pass/fail checks
+- ✅ Message routing decisions
+- ✅ Fallback when cloud model is rate-limited
+
+See `docs/model-tier-strategy.md` for full architecture, RAM budget, and integration points.
+
 ## Key Directories
 
 | Path | Purpose |
 |------|---------|
-| `docs/` | Troubleshooting, guides, templates, SECURITY.md |
+| `docs/` | Troubleshooting, guides, templates, SECURITY.md, **model-tier-strategy.md** |
 | `docs/templates/` | Seed MEMORY.md, USER.md, brain .gitignore |
 | `install.sh` | Single-command installer, 27 steps (idempotent) |
 | `deploy/` | Langfuse + ClickHouse deployment (docker-compose, configs, README) |

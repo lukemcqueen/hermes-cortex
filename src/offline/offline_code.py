@@ -22,7 +22,7 @@ Usage:
                                                → Fetch URL, extract code, learn
 
 Requirements: Python 3.10+, Ollama running with nomic-embed-text
-Optional: qwen2.5-coder:1.5b (or higher) for code generation
+Optional: qwen2.5-coder (3b, 7b, or 14b) for code generation
 """
 import argparse
 import json
@@ -40,7 +40,7 @@ CORPUS_DIR = Path(__file__).parent / "code-corpus"
 INDEX_DB = HOME / "offline" / "code-index.json"
 OLLAMA_URL = "http://localhost:11434"
 EMBED_MODEL = "nomic-embed-text"
-GEN_MODEL = "qwen2.5-coder:1.5b-64k"  # default; auto-upgraded if VRAM available
+GEN_MODEL = "qwen2.5-coder:3b"  # default; auto-upgraded if VRAM available
 
 
 def _detect_gen_model() -> str:
@@ -97,11 +97,11 @@ def _detect_gen_model() -> str:
         if vram_gb > 24:
             return "qwen2.5-coder:14b"                         # Q4_K_M ~8GB
         elif vram_gb > 10:
-            return "qwen2.5-coder:7b"                          # Q4_K_M ~4.5GB (default)
+            return "qwen2.5-coder:7b"                          # Q4_K_M ~4.5GB
         elif vram_gb > 4:
-            return "qwen2.5-coder:1.5b"                        # Q4_K_M ~1GB, 64K context
+            return "qwen2.5-coder:3b"                          # Q4_K_M ~1.7GB (sweet spot)
         else:
-            return "qwen2.5-coder:1.5b"                        # floor — always runs
+            return "qwen2.5-coder:3b"                          # floor — always runs
     except Exception:
         return GEN_MODEL  # fall back to default
 
