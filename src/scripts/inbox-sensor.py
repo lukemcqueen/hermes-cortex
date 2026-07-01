@@ -27,7 +27,7 @@ from urllib.error import URLError
 HOME = Path.home()
 STATE_DIR = HOME / ".hermes" / "state"
 SEEN_FILE = STATE_DIR / "inbox-broadcast-seen"
-INBOX_API = os.environ.get("AGENT_INBOX_URL", "https://your-domain.com:13004")
+INBOX_API = os.environ.get("AGENT_INBOX_URL", "http://127.0.0.1:8903")
 INBOX_AUTH = os.environ.get("MOSES_INBOX_AUTH", "")
 
 # Read MOSES_INBOX_AUTH from config file if not set via env
