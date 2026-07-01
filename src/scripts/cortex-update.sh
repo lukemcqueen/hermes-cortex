@@ -704,7 +704,7 @@ verify_services() {
     fi
   elif [[ "$os" == "Linux" ]]; then
     local any_unmanaged=0 any_inactive=0 managed=0
-    for unit in ollama gbrain-autopilot hermes-gateway hermes-cortex-dashboard hermes-agent-inbox; do
+    for unit in ollama gbrain-autopilot hermes-gateway hermes-cortex-dashboard; do
       # Check system-level first, fall back to user-level
       if systemctl is-active --quiet "$unit" 2>/dev/null || systemctl --user is-active --quiet "$unit" 2>/dev/null; then
         managed=$((managed + 1))
