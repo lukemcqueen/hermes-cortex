@@ -104,6 +104,12 @@ def main():
     if SEEN_FILE.exists():
         seen_ids = set(line.strip() for line in SEEN_FILE.read_text().splitlines() if line.strip())
 
+    # Touch last-message-check before the API call so it fires on every run
+    # (both success and error paths). The system-alert-watchdog checks this
+    # file's mtime to detect inbox polling stalls.
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    (STATE_DIR / "last-message-check").write_text(datetime.now(timezone.utc).isoformat())
+
     # Fetch messages via API with per-agent filtering
     url = f"{INBOX_API}/api/inbox?for=moses&unread_only=true"
     try:
@@ -139,10 +145,6 @@ def main():
                 new_broadcasts += 1
 
     has_work = new_broadcasts > 0 or urgent_count > 0
-
-    # Touch last-message-check so system-alert-watchdog can gauge freshness
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    (STATE_DIR / "last-message-check").write_text(datetime.now(timezone.utc).isoformat())
 
     print(json.dumps({
         "has_work": has_work,
