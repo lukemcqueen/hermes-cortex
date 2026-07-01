@@ -175,20 +175,21 @@ def _fetch_http(url: str, auth: str = "") -> dict | None:
 def _fetch_inbox(agent_key: str) -> dict | None:
     """Read the latest health push from the inbox for a given agent.
 
-    Looks for the most recent message on the 'health' topic from this agent
-    and parses the body as a health vector.
+    Looks for the most recent message from this agent containing a
+    ``{"v": [...]}`` vector. Searches both 'health' and 'general' topics
+    since agents push to whichever topic is active.
     """
-    data = _inbox_request(f"api/inbox?limit=10&topic={HEALTH_TOPIC}")
-    if not data:
-        return None
-
-    msgs = data.get("messages", [])
-    # Find most recent message from this agent
-    for msg in msgs:
-        if msg.get("from", "").lower() == agent_key.lower():
-            body = msg.get("body", "").strip()
-            return _parse_vector_body(body)
-
+    for topic in (HEALTH_TOPIC, "general"):
+        data = _inbox_request(f"api/inbox?limit=10&topic={topic}")
+        if not data:
+            continue
+        msgs = data.get("messages", [])
+        for msg in msgs:
+            if msg.get("from", "").lower() == agent_key.lower():
+                body = msg.get("body", "").strip()
+                result = _parse_vector_body(body)
+                if result:
+                    return result
     return None
 
 
