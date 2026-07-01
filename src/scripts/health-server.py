@@ -226,6 +226,92 @@ def _check_services() -> dict:
 
 
 # ── Cron health check ─────────────────────────────────────────
+def _estimate_interval(schedule: str) -> int:
+    """Estimate expected interval in seconds from a cron schedule.
+
+    Uses the most significant constrained field to determine cadence:
+    - Weekday or day-of-month constrained → weekly/monthly
+    - Hour constrained (but no weekday) → daily
+    - Only minute constrained → sub-hourly
+    - Fallback: 86400 (24h)
+
+    Stale check uses: elapsed > 2x expected.
+    """
+    if not schedule:
+        return 86400
+    s = schedule.strip()
+
+    # 'every Nm' / 'every N min' / 'every Nh' format
+    import re as _re
+    m = _re.match(r'every\s+(\d+)\s*(m|min|h)', s, _re.IGNORECASE)
+    if m:
+        val = int(m.group(1))
+        return val * 60 if m.group(2) != 'h' else val * 3600
+
+    # Standard 5-field cron
+    parts = s.split()
+    if len(parts) != 5:
+        return 86400
+    minute, hour, day, month, weekday = parts
+
+    # Expand ranges (1-5 → 1,2,3,4,5) for weekday and day fields
+    def _expand_range(field: str) -> list[int]:
+        """Expand a cron field like '1-5' or '1,3-5' into a list of ints."""
+        vals: list[int] = []
+        for part in field.split(','):
+            if '-' in part and part != '*':
+                a, b = (int(x) for x in part.split('-', 1))
+                vals.extend(range(a, b + 1))
+            else:
+                try:
+                    vals.append(int(part))
+                except ValueError:
+                    pass
+        return sorted(set(vals))
+
+    # Check fields from most significant to least.
+    # First matching constraint determines the cadence.
+
+    # Day-of-month constrained → monthly
+    if day not in ('*', '?'):
+        return 30 * 86400
+
+    # Weekday constrained → weekly (or multi-day gap based on schedule)
+    if weekday not in ('*', '?'):
+        dow_vals = _expand_range(weekday)
+        if len(dow_vals) > 1:
+            # Multi-day-per-week schedule: use the longest gap between days
+            gaps = [(dow_vals[(i+1) % len(dow_vals)] - dow_vals[i]) % 7
+                    for i in range(len(dow_vals))]
+            max_gap = max(gaps)
+            return max_gap * 86400
+        return 7 * 86400  # single weekday = weekly
+
+    # Hour constrained → daily cadence (or sub-daily based on hour pattern)
+    if hour != '*':
+        if ',' in hour:
+            vals = sorted(int(x) for x in hour.split(','))
+            min_gap = min(vals[i+1] - vals[i] for i in range(len(vals)-1))
+            return min_gap * 3600
+        elif '-' in hour:
+            return 3600  # hourly within range
+        elif hour.startswith('*/'):
+            return int(hour[2:]) * 3600
+        return 86400  # single hour = daily
+
+    # Only minute constrained → sub-hourly
+    if minute != '*':
+        if ',' in minute:
+            vals = sorted(int(x) for x in minute.split(','))
+            min_gap = min(vals[i+1] - vals[i] for i in range(len(vals)-1)) if len(vals) > 1 else 1
+            return max(min_gap * 60, 60)
+        elif minute.startswith('*/'):
+            return max(int(minute[2:]) * 60, 60)
+        return 3600  # single minute = at most once per hour
+
+    return 86400  # everything wildcarded = daily default
+
+
 def _check_cron_health() -> dict:
     """Check cached cron job health from jobs.json."""
     issues: list[dict] = []
@@ -247,16 +333,17 @@ def _check_cron_health() -> dict:
                 if status == "error":
                     errored.append(j.get("name", j.get("job_id", "unknown")))
                     healthy = False
-                # Check for stale jobs (not run in > 2x their schedule)
+                # Check for stale jobs (not run in > 2x expected interval)
                 last_run = j.get("last_run_at")
                 if last_run and "T" in str(last_run):
                     try:
                         last = datetime.fromisoformat(str(last_run)).timestamp()
                         elapsed = now - last
-                        # Estimate schedule interval
                         sched = j.get("schedule", "")
-                        if sched and elapsed > 86400:  # > 24h since last run
-                            stale.append(j.get("name", j.get("job_id", "unknown")))
+                        if sched:
+                            expected = _estimate_interval(sched)
+                            if elapsed > 2 * expected and expected > 0:
+                                stale.append(j.get("name", j.get("job_id", "unknown")))
                     except (ValueError, TypeError):
                         pass
         except (json.JSONDecodeError, KeyError):
