@@ -140,6 +140,10 @@ def main():
 
     has_work = new_broadcasts > 0 or urgent_count > 0
 
+    # Touch last-message-check so system-alert-watchdog can gauge freshness
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    (STATE_DIR / "last-message-check").write_text(datetime.now(timezone.utc).isoformat())
+
     print(json.dumps({
         "has_work": has_work,
         "unread_count": unread_count,
