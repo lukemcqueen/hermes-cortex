@@ -718,13 +718,9 @@ verify_services() {
     if [[ "$any_unmanaged" -eq 0 && "$any_inactive" -eq 0 ]]; then
       info "All $managed cortex services managed by systemd (active)"
     fi
-    # Detect unmanaged processes
-    local ollama_pid hermes_pid
-    ollama_pid=$(pgrep -f "ollama serve" 2>/dev/null || true)
+    # Detect unmanaged processes (skip ollama — already covered by the service loop above)
+    local hermes_pid
     hermes_pid=$(pgrep -f "hermes_cli.main" 2>/dev/null || true)
-    if [[ -n "$ollama_pid" ]] && ! systemctl --user is-active --quiet ollama 2>/dev/null; then
-      warn "⚠ Ollama running (PID $ollama_pid) but NOT managed by systemd — use install.sh"
-    fi
     if [[ -n "$hermes_pid" ]] && ! systemctl --user is-active --quiet hermes-gateway 2>/dev/null; then
       warn "⚠ Hermes Gateway running (PID $hermes_pid) but NOT managed by systemd"
     fi
