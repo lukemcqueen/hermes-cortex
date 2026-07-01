@@ -455,20 +455,21 @@ bash ~/.hermes/scripts/install-crons.sh --uninstall
 
 ## ⚡ Health Monitoring Pipeline
 
-The orchestrator polls all server agents every 10 minutes for a compact **health vector** — an 8-element binary/ternary status vector with no auth overhead, no secrets, no JSON bloat.
+The orchestrator polls all server agents every 10 minutes for a compact **health vector** — a 9-element ternary status vector with no auth overhead, no secrets, no JSON bloat.
 
 ### Service map (shared across all agents)
 
-| Index | Service | Code |
-|-------|---------|------|
-| 0 | nginx | 1=up, -1=down, 0=n/a |
-| 1 | Ollama | same |
-| 2 | gbrain | same |
-| 3 | Cortex Dashboard | same |
-| 4 | Langfuse (web) | same |
-| 5 | Langfuse (worker) | same |
-| 6 | Docker daemon | same |
-| 7 | Hermes Gateway | same |
+| Index | Service | Code | Description |
+|-------|---------|------|-------------|
+| 0 | resources | 1=ok, -1=stressed, 0=n/a | CPU load < 4× cores, memory > 5% free |
+| 1 | services | 1=ok, -1=down, 0=n/a | At least one core daemon reachable |
+| 2 | no_errored_crons | 1=ok, -1=error, 0=n/a | No cron jobs with recent failures |
+| 3 | no_stale_crons | 1=ok, -1=stale, 0=n/a | No cron jobs gone stale (orchestrator) |
+| 4 | nginx | 1=up, -1=down, 0=n/a | nginx process running |
+| 5 | ollama | 1=up, -1=down, 0=n/a | Ollama process running |
+| 6 | gbrain | 1=up, -1=down, 0=n/a | gbrain sync daemon running |
+| 7 | disk_ok | 1=ok, -1=full, 0=n/a | Root partition < 90% used |
+| 8 | gbrain_sources_ok | 1=ok, -1=missing, 0=n/a | ~/brain dirs exist and non-empty |
 
 ### Health endpoint (server agents)
 

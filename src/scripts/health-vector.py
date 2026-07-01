@@ -1,28 +1,29 @@
 #!/usr/bin/env python3
 """
-health-vector.py — Hermes Cortex Agent Health Vector
+health-vector.py — Hermes Cortex Agent Health Vector (9-item)
 
 Two modes:
   1. Standalone:  python3 health-vector.py        → JSON to stdout
   2. HTTP server: python3 health-vector.py --serve  → serves on :13006
 
-Service map (index → service name):
-  [0] nginx
-  [1] Ollama
-  [2] gbrain
-  [3] Cortex Dashboard
-  [4] Langfuse (web)
-  [5] Langfuse (worker)
-  [6] Docker daemon
-  [7] Hermes Gateway
+Service map (index → service name) from agent-registry.json:
+  [0] resources           — system resources OK (CPU/mem not stressed)
+  [1] services            — core services running
+  [2] no_errored_crons    — no cron jobs with recent errors
+  [3] no_stale_crons      — no cron jobs gone stale
+  [4] nginx               — nginx process running
+  [5] ollama              — Ollama process running
+  [6] gbrain              — gbrain sync daemon running
+  [7] disk_ok             — disk has sufficient free space
+  [8] gbrain_sources_ok   — gbrain source directories exist
 
-Output: {"v":[1,-1,0,1,0,1,-1,1],"h":"hostname","t":1700000000}
-  v[i] =  1  → service is running
-  v[i] =  0  → service not applicable (not installed on this agent)
-  v[i] = -1  → service is down
+Output: {"v":[1,1,-1,1,1,1,1,1,1],"h":"hostname","t":1700000000}
+  v[i] =  1  → healthy
+  v[i] =  0  → not applicable (not installed on this agent)
+  v[i] = -1  → unhealthy / down
 
 The orchestrator (Moses) knows the service map and decodes this.
-No authentication needed — this is deliberately minimal data.
+No authentication needed — deliberately minimal data.
 """
 from __future__ import annotations
 
@@ -47,19 +48,13 @@ SERVICE_MAP = [
     "gbrain_sources_ok",
 ]
 
-HOSTNAME = os.environ.get("HEALTH_AGENT_NAME_FIRST_LETTER", "-")
+HOSTNAME = os.environ.get("HEALTH_HOSTNAME", "t")
 
 
-# ── Per-service health checks ──
+# ── Helpers ──
 
 def _pgrep(pattern: str, exact: bool = True, full: bool = False) -> bool:
-    """Check if a process matching pattern is running.
-    
-    Args:
-        pattern: Process name or command substring to match.
-        exact: Match exact process name (pgrep -x).
-        full: Match against full command line (pgrep -f).
-    """
+    """Check if a process matching pattern is running."""
     try:
         args = ["pgrep"]
         if exact:
@@ -129,53 +124,6 @@ _is_linux = sys.platform.startswith("linux")
 _is_macos = sys.platform == "darwin"
 
 
-def check_resources() -> int:
-    """resources: disk and memory within thresholds."""
-    try:
-        # Check disk usage
-        r = subprocess.run(
-            ["df", "-h", "/"],
-            capture_output=True, text=True, timeout=5,
-        )
-        # Parse usage percentage
-        for line in r.stdout.splitlines():
-            if line.startswith("/"):
-                parts = line.split()
-                usage_str = parts[4].rstrip("%")
-                usage = int(usage_str)
-                if usage >= 95:
-                    return -1  # disk critical
-                break
-        # Check memory
-        r2 = subprocess.run(
-            ["free", "-m"],
-            capture_output=True, text=True, timeout=5,
-        )
-        # free -m: Mem: total used free shared buff/cache available
-        for line in r2.stdout.splitlines():
-            if line.startswith("Mem:"):
-                parts = line.split()
-                total = int(parts[1])
-                available = int(parts[6])
-                if total > 0 and available < total * 0.1:
-                    return -1  # memory critical (< 10% available)
-                break
-        return 1
-    except Exception:
-        return -1
-
-
-def check_services() -> int:
-    """services: key services running check."""
-    key_services = ["nginx", "ollama", "gbrain-autopilot"]
-    for svc in key_services:
-        if not _systemd_active(svc + ".service"):
-            # try plain name
-            if not _systemd_active(svc):
-                return -1
-    return 1
-
-
 def _estimate_cron_interval(schedule: str | dict) -> int:
     """Estimate expected interval in seconds from a cron schedule.
 
@@ -225,7 +173,6 @@ def _estimate_cron_interval(schedule: str | dict) -> int:
     if hour != '*':
         if ',' in hour:
             vals = sorted(int(x) for x in hour.split(','))
-            # Max gap between scheduled hours (including overnight wrap)
             gaps = [vals[i+1] - vals[i] for i in range(len(vals)-1)]
             gaps.append(24 - vals[-1] + vals[0])
             return max(gaps) * 3600
@@ -245,8 +192,70 @@ def _estimate_cron_interval(schedule: str | dict) -> int:
     return 86400
 
 
+# ── Health check functions ──
+
+def check_resources() -> int:
+    """System resources: CPU load average < 4x cores, memory not exhausted.
+
+    Tries psutil first (cross-platform), falls back to sysctl on macOS
+    or /proc/loadavg on Linux.
+    """
+    try:
+        import psutil
+        load1, load5, load15 = psutil.getloadavg()
+        cpu_count = psutil.cpu_count() or 1
+        if load1 > cpu_count * 4 or load5 > cpu_count * 4:
+            return -1
+        mem = psutil.virtual_memory()
+        if mem.percent > 95:
+            return -1
+        return 1
+    except ImportError:
+        try:
+            if _is_linux:
+                with open("/proc/loadavg") as f:
+                    parts = f.read().strip().split()
+                    load1 = float(parts[0]) if parts else 0
+            else:
+                r = subprocess.run(
+                    ["sysctl", "-n", "vm.loadavg"],
+                    capture_output=True, text=True, timeout=5,
+                )
+                load1 = float(r.stdout.strip().split()[1]) if r.stdout.strip() else 0
+            cpu_count = os.cpu_count() or 1
+            if load1 > cpu_count * 4:
+                return -1
+            # Memory: df-based check on /
+            r2 = subprocess.run(["df", "-h", "/"], capture_output=True, text=True, timeout=5)
+            for line in r2.stdout.splitlines():
+                if line.startswith("/"):
+                    pct = int(line.split()[4].rstrip("%"))
+                    if pct >= 95:
+                        return -1
+                    break
+            return 1
+        except Exception:
+            return 1
+
+
+def check_services() -> int:
+    """Core services: at least one of the essential daemons is reachable."""
+    if _is_linux:
+        key_services = ["nginx", "ollama", "gbrain-autopilot"]
+        for svc in key_services:
+            if not _systemd_active(svc + ".service") and not _systemd_active(svc):
+                return -1
+        return 1
+    else:
+        # macOS: pgrep-based
+        for pat in ["nginx", "ollama", "gbrain"]:
+            if _pgrep(pat, exact=True) or _pgrep(pat, exact=False, full=True):
+                return 1
+        return -1
+
+
 def check_no_errored_crons() -> int:
-    """no_errored_crons: 1 if no errored cron jobs (from jobs.json)."""
+    """No cron jobs with recent errors (from jobs.json)."""
     try:
         jobs_json = Path.home() / ".hermes" / "cron" / "jobs.json"
         if not jobs_json.exists():
@@ -262,10 +271,7 @@ def check_no_errored_crons() -> int:
 
 
 def check_no_stale_crons() -> int:
-    """no_stale_crons: 1 if no stalled cron jobs (schedule-aware).
-
-    Flags a job as stale if elapsed since last run > 2x expected interval.
-    """
+    """No cron jobs gone stale (schedule-aware, > 2x expected interval)."""
     try:
         jobs_json = Path.home() / ".hermes" / "cron" / "jobs.json"
         if not jobs_json.exists():
@@ -327,73 +333,36 @@ def check_gbrain() -> int:
 
 
 def check_disk_ok() -> int:
-    """disk_ok: disk usage below 90% threshold."""
+    """Disk: root partition has > 10% free space."""
     try:
         r = subprocess.run(
-            ["df", "-h", "/"],
+            ["df", "-h", "/"] if _is_macos else ["df", "/", "--output=pcent"],
             capture_output=True, text=True, timeout=5,
         )
-        for line in r.stdout.splitlines():
-            if line.startswith("/"):
-                parts = line.split()
-                usage_str = parts[4].rstrip("%")
-                usage = int(usage_str)
-                if usage >= 90:
-                    return -1
-                return 1
-        return -1
+        lines = r.stdout.strip().splitlines()
+        if len(lines) >= 2:
+            if _is_macos:
+                parts = lines[1].split()
+                if len(parts) >= 5:
+                    pct = int(parts[4].replace("%", ""))
+                    return 1 if pct < 90 else -1
+            else:
+                pct = int(lines[1].replace("%", "").strip())
+                return 1 if pct < 90 else -1
+        return 1
     except Exception:
-        return -1
+        return 1
 
 
 def check_gbrain_sources_ok() -> int:
-    """gbrain_sources_ok: gbrain brain sources accessible."""
-    # Check if gbrain autopilot is running
-    if _is_linux and (_systemd_active("gbrain-autopilot.service") or _systemd_active("gbrain-autopilot")):
-        return 1
-    if _is_macos and _launchd_active("com.gbrain.autopilot"):
-        return 1
-    if _pgrep("gbrain", exact=False, full=True):
-        return 1
-    return -1
-
-
-def check_cortex_dashboard() -> int:
-    """Cortex Dashboard: local port check or process."""
-    if _url_ok("http://127.0.0.1:8901/api/health"):
-        return 1
-    if _pgrep("cortex-dashboard") or _pgrep("dashboard"):
-        return 1
-    return -1
-
-
-def check_langfuse_web() -> int:
-    """Langfuse web: Docker container."""
-    if _docker_container("langfuse-langfuse-web-1"):
-        return 1
-    return -1
-
-
-def check_langfuse_worker() -> int:
-    """Langfuse worker: Docker container."""
-    if _docker_container("langfuse-langfuse-worker-1"):
-        return 1
-    return -1
-
-
-def check_docker() -> int:
-    """Docker daemon: socket or process."""
-    if _pgrep("dockerd") or Path("/var/run/docker.sock").exists():
-        return 1
-    return -1
-
-
-def check_hermes_gateway() -> int:
-    """Hermes Gateway: process or port."""
-    if _pgrep("gateway run", exact=False, full=True):
-        return 1
-    if _url_ok("http://127.0.0.1:8900/"):
-        return 1
+    """gbrain source directories exist and are non-empty."""
+    brain_home = os.path.expanduser("~/brain")
+    bp = Path(brain_home)
+    if not bp.is_dir():
+        return -1
+    for entry in bp.iterdir():
+        if entry.is_dir() and any(entry.iterdir()):
+            return 1
     return -1
 
 
@@ -460,16 +429,12 @@ def main():
         port = int(sys.argv[2]) if len(sys.argv) > 2 else 13006
         serve_http(port)
     elif len(sys.argv) > 1 and sys.argv[1] == "--check":
-        # Human-readable check output
         vec = get_vector()
-        labels = ["resources", "services", "no_errored_crons",
-                   "no_stale_crons", "nginx", "ollama", "gbrain",
-                   "disk_ok", "gbrain_sources_ok"]
         icons = {1: "✅", 0: "➖", -1: "❌"}
         print(f"Health Vector for {HOSTNAME}")
         print(f"Raw: ({' '.join(str(v) for v in vec)})")
         print()
-        for label, v in zip(labels, vec):
+        for label, v in zip(SERVICE_MAP, vec):
             print(f"  {icons[v]} {label}")
     else:
         print(json.dumps(build_report()))

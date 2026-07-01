@@ -115,6 +115,7 @@ services:
     environment:
       <<: *langfuse-env-base
       HOSTNAME: "0.0.0.0"
+      NODE_OPTIONS: "--max-old-space-size=768"
       NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3000}
       LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-hermes-cortex}
       LANGFUSE_INIT_PROJECT_ID: ${LANGFUSE_INIT_PROJECT_ID:-default-project}
