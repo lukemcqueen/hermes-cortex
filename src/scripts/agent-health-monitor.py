@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""agent-health-monitor.py — Cross-server health poller for Moses.
+"""agent-health-monitor.py — Cross-server health poller for Moses (DEPRECATED).
+
+⚠  This script is deprecated. Use orch-team-health.py instead, which
+   supports the agent-registry.json health_method field (both 'http' for
+   servers and 'inbox' for client-only agents like Titus).
+
+   The active cron (orch-team-health) handles Titus via inbox — he pushes
+   his health vector using health-vector-push.sh and Moses reads it from
+   the inbox. Never try to HTTP-poll Titus directly. He is not a server.
 
 no_agent watchdog pattern:
   Empty stdout → silent (no state change)
@@ -17,7 +25,8 @@ Moses's own health is checked at http://127.0.0.1:8905 via fallback.
 
 Setup:
   Add to agent-registry.json:
-    "titus": { ..., "health_url": "https://user:pass@titus-host:13006/api/v1/health" }
+    "gisu": { ..., "health_url": "https://user:pass@gisu-host:13006/api/v1/health" }
+    "titus": { "health_method": "inbox" }  ⚠ Do NOT set health_url for Titus
 """
 from __future__ import annotations
 
