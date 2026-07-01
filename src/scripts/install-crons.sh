@@ -362,7 +362,7 @@ create_cron "agent-auto-remediate" "*/30 * * * *" \
   "origin" \
   "$HOME" \
   "false" \
-  "qwen2.5-coder:3b" "custom:ollama-local"
+  "deepseek-v4-flash" "opencode-zen"
 
 # Companion sensor (no_agent, every 5 min)
 create_cron "remediation-sensor" "*/5 * * * *" \
@@ -517,7 +517,7 @@ create_cron "memory-pruning" "0 4 * * 1" \
   "" \
   "Consolidate Hermes agent memory and project agent instructions. Read MEMORY.md, USER.md from the active profile and project roots. Consolidate into compact pointers. Prune stale entries. Keep under 2,200 chars." \
   "" "" "origin" "" "false" \
-  "deepseek-v4-flash" "opencode-zen"
+  "qwen2.5-coder:3b" "custom:ollama-local"
 
 # Auto-save sessions every 6 hours
 create_cron "auto-save-sessions" "every 360m" \

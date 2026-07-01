@@ -4,6 +4,10 @@
 no_agent watchdog pattern:
   Always outputs the snapshot (not silent) — this is a periodic report, not a state-change monitor.
 
+Two health methods:
+  - http:   Poll agent's health-vector HTTP endpoint (server agents)
+  - inbox:  Read agent's latest health push from the inbox (client-only agents)
+
 Usage:
   python3 orch-health-report.py
 
@@ -14,6 +18,7 @@ Output:
 
 from __future__ import annotations
 
+import base64
 import json
 import sys
 import time
@@ -24,11 +29,55 @@ from pathlib import Path
 HOME = Path.home()
 REGISTRY_PATH = HOME / "hermes-cortex" / "src" / "agent-registry.json"
 REGISTRY_LOCAL = HOME / ".hermes" / "agent-registry.local.json"
+INBOX_CONF = HOME / ".hermes" / "moses-inbox.conf"
 TIMEOUT = 3
-SERVICE_MAP = ["resources", "services", "no_errored_crons", "no_stale_crons", "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok"]
+SERVICE_MAP = ["resources", "services", "no_errored_crons", "no_stale_crons",
+               "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok"]
 ICONS = {1: "🟢", 0: "⚪", -1: "🔴"}
-STATUS_LABEL = {1: "✅", -1: "⚠️"}
 
+
+# ── Inbox connection ──
+
+def _load_inbox_config() -> dict:
+    """Load inbox URL and auth from moses-inbox.conf."""
+    config = {"url": "", "auth": ""}
+    if not INBOX_CONF.exists():
+        return config
+    for line in INBOX_CONF.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        k = k.strip()
+        v = v.strip().strip("'\"")
+        if k == "MOSES_INBOX_URL":
+            config["url"] = v.rstrip("/")
+        elif k == "MOSES_INBOX_AUTH":
+            config["auth"] = v
+    return config
+
+
+INBOX_CFG = _load_inbox_config()
+
+
+def _inbox_request(path: str) -> dict | None:
+    """Make an authenticated GET to the inbox API. Returns parsed JSON or None."""
+    if not INBOX_CFG["url"]:
+        return None
+    url = f"{INBOX_CFG['url']}/{path.lstrip('/')}"
+    headers = {"Accept": "application/json"}
+    if INBOX_CFG["auth"]:
+        encoded = base64.b64encode(INBOX_CFG["auth"].encode()).decode()
+        headers["Authorization"] = f"Basic {encoded}"
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            return json.loads(resp.read().decode())
+    except Exception:
+        return None
+
+
+# ── Agent loading ──
 
 def _get_agents() -> list[dict]:
     """Load agents from registry with local overrides, same as orch-team-health.py."""
@@ -69,8 +118,10 @@ def _get_agents() -> list[dict]:
     return agents
 
 
+# ── HTTP fetch ──
+
 def _fetch(url: str) -> dict | None:
-    """Fetch health vector from an agent."""
+    """Fetch health vector from an agent via HTTP."""
     try:
         req = urllib.request.Request(url, headers={
             "User-Agent": "hermes-health-report/1.0",
@@ -82,6 +133,43 @@ def _fetch(url: str) -> dict | None:
         return None
 
 
+# ── Inbox fetch ──
+
+def _fetch_inbox_vector(agent_key: str) -> list[int] | None:
+    """Read the latest health push from the inbox for a given agent.
+
+    Looks for the most recent message from this agent containing a
+    ``{"v": [...]}`` vector. Searches both 'health' and 'general' topics.
+    Returns the vector or None.
+    """
+    for topic in ("health", "general"):
+        resp = _inbox_request(
+            f"api/inbox?topic={topic}&unread_only=false"
+        )
+        if not resp:
+            continue
+        messages = resp.get("messages", [])
+        for msg in messages:
+            # Only consider messages from this agent
+            if msg.get("from", "").strip().lower() != agent_key:
+                continue
+            body = msg.get("body", "")
+            if isinstance(body, str):
+                try:
+                    parsed = json.loads(body)
+                except (json.JSONDecodeError, TypeError):
+                    continue
+            elif isinstance(body, dict):
+                parsed = body
+            else:
+                continue
+            if "v" in parsed and isinstance(parsed["v"], list):
+                return parsed["v"]
+    return None
+
+
+# ── Report builder ──
+
 def build_snapshot() -> str:
     """Build the health snapshot markdown string."""
     agents = _get_agents()
@@ -91,17 +179,19 @@ def build_snapshot() -> str:
     for agent in agents:
         key = agent["key"]
         name = agent["name"]
+        vec = None
 
-        if agent["method"] == "inbox":
-            lines.append(f"\n**{name}** 📨 inbox push")
-            continue
+        if agent["method"] == "http":
+            data = _fetch(agent["url"])
+            if data and "v" in data:
+                vec = data["v"]
+        elif agent["method"] == "inbox":
+            vec = _fetch_inbox_vector(key)
 
-        data = _fetch(agent["url"])
-        if not data or "v" not in data:
+        if not vec:
             lines.append(f"\n**{name}** 🔴 unreachable")
             continue
 
-        vec = data["v"]
         down = sum(1 for x in vec if x == -1)
         status = "✅" if down == 0 else f"⚠️ {down} down"
         bar = "".join(ICONS.get(x, "⬜") for x in vec)
