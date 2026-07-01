@@ -47,7 +47,7 @@ SERVICE_MAP = [
     "gbrain_sources_ok",
 ]
 
-HOSTNAME = os.environ.get("HEALTH_AGENT_NAME_ID", "-")
+HOSTNAME = os.environ.get("HEALTH_AGENT_NAME_FIRST_LETTER", "-")
 
 
 # ── Per-service health checks ──
