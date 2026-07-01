@@ -178,6 +178,7 @@ register "src/scripts/health-server.py"            "${HERMES_HOME}/scripts/healt
 register "src/scripts/health-vector.py"            "${HERMES_HOME}/scripts/health-vector.py"
 register "src/scripts/report-agent-health.py"      "${HERMES_HOME}/scripts/report-agent-health.py"
 register "src/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" "health-server" "restart_health_server"
+register "src/scripts/com.hermes.health-server.service" "${HOME}/.config/systemd/user/com.hermes.health-server.service" "health-server" "restart_health_server"
 
 # Timezone helper (required by monitoring scripts)
 register "src/scripts/hermes_tz.py"                "${HERMES_HOME}/scripts/hermes_tz.py"

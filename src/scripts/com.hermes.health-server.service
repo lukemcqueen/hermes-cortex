@@ -1,0 +1,21 @@
+[Unit]
+Description=Hermes Health Server — self-monitoring API
+Documentation=https://github.com/fleet-operator/hermes-cortex
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/.hermes/hermes-agent/venv/bin/python3 %h/.hermes/scripts/health-server.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:%h/.hermes/health-server/server.log
+StandardError=append:%h/.hermes/health-server/server.log
+
+# Runtime hardening
+NoNewPrivileges=yes
+ProtectHome=read-only
+PrivateTmp=yes
+ProtectSystem=strict
+
+[Install]
+WantedBy=default.target

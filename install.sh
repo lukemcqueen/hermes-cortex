@@ -2171,6 +2171,24 @@ PLIST
     info "  Health server launch agent already loaded"
   fi
 elif [[ "$CORTEX_OS" == "linux" ]]; then
+  # Install health server systemd user service (self-monitoring API)
+  SYSTEMD_DIR="${HOME}/.config/systemd/user"
+  HEALTH_SERVICE_SRC="${SCRIPT_DIR}/src/scripts/com.hermes.health-server.service"
+  HEALTH_SERVICE_DST="${SYSTEMD_DIR}/com.hermes.health-server.service"
+  mkdir -p "$SYSTEMD_DIR"
+  if [[ -f "$HEALTH_SERVICE_SRC" ]]; then
+    cp "$HEALTH_SERVICE_SRC" "$HEALTH_SERVICE_DST"
+    chmod 644 "$HEALTH_SERVICE_DST"
+    systemctl --user daemon-reload 2>/dev/null
+    if ! systemctl --user is-enabled com.hermes.health-server &>/dev/null 2>&1; then
+      systemctl --user enable com.hermes.health-server 2>&1
+      systemctl --user start com.hermes.health-server 2>&1
+      info "  Health server systemd service installed and started"
+    else
+      info "  Health server systemd service already enabled"
+    fi
+  fi
+
   # Docker daemon is managed by the system's init — just verify it's available
   if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
     info "  Docker daemon is running (managed by systemd)"
