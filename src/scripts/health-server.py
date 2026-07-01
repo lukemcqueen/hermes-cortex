@@ -50,7 +50,7 @@ HOME = Path.home()
 # Startup timestamp for uptime tracking
 _STARTUP_TS = time.time()
 
-app = FastAPI(title=f"Health Server — {SERVER_NAME}", version="1.0.0")
+app = FastAPI(title=f"Health Server — {AGENT_ID}", version="1.0.0")
 
 
 # ── Helpers ────────────────────────────────────────────────────
@@ -542,9 +542,7 @@ def _build_health() -> dict:
     all_issues.sort(key=lambda x: severity_order.get(x.get("severity", "info"), 99))
 
     return {
-        "server": SERVER_NAME,
-        "hostname": platform.node().split(".")[0],
-        "platform": _get_os(),
+        "server": AGENT_ID,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "uptime_seconds": _get_uptime(),
         "healthy": healthy,
@@ -618,19 +616,19 @@ async def health_v1():
 @app.get("/api/v1/health/resources")
 async def health_resources():
     result = _check_resources()
-    return {"server": SERVER_NAME, "timestamp": datetime.now(timezone.utc).isoformat(), **result}
+    return {"server": AGENT_ID, "timestamp": datetime.now(timezone.utc).isoformat(), **result}
 
 
 @app.get("/api/v1/health/services")
 async def health_services():
     result = _check_services()
-    return {"server": SERVER_NAME, "timestamp": datetime.now(timezone.utc).isoformat(), **result}
+    return {"server": AGENT_ID, "timestamp": datetime.now(timezone.utc).isoformat(), **result}
 
 
 @app.get("/api/v1/health/gbrain-sources")
 async def health_gbrain_sources():
     result = _check_gbrain_sources()
-    return {"server": SERVER_NAME, "timestamp": datetime.now(timezone.utc).isoformat(), **result}
+    return {"server": AGENT_ID, "timestamp": datetime.now(timezone.utc).isoformat(), **result}
 
 
 @app.get("/health")
