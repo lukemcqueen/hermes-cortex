@@ -27,8 +27,27 @@ from urllib.error import URLError
 HOME = Path.home()
 STATE_DIR = HOME / ".hermes" / "state"
 SEEN_FILE = STATE_DIR / "inbox-broadcast-seen"
-INBOX_API = os.environ.get("AGENT_INBOX_URL", "http://127.0.0.1:8903")
+INBOX_API = os.environ.get("AGENT_INBOX_URL", "")
 INBOX_AUTH = os.environ.get("MOSES_INBOX_AUTH", "")
+
+# Read MOSES_INBOX_URL from config file if not set via env
+if not INBOX_API:
+    config_path = HOME / ".hermes" / "moses-inbox.conf"
+    if config_path.exists():
+        try:
+            for line in config_path.read_text().splitlines():
+                line = line.strip()
+                if line.startswith("MOSES_INBOX_URL="):
+                    val = line.split("=", 1)[1].strip().strip("'\"")
+                    if val:
+                        INBOX_API = val
+                        break
+        except Exception:
+            pass
+
+# Fallback default
+if not INBOX_API:
+    INBOX_API = "http://127.0.0.1:8903"
 
 # Read MOSES_INBOX_AUTH from config file if not set via env
 if not INBOX_AUTH:
