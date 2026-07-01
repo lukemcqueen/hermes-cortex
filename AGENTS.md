@@ -96,15 +96,26 @@ Every agent working in this repo must follow these non-negotiable rules:
 8. **Keep working until done** — don't stop after writing a stub, plan, or single command. Work until you've actually exercised the code or produced the requested result.
 9. **Use tools, not descriptions** — never describe what you would do without actually doing it. Every response must contain tool calls that make progress or deliver a final result.
 10. **Score every change** — every code change, config change, script edit,
-    or deployment must be logged to the loop-governance DB. Two paths:
+    or deployment must be logged to the loop-governance DB.
 
-    **Path A — MCP tools (for agents with MCP access):**
+    > **⚡ Mandatory: pre-commit scoring hook** — every dev machine running
+    > cortex-update has a global git pre-commit hook that auto-creates a
+    > governance cycle on every commit. See `docs/pre-commit-scoring.md`.
+    > Agents must never override or bypass this hook. `SKIP_SCORE=1` is for
+    > emergencies only and must be explicitly approved.
+
+    Two feedback paths (both result in a loop-governance DB entry):
+
+    **Path A — MCP tools (for agents with MCP access; provides feedback):**
     - Before coding: `mcp_loop_governance_cache_search(query="task description")`
     - After change: `mcp_loop_governance_cycle_query(task_id="<task>")`
     - Provide feedback: `mcp_loop_governance_feedback_accept(cycle_id=N)`
       or `mcp_loop_governance_feedback_override(cycle_id=N, correct_decision="...", note="...")`
 
-    **Path B — CLI tools (for pre-commit hooks, scripts, shell):**
+    **Path B — Pre-commit hook (default, runs automatically):**
+    The hook creates cycles with `score-cycle --task "precommit-<repo>-<branch>/<message-slug>" --cycle <N> --code-file <file> --pass-pct <rate>`.
+    Agents should follow up with `loop-feedback accept/override` to close the
+    feedback loop. For manual CLI use:
     `score-cycle --task <id> --cycle <N> --code-file <file> --prev-code-file <file> --pass-pct <rate>`
     `loop-feedback accept <id>` / `loop-feedback override <id> --note "..."`
 

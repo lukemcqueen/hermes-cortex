@@ -734,25 +734,40 @@ verify_services() {
 # ── Main ────────────────────────────────────────────────────
 
 install_precommit_hook() {
+  local hooks_dir="${HERMES_HOME}/hooks"
   local hook_src="${HERMES_HOME}/scripts/pre-commit-score"
-  local hook_dest="${REPO_DIR}/.git/hooks/pre-commit"
+  local push_src="${HERMES_HOME}/scripts/pre-push-pull"
 
   [[ ! -f "$hook_src" ]] && return 0  # script not deployed yet, skip
-  [[ ! -d "${REPO_DIR}/.git/hooks" ]] && return 0  # not a git repo
 
+  mkdir -p "$hooks_dir"
+
+  # Deploy pre-commit-score to shared hooks dir
+  local hook_dest="${hooks_dir}/pre-commit"
   if needs_update "$hook_src" "$hook_dest"; then
     cp "$hook_src" "$hook_dest"
     chmod +x "$hook_dest"
-    info "Installed pre-commit scoring hook: ${hook_dest/$HOME/\\~}"
+    info "Deployed shared pre-commit hook: ${hook_dest/$HOME/\\~}"
   fi
 
-  # Also install pre-push-pull hook if present
-  local push_src="${HERMES_HOME}/scripts/pre-push-pull"
-  local push_dest="${REPO_DIR}/.git/hooks/pre-push"
-  if [[ -f "$push_src" ]] && needs_update "$push_src" "$push_dest"; then
-    cp "$push_src" "$push_dest"
-    chmod +x "$push_dest"
-    info "Installed pre-push safe-pull hook: ${push_dest/$HOME/\\~}"
+  # Deploy pre-push-pull to shared hooks dir
+  if [[ -f "$push_src" ]]; then
+    local push_dest="${hooks_dir}/pre-push"
+    if needs_update "$push_src" "$push_dest"; then
+      cp "$push_src" "$push_dest"
+      chmod +x "$push_dest"
+      info "Deployed shared pre-push hook: ${push_dest/$HOME/\\~}"
+    fi
+  fi
+
+  # Set global hooksPath — this makes ALL git repos on this machine
+  # use the shared hooks dir. Per-repo .git/hooks/ is overridden.
+  local current_hooks_path
+  current_hooks_path=$(git config --global core.hooksPath 2>/dev/null || echo "")
+  if [[ "$current_hooks_path" != "$hooks_dir" ]]; then
+    git config --global core.hooksPath "$hooks_dir"
+    info "Set git global hooksPath → ${hooks_dir/$HOME/\\~}"
+    info "  → All repos on this machine now use the scoring hook"
   fi
 }
 
