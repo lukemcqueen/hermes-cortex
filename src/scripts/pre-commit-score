@@ -14,11 +14,11 @@ if [[ "${SKIP_SCORE:-}" == "1" ]]; then
   exit 0
 fi
 
-# Find score-cycle — try PATH, then common locations
+# Find score-cycle — try PATH, then common locations (resolve to full path)
 SCORE_CYCLE=""
 for candidate in score-cycle ~/.local/bin/score-cycle "$HOME/.local/bin/score-cycle"; do
-  if command -v "$candidate" &>/dev/null 2>&1; then
-    SCORE_CYCLE="$candidate"
+  if resolved=$(command -v "$candidate" 2>/dev/null); then
+    SCORE_CYCLE="$resolved"
     break
   fi
 done
@@ -75,14 +75,34 @@ for py in ~/.pyenv/versions/3.13.*/bin/python3; do
   fi
 done
 
-# Build task id from repo + branch
+# Build task id from repo + branch + commit message (descriptive, unique)
 REPO_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'unknown')")
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')
-TASK_ID="precommit-${REPO_NAME}-${BRANCH}"
+COMMIT_MSG=$(head -1 "$(git rev-parse --git-dir 2>/dev/null)/COMMIT_EDITMSG" 2>/dev/null || echo "update")
+MSG_SLUG=$(echo "$COMMIT_MSG" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | head -c 48)
+TASK_ID="precommit-${REPO_NAME}-${BRANCH}/${MSG_SLUG}"
+
+# Auto-increment cycle number per task (so repeated commits with same message get cycles 1,2,3...)
+DB_PATH="$HOME/.hermes/data/loop-governance.db"
+PREV_CYCLE=$(python3 -c "
+import sqlite3, os
+db = os.path.expanduser('$DB_PATH')
+if os.path.exists(db):
+    try:
+        c = sqlite3.connect(db)
+        r = c.execute('SELECT MAX(cycle_num) FROM loop_cycles WHERE task_id = ?', ('$TASK_ID',)).fetchone()
+        c.close()
+        print(r[0] or 0)
+    except:
+        print(0)
+else:
+    print(0)
+" 2>/dev/null || echo "0")
+CYCLE_NUM=$((PREV_CYCLE + 1))
 
 SCORE_OUTPUT=$("$PYTHON_BIN" "$SCORE_CYCLE" \
   --task "$TASK_ID" \
-  --cycle 1 \
+  --cycle "$CYCLE_NUM" \
   --code-file "$CODE_FILE" \
   --prev-code-file "$PREV_FILE" \
   --pass-pct "$PASS_PCT" \
