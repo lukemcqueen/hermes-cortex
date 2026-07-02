@@ -21,13 +21,30 @@ Security:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import platform
+import signal
 import subprocess
 import sys
 import time
+import traceback
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from datetime import datetime, timezone
 from pathlib import Path
+
+# ── Logging setup ──────────────────────────────────────────────
+_log = logging.getLogger("health-server")
+_log.setLevel(logging.DEBUG)
+_handler = logging.StreamHandler(stream=sys.stdout)
+_handler.setLevel(logging.DEBUG)
+_fmt = logging.Formatter(
+    fmt="%(asctime)s.%(msecs)03d [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
+_handler.setFormatter(_fmt)
+_log.addHandler(_handler)
+_log.propagate = False  # don't double-log through uvicorn's root logger
 
 try:
     import uvicorn
@@ -73,6 +90,51 @@ def _get_uptime() -> int:
 
 def _get_os() -> str:
     return f"{platform.system().lower()}/{platform.release()}"
+
+
+# ── Timing & deadline helpers ─────────────────────────────────
+_tpool = ThreadPoolExecutor(max_workers=2)
+
+
+def _run_with_deadline(fn, timeout: float, label: str = "check"):
+    """Run `fn()` in a thread with a hard deadline.
+
+    Returns (result, elapsed, timed_out) tuple.
+    If the deadline is exceeded, returns (None, timeout, True).
+    """
+    fut = _tpool.submit(fn)
+    start = time.monotonic()
+    try:
+        result = fut.result(timeout=timeout)
+        elapsed = time.monotonic() - start
+        return result, round(elapsed, 3), False
+    except TimeoutError:
+        elapsed = time.monotonic() - start
+        _log.warning("DEADLINE EXCEEDED — %s did not finish in %.1fs (%.1fs elapsed)", label, timeout, elapsed)
+        return None, round(elapsed, 3), True
+    except Exception as e:
+        elapsed = time.monotonic() - start
+        _log.error("DEADLINE ERROR — %s failed after %.1fs: %s", label, elapsed, e)
+        return None, round(elapsed, 3), True
+
+
+def _timed(label: str, fn, *args, **kwargs):
+    """Run `fn(*args, **kwargs)` and return (result, elapsed_seconds).
+
+    Always returns — no exception escapes. On error, logs + returns
+    (None, elapsed).
+    """
+    start = time.monotonic()
+    try:
+        result = fn(*args, **kwargs)
+        elapsed = time.monotonic() - start
+        if elapsed > 2.0:
+            _log.info("SLOW CHECK — %s took %.1fs", label, elapsed)
+        return result, round(elapsed, 3)
+    except Exception:
+        elapsed = time.monotonic() - start
+        _log.error("CHECK FAILED — %s crashed after %.1fs\n%s", label, elapsed, traceback.format_exc())
+        return None, round(elapsed, 3)
 
 
 # ── Resource checks ────────────────────────────────────────────
@@ -368,7 +430,7 @@ def _check_cron_health() -> dict:
 # ── gbrain sources check ───────────────────────────────────────
 _gbrain_cache: dict | None = None
 _gbrain_cache_ts: float = 0
-_GBRAIN_CACHE_TTL = 300  # 5 minutes
+_GBRAIN_CACHE_TTL = 900  # 15 minutes
 
 def _check_gbrain_sources() -> dict:
     """Check gbrain source health via gbrain doctor --json.
@@ -520,15 +582,21 @@ def _check_gbrain_sources() -> dict:
 
 # ── Consolidated health ───────────────────────────────────────
 def _build_health() -> dict:
-    """Build the full consolidated health response."""
+    """Build the full consolidated health response with per-check timing."""
     checks = {}
     all_issues: list[dict] = []
     healthy = True
+    timing: dict[str, float] = {}
 
     for name, fn in [("resources", _check_resources), ("services", _check_services),
                       ("cron_health", _check_cron_health),
                       ("gbrain_sources", _check_gbrain_sources)]:
-        result = fn()
+        result, elapsed = _timed(name, fn)
+        timing[name] = elapsed
+        if result is None:
+            # Check failed entirely — return degraded result
+            result = {"healthy": False, "issues": [{"severity": "critical", "check": name,
+                       "detail": f"Check crashed or timed out after {elapsed}s"}]}
         checks[name] = {
             "healthy": result["healthy"],
             **({k: v for k, v in result.items() if k not in ("healthy", "issues")}),
@@ -541,6 +609,10 @@ def _build_health() -> dict:
     severity_order = {"critical": 0, "high": 1, "warning": 2, "info": 3}
     all_issues.sort(key=lambda x: severity_order.get(x.get("severity", "info"), 99))
 
+    total_elapsed = sum(timing.values())
+    _log.info("HEALTH — %s total=%.1fs %s", AGENT_ID, total_elapsed,
+              " ".join(f"{k}={v}s" for k, v in sorted(timing.items())))
+
     return {
         "server": AGENT_ID,
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -548,6 +620,7 @@ def _build_health() -> dict:
         "healthy": healthy,
         "checks": checks,
         "issues": all_issues,
+        "timing": timing,
     }
 
 
@@ -557,16 +630,38 @@ def _build_compact_health() -> dict:
 
     Format: {"v": [...], "h": "j", "t": unix_timestamp}
 
-    v array (8 values):
-      [resources, services, no_errored_crons, no_stale_crons, nginx, ollama, gbrain, disk_ok]
+    v array (9 values):
+      [resources, services, no_errored_crons, no_stale_crons, nginx, ollama, gbrain, disk_ok, gbrain_sources_ok]
       1 = healthy, -1 = unhealthy/warning
     h: single-char agent identifier (j = Joseph, m = Moses, t = Titus, g = Gisu)
     t: unix timestamp
     """
-    r = _check_resources()
-    s = _check_services()
-    c = _check_cron_health()
-    g = _check_gbrain_sources()
+    _start = time.monotonic()
+
+    # Run checks with timing
+    r, r_elapsed = _timed("resources", _check_resources)
+    s, s_elapsed = _timed("services", _check_services)
+    c, c_elapsed = _timed("cron_health", _check_cron_health)
+    # gbrain sources gets a hard 20s deadline to avoid blocking the whole endpoint
+    g, g_elapsed, g_timedout = _run_with_deadline(_check_gbrain_sources, timeout=20.0, label="gbrain_sources")
+    if g_timedout or g is None:
+        g = {"healthy": False, "issues": [{"severity": "warning", "check": "gbrain_sources",
+              "detail": f"Deadline exceeded ({g_elapsed}s) — degraded response"}]}
+
+    total_elapsed = round(time.monotonic() - _start, 3)
+    _log.info("COMPACT — %s total=%.1fs resources=%.1fs services=%.1fs crons=%.1fs gbrain=%.1fs",
+              AGENT_ID, total_elapsed, r_elapsed, s_elapsed, c_elapsed, g_elapsed)
+
+    if total_elapsed > 5.0:
+        _log.warning("SLOW COMPACT HEALTH — %s took %.1fs", AGENT_ID, total_elapsed)
+
+    # Guard against crashed checks — degrade gracefully
+    if r is None:
+        r = {"healthy": False, "issues": [], "data": {}}
+    if s is None:
+        s = {"healthy": False, "issues": [], "items": []}
+    if c is None:
+        c = {"errored": ["check-failed"], "stale": [], "healthy": False}
 
     resources_ok = r["healthy"]
     services_ok = s["healthy"]
@@ -644,4 +739,16 @@ async def index():
 
 # ── Main ──────────────────────────────────────────────────────
 if __name__ == "__main__":
+    _log.info("STARTING — server=%s agent=%s port=%d os=%s python=%s",
+              SERVER_NAME, AGENT_ID, HEALTH_PORT, _get_os(), platform.python_version())
+    _log.info("CONFIG — _STARTUP_TS=%d HOME=%s", int(_STARTUP_TS), HOME)
+
+    # Log on graceful shutdown
+    def _shutdown_log(signum, frame):
+        _log.warning("SHUTDOWN — received signal %d, exiting", signum)
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, _shutdown_log)
+    signal.signal(signal.SIGINT, _shutdown_log)
+
     uvicorn.run(app, host="127.0.0.1", port=HEALTH_PORT, log_level="info")
