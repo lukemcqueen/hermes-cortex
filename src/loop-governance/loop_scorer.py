@@ -23,7 +23,21 @@ import urllib.error
 import urllib.request
 
 OLLAMA_URL = "http://localhost:11434/api/embeddings"
-from hermes_models import get_model
+try:
+    from hermes_models import get_model
+except ImportError:
+    # Ensure the scripts directory is on sys.path when running from
+    # installable CLI tools (score-cycle) or subdirectories
+    import sys
+    from pathlib import Path
+    for candidate in [
+        Path.home() / ".hermes-cortex" / "scripts",
+        Path(__file__).resolve().parent.parent / "scripts",
+    ]:
+        resolved = candidate.resolve()
+        if resolved.is_dir() and str(resolved) not in sys.path:
+            sys.path.insert(0, str(resolved))
+    from hermes_models import get_model
 
 NOMIC_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text")
 
