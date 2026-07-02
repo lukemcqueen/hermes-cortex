@@ -18,11 +18,41 @@ from base64 import b64encode
 from datetime import datetime, timedelta, timezone
 
 # ── Config ──────────────────────────────────────────────────────────────
+# JUDGE_MODEL reads from $JUDGE_MODEL env var first, then ~/.hermes/models.env,
+# then falls back to the hardcoded default.  Env var takes priority because
+# systemd drop-in and interactive shells both set it before the script runs.
 LANGFUSE_BASE = "http://localhost:3000"
 OLLAMA_BASE = "http://localhost:11434"
 OLLAMA_API_TAGS = f"{OLLAMA_BASE}/api/tags"
 OLLAMA_URL = f"{OLLAMA_BASE}/api/chat"
-JUDGE_MODEL = "qwen2.5-coder:3b"
+DEFAULT_JUDGE_MODEL = "qwen2.5-coder:3b"
+
+
+def _load_models_env() -> dict:
+    """Load model env vars from ~/.hermes/models.env as a fallback.
+
+    The file uses ``KEY=value`` syntax (no export keyword).  Non-existent
+    or unreadable files return an empty dict silently.
+    """
+    env_path = os.path.expanduser("~/.hermes/models.env")
+    if not os.path.isfile(env_path):
+        return {}
+    try:
+        result = {}
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    key, _, val = line.partition("=")
+                    result[key.strip()] = val.strip()
+        return result
+    except (OSError, IOError):
+        return {}
+
+
+JUDGE_MODEL = os.environ.get("JUDGE_MODEL") or _load_models_env().get("JUDGE_MODEL") or DEFAULT_JUDGE_MODEL
 
 SCORE_CRITERIA = ["helpfulness", "clarity", "depth"]
 MAX_TRACES_PER_RUN = 5  # ~2min on Intel with qwen2.5-coder:3b
