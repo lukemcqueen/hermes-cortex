@@ -53,6 +53,7 @@ HOME = Path.home()
 LOOP_DB = HOME / ".hermes" / "data" / "loop-governance.db"
 CONFIG_PATH = HOME / ".hermes" / "data" / "loop-governance-config.json"
 CACHE_DB = HOME / ".hermes" / "data" / "session-embeddings.db"
+GOVERNANCE_STATE = HOME / ".hermes-cortex" / "state" / ".governance-active.json"
 OLLAMA_URL = "http://localhost:11434/api/embeddings"
 NOMIC_MODEL = "nomic-embed-text"
 
@@ -185,6 +186,29 @@ async def list_tools() -> list[Tool]:
                 "required": ["query"],
             },
         ),
+        Tool(
+            name="begin_change",
+            description="MANDATORY: Call before making any code/config change. Creates a governance lock file that the pre-commit hook checks. Without this, the hook will reject the commit.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "Short task identifier (e.g. 'fix-auth-403')"},
+                    "description": {"type": "string", "description": "What this change does"},
+                },
+                "required": ["task_id", "description"],
+            },
+        ),
+        Tool(
+            name="end_change",
+            description="Call after scoring a change to release the governance lock. The lock must be released before begin_change can be called again.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "Task ID matching the begin_change call"},
+                },
+                "required": ["task_id"],
+            },
+        ),
     ]
 
 
@@ -200,6 +224,8 @@ async def call_tool(name: str, arguments: dict[str, Any] | None) -> CallToolResu
             "feedback_accept": _feedback_accept,
             "feedback_override": _feedback_override,
             "cache_search": _cache_search,
+            "begin_change": _begin_change,
+            "end_change": _end_change,
         }
         handler = handlers.get(name)
         if handler:
@@ -342,6 +368,70 @@ def _cache_search(args: dict) -> CallToolResult:
     scored.sort(key=lambda x: x[0], reverse=True)
     results = [s[1] for s in scored[:top_k]]
     return CallToolResult(content=[TextContent(type="text", text=json.dumps(results, indent=2))])
+
+
+def _begin_change(args: dict) -> CallToolResult:
+    """Create a governance lock file. Pre-commit hook checks this exists."""
+    task_id = args.get("task_id", "").strip()
+    description = args.get("description", "").strip()
+    if not task_id:
+        return CallToolResult(content=[TextContent(type="text", text="Error: task_id is required")])
+    if not description:
+        return CallToolResult(content=[TextContent(type="text", text="Error: description is required")])
+
+    # Check if already locked
+    if GOVERNANCE_STATE.exists():
+        try:
+            existing = json.loads(GOVERNANCE_STATE.read_text())
+            return CallToolResult(content=[TextContent(
+                type="text",
+                text=f"Error: A governance session is already active: '{existing.get('task_id')}' - {existing.get('description')}. Call end_change('{existing.get('task_id')}') first or use force=True."
+            )])
+        except (json.JSONDecodeError, OSError):
+            pass
+        # Stale lock — overwrite
+
+    GOVERNANCE_STATE.parent.mkdir(parents=True, exist_ok=True)
+    state = {
+        "task_id": task_id,
+        "description": description,
+        "started_at": datetime.now().isoformat(timespec="seconds"),
+        "agent": os.environ.get("AGENT_NAME", "unknown"),
+    }
+    GOVERNANCE_STATE.write_text(json.dumps(state, indent=2))
+    return CallToolResult(content=[TextContent(
+        type="text",
+        text=f"Governance session started: {task_id} — {description}. Lock file: {GOVERNANCE_STATE}"
+    )])
+
+
+def _end_change(args: dict) -> CallToolResult:
+    """Release the governance lock. Requires matching task_id."""
+    task_id = args.get("task_id", "").strip()
+    if not task_id:
+        return CallToolResult(content=[TextContent(type="text", text="Error: task_id is required")])
+
+    if not GOVERNANCE_STATE.exists():
+        return CallToolResult(content=[TextContent(
+            type="text", text="No governance session active (no lock file found). Nothing to release."
+        )])
+
+    try:
+        existing = json.loads(GOVERNANCE_STATE.read_text())
+        stored_task = existing.get("task_id", "")
+        if stored_task and stored_task != task_id:
+            return CallToolResult(content=[TextContent(
+                type="text",
+                text=f"Error: Lock belongs to task '{stored_task}', not '{task_id}'. Use end_change('{stored_task}') or force=True."
+            )])
+        GOVERNANCE_STATE.unlink()
+        return CallToolResult(content=[TextContent(
+            type="text", text=f"Governance session '{task_id}' closed. Lock released."
+        )])
+    except (json.JSONDecodeError, OSError) as e:
+        return CallToolResult(content=[TextContent(
+            type="text", text=f"Error reading lock file: {e}. Remove manually: rm {GOVERNANCE_STATE}"
+        )])
 
 
 async def main():

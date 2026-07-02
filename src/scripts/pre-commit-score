@@ -14,6 +14,49 @@ if [[ "${SKIP_SCORE:-}" == "1" ]]; then
   exit 0
 fi
 
+# ── Level 3: Governance lock check ─────────────────────────────
+# Agent must call begin_change() before making changes.
+GOVERNANCE_LOCK="${HOME}/.hermes-cortex/state/.governance-active.json"
+if [[ ! -f "$GOVERNANCE_LOCK" ]]; then
+  echo ""
+  echo "❌  No active governance session."
+  echo "    You must call begin_change(task_id, description) before making changes."
+  echo "    Run: mcp_loop_governance_begin_change(task_id=\"fix-xyz\", description=\"...\")"
+  echo ""
+  echo "    To bypass this check:  SKIP_SCORE=1 git commit ..."
+  echo ""
+  exit 1
+fi
+
+# ── Level 2: AGENTS.md core requirements check ─────────────────
+CHECK_SCRIPT=""
+for candidate in check-agents-dot-md.py ~/.hermes/scripts/check-agents-dot-md.py ~/.hermes-cortex/scripts/check-agents-dot-md.py; do
+  if [[ -f "$candidate" ]]; then
+    CHECK_SCRIPT="$candidate"
+    break
+  fi
+done
+if [[ -n "$CHECK_SCRIPT" ]]; then
+  REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  if [[ -n "$REPO_ROOT" ]]; then
+    AGENTS_CHECK=$(python3 "$CHECK_SCRIPT" "$REPO_ROOT" 2>&1 || true)
+    AGENTS_EXIT=$?
+    if [[ "$AGENTS_EXIT" -eq 1 ]]; then
+      echo "❌  AGENTS.md missing. Create one before committing."
+      echo "    See ~/hermes-cortex/AGENTS.md as template."
+      exit 1
+    fi
+    # Exit 2 is a warning — print it but don't block
+    if [[ "$AGENTS_EXIT" -eq 2 ]]; then
+      echo "$AGENTS_CHECK" | grep -v "^🔍\|^$"
+    fi
+  fi
+fi
+
+# ── Auto-release governance lock on successful score ───────────
+# (Lock will be re-created by the next begin_change call)
+trap 'rm -f "$GOVERNANCE_LOCK"' EXIT
+
 # Find score-cycle — try PATH, then common locations (resolve to full path)
 SCORE_CYCLE=""
 for candidate in score-cycle ~/.local/bin/score-cycle "$HOME/.local/bin/score-cycle"; do
