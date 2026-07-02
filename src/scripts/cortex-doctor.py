@@ -112,7 +112,7 @@ class Results:
 
     def status_icon(self, s):
         if self.json_mode: return s
-        return {"PASS": "✅", "WARN": "⚠️ ", "FAIL": "❌"}.get(s, "❓")
+        return {"PASS": "✅", "WARN": "⚠️ ", "FAIL": "❌", "INFO": "ℹ️ "}.get(s, "❓")
 
     def print_summary(self, compact=False):
         if self.json_mode:
@@ -166,6 +166,44 @@ def read_file(path):
         return Path(path).read_text()
     except (FileNotFoundError, OSError):
         return ""
+
+def _find_similar_name(name, valid_names):
+    """Suggest a similar cron name from valid_names if one exists.
+    Checks: missing/extra hyphen, common suffix swaps, single-char diffs."""
+    if not name or not valid_names:
+        return None
+
+    # Exact after stripping common suffixes
+    base = name.replace("-cron", "").replace("-daemon", "").replace("-job", "")
+    for v in valid_names:
+        if v == name:
+            return None  # exact match — not extra
+        if v == base:
+            return v
+
+    # Hyphen-normalized comparison
+    norm = name.replace("_", "-").replace(" ", "-").lower()
+    for v in valid_names:
+        v_norm = v.replace("_", "-").replace(" ", "-").lower()
+        if v_norm == norm:
+            return v
+
+    # Single-char Levenshtein distance (insert/delete/substitute)
+    for v in valid_names:
+        if abs(len(v) - len(name)) <= 2:
+            # Count differing characters
+            diffs = sum(1 for a, b in zip(v, name) if a != b) + abs(len(v) - len(name))
+            if diffs <= 2:
+                return v
+
+    # Check if name is expected with a prefix/suffix mismatch
+    for v in valid_names:
+        if name.startswith(v) or v.startswith(name):
+            return v
+        if name.endswith(v) or v.endswith(name):
+            return v
+
+    return None
 
 
 # ── Checks ──────────────────────────────────────────────────────
@@ -264,6 +302,37 @@ def check_crons(res):
                 all_names = ", ".join(n for n, _ in stale)
                 res.add(f"Cron status ({len(stale)} total)", "WARN", f"unhealthy: {all_names}",
                          "Inspect and re-create unhealthy crons")
+
+    # Check for extra crons — registered but not in expected list
+    expected_set = set(expected_crons)
+    extra_crons = [n for n in registered if n not in expected_set]
+    if extra_crons:
+        # Show first 5 individually, summarize the rest
+        display = sorted(extra_crons)
+        if len(display) <= 5:
+            for name in display:
+                suggestion = _find_similar_name(name, expected_set)
+                if suggestion:
+                    res.add(f"Extra cron ({name})", "WARN",
+                             f"not part of Hermes Cortex — did you mean '{suggestion}'?",
+                             f"Rename or remove: cronjob(action='update', job_id=..., name='{suggestion}')")
+                else:
+                    res.add(f"Extra cron ({name})", "INFO",
+                             f"registered but not part of Hermes Cortex system",
+                             f"Remove if unknown: cronjob(action='remove', job_id=...)")
+        else:
+            # Check if any are near-miss first
+            near_misses = [(n, _find_similar_name(n, expected_set)) for n in display[:10]]
+            warnings = [(n, s) for n, s in near_misses if s]
+            for name, suggestion in warnings[:3]:
+                res.add(f"Extra cron ({name})", "WARN",
+                         f"not part of Hermes Cortex — did you mean '{suggestion}'?",
+                         f"Rename or remove: cronjob(action='update', job_id=..., name='{suggestion}')")
+            info_total = len(extra_crons) - len(warnings)
+            if info_total > 0:
+                res.add(f"Extra crons", "INFO",
+                         f"{info_total} cron(s) not part of Hermes Cortex system (e.g. {', '.join(display[:3])}...)",
+                         f"Run with full output to see all")
 
     # Total registered count
     total = len(registered)
