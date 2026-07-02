@@ -48,22 +48,46 @@ CORTEX_UPDATE = CORTEX_REPO / "src" / "scripts" / "cortex-update.sh"
 
 # Passthrough to subprocess for HTTP checks (avoid cert issues with urllib)
 CURL = os.environ.get("CURL_BIN", "curl")
+EXTERNAL_BASE = os.environ.get("CORTEX_DOCTOR_BASE", "https://your-domain.com")
 
-# ── Expected cron list from install-crons.sh ────────────────────
-EXPECTED_CRONS = [
-    "agent-fixer", "memory-to-brain-sync",
-    "system-alert-watchdog", "service-recovery", "inbox-sensor", "inbox-flag",
-    "orch-team-messages", "remediation-sensor",
-    "hermes-update", "gbrain-nightly-dream", "gbrain-update-sync",
-    "hermes-cortex-sync", "harvest-lessons", "memory-pruning",
-    "auto-save-sessions", "agent-daily-bible-reading",
-    "agent-daily-soul-refinement",
-    "llm-judge-scorer-weekday", "llm-judge-scorer-weekend",
-    "offline-code-index", "model-health-watchdog",
-    "agent-inbox", "agent-remediate-apply", "agent-apply-fixes",
-]
 
-EXTERNAL_BASE = "https://your-domain.com"
+# ── Dynamic registries (self-updating from source) ────────────
+
+def parse_expected_crons():
+    """Read expected cron names from install-crons.sh's uninstall array.
+    This auto-updates whenever install-crons.sh changes."""
+    text = read_file(INSTALL_CRONS)
+    if not text:
+        return []
+    # Extract between 'for job in \' and '; do'
+    m = re.search(r'for job in \\\n(.*?); do', text, re.DOTALL)
+    if not m:
+        return []
+    block = m.group(1)
+    # Extract quoted strings
+    names = re.findall(r'"([^"]+)"', block)
+    # Remove 'system-heartbeat' if it still exists in old install-crons.sh
+    return [n for n in names if n != "system-heartbeat"]
+
+
+def find_script_consumers():
+    """Scan cortex scripts for models.env variable names.
+    Returns dict of {var_name: [matching_scripts]}"""
+    scripts_dir = CORTEX_REPO / "src" / "scripts"
+    if not scripts_dir.is_dir():
+        return {}
+    # Known models.env vars to scan for
+    known_vars = ["JUDGE_MODEL", "EMBEDDING_MODEL", "CODING_MODEL", "CREATIVE_MODEL", "DEFAULT_MODEL"]
+    consumers = {v: [] for v in known_vars}
+    for script in sorted(scripts_dir.iterdir()):
+        if not script.is_file():
+            continue
+        text = script.read_text(errors="replace")
+        for var in known_vars:
+            if var in text:
+                consumers[var].append(script.name)
+    return consumers
+
 EXTERNAL_SERVICES = [
     ("Dashboard",      f"{EXTERNAL_BASE}:13001/",       "401"),
     ("Langfuse",       f"{EXTERNAL_BASE}:13002/",       "401"),
@@ -194,11 +218,17 @@ def check_crons(res):
     jobs = data.get("jobs", []) if isinstance(data, dict) else data
     registered = {j.get("name"): j for j in jobs if isinstance(j, dict) and j.get("name")}
 
+    # Auto-updating expected cron list from install-crons.sh
+    expected_crons = parse_expected_crons()
+    if not expected_crons:
+        res.add("Crons registry", "WARN", "Could not parse install-crons.sh", "Check src/scripts/install-crons.sh exists")
+        expected_crons = list(registered.keys())  # fallback: check whatever exists
+
     # Check each expected cron
     missing = []
     bad_workdir = []
     stale = []
-    for name in EXPECTED_CRONS:
+    for name in expected_crons:
         job = registered.get(name)
         if not job:
             missing.append(name)
@@ -215,7 +245,7 @@ def check_crons(res):
             stale.append((name, last_status))
 
     if not missing and not bad_workdir and not stale:
-        total = len(EXPECTED_CRONS)
+        total = len(expected_crons)
         res.add("Crons registered", "PASS", f"all {total} expected crons present and healthy")
     else:
         if missing:
@@ -443,30 +473,17 @@ def check_config(res):
                  "Add JUDGE_MODEL, EMBEDDING_MODEL etc.")
         return
 
-    # Known env vars and their expected consumers (from AGENTS.md)
-    known_var_consumers = {
-        "JUDGE_MODEL": ["llm-judge-scorer.py", "model-health-watchdog.py"],
-        "EMBEDDING_MODEL": ["system-alert-watchdog.py", "loop_scorer.py", "session_cache.py",
-                           "loop-gov-mcp.py", "offline_code.py", "lessons.py",
-                           "session_mine.py", "web_cache.py", "cleanup-ollama.sh", "install-ollama.sh"],
-        "CODING_MODEL": ["offline_code.py"],
-    }
-
-    for var, consumers in known_var_consumers.items():
+    # Dynamic consumer discovery: scan all src/scripts/ for var references
+    consumers_by_var = find_script_consumers()
+    for var, consumer_names in consumers_by_var.items():
         if var not in defined:
             res.add(f"Config ({var})", "WARN", f"Not defined in models.env",
                      f"Add: export {var}=<model-name> to ~/.hermes/models.env")
         else:
-            # Check at least one consumer exists
-            consumer_scripts = CORTEX_REPO / "src" / "scripts"
-            found_consumers = []
-            for c in consumers:
-                if (consumer_scripts / c).exists():
-                    found_consumers.append(c)
-            if found_consumers:
-                res.add(f"Config ({var})", "PASS", f"defined, {len(found_consumers)} consumer(s) exist")
+            if consumer_names:
+                res.add(f"Config ({var})", "PASS", f"defined, {len(consumer_names)} consumer(s) found")
             else:
-                res.add(f"Config ({var})", "WARN", f"defined but no consumers found (scripts may be elsewhere)")
+                res.add(f"Config ({var})", "INFO", f"defined but zero consumer scripts reference it")
 
 
 # ── Fix actions ─────────────────────────────────────────────────
