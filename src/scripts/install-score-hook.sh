@@ -95,9 +95,6 @@ install_hook() {
   chmod +x "$hook_dest"
   info "Installed hook: $(basename "$repo")"
   INSTALLED=$((INSTALLED + 1))
-
-  # Also install pre-push hook (check independently of pre-commit)
-  install_push_hook "$repo"
 }
 
 # ── Install pre-push hook ───────────────────────────────
@@ -209,7 +206,7 @@ for dir in "${AUTO_SCAN_DIRS[@]}"; do
     install_hook "$repo"
   done < <(find_repos "$dir")
 
-  # Also install pre-push hook in repos that already have pre-commit
+  # Install pre-push hook independently of pre-commit status
   while IFS= read -r repo; do
     install_push_hook "$repo"
   done < <(find_repos "$dir")
