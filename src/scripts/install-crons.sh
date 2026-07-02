@@ -66,17 +66,16 @@ if $UNINSTALL; then
   # Allow uninstall even without hermes by removing from jobs.json
 fi
 
-# ── Helper: check if a cron job exists in jobs.json ────────
+# ── Helper: check if a cron job exists ────────────────────
 cron_exists() {
   local name="$1"
+
+  # Method 1: Check jobs.json (fast, direct)
   if [[ -f "$CRON_JOBS_FILE" ]]; then
-    # jobs.json structure: { "jobs": [...] } or [ ... ]
-    # Check by name field
-    python3 -c "
+    if python3 -c "
 import json, sys
 try:
     data = json.load(open('$CRON_JOBS_FILE'))
-    # Handle nested structure: { 'jobs': [...] }
     if isinstance(data, dict) and 'jobs' in data:
         data = data['jobs']
     if isinstance(data, list):
@@ -90,11 +89,19 @@ try:
 except Exception:
     pass
 sys.exit(1)
-"
-    if [ $? -eq 0 ]; then
+" 2>/dev/null; then
       return 0
     fi
   fi
+
+  # Method 2: Fallback to hermes CLI (more robust — works even if
+  # jobs.json is temporarily locked, being rewritten, or missing)
+  if command -v "${HERMES_CMD:-hermes}" &>/dev/null; then
+    if "${HERMES_CMD:-hermes}" cron list --all 2>/dev/null | grep -q "Name:[[:space:]]*${name}$"; then
+      return 0
+    fi
+  fi
+
   return 1
 }
 
@@ -274,6 +281,10 @@ if old_model in text:
         '    base_url: http://localhost:11434/v1\n'
         '    api_key: ""\n'
         '    api_mode: chat_completions\n'
+        '    models:\n'
+        '      qwen2.5-coder:3b:\n'
+        '        context_length: 65536\n'
+        '        ollama_num_ctx: 65536\n'
     )
     text = text.replace(old_model, custom_block, 1)
     with open(fp, 'w') as f:
@@ -288,7 +299,11 @@ else:
                 '  ollama-local:\n'
                 '    base_url: http://localhost:11434/v1\n'
                 '    api_key: ""\n'
-                '    api_mode: chat_completions')
+                '    api_mode: chat_completions\n'
+                '    models:\n'
+                '      qwen2.5-coder:3b:\n'
+                '        context_length: 65536\n'
+                '        ollama_num_ctx: 65536\n')
             lines_t.insert(i, custom_block)
             text = "\n".join(lines_t)
             with open(fp, 'w') as f:
