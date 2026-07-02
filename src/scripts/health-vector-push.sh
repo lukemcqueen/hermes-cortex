@@ -21,9 +21,20 @@
 #   AGENT_NAME=titus bash health-vector-push.sh
 # ─────────────────────────────────────────────────────────────
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 CONFIG_FILE="${HOME}/.hermes/moses-inbox.conf"
 ERROR_LOG="/tmp/com.hermes.health-push.err"
+
+# ── Load failure state helpers ───────────────────────────────────
+STATE_SCRIPT="${SCRIPT_DIR}/cron-failure-state.sh"
+if [[ -f "$STATE_SCRIPT" ]]; then
+    source "$STATE_SCRIPT"
+else
+    # Fallback when running from repo vs deployed
+    STATE_SCRIPT2="${HOME}/.hermes-cortex/scripts/cron-failure-state.sh"
+    [[ -f "$STATE_SCRIPT2" ]] && source "$STATE_SCRIPT2"
+fi
+CRON_STATE_SCRIPT="health-vector-push"
 
 # ── Load config ────────────────────────────────────────────
 if [[ -f "$CONFIG_FILE" ]]; then
@@ -144,8 +155,15 @@ if [[ -n "$MOSES_INBOX_AUTH" ]]; then
 fi
 
 curl "${CURL_ARGS[@]}" "$API_URL" > "$RESPONSE_FILE" 2>/dev/null || {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] curl failed" >> "$ERROR_LOG"
-    exit 1
+    local ERR_MSG="[$(date '+%Y-%m-%d %H:%M:%S')] curl failed to $API_URL"
+    local ERR_HASH
+    ERR_HASH=$(cron_error_hash "health-vector-push: curl failed")
+    if cron_should_report "$CRON_STATE_SCRIPT" "$ERR_HASH" 30; then
+        echo "$ERR_MSG" >> "$ERROR_LOG"
+        cron_record_failure "$CRON_STATE_SCRIPT" "$ERR_HASH" 30
+        exit 1
+    fi
+    exit 0
 }
 
 HTTP_CODE=$(tail -1 "$RESPONSE_FILE")
@@ -153,10 +171,20 @@ HTTP_CODE=$(tail -1 "$RESPONSE_FILE")
 case "$HTTP_CODE" in
     2*) ;;
     *)
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] HTTP $HTTP_CODE to $API_URL" >> "$ERROR_LOG"
-        exit 1
+        local ERR_MSG="[$(date '+%Y-%m-%d %H:%M:%S')] HTTP $HTTP_CODE to $API_URL"
+        local ERR_HASH
+        ERR_HASH=$(cron_error_hash "health-vector-push: HTTP $HTTP_CODE")
+        if cron_should_report "$CRON_STATE_SCRIPT" "$ERR_HASH" 30; then
+            echo "$ERR_MSG" >> "$ERROR_LOG"
+            cron_record_failure "$CRON_STATE_SCRIPT" "$ERR_HASH" 30
+            exit 1
+        fi
+        exit 0
         ;;
 esac
+
+# ── Record success ─────────────────────────────────────────
+cron_record_success "$CRON_STATE_SCRIPT"
 
 # Silent success
 exit 0

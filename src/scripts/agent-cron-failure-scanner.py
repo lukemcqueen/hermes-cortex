@@ -17,6 +17,16 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+# Import failure state for inbox alert dedup
+_state_helper_dir = str(Path(__file__).parent)
+if _state_helper_dir not in sys.path:
+    sys.path.insert(0, _state_helper_dir)
+try:
+    from cron_failure_state import FailureState
+    _fs = FailureState("cron-failure-scanner")
+except ImportError:
+    _fs = None
+
 CRON_OUTPUT = Path.home() / ".hermes" / "cron" / "output"
 INBOX_API = os.environ.get(
     "AGENT_INBOX_URL",
@@ -85,7 +95,16 @@ def main():
             failures.append((job_name, failure, mtime))
 
     if not failures:
+        # Clear failure state — no active failures
+        if _fs:
+            _fs.record_success()
         return 0
+
+    # ── Dedup: same failures within 60 min → stay silent ──────
+    sigs = sorted(f"{n}:{r}" for n, r, _ in failures)
+    sig_hash = FailureState.compute_hash("|".join(sigs))
+    if _fs and not _fs.should_report(sig_hash, cooldown_minutes=60):
+        return 0  # Already reported this failure set recently
 
     # Build inbox message
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -118,6 +137,10 @@ def main():
 
     # Also print to stdout for cron output/delivery
     print(body)
+
+    # Record failure report for dedup
+    if _fs:
+        _fs.record_failure(sig_hash, cooldown_minutes=60)
     return 1
 
 
