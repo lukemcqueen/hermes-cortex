@@ -34,7 +34,7 @@ done
 # DEPLOY_SCRIPT: linux=/usr/local/sbin, mac intel=/usr/local/sbin, mac arm=/opt/homebrew/sbin
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 DEPLOY_SCRIPT=""
-for path in "${CORTEX_REPO}/deploy/nginx/hermes-security-apply" /usr/local/sbin/hermes-security-apply /opt/homebrew/sbin/hermes-security-apply; do
+for path in /usr/local/sbin/hermes-security-apply /opt/homebrew/sbin/hermes-security-apply "${CORTEX_REPO}/deploy/nginx/hermes-security-apply"; do
   if [ -x "$path" ]; then
     DEPLOY_SCRIPT="$path"
     break
@@ -169,7 +169,7 @@ else
     git add deploy/nginx/blocked_ips.add
     IP_COUNT=$(git diff --cached --unified=0 deploy/nginx/blocked_ips.add 2>/dev/null | \
       grep '^\+[0-9]' | grep -v '^+++' | wc -l) || true
-    git commit -m "auto: block ${IP_COUNT} suspect IPs [pipeline]"
+    SKIP_SCORE=1 git commit -m "auto: block ${IP_COUNT} suspect IPs [pipeline]"
     PIPELINE_OUTPUT+="  ✓ Committed ${IP_COUNT} IPs to repo"$'\n'
 
     log "── Step 5: Push ──"
