@@ -167,6 +167,78 @@ pull_embedding_model() {
   fi
 }
 
+# ── Build model with sufficient context ─────────────────────
+# Hermes Agent uses local models (qwen2.5-coder:3b, 7b variants, etc.)
+# as judge/coding models. All models need at least 64k context for
+# Hermes Agent's tool calls and conversation history.
+#
+# qwen2.5-coder:3b  → Ollama registry build defaults to 32k → build with 64k
+# Larger variants    → ship with 128k+ out of the box, already above minimum
+#
+# This function checks the model's current context length and only
+# rebuilds if it's below 64k. Idempotent: safe to run on any model.
+build_qwen_model() {
+  local model_name="${1:-qwen2.5-coder:3b}"
+  local modelfile
+  modelfile="$(mktemp)"
+
+  if ! command -v ollama &>/dev/null; then
+    warn "Ollama not installed — cannot build ${model_name} with 64k context"
+    rm -f "$modelfile"
+    return 0
+  fi
+
+  # Check if model exists and was built with 64k context
+  local existing_ctx=""
+  if ollama list 2>/dev/null | grep -qF "$model_name"; then
+    existing_ctx=$(ollama show "$model_name" 2>/dev/null | grep -i "context length" | grep -oE '[0-9]+' | head -1 || echo "")
+  fi
+
+  if [[ -n "$existing_ctx" ]] && [[ "$existing_ctx" -ge 65536 ]]; then
+    info "Model '${model_name}' already built with ${existing_ctx} context — OK"
+    rm -f "$modelfile"
+    return 0
+  fi
+
+  # Generate Modelfile dynamically so it works for any model variant
+  # (qwen2.5-coder:3b, mannix/qwen2.5-coder:7b-iq3_xs, etc.)
+  {
+    echo "FROM ${model_name}"
+    echo "PARAMETER num_ctx 65536"
+  } > "$modelfile"
+
+  if [[ -n "$existing_ctx" ]]; then
+    warn "Model '${model_name}' exists with ${existing_ctx} context (Hermes needs 64k)"
+    warn "  Rebuilding with 64k context…"
+  else
+    echo "  Building ${model_name} with 64k context…"
+  fi
+
+  ollama create "$model_name" -f "$modelfile" 2>&1
+  local result=$?
+  rm -f "$modelfile"
+
+  if [[ $result -eq 0 ]]; then
+    info "Built ${model_name} with 64k context"
+  else
+    warn "Failed to build ${model_name} — check ollama status"
+  fi
+}
+
+# ── Verify model context ────────────────────────────────────
+verify_qwen_context() {
+  local model_name="${1:-qwen2.5-coder:3b}"
+  local ctx
+  ctx=$(ollama show "$model_name" 2>/dev/null | grep -i "context length" | grep -oE '[0-9]+' | head -1 || echo "unknown")
+  if [[ "$ctx" == "unknown" ]] || [[ "$ctx" -lt 65536 ]]; then
+    warn "⚠  ${model_name} context: ${ctx} (Hermes needs 64k / 65536)"
+    warn "   Rebuild: ollama create ${model_name} -f <(echo -e \"FROM ${model_name}\\nPARAMETER num_ctx 65536\")"
+    return 1
+  fi
+  info "✅ ${model_name} context: ${ctx} (64k OK)"
+  return 0
+}
+
 # ── Main ────────────────────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   action="${1:-all}"
@@ -180,6 +252,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
       setup_ollama_service
       wait_for_ollama
       pull_embedding_model "${2:-nomic-embed-text}"
+      build_qwen_model "${3:-qwen2.5-coder:3b}"
       ;;
   esac
 fi
