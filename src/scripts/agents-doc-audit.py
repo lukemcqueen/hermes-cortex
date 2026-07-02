@@ -10,6 +10,9 @@ Usage:
   python3 agents-doc-audit.py --config path/to.yaml   # custom config
   python3 agents-doc-audit.py --json                   # machine-readable output
   python3 agents-doc-audit.py --send-report            # deliver via agent inbox
+  python3 agents-doc-audit.py --repo .                 # pre-commit hook check
+  python3 agents-doc-audit.py --repo . --prune         # dry-run pruning analysis
+  python3 agents-doc-audit.py --repo . --prune --apply # execute pruning moves
 """
 
 import argparse
@@ -60,11 +63,336 @@ DEFAULT_CONFIG = {
         "Real execution, no simulation",
         "Pre-commit / pre-push hooks",
     ],
+    # Protected sections — never flagged for pruning
+    "protected_sections": [
+        "What This Repo Does",
+        "Agent Execution Contract",
+        "Architecture Principles",
+        "Loop Governance",
+        "Mandatory Agent Workflow",
+        "Inbox Message Decision Framework",
+        "Doc Freshness",
+        "Agent Cron Management",
+        "Rules",
+    ],
 }
 
-# Sections to check. A section is considered present if:
-# - Heading with that text exists, OR
-# - The text appears as a significant anchor in the document
+# ── Pruning rules ──────────────────────────────────────────────────────────
+# Each rule: (match_fn, description, suggested_target, priority)
+# Higher priority = stronger recommendation to move
+
+
+def _heading_text(line):
+    """Extract clean heading text from a markdown heading line."""
+    return re.sub(r"^#+\s+", "", line).strip()
+
+
+def _count_lines(section_lines):
+    """Count non-empty lines in a section."""
+    return sum(1 for l in section_lines if l.strip())
+
+
+def _has_ip_address(text):
+    """Check if text contains IP addresses."""
+    return bool(re.search(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", text))
+
+
+def _has_url(text):
+    """Check if text contains URLs."""
+    return bool(re.search(r"https?://[^\s\)]+", text))
+
+
+def _has_curl_command(text):
+    """Check if text contains shell commands."""
+    return bool(re.search(r"(?:```\s*(?:bash|sh|shell|zsh)\s*\n|^\$ )", text, re.MULTILINE))
+
+
+def _has_port_number(text):
+    """Check if text contains port numbers."""
+    return bool(re.search(r"(?::|\bport\s+)[12]?\d{1,4}\b", text, re.IGNORECASE))
+
+
+def _is_luke_specific(heading, text):
+    """Check if a section is specific to Luke's deployment."""
+    return "⚡" in heading or bool(re.search(r"Luke'?s\s+(deployment|setup|multi-agent)", text, re.IGNORECASE))
+
+
+def _is_setup_or_config(heading, text):
+    """Check if section is setup/install/config documentation."""
+    setup_keywords = r"(?:setup|install|deployment|configuration|checklist|steps? to|how to set up)"
+    return bool(re.search(setup_keywords, heading, re.IGNORECASE))
+
+
+def _has_file_path(text):
+    """Check if text contains file paths."""
+    return bool(re.search(r"(?:~|/[\w\-./]+)\.[\w]{1,5}\b", text))
+
+
+# Sections to always protect from pruning
+ALWAYS_PROTECTED = {
+    "What This Repo Does",
+    "Key Directories",
+    "Architecture Principles",
+    "Agent Execution Contract",
+    "Rules",
+    "Common Tasks",
+}
+
+# Merge candidates — sections with overlapping content
+MERGE_CANDIDATES = [
+    (r"(?i)loop\s*governance", "Loop Governance"),
+    (r"(?i)inbox\s*(message)?\s*decision", "Inbox Message Decision Framework"),
+    (r"(?i)cron\s*(job|management|architecture)", "Agent Cron Management"),
+]
+
+
+def parse_sections(content):
+    """Parse markdown content into a list of (heading, heading_level, lines) tuples."""
+    sections = []
+    lines = content.split("\n")
+    current_heading = "Preamble"
+    current_level = 0
+    current_lines = []
+
+    for line in lines:
+        heading_match = re.match(r"^(#{1,4})\s+(.+)$", line)
+        if heading_match:
+            # Save previous section
+            if current_lines or current_heading:
+                sections.append((current_heading, current_level, current_lines))
+            current_level = len(heading_match.group(1))
+            current_heading = heading_match.group(2).strip()
+            current_lines = []
+        else:
+            current_lines.append(line)
+
+    # Save last section
+    sections.append((current_heading, current_level, current_lines))
+    return sections
+
+
+def is_protected(heading, protected_list):
+    """Check if a section heading matches a protected section."""
+    for protected in protected_list:
+        if protected.lower() in heading.lower():
+            return True
+    return False
+
+
+def is_overlap_with_protected(heading, content, protected_list):
+    """Check if section content substantially overlaps a protected section."""
+    for protected in protected_list:
+        pattern = SECTION_PATTERNS.get(protected)
+        if pattern and pattern.search(content):
+            return True
+    return False
+
+
+def analyze_section(heading, level, lines, protected_list, config):
+    """Analyze a single section for pruning candidacy."""
+    text = "\n".join(lines)
+    line_count = _count_lines(lines)
+    heading_lower = heading.lower()
+
+    # ── Never flag protections ──
+    if is_protected(heading, protected_list):
+        return None
+
+    # ── Never flag brief structural elements ──
+    if line_count < 3:
+        return None
+
+    reasons = []
+    suggested_target = None
+
+    # Luke-specific → fleet docs
+    if _is_luke_specific(heading, text):
+        reasons.append("⚡ Luke-specific deployment config → belongs in docs/")
+        suggested_target = "docs/fleet-reference.md"
+    elif _is_setup_or_config(heading, text) and (
+        _has_ip_address(text) or _has_port_number(text) or _has_url(text)
+    ):
+        reasons.append("Setup/install documentation with concrete addresses")
+        suggested_target = "docs/setup-reference.md"
+    elif _has_curl_command(text) and line_count > 15:
+        reasons.append("Implementation commands ({} lines) → belongs in docs/".format(line_count))
+        suggested_target = "docs/operations-reference.md"
+    elif line_count > 60:
+        reasons.append("Large section ({} lines) → candidate for summarization".format(line_count))
+        suggested_target = "docs/reference/"
+
+    # Merge candidate check
+    for pattern, canonical_name in MERGE_CANDIDATES:
+        if re.search(pattern, heading) and not is_protected(canonical_name, protected_list):
+            # Check if it's a subsection that could merge UP
+            if level >= 3:
+                reasons.append("Overlaps with '{}' — merge candidate".format(canonical_name))
+                if not suggested_target:
+                    suggested_target = "inline merge"
+
+    if not reasons:
+        return None
+
+    return {
+        "heading": heading,
+        "level": level,
+        "lines": line_count,
+        "reasons": reasons,
+        "suggested_target": suggested_target,
+        "content_preview": text[:200] + ("..." if len(text) > 200 else ""),
+    }
+
+
+def generate_pruning_report(repo_root, content, protected_list, config):
+    """Generate a pruning analysis report for AGENTS.md."""
+    sections = parse_sections(content)
+    candidates = []
+
+    for heading, level, lines in sections:
+        result = analyze_section(heading, level, lines, protected_list, config)
+        if result:
+            candidates.append(result)
+
+    return {
+        "repo": repo_root,
+        "total_sections": len(sections),
+        "candidate_count": len(candidates),
+        "candidates": candidates,
+    }
+
+
+def format_pruning_report(report):
+    """Format pruning analysis as human-readable output."""
+    lines = []
+    lines.append("📋 **AGENTS.md Pruning Analysis**")
+    lines.append(f"📂 {report['repo']}")
+    lines.append(f"📊 {report['total_sections']} sections, {report['candidate_count']} pruning candidates")
+    lines.append("")
+
+    if not report["candidates"]:
+        lines.append("✅ No sections flagged for pruning — AGENTS.md is lean.")
+        return "\n".join(lines)
+
+    # Group by suggested target
+    groups = {}
+    for c in report["candidates"]:
+        target = c["suggested_target"] or "review"
+        groups.setdefault(target, []).append(c)
+
+    for target, candidates in sorted(groups.items()):
+        if target == "inline merge":
+            lines.append("**🔄 Merge candidates:**")
+        elif target == "docs/reference/":
+            lines.append("**📚 Summarize → reference docs:**")
+        else:
+            lines.append(f"**📦 Move to `{target}`:**")
+        lines.append("")
+
+        for c in candidates:
+            icon = "⚡" if any("Luke" in r for r in c["reasons"]) else "📦"
+            lines.append(f"  {icon} **{c['heading']}** ({c['lines']} lines)")
+            for r in c["reasons"]:
+                lines.append(f"    └ {r}")
+            lines.append("")
+        lines.append("")
+
+    lines.append("---")
+    lines.append("**How to apply:**")
+    lines.append("  python3 agents-doc-audit.py --repo <path> --prune --apply")
+    lines.append("  (Dry-run by default. --apply moves flagged content to docs/.)")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+def apply_pruning(repo_root, content, candidates, config):
+    """Apply pruning moves: relocate flagged sections to docs/ files."""
+    repo = Path(repo_root).resolve()
+    docs_dir = repo / "docs"
+    docs_dir.mkdir(exist_ok=True)
+
+    moves = []
+    for c in candidates:
+        target = c["suggested_target"]
+        if not target or target == "inline merge":
+            continue  # Skip merge candidates — manual review needed
+
+        # Determine target file
+        if target.startswith("docs/"):
+            target_path = repo / target
+        else:
+            # Generate a filename from the heading
+            safe_name = re.sub(r"[^a-z0-9]+", "-", c["heading"].lower()).strip("-")
+            target_path = docs_dir / f"{safe_name}.md"
+            target = f"docs/{safe_name}.md"
+
+        heading = c["heading"]
+        heading_marker = "#" * c["level"]
+
+        # Build the content to write
+        section_content = f"{heading_marker} {heading}\n\n"
+        section_content += c["content_preview"].rstrip("...\n") + "\n\n"
+        section_content += f"> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`\n"
+        section_content += f"> Date: {datetime.now(timezone.utc).isoformat()}\n"
+
+        # Append to target file (create if doesn't exist)
+        if target_path.exists():
+            existing = target_path.read_text(encoding="utf-8")
+            section_content = existing + "\n\n---\n\n" + section_content
+
+        target_path.write_text(section_content, encoding="utf-8")
+        moves.append({"from": f"AGENTS.md → {heading}", "to": str(target), "size": c["lines"]})
+
+    # Now rebuild AGENTS.md with flagged sections replaced by links
+    # IMPORTANT: parse_sections stores heading lines separately from content lines.
+    # We must re-emit the heading line for sections we keep.
+    sections = parse_sections(content)
+    new_lines = []
+    removed = set(c["heading"] for c in candidates if c["suggested_target"] and c["suggested_target"] != "inline merge")
+    heading_preamble = "# Agent Guidelines — Hermes Cortex"  # file-level H1, kept
+
+    for heading, level, lines in sections:
+        if heading in removed:
+            # Replace heading + content with a brief link
+            target = None
+            for c in candidates:
+                if c["heading"] == heading:
+                    target = c["suggested_target"]
+                    break
+            if target:
+                safe_name = re.sub(r"[^a-z0-9]+", "-", heading.lower()).strip("-")
+                link = f"docs/{safe_name}.md" if not target.startswith("docs/") else target
+                new_lines.append(f"{'#' * level} {heading}")
+                new_lines.append("")
+                new_lines.append(f"> Content relocated to [`{link}`]({link}) for focused reference.")
+                new_lines.append(f"> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._")
+                new_lines.append("")
+            else:
+                # Shouldn't happen but fallback
+                heading_marker = "#" * level
+                if heading != "Preamble":
+                    new_lines.append(f"{heading_marker} {heading}")
+                new_lines.extend(lines)
+        else:
+            # Keep the heading line + content
+            heading_marker = "#" * level
+            if heading != "Preamble":
+                new_lines.append(f"{heading_marker} {heading}")
+            new_lines.extend(lines)
+
+    # Write updated AGENTS.md
+    agents_path = repo / "AGENTS.md"
+    agents_path.write_text("\n".join(new_lines), encoding="utf-8")
+
+    return {
+        "moves": moves,
+        "agents_md_path": str(agents_path),
+        "total_moved": len(moves),
+    }
+
+
+# ── Sections to check ──────────────────────────────────────────────────────
+
 SECTION_PATTERNS = {
     "Identity": re.compile(r"^##\s+Identity", re.MULTILINE),
     "Core Mission": re.compile(r"^##\s+Core Mission", re.MULTILINE),
@@ -177,7 +505,6 @@ def check_git_freshness(file_path):
 
     if git_dir:
         try:
-            # Use git log to find last commit touching this file
             import subprocess
 
             rel_path = os.path.relpath(full_path, git_dir)
@@ -218,7 +545,57 @@ def audit():
         help="Quick mode: check only AGENTS.md at repo root (for pre-commit hooks). "
              "Exit codes: 0=clean, 1=missing required sections, 2=file not found",
     )
+    parser.add_argument(
+        "--prune",
+        action="store_true",
+        help="Analyze AGENTS.md for pruning candidates (requires --repo). "
+             "Dry-run by default — shows what would be moved.",
+    )
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Apply pruning moves (requires --prune and --repo). "
+             "Moves flagged sections to docs/ and replaces with links.",
+    )
     args = parser.parse_args()
+
+    # ── Prune mode ──────────────────────────────────────────────────
+    if args.prune:
+        if not args.repo:
+            print("❌ --prune requires --repo to identify which AGENTS.md to analyze")
+            sys.exit(2)
+
+        repo = os.path.expanduser(args.repo)
+        config = load_config(args.config)
+        protected_list = config.get("protected_sections", DEFAULT_CONFIG.get("protected_sections", []))
+        agents_path = os.path.join(repo, "AGENTS.md")
+        content = read_file_safe(agents_path)
+
+        if content is None:
+            print(f"❌ AGENTS.md not found at {agents_path}")
+            sys.exit(2)
+
+        report = generate_pruning_report(repo, content, protected_list, config)
+
+        if args.apply:
+            result = apply_pruning(repo, content, report["candidates"], config)
+            if args.json:
+                print(json.dumps(result, indent=2))
+            else:
+                print(f"✅ Pruning applied: {result['total_moved']} sections moved to docs/")
+                for m in result["moves"]:
+                    print(f"   └ {m['from']} → {m['to']}")
+                print(f"\n   Updated: {result['agents_md_path']}")
+        else:
+            if args.json:
+                print(json.dumps(report, indent=2))
+            else:
+                print(format_pruning_report(report))
+
+        # Exit: 2 if candidates found, 0 if clean
+        if report["candidate_count"] > 0:
+            sys.exit(2 if not args.apply else 0)
+        sys.exit(0)
 
     # ── Quick mode (--repo): single AGENTS.md check for pre-commit hooks ─
     if args.repo:

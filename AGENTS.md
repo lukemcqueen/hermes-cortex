@@ -1,13 +1,7 @@
 # Agent Guidelines — Hermes Cortex
 
-This file is read by many agent tools (Claude Code, Copilot, Codex, Hermes, etc.)
-on session start. It orients any agent working on this repo.
-
-> **🪪 Scope:** This file serves two audiences:
-> - **General agents** — the Architecture Principles, Agent Execution Contract, and Structured Development Pipeline below are universal to Hermes Cortex and recommended for every agent.
-> - **Luke's deployment (Moses server)** — sections marked with a `⚡` tag are specific to Luke's multi-machine, multi-agent orchestration setup. They describe how Moses (the orchestrator agent) coordinates with peer agents Titus, Gisu, and Joseph. If you are not running Luke's setup, treat these as examples you can adapt.
->
-> Everything unmarked is general Hermes Cortex guidance — apply it to any project using this repo.
+> Content relocated to [`docs/fleet-reference.md`](docs/fleet-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ## What This Repo Does
 
@@ -415,95 +409,18 @@ code-review (security scan, quality gate)
 
 ## ⚡ Daily Priority Check-in (Luke's multi-agent setup)
 
-**Cron jobs:**
-- `titus-daily-briefing` — 8:00am KST, posts to GitHub issue #1
-- `daily-priority-checkin` — 8:30am KST, delivers to `origin` (Telegram)
-
-**Purpose:** Start each day with focused alignment on the user's #1 priority, incorporating cross-agent context from Titus.
-
-**Workflow:**
-
-| Time | Agent | Action |
-|------|-------|--------|
-| 8:00am | Titus | Analyzes repos on Luke's MacBook (all except hermes-cortex). Posts briefing as comment on **GitHub issue #11** in fleet-operator/hermes-cortex |
-| 8:30am | Moses | Reads latest comment from **GitHub issue #11** via `gh api`. Asks user: "What is your #1 priority for today?" |
-| 8:30am+ | Moses | Breaks priority into 2-4 actionable tasks. Incorporates Titus's suggestions. Updates memory. Begins execution. |
-
-**Why GitHub Issues:** Cross-machine bridge — Titus writes repo comments, Moses reads via `gh api`. Natural audit trail.
-
-**Why this matters:** Prevents context-switching, builds historical record of focus areas, creates natural daily rhythm.
-
-|---
-|-------|-------|---------|
-| Elicit | `requirements-elicitation` | Structured requirements gathering from user goals |
-| Review | `architecture-review` | Architecture review with weighted decision matrix |
-| Spec | `product-requirements` | 1-page PRD — problem, solution, constraints, open questions |
-| Slice | `story-decomposition` | Break feature into independently deliverable stories |
-| Build | `change-test-loop` | LEARN-RED-GREEN-REFACTOR with lesson-aware memory |
-| Review | `code-review` | Pre-commit review: security, quality, auto-fix |
+> Content relocated to [`docs/fleet-reference.md`](docs/fleet-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ## ⚡ Luke's Deployment: Daily Priority Check-in
 
-| Time | Agent | Action |
-|------|-------|--------|
-| 8:00am KST | Titus | Analyzes repos, posts briefing as comment on GitHub issue #11 |
-| 8:30am KST | Moses | Reads latest comment via `gh api`. Asks user for #1 priority. |
-
-**Crons:** `titus-daily-briefing` (8:00am KST), `daily-priority-checkin` (8:30am KST).
-
----
+> Content relocated to [`docs/fleet-reference.md`](docs/fleet-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ## ⚡ Luke's Deployment: Cron Jobs Reference
 
-| Cron | Schedule | Type | Purpose |
-|------|----------|------|---------|
-| `agent-auto-remediate` | `*/30 * * * *` | LLM+skill | Auto-fix cron/inbox/service issues |
-| `remediation-sensor` | `*/5 * * * *` | no_agent | Companion diagnostics sensor |
-| `service-recovery` | `*/5 * * * *` | no_agent | Auto-restart crashed services |
-| `hermes-update` | `23 22 * * *` | no_agent | Daily Hermes upgrade + config migrate |
-| `hermes-cortex-sync` | `33 22 * * *` | no_agent | Daily repo pull + tool re-sync |
-| `system-alert-watchdog` | `*/30 * * * *` | no_agent | Resource threshold alerts |
-| `agent-cron-failure-scanner` | `*/30 * * * *` | no_agent | Scans ALL cron outputs for recent failures (last 90 min) |
-| `inbox-sensor` | `*/10 * * * *` | no_agent | Detect new broadcast messages |
-| `memory-to-brain-sync` | `0 */6 * * *` | no_agent | Memory persistence to gbrain |
-| `score-auditor` | `0 */6 * * *` | no_agent | Scans for unscored changes |
-| `gbrain-nightly-dream` | `0 3 * * 6` | no_agent | Weekly gbrain knowledge enrichment |
-| `gbrain-update-sync` | `0 2 * * 0` | no_agent | Weekly gbrain update + health check |
-| `harvest-lessons` | `0 5 * * 1` | no_agent | Weekly lesson harvesting |
-| `memory-pruning` | `0 4 * * 1` | LLM+prompt | Weekly memory consolidation |
-| `auto-save-sessions` | `every 360m` | no_agent | Session state auto-save |
-| `agent-daily-bible-reading` | `0 1 * * *` | LLM+skill | Daily Bible reading |
-| `agent-daily-soul-refinement` | `0 23 * * *` | LLM+skill | Daily soul refinement |
-| `llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | Weekday trace quality scoring |
-| `llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | Weekend trace quality scoring |
-| `offline-code-index` | `0 5 * * 0` | no_agent | Weekly corpus index refresh |
-|| `process-mcp-agent-inbox-messages` | `*/30 * * * *` | LLM | None | `origin` | Read + process new inbox messages (MCP inbox-watch + Decision Framework) |
-|| **Orchestrator-only (Moses primary, Esther backup):** | | | | ||
-| `orch-team-health` | `*/10 * * * *` | no_agent | Cross-agent health polling |
-| `orch-team-messages` | `*/10 * * * *` | no_agent | Flag urgent agent messages |
-| `orch-process-agent-messages` | `*/10 * * * *` | LLM | Process inbox remediation markers |
-|
-|### Cron naming convention
-|
-|When creating a new cron, prefix it to signal scope so other agents know whether to install it:
-|
-|| Prefix | Meaning | Example |
-||--------|---------|---------|
-| `orch-*` | **Orchestrator-only** — runs only on the orchestrator (Moses) and backup | `orch-team-health` |
-| `agent-*` | **LLM-driven** — agent reasons each tick; installable on any machine | `agent-auto-remediate` |
-| `local-*` | **This server only** — NOT shared with or installed on peer agents. Combine with `agent-` as `local-agent-*` for LLM-driven local crons. | `local-agent-daily-news-brief`, `local-script-name` |
-| no prefix | **General no_agent** — safe for any agent to run, no LLM tokens used | `remediation-sensor` |
-|
-|**Rule:** If a cron should stay on one machine and never appear on Titus, Gisu, or Joseph, prefix it `local-`. When adding a new cron, always ask: *Would another agent on another machine benefit from running this?* If no, use `local-*`.|
-|
-|**Management:**|
-```bash
-hermes cron list
-bash ~/.hermes/scripts/install-crons.sh          # install/update all
-bash ~/.hermes/scripts/install-crons.sh --force  # recreate all
-bash ~/.hermes/scripts/install-crons.sh --dry-run
-bash ~/.hermes/scripts/install-crons.sh --uninstall
-```
+> Content relocated to [`docs/fleet-reference.md`](docs/fleet-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ## ⚡ Health Monitoring Pipeline
 
@@ -556,42 +473,13 @@ No authentication. No TLS. Plain HTTP — the vector contains no secrets, just b
 
 ### Deployment (each server agent)
 
-1. Open the firewall port:
-   ```bash
-   sudo ufw allow <PORT>/tcp
-   ```
-2. Run health-vector server (port varies per agent):
-   ```bash
-   python3 ~/hermes-cortex/src/scripts/health-vector.py --serve <PORT>
-   ```
-3. Install the systemd user service (Linux):
-   ```bash
-   systemctl --user enable health-vector.service
-   systemctl --user start health-vector.service
-   ```
-4. Verify:
-   ```bash
-   curl -s http://127.0.0.1:<PORT>/
-   # → {"v":[...], "h":"hostname", "t":...}
-   ```
-5. Moses' `orch-team-health.py` picks it up automatically once the `health_url` is set in `src/agent-registry.json`.
+> Content relocated to [`docs/setup-reference.md`](docs/setup-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ### Deployment (Titus / macOS client-only)
 
-Titus cannot be polled (no inbound). Instead he pushes to Moses' inbox:
-
-1. **Pull hermes-cortex** and set up `~/.hermes/moses-inbox.conf` with his own credentials:
-   ```ini
-   MOSES_INBOX_URL="https://your-domain.com:13004"
-   MOSES_INBOX_AUTH="titus:<password>"
-   AGENT_NAME="titus"
-   ```
-2. Install the launchd agent:
-   ```bash
-   cp ~/hermes-cortex/docs/templates/com.hermes.health-push.plist ~/Library/LaunchAgents/
-   launchctl load ~/Library/LaunchAgents/com.hermes.health-push.plist
-   ```
-3. Test: `AGENT_NAME=titus bash ~/hermes-cortex/src/scripts/health-vector-push.sh`
+> Content relocated to [`docs/setup-reference.md`](docs/setup-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ### Files
 
@@ -678,27 +566,8 @@ nginx proxy (:13004 / :14004)              ↳ calls remote inbox API via HTTP
 
 ### Critical: You need a poll cron to receive messages
 
-The MCP client and config give you the **ability** to read messages, but nothing
-actually checks the inbox automatically unless you have a **poll cron**. Without
-it, messages sit unread until a human starts a session with you.
-
-Every client agent needs a `process-mcp-agent-inbox-messages` LLM cron:
-
-```bash
-hermes cron create --name process-mcp-agent-inbox-messages \
-  --model "deepseek/deepseek-v4-flash" \
-  --provider "openrouter" \
-  --schedule "0 6-23 * * *" \
-  --prompt "Check the agent inbox for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. Outside 6am-11pm daily, be silent if nothing urgent." \
-  --deliver origin
-```
-
-This runs hourly 6am-11pm, costs ~$0.006/run in LLM tokens (~$0.11/day), and delivers
-results to your origin chat (Telegram DM).
-
-**Do NOT use the old `agent-inbox-check.sh` script** — it is deprecated and
-no longer works (MCP-only now). See `docs/agent-inbox-setup.md` for full
-migration instructions.
+> Content relocated to [`docs/operations-reference.md`](docs/operations-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ### What "install the inbox" means
 
@@ -748,7 +617,7 @@ curl -s -u "your_username:your_password" \
   https://your-domain.com:13004/api/inbox?limit=3
 
 # 5. Create inbox-check cron (every 30 min):
-#    hermes cron create ...
+# hermes cron create ...
 ```
 
 **Moses and Esther only — additionally:**
