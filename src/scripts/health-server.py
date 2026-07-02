@@ -430,7 +430,7 @@ def _check_cron_health() -> dict:
 # ── gbrain sources check ───────────────────────────────────────
 _gbrain_cache: dict | None = None
 _gbrain_cache_ts: float = 0
-_GBRAIN_CACHE_TTL = 300  # 5 minutes
+_GBRAIN_CACHE_TTL = 900  # 15 minutes
 
 def _check_gbrain_sources() -> dict:
     """Check gbrain source health via gbrain doctor --json.
