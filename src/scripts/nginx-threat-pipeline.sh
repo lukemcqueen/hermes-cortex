@@ -148,9 +148,21 @@ elif [ -z "$NGINX_BIN" ]; then
   log "  nginx not found — skipping deploy"
 elif $NEW_IPS; then
   if sudo -n "$DEPLOY_SCRIPT" 2>&1; then
-    log "  ✓ Deployed"
+    log "  ✓ Deployed via hermes-security-apply"
   else
-    error "Deploy failed"
+    error "Deploy failed — sudo NOPASSWD rule missing for hermes-security-apply"
+    error "  Run: sudo bash ~/hermes-cortex/deploy/nginx/deploy-sudoers.sh"
+    # Still try to validate and reload (may fail, but harmless)
+  fi
+  # Validate & reload nginx when possible
+  if sudo -n /usr/sbin/nginx -t 2>&1; then
+    log "  ✓ nginx config valid"
+    # Only reload if we actually deployed or if the config changed
+    if $NEW_IPS && sudo -n /usr/sbin/nginx -s reload 2>&1; then
+      log "  ✓ nginx reloaded"
+    fi
+  else
+    log "  ⚠ nginx config needs attention"
   fi
 else
   log "  No new IPs — skipping"
