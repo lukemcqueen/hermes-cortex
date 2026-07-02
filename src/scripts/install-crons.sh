@@ -364,7 +364,7 @@ Include a **KST timezone** marker in your report (e.g. \`[YYYY-MM-DD HH:MM KST]\
   "auto-remediation" \
   "terminal,file,web" \
   "origin" \
-  "\$HOME" \
+  "$HOME" \
   "false" \
   "deepseek-v4-flash" "opencode-zen"
 
