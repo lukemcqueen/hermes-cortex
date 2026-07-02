@@ -54,7 +54,7 @@ TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 BLOCKED_IPS="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
 BADBOTS_CONF="${CORTEX_REPO}/deploy/nginx/nginx-badbots.conf"
 ZONE_DEFS="${NGINX_DIR}/hermes-zone-defs.conf"
-SERVICES_CONF="${NGINX_DIR}/servers/hermes-services.conf"
+SERVICES_CONF="${NGINX_DIR}/sites-enabled/hermes-services.conf"
 
 echo "━━━ Hermes Security Deploy — ${TIMESTAMP} ━━━"
 
@@ -136,6 +136,19 @@ if [ -f "$BLOCKED_IPS" ]; then
     [[ "$ip" == \#* ]] && continue
     # Validate IPv4 format
     if ! echo "$ip" | grep -qP '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'; then
+      INVALID=$((INVALID + 1))
+      continue
+    fi
+    # Skip private/reserved IP ranges
+    if echo "$ip" | grep -qP '^127\.|^10\.|^0\.'; then
+      INVALID=$((INVALID + 1))
+      continue
+    fi
+    if echo "$ip" | grep -qP '^172\.(1[6-9]|2[0-9]|3[0-1])\.'; then
+      INVALID=$((INVALID + 1))
+      continue
+    fi
+    if echo "$ip" | grep -qP '^192\.168\.'; then
       INVALID=$((INVALID + 1))
       continue
     fi

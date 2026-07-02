@@ -8,11 +8,24 @@ import re
 IPV4_RE = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
 
 def is_valid_ip(s):
-    """Return True if s is a valid IPv4 address."""
+    """Return True if s is a valid, non-private IPv4 address."""
     if not IPV4_RE.match(s):
         return False
     parts = [int(p) for p in s.split(".")]
-    return all(0 <= p <= 255 for p in parts)
+    if not all(0 <= p <= 255 for p in parts):
+        return False
+    # Skip private/reserved ranges
+    if parts[0] == 10:
+        return False
+    if parts[0] == 127:
+        return False
+    if parts[0] == 0:
+        return False
+    if parts[0] == 172 and 16 <= parts[1] <= 31:
+        return False
+    if parts[0] == 192 and parts[1] == 168:
+        return False
+    return True
 
 
 def main():

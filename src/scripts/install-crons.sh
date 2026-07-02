@@ -322,8 +322,8 @@ if $UNINSTALL; then
   echo ""
   printf "${CYAN}━━━ Uninstalling Hermes Cron Jobs ━━━${RESET}\n\n"
   for job in \
-    "agent-auto-remediate" "system-heartbeat" "memory-to-brain-sync" \
-    "system-alert-watchdog" "service-recovery" "inbox-sensor" \
+    "agent-fixer" "system-heartbeat" "memory-to-brain-sync" \
+    "system-alert-watchdog" "service-recovery" "inbox-sensor" "inbox-flag" \
     "orch-team-messages" "remediation-sensor" \
     "hermes-update" "gbrain-nightly-dream" "gbrain-update-sync" \
     "hermes-cortex-sync" "harvest-lessons" "memory-pruning" \
@@ -331,7 +331,7 @@ if $UNINSTALL; then
     "agent-daily-soul-refinement" \
     "llm-judge-scorer-weekday" "llm-judge-scorer-weekend" \
     "offline-code-index" "model-health-watchdog" \
-    "process-mcp-agent-inbox-messages"; do
+    "agent-inbox" "agent-apply-fixes"; do
     remove_cron "$job"
   done
   info "Uninstall complete"
@@ -353,20 +353,34 @@ setup_ollama_provider
 # ── 1. Auto-Remediation Pipeline ────────────────────────────
 printf "${CYAN}  1. Auto-Remediation Pipeline${RESET}\\n"
 
-# LLM-driven auto-remediation (every 30 min)
-create_cron "agent-auto-remediate" "*/30 * * * *" \
+# LLM-driven auto-remediation (every 2h)
+create_cron "agent-fixer" "0 */2 * * *" \
   "" \
-  "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report." \
+  "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
+
+## OUTPUT FORMAT
+Include a **KST timezone** marker in your report (e.g. \`[YYYY-MM-DD HH:MM KST]\`). End every delivery with this exact footer:
+📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo | agent-fixer" \
   "auto-remediation" \
   "terminal,file,web" \
   "origin" \
-  "$HOME" \
+  "\$HOME"
   "false" \
   "deepseek-v4-flash" "opencode-zen"
 
 # Companion sensor (no_agent, every 5 min)
 create_cron "remediation-sensor" "*/5 * * * *" \
   "remediation-sensor.py" \
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
+
+# Inbox flag sensor (no_agent, every 10 min) — feeds context to agent-inbox
+create_cron "inbox-flag" "*/10 * * * *" \
+  "inbox-flag.py" \
   "" \
   "" \
   "" \
@@ -566,12 +580,41 @@ create_cron "model-health-watchdog" "0 7 * * *" \
   "model-health-watchdog.py" \
   "" "" "" "origin" "" "true"
 
-# Agent inbox message processing (LLM, hourly 6am-11pm)
-create_cron "process-mcp-agent-inbox-messages" "0 6-23 * * *" \
+# Agent inbox message processing (LLM, every 2h, cost-optimized with inbox-flag sensor)
+create_cron "agent-inbox" "0 */2 * * *" \
   "" \
-  "Check the agent inbox for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework. Report actionable items with evidence. Outside 6am-11pm daily, be silent if nothing urgent." \
+  "Process the agent inbox using the Inbox Message Decision Framework. The inbox-flag sensor output is injected below as context — it shows which new messages (if any) are waiting for you.
+
+## Standard inbox processing
+1. Read the context_from sensor output to see if there are new messages
+2. If no messages: output [SILENT] and nothing else
+3. If messages exist: use inbox-watch and inbox-read MCP tools
+4. For each unread message, use the Inbox Message Decision Framework:
+   - Assess Priority (critical/urgent/normal)
+   - Assess Actionability (AUTO-ACT / DELEGATE / ESCALATE / ACKNOWLEDGE)
+   - Assess Scope (simple/moderate/complex/multi-agent)
+5. Act according to the decision matrix
+6. Deliver a concise report of what was processed
+
+## Agent Cron Management (\ud83d\udd17 CRON requests)
+When an agent sends an inbox message with subject \`\ud83d\udd17 CRON: create|update|remove\`, process it.
+
+## OUTPUT FORMAT
+Include a **KST timezone** marker in your report (e.g. \`[YYYY-MM-DD HH:MM KST]\`). End every delivery with this exact footer:
+\ud83d\udcca deepseek-v4-flash (opencode-zen) | \$0.006/run \u2248 \$2.18/mo | agent-inbox" \
   "" "" "origin" "" "false" \
   "deepseek-v4-flash" "opencode-zen"
+
+# Agent fix apply (LLM, qwen, every 10min — processes remediation markers)
+create_cron "agent-apply-fixes" "*/10 * * * *" \
+  "" \
+  "Process remediation markers in ~/.hermes/state/remediate/. If markers exist, read them and apply fixes. Report what was fixed or stay silent if nothing to do.
+
+## OUTPUT FORMAT
+Include a **KST timezone** marker (e.g. \`[YYYY-MM-DD HH:MM KST]\`). End every delivery with this exact footer:
+\ud83d\udcca qwen2.5-coder:3b (custom:ollama-local) | free | agent-apply-fixes" \
+  "" "terminal,file,web" "local" "" "false" \
+  "qwen2.5-coder:3b" "custom:ollama-local"
 
 # Scoring activity watchdog — alerts if too few cycles logged today
 create_cron "scoring-activity-watchdog" "0 14,20 * * *" \
