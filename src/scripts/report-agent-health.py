@@ -118,10 +118,14 @@ def build_report(data: dict | None) -> dict:
     services = ((data.get("checks") or {}).get("services") or {}).get("items", [])
     issues = data.get("issues", [])
 
+    # The health endpoint is the Cortex dashboard (:8901) which uses "overall"
+    # instead of the health-server "healthy" field. Accept both.
+    is_healthy = data.get("healthy") or (data.get("overall") == "healthy")
+
     return {
         "type": "health-report",
         "agent": agent_name,
-        "healthy": data.get("healthy", False),
+        "healthy": is_healthy,
         "reachable": True,
         "server": data.get("server", agent_name),
         "hostname": data.get("hostname", agent_name),
