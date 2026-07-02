@@ -168,6 +168,8 @@ register "src/scripts/state_tracker.py"           "${HERMES_HOME}/scripts/state_
 register "src/scripts/inbox-mcp.sh"               "${HERMES_HOME}/scripts/inbox-mcp.sh"
 register "src/scripts/inbox-mcp-updated.py"       "${HERMES_HOME}/scripts/inbox-mcp-updated.py"
 register "src/scripts/inbox-flag.py"              "${HERMES_HOME}/scripts/inbox-flag.py"
+register "src/scripts/inbox-watch.sh"             "${HERMES_HOME}/scripts/inbox-watch.sh"
+register "src/scripts/setup-agent-inbox.sh"       "${HERMES_HOME}/scripts/setup-agent-inbox.sh"
 register "src/scripts/loop-gov-mcp.sh"            "${HERMES_HOME}/scripts/loop-gov-mcp.sh"
 register "src/scripts/agent-inbox-monitor.sh"     "${HERMES_HOME}/scripts/agent-inbox-monitor.sh"
 register "src/scripts/orch-inbox-processor.py"   "${HERMES_HOME}/scripts/orch-inbox-processor.py"
