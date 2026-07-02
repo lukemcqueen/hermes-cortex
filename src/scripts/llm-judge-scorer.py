@@ -2,7 +2,7 @@
 """LLM-as-Judge Scorer — evaluates Hermes conversation traces using a local Ollama model.
 
 Replaces the earlier rule-based scorer with actual LLM-based judgment.
-Uses local Ollama model (default: qwen2.5-coder:1.5b) for evaluation, posts scores to Langfuse API.
+Uses local Ollama model (default: qwen2.5-coder:3b) for evaluation, posts scores to Langfuse API.
 Configurable via JUDGE_MODEL constant at the top of this file and checked
 at startup via _check_ollama_model().
 
@@ -25,7 +25,7 @@ OLLAMA_URL = f"{OLLAMA_BASE}/api/chat"
 JUDGE_MODEL = "qwen2.5-coder:3b"
 
 SCORE_CRITERIA = ["helpfulness", "clarity", "depth"]
-MAX_TRACES_PER_RUN = 5  # ~2min on Intel with qwen2.5-coder:1.5b
+MAX_TRACES_PER_RUN = 5  # ~2min on Intel with qwen2.5-coder:3b
 MAX_CONTENT_CHARS = 800  # Keep small for CPU-bound inference
 FETCH_BATCH = 20  # Fetch this many, filter to unscored
 

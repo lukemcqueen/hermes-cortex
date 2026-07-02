@@ -331,7 +331,7 @@ if $UNINSTALL; then
     "agent-daily-soul-refinement" \
     "llm-judge-scorer-weekday" "llm-judge-scorer-weekend" \
     "offline-code-index" "model-health-watchdog" \
-    "agent-inbox" "agent-apply-fixes"; do
+    "agent-inbox" "agent-remediate-apply" "agent-apply-fixes"; do
     remove_cron "$job"
   done
   info "Uninstall complete"
@@ -364,7 +364,7 @@ Include a **KST timezone** marker in your report (e.g. \`[YYYY-MM-DD HH:MM KST]\
   "auto-remediation" \
   "terminal,file,web" \
   "origin" \
-  "\$HOME"
+  "\$HOME" \
   "false" \
   "deepseek-v4-flash" "opencode-zen"
 
@@ -526,36 +526,34 @@ create_cron "harvest-lessons" "0 5 * * 1" \
   "harvest-lessons.sh" \
   "" "" "" "origin" "" "true"
 
-# Weekly memory pruning and consolidation
+# Weekly memory pruning and consolidation (deepseek — needs Hermes memory tool)
 create_cron "memory-pruning" "0 4 * * 1" \
   "" \
   "Consolidate Hermes agent memory and project agent instructions. Read MEMORY.md, USER.md from the active profile and project roots. Consolidate into compact pointers. Prune stale entries. Keep under 2,200 chars." \
   "" "" "origin" "" "false" \
-  "qwen2.5-coder:3b" "custom:ollama-local"
+  "deepseek-v4-flash" "opencode-zen"
 
 # Auto-save sessions every 6 hours
 create_cron "auto-save-sessions" "every 360m" \
   "auto-save-sessions.py" \
   "" "" "" "local" "" "true"
 
-# Daily bible reading (LLM with soul-refinement skill)
+# Daily bible reading (no_agent script — reads SOUL.md, calls deepseek API, appends)
 create_cron "agent-daily-bible-reading" "0 1 * * *" \
-  "" \
-  "Load the soul-refinement skill. Read ~/.hermes/SOUL.md and find the last book covered in the Scripture schedule. Read and summarize the next book. Add the daily verse to the session log." \
-  "soul-refinement" "" "origin" "" "false" \
-  "qwen2.5-coder:3b" "custom:ollama-local"
+  "agent-daily-bible-reading.py" \
+  "" "" "" "origin" "" "true"
 
 # Daily threat pipeline — scanner → fail2ban → deploy → commit → push
 create_cron "threat-pipeline" "0 5 * * *" \
   "nginx-threat-pipeline.sh" \
   "" "" "" "origin" "" "true"
 
-# Daily soul refinement (LLM with soul-refinement skill)
+# Daily soul refinement (deepseek — needs Hermes tools: session_search, memory, patch)
 create_cron "agent-daily-soul-refinement" "0 23 * * *" \
   "" \
   "Load the soul-refinement skill. Use session_search() to find today's sessions. Look for any user corrections, feedback, or behavior patterns worth noting. Update SOUL.md with insights. Keep it under 5KB." \
   "soul-refinement" "" "origin" "" "false" \
-  "qwen2.5-coder:3b" "custom:ollama-local"
+  "deepseek-v4-flash" "opencode-zen"
 
 # ── 7. Universal Agent Crons ──────────────────────────────
 printf "\n${CYAN}  7. Universal Agent Crons${RESET}\n"
@@ -605,16 +603,10 @@ Include a **KST timezone** marker in your report (e.g. \`[YYYY-MM-DD HH:MM KST]\
   "" "" "origin" "" "false" \
   "deepseek-v4-flash" "opencode-zen"
 
-# Agent fix apply (LLM, qwen, every 10min — processes remediation markers)
-create_cron "agent-apply-fixes" "*/10 * * * *" \
-  "" \
-  "Process remediation markers in ~/.hermes/state/remediate/. If markers exist, read them and apply fixes. Report what was fixed or stay silent if nothing to do.
-
-## OUTPUT FORMAT
-Include a **KST timezone** marker (e.g. \`[YYYY-MM-DD HH:MM KST]\`). End every delivery with this exact footer:
-\ud83d\udcca qwen2.5-coder:3b (custom:ollama-local) | free | agent-apply-fixes" \
-  "" "terminal,file,web" "local" "" "false" \
-  "qwen2.5-coder:3b" "custom:ollama-local"
+# Agent remediation apply (no_agent script — reads sensor output, applies deterministic fixes)
+create_cron "agent-remediate-apply" "*/10 * * * *" \
+  "agent-remediate-apply.py" \
+  "" "" "" "origin" "" "true"
 
 # Scoring activity watchdog — alerts if too few cycles logged today
 create_cron "scoring-activity-watchdog" "0 14,20 * * *" \

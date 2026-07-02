@@ -40,22 +40,23 @@ This replaces the previous three-model stack with a unified **qwen2.5-coder:3b**
 - ✅ Message routing decisions
 - ✅ Fallback when cloud model is rate-limited
 
-### Cron Model Migration
+### Cron Architecture — Three-Tier Model
 
-As of July 2026, several LLM-powered crons now default to **qwen2.5-coder:3b** (local, zero cost) instead of deepseek-v4-flash (API):
+As of July 2026, agent crons follow a three-tier architecture based on task requirements:
 
-| Cron | Schedule | Model | Why |
-|------|----------|-------|-----|
-| `agent-daily-bible-reading` | daily @ 1am | qwen2.5-coder:3b | Pure text, no web needed |
-| `agent-daily-soul-refinement` | daily @ 11pm | qwen2.5-coder:3b | Session analysis, file-only |
-| `memory-pruning` | weekly @ Mon 4am | qwen2.5-coder:3b | Memory consolidation, no web |
-| `orch-process-agent-messages` | every 10min | qwen2.5-coder:3b | Inbox remediation processing |
-| `llm-judge-scorer-weekday` | Mon-Fri 12:00, 20:00 | qwen2.5-coder:3b | LLM-as-Judge (via script update) |
-| `llm-judge-scorer-weekend` | Sat-Sun 22:00 | qwen2.5-coder:3b | LLM-as-Judge (via script update) |
+| Tier | Approach | When to use | Examples | Cost |
+|------|----------|-------------|----------|------|
+| **no_agent + API** | Python script + single deepseek API call | Deterministic orchestration + one creative generation | `agent-daily-bible-reading`, `agent-remediate-apply` | $0 / ~$0.01/run |
+| **LLM-driven (deepseek)** | Full agent loop on deepseek-v4-flash | Needs Hermes tools (session_search, memory, patch) | `agent-daily-soul-refinement`, `memory-pruning`, `agent-fixer`, `agent-inbox` | ~$0.01/run |
+| **no_agent script** | Python/shell, no LLM | Deterministic checks, sensors, watchdogs | `remediation-sensor`, `model-health-watchdog`, `inbox-flag` | $0 |
 
-Complex reasoning tasks (`agent-auto-remediate`, `agent-weekly-loop-eval`, `process-mcp-agent-inbox-messages`) remain on deepseek-v4-flash.
+**Migration from qwen2.5-coder:3b:** The 3B model is excellent for single-shot tasks (code gen, classification, pass/fail) but lacks the reasoning capacity for multi-step agentic workflows. Crons that need multi-tool chaining have been migrated to the first two tiers above.
 
-To run these crons on a fresh Hermes install:
+**Key scripts:**
+- `src/scripts/agent-daily-bible-reading.py` — no_agent script: reads SOUL.md, determines next canonical book, calls deepseek API for creative generation, appends to SOUL.md, reports result
+- `src/scripts/agent-remediate-apply.py` — no_agent script: reads remediation-sensor output, applies deterministic fixes (nginx, services, disk, ollama), reports
+
+To install these crons on a fresh Hermes install:
 ```bash
 bash src/scripts/install-crons.sh
 ```
