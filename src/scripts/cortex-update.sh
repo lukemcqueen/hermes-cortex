@@ -104,6 +104,7 @@ register "src/scripts/pre-commit-score"            "${HERMES_HOME}/scripts/pre-c
 register "src/scripts/pre-push-pull"               "${HERMES_HOME}/scripts/pre-push-pull"
 register "src/scripts/score-auditor.py"            "${HERMES_HOME}/scripts/score-auditor.py"
 register "src/scripts/agents-doc-audit.py"          "${HERMES_HOME}/scripts/agents-doc-audit.py"
+register "src/scripts/check-external-services.sh"   "${HERMES_HOME}/scripts/check-external-services.sh"
 register "src/scripts/cron-failure-state.sh"       "${HERMES_HOME}/scripts/cron-failure-state.sh"
 register "src/scripts/cron_failure_state.py"       "${HERMES_HOME}/scripts/cron_failure_state.py"
 register "src/scripts/seed-project.sh"           "${HERMES_HOME}/scripts/seed-project.sh"
