@@ -29,6 +29,8 @@ from pathlib import Path
 
 # ── Config ──────────────────────────────────────────────────────
 HOME = Path.home()
+IS_MAC = sys.platform == "darwin"
+IS_LINUX = sys.platform == "linux"
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", HOME / ".hermes"))
 CORTEX_HOME = Path(os.environ.get("HERMES_CORTEX_HOME", HOME / ".hermes-cortex"))
 JOBS_FILE = HERMES_HOME / "cron" / "jobs.json"
@@ -324,17 +326,29 @@ def check_services(res):
     else:
         res.add("Ollama", "FAIL", "Not reachable on localhost:11434", "Run: systemctl --user start ollama || ollama serve")
 
-    # gbrain daemon
-    out, _ = run(["systemctl", "--user", "is-active", "gbrain-autopilot"], timeout=5)
-    if out.strip() == "active":
-        res.add("gbrain daemon", "PASS", "autopilot active")
-    else:
-        out2, _ = run(["systemctl", "--user", "is-active", "com.gbrain.sync-watch"], timeout=5)
-        if out2.strip() == "active":
-            res.add("gbrain daemon", "PASS", "sync-watch active (legacy)")
+    # gbrain daemon (cross-platform: systemd on Linux, launchd on macOS)
+    if IS_MAC:
+        out, _ = run(["launchctl", "list", "com.gbrain.autopilot"], timeout=5)
+        if '"PID"' in out:
+            res.add("gbrain daemon", "PASS", "autopilot active (launchd)")
         else:
-            res.add("gbrain daemon", "WARN", "Neither autopilot nor sync-watch active",
-                     "Run: bash ~/hermes-cortex/src/scripts/install-gbrain-sync.sh")
+            out2, _ = run(["launchctl", "list", "com.gbrain.sync-watch"], timeout=5)
+            if '"PID"' in out2:
+                res.add("gbrain daemon", "PASS", "sync-watch active (launchd, legacy)")
+            else:
+                res.add("gbrain daemon", "WARN", "Neither autopilot nor sync-watch active",
+                         "Run: bash ~/hermes-cortex/src/scripts/install-gbrain-sync.sh")
+    else:  # Linux
+        out, _ = run(["systemctl", "--user", "is-active", "gbrain-autopilot"], timeout=5)
+        if out.strip() == "active":
+            res.add("gbrain daemon", "PASS", "autopilot active (systemd)")
+        else:
+            out2, _ = run(["systemctl", "--user", "is-active", "com.gbrain.sync-watch"], timeout=5)
+            if out2.strip() == "active":
+                res.add("gbrain daemon", "PASS", "sync-watch active (systemd, legacy)")
+            else:
+                res.add("gbrain daemon", "WARN", "Neither autopilot nor sync-watch active",
+                         "Run: bash ~/hermes-cortex/src/scripts/install-gbrain-sync.sh")
 
 
 def check_system(res):
@@ -357,27 +371,53 @@ def check_system(res):
                 except ValueError:
                     pass
 
-    # Memory
-    out, _ = run(["free", "-h"])
-    if out:
-        for line in out.split("\n"):
-            if line.startswith("Mem:"):
-                parts = line.split()
-                if len(parts) >= 3:
-                    total = parts[1]
-                    used = parts[2]
-                    res.add("Memory", "PASS", f"{used} used / {total} total")
-                break
+    # Memory (cross-platform: free on Linux, vm_stat + sysctl on macOS)
+    if IS_MAC:
+        total_mem, _ = run(["sysctl", "-n", "hw.memsize"], timeout=5)
+        if total_mem.isdigit():
+            total_gb = int(total_mem) / 1073741824
+            vm_out, _ = run(["vm_stat"], timeout=5)
+            pages_free = 0
+            pages_spec = 0
+            pages_purge = 0
+            pages_file = 0
+            pages_comp = 0
+            for line in vm_out.split("\n"):
+                m = re.search(r'Pages free:\s+(\d+)', line)
+                if m: pages_free = int(m.group(1))
+                m = re.search(r'Pages speculative:\s+(\d+)', line)
+                if m: pages_spec = int(m.group(1))
+                m = re.search(r'Pages purgable:\s+(\d+)', line)
+                if m: pages_purge = int(m.group(1))
+                m = re.search(r'File-backed pages:\s+(\d+)', line)
+                if m: pages_file = int(m.group(1))
+                m = re.search(r'Pages occupied by compressor:\s+(\d+)', line)
+                if m: pages_comp = int(m.group(1))
+            # Approximate: active + wired = used (pages * 16384 / 1073741824 GB)
+            total_pages = int(total_mem) / 16384
+            used_pages = total_pages - pages_free - pages_spec - pages_purge
+            used_gb = used_pages * 16384 / 1073741824
+            res.add("Memory", "PASS", f"{used_gb:.1f}G used / {total_gb:.0f}G total")
+    else:  # Linux
+        out, _ = run(["free", "-h"])
+        if out:
+            for line in out.split("\n"):
+                if line.startswith("Mem:"):
+                    parts = line.split()
+                    if len(parts) >= 3:
+                        total = parts[1]
+                        used = parts[2]
+                        res.add("Memory", "PASS", f"{used} used / {total} total")
+                    break
 
-    # Also try to parse /proc/meminfo for percentage
-    meminfo = read_file("/proc/meminfo")
-    mem_total = re.search(r"MemTotal:\s+(\d+)", meminfo)
-    mem_avail = re.search(r"MemAvailable:\s+(\d+)", meminfo)
-    if mem_total and mem_avail:
-        total_kb = int(mem_total.group(1))
-        avail_kb = int(mem_avail.group(1))
-        pct = int((1 - avail_kb / total_kb) * 100) if total_kb > 0 else 0
-        # Don't re-add — it was already added above via free -h
+        # /proc/meminfo for percentage warning (Linux only)
+        meminfo = read_file("/proc/meminfo")
+        mem_total = re.search(r"MemTotal:\s+(\d+)", meminfo)
+        mem_avail = re.search(r"MemAvailable:\s+(\d+)", meminfo)
+        if mem_total and mem_avail:
+            total_kb = int(mem_total.group(1))
+            avail_kb = int(mem_avail.group(1))
+            pct = int((1 - avail_kb / total_kb) * 100) if total_kb > 0 else 0
 
 
 def check_config(res):
