@@ -40,7 +40,7 @@ offline_code index --force
 
 # Step 4: Ensure models are pulled
 ollama pull nomic-embed-text        # already pulled by install.sh
-ollama pull qwen2.5-coder:3b      # minimum (32K context, needed for gen)
+ollama pull qwen2.5-coder:3b        # minimum (then build with 64k: see AGENTS.md)
 ```
 
 ## Usage
