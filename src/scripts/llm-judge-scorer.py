@@ -28,7 +28,7 @@ OLLAMA_URL = f"{OLLAMA_BASE}/api/chat"
 JUDGE_MODEL = get_model("JUDGE_MODEL", "qwen2.5-coder:3b")
 
 SCORE_CRITERIA = ["helpfulness", "clarity", "depth"]
-MAX_TRACES_PER_RUN = 5  # ~2min on Intel with qwen2.5-coder:3b
+MAX_TRACES_PER_RUN = 5  # ~3min on Intel with qwen2.5-coder:3b
 MAX_CONTENT_CHARS = 800  # Keep small for CPU-bound inference
 FETCH_BATCH = 20  # Fetch this many, filter to unscored
 
