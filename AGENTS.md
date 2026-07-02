@@ -19,7 +19,52 @@ Hermes Cortex is a **public installer and skill set** for
 
 ## Ollama Model Tier
 
-Hermes Cortex ships a **two-model Ollama stack** for offline/cheap operations:
+Hermes Cortex ships a **two-model stack** plus a unified env-var configuration
+system:
+
+### Unified Model Configuration (`~/.hermes/models.env`)
+
+All Ollama model names are configured in `~/.hermes/models.env`. This file
+**survives `cortex-update.sh`** (it's outside the repo) — set your custom
+models there once and they never get reverted.
+
+| Env var | Purpose | Default |
+|---------|---------|---------|
+| `JUDGE_MODEL` | LLM-as-Judge scorer | `qwen2.5-coder:3b` |
+| `EMBEDDING_MODEL` | Text embeddings (gbrain, session cache, loop scorer, offline_code) | `nomic-embed-text:latest` |
+| `CODING_MODEL` | Code generation via offline_code | auto-detected by RAM |
+| `CREATIVE_MODEL` | Reserved for future creative tasks | _(not yet wired)_ |
+
+Resolution priority (every script follows this):
+1. **Runtime env var** — `JUDGE_MODEL=mannix/qwen:7b python3 script.py`
+2. **`~/.hermes/models.env`** — persistant per-agent config, never overwritten
+3. **Script's hardcoded default** — last resort fallback shipped with the repo
+
+To change a model across all tools, edit `~/.hermes/models.env`:
+
+```bash
+# Example: Titus uses a bigger judge model
+echo 'JUDGE_MODEL=mannix/qwen2.5-coder:7b-iq3_xs' >> ~/.hermes/models.env
+```
+
+**Scripts that respect `models.env`:**
+
+| Script | Env var read | Deployed to |
+|--------|-------------|-------------|
+| `llm-judge-scorer.py` | `JUDGE_MODEL` | `~/.hermes-cortex/scripts/` |
+| `model-health-watchdog.py` | `JUDGE_MODEL` | `~/.hermes-cortex/scripts/` |
+| `system-alert-watchdog.py` | `EMBEDDING_MODEL` | `~/.hermes-cortex/scripts/` |
+| `loop_scorer.py` | `EMBEDDING_MODEL` | `~/.hermes-cortex/scripts/` |
+| `session_cache.py` | `EMBEDDING_MODEL` | `~/.hermes-cortex/scripts/` |
+| `loop-gov-mcp.py` | `EMBEDDING_MODEL` | `~/.hermes-cortex/tools/loop-governance/` |
+| `offline_code.py` | `EMBEDDING_MODEL`, `CODING_MODEL` | `~/.hermes-cortex/offline/` |
+| `lessons.py` | `EMBEDDING_MODEL` | `~/.hermes-cortex/offline/` |
+| `session_mine.py` | `EMBEDDING_MODEL` | `~/.hermes-cortex/offline/` |
+| `web_cache.py` | `EMBEDDING_MODEL` | `~/.hermes-cortex/web-cache/` |
+| `cleanup-ollama.sh` | `EMBEDDING_MODEL` | `~/.hermes-cortex/scripts/` |
+| `install-ollama.sh` | `EMBEDDING_MODEL` | `~/.hermes-cortex/scripts/` |
+
+### Default Stack Values
 
 | Tier | Model | Size | Role |
 |------|-------|------|------|

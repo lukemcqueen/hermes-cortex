@@ -39,6 +39,13 @@ import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Ensure hermes_models is importable from different repo/deploy directories
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_SCRIPTS_DIR = _SCRIPT_DIR.parent / "scripts"
+if _SCRIPTS_DIR.exists() and str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+from hermes_models import get_model
+
 # ── Configuration ──────────────────────────────────────────────
 
 CACHE_DIR = Path(os.environ.get(
@@ -54,10 +61,9 @@ OLLAMA_EMBED_URL = os.environ.get(
     "OLLAMA_EMBED_URL",
     "http://127.0.0.1:11434/api/embed"
 )
-OLLAMA_MODEL = os.environ.get(
-    "OLLAMA_EMBED_MODEL",
-    "nomic-embed-text"
-)
+# Priority: OLLAMA_EMBED_MODEL (legacy) → EMBEDDING_MODEL (shared) → default
+_OLLAMA_EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL") or ""
+OLLAMA_MODEL = _OLLAMA_EMBED_MODEL or get_model("EMBEDDING_MODEL", "nomic-embed-text")
 
 # ── Embedded Model Dimensions ──────────────────────────────────
 # nomic-embed-text = 768 dimensions

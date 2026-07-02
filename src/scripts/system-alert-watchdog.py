@@ -28,6 +28,9 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 from hermes_tz import format_timestamp
 from state_tracker import StateTracker
+from hermes_models import get_model
+
+_EMBEDDING_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text")
 
 MEM_PCT_WARN = 85
 SWAP_PCT_WARN = 90
@@ -414,9 +417,9 @@ def check_loop_gov():
                 tags = _json.loads(resp.read())
                 ollama_up = True
                 models = [m["name"] for m in tags.get("models", [])]
-                if not any("nomic-embed-text" in m for m in models):
-                    alerts.append("⚠️ nomic-embed-text model not pulled — run: ollama pull nomic-embed-text")
-                    details.append("  Run: ollama pull nomic-embed-text")
+                if not any(_EMBEDDING_MODEL in m for m in models):
+                    alerts.append(f"⚠️ {_EMBEDDING_MODEL} model not pulled — run: ollama pull {_EMBEDDING_MODEL}")
+                    details.append(f"  Run: ollama pull {_EMBEDDING_MODEL}")
         except Exception as e:
             alerts.append(f"⚠️ Ollama check error: {e}")
             details.append("  Attempting auto-restart…")

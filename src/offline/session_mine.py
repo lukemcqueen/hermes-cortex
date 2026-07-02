@@ -30,6 +30,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
+from hermes_paths import ensure_scripts_path
+ensure_scripts_path()
+from hermes_models import get_model
+
+EMBEDDING_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text")
+
 # ── Config ──────────────────────────────────────────────────
 HOME = Path.home()
 HERMES_HOME = HOME / ".hermes-cortex"
@@ -392,7 +398,7 @@ def _check_duplicate(title: str, problem: str, threshold: float = 0.65) -> Optio
 
     # Embed the search text
     try:
-        body = json.dumps({"model": "nomic-embed-text", "input": search_text}).encode()
+        body = json.dumps({"model": EMBEDDING_MODEL, "input": search_text}).encode()
         req = urllib.request.Request(
             "http://localhost:11434/api/embed",
             data=body,

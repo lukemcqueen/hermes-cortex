@@ -18,29 +18,23 @@ Usage:
   offline_code search --learn-on-miss "flask"  → On miss, output learnable template
   offline_code learn "Title" --lang py --tags "api,flask" \
       --desc "Description" --code "code here"  → Add learned snippet
-  offline_code learn-from-url "Title" --url https://... --desc "..."
-                                               → Fetch URL, extract code, learn
-
-Requirements: Python 3.10+, Ollama running with nomic-embed-text
-Optional: qwen2.5-coder (3b, 7b, or 14b) for code generation
 """
+
 import argparse
-import json
-import os
-import re
-import subprocess
-import sys
-import textwrap
-import unicodedata
-from datetime import datetime
+import json, os, re, sys, subprocess, textwrap, time, urllib.error, urllib.request
 from pathlib import Path
+from typing import Optional
+
+from hermes_paths import ensure_scripts_path
+ensure_scripts_path()
+from hermes_models import get_model
 
 HOME = Path.home()
 CORPUS_DIR = Path(__file__).parent / "code-corpus"
 INDEX_DB = HOME / "offline" / "code-index.json"
 OLLAMA_URL = "http://localhost:11434"
-EMBED_MODEL = "nomic-embed-text"
-GEN_MODEL = "qwen2.5-coder:3b"  # default; auto-upgraded if VRAM available
+EMBED_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text")
+GEN_MODEL = get_model("CODING_MODEL", "qwen2.5-coder:3b")  # default; auto-upgraded if VRAM available
 
 
 def _detect_gen_model() -> str:

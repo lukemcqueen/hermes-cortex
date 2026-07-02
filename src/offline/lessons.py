@@ -22,9 +22,13 @@ import os
 import re
 import subprocess
 import sys
-import unicodedata
+import json, os, re, sys, textwrap, urllib.error, urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+
+from hermes_paths import ensure_scripts_path
+ensure_scripts_path()
+from hermes_models import get_model
 from typing import Optional
 
 # ── Config ──────────────────────────────────────────────────
@@ -33,7 +37,7 @@ LESSONS_DIR = HOME / "brain" / "lessons"
 INDEX_FILE = HOME / "offline" / "lessons-index.json"
 
 # Embedding config (same as offline_code)
-EMBED_MODEL = "nomic-embed-text"
+EMBED_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text")
 SIMILARITY_THRESHOLD = 0.55  # broader match for natural language bug descriptions
 
 

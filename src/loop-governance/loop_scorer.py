@@ -23,7 +23,9 @@ import urllib.error
 import urllib.request
 
 OLLAMA_URL = "http://localhost:11434/api/embeddings"
-NOMIC_MODEL = "nomic-embed-text"
+from hermes_models import get_model
+
+NOMIC_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text")
 
 
 def embed(text: str) -> list[float] | None:

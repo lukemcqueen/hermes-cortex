@@ -19,15 +19,24 @@ Tools:
 import asyncio
 import importlib.util
 import json
-import logging
 import os
 import sqlite3
 import sys
-import traceback
+import time
+import urllib.error
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+# Ensure hermes_models.py is importable when running from src/mcp-servers/
+_SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(_SCRIPT_DIR.parent / "scripts"))
+
+from hermes_models import get_model
+
+# Embedding model used by all loop-governance tools
+NOMIC_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text")
 
 # ── Dependency Check: mcp package ────────────────────────────
 _HAVE_MCP = importlib.util.find_spec("mcp")
@@ -55,7 +64,6 @@ CONFIG_PATH = HOME / ".hermes" / "data" / "loop-governance-config.json"
 CACHE_DB = HOME / ".hermes" / "data" / "session-embeddings.db"
 GOVERNANCE_STATE = HOME / ".hermes-cortex" / "state" / ".governance-active.json"
 OLLAMA_URL = "http://localhost:11434/api/embeddings"
-NOMIC_MODEL = "nomic-embed-text"
 
 
 def _embed(text: str) -> list[float] | None:

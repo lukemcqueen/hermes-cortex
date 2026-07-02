@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
-# cleanup-ollama.sh — remove all Ollama models except nomic-embed-text
-# Only nomic-embed-text is needed for scoring. Other models waste disk.
+# cleanup-ollama.sh — remove all Ollama models except the embedding model
+# Reads EMBEDDING_MODEL from ~/.hermes/models.env (survives cortex-update.sh).
+# Default: nomic-embed-text
+
+# Source model configuration
+MODELS_ENV="${HOME}/.hermes/models.env"
+if [ -f "$MODELS_ENV" ]; then
+  set -a
+  source "$MODELS_ENV"
+  set +a
+fi
+EMBEDDING_MODEL="${EMBEDDING_MODEL:-nomic-embed-text}"
 
 echo "=== Ollama Model Cleanup ==="
 echo ""
@@ -11,7 +21,7 @@ if ! curl -sf http://localhost:11434/api/tags >/dev/null 2>&1; then
 fi
 
 for model in $(ollama list 2>/dev/null | tail -n +2 | awk '{print $1}'); do
-  if [ "$model" != "nomic-embed-text:latest" ]; then
+  if [ "$model" != "$EMBEDDING_MODEL" ]; then
     size=$(ollama list 2>/dev/null | grep "$model" | awk '{print $3}')
     echo "  Removing: $model ($size)"
     ollama rm "$model" 2>/dev/null

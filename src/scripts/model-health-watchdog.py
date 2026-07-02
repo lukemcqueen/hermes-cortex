@@ -35,6 +35,8 @@ import sys
 import urllib.error
 import urllib.request
 
+from hermes_models import get_model
+
 # ── Config ──────────────────────────────────────────────────────────────
 OLLAMA_TAGS_URL = "http://localhost:11434/api/tags"
 ALWAYS_REQUIRED = [
@@ -60,8 +62,8 @@ def _parse_judge_models() -> list:
     if cli_models:
         return cli_models
 
-    # Check env var
-    env_models = os.environ.get("JUDGE_MODEL", "").strip()
+    # Check env var (also falls back to ~/.hermes/models.env)
+    env_models = get_model("JUDGE_MODEL", "").strip()
     if env_models:
         return [m.strip() for m in env_models.split(",") if m.strip()]
 
