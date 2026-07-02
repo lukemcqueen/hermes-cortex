@@ -47,8 +47,18 @@ DEFAULT_CONFIG = {
                 "Inbox Message Decision Framework",
                 "Doc Freshness",
                 "Agent Cron Management",
+                "Governance lock",
+                "Rule #10: Score Every Change",
+                "Real execution, no simulation",
             ],
         },
+    ],
+    # Pre-commit hook checks these sections when --repo is passed
+    "hook_sections": [
+        "Agent Execution Contract",
+        "Rule #10: Score Every Change",
+        "Real execution, no simulation",
+        "Pre-commit / pre-push hooks",
     ],
 }
 
@@ -77,6 +87,22 @@ SECTION_PATTERNS = {
     ),
     "Agent Cron Management": re.compile(
         r"(?:Agent Cron Management|CRON.*create.*update.*remove|cron-management skill)",
+        re.MULTILINE | re.IGNORECASE,
+    ),
+    "Governance lock": re.compile(
+        r"(?:begin_change|end_change|governance.lock|governance-active)",
+        re.MULTILINE | re.IGNORECASE,
+    ),
+    "Rule #10: Score Every Change": re.compile(
+        r"(?:Rule #10|Score Every Change|score.change|loop governance.*score)",
+        re.MULTILINE | re.IGNORECASE,
+    ),
+    "Real execution, no simulation": re.compile(
+        r"(?:Real execution|no simulation|verified.*result|actual.*command)",
+        re.MULTILINE | re.IGNORECASE,
+    ),
+    "Pre-commit / pre-push hooks": re.compile(
+        r"(?:pre.commit|pre.push|commit.*hook|SKIP_SCORE)",
         re.MULTILINE | re.IGNORECASE,
     ),
 }
@@ -187,7 +213,59 @@ def audit():
         action="store_true",
         help="Deliver report via agent inbox (requires MCP tools)",
     )
+    parser.add_argument(
+        "--repo",
+        help="Quick mode: check only AGENTS.md at repo root (for pre-commit hooks). "
+             "Exit codes: 0=clean, 1=missing required sections, 2=file not found",
+    )
     args = parser.parse_args()
+
+    # ── Quick mode (--repo): single AGENTS.md check for pre-commit hooks ─
+    if args.repo:
+        repo = os.path.expanduser(args.repo)
+        agents_path = os.path.join(repo, "AGENTS.md")
+        content = read_file_safe(agents_path)
+        if content is None or content.startswith("⚠️"):
+            msg = f"❌ AGENTS.md not found at {agents_path}" if content is None else content
+            if args.json:
+                print(json.dumps({"error": msg, "exit_code": 2}))
+            else:
+                print(msg)
+            sys.exit(2)
+
+        # Check hook-required sections (from config, or default list)
+        config = load_config(args.config)
+        hook_sections = config.get("hook_sections", DEFAULT_CONFIG.get("hook_sections", [
+            "Agent Execution Contract",
+            "Rule #10: Score Every Change",
+            "Real execution, no simulation",
+            "Pre-commit / pre-push hooks",
+        ]))
+        missing = []
+        for section in hook_sections:
+            if not check_section(content, section):
+                missing.append(section)
+
+        if missing:
+            if args.json:
+                print(json.dumps({
+                    "status": "fail",
+                    "agents_path": agents_path,
+                    "missing_sections": missing,
+                    "exit_code": 1,
+                }))
+            else:
+                print(f"⚠️  AGENTS.md at {agents_path} is missing required sections:")
+                for s in missing:
+                    print(f"   - {s}")
+                print("   Add them before committing, or use SKIP_SCORE=1 to bypass.")
+            sys.exit(1)
+
+        if args.json:
+            print(json.dumps({"status": "ok", "agents_path": agents_path, "exit_code": 0}))
+        else:
+            print(f"✅ AGENTS.md at {agents_path} — all required sections present")
+        sys.exit(0)
 
     config = load_config(args.config)
 

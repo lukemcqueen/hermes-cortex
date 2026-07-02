@@ -28,27 +28,48 @@ if [[ ! -f "$GOVERNANCE_LOCK" ]]; then
   exit 1
 fi
 
-# ── Level 2: AGENTS.md core requirements check ─────────────────
-CHECK_SCRIPT=""
-for candidate in check-agents-dot-md.py ~/.hermes/scripts/check-agents-dot-md.py ~/.hermes-cortex/scripts/check-agents-dot-md.py; do
+# ── Level 2: AGENTS.md core requirements check via agents-doc-audit.py ──
+AUDIT_SCRIPT=""
+for candidate in agents-doc-audit.py ~/.hermes-cortex/scripts/agents-doc-audit.py ~/.local/bin/agents-doc-audit.py "$(git rev-parse --show-toplevel 2>/dev/null || echo '')/src/scripts/agents-doc-audit.py"; do
   if [[ -f "$candidate" ]]; then
-    CHECK_SCRIPT="$candidate"
+    AUDIT_SCRIPT="$candidate"
     break
   fi
 done
-if [[ -n "$CHECK_SCRIPT" ]]; then
+if [[ -z "$AUDIT_SCRIPT" ]]; then
+  # Fallback: find it in hermes-cortex repo
+  for base in ~/hermes-cortex ~/HermesCortex ~/cortex; do
+    candidate="$base/src/scripts/agents-doc-audit.py"
+    if [[ -f "$candidate" ]]; then
+      AUDIT_SCRIPT="$candidate"
+      break
+    fi
+  done
+fi
+if [[ -n "$AUDIT_SCRIPT" ]]; then
   REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
   if [[ -n "$REPO_ROOT" ]]; then
-    AGENTS_CHECK=$(python3 "$CHECK_SCRIPT" "$REPO_ROOT" 2>&1 || true)
+    AGENTS_OUTPUT=$(python3 "$AUDIT_SCRIPT" --repo "$REPO_ROOT" --json 2>&1 || true)
     AGENTS_EXIT=$?
-    if [[ "$AGENTS_EXIT" -eq 1 ]]; then
-      echo "❌  AGENTS.md missing. Create one before committing."
+    if [[ "$AGENTS_EXIT" -eq 2 ]]; then
+      echo "❌  AGENTS.md not found at repo root. Create one before committing."
       echo "    See ~/hermes-cortex/AGENTS.md as template."
       exit 1
     fi
-    # Exit 2 is a warning — print it but don't block
-    if [[ "$AGENTS_EXIT" -eq 2 ]]; then
-      echo "$AGENTS_CHECK" | grep -v "^🔍\|^$"
+    if [[ "$AGENTS_EXIT" -eq 1 ]]; then
+      echo "$AGENTS_OUTPUT" | python3 -c "
+import json, sys
+try:
+    data = json.loads(sys.stdin.read())
+    print('⚠️  AGENTS.md missing required sections:')
+    for s in data.get('missing_sections', []):
+        print(f'   - {s}')
+    print('   Add them, or SKIP_SCORE=1 to bypass.')
+except Exception:
+    print('⚠️  AGENTS.md check failed (non-parseable output)')
+    print(sys.stdin.read())
+" 2>/dev/null || echo "$AGENTS_OUTPUT"
+      exit 1
     fi
   fi
 fi
