@@ -220,4 +220,3 @@ Check your skill files with:
 hermes validate skills                     # validate all skills
 hermes validate skills --path ./myskill.md # single file
 hermes validate skills --strict            # fail on warnings
-```

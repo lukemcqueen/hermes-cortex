@@ -19,13 +19,13 @@ cd "$CORTEX_REPO"
 
 # Use the same strategy as the working monitor script - assert repo exists and log what's happening
 log()  { echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') cortex-sync] $*"; }
+stash_pop() { if $STASHED; then git stash pop 2>&1 | while IFS= read -r line; do echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') cortex-sync] $line"; done || true; fi }
 
 # Stash any uncommitted changes before fetch/rebase
 STASHED=false
 if ! git diff --quiet || ! git diff --cached --quiet; then
     log "Stashing local changes before sync"
-    STASH_MSG="auto-stash before cortex-sync $(date -u +%Y%m%dT%H%M%SZ)"
-    log "$(git stash push -m "$STASH_MSG" 2>&1 || true)"
+    git stash push -m "auto-stash before cortex-sync $(date -u +%Y%m%dT%H%M%SZ)" 2>&1 | while IFS= read -r line; do log "$line"; done || true
     STASHED=true
 fi
 
@@ -34,18 +34,18 @@ FETCH_OUTPUT=$(timeout 12 git fetch origin 2>&1) || {
     CTS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
     if [ "$FETCH_EXIT" -eq 124 ]; then
         echo "[$CTS cortex-sync] git fetch timed out after 12s, will retry next cycle"
-        $STASHED && git stash pop 2>/dev/null || true
+        stash_pop
         exit 1
     fi
     echo "[$CTS cortex-sync] git fetch failed (exit $FETCH_EXIT)"
-    echo "$FETCH_OUTPUT"
-    $STASHED && git stash pop 2>/dev/null || true
+    echo "[$CTS cortex-sync] $FETCH_OUTPUT"
+    stash_pop
     exit 1
 }
 
 # Silent exit if already up-to-date
 if ! git log HEAD..origin/main --oneline | grep -q .; then
-    $STASHED && git stash pop 2>/dev/null || true
+    stash_pop
     exit 0
 fi
 
@@ -59,24 +59,24 @@ PULL_OUTPUT=$(GIT_EDITOR=true timeout 20 git pull --rebase origin main 2>&1) || 
     CTS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
     if [ "$PULL_EXIT" -eq 124 ]; then
         echo "[$CTS cortex-sync] git pull --rebase timed out after 20s, will retry next cycle"
-        $STASHED && git stash pop 2>/dev/null || true
+        stash_pop
         exit 1
     fi
     echo "[$CTS cortex-sync] git rebase pull failed (exit $PULL_EXIT)"
-    echo "$PULL_OUTPUT"
-    $STASHED && git stash pop 2>/dev/null || true
+    echo "[$CTS cortex-sync] $PULL_OUTPUT"
+    stash_pop
     exit 1
 }
 
 # Re-sync tools and crons
 if [ -f "src/loop-governance/install-crons.py" ]; then
-    log "$(timeout 10 python3 src/loop-governance/install-crons.py 2>&1 || true)"
+    timeout 10 python3 src/loop-governance/install-crons.py 2>&1 | while IFS= read -r line; do log "$line"; done || true
 fi
 if [ -f "src/loop-governance/setup.sh" ]; then
-    log "$(timeout 10 bash src/loop-governance/setup.sh 2>&1 || true)"
+    timeout 10 bash src/loop-governance/setup.sh 2>&1 | while IFS= read -r line; do log "$line"; done || true
 fi
 
 # Restore stashed changes
-$STASHED && git stash pop 2>/dev/null || true
+stash_pop
 
 echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') cortex-sync] hermes-cortex updated, tools re-synced."

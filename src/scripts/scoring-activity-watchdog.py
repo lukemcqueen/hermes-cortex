@@ -31,7 +31,7 @@ THRESHOLDS = {
 
 def main():
     if not os.path.exists(DB_PATH):
-        print(f"{_cron_ts()} DB not found at {DB_PATH}")
+        print(f"{_cron_ts('scoring-activity-watchdog')} DB not found at {DB_PATH}")
         return 1
 
     now = datetime.now()
@@ -59,7 +59,7 @@ def main():
 
     if count < expected:
         print(
-            f"{_cron_ts()} ⚠️  Scoring activity low: {count} cycle(s) today "
+            f"{_cron_ts('scoring-activity-watchdog')} ⚠️  Scoring activity low: {count} cycle(s) today "
             f"(expected ≥{expected} by {hour:02d}:00). "
             f"Recent changes may be un-scored."
         )

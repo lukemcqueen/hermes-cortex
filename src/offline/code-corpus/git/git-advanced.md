@@ -62,4 +62,3 @@ git log --diff-filter=M --name-only              # files modified in commits
 git log -S "functionName" --source --all         # find where code was added/removed
 git shortlog -sn                                 # contributor commit count
 git blame file.py                                # who changed each line last
-```

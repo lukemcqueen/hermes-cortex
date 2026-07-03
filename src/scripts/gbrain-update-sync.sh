@@ -7,7 +7,7 @@ set -euo pipefail
 
 export PATH="$HOME/.bun/bin:$PATH"
 export GBRAIN_AI_EMBED_TIMEOUT_MS=300000
-GBRAIN="$HOME/.bun/bin/gbrain"
+GBRAIN="$HOME/.hermes/scripts/gbrain-wrapper.sh"
 
 echo "[$(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M KST')] gbrain-update-sync: starting"
 

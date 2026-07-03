@@ -32,7 +32,7 @@ set -euo pipefail
 
 export PATH="$HOME/.bun/bin:$PATH"
 export GBRAIN_AI_EMBED_TIMEOUT_MS=300000
-GBRAIN="$HOME/.bun/bin/gbrain"
+GBRAIN="$HOME/.hermes/scripts/gbrain-wrapper.sh"
 
 # ── Configuration (env-overridable) ─────────────────────────────────
 
@@ -42,7 +42,7 @@ DEFAULT_REPO=""
 if AUTOPILOT_CMD=$(ps -o args= -p "$(pgrep -f 'gbrain.*autopilot' | head -1)" 2>/dev/null); then
   DEFAULT_REPO=$(echo "$AUTOPILOT_CMD" | sed -n 's/.*--repo //p' | awk '{print $1}')
 fi
-GBRAIN_REPO="${GBRAIN_REPO:-${DEFAULT_REPO:-${HOME}/brain/moses}}"
+GBRAIN_REPO="${GBRAIN_REPO:-${DEFAULT_REPO:-${HOME}/hermes-cortex}}"
 
 # Max seconds to let gbrain dream run before aborting
 # Override via: DREAM_TIMEOUT=600 ./script.sh
