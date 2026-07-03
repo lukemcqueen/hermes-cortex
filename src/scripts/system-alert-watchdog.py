@@ -119,12 +119,12 @@ def _check_launchd(job_label: str) -> dict:
                 return {"status": "DEGRADED", "detail": f"PID {pid}, but LastExitStatus={exit_code} and process not found"}
             return {"status": "UP", "detail": f"PID {pid}"}
         proc_name = job_label.split(".")[-1]
-        pg = subprocess.run(["pgrep", "-x", proc_name], capture_output=True, timeout=5)
+        pg = subprocess.run(["pgrep", "-f", proc_name], capture_output=True, timeout=5)
         if pg.returncode != 0:
             for component in reversed(job_label.split(".")):
                 if component == proc_name:
                     continue
-                pg = subprocess.run(["pgrep", "-x", component], capture_output=True, timeout=5)
+                pg = subprocess.run(["pgrep", "-f", component], capture_output=True, timeout=5)
                 if pg.returncode == 0:
                     break
         if pg.returncode == 0:
