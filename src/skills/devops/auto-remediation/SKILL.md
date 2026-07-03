@@ -96,10 +96,18 @@ Don't report if everything is healthy — stay silent (watchdog pattern).
 
 ## Output rules
 
-- **Silent if nothing to fix** — zero output for healthy system
+- **Silent if nothing to fix** — zero output for healthy system (watchdog pattern)
 - **Silent on duplicate errors** — same issue reported last run is suppressed (uses `state_tracker.py`)
 - **Resolution reporting** — when a previously-reported issue clears, send `✅ {name} restored`
-- **Timestamp prefix** — start with `[YYYY-MM-DD HH:MM KST] agent-auto-remediate`
-- **Token cost footer** — end with `📊 Token cost: tracked in session DB | Cron: agent-auto-remediate`
+- **Standard format** — follow the three-phase format from `cron-format-standard` skill:
+  ```
+  <name> (<id>) [YYYY-MM-DD HH:MM KST]
+  -------------
+  Phase 1 — ...:
+  Phase 2 — ...:
+  Phase 3 — ...:
+  Result: ...
+  📊 <model> (<provider>) | <cost>/run ≈ <monthly>/mo
+  ```
 - **Brief** when fixes were applied — who, what, result
 - **Escalate** only if remediation failed 3+ times — then flag for user
