@@ -219,6 +219,14 @@ async def list_tools() -> list[Tool]:
                 "required": ["task_id"],
             },
         ),
+        Tool(
+            name="check_lock",
+            description="Check if a governance lock is active. Returns the lock state, task_id, and started_at if active, or nothing if inactive.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            },
+        ),
     ]
 
 
@@ -236,6 +244,7 @@ async def call_tool(name: str, arguments: dict[str, Any] | None) -> CallToolResu
             "cache_search": _cache_search,
             "begin_change": _begin_change,
             "end_change": _end_change,
+            "check_lock": _check_lock,
         }
         handler = handlers.get(name)
         if handler:
@@ -381,7 +390,7 @@ def _cache_search(args: dict) -> CallToolResult:
 
 
 def _begin_change(args: dict) -> CallToolResult:
-    """Create a governance lock file. Pre-commit hook checks this exists."""
+    """Create a governance lock via root-owned sudo helper."""
     task_id = args.get("task_id", "").strip()
     description = args.get("description", "").strip()
     if not task_id:
@@ -389,58 +398,170 @@ def _begin_change(args: dict) -> CallToolResult:
     if not description:
         return CallToolResult(content=[TextContent(type="text", text="Error: description is required")])
 
-    # Check if already locked
-    if GOVERNANCE_STATE.exists():
-        try:
-            existing = json.loads(GOVERNANCE_STATE.read_text())
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["sudo", "hermes-gov-lock", "on", task_id, description],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode != 0:
             return CallToolResult(content=[TextContent(
                 type="text",
-                text=f"Error: A governance session is already active: '{existing.get('task_id')}' - {existing.get('description')}. Call end_change('{existing.get('task_id')}') first or use force=True."
+                text=f"Error: {result.stderr.strip() or result.stdout.strip()}"
             )])
-        except (json.JSONDecodeError, OSError):
-            pass
-        # Stale lock — overwrite
-
-    GOVERNANCE_STATE.parent.mkdir(parents=True, exist_ok=True)
-    state = {
-        "task_id": task_id,
-        "description": description,
-        "started_at": datetime.now().isoformat(timespec="seconds"),
-        "agent": os.environ.get("AGENT_NAME", "unknown"),
-    }
-    GOVERNANCE_STATE.write_text(json.dumps(state, indent=2))
-    return CallToolResult(content=[TextContent(
-        type="text",
-        text=f"Governance session started: {task_id} — {description}. Lock file: {GOVERNANCE_STATE}"
-    )])
+        return CallToolResult(content=[TextContent(
+            type="text",
+            text=f"🔒 Governance session started: {task_id} — {description}\n"
+                 f"{result.stdout.strip()}\n"
+                 f"Repo src/ is now WRITABLE. Use end_change('{task_id}') when done."
+        )])
+    except subprocess.TimeoutExpired:
+        return CallToolResult(content=[TextContent(
+            type="text", text="Error: sudo timed out after 10s"
+        )])
+    except FileNotFoundError:
+        return CallToolResult(content=[TextContent(
+            type="text",
+            text="Error: sudo or hermes-gov-lock not found. Install first:\n"
+                 "  sudo cp ~/hermes-cortex/src/hooks/hermes-gov-lock.sh /usr/local/sbin/hermes-gov-lock\n"
+                 "  sudo chown root:root /usr/local/sbin/hermes-gov-lock\n"
+                 "  sudo chmod 755 /usr/local/sbin/hermes-gov-lock\n"
+                 "  echo 'moses ALL=(root) NOPASSWD: /usr/local/sbin/hermes-gov-lock' | sudo tee /etc/sudoers.d/hermes-gov"
+        )])
+    except Exception as e:
+        return CallToolResult(content=[TextContent(
+            type="text", text=f"Error: {e}"
+        )])
 
 
 def _end_change(args: dict) -> CallToolResult:
-    """Release the governance lock. Requires matching task_id."""
+    """Release governance lock — requires a scored cycle first."""
     task_id = args.get("task_id", "").strip()
     if not task_id:
         return CallToolResult(content=[TextContent(type="text", text="Error: task_id is required")])
 
-    if not GOVERNANCE_STATE.exists():
+    import subprocess
+
+    # Step 1: Check if a governance lock is active (via sudo helper)
+    try:
+        status_result = subprocess.run(
+            ["sudo", "hermes-gov-lock", "status"],
+            capture_output=True, text=True, timeout=5
+        )
+        if status_result.returncode != 0:
+            return CallToolResult(content=[TextContent(
+                type="text", text=f"Error checking lock state: {status_result.stderr.strip()}"
+            )])
+        lock_state = json.loads(status_result.stdout.strip())
+        if not lock_state.get("active", False):
+            return CallToolResult(content=[TextContent(
+                type="text", text="No governance session active (no root-owned lock found). Nothing to release."
+            )])
+    except (json.JSONDecodeError, subprocess.TimeoutExpired, FileNotFoundError) as e:
         return CallToolResult(content=[TextContent(
-            type="text", text="No governance session active (no lock file found). Nothing to release."
+            type="text", text=f"Error checking lock state: {e}"
         )])
 
+    # Step 2: Verify task_id matches
+    stored_task = lock_state.get("task_id", "")
+    if stored_task and stored_task != task_id:
+        return CallToolResult(content=[TextContent(
+            type="text",
+            text=f"Error: Lock belongs to task '{stored_task}', not '{task_id}'. Use end_change('{stored_task}')."
+        )])
+
+    # Step 3: Check loop-governance DB for a scored cycle
     try:
-        existing = json.loads(GOVERNANCE_STATE.read_text())
-        stored_task = existing.get("task_id", "")
-        if stored_task and stored_task != task_id:
+        conn = _db()
+        started_at = lock_state.get("started_at", "1970-01-01")
+        row = conn.execute(
+            """SELECT id, composite, decision, outcome_note
+               FROM loop_cycles
+               WHERE task_id = ? AND user_overrode IS NOT NULL
+               ORDER BY id DESC LIMIT 1""",
+            (task_id,)
+        ).fetchone()
+        conn.close()
+    except Exception:
+        row = None
+
+    if not row:
+        return CallToolResult(content=[TextContent(
+            type="text",
+            text=f"⛔ No scored cycle found for task '{task_id}'.\n\n"
+                 f"You must score this change before closing the governance session:\n"
+                 f"  1. mcp_loop_governance_cycle_query(task_id='{task_id}') — find the cycle\n"
+                 f"  2. mcp_loop_governance_feedback_accept(id=N) — mark as correct\n"
+                 f"     (or mcp_loop_governance_feedback_override() if wrong)\n"
+                 f"  3. mcp_loop_governance_end_change(task_id='{task_id}') — close the lock\n\n"
+                 f"The repo stays writable until you score and close."
+        )])
+
+    # Step 4: Score exists — release the lock
+    cycle_id, composite, decision, note = row
+    try:
+        result = subprocess.run(
+            ["sudo", "hermes-gov-lock", "off", task_id],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode != 0:
             return CallToolResult(content=[TextContent(
                 type="text",
-                text=f"Error: Lock belongs to task '{stored_task}', not '{task_id}'. Use end_change('{stored_task}') or force=True."
+                text=f"Error releasing lock: {result.stderr.strip() or result.stdout.strip()}"
             )])
-        GOVERNANCE_STATE.unlink()
         return CallToolResult(content=[TextContent(
-            type="text", text=f"Governance session '{task_id}' closed. Lock released."
+            type="text",
+            text=f"🔓 Governance session '{task_id}' closed.\n"
+                 f"Scored: cycle #{cycle_id} (composite={composite}, decision={decision})\n"
+                 f"Repo src/ is now READ-ONLY.\n"
         )])
-    except (json.JSONDecodeError, OSError) as e:
+    except subprocess.TimeoutExpired:
         return CallToolResult(content=[TextContent(
-            type="text", text=f"Error reading lock file: {e}. Remove manually: rm {GOVERNANCE_STATE}"
+            type="text", text="Error: sudo timed out after 10s"
+        )])
+    except Exception as e:
+        return CallToolResult(content=[TextContent(
+            type="text", text=f"Error: {e}"
+        )])
+
+
+def _check_lock(args: dict | None = None) -> CallToolResult:
+    """Check if a governance lock is active (via root-owned sudo helper)."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["sudo", "hermes-gov-lock", "status"],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode != 0:
+            return CallToolResult(content=[TextContent(
+                type="text", text=json.dumps({
+                    "active": False, "error": result.stderr.strip()
+                }, indent=2)
+            )])
+        # Parse JSON from first line (lock file content)
+        try:
+            state = json.loads(result.stdout.strip().split('\n')[0])
+            return CallToolResult(content=[TextContent(
+                type="text", text=json.dumps(state, indent=2)
+            )])
+        except (json.JSONDecodeError, IndexError):
+            return CallToolResult(content=[TextContent(
+                type="text", text=json.dumps({
+                    "active": False, "error": "Could not parse lock state"
+                }, indent=2)
+            )])
+    except FileNotFoundError:
+        return CallToolResult(content=[TextContent(
+            type="text", text=json.dumps({
+                "active": False, "error": "sudo or hermes-gov-lock not installed"
+            }, indent=2)
+        )])
+    except Exception as e:
+        return CallToolResult(content=[TextContent(
+            type="text", text=json.dumps({
+                "active": False, "error": str(e)
+            }, indent=2)
         )])
 
 
