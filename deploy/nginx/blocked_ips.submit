@@ -1,8 +1,0 @@
-# Agent-submitted IPs for blocking
-# Agents: append one bare IP per line (no deny keyword, no semicolon).
-# This file is processed every 30 min by agent-ip-submission.sh
-# and merged into blocked_ips.add, then cleared.
-#
-# Example:
-# 192.168.1.100
-# 10.0.0.50
