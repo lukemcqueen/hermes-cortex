@@ -33,11 +33,14 @@
     "gisu": {
       "name": "Gisu",
       "role": "operations",
+      "host": "your-gisu-host",
       "hostname": "worker-1",
       "is_server": true,
       "accessible": true,
       "health_method": "http",
-      "description": "Gisu — operations server (set health_url locally, port 13007)",
+      "health_url": "https://your-gisu-host:13007/health",
+      "port_range": "13001-13099",
+      "description": "Gisu — operations server",
       "inbox_user": "gisu",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
