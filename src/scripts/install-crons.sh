@@ -366,16 +366,35 @@ fi
 setup_ollama_provider
 
 # ── 1. Auto-Remediation Pipeline ────────────────────────────
-printf "${CYAN}  1. Auto-Remediation Pipeline${RESET}\\n"
+printf "${CYAN}  1. Auto-Remediation Pipeline${RESET}\\\n"
 
 # LLM-driven auto-remediation (every 2h)
 create_cron "agent-fixer" "0 */2 * * *" \
   "" \
   "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
-## OUTPUT FORMAT
-Include a **KST timezone** marker in your report (e.g. \`[YYYY-MM-DD HH:MM KST]\`). End every delivery with this exact footer:
-📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo | agent-fixer" \
+## OUTPUT FORMAT — FOLLOW EXACTLY
+Match this structure line for line. Your content replaces the values.
+Everything else stays: dashes, colons, spacing, line breaks.
+
+agent-fixer (JOB_ID) [YYYY-MM-DD HH:MM KST]
+-------------
+
+Phase 1 — Issues found: 2 active issues detected
+- [nginx] port 13001 unreachable
+- [disk] /var/log at 85% capacity
+
+Phase 2 — Fixes applied: 2 of 2 resolved
+- nginx: service restart succeeded
+- disk: log rotation freed 2.3GB
+
+Phase 3 — Unresolved: 0 remaining
+
+Result: All issues fixed. System nominal.
+
+📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo
+
+If nothing to report: output exactly [SILENT]" \
   "auto-remediation" \
   "terminal,file,web" \
   "origin" \
@@ -404,7 +423,7 @@ create_cron "inbox-flag" "*/10 * * * *" \
   "true"
 
 # ── 2. System Health Monitoring ──────────────────────────────
-printf "\\n${CYAN}  2. System Health Monitoring${RESET}\\n"
+printf "\\n${CYAN}  2. System Health Monitoring${RESET}\\\n"
 
 create_cron "system-alert-watchdog" "*/30 * * * *" \
   "system-alert-watchdog.py" \
@@ -425,7 +444,7 @@ create_cron "service-recovery" "*/5 * * * *" \
   "true"
 
 # ── 3. Knowledge & Memory ────────────────────────────────────
-printf "\\n${CYAN}  3. Knowledge & Memory${RESET}\\n"
+printf "\\n${CYAN}  3. Knowledge & Memory${RESET}\\\n"
 
 create_cron "memory-to-brain-sync" "0 */6 * * *" \
   "memory-to-brain-sync.py" \
@@ -437,7 +456,7 @@ create_cron "memory-to-brain-sync" "0 */6 * * *" \
   "true"
 
 # ── 4. Agent Inbox Processing ────────────────────────────────
-printf "\\n${CYAN}  4. Agent Inbox Processing${RESET}\\n"
+printf "\\n${CYAN}  4. Agent Inbox Processing${RESET}\\\n"
 
 create_cron "inbox-sensor" "*/10 * * * *" \
   "inbox-sensor.py" \
@@ -449,7 +468,7 @@ create_cron "inbox-sensor" "*/10 * * * *" \
   "true"
 
 # ── 5. Change Scoring Audit ──────────────────────────────────
-printf "\\n${CYAN}  5. Change Scoring Audit${RESET}\\n"
+printf "\\n${CYAN}  5. Change Scoring Audit${RESET}\\\n"
 
 create_cron "score-auditor" "0 */6 * * *" \
   "score-auditor.py" \
@@ -544,7 +563,31 @@ create_cron "harvest-lessons" "0 5 * * 1" \
 # Weekly memory pruning and consolidation (deepseek — needs Hermes memory tool)
 create_cron "memory-pruning" "0 4 * * 1" \
   "" \
-  "Consolidate Hermes agent memory and project agent instructions. Read MEMORY.md, USER.md from the active profile and project roots. Consolidate into compact pointers. Prune stale entries. Keep under 2,200 chars." \
+  "Consolidate Hermes agent memory and project agent instructions. Read MEMORY.md, USER.md from the active profile and project roots. Consolidate into compact pointers. Prune stale entries. Keep under 2,200 chars.
+
+## OUTPUT FORMAT — FOLLOW EXACTLY
+Match this structure line for line. Your content replaces the values.
+Everything else stays: dashes, colons, spacing, line breaks.
+
+memory-pruning (JOB_ID) [YYYY-MM-DD HH:MM KST]
+-------------
+
+Phase 1 — Memory read: MEMORY.md at 1,850 chars (12 entries), USER.md at 890 chars (8 entries)
+- Found 3 stale entries (dated 2026-06-15 or earlier, no longer referenced in recent sessions)
+- Found 2 verbose entries that could be consolidated
+
+Phase 2 — Pruning applied: Removed 3 stale entries (185 chars freed)
+- Consolidated 2 tool-quirk entries into 1 compact pointer
+- Merged 2 user-preference entries into 1
+- Final MEMORY.md: 1,420 chars (within 2,200 limit)
+
+Phase 3 — USER.md: No changes needed — all 8 entries still current
+
+Result: Memory consolidated. 3 stale entries pruned, 2 merged. Under limit.
+
+📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo
+
+If nothing to report: output exactly [SILENT]" \
   "" "" "origin" "" "false" \
   "deepseek-v4-flash" "opencode-zen"
 
@@ -571,7 +614,31 @@ create_cron "agent-ip-submission" "*/30 * * * *" \
 # Daily soul refinement (deepseek — needs Hermes tools: session_search, memory, patch)
 create_cron "agent-daily-soul-refinement" "0 23 * * *" \
   "" \
-  "Load the soul-refinement skill. Use session_search() to find today's sessions. Look for any user corrections, feedback, or behavior patterns worth noting. Update SOUL.md with insights. Keep it under 5KB." \
+  "Load the soul-refinement skill. Use session_search() to find today's sessions. Look for any user corrections, feedback, or behavior patterns worth noting. Update SOUL.md with insights. Keep it under 5KB.
+
+## OUTPUT FORMAT — FOLLOW EXACTLY
+Match this structure line for line. Your content replaces the values.
+Everything else stays: dashes, colons, spacing, line breaks.
+
+agent-daily-soul-refinement (JOB_ID) [YYYY-MM-DD HH:MM KST]
+-------------
+
+Phase 1 — Sessions reviewed: 8 sessions found today
+- Found 1 user correction: \"stop using vague language in reports\"
+- Found 2 behavioral patterns: consistently missing pre-commit hook check, verbosity in error reports
+
+Phase 2 — SOUL.md updates applied:
+- Added behavioral rule: verify pre-commit hook presence before git operations
+- Added style correction: prefer tool output over prose descriptions
+- Updated existing verbosity guideline to be more specific
+
+Phase 3 — Current SOUL.md: 4.2KB (within 5KB limit)
+
+Result: 3 insights added to SOUL.md. SOUL.md at 4.2KB.
+
+📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo
+
+If nothing to report: output exactly [SILENT]" \
   "soul-refinement" "" "origin" "" "false" \
   "deepseek-v4-flash" "opencode-zen"
 
@@ -614,12 +681,31 @@ create_cron "agent-inbox" "0 */2 * * *" \
 5. Act according to the decision matrix
 6. Deliver a concise report of what was processed
 
-## Agent Cron Management (\ud83d\udd17 CRON requests)
-When an agent sends an inbox message with subject \`\ud83d\udd17 CRON: create|update|remove\`, process it.
+## Agent Cron Management (🔗 CRON requests)
+When an agent sends an inbox message with subject \`🔗 CRON: create|update|remove\`, process it.
 
-## OUTPUT FORMAT
-Include a **KST timezone** marker in your report (e.g. \`[YYYY-MM-DD HH:MM KST]\`). End every delivery with this exact footer:
-\ud83d\udcca deepseek-v4-flash (opencode-zen) | \$0.006/run \u2248 \$2.18/mo | agent-inbox" \
+## OUTPUT FORMAT — FOLLOW EXACTLY
+Match this structure line for line. Your content replaces the values.
+Everything else stays: dashes, colons, spacing, line breaks.
+
+agent-inbox (JOB_ID) [YYYY-MM-DD HH:MM KST]
+-------------
+
+Phase 1 — Messages found: 2 unread messages waiting
+- 🔗 CRON: create from titus — wants new disk-watchdog cron
+- [normal] from moses — system health check passed
+
+Phase 2 — Actions taken: 2 of 2 processed
+- Created disk-watchdog cron (schedule: */30 * * * *, no_agent)
+- Acknowledged health check — no action needed
+
+Phase 3 — Escalated: 0
+
+Result: Inbox empty. All items processed.
+
+📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo
+
+If nothing to report: output exactly [SILENT]" \
   "" "" "origin" "" "false" \
   "deepseek-v4-flash" "opencode-zen"
 
@@ -641,7 +727,38 @@ create_cron "skill-miner" "0 6 * * 1" \
 # Loop-governance: weekly evaluation — report, skill miner, auto-apply, retention
 create_cron "agent-weekly-loop-eval" "0 9 * * 1" \
   "" \
-  "Run the loop governance evaluation pipeline for the last 7 days, then run the skill miner, auto-apply safe config changes, and vacuum old cycles.\n\n1. Generate the evaluation report using the loop-governance skill (last 7 days).\n2. Run the skill miner: execute `skill-miner` and report findings.\n3. Run auto-apply: execute `auto-apply --json`. Report what was applied or skipped.\n4. Run DB retention (archive cycles older than 90 days).\n5. Deliver a combined message." \
+  "Run the loop governance evaluation pipeline for the last 7 days, then run the skill miner, auto-apply safe config changes, and vacuum old cycles.
+
+1. Generate the evaluation report using the loop-governance skill (last 7 days).
+2. Run the skill miner: report findings.
+3. Run auto-apply: report what was applied or skipped.
+4. Run DB retention (archive cycles older than 90 days).
+5. Deliver a combined message.
+
+## OUTPUT FORMAT — FOLLOW EXACTLY
+Match this structure line for line. Your content replaces the values.
+Everything else stays: dashes, colons, spacing, line breaks.
+
+agent-weekly-loop-eval (JOB_ID) [YYYY-MM-DD HH:MM KST]
+-------------
+
+Phase 1 — Evaluation report: 7-day analysis complete
+- 43 cycles scored, avg score 7.2/10
+- 15 STOP decisions, 28 LOOP
+- Top task: fix-auth-403 (8 cycles, avg 8.1)
+
+Phase 2 — Skill miner: 2 new skill patterns identified
+- found recurrent \"docker-compose restart\" fix pattern
+- found \"nginx config reload after deploy\" pattern
+
+Phase 3 — Auto-apply + retention:
+- 4 safe config changes applied (threshold adjustments)
+- Archived 312 cycles older than 90 days
+- DB vacuumed: freed 1.8MB
+
+Result: Evaluation complete. 2 skills mined. DB cleaned.
+
+📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo" \
   "loop-governance" "" "origin" "" "false" \
   "deepseek-v4-flash" "opencode-zen"
 

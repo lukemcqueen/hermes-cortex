@@ -36,7 +36,7 @@ Update all files referencing the old model:
 | `deploy/README-langfuse-clickhouse.md` | Setup instructions, verify commands |
 | `docs/model-tier-strategy.md` | Integration points (if wiring changed) |
 
-Search: `grep -rn "qwen2.5-coder:1.5b\|<old-model>" ~/hermes-cortex/ --include="*.md"`
+Search: `grep -rn "qwen2.5-coder:3b\|<old-model>" ~/hermes-cortex/ --include="*.md"`
 
 ## Current Model Inventory
 
