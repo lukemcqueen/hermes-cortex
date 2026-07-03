@@ -968,6 +968,14 @@ main() {
 
   # Post-update service verification
   verify_services
+
+  # Install/update crons (idempotent — skips existing)
+  if command -v hermes &>/dev/null; then
+    HERMES_HOME="${HERMES_HOME}" bash "${HERMES_HOME}/scripts/install-crons.sh" 2>/dev/null && \
+      info "Crons up to date" || warn "Cron install skipped (no hermes CLI?)"
+  else
+    info "Hermes not found — skip cron install (run install-crons.sh after Hermes setup)"
+  fi
   echo ""
 }
 

@@ -828,7 +828,7 @@ Result: Evaluation complete. 2 skills mined. DB cleaned.
 
 # Session embedding cache rebuild (weekly Monday 05:00 — universal, loop-governance)
 create_cron "session-cache-build" "0 5 * * 1" \
-  "session-cache-build" \
+  "session_cache.py" \
   "" "" "" "origin" "" "true"
 
 # Cron output quality gate (every 10 min, silent when healthy — universal)
