@@ -28,9 +28,10 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 from hermes_tz import format_timestamp
 from state_tracker import StateTracker
-from hermes_models import get_model
+from hermes_models import load_models_env
 
-_EMBEDDING_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
+_MODELS_ENV = load_models_env()
+_EMBEDDING_MODEL = _MODELS_ENV.get("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 
 MEM_PCT_WARN = 85
 SWAP_PCT_WARN = 90
