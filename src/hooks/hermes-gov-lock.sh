@@ -76,10 +76,11 @@ cmd_on() {
 EOF
     chmod 600 "$LOCK_FILE"
 
-    # Make protected directories writable
+    # Make protected directories writable (preserve execute bits)
     for dir in "${PROTECTED_DIRS[@]}"; do
         if [ -d "$dir" ]; then
-            chmod -R 755 "$dir" 2>/dev/null || true
+            chmod -R u+w "$dir" 2>/dev/null || true
+            find "$dir" -type d -exec chmod u+x {} \; 2>/dev/null || true
         fi
     done
 
@@ -102,12 +103,11 @@ cmd_off() {
     fi
 
     # Make protected directories recursively read-only
-    # Files get 444 (read-only), dirs get 555 (read+execute)
+    # Uses a-wX: removes write from all, but preserves execute bits
+    # on directories and files that already had +x (like shell scripts)
     for dir in "${PROTECTED_DIRS[@]}"; do
         if [ -d "$dir" ]; then
-            find "$dir" -type f -exec chmod 444 {} \; 2>/dev/null || true
-            chmod -R u-w "$dir" 2>/dev/null || true
-            find "$dir" -type d -exec chmod u+x {} \; 2>/dev/null || true
+            chmod -R a-wX "$dir" 2>/dev/null || true
         fi
     done
 
