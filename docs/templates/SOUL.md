@@ -20,13 +20,23 @@ Add your operating principles. Below is a suggested starting set:
 
 **Governance is enforced at the MCP tool level**, not by shell hooks or willpower. The loop-gov-mcp.py server blocks write tools (`write_file`, `patch`, `terminal`, `skill_manage`, `cronjob`) when no governance lock is active.
 
-Before any file, config, or cron change:
+**Pre-work (BEFORE touching any file, config, or cron):**
 1. `mcp_loop_governance_cache_search(query="<what you are about to do>")` — learn from similar past cycles
 2. `mcp_loop_governance_begin_change(task_id="<short-name>", description="<what this does>")` — create governance lock (required before write tools will work)
-3. Make your changes
-4. `mcp_loop_governance_cycle_query(task_id="<descriptive-name>")` — find the recorded cycle
-5. `mcp_loop_governance_feedback_accept(id=N, ...)` or `feedback_override()` — score the change
-6. `mcp_loop_governance_end_change(task_id="<short-name>")` — release governance lock
+3. Only then: begin the actual work.
+
+**Post-change (AFTER each logical change — not at session end):**
+1. Commit changes
+2. `mcp_loop_governance_cycle_query(task_id="<descriptive-name>")` — find the recorded cycle
+3. If cycle found → `mcp_loop_governance_feedback_accept(id=N, note="...")` or `mcp_loop_governance_feedback_override(id=N, correct_decision="...", note="...")` — score the change
+4. `mcp_loop_governance_end_change(task_id="<short-name>")` — release governance lock
+5. **If `end_change` rejects** ("no scored cycle found"): the MCP server did not auto-create a cycle for this tool type (known limitation: `patch` under lock doesn't log cycles). Do NOT silently force-clear. Instead:
+   a. **Confess clearly** — state: "end_change rejected — no cycle auto-created for this tool type. Force-clearing lock."
+   b. `rm -f ~/.hermes-cortex/state/.governance-active.json`
+   c. Document the missed auto-cycle in this section
+6. Verify: did you actually score the last change?
+
+**HARD RULE: Never force-clear a lock without calling `end_change` first.** The sequence must be: `cycle_query` → try `feedback_accept/override` → try `end_change` → only if that rejects → confess + force-clear. Skipping `end_change` is skipping the accountability checkpoint.
 
 Each logical change gets scored individually. Batch-scoring a whole session is never acceptable. The MCP server enforces the lock, but scoring discipline remains your responsibility.
 
