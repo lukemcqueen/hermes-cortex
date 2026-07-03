@@ -283,8 +283,8 @@ if old_model in text:
         '    api_mode: chat_completions\n'
         '    models:\n'
         '      qwen2.5-coder:3b:\n'
-        '        context_length: 4096\n'
-        '        ollama_num_ctx: 4096\n'
+        '        context_length: 65536\n'
+        '        ollama_num_ctx: 65536\n'
     )
     text = text.replace(old_model, custom_block, 1)
     with open(fp, 'w') as f:
@@ -302,8 +302,8 @@ else:
                 '    api_mode: chat_completions\n'
                 '    models:\n'
                 '      qwen2.5-coder:3b:\n'
-                '        context_length: 4096\n'
-                '        ollama_num_ctx: 4096\n')
+                '        context_length: 65536\n'
+                '        ollama_num_ctx: 65536\n')
             lines_t.insert(i, custom_block)
             text = "\n".join(lines_t)
             with open(fp, 'w') as f:

@@ -71,11 +71,13 @@ echo 'JUDGE_MODEL=mannix/qwen2.5-coder:7b-iq3_xs' >> ~/.hermes/models.env
 | Embedding | `nomic-embed-text:v1.5` | 274 MB | Vector search (embeddings for search, RAG) |
 | Unified gen/judge | `qwen2.5-coder:3b` | 1.9 GB | Code gen, classification, routing, quality gates |
 
-> **⚠️ Context requirements:** On GPU-equipped machines 65536 (64k) context is ideal. On CPU-only machines (especially MacBooks) 65536 causes thermal throttling (92°C+). Default is now 4096 which keeps temps under 75°C under sustained load. See `install-ollama.sh` comments for details. `qwen2.5-coder:3b` from the Ollama registry defaults to 32k — build it with the required context:
+> **⚠️ 64k context minimum required.** All local models used with Hermes Agent need at least 64k context for tool calls and conversation history. `qwen2.5-coder:3b` from the Ollama registry defaults to 32k — build it with 64k:
 > ```bash
-> ollama create qwen2.5-coder:3b -f <(echo -e "FROM qwen2.5-coder:3b\nPARAMETER num_ctx 4096")
+> ollama create qwen2.5-coder:3b -f <(echo -e "FROM qwen2.5-coder:3b\nPARAMETER num_ctx 65536")
 > ```
 > Larger variants (7b+) typically ship with 128k+ out of the box and pass the check automatically. The installer runs this check — see `install-ollama.sh build_qwen_model`. Set `CORTEX_REPO` env var if your repo is at a non-standard path.
+>
+> **Thermal note (CPU-only machines):** 65536 context on a CPU-only MacBook was previously blamed for 92°C throttling, but the real cause was unlimited Ollama threads + model kept loaded 24/7. With `OLLAMA_NUM_THREADS=2` and `OLLAMA_KEEP_ALIVE=0`, 65536 context runs at 58°C under load — the same as 4096. See `install-ollama.sh` comments for details.
 
 This replaces the previous three-model stack with a unified **qwen2.5-coder:3b** model that handles both code generation and classification/judging. Agents should use it via `http://localhost:11434/api/generate` or `offline_code gen` for:
 

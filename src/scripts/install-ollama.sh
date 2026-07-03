@@ -169,19 +169,21 @@ pull_embedding_model() {
 
 # ── Build model with sufficient context ─────────────────────
 # Hermes Agent uses local models (qwen2.5-coder:3b, 7b variants, etc.)
-# as judge/coding models. All models need adequate context for
+# as judge/coding models. All models need 64k (65536) context for
 # Hermes Agent's tool calls and conversation history.
 #
-# On GPU-equipped machines 65536 (64k) context is fine, but on
-# CPU-only MacBooks (i7-4980HQ) 65536 causes 92°C thermal throttling
-# via intel_powerclamp, halting the entire system. We now default to
-# 4096 which keeps temps under 75°C even under sustained load.
+# THERMAL NOTE: On CPU-only machines (e.g. MacBook i7-4980HQ), the
+# default Ollama thread count (all cores) + model kept loaded 24/7
+# causes 92°C throttling. The fix is NOT reducing context — it's:
+#   1. OLLAMA_NUM_THREADS=2 — limits to 2 CPU cores (the real heat fix)
+#   2. OLLAMA_KEEP_ALIVE=0  — unloads model between uses
+# With both set, 65536 context runs at 58°C under load. Verified 2026-07-03.
 #
-# qwen2.5-coder:3b  → Ollama registry build defaults to 32k → build with 4k
+# qwen2.5-coder:3b  → Ollama registry build defaults to 32k → build with 64k
 # Larger variants    → ship with 128k+ out of the box, well above minimum
 #
 # This function checks the model's current context length and only
-# rebuilds if it's below the target (4096). Idempotent: safe to run on any model.
+# rebuilds if it's below 64k. Idempotent: safe to run on any model.
 build_qwen_model() {
   local model_name="${1:-qwen2.5-coder:3b}"
   local modelfile
@@ -199,7 +201,7 @@ build_qwen_model() {
     existing_ctx=$(ollama show "$model_name" 2>/dev/null | grep -i "context length" | grep -oE '[0-9]+' | head -1 || echo "")
   fi
 
-  if [[ -n "$existing_ctx" ]] && [[ "$existing_ctx" -ge 4096 ]]; then
+  if [[ -n "$existing_ctx" ]] && [[ "$existing_ctx" -ge 65536 ]]; then
     info "Model '${model_name}' already built with ${existing_ctx} context — OK"
     rm -f "$modelfile"
     return 0
@@ -209,7 +211,7 @@ build_qwen_model() {
   # (qwen2.5-coder:3b, mannix/qwen2.5-coder:7b-iq3_xs, etc.)
   {
     echo "FROM ${model_name}"
-    echo "PARAMETER num_ctx 4096"
+    echo "PARAMETER num_ctx 65536"
   } > "$modelfile"
 
   if [[ -n "$existing_ctx" ]]; then
@@ -235,12 +237,12 @@ verify_qwen_context() {
   local model_name="${1:-qwen2.5-coder:3b}"
   local ctx
   ctx=$(ollama show "$model_name" 2>/dev/null | grep -i "context length" | grep -oE '[0-9]+' | head -1 || echo "unknown")
-  if [[ "$ctx" == "unknown" ]] || [[ "$ctx" -lt 4096 ]]; then
-    warn "⚠  ${model_name} context: ${ctx} (Hermes needs 4k / 4096 — 65536 caused thermal throttling)"
-    warn "   Rebuild: ollama create ${model_name} -f <(echo -e \"FROM ${model_name}\\nPARAMETER num_ctx 4096\")"
+  if [[ "$ctx" == "unknown" ]] || [[ "$ctx" -lt 65536 ]]; then
+    warn "⚠  ${model_name} context: ${ctx} (Hermes needs 64k / 65536 — thread limit with OLLAMA_NUM_THREADS=2 keeps thermals safe)"
+    warn "   Rebuild: ollama create ${model_name} -f <(echo -e \"FROM ${model_name}\\nPARAMETER num_ctx 65536\")"
     return 1
   fi
-  info "✅ ${model_name} context: ${ctx} (4k OK)"
+  info "✅ ${model_name} context: ${ctx} (64k OK)"
   return 0
 }
 
