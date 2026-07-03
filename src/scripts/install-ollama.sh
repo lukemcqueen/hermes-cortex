@@ -118,7 +118,7 @@ setup_ollama_service() {
     write_service "$OLLAMA_SERVICE_NAME" \
       "$ollama_bin serve" \
       "$workdir" \
-      "PATH=/usr/local/bin:/usr/bin:/bin HOME=${HOME} OLLAMA_HOST=127.0.0.1"
+      "PATH=/usr/local/bin:/usr/bin:/bin HOME=${HOME} OLLAMA_HOST=127.0.0.1 OLLAMA_NUM_THREADS=2 OLLAMA_KEEP_ALIVE=0"
     start_service "$OLLAMA_SERVICE_NAME"
 
   elif [[ "$CORTEX_OS" == "linux" ]]; then
@@ -128,7 +128,7 @@ setup_ollama_service() {
       write_service "$OLLAMA_SERVICE_NAME" \
         "$ollama_bin serve" \
         "$workdir" \
-        "PATH=/usr/local/bin:/usr/bin:/bin HOME=${HOME} OLLAMA_HOST=127.0.0.1"
+        "PATH=/usr/local/bin:/usr/bin:/bin HOME=${HOME} OLLAMA_HOST=127.0.0.1 OLLAMA_NUM_THREADS=2 OLLAMA_KEEP_ALIVE=0"
       start_service "$OLLAMA_SERVICE_NAME"
     fi
 

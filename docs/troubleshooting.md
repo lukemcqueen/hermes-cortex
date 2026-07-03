@@ -385,6 +385,65 @@ Usually for queues like `trace-delete`, `evaluation-execution`, `dataset-delete`
 
 ---
 
+## 🔥 Thermal / CPU Throttling Issues
+
+### 1. Ollama causes CPU throttling / system halting (MacBook Intel)
+
+**Symptom:** System becomes unresponsive or freezes under load. CPU temperature hits 90°C+. `dmesg` shows `intel_powerclamp: Start idle injection`. Linux Pressure Stall Information (`/proc/pressure/cpu`) shows `some avg10 > 20%`.
+
+**Root cause:** The default Ollama configuration uses **all available CPU threads** (8 on a quad-core with HT) and keeps the model loaded for **5 minutes** after each use (`OLLAMA_KEEP_ALIVE=5m`). On CPU-only machines (Intel MacBooks, older laptops), this saturates all cores continuously, causing thermal throttling.
+
+**Fix — two environment variables:**
+
+```bash
+# Edit the Ollama service file
+nano ~/.config/systemd/user/ollama.service
+
+# Add these lines under [Service]:
+# Environment=OLLAMA_NUM_THREADS=2
+# Environment=OLLAMA_KEEP_ALIVE=0
+
+# Then:
+systemctl --user daemon-reload
+systemctl --user restart ollama.service
+```
+
+| Variable | Value | Effect |
+|----------|-------|--------|
+| `OLLAMA_NUM_THREADS=2` | Limits to 2 CPU cores | **Massive heat reduction** — the real fix |
+| `OLLAMA_KEEP_ALIVE=0` | Unloads model immediately after use | Prevents sustained load |
+
+**Verify:**
+```bash
+# Check env vars are applied
+cat /proc/$(pgrep -f "ollama serve")/environ 2>/dev/null | tr '\0' '\n' | grep OLLAMA
+
+# Check temperature dropped
+sensors | grep Package
+
+# Check pressure stall info improved
+cat /proc/pressure/cpu
+```
+
+**Expected results:**
+- Temperature: 92°C → **50-60°C**
+- PSI `some avg10`: 30%+ → **< 1%**
+- Powerclamp stops: `dmesg | grep "Stop forced idle injection"`
+
+**Important:** Do NOT reduce the model's context window (`num_ctx` / `PARAMETER num_ctx`) to fix heat. 65536 (64k) context runs at the same temperature as 4096 when threads are limited — the heat comes from CPU parallelism, not context size. The project requires 64k context for tool calls and conversation history. See `install-ollama.sh` header comments for the full diagnosis.
+
+**On macOS (launchd):**
+```bash
+# Edit the plist to add EnvironmentVariables
+launchctl unload ~/Library/LaunchAgents/ollama.plist
+# Add OLLAMA_NUM_THREADS and OLLAMA_KEEP_ALIVE to the plist's EnvironmentVariables dict
+launchctl load ~/Library/LaunchAgents/ollama.plist
+```
+
+**On fresh install:** `install-ollama.sh` now includes these env vars by default (macOS and Linux service writers). Run `bash ~/hermes-cortex/src/scripts/install-ollama.sh` to regenerate the service file.
+
+---
+
 ## 📋 Quick Reference: Common Commands
 
 ```bash
