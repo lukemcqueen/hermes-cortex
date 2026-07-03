@@ -75,6 +75,15 @@ install_hook() {
   local repo="$1"
   local hook_dest="${repo}/.git/hooks/${HOOK_NAME}"
 
+  # Check if core.hooksPath is set for this repo — if so, install there instead
+  local hooks_dir
+  hooks_dir=$(git -C "$repo" config --get core.hooksPath 2>/dev/null || true)
+  if [[ -n "$hooks_dir" ]]; then
+    # Expand $HOME if present in the path
+    hooks_dir="${hooks_dir/#\~/$HOME}"
+    hook_dest="${hooks_dir}/${HOOK_NAME}"
+  fi
+
   # Check if hook already exists and is up to date
   if [[ -f "$hook_dest" ]]; then
     if grep -q "pre-commit-score" "$hook_dest" 2>/dev/null; then
@@ -101,6 +110,14 @@ install_hook() {
 install_push_hook() {
   local repo="$1"
   local push_dest="${repo}/.git/hooks/${PUSH_HOOK_NAME}"
+
+  # Respect core.hooksPath for push hook too
+  local hooks_dir
+  hooks_dir=$(git -C "$repo" config --get core.hooksPath 2>/dev/null || true)
+  if [[ -n "$hooks_dir" ]]; then
+    hooks_dir="${hooks_dir/#\~/$HOME}"
+    push_dest="${hooks_dir}/${PUSH_HOOK_NAME}"
+  fi
 
   if [[ ! -f "$PUSH_HOOK_SOURCE" ]]; then
     return
