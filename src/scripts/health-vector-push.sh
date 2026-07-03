@@ -50,8 +50,8 @@ if [[ -z "$MOSES_INBOX_URL" ]]; then
     exit 1
 fi
 
-# Derive API endpoint from the inbox URL
-API_URL="${MOSES_INBOX_URL%/send}/api/send"
+# Use the inbox send URL directly (config provides the full endpoint)
+API_URL="${MOSES_INBOX_URL}"
 
 # ── Vector: default all-1 healthy ──────────────────────────
 # Each check sets its slot to 0=n/a, -1=fail, or leaves 1=pass

@@ -26,6 +26,7 @@ import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional, Union
 
 DEFAULT_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 DEFAULT_COOLDOWN = 30  # minutes
@@ -34,7 +35,7 @@ DEFAULT_COOLDOWN = 30  # minutes
 class FailureState:
     """Per-script failure state with cooldown-based dedup."""
 
-    def __init__(self, script_name: str, state_dir: Path | str | None = None):
+    def __init__(self, script_name: str, state_dir: Optional[Union[Path, str]] = None):
         self.script_name = script_name
         self.state_dir = Path(state_dir) if state_dir else DEFAULT_STATE_DIR
         self.state_file = self.state_dir / f"{script_name}.json"

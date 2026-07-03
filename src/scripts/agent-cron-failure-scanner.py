@@ -16,6 +16,7 @@ import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Optional, Tuple
 
 # Import failure state for inbox alert dedup
 _state_helper_dir = str(Path(__file__).parent)
@@ -36,7 +37,7 @@ AGENT_NAME = os.environ.get("AGENT_NAME", "Joseph")
 LOOKBACK_MINUTES = 90  # Check jobs that ran within the last 90 min
 
 
-def get_latest_output(job_dir: Path) -> tuple[datetime | None, str]:
+def get_latest_output(job_dir: Path) -> Tuple[Optional[datetime], str]:
     """Get the most recent output file and its content from a job dir."""
     files = sorted(job_dir.glob("*.md"), reverse=True)
     if not files:
@@ -47,7 +48,7 @@ def get_latest_output(job_dir: Path) -> tuple[datetime | None, str]:
     return mtime, content
 
 
-def extract_failure(content: str) -> str | None:
+def extract_failure(content: str) -> Optional[str]:
     """Extract failure reason from cron output doc."""
     # Check for explicit failure markers
     if "**Status:** script failed" in content:
@@ -79,7 +80,7 @@ def main():
             continue
 
         # Skip own output — prevents self-referential loop
-        if job_dir.name == "6f4afc3e62c8":
+        if job_dir.name in ("6f4afc3e62c8", "d4e93c159033"):
             continue
 
         mtime, content = get_latest_output(job_dir)
