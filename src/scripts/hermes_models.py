@@ -8,8 +8,8 @@ This module provides a single importable function that every script uses,
 replacing scattered hardcoded constants with a unified lookup.
 
 Resolution priority (highest to lowest):
-  1. Runtime environment variable (os.environ) — for one-off overrides
-  2. ~/.hermes/models.env file — persistent per-agent config, never overwritten
+  1. ~/.hermes/models.env file — persistent per-agent config, never overwritten
+  2. Runtime environment variable (os.environ) — for one-off overrides
   3. Hardcoded default — shipped with the repo, always the fallback
 
 Defined env vars (see ~/.hermes/models.env for current values):
@@ -75,7 +75,7 @@ def get_model(env_var: str, default: str) -> str:
         The resolved model name string.
     """
     models_env = load_models_env()
-    return os.environ.get(env_var) or models_env.get(env_var) or default
+    return models_env.get(env_var) or os.environ.get(env_var) or default
 
 
 def _clear_cache() -> None:
