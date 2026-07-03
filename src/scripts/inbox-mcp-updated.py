@@ -108,31 +108,11 @@ if not agent_name:
 
 DEFAULTAGENT = agent_name
 
-# Build SSL context with MCP client cert (required by nginx for external endpoint)
-CERT_DIR = Path.home() / ".hermes-cortex" / "certs"
-CLIENT_CERT = CERT_DIR / "hermes-mcp-client.crt"
-CLIENT_KEY = CERT_DIR / "hermes-mcp-client.key"
-SSL_CONTEXT = None
-if CERT_DIR.exists() and CLIENT_CERT.exists() and CLIENT_KEY.exists():
-    try:
-        ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-        ctx.load_cert_chain(str(CLIENT_CERT), str(CLIENT_KEY))
-        SSL_CONTEXT = ctx
-        log.info("Loaded MCP client cert from %s", CLIENT_CERT)
-    except Exception as e:
-        log.warning("Failed to load client cert: %s", e)
-        SSL_CONTEXT = None
-else:
-    ctx = None
-    if IS_LOCAL_FALLBACK:
-        log.info("No client cert — using localhost fallback (no cert required)")
-    else:
-        log.warning("MCP client cert not found at %s — external requests will fail",
-                    CLIENT_CERT)
+# SSL context for HTTPS — client certs are deprecated
+SSL_CONTEXT = ssl.create_default_context()
 
-log.info("Inbox URL: %s  auth=%s  agent=%s  cert=%s",
-         BASE_URL, "yes" if AUTH_HEADER else "no", DEFAULTAGENT,
-         "loaded" if SSL_CONTEXT else "none")
+log.info("Inbox URL: %s  auth=%s  agent=%s",
+         BASE_URL, "yes" if AUTH_HEADER else "no", DEFAULTAGENT)
 
 PROXY_PATH = "/usr/local/bin/mcp-inbox-proxy"
 
