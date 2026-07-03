@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3.12
 """agent-daily-bible-reading.py — no_agent cron script.
 
 Reads SOUL.md, determines the next canonical book to cover,
@@ -18,7 +18,7 @@ from pathlib import Path
 HOME = Path.home()
 SOUL_MD = HOME / ".hermes" / "SOUL.md"
 OLLAMA_URL = "http://localhost:11434/api/chat"
-OLLAMA_MODEL = "qwen2.5-coder:3b"
+OLLAMA_MODEL = "mannix/qwen2.5-coder:7b-iq3_xs"
 KST = timezone.utc
 
 BOOKS = [
@@ -55,7 +55,7 @@ def find_last_book() -> str | None:
     if not SOUL_MD.exists():
         return None
     text = SOUL_MD.read_text(encoding="utf-8")
-    for section_header in ["## Scripture Insights", "## Biblical Principles"]:
+    for section_header in ["## Daily Scripture", "## Scripture Insights", "## Biblical Principles"]:
         if section_header in text:
             insights_section = text.split(section_header)[-1]
             break
@@ -64,9 +64,15 @@ def find_last_book() -> str | None:
     insights_section = insights_section.split("## Session Mining Lessons")[0]
     def normalize_name(name: str) -> str | None:
         name = name.strip()
+        import re as re2
+        # Strip "📖 Book:" prefix if present
+        m_pre = re2.match(r"^📖 Book:\s*(.*)", name)
+        if m_pre:
+            name = m_pre.group(1)
+        # Strip parenthetical content like "(all 3 chapters)" or "(13 chapters)"
+        name = re2.sub(r"\s*\([^)]*\)\s*", "", name).strip()
         if name in BOOK_INDEX:
             return name
-        import re as re2
         m2 = re2.match(r'^(\d+)([A-Z]\S+)', name)
         if m2:
             with_space = f"{m2.group(1)} {m2.group(2)}"
@@ -75,7 +81,7 @@ def find_last_book() -> str | None:
         return None
     found_books = []
     for line in insights_section.split("\n"):
-        m = re.match(r"^### ([A-Za-z0-9 ]+) —", line) or re.match(r"^### ([A-Za-z0-9 ]+) \([0-9]{4}-[0-9]{2}-[0-9]{2}\)", line)
+        m = re.match(r"^### 📖 Book:\s*([A-Za-z0-9 ]+)\s*\(.*?\)\s*—", line) or re.match(r"^### ([A-Za-z0-9 ]+) —", line) or re.match(r"^### ([A-Za-z0-9 ]+) \([0-9]{4}-[0-9]{2}-[0-9]{2}\)", line)
         if m:
             name = normalize_name(m.group(1))
             if name:
@@ -154,10 +160,17 @@ def append_to_soul(book: str, full_entry: str) -> bool:
     if not SOUL_MD.exists():
         return False
     text = SOUL_MD.read_text(encoding="utf-8")
-    marker = "## Session Mining Lessons"
-    if marker in text:
+    # Insert before the cron marker comment if it exists
+    cron_marker = "<!-- Entries appended here by daily cron -->"
+    if cron_marker in text:
         full_block = f"\n{full_entry}\n\n"
-        new_text = text.replace(f"\n{marker}", f"{full_block}{marker}", 1)
+        new_text = text.replace(f"\n{cron_marker}", f"{full_block}{cron_marker}", 1)
+    elif "## Final Directive" in text:
+        full_block = f"\n{full_entry}\n\n"
+        new_text = text.replace(f"\n## Final Directive", f"{full_block}## Final Directive", 1)
+    elif "## Session Mining Lessons" in text:
+        full_block = f"\n{full_entry}\n\n"
+        new_text = text.replace(f"\n## Session Mining Lessons", f"{full_block}## Session Mining Lessons", 1)
     else:
         full_block = f"\n{full_entry}\n"
         new_text = text + full_block
