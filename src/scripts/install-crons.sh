@@ -162,20 +162,25 @@ create_cron() {
   # Remove existing cron if --force — actually use edit to avoid duplicates
   if $exists && $FORCE && [[ -n "$HERMES_CMD" ]]; then
     # Find job_id by name from jobs.json directly
-    local job_id
-    job_id=$(python3 -c "
+    local job_id _tmp
+    _tmp="${HERMES_HOME}/state/_cron_find.py"
+    mkdir -p "$(dirname "$_tmp")"
+    cat > "$_tmp" << 'PYEOF'
 import json, sys
 try:
-    with open('$CRON_JOBS_FILE') as f:
+    with open(sys.argv[1]) as f:
         data = json.load(f)
-    jobs = data.get('jobs', []) if isinstance(data, dict) else data
+    jobs = data.get("jobs", []) if isinstance(data, dict) else data
+    target = sys.argv[2]
     for j in jobs:
-        if isinstance(j, dict) and j.get('name') == '$name':
-            sys.stdout.write(j.get('id', ''))
+        if isinstance(j, dict) and j.get("name") == target:
+            sys.stdout.write(j.get("id", ""))
             sys.exit(0)
-except: pass
+except:
+    pass
 sys.exit(1)
-" 2>/dev/null) || job_id=""
+PYEOF
+    job_id=$(python3 "$_tmp" "$CRON_JOBS_FILE" "$name" 2>/dev/null || true)
     if [[ -n "$job_id" ]]; then
       # Build edit command — only pass non-empty fields
       local edit_cmd=("$HERMES_CMD" "cron" "edit" "$job_id")
