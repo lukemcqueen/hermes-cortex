@@ -58,8 +58,9 @@ done
 
 # DEPLOY_SCRIPT: linux=/usr/local/sbin, mac intel=/usr/local/sbin, mac arm=/opt/homebrew/sbin
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
+HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 DEPLOY_SCRIPT=""
-for path in /usr/local/sbin/hermes-security-apply /opt/homebrew/sbin/hermes-security-apply "${CORTEX_REPO}/deploy/nginx/hermes-security-apply"; do
+for path in /usr/local/sbin/hermes-security-apply /opt/homebrew/sbin/hermes-security-apply "${HERMES_HOME}/scripts/hermes-security-apply" "${CORTEX_REPO}/deploy/nginx/hermes-security-apply"; do
   if [ -x "$path" ]; then
     DEPLOY_SCRIPT="$path"
     break

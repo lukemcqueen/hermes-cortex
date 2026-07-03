@@ -155,6 +155,10 @@ register "src/scripts/generate-inbox-wrappers.py"   "${HERMES_HOME}/scripts/gene
 register "src/scripts/nginx-security-scanner.sh"    "${HERMES_HOME}/scripts/nginx-security-scanner.sh"
 register "src/scripts/nginx-threat-pipeline.sh"     "${HERMES_HOME}/scripts/nginx-threat-pipeline.sh"
 
+# Deploy scripts (nginx security pipeline)
+register "deploy/nginx/hermes-security-apply"       "${HERMES_HOME}/scripts/hermes-security-apply"
+register "deploy/nginx/deploy-sudoers.sh"           "${HERMES_HOME}/scripts/deploy-sudoers.sh"
+
 # Deployment-specific cron scripts
 register "src/scripts/auto-save-sessions.py"      "${HERMES_HOME}/scripts/auto-save-sessions.py"
 register "src/scripts/agent-health-monitor.py"    "${HERMES_HOME}/scripts/agent-health-monitor.py"
