@@ -77,3 +77,7 @@ node_modules/
 .hermes-cortex/sessions/current.md
 IMPROVEMENTS.md
 agent-inbox-private/
+
+# Agent registry (PII — real hostnames, URLs, IPs)
+src/agent-registry.json
+# Use src/agent-registry.json.example as the template
