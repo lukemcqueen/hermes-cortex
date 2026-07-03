@@ -230,10 +230,25 @@ def check_gbrain_sources() -> dict:
         pids = pg.stdout.decode().strip().split()
         # Verify autopilot log is recent (last 10 min)
         log = Path.home() / ".gbrain" / "autopilot.log"
+        log_ok = True
         if log.exists():
             age = (NOW - datetime.fromtimestamp(log.stat().st_mtime, tz=timezone.utc).astimezone()).total_seconds()
             if age > 600:
-                return {"status": "DEGRADED", "detail": f"autopilot PID(s) {'/'.join(pids)} but log stale ({age:.0f}s)"}
+                # Log stale — check journald (autopilot may log via systemd, not to file)
+                try:
+                    jctl = subprocess.run(
+                        ["journalctl", "--user", "-u", "gbrain-autopilot.service",
+                         "--since", "10 minutes ago", "--no-pager", "-n", "5"],
+                        capture_output=True, text=True, timeout=5,
+                    )
+                    if jctl.returncode == 0 and jctl.stdout.strip():
+                        log_ok = True  # Journald has recent activity
+                    else:
+                        log_ok = False
+                except (FileNotFoundError, subprocess.TimeoutExpired):
+                    log_ok = False
+                if not log_ok:
+                    return {"status": "DEGRADED", "detail": f"autopilot PID(s) {'/'.join(pids)} but log stale ({age:.0f}s)"}
         return {"status": "UP", "detail": f"autopilot PID(s) {'/'.join(pids)}"}
     except FileNotFoundError:
         return {"status": "UNKNOWN", "detail": "pgrep not found"}
