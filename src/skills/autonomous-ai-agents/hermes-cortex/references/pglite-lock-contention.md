@@ -175,6 +175,59 @@ The autopilot is a self-maintaining daemon that already handles sync internally 
 
 ---
 
+## Stop/Dream/Restart Pattern (Linux — no systemd service)
+
+On this machine (Linux Mint), the autopilot is launched as a background `bun` process
+via `terminal(background=true)`, not as a systemd service. Any cron job that needs
+exclusive DB access (e.g., `gbrain dream`) must stop the autopilot first and restart it
+afterward.
+
+### The Pattern
+
+The canonical implementation lives in `~/.hermes/scripts/gbrain-nightly-dream.sh`:
+
+```bash
+# 1. Stop the autopilot (graceful SIGTERM, 10s timeout, force SIGKILL)
+AUTOPILOT_PID=$(pgrep -f 'gbrain.*autopilot' | head -1)
+kill -TERM "$AUTOPILOT_PID"
+# wait up to 10s, then kill -KILL if still alive
+
+# 2. Run the DB-dependent command
+gbrain dream 2>&1 | tail -20
+
+# 3. Restart autopilot (via EXIT trap — always runs)
+trap 'if ! pgrep -f "gbrain.*autopilot"; then
+      cd $HOME && nohup bun $(which gbrain) autopilot --repo ... &
+      fi' EXIT
+```
+
+### Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **trap on EXIT** | Guarantees autopilot restart even if `gbrain dream` crashes mid-pipeline |
+| **pgrep for restart check** | Handles edge cases: dream spawns autopilot, or another process restarts it |
+| **SIGTERM first, 10s timeout, then SIGKILL** | Gives autopilot a chance to flush state before force kill |
+| **tail -20 on output** | Follows cron truncation convention — full output would be wasteful |
+
+### When to Use
+
+Apply this pattern to any cron that calls `gbrain <command>` and needs DB access
+while the autopilot is running. Commands that require the lock:
+
+- `gbrain dream` — full pipeline (sync, embed, synthesize, patterns, consolidate)
+- `gbrain sync` — manual sync cycle
+- `gbrain stats` — database statistics
+- `gbrain sources list` — reads registered sources from DB
+
+Commands that do NOT need the lock (safe to run with autopilot):
+
+- `gbrain doctor --fast` — filesystem-only checks
+- `gbrain check-update` — network check, no DB
+- `gbrain upgrade` — binary self-update, no DB
+
+---
+
 ## Linux (systemd) Differences
 
 The existing docs cover macOS (launchd). On Linux, the same PGLite lock contention

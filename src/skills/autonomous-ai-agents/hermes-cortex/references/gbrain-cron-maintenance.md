@@ -27,12 +27,32 @@ gbrain sync --skip-failed
 
 ## gbrain-nightly-dream Cron Job
 
-Runs Saturdays 03:00 KST for weekly knowledge enrichment:
+Runs Saturdays 03:00 KST for weekly knowledge enrichment. **Manages autopilot
+lifecycle** to avoid PGLite lock contention:
 
 ```bash
 export PATH="$HOME/.bun/bin:$PATH"
-gbrain dream --source mybrain
+GBRAIN="$HOME/.bun/bin/gbrain"
+
+# 1. Stop autopilot (graceful SIGTERM, 10s timeout, force SIGKILL)
+AUTOPILOT_PID=$(pgrep -f 'gbrain.*autopilot' | head -1)
+kill -TERM "$AUTOPILOT_PID"; sleep 3
+
+# 2. Run dream
+gbrain dream --source mybrain 2>&1 | tail -20
+
+# 3. Restart autopilot (via EXIT trap in the actual script)
 ```
+
+**Key design:** The actual script (`~/.hermes/scripts/gbrain-nightly-dream.sh`) uses
+a `trap ... EXIT` handler that guarantees autopilot restart even if `gbrain dream`
+crashes. Full documentation in the script header and in `pglite-lock-contention.md`.
+
+> **Important for agents writing gbrain crons:** Any script that calls `gbrain dream`,
+> `gbrain sync`, `gbrain stats`, or `gbrain sources list` while the autopilot is
+> running will fail with a PGLite lock contention error ("PGLite failed to initialize
+> its WASM runtime"). Always stop autopilot first or use commands that don't need DB
+> access (`gbrain doctor --fast`, `gbrain check-update`, `gbrain upgrade`).
 
 ## Current Backend Status
 
