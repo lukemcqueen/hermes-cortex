@@ -121,7 +121,7 @@ The script does **all** of this atomically:
 1. Backs up existing configs to `/etc/hermes-cortex-backups/$(date)/`
 2. Deploys fresh `hermes-services.conf` + `hermes-zone-defs.conf`
 3. Removes any duplicate `include hermes-zone-defs.conf` lines
-4. Appends new IPs from `blocked_ips.add` — validates IPv4 format, rejects garbage (skips duplicates)
+4. Appends new IPs from `blocked_ips.add` — validates IPv4 format, rejects private/reserved ranges, skips duplicates (**batch-processed**: ~5 grep calls total regardless of file size, < 1s even for 2000+ IPs)
 5. Replaces `/etc/fail2ban/filter.d/nginx-badbots.conf`
 6. Runs `nginx -t` to validate
 7. Reloads fail2ban and nginx

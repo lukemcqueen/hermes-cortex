@@ -120,47 +120,31 @@ for conf in "$ZONE_DEFS" "$SERVICES_CONF"; do
   fi
 done
 
-# ── Step 4: Append blocked IPs ──
+# ── Step 4: Append blocked IPs (batch-processed for speed) ──
 echo ""
 echo "── Step 4: Blocked IPs ──"
 BLOCK_FILE="${NGINX_DIR}/blocked_ips.conf"
 touch "$BLOCK_FILE"
 
 if [ -f "$BLOCKED_IPS" ]; then
-  ADDED=0
-  SKIPPED=0
-  INVALID=0
-  while IFS= read -r ip; do
-    # Skip blank lines and comments
-    [ -z "$ip" ] && continue
-    [[ "$ip" == \#* ]] && continue
-    # Validate IPv4 format
-    if ! echo "$ip" | grep -qP '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'; then
-      INVALID=$((INVALID + 1))
-      continue
-    fi
-    # Skip private/reserved IP ranges
-    if echo "$ip" | grep -qP '^127\.|^10\.|^0\.'; then
-      INVALID=$((INVALID + 1))
-      continue
-    fi
-    if echo "$ip" | grep -qP '^172\.(1[6-9]|2[0-9]|3[0-1])\.'; then
-      INVALID=$((INVALID + 1))
-      continue
-    fi
-    if echo "$ip" | grep -qP '^192\.168\.'; then
-      INVALID=$((INVALID + 1))
-      continue
-    fi
-    # Check for duplicate
-    if grep -q "^deny ${ip};" "$BLOCK_FILE" 2>/dev/null; then
-      SKIPPED=$((SKIPPED + 1))
-    else
-      echo "deny ${ip};" >> "$BLOCK_FILE"
-      ADDED=$((ADDED + 1))
-    fi
-  done < "$BLOCKED_IPS"
-  echo "  ✓ ${ADDED} new IPs added, ${SKIPPED} duplicates skipped${INVALID:+, ${INVALID} invalid skipped}"
+  # Batch process: one pipeline instead of per-IP grep calls
+  # Pipeline: strip comments/blanks → validate IPv4 → reject private → remove duplicates
+  NEW_IPS=$(mktemp)
+  # shellcheck disable=SC2002
+  cat "$BLOCKED_IPS" | \
+    grep -vE '^\s*(#|$)' | \
+    grep -E '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$' | \
+    grep -vE '^(127\.|10\.|0\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.)' | \
+    grep -vxF -f <(sed -n 's/^deny //;s/;$//p' "$BLOCK_FILE" 2>/dev/null) \
+    > "$NEW_IPS" || true
+
+  ADDED=$(wc -l < "$NEW_IPS")
+  if [ "$ADDED" -gt 0 ]; then
+    sed 's/^/deny /; s/$/;/' "$NEW_IPS" >> "$BLOCK_FILE"
+  fi
+  rm -f "$NEW_IPS"
+
+  echo "  ✓ ${ADDED} new IPs added"
 fi
 
 # Ensure blocked_ips.conf is included in the services config
