@@ -47,7 +47,9 @@ fi
 # The MCP server (loop-gov-mcp.py) already blocks write tools without
 # a lock. This check is a secondary safety net for direct-git operations.
 # Agent must call begin_change() before making changes.
-GOVERNANCE_LOCK="${HOME}/.hermes-cortex/state/.governance-active.json"
+# Lock files are repo-scoped: .governance-<repo-slug>.json
+REPO_SLUG=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'generic')" 2>/dev/null || echo 'generic')
+GOVERNANCE_LOCK="${HOME}/.hermes-cortex/state/.governance-${REPO_SLUG}.json"
 if [[ ! -f "$GOVERNANCE_LOCK" ]]; then
   echo ""
   echo "❌  No active governance session."

@@ -22,6 +22,7 @@ import json
 import logging
 import os
 import sqlite3
+import subprocess
 import sys
 import time
 import urllib.error
@@ -64,7 +65,26 @@ HOME = Path.home()
 LOOP_DB = HOME / ".hermes" / "data" / "loop-governance.db"
 CONFIG_PATH = HOME / ".hermes" / "data" / "loop-governance-config.json"
 CACHE_DB = HOME / ".hermes" / "data" / "session-embeddings.db"
-GOVERNANCE_STATE = HOME / ".hermes-cortex" / "state" / ".governance-active.json"
+GOVERNANCE_STATE_DIR = HOME / ".hermes-cortex" / "state"
+
+
+def _governance_lock_path() -> Path:
+    """Return a repo-scoped governance lock path.
+
+    Derives a slug from ``git rev-parse --show-toplevel`` so that each
+    repo on the same machine gets its own lock file.  Falls back to
+    ``.governance-generic.json`` when not inside a git repository.
+    """
+    try:
+        repo_root = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"],
+            stderr=subprocess.DEVNULL,
+            timeout=3,
+        ).decode().strip()
+        slug = Path(repo_root).name  # e.g. "hermes-cortex", "project-b"
+    except Exception:
+        slug = "generic"
+    return GOVERNANCE_STATE_DIR / f".governance-{slug}.json"
 OLLAMA_URL = "http://localhost:11434/api/embeddings"
 
 
@@ -399,9 +419,9 @@ def _begin_change(args: dict) -> CallToolResult:
         return CallToolResult(content=[TextContent(type="text", text="Error: description is required")])
 
     # Check if already locked
-    if GOVERNANCE_STATE.exists():
+    if _governance_lock_path().exists():
         try:
-            existing = json.loads(GOVERNANCE_STATE.read_text())
+            existing = json.loads(_governance_lock_path().read_text())
             return CallToolResult(content=[TextContent(
                 type="text",
                 text=f"Error: A governance session is already active: '{existing.get('task_id')}' - {existing.get('description')}. Call end_change('{existing.get('task_id')}') first."
@@ -409,7 +429,7 @@ def _begin_change(args: dict) -> CallToolResult:
         except (json.JSONDecodeError, OSError):
             pass
 
-    GOVERNANCE_STATE.parent.mkdir(parents=True, exist_ok=True)
+    _governance_lock_path().parent.mkdir(parents=True, exist_ok=True)
     state = {
         "task_id": task_id,
         "description": description,
@@ -417,11 +437,11 @@ def _begin_change(args: dict) -> CallToolResult:
         "agent": os.environ.get("AGENT_NAME", "unknown"),
         "scored": False,
     }
-    GOVERNANCE_STATE.write_text(json.dumps(state, indent=2))
+    _governance_lock_path().write_text(json.dumps(state, indent=2))
     return CallToolResult(content=[TextContent(
         type="text",
         text=f"🔒 Governance session started: {task_id} — {description}\n"
-             f"Lock file: {GOVERNANCE_STATE}\n"
+             f"Lock file: {_governance_lock_path()}\n"
              f"Use end_change('{task_id}') when done. "
              f"You MUST score this change first (end_change checks for scoring)."
     )])
@@ -434,14 +454,14 @@ def _end_change(args: dict) -> CallToolResult:
         return CallToolResult(content=[TextContent(type="text", text="Error: task_id is required")])
 
     # Step 1: Check if lock file exists
-    if not GOVERNANCE_STATE.exists():
+    if not _governance_lock_path().exists():
         return CallToolResult(content=[TextContent(
             type="text", text="No governance session active. Nothing to release."
         )])
 
     # Step 2: Verify task_id matches
     try:
-        existing = json.loads(GOVERNANCE_STATE.read_text())
+        existing = json.loads(_governance_lock_path().read_text())
         stored_task = existing.get("task_id", "")
         if stored_task and stored_task != task_id:
             return CallToolResult(content=[TextContent(
@@ -450,7 +470,7 @@ def _end_change(args: dict) -> CallToolResult:
             )])
     except (json.JSONDecodeError, OSError) as e:
         return CallToolResult(content=[TextContent(
-            type="text", text=f"Error reading lock file: {e}. Remove manually: rm {GOVERNANCE_STATE}"
+            type="text", text=f"Error reading lock file: {e}. Remove manually: rm {_governance_lock_path()}"
         )])
 
     # Step 3: Check loop-governance DB for a scored cycle with this task_id
@@ -481,7 +501,7 @@ def _end_change(args: dict) -> CallToolResult:
 
     # Step 4: Score exists — release the lock
     cycle_id, composite, decision, note = row
-    GOVERNANCE_STATE.unlink()
+    _governance_lock_path().unlink()
     return CallToolResult(content=[TextContent(
         type="text",
         text=f"🔓 Governance session '{task_id}' closed.\n"
@@ -492,17 +512,17 @@ def _end_change(args: dict) -> CallToolResult:
 
 def _check_lock(args: dict | None = None) -> CallToolResult:
     """Check if a governance lock is active."""
-    if not GOVERNANCE_STATE.exists():
+    if not _governance_lock_path().exists():
         return CallToolResult(content=[TextContent(
             type="text", text=json.dumps({"active": False, "lock": None}, indent=2)
         )])
     try:
-        state = json.loads(GOVERNANCE_STATE.read_text())
+        state = json.loads(_governance_lock_path().read_text())
         return CallToolResult(content=[TextContent(
             type="text", text=json.dumps({
                 "active": True,
                 "lock": state,
-                "file": str(GOVERNANCE_STATE),
+                "file": str(_governance_lock_path()),
             }, indent=2)
         )])
     except (json.JSONDecodeError, OSError) as e:

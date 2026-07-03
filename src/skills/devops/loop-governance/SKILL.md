@@ -20,7 +20,23 @@ metadata:
 > **RULE 2: SHARE IMPROVEMENTS TO THE PUBLIC REPO**
 > Every improvement you make that benefits other agents MUST go into the `hermes-cortex` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
 
-Tracks every code/config change through scored cycles. Each cycle captures what changed, why, and whether tests passed. Data flows through the evaluation pipeline (skill-miner → auto-apply → feedback loop).
+**Structural enforcement layers (hard blocks, listed in priority order):**
+
+1. **Hermes Plugin** (primary) — `~/.hermes/plugins/governance-enforcer/` uses the `pre_tool_call` plugin hook to intercept ALL tool calls before they execute. See the [`governance-plugin-implementation.md`](skill_view?name=loop-governance&file_path=references/governance-plugin-implementation.md) reference for full API docs, block matrix, and fleet installation. Key facts:
+   - Blocks `write_file`, `patch`, `terminal` write commands, `cronjob` create/update/remove, `skill_manage` create/edit/delete without an active governance lock
+   - Fires at the Hermes runtime level — the agent CANNOT bypass it mid-session
+   - Installed via `ln -sf ~/hermes-cortex/.hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/` then `/reset`
+   - A `README.md` with full documentation lives at `~/.hermes/plugins/governance-enforcer/README.md`
+
+2. **Pre-commit hook** (secondary) — global `core.hooksPath ~/.hermes-cortex/hooks/` auto-scores every `git commit`. Does NOT block commits (that is the plugin's job), but ensures the scoring DB is populated.
+
+3. **Cron auditor** (reactive) — `score-auditor` cron (every 6h) scans for unscored changes and reports findings.
+
+4. **SOUL.md directive** (identity layer) — the loop governance principle in SOUL.md is the final backstop.
+
+**IMPORTANT CORRECTION:** The `loop-gov-mcp.py` MCP server does NOT block Hermes write tools (`write_file`, `patch`, `terminal`, etc.). MCP servers only *provide* tools — they do not intercept or block Hermes built-in tools. The `begin_change()` / `end_change()` MCP tools create and release governance lock files, but the actual blocking must happen at the plugin level. If the plugin is not installed, there is NO structural enforcement — only self-discipline.
+
+**Lock files are per-repo:** Each git repo on the same machine gets its own lock at `~/.hermes-cortex/state/.governance-{repo-slug}.json`. A lock open in `hermes-cortex` doesn't affect work in `project-b`. See the governance-plugin-implementation.md reference for details.
 
 ## Tools
 
@@ -101,7 +117,7 @@ After each change, find and evaluate the auto-created cycle:
 **If no cycle was auto-created:** Known limitation — `patch` under active lock doesn't auto-create cycles. Follow the force-clear protocol:
    - Call `end_change(task_id)` — it will reject with "no scored cycle found"
    - **Confess clearly**: "end_change rejected — no cycle auto-created for this tool type. Force-clearing lock."
-   - `rm -f ~/.hermes-cortex/state/.governance-active.json`
+   - `rm -f ~/.hermes-cortex/state/.governance-$(basename $(git rev-parse --show-toplevel 2>/dev/null || echo 'generic')).json`
    - Never silently force-clear without calling `end_change` first.
 
 **Phase 3 is about awareness, not bureaucracy.** If you can't find a cycle, the system still knows you followed the pattern. The habit matters more than the DB entry.
