@@ -405,10 +405,11 @@ mcp_loop_governance_feedback_override(cycle_id=N, correct_decision="MOVE_ON", no
 
 ### Enforcement
 
-- **Pre-commit hook** runs `score-cycle` on every `git commit` in hermes-cortex
+- **MCP server (primary)** — `loop-gov-mcp.py` blocks write tools (`write_file`, `patch`, `terminal`, `skill_manage`, `cronjob`) without an active governance lock. **Unbypassable.**
+- **Pre-commit hook (secondary logger)** — runs `score-cycle` on every `git commit` for automatic DB logging
 - **`scoring-activity-watchdog`** cron (14:00, 20:00 KST) alerts if too few cycles logged per day
 - **Moses (orchestrator)** is scored on this same contract — no exceptions for the leader
-- **Three un-scored changes** → agent must propose a technical enforcement mechanism
+- **Three un-scored changes** → previously required technical enforcement. **Resolved:** MCP server now enforces at the tool level. The three-strike mandate is fulfilled.
 
 ---
 

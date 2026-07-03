@@ -131,6 +131,9 @@ register "src/scripts/orch-team-messages.sh"    "${HERMES_HOME}/scripts/orch-tea
 register "src/scripts/post-commit-notify.sh"          "${HERMES_HOME}/scripts/post-commit-notify.sh"
 register "src/scripts/install-post-commit-hook.sh"    "${HERMES_HOME}/scripts/install-post-commit-hook.sh"
 
+# Template drift checker (runs during cortex-update.sh)
+register "src/scripts/template-diff-check.py"          "${HERMES_HOME}/scripts/template-diff-check.py"
+
 # Moses inbox remediation
 register "src/scripts/orch-moses-inbox-remediate.sh"  "${HERMES_HOME}/scripts/orch-moses-inbox-remediate.sh"
 
@@ -879,6 +882,14 @@ main() {
 
   # Sync offline code corpus from repo
   sync_code_corpus
+
+  # Check template drift — warn if local SOUL.md is stale
+  if python3 "${HERMES_HOME}/scripts/template-diff-check.py" 2>/dev/null; then
+    :  # up to date — silent
+  else
+    warn "Template drift: run with --status to see details"
+    warn "  Update ~/.hermes/SOUL.md to match the template"
+  fi
 
   # Deploy nginx configs (OS-aware path substitution, sudo on Linux)
   deploy_nginx_configs

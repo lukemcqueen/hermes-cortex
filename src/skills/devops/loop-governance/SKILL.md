@@ -14,6 +14,8 @@ metadata:
 
 Tracks every code/config change through scored cycles. Each cycle captures what changed, why, and whether tests passed. Data flows through the evaluation pipeline (skill-miner → auto-apply → feedback loop).
 
+**Enforcement:** The `loop-gov-mcp.py` MCP server blocks write tools (`write_file`, `patch`, `terminal`, `skill_manage`, `cronjob`) without an active governance lock. Agents must call `begin_change()` before making changes. See the `software-development/loop-governance` skill for the full four-layer enforcement model.
+
 ## Tools
 
 All tools are symlinked at `~/.local/bin/`:

@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  pre-commit-score — Git pre-commit hook for rule #10
+#  pre-commit-score — Git pre-commit hook (secondary logger)
 #
-#  Scores staged changes via score-cycle before allowing
-#  a commit. Set SKIP_SCORE=1 to bypass.
+#  SECONDARY LOGGER: the MCP server (loop-gov-mcp.py) is the
+#  primary enforcement layer. It blocks write tools without an
+#  active governance lock at the Hermes tool level — this hook
+#  is redundant for enforcement.
+#
+#  What this hook adds: automatic score-cycle logging on every
+#  git commit so cycles appear in the DB without manual effort.
+#
+#  The governance-lock check below (Level 3) is a secondary
+#  safety net — the MCP server already blocks writes without
+#  a lock, so this should never fire for an MCP-connected agent.
+#
+#  Set SKIP_SCORE=1 to bypass.
 #
 #  Installed by: install-score-hook.sh
 #  Requires: score-cycle in PATH, loop-governance tools
@@ -32,7 +43,9 @@ if git diff --cached --name-only -- "$BLOCKED_IPS" 2>/dev/null | grep -q "$BLOCK
   fi
 fi
 
-# ── Level 3: Governance lock check ─────────────────────────────
+# ── Level 3: Governance lock check (secondary - MCP handles this) ───
+# The MCP server (loop-gov-mcp.py) already blocks write tools without
+# a lock. This check is a secondary safety net for direct-git operations.
 # Agent must call begin_change() before making changes.
 GOVERNANCE_LOCK="${HOME}/.hermes-cortex/state/.governance-active.json"
 if [[ ! -f "$GOVERNANCE_LOCK" ]]; then

@@ -5,18 +5,30 @@ scoring. See `hermes-cortex/AGENTS.md` for the full reference.
 
 ---
 
+## Enforcement Hierarchy
+
+Scoring enforcement has two layers:
+
+1. **MCP server (primary)** — `loop-gov-mcp.py` blocks write tools (`write_file`, `patch`, `terminal`, `skill_manage`, `cronjob`) unless `begin_change()` created an active governance lock. **This is unbypassable.** Agents cannot write files or create crons without calling `begin_change()` first.
+
+2. **Pre-commit hook (secondary logger)** — runs `score-cycle --json` on every `git commit` for data collection. Optional for enforcement but useful for keeping the scoring DB populated.
+
+See the `loop-governance` skill for the full four-layer model.
+
 ## Rule: Score every change
 
 Every change — code, config, script, or deployment — must be logged to the
 loop-governance DB. Two paths:
 
-**Path A — MCP tools (for agents with MCP access):**
-- Before coding: `mcp_loop_governance_cache_search(query="task description")`
+**Path A — MCP tools (PRIMARY — enforced by the MCP server):**
+- Before coding: `mcp_loop_governance_begin_change(task_id="<task>", description="...")`
+- `mcp_loop_governance_cache_search(query="task description")` — learn from past
 - After change: `mcp_loop_governance_cycle_query(task_id="<task>")`
 - Provide feedback: `mcp_loop_governance_feedback_accept(cycle_id=N)`
   or `mcp_loop_governance_feedback_override(cycle_id=N, correct_decision="...", note="...")`
+- Release lock: `mcp_loop_governance_end_change(task_id="<task>")`
 
-**Path B — CLI tools (for pre-commit hooks, scripts, shell):**
+**Path B — CLI tools (secondary, for manual scoring or script use):**
 ```bash
 score-cycle --task <project>-<feature> --cycle 1 \
   --code-file path/to/main/file \

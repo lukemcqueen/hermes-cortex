@@ -1,17 +1,12 @@
 # Pre-Commit Scoring Hook
 
-## Mandatory — Every Commit, Every Repo, Every Dev Machine
+## Secondary Logger — the MCP Server Is Primary
 
-This hook is **not optional**. Every developer working in this ecosystem must have
-it installed on every machine they use. It is the enforcement mechanism for
-[Rule #10](../AGENTS.md#10-score-every-change) of the Agent Execution Contract:
-**score every change**.
+The pre-commit hook is now a **secondary logger**, not the primary enforcement mechanism.
 
-Without the hook, manual scoring is forgettable. With it, every `git commit`
-auto-creates a governance cycle. You can't forget — it's enforced before the
-commit lands.
+**Primary enforcement is at the MCP tool level.** The `loop-gov-mcp.py` server blocks `write_file`, `patch`, `terminal`, `skill_manage`, and `cronjob` unless an active governance lock exists. You cannot write a file or create a cron without calling `begin_change()` first. This catches ALL changes — git-tracked or not, config-only, deployments, sudoers edits — at the Hermes tool level, before anything reaches disk.
 
----
+This hook adds **automatic scoring on every `git commit`** so cycles get logged to the DB for data collection and self-improvement. It's optional for enforcement (the MCP server already handled that) but valuable for keeping the scoring DB populated without manual effort.
 
 ## How It Works
 
@@ -25,6 +20,8 @@ Every time you run `git commit`:
 6. **Runs `score-cycle`** with the task ID, staged file, and pass rate
 7. **Creates a cycle** in the loop-governance DB (at `~/.hermes/data/loop-governance.db`)
 8. **Prints** the decision and task so you can follow up with feedback
+
+Note: step 6's governance-lock check is redundant — the MCP server already verified the lock at write time. But the scoring call itself is useful for keeping the DB populated.
 
 ### Example
 
@@ -146,37 +143,35 @@ loop-feedback override 122 --note "Complete change, should STOP" --correct-decis
 ## Architecture
 
 ```
-                    ┌──────────────────────┐
-                    │   git config --global │
-                    │   core.hooksPath      │
-                    │   = ~/.hermes-cortex/ │
-                    │   hooks/              │
-                    └──────────┬───────────┘
-                               │
-            ┌──────────────────┼──────────────────┐
-            ▼                  ▼                  ▼
-      ┌──────────┐      ┌──────────┐      ┌──────────┐
-      │ repo A   │      │ repo B   │      │ repo C   │
-      │ .git/    │      │ .git/    │      │ .git/    │
-      │ hooks/   │      │ hooks/   │      │ hooks/   │
-      │ (global) │      │ (global) │      │ (global) │
-      └──────────┘      └──────────┘      └──────────┘
-            │                  │                  │
-            └──────────────────┼──────────────────┘
-                               ▼
-                    ┌──────────────────────┐
-                    │  pre-commit script   │
-                    │  calls score-cycle   │
-                    └──────────┬───────────┘
-                               ▼
-                    ┌──────────────────────┐
-                    │  loop-governance.db  │
-                    │  ~/.hermes/data/     │
-                    └──────────────────────┘
+                    ┌──────────────────────────────────┐
+                    │   Hermes Agent (every session)    │
+                    │  begin_change() → write tools →   │
+                    │  cycle_query → feedback_accept()  │
+                    └─────────┬────────────────────────┘
+                              │
+                    ┌─────────▼────────────────────────┐
+                    │   loop-gov-mcp.py (MCP server)    │
+                    │   PRIMARY ENFORCER                │
+                    │   Blocks write tools without      │
+                    │   active governance lock           │
+                    │   Catches ALL changes             │
+                    └─────────┬────────────────────────┘
+                              │ git commit
+                    ┌─────────▼────────────────────────┐
+                    │   pre-commit hook (score-cycle)   │
+                    │   SECONDARY LOGGER                │
+                    │   Auto-scores on commit           │
+                    └─────────┬────────────────────────┘
+                              │
+                    ┌─────────▼────────────────────────┐
+                    │   loop-governance.db              │
+                    │   ~/.hermes/data/                 │
+                    └──────────────────────────────────┘
 ```
 
 A single `core.hooksPath` setting in `~/.gitconfig` makes every repo use the
-same hooks directory. No per-repo installation needed.
+same hooks directory. The MCP server is registered with `hermes mcp add` and
+applies to all agent sessions automatically.
 
 ---
 
@@ -221,7 +216,8 @@ bash ~/hermes-cortex/src/loop-governance/setup.sh
 
 ## Related
 
-- [Agent Execution Contract, Rule #10](../AGENTS.md#10-score-every-change)
+- [Adoption Enforcement (loop-governance skill)](../src/skills/software-development/loop-governance/SKILL.md#section-adoption-enforcement) — the four-layer enforcement model
 - `src/scripts/pre-commit-score` — the hook script
-- `src/scripts/cortex-update.sh` — auto-deploys the hook via `install_precommit_hook()`
+- `src/mcp-servers/loop-gov-mcp.py` — the primary enforcer MCP server
+- `src/scripts/cortex-update.sh` — deploys the hook via `install_precommit_hook()`
 - `src/loop-governance/setup.sh` — installs `score-cycle` and `loop-feedback` CLI tools

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  install-score-hook.sh — Deploy pre-commit hook to projects
+#  install-score-hook.sh — Deploy pre-commit hook (secondary logger)
+#
+#  NOTE: The MCP server (loop-gov-mcp.py) is the PRIMARY
+#  enforcement layer. This hook is a secondary logger that
+#  auto-scores on git commit for DB population.
 #
 #  Installs the pre-commit-score hook into one or more git
 #  repositories. Auto-detects repos under common dev dirs,

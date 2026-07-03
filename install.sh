@@ -1798,6 +1798,18 @@ else
   skip "USER.md already exists or template not found"
 fi
 
+# Seed SOUL.md from template if it doesn't exist yet
+SEED_SOUL="${SCRIPT_DIR}/docs/templates/SOUL.md"
+HERMES_AGENT_DIR="${HOME}/.hermes"
+if [[ -f "$SEED_SOUL" ]] && [[ ! -f "${HERMES_AGENT_DIR}/SOUL.md" ]]; then
+  mkdir -p "$HERMES_AGENT_DIR"
+  cp "$SEED_SOUL" "${HERMES_AGENT_DIR}/SOUL.md"
+  info "  Created SOUL.md from seed template"
+  info "  → Edit ~/.hermes/SOUL.md with your identity and behavioral principles"
+else
+  skip "SOUL.md already exists or template not found"
+fi
+
 # Seed memory scoring rubric
 SEED_MEMORY_README="${SCRIPT_DIR}/docs/templates/memory-readme.seed.md"
 MEMORY_DOC_DIR="${HERMES_HOME}/memory"
@@ -1894,6 +1906,33 @@ if [[ -f "$SCORE_HOOK_SCRIPT" ]]; then
 else
   skip "install-score-hook.sh not found — run later manually"
 fi
+
+# ─────────────────────────────────────────────────────────────
+#  12b. MCP Server Registration — Loop Governance Primary Enforcer
+# ─────────────────────────────────────────────────────────────
+step "Registering loop-governance MCP server (loop-gov-mcp.py)"
+MCP_SERVER_PATH="${SCRIPT_DIR}/src/mcp-servers/loop-gov-mcp.py"
+if [[ -f "$MCP_SERVER_PATH" ]]; then
+  if command -v hermes &>/dev/null; then
+    if hermes mcp list 2>/dev/null | grep -q "loop-governance"; then
+      skip "loop-governance MCP server already registered"
+    else
+      if hermes mcp add loop-governance --command python3 --args "$MCP_SERVER_PATH" 2>/dev/null; then
+        info "  Registered: loop-governance MCP server"
+        info "  → Primary write-tool enforcer. Blocks tools without governance lock."
+      else
+        warn "  Could not register MCP server — check hermes version"
+      fi
+    fi
+  else
+    skip "hermes CLI not found — MCP server not registered"
+    info "  → After installing Hermes, run:"
+    info "     hermes mcp add loop-governance --command python3 --args ${MCP_SERVER_PATH}"
+  fi
+else
+  skip "loop-gov-mcp.py not found at ${MCP_SERVER_PATH}"
+fi
+ok
 
 # ─────────────────────────────────────────────────────────────
 #  12. Web Cache — Local Semantic Web Cache

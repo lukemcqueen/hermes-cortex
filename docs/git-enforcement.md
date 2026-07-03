@@ -1,10 +1,18 @@
 # Git Enforcement
 
+## Secondary Enforcement — MCP Server Is Primary
+
+These git hooks are **secondary enforcers**. The primary enforcement layer is the
+`loop-gov-mcp.py` MCP server, which blocks write tools (`write_file`, `patch`,
+`terminal`, `skill_manage`, `cronjob`) unless an active governance lock exists.
+Git hooks only catch changes that flow through `git commit` — the MCP server
+catches ALL changes at the Hermes tool level.
+
 ## What This Is
 
-Two git hooks that prevent common workflow mistakes in a multi-agent repo:
+Two git hooks that assist common workflow practices in a multi-agent repo:
 
-- **pre-commit** — scores every change via `score-cycle` before allowing a commit
+- **pre-commit** — automatically logs a scoring cycle on every commit (secondary logger)
 - **pre-push** — ensures local `main` isn't behind `origin/main` before allowing a push
 
 They're part of the Agent Execution Contract (rules #10 and #13) and apply to every agent and human working on `hermes-cortex`.
@@ -17,7 +25,7 @@ They're part of the Agent Execution Contract (rules #10 and #13) and apply to ev
 
 Source: `src/scripts/pre-commit-score`
 
-Runs `score-cycle` on staged changes. If the scoring infrastructure isn't installed, it warns and still allows the commit — never a hard blocker unless `score-cycle` itself errors.
+Runs `score-cycle` on staged changes for **automatic DB logging**. Enforcement of the governance lock is handled by the MCP server — this hook just ensures a cycle is recorded for every commit.
 
 | Exit | Meaning | Next step |
 |------|---------|-----------|
@@ -100,6 +108,7 @@ If you're an agent working on this repo:
 ## Related
 
 - AGENTS.md — rule #10 (scoring), rule #13 (pull before push)
+- `src/mcp-servers/loop-gov-mcp.py` — primary enforcer MCP server
 - `src/scripts/pre-push-pull` — the push hook implementation
 - `src/scripts/pre-commit-score` — the commit hook implementation
 - `src/scripts/install-score-hook.sh` — the installer

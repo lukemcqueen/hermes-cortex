@@ -652,6 +652,91 @@ cd apps/api && .venv/bin/alembic heads          # see the heads
 
 ---
 
+## 25. Loop Governance — MCP Server / Scoring Issues
+
+### MCP server not blocking write tools
+
+The `loop-gov-mcp.py` server blocks `write_file`, `patch`, `terminal`, `skill_manage`, and `cronjob` unless a governance lock is active. If write tools work without a lock:
+
+```bash
+# 1. Check MCP server is registered
+hermes mcp list | grep loop-governance
+
+# 2. If not registered, add it:
+hermes mcp add loop-governance --command python3 --args ~/hermes-cortex/src/mcp-servers/loop-gov-mcp.py
+
+# 3. Restart the Hermes session for the MCP server to load
+#    → Exit and re-enter the chat session
+```
+
+### `end_change` rejected — "No scored cycle found"
+
+This happens when you call `end_change()` but no cycle was logged with your task_id in the loop-governance DB.
+
+```bash
+# 1. Check recent cycles for your task
+python3 -c "
+import sqlite3, os
+db = os.path.expanduser('~/.hermes/data/loop-governance.db')
+c = sqlite3.connect(db)
+r = c.execute('SELECT id, task_id, composite FROM loop_cycles ORDER BY id DESC LIMIT 10').fetchall()
+c.close()
+for row in r:
+    print(f'#{row[0]} {row[1][:60]} (score={row[2]})')
+"
+# 2. If no cycle with your task_id exists, create one manually:
+#    score-cycle --task <your-task-id> --cycle 1 --code "<description>" --pass-pct 1.0 --json
+# 3. Then accept it:
+#    loop-feedback accept <cycle_id> --note "..."
+# 4. Then end_change() will succeed
+```
+
+### `begin_change` says lock active but you want to start fresh
+
+A stale lock file can persist if a session was interrupted:
+
+```bash
+rm -f ~/.hermes-cortex/state/.governance-active.json
+# Then call begin_change() again
+```
+
+### Pre-commit hook reports "No active governance session"
+
+The pre-commit hook checks for the governance lock file as a secondary safety net. The MCP server already blocks writes without a lock, so this should not fire for MCP-connected agents.
+
+If it fires during a direct `git commit` outside of an agent session:
+
+```bash
+# Bypass: SKIP_SCORE=1 git commit -m "message"
+# Or create a governance lock first:
+mcp_loop_governance_begin_change(task_id="direct-commit", description="...")
+# Then commit, then:
+mcp_loop_governance_end_change(task_id="direct-commit")
+```
+
+### `score-cycle` not found
+
+```bash
+# Re-install loop-governance tools
+bash ~/hermes-cortex/src/loop-governance/setup.sh --symlinks-only
+# Or re-run install.sh step 11:
+bash ~/hermes-cortex/install.sh
+```
+
+### Template drift detected after cortex update
+
+The `template-diff-check.py` script runs after every `cortex-update.sh` pull. It flags if your `~/.hermes/SOUL.md` is missing sections or has stale content.
+
+```bash
+# See what's different:
+diff ~/.hermes/SOUL.md ~/hermes-cortex/docs/templates/SOUL.md
+# Merge changes into your SOUL.md
+# Re-run cortex-update to verify:
+cortex-update --status
+```
+
+---
+
 ## Changelog
 
 | Version | Date | Changes |
