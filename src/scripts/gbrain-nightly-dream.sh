@@ -4,8 +4,9 @@
 #
 #  Manages autopilot lifecycle to avoid PGLite lock contention:
 #    1. Stop the autopilot (graceful SIGTERM with 10s timeout)
-#    2. Run `gbrain dream`
-#    3. Restart autopilot (via trap, guarantees restart even on failure)
+#    2. Clear stale autopilot lock files
+#    3. Run `gbrain dream` (with 5-minute timeout)
+#    4. Restart autopilot (via trap, guarantees restart even on failure)
 #
 #  PGLite is single-connection — the autopilot holds the exclusive lock
 #  during its ~150s sync cycles. Any `gbrain dream` call that needs DB
@@ -15,6 +16,12 @@
 #  The trap handler on EXIT ensures the autopilot is restarted regardless
 #  of whether dream succeeds or fails. This prevents a crashed dream from
 #  leaving the system without continuous sync.
+#
+#  CROSS-AGENT NOTES:
+#  - GBRAIN_REPO is auto-detected from the running autopilot's --repo flag
+#  - Falls back to ~/brain/moses if autopilot isn't running
+#  - Override via env var: GBRAIN_REPO=/path/to/brain ./gbrain-nightly-dream.sh
+#  - DREAM_TIMEOUT defaults to 300s; override via env var
 #
 #  All agents: if you write any cron script that calls `gbrain <command>`
 #  and needs DB access while the autopilot is running, use this same
@@ -26,9 +33,24 @@ set -euo pipefail
 export PATH="$HOME/.bun/bin:$PATH"
 export GBRAIN_AI_EMBED_TIMEOUT_MS=300000
 GBRAIN="$HOME/.bun/bin/gbrain"
-GBRAIN_REPO="$HOME/brain"
+
+# ── Configuration (env-overridable) ─────────────────────────────────
+
+# Auto-detect brain repo from running autopilot's --repo flag
+# Override via: GBRAIN_REPO=/path/to/brain ./script.sh
+DEFAULT_REPO=""
+if AUTOPILOT_CMD=$(ps -o args= -p "$(pgrep -f 'gbrain.*autopilot' | head -1)" 2>/dev/null); then
+  DEFAULT_REPO=$(echo "$AUTOPILOT_CMD" | sed -n 's/.*--repo //p' | awk '{print $1}')
+fi
+GBRAIN_REPO="${GBRAIN_REPO:-${DEFAULT_REPO:-${HOME}/brain/moses}}"
+
+# Max seconds to let gbrain dream run before aborting
+# Override via: DREAM_TIMEOUT=600 ./script.sh
+DREAM_TIMEOUT="${DREAM_TIMEOUT:-300}"
 
 echo "[$(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M KST')] gbrain-nightly-dream: starting"
+echo "  Repo: ${GBRAIN_REPO}"
+echo "  Timeout: ${DREAM_TIMEOUT}s"
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -95,18 +117,35 @@ if [ -n "$AUTOPILOT_PID" ]; then
             echo "  ⚠ Could not stop autopilot — dream may still fail"
         fi
     fi
+
+    # ── Clear stale lock files ──
+    # autopilot.lock + cycle.lock + PGLite's .gbrain-lock persist after
+    # process death and block `gbrain dream` with "another cycle is
+    # already running"
+    for lock in "$HOME/.gbrain/autopilot.lock" "$HOME/.gbrain/cycle.lock" "$HOME/.gbrain/brain.pglite/.gbrain-lock/lock" "$HOME/.gbrain/.locks"; do
+        if [ -e "$lock" ]; then
+            rm -rf "$lock"
+            echo "  ✓ Cleared stale lock: $lock"
+        fi
+    done
 else
     echo "  ⚠ No autopilot process found — will run dream anyway"
 fi
 
-# ── Step 2: Run the dream ───────────────────────────────────────────
+# ── Step 2: Run the dream (with timeout) ────────────────────────────
 echo ""
-echo "  Running gbrain dream..."
+echo "  Running gbrain dream (timeout: ${DREAM_TIMEOUT}s)..."
+
+# First, purge any stale cycle state from the database
+echo "  → Pre-flight: purging stale cycle state..."
+"$GBRAIN" dream --phase purge 2>&1 | tail -3 || true
 
 DREAM_EXIT=0
-"$GBRAIN" dream 2>&1 | tail -20 || DREAM_EXIT=$?
+timeout "$DREAM_TIMEOUT" "$GBRAIN" dream 2>&1 | tail -20 || DREAM_EXIT=$?
 
-if [ "$DREAM_EXIT" -ne 0 ]; then
+if [ "$DREAM_EXIT" -eq 124 ]; then
+    echo "  ⚠ gbrain dream timed out after ${DREAM_TIMEOUT}s"
+elif [ "$DREAM_EXIT" -ne 0 ]; then
     echo "  ⚠ gbrain dream exited with code $DREAM_EXIT"
 fi
 
