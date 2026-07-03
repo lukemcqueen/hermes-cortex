@@ -11,6 +11,7 @@ import sqlite3
 import os
 import datetime
 import sys
+from datetime import datetime, timezone, timedelta
 
 DB_PATH = os.path.expanduser("~/.hermes/data/loop-governance.db")
 THRESHOLDS = {
@@ -20,12 +21,16 @@ THRESHOLDS = {
 }
 
 
+def _cron_ts() -> str:
+    return datetime.now(timezone(timedelta(hours=9))).strftime("[%Y-%m-%d %H:%M KST] scoring-activity-watchdog:")
+
+
 def main():
     if not os.path.exists(DB_PATH):
-        print(f"LOOP-GOV WATCHDOG: DB not found at {DB_PATH}")
+        print(f"{_cron_ts()} DB not found at {DB_PATH}")
         return 1
 
-    now = datetime.datetime.now()
+    now = datetime.now()
     today = now.date().isoformat()
     hour = now.hour
 
@@ -50,7 +55,7 @@ def main():
 
     if count < expected:
         print(
-            f"⚠️  Scoring activity low: {count} cycle(s) today "
+            f"{_cron_ts()} ⚠️  Scoring activity low: {count} cycle(s) today "
             f"(expected ≥{expected} by {hour:02d}:00). "
             f"Recent changes may be un-scored."
         )

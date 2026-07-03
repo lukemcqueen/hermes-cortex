@@ -34,6 +34,7 @@ import os
 import sys
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone, timedelta
 
 from hermes_models import get_model
 
@@ -43,6 +44,10 @@ ALWAYS_REQUIRED = [
     ("nomic-embed-text:latest", "Embeddings for gbrain knowledge brain and session cache"),
 ]
 DEFAULT_JUDGE_MODEL = "qwen2.5-coder:3b"
+
+
+def _cron_ts() -> str:
+    return datetime.now(timezone(timedelta(hours=9))).strftime("[%Y-%m-%d %H:%M KST] model-health-watchdog:")
 
 
 def _parse_judge_models() -> list:
@@ -112,31 +117,27 @@ def main():
         required.append((jm, f"LLM-as-Judge scoring (configured as judge model)"))
 
     if not quiet:
-        print("🤖 Ollama Model Health Watchdog")
-        print()
-        print(f"Checking Ollama at http://localhost:11434...", end=" ", flush=True)
+        print(f"{_cron_ts()} Checking Ollama at http://localhost:11434...", end=" ", flush=True)
 
     if not check_ollama_reachable():
         print("❌ FAILED")
         print()
-        print("Ollama is not reachable. This affects:")
+        print(f"{_cron_ts()} Ollama is not reachable. This affects:")
         print("  - Knowledge brain (gbrain) — embeddings will fail")
         print("  - Session cache — no embeddings for similarity search")
         print("  - LLM judge scorer — no model to evaluate traces")
         print()
-        print("Troubleshooting:")
-        print("  1. Check if Ollama is running:")
-        print("     systemctl status ollama")
-        print("  2. Start Ollama manually:")
-        print("     ollama serve")
-        print("  3. Check logs:")
-        print("     journalctl -u ollama --no-pager -n 20")
+        print("  Troubleshooting:")
+        print("    1. Check if Ollama is running:")
+        print("       systemctl status ollama")
+        print("    2. Start Ollama manually:")
+        print("       ollama serve")
+        print("    3. Check logs:")
+        print("       journalctl -u ollama --no-pager -n 20")
         sys.exit(1)
 
     if not quiet:
-        print("✅ OK")
-        print()
-        print(f"Checking {len(required)} required models...")
+        print(f"  Looking for {len(required)} required models...")
         print()
 
     # ── Check each model ────────────────────────────────────────────────
@@ -152,12 +153,12 @@ def main():
                 print(f"  ✅ {model}")
         else:
             any_missing = True
-            print(f"  ❌ {model} — MISSING", file=sys.stderr)
+            print(f"{_cron_ts()} ❌ {model} — MISSING", file=sys.stderr)
             print(f"     Purpose: {purpose}", file=sys.stderr)
 
     if not all_ok or any_missing:
         print()
-        print("Some required models are missing. To install:", file=sys.stderr)
+        print(f"{_cron_ts()} Some required models are missing. To install:", file=sys.stderr)
         for model in model_names:
             if not statuses.get(model, False):
                 print(f"  ollama pull {model}", file=sys.stderr)
@@ -169,7 +170,7 @@ def main():
     # ── All good ────────────────────────────────────────────────────────
     if not quiet:
         print()
-        print("✅ All models present and Ollama reachable.")
+        print(f"{_cron_ts()} All models present and Ollama reachable.")
     sys.exit(0)
 
 

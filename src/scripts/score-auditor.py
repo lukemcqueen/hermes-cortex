@@ -19,6 +19,15 @@ from pathlib import Path
 
 from state_tracker import StateTracker
 
+
+def _cron_ts(name: str) -> str:
+    """Return non-LLM cron prefix: [YYYY-MM-DD HH:MM KST] <name>:"""
+    kst = datetime.now(timezone(timedelta(hours=9))).strftime(
+        "[%Y-%m-%d %H:%M KST]"
+    )
+    return f"{kst} {name}:"
+
+
 # ── Config ──────────────────────────────────────────────────
 LOOKBACK_HOURS = int(os.environ.get("SCORE_AUDITOR_LOOKBACK", "24"))
 MAX_FILES_SHOWN = 15
@@ -204,7 +213,7 @@ def main() -> None:
 
     # ── Report ──
     ts = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
-    print(f"[{ts}] [score-auditor] {hostname} — {len(unscored)} unscored change(s)")
+    print(f"[{ts}] score-auditor: {len(unscored)} unscored change(s)")
     print(f"  Lookback: {LOOKBACK_HOURS}h  |  DB: {DB_PATH}")
     print("")
 

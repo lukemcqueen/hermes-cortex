@@ -11,14 +11,14 @@ set -euo pipefail
 CORTEX_REPO="$HOME/hermes-cortex"
 
 if [ ! -d "$CORTEX_REPO" ]; then
-    echo "[cortex-sync] Repo not found at $CORTEX_REPO"
+    echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') cortex-sync] Repo not found at $CORTEX_REPO"
     exit 1
 fi
 
 cd "$CORTEX_REPO"
 
 # Use the same strategy as the working monitor script - assert repo exists and log what's happening
-log()  { echo "[$(date '+%H:%M:%S')] $*"; }
+log()  { echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') cortex-sync] $*"; }
 
 # Stash any uncommitted changes before fetch/rebase
 STASHED=false
@@ -30,12 +30,13 @@ fi
 
 FETCH_OUTPUT=$(timeout 12 git fetch origin 2>&1) || {
     FETCH_EXIT=$?
+    CTS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
     if [ "$FETCH_EXIT" -eq 124 ]; then
-        echo "[cortex-sync] git fetch timed out after 12s, will retry next cycle"
+        echo "[$CTS cortex-sync] git fetch timed out after 12s, will retry next cycle"
         $STASHED && git stash pop 2>/dev/null || true
         exit 1
     fi
-    echo "[cortex-sync] git fetch failed (exit $FETCH_EXIT)"
+    echo "[$CTS cortex-sync] git fetch failed (exit $FETCH_EXIT)"
     echo "$FETCH_OUTPUT"
     $STASHED && git stash pop 2>/dev/null || true
     exit 1
@@ -54,12 +55,13 @@ fi
 # instead of hanging indefinitely within the timeout (v2: 2026-06-27).
 PULL_OUTPUT=$(GIT_EDITOR=true timeout 20 git pull --rebase origin main 2>&1) || {
     PULL_EXIT=$?
+    CTS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
     if [ "$PULL_EXIT" -eq 124 ]; then
-        echo "[cortex-sync] git pull --rebase timed out after 20s, will retry next cycle"
+        echo "[$CTS cortex-sync] git pull --rebase timed out after 20s, will retry next cycle"
         $STASHED && git stash pop 2>/dev/null || true
         exit 1
     fi
-    echo "[cortex-sync] git rebase pull failed (exit $PULL_EXIT)"
+    echo "[$CTS cortex-sync] git rebase pull failed (exit $PULL_EXIT)"
     echo "$PULL_OUTPUT"
     $STASHED && git stash pop 2>/dev/null || true
     exit 1
@@ -76,4 +78,4 @@ fi
 # Restore stashed changes
 $STASHED && git stash pop 2>/dev/null || true
 
-echo "[cortex-sync] hermes-cortex updated, tools re-synced."
+echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') cortex-sync] hermes-cortex updated, tools re-synced."

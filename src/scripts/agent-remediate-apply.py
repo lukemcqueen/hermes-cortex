@@ -29,6 +29,14 @@ KST = timezone(timedelta(hours=9))
 # ── Helpers ─────────────────────────────────────────────────────
 
 
+def _cron_ts(name: str) -> str:
+    """Return non-LLM cron prefix: [YYYY-MM-DD HH:MM KST] <name>:"""
+    kst = datetime.now(timezone(timedelta(hours=9))).strftime(
+        "[%Y-%m-%d %H:%M KST]"
+    )
+    return f"{kst} {name}:"
+
+
 def kst_now() -> str:
     return datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S KST")
 
@@ -251,15 +259,15 @@ def main() -> int:
     # 4. Output report if anything was done
     if not fixed:
         if failed:
-            print(f"🔧 Remediation ran at {kst_now()}")
+            print(f"[{kst_now()}] agent-remediate-apply:")
             print(f"  ❌ {len(failed)} issue(s) could not be fixed")
             for typ, detail in failed:
                 print(f"     - {typ}: {detail[:120]}")
             return 0
         # Nothing to report — silent
         return 0
-    
-    print(f"🔧 Remediation applied at {kst_now()}")
+
+    print(f"[{kst_now()}] agent-remediate-apply:")
     for typ, result in fixed:
         print(f"  ✅ [{typ}] {result}")
     if failed:

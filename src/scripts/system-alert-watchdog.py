@@ -41,6 +41,13 @@ details = []
 remediations = []
 HOSTNAME = socket.gethostname()[:12]
 NOW = datetime.now().astimezone()
+
+def _cron_ts(name: str) -> str:
+    """Return non-LLM cron prefix: [YYYY-MM-DD HH:MM KST] <name>:"""
+    kst = datetime.now(timezone(timedelta(hours=9))).strftime(
+        "[%Y-%m-%d %H:%M KST]"
+    )
+    return f"{kst} {name}:"
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
 BRAIN_SHARED = Path.home() / "brain" / "shared"
 
@@ -498,8 +505,7 @@ def main():
         return  # silent
 
     # Build state fingerprint from alerts
-    ts = NOW.strftime("%Y-%m-%d %H:%M")
-    output_parts = [f"[{ts} {HOSTNAME}]"]
+    output_parts = [_cron_ts("system-alert-watchdog")]
 
     for a in alerts:
         output_parts.append(a)

@@ -14,8 +14,8 @@ ADD_FILE="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
 NEW_IPS=false
 PIPELINE_OUTPUT=""
 
-log()  { echo "[$(date '+%H:%M:%S')] $*"; }
-error(){ echo "✗ $*"; }
+log()  { echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')] agent-ip-submission: $*"; }
+error(){ echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')] agent-ip-submission: ✗ $*"; }
 
 # ── Guard: no submit file or empty ──
 if [ ! -f "$SUBMIT_FILE" ]; then

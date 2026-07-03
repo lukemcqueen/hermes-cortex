@@ -349,9 +349,22 @@ ls -la ~/.hermes/scripts/*.py ~/.hermes/scripts/*.sh
 ### Cron output convention
 
 All cron job output follows a consistent format:
-- **Script (no_agent) crons**: prefix with `[YYYY-MM-DD HH:MM KST] cron-name: message`
-- **LLM-driven crons**: start with `[YYYY-MM-DD HH:MM KST] cron-name`, end with `📊 Token cost: tracked in session DB | Cron: cron-name`
+- **Script (no_agent) crons**: prefix each output line with `[YYYY-MM-DD HH:MM KST] cron-name: message`
+- **LLM-driven crons**: standard three-phase format (see `cron-format-standard` skill):
+  ```
+  <name> (<id>) [YYYY-MM-DD HH:MM KST]
+  -------------
+  Phase 1 — Topic: summary
+  - bullet
+  Phase 2 — Topic: summary
+  - bullet
+  Phase 3 — Topic: summary
+  - bullet
+  Result: verdict
+  📊 <model> (<provider>) | <cost>/run ≈ <monthly>/mo
+  ```
 - **Silent when good**: no output when everything is healthy — only produce output on state changes, errors, or actionable findings
+- **[SILENT]**: single-word output for watchdog crons with nothing to report
 
 ### "I don't have macOS"
 See the [Troubleshooting Guide](docs/troubleshooting.md) for Linux and Windows notes.

@@ -23,6 +23,15 @@ from platform_utils import (
 )
 from state_tracker import StateTracker
 
+from datetime import datetime, timezone, timedelta
+
+def _cron_ts(name: str) -> str:
+    """Return non-LLM cron prefix: [YYYY-MM-DD HH:MM KST] <name>:"""
+    kst = datetime.now(timezone(timedelta(hours=9))).strftime(
+        "[%Y-%m-%d %H:%M KST]"
+    )
+    return f"{kst} {name}:"
+
 UID = os.getuid()
 LANGFUSE_DIR = str(Path.home() / "langfuse")
 HERMES_SCRIPTS = Path.home() / ".hermes" / "scripts"
@@ -214,9 +223,9 @@ def main():
         from hermes_tz import format_timestamp
         hostname = os.uname().nodename[:12]
         ts = format_timestamp("%Y-%m-%d %H:%M %Z")
-        print(f"🔧 {hostname} [{ts}]")
-        for a in actions:
-            print(a)
+        print(f"[{ts}] service-recovery:")
+        actions_line = "  " + "\n  ".join(actions)
+        print(actions_line)
         for s in statuses:
             print(f"  {s}")
     else:

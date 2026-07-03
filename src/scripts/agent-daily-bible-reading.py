@@ -12,13 +12,13 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 HOME = Path.home()
 SOUL_MD = HOME / ".hermes" / "SOUL.md"
 OLLAMA_URL = "http://localhost:11434/api/chat"
-KST = timezone.utc  # We'll just note KST in the output
+KST = timezone(timedelta(hours=9))
 
 # Full Protestant canon in order
 BOOKS = [
@@ -234,25 +234,27 @@ def main() -> int:
     if last_book is None:
         print("❌ Could not find any books in SOUL.md", file=sys.stderr)
         return 1
-    
+
     next_book = get_next_book(last_book)
     if next_book is None:
         # All books covered or last book not found in our list
         print("📖 All 66 books have been covered. Bible reading complete.", file=sys.stderr)
         return 0
-    
+
     print(f"📖 Last book: {last_book} → Next: {next_book}")
-    
+
     full_entry = generate_entry(next_book)
     if full_entry is None:
         return 1
-    
+
     if not append_to_soul(next_book, full_entry):
         print("❌ Failed to append to SOUL.md", file=sys.stderr)
         return 1
-    
-    # Output the result for delivery
-    print(f"\n✅ Appended insight for **{next_book}** to SOUL.md\n")
+
+    # Output the result for delivery in standard format
+    ts = datetime.now(KST).strftime("%Y-%m-%d %H:%M KST")
+    print(f"[{ts}] agent-daily-bible-reading: Appended insight for **{next_book}** to SOUL.md")
+    print("")
     print(full_entry)
     return 0
 

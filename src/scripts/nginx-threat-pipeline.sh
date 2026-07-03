@@ -10,7 +10,7 @@ set -euo pipefail
 # ── Guard: abort any stale git operations before proceeding ──
 if git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rev-parse --git-dir &>/dev/null; then
   if git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rebase --show-current &>/dev/null 2>&1; then
-    echo "[$(date '+%H:%M:%S')] ⚠ Stale rebase detected — aborting"
+    echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ⚠ Stale rebase detected — aborting"
     git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rebase --abort 2>/dev/null || true
   fi
   # Clear any unfinished merge/revert/cherry-pick state
@@ -40,7 +40,7 @@ if [ -f "$SUBMIT_FILE" ]; then
     if [ "$SUBMIT_COUNT" -gt 0 ]; then
       echo "$NEW_FROM_SUBMIT" >> "${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
       NEW_IPS=true
-      PIPELINE_OUTPUT+="  ✓ ${SUBMIT_COUNT} agent-submitted IPs merged from blocked_ips.submit"$'\n'
+      PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ ${SUBMIT_COUNT} agent-submitted IPs merged from blocked_ips.submit"$'\n'
     fi
     : > "$SUBMIT_FILE"
   fi
@@ -81,8 +81,8 @@ command -v fail2ban-client &>/dev/null && F2B_INSTALLED=true
 
 mkdir -p "${HOME}/.hermes/state" "${HOME}/.hermes/logs"
 
-log()  { echo "[$(date '+%H:%M:%S')] $*"; }
-error(){ echo "✗ $*"; }
+log()  { echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] $*"; }
+error(){ echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✗ $*"; }
 
 PIPELINE_OUTPUT=""
 NEW_IPS=false
@@ -227,7 +227,7 @@ else
     SKIP_SCORE=1 git commit -m "auto: block ${IP_COUNT} suspect IPs [pipeline]" 2>&1 || true
     # Check if commit succeeded (no staged changes = committed)
     if git diff --cached --quiet deploy/nginx/blocked_ips.add 2>/dev/null; then
-      PIPELINE_OUTPUT+="  ✓ Committed ${IP_COUNT} IPs to repo"$'\n'
+      PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Committed ${IP_COUNT} IPs to repo"$'\n'
     else
       log "  ⚠ Git commit failed — may need manual merge"
     fi
@@ -236,7 +236,7 @@ else
     for push_attempt in 1 2; do
       if [ -n "$TIMEOUT_CMD" ]; then
         if SKIP_PRE_PUSH=1 $TIMEOUT_CMD 10 git push origin main 2>&1; then
-          PIPELINE_OUTPUT+="  ✓ Pushed to origin"$'\n'
+          PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Pushed to origin"$'\n'
           break
         else
           PUSH_EXIT=$?
@@ -247,12 +247,12 @@ else
             log "  ⚠ Push failed (code $PUSH_EXIT) — pulling and retrying"
             $TIMEOUT_CMD 15 git pull --rebase origin main 2>&1 || true
           else
-            PIPELINE_OUTPUT+="  ⚠ Push failed after retry"$'\n'
+            PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ⚠ Push failed after retry"$'\n'
           fi
         fi
       else
         if SKIP_PRE_PUSH=1 git push origin main 2>&1; then
-          PIPELINE_OUTPUT+="  ✓ Pushed to origin"$'\n'
+          PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Pushed to origin"$'\n'
           break
         else
           PUSH_EXIT=$?
@@ -260,7 +260,7 @@ else
             log "  ⚠ Push failed (code $PUSH_EXIT) — pulling and retrying"
             git pull --rebase origin main 2>&1 || true
           else
-            PIPELINE_OUTPUT+="  ⚠ Push failed after retry"$'\n'
+            PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ⚠ Push failed after retry"$'\n'
           fi
         fi
       fi
@@ -273,8 +273,8 @@ date -u +"%Y-%m-%dT%H:%M:%SZ" > "${HOME}/.hermes/state/nginx-threat-pipeline-las
 
 # ── Output (watchdog: silent unless changes) ──
 if $NEW_IPS; then
-  echo ""
-  echo "━━━ Threat Pipeline — $(date '+%Y-%m-%d %H:%M:%S') ━━━"
+  TS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
+  echo "[$TS nginx-threat-pipeline] ━━━ Threat Pipeline — ${TS} ━━━"
   echo "$PIPELINE_OUTPUT"
-  echo "━━━ Complete ━━━"
+  echo "[$TS nginx-threat-pipeline] ━━━ Complete ━━━"
 fi

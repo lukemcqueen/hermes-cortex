@@ -18,10 +18,11 @@ set -euo pipefail
 # Use a timeout to avoid blocking indefinitely — if it times out, skip to migrate+doctor.
 UPDATE_OUTPUT=$(timeout 30 hermes update -y 2>&1) || {
     UPDATE_EXIT=$?
+    TS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
     if [ $UPDATE_EXIT -eq 124 ]; then
-        echo "[hermes-update] hermes update timed out (non-interactive cron context); skipping."
+        echo "[$TS hermes-update] hermes update timed out (non-interactive cron context); skipping."
     else
-        echo "[hermes-update] hermes update failed (exit $UPDATE_EXIT)"
+        echo "[$TS hermes-update] hermes update failed (exit $UPDATE_EXIT)"
         echo "$UPDATE_OUTPUT"
         # Non-fatal — allow migrate and doctor to proceed
     fi
@@ -29,15 +30,17 @@ UPDATE_OUTPUT=$(timeout 30 hermes update -y 2>&1) || {
 
 # Step 2: Config migration (runs even if update timed out or failed)
 MIGRATE_OUTPUT=$(timeout 35 hermes config migrate 2>&1) || {
+    TS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
     MIGRATE_EXIT=$?
-    echo "[hermes-update] config migrate failed (exit $MIGRATE_EXIT)"
+    echo "[$TS hermes-update] config migrate failed (exit $MIGRATE_EXIT)"
     echo "$MIGRATE_OUTPUT"
 }
 
 # Step 3: Final health check
 DOCTOR_OUTPUT=$(timeout 30 hermes doctor 2>&1) || {
+    TS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
     DOCTOR_EXIT=$?
-    echo "[hermes-update] hermes doctor failed (exit $DOCTOR_EXIT)"
+    echo "[$TS hermes-update] hermes doctor failed (exit $DOCTOR_EXIT)"
     echo "$DOCTOR_OUTPUT"
 }
 
