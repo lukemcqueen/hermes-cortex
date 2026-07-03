@@ -9,9 +9,17 @@ Exit 0 (no stdout) = all good. Non-zero exit or stdout = alert.
 
 import sqlite3
 import os
-import datetime
 import sys
 from datetime import datetime, timezone, timedelta
+
+
+def _cron_ts(name: str) -> str:
+    """Return non-LLM cron prefix: [YYYY-MM-DD HH:MM KST] <name>:"""
+    kst = datetime.now(timezone(timedelta(hours=9))).strftime(
+        "[%Y-%m-%d %H:%M KST]"
+    )
+    return f"{kst} {name}:"
+
 
 DB_PATH = os.path.expanduser("~/.hermes/data/loop-governance.db")
 THRESHOLDS = {
@@ -19,10 +27,6 @@ THRESHOLDS = {
     14: 1,  # by 2pm: at least 1 change scored
     20: 2,  # by 8pm: at least 2 changes scored
 }
-
-
-def _cron_ts() -> str:
-    return datetime.now(timezone(timedelta(hours=9))).strftime("[%Y-%m-%d %H:%M KST] scoring-activity-watchdog:")
 
 
 def main():

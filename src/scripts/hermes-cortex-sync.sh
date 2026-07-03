@@ -24,7 +24,8 @@ log()  { echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') cortex-sync] $*"; }
 STASHED=false
 if ! git diff --quiet || ! git diff --cached --quiet; then
     log "Stashing local changes before sync"
-    git stash push -m "auto-stash before cortex-sync $(date -u +%Y%m%dT%H%M%SZ)" 2>&1 || true
+    STASH_MSG="auto-stash before cortex-sync $(date -u +%Y%m%dT%H%M%SZ)"
+    log "$(git stash push -m "$STASH_MSG" 2>&1 || true)"
     STASHED=true
 fi
 
@@ -69,10 +70,10 @@ PULL_OUTPUT=$(GIT_EDITOR=true timeout 20 git pull --rebase origin main 2>&1) || 
 
 # Re-sync tools and crons
 if [ -f "src/loop-governance/install-crons.py" ]; then
-    timeout 10 python3 src/loop-governance/install-crons.py 2>&1 || true
+    log "$(timeout 10 python3 src/loop-governance/install-crons.py 2>&1 || true)"
 fi
 if [ -f "src/loop-governance/setup.sh" ]; then
-    timeout 10 bash src/loop-governance/setup.sh 2>&1 || true
+    log "$(timeout 10 bash src/loop-governance/setup.sh 2>&1 || true)"
 fi
 
 # Restore stashed changes

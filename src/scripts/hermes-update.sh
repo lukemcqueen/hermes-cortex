@@ -23,7 +23,7 @@ UPDATE_OUTPUT=$(timeout 30 hermes update -y 2>&1) || {
         echo "[$TS hermes-update] hermes update timed out (non-interactive cron context); skipping."
     else
         echo "[$TS hermes-update] hermes update failed (exit $UPDATE_EXIT)"
-        echo "$UPDATE_OUTPUT"
+        echo "[$TS hermes-update] $UPDATE_OUTPUT"
         # Non-fatal — allow migrate and doctor to proceed
     fi
 }
@@ -33,7 +33,7 @@ MIGRATE_OUTPUT=$(timeout 35 hermes config migrate 2>&1) || {
     TS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
     MIGRATE_EXIT=$?
     echo "[$TS hermes-update] config migrate failed (exit $MIGRATE_EXIT)"
-    echo "$MIGRATE_OUTPUT"
+    echo "[$TS hermes-update] $MIGRATE_OUTPUT"
 }
 
 # Step 3: Final health check
@@ -41,7 +41,7 @@ DOCTOR_OUTPUT=$(timeout 30 hermes doctor 2>&1) || {
     TS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
     DOCTOR_EXIT=$?
     echo "[$TS hermes-update] hermes doctor failed (exit $DOCTOR_EXIT)"
-    echo "$DOCTOR_OUTPUT"
+    echo "[$TS hermes-update] $DOCTOR_OUTPUT"
 }
 
 # Silent exit — no news is good news

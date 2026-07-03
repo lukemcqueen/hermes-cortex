@@ -46,8 +46,12 @@ ALWAYS_REQUIRED = [
 DEFAULT_JUDGE_MODEL = "qwen2.5-coder:3b"
 
 
-def _cron_ts() -> str:
-    return datetime.now(timezone(timedelta(hours=9))).strftime("[%Y-%m-%d %H:%M KST] model-health-watchdog:")
+def _cron_ts(name: str) -> str:
+    """Return non-LLM cron prefix: [YYYY-MM-DD HH:MM KST] <name>:"""
+    kst = datetime.now(timezone(timedelta(hours=9))).strftime(
+        "[%Y-%m-%d %H:%M KST]"
+    )
+    return f"{kst} {name}:"
 
 
 def _parse_judge_models() -> list:
@@ -117,12 +121,12 @@ def main():
         required.append((jm, f"LLM-as-Judge scoring (configured as judge model)"))
 
     if not quiet:
-        print(f"{_cron_ts()} Checking Ollama at http://localhost:11434...", end=" ", flush=True)
+        print(f"{_cron_ts('model-health-watchdog')} Checking Ollama at http://localhost:11434...", end=" ", flush=True)
 
     if not check_ollama_reachable():
         print("❌ FAILED")
         print()
-        print(f"{_cron_ts()} Ollama is not reachable. This affects:")
+        print(f"{_cron_ts('model-health-watchdog')} Ollama is not reachable. This affects:")
         print("  - Knowledge brain (gbrain) — embeddings will fail")
         print("  - Session cache — no embeddings for similarity search")
         print("  - LLM judge scorer — no model to evaluate traces")
@@ -153,12 +157,12 @@ def main():
                 print(f"  ✅ {model}")
         else:
             any_missing = True
-            print(f"{_cron_ts()} ❌ {model} — MISSING", file=sys.stderr)
+            print(f"{_cron_ts('model-health-watchdog')} ❌ {model} — MISSING", file=sys.stderr)
             print(f"     Purpose: {purpose}", file=sys.stderr)
 
     if not all_ok or any_missing:
         print()
-        print(f"{_cron_ts()} Some required models are missing. To install:", file=sys.stderr)
+        print(f"{_cron_ts('model-health-watchdog')} Some required models are missing. To install:", file=sys.stderr)
         for model in model_names:
             if not statuses.get(model, False):
                 print(f"  ollama pull {model}", file=sys.stderr)
@@ -170,7 +174,7 @@ def main():
     # ── All good ────────────────────────────────────────────────────────
     if not quiet:
         print()
-        print(f"{_cron_ts()} All models present and Ollama reachable.")
+        print(f"{_cron_ts('model-health-watchdog')} All models present and Ollama reachable.")
     sys.exit(0)
 
 
