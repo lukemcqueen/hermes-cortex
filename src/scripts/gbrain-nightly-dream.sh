@@ -24,8 +24,9 @@
 set -euo pipefail
 
 export PATH="$HOME/.bun/bin:$PATH"
+export GBRAIN_AI_EMBED_TIMEOUT_MS=300000
 GBRAIN="$HOME/.bun/bin/gbrain"
-GBRAIN_REPO="/home/moses/brain/moses"
+GBRAIN_REPO="$HOME/brain"
 
 echo "[$(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M KST')] gbrain-nightly-dream: starting"
 
@@ -44,7 +45,7 @@ autopilot_is_dead() {
 # Start the autopilot daemon in background
 start_autopilot() {
     cd "$HOME"
-    nohup "$BUN" "$GBRAIN" autopilot --repo "$GBRAIN_REPO" > /dev/null 2>&1 &
+    nohup "$GBRAIN" autopilot --repo "$GBRAIN_REPO" > /dev/null 2>&1 &
     local NEW_PID=$!
     echo "  Autopilot restarted (PID $NEW_PID)"
 }

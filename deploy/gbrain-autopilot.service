@@ -1,0 +1,19 @@
+[Unit]
+Description=gbrain autopilot — self-maintaining brain daemon
+Documentation=https://github.com/garrytan/gbrain
+After=network.target ollama.service
+Wants=ollama.service
+
+[Service]
+Type=simple
+ExecStart=%h/.gbrain/autopilot-run.sh
+Restart=on-failure
+RestartSec=10
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+# Prevent embedding timeouts on large documents (default 60s → 5min)
+Environment=GBRAIN_AI_EMBED_TIMEOUT_MS=300000
+
+[Install]
+WantedBy=default.target

@@ -1345,6 +1345,57 @@ gbrain sources list         # mybrain has pages, default is empty
 gbrain search "test" --limit 1  # Returns results
 ```
 
+### gbrain PGLite Recovery
+
+> **Full reference:** [`docs/gbrain-pglite-recovery.md`](docs/gbrain-pglite-recovery.md) — comprehensive guide covering stale postmaster.pid, embedding timeouts, two-autopilot contention, DB rebuild, and systemd service setup.
+
+gbrain uses **PGLite** — PostgreSQL compiled to WASM running inside Bun. It is **single-connection**: only ONE process can access the database at a time. This creates three common failure modes:
+
+**Failure 1 — Stale postmaster.pid:** If a PGLite instance crashes (SIGKILL, power loss), it leaves a stale `postmaster.pid`. New PGLite instances see this and fall back to in-memory-only mode. Every CLI command runs 114 migrations, imports are lost on exit, and `gbrain stats` always shows 0 pages. Fix: `rm -f ~/.gbrain/brain.pglite/postmaster.pid`, then re-init if needed.
+
+**Failure 2 — Embedding timeout:** The default `GBRAIN_AI_EMBED_TIMEOUT_MS` is 60 seconds. Ollama's `nomic-embed-text:v1.5` takes longer than 60s for large documents. Fix: set `export GBRAIN_AI_EMBED_TIMEOUT_MS=300000` in all gbrain scripts (autopilot-run.sh, nightly-dream, update-sync).
+
+**Failure 3 — Two autopilots:** Starting `gbrain autopilot` for two different repos (e.g., `--repo ~/brain/hermes-cortex` and `--repo ~/brain`) creates two processes fighting for the same PGLite lock. One starts in-memory, both emit "Autopilot stopping (SIGTERM)". Fix: kill all, restart ONE pointing to `--repo ~/brain` (covers all subdirectories).
+
+**Full recovery procedure** (when persistence is completely broken):
+
+```bash
+# 1. Stop all gbrain processes
+pkill -f 'gbrain.*autopilot' 2>/dev/null || true; sleep 3
+
+# 2. Backup and remove old DB
+mv ~/.gbrain/brain.pglite ~/.gbrain/brain.pglite.bak.$(date +%s)
+
+# 3. Reinitialize fresh
+gbrain init --pglite
+
+# 4. Verify persistence (run twice — second should say "All up to date")
+gbrain apply-migrations --yes
+
+# 5. Import content
+gbrain import ~/brain
+
+# 6. Embed with extended timeout
+export GBRAIN_AI_EMBED_TIMEOUT_MS=300000
+gbrain embed --all
+
+# 7. Verify
+gbrain stats
+# Expected: Pages > 0, Chunks > 0, Embedded = Chunks
+
+# 8. Restart autopilot (Linux: systemctl --user start gbrain-autopilot.service)
+```
+
+**The `embedding_model` must use explicit tag:** `nomic-embed-text:v1.5`, NOT `nomic-embed-text` (no tag) or `nomic-embed-text:latest`. Set in both `~/.gbrain/config.json` and `~/.hermes/models.env`.
+
+**Embedding model verification:**
+```bash
+curl -s http://localhost:11434/api/embeddings \
+  -d '{"model":"nomic-embed-text:v1.5","prompt":"test"}' | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); print(f'{len(d[\"embedding\"])}d')"
+# Expected: "768d"
+```
+
 ### Health Check
 
 ```bash
@@ -1720,24 +1771,84 @@ PGLite failed to initialize its WASM runtime.
   Original error: Aborted(). Build with -sASSERTIONS for more info.
 ```
 
-**Most likely cause:** Lock contention. `com.gbrain.autopilot` holds the exclusive PGLite connection, and a second process (sync-watch or a direct CLI call) can't open another. PGLite 0.4.x is single-connection — the error message is misleading, pointing at a macOS 26.3 WASM bug that doesn't apply on macOS 14.x.
+**Two possible causes:**
+
+**Cause A — Lock contention (most common):** The autopilot holds the exclusive PGLite connection, and a second process can't open another. PGLite is single-connection — the error message is misleading.
 
 **Diagnose:**
 ```bash
-launchctl list | grep gbrain
+ps aux | grep -E '[g]brain.*autopilot' | grep -v grep
 ```
-If both `com.gbrain.autopilot` AND `com.gbrain.sync-watch` appear, sync-watch is the redundant process that will never work.
+If an autopilot is running, this is lock contention.
 
-**Fix:** The redundant daemon is `sync-watch` — the autopilot handles sync internally every ~150s. Disable sync-watch:
+**Fix:** Stop the autopilot temporarily, run your command, then restart:
 ```bash
-launchctl bootout gui/$(id -u)/com.gbrain.sync-watch 2>/dev/null || true
-mv ~/Library/LaunchAgents/com.gbrain.sync-watch.plist{,.disabled}
-mv ~/.gbrain/sync-watch.sh{,.bak}
+# Linux (systemd)
+systemctl --user stop gbrain-autopilot.service
+gbrain <command>
+systemctl --user start gbrain-autopilot.service
+
+# macOS (launchd)
+launchctl bootout gui/$(id -u)/com.gbrain.autopilot
+gbrain <command>
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gbrain.autopilot.plist
 ```
 
-Then verify autopilot is running healthy cycles. See `references/pglite-lock-contention.md` for the full debugging workflow, diagnosis flow, and cleanup steps.
+**Cause B — Stale postmaster.pid:** A previously crashed PGLite instance left a stale PID file. New PGLite can't claim the data directory.
 
-**New installs are fixed:** The installer now detects autopilot and skips sync-watch setup automatically (commit 7f2205d).
+**Diagnose:**
+```bash
+cat ~/.gbrain/brain.pglite/postmaster.pid
+gbrain apply-migrations --yes
+# If every run says "114 migration(s) applied" → stale postmaster.pid
+```
+
+**Fix:**
+```bash
+# Remove stale PID
+rm -f ~/.gbrain/brain.pglite/postmaster.pid
+
+# Verify persistence restored
+gbrain apply-migrations --yes
+# Run twice — second should say "All migrations up to date"
+```
+
+If neither works, see [gbrain PGLite Recovery](#gbrain-pglite-recovery) above for full DB rebuild.
+
+### gbrain Embedding Times Out on Large Documents
+
+**Symptoms:**
+```
+Error embedding <slug>: [embed(ollama:nomic-embed-text:v1.5)] The operation timed out.
+```
+Some pages embed successfully (showing progress) but others fail partway through. Large daily memory files and long reference docs fail consistently.
+
+**Root cause:** The default gbrain embed timeout (`AI_EMBED_TIMEOUT_MS`) is 60 seconds. Ollama's `nomic-embed-text:v1.5` takes longer than 60s to generate 768-dim embeddings for large documents.
+
+**Fix:** Set the environment variable in ALL gbrain scripts:
+```bash
+export GBRAIN_AI_EMBED_TIMEOUT_MS=300000
+gbrain embed --stale
+```
+
+**Files that need this env var:**
+- `~/.gbrain/autopilot-run.sh` — before the `exec` line
+- `~/.hermes/scripts/gbrain-nightly-dream.sh` — after PATH export
+- `~/.hermes/scripts/gbrain-update-sync.sh` — same
+
+**Verification:**
+```bash
+# Before: check current embedded count
+gbrain stats | grep "Embedded"
+
+# After retry
+export GBRAIN_AI_EMBED_TIMEOUT_MS=300000
+gbrain embed --all 2>&1 | tail -5
+# Expected: "Embedded X chunks across Y pages" with 0 errors
+
+gbrain stats | grep "Embedded"
+# Expected: Embedded = Chunks
+```
 
 ### gbrain Migration Failures
 

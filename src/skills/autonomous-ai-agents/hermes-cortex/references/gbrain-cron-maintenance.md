@@ -32,6 +32,7 @@ lifecycle** to avoid PGLite lock contention:
 
 ```bash
 export PATH="$HOME/.bun/bin:$PATH"
+export GBRAIN_AI_EMBED_TIMEOUT_MS=300000   # Required: default 60s times out on large docs
 GBRAIN="$HOME/.bun/bin/gbrain"
 
 # 1. Stop autopilot (graceful SIGTERM, 10s timeout, force SIGKILL)

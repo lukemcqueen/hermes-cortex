@@ -317,4 +317,59 @@ systemctl --user stop gbrain-autopilot.service
 systemctl --user list-units | grep gbrain
 ```
 
+## Stale postmaster.pid — the Hidden Persistence Killer
+
+A separate but related issue: when a PGLite process crashes (SIGKILL, power loss, `kill -9`), it leaves a stale `postmaster.pid` file. This file marks the PostgreSQL instance that owns the data directory. When a new PGLite process starts and sees this file, it assumes another PostgreSQL is already running and falls back to **in-memory-only mode** — the disk files are never read or written.
+
+### Symptoms
+
+- Every `gbrain` command runs all migrations: `Schema version 1 → 119 (114 migration(s) pending)`
+- `gbrain stats` always shows 0 pages, even after importing in a previous CLI session
+- Data disappears between process restarts
+- The WAL directory shows no recent modifications: `ls -la ~/.gbrain/brain.pglite/pg_wal/`
+
+### Diagnosis
+
+```bash
+# 1. Check if postmaster.pid exists
+ls -la ~/.gbrain/brain.pglite/postmaster.pid
+# If this file exists and the PID is not a running process → stale
+
+# 2. Verify persistence with double migration check
+gbrain apply-migrations --yes
+gbrain apply-migrations --yes
+# Both should say "All migrations up to date."
+# If the FIRST says "114 applied" and the SECOND says "114 applied" again → persistence broken
+```
+
+### Fix
+
+```bash
+# 1. Stop all gbrain processes
+pkill -f 'gbrain.*autopilot' 2>/dev/null || true
+sleep 3
+
+# 2. Remove stale PID
+rm -f ~/.gbrain/brain.pglite/postmaster.pid
+
+# 3. Re-test persistence
+gbrain apply-migrations --yes
+```
+
+If persistence is still broken, the WAL/checkpoint state is corrupted. See `docs/gbrain-pglite-recovery.md` for the full DB rebuild procedure.
+
+## Linux (systemd) vs macOS (launchd) Comparison
+
+| Aspect | Linux (systemd) | macOS (launchd) |
+|--------|----------------|-----------------|
+| Service manager | `systemctl --user` | `launchctl` |
+| Service type | `[Install] WantedBy=default.target` | `RunAtLoad` + `KeepAlive` |
+| Auto-start on boot | `systemctl --user enable` | `.plist` in `~/Library/LaunchAgents/` |
+| Start | `systemctl --user start` | `launchctl bootstrap` |
+| Stop | `systemctl --user stop` | `launchctl bootout` |
+| Status | `systemctl --user status` | `launchctl list` |
+| Lingering required? | Yes (`loginctl enable-linger`) | No |
+
+For the autopilot systemd service file, see `docs/gbrain-pglite-recovery.md`.
+
 > **Note:** The "macOS 26.3 WASM bug" error message is misleading on Linux too. On both platforms, PGLite lock contention produces the same WASM runtime error text — treat any "PGLite failed to initialize its WASM runtime" error as lock contention first, WASM bug second.
