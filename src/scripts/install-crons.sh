@@ -147,7 +147,7 @@ create_cron() {
   if $DRY_RUN; then
     local action="Create"
     if $exists && $FORCE; then
-      action="Recreate (force)"
+      action="Update (force)"
     fi
     info "[DRY-RUN] ${action} cron: ${name}"
     printf "  schedule=%s\\n" "$schedule"
@@ -159,9 +159,61 @@ create_cron() {
     return 0
   fi
 
-  # Remove existing cron if --force
+  # Remove existing cron if --force — actually use edit to avoid duplicates
   if $exists && $FORCE && [[ -n "$HERMES_CMD" ]]; then
-    "$HERMES_CMD" cron remove --name "$name" 2>/dev/null || true
+    # Find job_id by name from jobs.json directly
+    local job_id
+    job_id=$(python3 -c "
+import json, sys
+try:
+    with open('$CRON_JOBS_FILE') as f:
+        data = json.load(f)
+    jobs = data.get('jobs', []) if isinstance(data, dict) else data
+    for j in jobs:
+        if isinstance(j, dict) and j.get('name') == '$name':
+            sys.stdout.write(j.get('id', ''))
+            sys.exit(0)
+except: pass
+sys.exit(1)
+" 2>/dev/null) || job_id=""
+    if [[ -n "$job_id" ]]; then
+      # Build edit command — only pass non-empty fields
+      local edit_cmd=("$HERMES_CMD" "cron" "edit" "$job_id")
+      edit_cmd+=("--schedule" "$schedule")
+      if [[ -n "$script" ]]; then
+        edit_cmd+=("--script" "$script")
+      fi
+      if [[ -n "$skill" ]]; then
+        edit_cmd+=("--skill" "$skill")
+      fi
+      if [[ -n "$deliver" ]]; then
+        edit_cmd+=("--deliver" "$deliver")
+      fi
+      if [[ -n "$workdir" ]]; then
+        edit_cmd+=("--workdir" "$workdir")
+      fi
+      if [[ "$no_agent" == "true" ]]; then
+        edit_cmd+=("--no-agent")
+      elif [[ -n "$script" ]]; then
+        edit_cmd+=("--agent")
+      fi
+      if [[ -n "$prompt" ]]; then
+        edit_cmd+=("--prompt" "$prompt")
+      fi
+      if "${edit_cmd[@]}" 2>&1; then
+        info "Updated cron: ${name} (${schedule})"
+        CREATED=$((CREATED + 1))
+        # Pin model/provider post-edit
+        if [[ -n "$model" || -n "$provider" ]]; then
+          pin_cron_model "$name" "$model" "$provider"
+        fi
+      else
+        warn "Failed to update cron: ${name}"
+        FAILED=$((FAILED + 1))
+      fi
+      return 0
+    fi
+    # Fall through to create if we couldn't find the job_id
   fi
 
   if [[ -z "$HERMES_CMD" ]]; then
