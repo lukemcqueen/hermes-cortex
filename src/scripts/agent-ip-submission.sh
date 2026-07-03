@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# agent-ip-submission.sh — Process agent-submitted IPs into blocked_ips.add
+#
+# Agents (Gisu, Moses, Titus) write IPs to deploy/nginx/blocked_ips.submit.
+# This script validates, deduplicates, and merges them into blocked_ips.add,
+# then clears the submit file. Silent when no submissions (watchdog pattern).
+#
+# Schedule: every 30 minutes via cron (no_agent: true).
+set -euo pipefail
+
+CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
+SUBMIT_FILE="${CORTEX_REPO}/deploy/nginx/blocked_ips.submit"
+ADD_FILE="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
+NEW_IPS=false
+PIPELINE_OUTPUT=""
+
+log()  { echo "[$(date '+%H:%M:%S')] $*"; }
+error(){ echo "✗ $*"; }
+
+# ── Guard: no submit file or empty ──
+if [ ! -f "$SUBMIT_FILE" ]; then
+  exit 0
+fi
+
+SUBMIT_RAW=$(grep -v '^#' "$SUBMIT_FILE" 2>/dev/null | grep -v '^[[:space:]]*$' || true)
+if [ -z "$SUBMIT_RAW" ]; then
+  exit 0
+fi
+
+log "── Agent IP Submission Processor ──"
+
+# ── Validate IPv4 ──
+VALID_IPS=$(echo "$SUBMIT_RAW" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | \
+  awk -F. '{if($1<=255&&$2<=255&&$3<=255&&$4<=255)print}' || true)
+
+INVALID_IPS=$(echo "$SUBMIT_RAW" | grep -v -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || true)
+
+SUBMIT_COUNT=$(echo "$VALID_IPS" | grep -c '[0-9]' 2>/dev/null || true)
+SUBMIT_COUNT=$((SUBMIT_COUNT + 0))
+
+if [ "$SUBMIT_COUNT" -eq 0 ]; then
+  log "  No valid IPs in submit file — clearing"
+  : > "$SUBMIT_FILE"
+  exit 0
+fi
+
+if [ -n "$INVALID_IPS" ]; then
+  INVALID_COUNT=$(echo "$INVALID_IPS" | wc -l)
+  log "  ⚠ ${INVALID_COUNT} invalid entries skipped (not valid IPv4)"
+fi
+
+# ── Deduplicate against blocked_ips.add ──
+NEW_ENTRIES=""
+while IFS= read -r ip; do
+  [ -z "$ip" ] && continue
+  if ! grep -qF "$ip" "$ADD_FILE" 2>/dev/null; then
+    NEW_ENTRIES+="${ip}"$'\n'
+  fi
+done <<< "$VALID_IPS"
+
+NEW_COUNT=$(echo "$NEW_ENTRIES" | grep -c '[0-9]' 2>/dev/null || true)
+NEW_COUNT=$((NEW_COUNT + 0))
+
+if [ "$NEW_COUNT" -eq 0 ]; then
+  log "  All ${SUBMIT_COUNT} submitted IPs already in blocked_ips.add — clearing submit file"
+  : > "$SUBMIT_FILE"
+  exit 0
+fi
+
+# ── Append new IPs to blocked_ips.add ──
+echo "$NEW_ENTRIES" >> "$ADD_FILE"
+NEW_IPS=true
+PIPELINE_OUTPUT+="  ✓ Added ${NEW_COUNT} agent-submitted IPs to blocked_ips.add"$'\n'
+
+# ── Clear submit file ──
+: > "$SUBMIT_FILE"
+PIPELINE_OUTPUT+="  ✓ Cleared blocked_ips.submit"$'\n'
+
+# ── Commit and push ──
+cd "$CORTEX_REPO"
+if git diff --quiet deploy/nginx/blocked_ips.add 2>/dev/null; then
+  log "  No git changes (unexpected) — skipping commit"
+else
+  git add deploy/nginx/blocked_ips.add deploy/nginx/blocked_ips.submit 2>/dev/null || git add deploy/nginx/blocked_ips.add
+  SKIP_SCORE=1 git commit -m "auto: block ${NEW_COUNT} agent-submitted IPs [pipeline]" 2>&1 || true
+
+  # Push with retry
+  for push_attempt in 1 2; do
+    if SKIP_PRE_PUSH=1 git push origin main 2>&1; then
+      PIPELINE_OUTPUT+="  ✓ Pushed to origin"$'\n'
+      break
+    else
+      PUSH_EXIT=$?
+      if [ $push_attempt -eq 1 ]; then
+        log "  ⚠ Push failed (code ${PUSH_EXIT}) — pulling and retrying"
+        git pull --rebase origin main 2>&1 || true
+      else
+        PIPELINE_OUTPUT+="  ⚠ Push failed after retry"$'\n'
+      fi
+    fi
+  done
+fi
+
+# ── Deploy live if hermes-security-apply is available ──
+DEPLOY_SCRIPT=""
+for path in /usr/local/sbin/hermes-security-apply /opt/homebrew/sbin/hermes-security-apply; do
+  if [ -x "$path" ]; then
+    DEPLOY_SCRIPT="$path"
+    break
+  fi
+done
+
+if [ -n "$DEPLOY_SCRIPT" ]; then
+  if sudo -n "$DEPLOY_SCRIPT" 2>&1; then
+    PIPELINE_OUTPUT+="  ✓ Deployed live via hermes-security-apply"$'\n'
+  else
+    log "  ⚠ Deploy failed — will be picked up by daily pipeline"
+  fi
+fi
+
+# ── Output ──
+echo ""
+echo "━━━ Agent IP Submission — $(date '+%Y-%m-%d %H:%M:%S') ━━━"
+echo "$PIPELINE_OUTPUT"
+echo "━━━ Complete ━━━"

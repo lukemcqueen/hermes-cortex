@@ -20,6 +20,31 @@ fi
 
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 SCANNER="${CORTEX_REPO}/src/scripts/nginx-security-scanner.sh"
+SUBMIT_FILE="${CORTEX_REPO}/deploy/nginx/blocked_ips.submit"
+
+# ── Process agent-submitted IPs before scanning ──
+if [ -f "$SUBMIT_FILE" ]; then
+  SUBMIT_RAW=$(grep -v '^#' "$SUBMIT_FILE" 2>/dev/null | grep -v '^[[:space:]]*$' || true)
+  if [ -n "$SUBMIT_RAW" ]; then
+    VALID_IPS=$(echo "$SUBMIT_RAW" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | \
+      awk -F. '{if($1<=255&&$2<=255&&$3<=255&&$4<=255)print}' || true)
+    NEW_FROM_SUBMIT=""
+    while IFS= read -r ip; do
+      [ -z "$ip" ] && continue
+      if ! grep -qF "$ip" "${CORTEX_REPO}/deploy/nginx/blocked_ips.add" 2>/dev/null; then
+        NEW_FROM_SUBMIT+="${ip}"$'\n'
+      fi
+    done <<< "$VALID_IPS"
+    SUBMIT_COUNT=$(echo "$NEW_FROM_SUBMIT" | grep -c '[0-9]' 2>/dev/null || true)
+    SUBMIT_COUNT=$((SUBMIT_COUNT + 0))
+    if [ "$SUBMIT_COUNT" -gt 0 ]; then
+      echo "$NEW_FROM_SUBMIT" >> "${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
+      NEW_IPS=true
+      PIPELINE_OUTPUT+="  ✓ ${SUBMIT_COUNT} agent-submitted IPs merged from blocked_ips.submit"$'\n'
+    fi
+    : > "$SUBMIT_FILE"
+  fi
+fi
 
 # ── Platform-aware paths ──
 # timeout: linux=timeout, mac=gtimeout (brew coreutils)

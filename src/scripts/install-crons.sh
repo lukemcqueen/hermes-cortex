@@ -563,6 +563,11 @@ create_cron "threat-pipeline" "0 5 * * *" \
   "nginx-threat-pipeline.sh" \
   "" "" "" "origin" "" "true"
 
+# Agent IP submission processor — every 30 min, merges blocked_ips.submit into blocked_ips.add
+create_cron "agent-ip-submission" "*/30 * * * *" \
+  "agent-ip-submission.sh" \
+  "" "" "" "origin" "" "true"
+
 # Daily soul refinement (deepseek — needs Hermes tools: session_search, memory, patch)
 create_cron "agent-daily-soul-refinement" "0 23 * * *" \
   "" \
