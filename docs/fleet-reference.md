@@ -1,5 +1,13 @@
 # Fleet Reference (Luke's Deployment)
 
+> **⚠️ TWO HARD RULES — Every Agent Must Follow**
+>
+> **RULE 1: USE LOOP GOVERNANCE ALWAYS**
+> Every code/config/cron change REQUIRES: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. No exceptions. If `end_change` rejects, confess and force-clear — never silently skip the loop. The MCP server blocks write tools without an active lock — this is enforced at the tool level, not optional.
+>
+> **RULE 2: SHARE IMPROVEMENTS TO THE PUBLIC REPO**
+> Every improvement you make that benefits other agents MUST go into the `hermes-cortex` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
+
 This document contains fleet-specific guidance for Luke's multi-agent
 orchestration setup. It was relocated from `AGENTS.md` to keep the root
 agent guidelines focused on general Hermes Cortex usage.

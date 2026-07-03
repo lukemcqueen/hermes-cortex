@@ -12,6 +12,14 @@ metadata:
 
 # Loop Governance
 
+> **⚠️ TWO HARD RULES — Every Agent Must Follow**
+>
+> **RULE 1: USE LOOP GOVERNANCE ALWAYS**
+> Every code/config/cron change REQUIRES: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. No exceptions. If `end_change` rejects, confess and force-clear — never silently skip the loop. The MCP server blocks write tools without an active lock — this is enforced at the tool level, not optional.
+>
+> **RULE 2: SHARE IMPROVEMENTS TO THE PUBLIC REPO**
+> Every improvement you make that benefits other agents MUST go into the `hermes-cortex` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
+
 Tracks every code/config change through scored cycles. Each cycle captures what changed, why, and whether tests passed. Data flows through the evaluation pipeline (skill-miner → auto-apply → feedback loop).
 
 ## Tools
@@ -90,7 +98,11 @@ After each change, find and evaluate the auto-created cycle:
 3. Call `feedback_accept(cycle_id=N)` if the decision was appropriate
 4. Call `feedback_override(cycle_id=N, correct_decision=LOOP|STOP|MOVE_ON, note="...")` if wrong
 
-**If no cycle was auto-created:** The scoring subsystem may not be active or may not have captured your change. Note the absence and move on — do NOT block progress. The key requirement is that YOU did Phase 1 diligence and Phase 3 awareness.
+**If no cycle was auto-created:** Known limitation — `patch` under active lock doesn't auto-create cycles. Follow the force-clear protocol:
+   - Call `end_change(task_id)` — it will reject with "no scored cycle found"
+   - **Confess clearly**: "end_change rejected — no cycle auto-created for this tool type. Force-clearing lock."
+   - `rm -f ~/.hermes-cortex/state/.governance-active.json`
+   - Never silently force-clear without calling `end_change` first.
 
 **Phase 3 is about awareness, not bureaucracy.** If you can't find a cycle, the system still knows you followed the pattern. The habit matters more than the DB entry.
 
