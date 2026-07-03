@@ -3,6 +3,7 @@
 
 Also validates IPs to prevent garbage entries from fail2ban log parsing.
 """
+import os
 import re
 
 IPV4_RE = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
@@ -30,7 +31,7 @@ def is_valid_ip(s):
 
 def main():
     # Read blocked_ips.add (the new IPs to add)
-    add_path = "/home/luke/hermes-cortex/deploy/nginx/blocked_ips.add"
+    add_path = os.path.join(os.path.dirname(__file__), "blocked_ips.add")
     with open(add_path) as f:
         raw = [line.strip() for line in f if line.strip() and not line.startswith("#")]
     
@@ -92,7 +93,7 @@ def main():
         output_lines.extend(existing_lines[insertion_point:])
 
     # Write output
-    output_path = "/home/luke/.hermes/new-blocked-ips.conf"
+    output_path = os.path.expanduser("~/.hermes/new-blocked-ips.conf")
     with open(output_path, "w") as f:
         f.writelines(output_lines)
 

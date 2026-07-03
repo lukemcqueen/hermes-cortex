@@ -214,77 +214,31 @@ def check_memory_sync_freshness() -> dict:
         return {"status": "DOWN", "detail": f"Last sync: {age.total_seconds() / 3600:.1f}h ago — stale!"}
 
 def check_gbrain_sources() -> dict:
-    def _run(args, timeout=15):
-        env = os.environ.copy()
-        env["PATH"] = f"{Path.home() / '.bun/bin'}:{env.get('PATH', '')}"
-        return subprocess.run(
-            args, capture_output=True, text=True, timeout=timeout,
-            env=env, cwd=str(Path.home() / "brain"),
-        )
-    def _parse_sources_list(output):
-        lines = output.strip().split("\n")
-        total = 0; never_synced = 0; zero_pages = 0
-        for line in lines:
-            parts = line.split()
-            if len(parts) >= 3 and parts[2].isdigit():
-                pages = int(parts[2])
-                if len(parts) >= 2 and parts[0] == "default" and parts[1] == "federated":
-                    continue
-                total += 1
-                if pages == 0:
-                    zero_pages += 1
-                if "never synced" in line.lower():
-                    never_synced += 1
-        return total, never_synced, zero_pages
+    """Check gbrain autopilot is running. Avoids DB-lock contention with running autopilot."""
     try:
         bun_path = Path.home() / ".bun" / "bin"
         gbrain_cmd = str(bun_path / "gbrain")
         if not bun_path.exists() or not Path(gbrain_cmd).exists():
             return {"status": "UNKNOWN", "detail": "gbrain not installed"}
-        try:
-            result = _run([gbrain_cmd, "doctor", "--json"], timeout=30)
-            if result.returncode == 0 and result.stdout.strip():
-                data = _json.loads(result.stdout)
-                checks = data.get("doctor", {}).get("checks", [])
-                failures = []
-                for check in checks:
-                    name = check.get("name", "")
-                    status = check.get("status", "")
-                    msg = check.get("message", "")
-                    if status == "fail" and any(kw in name for kw in ["sync", "embed", "source", "cycle"]):
-                        failures.append(f"{name}: {msg[:120]}")
-                    elif status == "warn" and name in ("sync_freshness", "cycle_freshness", "orphan_ratio"):
-                        failures.append(f"{name}: {msg[:120]}")
-                if failures:
-                    detail = "; ".join(failures[:3])
-                    more = f" (+{len(failures) - 3} more)" if len(failures) > 3 else ""
-                    return {"status": "DEGRADED", "detail": f"{detail}{more}"}
-                overall = data.get("overall_health_score", -1)
-                if 0 <= overall < 50:
-                    return {"status": "DEGRADED", "detail": f"Health score: {overall}/100"}
-                return {"status": "UP", "detail": "All sources healthy"}
-        except (_json.JSONDecodeError, ValueError):
-            pass
-        result2 = _run([gbrain_cmd, "sources", "list"], timeout=15)
-        if result2.returncode == 0 and result2.stdout.strip():
-            total, never_synced, zero_pages = _parse_sources_list(result2.stdout)
-            issues = []
-            if never_synced > 0:
-                issues.append(f"{never_synced} source(s) never synced")
-            if zero_pages > 0 and zero_pages == total:
-                issues.append("all sources have 0 pages")
-            elif zero_pages > 0:
-                issues.append(f"{zero_pages} source(s) have 0 pages")
-            if issues:
-                return {"status": "DEGRADED", "detail": "; ".join(issues[:2])}
-            if total == 0:
-                return {"status": "UNKNOWN", "detail": "no gbrain sources found"}
-            return {"status": "UP", "detail": f"{total} source(s), all synced"}
-        return {"status": "UNKNOWN", "detail": "gbrain available but sources list failed"}
+        # Check autopilot process directly via pgrep — no DB lock needed
+        pg = subprocess.run(
+            ["pgrep", "-f", "gbrain.*autopilot"],
+            capture_output=True, timeout=5,
+        )
+        if pg.returncode != 0:
+            return {"status": "DOWN", "detail": "gbrain-autopilot not active in any scope"}
+        pids = pg.stdout.decode().strip().split()
+        # Verify autopilot log is recent (last 10 min)
+        log = Path.home() / ".gbrain" / "autopilot.log"
+        if log.exists():
+            age = (NOW - datetime.fromtimestamp(log.stat().st_mtime, tz=timezone.utc).astimezone()).total_seconds()
+            if age > 600:
+                return {"status": "DEGRADED", "detail": f"autopilot PID(s) {'/'.join(pids)} but log stale ({age:.0f}s)"}
+        return {"status": "UP", "detail": f"autopilot PID(s) {'/'.join(pids)}"}
     except FileNotFoundError:
-        return {"status": "UNKNOWN", "detail": "gbinary not found in PATH"}
+        return {"status": "UNKNOWN", "detail": "pgrep not found"}
     except subprocess.TimeoutExpired:
-        return {"status": "UNKNOWN", "detail": "gbrain check timed out"}
+        return {"status": "UNKNOWN", "detail": "autopilot check timed out"}
     except Exception as e:
         return {"status": "UNKNOWN", "detail": f"gbrain check: {e}"}
 

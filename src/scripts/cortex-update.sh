@@ -915,7 +915,12 @@ main() {
   # of the check land in the same tree, no core agent patch needed)
   _HERMES_AGENT_SCRIPTS="${HOME}/.hermes/scripts"
   _CORTEX_DEPLOY_SCRIPTS="${HERMES_HOME}/scripts"
-  if [ -d "$_HERMES_AGENT_SCRIPTS" ] && [ ! -L "$_HERMES_AGENT_SCRIPTS" ]; then
+  # Safety guard: skip symlink dance when both paths resolve to the same directory.
+  # This happens when HERMES_HOME is already set to ~/.hermes — rm -rf would
+  # delete all installed scripts and create a self-referential symlink.
+  if [ "$(cd "$_HERMES_AGENT_SCRIPTS" 2>/dev/null && pwd)" = "$(cd "$_CORTEX_DEPLOY_SCRIPTS" 2>/dev/null && pwd)" ]; then
+    :
+  elif [ -d "$_HERMES_AGENT_SCRIPTS" ] && [ ! -L "$_HERMES_AGENT_SCRIPTS" ]; then
     _UNIQUE=$(comm -23 \
       <(cd "$_HERMES_AGENT_SCRIPTS" && ls *.py *.sh 2>/dev/null | sort) \
       <(cd "$_CORTEX_DEPLOY_SCRIPTS" && ls *.py *.sh 2>/dev/null | sort))
