@@ -136,6 +136,19 @@ systemctl --user restart gbrain-autopilot.service
 journalctl --user -u gbrain-autopilot.service -f
 ```
 
+### Running gbrain Commands (the wrapper)
+
+Any cron or script that calls `gbrain <command>` while autopilot is running
+**must** go through `gbrain-wrapper.sh` to avoid PGLite lock contention:
+
+```bash
+~/.hermes/scripts/gbrain-wrapper.sh dream
+~/.hermes/scripts/gbrain-wrapper.sh stats
+```
+
+The wrapper stops the systemd autopilot, runs the command, and restarts it.
+See `docs/gbrain-pglite-recovery.md` for full details.
+
 ### Initial Setup (fresh install)
 
 ```bash

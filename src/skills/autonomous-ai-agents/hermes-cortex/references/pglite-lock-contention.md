@@ -175,146 +175,51 @@ The autopilot is a self-maintaining daemon that already handles sync internally 
 
 ---
 
-## Stop/Dream/Restart Pattern (Linux — no systemd service)
+## Cron Script Pattern — gbrain-wrapper.sh (systemd-only)
 
-On this machine (Linux Mint), the autopilot is launched as a background `bun` process
-via `terminal(background=true)`, not as a systemd service. Any cron job that needs
-exclusive DB access (e.g., `gbrain dream`) must stop the autopilot first and restart it
-afterward.
+Any cron script that needs to call `gbrain <command>` while the autopilot is
+running **must** go through `gbrain-wrapper.sh`. The wrapper:
+1. Stops the systemd autopilot service (`systemctl --user stop`)
+2. Clears stale lock files from previous crashes
+3. Runs the requested gbrain command
+4. Restarts the systemd autopilot service (`systemctl --user start`) via trap EXIT
 
-### The Pattern
+This is the **only supported pattern** on Linux. Never use `nohup` or manual
+`kill`/`pgrep` to manage the autopilot lifecycle — always use systemctl.
 
-The canonical implementation lives in `~/.hermes/scripts/gbrain-nightly-dream.sh`:
+### Usage
 
 ```bash
-# 1. Stop the autopilot (graceful SIGTERM, 10s timeout, force SIGKILL)
-AUTOPILOT_PID=$(pgrep -f 'gbrain.*autopilot' | head -1)
-kill -TERM "$AUTOPILOT_PID"
-# wait up to 10s, then kill -KILL if still alive
-
-# 2. Run the DB-dependent command
-gbrain dream 2>&1 | tail -20
-
-# 3. Restart autopilot (via EXIT trap — always runs)
-trap 'if ! pgrep -f "gbrain.*autopilot"; then
-      cd $HOME && nohup bun $(which gbrain) autopilot --repo ... &
-      fi' EXIT
+# Any gbrain command
+~/.hermes/scripts/gbrain-wrapper.sh dream
+~/.hermes/scripts/gbrain-wrapper.sh stats
+~/.hermes/scripts/gbrain-wrapper.sh sources list
+~/.hermes/scripts/gbrain-wrapper.sh doctor --fast
 ```
 
-### Key Design Decisions
+### Which commands need the wrapper
 
-| Decision | Rationale |
-|----------|-----------|
-| **trap on EXIT** | Guarantees autopilot restart even if `gbrain dream` crashes mid-pipeline |
-| **pgrep for restart check** | Handles edge cases: dream spawns autopilot, or another process restarts it |
-| **SIGTERM first, 10s timeout, then SIGKILL** | Gives autopilot a chance to flush state before force kill |
-| **tail -20 on output** | Follows cron truncation convention — full output would be wasteful |
+| Needs stop/restart | Safe to run raw (no wrapper) |
+|---|---|
+| `gbrain dream` — full pipeline | `gbrain doctor --fast` — filesystem-only |
+| `gbrain sync` — manual sync cycle | `gbrain check-update` — network check |
+| `gbrain stats` — database statistics | `gbrain upgrade` — binary self-update |
+| `gbrain sources list` — reads DB | `gbrain --version` — no DB access |
+| `gbrain query` / `ask` — searches brain | |
 
-### When to Use
+It's harmless to use the wrapper for all commands — the stop/restart
+overhead is ~2 seconds. Both `gbrain-nightly-dream.sh` and
+`gbrain-update-sync.sh` use it.
 
-Apply this pattern to any cron that calls `gbrain <command>` and needs DB access
-while the autopilot is running. Commands that require the lock:
-
-- `gbrain dream` — full pipeline (sync, embed, synthesize, patterns, consolidate)
-- `gbrain sync` — manual sync cycle
-- `gbrain stats` — database statistics
-- `gbrain sources list` — reads registered sources from DB
-
-Commands that do NOT need the lock (safe to run with autopilot):
-
-- `gbrain doctor --fast` — filesystem-only checks
-- `gbrain check-update` — network check, no DB
-- `gbrain upgrade` — binary self-update, no DB
-
----
-
-## Linux (systemd) Differences
-
-The existing docs cover macOS (launchd). On Linux, the same PGLite lock contention
-applies, but service management differs.
-
-### Service Management
-
-| Action | macOS (launchd) | Linux (systemd user) |
-|--------|-----------------|---------------------|
-| List services | `launchctl list \| grep gbrain` | `systemctl --user list-units \| grep gbrain` |
-| Check status | `launchctl list com.gbrain.sync-watch` | `systemctl --user is-active com.gbrain.sync-watch` |
-| Stop service | `launchctl bootout gui/$(id -u)/...` | `systemctl --user stop ...` |
-| Disable service | `mv plist{,.disabled}` | `systemctl --user disable ...` |
-| View logs | `tail ~/.gbrain/sync-watch.log` | Same path, or `journalctl --user -u ...` |
-
-### Two Approaches (choose ONE)
-
-**A) sync-watch only (recommended for PGLite)** — Simple bash daemon that
-polls `gbrain sync --all` every 120s. Pre-installed by `install.sh`. Works
-well with PGLite because it opens and releases the database connection quickly.
+### Verifying the wrapper works
 
 ```bash
-# Enable and start
-systemctl --user enable com.gbrain.sync-watch.service
-systemctl --user start com.gbrain.sync-watch.service
+# Run a quick test
+~/.hermes/scripts/gbrain-wrapper.sh doctor --fast
 
-# Verify
-systemctl --user is-active com.gbrain.sync-watch.service
-# Expected: active
-```
-
-**B) Autopilot only (requires Supabase/network Postgres)** — Full self-
-maintaining daemon. **Do NOT use with PGLite** — the exclusive lock blocks
-all other gbrain CLI commands (query, sources list, stats) for ~3min every
-5min cycle.
-
-```bash
-# Install (requires --repo for PGLite brains)
-gbrain autopilot --install --repo ~/brain/default --interval 300
-
-# Uninstall
-gbrain autopilot --uninstall
-systemctl --user stop gbrain-autopilot.service
-```
-
-**Never run both.** PGLite is single-connection — autopilot and sync-watch
-will fight over the lock and fail intermittently with the WASM error.
-
-### Sync-Watch Resilience
-
-The sync-watch script (`~/.gbrain/sync-watch.sh`) includes a `||` fallback
-so transient WASM/PGLite failures don't kill the loop:
-
-```bash
-"$BUN" "$GBRAIN" sync --all --no-pull 2>&1 || \
-  echo "[$(date)] ⚠ sync failed, will retry next cycle"
-```
-
-The service will always be `active (running)` even when an individual sync
-cycle fails — systemd only restarts it on process exit.
-
-### Auto-remediation Alert
-
-The `system-alert-watchdog.py` checks the service status (`systemctl --user
-is-active`), not individual sync results. A healthy sync-watch service
-always reports UP even if a transient WASM error occurred on a cycle.
-
-To verify functional health separately:
-```bash
-# Run one sync cycle manually
-gbrain sync --all --no-pull 2>&1
-# Expected: "synced=0" or "imported=N" — any WASM error means lock contention
-```
-
-### Full Cleanup (switching between approaches)
-
-```bash
-# Stop and disable sync-watch
-systemctl --user stop com.gbrain.sync-watch.service
-systemctl --user disable com.gbrain.sync-watch.service
-
-# Or stop autopilot
-gbrain autopilot --uninstall
-systemctl --user stop gbrain-autopilot.service
-
-# Verify no gbrain services remain
-systemctl --user list-units | grep gbrain
+# Check autopilot restarted afterward
+systemctl --user status gbrain-autopilot.service
+# Expected: active (running)
 ```
 
 ## Stale postmaster.pid — the Hidden Persistence Killer
