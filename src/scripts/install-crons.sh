@@ -601,14 +601,10 @@ fi
 
 printf "\n${CYAN}  6. Deployment-Specific Crons${RESET}\n"
 
-# Daily Hermes Agent self-update (watchdog: empty stdout = silent, local = no spam on success)
-# deliver=local — watchdog pattern: script produces empty output on success,
-# so there's nothing to deliver to Telegram. On failure/actual update, output
-# is saved locally for inspection. See hermes-update.sh for the self-timeout
-# logic that prevents blocking in cron context.
+# Daily Hermes Agent self-update
 create_cron "hermes-update" "23 22 * * *" \
   "hermes-update.sh" \
-  "" "" "" "local" "" "true"
+  "" "" "" "origin" "" "true"
 
 # Weekly gbrain dream for knowledge enrichment
 create_cron "gbrain-nightly-dream" "0 3 * * 6" \
