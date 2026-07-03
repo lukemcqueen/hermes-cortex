@@ -102,10 +102,10 @@ if [[ "${1:-}" == "--check" ]]; then
     echo "  ${GREEN}✓${RESET} Ollama binary found"
     if curl -sf http://localhost:11434/api/tags &>/dev/null; then
       echo "  ${GREEN}✓${RESET} Ollama server running"
-      if curl -sf http://localhost:11434/api/tags | grep -q "nomic-embed-text"; then
-        echo "  ${GREEN}✓${RESET} nomic-embed-text model loaded"
+      if curl -sf http://localhost:11434/api/tags | grep -q "nomic-embed-text:v1.5"; then
+        echo "  ${GREEN}✓${RESET} nomic-embed-text:v1.5 model loaded"
       else
-        echo "  ${YELLOW}⚠${RESET} nomic-embed-text not pulled"
+        echo "  ${YELLOW}⚠${RESET} nomic-embed-text:v1.5 not pulled"
       fi
     else
       echo "  ${YELLOW}⚠${RESET} Ollama server not running"
@@ -280,8 +280,8 @@ bash "${SCRIPT_DIR}/src/scripts/install-ollama.sh" wait
 ok
 
 # Pull embedding model
-step "Pulling embedding model (nomic-embed-text)"
-bash "${SCRIPT_DIR}/src/scripts/install-ollama.sh" embed nomic-embed-text
+step "Pulling embedding model (nomic-embed-text:v1.5)"
+bash "${SCRIPT_DIR}/src/scripts/install-ollama.sh" embed nomic-embed-text:v1.5
 ok
 
 # ── Ollama security check ──────────────────────────────────
@@ -405,8 +405,8 @@ step "Initializing gbrain with PGLite (local, zero-config)"
 if [[ -f "${CORTEX_HOME}/.gbrain/brain.pglite" ]]; then
   skip "brain already exists"
 else
-  "$GBRAIN_CMD" init --pglite --embedding-model ollama:nomic-embed-text --yes 2>/dev/null || \
-    "$GBRAIN_CMD" init --pglite --embedding-model ollama:nomic-embed-text
+  "$GBRAIN_CMD" init --pglite --embedding-model ollama:nomic-embed-text:v1.5 --yes 2>/dev/null || \
+    "$GBRAIN_CMD" init --pglite --embedding-model ollama:nomic-embed-text:v1.5
   ok
 fi
 
@@ -2381,7 +2381,7 @@ ok
 header "INSTALLATION SUMMARY"
 
 printf "\n${BOLD}✅ System components installed${RESET}\n"
-printf "  ${GREEN}•${RESET} Ollama           — LLM server (embedding: nomic-embed-text)\n"
+printf "  ${GREEN}•${RESET} Ollama           — LLM server (embedding: nomic-embed-text:v1.5)\n"
 printf "  ${GREEN}•${RESET} Bun              — JS runtime\n"
 printf "  ${GREEN}•${RESET} gbrain           — Knowledge brain (PGLite)\n"
 if [[ "$CORTEX_PROFILE" == "server" ]]; then

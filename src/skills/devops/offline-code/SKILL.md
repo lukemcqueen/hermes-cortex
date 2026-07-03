@@ -2,7 +2,7 @@
 name: offline-code
 version: 1.0.0
 category: devops
-description: "Offline code snippet search + generation using local Ollama models. Search a 518-snippet corpus across 32 categories with nomic-embed-text, generate code with auto-detected qwen2.5-coder (3b on 4-8GB, 7b on 8-24GB, 14b on 24GB+). No internet needed."
+description: "Offline code snippet search + generation using local Ollama models. Search a 518-snippet corpus across 32 categories with nomic-embed-text:v1.5, generate code with auto-detected qwen2.5-coder (3b on 4-8GB, 7b on 8-24GB, 14b on 24GB+). No internet needed."
 author: Titus
 license: MIT
 metadata:
@@ -20,7 +20,7 @@ A two-tier local coding assistant: **search** a curated corpus of algorithms and
               search                   gen
                  │                       │
                  ▼                       ▼
-      nomic-embed-text            qwen2.5-coder:3b
+      nomic-embed-text:v1.5            qwen2.5-coder:3b
       (embeds query,              (RAG: top-3 snippets
        cosine similarity           + user prompt → code)
        → ranked snippets)
@@ -39,7 +39,7 @@ offline_code stats
 offline_code index --force
 
 # Step 4: Ensure models are pulled
-ollama pull nomic-embed-text        # already pulled by install.sh
+ollama pull nomic-embed-text:v1.5        # already pulled by install.sh
 ollama pull qwen2.5-coder:3b        # minimum (then build with 64k: see AGENTS.md)
 ```
 
@@ -109,8 +109,8 @@ This saves API costs, works offline, and is faster than web search.
 
 | Component | Model | Size | Purpose |
 |---|---|---|---|
-| Search indexing | nomic-embed-text | 261 MB | Embed snippets into 768-dim vectors |
-| Query embedding | nomic-embed-text | — | Embed your search query for cosine comparison |
+| Search indexing | nomic-embed-text:v1.5 | 261 MB | Embed snippets into 768-dim vectors |
+| Query embedding | nomic-embed-text:v1.5 | — | Embed your search query for cosine comparison |
 | Code generation | Auto-detected qwen2.5-coder | varies | **3b** on 4-8GB RAM (default, 32K ctx) |
 | | | | **7b** on 8-24GB RAM (better quality) |
 | | | | **14b** on 24GB+ RAM (best quality) |
@@ -128,7 +128,7 @@ The corpus lives at `~/hermes-cortex/src/offline/code-corpus/` with 366 snippets
 | Symptom | Fix |
 |---|---|
 | `offline_code: command not found` | `ln -sf ~/hermes-cortex/src/offline/offline_code.sh ~/.hermes/bin/offline_code` |
-| `nomic-embed-text not found` | `ollama pull nomic-embed-text` |
+| `nomic-embed-text:v1.5 not found` | `ollama pull nomic-embed-text:v1.5` |
 | `qwen2.5-coder not found` | `ollama pull qwen2.5-coder:3b` (minimum, auto-detects higher) |
 | `Index is current` on `--force` | Use `--force` flag to rebuild |
 | Corpus empty / no snippets | Run `offline_code index --force` to build from scratch |

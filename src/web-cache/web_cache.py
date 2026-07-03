@@ -63,7 +63,7 @@ OLLAMA_EMBED_URL = os.environ.get(
 )
 # Priority: OLLAMA_EMBED_MODEL (legacy) → EMBEDDING_MODEL (shared) → default
 _OLLAMA_EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL") or ""
-OLLAMA_MODEL = _OLLAMA_EMBED_MODEL or get_model("EMBEDDING_MODEL", "nomic-embed-text")
+OLLAMA_MODEL = _OLLAMA_EMBED_MODEL or get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 
 # ── Embedded Model Dimensions ──────────────────────────────────
 # nomic-embed-text = 768 dimensions

@@ -34,7 +34,7 @@ INBOX_DIR = HOME / "agent-inbox-private" / "inbox"
 OLLAMA_URL = "http://localhost:11434/api/embeddings"
 from hermes_models import get_model
 
-NOMIC_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text")
+NOMIC_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 
 
 def embed(text: str) -> list[float] | None:

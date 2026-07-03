@@ -87,7 +87,7 @@ Updated installer summary to reflect new components:
 
 ```
 ✅ System components installed
-  • Ollama           — LLM server (embedding: nomic-embed-text)
+  • Ollama           — LLM server (embedding: nomic-embed-text:v1.5)
   • Bun              — JS runtime
   • gbrain           — Knowledge brain (PGLite)
   • Langfuse         — LLM observability (Docker, port 3000)

@@ -107,7 +107,7 @@ class LoopDB:
                 user_overrode   INTEGER,
                 outcome_note    TEXT,
                 schema_version  INTEGER DEFAULT 1,
-                model_name      TEXT DEFAULT 'nomic-embed-text'
+                model_name      TEXT DEFAULT 'nomic-embed-text:v1.5'
             );
 
             CREATE TABLE IF NOT EXISTS content_assets (
@@ -140,7 +140,7 @@ class LoopDB:
                   no_progress: bool, decision: str,
                   spec_hash: str = None, code_hash: str = None,
                   test_output_hash: str = None,
-                  model_name: str = "nomic-embed-text") -> int:
+                  model_name: str = "nomic-embed-text:v1.5") -> int:
         """Log a scored cycle and return the row ID."""
         self._lock()
         try:

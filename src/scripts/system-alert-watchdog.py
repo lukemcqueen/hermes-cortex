@@ -30,7 +30,7 @@ from hermes_tz import format_timestamp
 from state_tracker import StateTracker
 from hermes_models import get_model
 
-_EMBEDDING_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text")
+_EMBEDDING_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 
 MEM_PCT_WARN = 85
 SWAP_PCT_WARN = 90

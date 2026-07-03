@@ -37,7 +37,7 @@ sys.path.insert(0, str(_SCRIPT_DIR.parent / "scripts"))
 from hermes_models import get_model
 
 # Embedding model used by all loop-governance tools
-NOMIC_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text")
+NOMIC_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 
 # ── Dependency Check: mcp package ────────────────────────────
 _HAVE_MCP = importlib.util.find_spec("mcp")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Model Health Watchdog — checks required Ollama models exist.
 
-Always checks: nomic-embed-text:latest (embeddings for gbrain / session cache).
+Always checks: nomic-embed-text:v1.5 (embeddings for gbrain / session cache).
 Checks one or more judge models — defaults to qwen2.5-coder:3b, but any
 Ollama model name can be specified via --judge-model or JUDGE_MODEL env var.
 
@@ -9,7 +9,7 @@ Silent (exit 0) when all required models are present.
 Alerts with a descriptive message when any model is missing.
 
 Usage:
-  # Default (nomic-embed-text + qwen2.5-coder:3b)
+  # Default (nomic-embed-text:v1.5 + qwen2.5-coder:3b)
   python3 model-health-watchdog.py
 
   # Custom judge model (Titus using mannix/qwen2.5-coder:7b)
@@ -41,7 +41,7 @@ from hermes_models import get_model
 # ── Config ──────────────────────────────────────────────────────────────
 OLLAMA_TAGS_URL = "http://localhost:11434/api/tags"
 ALWAYS_REQUIRED = [
-    ("nomic-embed-text:latest", "Embeddings for gbrain knowledge brain and session cache"),
+    ("nomic-embed-text:v1.5", "Embeddings for gbrain knowledge brain and session cache"),
 ]
 DEFAULT_JUDGE_MODEL = "qwen2.5-coder:3b"
 

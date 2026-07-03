@@ -116,7 +116,7 @@ When the router classifies an incoming request:
 ## Dependencies
 
 - `offline-knowledge` (provides the lesson search/index/create CLI)
-- `nomic-embed-text` (Ollama model for semantic embeddings)
+- `nomic-embed-text:v1.5` (Ollama model for semantic embeddings)
 - `save-lesson` (manual save workflow, already integrated)
 
 ## Design Principles

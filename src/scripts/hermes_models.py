@@ -22,7 +22,7 @@ Usage:
     from hermes_models import get_model
 
     judge = get_model("JUDGE_MODEL", "qwen2.5-coder:3b")
-    embed = get_model("EMBEDDING_MODEL", "nomic-embed-text")
+    embed = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 """
 
 import os

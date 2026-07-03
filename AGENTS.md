@@ -31,7 +31,7 @@ models there once and they never get reverted.
 | Env var | Purpose | Default |
 |---------|---------|---------|
 | `JUDGE_MODEL` | LLM-as-Judge scorer | `qwen2.5-coder:3b` |
-| `EMBEDDING_MODEL` | Text embeddings (gbrain, session cache, loop scorer, offline_code) | `nomic-embed-text:latest` |
+| `EMBEDDING_MODEL` | Text embeddings (gbrain, session cache, loop scorer, offline_code) | `nomic-embed-text:v1.5` |
 | `CODING_MODEL` | Code generation via offline_code | auto-detected by RAM |
 | `CREATIVE_MODEL` | Reserved for future creative tasks | _(not yet wired)_ |
 
@@ -68,7 +68,7 @@ echo 'JUDGE_MODEL=mannix/qwen2.5-coder:7b-iq3_xs' >> ~/.hermes/models.env
 
 | Tier | Model | Size | Role |
 |------|-------|------|------|
-| Embedding | `nomic-embed-text` | 274 MB | Vector search (embeddings for search, RAG) |
+| Embedding | `nomic-embed-text:v1.5` | 274 MB | Vector search (embeddings for search, RAG) |
 | Unified gen/judge | `qwen2.5-coder:3b` | 1.9 GB | Code gen, classification, routing, quality gates |
 
 > **⚠️ 64k context minimum required.** All local models used with Hermes Agent need at least 64k context for tool calls and conversation history. `qwen2.5-coder:3b` from the Ollama registry defaults to 32k — build it with 64k:
@@ -317,7 +317,7 @@ valuable than an unscored config change that silently breaks later.
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
 | `embedding failed` / `Ollama connection refused` | Ollama not running | `ollama serve` or `brew services restart ollama` |
-| `Model nomic-embed-text not found` | Model not pulled | `ollama pull nomic-embed-text` (274 MB) |
+| `Model nomic-embed-text:v1.5 not found` | Model not pulled | `ollama pull nomic-embed-text:v1.5` (274 MB) |
 | `DB locked` | Concurrent score-cycle process | Wait and retry, or `rm ~/.hermes/data/loop-governance.db-journal` |
 | `score-cycle not found` | Symlink missing | `bash ~/hermes-cortex/src/loop-governance/setup.sh --symlinks-only` |
 | `warning: all tests failed — score may be inaccurate` | Test suite broken | Fix tests first, then re-score |
@@ -351,7 +351,7 @@ hermes mcp add \
   loop-governance
 
 # Pull the embedding model (required for scoring)
-ollama pull nomic-embed-text
+ollama pull nomic-embed-text:v1.5
 
 # Deploy pre-commit hooks across all repos
 bash ~/.hermes/scripts/install-score-hook.sh --all
@@ -360,7 +360,7 @@ bash ~/.hermes/scripts/install-score-hook.sh --all
 bash ~/.hermes-cortex/tools/loop-governance/verify.sh
 ```
 
-**Dependencies:** Ollama + **nomic-embed-text** (for scoring — the only
+**Dependencies:** Ollama + **nomic-embed-text:v1.5** (for scoring — the only
 model required). 274 MB. Run `bash src/loop-governance/cleanup-ollama.sh`
 to remove unnecessary models and free disk space.
 
@@ -412,7 +412,7 @@ mcp_loop_governance_feedback_override(cycle_id=N, correct_decision="MOVE_ON", no
 
 ## Skill Miner (Automated, Runs Weekly)
 
-`skill-miner` runs every Monday 6am on each agent's machine. It scans local data for reusable patterns, scores them with nomic-embed-text, and sends top findings to Moses via the agent inbox automatically. No manual effort needed.
+`skill-miner` runs every Monday 6am on each agent's machine. It scans local data for reusable patterns, scores them with nomic-embed-text:v1.5, and sends top findings to Moses via the agent inbox automatically. No manual effort needed.
 
 **What it mines (locally, PII-scrubbed):**
 - Loop governance DB — high-scoring TDD cycles

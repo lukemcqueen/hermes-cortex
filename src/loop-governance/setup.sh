@@ -85,13 +85,13 @@ else
   pass "Ollama: $OLLAMA"
   if curl -sf http://localhost:11434/api/tags >/dev/null 2>&1; then
     pass "Ollama server running"
-    if curl -sf http://localhost:11434/api/tags | grep -q "nomic-embed-text"; then
-      pass "nomic-embed-text model loaded"
+    if curl -sf http://localhost:11434/api/tags | grep -q "nomic-embed-text:v1.5"; then
+      pass "nomic-embed-text:v1.5 model loaded"
     else
-      warn "nomic-embed-text not pulled"
+      warn "nomic-embed-text:v1.5 not pulled"
       if [[ "$CHECK_ONLY" != "1" ]]; then
-        info "  Pulling nomic-embed-text…"
-        ollama pull nomic-embed-text 2>&1 && pass "OK" || warn "Pull failed"
+        info "  Pulling nomic-embed-text:v1.5…"
+        ollama pull nomic-embed-text:v1.5 2>&1 && pass "OK" || warn "Pull failed"
       fi
     fi
   else

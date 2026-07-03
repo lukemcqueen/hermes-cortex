@@ -157,7 +157,7 @@ pull_embedding_model() {
   # Source model config for EMBEDDING_MODEL (survives cortex-update.sh)
   local models_env="${HOME}/.hermes/models.env"
   [ -f "$models_env" ] && source "$models_env" 2>/dev/null || true
-  local model="${1:-${EMBEDDING_MODEL:-nomic-embed-text}}"
+  local model="${1:-${EMBEDDING_MODEL:-nomic-embed-text:v1.5}}"
   if ollama list 2>/dev/null | grep -q "$model"; then
     info "Embedding model '${model}' already pulled"
   else
@@ -246,12 +246,12 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     install)   install_ollama ;;
     service)   setup_ollama_service ;;
     wait)      wait_for_ollama ;;
-    embed)     pull_embedding_model "${2:-nomic-embed-text}" ;;
+    embed)     pull_embedding_model "${2:-nomic-embed-text:v1.5}" ;;
     all|*)
       install_ollama
       setup_ollama_service
       wait_for_ollama
-      pull_embedding_model "${2:-nomic-embed-text}"
+      pull_embedding_model "${2:-nomic-embed-text:v1.5}"
       build_qwen_model "${3:-qwen2.5-coder:3b}"
       ;;
   esac

@@ -11,7 +11,7 @@ platforms: [linux, macos, windows]
 
 ## Overview
 
-`web_cache` is a transparent cache that sits between you and the web. It stores `web_search` and `web_extract` results in a local SQLite database with vector embeddings (via Ollama nomic-embed-text), so you can check the cache **before** making expensive web calls.
+`web_cache` is a transparent cache that sits between you and the web. It stores `web_search` and `web_extract` results in a local SQLite database with vector embeddings (via Ollama nomic-embed-text:v1.5), so you can check the cache **before** making expensive web calls.
 
 Over time, the cache becomes a rich "local internet" — you can answer most common queries from cached knowledge alone, even when offline.
 
@@ -135,7 +135,7 @@ Dual-mode lookup:
   - Semantic similarity for search queries (>0.82 threshold)
   - Exact URL match for page extracts
     ↓
-Ollama nomic-embed-text for embeddings (768-dim, local, free)
+Ollama nomic-embed-text:v1.5 for embeddings (768-dim, local, free)
     ↓
 LRU eviction when >200MB (configurable)
     ↓

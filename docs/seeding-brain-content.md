@@ -28,7 +28,7 @@ Create these three files to give your agent immediate context:
 
 ## Installed Tools
 - Hermes Agent — AI agent runtime
-- Ollama — local LLM server (nomic-embed-text for embeddings)
+- Ollama — local LLM server (nomic-embed-text:v1.5 for embeddings)
 - gbrain — knowledge brain (PGLite)
 - Docker Desktop — for Langfuse, kiwix, etc.
 - nginx — reverse proxy (ports 13001+)

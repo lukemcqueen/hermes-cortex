@@ -4,7 +4,7 @@
 #
 #  Installs the bare minimum to use TDD scoring and skills:
 #    1. Loop-governance tools (score-cycle, loop-feedback)
-#    2. Ollama + nomic-embed-text (for AI-powered scoring)
+#    2. Ollama + nomic-embed-text:v1.5 (for AI-powered scoring)
 #
 #  Usage:
 #    bash quick-start.sh

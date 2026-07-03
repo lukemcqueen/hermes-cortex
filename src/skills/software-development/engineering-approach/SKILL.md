@@ -248,7 +248,7 @@ For CLI scoring, `--code-file` should be the file that best represents the chang
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
 | `embedding failed` / `Ollama connection refused` | Ollama not running | `ollama serve` or `brew services restart ollama` |
-| `Model nomic-embed-text not found` | Model not pulled | `ollama pull nomic-embed-text` (274 MB) |
+| `Model nomic-embed-text:v1.5 not found` | Model not pulled | `ollama pull nomic-embed-text:v1.5` (274 MB) |
 | `DB locked` | Concurrent score-cycle process | Wait and retry, or `rm ~/.hermes/data/loop-governance.db-journal` |
 | `score-cycle not found` | Symlink missing | `bash ~/hermes-cortex/src/loop-governance/setup.sh --symlinks-only` |
 | `warning: all tests failed` | Test suite broken | Fix tests first, then re-score |

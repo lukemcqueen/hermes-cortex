@@ -33,7 +33,7 @@ HOME = Path.home()
 CORPUS_DIR = Path(__file__).parent / "code-corpus"
 INDEX_DB = HOME / "offline" / "code-index.json"
 OLLAMA_URL = "http://localhost:11434"
-EMBED_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text")
+EMBED_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 GEN_MODEL = get_model("CODING_MODEL", "qwen2.5-coder:3b")  # default; auto-upgraded if VRAM available
 
 

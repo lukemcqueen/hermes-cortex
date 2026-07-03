@@ -39,7 +39,7 @@ except ImportError:
             sys.path.insert(0, str(resolved))
     from hermes_models import get_model
 
-NOMIC_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text")
+NOMIC_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 
 
 def embed(text: str) -> list[float] | None:

@@ -34,7 +34,7 @@ from hermes_paths import ensure_scripts_path
 ensure_scripts_path()
 from hermes_models import get_model
 
-EMBEDDING_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text")
+EMBEDDING_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 
 # ── Config ──────────────────────────────────────────────────
 HOME = Path.home()

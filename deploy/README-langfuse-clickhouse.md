@@ -335,7 +335,7 @@ A scheduled script that evaluates Hermes conversation traces using a local Ollam
 |-------------|-------|---------|
 | Ollama running | `curl -s http://localhost:11434/api/tags` | `systemctl start ollama` |
 | Judge model | `ollama list \| grep qwen2.5-coder` | `ollama pull qwen2.5-coder:3b` |
-| Embeddings model | `ollama list \| grep nomic-embed-text` | `ollama pull nomic-embed-text:latest` |
+| Embeddings model | `ollama list \| grep nomic-embed-text:v1.5` | `ollama pull nomic-embed-text:v1.5` |
 | Langfuse .env | `cat ~/.hermes-cortex/.env` | See "Step 5" below |
 | Langfuse running | `curl -s -o /dev/null -w '%{http_code}' http://localhost:3000` | `docker compose up -d` |
 
@@ -399,7 +399,7 @@ hermes cron create --name model-health-watchdog \
 # Dry-run the scorer
 python3 ~/.hermes-cortex/scripts/llm-judge-scorer.py --dry-run
 
-# Check model health (default: nomic-embed-text + qwen2.5-coder:3b)
+# Check model health (default: nomic-embed-text:v1.5 + qwen2.5-coder:3b)
 python3 ~/.hermes-cortex/scripts/model-health-watchdog.py
 
 # Check with a custom judge model (e.g., Titus' model)
@@ -431,7 +431,7 @@ The watchdog supports custom judge models via:
 - `--judge-model <name>` (CLI flag, repeatable for multiple models)
 - `JUDGE_MODEL` environment variable (comma-separated for multiple)
 - Defaults to `qwen2.5-coder:3b` if neither is set
-- `nomic-embed-text:latest` is always required and always checked
+- `nomic-embed-text:v1.5` is always required and always checked
 
 Use the `extract_langfuse_env.py` utility to regenerate the `.env` file from the running
 Docker stack if keys ever need updating:

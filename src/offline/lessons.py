@@ -37,7 +37,7 @@ LESSONS_DIR = HOME / "brain" / "lessons"
 INDEX_FILE = HOME / "offline" / "lessons-index.json"
 
 # Embedding config (same as offline_code)
-EMBED_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text")
+EMBED_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 SIMILARITY_THRESHOLD = 0.55  # broader match for natural language bug descriptions
 
 

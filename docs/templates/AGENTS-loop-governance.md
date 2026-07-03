@@ -50,7 +50,7 @@ mcp_loop_governance_cache_search(query="<current task>")  # learn from past
 | Symptom | Fix |
 |---------|-----|
 | Ollama connection refused | `ollama serve` or `brew services restart ollama` |
-| nomic-embed-text not found | `ollama pull nomic-embed-text` |
+| nomic-embed-text:v1.5 not found | `ollama pull nomic-embed-text:v1.5` |
 | score-cycle not found | `bash ~/hermes-cortex/src/loop-governance/setup.sh --symlinks-only` |
 | MCP tool returns error | `hermes mcp add --command python3 --args ~/hermes-cortex/src/mcp-servers/loop-gov-mcp.py loop-governance` |
 
@@ -63,7 +63,7 @@ resolved. Never skip permanently.
 # One-time (requires hermes-cortex cloned)
 bash ~/hermes-cortex/src/loop-governance/setup.sh
 hermes mcp add --command python3 --args ~/hermes-cortex/src/mcp-servers/loop-gov-mcp.py loop-governance
-ollama pull nomic-embed-text
+ollama pull nomic-embed-text:v1.5
 bash ~/.hermes/scripts/install-score-hook.sh --path $(pwd)
 bash ~/.hermes-cortex/tools/loop-governance/verify.sh
 ```
