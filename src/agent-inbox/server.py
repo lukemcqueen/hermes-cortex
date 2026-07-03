@@ -890,9 +890,9 @@ async def api_send_message(request: Request):
     """JSON-only — for agents and scripts.
 
     Example:
-      curl -sk -X POST https://your-domain.com:13004/api/send \\
-        -H "Content-Type: application/json" \\
-        -d '{"from":"gisu","subject":"Status update","body":"All systems nominal.","topic":"operations","priority":"normal"}'
+      curl -sk -X POST https://your-domain.com:13004/api/send \\\
+        -H "Content-Type: application/json" \\\
+        -d '{"from":"agent-name","subject":"Status update","body":"All systems nominal.","topic":"operations","priority":"normal"}'
     """
     try:
         payload = await request.json()
@@ -1045,7 +1045,7 @@ async def api_send_get_example():
             "thread": "Thread ID for replies (optional)",
             "parent": "Parent message ID for replies (optional)",
         },
-        "example": 'curl -sk -X POST https://your-domain.com:13004/api/send -H "Content-Type: application/json" -d \'{"from":"gisu","subject":"Status update","body":"All systems nominal.","topic":"operations","priority":"normal"}\'',
+        "example": 'curl -sk -X POST https://your-domain.com:13004/api/send -H "Content-Type: application/json" -d \'{"from":"agent-name","subject":"Status update","body":"All systems nominal.","topic":"operations","priority":"normal"}\'',
     }
 
 

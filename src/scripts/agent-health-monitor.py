@@ -25,7 +25,7 @@ Moses's own health is checked at http://127.0.0.1:8905 via fallback.
 
 Setup:
   Add to agent-registry.json:
-    "gisu": { ..., "health_url": "https://user:pass@gisu-host:13006/api/v1/health" }
+    "gisu": { ..., "health_url": "https://user:pass@your-gisu-host:13006/api/v1/health" }
     "titus": { "health_method": "inbox" }  ⚠ Do NOT set health_url for Titus
 """
 from __future__ import annotations
