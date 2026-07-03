@@ -31,8 +31,6 @@ SILENT_IS_ZERO = 5  # bytes — output smaller than this when job should produce
 
 # LLM-driven crons we monitor (no_agent=False, prompt-based)
 MONITORED_CRONS = [
-    "process-mcp-agent-inbox-messages",
-    "agent-auto-remediate",
     "agent-weekly-loop-eval",
     "local-agent-daily-news-brief",
     "local-agent-daily-system-brief",
