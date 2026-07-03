@@ -67,20 +67,18 @@ def find_last_book() -> str | None:
 
     text = SOUL_MD.read_text(encoding="utf-8")
     
-    # Find all ### BookName — entries in Scripture Insights section
-    # Look after the "## Scripture Insights" section header
-    insights_section = text.split("## Scripture Insights")[-1]
-    # Stop at the next ## section (Session Mining Lessons)
-    insights_section = insights_section.split("## Session Mining Lessons")[0]
+    # Find all ### entries in Daily Scripture section
+    # Look after the "## Daily Scripture" section header
+    insights_section = text.split("## Daily Scripture")[-1]
+    # Stop at the next ## section (Schedule)
+    insights_section = insights_section.split("## Schedule")[0]
     
     found_books = []
     for line in insights_section.split("\n"):
-        m = re.match(r"^### ([A-Za-z0-9 ]+) —", line)
+        # Match: ### 📖 Book: Name (details) — Date
+        m = re.match(r"^### 📖 Book: ([A-Za-z0-9 ]+) \(", line)
         if m:
             name = m.group(1).strip()
-            # Handle "1 Samuel" "2 Kings" etc — re.match captures everything up to —
-            # But the regex above stops at the space before "—" so full names like
-            # "1 Samuel" are captured
             if name in BOOK_INDEX:
                 found_books.append(name)
     
