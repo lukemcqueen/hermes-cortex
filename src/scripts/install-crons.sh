@@ -826,6 +826,16 @@ Result: Evaluation complete. 2 skills mined. DB cleaned.
   "loop-governance" "" "origin" "" "false" \
   "deepseek-v4-flash" "opencode-zen"
 
+# Session embedding cache rebuild (weekly Monday 05:00 — universal, loop-governance)
+create_cron "session-cache-build" "0 5 * * 1" \
+  "session-cache-build" \
+  "" "" "" "origin" "" "true"
+
+# Cron output quality gate (every 10 min, silent when healthy — universal)
+create_cron "cron-quality-watchdog" "*/10 * * * *" \
+  "cron-quality-watchdog.py" \
+  "" "" "" "origin" "" "true"
+
 echo ""
 printf "${CYAN}━━━ Summary ━━━${RESET}\n"
 if $DRY_RUN; then
