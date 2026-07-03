@@ -538,7 +538,7 @@ sed -i '' '1s|#!/usr/bin/env python3|#!/Users/\$(whoami)/.local/bin/python3.12|'
   ~/hermes-cortex/src/loop-governance/loop_feedback.py
 ```
 
-When deploying to a new machine, verify `python3 --version` resolves to 3.12+. The `install.sh` probes `python3 python3.12 python3.11 python3.10` in order and selects the first 3.12+ with sqlite3 extension support.
+When deploying to a new machine, verify `python3 --version` resolves to 3.12+. The `install.sh` probes `python3 python3.12` (plus any available 3.13/3.14) in order and selects the first 3.12+ with sqlite3 extension support.
 
 **5. Cron prompt URLs must use external inbox address**
 

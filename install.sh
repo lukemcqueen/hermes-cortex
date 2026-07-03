@@ -156,10 +156,11 @@ source "${SCRIPT_DIR}/src/scripts/os-config.sh"
 source "${SCRIPT_DIR}/src/scripts/service-writer.sh"
 
 # ── Python version probe ────────────────────────────────────
-# Find the newest Python 3.12+ with working sqlite3 extension support.
-# macOS ships 3.9.6 whose sqlite3 can't enable_load_extension — breaks sqlite-vec.
+# HERMES NOW REQUIRES PYTHON 3.12+. Earlier versions (3.9, 3.10, 3.11)
+# lack PEP 604 union syntax support and/or sqlite3 extension support.
+# macOS ships 3.9.6 — its sqlite3 can't enable_load_extension (breaks sqlite-vec).
 find_best_python() {
-  local candidates="python3 python3.12 python3.11 python3.10"
+  local candidates="python3 python3.12 $(command -v python3.13 python3.14 2>/dev/null | tr '\n' ' ')"
   local found=""
   for candidate in $candidates; do
     if command -v "$candidate" &>/dev/null; then
@@ -167,7 +168,7 @@ find_best_python() {
       ver=$("$candidate" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null)
       local major="${ver%.*}"
       local minor="${ver#*.}"
-      if [[ "$major" -ge 3 && "$minor" -ge 10 ]] 2>/dev/null; then
+      if [[ "$major" -ge 3 && "$minor" -ge 12 ]] 2>/dev/null; then
         # Verify sqlite3 extension support
         if "$candidate" -c 'import sqlite3; sqlite3.connect(":memory:").enable_load_extension(True)' 2>/dev/null; then
           found="$candidate"
@@ -180,7 +181,7 @@ find_best_python() {
     # Fallback: use whatever python3 is available, warn
     found="python3"
     warn "No Python 3.12+ with sqlite3 extension support found — web_cache may fail"
-    warn "Install with: brew install python@3.12  # 3.12 is the default for all Hermes projects"
+    warn "Install with: brew install python@3.12  # 3.12 is the minimum for all Hermes projects"
   fi
   echo "$found"
 }
