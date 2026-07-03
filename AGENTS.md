@@ -71,9 +71,9 @@ echo 'JUDGE_MODEL=mannix/qwen2.5-coder:7b-iq3_xs' >> ~/.hermes/models.env
 | Embedding | `nomic-embed-text:v1.5` | 274 MB | Vector search (embeddings for search, RAG) |
 | Unified gen/judge | `qwen2.5-coder:3b` | 1.9 GB | Code gen, classification, routing, quality gates |
 
-> **⚠️ 64k context minimum required.** All local models used with Hermes Agent need at least 64k context for tool calls and conversation history. `qwen2.5-coder:3b` from the Ollama registry defaults to 32k — build it with 64k:
+> **⚠️ Context requirements:** On GPU-equipped machines 65536 (64k) context is ideal. On CPU-only machines (especially MacBooks) 65536 causes thermal throttling (92°C+). Default is now 4096 which keeps temps under 75°C under sustained load. See `install-ollama.sh` comments for details. `qwen2.5-coder:3b` from the Ollama registry defaults to 32k — build it with the required context:
 > ```bash
-> ollama create qwen2.5-coder:3b -f <(echo -e "FROM qwen2.5-coder:3b\nPARAMETER num_ctx 65536")
+> ollama create qwen2.5-coder:3b -f <(echo -e "FROM qwen2.5-coder:3b\nPARAMETER num_ctx 4096")
 > ```
 > Larger variants (7b+) typically ship with 128k+ out of the box and pass the check automatically. The installer runs this check — see `install-ollama.sh build_qwen_model`. Set `CORTEX_REPO` env var if your repo is at a non-standard path.
 

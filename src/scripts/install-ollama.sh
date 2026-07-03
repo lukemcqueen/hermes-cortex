@@ -169,14 +169,19 @@ pull_embedding_model() {
 
 # ── Build model with sufficient context ─────────────────────
 # Hermes Agent uses local models (qwen2.5-coder:3b, 7b variants, etc.)
-# as judge/coding models. All models need at least 64k context for
+# as judge/coding models. All models need adequate context for
 # Hermes Agent's tool calls and conversation history.
 #
-# qwen2.5-coder:3b  → Ollama registry build defaults to 32k → build with 64k
-# Larger variants    → ship with 128k+ out of the box, already above minimum
+# On GPU-equipped machines 65536 (64k) context is fine, but on
+# CPU-only MacBooks (i7-4980HQ) 65536 causes 92°C thermal throttling
+# via intel_powerclamp, halting the entire system. We now default to
+# 4096 which keeps temps under 75°C even under sustained load.
+#
+# qwen2.5-coder:3b  → Ollama registry build defaults to 32k → build with 4k
+# Larger variants    → ship with 128k+ out of the box, well above minimum
 #
 # This function checks the model's current context length and only
-# rebuilds if it's below 64k. Idempotent: safe to run on any model.
+# rebuilds if it's below the target (4096). Idempotent: safe to run on any model.
 build_qwen_model() {
   local model_name="${1:-qwen2.5-coder:3b}"
   local modelfile
@@ -194,7 +199,7 @@ build_qwen_model() {
     existing_ctx=$(ollama show "$model_name" 2>/dev/null | grep -i "context length" | grep -oE '[0-9]+' | head -1 || echo "")
   fi
 
-  if [[ -n "$existing_ctx" ]] && [[ "$existing_ctx" -ge 65536 ]]; then
+  if [[ -n "$existing_ctx" ]] && [[ "$existing_ctx" -ge 4096 ]]; then
     info "Model '${model_name}' already built with ${existing_ctx} context — OK"
     rm -f "$modelfile"
     return 0
@@ -204,7 +209,7 @@ build_qwen_model() {
   # (qwen2.5-coder:3b, mannix/qwen2.5-coder:7b-iq3_xs, etc.)
   {
     echo "FROM ${model_name}"
-    echo "PARAMETER num_ctx 65536"
+    echo "PARAMETER num_ctx 4096"
   } > "$modelfile"
 
   if [[ -n "$existing_ctx" ]]; then
@@ -230,12 +235,12 @@ verify_qwen_context() {
   local model_name="${1:-qwen2.5-coder:3b}"
   local ctx
   ctx=$(ollama show "$model_name" 2>/dev/null | grep -i "context length" | grep -oE '[0-9]+' | head -1 || echo "unknown")
-  if [[ "$ctx" == "unknown" ]] || [[ "$ctx" -lt 65536 ]]; then
-    warn "⚠  ${model_name} context: ${ctx} (Hermes needs 64k / 65536)"
-    warn "   Rebuild: ollama create ${model_name} -f <(echo -e \"FROM ${model_name}\\nPARAMETER num_ctx 65536\")"
+  if [[ "$ctx" == "unknown" ]] || [[ "$ctx" -lt 4096 ]]; then
+    warn "⚠  ${model_name} context: ${ctx} (Hermes needs 4k / 4096 — 65536 caused thermal throttling)"
+    warn "   Rebuild: ollama create ${model_name} -f <(echo -e \"FROM ${model_name}\\nPARAMETER num_ctx 4096\")"
     return 1
   fi
-  info "✅ ${model_name} context: ${ctx} (64k OK)"
+  info "✅ ${model_name} context: ${ctx} (4k OK)"
   return 0
 }
 
