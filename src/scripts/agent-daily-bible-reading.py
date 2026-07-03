@@ -2,7 +2,7 @@
 """agent-daily-bible-reading.py — no_agent cron script.
 
 Reads SOUL.md, determines the next canonical book to cover,
-generates an insight via deepseek API, and appends it.
+generates an insight via local Ollama qwen2.5-coder:3b, and appends it.
 
 Silent when no new book needed (exit 0, empty stdout).
 """
@@ -18,6 +18,7 @@ from pathlib import Path
 HOME = Path.home()
 SOUL_MD = HOME / ".hermes" / "SOUL.md"
 OLLAMA_URL = "http://localhost:11434/api/chat"
+OLLAMA_MODEL = "qwen2.5-coder:3b"
 KST = timezone.utc
 
 BOOKS = [
@@ -93,29 +94,8 @@ def get_next_book(last_book: str) -> str | None:
     return BOOKS[idx + 1]
 
 
-DEEPSEEK_URL = "https://opencode.ai/zen/v1/chat/completions"
-DEEPSEEK_MODEL = "deepseek-v4-flash"
-ENV_FILE = HOME / ".hermes" / ".env"
-
-
-def get_deepseek_api_key() -> str | None:
-    if not ENV_FILE.exists():
-        return None
-    for line in ENV_FILE.read_text().splitlines():
-        line = line.strip()
-        if line.startswith("OPENCODE_ZEN_API_KEY="):
-            val = line.split("=", 1)[1].strip().strip("\"'")
-            if val:
-                return val
-    return None
-
-
 def generate_entry(book: str) -> str | None:
     today = get_kst_today()
-    api_key = get_deepseek_api_key()
-    if not api_key:
-        print("OPENCODE_ZEN_API_KEY not found in .env", file=sys.stderr)
-        return None
     prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md).
 Write the entry for **{book}** in this EXACT format:
 ### {book} — *"[key verse]" ([Book Chapter:Verse])*
@@ -128,32 +108,28 @@ Requirements:
 4. Output ONLY the entry — no explanations, no code fences, no extra text.
 Generate the entry for {book}:"""
     payload = json.dumps({
-        "model": DEEPSEEK_MODEL,
+        "model": OLLAMA_MODEL,
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 4096,
-        "temperature": 0.7,
+        "stream": False,
+        "options": {
+            "num_predict": 4096,
+            "temperature": 0.7,
+        },
     })
     try:
         result = subprocess.run(
-            ["curl", "-s", "-w", "\n%{http_code}", "-X", "POST", DEEPSEEK_URL,
+            ["curl", "-s", "-X", "POST", OLLAMA_URL,
              "-H", "Content-Type: application/json",
-             "-H", "Authorization: Bearer " + api_key,
              "-d", payload],
-            capture_output=True, text=True, timeout=120,
+            capture_output=True, text=True, timeout=300,
         )
-        parts = result.stdout.strip().rsplit("\n", 1)
-        http_code = parts[-1] if len(parts) > 1 else "000"
-        body = parts[0] if len(parts) > 1 else result.stdout
         if result.returncode != 0:
-            print(f"curl failed (exit {result.returncode}): {result.stderr}", file=sys.stderr)
+            print(f"curl to ollama failed (exit {result.returncode}): {result.stderr}", file=sys.stderr)
             return None
-        if http_code != "200":
-            print(f"API returned HTTP {http_code}: {body[:300]}", file=sys.stderr)
-            return None
-        response = json.loads(body)
-        content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
+        response = json.loads(result.stdout)
+        content = response.get("message", {}).get("content", "")
         if not content:
-            print("Empty response from API", file=sys.stderr)
+            print("Empty response from Ollama", file=sys.stderr)
             return None
         content = content.strip()
         if content.startswith("```"):
@@ -164,10 +140,10 @@ Generate the entry for {book}:"""
         return content
     except json.JSONDecodeError as e:
         print(f"JSON parse error: {e}", file=sys.stderr)
-        print(f"   Body: {body[:500]}", file=sys.stderr)
+        print(f"   Body: {getattr(result, 'stdout', '')[:500]}", file=sys.stderr)
         return None
     except subprocess.TimeoutExpired:
-        print("API request timed out after 120s", file=sys.stderr)
+        print("Ollama request timed out after 300s", file=sys.stderr)
         return None
     except Exception as e:
         print(f"Unexpected error: {e}", file=sys.stderr)
