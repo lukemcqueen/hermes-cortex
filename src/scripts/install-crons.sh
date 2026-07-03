@@ -43,6 +43,7 @@ FORCE=false
 CREATED=0
 SKIPPED=0
 FAILED=0
+WOULD_CREATE=0
 
 parse_args() {
   while [[ $# -gt 0 ]]; do
@@ -118,6 +119,10 @@ script_exists() {
   if [[ -f "${SCRIPT_DIR}/${script}" ]]; then
     return 0
   fi
+  # Check CLI wrapper symlinks (loop-governance setup.sh)
+  if [[ -f "${HOME}/.local/bin/${script}" ]]; then
+    return 0
+  fi
   return 1
 }
 
@@ -155,7 +160,7 @@ create_cron() {
     printf "  skill=%s\\n" "${skill:-<none>}"
     [[ -n "$model"    ]] && printf "  model=%s\\n" "$model"
     [[ -n "$provider" ]] && printf "  provider=%s\\n" "$provider"
-    CREATED=$((CREATED + 1))
+    WOULD_CREATE=$((WOULD_CREATE + 1))
     return 0
   fi
 
@@ -320,7 +325,8 @@ setup_ollama_provider() {
     return 0
   fi
   # Insert custom_providers block before fallback_providers
-  python3 << "PYEOF" 2>&1
+  local _ollama_out
+  _ollama_out=$(python3 << "PYEOF" 2>&1)
 import os
 fp = os.path.expanduser("${config_file}")
 with open(fp) as f:
@@ -368,7 +374,7 @@ else:
             print("ADDED")
             break
 PYEOF
-  if [[ $? -eq 0 ]] && grep -q ADDED /dev/stdin 2>/dev/null; then
+  if [[ "$_ollama_out" == *"ADDED"* ]]; then
     info "Added local Ollama provider: custom:ollama-local"
   else
     warn "Could not auto-add custom provider — add manually to config.yaml"
@@ -396,14 +402,17 @@ if $UNINSTALL; then
   for job in \
     "agent-fixer" "system-heartbeat" "memory-to-brain-sync" \
     "system-alert-watchdog" "service-recovery" "inbox-sensor" "inbox-flag" \
-    "orch-team-messages" "remediation-sensor" \
+    "orch-team-messages" "orch-team-health" "remediation-sensor" \
     "hermes-update" "gbrain-nightly-dream" "gbrain-update-sync" \
     "hermes-cortex-sync" "harvest-lessons" "memory-pruning" \
     "auto-save-sessions" "agent-daily-bible-reading" \
     "agent-daily-soul-refinement" \
     "llm-judge-scorer-weekday" "llm-judge-scorer-weekend" \
     "offline-code-index" "model-health-watchdog" \
-    "agent-inbox" "agent-remediate-apply" "agent-apply-fixes"; do
+    "agent-inbox" "agent-remediate-apply" "agent-apply-fixes" \
+    "score-auditor" "threat-pipeline" "agent-ip-submission" \
+    "scoring-activity-watchdog" "skill-miner" "agent-weekly-loop-eval" \
+    "session-cache-build" "cron-quality-watchdog"; do
     remove_cron "$job"
   done
   info "Uninstall complete"
@@ -536,191 +545,48 @@ create_cron "score-auditor" "0 */6 * * *" \
   "" \
   "true"
 
-# ── Orchestrator-Only Crons ──────────────────────────────────
-# These crons only run on the orchestrator (Moses) and backup
-# orchestrator. Worker agents skip them entirely.
-# Agent-registry detection: if this host's hostname matches the
-# orchestrator field, it runs the orch-* crons.
-
-IS_ORCHESTRATOR=false
-REGISTRY="${CORTEX_REPO:-$HOME/hermes-cortex}/src/agent-registry.json"
-if [ -f "$REGISTRY" ]; then
-  HOST=$(hostname -s 2>/dev/null || echo "unknown")
-  # Check if this hostname matches any orchestrator (primary or backup)
-  PY_RESULT=$(python3 -c "
-import json, sys
-d = json.load(open('$REGISTRY'))
-agents = d.get('agents', {})
-host = '$HOST'
-for name, info in agents.items():
-    if info.get('is_orchestrator') or info.get('is_backup_orchestrator'):
-        if info.get('hostname') == host:
-            print('true')
-            sys.exit(0)
-print('false')
-" 2>/dev/null || echo "false")
-  if [ "$PY_RESULT" = "true" ]; then
-    IS_ORCHESTRATOR=true
-  fi
-fi
-
-if $IS_ORCHESTRATOR; then
-  create_cron "orch-team-messages" "*/10 * * * *" \
-    "orch-team-messages.sh" \
-    "" \
-    "" \
-    "" \
-    "origin" \
-    "" \
-    "true"
-
-  # orch-team-health — cross-agent health polling
-  create_cron "orch-team-health" "*/10 * * * *" \
-    "orch-team-health.py" \
-    "" \
-    "" \
-    "" \
-    "origin" \
-    "" \
-    "true"
-fi
-
-# ── Deployment-Specific Crons ─────────────────────────────
-# These are specific to Luke's deployment but tracked in the
-# repo so install-crons.sh --force can recreate them.
-# (All crons listed in the AGENTS.md reference table.)
-
-printf "\n${CYAN}  6. Deployment-Specific Crons${RESET}\n"
-
-# Daily Hermes Agent self-update
-create_cron "hermes-update" "23 22 * * *" \
-  "hermes-update.sh" \
-  "" "" "" "origin" "" "true"
-
-# Weekly gbrain dream for knowledge enrichment
-create_cron "gbrain-nightly-dream" "0 3 * * 6" \
-  "gbrain-nightly-dream.sh" \
-  "" "" "" "origin" "" "true"
-
-# Weekly gbrain update and health check
-create_cron "gbrain-update-sync" "0 2 * * 0" \
-  "gbrain-update-sync.sh" \
-  "" "" "" "origin" "" "true"
-
-# Daily hermes-cortex sync and update
-create_cron "hermes-cortex-sync" "33 22 * * *" \
-  "hermes-cortex-sync.sh" \
-  "" "" "" "origin" "" "true"
-
-# Weekly lesson harvesting
-create_cron "harvest-lessons" "0 5 * * 1" \
-  "harvest-lessons.sh" \
-  "" "" "" "origin" "" "true"
-
-# Weekly memory pruning and consolidation (deepseek — needs Hermes memory tool)
-create_cron "memory-pruning" "0 4 * * 1" \
-  "" \
-  "Consolidate Hermes agent memory and project agent instructions. Read MEMORY.md, USER.md from the active profile and project roots. Consolidate into compact pointers. Prune stale entries. Keep under 2,200 chars.
-
-## OUTPUT FORMAT — FOLLOW EXACTLY
-Match this structure line for line. Your content replaces the values.
-Everything else stays: dashes, colons, spacing, line breaks.
-
-memory-pruning (JOB_ID) [YYYY-MM-DD HH:MM KST]
--------------
-
-Phase 1 — Memory read: MEMORY.md at 1,850 chars (12 entries), USER.md at 890 chars (8 entries)
-- Found 3 stale entries (dated 2026-06-15 or earlier, no longer referenced in recent sessions)
-- Found 2 verbose entries that could be consolidated
-
-Phase 2 — Pruning applied: Removed 3 stale entries (185 chars freed)
-- Consolidated 2 tool-quirk entries into 1 compact pointer
-- Merged 2 user-preference entries into 1
-- Final MEMORY.md: 1,420 chars (within 2,200 limit)
-
-Phase 3 — USER.md: No changes needed — all 8 entries still current
-
-Result: Memory consolidated. 3 stale entries pruned, 2 merged. Under limit.
-
-📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo
-
-If nothing to report: output exactly [SILENT]" \
-  "" "" "origin" "" "false" \
-  "deepseek-v4-flash" "opencode-zen"
-
-# Auto-save sessions every 6 hours
-create_cron "auto-save-sessions" "every 360m" \
-  "auto-save-sessions.py" \
-  "" "" "" "local" "" "true"
-
-# Daily bible reading (no_agent script — reads SOUL.md, calls deepseek API, appends)
-create_cron "agent-daily-bible-reading" "0 1 * * *" \
-  "agent-daily-bible-reading.py" \
-  "" "" "" "origin" "" "true"
-
-# Daily threat pipeline — scanner → fail2ban → deploy → commit → push
-create_cron "threat-pipeline" "0 5 * * *" \
-  "nginx-threat-pipeline.sh" \
-  "" "" "" "origin" "" "true"
-
-# Agent IP submission processor — every 30 min, merges blocked_ips.submit into blocked_ips.add
-create_cron "agent-ip-submission" "*/30 * * * *" \
-  "agent-ip-submission.sh" \
-  "" "" "" "origin" "" "true"
-
-# Daily soul refinement (deepseek — needs Hermes tools: session_search, memory, patch)
-create_cron "agent-daily-soul-refinement" "0 23 * * *" \
-  "" \
-  "Load the soul-refinement skill. Use session_search() to find today's sessions. Look for any user corrections, feedback, or behavior patterns worth noting. Update SOUL.md with insights. Keep it under 5KB.
-
-## OUTPUT FORMAT — FOLLOW EXACTLY
-Match this structure line for line. Your content replaces the values.
-Everything else stays: dashes, colons, spacing, line breaks.
-
-agent-daily-soul-refinement (JOB_ID) [YYYY-MM-DD HH:MM KST]
--------------
-
-Phase 1 — Sessions reviewed: 8 sessions found today
-- Found 1 user correction: \"stop using vague language in reports\"
-- Found 2 behavioral patterns: consistently missing pre-commit hook check, verbosity in error reports
-
-Phase 2 — SOUL.md updates applied:
-- Added behavioral rule: verify pre-commit hook presence before git operations
-- Added style correction: prefer tool output over prose descriptions
-- Updated existing verbosity guideline to be more specific
-
-Phase 3 — Current SOUL.md: 4.2KB (within 5KB limit)
-
-Result: 3 insights added to SOUL.md. SOUL.md at 4.2KB.
-
-📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo
-
-If nothing to report: output exactly [SILENT]" \
-  "soul-refinement" "" "origin" "" "false" \
-  "deepseek-v4-flash" "opencode-zen"
-
-# ── 7. Universal Agent Crons ──────────────────────────────
-printf "\n${CYAN}  7. Universal Agent Crons${RESET}\n"
+# ── 6. Universal Agent Crons ──────────────────────────────
+printf "\n${CYAN}  6. Universal Agent Crons${RESET}\n"
 
 # LLM judge scorer — weekday (Mon-Fri 12:00 and 20:00)
 create_cron "llm-judge-scorer-weekday" "0 12,20 * * 1-5" \
   "llm-judge-scorer.py" \
-  "" "" "" "local" "" "true"
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
 
 # LLM judge scorer — weekend (Sat-Sun 22:00)
 create_cron "llm-judge-scorer-weekend" "0 22 * * 0,6" \
   "llm-judge-scorer.py" \
-  "" "" "" "local" "" "true"
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
 
 # Offline code index rebuild (weekly Sunday 05:00)
 create_cron "offline-code-index" "0 5 * * 0" \
   "offline_code_index_cron.sh" \
-  "" "" "" "local" "" "true"
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
 
 # Model health watchdog (daily 07:00)
 create_cron "model-health-watchdog" "0 7 * * *" \
   "model-health-watchdog.py" \
-  "" "" "" "origin" "" "true"
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
 
 # Agent inbox message processing (LLM, every 2h, cost-optimized with inbox-flag sensor)
 create_cron "agent-inbox" "0 */2 * * *" \
@@ -776,17 +642,32 @@ create_cron "agent-apply-fixes" "*/10 * * * *" \
 # Agent remediation apply (no_agent script — reads sensor output, applies deterministic fixes)
 create_cron "agent-remediate-apply" "*/10 * * * *" \
   "agent-remediate-apply.py" \
-  "" "" "" "origin" "" "true"
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
 
 # Scoring activity watchdog — alerts if too few cycles logged today
 create_cron "scoring-activity-watchdog" "0 14,20 * * *" \
   "scoring-activity-watchdog.py" \
-  "" "" "" "origin" "" "true"
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
 
 # Loop-governance: skill miner — mines local data, sends findings via inbox
 create_cron "skill-miner" "0 6 * * 1" \
   "skill_miner.py" \
-  "" "" "" "origin" "" "true"
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
 
 # Loop-governance: weekly evaluation — report, skill miner, auto-apply, retention
 create_cron "agent-weekly-loop-eval" "0 9 * * 1" \
@@ -829,17 +710,235 @@ Result: Evaluation complete. 2 skills mined. DB cleaned.
 # Session embedding cache rebuild (weekly Monday 05:00 — universal, loop-governance)
 create_cron "session-cache-build" "0 5 * * 1" \
   "session_cache.py" \
-  "" "" "" "origin" "" "true"
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
 
 # Cron output quality gate (every 10 min, silent when healthy — universal)
 create_cron "cron-quality-watchdog" "*/10 * * * *" \
   "cron-quality-watchdog.py" \
-  "" "" "" "origin" "" "true"
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# ── 7. Orchestrator-Only Crons ──────────────────────────────────
+# These crons only run on the orchestrator (Moses) and backup
+# orchestrator. Worker agents skip them entirely.
+# Agent-registry detection: if this host's hostname matches the
+# orchestrator field, it runs the orch-* crons.
+
+IS_ORCHESTRATOR=false
+REGISTRY="${CORTEX_REPO:-$HOME/hermes-cortex}/src/agent-registry.json"
+if [ -f "$REGISTRY" ]; then
+  HOST=$(hostname -s 2>/dev/null || echo "unknown")
+  # Check if this hostname matches any orchestrator (primary or backup)
+  PY_RESULT=$(python3 -c "
+import json, sys
+d = json.load(open('$REGISTRY'))
+agents = d.get('agents', {})
+host = '$HOST'
+for name, info in agents.items():
+    if info.get('is_orchestrator') or info.get('is_backup_orchestrator'):
+        if info.get('hostname') == host:
+            print('true')
+            sys.exit(0)
+print('false')
+" 2>/dev/null || echo "false")
+  if [ "$PY_RESULT" = "true" ]; then
+    IS_ORCHESTRATOR=true
+  fi
+fi
+
+if $IS_ORCHESTRATOR; then
+  create_cron "orch-team-messages" "*/10 * * * *" \
+    "orch-team-messages.sh" \
+    "" \
+    "" \
+    "" \
+    "origin" \
+    "" \
+    "true"
+
+  # orch-team-health — cross-agent health polling
+  create_cron "orch-team-health" "*/10 * * * *" \
+    "orch-team-health.py" \
+    "" \
+    "" \
+    "" \
+    "origin" \
+    "" \
+    "true"
+fi
+
+# ── 8. Deployment-Specific Crons ─────────────────────────────
+# These are specific to Luke's deployment but tracked in the
+# repo so install-crons.sh --force can recreate them.
+# (All crons listed in the AGENTS.md reference table.)
+
+printf "\n${CYAN}  8. Deployment-Specific Crons${RESET}\n"
+
+# Daily Hermes Agent self-update
+create_cron "hermes-update" "23 22 * * *" \
+  "hermes-update.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# Weekly gbrain dream for knowledge enrichment
+create_cron "gbrain-nightly-dream" "0 3 * * 6" \
+  "gbrain-nightly-dream.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# Weekly gbrain update and health check
+create_cron "gbrain-update-sync" "0 2 * * 0" \
+  "gbrain-update-sync.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# Daily hermes-cortex sync and update
+create_cron "hermes-cortex-sync" "33 22 * * *" \
+  "hermes-cortex-sync.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# Weekly lesson harvesting
+create_cron "harvest-lessons" "0 5 * * 1" \
+  "harvest-lessons.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# Weekly memory pruning and consolidation (deepseek — needs Hermes memory tool)
+create_cron "memory-pruning" "0 4 * * 1" \
+  "" \
+  "Consolidate Hermes agent memory and project agent instructions. Read MEMORY.md, USER.md from the active profile and project roots. Consolidate into compact pointers. Prune stale entries. Keep under 2,200 chars.
+
+## OUTPUT FORMAT — FOLLOW EXACTLY
+Match this structure line for line. Your content replaces the values.
+Everything else stays: dashes, colons, spacing, line breaks.
+
+memory-pruning (JOB_ID) [YYYY-MM-DD HH:MM KST]
+-------------
+
+Phase 1 — Memory read: MEMORY.md at 1,850 chars (12 entries), USER.md at 890 chars (8 entries)
+- Found 3 stale entries (dated 2026-06-15 or earlier, no longer referenced in recent sessions)
+- Found 2 verbose entries that could be consolidated
+
+Phase 2 — Pruning applied: Removed 3 stale entries (185 chars freed)
+- Consolidated 2 tool-quirk entries into 1 compact pointer
+- Merged 2 user-preference entries into 1
+- Final MEMORY.md: 1,420 chars (within 2,200 limit)
+
+Phase 3 — USER.md: No changes needed — all 8 entries still current
+
+Result: Memory consolidated. 3 stale entries pruned, 2 merged. Under limit.
+
+📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo
+
+If nothing to report: output exactly [SILENT]" \
+  "" "" "origin" "" "false" \
+  "deepseek-v4-flash" "opencode-zen"
+
+# Auto-save sessions every 6 hours
+create_cron "auto-save-sessions" "every 360m" \
+  "auto-save-sessions.py" \
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
+
+# Daily bible reading (no_agent script — reads SOUL.md, calls deepseek API, appends)
+create_cron "agent-daily-bible-reading" "0 1 * * *" \
+  "agent-daily-bible-reading.py" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# Daily threat pipeline — scanner → fail2ban → deploy → commit → push
+create_cron "threat-pipeline" "0 5 * * *" \
+  "nginx-threat-pipeline.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# Agent IP submission processor — every 30 min, merges blocked_ips.submit into blocked_ips.add
+create_cron "agent-ip-submission" "*/30 * * * *" \
+  "agent-ip-submission.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# Daily soul refinement (deepseek — needs Hermes tools: session_search, memory, patch)
+create_cron "agent-daily-soul-refinement" "0 23 * * *" \
+  "" \
+  "Load the soul-refinement skill. Use session_search() to find today's sessions. Look for any user corrections, feedback, or behavior patterns worth noting. Update SOUL.md with insights. Keep it under 5KB.
+
+## OUTPUT FORMAT — FOLLOW EXACTLY
+Match this structure line for line. Your content replaces the values.
+Everything else stays: dashes, colons, spacing, line breaks.
+
+agent-daily-soul-refinement (JOB_ID) [YYYY-MM-DD HH:MM KST]
+-------------
+
+Phase 1 — Sessions reviewed: 8 sessions found today
+- Found 1 user correction: \"stop using vague language in reports\"
+- Found 2 behavioral patterns: consistently missing pre-commit hook check, verbosity in error reports
+
+Phase 2 — SOUL.md updates applied:
+- Added behavioral rule: verify pre-commit hook presence before git operations
+- Added style correction: prefer tool output over prose descriptions
+- Updated existing verbosity guideline to be more specific
+
+Phase 3 — Current SOUL.md: 4.2KB (within 5KB limit)
+
+Result: 3 insights added to SOUL.md. SOUL.md at 4.2KB.
+
+📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo
+
+If nothing to report: output exactly [SILENT]" \
+  "soul-refinement" "" "origin" "" "false" \
+  "deepseek-v4-flash" "opencode-zen"
 
 echo ""
 printf "${CYAN}━━━ Summary ━━━${RESET}\n"
 if $DRY_RUN; then
-  info "Would create: ${CREATED} cron job(s)"
+  info "Would create: ${WOULD_CREATE} cron job(s)"
   info "Would skip: ${SKIPPED} existing job(s)"
   info "Run without --dry-run to apply"
 else
