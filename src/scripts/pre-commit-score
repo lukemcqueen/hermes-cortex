@@ -56,7 +56,45 @@ if [[ ! -f "$GOVERNANCE_LOCK" ]]; then
   if [[ -f "$GENERIC_LOCK" ]]; then
     # Generic lock exists but repo-scoped doesn't — mismatch detected.
     # This happens when begin_change() was called from outside the git repo.
-    # Auto-migrate: symlink generic to repo-scoped so the commit can proceed.
+    # Before auto-migrating, check that scoring infrastructure is healthy.
+    SCORE_CYCLE_PATH=""
+    for candidate in score-cycle ~/.local/bin/score-cycle "$HOME/.local/bin/score-cycle"; do
+      if resolved=$(command -v "$candidate" 2>/dev/null); then
+        SCORE_CYCLE_PATH="$resolved"
+        break
+      fi
+    done
+
+    OLLAMA_OK=false
+    if curl -s http://localhost:11434/api/tags --max-time 3 >/dev/null 2>&1; then
+      OLLAMA_OK=true
+    fi
+
+    DB_OK=false
+    if [[ -f "${HOME}/.hermes/data/loop-governance.db" ]]; then
+      DB_OK=true
+    fi
+
+    if [[ -z "$SCORE_CYCLE_PATH" ]] || ! $OLLAMA_OK || ! $DB_OK; then
+      # Scoring infra is broken — don't auto-migrate, advise fix first
+      echo ""
+      echo "⚠️  Governance lock exists at .governance-generic.json but this commit"
+      echo "   is in the '${REPO_SLUG}' repo (lock files are repo-scoped)."
+      echo ""
+      echo "   Scoring infrastructure is not fully healthy:"
+      [[ -z "$SCORE_CYCLE_PATH" ]]   && echo "     ❌ score-cycle CLI  — not found"
+      $OLLAMA_OK                      || echo "     ❌ Ollama           — not responding on :11434"
+      $DB_OK                          || echo "     ❌ Loop DB          — not found at ~/.hermes/data/loop-governance.db"
+      echo ""
+      echo "   Fix the scoring infra first, then commit normally."
+      echo "   Or bypass this check:  SKIP_SCORE=1 git commit ..."
+      echo "   Or manually symlink:   ln -sf ~/.hermes-cortex/state/.governance-generic.json"
+      echo "                               ~/.hermes-cortex/state/.governance-${REPO_SLUG}.json"
+      echo ""
+      exit 1
+    fi
+
+    # All dependencies healthy — auto-migrate
     echo ""
     echo "⚠️  Governance lock exists at .governance-generic.json but this commit"
     echo "   is in the '${REPO_SLUG}' repo (lock files are repo-scoped)."
