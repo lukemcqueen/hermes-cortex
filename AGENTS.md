@@ -7,6 +7,8 @@
 >
 > **RULE 2: SHARE IMPROVEMENTS TO THE PUBLIC REPO**
 > Every improvement you make that benefits other agents MUST go into the `hermes-cortex` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
+>
+> **📖 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full agent contribution workflow — survey, genericize, test, commit, push, and close the governance loop.**
 
 > Content relocated to [`docs/fleet-reference.md`](docs/fleet-reference.md) for focused reference.
 > _Pruned by agents-doc-audit.py — the full content is preserved at the link above._

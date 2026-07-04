@@ -9,6 +9,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `README.md` | Project overview, quick start, and links |
+| `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
 | `AGENTS.md` | Agent guidelines — read by AI tools on session start |
 | `install.sh` | Single-command installer (idempotent, safe to re-run) |
 | `src/scripts/check-system.sh` | System compatibility check before installing |
@@ -94,5 +95,6 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
+| `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
 | `src/scripts/` | OS abstraction scripts (os-config.sh, service-writer.sh, install-ollama.sh, install-nginx.sh, install-gbrain-sync.sh) + utility scripts (heartbeat, memory sync, bootstrap-brain, check-memory-budget, health checks, scoring) |
 | `.gitignore` | Gitignore — excludes .agentkore, .env, secrets, brain data |
