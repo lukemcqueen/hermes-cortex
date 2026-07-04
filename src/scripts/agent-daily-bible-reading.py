@@ -2,7 +2,7 @@
 """agent-daily-bible-reading.py — no_agent cron script.
 
 Reads SOUL.md, determines the next canonical book to cover,
-generates an insight via local Ollama qwen2.5-coder:3b, and appends it.
+generates an insight via deepseek API, and appends it.
 
 Silent when no new book needed (exit 0, empty stdout).
 """
@@ -17,10 +17,9 @@ from pathlib import Path
 
 HOME = Path.home()
 SOUL_MD = HOME / ".hermes" / "SOUL.md"
-OLLAMA_URL = "http://localhost:11434/api/chat"
-OLLAMA_MODEL = "qwen2.5-coder:3b"
 KST = timezone(timedelta(hours=9))
 
+# Full Protestant canon in order
 BOOKS = [
     "Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy",
     "Joshua", "Judges", "Ruth",
@@ -43,141 +42,180 @@ BOOKS = [
     "Revelation",
 ]
 
+# Map canonical names to their index for lookups
 BOOK_INDEX = {b: i for i, b in enumerate(BOOKS)}
 
 
 def get_kst_today() -> str:
+    """Return today's date in KST as YYYY-MM-DD."""
     now = datetime.now()
     return now.strftime("%Y-%m-%d")
 
 
 def find_last_book() -> str | None:
+    """Read SOUL.md and find the last book covered in Scripture Insights."""
     if not SOUL_MD.exists():
         return None
+
     text = SOUL_MD.read_text(encoding="utf-8")
-    # Find section that contains book entries — match heading on its own line
-    insights_section = text
-    for section_header in ["## Biblical Principles", "## Scripture Insights"]:
-        pos = text.find(f"\n{section_header}\n")
-        if pos >= 0:
-            insights_section = text[pos + 1:]
-            break
-        if text.startswith(f"{section_header}\n"):
-            insights_section = text
-            break
+    
+    # Find all ### BookName — entries in Scripture Insights section
+    # Look after the "## Scripture Insights" section header
+    insights_section = text.split("## Scripture Insights")[-1]
+    # Stop at the next ## section (Session Mining Lessons)
     insights_section = insights_section.split("## Session Mining Lessons")[0]
-    def normalize_name(name: str) -> str | None:
-        name = name.strip()
-        import re as re2
-        # Strip "📖 Book:" prefix if present
-        m_pre = re2.match(r"^📖 Book:\s*(.*)", name)
-        if m_pre:
-            name = m_pre.group(1)
-        # Strip parenthetical content like "(all 3 chapters)" or "(13 chapters)"
-        name = re2.sub(r"\s*\([^)]*\)\s*", "", name).strip()
-        if name in BOOK_INDEX:
-            return name
-        m2 = re2.match(r'^(\d+)([A-Z]\S+)', name)
-        if m2:
-            with_space = f"{m2.group(1)} {m2.group(2)}"
-            if with_space in BOOK_INDEX:
-                return with_space
-        return None
+    
     found_books = []
     for line in insights_section.split("\n"):
-        m = re.match(r"^### 📖 Book:\s*([A-Za-z0-9 ]+)\s*\(.*?\)\s*—", line) or re.match(r"^### ([A-Za-z0-9 ]+) —", line) or re.match(r"^### ([A-Za-z0-9 ]+) \([0-9]{4}-[0-9]{2}-[0-9]{2}\)", line)
+        m = re.match(r"^### ([A-Za-z0-9 ]+) —", line)
         if m:
-            name = normalize_name(m.group(1))
-            if name:
+            name = m.group(1).strip()
+            if name in BOOK_INDEX:
                 found_books.append(name)
+    
     if not found_books:
         return None
+    
     return found_books[-1]
 
 
 def get_next_book(last_book: str) -> str | None:
+    """Determine the next canonical book after last_book."""
     idx = BOOK_INDEX.get(last_book)
     if idx is None:
         return None
     if idx + 1 >= len(BOOKS):
-        return None
+        return None  # All books covered
     return BOOKS[idx + 1]
 
 
+DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
+DEEPSEEK_MODEL = "deepseek-v4-flash"
+ENV_FILE = HOME / ".hermes" / ".env"
+
+
+def get_deepseek_api_key() -> str | None:
+    """Read DEEPSEEK_API_KEY from the Hermes .env file."""
+    if not ENV_FILE.exists():
+        return None
+    for line in ENV_FILE.read_text().splitlines():
+        line = line.strip()
+        if line.startswith("DEEPSEEK_API_KEY="):
+            val = line.split("=", 1)[1].strip().strip("\"'")
+            if val:
+                return val
+    return None
+
+
 def generate_entry(book: str) -> str | None:
+    """Call deepseek-v4-flash to generate the full entry text.
+    Returns the raw model response — the model outputs the complete entry including
+    verse, commentary, and date comment in the correct format."""
+    
     today = get_kst_today()
-    prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md).
+    
+    api_key = get_deepseek_api_key()
+    if not api_key:
+        print("❌ DEEPSEEK_API_KEY not found in .env", file=sys.stderr)
+        return None
+    
+    prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md). This entry becomes part of the agent's identity — it's read every session so it must shape the agent's behaviour with sharp, specific lessons.
+
 Write the entry for **{book}** in this EXACT format:
+
 ### {book} — *"[key verse]" ([Book Chapter:Verse])*
+
 [3-5 paragraphs of commentary.]
+
 <!-- Added {today} -->
+
 Requirements:
-1. Pick ONE key verse that genuinely captures the book's core message.
-2. Write 3-5 paragraphs with specific lessons for system operations.
+1. Pick ONE key verse that genuinely captures the book's core message. Include the exact citation.
+2. Write 3-5 paragraphs: explain the biblical context, then draw specific lessons for the agent's work as a system operator — automation, monitoring, reliability, documentation, cron jobs, config files, deployments, log analysis, health checks, rollbacks, etc.
 3. End each paragraph's lesson with **bold text** for the key takeaway.
-4. Output ONLY the entry — no explanations, no code fences, no extra text.
+4. Be sharp and concrete — no generic life advice. Each lesson must be something an automation agent can actually apply.
+5. Output ONLY the entry — no explanations, no code fences, no extra text.
+6. The date comment goes AFTER the commentary paragraph, on its own line.
+
 Generate the entry for {book}:"""
+
     payload = json.dumps({
-        "model": OLLAMA_MODEL,
+        "model": DEEPSEEK_MODEL,
         "messages": [{"role": "user", "content": prompt}],
-        "stream": False,
-        "options": {
-            "num_predict": 4096,
-            "temperature": 0.7,
-        },
+        "max_tokens": 4096,
+        "temperature": 0.7,
     })
+
     try:
         result = subprocess.run(
-            ["curl", "-s", "-X", "POST", OLLAMA_URL,
+            ["curl", "-s", "-w", "\n%{http_code}", "-X", "POST", DEEPSEEK_URL,
              "-H", "Content-Type: application/json",
+             "-H", f"Authorization: Bearer {api_key}",
              "-d", payload],
-            capture_output=True, text=True, timeout=300,
+            capture_output=True, text=True, timeout=120,
         )
+        
+        # Split response body from HTTP status code
+        parts = result.stdout.strip().rsplit("\n", 1)
+        http_code = parts[-1] if len(parts) > 1 else "000"
+        body = parts[0] if len(parts) > 1 else result.stdout
+        
         if result.returncode != 0:
-            print(f"curl to ollama failed (exit {result.returncode}): {result.stderr}", file=sys.stderr)
+            print(f"❌ curl failed (exit {result.returncode}): {result.stderr}", file=sys.stderr)
             return None
-        response = json.loads(result.stdout)
-        content = response.get("message", {}).get("content", "")
+        
+        if http_code != "200":
+            print(f"❌ API returned HTTP {http_code}: {body[:300]}", file=sys.stderr)
+            return None
+        
+        response = json.loads(body)
+        content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
+        
         if not content:
-            print("Empty response from Ollama", file=sys.stderr)
+            print(f"❌ Empty response from API", file=sys.stderr)
             return None
+        
+        # Clean up any markdown code block wrapping
         content = content.strip()
         if content.startswith("```"):
+            # Remove opening fence and any language tag
             content = content.split("\n", 1)[-1] if "\n" in content else content[3:]
+            # Remove closing fence
             if content.endswith("```"):
                 content = content[:-3]
             content = content.strip()
+        
         return content
     except json.JSONDecodeError as e:
-        print(f"JSON parse error: {e}", file=sys.stderr)
-        print(f"   Body: {getattr(result, 'stdout', '')[:500]}", file=sys.stderr)
+        print(f"❌ JSON parse error: {e}", file=sys.stderr)
+        print(f"   Body: {body[:500]}", file=sys.stderr)
         return None
     except subprocess.TimeoutExpired:
-        print("Ollama request timed out after 300s", file=sys.stderr)
+        print(f"❌ API request timed out after 120s", file=sys.stderr)
         return None
     except Exception as e:
-        print(f"Unexpected error: {e}", file=sys.stderr)
+        print(f"❌ Unexpected error: {e}", file=sys.stderr)
         return None
 
 
 def append_to_soul(book: str, full_entry: str) -> bool:
+    """Append the full entry to SOUL.md before the Session Mining Lessons section."""
     if not SOUL_MD.exists():
         return False
+    
     text = SOUL_MD.read_text(encoding="utf-8")
-    # Insert before the cron marker comment if it exists
-    cron_marker = "<!-- Entries appended here by daily cron -->"
-    if cron_marker in text:
+    
+    # Insert before "## Session Mining Lessons" if present
+    marker = "## Session Mining Lessons"
+    if marker in text:
+        # Add a blank line before the entry, then insert
         full_block = f"\n{full_entry}\n\n"
-        new_text = text.replace(f"\n{cron_marker}", f"{full_block}{cron_marker}", 1)
-    elif "## Final Directive" in text:
-        full_block = f"\n{full_entry}\n\n"
-        new_text = text.replace(f"\n## Final Directive", f"{full_block}## Final Directive", 1)
-    elif "## Session Mining Lessons" in text:
-        full_block = f"\n{full_entry}\n\n"
-        new_text = text.replace(f"\n## Session Mining Lessons", f"{full_block}## Session Mining Lessons", 1)
+        new_text = text.replace(f"\n{marker}", f"{full_block}{marker}", 1)
     else:
+        # Append at the end
         full_block = f"\n{full_entry}\n"
         new_text = text + full_block
+    
     SOUL_MD.write_text(new_text, encoding="utf-8")
     return True
 
@@ -185,20 +223,27 @@ def append_to_soul(book: str, full_entry: str) -> bool:
 def main() -> int:
     last_book = find_last_book()
     if last_book is None:
-        print("Could not find any books in SOUL.md", file=sys.stderr)
+        print("❌ Could not find any books in SOUL.md", file=sys.stderr)
         return 1
+    
     next_book = get_next_book(last_book)
     if next_book is None:
-        # Silent exit — all books covered, nothing to do (no_agent pattern)
+        # All books covered or last book not found in our list
+        print("📖 All 66 books have been covered. Bible reading complete.", file=sys.stderr)
         return 0
-    print(f"Last book: {last_book} -> Next: {next_book}")
+    
+    print(f"📖 Last book: {last_book} → Next: {next_book}")
+    
     full_entry = generate_entry(next_book)
     if full_entry is None:
         return 1
+    
     if not append_to_soul(next_book, full_entry):
-        print("Failed to append to SOUL.md", file=sys.stderr)
+        print("❌ Failed to append to SOUL.md", file=sys.stderr)
         return 1
-    print(f"Appended insight for {next_book} to SOUL.md")
+    
+    # Output the result for delivery
+    print(f"\n✅ Appended insight for **{next_book}** to SOUL.md\n")
     print(full_entry)
     return 0
 
