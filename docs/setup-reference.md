@@ -6,6 +6,44 @@ to keep the root agent guidelines focused on general Hermes Cortex usage.
 
 ---
 
+## Systemd Service Policy — User-Level Only
+
+**All Hermes Cortex services MUST be installed as user-level systemd units only.**
+
+| ✅ Correct | ❌ Wrong |
+|-----------|---------|
+| `~/.config/systemd/user/com.hermes.health-server.service` | `/etc/systemd/system/hermes-health.service` |
+| `systemctl --user enable/start` | `sudo systemctl enable/start` |
+| `WantedBy=default.target` | `WantedBy=multi-user.target` |
+
+### Why
+
+Running duplicate services at both system and user scope causes port conflicts,
+auto-restart loops, and syslog noise. The Cortex installer (`install.sh`) and
+all templates ship user-level units — system-level duplicates are **never**
+created by the repo's own tooling.
+
+### Deployment checklist
+
+1. Service files live in `~/.config/systemd/user/` only
+2. Enable/start with `systemctl --user enable <name>` (no `sudo`)
+3. `WantedBy=default.target` in the `[Install]` section
+4. Never `sudo cp` a user service into `/etc/systemd/system/`
+
+### Cleanup (if duplicates exist)
+
+```bash
+# Disable system-level duplicates
+sudo systemctl disable --now hermes-dashboard hermes-health \
+  hermes-inbox hermes-gateway
+
+# Remove the stale unit files
+sudo rm /etc/systemd/system/hermes-*.service
+sudo rm /etc/systemd/system/multi-user.target.wants/hermes-*.service
+```
+
+---
+
 ## Health Monitoring Pipeline
 
 The orchestrator polls all server agents every 10 minutes for a compact

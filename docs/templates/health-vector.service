@@ -1,5 +1,10 @@
 # health-vector.service — Hermes Cortex Agent Health Vector Server
 #
+# ⚠️ USER-LEVEL ONLY — must live in ~/.config/systemd/user/
+#    Never copy to /etc/systemd/system/ (causes port conflicts).
+#    Enable/start: systemctl --user enable health-vector.service
+#    Template source: docs/templates/health-vector.service (hermes-cortex repo)
+#
 # Serve the health vector on the configured port (no auth, no TLS).
 # The orchestrator polls this endpoint to monitor agent health.
 #
