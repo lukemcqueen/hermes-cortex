@@ -384,3 +384,4 @@ See the [Troubleshooting Guide](docs/troubleshooting.md) for Linux and Windows n
 ---
 
 *Built by [@fleet-operator](https://github.com/fleet-operator) · Powered by 🦞 [Hermes Agent](https://hermes-agent.nousresearch.com) · Version `v1.0.0` · [MIT License](LICENSE) · See [Third-Party Licenses](docs/THIRD_PARTY_LICENSES.md) for component attributions*
+test

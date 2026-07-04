@@ -325,10 +325,11 @@ setup_ollama_provider() {
     return 0
   fi
   # Insert custom_providers block before fallback_providers
-  local _ollama_out
-  _ollama_out=$(python3 << "PYEOF" 2>&1)
+  local _tmp
+  _tmp=$(mktemp)
+  cat > "$_tmp" << 'PYEOF'
 import os
-fp = os.path.expanduser("${config_file}")
+fp = os.path.expanduser("REPLACE_CONFIG_FILE")
 with open(fp) as f:
     text = f.read()
 old_model = (
@@ -354,7 +355,6 @@ if old_model in text:
         f.write(text)
     print("ADDED")
 else:
-    # Try inserting before fallback_providers:
     lines_t = text.split("\n")
     for i, line in enumerate(lines_t):
         if line.strip() == "fallback_providers:":
@@ -374,6 +374,10 @@ else:
             print("ADDED")
             break
 PYEOF
+  sed -i "s|REPLACE_CONFIG_FILE|$config_file|g" "$_tmp"
+  local _ollama_out
+  _ollama_out=$(python3 "$_tmp" 2>&1)
+  rm -f "$_tmp"
   if [[ "$_ollama_out" == *"ADDED"* ]]; then
     info "Added local Ollama provider: custom:ollama-local"
   else

@@ -55,12 +55,16 @@ def find_last_book() -> str | None:
     if not SOUL_MD.exists():
         return None
     text = SOUL_MD.read_text(encoding="utf-8")
-    for section_header in ["## Daily Scripture", "## Scripture Insights", "## Biblical Principles"]:
-        if section_header in text:
-            insights_section = text.split(section_header)[-1]
+    # Find section that contains book entries — match heading on its own line
+    insights_section = text
+    for section_header in ["## Biblical Principles", "## Scripture Insights"]:
+        pos = text.find(f"\n{section_header}\n")
+        if pos >= 0:
+            insights_section = text[pos + 1:]
             break
-    else:
-        insights_section = text
+        if text.startswith(f"{section_header}\n"):
+            insights_section = text
+            break
     insights_section = insights_section.split("## Session Mining Lessons")[0]
     def normalize_name(name: str) -> str | None:
         name = name.strip()
