@@ -29,7 +29,7 @@ import subprocess
 import sys
 import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -588,22 +588,29 @@ def _build_health() -> dict:
     healthy = True
     timing: dict[str, float] = {}
 
-    for name, fn in [("resources", _check_resources), ("services", _check_services),
-                      ("cron_health", _check_cron_health),
-                      ("gbrain_sources", _check_gbrain_sources)]:
-        result, elapsed = _timed(name, fn)
-        timing[name] = elapsed
-        if result is None:
-            # Check failed entirely — return degraded result
-            result = {"healthy": False, "issues": [{"severity": "critical", "check": name,
-                       "detail": f"Check crashed or timed out after {elapsed}s"}]}
-        checks[name] = {
-            "healthy": result["healthy"],
-            **({k: v for k, v in result.items() if k not in ("healthy", "issues")}),
-        }
-        if not result["healthy"]:
-            healthy = False
-        all_issues.extend(result.get("issues", []))
+    checks_list = [
+        ("resources", _check_resources),
+        ("services", _check_services),
+        ("cron_health", _check_cron_health),
+        ("gbrain_sources", _check_gbrain_sources),
+    ]
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {pool.submit(_timed, name, fn): name for name, fn in checks_list}
+        for future in as_completed(futures):
+            name = futures[future]
+            result, elapsed = future.result()
+            timing[name] = elapsed
+            if result is None:
+                result = {"healthy": False, "issues": [{"severity": "critical", "check": name,
+                           "detail": f"Check crashed or timed out after {elapsed}s"}]}
+            checks[name] = {
+                "healthy": result["healthy"],
+                **({k: v for k, v in result.items() if k not in ("healthy", "issues")}),
+            }
+            if not result["healthy"]:
+                healthy = False
+            all_issues.extend(result.get("issues", []))
 
     # Sort issues by severity
     severity_order = {"critical": 0, "high": 1, "warning": 2, "info": 3}
@@ -638,15 +645,30 @@ def _build_compact_health() -> dict:
     """
     _start = time.monotonic()
 
-    # Run checks with timing
-    r, r_elapsed = _timed("resources", _check_resources)
-    s, s_elapsed = _timed("services", _check_services)
-    c, c_elapsed = _timed("cron_health", _check_cron_health)
-    # gbrain sources gets a hard 20s deadline to avoid blocking the whole endpoint
-    g, g_elapsed, g_timedout = _run_with_deadline(_check_gbrain_sources, timeout=20.0, label="gbrain_sources")
-    if g_timedout or g is None:
-        g = {"healthy": False, "issues": [{"severity": "warning", "check": "gbrain_sources",
-              "detail": f"Deadline exceeded ({g_elapsed}s) — degraded response"}]}
+    # Run checks in parallel
+    r = s = c = g = None
+    r_elapsed = s_elapsed = c_elapsed = 0.0
+    g_elapsed = 0.0
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        f_r = pool.submit(_timed, "resources", _check_resources)
+        f_s = pool.submit(_timed, "services", _check_services)
+        f_c = pool.submit(_timed, "cron_health", _check_cron_health)
+        # gbrain sources gets a hard 20s deadline
+        f_g = pool.submit(_run_with_deadline, _check_gbrain_sources, 20.0, "gbrain_sources")
+
+        for f in as_completed([f_r, f_s, f_c, f_g]):
+            if f is f_r:
+                r, r_elapsed = f.result()
+            elif f is f_s:
+                s, s_elapsed = f.result()
+            elif f is f_c:
+                c, c_elapsed = f.result()
+            elif f is f_g:
+                g, g_elapsed, g_timedout = f.result()
+                if g_timedout or g is None:
+                    g = {"healthy": False, "issues": [{"severity": "warning", "check": "gbrain_sources",
+                          "detail": f"Deadline exceeded ({g_elapsed}s) — degraded response"}]}
 
     total_elapsed = round(time.monotonic() - _start, 3)
     _log.info("COMPACT — %s total=%.1fs resources=%.1fs services=%.1fs crons=%.1fs gbrain=%.1fs",
