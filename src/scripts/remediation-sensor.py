@@ -271,7 +271,8 @@ def check_ssl_certs():
     cert_dirs = [
         "/etc/letsencrypt/live",
         "/etc/ssl/certs",
-        "/usr/local/etc/nginx/servers",
+        "/etc/nginx",                              # Linux
+        "/usr/local/etc/nginx/servers",             # macOS (Homebrew x86_64)
     ]
     
     # Check if certbot systemd timer is active (preferred method)

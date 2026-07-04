@@ -33,16 +33,19 @@ case "$(uname -s)" in
   Darwin)
     if [[ "$(uname -m)" == "arm64" ]]; then
       NGINX_DIR="/opt/homebrew/etc/nginx"
+      NGINX_CONFIG_DIR="${NGINX_DIR}/servers"
       FAIL2BAN_DIR="/opt/homebrew/etc/fail2ban"
       NGINX_LOG_DIR="/opt/homebrew/var/log/nginx"
     else
       NGINX_DIR="/usr/local/etc/nginx"
+      NGINX_CONFIG_DIR="${NGINX_DIR}/servers"
       FAIL2BAN_DIR="/usr/local/etc/fail2ban"
       NGINX_LOG_DIR="/usr/local/var/log/nginx"
     fi
     ;;
   Linux)
     NGINX_DIR="/etc/nginx"
+    NGINX_CONFIG_DIR="${NGINX_DIR}/sites-enabled"
     FAIL2BAN_DIR="/etc/fail2ban"
     NGINX_LOG_DIR="/var/log/nginx"
     ;;
@@ -91,12 +94,12 @@ for src in "${CORTEX_REPO}/deploy/nginx/hermes-zone-defs.conf" "${CORTEX_REPO}/d
       cp "$src" "$ZONE_DEFS"
       echo "  ✓ Deployed: ${base}"
     elif [ "$base" = "hermes-services.conf" ]; then
-      mkdir -p "${NGINX_DIR}/servers"
+      mkdir -p "${NGINX_CONFIG_DIR}"
       < "$src" sed \
-        -e "s|__NGINX_CONFIG_DIR__|${NGINX_DIR}/servers|g" \
+        -e "s|__NGINX_CONFIG_DIR__|${NGINX_CONFIG_DIR}|g" \
         -e "s|__NGINX_LOG_DIR__|${NGINX_LOG_DIR}|g" \
         -e "s|__HTPASSWD_FILE__|${NGINX_DIR}/.htpasswd|g" \
-        > "${NGINX_DIR}/servers/${base}"
+        > "${NGINX_CONFIG_DIR}/${base}"
       echo "  ✓ Deployed: ${base} (paths substituted)"
     fi
   fi

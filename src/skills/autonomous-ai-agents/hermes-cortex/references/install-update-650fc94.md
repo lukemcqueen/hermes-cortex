@@ -58,6 +58,7 @@ DASHBOARD_DEST="${HERMES_HOME}/dashboard"
 
 ```bash
 NGINX_CONF="/usr/local/etc/nginx/servers/hermes-services.conf"
+# Linux path: /etc/nginx/sites-enabled/hermes-services.conf
 
 # Install via Homebrew if missing
 # Copy config from repo nginx/hermes-services.conf
@@ -137,7 +138,8 @@ If you installed before commit 7b7a8f2 and used your personal domain:
 
 ```bash
 # Check for personal domain in config
-grep -rn "your-domain\.com" ~/langfuse/ ~/.hermes/dashboard/ /usr/local/etc/nginx/servers/
+grep -rn "your-domain\\.com" ~/langfuse/ ~/.hermes/dashboard/ /usr/local/etc/nginx/servers/
+# Linux: replace /usr/local/etc/nginx/servers/ with /etc/nginx/sites-enabled/
 
 # Replace with example.com for public repo safety
 # See references/public-repo-privacy.md for full workflow
