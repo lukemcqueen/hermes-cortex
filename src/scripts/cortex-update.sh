@@ -157,6 +157,7 @@ register "src/scripts/daily-bible-reading.sh"       "${HERMES_HOME}/scripts/dail
 register "src/scripts/generate-inbox-wrappers.py"   "${HERMES_HOME}/scripts/generate-inbox-wrappers.py"
 register "src/scripts/nginx-security-scanner.sh"    "${HERMES_HOME}/scripts/nginx-security-scanner.sh"
 register "src/scripts/nginx-threat-pipeline.sh"     "${HERMES_HOME}/scripts/nginx-threat-pipeline.sh"
+register "src/scripts/agent-ip-submission.sh"      "${HERMES_HOME}/scripts/agent-ip-submission.sh"
 
 # Deploy scripts (nginx security pipeline)
 register "deploy/nginx/hermes-security-apply"       "${HERMES_HOME}/scripts/hermes-security-apply"
