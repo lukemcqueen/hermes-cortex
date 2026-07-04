@@ -42,89 +42,59 @@ BOOKS = [
     "1 John", "2 John", "3 John", "Jude",
     "Revelation",
 ]
-
 BOOK_INDEX = {b: i for i, b in enumerate(BOOKS)}
+
+# Build a mapping that also matches without spaces (e.g. "1Thessalonians" -> "1 Thessalonians")
+_BOOK_INDEX_FUZZY = {}
+for name in BOOKS:
+    _BOOK_INDEX_FUZZY[name] = name
+    compact = re.sub(r"(\d) ", r"\1", name)  # "1 Thessalonians" -> "1Thessalonians"
+    _BOOK_INDEX_FUZZY[compact] = name
 
 
 def get_kst_today() -> str:
-    now = datetime.now()
-    return now.strftime("%Y-%m-%d")
+    return datetime.now(KST).strftime("%Y-%m-%d")
 
 
-def find_last_book() -> str | None:
+def find_all_books() -> list[str]:
+    """Find ALL book references across the entire SOUL.md, ordered by appearance."""
     if not SOUL_MD.exists():
-        return None
+        return []
     text = SOUL_MD.read_text(encoding="utf-8")
-    # Find section that contains book entries — match heading on its own line
-    insights_section = text
-    for section_header in ["## Biblical Principles", "## Scripture Insights"]:
-        pos = text.find(f"\n{section_header}\n")
-        if pos >= 0:
-            insights_section = text[pos + 1:]
-            break
-        if text.startswith(f"{section_header}\n"):
-            insights_section = text
-            break
-    insights_section = insights_section.split("## Session Mining Lessons")[0]
-    def normalize_name(name: str) -> str | None:
-        name = name.strip()
-        import re as re2
-        # Strip "📖 Book:" prefix if present
-        m_pre = re2.match(r"^📖 Book:\s*(.*)", name)
-        if m_pre:
-            name = m_pre.group(1)
-        # Strip parenthetical content like "(all 3 chapters)" or "(13 chapters)"
-        name = re2.sub(r"\s*\([^)]*\)\s*", "", name).strip()
-        if name in BOOK_INDEX:
-            return name
-        m2 = re2.match(r'^(\d+)([A-Z]\S+)', name)
-        if m2:
-            with_space = f"{m2.group(1)} {m2.group(2)}"
-            if with_space in BOOK_INDEX:
-                return with_space
-        return None
-    found_books = []
-    for line in insights_section.split("\n"):
-        m = re.match(r"^### 📖 Book:\s*([A-Za-z0-9 ]+)\s*\(.*?\)\s*—", line) or re.match(r"^### ([A-Za-z0-9 ]+) —", line) or re.match(r"^### ([A-Za-z0-9 ]+) \([0-9]{4}-[0-9]{2}-[0-9]{2}\)", line)
-        if m:
-            name = normalize_name(m.group(1))
-            if name:
-                found_books.append(name)
-    if not found_books:
-        return None
-    return found_books[-1]
+    found = []
+    seen = set()
+    for line in text.split("\n"):
+        # Match: ### BookName (YYYY-MM-DD) or ### BookName — text
+        m = re.match(r"^### ([A-Za-z0-9 ]+)\s*[(\u2014-]", line)
+        if not m:
+            continue
+        raw = m.group(1).strip()
+        # Try exact match first, then fuzzy
+        name = _BOOK_INDEX_FUZZY.get(raw)
+        if name is None:
+            continue
+        if name not in seen:
+            seen.add(name)
+            found.append(name)
+    return found
 
 
-def get_next_book(last_book: str) -> str | None:
-    idx = BOOK_INDEX.get(last_book)
-    if idx is None:
-        return None
-    if idx + 1 >= len(BOOKS):
-        return None
-    return BOOKS[idx + 1]
+def get_last_uncovered_book(found: list[str]) -> str | None:
+    """Find the first book in the canonical list not yet found in SOUL.md."""
+    covered = set(found)
+    for book in BOOKS:
+        if book not in covered:
+            return book
+    return None
 
 
-def generate_entry(book: str) -> str | None:
-    today = get_kst_today()
-    prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md).
-Write the entry for **{book}** in this EXACT format:
-### {book} — *"[key verse]" ([Book Chapter:Verse])*
-[3-5 paragraphs of commentary.]
-<!-- Added {today} -->
-Requirements:
-1. Pick ONE key verse that genuinely captures the book's core message.
-2. Write 3-5 paragraphs with specific lessons for system operations.
-3. End each paragraph's lesson with **bold text** for the key takeaway.
-4. Output ONLY the entry — no explanations, no code fences, no extra text.
-Generate the entry for {book}:"""
+def query_ollama(prompt: str) -> str | None:
+    """Send a prompt to Ollama chat and return the response content."""
     payload = json.dumps({
         "model": OLLAMA_MODEL,
         "messages": [{"role": "user", "content": prompt}],
         "stream": False,
-        "options": {
-            "num_predict": 4096,
-            "temperature": 0.7,
-        },
+        "options": {"num_predict": 4096, "temperature": 0.7},
     })
     try:
         result = subprocess.run(
@@ -134,12 +104,12 @@ Generate the entry for {book}:"""
             capture_output=True, text=True, timeout=300,
         )
         if result.returncode != 0:
-            print(f"curl to ollama failed (exit {result.returncode}): {result.stderr}", file=sys.stderr)
+            print(f"curl failed: {result.stderr.strip()}", file=sys.stderr)
             return None
-        response = json.loads(result.stdout)
-        content = response.get("message", {}).get("content", "")
+        resp = json.loads(result.stdout)
+        content = resp.get("message", {}).get("content", "")
         if not content:
-            print("Empty response from Ollama", file=sys.stderr)
+            print("Ollama returned empty content", file=sys.stderr)
             return None
         content = content.strip()
         if content.startswith("```"):
@@ -150,7 +120,7 @@ Generate the entry for {book}:"""
         return content
     except json.JSONDecodeError as e:
         print(f"JSON parse error: {e}", file=sys.stderr)
-        print(f"   Body: {getattr(result, 'stdout', '')[:500]}", file=sys.stderr)
+        print(f"   Response: {result.stdout[:500]}", file=sys.stderr)
         return None
     except subprocess.TimeoutExpired:
         print("Ollama request timed out after 300s", file=sys.stderr)
@@ -160,46 +130,61 @@ Generate the entry for {book}:"""
         return None
 
 
-def append_to_soul(book: str, full_entry: str) -> bool:
+def generate_entry(book: str) -> str | None:
+    today = get_kst_today()
+    prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md).
+Write the entry for **{book}** in this EXACT format:
+
+### {book} — *"[key verse]" ([Book Chapter:Verse])*
+[3-5 paragraphs of commentary about operations/security lessons from this book.]
+<!-- Added {today} -->
+
+Requirements:
+1. Pick ONE key verse that genuinely captures the book's core message.
+2. Write 3-5 paragraphs with specific lessons for system operations.
+3. End each paragraph's lesson with **bold text** for the key takeaway.
+4. Output ONLY the entry — no explanations, no code fences, no extra text.
+
+Generate the entry for {book}:"""
+    return query_ollama(prompt)
+
+
+def append_to_soul(book: str, entry: str) -> bool:
     if not SOUL_MD.exists():
         return False
     text = SOUL_MD.read_text(encoding="utf-8")
-    # Insert before the cron marker comment if it exists
-    cron_marker = "<!-- Entries appended here by daily cron -->"
-    if cron_marker in text:
-        full_block = f"\n{full_entry}\n\n"
-        new_text = text.replace(f"\n{cron_marker}", f"{full_block}{cron_marker}", 1)
-    elif "## Final Directive" in text:
-        full_block = f"\n{full_entry}\n\n"
-        new_text = text.replace(f"\n## Final Directive", f"{full_block}## Final Directive", 1)
-    elif "## Session Mining Lessons" in text:
-        full_block = f"\n{full_entry}\n\n"
-        new_text = text.replace(f"\n## Session Mining Lessons", f"{full_block}## Session Mining Lessons", 1)
+    # Insert before the Final Directive section
+    if "\n## Final Directive\n" in text:
+        full_block = f"\n{entry}\n\n"
+        new_text = text.replace("\n## Final Directive\n", f"{full_block}## Final Directive\n", 1)
+    elif "\n## Scripture Insights\n" in text:
+        full_block = f"\n{entry}\n\n"
+        new_text = text.replace("\n## Scripture Insights\n", f"{full_block}## Scripture Insights\n", 1)
     else:
-        full_block = f"\n{full_entry}\n"
+        full_block = f"\n{entry}\n"
         new_text = text + full_block
     SOUL_MD.write_text(new_text, encoding="utf-8")
     return True
 
 
 def main() -> int:
-    last_book = find_last_book()
-    if last_book is None:
-        print("Could not find any books in SOUL.md", file=sys.stderr)
-        return 1
-    next_book = get_next_book(last_book)
+    found = find_all_books()
+    print(f"Books covered in SOUL.md: {len(found)}", file=sys.stderr)
+    for b in found:
+        print(f"  - {b}", file=sys.stderr)
+    next_book = get_last_uncovered_book(found)
     if next_book is None:
-        # Silent exit — all books covered, nothing to do (no_agent pattern)
+        print("All books covered. Nothing to generate.")
         return 0
-    print(f"Last book: {last_book} -> Next: {next_book}")
-    full_entry = generate_entry(next_book)
-    if full_entry is None:
+    print(f"Generating entry for {next_book}")
+    entry = generate_entry(next_book)
+    if entry is None:
         return 1
-    if not append_to_soul(next_book, full_entry):
+    print(entry)
+    if not append_to_soul(next_book, entry):
         print("Failed to append to SOUL.md", file=sys.stderr)
         return 1
-    print(f"Appended insight for {next_book} to SOUL.md")
-    print(full_entry)
+    print(f"Appended insight for {next_book} to SOUL.md", file=sys.stderr)
     return 0
 
 
