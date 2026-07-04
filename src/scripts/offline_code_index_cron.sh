@@ -17,8 +17,8 @@ if [ ! -x "$OFFLINE_CODE" ]; then
     exit 1
 fi
 
-# Run index — force rebuild to pick up new snippets
-OUTPUT=$("$OFFLINE_CODE" index --force 2>&1) || {
+# Run index — incremental, only rebuilds when snippet count changes
+OUTPUT=$("$OFFLINE_CODE" index 2>&1) || {
     echo "[offline-code-index] Index rebuild failed"
     echo "$OUTPUT"
     exit 1
@@ -29,5 +29,5 @@ if echo "$OUTPUT" | grep -q "already current\|up to date\|nothing to index\|Inde
     exit 0
 fi
 
-echo "[offline-code-index] Index rebuilt successfully"
+# Index was rebuilt or had activity — report it
 echo "$OUTPUT"

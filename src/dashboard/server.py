@@ -1008,7 +1008,7 @@ def api_system():
 AGENT_HEALTH_FILE = HERMES_HOME / "state" / "agent-health-data.json"
 
 @app.route("/api/agents")
-@_cached("agents", ttl=60)
+@_cached("agents", ttl=10)
 def api_agents():
     """Read structured health data written by orch-team-health.py."""
     if AGENT_HEALTH_FILE.exists():
