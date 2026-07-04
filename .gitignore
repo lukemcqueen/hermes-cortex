@@ -11,6 +11,7 @@ patches/
 .env
 .env.local
 .env.*
+!.env.example
 *.pem
 *.key
 **/creds/**
