@@ -25,10 +25,10 @@ metadata:
 1. **Hermes Plugin** (primary) — `~/.hermes/plugins/governance-enforcer/` uses the `pre_tool_call` plugin hook to intercept ALL tool calls before they execute. See the [`governance-plugin-implementation.md`](skill_view?name=loop-governance&file_path=references/governance-plugin-implementation.md) reference for full API docs, block matrix, and fleet installation. Key facts:
    - Blocks `write_file`, `patch`, `terminal` write commands, `cronjob` create/update/remove, `skill_manage` create/edit/delete without an active governance lock
    - Fires at the Hermes runtime level — the agent CANNOT bypass it mid-session
-   - Installed via `ln -sf ~/hermes-cortex/.hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/` then `/reset`
+   - Installed via `ln -sf ~/hermes-cortex/.hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/` then `hermes plugins enable governance-enforcer --allow-tool-override` then `/reset` (or new session)
    - A `README.md` with full documentation lives at `~/.hermes/plugins/governance-enforcer/README.md`
 
-2. **Pre-commit hook** (secondary) — global `core.hooksPath ~/.hermes-cortex/hooks/` auto-scores every `git commit`. Does NOT block commits (that is the plugin's job), but ensures the scoring DB is populated.
+2. **Pre-commit hook** (secondary) — global `core.hooksPath ~/.hermes-cortex/hooks/` auto-scores every `git commit`. ALSO blocks commits without an active governance lock (Level 3 check in the hook script). Bypass: `SKIP_SCORE=1 git commit`.
 
 3. **Cron auditor** (reactive) — `score-auditor` cron (every 6h) scans for unscored changes and reports findings.
 
@@ -37,6 +37,36 @@ metadata:
 **IMPORTANT CORRECTION:** The `loop-gov-mcp.py` MCP server does NOT block Hermes write tools (`write_file`, `patch`, `terminal`, etc.). MCP servers only *provide* tools — they do not intercept or block Hermes built-in tools. The `begin_change()` / `end_change()` MCP tools create and release governance lock files, but the actual blocking must happen at the plugin level. If the plugin is not installed, there is NO structural enforcement — only self-discipline.
 
 **Lock files are per-repo:** Each git repo on the same machine gets its own lock at `~/.hermes-cortex/state/.governance-{repo-slug}.json`. A lock open in `hermes-cortex` doesn't affect work in `project-b`. See the governance-plugin-implementation.md reference for details.
+
+**💡 Best Practice — `cd` into your repo BEFORE `begin_change()`:**
+The lock slug is derived from `git rev-parse --show-toplevel` at the moment `begin_change()` is called. If you call it from outside a git repo (e.g. `~`, `/tmp`, a non-git directory), the slug falls back to `generic` instead of your repo name (e.g. `hermes-cortex`). Later, when `git commit` runs the pre-commit hook, it looks for a lock matching the *current* repo's slug — and finds nothing.
+
+**Correct workflow:**
+```bash
+cd ~/hermes-cortex                                # now git root = hermes-cortex
+mcp_loop_governance_begin_change(...)              # lock → .governance-hermes-cortex.json
+# ... make changes ...
+mcp_loop_governance_end_change(...)                # lock released
+git add -A && git commit -m "..."                  # pre-commit hook finds the right lock
+```
+
+**If you already hit the mismatch (generic lock exists but commit is in a repo):**
+The pre-commit hook (v1.1.0+) auto-detects this and symlinks the generic lock to the repo-scoped path. The commit proceeds. But fix the root cause for next time: always `cd` into the repo first.
+
+**Lock file resolution flow (in code):**
+```
+begin_change() called
+  └── git rev-parse --show-toplevel
+        ├── success → slug = basename(toplevel)       → .governance-hermes-cortex.json
+        └── fail    → slug = "generic"                 → .governance-generic.json
+
+pre-commit hook runs
+  └── git rev-parse --show-toplevel
+        ├── success → checks .governance-hermes-cortex.json
+        │     └── not found → checks .governance-generic.json
+        │           └── found → auto-migrate (symlink generic → repo-scoped) ✅
+        │           └── not found → ❌ blocked
+        └── fail    → checks .governance-generic.json
 
 ## Tools
 
@@ -114,6 +144,21 @@ After each change, find and evaluate the auto-created cycle:
 3. Call `feedback_accept(cycle_id=N)` if the decision was appropriate
 4. Call `feedback_override(cycle_id=N, correct_decision=LOOP|STOP|MOVE_ON, note="...")` if wrong
 
+### Post-change delivery: always report the commit hash
+
+After committing and pushing, you MUST deliver the commit hash to the user as part of your response. The user expects to see:
+
+- **The commit hash** — short form (7+ chars)
+- **The commit message** — one-line summary
+- **Confirmation it was pushed** — `pushed to origin/main`
+
+This is not optional. The commit hash is how the user tracks what changed across sessions and agents. A response that says "changes committed and pushed" without the hash is incomplete — the user will ask for it.
+
+**Delivery format (compact, fits in one line):**
+```
+`abc1234` — `feat: add widget` — pushed to `origin/main` ✅
+```
+
 **If no cycle was auto-created:** Known limitation — `patch` under active lock doesn't auto-create cycles. Follow the force-clear protocol:
    - Call `end_change(task_id)` — it will reject with "no scored cycle found"
    - **Confess clearly**: "end_change rejected — no cycle auto-created for this tool type. Force-clearing lock."
@@ -122,9 +167,75 @@ After each change, find and evaluate the auto-created cycle:
 
 **Phase 3 is about awareness, not bureaucracy.** If you can't find a cycle, the system still knows you followed the pattern. The habit matters more than the DB entry.
 
+### Pitfall: enforcement layers lost on re-clone
+
+When the `hermes-cortex` repo is re-cloned (e.g. after git history rewrite for PII scrub), three enforcement layers are silently lost:
+
+1. **Plugin symlink** at `~/.hermes/plugins/governance-enforcer/` — source lives in `.hermes-cortex/plugins/governance-enforcer/` but the symlink is not git-tracked. Re-create: `ln -sf ~/hermes-cortex/.hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/`. Then re-enable: `hermes plugins enable governance-enforcer --allow-tool-override`.
+
+2. **Pre-commit hook** at `~/.hermes-cortex/hooks/pre-commit` — source at `~/hermes-cortex/src/scripts/pre-commit-score`. Re-install:
+   ```bash
+   mkdir -p ~/.hermes-cortex/hooks
+   cp ~/hermes-cortex/src/scripts/pre-commit-score ~/.hermes-cortex/hooks/pre-commit
+   chmod +x ~/.hermes-cortex/hooks/pre-commit
+   git config --global core.hooksPath ~/.hermes-cortex/hooks/
+   ```
+
+3. **MCP server config** — `~/.hermes/config.yaml` must use the Hermes Agent venv Python, not system `python3`:
+   ```bash
+   hermes mcp add loop-governance \
+     --command ~/.hermes/hermes-agent/venv/bin/python3 \
+     --args ~/hermes-cortex/src/mcp-servers/loop-gov-mcp.py
+   ```
+   The `mcp` package is NOT installed system-wide. Using bare `python3` fails with `ERROR: Required 'mcp' Python package not found.`
+
+**Verification checklist after re-clone:**
+- [ ] `ls ~/.hermes/plugins/governance-enforcer/__init__.py` — plugin exists
+- [ ] `hermes plugins list --plain | grep governance` shows `enabled`
+- [ ] `ls ~/.hermes-cortex/hooks/pre-commit` — hook exists
+- [ ] `git config --global core.hooksPath` returns the hooks dir
+- [ ] `grep -A5 \"loop-governance\" ~/.hermes/config.yaml | grep \"venv\"` confirms MCP uses venv Python
+
 ### Per-change scoring, not per-session
 
 Each logical change gets its **own** cycle. Batch-scoring a whole session is not acceptable — the system needs per-change granularity.
+
+### Pitfall: enforcement layers lost on re-clone
+
+When you re-clone the `hermes-cortex` repo (e.g. after a git history rewrite), three enforcement layers are silently lost because they live outside the git-tracked tree:
+
+1. **Plugin symlink** at `~/.hermes/plugins/governance-enforcer/` — source lives in the repo at `.hermes-cortex/plugins/governance-enforcer/` but the symlink is not tracked:
+   ```bash
+   ln -sf ~/hermes-cortex/.hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
+   ```
+
+2. **Pre-commit hook** at `~/.hermes-cortex/hooks/pre-commit` — source is at `~/hermes-cortex/src/scripts/pre-commit-score` but the installed copy and `core.hooksPath` config are per-machine:
+   ```bash
+   mkdir -p ~/.hermes-cortex/hooks
+   cp ~/hermes-cortex/src/scripts/pre-commit-score ~/.hermes-cortex/hooks/pre-commit
+   chmod +x ~/.hermes-cortex/hooks/pre-commit
+   git config --global core.hooksPath ~/.hermes-cortex/hooks/
+   ```
+
+3. **MCP server config** in `~/.hermes/config.yaml` — must use the Hermes Agent venv Python, not system python3 (see below).
+
+**Verification checklist after re-clone:**
+- [ ] `ls ~/.hermes/plugins/governance-enforcer/__init__.py` — plugin exists
+- [ ] `ls ~/.hermes-cortex/hooks/pre-commit` — hook exists
+- [ ] `git config --global core.hooksPath` returns `~/.hermes-cortex/hooks/`
+- [ ] `grep -A5 "loop-governance" ~/.hermes/config.yaml | grep "venv"` — MCP server uses venv Python
+
+**MCP server requires the Hermes Agent venv Python:**
+The `mcp` package is installed in `~/.hermes/hermes-agent/venv/` but NOT system-wide. Using bare `python3` fails with:
+```
+[mcp-server] ERROR: Required 'mcp' Python package not found.
+```
+Correct command:
+```bash
+hermes mcp add loop-governance \
+  --command ~/.hermes/hermes-agent/venv/bin/python3 \
+  --args ~/hermes-cortex/src/mcp-servers/loop-gov-mcp.py
+```
 
 ### Pitfall: Read-only sessions that turn into writes — always cache_search before the first write
 

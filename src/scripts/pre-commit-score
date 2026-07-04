@@ -50,15 +50,39 @@ fi
 # Lock files are repo-scoped: .governance-<repo-slug>.json
 REPO_SLUG=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'generic')" 2>/dev/null || echo 'generic')
 GOVERNANCE_LOCK="${HOME}/.hermes-cortex/state/.governance-${REPO_SLUG}.json"
+GENERIC_LOCK="${HOME}/.hermes-cortex/state/.governance-generic.json"
+
 if [[ ! -f "$GOVERNANCE_LOCK" ]]; then
-  echo ""
-  echo "❌  No active governance session."
-  echo "    You must call begin_change(task_id, description) before making changes."
-  echo "    Run: mcp_loop_governance_begin_change(task_id=\"fix-xyz\", description=\"...\")"
-  echo ""
-  echo "    To bypass this check:  SKIP_SCORE=1 git commit ..."
-  echo ""
-  exit 1
+  if [[ -f "$GENERIC_LOCK" ]]; then
+    # Generic lock exists but repo-scoped doesn't — mismatch detected.
+    # This happens when begin_change() was called from outside the git repo.
+    # Auto-migrate: symlink generic to repo-scoped so the commit can proceed.
+    echo ""
+    echo "⚠️  Governance lock exists at .governance-generic.json but this commit"
+    echo "   is in the '${REPO_SLUG}' repo (lock files are repo-scoped)."
+    echo ""
+    echo "   Auto-migrating: ln -sf .governance-generic.json → .governance-${REPO_SLUG}.json"
+    mkdir -p "${HOME}/.hermes-cortex/state"
+    ln -sf "$GENERIC_LOCK" "$GOVERNANCE_LOCK"
+    echo "   ✅ Lock migrated. Continuing with commit."
+    echo ""
+  else
+    # No lock at all — block with help message
+    echo ""
+    echo "❌  No active governance session."
+    echo "    You must call begin_change(task_id, description) before making changes."
+    echo "    Run: mcp_loop_governance_begin_change(task_id=\"fix-xyz\", description=\"...\")"
+    echo ""
+    echo "    💡 Tip: Always cd into your repo (e.g. 'cd ~/hermes-cortex') before"
+    echo "       calling begin_change() so the lock gets the correct repo slug."
+    echo "       If you already have a lock at .governance-generic.json, run:"
+    echo "         ln -sf ~/.hermes-cortex/state/.governance-generic.json"
+    echo "            ~/.hermes-cortex/state/.governance-${REPO_SLUG}.json"
+    echo ""
+    echo "    To bypass this check:  SKIP_SCORE=1 git commit ..."
+    echo ""
+    exit 1
+  fi
 fi
 
 # ── Level 2: AGENTS.md core requirements check via agents-doc-audit.py ──
