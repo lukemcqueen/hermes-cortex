@@ -849,6 +849,48 @@ create_cron "threat-pipeline" "0 5 * * *" \
   "" \
   "true"
 
+# Agent IP submission processor (every 30 min) — universal
+create_cron "agent-ip-submission" "*/30 * * * *" \
+  "agent-ip-submission.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# Daily soul refinement (deepseek — needs Hermes tools: session_search, memory, patch) — universal
+create_cron "agent-daily-soul-refinement" "0 23 * * *" \
+  "" \
+  "Load the soul-refinement skill. Use session_search() to find today's sessions. Look for any user corrections, feedback, or behavior patterns worth noting. Update SOUL.md with insights. Keep it under 5KB.
+
+## OUTPUT FORMAT — FOLLOW EXACTLY
+Match this structure line for line. Your content replaces the values.
+Everything else stays: dashes, colons, spacing, line breaks.
+
+agent-daily-soul-refinement (JOB_ID) [YYYY-MM-DD HH:MM KST]
+-------------
+
+Phase 1 — Session mining: found 12 sessions today
+- 3 corrections from user (fixed: nginx port naming, cron schedule typo)
+- 2 recurring questions (add to SOUL.md Patterns section)
+- 1 new tool quirk discovered (pgrep -x limitation)
+
+Phase 2 — SOUL.md update:
+- Added Communication Style section (user prefers bullet points)
+- Added nginx-reload pitfall (use nginx -t before systemctl reload)
+- Pruned stale Python 3.9 workaround (no longer deployed)
+
+Phase 3 — Size check: SOUL.md at 4.2KB (under 5KB limit)
+
+Result: SOUL.md refined. 2 corrections applied, 1 pattern added, 1 pitfall documented.
+
+📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo
+
+If nothing to report: output exactly [SILENT]" \
+  "soul-refinement" "" "origin" "" "false" \
+  "deepseek-v4-flash" "opencode-zen"
+
 echo ""
 printf "${CYAN}━━━ Summary ━━━${RESET}\n"
 if $DRY_RUN; then
