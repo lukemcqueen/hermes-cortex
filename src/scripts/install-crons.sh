@@ -734,30 +734,20 @@ create_cron "cron-quality-watchdog" "*/10 * * * *" \
 # ── 7. Orchestrator-Only Crons ──────────────────────────────────
 # These crons only run on the orchestrator (Moses) and backup
 # orchestrator. Worker agents skip them entirely.
-# Agent-registry detection: if this host's hostname matches the
-# orchestrator field, it runs the orch-* crons.
+# Hostname-based detection: if this machine's hostname matches
+# an entry in ORCHESTRATOR_HOSTS, it gets the orch-* crons.
 
+# Known orchestrator hostnames — machines that run orch-* crons
+# Add backup orchestrators here as they come online.
+ORCHESTRATOR_HOSTS="moses esther"
+HOST=$(hostname -s 2>/dev/null || echo "unknown")
 IS_ORCHESTRATOR=false
-REGISTRY="${CORTEX_REPO:-$HOME/hermes-cortex}/src/agent-registry.json"
-if [ -f "$REGISTRY" ]; then
-  HOST=$(hostname -s 2>/dev/null || echo "unknown")
-  # Check if this hostname matches any orchestrator (primary or backup)
-  PY_RESULT=$(python3 -c "
-import json, sys
-d = json.load(open('$REGISTRY'))
-agents = d.get('agents', {})
-host = '$HOST'
-for name, info in agents.items():
-    if info.get('is_orchestrator') or info.get('is_backup_orchestrator'):
-        if info.get('hostname') == host:
-            print('true')
-            sys.exit(0)
-print('false')
-" 2>/dev/null || echo "false")
-  if [ "$PY_RESULT" = "true" ]; then
+for oh in $ORCHESTRATOR_HOSTS; do
+  if [ "$HOST" = "$oh" ]; then
     IS_ORCHESTRATOR=true
+    break
   fi
-fi
+done
 
 if $IS_ORCHESTRATOR; then
   create_cron "orch-team-messages" "*/10 * * * *" \
