@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 """
 score-auditor.py — no_agent watchdog: flag unscored file changes
 

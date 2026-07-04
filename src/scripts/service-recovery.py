@@ -177,6 +177,29 @@ def _try_restart(svc: dict) -> str | None:
         return f"⚠️ {name} restart issued but not confirmed up after 3s"
 
 
+def _fix_gbrain_stale_lock() -> str | None:
+    """Check and remove stale gbrain autopilot lock file. Returns message or None."""
+    lock = Path.home() / ".gbrain" / "autopilot.lock"
+    if not lock.exists():
+        return None
+    try:
+        pid_str = lock.read_text().strip()
+        if not pid_str.isdigit():
+            lock.unlink()
+            return "removed corrupt lock file"
+        pid = int(pid_str)
+        # Check if PID is alive
+        alive = subprocess.run(
+            ["kill", "-0", str(pid)], capture_output=True, timeout=5
+        ).returncode == 0
+        if not alive:
+            lock.unlink()
+            return f"removed stale lock (PID {pid} dead)"
+        return None  # lock is valid, don't touch it
+    except (OSError, ValueError, subprocess.TimeoutExpired) as e:
+        return f"lock check error: {e}"
+
+
 def main():
     actions = []
     statuses = []
@@ -204,6 +227,13 @@ def main():
             else:
                 actions.append(f"🔄 {name}: restored missing scripts")
             continue
+
+        if name == "gbrain":
+            # Stale lock file can prevent restart even after service appears down
+            lock_msg = _fix_gbrain_stale_lock()
+            if lock_msg:
+                actions.append(f"🔧 gbrain: {lock_msg}")
+            # Proceed with restart regardless — lock is cleared
 
         err = _try_restart(svc)
         if err:
