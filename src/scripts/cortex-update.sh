@@ -101,6 +101,7 @@ register "src/scripts/install-ollama.sh"          "${HERMES_HOME}/scripts/instal
 register "src/scripts/install-nginx.sh"           "${HERMES_HOME}/scripts/install-nginx.sh"
 register "src/scripts/install-cortex-update-cron.sh" "${HERMES_HOME}/scripts/install-cortex-update-cron.sh"
 register "src/scripts/install-crons.sh"       "${HERMES_HOME}/scripts/install-crons.sh"
+register "src/scripts/install-orch-crons.sh"  "${HERMES_HOME}/scripts/install-orch-crons.sh"
 register "src/scripts/install-score-hook.sh"       "${HERMES_HOME}/scripts/install-score-hook.sh"
 register "src/scripts/pre-commit-score"            "${HERMES_HOME}/scripts/pre-commit-score"
 register "src/scripts/pre-push-pull"               "${HERMES_HOME}/scripts/pre-push-pull"
@@ -970,10 +971,19 @@ main() {
   # Post-update service verification
   verify_services
 
-  # Install/update crons (idempotent — skips existing)
+  # Install/update universal crons (idempotent — skips existing)
   if command -v hermes &>/dev/null; then
     HERMES_HOME="${HERMES_HOME}" bash "${HERMES_HOME}/scripts/install-crons.sh" 2>/dev/null && \
       info "Crons up to date" || warn "Cron install skipped (no hermes CLI?)"
+
+    # ── Orchestrator-only crons (team health, soul refinement, etc.) ──
+    # Only run on orchestrator machines (hostname: moses or esther)
+    ORCH_HOST=$(hostname -s 2>/dev/null || echo "unknown")
+    case "$ORCH_HOST" in
+      moses|esther)
+        HERMES_HOME="${HERMES_HOME}" bash "${HERMES_HOME}/scripts/install-orch-crons.sh" 2>/dev/null && \
+          info "Orch crons up to date" || warn "Orch cron install skipped" ;;
+    esac
   else
     info "Hermes not found — skip cron install (run install-crons.sh after Hermes setup)"
   fi

@@ -731,92 +731,12 @@ create_cron "cron-quality-watchdog" "*/10 * * * *" \
   "" \
   "true"
 
-# ── 7. Orchestrator-Only Crons ──────────────────────────────────
-# These crons only run on the orchestrator (Moses) and backup
-# orchestrator. Worker agents skip them entirely.
-# Hostname-based detection: if this machine's hostname matches
-# an entry in ORCHESTRATOR_HOSTS, it gets the orch-* crons.
-
-# Known orchestrator hostnames — machines that run orch-* crons
-# Add backup orchestrators here as they come online.
-ORCHESTRATOR_HOSTS="moses esther"
-HOST=$(hostname -s 2>/dev/null || echo "unknown")
-IS_ORCHESTRATOR=false
-for oh in $ORCHESTRATOR_HOSTS; do
-  if [ "$HOST" = "$oh" ]; then
-    IS_ORCHESTRATOR=true
-    break
-  fi
-done
-
-if $IS_ORCHESTRATOR; then
-  create_cron "orch-team-messages" "*/10 * * * *" \
-    "orch-team-messages.sh" \
-    "" \
-    "" \
-    "" \
-    "origin" \
-    "" \
-    "true"
-
-  # orch-team-health — cross-agent health polling
-  create_cron "orch-team-health" "*/10 * * * *" \
-    "orch-team-health.py" \
-    "" \
-    "" \
-    "" \
-    "origin" \
-    "" \
-    "true"
-
-  # Agent IP submission processor — merges blocked_ips.submit into blocked_ips.add
-  create_cron "agent-ip-submission" "*/30 * * * *" \
-    "agent-ip-submission.sh" \
-    "" \
-    "" \
-    "" \
-    "origin" \
-    "" \
-    "true"
-
-  # Daily soul refinement (deepseek — needs Hermes tools: session_search, memory, patch)
-  create_cron "agent-daily-soul-refinement" "0 23 * * *" \
-    "" \
-    "Load the soul-refinement skill. Use session_search() to find today's sessions. Look for any user corrections, feedback, or behavior patterns worth noting. Update SOUL.md with insights. Keep it under 5KB.
-
-## OUTPUT FORMAT — FOLLOW EXACTLY
-Match this structure line for line. Your content replaces the values.
-Everything else stays: dashes, colons, spacing, line breaks.
-
-agent-daily-soul-refinement (JOB_ID) [YYYY-MM-DD HH:MM KST]
--------------
-
-Phase 1 — Sessions reviewed: 8 sessions found today
-- Found 1 user correction: \"stop using vague language in reports\"
-- Found 2 behavioral patterns: consistently missing pre-commit hook check, verbosity in error reports
-
-Phase 2 — SOUL.md updates applied:
-- Added behavioral rule: verify pre-commit hook presence before git operations
-- Added style correction: prefer tool output over prose descriptions
-- Updated existing verbosity guideline to be more specific
-
-Phase 3 — Current SOUL.md: 4.2KB (within 5KB limit)
-
-Result: 3 insights added to SOUL.md. SOUL.md at 4.2KB.
-
-📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo
-
-If nothing to report: output exactly [SILENT]" \
-    "soul-refinement" "" "origin" "" "false" \
-    "deepseek-v4-flash" "opencode-zen"
-fi
-
-# ── 8. Deployment-Specific Crons ─────────────────────────────
+# ── 7. Deployment-Specific Crons ─────────────────────────────
 # These are specific to Luke's deployment but tracked in the
 # repo so install-crons.sh --force can recreate them.
 # (All crons listed in the AGENTS.md reference table.)
 
-printf "\n${CYAN}  8. Deployment-Specific Crons${RESET}\n"
+printf "\n${CYAN}  7. Deployment-Specific Crons${RESET}\n"
 
 # Daily Hermes Agent self-update
 create_cron "hermes-update" "23 22 * * *" \
