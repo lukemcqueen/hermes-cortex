@@ -61,22 +61,40 @@ def find_all_books() -> list[str]:
     if not SOUL_MD.exists():
         return []
     text = SOUL_MD.read_text(encoding="utf-8")
-    found = []
-    seen = set()
-    for line in text.split("\n"):
-        # Match: ### BookName (YYYY-MM-DD) or ### BookName — text
-        m = re.match(r"^### ([A-Za-z0-9 ]+)\s*[(\u2014-]", line)
-        if not m:
-            continue
-        raw = m.group(1).strip()
-        # Try exact match first, then fuzzy
-        name = _BOOK_INDEX_FUZZY.get(raw)
-        if name is None:
-            continue
-        if name not in seen:
-            seen.add(name)
-            found.append(name)
-    return found
+    for section_header in ["## Daily Scripture", "## Scripture Insights", "## Biblical Principles"]:
+        if section_header in text:
+            insights_section = text.split(section_header)[-1]
+            break
+    else:
+        insights_section = text
+    insights_section = insights_section.split("## Session Mining Lessons")[0]
+    def normalize_name(name: str) -> str | None:
+        name = name.strip()
+        import re as re2
+        # Strip "📖 Book:" prefix if present
+        m_pre = re2.match(r"^📖 Book:\s*(.*)", name)
+        if m_pre:
+            name = m_pre.group(1)
+        # Strip parenthetical content like "(all 3 chapters)" or "(13 chapters)"
+        name = re2.sub(r"\s*\([^)]*\)\s*", "", name).strip()
+        if name in BOOK_INDEX:
+            return name
+        m2 = re2.match(r'^(\d+)([A-Z]\S+)', name)
+        if m2:
+            with_space = f"{m2.group(1)} {m2.group(2)}"
+            if with_space in BOOK_INDEX:
+                return with_space
+        return None
+    found_books = []
+    for line in insights_section.split("\n"):
+        m = re.match(r"^### 📖 Book:\s*([A-Za-z0-9 ]+)\s*\(.*?\)\s*—", line) or re.match(r"^### ([A-Za-z0-9 ]+) —", line) or re.match(r"^### ([A-Za-z0-9 ]+) \([0-9]{4}-[0-9]{2}-[0-9]{2}\)", line)
+        if m:
+            name = normalize_name(m.group(1))
+            if name:
+                found_books.append(name)
+    if not found_books:
+        return None
+    return found_books[-1]
 
 
 def get_last_uncovered_book(found: list[str]) -> str | None:
