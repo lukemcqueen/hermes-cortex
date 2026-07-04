@@ -56,7 +56,7 @@ MCP_SERVERS_DIR = CORTEX_REPO / "src" / "mcp-servers"
 
 # Passthrough to subprocess for HTTP checks (avoid cert issues with urllib)
 CURL = os.environ.get("CURL_BIN", "curl")
-EXTERNAL_BASE = os.environ.get("CORTEX_DOCTOR_BASE", "https://your-domain.com")
+EXTERNAL_BASE = os.environ.get("CORTEX_DOCTOR_BASE", "https://bus.example.org")
 
 # Expected MCP servers
 EXPECTED_MCP_SERVERS = {
@@ -79,8 +79,9 @@ CORE_FOOTPRINT = [
     (".hermes/config.yaml"                            , "f", "Hermes configuration"),
     (".hermes-cortex"                                 , "d", "Cortex home directory"),
     (".hermes-cortex/scripts"                         , "d", "Deployed scripts"),
-    (".hermes-cortex/state"                           , "d", "State directory"),
     (".hermes-cortex/sessions"                        , "d", "Session archive"),
+    (".hermes-cortex/hooks"                          , "d", "Shared hooks directory"),
+    (".hermes-cortex/state"                           , "d", "State directory"),
     (".hermes-cortex/memory"                          , "d", "Agent memory directory"),
     (".local/bin/hermes"                              , "f", "Hermes CLI binary"),
     ("brain"                                          , "d", "Knowledge brain root"),
@@ -528,76 +529,185 @@ def check_config(res):
 
 
 def check_governance(res):
-    """7. Governance system: MCP servers, pre-commit hook, score-cycle, governance lock."""
+    """7. Governance system: plugin, pre-commit hook, MCP servers, lock files, score-cycle."""
     config_text = read_file(CONFIG_FILE)
+    state_dir = CORTEX_HOME / "state"
+    hooks_dir = CORTEX_HOME / "hooks"
+    global_hooks_path = run_bg(["git", "config", "--global", "core.hooksPath"], timeout=5)
 
-    # MCP servers in config.yaml
+    # ── Governance plugin ────────────────────────────────────
+    plugin_dir = HERMES_HOME / "plugins" / "governance-enforcer"
+    plugin_src = CORTEX_REPO / ".hermes-cortex" / "plugins" / "governance-enforcer"
+    plugin_enabled = "governance-enforcer" in config_text and "enabled" in config_text
+
+    if plugin_dir.exists() and (plugin_dir / "__init__.py").exists():
+        res.add("Governance plugin", "PASS", "installed at ~/.hermes/plugins/governance-enforcer")
+        if plugin_dir.is_symlink():
+            target = os.readlink(str(plugin_dir))
+            if plugin_src.exists() and str(plugin_src) in target:
+                res.add("Plugin symlink", "PASS", f"symlinked to {target}")
+            else:
+                res.add("Plugin symlink", "WARN", f"symlinked to {target} (not ~/hermes-cortex/.hermes-cortex/...)",
+                         "Re-create: ln -sf ~/hermes-cortex/.hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/")
+    else:
+        res.add("Governance plugin", "FAIL", "not installed",
+                 "Install: ln -sf ~/hermes-cortex/.hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/\n"
+                 "Then: hermes plugins enable governance-enforcer --allow-tool-override\n"
+                 "Then: /reset (new session)")
+
+    if plugin_enabled:
+        res.add("Plugin config", "PASS", "enabled in config.yaml")
+    else:
+        res.add("Plugin config", "FAIL" if plugin_dir.exists() else "WARN",
+                 "not enabled in config.yaml",
+                 "Run: hermes plugins enable governance-enforcer --allow-tool-override")
+
+    # Plugin source integrity
+    if plugin_src.exists() and (plugin_src / "__init__.py").exists():
+        res.add("Plugin source", "PASS", "source in repo at .hermes-cortex/plugins/governance-enforcer")
+    else:
+        res.add("Plugin source", "FAIL", "source missing in repo",
+                 "Check: ~/hermes-cortex/.hermes-cortex/plugins/governance-enforcer/")
+
+    # ── MCP servers ──────────────────────────────────────────
     for name, server_script in EXPECTED_MCP_SERVERS.items():
-        if name in config_text:
-            res.add(f"MCP server ({name})", "PASS", "configured in config.yaml")
-        else:
+        if name not in config_text:
             res.add(f"MCP server ({name})", "FAIL", "not configured",
-                     f"Add to config.yaml under mcpServers: {name}")
+                     f"Run: hermes mcp add {name} --command ~/.hermes/hermes-agent/venv/bin/python3 "
+                     f"--args ~/hermes-cortex/src/mcp-servers/{server_script}")
+            continue
 
-    # MCP servers running
-    for name, server_script in EXPECTED_MCP_SERVERS.items():
-        if process_running(server_script):
-            res.add(f"MCP running ({name})", "PASS", "process active")
-        else:
-            res.add(f"MCP running ({name})", "WARN", "not running (may start on demand)",
-                     "Check: systemctl or hermes process status")
+        res.add(f"MCP server ({name})", "PASS", "configured in config.yaml")
 
-    # Pre-commit hook
-    hook_path = CORTEX_REPO / ".git" / "hooks" / "pre-commit"
-    if hook_path.exists():
-        content = hook_path.read_text()
-        if "score-cycle" in content or "governance" in content:
+        # Check if MCP uses venv Python (not bare python3)
+        if name == "loop-governance":
+            # Try to find the command in config.yaml for this server
+            cmd_match = re.search(
+                rf'{re.escape(name)}.*?command:\s*(\S+)',
+                config_text, re.DOTALL
+            )
+            if cmd_match:
+                cmd = cmd_match.group(1)
+                if "venv" in cmd and "python3" in cmd:
+                    res.add(f"MCP Python ({name})", "PASS", f"uses venv: {cmd}")
+                elif "python3" in cmd:
+                    venv_python = HERMES_HOME / "hermes-agent" / "venv" / "bin" / "python3"
+                    if venv_python.exists():
+                        res.add(f"MCP Python ({name})", "WARN",
+                                 f"uses bare python3 (expected venv)",
+                                 f"Run: hermes mcp update {name} --command {venv_python}")
+                    else:
+                        res.add(f"MCP Python ({name})", "WARN",
+                                 f"uses python3 but venv not found at {venv_python}")
+
+
+    # ── Pre-commit hook (global hooksPath) ────────────────────
+    expected_hook_path = hooks_dir / "pre-commit"
+    expected_hooks_path = str(hooks_dir)
+
+    if global_hooks_path.rstrip("/") == expected_hooks_path:
+        res.add("Global hooksPath", "PASS", f"core.hooksPath → {expected_hooks_path}")
+    elif global_hooks_path:
+        res.add("Global hooksPath", "WARN",
+                 f"set to '{global_hooks_path}' (expected '{expected_hooks_path}')",
+                 f"Run: git config --global core.hooksPath {expected_hooks_path}")
+    else:
+        res.add("Global hooksPath", "FAIL", "not set",
+                 f"Run: git config --global core.hooksPath {expected_hooks_path}")
+
+    if expected_hook_path.exists():
+        content = expected_hook_path.read_text()
+        if "score-cycle" in content and "governance" in content:
             res.add("Pre-commit hook", "PASS", "installed with governance check")
         else:
             res.add("Pre-commit hook", "WARN", "installed but may be outdated",
-                     "Run: bash install-score-hook.sh")
+                     "Run: cp ~/hermes-cortex/src/scripts/pre-commit-score ~/.hermes-cortex/hooks/pre-commit")
     else:
-        res.add("Pre-commit hook", "WARN", "not installed",
-                 "Run: bash install-score-hook.sh for governance enforcement")
+        res.add("Pre-commit hook", "FAIL", f"not found at {expected_hook_path}",
+                 "Install: cp ~/hermes-cortex/src/scripts/pre-commit-score ~/.hermes-cortex/hooks/pre-commit\n"
+                 "Then: chmod +x ~/.hermes-cortex/hooks/pre-commit")
 
-    # Pre-push hook
-    push_hook_path = CORTEX_REPO / ".git" / "hooks" / "pre-push"
-    if push_hook_path.exists():
-        push_content = push_hook_path.read_text()
+    # ── Pre-push hook (global) ────────────────────────────────
+    expected_push_hook = hooks_dir / "pre-push"
+    if expected_push_hook.exists():
+        push_content = expected_push_hook.read_text()
         if "pre-push-pull" in push_content:
             res.add("Pre-push hook", "PASS", "installed with pull-before-push check")
         else:
-            res.add("Pre-push hook", "WARN", "installed but may be outdated",
-                     "Run: bash install-score-hook.sh")
+            res.add("Pre-push hook", "WARN", "installed but may be outdated")
     else:
         res.add("Pre-push hook", "WARN", "not installed",
-                 "Run: bash install-score-hook.sh for push protection")
+                 "Install: cp ~/hermes-cortex/src/scripts/pre-push-pull ~/.hermes-cortex/hooks/pre-push\n"
+                 "Then: chmod +x ~/.hermes-cortex/hooks/pre-push")
 
-    # Score-cycle
+    # ── Score-cycle CLI ───────────────────────────────────────
     score_paths = [
         HOME / ".local" / "bin" / "score-cycle",
         Path("/usr/local/bin/score-cycle"),
         CORTEX_HOME / "scripts" / "score-cycle",
     ]
-    if any(p.exists() for p in score_paths):
-        res.add("Score-cycle", "PASS", "available in PATH")
+    found_score = None
+    for p in score_paths:
+        if p.exists():
+            found_score = p
+            break
+    if found_score:
+        if found_score.is_symlink():
+            target = os.readlink(str(found_score))
+            if Path(target).exists():
+                res.add("Score-cycle", "PASS", f"available at {found_score} → {target}")
+            else:
+                res.add("Score-cycle", "WARN", f"symlink broken: {found_score} → {target}",
+                         "Re-run: bash ~/hermes-cortex/src/loop-governance/setup.sh")
+        else:
+            res.add("Score-cycle", "PASS", f"available at {found_score}")
     else:
         res.add("Score-cycle", "WARN", "not found in PATH",
-                 "Run: bash install-score-hook.sh to deploy scoring tools")
+                 "Run: bash ~/hermes-cortex/src/loop-governance/setup.sh to deploy scoring tools")
 
-    # Stuck governance lock
-    lock_file = CORTEX_HOME / "state" / ".governance-active.json"
-    if lock_file.exists():
-        try:
-            lock_data = json.loads(lock_file.read_text())
-            started = lock_data.get("started_at", "unknown")
-            res.add("Governance lock", "WARN", f"stale lock from {started}",
-                     "Remove: rm -f ~/.hermes-cortex/state/.governance-active.json")
-        except (json.JSONDecodeError, OSError):
-            res.add("Governance lock", "WARN", "stale lock file (unparseable)",
-                     "Remove: rm -f ~/.hermes-cortex/state/.governance-active.json")
+    # ── Stale governance locks (per-repo pattern) ──────────────
+    if not state_dir.exists():
+        res.add("State directory", "INFO", "does not exist (will be created on first begin_change)")
     else:
-        res.add("Governance lock", "PASS", "no stale lock")
+        lock_files = list(state_dir.glob(".governance-*.json"))
+        if lock_files:
+            stale_count = 0
+            now = time.time()
+            for lf in lock_files:
+                try:
+                    lock_data = json.loads(lf.read_text())
+                    started = lock_data.get("started_at", "")
+                    # Check if lock is older than 24 hours
+                    if started:
+                        try:
+                            started_ts = datetime.fromisoformat(started).timestamp()
+                            age_hours = (now - started_ts) / 3600
+                            if age_hours > 24:
+                                stale_count += 1
+                                res.add(f"Stale lock ({lf.name})", "WARN",
+                                         f"from {started} ({age_hours:.0f}h old)",
+                                         f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
+                        except (ValueError, TypeError):
+                            stale_count += 1
+                            res.add(f"Stale lock ({lf.name})", "WARN",
+                                     f"unparseable timestamp: {started}",
+                                     f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
+                    else:
+                        stale_count += 1
+                        res.add(f"Stale lock ({lf.name})", "WARN",
+                                 "no started_at field",
+                                 f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
+                except (json.JSONDecodeError, OSError):
+                    stale_count += 1
+                    res.add(f"Stale lock ({lf.name})", "WARN",
+                             "unparseable lock file",
+                             f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
+
+            if stale_count == 0:
+                res.add("Governance locks", "PASS",
+                         f"{len(lock_files)} active lock(s), none stale")
+        else:
+            res.add("Governance locks", "PASS", "no lock files")
 
 
 def check_install(res):
@@ -670,13 +780,14 @@ def apply_fixes(res):
         else:
             failed += 1
 
-    # Fix: MCP server not configured
+    # Fix: MCP server not configured (use venv Python)
     for name, server_script in EXPECTED_MCP_SERVERS.items():
         if f"MCP server ({name})" in fix_map and fix_map[f"MCP server ({name})"] == "FAIL":
             if CONFIG_FILE.exists() and CORTEX_REPO.exists():
                 mcp_path = MCP_SERVERS_DIR / server_script
-                if mcp_path.exists():
-                    if _run_fix(f"Adding MCP server {name} to config.yaml",
+                venv_python = HERMES_HOME / "hermes-agent" / "venv" / "bin" / "python3"
+                if mcp_path.exists() and venv_python.exists():
+                    if _run_fix(f"Adding MCP server {name} to config.yaml (venv Python)",
                                 ["python3", "-c", f"""
 import yaml, sys
 with open('{CONFIG_FILE}') as f:
@@ -684,7 +795,7 @@ with open('{CONFIG_FILE}') as f:
 if 'mcpServers' not in cfg:
     cfg['mcpServers'] = {{}}
 cfg['mcpServers']['{name}'] = {{
-    'command': 'python3',
+    'command': '{venv_python}',
     'args': ['{mcp_path}'],
     'enabled': True
 }}
@@ -696,32 +807,105 @@ print('ADDED')
                     else:
                         failed += 1
 
-    # Fix: pre-commit hook not installed
-    if "Pre-commit hook" in fix_map and "not installed" in str(fix_map["Pre-commit hook"]):
-        if INSTALL_SCORE_HOOK.exists():
-            if _run_fix("Installing pre-commit hook",
-                         ["bash", str(INSTALL_SCORE_HOOK), "--path", str(CORTEX_REPO)]):
+    # Fix: MCP server uses bare python3 instead of venv
+    for name in EXPECTED_MCP_SERVERS:
+        if f"MCP Python ({name})" in fix_map and fix_map[f"MCP Python ({name})"] == "WARN":
+            venv_python = HERMES_HOME / "hermes-agent" / "venv" / "bin" / "python3"
+            if venv_python.exists():
+                if _run_fix(f"Updating MCP {name} to use venv Python",
+                            ["hermes", "mcp", "update", name,
+                             "--command", str(venv_python)]):
+                    fixed += 1
+                else:
+                    failed += 1
+
+    # Fix: governance plugin not installed/symlinked
+    if "Governance plugin" in fix_map and fix_map["Governance plugin"] == "FAIL":
+        plugin_dir = HERMES_HOME / "plugins" / "governance-enforcer"
+        plugin_src = CORTEX_REPO / ".hermes-cortex" / "plugins" / "governance-enforcer"
+        if plugin_src.exists():
+            if _run_fix("Symlinking governance plugin",
+                        ["ln", "-sf", str(plugin_src), str(plugin_dir)]):
                 fixed += 1
             else:
                 failed += 1
-
-    # Fix: pre-push hook not installed or outdated
-    if "Pre-push hook" in fix_map and "not installed" in str(fix_map.get("Pre-push hook", "")):
-        if INSTALL_SCORE_HOOK.exists():
-            if _run_fix("Installing pre-push hook",
-                         ["bash", str(INSTALL_SCORE_HOOK), "--path", str(CORTEX_REPO)]):
-                fixed += 1
-            else:
-                failed += 1
-
-    # Fix: stuck governance lock
-    if "Governance lock" in fix_map and "stale" in fix_map["Governance lock"]:
-        lock_file = CORTEX_HOME / "state" / ".governance-active.json"
-        if lock_file.exists():
-            lock_file.unlink()
-            print(f"  → Removing stale governance lock...")
-            print(f"  ✅ Done")
+        # Also try to enable it
+        if _run_fix("Enabling governance plugin",
+                    ["hermes", "plugins", "enable", "governance-enforcer", "--allow-tool-override"]):
             fixed += 1
+        else:
+            failed += 1
+
+    # Fix: pre-commit hook not installed (global hooksPath)
+    if "Pre-commit hook" in fix_map and "FAIL" in fix_map.get("Pre-commit hook", ""):
+        hook_src = CORTEX_REPO / "src" / "scripts" / "pre-commit-score"
+        hook_dest = CORTEX_HOME / "hooks" / "pre-commit"
+        if hook_src.exists():
+            if _run_fix("Installing pre-commit hook to shared hooks dir",
+                        ["cp", str(hook_src), str(hook_dest)]):
+                if _run_fix("Setting hook as executable",
+                            ["chmod", "+x", str(hook_dest)]):
+                    fixed += 1
+                else:
+                    failed += 1
+            else:
+                failed += 1
+
+    # Fix: global hooksPath not set correctly
+    if "Global hooksPath" in fix_map and fix_map.get("Global hooksPath") in ("FAIL", "WARN"):
+        expected_hooks_path = str(CORTEX_HOME / "hooks")
+        if _run_fix("Setting global hooksPath",
+                    ["git", "config", "--global", "core.hooksPath", expected_hooks_path]):
+            fixed += 1
+        else:
+            failed += 1
+
+    # Fix: pre-push hook not installed
+    if "Pre-push hook" in fix_map and "not installed" in fix_map.get("Pre-push hook", ""):
+        push_src = CORTEX_REPO / "src" / "scripts" / "pre-push-pull"
+        push_dest = CORTEX_HOME / "hooks" / "pre-push"
+        if push_src.exists():
+            if _run_fix("Installing pre-push hook",
+                        ["cp", str(push_src), str(push_dest)]):
+                if _run_fix("Setting hook as executable",
+                            ["chmod", "+x", str(push_dest)]):
+                    fixed += 1
+                else:
+                    failed += 1
+            else:
+                failed += 1
+
+    # Fix: stale governance locks (per-repo pattern)
+    state_dir = CORTEX_HOME / "state"
+    if state_dir.exists():
+        for lf in state_dir.glob(".governance-*.json"):
+            try:
+                lock_data = json.loads(lf.read_text())
+                started = lock_data.get("started_at", "")
+                if started:
+                    try:
+                        started_ts = datetime.fromisoformat(started).timestamp()
+                        age_hours = (time.time() - started_ts) / 3600
+                        if age_hours > 24:
+                            lf.unlink()
+                            print(f"  → Removing stale lock: {lf.name} ({age_hours:.0f}h old)")
+                            print(f"  ✅ Done")
+                            fixed += 1
+                    except (ValueError, TypeError):
+                        lf.unlink()
+                        print(f"  → Removing unparseable lock: {lf.name}")
+                        print(f"  ✅ Done")
+                        fixed += 1
+                else:
+                    lf.unlink()
+                    print(f"  → Removing lock with no timestamp: {lf.name}")
+                    print(f"  ✅ Done")
+                    fixed += 1
+            except (json.JSONDecodeError, OSError):
+                lf.unlink()
+                print(f"  → Removing corrupt lock: {lf.name}")
+                print(f"  ✅ Done")
+                fixed += 1
 
     # Fix: Ollama down
     if "Ollama" in fix_map and fix_map["Ollama"] == "FAIL":

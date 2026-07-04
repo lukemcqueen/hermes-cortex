@@ -70,6 +70,8 @@ pre-commit hook runs
 
 ## Tools
 
+**💡 Quick governance health check:** Run `python3 ~/.hermes-cortex/scripts/cortex-doctor.py` to check all governance components (plugin, MCP servers, hooks, locks, score-cycle) at once. Add `--fix` to auto-fix common issues. Add `--json` for machine-readable output.
+
 All tools are symlinked at `~/.local/bin/`:
 
 | Tool | Purpose |
