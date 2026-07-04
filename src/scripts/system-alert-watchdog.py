@@ -93,6 +93,15 @@ def check_systemd(unit_name: str) -> dict:
         pg = subprocess.run(["pgrep", "-x", proc_name], capture_output=True, timeout=5)
         if pg.returncode == 0:
             return {"status": "DEGRADED", "detail": f"{unit_name} (process found, no systemd unit)"}
+        # Fuzzy fallback: split unit name on hyphens/dots (e.g. "gbrain-autopilot" -> "gbrain.*autopilot")
+        # catches processes launched via interpreters (bun, python, java) whose process name is the interpreter
+        parts = re.split(r"[-.]+", unit_name)
+        if len(parts) > 1:
+            fuzzy = ".*".join(parts)
+            pg = subprocess.run(["pgrep", "-f", fuzzy], capture_output=True, timeout=5)
+            if pg.returncode == 0:
+                pids = pg.stdout.decode().strip().split()
+                return {"status": "DEGRADED", "detail": f"{unit_name} (fuzzy pgrep '{fuzzy}', PID(s) {'/'.join(pids)})"}
     except Exception:
         pass
     return {"status": "DOWN", "detail": f"{unit_name} not active in any scope"}
