@@ -145,6 +145,7 @@ register "src/scripts/orch-weekly-auto-fix.py"    "${HERMES_HOME}/scripts/orch-w
 # System watchdog scripts (no_agent cron jobs)
 register "src/scripts/service-recovery.py"        "${HERMES_HOME}/scripts/service-recovery.py"
 register "src/scripts/platform_utils.py"          "${HERMES_HOME}/scripts/platform_utils.py"
+register "src/scripts/agent-daily-bible-reading.py" "${HERMES_HOME}/scripts/agent-daily-bible-reading.py"
 register "src/scripts/langfuse-health-watchdog.py" "${HERMES_HOME}/scripts/langfuse-health-watchdog.py"
 register "src/scripts/llm-judge-scorer.py"         "${HERMES_HOME}/scripts/llm-judge-scorer.py"
 register "src/scripts/model-health-watchdog.py"    "${HERMES_HOME}/scripts/model-health-watchdog.py"
