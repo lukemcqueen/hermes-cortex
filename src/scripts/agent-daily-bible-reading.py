@@ -12,12 +12,13 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
 SOUL_MD = HOME / ".hermes" / "SOUL.md"
-KST = timezone(timedelta(hours=9))
+OLLAMA_URL = "http://localhost:11434/api/chat"
+KST = timezone.utc  # We'll just note KST in the output
 
 # Full Protestant canon in order
 BOOKS = [
