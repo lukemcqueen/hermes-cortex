@@ -479,8 +479,23 @@ def check_services(res):
 
 
 def check_system(res):
-    """5. System resources: disk, memory."""
-    out = run_bg(["df", "-h", "/"])
+    """5. System resources: disk, memory, systemd service scope."""
+    # ── Systemd service scope check (Linux only) ──
+    if IS_LINUX:
+        out = run_bg(["sh", "-c", "ls /etc/systemd/system/hermes-*.service 2>/dev/null"], timeout=5)
+        if out.strip():
+            count = len(out.strip().split("\n"))
+            res.add("Systemd scope", "WARN",
+                    f"{count} Hermes service(s) found in /etc/systemd/system/ (must use ~/.config/systemd/user/)",
+                    "sudo systemctl disable --now hermes-dashboard hermes-health hermes-inbox hermes-gateway ; "
+                    "sudo rm /etc/systemd/system/hermes-*.service ; "
+                    "sudo rm /etc/systemd/system/multi-user.target.wants/hermes-*.service ; "
+                    "sudo systemctl daemon-reload")
+        else:
+            res.add("Systemd scope", "PASS", "no system-level Hermes services (all user-level)")
+
+    # ── Disk usage ──
+    out = run_bg(["df", "-h", "/"], timeout=5)
     if out:
         lines = out.strip().split("\n")
         if len(lines) >= 2:
