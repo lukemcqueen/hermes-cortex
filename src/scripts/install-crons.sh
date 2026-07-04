@@ -636,12 +636,11 @@ If nothing to report: output exactly [SILENT]" \
   "" "" "origin" "" "false" \
   "deepseek-v4-flash" "opencode-zen"
 
-# Agent-specific local fixer (local model, every 10m — reads sensor output, applies fixes)
+# Agent-specific local fixer (no_agent script — reads markers, searches offline corpus, applies fixes)
 create_cron "agent-apply-fixes" "*/10 * * * *" \
+  "agent-apply-fixes.py" \
   "" \
-  "Process remediation markers in ~/.hermes/state/remediate/. If markers exist, read them and apply fixes. Report results or stay silent if nothing to fix." \
-  "" "" "local" "" "false" \
-  "qwen2.5-coder:3b" "custom:ollama-local"
+  "" "" "local" "" "true"
 
 # Agent remediation apply (no_agent script — reads sensor output, applies deterministic fixes)
 create_cron "agent-remediate-apply" "*/10 * * * *" \
