@@ -158,18 +158,27 @@ def _get_agents() -> list[dict]:
 # ── Fetching ──
 
 def _fetch_http(url: str, auth: str = "") -> dict | None:
-    """HTTP GET to a health-vector endpoint. Supports Basic Auth."""
+    """HTTP GET to a health-vector endpoint. Supports Basic Auth.
+    
+    Retries once on failure to tolerate transient network blips.
+    """
     import base64
     headers = {"Accept": "application/json", "User-Agent": "hermes-health-monitor/1.0"}
     if auth:
         encoded = base64.b64encode(auth.encode()).decode()
         headers["Authorization"] = f"Basic {encoded}"
-    req = urllib.request.Request(url, headers=headers)
-    try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-            return json.loads(resp.read().decode())
-    except (HTTPError, URLError, json.JSONDecodeError, TimeoutError, OSError) as e:
-        return None
+
+    for attempt in range(2):
+        req = urllib.request.Request(url, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+                return json.loads(resp.read().decode())
+        except (HTTPError, URLError, json.JSONDecodeError, TimeoutError, OSError) as e:
+            if attempt == 0:
+                time.sleep(1)  # brief pause before retry
+                continue
+            return None
+    return None
 
 
 def _fetch_inbox(agent_key: str) -> dict | None:
@@ -305,10 +314,19 @@ def _parse_rich_report(report: dict) -> dict:
 # ── Health data conversion ──
 
 def _vector_to_health_data(vec: list[int], hostname: str, name: str) -> dict:
-    """Convert health-vector format to Dashboard-compatible health dict."""
+    """Convert health-vector format to Dashboard-compatible health dict.
+    
+    Severity mapping for -1 values:
+      Indices 0 (resources), 2 (no_errored_crons), 3 (no_stale_crons),
+      8 (gbrain_sources_ok) → 'warning' (yellow in dashboard)
+      Indices 1 (services), 4 (nginx), 5 (ollama), 6 (gbrain), 7 (disk_ok)
+      → 'critical' (red in dashboard)
+    """
+    WARNING_INDICES = {0, 2, 3, 8}  # moderate issues → yellow
     issues = []
     services = []
     all_ok = True
+    critical_count = 0
 
     for i, svc_name in enumerate(SERVICE_MAP):
         status = vec[i] if i < len(vec) else 0
@@ -320,8 +338,11 @@ def _vector_to_health_data(vec: list[int], hostname: str, name: str) -> dict:
         })
         if status == -1:
             all_ok = False
+            severity = "warning" if i in WARNING_INDICES else "critical"
+            if severity == "critical":
+                critical_count += 1
             issues.append({
-                "severity": "critical",
+                "severity": severity,
                 "check": svc_name,
                 "detail": f"{svc_name} is down",
             })
@@ -336,7 +357,7 @@ def _vector_to_health_data(vec: list[int], hostname: str, name: str) -> dict:
         "vector": vec,
         "issues": issues,
         "issue_count": len(issues),
-        "critical_count": len(issues),
+        "critical_count": critical_count,
         "services": {"items": services, "up": up_count, "total": total},
         "service_summary": f"{up_count}/{total} up",
         "last_seen": datetime.now(timezone.utc).isoformat(),
