@@ -189,7 +189,7 @@ def main() -> int:
         return 1
     next_book = get_next_book(last_book)
     if next_book is None:
-        print("All 66 books covered. Bible reading complete.")
+        # Silent exit — all books covered, nothing to do (no_agent pattern)
         return 0
     print(f"Last book: {last_book} -> Next: {next_book}")
     full_entry = generate_entry(next_book)
