@@ -70,7 +70,7 @@ NGINX_CONF="/usr/local/etc/nginx/servers/hermes-services.conf"
 
 1. **With SSL certs** (from private repo):
    - Copies `nginx/hermes-services.conf` with TLS + basic auth
-   - Requires certs at `/usr/local/etc/nginx/ssl/fleet-operator.com/`
+   - Requires certs at `/usr/local/etc/nginx/ssl/fleet-operator.com/`  (Linux: `/etc/letsencrypt/live/yourdomain.com/`)
    - External access: `https://your-domain.com:11002` (Langfuse), `:11003` (Dashboard)
 
 2. **Local-only** (fallback):
