@@ -73,9 +73,16 @@ def _is_linux() -> bool:
 def check_systemd(unit_name: str) -> dict:
     for scope, label in [(["--user"], "user"), ([], "system")]:
         try:
+            # systemctl --user needs DBUS_SESSION_BUS_ADDRESS + XDG_RUNTIME_DIR
+            # which cron/terminal environments may not have
+            env = os.environ.copy()
+            if scope == ["--user"]:
+                uid = os.getuid()
+                env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{uid}")
+                env.setdefault("DBUS_SESSION_BUS_ADDRESS", f"unix:path=/run/user/{uid}/bus")
             result = subprocess.run(
                 ["systemctl", *scope, "is-active", unit_name],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True, text=True, timeout=10, env=env,
             )
             status = result.stdout.strip()
             if result.returncode == 0 and status == "active":
