@@ -25,6 +25,11 @@ import json, os, re, sys, subprocess, textwrap, time, urllib.error, urllib.reque
 from pathlib import Path
 from typing import Optional
 
+# Ensure ~/.hermes/scripts/ is on sys.path before importing hermes_paths
+_HERMES_SCRIPTS = Path.home() / ".hermes" / "scripts"
+if str(_HERMES_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_HERMES_SCRIPTS))
+
 from hermes_paths import ensure_scripts_path
 ensure_scripts_path()
 from hermes_models import get_model
