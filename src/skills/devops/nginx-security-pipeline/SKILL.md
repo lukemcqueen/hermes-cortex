@@ -231,6 +231,7 @@ sudo fail2ban-client status nginx-badbots
 
 # Check blocked IPs are deployed
 grep "^deny" /usr/local/etc/nginx/blocked_ips.conf
+# Linux: grep "^deny" /etc/nginx/blocked_ips.conf
 
 # Check nginx config is valid
 nginx -t

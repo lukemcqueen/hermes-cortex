@@ -41,8 +41,10 @@ def main():
     if invalid:
         print(f"⚠ Skipped {len(invalid)} invalid entries: {', '.join(invalid[:5])}{'...' if len(invalid) > 5 else ''}")
 
-    # Read existing blocked_ips.conf
+    # Read existing blocked_ips.conf (OS-aware path)
     conf_path = "/etc/nginx/blocked_ips.conf"
+    if not os.path.exists(conf_path):
+        conf_path = "/usr/local/etc/nginx/blocked_ips.conf"
     try:
         with open(conf_path) as f:
             existing_lines = f.readlines()
