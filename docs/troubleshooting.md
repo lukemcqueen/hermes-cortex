@@ -270,6 +270,7 @@ ssl_ciphers HIGH:!aNULL:!MD5;
 **Fix:** The `.htpasswd` file may need to be regenerated:
 ```bash
 htpasswd -c ${NGINX_HTPASSWD:-/usr/local/etc/nginx/.htpasswd} your-username
+# Linux: /etc/nginx/.hermes-htpasswd
 # Enter your password when prompted
 nginx -s reload
 ```

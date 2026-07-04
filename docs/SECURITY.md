@@ -165,7 +165,7 @@ ls -la ~/.hermes/state.db   # Should show: -rw-------
 ```bash
 chmod 600 ~/.hermes/state.db ~/.hermes/state.db-wal ~/.hermes/state.db-shm
 chmod 600 ~/.hermes/logs/*.log
-chmod 640 ${NGINX_HTPASSWD:-/usr/local/etc/nginx/.htpasswd}
+chmod 640 ${NGINX_HTPASSWD:-/usr/local/etc/nginx/.htpasswd}     # Linux: /etc/nginx/.hermes-htpasswd
 ```
 
 ---

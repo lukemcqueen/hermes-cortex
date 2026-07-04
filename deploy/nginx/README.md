@@ -77,6 +77,7 @@ python3 ~/hermes-cortex/deploy/nginx/fix-blocked-ips.py
 sudo cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf      # Linux
 # sudo cp /tmp/blocked_ips.conf.new /usr/local/etc/nginx/blocked_ips.conf  # macOS
 sudo /usr/local/sbin/hermes-security-apply
+# Linux: sudo hermes-security-apply  (in PATH, or ~/hermes-cortex/deploy/nginx/hermes-security-apply)
 ```
 
 For cron/agent use, copy the fix script to `~/.hermes/scripts/`:
