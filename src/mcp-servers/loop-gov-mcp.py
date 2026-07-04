@@ -116,8 +116,34 @@ def _cosine_sim(a: list[float], b: list[float]) -> float:
 
 
 def _db() -> sqlite3.Connection:
+    """Get or create the loop-governance DB with auto-schema init."""
+    # Ensure parent directory exists
+    LOOP_DB.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(LOOP_DB))
     conn.row_factory = sqlite3.Row
+    # Auto-create schema if missing
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS loop_cycles (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp       TEXT NOT NULL DEFAULT (datetime('now')),
+            task_id         TEXT NOT NULL,
+            cycle_num       INTEGER NOT NULL,
+            spec_hash       TEXT,
+            code_hash       TEXT,
+            test_output_hash TEXT,
+            completeness    REAL NOT NULL,
+            quality         REAL NOT NULL,
+            progress        REAL NOT NULL,
+            composite       REAL NOT NULL,
+            no_progress     INTEGER NOT NULL DEFAULT 0,
+            decision        TEXT NOT NULL,
+            user_overrode   INTEGER,
+            outcome_note    TEXT,
+            schema_version  INTEGER DEFAULT 1,
+            model_name      TEXT DEFAULT 'nomic-embed-text'
+        )"""
+    )
+    conn.commit()
     return conn
 
 
@@ -226,7 +252,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="begin_change",
-            description="MANDATORY: Call before making any code/config change. Creates a governance lock. end_change will verify scoring before releasing the lock — you MUST score this change.",
+            description="MANDATORY: Call before making any code/config change. Creates a governance lock AND a pending cycle in the loop-governance DB. You must call feedback_accept on the pending cycle before end_change will release the lock.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -238,7 +264,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="end_change",
-            description="REQUIRED: Release the governance lock. Checks loop-governance DB for a scored cycle with this task_id. If no score found, the release is REJECTED — you must score first.",
+            description="RELEASE the governance lock. Checks loop-governance DB for a reviewed cycle (feedback_accept/override) matching this task_id. If the pending cycle hasn't been scored, the release is REJECTED — call feedback_accept first.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -312,28 +338,29 @@ def _cycle_query(args: dict) -> CallToolResult:
 
 
 def _cycle_stats(args: dict) -> CallToolResult:
-    if not LOOP_DB.exists():
-        return CallToolResult(content=[TextContent(type="text", text="No loop DB yet.")])
-    conn = _db()
-    total = conn.execute("SELECT COUNT(*) FROM loop_cycles").fetchone()[0]
-    avg = conn.execute("SELECT ROUND(AVG(composite),1) FROM loop_cycles").fetchone()[0] or 0
-    count_7 = conn.execute("SELECT COUNT(*) FROM loop_cycles WHERE composite >= 7.0").fetchone()[0]
-    feedback = conn.execute("SELECT COUNT(*) FROM loop_cycles WHERE user_overrode IS NOT NULL").fetchone()[0]
-    accepted = conn.execute("SELECT COUNT(*) FROM loop_cycles WHERE user_overrode = 0").fetchone()[0]
-    overridden = conn.execute("SELECT COUNT(*) FROM loop_cycles WHERE user_overrode = 1").fetchone()[0]
-    top_tasks = conn.execute(
-        "SELECT task_id, COUNT(*) as n FROM loop_cycles GROUP BY task_id ORDER BY n DESC LIMIT 5"
-    ).fetchall()
-    conn.close()
-    return CallToolResult(content=[TextContent(type="text", text=json.dumps({
-        "total_cycles": total,
-        "avg_composite": avg,
-        "cycles_over_7": count_7,
-        "feedback_count": feedback,
-        "accepted": accepted,
-        "overridden": overridden,
-        "top_tasks": [dict(t) for t in top_tasks],
-    }, indent=2))])
+    try:
+        conn = _db()
+        total = conn.execute("SELECT COUNT(*) FROM loop_cycles").fetchone()[0]
+        avg = conn.execute("SELECT ROUND(AVG(composite),1) FROM loop_cycles").fetchone()[0] or 0
+        count_7 = conn.execute("SELECT COUNT(*) FROM loop_cycles WHERE composite >= 7.0").fetchone()[0]
+        feedback = conn.execute("SELECT COUNT(*) FROM loop_cycles WHERE user_overrode IS NOT NULL").fetchone()[0]
+        accepted = conn.execute("SELECT COUNT(*) FROM loop_cycles WHERE user_overrode = 0").fetchone()[0]
+        overridden = conn.execute("SELECT COUNT(*) FROM loop_cycles WHERE user_overrode = 1").fetchone()[0]
+        top_tasks = conn.execute(
+            "SELECT task_id, COUNT(*) as n FROM loop_cycles GROUP BY task_id ORDER BY n DESC LIMIT 5"
+        ).fetchall()
+        conn.close()
+        return CallToolResult(content=[TextContent(type="text", text=json.dumps({
+            "total_cycles": total,
+            "avg_composite": avg,
+            "cycles_over_7": count_7,
+            "feedback_count": feedback,
+            "accepted": accepted,
+            "overridden": overridden,
+            "top_tasks": [dict(t) for t in top_tasks],
+        }, indent=2))])
+    except Exception as e:
+        return CallToolResult(content=[TextContent(type="text", text=f"No loop DB yet, or error reading it: {e}")])
 
 
 def _config_show(args: dict | None = None) -> CallToolResult:
@@ -369,26 +396,49 @@ def _config_set(args: dict) -> CallToolResult:
 
 
 def _feedback_accept(args: dict) -> CallToolResult:
-    conn = _db()
-    cycle_id = args["cycle_id"]
+    cycle_id = args.get("cycle_id")
+    if cycle_id is None:
+        return CallToolResult(content=[TextContent(type="text", text="Error: cycle_id is required")])
     note = args.get("note", "")
-    conn.execute("UPDATE loop_cycles SET user_overrode=0, outcome_note=? WHERE id=?", (note, cycle_id))
-    conn.commit()
-    conn.close()
-    return CallToolResult(content=[TextContent(type="text", text="Cycle " + str(cycle_id) + " marked as correct.")])
+    try:
+        conn = _db()
+        existing = conn.execute("SELECT id FROM loop_cycles WHERE id = ?", (cycle_id,)).fetchone()
+        if not existing:
+            conn.close()
+            return CallToolResult(content=[TextContent(
+                type="text",
+                text=f"Error: Cycle #{cycle_id} not found in loop-governance DB. Use cycle_query to find valid cycle IDs."
+            )])
+        conn.execute("UPDATE loop_cycles SET user_overrode=0, outcome_note=? WHERE id=?", (note, cycle_id))
+        conn.commit()
+        conn.close()
+        return CallToolResult(content=[TextContent(type="text", text=f"✅ Cycle #{cycle_id} marked as accepted.")])
+    except Exception as e:
+        return CallToolResult(content=[TextContent(type="text", text=f"Error accepting cycle #{cycle_id}: {e}")])
 
 
 def _feedback_override(args: dict) -> CallToolResult:
-    conn = _db()
-    cycle_id = args["cycle_id"]
+    cycle_id = args.get("cycle_id")
+    if cycle_id is None:
+        return CallToolResult(content=[TextContent(type="text", text="Error: cycle_id is required")])
     correct = args.get("correct_decision", "LOOP")
     note = args.get("note", "")
     correct_note = correct + ": " + note
-    conn.execute("UPDATE loop_cycles SET user_overrode=1, outcome_note=? WHERE id=?", (correct_note, cycle_id))
-    conn.commit()
-    conn.close()
-    text = "Cycle " + str(cycle_id) + " overridden -> " + correct + "."
-    return CallToolResult(content=[TextContent(type="text", text=text)])
+    try:
+        conn = _db()
+        existing = conn.execute("SELECT id FROM loop_cycles WHERE id = ?", (cycle_id,)).fetchone()
+        if not existing:
+            conn.close()
+            return CallToolResult(content=[TextContent(
+                type="text",
+                text=f"Error: Cycle #{cycle_id} not found in loop-governance DB. Use cycle_query to find valid cycle IDs."
+            )])
+        conn.execute("UPDATE loop_cycles SET user_overrode=1, outcome_note=? WHERE id=?", (correct_note, cycle_id))
+        conn.commit()
+        conn.close()
+        return CallToolResult(content=[TextContent(type="text", text=f"⏩ Cycle #{cycle_id} overridden → {correct}.")])
+    except Exception as e:
+        return CallToolResult(content=[TextContent(type="text", text=f"Error overriding cycle #{cycle_id}: {e}")])
 
 
 def _cache_search(args: dict) -> CallToolResult:
@@ -418,7 +468,7 @@ def _cache_search(args: dict) -> CallToolResult:
 
 
 def _begin_change(args: dict) -> CallToolResult:
-    """Create a governance lock file. Records task_id for scoring enforcement."""
+    """Create a governance lock file AND a pending cycle in the loop-governance DB."""
     task_id = args.get("task_id", "").strip()
     description = args.get("description", "").strip()
     if not task_id:
@@ -437,6 +487,7 @@ def _begin_change(args: dict) -> CallToolResult:
         except (json.JSONDecodeError, OSError):
             pass
 
+    # Create lock file
     _governance_lock_path().parent.mkdir(parents=True, exist_ok=True)
     state = {
         "task_id": task_id,
@@ -446,12 +497,47 @@ def _begin_change(args: dict) -> CallToolResult:
         "scored": False,
     }
     _governance_lock_path().write_text(json.dumps(state, indent=2))
+
+    # Create pending cycle in loop-governance DB
+    try:
+        conn = _db()
+        row = conn.execute(
+            "SELECT COALESCE(MAX(cycle_num), 0) + 1 FROM loop_cycles WHERE task_id = ?",
+            (task_id,)
+        ).fetchone()
+        cycle_num = row[0] if row else 1
+
+        conn.execute(
+            """INSERT INTO loop_cycles
+               (task_id, cycle_num, completeness, quality, progress, composite,
+                no_progress, decision, user_overrode, outcome_note)
+               VALUES (?, ?, 0, 0, 0, 0, 0, 'PENDING', NULL,
+                       'Created by begin_change — call feedback_accept to score')""",
+            (task_id, cycle_num)
+        )
+        conn.commit()
+        cycle_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.close()
+
+        pending_msg = (
+            f"\n📝 Pending cycle #{cycle_id} created in loop-governance DB.\n"
+            f"   After your change, call:\n"
+            f"     1. mcp_loop_governance_cycle_query(task_id='{task_id}')\n"
+            f"     2. mcp_loop_governance_feedback_accept(id={cycle_id}, note='...')\n"
+            f"     3. mcp_loop_governance_end_change(task_id='{task_id}')"
+        )
+    except Exception as e:
+        pending_msg = (
+            f"\n⚠️  Could not create pending cycle: {e}\n"
+            f"   end_change will reject — force-clear with: rm {_governance_lock_path()}"
+        )
+
     return CallToolResult(content=[TextContent(
         type="text",
         text=f"🔒 Governance session started: {task_id} — {description}\n"
              f"Lock file: {_governance_lock_path()}\n"
-             f"Use end_change('{task_id}') when done. "
-             f"You MUST score this change first (end_change checks for scoring)."
+             f"Use end_change('{task_id}') when done."
+             + pending_msg
     )])
 
 
@@ -496,15 +582,26 @@ def _end_change(args: dict) -> CallToolResult:
         row = None
 
     if not row:
+        # Offer to find the pending cycle and score it
+        try:
+            conn2 = _db()
+            pending = conn2.execute(
+                "SELECT id FROM loop_cycles WHERE task_id = ? AND user_overrode IS NULL ORDER BY id DESC LIMIT 1",
+                (task_id,)
+            ).fetchone()
+            conn2.close()
+            hint = f"   A pending cycle (#{pending[0]}) exists for this task — run:\n" if pending else ""
+        except Exception:
+            hint = ""
+
         return CallToolResult(content=[TextContent(
             type="text",
-            text=f"⛔ No scored cycle found for task '{task_id}'.\n\n"
-                 f"end_change is REJECTED until you score this change:\n"
-                 f"  1. mcp_loop_governance_cycle_query(task_id='{task_id}') — find the cycle\n"
-                 f"  2. mcp_loop_governance_feedback_accept(id=N) — mark as correct\n"
-                 f"     (or mcp_loop_governance_feedback_override(id=N, correct_decision=...) if wrong)\n"
-                 f"  3. mcp_loop_governance_end_change(task_id='{task_id}') — close the lock\n\n"
-                 f"The lock stays active until you score. You cannot start a new task until this one is closed."
+            text=f"⛔ No scored cycle found for task '{task_id}'. "
+                 f"The pending cycle needs feedback_accept before release.\n\n"
+                 + hint
+                 + f"  1. mcp_loop_governance_feedback_accept(id=N, note='...') — score the cycle\n"
+                 + f"  2. mcp_loop_governance_end_change(task_id='{task_id}') — retry release\n\n"
+                 + f"The lock stays active until you score. You cannot start a new task until this one is closed."
         )])
 
     # Step 4: Score exists — release the lock

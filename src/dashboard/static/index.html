@@ -67,6 +67,7 @@
   .status-dot.up { background: var(--green); box-shadow: 0 0 6px var(--green); }
   .status-dot.down { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
   .status-dot.degraded { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+  .status-dot.critical { background: var(--red); box-shadow: 0 0 6px var(--red); }
 
   .service-row {
     display: flex; align-items: center; justify-content: space-between;
@@ -382,16 +383,24 @@ const LANGFUSE_EXTERNAL = 'http://localhost:13002'; // External Langfuse URL (fo
 
   function renderHealth(data) {
     const h = data.health;
+    const services = Object.entries(h.services);
+    const total = services.length;
+    const downCount = services.filter(([_, svc]) => svc.status !== 'up').length;
+    const allDown = total > 0 && downCount === total;
+
     let html = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-      <span class="status-dot ${h.overall}"></span>
-      <span style="font-size:14px;font-weight:600;text-transform:capitalize">${h.overall}</span>
+      <span class="status-dot ${allDown ? 'critical' : h.overall}"></span>
+      <span style="font-size:14px;font-weight:600;text-transform:capitalize">${allDown ? 'critical' : h.overall}</span>
       <span style="color:var(--text-dim);font-size:11px">${h.summary}</span>
       <span style="margin-left:auto;color:var(--text-muted);font-size:10px">${h.uptime_days}d uptime</span>
     </div>`;
-    for (const [name, svc] of Object.entries(h.services)) {
+    for (const [name, svc] of services) {
       const s = svc.status;
+      let dotClass = s;
+      if (s === 'down') dotClass = allDown ? 'critical' : 'down';
+      if (s === 'unreachable') dotClass = 'critical';
       html += `<div class="service-row">
-        <span><span class="service-name"><span class="status-dot ${s}"></span>${name}</span>
+        <span><span class="service-name"><span class="status-dot ${dotClass}"></span>${name}</span>
         <span class="service-label">${svc.label||''}</span></span>
         <span class="service-status">${s}${svc.pid ? ` · PID ${svc.pid}` : ''}</span>
       </div>`;
