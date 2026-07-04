@@ -745,12 +745,119 @@ diff ~/.hermes/SOUL.md ~/hermes-cortex/docs/templates/SOUL.md
 cortex-update --status
 ```
 
+## 🧠 Scoring / Loop Governance Issues
+
+### 19. Loop-gov MCP server fails: `ModuleNotFoundError: No module named 'hermes_models'`
+
+**Symptom:** `hermes mcp test loop-governance` fails. The `mcp_loop_governance_*` tools (begin_change, cycle_query, feedback_accept, etc.) don't appear in the agent's tool list.
+
+**Root cause:** The deployed `loop-gov-mcp.py` adds the wrong directory to `sys.path`. It looks for `hermes_models.py` in `~/.hermes-cortex/scripts/` but the file is deployed to `~/.hermes/scripts/hermes_models.py` by `install.sh`.
+
+**Fix — update the import path resolver in both the deployed and source copies:**
+
+```python
+# In ~/.hermes-cortex/scripts/mcp-servers/loop-gov-mcp.py
+# AND ~/hermes-cortex/src/mcp-servers/loop-gov-mcp.py
+
+# Ensure hermes_models.py is importable from any Hermes deployment
+_HERMES_HOME = Path.home() / ".hermes"
+_HERMES_SCRIPTS = _HERMES_HOME / "scripts"
+if _HERMES_SCRIPTS.exists():
+    sys.path.insert(0, str(_HERMES_SCRIPTS))
+
+# Also check the repo-local scripts path (for dev/source runs)
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_REPO_SCRIPTS = _SCRIPT_DIR.parent / "scripts"
+if _REPO_SCRIPTS.exists():
+    sys.path.insert(0, str(_REPO_SCRIPTS))
+
+from hermes_models import get_model
+```
+
+After fixing, verify:
+```bash
+hermes mcp test loop-governance
+# Expected: "✓ Connected", "Tools discovered: 10"
+```
+
+### 20. Governance-enforcer plugin installed but not blocking writes
+
+**Symptom:** Write tools (write_file, patch, terminal write commands) work even when no governance lock is active. The plugin files exist at `~/.hermes/plugins/governance-enforcer/` but have no effect.
+
+**Root cause:** The plugin is symlinked in the plugins directory but **not registered** in `~/.hermes/config.yaml` under `plugins.enabled`. Hermes only loads plugins listed there.
+
+**Fix:**
+```bash
+# Add the plugin to the enabled list
+hermes config set plugins.enabled '["observability/langfuse", "governance-enforcer"]'
+
+# The plugin also needs a session restart to take effect:
+# On CLI: /reset
+# On gateway: /restart
+```
+
+Verify:
+```bash
+hermes config show  # should show plugins.enabled including governance-enforcer
+ls -la ~/.hermes/plugins/governance-enforcer/  # should show plugin.yaml, __init__.py
+```
+
+### 21. Score-auditor always reports `had_issues: true`
+
+**Symptom:** The `score-auditor` cron job runs but never clears its error state. Checking `~/.hermes/state/score-auditor.state` shows `"had_issues": true`.
+
+**Root cause:** The `get_scored_tasks()` function in `score-auditor.py` searches for DB tables named `cycles` or `cycle_scores`, but the actual table created by `loop_db.py` is named `loop_cycles`. This causes `get_scored_tasks()` to return an empty set every time, making every modified file appear "unscored."
+
+**Fix — update `get_scored_tasks()` to check for `loop_cycles` first:**
+
+```python
+# In ~/.hermes/scripts/score-auditor.py (deployed)
+# AND ~/hermes-cortex/src/scripts/score-auditor.py (source)
+
+if 'loop_cycles' in table_names:
+    rows = cur.execute(
+        'SELECT DISTINCT task_id FROM loop_cycles'
+    ).fetchall()
+elif 'cycles' in table_names:
+    rows = cur.execute(
+        'SELECT DISTINCT task_id FROM cycles'
+    ).fetchall()
+elif 'cycle_scores' in table_names:
+    rows = cur.execute(
+        'SELECT DISTINCT task_id FROM cycle_scores'
+    ).fetchall()
+else:
+    return set()
+```
+
+After fixing, run it to clear the state:
+```bash
+PYTHONPATH=~/.hermes/scripts python3 ~/.hermes/scripts/score-auditor.py
+cat ~/.hermes/state/score-auditor.state  # Should show "had_issues": false
+```
+
+### 22. Session cache / cache_search not working
+
+**Symptom:** `cache_search()` returns no results or the tool is unavailable.
+
+**Root cause:** The session-embeddings DB was never built or is stale. The MCP server needs it for embedding search but fails silently if the DB is missing.
+
+**Fix — rebuild the session cache:**
+```bash
+PYTHONPATH=~/.hermes/scripts python3 ~/.hermes-cortex/tools/loop-governance/session_cache.py build
+```
+
+Requires:
+- Ollama running with `nomic-embed-text:v1.5` pulled
+- `~/.hermes/scripts/hermes_models.py` on PYTHONPATH
+
 ---
 
 ## Changelog
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.6.0 | 2026-07-04 | Added #19 (loop-gov MCP import path), #20 (governance-enforcer plugin registration), #21 (score-auditor table name), #22 (session cache rebuild) |
 | 1.5.0 | 2026-06-22 | Added #24 (Alembic migration fork troubleshooting, prevention protocol, diagnostics) |
 | 1.4.0 | 2026-06-10 | Rewrote #23 (Langfuse costs) — fixed schema from `langfuse.models` to `public.models`, corrected INSERT SQL for v3 schema, added opencode-zen/opencode-go provider subsection with deepseek-v4-flash-free pricing SQL |
 | 1.2.0 | 2026-06-06 | Added #21 (Langfuse fromTimestamp), #22 (dashboard no-traces), #23 (costs $0.00), #24 (pf firewall), #25 (fail2ban), updated port ranges |

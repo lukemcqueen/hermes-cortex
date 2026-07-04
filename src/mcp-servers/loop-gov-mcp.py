@@ -32,9 +32,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-# Ensure hermes_models.py is importable when running from src/mcp-servers/
+# Ensure hermes_models.py is importable from any Hermes deployment
+_HERMES_HOME = Path.home() / ".hermes"
+_HERMES_SCRIPTS = _HERMES_HOME / "scripts"
+if _HERMES_SCRIPTS.exists():
+    sys.path.insert(0, str(_HERMES_SCRIPTS))
+
+# Also check the repo-local scripts path (for dev/source runs)
 _SCRIPT_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(_SCRIPT_DIR.parent / "scripts"))
+_REPO_SCRIPTS = _SCRIPT_DIR.parent / "scripts"
+if _REPO_SCRIPTS.exists():
+    sys.path.insert(0, str(_REPO_SCRIPTS))
 
 from hermes_models import get_model
 

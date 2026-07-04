@@ -153,13 +153,17 @@ def get_scored_tasks() -> set[str]:
         ).fetchall()
         table_names = [t[0] for t in tables]
 
-        if "cycles" in table_names:
+        if 'loop_cycles' in table_names:
             rows = cur.execute(
-                "SELECT DISTINCT task_id FROM cycles"
+                'SELECT DISTINCT task_id FROM loop_cycles'
             ).fetchall()
-        elif "cycle_scores" in table_names:
+        elif 'cycles' in table_names:
             rows = cur.execute(
-                "SELECT DISTINCT task_id FROM cycle_scores"
+                'SELECT DISTINCT task_id FROM cycles'
+            ).fetchall()
+        elif 'cycle_scores' in table_names:
+            rows = cur.execute(
+                'SELECT DISTINCT task_id FROM cycle_scores'
             ).fetchall()
         else:
             return set()
