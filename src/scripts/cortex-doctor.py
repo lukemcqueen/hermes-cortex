@@ -48,6 +48,7 @@ if not CORTEX_REPO.is_dir() or not (CORTEX_REPO / "AGENTS.md").exists():
 SCRIPTS_SRC = CORTEX_REPO / "src" / "scripts"
 INSTALL_CRONS = SCRIPTS_SRC / "install-crons.sh"
 CORTEX_UPDATE = SCRIPTS_SRC / "cortex-update.sh"
+INSTALL_ORCH_CRONS = SCRIPTS_SRC / "install-orch-crons.sh"
 INSTALL_SCRIPT = CORTEX_REPO / "install.sh"
 INSTALL_OLLAMA = SCRIPTS_SRC / "install-ollama.sh"
 INSTALL_SCORE_HOOK = SCRIPTS_SRC / "install-score-hook.sh"
@@ -92,7 +93,8 @@ CORE_FOOTPRINT = [
 # ── Dynamic registries (self-updating from source) ────────────
 
 def parse_expected_crons():
-    """Read expected cron names from install-crons.sh's uninstall array."""
+    """Read expected universal cron names from install-crons.sh's uninstall array,
+    excluding orchestrator-only crons (those in install-orch-crons.sh)."""
     text = read_file(INSTALL_CRONS)
     if not text:
         return []
@@ -101,7 +103,22 @@ def parse_expected_crons():
         return []
     block = m.group(1)
     names = re.findall(r'"([^"]+)"', block)
-    return [n for n in names if n != "system-heartbeat"]
+    # Exclude system-heartbeat (removed from active installs)
+    # and orchestrator-only crons (validated separately)
+    orch_crons = set(parse_orch_crons())
+    return [n for n in names if n != "system-heartbeat" and n not in orch_crons]
+
+
+def parse_orch_crons():
+    """Read orchestrator-only cron names from install-orch-crons.sh."""
+    text = read_file(INSTALL_ORCH_CRONS)
+    if not text:
+        return []
+    m = re.search(r'for job in \\\n(.*?); do', text, re.DOTALL)
+    if not m:
+        return []
+    block = m.group(1)
+    return re.findall(r'"([^"]+)"', block)
 
 
 def find_script_consumers():
@@ -346,6 +363,26 @@ def check_crons(res):
             info_total = len(extra) - len(warnings)
             if info_total > 0:
                 res.add("Extra crons", "INFO", f"{info_total} cron(s) not part of system (e.g. {', '.join(display[:3])}...)")
+
+    # ── Orchestrator-only crons ──
+    # Validate separately: only expected on orchestrator machines
+    orch_crons = parse_orch_crons()
+    hostname = run_bg(["hostname", "-s"]).strip() or "unknown"
+    is_orch = hostname in ("moses", "esther")
+    if orch_crons:
+        missing_orch = [n for n in orch_crons if n not in registered]
+        if is_orch and missing_orch:
+            res.add("Orch crons missing", "FAIL",
+                    f"orchestrator host '{hostname}' missing {len(missing_orch)}: {', '.join(missing_orch)}",
+                    "Run: bash install-orch-crons.sh --force")
+        elif is_orch and not missing_orch:
+            res.add("Orch crons", "PASS",
+                    f"all {len(orch_crons)} orchestrator crons present (host: {hostname})")
+        elif not is_orch and not missing_orch:
+            # Worker agent that somehow has orch crons — warn
+            res.add("Orch crons", "INFO",
+                    f"orchestrator crons exist on non-orch host '{hostname}' (ok if backup)")
+        # If not is_orch and missing_orch: expected — worker agents skip orch crons, no report needed
 
     res.add("Crons total", "PASS" if len(registered) > 0 else "WARN", f"{len(registered)} jobs registered")
 
