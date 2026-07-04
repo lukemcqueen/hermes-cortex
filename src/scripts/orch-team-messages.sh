@@ -103,16 +103,33 @@ for msg in "${INBOX_FILES[@]}"; do
   if $IS_BROADCAST; then
     # ── Broadcast: leave in inbox for agents, show to Moses once ──
     if ! grep -q "^${id}$" "$SEEN_FILE" 2>/dev/null; then
+      # ── Health-status filter: suppress broadcast of health-ping JSON ──
+      #   Agents sometimes broadcast health-online notices to #luke. These are
+      #   programmatic, not human-readable messages Luke needs to see.
+      body_start=$(grep -n '^---$' "$msg" 2>/dev/null | tail -1 | cut -d: -f1)
+      body_start=$((body_start + 1))
+      BODY=$(tail -n +"${body_start}" "$msg" 2>/dev/null || true)
+      HEALTH_PING=false
+      lower_subject=$(echo "${subject}" | tr '[:upper:]' '[:lower:]')
+      # Check 1: subject matches health-online patterns
+      if echo "${lower_subject}" | grep -Eq "(online.*health|health.*online|health reporting|status.*online)"; then
+        HEALTH_PING=true
+      fi
+      # Check 2: body is a JSON object (programmatic health data, not human message)
+      if echo "${BODY}" | grep -Eq '^\s*\{' 2>/dev/null; then
+        HEALTH_PING=true
+      fi
+      if $HEALTH_PING; then
+        # Track as seen so we don't re-evaluate, but don't broadcast
+        echo "$id" >> "$SEEN_FILE"
+        continue
+      fi
       TS=$(TZ="Asia/Seoul" date +"%Y-%m-%d %H:%M KST")
       $HAD_OUTPUT || { echo "━━━ 📬 Agent Inbox — Broadcast ━━━ [${TS}]"; HAD_OUTPUT=true; }
       echo "  From: ${from}  |  Topic: #${topic}"
       echo "  Subject: ${subject}"
       echo "  (agents will pick this up on next poll)"
       echo ""
-      # Show body
-      body_start=$(grep -n '^---$' "$msg" 2>/dev/null | tail -1 | cut -d: -f1)
-      body_start=$((body_start + 1))
-      BODY=$(tail -n +"${body_start}" "$msg" 2>/dev/null || true)
       echo "${BODY}"
       echo ""
       echo "━━━ End Broadcast ━━━"
