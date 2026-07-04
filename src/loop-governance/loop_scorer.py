@@ -31,8 +31,9 @@ except ImportError:
     import sys
     from pathlib import Path
     for candidate in [
-        Path.home() / ".hermes-cortex" / "scripts",
-        Path(__file__).resolve().parent.parent / "scripts",
+        Path.home() / ".hermes" / "scripts",                # ~/.hermes/scripts/ (deployment)
+        Path.home() / ".hermes-cortex" / "scripts",          # ~/.hermes-cortex/scripts/
+        Path(__file__).resolve().parent.parent / "scripts",  # repo src/scripts/ or tools/scripts/
     ]:
         resolved = candidate.resolve()
         if resolved.is_dir() and str(resolved) not in sys.path:

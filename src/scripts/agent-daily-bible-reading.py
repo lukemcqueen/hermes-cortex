@@ -1,4 +1,4 @@
-#!/opt/homebrew/bin/python3.12
+#!/usr/bin/env python3
 """agent-daily-bible-reading.py — no_agent cron script.
 
 Reads SOUL.md, determines the next canonical book to cover,
@@ -12,14 +12,14 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 HOME = Path.home()
 SOUL_MD = HOME / ".hermes" / "SOUL.md"
 OLLAMA_URL = "http://localhost:11434/api/chat"
-OLLAMA_MODEL = "mannix/qwen2.5-coder:7b-iq3_xs"
-KST = timezone.utc
+OLLAMA_MODEL = "qwen2.5-coder:3b"
+KST = timezone(timedelta(hours=9))
 
 BOOKS = [
     "Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy",
