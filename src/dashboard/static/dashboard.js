@@ -441,5 +441,5 @@ const LANGFUSE_EXTERNAL = 'http://localhost:13002';
   refresh();
   setInterval(refresh, 30000);
   refreshAgents();
-  setInterval(refreshAgents, 10000);
+  setInterval(refreshAgents, 3000);
 })();
