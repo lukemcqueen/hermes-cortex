@@ -6,21 +6,28 @@ This directory contains the A2A (Agent2Agent) v1.0 implementation.
 
 | Path | Purpose | Status |
 |------|---------|--------|
-| `agent-card.json` | Static Agent Card for this server | Not yet created (Slice 1) |
-| `generate-agent-card.py` | Auto-generate Agent Card from SOUL.md + skills | Not yet created (Slice 1) |
-| `agent-registry.template.json` | Template for agent server addresses | ✅ Created (PII scrub) |
-| `a2a-server.py` | A2A-compliant HTTP server (JSON-RPC 2.0) | Not yet created (Slice 3) |
-| `task-state-schema.sql` | SQLite schema for task state machine | Not yet created (Slice 3) |
+| `agent-card.json` | Static Agent Card for this server (12 skills) | ✅ Done |
+| `generate-agent-card.py` | no_agent generator for the Agent Card | ✅ Done |
+| `a2a-server.py` | A2A-compliant HTTP server (FastAPI, port 8906) | ✅ Done |
+| `agent-registry.template.json` | Template for agent server addresses | ✅ Done (in `src/`) |
+
+## MCP Tools
+
+The `a2a-bridge` MCP server (`src/mcp-servers/a2a-mcp.py`) provides 6 tools:
+
+| Tool | What It Does |
+|------|-------------|
+| `a2a_list_agents` | List all known agents with URLs and roles |
+| `a2a_get_agent` | Get details for a specific agent by name |
+| `a2a_discover` | Fetch a remote agent's Agent Card |
+| `a2a_send_task` | Submit a task to a remote agent |
+| `a2a_get_task` | Poll task status on a remote agent |
+| `a2a_cancel_task` | Cancel a pending task on a remote agent |
 
 ## Architecture
 
 See [`docs/a2a-architecture.md`](../../docs/a2a-architecture.md) for full design.
 
-## Implementation Order
+## Remaining Work
 
-1. Agent Card (Slice 1)
-2. Agent Registry MCP tool (Slice 2)
-3. A2A Server (Slice 3)
-4. A2A Bridge MCP (Slice 4)
-5. nginx mTLS block (Slice 5)
-6. Integration + E2E test (Slice 6)
+- E2E test when a second agent server is available (Slice 6)

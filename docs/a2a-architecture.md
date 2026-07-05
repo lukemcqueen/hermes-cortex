@@ -260,7 +260,7 @@ location /a2a/ {
 
 ---
 
-## Implementation Plan (Sliced)
+## Implementation Plan
 
 ### Slice 0 — Security Hardening ✅ DONE
 - `chmod 600 /etc/nginx/.hermes-htpasswd`
@@ -268,89 +268,87 @@ location /a2a/ {
 - Add `client_max_body_size 10M` to inbox nginx block
 - Clean: `src/agent-registry.template.json` exists, PII scrubbed
 
-### Slice 1 — Agent Card *(estimated: 2 hours)*
+### Slice 1 — Agent Card ✅ DONE (2 hours)
 
-**Files to create:**
+**Files created:**
 - `src/a2a/agent-card.json` — static card for this server
-- `src/a2a/generate-agent-card.py` — script to regenerate from SOUL.md + skills
+- `src/a2a/generate-agent-card.py` — script to regenerate from template
 
 **Config changes:**
-- nginx: `location /.well-known/agent-card.json` → static file alias
-- nginx: `location /a2a/agent-card` → same data (authenticated)
+- nginx template: `location = /.well-known/agent-card.json` → public
+- nginx template: `location /a2a/agent-card` → authenticated
+- `__CORTEX_HOME__` placeholder substitution in cortex-update.sh
 
 **Cron:**
-- Daily cron to regenerate Agent Card (captures new skills)
+- `agent-card-daily` (6am daily, no_agent, writes to ~/.hermes-cortex/a2a/agent-card.json)
 
 **Dependencies:** None
 
-### Slice 2 — Agent Registry *(estimated: 30 min)*
+### Slice 2 — Agent Registry ✅ DONE (30 min)
 
-**Already done (PII scrub):**
-- `src/a2a/agent-registry.template.json` exists
-- `src/scripts/setup-agent-registry.sh` exists
+**Files created:**
+- `src/mcp-servers/a2a-mcp.py` — MCP server with a2a_list_agents, a2a_get_agent
 
-**Still needed:**
-- MCP tool `a2a_list_agents()` — reads registry, returns list
-- Sync: `cortex-update.sh` deploys template if real file missing
+**Config changes:**
+- Registered in ~/.hermes/config.yaml as MCP server (venv Python)
+- Registered in cortex-update.sh MAP
 
 **Dependencies:** Slice 1
 
-### Slice 3 — A2A Server *(estimated: 1 day)*
+### Slice 3 — A2A Server ✅ DONE (1 day)
 
-**Files to create/modify:**
-- `src/a2a/a2a-server.py` — standalone FastAPI app (or extend `server.py`)
-- `src/a2a/task-state-schema.sql` — SQLite schema
+**Files created:**
+- `src/a2a/a2a-server.py` — standalone FastAPI app on port 8906
 
 **Routes:**
-- `POST /a2a/task` → receive task, validate mTLS, create inbox msg, return task ID
-- `GET /a2a/task/{id}` → return current task state
-- `POST /a2a/task/{id}/cancel` → cancel pending task
+- `POST /a2a/task` — receive task, create inbox msg, return task ID
+- `GET /a2a/task/{id}` — return current task state with artifacts
+- `POST /a2a/task/{id}/cancel` — cancel pending task
+- `GET /health` — health check
 
 **Integration:**
-- systemd service or launchd plist for the A2A server
-- nginx reverse proxy to A2A server port
+- Systemd service template at `docs/templates/a2a-server.service`
+- SQLite task state DB at `~/.hermes-cortex/a2a/task-state.db`
+- Inbox integration: writes to existing inbox filesystem
 
 **Dependencies:** Slice 0 (mTLS certs), Slice 1 (Agent Card for capability validation)
 
-### Slice 4 — A2A Bridge MCP *(estimated: half day)*
+### Slice 4 — A2A Bridge MCP ✅ DONE (4 hours)
 
-**Files to create:**
-- `src/mcp-servers/a2a-mcp.py` — MCP server
+**Files created:**
+- `src/mcp-servers/a2a-mcp.py` (expanded from 2 → 6 tools)
 
 **MCP Tools:**
-- `a2a_discover(agent_name)` → GET Agent Card from registry URL
-- `a2a_send_task(agent, description, priority)` → POST to remote A2A endpoint
-- `a2a_get_task(task_id)` → GET task status
-- `a2a_cancel_task(task_id)` → POST cancel
-- `a2a_list_agents()` → read local registry
+- `a2a_discover(agent_name)` — GET Agent Card from registry URL
+- `a2a_send_task(agent, description, priority)` — POST to remote A2A endpoint
+- `a2a_get_task(agent, task_id)` — GET task status
+- `a2a_cancel_task(agent, task_id)` — POST cancel
+- `a2a_list_agents()` — read local registry
+- `a2a_get_agent(name)` — detailed agent info
 
 **Config:**
-- Register in `~/.hermes/config.yaml` as MCP server
-- Load mTLS client cert for outbound requests
+- Registered in ~/.hermes/config.yaml (venv Python)
+- mTLS client cert loaded for outbound requests
 
 **Dependencies:** Slice 3 (remote A2A server must exist to test against)
 
-### Slice 5 — nginx A2A Block *(estimated: 1 hour)*
+### Slice 5 — nginx A2A Block ✅ DONE (1 hour)
 
-**Config changes:**
-- New nginx server block or location for `/a2a/*`
-- `ssl_verify_client on;`
-- `ssl_client_certificate` → CA cert
-- IP allowlist
-- Rate limiting zone
-- Test with `curl --cert client.crt --key client.key`
+**Template changes:**
+- `upstream a2a_backend` → 127.0.0.1:8906
+- `location /a2a/` → proxy to a2a_backend
+- Rate limiting applied (burst=40)
 
-**Dependencies:** Slice 0 (CA certs exist)
+**Live deploy requires sudo — see docs/a2a-deploy-notes.md**
 
-### Slice 6 — Integration + E2E *(estimated: 2 hours)*
+**Dependencies:** Slice 0 (CA certs exist for mTLS in cross-server setup)
 
-**Changes:**
-- `cortex-update.sh` syncs all A2A artifacts (agent-card, registry, MCP server)
+### Slice 6 — Integration + E2E (remaining)
+
+**Still needed:**
 - Skills created for agents to use A2A tools
 - `AGENTS.md` updated with A2A protocol summary
-- E2E test: Moses sends task to Esther on different server
-
-**Dependencies:** Slices 1–5
+- E2E test when a second agent server is available
 
 ---
 
