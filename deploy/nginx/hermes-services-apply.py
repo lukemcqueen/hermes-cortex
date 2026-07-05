@@ -92,19 +92,43 @@ def find_letsencrypt_certs(domain=None):
                 [d for d in live_dir.iterdir() if d.is_dir() and not d.name.startswith(".")]
             )
         except PermissionError:
+            # Try common domain names as fallback
+            for common in ("mp-stage.koscap.or.kr", "mwi-stage.koscap.or.kr", "mweb-stage.koscap.or.kr"):
+                d = live_dir / common
+                try:
+                    if d.is_dir():
+                        candidates.append(d)
+                except PermissionError:
+                    continue
+        except FileNotFoundError:
             return None, None
 
     for d in candidates:
         cert = d / "fullchain.pem"
         key = d / "privkey.pem"
-        if cert.is_file() and key.is_file():
-            try:
-                # Verify cert is not expiring within 7 days
-                # (simple check: file readable and non-empty)
-                if cert.stat().st_size > 100 and key.stat().st_size > 100:
+        try:
+            if cert.is_file() and key.is_file():
+                try:
+                    # Verify cert is not expiring within 7 days
+                    # (simple check: file readable and non-empty)
+                    if cert.stat().st_size > 100 and key.stat().st_size > 100:
+                        return str(cert), str(key)
+                except PermissionError:
+                    # Can't stat but paths exist — trust them (nginx reads as root)
                     return str(cert), str(key)
-            except OSError:
-                continue
+                except OSError:
+                    continue
+            else:
+                # Fallback: check by absolute symlink path (LE live/ -> archive/)
+                alt_cert = Path(f"/etc/letsencrypt/archive/{d.name}/fullchain1.pem")
+                alt_key = Path(f"/etc/letsencrypt/archive/{d.name}/privkey1.pem")
+                try:
+                    if alt_cert.is_file() and alt_key.is_file():
+                        return str(cert), str(key)
+                except (PermissionError, OSError):
+                    continue
+        except PermissionError:
+            continue
     return None, None
 
 
@@ -143,18 +167,31 @@ def find_system_certs():
 def discover_ssl_certs(domain=None, explicit_cert=None, explicit_key=None):
     """Discover SSL certificates. Returns (cert_path, key_path) or (None, None)."""
     # Priority 1: Explicit paths from env/args
+    # Use explicit paths even if we can't stat them (e.g. root-only LE certs).
+    # nginx reads these as root and the user has verified they work.
     if explicit_cert and explicit_key:
-        if Path(explicit_cert).is_file() and Path(explicit_key).is_file():
+        try:
+            if Path(explicit_cert).is_file() and Path(explicit_key).is_file():
+                return explicit_cert, explicit_key
+        except PermissionError:
+            # Permission denied — trust the explicit path (nginx reads as root)
+            print(f"  ✓ Using explicit cert path (PermissionError on stat — trusting nginx can read)")
             return explicit_cert, explicit_key
         print(f"  ⚠ Explicit cert/key paths not found, falling back to auto-detect")
 
     # Priority 2: Env vars
-    env_cert = os.environ.get("CORTEX_SSL_CERT_PATH")
-    env_key = os.environ.get("CORTEX_SSL_CERT_KEY_PATH")
-    if env_cert and env_key:
-        if Path(env_cert).is_file() and Path(env_key).is_file():
-            return env_cert, env_key
-        print(f"  ⚠ CORTEX_SSL_CERT_PATH/CORTEX_SSL_CERT_KEY_PATH files not found")
+    if not (explicit_cert and explicit_key):
+        env_cert = os.environ.get("CORTEX_SSL_CERT_PATH")
+        env_key = os.environ.get("CORTEX_SSL_CERT_KEY_PATH")
+        if env_cert and env_key:
+            try:
+                if Path(env_cert).is_file() and Path(env_key).is_file():
+                    return env_cert, env_key
+            except PermissionError:
+                # Permission denied — trust the env path (nginx reads as root)
+                print(f"  ✓ CORTEX_SSL_CERT_PATH trust (PermissionError on stat — trusting nginx can read)")
+                return env_cert, env_key
+            print(f"  ⚠ CORTEX_SSL_CERT_PATH/CORTEX_SSL_CERT_KEY_PATH files not found")
 
     # Priority 3: Let's Encrypt (specific domain or scan)
     cert, key = find_letsencrypt_certs(domain)
