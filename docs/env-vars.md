@@ -7,13 +7,16 @@ and related scripts. New variables should be added here with all fields.
 
 ## Env File Template
 
-A pre-commented template lives at `deploy/nginx/hermes-services.env.example`:
+The env file lives at `deploy/hermes-services.env` (NOT in `deploy/nginx/`) to make
+clear it is **sourced only** — never deployed to nginx. Only `*.conf` files from
+`deploy/nginx/` get deployed to the nginx config directory.
 
 ```bash
-cp ~/hermes-cortex/deploy/nginx/hermes-services.env.example \
-  ~/hermes-cortex/deploy/nginx/hermes-services.env
+# Copy the template to the deploy/ directory (one level above nginx/)
+cp ~/hermes-cortex/deploy/hermes-services.env.example \
+  ~/hermes-cortex/deploy/hermes-services.env
 # Edit, then source:
-set -a; source ~/hermes-cortex/deploy/nginx/hermes-services.env; set +a
+set -a; source ~/hermes-cortex/deploy/hermes-services.env; set +a
 sudo hermes-security-apply
 ```
 

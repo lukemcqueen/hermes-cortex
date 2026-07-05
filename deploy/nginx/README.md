@@ -28,7 +28,7 @@ no benefit to running it on a host without nginx.
 | `nginx-badbots.conf` | **Input:** fail2ban filter for archive scanners + `/storage/` crawling |
 | `hermes-security-apply` | Sudo-installed script that deploys all configs atomically |
 | `hermes-services-apply.py` | **Alternative:** Python deploy script — auto-discovers SSL certs, supports `--dry-run` and `--validate` |
-| `hermes-services.env.example` | **Template env file** — copy to `hermes-services.env`, set `CORTEX_SSL_*` vars |
+| `deploy/hermes-services.env.example` | **Env template** — copy to `deploy/hermes-services.env`, set `CORTEX_SSL_*` vars. **Source only** — never deploy to nginx. |
 | `README.md` | This file |
 
 ---
@@ -116,9 +116,9 @@ work until certs are provided.
 ### Setup
 
 ```bash
-# 1. Copy the env template and edit
-cp ~/hermes-cortex/deploy/nginx/hermes-services.env.example \
-  ~/hermes-cortex/deploy/nginx/hermes-services.env
+# 1. Copy the env template and edit (stays in deploy/, never goes to nginx)
+cp ~/hermes-cortex/deploy/hermes-services.env.example \
+  ~/hermes-cortex/deploy/hermes-services.env
 
 # 2. Edit with your cert paths or domain
 #    CORTEX_SSL_CERT_PATH=/etc/letsencrypt/live/example.com/fullchain.pem
@@ -126,7 +126,7 @@ cp ~/hermes-cortex/deploy/nginx/hermes-services.env.example \
 #    CORTEX_SSL_DOMAIN=example.com
 
 # 3. Source it before deploying
-set -a; source ~/hermes-cortex/deploy/nginx/hermes-services.env; set +a
+set -a; source ~/hermes-cortex/deploy/hermes-services.env; set +a
 sudo hermes-security-apply
 
 # Or use the Python script directly with --dry-run first:
