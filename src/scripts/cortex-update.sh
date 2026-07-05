@@ -733,16 +733,21 @@ deploy_system_scripts() {
     if needs_update "$src" "$dest"; then
       if command -v sudo &>/dev/null; then
         sudo mkdir -p "$deploy_dir" 2>/dev/null || true
-        sudo cp "$src" "$dest"
-        sudo chown root:root "$dest"
-        sudo chmod 755 "$dest"
+        if sudo cp "$src" "$dest" 2>/dev/null; then
+          sudo chown root:root "$dest" 2>/dev/null || true
+          sudo chmod 755 "$dest" 2>/dev/null || true
+          info "  Deployed: ${script} → ${deploy_dir}/"
+          files_copied=$((files_copied + 1))
+        else
+          warn "  Skipped ${script} — sudo not available for ${deploy_dir}/ (add NOPASSWD entry)"
+        fi
       else
         mkdir -p "$deploy_dir" 2>/dev/null || true
         cp "$src" "$dest"
         chmod 755 "$dest"
+        info "  Deployed: ${script} → ${deploy_dir}/"
+        files_copied=$((files_copied + 1))
       fi
-      info "  Deployed: ${script} → ${deploy_dir}/"
-      files_copied=$((files_copied + 1))
     fi
   done
 
