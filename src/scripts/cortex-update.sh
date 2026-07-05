@@ -676,6 +676,16 @@ deploy_nginx_configs() {
       -e "s|__NGINX_LOG_DIR__|${log_dir}|g" \
       -e "s|__HTPASSWD_FILE__|${htpasswd}|g" > "$tmpfile"
     if command -v sudo &>/dev/null && [[ "$config_dir" == /etc/* ]]; then
+      # ── Preserve custom port ranges (12xxx Joseph, 14xxx Esther, etc.) ──
+      if [[ -f "$conf_dst" ]]; then
+        local live_prefix template_prefix
+        live_prefix=$(grep -oP 'listen\s+127\.0\.0\.1:\K[0-9]{2}(?=[0-9]{3})' "$conf_dst" | head -1)
+        template_prefix=$(grep -oP 'listen\s+127\.0\.0\.1:\K[0-9]{2}(?=[0-9]{3})' "$tmpfile" | head -1)
+        if [[ -n "$live_prefix" && -n "$template_prefix" && "$live_prefix" != "$template_prefix" ]]; then
+          sed -i "s/:${template_prefix}/:${live_prefix}/g" "$tmpfile"
+          info "  Preserved port range ${template_prefix}xxx → ${live_prefix}xxx"
+        fi
+      fi
       sudo mkdir -p "$(dirname "$conf_dst")" 2>/dev/null || true
       sudo cp "$tmpfile" "$conf_dst"
       sudo chmod 644 "$conf_dst"

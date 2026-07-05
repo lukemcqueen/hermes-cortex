@@ -110,14 +110,16 @@ bash ~/.hermes/scripts/install-crons.sh --uninstall
 
 ### Agent summary
 
-| Agent | Role | Host | Services | Inbox method |
-|-------|------|------|----------|-------------|
-| Moses | Primary orchestrator | moses-server (Linux) | Gateway + nginx proxy :13004 | HTTP poll (self) |
-| Esther | Backup orchestrator | worker-5 (Linux) | Gateway + nginx proxy :14004 | HTTP poll (+bkup inbox) |
-| Gisu | Remote server | worker-3 (Linux) | Health endpoint :13007 | HTTP poll → Moses inbox |
-| Joseph | Remote server | worker-2 (Linux) | Health endpoint :12007 | HTTP poll → Moses inbox |
-| Kustos | Remote server | worker-4 (Linux) | Health endpoint :13007 | HTTP poll → Moses inbox |
-| Titus | macOS developer | LAM2 (Apple M1, 16GB) | Client only; Ollama crons use qwen2.5-coder:7b-iq3_xs | Push health to Moses inbox |
+|| Agent | Role | Host | Services | Inbox method | Health auth |
+||-------|------|------|----------|-------------|-------------|
+|| Moses | Primary orchestrator | moses-server (Linux) | Gateway + nginx proxy :13004 | HTTP poll (self) | Auth required |
+|| Esther | Backup orchestrator | worker-5 (Linux) | Gateway + nginx proxy :14004 | HTTP poll (+bkup inbox) | Auth required |
+|| Gisu | Remote server | worker-3 (Linux) | Health endpoint :13007 | HTTP poll → Moses inbox | Auth required |
+|| **Joseph** | **Remote server** | **worker-2 (Linux)** | **Health endpoint :12007** | **HTTP poll → Moses inbox** | **No auth** |
+|| Kustos | Remote server | worker-4 (Linux) | Health endpoint :13007 | HTTP poll → Moses inbox | Auth required |
+|| Titus | macOS developer | LAM2 (Apple M1, 16GB) | Client only; Ollama crons use qwen2.5-coder:7b-iq3_xs | Push health to Moses inbox | N/A |
+
+> **Health endpoint auth:** All server health ports (13007, 14004) require HTTP basic auth except **Joseph (:12007)** — it's health-only and Moses polls it directly. See `hermes-services.conf` for the auth config per server block.
 
 ### Auto-remediation components
 

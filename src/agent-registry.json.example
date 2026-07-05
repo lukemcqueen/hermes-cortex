@@ -53,7 +53,7 @@
       "platform": "linux",
       "health_method": "http",
       "health_url": "https://your-domain.com:12007/health",
-      "description": "Joseph — web/infra server (set health_url locally, port 12007)",
+      "description": "Joseph — web/infra server (set health_url locally, port 12007, no auth)",
       "inbox_user": "joseph",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
