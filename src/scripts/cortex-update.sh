@@ -248,6 +248,10 @@ register "src/offline/lessons.py"                 "${HERMES_HOME}/offline/lesson
 register "src/offline/migrate_fts_reasoning.sql"  "${HERMES_HOME}/offline/migrate_fts_reasoning.sql"
 register "src/offline/auto-update.sh"             "${HERMES_HOME}/offline/auto-update.sh"
 
+# A2A Agent-to-Agent Protocol
+register "src/a2a/generate-agent-card.py"         "${HERMES_HOME}/scripts/generate-agent-card.py"
+register "src/a2a/agent-card.json"                "${HERMES_HOME}/a2a/agent-card.json"
+
 # Templates → ~/.hermes/memories/ (guarded — only if dest missing)
 register "docs/templates/MEMORY.seed.md"      "${HERMES_HOME}/memories/MEMORY.md"
 register "docs/templates/USER.seed.md"        "${HERMES_HOME}/memories/USER.md"
@@ -672,7 +676,8 @@ deploy_nginx_configs() {
     < "$conf_src" sed \
       -e "s|__NGINX_CONFIG_DIR__|${config_dir}|g" \
       -e "s|__NGINX_LOG_DIR__|${log_dir}|g" \
-      -e "s|__HTPASSWD_FILE__|${htpasswd}|g" > "$tmpfile"
+      -e "s|__HTPASSWD_FILE__|${htpasswd}|g" \
+      -e "s|__CORTEX_HOME__|${HOME}|g" > "$tmpfile"
     if command -v sudo &>/dev/null && [[ "$config_dir" == /etc/* ]]; then
       # ── Preserve custom port ranges (12xxx Joseph, 14xxx Esther, etc.) ──
       if [[ -f "$conf_dst" ]]; then
