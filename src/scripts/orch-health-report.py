@@ -27,7 +27,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
-REGISTRY_PATH = HOME / "hermes-cortex" / "src" / "agent-registry.json"
+REGISTRY_PATH = HOME / ".hermes" / "state" / "agent-registry.json"
+REGISTRY_TEMPLATE = HOME / "hermes-cortex" / "src" / "agent-registry.template.json"
 REGISTRY_LOCAL = HOME / ".hermes" / "agent-registry.local.json"
 INBOX_CONF = HOME / ".hermes" / "moses-inbox.conf"
 TIMEOUT = 3
@@ -88,6 +89,11 @@ def _get_agents() -> list[dict]:
     if REGISTRY_PATH.exists():
         try:
             registry = json.loads(REGISTRY_PATH.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+    if not registry and REGISTRY_TEMPLATE.exists():
+        try:
+            registry = json.loads(REGISTRY_TEMPLATE.read_text())
         except (json.JSONDecodeError, OSError):
             pass
     if REGISTRY_LOCAL.exists():

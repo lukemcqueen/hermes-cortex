@@ -1,0 +1,103 @@
+{
+  "version": 3,
+  "description": "Agent registry for Hermes Cortex. Template — copy to ~/.hermes/state/agent-registry.json and fill in real URLs during setup.",
+  "health_vector_map": [
+    "resources", "services", "no_errored_crons", "no_stale_crons",
+    "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok"
+  ],
+  "routing": {
+    "broadcast_topics": [
+      "luke",
+      "all",
+      "general"
+    ],
+    "agent_prefix_topics": true
+  },
+  "agents": {
+    "moses": {
+      "name": "Moses",
+      "role": "orchestrator",
+      "hostname": "moses",
+      "is_server": true,
+      "is_orchestrator": true,
+      "accessible": true,
+      "platform": "linux",
+      "health_method": "http",
+      "health_url": "https://{{CORTEX_DOMAIN}}:{{CORTEX_HEALTH_PORT}}/health",
+      "description": "Moses — orchestrator server",
+      "inbox_user": "moses",
+      "inbox_watch_schedule": "every 10m",
+      "inbox_deliver": "local"
+    },
+    "esther": {
+      "name": "Esther",
+      "role": "orchestrator-backup",
+      "hostname": "esther",
+      "is_server": true,
+      "is_backup_orchestrator": true,
+      "accessible": true,
+      "platform": "linux",
+      "health_method": "http",
+      "health_url": "https://{{ESTHER_DOMAIN}}:{{ESTHER_HEALTH_PORT}}/health",
+      "description": "Esther — backup orchestrator",
+      "inbox_user": "esther",
+      "inbox_watch_schedule": "every 10m",
+      "inbox_deliver": "local"
+    },
+    "joseph": {
+      "name": "Joseph",
+      "role": "web-infrastructure",
+      "hostname": "joseph",
+      "is_server": true,
+      "accessible": true,
+      "platform": "linux",
+      "health_method": "http",
+      "health_url": "https://{{JOSEPH_DOMAIN}}:{{JOSEPH_HEALTH_PORT}}/health",
+      "description": "Joseph — web/infra server",
+      "inbox_user": "joseph",
+      "inbox_watch_schedule": "every 10m",
+      "inbox_deliver": "local"
+    },
+    "kustos": {
+      "name": "Kustos",
+      "role": "web-infrastructure",
+      "hostname": "kustos",
+      "is_server": true,
+      "accessible": true,
+      "platform": "linux",
+      "health_method": "http",
+      "health_url": "https://{{KUSTOS_DOMAIN}}:{{KUSTOS_HEALTH_PORT}}/health",
+      "description": "Kustos — security server",
+      "inbox_user": "kustos",
+      "inbox_watch_schedule": "every 10m",
+      "inbox_deliver": "local"
+    },
+    "gisu": {
+      "name": "Gisu",
+      "role": "operations",
+      "hostname": "gisu",
+      "is_server": true,
+      "accessible": true,
+      "platform": "linux",
+      "health_method": "http",
+      "health_url": "https://{{GISU_DOMAIN}}:{{GISU_HEALTH_PORT}}/health",
+      "description": "Gisu — operations server",
+      "inbox_user": "gisu",
+      "inbox_watch_schedule": "every 10m",
+      "inbox_deliver": "local"
+    },
+    "titus": {
+      "name": "Titus",
+      "role": "developer",
+      "hostname": "titus",
+      "is_server": false,
+      "accessible": true,
+      "health_method": "inbox",
+      "platform": "macOS",
+      "description": "Titus — macOS developer machine. NOT a server — do not poll. Pushes health vector to inbox.",
+      "inbox_user": "titus",
+      "inbox_watch_schedule": "every 10m",
+      "inbox_deliver": "local"
+    }
+  }
+}

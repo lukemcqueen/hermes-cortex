@@ -57,7 +57,10 @@ MCP_SERVERS_DIR = CORTEX_REPO / "src" / "mcp-servers"
 
 # Passthrough to subprocess for HTTP checks (avoid cert issues with urllib)
 CURL = os.environ.get("CURL_BIN", "curl")
-EXTERNAL_BASE = os.environ.get("CORTEX_DOCTOR_BASE", "https://bus.example.org")
+EXTERNAL_BASE = os.environ.get("CORTEX_DOCTOR_BASE", "")
+# Fall back to localhost when no domain is configured (PII-safe default)
+if not EXTERNAL_BASE:
+    EXTERNAL_BASE = "http://127.0.0.1"
 
 # Expected MCP servers
 EXPECTED_MCP_SERVERS = {

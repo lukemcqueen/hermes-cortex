@@ -139,8 +139,8 @@ All in `src/scripts/`, installed by `install.sh` + `install-crons.sh`:
 ### Esther setup (backup orchestrator)
 
 ```bash
-# 1. Copy agent registry
-cp ~/.hermes-cortex/src/agent-registry.json ~/.hermes/state/agent-registry.json
+# 1. Run agent registry setup (prompts for real URLs)
+bash ~/.hermes-cortex/src/scripts/setup-agent-registry.sh
 # 2. Install crons
 bash ~/.hermes-cortex/src/scripts/install-crons.sh
 # 3. Copy orchestrator-specific scripts

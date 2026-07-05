@@ -516,7 +516,7 @@ No authentication. No TLS. Plain HTTP — the vector contains no secrets, just b
 ### Agent endpoint URLs
 
 > **Private config:** Actual domains are set locally (not committed to the public repo).
-> See `src/agent-registry.json` — each agent's `health_url` must be configured on the
+> See `~/.hermes/state/agent-registry.json` — each agent's `health_url` must be configured on the
 > orchestrator for the poller to reach it. Port hints are in the description field.
 
 | Agent | Port | Method | Auth |
@@ -554,7 +554,7 @@ No authentication. No TLS. Plain HTTP — the vector contains no secrets, just b
 | `src/scripts/health-vector-push.sh` | Inbox push script for client-only agents |
 || `src/scripts/orch-team-health.py` | Orchestrator poller (no_agent cron) |
 || `src/scripts/orch-health-report.py` | Health snapshot report — formatted for Telegram delivery |
-|| `src/agent-registry.json` | Agent registry with `health_method`, `health_url` |
+|| `src/agent-registry.template.json` | Agent registry template (fill during setup → `~/.hermes/state/agent-registry.json`) |
 || `docs/templates/com.hermes.health-push.plist` | macOS launchd template for Titus |
 || `docs/templates/health-vector.service` | systemd user service template for server agents |
 
@@ -760,8 +760,8 @@ All in `src/scripts/`, installed by `install.sh` + `install-crons.sh`:
 ### Esther setup (backup orchestrator)
 
 ```bash
-# 1. Copy agent registry
-cp ~/.hermes-cortex/src/agent-registry.json ~/.hermes/state/agent-registry.json
+# 1. Run agent registry setup (prompts for real URLs)
+bash ~/.hermes-cortex/src/scripts/setup-agent-registry.sh
 # 2. Install crons
 bash ~/.hermes-cortex/src/scripts/install-crons.sh
 # 3. Copy orchestrator-specific scripts
