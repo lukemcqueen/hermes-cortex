@@ -26,6 +26,7 @@ sudo hermes-security-apply
 |----------|---------|---------|---------|
 | `CORTEX_REPO` | `$HOME/hermes-cortex` | `cortex-update.sh`, `hermes-security-apply`, `hermes-services-apply.py` | Path to the hermec-cortex repo. Multiple scripts source templates and configs from here. |
 | `CORTEX_SKIP_NGINX` | _(unset)_ | `cortex-update.sh`, `hermes-services-apply.py` | When set to any value, skip nginx config deploy, test, and reload. |
+| `CORTEX_FORCE_DEPLOY` | _(unset)_ | `hermes-security-apply`, `cortex-update.sh`, `hermes-services-apply.py` | When set to `1`, re-resolve SSL certs and port prefix from env/auto-detect instead of preserving existing values from the live config. |
 | `CORTEX_NGINX_PORT_PREFIX` | `13` | `cortex-update.sh`, `hermes-services-apply.py` | Two-digit port prefix for nginx server blocks. Template ships as `13xxx`; set to `12` (Joseph), `14` (Esther), etc. |
 | `CORTEX_SSL_CERT_PATH` | *(auto-detect)* | `hermes-services-apply.py`, `hermes-security-apply`, `cortex-update.sh` | Explicit SSL certificate path. Overrides all auto-detection. |
 | `CORTEX_SSL_CERT_KEY_PATH` | *(auto-detect)* | `hermes-services-apply.py`, `hermes-security-apply`, `cortex-update.sh` | Explicit SSL certificate key path. Overrides all auto-detection. |
@@ -33,7 +34,24 @@ sudo hermes-security-apply
 
 ---
 
-## SSL Cert Discovery Order
+## SSL Cert Discovery & Preservation
+
+By default, all three deploy scripts **preserve** the port prefix and SSL cert
+paths from the existing deployed config. They only auto-discover new values if
+the existing config has placeholders (`__SSL_CERT__`) or if `CORTEX_FORCE_DEPLOY=1`
+is set (or `--force` passed to the Python script).
+
+To force re-evaluation on the next deploy:
+
+```bash
+# Re-resolve SSL certs and port prefix from scratch
+CORTEX_FORCE_DEPLOY=1 sudo hermes-security-apply
+
+# Or with the Python script
+python3 deploy/nginx/hermes-services-apply.py --force
+```
+
+### Discovery Order (when not preserved)
 
 All three scripts follow the same priority:
 

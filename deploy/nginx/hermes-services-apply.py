@@ -310,6 +310,7 @@ def main():
         epilog=__doc__,
     )
     parser.add_argument("--dry-run", action="store_true", help="Show what would be done without writing")
+    parser.add_argument("--force", action="store_true", help="Re-resolve SSL certs and port prefix from env/auto-detect instead of preserving existing values")
     parser.add_argument("--domain", help="Domain for Let's Encrypt cert lookup (or set CORTEX_SSL_DOMAIN)")
     parser.add_argument("--cert", help="Explicit SSL cert path")
     parser.add_argument("--key", help="Explicit SSL key path")
@@ -343,13 +344,38 @@ def main():
     # ── Port prefix ──
     port_prefix = os.environ.get("CORTEX_NGINX_PORT_PREFIX", "13")
 
-    # ── SSL discovery ──
-    domain = args.domain or os.environ.get("CORTEX_SSL_DOMAIN")
-    cert_path, key_path = discover_ssl_certs(
-        domain=domain,
-        explicit_cert=args.cert,
-        explicit_key=args.key,
-    )
+    # ── Read existing config (preserve ports/SSL unless forced) ──
+    cert_path, key_path = None, None
+    force_deploy = args.force or os.environ.get("CORTEX_FORCE_DEPLOY", "")
+    live_path = config_dir / "hermes-services.conf"
+    if not force_deploy and live_path.is_file():
+        try:
+            live_text = live_path.read_text()
+            # Extract existing port prefix
+            m = re.search(r'listen\s+(?:127\.0\.0\.1:)?(\d{2})(?=\d{3}\b)', live_text)
+            if m:
+                port_prefix = m.group(1)
+            # Extract existing SSL cert/key paths
+            m_cert = re.search(r'ssl_certificate\s+(\S+?);?\s*$', live_text, re.MULTILINE)
+            m_key = re.search(r'ssl_certificate_key\s+(\S+?);?\s*$', live_text, re.MULTILINE)
+            if m_cert and m_key:
+                ec = m_cert.group(1)
+                ek = m_key.group(1)
+                if ec != "__SSL_CERT__" and ek != "__SSL_CERT_KEY__":
+                    cert_path, key_path = ec, ek
+                    print(f"  ✓ Preserved SSL cert: {cert_path}")
+                    print(f"  ✓ Preserved port prefix: {port_prefix}xxx")
+        except (OSError, PermissionError):
+            pass
+
+    # ── SSL discovery (only if not preserved) ──
+    if not cert_path:
+        domain = args.domain or os.environ.get("CORTEX_SSL_DOMAIN")
+        cert_path, key_path = discover_ssl_certs(
+            domain=domain,
+            explicit_cert=args.cert,
+            explicit_key=args.key,
+        )
 
     # ── Process template ──
     if args.dry_run:
