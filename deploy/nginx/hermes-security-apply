@@ -256,9 +256,21 @@ fi
 echo ""
 echo "── Step 7: Reload ──"
 
-# Reload nginx
+# Reload nginx (graceful)
 if nginx -s reload 2>&1; then
-  echo "  ✓ nginx reloaded"
+  echo "  ✓ nginx reload signal sent"
+  # Sleep briefly and check if reload actually took effect
+  sleep 2
+  if tail -5 /var/log/nginx/error.log 2>/dev/null | grep -q "still could not bind"; then
+    echo "  ⚠ Reload partially failed (port conflicts with old workers)"
+    echo "  → Doing full restart to release stale bindings..."
+    nginx -s quit 2>/dev/null
+    sleep 1
+    systemctl start nginx 2>/dev/null || /usr/sbin/nginx 2>&1
+    echo "  ✓ nginx restarted (new config active)"
+  else
+    echo "  ✓ nginx reloaded (new config active)"
+  fi
 else
   echo "  ✗ nginx reload failed"
   exit 1
