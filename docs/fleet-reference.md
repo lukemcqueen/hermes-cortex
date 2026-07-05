@@ -110,16 +110,16 @@ bash ~/.hermes/scripts/install-crons.sh --uninstall
 
 ### Agent summary
 
-|| Agent | Role | Host | Services | Inbox method | Health auth |
-||-------|------|------|----------|-------------|-------------|
-|| Moses | Primary orchestrator | moses-server (Linux) | Gateway + nginx proxy :13004 | HTTP poll (self) | Auth required |
-|| Esther | Backup orchestrator | worker-5 (Linux) | Gateway + nginx proxy :14004 | HTTP poll (+bkup inbox) | Auth required |
-|| Gisu | Remote server | worker-3 (Linux) | Health endpoint :13007 | HTTP poll → Moses inbox | Auth required |
-|| **Joseph** | **Remote server** | **worker-2 (Linux)** | **Health endpoint :12007** | **HTTP poll → Moses inbox** | **No auth** |
-|| Kustos | Remote server | worker-4 (Linux) | Health endpoint :13007 | HTTP poll → Moses inbox | Auth required |
-|| Titus | macOS developer | LAM2 (Apple M1, 16GB) | Client only; Ollama crons use qwen2.5-coder:7b-iq3_xs | Push health to Moses inbox | N/A |
+||| Agent | Role | Host | Services | Inbox method | Health auth |
+|||-------|------|------|----------|-------------|-------------|
+||| Moses | Primary orchestrator | moses-server (Linux) | Gateway + nginx proxy :13004 | HTTP poll (self) | **No auth** |
+||| Esther | Backup orchestrator | worker-5 (Linux) | Gateway + nginx proxy :14004 | HTTP poll (+bkup inbox) | **No auth** |
+||| Gisu | Remote server | worker-3 (Linux) | Health endpoint :13007 | HTTP poll → Moses inbox | **No auth** |
+||| **Joseph** | **Remote server** | **worker-2 (Linux)** | **Health endpoint :12007** | **HTTP poll → Moses inbox** | **No auth** |
+||| Kustos | Remote server | worker-4 (Linux) | Health endpoint :13007 | HTTP poll → Moses inbox | **No auth** |
+||| Titus | macOS developer | LAM2 (Apple M1, 16GB) | Client only; Ollama crons use qwen2.5-coder:7b-iq3_xs | Push health to Moses inbox | N/A |
 
-> **Health endpoint auth:** All server health ports (13007, 14004) require HTTP basic auth except **Joseph (:12007)** — it's health-only and Moses polls it directly. See `hermes-services.conf` for the auth config per server block.
+> **Health endpoint auth:** The health server block (`xx007`) has **no auth_basic** — it is intentionally open so Moses can poll every agent without managing per-agent credentials. This is by design: the health endpoint exposes only a compact 9-element ternary status vector with no secrets, no PII, no write operations. See `hermes-services.conf` lines 345-384 for the server block (note the absence of `auth_basic`).
 
 ### Auto-remediation components
 

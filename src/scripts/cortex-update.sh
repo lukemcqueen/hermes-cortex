@@ -684,12 +684,48 @@ deploy_nginx_configs() {
     #   14 = Esther
     local port_prefix="${CORTEX_NGINX_PORT_PREFIX:-13}"
 
+    # ── SSL cert resolution ──────────────────────────────
+    # Priority: env var > Let's Encrypt by domain > scan > self-signed
+    local ssl_cert="" ssl_key=""
+    if [[ -n "${CORTEX_SSL_CERT_PATH:-}" && -n "${CORTEX_SSL_CERT_KEY_PATH:-}" ]]; then
+      if [[ -f "$CORTEX_SSL_CERT_PATH" && -f "$CORTEX_SSL_CERT_KEY_PATH" ]]; then
+        ssl_cert="$CORTEX_SSL_CERT_PATH"
+        ssl_key="$CORTEX_SSL_CERT_KEY_PATH"
+      fi
+    elif [[ -d /etc/letsencrypt/live ]]; then
+      local le_domain="${CORTEX_SSL_DOMAIN:-}"
+      if [[ -n "$le_domain" && -f "/etc/letsencrypt/live/$le_domain/fullchain.pem" ]]; then
+        ssl_cert="/etc/letsencrypt/live/$le_domain/fullchain.pem"
+        ssl_key="/etc/letsencrypt/live/$le_domain/privkey.pem"
+      else
+        # Scan all Let's Encrypt dirs, take first valid
+        for le_dir in /etc/letsencrypt/live/*/; do
+          local c="${le_dir}fullchain.pem" k="${le_dir}privkey.pem"
+          if [[ -f "$c" && -f "$k" ]]; then
+            ssl_cert="$c"; ssl_key="$k"; break
+          fi
+        done
+      fi
+    fi
+    # Fall back to self-signed ~/certs/
+    if [[ -z "$ssl_cert" && -f "${HOME}/certs/fullchain.pem" && -f "${HOME}/certs/privkey.pem" ]]; then
+      ssl_cert="${HOME}/certs/fullchain.pem"; ssl_key="${HOME}/certs/privkey.pem"
+    fi
+
+    if [[ -n "$ssl_cert" ]]; then
+      info "  SSL cert: ${ssl_cert}"
+    else
+      warn "  No SSL certs found — __SSL_CERT__ placeholders left unchanged"
+    fi
+
     < "$conf_src" sed \
       -e "s|__NGINX_CONFIG_DIR__|${config_dir}|g" \
       -e "s|__NGINX_LOG_DIR__|${log_dir}|g" \
       -e "s|__HTPASSWD_FILE__|${htpasswd}|g" \
       -e "s|__CORTEX_HOME__|${HOME}|g" \
-      -e "/listen[[:space:]]/s|127\.0\.0\.1:13\([0-9][0-9][0-9]\)|127.0.0.1:${port_prefix}\1|g" > "$tmpfile"
+      -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
+      -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
+      -e "/listen[[:space:]]/s|127\\.0\\.0\\.1:13\\([0-9][0-9][0-9]\\)|127.0.0.1:${port_prefix}\\1|g" > "$tmpfile"
     if command -v sudo &>/dev/null && [[ "$config_dir" == /etc/* ]]; then
       # ── Preserve custom port ranges (12xxx Joseph, 14xxx Esther, etc.) ──
       if [[ -f "$conf_dst" ]]; then

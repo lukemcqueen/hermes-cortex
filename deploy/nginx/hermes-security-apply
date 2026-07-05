@@ -95,10 +95,48 @@ for src in "${CORTEX_REPO}/deploy/nginx/hermes-zone-defs.conf" "${CORTEX_REPO}/d
       echo "  ✓ Deployed: ${base}"
     elif [ "$base" = "hermes-services.conf" ]; then
       mkdir -p "${NGINX_CONFIG_DIR}"
+
+      # ── SSL cert resolution ────────────────────────────
+      SSL_CERT=""
+      SSL_KEY=""
+      if [ -n "${CORTEX_SSL_CERT_PATH:-}" ] && [ -n "${CORTEX_SSL_CERT_KEY_PATH:-}" ]; then
+        if [ -f "$CORTEX_SSL_CERT_PATH" ] && [ -f "$CORTEX_SSL_CERT_KEY_PATH" ]; then
+          SSL_CERT="$CORTEX_SSL_CERT_PATH"
+          SSL_KEY="$CORTEX_SSL_CERT_KEY_PATH"
+        fi
+      elif [ -d /etc/letsencrypt/live ]; then
+        LE_DOMAIN="${CORTEX_SSL_DOMAIN:-}"
+        if [ -n "$LE_DOMAIN" ] && [ -f "/etc/letsencrypt/live/${LE_DOMAIN}/fullchain.pem" ]; then
+          SSL_CERT="/etc/letsencrypt/live/${LE_DOMAIN}/fullchain.pem"
+          SSL_KEY="/etc/letsencrypt/live/${LE_DOMAIN}/privkey.pem"
+        else
+          for le_dir in /etc/letsencrypt/live/*/; do
+            if [ -f "${le_dir}fullchain.pem" ] && [ -f "${le_dir}privkey.pem" ]; then
+              SSL_CERT="${le_dir}fullchain.pem"
+              SSL_KEY="${le_dir}privkey.pem"
+              break
+            fi
+          done
+        fi
+      fi
+      if [ -z "$SSL_CERT" ] && [ -f "${HOME}/certs/fullchain.pem" ] && [ -f "${HOME}/certs/privkey.pem" ]; then
+        SSL_CERT="${HOME}/certs/fullchain.pem"
+        SSL_KEY="${HOME}/certs/privkey.pem"
+      fi
+
+      if [ -n "$SSL_CERT" ]; then
+        echo "  ✓ SSL cert: ${SSL_CERT}"
+      else
+        echo "  ⚠ No SSL certs found — __SSL_CERT__ placeholders left unchanged"
+      fi
+
       < "$src" sed \
         -e "s|__NGINX_CONFIG_DIR__|${NGINX_CONFIG_DIR}|g" \
         -e "s|__NGINX_LOG_DIR__|${NGINX_LOG_DIR}|g" \
         -e "s|__HTPASSWD_FILE__|${NGINX_DIR}/.htpasswd|g" \
+        -e "s|__CORTEX_HOME__|${HOME}|g" \
+        -e "s|__SSL_CERT__|${SSL_CERT:-__SSL_CERT__}|g" \
+        -e "s|__SSL_CERT_KEY__|${SSL_KEY:-__SSL_CERT_KEY__}|g" \
         > "${NGINX_CONFIG_DIR}/${base}"
       echo "  ✓ Deployed: ${base} (paths substituted)"
     fi

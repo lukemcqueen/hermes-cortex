@@ -27,6 +27,8 @@ no benefit to running it on a host without nginx.
 | `blocked_ips.add` | **Input:** bare IPs to block (one per line, no `deny` keyword, no semicolon) |
 | `nginx-badbots.conf` | **Input:** fail2ban filter for archive scanners + `/storage/` crawling |
 | `hermes-security-apply` | Sudo-installed script that deploys all configs atomically |
+| `hermes-services-apply.py` | **Alternative:** Python deploy script — auto-discovers SSL certs, supports `--dry-run` and `--validate` |
+| `hermes-services.env.example` | **Template env file** — copy to `hermes-services.env`, set `CORTEX_SSL_*` vars |
 | `README.md` | This file |
 
 ---
@@ -95,6 +97,63 @@ sudo nginx -t && echo "✓ Config valid"
 # Active blocks
 sudo nginx -T 2>/dev/null | grep 'deny ' | wc -l
 ```
+
+---
+
+## SSL Certificate Configuration
+
+The config template (`hermes-services.conf`) uses `__SSL_CERT__` and `__SSL_CERT_KEY__`
+placeholders. All three deploy scripts auto-discover certificates in this priority:
+
+1. `CORTEX_SSL_CERT_PATH` / `CORTEX_SSL_CERT_KEY_PATH` env vars (explicit paths)
+2. `CORTEX_SSL_DOMAIN` → `/etc/letsencrypt/live/<domain>/`
+3. Scan all directories under `/etc/letsencrypt/live/`
+4. `$HOME/certs/fullchain.pem` + `privkey.pem`
+
+If no certs are found, the placeholders remain unchanged — SSL listeners won't
+work until certs are provided.
+
+### Setup
+
+```bash
+# 1. Copy the env template and edit
+cp ~/hermes-cortex/deploy/nginx/hermes-services.env.example \
+  ~/hermes-cortex/deploy/nginx/hermes-services.env
+
+# 2. Edit with your cert paths or domain
+#    CORTEX_SSL_CERT_PATH=/etc/letsencrypt/live/example.com/fullchain.pem
+#    CORTEX_SSL_CERT_KEY_PATH=/etc/letsencrypt/live/example.com/privkey.pem
+#    CORTEX_SSL_DOMAIN=example.com
+
+# 3. Source it before deploying
+set -a; source ~/hermes-cortex/deploy/nginx/hermes-services.env; set +a
+sudo hermes-security-apply
+
+# Or use the Python script directly with --dry-run first:
+python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py --dry-run
+python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py
+```
+
+### Env var reference
+
+See `docs/env-vars.md` for the full reference of all `CORTEX_*` variables.
+
+---
+
+## Health Endpoint — No Authentication
+
+The health server (port `xx007`, e.g. `13007`) has **no HTTP Basic Auth** — intentionally.
+Moses polls every agent's health vector without managing per-agent credentials.
+
+**Verify:**
+```bash
+grep -c 'auth_basic' /etc/nginx/sites-enabled/hermes-services.conf
+# Health block should have 0 matches for auth_basic
+```
+
+The health endpoint exposes only a compact 9-element ternary status vector
+(CPU load, services, crons, disk, etc.). No secrets, no PII, no write operations.
+Rate limited to 6 requests/minute per IP.
 
 ---
 
