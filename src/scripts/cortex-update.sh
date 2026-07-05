@@ -223,8 +223,7 @@ register "src/scripts/send-agent-learning.sh"      "${HERMES_HOME}/scripts/send-
 register "src/scripts/collect-agent-skills.sh"     "${HERMES_HOME}/scripts/collect-agent-skills.sh"
 register "src/scripts/request-skill-reports.sh"    "${HERMES_HOME}/scripts/request-skill-reports.sh"
 register "src/scripts/process-skill-reports.py"    "${HERMES_HOME}/scripts/process-skill-reports.py"
-# Agent inbox connection config — user creates manually from template
-# register "src/scripts/moses-inbox.conf.template"   "${HERMES_HOME}/moses-inbox.conf.template"
+# Agent inbox connection config — user creates manually
 
 # MCP inbox proxy — sudo'd HTTPS proxy with root-owned client cert
 register "src/scripts/mcp-inbox-proxy"              "${HERMES_HOME}/scripts/mcp-inbox-proxy"
