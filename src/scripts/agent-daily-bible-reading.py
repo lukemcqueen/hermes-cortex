@@ -117,9 +117,9 @@ def find_last_book() -> str | None:
     # Find all ### BookName — entries in Scripture Insights section
     # Look after the "## Scripture Insights" section header
     insights_section = text.split("## Scripture Insights")[-1]
-    # Stop at the next ## section (Session Mining Lessons)
-    insights_section = insights_section.split("## Session Mining Lessons")[0]
-
+    # Stop at the next ## section (Final Directive)
+    insights_section = insights_section.split("## Final Directive")[0]
+    
     found_books = []
     for line in insights_section.split("\n"):
         m = re.match(r"^### ([A-Za-z0-9 ]+) —", line)
@@ -303,8 +303,8 @@ def append_to_soul(book: str, full_entry: str) -> bool:
 
     text = SOUL_MD.read_text(encoding="utf-8")
 
-    # Insert before "## Session Mining Lessons" if present
-    marker = "## Session Mining Lessons"
+    # Insert before "## Final Directive" if present
+    marker = "## Final Directive"
     if marker in text:
         full_block = f"\n{full_entry}\n\n"
         new_text = text.replace(f"\n{marker}", f"{full_block}{marker}", 1)
