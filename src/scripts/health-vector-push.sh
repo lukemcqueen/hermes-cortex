@@ -50,8 +50,11 @@ if [[ -z "$CORTEX_INBOX_URL" ]]; then
     exit 1
 fi
 
-# Use the inbox send URL directly (config provides the full endpoint)
+# Use /api/send (JSON) endpoint — strip trailing /send if present, append /api/send
 API_URL="${CORTEX_INBOX_URL}"
+API_URL="${API_URL%/send}"
+API_URL="${API_URL%/api/send}"
+API_URL="${API_URL}/api/send"
 
 # ── Vector: default all-1 healthy ──────────────────────────
 # Each check sets its slot to 0=n/a, -1=fail, or leaves 1=pass
@@ -145,7 +148,7 @@ msg = {'from': '$AGENT_NAME', 'subject': 'health', 'body': body}
 print(json.dumps(msg))
 " 2>/dev/null || echo '{}')
 
-# ── POST to inbox API ──────────────────────────────────────
+# ── POST to inbox API with fallback (primary remote → local agent inbox) ──
 RESPONSE_FILE=$(mktemp /tmp/health-push-XXXXXX)
 trap 'rm -f "$RESPONSE_FILE"' EXIT
 
@@ -154,32 +157,44 @@ if [[ -n "$CORTEX_INBOX_AUTH" ]]; then
     CURL_ARGS=(-u "$CORTEX_INBOX_AUTH" "${CURL_ARGS[@]}")
 fi
 
-curl "${CURL_ARGS[@]}" "$API_URL" > "$RESPONSE_FILE" 2>/dev/null || {
-    ERR_MSG="[$(date '+%Y-%m-%d %H:%M:%S')] curl failed to $API_URL"
-    ERR_HASH=$(cron_error_hash "health-vector-push: curl failed")
+FALLBACK_URLS=(
+    "http://127.0.0.1:8904/api/send"
+    "http://127.0.0.1:13004/api/send"
+)
+
+PUSH_OK=0
+for attempt_url in "$API_URL" "${FALLBACK_URLS[@]}"; do
+    CURL_ATTEMPT_ARGS=("${CURL_ARGS[@]}")
+    if [[ "$attempt_url" != "$API_URL" ]]; then
+        # Local fallbacks — no auth needed
+        CURL_ATTEMPT_ARGS=(-s -X POST -H "Content-Type: application/json" -d "$PAYLOAD" -w "\n%{http_code}" --max-time 10)
+    fi
+
+    curl "${CURL_ATTEMPT_ARGS[@]}" "$attempt_url" > "$RESPONSE_FILE" 2>/dev/null && {
+        HTTP_CODE=$(tail -1 "$RESPONSE_FILE")
+        case "$HTTP_CODE" in
+            2*)
+                PUSH_OK=1
+                break
+                ;;
+            *)
+                ERR_MSG="[$(date '+%Y-%m-%d %H:%M:%S')] HTTP $HTTP_CODE to $attempt_url"
+                ;;
+        esac
+    } || {
+        ERR_MSG="[$(date '+%Y-%m-%d %H:%M:%S')] curl failed to $attempt_url"
+    }
+done
+
+if [[ "$PUSH_OK" -eq 0 ]]; then
+    ERR_HASH=$(cron_error_hash "health-vector-push: push failed (all endpoints)")
     if cron_should_report "$CRON_STATE_SCRIPT" "$ERR_HASH" 30; then
         echo "$ERR_MSG" >> "$ERROR_LOG"
         cron_record_failure "$CRON_STATE_SCRIPT" "$ERR_HASH" 30
         exit 1
     fi
     exit 0
-}
-
-HTTP_CODE=$(tail -1 "$RESPONSE_FILE")
-
-case "$HTTP_CODE" in
-    2*) ;;
-    *)
-        ERR_MSG="[$(date '+%Y-%m-%d %H:%M:%S')] HTTP $HTTP_CODE to $API_URL"
-        ERR_HASH=$(cron_error_hash "health-vector-push: HTTP $HTTP_CODE")
-        if cron_should_report "$CRON_STATE_SCRIPT" "$ERR_HASH" 30; then
-            echo "$ERR_MSG" >> "$ERROR_LOG"
-            cron_record_failure "$CRON_STATE_SCRIPT" "$ERR_HASH" 30
-            exit 1
-        fi
-        exit 0
-        ;;
-esac
+fi
 
 # ── Record success ─────────────────────────────────────────
 cron_record_success "$CRON_STATE_SCRIPT"
