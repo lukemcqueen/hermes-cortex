@@ -56,11 +56,20 @@ ENV_FILE = HOME / ".hermes" / ".env"
 # ── Agent name detection ─────────────────────────────────────
 
 def detect_agent_name() -> str:
-    """Detect the agent's name from env var, config, or SOUL.md header."""
+    """Detect the agent's name from env var, config, .env, or SOUL.md header."""
     # 1. Env var override
     env_name = os.environ.get("HERMES_AGENT_NAME") or os.environ.get("AGENT_NAME")
     if env_name:
         return env_name
+
+    # 1b. .env file (loaded by no_agent cron scripts)
+    if ENV_FILE.exists():
+        for line in ENV_FILE.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("AGENT_NAME="):
+                val = line.split("=", 1)[1].strip().strip("\"'")
+                if val:
+                    return val
 
     # 2. Hermes config.yaml
     config_paths = [
