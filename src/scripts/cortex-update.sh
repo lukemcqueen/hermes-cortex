@@ -163,9 +163,8 @@ register "src/scripts/agent-remediate-apply.py"  "${HERMES_HOME}/scripts/agent-r
 register "src/scripts/agent-apply-fixes.py"      "${HERMES_HOME}/scripts/agent-apply-fixes.py"
 register "src/scripts/agent-ip-submission.sh"      "${HERMES_HOME}/scripts/agent-ip-submission.sh"
 
-# Deploy scripts (nginx security pipeline)
-register "deploy/nginx/hermes-security-apply"       "${HERMES_HOME}/scripts/hermes-security-apply"
-register "deploy/nginx/deploy-sudoers.sh"           "${HERMES_HOME}/scripts/deploy-sudoers.sh"
+# Deploy scripts (nginx security pipeline) — now deployed to /usr/local/sbin/
+# by deploy_system_scripts() below. Old register entries removed.
 
 # Deployment-specific cron scripts
 register "src/scripts/auto-save-sessions.py"      "${HERMES_HOME}/scripts/auto-save-sessions.py"
@@ -716,6 +715,46 @@ deploy_nginx_configs() {
   fi
 }
 
+# ── System Scripts Deploy ───────────────────────────────────────
+# Deploys admin scripts to /usr/local/sbin/ (root-owned, NOPASSWD-safe).
+# Uses sudo on Linux for the root-owned path.
+deploy_system_scripts() {
+  local deploy_dir="/usr/local/sbin"
+  local src_dir="${REPO_DIR}/deploy/nginx"
+  local scripts=("hermes-security-apply" "hermes-nginx-clean-restart")
+  local files_copied=0
+
+  [[ -d "$src_dir" ]] || return 0
+
+  for script in "${scripts[@]}"; do
+    local src="${src_dir}/${script}"
+    local dest="${deploy_dir}/${script}"
+    [[ ! -f "$src" ]] && continue
+    if needs_update "$src" "$dest"; then
+      if command -v sudo &>/dev/null; then
+        sudo mkdir -p "$deploy_dir" 2>/dev/null || true
+        sudo cp "$src" "$dest"
+        sudo chown root:root "$dest"
+        sudo chmod 755 "$dest"
+      else
+        mkdir -p "$deploy_dir" 2>/dev/null || true
+        cp "$src" "$dest"
+        chmod 755 "$dest"
+      fi
+      info "  Deployed: ${script} → ${deploy_dir}/"
+      files_copied=$((files_copied + 1))
+    fi
+  done
+
+  [[ "$files_copied" -eq 0 ]] && return 0
+
+  # Remove old local copies — canonical version is now in /usr/local/sbin/
+  local home_link="${HERMES_HOME}/scripts/hermes-security-apply"
+  local agent_link="${HOME}/.hermes/scripts/hermes-security-apply"
+  [[ -f "$home_link" ]] && rm -f "$home_link"
+  [[ -f "$agent_link" ]] && rm -f "$agent_link"
+}
+
 # ── Post-update service verification ─────────────────────────
 
 verify_services() {
@@ -908,6 +947,9 @@ main() {
 
   # Deploy nginx configs (OS-aware path substitution, sudo on Linux)
   deploy_nginx_configs
+
+  # Deploy system scripts to /usr/local/sbin/ (root-owned, NOPASSWD-safe)
+  deploy_system_scripts
 
   # Restart affected services
   if [[ ${#TO_RESTART[@]} -gt 0 ]]; then
