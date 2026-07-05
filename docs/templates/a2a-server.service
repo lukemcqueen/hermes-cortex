@@ -1,8 +1,8 @@
 [Unit]
 Description=Hermes Cortex A2A Server — agent-to-agent task delegation
 Documentation=https://github.com/fleet-operator/hermes-cortex/docs/a2a-architecture.md
-After=network.target agent-inbox.service
-Requires=agent-inbox.service
+After=network.target
+# No hard dependencies — standalone service
 
 [Service]
 Type=simple
@@ -11,7 +11,7 @@ ExecStart=__HERMES_VENV__/bin/python3 -m uvicorn a2a-server:app --host 127.0.0.1
 WorkingDirectory=__CORTEX_REPO__/src/a2a
 Restart=on-failure
 RestartSec=10
-Environment=AGENT_NAME=moses
+Environment=AGENT_NAME=joseph
 Environment=AGENT_INBOX_DIR=__INBOX_DIR__
 
 # Security

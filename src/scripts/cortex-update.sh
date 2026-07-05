@@ -676,11 +676,20 @@ deploy_nginx_configs() {
   if needs_update "$conf_src" "$conf_dst"; then
     local tmpfile
     tmpfile="$(mktemp)" || return 1
+
+    # Port prefix: template ships as 13xxx (generic default).
+    # Set CORTEX_NGINX_PORT_PREFIX to your agent's prefix:
+    #   13 = generic/default (no change)
+    #   12 = Joseph
+    #   14 = Esther
+    local port_prefix="${CORTEX_NGINX_PORT_PREFIX:-13}"
+
     < "$conf_src" sed \
       -e "s|__NGINX_CONFIG_DIR__|${config_dir}|g" \
       -e "s|__NGINX_LOG_DIR__|${log_dir}|g" \
       -e "s|__HTPASSWD_FILE__|${htpasswd}|g" \
-      -e "s|__CORTEX_HOME__|${HOME}|g" > "$tmpfile"
+      -e "s|__CORTEX_HOME__|${HOME}|g" \
+      -e "/listen[[:space:]]/s|127\.0\.0\.1:13\([0-9][0-9][0-9]\)|127.0.0.1:${port_prefix}\1|g" > "$tmpfile"
     if command -v sudo &>/dev/null && [[ "$config_dir" == /etc/* ]]; then
       # ── Preserve custom port ranges (12xxx Joseph, 14xxx Esther, etc.) ──
       if [[ -f "$conf_dst" ]]; then
