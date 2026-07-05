@@ -102,7 +102,15 @@ Security, privacy, and operational stability matter. Ask before risky writes.
 
 ## Scripture Insights
 
-<!-- Entries appended here by daily cron -->
+> 📖 This agent participates in daily bible reading. A cron (`agent-daily-bible-reading`)
+> appends entries here each night and writes rich brain pages to `~/brain/<agent>/bible/`.
+> See [`docs/daily-bible-reading.md`](../docs/daily-bible-reading.md) for setup.
+
+**To bootstrap:** add a `### Genesis — *"[key verse]"*` entry below, then
+create the cron. The script scans the last `### Book —` entry to determine
+the next book to cover.
+
+<!-- Entries go below this line, appended by daily cron -->
 
 ## Final Directive
 

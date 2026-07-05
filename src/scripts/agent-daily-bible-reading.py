@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 """agent-daily-bible-reading.py — no_agent cron script.
 
-Reads SOUL.md (or brain fallback), determines the next canonical book,
-generates an insight via deepseek API, appends a compact one-liner to
-SOUL.md, a full entry to the brain file, and auto-archives old entries
-to a gbrain-synced brain dir to keep SOUL.md small.
-
-Compact format in SOUL.md:
-  ### Book — *"short phrase" (citation) — date*
+Reads SOUL.md, determines the next canonical book to cover,
+generates two artifacts via deepseek API:
+  1. A SOUL.md entry (concise, lesson-focused)
+  2. A rich brain page at ~/brain/<agent>/bible/<book>.md
 
 Silent when no new book needed (exit 0, empty stdout).
 """
@@ -22,10 +19,6 @@ from pathlib import Path
 
 HOME = Path.home()
 SOUL_MD = HOME / ".hermes" / "SOUL.md"
-BRAIN_DIR = HOME / ".hermes" / "brain"
-BRAIN_FILE = BRAIN_DIR / "scripture-insights.md"
-BIBLE_ARCHIVE_DIR = HOME / "brain" / "sources" / "hermes" / "bible-readings"
-MAX_INLINE_ENTRIES = 2  # Keep only this many entries in SOUL.md, archive the rest
 OLLAMA_URL = "http://localhost:11434/api/chat"
 KST = timezone.utc  # We'll just note KST in the output
 
@@ -55,6 +48,49 @@ BOOKS = [
 # Map canonical names to their index for lookups
 BOOK_INDEX = {b: i for i, b in enumerate(BOOKS)}
 
+DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
+DEEPSEEK_MODEL = "deepseek-v4-flash"
+ENV_FILE = HOME / ".hermes" / ".env"
+
+
+# ── Agent name detection ─────────────────────────────────────
+
+def detect_agent_name() -> str:
+    """Detect the agent's name from env var, config, or SOUL.md header."""
+    # 1. Env var override
+    env_name = os.environ.get("HERMES_AGENT_NAME") or os.environ.get("AGENT_NAME")
+    if env_name:
+        return env_name
+
+    # 2. Hermes config.yaml
+    config_paths = [
+        HOME / ".hermes" / "config.yaml",
+        HOME / ".hermes" / "config.json",
+    ]
+    for cp in config_paths:
+        if cp.exists():
+            try:
+                text = cp.read_text(encoding="utf-8")
+                m = re.search(r'agent_name["\s:=]+["\']?([a-zA-Z0-9_-]+)', text)
+                if m:
+                    return m.group(1)
+            except Exception:
+                pass
+
+    # 3. SOUL.md first line: "# SOUL.md — AgentName"
+    if SOUL_MD.exists():
+        first_line = SOUL_MD.read_text(encoding="utf-8").split("\n", 1)[0]
+        m = re.match(r"^#\s*SOUL\.md\s*[-–—]\s*(.+)", first_line)
+        if m:
+            name = m.group(1).strip()
+            if name:
+                return name
+
+    # 4. Fallback
+    return "moses"
+
+
+# ── Book tracking from SOUL.md ────────────────────────────────
 
 def get_kst_today() -> str:
     """Return today's date in KST as YYYY-MM-DD."""
@@ -62,48 +98,31 @@ def get_kst_today() -> str:
     return now.strftime("%Y-%m-%d")
 
 
-def _find_last_book_in_file(filepath: Path) -> str | None:
-    """Find the last book reference ### BookName in a markdown file."""
-    if not filepath.exists():
+def find_last_book() -> str | None:
+    """Read SOUL.md and find the last book covered in Scripture Insights."""
+    if not SOUL_MD.exists():
         return None
-    text = filepath.read_text(encoding="utf-8")
+
+    text = SOUL_MD.read_text(encoding="utf-8")
+
+    # Find all ### BookName — entries in Scripture Insights section
+    # Look after the "## Scripture Insights" section header
+    insights_section = text.split("## Scripture Insights")[-1]
+    # Stop at the next ## section (Session Mining Lessons)
+    insights_section = insights_section.split("## Session Mining Lessons")[0]
+
     found_books = []
-    for line in text.split("\n"):
+    for line in insights_section.split("\n"):
         m = re.match(r"^### ([A-Za-z0-9 ]+) —", line)
         if m:
             name = m.group(1).strip()
             if name in BOOK_INDEX:
                 found_books.append(name)
-    return found_books[-1] if found_books else None
 
+    if not found_books:
+        return None
 
-def find_last_book() -> str | None:
-    """Read SOUL.md and find the last book covered in compact entries.
-    Falls back to BRAIN_FILE if SOUL.md has no entries."""
-    # Try SOUL.md first (compact entries section)
-    if SOUL_MD.exists():
-        text = SOUL_MD.read_text(encoding="utf-8")
-
-        # Find all ### BookName — entries in Scripture Insights section
-        insights_section = text.split("## Scripture Insights")[-1]
-        insights_section = insights_section.split("## Session Mining Lessons")[0]
-
-        found_books = []
-        for line in insights_section.split("\n"):
-            m = re.match(r"^### ([A-Za-z0-9 ]+) —", line)
-            if m:
-                name = m.group(1).strip()
-                if name in BOOK_INDEX:
-                    found_books.append(name)
-
-        if found_books:
-            return found_books[-1]
-
-    # Fallback: check BRAIN_FILE
-    if BRAIN_FILE.exists():
-        return _find_last_book_in_file(BRAIN_FILE)
-
-    return None
+    return found_books[-1]
 
 
 def get_next_book(last_book: str) -> str | None:
@@ -116,10 +135,7 @@ def get_next_book(last_book: str) -> str | None:
     return BOOKS[idx + 1]
 
 
-DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
-DEEPSEEK_MODEL = "deepseek-v4-flash"
-ENV_FILE = HOME / ".hermes" / ".env"
-
+# ── Deepseek API call ─────────────────────────────────────────
 
 def get_deepseek_api_key() -> str | None:
     """Read DEEPSEEK_API_KEY from the Hermes .env file."""
@@ -134,13 +150,74 @@ def get_deepseek_api_key() -> str | None:
     return None
 
 
-def generate_entry(book: str) -> str | None:
-    """Call deepseek-v4-flash to generate the full entry text."""
-    today = get_kst_today()
+def _call_deepseek(prompt: str, max_tokens: int = 4096) -> str | None:
+    """Make a deepseek API call and return the cleaned response content."""
     api_key = get_deepseek_api_key()
     if not api_key:
         print("❌ DEEPSEEK_API_KEY not found in .env", file=sys.stderr)
         return None
+
+    payload = json.dumps({
+        "model": DEEPSEEK_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": max_tokens,
+        "temperature": 0.7,
+    })
+
+    body = ""
+    try:
+        result = subprocess.run(
+            ["curl", "-s", "-w", "\n%{http_code}", "-X", "POST", DEEPSEEK_URL,
+             "-H", "Content-Type: application/json",
+             "-H", f"Authorization: Bearer {api_key}",
+             "-d", payload],
+            capture_output=True, text=True, timeout=180,
+        )
+
+        # Split response body from HTTP status code
+        parts = result.stdout.strip().rsplit("\n", 1)
+        http_code = parts[-1] if len(parts) > 1 else "000"
+        body = parts[0] if len(parts) > 1 else result.stdout
+
+        if result.returncode != 0:
+            print(f"❌ curl failed (exit {result.returncode}): {result.stderr}", file=sys.stderr)
+            return None
+
+        if http_code != "200":
+            print(f"❌ API returned HTTP {http_code}: {body[:300]}", file=sys.stderr)
+            return None
+
+        response = json.loads(body)
+        content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+        if not content:
+            print(f"❌ Empty response from API", file=sys.stderr)
+            return None
+
+        # Clean up any markdown code block wrapping
+        content = content.strip()
+        if content.startswith("```"):
+            content = content.split("\n", 1)[-1] if "\n" in content else content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
+
+        return content
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON parse error: {e}", file=sys.stderr)
+        print(f"   Body: {body[:500]}", file=sys.stderr)
+        return None
+    except subprocess.TimeoutExpired:
+        print(f"❌ API request timed out after 180s", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"❌ Unexpected error: {e}", file=sys.stderr)
+        return None
+
+
+def generate_soul_entry(book: str) -> str | None:
+    """Generate the concise SOUL.md entry (focused on agent lessons)."""
+    today = get_kst_today()
 
     prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md). This entry becomes part of the agent's identity — it's read every session so it must shape the agent's behaviour with sharp, specific lessons.
 
@@ -162,235 +239,158 @@ Requirements:
 
 Generate the entry for {book}:"""
 
-    payload = json.dumps({
-        "model": DEEPSEEK_MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 4096,
-        "temperature": 0.7,
-    })
-
-    try:
-        result = subprocess.run(
-            ["curl", "-s", "-w", "\n%{http_code}", "-X", "POST", DEEPSEEK_URL,
-             "-H", "Content-Type: application/json",
-             "-H", f"Authorization: Bearer ***",
-             "-d", payload],
-            capture_output=True, text=True, timeout=120,
-        )
-
-        parts = result.stdout.strip().rsplit("\n", 1)
-        http_code = parts[-1] if len(parts) > 1 else "000"
-        body = parts[0] if len(parts) > 1 else result.stdout
-
-        if result.returncode != 0:
-            print(f"❌ curl failed (exit {result.returncode}): {result.stderr}", file=sys.stderr)
-            return None
-
-        if http_code != "200":
-            print(f"❌ API returned HTTP {http_code}: {body[:300]}", file=sys.stderr)
-            return None
-
-        response = json.loads(body)
-        content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
-
-        if not content:
-            print(f"❌ Empty response from API", file=sys.stderr)
-            return None
-
-        content = content.strip()
-        if content.startswith("```"):
-            content = content.split("\n", 1)[-1] if "\n" in content else content[3:]
-            if content.endswith("```"):
-                content = content[:-3]
-            content = content.strip()
-
-        return content
-    except json.JSONDecodeError as e:
-        print(f"❌ JSON parse error: {e}", file=sys.stderr)
-        print(f"   Body: {body[:500]}", file=sys.stderr)
-        return None
-    except subprocess.TimeoutExpired:
-        print(f"❌ API request timed out after 120s", file=sys.stderr)
-        return None
-    except Exception as e:
-        print(f"❌ Unexpected error: {e}", file=sys.stderr)
-        return None
+    return _call_deepseek(prompt, max_tokens=4096)
 
 
-def parse_entry_heading(full_entry: str) -> tuple[str, str, str] | None:
-    """Parse the full entry's heading line.
+def generate_brain_page(book: str, agent_name: str) -> str | None:
+    """Generate the rich brain page for ~/brain/<agent>/bible/<book>.md."""
+    today = get_kst_today()
 
-    Expected format:
-      ### BookName — *"verse text" (Chapter:Verse)*
+    prompt = f"""You are writing a detailed Bible study note for a knowledge brain directory. This is a reference document that will be stored permanently as a knowledge source, so it needs depth: historical context, archaeological evidence, textual scholarship, Jewish interpretive tradition, and original language analysis.
 
-    Returns (book_name, short_phrase, citation) or None.
-    Extracts a short phrase (first ~60 chars of verse) for the compact line.
-    """
-    first_line = full_entry.strip().split("\n")[0]
-    m = re.match(r"^### ([A-Za-z0-9 ]+) — \*\"(.+?)\" \((.+?)\)\*", first_line)
-    if m:
-        book = m.group(1).strip()
-        verse = m.group(2).strip()
-        citation = m.group(3).strip()
-        # Truncate long verses for the compact line
-        if len(verse) > 60:
-            verse = verse[:57] + "..."
-        return (book, verse, citation)
-    return None
+Write the entry for **{book}** in this EXACT markdown format:
+
+# {book}
+
+*Read: {today}*
+
+## Summary
+
+[2-3 paragraphs: narrative overview of the book — plot, key characters, theological themes, and its place in the biblical canon.]
+
+## Archaeology & Scholarship
+
+[2-3 paragraphs covering: archaeological discoveries that illuminate the book (sites, inscriptions, artifacts), textual criticism insights (Dead Sea Scrolls variants, Septuagint differences, Masoretic tradition), scholarly dating debates, and how the evidence supports or challenges traditional views. Reference specific digs, finds, and scholars where possible.]
+
+## Jewish & Messianic Jewish Perspective
+
+[2-3 paragraphs covering: how the book is read in traditional Jewish interpretation (Talmud, Midrash, Rashi, Maimonides), its liturgical use (haftarah readings, festivals), and how Messianic Jewish teachers (FFOZ, ONE FOR ISRAEL, Rabbi Jason Sobel, Dr. Eitan Bar, etc.) see the book pointing toward or prefiguring Yeshua the Messiah. Include specific typology or prophecy connections.]
+
+## Original Language Insights
+
+[Analyze 3-4 key Hebrew (OT) or Greek (NT) words from this book. For each: the word in its original script, transliteration, literal meaning, semantic range, how it's used in context, and any wordplay or textual significance. Format each as a bolded word heading.]
+
+## Insight for {agent_name}
+
+[A single paragraph connecting the book's core message to practical application for {agent_name}, a system operator and automation agent. Be specific and concrete, relating to monitoring, infrastructure, documentation, reliability, delegation, or leadership.]
+
+Requirements:
+1. Be factually accurate — cite real archaeological finds, real scholars, real textual evidence.
+2. Include the Hebrew or Greek script for original language insights.
+3. The Jewish & Messianic Jewish section must give equal weight to both perspectives.
+4. Output ONLY the entry — no explanations, no code fences, no extra text.
+
+Generate the entry for {book}:"""
+
+    return _call_deepseek(prompt, max_tokens=8192)
 
 
-def append_compact_to_soul(book: str, short_phrase: str, citation: str, today: str) -> bool:
-    """Append a compact one-liner to SOUL.md before the Session Mining section."""
+# ── Write artifacts ───────────────────────────────────────────
+
+def append_to_soul(book: str, full_entry: str) -> bool:
+    """Append the full entry to SOUL.md before the Session Mining Lessons section."""
     if not SOUL_MD.exists():
         return False
 
     text = SOUL_MD.read_text(encoding="utf-8")
-    compact_line = f'### {book} — *"{short_phrase}" ({citation}) — {today}*'
 
+    # Insert before "## Session Mining Lessons" if present
     marker = "## Session Mining Lessons"
     if marker in text:
-        new_text = text.replace(f"\n{marker}", f"\n{compact_line}\n\n{marker}", 1)
+        full_block = f"\n{full_entry}\n\n"
+        new_text = text.replace(f"\n{marker}", f"{full_block}{marker}", 1)
     else:
-        new_text = text.rstrip() + f"\n{compact_line}\n"
+        full_block = f"\n{full_entry}\n"
+        new_text = text + full_block
 
     SOUL_MD.write_text(new_text, encoding="utf-8")
     return True
 
 
-def append_full_to_brain(book: str, full_entry: str, today: str) -> bool:
-    """Append the full entry to the brain file with a date marker.
+def write_brain_page(book: str, content: str, agent_name: str) -> bool:
+    """Write a brain page to ~/brain/<agent>/bible/<book>.md.
 
-    Also creates a symlink from the brain file to the gbrain sources dir
-    so the gbrain autopilot daemon picks it up for vector search.
+    Creates the directory structure if it doesn't exist.
+    Uses a canonical filename based on the book name.
     """
-    BRAIN_DIR.mkdir(parents=True, exist_ok=True)
-    if not BRAIN_FILE.exists():
-        content = (
-            "# Scripture Insights — Full Entries\n\n"
-            "<!-- Full entries appended by agent-daily-bible-reading cron at 01:00 KST -->\n\n"
-            "---\n\n"
-        )
-        BRAIN_FILE.write_text(content, encoding="utf-8")
-    else:
-        content = BRAIN_FILE.read_text(encoding="utf-8")
+    # Determine canonical filename
+    safe_name = book.lower().replace(" ", "-")
+    brain_dir = HOME / "brain" / agent_name / "bible"
+    brain_dir.mkdir(parents=True, exist_ok=True)
 
-    entry_block = full_entry.strip() + "\n\n---\n\n"
-    BRAIN_FILE.write_text(content + entry_block, encoding="utf-8")
-
-    # Ensure gbrain sources dir exists and create a copy for gbrain sync
-    BIBLE_ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
-    gbrain_copy = BIBLE_ARCHIVE_DIR / "current.md"
-    gbrain_copy.write_text(content + entry_block + "\n*Last updated: {date}*\n".format(date=today), encoding="utf-8")
-
+    brain_file = brain_dir / f"{safe_name}.md"
+    brain_file.write_text(content.strip() + "\n", encoding="utf-8")
     return True
 
 
-# ─── Archive helpers ────────────────────────────────────────────────
-
-ARCHIVE_HEADER = """# Archived Scripture Insights — {book_range}
-<!-- Archived from SOUL.md on {date} by agent-daily-bible-reading cron. -->
-
-"""
-
-
-def find_all_entries() -> list[tuple[str, str]] | None:
-    """Parse SOUL.md and return list of (book_name, full_entry_text) for each Scripture Insight entry.
-    Returns None if section not found."""
-    if not SOUL_MD.exists():
-        return None
-    text = SOUL_MD.read_text(encoding="utf-8")
-    lines = text.split("\n")
-
-    try:
-        start = next(i for i, l in enumerate(lines) if l.strip() == "## Scripture Insights")
-    except StopIteration:
-        return None
-
-    end = start + 1
-    while end < len(lines):
-        if lines[end].startswith("## ") and "Scripture" not in lines[end]:
-            break
-        end += 1
-
-    entries = []
-    i = start
-    while i < end:
-        m = re.match(r"^### ([A-Za-z0-9 ]+) —", lines[i])
-        if m:
-            name = m.group(1).strip()
-            if name in BOOK_INDEX:
-                entry_lines = []
-                while i < end:
-                    entry_lines.append(lines[i])
-                    i += 1
-                    if i < end and lines[i].startswith("### "):
-                        break
-                entries.append((name, "\n".join(entry_lines)))
-                continue
-        i += 1
-
-    return entries if entries else None
-
-
-def archive_old_entries(entries: list[tuple[str, str]]) -> bool:
-    """If SOUL.md has more than MAX_INLINE_ENTRIES entries, archive the oldest ones
-    to the gbrain brain source directory and trim them from SOUL.md."""
-    if len(entries) <= MAX_INLINE_ENTRIES:
-        return True
-
-    to_archive = entries[:-MAX_INLINE_ENTRIES]
-    to_keep = entries[-MAX_INLINE_ENTRIES:]
+def update_brain_index(book: str, agent_name: str) -> bool:
+    """Create or update INDEX.md in the bible directory."""
+    brain_dir = HOME / "brain" / agent_name / "bible"
+    index_file = brain_dir / "INDEX.md"
     today = get_kst_today()
 
-    BIBLE_ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
-    existing = list(BIBLE_ARCHIVE_DIR.glob("archive-*.md"))
-    next_num = len(existing) + 1
-    book_range = f"{to_archive[0][0]} \u2192 {to_archive[-1][0]}"
-    archive_path = BIBLE_ARCHIVE_DIR / f"archive-{next_num:02d}.md"
+    # Read existing index if it exists
+    existing_entries = {}
+    if index_file.exists():
+        text = index_file.read_text(encoding="utf-8")
+        for line in text.split("\n"):
+            m = re.match(r"\|\s*(\d+)\s*\|", line)
+            if m:
+                existing_entries[int(m.group(1))] = line
 
-    archive_content = ARCHIVE_HEADER.format(book_range=book_range, date=today)
-    for _, entry_text in to_archive:
-        archive_content += entry_text.strip() + "\n\n"
-    archive_content += "\n---\n\n*Archived {date}. This content is synced into gbrain for vector search.*\n".format(date=today)
-    archive_path.write_text(archive_content.strip() + "\n", encoding="utf-8")
+    # Get all existing brain page files to build complete index
+    page_files = sorted(brain_dir.glob("*.md"))
+    books_in_brain = []
+    for pf in page_files:
+        if pf.name == "INDEX.md":
+            continue
+        # Read the first line to get the book name
+        content = pf.read_text(encoding="utf-8").split("\n", 1)[0]
+        # "# Book Name" or just the title
+        title = content.lstrip("# ").strip()
+        if title:
+            books_in_brain.append((pf.name, title))
+        else:
+            books_in_brain.append((pf.name, pf.stem.replace("-", " ").title()))
 
-    # Trim SOUL.md
-    text = SOUL_MD.read_text(encoding="utf-8")
-    lines = text.split("\n")
-
-    section_start = next(i for i, l in enumerate(lines) if l.strip() == "## Scripture Insights")
-    section_end = section_start + 1
-    while section_end < len(lines):
-        if lines[section_end].startswith("## ") and "Scripture" not in lines[section_end]:
-            break
-        section_end += 1
-
-    new_section = [
-        "## Scripture Insights",
+    # Build new index sorted by canonical order
+    lines = [
+        "# 📖 Scripture Insights — Index",
         "",
-        "<!-- Entries will be appended here by the daily Bible reading cron job -->",
-        "<!-- Older readings archived at /home/luke/brain/sources/hermes/bible-readings/ -->",
+        "Daily wisdom from the Biblical canon, stored one book at a time.",
         "",
     ]
-    for _, entry_text in to_keep:
-        for line in entry_text.split("\n"):
-            new_section.append(line)
-        new_section.append("")
 
-    new_lines = lines[:section_start] + new_section + lines[section_end:]
-    SOUL_MD.write_text("\n".join(new_lines), encoding="utf-8")
+    # Collect books in canonical order
+    indexed_books = []
+    for i, canonical_book in enumerate(BOOKS, 1):
+        # Check if this book has a brain page
+        safe_name = canonical_book.lower().replace(" ", "-")
+        page_path = brain_dir / f"{safe_name}.md"
+        if page_path.exists() or canonical_book == book:
+            indexed_books.append((i, canonical_book, today if canonical_book == book else None))
 
-    print(f"Archived {len(to_archive)} entries ({book_range}) -> {archive_path.name}", file=sys.stderr)
-    print(f"Kept {len(to_keep)} entries inline in SOUL.md", file=sys.stderr)
+    if indexed_books:
+        lines.append("| # | Book | Read |")
+        lines.append("|---|------|------|")
+        for num, bname, read_date in indexed_books:
+            date_str = read_date if read_date else "—"
+            lines.append(f"| {num} | {bname} | {date_str} |")
+
+    lines.append("")
+    index_file.write_text("\n".join(lines), encoding="utf-8")
     return True
 
 
-# ─── Main ───────────────────────────────────────────────────────────
+# ── Main ──────────────────────────────────────────────────────
 
 def main() -> int:
+    agent_name = detect_agent_name()
+    print(f"🤖 Agent: {agent_name}", file=sys.stderr)
+
     last_book = find_last_book()
     if last_book is None:
-        print("❌ No books found in SOUL.md or brain file", file=sys.stderr)
+        print("❌ Could not find any books in SOUL.md", file=sys.stderr)
         return 1
 
     next_book = get_next_book(last_book)
@@ -398,45 +398,42 @@ def main() -> int:
         print("📖 All 66 books have been covered. Bible reading complete.", file=sys.stderr)
         return 0
 
-    today = get_kst_today()
-    print(f"📖 Last: {last_book} → Next: {next_book}")
+    print(f"📖 Last book: {last_book} → Next: {next_book}", file=sys.stderr)
 
-    full_entry = generate_entry(next_book)
-    if full_entry is None:
+    # ── Step 1: Generate SOUL.md entry ──────────────────────
+    print("📝 Generating SOUL.md entry...", file=sys.stderr)
+    soul_entry = generate_soul_entry(next_book)
+    if soul_entry is None:
         return 1
 
-    # Parse the heading for the compact line
-    parsed = parse_entry_heading(full_entry)
-    if parsed is None:
-        print(f"⚠️ Could not parse entry heading, using book-only format", file=sys.stderr)
-        book = next_book
-        short_phrase = full_entry.split('\n')[0].split('—')[1].strip().strip('*"')[:60]
-        citation = ""
+    if not append_to_soul(next_book, soul_entry):
+        print("❌ Failed to append to SOUL.md", file=sys.stderr)
+        return 1
+    print("✅ Appended to SOUL.md", file=sys.stderr)
+
+    # ── Step 2: Generate brain page ──────────────────────────
+    print("📝 Generating brain page...", file=sys.stderr)
+    brain_content = generate_brain_page(next_book, agent_name)
+    if brain_content is None:
+        # Non-fatal — the SOUL.md entry was already written
+        print("⚠️  Brain page generation failed (SOUL.md entry was written)", file=sys.stderr)
+        brain_ok = False
     else:
-        book, short_phrase, citation = parsed
+        brain_ok = write_brain_page(next_book, brain_content, agent_name)
+        if brain_ok:
+            update_brain_index(next_book, agent_name)
+            print("✅ Written to brain bible dir", file=sys.stderr)
+        else:
+            print("⚠️  Failed to write brain page", file=sys.stderr)
 
-    # Write compact line to SOUL.md
-    if not append_compact_to_soul(book, short_phrase, citation, today):
-        print("❌ Failed to append compact entry to SOUL.md", file=sys.stderr)
-        return 1
+    # ── Step 3: Output summary for delivery ──────────────────
+    brain_status = "✅" if brain_ok else "⚠️"
+    print(f"\n✅📖 Insight for **{next_book}** — SOUL.md ✅ | Brain {brain_status}\n")
+    print(soul_entry)
 
-    # Write full entry to brain file + gbrain sources
-    if not append_full_to_brain(book, full_entry, today):
-        print("❌ Failed to append full entry to brain file", file=sys.stderr)
-        return 1
+    if brain_ok:
+        print(f"\n📄 Brain page: `~/brain/{agent_name}/bible/{next_book.lower().replace(' ', '-')}.md`")
 
-    # Archive old entries if SOUL.md has grown too many inline entries
-    # (safety net — compact entries are small, but a long-running system
-    #  could accumulate hundreds)
-    all_entries = find_all_entries()
-    if all_entries:
-        archive_old_entries(all_entries)
-
-    # Output the result for delivery
-    print(f"\n✅ Appended compact insight for **{book}** to SOUL.md")
-    print(f"   Full entry written to ~/.hermes/brain/scripture-insights.md")
-    print(f"   Also synced to gbrain: {BIBLE_ARCHIVE_DIR}/\n")
-    print(f"### {book} — *\"{short_phrase}\" ({citation}) — {today}*")
     return 0
 
 
