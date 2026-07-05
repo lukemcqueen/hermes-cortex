@@ -30,7 +30,7 @@ HOME = Path.home()
 REGISTRY_PATH = HOME / ".hermes" / "state" / "agent-registry.json"
 REGISTRY_TEMPLATE = HOME / "hermes-cortex" / "src" / "agent-registry.template.json"
 REGISTRY_LOCAL = HOME / ".hermes" / "agent-registry.local.json"
-INBOX_CONF = HOME / ".hermes" / "moses-inbox.conf"
+INBOX_CONF = HOME / ".hermes" / "hermes-inbox.conf"
 TIMEOUT = 3
 SERVICE_MAP = ["resources", "services", "no_errored_crons", "no_stale_crons",
                "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok"]
@@ -40,7 +40,7 @@ ICONS = {1: "🟢", 0: "⚪", -1: "🔴"}
 # ── Inbox connection ──
 
 def _load_inbox_config() -> dict:
-    """Load inbox URL and auth from moses-inbox.conf."""
+    """Load inbox URL and auth from hermes-inbox.conf."""
     config = {"url": "", "auth": ""}
     if not INBOX_CONF.exists():
         return config
@@ -51,9 +51,9 @@ def _load_inbox_config() -> dict:
         k, v = line.split("=", 1)
         k = k.strip()
         v = v.strip().strip("'\"")
-        if k == "MOSES_INBOX_URL":
+        if k == "CORTEX_INBOX_URL":
             config["url"] = v.rstrip("/")
-        elif k == "MOSES_INBOX_AUTH":
+        elif k == "CORTEX_INBOX_AUTH":
             config["auth"] = v
     return config
 

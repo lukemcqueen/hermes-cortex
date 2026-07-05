@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json,os,urllib.request,urllib.parse,base64,datetime,subprocess
 from pathlib import Path
-C=Path.home()/".hermes"/"moses-inbox.conf"
+C=Path.home()/".hermes"/"hermes-inbox.conf"
 M=Path.home()/".hermes"/"state"/"skills-manifest.json"
 if C.exists():
  for l in open(C):
@@ -9,8 +9,8 @@ if C.exists():
   if l and not l.startswith("#") and "=" in l:
    k,v=l.split("=",1)
    os.environ[k]=v.strip(chr(39)+chr(34))
-U=os.environ.get("MOSES_INBOX_URL")
-A=os.environ.get("MOSES_INBOX_AUTH")
+U=os.environ.get("CORTEX_INBOX_URL")
+A=os.environ.get("CORTEX_INBOX_AUTH")
 if not U or not A:exit(0)
 subprocess.run(["python3","/tmp/rebuild-manifest.py"],capture_output=True)
 if not M.exists():exit(0)

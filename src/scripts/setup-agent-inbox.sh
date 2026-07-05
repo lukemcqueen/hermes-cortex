@@ -14,7 +14,7 @@
 #
 #  Requires:
 #    - Hermes CLI (hermes cron create)
-#    - ~/.hermes/moses-inbox.conf with MOSES_INBOX_AUTH
+#    - ~/.hermes/hermes-inbox.conf with CORTEX_INBOX_AUTH
 #    - curl (for API calls)
 #    - Pulled hermes-cortex (for inbox-watch.sh)
 #
@@ -59,7 +59,7 @@ if [ -z "$AGENT" ]; then
   esac
 fi
 
-INBOX_URL="${MOSES_INBOX_URL:-https://your-domain.com:13004}"
+INBOX_URL="${CORTEX_INBOX_URL:-https://your-domain.com:13004}"
 
 echo ""
 echo -e "${BOLD}━━━ Agent Inbox Pipeline Setup ━━━${RESET}"
@@ -97,21 +97,21 @@ if [ ! -f "$WATCH_SCRIPT" ]; then
 fi
 
 # Check auth config
-AUTH_FILE="${HOME}/.hermes/moses-inbox.conf"
+AUTH_FILE="${HOME}/.hermes/hermes-inbox.conf"
 AUTH_OK=false
 if [ -f "$AUTH_FILE" ]; then
   # shellcheck disable=SC1090
   source "$AUTH_FILE" 2>/dev/null || true
-  TEST_AUTH="${MOSES_INBOX_AUTH:-}"
+  TEST_AUTH="${CORTEX_INBOX_AUTH:-}"
   if [ -n "$TEST_AUTH" ]; then
     AUTH_OK=true
   fi
 fi
 if ! $AUTH_OK; then
-  warn "No auth credentials found in ~/.hermes/moses-inbox.conf"
+  warn "No auth credentials found in ~/.hermes/hermes-inbox.conf"
   warn "Create it with:"
-  echo "    MOSES_INBOX_URL=\"https://your-domain.com:13004\""
-  echo "    MOSES_INBOX_AUTH=\"user:pass\""
+  echo "    CORTEX_INBOX_URL=\"https://your-domain.com:13004\""
+  echo "    CORTEX_INBOX_AUTH=\"user:pass\""
   echo "    AGENT_NAME=\"${AGENT}\""
 fi
 
@@ -119,7 +119,7 @@ fi
 echo -n "  Testing inbox API connectivity... "
 if $AUTH_OK; then
   API_OK=$(curl -sf --max-time 10 \
-    -u "$MOSES_INBOX_AUTH" \
+    -u "$CORTEX_INBOX_AUTH" \
     "${INBOX_URL}/api/inbox?for=${AGENT}&limit=1" \
     >/dev/null 2>&1 && echo "true" || echo "false")
 else
@@ -187,8 +187,8 @@ For each unread message:
 
 1. Fetch the full message via the inbox API:
    \`\`\`bash
-   source ~/.hermes/moses-inbox.conf
-   curl -s -u \"\$MOSES_INBOX_AUTH\" \
+   source ~/.hermes/hermes-inbox.conf
+   curl -s -u \"\$CORTEX_INBOX_AUTH\" \
      \"${INBOX_URL}/api/inbox?for=${AGENT}&unread_only=true\"
    \`\`\`
 

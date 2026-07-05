@@ -40,7 +40,7 @@ their domain.
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
-| `moses-inbox-remediation` | 1.0.0 | Auto-remediate hermes-cortex issues reported by peer agents via agent inbox — reads remediation markers, applies fixes, marks done | `skill_view(name='moses-inbox-remediation')` |
+| `inbox-remediation` | 1.0.0 | Auto-remediate hermes-cortex issues reported by peer agents via agent inbox — reads remediation markers, applies fixes, marks done | `skill_view(name='inbox-remediation')` |
 | `nginx-security-pipeline` | 1.0.0 | Self-maintaining nginx security pipeline — IP blocking, fail2ban, atomic deploy, and daily scanner for nginx reverse proxies. Platform-aware (macOS/Linux). | `skill_view(name='nginx-security-pipeline')` |
 | `nginx-web-app-deployment` | 1.0.0 | Deploy web apps behind nginx — upstream config, SSL, rate limiting, launchd/systemd, multi-layer testing | `skill_view(name='nginx-web-app-deployment')` |
 | `package-security` | 1.0.0 | Age-gated package installation — verifies packages are ≥14 days old before install. Covers PyPI, npm, crates.io, Homebrew. | `skill_view(name='package-security')` |
@@ -93,7 +93,7 @@ references remain.
 | 2026-06-11 | TDD merged into change-test-loop (v1.1.0), writing-plans merged into plan (v2.1.0) |
 | 2026-06-09 | Added public-contribution, skill-from-lesson (software-development), nginx-web-app-deployment (devops), SOUL.md template, updated nginx template |
 | 2026-06-09 | Added pr-review (github), package-security (devops). skill-from-lesson absorbed into save-lesson (v1.1.0). documentation-maintenance-audit absorbed into project-readiness. |
-|| 2026-06-15 | Added moses-inbox-remediation devops skill v1.0.0 — auto-remediate hermes-cortex issues from agent inbox messages |
+|| 2026-06-15 | Added inbox-remediation devops skill v1.0.0 — auto-remediate hermes-cortex issues from agent inbox messages |
 || 2026-06-15 | orch-weekly-auto-fix v1.1.0 — added verification phase: each fix re-checks its condition post-fix with PASS/FAIL/WARN output |
 || 2026-06-17 | Added skill collection pipeline: collect-agent-skills.sh (agent-side reporter), request-skill-reports.sh (Moses orchestrator), process-skill-reports.py (digest compiler). Inbox server filename collision fix (microsecond precision). |
 || 2026-06-12 | **Memory That Compounds** — change-test-loop v2.0.0 adds LEARN phase (search lessons before every code change). New lesson-aware-agent skill for universal injection. Daily lesson auto-miner (02:00 KST). Compound stats dashboard (02:30 KST). Replaced weekly mining with daily mining. |

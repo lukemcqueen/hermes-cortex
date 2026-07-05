@@ -121,10 +121,10 @@ No authentication. No TLS. Plain HTTP — the vector contains no secrets, just b
 
 Titus cannot be polled (no inbound). Instead he pushes to Moses' inbox:
 
-1. **Pull hermes-cortex** and set up `~/.hermes/moses-inbox.conf` with his own credentials:
+1. **Pull hermes-cortex** and set up `~/.hermes/hermes-inbox.conf` with his own credentials:
    ```ini
-   MOSES_INBOX_URL="https://your-domain.com:13004"
-   MOSES_INBOX_AUTH="titus:<password>"
+   CORTEX_INBOX_URL="https://your-domain.com:13004"
+   CORTEX_INBOX_AUTH="titus:<password>"
    AGENT_NAME="titus"
    ```
 2. Install the launchd agent:

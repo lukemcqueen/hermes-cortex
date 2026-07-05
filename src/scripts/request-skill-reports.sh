@@ -23,11 +23,11 @@ REGISTRY_FILE="$STATE_DIR/agent-registry.json"
 # ── Config: source inbox credentials ──
 INBOX_URL="https://your-domain.com:13004/send"
 INBOX_AUTH=""
-CONFIG_FILE="${HOME}/.hermes/moses-inbox.conf"
+CONFIG_FILE="${HOME}/.hermes/hermes-inbox.conf"
 if [[ -f "$CONFIG_FILE" ]]; then
     source "$CONFIG_FILE"
-    INBOX_URL="${MOSES_INBOX_URL:-$INBOX_URL}/send"
-    INBOX_AUTH="${MOSES_INBOX_AUTH:-}"
+    INBOX_URL="${CORTEX_INBOX_URL:-$INBOX_URL}/send"
+    INBOX_AUTH="${CORTEX_INBOX_AUTH:-}"
 fi
 
 LAST_RUN_FILE="$STATE_DIR/last-skill-report-request.txt"
@@ -116,7 +116,7 @@ Instructions:
     no_agent=true \
     deliver=local
 
-  Then fill in ~/.hermes/moses-inbox.conf with your Moses
+  Then fill in ~/.hermes/hermes-inbox.conf with your Moses
   inbox credentials (see the template file).
 
 Reply to this message with a summary of any custom skills found,

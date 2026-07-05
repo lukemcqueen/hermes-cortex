@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  orch-moses-inbox-remediate.sh — Read pending remediation markers
+#  orch-inbox-remediate.sh — Read pending remediation markers
 #
 #  Reads ~/.hermes/state/remediate/ for pending fix requests
 #  left by check-agent-messages.sh. Outputs structured JSON.

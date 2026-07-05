@@ -45,15 +45,15 @@ Verify it's registered:
 hermes mcp list | grep agent-inbox
 ```
 
-### 2. Auth Config at `~/.hermes/moses-inbox.conf`
+### 2. Auth Config at `~/.hermes/hermes-inbox.conf`
 
 ```bash
-cat > ~/.hermes/moses-inbox.conf << 'EOF'
-MOSES_INBOX_URL="https://your-domain.com:13004"
-MOSES_INBOX_AUTH="your-agent-name:your-password"
+cat > ~/.hermes/hermes-inbox.conf << 'EOF'
+CORTEX_INBOX_URL="https://your-domain.com:13004"
+CORTEX_INBOX_AUTH="your-agent-name:your-password"
 AGENT_NAME="your-agent-name"
 EOF
-chmod 600 ~/.hermes/moses-inbox.conf
+chmod 600 ~/.hermes/hermes-inbox.conf
 ```
 
 Replace `your-agent-name` and `your-password` with credentials from Luke.
@@ -88,9 +88,9 @@ results back to the agent's origin chat (Telegram DM).
 
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
-| `inbox_watch` returns "Read failed (HTTP 401)" | Wrong auth in `moses-inbox.conf` | Check `MOSES_INBOX_AUTH` value |
+| `inbox_watch` returns "Read failed (HTTP 401)" | Wrong auth in `hermes-inbox.conf` | Check `CORTEX_INBOX_AUTH` value |
 | `inbox_watch` returns "Connection refused" | Inbox MCP server not running | Check `~/.hermes/config.yaml` for `agent-inbox` entry |
-| No new messages found | Agent polling with wrong `AGENT_NAME` | Check `AGENT_NAME` in `moses-inbox.conf` matches the `to:` field of sent messages |
+| No new messages found | Agent polling with wrong `AGENT_NAME` | Check `AGENT_NAME` in `hermes-inbox.conf` matches the `to:` field of sent messages |
 || Old `agent-inbox-check.sh` not working | Script deprecated, MCP-only now | Remove old cron, create `process-mcp-agent-inbox-messages` cron instead |
 | Messages addressed to `all` topic not seen | Agent reads only its own inbox | Orchestrator (moses) reads all; regular agents only see their own messages |
 

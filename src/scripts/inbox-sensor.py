@@ -5,7 +5,7 @@ Runs every 10m as a no_agent watchdog. Calls the agent inbox API
 (via the external MCP backend endpoint) to check for new broadcast
 messages. Silent when nothing new.
 
-Uses MOSES_INBOX_AUTH for Basic Auth if set (user:pass format).
+Uses CORTEX_INBOX_AUTH for Basic Auth if set (user:pass format).
 
 Output shape:
 {
@@ -28,16 +28,16 @@ HOME = Path.home()
 STATE_DIR = HOME / ".hermes" / "state"
 SEEN_FILE = STATE_DIR / "inbox-broadcast-seen"
 INBOX_API = os.environ.get("AGENT_INBOX_URL", "")
-INBOX_AUTH = os.environ.get("MOSES_INBOX_AUTH", "")
+INBOX_AUTH = os.environ.get("CORTEX_INBOX_AUTH", "")
 
-# Read MOSES_INBOX_URL from config file if not set via env
+# Read CORTEX_INBOX_URL from config file if not set via env
 if not INBOX_API:
-    config_path = HOME / ".hermes" / "moses-inbox.conf"
+    config_path = HOME / ".hermes" / "hermes-inbox.conf"
     if config_path.exists():
         try:
             for line in config_path.read_text().splitlines():
                 line = line.strip()
-                if line.startswith("MOSES_INBOX_URL="):
+                if line.startswith("CORTEX_INBOX_URL="):
                     val = line.split("=", 1)[1].strip().strip("'\"")
                     if val:
                         INBOX_API = val
@@ -49,14 +49,14 @@ if not INBOX_API:
 if not INBOX_API:
     INBOX_API = "http://127.0.0.1:8903"
 
-# Read MOSES_INBOX_AUTH from config file if not set via env
+# Read CORTEX_INBOX_AUTH from config file if not set via env
 if not INBOX_AUTH:
-    config_path = HOME / ".hermes" / "moses-inbox.conf"
+    config_path = HOME / ".hermes" / "hermes-inbox.conf"
     if config_path.exists():
         try:
             for line in config_path.read_text().splitlines():
                 line = line.strip()
-                if line.startswith("MOSES_INBOX_AUTH="):
+                if line.startswith("CORTEX_INBOX_AUTH="):
                     val = line.split("=", 1)[1].strip().strip("'\"")
                     if val:
                         INBOX_AUTH = val

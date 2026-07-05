@@ -136,7 +136,7 @@ register "src/scripts/install-post-commit-hook.sh"    "${HERMES_HOME}/scripts/in
 register "src/scripts/template-diff-check.py"          "${HERMES_HOME}/scripts/template-diff-check.py"
 
 # Moses inbox remediation
-register "src/scripts/orch-moses-inbox-remediate.sh"  "${HERMES_HOME}/scripts/orch-moses-inbox-remediate.sh"
+register "src/scripts/orch-inbox-remediate.sh"  "${HERMES_HOME}/scripts/orch-inbox-remediate.sh"
 
 # Auto-remediation scripts
 register "src/scripts/cron-auto-remediate.sh"     "${HERMES_HOME}/scripts/cron-auto-remediate.sh"

@@ -19,7 +19,7 @@
 #    hermes cron create name=agent-inbox schedule="0 */2 * * *" \
 #      prompt="Process inbox messages..." context_from=<job_id>
 #
-#  Auth: Uses ~/.hermes/moses-inbox.conf if present (BASIC auth).
+#  Auth: Uses ~/.hermes/hermes-inbox.conf if present (BASIC auth).
 #  Or set INBOX_AUTH env var to "user:pass".
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -54,14 +54,20 @@ fi
 INBOX_URL="${INBOX_API_URL:-https://your-domain.com:13004/api/inbox}"
 AUTH=""
 
-# Try loading auth from config file
-AUTH_FILE="${HOME}/.hermes/moses-inbox.conf"
+# Try loading auth from config file — check new name first, fall back to old
+AUTH_FILE="${HOME}/.hermes/hermes-inbox.conf"
+if [ ! -f "$AUTH_FILE" ]; then
+  AUTH_FILE="${HOME}/.hermes/moses-inbox.conf"
+  if [ -f "$AUTH_FILE" ]; then
+    echo "[deprecated] Rename ~/.hermes/moses-inbox.conf → ~/.hermes/hermes-inbox.conf" >&2
+  fi
+fi
 if [ -f "$AUTH_FILE" ]; then
   # shellcheck disable=SC1090
   source "$AUTH_FILE" 2>/dev/null || true
 fi
-# Support multiple auth var names (legacy compatibility)
-AUTH="${INBOX_AUTH:-${MOSES_INBOX_AUTH:-}}"
+# Support multiple auth var names (CORTEX_ preferred, old MOSES_ fallback)
+AUTH="${INBOX_AUTH:-${CORTEX_INBOX_AUTH:-${MOSES_INBOX_AUTH:-}}}"
 
 # ── Poll ───────────────────────────────────────────────────
 URL="${INBOX_URL}?for=${AGENT}&unread_only=true"

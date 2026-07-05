@@ -9,9 +9,9 @@
 #  Includes full SKILL.md content so Moses can evaluate quality
 #  without needing to request the file separately.
 #
-#  Relies on two env vars (or ~/.hermes/moses-inbox.conf):
-#    MOSES_INBOX_URL  — Moses inbox MCP endpoint (POST via internal API)
-#    MOSES_INBOX_AUTH — "user:pass" for Basic Auth on that
+#  Relies on two env vars (or ~/.hermes/hermes-inbox.conf):
+#    CORTEX_INBOX_URL  — Moses inbox MCP endpoint (POST via internal API)
+#    CORTEX_INBOX_AUTH — "user:pass" for Basic Auth on that
 #      endpoint (optional — skips POST if absent)
 #
 #  Deployed to agents via cortex-update.sh.
@@ -22,7 +22,7 @@ REPO_DIR="${CORTEX_REPO:-$HOME/hermes-cortex}"
 SKILLS_DIR="${HERMES_HOME:-$HOME/.hermes-cortex}/skills"
 REPO_SKILLS_DIR="$REPO_DIR/src/skills"
 STATE_DIR="${HERMES_HOME:-$HOME/.hermes}/state"
-CONFIG_FILE="$HOME/.hermes/moses-inbox.conf"
+CONFIG_FILE="$HOME/.hermes/hermes-inbox.conf"
 MANIFEST_FILE="$STATE_DIR/skills-manifest.json"
 
 # Optional Moses inbox config
@@ -112,10 +112,10 @@ if [[ $TOTAL -eq 0 ]]; then
 fi
 
 # ── Send to Moses inbox (if configured) ─────────────────────
-if [[ -n "${MOSES_INBOX_URL:-}" ]]; then
+if [[ -n "${CORTEX_INBOX_URL:-}" ]]; then
   AUTH_ARGS=()
-  if [[ -n "${MOSES_INBOX_AUTH:-}" ]]; then
-    AUTH_ARGS=(-u "$MOSES_INBOX_AUTH")
+  if [[ -n "${CORTEX_INBOX_AUTH:-}" ]]; then
+    AUTH_ARGS=(-u "$CORTEX_INBOX_AUTH")
   fi
 
   # Build body: summary overview + full content for each skill
@@ -153,7 +153,7 @@ ${SKILL_CONTENTS[$idx]:-(unreadable)}
 from=$HOSTNAME&topic=reports&subject=Skill Report: $TOTAL custom skills&body=$BODY&priority=normal
 BODYEOF
 
-  curl -sk -X POST "$MOSES_INBOX_URL" \
+  curl -sk -X POST "$CORTEX_INBOX_URL" \
     "${AUTH_ARGS[@]}" \
     --data-binary @"$BODY_FILE" \
     -H "Content-Type: application/x-www-form-urlencoded" \

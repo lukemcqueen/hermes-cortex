@@ -918,7 +918,7 @@ You are Moses. This is your inbox remediation processor.
 
 ## Step 1: Check for pending remediation markers
 
-Run the companion script: `~/.hermes/scripts/orch-moses-inbox-remediate.sh`
+Run the companion script: `~/.hermes/scripts/orch-inbox-remediate.sh`
 If output is `[]`, respond with [SILENT] — nothing needs remediation.
 
 ## Step 2: Process each pending item
@@ -945,8 +945,8 @@ Run:
 
 ```bash
 # 1. Deploy companion scripts
-cp hermes-cortex/scripts/orch-moses-inbox-remediate.sh ~/.hermes/scripts/
-chmod +x ~/.hermes/scripts/orch-moses-inbox-remediate.sh
+cp hermes-cortex/scripts/orch-inbox-remediate.sh ~/.hermes/scripts/
+chmod +x ~/.hermes/scripts/orch-inbox-remediate.sh
 
 # 2. Create the cron
 hermes cron create \

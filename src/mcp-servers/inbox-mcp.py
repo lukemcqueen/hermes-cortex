@@ -2,12 +2,12 @@
 """
 Agent Inbox MCP Server — send, read, and watch the agent inbox.
 
-Reads MOSES_INBOX_URL, MOSES_INBOX_FALLBACK_URL, MOSES_INBOX_THIRD_URL,
-MOSES_INBOX_AUTH, and AGENT_NAME from:
+Reads CORTEX_INBOX_URL, CORTEX_INBOX_FALLBACK_URL, CORTEX_INBOX_THIRD_URL,
+CORTEX_INBOX_AUTH, and AGENT_NAME from:
   1. Environment variables
-  2. ~/.hermes/moses-inbox.conf (key=value format)
+  2. ~/.hermes/hermes-inbox.conf (key=value format)
 
-🔒  PROTECT YOUR CONFIG: chmod 600 ~/.hermes/moses-inbox.conf
+🔒  PROTECT YOUR CONFIG: chmod 600 ~/.hermes/hermes-inbox.conf
      The password is sent over HTTPS (encrypted in transit).
      At-rest protection relies on filesystem permissions.
 
@@ -54,13 +54,51 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent, CallToolResult
 
 # ── Config Loading ────────────────────────────────────────────
-CONFIG_FILE = Path.home() / ".hermes" / "moses-inbox.conf"
+# Primary: hermes-inbox.conf. Fallback: moses-inbox.conf (deprecated).
+CONFIG_FILE = Path.home() / ".hermes" / "hermes-inbox.conf"
+CONFIG_FILE_OLD = Path.home() / ".hermes" / "moses-inbox.conf"
+if not CONFIG_FILE.exists() and CONFIG_FILE_OLD.exists():
+    log.warning("⚠️  ~/.hermes/moses-inbox.conf is deprecated — rename to hermes-inbox.conf")
+    CONFIG_FILE = CONFIG_FILE_OLD
 
-inbox_url = os.environ.get("MOSES_INBOX_URL", "")
-inbox_fallback_url = os.environ.get("MOSES_INBOX_FALLBACK_URL", "")
-inbox_third_url = os.environ.get("MOSES_INBOX_THIRD_URL", "")
-inbox_auth = os.environ.get("MOSES_INBOX_AUTH", "")
+# Check CORTEX_INBOX_* env vars first, fall back to MOSES_INBOX_* (deprecated)
+inbox_url = os.environ.get("CORTEX_INBOX_URL", "")
+if not inbox_url:
+    old_val = os.environ.get("MOSES_INBOX_URL", "")
+    if old_val:
+        log.warning("⚠️  MOSES_INBOX_URL is deprecated — use CORTEX_INBOX_URL")
+        inbox_url = old_val
+
+inbox_fallback_url = os.environ.get("CORTEX_INBOX_FALLBACK_URL", "")
+if not inbox_fallback_url:
+    old_val = os.environ.get("MOSES_INBOX_FALLBACK_URL", "")
+    if old_val:
+        log.warning("⚠️  MOSES_INBOX_FALLBACK_URL is deprecated — use CORTEX_INBOX_FALLBACK_URL")
+        inbox_fallback_url = old_val
+
+inbox_third_url = os.environ.get("CORTEX_INBOX_THIRD_URL", "")
+if not inbox_third_url:
+    old_val = os.environ.get("MOSES_INBOX_THIRD_URL", "")
+    if old_val:
+        log.warning("⚠️  MOSES_INBOX_THIRD_URL is deprecated — use CORTEX_INBOX_THIRD_URL")
+        inbox_third_url = old_val
+
+inbox_auth = os.environ.get("CORTEX_INBOX_AUTH", "")
+if not inbox_auth:
+    old_val = os.environ.get("MOSES_INBOX_AUTH", "")
+    if old_val:
+        log.warning("⚠️  MOSES_INBOX_AUTH is deprecated — use CORTEX_INBOX_AUTH")
+        inbox_auth = old_val
+
 agent_name = os.environ.get("AGENT_NAME", "")
+
+# Config file keys: accept both CORTEX_ and MOSES_ prefixes
+_OLD_KEYS = {
+    "MOSES_INBOX_URL": "CORTEX_INBOX_URL",
+    "MOSES_INBOX_FALLBACK_URL": "CORTEX_INBOX_FALLBACK_URL",
+    "MOSES_INBOX_THIRD_URL": "CORTEX_INBOX_THIRD_URL",
+    "MOSES_INBOX_AUTH": "CORTEX_INBOX_AUTH",
+}
 
 if CONFIG_FILE.exists():
     try:
@@ -75,13 +113,15 @@ if CONFIG_FILE.exists():
                 # Strip inline comments (everything after # preceded by whitespace)
                 import re as _re
                 v = _re.sub(r"\s+#.*$", "", v).strip()
-                if k == "MOSES_INBOX_URL" and not inbox_url:
+                # Map old key names to new ones
+                mapped_k = _OLD_KEYS.get(k, k)
+                if mapped_k == "CORTEX_INBOX_URL" and not inbox_url:
                     inbox_url = v
-                elif k == "MOSES_INBOX_FALLBACK_URL" and not inbox_fallback_url:
+                elif mapped_k == "CORTEX_INBOX_FALLBACK_URL" and not inbox_fallback_url:
                     inbox_fallback_url = v
-                elif k == "MOSES_INBOX_THIRD_URL" and not inbox_third_url:
+                elif mapped_k == "CORTEX_INBOX_THIRD_URL" and not inbox_third_url:
                     inbox_third_url = v
-                elif k == "MOSES_INBOX_AUTH" and not inbox_auth:
+                elif mapped_k == "CORTEX_INBOX_AUTH" and not inbox_auth:
                     inbox_auth = v
                 elif k == "AGENT_NAME" and not agent_name:
                     agent_name = v
@@ -101,8 +141,8 @@ _URL_LIST.append(("localhost (last resort)", "http://127.0.0.1:8903"))
 
 IS_LOCAL_FALLBACK = not bool(inbox_url)
 if IS_LOCAL_FALLBACK:
-    log.warning("❗ MOSES_INBOX_URL not configured — using localhost only. "
-                "Set MOSES_INBOX_URL in ~/.hermes/moses-inbox.conf for external agents.")
+    log.warning("❗ CORTEX_INBOX_URL not configured — using localhost only. "
+                "Set CORTEX_INBOX_URL in ~/.hermes/hermes-inbox.conf for external agents.")
 
 log.info("Inbox routing chain:")
 for name, url in _URL_LIST:
@@ -375,8 +415,8 @@ def _inbox_read(args: dict) -> CallToolResult:
     elif status == 401:
         return CallToolResult(content=[TextContent(type="text",
             text="Read failed (HTTP 401 Unauthorized). Configure credentials:\n"
-                 "  nano ~/.hermes/moses-inbox.conf\n"
-                 "  Set: MOSES_INBOX_AUTH=user:pass")])
+                 "  nano ~/.hermes/hermes-inbox.conf\n"
+                 "  Set: CORTEX_INBOX_AUTH=user:pass")])
     else:
         return CallToolResult(content=[TextContent(type="text", text=f"Read failed (HTTP {status}): {resp_body}")])
 
@@ -392,7 +432,7 @@ def _inbox_watch(args: dict) -> CallToolResult:
     if status != 200:
         if status == 401:
             return CallToolResult(content=[TextContent(type="text",
-                text="Watch failed (HTTP 401). Configure MOSES_INBOX_AUTH in ~/.hermes/moses-inbox.conf")])
+                text="Watch failed (HTTP 401). Configure CORTEX_INBOX_AUTH in ~/.hermes/hermes-inbox.conf")])
         return CallToolResult(content=[TextContent(type="text", text=f"Watch failed (HTTP {status}): {resp_body}")])
 
     try:

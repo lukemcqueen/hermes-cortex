@@ -1,5 +1,5 @@
 ---
-name: moses-inbox-remediation
+name: inbox-remediation
 description: "Auto-remediate hermes-cortex issues reported by peer agents via the agent inbox. Scans pending remediation markers every 10 minutes, reads the original message, applies the fix, and marks the request as done."
 version: 1.0.0
 author: Moses
@@ -28,7 +28,7 @@ Load this skill when:
     ↓  Detects keywords: error, failed, broken, crash, help, etc.
     ↓  Writes remediation marker to ~/.hermes/state/remediate/
     ↓
-[orch-moses-inbox-remediate.sh] companion script (no_agent)
+[orch-inbox-remediate.sh] companion script (no_agent)
     ↓  Reads markers + original messages
     ↓  Outputs structured JSON: [{sender, subject, body, marker_file}]
     ↓
@@ -47,8 +47,8 @@ Load this skill when:
 ### 1. Deploy the companion script
 
 ```bash
-cp hermes-cortex/scripts/orch-moses-inbox-remediate.sh ~/.hermes/scripts/
-chmod +x ~/.hermes/scripts/orch-moses-inbox-remediate.sh
+cp hermes-cortex/scripts/orch-inbox-remediate.sh ~/.hermes/scripts/
+chmod +x ~/.hermes/scripts/orch-inbox-remediate.sh
 ```
 
 ### 2. Create the orch-process-agent-messages cron
@@ -64,7 +64,7 @@ You are Moses, the orchestration mind of Hermes. This is your agent message proc
 
 Run the companion script:
 ```bash
-~/.hermes/scripts/orch-moses-inbox-remediate.sh
+~/.hermes/scripts/orch-inbox-remediate.sh
 ```
 
 If output is `[]`, respond with `[SILENT]` — nothing needs remediation.

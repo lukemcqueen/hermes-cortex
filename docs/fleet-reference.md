@@ -144,7 +144,7 @@ bash ~/.hermes-cortex/src/scripts/setup-agent-registry.sh
 # 2. Install crons
 bash ~/.hermes-cortex/src/scripts/install-crons.sh
 # 3. Copy orchestrator-specific scripts
-cp ~/hermes-cortex/src/scripts/orch-moses-inbox-remediate.sh ~/.hermes/scripts/
+cp ~/hermes-cortex/src/scripts/orch-inbox-remediate.sh ~/.hermes/scripts/
 cp ~/hermes-cortex/src/scripts/orch-weekly-auto-fix.py ~/.hermes/scripts/
 # 4. Create orch-process-agent-messages cron (see agent-registry.json)
 # 5. Start gbrain autopilot

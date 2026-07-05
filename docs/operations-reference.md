@@ -29,7 +29,7 @@ MOSES / ESTHER (inbox servers)          EVERY AGENT (including Moses & Esther)
 Hermes gateway (:8903)                  ~/.hermes/config.yaml
   ↳ built-in inbox API                    ↳ mcp_servers.agent-inbox
   ↳ stores messages                       ↳ runs inbox-mcp.py as subprocess
-                                          ↳ reads ~/.hermes/moses-inbox.conf
+                                          ↳ reads ~/.hermes/hermes-inbox.conf
 nginx proxy (:13004 / :14004)              ↳ calls remote inbox API via HTTP
   ↳ SSL + Basic Auth                      ↳ exposes inbox_send/read/watch tools
   ↳ proxies → :8903
@@ -37,7 +37,7 @@ nginx proxy (:13004 / :14004)              ↳ calls remote inbox API via HTTP
 
 ### What each agent needs
 
-| Agent | Role | Runs API backend? | Runs MCP client? | Has `moses-inbox.conf`? |
+| Agent | Role | Runs API backend? | Runs MCP client? | Has `hermes-inbox.conf`? |
 |-------|------|-------------------|-------------------|------------------------|
 | **Moses** | Primary orchestrator | ✅ YES — gateway :8903 + nginx :13004 | ✅ YES — inbox tools | ✅ Points to self |
 | **Esther** | Backup orchestrator | ✅ YES — gateway :8903 + nginx :14004 | ✅ YES — inbox tools | ✅ Points to her own instance |
@@ -84,7 +84,7 @@ If you are Gisu, Joseph, Kustos, or Titus (client agents):
            command: python3
            args: [~/hermes-cortex/src/mcp-servers/inbox-mcp.py]
            enabled: true
-  └─ You need ~/.hermes/moses-inbox.conf with YOUR credentials
+  └─ You need ~/.hermes/hermes-inbox.conf with YOUR credentials
   └─ You DO NOT need to run an inbox server or nginx proxy
 ```
 
@@ -102,15 +102,15 @@ grep -A4 "agent-inbox" ~/.hermes/config.yaml
 # Should show: command: python3, args: [inbox-mcp.py], enabled: true
 
 # 3. Create credentials file — YOUR OWN credentials
-nano ~/.hermes/moses-inbox.conf
+nano ~/.hermes/hermes-inbox.conf
 ```
 ```ini
-MOSES_INBOX_URL="https://your-domain.com:13004"
-MOSES_INBOX_AUTH="your_username:your_password"
+CORTEX_INBOX_URL="https://your-domain.com:13004"
+CORTEX_INBOX_AUTH="your_username:your_password"
 AGENT_NAME="your_agent_name"
 ```
 ```bash
-chmod 600 ~/.hermes/moses-inbox.conf
+chmod 600 ~/.hermes/hermes-inbox.conf
 
 # 4. Verify you can talk to the inbox
 curl -s -u "your_username:your_password" \
@@ -130,7 +130,7 @@ curl -s -u "your_username:your_password" https://your-domain.com:13004/api/inbox
 
 ### Common confusion to avoid
 
-Key rule: only Moses and Esther run the inbox API backend. Every other agent just needs the MCP client (`inbox-mcp.py` in config.yaml) + credentials in `~/.hermes/moses-inbox.conf`. Do NOT share credentials — every agent has their own htpasswd user.
+Key rule: only Moses and Esther run the inbox API backend. Every other agent just needs the MCP client (`inbox-mcp.py` in config.yaml) + credentials in `~/.hermes/hermes-inbox.conf`. Do NOT share credentials — every agent has their own htpasswd user.
 
 ---
 

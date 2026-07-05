@@ -12,9 +12,9 @@ dashboard consumption.
 Moses reads these from the inbox and merges them into
 agent-health-data.json.
 
-Configuration (env vars or ~/.hermes/moses-inbox.conf):
-  MOSES_INBOX_URL   — Moses inbox MCP endpoint (POST via internal API)
-  MOSES_INBOX_AUTH  — "user:pass" for Basic Auth
+Configuration (env vars or ~/.hermes/hermes-inbox.conf):
+  CORTEX_INBOX_URL   — Moses inbox MCP endpoint (POST via internal API)
+  CORTEX_INBOX_AUTH  — "user:pass" for Basic Auth
   AGENT_NAME        — name to report as (default: hostname)
 
 Cron setup on the remote agent:
@@ -36,7 +36,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 HOME = Path.home()
-CONFIG_FILE = HOME / ".hermes" / "moses-inbox.conf"
+CONFIG_FILE = HOME / ".hermes" / "hermes-inbox.conf"
 HEALTH_LOCAL = 'http://127.0.0.1:8901/api/health'
 STATE_FILE = HOME / ".hermes" / "state" / "agent-health-push-state.json"
 TIMEOUT = 15
@@ -44,8 +44,8 @@ TIMEOUT = 15
 # ── Config ────────────────────────────────────────────────────
 
 # Load from config file first
-inbox_url = os.environ.get("MOSES_INBOX_URL", "")
-inbox_auth = os.environ.get("MOSES_INBOX_AUTH", "")
+inbox_url = os.environ.get("CORTEX_INBOX_URL", "")
+inbox_auth = os.environ.get("CORTEX_INBOX_AUTH", "")
 agent_name = os.environ.get("AGENT_NAME", "")
 
 if CONFIG_FILE.exists():
@@ -59,9 +59,9 @@ if CONFIG_FILE.exists():
                     k, v = line.split("=", 1)
                     k = k.strip()
                     v = v.strip().strip("'\"")
-                    if k == "MOSES_INBOX_URL" and not inbox_url:
+                    if k == "CORTEX_INBOX_URL" and not inbox_url:
                         inbox_url = v
-                    elif k == "MOSES_INBOX_AUTH" and not inbox_auth:
+                    elif k == "CORTEX_INBOX_AUTH" and not inbox_auth:
                         inbox_auth = v
     except Exception:
         pass
@@ -71,7 +71,7 @@ if not agent_name:
     agent_name = platform.node().split(".")[0]
 
 if not inbox_url:
-    print("ERROR: MOSES_INBOX_URL not set", file=sys.stderr)
+    print("ERROR: CORTEX_INBOX_URL not set", file=sys.stderr)
     sys.exit(1)
 
 

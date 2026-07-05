@@ -2,11 +2,11 @@
 """
 Agent Inbox MCP Server — send, read, and watch the agent inbox.
 
-Reads MOSES_INBOX_URL, MOSES_INBOX_AUTH, and AGENT_NAME from:
+Reads CORTEX_INBOX_URL, CORTEX_INBOX_AUTH, and AGENT_NAME from:
   1. Environment variables
-  2. ~/.hermes/moses-inbox.conf (key=value format)
+  2. ~/.hermes/hermes-inbox.conf (key=value format)
 
-🔒  PROTECT YOUR CONFIG: chmod 600 ~/.hermes/moses-inbox.conf
+🔒  PROTECT YOUR CONFIG: chmod 600 ~/.hermes/hermes-inbox.conf
      The password is sent over HTTPS (encrypted in transit).
      At-rest protection relies on filesystem permissions.
 
@@ -55,10 +55,10 @@ from mcp.types import Tool, TextContent, CallToolResult
 
 # ── Config Loading ────────────────────────────────────────────
 # Same pattern as report-agent-health.py and collect-agent-skills.sh
-CONFIG_FILE = Path.home() / ".hermes" / "moses-inbox.conf"
+CONFIG_FILE = Path.home() / ".hermes" / "hermes-inbox.conf"
 
-inbox_url = os.environ.get("MOSES_INBOX_URL", "")
-inbox_auth = os.environ.get("MOSES_INBOX_AUTH", "")
+inbox_url = os.environ.get("CORTEX_INBOX_URL", "")
+inbox_auth = os.environ.get("CORTEX_INBOX_AUTH", "")
 agent_name = os.environ.get("AGENT_NAME", "")
 
 if CONFIG_FILE.exists():
@@ -71,9 +71,9 @@ if CONFIG_FILE.exists():
                 k, v = line.split("=", 1)
                 k = k.strip()
                 v = v.strip().strip("'\"")
-                if k == "MOSES_INBOX_URL" and not inbox_url:
+                if k == "CORTEX_INBOX_URL" and not inbox_url:
                     inbox_url = v
-                elif k == "MOSES_INBOX_AUTH" and not inbox_auth:
+                elif k == "CORTEX_INBOX_AUTH" and not inbox_auth:
                     inbox_auth = v
                 elif k == "AGENT_NAME" and not agent_name:
                     agent_name = v
@@ -87,8 +87,8 @@ if inbox_url:
 else:
     BASE_URL = "http://localhost:8903"
     IS_LOCAL_FALLBACK = True
-    log.warning("❗ MOSES_INBOX_URL not configured — routing to %s (local only). "
-                "Set MOSES_INBOX_URL in ~/.hermes/moses-inbox.conf for external agents.",
+    log.warning("❗ CORTEX_INBOX_URL not configured — routing to %s (local only). "
+                "Set CORTEX_INBOX_URL in ~/.hermes/hermes-inbox.conf for external agents.",
                 BASE_URL)
 
 # Build auth header if credentials available
@@ -312,8 +312,8 @@ def _inbox_read(args: dict) -> CallToolResult:
     elif status == 401:
         return CallToolResult(content=[TextContent(type="text",
             text="Read failed (HTTP 401 Unauthorized). Configure credentials:\n"
-                 "  nano ~/.hermes/moses-inbox.conf\n"
-                 "  Set: MOSES_INBOX_AUTH=user:pass")])
+                 "  nano ~/.hermes/hermes-inbox.conf\n"
+                 "  Set: CORTEX_INBOX_AUTH=user:pass")])
     else:
         return CallToolResult(content=[TextContent(type="text", text=f"Read failed (HTTP {status}): {resp_body}")])
 
@@ -329,7 +329,7 @@ def _inbox_watch(args: dict) -> CallToolResult:
     if status != 200:
         if status == 401:
             return CallToolResult(content=[TextContent(type="text",
-                text="Watch failed (HTTP 401). Configure MOSES_INBOX_AUTH in ~/.hermes/moses-inbox.conf")])
+                text="Watch failed (HTTP 401). Configure CORTEX_INBOX_AUTH in ~/.hermes/hermes-inbox.conf")])
         return CallToolResult(content=[TextContent(type="text", text=f"Watch failed (HTTP {status}): {resp_body}")])
 
     try:

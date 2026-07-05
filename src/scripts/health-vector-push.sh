@@ -22,7 +22,7 @@
 # ─────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
-CONFIG_FILE="${HOME}/.hermes/moses-inbox.conf"
+CONFIG_FILE="${HOME}/.hermes/hermes-inbox.conf"
 ERROR_LOG="/tmp/com.hermes.health-push.err"
 
 # ── Load failure state helpers ───────────────────────────────────
@@ -41,17 +41,17 @@ if [[ -f "$CONFIG_FILE" ]]; then
     . "$CONFIG_FILE"
 fi
 
-: "${MOSES_INBOX_URL:=}"
-: "${MOSES_INBOX_AUTH:=}"
+: "${CORTEX_INBOX_URL:=}"
+: "${CORTEX_INBOX_AUTH:=}"
 : "${AGENT_NAME:=titus}"
 
-if [[ -z "$MOSES_INBOX_URL" ]]; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] MOSES_INBOX_URL not set" >> "$ERROR_LOG"
+if [[ -z "$CORTEX_INBOX_URL" ]]; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] CORTEX_INBOX_URL not set" >> "$ERROR_LOG"
     exit 1
 fi
 
 # Use the inbox send URL directly (config provides the full endpoint)
-API_URL="${MOSES_INBOX_URL}"
+API_URL="${CORTEX_INBOX_URL}"
 
 # ── Vector: default all-1 healthy ──────────────────────────
 # Each check sets its slot to 0=n/a, -1=fail, or leaves 1=pass
@@ -150,8 +150,8 @@ RESPONSE_FILE=$(mktemp /tmp/health-push-XXXXXX)
 trap 'rm -f "$RESPONSE_FILE"' EXIT
 
 CURL_ARGS=(-s -X POST -H "Content-Type: application/json" -d "$PAYLOAD" -w "\n%{http_code}" --max-time 10)
-if [[ -n "$MOSES_INBOX_AUTH" ]]; then
-    CURL_ARGS=(-u "$MOSES_INBOX_AUTH" "${CURL_ARGS[@]}")
+if [[ -n "$CORTEX_INBOX_AUTH" ]]; then
+    CURL_ARGS=(-u "$CORTEX_INBOX_AUTH" "${CURL_ARGS[@]}")
 fi
 
 curl "${CURL_ARGS[@]}" "$API_URL" > "$RESPONSE_FILE" 2>/dev/null || {
