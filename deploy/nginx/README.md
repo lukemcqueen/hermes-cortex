@@ -147,8 +147,11 @@ Moses polls every agent's health vector without managing per-agent credentials.
 
 **Verify:**
 ```bash
-grep -c 'auth_basic' /etc/nginx/sites-enabled/hermes-services.conf
+# Config is written to sites-available/, symlinked in sites-enabled/
+ls -la /etc/nginx/sites-available/hermes-services.conf
+ls -la /etc/nginx/sites-enabled/hermes-services.conf  # → ../sites-available/hermes-services.conf
 # Health block should have 0 matches for auth_basic
+grep -c 'auth_basic' /etc/nginx/sites-enabled/hermes-services.conf
 ```
 
 The health endpoint exposes only a compact 9-element ternary status vector

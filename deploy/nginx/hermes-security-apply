@@ -42,10 +42,12 @@ case "$(uname -s)" in
       FAIL2BAN_DIR="/usr/local/etc/fail2ban"
       NGINX_LOG_DIR="/usr/local/var/log/nginx"
     fi
+    NGINX_AVAILABLE_DIR="${NGINX_CONFIG_DIR}"  # macOS: no sites-available, write directly
     ;;
   Linux)
     NGINX_DIR="/etc/nginx"
     NGINX_CONFIG_DIR="${NGINX_DIR}/sites-enabled"
+    NGINX_AVAILABLE_DIR="${NGINX_DIR}/sites-available"
     FAIL2BAN_DIR="/etc/fail2ban"
     NGINX_LOG_DIR="/var/log/nginx"
     ;;
@@ -130,6 +132,9 @@ for src in "${CORTEX_REPO}/deploy/nginx/hermes-zone-defs.conf" "${CORTEX_REPO}/d
         echo "  ⚠ No SSL certs found — __SSL_CERT__ placeholders left unchanged"
       fi
 
+      # Write to sites-available (Linux) or servers/ (macOS)
+      mkdir -p "${NGINX_AVAILABLE_DIR}"
+
       < "$src" sed \
         -e "s|__NGINX_CONFIG_DIR__|${NGINX_CONFIG_DIR}|g" \
         -e "s|__NGINX_LOG_DIR__|${NGINX_LOG_DIR}|g" \
@@ -137,8 +142,15 @@ for src in "${CORTEX_REPO}/deploy/nginx/hermes-zone-defs.conf" "${CORTEX_REPO}/d
         -e "s|__CORTEX_HOME__|${HOME}|g" \
         -e "s|__SSL_CERT__|${SSL_CERT:-__SSL_CERT__}|g" \
         -e "s|__SSL_CERT_KEY__|${SSL_KEY:-__SSL_CERT_KEY__}|g" \
-        > "${NGINX_CONFIG_DIR}/${base}"
-      echo "  ✓ Deployed: ${base} (paths substituted)"
+        > "${NGINX_AVAILABLE_DIR}/${base}"
+      echo "  ✓ Deployed: ${NGINX_AVAILABLE_DIR}/${base} (paths substituted)"
+
+      # Symlink from sites-enabled -> sites-available on Linux
+      if [ "${NGINX_AVAILABLE_DIR}" != "${NGINX_CONFIG_DIR}" ]; then
+        mkdir -p "${NGINX_CONFIG_DIR}"
+        ln -sf "${NGINX_AVAILABLE_DIR}/${base}" "${NGINX_CONFIG_DIR}/${base}"
+        echo "  ✓ Symlinked: ${NGINX_CONFIG_DIR}/${base} → ${NGINX_AVAILABLE_DIR}/${base}"
+      fi
     fi
   fi
 done

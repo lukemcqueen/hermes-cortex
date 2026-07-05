@@ -50,7 +50,10 @@ from pathlib import Path
 # ── OS-aware path detection ──────────────────────────────────────────
 
 def detect_nginx_paths():
-    """Return (config_dir, brew_dir, log_dir, htpasswd) based on OS."""
+    """Return (config_dir, available_dir, brew_dir, log_dir, htpasswd) based on OS.
+    config_dir is the active nginx include dir (sites-enabled on Linux, servers/ on macOS).
+    available_dir is where configs are written (sites-available on Linux, same as config_dir on macOS).
+    """
     system = platform.system()
     if system == "Darwin":
         machine = platform.machine()
@@ -61,15 +64,17 @@ def detect_nginx_paths():
         config_dir = brew_dir / "servers"
         log_dir = Path(brew_dir.parent.parent / "var" / "log" / "nginx")
         htpasswd = brew_dir / ".htpasswd"
+        available_dir = config_dir  # macOS: no sites-available split, write directly
     elif system == "Linux":
         brew_dir = Path("/etc/nginx")
         config_dir = brew_dir / "sites-enabled"
+        available_dir = brew_dir / "sites-available"
         log_dir = Path("/var/log/nginx")
         htpasswd = brew_dir / ".hermes-htpasswd"
     else:
         print(f"✗ Unsupported OS: {system}")
         sys.exit(1)
-    return config_dir, brew_dir, log_dir, htpasswd
+    return config_dir, available_dir, log_dir, htpasswd
 
 
 # ── SSL cert discovery ───────────────────────────────────────────────
@@ -321,7 +326,7 @@ def main():
             sys.exit(1)
 
     # ── Determine paths ──
-    config_dir, brew_dir, log_dir, htpasswd = detect_nginx_paths()
+    config_dir, available_dir, log_dir, htpasswd = detect_nginx_paths()
     cortex_repo = Path(os.environ.get("CORTEX_REPO", Path.home() / "hermes-cortex"))
     cortex_home = Path.home()
 
@@ -354,6 +359,7 @@ def main():
 
     print(f"  Template: {template}")
     print(f"  Config dir: {config_dir}")
+    print(f"  Available dir: {available_dir}")
     print(f"  Log dir: {log_dir}")
     print(f"  htpasswd: {htpasswd}")
     print(f"  Port prefix: {port_prefix}xxx")
@@ -372,27 +378,30 @@ def main():
     # ── Determine output path ──
     if args.output:
         output_path = Path(args.output)
+        symlink_path = None
     else:
-        output_path = config_dir / "hermes-services.conf"
+        output_path = available_dir / "hermes-services.conf"
+        symlink_path = config_dir / "hermes-services.conf" if config_dir != available_dir else None
 
     # ── Preserve live port prefix (like cortex-update.sh does) ──
-    if output_path.is_file() and not args.dry_run:
-        live_content = output_path.read_text()
-        live_match = re.search(r'listen\s+(?:127\.0\.0\.1:)?(\d{2})(\d{3})\s', live_content)
-        template_match = re.search(r'listen\s+(?:127\.0\.0\.1:)?(\d{2})(\d{3})\s', processed)
-        if live_match and template_match and live_match.group(1) != template_match.group(1):
-            old_prefix = template_match.group(1)
-            new_prefix = live_match.group(1)
-            processed = processed.replace(f":{old_prefix}", f":{new_prefix}")
-            print(f"  ✓ Preserved port range {old_prefix}xxx → {new_prefix}xxx")
+    if not args.dry_run:
+        live_path = symlink_path or output_path
+        if live_path.is_file():
+            live_content = live_path.read_text()
+            live_match = re.search(r'listen\s+(?:127\.0\.0\.1:)?(\d{2})(\d{3})\s', live_content)
+            template_match = re.search(r'listen\s+(?:127\.0\.0\.1:)?(\d{2})(\d{3})\s', processed)
+            if live_match and template_match and live_match.group(1) != template_match.group(1):
+                old_prefix = template_match.group(1)
+                new_prefix = live_match.group(1)
+                processed = processed.replace(f":{old_prefix}", f":{new_prefix}")
+                print(f"  ✓ Preserved port range {old_prefix}xxx → {new_prefix}xxx")
 
     # ── Write ──
     if args.dry_run:
         # Show diff-like summary
-        if output_path.is_file():
-            print(f"  → Would update: {output_path}")
-        else:
-            print(f"  → Would create: {output_path}")
+        print(f"  → Would write:  {output_path}")
+        if symlink_path:
+            print(f"  → Would symlink: {symlink_path} → {output_path}")
         # Show SSL substitution status
         if "__SSL_CERT__" in processed:
             ssl_count = processed.count("__SSL_CERT__")
@@ -407,31 +416,31 @@ def main():
             tmp.close()
             os.chmod(tmp.name, 0o644)
 
-            # Check if target needs sudo
-            try:
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.write_text("")  # test write access
-                shutil.copy2(tmp.name, str(output_path))
-            except (PermissionError, OSError):
-                # Fall back to sudo
-                subprocess.run(
-                    ["sudo", "cp", tmp.name, str(output_path)],
-                    check=True,
-                    timeout=30,
-                )
-                subprocess.run(
-                    ["sudo", "chmod", "644", str(output_path)],
-                    check=True,
-                    timeout=30,
-                )
-            finally:
-                os.unlink(tmp.name)
-        except Exception as e:
-            os.unlink(tmp.name)
-            print(f"✗ Write failed: {e}")
-            sys.exit(1)
+            # Write to available_dir (sites-available on Linux, servers/ on macOS)
+            def _write_file(src, dst):
+                try:
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, str(dst))
+                except (PermissionError, OSError):
+                    subprocess.run(["sudo", "cp", src, str(dst)], check=True, timeout=30)
+                    subprocess.run(["sudo", "chmod", "644", str(dst)], check=True, timeout=30)
 
-        print(f"  ✓ Deployed: {output_path}")
+            _write_file(tmp.name, output_path)
+            print(f"  ✓ Deployed: {output_path}")
+
+            # Symlink from sites-enabled -> sites-available on Linux
+            if symlink_path:
+                try:
+                    if symlink_path.is_symlink() or symlink_path.exists():
+                        symlink_path.unlink()
+                    symlink_path.parent.mkdir(parents=True, exist_ok=True)
+                    symlink_path.symlink_to(output_path)
+                    print(f"  ✓ Symlinked: {symlink_path} → {output_path}")
+                except (PermissionError, OSError):
+                    subprocess.run(["sudo", "ln", "-sf", str(output_path), str(symlink_path)], check=True, timeout=30)
+                    print(f"  ✓ Symlinked (sudo): {symlink_path} → {output_path}")
+        finally:
+            os.unlink(tmp.name)
 
     # ── Test and reload ──
     skip_nginx = os.environ.get("CORTEX_SKIP_NGINX", "")
