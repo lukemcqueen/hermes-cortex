@@ -252,6 +252,8 @@ register "src/offline/auto-update.sh"             "${HERMES_HOME}/offline/auto-u
 register "src/a2a/generate-agent-card.py"         "${HERMES_HOME}/scripts/generate-agent-card.py"
 register "src/a2a/agent-card.json"                "${HERMES_HOME}/a2a/agent-card.json"
 register "src/mcp-servers/a2a-mcp.py"              "${HERMES_HOME}/mcp-servers/a2a-mcp.py"
+register "src/a2a/a2a-server.py"                     "${HERMES_HOME}/scripts/a2a-server.py"
+register "docs/templates/a2a-server.service"          "${HERMES_HOME}/templates/a2a-server.service"
 
 # Templates → ~/.hermes/memories/ (guarded — only if dest missing)
 register "docs/templates/MEMORY.seed.md"      "${HERMES_HOME}/memories/MEMORY.md"
