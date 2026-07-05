@@ -12,16 +12,18 @@ Usage:
     uvicorn server:app --host 127.0.0.1 --port 8903
 """
 import html
+import json
 import os
 import re
+import sqlite3
 import sys
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import FastAPI, Form, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 # ── Configurable inbox directory ────────────────────────────
 # AGENT_INBOX_DIR overrides the default ~/hermes-cortex-private/messages
@@ -75,7 +77,7 @@ def _parse_message(path: Path) -> dict:
     text = path.read_text(encoding="utf-8", errors="replace")
     front = {"from": "?", "subject": "No subject", "topic": DEFAULT_TOPIC,
              "thread": "", "parent": "", "status": "unread", "priority": "normal",
-             "read_by": "", "to": "all", "cc": ""}
+             "read_by": "", "to": "all", "cc": "", "task-id": ""}
     body = text
 
     m = re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)", text, re.DOTALL)
@@ -102,6 +104,7 @@ def _parse_message(path: Path) -> dict:
         "status": front.get("status", "unread"),
         "priority": front.get("priority", "normal"),
         "read_by": front.get("read_by", ""),
+        "task-id": front.get("task-id", ""),
         "body": body,
         "timestamp": datetime.fromtimestamp(path.stat().st_mtime).isoformat(),
         "filename": filename,
@@ -116,7 +119,8 @@ def _write_message(from_: str, subject: str, body: str,
                    thread: str = "",
                    parent: str = "",
                    priority: str = "normal",
-                   status: str = "unread") -> str:
+                   status: str = "unread",
+                   task_id: str = "") -> str:
     """Write a message file to the inbox. Returns the filename."""
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
     safe_from = re.sub(r"[^a-zA-Z0-9_-]", "", from_.strip().lower()) or "agent"
@@ -140,6 +144,9 @@ def _write_message(from_: str, subject: str, body: str,
         cc_vals.insert(0, "luke")
     cc_str = ", ".join(cc_vals)
 
+    # Include task-id in frontmatter if provided
+    task_id_line = f"task-id: {task_id}\n" if task_id else ""
+
     content = f"""---
 from: {from_.strip()}
 to: {to_val}
@@ -151,7 +158,7 @@ thread: {thread}
 parent: {parent}
 status: {status}
 read_by: {read_by}
----
+{task_id_line}---
 
 {body.strip()}
 """
@@ -278,6 +285,148 @@ def _build_thread_tree(messages: list[dict]) -> list[dict]:
 
 def _unread_count(messages: list[dict]) -> int:
     return sum(1 for m in messages if m["status"] == "unread" and not m.get("is_processed"))
+
+
+# ── A2A Task State Database ──────────────────────────────────
+
+A2A_DIR = Path.home() / ".hermes-cortex" / "a2a"
+A2A_DB_PATH = A2A_DIR / "task-state.db"
+
+
+def _init_a2a_db():
+    """Initialize the A2A task state database."""
+    A2A_DIR.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(A2A_DB_PATH))
+    conn.row_factory = sqlite3.Row
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS tasks (
+            id TEXT PRIMARY KEY,
+            source_agent TEXT NOT NULL,
+            target_agent TEXT NOT NULL,
+            state TEXT NOT NULL DEFAULT 'submitted'
+                CHECK(state IN ('submitted','working','completed','failed','canceled','rejected')),
+            description TEXT DEFAULT '',
+            priority TEXT DEFAULT 'normal'
+                CHECK(priority IN ('normal','urgent','critical')),
+            inbox_message_filename TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            completed_at TEXT,
+            result_summary TEXT DEFAULT '',
+            error TEXT DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_a2a_tasks_target ON tasks(target_agent, state);
+        CREATE INDEX IF NOT EXISTS idx_a2a_tasks_state ON tasks(state);
+    """)
+    conn.commit()
+    conn.close()
+
+
+def _get_a2a_db() -> sqlite3.Connection:
+    """Get a thread-safe SQLite connection for the A2A task DB."""
+    conn = sqlite3.connect(str(A2A_DB_PATH))
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    return conn
+
+
+def _create_task(source: str, target: str, description: str, priority: str,
+                 inbox_filename: str, task_id: str) -> dict:
+    """Create a new A2A task row in the database."""
+    now = datetime.now(timezone.utc).isoformat()
+    conn = _get_a2a_db()
+    conn.execute(
+        "INSERT INTO tasks (id, source_agent, target_agent, state, description, priority, "
+        "inbox_message_filename, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (task_id, source, target, "submitted", description, priority, inbox_filename, now, now),
+    )
+    conn.commit()
+    row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+    conn.close()
+    return dict(row)
+
+
+def _get_task(task_id: str) -> Optional[dict]:
+    """Get an A2A task by ID."""
+    conn = _get_a2a_db()
+    row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def _update_task_state(task_id: str, new_state: str, result: str = "", error: str = ""):
+    """Update an A2A task's state and timestamp."""
+    now = datetime.now(timezone.utc).isoformat()
+    conn = _get_a2a_db()
+    updates = {"updated_at": now, "state": new_state}
+    if new_state in ("completed", "failed", "canceled"):
+        updates["completed_at"] = now
+    if result:
+        updates["result_summary"] = result
+    if error:
+        updates["error"] = error
+
+    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    conn.execute(f"UPDATE tasks SET {set_clause} WHERE id = ?",
+                 (*updates.values(), task_id))
+    conn.commit()
+    conn.close()
+
+
+def _list_tasks(target_agent: str = "", state: str = "", limit: int = 50) -> list[dict]:
+    """List A2A tasks with optional filters."""
+    conn = _get_a2a_db()
+    query = "SELECT * FROM tasks WHERE 1=1"
+    params = []
+    if target_agent:
+        query += " AND target_agent = ?"
+        params.append(target_agent)
+    if state:
+        query += " AND state = ?"
+        params.append(state)
+    query += " ORDER BY created_at DESC LIMIT ?"
+    params.append(limit)
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def _mark_task_working(task_id: str):
+    """Mark a task as 'working' (agent picked it up)."""
+    task = _get_task(task_id)
+    if task and task["state"] == "submitted":
+        _update_task_state(task_id, "working")
+
+
+def _mark_task_completed(task_id: str, result: str = ""):
+    """Mark a task as 'completed'."""
+    _update_task_state(task_id, "completed", result=result)
+
+
+def _mark_task_failed(task_id: str, error: str = ""):
+    """Mark a task as 'failed'."""
+    _update_task_state(task_id, "failed", error=error)
+
+
+# ── JSON-RPC helpers ──
+
+def jsonrpc_success(request_id: Any, result: dict) -> JSONResponse:
+    return JSONResponse({"jsonrpc": "2.0", "id": request_id, "result": result})
+
+
+def jsonrpc_error(request_id: Any, code: int, message: str) -> JSONResponse:
+    return JSONResponse(
+        {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}},
+        status_code=200,
+    )
+
+
+# Initialize A2A DB on module load
+_init_a2a_db()
+
+# ── Agent identity (for A2A endpoints) ───────────────────────
+SERVER_AGENT_NAME = os.environ.get("AGENT_NAME", "agent")
 
 
 # ── HTML Templates ───────────────────────────────────────────
@@ -1047,6 +1196,148 @@ async def api_send_get_example():
         },
         "example": 'curl -sk -X POST https://your-domain.com:13004/api/send -H "Content-Type: application/json" -d \'{"from":"agent-name","subject":"Status update","body":"All systems nominal.","topic":"operations","priority":"normal"}\'',
     }
+
+
+@app.get("/a2a/agent-card")
+async def a2a_agent_card():
+    """Serve the A2A Agent Card for agent discovery."""
+    card_path = A2A_DIR / "agent-card.json"
+    if card_path.exists():
+        return JSONResponse(json.loads(card_path.read_text()))
+    return JSONResponse({"error": "Agent card not found"}, status_code=404)
+
+
+@app.get("/.well-known/agent-card.json")
+async def well_known_agent_card():
+    """Serve agent card at the standard well-known URI."""
+    return await a2a_agent_card()
+
+
+# ── A2A JSON-RPC Endpoints ──────────────────────────────────
+
+
+@app.post("/a2a/task")
+async def a2a_tasks_send(request: Request):
+    """
+    JSON-RPC method: tasks/send
+
+    Submit an A2A task to this agent. Creates an inbox message for the target agent
+    and a task state row. Returns the task ID and initial state.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return jsonrpc_error(None, -32700, "Parse error")
+
+    req_id = body.get("id", None)
+    method = body.get("method", "")
+    params = body.get("params", {})
+
+    if method not in ("tasks/send",):
+        return jsonrpc_error(req_id, -32601, f"Method not found: {method}")
+
+    task_params = params.get("task", params)
+    messages = task_params.get("messages", [])
+    if not messages:
+        return jsonrpc_error(req_id, -32602, "Missing task.messages")
+
+    # Extract task details from the first user message
+    first_msg = messages[0]
+    parts = first_msg.get("parts", [])
+    text_parts = [p.get("text", "") for p in parts if p.get("type") == "text"]
+    description = "\n".join(text_parts) if text_parts else "(no description)"
+
+    # Determine target from sessionId or default to orchestrator
+    target_agent = params.get("sessionId", SERVER_AGENT_NAME)
+
+    priority = "normal"
+    for msg in messages:
+        if "priority" in msg:
+            priority = msg["priority"]
+
+    # Generate task ID
+    task_id = f"a2a-{uuid.uuid4().hex[:12]}"
+
+    # Write inbox message with the unified YAML frontmatter format
+    filename = _write_message(
+        from_=SERVER_AGENT_NAME, subject=f"A2A Task: {description[:80]}",
+        body=description, topic="a2a", to_=target_agent,
+        priority=priority, task_id=task_id,
+    )
+
+    # Create task state
+    task = _create_task(
+        source=SERVER_AGENT_NAME, target=target_agent,
+        description=description, priority=priority,
+        inbox_filename=filename, task_id=task_id,
+    )
+
+    return jsonrpc_success(req_id, {
+        "id": task_id,
+        "status": {
+            "state": task["state"],
+            "created_at": task["created_at"],
+        },
+    })
+
+
+@app.get("/a2a/task/{task_id}")
+async def a2a_tasks_get(task_id: str, request: Request):
+    """
+    JSON-RPC method: tasks/get
+
+    Poll the current state of a task. Returns the full task status including
+    result_summary if completed.
+    """
+    req_id = request.query_params.get("id", 1)
+
+    task = _get_task(task_id)
+    if not task:
+        return jsonrpc_error(req_id, -32000, f"Task not found: {task_id}")
+
+    return jsonrpc_success(req_id, {
+        "id": task_id,
+        "status": {
+            "state": task["state"],
+            "created_at": task["created_at"],
+            "updated_at": task["updated_at"],
+            "completed_at": task.get("completed_at"),
+        },
+        "artifacts": [{
+            "type": "text",
+            "text": task.get("result_summary", ""),
+        }] if task.get("result_summary") else [],
+    })
+
+
+@app.post("/a2a/task/{task_id}/cancel")
+async def a2a_tasks_cancel(task_id: str, request: Request):
+    """
+    JSON-RPC method: tasks/cancel
+
+    Cancel a pending task. Only tasks in 'submitted' or 'working' state can be cancelled.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    req_id = body.get("id", None)
+
+    task = _get_task(task_id)
+    if not task:
+        return jsonrpc_error(req_id, -32000, f"Task not found: {task_id}")
+
+    if task["state"] not in ("submitted", "working"):
+        return jsonrpc_error(req_id, -32001,
+                             f"Cannot cancel task in state '{task['state']}'")
+
+    _update_task_state(task_id, "canceled", result="Task cancelled by request")
+
+    return jsonrpc_success(req_id, {
+        "id": task_id,
+        "status": {"state": "canceled"},
+    })
 
 
 if __name__ == "__main__":

@@ -40,6 +40,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+HOME = Path.home()
+
 # ── Dependency Check ──────────────────────────────────────────
 if importlib.util.find_spec("mcp") is None:
     print("[mcp-server] ERROR: Required 'mcp' Python package not found.", file=sys.stderr)
@@ -328,13 +330,88 @@ async def list_tools() -> list[Tool]:
                 "required": ["filename"],
             },
         ),
+        # ── A2A Bridge Tools ──
+        Tool(
+            name="inbox_list_agents",
+            description="List all known agents with their URLs, roles, and accessibility status.",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        Tool(
+            name="inbox_get_agent",
+            description="Get details for a specific agent by name.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Agent name (e.g. 'esther', 'joseph')"},
+                },
+                "required": ["name"],
+            },
+        ),
+        Tool(
+            name="inbox_discover",
+            description="Fetch a remote agent's Agent Card to see their capabilities and skills.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "agent": {"type": "string", "description": "Agent name to discover"},
+                },
+                "required": ["agent"],
+            },
+        ),
+        Tool(
+            name="inbox_send_task",
+            description="Submit a task to a remote agent via A2A protocol. Returns task ID for status polling.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "agent": {"type": "string", "description": "Target agent name"},
+                    "description": {"type": "string", "description": "Task description"},
+                    "priority": {"type": "string", "enum": ["normal", "urgent", "critical"],
+                                 "description": "Task priority", "default": "normal"},
+                },
+                "required": ["agent", "description"],
+            },
+        ),
+        Tool(
+            name="inbox_get_task",
+            description="Poll the status of an A2A task on a remote agent.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "agent": {"type": "string", "description": "Agent name the task was sent to"},
+                    "task_id": {"type": "string", "description": "Task ID from inbox_send_task"},
+                },
+                "required": ["agent", "task_id"],
+            },
+        ),
+        Tool(
+            name="inbox_cancel_task",
+            description="Cancel a pending A2A task on a remote agent.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "agent": {"type": "string", "description": "Agent name the task was sent to"},
+                    "task_id": {"type": "string", "description": "Task ID to cancel"},
+                },
+                "required": ["agent", "task_id"],
+            },
+        ),
     ]
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any] | None) -> CallToolResult:
     args = arguments or {}
     try:
-        handlers = {"inbox_send": _inbox_send, "inbox_read": _inbox_read, "inbox_watch": _inbox_watch, "inbox_delete": _inbox_delete}
+        handlers = {
+            "inbox_send": _inbox_send, "inbox_read": _inbox_read,
+            "inbox_watch": _inbox_watch, "inbox_delete": _inbox_delete,
+            "inbox_list_agents": _inbox_list_agents,
+            "inbox_get_agent": _inbox_get_agent,
+            "inbox_discover": _inbox_discover,
+            "inbox_send_task": _inbox_send_task,
+            "inbox_get_task": _inbox_get_task,
+            "inbox_cancel_task": _inbox_cancel_task,
+        }
         handler = handlers.get(name)
         if handler:
             return handler(args)
@@ -458,6 +535,248 @@ def _inbox_delete(args: dict) -> CallToolResult:
         return CallToolResult(content=[TextContent(type="text", text=f"🗑 Deleted: {clean}")])
     else:
         return CallToolResult(content=[TextContent(type="text", text=f"Delete failed (HTTP {status}): {resp_body}")])
+
+
+# ── A2A Bridge — Agent Discovery & Task Delegation ─────────────
+
+# Registry paths
+A2A_REGISTRY = HOME / ".hermes-cortex" / "a2a" / "agent-registry.json"
+STATE_REGISTRY = HOME / ".hermes" / "state" / "agent-registry.json"
+
+# mTLS client cert (for A2A cross-server requests)
+CERT_DIR = HOME / ".hermes-cortex" / "certs"
+CLIENT_CERT = CERT_DIR / "hermes-mcp-client.crt"
+CLIENT_KEY = CERT_DIR / "hermes-mcp-client.key"
+
+_A2A_SSL_CONTEXT = None
+if CLIENT_CERT.exists() and CLIENT_KEY.exists():
+    try:
+        ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        ctx.load_cert_chain(str(CLIENT_CERT), str(CLIENT_KEY))
+        _A2A_SSL_CONTEXT = ctx
+        log.info("Loaded A2A mTLS client cert from %s", CLIENT_CERT)
+    except Exception as e:
+        log.warning("Failed to load A2A mTLS client cert: %s", e)
+
+
+def _load_agent_registry() -> dict:
+    """Load agent registry from A2A path first, fall back to state path."""
+    for path in [A2A_REGISTRY, STATE_REGISTRY]:
+        if path.exists():
+            try:
+                return json.loads(path.read_text())
+            except (json.JSONDecodeError, OSError) as e:
+                log.warning("Failed to load %s: %s", path, e)
+    log.warning("No agent registry found — checked %s, %s", A2A_REGISTRY, STATE_REGISTRY)
+    return {"agents": {}}
+
+
+def _normalize_agents(registry: dict) -> list[dict]:
+    """Extract and normalize agent list from registry."""
+    agents = registry.get("agents", {})
+    result = []
+    for key, entry in agents.items():
+        result.append({
+            "name": key,
+            "display_name": entry.get("name", key.capitalize()),
+            "role": entry.get("role", "unknown"),
+            "url": entry.get("url", ""),
+            "health_url": entry.get("health_url", ""),
+            "health_method": entry.get("health_method", "http"),
+            "platform": entry.get("platform", "unknown"),
+            "accessible": entry.get("accessible", False),
+            "agent_card_url": entry.get("agent_card_url", ""),
+        })
+    return sorted(result, key=lambda a: a["name"])
+
+
+def _resolve_agent_url(agent_name: str) -> str | None:
+    """Resolve an agent's base URL from the registry."""
+    registry = _load_agent_registry()
+    entry = registry.get("agents", {}).get(agent_name)
+    if not entry:
+        return None
+    return entry.get("url") or entry.get("health_url", "").replace("/health", "") or None
+
+
+def _a2a_http_get(url: str, timeout: int = 10) -> tuple[int, str]:
+    """Make an HTTPS GET request with basic auth + optional mTLS client cert."""
+    try:
+        headers = {"Accept": "application/json"}
+        if AUTH_HEADER:
+            headers.update(AUTH_HEADER)
+        req = urllib.request.Request(url, method="GET", headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout, context=_A2A_SSL_CONTEXT) as resp:
+            return resp.status, resp.read().decode()
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")[:500]
+        return e.code, body
+    except Exception as e:
+        return 0, str(e)
+
+
+def _a2a_http_post(url: str, data: bytes, timeout: int = 15) -> tuple[int, str]:
+    """Make an HTTPS POST request with basic auth + JSON body + optional mTLS client cert."""
+    try:
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        if AUTH_HEADER:
+            headers.update(AUTH_HEADER)
+        req = urllib.request.Request(
+            url, data=data, method="POST", headers=headers,
+        )
+        with urllib.request.urlopen(req, timeout=timeout, context=_A2A_SSL_CONTEXT) as resp:
+            return resp.status, resp.read().decode()
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")[:500]
+        return e.code, body
+    except Exception as e:
+        return 0, str(e)
+
+
+# ── A2A Tool Implementations ──
+
+def _inbox_list_agents(args: dict) -> CallToolResult:
+    registry = _load_agent_registry()
+    agents = _normalize_agents(registry)
+    if not agents:
+        return CallToolResult(content=[TextContent(type="text", text="No agents found in registry.")])
+    lines = [f"📋 {len(agents)} agent(s) in registry:"]
+    for a in agents:
+        status = "🟢" if a.get("accessible") else "🔴"
+        role = a.get("role", "?")
+        url = a.get("url") or a.get("health_url") or "—"
+        lines.append(f"  {status} {a['name']:12s} ({role:22s}) {url}")
+    return CallToolResult(content=[TextContent(type="text", text="\n".join(lines))])
+
+
+def _inbox_get_agent(args: dict) -> CallToolResult:
+    name = args.get("name", "")
+    if not name:
+        return CallToolResult(content=[TextContent(type="text", text="Error: 'name' is required.")])
+    registry = _load_agent_registry()
+    entry = registry.get("agents", {}).get(name)
+    if not entry:
+        return CallToolResult(content=[TextContent(type="text", text=f"Agent '{name}' not found in registry.")])
+    data = {
+        "name": name, "display_name": entry.get("name", name.capitalize()),
+        "role": entry.get("role", "unknown"), "url": entry.get("url", ""),
+        "health_url": entry.get("health_url", ""), "platform": entry.get("platform", "unknown"),
+        "accessible": entry.get("accessible", False),
+        "is_server": entry.get("is_server", False),
+        "agent_card_url": entry.get("agent_card_url", ""),
+        "description": entry.get("description", ""),
+    }
+    return CallToolResult(content=[TextContent(type="text", text=json.dumps(data, indent=2))])
+
+
+def _inbox_discover(args: dict) -> CallToolResult:
+    agent = args.get("agent", "")
+    if not agent:
+        return CallToolResult(content=[TextContent(type="text", text="Error: 'agent' is required.")])
+    base_url = _resolve_agent_url(agent)
+    if not base_url:
+        return CallToolResult(content=[TextContent(
+            type="text", text=f"Agent '{agent}' not found in registry. Run inbox_list_agents to see available agents."
+        )])
+    card_urls = [
+        f"{base_url.rstrip('/')}/.well-known/agent-card.json",
+        f"{base_url.rstrip('/')}/a2a/agent-card",
+    ]
+    for card_url in card_urls:
+        status, body = _a2a_http_get(card_url)
+        if status == 200:
+            try:
+                card = json.loads(body)
+                return CallToolResult(content=[TextContent(type="text", text=json.dumps(card, indent=2))])
+            except json.JSONDecodeError:
+                return CallToolResult(content=[TextContent(
+                    type="text", text=f"Agent Card at {card_url} returned invalid JSON: {body[:200]}"
+                )])
+    return CallToolResult(content=[TextContent(
+        type="text", text=f"Could not fetch Agent Card for '{agent}' — tried {', '.join(card_urls)}."
+    )])
+
+
+def _inbox_send_task(args: dict) -> CallToolResult:
+    agent = args.get("agent", "")
+    description = args.get("description", "")
+    priority = args.get("priority", "normal")
+    if not agent or not description:
+        return CallToolResult(content=[TextContent(
+            type="text", text="Error: 'agent' and 'description' are required."
+        )])
+    base_url = _resolve_agent_url(agent)
+    if not base_url:
+        return CallToolResult(content=[TextContent(
+            type="text", text=f"Agent '{agent}' not found in registry."
+        )])
+    url = f"{base_url.rstrip('/')}/a2a/task"
+    payload = json.dumps({
+        "jsonrpc": "2.0", "id": f"hermes-{HOME.name}",
+        "method": "tasks/send",
+        "params": {
+            "task": {
+                "state": "submitted",
+                "messages": [{
+                    "role": "user",
+                    "parts": [{"type": "text", "text": description}],
+                }],
+            },
+        },
+    }).encode()
+    status_code, body = _a2a_http_post(url, payload)
+    if status_code == 200:
+        return CallToolResult(content=[TextContent(type="text", text=body)])
+    else:
+        return CallToolResult(content=[TextContent(
+            type="text", text=f"Task submission failed (HTTP {status_code}): {body[:300] if body else 'no response'}"
+        )])
+
+
+def _inbox_get_task(args: dict) -> CallToolResult:
+    agent = args.get("agent", "")
+    task_id = args.get("task_id", "")
+    if not agent or not task_id:
+        return CallToolResult(content=[TextContent(
+            type="text", text="Error: 'agent' and 'task_id' are required."
+        )])
+    base_url = _resolve_agent_url(agent)
+    if not base_url:
+        return CallToolResult(content=[TextContent(
+            type="text", text=f"Agent '{agent}' not found in registry."
+        )])
+    url = f"{base_url.rstrip('/')}/a2a/task/{task_id}"
+    status_code, body = _a2a_http_get(url)
+    if status_code == 200:
+        return CallToolResult(content=[TextContent(type="text", text=body)])
+    else:
+        return CallToolResult(content=[TextContent(
+            type="text", text=f"Task query failed (HTTP {status_code}): {body[:300] if body else 'no response'}"
+        )])
+
+
+def _inbox_cancel_task(args: dict) -> CallToolResult:
+    agent = args.get("agent", "")
+    task_id = args.get("task_id", "")
+    if not agent or not task_id:
+        return CallToolResult(content=[TextContent(
+            type="text", text="Error: 'agent' and 'task_id' are required."
+        )])
+    base_url = _resolve_agent_url(agent)
+    if not base_url:
+        return CallToolResult(content=[TextContent(
+            type="text", text=f"Agent '{agent}' not found in registry."
+        )])
+    url = f"{base_url.rstrip('/')}/a2a/task/{task_id}/cancel"
+    payload = json.dumps({"jsonrpc": "2.0", "id": 1}).encode()
+    status_code, body = _a2a_http_post(url, payload)
+    if status_code == 200:
+        return CallToolResult(content=[TextContent(type="text", text=body)])
+    else:
+        return CallToolResult(content=[TextContent(
+            type="text", text=f"Task cancellation failed (HTTP {status_code}): {body[:300] if body else 'no response'}"
+        )])
+
 
 # ── Main ──────────────────────────────────────────────────────
 async def main():
