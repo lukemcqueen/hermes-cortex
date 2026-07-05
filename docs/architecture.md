@@ -90,7 +90,7 @@ rate-limited by nginx + fail2ban (4 jails, ban escalation 1h→4wk):
 |------|---------|--------------|-------|
 | 13001 | Cortex Dashboard (HTTPS) | Yes (Basic Auth) | nginx rate-limit 20/5r/s + conn-limit 10/IP |
 | 13002 | Langfuse (HTTPS) | Yes (Basic Auth) | nginx rate-limit + _next/static excluded from auth limiter |
-| 13007 | Health Server (HTTPS) | Yes (Basic Auth) | Strict rate-limit 6r/m, conn-limit 5/IP |
+| 13007 | Health Server | **No auth** (health endpoint, Moses polls this) | Strict rate-limit 6r/m, conn-limit 5/IP |
 
 ## Security Stack
 
