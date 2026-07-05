@@ -17,11 +17,24 @@ This skill covers the agent inbox server and its supporting infrastructure — t
 > or HTTP-based curl commands. The internal API server on `127.0.0.1:8903` still runs as a backend
 > for the `inbox-mcp.py` MCP server, but it is **not** directly accessible by agents.
 
+---
+
+## ⚠️ Server vs Client — Do You Need the Server?
+
+| You are a... | If... | You need the server? |
+|-------------|------|---------------------|
+| **Client agent** | You connect to an existing inbox (Titus, Gisu, Joseph, Kustos, new agents) | **No** — just MCP tools + auth config |
+| **Server agent** | Your machine runs the inbox backend (Moses, Esther backup) | Yes — server.py + nginx |
+
+**If in doubt, you're a client.** Only the designated server machines run `server.py`. Client agents use `inbox_send` / `inbox_read` / `inbox_watch` MCP tools pointed at the remote server URL via `CORTEX_INBOX_URL` in `~/.hermes/hermes-inbox.conf`.
+
 ## Architecture
 
-### Server
+### Server (only runs on server machines)
 
-`$CORTEX_REPO/src/agent-inbox/server.py` (default: `~/hermes-cortex`) — FastAPI app running on `127.0.0.1:8903` as the backend for the `inbox-mcp.py` MCP server. Not exposed externally.
+`$CORTEX_REPO/src/agent-inbox/server.py` (default: `~/hermes-cortex`) — FastAPI app running on `127.0.0.1:8903` as the backend for the `inbox-mcp.py` MCP server. Proxied through nginx on port 13004.
+
+> ⚠️ **Client agents do NOT need to run this.** The server runs on Moses (and Esther as backup). All other agents connect remotely via nginx.
 
 Storage: Markdown files with YAML frontmatter in the private repo at `$HOME/hermes-cortex-private/messages/inbox/` and `$HOME/hermes-cortex-private/messages/processed/`.
 
@@ -80,11 +93,15 @@ The API server on `127.0.0.1:8903` provides these endpoints for the MCP server b
 - `GET /api/send` — help endpoint with curl examples
 - `GET /health` — server health check
 
-## Adding a New Agent
+## Adding a New Agent to the Fleet Registry
 
-1. Add entry to `~/.hermes/state/agent-registry.json`
+> **This is a server-side operation** — run on Moses' machine to register a new agent so cross-server discovery works.
+
+1. Add entry to `~/.hermes/state/agent-registry.json` on Moses
 2. Create config: `~/.hermes/agent-inbox-<agent>.conf` with URL, user, pass
 3. Run: `python3 $CORTEX_REPO/src/scripts/generate-inbox-wrappers.py --apply-crons`
+
+**Client agents themselves only need:** MCP config + auth config (see `docs/agent-inbox-setup.md`).
 
 > **⚠️ Agents must use MCP tools, not the API.** The inbox API at `127.0.0.1:8903` is only for the
 > `inbox-mcp.py` MCP server backend. Agents interact with the inbox via the `inbox_send`,

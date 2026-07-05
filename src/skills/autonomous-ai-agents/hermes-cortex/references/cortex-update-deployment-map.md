@@ -58,9 +58,14 @@ Sources under `~/hermes-cortex/` → dest under `~/.hermes/` or `~/`.
 | `src/dashboard/com.hermes.cortex-dashboard.plist` | `~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist` | |
 
 ### Agent inbox
+
 | `src/agent-inbox/server.py` | `~/.hermes/agent-inbox/server.py` | `restart_agent_inbox` |
 | `src/agent-inbox/com.hermes.agent-inbox.plist` | `~/Library/LaunchAgents/com.hermes.agent-inbox.plist` | |
 | `src/agent-inbox/agent-inbox-monitor.sh` | `~/.hermes/scripts/agent-inbox-monitor.sh` | |
+
+> ⚠️ **server.py is deployed to all agents by cortex-update.sh (having the file on disk is harmless).**
+> **But it should only be RUN on designated server machines** (Moses, Esther backup).
+> Client agents (Titus, Gisu, Joseph, Kustos) must NOT start server.py. They connect remotely via MCP tools pointed at the server URL in `~/.hermes/hermes-inbox.conf`.
 
 ### Templates (guarded — only if dest missing)
 | `docs/templates/MEMORY.seed.md` | `~/.hermes/memories/MEMORY.md` | |
