@@ -125,7 +125,7 @@ def parse_orch_crons():
 
 
 def find_script_consumers():
-    """Scan cortex scripts for models.env variable names."""
+    """Scan cortex scripts for .env variable names."""
     scripts_dir = CORTEX_REPO / "src" / "scripts"
     if not scripts_dir.is_dir():
         return {}
