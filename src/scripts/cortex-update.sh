@@ -747,83 +747,40 @@ deploy_nginx_configs() {
       -e "s|__CORTEX_HOME__|${HOME}|g" \
       -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
       -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
-      -e "/listen[[:space:]]/s|127\.0\.0\.1:13\([0-9][0-9][0-9]\)|127.0.0.1:${port_prefix}\1|g" \
-      -e "/listen[[:space:]]/s|listen 13\([0-9][0-9][0-9]\) ssl|listen ${port_prefix}\1 ssl|g" > "$tmpfile"
+      -e "/listen[[:space:]]/s|127\\.0\\.0\\.1:13\\([0-9][0-9][0-9]\\)|127.0.0.1:${port_prefix}\\1|g" \
+      -e "/listen[[:space:]]/s|listen 13\\([0-9][0-9][0-9]\\) ssl|listen ${port_prefix}\\1 ssl|g" > "$tmpfile"
 
-    # ── Pre-deploy nginx config test ──
-    # Test the new config against the tmpfile BEFORE overwriting the live one.
-    # If the test fails, the existing config is preserved and a clear error
-    # with actionable guidance is shown.
+    # ── Port preservation (must happen before deploy) ──
+    # Preserve custom port ranges (12xxx Joseph, 14xxx Esther, etc.)
     if [[ -f "$conf_dst" ]]; then
-      local nginx_test_out nginx_test_cmd
-      if [[ "$brew_dir" == /etc/* ]]; then
-        nginx_test_cmd="sudo -n nginx -t -c '${tmpfile}' 2>&1"
-      else
-        nginx_test_cmd="nginx -t -c '${tmpfile}' 2>&1"
+      local live_prefix template_prefix
+      live_prefix=$(grep -oP 'listen\s+127\.0\.0\.1:\K[0-9]{2}(?=[0-9]{3})' "$conf_dst" | head -1)
+      template_prefix=$(grep -oP 'listen\s+127\.0\.0\.1:\K[0-9]{2}(?=[0-9]{3})' "$tmpfile" | head -1)
+      if [[ -n "$live_prefix" && -n "$template_prefix" && "$live_prefix" != "$template_prefix" ]]; then
+        sed -i "s/:${template_prefix}/:${live_prefix}/g" "$tmpfile"
+        info "  Preserved port range ${template_prefix}xxx → ${live_prefix}xxx"
       fi
-      nginx_test_out=$(eval "$nginx_test_cmd") || {
-        error ""
-        error "╔══════════════════════════════════════════════════════════════╗"
-        error "║  nginx config test FAILED — NOT deploying                  ║"
-        error "║  Existing config preserved at: ${conf_dst} ║"
-        error "╚══════════════════════════════════════════════════════════════╝"
-        error ""
-        error "nginx -t output:"
-        while IFS= read -r line; do
-          error "  ${line}"
-        done <<< "$nginx_test_out"
-        # Check for common issues and show actionable guidance
-        if grep -q 'ssl_certificate\|__SSL_CERT__\|__SSL_CERT_KEY__' <<< "$nginx_test_out"; then
-          error ""
-          error "Fix: SSL cert path issue."
-          if [[ -z "${ssl_cert:-}" ]]; then
-            error "  CORTEX_SSL_CERT_PATH is not set or no certs found."
-            error "  Set in ~/.hermes/models.env:"
-            error "    CORTEX_SSL_CERT_PATH=/path/to/fullchain.pem"
-            error "    CORTEX_SSL_CERT_KEY_PATH=/path/to/privkey.pem"
-          else
-            error "  Cert path set but nginx cannot read it: ${ssl_cert}"
-            error "  Check file permissions and path correctness."
-          fi
-        fi
-        if grep -q 'htpasswd\|__HTPASSWD_FILE__' <<< "$nginx_test_out"; then
-          error ""
-          error "Fix: htpasswd file issue."
-          error "  Expected path: ${htpasswd}"
-          error "  Generate: sudo htpasswd -c ${htpasswd} username"
-        fi
-        if grep -q 'Cannot allocate memory' <<< "$nginx_test_out"; then
-          error ""
-          error "Fix: System memory low. Free memory or increase swap."
-        fi
-        rm -f "$tmpfile"
-        return 1
-      }
-      info "  nginx config test passed (pre-deploy)"
     fi
 
+    # ── Deploy: backup → write → test → rollback on failure ──
+    # Back up the current config before overwriting
+    local backup="${tmpfile}.bak"
+    if [[ -f "$conf_dst" ]]; then
+      cp "$conf_dst" "$backup" 2>/dev/null || sudo cp "$conf_dst" "$backup" 2>/dev/null || true
+    fi
+
+    # Write to sites-available (Linux) or servers/ (macOS)
     if command -v sudo &>/dev/null && [[ "$config_dir" == /etc/* ]]; then
-      # ── Preserve custom port ranges (12xxx Joseph, 14xxx Esther, etc.) ──
-      if [[ -f "$conf_dst" ]]; then
-        local live_prefix template_prefix
-        live_prefix=$(grep -oP 'listen\s+127\.0\.0\.1:\K[0-9]{2}(?=[0-9]{3})' "$conf_dst" | head -1)
-        template_prefix=$(grep -oP 'listen\s+127\.0\.0\.1:\K[0-9]{2}(?=[0-9]{3})' "$tmpfile" | head -1)
-        if [[ -n "$live_prefix" && -n "$template_prefix" && "$live_prefix" != "$template_prefix" ]]; then
-          sed -i "s/:${template_prefix}/:${live_prefix}/g" "$tmpfile"
-          info "  Preserved port range ${template_prefix}xxx → ${live_prefix}xxx"
-        fi
-      fi
-      # Write to sites-available (Linux) or servers/ (macOS)
       sudo mkdir -p "$(dirname "$conf_available")" 2>/dev/null || true
       sudo cp "$tmpfile" "$conf_available"
       sudo chmod 644 "$conf_available"
       info "  Updated: ${conf_available}"
     else
-      # Write to sites-available (Linux) or servers/ (macOS)
       mkdir -p "$(dirname "$conf_available")" 2>/dev/null || true
       cp "$tmpfile" "$conf_available"
       info "  Updated: ${conf_available}"
     fi
+
     # Symlink sites-enabled -> sites-available when they differ (Linux convention)
     if [[ "$config_dir" != "$available_dir" ]]; then
       if command -v sudo &>/dev/null && [[ "$config_dir" == /etc/* ]]; then
@@ -835,6 +792,54 @@ deploy_nginx_configs() {
       fi
       info "  Symlinked: ${conf_dst} → ${conf_available}"
     fi
+
+    # Test the REAL deployed config — roll back on failure
+    local nginx_test_out
+    nginx_test_out=$(sudo -n nginx -t 2>&1) || {
+      error ""
+      error "╔══════════════════════════════════════════════════════════════╗"
+      error "║  nginx config test FAILED — rolling back to previous config ║"
+      error "╚══════════════════════════════════════════════════════════════╝"
+      error ""
+      # Restore backup
+      if [[ -f "$backup" ]]; then
+        sudo cp "$backup" "$conf_dst" 2>/dev/null || true
+        sudo cp "$backup" "$conf_available" 2>/dev/null || true
+        info "  Restored previous config from backup"
+      fi
+      error "nginx -t output:"
+      while IFS= read -r line; do
+        error "  ${line}"
+      done <<< "$nginx_test_out"
+      # Common issues guidance
+      if grep -q 'ssl_certificate\|__SSL_CERT__\|__SSL_CERT_KEY__' <<< "$nginx_test_out"; then
+        error ""
+        error "Fix: SSL cert path issue."
+        if [[ -z "${ssl_cert:-}" ]]; then
+          error "  CORTEX_SSL_CERT_PATH is not set or no certs found."
+          error "  Set in ~/.hermes/models.env:"
+          error "    CORTEX_SSL_CERT_PATH=/path/to/fullchain.pem"
+          error "    CORTEX_SSL_CERT_KEY_PATH=/path/to/privkey.pem"
+        else
+          error "  Cert path set but nginx cannot read it: ${ssl_cert}"
+          error "  Check file permissions and path correctness."
+        fi
+      fi
+      if grep -q 'htpasswd\|__HTPASSWD_FILE__' <<< "$nginx_test_out"; then
+        error ""
+        error "Fix: htpasswd file issue."
+        error "  Expected path: ${htpasswd}"
+        error "  Generate: sudo htpasswd -c ${htpasswd} username"
+      fi
+      if grep -q 'Cannot allocate memory' <<< "$nginx_test_out"; then
+        error ""
+        error "Fix: System memory low. Free memory or increase swap."
+      fi
+      rm -f "$backup" "$tmpfile"
+      return 1
+    }
+    info "  nginx config test passed"
+    rm -f "$backup"
     rm -f "$tmpfile"
     files_copied=$((files_copied + 1))
   fi
