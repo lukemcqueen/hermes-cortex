@@ -13,6 +13,7 @@ After=network.target
 [Service]
 Type=simple
 Environment=PATH=%h/.local/bin:%h/.hermes/hermes-agent/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStartPre=/bin/mkdir -p %h/.hermes/health-server
 ExecStart=%h/.hermes/hermes-agent/venv/bin/python3 %h/.hermes/scripts/health-server.py
 Restart=on-failure
 RestartSec=5
@@ -21,7 +22,10 @@ StandardError=append:%h/.hermes/health-server/server.log
 
 # Runtime hardening
 NoNewPrivileges=yes
+# ProtectHome=read-only ensures most of ~/ is read-only for security.
+# ReadWritePaths carves out the log+pid directory so the server can write there.
 ProtectHome=read-only
+ReadWritePaths=%h/.hermes/health-server/
 PrivateTmp=yes
 ProtectSystem=strict
 

@@ -1,6 +1,6 @@
 ---
 name: change-test-loop
-version: 2.0.0
+version: 2.1.0
 category: software-development
 description: "LEARN-RED-GREEN-REFACTOR loop with lesson-aware memory, confidence scoring, retry limits, coverage requirements, and strict TDD discipline."
 author: Hermes Agent
@@ -348,6 +348,25 @@ def register_user(email, password):
 # Next: repeat loop for password hashing, duplicate email check, etc.
 ```
 
+## Avoid Horizontal Slices
+
+Do **not** write all tests first and then all implementation. That is horizontal slicing: RED becomes "write a pile of imagined tests" and GREEN becomes "make the pile pass." It produces brittle tests because the tests are designed before the implementation has taught you what behavior and interface actually matter.
+
+Use vertical tracer bullets instead:
+
+```text
+WRONG:
+  RED:   test1, test2, test3, test4
+  GREEN: impl1, impl2, impl3, impl4
+
+RIGHT:
+  RED→GREEN: test1→impl1
+  RED→GREEN: test2→impl2
+  RED→GREEN: test3→impl3
+```
+
+A tracer bullet is one end-to-end behavior slice. It proves the path works, teaches you about the interface, and keeps each next test grounded in what you just learned.
+
 ## Why Order Matters
 
 **"I'll write tests after to verify it works"**
@@ -514,6 +533,15 @@ Before marking work complete:
 - [ ] REFACTOR: Confidence score ≥ 2 (or fallback invoked)
 - [ ] Coverage meets the minimum requirement for the change type
 - [ ] Retry limit not exceeded (or fallback was escalated)
+
+## When Stuck
+
+| Problem | Solution |
+|---------|----------|
+| Don't know how to test | Write the wished-for API. Write the assertion first. Ask the user. |
+| Test too complicated | Design too complicated. Simplify the interface. |
+| Must mock everything | Code too coupled. Use dependency injection. |
+| Test setup huge | Extract helpers. Still complex? Simplify the design. |
 
 ## Final Rule
 
