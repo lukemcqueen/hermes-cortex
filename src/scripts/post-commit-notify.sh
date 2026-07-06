@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ── Paths ──
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 STATE_FILE="${HOME}/.hermes/state/post-commit-notify"
 LOG_FILE="${STATE_FILE}.log"
 CONFIG_FILE="${HOME}/.hermes/hermes-inbox.conf"

@@ -8,7 +8,8 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 HOOK_DIR="${REPO_DIR}/.git/hooks"
 HOOK_PATH="${HOOK_DIR}/post-commit"
 NOTIFY_SCRIPT="${REPO_DIR}/src/scripts/post-commit-notify.sh"
