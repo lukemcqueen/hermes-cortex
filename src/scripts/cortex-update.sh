@@ -42,6 +42,11 @@ if [[ "$REPO_DIR" == "/" ]]; then
     done
   fi
 fi
+# ── Auto-source env file (so agents don't need env_keep in sudoers) ──
+ENV_FILE="${REPO_DIR}/deploy/hermes-services.env"
+if [[ -f "$ENV_FILE" ]]; then
+  set -a; source "$ENV_FILE"; set +a
+fi
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes-cortex}"
 STATE_DIR="${HERMES_HOME}/state"
 LAST_COMMIT_FILE="${STATE_DIR}/update-commit"
@@ -696,8 +701,9 @@ deploy_nginx_configs() {
     # ── Read existing config (preserve ports/SSL unless forced) ──
     local existing_ssl_cert="" existing_ssl_key=""
     if [[ -f "$conf_dst" && -z "${CORTEX_FORCE_DEPLOY:-}" ]]; then
-      existing_ssl_cert=$(grep -oP 'ssl_certificate\s+\K\S+' "$conf_dst" 2>/dev/null | head -1 | sed 's/;$//')
-      existing_ssl_key=$(grep -oP 'ssl_certificate_key\s+\K\S+' "$conf_dst" 2>/dev/null | head -1 | sed 's/;$//')
+      # POSIX-safe SSL cert extraction (macOS BSD tools don't support grep -P)
+      existing_ssl_cert=$(sed -n 's/^[[:space:]]*ssl_certificate[[:space:]]\{1,\}\([^;]*\);/\1/p' "$conf_dst" | head -1) || true
+      existing_ssl_key=$(sed -n 's/^[[:space:]]*ssl_certificate_key[[:space:]]\{1,\}\([^;]*\);/\1/p' "$conf_dst" | head -1) || true
       [[ "$existing_ssl_cert" == "__SSL_CERT__" ]] && existing_ssl_cert=""
       [[ "$existing_ssl_key" == "__SSL_CERT_KEY__" ]] && existing_ssl_key=""
     fi
@@ -742,6 +748,7 @@ deploy_nginx_configs() {
 
     < "$conf_src" sed \
       -e "s|__NGINX_CONFIG_DIR__|${config_dir}|g" \
+      -e "s|__NGINX_BREW_DIR__|${brew_dir}|g" \
       -e "s|__NGINX_LOG_DIR__|${log_dir}|g" \
       -e "s|__HTPASSWD_FILE__|${htpasswd}|g" \
       -e "s|__CORTEX_HOME__|${HOME}|g" \
@@ -754,10 +761,11 @@ deploy_nginx_configs() {
     # Preserve custom port ranges (12xxx Joseph, 14xxx Esther, etc.)
     if [[ -f "$conf_dst" ]]; then
       local live_prefix template_prefix
-      live_prefix=$(grep -oP 'listen\s+127\.0\.0\.1:\K[0-9]{2}(?=[0-9]{3})' "$conf_dst" | head -1)
-      template_prefix=$(grep -oP 'listen\s+127\.0\.0\.1:\K[0-9]{2}(?=[0-9]{3})' "$tmpfile" | head -1)
+      # POSIX-safe extraction (macOS BSD tools don't support grep -P)
+      live_prefix=$(sed -n 's/^[[:space:]]*listen[[:space:]]\{1,\}\(127\.0\.0\.1:\)\?[0-9]\{2\}\([0-9]\{3\}\)\( ssl\)\?;/\2/p' "$conf_dst" | head -1) || true
+      template_prefix=$(sed -n 's/^[[:space:]]*listen[[:space:]]\{1,\}\(127\.0\.0\.1:\)\?[0-9]\{2\}\([0-9]\{3\}\)\( ssl\)\?;/\2/p' "$tmpfile" | head -1) || true
       if [[ -n "$live_prefix" && -n "$template_prefix" && "$live_prefix" != "$template_prefix" ]]; then
-        sed -i "s/:${template_prefix}/:${live_prefix}/g" "$tmpfile"
+        sed -i '' "s/:${template_prefix}/:${live_prefix}/g" "$tmpfile"
         info "  Preserved port range ${template_prefix}xxx → ${live_prefix}xxx"
       fi
     fi
@@ -794,8 +802,13 @@ deploy_nginx_configs() {
     fi
 
     # Test the REAL deployed config — roll back on failure
-    local nginx_test_out
-    nginx_test_out=$(sudo -n nginx -t 2>&1) || {
+    local nginx_test_out nginx_test_cmd
+    if command -v sudo &>/dev/null && sudo -n true 2>/dev/null; then
+      nginx_test_cmd="sudo -n nginx -t 2>&1"
+    else
+      nginx_test_cmd="nginx -t 2>&1"
+    fi
+    nginx_test_out=$(eval "$nginx_test_cmd") || {
       error ""
       error "╔══════════════════════════════════════════════════════════════╗"
       error "║  nginx config test FAILED — rolling back to previous config ║"

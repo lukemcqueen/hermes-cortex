@@ -50,6 +50,10 @@ sudo chmod 440 /etc/sudoers.d/hermes-security
 sudo visudo -cf /etc/sudoers.d/hermes-security
 ```
 
+No `env_keep` needed — all three deploy scripts auto-source `deploy/hermes-services.env`
+internally. Set your `CORTEX_*` vars in the env file once, and every deploy picks
+them up automatically.
+
 ### 3. Ensure the input files exist
 
 ```bash
@@ -125,8 +129,8 @@ cp ~/hermes-cortex/deploy/hermes-services.env.example \
 #    CORTEX_SSL_CERT_KEY_PATH=/etc/letsencrypt/live/example.com/privkey.pem
 #    CORTEX_SSL_DOMAIN=example.com
 
-# 3. Source it before deploying
-set -a; source ~/hermes-cortex/deploy/hermes-services.env; set +a
+# 3. That's it — the scripts auto-source deploy/hermes-services.env internally.
+#    Just run the deploy:
 sudo hermes-security-apply
 
 # Or use the Python script directly with --dry-run first:

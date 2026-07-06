@@ -484,4 +484,17 @@ def main():
 
 
 if __name__ == "__main__":
+    # ── Auto-source env file (so agents don't need env_keep in sudoers) ──
+    env_file = Path(os.environ.get("CORTEX_REPO", Path.home() / "hermes-cortex")) / "deploy" / "hermes-services.env"
+    if env_file.is_file():
+        with open(env_file) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, val = line.partition("=")
+                key, val = key.strip(), val.strip().strip("'\"")
+                if key not in os.environ:  # don't override explicit env vars
+                    os.environ[key] = val
+
     main()
