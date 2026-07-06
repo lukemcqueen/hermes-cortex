@@ -747,7 +747,26 @@ deploy_nginx_configs() {
       -e "s|__CORTEX_HOME__|${HOME}|g" \
       -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
       -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
-      -e "/listen[[:space:]]/s|127\\.0\\.0\\.1:13\\([0-9][0-9][0-9]\\)|127.0.0.1:${port_prefix}\\1|g" > "$tmpfile"
+      -e "/listen[[:space:]]/s|127\.0\.0\.1:13\([0-9][0-9][0-9]\)|127.0.0.1:${port_prefix}\\1|g" > "$tmpfile"
+
+    # ── Activate SSL when certs are available ──
+    # The template has SSL listen + certs commented out (opt-in).
+    # When certs are resolved, uncomment + enable them, and
+    # comment out the non-SSL loopback listen (can't have both).
+    # Only activates in active server blocks (not inside #server { ... })
+    if [[ -n "$ssl_cert" ]]; then
+      # Mark lines inside commented-out server blocks so we skip them
+      sed -i '/^[[:space:]]*#server {/,/^[[:space:]]*#}/s/^/__SKIP_SERVER__/' "$tmpfile"
+      sed -i \
+        -e '/__SKIP_SERVER__/!s|^\([[:space:]]*\)# *listen 13\([0-9][0-9][0-9]\) ssl;|\1listen '"${port_prefix}"'\2 ssl;|' \
+        -e '/__SKIP_SERVER__/!s|^\([[:space:]]*\)# *ssl_certificate\s\+/etc/letsencrypt/live/your-domain.com/fullchain.pem;|\1ssl_certificate     '"${ssl_cert}"';|' \
+        -e '/__SKIP_SERVER__/!s|^\([[:space:]]*\)# *ssl_certificate_key\s\+/etc/letsencrypt/live/your-domain.com/privkey.pem;|\1ssl_certificate_key '"${ssl_key}"';|' \
+        -e '/__SKIP_SERVER__/!s|^\([[:space:]]*\)\(listen 127\.0\.0\.1:[0-9]\+\)|\1# \2|' \
+        "$tmpfile"
+      # Remove markers
+      sed -i '/^__SKIP_SERVER__/s/__SKIP_SERVER__//' "$tmpfile"
+      info "  SSL activated: ${ssl_cert}"
+    fi
     if command -v sudo &>/dev/null && [[ "$config_dir" == /etc/* ]]; then
       # ── Preserve custom port ranges (12xxx Joseph, 14xxx Esther, etc.) ──
       if [[ -f "$conf_dst" ]]; then
