@@ -451,7 +451,7 @@ launchctl unload ~/Library/LaunchAgents/ollama.plist
 launchctl load ~/Library/LaunchAgents/ollama.plist
 ```
 
-**On fresh install:** `install-ollama.sh` now includes these env vars by default (macOS and Linux service writers). Run `bash ~/hermes-cortex/src/scripts/install-ollama.sh` to regenerate the service file.
+**On fresh install:** `install-ollama.sh` now includes these env vars by default (macOS and Linux service writers). Run `bash ~/hermes-cortex/src/scripts/install/install-ollama.sh` to regenerate the service file.
 
 ---
 
@@ -813,7 +813,7 @@ ls -la ~/.hermes/plugins/governance-enforcer/  # should show plugin.yaml, __init
 
 ```python
 # In ~/.hermes/scripts/score-auditor.py (deployed)
-# AND ~/hermes-cortex/src/scripts/score-auditor.py (source)
+# AND ~/hermes-cortex/src/scripts/manage/score-auditor.py (source)
 
 if 'loop_cycles' in table_names:
     rows = cur.execute(

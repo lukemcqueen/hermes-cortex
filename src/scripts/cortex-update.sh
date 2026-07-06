@@ -230,7 +230,6 @@ register "src/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAge
 register "src/scripts/com.hermes.health-server.service" "${HOME}/.config/systemd/user/com.hermes.health-server.service" "health-server" "restart_health_server"
 
 # Shared model config loader (imported by many scripts)
-register "src/scripts/hermes_models.py"            "${HERMES_HOME}/scripts/hermes_models.py"
 
 # Inbox sensor and health models
 register "src/scripts/inbox/inbox-sensor.py"             "${HERMES_HOME}/scripts/inbox-sensor.py"
@@ -678,7 +677,7 @@ deploy_nginx_configs() {
 
   # If OS config not loaded, try to determine paths from REPO_DIR
   if [[ -z "$config_dir" ]]; then
-    local os_script="${REPO_DIR}/src/scripts/os-config.sh"
+    local os_script="${REPO_DIR}/src/scripts/install/os-config.sh"
     [[ -f "$os_script" ]] && source "$os_script" 2>/dev/null || true
     config_dir="${NGINX_CONFIG_DIR:-}"
     brew_dir="${NGINX_BREW_DIR:-}"

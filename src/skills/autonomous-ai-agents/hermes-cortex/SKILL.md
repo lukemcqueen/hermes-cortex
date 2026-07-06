@@ -1148,8 +1148,8 @@ If missing, create them per the new skill's setup instructions. Common patterns:
 The most common drift: installed watchdog scripts lag behind the repo. The `--force-all` flag catches these, but verify:
 
 ```bash
-diff ~/hermes-cortex/src/scripts/system-alert-watchdog.py ~/.hermes/scripts/system-alert-watchdog.py
-diff ~/hermes-cortex/src/scripts/service-recovery.py ~/.hermes/scripts/service-recovery.py
+diff ~/hermes-cortex/src/scripts/health/system-alert-watchdog.py ~/.hermes/scripts/system-alert-watchdog.py
+diff ~/hermes-cortex/src/scripts/health/service-recovery.py ~/.hermes/scripts/service-recovery.py
 ```
 
 Zero output = in sync. Any diff means the installed version is stale.

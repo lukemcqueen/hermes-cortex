@@ -11,33 +11,33 @@ Sources under `~/hermes-cortex/` → dest under `~/.hermes/` or `~/`.
 | Repo source | Installed dest | Notes |
 |-------------|---------------|-------|
 | `src/scripts/cortex-update.sh` | `~/.hermes/scripts/cortex-update.sh` | Self-updating |
-| `src/scripts/heartbeat.py` | `~/.hermes/scripts/heartbeat.py` | |
-| `src/scripts/memory-to-brain-sync.py` | `~/.hermes/scripts/memory-to-brain-sync.py` | |
-| `src/scripts/bootstrap-brain.sh` | `~/.hermes/scripts/bootstrap-brain.sh` | |
-| `src/scripts/check-memory-budget.sh` | `~/.hermes/scripts/check-memory-budget.sh` | |
-| `src/scripts/cortex-health.sh` | `~/.hermes/scripts/cortex-health.sh` | |
-| `src/scripts/cortex-setup-langfuse.sh` | `~/.hermes/scripts/cortex-setup-langfuse.sh` | |
-| `src/scripts/install-gbrain-sync.sh` | `~/.hermes/scripts/install-gbrain-sync.sh` | `restart_gbrain_sync` |
-| `src/scripts/install-ollama.sh` | `~/.hermes/scripts/install-ollama.sh` | |
-| `src/scripts/install-nginx.sh` | `~/.hermes/scripts/install-nginx.sh` | |
-| `src/scripts/install-cortex-update-cron.sh` | `~/.hermes/scripts/install-cortex-update-cron.sh` | |
-| `src/scripts/prod-watchdog.sh` | `~/.hermes/scripts/prod-watchdog.sh` | |
-| `src/scripts/orch-team-messages.sh` | `~/.hermes/scripts/orch-team-messages.sh` | |
-| `src/scripts/os-config.sh` | `~/.hermes/scripts/os-config.sh` | |
-| `src/scripts/service-writer.sh` | `~/.hermes/scripts/service-writer.sh` | |
+| `src/scripts/health/heartbeat.py` | `~/.hermes/scripts/heartbeat.py` | |
+| `src/scripts/manage/memory-to-brain-sync.py` | `~/.hermes/scripts/memory-to-brain-sync.py` | |
+| `src/scripts/install/bootstrap-brain.sh` | `~/.hermes/scripts/bootstrap-brain.sh` | |
+| `src/scripts/health/check-memory-budget.sh` | `~/.hermes/scripts/check-memory-budget.sh` | |
+| `src/scripts/manage/cortex-health.sh` | `~/.hermes/scripts/cortex-health.sh` | |
+| `src/scripts/install/cortex-setup-langfuse.sh` | `~/.hermes/scripts/cortex-setup-langfuse.sh` | |
+| `src/scripts/install/install-gbrain-sync.sh` | `~/.hermes/scripts/install-gbrain-sync.sh` | `restart_gbrain_sync` |
+| `src/scripts/install/install-ollama.sh` | `~/.hermes/scripts/install-ollama.sh` | |
+| `src/scripts/install/install-nginx.sh` | `~/.hermes/scripts/install-nginx.sh` | |
+| `src/scripts/install/install-cortex-update-cron.sh` | `~/.hermes/scripts/install-cortex-update-cron.sh` | |
+| `src/scripts/health/prod-watchdog.sh` | `~/.hermes/scripts/prod-watchdog.sh` | |
+| `src/scripts/agent/orch-team-messages.sh` | `~/.hermes/scripts/orch-team-messages.sh` | |
+| `src/scripts/install/os-config.sh` | `~/.hermes/scripts/os-config.sh` | |
+| `src/scripts/install/service-writer.sh` | `~/.hermes/scripts/service-writer.sh` | |
 
 ### Self-remediation scripts
-| `src/scripts/system-alert-watchdog.py` | `~/.hermes/scripts/system-alert-watchdog.py` | |
-| `src/scripts/service-recovery.py` | `~/.hermes/scripts/service-recovery.py` | |
-| `src/scripts/langfuse-health-watchdog.py` | `~/.hermes/scripts/langfuse-health-watchdog.py` | |
-| `src/scripts/llm-judge-scorer.py` | `~/.hermes/scripts/llm-judge-scorer.py` | |
-| `src/scripts/cron-auto-remediate.sh` | `~/.hermes/scripts/cron-auto-remediate.sh` | |
+| `src/scripts/health/system-alert-watchdog.py` | `~/.hermes/scripts/system-alert-watchdog.py` | |
+| `src/scripts/health/service-recovery.py` | `~/.hermes/scripts/service-recovery.py` | |
+| `src/scripts/health/langfuse-health-watchdog.py` | `~/.hermes/scripts/langfuse-health-watchdog.py` | |
+| `src/scripts/manage/llm-judge-scorer.py` | `~/.hermes/scripts/llm-judge-scorer.py` | |
+| `src/scripts/health/cron-auto-remediate.sh` | `~/.hermes/scripts/cron-auto-remediate.sh` | |
 | `scripts/weekly-auto-fix.py` | `~/.hermes/scripts/weekly-auto-fix.py` | |
 
 ### Lesson-aware scripts
-| `src/scripts/daily-lesson-mine.sh` | `~/.hermes/scripts/daily-lesson-mine.sh` | |
-| `src/scripts/lesson-compound-stats.py` | `~/.hermes/scripts/lesson-compound-stats.py` | |
-| `src/scripts/lesson-hit.sh` | `~/.hermes/scripts/lesson-hit.sh` | |
+| `src/scripts/manage/daily-lesson-mine.sh` | `~/.hermes/scripts/daily-lesson-mine.sh` | |
+| `src/scripts/manage/lesson-compound-stats.py` | `~/.hermes/scripts/lesson-compound-stats.py` | |
+| `src/scripts/manage/lesson-hit.sh` | `~/.hermes/scripts/lesson-hit.sh` | |
 
 ### Offline tools
 | `src/offline/offline_knowledge.py` | `~/.hermes/offline/offline_knowledge.py` | |
@@ -117,7 +117,7 @@ On macOS, `shasum -a 256` is the equivalent of `sha256sum` and is available nati
 **VERIFICATION:**
 ```bash
 bash ~/.hermes/scripts/cortex-update.sh --force-all
-diff ~/hermes-cortex/src/scripts/system-alert-watchdog.py ~/.hermes/scripts/system-alert-watchdog.py
+diff ~/hermes-cortex/src/scripts/health/system-alert-watchdog.py ~/.hermes/scripts/system-alert-watchdog.py
 # Should be identical (no diff output)
 ```
 

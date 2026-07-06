@@ -16,7 +16,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
 | `docs/env-vars.md` | Environment variable reference — CORTEX_* vars, SSL, deploy scripts |
 | `install.sh` | Single-command installer (idempotent, safe to re-run) |
-| `src/scripts/check-system.sh` | System compatibility check before installing |
+| `src/scripts/ (flat shared libs), src/scripts/agent/, health/, install/, inbox/, manage/install/check-system.sh` | System compatibility check before installing |
 
 ## Security
 
@@ -100,5 +100,5 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
-| `src/scripts/` | OS abstraction scripts (os-config.sh, service-writer.sh, install-ollama.sh, install-nginx.sh, install-gbrain-sync.sh) + utility scripts (heartbeat, memory sync, bootstrap-brain, check-memory-budget, health checks, scoring) |
+| `src/scripts/` | Shared libraries + 5 subdirectories: agent/, health/, install/, inbox/, manage/ — cron scripts, health checks, installers, inbox tools, management utilities |
 | `.gitignore` | Gitignore — excludes .agentkore, .env, secrets, brain data |

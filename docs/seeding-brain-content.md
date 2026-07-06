@@ -261,4 +261,4 @@ bash ~/.hermes/scripts/heartbeat.py --report
 - [Knowledge Isolation Architecture](./knowledge-isolation-architecture.md) — How brain sources work
 - [Memory Architecture (Pointer Pattern)](./agent-memory-pointer-pattern.md) — Compressed pointers
 - [Architecture Overview](./architecture.md) — System architecture
-- [bootstrap-brain.sh](../src/scripts/bootstrap-brain.sh) — Post-install brain verification
+- [bootstrap-brain.sh](../src/scripts/install/bootstrap-brain.sh) — Post-install brain verification

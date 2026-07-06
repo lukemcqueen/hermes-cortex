@@ -95,7 +95,7 @@ bun.exe <pid>  ... ~/.gbrain/brain.pglite/base/5/17744
 
 ## Root Cause
 
-The `install.sh` in hermes-cortex creates a `sync-watch` daemon (`com.gbrain.sync-watch`) via `src/scripts/install-gbrain-sync.sh`. Separately, gbrain's own `autopilot` command (run via `gbrain autopilot --install`) creates `com.gbrain.autopilot`. Both daemons try to open the same PGLite database, but PGLite 0.4.x is single-connection.
+The `install.sh` in hermes-cortex creates a `sync-watch` daemon (`com.gbrain.sync-watch`) via `src/scripts/install/install-gbrain-sync.sh`. Separately, gbrain's own `autopilot` command (run via `gbrain autopilot --install`) creates `com.gbrain.autopilot`. Both daemons try to open the same PGLite database, but PGLite 0.4.x is single-connection.
 
 ## Fix (as of commit 7f2205d)
 
@@ -157,10 +157,10 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gbrain.autopilot.pli
 
 | File | Change |
 |---|---|
-| `src/scripts/install-gbrain-sync.sh` | Skip sync-watch setup if autopilot plist/process exists |
+| `src/scripts/install/install-gbrain-sync.sh` | Skip sync-watch setup if autopilot plist/process exists |
 | `src/scripts/cortex-update.sh` | Restart autopilot instead of sync-watch when autopilot present |
-| `src/scripts/cortex-health.sh` | Check autopilot first, fall back to sync-watch |
-| `src/scripts/heartbeat.py` | Same autopilot-first check |
+| `src/scripts/manage/cortex-health.sh` | Check autopilot first, fall back to sync-watch |
+| `src/scripts/health/heartbeat.py` | Same autopilot-first check |
 | `src/dashboard/server.py` | Include autopilot in sync daemon PID regex |
 | `install.sh` | Update verify script + install summary output |
 

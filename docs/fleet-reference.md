@@ -140,12 +140,12 @@ All in `src/scripts/`, installed by `install.sh` + `install-crons.sh`:
 
 ```bash
 # 1. Run agent registry setup (prompts for real URLs)
-bash ~/.hermes-cortex/src/scripts/setup-agent-registry.sh
+bash ~/.hermes-cortex/src/scripts/install/setup-agent-registry.sh
 # 2. Install crons
 bash ~/.hermes-cortex/src/scripts/install-crons.sh
 # 3. Copy orchestrator-specific scripts
-cp ~/hermes-cortex/src/scripts/orch-inbox-remediate.sh ~/.hermes/scripts/
-cp ~/hermes-cortex/src/scripts/orch-weekly-auto-fix.py ~/.hermes/scripts/
+cp ~/hermes-cortex/src/scripts/agent/orch-inbox-remediate.sh ~/.hermes/scripts/
+cp ~/hermes-cortex/src/scripts/agent/orch-weekly-auto-fix.py ~/.hermes/scripts/
 # 4. Create orch-process-agent-messages cron (see agent-registry.json)
 # 5. Start gbrain autopilot
 gbrain autopilot --repo ~/brain/default --interval 300 &

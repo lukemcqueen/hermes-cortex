@@ -157,7 +157,7 @@ Load `skill_view(name="offline-code")` for full usage docs.
 - **Templates:** Place in `docs/templates/`, update `install.sh`
 - **Install changes:** Edit `install.sh` (26 steps, idempotent)
 - **Docker config:** Edit `deploy/docker-compose.langfuse.yml`
-- **Scoring hooks:** `bash ~/.hermes-cortex/src/scripts/install-score-hook.sh --all` (or `--list`)
+- **Scoring hooks:** `bash ~/.hermes-cortex/src/scripts/install/install-score-hook.sh --all` (or `--list`)
 
 ## Rules
 

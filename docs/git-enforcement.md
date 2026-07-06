@@ -59,16 +59,16 @@ Both hooks are deployed by a shared installer:
 
 ```bash
 # Auto-detect repos and install
-bash src/scripts/install-score-hook.sh
+bash src/scripts/install/install-score-hook.sh
 
 # Install into a specific repo
-bash src/scripts/install-score-hook.sh --path ~/hermes-cortex
+bash src/scripts/install/install-score-hook.sh --path ~/hermes-cortex
 
 # Check which repos have hooks
-bash src/scripts/install-score-hook.sh --check
+bash src/scripts/install/install-score-hook.sh --check
 
 # Remove hooks
-bash src/scripts/install-score-hook.sh --remove
+bash src/scripts/install/install-score-hook.sh --remove
 ```
 
 The installer copies the source scripts into `.git/hooks/` as standalone files (not symlinks). Re-run it after cloning a fresh copy of the repo.
@@ -119,5 +119,5 @@ If you're an agent working on this repo:
 - `src/mcp-servers/loop-gov-mcp.py` — primary enforcer MCP server
 - `src/scripts/pre-push-pull` — the push hook implementation
 - `src/scripts/pre-commit-score` — the commit hook implementation
-- `src/scripts/install-score-hook.sh` — the installer
+- `src/scripts/install/install-score-hook.sh` — the installer
 - `docs/troubleshooting.md` — general system issues

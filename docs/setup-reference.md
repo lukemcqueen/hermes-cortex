@@ -103,7 +103,7 @@ No authentication. No TLS. Plain HTTP — the vector contains no secrets, just b
    ```
 2. Run health-vector server (port varies per agent):
    ```bash
-   python3 ~/hermes-cortex/src/scripts/health-vector.py --serve <PORT>
+   python3 ~/hermes-cortex/src/scripts/health/health-vector.py --serve <PORT>
    ```
 3. Install the systemd user service (Linux):
    ```bash
@@ -132,16 +132,16 @@ Titus cannot be polled (no inbound). Instead he pushes to Moses' inbox:
    cp ~/hermes-cortex/docs/templates/com.hermes.health-push.plist ~/Library/LaunchAgents/
    launchctl load ~/Library/LaunchAgents/com.hermes.health-push.plist
    ```
-3. Test: `AGENT_NAME=titus bash ~/hermes-cortex/src/scripts/health-vector-push.sh`
+3. Test: `AGENT_NAME=titus bash ~/hermes-cortex/src/scripts/health/health-vector-push.sh`
 
 ### Files
 
 | Path | Purpose |
 |------|---------|
-| `src/scripts/health-vector.py` | Health vector generator + HTTP server (cross-platform) |
-| `src/scripts/health-vector-push.sh` | Inbox push script for client-only agents |
-| `src/scripts/orch-team-health.py` | Orchestrator poller (no_agent cron) |
-| `src/scripts/orch-health-report.py` | Health snapshot report — formatted for Telegram delivery |
+| `src/scripts/health/health-vector.py` | Health vector generator + HTTP server (cross-platform) |
+| `src/scripts/health/health-vector-push.sh` | Inbox push script for client-only agents |
+| `src/scripts/agent/orch-team-health.py` | Orchestrator poller (no_agent cron) |
+| `src/scripts/agent/orch-health-report.py` | Health snapshot report — formatted for Telegram delivery |
 | `src/agent-registry.template.json` | Agent registry template (fill during setup → `~/.hermes/state/agent-registry.json`) |
 | `docs/templates/com.hermes.health-push.plist` | macOS launchd template for Titus |
 | `docs/templates/health-vector.service` | systemd user service template for server agents |
@@ -161,7 +161,7 @@ The script (`orch-health-report.py`) reads the agent registry with local overrid
 
 ```bash
 # 1. Copy the script
-cp ~/hermes-cortex/src/scripts/orch-health-report.py ~/.hermes/scripts/orch-health-report.py
+cp ~/hermes-cortex/src/scripts/agent/orch-health-report.py ~/.hermes/scripts/orch-health-report.py
 
 # 2. Create the crons
 hermes cron create --name orch-health-report-weekday \
