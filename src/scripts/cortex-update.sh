@@ -747,12 +747,15 @@ deploy_nginx_configs() {
       -e "s|__CORTEX_HOME__|${HOME}|g" \
       -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
       -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
-      -e "/listen[[:space:]]/s|127\.0\.0\.1:13\([0-9][0-9][0-9]\)|127.0.0.1:${port_prefix}\1|g" > "$tmpfile"
+      -e "/listen[[:space:]]/s|127\\.0\\.0\\.1:13\\([0-9][0-9][0-9]\\)|127.0.0.1:${port_prefix}\\1|g" > "$tmpfile"
 
-    # ── When SSL certs are available: enable SSL on all server blocks ──
-    # The template ships with loopback-only (listen 127.0.0.1:PORT;)
-    # and commented-out SSL hints. When certs are found, we switch to
-    # SSL mode: replace loopback listen with PORT ssl + cert paths.
+    # ── When SSL certs are available: add cert paths to each server block ──
+    # Template already uses listen PORT ssl; (external, SSL) on all blocks.
+    # This step adds the cert paths and session config from the resolved
+    # ssl_cert/ssl_key vars. Template placeholders __SSL_CERT__ are
+    # substituted in the sed step above; this step handles the case where
+    # the template's listen directive already has ssl but the embedded
+    # cert paths need to be written.
     # Only activates in ACTIVE server blocks (not inside #server { ... })
     if [[ -n "$ssl_cert" && -n "$ssl_key" ]]; then
       # Mark lines inside commented-out server blocks so we skip them
@@ -760,15 +763,68 @@ deploy_nginx_configs() {
       # Step 1: Replace loopback listen with SSL listen (skip marked blocks)
       sed -i '/__SKIP_SERVER__/!s|^\([[:space:]]*\)listen 127\.0\.0\.1:\([0-9][0-9][0-9][0-9][0-9]\);|\1listen \2 ssl;|' "$tmpfile"
       # Step 2: Add SSL cert directives after each active SSL listen
-      sed -i '/__SKIP_SERVER__/!s|^\([[:space:]]*\)listen [0-9][0-9][0-9][0-9][0-9] ssl;|\0\
-\1ssl_session_cache   shared:SSL:10m;\
-\1ssl_session_timeout 10m;\
-\1ssl_certificate     '"${ssl_cert}"';\
+      sed -i '/__SKIP_SERVER__/!s|^\([[:space:]]*\)listen [0-9][0-9][0-9][0-9][0-9] ssl;|\0\\
+\1ssl_session_cache   shared:SSL:10m;\\
+\1ssl_session_timeout 10m;\\
+\1ssl_certificate     '"${ssl_cert}"';\\
 \1ssl_certificate_key '"${ssl_key}"';|' "$tmpfile"
       # Remove skip markers
       sed -i '/^__SKIP_SERVER__/s/__SKIP_SERVER__//' "$tmpfile"
       info "  SSL enabled — ${ssl_cert}"
     fi
+
+    # ── Pre-deploy nginx config test ──
+    # Test the new config against the tmpfile BEFORE overwriting the live one.
+    # If the test fails, the existing config is preserved and a clear error
+    # with actionable guidance is shown.
+    if [[ -f "$conf_dst" ]]; then
+      local nginx_test_out nginx_test_cmd
+      if [[ "$brew_dir" == /etc/* ]]; then
+        nginx_test_cmd="sudo -n nginx -t -c '${tmpfile}' 2>&1"
+      else
+        nginx_test_cmd="nginx -t -c '${tmpfile}' 2>&1"
+      fi
+      nginx_test_out=$(eval "$nginx_test_cmd") || {
+        error ""
+        error "╔══════════════════════════════════════════════════════════════╗"
+        error "║  nginx config test FAILED — NOT deploying                  ║"
+        error "║  Existing config preserved at: ${conf_dst} ║"
+        error "╚══════════════════════════════════════════════════════════════╝"
+        error ""
+        error "nginx -t output:"
+        while IFS= read -r line; do
+          error "  ${line}"
+        done <<< "$nginx_test_out"
+        # Check for common issues and show actionable guidance
+        if grep -q 'ssl_certificate\|__SSL_CERT__\|__SSL_CERT_KEY__' <<< "$nginx_test_out"; then
+          error ""
+          error "Fix: SSL cert path issue."
+          if [[ -z "${ssl_cert:-}" ]]; then
+            error "  CORTEX_SSL_CERT_PATH is not set or no certs found."
+            error "  Set in ~/.hermes/models.env:"
+            error "    CORTEX_SSL_CERT_PATH=/path/to/fullchain.pem"
+            error "    CORTEX_SSL_CERT_KEY_PATH=/path/to/privkey.pem"
+          else
+            error "  Cert path set but nginx cannot read it: ${ssl_cert}"
+            error "  Check file permissions and path correctness."
+          fi
+        fi
+        if grep -q 'htpasswd\|__HTPASSWD_FILE__' <<< "$nginx_test_out"; then
+          error ""
+          error "Fix: htpasswd file issue."
+          error "  Expected path: ${htpasswd}"
+          error "  Generate: sudo htpasswd -c ${htpasswd} username"
+        fi
+        if grep -q 'Cannot allocate memory' <<< "$nginx_test_out"; then
+          error ""
+          error "Fix: System memory low. Free memory or increase swap."
+        fi
+        rm -f "$tmpfile"
+        return 1
+      }
+      info "  nginx config test passed (pre-deploy)"
+    fi
+
     if command -v sudo &>/dev/null && [[ "$config_dir" == /etc/* ]]; then
       # ── Preserve custom port ranges (12xxx Joseph, 14xxx Esther, etc.) ──
       if [[ -f "$conf_dst" ]]; then

@@ -131,7 +131,9 @@ lsof -i -P | grep LISTEN
 ```
 
 If you see `*:PORT` (with `*`), it's accessible to your network.
-If you see `localhost:PORT` or `127.0.0.1:PORT`, it's local-only.
+This is the expected nginx posture — all proxy listeners expose services
+externally with SSL. Never use `localhost:PORT` or `127.0.0.1:PORT` for
+nginx reverse proxy listeners.
 
 ---
 
@@ -606,16 +608,18 @@ The installer preserves your existing passwords (doesn't overwrite `.env` files)
 
 The installer covers the basics. For a **production-ready security posture**, prompt your Hermes agent with any of these:
 
-### 10.1 Set up three-tier access
+### 10.1 Set up nginx SSL (external access only)
 
-**Prompt your agent:** "Set up three-tier access: SSH direct, SSH via nginx proxy, and web HTTPS"
+**Prompt your agent:** "Set up external HTTPS access via nginx with Let's Encrypt"
 
 **What your agent should do:**
-Configure nginx to bind on two ports:
-- **127.0.0.1:13001-13002** — Local-only (HTTP + Basic Auth), reachable via SSH tunnel
-- ***:13001-13002** — HTTPS + Basic Auth (if you have a public domain), reachable from the web
+Configures nginx to listen with SSL on external ports:
+- Each server block uses `listen PORT ssl;` (external, SSL) — never `127.0.0.1:PORT`
+- SSL certs from Let's Encrypt (or set `CORTEX_SSL_CERT_PATH` in `~/.hermes/models.env`)
+- Basic Auth on all non-health endpoints
+- The health endpoint (:xx007) has no auth for Moses/Esther polling
 
-Configure TLS if using web access: use Let's Encrypt via certbot. Moses/Esther pull certs from Joseph's server — do not generate local certs. Titus uses mkcert for local dev.
+Configure TLS with Let's Encrypt via certbot. Moses/Esther pull certs from Joseph's server — do not generate local certs.
 
 ### 10.2 Harden nginx
 
