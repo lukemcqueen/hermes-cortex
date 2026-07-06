@@ -121,10 +121,9 @@ for src in "${CORTEX_REPO}/deploy/nginx/hermes-zone-defs.conf" "${CORTEX_REPO}/d
       ssl_cert="$existing_ssl_cert" ssl_key="$existing_ssl_key"
       if [[ -z "$ssl_cert" ]]; then
         if [ -n "${CORTEX_SSL_CERT_PATH:-}" ] && [ -n "${CORTEX_SSL_CERT_KEY_PATH:-}" ]; then
-          if [ -f "$CORTEX_SSL_CERT_PATH" ] && [ -f "$CORTEX_SSL_CERT_KEY_PATH" ]; then
-            ssl_cert="$CORTEX_SSL_CERT_PATH"
-            ssl_key="$CORTEX_SSL_CERT_KEY_PATH"
-          fi
+          # Trust the user's env var paths — nginx -t will catch invalid paths
+          ssl_cert="$CORTEX_SSL_CERT_PATH"
+          ssl_key="$CORTEX_SSL_CERT_KEY_PATH"
         elif [ -d /etc/letsencrypt/live ]; then
           le_domain="${CORTEX_SSL_DOMAIN:-}"
           if [ -n "$le_domain" ] && [ -f "/etc/letsencrypt/live/${le_domain}/fullchain.pem" ]; then
