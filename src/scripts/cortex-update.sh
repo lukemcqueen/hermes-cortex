@@ -748,6 +748,24 @@ deploy_nginx_configs() {
       -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
       -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
       -e "/listen[[:space:]]/s|127\\.0\\.0\\.1:13\\([0-9][0-9][0-9]\\)|127.0.0.1:${port_prefix}\\1|g" > "$tmpfile"
+
+    # ── When SSL certs are available: enable SSL on all server blocks ──
+    # The template ships with loopback-only (listen 127.0.0.1:PORT;)
+    # and commented-out SSL hints. When certs are found, we switch to
+    # SSL mode: replace loopback listen with PORT ssl + cert paths.
+    if [[ -n "$ssl_cert" && -n "$ssl_key" ]]; then
+      # Step 1: Replace "listen 127.0.0.1:PORT;" with "listen PORT ssl;"
+      sed -i "s|^    listen 127\\.0\\.0\\.1:\\([0-9][0-9][0-9][0-9][0-9]\\);|    listen \\1 ssl;|" "$tmpfile"
+      # Step 2: Add SSL cert directives after each listen ... ssl; line
+      # (insert after the ssl listen line in each server block)
+      sed -i "/^    listen [0-9][0-9][0-9][0-9][0-9] ssl;$/a\\
+    ssl_session_cache   shared:SSL:10m;\\
+    ssl_session_timeout 10m;\\
+\\
+    ssl_certificate     ${ssl_cert};\\
+    ssl_certificate_key ${ssl_key};" "$tmpfile"
+      info "  SSL enabled — ${ssl_cert}"
+    fi
     if command -v sudo &>/dev/null && [[ "$config_dir" == /etc/* ]]; then
       # ── Preserve custom port ranges (12xxx Joseph, 14xxx Esther, etc.) ──
       if [[ -f "$conf_dst" ]]; then
