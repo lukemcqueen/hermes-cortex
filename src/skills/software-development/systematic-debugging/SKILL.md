@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [debugging, troubleshooting, problem-solving, root-cause, investigation]
-    related_skills: [test-driven-development, plan, subagent-driven-development]
+    related_skills: [change-test-loop, plan, subagent-driven-development]
 ---
 
 # Systematic Debugging
@@ -229,7 +229,7 @@ search_files("similar_pattern", path="src/", file_glob="*.py")
 - Simplest possible reproduction
 - Automated test if possible
 - MUST have before fixing
-- Use the `test-driven-development` skill
+- Use the `change-test-loop` skill
 
 ### 2. Implement Single Fix
 
@@ -348,7 +348,7 @@ delegate_task(
 )
 ```
 
-### With test-driven-development
+### With change-test-loop
 
 When fixing bugs:
 1. Write a test that reproduces the bug (RED)

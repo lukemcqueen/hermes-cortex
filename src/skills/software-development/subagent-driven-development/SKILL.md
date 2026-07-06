@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [delegation, subagent, implementation, workflow, parallel]
-    related_skills: [writing-plans, code-review, test-driven-development]
+    related_skills: [writing-plans, code-review, change-test-loop]
 ---
 
 # Subagent-Driven Development
@@ -332,7 +332,7 @@ This skill EXECUTES plans created by the writing-plans skill:
 1. User requirements → writing-plans → implementation plan
 2. Implementation plan → subagent-driven-development → working code
 
-### With test-driven-development
+### With change-test-loop
 
 Implementer subagents should follow TDD:
 1. Write failing test first

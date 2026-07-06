@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [story-decomposition, agile, user-stories, acceptance-criteria, vertical-slices, invest]
-    related_skills: [test-driven-development, plan, change-test-loop, writing-plans]
+    related_skills: [plan, change-test-loop, writing-plans]
 ---
 
 # Story Slicing
