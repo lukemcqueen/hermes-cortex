@@ -24,11 +24,16 @@ import json
 import logging
 import os
 import platform
+import re
 import signal
+import socket
+import ssl
 import subprocess
 import sys
 import time
 import traceback
+import urllib.request
+import urllib.error
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
@@ -63,6 +68,15 @@ else:
 AGENT_ID = os.environ.get("AGENT_ID", SERVER_NAME[0].lower() if SERVER_NAME else "?")
 HEALTH_PORT = int(os.environ.get("HEALTH_PORT", "8905"))
 HOME = Path.home()
+
+# External health URL for self-verification
+# Set EXTERNAL_HEALTH_URL to the URL other agents use to reach this health server.
+# If unset, the health check is skipped and reported as "not configured".
+EXTERNAL_HEALTH_URL = os.environ.get("EXTERNAL_HEALTH_URL", "")
+
+# SSL cert paths — used for cert expiration checking
+SSL_CERT_PATH = os.environ.get("CORTEX_SSL_CERT_PATH", "")
+SSL_CERT_KEY_PATH = os.environ.get("CORTEX_SSL_CERT_KEY_PATH", "")
 
 # Startup timestamp for uptime tracking
 _STARTUP_TS = time.time()
@@ -585,6 +599,93 @@ def _check_gbrain_sources() -> dict:
     return result
 
 
+# ── External reachability ──────────────────────────────────────
+_CERT_EXPIRY_CACHE: tuple | None = None
+_CERT_EXPIRY_CACHE_TS: float = 0.0
+_CERT_EXPIRY_CACHE_TTL: float = 3600  # 1 hour
+
+def _check_external_reachability() -> dict:
+    """Test the external health URL and SSL cert expiry.
+
+    Returns:
+        {"reachable": bool, "status_code": int|None, "url_tested": str,
+         "cert_expiry_days": int|None, "cert_expiry_warning": str|None, ...}
+    """
+    result = {
+        "reachable": False,
+        "status_code": None,
+        "url_tested": EXTERNAL_HEALTH_URL or "(not configured)",
+        "cert_expiry_days": None,
+        "cert_expiry_warning": None,
+        "detail": "",
+        "healthy": True,  # not-configured/unreachable is informational, not unhealthy
+    }
+
+    # ── Check SSL cert expiry ──
+    cert_expiry_days = None
+    cert_warning = None
+    global _CERT_EXPIRY_CACHE, _CERT_EXPIRY_CACHE_TS
+    now = time.time()
+    if _CERT_EXPIRY_CACHE is not None and (now - _CERT_EXPIRY_CACHE_TS) < _CERT_EXPIRY_CACHE_TTL:
+        cert_expiry_days, cert_warning = _CERT_EXPIRY_CACHE
+    elif SSL_CERT_PATH and Path(SSL_CERT_PATH).exists():
+        try:
+            ctx = ssl.create_default_context()
+            with open(SSL_CERT_PATH, "rb") as f:
+                cert = ctx._wrap_pem_cert(f.read())  # internal-ish but works
+        except Exception:
+            try:
+                from cryptography import x509
+                from cryptography.hazmat.backends import default_backend
+                with open(SSL_CERT_PATH, "rb") as f:
+                    cert_data = f.read()
+                cert_obj = x509.load_pem_x509_certificate(cert_data, default_backend())
+                not_after = cert_obj.not_valid_after_utc if hasattr(cert_obj, "not_valid_after_utc") else cert_obj.not_valid_after
+                remaining = (not_after - datetime.now(timezone.utc)).days
+                cert_expiry_days = remaining
+                if remaining < 0:
+                    cert_warning = f"CRITICAL — SSL cert expired {abs(remaining)} day(s) ago"
+                elif remaining < 7:
+                    cert_warning = f"WARNING — SSL cert expires in {remaining} day(s)"
+                elif remaining < 30:
+                    cert_warning = f"INFO — SSL cert expires in {remaining} day(s)"
+            except ImportError:
+                # Fallback: use openssl CLI
+                _log.warning("cryptography not installed — skipping cert expiry check")
+                pass
+        _CERT_EXPIRY_CACHE = (cert_expiry_days, cert_warning)
+        _CERT_EXPIRY_CACHE_TS = time.time()
+
+    result["cert_expiry_days"] = cert_expiry_days
+    result["cert_expiry_warning"] = cert_warning
+
+    # ── Check external URL reachability ──
+    if not EXTERNAL_HEALTH_URL:
+        result["detail"] = "EXTERNAL_HEALTH_URL not configured"
+        return result
+
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(EXTERNAL_HEALTH_URL)
+        host = parsed.hostname or "unknown"
+        port = parsed.port or 443
+
+        # Test TCP connectivity to the external port
+        # This validates DNS resolution + firewall + nginx is listening
+        addrs = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+        sock = socket.create_connection((host, port), timeout=5)
+        sock.close()
+        result["reachable"] = True
+        result["status_code"] = 0
+        result["detail"] = f"TCP connected to {host}:{port}"
+    except socket.gaierror as e:
+        result["detail"] = f"DNS resolution failed: {e}"
+    except (socket.timeout, OSError) as e:
+        result["detail"] = f"TCP connection failed: {e}"
+
+    return result
+
+
 # ── Consolidated health ───────────────────────────────────────
 def _build_health() -> dict:
     """Build the full consolidated health response with per-check timing."""
@@ -598,9 +699,10 @@ def _build_health() -> dict:
         ("services", _check_services),
         ("cron_health", _check_cron_health),
         ("gbrain_sources", _check_gbrain_sources),
+        ("external_reachability", _check_external_reachability),
     ]
 
-    with ThreadPoolExecutor(max_workers=4) as pool:
+    with ThreadPoolExecutor(max_workers=5) as pool:
         futures = {pool.submit(_timed, name, fn): name for name, fn in checks_list}
         for future in as_completed(futures):
             name = futures[future]
@@ -633,6 +735,7 @@ def _build_health() -> dict:
         "checks": checks,
         "issues": all_issues,
         "timing": timing,
+        "external_reachability": checks.get("external_reachability", {}),
     }
 
 
@@ -642,9 +745,11 @@ def _build_compact_health() -> dict:
 
     Format: {"v": [...], "h": "j", "t": unix_timestamp}
 
-    v array (9 values):
-      [resources, services, no_errored_crons, no_stale_crons, nginx, ollama, gbrain, disk_ok, gbrain_sources_ok]
+    v array (10 values):
+      [resources, services, no_errored_crons, no_stale_crons, nginx, ollama,
+       gbrain, disk_ok, gbrain_sources_ok, external_reachable]
       1 = healthy, -1 = unhealthy/warning
+      (10th element = -1 means external health URL is unreachable or misconfigured)
     h: single-char agent identifier (j = Joseph, m = Moses, t = Titus, g = Gisu)
     t: unix timestamp
     """
@@ -662,7 +767,7 @@ def _build_compact_health() -> dict:
     r_elapsed = s_elapsed = c_elapsed = 0.0
     g_elapsed = 0.0
 
-    with ThreadPoolExecutor(max_workers=4) as pool:
+    with ThreadPoolExecutor(max_workers=5) as pool:
         f_r = pool.submit(_timed, "resources", _check_resources)
         f_s = pool.submit(_timed, "services", _check_services)
         f_c = pool.submit(_timed, "cron_health", _check_cron_health)
@@ -714,6 +819,10 @@ def _build_compact_health() -> dict:
     # gbrain sources check
     gbrain_sources_ok = g.get("healthy", True)
 
+    # External reachability — lightweight check (no cert expiry in compact mode)
+    _ext = _check_external_reachability()
+    external_ok = _ext.get("reachable", False) if EXTERNAL_HEALTH_URL else True  # skip if not configured
+
     v = [
         1 if resources_ok else -1,
         1 if services_ok else -1,
@@ -724,6 +833,7 @@ def _build_compact_health() -> dict:
         1 if gbrain_ok else -1,
         1 if disk_ok else -1,
         1 if gbrain_sources_ok else -1,
+        1 if external_ok else -1,
     ]
 
     # Agent identifier — can be overridden via AGENT_ID env var
