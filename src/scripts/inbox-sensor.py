@@ -32,7 +32,7 @@ INBOX_AUTH = os.environ.get("CORTEX_INBOX_AUTH", "")
 
 # Read CORTEX_INBOX_URL from config file if not set via env
 if not INBOX_API:
-    for conf_path in [HOME / ".hermes" / "hermes-cortex.env", HOME / ".hermes" / "hermes-inbox.conf"]:
+    for conf_path in [HOME / "hermes-cortex" / ".env", HOME / ".hermes" / "hermes-inbox.conf"]:
         if conf_path.exists():
             try:
                 for line in conf_path.read_text().splitlines():
@@ -53,7 +53,7 @@ if not INBOX_API:
 
 # Read CORTEX_INBOX_AUTH from config file if not set via env
 if not INBOX_AUTH:
-    for conf_path in [HOME / ".hermes" / "hermes-cortex.env", HOME / ".hermes" / "hermes-inbox.conf"]:
+    for conf_path in [HOME / "hermes-cortex" / ".env", HOME / ".hermes" / "hermes-inbox.conf"]:
         if conf_path.exists():
             try:
                 for line in conf_path.read_text().splitlines():

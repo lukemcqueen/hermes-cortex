@@ -45,11 +45,11 @@ for arg in "$@"; do
       echo ""
       echo "Wires Hermes Agent with Langfuse integration:"
       echo "  - Generates Hermes-specific API key in Langfuse Postgres"
-      echo "  - Writes Hermes env vars to ~/.hermes/.env"
+      echo "  - Appends Langfuse env vars to ~/hermes-cortex/.env"
       echo "  - Installs Langfuse Python SDK"
       echo "  - Enables Langfuse observability plugin"
       echo ""
-      echo "Output: ~/langfuse/.env + ~/.hermes/.env"
+      echo "Output: ~/langfuse/.env + ~/hermes-cortex/.env (appended)"
       exit 0
       ;;
   esac
@@ -165,15 +165,21 @@ else
   warn "Failed to upsert API key in Postgres - may already exist or table structure differs"
 fi
 
-# ── Step 6: Write Hermes env vars ───────────────────────────────────
-HERMES_DIR="${HOME}/.hermes"
-mkdir -p "$HERMES_DIR"
+# ── Step 6: Write Langfuse env vars to Cortex .env ─────────────────
+# ⚠ Appends to ~/hermes-cortex/.env — does NOT touch ~/.hermes/.env
+CORTEX_ENV_FILE="${HOME}/hermes-cortex/.env"
+mkdir -p "$(dirname "$CORTEX_ENV_FILE")"
 
-HERMES_ENV_FILE="${HERMES_DIR}/.env"
-cat > "$HERMES_ENV_FILE" <<HERMES_ENVEOF
-# Hermes + Langfuse integration
-# Only these vars are consumed by the Hermes Langfuse plugin.
-# All other *_ENABLED=true vars seen in earlier versions are inert.
+# Remove any existing Langfuse vars to avoid duplicates on re-run
+if [[ -f "$CORTEX_ENV_FILE" ]]; then
+    for var in HERMES_LANGFUSE_PUBLIC_KEY HERMES_LANGFUSE_SECRET_KEY HERMES_LANGFUSE_BASE_URL HERMES_LANGFUSE_ENV HERMES_LANGFUSE_RELEASE HERMES_LANGFUSE_SAMPLE_RATE; do
+        sed -i "/^${var}=/d" "$CORTEX_ENV_FILE" 2>/dev/null || true
+    done
+fi
+
+cat >> "$CORTEX_ENV_FILE" <<HERMES_ENVEOF
+
+# ── Langfuse integration (added by cortex-setup-langfuse.sh) ──
 HERMES_LANGFUSE_PUBLIC_KEY=$HAPI_KEY_PUBLIC
 HERMES_LANGFUSE_SECRET_KEY=$HAPI_KEY_SECRET
 HERMES_LANGFUSE_BASE_URL=http://localhost:3000
@@ -182,10 +188,9 @@ HERMES_LANGFUSE_RELEASE=v1
 HERMES_LANGFUSE_SAMPLE_RATE=1.0
 HERMES_ENVEOF
 
-chmod 600 "$HERMES_ENV_FILE"
-info "Generated Hermes .env with Langfuse integration"
-info "  File: ${HERMES_ENV_FILE}"
-info "  Permissions: 600 (user-read only)"
+chmod 600 "$CORTEX_ENV_FILE"
+info "Appended Langfuse env vars to: ${CORTEX_ENV_FILE}"
+info "  To make them available to Hermes Agent, add them to ~/.hermes/.env manually."
 
 # ── Step 7: Install Langfuse Python SDK ──────────────────────────────
 info "Checking Langfuse Python SDK..."
@@ -273,7 +278,7 @@ fi
 echo ""
 info "✅ Langfuse setup complete with Hermes Agent integration"
 echo "  - Langfuse secrets: ${LANGFUSE_DIR}/.env"
-echo "  - Hermes + Langfuse: ${HOME}/.hermes/.env"
+echo "  - Langfuse env vars appended to: ${HOME}/hermes-cortex/.env"
 echo "  - Langfuse API key: Public=$HAPI_KEY_PUBLIC, Secret saved in Hermes .env"
 if $DO_START; then
   echo "  - Langfuse starting: Started"

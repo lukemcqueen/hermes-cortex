@@ -1386,7 +1386,7 @@ gbrain stats
 # 8. Restart autopilot (Linux: systemctl --user start gbrain-autopilot.service)
 ```
 
-**The `embedding_model` must use explicit tag:** `nomic-embed-text:v1.5`, NOT `nomic-embed-text` (no tag) or `nomic-embed-text:latest`. Set in both `~/.gbrain/config.json` and `~/.hermes/models.env`.
+**The `embedding_model` must use explicit tag:** `nomic-embed-text:v1.5`, NOT `nomic-embed-text` (no tag) or `nomic-embed-text:latest`. Set in both `~/.gbrain/config.json` and `~/hermes-cortex/.env`.
 
 **Embedding model verification:**
 ```bash

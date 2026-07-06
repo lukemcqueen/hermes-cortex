@@ -56,7 +56,7 @@ from mcp.types import Tool, TextContent, CallToolResult
 # ── Config Loading ────────────────────────────────────────────
 # Same pattern as report-agent-health.py and collect-agent-skills.sh
 CONFIG_FILES = [
-    Path.home() / ".hermes" / "hermes-cortex.env",
+    Path.home() / "hermes-cortex" / ".env",
     Path.home() / ".hermes" / "hermes-inbox.conf",
 ]
 

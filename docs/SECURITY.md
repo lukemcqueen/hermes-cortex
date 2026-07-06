@@ -615,7 +615,7 @@ The installer covers the basics. For a **production-ready security posture**, pr
 **What your agent should do:**
 Configures nginx to listen with SSL on external ports:
 - Each server block uses `listen PORT ssl;` (external, SSL) — never `127.0.0.1:PORT`
-- SSL certs from Let's Encrypt (or set `CORTEX_SSL_CERT_PATH` in `~/.hermes/models.env`)
+- SSL certs from Let's Encrypt (or set `CORTEX_SSL_CERT_PATH` in `~/hermes-cortex/.env`)
 - Basic Auth on all non-health endpoints
 - The health endpoint (:xx007) has no auth for Moses/Esther polling
 
