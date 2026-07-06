@@ -260,8 +260,9 @@ def _request(path: str, data: bytes | None = None, method: str = "POST") -> tupl
         if status != 0:
             # Got a real HTTP response — server is alive
             # BUT: 401 means auth mismatch, not a usable endpoint — cascade
-            # Also cascade on 403 (forbidden) and 404 (wrong path)
-            if status in (401, 403, 404):
+            # Also cascade on 403 (forbidden), 404 (wrong path),
+            # 502/503 (upstream unavailable — nginx proxy to dead backend)
+            if status in (401, 403, 404, 502, 503):
                 log.warning("  %s responded HTTP %s (cascading), trying next in chain", name, status)
                 last_error = f"HTTP {status}"
                 continue

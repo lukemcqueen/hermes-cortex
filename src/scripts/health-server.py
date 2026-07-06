@@ -67,6 +67,11 @@ HOME = Path.home()
 # Startup timestamp for uptime tracking
 _STARTUP_TS = time.time()
 
+# Compact health response cache — recompute every N seconds
+_COMPACT_CACHE: dict | None = None
+_COMPACT_CACHE_TS: float = 0.0
+_COMPACT_CACHE_TTL: float = 30.0  # seconds
+
 app = FastAPI(title=f"Health Server — {AGENT_ID}", version="1.0.0")
 
 
@@ -645,6 +650,13 @@ def _build_compact_health() -> dict:
     """
     _start = time.monotonic()
 
+    global _COMPACT_CACHE, _COMPACT_CACHE_TS
+    now_ts = time.time()
+    if _COMPACT_CACHE is not None and (now_ts - _COMPACT_CACHE_TS) < _COMPACT_CACHE_TTL:
+        # Update timestamp only — serve cached vector
+        _COMPACT_CACHE["t"] = int(now_ts)
+        return _COMPACT_CACHE
+
     # Run checks in parallel
     r = s = c = g = None
     r_elapsed = s_elapsed = c_elapsed = 0.0
@@ -654,8 +666,8 @@ def _build_compact_health() -> dict:
         f_r = pool.submit(_timed, "resources", _check_resources)
         f_s = pool.submit(_timed, "services", _check_services)
         f_c = pool.submit(_timed, "cron_health", _check_cron_health)
-        # gbrain sources gets a hard 20s deadline
-        f_g = pool.submit(_run_with_deadline, _check_gbrain_sources, 20.0, "gbrain_sources")
+        # gbrain sources gets a hard 5s deadline (was 20s)
+        f_g = pool.submit(_run_with_deadline, _check_gbrain_sources, 5.0, "gbrain_sources")
 
         for f in as_completed([f_r, f_s, f_c, f_g]):
             if f is f_r:
@@ -717,11 +729,16 @@ def _build_compact_health() -> dict:
     # Agent identifier — can be overridden via AGENT_ID env var
     h = AGENT_ID
 
-    return {
+    result = {
         "v": v,
         "h": h,
         "t": int(time.time()),
     }
+    # Store in cache
+    _COMPACT_CACHE = result
+    _COMPACT_CACHE_TS = time.time()
+
+    return result
 
 
 # ── Routes ────────────────────────────────────────────────────
