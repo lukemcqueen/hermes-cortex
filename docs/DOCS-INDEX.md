@@ -11,6 +11,10 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `README.md` | Project overview, quick start, and links |
 | `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
 | `AGENTS.md` | Agent guidelines — read by AI tools on session start |
+| `docs/setup-reference.md` | Deployment setup across Luke's multi-machine fleet |
+| `docs/operations-reference.md` | Operations — inbox architecture, offline code, common tasks |
+| `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
+| `docs/env-vars.md` | Environment variable reference — CORTEX_* vars, SSL, deploy scripts |
 | `install.sh` | Single-command installer (idempotent, safe to re-run) |
 | `src/scripts/check-system.sh` | System compatibility check before installing |
 
@@ -64,9 +68,9 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
-| `docs/SKILLS-MANIFEST.md` | Version manifest for all 21 skills — planning pipeline + execution methodology |
-| `docs/seeding-brain-content.md` | Brain directory templates and starter content — get from 0 pages to searchable knowledge |
-| `.hermes-cortex/skills/` | Project-specific Hermes skills |
+|| `docs/SKILLS-MANIFEST.md` | Version manifest for all skills — planning pipeline + execution methodology |
+|| `docs/seeding-brain-content.md` | Brain directory templates and starter content — get from 0 pages to searchable knowledge |
+|| `src/skills/` | Canonical skills directory — organized by domain in the repo |
 
 ## Templates
 

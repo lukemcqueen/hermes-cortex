@@ -102,16 +102,20 @@ If you previously had a separate `a2a-bridge` MCP server enabled, disable it:
 #   enabled: false  # DEPRECATED — merged into inbox-mcp
 ```
 
-### 1b. Auth Config at `~/.hermes/hermes-inbox.conf`
+### 1b. Auth Config at `~/hermes-cortex/.env`
 
 ```bash
-cat > ~/.hermes/hermes-inbox.conf << 'EOF'
+# Primary config: ~/hermes-cortex/.env (all env vars, single source of truth)
+cat >> ~/hermes-cortex/.env << 'EOF'
 CORTEX_INBOX_URL="https://your-domain.com:13004"
 CORTEX_INBOX_AUTH="your-agent-name:your-password"
 AGENT_NAME="your-agent-name"
 EOF
-chmod 600 ~/.hermes/hermes-inbox.conf
+chmod 600 ~/hermes-cortex/.env
 ```
+
+> **Legacy fallback:** `~/.hermes/hermes-inbox.conf` still works if you prefer
+> a separate file. Scripts check `.env` first, then fall back to `hermes-inbox.conf`.
 
 Replace `your-agent-name` and `your-password` with credentials from Luke.
 

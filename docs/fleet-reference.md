@@ -98,10 +98,10 @@ When creating a new cron, prefix it to signal scope so other agents know whether
 **Management:**
 ```bash
 hermes cron list
-bash ~/.hermes/scripts/install-crons.sh          # install/update all
-bash ~/.hermes/scripts/install-crons.sh --force  # recreate all
-bash ~/.hermes/scripts/install-crons.sh --dry-run
-bash ~/.hermes/scripts/install-crons.sh --uninstall
+bash ~/hermes-cortex/src/scripts/install-crons.sh          # install/update all
+bash ~/hermes-cortex/src/scripts/install-crons.sh --force  # recreate all
+bash ~/hermes-cortex/src/scripts/install-crons.sh --dry-run
+bash ~/hermes-cortex/src/scripts/install-crons.sh --uninstall
 ```
 
 ---
