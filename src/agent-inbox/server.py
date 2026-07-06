@@ -1341,5 +1341,23 @@ async def a2a_tasks_cancel(task_id: str, request: Request):
 
 
 if __name__ == "__main__":
+    import sys
+    from pathlib import Path
+    # Add scripts dir to path for _port_arbitration import
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    from _port_arbitration import check_and_claim_port, release_port, setup_dirs
+
+    PORT = int(os.environ.get("AGENT_INBOX_PORT", "8903"))
+    data_dir = os.environ.get("AGENT_INBOX_DIR", str(Path.home() / "agent-inbox-private"))
+    pid_path = str(Path.home() / ".hermes-cortex" / "a2a" / "agent-inbox.pid")
+
+    setup_dirs(data_dir)
+    if not check_and_claim_port("127.0.0.1", PORT, "agent-inbox", pid_path=pid_path):
+        sys.exit(0)
+
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8903)
+
+    try:
+        uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="info")
+    finally:
+        release_port()
