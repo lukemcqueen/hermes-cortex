@@ -72,8 +72,8 @@ if [ -f "$CONFIG_FILE" ]; then
     esac
     # Strip inline comments from value
     value="${value%%\#*}"
-    value="${value%"${value##[! ]}"}"   # trim leading whitespace
-    value="${value%"${value##*[! ]}"}"  # trim trailing whitespace
+    value="${value%\"${value##[! ]}\"}"   # trim leading whitespace
+    value="${value%\"${value##*[! ]}\"}"  # trim trailing whitespace
     # Strip surrounding quotes
     value="${value%\'}"; value="${value#\'}"
     value="${value%\"}"; value="${value#\"}"
