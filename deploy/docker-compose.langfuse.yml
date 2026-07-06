@@ -131,8 +131,8 @@ services:
     restart: always
     # ── Resource limits: prevent CPU contention with agent services ──
     cpus: 1.0
-    mem_limit: 2g
-    memswap_limit: 2g
+    mem_limit: 8g
+    memswap_limit: 8g
     healthcheck:
       test: ["CMD-SHELL", "clickhouse client -h localhost --query 'SELECT 1'"]
       interval: 5s
