@@ -633,17 +633,16 @@ def _check_external_reachability() -> dict:
             if not Path(SSL_CERT_PATH).exists():
                 _log.warning("SSL cert not found at %s", SSL_CERT_PATH)
             else:
-                ctx = ssl.create_default_context()
-                with open(SSL_CERT_PATH, "rb") as f:
-                    cert = ctx._wrap_pem_cert(f.read())  # internal-ish but works
-        except Exception:
-            try:
                 from cryptography import x509
                 from cryptography.hazmat.backends import default_backend
                 with open(SSL_CERT_PATH, "rb") as f:
                     cert_data = f.read()
                 cert_obj = x509.load_pem_x509_certificate(cert_data, default_backend())
                 not_after = cert_obj.not_valid_after_utc if hasattr(cert_obj, "not_valid_after_utc") else cert_obj.not_valid_after
+                # Make offset-aware for consistent comparison
+                if not_after.tzinfo is None:
+                    from datetime import timezone as tz
+                    not_after = not_after.replace(tzinfo=tz.utc)
                 remaining = (not_after - datetime.now(timezone.utc)).days
                 cert_expiry_days = remaining
                 if remaining < 0:
@@ -652,8 +651,8 @@ def _check_external_reachability() -> dict:
                     cert_warning = f"WARNING — SSL cert expires in {remaining} day(s)"
                 elif remaining < 30:
                     cert_warning = f"INFO — SSL cert expires in {remaining} day(s)"
-            except Exception:
-                _log.warning("cryptography not installed or cert unreadable — skipping cert expiry check")
+        except Exception:
+            _log.warning("cryptography not installed or cert unreadable — skipping cert expiry check")
         _CERT_EXPIRY_CACHE = (cert_expiry_days, cert_warning)
         _CERT_EXPIRY_CACHE_TS = time.time()
 
