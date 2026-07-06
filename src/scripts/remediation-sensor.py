@@ -233,7 +233,22 @@ def check_gbrain_health():
     
     Detects PGLite WASM runtime failures (common on Linux with glibc/kernel incompat).
     Runs gbrain sync --no-pull and checks for WASM abort errors.
+    
+    NOTE: On Linux, PGLite WASM failures are expected/benign — gbrain operates
+    in filesystem mode and passes all doctor checks. The upstream macOS 26.3 WASM
+    bug (#223) is macOS-specific. Skip WASM checks on Linux entirely.
     """
+    # Skip WASM checks on Linux — gbrain uses filesystem mode, WASM failure is benign
+    if sys.platform.startswith("linux"):
+        # Still check connection health on Linux
+        out, err, rc = run("gbrain sync --all --no-pull 2>&1", timeout=60)
+        combined = (out + " " + err).lower()
+        if rc != 0 and "could not connect" in combined:
+            add_issue("gbrain_connection_failure", "high", "gbrain cannot connect to configured database", {
+                "error_snippet": (out + err)[:300],
+            })
+        return
+    
     # Check if gbrain is installed
     if not os.path.exists(os.path.expanduser("~/.gbrain")):
         return  # gbrain not installed, skip

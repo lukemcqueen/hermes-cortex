@@ -42,10 +42,12 @@ case "$(uname -s)" in
       FAIL2BAN_DIR="/usr/local/etc/fail2ban"
       NGINX_LOG_DIR="/usr/local/var/log/nginx"
     fi
+    NGINX_AVAILABLE_DIR="${NGINX_CONFIG_DIR}"  # macOS: no sites-available, write directly
     ;;
   Linux)
     NGINX_DIR="/etc/nginx"
     NGINX_CONFIG_DIR="${NGINX_DIR}/sites-enabled"
+    NGINX_AVAILABLE_DIR="${NGINX_DIR}/sites-available"
     FAIL2BAN_DIR="/etc/fail2ban"
     NGINX_LOG_DIR="/var/log/nginx"
     ;;
@@ -96,49 +98,85 @@ for src in "${CORTEX_REPO}/deploy/nginx/hermes-zone-defs.conf" "${CORTEX_REPO}/d
     elif [ "$base" = "hermes-services.conf" ]; then
       mkdir -p "${NGINX_CONFIG_DIR}"
 
-      # ── SSL cert resolution ────────────────────────────
-      SSL_CERT=""
-      SSL_KEY=""
-      if [ -n "${CORTEX_SSL_CERT_PATH:-}" ] && [ -n "${CORTEX_SSL_CERT_KEY_PATH:-}" ]; then
-        if [ -f "$CORTEX_SSL_CERT_PATH" ] && [ -f "$CORTEX_SSL_CERT_KEY_PATH" ]; then
-          SSL_CERT="$CORTEX_SSL_CERT_PATH"
-          SSL_KEY="$CORTEX_SSL_CERT_KEY_PATH"
-        fi
-      elif [ -d /etc/letsencrypt/live ]; then
-        LE_DOMAIN="${CORTEX_SSL_DOMAIN:-}"
-        if [ -n "$LE_DOMAIN" ] && [ -f "/etc/letsencrypt/live/${LE_DOMAIN}/fullchain.pem" ]; then
-          SSL_CERT="/etc/letsencrypt/live/${LE_DOMAIN}/fullchain.pem"
-          SSL_KEY="/etc/letsencrypt/live/${LE_DOMAIN}/privkey.pem"
-        else
-          for le_dir in /etc/letsencrypt/live/*/; do
-            if [ -f "${le_dir}fullchain.pem" ] && [ -f "${le_dir}privkey.pem" ]; then
-              SSL_CERT="${le_dir}fullchain.pem"
-              SSL_KEY="${le_dir}privkey.pem"
-              break
-            fi
-          done
-        fi
-      fi
-      if [ -z "$SSL_CERT" ] && [ -f "${HOME}/certs/fullchain.pem" ] && [ -f "${HOME}/certs/privkey.pem" ]; then
-        SSL_CERT="${HOME}/certs/fullchain.pem"
-        SSL_KEY="${HOME}/certs/privkey.pem"
+      # ── Read existing config (preserve ports/SSL unless forced) ──
+      existing_conf="${NGINX_AVAILABLE_DIR}/${base}"
+      existing_port_prefix="" existing_ssl_cert="" existing_ssl_key=""
+      force_deploy="${CORTEX_FORCE_DEPLOY:-}"
+      if [[ -f "$existing_conf" && -z "$force_deploy" ]]; then
+        existing_port_prefix=$(grep -oP 'listen\s+(?:127\.0\.0\.1:)?\K[0-9]{2}(?=[0-9]{3}\b)' "$existing_conf" | head -1)
+        existing_ssl_cert=$(grep -oP 'ssl_certificate\s+\K\S+' "$existing_conf" | head -1 | sed 's/;$//')
+        existing_ssl_key=$(grep -oP 'ssl_certificate_key\s+\K\S+' "$existing_conf" | head -1 | sed 's/;$//')
+        # Only keep if not a placeholder
+        [[ "$existing_ssl_cert" == "__SSL_CERT__" ]] && existing_ssl_cert=""
+        [[ "$existing_ssl_key" == "__SSL_CERT_KEY__" ]] && existing_ssl_key=""
       fi
 
-      if [ -n "$SSL_CERT" ]; then
-        echo "  ✓ SSL cert: ${SSL_CERT}"
+      # ── Port prefix ────────────────────────────────────
+      port_prefix="${existing_port_prefix:-${CORTEX_NGINX_PORT_PREFIX:-13}}"
+      if [[ -n "$existing_port_prefix" && -z "$force_deploy" ]]; then
+        echo "  ✓ Preserved port prefix: ${port_prefix}xxx"
+      fi
+
+      # ── SSL cert resolution (only if not preserved) ────
+      ssl_cert="$existing_ssl_cert" ssl_key="$existing_ssl_key"
+      if [[ -z "$ssl_cert" ]]; then
+        if [ -n "${CORTEX_SSL_CERT_PATH:-}" ] && [ -n "${CORTEX_SSL_CERT_KEY_PATH:-}" ]; then
+          if [ -f "$CORTEX_SSL_CERT_PATH" ] && [ -f "$CORTEX_SSL_CERT_KEY_PATH" ]; then
+            ssl_cert="$CORTEX_SSL_CERT_PATH"
+            ssl_key="$CORTEX_SSL_CERT_KEY_PATH"
+          fi
+        elif [ -d /etc/letsencrypt/live ]; then
+          le_domain="${CORTEX_SSL_DOMAIN:-}"
+          if [ -n "$le_domain" ] && [ -f "/etc/letsencrypt/live/${le_domain}/fullchain.pem" ]; then
+            ssl_cert="/etc/letsencrypt/live/${le_domain}/fullchain.pem"
+            ssl_key="/etc/letsencrypt/live/${le_domain}/privkey.pem"
+          else
+            for le_dir in /etc/letsencrypt/live/*/; do
+              if [ -f "${le_dir}fullchain.pem" ] && [ -f "${le_dir}privkey.pem" ]; then
+                ssl_cert="${le_dir}fullchain.pem"
+                ssl_key="${le_dir}privkey.pem"
+                break
+              fi
+            done
+          fi
+        fi
+        if [ -z "$ssl_cert" ] && [ -f "${HOME}/certs/fullchain.pem" ] && [ -f "${HOME}/certs/privkey.pem" ]; then
+          ssl_cert="${HOME}/certs/fullchain.pem"
+          ssl_key="${HOME}/certs/privkey.pem"
+        fi
+      fi
+
+      if [ -n "$ssl_cert" ]; then
+        if [[ "$ssl_cert" == "$existing_ssl_cert" && -n "$existing_ssl_cert" ]]; then
+          echo "  ✓ Preserved SSL cert: ${ssl_cert}"
+        else
+          echo "  ✓ SSL cert: ${ssl_cert}"
+        fi
       else
         echo "  ⚠ No SSL certs found — __SSL_CERT__ placeholders left unchanged"
       fi
+
+      # Write to sites-available (Linux) or servers/ (macOS)
+      mkdir -p "${NGINX_AVAILABLE_DIR}"
 
       < "$src" sed \
         -e "s|__NGINX_CONFIG_DIR__|${NGINX_CONFIG_DIR}|g" \
         -e "s|__NGINX_LOG_DIR__|${NGINX_LOG_DIR}|g" \
         -e "s|__HTPASSWD_FILE__|${NGINX_DIR}/.htpasswd|g" \
         -e "s|__CORTEX_HOME__|${HOME}|g" \
-        -e "s|__SSL_CERT__|${SSL_CERT:-__SSL_CERT__}|g" \
-        -e "s|__SSL_CERT_KEY__|${SSL_KEY:-__SSL_CERT_KEY__}|g" \
-        > "${NGINX_CONFIG_DIR}/${base}"
-      echo "  ✓ Deployed: ${base} (paths substituted)"
+        -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
+        -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
+        -e "/listen[[:space:]]/s|127\\.0\\.0\\.1:13\\([0-9][0-9][0-9]\\)|127.0.0.1:${port_prefix}\\1|g" \
+        -e "/listen[[:space:]]/s|listen[[:space:]]*13\\([0-9][0-9][0-9]\\)|listen ${port_prefix}\\1|g" \
+        > "${NGINX_AVAILABLE_DIR}/${base}"
+      echo "  ✓ Deployed: ${NGINX_AVAILABLE_DIR}/${base} (paths substituted)"
+
+      # Symlink from sites-enabled -> sites-available on Linux
+      if [ "${NGINX_AVAILABLE_DIR}" != "${NGINX_CONFIG_DIR}" ]; then
+        mkdir -p "${NGINX_CONFIG_DIR}"
+        ln -sf "${NGINX_AVAILABLE_DIR}/${base}" "${NGINX_CONFIG_DIR}/${base}"
+        echo "  ✓ Symlinked: ${NGINX_CONFIG_DIR}/${base} → ${NGINX_AVAILABLE_DIR}/${base}"
+      fi
     fi
   fi
 done
@@ -256,9 +294,21 @@ fi
 echo ""
 echo "── Step 7: Reload ──"
 
-# Reload nginx
+# Reload nginx (graceful)
 if nginx -s reload 2>&1; then
-  echo "  ✓ nginx reloaded"
+  echo "  ✓ nginx reload signal sent"
+  # Sleep briefly and check if reload actually took effect
+  sleep 2
+  if tail -5 /var/log/nginx/error.log 2>/dev/null | grep -q "still could not bind"; then
+    echo "  ⚠ Reload partially failed (port conflicts with old workers)"
+    echo "  → Doing full restart to release stale bindings..."
+    nginx -s quit 2>/dev/null
+    sleep 1
+    systemctl start nginx 2>/dev/null || /usr/sbin/nginx 2>&1
+    echo "  ✓ nginx restarted (new config active)"
+  else
+    echo "  ✓ nginx reloaded (new config active)"
+  fi
 else
   echo "  ✗ nginx reload failed"
   exit 1

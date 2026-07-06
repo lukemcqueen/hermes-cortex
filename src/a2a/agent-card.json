@@ -1,7 +1,7 @@
 {
   "name": "moses",
   "description": "Orchestrator agent for Hermes Cortex — manages infrastructure, cron jobs, system health, agent inbox, and multi-agent orchestration across the fleet.",
-  "url": "https://bus.example.org:13004/a2a",
+  "url": "https://your-domain.com:13004/a2a",
   "provider": {
     "name": "Hermes Cortex",
     "version": "1.0"

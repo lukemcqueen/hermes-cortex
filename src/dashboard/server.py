@@ -548,10 +548,11 @@ def _get_detailed_memory() -> dict:
     except Exception:
         pass
     # Parse top -l 1 for the same numbers Activity Monitor shows
-    # Output: "PhysMem: 11G used (1937M wired), 4791M unused."
+    # Actual output: "PhysMem: 15G used (3126M wired, 6689M compressor), 80M unused."
+    _top_ok = False
     try:
         r = subprocess.run(["top", "-l", "1", "-n", "0"], capture_output=True, text=True, timeout=10)
-        m = re.search(r'PhysMem:\s+([\d.]+)([KMG])\s+used\s+\((\d+)([KMG])\s+wired\),\s+([\d.]+)([KMG])\s+unused', r.stdout)
+        m = re.search(r'PhysMem:\s+([\d.]+)([KMG])\s+used\s+\((\d+)([KMG])\s+wired(?:,\s+[\d.]+[KMG]\s+compressor)?\),\s+([\d.]+)([KMG])\s+unused', r.stdout)
         if m:
             def parse_val(val, unit):
                 v = float(val)
@@ -561,9 +562,11 @@ def _get_detailed_memory() -> dict:
             used_mb = parse_val(m.group(1), m.group(2))
             wired_mb = float(m.group(3))
             free_mb = parse_val(m.group(5), m.group(6))
+            _top_ok = True
     except Exception:
         pass
     # vm_stat for accurate breakdown (handles multi-word keys)
+    # Only overwrites used/free if top parsing failed
     compressed_mb = 0
     active_mb = 0
     inactive_mb = 0
@@ -586,10 +589,12 @@ def _get_detailed_memory() -> dict:
         inactive_mb   = mb(pages.get("pages inactive", 0))
         free_v        = pages.get("pages free", 0)
         speculative   = pages.get("pages speculative", 0)
-        free_mb       = mb(free_v + speculative)
+        if not _top_ok:
+            free_mb       = mb(free_v + speculative)
 
         # True used = wired + active + compressed (excludes inactive which is available)
-        used_mb = wired_mb + active_mb + compressed_mb
+        if not _top_ok:
+            used_mb = wired_mb + active_mb + compressed_mb
     except Exception:
         pass
     return {

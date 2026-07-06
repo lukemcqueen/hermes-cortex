@@ -6,9 +6,14 @@
 #  commit details and sends an inbox broadcast to all agents
 #  via the agent inbox API.
 #
+#  Uses the SAME config loading pattern as inbox-mcp.py:
+#    1. CORTEX_INBOX_* environment variables
+#    2. ~/.hermes/hermes-inbox.conf (KEY=VALUE format, parsed line-by-line)
+#    3. URL fallback chain: primary → fallback → third → localhost:8903
+#
 #  Silent when:
 #    - Repo dir doesn't exist
-#    - Inbox server is unreachable
+#    - Inbox server is unreachable (all URLs in chain fail)
 #    - State file says we already notified for this commit
 #
 #  Install as git post-commit hook:
@@ -19,19 +24,11 @@ set -euo pipefail
 # ── Paths ──
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATE_FILE="${HOME}/.hermes/state/post-commit-notify"
-
-# ── Config: source inbox credentials ──
-INBOX_URL="https://your-domain.com:13004/send"
-INBOX_AUTH=""
+LOG_FILE="${STATE_FILE}.log"
 CONFIG_FILE="${HOME}/.hermes/hermes-inbox.conf"
-if [[ -f "$CONFIG_FILE" ]]; then
-    source "$CONFIG_FILE"
-    INBOX_URL="${CORTEX_INBOX_URL:-$INBOX_URL}/send"
-    INBOX_AUTH="${CORTEX_INBOX_AUTH:-}"
-fi
 
 # ── Helpers ──
-log()  { echo "[notify] $*" >> "$STATE_FILE.log"; }
+log()  { echo "[notify] $*" >> "$LOG_FILE"; }
 
 # ── Step 1: Check we're in a git repo ──
 cd "$REPO_DIR" || exit 0
@@ -54,26 +51,120 @@ if [ -f "$STATE_FILE" ]; then
   fi
 fi
 
-# ── Step 4: Build message body ──
-BODY="Commited by ${AUTHOR}
+# ── Step 4: Load inbox config (same pattern as inbox-mcp.py) ──
+# Priority: env var > config file
+INBOX_URL="${CORTEX_INBOX_URL:-}"
+INBOX_FALLBACK_URL="${CORTEX_INBOX_FALLBACK_URL:-}"
+INBOX_THIRD_URL="${CORTEX_INBOX_THIRD_URL:-}"
+INBOX_AUTH="${CORTEX_INBOX_AUTH:-}"
+AGENT_NAME="${AGENT_NAME:-}"
+
+# Parse config file line-by-line (cannot use bash source — config KEY=VALUE
+# without export, and values may contain special characters)
+if [ -f "$CONFIG_FILE" ]; then
+  while IFS='=' read -r key value || [ -n "$key" ]; do
+    # Trim whitespace
+    key="${key// /}"
+    key="${key//	/}"
+    # Skip comments and blank lines
+    case "$key" in
+      ''|'#'*) continue ;;
+    esac
+    # Strip inline comments from value
+    value="${value%%\#*}"
+    value="${value%"${value##[! ]}"}"   # trim leading whitespace
+    value="${value%"${value##*[! ]}"}"  # trim trailing whitespace
+    # Strip surrounding quotes
+    value="${value%\'}"; value="${value#\'}"
+    value="${value%\"}"; value="${value#\"}"
+
+    case "$key" in
+      CORTEX_INBOX_URL)
+        [ -z "$INBOX_URL" ] && INBOX_URL="$value"
+        ;;
+      CORTEX_INBOX_FALLBACK_URL)
+        [ -z "$INBOX_FALLBACK_URL" ] && INBOX_FALLBACK_URL="$value"
+        ;;
+      CORTEX_INBOX_THIRD_URL)
+        [ -z "$INBOX_THIRD_URL" ] && INBOX_THIRD_URL="$value"
+        ;;
+      CORTEX_INBOX_AUTH)
+        [ -z "$INBOX_AUTH" ] && INBOX_AUTH="$value"
+        ;;
+      AGENT_NAME)
+        [ -z "$AGENT_NAME" ] && AGENT_NAME="$value"
+        ;;
+      # Support deprecated MOSES_* keys
+      MOSES_INBOX_URL)
+        [ -z "$INBOX_URL" ] && INBOX_URL="$value"
+        ;;
+      MOSES_INBOX_FALLBACK_URL)
+        [ -z "$INBOX_FALLBACK_URL" ] && INBOX_FALLBACK_URL="$value"
+        ;;
+      MOSES_INBOX_THIRD_URL)
+        [ -z "$INBOX_THIRD_URL" ] && INBOX_THIRD_URL="$value"
+        ;;
+      MOSES_INBOX_AUTH)
+        [ -z "$INBOX_AUTH" ] && INBOX_AUTH="$value"
+        ;;
+    esac
+  done < "$CONFIG_FILE"
+fi
+
+# Resolve AGENT_NAME if still empty
+if [ -z "$AGENT_NAME" ]; then
+  if [ -n "$INBOX_AUTH" ] && [[ "$INBOX_AUTH" == *:* ]]; then
+    AGENT_NAME="${INBOX_AUTH%%:*}"
+  else
+    AGENT_NAME="${USER:-moses}"
+  fi
+fi
+
+# ── Step 5: Build URL chain (same as inbox-mcp.py) ──
+# Build the send URLs from base URLs (strip trailing /, then add /send)
+declare -a URL_CHAIN=()
+[ -n "$INBOX_URL" ] && URL_CHAIN+=("${INBOX_URL%/}/send")
+[ -n "$INBOX_FALLBACK_URL" ] && URL_CHAIN+=("${INBOX_FALLBACK_URL%/}/send")
+[ -n "$INBOX_THIRD_URL" ] && URL_CHAIN+=("${INBOX_THIRD_URL%/}/send")
+# Always append the localhost fallback
+URL_CHAIN+=("http://127.0.0.1:8903/send")
+
+# ── Step 6: Build auth header ──
+CURL_AUTH=()
+[ -n "$INBOX_AUTH" ] && CURL_AUTH=(-u "$INBOX_AUTH")
+
+# ── Step 7: Build message body ──
+BODY="Committed by ${AUTHOR}
 SHA: ${SHA}
 Subject: ${SUBJECT}
 Files: ${FILE_COUNT} changed
 
-${FILES}
-"
+${FILES}"
 
-# ── Step 5: Send broadcast to all agents (marked read — informational, not actionable) ──
-CURL_AUTH=()
-[[ -n "$INBOX_AUTH" ]] && CURL_AUTH=(-u "$INBOX_AUTH")
-curl -sf -X POST "$INBOX_URL" "${CURL_AUTH[@]}" \
-  -d "from=Moses" \
-  -d "topic=all" \
-  -d "subject=📦 hermes-cortex update: ${SUBJECT}" \
-  -d "body=${BODY}" \
-  -d "priority=normal" \
-  -d "status=read" \
-  >/dev/null 2>&1 && log "notified all agents for ${SHA}" || log "failed to notify for ${SHA}"
+# ── Step 8: Send broadcast — try each URL in the chain ──
+SENT=false
+for URL in "${URL_CHAIN[@]}"; do
+  if curl -sf -X POST "$URL" "${CURL_AUTH[@]}" \
+    -d "from=${AGENT_NAME}" \
+    -d "to=all" \
+    -d "topic=general" \
+    -d "subject=📦 hermes-cortex update: ${SUBJECT}" \
+    -d "body=${BODY}" \
+    -d "priority=normal" \
+    -d "status=read" \
+    >/dev/null 2>&1; then
+    SENT=true
+    log "notified all agents via ${URL} for ${SHA}"
+    break
+  fi
+  log "failed to reach ${URL} for ${SHA}"
+done
 
-# ── Step 6: Save state ──
+if [ "$SENT" = false ]; then
+  log "all inbox endpoints unreachable for ${SHA}"
+  # Exit silently — watchdog pattern
+  exit 0
+fi
+
+# ── Step 9: Save state ──
 echo "$SHA" > "$STATE_FILE"

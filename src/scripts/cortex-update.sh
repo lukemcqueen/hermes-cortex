@@ -673,6 +673,15 @@ deploy_nginx_configs() {
   # 2. hermes-services.conf — substitute placeholders, then write
   local conf_src="${nginx_src_dir}/hermes-services.conf"
   local conf_dst="${config_dir}/hermes-services.conf"
+
+  # On Linux, write to sites-available/ and symlink in sites-enabled/
+  # On macOS, servers/ acts as both (no available/enabled split)
+  local available_dir="${config_dir}"
+  if [[ "$config_dir" == */sites-enabled ]]; then
+    available_dir="${config_dir%/sites-enabled}/sites-available"
+  fi
+  local conf_available="${available_dir}/hermes-services.conf"
+
   if needs_update "$conf_src" "$conf_dst"; then
     local tmpfile
     tmpfile="$(mktemp)" || return 1
@@ -684,9 +693,18 @@ deploy_nginx_configs() {
     #   14 = Esther
     local port_prefix="${CORTEX_NGINX_PORT_PREFIX:-13}"
 
-    # ── SSL cert resolution ──────────────────────────────
-    # Priority: env var > Let's Encrypt by domain > scan > self-signed
-    local ssl_cert="" ssl_key=""
+    # ── Read existing config (preserve ports/SSL unless forced) ──
+    local existing_ssl_cert="" existing_ssl_key=""
+    if [[ -f "$conf_dst" && -z "${CORTEX_FORCE_DEPLOY:-}" ]]; then
+      existing_ssl_cert=$(grep -oP 'ssl_certificate\s+\K\S+' "$conf_dst" 2>/dev/null | head -1 | sed 's/;$//')
+      existing_ssl_key=$(grep -oP 'ssl_certificate_key\s+\K\S+' "$conf_dst" 2>/dev/null | head -1 | sed 's/;$//')
+      [[ "$existing_ssl_cert" == "__SSL_CERT__" ]] && existing_ssl_cert=""
+      [[ "$existing_ssl_key" == "__SSL_CERT_KEY__" ]] && existing_ssl_key=""
+    fi
+
+    # ── SSL cert resolution (only if not preserved) ──────
+    local ssl_cert="$existing_ssl_cert" ssl_key="$existing_ssl_key"
+    if [[ -z "$ssl_cert" ]]; then
     if [[ -n "${CORTEX_SSL_CERT_PATH:-}" && -n "${CORTEX_SSL_CERT_KEY_PATH:-}" ]]; then
       if [[ -f "$CORTEX_SSL_CERT_PATH" && -f "$CORTEX_SSL_CERT_KEY_PATH" ]]; then
         ssl_cert="$CORTEX_SSL_CERT_PATH"
@@ -711,9 +729,14 @@ deploy_nginx_configs() {
     if [[ -z "$ssl_cert" && -f "${HOME}/certs/fullchain.pem" && -f "${HOME}/certs/privkey.pem" ]]; then
       ssl_cert="${HOME}/certs/fullchain.pem"; ssl_key="${HOME}/certs/privkey.pem"
     fi
+    fi  # closes 'if [[ -z "$ssl_cert" ]]' (already preserved from live config)
 
     if [[ -n "$ssl_cert" ]]; then
-      info "  SSL cert: ${ssl_cert}"
+      if [[ "$ssl_cert" == "$existing_ssl_cert" && -n "$existing_ssl_cert" ]]; then
+        info "  Preserved SSL cert: ${ssl_cert}"
+      else
+        info "  SSL cert: ${ssl_cert}"
+      fi
     else
       warn "  No SSL certs found — __SSL_CERT__ placeholders left unchanged"
     fi
@@ -737,15 +760,29 @@ deploy_nginx_configs() {
           info "  Preserved port range ${template_prefix}xxx → ${live_prefix}xxx"
         fi
       fi
-      sudo mkdir -p "$(dirname "$conf_dst")" 2>/dev/null || true
-      sudo cp "$tmpfile" "$conf_dst"
-      sudo chmod 644 "$conf_dst"
+      # Write to sites-available (Linux) or servers/ (macOS)
+      sudo mkdir -p "$(dirname "$conf_available")" 2>/dev/null || true
+      sudo cp "$tmpfile" "$conf_available"
+      sudo chmod 644 "$conf_available"
+      info "  Updated: ${conf_available}"
     else
-      mkdir -p "$(dirname "$conf_dst")" 2>/dev/null || true
-      cp "$tmpfile" "$conf_dst"
+      # Write to sites-available (Linux) or servers/ (macOS)
+      mkdir -p "$(dirname "$conf_available")" 2>/dev/null || true
+      cp "$tmpfile" "$conf_available"
+      info "  Updated: ${conf_available}"
+    fi
+    # Symlink sites-enabled -> sites-available when they differ (Linux convention)
+    if [[ "$config_dir" != "$available_dir" ]]; then
+      if command -v sudo &>/dev/null && [[ "$config_dir" == /etc/* ]]; then
+        sudo mkdir -p "$config_dir" 2>/dev/null || true
+        sudo ln -sf "$conf_available" "$conf_dst"
+      else
+        mkdir -p "$config_dir" 2>/dev/null || true
+        ln -sf "$conf_available" "$conf_dst"
+      fi
+      info "  Symlinked: ${conf_dst} → ${conf_available}"
     fi
     rm -f "$tmpfile"
-    info "  Updated: hermes-services.conf → ${conf_dst} (OS-aware paths)"
     files_copied=$((files_copied + 1))
   fi
 

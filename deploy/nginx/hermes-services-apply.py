@@ -50,7 +50,10 @@ from pathlib import Path
 # ── OS-aware path detection ──────────────────────────────────────────
 
 def detect_nginx_paths():
-    """Return (config_dir, brew_dir, log_dir, htpasswd) based on OS."""
+    """Return (config_dir, available_dir, brew_dir, log_dir, htpasswd) based on OS.
+    config_dir is the active nginx include dir (sites-enabled on Linux, servers/ on macOS).
+    available_dir is where configs are written (sites-available on Linux, same as config_dir on macOS).
+    """
     system = platform.system()
     if system == "Darwin":
         machine = platform.machine()
@@ -61,15 +64,17 @@ def detect_nginx_paths():
         config_dir = brew_dir / "servers"
         log_dir = Path(brew_dir.parent.parent / "var" / "log" / "nginx")
         htpasswd = brew_dir / ".htpasswd"
+        available_dir = config_dir  # macOS: no sites-available split, write directly
     elif system == "Linux":
         brew_dir = Path("/etc/nginx")
         config_dir = brew_dir / "sites-enabled"
+        available_dir = brew_dir / "sites-available"
         log_dir = Path("/var/log/nginx")
         htpasswd = brew_dir / ".hermes-htpasswd"
     else:
         print(f"✗ Unsupported OS: {system}")
         sys.exit(1)
-    return config_dir, brew_dir, log_dir, htpasswd
+    return config_dir, available_dir, log_dir, htpasswd
 
 
 # ── SSL cert discovery ───────────────────────────────────────────────
@@ -92,19 +97,43 @@ def find_letsencrypt_certs(domain=None):
                 [d for d in live_dir.iterdir() if d.is_dir() and not d.name.startswith(".")]
             )
         except PermissionError:
+            # Try common domain names as fallback
+            for common in ("mp-stage.koscap.or.kr", "mwi-stage.koscap.or.kr", "mweb-stage.koscap.or.kr"):
+                d = live_dir / common
+                try:
+                    if d.is_dir():
+                        candidates.append(d)
+                except PermissionError:
+                    continue
+        except FileNotFoundError:
             return None, None
 
     for d in candidates:
         cert = d / "fullchain.pem"
         key = d / "privkey.pem"
-        if cert.is_file() and key.is_file():
-            try:
-                # Verify cert is not expiring within 7 days
-                # (simple check: file readable and non-empty)
-                if cert.stat().st_size > 100 and key.stat().st_size > 100:
+        try:
+            if cert.is_file() and key.is_file():
+                try:
+                    # Verify cert is not expiring within 7 days
+                    # (simple check: file readable and non-empty)
+                    if cert.stat().st_size > 100 and key.stat().st_size > 100:
+                        return str(cert), str(key)
+                except PermissionError:
+                    # Can't stat but paths exist — trust them (nginx reads as root)
                     return str(cert), str(key)
-            except OSError:
-                continue
+                except OSError:
+                    continue
+            else:
+                # Fallback: check by absolute symlink path (LE live/ -> archive/)
+                alt_cert = Path(f"/etc/letsencrypt/archive/{d.name}/fullchain1.pem")
+                alt_key = Path(f"/etc/letsencrypt/archive/{d.name}/privkey1.pem")
+                try:
+                    if alt_cert.is_file() and alt_key.is_file():
+                        return str(cert), str(key)
+                except (PermissionError, OSError):
+                    continue
+        except PermissionError:
+            continue
     return None, None
 
 
@@ -143,18 +172,31 @@ def find_system_certs():
 def discover_ssl_certs(domain=None, explicit_cert=None, explicit_key=None):
     """Discover SSL certificates. Returns (cert_path, key_path) or (None, None)."""
     # Priority 1: Explicit paths from env/args
+    # Use explicit paths even if we can't stat them (e.g. root-only LE certs).
+    # nginx reads these as root and the user has verified they work.
     if explicit_cert and explicit_key:
-        if Path(explicit_cert).is_file() and Path(explicit_key).is_file():
+        try:
+            if Path(explicit_cert).is_file() and Path(explicit_key).is_file():
+                return explicit_cert, explicit_key
+        except PermissionError:
+            # Permission denied — trust the explicit path (nginx reads as root)
+            print(f"  ✓ Using explicit cert path (PermissionError on stat — trusting nginx can read)")
             return explicit_cert, explicit_key
         print(f"  ⚠ Explicit cert/key paths not found, falling back to auto-detect")
 
     # Priority 2: Env vars
-    env_cert = os.environ.get("CORTEX_SSL_CERT_PATH")
-    env_key = os.environ.get("CORTEX_SSL_CERT_KEY_PATH")
-    if env_cert and env_key:
-        if Path(env_cert).is_file() and Path(env_key).is_file():
-            return env_cert, env_key
-        print(f"  ⚠ CORTEX_SSL_CERT_PATH/CORTEX_SSL_CERT_KEY_PATH files not found")
+    if not (explicit_cert and explicit_key):
+        env_cert = os.environ.get("CORTEX_SSL_CERT_PATH")
+        env_key = os.environ.get("CORTEX_SSL_CERT_KEY_PATH")
+        if env_cert and env_key:
+            try:
+                if Path(env_cert).is_file() and Path(env_key).is_file():
+                    return env_cert, env_key
+            except PermissionError:
+                # Permission denied — trust the env path (nginx reads as root)
+                print(f"  ✓ CORTEX_SSL_CERT_PATH trust (PermissionError on stat — trusting nginx can read)")
+                return env_cert, env_key
+            print(f"  ⚠ CORTEX_SSL_CERT_PATH/CORTEX_SSL_CERT_KEY_PATH files not found")
 
     # Priority 3: Let's Encrypt (specific domain or scan)
     cert, key = find_letsencrypt_certs(domain)
@@ -268,6 +310,7 @@ def main():
         epilog=__doc__,
     )
     parser.add_argument("--dry-run", action="store_true", help="Show what would be done without writing")
+    parser.add_argument("--force", action="store_true", help="Re-resolve SSL certs and port prefix from env/auto-detect instead of preserving existing values")
     parser.add_argument("--domain", help="Domain for Let's Encrypt cert lookup (or set CORTEX_SSL_DOMAIN)")
     parser.add_argument("--cert", help="Explicit SSL cert path")
     parser.add_argument("--key", help="Explicit SSL key path")
@@ -284,7 +327,7 @@ def main():
             sys.exit(1)
 
     # ── Determine paths ──
-    config_dir, brew_dir, log_dir, htpasswd = detect_nginx_paths()
+    config_dir, available_dir, log_dir, htpasswd = detect_nginx_paths()
     cortex_repo = Path(os.environ.get("CORTEX_REPO", Path.home() / "hermes-cortex"))
     cortex_home = Path.home()
 
@@ -301,13 +344,38 @@ def main():
     # ── Port prefix ──
     port_prefix = os.environ.get("CORTEX_NGINX_PORT_PREFIX", "13")
 
-    # ── SSL discovery ──
-    domain = args.domain or os.environ.get("CORTEX_SSL_DOMAIN")
-    cert_path, key_path = discover_ssl_certs(
-        domain=domain,
-        explicit_cert=args.cert,
-        explicit_key=args.key,
-    )
+    # ── Read existing config (preserve ports/SSL unless forced) ──
+    cert_path, key_path = None, None
+    force_deploy = args.force or os.environ.get("CORTEX_FORCE_DEPLOY", "")
+    live_path = config_dir / "hermes-services.conf"
+    if not force_deploy and live_path.is_file():
+        try:
+            live_text = live_path.read_text()
+            # Extract existing port prefix
+            m = re.search(r'listen\s+(?:127\.0\.0\.1:)?(\d{2})(?=\d{3}\b)', live_text)
+            if m:
+                port_prefix = m.group(1)
+            # Extract existing SSL cert/key paths
+            m_cert = re.search(r'ssl_certificate\s+(\S+?);?\s*$', live_text, re.MULTILINE)
+            m_key = re.search(r'ssl_certificate_key\s+(\S+?);?\s*$', live_text, re.MULTILINE)
+            if m_cert and m_key:
+                ec = m_cert.group(1)
+                ek = m_key.group(1)
+                if ec != "__SSL_CERT__" and ek != "__SSL_CERT_KEY__":
+                    cert_path, key_path = ec, ek
+                    print(f"  ✓ Preserved SSL cert: {cert_path}")
+                    print(f"  ✓ Preserved port prefix: {port_prefix}xxx")
+        except (OSError, PermissionError):
+            pass
+
+    # ── SSL discovery (only if not preserved) ──
+    if not cert_path:
+        domain = args.domain or os.environ.get("CORTEX_SSL_DOMAIN")
+        cert_path, key_path = discover_ssl_certs(
+            domain=domain,
+            explicit_cert=args.cert,
+            explicit_key=args.key,
+        )
 
     # ── Process template ──
     if args.dry_run:
@@ -317,6 +385,7 @@ def main():
 
     print(f"  Template: {template}")
     print(f"  Config dir: {config_dir}")
+    print(f"  Available dir: {available_dir}")
     print(f"  Log dir: {log_dir}")
     print(f"  htpasswd: {htpasswd}")
     print(f"  Port prefix: {port_prefix}xxx")
@@ -335,27 +404,30 @@ def main():
     # ── Determine output path ──
     if args.output:
         output_path = Path(args.output)
+        symlink_path = None
     else:
-        output_path = config_dir / "hermes-services.conf"
+        output_path = available_dir / "hermes-services.conf"
+        symlink_path = config_dir / "hermes-services.conf" if config_dir != available_dir else None
 
     # ── Preserve live port prefix (like cortex-update.sh does) ──
-    if output_path.is_file() and not args.dry_run:
-        live_content = output_path.read_text()
-        live_match = re.search(r'listen\s+(?:127\.0\.0\.1:)?(\d{2})(\d{3})\s', live_content)
-        template_match = re.search(r'listen\s+(?:127\.0\.0\.1:)?(\d{2})(\d{3})\s', processed)
-        if live_match and template_match and live_match.group(1) != template_match.group(1):
-            old_prefix = template_match.group(1)
-            new_prefix = live_match.group(1)
-            processed = processed.replace(f":{old_prefix}", f":{new_prefix}")
-            print(f"  ✓ Preserved port range {old_prefix}xxx → {new_prefix}xxx")
+    if not args.dry_run:
+        live_path = symlink_path or output_path
+        if live_path.is_file():
+            live_content = live_path.read_text()
+            live_match = re.search(r'listen\s+(?:127\.0\.0\.1:)?(\d{2})(\d{3})\s', live_content)
+            template_match = re.search(r'listen\s+(?:127\.0\.0\.1:)?(\d{2})(\d{3})\s', processed)
+            if live_match and template_match and live_match.group(1) != template_match.group(1):
+                old_prefix = template_match.group(1)
+                new_prefix = live_match.group(1)
+                processed = processed.replace(f":{old_prefix}", f":{new_prefix}")
+                print(f"  ✓ Preserved port range {old_prefix}xxx → {new_prefix}xxx")
 
     # ── Write ──
     if args.dry_run:
         # Show diff-like summary
-        if output_path.is_file():
-            print(f"  → Would update: {output_path}")
-        else:
-            print(f"  → Would create: {output_path}")
+        print(f"  → Would write:  {output_path}")
+        if symlink_path:
+            print(f"  → Would symlink: {symlink_path} → {output_path}")
         # Show SSL substitution status
         if "__SSL_CERT__" in processed:
             ssl_count = processed.count("__SSL_CERT__")
@@ -370,31 +442,31 @@ def main():
             tmp.close()
             os.chmod(tmp.name, 0o644)
 
-            # Check if target needs sudo
-            try:
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.write_text("")  # test write access
-                shutil.copy2(tmp.name, str(output_path))
-            except (PermissionError, OSError):
-                # Fall back to sudo
-                subprocess.run(
-                    ["sudo", "cp", tmp.name, str(output_path)],
-                    check=True,
-                    timeout=30,
-                )
-                subprocess.run(
-                    ["sudo", "chmod", "644", str(output_path)],
-                    check=True,
-                    timeout=30,
-                )
-            finally:
-                os.unlink(tmp.name)
-        except Exception as e:
-            os.unlink(tmp.name)
-            print(f"✗ Write failed: {e}")
-            sys.exit(1)
+            # Write to available_dir (sites-available on Linux, servers/ on macOS)
+            def _write_file(src, dst):
+                try:
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, str(dst))
+                except (PermissionError, OSError):
+                    subprocess.run(["sudo", "cp", src, str(dst)], check=True, timeout=30)
+                    subprocess.run(["sudo", "chmod", "644", str(dst)], check=True, timeout=30)
 
-        print(f"  ✓ Deployed: {output_path}")
+            _write_file(tmp.name, output_path)
+            print(f"  ✓ Deployed: {output_path}")
+
+            # Symlink from sites-enabled -> sites-available on Linux
+            if symlink_path:
+                try:
+                    if symlink_path.is_symlink() or symlink_path.exists():
+                        symlink_path.unlink()
+                    symlink_path.parent.mkdir(parents=True, exist_ok=True)
+                    symlink_path.symlink_to(output_path)
+                    print(f"  ✓ Symlinked: {symlink_path} → {output_path}")
+                except (PermissionError, OSError):
+                    subprocess.run(["sudo", "ln", "-sf", str(output_path), str(symlink_path)], check=True, timeout=30)
+                    print(f"  ✓ Symlinked (sudo): {symlink_path} → {output_path}")
+        finally:
+            os.unlink(tmp.name)
 
     # ── Test and reload ──
     skip_nginx = os.environ.get("CORTEX_SKIP_NGINX", "")
