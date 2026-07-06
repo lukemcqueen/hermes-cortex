@@ -55,30 +55,34 @@ from mcp.types import Tool, TextContent, CallToolResult
 
 # ── Config Loading ────────────────────────────────────────────
 # Same pattern as report-agent-health.py and collect-agent-skills.sh
-CONFIG_FILE = Path.home() / ".hermes" / "hermes-inbox.conf"
+CONFIG_FILES = [
+    Path.home() / "hermes-cortex" / ".env",
+    Path.home() / ".hermes" / "hermes-inbox.conf",
+]
 
 inbox_url = os.environ.get("CORTEX_INBOX_URL", "")
 inbox_auth = os.environ.get("CORTEX_INBOX_AUTH", "")
 agent_name = os.environ.get("AGENT_NAME", "")
 
-if CONFIG_FILE.exists():
-    try:
-        for line in CONFIG_FILE.read_text().splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" in line:
-                k, v = line.split("=", 1)
-                k = k.strip()
-                v = v.strip().strip("'\"")
-                if k == "CORTEX_INBOX_URL" and not inbox_url:
-                    inbox_url = v
-                elif k == "CORTEX_INBOX_AUTH" and not inbox_auth:
-                    inbox_auth = v
-                elif k == "AGENT_NAME" and not agent_name:
-                    agent_name = v
-    except Exception as e:
-        log.warning("Failed to read %s: %s", CONFIG_FILE, e)
+for CONFIG_FILE in CONFIG_FILES:
+    if CONFIG_FILE.exists():
+        try:
+            for line in CONFIG_FILE.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    k = k.strip()
+                    v = v.strip().strip("'\"")
+                    if k == "CORTEX_INBOX_URL" and not inbox_url:
+                        inbox_url = v
+                    elif k == "CORTEX_INBOX_AUTH" and not inbox_auth:
+                        inbox_auth = v
+                    elif k == "AGENT_NAME" and not agent_name:
+                        agent_name = v
+        except Exception as e:
+            log.warning(f"Failed to read {CONFIG_FILE}: {e}")
 
 # Derive base URL: strip /send or /api/inbox from the configured URL
 if inbox_url:

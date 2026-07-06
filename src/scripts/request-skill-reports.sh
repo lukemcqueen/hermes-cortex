@@ -23,7 +23,14 @@ REGISTRY_FILE="$STATE_DIR/agent-registry.json"
 # ── Config: source inbox credentials ──
 INBOX_URL="https://your-domain.com:13004/send"
 INBOX_AUTH=""
-CONFIG_FILE="${HOME}/.hermes/hermes-inbox.conf"
+
+# Load config — try .env first, fallback to hermes-inbox.conf
+CONFIG_FILE=""
+if [[ -f "${HOME}/hermes-cortex/.env" ]]; then
+    CONFIG_FILE="${HOME}/hermes-cortex/.env"
+elif [[ -f "${HOME}/.hermes/hermes-inbox.conf" ]]; then
+    CONFIG_FILE="${HOME}/.hermes/hermes-inbox.conf"
+fi
 if [[ -f "$CONFIG_FILE" ]]; then
     source "$CONFIG_FILE"
     INBOX_URL="${CORTEX_INBOX_URL:-$INBOX_URL}/send"
@@ -116,8 +123,8 @@ Instructions:
     no_agent=true \
     deliver=local
 
-  Then fill in ~/.hermes/hermes-inbox.conf with your Moses
-  inbox credentials (see the template file).
+  Then fill in ~/hermes-cortex/.env with your Moses
+  inbox credentials (see .env.example in the repo).
 
 Reply to this message with a summary of any custom skills found,
 or with 'none' if you have nothing new to report.

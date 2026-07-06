@@ -47,6 +47,15 @@ ENV_FILE="${REPO_DIR}/deploy/hermes-services.env"
 if [[ -f "$ENV_FILE" ]]; then
   set -a; source "$ENV_FILE"; set +a
 fi
+
+# ── Cortex env file location ──
+# Single source of truth: ~/hermes-cortex/.env (hidden, gitignored).
+# ⚠ CRITICAL: ~/.hermes/.env is Hermes Agent's own config — never write or symlink.
+CORTEX_ENV_FILE="${REPO_DIR}/.env"
+# Also source it if present (overrides deploy env for inbox vars)
+if [[ -f "${HOME}/.hermes/.env" ]]; then
+  set -a; source "${HOME}/.hermes/.env"; set +a
+fi
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes-cortex}"
 STATE_DIR="${HERMES_HOME}/state"
 LAST_COMMIT_FILE="${STATE_DIR}/update-commit"
@@ -831,7 +840,7 @@ deploy_nginx_configs() {
         error "Fix: SSL cert path issue."
         if [[ -z "${ssl_cert:-}" ]]; then
           error "  CORTEX_SSL_CERT_PATH is not set or no certs found."
-          error "  Set in ~/.hermes/models.env:"
+          error "  Set in ~/hermes-cortex/.env:"
           error "    CORTEX_SSL_CERT_PATH=/path/to/fullchain.pem"
           error "    CORTEX_SSL_CERT_KEY_PATH=/path/to/privkey.pem"
         else

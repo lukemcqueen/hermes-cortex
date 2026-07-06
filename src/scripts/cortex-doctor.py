@@ -35,7 +35,7 @@ IS_LINUX = sys.platform == "linux"
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", HOME / ".hermes"))
 CORTEX_HOME = Path(os.environ.get("HERMES_CORTEX_HOME", HOME / ".hermes-cortex"))
 JOBS_FILE = HERMES_HOME / "cron" / "jobs.json"
-MODELS_ENV = HERMES_HOME / "models.env"
+MODELS_ENV = HOME / "hermes-cortex" / ".env"
 CONFIG_FILE = HERMES_HOME / "config.yaml"
 
 # Find cortex repo
@@ -551,9 +551,9 @@ def check_system(res):
 
 
 def check_config(res):
-    """6. Config consistency: models.env var cross-reference."""
+    """6. Config consistency: env var cross-reference."""
     if not MODELS_ENV.exists():
-        res.add("Config (models.env)", "WARN", "Not found", "Create ~/.hermes/models.env with env vars")
+        res.add("Config (.env)", "WARN", "Not found", "Create ~/hermes-cortex/.env with env vars")
         return
 
     text = MODELS_ENV.read_text()
@@ -567,15 +567,15 @@ def check_config(res):
             defined[m.group(1)] = line
 
     if not defined:
-        res.add("Config (models.env)", "WARN", "File exists but no exports defined",
+        res.add("Config (.env)", "WARN", "File exists but no exports defined",
                  "Add JUDGE_MODEL, EMBEDDING_MODEL etc.")
         return
 
     consumers_by_var = find_script_consumers()
     for var, consumer_names in consumers_by_var.items():
         if var not in defined:
-            res.add(f"Config ({var})", "WARN", f"Not defined in models.env",
-                     f"Add: export {var}=<model-name> to ~/.hermes/models.env")
+            res.add(f"Config ({var})", "WARN", f"Not defined in .env",
+                     f"Add: export {var}=<model-name> to ~/hermes-cortex/.env")
         else:
             if consumer_names:
                 res.add(f"Config ({var})", "PASS", f"defined, {len(consumer_names)} consumer(s) found")

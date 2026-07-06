@@ -296,7 +296,7 @@ Every file, directory, config key, env var, and function must be intentional. If
 
 Specific checks I run during every review pass:
 - **Config file with dead keys** → values that no script reads → delete the keys or wire them
-- **Env var in models.env with no consumer** → wire a reader or remove the var
+- **Env var in .env with no consumer** → wire a reader or remove the var
 - **Script in src/scripts/ not in cortex-update.sh MAP** → register it or move it to archive/
 - **Helper function with one caller that's < 10 lines** → inline it (shared modules earn their place)
 - **Flag in --help output that isn't handled in code** → implement it or remove it from help

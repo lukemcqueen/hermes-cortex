@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # cleanup-ollama.sh — remove all Ollama models except the embedding model
-# Reads EMBEDDING_MODEL from ~/.hermes/models.env (survives cortex-update.sh).
+# Reads EMBEDDING_MODEL from ~/hermes-cortex/.env
 # Default: nomic-embed-text:v1.5
 
 # Source model configuration
-MODELS_ENV="${HOME}/.hermes/models.env"
+MODELS_ENV="${HOME}/hermes-cortex/.env"
 if [ -f "$MODELS_ENV" ]; then
   set -a
   source "$MODELS_ENV"

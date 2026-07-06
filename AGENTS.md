@@ -32,11 +32,11 @@ Hermes Cortex is a **public installer and skill set** for
 Hermes Cortex ships a **two-model stack** plus a unified env-var configuration
 system:
 
-### Unified Model Configuration (`~/.hermes/models.env`)
+### Single Env File (`~/hermes-cortex/.env`)
 
-All Ollama model names are configured in `~/.hermes/models.env`. This file
-**survives `cortex-update.sh`** (it's outside the repo) — set your custom
-models there once and they never get reverted.
+All environment variables live in `~/hermes-cortex/.env` (hidden, gitignored).
+This is the single source of truth for Cortex — no symlinks, no separate files.
+⚠ `~/.hermes/.env` is Hermes Agent's own config and is never touched by Cortex.
 
 | Env var | Purpose | Default |
 |---------|---------|---------|
@@ -47,17 +47,17 @@ models there once and they never get reverted.
 
 Resolution priority (every script follows this):
 1. **Runtime env var** — `JUDGE_MODEL=mannix/qwen:7b python3 script.py`
-2. **`~/.hermes/models.env`** — persistant per-agent config, never overwritten
+2. **`~/hermes-cortex/.env`** — persistent per-agent config, never overwritten
 3. **Script's hardcoded default** — last resort fallback shipped with the repo
 
-To change a model across all tools, edit `~/.hermes/models.env`:
+To change a model across all tools, edit `~/hermes-cortex/.env`:
 
 ```bash
 # Example: Titus uses a bigger judge model
-echo 'JUDGE_MODEL=mannix/qwen2.5-coder:7b-iq3_xs' >> ~/.hermes/models.env
+echo 'JUDGE_MODEL=mannix/qwen2.5-coder:7b-iq3_xs' >> ~/hermes-cortex/.env
 ```
 
-**Scripts that respect `models.env`:**
+**Scripts that respect `.env`:**
 
 | Script | Env var read | Deployed to |
 |--------|-------------|-------------|
