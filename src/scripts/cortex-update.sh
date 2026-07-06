@@ -772,6 +772,59 @@ deploy_nginx_configs() {
       sed -i '/^__SKIP_SERVER__/s/__SKIP_SERVER__//' "$tmpfile"
       info "  SSL enabled — ${ssl_cert}"
     fi
+
+    # ── Pre-deploy nginx config test ──
+    # Test the new config against the tmpfile BEFORE overwriting the live one.
+    # If the test fails, the existing config is preserved and a clear error
+    # with actionable guidance is shown.
+    if [[ -f "$conf_dst" ]]; then
+      local nginx_test_out nginx_test_cmd
+      if [[ "$brew_dir" == /etc/* ]]; then
+        nginx_test_cmd="sudo -n nginx -t -c '${tmpfile}' 2>&1"
+      else
+        nginx_test_cmd="nginx -t -c '${tmpfile}' 2>&1"
+      fi
+      nginx_test_out=$(eval "$nginx_test_cmd") || {
+        error ""
+        error "╔══════════════════════════════════════════════════════════════╗"
+        error "║  nginx config test FAILED — NOT deploying                  ║"
+        error "║  Existing config preserved at: ${conf_dst} ║"
+        error "╚══════════════════════════════════════════════════════════════╝"
+        error ""
+        error "nginx -t output:"
+        while IFS= read -r line; do
+          error "  ${line}"
+        done <<< "$nginx_test_out"
+        # Check for common issues and show actionable guidance
+        if grep -q 'ssl_certificate\|__SSL_CERT__\|__SSL_CERT_KEY__' <<< "$nginx_test_out"; then
+          error ""
+          error "Fix: SSL cert path issue."
+          if [[ -z "${ssl_cert:-}" ]]; then
+            error "  CORTEX_SSL_CERT_PATH is not set or no certs found."
+            error "  Set in ~/.hermes/models.env:"
+            error "    CORTEX_SSL_CERT_PATH=/path/to/fullchain.pem"
+            error "    CORTEX_SSL_CERT_KEY_PATH=/path/to/privkey.pem"
+          else
+            error "  Cert path set but nginx cannot read it: ${ssl_cert}"
+            error "  Check file permissions and path correctness."
+          fi
+        fi
+        if grep -q 'htpasswd\|__HTPASSWD_FILE__' <<< "$nginx_test_out"; then
+          error ""
+          error "Fix: htpasswd file issue."
+          error "  Expected path: ${htpasswd}"
+          error "  Generate: sudo htpasswd -c ${htpasswd} username"
+        fi
+        if grep -q 'Cannot allocate memory' <<< "$nginx_test_out"; then
+          error ""
+          error "Fix: System memory low. Free memory or increase swap."
+        fi
+        rm -f "$tmpfile"
+        return 1
+      }
+      info "  nginx config test passed (pre-deploy)"
+    fi
+
     if command -v sudo &>/dev/null && [[ "$config_dir" == /etc/* ]]; then
       # ── Preserve custom port ranges (12xxx Joseph, 14xxx Esther, etc.) ──
       if [[ -f "$conf_dst" ]]; then
