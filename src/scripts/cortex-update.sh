@@ -840,7 +840,7 @@ deploy_nginx_configs() {
         error "Fix: SSL cert path issue."
         if [[ -z "${ssl_cert:-}" ]]; then
           error "  CORTEX_SSL_CERT_PATH is not set or no certs found."
-          error "  Set in ~/.hermes/models.env:"
+          error "  Set in ~/hermes-cortex/.env:"
           error "    CORTEX_SSL_CERT_PATH=/path/to/fullchain.pem"
           error "    CORTEX_SSL_CERT_KEY_PATH=/path/to/privkey.pem"
         else

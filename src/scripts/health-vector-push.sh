@@ -23,7 +23,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 
-# Load config — try new hermes-cortex.env first, fallback to hermes-inbox.conf
+# Load config — try .env first, fallback to hermes-inbox.conf
 CONFIG_FILE=""
 if [[ -f "${HOME}/hermes-cortex/.env" ]]; then
     CONFIG_FILE="${HOME}/hermes-cortex/.env"

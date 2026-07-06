@@ -2,17 +2,18 @@
 """
 hermes_models.py — Shared model configuration loader for all Hermes Cortex scripts.
 
-All Ollama model names used across the project are configured in
-~/.hermes/models.env, which survives cortex-update.sh (it's outside the repo).
-This module provides a single importable function that every script uses,
-replacing scattered hardcoded constants with a unified lookup.
+All environment variables used across the project are configured in
+~/hermes-cortex/.env, which is gitignored and never overwritten by
+cortex-update.sh. This module provides a single importable function
+that every script uses, replacing scattered hardcoded constants with
+a unified lookup.
 
 Resolution priority (highest to lowest):
-  1. ~/.hermes/models.env file — persistent per-agent config, never overwritten
-  2. Runtime environment variable (os.environ) — for one-off overrides
+  1. Runtime environment variable (os.environ) — for one-off overrides
+  2. ~/hermes-cortex/.env — persistent per-agent config, never overwritten
   3. Hardcoded default — shipped with the repo, always the fallback
 
-Defined env vars (see ~/.hermes/models.env for current values):
+Defined env vars (see ~/hermes-cortex/.env for current values):
   JUDGE_MODEL       — LLM-as-judge scorer (default: qwen2.5-coder:3b)
   EMBEDDING_MODEL   — Text embeddings (default: nomic-embed-text)
   CODING_MODEL      — Code generation via offline_code (default: auto-detected)
@@ -27,12 +28,12 @@ Usage:
 
 import os
 
-_MODELS_ENV_PATH = os.path.expanduser("~/.hermes/models.env")
+_MODELS_ENV_PATH = os.path.expanduser("~/hermes-cortex/.env")
 _CACHE: dict | None = None
 
 
 def load_models_env() -> dict[str, str]:
-    """Load model env vars from ~/.hermes/models.env.
+    """Load env vars from ~/hermes-cortex/.env.
 
     Returns a dict of KEY=value pairs.  Non-existent or unreadable files
     return an empty dict silently.  Results are cached after first read.
@@ -65,7 +66,7 @@ def load_models_env() -> dict[str, str]:
 
 
 def get_model(env_var: str, default: str) -> str:
-    """Resolve a model name from env var → models.env → default.
+    """Resolve a model name from env var → .env → default.
 
     Args:
         env_var: Name of the environment variable (e.g. "JUDGE_MODEL").
@@ -74,11 +75,16 @@ def get_model(env_var: str, default: str) -> str:
     Returns:
         The resolved model name string.
     """
+    # Runtime env var wins first (one-off overrides)
+    runtime = os.environ.get(env_var)
+    if runtime:
+        return runtime
+    # Then .env file
     models_env = load_models_env()
-    return models_env.get(env_var) or os.environ.get(env_var) or default
+    return models_env.get(env_var) or default
 
 
 def _clear_cache() -> None:
-    """Clear the cached models.env contents (for testing)."""
+    """Clear the cached .env contents (for testing)."""
     global _CACHE
     _CACHE = None

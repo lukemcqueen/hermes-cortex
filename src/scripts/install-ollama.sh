@@ -155,7 +155,7 @@ wait_for_ollama() {
 
 pull_embedding_model() {
   # Source model config for EMBEDDING_MODEL (survives cortex-update.sh)
-  local models_env="${HOME}/.hermes/models.env"
+  local models_env="${HOME}/hermes-cortex/.env"
   [ -f "$models_env" ] && source "$models_env" 2>/dev/null || true
   local model="${1:-${EMBEDDING_MODEL:-nomic-embed-text:v1.5}}"
   if ollama list 2>/dev/null | grep -q "$model"; then
