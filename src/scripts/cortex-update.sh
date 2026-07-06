@@ -202,6 +202,7 @@ register "src/scripts/cost_store.py"               "${HERMES_HOME}/scripts/cost_
 register "src/scripts/install-cron-cost-tracking.py" "${HERMES_HOME}/scripts/install-cron-cost-tracking.py"
 
 # Health monitoring
+register "src/scripts/_port_arbitration.py"        "${HERMES_HOME}/scripts/_port_arbitration.py"
 register "src/scripts/health-server.py"            "${HERMES_HOME}/scripts/health-server.py" "health-server"
 register "src/scripts/health-vector.py"            "${HERMES_HOME}/scripts/health-vector.py"
 register "src/scripts/report-agent-health.py"      "${HERMES_HOME}/scripts/report-agent-health.py"
@@ -1133,6 +1134,7 @@ main() {
         restart_langfuse)    restart_langfuse ;;
         restart_dashboard)   restart_dashboard ;;
         restart_agent_inbox) restart_agent_inbox ;;
+        restart_health_server) restart_health_server ;;
         *)                   warn "Unknown restart command: $cmd" ;;
       esac
     done
