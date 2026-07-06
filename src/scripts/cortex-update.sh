@@ -747,25 +747,27 @@ deploy_nginx_configs() {
       -e "s|__CORTEX_HOME__|${HOME}|g" \
       -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
       -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
-      -e "/listen[[:space:]]/s|127\.0\.0\.1:13\([0-9][0-9][0-9]\)|127.0.0.1:${port_prefix}\\1|g" > "$tmpfile"
+      -e "/listen[[:space:]]/s|127\.0\.0\.1:13\([0-9][0-9][0-9]\)|127.0.0.1:${port_prefix}\1|g" > "$tmpfile"
 
-    # ── Activate SSL when certs are available ──
-    # The template has SSL listen + certs commented out (opt-in).
-    # When certs are resolved, uncomment + enable them, and
-    # comment out the non-SSL loopback listen (can't have both).
-    # Only activates in active server blocks (not inside #server { ... })
-    if [[ -n "$ssl_cert" ]]; then
+    # ── When SSL certs are available: enable SSL on all server blocks ──
+    # The template ships with loopback-only (listen 127.0.0.1:PORT;)
+    # and commented-out SSL hints. When certs are found, we switch to
+    # SSL mode: replace loopback listen with PORT ssl + cert paths.
+    # Only activates in ACTIVE server blocks (not inside #server { ... })
+    if [[ -n "$ssl_cert" && -n "$ssl_key" ]]; then
       # Mark lines inside commented-out server blocks so we skip them
       sed -i '/^[[:space:]]*#server {/,/^[[:space:]]*#}/s/^/__SKIP_SERVER__/' "$tmpfile"
-      sed -i \
-        -e '/__SKIP_SERVER__/!s|^\([[:space:]]*\)# *listen 13\([0-9][0-9][0-9]\) ssl;|\1listen '"${port_prefix}"'\2 ssl;|' \
-        -e '/__SKIP_SERVER__/!s|^\([[:space:]]*\)# *ssl_certificate\s\+/etc/letsencrypt/live/your-domain.com/fullchain.pem;|\1ssl_certificate     '"${ssl_cert}"';|' \
-        -e '/__SKIP_SERVER__/!s|^\([[:space:]]*\)# *ssl_certificate_key\s\+/etc/letsencrypt/live/your-domain.com/privkey.pem;|\1ssl_certificate_key '"${ssl_key}"';|' \
-        -e '/__SKIP_SERVER__/!s|^\([[:space:]]*\)\(listen 127\.0\.0\.1:[0-9]\+\)|\1# \2|' \
-        "$tmpfile"
-      # Remove markers
+      # Step 1: Replace loopback listen with SSL listen (skip marked blocks)
+      sed -i '/__SKIP_SERVER__/!s|^\([[:space:]]*\)listen 127\.0\.0\.1:\([0-9][0-9][0-9][0-9][0-9]\);|\1listen \2 ssl;|' "$tmpfile"
+      # Step 2: Add SSL cert directives after each active SSL listen
+      sed -i '/__SKIP_SERVER__/!s|^\([[:space:]]*\)listen [0-9][0-9][0-9][0-9][0-9] ssl;|\0\
+\1ssl_session_cache   shared:SSL:10m;\
+\1ssl_session_timeout 10m;\
+\1ssl_certificate     '"${ssl_cert}"';\
+\1ssl_certificate_key '"${ssl_key}"';|' "$tmpfile"
+      # Remove skip markers
       sed -i '/^__SKIP_SERVER__/s/__SKIP_SERVER__//' "$tmpfile"
-      info "  SSL activated: ${ssl_cert}"
+      info "  SSL enabled — ${ssl_cert}"
     fi
     if command -v sudo &>/dev/null && [[ "$config_dir" == /etc/* ]]; then
       # ── Preserve custom port ranges (12xxx Joseph, 14xxx Esther, etc.) ──
