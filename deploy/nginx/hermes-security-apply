@@ -57,6 +57,7 @@ BACKUP_DIR="/etc/hermes-cortex-backups/$(date +%Y%m%d-%H%M%S)"
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
 BLOCKED_IPS="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
+ALLOW_IPS_MANUAL="${NGINX_DIR}/allow-ips-manual.conf"
 BADBOTS_CONF="${CORTEX_REPO}/deploy/nginx/nginx-badbots.conf"
 ZONE_DEFS="${NGINX_DIR}/hermes-zone-defs.conf"
 SERVICES_CONF="${NGINX_DIR}/sites-enabled/hermes-services.conf"
@@ -216,6 +217,15 @@ if [ -f "$BLOCKED_IPS" ]; then
     grep -vxF -f <(sed -n 's/^deny //;s/;$//p' "$BLOCK_FILE" 2>/dev/null) \
     > "$NEW_IPS" || true
 
+  # Strip any IPs that are manually allow-listed (fail2ban protection override)
+  if [ -f "$ALLOW_IPS_MANUAL" ]; then
+    STRIPPED_IPS=$(mktemp)
+    grep -oP 'allow\s+\K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' "$ALLOW_IPS_MANUAL" 2>/dev/null | \
+      grep -vxF -f - "$NEW_IPS" > "$STRIPPED_IPS" || true
+    mv "$STRIPPED_IPS" "$NEW_IPS"
+    echo "  ✓ Stripped allow-listed IPs from block list"
+  fi
+
   ADDED=$(wc -l < "$NEW_IPS")
   if [ "$ADDED" -gt 0 ]; then
     sed 's/^/deny /; s/$/;/' "$NEW_IPS" >> "$BLOCK_FILE"
@@ -225,10 +235,12 @@ if [ -f "$BLOCKED_IPS" ]; then
   echo "  ✓ ${ADDED} new IPs added"
 fi
 
-# Ensure blocked_ips.conf is included in the services config
+# Ensure blocked_ips.conf and allow-ips-manual.conf are included in services config
 if ! grep -q "include blocked_ips.conf" "$SERVICES_CONF" 2>/dev/null; then
-  # Add it to every server block
   echo "  ⚠ blocked_ips.conf not yet included in nginx config — add manually or through install.sh"
+fi
+if ! grep -q "include allow-ips-manual.conf" "$SERVICES_CONF" 2>/dev/null; then
+  echo "  ⚠ allow-ips-manual.conf not included in nginx config — update cortex-update.sh or template"
 fi
 
 # ── Step 5: Install fail2ban filter ──

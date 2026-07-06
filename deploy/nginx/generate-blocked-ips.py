@@ -62,6 +62,24 @@ def main():
     # Find new IPs not yet in conf
     new_ips = [ip for ip in valid if ip not in denied]
 
+    # Filter out allow-listed IPs (manual override, fail2ban protection)
+    allow_ips_manual = "/etc/nginx/allow-ips-manual.conf"
+    manual_allowed = set()
+    if os.path.exists(allow_ips_manual):
+        with open(allow_ips_manual) as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("allow ") and line.endswith(";"):
+                    ip = line[6:].rstrip(";").strip()
+                    if IPV4_RE.match(ip):
+                        manual_allowed.add(ip)
+        if manual_allowed:
+            before = len(new_ips)
+            new_ips = [ip for ip in new_ips if ip not in manual_allowed]
+            stripped = before - len(new_ips)
+            if stripped:
+                print(f"📋 Stripped {stripped} allow-listed IP(s) from deploy")
+
     if not new_ips:
         print("No new IPs to deploy")
         return
