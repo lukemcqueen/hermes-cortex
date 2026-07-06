@@ -7,15 +7,18 @@ no_agent watchdog pattern:
 
 Reads dashboard health at http://127.0.0.1:8901/api/health
 and POSTs the structured result to Moses's agent inbox for
+dashboard consumption. ALSO checks the external health URL
+(Principle #14 — never report healthy from localhost alone).
+
+Reads dashboard health at http://127.0.0.1:8901/api/health
+and POSTs the structured result to Moses's agent inbox for
 dashboard consumption.
 
-Moses reads these from the inbox and merges them into
-agent-health-data.json.
-
 Configuration (env vars or ~/.hermes/hermes-inbox.conf):
-  CORTEX_INBOX_URL   — Moses inbox MCP endpoint (POST via internal API)
-  CORTEX_INBOX_AUTH  — "user:pass" for Basic Auth
-  AGENT_NAME        — name to report as (default: hostname)
+  CORTEX_INBOX_URL     — Moses inbox MCP endpoint (POST via internal API)
+  CORTEX_INBOX_AUTH    — "user:pass" for Basic Auth
+  AGENT_NAME           — name to report as (default: hostname)
+  EXTERNAL_HEALTH_URL  — external URL to verify reachability (Principle #14)
 
 Cron setup on the remote agent:
   cronjob action=create schedule="every 10m" \
@@ -28,6 +31,7 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import sys
 import time
 from datetime import datetime, timezone
@@ -47,6 +51,7 @@ TIMEOUT = 15
 inbox_url = os.environ.get("CORTEX_INBOX_URL", "")
 inbox_auth = os.environ.get("CORTEX_INBOX_AUTH", "")
 agent_name = os.environ.get("AGENT_NAME", "")
+external_health_url = os.environ.get("EXTERNAL_HEALTH_URL", "")
 
 if CONFIG_FILE.exists():
     try:
@@ -63,6 +68,8 @@ if CONFIG_FILE.exists():
                         inbox_url = v
                     elif k == "CORTEX_INBOX_AUTH" and not inbox_auth:
                         inbox_auth = v
+                    elif k == "EXTERNAL_HEALTH_URL" and not external_health_url:
+                        external_health_url = v
     except Exception:
         pass
 
@@ -85,6 +92,44 @@ def fetch_local_health() -> dict | None:
             return json.loads(resp.read().decode())
     except Exception as e:
         return {"healthy": False, "error": str(e), "server": agent_name}
+
+
+# ── External reachability check (Principle #14) ────────────────
+
+def check_external_reachability() -> dict:
+    """Test TCP connectivity to the external health URL.
+
+    Returns dict with reachable, url_tested, detail fields.
+    Used to verify the health endpoint is externally accessible,
+    not just locally running.
+    """
+    result = {
+        "reachable": False,
+        "url_tested": external_health_url or "(not configured)",
+        "detail": "",
+    }
+    if not external_health_url:
+        result["detail"] = "EXTERNAL_HEALTH_URL not configured — skipping external check"
+        return result
+
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(external_health_url)
+        host = parsed.hostname or "unknown"
+        port = parsed.port or 443
+
+        # Test TCP connectivity — validates DNS + firewall + service listening
+        addrs = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+        sock = socket.create_connection((host, port), timeout=10)
+        sock.close()
+        result["reachable"] = True
+        result["detail"] = f"TCP connected to {host}:{port}"
+    except socket.gaierror as e:
+        result["detail"] = f"DNS resolution failed: {e}"
+    except (socket.timeout, OSError) as e:
+        result["detail"] = f"TCP connection failed: {e}"
+
+    return result
 
 
 # ── Fingerprint ────────────────────────────────────────────────
@@ -116,11 +161,28 @@ def build_report(data: dict | None) -> dict:
         }
 
     services = ((data.get("checks") or {}).get("services") or {}).get("items", [])
-    issues = data.get("issues", [])
+    issues = list(data.get("issues", []))
 
     # The health endpoint is the Cortex dashboard (:8901) which uses "overall"
     # instead of the health-server "healthy" field. Accept both.
     is_healthy = data.get("healthy") or (data.get("overall") == "healthy")
+
+    # ── Check external reachability (Principle #14) ──
+    ext = check_external_reachability()
+    external_reachable = ext.get("reachable", False)
+    if external_health_url and not external_reachable:
+        is_healthy = False
+        issues.append({
+            "severity": "critical" if issues else "warning",
+            "check": "external_reachability",
+            "detail": ext.get("detail", "External health URL unreachable"),
+        })
+    elif external_health_url and external_reachable:
+        issues.append({
+            "severity": "info",
+            "check": "external_reachability",
+            "detail": ext.get("detail", "External health URL reachable"),
+        })
 
     return {
         "type": "health-report",
@@ -131,12 +193,13 @@ def build_report(data: dict | None) -> dict:
         "hostname": data.get("hostname", agent_name),
         "timestamp": now_iso,
         "issues": issues,
-        "issue_count": len(issues),
+        "issue_count": len([i for i in issues if i.get("severity") in ("critical", "high", "warning")]),
         "critical_count": sum(1 for i in issues if i.get("severity") == "critical"),
         "services": services,
         "service_summary": f"{sum(1 for s in services if s.get('status') == 'running')}/{len(services)} up",
         "uptime_seconds": data.get("uptime_seconds", 0),
         "resources": data.get("checks", {}).get("resources", {}).get("data", {}),
+        "external_reachability": ext,
     }
 
 
@@ -182,7 +245,7 @@ def main():
         except Exception:
             pass
 
-    # Build report
+    # Build report (includes external reachability check)
     report = build_report(data)
 
     if fp == prev_fp and data and data.get("healthy", False):
@@ -198,7 +261,8 @@ def main():
 
         # Output for logging
         status = "healthy" if report["healthy"] else f"unhealthy ({report['issue_count']} issues)"
-        print(f"Reported {agent_name} health: {status}")
+        ext_status = "ext=ok" if report.get("external_reachability", {}).get("reachable") else "ext=unchecked"
+        print(f"Reported {agent_name} health: {status} {ext_status}")
 
 
 if __name__ == "__main__":
