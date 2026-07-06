@@ -8,10 +8,10 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 HOOK_DIR="${REPO_DIR}/.git/hooks"
 HOOK_PATH="${HOOK_DIR}/post-commit"
-NOTIFY_SCRIPT="${REPO_DIR}/scripts/post-commit-notify.sh"
+NOTIFY_SCRIPT="${REPO_DIR}/src/scripts/post-commit-notify.sh"
 
 if [ ! -d "$HOOK_DIR" ]; then
   echo "✗ No .git/hooks directory at ${HOOK_DIR}"
@@ -28,11 +28,11 @@ cat > "$HOOK_PATH" <<'HOOK'
 #!/usr/bin/env bash
 set -euo pipefail
 REPO_DIR="$(cd "$(git rev-parse --git-dir 2>/dev/null)/.." && pwd 2>/dev/null)"
-if [ -n "$REPO_DIR" ] && [ -f "${REPO_DIR}/scripts/post-commit-notify.sh" ]; then
-  bash "${REPO_DIR}/scripts/post-commit-notify.sh" &
+if [ -n "$REPO_DIR" ] && [ -f "${REPO_DIR}/src/scripts/post-commit-notify.sh" ]; then
+  bash "${REPO_DIR}/src/scripts/post-commit-notify.sh" &
 fi
 HOOK
 
 chmod +x "$HOOK_PATH"
 echo "✓ Installed post-commit hook at ${HOOK_PATH}"
-echo "  → Runs scripts/post-commit-notify.sh after every commit"
+echo "  → Runs src/scripts/post-commit-notify.sh after every commit"
