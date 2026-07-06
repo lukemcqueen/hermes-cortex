@@ -17,12 +17,12 @@
 #    - State file says we already notified for this commit
 #
 #  Install as git post-commit hook:
-#    scripts/install-post-commit-hook.sh
+#    cp src/scripts/post-commit-notify.sh ~/.hermes-cortex/hooks/post-commit
+#    chmod +x ~/.hermes-cortex/hooks/post-commit
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
 # ── Paths ──
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATE_FILE="${HOME}/.hermes/state/post-commit-notify"
 LOG_FILE="${STATE_FILE}.log"
 CONFIG_FILE="${HOME}/.hermes/hermes-inbox.conf"
@@ -30,11 +30,11 @@ CONFIG_FILE="${HOME}/.hermes/hermes-inbox.conf"
 # ── Helpers ──
 log()  { echo "[notify] $*" >> "$LOG_FILE"; }
 
-# ── Step 1: Check we're in a git repo ──
-cd "$REPO_DIR" || exit 0
+# ── Step 1: Resolve repo root from cwd (post-commit runs in repo) ──
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
   exit 0
 fi
+REPO_DIR=$(git rev-parse --show-toplevel 2>/dev/null || true)
 
 # ── Step 2: Get commit info ──
 SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -53,63 +53,45 @@ fi
 
 # ── Step 4: Load inbox config (same pattern as inbox-mcp.py) ──
 # Priority: env var > config file
+# Note: Python-style inline comment stripping (value%%\#*) must use
+# CLEAN pattern syntax — no backslash-escaped characters that bash
+# misinterprets inside double-quoted patterns with #-containing URLs.
 INBOX_URL="${CORTEX_INBOX_URL:-}"
 INBOX_FALLBACK_URL="${CORTEX_INBOX_FALLBACK_URL:-}"
 INBOX_THIRD_URL="${CORTEX_INBOX_THIRD_URL:-}"
 INBOX_AUTH="${CORTEX_INBOX_AUTH:-}"
 AGENT_NAME="${AGENT_NAME:-}"
 
-# Parse config file line-by-line (cannot use bash source — config KEY=VALUE
-# without export, and values may contain special characters)
-if [ -f "$CONFIG_FILE" ]; then
-  while IFS='=' read -r key value || [ -n "$key" ]; do
-    # Trim whitespace
-    key="${key// /}"
-    key="${key//	/}"
+# Parse config file line-by-line using process substitution to avoid subshell
+while IFS='=' read -r key value || [ -n "$key" ]; do
+    # Trim whitespace from key
+    key="${key//[[:space:]]/}"
     # Skip comments and blank lines
+    case "$key" in ''|'#'*) continue ;; esac
+    # Strip inline comments from value (hash preceded by space)
+    value="${value%% #*}"
+    # Trim leading/trailing whitespace from value
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    
     case "$key" in
-      ''|'#'*) continue ;;
-    esac
-    # Strip inline comments from value
-    value="${value%%\#*}"
-    value="${value%"${value##[! ]}"}"   # trim leading whitespace
-    value="${value%"${value##*[! ]}"}"  # trim trailing whitespace
-    # Strip surrounding quotes
-    value="${value%\'}"; value="${value#\'}"
-    value="${value%\"}"; value="${value#\"}"
-
-    case "$key" in
-      CORTEX_INBOX_URL)
+      CORTEX_INBOX_URL|MOSES_INBOX_URL)
         [ -z "$INBOX_URL" ] && INBOX_URL="$value"
         ;;
-      CORTEX_INBOX_FALLBACK_URL)
+      CORTEX_INBOX_FALLBACK_URL|MOSES_INBOX_FALLBACK_URL)
         [ -z "$INBOX_FALLBACK_URL" ] && INBOX_FALLBACK_URL="$value"
         ;;
-      CORTEX_INBOX_THIRD_URL)
+      CORTEX_INBOX_THIRD_URL|MOSES_INBOX_THIRD_URL)
         [ -z "$INBOX_THIRD_URL" ] && INBOX_THIRD_URL="$value"
         ;;
-      CORTEX_INBOX_AUTH)
+      CORTEX_INBOX_AUTH|MOSES_INBOX_AUTH)
         [ -z "$INBOX_AUTH" ] && INBOX_AUTH="$value"
         ;;
       AGENT_NAME)
         [ -z "$AGENT_NAME" ] && AGENT_NAME="$value"
         ;;
-      # Support deprecated MOSES_* keys
-      MOSES_INBOX_URL)
-        [ -z "$INBOX_URL" ] && INBOX_URL="$value"
-        ;;
-      MOSES_INBOX_FALLBACK_URL)
-        [ -z "$INBOX_FALLBACK_URL" ] && INBOX_FALLBACK_URL="$value"
-        ;;
-      MOSES_INBOX_THIRD_URL)
-        [ -z "$INBOX_THIRD_URL" ] && INBOX_THIRD_URL="$value"
-        ;;
-      MOSES_INBOX_AUTH)
-        [ -z "$INBOX_AUTH" ] && INBOX_AUTH="$value"
-        ;;
     esac
-  done < "$CONFIG_FILE"
-fi
+done < <(grep -E '^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=' "$CONFIG_FILE" 2>/dev/null || true)
 
 # Resolve AGENT_NAME if still empty
 if [ -z "$AGENT_NAME" ]; then
