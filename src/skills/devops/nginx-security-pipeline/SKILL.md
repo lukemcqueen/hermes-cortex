@@ -19,16 +19,16 @@ Set up nginx security with IP blocking, fail2ban integration, automated daily sc
 ## Architecture
 
 ```
-blocked_ips.add (input)    nginx-badbots.conf (filter)
-         │                          │
-         └───────┬──────────────────┘
-                 │
-    sudo hermes-security-apply
+blocked_ips.add (input)    nginx-badbots.conf (filter)    allow-ips-manual.conf (override)
+         │                          │                              │
+         └───────┬──────────────────┘                              │
+                 │                  Strips allow-listed IPs        │
+    sudo hermes-security-apply ─────────────────────────────────────┘
          │
          ├── Backs up old configs
          ├── Deploys zone-defs + services
          ├── Deduplicates includes
-         ├── Appends new IPs (skip dups)
+         ├── Appends new IPs (skip dups, strip allow-listed)
          ├── Installs fail2ban filter + jail
          ├── nginx -t (validate)
          └── Reloads fail2ban + nginx
@@ -40,9 +40,9 @@ The daily scanner feeds back into `blocked_ips.add`, creating a closed loop: **L
 
 | Requirement | Notes |
 |-------------|-------|
-| **nginx** | Required. Deploy script installs configs and reloads nginx. |
+| **nginx** | Required. Deploy scripts install configs and reload nginx. |
 | **fail2ban** | Required for automated bans. Pipeline integrates with fail2ban filters. |
-| **sudoers entry** | NOPASSWD for `/usr/local/sbin/hermes-security-apply` + nginx commands. |
+| **sudoers entry** | NOPASSWD for `/usr/local/sbin/hermes-security-apply` + nginx commands (only needed for legacy pipeline scripts). |
 
 **Agents without nginx/fail2ban** — skip this pipeline entirely. The scanner
 silently exits when nginx logs aren't found, but there's no benefit to running
@@ -56,9 +56,17 @@ it on a host without nginx.
 |------|---------|
 | `blocked_ips.add` | **Input:** bare IPs to block (one per line, no `deny`, no semicolon) |
 | `nginx-badbots.conf` | fail2ban filter for archive scanners + `/storage/` crawling |
-| `hermes-security-apply` | Deploy script — sudo-installed to `/usr/local/sbin/` |
+| `hermes-security-apply` | **Legacy** bash deploy script — superseded by `hermes-services-apply.py` |
+| `hermes-services-apply.py` | **Primary** Python deploy script — handles SSL, port prefix, `allow-ips-manual.conf` |
 | `fix-blocked-ips.py` | **Recovery:** regenerates `blocked_ips.conf` if corrupted with bare IPs |
 | `README.md` | Setup guide with platform notes |
+
+### Per-machine (not in git)
+
+| File | Purpose |
+|------|---------|
+| `/etc/nginx/allow-ips-manual.conf` | Manual allow list — `allow X.X.X.X;` per line, overrides blocked_ips.conf |
+| `deploy/hermes-services.env` | Env file with `CORTEX_*` vars, auto-sourced by deploy scripts |
 
 ### Scanner (`src/scripts/`)
 
@@ -78,13 +86,23 @@ touch "${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/nginx-badbots.conf"
 
 Populate `blocked_ips.add` with known bad IPs (one per line, bare IPs only).
 
-### 2. Install the deploy script
+### 2. Configure the env file
+
+```bash
+cp ~/hermes-cortex/deploy/hermes-services.env.example \
+  ~/hermes-cortex/deploy/hermes-services.env
+# Set CORTEX_SSL_CERT_PATH, CORTEX_NGINX_PORT_PREFIX, etc.
+```
+
+### 3. Install the legacy deploy script (optional)
+
+Only if your pipeline cron calls `/usr/local/sbin/hermes-security-apply`:
 
 ```bash
 sudo install -o root -g wheel -m 0750 hermes-security-apply /usr/local/sbin/hermes-security-apply
 ```
 
-### 3. Add passwordless sudo
+### 4. Add passwordless sudo (for legacy script)
 
 ```bash
 echo '$(whoami) ALL=(root) NOPASSWD: /usr/local/sbin/hermes-security-apply' \
@@ -93,7 +111,7 @@ sudo chmod 440 /etc/sudoers.d/hermes-security
 sudo visudo -cf /etc/sudoers.d/hermes-security
 ```
 
-### 4. Set up fail2ban
+### 5. Set up fail2ban
 
 Copy the filter to fail2ban's filter directory:
 
@@ -114,21 +132,21 @@ bantime  = 86400
 findtime = 3600
 ```
 
-### 5. Activate the jail
+### 6. Activate the jail
 
 ```bash
 sudo fail2ban-client reload
 sudo fail2ban-client status nginx-badbots
 ```
 
-### 6. Create daily scanner cron
+### 7. Create daily scanner cron
 
 ```bash
 cron name=daily-nginx-scanner schedule="0 6 * * *" \
   script=nginx-security-scanner.sh no_agent=true deliver=local
 ```
 
-### 6b. (Optional) Create threat pipeline cron
+### 7b. (Optional) Create threat pipeline cron
 
 Adds fail2ban ban collection and git commit/push on top of the scanner:
 
@@ -140,14 +158,18 @@ cron name=threat-pipeline schedule="0 5 * * *" \
 The pipeline:
 1. Runs the scanner for new suspect IPs from nginx logs
 2. Collects new banned IPs from fail2ban logs
-3. Deploys via `sudo -n hermes-security-apply` (requires passwordless sudo)
+3. Deploys via `sudo -n hermes-security-apply` (uses the legacy script)
 4. Git-commits and pushes `blocked_ips.add` changes
 
 > **Note:** This is a deployment-specific cron (Luke's setup). Install via `install-crons.sh` on each target host.
 
-### 7. First deploy
+### 8. First deploy
 
 ```bash
+# Preferred
+python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py
+
+# Or legacy
 sudo /usr/local/sbin/hermes-security-apply
 ```
 
@@ -157,15 +179,23 @@ sudo /usr/local/sbin/hermes-security-apply
 
 ```bash
 echo "1.2.3.4" >> "${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/blocked_ips.add"
-sudo /usr/local/sbin/hermes-security-apply
+# Deploy
+python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py
+```
+
+### Allow an IP (never block)
+
+```bash
+echo "allow 1.2.3.4;" | sudo tee -a /etc/nginx/allow-ips-manual.conf
+sudo nginx -s reload
 ```
 
 ### What the deploy script does
 
 1. Backs up existing configs to `/etc/hermes-cortex-backups/$(date)/`
-2. Deploys fresh nginx configs
+2. Deploys fresh nginx configs (from template, with allow-ips-manual include)
 3. Deduplicates include directives
-4. Appends new IPs (skips duplicates) — validates IPv4, rejects garbage
+4. Appends new IPs (skips duplicates, strips allow-listed IPs) — validates IPv4, rejects garbage
 5. Installs fail2ban filter + jail
 6. Runs `nginx -t` to validate
 7. If valid: reloads nginx and fail2ban
@@ -178,9 +208,9 @@ sudo /usr/local/sbin/hermes-security-apply
 | Concern | Value |
 |---------|-------|
 | fail2ban service | `homebrew.mxcl.fail2ban` |
-| nginx config dir | `/usr/local/etc/nginx/` |
-| fail2ban config dir | `/usr/local/etc/fail2ban/` |
-| nginx log dir | `/usr/local/var/log/nginx/` |
+| nginx config dir | `/usr/local/etc/nginx/` (Intel) / `/opt/homebrew/etc/nginx/` (ARM) |
+| fail2ban config dir | `/usr/local/etc/fail2ban/` (Intel) / `/opt/homebrew/etc/fail2ban/` (ARM) |
+| nginx log dir | `/usr/local/var/log/nginx/` (Intel) / `/opt/homebrew/var/log/nginx/` (ARM) |
 | Service manager | `launchctl` |
 | Firewall backend | `pf` (built-in) |
 | Sudoers permissions | `0440` |
@@ -219,7 +249,9 @@ sudo systemctl reload fail2ban
 
 5. **fail2ban socket on macOS**: Requires root to access. Always use `sudo fail2ban-client`.
 
-7. **IPv4 validation**: All three scripts (`hermes-security-apply`, `generate-blocked-ips.py`, `fix-blocked-ips.py`) now validate IPv4 format and reject garbage entries. The threat pipeline also filters via `awk` before appending to `blocked_ips.add`. If nginx -t fails with "invalid parameter `00:NN,NNN`", run `fix-blocked-ips.py` to regenerate from clean source.
+6. **False-positive warning**: The legacy `hermes-security-apply` prints `⚠ blocked_ips.conf not yet included` even when it is. This is because the old script deploys to `/etc/nginx/servers/` but checks the `sites-enabled` path. Use the Python script instead.
+
+7. **IPv4 validation**: All scripts (`hermes-security-apply`, `generate-blocked-ips.py`, `fix-blocked-ips.py`) validate IPv4 format and reject garbage entries. The threat pipeline also filters via `awk` before appending to `blocked_ips.add`. If nginx -t fails with "invalid parameter `00:NN,NNN`", run `fix-blocked-ips.py` to regenerate from clean source.
 
 8. **Log paths on Linux**: The jail `logpath` must match your OS — `/var/log/nginx/access.log` on Linux vs `/usr/local/var/log/nginx/*-access.log` on macOS Homebrew.
 
@@ -230,11 +262,13 @@ sudo systemctl reload fail2ban
 sudo fail2ban-client status nginx-badbots
 
 # Check blocked IPs are deployed
-grep "^deny" /usr/local/etc/nginx/blocked_ips.conf
-# Linux: grep "^deny" /etc/nginx/blocked_ips.conf
+grep "^deny" /etc/nginx/blocked_ips.conf
+
+# Check allow list is active
+cat /etc/nginx/allow-ips-manual.conf
 
 # Check nginx config is valid
-nginx -t
+sudo nginx -t
 
 # Verify daily cron exists
 cron list | grep nginx-scanner

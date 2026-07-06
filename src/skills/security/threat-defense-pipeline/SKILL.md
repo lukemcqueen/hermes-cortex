@@ -42,6 +42,10 @@ SKIP_PRE_PUSH=1 git push origin main
 Then deploy live:
 
 ```bash
+# Preferred
+python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py
+
+# Or legacy (what the cron pipeline uses)
 sudo /usr/local/sbin/hermes-security-apply
 ```
 
@@ -81,10 +85,16 @@ The threat-pipeline script (`src/scripts/nginx-threat-pipeline.sh`) self-heals:
 ## Manual Deploy (for agents with sudo access)
 
 ```bash
+# Preferred — handles SSL, port prefixes, allow-ips-manual
+python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py
+
+# Legacy (what the cron pipeline uses)
 sudo /usr/local/sbin/hermes-security-apply
 ```
 
-This deploys blocked IPs, fail2ban filter, nginx configs, validates, and reloads.
+Both deploy blocked IPs, fail2ban filter, nginx configs, validate, and reload.
+The legacy script has a known false-positive warning (`⚠ blocked_ips.conf not yet included`)
+— use the Python script to avoid it.
 
 ## Architecture
 

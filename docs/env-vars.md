@@ -27,7 +27,7 @@ sudo hermes-security-apply
 | `CORTEX_REPO` | `$HOME/hermes-cortex` | `cortex-update.sh`, `hermes-security-apply`, `hermes-services-apply.py` | Path to the hermec-cortex repo. Multiple scripts source templates and configs from here. |
 | `CORTEX_SKIP_NGINX` | _(unset)_ | `cortex-update.sh`, `hermes-services-apply.py` | When set to any value, skip nginx config deploy, test, and reload. |
 | `CORTEX_FORCE_DEPLOY` | _(unset)_ | `hermes-security-apply`, `cortex-update.sh`, `hermes-services-apply.py` | When set to `1`, re-resolve SSL certs and port prefix from env/auto-detect instead of preserving existing values from the live config. |
-| `CORTEX_NGINX_PORT_PREFIX` | `13` | `cortex-update.sh`, `hermes-services-apply.py` | Two-digit port prefix for nginx server blocks. Template ships as `13xxx`; set to `12` (Joseph), `14` (Esther), etc. |
+| `CORTEX_NGINX_PORT_PREFIX` | `13` | `cortex-update.sh`, `hermes-services-apply.py` | Two-digit port prefix for nginx server blocks. Template ships as `13xxx`; set to `12` (Joseph), `14` (Esther), etc. **Legacy `hermes-security-apply` does NOT support this** — use the Python script. |
 | `CORTEX_SSL_CERT_PATH` | *(auto-detect)* | `hermes-services-apply.py`, `hermes-security-apply`, `cortex-update.sh` | Explicit SSL certificate path. Overrides all auto-detection. |
 | `CORTEX_SSL_CERT_KEY_PATH` | *(auto-detect)* | `hermes-services-apply.py`, `hermes-security-apply`, `cortex-update.sh` | Explicit SSL certificate key path. Overrides all auto-detection. |
 | `CORTEX_SSL_DOMAIN` | *(auto-scan)* | `hermes-services-apply.py`, `hermes-security-apply`, `cortex-update.sh` | Domain name for Let's Encrypt cert lookup at `/etc/letsencrypt/live/<domain>/`. When unset, scans all directories under `/etc/letsencrypt/live/`. |
@@ -69,9 +69,9 @@ valid cert paths are provided — this is intentional. SSL is mandatory, not opt
 
 ## Deploy Script Comparison
 
-| Feature | `cortex-update.sh` | `hermes-security-apply` | `hermes-services-apply.py` |
+|| Feature | `cortex-update.sh` | `hermes-security-apply` | `hermes-services-apply.py` |
 |---------|-------------------|------------------------|---------------------------|
-| Language | Bash | Bash | Python |
+| Language | Bash | **Bash (legacy)** | **Python (primary)** |
 | Run by | `cortex-update.sh` (auto-update) | sudo / cron | Manual or script pipeline |
 | OS-aware paths | ✓ (via `os-config.sh`) | ✓ (inline) | ✓ (inline) |
 | `__NGINX_CONFIG_DIR__` | ✓ | ✓ | ✓ |
@@ -79,8 +79,10 @@ valid cert paths are provided — this is intentional. SSL is mandatory, not opt
 | `__HTPASSWD_FILE__` | ✓ | ✓ | ✓ |
 | `__CORTEX_HOME__` | ✓ | ✗ | ✓ |
 | `__SSL_CERT__` / `__SSL_CERT_KEY__` | ✓ | ✓ | ✓ |
-| Port prefix translation | ✓ (sed) | ✗ | ✓ (re) |
-| Live port range preserve | ✓ | ✗ | ✓ |
+| Port prefix translation | ✓ (sed) | ✗ **no** | ✓ (re) |
+| Live port range preserve | ✓ | ✗ **no** | ✓ |
+| `allow-ips-manual.conf` support | ✓ (via template) | ✓ (via template + strip logic) | ✓ (via template) |
+| Deploys to correct path | ✓ | ✗ writes to `/etc/nginx/servers/` instead of `sites-available/` | ✓ |
 | Dry-run mode | ✗ | ✗ | ✓ |
 | nginx -t before reload | ✓ | ✓ | ✓ |
 | `CORTEX_SKIP_NGINX` | ✓ | ✗ | ✓ |
