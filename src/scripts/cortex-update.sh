@@ -1133,6 +1133,7 @@ main() {
         restart_langfuse)    restart_langfuse ;;
         restart_dashboard)   restart_dashboard ;;
         restart_agent_inbox) restart_agent_inbox ;;
+        restart_health_server) restart_health_server ;;
         *)                   warn "Unknown restart command: $cmd" ;;
       esac
     done

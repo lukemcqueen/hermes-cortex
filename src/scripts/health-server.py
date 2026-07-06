@@ -628,7 +628,7 @@ def _check_external_reachability() -> dict:
     now = time.time()
     if _CERT_EXPIRY_CACHE is not None and (now - _CERT_EXPIRY_CACHE_TS) < _CERT_EXPIRY_CACHE_TTL:
         cert_expiry_days, cert_warning = _CERT_EXPIRY_CACHE
-    elif SSL_CERT_PATH and Path(SSL_CERT_PATH).exists():
+    elif SSL_CERT_PATH:
         try:
             ctx = ssl.create_default_context()
             with open(SSL_CERT_PATH, "rb") as f:
@@ -649,9 +649,9 @@ def _check_external_reachability() -> dict:
                     cert_warning = f"WARNING — SSL cert expires in {remaining} day(s)"
                 elif remaining < 30:
                     cert_warning = f"INFO — SSL cert expires in {remaining} day(s)"
-            except ImportError:
-                # Fallback: use openssl CLI
-                _log.warning("cryptography not installed — skipping cert expiry check")
+            except Exception:
+                # Fallback: cryptography not installed or cert unreadable (root-owned)
+                _log.warning("cryptography not available or cert unreadable — skipping cert expiry check")
                 pass
         _CERT_EXPIRY_CACHE = (cert_expiry_days, cert_warning)
         _CERT_EXPIRY_CACHE_TS = time.time()
