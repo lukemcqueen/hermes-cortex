@@ -28,6 +28,12 @@ else
   CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 fi
 
+# ── Auto-source env file (so agents don't need env_keep in sudoers) ──
+ENV_FILE="${CORTEX_REPO}/deploy/hermes-services.env"
+if [ -f "$ENV_FILE" ]; then
+  set -a; source "$ENV_FILE"; set +a
+fi
+
 # ── OS-aware nginx & fail2ban paths ─────────────────────────
 case "$(uname -s)" in
   Darwin)
