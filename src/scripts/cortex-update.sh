@@ -747,7 +747,7 @@ deploy_nginx_configs() {
       -e "s|__CORTEX_HOME__|${HOME}|g" \
       -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
       -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
-      -e "/listen[[:space:]]/s|127\.0\.0\.1:13\([0-9][0-9][0-9]\)|127.0.0.1:${port_prefix}\1|g" > "$tmpfile"
+      -e "/listen[[:space:]]/s|127\\.0\\.0\\.1:13\\([0-9][0-9][0-9]\\)|127.0.0.1:${port_prefix}\\1|g" > "$tmpfile"
 
     # ── When SSL certs are available: enable SSL on all server blocks ──
     # The template ships with loopback-only (listen 127.0.0.1:PORT;)
@@ -760,10 +760,10 @@ deploy_nginx_configs() {
       # Step 1: Replace loopback listen with SSL listen (skip marked blocks)
       sed -i '/__SKIP_SERVER__/!s|^\([[:space:]]*\)listen 127\.0\.0\.1:\([0-9][0-9][0-9][0-9][0-9]\);|\1listen \2 ssl;|' "$tmpfile"
       # Step 2: Add SSL cert directives after each active SSL listen
-      sed -i '/__SKIP_SERVER__/!s|^\([[:space:]]*\)listen [0-9][0-9][0-9][0-9][0-9] ssl;|\0\
-\1ssl_session_cache   shared:SSL:10m;\
-\1ssl_session_timeout 10m;\
-\1ssl_certificate     '"${ssl_cert}"';\
+      sed -i '/__SKIP_SERVER__/!s|^\([[:space:]]*\)listen [0-9][0-9][0-9][0-9][0-9] ssl;|\0\\
+\1ssl_session_cache   shared:SSL:10m;\\
+\1ssl_session_timeout 10m;\\
+\1ssl_certificate     '"${ssl_cert}"';\\
 \1ssl_certificate_key '"${ssl_key}"';|' "$tmpfile"
       # Remove skip markers
       sed -i '/^__SKIP_SERVER__/s/__SKIP_SERVER__//' "$tmpfile"
