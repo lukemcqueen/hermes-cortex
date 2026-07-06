@@ -745,11 +745,10 @@ def _build_compact_health() -> dict:
 
     Format: {"v": [...], "h": "j", "t": unix_timestamp}
 
-    v array (10 values):
+    v array (9 values):
       [resources, services, no_errored_crons, no_stale_crons, nginx, ollama,
-       gbrain, disk_ok, gbrain_sources_ok, external_reachable]
+       gbrain, disk_ok, gbrain_sources_ok]
       1 = healthy, -1 = unhealthy/warning
-      (10th element = -1 means external health URL is unreachable or misconfigured)
     h: single-char agent identifier (j = Joseph, m = Moses, t = Titus, g = Gisu)
     t: unix timestamp
     """
@@ -819,10 +818,6 @@ def _build_compact_health() -> dict:
     # gbrain sources check
     gbrain_sources_ok = g.get("healthy", True)
 
-    # External reachability — lightweight check (no cert expiry in compact mode)
-    _ext = _check_external_reachability()
-    external_ok = _ext.get("reachable", False) if EXTERNAL_HEALTH_URL else True  # skip if not configured
-
     v = [
         1 if resources_ok else -1,
         1 if services_ok else -1,
@@ -833,7 +828,6 @@ def _build_compact_health() -> dict:
         1 if gbrain_ok else -1,
         1 if disk_ok else -1,
         1 if gbrain_sources_ok else -1,
-        1 if external_ok else -1,
     ]
 
     # Agent identifier — can be overridden via AGENT_ID env var
