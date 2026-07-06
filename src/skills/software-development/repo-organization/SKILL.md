@@ -115,7 +115,7 @@ hermes-cortex/
 
 | Pattern | Example | Meaning |
 |---------|---------|---------|
-| `kebab-case` | `code-review`, `test-driven-development` | Skill directory name = `name:` in SKILL.md frontmatter |
+| `kebab-case` | `code-review`, `change-test-loop` | Skill directory name = `name:` in SKILL.md frontmatter |
 
 ---
 

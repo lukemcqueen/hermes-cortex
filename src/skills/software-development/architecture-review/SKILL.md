@@ -11,7 +11,7 @@ metadata:
   hermes:
     tags: [architecture, design-review, decision-matrix, cost-estimation, conflict-resolution]
     trigger_phrases: [architecture review, design review, evaluate approach]
-    related_skills: [plan, writing-plans, spike, test-driven-development]
+    related_skills: [plan, writing-plans, spike, change-test-loop]
 ---
 
 # architecture-review: Architecture Review
@@ -202,4 +202,4 @@ After scoring by all 6 roles:
 - **plan** — Use after the review to turn the recommendation into a concrete implementation plan
 - **writing-plans** — For documenting the chosen architecture in a structured design doc
 - **spike** — For prototyping the recommended approach before committing
-- **test-driven-development** — For implementing the chosen architecture with quality assurance built in
+- **change-test-loop** — For implementing the chosen architecture with quality assurance built in

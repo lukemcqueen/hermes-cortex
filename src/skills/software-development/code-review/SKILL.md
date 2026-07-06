@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [code-review, security, verification, quality, pre-commit, auto-fix]
-    related_skills: [subagent-driven-development, plan, test-driven-development, github-code-review]
+    related_skills: [subagent-driven-development, plan, change-test-loop, github-code-review]
 ---
 
 # Pre-Commit Code Verification
@@ -263,7 +263,7 @@ element.textContent = userInput;
 **subagent-driven-development:** Run this after EACH task as the quality gate.
 The two-stage review (spec compliance + code quality) uses this pipeline.
 
-**test-driven-development:** This pipeline verifies TDD discipline was followed —
+**change-test-loop:** This pipeline verifies TDD discipline was followed —
 tests exist, tests pass, no regressions.
 
 **plan:** Validates implementation matches the plan requirements.

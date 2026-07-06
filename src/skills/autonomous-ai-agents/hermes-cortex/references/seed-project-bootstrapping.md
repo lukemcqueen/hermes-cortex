@@ -88,7 +88,7 @@ bash ~/.hermes-cortex/scripts/seed-project.sh --restore=/path/to/project@2026062
 
 ### Skills
 - Copies SKILL.md + references/ from global ~/.hermes/skills/
-- Default set: change-test-loop, engineering-approach, test-driven-development, save-lesson, spike, writing-plans
+- Default set: change-test-loop, engineering-approach, save-lesson, spike, writing-plans
 - Custom via `--skill-refs=comma,separated,list`
 
 ## Pitfalls

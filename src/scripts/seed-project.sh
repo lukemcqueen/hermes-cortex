@@ -502,7 +502,7 @@ deploy_skills() {
 
   if [[ "$refs" == "ALL" || "$COMPONENTS" == "ALL" ]]; then
     # Default skill set for a seeded project
-    refs="change-test-loop,engineering-approach,test-driven-development,save-lesson,spike,writing-plans"
+    refs="change-test-loop,engineering-approach,save-lesson,spike,writing-plans"
   fi
 
   if [[ "$MODE" == "diff" ]]; then
