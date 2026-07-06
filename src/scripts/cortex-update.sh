@@ -749,10 +749,13 @@ deploy_nginx_configs() {
       -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
       -e "/listen[[:space:]]/s|127\\.0\\.0\\.1:13\\([0-9][0-9][0-9]\\)|127.0.0.1:${port_prefix}\\1|g" > "$tmpfile"
 
-    # ── When SSL certs are available: enable SSL on all server blocks ──
-    # The template ships with loopback-only (listen 127.0.0.1:PORT;)
-    # and commented-out SSL hints. When certs are found, we switch to
-    # SSL mode: replace loopback listen with PORT ssl + cert paths.
+    # ── When SSL certs are available: add cert paths to each server block ──
+    # Template already uses listen PORT ssl; (external, SSL) on all blocks.
+    # This step adds the cert paths and session config from the resolved
+    # ssl_cert/ssl_key vars. Template placeholders __SSL_CERT__ are
+    # substituted in the sed step above; this step handles the case where
+    # the template's listen directive already has ssl but the embedded
+    # cert paths need to be written.
     # Only activates in ACTIVE server blocks (not inside #server { ... })
     if [[ -n "$ssl_cert" && -n "$ssl_key" ]]; then
       # Mark lines inside commented-out server blocks so we skip them

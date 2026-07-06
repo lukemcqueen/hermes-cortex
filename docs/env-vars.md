@@ -62,8 +62,8 @@ All three scripts follow the same priority:
 5. **System fallback** — `/etc/ssl/certs/` and `/etc/ssl/private/`
 
 If nothing is found, `__SSL_CERT__` and `__SSL_CERT_KEY__` placeholders are left
-unchanged in the deployed config. SSL will not be active until certs are
-provided — nginx will fail to start on SSL listeners until resolved.
+unchanged in the deployed config. nginx will fail to validate and reload until
+valid cert paths are provided — this is intentional. SSL is mandatory, not opt-in.
 
 ---
 
