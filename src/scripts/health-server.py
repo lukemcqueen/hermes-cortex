@@ -628,21 +628,19 @@ def _check_external_reachability() -> dict:
     now = time.time()
     if _CERT_EXPIRY_CACHE is not None and (now - _CERT_EXPIRY_CACHE_TS) < _CERT_EXPIRY_CACHE_TTL:
         cert_expiry_days, cert_warning = _CERT_EXPIRY_CACHE
-    elif SSL_CERT_PATH:
+    elif SSL_CERT_PATH and Path(SSL_CERT_PATH).exists():
         try:
-            if not Path(SSL_CERT_PATH).exists():
-                _log.warning("SSL cert not found at %s", SSL_CERT_PATH)
-            else:
+            ctx = ssl.create_default_context()
+            with open(SSL_CERT_PATH, "rb") as f:
+                cert = ctx._wrap_pem_cert(f.read())  # internal-ish but works
+        except Exception:
+            try:
                 from cryptography import x509
                 from cryptography.hazmat.backends import default_backend
                 with open(SSL_CERT_PATH, "rb") as f:
                     cert_data = f.read()
                 cert_obj = x509.load_pem_x509_certificate(cert_data, default_backend())
                 not_after = cert_obj.not_valid_after_utc if hasattr(cert_obj, "not_valid_after_utc") else cert_obj.not_valid_after
-                # Make offset-aware for consistent comparison
-                if not_after.tzinfo is None:
-                    from datetime import timezone as tz
-                    not_after = not_after.replace(tzinfo=tz.utc)
                 remaining = (not_after - datetime.now(timezone.utc)).days
                 cert_expiry_days = remaining
                 if remaining < 0:
@@ -651,8 +649,10 @@ def _check_external_reachability() -> dict:
                     cert_warning = f"WARNING — SSL cert expires in {remaining} day(s)"
                 elif remaining < 30:
                     cert_warning = f"INFO — SSL cert expires in {remaining} day(s)"
-        except Exception:
-            _log.warning("cryptography not installed or cert unreadable — skipping cert expiry check")
+            except ImportError:
+                # Fallback: use openssl CLI
+                _log.warning("cryptography not installed — skipping cert expiry check")
+                pass
         _CERT_EXPIRY_CACHE = (cert_expiry_days, cert_warning)
         _CERT_EXPIRY_CACHE_TS = time.time()
 
@@ -880,18 +880,107 @@ async def index():
     return _build_compact_health()
 
 
+# ── Startup helpers ────────────────────────────────────────────
+def _ensure_dirs():
+    """Create required directories if missing.
+    
+    Prevents crash-looping from 'Failed to set up standard output: No such file or directory'.
+    Must run before any I/O or bind attempt.
+    """
+    data_dir = HOME / ".hermes" / "health-server"
+    if not data_dir.exists():
+        data_dir.mkdir(parents=True, exist_ok=True)
+        _log.info("CREATED — directory: %s", data_dir)
+
+
+_PID_FILE: Path | None = None
+
+
+def _check_port_conflict() -> bool:
+    """Check if HEALTH_PORT is already in use by another health-server.
+    
+    Returns True if port is free (caller should proceed).
+    Returns False if port is taken by a known health-server (caller should exit 0).
+    Exits 1 on unexpected conflict (will trigger systemd restart).
+    
+    This prevents crash-looping:
+    - Manual instance started while systemd service is running → exits 0 gracefully
+    - systemd restart while manual instance holds the port → exits 0 gracefully
+    - Neither systemd nor manual sees a failure → no restart triggered
+    """
+    global _PID_FILE
+    _PID_FILE = HOME / ".hermes" / "health-server" / "server.pid"
+    
+    # Try binding to check if port is free
+    test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    test_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        test_sock.bind(("127.0.0.1", HEALTH_PORT))
+        test_sock.close()
+        # Port is free — write our PID and proceed
+        _PID_FILE.write_text(str(os.getpid()))
+        _log.info("PORT_CHECK — port %d is free, proceeding", HEALTH_PORT)
+        return True
+    except OSError as e:
+        test_sock.close()
+        if e.errno == 98:  # EADDRINUSE
+            _log.warning("PORT CONFLICT — port %d is already in use", HEALTH_PORT)
+            
+            # Check if the owner is another health-server via PID file
+            if _PID_FILE.exists():
+                try:
+                    existing_pid = int(_PID_FILE.read_text().strip())
+                    # Check if that PID is still alive and is our health-server
+                    proc_path = Path(f"/proc/{existing_pid}/cmdline")
+                    if proc_path.exists():
+                        cmdline = proc_path.read_text().replace("\0", " ")
+                        if "health-server.py" in cmdline:
+                            _log.info("PORT HANDOFF — existing health-server PID %d is running, exiting 0", existing_pid)
+                            return False  # Graceful handoff — don't crash-loop
+                        else:
+                            _log.warning("PORT CONFLICT — PID %d exists but is not health-server (%s), exiting 1", existing_pid, cmdline[:80])
+                    else:
+                        # Stale PID file — clean it up
+                        _log.info("PORT CLEANUP — stale PID file (PID %d gone), removing", existing_pid)
+                        _PID_FILE.unlink(missing_ok=True)
+                except (ValueError, OSError, IOError) as e2:
+                    _log.warning("PORT CONFLICT — could not read PID file: %s", e2)
+            
+            # If we get here, we can't identify the owner or it's not ours
+            _log.error("PORT CONFLICT — port %d in use by unknown process, exiting 1", HEALTH_PORT)
+            sys.exit(1)
+        else:
+            _log.error("PORT CHECK — unexpected socket error: %s", e)
+            sys.exit(1)
+
+
 # ── Main ──────────────────────────────────────────────────────
 if __name__ == "__main__":
+    # Layer 1: Ensure directories exist before any I/O
+    _ensure_dirs()
     _log.info("STARTING — server=%s agent=%s port=%d os=%s python=%s",
               SERVER_NAME, AGENT_ID, HEALTH_PORT, _get_os(), platform.python_version())
     _log.info("CONFIG — _STARTUP_TS=%d HOME=%s", int(_STARTUP_TS), HOME)
 
+    # Layer 2: Port arbitration — crash-loop prevention
+    if not _check_port_conflict():
+        # Port is held by another health-server — exit 0 (not a failure)
+        _log.info("HANDOFF — existing health-server owns port %d, this instance exiting 0", HEALTH_PORT)
+        sys.exit(0)
+
     # Log on graceful shutdown
     def _shutdown_log(signum, frame):
         _log.warning("SHUTDOWN — received signal %d, exiting", signum)
+        if _PID_FILE and _PID_FILE.exists():
+            _PID_FILE.unlink(missing_ok=True)
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, _shutdown_log)
     signal.signal(signal.SIGINT, _shutdown_log)
 
-    uvicorn.run(app, host="127.0.0.1", port=HEALTH_PORT, log_level="info")
+    # Layer 3: Run — if uvicorn fails, systemd will try again (rare with port arbitration)
+    try:
+        uvicorn.run(app, host="127.0.0.1", port=HEALTH_PORT, log_level="info")
+    finally:
+        if _PID_FILE and _PID_FILE.exists():
+            _PID_FILE.unlink(missing_ok=True)
