@@ -747,31 +747,8 @@ deploy_nginx_configs() {
       -e "s|__CORTEX_HOME__|${HOME}|g" \
       -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
       -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
-      -e "/listen[[:space:]]/s|127\\.0\\.0\\.1:13\\([0-9][0-9][0-9]\\)|127.0.0.1:${port_prefix}\\1|g" > "$tmpfile"
-
-    # ── When SSL certs are available: add cert paths to each server block ──
-    # Template already uses listen PORT ssl; (external, SSL) on all blocks.
-    # This step adds the cert paths and session config from the resolved
-    # ssl_cert/ssl_key vars. Template placeholders __SSL_CERT__ are
-    # substituted in the sed step above; this step handles the case where
-    # the template's listen directive already has ssl but the embedded
-    # cert paths need to be written.
-    # Only activates in ACTIVE server blocks (not inside #server { ... })
-    if [[ -n "$ssl_cert" && -n "$ssl_key" ]]; then
-      # Mark lines inside commented-out server blocks so we skip them
-      sed -i '/^[[:space:]]*#server {/,/^[[:space:]]*#}/s/^/__SKIP_SERVER__/' "$tmpfile"
-      # Step 1: Replace loopback listen with SSL listen (skip marked blocks)
-      sed -i '/__SKIP_SERVER__/!s|^\([[:space:]]*\)listen 127\.0\.0\.1:\([0-9][0-9][0-9][0-9][0-9]\);|\1listen \2 ssl;|' "$tmpfile"
-      # Step 2: Add SSL cert directives after each active SSL listen
-      sed -i '/__SKIP_SERVER__/!s|^\([[:space:]]*\)listen [0-9][0-9][0-9][0-9][0-9] ssl;|\0\\
-\1ssl_session_cache   shared:SSL:10m;\\
-\1ssl_session_timeout 10m;\\
-\1ssl_certificate     '"${ssl_cert}"';\\
-\1ssl_certificate_key '"${ssl_key}"';|' "$tmpfile"
-      # Remove skip markers
-      sed -i '/^__SKIP_SERVER__/s/__SKIP_SERVER__//' "$tmpfile"
-      info "  SSL enabled — ${ssl_cert}"
-    fi
+      -e "/listen[[:space:]]/s|127\.0\.0\.1:13\([0-9][0-9][0-9]\)|127.0.0.1:${port_prefix}\1|g" \
+      -e "/listen[[:space:]]/s|listen 13\([0-9][0-9][0-9]\) ssl|listen ${port_prefix}\1 ssl|g" > "$tmpfile"
 
     # ── Pre-deploy nginx config test ──
     # Test the new config against the tmpfile BEFORE overwriting the live one.
