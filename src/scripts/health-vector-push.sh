@@ -22,7 +22,14 @@
 # ─────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
-CONFIG_FILE="${HOME}/.hermes/hermes-inbox.conf"
+
+# Load config — try new hermes-cortex.env first, fallback to hermes-inbox.conf
+CONFIG_FILE=""
+if [[ -f "${HOME}/.hermes/hermes-cortex.env" ]]; then
+    CONFIG_FILE="${HOME}/.hermes/hermes-cortex.env"
+elif [[ -f "${HOME}/.hermes/hermes-inbox.conf" ]]; then
+    CONFIG_FILE="${HOME}/.hermes/hermes-inbox.conf"
+fi
 ERROR_LOG="/tmp/com.hermes.health-push.err"
 
 # ── Load failure state helpers ───────────────────────────────────

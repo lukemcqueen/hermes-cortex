@@ -32,18 +32,20 @@ INBOX_AUTH = os.environ.get("CORTEX_INBOX_AUTH", "")
 
 # Read CORTEX_INBOX_URL from config file if not set via env
 if not INBOX_API:
-    config_path = HOME / ".hermes" / "hermes-inbox.conf"
-    if config_path.exists():
-        try:
-            for line in config_path.read_text().splitlines():
-                line = line.strip()
-                if line.startswith("CORTEX_INBOX_URL="):
-                    val = line.split("=", 1)[1].strip().strip("'\"")
-                    if val:
-                        INBOX_API = val
-                        break
-        except Exception:
-            pass
+    for conf_path in [HOME / ".hermes" / "hermes-cortex.env", HOME / ".hermes" / "hermes-inbox.conf"]:
+        if conf_path.exists():
+            try:
+                for line in conf_path.read_text().splitlines():
+                    line = line.strip()
+                    if line.startswith("CORTEX_INBOX_URL="):
+                        val = line.split("=", 1)[1].strip().strip("'\"")
+                        if val:
+                            INBOX_API = val
+                            break
+            except Exception:
+                pass
+        if INBOX_API:
+            break
 
 # Fallback default
 if not INBOX_API:
@@ -51,18 +53,20 @@ if not INBOX_API:
 
 # Read CORTEX_INBOX_AUTH from config file if not set via env
 if not INBOX_AUTH:
-    config_path = HOME / ".hermes" / "hermes-inbox.conf"
-    if config_path.exists():
-        try:
-            for line in config_path.read_text().splitlines():
-                line = line.strip()
-                if line.startswith("CORTEX_INBOX_AUTH="):
-                    val = line.split("=", 1)[1].strip().strip("'\"")
-                    if val:
-                        INBOX_AUTH = val
-                        break
-        except Exception:
-            pass
+    for conf_path in [HOME / ".hermes" / "hermes-cortex.env", HOME / ".hermes" / "hermes-inbox.conf"]:
+        if conf_path.exists():
+            try:
+                for line in conf_path.read_text().splitlines():
+                    line = line.strip()
+                    if line.startswith("CORTEX_INBOX_AUTH="):
+                        val = line.split("=", 1)[1].strip().strip("'\"")
+                        if val:
+                            INBOX_AUTH = val
+                            break
+            except Exception:
+                pass
+        if INBOX_AUTH:
+            break
 
 # Build auth header if credentials available
 AUTH_HEADER = {}

@@ -47,6 +47,19 @@ ENV_FILE="${REPO_DIR}/deploy/hermes-services.env"
 if [[ -f "$ENV_FILE" ]]; then
   set -a; source "$ENV_FILE"; set +a
 fi
+
+# ── Ensure ~/.hermes/hermes-cortex.env symlink exists ──
+CORTEX_ENV_SRC="${REPO_DIR}/hermes-cortex.env"
+CORTEX_ENV_DST="${HOME}/.hermes/hermes-cortex.env"
+if [[ -f "$CORTEX_ENV_SRC" && ! -f "$CORTEX_ENV_DST" ]]; then
+  mkdir -p "${HOME}/.hermes"
+  ln -sf "$CORTEX_ENV_SRC" "$CORTEX_ENV_DST"
+  echo "  → Created symlink: ${CORTEX_ENV_DST}"
+fi
+# Also source it if present (overrides deploy env for inbox vars)
+if [[ -f "$CORTEX_ENV_DST" ]]; then
+  set -a; source "$CORTEX_ENV_DST"; set +a
+fi
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes-cortex}"
 STATE_DIR="${HERMES_HOME}/state"
 LAST_COMMIT_FILE="${STATE_DIR}/update-commit"
