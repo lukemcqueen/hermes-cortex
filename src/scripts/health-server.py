@@ -38,6 +38,9 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
+# ── Shared port arbitration ────────────────────────────────────
+from _port_arbitration import check_and_claim_port, release_port, setup_dirs as _ensure_dirs_server
+
 # ── Logging setup ──────────────────────────────────────────────
 _log = logging.getLogger("health-server")
 _log.setLevel(logging.DEBUG)
@@ -885,73 +888,23 @@ def _ensure_dirs():
     """Create required directories if missing.
     
     Prevents crash-looping from 'Failed to set up standard output: No such file or directory'.
-    Must run before any I/O or bind attempt.
+    Delegates to shared _port_arbitration module for consistency.
     """
-    data_dir = HOME / ".hermes" / "health-server"
-    if not data_dir.exists():
-        data_dir.mkdir(parents=True, exist_ok=True)
-        _log.info("CREATED — directory: %s", data_dir)
+    _ensure_dirs_server(str(HOME / ".hermes" / "health-server"))
 
 
 _PID_FILE: Path | None = None
+_PID_PATH = HOME / ".hermes" / "health-server" / "server.pid"
 
 
 def _check_port_conflict() -> bool:
     """Check if HEALTH_PORT is already in use by another health-server.
     
-    Returns True if port is free (caller should proceed).
-    Returns False if port is taken by a known health-server (caller should exit 0).
-    Exits 1 on unexpected conflict (will trigger systemd restart).
-    
-    This prevents crash-looping:
-    - Manual instance started while systemd service is running → exits 0 gracefully
-    - systemd restart while manual instance holds the port → exits 0 gracefully
-    - Neither systemd nor manual sees a failure → no restart triggered
+    Delegates to shared _port_arbitration.check_and_claim_port().
     """
-    global _PID_FILE
-    _PID_FILE = HOME / ".hermes" / "health-server" / "server.pid"
-    
-    # Try binding to check if port is free
-    test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    test_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    try:
-        test_sock.bind(("127.0.0.1", HEALTH_PORT))
-        test_sock.close()
-        # Port is free — write our PID and proceed
-        _PID_FILE.write_text(str(os.getpid()))
-        _log.info("PORT_CHECK — port %d is free, proceeding", HEALTH_PORT)
-        return True
-    except OSError as e:
-        test_sock.close()
-        if e.errno == 98:  # EADDRINUSE
-            _log.warning("PORT CONFLICT — port %d is already in use", HEALTH_PORT)
-            
-            # Check if the owner is another health-server via PID file
-            if _PID_FILE.exists():
-                try:
-                    existing_pid = int(_PID_FILE.read_text().strip())
-                    # Check if that PID is still alive and is our health-server
-                    proc_path = Path(f"/proc/{existing_pid}/cmdline")
-                    if proc_path.exists():
-                        cmdline = proc_path.read_text().replace("\0", " ")
-                        if "health-server.py" in cmdline:
-                            _log.info("PORT HANDOFF — existing health-server PID %d is running, exiting 0", existing_pid)
-                            return False  # Graceful handoff — don't crash-loop
-                        else:
-                            _log.warning("PORT CONFLICT — PID %d exists but is not health-server (%s), exiting 1", existing_pid, cmdline[:80])
-                    else:
-                        # Stale PID file — clean it up
-                        _log.info("PORT CLEANUP — stale PID file (PID %d gone), removing", existing_pid)
-                        _PID_FILE.unlink(missing_ok=True)
-                except (ValueError, OSError, IOError) as e2:
-                    _log.warning("PORT CONFLICT — could not read PID file: %s", e2)
-            
-            # If we get here, we can't identify the owner or it's not ours
-            _log.error("PORT CONFLICT — port %d in use by unknown process, exiting 1", HEALTH_PORT)
-            sys.exit(1)
-        else:
-            _log.error("PORT CHECK — unexpected socket error: %s", e)
-            sys.exit(1)
+    global _PID_FILE, _PID_PATH
+    _PID_FILE = _PID_PATH
+    return check_and_claim_port("127.0.0.1", HEALTH_PORT, "health-server", pid_path=_PID_PATH)
 
 
 # ── Main ──────────────────────────────────────────────────────
