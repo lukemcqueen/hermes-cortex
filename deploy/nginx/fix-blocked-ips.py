@@ -56,6 +56,20 @@ if os.path.exists(current_conf):
             if line.startswith("allow "):
                 allow_lines.append(line.rstrip())
 
+# Read manual allow list — these IPs must never appear in blocked_ips.conf
+allow_ips_manual = os.path.join(nginx_conf_dir, "allow-ips-manual.conf")
+manual_allowed = set()
+if os.path.exists(allow_ips_manual):
+    with open(allow_ips_manual) as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith("allow ") and line.endswith(";"):
+                ip = line[6:].rstrip(";").strip()
+                if IPV4_RE.match(ip):
+                    manual_allowed.add(ip)
+    if manual_allowed:
+        print(f"📋 {len(manual_allowed)} IPs in manual allow list — will exclude from block list")
+
 # Read and validate IPs from source
 ips = []
 skipped = []
@@ -65,7 +79,10 @@ with open(blocked_ips_add) as f:
         if not line or line.startswith("#"):
             continue
         if is_valid_ip(line):
-            ips.append(line)
+            if line not in manual_allowed:
+                ips.append(line)
+            else:
+                skipped.append(f"{line} (allow-listed)")
         else:
             skipped.append(line)
 
