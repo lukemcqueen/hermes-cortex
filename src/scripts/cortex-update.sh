@@ -52,6 +52,15 @@ fi
 # Single source of truth: ~/hermes-cortex/.env (hidden, gitignored).
 # ⚠ CRITICAL: ~/.hermes/.env is Hermes Agent's own config — never write or symlink.
 CORTEX_ENV_FILE="${REPO_DIR}/.env"
+
+# ⚠ Clean up stale files from old env architecture
+for stale in "${HOME}/.hermes/models.env" "${HOME}/.hermes/hermes-cortex.env"; do
+  if [[ -f "$stale" ]]; then
+    rm -f "$stale"
+    echo "  → Removed stale env file: ${stale}"
+  fi
+done
+
 # Also source it if present (overrides deploy env for inbox vars)
 if [[ -f "${HOME}/.hermes/.env" ]]; then
   set -a; source "${HOME}/.hermes/.env"; set +a
