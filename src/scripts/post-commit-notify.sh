@@ -71,9 +71,12 @@ while IFS='=' read -r key value || [ -n "$key" ]; do
     # Strip inline comments from value (hash preceded by space)
     value="${value%% #*}"
     # Trim leading/trailing whitespace from value
-    value="${value#"${value%%[![:space:]]*}"}"
-    value="${value%"${value##*[![:space:]]}"}"
-    
+    value="${value#${value%%[![:space:]]*}}"
+    value="${value%${value##*[![:space:]]}}"
+    # Strip surrounding quotes (same pattern as inbox-mcp.py)
+    value="${value%\'}"; value="${value#\'}"
+    value="${value%\"}"; value="${value#\"}"
+
     case "$key" in
       CORTEX_INBOX_URL|MOSES_INBOX_URL)
         [ -z "$INBOX_URL" ] && INBOX_URL="$value"
