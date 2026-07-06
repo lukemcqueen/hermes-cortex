@@ -223,9 +223,18 @@ register "src/scripts/install-cron-cost-tracking.py" "${HERMES_HOME}/scripts/ins
 register "src/scripts/_port_arbitration.py"        "${HERMES_HOME}/scripts/_port_arbitration.py"
 register "src/scripts/health-server.py"            "${HERMES_HOME}/scripts/health-server.py" "health-server"
 register "src/scripts/health-vector.py"            "${HERMES_HOME}/scripts/health-vector.py"
+register "src/scripts/health-vector-push.sh"       "${HERMES_HOME}/scripts/health-vector-push.sh"
 register "src/scripts/report-agent-health.py"      "${HERMES_HOME}/scripts/report-agent-health.py"
+register "src/scripts/request-skill-reports.sh"    "${HERMES_HOME}/scripts/request-skill-reports.sh"
 register "src/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" "health-server" "restart_health_server"
 register "src/scripts/com.hermes.health-server.service" "${HOME}/.config/systemd/user/com.hermes.health-server.service" "health-server" "restart_health_server"
+
+# Shared model config loader (imported by many scripts)
+register "src/scripts/hermes_models.py"            "${HERMES_HOME}/scripts/hermes_models.py"
+
+# Inbox sensor and health models
+register "src/scripts/inbox-sensor.py"             "${HERMES_HOME}/scripts/inbox-sensor.py"
+register "src/scripts/model-health-watchdog.py"    "${HERMES_HOME}/scripts/model-health-watchdog.py"
 
 # Timezone helper (required by monitoring scripts)
 register "src/scripts/hermes_tz.py"                "${HERMES_HOME}/scripts/hermes_tz.py"
