@@ -46,7 +46,9 @@ upstream agent_inbox_backend {
 }
 
 server {
-    listen 127.0.0.1:13004;
+    listen 13004 ssl;
+    ssl_certificate     __SSL_CERT__;
+    ssl_certificate_key __SSL_CERT_KEY__;
     ...
     location /a2a/ {
         proxy_pass http://agent_inbox_backend;
