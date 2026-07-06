@@ -33,6 +33,11 @@ and auto-detects macOS (Intel + ARM) vs Linux paths.
 - Cron has no TTY (`requiretty` in sudoers)
 - `bash` wrapper made sudo see `bash` instead of the NOPASSWD-authorized script path
 
+> **⚠ Legacy script note:** `hermes-security-apply` (bash) deploys to `/etc/nginx/servers/` instead of
+> `sites-available/`, producing the false-positive `⚠ blocked_ips.conf not yet included` warning.
+> The new Python script `hermes-services-apply.py` deploys to the correct path and is the preferred
+> replacement. The pipeline scripts still call the legacy version.
+
 ## Verification
 
 - Linux (6.8.0-generic): full pipeline runs, 14 IPs found, deployed, nginx reloaded ✅
