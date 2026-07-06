@@ -74,15 +74,16 @@ Using bare `python3` fails with "Required 'mcp' Python package not found."
 4. Only then: begin the actual work.
 
 **Post-change (AFTER each logical change — not at the end of the session):**
-1. Commit changes
-2. `mcp_loop_governance_cycle_query(task_id="<descriptive-name>")` — find the cycle logged by the MCP server during the change
-3. If cycle found → `mcp_loop_governance_feedback_accept(id=N, note="...")` or `mcp_loop_governance_feedback_override(id=N, correct_decision="...", note="...")` — close the feedback loop
-4. `mcp_loop_governance_end_change(task_id="<short-name>")` — release governance lock
-5. **If `end_change` rejects** ("no scored cycle found"): the MCP server did not auto-create a cycle for this tool type (known limitation: `patch` under lock doesn't log cycles). Do NOT silently force-clear. Instead:
+1. Do all cleanup (temp files, test jobs, restored files) **before** releasing the lock — the governance enforcer blocks writes after `end_change()`, and re-acquiring the lock for cleanup wastes a cycle
+2. Commit changes
+3. `mcp_loop_governance_cycle_query(task_id="<descriptive-name>")` — find the cycle logged by the MCP server during the change
+4. If cycle found → `mcp_loop_governance_feedback_accept(id=N, note="...")` or `mcp_loop_governance_feedback_override(id=N, correct_decision="...", note="...")` — close the feedback loop
+5. `mcp_loop_governance_end_change(task_id="<short-name>")` — release governance lock
+6. **If `end_change` rejects** ("no scored cycle found"): the MCP server did not auto-create a cycle for this tool type (known limitation: `patch` under lock doesn't log cycles). Do NOT silently force-clear. Instead:
    a. **Confess clearly** — tell the user: "end_change rejected — no cycle auto-created for this tool type. Force-clearing lock."
    b. `rm -f ~/.hermes-cortex/state/.governance-$(basename $(git rev-parse --show-toplevel 2>/dev/null || echo 'generic')).json`
    c. Add one line to this section documenting the missed auto-cycle
-6. Verify: did you actually score the last change? If the answer is "I'll do it in a minute" — stop what you're doing and score now. **Retroactive scoring is failure acknowledgment, not a workflow.**
+7. Verify: did you actually score the last change? If the answer is "I'll do it in a minute" — stop what you're doing and score now. **Retroactive scoring is failure acknowledgment, not a workflow.**
 
 **HARD RULE: Never force-clear a lock without calling `end_change` first.** The sequence must be `cycle_query` → try `feedback_accept` → try `end_change` → only if that rejects → confess + force-clear. Skipping `end_change` is skipping the accountability checkpoint.
 
@@ -135,6 +136,7 @@ Efficiency means making decisions and executing, not circling through redundant 
 
 **Be precise with user-supplied values.** When the user provides an exact URL, port, protocol, or name, apply it verbatim — do not substitute http for https, do not skip details because you think they're minor. Read the user's input twice if needed. One character difference (http vs https, 13007 vs 14007) breaks the whole thing.
 
+**Verify documentation claims against code.** When writing constraints or invariants in documentation ("Cortex never writes to X", "Script Y never modifies Z"), verify the claim by searching the actual codebase first. A `search_files` for the path, file, or pattern in the code tells you more than your assumptions about how it *should* work. Documented claims that contradict code behavior mislead every agent who relies on that documentation — and you only find out when something breaks.
 
 ### 6. Survey before action
 <!-- Added 2026-07-02 -->
