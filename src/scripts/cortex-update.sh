@@ -258,6 +258,9 @@ register "src/scripts/request-skill-reports.sh"    "${HERMES_HOME}/scripts/reque
 register "src/scripts/process-skill-reports.py"    "${HERMES_HOME}/scripts/process-skill-reports.py"
 # Agent inbox connection config — user creates manually
 
+# A2A Agent Card generator — daily cron generates Agent Card JSON
+register "src/a2a/generate-agent-card.py"         "${HERMES_HOME}/scripts/generate-agent-card.py"
+
 # MCP inbox proxy — sudo'd HTTPS proxy with root-owned client cert
 register "src/scripts/mcp-inbox-proxy"              "${HERMES_HOME}/scripts/mcp-inbox-proxy"
 
