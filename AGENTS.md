@@ -165,3 +165,4 @@ Previously inlined content moved to:
 | Fleet Reference (agent summary, cron jobs, auto-remediation) | [`docs/fleet-reference.md`](docs/fleet-reference.md) |
 | Operations Reference (inbox architecture, offline code, rules) | [`docs/operations-reference.md`](docs/operations-reference.md) |
 | Health monitoring, agent setup | [`docs/setup-reference.md`](docs/setup-reference.md) |
+| Symlink policy (Hermes vs Cortex layout) | [`docs/symlink-policy.md`](docs/symlink-policy.md) |
