@@ -164,11 +164,23 @@ def _get_agents() -> list[dict]:
                 "method": "inbox",
             })
 
-    # Fallback: always include Moses local health if not already present
+    # Fallback: Moses health URL from .env, then localhost
     if not any(a["key"] == "moses" for a in agents):
+        moses_url = os.environ.get("CORTEX_HEALTH_URL", "")
+        if not moses_url and CORTEX_ENV.exists():
+            for line in CORTEX_ENV.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                if k.strip() == "CORTEX_HEALTH_URL":
+                    moses_url = v.strip().strip("'\"")
+                    break
+        if not moses_url:
+            moses_url = "http://127.0.0.1:13007/"
         agents.insert(0, {
             "key": "moses", "name": "Moses",
-            "method": "http", "url": "http://127.0.0.1:13007/",
+            "method": "http", "url": moses_url,
         })
     return agents
 

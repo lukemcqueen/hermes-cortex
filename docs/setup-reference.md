@@ -192,6 +192,7 @@ This is the single source of truth for Cortex. ⚠ `~/.hermes/.env` is Hermes Ag
 | Env var | Purpose | Default |
 |---------|---------|---------|
 | `IS_ORCHESTRATOR` | Gate orchestrator-only features (orch crons, team health, inbox remediation). Set `true` on Moses/Esther only. | `false` |
+| `CORTEX_HEALTH_URL` | External health endpoint. Orchestrator pollers use this to verify agent reachability through nginx. Format: `https://yourdomain.com:xx007/health` | _(none)_ |
 | `JUDGE_MODEL` | LLM-as-Judge scorer | `qwen2.5-coder:3b` |
 | `EMBEDDING_MODEL` | Text embeddings (gbrain, session cache, loop scorer, offline_code) | `nomic-embed-text:v1.5` |
 | `CODING_MODEL` | Code generation via offline_code | auto-detected by RAM |

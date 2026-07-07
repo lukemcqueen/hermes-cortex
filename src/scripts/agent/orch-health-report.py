@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
+CORTEX_ENV = HOME / "hermes-cortex" / ".env"
 REGISTRY_PATH = HOME / ".hermes" / "state" / "agent-registry.json"
 REGISTRY_TEMPLATE = HOME / "hermes-cortex" / "src" / "agent-registry.template.json"
 REGISTRY_LOCAL = HOME / ".hermes" / "agent-registry.local.json"
@@ -117,10 +118,23 @@ def _get_agents() -> list[dict]:
         elif method == "inbox":
             agents.append({"key": key, "name": name, "method": "inbox"})
 
-    # Fallback: Moses local health
+    # Fallback: Moses health URL from .env, then localhost
     if not any(a["key"] == "moses" for a in agents):
+        import os
+        moses_url = os.environ.get("CORTEX_HEALTH_URL", "")
+        if not moses_url and CORTEX_ENV.exists():
+            for line in CORTEX_ENV.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                if k.strip() == "CORTEX_HEALTH_URL":
+                    moses_url = v.strip().strip("'\"")
+                    break
+        if not moses_url:
+            moses_url = "http://127.0.0.1:13007/health"
         agents.insert(0, {"key": "moses", "name": "Moses", "method": "http",
-                          "url": "http://127.0.0.1:13007/health"})
+                          "url": moses_url})
     return agents
 
 
