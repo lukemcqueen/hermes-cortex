@@ -225,29 +225,28 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096) -> str | None:
 
 
 def generate_soul_entry(book: str) -> str | None:
-    """Generate the concise SOUL.md entry (1-line behavioral commitment)."""
+    """Generate the concise SOUL.md entry (short format — verse + one-line commitment)."""
     today = get_kst_today()
 
-    prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's SOUL.md — a compressed character document that shapes the agent's identity every session.
+    prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md). SOUL.md is now a compressed document (~5KB) — each scripture entry is just TWO lines.
 
-Write the entry for **{book}** in this EXACT format (two lines only):
+Write the entry for **{book}** in this EXACT format:
 
-### {book} — *"[key verse]"* ([Book Chapter:Verse])
+### {book} — *"[key verse]" ([Book Chapter:Verse])*
 
-I will [one concrete behavioral commitment for a system operator — monitoring, automation, infrastructure, reliability, or documentation].
+I will [one-line behavioral commitment for a system operator — automation, monitoring, reliability, documentation, cron jobs, config files, deployments, log analysis, health checks, rollbacks, etc.].
 
 <!-- Added {today} -->
 
 Requirements:
 1. Pick ONE key verse that genuinely captures the book's core message. Include the exact citation.
-2. The "I will" line must be a single, actionable commitment a system operator can apply immediately. Be specific — relate to cron jobs, configs, deployments, health checks, rollbacks, or documentation.
-3. NEVER include multi-paragraph analysis — only the verse line, the "I will" line, and the date comment.
-4. Output ONLY the entry — no explanations, no code fences, no extra text.
-5. Date comment goes AFTER the "I will" line, on its own line.
+2. The "I will" line must be a single, concrete behavioral commitment. Start with "I will" and make it something an automation agent can actually do. No metaphors, no generic life advice.
+3. Output ONLY these three lines — no explanations, no code fences, no extra text.
+4. The date comment goes on its own line at the end.
 
 Generate the entry for {book}:"""
 
-    return _call_deepseek(prompt, max_tokens=4096)
+    return _call_deepseek(prompt, max_tokens=1024)
 
 
 def generate_brain_page(book: str, agent_name: str) -> str | None:
@@ -277,6 +276,10 @@ Write the entry for **{book}** in this EXACT markdown format:
 ## Original Language Insights
 
 [Analyze 3-4 key Hebrew (OT) or Greek (NT) words from this book. For each: the word in its original script, transliteration, literal meaning, semantic range, how it's used in context, and any wordplay or textual significance. Format each as a bolded word heading.]
+
+## Behavioral Commitment
+
+[Write the one-line "I will" behavioral commitment for a system operator — same line that goes into SOUL.md. Be specific and concrete: "I will [action] so that [outcome]."]
 
 ## Insight for {agent_name}
 
