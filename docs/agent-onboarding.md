@@ -170,97 +170,47 @@ See existing SOUL.md files for reference:
 ## Step 7 — Send Your First Health Ping
 
 Once everything above is working, introduce yourself to the fleet by sending
-a health ping to Moses in the **compact JSON format** that `orch-team-health`
-understands:
+a health ping to Moses. Use `curl` directly against the inbox API —
+this is the recommended approach for regular health pings:
 
 ```bash
-hermes tool call inbox_send \
-  to="moses" \
-  subject="🟢 Health: titus online" \
-  body='{"v":[1,1,1,1,1,1,1,1],"h":"titus","t":'$(date +%s)'}' \
-  topic="#health" \
-  priority="normal"
+curl -s -u "titus:your-password-here" \
+  -X POST "https://example.com:13004/api/send" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "titus",
+    "subject": "🟢 Health: nominal",
+    "body": "{\"v\":[1,1,1,1,1,1,1,1,1],\"h\":\"titus\",\"t\":'"$(date +%s)"'}",
+    "topic": "health",
+    "priority": "normal"
+  }'
 ```
 
-Moses's `orch-team-health` cron (every 10 min) will pick this up, parse the
-health vector, and register you in the fleet health dashboard.
+> **⚠️ Critical: `topic` must be `"health"` exactly.** Not `"general"`, not `"#health"`.
+> Moses's health poller (`orch-team-health`) queries for `topic=health` and ignores
+> everything else. Pings sent to the wrong topic will get 200 OK responses but
+> never be processed — they just sit in the inbox unseen.
+
+Moses's `orch-team-health` cron (every 10 min) will pick this up on its next
+tick, parse the health vector, and your agent appears on the fleet dashboard.
 
 **What the fields mean:**
 | Field | Meaning |
 |-------|---------|
-| `v` | Health vector — 9 integers mapping to: resources, services, no_errored_crons, no_stale_crons, nginx, ollama, gbrain, disk_ok, gbrain_sources_ok. `1` = healthy, `0` = unknown, `-1` = degraded |
-| `h` | Hostname (your agent name) |
-| `t` | Unix timestamp of the ping |
+| `from` | Your agent name (must match htpasswd username) |
+| `topic` | **Must be `"health"`** — the inbox routing key |
+| `body` | A JSON **string** containing the health vector. Inner quotes are escaped. The body has three sub-fields: |
+| `body → v` | 9-element health vector — see table below |
+| `body → h` | Your hostname |
+| `body → t` | Unix timestamp of the ping (use `$(date +%s)`) |
 
-You can also send a **rich health-report** format with `"type":"health-report"`
-and a full breakdown of services and issues. See the reference below.
+**Health vector format:**
 
-Moses will confirm receipt and register you in the fleet health dashboard.
-
----
-
-## Health Pings — Anchor Pattern
-
-This section explains how Moses processes your health pings and why you won't
-get false alerts when your laptop lid is closed.
-
-### How it works
-
-```mermaid
-flowchart LR
-  Titus["Titus (macOS)
-  pings every 5 min"] -->|inbox_send #health| Inbox
-  
-  subgraph Moses ["Moses (server) — every 10 min"]
-    Health["orch-team-health.py
-    no_agent, $0 cost"]
-    State["~/.hermes/state/
-    last-seen.json"]
-  end
-  
-  Inbox -->|reads + deletes| Health
-  Health -->|writes timestamp| State
-  State -.->|check grace| Health
-  Health -.->|alert if &gt;4h| Alert["🔴 Titus unreachable"]
+```json
+{"v":[1,1,1,1,1,1,1,1,1],"h":"titus","t":1712345678}
 ```
 
-**On each tick (every 10 minutes):**
-
-1. `orch-team-health` reads your `#health` messages from the inbox
-2. **Keeps the oldest message** (the *anchor*) — this is proof you were alive
-3. **Deletes all newer health pings** — they confirmed liveness at their time
-   but are redundant once consumed
-4. Parses the anchor body as a health vector
-5. Records `last_seen = anchor.timestamp` to `~/.hermes/state/last-seen.json`
-
-**If you go silent (laptop asleep, lid closed, no network):**
-
-1. No new messages arrive. The anchor still sits in the inbox.
-2. `orch-team-health` sees no new messages and checks `last-seen.json`
-3. If within the **4-hour grace window** → silent, no alert
-4. If beyond 4 hours → alert fires: 🔴 Titus — no health message in inbox
-
-**When you come back online:**
-
-1. New health pings arrive
-2. Anchor stays (still the oldest), newer ones deleted
-3. `last_seen` updated, health restored, resolve fires: ✅ Titus — back online
-
-### Ping cadence
-
-| You | Recommended interval |
-|-----|-------------------|
-| Routine health ping | Every **5 minutes** |
-| On state change | Immediately (service down, disk full, etc.) |
-
-Ping more or less often — it doesn't matter. `orch-team-health` checks every
-10 minutes regardless of how many pings you sent.
-
-### Health vector reference
-
-The simplest format is compact JSON. Here's what each index in the `v` array
-means:
-
+Each index in the `v` array:
 | Index | Service | 1 = healthy | -1 = degraded |
 |-------|---------|-------------|---------------|
 | 0 | resources | CPU/mem/disk within limits | Threshold breached |
@@ -273,54 +223,92 @@ means:
 | 7 | disk_ok | Disk space OK | Low disk space |
 | 8 | gbrain_sources_ok | All sources synced | Sync failures |
 
-A healthy laptop ping:
-```json
-{"v":[1,1,1,1,1,1,1,1],"h":"titus","t":1712345678}
-```
-
-A ping with a specific issue:
+A healthy laptop sends all 1s. An issue like cron errors:
 ```json
 {"v":[1,1,-1,1,1,1,1,1,1],"h":"titus","t":1712345678}
 ```
-(cron errors detected — index 2 is -1)
 
-### Rich health-report format (optional)
+### Verify it's working
 
-You can send a detailed breakdown instead of the compact vector:
+After sending a ping, wait for the next `orch-team-health` tick (up to 10 min)
+and check one of:
 
-```json
-{
-  "type": "health-report",
-  "healthy": true,
-  "platform": "macOS",
-  "hostname": "titus",
-  "timestamp": "2026-07-07T15:00:00Z",
-  "services": [
-    {"name": "nginx", "status": "running"},
-    {"name": "ollama", "status": "running"},
-    {"name": "gbrain", "status": "running"}
-  ],
-  "resources": {
-    "cpu_pct": 23,
-    "mem_pct": 62,
-    "disk_pct": 45
-  },
-  "issues": []
-}
+1. **Inbox** — your ping arrives (check via curl):
+   ```bash
+   curl -s -u "titus:your-password" \
+     "https://example.com:13004/api/inbox?topic=health&limit=3"
+   ```
+   You should see your message listed with `"from": "titus"`.
+
+2. **Agent health data** (Moses can check):
+   ```bash
+   python3 -c "import json;d=json.load(open('/home/moses/.hermes/state/agent-health-data.json'));print(d.get('titus', {}).get('reachable'))"
+   ```
+
+3. **Dashboard** — open the Cortex Dashboard URL. Your agent card should appear
+   alongside the other agents, green if all services are 1.
+
+### Advanced: Rich format (optional)
+
+Instead of the compact vector, you can send a detailed breakdown. The body
+contains a JSON object with `"type": "health-report"`:
+
+```bash
+curl -s -u "titus:your-password" \
+  -X POST "https://example.com:13004/api/send" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "titus",
+    "subject": "🟢 Health: detailed",
+    "body": "{\"type\":\"health-report\",\"healthy\":true,\"platform\":\"macOS\",\"hostname\":\"titus\",\"services\":[{\"name\":\"ollama\",\"status\":\"running\"}],\"resources\":{\"cpu_pct\":23,\"mem_pct\":62,\"disk_pct\":45},\"issues\":[]}",
+    "topic": "health",
+    "priority": "normal"
+  }'
 ```
 
-This gets parsed into the same health vector for dashboard display, with extra
+This gets parsed into the same 9-element vector for the dashboard, with extra
 metadata preserved for the dashboard endpoint.
+
+## Health Pings — Anchor Pattern
+
+This section explains how Moses processes your health pings.
+
+### How it works
+
+Every 10 minutes, `orch-team-health` (a no_agent script, runs at $0 cost):
+
+1. Reads all `#health`-topic messages from your agent in the inbox
+2. **Keeps the oldest message** (the *anchor*) — this stays as proof you were alive
+3. **Deletes all newer health pings** — they confirmed liveness but are redundant once consumed
+4. Parses the anchor body into a health vector and writes it to the fleet dashboard
+
+**When you're alive:** The anchor sits in the inbox. Orch-team-health reads it
+every tick and the dashboard shows green.
+
+**When you sleep (lid closed, no network):** The anchor stays. Orch-team-health
+reads it every tick — same anchor, same data. Dashboard stays green. **No false
+alerts.** The anchor is your permanent "I was alive" marker.
+
+**When you come back:** New pings arrive. The anchor stays (still the oldest),
+newer pings are cleaned up. Dashboard stays green.
+
+### Ping cadence
+
+| You | Recommended interval |
+|-----|-------------------|
+| Routine health ping | Every **5 minutes** |
+| On state change | Immediately (service down, disk full, etc.) |
+
+Ping more or less often — it doesn't matter. Only the oldest message (anchor)
+and the most recent check matter.
 
 ### Key points
 
-- **Your first ping becomes the permanent anchor.** It stays in the inbox until
-  you next restart (when a newer anchor takes its place).
-- **You never accumulate pings in the inbox.** Moses deletes consumed ones.
-- **Laptop sleep is handled.** 4 hours of silence before any alert.
+- **Your first ping becomes the permanent anchor.** It stays in the inbox
+  indefinitely until you restart your agent (a newer anchor takes its place).
+- **You never accumulate pings.** Moses deletes consumed ones on every tick.
+- **Laptop sleep is invisible.** The anchor keeps the dashboard green. No alerts.
 - **No token cost.** The health pipeline is `no_agent` — no LLM involved.
-
----
 
 ## Step 8 — Register with the Fleet (Moses's Side)
 
@@ -355,7 +343,7 @@ This step happens **on Moses's machine**, not yours. Moses will:
 |----------|-------------|
 | **Receiving instructions** | Moses sends inbox messages → your poll cron picks them up → you process them |
 | **Reporting results** | Send inbox messages back with subject `✅ Done: <summary>` → Moses reads on his next tick |
-| **Reporting health** | Send JSON health pings to Moses via `inbox_send` on topic `#health` (see [Health Pings — Anchor Pattern](#health-pings--anchor-pattern)). Oldest ping stays as anchor, newer ones deleted. 4h grace for laptop sleep. |
+| **Reporting health** | Send JSON health pings via `curl` to `.../api/send` with `topic: "health"` (exact). Oldest ping stays as anchor, newer ones deleted. See [Step 7](#step-7--send-your-first-health-ping). |
 | **Requesting cron changes** | Send Moses an inbox with subject `🔧 CRON: create|update|remove <name>` |
 | **Asking for help** | Send `🔴 Blocked: <issue>` to Moses — he'll investigate |
 | **Talking to other agents** | Use `inbox_send` to any agent Moses has registered. CC the human on cross-agent messages. |
@@ -370,7 +358,8 @@ This step happens **on Moses's machine**, not yours. Moses will:
 | `inbox_send` returns 401 | Wrong credentials in `~/.hermes-cortex/.env`. Double-check with Moses. |
 | `inbox_send` returns connection refused | Moses's nginx is down. Check with the human. |
 | Cron never delivers to Telegram | Your `--deliver origin` points to a chat that isn't connected. Check `hermes` settings. |
-| You don't see your own SOUL.md in docs/ | Only Moses writes to the repo. Send him a note to create your agent-profiles directory. |
+|| You don't see your own SOUL.md in docs/ | Only Moses writes to the repo. Send him a note to create your agent-profiles directory. |
+|| Pings get 200 OK but dashboard stays red | You're sending to the wrong topic. Check: your POST body must have `"topic":"health"` (not `general`, not `#health`). Moses's poller only reads `topic=health`. |
 
 ---
 
