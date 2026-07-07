@@ -19,8 +19,12 @@ from pathlib import Path
 
 HOME = Path.home()
 SOUL_MD = HOME / ".hermes" / "SOUL.md"
+BRAIN_BIBLE = lambda agent: HOME / "brain" / agent / "bible"
 OLLAMA_URL = "http://localhost:11434/api/chat"
 KST = timezone.utc  # We'll just note KST in the output
+
+# ── Cycle tracking ─────────────────────────────────────────────
+CYCLE_RE = re.compile(r"<!-- Bible Cycle:\s*(\d+)\s*-->")
 
 # Full Protestant canon in order
 BOOKS = [
@@ -225,20 +229,24 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096) -> str | None:
 
 
 def generate_soul_entry(book: str) -> str | None:
-    """Generate a SHORT SOUL.md entry (verse + one-line commitment only)."""
+    """Generate the concise SOUL.md entry (short format — verse + one-line commitment)."""
     today = get_kst_today()
 
-    prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md). This is read every session so it must be compact and sharp — a single verse and a one-line commitment.
+    prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md). SOUL.md is now a compressed document (~5KB) — each scripture entry is just TWO lines.
 
-Write the entry for **{book}** in this EXACT format — nothing more, nothing less:
+Write the entry for **{book}** in this EXACT format:
 
 ### {book} — *"[key verse]" ([Book Chapter:Verse])*
-I will [one-line behavioral commitment for a system operator].
+
+I will [one-line behavioral commitment for a system operator — automation, monitoring, reliability, documentation, cron jobs, config files, deployments, log analysis, health checks, rollbacks, etc.].
+
+<!-- Added {today} -->
 
 Requirements:
-1. Pick ONE key verse that captures the book's core message. Exact citation.
-2. Write exactly ONE sentence after "I will" — a concrete, actionable commitment for an automation agent.
-3. Output ONLY the two-line entry — no explanations, no code fences, no extra text.
+1. Pick ONE key verse that genuinely captures the book's core message. Include the exact citation.
+2. The "I will" line must be a single, concrete behavioral commitment. Start with "I will" and make it something an automation agent can actually do. No metaphors, no generic life advice.
+3. Output ONLY these three lines — no explanations, no code fences, no extra text.
+4. The date comment goes on its own line at the end.
 
 Generate the entry for {book}:"""
 
@@ -273,6 +281,10 @@ Write the entry for **{book}** in this EXACT markdown format:
 
 [Analyze 3-4 key Hebrew (OT) or Greek (NT) words from this book. For each: the word in its original script, transliteration, literal meaning, semantic range, how it's used in context, and any wordplay or textual significance. Format each as a bolded word heading.]
 
+## Behavioral Commitment
+
+[Write the one-line "I will" behavioral commitment for a system operator — same line that goes into SOUL.md. Be specific and concrete: "I will [action] so that [outcome]."]
+
 ## Insight for {agent_name}
 
 [A single paragraph connecting the book's core message to practical application for {agent_name}, a system operator and automation agent. Be specific and concrete, relating to monitoring, infrastructure, documentation, reliability, delegation, or leadership.]
@@ -291,12 +303,22 @@ Generate the entry for {book}:"""
 # ── Write artifacts ───────────────────────────────────────────
 
 def append_to_soul(book: str, full_entry: str) -> bool:
-    """Append the short entry to the end of SOUL.md."""
+    """Append the full entry to SOUL.md before the Session Mining Lessons section."""
     if not SOUL_MD.exists():
         return False
 
-    text = SOUL_MD.read_text(encoding="utf-8").rstrip() + "\n\n" + full_entry.strip() + "\n"
-    SOUL_MD.write_text(text, encoding="utf-8")
+    text = SOUL_MD.read_text(encoding="utf-8")
+
+    # Insert before "## Final Directive" if present
+    marker = "## Final Directive"
+    if marker in text:
+        full_block = f"\n{full_entry}\n\n"
+        new_text = text.replace(f"\n{marker}", f"{full_block}{marker}", 1)
+    else:
+        full_block = f"\n{full_entry}\n"
+        new_text = text + full_block
+
+    SOUL_MD.write_text(new_text, encoding="utf-8")
     return True
 
 
@@ -377,19 +399,84 @@ def update_brain_index(book: str, agent_name: str) -> bool:
 
 # ── Main ──────────────────────────────────────────────────────
 
+def get_cycle() -> int:
+    """Read the current bible cycle from SOUL.md comment."""
+    if not SOUL_MD.exists():
+        return 1
+    text = SOUL_MD.read_text(encoding="utf-8")
+    m = CYCLE_RE.search(text)
+    return int(m.group(1)) if m else 1
+
+
+def set_cycle(cycle: int) -> None:
+    """Set the bible cycle number in SOUL.md. Creates or replaces the comment."""
+    if not SOUL_MD.exists():
+        return
+    text = SOUL_MD.read_text(encoding="utf-8")
+    comment = f"<!-- Bible Cycle: {cycle} -->"
+    if CYCLE_RE.search(text):
+        text = CYCLE_RE.sub(comment, text)
+    else:
+        text = text + f"\n{comment}\n"
+    SOUL_MD.write_text(text, encoding="utf-8")
+
+
+def archive_and_reset(agent_name: str) -> None:
+    """Archive current Scripture Insights to brain/, clear from SOUL.md, increment cycle."""
+    if not SOUL_MD.exists():
+        return
+    text = SOUL_MD.read_text(encoding="utf-8")
+    cycle = get_cycle()
+
+    # Extract current entries for archive
+    insights_section = text.split("## Scripture Insights")[-1]
+    insights_section = insights_section.split("## Final Directive")[0]
+
+    # Archive the completed cycle's scripture insights
+    brain_dir = BRAIN_BIBLE(agent_name)
+    brain_dir.mkdir(parents=True, exist_ok=True)
+    archive_file = brain_dir / f"cycle-{cycle}-completed.md"
+    archive_file.write_text(
+        f"# Bible Cycle {cycle} — Completed\n\n"
+        f"*Archived: {datetime.now().strftime('%Y-%m-%d %H:%M')}*\n\n"
+        f"{insights_section.strip()}\n",
+        encoding="utf-8",
+    )
+
+    # Clear Scripture Insights section between the headers
+    new_cycle = cycle + 1
+    new_text = text.replace(
+        f"## Scripture Insights{insights_section}## Final Directive",
+        f"## Scripture Insights\n\n## Final Directive",
+    )
+    # Also ensure the cycle comment is updated
+    new_text = CYCLE_RE.sub(f"<!-- Bible Cycle: {new_cycle} -->", new_text)
+    SOUL_MD.write_text(new_text, encoding="utf-8")
+    print(f"♻️  Bible Cycle {cycle} complete! Archived to brain/. Starting Cycle {new_cycle}.", file=sys.stderr)
+
+
 def main() -> int:
     agent_name = detect_agent_name()
     print(f"🤖 Agent: {agent_name}", file=sys.stderr)
+    cycle = get_cycle()
+    print(f"🔄 Bible Cycle: {cycle}", file=sys.stderr)
 
     last_book = find_last_book()
-    if last_book is None:
-        print("❌ Could not find any books in SOUL.md", file=sys.stderr)
-        return 1
 
-    next_book = get_next_book(last_book)
-    if next_book is None:
-        print("📖 All 66 books have been covered. Bible reading complete.", file=sys.stderr)
-        return 0
+    # Edge case 1: No books in SOUL.md — start from Genesis
+    if last_book is None:
+        next_book = BOOKS[0]  # Genesis
+        print(f"📖 No books found — starting from Genesis (Cycle {cycle})", file=sys.stderr)
+
+    else:
+        next_book = get_next_book(last_book)
+
+        # Edge case 2: All 66 books covered — archive, reset, restart from Genesis
+        if next_book is None:
+            print(f"📖 All 66 books covered in Cycle {cycle}. Resetting...", file=sys.stderr)
+            archive_and_reset(agent_name)
+            next_book = BOOKS[0]  # Genesis
+            print(f"♻️  Restarting from Genesis (Cycle {cycle + 1})", file=sys.stderr)
 
     print(f"📖 Last book: {last_book} → Next: {next_book}", file=sys.stderr)
 
