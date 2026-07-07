@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 """
-score-auditor.py — no_agent watchdog: flag unscored file changes
+governance-auditor.py — no_agent watchdog: governance maintenance + unscored detection
 
 Watchdog pattern:
   Empty stdout → silent (all changes scored)
@@ -174,11 +174,69 @@ def get_scored_tasks() -> set[str]:
     except Exception:
         return set()
 
+# ── Stale lock cleanup ────────────────────────────────────────
+GOVERNANCE_STATE_DIR = os.path.expanduser("~/.hermes-cortex/state")
+LOCK_MAX_AGE_HOURS = 12
+
+
+def _cleanup_stale_locks() -> list[str]:
+    """Remove repo-scoped governance locks older than 12h.
+
+    Does NOT touch .governance-generic.json (shared across concurrent
+    Hermes sessions — Telegram, CLI, gateway all share it).
+
+    Returns list of human-readable cleanup messages (empty = nothing done).
+    """
+    if not os.path.isdir(GOVERNANCE_STATE_DIR):
+        return []
+
+    now = time.time()
+    cleaned = []
+
+    for fname in os.listdir(GOVERNANCE_STATE_DIR):
+        if not fname.startswith(".governance-") or fname == ".governance-generic.json":
+            continue
+        fpath = os.path.join(GOVERNANCE_STATE_DIR, fname)
+        if not os.path.isfile(fpath):
+            continue
+
+        age_hours = (now - os.path.getmtime(fpath)) / 3600
+        if age_hours < LOCK_MAX_AGE_HOURS:
+            continue
+
+        # Read task info for the log
+        task_info = ""
+        try:
+            with open(fpath) as f:
+                d = json.load(f)
+            task_info = f" (task={d.get('task_id','?')}, started={d.get('started_at','?')})"
+        except Exception:
+            pass
+
+        os.remove(fpath)
+        cleaned.append(f"  🧹 Removed stale lock: {fname}{task_info} ({int(age_hours)}h old)")
+
+    return cleaned
+
+
 # ── Main ─────────────────────────────────────────────────────
 def main() -> None:
+    output = []
+
+    # Phase 1: Clean stale governance locks
+    lock_msgs = _cleanup_stale_locks()
+    if lock_msgs:
+        ts = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
+        output.append(f"[{ts}] governance-auditor: cleaned {len(lock_msgs)} stale lock(s)")
+        output.extend(lock_msgs)
+        output.append("")
+
+    # Phase 2: Check for unscored changes
     recent = find_recent_files()
     if not recent:
-        return  # silent exit — nothing changed
+        StateTracker("governance-auditor").evaluate("healthy", has_issues=False)
+        if output:
+            print("\n".join(output))
 
     scored = get_scored_tasks()
     unscored: list[dict] = []
@@ -205,20 +263,22 @@ def main() -> None:
 
     if not unscored:
         # Clear prior error state
-        StateTracker("score-auditor").evaluate("healthy", has_issues=False)
-        return  # silent — all changes accounted for
+        StateTracker("governance-auditor").evaluate("healthy", has_issues=False)
+        if output:
+            print("\n".join(output))
+        return  # silent or lock-cleanup only
 
     # State tracking — suppress duplicates
     hostname = os.uname().nodename.split(".")[0]
     fp = f"host={hostname}|count={len(unscored)}"
-    action = StateTracker("score-auditor").evaluate(fp)
+    action = StateTracker("governance-auditor").evaluate(fp)
 
     if action == "silent":
         return  # same unscored count as last time
 
     # ── Report ──
     ts = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
-    print(f"[{ts}] score-auditor: {len(unscored)} unscored change(s)")
+    print(f"[{ts}] governance-auditor: {len(unscored)} unscored change(s)")
     print(f"  Lookback: {LOOKBACK_HOURS}h  |  DB: {DB_PATH}")
     print("")
 

@@ -124,7 +124,7 @@ register "src/scripts/install/install-orch-crons.sh"  "${HERMES_HOME}/scripts/in
 register "src/scripts/install/install-score-hook.sh"       "${HERMES_HOME}/scripts/install-score-hook.sh"
 register "src/scripts/pre-commit-score"            "${HERMES_HOME}/scripts/pre-commit-score"
 register "src/scripts/pre-push-pull"               "${HERMES_HOME}/scripts/pre-push-pull"
-register "src/scripts/manage/score-auditor.py"            "${HERMES_HOME}/scripts/score-auditor.py"
+register "src/scripts/manage/governance-auditor.py"            "${HERMES_HOME}/scripts/governance-auditor.py"
 register "src/scripts/agent/agents-doc-audit.py"          "${HERMES_HOME}/scripts/agents-doc-audit.py"
 register "src/scripts/agent/agents-md-prune-scan.py"      "${HERMES_HOME}/scripts/agents-md-prune-scan.py"
 register "src/scripts/health/check-external-services.sh"   "${HERMES_HOME}/scripts/check-external-services.sh"

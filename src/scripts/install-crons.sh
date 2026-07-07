@@ -414,7 +414,7 @@ if $UNINSTALL; then
     "llm-judge-scorer-weekday" "llm-judge-scorer-weekend" \
     "offline-code-index" "model-health-watchdog" \
     "agent-inbox" "agent-remediate-apply" "agent-apply-fixes" \
-    "score-auditor" "threat-pipeline" "agent-ip-submission" \
+    "governance-auditor" "threat-pipeline" "agent-ip-submission" \
     "scoring-activity-watchdog" "skill-miner" "agent-weekly-loop-eval" \
     "session-cache-build" "cron-quality-watchdog"; do
     remove_cron "$job"
@@ -537,11 +537,11 @@ create_cron "inbox-sensor" "*/10 * * * *" \
   "" \
   "true"
 
-# ── 5. Change Scoring Audit ──────────────────────────────────
+# ── 5. Governance Audit & Lock Cleanup ──────────────────────
 printf "\\n${CYAN}  5. Change Scoring Audit${RESET}\\\n"
 
-create_cron "score-auditor" "0 */6 * * *" \
-  "score-auditor.py" \
+create_cron "governance-auditor" "0 */6 * * *" \
+  "governance-auditor.py" \
   "" \
   "" \
   "" \

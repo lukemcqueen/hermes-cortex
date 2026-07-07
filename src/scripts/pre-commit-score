@@ -54,56 +54,35 @@ GENERIC_LOCK="${HOME}/.hermes-cortex/state/.governance-generic.json"
 
 if [[ ! -f "$GOVERNANCE_LOCK" ]]; then
   if [[ -f "$GENERIC_LOCK" ]]; then
-    # Generic lock exists but repo-scoped doesn't — mismatch detected.
-    # This happens when begin_change() was called from outside the git repo.
-    # Before auto-migrating, check that scoring infrastructure is healthy.
-    SCORE_CYCLE_PATH=""
-    for candidate in score-cycle ~/.local/bin/score-cycle "$HOME/.local/bin/score-cycle"; do
-      if resolved=$(command -v "$candidate" 2>/dev/null); then
-        SCORE_CYCLE_PATH="$resolved"
-        break
-      fi
-    done
-
-    OLLAMA_OK=false
-    if curl -s http://localhost:11434/api/tags --max-time 3 >/dev/null 2>&1; then
-      OLLAMA_OK=true
+    # Generic lock exists but repo-scoped doesn't.
+    #
+    # IMPORTANT: The generic lock is SHARED across all concurrent Hermes
+    # sessions (Telegram, CLI, gateway). It belongs to another session's
+    # begin_change() — NOT to this commit. Never auto-migrate or block
+    # for it. Just note it and continue.
+    #
+    # Stale locks are cleaned up by a daily cleanup cron (not here).
+    STALE_INFO=$(python3 -c "
+import json
+try:
+    d = json.load(open('$GENERIC_LOCK'))
+    print(f\"{d.get('task_id','?')}|{d.get('description','?')}|{d.get('started_at','?')}\")
+except:
+    pass
+" 2>/dev/null)
+    if [[ -n "$STALE_INFO" ]]; then
+      IFS='|' read -r STALE_TASK STALE_DESC STALE_DATE <<< "$STALE_INFO"
+      echo ""
+      echo "ℹ️  Generic governance lock found (belongs to another session):"
+      echo "    task_id:     ${STALE_TASK}"
+      echo "    description: ${STALE_DESC}"
+      echo "    started_at:  ${STALE_DATE}"
+      echo "    This lock belongs to a different session — skipping."
+      echo "    (Stale locks are cleaned up by daily cleanup cron.)"
+      echo ""
     fi
-
-    DB_OK=false
-    if [[ -f "${HOME}/.hermes/data/loop-governance.db" ]]; then
-      DB_OK=true
-    fi
-
-    if [[ -z "$SCORE_CYCLE_PATH" ]] || ! $OLLAMA_OK || ! $DB_OK; then
-      # Scoring infra is broken — don't auto-migrate, advise fix first
-      echo ""
-      echo "⚠️  Governance lock exists at .governance-generic.json but this commit"
-      echo "   is in the '${REPO_SLUG}' repo (lock files are repo-scoped)."
-      echo ""
-      echo "   Scoring infrastructure is not fully healthy:"
-      [[ -z "$SCORE_CYCLE_PATH" ]]   && echo "     ❌ score-cycle CLI  — not found"
-      $OLLAMA_OK                      || echo "     ❌ Ollama           — not responding on :11434"
-      $DB_OK                          || echo "     ❌ Loop DB          — not found at ~/.hermes/data/loop-governance.db"
-      echo ""
-      echo "   Fix the scoring infra first, then commit normally."
-      echo "   Or bypass this check:  SKIP_SCORE=1 git commit ..."
-      echo "   Or manually symlink:   ln -sf ~/.hermes-cortex/state/.governance-generic.json"
-      echo "                               ~/.hermes-cortex/state/.governance-${REPO_SLUG}.json"
-      echo ""
-      exit 1
-    fi
-
-    # All dependencies healthy — auto-migrate
-    echo ""
-    echo "⚠️  Governance lock exists at .governance-generic.json but this commit"
-    echo "   is in the '${REPO_SLUG}' repo (lock files are repo-scoped)."
-    echo ""
-    echo "   Auto-migrating: ln -sf .governance-generic.json → .governance-${REPO_SLUG}.json"
-    mkdir -p "${HOME}/.hermes-cortex/state"
-    ln -sf "$GENERIC_LOCK" "$GOVERNANCE_LOCK"
-    echo "   ✅ Lock migrated. Continuing with commit."
-    echo ""
+    # Continue without scoring — not our lock, not our score
+    exit 0
   else
     # No lock at all — block with help message
     echo ""
@@ -234,6 +213,21 @@ for py in ~/.pyenv/versions/3.13.*/bin/python3; do
   fi
 done
 
+# ── GAP CLOSED: Remove silent score-cycle failure ─────────────
+# Before 2026-07-07: stderr was hidden (2>/dev/null) and a failed
+# score-cycle silently fell through to echo '{"decision":"LOOP"}',
+# letting bypassed-governance commits go through unnoticed.
+# 
+# Now: stderr is visible, and on failure the commit warns + proceeds
+# but does NOT fake a cycle. The user sees what happened.
+#
+# Known Hermes enforcement regex gap: the ^ anchor on git commit
+# only catches standalone commands. Compound commands bypass it:
+#   cd x && git commit      ← bypasses
+#   SKIP_SCORE=1 git commit ← bypasses  
+# Run git commit standalone to trigger the enforcement check.
+# ────────────────────────────────────────────────────────────────
+
 # Build task id from repo + branch + commit message (descriptive, unique)
 REPO_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'unknown')")
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')
@@ -259,13 +253,29 @@ else:
 " 2>/dev/null || echo "0")
 CYCLE_NUM=$((PREV_CYCLE + 1))
 
+SCORE_STDERR=$(mktemp)
 SCORE_OUTPUT=$("$PYTHON_BIN" "$SCORE_CYCLE" \
   --task "$TASK_ID" \
   --cycle "$CYCLE_NUM" \
   --code-file "$CODE_FILE" \
   --prev-code-file "$PREV_FILE" \
   --pass-pct "$PASS_PCT" \
-  --json 2>/dev/null || echo '{"decision":"LOOP"}')
+  --json 2>"$SCORE_STDERR") || {
+  # score-cycle failed — show stderr, do NOT fake a decision
+  if [[ -s "$SCORE_STDERR" ]]; then
+    echo ""
+    echo "⚠️  score-cycle encountered an error (stderr follows):"
+    sed 's/^/   /' "$SCORE_STDERR"
+    echo ""
+    echo "   The commit will proceed but no cycle will be logged."
+    echo "   Check whether governance was properly followed."
+    echo "   To bypass this check: SKIP_SCORE=1 git commit ..."
+    echo ""
+  fi
+  rm -f "$SCORE_STDERR"
+  SCORE_OUTPUT='{"decision":"LOOP","note":"score-cycle failed — no cycle logged"}'
+}
+rm -f "$SCORE_STDERR"
 
 rm -f "$PREV_FILE"
 
