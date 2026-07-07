@@ -908,7 +908,7 @@ deploy_nginx_configs() {
 deploy_system_scripts() {
   local deploy_dir="/usr/local/sbin"
   local src_dir="${REPO_DIR}/deploy/nginx"
-  local scripts=("hermes-security-apply" "hermes-nginx-clean-restart")
+  local scripts=("install-nginx-full.sh" "hermes-nginx-clean-restart")
   local files_copied=0
 
   [[ -d "$src_dir" ]] || return 0
@@ -941,8 +941,8 @@ deploy_system_scripts() {
   [[ "$files_copied" -eq 0 ]] && return 0
 
   # Remove old local copies — canonical version is now in /usr/local/sbin/
-  local home_link="${HERMES_HOME}/scripts/hermes-security-apply"
-  local agent_link="${HOME}/.hermes/scripts/hermes-security-apply"
+  local home_link="${HERMES_HOME}/scripts/install-nginx-full.sh"
+  local agent_link="${HOME}/.hermes/scripts/install-nginx-full.sh"
   [[ -f "$home_link" ]] && rm -f "$home_link"
   [[ -f "$agent_link" ]] && rm -f "$agent_link"
 }

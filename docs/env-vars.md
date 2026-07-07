@@ -45,7 +45,7 @@ To force re-evaluation on the next deploy:
 python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py --force
 
 # Or with the legacy bash script (not recommended)
-# CORTEX_FORCE_DEPLOY=1 sudo hermes-security-apply
+# CORTEX_FORCE_DEPLOY=1 sudo install-nginx-full.sh
 ```
 
 ### Discovery Order (when not preserved)
@@ -66,7 +66,7 @@ valid cert paths are provided — this is intentional. SSL is mandatory, not opt
 
 ## Deploy Script Comparison
 
-||| Feature | `cortex-update.sh` | `hermes-security-apply` | `hermes-services-apply.py` |
+||| Feature | `cortex-update.sh` | `install-nginx-full.sh` | `hermes-services-apply.py` |
 ||---------|-------------------|------------------------|---------------------------|
 || Language | Bash | Bash **(legacy, deprecated)** | **Python (primary — use this)** |
 | Run by | `cortex-update.sh` (auto-update) | sudo / cron | Manual or script pipeline |
@@ -104,10 +104,10 @@ bash ~/hermes-cortex/src/scripts/cortex-update.sh
 CORTEX_SKIP_NGINX=1 bash ~/hermes-cortex/src/scripts/cortex-update.sh
 ```
 
-> ⚠ **Legacy script:** `hermes-security-apply` is deprecated. Use `hermes-services-apply.py` above instead.
+> ⚠ **Legacy script:** `install-nginx-full.sh` is deprecated. Use `hermes-services-apply.py` above instead.
 >
 > ```bash
-> sudo hermes-security-apply
+> sudo install-nginx-full.sh
 > ```
 
 ### hermes-services-apply.py (Python deploy)

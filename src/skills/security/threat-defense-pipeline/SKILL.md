@@ -117,7 +117,7 @@ validates with `nginx -t`, and reloads nginx. No broad sudo script needed.
          │
     nginx scanner ──> blocked_ips.add ──> pipeline ──> git commit/push
                                                     │
-                                             hermes-security-apply
+                                             install-nginx-full.sh
                                                     │
                                               nginx reload
                                               fail2ban reload

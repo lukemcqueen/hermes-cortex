@@ -7,7 +7,7 @@
 | `deploy/nginx/blocked_ips.add` | 11 storage scanner IPs (34.x, 136.x, etc.) |
 | `deploy/nginx/nginx-badbots.conf` | fail2ban filter — extended archive types + `/storage/` path |
 | `deploy/nginx/README.md` | Human setup + daily ops guide |
-| `deploy/nginx/hermes-security-apply` | **Legacy** bash deploy script — now superseded by `hermes-services-apply.py` |
+| `deploy/nginx/install-nginx-full.sh` | **Legacy** bash deploy script — now superseded by `hermes-services-apply.py` |
 | `deploy/nginx/hermes-services-apply.py` | **Primary** Python deploy script — auto-SSL, port prefix, allow-ips-manual |
 | `deploy/nginx/fix-blocked-ips.py` | Helper — regenerates `blocked_ips.conf` if corrupted with bare IPs |
 | `src/scripts/nginx-security-scanner.sh` | Daily scanner — auto-detect new IPs, auto-deploy |
@@ -61,7 +61,7 @@ python3 deploy/nginx/hermes-services-apply.py             # deploy
 ### Legacy (used by cron pipeline)
 
 ```bash
-sudo /usr/local/sbin/hermes-security-apply
+sudo /usr/local/sbin/install-nginx-full.sh
 ```
 
 **Known false positive:** The legacy script prints `⚠ blocked_ips.conf not yet included in nginx config`.
@@ -70,11 +70,11 @@ path it doesn't update. The live config is correct. Use the Python script to avo
 
 ## Updating the System Script (Legacy)
 
-Only needed if your pipeline cron references `/usr/local/sbin/hermes-security-apply`:
+Only needed if your pipeline cron references `/usr/local/sbin/install-nginx-full.sh`:
 
 ```bash
-sudo cp ~/hermes-cortex/deploy/nginx/hermes-security-apply /usr/local/sbin/hermes-security-apply
-sudo chmod 755 /usr/local/sbin/hermes-security-apply
+sudo cp ~/hermes-cortex/deploy/nginx/install-nginx-full.sh /usr/local/sbin/install-nginx-full.sh
+sudo chmod 755 /usr/local/sbin/install-nginx-full.sh
 ```
 
 ### Verify the update
@@ -106,7 +106,7 @@ blocked_ips.add (input)    nginx-badbots.conf (input)    allow-ips-manual.conf (
          │                          │                              │
          └───────┬──────────────────┘                              │
                  │                        Strips allow-listed IPs  │
-    hermes-security-apply ──────────────────────────────────────────┘
+    install-nginx-full.sh ──────────────────────────────────────────┘
          │
          ├── Backs up old configs
          ├── Deploys nginx + zone-defs

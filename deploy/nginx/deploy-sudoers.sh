@@ -2,7 +2,7 @@
 # deploy-sudoers.sh — Deploy missing NOPASSWD sudo rules for nginx security pipeline
 #
 # The source file deploy/nginx/hermes-security contains all needed sudoers rules,
-# but lines 30-33 (hermes-security-apply + blocked_ips.conf cp) were never deployed
+# but lines 30-33 (install-nginx-full.sh + blocked_ips.conf cp) were never deployed
 # to /etc/sudoers.d/hermes-security. This script deploys them.
 #
 # Usage: sudo bash deploy-sudoers.sh
@@ -65,6 +65,6 @@ echo ""
 echo "━━━ Complete ━━━"
 echo ""
 echo "Now test the pipeline deploy:"
-echo "  sudo /usr/local/sbin/hermes-security-apply"
+echo "  sudo /usr/local/sbin/install-nginx-full.sh"
 echo ""
 echo "The daily threat-pipeline cron should now deploy automatically."

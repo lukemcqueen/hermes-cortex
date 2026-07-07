@@ -19,7 +19,7 @@ SSL cert discovery order (first found wins):
   6. If nothing found, leave placeholders unchanged (skip SSL substitution)
 
 Also handles port prefix translation (CORTEX_NGINX_PORT_PREFIX) and OS-aware
-path detection matching hermes-security-apply conventions.
+path detection matching install-nginx-full.sh conventions.
 
 Usage:
   python3 hermes-services-apply.py [--dry-run] [--domain example.com]

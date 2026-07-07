@@ -12,7 +12,7 @@ fail2ban filters.
 |-------------|-------|
 | **nginx** | Required. The deploy scripts install configs and reload nginx. |
 | **fail2ban** | Required for automated bans. The pipeline integrates with fail2ban filters. |
-| **sudoers entry** | Passwordless sudo for `/usr/local/sbin/hermes-security-apply` + nginx commands. Not needed for the Python script if the user has root access via other means. |
+| **sudoers entry** | Passwordless sudo for `/usr/local/sbin/install-nginx-full.sh` + nginx commands. Not needed for the Python script if the user has root access via other means. |
 | **Env file** | `~/hermes-cortex/.env` (gitignored) — set your `CORTEX_*` vars. The deploy scripts auto-source this. See `.env.example` for all options. |
 
 **Agents without nginx/fail2ban** should skip this pipeline entirely.
@@ -27,7 +27,7 @@ no benefit to running it on a host without nginx.
 | `hermes-zone-defs.conf` | Rate limit zones, CSP maps, direct-IP blocker |
 | `blocked_ips.add` | **Input:** bare IPs to block (one per line, no `deny` keyword, no semicolon) |
 | `nginx-badbots.conf` | **Input:** fail2ban filter for archive scanners + `/storage/` crawling |
-| `hermes-security-apply` | **Full deploy** bash script — nginx configs + SSL + blocked IPs + fail2ban. Used for fresh installs and full deploys. Daily pipeline uses `deploy-blocked-ips.sh` for incremental updates. |
+| `install-nginx-full.sh` | **Full deploy** bash script — nginx configs + SSL + blocked IPs + fail2ban. Used for fresh installs and full deploys. Daily pipeline uses `deploy-blocked-ips.sh` for incremental updates. |
 | `hermes-services-apply.py` | **Primary** Python deploy script — auto-discovers SSL, supports `--dry-run`, handles port prefixes and `allow-ips-manual.conf` |
 | `~/hermes-cortex/.env.example` | **Env template** — copy to `.env`, set `CORTEX_SSL_*` vars. Gitignored, auto-sourced by deploy scripts. |
 | `allow-ips-manual.conf` | **Per-machine** (not in git): manual allow list at `/etc/nginx/allow-ips-manual.conf` — IPs listed here override blocked_ips.conf |
@@ -49,13 +49,13 @@ The deploy scripts auto-source this file — no need to source it manually.
 ### 2. Install the full deploy script (required for fail2ban + fresh installs)
 
 ```bash
-sudo install -o root -g root -m 0750 hermes-security-apply /usr/local/sbin/hermes-security-apply
+sudo install -o root -g root -m 0750 install-nginx-full.sh /usr/local/sbin/install-nginx-full.sh
 ```
 
 ### 3. Add passwordless sudo for the deploy script (required for cron usage)
 
 ```bash
-echo '<your-username> ALL=(root) NOPASSWD: /usr/local/sbin/hermes-security-apply' \
+echo '<your-username> ALL=(root) NOPASSWD: /usr/local/sbin/install-nginx-full.sh' \
   | sudo tee /etc/sudoers.d/hermes-security
 sudo chmod 440 /etc/sudoers.d/hermes-security
 sudo visudo -cf /etc/sudoers.d/hermes-security
@@ -111,7 +111,7 @@ What it does:
 ### Legacy: bash deploy script
 
 ```bash
-sudo /usr/local/sbin/hermes-security-apply
+sudo /usr/local/sbin/install-nginx-full.sh
 ```
 
 **Known issue with the legacy script:** It writes to `/etc/nginx/servers/` instead of
@@ -127,18 +127,18 @@ the config has bare IPs (missing `deny ... ;` wrapper). Fix with the helper scri
 python3 ~/hermes-cortex/deploy/nginx/fix-blocked-ips.py
 sudo cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf      # Linux
 # sudo cp /tmp/blocked_ips.conf.new /usr/local/etc/nginx/blocked_ips.conf  # macOS
-sudo /usr/local/sbin/hermes-security-apply
+sudo /usr/local/sbin/install-nginx-full.sh
 ```
 
 ---
 
 ## Updating the System Script (Legacy)
 
-Only needed if your pipeline cron references `/usr/local/sbin/hermes-security-apply`:
+Only needed if your pipeline cron references `/usr/local/sbin/install-nginx-full.sh`:
 
 ```bash
-sudo cp ~/hermes-cortex/deploy/nginx/hermes-security-apply /usr/local/sbin/hermes-security-apply
-sudo chmod 755 /usr/local/sbin/hermes-security-apply
+sudo cp ~/hermes-cortex/deploy/nginx/install-nginx-full.sh /usr/local/sbin/install-nginx-full.sh
+sudo chmod 755 /usr/local/sbin/install-nginx-full.sh
 ```
 
 ### Verify
@@ -202,7 +202,7 @@ sudo nginx -s reload
 This file is included in nginx config BEFORE `blocked_ips.conf`, so `allow`
 rules run first and override any `deny` rules for those IPs.
 
-The deploy pipeline (`hermes-security-apply`) also strips allow-listed IPs
+The deploy pipeline (`install-nginx-full.sh`) also strips allow-listed IPs
 from the block list during deployment, so fail2ban cannot accidentally add
 them to `blocked_ips.conf`.
 
@@ -251,7 +251,7 @@ Edit `nginx-badbots.conf` with new `failregex` patterns as needed.
 python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py
 
 # Legacy (still works for IPs, but doesn't handle allow-ips-manual or port prefix)
-sudo /usr/local/sbin/hermes-security-apply
+sudo /usr/local/sbin/install-nginx-full.sh
 ```
 
 The deploy script does **all** of this atomically:

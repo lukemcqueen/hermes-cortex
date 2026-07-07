@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  hermes-security-apply — Atomic nginx security deploy script
+#  install-nginx-full.sh — One-shot nginx full deploy script
 #
-#  Deploys: blocked IPs, fail2ban filter, nginx configs.
+#  Installs: nginx configs, SSL certs, blocked IPs, fail2ban filter.
+#  Used for fresh installs and full deploys (NOT the daily pipeline).
 #  Atomic: validates before reloading. Safe to re-run.
 #
 #  Sources:
@@ -16,7 +17,7 @@
 #    macOS arm64:  /opt/homebrew/etc/nginx/
 #
 #  Usage:
-#    sudo hermes-security-apply
+#    sudo install-nginx-full.sh
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 

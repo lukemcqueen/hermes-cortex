@@ -33,7 +33,7 @@ and auto-detects macOS (Intel + ARM) vs Linux paths.
 - Cron has no TTY (`requiretty` in sudoers)
 - `bash` wrapper made sudo see `bash` instead of the NOPASSWD-authorized script path
 
-> **⚠ Script note:** `hermes-security-apply` (bash) deploys to `sites-available/` now, but
+> **⚠ Script note:** `install-nginx-full.sh` (bash) deploys to `sites-available/` now, but
 > `sites-available/`, producing the false-positive `⚠ blocked_ips.conf not yet included` warning.
 > The new Python script `hermes-services-apply.py` deploys to the correct path and is the preferred
 > replacement. The pipeline scripts still call the legacy version.
@@ -47,5 +47,5 @@ and auto-detects macOS (Intel + ARM) vs Linux paths.
 ## Files
 
 - `src/scripts/nginx-threat-pipeline.sh` — the pipeline script (tracked in repo)
-- `deploy/nginx/hermes-security-apply` — deploy script (already tracked)
+- `deploy/nginx/install-nginx-full.sh` — deploy script (already tracked)
 - `src/scripts/nginx-security-scanner.sh` — daily scanner (already tracked)

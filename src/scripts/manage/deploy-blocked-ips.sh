@@ -2,7 +2,7 @@
 # deploy-blocked-ips.sh — Generate and deploy blocked_ips.conf
 #
 # Minimal-root deploy: generates the blocklist config without needing
-# the full hermes-security-apply script. Only uses sudo for the final
+# the full install-nginx-full.sh script. Only uses sudo for the final
 # cp to /etc/nginx/.
 #
 # Usage:

@@ -53,7 +53,7 @@ it on a host without nginx.
 |------|---------|
 | `blocked_ips.add` | **Input:** bare IPs to block (one per line, no `deny`, no semicolon) |
 | `nginx-badbots.conf` | fail2ban filter for archive scanners + `/storage/` crawling |
-| `hermes-security-apply` | **Full deploy** bash script — nginx configs + SSL + blocked IPs + fail2ban. Used for fresh installs. Daily pipeline uses `deploy-blocked-ips.sh`. |
+| `install-nginx-full.sh` | **Full deploy** bash script — nginx configs + SSL + blocked IPs + fail2ban. Used for fresh installs. Daily pipeline uses `deploy-blocked-ips.sh`. |
 | `hermes-services-apply.py` | **Primary** Python deploy script — handles SSL, port prefix, `allow-ips-manual.conf` |
 | `fix-blocked-ips.py` | **Recovery:** regenerates `blocked_ips.conf` if corrupted with bare IPs |
 | `README.md` | Setup guide with platform notes |
@@ -151,7 +151,7 @@ cron name=threat-pipeline schedule="0 5 * * *" \
 The pipeline:
 1. Runs the scanner for new suspect IPs from nginx logs
 2. Collects new banned IPs from fail2ban logs
-3. Deploys via `sudo -n hermes-security-apply` (uses the legacy script)
+3. Deploys via `sudo -n install-nginx-full.sh` (uses the legacy script)
 4. Git-commits and pushes `blocked_ips.add` changes
 
 > **Note:** This is a deployment-specific cron (Luke's setup). Install via `install-crons.sh` on each target host.

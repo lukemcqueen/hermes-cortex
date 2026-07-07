@@ -181,7 +181,7 @@ fi
 # ── Step 3: Deploy ──
 log "── Step 3: Deploy ──"
 if [ -z "$DEPLOY_SCRIPT" ]; then
-  log "  hermes-security-apply not found on any platform path — skipping"
+  log "  install-nginx-full.sh not found on any platform path — skipping"
 elif [ -z "$NGINX_BIN" ]; then
   log "  nginx not found — skipping deploy"
 elif $NEW_IPS; then
