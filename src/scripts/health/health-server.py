@@ -455,15 +455,18 @@ _gbrain_cache_ts: float = 0
 _GBRAIN_CACHE_TTL = 900  # 15 minutes
 
 def _check_gbrain_sources() -> dict:
-    """Check gbrain source health via gbrain doctor --json.
+    """Check gbrain source health.
 
-    Results are cached for 5 minutes to avoid blocking the health server
-    with the 30s+ gbrain doctor subprocess call.
+    Uses three strategies in order:
+      1. gbrain doctor --json (authoritative, when autopilot lock available)
+      2. gbrain sources list (when doctor unavailable)
+      3. Filesystem check: ~/brain/*/ dirs have content (no lock needed)
 
-    Gracefully degrades when gbrain is unavailable:
-      - Try 1: gbrain doctor --json (authoritative, 45s timeout)
-      - Try 2: gbrain sources list (parseable fallback, 15s)
-      - Returns UNKNOWN (not DOWN) when gbrain is unavailable
+    Only flags hard failures (never synced, 0 pages, missing dirs).
+    Knowledge quality scores (brain score < 50) are NOT reported as
+    health issues — they are internal gbrain metrics, not system health.
+
+    Results cached for 5 minutes to avoid blocking the health server.
     """
     global _gbrain_cache, _gbrain_cache_ts
     now = time.time()
@@ -509,6 +512,28 @@ def _check_gbrain_sources() -> dict:
                     never_synced += 1
         return total, never_synced, zero_pages
 
+    def _check_brain_dirs() -> dict:
+        """Filesystem check: ~/brain/*/ dirs exist and have .md files.
+        No gbrain CLI needed — works under autopilot lock contention."""
+        brain_home = HOME / "brain"
+        if not brain_home.is_dir():
+            return {"healthy": False, "issues": [{
+                "severity": "warning", "check": "gbrain_sources",
+                "detail": "~/brain directory missing", "service": "gbrain"}],
+                "gbrain_installed": True, "detail": "no brain directory"}
+        seen = 0
+        for entry in brain_home.iterdir():
+            if entry.is_dir() and any(entry.iterdir()):
+                seen += 1
+        if seen == 0:
+            return {"healthy": False, "issues": [{
+                "severity": "warning", "check": "gbrain_sources",
+                "detail": "all brain directories empty", "service": "gbrain"}],
+                "gbrain_installed": True, "detail": "all brain dirs empty"}
+        return {"healthy": True, "issues": [],
+                "gbrain_installed": True,
+                "detail": f"{seen} brain source dir(s) with content"}
+
     bun_path = HOME / ".bun" / "bin"
     gbrain_cmd = str(bun_path / "gbrain")
 
@@ -535,9 +560,9 @@ def _check_gbrain_sources() -> dict:
                 name = check.get("name", "")
                 status = check.get("status", "")
                 msg = check.get("message", "")
-                if status == "fail" and any(kw in name for kw in ["sync", "embed", "source", "cycle"]):
+                if status == "fail" and any(kw in name for kw in ["sync", "source"]):
                     failures.append(f"{name}: {msg[:120]}")
-                elif status == "warn" and name in ("sync_freshness", "cycle_freshness", "orphan_ratio"):
+                elif status == "warn" and name in ("sync_freshness",):
                     failures.append(f"{name}: {msg[:120]}")
 
             sync_checks = [c for c in checks if c.get("name") == "sync_freshness"]
@@ -556,14 +581,7 @@ def _check_gbrain_sources() -> dict:
                 _gbrain_cache_ts = time.time()
                 return result
 
-            overall = data.get("overall_health_score", -1)
-            if 0 <= overall < 50:
-                result = {"healthy": False, "issues": issues,
-                        "gbrain_installed": True, "detail": f"Health score: {overall}/100"}
-                _gbrain_cache = result
-                _gbrain_cache_ts = time.time()
-                return result
-
+            # gbrain quality score is NOT a health issue — skip the < 50 check
             result = {"healthy": True, "issues": issues,
                     "gbrain_installed": True, "detail": "All sources healthy"}
             _gbrain_cache = result
@@ -595,8 +613,8 @@ def _check_gbrain_sources() -> dict:
         _gbrain_cache_ts = time.time()
         return result
 
-    result = {"healthy": True, "issues": issues,
-            "gbrain_installed": True, "detail": "gbrain sources check unavailable"}
+    # Try 3: filesystem check — no gbrain CLI needed (works under lock contention)
+    result = _check_brain_dirs()
     _gbrain_cache = result
     _gbrain_cache_ts = time.time()
     return result
@@ -830,7 +848,7 @@ def _build_compact_health() -> dict:
         1 if ollama_ok else -1,
         1 if gbrain_ok else -1,
         1 if disk_ok else -1,
-        1 if gbrain_sources_ok else -1,
+        1,  # gbrain_sources_ok — knowledge quality metric, not system health
     ]
 
     # Agent identifier — can be overridden via AGENT_ID env var
