@@ -15,7 +15,7 @@ Outside a git repo, the generic fallback ``.governance-generic.json`` is used.
 This is the structural enforcement layer that I, as an agent, cannot bypass
 or talk my way out of — the block comes from outside myself.
 
-Install: ln -sf ~/hermes-cortex/.hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
+Install: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
 """
 
 import json

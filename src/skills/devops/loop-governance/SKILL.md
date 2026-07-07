@@ -25,7 +25,7 @@ metadata:
 1. **Hermes Plugin** (primary) — `~/.hermes/plugins/governance-enforcer/` uses the `pre_tool_call` plugin hook to intercept ALL tool calls before they execute. See the [`governance-plugin-implementation.md`](skill_view?name=loop-governance&file_path=references/governance-plugin-implementation.md) reference for full API docs, block matrix, and fleet installation. Key facts:
    - Blocks `write_file`, `patch`, `terminal` write commands, `cronjob` create/update/remove, `skill_manage` create/edit/delete without an active governance lock
    - Fires at the Hermes runtime level — the agent CANNOT bypass it mid-session
-   - Installed via `ln -sf ~/hermes-cortex/.hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/` then `/reset`
+   - Installed via `ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/` then `/reset`
    - A `README.md` with full documentation lives at `~/.hermes/plugins/governance-enforcer/README.md`
 
 2. **Pre-commit hook** (secondary) — global `core.hooksPath ~/.hermes-cortex/hooks/` auto-scores every `git commit`. Does NOT block commits (that is the plugin's job), but ensures the scoring DB is populated.
