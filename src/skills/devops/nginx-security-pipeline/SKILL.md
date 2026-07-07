@@ -53,7 +53,7 @@ it on a host without nginx.
 |------|---------|
 | `blocked_ips.add` | **Input:** bare IPs to block (one per line, no `deny`, no semicolon) |
 | `nginx-badbots.conf` | fail2ban filter for archive scanners + `/storage/` crawling |
-| `hermes-security-apply` | **Legacy** bash deploy script — superseded by `hermes-services-apply.py` |
+| `hermes-security-apply` | **Full deploy** bash script — nginx configs + SSL + blocked IPs + fail2ban. Used for fresh installs. Daily pipeline uses `deploy-blocked-ips.sh`. |
 | `hermes-services-apply.py` | **Primary** Python deploy script — handles SSL, port prefix, `allow-ips-manual.conf` |
 | `fix-blocked-ips.py` | **Recovery:** regenerates `blocked_ips.conf` if corrupted with bare IPs |
 | `README.md` | Setup guide with platform notes |

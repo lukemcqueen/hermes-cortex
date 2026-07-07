@@ -27,7 +27,7 @@ no benefit to running it on a host without nginx.
 | `hermes-zone-defs.conf` | Rate limit zones, CSP maps, direct-IP blocker |
 | `blocked_ips.add` | **Input:** bare IPs to block (one per line, no `deny` keyword, no semicolon) |
 | `nginx-badbots.conf` | **Input:** fail2ban filter for archive scanners + `/storage/` crawling |
-| `hermes-security-apply` | **Legacy** bash deploy script — now superseded by `hermes-services-apply.py` |
+| `hermes-security-apply` | **Full deploy** bash script — nginx configs + SSL + blocked IPs + fail2ban. Used for fresh installs and full deploys. Daily pipeline uses `deploy-blocked-ips.sh` for incremental updates. |
 | `hermes-services-apply.py` | **Primary** Python deploy script — auto-discovers SSL, supports `--dry-run`, handles port prefixes and `allow-ips-manual.conf` |
 | `~/hermes-cortex/.env.example` | **Env template** — copy to `.env`, set `CORTEX_SSL_*` vars. Gitignored, auto-sourced by deploy scripts. |
 | `allow-ips-manual.conf` | **Per-machine** (not in git): manual allow list at `/etc/nginx/allow-ips-manual.conf` — IPs listed here override blocked_ips.conf |
@@ -46,13 +46,13 @@ cp ~/hermes-cortex/.env.example ~/hermes-cortex/.env
 
 The deploy scripts auto-source this file — no need to source it manually.
 
-### 2. Install the legacy deploy script (optional — only needed if pipelines still call it)
+### 2. Install the full deploy script (required for fail2ban + fresh installs)
 
 ```bash
 sudo install -o root -g root -m 0750 hermes-security-apply /usr/local/sbin/hermes-security-apply
 ```
 
-### 3. Add passwordless sudo for the legacy script (optional)
+### 3. Add passwordless sudo for the deploy script (required for cron usage)
 
 ```bash
 echo '<your-username> ALL=(root) NOPASSWD: /usr/local/sbin/hermes-security-apply' \
