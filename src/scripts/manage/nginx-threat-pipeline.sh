@@ -64,7 +64,7 @@ done
 
 # DEPLOY_SCRIPT: minimal — just deploy blocked IPs
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
-HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
+HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes-cortex}"
 DEPLOY_SCRIPT=""
 DEPLOY_BLOCKED="${HERMES_HOME}/scripts/deploy-blocked-ips.sh"
 if [ ! -x "$DEPLOY_BLOCKED" ]; then
