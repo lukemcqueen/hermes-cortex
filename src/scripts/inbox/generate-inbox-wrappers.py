@@ -33,9 +33,9 @@ from pathlib import Path
 
 HOME = Path.home()
 SCRIPTS_DIR = HOME / ".hermes-cortex" / "scripts"
-REGISTRY_PATH = HOME / ".hermes" / "state" / "agent-registry.json"
+REGISTRY_PATH = HOME / ".hermes-cortex" / "state" / "agent-registry.json"
 WATCH_SCRIPT = SCRIPTS_DIR / "agent-inbox-watch.sh"
-STATE_DIR = HOME / ".hermes" / "state"
+STATE_DIR = HOME / ".hermes-cortex" / "state"
 
 
 def get_registry():

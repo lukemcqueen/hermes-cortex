@@ -42,7 +42,7 @@ from urllib.request import Request, urlopen
 HOME = Path.home()
 CONFIG_FILE = HOME / ".hermes" / "hermes-inbox.conf"
 HEALTH_LOCAL = 'http://127.0.0.1:8901/api/health'
-STATE_FILE = HOME / ".hermes" / "state" / "agent-health-push-state.json"
+STATE_FILE = HOME / ".hermes-cortex" / "state" / "agent-health-push-state.json"
 TIMEOUT = 15
 
 # ── Config ────────────────────────────────────────────────────

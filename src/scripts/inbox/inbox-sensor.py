@@ -25,7 +25,7 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 HOME = Path.home()
-STATE_DIR = HOME / ".hermes" / "state"
+STATE_DIR = HOME / ".hermes-cortex" / "state"
 SEEN_FILE = STATE_DIR / "inbox-broadcast-seen"
 INBOX_API = os.environ.get("AGENT_INBOX_URL", "")
 INBOX_AUTH = os.environ.get("CORTEX_INBOX_AUTH", "")
@@ -75,7 +75,7 @@ if INBOX_AUTH and ":" in INBOX_AUTH:
     AUTH_HEADER = {"Authorization": "Basic " + encoded}
 
 # Read agent registry for broadcast topics
-REGISTRY_PATH = HOME / ".hermes" / "state" / "agent-registry.json"
+REGISTRY_PATH = HOME / ".hermes-cortex" / "state" / "agent-registry.json"
 
 
 def get_broadcast_topics() -> list[str]:

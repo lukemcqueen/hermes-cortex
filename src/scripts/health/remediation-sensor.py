@@ -28,7 +28,7 @@ from pathlib import Path
 
 HOME = Path.home()
 HERMES_SCRIPTS = HOME / ".hermes" / "scripts"
-STATE_DIR = HOME / ".hermes" / "state"
+STATE_DIR = HOME / ".hermes-cortex" / "state"
 CORTEX_REPO_ENV = os.environ.get("CORTEX_REPO", "")
 if CORTEX_REPO_ENV:
     CORTEX_REPO = Path(CORTEX_REPO_ENV)

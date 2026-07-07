@@ -26,7 +26,7 @@ from pathlib import Path
 
 HOME = Path.home()
 INBOX_DIR = HOME / "agent-inbox-private" / "inbox"
-STATE_DIR = HOME / ".hermes" / "state"
+STATE_DIR = HOME / ".hermes-cortex" / "state"
 SEEN_FILE = STATE_DIR / "inbox-flag-seen"
 
 KST = timezone(timedelta(hours=9))

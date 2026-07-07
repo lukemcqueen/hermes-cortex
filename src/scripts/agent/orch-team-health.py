@@ -42,11 +42,11 @@ if str(PARENT_DIR) not in sys.path:
 from hermes_tz import format_timestamp
 
 HOME = Path.home()
-STATE_FILE = HOME / ".hermes" / "state" / "health-state.json"
-HEALTH_DATA_FILE = HOME / ".hermes" / "state" / "agent-health-data.json"
-REGISTRY_PATH = HOME / ".hermes" / "state" / "agent-registry.json"
+STATE_FILE = HOME / ".hermes-cortex" / "state" / "health-state.json"
+HEALTH_DATA_FILE = HOME / ".hermes-cortex" / "state" / "agent-health-data.json"
+REGISTRY_PATH = HOME / ".hermes-cortex" / "state" / "agent-registry.json"
 REGISTRY_TEMPLATE = HOME / "hermes-cortex" / "src" / "agent-registry.template.json"
-REGISTRY_LOCAL = HOME / ".hermes" / "agent-registry.local.json"
+REGISTRY_LOCAL = HOME / ".hermes-cortex" / "state" / "agent-registry.local.json"
 CORTEX_ENV = HOME / "hermes-cortex" / ".env"
 TIMEOUT = 5
 HEALTH_TOPIC = "health"
@@ -55,7 +55,7 @@ HEALTH_TOPIC = "health"
 # Titus is a macOS laptop that sleeps — 4h grace avoids false alerts on lid close
 LAPTOP_GRACE_MINUTES = 240
 
-LAST_SEEN_FILE = HOME / ".hermes" / "state" / "last-seen.json"
+LAST_SEEN_FILE = HOME / ".hermes-cortex" / "state" / "last-seen.json"
 
 SERVICE_MAP = [
     "resources", "services", "no_errored_crons", "no_stale_crons",

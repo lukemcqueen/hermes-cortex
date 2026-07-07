@@ -776,11 +776,11 @@ def _ensure_dirs():
     Prevents crash-looping from 'Failed to set up standard output: No such file or directory'.
     Delegates to shared _port_arbitration module for consistency.
     """
-    _ensure_dirs_server(str(HOME / ".hermes" / "health-server"))
+    _ensure_dirs_server(str(HOME / ".hermes-cortex" / "health-server"))
 
 
 _PID_FILE: Path | None = None
-_PID_PATH = HOME / ".hermes" / "health-server" / "server.pid"
+_PID_PATH = HOME / ".hermes-cortex" / "health-server" / "server.pid"
 
 
 def _check_port_conflict() -> bool:

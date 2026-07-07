@@ -2,7 +2,7 @@
 import json,os,urllib.request,urllib.parse,base64,datetime,subprocess
 from pathlib import Path
 C=Path.home()/".hermes"/"hermes-inbox.conf"
-M=Path.home()/".hermes"/"state"/"skills-manifest.json"
+M=Path.home()/".hermes-cortex"/"state"/"skills-manifest.json"
 if C.exists():
  for l in open(C):
   l=l.strip()
