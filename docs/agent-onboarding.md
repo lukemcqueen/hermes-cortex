@@ -170,18 +170,155 @@ See existing SOUL.md files for reference:
 ## Step 7 — Send Your First Health Ping
 
 Once everything above is working, introduce yourself to the fleet by sending
-a health ping to Moses:
+a health ping to Moses in the **compact JSON format** that `orch-team-health`
+understands:
 
 ```bash
 hermes tool call inbox_send \
   to="moses" \
   subject="🟢 Health: titus online" \
-  body="Titus is online and connected to the inbox. Agent: titus | Platform: macOS | Role: developer | Status: nominal" \
+  body='{"v":[1,1,1,1,1,1,1,1],"h":"titus","t":'$(date +%s)'}' \
   topic="#health" \
   priority="normal"
 ```
 
+Moses's `orch-team-health` cron (every 10 min) will pick this up, parse the
+health vector, and register you in the fleet health dashboard.
+
+**What the fields mean:**
+| Field | Meaning |
+|-------|---------|
+| `v` | Health vector — 9 integers mapping to: resources, services, no_errored_crons, no_stale_crons, nginx, ollama, gbrain, disk_ok, gbrain_sources_ok. `1` = healthy, `0` = unknown, `-1` = degraded |
+| `h` | Hostname (your agent name) |
+| `t` | Unix timestamp of the ping |
+
+You can also send a **rich health-report** format with `"type":"health-report"`
+and a full breakdown of services and issues. See the reference below.
+
 Moses will confirm receipt and register you in the fleet health dashboard.
+
+---
+
+## Health Pings — Anchor Pattern
+
+This section explains how Moses processes your health pings and why you won't
+get false alerts when your laptop lid is closed.
+
+### How it works
+
+```mermaid
+flowchart LR
+  Titus["Titus (macOS)
+  pings every 5 min"] -->|inbox_send #health| Inbox
+  
+  subgraph Moses ["Moses (server) — every 10 min"]
+    Health["orch-team-health.py
+    no_agent, $0 cost"]
+    State["~/.hermes/state/
+    last-seen.json"]
+  end
+  
+  Inbox -->|reads + deletes| Health
+  Health -->|writes timestamp| State
+  State -.->|check grace| Health
+  Health -.->|alert if &gt;4h| Alert["🔴 Titus unreachable"]
+```
+
+**On each tick (every 10 minutes):**
+
+1. `orch-team-health` reads your `#health` messages from the inbox
+2. **Keeps the oldest message** (the *anchor*) — this is proof you were alive
+3. **Deletes all newer health pings** — they confirmed liveness at their time
+   but are redundant once consumed
+4. Parses the anchor body as a health vector
+5. Records `last_seen = anchor.timestamp` to `~/.hermes/state/last-seen.json`
+
+**If you go silent (laptop asleep, lid closed, no network):**
+
+1. No new messages arrive. The anchor still sits in the inbox.
+2. `orch-team-health` sees no new messages and checks `last-seen.json`
+3. If within the **4-hour grace window** → silent, no alert
+4. If beyond 4 hours → alert fires: 🔴 Titus — no health message in inbox
+
+**When you come back online:**
+
+1. New health pings arrive
+2. Anchor stays (still the oldest), newer ones deleted
+3. `last_seen` updated, health restored, resolve fires: ✅ Titus — back online
+
+### Ping cadence
+
+| You | Recommended interval |
+|-----|-------------------|
+| Routine health ping | Every **5 minutes** |
+| On state change | Immediately (service down, disk full, etc.) |
+
+Ping more or less often — it doesn't matter. `orch-team-health` checks every
+10 minutes regardless of how many pings you sent.
+
+### Health vector reference
+
+The simplest format is compact JSON. Here's what each index in the `v` array
+means:
+
+| Index | Service | 1 = healthy | -1 = degraded |
+|-------|---------|-------------|---------------|
+| 0 | resources | CPU/mem/disk within limits | Threshold breached |
+| 1 | services | All services running | One or more stopped |
+| 2 | no_errored_crons | No cron failures | Errored crons detected |
+| 3 | no_stale_crons | All crons running | Stale crons detected |
+| 4 | nginx | nginx running | nginx down |
+| 5 | ollama | Ollama responding | Ollama unreachable |
+| 6 | gbrain | gbrain healthy | gbrain issues |
+| 7 | disk_ok | Disk space OK | Low disk space |
+| 8 | gbrain_sources_ok | All sources synced | Sync failures |
+
+A healthy laptop ping:
+```json
+{"v":[1,1,1,1,1,1,1,1],"h":"titus","t":1712345678}
+```
+
+A ping with a specific issue:
+```json
+{"v":[1,1,-1,1,1,1,1,1,1],"h":"titus","t":1712345678}
+```
+(cron errors detected — index 2 is -1)
+
+### Rich health-report format (optional)
+
+You can send a detailed breakdown instead of the compact vector:
+
+```json
+{
+  "type": "health-report",
+  "healthy": true,
+  "platform": "macOS",
+  "hostname": "titus",
+  "timestamp": "2026-07-07T15:00:00Z",
+  "services": [
+    {"name": "nginx", "status": "running"},
+    {"name": "ollama", "status": "running"},
+    {"name": "gbrain", "status": "running"}
+  ],
+  "resources": {
+    "cpu_pct": 23,
+    "mem_pct": 62,
+    "disk_pct": 45
+  },
+  "issues": []
+}
+```
+
+This gets parsed into the same health vector for dashboard display, with extra
+metadata preserved for the dashboard endpoint.
+
+### Key points
+
+- **Your first ping becomes the permanent anchor.** It stays in the inbox until
+  you next restart (when a newer anchor takes its place).
+- **You never accumulate pings in the inbox.** Moses deletes consumed ones.
+- **Laptop sleep is handled.** 4 hours of silence before any alert.
+- **No token cost.** The health pipeline is `no_agent` — no LLM involved.
 
 ---
 
@@ -218,7 +355,7 @@ This step happens **on Moses's machine**, not yours. Moses will:
 |----------|-------------|
 | **Receiving instructions** | Moses sends inbox messages → your poll cron picks them up → you process them |
 | **Reporting results** | Send inbox messages back with subject `✅ Done: <summary>` → Moses reads on his next tick |
-| **Reporting health** | Send topic `#health` pings to Moses (daily or on state change) |
+| **Reporting health** | Send JSON health pings to Moses via `inbox_send` on topic `#health` (see [Health Pings — Anchor Pattern](#health-pings--anchor-pattern)). Oldest ping stays as anchor, newer ones deleted. 4h grace for laptop sleep. |
 | **Requesting cron changes** | Send Moses an inbox with subject `🔧 CRON: create|update|remove <name>` |
 | **Asking for help** | Send `🔴 Blocked: <issue>` to Moses — he'll investigate |
 | **Talking to other agents** | Use `inbox_send` to any agent Moses has registered. CC the human on cross-agent messages. |
