@@ -62,8 +62,18 @@ EXTERNAL_BASE = os.environ.get("CORTEX_DOCTOR_BASE", "")
 if not EXTERNAL_BASE:
     EXTERNAL_BASE = "https://localhost"
 
-# Port prefix — read from env or default to 13 (Moses). Joseph uses 12.
-CORTEX_PORT_PREFIX = os.environ.get("CORTEX_NGINX_PORT_PREFIX", "13").strip()
+# Port prefix — read from CORTEX_HOME/.env, default to 13
+_PORT_PREFIX_ENV = CORTEX_HOME / ".env"
+_PORT_PREFIX = "13"  # default
+try:
+    for _line in _PORT_PREFIX_ENV.read_text().split("\n"):
+        _line = _line.strip()
+        if _line.startswith("CORTEX_NGINX_PORT_PREFIX="):
+            _val = _line.split("=", 1)[1].strip().strip('"').strip("'")
+            if _val:
+                _PORT_PREFIX = _val
+except (FileNotFoundError, OSError, IndexError):
+    pass
 
 # Expected MCP servers
 EXPECTED_MCP_SERVERS = {
@@ -72,15 +82,10 @@ EXPECTED_MCP_SERVERS = {
 }
 
 # External services — port is derived from CORTEX_NGINX_PORT_PREFIX
-_CORTEX_PORTS = {
-    "dashboard": f"{CORTEX_PORT_PREFIX}001",
-    "langfuse":  f"{CORTEX_PORT_PREFIX}002",
-    "inbox":     f"{CORTEX_PORT_PREFIX}004",
-}
 EXTERNAL_SERVICES = [
-    ("Dashboard",      f"{EXTERNAL_BASE}:{_CORTEX_PORTS['dashboard']}/",       "401"),
-    ("Langfuse",       f"{EXTERNAL_BASE}:{_CORTEX_PORTS['langfuse']}/",        "401"),
-    ("Inbox API",      f"{EXTERNAL_BASE}:{_CORTEX_PORTS['inbox']}/health",     "200"),
+    ("Dashboard",      f"{EXTERNAL_BASE}:{_PORT_PREFIX}001/",       "401"),
+    ("Langfuse",       f"{EXTERNAL_BASE}:{_PORT_PREFIX}002/",       "401"),
+    ("Inbox API",      f"{EXTERNAL_BASE}:{_PORT_PREFIX}004/health", "200"),
 ]
 
 # Core install footprint (paths relative to HOME that should exist)
