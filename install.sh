@@ -1128,7 +1128,7 @@ set -euo pipefail
 # ── Config ──
 AGENT_NAME="${HOSTNAME%%.*}"
 INBOX_URL="http://127.0.0.1:8903/send"
-STATE_DIR="${HOME}/.hermes/state"
+STATE_DIR="${HOME}/.hermes-cortex/state"
 LAST_SENT_FILE="${STATE_DIR}/agent-learning-last-sent"
 INTERVAL_SECONDS="${AGENT_LEARNING_INTERVAL:-21600}"  # default 6h
 SESSION_DIR="${HOME}/.hermes-cortex/sessions"
