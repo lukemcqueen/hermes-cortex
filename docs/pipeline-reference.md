@@ -95,3 +95,47 @@ Most writes happen overnight when the system is idle:
 04:00 — Web cache backup (no_agent)
 05:00 Sun — Memory compress (no_agent)
 ```
+
+---
+
+## Autonomous Agent Reliability Patterns
+
+Based on Karpathy's research (41% → 3% mistake rate reduction with explicit constraints):
+
+- **Task Contract** — For 3+ step tasks, define goal/success criteria/constraints/checkpoints *before* executing. Template: `docs/templates/task-contract.md`
+- **Checkpoint Verification** — Verify each step before proceeding. Fixing state retroactively is 10x harder.
+- **Conflict Surfacing** — When detecting multiple patterns, surface the conflict explicitly. Do NOT blend silently.
+- **Read-Before-Write** — Read a file before editing it unless creating from scratch. 90% of mistakes come from missing context.
+- **Eval-Driven Development** — Define evals BEFORE building. Capability evals (new features) + regression evals (maintain ≥95%). Skill: `eval-harness`.
+
+## Structured Development Pipeline
+
+When building new features or making significant changes, use this structured workflow:
+
+```text
+requirements-elicitation (structured requirements gathering)
+    ↓
+architecture-review (multi-role architecture review)
+    ↓
+product-requirements (concise product spec)
+    ↓
+story-decomposition (user-visible, testable stories)
+    ↓
+change-test-loop (RED-GREEN-REFACTOR with lessons)
+    ↓
+code-review (security scan, quality gate)
+```
+
+Each stage consumes the output of the prior one, reducing rework and enforcing quality gates before code is written.
+
+## Skill Miner (Automated, Runs Weekly)
+
+`skill-miner` runs every Monday 6am on each agent's machine. It scans local data for reusable patterns, scores them, and sends top findings to Moses via the agent inbox. No manual effort needed.
+
+**What it mines (PII-scrubbed):**
+- Loop governance DB — high-scoring TDD cycles
+- Session history — successful patterns
+- Agent memory — MEMORY.md, USER.md content
+- Custom skills — skills installed locally but not in the repo
+
+**Output:** Top 5 findings sent to `to=moses` (default) with `cc=luke` via the agent inbox. Moses reviews, consolidates, and pushes to hermes-cortex.

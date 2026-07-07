@@ -31,7 +31,7 @@ Update all files referencing the old model:
 
 | File | What to update |
 |------|---------------|
-| `AGENTS.md` | Cron migration table (model + why) |
+| `docs/setup-reference.md` | Cron migration table + env vars + three-tier architecture |
 | Skill `SKILL.md` | Description, prerequisites, troubleshooting |
 | `deploy/README-langfuse-clickhouse.md` | Setup instructions, verify commands |
 | `docs/model-tier-strategy.md` | Integration points (if wiring changed) |

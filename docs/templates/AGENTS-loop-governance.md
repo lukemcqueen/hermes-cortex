@@ -9,7 +9,7 @@
 > Every improvement you make that benefits other agents MUST go into the `hermes-cortex` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
 
 Copy this section into your project's `AGENTS.md` to adopt loop-governance
-scoring. See `hermes-cortex/AGENTS.md` for the full reference.
+scoring. See `~/hermes-cortex/docs/loop-governance-reference.md` for the full reference.
 
 ---
 

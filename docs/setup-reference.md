@@ -174,3 +174,79 @@ hermes cron create --name orch-health-report-saturday \
 
 # 3. Set up her own agent-registry.local.json (see Moses' version for reference)
 ```
+
+---
+
+## Ollama Model Tier
+
+Hermes Cortex ships a **two-model stack** plus a unified env-var configuration system.
+
+### Single Env File (`~/hermes-cortex/.env`)
+
+All environment variables live in `~/hermes-cortex/.env` (hidden, gitignored).
+This is the single source of truth for Cortex. ⚠ `~/.hermes/.env` is Hermes Agent's own config and is never touched by Cortex.
+
+| Env var | Purpose | Default |
+|---------|---------|---------|
+| `JUDGE_MODEL` | LLM-as-Judge scorer | `qwen2.5-coder:3b` |
+| `EMBEDDING_MODEL` | Text embeddings (gbrain, session cache, loop scorer, offline_code) | `nomic-embed-text:v1.5` |
+| `CODING_MODEL` | Code generation via offline_code | auto-detected by RAM |
+| `CREATIVE_MODEL` | Reserved for future creative tasks | _(not yet wired)_ |
+
+Resolution priority (every script follows this):
+1. **Runtime env var** — `JUDGE_MODEL=mannix/qwen:7b python3 script.py`
+2. **`~/hermes-cortex/.env`** — persistent per-agent config, never overwritten
+3. **Script's hardcoded default** — last resort fallback shipped with the repo
+
+### Default Stack Values
+
+| Tier | Model | Size | Role |
+|------|-------|------|------|
+| Embedding | `nomic-embed-text:v1.5` | 274 MB | Vector search (embeddings for search, RAG) |
+| Unified gen/judge | `qwen2.5-coder:3b` | 1.9 GB | Code gen, classification, routing, quality gates |
+
+> **⚠️ 64k context minimum required.** `qwen2.5-coder:3b` from the Ollama registry defaults to 32k — build it with 64k:
+> ```bash
+> ollama create qwen2.5-coder:3b -f <(echo -e "FROM qwen2.5-coder:3b\nPARAMETER num_ctx 65536")
+> ```
+> Larger variants (7b+) typically ship with 128k+ out of the box. The installer runs this check — see `install-ollama.sh build_qwen_model`.
+>
+> **Thermal note (CPU-only):** 65536 context on a CPU-only MacBook was previously blamed for 92°C throttling, but the real cause was unlimited Ollama threads + model kept loaded 24/7. With `OLLAMA_NUM_THREADS=2` and `OLLAMA_KEEP_ALIVE=0`, 65536 context runs at 58°C under load. See `install-ollama.sh` comments.
+
+This replaces the previous three-model stack with a unified **qwen2.5-coder:3b** model for code generation, classification, and judging. Agents use it via `http://localhost:11434/api/generate` or `offline_code gen`.
+
+### Scripts that respect `.env`
+
+| Script | Env var read |
+|--------|-------------|
+| `llm-judge-scorer.py` | `JUDGE_MODEL` |
+| `model-health-watchdog.py` | `JUDGE_MODEL` |
+| `system-alert-watchdog.py` | `EMBEDDING_MODEL` |
+| `loop_scorer.py` | `EMBEDDING_MODEL` |
+| `session_cache.py` | `EMBEDDING_MODEL` |
+| `loop-gov-mcp.py` | `EMBEDDING_MODEL` |
+| `offline_code.py` | `EMBEDDING_MODEL`, `CODING_MODEL` |
+| `lessons.py` | `EMBEDDING_MODEL` |
+| `session_mine.py` | `EMBEDDING_MODEL` |
+| `web_cache.py` | `EMBEDDING_MODEL` |
+| `cleanup-ollama.sh` | `EMBEDDING_MODEL` |
+| `install-ollama.sh` | `EMBEDDING_MODEL` |
+
+### Cron Architecture — Three-Tier Model
+
+Agent crons follow a three-tier architecture based on task requirements:
+
+| Tier | Approach | When to use | Examples | Cost |
+|------|----------|-------------|----------|------|
+| **no_agent + API** | Python script + single deepseek API call | Deterministic orchestration + one creative generation | `agent-daily-bible-reading`, `agent-remediate-apply` | $0 / ~$0.01/run |
+| **LLM-driven (deepseek)** | Full agent loop on deepseek-v4-flash | Needs Hermes tools (session_search, memory, patch) | `agent-daily-soul-refinement`, `memory-pruning`, `agent-fixer` | ~$0.01/run |
+| **no_agent script** | Python/shell, no LLM | Deterministic checks, sensors, watchdogs | `remediation-sensor`, `model-health-watchdog`, `inbox-flag` | $0 |
+
+**Migration from qwen2.5-coder:3b:** The 3B model is excellent for single-shot tasks but lacks the reasoning capacity for multi-step agentic workflows. Crons needing multi-tool chaining have been migrated to the first two tiers. Example: `agent-apply-fixes` was an LLM cron on qwen (every 10min, 9.6k token → 29min inference); converted to a no_agent script searching the offline code corpus instead — 4.5s per run, zero LLM cost.
+
+**Key scripts:**
+- `src/scripts/agent-daily-bible-reading.py` — no_agent + deepseek API
+- `src/scripts/agent-remediate-apply.py` — no_agent: reads sensor output, applies fixes
+- `src/scripts/agent-apply-fixes.py` — no_agent: searches offline code corpus for fix patterns
+
+Install: `bash src/scripts/install-crons.sh`
