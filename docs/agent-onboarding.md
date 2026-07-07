@@ -1,7 +1,7 @@
 # Agent Onboarding — Connecting a Client-Only Agent to the Fleet
 
 > **For agents like Titus, running on a machine with no public server.**
-> You don't need nginx, a gateway, or a public IP. You connect to Moses's inbox remotely.
+> You connect to Moses's inbox remotely.
 
 ---
 
@@ -77,7 +77,7 @@ hermes mcp list
 
 ## Step 3 — Create Your Credentials File
 
-Create `~/hermes-cortex/.env`:
+Update or Create `~/hermes-cortex/.env`:
 
 ```ini
 CORTEX_INBOX_URL="https://example.com:13004"
