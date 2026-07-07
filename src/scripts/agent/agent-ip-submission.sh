@@ -27,27 +27,20 @@ if [ -z "$SUBMIT_RAW" ]; then
   exit 0
 fi
 
-log "── Agent IP Submission Processor ──"
-
 # ── Validate IPv4 ──
 VALID_IPS=$(echo "$SUBMIT_RAW" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | \
   awk -F. '{if($1<=255&&$2<=255&&$3<=255&&$4<=255)print}' || true)
-
-INVALID_IPS=$(echo "$SUBMIT_RAW" | grep -v -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || true)
 
 SUBMIT_COUNT=$(echo "$VALID_IPS" | grep -c '[0-9]' 2>/dev/null || true)
 SUBMIT_COUNT=$((SUBMIT_COUNT + 0))
 
 if [ "$SUBMIT_COUNT" -eq 0 ]; then
-  log "  No valid IPs in submit file — clearing"
+  # Silent no-op: nothing valid to process
   : > "$SUBMIT_FILE"
   exit 0
 fi
 
-if [ -n "$INVALID_IPS" ]; then
-  INVALID_COUNT=$(echo "$INVALID_IPS" | wc -l)
-  log "  ⚠ ${INVALID_COUNT} invalid entries skipped (not valid IPv4)"
-fi
+log "── Agent IP Submission Processor ──"
 
 # ── Deduplicate against blocked_ips.add ──
 NEW_ENTRIES=""
@@ -62,7 +55,7 @@ NEW_COUNT=$(echo "$NEW_ENTRIES" | grep -c '[0-9]' 2>/dev/null || true)
 NEW_COUNT=$((NEW_COUNT + 0))
 
 if [ "$NEW_COUNT" -eq 0 ]; then
-  log "  All ${SUBMIT_COUNT} submitted IPs already in blocked_ips.add — clearing submit file"
+  # Silent no-op: all already blocked
   : > "$SUBMIT_FILE"
   exit 0
 fi

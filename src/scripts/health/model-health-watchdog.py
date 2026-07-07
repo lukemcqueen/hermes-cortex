@@ -112,7 +112,11 @@ def check_models_exist(models: list) -> dict:
 
 
 def main():
-    quiet = "--quiet" in sys.argv
+    # Quiet by default. Pass --verbose to see OK status.
+    if "--quiet" in sys.argv:
+        quiet = True  # backward compat: explicit quiet flag
+    else:
+        quiet = "--verbose" not in sys.argv
     judge_models = _parse_judge_models()
 
     # Build full model list: always-required + judge models
