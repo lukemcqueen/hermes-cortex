@@ -47,7 +47,7 @@ HEALTH_DATA_FILE = HOME / ".hermes" / "state" / "agent-health-data.json"
 REGISTRY_PATH = HOME / ".hermes" / "state" / "agent-registry.json"
 REGISTRY_TEMPLATE = HOME / "hermes-cortex" / "src" / "agent-registry.template.json"
 REGISTRY_LOCAL = HOME / ".hermes" / "agent-registry.local.json"
-INBOX_CONF = HOME / ".hermes" / "hermes-inbox.conf"
+CORTEX_ENV = HOME / "hermes-cortex" / ".env"
 TIMEOUT = 5
 HEALTH_TOPIC = "health"
 
@@ -63,21 +63,30 @@ SEVERITY_MAP = {-1: "critical", 0: "info"}
 # ── Inbox connection (from hermes-inbox.conf) ──
 
 def _load_inbox_config() -> dict:
-    """Load inbox URL and auth from hermes-inbox.conf."""
+    """Load inbox URL and auth from env vars, fallback to hermes-cortex/.env."""
     config = {"url": "", "auth": ""}
-    if not INBOX_CONF.exists():
-        return config
-    for line in INBOX_CONF.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        k, v = line.split("=", 1)
-        k = k.strip()
-        v = v.strip().strip("'\"")
-        if k == "CORTEX_INBOX_URL":
-            config["url"] = v.rstrip("/")
-        elif k == "CORTEX_INBOX_AUTH":
-            config["auth"] = v
+
+    # Try environment variables first
+    env_url = os.environ.get("CORTEX_INBOX_URL", "")
+    env_auth = os.environ.get("CORTEX_INBOX_AUTH", "")
+    if env_url:
+        config["url"] = env_url.rstrip("/")
+    if env_auth:
+        config["auth"] = env_auth
+
+    # Fallback: parse from hermes-cortex/.env
+    if not config["url"] and CORTEX_ENV.exists():
+        for line in CORTEX_ENV.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            k = k.strip()
+            v = v.strip().strip("'\"")
+            if k == "CORTEX_INBOX_URL" and not config["url"]:
+                config["url"] = v.rstrip("/")
+            elif k == "CORTEX_INBOX_AUTH" and not config["auth"]:
+                config["auth"] = v
     return config
 
 
