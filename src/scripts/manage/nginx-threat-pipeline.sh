@@ -24,7 +24,7 @@ if git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rev-parse --git-dir &>/dev/nul
 fi
 
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
-SCANNER="${CORTEX_REPO}/src/scripts/nginx-security-scanner.sh"
+SCANNER="${CORTEX_REPO}/src/scripts/manage/nginx-security-scanner.sh"
 SUBMIT_FILE="${CORTEX_REPO}/deploy/nginx/blocked_ips.submit"
 
 # ── Process agent-submitted IPs before scanning ──
