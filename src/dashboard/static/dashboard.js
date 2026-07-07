@@ -401,7 +401,7 @@ const LANGFUSE_EXTERNAL = 'http://localhost:13002';
       }
       return;
     }
-    $('timestamp').textContent = data.timestamp ? data.timestamp.slice(11,19) : new Date().toLocaleTimeString();
+    $('timestamp').textContent = data.timestamp ? data.timestamp.slice(0,19) + ' KST' : new Date().toLocaleTimeString();
     renderHealth(data);
     renderMetrics(data);
     renderStats(data);

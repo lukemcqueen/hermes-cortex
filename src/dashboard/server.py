@@ -1052,6 +1052,9 @@ def _agents_data() -> dict:
 @app.route("/api/all")
 def api_all():
     """Aggregated snapshot — no additional caching (individual endpoints handle it)."""
+    # KST (UTC+9)
+    kst_offset = timezone(timedelta(hours=9))
+    kst = datetime.now(kst_offset)
     return jsonify({
         "health": _health(),
         "langfuse": {
@@ -1065,7 +1068,7 @@ def api_all():
         "session_timeline": _session_timeline(),
         "system": _system(),
         "sysinfo": _sysinfo(),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": kst.isoformat(),
     })
 
 
