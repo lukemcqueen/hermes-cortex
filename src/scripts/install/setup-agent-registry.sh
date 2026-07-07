@@ -14,7 +14,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CORTEX_HOME="${CORTEX_HOME:-$HOME/hermes-cortex}"
-STATE_DIR="$HOME/.hermes/state"
+STATE_DIR="$HOME/.hermes-cortex/state"
 TEMPLATE="$CORTEX_HOME/src/agent-registry.template.json"
 TARGET="$STATE_DIR/agent-registry.json"
 LOCAL_OVERRIDE="$HOME/.hermes-cortex/state/agent-registry.local.json"

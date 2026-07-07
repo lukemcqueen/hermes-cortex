@@ -33,14 +33,14 @@
 #   agent-inbox-check.sh
 #   agent-inbox-check.sh --mark-read   # mark messages as read after printing
 #
-# Config: set these in ~/.hermes/agent-inbox.conf or pass via env vars
+# Config: set these in ~/.hermes-cortex/agent-inbox.conf or pass via env vars
 #   AGENT_INBOX_URL   (default: https://your-domain.com:13004)
 #   AGENT_INBOX_USER
 #   AGENT_INBOX_PASS
 
 set -euo pipefail
 
-CONFIG="${HOME}/.hermes/agent-inbox.conf"
+CONFIG="${HOME}/.hermes-cortex/agent-inbox.conf"
 [ -f "$CONFIG" ] && source "$CONFIG"
 
 URL="${AGENT_INBOX_URL:-https://your-domain.com:13004}"

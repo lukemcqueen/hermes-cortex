@@ -48,8 +48,8 @@ except ImportError:
     sys.exit(1)
 
 # Configuration
-HERMES_HOME = Path.home() / ".hermes"
-EVALS_DIR = HERMES_HOME / "evals"
+CORTEX_HOME = Path.home() / ".hermes-cortex"
+EVALS_DIR = CORTEX_HOME / "evals"
 TRACES_DIR = EVALS_DIR / "traces"
 REPORTS_DIR = EVALS_DIR / "reports"
 EVALS_REPO_DIR = Path.home() / "hermes-cortex" / "evals"

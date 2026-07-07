@@ -189,7 +189,7 @@ Transcripts flagged for review:
 
 ```bash
 # Open specific transcript
-cat ~/.hermes/evals/traces/eval-run-20260619-143022-existing-install-trace-7.json | jq
+cat ~/.hermes-cortex/evals/traces/eval-run-20260619-143022-existing-install-trace-7.json | jq
 
 # Or view in Langfuse UI
 open https://langfuse.local/project/.../traces/eval-run-20260619-143022-existing-install-trace-7
@@ -326,7 +326,7 @@ Recommended fixes:
 - Add conflict surfacing requirement to task contract
 - Add checkpoint verification before "complete" status
 
-Full report: ~/.hermes/evals/reports/weekly-failure-2026-W24.md
+Full report: ~/.hermes-cortex/evals/reports/weekly-failure-2026-W24.md
 ```
 
 ### Failure Clustering
@@ -451,8 +451,8 @@ hermes cron create \
 | `src/scripts/analyze-failures.py` | Weekly failure analysis |
 | `evals/` | Eval definitions (YAML) |
 | `evals/graders/` | Grader implementations (Python) |
-| `~/.hermes/evals/traces/` | Captured eval traces |
-| `~/.hermes/evals/reports/` | Generated reports |
+| `~/.hermes-cortex/evals/traces/` | Captured eval traces |
+| `~/.hermes-cortex/evals/reports/` | Generated reports |
 
 ## Related Skills
 

@@ -115,7 +115,7 @@ No authentication. No TLS. Plain HTTP — the vector contains no secrets, just b
    curl -s http://127.0.0.1:<PORT>/
    # → {"v":[...], "h":"hostname", "t":...}
    ```
-5. Moses' `orch-team-health.py` picks it up automatically once the `health_url` is set in `~/.hermes/state/agent-registry.json`.
+5. Moses' `orch-team-health.py` picks it up automatically once the `health_url` is set in `~/.hermes-cortex/state/agent-registry.json`.
 
 ### Deployment (Titus / macOS client-only)
 
@@ -142,7 +142,7 @@ Titus cannot be polled (no inbound). Instead he pushes to Moses' inbox:
 | `src/scripts/health/health-vector-push.sh` | Inbox push script for client-only agents |
 | `src/scripts/agent/orch-team-health.py` | Orchestrator poller (no_agent cron) |
 | `src/scripts/agent/orch-health-report.py` | Health snapshot report — formatted for Telegram delivery |
-| `src/agent-registry.template.json` | Agent registry template (fill during setup → `~/.hermes/state/agent-registry.json`) |
+| `src/agent-registry.template.json` | Agent registry template (fill during setup → `~/.hermes-cortex/state/agent-registry.json`) |
 | `docs/templates/com.hermes.health-push.plist` | macOS launchd template for Titus |
 | `docs/templates/health-vector.service` | systemd user service template for server agents |
 

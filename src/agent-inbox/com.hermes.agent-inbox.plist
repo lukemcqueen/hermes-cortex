@@ -7,7 +7,7 @@
     <string>com.hermes.agent-inbox</string>
     <key>ProgramArguments</key>
     <array>
-        <string>${CORTEX_HOME}/.hermes/agent-inbox/venv/bin/uvicorn</string>
+        <string>${CORTEX_HOME}/.hermes-cortex/agent-inbox/venv/bin/uvicorn</string>
         <string>--app-dir</string>
         <string>${CORTEX_HOME}/hermes-cortex/src/agent-inbox</string>
         <string>server:app</string>
@@ -24,13 +24,13 @@
     <key>RunAtLoad</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>${CORTEX_HOME}/.hermes/agent-inbox/server.log</string>
+    <string>${CORTEX_HOME}/.hermes-cortex/agent-inbox/server.log</string>
     <key>StandardErrorPath</key>
-    <string>${CORTEX_HOME}/.hermes/agent-inbox/server.log</string>
+    <string>${CORTEX_HOME}/.hermes-cortex/agent-inbox/server.log</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>${CORTEX_HOME}/.hermes/agent-inbox/venv/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>${CORTEX_HOME}/.hermes-cortex/agent-inbox/venv/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
 </dict>
 </plist>

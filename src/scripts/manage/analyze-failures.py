@@ -48,9 +48,9 @@ except ImportError:
     sys.exit(1)
 
 # Configuration
-HERMES_HOME = Path.home() / ".hermes"
-TRACES_DIR = HERMES_HOME / "evals" / "traces"
-REPORTS_DIR = HERMES_HOME / "evals" / "reports"
+CORTEX_HOME = Path.home() / ".hermes-cortex"
+TRACES_DIR = CORTEX_HOME / "evals" / "traces"
+REPORTS_DIR = CORTEX_HOME / "evals" / "reports"
 LANGFUSE_DIR = Path.home() / "langfuse"
 
 

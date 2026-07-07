@@ -264,13 +264,13 @@ before the sync daemon has anything to index. See "Existing Repo Setup" below.
 ### 5. Audit the Auto-Update Path
 
 ```bash
-head -5 ~/.hermes/offline/auto-update.sh 2>/dev/null || head -5 ~/hermes-cortex/offline/auto-update.sh
-grep "^HERMES_DIR\|^OFFLINE_DIR" ~/.hermes/offline/auto-update.sh 2>/dev/null
+head -5 ~/.hermes-cortex/offline/auto-update.sh 2>/dev/null || head -5 ~/hermes-cortex/offline/auto-update.sh
+grep "^HERMES_DIR\|^OFFLINE_DIR" ~/.hermes-cortex/offline/auto-update.sh 2>/dev/null
 ```
 
 If the script references `$HOME/hermes-cortex/offline/` (hardcoded path), it breaks
 when the repo is cloned somewhere other than `~/hermes-cortex`. The script should
-derive its path from its own location or use `~/.hermes/offline/`.
+derive its path from its own location or use `~/.hermes-cortex/offline/`.
 
 ### 6. Verify Offline Code Index
 

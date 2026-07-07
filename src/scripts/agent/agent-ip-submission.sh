@@ -95,7 +95,7 @@ else
 fi
 
 # ── Deploy live if deploy-blocked-ips is available ──
-DEPLOY_BLOCKED="${HERMES_HOME}/scripts/deploy-blocked-ips.sh"
+DEPLOY_BLOCKED="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/scripts/deploy-blocked-ips.sh"
 if [ ! -x "$DEPLOY_BLOCKED" ]; then
   DEPLOY_BLOCKED="${CORTEX_REPO}/src/scripts/manage/deploy-blocked-ips.sh"
 fi

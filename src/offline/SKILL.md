@@ -74,7 +74,7 @@ offline_knowledge stats
 
 If kiwix-serve isn't running, start it:
 ```bash
-docker compose -f ~/.hermes/offline/kiwix-docker-compose.yml up -d
+docker compose -f ~/.hermes-cortex/offline/kiwix-docker-compose.yml up -d
 ```
 
 ## Pre-Flight Checklist (Before Going Offline)

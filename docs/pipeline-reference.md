@@ -71,7 +71,7 @@ The corpus is **self-improving** — agents contribute back when they find missi
 
 | Step | Tool | Schedule | LLM? | Output |
 |------|------|----------|------|--------|
-| Deploy | `cortex-update.sh` (sync_code_corpus) | On each deploy | ✗ | `.md` files synced to `~/.hermes/offline/code-corpus/` |
+| Deploy | `cortex-update.sh` (sync_code_corpus) | On each deploy | ✗ | `.md` files synced to `~/.hermes-cortex/offline/code-corpus/` |
 | Index | `offline-code-index` (cron) | Weekly Sun 05:00 | ✗ | Vector index refreshed (nomic-embed-text:v1.5) |
 | Learn | `offline_code learn` | On demand (when web_search fills a gap) | ✗ | New `.md` snippet created in code-corpus |
 

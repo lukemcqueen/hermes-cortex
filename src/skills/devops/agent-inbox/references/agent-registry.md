@@ -2,7 +2,7 @@
 
 ## Location
 
-`~/.hermes/state/agent-registry.json`
+`~/.hermes-cortex/state/agent-registry.json`
 
 ## Purpose
 

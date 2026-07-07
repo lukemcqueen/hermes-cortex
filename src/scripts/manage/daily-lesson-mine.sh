@@ -11,7 +11,7 @@
 set -euo pipefail
 
 # ── Paths ──────────────────────────────────────────────────────────────
-# Priority: CORTEX_REPO env var > ~/.hermes/offline/ (install.sh dest) > ~/hermes-cortex/
+# Priority: CORTEX_REPO env var > ~/.hermes-cortex/offline/ (install.sh dest) > ~/hermes-cortex/
 MINE_SCRIPT=""
 for candidate in \
   "${CORTEX_REPO:-}/src/offline/session_mine.py" \

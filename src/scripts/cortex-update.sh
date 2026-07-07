@@ -59,10 +59,10 @@ done
 
 # Also source it if present (overrides deploy env for inbox vars)
 if [[ -f "${HOME}/.hermes/.env" ]]; then
-  set -a; source "${HOME}/.hermes/.env"; set +a
+  set -a; source "${HOME}/.hermes-cortex/.env"; set +a
 fi
-HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes-cortex}"
-STATE_DIR="${HERMES_HOME}/state"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}"
+STATE_DIR="${CORTEX_DEPLOY_HOME}/state"
 LAST_COMMIT_FILE="${STATE_DIR}/update-commit"
 BUN_PATH="${HOME}/.bun/bin"
 export PATH="${BUN_PATH}:$PATH"
@@ -104,211 +104,211 @@ register() {
 }
 
 # Scripts → ~/.hermes-cortex/scripts/
-register "src/scripts/health/system-alert-watchdog.py"   "${HERMES_HOME}/scripts/system-alert-watchdog.py"
-register "src/scripts/hermes_models.py"            "${HERMES_HOME}/scripts/hermes_models.py"
-register "src/scripts/hermes_paths.py"             "${HERMES_HOME}/scripts/hermes_paths.py"
-register "src/scripts/install/check-system.sh"             "${HERMES_HOME}/scripts/check-system.sh"
-register "src/scripts/manage/memory-to-brain-sync.py"    "${HERMES_HOME}/scripts/memory-to-brain-sync.py"
-register "src/scripts/install/bootstrap-brain.sh"         "${HERMES_HOME}/scripts/bootstrap-brain.sh"
-register "src/scripts/health/check-memory-budget.sh"     "${HERMES_HOME}/scripts/check-memory-budget.sh"
-register "src/scripts/install/cortex-profile.sh"          "${HERMES_HOME}/scripts/cortex-profile.sh"
-register "src/scripts/install/seed-project-brain.sh"      "${HERMES_HOME}/scripts/seed-project-brain.sh"
-register "src/scripts/manage/cortex-health.sh"           "${HERMES_HOME}/scripts/cortex-health.sh"
-register "src/scripts/install/cortex-setup-langfuse.sh"   "${HERMES_HOME}/scripts/cortex-setup-langfuse.sh"
-register "src/scripts/cortex-update.sh"           "${HERMES_HOME}/scripts/cortex-update.sh"
-register "src/scripts/install/install-ollama.sh"          "${HERMES_HOME}/scripts/install-ollama.sh"
-register "src/scripts/install/install-nginx.sh"           "${HERMES_HOME}/scripts/install-nginx.sh"
-register "src/scripts/install/install-cortex-update-cron.sh" "${HERMES_HOME}/scripts/install-cortex-update-cron.sh"
-register "src/scripts/install-crons.sh"       "${HERMES_HOME}/scripts/install-crons.sh"
-register "src/scripts/install/install-orch-crons.sh"  "${HERMES_HOME}/scripts/install-orch-crons.sh"
-register "src/scripts/install/install-score-hook.sh"       "${HERMES_HOME}/scripts/install-score-hook.sh"
-register "src/scripts/pre-commit-score"            "${HERMES_HOME}/scripts/pre-commit-score"
-register "src/scripts/pre-push-pull"               "${HERMES_HOME}/scripts/pre-push-pull"
-register "src/scripts/manage/governance-auditor.py"            "${HERMES_HOME}/scripts/governance-auditor.py"
-register "src/scripts/agent/agents-doc-audit.py"          "${HERMES_HOME}/scripts/agents-doc-audit.py"
-register "src/scripts/agent/agents-md-prune-scan.py"      "${HERMES_HOME}/scripts/agents-md-prune-scan.py"
-register "src/scripts/health/check-external-services.sh"   "${HERMES_HOME}/scripts/check-external-services.sh"
-register "src/scripts/manage/cortex-doctor.py"              "${HERMES_HOME}/scripts/cortex-doctor.py"
-register "src/scripts/cron-failure-state.sh"       "${HERMES_HOME}/scripts/cron-failure-state.sh"
-register "src/scripts/cron_failure_state.py"       "${HERMES_HOME}/scripts/cron_failure_state.py"
-register "src/scripts/install/seed-project.sh"           "${HERMES_HOME}/scripts/seed-project.sh"
-register "src/scripts/manage/hermes-update.sh"            "${HERMES_HOME}/scripts/hermes-update.sh"
-register "src/scripts/manage/hermes-cortex-sync.sh"      "${HERMES_HOME}/scripts/hermes-cortex-sync.sh"
-register "src/scripts/manage/update-session-state.sh"    "${HERMES_HOME}/scripts/update-session-state.sh"
+register "src/scripts/health/system-alert-watchdog.py"   "${CORTEX_DEPLOY_HOME}/scripts/system-alert-watchdog.py"
+register "src/scripts/hermes_models.py"            "${CORTEX_DEPLOY_HOME}/scripts/hermes_models.py"
+register "src/scripts/hermes_paths.py"             "${CORTEX_DEPLOY_HOME}/scripts/hermes_paths.py"
+register "src/scripts/install/check-system.sh"             "${CORTEX_DEPLOY_HOME}/scripts/check-system.sh"
+register "src/scripts/manage/memory-to-brain-sync.py"    "${CORTEX_DEPLOY_HOME}/scripts/memory-to-brain-sync.py"
+register "src/scripts/install/bootstrap-brain.sh"         "${CORTEX_DEPLOY_HOME}/scripts/bootstrap-brain.sh"
+register "src/scripts/health/check-memory-budget.sh"     "${CORTEX_DEPLOY_HOME}/scripts/check-memory-budget.sh"
+register "src/scripts/install/cortex-profile.sh"          "${CORTEX_DEPLOY_HOME}/scripts/cortex-profile.sh"
+register "src/scripts/install/seed-project-brain.sh"      "${CORTEX_DEPLOY_HOME}/scripts/seed-project-brain.sh"
+register "src/scripts/manage/cortex-health.sh"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-health.sh"
+register "src/scripts/install/cortex-setup-langfuse.sh"   "${CORTEX_DEPLOY_HOME}/scripts/cortex-setup-langfuse.sh"
+register "src/scripts/cortex-update.sh"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-update.sh"
+register "src/scripts/install/install-ollama.sh"          "${CORTEX_DEPLOY_HOME}/scripts/install-ollama.sh"
+register "src/scripts/install/install-nginx.sh"           "${CORTEX_DEPLOY_HOME}/scripts/install-nginx.sh"
+register "src/scripts/install/install-cortex-update-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-cortex-update-cron.sh"
+register "src/scripts/install-crons.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-crons.sh"
+register "src/scripts/install/install-orch-crons.sh"  "${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh"
+register "src/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
+register "src/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
+register "src/scripts/pre-push-pull"               "${CORTEX_DEPLOY_HOME}/scripts/pre-push-pull"
+register "src/scripts/manage/governance-auditor.py"            "${CORTEX_DEPLOY_HOME}/scripts/governance-auditor.py"
+register "src/scripts/agent/agents-doc-audit.py"          "${CORTEX_DEPLOY_HOME}/scripts/agents-doc-audit.py"
+register "src/scripts/agent/agents-md-prune-scan.py"      "${CORTEX_DEPLOY_HOME}/scripts/agents-md-prune-scan.py"
+register "src/scripts/health/check-external-services.sh"   "${CORTEX_DEPLOY_HOME}/scripts/check-external-services.sh"
+register "src/scripts/manage/cortex-doctor.py"              "${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py"
+register "src/scripts/cron-failure-state.sh"       "${CORTEX_DEPLOY_HOME}/scripts/cron-failure-state.sh"
+register "src/scripts/cron_failure_state.py"       "${CORTEX_DEPLOY_HOME}/scripts/cron_failure_state.py"
+register "src/scripts/install/seed-project.sh"           "${CORTEX_DEPLOY_HOME}/scripts/seed-project.sh"
+register "src/scripts/manage/hermes-update.sh"            "${CORTEX_DEPLOY_HOME}/scripts/hermes-update.sh"
+register "src/scripts/manage/hermes-cortex-sync.sh"      "${CORTEX_DEPLOY_HOME}/scripts/hermes-cortex-sync.sh"
+register "src/scripts/manage/update-session-state.sh"    "${CORTEX_DEPLOY_HOME}/scripts/update-session-state.sh"
 
 # Loop-governance scripts (deployed to scripts/ for cron use)
-register "src/loop-governance/cleanup-ollama.sh"  "${HERMES_HOME}/scripts/cleanup-ollama.sh"
-register "src/loop-governance/inbox_watcher.py"    "${HERMES_HOME}/scripts/inbox_watcher.py"
-register "src/loop-governance/session_cache.py"    "${HERMES_HOME}/scripts/session_cache.py"
-register "src/loop-governance/setup.sh"            "${HERMES_HOME}/scripts/setup.sh"
-register "src/loop-governance/skill_miner.py"      "${HERMES_HOME}/scripts/skill_miner.py"
-register "src/loop-governance/skill-miner-wrapper" "${HERMES_HOME}/scripts/skill-miner-wrapper"
-register "src/loop-governance/update.sh"           "${HERMES_HOME}/scripts/update.sh"
+register "src/loop-governance/cleanup-ollama.sh"  "${CORTEX_DEPLOY_HOME}/scripts/cleanup-ollama.sh"
+register "src/loop-governance/inbox_watcher.py"    "${CORTEX_DEPLOY_HOME}/scripts/inbox_watcher.py"
+register "src/loop-governance/session_cache.py"    "${CORTEX_DEPLOY_HOME}/scripts/session_cache.py"
+register "src/loop-governance/setup.sh"            "${CORTEX_DEPLOY_HOME}/scripts/setup.sh"
+register "src/loop-governance/skill_miner.py"      "${CORTEX_DEPLOY_HOME}/scripts/skill_miner.py"
+register "src/loop-governance/skill-miner-wrapper" "${CORTEX_DEPLOY_HOME}/scripts/skill-miner-wrapper"
+register "src/loop-governance/update.sh"           "${CORTEX_DEPLOY_HOME}/scripts/update.sh"
 
-register "src/scripts/health/prod-watchdog.sh"          "${HERMES_HOME}/scripts/prod-watchdog.sh"
-register "src/scripts/agent/orch-team-messages.sh"    "${HERMES_HOME}/scripts/orch-team-messages.sh"
+register "src/scripts/health/prod-watchdog.sh"          "${CORTEX_DEPLOY_HOME}/scripts/prod-watchdog.sh"
+register "src/scripts/agent/orch-team-messages.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-team-messages.sh"
 
 # Post-commit notification + installer
-register "src/scripts/manage/post-commit-notify.sh"          "${HERMES_HOME}/scripts/post-commit-notify.sh"
-register "src/scripts/install/install-post-commit-hook.sh"    "${HERMES_HOME}/scripts/install-post-commit-hook.sh"
+register "src/scripts/manage/post-commit-notify.sh"          "${CORTEX_DEPLOY_HOME}/scripts/post-commit-notify.sh"
+register "src/scripts/install/install-post-commit-hook.sh"    "${CORTEX_DEPLOY_HOME}/scripts/install-post-commit-hook.sh"
 
 # Template drift checker (runs during cortex-update.sh)
-register "src/scripts/manage/template-diff-check.py"          "${HERMES_HOME}/scripts/template-diff-check.py"
+register "src/scripts/manage/template-diff-check.py"          "${CORTEX_DEPLOY_HOME}/scripts/template-diff-check.py"
 
 # Moses inbox remediation
-register "src/scripts/agent/orch-inbox-remediate.sh"  "${HERMES_HOME}/scripts/orch-inbox-remediate.sh"
+register "src/scripts/agent/orch-inbox-remediate.sh"  "${CORTEX_DEPLOY_HOME}/scripts/orch-inbox-remediate.sh"
 
 # Auto-remediation scripts
-register "src/scripts/health/cron-auto-remediate.sh"     "${HERMES_HOME}/scripts/cron-auto-remediate.sh"
-register "src/scripts/agent/orch-weekly-auto-fix.py"    "${HERMES_HOME}/scripts/orch-weekly-auto-fix.py"
+register "src/scripts/health/cron-auto-remediate.sh"     "${CORTEX_DEPLOY_HOME}/scripts/cron-auto-remediate.sh"
+register "src/scripts/agent/orch-weekly-auto-fix.py"    "${CORTEX_DEPLOY_HOME}/scripts/orch-weekly-auto-fix.py"
 
 # System watchdog scripts (no_agent cron jobs)
-register "src/scripts/health/service-recovery.py"        "${HERMES_HOME}/scripts/service-recovery.py"
-register "src/scripts/platform_utils.py"          "${HERMES_HOME}/scripts/platform_utils.py"
-register "src/scripts/agent/agent-daily-bible-reading.py" "${HERMES_HOME}/scripts/agent-daily-bible-reading.py"
-register "src/scripts/health/langfuse-health-watchdog.py" "${HERMES_HOME}/scripts/langfuse-health-watchdog.py"
-register "src/scripts/manage/llm-judge-scorer.py"         "${HERMES_HOME}/scripts/llm-judge-scorer.py"
-register "src/scripts/health/model-health-watchdog.py"    "${HERMES_HOME}/scripts/model-health-watchdog.py"
-register "src/scripts/manage/offline_code_index_cron.sh"  "${HERMES_HOME}/scripts/offline_code_index_cron.sh"
-register "src/scripts/health/cron-quality-watchdog.py"    "${HERMES_HOME}/scripts/cron-quality-watchdog.py"
-register "src/scripts/agent/agent-cron-failure-scanner.py" "${HERMES_HOME}/scripts/agent-cron-failure-scanner.py"
-register "src/scripts/health/scoring-activity-watchdog.py" "${HERMES_HOME}/scripts/scoring-activity-watchdog.py"
-register "src/scripts/state_tracker.py"             "${HERMES_HOME}/scripts/state_tracker.py"
-register "src/scripts/health/check-certs.py"               "${HERMES_HOME}/scripts/check-certs.py"
+register "src/scripts/health/service-recovery.py"        "${CORTEX_DEPLOY_HOME}/scripts/service-recovery.py"
+register "src/scripts/platform_utils.py"          "${CORTEX_DEPLOY_HOME}/scripts/platform_utils.py"
+register "src/scripts/agent/agent-daily-bible-reading.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-daily-bible-reading.py"
+register "src/scripts/health/langfuse-health-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/langfuse-health-watchdog.py"
+register "src/scripts/manage/llm-judge-scorer.py"         "${CORTEX_DEPLOY_HOME}/scripts/llm-judge-scorer.py"
+register "src/scripts/health/model-health-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/model-health-watchdog.py"
+register "src/scripts/manage/offline_code_index_cron.sh"  "${CORTEX_DEPLOY_HOME}/scripts/offline_code_index_cron.sh"
+register "src/scripts/health/cron-quality-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/cron-quality-watchdog.py"
+register "src/scripts/agent/agent-cron-failure-scanner.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-cron-failure-scanner.py"
+register "src/scripts/health/scoring-activity-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/scoring-activity-watchdog.py"
+register "src/scripts/state_tracker.py"             "${CORTEX_DEPLOY_HOME}/scripts/state_tracker.py"
+register "src/scripts/health/check-certs.py"               "${CORTEX_DEPLOY_HOME}/scripts/check-certs.py"
 # daily-bible-reading.sh was deleted from repo — replaced by agent-daily-bible-reading.py
-register "src/scripts/inbox/generate-inbox-wrappers.py"   "${HERMES_HOME}/scripts/generate-inbox-wrappers.py"
-register "src/scripts/manage/nginx-security-scanner.sh"    "${HERMES_HOME}/scripts/nginx-security-scanner.sh"
-register "src/scripts/manage/nginx-threat-pipeline.sh"     "${HERMES_HOME}/scripts/nginx-threat-pipeline.sh"
-register "src/scripts/manage/deploy-blocked-ips.sh"        "${HERMES_HOME}/scripts/deploy-blocked-ips.sh"
-register "src/scripts/agent/agent-remediate-apply.py"  "${HERMES_HOME}/scripts/agent-remediate-apply.py"
-register "src/scripts/agent/agent-apply-fixes.py"      "${HERMES_HOME}/scripts/agent-apply-fixes.py"
-register "src/scripts/agent/agent-ip-submission.sh"      "${HERMES_HOME}/scripts/agent-ip-submission.sh"
+register "src/scripts/inbox/generate-inbox-wrappers.py"   "${CORTEX_DEPLOY_HOME}/scripts/generate-inbox-wrappers.py"
+register "src/scripts/manage/nginx-security-scanner.sh"    "${CORTEX_DEPLOY_HOME}/scripts/nginx-security-scanner.sh"
+register "src/scripts/manage/nginx-threat-pipeline.sh"     "${CORTEX_DEPLOY_HOME}/scripts/nginx-threat-pipeline.sh"
+register "src/scripts/manage/deploy-blocked-ips.sh"        "${CORTEX_DEPLOY_HOME}/scripts/deploy-blocked-ips.sh"
+register "src/scripts/agent/agent-remediate-apply.py"  "${CORTEX_DEPLOY_HOME}/scripts/agent-remediate-apply.py"
+register "src/scripts/agent/agent-apply-fixes.py"      "${CORTEX_DEPLOY_HOME}/scripts/agent-apply-fixes.py"
+register "src/scripts/agent/agent-ip-submission.sh"      "${CORTEX_DEPLOY_HOME}/scripts/agent-ip-submission.sh"
 
 # Deploy scripts (nginx security pipeline) — now deployed to /usr/local/sbin/
 # by deploy_system_scripts() below. Old register entries removed.
 
 # Deployment-specific cron scripts
-register "src/scripts/manage/auto-save-sessions.py"      "${HERMES_HOME}/scripts/auto-save-sessions.py"
-register "src/scripts/agent/agent-health-monitor.py"    "${HERMES_HOME}/scripts/agent-health-monitor.py"
-register "src/scripts/manage/gbrain-nightly-dream.sh"   "${HERMES_HOME}/scripts/gbrain-nightly-dream.sh"
-register "src/scripts/manage/gbrain-update-sync.sh"     "${HERMES_HOME}/scripts/gbrain-update-sync.sh"
-register "src/scripts/manage/gbrain-wrapper.sh"         "${HERMES_HOME}/scripts/gbrain-wrapper.sh"
-register "src/scripts/manage/gbrain-doctor-summary.py"   "${HERMES_HOME}/scripts/gbrain-doctor-summary.py"
-register "src/scripts/manage/harvest-lessons.sh"         "${HERMES_HOME}/scripts/harvest-lessons.sh"
-register "src/scripts/manage/send-skill-report.py"       "${HERMES_HOME}/scripts/send-skill-report.py"
-register "src/scripts/state_tracker.py"           "${HERMES_HOME}/scripts/state_tracker.py"
+register "src/scripts/manage/auto-save-sessions.py"      "${CORTEX_DEPLOY_HOME}/scripts/auto-save-sessions.py"
+register "src/scripts/agent/agent-health-monitor.py"    "${CORTEX_DEPLOY_HOME}/scripts/agent-health-monitor.py"
+register "src/scripts/manage/gbrain-nightly-dream.sh"   "${CORTEX_DEPLOY_HOME}/scripts/gbrain-nightly-dream.sh"
+register "src/scripts/manage/gbrain-update-sync.sh"     "${CORTEX_DEPLOY_HOME}/scripts/gbrain-update-sync.sh"
+register "src/scripts/manage/gbrain-wrapper.sh"         "${CORTEX_DEPLOY_HOME}/scripts/gbrain-wrapper.sh"
+register "src/scripts/manage/gbrain-doctor-summary.py"   "${CORTEX_DEPLOY_HOME}/scripts/gbrain-doctor-summary.py"
+register "src/scripts/manage/harvest-lessons.sh"         "${CORTEX_DEPLOY_HOME}/scripts/harvest-lessons.sh"
+register "src/scripts/manage/send-skill-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/send-skill-report.py"
+register "src/scripts/state_tracker.py"           "${CORTEX_DEPLOY_HOME}/scripts/state_tracker.py"
 
 # Inbox MCP tools
-register "src/scripts/inbox/inbox-mcp.sh"               "${HERMES_HOME}/scripts/inbox-mcp.sh"
-register "src/scripts/inbox/inbox-mcp-updated.py"       "${HERMES_HOME}/scripts/inbox-mcp-updated.py"
-register "src/scripts/inbox/inbox-flag.py"              "${HERMES_HOME}/scripts/inbox-flag.py"
-register "src/scripts/inbox/inbox-watch.sh"             "${HERMES_HOME}/scripts/inbox-watch.sh"
-register "src/scripts/install/setup-agent-inbox.sh"       "${HERMES_HOME}/scripts/setup-agent-inbox.sh"
-register "src/scripts/manage/loop-gov-mcp.sh"            "${HERMES_HOME}/scripts/loop-gov-mcp.sh"
-register "src/scripts/agent/agent-inbox-monitor.sh"     "${HERMES_HOME}/scripts/agent-inbox-monitor.sh"
-register "src/scripts/agent/orch-inbox-processor.py"   "${HERMES_HOME}/scripts/orch-inbox-processor.py"
-register "src/scripts/agent/check-agent-messages.sh"    "${HERMES_HOME}/scripts/check-agent-messages.sh"
-register "src/scripts/manage/ek-session-snapshot.py"     "${HERMES_HOME}/scripts/ek-session-snapshot.py"
+register "src/scripts/inbox/inbox-mcp.sh"               "${CORTEX_DEPLOY_HOME}/scripts/inbox-mcp.sh"
+register "src/scripts/inbox/inbox-mcp-updated.py"       "${CORTEX_DEPLOY_HOME}/scripts/inbox-mcp-updated.py"
+register "src/scripts/inbox/inbox-flag.py"              "${CORTEX_DEPLOY_HOME}/scripts/inbox-flag.py"
+register "src/scripts/inbox/inbox-watch.sh"             "${CORTEX_DEPLOY_HOME}/scripts/inbox-watch.sh"
+register "src/scripts/install/setup-agent-inbox.sh"       "${CORTEX_DEPLOY_HOME}/scripts/setup-agent-inbox.sh"
+register "src/scripts/manage/loop-gov-mcp.sh"            "${CORTEX_DEPLOY_HOME}/scripts/loop-gov-mcp.sh"
+register "src/scripts/agent/agent-inbox-monitor.sh"     "${CORTEX_DEPLOY_HOME}/scripts/agent-inbox-monitor.sh"
+register "src/scripts/agent/orch-inbox-processor.py"   "${CORTEX_DEPLOY_HOME}/scripts/orch-inbox-processor.py"
+register "src/scripts/agent/check-agent-messages.sh"    "${CORTEX_DEPLOY_HOME}/scripts/check-agent-messages.sh"
+register "src/scripts/manage/ek-session-snapshot.py"     "${CORTEX_DEPLOY_HOME}/scripts/ek-session-snapshot.py"
 
 # Orchestrator health polling (Moses primary, Esther backup)
-register "src/scripts/agent/orch-team-health.py"         "${HERMES_HOME}/scripts/orch-team-health.py"
-register "src/scripts/agent/orch-gbrain-doctor.sh"       "${HERMES_HOME}/scripts/orch-gbrain-doctor.sh"
+register "src/scripts/agent/orch-team-health.py"         "${CORTEX_DEPLOY_HOME}/scripts/orch-team-health.py"
+register "src/scripts/agent/orch-gbrain-doctor.sh"       "${CORTEX_DEPLOY_HOME}/scripts/orch-gbrain-doctor.sh"
 
 # Cron cost tracking — SQLite store + deployment script
-register "src/scripts/cost_store.py"               "${HERMES_HOME}/scripts/cost_store.py"
-register "src/scripts/install/install-cron-cost-tracking.py" "${HERMES_HOME}/scripts/install-cron-cost-tracking.py"
+register "src/scripts/cost_store.py"               "${CORTEX_DEPLOY_HOME}/scripts/cost_store.py"
+register "src/scripts/install/install-cron-cost-tracking.py" "${CORTEX_DEPLOY_HOME}/scripts/install-cron-cost-tracking.py"
 
 # Health monitoring
-register "src/scripts/_port_arbitration.py"        "${HERMES_HOME}/scripts/_port_arbitration.py"
-register "src/scripts/health/health-server.py"            "${HERMES_HOME}/scripts/health-server.py" "health-server"
-register "src/scripts/health/health-vector.py"            "${HERMES_HOME}/scripts/health-vector.py"
-register "src/scripts/health/health-vector-push.sh"       "${HERMES_HOME}/scripts/health-vector-push.sh"
-register "src/scripts/health/report-agent-health.py"      "${HERMES_HOME}/scripts/report-agent-health.py"
-register "src/scripts/manage/request-skill-reports.sh"    "${HERMES_HOME}/scripts/request-skill-reports.sh"
+register "src/scripts/_port_arbitration.py"        "${CORTEX_DEPLOY_HOME}/scripts/_port_arbitration.py"
+register "src/scripts/health/health-server.py"            "${CORTEX_DEPLOY_HOME}/scripts/health-server.py" "health-server"
+register "src/scripts/health/health-vector.py"            "${CORTEX_DEPLOY_HOME}/scripts/health-vector.py"
+register "src/scripts/health/health-vector-push.sh"       "${CORTEX_DEPLOY_HOME}/scripts/health-vector-push.sh"
+register "src/scripts/health/report-agent-health.py"      "${CORTEX_DEPLOY_HOME}/scripts/report-agent-health.py"
+register "src/scripts/manage/request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}/scripts/request-skill-reports.sh"
 register "src/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" "health-server" "restart_health_server"
 register "src/scripts/com.hermes.health-server.service" "${HOME}/.config/systemd/user/com.hermes.health-server.service" "health-server" "restart_health_server"
 
 # Shared model config loader (imported by many scripts)
 
 # Inbox sensor and health models
-register "src/scripts/inbox/inbox-sensor.py"             "${HERMES_HOME}/scripts/inbox-sensor.py"
-register "src/scripts/health/model-health-watchdog.py"    "${HERMES_HOME}/scripts/model-health-watchdog.py"
+register "src/scripts/inbox/inbox-sensor.py"             "${CORTEX_DEPLOY_HOME}/scripts/inbox-sensor.py"
+register "src/scripts/health/model-health-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/model-health-watchdog.py"
 
 # Timezone helper (required by monitoring scripts)
-register "src/scripts/hermes_tz.py"                "${HERMES_HOME}/scripts/hermes_tz.py"
+register "src/scripts/hermes_tz.py"                "${CORTEX_DEPLOY_HOME}/scripts/hermes_tz.py"
 
 # Remediation sensor (companion to agent-auto-remediate cron)
-register "src/scripts/health/remediation-sensor.py"       "${HERMES_HOME}/scripts/remediation-sensor.py"
+register "src/scripts/health/remediation-sensor.py"       "${CORTEX_DEPLOY_HOME}/scripts/remediation-sensor.py"
 
 # Inbox monitoring
-register "src/scripts/inbox/inbox-sensor.py"             "${HERMES_HOME}/scripts/inbox-sensor.py"
+register "src/scripts/inbox/inbox-sensor.py"             "${CORTEX_DEPLOY_HOME}/scripts/inbox-sensor.py"
 
 # Eval harness (agent reliability patterns)
-register "src/scripts/manage/run-evals.py"                "${HERMES_HOME}/scripts/run-evals.py"
-register "src/scripts/manage/analyze-failures.py"         "${HERMES_HOME}/scripts/analyze-failures.py"
+register "src/scripts/manage/run-evals.py"                "${CORTEX_DEPLOY_HOME}/scripts/run-evals.py"
+register "src/scripts/manage/analyze-failures.py"         "${CORTEX_DEPLOY_HOME}/scripts/analyze-failures.py"
 
 # Agent learning sender
-register "src/scripts/manage/send-agent-learning.sh"      "${HERMES_HOME}/scripts/send-agent-learning.sh"
+register "src/scripts/manage/send-agent-learning.sh"      "${CORTEX_DEPLOY_HOME}/scripts/send-agent-learning.sh"
 
 # Skill collection pipeline
-register "src/scripts/manage/collect-agent-skills.sh"     "${HERMES_HOME}/scripts/collect-agent-skills.sh"
-register "src/scripts/manage/request-skill-reports.sh"    "${HERMES_HOME}/scripts/request-skill-reports.sh"
-register "src/scripts/manage/process-skill-reports.py"    "${HERMES_HOME}/scripts/process-skill-reports.py"
+register "src/scripts/manage/collect-agent-skills.sh"     "${CORTEX_DEPLOY_HOME}/scripts/collect-agent-skills.sh"
+register "src/scripts/manage/request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}/scripts/request-skill-reports.sh"
+register "src/scripts/manage/process-skill-reports.py"    "${CORTEX_DEPLOY_HOME}/scripts/process-skill-reports.py"
 # Agent inbox connection config — user creates manually
 
 # A2A Agent Card generator — daily cron generates Agent Card JSON
-register "src/a2a/generate-agent-card.py"         "${HERMES_HOME}/scripts/generate-agent-card.py"
+register "src/a2a/generate-agent-card.py"         "${CORTEX_DEPLOY_HOME}/scripts/generate-agent-card.py"
 
 # MCP inbox proxy — sudo'd HTTPS proxy with root-owned client cert
-register "src/scripts/mcp-inbox-proxy"              "${HERMES_HOME}/scripts/mcp-inbox-proxy"
+register "src/scripts/mcp-inbox-proxy"              "${CORTEX_DEPLOY_HOME}/scripts/mcp-inbox-proxy"
 
 # Agent inbox check (used by install.sh for cron setup)
-register "src/agent-inbox/agent-inbox-check.sh"    "${HERMES_HOME}/scripts/agent-inbox-check.sh"
+register "src/agent-inbox/agent-inbox-check.sh"    "${CORTEX_DEPLOY_HOME}/scripts/agent-inbox-check.sh"
 
 # Lesson-aware scripts (Memory That Compounds)
-register "src/scripts/manage/daily-lesson-mine.sh"      "${HERMES_HOME}/scripts/daily-lesson-mine.sh"
-register "src/scripts/manage/lesson-compound-stats.py"   "${HERMES_HOME}/scripts/lesson-compound-stats.py"
-register "src/scripts/manage/lesson-hit.sh"              "${HERMES_HOME}/scripts/lesson-hit.sh"
+register "src/scripts/manage/daily-lesson-mine.sh"      "${CORTEX_DEPLOY_HOME}/scripts/daily-lesson-mine.sh"
+register "src/scripts/manage/lesson-compound-stats.py"   "${CORTEX_DEPLOY_HOME}/scripts/lesson-compound-stats.py"
+register "src/scripts/manage/lesson-hit.sh"              "${CORTEX_DEPLOY_HOME}/scripts/lesson-hit.sh"
 
 # Offline tools
-register "src/offline/offline_knowledge.py"       "${HERMES_HOME}/offline/offline_knowledge.py"
-register "src/offline/offline_knowledge.sh"       "${HERMES_HOME}/offline/offline_knowledge.sh"
-register "src/offline/offline_code.py"            "${HERMES_HOME}/offline/offline_code.py"
-register "src/offline/offline_code.sh"            "${HERMES_HOME}/offline/offline_code.sh"
-register "src/offline/kiwix-docker-compose.yml"   "${HERMES_HOME}/offline/kiwix-docker-compose.yml"
-register "src/offline/prep-offline.sh"            "${HERMES_HOME}/offline/prep-offline.sh"
-register "src/offline/session_mine.py"            "${HERMES_HOME}/offline/session_mine.py"
-register "src/offline/lessons.py"                 "${HERMES_HOME}/offline/lessons.py"
-register "src/offline/migrate_fts_reasoning.sql"  "${HERMES_HOME}/offline/migrate_fts_reasoning.sql"
-register "src/offline/auto-update.sh"             "${HERMES_HOME}/offline/auto-update.sh"
+register "src/offline/offline_knowledge.py"       "${CORTEX_DEPLOY_HOME}/offline/offline_knowledge.py"
+register "src/offline/offline_knowledge.sh"       "${CORTEX_DEPLOY_HOME}/offline/offline_knowledge.sh"
+register "src/offline/offline_code.py"            "${CORTEX_DEPLOY_HOME}/offline/offline_code.py"
+register "src/offline/offline_code.sh"            "${CORTEX_DEPLOY_HOME}/offline/offline_code.sh"
+register "src/offline/kiwix-docker-compose.yml"   "${CORTEX_DEPLOY_HOME}/offline/kiwix-docker-compose.yml"
+register "src/offline/prep-offline.sh"            "${CORTEX_DEPLOY_HOME}/offline/prep-offline.sh"
+register "src/offline/session_mine.py"            "${CORTEX_DEPLOY_HOME}/offline/session_mine.py"
+register "src/offline/lessons.py"                 "${CORTEX_DEPLOY_HOME}/offline/lessons.py"
+register "src/offline/migrate_fts_reasoning.sql"  "${CORTEX_DEPLOY_HOME}/offline/migrate_fts_reasoning.sql"
+register "src/offline/auto-update.sh"             "${CORTEX_DEPLOY_HOME}/offline/auto-update.sh"
 
 # A2A Agent-to-Agent Protocol
-register "src/a2a/generate-agent-card.py"         "${HERMES_HOME}/scripts/generate-agent-card.py"
-register "src/a2a/agent-card.json"                "${HERMES_HOME}/a2a/agent-card.json"
-register "src/mcp-servers/a2a-mcp.py"              "${HERMES_HOME}/mcp-servers/a2a-mcp.py"
-register "src/a2a/a2a-server.py"                     "${HERMES_HOME}/scripts/a2a-server.py"
-register "docs/templates/a2a-server.service"          "${HERMES_HOME}/templates/a2a-server.service"
+register "src/a2a/generate-agent-card.py"         "${CORTEX_DEPLOY_HOME}/scripts/generate-agent-card.py"
+register "src/a2a/agent-card.json"                "${CORTEX_DEPLOY_HOME}/a2a/agent-card.json"
+register "src/mcp-servers/a2a-mcp.py"              "${CORTEX_DEPLOY_HOME}/mcp-servers/a2a-mcp.py"
+register "src/a2a/a2a-server.py"                     "${CORTEX_DEPLOY_HOME}/scripts/a2a-server.py"
+register "docs/templates/a2a-server.service"          "${CORTEX_DEPLOY_HOME}/templates/a2a-server.service"
 
 # Templates → ~/.hermes/memories/ (guarded — only if dest missing)
-register "docs/templates/MEMORY.seed.md"      "${HERMES_HOME}/memories/MEMORY.md"
-register "docs/templates/USER.seed.md"        "${HERMES_HOME}/memories/USER.md"
-register "docs/templates/memory-readme.seed.md" "${HERMES_HOME}/memory/README.md"
+register "docs/templates/MEMORY.seed.md"      "${CORTEX_DEPLOY_HOME}/memories/MEMORY.md"
+register "docs/templates/USER.seed.md"        "${CORTEX_DEPLOY_HOME}/memories/USER.md"
+register "docs/templates/memory-readme.seed.md" "${CORTEX_DEPLOY_HOME}/memory/README.md"
 
 # Langfuse
 register "deploy/docker-compose.langfuse.yml"        "${HOME}/langfuse/docker-compose.yml" "langfuse" "restart_langfuse"
 
 # Dashboard
-register "src/dashboard/server.py"               "${HERMES_HOME}/dashboard/server.py" "dashboard" "restart_dashboard"
-register "src/dashboard/static/index.html"        "${HERMES_HOME}/dashboard/static/index.html" "dashboard"
+register "src/dashboard/server.py"               "${CORTEX_DEPLOY_HOME}/dashboard/server.py" "dashboard" "restart_dashboard"
+register "src/dashboard/static/index.html"        "${CORTEX_DEPLOY_HOME}/dashboard/static/index.html" "dashboard"
 register "src/dashboard/com.hermes.cortex-dashboard.plist" "${HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist" "dashboard"
 
 # Agent Inbox
-register "src/agent-inbox/server.py"              "${HERMES_HOME}/agent-inbox/server.py" "agent-inbox" "restart_agent_inbox"
+register "src/agent-inbox/server.py"              "${CORTEX_DEPLOY_HOME}/agent-inbox/server.py" "agent-inbox" "restart_agent_inbox"
 register "src/agent-inbox/com.hermes.agent-inbox.plist" "${HOME}/Library/LaunchAgents/com.hermes.agent-inbox.plist" "agent-inbox"
 
 # Service definitions
-register "src/scripts/install/os-config.sh"               "${HERMES_HOME}/scripts/os-config.sh"
-register "src/scripts/install/service-writer.sh"          "${HERMES_HOME}/scripts/service-writer.sh"
+register "src/scripts/install/os-config.sh"               "${CORTEX_DEPLOY_HOME}/scripts/os-config.sh"
+register "src/scripts/install/service-writer.sh"          "${CORTEX_DEPLOY_HOME}/scripts/service-writer.sh"
 
 # ── Service restart helpers ─────────────────────────────────
 
@@ -360,7 +360,7 @@ restart_agent_inbox() {
     local plist="${HOME}/Library/LaunchAgents/com.hermes.agent-inbox.plist"
     launchctl unload "$plist" 2>/dev/null || true
     # Create venv if missing
-    local inbox_dir="${HERMES_HOME}/agent-inbox"
+    local inbox_dir="${CORTEX_DEPLOY_HOME}/agent-inbox"
     if [[ ! -d "${inbox_dir}/venv" ]]; then
       python3 -m venv "${inbox_dir}/venv" 2>/dev/null || true
       "${inbox_dir}/venv/bin/pip" install fastapi uvicorn python-multipart 2>/dev/null || true
@@ -432,7 +432,7 @@ copy_file() {
     # Preserve executable bit
     [[ -x "$src" ]] && chmod +x "$dest"
     # Fallback: .py and .sh files in scripts dir must be executable for no_agent cron jobs
-    if [[ "$dest" == "${HERMES_HOME}/scripts/"* ]]; then
+    if [[ "$dest" == "${CORTEX_DEPLOY_HOME}/scripts/"* ]]; then
       case "$dest" in
         *.py|*.sh) chmod +x "$dest" ;;
       esac
@@ -507,34 +507,34 @@ DEPRECATED_FILES=()  # populated by scanning the map for files that no longer ex
 
 update_symlinks() {
   # Recreate web_cache symlink
-  local src="${HERMES_HOME}/web-cache/web_cache.sh"
-  local link="${HERMES_HOME}/bin/web_cache"
+  local src="${CORTEX_DEPLOY_HOME}/web-cache/web_cache.sh"
+  local link="${CORTEX_DEPLOY_HOME}/bin/web_cache"
   if [[ -f "$src" ]]; then
-    mkdir -p "${HERMES_HOME}/bin"
+    mkdir -p "${CORTEX_DEPLOY_HOME}/bin"
     ln -sf "$src" "$link"
     info "  Symlink: web_cache"
   fi
 
   # Recreate offline symlinks
-  local offline_script="${HERMES_HOME}/offline/offline_knowledge.sh"
-  local offline_link="${HERMES_HOME}/bin/offline_knowledge"
+  local offline_script="${CORTEX_DEPLOY_HOME}/offline/offline_knowledge.sh"
+  local offline_link="${CORTEX_DEPLOY_HOME}/bin/offline_knowledge"
   if [[ -f "$offline_script" ]]; then
     ln -sf "$offline_script" "$offline_link"
     info "  Symlink: offline_knowledge"
   fi
 
-  local prep_script="${HERMES_HOME}/offline/prep-offline.sh"
-  local prep_link="${HERMES_HOME}/bin/prep-offline"
+  local prep_script="${CORTEX_DEPLOY_HOME}/offline/prep-offline.sh"
+  local prep_link="${CORTEX_DEPLOY_HOME}/bin/prep-offline"
   if [[ -f "$prep_script" ]]; then
     ln -sf "$prep_script" "$prep_link"
     info "  Symlink: prep-offline"
   fi
 
   # Recreate offline_code symlink
-  local code_script="${HERMES_HOME}/offline/offline_code.sh"
-  local code_link="${HERMES_HOME}/bin/offline_code"
+  local code_script="${CORTEX_DEPLOY_HOME}/offline/offline_code.sh"
+  local code_link="${CORTEX_DEPLOY_HOME}/bin/offline_code"
   if [[ -f "$code_script" ]]; then
-    mkdir -p "${HERMES_HOME}/bin"
+    mkdir -p "${CORTEX_DEPLOY_HOME}/bin"
     ln -sf "$code_script" "$code_link"
     info "  Symlink: offline_code"
   fi
@@ -546,7 +546,7 @@ update_symlinks() {
 # files whose checksums differ from installed versions.
 sync_skills() {
   local skill_repo="${REPO_DIR}/src/skills"
-  local skill_dest="${HERMES_HOME}/skills"
+  local skill_dest="${CORTEX_DEPLOY_HOME}/skills"
   [[ -d "$skill_repo" ]] || { info "  No src/skills/ in repo — skipping skill sync"; return 0; }
 
   local synced=0 skipped=0
@@ -586,7 +586,7 @@ sync_skills() {
 # changed files to minimize unnecessary re-indexing.
 sync_code_corpus() {
   local corpus_src="${REPO_DIR}/src/offline/code-corpus"
-  local corpus_dest="${HERMES_HOME}/offline/code-corpus"
+  local corpus_dest="${CORTEX_DEPLOY_HOME}/offline/code-corpus"
   [[ -d "$corpus_src" ]] || { info "  No code-corpus/ in repo — skipping"; return 0; }
 
   mkdir -p "$corpus_dest"
@@ -848,7 +848,7 @@ deploy_system_scripts() {
   [[ "$files_copied" -eq 0 ]] && return 0
 
   # Remove old local copies — canonical version is now in /usr/local/sbin/
-  local home_link="${HERMES_HOME}/scripts/install-nginx-full.sh"
+  local home_link="${CORTEX_DEPLOY_HOME}/scripts/install-nginx-full.sh"
   local agent_link="${HOME}/.hermes-cortex/scripts/install-nginx-full.sh"
   [[ -f "$home_link" ]] && rm -f "$home_link"
   [[ -f "$agent_link" ]] && rm -f "$agent_link"
@@ -903,9 +903,9 @@ verify_services() {
 # ── Main ────────────────────────────────────────────────────
 
 install_precommit_hook() {
-  local hooks_dir="${HERMES_HOME}/hooks"
-  local hook_src="${HERMES_HOME}/scripts/pre-commit-score"
-  local push_src="${HERMES_HOME}/scripts/pre-push-pull"
+  local hooks_dir="${CORTEX_DEPLOY_HOME}/hooks"
+  local hook_src="${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
+  local push_src="${CORTEX_DEPLOY_HOME}/scripts/pre-push-pull"
 
   [[ ! -f "$hook_src" ]] && return 0  # script not deployed yet, skip
 
@@ -945,7 +945,7 @@ main() {
   register
 
   # Source OS config for nginx path variables (NGINX_CONFIG_DIR, NGINX_LOG_DIR, NGINX_HTPASSWD)
-  local os_config="${HERMES_HOME}/scripts/os-config.sh"
+  local os_config="${CORTEX_DEPLOY_HOME}/scripts/os-config.sh"
   [[ -f "$os_config" ]] && source "$os_config" 2>/dev/null || true
 
   echo ""
@@ -1037,7 +1037,7 @@ main() {
   sync_code_corpus
 
   # Check template drift — warn if local SOUL.md is stale
-  if python3 "${HERMES_HOME}/scripts/template-diff-check.py" 2>/dev/null; then
+  if python3 "${CORTEX_DEPLOY_HOME}/scripts/template-diff-check.py" 2>/dev/null; then
     :  # up to date — silent
   else
     warn "Template drift: run with --status to see details"
@@ -1078,14 +1078,14 @@ main() {
   echo "$new_commit" > "$LAST_COMMIT_FILE"
   info "State saved: ${new_commit:0:8}"
 
-  # Ensure HERMES_HOME/scripts/ → .hermes-cortex/scripts/ symlink
+  # Ensure ~/.hermes/scripts/ points to ~/.hermes-cortex/scripts/
   # (cron security guard resolves this directory and checks script
   # paths against it — a directory-level symlink means both sides
   # of the check land in the same tree, no core agent patch needed)
-  _HERMES_AGENT_SCRIPTS="${HOME}/.hermes-cortex/scripts"
-  _CORTEX_DEPLOY_SCRIPTS="${HERMES_HOME}/scripts"
+  _HERMES_AGENT_SCRIPTS="${HOME}/.hermes/scripts"
+  _CORTEX_DEPLOY_SCRIPTS="${CORTEX_DEPLOY_HOME}/scripts"
   # Safety guard: skip symlink dance when both paths resolve to the same directory.
-  # This happens when HERMES_HOME is already set to ~/.hermes — rm -rf would
+  # This happens when CORTEX_DEPLOY_HOME is already set to ~/.hermes — rm -rf would
   # delete all installed scripts and create a self-referential symlink.
   if [ "$(cd "$_HERMES_AGENT_SCRIPTS" 2>/dev/null && pwd)" = "$(cd "$_CORTEX_DEPLOY_SCRIPTS" 2>/dev/null && pwd)" ]; then
     :
@@ -1128,7 +1128,7 @@ main() {
 
   # Install/update universal crons (idempotent — skips existing)
   if command -v hermes &>/dev/null; then
-    HERMES_HOME="${HERMES_HOME}" bash "${HERMES_HOME}/scripts/install-crons.sh" 2>/dev/null && \
+    CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME}" bash "${CORTEX_DEPLOY_HOME}/scripts/install-crons.sh" 2>/dev/null && \
       info "Crons up to date" || warn "Cron install skipped (no hermes CLI?)"
 
     # ── Orchestrator-only crons (team health, soul refinement, etc.) ──
@@ -1144,7 +1144,7 @@ main() {
       esac
     fi
     if $_ORCH; then
-      HERMES_HOME="${HERMES_HOME}" bash "${HERMES_HOME}/scripts/install-orch-crons.sh" 2>/dev/null && \
+      CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME}" bash "${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh" 2>/dev/null && \
         info "Orch crons up to date" || warn "Orch cron install skipped"
     fi
   else

@@ -52,6 +52,7 @@ def _cron_ts(name: str) -> str:
         "[%Y-%m-%d %H:%M KST]"
     )
     return f"{kst} {name}:"
+CORTEX_DEPLOY_HOME = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex"))
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
 BRAIN_SHARED = Path.home() / "brain" / "shared"
 
@@ -191,7 +192,7 @@ def check_docker_containers() -> dict:
         return {"status": "ERROR", "detail": str(e)}
 
 def check_gateway_log() -> dict:
-    log_dir = HERMES_HOME / "logs"
+    log_dir = CORTEX_DEPLOY_HOME / "logs"
     if not log_dir.exists():
         return {"status": "UNKNOWN", "detail": "No log directory"}
     recent = False
@@ -205,7 +206,7 @@ def check_gateway_log() -> dict:
     return {"status": "DEGRADED", "detail": "No log activity in 30+ min"}
 
 def check_inbox_staleness() -> dict:
-    state_file = HERMES_HOME / "state" / "last-message-check"
+    state_file = CORTEX_DEPLOY_HOME / "state" / "last-message-check"
     if not state_file.exists():
         return {"status": "DEGRADED", "detail": "No state file — orch-team-messages may not have run"}
     try:

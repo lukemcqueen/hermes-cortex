@@ -6,11 +6,11 @@
     <string>com.hermes.cortex-dashboard</string>
     <key>ProgramArguments</key>
     <array>
-        <string>${HERMES_HOME}/dashboard/venv/bin/python3</string>
-        <string>${HERMES_HOME}/dashboard/server.py</string>
+        <string>${CORTEX_DEPLOY_HOME}/dashboard/venv/bin/python3</string>
+        <string>${CORTEX_DEPLOY_HOME}/dashboard/server.py</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>${HERMES_HOME}/dashboard</string>
+    <string>${CORTEX_DEPLOY_HOME}/dashboard</string>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>

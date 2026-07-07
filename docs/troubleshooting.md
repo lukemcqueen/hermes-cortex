@@ -150,11 +150,11 @@ LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE=true
 
 **Fix — create a virtual environment:**
 ```bash
-python3 -m venv ~/.hermes/dashboard/.venv
-source ~/.hermes/dashboard/.venv/bin/activate
+python3 -m venv ~/.hermes-cortex/dashboard/.venv
+source ~/.hermes-cortex/dashboard/.venv/bin/activate
 pip install flask
 # Run the dashboard from within the venv:
-python3 ~/.hermes/dashboard/server.py
+python3 ~/.hermes-cortex/dashboard/server.py
 ```
 
 Or use the system Python with pip install:
@@ -464,7 +464,7 @@ docker compose -f deploy/docker-compose.langfuse.yml logs -f langfuse-worker
 docker compose -f deploy/docker-compose.langfuse.yml down && docker compose -f deploy/docker-compose.langfuse.yml up -d
 
 # Dashboard
-cd ~/.hermes/dashboard && source .venv/bin/activate && python3 server.py
+cd ~/.hermes-cortex/dashboard && source .venv/bin/activate && python3 server.py
 
 # nginx
 nginx -t              # Test config
@@ -491,7 +491,7 @@ hermes cron run <id>  # Test a job immediately
 
 **Root cause:** Langfuse v3.178+ requires `fromTimestamp` on trace API queries. The dashboard's `_lf()` function must auto-append it.
 
-**Fix — ensure `_lf()` in `~/.hermes/dashboard/server.py` appends `fromTimestamp={iso_7days_ago}` when missing from the path. Then restart: `launchctl kickstart gui/$(id -u)/com.hermes.cortex-dashboard`
+**Fix — ensure `_lf()` in `~/.hermes-cortex/dashboard/server.py` appends `fromTimestamp={iso_7days_ago}` when missing from the path. Then restart: `launchctl kickstart gui/$(id -u)/com.hermes.cortex-dashboard`
 
 **Alternative:** Add `LANGFUSE_API_TRACES_REJECT_NO_DATE_RANGE=false` to `~/langfuse/.env` and recreate Docker containers (less secure).
 
@@ -688,7 +688,7 @@ This happens when you call `end_change()` but no cycle was logged with your task
 # 1. Check recent cycles for your task
 python3 -c "
 import sqlite3, os
-db = os.path.expanduser('~/.hermes/data/loop-governance.db')
+db = os.path.expanduser('~/.hermes-cortex/data/loop-governance.db')
 c = sqlite3.connect(db)
 r = c.execute('SELECT id, task_id, composite FROM loop_cycles ORDER BY id DESC LIMIT 10').fetchall()
 c.close()

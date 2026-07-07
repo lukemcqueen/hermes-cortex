@@ -82,8 +82,8 @@ curl -s http://localhost:11434/api/tags               # Ollama models
 
 ```bash
 # Create dedicated venv (isolated from gateway deps)
-python3 -m venv ~/.hermes/dashboard/venv
-~/.hermes/dashboard/venv/bin/pip install flask
+python3 -m venv ~/.hermes-cortex/dashboard/venv
+~/.hermes-cortex/dashboard/venv/bin/pip install flask
 
 # Install plist (replace CORTEX_HOME with actual path)
 sed "s|CORTEX_HOME|/Users/$(whoami)|g" \

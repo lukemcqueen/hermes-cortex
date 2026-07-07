@@ -142,7 +142,7 @@ Only run this if you are a **designated server machine** that hosts the inbox ba
 
 ### 2a. Deploy server.py
 
-`cortex-update.sh` copies `src/agent-inbox/server.py` to `~/.hermes/agent-inbox/server.py`. Run:
+`cortex-update.sh` copies `src/agent-inbox/server.py` to `~/.hermes-cortex/agent-inbox/server.py`. Run:
 
 ```bash
 bash ~/hermes-cortex/src/scripts/cortex-update.sh --force-all
@@ -162,7 +162,7 @@ launchctl load ~/Library/LaunchAgents/com.hermes.agent-inbox.plist
 
 **Manual (for testing):**
 ```bash
-cd ~/.hermes/agent-inbox
+cd ~/hermes-cortex/src/agent-inbox
 python3 -m uvicorn server:app --host 127.0.0.1 --port 8903
 ```
 
@@ -292,8 +292,8 @@ If upgrading from the standalone A2A server (pre-2026-07-05):
 
 1. **Stop old A2A server** — `kill $(lsof -t -i:8906)`
 2. **Remove old systemd service** — `sudo systemctl disable --now a2a-server; sudo rm /etc/systemd/system/a2a-server.service`
-3. **Update inbox server.py** — `cp src/agent-inbox/server.py ~/.hermes/agent-inbox/server.py`
+3. **Update inbox server.py** — `cp src/agent-inbox/server.py ~/.hermes-cortex/agent-inbox/server.py`
 4. **Update inbox-mcp.py** — `cp src/mcp-servers/inbox-mcp.py ~/.hermes-cortex/scripts/inbox-mcp.py`
 5. **Disable old a2a-bridge MCP** — set `enabled: false` in `~/.hermes/config.yaml`
-6. **Restart inbox server** — `kill <pid>; cd ~/.hermes/agent-inbox && python3 -m uvicorn server:app --host 127.0.0.1 --port 8903`
+6. **Restart inbox server** — `kill <pid>; cd ~/.hermes-cortex/agent-inbox && python3 -m uvicorn server:app --host 127.0.0.1 --port 8903`
 7. **All A2A tools are now `inbox_*`** — use `inbox_list_agents`, `inbox_send_task`, etc. via the same MCP server

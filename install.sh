@@ -226,7 +226,7 @@ fi
 CORTEX_USER="${CORTEX_USER:-$USER}"
 CORTEX_HOME="${CORTEX_HOME:-$HOME}"
 BRAIN_DIR="${CORTEX_HOME}/brain"
-HERMES_HOME="${HERMES_HOME:-${CORTEX_HOME}/.hermes-cortex}"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${CORTEX_HOME}/.hermes-cortex}"
 
 # SCRIPT_DIR is already set at the top of the script
 
@@ -244,7 +244,7 @@ TOTAL_STEPS=27
 STEP=0
 
 # Ensure Hermes is installed
-if ! command -v hermes &>/dev/null && [[ ! -x "${HERMES_HOME}/hermes-agent/venv/bin/hermes" ]]; then
+if ! command -v hermes &>/dev/null && [[ ! -x "${CORTEX_DEPLOY_HOME}/hermes-agent/venv/bin/hermes" ]]; then
   warn "Hermes Agent not found. Install it first: https://hermes-agent.nousresearch.com/docs"
   warn "The script will install everything else, but you'll need Hermes for the final agent-side setup."
 fi
@@ -620,7 +620,7 @@ ok
 # ─────────────────────────────────────────────────────────────
 step "Installing gbrain Hermes plugin (/brain command)"
 
-PLUGIN_DIR="${HERMES_HOME}/plugins/gbrain-command"
+PLUGIN_DIR="${CORTEX_DEPLOY_HOME}/plugins/gbrain-command"
 if [[ -f "${PLUGIN_DIR}/__init__.py" ]]; then
   skip "plugin already installed"
 else
@@ -814,7 +814,7 @@ fi
 #  8. Hermes Scripts (heartbeat, memory-to-brain)
 # ─────────────────────────────────────────────────────────────
 step "Installing Hermes utility scripts"
-SCRIPTS_DIR="${HERMES_HOME}/scripts"
+SCRIPTS_DIR="${CORTEX_DEPLOY_HOME}/scripts"
 mkdir -p "$SCRIPTS_DIR"
 
 # ── heartbeat.py ──────────────────────────────────────────
@@ -1691,7 +1691,7 @@ fi
 
 # ── Eval Harness Scripts ───────────────────────────────────────
 # Create evals directory structure
-EVALS_DIR="${HERMES_HOME}/evals"
+EVALS_DIR="${CORTEX_DEPLOY_HOME}/evals"
 mkdir -p "$EVALS_DIR/traces" "$EVALS_DIR/reports"
 info "  Created evals directory structure"
 
@@ -1754,7 +1754,7 @@ HERMES_CRONS_SCRIPT="${SCRIPTS_DIR}/install-crons.sh"
 if [[ -f "$HERMES_CRONS_SCRIPT" ]]; then
   step "Creating essential Hermes cron jobs (auto-remediation, health, memory sync…)"
   # Verify Hermes is installed first
-  if ! command -v hermes &>/dev/null && [[ ! -x "${HERMES_HOME}/hermes-agent/venv/bin/hermes" ]]; then
+  if ! command -v hermes &>/dev/null && [[ ! -x "${CORTEX_DEPLOY_HOME}/hermes-agent/venv/bin/hermes" ]]; then
     warn "Hermes Agent not found — cron jobs cannot be created"
     warn "  Install Hermes Agent first: https://hermes-agent.nousresearch.com/docs"
     warn "  Then run: bash ${HERMES_CRONS_SCRIPT}"
@@ -1807,7 +1807,7 @@ step "Seeding initial memory files (MEMORY.md, USER.md)"
 # Find the template seed files
 SEED_MEMORY="${SCRIPT_DIR}/docs/templates/MEMORY.seed.md"
 SEED_USER="${SCRIPT_DIR}/docs/templates/USER.seed.md"
-HERMES_MEMORIES="${HERMES_HOME}/memories"
+HERMES_MEMORIES="${CORTEX_DEPLOY_HOME}/memories"
 
 # Create memory directory if it doesn't exist
 mkdir -p "$HERMES_MEMORIES"
@@ -1841,7 +1841,7 @@ fi
 
 # Seed memory scoring rubric
 SEED_MEMORY_README="${SCRIPT_DIR}/docs/templates/memory-readme.seed.md"
-MEMORY_DOC_DIR="${HERMES_HOME}/memory"
+MEMORY_DOC_DIR="${CORTEX_DEPLOY_HOME}/memory"
 if [[ -f "$SEED_MEMORY_README" ]] && [[ ! -f "${MEMORY_DOC_DIR}/README.md" ]]; then
   mkdir -p "$MEMORY_DOC_DIR"
   cp "$SEED_MEMORY_README" "${MEMORY_DOC_DIR}/README.md"
@@ -1859,7 +1859,7 @@ ok
 # ─────────────────────────────────────────────────────────────
 step "Installing Hermes skills from repo"
 SKILLS_REPO="${SCRIPT_DIR}/src/skills"
-HERMES_SKILLS="${HERMES_HOME}/skills"
+HERMES_SKILLS="${CORTEX_DEPLOY_HOME}/skills"
 if [[ -d "$SKILLS_REPO" ]]; then
   count=0
   while IFS= read -r -d '' skill_file; do
@@ -1894,8 +1894,8 @@ ok
 # ─────────────────────────────────────────────────────────────
 step "Installing Loop Governance tools (score-cycle, loop-feedback, auto-apply)"
 LG_SOURCE="${SCRIPT_DIR}/src/loop-governance"
-LG_DEST="${HERMES_HOME}/loop-governance"
-HERMES_BIN="${HERMES_HOME}/bin"
+LG_DEST="${CORTEX_DEPLOY_HOME}/loop-governance"
+HERMES_BIN="${CORTEX_DEPLOY_HOME}/bin"
 if [[ -d "$LG_SOURCE" ]]; then
   mkdir -p "$LG_DEST" "$HERMES_BIN"
   # Copy all Python modules
@@ -1968,8 +1968,8 @@ ok
 # ─────────────────────────────────────────────────────────────
 step "Installing Web Cache (semantic web result cache)"
 WEB_CACHE_REPO="${SCRIPT_DIR}/src/web-cache"
-WEB_CACHE_DEST="${HERMES_HOME}/web-cache"
-HERMES_BIN="${HERMES_HOME}/bin"
+WEB_CACHE_DEST="${CORTEX_DEPLOY_HOME}/web-cache"
+HERMES_BIN="${CORTEX_DEPLOY_HOME}/bin"
 if [[ -d "$WEB_CACHE_REPO" ]]; then
   mkdir -p "$WEB_CACHE_DEST" "$HERMES_BIN"
   # Copy the Python tool
@@ -2074,7 +2074,7 @@ fi
 # ─────────────────────────────────────────────────────────────
 step "Installing Cortex Dashboard"
 
-DASHBOARD_DEST="${HERMES_HOME}/dashboard"
+DASHBOARD_DEST="${CORTEX_DEPLOY_HOME}/dashboard"
 DASHBOARD_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist"
 
 if [[ -f "$DASHBOARD_DEST/server.py" ]]; then
@@ -2134,9 +2134,9 @@ else
         <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
     <key>StandardOutPath</key>
-    <string>${HERMES_HOME}/logs/cortex-dashboard.log</string>
+    <string>${CORTEX_DEPLOY_HOME}/logs/cortex-dashboard.log</string>
     <key>StandardErrorPath</key>
-    <string>${HERMES_HOME}/logs/cortex-dashboard.log</string>
+    <string>${CORTEX_DEPLOY_HOME}/logs/cortex-dashboard.log</string>
 </dict>
 </plist>
 PLIST
@@ -2168,8 +2168,8 @@ WorkingDirectory=${DASHBOARD_DEST}
 Restart=always
 RestartSec=5
 Environment=PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-StandardOutput=append:${HERMES_HOME}/logs/cortex-dashboard.log
-StandardError=append:${HERMES_HOME}/logs/cortex-dashboard.log
+StandardOutput=append:${CORTEX_DEPLOY_HOME}/logs/cortex-dashboard.log
+StandardError=append:${CORTEX_DEPLOY_HOME}/logs/cortex-dashboard.log
 
 [Install]
 WantedBy=default.target
@@ -2276,7 +2276,7 @@ fi
 step "Installing offline knowledge tools (cache cascade + ZIM viewer)"
 
 OFFLINE_REPO="${SCRIPT_DIR}/src/offline"
-OFFLINE_DEST="${HERMES_HOME}/offline"
+OFFLINE_DEST="${CORTEX_DEPLOY_HOME}/offline"
 
 if [[ -d "$OFFLINE_REPO" ]]; then
   mkdir -p "$OFFLINE_DEST" "$HERMES_BIN"
@@ -2374,7 +2374,7 @@ fi
 # ─────────────────────────────────────────────────────────────
 step "Enabling gbrain-command plugin in Hermes config"
 
-HERMES_CONFIG="${HERMES_HOME}/config.yaml"
+HERMES_CONFIG="${CORTEX_DEPLOY_HOME}/config.yaml"
 if [[ -f "$HERMES_CONFIG" ]]; then
   # Check if plugin is already enabled
   if grep -q "gbrain-command" "$HERMES_CONFIG" 2>/dev/null; then
@@ -2413,8 +2413,8 @@ if [[ -f "$HERMES_CONFIG" ]]; then
 fi
 
 # State database
-if [[ -f "${HERMES_HOME}/state.db" ]]; then
-  chmod 600 "${HERMES_HOME}/state.db" 2>/dev/null && info "  Locked state.db"
+if [[ -f "${CORTEX_DEPLOY_HOME}/state.db" ]]; then
+  chmod 600 "${CORTEX_DEPLOY_HOME}/state.db" 2>/dev/null && info "  Locked state.db"
 fi
 
 # Any .env files in home or brain dirs
@@ -2561,7 +2561,7 @@ printf "  ${GREEN}•${RESET} /brain query     — search your knowledge brain\n
 printf "  ${GREEN}•${RESET} Offline query:   offline_knowledge query \"question\"\n"
 printf "  ${GREEN}•${RESET} Download ZIM:    prep-offline\n"
 printf "  ${GREEN}•${RESET} Brain dirs:      %s\n" "${BRAIN_DIR}"
-printf "  ${GREEN}•${RESET} Logs:            %s/logs/\n" "${HERMES_HOME}"
+printf "  ${GREEN}•${RESET} Logs:            %s/logs/\n" "${CORTEX_DEPLOY_HOME}"
 printf "  ${GREEN}•${RESET} Scripts:         %s/scripts/\n" "${SCRIPTS_DIR}"
 
 printf "\n${BOLD}🐚 For daily use in shell:${RESET}\n"

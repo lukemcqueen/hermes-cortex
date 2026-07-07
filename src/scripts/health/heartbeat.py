@@ -26,6 +26,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+CORTEX_DEPLOY_HOME = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex"))
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
 BRAIN_SHARED = Path.home() / "brain" / "shared"
 NOW = datetime.now().astimezone()
@@ -206,7 +207,7 @@ def check_memory_sync_freshness() -> dict:
 
 def check_gateway_log() -> dict:
     """Quick check if gateway has logged recently."""
-    log_dir = HERMES_HOME / "logs"
+    log_dir = CORTEX_DEPLOY_HOME / "logs"
     if not log_dir.exists():
         return {"status": "UNKNOWN", "detail": "No log directory"}
     # Find most recently modified log file and report its age
@@ -419,7 +420,7 @@ def check_gbrain_sources() -> dict:
 
 def check_inbox_staleness() -> dict:
     """Check if agent inbox was scanned recently (every 10m cron, warn if >25m stale)."""
-    state_file = HERMES_HOME / "state" / "last-message-check"
+    state_file = CORTEX_DEPLOY_HOME / "state" / "last-message-check"
     if not state_file.exists():
         return {"status": "DEGRADED", "detail": "No state file — check-agent-messages may not have run"}
     try:

@@ -16,8 +16,8 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-HERMES_HOME="${HERMES_HOME:-$HOME/.hermes-cortex}"
-STATE_DIR="$HERMES_HOME/state"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}"
+STATE_DIR="$CORTEX_DEPLOY_HOME/state"
 REGISTRY_FILE="$STATE_DIR/agent-registry.json"
 
 # ── Config: source inbox credentials ──

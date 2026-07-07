@@ -7,7 +7,7 @@
     <string>com.hermes.health-server</string>
     <key>ProgramArguments</key>
     <array>
-        <string>${CORTEX_HOME}/.hermes/agent-inbox/venv/bin/python3</string>
+        <string>${CORTEX_HOME}/.hermes-cortex/agent-inbox/venv/bin/python3</string>
         <string>${CORTEX_HOME}/.hermes/scripts/health-server.py</string>
     </array>
     <key>KeepAlive</key>
@@ -15,13 +15,13 @@
     <key>RunAtLoad</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>${CORTEX_HOME}/.hermes/health-server/server.log</string>
+    <string>${CORTEX_HOME}/.hermes-cortex/health-server/server.log</string>
     <key>StandardErrorPath</key>
-    <string>${CORTEX_HOME}/.hermes/health-server/server.log</string>
+    <string>${CORTEX_HOME}/.hermes-cortex/health-server/server.log</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>${CORTEX_HOME}/.hermes/agent-inbox/venv/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>${CORTEX_HOME}/.hermes-cortex/agent-inbox/venv/bin:/usr/local/bin:/usr/bin:/bin</string>
         <key>HEALTH_SERVER_NAME</key>
         <string>auto</string>
         <key>HEALTH_PORT</key>

@@ -40,26 +40,26 @@ Sources under `~/hermes-cortex/` → dest under `~/.hermes/` or `~/`.
 | `src/scripts/manage/lesson-hit.sh` | `~/.hermes/scripts/lesson-hit.sh` | |
 
 ### Offline tools
-| `src/offline/offline_knowledge.py` | `~/.hermes/offline/offline_knowledge.py` | |
+| `src/offline/offline_knowledge.py` | `~/.hermes-cortex/offline/offline_knowledge.py` | |
 | `src/offline/offline_knowledge.sh` | `~/.hermes/bin/offline_knowledge` | Symlink in bin/ for PATH access |
-| `src/offline/offline_code.py` | `~/.hermes/offline/offline_code.py` | |
+| `src/offline/offline_code.py` | `~/.hermes-cortex/offline/offline_code.py` | |
 | `src/offline/offline_code.sh` | `~/.hermes/bin/offline_code` | Symlink to bin/ for CLI access |
-| `src/offline/code-corpus/` | `~/.hermes/offline/code-corpus/` | 366 snippets, 25 languages |
-| `src/offline/kiwix-docker-compose.yml` | `~/.hermes/offline/kiwix-docker-compose.yml` | |
-| `src/offline/prep-offline.sh` | `~/.hermes/offline/prep-offline.sh` | |
-| `src/offline/session_mine.py` | `~/.hermes/offline/session_mine.py` | |
-| `src/offline/lessons.py` | `~/.hermes/offline/lessons.py` | |
-| `src/offline/migrate_fts_reasoning.sql` | `~/.hermes/offline/migrate_fts_reasoning.sql` | |
-| `src/offline/auto-update.sh` | `~/.hermes/offline/auto-update.sh` | |
+| `src/offline/code-corpus/` | `~/.hermes-cortex/offline/code-corpus/` | 366 snippets, 25 languages |
+| `src/offline/kiwix-docker-compose.yml` | `~/.hermes-cortex/offline/kiwix-docker-compose.yml` | |
+| `src/offline/prep-offline.sh` | `~/.hermes-cortex/offline/prep-offline.sh` | |
+| `src/offline/session_mine.py` | `~/.hermes-cortex/offline/session_mine.py` | |
+| `src/offline/lessons.py` | `~/.hermes-cortex/offline/lessons.py` | |
+| `src/offline/migrate_fts_reasoning.sql` | `~/.hermes-cortex/offline/migrate_fts_reasoning.sql` | |
+| `src/offline/auto-update.sh` | `~/.hermes-cortex/offline/auto-update.sh` | |
 
 ### Dashboard
-| `src/dashboard/server.py` | `~/.hermes/dashboard/server.py` | `restart_dashboard` |
-| `src/dashboard/static/index.html` | `~/.hermes/dashboard/static/index.html` | |
+| `src/dashboard/server.py` | `~/.hermes-cortex/dashboard/server.py` | `restart_dashboard` |
+| `src/dashboard/static/index.html` | `~/.hermes-cortex/dashboard/static/index.html` | |
 | `src/dashboard/com.hermes.cortex-dashboard.plist` | `~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist` | |
 
 ### Agent inbox
 
-| `src/agent-inbox/server.py` | `~/.hermes/agent-inbox/server.py` | `restart_agent_inbox` |
+| `src/agent-inbox/server.py` | `~/.hermes-cortex/agent-inbox/server.py` | `restart_agent_inbox` |
 | `src/agent-inbox/com.hermes.agent-inbox.plist` | `~/Library/LaunchAgents/com.hermes.agent-inbox.plist` | |
 | `src/agent-inbox/agent-inbox-monitor.sh` | `~/.hermes/scripts/agent-inbox-monitor.sh` | |
 

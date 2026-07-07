@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "description": "Agent registry for Hermes Cortex. Template — copy to ~/.hermes/state/agent-registry.json and fill in real URLs during setup.",
+  "description": "Agent registry for Hermes Cortex. Template — copy to ~/.hermes-cortex/state/agent-registry.json and fill in real URLs during setup.",
   "health_vector_map": [
     "resources", "services", "no_errored_crons", "no_stale_crons",
     "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok"

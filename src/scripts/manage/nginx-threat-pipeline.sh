@@ -64,9 +64,9 @@ done
 
 # DEPLOY_SCRIPT: minimal — just deploy blocked IPs
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
-HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes-cortex}"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}"
 DEPLOY_SCRIPT=""
-DEPLOY_BLOCKED="${HERMES_HOME}/scripts/deploy-blocked-ips.sh"
+DEPLOY_BLOCKED="${CORTEX_DEPLOY_HOME}/scripts/deploy-blocked-ips.sh"
 if [ ! -x "$DEPLOY_BLOCKED" ]; then
   DEPLOY_BLOCKED="${CORTEX_REPO}/src/scripts/manage/deploy-blocked-ips.sh"
 fi
@@ -87,7 +87,7 @@ done
 F2B_INSTALLED=false
 command -v fail2ban-client &>/dev/null && F2B_INSTALLED=true
 
-mkdir -p "${HOME}/.hermes/state" "${HOME}/.hermes/logs"
+mkdir -p "${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/state" "${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/logs"
 
 log()  { echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] $*"; }
 error(){ echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✗ $*"; }

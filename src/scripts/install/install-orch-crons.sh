@@ -195,7 +195,7 @@ create_cron() {
 
   if $exists && $FORCE && [[ -n "$HERMES_CMD" ]]; then
     local job_id _tmp
-    _tmp="${HERMES_HOME}/state/_cron_find.py"
+    _tmp="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/state/_cron_find.py"
     mkdir -p "$(dirname "$_tmp")"
     cat > "$_tmp" << 'PYEOF'
 import json, sys

@@ -19,7 +19,7 @@ Never assume "local-only" — test the external URL to prove you're healthy.
 
 ### Phase 1: Find your health URL
 
-1. Read `~/.hermes/state/agent-registry.json`
+1. Read `~/.hermes-cortex/state/agent-registry.json`
 2. Find your agent entry by name
 3. Extract `health_url` if present — this is your canonical health endpoint
 4. If no `health_url` is set, construct one from convention:
@@ -75,7 +75,7 @@ Include in your report:
 2. **Use the external DNS name**, not the local IP. Other agents use the external URL.
 3. **Don't assume.** A listening process + a running nginx does not equal external reachability.
 4. **Report facts, not interpretations.** Say "HTTP 000 — connection refused" not "I'm not externally accessible" (the second is a conclusion, the first is evidence).
-5. **Credentials:** If basic auth is needed, locate credentials from `~/.hermes/state/agent-registry.json` or `~/.hermes/.htpasswd` or env vars.
+5. **Credentials:** If basic auth is needed, locate credentials from `~/.hermes-cortex/state/agent-registry.json` or `~/.hermes/.htpasswd` or env vars.
 
 ## Integration Points
 

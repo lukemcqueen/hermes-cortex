@@ -13,12 +13,12 @@ Added model pricing entries under both `("[model name]")` and `("[provider name]
 - Output: $1.45/1M tokens
 - Cache read: $0.0028/1M tokens (cache hit)
 
-### 3. `~/.hermes/dashboard/server.py`
+### 3. `~/.hermes-cortex/dashboard/server.py`
 **Bug**: `_lf("/observations?limit=200")` → Langfuse API caps at 100 items per page, returns HTTP 400. Dashboard silently receives None → empty observation data.
 
 **Fix**: Changed to `limit=100`.
 
-### 4. `~/.hermes/dashboard/static/index.html`
+### 4. `~/.hermes-cortex/dashboard/static/index.html`
 - Added `.cyan` stat card color for spend display
 - Added `.cost` CSS class for per-model cost column (green mono)
 - Updated `renderStats()` to show "Total Spend" or "Tokens" stat card (6th position)

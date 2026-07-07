@@ -95,7 +95,7 @@ bash ~/.hermes/scripts/seed-project-brain.sh --all 2>/dev/null || \
   echo "No seed script yet — seed manually (see Existing Repo Setup in skill)"
 
 # 4. Rebuild offline code index
-offline_code index 2>/dev/null || python3 ~/.hermes/offline/offline_code.py index
+offline_code index 2>/dev/null || python3 ~/.hermes-cortex/offline/offline_code.py index
 
 # 5. Verify
 gbrain sources list

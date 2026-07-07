@@ -24,7 +24,7 @@ set -euo pipefail
 PRIVATE_REPO="${HOME}/hermes-cortex-private"
 INBOX_DIR="${PRIVATE_REPO}/messages/inbox"
 PROCESSED_DIR="${PRIVATE_REPO}/messages/processed"
-STATE_DIR="${HOME}/.hermes/state"
+STATE_DIR="${HOME}/.hermes-cortex/state"
 SEEN_FILE="${STATE_DIR}/inbox-broadcast-seen"
 STATE_FILE="${STATE_DIR}/last-message-check"
 

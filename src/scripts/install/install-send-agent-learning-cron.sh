@@ -16,8 +16,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/os-config.sh"
 
 SERVICE_NAME="com.hermes.agent-learning-sender"
-UPDATE_SCRIPT="${HERMES_HOME}/scripts/send-agent-learning.sh"
-STATE_DIR="${HERMES_HOME}/state"
+UPDATE_SCRIPT="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/scripts/send-agent-learning.sh"
+STATE_DIR="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/state"
 mkdir -p "$STATE_DIR"
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; RESET='\033[0m'

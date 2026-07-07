@@ -7,8 +7,8 @@
 
   1. DEDICATED VENV (recommended for production/isolated setups):
      Keeps dashboard deps separate from gateway deps.
-     Create venv: python3 -m venv ~/.hermes/dashboard/venv
-     Install:     ~/.hermes/dashboard/venv/bin/pip install flask
+     Create venv: python3 -m venv ~/.hermes-cortex/dashboard/venv
+     Install:     ~/.hermes-cortex/dashboard/venv/bin/pip install flask
 
   2. SHARED VENV (simpler, uses gateway's venv):
      Uses the Hermes Agent venv to avoid a second venv.
@@ -25,7 +25,7 @@
     <!--
       OPTION A: Dedicated venv (isolated)
       ProgramArguments:
-        <string>CORTEX_HOME/.hermes/dashboard/venv/bin/python3</string>
+        <string>CORTEX_HOME/.hermes-cortex/dashboard/venv/bin/python3</string>
 
       OPTION B: Shared gateway venv (simpler)
       ProgramArguments:
@@ -33,12 +33,12 @@
     -->
     <key>ProgramArguments</key>
     <array>
-        <string>CORTEX_HOME/.hermes/dashboard/venv/bin/python3</string>
-        <string>CORTEX_HOME/.hermes/dashboard/server.py</string>
+        <string>CORTEX_HOME/.hermes-cortex/dashboard/venv/bin/python3</string>
+        <string>CORTEX_HOME/.hermes-cortex/dashboard/server.py</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>CORTEX_HOME/.hermes/dashboard</string>
+    <string>CORTEX_HOME/.hermes-cortex/dashboard</string>
 
     <key>RunAtLoad</key>
     <true/>

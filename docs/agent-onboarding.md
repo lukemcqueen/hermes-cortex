@@ -314,7 +314,7 @@ and the most recent check matter.
 
 This step happens **on Moses's machine**, not yours. Moses will:
 
-1. Add you to `~/.hermes/state/agent-registry.json`:
+1. Add you to `~/.hermes-cortex/state/agent-registry.json`:
 
 ```json
 "titus": {

@@ -19,9 +19,9 @@
 set -euo pipefail
 
 REPO_DIR="${CORTEX_REPO:-$HOME/hermes-cortex}"
-SKILLS_DIR="${HERMES_HOME:-$HOME/.hermes-cortex}/skills"
+SKILLS_DIR="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}/skills"
 REPO_SKILLS_DIR="$REPO_DIR/src/skills"
-STATE_DIR="${HERMES_HOME:-$HOME/.hermes}/state"
+STATE_DIR="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}/state"
 CONFIG_FILE="$HOME/.hermes/hermes-inbox.conf"
 MANIFEST_FILE="$STATE_DIR/skills-manifest.json"
 

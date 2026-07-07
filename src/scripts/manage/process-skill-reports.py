@@ -25,7 +25,7 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 INBOX_URL = os.environ.get("AGENT_INBOX_URL", "https://your-domain.com:13004")
-STATE_DIR = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")) / "state"
+STATE_DIR = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state"
 PROCESSED_MARKER = STATE_DIR / "last-skill-report-processed.txt"
 
 TOPIC_FILTER = "reports"

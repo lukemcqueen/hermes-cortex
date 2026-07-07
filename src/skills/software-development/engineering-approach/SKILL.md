@@ -249,7 +249,7 @@ For CLI scoring, `--code-file` should be the file that best represents the chang
 |---------|-------------|-----|
 | `embedding failed` / `Ollama connection refused` | Ollama not running | `ollama serve` or `brew services restart ollama` |
 | `Model nomic-embed-text:v1.5 not found` | Model not pulled | `ollama pull nomic-embed-text:v1.5` (274 MB) |
-| `DB locked` | Concurrent score-cycle process | Wait and retry, or `rm ~/.hermes/data/loop-governance.db-journal` |
+| `DB locked` | Concurrent score-cycle process | Wait and retry, or `rm ~/.hermes-cortex/data/loop-governance.db-journal` |
 | `score-cycle not found` | Symlink missing | `bash ~/hermes-cortex/src/loop-governance/setup.sh --symlinks-only` |
 | `warning: all tests failed` | Test suite broken | Fix tests first, then re-score |
 | MCP tool returns `Error: no such column` | Server code out of sync with DB schema | Kill stale `loop-gov-mcp.py` processes |
