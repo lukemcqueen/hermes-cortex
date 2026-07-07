@@ -28,11 +28,11 @@ else
   CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 fi
 
-# ── Auto-source env file (so agents don't need env_keep in sudoers) ──
+# ── Source defaults first, then user overrides ──────────────
 ENV_FILE="${CORTEX_REPO}/deploy/hermes-services.env"
-if [ -f "$ENV_FILE" ]; then
-  set -a; source "$ENV_FILE"; set +a
-fi
+[ -f "$ENV_FILE" ] && { set -a; source "$ENV_FILE"; set +a; }
+CORTEX_ENV="${CORTEX_REPO}/.env"
+[ -f "$CORTEX_ENV" ] && { set -a; source "$CORTEX_ENV"; set +a; }
 
 # ── OS-aware nginx & fail2ban paths ─────────────────────────
 case "$(uname -s)" in
@@ -125,9 +125,13 @@ for src in "${CORTEX_REPO}/deploy/nginx/hermes-zone-defs.conf" "${CORTEX_REPO}/d
       fi
 
       # ── Port prefix ────────────────────────────────────
-      port_prefix="${existing_port_prefix:-${CORTEX_NGINX_PORT_PREFIX:-13}}"
+      port_prefix="${CORTEX_NGINX_PORT_PREFIX:-${existing_port_prefix:-13}}"
       if [[ -n "$existing_port_prefix" && -z "$force_deploy" ]]; then
-        echo "  ✓ Preserved port prefix: ${port_prefix}xxx"
+        if [[ "$port_prefix" == "$existing_port_prefix" ]]; then
+          echo "  ✓ Preserved port prefix: ${port_prefix}xxx"
+        else
+          echo "  ✓ Using CORTEX_NGINX_PORT_PREFIX: ${port_prefix}xxx (config had ${existing_port_prefix}xxx)"
+        fi
       fi
 
       # ── SSL cert resolution (only if not preserved) ────

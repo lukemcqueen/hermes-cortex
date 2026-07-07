@@ -36,15 +36,29 @@ Environment:
 """
 
 import argparse
+import json
 import os
 import platform
 import re
+import secrets
 import shutil
 import stat
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+# ── Source .env overrides ─────────────────────────────────────
+_cortex_repo = Path(os.environ.get("CORTEX_REPO", Path.home() / "hermes-cortex"))
+_env_path = _cortex_repo / ".env"
+if _env_path.exists():
+    for line in _env_path.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            k, v = k.strip(), v.strip().strip("\"'")
+            if k not in os.environ:
+                os.environ[k] = v
 
 
 # ── OS-aware path detection ──────────────────────────────────────────
