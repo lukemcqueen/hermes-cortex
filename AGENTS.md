@@ -145,6 +145,8 @@ Only Moses has `cronjob` MCP tool. Others request via inbox with subject `🔧 C
 | `llm-judge-scorer-weekday` | no_agent | `0 12,20 * * 1-5` | `llm-judge-scorer.py` | local |
 | `offline-code-index` | no_agent | `0 5 * * 0` | `offline_code_index_cron.sh` | local |
 | `model-health-watchdog` | no_agent | `0 7 * * *` | `model-health-watchdog.py` | origin |
+| `agents-md-prune-scan` | no_agent | `0 4 * * 1-6` | `agents-md-prune-scan.py` | local |
+| `agents-md-prune-apply` | LLM | `30 4 * * 1-6` | prompt: review scan + apply moves | origin |
 | `process-mcp-agent-inbox-messages` | LLM | `0 6-23 * * *` | inbox poll + failure check | origin |
 
 Run `bash ~/hermes-cortex/src/scripts/install-crons.sh --dry-run` to see what's missing. LLM crons pinned via `pin_cron_model()`.

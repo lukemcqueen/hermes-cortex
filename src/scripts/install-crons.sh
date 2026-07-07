@@ -890,6 +890,42 @@ If nothing to report: output exactly [SILENT]" \
   "soul-refinement" "" "origin" "" "false" \
   "deepseek-v4-flash" "opencode-zen"
 
+# ── AGENTS.md auto-trim: daily scan + LLM apply (M-Sa) ──
+# Phase 1: deterministic scan — silent when clean, JSON report when candidates found
+create_cron "agents-md-prune-scan" "0 4 * * 1-6" \
+  "agents-md-prune-scan.py" \
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
+
+# Phase 2: LLM review + apply — reads scan output via context_from
+create_cron "agents-md-prune-apply" "30 4 * * 1-6" \
+  "" \
+  "Review the AGENTS.md pruning scan report injected below (via context_from=agents-md-prune-scan).
+If candidates exist and look correct, apply them by running:
+  python3 ~/.hermes-cortex/scripts/agents-doc-audit.py --repo ~/hermes-cortex --prune --apply
+Then commit and push the changes.
+If no candidates (empty context) or you disagree with the recommendations, stay silent.
+
+## OUTPUT FORMAT — FOLLOW EXACTLY
+Match this structure line for line. Your content replaces the values.
+Everything else stays: dashes, colons, spacing, line breaks.
+
+agents-md-prune-apply (JOB_ID) [YYYY-MM-DD HH:MM KST]
+-------------
+
+Phase 1 — Scan: [N] candidates found
+Phase 2 — Review: [accepted N / rejected N]
+Phase 3 — Apply: [N] sections moved to docs/
+
+If nothing to apply: output exactly [SILENT]" \
+  "" "" "origin" \
+  "$HOME" "false" \
+  "deepseek-v4-flash" "opencode-zen"
+
 echo ""
 printf "${CYAN}━━━ Summary ━━━${RESET}\n"
 if $DRY_RUN; then

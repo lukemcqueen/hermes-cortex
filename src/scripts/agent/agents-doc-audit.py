@@ -66,13 +66,16 @@ DEFAULT_CONFIG = {
     # Protected sections — never flagged for pruning
     "protected_sections": [
         "What This Repo Does",
-        "Agent Execution Contract",
+        "Key Directories",
         "Architecture Principles",
+        "Agent Execution Contract",
         "Loop Governance",
         "Mandatory Agent Workflow",
         "Inbox Message Decision Framework",
         "Doc Freshness",
         "Agent Cron Management",
+        "Common Tasks",
+        "Reference Docs",
         "Rules",
     ],
 }
@@ -126,6 +129,73 @@ def _is_setup_or_config(heading, text):
 def _has_file_path(text):
     """Check if text contains file paths."""
     return bool(re.search(r"(?:~|/[\w\-./]+)\.[\w]{1,5}\b", text))
+
+
+def _code_block_ratio(text):
+    """Calculate what fraction of section lines are inside fenced code blocks."""
+    lines = text.split("\n")
+    if not lines:
+        return 0.0
+    in_code = False
+    code_lines = 0
+    for line in lines:
+        if line.strip().startswith("```"):
+            in_code = not in_code
+        elif in_code:
+            code_lines += 1
+    return code_lines / len(lines)
+
+
+def _has_code_block(text):
+    """Check if text contains any fenced code block."""
+    return bool(re.search(r"^```", text, re.MULTILINE))
+
+
+def _is_reference_table(text):
+    """Check if section is primarily a large reference table.
+
+    Flags sections where markdown table rows make up >30% of lines
+    AND there are at least 5 table body rows.
+    """
+    lines = text.split("\n")
+    if len(lines) < 8:
+        return False
+    table_rows = sum(1 for l in lines if l.strip().startswith("|"))
+    body_rows = table_rows - 2 if table_rows >= 3 else 0  # subtract header + separator
+    return body_rows >= 5 and table_rows / len(lines) > 0.3
+
+
+def _has_deprecated_marker(text):
+    """Check for deprecated/legacy/superseded markers in section content.
+
+    Uses specific deprecation vocabulary — avoids ambiguous phrases like
+    'moved to' which appear in healthy content relocation notes.
+    """
+    return bool(re.search(
+        r"(?:deprecated|legacy|formerly known|no longer needed|"
+        r"superseded|replaced by|no longer used|removed in|stale|obsolete|"
+        r"moved to (?:archive|legacy|reference))",
+        text, re.IGNORECASE,
+    ))
+
+
+def _has_howto_narrative(text):
+    """Check for step-by-step instructions (numbered steps + code blocks)."""
+    has_steps = bool(re.search(r"(?:^|\n)\s*\d+\.\s+\w+", text))
+    has_code = bool(re.search(r"^```", text, re.MULTILINE))
+    return has_steps and has_code
+
+
+def _is_config_heavy(text):
+    """Check if section has long config blocks (YAML/TOML/ini/json)."""
+    config_fences = re.findall(
+        r"```(?:yaml|toml|ini|json|cfg|conf)\s*\n(.*?)```",
+        text, re.DOTALL | re.IGNORECASE,
+    )
+    if not config_fences:
+        return False
+    total_config_lines = sum(len(fence.split("\n")) for fence in config_fences)
+    return total_config_lines > 10
 
 
 # Sections to always protect from pruning
@@ -189,7 +259,11 @@ def is_overlap_with_protected(heading, content, protected_list):
 
 
 def analyze_section(heading, level, lines, protected_list, config):
-    """Analyze a single section for pruning candidacy."""
+    """Analyze a single section for pruning candidacy.
+
+    Collects ALL matching reasons (not just the first) and picks the
+    most specific suggested_target by priority.
+    """
     text = "\n".join(lines)
     line_count = _count_lines(lines)
     heading_lower = heading.lower()
@@ -205,26 +279,73 @@ def analyze_section(heading, level, lines, protected_list, config):
     reasons = []
     suggested_target = None
 
-    # Luke-specific → fleet docs
+    # ── Collect ALL reasons (independent checks, not elif) ──
+
+    # 1. Luke-specific → fleet docs (highest priority)
     if _is_luke_specific(heading, text):
         reasons.append("⚡ Luke-specific deployment config → belongs in docs/")
         suggested_target = "docs/fleet-reference.md"
-    elif _is_setup_or_config(heading, text) and (
+
+    # 2. Deprecated/legacy → needs cleanup
+    if _has_deprecated_marker(text):
+        reasons.append("Contains deprecated/legacy markers → consider removal or archival")
+        if not suggested_target:
+            suggested_target = "docs/reference/"
+
+    # 3. Setup/install with concrete addresses → setup docs
+    if _is_setup_or_config(heading, text) and (
         _has_ip_address(text) or _has_port_number(text) or _has_url(text)
     ):
         reasons.append("Setup/install documentation with concrete addresses")
-        suggested_target = "docs/setup-reference.md"
-    elif _has_curl_command(text) and line_count > 15:
-        reasons.append("Implementation commands ({} lines) → belongs in docs/".format(line_count))
-        suggested_target = "docs/operations-reference.md"
-    elif line_count > 60:
-        reasons.append("Large section ({} lines) → candidate for summarization".format(line_count))
-        suggested_target = "docs/reference/"
+        if not suggested_target:
+            suggested_target = "docs/setup-reference.md"
 
-    # Merge candidate check
+    # 4. Config-heavy blocks (YAML/TOML/ini/json > 10 lines)
+    if _is_config_heavy(text):
+        reasons.append("Long configuration blocks → belongs in docs/")
+        if not suggested_target:
+            suggested_target = "docs/setup-reference.md"
+
+    # 5. Code-heavy sections (>30% code block lines)
+    code_ratio = _code_block_ratio(text)
+    if _has_code_block(text) and code_ratio > 0.3 and line_count > 10:
+        reasons.append(
+            "Code-heavy section ({:.0f}% code, {} lines) → belongs in docs/".format(
+                code_ratio * 100, line_count
+            )
+        )
+        if not suggested_target:
+            suggested_target = "docs/operations-reference.md"
+
+    # 6. Shell/curl commands (>15 lines, catches non-curl commands too via code_ratio)
+    if _has_curl_command(text) and line_count > 15:
+        reasons.append("Implementation commands ({} lines) → belongs in docs/".format(line_count))
+        if not suggested_target:
+            suggested_target = "docs/operations-reference.md"
+
+    # 7. Reference table (primarily tabular data, not policy)
+    if _is_reference_table(text):
+        reasons.append("Large reference table ({} rows) → belongs in docs/".format(
+            sum(1 for l in lines if l.strip().startswith("|"))
+        ))
+        if not suggested_target:
+            suggested_target = "docs/"
+
+    # 8. How-to narrative (numbered steps + code)
+    if _has_howto_narrative(text):
+        reasons.append("Step-by-step how-to guide → belongs in docs/")
+        if not suggested_target:
+            suggested_target = "docs/operations-reference.md"
+
+    # 9. Large section fallback (>60 lines, low-specificity signal)
+    if line_count > 60 and not suggested_target:
+        reasons.append("Large section ({} lines) → candidate for summarization".format(line_count))
+        if not suggested_target:
+            suggested_target = "docs/reference/"
+
+    # ── Merge candidate check ──
     for pattern, canonical_name in MERGE_CANDIDATES:
         if re.search(pattern, heading) and not is_protected(canonical_name, protected_list):
-            # Check if it's a subsection that could merge UP
             if level >= 3:
                 reasons.append("Overlaps with '{}' — merge candidate".format(canonical_name))
                 if not suggested_target:

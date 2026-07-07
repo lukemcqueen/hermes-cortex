@@ -126,6 +126,7 @@ register "src/scripts/pre-commit-score"            "${HERMES_HOME}/scripts/pre-c
 register "src/scripts/pre-push-pull"               "${HERMES_HOME}/scripts/pre-push-pull"
 register "src/scripts/manage/score-auditor.py"            "${HERMES_HOME}/scripts/score-auditor.py"
 register "src/scripts/agent/agents-doc-audit.py"          "${HERMES_HOME}/scripts/agents-doc-audit.py"
+register "src/scripts/agent/agents-md-prune-scan.py"      "${HERMES_HOME}/scripts/agents-md-prune-scan.py"
 register "src/scripts/health/check-external-services.sh"   "${HERMES_HOME}/scripts/check-external-services.sh"
 register "src/scripts/manage/cortex-doctor.py"              "${HERMES_HOME}/scripts/cortex-doctor.py"
 register "src/scripts/cron-failure-state.sh"       "${HERMES_HOME}/scripts/cron-failure-state.sh"
