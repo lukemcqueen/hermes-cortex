@@ -406,7 +406,7 @@ if $UNINSTALL; then
   for job in \
     "agent-fixer" "system-heartbeat" "memory-to-brain-sync" \
     "system-alert-watchdog" "service-recovery" "inbox-sensor" "inbox-flag" \
-    "orch-team-messages" "orch-team-health" "remediation-sensor" \
+    "remediation-sensor" \
     "hermes-update" "gbrain-nightly-dream" "gbrain-update-sync" \
     "hermes-cortex-sync" "harvest-lessons" "memory-pruning" \
     "auto-save-sessions" "agent-daily-bible-reading" \

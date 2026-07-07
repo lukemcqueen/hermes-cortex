@@ -48,7 +48,7 @@ if not CORTEX_REPO.is_dir() or not (CORTEX_REPO / "AGENTS.md").exists():
 SCRIPTS_SRC = CORTEX_REPO / "src" / "scripts"
 INSTALL_CRONS = SCRIPTS_SRC / "install-crons.sh"
 CORTEX_UPDATE = SCRIPTS_SRC / "cortex-update.sh"
-INSTALL_ORCH_CRONS = SCRIPTS_SRC / "install-orch-crons.sh"
+INSTALL_ORCH_CRONS = SCRIPTS_SRC / "install" / "install-orch-crons.sh"
 INSTALL_SCRIPT = CORTEX_REPO / "install.sh"
 INSTALL_OLLAMA = SCRIPTS_SRC / "install-ollama.sh"
 INSTALL_SCORE_HOOK = SCRIPTS_SRC / "install-score-hook.sh"

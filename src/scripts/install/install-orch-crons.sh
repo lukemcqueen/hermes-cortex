@@ -14,6 +14,15 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
+# ── Guard: orchestrator hostnames only ──
+HOSTNAME="$(hostname -s 2>/dev/null || echo 'unknown')"
+if [[ "$HOSTNAME" != "moses" && "$HOSTNAME" != "esther" ]]; then
+  echo "✗ This script installs orchestrator-only crons (orch-team-messages, orch-team-health)."
+  echo "  Your hostname is '$HOSTNAME' — only 'moses' and 'esther' are orchestrators."
+  echo "  If you are a worker agent, you do NOT need orchestration crons."
+  exit 0
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 source "${SCRIPT_DIR}/os-config.sh"
 
