@@ -63,7 +63,7 @@ it on a host without nginx.
 | File | Purpose |
 |------|---------|
 | `/etc/nginx/allow-ips-manual.conf` | Manual allow list — `allow X.X.X.X;` per line, overrides blocked_ips.conf |
-| `deploy/hermes-services.env` | Env file with `CORTEX_*` vars, auto-sourced by deploy scripts |
+| `~/hermes-cortex/.env` | Single source of truth — gitignored per-machine config with `CORTEX_*` vars, auto-sourced by deploy scripts |
 
 ### Scanner (`src/scripts/`)
 
@@ -86,9 +86,10 @@ Populate `blocked_ips.add` with known bad IPs (one per line, bare IPs only).
 ### 2. Configure the env file
 
 ```bash
-cp ~/hermes-cortex/deploy/hermes-services.env.example \
-  ~/hermes-cortex/deploy/hermes-services.env
+# Edit ~/hermes-cortex/.env (gitignored) with your settings:
+vim ~/hermes-cortex/.env
 # Set CORTEX_SSL_CERT_PATH, CORTEX_NGINX_PORT_PREFIX, etc.
+# See ~/hermes-cortex/.env.example for all available vars.
 ```
 
 ### 3. Deploy script auto-installed

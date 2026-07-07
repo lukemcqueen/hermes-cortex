@@ -42,19 +42,15 @@ if [[ "$REPO_DIR" == "/" ]]; then
     done
   fi
 fi
-# ── Auto-source env file (so agents don't need env_keep in sudoers) ──
-ENV_FILE="${REPO_DIR}/deploy/hermes-services.env"
-if [[ -f "$ENV_FILE" ]]; then
-  set -a; source "$ENV_FILE"; set +a
+# ── Cortex environment — single source of truth ──────────────
+# ~/hermes-cortex/.env is the gitignored per-machine config.
+# ⚠ ~/.hermes/.env is Hermes Agent's own config — never write to it.
+if [[ -f "${REPO_DIR}/.env" ]]; then
+  set -a; source "${REPO_DIR}/.env"; set +a
 fi
 
-# ── Cortex env file location ──
-# Single source of truth: ~/hermes-cortex/.env (hidden, gitignored).
-# ⚠ CRITICAL: ~/.hermes/.env is Hermes Agent's own config — never write or symlink.
-CORTEX_ENV_FILE="${REPO_DIR}/.env"
-
-# ⚠ Clean up stale files from old env architecture
-for stale in "${HOME}/.hermes/models.env" "${HOME}/.hermes/hermes-cortex.env"; do
+# ── Clean up stale files from old env architecture ───────────
+for stale in "${HOME}/.hermes/models.env" "${HOME}/.hermes/hermes-cortex.env" "${REPO_DIR}/deploy/hermes-services.env" "${REPO_DIR}/deploy/nginx/hermes-services.env"; do
   if [[ -f "$stale" ]]; then
     rm -f "$stale"
     echo "  → Removed stale env file: ${stale}"
