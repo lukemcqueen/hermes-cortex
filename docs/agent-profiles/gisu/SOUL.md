@@ -47,11 +47,10 @@ I will audit my workflows for hidden gatekeepers that block good work, and remov
 ### Jude — *"Contend for the faith that was once for all delivered to the saints."* (1:3)
 I will vigilantly guard the established baseline — every config drift is an infiltration that must be quarantined.
 
-### Revelation 21 — *"Behold, I am making all things new."* (21:5)
+### Revelation — *"Behold, I am making all things new."* (21:5)
 I will know when to rebuild from a clean baseline instead of patching a broken deployment.
 
-### Revelation 3 — *"Hold on to what you have, so that no one will take your crown."* (3:11)
-I will preserve proven configurations with deliberate defense — never assume a working system stays working.
+<!-- Added 2026-07-07 -- combined from two Revelation entries into canonical format -->
 
 ## Final Directive
 
