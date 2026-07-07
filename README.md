@@ -245,7 +245,7 @@ Hermes Cortex ships a **three-layer enforcement system** for [Rule #10](AGENTS.m
 
 ### Layer 1 — Pre-Commit Hook (Hard Gate)
 
-Blocks `git commit` if `score-cycle` fails on staged changes. Bypass with `SKIP_SCORE=1`.
+Blocks `git commit` if `score-cycle` fails on staged changes. Bypass with `SKIP_SCORE=1` (abuse detection: 3/h warns, 6/24h blocks, 3 warnings — persistent lock).
 
 ```bash
 # Install to all detected projects

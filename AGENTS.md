@@ -59,7 +59,7 @@ project-root/
 9. **Use tools, not descriptions** — every response must contain tool calls or a final result.
 10. **Score every change** — every code/config/script edit logged to loop-governance DB.
 
-    > **⚡ Pre-commit scoring hook** auto-creates a cycle on every commit. Never bypass. `SKIP_SCORE=1` is emergencies only.
+    > **⚡ Pre-commit scoring hook** auto-creates a cycle on every commit. Use governance. `SKIP_SCORE=1` is emergencies only (abuse detection: 3/h warns, 6/24h blocks, 3 warnings locks permanently).
 
 11. **Tests/TDD/scoring are always the default.** Only opt-outs: `"skip tests"`, `"read-only"`, `"throwaway prototype"`, `"just check/look at"`.
 12. **Tag discovered issues as follow-ups** — document as `pending` todo, finish current work, then return. Never silently skip or fix inline.
