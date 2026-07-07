@@ -66,7 +66,8 @@ done
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 DEPLOY_SCRIPT=""
-for path in "${HERMES_HOME}/scripts/hermes-security-apply" /usr/local/sbin/hermes-security-apply /opt/homebrew/sbin/hermes-security-apply "${CORTEX_REPO}/deploy/nginx/hermes-security-apply"; do
+# Prefer NOPASSWD path first, then local scripts as fallback
+for path in /usr/local/sbin/hermes-security-apply "${HERMES_HOME}/scripts/hermes-security-apply" /opt/homebrew/sbin/hermes-security-apply "${CORTEX_REPO}/deploy/nginx/hermes-security-apply"; do
   if [ -x "$path" ]; then
     DEPLOY_SCRIPT="$path"
     break
@@ -101,9 +102,11 @@ if [ -x "$SCANNER" ]; then
     SCANNER_OUTPUT=$($TIMEOUT_CMD 12 bash "$SCANNER" 2>&1) || true
     RC=$?
     if [ "$RC" -eq 124 ]; then
-      log "  ⚠ Scanner timed out after 12s"
+      error "Scanner timed out after 12s — ABORTING"
+      exit 1
     elif [ "$RC" -ne 0 ]; then
-      log "  ⚠ Scanner exited with code ${RC}"
+      error "Scanner failed with exit code ${RC} — ABORTING"
+      exit 1
     fi
   else
     SCANNER_OUTPUT=$(bash "$SCANNER" 2>&1) || true
@@ -112,7 +115,8 @@ if [ -x "$SCANNER" ]; then
     NEW_IPS=true; PIPELINE_OUTPUT+="${SCANNER_OUTPUT}"$'\n'
   fi
 else
-  error "Scanner not found at ${SCANNER} — skipping"
+  error "Scanner not found at ${SCANNER} — ABORTING (security pipeline broken)"
+  exit 1
 fi
 
 # ── Step 2: Collect fail2ban bans ──
