@@ -225,29 +225,24 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096) -> str | None:
 
 
 def generate_soul_entry(book: str) -> str | None:
-    """Generate the concise SOUL.md entry (short behavioral statement only)."""
+    """Generate a SHORT SOUL.md entry (verse + one-line commitment only)."""
     today = get_kst_today()
 
-    prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md). This is read every session so it must distill the book into ONE sharp behavioral commitment.
+    prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md). This is read every session so it must be compact and sharp — a single verse and a one-line commitment.
 
 Write the entry for **{book}** in this EXACT format — nothing more, nothing less:
 
 ### {book} — *"[key verse]" ([Book Chapter:Verse])*
-
-I will [one-line behavioral commitment based on this book's lesson for a system operator / automation agent].
-
-<!-- Added {today} -->
+I will [one-line behavioral commitment for a system operator].
 
 Requirements:
 1. Pick ONE key verse that captures the book's core message. Exact citation.
-2. The behavioral commitment must be ONE sentence, specific to automation work — monitoring, infrastructure, documentation, deployments, health checks, log analysis, crons, rollbacks.
-3. Be sharp and concrete. Example format: "I will document every decision to not act, and mark the timestamp; that record becomes the foundation for future root-cause analysis."
-4. No explanations. No extra paragraphs. No commentary.
-5. Output ONLY the 4-line entry — no code fences, no extra text.
+2. Write exactly ONE sentence after "I will" — a concrete, actionable commitment for an automation agent.
+3. Output ONLY the two-line entry — no explanations, no code fences, no extra text.
 
 Generate the entry for {book}:"""
 
-    return _call_deepseek(prompt, max_tokens=4096)
+    return _call_deepseek(prompt, max_tokens=1024)
 
 
 def generate_brain_page(book: str, agent_name: str) -> str | None:
