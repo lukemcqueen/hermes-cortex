@@ -70,6 +70,12 @@ SERVICES_CONF="${NGINX_DIR}/sites-enabled/hermes-services.conf"
 
 echo "━━━ Hermes Security Deploy — ${TIMESTAMP} ━━━"
 
+# ── Source SSL cert paths from .env ──
+CORTEX_ENV="${CORTEX_REPO}/.env"
+if [ -f "$CORTEX_ENV" ]; then
+  set -a; source "$CORTEX_ENV"; set +a
+fi
+
 # ── Ensure repo exists ──
 if [ ! -d "$CORTEX_REPO" ]; then
   echo "✗ Cortex repo not found at ${CORTEX_REPO}"
