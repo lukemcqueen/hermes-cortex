@@ -1010,7 +1010,7 @@ def api_system():
 
 # ── Agent Health ──────────────────────────────────────────────
 
-AGENT_HEALTH_FILE = HERMES_HOME / "state" / "agent-health-data.json"
+AGENT_HEALTH_FILE = Path.home() / ".hermes-cortex" / "state" / "agent-health-data.json"
 
 @app.route("/api/agents")
 @_cached("agents", ttl=10)
