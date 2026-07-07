@@ -140,7 +140,7 @@ Only Moses has `cronjob` MCP tool. Others request via inbox with subject `🔧 C
 | `agent-cron-failure-scanner` | no_agent | `*/30 * * * *` | `agent-cron-failure-scanner.py` | local |
 | `service-recovery` | no_agent | `*/5 * * * *` | `service-recovery.py` | origin |
 | `inbox-sensor` | no_agent | `*/10 * * * *` | `inbox-sensor.py` | local |
-| `score-auditor` | no_agent | `0 */6 * * *` | `score-auditor.py` | origin |
+| `governance-auditor` | no_agent | `0 */6 * * *` | `governance-auditor.py` | origin |
 | `memory-to-brain-sync` | no_agent | `0 */6 * * *` | `memory-to-brain-sync.py` | local |
 | `llm-judge-scorer-weekday` | no_agent | `0 12,20 * * 1-5` | `llm-judge-scorer.py` | local |
 | `offline-code-index` | no_agent | `0 5 * * 0` | `offline_code_index_cron.sh` | local |
