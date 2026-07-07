@@ -697,7 +697,8 @@ deploy_nginx_configs() {
         if sudo cp "$zone_src" "$zone_dst" 2>/dev/null; then
           sudo chmod 644 "$zone_dst"
         else
-          warn "  Cannot write to ${zone_dst} — add sudoers: sudo cp from ${nginx_src_dir} to ${brew_dir}"
+          warn "  Cannot write zone-defs — add sudoers rule:"
+          warn "    ${USER} ALL=(ALL) NOPASSWD: /bin/cp ${zone_src} ${zone_dst}"
         fi
       else
         warn "  Passwordless sudo not available — skipping zone-defs deploy"
@@ -723,8 +724,9 @@ deploy_nginx_configs() {
   local conf_available="${available_dir}/hermes-services.conf"
 
   if needs_update "$conf_src" "$conf_dst"; then
-    local tmpfile
-    tmpfile="$(mktemp)" || return 1
+    local tmpfile="/tmp/hermes-services-processed.conf"
+    # Clean any leftover from a previous run
+    rm -f "$tmpfile"
 
     # Port prefix: template ships as 13xxx (generic default).
     # Set CORTEX_NGINX_PORT_PREFIX to your agent's prefix:
@@ -820,9 +822,8 @@ deploy_nginx_configs() {
           sudo chmod 644 "$conf_available"
           info "  Updated: ${conf_available}"
         else
-          warn "  Cannot write nginx config — add sudoers rules:"
-          warn "    ${USER} ALL=(ALL) NOPASSWD: /bin/cp ${tmpfile%/*}/* ${config_dir}/*"
-          warn "    ${USER} ALL=(ALL) NOPASSWD: /bin/chmod 644 ${config_dir}/*"
+          warn "  Cannot write nginx config — add sudoers rule:"
+          warn "    ${USER} ALL=(ALL) NOPASSWD: /bin/cp ${tmpfile} ${conf_available}"
           warn "  Config saved to: ${tmpfile}"
         fi
       else
@@ -842,7 +843,8 @@ deploy_nginx_configs() {
           if sudo ln -sf "$conf_available" "$conf_dst" 2>/dev/null; then
             info "  Symlinked: ${conf_dst} → ${conf_available}"
           else
-            warn "  Cannot symlink — add sudoers: sudo ln -sf ${config_dir}/* ${config_dir}/*"
+            warn "  Cannot symlink — add sudoers rule:"
+            warn "    ${USER} ALL=(ALL) NOPASSWD: /bin/ln -sf ${conf_available} ${conf_dst}"
           fi
         fi
         # No sudo? skip symlink
