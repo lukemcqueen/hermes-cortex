@@ -68,11 +68,23 @@ EXPECTED_MCP_SERVERS = {
     "loop-governance": "loop-gov-mcp.py",
 }
 
-# External services
+# External services — use CORTEX_NGINX_PORT_PREFIX from .env, default to 13
+_PORT_PREFIX_ENV = CORTEX_HOME / ".env"
+_PORT_PREFIX = "13"  # default
+try:
+    for line in _PORT_PREFIX_ENV.read_text().split("\n"):
+        line = line.strip()
+        if line.startswith("CORTEX_NGINX_PORT_PREFIX="):
+            val = line.split("=", 1)[1].strip().strip('"').strip("'")
+            if val:
+                _PORT_PREFIX = val
+except (FileNotFoundError, OSError, IndexError):
+    pass
+
 EXTERNAL_SERVICES = [
-    ("Dashboard",      f"{EXTERNAL_BASE}:13001/",       "401"),
-    ("Langfuse",       f"{EXTERNAL_BASE}:13002/",       "401"),
-    ("Inbox API",      f"{EXTERNAL_BASE}:13004/health", "200"),
+    ("Dashboard",      f"{EXTERNAL_BASE}:{_PORT_PREFIX}001/",       "401"),
+    ("Langfuse",       f"{EXTERNAL_BASE}:{_PORT_PREFIX}002/",       "401"),
+    ("Inbox API",      f"{EXTERNAL_BASE}:{_PORT_PREFIX}004/health", "200"),
 ]
 
 # Core install footprint (paths relative to HOME that should exist)
