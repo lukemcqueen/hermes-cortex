@@ -1573,7 +1573,7 @@ else
 # check-memory-budget.sh — MEMORY.md usage monitor
 set -euo pipefail
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; RESET='\033[0m'
-FILE="${HOME}/.hermes-cortex/memories/MEMORY.md"
+FILE="${HOME}/.hermes/memories/MEMORY.md"
 LIMIT=2200
 [[ ! -f "$FILE" ]] && { echo "No MEMORY.md found"; exit 0; }
 CHARS=$(wc -m < "$FILE" | tr -d ' ')
@@ -2471,7 +2471,7 @@ printf "  ${GREEN}•${RESET} hermes-update.sh → daily Hermes Agent upgrade (n
 printf "  ${GREEN}•${RESET} hermes-cortex-sync.sh → daily repo sync + tool re-install\\n"
 printf "  ${GREEN}•${RESET} prod-watchdog.sh  → production site monitoring with auto-remediation\\n"
 printf "  ${GREEN}•${RESET} check-memory-budget.sh → MEMORY.md usage monitor\n"
-printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes-cortex/memories/{MEMORY,USER}.md\\n"
+printf "  ${GREEN}•${RESET} memory seeds     → ~/.hermes/memories/{MEMORY,USER}.md\\n"
 printf "  ${GREEN}•${RESET} Hermes skills    → 12+ shared skills in ~/.hermes-cortex/skills/\\n"
 printf "  ${GREEN}•${RESET} Web Cache       → semantic web result cache (sqlite-vec + Ollama)\n"
 printf "  ${GREEN}•${RESET} Offline Knowledge → cascade cache + kiwix ZIM content viewer\n"
@@ -2491,7 +2491,7 @@ cat <<PROMPT
 
 I've installed the Hermes Cortex system. Please finish the setup by:
 
-1. Open ~/.hermes-cortex/memories/MEMORY.md and ~/.hermes-cortex/memories/USER.md — fill in your system topology and user profile so I know your context
+1. Open ~/.hermes/memories/MEMORY.md and ~/.hermes/memories/USER.md — fill in your system topology and user profile so I know your context
 2. Load the shared skills from ~/.hermes-cortex/skills/ (use skill_view(name) to browse them — includes subagent-driven-development, systematic-debugging v2.0 (6-phase feedback-loop debugging), code-review v3.0 (two-axis Standards+Spec), codebase-design (deep module vocabulary), change-test-loop, spike, plan, memory-architecture, client-brand-brand-marketing, korean-language-learning)
 3. Loading the hermes-agent skill and verifying the gbrain-command plugin
 4. Run ~/.hermes-cortex/scripts/bootstrap-brain.sh to ensure all brain sources are initialized, git-enabled, registered in gbrain, and synced. Note which sources have indexed pages (if any show 0 pages, add some .md files and re-sync)
@@ -2522,7 +2522,7 @@ I've installed the Hermes Cortex system. Please finish the setup by:
 
    e) memory-pruning — daily at 4am:
       Schedule: 0 4 * * *
-      Prompt: Read your current MEMORY.md and USER.md from ~/.hermes-cortex/memories/ and prune/consolidate entries that are stale, redundant, or no longer relevant. Keep useful durable facts. Report what you removed and why.
+      Prompt: Read your current MEMORY.md and USER.md from ~/.hermes/memories/ and prune/consolidate entries that are stale, redundant, or no longer relevant. Keep useful durable facts. Report what you removed and why.
 
    f) cortex-update — weekly on Sunday at 3am (auto-pull + delta-update):
       Schedule: 0 3 * * 0
