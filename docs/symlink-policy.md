@@ -98,35 +98,31 @@ transparently — no data is lost.
 ```
 ~/.hermes/                          ~/.hermes-cortex/
 ├── config.yaml           [REAL]    ├── scripts/          [REAL]
-├── .env                  [REAL]    ├── tools/             [REAL]
-├── profiles/             [REAL]    ├── sessions/          [REAL]
-├── plugins/              [REAL]    ├── state/             [REAL]
-├── SOUL.md               [REAL]    ├── data/              [REAL]
-├── state.db              [REAL]    ├── offline/           [REAL]
-├── cron/                 [REAL]    ├── memory/            [REAL]
-├── hermes-agent/         [REAL]    ├── memories/          [REAL]
-├── bin/                  [REAL]    ├── web-cache/         [REAL]
-├── auth.json             [REAL]    ├── dashboard/         [REAL]
-├── logs/                 [REAL]    ├── health-server/     [REAL]
-├── cache/                [REAL]    ├── hooks/             [REAL]
-├── ... (Hermes runtime)            ├── mcp-servers/       [REAL]
-│                                   ├── evals/             [REAL]
-├── scripts → .hermes-cortex/       ├── bible-reading-tracker.json [REAL]
-├── skills → .hermes-cortex/        ├── titus-avatar.html  [REAL]
-├── offline → .hermes-cortex/       │
-├── state → .hermes-cortex/         ├── skills → ../.hermes/skills/ [SYMLINK]
-├── data → .hermes-cortex/         │
-├── sessions → .hermes-cortex/     Both point to same skills dir
-├── memory → .hermes-cortex/       (Hermes manages ~/.hermes/skills/
-├── memories → .hermes-cortex/      via skills_sync.py, cortex-update
-├── hooks → .hermes-cortex/         deploys through the symlink)
-├── mcp-servers → .hermes-cortex/
-├── dashboard → .hermes-cortex/
-├── health-server → .hermes-cortex/
-├── web-cache → .hermes-cortex/
-├── evals → .hermes-cortex/
-├── bible-reading-tracker.json → .
-└── titus-avatar.html → .
+├── .env                  [REAL]    ├── tools/            [REAL]
+├── profiles/             [REAL]    ├── sessions/         [REAL]
+├── plugins/              [REAL]    ├── state/            [REAL]
+├── SOUL.md               [REAL]    ├── data/             [REAL]
+├── state.db              [REAL]    ├── offline/          [REAL]
+├── cron/                 [REAL]    ├── memory/           [REAL]
+├── hermes-agent/         [REAL]    ├── memories/         [REAL]
+├── auth.json             [REAL]    ├── web-cache/        [REAL]
+├── logs/                 [REAL]    ├── dashboard/        [REAL]
+├── cache/                [REAL]    ├── health-server/    [REAL]
+├── a2a/                  [REAL]    ├── hooks/            [REAL]
+├── sessions/             [REAL]    ├── mcp-servers/      [REAL]
+├── state/                [REAL]    ├── a2a/              [REAL]
+├── data/                 [REAL]    ├── evals/            [REAL]
+├── ... (Hermes runtime)            ├── certs/            [REAL]
+│                                   ├── agent-inbox/      [REAL]
+│                                   ├── bin/              [REAL]
+├── scripts → .hermes-cortex/       │
+│  .env                  [REAL]     │
+│  (Each .env is independent —     ├── skills → ../.hermes/skills/ [SYMLINK]
+│   NOT symlinked.                  │
+│   ~/.hermes/.env = Agent only    Both point to same skills dir
+│   ~/.hermes-cortex/.env = Cortex (Hermes manages ~/.hermes/skills/
+│   ~/hermes-cortex/.env = Repo)   via skills_sync.py, cortex-update
+│                                   deploys through the symlink)
 ```
 
 ---
@@ -220,4 +216,5 @@ ls -la ~/.hermes-cortex/skills
 |------|--------|-----|
 | 2026-07-07 | Initial policy created | Titus |
 | 2026-07-07 | Migrated 15 dirs + 2 files from ~/.hermes/ to ~/.hermes-cortex/ with symlinks | Titus |
-| 2026-07-07 | Identified skills/ as Hermes Agent canonical dir — reverted symlink direction | Titus |
+|| 2026-07-07 | Identified skills/ as Hermes Agent canonical dir — reverted symlink direction | Titus |
+|| 2026-07-08 | Stripped aspirational symlinks from doc — only scripts/ is actually symlinked. .env split into 3 independent files. | Moses |

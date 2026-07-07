@@ -60,7 +60,7 @@ CURL = os.environ.get("CURL_BIN", "curl")
 EXTERNAL_BASE = os.environ.get("CORTEX_DOCTOR_BASE", "")
 # Fall back to localhost when no domain is configured (PII-safe default)
 if not EXTERNAL_BASE:
-    EXTERNAL_BASE = "http://127.0.0.1"
+    EXTERNAL_BASE = "https://localhost"
 
 # Expected MCP servers
 EXPECTED_MCP_SERVERS = {
@@ -214,8 +214,8 @@ def run_bg(cmd, timeout=10):
 
 
 def http_get(url, timeout=10):
-    """Curl-based HTTP check."""
-    out, _ = run([CURL, "-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", str(timeout), url])
+    """Curl-based HTTP check (with -k for localhost SSL)."""
+    out, _ = run([CURL, "-sk", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", str(timeout), url])
     return out.strip()
 
 
@@ -592,7 +592,7 @@ def check_governance(res):
 
     # ── Governance plugin ────────────────────────────────────
     plugin_dir = HERMES_HOME / "plugins" / "governance-enforcer"
-    plugin_src = CORTEX_REPO / ".hermes-cortex" / "plugins" / "governance-enforcer"
+    plugin_src = CORTEX_REPO / "plugins" / "governance-enforcer"
     plugin_enabled = "governance-enforcer" in config_text and "enabled" in config_text
 
     if plugin_dir.exists() and (plugin_dir / "__init__.py").exists():

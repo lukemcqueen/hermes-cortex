@@ -70,9 +70,9 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent, CallToolResult
 
 HOME = Path.home()
-LOOP_DB = HOME / ".hermes" / "data" / "loop-governance.db"
-CONFIG_PATH = HOME / ".hermes" / "data" / "loop-governance-config.json"
-CACHE_DB = HOME / ".hermes" / "data" / "session-embeddings.db"
+LOOP_DB = HOME / ".hermes-cortex" / "data" / "loop-governance.db"
+CONFIG_PATH = HOME / ".hermes-cortex" / "data" / "loop-governance-config.json"
+CACHE_DB = HOME / ".hermes-cortex" / "data" / "session-embeddings.db"
 GOVERNANCE_STATE_DIR = HOME / ".hermes-cortex" / "state"
 
 
