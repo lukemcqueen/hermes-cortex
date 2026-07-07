@@ -5,19 +5,16 @@ and related scripts. New variables should be added here with all fields.
 
 ---
 
-## Env File Template
+## Env File
 
-The env file lives at `deploy/hermes-services.env` (NOT in `deploy/nginx/`) to make
-clear it is **sourced only** — never deployed to nginx. Only `*.conf` files from
-`deploy/nginx/` get deployed to the nginx config directory.
+The env file lives at `~/hermes-cortex/.env` (gitignored) — the single source of truth
+for all Cortex environment variables. It's auto-sourced by deploy scripts and `cortex-update.sh`.
 
 ```bash
-# Copy the template to the deploy/ directory (one level above nginx/)
-cp ~/hermes-cortex/deploy/hermes-services.env.example \
-  ~/hermes-cortex/deploy/hermes-services.env
-# Edit, then source:
-set -a; source ~/hermes-cortex/deploy/hermes-services.env; set +a
-sudo hermes-security-apply
+# Copy the template, then edit
+cp ~/hermes-cortex/.env.example ~/hermes-cortex/.env
+# Edit with your settings:
+vim ~/hermes-cortex/.env
 ```
 
 ## Variable Reference

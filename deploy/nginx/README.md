@@ -13,7 +13,7 @@ fail2ban filters.
 | **nginx** | Required. The deploy scripts install configs and reload nginx. |
 | **fail2ban** | Required for automated bans. The pipeline integrates with fail2ban filters. |
 | **sudoers entry** | Passwordless sudo for `/usr/local/sbin/hermes-security-apply` + nginx commands. Not needed for the Python script if the user has root access via other means. |
-| **Env file** | Copy `deploy/hermes-services.env.example` → `deploy/hermes-services.env` and set your `CORTEX_*` vars. The Python script auto-sources this file. |
+| **Env file** | `~/hermes-cortex/.env` (gitignored) — set your `CORTEX_*` vars. The deploy scripts auto-source this. See `.env.example` for all options. |
 
 **Agents without nginx/fail2ban** should skip this pipeline entirely.
 The scanner silently exits when nginx logs aren't found, but there's
@@ -29,7 +29,7 @@ no benefit to running it on a host without nginx.
 | `nginx-badbots.conf` | **Input:** fail2ban filter for archive scanners + `/storage/` crawling |
 | `hermes-security-apply` | **Legacy** bash deploy script — now superseded by `hermes-services-apply.py` |
 | `hermes-services-apply.py` | **Primary** Python deploy script — auto-discovers SSL, supports `--dry-run`, handles port prefixes and `allow-ips-manual.conf` |
-| `deploy/hermes-services.env.example` | **Env template** — copy to `deploy/hermes-services.env`, set `CORTEX_SSL_*` vars. **Source only** — never deployed to nginx. |
+| `~/hermes-cortex/.env.example` | **Env template** — copy to `.env`, set `CORTEX_SSL_*` vars. Gitignored, auto-sourced by deploy scripts. |
 | `allow-ips-manual.conf` | **Per-machine** (not in git): manual allow list at `/etc/nginx/allow-ips-manual.conf` — IPs listed here override blocked_ips.conf |
 | `README.md` | This file |
 
@@ -40,12 +40,11 @@ no benefit to running it on a host without nginx.
 ### 1. Configure the env file
 
 ```bash
-cp ~/hermes-cortex/deploy/hermes-services.env.example \
-  ~/hermes-cortex/deploy/hermes-services.env
-# Edit with your cert paths, port prefix, etc.
+cp ~/hermes-cortex/.env.example ~/hermes-cortex/.env
+# Edit ~/hermes-cortex/.env with your cert paths, port prefix, etc.
 ```
 
-The Python script auto-sources this file — no need to source it manually.
+The deploy scripts auto-source this file — no need to source it manually.
 
 ### 2. Install the legacy deploy script (optional — only needed if pipelines still call it)
 
@@ -62,7 +61,7 @@ sudo chmod 440 /etc/sudoers.d/hermes-security
 sudo visudo -cf /etc/sudoers.d/hermes-security
 ```
 
-No `env_keep` needed — all deploy scripts auto-source `deploy/hermes-services.env`
+No `env_keep` needed — all deploy scripts auto-source `~/hermes-cortex/.env`
 internally. Set your `CORTEX_*` vars in the env file once, and every deploy picks
 them up automatically.
 
@@ -169,9 +168,10 @@ work until certs are provided.
 ### Setup
 
 ```bash
-# 1. Copy the env template and edit (stays in deploy/, never goes to nginx)
-cp ~/hermes-cortex/deploy/hermes-services.env.example \
-  ~/hermes-cortex/deploy/hermes-services.env
+# 1. Copy the env template (stays in repo, never goes to nginx)
+cp ~/hermes-cortex/.env.example ~/hermes-cortex/.env
+# 2. Edit with your settings
+vim ~/hermes-cortex/.env
 
 # 2. Edit with your cert paths or domain
 #    CORTEX_SSL_CERT_PATH=/etc/letsencrypt/live/example.com/fullchain.pem

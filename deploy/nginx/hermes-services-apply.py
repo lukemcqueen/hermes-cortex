@@ -499,7 +499,7 @@ def main():
 
 if __name__ == "__main__":
     # ── Auto-source env file (so agents don't need env_keep in sudoers) ──
-    env_file = Path(os.environ.get("CORTEX_REPO", Path.home() / "hermes-cortex")) / "deploy" / "hermes-services.env"
+    env_file = Path(os.environ.get("CORTEX_REPO", Path.home() / "hermes-cortex")) / ".env"
     if env_file.is_file():
         with open(env_file) as f:
             for line in f:

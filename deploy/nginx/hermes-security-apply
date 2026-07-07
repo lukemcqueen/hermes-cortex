@@ -28,9 +28,7 @@ else
   CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 fi
 
-# ── Source defaults first, then user overrides ──────────────
-ENV_FILE="${CORTEX_REPO}/deploy/hermes-services.env"
-[ -f "$ENV_FILE" ] && { set -a; source "$ENV_FILE"; set +a; }
+# ── Source user environment ──────────────────────────────────
 CORTEX_ENV="${CORTEX_REPO}/.env"
 [ -f "$CORTEX_ENV" ] && { set -a; source "$CORTEX_ENV"; set +a; }
 
