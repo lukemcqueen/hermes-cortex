@@ -808,11 +808,18 @@ deploy_nginx_configs() {
     fi
 
     # Write to sites-available (Linux) or servers/ (macOS)
-    if command -v sudo &>/dev/null && [[ "$config_dir" == /etc/* ]]; then
-      sudo mkdir -p "$(dirname "$conf_available")" 2>/dev/null || true
-      sudo cp "$tmpfile" "$conf_available"
-      sudo chmod 644 "$conf_available"
-      info "  Updated: ${conf_available}"
+    # Pre-check: passwordless sudo for /etc/ paths
+    if [[ "$config_dir" == /etc/* ]]; then
+      if ! command -v sudo &>/dev/null || ! sudo -n true 2>/dev/null; then
+        warn "  Passwordless sudo not available — skipping nginx deploy"
+        warn "  To enable: echo \"${USER} ALL=(ALL) NOPASSWD: /usr/sbin/nginx, /bin/mkdir, /bin/cp, /bin/chmod, /bin/ln\" | sudo tee /etc/sudoers.d/hermes-cortex"
+        warn "  Config was written to: ${tmpfile}"
+      else
+        sudo mkdir -p "$(dirname "$conf_available")"
+        sudo cp "$tmpfile" "$conf_available"
+        sudo chmod 644 "$conf_available"
+        info "  Updated: ${conf_available}"
+      fi
     else
       mkdir -p "$(dirname "$conf_available")" 2>/dev/null || true
       cp "$tmpfile" "$conf_available"
@@ -821,14 +828,18 @@ deploy_nginx_configs() {
 
     # Symlink sites-enabled -> sites-available when they differ (Linux convention)
     if [[ "$config_dir" != "$available_dir" ]]; then
-      if command -v sudo &>/dev/null && [[ "$config_dir" == /etc/* ]]; then
-        sudo mkdir -p "$config_dir" 2>/dev/null || true
-        sudo ln -sf "$conf_available" "$conf_dst"
+      if [[ "$config_dir" == /etc/* ]]; then
+        if command -v sudo &>/dev/null && sudo -n true 2>/dev/null; then
+          sudo mkdir -p "$config_dir"
+          sudo ln -sf "$conf_available" "$conf_dst"
+          info "  Symlinked: ${conf_dst} → ${conf_available}"
+        fi
+        # No sudo? skip symlink (we already warned above)
       else
         mkdir -p "$config_dir" 2>/dev/null || true
         ln -sf "$conf_available" "$conf_dst"
+        info "  Symlinked: ${conf_dst} → ${conf_available}"
       fi
-      info "  Symlinked: ${conf_dst} → ${conf_available}"
     fi
 
     # Test the REAL deployed config — roll back on failure
