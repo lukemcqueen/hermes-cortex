@@ -26,6 +26,9 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+PARENT_DIR = SCRIPT_DIR.parent
+if str(PARENT_DIR) not in sys.path:
+    sys.path.insert(0, str(PARENT_DIR))
 from hermes_tz import format_timestamp
 from state_tracker import StateTracker
 from hermes_models import load_models_env
