@@ -49,7 +49,7 @@ GENERATED=$(python3 "$FIX_SCRIPT" 2>&1) || {
 echo "$GENERATED"
 
 # Extract IP count from output
-IP_COUNT=$(echo "$GENERATED" | grep -oP 'blocked IPs: \K\d+')
+IP_COUNT=$(echo "$GENERATED" | grep -oP '\d+(?= blocked IPs\b)')
 if [ -z "$IP_COUNT" ] || [ "$IP_COUNT" -eq 0 ]; then
   log "  No IPs to deploy — skipping"
   exit 0
