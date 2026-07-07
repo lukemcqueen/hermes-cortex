@@ -112,7 +112,7 @@ def find_letsencrypt_certs(domain=None):
             )
         except PermissionError:
             # Try common domain names as fallback
-            for common in ("mp-stage.koscap.or.kr", "mwi-stage.koscap.or.kr", "mweb-stage.koscap.or.kr"):
+            for common in ("staging1.example.com", "staging2.example.com", "staging3.example.com"):
                 d = live_dir / common
                 try:
                     if d.is_dir():

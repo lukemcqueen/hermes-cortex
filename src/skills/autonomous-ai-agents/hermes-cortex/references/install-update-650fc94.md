@@ -70,7 +70,7 @@ NGINX_CONF="/usr/local/etc/nginx/servers/hermes-services.conf"
 
 1. **With SSL certs** (from private repo):
    - Copies `nginx/hermes-services.conf` with TLS + basic auth
-   - Requires certs at `/usr/local/etc/nginx/ssl/fleet-operator.com/`  (Linux: `/etc/letsencrypt/live/yourdomain.com/`)
+   - Requires certs at `/usr/local/etc/nginx/ssl/example.com/`  (Linux: `/etc/letsencrypt/live/yourdomain.com/`)
    - External access: `https://your-domain.com:11002` (Langfuse), `:11003` (Dashboard)
 
 2. **Local-only** (fallback):
@@ -112,7 +112,7 @@ Updated installer summary to reflect new components:
 | `install.sh` | +312, -16 (13 steps now) |
 | `docker-compose.langfuse.yml` | +95 (new file) |
 
-**Note:** Initial commit used `fleet-operator.com` as placeholder domain. This was later replaced with `example.com` via git history rewrite (see `references/public-repo-privacy.md`).
+**Note:** Initial commit used `example.com` as placeholder domain. This was later replaced with `example.com` via git history rewrite (see `references/public-repo-privacy.md`).
 
 ## Testing Performed
 

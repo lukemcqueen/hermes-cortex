@@ -1,7 +1,7 @@
 # Public Repo Domain Privacy Pattern
 
 **Date:** 2026-06-04
-**Issue:** Personal domain names (`fleet-operator.com`) were hardcoded in public repo files, exposing personal infrastructure details.
+**Issue:** Personal domain names (`example.com`) were hardcoded in public repo files, exposing personal infrastructure details.
 
 ## Pattern
 

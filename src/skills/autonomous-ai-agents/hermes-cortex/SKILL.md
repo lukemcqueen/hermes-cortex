@@ -1642,7 +1642,7 @@ done
 After multiple restart cycles, Next.js init scripts (which create default org/project/user) may hang permanently if user records already exist. Container stays up 5+ minutes without reaching MCP registration. Fix:
 
 ```sql
-DELETE FROM users WHERE email IN ('fleet-operator@gmail.com', 'hermes2@example.com');
+DELETE FROM users WHERE email IN ('user@example.com', 'hermes2@example.com');
 ```
 CASCADE handles related records. Next container restart recreates them cleanly.
 
