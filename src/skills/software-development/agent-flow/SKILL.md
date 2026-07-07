@@ -10,7 +10,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [workflow, router, dispatch, patterns, code, debug, ui, api, db, data, pipeline, research, writing, review, planning]
-    related_skills: [dev-plan, spike, change-test-loop, systematic-debugging, code-review, subagent-driven-development, writing-plans, memory-architecture]
+    related_skills: [dev-plan, spike, change-test-loop, systematic-debugging, code-review, subagent-driven-development, writing-plans, memory-architecture, codebase-design]
 ---
 
 # Agent Flow — Workflow Router
@@ -114,27 +114,39 @@ Use this skill at session start (or whenever a new request arrives) to classify 
 - "stack trace"
 - "trace this issue"
 - "root cause"
+- "bug"
 
 **Toolset requirements:**
 - `terminal` — run the failing command, inspect logs
 - `read_file` — examine source where error originates
 - `search_files` — grep for error patterns across codebase
-- `web_search` / `web_extract` — for known error solutions (if contextually safe)
+
+**Method: Load the `systematic-debugging` skill and follow its 6-phase process:**
+
+1. **Phase 0 — Build a feedback loop.** Before theorizing, build a tight pass/fail signal: failing test, curl harness, CLI invocation, headless browser script, or bisection harness. Tighten it (faster, sharper, deterministic). Non-deterministic bugs: raise reproduction rate above 1%.
+2. **Phase 1 — Reproduce + minimise.** Run the loop, confirm the correct bug, shrink to smallest load-bearing scenario. Gather evidence: error messages, recent changes, data flow.
+3. **Phase 2 — Pattern analysis.** Find working examples, compare against references, identify what's different.
+4. **Phase 3 — Hypothesise + instrument.** Generate 3-5 ranked falsifiable hypotheses. Tag debug logs with `[DEBUG-XXXX]`. One variable at a time. Perf bugs: measure first, fix second.
+5. **Phase 4 — Fix + regression test.** Check for a correct test seam first. Turn minimised repro into a failing test. Apply fix. Verify original loop goes green.
+6. **Phase 5 — Cleanup + post-mortem.** Remove tagged instrumentation. Document correct hypothesis. Ask: "What would prevent this bug?" If answer involves architecture (no test seam), hand off to `codebase-design`.
+
+If 3+ fixes failed, question the architecture using the `codebase-design` skill — the module may need deepening to create a testable seam.
 
 **Output format:**
-1. **Symptom** — what the user sees (exact error message, behaviour)
-2. **Hypothesis** — what I think is happening (1–3 sentences)
-3. **Evidence** — log lines, code analysis, reproduction steps
-4. **Root cause** — definitive answer after investigation
-5. **Fix** — code/solution if straightforward, or recommended next steps
+1. **Feedback loop** — the pass/fail signal built (command, test, harness)
+2. **Hypotheses** — 3-5 ranked, each falsifiable
+3. **Root cause** — definitive answer after investigation
+4. **Fix** — code/solution with regression test
+5. **Post-mortem** — what would prevent this bug
 
 **Checklist:**
-- [ ] Did I reproduce the error myself before diagnosing?
-- [ ] Did I read the relevant log/output carefully?
-- [ ] Did I check for common gotchas (env vars, permissions, versions)?
-- [ ] Did I rule out the obvious causes first?
-- [ ] Is my root cause specific and falsifiable?
-- [ ] Did I provide a reproduction command for the user?
+- [ ] Did I build a tight feedback loop BEFORE theorizing?
+- [ ] Did I reproduce, minimise, and confirm the correct bug?
+- [ ] Did I generate 3-5 ranked hypotheses (not just one)?
+- [ ] Did I instrument one variable at a time with tagged debug logs?
+- [ ] Did I check for a correct test seam before writing the regression test?
+- [ ] Did I clean up all [DEBUG-...] instrumentation?
+- [ ] If 3+ fixes failed, did I question the architecture?
 - [ ] If I can't find the cause, did I say so honestly and suggest next steps?
 
 ---
@@ -450,24 +462,27 @@ Use this skill at session start (or whenever a new request arrives) to classify 
 **Toolset requirements:**
 - `read_file` — read the code under review
 - `search_files` — find related code for context
-- `web_search` / `web_extract` — only if PR link needs fetching
 - `terminal` — optional, to run linter or tests on the code
+
+**Method: Load the `code-review` skill and follow its two-axis process:**
+
+Review along two independent axes:
+1. **Standards** — does the code follow documented repo conventions + the Fowler smell baseline (Mysterious Name, Duplicated Code, Feature Envy, Primitive Obsession, Speculative Generality, etc.)? Hard violations (documented standards breached) vs judgement calls (code smells).
+2. **Spec** — does the code implement what the originating issue/PRD asked for? Check for missing requirements, scope creep, and wrong implementations.
+
+Run both axes as parallel sub-agents so they don't pollute each other. Present findings separately — do NOT merge or rerank axes.
 
 **Output format:**
 1. **Summary** — one-sentence overview of the change.
-2. **Strengths** — what's done well (be specific).
-3. **Issues** — categorized:
-   - 🔴 **Critical** — correctness bugs, security holes, data loss
-   - 🟡 **Major** — logic errors, performance, missing error handling
-   - 🔵 **Minor** — style, naming, comments, best practices
-4. **Questions** — things to clarify before merge.
-5. **Recommendation** — approve / changes requested / blocked.
+2. **Standards** — hard violations and code smells found.
+3. **Spec** — missing items, scope creep, wrong implementations (or "no spec available").
+4. **Recommendation** — approve / changes requested / blocked.
 
 **Checklist:**
-- [ ] Did I understand the intent before commenting?
-- [ ] Are my comments specific (not "this could be better")?
-- [ ] Did I balance criticism with positive observations?
-- [ ] Did I focus on correctness, security, and maintainability over style?
+- [ ] Did I identify the spec source (issue ref, PRD, user-provided path)?
+- [ ] Did I check documented repo standards FIRST (before code smells)?
+- [ ] Did I run Standards and Spec as separate sub-agents (no shared context)?
+- [ ] Did I present findings separately without merging or reranking?
 - [ ] Did I check for tests — do they exist, are they meaningful?
 - [ ] Did I avoid bikeshedding (nitpicking trivial preferences)?
 - [ ] Did I provide actionable suggestions, not just problems?

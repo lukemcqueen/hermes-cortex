@@ -11,27 +11,28 @@ their domain.
 |-------|---------|---------|-----------|
 | `pr-review` | 1.0.0 | Full PR review pipeline — whole-repo context, architecture analysis, lesson-DB pattern matching, test regression check, and formal review with inline comments. Zero external API costs. | `skill_view(name='pr-review')` |
 
-## Software Development (19 skills)
+## Software Development (22 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `requirements-elicitation` | 1.1.0 | Requirements elicitation — deep/fast modes, RICE/MoSCoW, domain question banks | `skill_view(name='requirements-elicitation')` |
-| `architecture-review` | 1.1.0 | Multi-role architecture review — 6 roles, weighted decision matrix | `skill_view(name='architecture-review')` |
+| `architecture-review` | 1.1.0 | Multi-role architecture review — 6 roles, weighted decision matrix. Integrated with codebase-design for deep module vocabulary. | `skill_view(name='architecture-review')` |
 | `story-decomposition` | 1.0.0 | Break features into user-visible, testable stories with INVEST | `skill_view(name='story-decomposition')` |
 | `product-requirements` | 1.0.0 | Concise 1-page PRD template — 14 sections | `skill_view(name='product-requirements')` |
-| `agent-flow` | 1.0.0 | Workflow router — 12 patterns (simple code, enterprise, debug, etc.) | `skill_view(name='agent-flow')` |
+| `agent-flow` | 1.0.0 | Workflow router — 12 patterns (simple code, enterprise, debug with 6-phase process, review with two-axis approach) | `skill_view(name='agent-flow')` |
 | `agent-contract` | 1.0.0 | Non-negotiable execution rules — real work, no simulation | `skill_view(name='agent-contract')` |
-| `agent-inbox` | 1.0.0 | Web-based agent messaging system — topic channels, thread support, priority field, JSON API for agent-to-agent communication. | `skill_view(name='agent-inbox')` |
+| `agent-inbox` | 1.0.0 | Web-based agent messaging system — topic channels, thread support, priority field, JSON API | `skill_view(name='agent-inbox')` |
 | `dev-plan` | 2.1.0 | Plan mode — write actionable markdown plans, no execution | `skill_view(name='dev-plan')` |
-| `change-test-loop` | 2.0.0 | LEARN-RED-GREEN-REFACTOR loop — lesson-aware memory, confidence scoring, retry limits, TDD discipline. Every cycle begins by searching past lessons. | `skill_view(name='change-test-loop')` |
-| `lesson-aware-agent` | 1.0.0 | Universal lesson injection — search lessons before every action, save lessons after every fix. Works across all skills. | `skill_view(name='lesson-aware-agent')` |
-| `public-contribution` | 1.0.0 | After any improvement, evaluate whether it's public-worthy for the Hermes Cortex OSS community, genericize, and contribute | `skill_view(name='public-contribution')` |
-| `session-manager` | 1.1.0 | Session checkpoint/restore, context compression, progress tracking. Uses `.hermes-cortex/sessions/current.md` for active state | `skill_view(name='session-manager')` |
+| `change-test-loop` | 2.0.0 | LEARN-RED-GREEN-REFACTOR loop — lesson-aware memory, confidence scoring, retry limits | `skill_view(name='change-test-loop')` |
+| `lesson-aware-agent` | 1.0.0 | Universal lesson injection — search lessons before every action, save lessons after every fix | `skill_view(name='lesson-aware-agent')` |
+| `public-contribution` | 1.0.0 | After any improvement, evaluate whether it's public-worthy and contribute | `skill_view(name='public-contribution')` |
+| `session-manager` | 1.1.0 | Session checkpoint/restore, context compression, progress tracking | `skill_view(name='session-manager')` |
 | `state-orchestrator` | 1.0.0 | Info routing — live context vs session vs memory vs docs | `skill_view(name='state-orchestrator')` |
-| `save-lesson` | 1.1.0 | Auto-save bug-fix lessons, promote to skills, handle structured bug reports (P0/P1/P2 triage) | `skill_view(name='save-lesson')` |
+| `save-lesson` | 1.1.0 | Auto-save bug-fix lessons, promote to skills, handle structured bug reports | `skill_view(name='save-lesson')` |
 | `subagent-driven-development` | 1.0.0 | Execute plans via delegate_task subagents (2-stage review) | `skill_view(name='subagent-driven-development')` |
-| `systematic-debugging` | 1.0.0 | 4-phase root cause debugging | `skill_view(name='systematic-debugging')` |
-| `code-review` | 1.0.0 | Pre-commit review: security scan, quality gates, auto-fix | `skill_view(name='code-review')` |
+| `systematic-debugging` | 2.0.0 | **6-phase** root cause debugging: feedback loop, reproduce, pattern, hypothesise, fix, cleanup. Ported from Matt Pocock's diagnosing-bugs. | `skill_view(name='systematic-debugging')` |
+| `code-review` | 3.0.0 | **Two-axis** pre-commit review: Standards (conventions + Fowler smells) + Spec (requirements). Parallel sub-agents. Plus security scan + auto-fix. Ported from Matt Pocock's code-review. | `skill_view(name='code-review')` |
+| `codebase-design` | 1.0.0 | **NEW** — Deep module vocabulary: module, interface, depth, seam, adapter, leverage, locality. Design testable modules with clean seams. Ported from Matt Pocock. | `skill_view(name='codebase-design')` |
 | `spike` | 1.0.0 | Throwaway experiments to validate ideas before build | `skill_view(name='spike')` |
 | `memory-architecture` | 1.0.0 | Agent memory system — MEMORY.md structure, privacy, gitignore | `skill_view(name='memory-architecture')` |
 | `ecosystem-audit` | 1.0.0 | Evaluate third-party tools for adoption, integration, or removal | `skill_view(name='ecosystem-audit')` |
@@ -96,4 +97,5 @@ references remain.
 || 2026-06-15 | Added inbox-remediation devops skill v1.0.0 — auto-remediate hermes-cortex issues from agent inbox messages |
 || 2026-06-15 | orch-weekly-auto-fix v1.1.0 — added verification phase: each fix re-checks its condition post-fix with PASS/FAIL/WARN output |
 || 2026-06-17 | Added skill collection pipeline: collect-agent-skills.sh (agent-side reporter), request-skill-reports.sh (Moses orchestrator), process-skill-reports.py (digest compiler). Inbox server filename collision fix (microsecond precision). |
-|| 2026-06-12 | **Memory That Compounds** — change-test-loop v2.0.0 adds LEARN phase (search lessons before every code change). New lesson-aware-agent skill for universal injection. Daily lesson auto-miner (02:00 KST). Compound stats dashboard (02:30 KST). Replaced weekly mining with daily mining. |
+||| 2026-06-12 | **Memory That Compounds** — change-test-loop v2.0.0 adds LEARN phase (search lessons before every code change). New lesson-aware-agent skill for universal injection. Daily lesson auto-miner (02:00 KST). Compound stats dashboard (02:30 KST). Replaced weekly mining with daily mining. |
+||| 2026-07-07 | **Pocock Upgrade** — Three skills imported/upgraded from Matt Pocock's skills repo (159k ★). New `codebase-design` (deep module vocabulary). `systematic-debugging` v2.0 (6-phase with feedback loop). `code-review` v3.0 (two-axis Standards + Spec with Fowler smells). Integrated into agent-flow and architecture-review. |

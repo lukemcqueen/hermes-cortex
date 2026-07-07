@@ -11,7 +11,7 @@ metadata:
   hermes:
     tags: [architecture, design-review, decision-matrix, cost-estimation, conflict-resolution]
     trigger_phrases: [architecture review, design review, evaluate approach]
-    related_skills: [plan, writing-plans, spike, change-test-loop]
+    related_skills: [plan, writing-plans, spike, change-test-loop, codebase-design, systematic-debugging]
 ---
 
 # architecture-review: Architecture Review
@@ -197,9 +197,11 @@ After scoring by all 6 roles:
 
 ---
 
-## Related Skills
+## Integration with Other Skills
 
-- **plan** — Use after the review to turn the recommendation into a concrete implementation plan
+- **codebase-design** — Use deep module vocabulary (module, interface, depth, seam, adapter) during architecture reviews. When comparing approaches, evaluate their depth: does one hide more complexity behind a smaller interface? Is the seam well-placed? The "two adapters" rule prevents over-engineering ports.
+- **plan** — Use after the review to turn the recommendation into a concrete implementation plan, applying deep module principles from codebase-design
 - **writing-plans** — For documenting the chosen architecture in a structured design doc
 - **spike** — For prototyping the recommended approach before committing
 - **change-test-loop** — For implementing the chosen architecture with quality assurance built in
+- **systematic-debugging** — When architecture decisions lead to hard bugs, use the feedback loop approach to diagnose
