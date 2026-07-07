@@ -692,10 +692,14 @@ deploy_nginx_configs() {
   local zone_src="${nginx_src_dir}/hermes-zone-defs.conf"
   local zone_dst="${brew_dir}/hermes-zone-defs.conf"
   if needs_update "$zone_src" "$zone_dst"; then
-    if command -v sudo &>/dev/null && [[ "$brew_dir" == /etc/* ]]; then
-      sudo mkdir -p "$brew_dir" 2>/dev/null || true
-      sudo cp "$zone_src" "$zone_dst"
-      sudo chmod 644 "$zone_dst"
+    if [[ "$brew_dir" == /etc/* ]]; then
+      if command -v sudo &>/dev/null && sudo -n mkdir -p "$brew_dir" 2>/dev/null; then
+        sudo mkdir -p "$brew_dir"
+        sudo cp "$zone_src" "$zone_dst"
+        sudo chmod 644 "$zone_dst"
+      else
+        warn "  Passwordless sudo not available — skipping zone-defs deploy"
+      fi
     else
       mkdir -p "$brew_dir" 2>/dev/null || true
       cp "$zone_src" "$zone_dst"
@@ -808,11 +812,15 @@ deploy_nginx_configs() {
     fi
 
     # Write to sites-available (Linux) or servers/ (macOS)
-    # Pre-check: passwordless sudo for /etc/ paths
+    # Pre-check: specific sudo commands needed for deploy
     if [[ "$config_dir" == /etc/* ]]; then
-      if ! command -v sudo &>/dev/null || ! sudo -n true 2>/dev/null; then
-        warn "  Passwordless sudo not available — skipping nginx deploy"
-        warn "  To enable: echo \"${USER} ALL=(ALL) NOPASSWD: /usr/sbin/nginx, /bin/mkdir, /bin/cp, /bin/chmod, /bin/ln\" | sudo tee /etc/sudoers.d/hermes-cortex"
+      if ! command -v sudo &>/dev/null; then
+        warn "  sudo not available — skipping nginx deploy"
+        warn "  Config was written to: ${tmpfile}"
+      elif ! sudo -n mkdir -p "$(dirname "$conf_available")" 2>/dev/null; then
+        warn "  nginx deploy directory not writable — add sudoers rules:"
+        warn "    ${USER} ALL=(ALL) NOPASSWD: /bin/mkdir -p ${config_dir}/*"
+        warn "    ${USER} ALL=(ALL) NOPASSWD: /bin/cp ${tmpfile%/*}/* ${config_dir}/*"
         warn "  Config was written to: ${tmpfile}"
       else
         sudo mkdir -p "$(dirname "$conf_available")"
@@ -829,12 +837,12 @@ deploy_nginx_configs() {
     # Symlink sites-enabled -> sites-available when they differ (Linux convention)
     if [[ "$config_dir" != "$available_dir" ]]; then
       if [[ "$config_dir" == /etc/* ]]; then
-        if command -v sudo &>/dev/null && sudo -n true 2>/dev/null; then
+        if command -v sudo &>/dev/null && sudo -n mkdir -p "$config_dir" 2>/dev/null; then
           sudo mkdir -p "$config_dir"
           sudo ln -sf "$conf_available" "$conf_dst"
           info "  Symlinked: ${conf_dst} → ${conf_available}"
         fi
-        # No sudo? skip symlink (we already warned above)
+        # No mkdir sudo? skip symlink (we already warned above)
       else
         mkdir -p "$config_dir" 2>/dev/null || true
         ln -sf "$conf_available" "$conf_dst"
@@ -844,7 +852,7 @@ deploy_nginx_configs() {
 
     # Test the REAL deployed config — roll back on failure
     local nginx_test_out nginx_test_cmd
-    if command -v sudo &>/dev/null && sudo -n true 2>/dev/null; then
+    if command -v sudo &>/dev/null && sudo -n nginx -t 2>/dev/null; then
       nginx_test_cmd="sudo -n nginx -t 2>&1"
     else
       nginx_test_cmd="nginx -t 2>&1"
