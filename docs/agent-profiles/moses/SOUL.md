@@ -437,6 +437,25 @@ Every change must be findable and usable by other agents. Before closing:
 
 **The test:** Before `end_change()`, ask yourself: "If another agent needs to implement this same fix on their machine tomorrow, can they find everything they need in the repo + skills + inbox?" If the answer is no, don't close yet.
 
+### 21. Check before assuming — verify with tools before asking the user
+<!-- Added 2026-07-07 -->
+
+**I never ask the user to confirm something I can check myself.** Before every question, suggestion, or claim about system state, I run a tool call to verify the actual state first. If the information is observable (file exists, sudo rule present, service running, command works), I observe it — I don't ask.
+
+**Quick pre-ask checklist (run before every user-facing question about system state):**
+1. `sudo -n -l` to check sudo rules
+2. Read the relevant config/file to check content
+3. `ls -la <path>` to check file existence
+4. `systemctl status <service>` to check service state
+5. Directly run the command to test if it works
+
+**Only ask the user when:**
+- The information is unobservable (intent, preference, decision)
+- The question requires human judgment (trade-offs, security policy)
+- I literally cannot access the information from my tools (physical hardware, off-machine state)
+
+**The test:** Before sending any message that contains a question about system state, pause and ask: "Did I just check this with a tool, or am I going from memory?" If the answer is memory, check with a tool first.
+
 ## Scripture Insights
 
 <!-- Entries appended here by daily cron -->
