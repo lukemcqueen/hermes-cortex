@@ -23,13 +23,10 @@ blocked_ips.add (input)    nginx-badbots.conf (filter)    allow-ips-manual.conf 
          │                          │                              │
          └───────┬──────────────────┘                              │
                  │                  Strips allow-listed IPs        │
-    sudo hermes-security-apply ─────────────────────────────────────┘
+    bash deploy-blocked-ips.sh ────────────────────────────────────┘
          │
-         ├── Backs up old configs
-         ├── Deploys zone-defs + services
-         ├── Deduplicates includes
-         ├── Appends new IPs (skip dups, strip allow-listed)
-         ├── Installs fail2ban filter + jail
+         ├── Generates blocked_ips.conf from blocked_ips.add
+         ├── sudo cp to /etc/nginx/blocked_ips.conf
          ├── nginx -t (validate)
          └── Reloads fail2ban + nginx
 ```
@@ -42,7 +39,7 @@ The daily scanner feeds back into `blocked_ips.add`, creating a closed loop: **L
 |-------------|-------|
 | **nginx** | Required. Deploy scripts install configs and reload nginx. |
 | **fail2ban** | Required for automated bans. Pipeline integrates with fail2ban filters. |
-| **sudoers entry** | NOPASSWD for `/usr/local/sbin/hermes-security-apply` + nginx commands (only needed for legacy pipeline scripts). |
+| **sudoers entry** | No broad script NOPASSWD needed. Only tight rules: `sudo cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf`, `nginx -t`, `nginx -s reload`. |
 
 **Agents without nginx/fail2ban** — skip this pipeline entirely. The scanner
 silently exits when nginx logs aren't found, but there's no benefit to running
@@ -94,21 +91,16 @@ cp ~/hermes-cortex/deploy/hermes-services.env.example \
 # Set CORTEX_SSL_CERT_PATH, CORTEX_NGINX_PORT_PREFIX, etc.
 ```
 
-### 3. Install the legacy deploy script (optional)
+### 3. Deploy script auto-installed
 
-Only if your pipeline cron calls `/usr/local/sbin/hermes-security-apply`:
+`deploy-blocked-ips.sh` is deployed by `cortex-update.sh` to `~/.hermes/scripts/`.
+No manual install needed.
 
-```bash
-sudo install -o root -g wheel -m 0750 hermes-security-apply /usr/local/sbin/hermes-security-apply
-```
-
-### 4. Add passwordless sudo (for legacy script)
+### 4. Add passwordless sudo (tight rule only)
 
 ```bash
-echo '$(whoami) ALL=(root) NOPASSWD: /usr/local/sbin/hermes-security-apply' \
-  | sudo tee /etc/sudoers.d/hermes-security
-sudo chmod 440 /etc/sudoers.d/hermes-security
-sudo visudo -cf /etc/sudoers.d/hermes-security
+echo 'moses ALL=(root) NOPASSWD: /bin/cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf' \
+  | sudo tee -a /etc/sudoers.d/hermes
 ```
 
 ### 5. Set up fail2ban
@@ -166,11 +158,8 @@ The pipeline:
 ### 8. First deploy
 
 ```bash
-# Preferred
-python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py
-
-# Or legacy
-sudo /usr/local/sbin/hermes-security-apply
+# Generate and deploy blocked IPs (minimal-root)
+bash ~/.hermes/scripts/deploy-blocked-ips.sh
 ```
 
 ## Daily Operations
@@ -249,9 +238,9 @@ sudo systemctl reload fail2ban
 
 5. **fail2ban socket on macOS**: Requires root to access. Always use `sudo fail2ban-client`.
 
-6. **False-positive warning**: The legacy `hermes-security-apply` prints `⚠ blocked_ips.conf not yet included` even when it is. This is because the old script deploys to `/etc/nginx/servers/` but checks the `sites-enabled` path. Use the Python script instead.
+6. **False-positive warning**: The legacy script prints `⚠ blocked_ips.conf not yet included` even when it is. This was fixed in `deploy-blocked-ips.sh`.
 
-7. **IPv4 validation**: All scripts (`hermes-security-apply`, `generate-blocked-ips.py`, `fix-blocked-ips.py`) validate IPv4 format and reject garbage entries. The threat pipeline also filters via `awk` before appending to `blocked_ips.add`. If nginx -t fails with "invalid parameter `00:NN,NNN`", run `fix-blocked-ips.py` to regenerate from clean source.
+7. **IPv4 validation**: All scripts (`fix-blocked-ips.py`, `generate-blocked-ips.py`) validate IPv4 format and reject garbage entries. The threat pipeline also filters via `awk` before appending to `blocked_ips.add`.
 
 8. **Log paths on Linux**: The jail `logpath` must match your OS — `/var/log/nginx/access.log` on Linux vs `/usr/local/var/log/nginx/*-access.log` on macOS Homebrew.
 

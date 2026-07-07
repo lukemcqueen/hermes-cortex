@@ -1,22 +1,27 @@
-# Hermes security cron jobs — passwordless sudo for specific tools
-# Luke's deployment
-luke ALL=(root) NOPASSWD: /usr/bin/rkhunter
-luke ALL=(root) NOPASSWD: /usr/bin/aide
-luke ALL=(root) NOPASSWD: /usr/bin/lynis
-luke ALL=(root) NOPASSWD: /usr/bin/chkrootkit
-luke ALL=(root) NOPASSWD: /usr/sbin/nginx -t
-luke ALL=(root) NOPASSWD: /usr/sbin/nginx -s reload
-luke ALL=(root) NOPASSWD: /bin/systemctl reload nginx
-luke ALL=(root) NOPASSWD: /usr/bin/fail2ban-client reload
-luke ALL=(root) NOPASSWD: /usr/bin/fail2ban-client status
-luke ALL=(root) NOPASSWD: /usr/local/sbin/hermes-security-apply
-luke ALL=(root) NOPASSWD: /usr/bin/certbot renew --non-interactive
-luke ALL=(root) NOPASSWD: /usr/bin/certbot --version
-luke ALL=(root) NOPASSWD: /usr/bin/certbot renew --dry-run
-
-# Moses (Moses server) deployment — minimal set actually called by running scripts only
+# Hermes sudoers — minimal passwordless sudo for automation
+# Deployed at /etc/sudoers.d/hermes
+#
+# Moses agent — nginx management (called by crons)
 moses ALL=(root) NOPASSWD: /usr/sbin/nginx -t
 moses ALL=(root) NOPASSWD: /usr/sbin/nginx -s reload
+moses ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx
+moses ALL=(root) NOPASSWD: /usr/bin/systemctl start nginx
+moses ALL=(root) NOPASSWD: /usr/bin/systemctl stop nginx
+moses ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx
+
+# Moses agent — blocked IP deploy (tight single path)
+moses ALL=(root) NOPASSWD: /bin/cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf
+
+# Moses agent — htpasswd deploy
+moses ALL=(root) NOPASSWD: /usr/bin/cp /tmp/hermes-htpasswd /etc/nginx/.hermes-htpasswd
+
+# Moses agent — apt cleanup (called by system-alert-watchdog)
 moses ALL=(root) NOPASSWD: /usr/bin/apt autoremove --purge -y
 moses ALL=(root) NOPASSWD: /usr/bin/apt clean
-moses ALL=(root) NOPASSWD: /bin/cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf
+
+# Moses agent — read-only monitoring
+moses ALL=(root) NOPASSWD: /usr/bin/fail2ban-client status
+
+# Moses agent — certbot renewal
+moses ALL=(root) NOPASSWD: /usr/bin/certbot renew --non-interactive
+moses ALL=(root) NOPASSWD: /usr/bin/certbot certificates

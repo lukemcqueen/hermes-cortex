@@ -182,6 +182,7 @@ register "src/scripts/health/check-certs.py"               "${HERMES_HOME}/scrip
 register "src/scripts/inbox/generate-inbox-wrappers.py"   "${HERMES_HOME}/scripts/generate-inbox-wrappers.py"
 register "src/scripts/manage/nginx-security-scanner.sh"    "${HERMES_HOME}/scripts/nginx-security-scanner.sh"
 register "src/scripts/manage/nginx-threat-pipeline.sh"     "${HERMES_HOME}/scripts/nginx-threat-pipeline.sh"
+register "src/scripts/manage/deploy-blocked-ips.sh"        "${HERMES_HOME}/scripts/deploy-blocked-ips.sh"
 register "src/scripts/agent/agent-remediate-apply.py"  "${HERMES_HOME}/scripts/agent-remediate-apply.py"
 register "src/scripts/agent/agent-apply-fixes.py"      "${HERMES_HOME}/scripts/agent-apply-fixes.py"
 register "src/scripts/agent/agent-ip-submission.sh"      "${HERMES_HOME}/scripts/agent-ip-submission.sh"

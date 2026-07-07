@@ -14,7 +14,7 @@ and auto-detects macOS (Intel + ARM) vs Linux paths.
 | fail2ban log not found | `fail2ban installed but no log file — skipping` |
 | `deploy/nginx/` dir missing | `mkdir -p` before append |
 | cortex repo missing | `cortex repo not found — skipping commit` |
-| deploy script not on any platform path | `hermes-security-apply not found — skipping` |
+| deploy script not found | `deploy-blocked-ips.sh not found — skipping` |
 | nginx binary not found | `nginx not found — skipping deploy` |
 | no `timeout`/`gtimeout` binary | Runs without timeout instead of failing |
 
@@ -23,7 +23,7 @@ and auto-detects macOS (Intel + ARM) vs Linux paths.
 | Concern | Detection order |
 |---------|----------------|
 | **timeout** | `timeout` (Linux) → `gtimeout` (macOS brew coreutils) |
-| **hermes-security-apply** | `/usr/local/sbin/` (Linux/Mac Intel) → `/opt/homebrew/sbin/` (Mac ARM) |
+| **deploy-blocked-ips.sh** | `~/.hermes/scripts/` (symlinked to Hermes home) |
 | **nginx binary** | `/usr/sbin/nginx` (Linux) → `/usr/local/bin/nginx` (Mac Intel) → `/opt/homebrew/bin/nginx` (Mac ARM) |
 | **fail2ban log** | `/var/log/fail2ban.log` (Linux) → `/opt/homebrew/var/log/` (Mac ARM) → `/usr/local/var/log/` (Mac Intel) |
 

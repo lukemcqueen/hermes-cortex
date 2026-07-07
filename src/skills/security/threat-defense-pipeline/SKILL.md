@@ -42,11 +42,8 @@ SKIP_PRE_PUSH=1 git push origin main
 Then deploy live:
 
 ```bash
-# Preferred
-python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py
-
-# Or legacy (what the cron pipeline uses)
-sudo /usr/local/sbin/hermes-security-apply
+# Deploy blocked IPs (minimal-root)
+bash ~/.hermes/scripts/deploy-blocked-ips.sh
 ```
 
 ### OR let the daily pipeline handle it:
@@ -93,24 +90,25 @@ sudo fail2ban-client status sshd             # sshd ban list
 
 ## Pipeline Self-Healing
 
-The threat-pipeline script (`src/scripts/nginx-threat-pipeline.sh`) self-heals:
-- If `sudo -n hermes-security-apply` fails (missing NOPASSWD), it auto-runs `deploy- sudoers.sh` and retries
+The threat-pipeline script (`src/scripts/manage/nginx-threat-pipeline.sh`) uses `deploy-blocked-ips.sh` for minimal-root deploy:
+- Generates `blocked_ips.conf` from `blocked_ips.add` using `fix-blocked-ips.py` (no root)
+- Deploys with a single tight `sudo cp` rule (one specific path only)
+- Validates with `sudo nginx -t`, reloads with `sudo nginx -s reload`
 - Git commits use `SKIP_SCORE=1` to bypass governance hooks
 - Git pushes use `SKIP_PRE_PUSH=1` to bypass pre-push pull checks
 
 ## Manual Deploy (for agents with sudo access)
 
 ```bash
-# Preferred — handles SSL, port prefixes, allow-ips-manual
-python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py
+# Deploy blocked IPs (minimal-root — only needs sudo cp)
+bash ~/.hermes/scripts/deploy-blocked-ips.sh
 
-# Legacy (what the cron pipeline uses)
-sudo /usr/local/sbin/hermes-security-apply
+# Or from the repo directly:
+bash ~/hermes-cortex/src/scripts/manage/deploy-blocked-ips.sh
 ```
 
-Both deploy blocked IPs, fail2ban filter, nginx configs, validate, and reload.
-The legacy script has a known false-positive warning (`⚠ blocked_ips.conf not yet included`)
-— use the Python script to avoid it.
+Generates `blocked_ips.conf` from `blocked_ips.add`, deploys with `sudo cp`,
+validates with `nginx -t`, and reloads nginx. No broad sudo script needed.
 
 ## Architecture
 
