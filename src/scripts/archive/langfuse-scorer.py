@@ -8,9 +8,9 @@ Two modes:
   2. LLM-assisted — uses Langfuse evaluator config if set up
 
 Usage:
-  python3 ~/.hermes/scripts/langfuse-scorer.py
-  python3 ~/.hermes/scripts/langfuse-scorer.py --trace-id <id>
-  python3 ~/.hermes/scripts/langfuse-scorer.py --dry-run
+  python3 ~/.hermes-cortex/scripts/langfuse-scorer.py
+  python3 ~/.hermes-cortex/scripts/langfuse-scorer.py --trace-id <id>
+  python3 ~/.hermes-cortex/scripts/langfuse-scorer.py --dry-run
 """
 
 import json

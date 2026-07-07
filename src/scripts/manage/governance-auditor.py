@@ -35,7 +35,7 @@ MAX_FILES_SHOWN = 15
 DB_PATH = os.path.expanduser(
     os.environ.get(
         "SCORE_DB_PATH",
-        "~/.hermes/data/loop-governance.db"
+        "~/.hermes-cortex/data/loop-governance.db"
     )
 )
 SCANNED_DIRS = [

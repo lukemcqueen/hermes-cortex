@@ -2,7 +2,7 @@
 """
 Loop Governance Config — runtime thresholds and weights for the scoring system.
 
-Config lives at ~/.hermes/data/loop-governance-config.json and is read on every
+Config lives at ~/.hermes-cortex/data/loop-governance-config.json and is read on every
 score call (cheap — ~50µs file stat). This allows safe, auditable runtime tuning
 without patching Python source files.
 
@@ -16,7 +16,7 @@ import json
 import os
 
 DEFAULT_CONFIG_PATH = os.path.expanduser(
-    "~/.hermes/data/loop-governance-config.json"
+    "~/.hermes-cortex/data/loop-governance-config.json"
 )
 
 DEFAULTS = {

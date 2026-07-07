@@ -142,7 +142,7 @@ if ! echo "$PATH" | tr ':' '\n' | grep -q "${HOME}/.local/bin"; then
 fi
 
 # ── Database directory ─────────────────────────────────────
-DB_DIR="${HOME}/.hermes/data"
+DB_DIR="${HOME}/.hermes-cortex/data"
 mkdir -p "$DB_DIR"
 
 # ── Config ──────────────────────────────────────────────────

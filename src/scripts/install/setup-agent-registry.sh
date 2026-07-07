@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # setup-agent-registry.sh — First-time setup for agent-registry.json
 #
-# Creates ~/.hermes/state/agent-registry.json from the template
+# Creates ~/.hermes-cortex/state/agent-registry.json from the template
 # by filling in real server URLs. Skips if file already exists.
 #
 # Usage:
@@ -17,7 +17,7 @@ CORTEX_HOME="${CORTEX_HOME:-$HOME/hermes-cortex}"
 STATE_DIR="$HOME/.hermes/state"
 TEMPLATE="$CORTEX_HOME/src/agent-registry.template.json"
 TARGET="$STATE_DIR/agent-registry.json"
-LOCAL_OVERRIDE="$HOME/.hermes/agent-registry.local.json"
+LOCAL_OVERRIDE="$HOME/.hermes-cortex/state/agent-registry.local.json"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()  { echo -e "${CYAN}ℹ${NC} $1"; }

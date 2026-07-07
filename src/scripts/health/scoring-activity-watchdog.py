@@ -21,7 +21,7 @@ def _cron_ts(name: str) -> str:
     return f"{kst} {name}:"
 
 
-DB_PATH = os.path.expanduser("~/.hermes/data/loop-governance.db")
+DB_PATH = os.path.expanduser("~/.hermes-cortex/data/loop-governance.db")
 THRESHOLDS = {
     # hour: minimum cycles expected by that time
     14: 1,  # by 2pm: at least 1 change scored

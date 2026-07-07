@@ -12,7 +12,7 @@ Schema (auto-created on first use):
 Usage:
     from loop_db import LoopDB
 
-    db = LoopDB("~/.hermes/data/loop-governance.db")
+    db = LoopDB("~/.hermes-cortex/data/loop-governance.db")
     db.log_cycle(task_id="task-1", cycle_num=1, completeness=8.0, ...)
     stats = db.get_summary_stats()
     db.close()
@@ -42,8 +42,8 @@ def content_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
-DEFAULT_DB_PATH = os.path.expanduser("~/.hermes/data/loop-governance.db")
-EVENTS_DIR = os.path.expanduser("~/.hermes/data/loop-events")
+DEFAULT_DB_PATH = os.path.expanduser("~/.hermes-cortex/data/loop-governance.db")
+EVENTS_DIR = os.path.expanduser("~/.hermes-cortex/data/loop-events")
 
 
 class LoopDB:
@@ -303,12 +303,12 @@ class LoopDB:
 
         Args:
             days: Age threshold in days (default 90).
-            archive_dir: Directory for JSON archives (default: ~/.hermes/data/loop-archive/).
+            archive_dir: Directory for JSON archives (default: ~/.hermes-cortex/data/loop-archive/).
 
         Returns:
             dict with count of archived cycles, archive path, and DB size before/after.
         """
-        archive_dir = archive_dir or os.path.expanduser("~/.hermes/data/loop-archive")
+        archive_dir = archive_dir or os.path.expanduser("~/.hermes-cortex/data/loop-archive")
         os.makedirs(archive_dir, exist_ok=True)
 
         # Get size before

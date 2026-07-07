@@ -9,7 +9,7 @@ Usage:
     action = st.evaluate(fp)
     # action: "silent" (same as before), "alert" (new error), "resolve" (error cleared)
 
-State files stored in ~/.hermes/state/<cron-name>.state
+State files stored in ~/.hermes-cortex/state/<cron-name>.state
 """
 
 import hashlib
@@ -18,7 +18,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-STATE_DIR = Path.home() / ".hermes" / "state"
+STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 
 
 class StateTracker:

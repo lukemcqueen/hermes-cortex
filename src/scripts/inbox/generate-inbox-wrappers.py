@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """generate-inbox-wrappers.py — Generate per-agent inbox watch wrappers from registry.
 
-Reads ~/.hermes/state/agent-registry.json and creates wrapper scripts
+Reads ~/.hermes-cortex/state/agent-registry.json and creates wrapper scripts
 for each agent that has inbox_user and inbox_watch_schedule set.
 
 Usage:
@@ -169,7 +169,7 @@ def main():
 
     print()
     print("Done. To add a new agent:")
-    print("  1. Add entry to ~/.hermes/state/agent-registry.json")
+    print("  1. Add entry to ~/.hermes-cortex/state/agent-registry.json")
     print("  2. Create config: ~/.hermes/agent-inbox-<agent>.conf")
     print("  3. Run: python3 generate-inbox-wrappers.py --apply-crons")
     print()

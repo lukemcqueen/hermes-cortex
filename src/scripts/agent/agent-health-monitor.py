@@ -13,13 +13,13 @@ no_agent watchdog pattern:
   Empty stdout → silent (no state change)
   Text output  → delivered (new issues or resolutions)
 
-State tracked in ~/.hermes/state/health-state.json — fingerprints
+State tracked in ~/.hermes-cortex/state/health-state.json — fingerprints
 per server so alerts only fire on state transitions.
 
-Structured health data written to ~/.hermes/state/agent-health-data.json
+Structured health data written to ~/.hermes-cortex/state/agent-health-data.json
 for dashboard consumption — updated every poll cycle.
 
-Agent registry at ~/.hermes/state/agent-registry.json — each agent
+Agent registry at ~/.hermes-cortex/state/agent-registry.json — each agent
 entry can set "health_url" for remote health API endpoint.
 Moses's own health is checked at http://127.0.0.1:8905 via fallback.
 

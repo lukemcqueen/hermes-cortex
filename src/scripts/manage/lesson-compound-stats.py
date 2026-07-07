@@ -2,9 +2,9 @@
 """Lesson Compound Stats — reports the compounding value of the lesson database.
 
 Usage:
-  python3 ~/.hermes/scripts/lesson-compound-stats.py          # full report
-  python3 ~/.hermes/scripts/lesson-compound-stats.py --brief  # one-liner for cron
-  python3 ~/.hermes/scripts/lesson-compound-stats.py --json   # machine-readable
+  python3 ~/.hermes-cortex/scripts/lesson-compound-stats.py          # full report
+  python3 ~/.hermes-cortex/scripts/lesson-compound-stats.py --brief  # one-liner for cron
+  python3 ~/.hermes-cortex/scripts/lesson-compound-stats.py --json   # machine-readable
 
 Outputs the growth, usage, and estimated time saved from the lesson system.
 """

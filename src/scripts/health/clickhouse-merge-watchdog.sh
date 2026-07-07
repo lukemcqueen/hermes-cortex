@@ -4,7 +4,7 @@
 # State file tracks failure count between runs to detect increases.
 set -euo pipefail
 
-STATE_FILE="${HOME}/.hermes/scripts/state/clickhouse-merge-watchdog.state"
+STATE_FILE="${HOME}/.hermes-cortex/scripts/state/clickhouse-merge-watchdog.state"
 CONTAINER="langfuse-clickhouse-1"
 QUERY="SELECT value FROM system.metrics WHERE metric = 'TotalMergeFailures'"
 DETAILS_QUERY="SELECT

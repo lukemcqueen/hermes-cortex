@@ -25,8 +25,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
-CACHE_DB = HOME / ".hermes" / "data" / "session-embeddings.db"
-LOOP_DB = HOME / ".hermes" / "data" / "loop-governance.db"
+CACHE_DB = HOME / ".hermes-cortex" / "data" / "session-embeddings.db"
+LOOP_DB = HOME / ".hermes-cortex" / "data" / "loop-governance.db"
 SESSION_DIR = HOME / ".hermes-cortex" / "sessions"
 SKILLS_DIR = HOME / ".hermes-cortex" / "skills" / "software-development"
 INBOX_DIR = HOME / "agent-inbox-private" / "inbox"

@@ -31,7 +31,7 @@ from pathlib import Path
 REPO_HOME = Path.home() / "hermes-cortex"
 CARD_TEMPLATE = REPO_HOME / "src" / "a2a" / "agent-card.json"
 CORTEX_HOME = Path(os.environ.get("CORTEX_HOME", str(Path.home() / "hermes-cortex")))
-STATE_DIR = Path.home() / ".hermes" / "state"
+STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 
 
 def load_template() -> dict:

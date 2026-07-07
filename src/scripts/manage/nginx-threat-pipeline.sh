@@ -263,7 +263,7 @@ else
 fi
 
 # ── Save state ──
-date -u +"%Y-%m-%dT%H:%M:%SZ" > "${HOME}/.hermes/state/nginx-threat-pipeline-lastrun"
+date -u +"%Y-%m-%dT%H:%M:%SZ" > "${HOME}/.hermes-cortex/state/nginx-threat-pipeline-lastrun"
 
 # ── Output (watchdog: silent unless changes) ──
 if $NEW_IPS; then

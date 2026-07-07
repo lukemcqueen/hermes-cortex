@@ -2,7 +2,7 @@
 # ─────────────────────────────────────────────────────────────
 #  orch-inbox-remediate.sh — Read pending remediation markers
 #
-#  Reads ~/.hermes/state/remediate/ for pending fix requests
+#  Reads ~/.hermes-cortex/state/remediate/ for pending fix requests
 #  left by check-agent-messages.sh. Outputs structured JSON.
 #
 #  Output: JSON array. Empty [] when nothing pending (silent).
@@ -11,7 +11,7 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-REMEDIATE_DIR="${HOME}/.hermes/state/remediate"
+REMEDIATE_DIR="${HOME}/.hermes-cortex/state/remediate"
 DONE_DIR="${REMEDIATE_DIR}/done"
 PRIVATE_REPO="${HOME}/hermes-cortex-private"
 INBOX_DIR="${PRIVATE_REPO}/messages/inbox"

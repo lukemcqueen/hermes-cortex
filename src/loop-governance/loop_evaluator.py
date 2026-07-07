@@ -23,7 +23,7 @@ import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-DEFAULT_DB_PATH = os.path.expanduser("~/.hermes/data/loop-governance.db")
+DEFAULT_DB_PATH = os.path.expanduser("~/.hermes-cortex/data/loop-governance.db")
 
 
 class LoopEvaluator:

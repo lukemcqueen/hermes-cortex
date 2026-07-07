@@ -12,7 +12,7 @@ INTENDED USAGE:
     
     # Via execute_code in Hermes agent
     from hermes_tools import execute_code
-    execute_code(code="python3 ~/.hermes/scripts/run-evals.py --eval cron-installation")
+    execute_code(code="python3 ~/.hermes-cortex/scripts/run-evals.py --eval cron-installation")
 
 NOTES:
     This script imports from hermes_tools, which is only available inside

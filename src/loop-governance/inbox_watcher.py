@@ -49,7 +49,7 @@ if INBOX_AUTH and ":" in INBOX_AUTH:
     AUTH_HEADER = {"Authorization": f"Basic {encoded}"}
 
 INBOX_DIR = Path.home() / "agent-inbox-private" / "inbox"
-LAST_SEEN_FILE = Path.home() / ".hermes" / "data" / "inbox-last-seen.txt"
+LAST_SEEN_FILE = Path.home() / ".hermes-cortex" / "data" / "inbox-last-seen.txt"
 
 
 def fetch_inbox_html() -> str:

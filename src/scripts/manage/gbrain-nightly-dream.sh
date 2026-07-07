@@ -16,7 +16,7 @@ set -euo pipefail
 
 export PATH="$HOME/.bun/bin:$PATH"
 export GBRAIN_AI_EMBED_TIMEOUT_MS=300000
-WRAPPER="$HOME/.hermes/scripts/gbrain-wrapper.sh"
+WRAPPER="$HOME/.hermes-cortex/scripts/gbrain-wrapper.sh"
 
 # ── Configuration (env-overridable) ─────────────────────────────────
 

@@ -404,7 +404,7 @@ def check_resources():
 # ── Loop Governance Health ──────────────────────────────
 
 def check_loop_gov():
-    LOOP_DB = Path.home() / ".hermes" / "data" / "loop-governance.db"
+    LOOP_DB = Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"
     try:
         ollama_up = False
         try:

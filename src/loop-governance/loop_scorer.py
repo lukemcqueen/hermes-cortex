@@ -31,7 +31,7 @@ except ImportError:
     import sys
     from pathlib import Path
     for candidate in [
-        Path.home() / ".hermes" / "scripts",                # ~/.hermes/scripts/ (deployment)
+        Path.home() / ".hermes-cortex" / "scripts",                # ~/.hermes/scripts/ (deployment)
         Path.home() / ".hermes-cortex" / "scripts",          # ~/.hermes-cortex/scripts/
         Path(__file__).resolve().parent.parent / "scripts",  # repo src/scripts/ or tools/scripts/
     ]:
@@ -155,7 +155,7 @@ def score_progress(previous_output: str, current_output: str) -> float:
 
 def _cache_boost(text: str) -> float:
     """Check embedding cache for similar known-good patterns. Returns 0-2 boost."""
-    cache_path = os.path.expanduser("~/.hermes/data/session-embeddings.db")
+    cache_path = os.path.expanduser("~/.hermes-cortex/data/session-embeddings.db")
     if not os.path.exists(cache_path):
         return 0.0
     try:

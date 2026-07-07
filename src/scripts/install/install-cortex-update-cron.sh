@@ -5,7 +5,7 @@
 #  Creates a system-level cron job (launchd / systemd timer /
 #  crontab) that runs cortex-update.sh daily at 3am.
 #  The job is silent when nothing changed and writes
-#  ~/.hermes/state/last-update.{json,txt} on changes.
+#  ~/.hermes-cortex/state/last-update.{json,txt} on changes.
 #
 #  The operator (Luke role) is notified by whatever delivery
 #  channel the cron is configured with. When the cron's output

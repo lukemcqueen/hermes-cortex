@@ -5,17 +5,17 @@ no_agent watchdog pattern:
   Empty stdout → silent (no state change)
   Text output  → delivered (new issues or resolutions)
 
-State tracked in ~/.hermes/state/health-state.json — fingerprints
+State tracked in ~/.hermes-cortex/state/health-state.json — fingerprints
 per agent so alerts only fire on state transitions.
 
-Structured health data written to ~/.hermes/state/agent-health-data.json
+Structured health data written to ~/.hermes-cortex/state/agent-health-data.json
 for dashboard consumption — updated every poll cycle.
 
 Two health methods:
   - http:   Poll agent's health-vector HTTP endpoint (server agents)
   - inbox:  Read agent's latest health push from the inbox (client-only agents)
 
-Agent registry at ~/.hermes/state/agent-registry.json — each agent
+Agent registry at ~/.hermes-cortex/state/agent-registry.json — each agent
 entry must set health_method to "http" or "inbox".
 """
 from __future__ import annotations
@@ -126,7 +126,7 @@ def _inbox_request(path: str, method: str = "GET") -> dict | None:
 def _get_agents() -> list[dict]:
     """Load all tracked agents from registry — HTTP-pollable and inbox-based.
 
-    Merges local overrides from ~/.hermes/agent-registry.local.json on top of
+    Merges local overrides from ~/.hermes-cortex/state/agent-registry.local.json on top of
     the main registry. Local overrides can set health_url, accessible, etc.
     without committing to the public repo.
     """

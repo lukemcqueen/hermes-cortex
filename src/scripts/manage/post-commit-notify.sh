@@ -23,7 +23,7 @@
 set -euo pipefail
 
 # ── Paths ──
-STATE_FILE="${HOME}/.hermes/state/post-commit-notify"
+STATE_FILE="${HOME}/.hermes-cortex/state/post-commit-notify"
 LOG_FILE="${STATE_FILE}.log"
 CONFIG_FILE="${HOME}/.hermes/hermes-inbox.conf"
 

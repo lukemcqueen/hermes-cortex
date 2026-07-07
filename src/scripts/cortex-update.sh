@@ -849,7 +849,7 @@ deploy_system_scripts() {
 
   # Remove old local copies — canonical version is now in /usr/local/sbin/
   local home_link="${HERMES_HOME}/scripts/install-nginx-full.sh"
-  local agent_link="${HOME}/.hermes/scripts/install-nginx-full.sh"
+  local agent_link="${HOME}/.hermes-cortex/scripts/install-nginx-full.sh"
   [[ -f "$home_link" ]] && rm -f "$home_link"
   [[ -f "$agent_link" ]] && rm -f "$agent_link"
 }
@@ -1082,7 +1082,7 @@ main() {
   # (cron security guard resolves this directory and checks script
   # paths against it — a directory-level symlink means both sides
   # of the check land in the same tree, no core agent patch needed)
-  _HERMES_AGENT_SCRIPTS="${HOME}/.hermes/scripts"
+  _HERMES_AGENT_SCRIPTS="${HOME}/.hermes-cortex/scripts"
   _CORTEX_DEPLOY_SCRIPTS="${HERMES_HOME}/scripts"
   # Safety guard: skip symlink dance when both paths resolve to the same directory.
   # This happens when HERMES_HOME is already set to ~/.hermes — rm -rf would
@@ -1096,13 +1096,13 @@ main() {
     if [ -z "$_UNIQUE" ]; then
       rm -rf "$_HERMES_AGENT_SCRIPTS"
       ln -sf "$_CORTEX_DEPLOY_SCRIPTS" "$_HERMES_AGENT_SCRIPTS"
-      info "Linked ~/.hermes/scripts/ → cortex (directory symlink)"
+      info "Linked ~/.hermes-cortex/scripts/ (directory symlink)"
     else
-      warn "~/.hermes/scripts/ has unique files: $_UNIQUE — not replacing"
+      warn "~/.hermes-cortex/scripts/ has unique files: $_UNIQUE — not replacing"
     fi
   elif [ ! -e "$_HERMES_AGENT_SCRIPTS" ]; then
     ln -sf "$_CORTEX_DEPLOY_SCRIPTS" "$_HERMES_AGENT_SCRIPTS"
-    info "Created ~/.hermes/scripts/ → cortex symlink"
+    info "Created ~/.hermes-cortex/scripts/ symlink"
   fi
 
   # Install pre-commit scoring hook in repo

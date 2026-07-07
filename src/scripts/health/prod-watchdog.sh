@@ -11,7 +11,7 @@
 #  docker compose, discovers the project directory dynamically
 #  from Docker labels.
 #
-#  State: persistent counter in ~/.hermes/state/watchdog-*.count
+#  State: persistent counter in ~/.hermes-cortex/state/watchdog-*.count
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -20,7 +20,7 @@ SITES=(
   "site2.com|static"
 )
 
-STATE_DIR="${HOME}/.hermes/state"
+STATE_DIR="${HOME}/.hermes-cortex/state"
 mkdir -p "$STATE_DIR"
 
 ERRORS=""

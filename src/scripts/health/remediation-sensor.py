@@ -35,7 +35,7 @@ if CORTEX_REPO_ENV:
 else:
     CORTEX_REPO = HOME / "hermes-cortex"
 CORTEX_SCRIPTS = CORTEX_REPO / "src" / "scripts"
-WEB_CACHE = HOME / ".hermes" / "data" / "web_cache.sqlite"
+WEB_CACHE = HOME / ".hermes-cortex" / "data" / "web_cache.sqlite"
 
 ISSUES = []
 

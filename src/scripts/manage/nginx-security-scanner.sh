@@ -42,7 +42,7 @@ elif [ -d "/opt/homebrew/var/log/nginx" ]; then
 else
   LOG_DIR="/usr/local/var/log/nginx"
 fi
-STATE_FILE="${HOME}/.hermes/state/nginx-scanner-lastrun"
+STATE_FILE="${HOME}/.hermes-cortex/state/nginx-scanner-lastrun"
 
 mkdir -p "$(dirname "$STATE_FILE")"
 

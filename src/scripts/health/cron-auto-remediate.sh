@@ -142,7 +142,7 @@ case "${ACTION}" in
     fi
 
     # Check web cache
-    WEB_CACHE="${HOME}/.hermes/data/web_cache.sqlite"
+    WEB_CACHE="${HOME}/.hermes-cortex/data/web_cache.sqlite"
     if [ -f "${WEB_CACHE}" ]; then
       SIZE_MB=$(du -m "${WEB_CACHE}" 2>/dev/null | cut -f1 || echo 0)
       if [ "${SIZE_MB}" -gt 200 ] 2>/dev/null; then

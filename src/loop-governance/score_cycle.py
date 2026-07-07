@@ -64,7 +64,7 @@ import sys
 from loop_scorer import full_score
 from loop_db import LoopDB
 
-DEFAULT_DB_PATH = os.path.expanduser("~/.hermes/data/loop-governance.db")
+DEFAULT_DB_PATH = os.path.expanduser("~/.hermes-cortex/data/loop-governance.db")
 
 
 def read_or_none(path):

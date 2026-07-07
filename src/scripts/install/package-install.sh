@@ -14,7 +14,7 @@
 #   BYPASS_AGE_CHECK=1 pip-safe install brand-new-package
 
 MIN_AGE_DAYS="${MIN_AGE_DAYS:-14}"
-CHECKER="$HOME/.hermes/scripts/check-package-age.py"
+CHECKER="$HOME/.hermes-cortex/scripts/check-package-age.py"
 
 if [ ! -f "$CHECKER" ]; then
     echo "🚨 Package age checker not found at $CHECKER"

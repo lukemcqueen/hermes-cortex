@@ -13,7 +13,7 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-WRAPPER="${HOME}/.hermes/scripts/gbrain-wrapper.sh"
+WRAPPER="${HOME}/.hermes-cortex/scripts/gbrain-wrapper.sh"
 GBRAIN_BIN="$(command -v gbrain || echo "${HOME}/.bun/bin/gbrain")"
 
 if [ ! -x "$GBRAIN_BIN" ]; then

@@ -25,8 +25,8 @@ import json, os, re, sys, subprocess, textwrap, time, urllib.error, urllib.reque
 from pathlib import Path
 from typing import Optional
 
-# Ensure ~/.hermes/scripts/ is on sys.path before importing hermes_paths
-_HERMES_SCRIPTS = Path.home() / ".hermes" / "scripts"
+# Ensure ~/.hermes-cortex/scripts/ is on sys.path before importing hermes_paths
+_HERMES_SCRIPTS = Path.home() / ".hermes-cortex" / "scripts"
 if str(_HERMES_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_HERMES_SCRIPTS))
 

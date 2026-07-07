@@ -29,7 +29,7 @@ mkdir -p "$INBOX_DIR" "$PROCESSED_DIR" "$STATE_DIR"
 date -u +"%Y-%m-%dT%H:%M:%SZ" > "$STATE_FILE"
 
 # Read agent registry for routing targets
-AGENT_REGISTRY="${HOME}/.hermes/state/agent-registry.json"
+AGENT_REGISTRY="${HOME}/.hermes-cortex/state/agent-registry.json"
 BROADCAST_TOPICS="luke|all|general"
 if [ -f "$AGENT_REGISTRY" ]; then
   # Extract broadcast topics + all agent names from registry
@@ -138,7 +138,7 @@ for msg in "${INBOX_FILES[@]}"; do
 
       if $NEEDS_FIX; then
         # Write a remediation marker
-        REMEDIATE_DIR="${HOME}/.hermes/state/remediate"
+        REMEDIATE_DIR="${HOME}/.hermes-cortex/state/remediate"
         mkdir -p "${REMEDIATE_DIR}"
         echo "from=${from}" > "${REMEDIATE_DIR}/inbox-$(date +%s).txt"
         echo "subject=${subject}" >> "${REMEDIATE_DIR}/inbox-$(date +%s).txt"

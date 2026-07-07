@@ -4,7 +4,7 @@
 no_agent cron script. Runs every 10 minutes.
 
 Strategy:
-  1. Scan ~/.hermes/state/remediate/ for inbox-*.txt markers
+  1. Scan ~/.hermes-cortex/state/remediate/ for inbox-*.txt markers
   2. If none → silent exit (no delivery, no tokens wasted)
   3. Read each marker, extract keywords from subject/body
   4. Search offline code corpus with those keywords
@@ -187,7 +187,7 @@ def apply_fix(marker: dict, handlers: dict) -> tuple[str | None, list]:
 
 # ── Marker reading ────────────────────────────────────────────
 def scan_markers() -> list[dict]:
-    """Scan ~/.hermes/state/remediate/ for pending inbox markers."""
+    """Scan ~/.hermes-cortex/state/remediate/ for pending inbox markers."""
     if not REMEDIATE_DIR.exists():
         return []
     
