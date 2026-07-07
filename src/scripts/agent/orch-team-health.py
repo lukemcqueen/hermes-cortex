@@ -51,6 +51,12 @@ CORTEX_ENV = HOME / "hermes-cortex" / ".env"
 TIMEOUT = 5
 HEALTH_TOPIC = "health"
 
+# Grace period for laptop/client agents (no alert if last seen within this window)
+# Titus is a macOS laptop that sleeps — 4h grace avoids false alerts on lid close
+LAPTOP_GRACE_MINUTES = 240
+
+LAST_SEEN_FILE = HOME / ".hermes" / "state" / "last-seen.json"
+
 SERVICE_MAP = [
     "resources", "services", "no_errored_crons", "no_stale_crons",
     "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok",
@@ -93,8 +99,8 @@ def _load_inbox_config() -> dict:
 INBOX_CFG = _load_inbox_config()
 
 
-def _inbox_request(path: str) -> dict | None:
-    """Make an authenticated GET to the inbox API. Returns parsed JSON or None."""
+def _inbox_request(path: str, method: str = "GET") -> dict | None:
+    """Make an authenticated request to the inbox API. Returns parsed JSON or None."""
     if not INBOX_CFG["url"]:
         return None
 
@@ -104,10 +110,13 @@ def _inbox_request(path: str) -> dict | None:
         encoded = base64.b64encode(INBOX_CFG["auth"].encode()).decode()
         headers["Authorization"] = f"Basic {encoded}"
 
-    req = urllib.request.Request(url, headers=headers, method="GET")
+    req = urllib.request.Request(url, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-            return json.loads(resp.read().decode())
+            body = resp.read().decode()
+            if not body:
+                return {}
+            return json.loads(body)
     except (HTTPError, URLError, json.JSONDecodeError, TimeoutError, OSError):
         return None
 
@@ -211,24 +220,89 @@ def _fetch_http(url: str, auth: str = "") -> dict | None:
     return None
 
 
-def _fetch_inbox(agent_key: str) -> dict | None:
-    """Read the latest health push from the inbox for a given agent.
+def _fetch_inbox(agent_key: str) -> tuple[dict | None, str | None]:
+    """Read health pings from inbox — keep oldest (anchor), delete newer ones.
 
-    Looks for the most recent message on the 'health' topic from this agent
-    and parses the body as a health vector.
+    Returns (parsed_health_data, anchor_timestamp_iso) or (None, None).
+    The anchor stays in the inbox as a "Titus was alive since X" marker.
+    Newer pings are deleted — they confirmed liveness at their timestamp,
+    but only the anchor and the recency of inbox access matter for alerting.
     """
-    data = _inbox_request(f"api/inbox?limit=10&topic={HEALTH_TOPIC}")
+    data = _inbox_request(f"api/inbox?limit=20&topic={HEALTH_TOPIC}")
     if not data:
-        return None
+        return None, None
 
     msgs = data.get("messages", [])
-    # Find most recent message from this agent
-    for msg in msgs:
-        if msg.get("from", "").lower() == agent_key.lower():
-            body = msg.get("body", "").strip()
-            return _parse_vector_body(body)
+    # Find messages from this agent, sorted oldest first
+    agent_msgs = [
+        m for m in msgs
+        if m.get("from", "").lower() == agent_key.lower()
+    ]
+    if not agent_msgs:
+        return None, None
 
-    return None
+    # Sort by timestamp ascending (oldest first)
+    agent_msgs.sort(key=lambda m: m.get("timestamp", ""))
+
+    if len(agent_msgs) == 1:
+        # Only the anchor — no new pings to delete
+        anchor = agent_msgs[0]
+        result = _parse_vector_body(anchor.get("body", ""))
+        return result, anchor.get("timestamp")
+
+    # Keep oldest (anchor), delete everything newer
+    anchor = agent_msgs[0]
+    for msg in agent_msgs[1:]:
+        filename = msg.get("filename", "")
+        if filename:
+            _inbox_request(f"api/delete/{filename}", method="DELETE")
+
+    result = _parse_vector_body(anchor.get("body", ""))
+    return result, anchor.get("timestamp")
+
+
+# ── Last-seen tracking (laptop grace period) ──
+
+
+def _record_last_seen(agent_key: str, timestamp_iso: str) -> None:
+    """Persist the latest anchor timestamp for an inbox agent."""
+    if not LAST_SEEN_FILE.parent.exists():
+        LAST_SEEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+    seen = {}
+    if LAST_SEEN_FILE.exists():
+        try:
+            seen = json.loads(LAST_SEEN_FILE.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+    seen[agent_key] = timestamp_iso
+    LAST_SEEN_FILE.write_text(json.dumps(seen, indent=2))
+
+
+def _last_seen_minutes_ago(agent_key: str) -> int | None:
+    """Return minutes since agent's last anchor timestamp, or None if unknown."""
+    if not LAST_SEEN_FILE.exists():
+        return None
+    try:
+        seen = json.loads(LAST_SEEN_FILE.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+    ts_str = seen.get(agent_key, "")
+    if not ts_str:
+        return None
+    try:
+        # Inbox timestamps are ISO format, possibly with Z or offset
+        ts_str = ts_str.replace("Z", "+00:00").replace("T", " ")
+        if "+" not in ts_str and ts_str.endswith("00:00"):
+            ts_str += "+00:00"
+        last = datetime.fromisoformat(ts_str)
+        now = datetime.now(timezone.utc)
+        # Handle naive vs aware
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        delta = now - last
+        return int(delta.total_seconds() / 60)
+    except (ValueError, TypeError):
+        return None
 
 
 def _parse_vector_body(body: str) -> dict | None:
@@ -503,12 +577,19 @@ def main():
             else:
                 error = "unreachable" if data is None else "invalid format"
         elif a["method"] == "inbox":
-            data = _fetch_inbox(key)
+            data, anchor_ts = _fetch_inbox(key)
             if data and "v" in data:
                 vector = data["v"]
                 hostname = data.get("h", "")
+                # Update last-seen for laptop agents
+                _record_last_seen(key, anchor_ts or "")
             else:
                 error = "no health message in inbox" if data is None else "invalid format"
+                # Laptop grace period: suppress alert if agent last seen recently
+                if data is None:
+                    mins_ago = _last_seen_minutes_ago(key)
+                    if mins_ago is not None and mins_ago < LAPTOP_GRACE_MINUTES:
+                        error = None  # Suppress — laptop likely asleep
 
         poll_results[key] = {
             "vector": vector, "error": error,
@@ -521,6 +602,11 @@ def main():
 
         if fp == old:
             continue  # No change
+
+        # Laptop grace: suppress alert if within window (error cleared, fp stale)
+        if vector is None and error is None and a["method"] == "inbox":
+            now[key] = old  # Keep old fingerprint so state doesn't change
+            continue
 
         if vector is None:
             alerts.append(f"🔴 {name} — {error or 'unreachable'}")
