@@ -5,6 +5,11 @@
 # Silent when no new IPs (watchdog pattern).
 # Cross-platform: Linux + macOS (Intel and Apple Silicon).
 # Schedule: daily at 5 AM via cron (no_agent: true).
+#
+# IMPORTANT: All IP collection paths filter out RFC 1918 private/reserved
+# ranges (127.x, 10.x, 172.16-31.x, 192.168.x, 0.x, 169.254.x, 224.x, 240.x).
+# This prevents LAN IPs (gateway, internal services) from being added to the
+# public blocklist when fail2ban bans the router's NAT IP.
 set -euo pipefail
 
 # ── Guard: abort any stale git operations before proceeding ──
@@ -27,7 +32,8 @@ if [ -f "$SUBMIT_FILE" ]; then
   SUBMIT_RAW=$(grep -v '^#' "$SUBMIT_FILE" 2>/dev/null | grep -v '^[[:space:]]*$' || true)
   if [ -n "$SUBMIT_RAW" ]; then
     VALID_IPS=$(echo "$SUBMIT_RAW" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | \
-      awk -F. '{if($1<=255&&$2<=255&&$3<=255&&$4<=255)print}' || true)
+      awk -F. '{if($1<=255&&$2<=255&&$3<=255&&$4<=255)print}' | \
+      grep -vE '^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|0\.|169\.254\.|224\.|240\.)' || true)
     NEW_FROM_SUBMIT=""
     while IFS= read -r ip; do
       [ -z "$ip" ] && continue
@@ -148,8 +154,10 @@ if [ -n "$F2B_LOG" ]; then
 
   # Validate all extracted IPs — reject garbage from fail2ban log parsing
   # Only lines matching IPv4 format (4 dot-separated octets, each 0-255) pass
+  # Also reject RFC 1918 private ranges (10.x, 172.16-31.x, 192.168.x) and loopback (127.x)
   NEW_F2B_IPS=$(echo "$F2B_TIMEOUT_RESULT" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | \
-    awk -F. '{if($1<=255&&$2<=255&&$3<=255&&$4<=255)print}' || true)
+    awk -F. '{if($1<=255&&$2<=255&&$3<=255&&$4<=255)print}' | \
+    grep -vE '^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|0\.|169\.254\.|224\.|240\.)' || true)
 
   F2B_COUNT=$(echo "$NEW_F2B_IPS" | grep -c '[0-9]' 2>/dev/null || true)
   F2B_COUNT=$((F2B_COUNT + 0))

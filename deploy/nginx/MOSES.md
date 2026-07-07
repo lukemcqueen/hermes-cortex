@@ -44,7 +44,7 @@ This runs at 6 AM daily, scans logs for new suspect IPs, and auto-deploys if it 
 If any peer needs it:
 
 ```bash
-cp ~/hermes-cortex/src/scripts/nginx-security-scanner.sh ~/.hermes/scripts/
+cp ~/hermes-cortex/src/scripts/manage/nginx-security-scanner.sh ~/.hermes/scripts/
 chmod +x ~/.hermes/scripts/nginx-security-scanner.sh
 ```
 
@@ -120,6 +120,11 @@ blocked_ips.add (input)    nginx-badbots.conf (input)    allow-ips-manual.conf (
 
 The daily scanner feeds back into `blocked_ips.add`, creating a closed loop:
 **Logs → Detect → Append → Deploy → Protect**.
+
+**Private IP filter:** All collection paths (nginx log scan, fail2ban extraction,
+agent-submitted IPs) reject RFC 1918 private ranges (127.x, 10.x, 172.16-31.x,
+192.168.x, 0.x, 169.254.x, 224.x, 240.x). This was added 2026-07-07 after
+fail2ban banned a gateway IP through NAT, contaminating the blocklist.
 
 **Important:** The deploy script APPENDS to `blocked_ips.conf` — it does not regenerate
 the file from scratch. If `blocked_ips.conf` gets corrupted (e.g. bare IPs instead of

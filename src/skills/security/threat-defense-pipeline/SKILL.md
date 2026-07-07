@@ -61,6 +61,22 @@ The pipeline runs at **05:00 KST daily**. It automatically:
 
 If the pipeline finds no new IPs, it stays silent (watchdog pattern).
 
+## ⚠ Private IP Filtering (RFC 1918)
+
+All three IP collection paths in the pipeline **reject private/reserved IPs**:
+
+| Path | File | Filter |
+|------|------|--------|
+| nginx log scanner | `src/scripts/manage/nginx-security-scanner.sh` | `^127.\|10.\|172.(16-31).\|192.168.\|0.\|169.254.\|224.\|240.` |
+| fail2ban extraction (scanner) | `src/scripts/manage/nginx-security-scanner.sh` | Same regex — added 2026-07-07 |
+| fail2ban extraction (pipeline) | `src/scripts/manage/nginx-threat-pipeline.sh` | `grep -vE` on private ranges — added 2026-07-07 |
+| agent-submitted IPs | `src/scripts/manage/nginx-threat-pipeline.sh` step 0 | Same `grep -vE` — added 2026-07-07 |
+| Config generator | `deploy/nginx/fix-blocked-ips.py` | `PRIVATE_RANGES` regex in `is_valid_public_ip()` |
+
+**Why this matters:** fail2ban can ban a LAN IP (your gateway/router) when attackers hit your server through its NAT. Without filtering, the pipeline blindly adds gateway IPs to the blocklist. These filters prevent that.
+
+**If you ever need to add a private IP to the blocklist** (unusual — only if nginx is behind an internal reverse proxy), add it to `/etc/nginx/allow-ips-manual.conf` instead to ensure it's never blocked.
+
 ## fail2ban Jails
 
 | Jail | Target | Ban Action |

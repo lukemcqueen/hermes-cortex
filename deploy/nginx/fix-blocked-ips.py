@@ -21,13 +21,21 @@ import sys
 import platform
 
 IPV4_RE = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
+# RFC 1918 private ranges and other addresses that must never appear in a public blocklist
+PRIVATE_RANGES = re.compile(
+    r"^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|0\.|169\.254\.|224\.|240\.)"
+)
 
-def is_valid_ip(s):
-    """Return True if s is a valid IPv4 address."""
+def is_valid_public_ip(s):
+    """Return True if s is a valid public IPv4 address (not private/reserved)."""
     if not IPV4_RE.match(s):
         return False
     parts = [int(p) for p in s.split(".")]
-    return all(0 <= p <= 255 for p in parts)
+    if not all(0 <= p <= 255 for p in parts):
+        return False
+    if PRIVATE_RANGES.match(s):
+        return False
+    return True
 
 
 # Detect paths
@@ -78,7 +86,7 @@ with open(blocked_ips_add) as f:
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        if is_valid_ip(line):
+        if is_valid_public_ip(line):
             if line not in manual_allowed:
                 ips.append(line)
             else:

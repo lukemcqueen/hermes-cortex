@@ -5,6 +5,10 @@
 #  Scans nginx access logs for suspect IPs, appends new ones
 #  to blocked_ips.add, and auto-deploys if changes found.
 #
+#  Also scans fail2ban logs — both paths filter out RFC 1918
+#  private/reserved ranges (127.x, 10.x, 172.16-31.x, 192.168.x,
+#  0.x, 169.254.x, 224.x, 240.x) to prevent LAN IP contamination.
+#
 #  Silent when clean (watchdog pattern). Only outputs on changes.
 #
 #  Schedule: daily at 6 AM (cron)
@@ -93,6 +97,10 @@ fi
 if [ -f "$F2B_LOG" ]; then
   while IFS= read -r ip; do
     [ -z "$ip" ] && continue
+    # Skip private/local IPs (RFC 1918, loopback, link-local, multicast)
+    if [[ "$ip" =~ ^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|0\.|169\.254\.|224\.|240\.) ]]; then
+      continue
+    fi
     if [ -f "$BLOCKED_IPS" ] && grep -qF "$ip" "$BLOCKED_IPS" 2>/dev/null; then
       continue
     fi
