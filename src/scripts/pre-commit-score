@@ -14,62 +14,78 @@
 #  safety net — the MCP server already blocks writes without
 #  a lock, so this should never fire for an MCP-connected agent.
 #
-#  Set SKIP_SCORE=1 to bypass (max 3 uses per 24h — throttled).
+#  Set SKIP_SCORE=1 to bypass (abuse detection: burst warns, hard limit blocks).
 #
 #  Installed by: install-score-hook.sh
 #  Requires: score-cycle in PATH, loop-governance tools
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-# ── SKIP_SCORE throttle ──────────────────────────────────────
-# Max 3 uses per 24h rolling window. After that the bypass is
-# locked out — agents must follow governance.
+# ── SKIP_SCORE abuse detection ──────────────────────────────
+# Tracks usage and detects abuse patterns:
+#   Burst:   3+ skips in 60 min         → warning (still allowed)
+#   Hard:    6+ skips in 24h            → locked out
+#   Chronic: 3+ burst warnings          → locked out until file deleted
+#
+# State file: ~/.hermes-cortex/state/.skip-score-counter.json
 SKIP_COUNTER="${HOME}/.hermes-cortex/state/.skip-score-counter.json"
-SKIP_MAX=3
-SKIP_WINDOW_HOURS=24
+BURST_MIN=60
+BURST_LIMIT=3
+HARD_LIMIT=6
+HARD_WINDOW=24
+CHRONIC_WARN_LIMIT=3
 
 if [[ "${SKIP_SCORE:-}" == "1" ]]; then
   # Read or init counter
   if [[ -f "$SKIP_COUNTER" ]]; then
-    NOW_TS=$(date +%s)
-    ENTRIES=$(python3 -c "
+    ABUSE_DATA=$(python3 -c "
 import json, os, time
 fp = os.path.expanduser('$SKIP_COUNTER')
 try:
     d = json.load(open(fp))
-    entries = d.get('entries', [])
-    # Filter entries within window
-    cutoff = time.time() - ($SKIP_WINDOW_HOURS * 3600)
-    fresh = [e for e in entries if e > cutoff]
-    d['entries'] = fresh
-    json.dump(d, open(fp, 'w'))
-    print(len(fresh))
 except:
-    print(0)
-" 2>/dev/null || echo "0")
+    d = {'entries': [], 'warnings': 0}
+entries = d.get('entries', [])
+warnings = d.get('warnings', 0)
+
+now = time.time()
+# Prune old entries outside hard window
+cutoff_24h = now - ($HARD_WINDOW * 3600)
+fresh = [e for e in entries if e > cutoff_24h]
+cutoff_1h = now - ($BURST_MIN * 60)
+in_last_hour = len([e for e in fresh if e > cutoff_1h])
+
+d['entries'] = fresh
+d['warnings'] = warnings
+json.dump(d, open(fp, 'w'))
+
+print(f'{len(fresh)}|{warnings}|{in_last_hour}')
+" 2>/dev/null || echo "0|0|0")
   else
-    ENTRIES=0
+    ABUSE_DATA="0|0|0"
   fi
 
-  if [[ "$ENTRIES" -ge "$SKIP_MAX" ]]; then
-    OLDEST=$(python3 -c "
-import json
-try:
-    d = json.load(open('$SKIP_COUNTER'))
-    entries = d.get('entries', [])
-    if entries:
-        from datetime import datetime, timezone, timedelta
-        kst = datetime.fromtimestamp(min(entries), tz=timezone(timedelta(hours=9)))
-        print(kst.strftime('%H:%M KST'))
-    else:
-        print('?')
-except:
-    print('?')
-" 2>/dev/null || echo "?")
+  IFS='|' read -r ENTRIES WARNINGS IN_HOUR <<< "$ABUSE_DATA"
+  ENTRIES=${ENTRIES:-0}
+  WARNINGS=${WARNINGS:-0}
+  IN_HOUR=${IN_HOUR:-0}
+
+  # Chronic abuse — locked out until file removed
+  if [[ "$WARNINGS" -ge "$CHRONIC_WARN_LIMIT" ]]; then
     echo ""
-    echo "⛔  SKIP_SCORE=1 locked out — used ${ENTRIES}/${SKIP_MAX} times in ${SKIP_WINDOW_HOURS}h."
-    echo "    Last used at ${OLDEST}. Use governance: begin_change() → work → end_change()"
-    echo "    This lockout resets automatically after ${SKIP_WINDOW_HOURS}h from the oldest use."
+    echo "⛔  SKIP_SCORE=1 chronically abused (${WARNINGS} warnings)."
+    echo "    Abuse detected ${WARNINGS} times — bypass permanently disabled."
+    echo "    Remove ${SKIP_COUNTER} to reset, or follow governance."
+    echo ""
+    exit 1
+  fi
+
+  # Hard limit — too many skips in 24h
+  if [[ "$ENTRIES" -ge "$HARD_LIMIT" ]]; then
+    echo ""
+    echo "⛔  SKIP_SCORE=1 hard limit reached — ${ENTRIES}× in ${HARD_WINDOW}h."
+    echo "    Use governance: begin_change() → work → feedback_accept → end_change()"
+    echo "    Resets automatically as oldest uses age out (${HARD_WINDOW}h window)."
     echo ""
     exit 1
   fi
@@ -82,14 +98,33 @@ fp = os.path.expanduser('$SKIP_COUNTER')
 try:
     d = json.load(open(fp))
 except:
-    d = {'entries': []}
+    d = {'entries': [], 'warnings': 0}
 entries = d.get('entries', [])
 entries.append(time.time())
-# Prune old entries
-cutoff = time.time() - ($SKIP_WINDOW_HOURS * 3600)
+cutoff = time.time() - ($HARD_WINDOW * 3600)
 d['entries'] = [e for e in entries if e > cutoff]
 json.dump(d, open(fp, 'w'))
 " 2>/dev/null || true
+
+  # Burst check — too many in short window (IN_HOUR excludes current skip)
+  CURRENT_BURST=$((IN_HOUR + 1))
+  if [[ "$CURRENT_BURST" -ge "$BURST_LIMIT" ]]; then
+    NEW_WARNINGS=$((WARNINGS + 1))
+    python3 -c "
+import json, os
+fp = os.path.expanduser('$SKIP_COUNTER')
+d = json.load(open(fp))
+d['warnings'] = $NEW_WARNINGS
+json.dump(d, open(fp, 'w'))
+" 2>/dev/null || true
+
+    echo ""
+    echo "⚠️  Abuse detected: ${CURRENT_BURST}× SKIP_SCORE=1 in the last ${BURST_MIN} min."
+    echo "    Warning ${NEW_WARNINGS}/${CHRONIC_WARN_LIMIT}. After ${CHRONIC_WARN_LIMIT}, bypass is locked out."
+    echo "    Use governance instead: begin_change() → ... → end_change()"
+    echo ""
+  fi
+
   exit 0
 fi
 
