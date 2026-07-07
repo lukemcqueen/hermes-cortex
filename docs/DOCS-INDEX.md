@@ -12,8 +12,9 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
 | `AGENTS.md` | Agent guidelines — read by AI tools on session start |
 | `docs/setup-reference.md` | Deployment setup across Luke's multi-machine fleet |
-| `docs/operations-reference.md` | Operations — inbox architecture, offline code, common tasks |
-| `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
+|| `docs/operations-reference.md` | Operations — inbox architecture, offline code, common tasks |
+|| `docs/agent-onboarding.md` | Agent onboarding — step-by-step guide for client-only agents to connect to Moses and the fleet |
+|| `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
 | `docs/env-vars.md` | Environment variable reference — CORTEX_* vars, SSL, deploy scripts |
 | `install.sh` | Single-command installer (idempotent, safe to re-run) |
 | `src/scripts/ (flat shared libs), src/scripts/agent/, health/, install/, inbox/, manage/install/check-system.sh` | System compatibility check before installing |
