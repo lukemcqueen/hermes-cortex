@@ -693,10 +693,12 @@ deploy_nginx_configs() {
   local zone_dst="${brew_dir}/hermes-zone-defs.conf"
   if needs_update "$zone_src" "$zone_dst"; then
     if [[ "$brew_dir" == /etc/* ]]; then
-      if command -v sudo &>/dev/null && sudo -n mkdir -p "$brew_dir" 2>/dev/null; then
-        sudo mkdir -p "$brew_dir"
-        sudo cp "$zone_src" "$zone_dst"
-        sudo chmod 644 "$zone_dst"
+      if command -v sudo &>/dev/null; then
+        if sudo cp "$zone_src" "$zone_dst" 2>/dev/null; then
+          sudo chmod 644 "$zone_dst"
+        else
+          warn "  Cannot write to ${zone_dst} — add sudoers: sudo cp from ${nginx_src_dir} to ${brew_dir}"
+        fi
       else
         warn "  Passwordless sudo not available — skipping zone-defs deploy"
       fi
@@ -812,21 +814,20 @@ deploy_nginx_configs() {
     fi
 
     # Write to sites-available (Linux) or servers/ (macOS)
-    # Pre-check: specific sudo commands needed for deploy
     if [[ "$config_dir" == /etc/* ]]; then
-      if ! command -v sudo &>/dev/null; then
-        warn "  sudo not available — skipping nginx deploy"
-        warn "  Config was written to: ${tmpfile}"
-      elif ! sudo -n mkdir -p "$(dirname "$conf_available")" 2>/dev/null; then
-        warn "  nginx deploy directory not writable — add sudoers rules:"
-        warn "    ${USER} ALL=(ALL) NOPASSWD: /bin/mkdir -p ${config_dir}/*"
-        warn "    ${USER} ALL=(ALL) NOPASSWD: /bin/cp ${tmpfile%/*}/* ${config_dir}/*"
-        warn "  Config was written to: ${tmpfile}"
+      if command -v sudo &>/dev/null; then
+        if sudo cp "$tmpfile" "$conf_available" 2>/dev/null; then
+          sudo chmod 644 "$conf_available"
+          info "  Updated: ${conf_available}"
+        else
+          warn "  Cannot write nginx config — add sudoers rules:"
+          warn "    ${USER} ALL=(ALL) NOPASSWD: /bin/cp ${tmpfile%/*}/* ${config_dir}/*"
+          warn "    ${USER} ALL=(ALL) NOPASSWD: /bin/chmod 644 ${config_dir}/*"
+          warn "  Config saved to: ${tmpfile}"
+        fi
       else
-        sudo mkdir -p "$(dirname "$conf_available")"
-        sudo cp "$tmpfile" "$conf_available"
-        sudo chmod 644 "$conf_available"
-        info "  Updated: ${conf_available}"
+        warn "  sudo not available — skipping nginx deploy"
+        warn "  Config saved to: ${tmpfile}"
       fi
     else
       mkdir -p "$(dirname "$conf_available")" 2>/dev/null || true
@@ -837,12 +838,14 @@ deploy_nginx_configs() {
     # Symlink sites-enabled -> sites-available when they differ (Linux convention)
     if [[ "$config_dir" != "$available_dir" ]]; then
       if [[ "$config_dir" == /etc/* ]]; then
-        if command -v sudo &>/dev/null && sudo -n mkdir -p "$config_dir" 2>/dev/null; then
-          sudo mkdir -p "$config_dir"
-          sudo ln -sf "$conf_available" "$conf_dst"
-          info "  Symlinked: ${conf_dst} → ${conf_available}"
+        if command -v sudo &>/dev/null; then
+          if sudo ln -sf "$conf_available" "$conf_dst" 2>/dev/null; then
+            info "  Symlinked: ${conf_dst} → ${conf_available}"
+          else
+            warn "  Cannot symlink — add sudoers: sudo ln -sf ${config_dir}/* ${config_dir}/*"
+          fi
         fi
-        # No mkdir sudo? skip symlink (we already warned above)
+        # No sudo? skip symlink
       else
         mkdir -p "$config_dir" 2>/dev/null || true
         ln -sf "$conf_available" "$conf_dst"
