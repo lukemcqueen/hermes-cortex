@@ -90,7 +90,7 @@ SERVICES: list[dict] = [
     },
     _make_service("Ollama", label="com.ollama.serve", pgrep="ollama"),
     # gbrain: systemd user service (not Docker — don't check Docker)
-    _make_service("gbrain", label="com.gbrain.autopilot", pgrep="gbrain"),
+    _make_service("gbrain", label="gbrain-autopilot", pgrep="gbrain"),
     {
         "name": "scripts",
         "check": _check_scripts,
@@ -200,6 +200,52 @@ def _fix_gbrain_stale_lock() -> str | None:
         return f"lock check error: {e}"
 
 
+def _fix_gbrain_orphan_process() -> str | None:
+    """Detect and kill gbrain autopilot running outside systemd.
+
+    If a bun/raw gbrain autopilot process is found but the systemd service
+    is not running, kill the orphan and return a message.
+    Returns None if no orphan is found.
+    Triggers systemd restart via the caller's normal restart flow.
+    """
+    # Only applies on Linux
+    if not is_linux():
+        return None
+    # Check if systemd service is already active
+    out, _, rc = _run(["systemctl", "--user", "is-active", "gbrain-autopilot"])
+    if rc == 0 and out.strip() == "active":
+        return None  # systemd is managing it — nothing to fix
+    # Look for orphan bun/raw gbrain autopilot processes
+    out, _, _ = _run(["pgrep", "-f", r"bun.*gbrain.*autopilot|gbrain.*autopilot"])
+    if not out.strip():
+        return None  # no raw process found
+    pids = out.strip().split()
+    killed = []
+    for pid in pids:
+        # Check this isn't the systemd-managed PID
+        sysd_pid, _, _ = _run(["systemctl", "--user", "show", "-p", "MainPID", "gbrain-autopilot"])
+        if sysd_pid.strip() and sysd_pid.strip() != "0":
+            sp = sysd_pid.split("=")[-1]
+            if pid == sp:
+                continue  # this IS the systemd-managed PID
+        _run(["kill", "-TERM", pid])
+        import time
+        for _ in range(3):
+            alive, _, _ = _run(["kill", "-0", pid])
+            if alive != 0:
+                break
+            time.sleep(1)
+        alive_check, _, _ = _run(["kill", "-0", pid])
+        if alive_check == 0:
+            _run(["kill", "-KILL", pid])
+            killed.append(f"{pid}(SIGKILL)")
+        else:
+            killed.append(f"{pid}(TERM)")
+    if killed:
+        return f"killed orphan autopilot process(es): {', '.join(killed)}"
+    return None
+
+
 def main():
     actions = []
     statuses = []
@@ -233,7 +279,11 @@ def main():
             lock_msg = _fix_gbrain_stale_lock()
             if lock_msg:
                 actions.append(f"🔧 gbrain: {lock_msg}")
-            # Proceed with restart regardless — lock is cleared
+            # Detect and kill orphan bun processes running outside systemd
+            orphan_msg = _fix_gbrain_orphan_process()
+            if orphan_msg:
+                actions.append(f"🔧 gbrain: {orphan_msg}")
+            # Proceed with restart regardless — locks cleared, orphans dead
 
         err = _try_restart(svc)
         if err:
