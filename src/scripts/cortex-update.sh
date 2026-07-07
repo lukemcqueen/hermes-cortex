@@ -692,22 +692,8 @@ deploy_nginx_configs() {
   local zone_src="${nginx_src_dir}/hermes-zone-defs.conf"
   local zone_dst="${brew_dir}/hermes-zone-defs.conf"
   if needs_update "$zone_src" "$zone_dst"; then
-    if [[ "$brew_dir" == /etc/* ]]; then
-      if command -v sudo &>/dev/null; then
-        if sudo cp "$zone_src" "$zone_dst" 2>/dev/null; then
-          sudo chmod 644 "$zone_dst"
-        else
-          warn "  Cannot write zone-defs — add sudoers rule:"
-          warn "    ${USER} ALL=(ALL) NOPASSWD: /bin/cp ${zone_src} ${zone_dst}"
-        fi
-      else
-        warn "  Passwordless sudo not available — skipping zone-defs deploy"
-      fi
-    else
-      mkdir -p "$brew_dir" 2>/dev/null || true
-      cp "$zone_src" "$zone_dst"
-    fi
-    info "  Updated: hermes-zone-defs.conf → ${zone_dst}"
+    info "  Updated template: ${zone_src}"
+    info "  Deploy with: sudo cp ${zone_src} ${zone_dst}"
     files_copied=$((files_copied + 1))
   fi
 
@@ -808,125 +794,19 @@ deploy_nginx_configs() {
       fi
     fi
 
-    # ── Deploy: backup → write → test → rollback on failure ──
-    # Back up the current config before overwriting
-    local backup="${tmpfile}.bak"
-    if [[ -f "$conf_dst" ]]; then
-      cp "$conf_dst" "$backup" 2>/dev/null || sudo cp "$conf_dst" "$backup" 2>/dev/null || true
-    fi
-
-    # Write to sites-available (Linux) or servers/ (macOS)
-    if [[ "$config_dir" == /etc/* ]]; then
-      if command -v sudo &>/dev/null; then
-        if sudo cp "$tmpfile" "$conf_available" 2>/dev/null; then
-          sudo chmod 644 "$conf_available"
-          info "  Updated: ${conf_available}"
-        else
-          warn "  Cannot write nginx config — add sudoers rule:"
-          warn "    ${USER} ALL=(ALL) NOPASSWD: /bin/cp ${tmpfile} ${conf_available}"
-          warn "  Config saved to: ${tmpfile}"
-        fi
-      else
-        warn "  sudo not available — skipping nginx deploy"
-        warn "  Config saved to: ${tmpfile}"
-      fi
-    else
-      mkdir -p "$(dirname "$conf_available")" 2>/dev/null || true
-      cp "$tmpfile" "$conf_available"
-      info "  Updated: ${conf_available}"
-    fi
-
-    # Symlink sites-enabled -> sites-available when they differ (Linux convention)
+    # ── Config generated — tell user how to deploy ──
+    info "  Config generated: ${tmpfile}"
+    info "  Deploy with:"
+    info "    sudo cp ${tmpfile} ${conf_available}"
     if [[ "$config_dir" != "$available_dir" ]]; then
-      if [[ "$config_dir" == /etc/* ]]; then
-        if command -v sudo &>/dev/null; then
-          if sudo ln -sf "$conf_available" "$conf_dst" 2>/dev/null; then
-            info "  Symlinked: ${conf_dst} → ${conf_available}"
-          else
-            warn "  Cannot symlink — add sudoers rule:"
-            warn "    ${USER} ALL=(ALL) NOPASSWD: /bin/ln -sf ${conf_available} ${conf_dst}"
-          fi
-        fi
-        # No sudo? skip symlink
-      else
-        mkdir -p "$config_dir" 2>/dev/null || true
-        ln -sf "$conf_available" "$conf_dst"
-        info "  Symlinked: ${conf_dst} → ${conf_available}"
-      fi
+      info "    sudo ln -sf ${conf_available} ${conf_dst}"
     fi
-
-    # Test the REAL deployed config — roll back on failure
-    local nginx_test_out nginx_test_cmd
-    if command -v sudo &>/dev/null && sudo -n nginx -t 2>/dev/null; then
-      nginx_test_cmd="sudo -n nginx -t 2>&1"
-    else
-      nginx_test_cmd="nginx -t 2>&1"
-    fi
-    nginx_test_out=$(eval "$nginx_test_cmd") || {
-      error ""
-      error "╔══════════════════════════════════════════════════════════════╗"
-      error "║  nginx config test FAILED — rolling back to previous config ║"
-      error "╚══════════════════════════════════════════════════════════════╝"
-      error ""
-      # Restore backup
-      if [[ -f "$backup" ]]; then
-        sudo cp "$backup" "$conf_dst" 2>/dev/null || true
-        sudo cp "$backup" "$conf_available" 2>/dev/null || true
-        info "  Restored previous config from backup"
-      fi
-      error "nginx -t output:"
-      while IFS= read -r line; do
-        error "  ${line}"
-      done <<< "$nginx_test_out"
-      # Common issues guidance
-      if grep -q 'ssl_certificate\|__SSL_CERT__\|__SSL_CERT_KEY__' <<< "$nginx_test_out"; then
-        error ""
-        error "Fix: SSL cert path issue."
-        if [[ -z "${ssl_cert:-}" ]]; then
-          error "  CORTEX_SSL_CERT_PATH is not set or no certs found."
-          error "  Set in ~/hermes-cortex/.env:"
-          error "    CORTEX_SSL_CERT_PATH=/path/to/fullchain.pem"
-          error "    CORTEX_SSL_CERT_KEY_PATH=/path/to/privkey.pem"
-        else
-          error "  Cert path set but nginx cannot read it: ${ssl_cert}"
-          error "  Check file permissions and path correctness."
-        fi
-      fi
-      if grep -q 'htpasswd\|__HTPASSWD_FILE__' <<< "$nginx_test_out"; then
-        error ""
-        error "Fix: htpasswd file issue."
-        error "  Expected path: ${htpasswd}"
-        error "  Generate: sudo htpasswd -c ${htpasswd} username"
-      fi
-      if grep -q 'Cannot allocate memory' <<< "$nginx_test_out"; then
-        error ""
-        error "Fix: System memory low. Free memory or increase swap."
-      fi
-      rm -f "$backup" "$tmpfile"
-      return 1
-    }
-    info "  nginx config test passed"
-    rm -f "$backup"
-    rm -f "$tmpfile"
+    info "    sudo nginx -t && sudo nginx -s reload"
     files_copied=$((files_copied + 1))
   fi
 
   [[ "$files_copied" -eq 0 ]] && return 0
-
-  # 3. Test and reload nginx
-  local nginx_test="nginx -t"
-  local nginx_reload="nginx -s reload"
-  if [[ "$brew_dir" == /etc/* ]]; then
-    nginx_test="sudo -n nginx -t"
-    nginx_reload="sudo systemctl reload nginx || sudo nginx -s reload"
-  fi
-
-  if eval "$nginx_test" 2>/dev/null; then
-    eval "$nginx_reload" 2>/dev/null || true
-    info "  nginx config test passed — reloaded"
-  else
-    warn "  nginx config test failed — check ${conf_dst}"
-  fi
+  info "  nginx configs updated — run the deploy commands above to apply"
 }
 
 # ── System Scripts Deploy ───────────────────────────────────────
