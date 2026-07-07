@@ -14,14 +14,82 @@
 #  safety net — the MCP server already blocks writes without
 #  a lock, so this should never fire for an MCP-connected agent.
 #
-#  Set SKIP_SCORE=1 to bypass.
+#  Set SKIP_SCORE=1 to bypass (max 3 uses per 24h — throttled).
 #
 #  Installed by: install-score-hook.sh
 #  Requires: score-cycle in PATH, loop-governance tools
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
+# ── SKIP_SCORE throttle ──────────────────────────────────────
+# Max 3 uses per 24h rolling window. After that the bypass is
+# locked out — agents must follow governance.
+SKIP_COUNTER="${HOME}/.hermes-cortex/state/.skip-score-counter.json"
+SKIP_MAX=3
+SKIP_WINDOW_HOURS=24
+
 if [[ "${SKIP_SCORE:-}" == "1" ]]; then
+  # Read or init counter
+  if [[ -f "$SKIP_COUNTER" ]]; then
+    NOW_TS=$(date +%s)
+    ENTRIES=$(python3 -c "
+import json, os, time
+fp = os.path.expanduser('$SKIP_COUNTER')
+try:
+    d = json.load(open(fp))
+    entries = d.get('entries', [])
+    # Filter entries within window
+    cutoff = time.time() - ($SKIP_WINDOW_HOURS * 3600)
+    fresh = [e for e in entries if e > cutoff]
+    d['entries'] = fresh
+    json.dump(d, open(fp, 'w'))
+    print(len(fresh))
+except:
+    print(0)
+" 2>/dev/null || echo "0")
+  else
+    ENTRIES=0
+  fi
+
+  if [[ "$ENTRIES" -ge "$SKIP_MAX" ]]; then
+    OLDEST=$(python3 -c "
+import json
+try:
+    d = json.load(open('$SKIP_COUNTER'))
+    entries = d.get('entries', [])
+    if entries:
+        from datetime import datetime, timezone, timedelta
+        kst = datetime.fromtimestamp(min(entries), tz=timezone(timedelta(hours=9)))
+        print(kst.strftime('%H:%M KST'))
+    else:
+        print('?')
+except:
+    print('?')
+" 2>/dev/null || echo "?")
+    echo ""
+    echo "⛔  SKIP_SCORE=1 locked out — used ${ENTRIES}/${SKIP_MAX} times in ${SKIP_WINDOW_HOURS}h."
+    echo "    Last used at ${OLDEST}. Use governance: begin_change() → work → end_change()"
+    echo "    This lockout resets automatically after ${SKIP_WINDOW_HOURS}h from the oldest use."
+    echo ""
+    exit 1
+  fi
+
+  # Record this skip
+  mkdir -p "$(dirname "$SKIP_COUNTER")"
+  python3 -c "
+import json, os, time
+fp = os.path.expanduser('$SKIP_COUNTER')
+try:
+    d = json.load(open(fp))
+except:
+    d = {'entries': []}
+entries = d.get('entries', [])
+entries.append(time.time())
+# Prune old entries
+cutoff = time.time() - ($SKIP_WINDOW_HOURS * 3600)
+d['entries'] = [e for e in entries if e > cutoff]
+json.dump(d, open(fp, 'w'))
+" 2>/dev/null || true
   exit 0
 fi
 
