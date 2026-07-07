@@ -17,7 +17,6 @@ luke ALL=(root) NOPASSWD: /usr/bin/certbot renew --dry-run
 # Moses (Moses server) deployment — minimal set actually called by running scripts only
 moses ALL=(root) NOPASSWD: /usr/sbin/nginx -t
 moses ALL=(root) NOPASSWD: /usr/sbin/nginx -s reload
-moses ALL=(root) NOPASSWD: /usr/local/sbin/hermes-security-apply
-moses ALL=(root) NOPASSWD: /usr/bin/apt autoremove
+moses ALL=(root) NOPASSWD: /usr/bin/apt autoremove --purge -y
 moses ALL=(root) NOPASSWD: /usr/bin/apt clean
-
+moses ALL=(root) NOPASSWD: /bin/cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf

@@ -62,17 +62,17 @@ for cmd in timeout gtimeout; do
   fi
 done
 
-# DEPLOY_SCRIPT: linux=/usr/local/sbin, mac intel=/usr/local/sbin, mac arm=/opt/homebrew/sbin
+# DEPLOY_SCRIPT: minimal — just deploy blocked IPs
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 DEPLOY_SCRIPT=""
-# Prefer NOPASSWD path first, then local scripts as fallback
-for path in /usr/local/sbin/hermes-security-apply "${HERMES_HOME}/scripts/hermes-security-apply" /opt/homebrew/sbin/hermes-security-apply "${CORTEX_REPO}/deploy/nginx/hermes-security-apply"; do
-  if [ -x "$path" ]; then
-    DEPLOY_SCRIPT="$path"
-    break
-  fi
-done
+DEPLOY_BLOCKED="${HERMES_HOME}/scripts/deploy-blocked-ips.sh"
+if [ ! -x "$DEPLOY_BLOCKED" ]; then
+  DEPLOY_BLOCKED="${CORTEX_REPO}/src/scripts/manage/deploy-blocked-ips.sh"
+fi
+if [ -x "$DEPLOY_BLOCKED" ]; then
+  DEPLOY_SCRIPT="$DEPLOY_BLOCKED"
+fi
 
 # NGINX binary path (for existence check, not execution)
 NGINX_BIN=""
@@ -185,35 +185,16 @@ if [ -z "$DEPLOY_SCRIPT" ]; then
 elif [ -z "$NGINX_BIN" ]; then
   log "  nginx not found — skipping deploy"
 elif $NEW_IPS; then
-  if sudo -n "$DEPLOY_SCRIPT" 2>&1; then
-    log "  ✓ Deployed via hermes-security-apply"
-  else
-    error "Deploy failed — sudo NOPASSWD rule missing for hermes-security-apply"
-    # Self-healing: deploy the sudoers rule and retry
-    DEPLOY_SUDOERS="${CORTEX_REPO}/deploy/nginx/deploy-sudoers.sh"
-    if [ -x "$DEPLOY_SUDOERS" ]; then
-      log "  → Self-healing: deploying NOPASSWD sudoers rule..."
-      if sudo -n bash "$DEPLOY_SUDOERS" 2>&1; then
-        log "  ✓ Sudoers rule deployed — retrying deploy..."
-        if sudo -n "$DEPLOY_SCRIPT" 2>&1; then
-          log "  ✓ Deployed via hermes-security-apply (after self-heal)"
-        else
-          error "  Deploy failed even after self-heal — manual fix needed"
-          error "  Run: sudo bash ${DEPLOY_SUDOERS}"
-        fi
-      else
-        error "  Sudoers self-heal failed — no NOPASSWD for deploy-sudoers.sh"
-        error "  Manual fix: sudo bash ${DEPLOY_SUDOERS}"
-      fi
+  if [ -n "$DEPLOY_SCRIPT" ]; then
+    if bash "$DEPLOY_SCRIPT" 2>&1; then
+      log "  ✓ Blocked IPs deployed"
     else
-      error "  Sudoers deploy script not found at ${DEPLOY_SUDOERS}"
-      error "  Manual fix: add NOPASSWD for hermes-security-apply to /etc/sudoers.d/"
+      error "Blocked IPs deploy failed — see above"
     fi
   fi
-  # Validate & reload nginx when possible
+  # Fallback: validate + reload nginx using existing NOPASSWD rules
   if sudo -n /usr/sbin/nginx -t 2>&1; then
     log "  ✓ nginx config valid"
-    # Only reload if we actually deployed or if the config changed
     if $NEW_IPS && sudo -n /usr/sbin/nginx -s reload 2>&1; then
       log "  ✓ nginx reloaded"
     fi

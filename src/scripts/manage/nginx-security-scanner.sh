@@ -18,7 +18,7 @@
 #  PREREQUISITES:
 #  - nginx installed and running (access logs exist)
 #  - fail2ban installed (optional — log scanning skipped if absent)
-#  - hermes-security-apply installed at /usr/local/sbin/ with NOPASSWD sudo
+#  - deploy-blocked-ips.sh installed (generates + deploys blocked IPs)
 #
 #  AGENTS WITHOUT NGINX: Skip this cron entirely. The scanner silently
 #  exits with no output when nginx logs aren't found (watchdog pattern),
@@ -28,9 +28,12 @@ set -euo pipefail
 
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 BLOCKED_IPS="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
-# Use the sudoers-authorized path for deploy script (not the repo path)
-# sudoers only allows NOPASSWD for /usr/local/sbin/hermes-security-apply
-DEPLOY_SCRIPT="/usr/local/sbin/hermes-security-apply"
+# Use deploy-blocked-ips.sh for minimal-root deploy
+HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
+DEPLOY_SCRIPT="${HERMES_HOME}/scripts/deploy-blocked-ips.sh"
+if [ ! -x "$DEPLOY_SCRIPT" ]; then
+  DEPLOY_SCRIPT="${CORTEX_REPO}/src/scripts/manage/deploy-blocked-ips.sh"
+fi
 # Linux: /var/log/nginx, macOS x86_64: /usr/local/var/log/nginx, macOS arm64: /opt/homebrew/var/log/nginx
 if [ -d "/var/log/nginx" ]; then
   LOG_DIR="/var/log/nginx"
@@ -154,7 +157,7 @@ echo "  ${ADDED} IPs appended to blocked_ips.add"
 if [ "$ADDED" -gt 0 ] && [ -x "$DEPLOY_SCRIPT" ]; then
   echo ""
   echo "── Deploying... ──"
-  if sudo "$DEPLOY_SCRIPT" 2>&1; then
+  if bash "$DEPLOY_SCRIPT" 2>&1; then
     echo ""
     echo "✓ Security update deployed successfully"
   else

@@ -101,21 +101,19 @@ else
   done
 fi
 
-# ── Deploy live if hermes-security-apply is available ──
-DEPLOY_SCRIPT=""
-for path in /usr/local/sbin/hermes-security-apply /opt/homebrew/sbin/hermes-security-apply; do
-  if [ -x "$path" ]; then
-    DEPLOY_SCRIPT="$path"
-    break
-  fi
-done
-
-if [ -n "$DEPLOY_SCRIPT" ]; then
-  if sudo -n "$DEPLOY_SCRIPT" 2>&1; then
-    PIPELINE_OUTPUT+="  ✓ Deployed live via hermes-security-apply"$'\n'
+# ── Deploy live if deploy-blocked-ips is available ──
+DEPLOY_BLOCKED="${HERMES_HOME}/scripts/deploy-blocked-ips.sh"
+if [ ! -x "$DEPLOY_BLOCKED" ]; then
+  DEPLOY_BLOCKED="${CORTEX_REPO}/src/scripts/manage/deploy-blocked-ips.sh"
+fi
+if [ -x "$DEPLOY_BLOCKED" ]; then
+  if bash "$DEPLOY_BLOCKED" 2>&1; then
+    PIPELINE_OUTPUT+="  ✓ Deployed live via deploy-blocked-ips"$'\n'
   else
     log "  ⚠ Deploy failed — will be picked up by daily pipeline"
   fi
+else
+  log "  deploy-blocked-ips.sh not found — IPs will be deployed by daily threat-pipeline"
 fi
 
 # ── Output ──

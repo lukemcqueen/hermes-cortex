@@ -10,7 +10,11 @@ Run this if blocked_ips.conf has bare IPs and nginx -t fails.
 Then:
   sudo cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf      # Linux
   sudo cp /tmp/blocked_ips.conf.new /usr/local/etc/nginx/blocked_ips.conf  # macOS
-  sudo /usr/local/sbin/hermes-security-apply
+  sudo nginx -t
+  sudo nginx -s reload
+
+For automated deployment, use deploy-blocked-ips.sh (recommended):
+  bash src/scripts/manage/deploy-blocked-ips.sh
 
 Install to ~/.hermes/scripts/ for agent use:
   cp deploy/nginx/fix-blocked-ips.py ~/.hermes/scripts/
