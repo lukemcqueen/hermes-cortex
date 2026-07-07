@@ -1767,6 +1767,35 @@ else
   warn "install-crons.sh not found — skipping cron job creation"
 fi
 
+# ── Orchestrator Crons (conditional on IS_ORCHESTRATOR) ──────────
+# Only installed on orchestrator machines (Moses / Esther).
+# Gate via IS_ORCHESTRATOR=true in ~/hermes-cortex/.env
+ORCH_CRONS_SCRIPT="${SCRIPTS_DIR}/install-orch-crons.sh"
+if [[ -f "$ORCH_CRONS_SCRIPT" ]]; then
+  _ORCH=false
+  if [[ "${IS_ORCHESTRATOR:-false}" == "true" ]]; then
+    _ORCH=true
+  fi
+  if ! $_ORCH; then
+    ORCH_HOST="$(hostname -s 2>/dev/null || echo 'unknown')"
+    if [[ "$ORCH_HOST" == "moses" || "$ORCH_HOST" == "esther" ]]; then
+      _ORCH=true
+    fi
+  fi
+  if $_ORCH; then
+    step "Creating orchestrator-only cron jobs (team health, team messages…)"
+    if command -v hermes &>/dev/null; then
+      bash "$ORCH_CRONS_SCRIPT" 2>&1 | sed 's/^/  /'
+      info "Orch crons installed"
+    else
+      warn "Hermes not installed — orch crons skipped"
+    fi
+    ok
+  else
+    skip "not an orchestrator (IS_ORCHESTRATOR != true)"
+  fi
+fi
+
 # ── Scripts list ────────────────────────────────────────────
 info "Scripts directory: ${SCRIPTS_DIR}"
 

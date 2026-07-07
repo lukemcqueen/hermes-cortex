@@ -160,6 +160,9 @@ The script (`orch-health-report.py`) reads the agent registry with local overrid
 **To deploy on Esther (backup orchestrator):**
 
 ```bash
+# 0. Set orchestrator flag in .env (required for orch crons installer)
+echo 'IS_ORCHESTRATOR=true' >> ~/hermes-cortex/.env
+
 # 1. Copy the script
 cp ~/hermes-cortex/src/scripts/agent/orch-health-report.py ~/.hermes/scripts/orch-health-report.py
 
@@ -188,6 +191,7 @@ This is the single source of truth for Cortex. ⚠ `~/.hermes/.env` is Hermes Ag
 
 | Env var | Purpose | Default |
 |---------|---------|---------|
+| `IS_ORCHESTRATOR` | Gate orchestrator-only features (orch crons, team health, inbox remediation). Set `true` on Moses/Esther only. | `false` |
 | `JUDGE_MODEL` | LLM-as-Judge scorer | `qwen2.5-coder:3b` |
 | `EMBEDDING_MODEL` | Text embeddings (gbrain, session cache, loop scorer, offline_code) | `nomic-embed-text:v1.5` |
 | `CODING_MODEL` | Code generation via offline_code | auto-detected by RAM |

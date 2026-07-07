@@ -743,7 +743,7 @@ create_cron "hermes-update" "23 22 * * *" \
   "" \
   "" \
   "" \
-  "origin" \
+  "local" \
   "" \
   "true"
 

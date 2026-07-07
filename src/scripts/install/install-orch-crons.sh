@@ -6,6 +6,9 @@
 #  on orchestrator machines (Moses primary, Esther backup).
 #  Worker agents should NEVER run this script.
 #
+#  Guard: IS_ORCHESTRATOR=true in ~/hermes-cortex/.env
+#  Fallback: hostname is 'moses' or 'esther' (legacy compat)
+#
 #  Usage:
 #    bash install-orch-crons.sh              # create missing crons
 #    bash install-orch-crons.sh --dry-run    # show what would be created
@@ -14,12 +17,32 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-# ── Guard: orchestrator hostnames only ──
-HOSTNAME="$(hostname -s 2>/dev/null || echo 'unknown')"
-if [[ "$HOSTNAME" != "moses" && "$HOSTNAME" != "esther" ]]; then
+# ── Guard: orchestrator check via env var (with hostname fallback) ──
+# IS_ORCHESTRATOR is the primary gate. Set in ~/hermes-cortex/.env:
+#   IS_ORCHESTRATOR=true   (on orchestrators like Moses / Esther)
+#   IS_ORCHESTRATOR=false  (on all other agents — default)
+CORTEX_ENV="${REPO_DIR:-${HOME}/hermes-cortex}/.env"
+if [[ -f "$CORTEX_ENV" ]]; then
+  set -a; source "$CORTEX_ENV"; set +a
+fi
+
+_IS_ORCH=false
+if [[ "${IS_ORCHESTRATOR:-false}" == "true" ]]; then
+  _IS_ORCH=true
+fi
+# Fallback: hostname check for backward compat with pre-1.4 installs
+if ! $_IS_ORCH; then
+  HOSTNAME="$(hostname -s 2>/dev/null || echo 'unknown')"
+  if [[ "$HOSTNAME" == "moses" || "$HOSTNAME" == "esther" ]]; then
+    _IS_ORCH=true
+  fi
+fi
+
+if ! $_IS_ORCH; then
   echo "✗ This script installs orchestrator-only crons (orch-team-messages, orch-team-health)."
-  echo "  Your hostname is '$HOSTNAME' — only 'moses' and 'esther' are orchestrators."
+  echo "  IS_ORCHESTRATOR is not set to 'true' — only orchestrators need these crons."
   echo "  If you are a worker agent, you do NOT need orchestration crons."
+  echo "  To run on this machine, set IS_ORCHESTRATOR=true in ~/hermes-cortex/.env"
   exit 0
 fi
 

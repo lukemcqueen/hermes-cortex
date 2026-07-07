@@ -58,7 +58,7 @@ agent guidelines focused on general Hermes Cortex usage.
 | `agent-auto-remediate` | `*/30 * * * *` | LLM+skill | Auto-fix cron/inbox/service issues |
 | `remediation-sensor` | `*/5 * * * *` | no_agent | Companion diagnostics sensor |
 | `service-recovery` | `*/5 * * * *` | no_agent | Auto-restart crashed services |
-| `hermes-update` | `23 22 * * *` | no_agent | Daily Hermes upgrade + config migrate |
+| `hermes-update` | `23 22 * * *` | no_agent | Daily Hermes upgrade + config migrate (output local only — Telegram delivery suppressed) |
 | `hermes-cortex-sync` | `33 22 * * *` | no_agent | Daily repo pull + tool re-sync |
 | `system-alert-watchdog` | `*/30 * * * *` | no_agent | Resource threshold alerts |
 | `agent-cron-failure-scanner` | `*/30 * * * *` | no_agent | Scans ALL cron outputs for recent failures (last 90 min) |
@@ -88,12 +88,26 @@ When creating a new cron, prefix it to signal scope so other agents know whether
 
 | Prefix | Meaning | Example |
 |--------|---------|---------|
-| `orch-*` | **Orchestrator-only** — runs only on the orchestrator (Moses) and backup | `orch-team-health` |
+| `orch-*` | **Orchestrator-only** — runs only on orchestrators (Moses, Esther) | `orch-team-health` |
 | `agent-*` | **LLM-driven** — agent reasons each tick; installable on any machine | `agent-auto-remediate` |
 | `local-*` | **This server only** — NOT shared with or installed on peer agents. Combine with `agent-` as `local-agent-*` for LLM-driven local crons. | `local-agent-daily-news-brief` |
 | no prefix | **General no_agent** — safe for any agent to run, no LLM tokens used | `remediation-sensor` |
 
 **Rule:** If a cron should stay on one machine and never appear on Titus, Gisu, or Joseph, prefix it `local-*`.
+
+### Orchestrator gate
+
+Orchestrator-only scripts (`install-orch-crons.sh`, `orch-team-messages.sh`, `orch-team-health.py`)
+check `IS_ORCHESTRATOR=true` in `~/hermes-cortex/.env` before running. This replaces the
+older hostname-based guard (`moses`/`esther`), which remains as fallback for backward compat.
+
+| Agent | IS_ORCHESTRATOR | Reason |
+|-------|-----------------|--------|
+| Moses | `true` | Primary orchestrator |
+| Esther | `true` | Backup orchestrator |
+| Gisu | `false` (default) | Worker agent |
+| Joseph | `false` (default) | Worker agent |
+| Kustos | `false` (default) | Worker agent |
 
 **Management:**
 ```bash

@@ -1227,13 +1227,21 @@ main() {
       info "Crons up to date" || warn "Cron install skipped (no hermes CLI?)"
 
     # ── Orchestrator-only crons (team health, soul refinement, etc.) ──
-    # Only run on orchestrator machines (hostname: moses or esther)
-    ORCH_HOST=$(hostname -s 2>/dev/null || echo "unknown")
-    case "$ORCH_HOST" in
-      moses|esther)
-        HERMES_HOME="${HERMES_HOME}" bash "${HERMES_HOME}/scripts/install-orch-crons.sh" 2>/dev/null && \
-          info "Orch crons up to date" || warn "Orch cron install skipped" ;;
-    esac
+    # Guard: IS_ORCHESTRATOR=true from .env (or hostname fallback)
+    _ORCH=false
+    if [[ "${IS_ORCHESTRATOR:-false}" == "true" ]]; then
+      _ORCH=true
+    fi
+    if ! $_ORCH; then
+      ORCH_HOST=$(hostname -s 2>/dev/null || echo "unknown")
+      case "$ORCH_HOST" in
+        moses|esther) _ORCH=true ;;
+      esac
+    fi
+    if $_ORCH; then
+      HERMES_HOME="${HERMES_HOME}" bash "${HERMES_HOME}/scripts/install-orch-crons.sh" 2>/dev/null && \
+        info "Orch crons up to date" || warn "Orch cron install skipped"
+    fi
   else
     info "Hermes not found — skip cron install (run install-crons.sh after Hermes setup)"
   fi
