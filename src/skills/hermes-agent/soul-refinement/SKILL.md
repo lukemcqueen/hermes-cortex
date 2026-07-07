@@ -21,36 +21,23 @@ Agents who use this process grow alongside their operator — applying lessons f
 
 ## Two Channels
 
-### Channel A — Bible Insight (recommended cron: 1am daily)
+### Channel A — Bible Insight (cron: 1am daily, Python script)
 
-Reads sequentially through the Biblical canon, extracts the single most relevant insight for the agent's character and role, and appends it to the `## Scripture Insights` section of SOUL.md.
+Handled by `agent-daily-bible-reading.py` (no_agent cron script). It:
+1. Generates a short behavioral statement (verse + one-line commitment) for SOUL.md
+2. Saves the full analysis (archaeology, language, Jewish perspective) to `~/brain/<agent>/bible/<book>.md`
+3. Updates the brain index
 
-**Setup (do once):**
-```bash
-cronjob create --name "agent-daily-bible-reading" \
-  --schedule "0 1 * * *" \
-  --skills "soul-refinement" \
-  --prompt "Load the soul-refinement skill. Read SOUL.md's Scripture Insights to find the last book covered. Read the next canonical book, distill one insight for your character, patch SOUL.md to append it. Report what you added."
-```
-
-**Output format:**
+**Output format for SOUL.md (short form only):**
 ```markdown
-[2026-06-28 01:04 KST] agent-daily-bible-reading
+### {Book} — *"{Key verse}"* ({Ref})
 
-### {Book} — *"{Key verse}"*
+I will [one-line behavioral commitment for a system operator].
 
-{2-4 sentence narrative connecting the book's theme to the agent's role.
-The last sentence should name the explicit lesson for the agent.}
-
-📊 Model: {actual model name (provider)} | Cost: ${actual_cost} | Cron: agent-daily-bible-reading
+<!-- Added {YYYY-MM-DD} -->
 ```
 
-**Output rules:**
-- Start every response with `[YYYY-MM-DD HH:MM KST] agent-daily-bible-reading`
-- The footer line MUST report the actual model running. Run `ollama ps` if needed to identify the model. Format: `📊 Model: qwen2.5-coder:3b (custom:ollama-local) | Cost: $0.000000 | Cron: agent-daily-bible-reading`
-- End every response with the footer line above.
-- Silent (no output) when all 66 books covered or today is Sunday
-- Silent on duplicate — if same book as last run, suppress output
+**Full analysis** goes to `~/brain/<agent>/bible/<book>.md` — not SOUL.md.
 
 ### Channel B — Session Mining (recommended cron: 23:00 daily)
 

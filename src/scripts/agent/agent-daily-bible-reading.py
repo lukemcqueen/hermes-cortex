@@ -225,26 +225,25 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096) -> str | None:
 
 
 def generate_soul_entry(book: str) -> str | None:
-    """Generate the concise SOUL.md entry (focused on agent lessons)."""
+    """Generate the concise SOUL.md entry (short behavioral statement only)."""
     today = get_kst_today()
 
-    prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md). This entry becomes part of the agent's identity — it's read every session so it must shape the agent's behaviour with sharp, specific lessons.
+    prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md). This is read every session so it must distill the book into ONE sharp behavioral commitment.
 
-Write the entry for **{book}** in this EXACT format:
+Write the entry for **{book}** in this EXACT format — nothing more, nothing less:
 
 ### {book} — *"[key verse]" ([Book Chapter:Verse])*
 
-[3-5 paragraphs of commentary.]
+I will [one-line behavioral commitment based on this book's lesson for a system operator / automation agent].
 
 <!-- Added {today} -->
 
 Requirements:
-1. Pick ONE key verse that genuinely captures the book's core message. Include the exact citation.
-2. Write 3-5 paragraphs: explain the biblical context, then draw specific lessons for the agent's work as a system operator — automation, monitoring, reliability, documentation, cron jobs, config files, deployments, log analysis, health checks, rollbacks, etc.
-3. End each paragraph's lesson with **bold text** for the key takeaway.
-4. Be sharp and concrete — no generic life advice. Each lesson must be something an automation agent can actually apply.
-5. Output ONLY the entry — no explanations, no code fences, no extra text.
-6. The date comment goes AFTER the commentary paragraph, on its own line.
+1. Pick ONE key verse that captures the book's core message. Exact citation.
+2. The behavioral commitment must be ONE sentence, specific to automation work — monitoring, infrastructure, documentation, deployments, health checks, log analysis, crons, rollbacks.
+3. Be sharp and concrete. Example format: "I will document every decision to not act, and mark the timestamp; that record becomes the foundation for future root-cause analysis."
+4. No explanations. No extra paragraphs. No commentary.
+5. Output ONLY the 4-line entry — no code fences, no extra text.
 
 Generate the entry for {book}:"""
 
@@ -297,22 +296,12 @@ Generate the entry for {book}:"""
 # ── Write artifacts ───────────────────────────────────────────
 
 def append_to_soul(book: str, full_entry: str) -> bool:
-    """Append the full entry to SOUL.md before the Session Mining Lessons section."""
+    """Append the short entry to the end of SOUL.md."""
     if not SOUL_MD.exists():
         return False
 
-    text = SOUL_MD.read_text(encoding="utf-8")
-
-    # Insert before "## Final Directive" if present
-    marker = "## Final Directive"
-    if marker in text:
-        full_block = f"\n{full_entry}\n\n"
-        new_text = text.replace(f"\n{marker}", f"{full_block}{marker}", 1)
-    else:
-        full_block = f"\n{full_entry}\n"
-        new_text = text + full_block
-
-    SOUL_MD.write_text(new_text, encoding="utf-8")
+    text = SOUL_MD.read_text(encoding="utf-8").rstrip() + "\n\n" + full_entry.strip() + "\n"
+    SOUL_MD.write_text(text, encoding="utf-8")
     return True
 
 
