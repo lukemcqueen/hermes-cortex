@@ -31,4 +31,4 @@ moses ALL=(root) NOPASSWD: /usr/bin/cp /tmp/hermes-htpasswd /etc/nginx/.hermes-h
 moses ALL=(root) NOPASSWD: /usr/bin/install -o root -g root -m 0755 /home/moses/hermes-cortex/deploy/nginx/hermes-security-apply /usr/local/sbin/hermes-security-apply
 moses ALL=(root) NOPASSWD: /usr/bin/cp /tmp/blocked_ips.conf /etc/nginx/blocked_ips.conf
 moses ALL=(root) NOPASSWD: /usr/local/sbin/hermes-security-apply
-moses ALL=(root) NOPASSWD: /bin/cp /home/moses/.hermes/scripts/hermes-security-apply /usr/local/sbin/hermes-security-apply
+
