@@ -89,8 +89,8 @@ command -v fail2ban-client &>/dev/null && F2B_INSTALLED=true
 
 mkdir -p "${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/state" "${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/logs"
 
-log()  { echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] $*"; }
-error(){ echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✗ $*"; }
+log()  { echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] $*" >&2; }
+error(){ echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✗ $*" >&2; }
 
 PIPELINE_OUTPUT=""
 NEW_IPS=false

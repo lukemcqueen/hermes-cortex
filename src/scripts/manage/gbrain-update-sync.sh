@@ -10,7 +10,10 @@ export PATH="$HOME/.bun/bin:$PATH"
 export GBRAIN_AI_EMBED_TIMEOUT_MS=300000
 WRAPPER="$HOME/.hermes-cortex/scripts/gbrain-wrapper.sh"
 
-echo "[$(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M KST')] gbrain-update-sync: starting"
+# ── State tracking — only report on actual changes ──
+STATE_DIR="$HOME/.hermes/state"
+HAD_OUTPUT=false
+log() { echo "[$(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M KST') gbrain-update-sync] $*"; }
 
 # Step 1: Check for update
 if "$WRAPPER" check-update --json 2>/dev/null | python3 -c "
@@ -21,15 +24,20 @@ try:
     sys.exit(0 if has else 1)
 except: sys.exit(1)
 " 2>/dev/null; then
-    echo "  Update available — running gbrain upgrade..."
-    "$WRAPPER" upgrade 2>&1
-    echo "  Upgrade complete"
-else
-    echo "  gbrain is up to date"
+    log "Update available — running gbrain upgrade..."
+    HAD_OUTPUT=true
+    "$WRAPPER" upgrade 2>&1 | while IFS= read -r line; do log "  $line"; done
+    log "Upgrade complete"
 fi
 
-# Step 2: Health check
-echo "  Running health check..."
-"$WRAPPER" doctor --fast 2>&1 || echo "  ⚠ Health check reported issues"
+# Step 2: Health check — only report if issues
+if HEALTH_OUTPUT=$("$WRAPPER" doctor --fast 2>&1); then
+    :  # doctor passed — stay silent
+else
+    log "⚠ Health check reported issues"
+    log "$HEALTH_OUTPUT"
+    HAD_OUTPUT=true
+fi
 
-echo "[$(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M KST')] gbrain-update-sync: done"
+# Silent if nothing noteworthy happened
+$HAD_OUTPUT || exit 0

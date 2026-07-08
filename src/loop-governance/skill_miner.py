@@ -1,11 +1,59 @@
 #!/usr/bin/env python3
 # skill_miner.py — Parse Hermes skills and generate checksums for loop governance scoring
-
-import os
-import sys
-import json
-import hashlib
+import json, os, sys, hashlib
 from pathlib import Path
+
+# ── Silent watchdog: only produce output on actual changes ──
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Compute skill digests for loop governance scoring")
+    parser.add_argument("action", nargs="?", default="collect", help="collect|score")
+    parser.add_argument("--output", default="/tmp/skills-manifest.json", help="Output file path")
+    args = parser.parse_args()
+
+    if args.action == "collect":
+        data = collect_skill_info()
+        with open(args.output, "w") as f:
+            json.dump(data, f, indent=2)
+        # Silent unless there's a notable number of files
+        if len(data) > 500:
+            print(f"skill-miner: collected {len(data)} skill files to {args.output}")
+
+    elif args.action == "score":
+        # Read existing manifest if present
+        manifest_path = Path(args.output)
+        if manifest_path.exists():
+            with open(manifest_path) as f:
+                old = json.load(f)
+        else:
+            old = []
+
+        current = collect_skill_info()
+        old_map = {(e["relpath"], e["hash"]): e for e in old}
+        new_map = {(e["relpath"], e["hash"]): e for e in current}
+        added = [e for k, e in new_map.items() if k not in old_map]
+        removed = [e for k, e in old_map.items() if k not in new_map]
+        unchanged = [e for k, e in new_map.items() if k in old_map]
+        result = {
+            "timestamp": hashlib.sha256(str(json.dumps(current, sort_keys=True)).encode()).hexdigest(),
+            "added": added,
+            "removed": removed,
+            "unchanged_count": len(unchanged),
+            "total": len(current),
+        }
+        with open(args.output, "w") as f:
+            json.dump(result, f, indent=2)
+
+        # Silent unless there are actual changes
+        if added or removed:
+            print(f"skill-miner: {len(current)} skills ({len(added)} added, {len(removed)} removed)")
+            if added:
+                print(f"  Added: {', '.join(a['relpath'] for a in added[:5])}{'…' if len(added) > 5 else ''}")
+            if removed:
+                print(f"  Removed: {', '.join(r['relpath'] for r in removed[:5])}{'…' if len(removed) > 5 else ''}")
+    else:
+        print(f"Unknown action: {args.action}")
+        sys.exit(1)
 
 def collect_skill_info(skill_root=Path.home() / ".hermes" / "skills"):
     """Walk skill_root, return list of {path, relpath, size, hash, type}"""
@@ -27,52 +75,6 @@ def collect_skill_info(skill_root=Path.home() / ".hermes" / "skills"):
                 "type": typ,
             })
     return result
-
-def main():
-    import argparse
-    parser = argparse.ArgumentParser(description="Compute skill digests for loop governance scoring")
-    parser.add_argument("action", nargs="?", default="collect", help="collect|score")
-    parser.add_argument("--output", default="/tmp/skills-manifest.json", help="Output file path")
-    args = parser.parse_args()
-
-    if args.action == "collect":
-        data = collect_skill_info()
-        with open(args.output, "w") as f:
-            json.dump(data, f, indent=2)
-        print(f"Collected {len(data)} skill files to {args.output}")
-    elif args.action == "score":
-        # Read existing manifest if present
-        manifest_path = Path(args.output)
-        if manifest_path.exists():
-            with open(manifest_path) as f:
-                old = json.load(f)
-        else:
-            old = []
-        # Read current skills
-        current = collect_skill_info()
-        # Compare and produce delta
-        old_map = {(e["relpath"], e["hash"]): e for e in old}
-        new_map = {(e["relpath"], e["hash"]): e for e in current}
-        added = [e for k, e in new_map.items() if k not in old_map]
-        removed = [e for k, e in old_map.items() if k not in new_map]
-        unchanged = [e for k, e in new_map.items() if k in old_map]
-        result = {
-            "timestamp": hashlib.sha256(str(json.dumps(current, sort_keys=True)).encode()).hexdigest(),
-            "added": added,
-            "removed": removed,
-            "unchanged_count": len(unchanged),
-            "total": len(current),
-        }
-        with open(args.output, "w") as f:
-            json.dump(result, f, indent=2)
-        print(f"Scored skills to {args.output}")
-        if added:
-            print(f"  Added ({len(added)}): {[a['relpath'] for a in added]}")
-        if removed:
-            print(f"  Removed ({len(removed)}): {[r['relpath'] for r in removed]}")
-    else:
-        print(f"Unknown action: {args.action}")
-        sys.exit(1)
 
 if __name__ == "__main__":
     main()
