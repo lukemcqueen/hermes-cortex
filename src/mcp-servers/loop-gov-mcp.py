@@ -82,6 +82,9 @@ def _governance_lock_path() -> Path:
     Derives a slug from ``git rev-parse --show-toplevel`` so that each
     repo on the same machine gets its own lock file.  Falls back to
     ``.governance-generic.json`` when not inside a git repository.
+
+    When running as an MCP server (outside any repo), tries common
+    cortex repo paths before resorting to ``generic``.
     """
     try:
         repo_root = subprocess.check_output(
@@ -91,7 +94,20 @@ def _governance_lock_path() -> Path:
         ).decode().strip()
         slug = Path(repo_root).name  # e.g. "hermes-cortex", "project-b"
     except Exception:
+        # MCP server runs outside any git repo — try known paths
         slug = "generic"
+        for candidate in [HOME / "hermes-cortex", HOME / ".hermes-cortex"]:
+            if (candidate / ".git").exists():
+                try:
+                    slug = subprocess.check_output(
+                        ["git", "-C", str(candidate), "rev-parse", "--show-toplevel"],
+                        stderr=subprocess.DEVNULL,
+                        timeout=3,
+                    ).decode().strip()
+                    slug = Path(slug).name
+                except Exception:
+                    slug = candidate.name
+                break
     return GOVERNANCE_STATE_DIR / f".governance-{slug}.json"
 OLLAMA_URL = "http://localhost:11434/api/embeddings"
 
