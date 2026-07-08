@@ -198,12 +198,12 @@ def check_gateway_log() -> dict:
     recent = False
     for f in log_dir.glob("*.log*"):
         age = NOW - datetime.fromtimestamp(f.stat().st_mtime, tz=timezone.utc).astimezone()
-        if age < timedelta(minutes=30):
+        if age < timedelta(hours=3):
             recent = True
             break
     if recent:
-        return {"status": "UP", "detail": "Activity in last 30 min"}
-    return {"status": "DEGRADED", "detail": "No log activity in 30+ min"}
+        return {"status": "UP", "detail": "Activity in last 3 hours"}
+    return {"status": "DEGRADED", "detail": "No log activity in 3+ hours"}
 
 def check_inbox_staleness() -> dict:
     state_file = CORTEX_DEPLOY_HOME / "state" / "last-message-check"
