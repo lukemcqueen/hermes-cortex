@@ -73,7 +73,7 @@ while IFS= read -r -d '' skill_file; do
 
   CUSTOM_SKILLS+=("{\"name\":\"$name\",\"category\":\"$category\",\"lines\":$lines,\"age_days\":$age_days,\"summary\":\"$summary\"}")
   SKILL_CONTENTS+=("$content")
-done < <(find "$SKILLS_DIR" -name "SKILL.md" -type f -print0 2>/dev/null || true)
+done < <(find -L "$SKILLS_DIR" -name "SKILL.md" -type f -print0 2>/dev/null || true)
 
 # ── Build manifest ───────────────────────────────────────────
 HOSTNAME="$(hostname 2>/dev/null || echo 'unknown')"
