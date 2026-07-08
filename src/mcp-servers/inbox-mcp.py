@@ -31,7 +31,6 @@ import json
 import logging
 import os
 import re
-import ssl
 import sys
 import traceback
 import urllib.error
@@ -167,31 +166,9 @@ if not agent_name:
 
 DEFAULTAGENT = agent_name
 
-# Build SSL context with MCP client cert (required by nginx for external endpoint)
-CERT_DIR = Path.home() / ".hermes-cortex" / "certs"
-CLIENT_CERT = CERT_DIR / "hermes-mcp-client.crt"
-CLIENT_KEY = CERT_DIR / "hermes-mcp-client.key"
+# No mTLS client cert — requests use system CA bundle
 SSL_CONTEXT = None
-if CERT_DIR.exists() and CLIENT_CERT.exists() and CLIENT_KEY.exists():
-    try:
-        ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-        ctx.load_cert_chain(str(CLIENT_CERT), str(CLIENT_KEY))
-        SSL_CONTEXT = ctx
-        log.info("Loaded MCP client cert from %s", CLIENT_CERT)
-    except Exception as e:
-        log.warning("Failed to load client cert: %s", e)
-        SSL_CONTEXT = None
-else:
-    ctx = None
-    if IS_LOCAL_FALLBACK:
-        log.info("No client cert — using localhost fallback (no cert required)")
-    else:
-        log.warning("MCP client cert not found at %s — external requests will fail",
-                    CLIENT_CERT)
-
-log.info("Inbox agent=%s  auth=%s  cert=%s",
-         DEFAULTAGENT, "yes" if AUTH_HEADER else "no",
-         "loaded" if SSL_CONTEXT else "none")
+log.info("Inbox agent=%s  auth=%s", DEFAULTAGENT, "yes" if AUTH_HEADER else "no")
 
 PROXY_PATH = "/usr/local/bin/mcp-inbox-proxy"
 
@@ -544,20 +521,8 @@ def _inbox_delete(args: dict) -> CallToolResult:
 A2A_REGISTRY = HOME / ".hermes-cortex" / "a2a" / "agent-registry.json"
 STATE_REGISTRY = HOME / ".hermes" / "state" / "agent-registry.json"
 
-# mTLS client cert (for A2A cross-server requests)
-CERT_DIR = HOME / ".hermes-cortex" / "certs"
-CLIENT_CERT = CERT_DIR / "hermes-mcp-client.crt"
-CLIENT_KEY = CERT_DIR / "hermes-mcp-client.key"
-
+# No mTLS client cert — A2A requests use system CA bundle
 _A2A_SSL_CONTEXT = None
-if CLIENT_CERT.exists() and CLIENT_KEY.exists():
-    try:
-        ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-        ctx.load_cert_chain(str(CLIENT_CERT), str(CLIENT_KEY))
-        _A2A_SSL_CONTEXT = ctx
-        log.info("Loaded A2A mTLS client cert from %s", CLIENT_CERT)
-    except Exception as e:
-        log.warning("Failed to load A2A mTLS client cert: %s", e)
 
 
 def _load_agent_registry() -> dict:

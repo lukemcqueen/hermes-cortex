@@ -2,9 +2,8 @@
 """
 mcp-inbox-proxy — Sudo'd proxy for MCP inbox HTTPS requests.
 
-Reads client cert + key from /etc/ssl/private/hermes-mcp/, makes the
-HTTPS request, and prints the response as JSON to stdout. Runs via
-sudo so the agent user never touches the cert files.
+Makes HTTPS requests using the system CA bundle and prints the response
+as JSON to stdout. Runs via sudo for elevated network access.
 
 Sudoers rule (one line):
   <agent-user> ALL=(root) NOPASSWD: /usr/local/bin/mcp-inbox-proxy
@@ -20,24 +19,9 @@ Output: JSON object on stdout with keys:
           body    — response body text (str)
 """
 import json
-import ssl
 import sys
 import urllib.error
 import urllib.request
-from pathlib import Path
-
-CERT_DIR = Path("/etc/ssl/private/hermes-mcp")
-CLIENT_CERT = CERT_DIR / "hermes-mcp-client.crt"
-CLIENT_KEY = CERT_DIR / "hermes-mcp-client.key"
-CA_CERT = CERT_DIR / "hermes-ca.crt"
-
-if not (CLIENT_CERT.exists() and CLIENT_KEY.exists()):
-    json.dump({"status": 0, "body": f"Cert not found at {CLIENT_CERT}"}, sys.stdout)
-    sys.exit(1)
-
-# Build SSL context with client cert (server cert verified by system CA bundle)
-ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-ctx.load_cert_chain(str(CLIENT_CERT), str(CLIENT_KEY))
 
 # Read request from stdin
 req_data = json.load(sys.stdin)
@@ -50,11 +34,11 @@ if not url:
     json.dump({"status": 0, "body": "Missing 'url' in request"}, sys.stdout)
     sys.exit(1)
 
-# Make the request
+# Make the request (uses system CA bundle — no mTLS client cert)
 try:
     data_bytes = body.encode() if body else None
     req = urllib.request.Request(url, data=data_bytes, headers=headers, method=method)
-    with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
+    with urllib.request.urlopen(req, timeout=15) as resp:
         json.dump({"status": resp.status, "body": resp.read().decode(errors="replace")}, sys.stdout)
 except urllib.error.HTTPError as e:
     json.dump({"status": e.code, "body": e.read().decode(errors="replace")[:500]}, sys.stdout)
