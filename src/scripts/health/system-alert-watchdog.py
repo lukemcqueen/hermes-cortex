@@ -192,18 +192,33 @@ def check_docker_containers() -> dict:
         return {"status": "ERROR", "detail": str(e)}
 
 def check_gateway_log() -> dict:
-    log_dir = CORTEX_DEPLOY_HOME / "logs"
-    if not log_dir.exists():
-        return {"status": "UNKNOWN", "detail": "No log directory"}
-    recent = False
-    for f in log_dir.glob("*.log*"):
-        age = NOW - datetime.fromtimestamp(f.stat().st_mtime, tz=timezone.utc).astimezone()
-        if age < timedelta(hours=3):
-            recent = True
-            break
-    if recent:
-        return {"status": "UP", "detail": "Activity in last 3 hours"}
-    return {"status": "DEGRADED", "detail": "No log activity in 3+ hours"}
+    """Check Hermes gateway health via systemd/journald — not log file timestamps.
+
+    The gateway logs to journald, not to CORTEX_DEPLOY_HOME/logs/.
+    That directory only contains the cortex-dashboard log (a separate
+    local Flask server that may not always be active).
+
+    Instead: check the gateway systemd service, then verify recent
+    journald activity as secondary evidence.
+    """
+    # Primary: is the gateway systemd service running?
+    svc_check = check_systemd("hermes-gateway")
+    if svc_check["status"] in ("DOWN", "ERROR"):
+        return {"status": "DOWN", "detail": f"Gateway service: {svc_check['detail']}"}
+
+    # Secondary: check journald for recent gateway activity
+    try:
+        result = subprocess.run(
+            ["journalctl", "--user", "-u", "hermes-gateway",
+             "--since", "10 minutes ago", "--no-pager", "-n", "3"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.stdout.strip():
+            return {"status": "UP", "detail": "Running, activity in last 10 min (journald)"}
+        # Process running but no recent journald output — could be idle, which is fine
+        return {"status": "UP", "detail": f"Running (service: {svc_check['detail']})"}
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return {"status": "UP", "detail": f"Running (service: {svc_check['detail']})"}
 
 def check_inbox_staleness() -> dict:
     state_file = CORTEX_DEPLOY_HOME / "state" / "last-message-check"
