@@ -192,33 +192,34 @@ def check_docker_containers() -> dict:
         return {"status": "ERROR", "detail": str(e)}
 
 def check_gateway_log() -> dict:
-    """Check Hermes gateway health via systemd/journald — not log file timestamps.
+    """Check Hermes gateway health — platform-aware.
 
-    The gateway logs to journald, not to CORTEX_DEPLOY_HOME/logs/.
-    That directory only contains the cortex-dashboard log (a separate
-    local Flask server that may not always be active).
+    On Linux: check systemd service + journald activity.
+    On macOS: check launchd job (ai.hermes.gateway).
 
-    Instead: check the gateway systemd service, then verify recent
-    journald activity as secondary evidence.
+    The old approach of checking ~/.hermes-cortex/logs/*.log caused
+    false-positive alerts because that directory only contains the
+    cortex-dashboard log (a separate local Flask server).
     """
-    # Primary: is the gateway systemd service running?
-    svc_check = check_systemd("hermes-gateway")
-    if svc_check["status"] in ("DOWN", "ERROR"):
-        return {"status": "DOWN", "detail": f"Gateway service: {svc_check['detail']}"}
+    if is_linux:
+        # Linux: systemd + journald
+        svc_check = check_systemd("hermes-gateway")
+        if svc_check["status"] in ("DOWN", "ERROR"):
+            return {"status": "DOWN", "detail": f"Gateway service: {svc_check['detail']}"}
+        try:
+            result = subprocess.run(
+                ["journalctl", "--user", "-u", "hermes-gateway",
+                 "--since", "10 minutes ago", "--no-pager", "-n", "3"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.stdout.strip():
+                return {"status": "UP", "detail": "Running, activity in last 10 min (journald)"}
+            return {"status": "UP", "detail": f"Running (service: {svc_check['detail']})"}
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return {"status": "UP", "detail": f"Running (service: {svc_check['detail']})"}
 
-    # Secondary: check journald for recent gateway activity
-    try:
-        result = subprocess.run(
-            ["journalctl", "--user", "-u", "hermes-gateway",
-             "--since", "10 minutes ago", "--no-pager", "-n", "3"],
-            capture_output=True, text=True, timeout=5,
-        )
-        if result.stdout.strip():
-            return {"status": "UP", "detail": "Running, activity in last 10 min (journald)"}
-        # Process running but no recent journald output — could be idle, which is fine
-        return {"status": "UP", "detail": f"Running (service: {svc_check['detail']})"}
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return {"status": "UP", "detail": f"Running (service: {svc_check['detail']})"}
+    # macOS: check launchd (ai.hermes.gateway)
+    return _check_launchd("ai.hermes.gateway")
 
 def check_inbox_staleness() -> dict:
     state_file = CORTEX_DEPLOY_HOME / "state" / "last-message-check"

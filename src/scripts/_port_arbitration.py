@@ -22,11 +22,12 @@ import os
 import socket
 import sys
 from pathlib import Path
+from typing import Optional, Union
 
 _log = logging.getLogger("port-arbitration")
 
-_PID_FILE: Path | None = None
-_SERVICE_NAME: str | None = None
+_PID_FILE: Optional[Path] = None
+_SERVICE_NAME: Optional[str] = None
 
 
 def _get_pid_path(service_name: str) -> Path:
@@ -44,7 +45,7 @@ def _get_pid_path(service_name: str) -> Path:
     return Path(runtime_dir) / f"{service_name}.pid"
 
 
-def setup_dirs(data_dir: str | Path) -> None:
+def setup_dirs(data_dir: Union[str, Path]) -> None:
     """Create required directories if missing.
     
     Prevents crash-looping from 'Failed to set up standard output' (exit 209).
@@ -56,7 +57,7 @@ def setup_dirs(data_dir: str | Path) -> None:
         _log.info("CREATED — directory: %s", d)
 
 
-def check_and_claim_port(host: str, port: int, service_name: str, pid_path: str | Path | None = None) -> bool:
+def check_and_claim_port(host: str, port: int, service_name: str, pid_path: Optional[Union[str, Path]] = None) -> bool:
     """Check if *port* is free on *host*. If free, claim it and return True.
     
     If taken by another instance of *service_name* (detected via PID file),
