@@ -158,11 +158,34 @@ GENERIC_LOCK="${HOME}/.hermes-cortex/state/.governance-generic.json"
 if [[ ! -f "$GOVERNANCE_LOCK" ]]; then
   if [[ -f "$GENERIC_LOCK" ]]; then
     # Generic lock exists but repo-scoped doesn't.
-    # Auto-bridge: symlink generic → repo-scoped so the hook proceeds
-    # to score the commit. This is safe because the generic lock IS
-    # the active governance session (set by begin_change in the MCP server).
-    # The repo-scoped lock is removed by the trap at line 256 after scoring.
-    ln -sf "$GENERIC_LOCK" "$GOVERNANCE_LOCK"
+    #
+    # IMPORTANT: The generic lock is SHARED across all concurrent Hermes
+    # sessions (Telegram, CLI, gateway). It belongs to another session's
+    # begin_change() — NOT to this commit. Never auto-migrate or block
+    # for it. Just note it and continue.
+    #
+    # Stale locks are cleaned up by a daily cleanup cron (not here).
+    STALE_INFO=$(python3 -c "
+import json
+try:
+    d = json.load(open('$GENERIC_LOCK'))
+    print(f\"{d.get('task_id','?')}|{d.get('description','?')}|{d.get('started_at','?')}\")
+except:
+    pass
+" 2>/dev/null)
+    if [[ -n "$STALE_INFO" ]]; then
+      IFS='|' read -r STALE_TASK STALE_DESC STALE_DATE <<< "$STALE_INFO"
+      echo ""
+      echo "ℹ️  Generic governance lock found (belongs to another session):"
+      echo "    task_id:     ${STALE_TASK}"
+      echo "    description: ${STALE_DESC}"
+      echo "    started_at:  ${STALE_DATE}"
+      echo "    This lock belongs to a different session — skipping."
+      echo "    (Stale locks are cleaned up by daily cleanup cron.)"
+      echo ""
+    fi
+    # Continue without scoring — not our lock, not our score
+    exit 0
   else
     # No lock at all — block with help message
     echo ""
