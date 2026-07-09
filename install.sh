@@ -38,8 +38,8 @@ fi
 # /dev/stdin and os-config.sh won't exist. In that case,
 # download the repo tarball and extract to a temp directory.
 REMOTE_CLEANUP=""
-if [[ -z "$SCRIPT_DIR" || ! -f "${SCRIPT_DIR}/src/scripts/os-config.sh" ]]; then
-  if [[ ! -f "${SCRIPT_DIR:-/dev/null}/src/scripts/os-config.sh" ]]; then
+if [[ -z "$SCRIPT_DIR" || ! -f "${SCRIPT_DIR}/src/scripts/install/os-config.sh" ]]; then
+  if [[ ! -f "${SCRIPT_DIR:-/dev/null}/src/scripts/install/os-config.sh" ]]; then
     printf "📡 Remote install detected — downloading hermes-cortex…\n\n"
 
     # Check required tools
@@ -76,7 +76,7 @@ BOLD='\033[1m'; RESET='\033[0m'
 # ── Check mode ──────────────────────────────────────────────
 # If --check is passed, run prerequisites check only and exit
 if [[ "${1:-}" == "--check" ]]; then
-  source "${SCRIPT_DIR}/src/scripts/os-config.sh" 2>/dev/null || true
+  source "${SCRIPT_DIR}/src/scripts/install/os-config.sh" 2>/dev/null || true
   echo ""
   echo "  ${BOLD}Hermes Cortex — Prerequisites Check${RESET}"
   echo ""
@@ -152,8 +152,8 @@ skip() { printf "  ${YELLOW}skip${RESET} — %s\n" "$1"; }
 trap 'printf "\n${RED}Installation aborted at step $STEP${RESET}\n"; rm -rf "${REMOTE_CLEANUP}"' EXIT
 
 # ── Source OS Abstraction Layer ─────────────────────────────
-source "${SCRIPT_DIR}/src/scripts/os-config.sh"
-source "${SCRIPT_DIR}/src/scripts/service-writer.sh"
+source "${SCRIPT_DIR}/src/scripts/install/os-config.sh"
+source "${SCRIPT_DIR}/src/scripts/install/service-writer.sh"
 
 # ── Python version probe ────────────────────────────────────
 # HERMES NOW REQUIRES PYTHON 3.12+. Earlier versions (3.9, 3.10, 3.11)

@@ -1,36 +1,37 @@
 #!/usr/bin/env python3
-"""Generate correct blocked_ips.conf from blocked_ips.add source.
+"""Generate and deploy blocked_ips.conf for nginx.
 
-Usage:
-  python3 deploy/nginx/fix-blocked-ips.py
+Single sudo invocation handles the full lifecycle:
+  Read blocked_ips.add → validate IPs → write .new config → atomic rename → nginx -t → nginx -s reload
 
-Output: /tmp/blocked_ips.conf.new — proper deny <ip>; syntax.
-Run this if blocked_ips.conf has bare IPs and nginx -t fails.
+Run as root (via sudo) for the full deploy:
+  sudo /path/to/fix-blocked-ips.py
 
-Then:
-  sudo cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf      # Linux
-  sudo cp /tmp/blocked_ips.conf.new /usr/local/etc/nginx/blocked_ips.conf  # macOS
-  sudo nginx -t
-  sudo nginx -s reload
+Run without sudo to only generate the config to /tmp/ (legacy mode for scripts that
+handle the deploy themselves):
+  python3 /path/to/fix-blocked-ips.py
 
-For automated deployment, use deploy-blocked-ips.sh (recommended):
-  bash src/scripts/manage/deploy-blocked-ips.sh
-
-Install to ~/.hermes/scripts/ for agent use:
-  cp deploy/nginx/fix-blocked-ips.py ~/.hermes/scripts/
+Install sudoers rule:
+  echo 'moses ALL=(root) NOPASSWD: /home/moses/hermes-cortex/deploy/nginx/fix-blocked-ips.py' | \
+    sudo tee /etc/sudoers.d/moses
 """
 import os
 import re
+import subprocess
 import sys
-import platform
 
+# ── Constants ──
 IPV4_RE = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
-# RFC 1918 private ranges and other addresses that must never appear in a public blocklist
 PRIVATE_RANGES = re.compile(
     r"^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|0\.|169\.254\.|224\.|240\.)"
 )
+NGINX_BIN = "/usr/sbin/nginx"
+NGINX_CONF_DIR = "/etc/nginx"
+BLOCKED_CONF = os.path.join(NGINX_CONF_DIR, "blocked_ips.conf")
+ALLOW_MANUAL_CONF = os.path.join(NGINX_CONF_DIR, "allow-ips-manual.conf")
 
-def is_valid_public_ip(s):
+
+def is_valid_public_ip(s: str) -> bool:
     """Return True if s is a valid public IPv4 address (not private/reserved)."""
     if not IPV4_RE.match(s):
         return False
@@ -42,77 +43,155 @@ def is_valid_public_ip(s):
     return True
 
 
-# Detect paths
-is_linux = platform.system() == "Linux"
-repo_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if not repo_dir.endswith("hermes-cortex"):
-    repo_dir = os.path.expanduser("~/hermes-cortex")
+def repo_dir() -> str:
+    """Detect the hermes-cortex repo directory."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    candidate = os.path.dirname(os.path.dirname(script_dir))
+    if candidate.endswith("hermes-cortex") or os.path.isdir(os.path.join(candidate, ".git")):
+        return candidate
+    home = os.environ.get("HOME", "/home/moses")
+    candidate2 = os.path.join(home, "hermes-cortex")
+    if os.path.isdir(candidate2):
+        return candidate2
+    return candidate
 
-blocked_ips_add = os.path.join(repo_dir, "deploy", "nginx", "blocked_ips.add")
-output_path = "/tmp/blocked_ips.conf.new"
 
-# Detect nginx config dir for reference
-nginx_conf_dir = "/etc/nginx" if is_linux else "/usr/local/etc/nginx"
+def read_allow_lines() -> list[str]:
+    """Preserve existing allow rules from the current blocked_ips.conf."""
+    allow_lines = []
+    if os.path.exists(BLOCKED_CONF):
+        with open(BLOCKED_CONF) as f:
+            for line in f:
+                if line.startswith("allow "):
+                    allow_lines.append(line.rstrip())
+    return allow_lines
 
-if not os.path.exists(blocked_ips_add):
-    print(f"✗ Source not found: {blocked_ips_add}")
-    print(f"  Expected at {repo_dir}/deploy/nginx/blocked_ips.add")
-    sys.exit(1)
 
-# Preserve allow lines from current config
-current_conf = os.path.join(nginx_conf_dir, "blocked_ips.conf")
-allow_lines = []
-if os.path.exists(current_conf):
-    with open(current_conf) as f:
-        for line in f:
-            if line.startswith("allow "):
-                allow_lines.append(line.rstrip())
+def read_manual_allowed() -> set[str]:
+    """Read IPs from allow-ips-manual.conf that must never be in the blocklist."""
+    manual = set()
+    if os.path.exists(ALLOW_MANUAL_CONF):
+        with open(ALLOW_MANUAL_CONF) as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("allow ") and line.endswith(";"):
+                    ip = line[6:].rstrip(";").strip()
+                    if IPV4_RE.match(ip):
+                        manual.add(ip)
+        if manual:
+            print(f"  📋 {len(manual)} IPs in manual allow list — excluded from blocklist")
+    return manual
 
-# Read manual allow list — these IPs must never appear in blocked_ips.conf
-allow_ips_manual = os.path.join(nginx_conf_dir, "allow-ips-manual.conf")
-manual_allowed = set()
-if os.path.exists(allow_ips_manual):
-    with open(allow_ips_manual) as f:
+
+def generate_config() -> tuple[list[str], str]:
+    """Read blocked_ips.add, validate IPs, return (lines, summary_message)."""
+    rdir = repo_dir()
+    source = os.path.join(rdir, "deploy", "nginx", "blocked_ips.add")
+
+    if not os.path.exists(source):
+        print(f"✗ Source not found: {source}")
+        sys.exit(1)
+
+    allow_lines = read_allow_lines()
+    manual_allowed = read_manual_allowed()
+
+    ips: list[str] = []
+    skipped: list[str] = []
+    with open(source) as f:
         for line in f:
             line = line.strip()
-            if line.startswith("allow ") and line.endswith(";"):
-                ip = line[6:].rstrip(";").strip()
-                if IPV4_RE.match(ip):
-                    manual_allowed.add(ip)
-    if manual_allowed:
-        print(f"📋 {len(manual_allowed)} IPs in manual allow list — will exclude from block list")
-
-# Read and validate IPs from source
-ips = []
-skipped = []
-with open(blocked_ips_add) as f:
-    for line in f:
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if is_valid_public_ip(line):
-            if line not in manual_allowed:
-                ips.append(line)
+            if not line or line.startswith("#"):
+                continue
+            if is_valid_public_ip(line):
+                if line not in manual_allowed:
+                    ips.append(line)
+                else:
+                    skipped.append(f"{line} (allow-listed)")
             else:
-                skipped.append(f"{line} (allow-listed)")
-        else:
-            skipped.append(line)
+                skipped.append(line)
 
-if skipped:
-    print(f"⚠ Skipped {len(skipped)} invalid entries in blocked_ips.add")
-    for s in skipped[:3]:
-        print(f"   invalid: {s}")
+    if skipped:
+        print(f"  ⚠ Skipped {len(skipped)} invalid entries")
+        for s in skipped[:3]:
+            print(f"     invalid: {s}")
 
-# Write new config
-output = list(allow_lines)
-output.append("")
-for ip in ips:
-    output.append(f"deny {ip};")
+    lines = list(allow_lines)
+    lines.append("")
+    for ip in ips:
+        lines.append(f"deny {ip};")
 
-content = "\n".join(output) + "\n"
-with open(output_path, "w") as f:
-    f.write(content)
+    summary = f"  ✓ Generated: {len(ips)} blocked IPs (+ {len(allow_lines)} allow rules)"
+    return lines, summary
 
-print(f"✓ Generated: {len(ips)} blocked IPs (+ {len(allow_lines)} allow rules)")
-print(f"  → {output_path}")
-print(f"  → Install: sudo cp {output_path} {nginx_conf_dir}/blocked_ips.conf")
+
+def deploy_via_sudo(config_lines: list[str]) -> None:
+    """Write config, atomic rename, validate, reload — all as root."""
+    new_conf = BLOCKED_CONF + ".new"
+    content = "\n".join(config_lines) + "\n"
+    with open(new_conf, "w") as f:
+        f.write(content)
+    os.chmod(new_conf, 0o644)
+
+    # Atomic rename on same filesystem
+    os.rename(new_conf, BLOCKED_CONF)
+    print(f"  ✓ Installed {BLOCKED_CONF}")
+
+    # Validate nginx config
+    result = subprocess.run(
+        [NGINX_BIN, "-t"], capture_output=True, text=True, timeout=15
+    )
+    if result.returncode != 0:
+        print(f"  ✗ nginx config INVALID:")
+        for line in result.stderr.strip().split("\n"):
+            print(f"     {line}")
+        sys.exit(1)
+    print(f"  ✓ nginx config valid")
+
+    # Reload nginx
+    result = subprocess.run(
+        [NGINX_BIN, "-s", "reload"], capture_output=True, text=True, timeout=15
+    )
+    if result.returncode != 0:
+        print(f"  ✗ nginx reload FAILED:")
+        for line in result.stderr.strip().split("\n"):
+            print(f"     {line}")
+        sys.exit(1)
+    print(f"  ✓ nginx reloaded")
+
+
+def deploy_via_temp(config_lines: list[str]) -> str:
+    """Fallback: write to /tmp/ for non-root mode (legacy)."""
+    tmp_path = "/tmp/blocked_ips.conf.new"
+    content = "\n".join(config_lines) + "\n"
+    with open(tmp_path, "w") as f:
+        f.write(content)
+    return tmp_path
+
+
+def main():
+    is_root = os.geteuid() == 0
+    if not is_root:
+        print("⚠ Non-root mode — generating config to /tmp/ only")
+        print("  Run with: sudo fix-blocked-ips.py for full deploy")
+        print()
+
+    lines, summary = generate_config()
+    print(summary)
+
+    ip_count = sum(1 for l in lines if l.startswith("deny "))
+    allow_count = sum(1 for l in lines if l.startswith("allow "))
+
+    if ip_count == 0 and allow_count == 0:
+        print("  ℹ No IPs or allow rules — skipping")
+        return
+
+    if is_root:
+        deploy_via_sudo(lines)
+    else:
+        tmp_path = deploy_via_temp(lines)
+        print(f"  → {tmp_path}")
+        print(f"  → Install: sudo cp {tmp_path} {BLOCKED_CONF} && sudo {NGINX_BIN} -t && sudo {NGINX_BIN} -s reload")
+
+
+if __name__ == "__main__":
+    main()

@@ -7,6 +7,9 @@ Usage:
     hermes mcp add --command python3 --args /path/to/loop-gov-mcp.py loop-governance
 
 Tools:
+    begin_change    Acquire a governance lock (with session ID, TTL, force override)
+    end_change      Release a governance lock (requires scored cycle)
+    check_lock      Check lock state, update heartbeat, auto-release stale locks
     cycle_query     Query scored cycles by task, score range, date
     cycle_stats     Summary statistics
     config_show     Show current thresholds/weights
@@ -15,7 +18,6 @@ Tools:
     feedback_override Override a decision
     cache_search    Search the embedding cache
 """
-
 import asyncio
 import importlib.util
 import json
@@ -25,20 +27,18 @@ import sqlite3
 import subprocess
 import sys
 import time
+import traceback
 import urllib.error
-import logging
-import urllib.request
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-# Ensure hermes_models.py is importable from any Hermes deployment
+# Ensure hermes_models.py is importable
 _HERMES_HOME = Path.home() / ".hermes"
 _HERMES_SCRIPTS = _HERMES_HOME / "scripts"
 if _HERMES_SCRIPTS.exists():
     sys.path.insert(0, str(_HERMES_SCRIPTS))
-
-# Also check the repo-local scripts path (for dev/source runs)
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_SCRIPTS = _SCRIPT_DIR.parent / "scripts"
 if _REPO_SCRIPTS.exists():
@@ -46,7 +46,6 @@ if _REPO_SCRIPTS.exists():
 
 from hermes_models import get_model
 
-# Embedding model used by all loop-governance tools
 NOMIC_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 
 # ── Dependency Check: mcp package ────────────────────────────
@@ -70,11 +69,32 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent, CallToolResult
 
 HOME = Path.home()
+SESSION_FILE = HOME / ".hermes" / "session.id"
 LOOP_DB = HOME / ".hermes-cortex" / "data" / "loop-governance.db"
 CONFIG_PATH = HOME / ".hermes-cortex" / "data" / "loop-governance-config.json"
 CACHE_DB = HOME / ".hermes-cortex" / "data" / "session-embeddings.db"
 GOVERNANCE_STATE_DIR = HOME / ".hermes-cortex" / "state"
+DEFAULT_TTL = 3600  # 1 hour
 
+
+# ── Session ID ───────────────────────────────────────────────
+
+def get_session_id() -> str:
+    """Return a persistent session ID, creating one on first call.
+
+    The session ID lives in ~/.hermes/session.id and persists across
+    tool calls within one Hermes session. A new Hermes session (e.g. a
+    separate terminal window) gets its own ID.
+    """
+    if SESSION_FILE.exists():
+        return SESSION_FILE.read_text().strip()
+    sid = f"sess_{uuid.uuid4().hex[:12]}"
+    SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SESSION_FILE.write_text(sid)
+    return sid
+
+
+# ── Governance Lock Path ─────────────────────────────────────
 
 def _governance_lock_path() -> Path:
     """Return a repo-scoped governance lock path.
@@ -82,9 +102,6 @@ def _governance_lock_path() -> Path:
     Derives a slug from ``git rev-parse --show-toplevel`` so that each
     repo on the same machine gets its own lock file.  Falls back to
     ``.governance-generic.json`` when not inside a git repository.
-
-    When running as an MCP server (outside any repo), tries common
-    cortex repo paths before resorting to ``generic``.
     """
     try:
         repo_root = subprocess.check_output(
@@ -92,9 +109,8 @@ def _governance_lock_path() -> Path:
             stderr=subprocess.DEVNULL,
             timeout=3,
         ).decode().strip()
-        slug = Path(repo_root).name  # e.g. "hermes-cortex", "project-b"
+        slug = Path(repo_root).name
     except Exception:
-        # MCP server runs outside any git repo — try known paths
         slug = "generic"
         for candidate in [HOME / "hermes-cortex", HOME / ".hermes-cortex"]:
             if (candidate / ".git").exists():
@@ -109,6 +125,59 @@ def _governance_lock_path() -> Path:
                     slug = candidate.name
                 break
     return GOVERNANCE_STATE_DIR / f".governance-{slug}.json"
+
+
+# ── Lock helpers ─────────────────────────────────────────────
+
+def _now_iso() -> str:
+    """Return current UTC time as ISO 8601 string with seconds precision."""
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _is_lock_stale(state: dict) -> bool:
+    """Check if a lock's heartbeat has exceeded its TTL."""
+    ttl = state.get("ttl_seconds", DEFAULT_TTL)
+    heartbeat_str = state.get("heartbeat_at", state.get("started_at", ""))
+    if not heartbeat_str:
+        return False
+    try:
+        # Parse ISO timestamp (handle both Z and +00:00 formats)
+        hb_str = heartbeat_str.replace("Z", "+00:00").replace("+00:00", "+00:00")
+        heartbeat = datetime.fromisoformat(hb_str)
+        now = datetime.now(timezone.utc)
+        elapsed = (now - heartbeat).total_seconds()
+        return elapsed > ttl
+    except (ValueError, TypeError):
+        return False
+
+
+def _read_lock() -> dict | None:
+    """Read the current lock file, return state dict or None."""
+    path = _governance_lock_path()
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def _write_lock(state: dict) -> None:
+    """Write lock state to file."""
+    path = _governance_lock_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(state, indent=2))
+
+
+def _release_lock() -> None:
+    """Remove the lock file."""
+    path = _governance_lock_path()
+    if path.exists():
+        path.unlink()
+
+
+# ── Embedding helpers ────────────────────────────────────────
+
 OLLAMA_URL = "http://localhost:11434/api/embeddings"
 
 
@@ -131,13 +200,13 @@ def _cosine_sim(a: list[float], b: list[float]) -> float:
     return 0.0 if na == 0 or nb == 0 else dot / (na * nb)
 
 
+# ── Database ─────────────────────────────────────────────────
+
 def _db() -> sqlite3.Connection:
     """Get or create the loop-governance DB with auto-schema init."""
-    # Ensure parent directory exists
     LOOP_DB.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(LOOP_DB))
     conn.row_factory = sqlite3.Row
-    # Auto-create schema if missing
     conn.execute(
         """CREATE TABLE IF NOT EXISTS loop_cycles (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -155,10 +224,15 @@ def _db() -> sqlite3.Connection:
             decision        TEXT NOT NULL,
             user_overrode   INTEGER,
             outcome_note    TEXT,
-            schema_version  INTEGER DEFAULT 1,
+            schema_version  INTEGER DEFAULT 2,
             model_name      TEXT DEFAULT 'nomic-embed-text'
         )"""
     )
+    # Add session_id column if missing (schema migration v1→v2)
+    try:
+        conn.execute("ALTER TABLE loop_cycles ADD COLUMN session_id TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already exists
     conn.commit()
     return conn
 
@@ -175,12 +249,55 @@ def _config() -> dict:
     }
 
 
+# ── MCP Server ───────────────────────────────────────────────
+
 server = Server("loop-governance")
 
 
 @server.list_tools()
 async def list_tools() -> list[Tool]:
     return [
+        Tool(
+            name="begin_change",
+            description="MANDATORY: Call before making any code/config change. Creates a governance lock AND a pending cycle in the loop-governance DB. You must call feedback_accept on the pending cycle before end_change will release the lock.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "Short task identifier (e.g. 'fix-auth-403')"},
+                    "description": {"type": "string", "description": "What this change does"},
+                    "force": {
+                        "type": "boolean",
+                        "description": "Force-acquire the lock even if another session holds it. Releases the existing lock first (default: false).",
+                        "default": False,
+                    },
+                    "ttl": {
+                        "type": "integer",
+                        "description": "Time-to-live in seconds. Lock auto-releases if heartbeat is not refreshed within this window (default: 3600 = 1 hour).",
+                        "default": DEFAULT_TTL,
+                    },
+                },
+                "required": ["task_id", "description"],
+            },
+        ),
+        Tool(
+            name="end_change",
+            description="RELEASE the governance lock. Checks loop-governance DB for a reviewed cycle (feedback_accept/override) matching this task_id. If the pending cycle hasn't been scored, the release is REJECTED — call feedback_accept first.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "Task ID matching the begin_change call"},
+                },
+                "required": ["task_id"],
+            },
+        ),
+        Tool(
+            name="check_lock",
+            description="Check if a governance lock is active. Returns the full lock state including session_id, heartbeat_at, and ttl_seconds if active. On every call, refreshes the heartbeat to prevent staleness. Auto-releases stale locks where heartbeat has exceeded TTL.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            },
+        ),
         Tool(
             name="cycle_query",
             description="Query scored cycles. Filter by task_id, min_score, max_score, limit.",
@@ -266,37 +383,6 @@ async def list_tools() -> list[Tool]:
                 "required": ["query"],
             },
         ),
-        Tool(
-            name="begin_change",
-            description="MANDATORY: Call before making any code/config change. Creates a governance lock AND a pending cycle in the loop-governance DB. You must call feedback_accept on the pending cycle before end_change will release the lock.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "task_id": {"type": "string", "description": "Short task identifier (e.g. 'fix-auth-403')"},
-                    "description": {"type": "string", "description": "What this change does"},
-                },
-                "required": ["task_id", "description"],
-            },
-        ),
-        Tool(
-            name="end_change",
-            description="RELEASE the governance lock. Checks loop-governance DB for a reviewed cycle (feedback_accept/override) matching this task_id. If the pending cycle hasn't been scored, the release is REJECTED — call feedback_accept first.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "task_id": {"type": "string", "description": "Task ID matching the begin_change call"},
-                },
-                "required": ["task_id"],
-            },
-        ),
-        Tool(
-            name="check_lock",
-            description="Check if a governance lock is active. Returns the lock state, task_id, and started_at if active, or nothing if inactive.",
-            inputSchema={
-                "type": "object",
-                "properties": {},
-            },
-        ),
     ]
 
 
@@ -305,6 +391,9 @@ async def call_tool(name: str, arguments: dict[str, Any] | None) -> CallToolResu
     args = arguments or {}
     try:
         handlers = {
+            "begin_change": _begin_change,
+            "end_change": _end_change,
+            "check_lock": _check_lock,
             "cycle_query": _cycle_query,
             "cycle_stats": _cycle_stats,
             "config_show": _config_show,
@@ -312,9 +401,6 @@ async def call_tool(name: str, arguments: dict[str, Any] | None) -> CallToolResu
             "feedback_accept": _feedback_accept,
             "feedback_override": _feedback_override,
             "cache_search": _cache_search,
-            "begin_change": _begin_change,
-            "end_change": _end_change,
-            "check_lock": _check_lock,
         }
         handler = handlers.get(name)
         if handler:
@@ -324,7 +410,244 @@ async def call_tool(name: str, arguments: dict[str, Any] | None) -> CallToolResu
         return CallToolResult(content=[TextContent(type="text", text="Error: " + str(e))])
 
 
-# Tool implementations
+# ── Tool Implementations ─────────────────────────────────────
+
+def _begin_change(args: dict) -> CallToolResult:
+    """Create a governance lock file AND a pending cycle in the loop-governance DB."""
+    task_id = args.get("task_id", "").strip()
+    description = args.get("description", "").strip()
+    force = args.get("force", False)
+    ttl = args.get("ttl", DEFAULT_TTL)
+
+    if not task_id:
+        return CallToolResult(content=[TextContent(type="text", text="Error: task_id is required")])
+    if not description:
+        return CallToolResult(content=[TextContent(type="text", text="Error: description is required")])
+    if ttl < 60:
+        return CallToolResult(content=[TextContent(type="text", text="Error: TTL must be at least 60 seconds")])
+    if ttl > 86400:
+        return CallToolResult(content=[TextContent(type="text", text="Error: TTL cannot exceed 86400 seconds (24 hours)")])
+
+    session_id = get_session_id()
+    now_iso = _now_iso()
+
+    # Check if already locked
+    existing = _read_lock()
+    if existing is not None:
+        if not force:
+            return CallToolResult(content=[TextContent(
+                type="text",
+                text=(
+                    f"Error: A governance session is already active:\n"
+                    f"  task_id:     {existing.get('task_id')}\n"
+                    f"  description: {existing.get('description')}\n"
+                    f"  session_id:  {existing.get('session_id', 'unknown')}\n"
+                    f"  started_at:  {existing.get('started_at')}\n"
+                    f"  heartbeat:   {existing.get('heartbeat_at')}\n"
+                    f"  agent:       {existing.get('agent')}\n\n"
+                    f"Call end_change('{existing.get('task_id')}') first, or use force=True to override."
+                )
+            )])
+        # Force override: release current lock with audit trail
+        released_task = existing.get("task_id", "unknown")
+        released_session = existing.get("session_id", "unknown")
+        _release_lock()
+        audit_note = (
+            f"Lock overridden by force=True.\n"
+            f"  Released session: {released_session}\n"
+            f"  Released task:    {released_task}\n"
+            f"  New session:      {session_id}\n"
+            f"  New task:         {task_id}"
+        )
+
+    # Create lock file with session ID, TTL, heartbeat
+    state = {
+        "task_id": task_id,
+        "description": description,
+        "started_at": now_iso,
+        "agent": os.environ.get("AGENT_NAME", "unknown"),
+        "session_id": session_id,
+        "ttl_seconds": ttl,
+        "heartbeat_at": now_iso,
+        "scored": False,
+    }
+    _write_lock(state)
+
+    # Create pending cycle in loop-governance DB
+    try:
+        conn = _db()
+        row = conn.execute(
+            "SELECT COALESCE(MAX(cycle_num), 0) + 1 FROM loop_cycles WHERE task_id = ?",
+            (task_id,)
+        ).fetchone()
+        cycle_num = row[0] if row else 1
+
+        outcome = "Created by begin_change — call feedback_accept to score"
+        if force:
+            outcome = audit_note
+
+        conn.execute(
+            """INSERT INTO loop_cycles
+               (task_id, cycle_num, completeness, quality, progress, composite,
+                no_progress, decision, user_overrode, outcome_note, session_id)
+               VALUES (?, ?, 0, 0, 0, 0, 0, 'PENDING', NULL, ?, ?)""",
+            (task_id, cycle_num, outcome, session_id)
+        )
+        conn.commit()
+        cycle_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.close()
+
+        pending_msg = (
+            f"\n📝 Pending cycle #{cycle_id} created in loop-governance DB.\n"
+            f"   After your change, call:\n"
+            f"     1. mcp_loop_governance_cycle_query(task_id='{task_id}')\n"
+            f"     2. mcp_loop_governance_feedback_accept(id={cycle_id}, note='...')\n"
+            f"     3. mcp_loop_governance_end_change(task_id='{task_id}')"
+        )
+    except Exception as e:
+        pending_msg = (
+            f"\n⚠️  Could not create pending cycle: {e}\n"
+            f"   end_change will reject — force-clear with: rm {_governance_lock_path()}"
+        )
+
+    prefix = "🔒 " if not force else "🔓⚠️ "
+    force_msg = f" (forced — replaced session {released_session})" if force else ""
+    return CallToolResult(content=[TextContent(
+        type="text",
+        text=(
+            f"{prefix}Governance session started: {task_id} — {description}{force_msg}\n"
+            f"Lock file: {_governance_lock_path()}\n"
+            f"Session ID: {session_id}\n"
+            f"TTL: {ttl}s\n"
+            f"Use end_change('{task_id}') when done."
+            + pending_msg
+        )
+    )])
+
+
+def _end_change(args: dict) -> CallToolResult:
+    """Release governance lock — requires a scored cycle in the loop-governance DB."""
+    task_id = args.get("task_id", "").strip()
+    if not task_id:
+        return CallToolResult(content=[TextContent(type="text", text="Error: task_id is required")])
+
+    # Step 1: Check if lock file exists
+    if not _governance_lock_path().exists():
+        return CallToolResult(content=[TextContent(
+            type="text", text="No governance session active. Nothing to release."
+        )])
+
+    # Step 2: Verify task_id matches
+    try:
+        existing = json.loads(_governance_lock_path().read_text())
+        stored_task = existing.get("task_id", "")
+        if stored_task and stored_task != task_id:
+            return CallToolResult(content=[TextContent(
+                type="text",
+                text=f"Error: Lock belongs to task '{stored_task}', not '{task_id}'. Use end_change('{stored_task}')."
+            )])
+    except (json.JSONDecodeError, OSError) as e:
+        return CallToolResult(content=[TextContent(
+            type="text", text=f"Error reading lock file: {e}. Remove manually: rm {_governance_lock_path()}"
+        )])
+
+    # Step 3: Check loop-governance DB for a scored cycle with this task_id
+    try:
+        conn = _db()
+        row = conn.execute(
+            """SELECT id, composite, decision, outcome_note
+               FROM loop_cycles
+               WHERE task_id = ? AND user_overrode IS NOT NULL
+               ORDER BY id DESC LIMIT 1""",
+            (task_id,)
+        ).fetchone()
+        conn.close()
+    except Exception:
+        row = None
+
+    if not row:
+        try:
+            conn2 = _db()
+            pending = conn2.execute(
+                "SELECT id FROM loop_cycles WHERE task_id = ? AND user_overrode IS NULL ORDER BY id DESC LIMIT 1",
+                (task_id,)
+            ).fetchone()
+            conn2.close()
+            hint = f"   A pending cycle (#{pending[0]}) exists for this task — run:\n" if pending else ""
+        except Exception:
+            hint = ""
+
+        return CallToolResult(content=[TextContent(
+            type="text",
+            text=(
+                f"⛔ No scored cycle found for task '{task_id}'. "
+                f"The pending cycle needs feedback_accept before release.\n\n"
+                + hint
+                + f"  1. mcp_loop_governance_feedback_accept(id=N, note='...') — score the cycle\n"
+                + f"  2. mcp_loop_governance_end_change(task_id='{task_id}') — retry release\n\n"
+                + "The lock stays active until you score. You cannot start a new task until this one is closed."
+            )
+        )])
+
+    # Step 4: Score exists — release the lock
+    cycle_id, composite, decision, note = row
+    _release_lock()
+    return CallToolResult(content=[TextContent(
+        type="text",
+        text=(
+            f"🔓 Governance session '{task_id}' closed.\n"
+            f"Scored: cycle #{cycle_id} (composite={composite}, decision={decision})\n"
+            f"Lock released. You can start a new change with begin_change()."
+        )
+    )])
+
+
+def _check_lock(args: dict | None = None) -> CallToolResult:
+    """Check if a governance lock is active.
+
+    Updates heartbeat on every call to prevent staleness.
+    Auto-releases locks whose heartbeat has exceeded TTL.
+    """
+    state = _read_lock()
+    if state is None:
+        return CallToolResult(content=[TextContent(
+            type="text", text=json.dumps({"active": False, "lock": None}, indent=2)
+        )])
+
+    # Check staleness
+    if _is_lock_stale(state):
+        stale = {
+            "task_id": state.get("task_id", "unknown"),
+            "session_id": state.get("session_id", "unknown"),
+            "agent": state.get("agent", "unknown"),
+            "started_at": state.get("started_at"),
+            "heartbeat_at": state.get("heartbeat_at"),
+            "ttl_seconds": state.get("ttl_seconds", DEFAULT_TTL),
+        }
+        _release_lock()
+        return CallToolResult(content=[TextContent(
+            type="text",
+            text=json.dumps({
+                "active": False,
+                "lock": None,
+                "auto_released": True,
+                "released_lock": stale,
+            }, indent=2)
+        )])
+
+    # Refresh heartbeat
+    state["heartbeat_at"] = _now_iso()
+    _write_lock(state)
+
+    return CallToolResult(content=[TextContent(
+        type="text",
+        text=json.dumps({
+            "active": True,
+            "lock": state,
+            "file": str(_governance_lock_path()),
+        }, indent=2)
+    )])
+
 
 def _cycle_query(args: dict) -> CallToolResult:
     conn = _db()
@@ -401,7 +724,7 @@ def _config_set(args: dict) -> CallToolResult:
     old_val = section[last]
     MAX_DELTA = 1.0
     if abs(value - old_val) > MAX_DELTA:
-        return CallToolResult(content=[TextContent(type="text", text="Safety bound: max delta " + str(MAX_DELTA) + ". " + str(old_val) + " -> " + str(value) + " exceeds that.")])
+        return CallToolResult(content=[TextContent(type="text", text=f"Safety bound: max delta {MAX_DELTA}. {old_val} -> {value} exceeds that.")])
     if value < 0 or value > 10:
         return CallToolResult(content=[TextContent(type="text", text="Value must be between 0 and 10")])
     section[last] = value
@@ -483,176 +806,7 @@ def _cache_search(args: dict) -> CallToolResult:
     return CallToolResult(content=[TextContent(type="text", text=json.dumps(results, indent=2))])
 
 
-def _begin_change(args: dict) -> CallToolResult:
-    """Create a governance lock file AND a pending cycle in the loop-governance DB."""
-    task_id = args.get("task_id", "").strip()
-    description = args.get("description", "").strip()
-    if not task_id:
-        return CallToolResult(content=[TextContent(type="text", text="Error: task_id is required")])
-    if not description:
-        return CallToolResult(content=[TextContent(type="text", text="Error: description is required")])
-
-    # Check if already locked
-    if _governance_lock_path().exists():
-        try:
-            existing = json.loads(_governance_lock_path().read_text())
-            return CallToolResult(content=[TextContent(
-                type="text",
-                text=f"Error: A governance session is already active: '{existing.get('task_id')}' - {existing.get('description')}. Call end_change('{existing.get('task_id')}') first."
-            )])
-        except (json.JSONDecodeError, OSError):
-            pass
-
-    # Create lock file
-    _governance_lock_path().parent.mkdir(parents=True, exist_ok=True)
-    state = {
-        "task_id": task_id,
-        "description": description,
-        "started_at": datetime.now().isoformat(timespec="seconds"),
-        "agent": os.environ.get("AGENT_NAME", "unknown"),
-        "scored": False,
-    }
-    _governance_lock_path().write_text(json.dumps(state, indent=2))
-
-    # Create pending cycle in loop-governance DB
-    try:
-        conn = _db()
-        row = conn.execute(
-            "SELECT COALESCE(MAX(cycle_num), 0) + 1 FROM loop_cycles WHERE task_id = ?",
-            (task_id,)
-        ).fetchone()
-        cycle_num = row[0] if row else 1
-
-        conn.execute(
-            """INSERT INTO loop_cycles
-               (task_id, cycle_num, completeness, quality, progress, composite,
-                no_progress, decision, user_overrode, outcome_note)
-               VALUES (?, ?, 0, 0, 0, 0, 0, 'PENDING', NULL,
-                       'Created by begin_change — call feedback_accept to score')""",
-            (task_id, cycle_num)
-        )
-        conn.commit()
-        cycle_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-        conn.close()
-
-        pending_msg = (
-            f"\n📝 Pending cycle #{cycle_id} created in loop-governance DB.\n"
-            f"   After your change, call:\n"
-            f"     1. mcp_loop_governance_cycle_query(task_id='{task_id}')\n"
-            f"     2. mcp_loop_governance_feedback_accept(id={cycle_id}, note='...')\n"
-            f"     3. mcp_loop_governance_end_change(task_id='{task_id}')"
-        )
-    except Exception as e:
-        pending_msg = (
-            f"\n⚠️  Could not create pending cycle: {e}\n"
-            f"   end_change will reject — force-clear with: rm {_governance_lock_path()}"
-        )
-
-    return CallToolResult(content=[TextContent(
-        type="text",
-        text=f"🔒 Governance session started: {task_id} — {description}\n"
-             f"Lock file: {_governance_lock_path()}\n"
-             f"Use end_change('{task_id}') when done."
-             + pending_msg
-    )])
-
-
-def _end_change(args: dict) -> CallToolResult:
-    """Release governance lock — requires a scored cycle in the loop-governance DB."""
-    task_id = args.get("task_id", "").strip()
-    if not task_id:
-        return CallToolResult(content=[TextContent(type="text", text="Error: task_id is required")])
-
-    # Step 1: Check if lock file exists
-    if not _governance_lock_path().exists():
-        return CallToolResult(content=[TextContent(
-            type="text", text="No governance session active. Nothing to release."
-        )])
-
-    # Step 2: Verify task_id matches
-    try:
-        existing = json.loads(_governance_lock_path().read_text())
-        stored_task = existing.get("task_id", "")
-        if stored_task and stored_task != task_id:
-            return CallToolResult(content=[TextContent(
-                type="text",
-                text=f"Error: Lock belongs to task '{stored_task}', not '{task_id}'. Use end_change('{stored_task}')."
-            )])
-    except (json.JSONDecodeError, OSError) as e:
-        return CallToolResult(content=[TextContent(
-            type="text", text=f"Error reading lock file: {e}. Remove manually: rm {_governance_lock_path()}"
-        )])
-
-    # Step 3: Check loop-governance DB for a scored cycle with this task_id
-    try:
-        conn = _db()
-        row = conn.execute(
-            """SELECT id, composite, decision, outcome_note
-               FROM loop_cycles
-               WHERE task_id = ? AND user_overrode IS NOT NULL
-               ORDER BY id DESC LIMIT 1""",
-            (task_id,)
-        ).fetchone()
-        conn.close()
-    except Exception:
-        row = None
-
-    if not row:
-        # Offer to find the pending cycle and score it
-        try:
-            conn2 = _db()
-            pending = conn2.execute(
-                "SELECT id FROM loop_cycles WHERE task_id = ? AND user_overrode IS NULL ORDER BY id DESC LIMIT 1",
-                (task_id,)
-            ).fetchone()
-            conn2.close()
-            hint = f"   A pending cycle (#{pending[0]}) exists for this task — run:\n" if pending else ""
-        except Exception:
-            hint = ""
-
-        return CallToolResult(content=[TextContent(
-            type="text",
-            text=f"⛔ No scored cycle found for task '{task_id}'. "
-                 f"The pending cycle needs feedback_accept before release.\n\n"
-                 + hint
-                 + f"  1. mcp_loop_governance_feedback_accept(id=N, note='...') — score the cycle\n"
-                 + f"  2. mcp_loop_governance_end_change(task_id='{task_id}') — retry release\n\n"
-                 + f"The lock stays active until you score. You cannot start a new task until this one is closed."
-        )])
-
-    # Step 4: Score exists — release the lock
-    cycle_id, composite, decision, note = row
-    _governance_lock_path().unlink()
-    return CallToolResult(content=[TextContent(
-        type="text",
-        text=f"🔓 Governance session '{task_id}' closed.\n"
-             f"Scored: cycle #{cycle_id} (composite={composite}, decision={decision})\n"
-             f"Lock released. You can start a new change with begin_change()."
-    )])
-
-
-def _check_lock(args: dict | None = None) -> CallToolResult:
-    """Check if a governance lock is active."""
-    if not _governance_lock_path().exists():
-        return CallToolResult(content=[TextContent(
-            type="text", text=json.dumps({"active": False, "lock": None}, indent=2)
-        )])
-    try:
-        state = json.loads(_governance_lock_path().read_text())
-        return CallToolResult(content=[TextContent(
-            type="text", text=json.dumps({
-                "active": True,
-                "lock": state,
-                "file": str(_governance_lock_path()),
-            }, indent=2)
-        )])
-    except (json.JSONDecodeError, OSError) as e:
-        return CallToolResult(content=[TextContent(
-            type="text", text=json.dumps({
-                "active": False, "error": str(e)
-            }, indent=2)
-        )])
-
+# ── Main ─────────────────────────────────────────────────────
 
 async def main():
     async with stdio_server() as (read_stream, write_stream):
