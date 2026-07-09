@@ -43,22 +43,8 @@ project-root/
 
 ### Skill loading — every session, every agent
 
-**Before any coding work, every agent MUST:**
-
-1. Check for `.hermes-cortex/skills.yaml` in the project root.
-2. If it exists, load each skill in the `always` section via `skill_view(name)`.
-3. Classify the current task using the `agent-flow` skill (12 patterns).
-4. Load skills in the `on_task` section matching the classification.
-
-This replaces the old file-copy approach (`.hermes-cortex/skills/<name>/SKILL.md`).
-If no manifest exists, fall back to scanning `.hermes-cortex/skills/` for embedded
-SKILL.md files (backward compatibility).
-
-**Why:** Skills stay in one global location (`~/.hermes/skills/`). No copies, no
-drift, no per-project stale files. The manifest is a lightweight reference that
-tells agents what's relevant and when.
-
-See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md) for details.
+> Content relocated to [`docs/reference/skill-loading.md`](docs/reference/skill-loading.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ### Architecture Principles
 
@@ -99,12 +85,23 @@ See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md) for
 mcp_loop_governance_cache_search(query="<what you are about to do>")
 ```
 
-### After each logical change
+### After each logical change — before closing the cycle
 ```python
+# 1. Load the change-checklist skill (mandatory before end_change)
+skill_view(name="change-checklist")
+
+# 2. Verify all 5 phases: test, multi-OS, multi-role, docs, final
+#    Run actual scripts. Diff outputs. Run doctor --quiet.
+
+# 3. Score the governance cycle
 mcp_loop_governance_cycle_query(task_id="<descriptive-name>")
 mcp_loop_governance_feedback_accept(cycle_id=N, note="verified: <how>")
 # OR if wrong:
 mcp_loop_governance_feedback_override(cycle_id=N, correct_decision="MOVE_ON", note="...")
+
+# 4. Push changes so all agents benefit
+git add -A && git commit -m "<descriptive message>"
+git pull --rebase origin main && git push origin main
 ```
 
 **Enforcement:** MCP server blocks write tools without a lock. Pre-commit hook runs `score-cycle` on every commit. Cron auditor flags low cycle counts.

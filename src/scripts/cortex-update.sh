@@ -230,7 +230,8 @@ register "src/scripts/cost_store.py"               "${CORTEX_DEPLOY_HOME}/script
 register "src/scripts/install/install-cron-cost-tracking.py" "${CORTEX_DEPLOY_HOME}/scripts/install-cron-cost-tracking.py"
 
 # Health monitoring
-register "src/scripts/pre-commit-doc-audit.sh"        "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-doc-audit.sh"
+register "src/scripts/change-validate.sh"                  "${CORTEX_DEPLOY_HOME}/scripts/change-validate.sh"
+register "src/scripts/pre-commit-doc-audit.sh"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-doc-audit.sh"
 register "src/scripts/_port_arbitration.py"        "${CORTEX_DEPLOY_HOME}/scripts/_port_arbitration.py"
 register "src/scripts/health/health-server.py"            "${CORTEX_DEPLOY_HOME}/scripts/health-server.py" "health-server"
 register "src/scripts/health/health-vector.py"            "${CORTEX_DEPLOY_HOME}/scripts/health-vector.py"
@@ -718,6 +719,16 @@ deploy_nginx_configs() {
   fi
   local conf_available="${available_dir}/hermes-services.conf"
 
+  # Cleanup: detect stale macOS-style servers/ dir on Linux
+  if [[ -d "${config_dir%/sites-enabled}/servers" ]]; then
+    local stale_servers="${config_dir%/sites-enabled}/servers/hermes-services.conf"
+    if [[ -f "$stale_servers" ]]; then
+      warn "  Stale file detected: ${stale_servers}"
+      warn "  Remove with: sudo rm ${stale_servers}"
+      warn "  (macOS-style path — nginx on Linux uses sites-available/ instead)"
+    fi
+  fi
+
   [[ ! -f "$conf_src" ]] && return 0
 
   local tmpfile="/tmp/hermes-services-processed.conf"
@@ -828,6 +839,8 @@ deploy_nginx_configs() {
 # Deploys admin scripts to /usr/local/sbin/ (root-owned, NOPASSWD-safe).
 # Uses sudo on Linux for the root-owned path.
 deploy_system_scripts() {
+  # Allow skipping nginx-related system scripts (e.g. on servers without sudo)
+  [[ -n "${CORTEX_SKIP_NGINX:-}" ]] && { info "CORTEX_SKIP_NGINX set — skipping system script deploy"; return 0; }
   local deploy_dir="/usr/local/sbin"
   local src_dir="${REPO_DIR}/deploy/nginx"
   local scripts=("install-nginx-full.sh" "hermes-nginx-clean-restart")
