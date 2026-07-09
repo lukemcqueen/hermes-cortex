@@ -116,6 +116,27 @@ this same turn, you can skip this step.
 | Docker config | `deploy/<name>.yml` or `deploy/docker/<name>.conf` | — |
 | Test | `tests/<category>/test_<name>.py` | — |
 
+#### Service Layer Policy — Critical
+
+All Hermes Cortex agent services MUST run at user level:
+
+| Platform | Agent Services | System Services (remain) |
+|----------|---------------|------------------------|
+| **Linux** | `~/.config/systemd/user/` (`systemctl --user`) | docker, nginx, fail2ban |
+| **macOS** | `~/Library/LaunchAgents/` (`launchctl load`) | docker, nginx, fail2ban |
+
+**When adding a new service or daemon:**
+- If it runs as the user and doesn't need root → user-level only
+- If it needs root (Docker, nginx, fail2ban) → system-level only
+- **Never both.** Duplicate layers cause restart loops, port conflicts, and silent failures
+
+**Correct unit file patterns:**
+- Linux: `WantedBy=default.target` (NOT `multi-user.target`)
+- macOS: `KeepAlive` + `RunAtLoad` in LaunchAgent (NOT LaunchDaemon)
+
+Full reasoning: [`docs/service-layer-decision.md`](docs/service-layer-decision.md)
+Platform guides: [`docs/linux-service-layer.md`](docs/linux-service-layer.md), [`docs/macos-service-layer.md`](docs/macos-service-layer.md)
+
 #### Naming Conventions
 
 | Type | Pattern | Example |

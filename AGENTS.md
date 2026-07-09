@@ -19,6 +19,9 @@
 | Path | Purpose |
 |------|---------|
 | `docs/` | Guides, templates, reference docs |
+| `docs/service-layer-decision.md` | **Architecture decision: user-level only for agent services** |
+| `docs/linux-service-layer.md` | Linux systemd `--user` service layer guide |
+| `docs/macos-service-layer.md` | macOS LaunchAgent service layer guide |
 | `install.sh` | Single-command installer |
 | `deploy/` | Langfuse + ClickHouse docker-compose |
 | `.hermes-cortex/` | Agent infra: sessions, skills, memory |

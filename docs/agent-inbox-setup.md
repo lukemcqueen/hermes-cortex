@@ -150,9 +150,11 @@ bash ~/hermes-cortex/src/scripts/cortex-update.sh --force-all
 
 ### 2b. Run the server
 
-**Linux (systemd):**
+**Linux (systemd — user-level):**
 ```bash
-sudo systemctl enable --now hermes-agent-inbox
+# All Hermes agent services use user-level systemd units.
+# Never use sudo for agent services.
+systemctl --user enable --now hermes-agent-inbox
 ```
 
 **macOS (launchd):**

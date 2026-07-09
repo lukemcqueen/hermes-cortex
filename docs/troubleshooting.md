@@ -339,12 +339,18 @@ lsof -i -P | grep ollama | grep LISTEN
 # Should show: ollama ... localhost:11434 (LISTEN)
 ```
 
-**Linux (systemd):**
+**Linux (systemd — user-level):**
 ```bash
-sudo systemctl stop ollama
-sudo sed -i 's|0.0.0.0|127.0.0.1|' /etc/systemd/system/ollama.service
-sudo systemctl daemon-reload && sudo systemctl start ollama
+# Ollama should run as a user-level service (not system-level).
+# This ensures no port conflicts with other services.
+systemctl --user stop ollama
+sed -i 's|0.0.0.0|127.0.0.1|' ~/.config/systemd/user/ollama.service
+systemctl --user daemon-reload && systemctl --user start ollama
 ```
+
+> ⚠️ If you have a stale system-level ollama.service in `/etc/systemd/system/`, remove it:
+> `sudo systemctl disable --now ollama && sudo rm /etc/systemd/system/ollama.service`
+> See [`docs/linux-service-layer.md`](linux-service-layer.md) for details.
 
 **Verify:** Run `lsof -i -P | grep ollama` — it should show `localhost:11434`, not `*:11434`.
 
