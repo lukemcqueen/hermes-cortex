@@ -185,21 +185,10 @@ if [ -z "$DEPLOY_SCRIPT" ]; then
 elif [ -z "$NGINX_BIN" ]; then
   log "  nginx not found — skipping deploy"
 elif $NEW_IPS; then
-  if [ -n "$DEPLOY_SCRIPT" ]; then
-    if bash "$DEPLOY_SCRIPT" 2>&1; then
-      log "  ✓ Blocked IPs deployed"
-    else
-      error "Blocked IPs deploy failed — see above"
-    fi
-  fi
-  # Fallback: validate + reload nginx using existing NOPASSWD rules
-  if sudo -n /usr/sbin/nginx -t 2>&1; then
-    log "  ✓ nginx config valid"
-    if $NEW_IPS && sudo -n /usr/sbin/nginx -s reload 2>&1; then
-      log "  ✓ nginx reloaded"
-    fi
+  if ! bash "$DEPLOY_SCRIPT" 2>&1; then
+    error "Blocked IPs deploy failed — see above"
   else
-    log "  ⚠ nginx config needs attention"
+    log "  ✓ Blocked IPs deployed"
   fi
 else
   log "  No new IPs — skipping"
