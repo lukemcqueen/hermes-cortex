@@ -25,8 +25,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -n "${SUDO_USER:-}" ]; then
   CORTEX_REPO="${CORTEX_REPO:-$(getent passwd "$SUDO_USER" | cut -d: -f6)/hermes-cortex}"
+  CORTEX_HOME="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
 else
   CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
+  CORTEX_HOME="${HOME}"
 fi
 
 # ── Source user environment ──────────────────────────────────
@@ -38,11 +40,13 @@ case "$(uname -s)" in
   Darwin)
     if [[ "$(uname -m)" == "arm64" ]]; then
       NGINX_DIR="/opt/homebrew/etc/nginx"
+      NGINX_HTPASSWD="${NGINX_DIR}/.htpasswd"
       NGINX_CONFIG_DIR="${NGINX_DIR}/servers"
       FAIL2BAN_DIR="/opt/homebrew/etc/fail2ban"
       NGINX_LOG_DIR="/opt/homebrew/var/log/nginx"
     else
       NGINX_DIR="/usr/local/etc/nginx"
+      NGINX_HTPASSWD="${NGINX_DIR}/.htpasswd"
       NGINX_CONFIG_DIR="${NGINX_DIR}/servers"
       FAIL2BAN_DIR="/usr/local/etc/fail2ban"
       NGINX_LOG_DIR="/usr/local/var/log/nginx"
@@ -51,6 +55,7 @@ case "$(uname -s)" in
     ;;
   Linux)
     NGINX_DIR="/etc/nginx"
+    NGINX_HTPASSWD="${NGINX_DIR}/.hermes-htpasswd"
     NGINX_CONFIG_DIR="${NGINX_DIR}/sites-enabled"
     NGINX_AVAILABLE_DIR="${NGINX_DIR}/sites-available"
     FAIL2BAN_DIR="/etc/fail2ban"
@@ -155,9 +160,9 @@ for src in "${CORTEX_REPO}/deploy/nginx/hermes-zone-defs.conf" "${CORTEX_REPO}/d
             done
           fi
         fi
-        if [ -z "$ssl_cert" ] && [ -f "${HOME}/certs/fullchain.pem" ] && [ -f "${HOME}/certs/privkey.pem" ]; then
-          ssl_cert="${HOME}/certs/fullchain.pem"
-          ssl_key="${HOME}/certs/privkey.pem"
+        if [ -z "$ssl_cert" ] && [ -f "${CORTEX_HOME}/certs/fullchain.pem" ] && [ -f "${CORTEX_HOME}/certs/privkey.pem" ]; then
+          ssl_cert="${CORTEX_HOME}/certs/fullchain.pem"
+          ssl_key="${CORTEX_HOME}/certs/privkey.pem"
         fi
       fi
 
@@ -177,8 +182,8 @@ for src in "${CORTEX_REPO}/deploy/nginx/hermes-zone-defs.conf" "${CORTEX_REPO}/d
       < "$src" sed \
         -e "s|__NGINX_CONFIG_DIR__|${NGINX_CONFIG_DIR}|g" \
         -e "s|__NGINX_LOG_DIR__|${NGINX_LOG_DIR}|g" \
-        -e "s|__HTPASSWD_FILE__|${NGINX_DIR}/.htpasswd|g" \
-        -e "s|__CORTEX_HOME__|${HOME}|g" \
+        -e "s|__HTPASSWD_FILE__|${NGINX_HTPASSWD}|g" \
+        -e "s|__CORTEX_HOME__|${CORTEX_HOME}|g" \
         -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
         -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
         -e "/listen[[:space:]]/s|127\\.0\\.0\\.1:13\\([0-9][0-9][0-9]\\)|127.0.0.1:${port_prefix}\\1|g" \

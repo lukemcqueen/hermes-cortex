@@ -21,6 +21,16 @@ warn()  { echo -e "${YELLOW}⚠${RESET} $*"; }
 error() { echo -e "${RED}✗${RESET} $*"; }
 
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+
+# ── Detect real user (works even under sudo) ─────────────────
+if [ -n "${SUDO_USER:-}" ]; then
+  CORTEX_HOME="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+elif [ -n "${HOME:-}" ]; then
+  CORTEX_HOME="${HOME}"
+else
+  CORTEX_HOME="$(getent passwd "$(whoami)" | cut -d: -f6)"
+fi
+
 # Walk up to find repo root (signature file: AGENTS.md at the root)
 while [[ "$REPO_DIR" != "/" && ! -f "$REPO_DIR/AGENTS.md" ]]; do
   REPO_DIR="$(dirname "$REPO_DIR")"
@@ -696,7 +706,7 @@ deploy_nginx_configs() {
     files_copied=$((files_copied + 1))
   fi
 
-  # 2. hermes-services.conf — substitute placeholders, then write
+  # 2. hermes-services.conf — substitute placeholders, then diff against deployed
   local conf_src="${nginx_src_dir}/hermes-services.conf"
   local conf_dst="${config_dir}/hermes-services.conf"
 
@@ -708,92 +718,98 @@ deploy_nginx_configs() {
   fi
   local conf_available="${available_dir}/hermes-services.conf"
 
-  if needs_update "$conf_src" "$conf_dst"; then
-    local tmpfile="/tmp/hermes-services-processed.conf"
-    # Clean any leftover from a previous run
-    rm -f "$tmpfile"
+  [[ ! -f "$conf_src" ]] && return 0
 
-    # Port prefix: template ships as 13xxx (generic default).
-    # Set CORTEX_NGINX_PORT_PREFIX to your agent's prefix:
-    #   13 = generic/default (no change)
-    #   12 = Joseph
-    #   14 = Esther
-    local port_prefix="${CORTEX_NGINX_PORT_PREFIX:-13}"
+  local tmpfile="/tmp/hermes-services-processed.conf"
+  # Clean any leftover from a previous run
+  rm -f "$tmpfile"
 
-    # ── Read existing config (preserve ports/SSL unless forced) ──
-    local existing_ssl_cert="" existing_ssl_key=""
-    if [[ -f "$conf_dst" && -z "${CORTEX_FORCE_DEPLOY:-}" ]]; then
-      # POSIX-safe SSL cert extraction (macOS BSD tools don't support grep -P)
-      existing_ssl_cert=$(sed -n 's/^[[:space:]]*ssl_certificate[[:space:]]\{1,\}\([^;]*\);/\1/p' "$conf_dst" | head -1) || true
-      existing_ssl_key=$(sed -n 's/^[[:space:]]*ssl_certificate_key[[:space:]]\{1,\}\([^;]*\);/\1/p' "$conf_dst" | head -1) || true
-      [[ "$existing_ssl_cert" == "__SSL_CERT__" ]] && existing_ssl_cert=""
-      [[ "$existing_ssl_key" == "__SSL_CERT_KEY__" ]] && existing_ssl_key=""
-    fi
+  # Port prefix: template ships as 13xxx (generic default).
+  # Set CORTEX_NGINX_PORT_PREFIX to your agent's prefix:
+  #   13 = generic/default (no change)
+  #   12 = Joseph
+  #   14 = Esther
+  local port_prefix="${CORTEX_NGINX_PORT_PREFIX:-13}"
 
-    # ── SSL cert resolution (only if not preserved) ──────
-    local ssl_cert="$existing_ssl_cert" ssl_key="$existing_ssl_key"
-    if [[ -z "$ssl_cert" ]]; then
-    if [[ -n "${CORTEX_SSL_CERT_PATH:-}" && -n "${CORTEX_SSL_CERT_KEY_PATH:-}" ]]; then
-      # Trust the user's env var paths — nginx -t will catch any invalid paths
-      ssl_cert="$CORTEX_SSL_CERT_PATH"
-      ssl_key="$CORTEX_SSL_CERT_KEY_PATH"
-    elif [[ -d /etc/letsencrypt/live ]]; then
-      local le_domain="${CORTEX_SSL_DOMAIN:-}"
-      if [[ -n "$le_domain" && -f "/etc/letsencrypt/live/$le_domain/fullchain.pem" ]]; then
-        ssl_cert="/etc/letsencrypt/live/$le_domain/fullchain.pem"
-        ssl_key="/etc/letsencrypt/live/$le_domain/privkey.pem"
-      else
-        # Scan all Let's Encrypt dirs, take first valid
-        for le_dir in /etc/letsencrypt/live/*/; do
-          local c="${le_dir}fullchain.pem" k="${le_dir}privkey.pem"
-          if [[ -f "$c" && -f "$k" ]]; then
-            ssl_cert="$c"; ssl_key="$k"; break
-          fi
-        done
-      fi
-    fi
-    # Fall back to self-signed ~/certs/
-    if [[ -z "$ssl_cert" && -f "${HOME}/certs/fullchain.pem" && -f "${HOME}/certs/privkey.pem" ]]; then
-      ssl_cert="${HOME}/certs/fullchain.pem"; ssl_key="${HOME}/certs/privkey.pem"
-    fi
-    fi  # closes 'if [[ -z "$ssl_cert" ]]' (already preserved from live config)
+  # ── Read existing config (preserve ports/SSL unless forced) ──
+  local existing_ssl_cert="" existing_ssl_key=""
+  if [[ -f "$conf_dst" && -z "${CORTEX_FORCE_DEPLOY:-}" ]]; then
+    # POSIX-safe SSL cert extraction (macOS BSD tools don't support grep -P)
+    existing_ssl_cert=$(sed -n 's/^[[:space:]]*ssl_certificate[[:space:]]\{1,\}\([^;]*\);/\1/p' "$conf_dst" | head -1) || true
+    existing_ssl_key=$(sed -n 's/^[[:space:]]*ssl_certificate_key[[:space:]]\{1,\}\([^;]*\);/\1/p' "$conf_dst" | head -1) || true
+    [[ "$existing_ssl_cert" == "__SSL_CERT__" ]] && existing_ssl_cert=""
+    [[ "$existing_ssl_key" == "__SSL_CERT_KEY__" ]] && existing_ssl_key=""
+  fi
 
-    if [[ -n "$ssl_cert" ]]; then
-      if [[ "$ssl_cert" == "$existing_ssl_cert" && -n "$existing_ssl_cert" ]]; then
-        info "  Preserved SSL cert: ${ssl_cert}"
-      else
-        info "  SSL cert: ${ssl_cert}"
-      fi
+  # ── SSL cert resolution (only if not preserved) ──────
+  local ssl_cert="$existing_ssl_cert" ssl_key="$existing_ssl_key"
+  if [[ -z "$ssl_cert" ]]; then
+  if [[ -n "${CORTEX_SSL_CERT_PATH:-}" && -n "${CORTEX_SSL_CERT_KEY_PATH:-}" ]]; then
+    # Trust the user's env var paths — nginx -t will catch any invalid paths
+    ssl_cert="$CORTEX_SSL_CERT_PATH"
+    ssl_key="$CORTEX_SSL_CERT_KEY_PATH"
+  elif [[ -d /etc/letsencrypt/live ]]; then
+    local le_domain="${CORTEX_SSL_DOMAIN:-}"
+    if [[ -n "$le_domain" && -f "/etc/letsencrypt/live/$le_domain/fullchain.pem" ]]; then
+      ssl_cert="/etc/letsencrypt/live/$le_domain/fullchain.pem"
+      ssl_key="/etc/letsencrypt/live/$le_domain/privkey.pem"
     else
-      warn "  No SSL certs found — __SSL_CERT__ placeholders left unchanged"
+      # Scan all Let's Encrypt dirs, take first valid
+      for le_dir in /etc/letsencrypt/live/*/; do
+        local c="${le_dir}fullchain.pem" k="${le_dir}privkey.pem"
+        if [[ -f "$c" && -f "$k" ]]; then
+          ssl_cert="$c"; ssl_key="$k"; break
+        fi
+      done
     fi
+  fi
+  # Fall back to self-signed ~/certs/
+  if [[ -z "$ssl_cert" && -f "${CORTEX_HOME}/certs/fullchain.pem" && -f "${CORTEX_HOME}/certs/privkey.pem" ]]; then
+    ssl_cert="${CORTEX_HOME}/certs/fullchain.pem"; ssl_key="${CORTEX_HOME}/certs/privkey.pem"
+  fi
+  fi  # closes 'if [[ -z "$ssl_cert" ]]' (already preserved from live config)
 
-    < "$conf_src" sed \
-      -e "s|__NGINX_CONFIG_DIR__|${config_dir}|g" \
-      -e "s|__NGINX_BREW_DIR__|${brew_dir}|g" \
-      -e "s|__NGINX_LOG_DIR__|${log_dir}|g" \
-      -e "s|__HTPASSWD_FILE__|${htpasswd}|g" \
-      -e "s|__CORTEX_HOME__|${HOME}|g" \
-      -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
-      -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
-      -e "/listen[[:space:]]/s|127\\.0\\.0\\.1:13\\([0-9][0-9][0-9]\\)|127.0.0.1:${port_prefix}\\1|g" \
-      -e "/listen[[:space:]]/s|listen 13\([0-9][0-9][0-9]\) ssl|listen ${port_prefix}\1 ssl|g" \
-      -e "s|/etc/nginx/|${brew_dir}/|g" > "$tmpfile"
-
-    # ── Port preservation (must happen before deploy) ──
-    # Preserve custom port ranges (12xxx Joseph, 14xxx Esther, etc.)
-    if [[ -f "$conf_dst" ]]; then
-      local live_prefix template_prefix
-      # POSIX-safe extraction (macOS BSD tools don't support grep -P)
-      live_prefix=$(sed -n 's/^[[:space:]]*listen[[:space:]]\{1,\}\(127\.0\.0\.1:\)\?[0-9]\{2\}\([0-9]\{3\}\)\( ssl\)\?;/\2/p' "$conf_dst" | head -1) || true
-      template_prefix=$(sed -n 's/^[[:space:]]*listen[[:space:]]\{1,\}\(127\.0\.0\.1:\)\?[0-9]\{2\}\([0-9]\{3\}\)\( ssl\)\?;/\2/p' "$tmpfile" | head -1) || true
-      if [[ -n "$live_prefix" && -n "$template_prefix" && "$live_prefix" != "$template_prefix" ]]; then
-        sed -i '' "s/:${template_prefix}/:${live_prefix}/g" "$tmpfile"
-        info "  Preserved port range ${template_prefix}xxx → ${live_prefix}xxx"
-      fi
+  if [[ -n "$ssl_cert" ]]; then
+    if [[ "$ssl_cert" == "$existing_ssl_cert" && -n "$existing_ssl_cert" ]]; then
+      info "  Preserved SSL cert: ${ssl_cert}"
+    else
+      info "  SSL cert: ${ssl_cert}"
     fi
+  else
+    warn "  No SSL certs found — __SSL_CERT__ placeholders left unchanged"
+  fi
 
-    # ── Config generated — tell user how to deploy ──
+  < "$conf_src" sed \
+    -e "s|__NGINX_CONFIG_DIR__|${config_dir}|g" \
+    -e "s|__NGINX_BREW_DIR__|${brew_dir}|g" \
+    -e "s|__NGINX_LOG_DIR__|${log_dir}|g" \
+    -e "s|__HTPASSWD_FILE__|${htpasswd}|g" \
+    -e "s|__CORTEX_HOME__|${CORTEX_HOME}|g" \
+    -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
+    -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
+    -e "/listen[[:space:]]/s|127\\.0\\.0\\.1:13\\([0-9][0-9][0-9]\\)|127.0.0.1:${port_prefix}\\1|g" \
+    -e "/listen[[:space:]]/s|listen 13\\([0-9][0-9][0-9]\\) ssl|listen ${port_prefix}\\1 ssl|g" \
+    -e "s|/etc/nginx/|${brew_dir}/|g" > "$tmpfile"
+
+  # ── Port preservation (must happen before deploy) ──
+  # Preserve custom port ranges (12xxx Joseph, 14xxx Esther, etc.)
+  if [[ -f "$conf_dst" ]]; then
+    local live_prefix template_prefix
+    # POSIX-safe extraction (macOS BSD tools don't support grep -P)
+    live_prefix=$(sed -n 's/^[[:space:]]*listen[[:space:]]\{1,\}\(127\.0\.0\.1:\)\?[0-9]\{2\}\([0-9]\{3\}\)\( ssl\)\?;/\2/p' "$conf_dst" | head -1) || true
+    template_prefix=$(sed -n 's/^[[:space:]]*listen[[:space:]]\{1,\}\(127\.0\.0\.1:\)\?[0-9]\{2\}\([0-9]\{3\}\)\( ssl\)\?;/\2/p' "$tmpfile" | head -1) || true
+    if [[ -n "$live_prefix" && -n "$template_prefix" && "$live_prefix" != "$template_prefix" ]]; then
+      sed -i '' "s/:${template_prefix}/:${live_prefix}/g" "$tmpfile"
+      info "  Preserved port range ${template_prefix}xxx → ${live_prefix}xxx"
+    fi
+  fi
+
+  # ── Diff processed config against deployed — skip if unchanged ──
+  if [[ -f "$conf_dst" ]] && diff -q "$tmpfile" "$conf_dst" &>/dev/null; then
+    info "  nginx config unchanged — skipping deploy"
+    rm -f "$tmpfile"
+  else
+    # ── Config differs — tell user how to deploy ──
     info "  Config generated: ${tmpfile}"
     info "  Deploy with:"
     info "    sudo cp ${tmpfile} ${conf_available}"
@@ -848,7 +864,7 @@ deploy_system_scripts() {
 
   # Remove old local copies — canonical version is now in /usr/local/sbin/
   local home_link="${CORTEX_DEPLOY_HOME}/scripts/install-nginx-full.sh"
-  local agent_link="${HOME}/.hermes-cortex/scripts/install-nginx-full.sh"
+  local agent_link="${CORTEX_HOME}/.hermes-cortex/scripts/install-nginx-full.sh"
   [[ -f "$home_link" ]] && rm -f "$home_link"
   [[ -f "$agent_link" ]] && rm -f "$agent_link"
 }

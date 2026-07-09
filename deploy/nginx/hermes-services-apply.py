@@ -151,9 +151,9 @@ def find_letsencrypt_certs(domain=None):
     return None, None
 
 
-def find_self_signed_certs():
+def find_self_signed_certs(user_home=None):
     """Search ~/certs/ for self-signed cert.pem / privkey.pem."""
-    home = Path.home()
+    home = Path(user_home) if user_home else Path.home()
     cert_dir = home / "certs"
     if not cert_dir.is_dir():
         return None, None
@@ -183,7 +183,7 @@ def find_system_certs():
     return None, None
 
 
-def discover_ssl_certs(domain=None, explicit_cert=None, explicit_key=None):
+def discover_ssl_certs(domain=None, explicit_cert=None, explicit_key=None, user_home=None):
     """Discover SSL certificates. Returns (cert_path, key_path) or (None, None)."""
     # Priority 1: Explicit paths from env/args
     # Use explicit paths even if we can't stat them (e.g. root-only LE certs).
@@ -218,7 +218,7 @@ def discover_ssl_certs(domain=None, explicit_cert=None, explicit_key=None):
         return cert, key
 
     # Priority 4: ~/certs/ self-signed
-    cert, key = find_self_signed_certs()
+    cert, key = find_self_signed_certs(user_home=user_home)
     if cert and key:
         return cert, key
 
@@ -343,7 +343,13 @@ def main():
     # ── Determine paths ──
     config_dir, available_dir, log_dir, htpasswd = detect_nginx_paths()
     cortex_repo = Path(os.environ.get("CORTEX_REPO", Path.home() / "hermes-cortex"))
-    cortex_home = Path.home()
+    # Detect real user (works even under sudo)
+    sudo_user = os.environ.get("SUDO_USER")
+    if sudo_user:
+        import pwd
+        cortex_home = Path(pwd.getpwnam(sudo_user).pw_dir)
+    else:
+        cortex_home = Path.home()
 
     # Template path
     template_path = args.template
@@ -389,6 +395,7 @@ def main():
             domain=domain,
             explicit_cert=args.cert,
             explicit_key=args.key,
+            user_home=cortex_home,
         )
 
     # ── Process template ──
