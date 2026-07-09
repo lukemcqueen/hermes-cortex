@@ -382,6 +382,11 @@ rm -f "$SCORE_STDERR"
 
 rm -f "$PREV_FILE"
 
+# ── Documentation audit (warn-only, doesn't block) ──────────
+if [[ -z "${SKIP_DOC_AUDIT:-}" ]] && [[ -f "$HOME/hermes-cortex/src/scripts/pre-commit-doc-audit.sh" ]]; then
+  bash "$HOME/hermes-cortex/src/scripts/pre-commit-doc-audit.sh"
+fi
+
 # Check decision — LOOP is normal for first cycle, STOP means done
 DECISION=$(echo "$SCORE_OUTPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('decision','LOOP'))" 2>/dev/null || echo "LOOP")
 

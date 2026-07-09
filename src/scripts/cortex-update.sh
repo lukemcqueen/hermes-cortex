@@ -219,6 +219,7 @@ register "src/scripts/cost_store.py"               "${CORTEX_DEPLOY_HOME}/script
 register "src/scripts/install/install-cron-cost-tracking.py" "${CORTEX_DEPLOY_HOME}/scripts/install-cron-cost-tracking.py"
 
 # Health monitoring
+register "src/scripts/pre-commit-doc-audit.sh"        "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-doc-audit.sh"
 register "src/scripts/_port_arbitration.py"        "${CORTEX_DEPLOY_HOME}/scripts/_port_arbitration.py"
 register "src/scripts/health/health-server.py"            "${CORTEX_DEPLOY_HOME}/scripts/health-server.py" "health-server"
 register "src/scripts/health/health-vector.py"            "${CORTEX_DEPLOY_HOME}/scripts/health-vector.py"

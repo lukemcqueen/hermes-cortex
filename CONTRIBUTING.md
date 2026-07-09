@@ -190,6 +190,35 @@ Before committing, scrub any PII from your changes:
 **Golden rule:** If a file contains your real domain, real paths, or real
 credentials, it does not belong in the public repo without genericization.
 
+### Step 5b: Documentation Audit — Mandatory
+
+**Before committing, audit whether your change needs documentation updates.**
+
+You must answer **NO** to ALL of these before proceeding:
+
+| Question | If YES → | 
+|----------|----------|
+| Did you create or modify a **file** in `src/scripts/`, `src/skills/`, or `deploy/`? | Update `cortex-update.sh` MAP or `docs/SKILLS-MANIFEST.md` |
+| Did you create or modify a **documentation file** (any `.md` in `docs/`)? | Update `docs/DOCS-INDEX.md` with new/changed entry |
+| Did you add a **new configuration template**? | Add to `docs/DOCS-INDEX.md` under Templates |
+| Did you add a **service or daemon**? | Update `docs/linux-service-layer.md` or `docs/macos-service-layer.md` fleet service map |
+| Did you change how a **public command or API** works? | Update the relevant documentation file + docstring |
+| Did you change a **cron schedule or script path**? | Update `docs/cron-job-recipes.md` or `docs/fleet-reference.md` |
+| Did you add a **new environment variable**? | Update `docs/env-vars.md` |
+| Did your change affect **agent behavior or session startup**? | Check if `AGENTS.md` or `README.md` needs updating |
+| Is your change significant enough that **another agent would benefit** from knowing about it? | Add a brief note to `docs/whats-new.md` or the relevant guide |
+
+**If any answer is YES → update the corresponding doc before committing.**
+
+The verification is simple:
+```bash
+# After staging all files, check if docs/ or templates/ changed
+git diff --cached --name-only | grep -E '^(docs|src/skills|deploy/nginx)/' > /tmp/dirty_docs.txt
+# If non-empty, run the table above against each changed file
+```
+
+**Golden rule:** A feature doesn't exist until its documentation is in the same commit.
+
 ### Step 6: Test Before Shipping
 
 **Every change to a script, config, or installer must be verified end-to-end**
