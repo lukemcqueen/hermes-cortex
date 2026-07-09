@@ -598,6 +598,24 @@ def check_config(res):
 
 def check_nginx(res):
     """7. Nginx config: file exists, htpasswd, agent-card, SSL certs, syntax."""
+
+    def _path_ok(p):
+        """Check if a path exists, treating PermissionError as 'exists' (root-owned)."""
+        try:
+            return Path(p).exists()
+        except PermissionError:
+            return True  # file exists, just not readable by this user
+
+    def _path_info(p):
+        """Return readable status of a path, handling permission errors."""
+        try:
+            p_obj = Path(p)
+            if p_obj.exists():
+                return "exists"
+            return "missing"
+        except PermissionError:
+            return "exists (root-owned, not readable by this user)"
+
     # ── OS-aware nginx paths ──
     nginx_brew_dir = None
     config_dir = None
@@ -653,9 +671,9 @@ def check_nginx(res):
 
     if htpasswd_path:
         p = Path(htpasswd_path)
-        if p.exists():
-            res.add("Nginx htpasswd", "PASS", f"{htpasswd_path} exists")
-        elif htpasswd_expected.exists():
+        if _path_ok(htpasswd_path):
+            res.add("Nginx htpasswd", "PASS", f"{htpasswd_path} {_path_info(htpasswd_path)}")
+        elif _path_ok(str(htpasswd_expected)):
             res.add("Nginx htpasswd", "FAIL",
                     f"config points to '{htpasswd_path}' (not found) — expected '{htpasswd_expected}'",
                     f"Re-deploy: cortex-update.sh --force-all")
@@ -677,7 +695,7 @@ def check_nginx(res):
             if card_path in seen_cards:
                 continue
             seen_cards.add(card_path)
-            if Path(card_path).exists():
+            if _path_ok(card_path):
                 agent_card_found += 1
             else:
                 agent_card_missing += 1
@@ -699,7 +717,7 @@ def check_nginx(res):
             if raw in seen_certs or "__SSL_CERT" in raw:
                 continue
             seen_certs.add(raw)
-            if Path(raw).exists():
+            if _path_ok(raw):
                 cert_found += 1
             else:
                 cert_missing += 1
