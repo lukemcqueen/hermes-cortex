@@ -731,10 +731,16 @@ def check_nginx(res):
 
     # ── nginx -t syntax check (with sudo for cert access) ──
     if nginx_available():
+        # Try sudo first (needed for root-owned certs on Linux)
+        # Fall back to direct if sudo fails (e.g. macOS — no TTY for password)
         if os.geteuid() == 0:
             out, code = run(["nginx", "-t"], timeout=10)
         elif run(["which", "sudo"], timeout=5)[0]:
-            out, code = run(["sudo", "nginx", "-t"], timeout=15)
+            r = subprocess.run(["sudo", "nginx", "-t"], capture_output=True, text=True, timeout=15)
+            out, code = r.stdout.strip(), r.returncode
+            # sudo without TTY exits 1 with msg on stderr — retry as user
+            if code != 0 and ("a terminal is required" in r.stderr.lower() or "a terminal is required" in r.stdout.lower()):
+                out, code = run(["nginx", "-t"], timeout=10)
         else:
             res.add("Nginx syntax", "INFO", "not root and no sudo — skipping syntax check")
             return
