@@ -43,8 +43,22 @@ project-root/
 
 ### Skill loading — every session, every agent
 
-> Content relocated to [`docs/reference/skill-loading.md`](docs/reference/skill-loading.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
+**Before any coding work, every agent MUST:**
+
+1. Check for `.hermes-cortex/skills.yaml` in the project root.
+2. If it exists, load each skill in the `always` section via `skill_view(name)`.
+3. Classify the current task using the `agent-flow` skill (12 patterns).
+4. Load skills in the `on_task` section matching the classification.
+
+This replaces the old file-copy approach (`.hermes-cortex/skills/<name>/SKILL.md`).
+If no manifest exists, fall back to scanning `.hermes-cortex/skills/` for embedded
+SKILL.md files (backward compatibility).
+
+**Why:** Skills stay in one global location (`~/.hermes/skills/`). No copies, no
+drift, no per-project stale files. The manifest is a lightweight reference that
+tells agents what's relevant and when.
+
+See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md) for details.
 
 ### Architecture Principles
 

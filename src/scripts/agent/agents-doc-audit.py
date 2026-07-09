@@ -77,6 +77,7 @@ DEFAULT_CONFIG = {
         "Common Tasks",
         "Reference Docs",
         "Rules",
+        "Skill loading",
     ],
 }
 
@@ -204,6 +205,7 @@ ALWAYS_PROTECTED = {
     "Key Directories",
     "Architecture Principles",
     "Agent Execution Contract",
+    "Skill loading",
     "Rules",
     "Common Tasks",
 }
@@ -331,11 +333,15 @@ def analyze_section(heading, level, lines, protected_list, config):
         if not suggested_target:
             suggested_target = "docs/"
 
-    # 8. How-to narrative (numbered steps + code)
+    # 8. How-to narrative (numbered steps + code) — BUT skip if it's a short
+    #    operational procedure (says "MUST", < 20 lines)
     if _has_howto_narrative(text):
-        reasons.append("Step-by-step how-to guide → belongs in docs/")
-        if not suggested_target:
-            suggested_target = "docs/operations-reference.md"
+        if line_count < 20 and "MUST" in text:
+            pass  # Operational rule/procedure, not a how-to guide
+        else:
+            reasons.append("Step-by-step how-to guide → belongs in docs/")
+            if not suggested_target:
+                suggested_target = "docs/operations-reference.md"
 
     # 9. Large section fallback (>60 lines, low-specificity signal)
     if line_count > 60 and not suggested_target:
