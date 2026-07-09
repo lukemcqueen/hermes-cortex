@@ -433,6 +433,29 @@ if ! command -v python3 &>/dev/null; then
   exit 1
 fi
 
+# ── Validate LLM cron model/provider env vars ──────────────
+# LLM-driven crons need a model + provider. Set in ~/hermes-cortex/.env.
+# The install script sources ~/hermes-cortex/.env early, so these will
+# be picked up. If not set, halt with a clear message.
+LLM_CRON_MODEL="${LLM_CRON_MODEL:-}"
+LLM_CRON_PROVIDER="${LLM_CRON_PROVIDER:-}"
+
+if [[ -z "$LLM_CRON_MODEL" || -z "$LLM_CRON_PROVIDER" ]]; then
+  echo ""
+  echo "━━━ LLM Cron Model/Provider Not Configured ━━━"
+  echo ""
+  echo "  LLM-driven cron jobs need a model and provider."
+  echo "  Set them in ~/hermes-cortex/.env:"
+  echo ""
+  echo "    LLM_CRON_MODEL=deepseek-v4-flash"
+  echo "    LLM_CRON_PROVIDER=deepseek"
+  echo ""
+  echo "  These control which model/provider all LLM-driven crons use."
+  echo "  Local-only crons (qwen on Ollama) use LOCAL_CRON_MODEL/PROVIDER."
+  echo ""
+  exit 1
+fi
+
 # Setup local Ollama provider for qwen crons
 setup_ollama_provider
 
@@ -471,7 +494,7 @@ If nothing to report: output exactly [SILENT]" \
   "origin" \
   "$HOME" \
   "false" \
-  "deepseek-v4-flash" "opencode-zen"
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 # Companion sensor (no_agent, every 5 min)
 create_cron "remediation-sensor" "*/5 * * * *" \
@@ -635,7 +658,7 @@ Result: Inbox empty. All items processed.
 
 If nothing to report: output exactly [SILENT]" \
   "" "" "origin" "" "false" \
-  "deepseek-v4-flash" "opencode-zen"
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 # Agent-specific local fixer (no_agent script — reads markers, searches offline corpus, applies fixes)
 create_cron "agent-apply-fixes" "*/10 * * * *" \
@@ -709,7 +732,7 @@ Result: Evaluation complete. 2 skills mined. DB cleaned.
 
 📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo" \
   "loop-governance" "" "origin" "" "false" \
-  "deepseek-v4-flash" "opencode-zen"
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 # Session embedding cache rebuild (weekly Monday 05:00 — universal, loop-governance)
 create_cron "session-cache-build" "0 5 * * 1" \
@@ -817,7 +840,7 @@ Result: Memory consolidated. 3 stale entries pruned, 2 merged. Under limit.
 
 If nothing to report: output exactly [SILENT]" \
   "" "" "origin" "" "false" \
-  "deepseek-v4-flash" "opencode-zen"
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 # Auto-save sessions every 6 hours
 create_cron "auto-save-sessions" "every 360m" \
@@ -889,7 +912,7 @@ Result: SOUL.md refined. 2 corrections applied, 1 pattern added, 1 pitfall docum
 
 If nothing to report: output exactly [SILENT]" \
   "soul-refinement" "" "origin" "" "false" \
-  "deepseek-v4-flash" "opencode-zen"
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 # ── AGENTS.md auto-trim: daily scan + LLM apply (M-Sa) ──
 # Phase 1: deterministic scan — silent when clean, JSON report when candidates found
@@ -925,7 +948,7 @@ Phase 3 — Apply: [N] sections moved to docs/
 If nothing to apply: output exactly [SILENT]" \
   "" "" "origin" \
   "$HOME" "false" \
-  "deepseek-v4-flash" "opencode-zen"
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 # ── 5. Skill Collection (universal — all agents) ──────────
 printf "${CYAN}  5. Skill Collection Pipeline${RESET}\n"
