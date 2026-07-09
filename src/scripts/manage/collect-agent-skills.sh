@@ -55,8 +55,16 @@ repo_skills = Path(os.environ["REPO_SKILLS_DIR"])
 bundled_skills = Path(os.environ.get("HERMES_BUNDLED_SKILLS_DIR", ""))
 manifest_file = state_dir / "skills-manifest.json"
 contents_dir = state_dir / "skill-contents"
-
 contents_dir.mkdir(parents=True, exist_ok=True)
+
+# Load skill ignore list (one skill name per line, # comments supported)
+ignore_file = state_dir / "skill-ignore.txt"
+ignored_skills = set()
+if ignore_file.exists():
+    for line in ignore_file.read_text().splitlines():
+        line = line.split("#")[0].strip()
+        if line:
+            ignored_skills.add(line.lower())
 hostname = os.uname().nodename
 timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
@@ -88,6 +96,11 @@ def scan_dir(search_dir):
 
         text = skill_file.read_text(errors="replace")
         name = skill_file.parent.name
+
+        # Skip if in the ignore list (personal/private skills)
+        if name.lower() in ignored_skills:
+            continue
+
         parent = skill_file.parent.parent
         try:
             category = str(parent.relative_to(search_dir))

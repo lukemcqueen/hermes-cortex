@@ -374,7 +374,7 @@ create_cron "skill-evaluate" "0 9 * * 2" \
   "" \
   "You are running a scheduled skill evaluation cron for the Moses orchestrator.\n\nYour job is to:\n1. Run process-skill-reports.py to collect any pending skill reports\n2. For each reported custom skill, evaluate:\n   - Is it well-structured? (proper YAML frontmatter, description, behavioral principles)\n   - Is it useful across the fleet or specific to one agent?\n   - Should it be upstreamed to hermes-cortex/src/skills/ or left as-is?\n3. Summarize findings and recommendations for each skill\n\n## OUTPUT FORMAT — FOLLOW EXACTLY\nMatch this structure line for line. Your content replaces the values.\nEverything else stays: dashes, colons, spacing, line breaks.\n\nskill-evaluate (JOB_ID) [YYYY-MM-DD HH:MM KST]\n-------------\n\nPhase 1 — Collection: [N] new skill reports from [M] agents\n- agent-a: [X] custom skills\n- agent-b: [Y] custom skills\n\nPhase 2 — Evaluation: [N] total skills reviewed\n- [skill-name]: ⭐ quality score [1-5], [upstream|custom|needs-work]\n  - Strengths: ...\n  - Weaknesses: ...\n  - Recommendation: ...\n\nPhase 3 — Upstream candidates: [N] ready for public-contribution\n- [skill-name] → src/skills/[category]/[skill-name]/SKILL.md\n\nResult: [N] evaluated, [N] recommended for upstreaming.\n\nIf no new reports: output exactly [SILENT]\n\n📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$1.80/mo" \
   "" "" "origin" "" "false" \
-  "deepseek-v4-flash" "opencode-zen"
+  "deepseek-v4-flash" "deepseek"
 
 echo ""
 printf "${CYAN}━━━ Summary ━━━${RESET}\n"
