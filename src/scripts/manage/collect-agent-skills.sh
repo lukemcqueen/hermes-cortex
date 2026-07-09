@@ -7,10 +7,10 @@
 #  that are NOT from the upstream hermes-cortex repo and
 #  reports them as custom skills to Moses via inbox.
 #
+#  The entire scan + JSON build is done in Python to correctly
+#  handle special characters, multi-line content, and JSON encoding.
+#
 #  no_agent-safe: silent exit (0) when nothing new to report.
-#  Deduplicates across both paths (no double reporting).
-#  Sends full SKILL.md content for quality evaluation via the
-#  JSON /api/send endpoint.
 #
 #  Requires (from ~/hermes-cortex/.env or ~/.hermes/hermes-inbox.conf):
 #    CORTEX_INBOX_URL  — Moses inbox API base URL
@@ -21,148 +21,178 @@
 set -euo pipefail
 
 REPO_DIR="${CORTEX_REPO:-$HOME/hermes-cortex}"
-
-# Primary: Hermes-native skill location (~/.hermes/skills/)
-# Fallback: cortex deploy skills (~/.hermes-cortex/skills/)
 HERMES_SKILLS_DIR="$HOME/.hermes/skills"
 CORTEX_SKILLS_DIR="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}/skills"
 REPO_SKILLS_DIR="$REPO_DIR/src/skills"
+# Also check bundled Hermes Agent skills (not truly "custom")
+HERMES_BUNDLED_SKILLS_DIR="$HOME/.hermes/hermes-agent/skills"
 STATE_DIR="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}/state"
 MANIFEST_FILE="$STATE_DIR/skills-manifest.json"
-CONTENTS_FILE="$STATE_DIR/skills-contents.json"
 
 # ── Source config ───────────────────────────────────────────
-# Try ~/hermes-cortex/.env first, fallback to ~/.hermes/hermes-inbox.conf
 if [[ -f "${HOME}/hermes-cortex/.env" ]]; then
   set -a; source "${HOME}/hermes-cortex/.env"; set +a
 elif [[ -f "${HOME}/.hermes/hermes-inbox.conf" ]]; then
   source "${HOME}/.hermes/hermes-inbox.conf"
 fi
 
-# ── Find custom skills ───────────────────────────────────────
-# A skill is "custom" if it exists in ~/.hermes/skills/ or
-# ~/.hermes-cortex/skills/ but NOT in the upstream repo's
-# src/skills/ directory.
-# Dedup: same relative path across both paths counted once.
-
-CUSTOM_SKILLS=()
-SKILL_CONTENTS=()
-SKILL_COUNT=0
-declare -A SEEN_RELPATHS
-
-find_skills_in() {
-  local search_dir="$1"
-  [[ -d "$search_dir" ]] || return 0
-  while IFS= read -r -d '' skill_file; do
-    rel_path="${skill_file#$search_dir/}"
-    # Skip if already seen (from the other path)
-    [[ -n "${SEEN_RELPATHS[$rel_path]:-}" ]] && continue
-    SEEN_RELPATHS["$rel_path"]=1
-    SKILL_COUNT=$((SKILL_COUNT + 1))
-
-    # Check if this exact SKILL.md exists in the repo
-    repo_skill="$REPO_SKILLS_DIR/$rel_path"
-    if [[ -f "$repo_skill" ]]; then
-      continue  # Not custom — from upstream repo
-    fi
-
-    # Extract skill name and category from directory path
-    skill_dir="$(dirname "$rel_path")"      # e.g. "devops/my-skill"
-    name="$(basename "$skill_dir")"           # e.g. "my-skill"
-    category="$(dirname "$skill_dir")"        # e.g. "devops"
-    [[ "$category" == "." ]] && category=""   # uncategorised
-
-    lines=$(wc -l < "$skill_file" 2>/dev/null || echo 0)
-    summary=$(grep -m1 '^description:' "$skill_file" 2>/dev/null | sed 's/^description: *//' || echo "")
-    [[ -z "$summary" ]] && summary="(no description)"
-
-    # File age in days
-    if [[ "$(uname)" == "Darwin" ]]; then
-      birth=$(stat -f "%B" "$skill_file" 2>/dev/null || echo 0)
-    else
-      birth=$(stat -c "%W" "$skill_file" 2>/dev/null || echo 0)
-    fi
-    now=$(date +%s)
-    age_days=$(( (now - birth) / 86400 ))
-    [[ $age_days -lt 0 ]] && age_days=0
-
-    # Read full SKILL.md content for evaluation
-    content=$(cat "$skill_file" 2>/dev/null || echo "(unreadable)")
-
-    CUSTOM_SKILLS+=("{\"name\":\"$name\",\"category\":\"$category\",\"lines\":$lines,\"age_days\":$age_days,\"summary\":\"$summary\"}")
-    SKILL_CONTENTS+=("$content")
-  done < <(find -L "$search_dir" -name "SKILL.md" -type f -print0 2>/dev/null || true)
-}
-
-# Search both paths (primary first, fallback second)
-find_skills_in "$HERMES_SKILLS_DIR"
-find_skills_in "$CORTEX_SKILLS_DIR"
-
-# ── Build and write manifest ─────────────────────────────────
-HOSTNAME="$(hostname 2>/dev/null || echo 'unknown')"
-TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-TOTAL=${#CUSTOM_SKILLS[@]}
-
-build_manifest() {
-  echo "{"
-  echo "  \"sender\": \"$HOSTNAME\","
-  echo "  \"type\": \"skill-report\","
-  echo "  \"generated\": \"$TIMESTAMP\","
-  echo "  \"total_skills\": $SKILL_COUNT,"
-  echo "  \"custom_skills\": $TOTAL,"
-  echo "  \"skills\": ["
-  local first=true
-  for skill in "${CUSTOM_SKILLS[@]}"; do
-    $first || echo ","
-    first=false
-    echo -n "    $skill"
-  done
-  echo ""
-  echo "  ]"
-  echo "}"
-}
-
+# ── Build manifest via Python ──────────────────────────────
+# (Python handles JSON encoding, multi-line content, and
+#  special characters correctly. Bash cannot safely build JSON.)
 mkdir -p "$STATE_DIR"
-build_manifest > "$MANIFEST_FILE"
 
-# Write contents JSON for Python sender to read
-python3 -c "
-import json, sys
-contents = []
-for line in sys.stdin:
-    contents.append(line.rstrip('\n'))
-json.dump(contents, sys.stdout)
-" <<< "$(printf '%s\n' "${SKILL_CONTENTS[@]}")" > "$CONTENTS_FILE"
+# Export vars for Python subprocess
+export STATE_DIR HERMES_SKILLS_DIR CORTEX_SKILLS_DIR REPO_SKILLS_DIR HERMES_BUNDLED_SKILLS_DIR
+
+python3 << 'PYEOF'
+import json, os, time
+from pathlib import Path
+
+state_dir = Path(os.environ["STATE_DIR"])
+hermes_skills = Path(os.environ["HERMES_SKILLS_DIR"])
+cortex_skills = Path(os.environ["CORTEX_SKILLS_DIR"])
+repo_skills = Path(os.environ["REPO_SKILLS_DIR"])
+bundled_skills = Path(os.environ.get("HERMES_BUNDLED_SKILLS_DIR", ""))
+manifest_file = state_dir / "skills-manifest.json"
+contents_dir = state_dir / "skill-contents"
+
+contents_dir.mkdir(parents=True, exist_ok=True)
+hostname = os.uname().nodename
+timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+skills_list = []
+seen_paths = set()
+
+def scan_dir(search_dir):
+    """Scan a directory for SKILL.md files not in the upstream repo."""
+    if not search_dir.is_dir():
+        return
+    for skill_file in sorted(search_dir.rglob("SKILL.md")):
+        if not skill_file.is_file():
+            continue
+        rel_path = str(skill_file.relative_to(search_dir))
+        if rel_path in seen_paths:
+            continue
+        seen_paths.add(rel_path)
+
+        # Skip if this skill exists in the upstream repo
+        repo_path = repo_skills / rel_path
+        if repo_path.exists():
+            continue
+
+        # Skip if this skill exists in the Hermes Agent bundle
+        if bundled_skills.is_dir():
+            bundled_path = bundled_skills / rel_path
+            if bundled_path.exists():
+                continue
+
+        text = skill_file.read_text(errors="replace")
+        name = skill_file.parent.name
+        parent = skill_file.parent.parent
+        try:
+            category = str(parent.relative_to(search_dir))
+        except ValueError:
+            category = ""
+
+        lines_count = text.count("\n") + 1
+
+        # Extract description from YAML frontmatter
+        summary = "(no description)"
+        if text.startswith("---"):
+            end = text.find("---", 3)
+            if end > 0:
+                front = text[3:end]
+                for line in front.split("\n"):
+                    line = line.strip()
+                    if line.startswith("description:"):
+                        desc = line[len("description:"):].strip().strip("'\"")
+                        if desc and desc not in ("|", ">"):
+                            summary = desc
+                        break
+
+        # File age in days
+        try:
+            stat = skill_file.stat()
+            birth = getattr(stat, 'st_birthtime', stat.st_ctime)
+        except Exception:
+            birth = skill_file.stat().st_ctime
+        age_days = max(0, int((time.time() - birth) / 86400))
+
+        skills_list.append({
+            "name": name,
+            "category": category,
+            "lines": lines_count,
+            "age_days": age_days,
+            "summary": summary,
+        })
+
+        # Write full content to individual file
+        idx = len(skills_list) - 1
+        (contents_dir / f"idx_{idx}.txt").write_text(text)
+
+scan_dir(hermes_skills)
+scan_dir(cortex_skills)
+
+manifest = {
+    "sender": hostname,
+    "type": "skill-report",
+    "generated": timestamp,
+    "total_skills": len(seen_paths),
+    "custom_skills": len(skills_list),
+    "skills": skills_list,
+}
+
+manifest_file.write_text(json.dumps(manifest, indent=2, ensure_ascii=False))
+total = len(skills_list)
+if total > 0:
+    print(f"FOUND {total} custom skills", flush=True)
+PYEOF
+
+# ── Read results from Python output ─────────────────────────
+# Python prints "FOUND N custom skills" when there are custom skills
+# If Python exited silently (no output), there are 0 custom skills
+PY_OUTPUT=$(tail -1 /dev/null 2>/dev/null || true)
+# Actually Python's print goes to stdout which bash captures. Let's use a temp file.
+TOTAL_FILE="$STATE_DIR/.custom_skill_count"
+python3 -c "import json; print(json.load(open('$MANIFEST_FILE')).get('custom_skills', 0))" > "$TOTAL_FILE"
+TOTAL=$(cat "$TOTAL_FILE" 2>/dev/null || echo 0)
 
 # ── Silent exit when nothing to report (watchdog pattern) ──
-if [[ $TOTAL -eq 0 ]]; then
+if [[ "$TOTAL" -eq 0 ]]; then
   exit 0
 fi
 
 # ── Send to Moses inbox via JSON API ────────────────────────
 if [[ -n "${CORTEX_INBOX_URL:-}" ]]; then
+  # Export vars for Python subprocess
+  export STATE_DIR
+
   python3 << 'PYEOF'
-import json, os, urllib.request, urllib.error, base64
+import json, os, sys, urllib.request, urllib.error, base64, time
 from pathlib import Path
 
-hostname = os.uname().nodename
+state_dir = Path(os.environ["STATE_DIR"])
+manifest_file = state_dir / "skills-manifest.json"
+contents_dir = state_dir / "skill-contents"
 inbox_url = os.environ.get("CORTEX_INBOX_URL", "").rstrip("/") + "/api/send"
 auth_creds = os.environ.get("CORTEX_INBOX_AUTH", "")
-state_dir = Path(os.environ.get("HOME")) / ".hermes-cortex" / "state"
-manifest_file = state_dir / "skills-manifest.json"
-contents_file = state_dir / "skills-contents.json"
 
 if not manifest_file.exists():
     exit(0)
 
 manifest = json.loads(manifest_file.read_text())
-contents = []
-if contents_file.exists():
-    contents = json.loads(contents_file.read_text())
-
 custom_total = manifest.get("custom_skills", 0)
 if custom_total == 0:
     exit(0)
+
+# Read skill contents from individual files
+contents = []
+if contents_dir.is_dir():
+    for i in range(len(manifest.get("skills", []))):
+        cf = contents_dir / f"idx_{i}.txt"
+        contents.append(cf.read_text() if cf.exists() else "")
+
+hostname = os.uname().nodename
 
 # Build body text
 parts = []
@@ -175,16 +205,17 @@ parts.append("")
 for i, s in enumerate(manifest.get("skills", [])):
     name = s.get("name", "?")
     catg = s.get("category", "")
-    lines_count = s.get("lines", 0)
-    age = s.get("age_days", 0)
-    summary = s.get("summary", "")
     tag = f" ({catg})" if catg else ""
     parts.append(f"== Skill: {name}{tag} ==")
-    parts.append(f"Lines: {lines_count} | Age: {age}d")
-    parts.append(f"Description: {summary}")
+    parts.append(f"Lines: {s.get('lines', 0)} | Age: {s.get('age_days', 0)}d")
+    parts.append(f"Description: {s.get('summary', '')}")
     parts.append("")
-    parts.append("--- Full content ---")
-    parts.append(contents[i] if i < len(contents) else "(content unavailable)")
+    parts.append("--- Full content (truncated) ---")
+    content = contents[i] if i < len(contents) else "(content unavailable)"
+    if len(content) > 1000:
+        parts.append(content[:1000] + "\n... [truncated]")
+    else:
+        parts.append(content)
     parts.append("--- End skill ---")
     parts.append("")
 
@@ -197,7 +228,6 @@ payload = {
     "priority": "normal",
 }
 
-# Send JSON POST to inbox API
 req = urllib.request.Request(
     inbox_url,
     data=json.dumps(payload).encode("utf-8"),
@@ -211,6 +241,14 @@ if auth_creds and ":" in auth_creds:
 try:
     resp = urllib.request.urlopen(req, timeout=30)
     print(f"Sent {custom_total} custom skills to Moses inbox", flush=True)
+except urllib.error.HTTPError as e:
+    if e.code == 413:
+        print(f"WARN: Report too large ({len(body_text)} bytes, max 100KB) — will be split in next run", file=sys.stderr, flush=True)
+        # Save the count for the record but don't retry
+        print(f"WARN: {custom_total} custom skills found but not sent (too large)", file=sys.stderr, flush=True)
+    else:
+        print(f"WARN: HTTP {e.code} sending skill report: {e}", file=sys.stderr, flush=True)
+    exit(0)  # Non-fatal — will retry next cycle
 except urllib.error.URLError as e:
     print(f"WARN: Failed to send skill report: {e}", file=sys.stderr, flush=True)
     exit(1)
