@@ -32,8 +32,17 @@ falling back to repo root if absent.
 |------|---------|
 | `.hermes-cortex/sessions/` | Session state (current.md + archive/) |
 | `.hermes-cortex/memory/` | Per-dev MEMORY.md, USER.md (gitignored) |
-| `.hermes-cortex/skills/` | Project-specific Hermes skills (tracked) |
+| `.hermes-cortex/skills.yaml` | Skills manifest — declares which global skills to load |
 | `AGENTS.md` | This file — agent orientation |
+
+## Skill loading
+
+**Every session start:** read `.hermes-cortex/skills.yaml` and load all `always`
+skills via `skill_view(name)`. Before each task, classify with `agent-flow`,
+then load `on_task` skills matching the classification.
+
+This replaces the old file-copy approach — skills stay in a single global
+location (`~/.hermes/skills/`), no drift, no stale copies.
 
 ## Commands
 

@@ -19,7 +19,7 @@ their domain.
 | `architecture-review` | 1.1.0 | Multi-role architecture review — 6 roles, weighted decision matrix. Integrated with codebase-design for deep module vocabulary. | `skill_view(name='architecture-review')` |
 | `story-decomposition` | 1.0.0 | Break features into user-visible, testable stories with INVEST | `skill_view(name='story-decomposition')` |
 | `product-requirements` | 1.0.0 | Concise 1-page PRD template — 14 sections | `skill_view(name='product-requirements')` |
-| `agent-flow` | 1.0.0 | Workflow router — 12 patterns (simple code, enterprise, debug with 6-phase process, review with two-axis approach) | `skill_view(name='agent-flow')` |
+| `agent-flow` | 1.1.0 | Workflow router — 12 patterns, manifest-aware skill loading (always + on_task from .hermes-cortex/skills.yaml) | `skill_view(name='agent-flow')` |
 | `agent-contract` | 1.0.0 | Non-negotiable execution rules — real work, no simulation | `skill_view(name='agent-contract')` |
 | `agent-inbox` | 1.0.0 | Web-based agent messaging system — topic channels, thread support, priority field, JSON API | `skill_view(name='agent-inbox')` |
 | `dev-plan` | 2.1.0 | Plan mode — write actionable markdown plans, no execution | `skill_view(name='dev-plan')` |

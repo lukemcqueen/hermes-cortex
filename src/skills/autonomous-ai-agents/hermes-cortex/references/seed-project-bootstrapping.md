@@ -14,10 +14,11 @@ REQUIRED:
 
 OPTIONS:
   --mode=merge|overwrite|diff    Default: merge
-  --components=ALL|list          Default: ALL (AGENTS.md,.hermes-cortex,pre-commit,loop-gov,skills)
+  --components=ALL|list          Default: ALL (AGENTS.md,.hermes-cortex,pre-commit,loop-gov,manifest,skills)
   --name=<name>                  Project display name (for AGENTS.md {{PROJECT_NAME}})
   --template=<path>              Custom AGENTS.md template
-  --skill-refs=skill1,skill2     Project skill overrides to enable
+  --skill-refs=skill1,skill2     Skill names for the manifest always section
+  --legacy-copy                  Copy skill files into project (default: manifest-only)
   --no-backup                    Skip backup (only with --mode=overwrite)
 
 RESTORE:
@@ -59,7 +60,7 @@ bash ~/.hermes-cortex/scripts/seed-project.sh --restore=/path/to/project@2026062
 
 ### What does NOT get restored
 - Loop-governance wrappers (generated, not backed up — re-seed)
-- Project skills (copied from global — re-seed)
+- Skills manifest and project skills (recreated from `--skill-refs` on re-seed)
 - Files that didn't exist before the seed (first seed has no backup)
 
 ## Component Details
@@ -86,10 +87,23 @@ bash ~/.hermes-cortex/scripts/seed-project.sh --restore=/path/to/project@2026062
 - Wrappers delegate to global score-cycle via `exec`
 - Adds *.db and loop-gov.db to .gitignore
 
-### Skills
-- Copies SKILL.md + references/ from global ~/.hermes/skills/
-- Default set: change-test-loop, engineering-approach, save-lesson, spike, writing-plans
+### Skills Manifest (`.hermes-cortex/skills.yaml`)
+
+- **Default (no `--legacy-copy`):** writes a YAML manifest that references global
+  skills by name. No file copies, no drift. The `always` section is populated from
+  `--skill-refs` (or the default set below). The `on_task` section provides
+  task-type mappings (debug → systematic-debugging, review → code-review, etc.).
+- **Legacy (`--legacy-copy`):** copies SKILL.md + references/ from global
+  `~/.hermes/skills/` into `.hermes-cortex/skills/<name>/` (old behavior).
+- Default set: change-test-loop, engineering-approach, save-lesson, spike, dev-plan
 - Custom via `--skill-refs=comma,separated,list`
+
+### How agents discover skills
+
+1. Agent reads `AGENTS.md` at session start → "load skills from manifest"
+2. Agent reads `.hermes-cortex/skills.yaml` → loads all `always` skills via `skill_view()`
+3. Agent classifies task via `agent-flow` → loads matching `on_task` skills
+4. Fallback: if no manifest, scan `.hermes-cortex/skills/` for embedded SKILL.md files
 
 ## Pitfalls
 
@@ -120,7 +134,11 @@ In bash, `local var=$(cmd)` masks the exit code of `cmd`. When `set -e` is activ
 3. Adds .gitignore entries (doesn't remove existing)
 4. Installs/updates pre-commit hook
 5. Loop-gov wrappers always created fresh (small files)
-6. Skills only added (never removed from .hermes-cortex/skills/)
+6. Writes skills.yaml manifest (new default — replaces file copies)
+7. Skills only added (never removed from .hermes-cortex/skills/)
+   Note: existing `.hermes-cortex/skills/<name>/` dirs from previous
+   file-copy seeds are harmless — agent-flow falls back to them if
+   no manifest exists, but the manifest takes priority.
 ```
 
 ### Re-seeding (idempotent)

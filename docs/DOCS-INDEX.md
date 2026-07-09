@@ -45,6 +45,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 || `docs/troubleshooting.md` | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse, Linux |
+|| `docs/skills-manifest-reference.md` | Skills manifest — how to manage project-level skills via YAML |
 || `docs/gbrain-stale-lock-detection.md` | gbrain stale lock file detection & auto-recovery — root cause, automated fix via service-recovery, manual diagnostics |
 | `docs/cron-job-recipes.md` | 10 reusable cron recipes — Bible reading, system alerts, memory pruning, morning briefing, and more |
 | `docs/computer-specs.md` | Hardware specs guide — RAM tiers, recommended models (Intel vs Apple Silicon), ZIM content bundles |
@@ -80,7 +81,8 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
-| `docs/templates/MEMORY.seed.md` | Memory file seed template — pointer pattern starter |
+| `docs/templates/AGENTS.seed.md` | AGENTS.md seed template — agent contract, loop governance, skill loading |
+| `docs/templates/skills.yaml` | Skills manifest seed template — always + on_task sections |
 | `docs/templates/USER.seed.md` | User profile seed template — preferences, context, projects |
 | `docs/templates/memory-readme.seed.md` | Memory scoring rubric seed — compact version of memory/README.md |
 | `docs/templates/gitignore.brain` | Standard .gitignore for brain sources |

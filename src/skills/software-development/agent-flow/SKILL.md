@@ -15,7 +15,25 @@ metadata:
 
 # Agent Flow — Workflow Router
 
-Use this skill at session start (or whenever a new request arrives) to classify the user's task into the correct workflow pattern. Each pattern prescribes the right toolset, output format, and quality checklist — no more guessing, no more context drift.
+## Before starting: load skills from manifest
+
+Before routing, check for a skills manifest at `.hermes-cortex/skills.yaml` (or
+`skills.yaml` in the current working directory).
+
+If it exists:
+
+1. Read the `always` section and load each skill with `skill_view(name)`.
+   These are core to this project — TDD discipline, conventions, lesson-saving.
+2. After classifying the task (see below), read the `on_task` section for
+   your classification and load those skills too.
+
+If it doesn't exist, fall back to scanning `.hermes-cortex/skills/` for any
+embedded SKILL.md files and load those.
+
+This ensures every agent has the right procedural knowledge for the project
+before touching any code — without copying skill files (no drift, no bloat).
+
+See `docs/skills-manifest-reference.md` in the hermes-cortex repo for details.
 
 ## How to route
 

@@ -30,9 +30,10 @@ header(){ printf "\n${BOLD}%s${RESET}\n" "$*"; }
 
 # ── Paths ────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"  # hermes-cortex repo root
+REPO_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"  # hermes-cortex repo root
 TEMPLATES_DIR="${REPO_DIR}/docs/templates"
 AGENTS_TEMPLATE="${TEMPLATES_DIR}/AGENTS.seed.md"
+MANIFEST_TEMPLATE="${TEMPLATES_DIR}/skills.yaml"
 CORTEX_COMMIT="$(cd "$REPO_DIR" && git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 HERMES_CORTEX_SKILLS="${HOME}/.hermes/skills"  # resolved via symlink
 
@@ -52,10 +53,11 @@ OPTIONS:
   --mode=overwrite     Backup existing, overwrite everything
   --mode=diff          Show what would change, no writes
   --components=ALL     (default) Deploy everything
-  --components=list    Comma-separated: AGENTS.md,.hermes-cortex,pre-commit,loop-gov,skills
+  --components=list    Comma-separated: AGENTS.md,.hermes-cortex,pre-commit,loop-gov,manifest,skills
   --name=<name>        Project display name (for AGENTS.md placeholder)
   --template=<path>    Custom AGENTS.md template file
-  --skill-refs=list    Comma-separated skill names to deploy as project overrides
+  --skill-refs=list    Comma-separated skill names for the manifest always section
+  --legacy-copy        Copy skill files into project (default: manifest-only, no drift)
   --no-backup          Skip backup (risky — use with --mode=overwrite only)
 
 RESTORE:
@@ -81,6 +83,7 @@ COMPONENTS="ALL"
 PROJECT_NAME=""
 CUSTOM_TEMPLATE=""
 SKILL_REFS=""
+LEGACY_COPY=false
 NO_BACKUP=false
 
 for arg in "$@"; do
@@ -92,6 +95,7 @@ for arg in "$@"; do
     --name=*)         PROJECT_NAME="${arg#*=}" ;;
     --template=*)     CUSTOM_TEMPLATE="${arg#*=}" ;;
     --skill-refs=*)   SKILL_REFS="${arg#*=}" ;;
+    --legacy-copy)    LEGACY_COPY=true ;;
     --no-backup)      NO_BACKUP=true ;;
     --restore=*)      RESTORE_TARGET="${arg#*=}" ;;
     --list-backups=*) LIST_BACKUPS="${arg#*=}" ;;
@@ -340,9 +344,32 @@ deploy_agents_md() {
     return 0
   fi
 
-  if [[ "$MODE" == "overwrite" ]] || [[ ! -f "$dest" ]] || [[ "$(cat "$dest" 2>/dev/null)" != "$content" ]]; then
+  if [[ "$MODE" == "overwrite" ]] || [[ ! -f "$dest" ]]; then
+    # No existing file or explicit overwrite — write template directly
     echo "$content" > "$dest"
     info "  AGENTS.md → ${dest/$HOME/~}"
+  elif [[ "$(cat "$dest" 2>/dev/null)" != "$content" ]]; then
+    # Existing content differs from template — merge custom sections into seed
+    local merge_script="${REPO_DIR}/src/scripts/install/merge-agents-md.py"
+    if [[ -f "$merge_script" ]]; then
+      info "  Merging project-specific content from existing AGENTS.md…"
+      local merged
+      merged=$(echo "$content" | python3 "$merge_script" "$dest" 2>/dev/null) || true
+      if [[ -n "$merged" ]]; then
+        echo "$merged" > "$dest"
+        info "  AGENTS.md — merged (preserved project-specific sections)"
+      else
+        # merge returned empty — no custom content or script failed
+        if [[ "$(cat "$dest" 2>/dev/null)" != "$content" ]]; then
+          echo "$content" > "$dest"
+          info "  AGENTS.md — updated from template (no custom sections to merge)"
+        fi
+      fi
+    else
+      # No merge script available — write template directly (backup exists)
+      echo "$content" > "$dest"
+      info "  AGENTS.md → ${dest/$HOME/~} (merge script not available)"
+    fi
   else
     info "  AGENTS.md — unchanged"
   fi
@@ -406,7 +433,7 @@ deploy_precommit() {
   local project="$1"
   [[ "${COMPONENTS}" != "ALL" && "${COMPONENTS}" != *"pre-commit"* ]] && return 0
 
-  local hook_script="${SCRIPT_DIR}/pre-commit-score"
+  local hook_script="${REPO_DIR}/src/scripts/pre-commit-score"
   local hook_dest="${project}/.git/hooks/pre-commit"
 
   if [[ ! -d "${project}/.git" ]]; then
@@ -493,16 +520,86 @@ EOF
   info "  loop-gov wrappers in .hermes-cortex/loop-governance/"
 }
 
+# ── Skills Manifest ────────────────────────────────────────────
+
+deploy_manifest() {
+  local project="$1" refs="$2"
+  [[ "${COMPONENTS}" != "ALL" && "${COMPONENTS}" != *"manifest"* ]] && return 0
+
+  local manifest_dest="${project}/.hermes-cortex/skills.yaml"
+
+  # Use --skill-refs to customize the always section
+  local always_skills="${refs:-change-test-loop,engineering-approach,save-lesson,spike,dev-plan}"
+
+  if [[ "$MODE" == "diff" ]]; then
+    if [[ ! -f "$manifest_dest" ]]; then
+      echo "  would create: .hermes-cortex/skills.yaml"
+    else
+      echo "  .hermes-cortex/skills.yaml — exists"
+    fi
+    return 0
+  fi
+
+  # Build the YAML from template + custom refs
+  local content=""
+  content="# Skills Manifest — $(basename "$project")
+#
+# Declares which global Hermes skills are relevant to this project.
+# See ~/hermes-cortex/docs/skills-manifest-reference.md for format.
+# Task types correspond to agent-flow patterns (12 types).
+
+always:"
+
+  IFS=',' read -ra skills <<< "$always_skills"
+  for skill in "${skills[@]}"; do
+    local trimmed="$(echo "$skill" | tr -d ' ')"
+    [[ -z "$trimmed" ]] && continue
+    content="$content
+  - name: $trimmed"
+  done
+
+  content="$content
+
+on_task:
+  debug:
+    - name: systematic-debugging
+  review:
+    - name: code-review
+    - name: architecture-review
+  planning:
+    - name: spike
+  enterprise:
+    - name: subagent-driven-development
+"
+
+  # Write manifest (diff mode handled above)
+  mkdir -p "$(dirname "$manifest_dest")"
+  echo "$content" > "$manifest_dest"
+
+  if [[ ! -f "$manifest_dest" ]]; then
+    warn "  Failed to write skills manifest"
+    return 0
+  fi
+
+  info "  skills manifest → ${manifest_dest/$HOME/~}"
+}
+
 deploy_skills() {
   local project="$1" refs="$2"
   [[ "${COMPONENTS}" != "ALL" && "${COMPONENTS}" != *"skills"* ]] && return 0
   [[ -z "$refs" && "${COMPONENTS}" != "ALL" ]] && return 0
 
+  # Legacy mode: copy skill files into project. Default: manifest-only.
+  if [[ "$LEGACY_COPY" != "true" ]]; then
+    info "  skills: manifest mode (use --legacy-copy for file copies)"
+    return 0
+  fi
+
   local project_skills="${project}/.hermes-cortex/skills"
 
   if [[ "$refs" == "ALL" || "$COMPONENTS" == "ALL" ]]; then
     # Default skill set for a seeded project
-    refs="change-test-loop,engineering-approach,save-lesson,spike,writing-plans"
+    refs="change-test-loop,engineering-approach,save-lesson,spike,dev-plan"
   fi
 
   if [[ "$MODE" == "diff" ]]; then
@@ -566,7 +663,7 @@ print_summary() {
   echo "  Mode:     ${mode}"
   [[ -n "$BACKUP_DIR" ]] && echo "  Backup:   ${backup_ref}"
   echo ""
-  echo "  AGENTS.md, .hermes-cortex/, pre-commit, loop-gov, skills"
+  echo "  AGENTS.md, .hermes-cortex/, pre-commit, loop-gov, manifest ($([[ "$LEGACY_COPY" == "true" ]] && echo "skills:file-copy" || echo "skills:manifest"))"
   echo "  To restore: seed-project.sh --restore=${project/$HOME/~}"
   echo "━━━━━━━━━━━━━━━━━━━━━"
 }
@@ -617,6 +714,7 @@ main() {
   deploy_cortex_dir "$PROJECT"
   deploy_precommit "$PROJECT"
   deploy_loop_gov "$PROJECT"
+  deploy_manifest "$PROJECT" "$SKILL_REFS"
   deploy_skills "$PROJECT" "$SKILL_REFS"
 
   if [[ "$MODE" != "diff" ]]; then

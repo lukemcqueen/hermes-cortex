@@ -22,9 +22,10 @@
 | `docs/service-layer-decision.md` | **Architecture decision: user-level only for agent services** |
 | `docs/linux-service-layer.md` | Linux systemd `--user` service layer guide |
 | `docs/macos-service-layer.md` | macOS LaunchAgent service layer guide |
+| `docs/skills-manifest-reference.md` | Skills manifest — how to manage project-level skills |
 | `install.sh` | Single-command installer |
 | `deploy/` | Langfuse + ClickHouse docker-compose |
-| `.hermes-cortex/` | Agent infra: sessions, skills, memory |
+| `.hermes-cortex/` | Agent infra: sessions, memory, skills.yaml |
 | `agent-inbox-private/` | Git-backed agent message store |
 
 ### Project Directory Convention
@@ -35,10 +36,29 @@ project-root/
 │   ├── sessions/current.md   # Active session state
 │   ├── sessions/archive/     # Timestamped snapshots
 │   ├── memory/               # Gitignored — per-user MEMORY.md, USER.md
-│   └── skills/               # Tracked project-specific skills
+│   └── skills.yaml           # Skills manifest (references global skills)
 ├── AGENTS.md                 # Stays at root
 └── docs/                     # Stays at root
 ```
+
+### Skill loading — every session, every agent
+
+**Before any coding work, every agent MUST:**
+
+1. Check for `.hermes-cortex/skills.yaml` in the project root.
+2. If it exists, load each skill in the `always` section via `skill_view(name)`.
+3. Classify the current task using the `agent-flow` skill (12 patterns).
+4. Load skills in the `on_task` section matching the classification.
+
+This replaces the old file-copy approach (`.hermes-cortex/skills/<name>/SKILL.md`).
+If no manifest exists, fall back to scanning `.hermes-cortex/skills/` for embedded
+SKILL.md files (backward compatibility).
+
+**Why:** Skills stay in one global location (`~/.hermes/skills/`). No copies, no
+drift, no per-project stale files. The manifest is a lightweight reference that
+tells agents what's relevant and when.
+
+See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md) for details.
 
 ### Architecture Principles
 

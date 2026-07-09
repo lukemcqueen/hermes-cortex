@@ -132,6 +132,7 @@ register "src/scripts/manage/cortex-doctor.py"              "${CORTEX_DEPLOY_HOM
 register "src/scripts/cron-failure-state.sh"       "${CORTEX_DEPLOY_HOME}/scripts/cron-failure-state.sh"
 register "src/scripts/cron_failure_state.py"       "${CORTEX_DEPLOY_HOME}/scripts/cron_failure_state.py"
 register "src/scripts/install/seed-project.sh"           "${CORTEX_DEPLOY_HOME}/scripts/seed-project.sh"
+register "src/scripts/install/merge-agents-md.py"      "${CORTEX_DEPLOY_HOME}/scripts/merge-agents-md.py"
 register "src/scripts/manage/hermes-update.sh"            "${CORTEX_DEPLOY_HOME}/scripts/hermes-update.sh"
 register "src/scripts/manage/hermes-cortex-sync.sh"      "${CORTEX_DEPLOY_HOME}/scripts/hermes-cortex-sync.sh"
 register "src/scripts/manage/update-session-state.sh"    "${CORTEX_DEPLOY_HOME}/scripts/update-session-state.sh"
