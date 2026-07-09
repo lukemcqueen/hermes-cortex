@@ -839,6 +839,8 @@ deploy_nginx_configs() {
 # Deploys admin scripts to /usr/local/sbin/ (root-owned, NOPASSWD-safe).
 # Uses sudo on Linux for the root-owned path.
 deploy_system_scripts() {
+  # Allow skipping nginx-related system scripts (e.g. on servers without sudo)
+  [[ -n "${CORTEX_SKIP_NGINX:-}" ]] && { info "CORTEX_SKIP_NGINX set — skipping system script deploy"; return 0; }
   local deploy_dir="/usr/local/sbin"
   local src_dir="${REPO_DIR}/deploy/nginx"
   local scripts=("install-nginx-full.sh" "hermes-nginx-clean-restart")
