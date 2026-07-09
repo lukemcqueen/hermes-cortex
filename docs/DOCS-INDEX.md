@@ -30,6 +30,9 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `docs/architecture.md` | System architecture overview — layers, services, port map, security stack |
+| `docs/service-layer-decision.md` | **Fleet-wide decision:** User-level systemd (Linux) / LaunchAgents (macOS) for all agent services. Full HC-Party architecture review with 6-role weighted matrix. |
+| `docs/linux-service-layer.md` | Linux service layer guide — user-level systemd, reboot survivability, template, migration from stale system units |
+| `docs/macos-service-layer.md` | macOS service layer guide — LaunchAgents vs LaunchDaemons, plist templates, migration guide, fleet service map |
 | `docs/knowledge-isolation-architecture.md` | Knowledge isolation model — gbrain source isolation, federated vs isolated sources, pointer pattern integration |
 | `docs/seeding-brain-content.md` | Brain directory templates and starter content — get from 0 pages to searchable knowledge |
 | `docs/deploy-registry-pattern.md` | Multi-repo deploy registry — public/private split, brain-* branches, sync workflow |
@@ -83,6 +86,8 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/templates/gitignore.brain` | Standard .gitignore for brain sources |
 | `docs/templates/com.hermes.cortex-dashboard.plist` | Launchd plist for Cortex Dashboard |
 | `docs/templates/com.docker.docker.plist` | Launchd plist for Docker Desktop auto-start |
+| `docs/templates/com.hermes.health-push.plist` | Launchd plist — health vector push (every 10min, to Moses inbox) |
+| `docs/templates/com.hermes.gateway.plist` | Launchd plist — persistent Hermes Gateway daemon |
 
 ## Legal
 

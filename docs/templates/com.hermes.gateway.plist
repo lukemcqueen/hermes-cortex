@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hermes Cortex — Gateway Launchd Plist (macOS)
+
+  Persistent Hermes Gateway daemon. Runs on login, auto-restarts on crash.
+  This is the only persistent long-lived process for agent-based Hermes
+  setups — MCP servers (inbox, loop-gov, tirith) are spawned per-session.
+
+  Setup:
+    1. Edit username in ProgramArguments path below
+    2. cp this file to ~/Library/LaunchAgents/com.hermes.gateway.plist
+    3. launchctl load ~/Library/LaunchAgents/com.hermes.gateway.plist
+
+  Check:
+    launchctl list com.hermes.gateway
+    tail -f ~/Library/Logs/com.hermes.gateway.log
+
+  Remove:
+    launchctl unload ~/Library/LaunchAgents/com.hermes.gateway.plist
+    rm ~/Library/LaunchAgents/com.hermes.gateway.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.hermes.gateway</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/luke/.hermes/hermes-agent/venv/bin/python</string>
+        <string>-m</string>
+        <string>hermes_agent.gateway.run</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/luke</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>CrashedOrAbnormalExit</key>
+        <true/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/luke/Library/Logs/com.hermes.gateway.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/luke/Library/Logs/com.hermes.gateway.log</string>
+</dict>
+</plist>

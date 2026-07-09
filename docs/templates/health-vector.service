@@ -16,7 +16,7 @@
 #   systemctl --user edit health-vector.service
 #   [Service]
 #   ExecStart=
-#   ExecStart=/usr/bin/python3 %h/hermes-cortex/src/scripts/health-vector.py --serve 13007
+#   ExecStart=/usr/bin/python3 %h/hermes-cortex/src/scripts/health/health-vector.py --serve 13007
 
 [Unit]
 Description=Hermes Cortex Health Vector Server
@@ -24,7 +24,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 %h/hermes-cortex/src/scripts/health-vector.py --serve 13007
+ExecStart=/usr/bin/python3 %h/hermes-cortex/src/scripts/health/health-vector.py --serve 13007
 Restart=always
 RestartSec=5
 StandardOutput=journal

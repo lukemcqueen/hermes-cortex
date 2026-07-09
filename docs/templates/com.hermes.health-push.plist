@@ -4,15 +4,18 @@
   Hermes Cortex — Health Push Launchd Plist
 
   Pushes a health vector to the Moses agent inbox every 10 minutes.
-  Each agent (Titus, Gisu, Joseph) installs this on their machine.
+  Client-only agents (Titus, Gisu, Joseph) install this on their machine.
 
   Setup:
-    1. cp this file to ~/Library/LaunchAgents/com.hermes.health-push.plist
-    2. Edit the username in the path below (replace 'titus' with your user)
+    1. Edit AGENT_NAME below (replace 'titus' with your agent name)
+    2. cp this file to ~/Library/LaunchAgents/com.hermes.health-push.plist
     3. launchctl load ~/Library/LaunchAgents/com.hermes.health-push.plist
 
   Check:
     tail -f /tmp/com.hermes.health-push.err
+
+  ⚠️ Script lives in health/ subdirectory (not scripts/ root).
+     If you move the hermes-cortex repo, update ProgramArguments path.
 -->
 <plist version="1.0">
 <dict>
@@ -22,7 +25,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/luke/hermes-cortex/src/scripts/health-vector-push.sh</string>
+        <string>/Users/luke/hermes-cortex/src/scripts/health/health-vector-push.sh</string>
     </array>
 
     <key>EnvironmentVariables</key>
