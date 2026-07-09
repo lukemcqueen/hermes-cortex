@@ -46,6 +46,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 |-----|-------------|
 || `docs/troubleshooting.md` | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse, Linux |
 || `docs/skills-manifest-reference.md` | Skills manifest — how to manage project-level skills via YAML |
+| `docs/reference/skill-loading.md` | Skill loading protocol — every agent loads skills on session start |
 || `docs/gbrain-stale-lock-detection.md` | gbrain stale lock file detection & auto-recovery — root cause, automated fix via service-recovery, manual diagnostics |
 | `docs/cron-job-recipes.md` | 10 reusable cron recipes — Bible reading, system alerts, memory pruning, morning briefing, and more |
 | `docs/computer-specs.md` | Hardware specs guide — RAM tiers, recommended models (Intel vs Apple Silicon), ZIM content bundles |
