@@ -852,10 +852,45 @@ deploy_system_scripts() {
   [[ -f "$agent_link" ]] && rm -f "$agent_link"
 }
 
+# ── Stale Service Detector ─────────────────────────────────
+# Detects known-dead services that should have been removed.
+# Runs on every agent after every update — both Linux + macOS.
+detect_stale_services() {
+  local os
+  os=$(uname -s)
+
+  if [[ "$os" == "Linux" ]]; then
+    local stale_found=0
+    for unit in "a2a-server"; do
+      if systemctl --user is-active --quiet "$unit" 2>/dev/null; then
+        warn "STALE: ${unit}.service (user-level) — deprecated, remove with:"
+        warn "  systemctl --user disable --now ${unit}"
+        stale_found=$((stale_found + 1))
+      fi
+      if systemctl is-active --quiet "$unit" 2>/dev/null; then
+        warn "STALE: ${unit}.service (system-level) — deprecated, remove with:"
+        warn "  sudo systemctl disable --now ${unit}"
+        stale_found=$((stale_found + 1))
+      fi
+    done
+    [[ "$stale_found" -gt 0 ]] && echo ""
+
+  elif [[ "$os" == "Darwin" ]]; then
+    for label in "com.hermes.a2a-server"; do
+      if launchctl list "$label" &>/dev/null 2>&1; then
+        warn "STALE: ${label} — deprecated, remove with:"
+        warn "  launchctl bootout gui/$(id -u)/${label}"
+        warn "  rm ~/Library/LaunchAgents/${label}.plist"
+      fi
+    done
+  fi
+}
+
 # ── Post-update service verification ─────────────────────────
 
 verify_services() {
   # After an update, verify important services are still managed and running
+  detect_stale_services
   local os
   os=$(uname -s)
 
@@ -1144,6 +1179,15 @@ main() {
     if $_ORCH; then
       CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME}" bash "${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh" 2>/dev/null && \
         info "Orch crons up to date" || warn "Orch cron install skipped"
+    else
+      # ── Non-orch guard: detect accidentally installed orch crons ──
+      local _orch_crons
+      _orch_crons=$(hermes cron list --all 2>/dev/null | grep -E "orch-(team-messages|team-health|gbrain-doctor)" || true)
+      if [[ -n "$_orch_crons" ]]; then
+        warn "Orch crons detected on non-orch agent — remove with:"
+        warn "  bash ${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh --uninstall"
+        echo "$_orch_crons"
+      fi
     fi
   else
     info "Hermes not found — skip cron install (run install-crons.sh after Hermes setup)"
