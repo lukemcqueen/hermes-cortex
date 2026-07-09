@@ -780,6 +780,7 @@ deploy_nginx_configs() {
   fi
 
   < "$conf_src" sed \
+    -e "s|/etc/nginx/|${brew_dir}/|g" \
     -e "s|__NGINX_CONFIG_DIR__|${config_dir}|g" \
     -e "s|__NGINX_BREW_DIR__|${brew_dir}|g" \
     -e "s|__NGINX_LOG_DIR__|${log_dir}|g" \
@@ -788,8 +789,7 @@ deploy_nginx_configs() {
     -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
     -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
     -e "/listen[[:space:]]/s|127\\.0\\.0\\.1:13\\([0-9][0-9][0-9]\\)|127.0.0.1:${port_prefix}\\1|g" \
-    -e "/listen[[:space:]]/s|listen 13\\([0-9][0-9][0-9]\\) ssl|listen ${port_prefix}\\1 ssl|g" \
-    -e "s|/etc/nginx/|${brew_dir}/|g" > "$tmpfile"
+    -e "/listen[[:space:]]/s|listen 13\\([0-9][0-9][0-9]\\) ssl|listen ${port_prefix}\\1 ssl|g" > "$tmpfile"
 
   # ── Port preservation (must happen before deploy) ──
   # Preserve custom port ranges (12xxx Joseph, 14xxx Esther, etc.)
