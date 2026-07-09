@@ -20,6 +20,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 source "${SCRIPT_DIR}/install/os-config.sh"
 
+# ── Source project .env ──────────────────────────────────
+# ~/hermes-cortex/.env contains LLM_CRON_MODEL, LLM_CRON_PROVIDER,
+# LOCAL_CRON_MODEL, LOCAL_CRON_PROVIDER, and other runtime vars.
+# Source it before validation so agents don't need manual exports.
+ENV_FILE="${HOME}/hermes-cortex/.env"
+if [[ -f "$ENV_FILE" ]]; then
+  set -a; source "$ENV_FILE"; set +a
+fi
+
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 CRON_JOBS_FILE="${HERMES_HOME}/cron/jobs.json"
 SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"
@@ -435,8 +444,8 @@ fi
 
 # ── Validate LLM cron model/provider env vars ──────────────
 # LLM-driven crons need a model + provider. Set in ~/hermes-cortex/.env.
-# The install script sources ~/hermes-cortex/.env early, so these will
-# be picked up. If not set, halt with a clear message.
+# The install script now sources ~/hermes-cortex/.env via set -a above, so
+# LLM_CRON_MODEL and LLM_CRON_PROVIDER will be picked up automatically.
 LLM_CRON_MODEL="${LLM_CRON_MODEL:-}"
 LLM_CRON_PROVIDER="${LLM_CRON_PROVIDER:-}"
 
