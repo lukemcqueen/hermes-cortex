@@ -170,9 +170,32 @@ Only Moses has `cronjob` MCP tool. Others request via inbox with subject `🔧 C
 | `model-health-watchdog` | no_agent | `0 7 * * *` | `model-health-watchdog.py` | origin |
 | `agents-md-prune-scan` | no_agent | `0 4 * * 1-6` | `agents-md-prune-scan.py` | local |
 | `agents-md-prune-apply` | LLM | `30 4 * * 1-6` | prompt: review scan + apply moves | origin |
-| `process-mcp-agent-inbox-messages` | LLM | `0 6-23 * * *` | inbox poll + failure check | origin |
+|| `process-mcp-agent-inbox-messages` | LLM | `0 6-23 * * *` | inbox poll + failure check | origin |
+|| `collect-agent-skills` | no_agent | `0 */6 * * *` | `collect-agent-skills.sh` | local |
+|| `send-skill-report` | no_agent | `30 */6 * * *` | `send-skill-report.py` | local |
 
-Run `bash ~/hermes-cortex/src/scripts/install-crons.sh --dry-run` to see what's missing. LLM crons pinned via `pin_cron_model()`.
+**Orchestrator-only crons** (installed by `install-orch-crons.sh` on orchestrator machines):
+
+| Cron | Type | Schedule | Script / Skill | Deliver |
+|------|------|----------|----------------|---------|
+| `orch-team-messages` | no_agent | `*/10 * * * *` | `orch-team-messages.sh` | origin |
+| `orch-team-health` | no_agent | `*/10 * * * *` | `orch-team-health.py` | origin |
+| `orch-gbrain-doctor` | no_agent | `0 6 * * *` | `orch-gbrain-doctor.sh` | origin |
+| `skill-report-request` | no_agent | `0 2 * * 1` | `request-skill-reports.sh` | origin |
+| `skill-report-process` | no_agent | `0 3 * * *` | `process-skill-reports.py` | origin |
+| `skill-evaluate` | LLM | `0 9 * * 2` | evaluate collected skills | origin |
+
+## Skill Collection Pipeline
+
+The full skill lifecycle runs across all agents:
+
+1. **Collect** — Every agent runs `collect-agent-skills.sh` every 6h, scanning both `~/.hermes/skills/` and `~/.hermes-cortex/skills/` for SKILL.md files not in the upstream repo. Custom skills are reported to Moses inbox (topic: `reports`).
+2. **Request** — Weekly (Mon 2am), Moses runs `request-skill-reports.sh` to prompt all agents to share skills.
+3. **Process** — Daily (3am), Moses runs `process-skill-reports.py` to compile incoming reports into a digest.
+4. **Evaluate** — Weekly (Tue 9am), an LLM-driven `skill-evaluate` cron reviews each custom skill for quality, structure, and upstreaming potential.
+5. **Upstream** — Skills approved for sharing are added to `hermes-cortex/src/skills/<category>/<name>/SKILL.md` and deployed fleet-wide via `cortex-update.sh` sync.
+
+See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md) for the manifest-based skill loading system (Titus).
 
 ---
 

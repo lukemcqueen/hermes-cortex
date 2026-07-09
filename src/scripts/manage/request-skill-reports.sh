@@ -6,7 +6,7 @@
 #  Reads agent-registry.json and sends an inbox message to
 #  each agent asking them to run collect-agent-skills.sh.
 #
-#  Designed to run as a cron job on Moses (e.g. daily at 2am).
+#  Designed to run as a cron job on Moses (e.g. weekly).
 #  Silent when sent successfully — errors only on failure.
 #
 #  Usage:
@@ -20,21 +20,17 @@ CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}"
 STATE_DIR="$CORTEX_DEPLOY_HOME/state"
 REGISTRY_FILE="$STATE_DIR/agent-registry.json"
 
-# ── Config: source inbox credentials ──
-INBOX_URL="https://your-domain.com:13004/send"
+# ── Source config ───────────────────────────────────────────
+INBOX_URL=""
 INBOX_AUTH=""
-
-# Load config — try .env first, fallback to hermes-inbox.conf
-CONFIG_FILE=""
 if [[ -f "${HOME}/hermes-cortex/.env" ]]; then
-    CONFIG_FILE="${HOME}/hermes-cortex/.env"
+  set -a; source "${HOME}/hermes-cortex/.env"; set +a
+  INBOX_URL="${CORTEX_INBOX_URL:-}"
+  INBOX_AUTH="${CORTEX_INBOX_AUTH:-}"
 elif [[ -f "${HOME}/.hermes/hermes-inbox.conf" ]]; then
-    CONFIG_FILE="${HOME}/.hermes/hermes-inbox.conf"
-fi
-if [[ -f "$CONFIG_FILE" ]]; then
-    source "$CONFIG_FILE"
-    INBOX_URL="${CORTEX_INBOX_URL:-$INBOX_URL}/send"
-    INBOX_AUTH="${CORTEX_INBOX_AUTH:-}"
+  source "${HOME}/.hermes/hermes-inbox.conf"
+  INBOX_URL="${CORTEX_INBOX_URL:-}"
+  INBOX_AUTH="${CORTEX_INBOX_AUTH:-}"
 fi
 
 LAST_RUN_FILE="$STATE_DIR/last-skill-report-request.txt"
@@ -75,45 +71,50 @@ if [[ ! -f "$REGISTRY_FILE" ]]; then
   exit 1
 fi
 
-# Parse agents from registry JSON (extract keys at top level or under "agents")
+# Parse agents from registry JSON
 AGENTS=()
-if python3 -c "import json; d=json.load(open('$REGISTRY_FILE')); print(list(d.get('agents', d).keys()))" 2>/dev/null | grep -q '^\[.*\]$'; then
-  AGENTS=($(python3 -c "
+while IFS= read -r name; do
+  AGENTS+=("$name")
+done < <(python3 -c "
 import json
-d = json.load(open('$REGISTRY_FILE'))
+with open('$REGISTRY_FILE') as f:
+    d = json.load(f)
 agents = d.get('agents', d)
-for name in agents:
+for name in sorted(agents.keys()):
     print(name)
-" 2>/dev/null))
-fi
+" 2>/dev/null)
 
 if [[ ${#AGENTS[@]} -eq 0 ]]; then
   echo "WARN: No agents found in registry" >&2
   exit 0
 fi
 
-# ── Send request to each agent ───────────────────────────────
+# ── Send request to each agent via inbox JSON API ──────────────
 SENT=0
 FAILED=0
 REQUEST_ID="skill-req-${TIMESTAMP}"
 
-# Build auth arg for curl
-CURL_AUTH=()
-[[ -n "$INBOX_AUTH" ]] && CURL_AUTH=(-u "$INBOX_AUTH")
+# Skip if inbox URL not configured
+if [[ -z "$INBOX_URL" ]]; then
+  echo "WARN: CORTEX_INBOX_URL not set — cannot send requests" >&2
+  exit 1
+fi
 
 for agent in "${AGENTS[@]}"; do
   # Skip self (Moses)
   [[ "$agent" == "moses" ]] && continue
 
   BODY="━━━ Skill Report Request — $REQUEST_ID ━━━
-Hi all agents,
+
+Hi $agent,
+
 Please run collect-agent-skills.sh and share your custom skills.
 This helps Moses discover and evaluate agent-developed skills
 for potential incorporation into the hermes-cortex upstream.
 
 Instructions:
   # Run once to report current skills:
-  bash ~/.hermes-cortex/scripts/collect-agent-skills.sh
+  bash ~/hermes-cortex/src/scripts/manage/collect-agent-skills.sh
 
   # To set up automatic reporting (every 6h, no_agent):
   hermes cron create \
@@ -124,7 +125,7 @@ Instructions:
     deliver=local
 
   Then fill in ~/hermes-cortex/.env with your Moses
-  inbox credentials (see .env.example in the repo).
+  inbox credentials (see install.sh for setup).
 
 Reply to this message with a summary of any custom skills found,
 or with 'none' if you have nothing new to report.
@@ -137,17 +138,37 @@ or with 'none' if you have nothing new to report.
     continue
   fi
 
-  if curl -sk -X POST "$INBOX_URL" \
-    "${CURL_AUTH[@]}" \
-    -d "from=moses" \
-    -d "to=$agent" \
-    -d "topic=operations" \
-    -d "subject=📋 Skill Report Request" \
-    -d "body=$BODY" \
-    -d "priority=normal" \
-    --connect-timeout 5 \
-    --max-time 10 \
-    -o /dev/null -w "%{http_code}" 2>/dev/null | grep -q "^\(200\|302\|303\)"; then
+  # Send via JSON POST to inbox API
+  if python3 -c "
+import json, urllib.request, base64, sys
+
+payload = {
+    'from': 'moses',
+    'to': '$agent',
+    'subject': '📋 Skill Report Request ($REQUEST_ID)',
+    'body': '''$BODY''',
+    'topic': 'operations',
+    'priority': 'normal',
+}
+
+url = '$INBOX_URL'.rstrip('/') + '/api/send'
+req = urllib.request.Request(url,
+    data=json.dumps(payload).encode('utf-8'),
+    headers={'Content-Type': 'application/json'},
+    method='POST')
+
+auth = '$INBOX_AUTH'
+if auth and ':' in auth:
+    encoded = base64.b64encode(auth.encode()).decode()
+    req.add_header('Authorization', f'Basic {encoded}')
+
+try:
+    resp = urllib.request.urlopen(req, timeout=15)
+    sys.exit(0)
+except Exception as e:
+    print(f'ERROR: {e}', file=sys.stderr)
+    sys.exit(1)
+" 2>/dev/null; then
     SENT=$((SENT + 1))
   else
     echo "ERROR: Failed to send to $agent" >&2

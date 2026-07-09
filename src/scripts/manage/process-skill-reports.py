@@ -2,8 +2,8 @@
 """process-skill-reports.py — Moses-side: compile agent skill reports
 from the inbox into a digest for Moses to review.
 
-Reads messages from the "reports" topic in the agent inbox and
-identifies skill-report messages (subject: "Skill Report:").
+Reads inbox messages from the "reports" topic and identifies
+skill-report messages (subject: "Skill Report:").
 
 Output: formatted digest to stdout (Telegram-friendly Markdown).
          Silent when no new reports since last processed.
@@ -14,57 +14,79 @@ Usage:
     python3 process-skill-reports.py --mark-read  # mark processed reports as read
 """
 
+import base64
 import json
 import os
 import re
 import sys
-import time
 from datetime import datetime
 from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-INBOX_URL = os.environ.get("AGENT_INBOX_URL", "https://your-domain.com:13004")
+# ── Config from environment ─────────────────────────────────
+# CORTEX_INBOX_URL is the primary source, with fallback
+CORTEX_INBOX_URL = os.environ.get("CORTEX_INBOX_URL", "")
+CORTEX_INBOX_AUTH = os.environ.get("CORTEX_INBOX_AUTH", "")
+
+# Try reading from .env if env vars not set
+if not CORTEX_INBOX_URL:
+    for conf in [Path.home() / "hermes-cortex" / ".env",
+                 Path.home() / ".hermes" / "hermes-inbox.conf"]:
+        if conf.exists():
+            try:
+                for line in conf.read_text().splitlines():
+                    line = line.strip()
+                    if line.startswith("CORTEX_INBOX_URL="):
+                        val = line.split("=", 1)[1].strip().strip("'\"")
+                        if val:
+                            CORTEX_INBOX_URL = val
+                    elif line.startswith("CORTEX_INBOX_AUTH="):
+                        val = line.split("=", 1)[1].strip().strip("'\"")
+                        if val:
+                            CORTEX_INBOX_AUTH = val
+            except Exception:
+                pass
+        if CORTEX_INBOX_URL:
+            break
+
+INBOX_URL = CORTEX_INBOX_URL.rstrip("/")
 STATE_DIR = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state"
 PROCESSED_MARKER = STATE_DIR / "last-skill-report-processed.txt"
 
 TOPIC_FILTER = "reports"
 
+def build_auth_header() -> dict:
+    """Build Basic Auth header if credentials available."""
+    if CORTEX_INBOX_AUTH and ":" in CORTEX_INBOX_AUTH:
+        encoded = base64.b64encode(CORTEX_INBOX_AUTH.encode()).decode()
+        return {"Authorization": "Basic " + encoded}
+    return {}
 
-def fetch_inbox_messages(topic: str = "") -> list[dict]:
+def fetch_inbox_messages(topic: str = "", unread_only: bool = True) -> list[dict]:
     """Fetch inbox messages from the agent inbox API."""
-    url = f"{INBOX_URL}/api/inbox?unread_only=true"
-    if topic:
-        url += f"&topic={topic}"
-
-    try:
-        req = Request(url)
-        with urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-        return data.get("messages", [])
-    except (URLError, json.JSONDecodeError, OSError) as e:
-        print(f"WARN: Could not fetch inbox: {e}", file=sys.stderr)
-        return []
-
-
-def fetch_all_inbox_messages(topic: str = "") -> list[dict]:
-    """Fetch ALL inbox messages (not just unread)."""
     url = f"{INBOX_URL}/api/inbox"
+    params = []
     if topic:
-        url += f"?topic={topic}"
+        params.append(f"topic={topic}")
+    if unread_only:
+        params.append("unread_only=true")
+    if params:
+        url += "?" + "&".join(params)
 
     try:
         req = Request(url)
+        for k, v in build_auth_header().items():
+            req.add_header(k, v)
         with urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode())
         return data.get("messages", [])
     except (URLError, json.JSONDecodeError, OSError) as e:
         print(f"WARN: Could not fetch inbox: {e}", file=sys.stderr)
         return []
-
 
 def mark_read(message_id: str) -> bool:
-    """Mark an inbox message as read via the frontend endpoint."""
+    """Mark an inbox message as read."""
     url = f"{INBOX_URL}/read/{message_id}"
     try:
         req = Request(url)
@@ -74,38 +96,30 @@ def mark_read(message_id: str) -> bool:
         print(f"WARN: Could not mark {message_id} as read: {e}", file=sys.stderr)
         return False
 
-
 def parse_skills_from_body(body: str) -> list[dict]:
     """Parse skill entries from the report body text."""
     skills = []
     for line in body.split("\n"):
         line = line.strip()
-        if line.startswith("•"):
-            # Format: • skill-name (category) — N lines
-            match = re.match(
-                r"•\s+(.+?)(?:\s+\((.+?)\))?\s*[—–-]+\s*(\d+)\s+lines",
-                line,
-            )
+        if line.startswith("==") and "Skill:" in line:
+            # Format: == Skill: name (category) ==
+            match = re.match(r"==\s+Skill:\s+(.+?)(?:\s+\((.+?)\))?\s+==", line)
             if match:
                 skills.append({
                     "name": match.group(1).strip(),
                     "category": match.group(2).strip() if match.group(2) else "",
-                    "lines": int(match.group(3)),
                 })
     return skills
-
 
 def extract_custom_count(body: str) -> int:
     """Extract the custom_skills count from the report body."""
     match = re.search(r"Custom skills[^:]*:\s*(\d+)", body)
     return int(match.group(1)) if match else 0
 
-
 def extract_total_count(body: str) -> int:
     """Extract the total_skills count."""
     match = re.search(r"Total skills[^:]*:\s*(\d+)", body)
     return int(match.group(1)) if match else 0
-
 
 def format_digest(reports: list[dict]) -> str:
     """Format skill reports into a Telegram-friendly digest."""
@@ -130,11 +144,11 @@ def format_digest(reports: list[dict]) -> str:
         lines.append(f"`{timestamp}` | {total_count} total, **{custom_count} custom**\n")
 
         if skills:
-            lines.append("| Skill | Category | Lines |")
-            lines.append("|-------|----------|-------|")
+            lines.append("| Skill | Category |")
+            lines.append("|-------|----------|")
             for s in skills:
                 cat = s["category"] if s["category"] else "—"
-                lines.append(f"| `{s['name']}` | {cat} | {s['lines']} |")
+                lines.append(f"| `{s['name']}` | {cat} |")
         else:
             lines.append("*(structured skill list not available — see inbox for full report)*")
 
@@ -145,20 +159,18 @@ def format_digest(reports: list[dict]) -> str:
 
     return "\n".join(lines)
 
-
 def main():
     show_all = "--all" in sys.argv
     mark_read_flag = "--mark-read" in sys.argv
 
     # Fetch messages
     if show_all:
-        messages = fetch_all_inbox_messages(topic=TOPIC_FILTER)
+        messages = fetch_inbox_messages(topic=TOPIC_FILTER, unread_only=False)
     else:
-        messages = fetch_inbox_messages(topic=TOPIC_FILTER)
+        messages = fetch_inbox_messages(topic=TOPIC_FILTER, unread_only=True)
 
     if not messages:
-        # Silent exit — no new reports
-        return
+        return  # Silent — no new messages
 
     # Filter to skill-report messages only
     reports = [m for m in messages if "skill report" in m.get("subject", "").lower()]
@@ -172,10 +184,8 @@ def main():
         last_processed = PROCESSED_MARKER.read_text().strip()
 
     if last_processed and not show_all:
-        # Filter to reports newer than last processed
         new_reports = []
         for r in reports:
-            # Use timestamp or filename for comparison
             msg_id = r.get("id", r.get("filename", ""))
             if msg_id > last_processed:
                 new_reports.append(r)

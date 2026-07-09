@@ -1,34 +1,123 @@
 #!/usr/bin/env python3
-import json,os,urllib.request,urllib.parse,base64,datetime,subprocess
+"""send-skill-report.py — Agent-side: auto-send skill manifest to Moses.
+
+Designed to run as a no_agent cron (every 6h). Reads the skills
+manifest written by collect-agent-skills.sh and sends it to Moses
+inbox via JSON API. Silent when no custom skills to report.
+
+Requires CORTEX_INBOX_URL and CORTEX_INBOX_AUTH (from .env or hermes-inbox.conf).
+"""
+
+import base64
+import json
+import os
+import subprocess
+import sys
+from datetime import datetime, timezone
 from pathlib import Path
-C=Path.home()/".hermes"/"hermes-inbox.conf"
-M=Path.home()/".hermes-cortex"/"state"/"skills-manifest.json"
-if C.exists():
- for l in open(C):
-  l=l.strip()
-  if l and not l.startswith("#") and "=" in l:
-   k,v=l.split("=",1)
-   os.environ[k]=v.strip(chr(39)+chr(34))
-U=os.environ.get("CORTEX_INBOX_URL")
-A=os.environ.get("CORTEX_INBOX_AUTH")
-if not U or not A:exit(0)
-subprocess.run(["python3","/tmp/rebuild-manifest.py"],capture_output=True)
-if not M.exists():exit(0)
-m=json.load(open(M));n=m.get("custom_skills",0)
-if n==0:exit(0)
-h=os.uname().nodename;t=datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-sk=m.get("total_skills","?")
-L=[f"--- Skill Report {h} ---",f"Generated: {t}",f"Total: {sk}",f"Custom: {n}",""]
-for s in m.get("skills",[]):
- nm=s.get("name","?")
- c=s.get("category","")
- sm=s.get("summary","")[:200]
- L.append(f"* {nm}"+(f" ({c})" if c else "")+f": {sm}")
-body="\n".join(L)+"\n"
-d=urllib.parse.urlencode({"from":h,"topic":"reports","subject":"Skill Report: "+str(n)+" custom","priority":"normal","body":body}).encode()
-rq=urllib.request.Request(U,data=d)
-rq.add_header("Authorization","Basic "+base64.b64encode(A.encode()).decode())
-rq.add_header("Content-Type","application/x-www-form-urlencoded")
+from urllib.request import Request, urlopen
+from urllib.error import URLError
+
+HOME = Path.home()
+
+# ── Source config from .env or hermes-inbox.conf ──────────
+CORTEX_INBOX_URL = os.environ.get("CORTEX_INBOX_URL", "")
+CORTEX_INBOX_AUTH = os.environ.get("CORTEX_INBOX_AUTH", "")
+
+for conf in [HOME / "hermes-cortex" / ".env",
+             HOME / ".hermes" / "hermes-inbox.conf"]:
+    if conf.exists():
+        try:
+            for line in conf.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                v = v.strip().strip("'\"")
+                if k == "CORTEX_INBOX_URL" and not CORTEX_INBOX_URL:
+                    CORTEX_INBOX_URL = v
+                elif k == "CORTEX_INBOX_AUTH" and not CORTEX_INBOX_AUTH:
+                    CORTEX_INBOX_AUTH = v
+        except Exception:
+            pass
+
+# ── Silent exit if not configured ─────────────────────────
+if not CORTEX_INBOX_URL:
+    sys.exit(0)
+
+STATE_DIR = HOME / ".hermes-cortex" / "state"
+MANIFEST_FILE = STATE_DIR / "skills-manifest.json"
+CONTENTS_FILE = STATE_DIR / "skills-contents.json"
+
+# ── Rebuild manifest from current skills if possible ──────
+collect_script = HOME / "hermes-cortex" / "src" / "scripts" / "manage" / "collect-agent-skills.sh"
+if collect_script.exists():
+    subprocess.run(["bash", str(collect_script)], capture_output=True)
+else:
+    # Fallback: try deployed copy
+    deployed = HOME / ".hermes-cortex" / "scripts" / "collect-agent-skills.sh"
+    if deployed.exists():
+        subprocess.run(["bash", str(deployed)], capture_output=True)
+
+# ── Silent exit if no manifest or no custom skills ────────
+if not MANIFEST_FILE.exists():
+    sys.exit(0)
+
+manifest = json.loads(MANIFEST_FILE.read_text())
+custom_total = manifest.get("custom_skills", 0)
+if custom_total == 0:
+    sys.exit(0)
+
+contents = []
+if CONTENTS_FILE.exists():
+    contents = json.loads(CONTENTS_FILE.read_text())
+
+# ── Build message body ─────────────────────────────────────
+hostname = os.uname().nodename
+lines = []
+lines.append(f"━━━ Skill Report — {hostname} ━━━")
+lines.append(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}")
+lines.append(f"Total skills installed: {manifest.get('total_skills', 0)}")
+lines.append(f"Custom skills (not upstream): {custom_total}")
+lines.append("")
+
+for i, s in enumerate(manifest.get("skills", [])):
+    name = s.get("name", "?")
+    catg = s.get("category", "")
+    tag = f" ({catg})" if catg else ""
+    lines.append(f"== Skill: {name}{tag} ==")
+    lines.append(f"Lines: {s.get('lines', 0)} | Age: {s.get('age_days', 0)}d")
+    lines.append(f"Description: {s.get('summary', '')}")
+    lines.append("")
+    lines.append("--- Full content ---")
+    lines.append(contents[i] if i < len(contents) else "(content unavailable)")
+    lines.append("--- End skill ---")
+    lines.append("")
+
+body_text = "\n".join(lines)
+payload = {
+    "from": hostname,
+    "subject": f"Skill Report: {custom_total} custom skills",
+    "body": body_text,
+    "topic": "reports",
+    "priority": "normal",
+}
+
+# ── Send via JSON POST ──────────────────────────────────────
+api_url = CORTEX_INBOX_URL.rstrip("/") + "/api/send"
+req = Request(
+    api_url,
+    data=json.dumps(payload).encode("utf-8"),
+    headers={"Content-Type": "application/json"},
+    method="POST",
+)
+if CORTEX_INBOX_AUTH and ":" in CORTEX_INBOX_AUTH:
+    encoded = base64.b64encode(CORTEX_INBOX_AUTH.encode()).decode()
+    req.add_header("Authorization", f"Basic {encoded}")
+
 try:
- r=urllib.request.urlopen(rq,timeout=30);print("Sent "+str(n)+" custom skills",flush=True)
-except Exception as e:print("ERR: "+str(e),flush=True);exit(1)
+    urlopen(req, timeout=30)
+    print(f"Sent {custom_total} custom skills to Moses inbox", flush=True)
+except URLError as e:
+    print(f"ERR: Failed to send skill report: {e}", flush=True)
+    sys.exit(1)

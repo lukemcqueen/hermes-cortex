@@ -416,7 +416,8 @@ if $UNINSTALL; then
     "agent-inbox" "agent-remediate-apply" "agent-apply-fixes" \
     "governance-auditor" "threat-pipeline" "agent-ip-submission" \
     "scoring-activity-watchdog" "skill-miner" "agent-weekly-loop-eval" \
-    "session-cache-build" "cron-quality-watchdog"; do
+    "session-cache-build" "cron-quality-watchdog" \
+    "collect-agent-skills" "send-skill-report"; do
     remove_cron "$job"
   done
   info "Uninstall complete"
@@ -925,6 +926,29 @@ If nothing to apply: output exactly [SILENT]" \
   "" "" "origin" \
   "$HOME" "false" \
   "deepseek-v4-flash" "opencode-zen"
+
+# ── 5. Skill Collection (universal — all agents) ──────────
+printf "${CYAN}  5. Skill Collection Pipeline${RESET}\n"
+
+# Collect custom skills every 6h — scans skills dirs, reports to Moses inbox
+create_cron "collect-agent-skills" "0 */6 * * *" \
+  "collect-agent-skills.sh" \
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
+
+# Send skill report to Moses every 6h — reads manifest, sends via API
+create_cron "send-skill-report" "30 */6 * * *" \
+  "send-skill-report.py" \
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
 
 echo ""
 printf "${CYAN}━━━ Summary ━━━${RESET}\n"
