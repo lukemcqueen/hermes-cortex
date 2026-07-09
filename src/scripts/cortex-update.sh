@@ -719,6 +719,16 @@ deploy_nginx_configs() {
   fi
   local conf_available="${available_dir}/hermes-services.conf"
 
+  # Cleanup: detect stale macOS-style servers/ dir on Linux
+  if [[ -d "${config_dir%/sites-enabled}/servers" ]]; then
+    local stale_servers="${config_dir%/sites-enabled}/servers/hermes-services.conf"
+    if [[ -f "$stale_servers" ]]; then
+      warn "  Stale file detected: ${stale_servers}"
+      warn "  Remove with: sudo rm ${stale_servers}"
+      warn "  (macOS-style path — nginx on Linux uses sites-available/ instead)"
+    fi
+  fi
+
   [[ ! -f "$conf_src" ]] && return 0
 
   local tmpfile="/tmp/hermes-services-processed.conf"
