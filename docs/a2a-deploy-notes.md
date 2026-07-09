@@ -2,6 +2,7 @@
 
 > **⚠️ A2A is now merged into the Agent Inbox server.**
 > As of 2026-07-05, there is no separate A2A server process.
+> The standalone `docs/templates/a2a-server.service` was **deleted on 2026-07-09**. Do not recreate it.
 > All A2A JSON-RPC endpoints are served by the inbox backend on port 8903.
 > See [`a2a-architecture.md`](a2a-architecture.md) for the current design.
 

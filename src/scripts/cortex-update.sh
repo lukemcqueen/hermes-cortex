@@ -286,9 +286,6 @@ register "src/offline/auto-update.sh"             "${CORTEX_DEPLOY_HOME}/offline
 # A2A Agent-to-Agent Protocol
 register "src/a2a/generate-agent-card.py"         "${CORTEX_DEPLOY_HOME}/scripts/generate-agent-card.py"
 register "src/a2a/agent-card.json"                "${CORTEX_DEPLOY_HOME}/a2a/agent-card.json"
-register "src/mcp-servers/a2a-mcp.py"              "${CORTEX_DEPLOY_HOME}/mcp-servers/a2a-mcp.py"
-register "src/a2a/a2a-server.py"                     "${CORTEX_DEPLOY_HOME}/scripts/a2a-server.py"
-register "docs/templates/a2a-server.service"          "${CORTEX_DEPLOY_HOME}/templates/a2a-server.service"
 
 # Templates → ~/.hermes/memories/ (guarded — only if dest missing)
 register "docs/templates/MEMORY.seed.md"      "${CORTEX_DEPLOY_HOME}/memories/MEMORY.md"
