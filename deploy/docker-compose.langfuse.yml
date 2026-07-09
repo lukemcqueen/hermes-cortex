@@ -16,12 +16,14 @@
 
 services:
   langfuse-worker:
-    image: langfuse/langfuse-worker:3.200.0
+    image: langfuse/langfuse-worker:3.206.0
     restart: always
     cpus: 0.5
     mem_limit: 512m
     memswap_limit: 512m
     depends_on: &langfuse-depends-on
+      clickhouse:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:
@@ -104,19 +106,31 @@ services:
       LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE: "true"
 
   langfuse-web:
-    image: langfuse/langfuse:3.200.0
-    restart: always
+    image: langfuse/langfuse:3.206.0
+    restart: on-failure:2
     depends_on: *langfuse-depends-on
     cpus: 0.5
     mem_limit: 1g
     memswap_limit: 1g
     ports:
       - "127.0.0.1:${LANGFUSE_PORT:-3000}:3000"
+    # Wrap CMD to keep container alive if server exits after init
+    command: >
+      /bin/sh -c '
+      if [ -n "$$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then
+        node --import dd-trace/initialize.mjs ./web/server.js --keepAliveTimeout 110000 || true;
+      else
+        node ./web/server.js --keepAliveTimeout 110000 || true;
+      fi;
+      echo "Langfuse server exited. Container staying alive.";
+      tail -f /dev/null
+      '
     environment:
       <<: *langfuse-env-base
       HOSTNAME: "0.0.0.0"
-      NODE_OPTIONS: "--max-old-space-size=1024"
+      NODE_OPTIONS: "--max-old-space-size=1024 --max-semi-space-size=64 --unhandled-rejections=warn"
       NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3000}
+      # ── Init vars — stay active for auth validation ──
       LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-hermes-cortex}
       LANGFUSE_INIT_PROJECT_ID: ${LANGFUSE_INIT_PROJECT_ID:-default-project}
       LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:-}
@@ -131,8 +145,8 @@ services:
     restart: always
     # ── Resource limits: prevent CPU contention with agent services ──
     cpus: 1.0
-    mem_limit: 8g
-    memswap_limit: 8g
+    mem_limit: 1g
+    memswap_limit: 1g
     healthcheck:
       test: ["CMD-SHELL", "clickhouse client -h localhost --query 'SELECT 1'"]
       interval: 5s

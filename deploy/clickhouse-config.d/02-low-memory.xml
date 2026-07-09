@@ -15,6 +15,10 @@
 -->
 <clickhouse>
 
+    <!-- ── Total memory cap (Docker Desktop limit: ~2.845 GiB total) ── -->
+    <max_server_memory_usage>800000000</max_server_memory_usage>
+    <!-- 800 MB — ClickHouse has 1g total, leaves ~200 MB for OS/FS cache -->
+
     <!-- ── Thread pools (defaults assume multi-core + high throughput) ── -->
     <background_pool_size>13</background_pool_size>
     <!-- merges & mutations; default 16; floor 13 in CH 25.5 (≤12 crashes) -->
