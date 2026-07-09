@@ -596,6 +596,144 @@ def check_config(res):
                 res.add(f"Config ({var})", "INFO", f"defined but zero consumer scripts reference it")
 
 
+def check_nginx(res):
+    """7. Nginx config: file exists, htpasswd, agent-card, SSL certs, syntax."""
+    # ── OS-aware nginx paths ──
+    nginx_brew_dir = None
+    config_dir = None
+    available_dir = None
+    htpasswd_expected = None
+
+    if IS_MAC:
+        if os.uname().machine == "arm64":
+            nginx_brew_dir = Path("/opt/homebrew/etc/nginx")
+        else:
+            nginx_brew_dir = Path("/usr/local/etc/nginx")
+        config_dir = nginx_brew_dir / "servers"
+        available_dir = config_dir
+        htpasswd_expected = nginx_brew_dir / ".htpasswd"
+    elif IS_LINUX:
+        nginx_brew_dir = Path("/etc/nginx")
+        config_dir = nginx_brew_dir / "sites-enabled"
+        available_dir = nginx_brew_dir / "sites-available"
+        htpasswd_expected = nginx_brew_dir / ".hermes-htpasswd"
+    else:
+        res.add("Nginx config", "INFO", "Unsupported OS — skipping nginx checks")
+        return
+
+    if not nginx_brew_dir or not nginx_brew_dir.is_dir():
+        res.add("Nginx config", "INFO", "nginx not installed — skipping checks")
+        return
+
+    conf_available = available_dir / "hermes-services.conf"
+    if not conf_available.is_file():
+        res.add("Nginx config", "FAIL", f"not found at {conf_available}",
+                "Run: sudo deploy/nginx/install-nginx-full.sh")
+        return
+    res.add("Nginx config", "PASS", f"found at {conf_available}")
+
+    text = conf_available.read_text()
+
+    # ── Check for unsubstituted placeholders ──
+    placeholders = ["__HTPASSWD_FILE__", "__NGINX_CONFIG_DIR__", "__NGINX_LOG_DIR__",
+                    "__CORTEX_HOME__", "__SSL_CERT__", "__SSL_CERT_KEY__"]
+    found_placeholders = [p for p in placeholders if p in text]
+    if found_placeholders:
+        res.add("Nginx placeholders", "FAIL",
+                f"unsubstituted: {', '.join(found_placeholders)}",
+                "Run: cortex-update.sh --force-all or hermes-services-apply.py")
+
+    # ── Verify htpasswd file ──
+    htpasswd_path = None
+    for line in text.split("\n"):
+        m = re.search(r'auth_basic_user_file\s+(\S+?);?\s*$', line)
+        if m:
+            htpasswd_path = m.group(1).rstrip(";")
+            break
+
+    if htpasswd_path:
+        p = Path(htpasswd_path)
+        if p.exists():
+            res.add("Nginx htpasswd", "PASS", f"{htpasswd_path} exists")
+        elif htpasswd_expected.exists():
+            res.add("Nginx htpasswd", "FAIL",
+                    f"config points to '{htpasswd_path}' (not found) — expected '{htpasswd_expected}'",
+                    f"Re-deploy: cortex-update.sh --force-all")
+        else:
+            res.add("Nginx htpasswd", "FAIL",
+                    f"not found at '{htpasswd_path}' (and expected '{htpasswd_expected}' also missing)",
+                    "Run: sudo htpasswd -c /etc/nginx/.hermes-htpasswd <user>")
+    else:
+        res.add("Nginx htpasswd", "INFO", "no auth_basic_user_file in config")
+
+    # ── Verify agent-card paths ──
+    seen_cards = set()
+    agent_card_found = 0
+    agent_card_missing = 0
+    for line in text.split("\n"):
+        m = re.search(r'alias\s+(\S+?/agent-card\.json)', line)
+        if m:
+            card_path = m.group(1).rstrip(";")
+            if card_path in seen_cards:
+                continue
+            seen_cards.add(card_path)
+            if Path(card_path).exists():
+                agent_card_found += 1
+            else:
+                agent_card_missing += 1
+                res.add("Nginx agent-card", "FAIL",
+                        f"not found at '{card_path}'",
+                        "Run: cortex-update.sh --force-all  OR  generate agent card in that directory")
+
+    if agent_card_found > 0 and agent_card_missing == 0:
+        res.add("Nginx agent-card", "PASS", f"{agent_card_found} agent card alias(es) resolve")
+
+    # ── Verify SSL cert paths (deduplicated) ──
+    seen_certs = set()
+    cert_found = 0
+    cert_missing = 0
+    for line in text.split("\n"):
+        m = re.search(r'ssl_certificate(?:_key)?\s+(\S+?);?\s*$', line)
+        if m:
+            raw = m.group(1).rstrip(";")
+            if raw in seen_certs or "__SSL_CERT" in raw:
+                continue
+            seen_certs.add(raw)
+            if Path(raw).exists():
+                cert_found += 1
+            else:
+                cert_missing += 1
+                label = "SSL cert" if "key" not in m.group(0) else "SSL key"
+                res.add(f"Nginx {label}", "FAIL",
+                        f"not found at '{raw}'",
+                        "Renew cert: sudo certbot renew  OR  set CORTEX_SSL_CERT_PATH env var")
+
+    if "__SSL_CERT__" not in text and cert_found > 0 and cert_missing == 0:
+        res.add("Nginx SSL certs", "PASS", f"{len(seen_certs)} cert path(s) resolve")
+
+    # ── nginx -t syntax check (with sudo for cert access) ──
+    if nginx_available():
+        if os.geteuid() == 0:
+            out, code = run(["nginx", "-t"], timeout=10)
+        elif run(["which", "sudo"], timeout=5)[0]:
+            out, code = run(["sudo", "nginx", "-t"], timeout=15)
+        else:
+            res.add("Nginx syntax", "INFO", "not root and no sudo — skipping syntax check")
+            return
+        if code == 0:
+            res.add("Nginx syntax", "PASS", "config valid (nginx -t)")
+        else:
+            lines = [l for l in out.split("\n") if "test failed" in l.lower() or "error" in l.lower()][:3]
+            detail = "; ".join(lines) if lines else "syntax error"
+            res.add("Nginx syntax", "FAIL", detail, "Check: sudo nginx -t")
+
+
+def nginx_available():
+    """Check if nginx binary is on PATH."""
+    out, _ = run(["which", "nginx"], timeout=5)
+    return bool(out.strip())
+
+
 def check_governance(res):
     """7. Governance system: plugin, pre-commit hook, MCP servers, lock files, score-cycle."""
     config_text = read_file(CONFIG_FILE)
@@ -1042,7 +1180,7 @@ def main():
     compact = "--quiet" in args
 
     all_checks = [check_repo, check_crons, check_scripts, check_services,
-                   check_system, check_config, check_governance, check_install]
+                   check_system, check_config, check_nginx, check_governance, check_install]
 
     if not res.json_mode:
         print("Hermes Cortex Doctor v2.0")
