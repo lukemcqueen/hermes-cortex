@@ -809,39 +809,13 @@ hermes config show  # should show plugins.enabled including governance-enforcer
 ls -la ~/.hermes/plugins/governance-enforcer/  # should show plugin.yaml, __init__.py
 ```
 
-### 21. Score-auditor always reports `had_issues: true`
+### 21. `governance-auditor` always reports `had_issues: true` (historical — old `score-auditor`)
 
-**Symptom:** The `score-auditor` cron job runs but never clears its error state. Checking `~/.hermes/state/score-auditor.state` shows `"had_issues": true`.
+**Symptom** (deprecated cron): The old `score-auditor` cron job never cleared its error state. Checking `~/.hermes/state/score-auditor.state` showed `"had_issues": true`.
 
-**Root cause:** The `get_scored_tasks()` function in `score-auditor.py` searches for DB tables named `cycles` or `cycle_scores`, but the actual table created by `loop_db.py` is named `loop_cycles`. This causes `get_scored_tasks()` to return an empty set every time, making every modified file appear "unscored."
+**Root cause:** The `get_scored_tasks()` function in the old `score-auditor.py` searched for DB tables named `cycles` or `cycle_scores`, but the actual table created by `loop_db.py` is named `loop_cycles`. This caused `get_scored_tasks()` to return an empty set every time, making every modified file appear "unscored."
 
-**Fix — update `get_scored_tasks()` to check for `loop_cycles` first:**
-
-```python
-# In ~/.hermes/scripts/score-auditor.py (deployed)
-# AND ~/hermes-cortex/src/scripts/manage/score-auditor.py (source)
-
-if 'loop_cycles' in table_names:
-    rows = cur.execute(
-        'SELECT DISTINCT task_id FROM loop_cycles'
-    ).fetchall()
-elif 'cycles' in table_names:
-    rows = cur.execute(
-        'SELECT DISTINCT task_id FROM cycles'
-    ).fetchall()
-elif 'cycle_scores' in table_names:
-    rows = cur.execute(
-        'SELECT DISTINCT task_id FROM cycle_scores'
-    ).fetchall()
-else:
-    return set()
-```
-
-After fixing, run it to clear the state:
-```bash
-PYTHONPATH=~/.hermes/scripts python3 ~/.hermes/scripts/score-auditor.py
-cat ~/.hermes/state/score-auditor.state  # Should show "had_issues": false
-```
+**Status:** `score-auditor` was renamed to `governance-auditor` and fully rewritten. The new implementation (`src/scripts/manage/governance-auditor.py`) uses a file-system scan approach, not `get_scored_tasks()`, so this bug no longer applies.
 
 ### 22. Session cache / cache_search not working
 
@@ -864,7 +838,7 @@ Requires:
 
 | Version | Date | Changes |
 |---|---|---|
-| 1.6.0 | 2026-07-04 | Added #19 (loop-gov MCP import path), #20 (governance-enforcer plugin registration), #21 (score-auditor table name), #22 (session cache rebuild) |
+| 1.6.0 | 2026-07-04 | Added #19 (loop-gov MCP import path), #20 (governance-enforcer plugin registration), #21 (governance-auditor section — supersedes score-auditor), #22 (session cache rebuild) |
 | 1.5.0 | 2026-06-22 | Added #24 (Alembic migration fork troubleshooting, prevention protocol, diagnostics) |
 | 1.4.0 | 2026-06-10 | Rewrote #23 (Langfuse costs) — fixed schema from `langfuse.models` to `public.models`, corrected INSERT SQL for v3 schema, added opencode-zen/opencode-go provider subsection with deepseek-v4-flash-free pricing SQL |
 | 1.2.0 | 2026-06-06 | Added #21 (Langfuse fromTimestamp), #22 (dashboard no-traces), #23 (costs $0.00), #24 (pf firewall), #25 (fail2ban), updated port ranges |

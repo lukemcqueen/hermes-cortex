@@ -64,7 +64,6 @@ agent guidelines focused on general Hermes Cortex usage.
 | `agent-cron-failure-scanner` | `*/30 * * * *` | no_agent | Scans ALL cron outputs for recent failures (last 90 min) |
 | `inbox-sensor` | `*/10 * * * *` | no_agent | Detect new broadcast messages |
 | `memory-to-brain-sync` | `0 */6 * * *` | no_agent | Memory persistence to gbrain |
-| `score-auditor` | `0 */6 * * *` | no_agent | Scans for unscored changes |
 | `gbrain-nightly-dream` | `0 3 * * 6` | no_agent | Weekly gbrain knowledge enrichment |
 | `gbrain-update-sync` | `0 2 * * 0` | no_agent | Weekly gbrain update + health check |
 | `harvest-lessons` | `0 5 * * 1` | no_agent | Weekly lesson harvesting |
