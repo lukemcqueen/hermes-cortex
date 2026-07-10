@@ -17,8 +17,10 @@ Install sudoers rule:
 """
 import os
 import re
+import signal
 import subprocess
 import sys
+import time
 
 # ── Constants ──
 IPV4_RE = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
@@ -52,6 +54,76 @@ def _detect_nginx_paths() -> tuple[str, str]:
 NGINX_BIN, NGINX_CONF_DIR = _detect_nginx_paths()
 BLOCKED_CONF = os.path.join(NGINX_CONF_DIR, "blocked_ips.conf")
 ALLOW_MANUAL_CONF = os.path.join(NGINX_CONF_DIR, "allow-ips-manual.conf")
+
+
+def _fix_orphaned_nginx() -> str | None:
+    """Detect and kill orphaned nginx master running outside systemd.
+
+    When nginx is started manually (not via systemd), systemd loses track
+    of the process. The old master holds ports and blocks systemd from
+    starting. This function kills the orphan and returns a message.
+    Returns None if no orphan found.
+    """
+    # Check systemd status
+    r = subprocess.run(
+        ["systemctl", "is-active", "nginx"],
+        capture_output=True, text=True, timeout=10,
+    )
+    if r.returncode == 0 and r.stdout.strip() == "active":
+        return None  # systemd is managing it
+
+    # Check process table for nginx master
+    r2 = subprocess.run(
+        ["pgrep", "-f", "nginx: master"],
+        capture_output=True, text=True, timeout=10,
+    )
+    if not r2.stdout.strip():
+        return None  # no master process at all
+
+    orphan_pids = []
+    for pid_str in r2.stdout.strip().split():
+        pid = int(pid_str)
+
+        # Check if this specific PID is tracked by systemd
+        r3 = subprocess.run(
+            ["systemctl", "show", "-p", "MainPID", "nginx"],
+            capture_output=True, text=True, timeout=10,
+        )
+        main_pid = r3.stdout.strip().split("=")[-1] if "=" in r3.stdout.strip() else "0"
+        if pid_str == main_pid:
+            continue  # this IS the systemd-managed PID
+
+        orphan_pids.append(pid)
+
+    if not orphan_pids:
+        return None
+
+    killed = []
+    for pid in orphan_pids:
+        os.kill(pid, signal.SIGTERM)
+        for _ in range(5):
+            try:
+                os.kill(pid, 0)  # still alive?
+                time.sleep(1)
+            except OSError:
+                break
+        try:
+            os.kill(pid, 0)
+            os.kill(pid, signal.SIGKILL)
+            killed.append(f"{pid}(SIGKILL)")
+        except OSError:
+            killed.append(f"{pid}(TERM)")
+
+    # Write correct PID file so systemd can track
+    pid_file = "/run/nginx.pid"
+    if orphan_pids and os.path.exists(pid_file):
+        try:
+            with open(pid_file, "w") as f:
+                f.write(str(orphan_pids[0]))
+        except OSError as e:
+            return f"orphan(s) killed ({', '.join(killed)}) but PID file write failed: {e}"
+
+    return f"orphan nginx master(s) killed: {', '.join(killed)}"
 
 
 def is_valid_public_ip(s: str) -> bool:
@@ -192,6 +264,11 @@ def deploy_via_temp(config_lines: list[str]) -> str:
 
 
 def main():
+    # Fix orphaned nginx before anything else — ensures systemd can manage it
+    orphan_msg = _fix_orphaned_nginx()
+    if orphan_msg:
+        print(f"  🔧 nginx: {orphan_msg}")
+
     is_root = os.geteuid() == 0
     if not is_root:
         print("⚠ Non-root mode — generating config to /tmp/ only")
