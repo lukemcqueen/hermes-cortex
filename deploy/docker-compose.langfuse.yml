@@ -61,6 +61,7 @@ services:
       # ── Telemetry / Privacy ──
       NEXT_TELEMETRY_DISABLED: "1"
       LANGFUSE_TELEMETRY_ENABLED: "false"
+      POSTHOG_HOST: "http://127.0.0.1:1"
 
       # ── Access Control ──
       AUTH_DISABLE_SIGNUP: "true"
@@ -107,23 +108,23 @@ services:
 
   langfuse-web:
     image: langfuse/langfuse:3.206.0
-    restart: on-failure:2
+    restart: unless-stopped
     depends_on: *langfuse-depends-on
     cpus: 0.5
     mem_limit: 1g
     memswap_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/api/public/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 240s
     ports:
       - "127.0.0.1:${LANGFUSE_PORT:-3000}:3000"
-    # Wrap CMD to keep container alive if server exits after init
+    # Auto-restart server if it exits (e.g. PostHog timeout crash)
     command: >
       /bin/sh -c '
-      if [ -n "$$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then
-        node --import dd-trace/initialize.mjs ./web/server.js --keepAliveTimeout 110000 || true;
-      else
-        node ./web/server.js --keepAliveTimeout 110000 || true;
-      fi;
-      echo "Langfuse server exited. Container staying alive.";
-      tail -f /dev/null
+      exec node ./web/server.js --keepAliveTimeout 110000
       '
     environment:
       <<: *langfuse-env-base
