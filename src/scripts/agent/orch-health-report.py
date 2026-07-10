@@ -169,8 +169,10 @@ def _fetch_inbox_vector(agent_key: str) -> list[int] | None:
 
     Looks for the most recent message from this agent containing a
     ``{"v": [...]}`` vector. Searches both 'health' and 'general' topics.
-    Returns the vector or None.
+    Returns the vector or None. Returns None if the message is stale
+    (>4 hours old — laptop grace period).
     """
+    now = datetime.now(timezone.utc)
     for topic in ("health", "general"):
         resp = _inbox_request(
             f"api/inbox?topic={topic}&unread_only=false"
@@ -193,6 +195,21 @@ def _fetch_inbox_vector(agent_key: str) -> list[int] | None:
             else:
                 continue
             if "v" in parsed and isinstance(parsed["v"], list):
+                # Check message age — 30-min grace for real-time health
+                ts_str = msg.get("timestamp", "")
+                if ts_str:
+                    try:
+                        ts_clean = ts_str.replace("Z", "+00:00")
+                        if "T" in ts_clean and "+" not in ts_clean and ts_clean.endswith("00:00"):
+                            ts_clean += "+00:00"
+                        msg_time = datetime.fromisoformat(ts_clean)
+                        if msg_time.tzinfo is None:
+                            msg_time = msg_time.replace(tzinfo=timezone.utc)
+                        age_hours = (now - msg_time).total_seconds() / 3600
+                        if age_hours > 0.5:
+                            return None  # Stale — treat as unreachable
+                    except (ValueError, TypeError):
+                        pass  # Can't parse timestamp — use the data anyway
                 return parsed["v"]
     return None
 
