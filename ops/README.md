@@ -6,11 +6,11 @@ Installers, monitors, services, offline stack, and fleet management. This layer 
 
 | Directory | Purpose | Status |
 |-----------|---------|--------|
-| `install/` | Installer scripts and Docker deployments | From `install.sh`, `deploy/` |
-| `scripts/` | Operational scripts: health, inbox, agent management | From `src/scripts/` |
-| `services/` | Long-running services: dashboard, agent-inbox, A2A | From `src/dashboard/`, `src/agent-inbox/`, `src/a2a/` |
-| `offline/` | Offline knowledge stack: Kiwix, code corpus, gbrain sync | From `src/offline/` |
-| `web-cache/` | Local semantic web cache (sqlite-vec) | From `src/web-cache/` |
+| `install/` | Installer scripts and Docker deployments | Populated (install.sh, quick-start.sh, deploy/) |
+| `scripts/` | Operational scripts: health, inbox, agent management | Populated (131 scripts from `src/scripts/`) |
+| `services/` | Long-running services: dashboard, agent-inbox, A2A | Populated (dashboard, agent-inbox, a2a) |
+| `offline/` | Offline knowledge stack: Kiwix, code corpus, gbrain sync | Populated (from `src/offline/`) |
+| `web-cache/` | Local semantic web cache (sqlite-vec) | Populated (from `src/web-cache/`) |
 | `monitors/` | Watchdogs, cron quality gates, health probes | Planned |
 
 ## Design Rules
