@@ -40,6 +40,7 @@ for _env_candidate in [LANGFUSE_ENV, HERMES_HOME / ".env"]:
             break
 
 LANGFUSE_HOST = os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
+LANGFUSE_EXTERNAL = os.environ.get("LANGFUSE_EXTERNAL", "http://localhost:13002")
 LANGFUSE_AUTH = None
 if pk and sk:
     LANGFUSE_AUTH = base64.b64encode(f"{pk}:{sk}".encode()).decode()
@@ -1068,6 +1069,9 @@ def api_all():
         "session_timeline": _session_timeline(),
         "system": _system(),
         "sysinfo": _sysinfo(),
+        "config": {
+            "langfuse_external": LANGFUSE_EXTERNAL,
+        },
         "timestamp": kst.isoformat(),
     })
 

@@ -1,16 +1,10 @@
 // ── Cortex Dashboard v2.1 — Design System Refresh ──
 // DESIGN.md at /DESIGN.md for token reference
 
-const LANGFUSE_HOST = 'http://localhost:3000';
-const LANGFUSE_EXTERNAL = 'http://localhost:13002';
-
 (function() {
   const $ = id => document.getElementById(id);
 
-  const lfLink = $('langfuse-link');
-  const tracesLink = $('langfuse-traces-link');
-  if (lfLink) lfLink.href = LANGFUSE_EXTERNAL;
-  if (tracesLink) tracesLink.href = LANGFUSE_EXTERNAL + '/traces';
+  let langfuseExternal = null;
 
   async function fetchAll() {
     try {
@@ -502,6 +496,17 @@ const LANGFUSE_EXTERNAL = 'http://localhost:13002';
       return;
     }
     $('timestamp').textContent = data.timestamp ? data.timestamp.slice(0,19) + ' KST' : new Date().toLocaleTimeString();
+
+    // Set Langfuse external links from server config (LANGFUSE_EXTERNAL env var)
+    const ext = data.config?.langfuse_external;
+    if (ext) {
+      langfuseExternal = ext;
+      const lfLink = $('langfuse-link');
+      const tracesLink = $('langfuse-traces-link');
+      if (lfLink) lfLink.href = ext;
+      if (tracesLink) tracesLink.href = ext + '/traces';
+    }
+
     renderHealth(data);
     renderMetrics(data);
     renderStats(data);
