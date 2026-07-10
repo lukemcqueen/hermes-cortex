@@ -111,8 +111,8 @@ services:
     restart: unless-stopped
     depends_on: *langfuse-depends-on
     cpus: 0.5
-    mem_limit: 1g
-    memswap_limit: 1g
+    mem_limit: 512m
+    memswap_limit: 512m
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/api/public/health || exit 1"]
       interval: 15s
@@ -129,7 +129,7 @@ services:
     environment:
       <<: *langfuse-env-base
       HOSTNAME: "0.0.0.0"
-      NODE_OPTIONS: "--max-old-space-size=1024 --max-semi-space-size=64 --unhandled-rejections=warn"
+      NODE_OPTIONS: "--max-old-space-size=512 --max-semi-space-size=64 --unhandled-rejections=warn"
       NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3000}
       # ── Init vars — stay active for auth validation ──
       LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-hermes-cortex}
