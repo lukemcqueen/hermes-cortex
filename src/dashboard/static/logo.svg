@@ -1,0 +1,21 @@
+<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logo-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#818cf8"/>
+    </linearGradient>
+  </defs>
+  <!-- Outer ring — subtle hexagon -->
+  <path d="M16 2.5l11.5 6.7v13.6L16 29.5l-11.5-6.7V9.2L16 2.5z" stroke="url(#logo-grad)" stroke-width="1.2" stroke-opacity="0.25" fill="none"/>
+  <!-- Neural node — top -->
+  <circle cx="16" cy="9" r="3.5" fill="url(#logo-grad)" opacity="0.95"/>
+  <circle cx="16" cy="9" r="1.2" fill="#f1f5f9" opacity="0.8"/>
+  <!-- Neural node — bottom-left -->
+  <circle cx="9.5" cy="21.5" r="3.5" fill="url(#logo-grad)" opacity="0.95"/>
+  <circle cx="9.5" cy="21.5" r="1.2" fill="#f1f5f9" opacity="0.8"/>
+  <!-- Neural node — bottom-right -->
+  <circle cx="22.5" cy="21.5" r="3.5" fill="url(#logo-grad)" opacity="0.95"/>
+  <circle cx="22.5" cy="21.5" r="1.2" fill="#f1f5f9" opacity="0.8"/>
+  <!-- Connection lines with glow -->
+  <path d="M16 12.5l-4.8 7.2M16 12.5l4.8 7.2M11.5 23l9-1.2" stroke="url(#logo-grad)" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.5"/>
+</svg>
