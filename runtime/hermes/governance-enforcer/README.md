@@ -289,7 +289,7 @@ Before the plugin existed, a **loop-gov-mcp.py** script was written to provide `
 mkdir -p ~/.hermes/plugins
 
 # Symlink the plugin from the Hermes Cortex repo
-ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
+ln -sf ~/hermes-cortex/runtime/hermes/governance-enforcer ~/.hermes/plugins/
 
 # Verify
 ls -la ~/.hermes/plugins/governance-enforcer/
@@ -314,10 +314,10 @@ The plugin source lives in the Hermes Cortex repo. To deploy to all agents:
 
 ```bash
 # Source of truth (commit and push first if modified)
-ls ~/hermes-cortex/plugins/governance-enforcer/
+ls ~/hermes-cortex/runtime/hermes/governance-enforcer/
 
 # On each agent machine, symlink:
-ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
+ln -sf ~/hermes-cortex/runtime/hermes/governance-enforcer ~/.hermes/plugins/
 
 # Run cortex-update to ensure repo is current:
 cd ~/hermes-cortex && git pull origin main
@@ -330,11 +330,11 @@ bash src/scripts/cortex-update.sh
 
 | Agent | Host | Repo Path |
 |-------|------|-----------|
-| Moses | Orchestrator | `~/hermes-cortex/plugins/governance-enforcer/` |
-| Esther | Backup orchestrator | `~/hermes-cortex/plugins/governance-enforcer/` |
-| Gisu | Work staging | `~/hermes-cortex/plugins/governance-enforcer/` |
-| Kustos | Work production | `~/hermes-cortex/plugins/governance-enforcer/` |
-| Joseph | Personal production | `~/hermes-cortex/plugins/governance-enforcer/` |
+| Moses | Orchestrator | `~/hermes-cortex/runtime/hermes/governance-enforcer/` |
+| Esther | Backup orchestrator | `~/hermes-cortex/runtime/hermes/governance-enforcer/` |
+| Gisu | Work staging | `~/hermes-cortex/runtime/hermes/governance-enforcer/` |
+| Kustos | Work production | `~/hermes-cortex/runtime/hermes/governance-enforcer/` |
+| Joseph | Personal production | `~/hermes-cortex/runtime/hermes/governance-enforcer/` |
 
 The pattern is the same for all: plugin source in the Cortex repo → symlink into `~/.hermes/plugins/`.
 
@@ -347,7 +347,7 @@ mkdir -p ~/.hermes/plugins
 if [ -L ~/.hermes/plugins/governance-enforcer ] || [ -d ~/.hermes/plugins/governance-enforcer ]; then
   echo "Plugin exists, skipping symlink"
 else
-  ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
+  ln -sf ~/hermes-cortex/runtime/hermes/governance-enforcer ~/.hermes/plugins/
   echo "Governance enforcer plugin installed. Restart Hermes to activate."
 fi
 ```

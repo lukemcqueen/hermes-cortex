@@ -6,9 +6,9 @@ Hermes Agent integration layer — plugins, MCP servers, hooks, and skill defini
 
 | Directory | Purpose | Status |
 |-----------|---------|--------|
-| `hermes/governance-enforcer/` | Pre-tool-call governance enforcement plugin | From `plugins/governance-enforcer/` |
+| `hermes/governance-enforcer/` | Pre-tool-call governance enforcement plugin | Populated (migrated from `plugins/governance-enforcer/`) |
 | `hermes/hooks/` | Git hooks (pre-commit scoring, post-commit) | From `.hermes-cortex/hooks/` |
-| `mcp-servers/` | MCP servers: inbox, loop-governance | From `src/mcp-servers/` |
+| `mcp-servers/` | MCP servers: inbox, loop-governance | Populated (migrated from `src/mcp-servers/`) |
 | `skills/` | Skill definitions loaded by Hermes Agent | From `src/skills/` |
 
 ## Design Rules

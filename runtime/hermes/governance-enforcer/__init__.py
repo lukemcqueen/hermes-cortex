@@ -15,7 +15,7 @@ Outside a git repo, the generic fallback ``.governance-generic.json`` is used.
 This is the structural enforcement layer that I, as an agent, cannot bypass
 or talk my way out of — the block comes from outside myself.
 
-Install: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
+Install: ln -sf ~/hermes-cortex/runtime/hermes/governance-enforcer ~/.hermes/plugins/
 """
 
 import json
@@ -200,7 +200,7 @@ def register(ctx):
                 "  mcp_loop_governance_cycle_query(task_id=\"<task>\")\n"
                 "  mcp_loop_governance_feedback_accept(cycle_id=N, note=\"verified: ...\")\n"
                 "  mcp_loop_governance_end_change(task_id=\"<task>\")\n\n"
-                "This enforcement comes from ~/.hermes/plugins/governance-enforcer/.\n"
+                "This enforcement comes from ~/.hermes/plugins/governance-enforcer/ (source: ~/hermes-cortex/runtime/hermes/governance-enforcer/).\n"
                 "Lock files are scoped per git repo — two repos can govern independently.\n"
                 "I cannot bypass or disable this mid-session."
             ),
