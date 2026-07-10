@@ -176,7 +176,7 @@ project-root/
 ├── .hermes-cortex/           # Agent infra (hidden, near code)
 │   ├── sessions/current.md   # Active session state
 │   ├── sessions/archive/     # Timestamped snapshots
-│   ├── me
+│   ├── memory/               # Gitignored — per-user MEMORY.md, USER.md
 
 > Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
-> Date: 2026-07-10T19:30:51.612984+00:00
+
