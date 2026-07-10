@@ -28,6 +28,7 @@ done
 # Priority: local repo > curl pipe dir > Hermes skill dir
 SOURCE_DIR=""
 for dir in \
+  "${HOME}/hermes-cortex/core/governance" \
   "${HOME}/hermes-cortex/src/loop-governance" \
   "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null)" \
   "${HOME}/.hermes-cortex/skills/software-development/loop-governance/scripts"; do

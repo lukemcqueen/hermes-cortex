@@ -1,1 +1,0 @@
-../../../profiles/personal/scripts/agent-daily-bible-reading.py

@@ -176,7 +176,7 @@ def test_os_detection():
 
 def test_config_yaml_exists():
     """The deploy config template should exist and be valid YAML."""
-    config_path = Path(__file__).parent.parent / "deploy" / "config" / "config.yaml"
+    config_path = Path(__file__).parent.parent / "ops" / "install" / "deploy" / "config" / "config.yaml"
     assert config_path.exists(), f"Missing deploy/config/config.yaml"
     import yaml
     with open(config_path) as f:

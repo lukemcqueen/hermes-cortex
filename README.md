@@ -127,6 +127,21 @@ Temporal) by replacing only the Runtime Adapter layer.
 
 Detailed breakdown: [`docs/architecture.md`](docs/architecture.md#code-architecture--three-layer-model)
 
+### 🧩 Optional Profiles
+
+The repo ships with a neutral enterprise core. Personal or opinionated content
+lives in `profiles/` as optional layers:
+
+| Profile | Contents |
+|---------|----------|
+| `personal/` | Bible reading skill, soul-refinement workflow, agent SOUL profiles (Moses, Esther, Titus, Kustos, Gisu) |
+
+All paths from personal profiles are symlinked from their canonical locations for
+backward compatibility. To exclude a profile, remove the symlink and the profile
+directory won't be shipped.
+
+See [`profiles/README.md`](profiles/README.md).
+
 ---
 
 ## 🚀 One-Command Install
@@ -136,7 +151,7 @@ Detailed breakdown: [`docs/architecture.md`](docs/architecture.md#code-architect
 **Quick start (30 seconds):** Try the governance scoring tools:
 
 ```bash
-bash src/loop-governance/setup.sh    # install deps + symlinks
+bash core/governance/setup.sh    # install deps + symlinks
 score-cycle --help                    # ready to use
 ```
 
@@ -157,23 +172,23 @@ bash ~/.hermes/scripts/install-crons.sh --force
 
 ```bash
 # One-liner — no clone needed
-curl -fsSL https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/install/install.sh | bash
 
 # Or clone for offline install / inspection:
 git clone --depth 1 https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex
-bash ~/hermes-cortex/install.sh
+bash ~/hermes-cortex/ops/install/install.sh
 
 # Check prerequisites only:
-bash ~/hermes-cortex/install.sh --check
+bash ~/hermes-cortex/ops/install/install.sh --check
 
 # macOS — Laptop profile: lean, no Docker
-CORTEX_PROFILE=laptop bash ~/hermes-cortex/install.sh
+CORTEX_PROFILE=laptop bash ~/hermes-cortex/ops/install/install.sh
 
 # Linux — auto-detects systemd, apt/dnf/pacman
-CORTEX_OS=linux bash ~/hermes-cortex/install.sh
+CORTEX_OS=linux bash ~/hermes-cortex/ops/install/install.sh
 
 # Windows — uses winget/choco + scheduled tasks (limited)
-CORTEX_OS=windows bash ~/hermes-cortex/install.sh
+CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 ```
 
 ### What `install.sh` does
@@ -218,7 +233,7 @@ export HERMES_HOME="$HOME/.hermes"           # Hermes config directory
 
 ```bash
 export CORTEX_SOURCES="luke,amy,shared,default"
-bash ~/hermes-cortex/install.sh
+bash ~/hermes-cortex/ops/install/install.sh
 ```
 
 Each source has isolated memory and .gitignore. The `/brain` slash command adapts to whatever sources you configure.
@@ -252,8 +267,10 @@ offline_knowledge query "symptoms of malaria"
 
 ## 🔧 Key Scripts
 
-| Script | Purpose |
+| **Key Scripts** | Purpose |
 |--------|---------|
+| `ops/install/install.sh` | **Main installer** (moved from root in v2.0.0) |
+| `ops/install/quick-start.sh` | Quickstart (moved from root in v2.0.0) |
 | `cortex-update.sh` | Deploy scripts from repo to `~/.hermes/scripts/` — run after every `git pull` |
 | `cortex-doctor.py` | System diagnostics, fix common issues |
 | `install-score-hook.sh` | Install/remove pre-commit scoring hooks on any repo |

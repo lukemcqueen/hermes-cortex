@@ -1,1 +1,0 @@
-ops/install/install.sh

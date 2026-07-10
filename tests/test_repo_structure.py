@@ -17,7 +17,7 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def test_all_skills_have_skilL_md():
     """Every skill directory under src/skills/ must have a SKILL.md."""
-    skills_dir = os.path.join(REPO_ROOT, "src", "skills")
+    skills_dir = os.path.join(REPO_ROOT, "runtime", "skills")
     missing = []
     for root, dirs, files in os.walk(skills_dir):
         # Skip non-skill subdirectories (references, templates, scripts, assets)
@@ -55,7 +55,7 @@ def test_no_dead_root_scripts():
 def test_install_steps_match_readme():
     """Install.sh step numbers should match README table."""
     readme_path = os.path.join(REPO_ROOT, "README.md")
-    install_path = os.path.join(REPO_ROOT, "install.sh")
+    install_path = os.path.join(REPO_ROOT, "ops", "install", "install.sh")
 
     # Count steps in README table
     step_count_readme = 0
@@ -81,7 +81,7 @@ def test_install_steps_match_readme():
 
 def test_skill_names_no_jargon():
     """Skill names should be clear, not jargon."""
-    skills_dir = os.path.join(REPO_ROOT, "src", "skills")
+    skills_dir = os.path.join(REPO_ROOT, "runtime", "skills")
     jargon_patterns = ["hc-", "ak-", "prd-"]
     issues = []
     for root, dirs, _ in os.walk(skills_dir):
@@ -95,7 +95,7 @@ def test_skill_names_no_jargon():
 def test_version_consistency():
     """VERSION file should match install.sh."""
     version_file = os.path.join(REPO_ROOT, "VERSION")
-    install_file = os.path.join(REPO_ROOT, "install.sh")
+    install_file = os.path.join(REPO_ROOT, "ops", "install", "install.sh")
 
     with open(version_file) as f:
         file_version = f.read().strip()
@@ -119,7 +119,7 @@ def test_version_consistency():
 
 def test_no_duplicate_skill_names():
     """No two skills should have the same name."""
-    skills_dir = os.path.join(REPO_ROOT, "src", "skills")
+    skills_dir = os.path.join(REPO_ROOT, "runtime", "skills")
     names = []
     for root, dirs, files in os.walk(skills_dir):
         if "SKILL.md" in files:
