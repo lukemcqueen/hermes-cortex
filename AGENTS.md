@@ -30,18 +30,8 @@
 
 ### Project Directory Convention
 
-```
-project-root/
-├── .hermes-cortex/           # Agent infra (hidden, near code)
-│   ├── sessions/current.md   # Active session state
-│   ├── sessions/archive/     # Timestamped snapshots
-│   ├── memory/               # Gitignored — per-user MEMORY.md, USER.md
-│   └── skills.yaml           # Skills manifest (references global skills)
-├── AGENTS.md                 # Stays at root
-└── docs/                     # Stays at root
-```
-
-See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md) for the skill-loading procedure.
+> Content relocated to [`docs/operations-reference.md`](docs/operations-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ### Architecture Principles
 
@@ -88,7 +78,7 @@ mcp_loop_governance_cache_search(query="<what you are about to do>")
 skill_view(name="change-checklist")
 
 # 2. Verify all 5 phases: test, multi-OS, multi-role, docs, final
-#    Run actual scripts. Diff outputs. Run doctor --quiet.
+# Run actual scripts. Diff outputs. Run doctor --quiet.
 
 # 3. Score the governance cycle
 mcp_loop_governance_cycle_query(task_id="<descriptive-name>")

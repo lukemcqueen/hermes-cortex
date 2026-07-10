@@ -164,3 +164,19 @@ Load `skill_view(name="offline-code")` for full usage docs.
 - **No PII in this repo.** No personal paths, hostnames, emails, API keys, or tokens. Use placeholders (`$HOME/`, `~/`, `<username>`). Every agent MUST grep for personal identifiers before committing.
 - No secrets. `.env`, `*.pem`, `*.key` are gitignored.
 - Keep docs current when changing install behavior.
+
+
+---
+
+### Project Directory Convention
+
+
+```
+project-root/
+├── .hermes-cortex/           # Agent infra (hidden, near code)
+│   ├── sessions/current.md   # Active session state
+│   ├── sessions/archive/     # Timestamped snapshots
+│   ├── me
+
+> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
+> Date: 2026-07-10T19:30:51.612984+00:00
