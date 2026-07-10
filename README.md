@@ -81,7 +81,7 @@ Agent query → web_cache (50μs) → kiwix ZIM (localhost:8080) → gbrain (RAG
 - **Web Cache** — Semantic search cache (sqlite-vec + Ollama embeddings, ~200MB LRU) — saves API costs
 - **Offline Knowledge** — Wikipedia, WikiMed, Wikivoyage, Wikibooks available locally via Docker ZIM server
 - **Offline Code Assistant** — 366 curated code snippets across 32 categories, 19 programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
-- **Offline Reader** — Zero-dependency web UI (`python3 src/offline/offline-reader.py`) for Bible (55+ languages), hymns, and wiki reference
+- **Offline Reader** — Zero-dependency web UI (`python3 ops/offline/offline-reader.py`) for Bible (55+ languages), hymns, and wiki reference
 - **gbrain** — Persistent knowledge brain (PGLite, zero-config, 4+ sources) with automatic 2-min sync daemon
 
 ### 📊 Observability Stack
@@ -208,7 +208,7 @@ CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 | 10 | **Skills** | 8+ shared skills installed to `~/.hermes/skills/` |
 | 11 | **Web Cache** | Semantic web result cache (sqlite-vec + Ollama) |
 | 12 | **Offline Knowledge** | Cascade tool + kiwix ZIM Docker + prep scripts |
-| 13 | **Offline Reader** | `python3 src/offline/offline-reader.py` — zero-dependency web UI |
+| 13 | **Offline Reader** | `python3 ops/offline/offline-reader.py` — zero-dependency web UI |
 | 14 | **Code Corpus** | 366 snippets across 32 categories, 19 languages; RAG index via Ollama |
 | 15 | **Auto-Update** | `auto-update.sh` — silent cron-based content updater |
 | 16 | **Cron Jobs** | 37 maintenance crons: health, security, sync, recovery, reporting |

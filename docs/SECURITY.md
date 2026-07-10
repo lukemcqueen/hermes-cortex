@@ -84,8 +84,8 @@ openssl rand -hex 32   # Redis, MinIO secret, encryption keys
 
 # Update ~/langfuse/.env with new values
 # Then restart Langfuse:
-docker compose -f ~/hermes-cortex/deploy/docker-compose.langfuse.yml down
-docker compose -f ~/hermes-cortex/deploy/docker-compose.langfuse.yml up -d
+docker compose -f ~/hermes-cortex/ops/install/deploy/docker-compose.langfuse.yml down
+docker compose -f ~/hermes-cortex/ops/install/deploy/docker-compose.langfuse.yml up -d
 ```
 
 ---
@@ -542,7 +542,7 @@ launchctl kickstart gui/$(id -u)/com.docker.docker
 docker ps -a
 
 # Restart Langfuse stack
-docker compose -f ~/hermes-cortex/deploy/docker-compose.langfuse.yml restart
+docker compose -f ~/hermes-cortex/ops/install/deploy/docker-compose.langfuse.yml restart
 ```
 
 ### 💻 I can't access the Dashboard
@@ -683,7 +683,7 @@ Check each of these and report status:
 | Check open ports | `lsof -i -P \| grep LISTEN` |
 | Check file permissions | `ls -la ~/.hermes/.env` |
 | View Langfuse credentials | `cat ~/langfuse/.env` (but don't share!) |
-| Restart Langfuse | `docker compose -f ~/hermes-cortex/deploy/docker-compose.langfuse.yml restart` |
+| Restart Langfuse | `docker compose -f ~/hermes-cortex/ops/install/deploy/docker-compose.langfuse.yml restart` |
 | View system logs | `cat ~/.hermes/logs/gateway.log` |
 | Check Ollama status | `launchctl list \| grep ollama` |
 | Lock a file to your user | `chmod 600 filename` |

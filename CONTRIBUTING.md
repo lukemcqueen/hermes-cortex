@@ -369,7 +369,7 @@ that needs to be installed on agent machines, register it here:
 | `src/agent-inbox/` files | `~/.hermes-cortex/agent-inbox/` |
 | `ops/services/dashboard/` files | `~/.hermes-cortex/dashboard/` |
 | `runtime/skills/<category>/<name>/` | `~/.hermes/skills/<category>/<name>/` (via symlink) |
-| `src/loop-governance/` files | `~/.hermes-cortex/loop-governance/` |
+| `core/governance/` files | `~/.hermes-cortex/loop-governance/` |
 | `deploy/nginx/` | `~/.hermes-cortex/nginx/` |
 | `docs/` | Read from repo (no deployment needed) |
 | `install.sh` | `~/.hermes-cortex/install.sh` |

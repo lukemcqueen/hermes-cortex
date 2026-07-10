@@ -207,7 +207,7 @@ fi
 
 # ── Level 2: AGENTS.md core requirements check via agents-doc-audit.py ──
 AUDIT_SCRIPT=""
-for candidate in agents-doc-audit.py ~/.hermes-cortex/scripts/agents-doc-audit.py ~/.local/bin/agents-doc-audit.py "$(git rev-parse --show-toplevel 2>/dev/null || echo '')/src/scripts/agents-doc-audit.py"; do
+for candidate in agents-doc-audit.py ~/.hermes-cortex/scripts/agents-doc-audit.py ~/.local/bin/agents-doc-audit.py "$(git rev-parse --show-toplevel 2>/dev/null || echo '')/ops/scripts/agents-doc-audit.py"; do
   if [[ -f "$candidate" ]]; then
     AUDIT_SCRIPT="$candidate"
     break
@@ -216,7 +216,7 @@ done
 if [[ -z "$AUDIT_SCRIPT" ]]; then
   # Fallback: find it in hermes-cortex repo
   for base in ~/hermes-cortex ~/HermesCortex ~/cortex; do
-    candidate="$base/src/scripts/agents-doc-audit.py"
+    candidate="$base/ops/scripts/agents-doc-audit.py"
     if [[ -f "$candidate" ]]; then
       AUDIT_SCRIPT="$candidate"
       break
@@ -267,7 +267,7 @@ done
 # If score-cycle doesn't exist, warn once per install
 if [[ -z "$SCORE_CYCLE" ]]; then
   echo "⚠  score-cycle not found — skipping scoring (install loop-governance first)"
-  echo "   Run: bash ~/hermes-cortex/src/loop-governance/setup.sh"
+  echo "   Run: bash ~/hermes-cortex/core/governance/setup.sh"
   exit 0
 fi
 
@@ -383,8 +383,8 @@ rm -f "$SCORE_STDERR"
 rm -f "$PREV_FILE"
 
 # ── Documentation audit (warn-only, doesn't block) ──────────
-if [[ -z "${SKIP_DOC_AUDIT:-}" ]] && [[ -f "$HOME/hermes-cortex/src/scripts/pre-commit-doc-audit.sh" ]]; then
-  bash "$HOME/hermes-cortex/src/scripts/pre-commit-doc-audit.sh"
+if [[ -z "${SKIP_DOC_AUDIT:-}" ]] && [[ -f "$HOME/hermes-cortex/ops/scripts/pre-commit-doc-audit.sh" ]]; then
+  bash "$HOME/hermes-cortex/ops/scripts/pre-commit-doc-audit.sh"
 fi
 
 # Check decision — LOOP is normal for first cycle, STOP means done

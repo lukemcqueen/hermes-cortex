@@ -220,7 +220,7 @@ if [[ -f "$CHECK_SCRIPT" ]]; then
   }
   printf "\n"
 else
-  warn "src/scripts/check-system.sh not found — skipping verification"
+  warn "ops/scripts/install/check-system.sh not found — skipping verification"
   printf "\n"
 fi
 
