@@ -116,29 +116,57 @@ def _lf_headers():
     return {"Authorization": f"Basic {auth}", "Content-Type": "application/json"}
 
 
-def _lf_get(path):
+def _lf_get(path, retries=2):
+    """GET from Langfuse API. Retries on transient errors (connection reset, timeout)."""
     headers = _lf_headers()
-    req = urllib.request.Request(f"{LANGFUSE_BASE}{path}", headers=headers)
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        body = e.read().decode()
-        print(f"  GET {path}: HTTP {e.code} — {body[:100]}", file=sys.stderr)
-        return None
+    last_err = None
+    for attempt in range(retries):
+        req = urllib.request.Request(f"{LANGFUSE_BASE}{path}", headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            body = e.read().decode()
+            print(f"  GET {path}: HTTP {e.code} — {body[:100]}", file=sys.stderr)
+            return None
+        except urllib.error.URLError as e:
+            last_err = e
+            print(f"  GET {path}: connection failed (attempt {attempt+1}) — {e.reason}", file=sys.stderr)
+        except OSError as e:  # catches ConnectionResetError, ConnectionAbortedError, etc.
+            last_err = e
+            print(f"  GET {path}: socket error (attempt {attempt+1}) — {e}", file=sys.stderr)
+        if attempt < retries - 1:
+            time.sleep(2)
+    if last_err:
+        print(f"  GET {path}: giving up after {retries} attempts", file=sys.stderr)
+    return None
 
 
-def _lf_post(path, body):
+def _lf_post(path, body, retries=2):
+    """POST to Langfuse API. Retries on transient errors."""
     headers = _lf_headers()
-    data = json.dumps(body).encode()
-    req = urllib.request.Request(f"{LANGFUSE_BASE}{path}", data=data, headers=headers, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        body = e.read().decode()
-        print(f"  POST {path}: HTTP {e.code} — {body[:200]}", file=sys.stderr)
-        return None
+    last_err = None
+    for attempt in range(retries):
+        data = json.dumps(body).encode()
+        req = urllib.request.Request(f"{LANGFUSE_BASE}{path}", data=data, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            body = e.read().decode()
+            print(f"  POST {path}: HTTP {e.code} — {body[:200]}", file=sys.stderr)
+            return None
+        except urllib.error.URLError as e:
+            last_err = e
+            print(f"  POST {path}: connection failed (attempt {attempt+1}) — {e.reason}", file=sys.stderr)
+        except OSError as e:
+            last_err = e
+            print(f"  POST {path}: socket error (attempt {attempt+1}) — {e}", file=sys.stderr)
+        if attempt < retries - 1:
+            time.sleep(2)
+    if last_err:
+        print(f"  POST {path}: giving up after {retries} attempts", file=sys.stderr)
+    return None
 
 
 # ── LLM-as-Judge scoring ───────────────────────────────────────────────
