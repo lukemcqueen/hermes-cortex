@@ -96,35 +96,47 @@ def get_session_id() -> str:
 
 # ── Governance Lock Path ─────────────────────────────────────
 
-def _governance_lock_path() -> Path:
-    """Return a repo-scoped governance lock path.
+def _derive_slug() -> str:
+    """Derive repo slug deterministically — no cwd or git PATH dependency.
 
-    Derives a slug from ``git rev-parse --show-toplevel`` so that each
-    repo on the same machine gets its own lock file.  Falls back to
-    ``.governance-generic.json`` when not inside a git repository.
+    Checks the canonical repo locations for a .git directory and uses
+    the directory name directly. This avoids the cwd-mismatch gap
+    between begin_change (session cwd) and the enforcer (gateway/cron cwd).
     """
+    for candidate in [HOME / "hermes-cortex", HOME / ".hermes-cortex"]:
+        if (candidate / ".git").exists():
+            return candidate.name
+    # Last resort: try git rev-parse from cwd
     try:
         repo_root = subprocess.check_output(
             ["git", "rev-parse", "--show-toplevel"],
-            stderr=subprocess.DEVNULL,
-            timeout=3,
+            stderr=subprocess.DEVNULL, timeout=3,
         ).decode().strip()
-        slug = Path(repo_root).name
+        return Path(repo_root).name
     except Exception:
-        slug = "generic"
-        for candidate in [HOME / "hermes-cortex", HOME / ".hermes-cortex"]:
-            if (candidate / ".git").exists():
-                try:
-                    slug = subprocess.check_output(
-                        ["git", "-C", str(candidate), "rev-parse", "--show-toplevel"],
-                        stderr=subprocess.DEVNULL,
-                        timeout=3,
-                    ).decode().strip()
-                    slug = Path(slug).name
-                except Exception:
-                    slug = candidate.name
-                break
+        return "generic"
+
+
+def _governance_lock_path(slug: str | None = None) -> Path:
+    """Return a repo-scoped governance lock path.
+
+    Derives the slug deterministically via _derive_slug() so the
+    same path is produced regardless of the calling process's cwd.
+    Falls back to ``.governance-generic.json`` only when no git repo
+    is found anywhere.
+
+    When called from begin_change/end_change (which already know the
+    slug), pass the slug explicitly to skip re-derivation.
+    """
+    if slug:
+        return GOVERNANCE_STATE_DIR / f".governance-{slug}.json"
+    slug = _derive_slug()
     return GOVERNANCE_STATE_DIR / f".governance-{slug}.json"
+
+
+def _generic_lock_path() -> Path:
+    """Return the generic lock path."""
+    return GOVERNANCE_STATE_DIR / ".governance-generic.json"
 
 
 # ── Lock helpers ─────────────────────────────────────────────
@@ -151,15 +163,26 @@ def _is_lock_stale(state: dict) -> bool:
         return False
 
 
-def _read_lock() -> dict | None:
-    """Read the current lock file, return state dict or None."""
-    path = _governance_lock_path()
-    if not path.exists():
-        return None
-    try:
-        return json.loads(path.read_text())
-    except (json.JSONDecodeError, OSError):
-        return None
+def _read_lock(slug: str | None = None) -> dict | None:
+    """Read the current lock file, return state dict or None.
+
+    First tries the repo-scoped path. If not found, falls back
+    to the generic lock (for enforcers running outside git cwd).
+    """
+    path = _governance_lock_path(slug)
+    if path.exists():
+        try:
+            return json.loads(path.read_text())
+        except (json.JSONDecodeError, OSError):
+            return None
+    # Fallback: try generic lock (enforcer bridge)
+    generic = _generic_lock_path()
+    if generic.exists():
+        try:
+            return json.loads(generic.read_text())
+        except (json.JSONDecodeError, OSError):
+            return None
+    return None
 
 
 def _write_lock(state: dict) -> None:

@@ -91,6 +91,8 @@ SERVICES: list[dict] = [
     _make_service("Ollama", label="com.ollama.serve", pgrep="ollama"),
     # gbrain: systemd user service (not Docker — don't check Docker)
     _make_service("gbrain", label="gbrain-autopilot", pgrep="gbrain"),
+    # health-server: systemd user service — handles /health endpoint behind nginx
+    _make_service("health-server", label="com.hermes.health-server", pgrep="health-server"),
     {
         "name": "scripts",
         "check": _check_scripts,

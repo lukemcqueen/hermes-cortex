@@ -40,6 +40,7 @@ for _env_candidate in [LANGFUSE_ENV, HERMES_HOME / ".env"]:
             break
 
 LANGFUSE_HOST = os.environ.get("LANGFUSE_HOST", "http://localhost:3000")
+LANGFUSE_EXTERNAL = os.environ.get("LANGFUSE_EXTERNAL", "http://localhost:13002")
 LANGFUSE_AUTH = None
 if pk and sk:
     LANGFUSE_AUTH = base64.b64encode(f"{pk}:{sk}".encode()).decode()
@@ -81,7 +82,7 @@ def _clear_cache(prefix=None):
 
 
 # ── Langfuse API ────────────────────────────────────────────────────────
-def _lf(path, timeout=10):
+def _lf(path, timeout=30):
     """Call Langfuse public API. Returns parsed JSON or None."""
     if not LANGFUSE_AUTH:
         return None
@@ -253,16 +254,90 @@ def _health():
 
 
 # ── Langfuse Data ───────────────────────────────────────────────────────
+# Known model pricing (per token) — used when Langfuse doesn't return cost
+_MODEL_PRICING = {
+    "deepseek-v4-flash": {"input": 1.5e-7, "output": 6.0e-7},  # $0.15/$0.60 per 1M
+    "deepseek/deepseek-v4-flash": {"input": 1.5e-7, "output": 6.0e-7},
+}
+
+def _get_usage_tokens(o):
+    """Extract input/output tokens from observation. Handles both flat fields and usage object."""
+    inp = o.get("inputTokens") or 0
+    out = o.get("outputTokens") or 0
+    if not inp and not out:
+        usage = o.get("usage") or {}
+        if isinstance(usage, dict):
+            inp = usage.get("input") or 0
+            out = usage.get("output") or 0
+    return inp, out
+
+def _calc_cost(model, inp_tokens, out_tokens):
+    """Calculate cost from token counts if model has known pricing."""
+    pricing = _MODEL_PRICING.get(model)
+    if pricing:
+        return (inp_tokens * pricing["input"]) + (out_tokens * pricing["output"])
+    return 0.0
+
+
+def _ch_query(sql, timeout=10):
+    """Run a ClickHouse query directly (fast fallback when Langfuse API is slow)."""
+    try:
+        r = subprocess.run(
+            ["docker", "exec", "-i", "langfuse-clickhouse-1", "clickhouse-client", "-q", sql],
+            capture_output=True, text=True, timeout=timeout
+        )
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.strip().split("\n")
+        return None
+    except Exception:
+        return None
+
+
+def _cost_from_clickhouse():
+    """Aggregate model usage and cost directly from ClickHouse (avoids slow Langfuse API)."""
+    rows = _ch_query(
+        "SELECT provided_model_name, count(), sum(usage_details['input']), "
+        "sum(usage_details['output']) "
+        "FROM observations "
+        "WHERE provided_model_name != '' "
+        "GROUP BY provided_model_name "
+        "ORDER BY count() DESC"
+    )
+    if not rows:
+        return {}, 0.0, {}
+
+    model_usage = {}
+    total_cost = 0.0
+    for row in rows:
+        parts = row.split("\t")
+        if len(parts) >= 4:
+            model = parts[0].strip()
+            calls = int(parts[1])
+            inp = int(parts[2])
+            out = int(parts[3])
+            cost = _calc_cost(model, inp, out)
+            model_usage[model] = {
+                "calls": calls, "tokens": inp + out,
+                "cost": cost, "label": model,
+            }
+            total_cost += cost
+    return model_usage, round(total_cost, 6), {}
+
+
 @_cached("lf_traces", ttl=60)
 def _lf_traces():
     """Fetch traces and derive model usage + cost trends."""
     data = _lf("/traces?limit=50")
     if not data:
+        # Langfuse API timed out — fall back to ClickHouse for cost data
+        ch_usage, ch_cost, _ = _cost_from_clickhouse()
+        if ch_usage:
+            return {"traces": [], "trace_count": 0, "model_usage": ch_usage, "total_cost": ch_cost, "recent": [], "cost_daily": {}}
         return {"traces": [], "trace_count": 0, "model_usage": {}, "total_cost": 0, "recent": [], "cost_daily": {}}
 
     traces = data.get("data", [])
-    # Also fetch observations for model usage
-    obs_data = _lf("/observations?limit=100")
+    # Try Langfuse API first (with increased timeout)
+    obs_data = _lf("/observations?limit=100", timeout=15)
     model_usage = {}
     total_cost = 0.0
     cost_daily = defaultdict(float)
@@ -273,10 +348,12 @@ def _lf_traces():
         if m not in model_usage:
             model_usage[m] = {"calls": 0, "tokens": 0, "cost": 0.0, "label": m}
         model_usage[m]["calls"] += 1
-        inp = o.get("inputTokens") or 0
-        out = o.get("outputTokens") or 0
+        inp, out = _get_usage_tokens(o)
         model_usage[m]["tokens"] += inp + out
+        # Use explicit cost if available, else calculate from token usage
         cost = o.get("totalCost") or 0
+        if not cost:
+            cost = _calc_cost(m, inp, out)
         model_usage[m]["cost"] += cost
         total_cost += cost
         # Daily cost from observation start time
@@ -287,6 +364,13 @@ def _lf_traces():
 
     recent = []
     for t in traces[:15]:
+        inp_sum = 0
+        out_sum = 0
+        for o in all_obs:
+            if o.get("traceId") == t.get("id"):
+                i, o2 = _get_usage_tokens(o)
+                inp_sum += i
+                out_sum += o2
         recent.append({
             "id": t.get("id", ""),
             "name": t.get("name", "") or "(unnamed)",
@@ -296,6 +380,14 @@ def _lf_traces():
             "htmlPath": t.get("htmlPath", ""),
             "obs_count": len([o for o in all_obs if o.get("traceId") == t.get("id")]),
         })
+
+    # Fallback: if Langfuse API returned no observations, query ClickHouse directly
+    if not model_usage:
+        ch_usage, ch_cost, ch_daily = _cost_from_clickhouse()
+        if ch_usage:
+            model_usage = ch_usage
+            total_cost = ch_cost
+            cost_daily = defaultdict(float, ch_daily)
 
     return {
         "traces": traces,
@@ -310,7 +402,7 @@ def _lf_traces():
 @_cached("lf_sessions", ttl=60)
 def _lf_sessions():
     """Fetch Langfuse sessions."""
-    data = _lf("/sessions?limit=20")
+    data = _lf("/sessions?limit=20", timeout=10)
     if not data:
         return {"session_count": 0, "sessions": []}
     sessions = data.get("data", [])
@@ -326,7 +418,7 @@ def _lf_sessions():
 @_cached("lf_scores", ttl=60)
 def _lf_scores():
     """Fetch evaluation scores."""
-    data = _lf("/scores?limit=100")
+    data = _lf("/scores?limit=100", timeout=10)
     if not data:
         return {"score_count": 0, "score_breakdown": {}, "recent_scores": []}
     scores = data.get("data", [])
@@ -1068,6 +1160,9 @@ def api_all():
         "session_timeline": _session_timeline(),
         "system": _system(),
         "sysinfo": _sysinfo(),
+        "config": {
+            "langfuse_external": LANGFUSE_EXTERNAL,
+        },
         "timestamp": kst.isoformat(),
     })
 

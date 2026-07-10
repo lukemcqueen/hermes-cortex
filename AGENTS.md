@@ -82,12 +82,23 @@ See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md) for
 mcp_loop_governance_cache_search(query="<what you are about to do>")
 ```
 
-### After each logical change
+### After each logical change — before closing the cycle
 ```python
+# 1. Load the change-checklist skill (mandatory before end_change)
+skill_view(name="change-checklist")
+
+# 2. Verify all 5 phases: test, multi-OS, multi-role, docs, final
+#    Run actual scripts. Diff outputs. Run doctor --quiet.
+
+# 3. Score the governance cycle
 mcp_loop_governance_cycle_query(task_id="<descriptive-name>")
 mcp_loop_governance_feedback_accept(cycle_id=N, note="verified: <how>")
 # OR if wrong:
 mcp_loop_governance_feedback_override(cycle_id=N, correct_decision="MOVE_ON", note="...")
+
+# 4. Push changes so all agents benefit
+git add -A && git commit -m "<descriptive message>"
+git pull --rebase origin main && git push origin main
 ```
 
 **Enforcement:** MCP server blocks write tools without a lock. Pre-commit hook runs `score-cycle` on every commit. Cron auditor flags low cycle counts.
