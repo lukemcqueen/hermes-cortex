@@ -24,7 +24,7 @@ if git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rev-parse --git-dir &>/dev/nul
 fi
 
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
-SCANNER="${CORTEX_REPO}/src/scripts/manage/nginx-security-scanner.sh"
+SCANNER="${CORTEX_REPO}/ops/scripts/manage/nginx-security-scanner.sh"
 SUBMIT_FILE="${CORTEX_REPO}/deploy/nginx/blocked_ips.submit"
 
 # ── Process agent-submitted IPs before scanning ──
@@ -68,7 +68,7 @@ CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}"
 DEPLOY_SCRIPT=""
 DEPLOY_BLOCKED="${CORTEX_DEPLOY_HOME}/scripts/deploy-blocked-ips.sh"
 if [ ! -x "$DEPLOY_BLOCKED" ]; then
-  DEPLOY_BLOCKED="${CORTEX_REPO}/src/scripts/manage/deploy-blocked-ips.sh"
+  DEPLOY_BLOCKED="${CORTEX_REPO}/ops/scripts/manage/deploy-blocked-ips.sh"
 fi
 if [ -x "$DEPLOY_BLOCKED" ]; then
   DEPLOY_SCRIPT="$DEPLOY_BLOCKED"

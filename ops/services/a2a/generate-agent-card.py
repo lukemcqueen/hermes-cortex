@@ -29,7 +29,7 @@ from pathlib import Path
 
 # ── Paths ──
 REPO_HOME = Path.home() / "hermes-cortex"
-CARD_TEMPLATE = REPO_HOME / "src" / "a2a" / "agent-card.json"
+CARD_TEMPLATE = REPO_HOME / "ops" / "services" / "a2a" / "agent-card.json"
 CORTEX_HOME = Path(os.environ.get("CORTEX_HOME", str(Path.home() / "hermes-cortex")))
 STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 
