@@ -74,7 +74,7 @@ SQLite database tracking A2A task lifecycle:
 - Relates inbox messages to task IDs via `inbox_message_filename`
 - Survives server restarts
 
-### 3. Agent Card (`src/a2a/agent-card.json`)
+### 3. Agent Card (`ops/services/a2a/agent-card.json`)
 
 Static JSON file describing this agent's capabilities, published at:
 - `https://domain.com:13004/.well-known/agent-card.json`

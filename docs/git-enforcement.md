@@ -107,7 +107,7 @@ If you're an agent working on this repo:
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Push blocked even though I just pulled | Remote received new commits since your last fetch | `git pull --rebase origin main` |
-| `score-cycle` not found warning | `loop-governance` tools not installed | `bash ~/hermes-cortex/src/loop-governance/setup.sh` |
+| `score-cycle` not found warning | `loop-governance` tools not installed | `bash ~/hermes-cortex/core/governance/setup.sh` |
 | Hook not running at all | Hook not copied into `.git/hooks/` | Re-run `install-score-hook.sh` |
 | Bypass env var not working | Exported in wrong shell or subprocess | Prefix directly: `SKIP_PRE_PUSH=1 git push` |
 

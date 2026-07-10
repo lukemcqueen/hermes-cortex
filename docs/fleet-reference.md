@@ -112,10 +112,10 @@ older hostname-based guard (`moses`/`esther`), which remains as fallback for bac
 **Management:**
 ```bash
 hermes cron list
-bash ~/hermes-cortex/src/scripts/install-crons.sh          # install/update all
-bash ~/hermes-cortex/src/scripts/install-crons.sh --force  # recreate all
-bash ~/hermes-cortex/src/scripts/install-crons.sh --dry-run
-bash ~/hermes-cortex/src/scripts/install-crons.sh --uninstall
+bash ~/hermes-cortex/ops/scripts/install-crons.sh          # install/update all
+bash ~/hermes-cortex/ops/scripts/install-crons.sh --force  # recreate all
+bash ~/hermes-cortex/ops/scripts/install-crons.sh --dry-run
+bash ~/hermes-cortex/ops/scripts/install-crons.sh --uninstall
 ```
 
 ---
@@ -137,7 +137,7 @@ bash ~/hermes-cortex/src/scripts/install-crons.sh --uninstall
 
 ### Auto-remediation components
 
-All in `src/scripts/`, installed by `install.sh` + `install-crons.sh`:
+All in `ops/scripts/`, installed by `install.sh` + `install-crons.sh`:
 
 | Script | Type | Schedule | Purpose |
 |--------|------|----------|---------|
@@ -154,12 +154,12 @@ All in `src/scripts/`, installed by `install.sh` + `install-crons.sh`:
 
 ```bash
 # 1. Run agent registry setup (prompts for real URLs)
-bash ~/.hermes-cortex/src/scripts/install/setup-agent-registry.sh
+bash ~/.hermes-cortex/ops/scripts/install/setup-agent-registry.sh
 # 2. Install crons
-bash ~/.hermes-cortex/src/scripts/install-crons.sh
+bash ~/.hermes-cortex/ops/scripts/install-crons.sh
 # 3. Copy orchestrator-specific scripts
-cp ~/hermes-cortex/src/scripts/agent/orch-inbox-remediate.sh ~/.hermes/scripts/
-cp ~/hermes-cortex/src/scripts/agent/orch-weekly-auto-fix.py ~/.hermes/scripts/
+cp ~/hermes-cortex/ops/scripts/agent/orch-inbox-remediate.sh ~/.hermes/scripts/
+cp ~/hermes-cortex/ops/scripts/agent/orch-weekly-auto-fix.py ~/.hermes/scripts/
 # 4. Create orch-process-agent-messages cron (see agent-registry.json)
 # 5. Start gbrain autopilot
 gbrain autopilot --repo ~/brain/default --interval 300 &

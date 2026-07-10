@@ -203,7 +203,7 @@ test -x ~/.hermes-cortex/hooks/pre-commit && echo "executable" || echo "not exec
 # Manually test score-cycle
 score-cycle --task "test-diagnostic" --cycle 1 --code-file /dev/null --json
 # If this fails, the score-cycle CLI or loop-governance setup is broken.
-# Re-run: ~/hermes-cortex/src/loop-governance/setup.sh
+# Re-run: ~/hermes-cortex/core/governance/setup.sh
 ```
 
 ### Per-repo hook overrides global
@@ -217,7 +217,7 @@ git config core.hooksPath           # should show global path
 The hook prints a warning and exits cleanly (doesn't block the commit).
 Install loop-governance tools:
 ```bash
-bash ~/hermes-cortex/src/loop-governance/setup.sh
+bash ~/hermes-cortex/core/governance/setup.sh
 ```
 
 ---
@@ -228,4 +228,4 @@ bash ~/hermes-cortex/src/loop-governance/setup.sh
 - `src/scripts/pre-commit-score` — the hook script
 - `src/mcp-servers/loop-gov-mcp.py` — the primary enforcer MCP server
 - `src/scripts/cortex-update.sh` — deploys the hook via `install_precommit_hook()`
-- `src/loop-governance/setup.sh` — installs `score-cycle` and `loop-feedback` CLI tools
+- `core/governance/setup.sh` — installs `score-cycle` and `loop-feedback` CLI tools

@@ -145,7 +145,7 @@ Only run this if you are a **designated server machine** that hosts the inbox ba
 `cortex-update.sh` copies `src/agent-inbox/server.py` to `~/.hermes-cortex/agent-inbox/server.py`. Run:
 
 ```bash
-bash ~/hermes-cortex/src/scripts/cortex-update.sh --force-all
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all
 ```
 
 ### 2b. Run the server

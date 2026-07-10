@@ -735,7 +735,7 @@ mcp_loop_governance_end_change(task_id="direct-commit")
 
 ```bash
 # Re-install loop-governance tools
-bash ~/hermes-cortex/src/loop-governance/setup.sh --symlinks-only
+bash ~/hermes-cortex/core/governance/setup.sh --symlinks-only
 # Or re-run install.sh step 11:
 bash ~/hermes-cortex/install.sh
 ```
@@ -789,7 +789,7 @@ hermes mcp test loop-governance
 
 ### 20. Governance-enforcer plugin installed but not blocking writes
 
-**Symptom:** Write tools (write_file, patch, terminal write commands) work even when no governance lock is active. The plugin files exist at `~/.hermes/plugins/governance-enforcer/` but have no effect.
+**Symptom:** Write tools (write_file, patch, terminal write commands) work even when no governance lock is active. The plugin files exist at `~/.hermes/runtime/hermes/governance-enforcer/` but have no effect.
 
 **Root cause:** The plugin is symlinked in the plugins directory but **not registered** in `~/.hermes/config.yaml` under `plugins.enabled`. Hermes only loads plugins listed there.
 
@@ -806,7 +806,7 @@ hermes config set plugins.enabled '["observability/langfuse", "governance-enforc
 Verify:
 ```bash
 hermes config show  # should show plugins.enabled including governance-enforcer
-ls -la ~/.hermes/plugins/governance-enforcer/  # should show plugin.yaml, __init__.py
+ls -la ~/.hermes/runtime/hermes/governance-enforcer/  # should show plugin.yaml, __init__.py
 ```
 
 ### 21. `governance-auditor` always reports `had_issues: true` (historical — old `score-auditor`)

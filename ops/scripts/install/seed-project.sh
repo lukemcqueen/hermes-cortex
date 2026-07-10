@@ -476,7 +476,7 @@ deploy_loop_gov() {
   [[ "${COMPONENTS}" != "ALL" && "${COMPONENTS}" != *"loop-gov"* ]] && return 0
 
   local lg_dir="${project}/.hermes-cortex/loop-governance"
-  local lg_source="${REPO_DIR}/src/loop-governance"
+  local lg_source="${REPO_DIR}/core/governance"
 
   if [[ "$MODE" == "diff" ]]; then
     echo "  would create: ${lg_dir/$HOME/~}/score-cycle wrapper"

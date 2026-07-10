@@ -57,16 +57,16 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `docs/offline-travel-stack.md` | Offline knowledge scenarios — jungle travel, development, kid learning |
-| `docs/offline-code-tutorials/` | Per-language code snippets in `src/offline/code-corpus/` (26 languages, 386 files) |
-| `src/offline/SKILL.md` | Offline-knowledge skill — cascade cache + kiwix ZIM usage protocol + Code Assistant |
-| `src/offline/prep-bible.sh` | Bible translation downloader — 55+ languages |
-| `src/offline/prep-hymns.sh` | Public domain hymn downloader — scores (PDF), notation (ABC), audio (MIDI) |
-| `src/offline/bible-parse.py` | Multi-strategy Bible text parser (PG, eBible, WEB formats) → structured JSON |
-| `src/offline/offline-reader.py` | Local web UI for Bible, hymns, and reference — zero dependencies, dark theme, fully offline |
-| `src/offline/auto-update.sh` | Silent auto-update for offline content — set-and-forget via cron |
-| `src/offline/offline_code.py` | Offline code assistant — search/generate from 518 curated code snippets across 32 categories via Ollama RAG |
-| `src/offline/prep-code.sh` | Build the code snippet corpus and vector index for offline coding |
-| `src/offline/code-corpus/generate.py` | Auto-discovers snippets modules, writes formatted .md snippet files with YAML frontmatter |
+| `docs/offline-code-tutorials/` | Per-language code snippets in `ops/offline/code-corpus/` (26 languages, 386 files) |
+| `ops/offline/SKILL.md` | Offline-knowledge skill — cascade cache + kiwix ZIM usage protocol + Code Assistant |
+| `ops/offline/prep-bible.sh` | Bible translation downloader — 55+ languages |
+| `ops/offline/prep-hymns.sh` | Public domain hymn downloader — scores (PDF), notation (ABC), audio (MIDI) |
+| `ops/offline/bible-parse.py` | Multi-strategy Bible text parser (PG, eBible, WEB formats) → structured JSON |
+| `ops/offline/offline-reader.py` | Local web UI for Bible, hymns, and reference — zero dependencies, dark theme, fully offline |
+| `ops/offline/auto-update.sh` | Silent auto-update for offline content — set-and-forget via cron |
+| `ops/offline/offline_code.py` | Offline code assistant — search/generate from 518 curated code snippets across 32 categories via Ollama RAG |
+| `ops/offline/prep-code.sh` | Build the code snippet corpus and vector index for offline coding |
+| `ops/offline/code-corpus/generate.py` | Auto-discovers snippets modules, writes formatted .md snippet files with YAML frontmatter |
 | `src/web-cache/SKILL.md` | Web cache skill — local semantic cache for web_search and web_extract |
 | `deploy/patches/hermes-langfuse-cost-fixes.patch.md` | Patch notes for Langfuse cost calculation fixes |
 

@@ -103,7 +103,7 @@ No authentication. No TLS. Plain HTTP — the vector contains no secrets, just b
    ```
 2. Run health-vector server (port varies per agent):
    ```bash
-   python3 ~/hermes-cortex/src/scripts/health/health-vector.py --serve <PORT>
+   python3 ~/hermes-cortex/ops/scripts/health/health-vector.py --serve <PORT>
    ```
 3. Install the systemd user service (Linux):
    ```bash
@@ -132,16 +132,16 @@ Titus cannot be polled (no inbound). Instead he pushes to Moses' inbox:
    cp ~/hermes-cortex/docs/templates/com.hermes.health-push.plist ~/Library/LaunchAgents/
    launchctl load ~/Library/LaunchAgents/com.hermes.health-push.plist
    ```
-3. Test: `AGENT_NAME=titus bash ~/hermes-cortex/src/scripts/health/health-vector-push.sh`
+3. Test: `AGENT_NAME=titus bash ~/hermes-cortex/ops/scripts/health/health-vector-push.sh`
 
 ### Files
 
 | Path | Purpose |
 |------|---------|
-| `src/scripts/health/health-vector.py` | Health vector generator + HTTP server (cross-platform) |
-| `src/scripts/health/health-vector-push.sh` | Inbox push script for client-only agents |
-| `src/scripts/agent/orch-team-health.py` | Orchestrator poller (no_agent cron) |
-| `src/scripts/agent/orch-health-report.py` | Health snapshot report — formatted for Telegram delivery |
+| `ops/scripts/health/health-vector.py` | Health vector generator + HTTP server (cross-platform) |
+| `ops/scripts/health/health-vector-push.sh` | Inbox push script for client-only agents |
+| `ops/scripts/agent/orch-team-health.py` | Orchestrator poller (no_agent cron) |
+| `ops/scripts/agent/orch-health-report.py` | Health snapshot report — formatted for Telegram delivery |
 | `src/agent-registry.template.json` | Agent registry template (fill during setup → `~/.hermes-cortex/state/agent-registry.json`) |
 | `docs/templates/com.hermes.health-push.plist` | macOS launchd template for Titus |
 | `docs/templates/health-vector.service` | systemd user service template for server agents |
@@ -164,7 +164,7 @@ The script (`orch-health-report.py`) reads the agent registry with local overrid
 echo 'IS_ORCHESTRATOR=true' >> ~/hermes-cortex/.env
 
 # 1. Copy the script
-cp ~/hermes-cortex/src/scripts/agent/orch-health-report.py ~/.hermes/scripts/orch-health-report.py
+cp ~/hermes-cortex/ops/scripts/agent/orch-health-report.py ~/.hermes/scripts/orch-health-report.py
 
 # 2. Create the crons
 hermes cron create --name orch-health-report-weekday \
@@ -250,8 +250,8 @@ Agent crons follow a three-tier architecture based on task requirements:
 **Migration from qwen2.5-coder:3b:** The 3B model is excellent for single-shot tasks but lacks the reasoning capacity for multi-step agentic workflows. Crons needing multi-tool chaining have been migrated to the first two tiers. Example: `agent-apply-fixes` was an LLM cron on qwen (every 10min, 9.6k token → 29min inference); converted to a no_agent script searching the offline code corpus instead — 4.5s per run, zero LLM cost.
 
 **Key scripts:**
-- `src/scripts/agent-daily-bible-reading.py` — no_agent + deepseek API
-- `src/scripts/agent-remediate-apply.py` — no_agent: reads sensor output, applies fixes
-- `src/scripts/agent-apply-fixes.py` — no_agent: searches offline code corpus for fix patterns
+- `ops/scripts/agent-daily-bible-reading.py` — no_agent + deepseek API
+- `ops/scripts/agent-remediate-apply.py` — no_agent: reads sensor output, applies fixes
+- `ops/scripts/agent-apply-fixes.py` — no_agent: searches offline code corpus for fix patterns
 
-Install: `bash src/scripts/install-crons.sh`
+Install: `bash ops/scripts/install-crons.sh`

@@ -33,13 +33,33 @@ else
   VERSION="1.0.0"  # fallback for remote/curl install
 fi
 
+# ── Locate repo root ─────────────────────────────────────────
+# SCRIPT_DIR may be ops/install/ (local clone) or the tarball root (remote)
+if [[ -n "$SCRIPT_DIR" && ( "$SCRIPT_DIR" == */ops/install || "$SCRIPT_DIR" == */hermes-cortex-main/ops/install ) ]]; then
+  REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+elif [[ -n "$SCRIPT_DIR" ]]; then
+  REPO_ROOT="$SCRIPT_DIR"
+else
+  REPO_ROOT=""
+fi
+
+export REPO_ROOT
+
+# ── Path resolution helpers ─────────────────────────────────
+# Maps old paths → new paths.  All internal references use these.
+_scripts() { echo "${REPO_ROOT}/ops/scripts"; }
+_offline() { echo "${REPO_ROOT}/ops/offline"; }
+_core_gov() { echo "${REPO_ROOT}/core/governance"; }
+_deploy() { echo "${REPO_ROOT}/ops/install/deploy"; }
+_dashboard() { echo "${REPO_ROOT}/ops/services/dashboard"; }
+
 # ── Remote install detection ─────────────────────────────────
 # If running from a curl pipe, SCRIPT_DIR will be empty or
 # /dev/stdin and os-config.sh won't exist. In that case,
 # download the repo tarball and extract to a temp directory.
 REMOTE_CLEANUP=""
-if [[ -z "$SCRIPT_DIR" || ! -f "${SCRIPT_DIR}/src/scripts/install/os-config.sh" ]]; then
-  if [[ ! -f "${SCRIPT_DIR:-/dev/null}/src/scripts/install/os-config.sh" ]]; then
+if [[ -z "$REPO_ROOT" || ! -f "$(_scripts)/install/os-config.sh" ]]; then
+  if [[ ! -f "${REPO_ROOT:-/dev/null}/ops/scripts/install/os-config.sh" ]]; then
     printf "📡 Remote install detected — downloading hermes-cortex…\n\n"
 
     # Check required tools
@@ -76,7 +96,7 @@ BOLD='\033[1m'; RESET='\033[0m'
 # ── Check mode ──────────────────────────────────────────────
 # If --check is passed, run prerequisites check only and exit
 if [[ "${1:-}" == "--check" ]]; then
-  source "${SCRIPT_DIR}/src/scripts/install/os-config.sh" 2>/dev/null || true
+  source "$(_scripts)/install/os-config.sh" 2>/dev/null || true
   echo ""
   echo "  ${BOLD}Hermes Cortex — Prerequisites Check${RESET}"
   echo ""
@@ -152,8 +172,8 @@ skip() { printf "  ${YELLOW}skip${RESET} — %s\n" "$1"; }
 trap 'printf "\n${RED}Installation aborted at step $STEP${RESET}\n"; rm -rf "${REMOTE_CLEANUP}"' EXIT
 
 # ── Source OS Abstraction Layer ─────────────────────────────
-source "${SCRIPT_DIR}/src/scripts/install/os-config.sh"
-source "${SCRIPT_DIR}/src/scripts/install/service-writer.sh"
+source "$(_scripts)/install/os-config.sh"
+source "$(_scripts)/install/service-writer.sh"
 
 # ── Python version probe ────────────────────────────────────
 # HERMES NOW REQUIRES PYTHON 3.12+. Earlier versions (3.9, 3.10, 3.11)
@@ -190,7 +210,7 @@ find_best_python() {
 #  0. System Verification Check
 # ─────────────────────────────────────────────────────────────
 header "SYSTEM VERIFICATION"
-CHECK_SCRIPT="${SCRIPT_DIR}/src/scripts/check-system.sh"
+CHECK_SCRIPT="$(_scripts)/check-system.sh"
 
 if [[ -f "$CHECK_SCRIPT" ]]; then
   bash "$CHECK_SCRIPT" || {
@@ -267,22 +287,22 @@ fi
 #  1. Ollama — local LLM server for embeddings
 # ─────────────────────────────────────────────────────────────
 step "Installing Ollama (local LLM server)"
-bash "${SCRIPT_DIR}/src/scripts/install-ollama.sh" install
+bash "$(_scripts)/install-ollama.sh" install
 ok
 
 # Configure Ollama service
 step "Configuring Ollama service"
-bash "${SCRIPT_DIR}/src/scripts/install-ollama.sh" service
+bash "$(_scripts)/install-ollama.sh" service
 ok
 
 # Wait for Ollama to be ready
 step "Waiting for Ollama to respond…"
-bash "${SCRIPT_DIR}/src/scripts/install-ollama.sh" wait
+bash "$(_scripts)/install-ollama.sh" wait
 ok
 
 # Pull embedding model
 step "Pulling embedding model (nomic-embed-text:v1.5)"
-bash "${SCRIPT_DIR}/src/scripts/install-ollama.sh" embed nomic-embed-text:v1.5
+bash "$(_scripts)/install-ollama.sh" embed nomic-embed-text:v1.5
 ok
 
 # ── Ollama security check ──────────────────────────────────
@@ -582,7 +602,7 @@ fi
 
 # Create gbrain sync daemon
 step "Creating gbrain sync-watch daemon ($SERVICE_MANAGER)"
-bash "${SCRIPT_DIR}/src/scripts/install-gbrain-sync.sh"
+bash "$(_scripts)/install-gbrain-sync.sh"
 ok
 
 # ── Check for duplicate 'default' gbrain source ──────────
@@ -821,9 +841,9 @@ mkdir -p "$SCRIPTS_DIR"
 HEARTBEAT_PATH="${SCRIPTS_DIR}/heartbeat.py"
 if [[ -f "$HEARTBEAT_PATH" ]]; then
   # Check if repo version differs — update if so
-  if [[ -f "${SCRIPT_DIR}/src/scripts/heartbeat.py" ]]; then
-    if ! cmp -s "$HEARTBEAT_PATH" "${SCRIPT_DIR}/src/scripts/heartbeat.py"; then
-      cp "${SCRIPT_DIR}/src/scripts/heartbeat.py" "$HEARTBEAT_PATH"
+  if [[ -f "$(_scripts)/heartbeat.py" ]]; then
+    if ! cmp -s "$HEARTBEAT_PATH" "$(_scripts)/heartbeat.py"; then
+      cp "$(_scripts)/heartbeat.py" "$HEARTBEAT_PATH"
       chmod +x "$HEARTBEAT_PATH"
       info "  Updated heartbeat.py (repo version differs)"
     else
@@ -834,8 +854,8 @@ if [[ -f "$HEARTBEAT_PATH" ]]; then
   fi
 else
   # Prefer repo copy to prevent divergence
-  if [[ -f "${SCRIPT_DIR}/src/scripts/heartbeat.py" ]]; then
-    cp "${SCRIPT_DIR}/src/scripts/heartbeat.py" "$HEARTBEAT_PATH"
+  if [[ -f "$(_scripts)/heartbeat.py" ]]; then
+    cp "$(_scripts)/heartbeat.py" "$HEARTBEAT_PATH"
     chmod +x "$HEARTBEAT_PATH"
     ok
     info "  Copied heartbeat.py from repo"
@@ -1094,8 +1114,8 @@ fi
 SEND_LEARNING_PATH="${SCRIPTS_DIR}/send-agent-learning.sh"
 if [[ -f "$SEND_LEARNING_PATH" ]]; then
   # Check if repo version differs — update if so
-  if ! cmp -s "$SEND_LEARNING_PATH" "${SCRIPT_DIR}/src/scripts/send-agent-learning.sh" 2>/dev/null; then
-    cp "${SCRIPT_DIR}/src/scripts/send-agent-learning.sh" "$SEND_LEARNING_PATH" 2>/dev/null || \
+  if ! cmp -s "$SEND_LEARNING_PATH" "$(_scripts)/send-agent-learning.sh" 2>/dev/null; then
+    cp "$(_scripts)/send-agent-learning.sh" "$SEND_LEARNING_PATH" 2>/dev/null || \
       warn "send-agent-learning.sh copy failed"
     chmod +x "$SEND_LEARNING_PATH"
     info "  Updated send-agent-learning.sh (repo version differs)"
@@ -1104,8 +1124,8 @@ if [[ -f "$SEND_LEARNING_PATH" ]]; then
   fi
 else
   # Prefer repo copy to prevent divergence
-  if [[ -f "${SCRIPT_DIR}/src/scripts/send-agent-learning.sh" ]]; then
-    cp "${SCRIPT_DIR}/src/scripts/send-agent-learning.sh" "$SEND_LEARNING_PATH" 2>/dev/null || \
+  if [[ -f "$(_scripts)/send-agent-learning.sh" ]]; then
+    cp "$(_scripts)/send-agent-learning.sh" "$SEND_LEARNING_PATH" 2>/dev/null || \
       warn "send-agent-learning.sh copy failed"
     chmod +x "$SEND_LEARNING_PATH"
     info "  Copied send-agent-learning.sh from repo"
@@ -1525,7 +1545,7 @@ BOOTSTRAP_PATH="${SCRIPTS_DIR}/bootstrap-brain.sh"
 if [[ -f "$BOOTSTRAP_PATH" ]]; then
   skip "bootstrap-brain.sh already exists"
 else
-  cp "${SCRIPT_DIR}/src/scripts/bootstrap-brain.sh" "$BOOTSTRAP_PATH" 2>/dev/null || {
+  cp "$(_scripts)/bootstrap-brain.sh" "$BOOTSTRAP_PATH" 2>/dev/null || {
     cat > "$BOOTSTRAP_PATH" <<'BOOTSTRAP'
 #!/usr/bin/env bash
 # bootstrap-brain.sh — Post-install brain verification
@@ -1567,7 +1587,7 @@ BUDGET_PATH="${SCRIPTS_DIR}/check-memory-budget.sh"
 if [[ -f "$BUDGET_PATH" ]]; then
   skip "check-memory-budget.sh already exists"
 else
-  cp "${SCRIPT_DIR}/src/scripts/check-memory-budget.sh" "$BUDGET_PATH" 2>/dev/null || {
+  cp "$(_scripts)/check-memory-budget.sh" "$BUDGET_PATH" 2>/dev/null || {
     cat > "$BUDGET_PATH" <<'BUDGET'
 #!/usr/bin/env bash
 # check-memory-budget.sh — MEMORY.md usage monitor
@@ -1594,7 +1614,7 @@ CORTEX_PROFILE_PATH="${SCRIPTS_DIR}/cortex-profile.sh"
 if [[ -f "$CORTEX_PROFILE_PATH" ]]; then
   skip "cortex-profile.sh already exists"
 else
-  cp "${SCRIPT_DIR}/src/scripts/cortex-profile.sh" "$CORTEX_PROFILE_PATH" 2>/dev/null || \
+  cp "$(_scripts)/cortex-profile.sh" "$CORTEX_PROFILE_PATH" 2>/dev/null || \
     warn "cortex-profile.sh not available (only from repo)"
   if [[ -f "$CORTEX_PROFILE_PATH" ]]; then
     chmod +x "$CORTEX_PROFILE_PATH"
@@ -1607,7 +1627,7 @@ SEED_BRAIN_PATH="${SCRIPTS_DIR}/seed-project-brain.sh"
 if [[ -f "$SEED_BRAIN_PATH" ]]; then
   skip "seed-project-brain.sh already exists"
 else
-  cp "${SCRIPT_DIR}/src/scripts/seed-project-brain.sh" "$SEED_BRAIN_PATH" 2>/dev/null || \
+  cp "$(_scripts)/seed-project-brain.sh" "$SEED_BRAIN_PATH" 2>/dev/null || \
     warn "seed-project-brain.sh not available (only from repo)"
   if [[ -f "$SEED_BRAIN_PATH" ]]; then
     chmod +x "$SEED_BRAIN_PATH"
@@ -1620,7 +1640,7 @@ CORTEX_HEALTH_PATH="${SCRIPTS_DIR}/cortex-health.sh"
 if [[ -f "$CORTEX_HEALTH_PATH" ]]; then
   skip "cortex-health.sh already exists"
 else
-  cp "${SCRIPT_DIR}/src/scripts/cortex-health.sh" "$CORTEX_HEALTH_PATH" 2>/dev/null || \
+  cp "$(_scripts)/cortex-health.sh" "$CORTEX_HEALTH_PATH" 2>/dev/null || \
     warn "cortex-health.sh not available (only from repo)"
   if [[ -f "$CORTEX_HEALTH_PATH" ]]; then
     chmod +x "$CORTEX_HEALTH_PATH"
@@ -1633,7 +1653,7 @@ CORTEX_LANGFUSE_PATH="${SCRIPTS_DIR}/cortex-setup-langfuse.sh"
 if [[ -f "$CORTEX_LANGFUSE_PATH" ]]; then
   skip "cortex-setup-langfuse.sh already exists"
 else
-  cp "${SCRIPT_DIR}/src/scripts/cortex-setup-langfuse.sh" "$CORTEX_LANGFUSE_PATH" 2>/dev/null || \
+  cp "$(_scripts)/cortex-setup-langfuse.sh" "$CORTEX_LANGFUSE_PATH" 2>/dev/null || \
     warn "cortex-setup-langfuse.sh not available (only from repo)"
   if [[ -f "$CORTEX_LANGFUSE_PATH" ]]; then
     chmod +x "$CORTEX_LANGFUSE_PATH"
@@ -1646,7 +1666,7 @@ CORTEX_UPDATE_PATH="${SCRIPTS_DIR}/cortex-update.sh"
 if [[ -f "$CORTEX_UPDATE_PATH" ]]; then
   skip "cortex-update.sh already exists"
 else
-  cp "${SCRIPT_DIR}/src/scripts/cortex-update.sh" "$CORTEX_UPDATE_PATH" 2>/dev/null || \
+  cp "$(_scripts)/cortex-update.sh" "$CORTEX_UPDATE_PATH" 2>/dev/null || \
     warn "cortex-update.sh not available (only from repo)"
   if [[ -f "$CORTEX_UPDATE_PATH" ]]; then
     chmod +x "$CORTEX_UPDATE_PATH"
@@ -1659,7 +1679,7 @@ PROD_WATCHDOG_PATH="${SCRIPTS_DIR}/prod-watchdog.sh"
 if [[ -f "$PROD_WATCHDOG_PATH" ]]; then
   skip "prod-watchdog.sh already exists"
 else
-  cp "${SCRIPT_DIR}/src/scripts/prod-watchdog.sh" "$PROD_WATCHDOG_PATH" 2>/dev/null || \
+  cp "$(_scripts)/prod-watchdog.sh" "$PROD_WATCHDOG_PATH" 2>/dev/null || \
     warn "prod-watchdog.sh not available (only from repo)"
   if [[ -f "$PROD_WATCHDOG_PATH" ]]; then
     chmod +x "$PROD_WATCHDOG_PATH"
@@ -1669,8 +1689,8 @@ fi
 
 # ── Health Monitoring ───────────────────────────────────────────
 HEALTH_SERVER_PATH="${SCRIPTS_DIR}/health-server.py"
-if [[ -f "${SCRIPT_DIR}/src/scripts/health-server.py" ]]; then
-  cp "${SCRIPT_DIR}/src/scripts/health-server.py" "$HEALTH_SERVER_PATH" 2>/dev/null || \
+if [[ -f "$(_scripts)/health-server.py" ]]; then
+  cp "$(_scripts)/health-server.py" "$HEALTH_SERVER_PATH" 2>/dev/null || \
     warn "health-server.py copy failed"
   chmod +x "$HEALTH_SERVER_PATH"
   info "  Installed health-server.py"
@@ -1682,8 +1702,8 @@ fi
 
 # ── Auto-Save Active Sessions Script ──────────────────────────────
 AUTO_SAVE_PATH="${SCRIPTS_DIR}/auto-save-sessions.py"
-if [[ -f "${SCRIPT_DIR}/src/scripts/auto-save-sessions.py" ]]; then
-  cp "${SCRIPT_DIR}/src/scripts/auto-save-sessions.py" "$AUTO_SAVE_PATH" 2>/dev/null || \
+if [[ -f "$(_scripts)/auto-save-sessions.py" ]]; then
+  cp "$(_scripts)/auto-save-sessions.py" "$AUTO_SAVE_PATH" 2>/dev/null || \
     warn "auto-save-sessions.py copy failed"
   chmod +x "$AUTO_SAVE_PATH" 2>/dev/null || true
   info "  Installed auto-save-sessions.py"
@@ -1696,24 +1716,24 @@ mkdir -p "$EVALS_DIR/traces" "$EVALS_DIR/reports"
 info "  Created evals directory structure"
 
 RUN_EVALS_PATH="${SCRIPTS_DIR}/run-evals.py"
-if [[ -f "${SCRIPT_DIR}/src/scripts/run-evals.py" ]]; then
-  cp "${SCRIPT_DIR}/src/scripts/run-evals.py" "$RUN_EVALS_PATH" 2>/dev/null || \
+if [[ -f "$(_scripts)/run-evals.py" ]]; then
+  cp "$(_scripts)/run-evals.py" "$RUN_EVALS_PATH" 2>/dev/null || \
     warn "run-evals.py copy failed"
   chmod +x "$RUN_EVALS_PATH"
   info "  Installed run-evals.py"
 fi
 
 ANALYZE_FAILURES_PATH="${SCRIPTS_DIR}/analyze-failures.py"
-if [[ -f "${SCRIPT_DIR}/src/scripts/analyze-failures.py" ]]; then
-  cp "${SCRIPT_DIR}/src/scripts/analyze-failures.py" "$ANALYZE_FAILURES_PATH" 2>/dev/null || \
+if [[ -f "$(_scripts)/analyze-failures.py" ]]; then
+  cp "$(_scripts)/analyze-failures.py" "$ANALYZE_FAILURES_PATH" 2>/dev/null || \
     warn "analyze-failures.py copy failed"
   chmod +x "$ANALYZE_FAILURES_PATH"
   info "  Installed analyze-failures.py"
 fi
 
 HERMES_TZ_PATH="${SCRIPTS_DIR}/hermes_tz.py"
-if [[ -f "${SCRIPT_DIR}/src/scripts/hermes_tz.py" ]]; then
-  cp "${SCRIPT_DIR}/src/scripts/hermes_tz.py" "$HERMES_TZ_PATH" 2>/dev/null || \
+if [[ -f "$(_scripts)/hermes_tz.py" ]]; then
+  cp "$(_scripts)/hermes_tz.py" "$HERMES_TZ_PATH" 2>/dev/null || \
     warn "hermes_tz.py copy failed"
   chmod +x "$HERMES_TZ_PATH"
   info "  Installed hermes_tz.py (timezone helper)"
@@ -2228,7 +2248,7 @@ PLIST
 
   # Install health server launchd agent (self-monitoring API)
   HEALTH_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.hermes.health-server.plist"
-  HEALTH_SRC="${SCRIPT_DIR}/src/scripts/com.hermes.health-server.plist"
+  HEALTH_SRC="$(_scripts)/com.hermes.health-server.plist"
   if [[ ! -f "$HEALTH_PLIST" ]]; then
     if [[ -f "$HEALTH_SRC" ]]; then
       sed "s|CORTEX_HOME|${CORTEX_HOME}|g" "$HEALTH_SRC" > "$HEALTH_PLIST"
@@ -2242,7 +2262,7 @@ PLIST
 elif [[ "$CORTEX_OS" == "linux" ]]; then
   # Install health server systemd user service (self-monitoring API)
   SYSTEMD_DIR="${HOME}/.config/systemd/user"
-  HEALTH_SERVICE_SRC="${SCRIPT_DIR}/src/scripts/com.hermes.health-server.service"
+  HEALTH_SERVICE_SRC="$(_scripts)/com.hermes.health-server.service"
   HEALTH_SERVICE_DST="${SYSTEMD_DIR}/com.hermes.health-server.service"
   mkdir -p "$SYSTEMD_DIR"
   if [[ -f "$HEALTH_SERVICE_SRC" ]]; then
@@ -2363,7 +2383,7 @@ fi
 # ─────────────────────────────────────────────────────────────
 if [[ "$CORTEX_PROFILE" == "server" ]]; then
 step "Installing nginx reverse proxy"
-bash "${SCRIPT_DIR}/src/scripts/install-nginx.sh"
+bash "$(_scripts)/install-nginx.sh"
 ok
 else
   skip "nginx (non-server profile — not needed)"

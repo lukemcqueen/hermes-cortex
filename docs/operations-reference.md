@@ -88,7 +88,7 @@ If you are Gisu, Joseph, Kustos, or Titus (client agents):
   └─ You DO NOT need to run an inbox server or nginx proxy
 ```
 
-This configuration is set up automatically by `bash ~/hermes-cortex/install.sh` / `bash ~/hermes-cortex/src/scripts/install-crons.sh`. If you ran the installer, your `config.yaml` already has the `agent-inbox` MCP server entry. If not, add it manually.
+This configuration is set up automatically by `bash ~/hermes-cortex/install.sh` / `bash ~/hermes-cortex/ops/scripts/install-crons.sh`. If you ran the installer, your `config.yaml` already has the `agent-inbox` MCP server entry. If not, add it manually.
 
 ### Setup checklist
 
@@ -157,7 +157,7 @@ Load `skill_view(name="offline-code")` for full usage docs.
 - **Templates:** Place in `docs/templates/`, update `install.sh`
 - **Install changes:** Edit `install.sh` (26 steps, idempotent)
 - **Docker config:** Edit `deploy/docker-compose.langfuse.yml`
-- **Scoring hooks:** `bash ~/.hermes-cortex/src/scripts/install/install-score-hook.sh --all` (or `--list`)
+- **Scoring hooks:** `bash ~/.hermes-cortex/ops/scripts/install/install-score-hook.sh --all` (or `--list`)
 
 ## Rules
 
