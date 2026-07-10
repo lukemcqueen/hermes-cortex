@@ -30,7 +30,7 @@ metadata:
 
 2. **Pre-commit hook** (secondary) — global `core.hooksPath ~/.hermes-cortex/hooks/` auto-scores every `git commit`. Does NOT block commits (that is the plugin's job), but ensures the scoring DB is populated.
 
-3. **Cron auditor** (reactive) — `score-auditor` cron (every 6h) scans for unscored changes and reports findings.
+3. **Cron auditor** (reactive) — `governance-auditor` cron (every 6h) scans for unscored changes and reports findings.
 
 4. **SOUL.md directive** (identity layer) — the loop governance principle in SOUL.md is the final backstop.
 
