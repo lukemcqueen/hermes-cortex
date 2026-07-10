@@ -165,8 +165,8 @@ if [[ -n "$CORTEX_INBOX_AUTH" ]]; then
 fi
 
 FALLBACK_URLS=(
+    "http://127.0.0.1:8903/api/send"
     "http://127.0.0.1:8904/api/send"
-    "http://127.0.0.1:13004/api/send"
 )
 
 PUSH_OK=0

@@ -494,7 +494,7 @@ When `:latest` is pulled, it resolves to `nomic-embed-text:latest` which is the 
 # ~/.gbrain/config.json
 "embedding_model": "ollama:nomic-embed-text:v1.5"
 
-# ~/hermes-cortex/.env
+# ~/.hermes/hermes-cortex.env
 EMBEDDING_MODEL=nomic-embed-text:v1.5
 ```
 

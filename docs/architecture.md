@@ -37,7 +37,47 @@
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-## Layers
+## Code Architecture — Three-Layer Model
+
+The repository is organized into three distinct layers, each with a well-defined boundary:
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                    CORTEX CORE                                  │
+│  Canonical schemas, workflow state, policy, identity.          │
+│  Zero runtime dependency — types and contracts only.           │
+│                                                                │
+│  core/governance/    — Loop governance DB, scorer, feedback    │
+│  core/schemas/       — WorkflowRun, Policy, KnowledgeRecord    │
+│  core/identity/      — Agent identity contracts                │
+├────────────────────────────────────────────────────────────────┤
+│                    CORTEX RUNTIME ADAPTER                       │
+│  Hermes Agent integration — plugins, MCPs, hooks, skills.     │
+│  Thin bridge: policies from Core → enforcement in Runtime.     │
+│                                                                │
+│  runtime/hermes/     — Governance enforcer plugin, git hooks   │
+│  runtime/mcp-servers/— Inbox & governance MCP servers          │
+│  runtime/skills/     — Hermes skill definitions                │
+├────────────────────────────────────────────────────────────────┤
+│                    CORTEX OPERATIONS                            │
+│  Installers, monitors, services, offline stack, fleet mgmt.   │
+│  Self-healing, silent-when-good, offline-first.                │
+│                                                                │
+│  ops/install/        — install.sh, deploy/, nginx configs      │
+│  ops/scripts/        — Health, inbox, archive, agent scripts   │
+│  ops/services/       — Dashboard, agent-inbox, A2A             │
+│  ops/offline/        — Kiwix, code corpus, offline reader      │
+│  ops/web-cache/      — SQLite-vec semantic cache               │
+└────────────────────────────────────────────────────────────────┘
+```
+
+This separation lets each layer evolve independently. For example, swapping the
+Hermes Agent runtime for LangGraph or Temporal means replacing the Runtime
+Adapter layer — the Core schemas and Ops infrastructure stay unchanged.
+
+---
+
+## Layers (Deployment)
 
 | Layer | Tool | Purpose |
 |-------|------|---------|

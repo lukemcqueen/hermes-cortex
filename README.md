@@ -5,7 +5,7 @@
 
 **Version: 1.0.0** · [![GitHub](https://img.shields.io/github/license/fleet-operator/hermes-cortex)](LICENSE) · [Hermes Agent](https://hermes-agent.nousresearch.com)
 
-![Hermes Cortex](avatar.png)
+![Hermes Cortex](docs/assets/avatar.png)
 
 **Hermes Cortex** is a self-contained system installer and public skill set for the [Hermes Agent](https://hermes-agent.nousresearch.com) runtime — but it's grown into much more. It's a **multi-agent fleet management platform**, a **governance engine**, a **self-healing operations system**, and a **deep knowledge stack**, all running on your own hardware with zero cloud dependency.
 
@@ -23,7 +23,6 @@ Hermes Cortex runs a coordinated team of specialized AI agents, each with distin
 |-------|------|---------------|
 | **Moses** 🗂️ | Orchestrator | Fleet health, cron management, infrastructure, governance |
 | **Esther** 👑 | Backup Orchestrator | Cover for Moses during downtime |
-| **Joseph** 📊 | Financial Analyst | Portfolio tracking, market briefs, financial insights |
 | **Titus** 🏗️ | DevOps | Service health, ClickHouse ops, recovery automation |
 | **Kustos** 🛡️ | Security | Threat detection, blocklist management, access control |
 | **Gisu** 💬 | Communications | Inbox routing, message triage, cross-agent coordination |
@@ -56,15 +55,15 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 
 ### 🩺 Self-Healing Operations
 
-**48 cron jobs** keep the system healthy without human intervention:
+**37 cron jobs** keep the system healthy without human intervention:
 
 | Category | Crons | What |
 |----------|-------|------|
 | **Health** | `orch-team-health`, `system-alert-watchdog`, `model-health-watchdog` | Every 5-30 min health checks across all agents |
 | **Recovery** | `service-recovery`, `agent-apply-fixes`, `remediation-sensor` | Auto-restart crashed services, apply fixes |
-| **Governance** | `governance-auditor`, `scoring-activity-watchdog`, `score-auditor` | Score tracking, lock cleanup, audit trails |
+| **Governance** | `governance-auditor`, `scoring-activity-watchdog` | Score tracking, lock cleanup, audit trails |
 | **Sync** | `hermes-cortex-sync`, `memory-to-brain-sync`, `gbrain-update-sync` | Pull updates, persist memory, sync brain |
-| **Security** | `threat-pipeline`, `agent-ip-submission`, `cert-expiry-watchdog` | Block threats, report IPs, renew certs |
+| **Security** | `threat-pipeline`, `agent-ip-submission` | Block threats, report IPs |
 | **Maintenance** | `memory-pruning`, `skill-miner`, `harvest-lessons`, `session-cache-build` | Weekly consolidation, skill extraction, lesson learning |
 | **Content** | `agent-daily-bible-reading`, `agent-daily-soul-refinement`, `offline-code-index` | Daily spiritual, weekly doc audits, code indexing |
 | **Reports** | `orch-health-report`, `orch-team-messages`, `orch-gbrain-doctor` | Scheduled health briefings, message flags, brain quality |
@@ -81,7 +80,7 @@ Agent query → web_cache (50μs) → kiwix ZIM (localhost:8080) → gbrain (RAG
 
 - **Web Cache** — Semantic search cache (sqlite-vec + Ollama embeddings, ~200MB LRU) — saves API costs
 - **Offline Knowledge** — Wikipedia, WikiMed, Wikivoyage, Wikibooks available locally via Docker ZIM server
-- **Offline Code Assistant** — 518 curated code snippets across 32 categories, 19 programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
+- **Offline Code Assistant** — 366 curated code snippets across 32 categories, 19 programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
 - **Offline Reader** — Zero-dependency web UI (`python3 src/offline/offline-reader.py`) for Bible (55+ languages), hymns, and wiki reference
 - **gbrain** — Persistent knowledge brain (PGLite, zero-config, 4+ sources) with automatic 2-min sync daemon
 
@@ -105,6 +104,28 @@ Agent query → web_cache (50μs) → kiwix ZIM (localhost:8080) → gbrain (RAG
 | Pipeline | **nginx-threat-pipeline.sh** | Daily scan of nginx logs for attack patterns, auto-ban repeat offenders |
 | Agent | **Governance Enforcer** | Blocks write tools without active governance lock |
 | Agent | **Security Guidance Plugin** | 25 regex patterns (pickle.load, eval, yaml.load, etc.) — warns on dangerous code |
+
+---
+
+## 🏗️ Repository Architecture
+
+The repository is organized into three layers, separating contracts from runtime
+integration from operations:
+
+| Layer | Directory | Purpose | Contents |
+|-------|-----------|---------|----------|
+| **Cortex Core** | `core/` | Schemas, governance, identity | Canonical type definitions, loop governance engine, agent identity contracts — zero runtime dependency |
+| **Cortex Runtime** | `runtime/` | Hermes Agent bridge | Governance enforcer plugin, MCP servers, git hooks, skill definitions |
+| **Cortex Ops** | `ops/` | Fleet operations | Installers, health scripts, watchdogs, offline stack, dashboard, web cache, cron infrastructure |
+
+The boundary is directional: **Core ← Runtime ← Ops**. Core knows nothing about
+Hermes Agent. Runtime translates Core contracts into Hermes-compatible hooks and
+plugins. Ops uses both to keep the fleet running.
+
+This model makes it possible to swap the agent runtime (e.g. to LangGraph or
+Temporal) by replacing only the Runtime Adapter layer.
+
+Detailed breakdown: [`docs/architecture.md`](docs/architecture.md#code-architecture--three-layer-model)
 
 ---
 
@@ -167,15 +188,15 @@ CORTEX_OS=windows bash ~/hermes-cortex/install.sh
 | 5 | **gbrain sync** | Launchd/systemd daemon — syncs brain every 2 minutes |
 | 6 | **Observability** † | Langfuse + Cortex Dashboard |
 | 7 | **`/brain` plugin** | Hermes slash command for gbrain queries |
-| 8 | **Scripts** | 50+ scripts: health checks, watchdogs, sync, governance, security |
+| 8 | **Scripts** | 127+ scripts: health checks, watchdogs, sync, governance, security |
 | 9 | **Plugin enable** | Auto-activates in Hermes config |
 | 10 | **Skills** | 8+ shared skills installed to `~/.hermes/skills/` |
 | 11 | **Web Cache** | Semantic web result cache (sqlite-vec + Ollama) |
 | 12 | **Offline Knowledge** | Cascade tool + kiwix ZIM Docker + prep scripts |
 | 13 | **Offline Reader** | `python3 src/offline/offline-reader.py` — zero-dependency web UI |
-| 14 | **Code Corpus** | 518 snippets across 32 categories, 19 languages; RAG index via Ollama |
+| 14 | **Code Corpus** | 366 snippets across 32 categories, 19 languages; RAG index via Ollama |
 | 15 | **Auto-Update** | `auto-update.sh` — silent cron-based content updater |
-| 16 | **Cron Jobs** | 48 maintenance crons: health, security, sync, recovery, reporting |
+| 16 | **Cron Jobs** | 37 maintenance crons: health, security, sync, recovery, reporting |
 | 17 | **nginx** † | Reverse proxy for Langfuse + Dashboard + hardening |
 | | *† Server profile only* | |
 
@@ -236,7 +257,7 @@ offline_knowledge query "symptoms of malaria"
 | `cortex-update.sh` | Deploy scripts from repo to `~/.hermes/scripts/` — run after every `git pull` |
 | `cortex-doctor.py` | System diagnostics, fix common issues |
 | `install-score-hook.sh` | Install/remove pre-commit scoring hooks on any repo |
-| `install-crons.sh` | Install/remove all 48 maintenance cron jobs |
+| `install-crons.sh` | Install/remove all 37 maintenance cron jobs |
 | `cleanup-stale-locks.sh` | Remove orphaned governance locks (>12h, folded into `governance-auditor`) |
 | `hermes-update.sh` | Silent nightly update of Hermes Agent |
 | `hermes-cortex-sync.sh` | Nightly git pull of hermes-cortex repo |

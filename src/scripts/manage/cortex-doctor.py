@@ -35,7 +35,9 @@ IS_LINUX = sys.platform == "linux"
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", HOME / ".hermes"))
 CORTEX_HOME = Path(os.environ.get("HERMES_CORTEX_HOME", HOME / ".hermes-cortex"))
 JOBS_FILE = HERMES_HOME / "cron" / "jobs.json"
-MODELS_ENV = HOME / "hermes-cortex" / ".env"
+# Prefer ~/hermes-cortex/.env (hidden, gitignored), fall back to legacy
+CORTEX_ENV = HOME / "hermes-cortex" / ".env"
+LEGACY_MODELS_ENV = HERMES_HOME / "models.env"
 CONFIG_FILE = HERMES_HOME / "config.yaml"
 
 # Find cortex repo
@@ -564,12 +566,14 @@ def check_system(res):
 
 
 def check_config(res):
-    """6. Config consistency: env var cross-reference."""
-    if not MODELS_ENV.exists():
-        res.add("Config (.env)", "WARN", "Not found", "Create ~/hermes-cortex/.env with env vars")
+    """6. Config consistency: hermes-cortex.env var cross-reference."""
+    env_path = CORTEX_ENV if CORTEX_ENV.exists() else LEGACY_MODELS_ENV
+    if not env_path.exists():
+        res.add("Config (hermes-cortex.env)", "WARN", "Not found",
+                "Create ~/hermes-cortex/.env with env vars")
         return
 
-    text = MODELS_ENV.read_text()
+    text = env_path.read_text()
     defined = {}
     for line in text.split("\n"):
         line = line.strip()
@@ -580,14 +584,14 @@ def check_config(res):
             defined[m.group(1)] = line
 
     if not defined:
-        res.add("Config (.env)", "WARN", "File exists but no exports defined",
+        res.add("Config (hermes-cortex.env)", "WARN", "File exists but no exports defined",
                  "Add JUDGE_MODEL, EMBEDDING_MODEL etc.")
         return
 
     consumers_by_var = find_script_consumers()
     for var, consumer_names in consumers_by_var.items():
         if var not in defined:
-            res.add(f"Config ({var})", "WARN", f"Not defined in .env",
+            res.add(f"Config ({var})", "WARN", f"Not defined in hermes-cortex.env",
                      f"Add: export {var}=<model-name> to ~/hermes-cortex/.env")
         else:
             if consumer_names:

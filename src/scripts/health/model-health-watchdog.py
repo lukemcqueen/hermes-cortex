@@ -71,7 +71,7 @@ def _parse_judge_models() -> list:
     if cli_models:
         return cli_models
 
-    # Check env var (also falls back to ~/hermes-cortex/.env)
+    # Check env var (also falls back to ~/.hermes/hermes-cortex.env)
     env_models = get_model("JUDGE_MODEL", "").strip()
     if env_models:
         return [m.strip() for m in env_models.split(",") if m.strip()]

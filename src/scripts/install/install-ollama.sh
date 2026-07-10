@@ -155,7 +155,10 @@ wait_for_ollama() {
 
 pull_embedding_model() {
   # Source model config for EMBEDDING_MODEL (survives cortex-update.sh)
-  local models_env="${HOME}/hermes-cortex/.env"
+  # Priority: ~/.hermes/hermes-cortex.env > ~/.hermes/models.env
+  local unified_env="${HOME}/.hermes/hermes-cortex.env"
+  [ -f "$unified_env" ] && source "$unified_env" 2>/dev/null || true
+  local models_env="${HOME}/.hermes/models.env"
   [ -f "$models_env" ] && source "$models_env" 2>/dev/null || true
   local model="${1:-${EMBEDDING_MODEL:-nomic-embed-text:v1.5}}"
   if ollama list 2>/dev/null | grep -q "$model"; then

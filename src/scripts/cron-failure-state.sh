@@ -87,7 +87,14 @@ cron_should_report() {
     local now_epoch
     now_epoch=$(date +%s)
     local report_epoch
-    report_epoch=$(date -d "$CRON_LAST_REPORT" +%s 2>/dev/null || echo "0")
+    # macOS date(1) uses -j -f, Linux uses -d
+    if date -d "$CRON_LAST_REPORT" +%s >/dev/null 2>&1; then
+        report_epoch=$(date -d "$CRON_LAST_REPORT" +%s 2>/dev/null)
+    elif date -j -f '%Y-%m-%dT%H:%M:%S%z' "$CRON_LAST_REPORT" +%s >/dev/null 2>&1; then
+        report_epoch=$(date -j -f '%Y-%m-%dT%H:%M:%S%z' "$CRON_LAST_REPORT" +%s 2>/dev/null)
+    else
+        report_epoch=0
+    fi
     local elapsed=$(( (now_epoch - report_epoch) / 60 ))
 
     if [[ "$elapsed" -ge "$cooldown" ]]; then

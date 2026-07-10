@@ -519,29 +519,31 @@ def _check_external_reachability() -> dict:
         cert_expiry_days, cert_warning = _CERT_EXPIRY_CACHE
     elif SSL_CERT_PATH:
         try:
-            ctx = ssl.create_default_context()
+            from cryptography import x509
+            from cryptography.hazmat.backends import default_backend
             with open(SSL_CERT_PATH, "rb") as f:
-                cert = ctx._wrap_pem_cert(f.read())  # internal-ish but works
-        except Exception:
-            try:
-                from cryptography import x509
-                from cryptography.hazmat.backends import default_backend
-                with open(SSL_CERT_PATH, "rb") as f:
-                    cert_data = f.read()
-                cert_obj = x509.load_pem_x509_certificate(cert_data, default_backend())
-                not_after = cert_obj.not_valid_after_utc if hasattr(cert_obj, "not_valid_after_utc") else cert_obj.not_valid_after
-                remaining = (not_after - datetime.now(timezone.utc)).days
-                cert_expiry_days = remaining
-                if remaining < 0:
-                    cert_warning = f"CRITICAL — SSL cert expired {abs(remaining)} day(s) ago"
-                elif remaining < 7:
-                    cert_warning = f"WARNING — SSL cert expires in {remaining} day(s)"
-                elif remaining < 30:
-                    cert_warning = f"INFO — SSL cert expires in {remaining} day(s)"
-            except Exception:
-                # Fallback: cryptography not installed or cert unreadable (root-owned)
-                _log.warning("cryptography not available or cert unreadable — skipping cert expiry check")
-                pass
+                cert_data = f.read()
+            cert_obj = x509.load_pem_x509_certificate(cert_data, default_backend())
+            not_after = cert_obj.not_valid_after_utc if hasattr(cert_obj, "not_valid_after_utc") else cert_obj.not_valid_after
+            # Make offset-aware for consistent comparison
+            if not_after.tzinfo is None:
+                from datetime import timezone as tz
+                not_after = not_after.replace(tzinfo=tz.utc)
+            remaining = (not_after - datetime.now(timezone.utc)).days
+            cert_expiry_days = remaining
+            if remaining < 0:
+                cert_warning = f"CRITICAL — SSL cert expired {abs(remaining)} day(s) ago"
+            elif remaining < 7:
+                cert_warning = f"WARNING — SSL cert expires in {remaining} day(s)"
+            elif remaining < 30:
+                cert_warning = f"INFO — SSL cert expires in {remaining} day(s)"
+        except ImportError:
+            # Fallback: try openssl CLI
+            _log.warning("cryptography not installed — skipping cert expiry check")
+            pass
+        except PermissionError:
+            _log.warning("Permission denied reading SSL cert at %s — skipping cert expiry check", SSL_CERT_PATH)
+            pass
         _CERT_EXPIRY_CACHE = (cert_expiry_days, cert_warning)
         _CERT_EXPIRY_CACHE_TS = time.time()
 

@@ -131,38 +131,41 @@ elif [[ "$CORTEX_OS" == "windows" ]]; then
 fi
 
 # ── nginx Path ──────────────────────────────────────────────
+# Uses : ${VAR:=default} pattern so env vars from ~/.hermes/hermes-cortex.env
+# (sourced before os-config.sh) override the auto-detected defaults.
 if [[ "$CORTEX_OS" == "macos" ]]; then
   if [[ "$(uname -m)" == "arm64" ]]; then
-    NGINX_CONFIG_DIR="/opt/homebrew/etc/nginx/servers"
-    NGINX_BREW_DIR="/opt/homebrew/etc/nginx"
+    : "${NGINX_CONFIG_DIR:=/opt/homebrew/etc/nginx/servers}"
+    : "${NGINX_ROOT:=/opt/homebrew/etc/nginx}"
   else
-    NGINX_CONFIG_DIR="/usr/local/etc/nginx/servers"
-    NGINX_BREW_DIR="/usr/local/etc/nginx"
+    : "${NGINX_CONFIG_DIR:=/usr/local/etc/nginx/servers}"
+    : "${NGINX_ROOT:=/usr/local/etc/nginx}"
   fi
 elif [[ "$CORTEX_OS" == "linux" ]]; then
-  NGINX_CONFIG_DIR="/etc/nginx/sites-enabled"
-  NGINX_BREW_DIR="/etc/nginx"
+  : "${NGINX_CONFIG_DIR:=/etc/nginx/sites-enabled}"
+  : "${NGINX_ROOT:=/etc/nginx}"
 fi
 
 # ── nginx Log & htpasswd Paths (OS-aware) ────────────────────
 if [[ "$CORTEX_OS" == "macos" ]]; then
   if [[ "$(uname -m)" == "arm64" ]]; then
-    NGINX_LOG_DIR="/opt/homebrew/var/log/nginx"
+    : "${NGINX_LOG_DIR:=/opt/homebrew/var/log/nginx}"
   else
-    NGINX_LOG_DIR="/usr/local/var/log/nginx"
+    : "${NGINX_LOG_DIR:=/usr/local/var/log/nginx}"
   fi
-  NGINX_HTPASSWD="${NGINX_BREW_DIR}/.htpasswd"
+  : "${NGINX_HTPASSWD:=${NGINX_ROOT}/.htpasswd}"
 elif [[ "$CORTEX_OS" == "linux" ]]; then
-  NGINX_LOG_DIR="/var/log/nginx"
-  NGINX_HTPASSWD="${NGINX_BREW_DIR}/.hermes-htpasswd"
+  : "${NGINX_LOG_DIR:=/var/log/nginx}"
+  : "${NGINX_HTPASSWD:=${NGINX_ROOT}/.hermes-htpasswd}"
 fi
 
 # ── Path Substitution Helper ─────────────────────────────────
-# Replaces __NGINX_CONFIG_DIR__, __NGINX_LOG_DIR__, __HTPASSWD_FILE__
-# placeholders in a config file with OS-appropriate paths.
+# Replaces __NGINX_CONFIG_DIR__, __NGINX_ROOT__, __NGINX_LOG_DIR__,
+# __HTPASSWD_FILE__ placeholders in a config file with OS-appropriate paths.
 subst_nginx_paths() {
   sed \
     -e "s|__NGINX_CONFIG_DIR__|${NGINX_CONFIG_DIR}|g" \
+    -e "s|__NGINX_ROOT__|${NGINX_ROOT}|g" \
     -e "s|__NGINX_LOG_DIR__|${NGINX_LOG_DIR}|g" \
     -e "s|__HTPASSWD_FILE__|${NGINX_HTPASSWD}|g"
 }
@@ -189,4 +192,4 @@ export CORTEX_OS CORTEX_PROFILE
 export PKG_MANAGER PKG_INSTALL PKG_CASK_INSTALL
 export SERVICE_MANAGER SERVICE_DIR SERVICE_EXT
 export SERVICE_LOAD SERVICE_UNLOAD SERVICE_START SERVICE_STOP SERVICE_LIST
-export NGINX_CONFIG_DIR NGINX_LOG_DIR NGINX_HTPASSWD OLLAMA_BIN
+export NGINX_CONFIG_DIR NGINX_ROOT NGINX_LOG_DIR NGINX_HTPASSWD OLLAMA_BIN
