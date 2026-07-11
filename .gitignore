@@ -84,3 +84,6 @@ agent-inbox-private/
 src/agent-registry.json
 # Use src/agent-registry.json.example as the template
 .governance-*.json
+deploy/
+src/scripts/
+plugins/
