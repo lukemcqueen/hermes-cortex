@@ -49,7 +49,7 @@ def repo_dir() -> str:
     candidate = os.path.dirname(os.path.dirname(script_dir))
     if candidate.endswith("hermes-cortex") or os.path.isdir(os.path.join(candidate, ".git")):
         return candidate
-    home = os.environ.get("HOME", "/home/moses")
+    home = os.environ.get("HOME") or os.path.expanduser("~")
     candidate2 = os.path.join(home, "hermes-cortex")
     if os.path.isdir(candidate2):
         return candidate2
