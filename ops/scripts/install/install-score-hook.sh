@@ -57,7 +57,7 @@ parse_args "$@"
 # Verify hook source exists
 if [[ ! -f "$HOOK_SOURCE" ]]; then
   # Try relative to repo root
-  HOOK_SOURCE="${HOME}/hermes-cortex/src/scripts/pre-commit-score"
+  HOOK_SOURCE="${SCRIPT_DIR}/../pre-commit-score"
 fi
 if [[ ! -f "$HOOK_SOURCE" ]]; then
   error "Hook template not found at pre-commit-score"
