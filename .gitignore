@@ -87,3 +87,4 @@ src/agent-registry.json
 deploy/
 src/scripts/
 plugins/
+src/scripts/install-crons.sh
