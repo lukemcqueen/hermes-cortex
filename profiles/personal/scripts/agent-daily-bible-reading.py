@@ -163,12 +163,67 @@ def get_deepseek_api_key() -> str | None:
     return None
 
 
+def _call_ollama(prompt: str, max_tokens: int = 4096) -> str | None:
+    """Call local Ollama (qwen2.5-coder:3b) and return the cleaned response content.
+    Used as fallback when no DEEPSEEK_API_KEY is available."""
+    payload = json.dumps({
+        "model": "qwen2.5-coder:3b",
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": False,
+        "options": {"num_predict": max_tokens, "temperature": 0.7},
+    })
+    body = ""
+    try:
+        result = subprocess.run(
+            ["curl", "-s", "-w", "\n%{http_code}", "-X", "POST", OLLAMA_URL,
+             "-H", "Content-Type: application/json",
+             "-d", payload],
+            capture_output=True, text=True, timeout=300,
+        )
+        parts = result.stdout.strip().rsplit("\n", 1)
+        http_code = parts[-1] if len(parts) > 1 else "000"
+        body = parts[0] if len(parts) > 1 else result.stdout
+
+        if result.returncode != 0:
+            print(f"❌ curl failed (exit {result.returncode}): {result.stderr}", file=sys.stderr)
+            return None
+        if http_code != "200":
+            print(f"❌ Ollama returned HTTP {http_code}: {body[:300]}", file=sys.stderr)
+            return None
+
+        response = json.loads(body)
+        content = response.get("message", {}).get("content", "")
+
+        if not content:
+            print(f"❌ Empty response from Ollama", file=sys.stderr)
+            return None
+
+        content = content.strip()
+        if content.startswith("```"):
+            content = content.split("\n", 1)[-1] if "\n" in content else content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
+        return content
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON parse error: {e}", file=sys.stderr)
+        print(f"   Body: {body[:500]}", file=sys.stderr)
+        return None
+    except subprocess.TimeoutExpired:
+        print(f"❌ Ollama request timed out after 300s", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"❌ Unexpected error: {e}", file=sys.stderr)
+        return None
+
+
 def _call_deepseek(prompt: str, max_tokens: int = 4096) -> str | None:
-    """Make a deepseek API call and return the cleaned response content."""
+    """Make a deepseek API call and return the cleaned response content.
+    Falls back to local Ollama if DEEPSEEK_API_KEY is not available."""
     api_key = get_deepseek_api_key()
     if not api_key:
-        print("❌ DEEPSEEK_API_KEY not found in .env", file=sys.stderr)
-        return None
+        print("⚠️  DEEPSEEK_API_KEY not found — falling back to local Ollama (qwen2.5-coder:3b)", file=sys.stderr)
+        return _call_ollama(prompt, max_tokens)
 
     payload = json.dumps({
         "model": DEEPSEEK_MODEL,
@@ -182,7 +237,7 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096) -> str | None:
         result = subprocess.run(
             ["curl", "-s", "-w", "\n%{http_code}", "-X", "POST", DEEPSEEK_URL,
              "-H", "Content-Type: application/json",
-             "-H", f"Authorization: Bearer {api_key}",
+             "-H", f"Authorization: Bearer ***",
              "-d", payload],
             capture_output=True, text=True, timeout=180,
         )
