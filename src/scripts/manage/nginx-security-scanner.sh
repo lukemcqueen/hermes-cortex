@@ -1,0 +1,1 @@
+/home/moses/hermes-cortex/ops/scripts/manage/nginx-security-scanner.sh
