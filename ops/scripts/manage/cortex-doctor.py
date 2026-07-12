@@ -48,15 +48,14 @@ if not CORTEX_REPO.is_dir() or not (CORTEX_REPO / "AGENTS.md").exists():
             CORTEX_REPO = candidate
             break
 SCRIPTS_SRC = CORTEX_REPO / "ops" / "scripts"
-SCRIPTS_DEPLOYED = CORTEX_HOME / "scripts"
 INSTALL_CRONS = SCRIPTS_SRC / "install-crons.sh"
 CORTEX_UPDATE = SCRIPTS_SRC / "cortex-update.sh"
 INSTALL_ORCH_CRONS = SCRIPTS_SRC / "install" / "install-orch-crons.sh"
-INSTALL_SCRIPT = CORTEX_REPO / "install.sh"
-INSTALL_OLLAMA = SCRIPTS_SRC / "install-ollama.sh"
-INSTALL_SCORE_HOOK = SCRIPTS_SRC / "install-score-hook.sh"
-SYMLINK_AUDIT = SCRIPTS_SRC / "symlink-audit.sh"
-MCP_SERVERS_DIR = CORTEX_REPO / "src" / "mcp-servers"
+INSTALL_SCRIPT = CORTEX_REPO / "ops" / "install" / "install.sh"
+INSTALL_OLLAMA = SCRIPTS_SRC / "install" / "install-ollama.sh"
+INSTALL_SCORE_HOOK = SCRIPTS_SRC / "install" / "install-score-hook.sh"
+SYMLINK_AUDIT = SCRIPTS_SRC / "manage" / "symlink-audit.sh"
+MCP_SERVERS_DIR = CORTEX_REPO / "runtime" / "mcp-servers"
 
 # Passthrough to subprocess for HTTP checks (avoid cert issues with urllib)
 CURL = os.environ.get("CURL_BIN", "curl")
@@ -327,7 +326,7 @@ def check_crons(res):
     expected_crons = parse_expected_crons()
     if not expected_crons:
         res.add("Crons registry", "WARN", "Could not parse install-crons.sh",
-                "Check src/scripts/install-crons.sh exists")
+                "Check ops/scripts/install-crons.sh exists")
         expected_crons = list(registered.keys())
 
     missing = []
@@ -440,68 +439,6 @@ def check_scripts(res):
     else:
         for name, script in missing[:5]:
             res.add(f"Script ({name})", "FAIL", f"not found: {script}", "Run: bash cortex-update.sh --force-all")
-
-
-def check_script_consistency(res):
-    """3b. Script consistency: deployed copies match repo source."""
-    if not SCRIPTS_DEPLOYED.is_dir():
-        res.add("Script consistency", "FAIL", f"Deployed scripts dir not found at {SCRIPTS_DEPLOYED}")
-        return
-    if not SCRIPTS_SRC.is_dir():
-        res.add("Script consistency", "SKIP", f"Repo scripts dir not found at {SCRIPTS_SRC}")
-        return
-
-    import hashlib
-
-    stale = []
-    missing_repo = []
-    ok = 0
-
-    # Build map of deployed script → repo source
-    for f in sorted(SCRIPTS_DEPLOYED.iterdir()):
-        if not f.is_file() or f.suffix not in (".py", ".sh"):
-            continue
-        name = f.name
-        # Search repo scripts recursively
-        repo_file = None
-        for root, dirs, files in os.walk(str(SCRIPTS_SRC)):
-            for fn in files:
-                if fn == name:
-                    repo_file = Path(root) / fn
-                    break
-            if repo_file:
-                break
-        if not repo_file:
-            missing_repo.append(name)
-            continue
-
-        # Compare checksums
-        deployed_hash = hashlib.sha256(f.read_bytes()).hexdigest()
-        repo_hash = hashlib.sha256(repo_file.read_bytes()).hexdigest()
-        if deployed_hash == repo_hash:
-            ok += 1
-        else:
-            stale.append((name, str(repo_file.relative_to(SCRIPTS_SRC))))
-
-    if not stale and not missing_repo:
-        res.add("Script consistency", "PASS", f"all {ok} scripts match repo source")
-    else:
-        if stale:
-            for name, relpath in stale[:5]:
-                fix = f"cp '{SCRIPTS_SRC / relpath}' '{SCRIPTS_DEPLOYED / name}'"
-                res.add(f"Script drift ({name})", "WARN",
-                        f"deployed copy differs from {relpath}", fix)
-            if len(stale) > 5:
-                res.add(f"Script drift (total)", "WARN",
-                        f"{len(stale)} scripts differ from repo source",
-                        "Run: cortex-doctor.py --fix to re-copy")
-        if missing_repo:
-            for name in missing_repo[:5]:
-                res.add(f"Script orphan ({name})", "INFO",
-                        "deployed but no repo source found")
-            if len(missing_repo) > 5:
-                res.add(f"Script orphan (total)", "INFO",
-                        f"{len(missing_repo)} deployed scripts with no repo source")
 
 
 def check_services(res):
@@ -713,7 +650,7 @@ def check_nginx(res):
     conf_available = available_dir / "hermes-services.conf"
     if not conf_available.is_file():
         res.add("Nginx config", "FAIL", f"not found at {conf_available}",
-                "Run: sudo deploy/nginx/install-nginx-full.sh")
+                "Run: sudo ops/install/deploy/nginx/install-nginx-full.sh")
         return
     res.add("Nginx config", "PASS", f"found at {conf_available}")
 
@@ -834,7 +771,7 @@ def check_governance(res):
 
     # ── Governance plugin ────────────────────────────────────
     plugin_dir = HERMES_HOME / "plugins" / "governance-enforcer"
-    plugin_src = CORTEX_REPO / "plugins" / "governance-enforcer"
+    plugin_src = CORTEX_REPO / "runtime" / "hermes" / "governance-enforcer"
     plugin_enabled = "governance-enforcer" in config_text and "enabled" in config_text
 
     if plugin_dir.exists() and (plugin_dir / "__init__.py").exists():
@@ -845,10 +782,10 @@ def check_governance(res):
                 res.add("Plugin symlink", "PASS", f"symlinked to {target}")
             else:
                 res.add("Plugin symlink", "WARN", f"symlinked to {target} (not ~/hermes-cortex/.hermes-cortex/...)",
-                         "Re-create: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/")
+                         "Re-create: ln -sf ~/hermes-cortex/runtime/hermes/governance-enforcer ~/.hermes/plugins/")
     else:
         res.add("Governance plugin", "FAIL", "not installed",
-                 "Install: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/\n"
+                 "Install: ln -sf ~/hermes-cortex/runtime/hermes/governance-enforcer ~/.hermes/plugins/\n"
                  "Then: hermes plugins enable governance-enforcer --allow-tool-override\n"
                  "Then: /reset (new session)")
 
@@ -861,10 +798,10 @@ def check_governance(res):
 
     # Plugin source integrity
     if plugin_src.exists() and (plugin_src / "__init__.py").exists():
-        res.add("Plugin source", "PASS", "source in repo at plugins/governance-enforcer")
+        res.add("Plugin source", "PASS", "source in repo at runtime/hermes/governance-enforcer")
     else:
         res.add("Plugin source", "FAIL", "source missing in repo",
-                 "Check: ~/hermes-cortex/plugins/governance-enforcer/")
+                 "Check: ~/hermes-cortex/runtime/hermes/governance-enforcer/")
 
     # ── MCP servers ──────────────────────────────────────────
     for name, server_script in EXPECTED_MCP_SERVERS.items():
@@ -955,12 +892,12 @@ def check_governance(res):
                 res.add("Score-cycle", "PASS", f"available at {found_score} → {target}")
             else:
                 res.add("Score-cycle", "WARN", f"symlink broken: {found_score} → {target}",
-                         "Re-run: bash ~/hermes-cortex/ops/scripts/install/install-score-hook.sh")
+                         "Re-run: bash ~/hermes-cortex/core/governance/setup.sh")
         else:
             res.add("Score-cycle", "PASS", f"available at {found_score}")
     else:
         res.add("Score-cycle", "WARN", "not found in PATH",
-                 "Run: bash ~/hermes-cortex/ops/scripts/install/install-score-hook.sh to deploy scoring tools")
+                 "Run: bash ~/hermes-cortex/core/governance/setup.sh to deploy scoring tools")
 
     # ── Stale governance locks (per-repo pattern) ──────────────
     if not state_dir.exists():
@@ -1071,44 +1008,11 @@ def apply_fixes(res):
             failed += 1
 
     # Fix: missing scripts → cortex-update.sh
-    if any(k.startswith("Script (") for k in fix_map):
+    if any(k.startswith("Script") for k in fix_map):
         if _run_fix("Deploying scripts via cortex-update", ["bash", str(CORTEX_UPDATE), "--force-all"]):
             fixed += 1
         else:
             failed += 1
-
-    # Fix: stale deployed scripts → re-copy from repo
-    import hashlib
-    has_drift = any(k.startswith("Script drift") for k in fix_map)
-    has_orphan = any(k.startswith("Script orphan") for k in fix_map)
-    if has_drift:
-        copied = 0
-        failed_copies = 0
-        for f in sorted(SCRIPTS_DEPLOYED.iterdir()):
-            if not f.is_file() or f.suffix not in (".py", ".sh"):
-                continue
-            name = f.name
-            repo_file = None
-            for root, dirs, files in os.walk(str(SCRIPTS_SRC)):
-                for fn in files:
-                    if fn == name:
-                        repo_file = Path(root) / fn
-                        break
-                if repo_file:
-                    break
-            if not repo_file:
-                continue
-            deployed_hash = hashlib.sha256(f.read_bytes()).hexdigest()
-            repo_hash = hashlib.sha256(repo_file.read_bytes()).hexdigest()
-            if deployed_hash != repo_hash:
-                if _run_fix(f"Re-copying {name} from repo",
-                            ["cp", str(repo_file), str(SCRIPTS_DEPLOYED / name)]):
-                    copied += 1
-                else:
-                    failed_copies += 1
-        if copied or failed_copies:
-            if not res.json_mode:
-                print(f"  → {copied} script(s) refreshed, {failed_copies} failed")
 
     # Fix: MCP server not configured (use venv Python)
     for name, server_script in EXPECTED_MCP_SERVERS.items():
@@ -1303,7 +1207,7 @@ def main():
     do_watch = "--watch" in args
     compact = "--quiet" in args
 
-    all_checks = [check_repo, check_crons, check_scripts, check_script_consistency, check_services,
+    all_checks = [check_repo, check_crons, check_scripts, check_services,
                    check_system, check_config, check_nginx, check_governance, check_install]
 
     if not res.json_mode:

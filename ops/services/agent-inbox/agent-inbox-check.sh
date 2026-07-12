@@ -11,7 +11,7 @@
 #  1. Ensure inbox MCP server is configured in ~/.hermes/config.yaml:
 #     agent-inbox:
 #       command: python3
-#       args: [~/hermes-cortex/src/mcp-servers/inbox-mcp.py]
+#       args: [~/hermes-cortex/runtime/mcp-servers/inbox-mcp.py]
 #       enabled: true
 #
 #  2. Create ~/.hermes/hermes-inbox.conf with your credentials:

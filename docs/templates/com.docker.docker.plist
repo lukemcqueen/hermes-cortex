@@ -26,8 +26,8 @@
     <key>KeepAlive</key>
     <false/>
     <key>StandardOutPath</key>
-    <string>CORTEX_HOME/.hermes/logs/docker-launch.log</string>
+    <string>CORTEX_HOME/.hermes-cortex/logs/docker-launch.log</string>
     <key>StandardErrorPath</key>
-    <string>CORTEX_HOME/.hermes/logs/docker-launch.log</string>
+    <string>CORTEX_HOME/.hermes-cortex/logs/docker-launch.log</string>
 </dict>
 </plist>

@@ -25,7 +25,7 @@ fi
 
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 SCANNER="${CORTEX_REPO}/ops/scripts/manage/nginx-security-scanner.sh"
-SUBMIT_FILE="${CORTEX_REPO}/deploy/nginx/blocked_ips.submit"
+SUBMIT_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.submit"
 
 # ── Process agent-submitted IPs before scanning ──
 if [ -f "$SUBMIT_FILE" ]; then
@@ -37,14 +37,14 @@ if [ -f "$SUBMIT_FILE" ]; then
     NEW_FROM_SUBMIT=""
     while IFS= read -r ip; do
       [ -z "$ip" ] && continue
-      if ! grep -qF "$ip" "${CORTEX_REPO}/deploy/nginx/blocked_ips.add" 2>/dev/null; then
+      if ! grep -qF "$ip" "${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add" 2>/dev/null; then
         NEW_FROM_SUBMIT+="${ip}"$'\n'
       fi
     done <<< "$VALID_IPS"
     SUBMIT_COUNT=$(echo "$NEW_FROM_SUBMIT" | grep -c '[0-9]' 2>/dev/null || true)
     SUBMIT_COUNT=$((SUBMIT_COUNT + 0))
     if [ "$SUBMIT_COUNT" -gt 0 ]; then
-      echo "$NEW_FROM_SUBMIT" >> "${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
+      echo "$NEW_FROM_SUBMIT" >> "${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add"
       NEW_IPS=true
       PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ ${SUBMIT_COUNT} agent-submitted IPs merged from blocked_ips.submit"$'\n'
     fi
@@ -137,7 +137,7 @@ if [ -n "$F2B_LOG" ]; then
         grep -oP '\'"'"'[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'\'"'"' | sort -u | \
         while IFS= read -r ip; do
           [ -z "$ip" ] && continue
-          grep -qF "$ip" "${CORTEX_REPO}/deploy/nginx/blocked_ips.add" 2>/dev/null && continue
+          grep -qF "$ip" "${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add" 2>/dev/null && continue
           echo "$ip"
         done
     ' _ "$F2B_LOG" "$CORTEX_REPO") || true
@@ -149,7 +149,7 @@ if [ -n "$F2B_LOG" ]; then
         grep -oP '\'"'"'[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'\'"'"' | sort -u | \
         while IFS= read -r ip; do
           [ -z "$ip" ] && continue
-          grep -qF "$ip" "${CORTEX_REPO}/deploy/nginx/blocked_ips.add" 2>/dev/null && continue
+          grep -qF "$ip" "${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add" 2>/dev/null && continue
           echo "$ip"
         done
     ' _ "$F2B_LOG" "$CORTEX_REPO") || true
@@ -169,8 +169,8 @@ if [ -n "$F2B_LOG" ]; then
     NEW_IPS=true
     log "  ${F2B_COUNT} new fail2ban-banned IPs"
     # Ensure directory exists before appending
-    mkdir -p "${CORTEX_REPO}/deploy/nginx"
-    echo "$NEW_F2B_IPS" >> "${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
+    mkdir -p "${CORTEX_REPO}/ops/install/deploy/nginx"
+    echo "$NEW_F2B_IPS" >> "${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add"
   fi
 elif $F2B_INSTALLED; then
   log "  fail2ban installed but no log file found — skipping"
@@ -200,16 +200,16 @@ if [ ! -d "$CORTEX_REPO" ]; then
   error "Cortex repo not found at ${CORTEX_REPO} — skipping commit"
 else
   cd "$CORTEX_REPO"
-  if git diff --quiet deploy/nginx/blocked_ips.add 2>/dev/null \
-     && git diff --cached --quiet deploy/nginx/blocked_ips.add 2>/dev/null; then
+  if git diff --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null \
+     && git diff --cached --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null; then
     log "  No changes to commit"
   else
-    git add deploy/nginx/blocked_ips.add
-    IP_COUNT=$(git diff --cached --unified=0 deploy/nginx/blocked_ips.add 2>/dev/null | \
+    git add ops/install/deploy/nginx/blocked_ips.add
+    IP_COUNT=$(git diff --cached --unified=0 ops/install/deploy/nginx/blocked_ips.add 2>/dev/null | \
       grep '^\+[0-9]' | grep -v '^+++' | wc -l) || true
     SKIP_SCORE=1 git commit -m "auto: block ${IP_COUNT} suspect IPs [pipeline]" 2>&1 || true
     # Check if commit succeeded (no staged changes = committed)
-    if git diff --cached --quiet deploy/nginx/blocked_ips.add 2>/dev/null; then
+    if git diff --cached --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null; then
       PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Committed ${IP_COUNT} IPs to repo"$'\n'
     else
       log "  ⚠ Git commit failed — may need manual merge"

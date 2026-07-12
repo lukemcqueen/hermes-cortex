@@ -102,9 +102,9 @@ PLISTEOF
     <key>WorkingDirectory</key>
     <string>${workdir}</string>
     <key>StandardOutPath</key>
-    <string>${workdir}/.hermes/logs/${name}.log</string>
+    <string>${workdir}/.hermes-cortex/logs/${name}.log</string>
     <key>StandardErrorPath</key>
-    <string>${workdir}/.hermes/logs/${name}.log</string>
+    <string>${workdir}/.hermes-cortex/logs/${name}.log</string>
 PLISTEOF
 
   # Add environment variables if provided
@@ -143,8 +143,8 @@ ExecStart=${command}
 WorkingDirectory=${workdir}
 Restart=on-failure
 RestartSec=10
-StandardOutput=append:${workdir}/.hermes/logs/${name}.log
-StandardError=append:${workdir}/.hermes/logs/${name}.log
+StandardOutput=append:${workdir}/.hermes-cortex/logs/${name}.log
+StandardError=append:${workdir}/.hermes-cortex/logs/${name}.log
 UNITEOF
 
   # Add environment variables if provided

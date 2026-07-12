@@ -10,10 +10,10 @@ import textwrap
 from pathlib import Path
 
 SEED_PROJECT = (
-    Path(__file__).resolve().parents[1] / "src" / "scripts" / "seed-project.sh"
+    Path(__file__).resolve().parents[1] / "ops" / "scripts" / "install" / "seed-project.sh"
 )
 CORTEX_UPDATE = (
-    Path(__file__).resolve().parents[1] / "src" / "scripts" / "cortex-update.sh"
+    Path(__file__).resolve().parents[1] / "ops" / "scripts" / "cortex-update.sh"
 )
 
 

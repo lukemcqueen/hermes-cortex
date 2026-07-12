@@ -25,7 +25,7 @@ info()  { echo -e "${CYAN}ℹ${RESET} $*"; }
 
 # ── Config ──────────────────────────────────────────────────
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
-CORTEX_UPDATE="${REPO_ROOT}/src/scripts/cortex-update.sh"
+CORTEX_UPDATE="${REPO_ROOT}/ops/scripts/cortex-update.sh"
 
 # Get staged files (no deletions, no binary/lock)
 STAGED=$(git diff --cached --name-only --diff-filter=ACMR \
@@ -95,9 +95,9 @@ done
 # If a deployable file was added/modified, check it's registered
 if [[ -f "$CORTEX_UPDATE" ]]; then
   for f in $STAGED; do
-    # Skip files not in deploy/ or src/scripts/
+    # Skip files not in deploy/ or ops/scripts/
     case "$f" in
-      deploy/*|src/scripts/*)
+      deploy/*|ops/scripts/*)
         basename_f=$(basename "$f")
         if ! grep -q "$basename_f" "$CORTEX_UPDATE" 2>/dev/null; then
           warn "File $f is not registered in cortex-update.sh register() —"

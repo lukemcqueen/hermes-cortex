@@ -27,12 +27,12 @@
 set -euo pipefail
 
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
-BLOCKED_IPS="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
+BLOCKED_IPS="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add"
 # Use deploy-blocked-ips.sh for minimal-root deploy
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 DEPLOY_SCRIPT="${HERMES_HOME}/scripts/deploy-blocked-ips.sh"
 if [ ! -x "$DEPLOY_SCRIPT" ]; then
-  DEPLOY_SCRIPT="${CORTEX_REPO}/src/scripts/manage/deploy-blocked-ips.sh"
+  DEPLOY_SCRIPT="${CORTEX_REPO}/ops/scripts/manage/deploy-blocked-ips.sh"
 fi
 # Linux: /var/log/nginx, macOS x86_64: /usr/local/var/log/nginx, macOS arm64: /opt/homebrew/var/log/nginx
 if [ -d "/var/log/nginx" ]; then

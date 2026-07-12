@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # update-session-state.sh — Refresh the Repo State section of .hermes-cortex/sessions/current.md
 #
-# Usage: ./src/scripts/update-session-state.sh
+# Usage: ./ops/scripts/manage/update-session-state.sh
 #   Runs silently if nothing changed (watchdog/CRON mode).
 #   Pass --verbose to always print status.
 #

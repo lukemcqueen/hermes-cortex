@@ -13,7 +13,7 @@
   2. SHARED VENV (simpler, uses gateway's venv):
      Uses the Hermes Agent venv to avoid a second venv.
 
-  Replace CORTEX_HOME with the actual home path (e.g. /home/<username>).
+  Replace CORTEX_HOME with $HOME (literally, launchd expands it).
   Copy to: ~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist
   Load:    launchctl load ~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist
 -->
@@ -25,20 +25,20 @@
     <!--
       OPTION A: Dedicated venv (isolated)
       ProgramArguments:
-        <string>CORTEX_HOME/.hermes-cortex/dashboard/venv/bin/python3</string>
+        <string>$HOME/.hermes-cortex/dashboard/venv/bin/python3</string>
 
       OPTION B: Shared gateway venv (simpler)
       ProgramArguments:
-        <string>CORTEX_HOME/.hermes/hermes-agent/venv/bin/python3</string>
+        <string>$HOME/.hermes/hermes-agent/venv/bin/python3</string>
     -->
     <key>ProgramArguments</key>
     <array>
-        <string>CORTEX_HOME/.hermes-cortex/dashboard/venv/bin/python3</string>
-        <string>CORTEX_HOME/.hermes-cortex/dashboard/server.py</string>
+        <string>$HOME/.hermes-cortex/dashboard/venv/bin/python3</string>
+        <string>$HOME/.hermes-cortex/dashboard/server.py</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>CORTEX_HOME/.hermes-cortex/dashboard</string>
+    <string>$HOME/.hermes-cortex/dashboard</string>
 
     <key>RunAtLoad</key>
     <true/>
@@ -54,8 +54,8 @@
     </dict>
 
     <key>StandardOutPath</key>
-    <string>CORTEX_HOME/.hermes/logs/cortex-dashboard.log</string>
+    <string>$HOME/.hermes-cortex/logs/cortex-dashboard.log</string>
     <key>StandardErrorPath</key>
-    <string>CORTEX_HOME/.hermes/logs/cortex-dashboard.log</string>
+    <string>$HOME/.hermes-cortex/logs/cortex-dashboard.log</string>
 </dict>
 </plist>

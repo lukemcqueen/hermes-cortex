@@ -9,7 +9,7 @@
 #   bash deploy-blocked-ips.sh --check   # dry-run (generate + validate only)
 #
 # Requires NOPASSWD:
-#   moses ALL=(root) NOPASSWD: /home/moses/hermes-cortex/deploy/nginx/fix-blocked-ips.py
+#   moses ALL=(root) NOPASSWD: /home/moses/hermes-cortex/ops/install/deploy/nginx/fix-blocked-ips.py
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,7 +18,7 @@ if [ ! -d "$CORTEX_REPO" ]; then
   CORTEX_REPO="$(cd "$SCRIPT_DIR/../.." && pwd 2>/dev/null || echo "$HOME/hermes-cortex")"
 fi
 
-FIX_SCRIPT="${CORTEX_REPO}/deploy/nginx/fix-blocked-ips.py"
+FIX_SCRIPT="${CORTEX_REPO}/ops/install/deploy/nginx/fix-blocked-ips.py"
 
 if [ ! -f "$FIX_SCRIPT" ]; then
   echo "[deploy-blocked-ips] ✗ fix-blocked-ips.py not found at ${FIX_SCRIPT}"

@@ -1,1 +1,1 @@
-/home/luke/hermes-cortex/ops/scripts/install-crons.sh
+/Users/luke/hermes-cortex/ops/scripts/install-crons.sh

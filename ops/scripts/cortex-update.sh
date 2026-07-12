@@ -148,13 +148,13 @@ register "ops/scripts/manage/hermes-cortex-sync.sh"      "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/update-session-state.sh"    "${CORTEX_DEPLOY_HOME}/scripts/update-session-state.sh"
 
 # Loop-governance scripts (deployed to scripts/ for cron use)
-register "ops/scripts/cleanup-ollama.sh"  "${CORTEX_DEPLOY_HOME}/scripts/cleanup-ollama.sh"
-register "ops/scripts/inbox_watcher.py"    "${CORTEX_DEPLOY_HOME}/scripts/inbox_watcher.py"
-register "ops/scripts/session_cache.py"    "${CORTEX_DEPLOY_HOME}/scripts/session_cache.py"
-register "ops/scripts/setup.sh"            "${CORTEX_DEPLOY_HOME}/scripts/setup.sh"
-register "ops/scripts/skill_miner.py"      "${CORTEX_DEPLOY_HOME}/scripts/skill_miner.py"
-register "ops/scripts/skill-miner-wrapper" "${CORTEX_DEPLOY_HOME}/scripts/skill-miner-wrapper"
-register "ops/scripts/update.sh"           "${CORTEX_DEPLOY_HOME}/scripts/update.sh"
+register "core/governance/cleanup-ollama.sh"  "${CORTEX_DEPLOY_HOME}/scripts/cleanup-ollama.sh"
+register "core/governance/inbox_watcher.py"    "${CORTEX_DEPLOY_HOME}/scripts/inbox_watcher.py"
+register "core/governance/session_cache.py"    "${CORTEX_DEPLOY_HOME}/scripts/session_cache.py"
+register "core/governance/setup.sh"            "${CORTEX_DEPLOY_HOME}/scripts/setup.sh"
+register "core/governance/skill_miner.py"      "${CORTEX_DEPLOY_HOME}/scripts/skill_miner.py"
+register "core/governance/skill-miner-wrapper" "${CORTEX_DEPLOY_HOME}/scripts/skill-miner-wrapper"
+register "core/governance/update.sh"           "${CORTEX_DEPLOY_HOME}/scripts/update.sh"
 
 register "ops/scripts/health/prod-watchdog.sh"          "${CORTEX_DEPLOY_HOME}/scripts/prod-watchdog.sh"
 register "ops/scripts/agent/orch-team-messages.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-team-messages.sh"
@@ -305,7 +305,7 @@ register "docs/templates/USER.seed.md"        "${CORTEX_DEPLOY_HOME}/memories/US
 register "docs/templates/memory-readme.seed.md" "${CORTEX_DEPLOY_HOME}/memory/README.md"
 
 # Langfuse
-register "deploy/docker-compose.langfuse.yml"        "${HOME}/langfuse/docker-compose.yml" "langfuse" "restart_langfuse"
+register "ops/install/deploy/docker-compose.langfuse.yml"        "${HOME}/langfuse/docker-compose.yml" "langfuse" "restart_langfuse"
 
 # Dashboard
 register "ops/services/dashboard/server.py"               "${CORTEX_DEPLOY_HOME}/dashboard/server.py" "dashboard" "restart_dashboard"
@@ -595,7 +595,7 @@ sync_skills() {
 # Uses rsync-style copy with checksum check. Only updates
 # changed files to minimize unnecessary re-indexing.
 sync_code_corpus() {
-  local corpus_src="${REPO_DIR}/src/offline/code-corpus"
+  local corpus_src="${REPO_DIR}/ops/offline/code-corpus"
   local corpus_dest="${CORTEX_DEPLOY_HOME}/offline/code-corpus"
   [[ -d "$corpus_src" ]] || { info "  No code-corpus/ in repo — skipping"; return 0; }
 
@@ -686,7 +686,7 @@ deploy_nginx_configs() {
 
   # If OS config not loaded, try to determine paths from REPO_DIR
   if [[ -z "$config_dir" ]]; then
-    local os_script="${REPO_DIR}/src/scripts/install/os-config.sh"
+    local os_script="${REPO_DIR}/ops/scripts/install/os-config.sh"
     [[ -f "$os_script" ]] && source "$os_script" 2>/dev/null || true
     config_dir="${NGINX_CONFIG_DIR:-}"
     brew_dir="${NGINX_BREW_DIR:-}"

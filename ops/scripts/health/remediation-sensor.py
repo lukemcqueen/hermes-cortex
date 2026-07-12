@@ -93,9 +93,9 @@ def check_git():
     if out.strip() and int(out.strip()) > 0:
         add_issue("git_issue", "critical", "Merge conflicts in cortex repo", {"repo": str(CORTEX_REPO)})
     # Dirty scripts
-    out, _, _ = run(f"cd {CORTEX_REPO} && git status --porcelain -- src/scripts/ 2>/dev/null | head -3")
+    out, _, _ = run(f"cd {CORTEX_REPO} && git status --porcelain -- ops/scripts/ 2>/dev/null | head -3")
     if out.strip():
-        add_issue("git_issue", "low", "Uncommitted changes in src/scripts/", {"repo": str(CORTEX_REPO)})
+        add_issue("git_issue", "low", "Uncommitted changes in ops/scripts/", {"repo": str(CORTEX_REPO)})
 
 
 def check_disk():

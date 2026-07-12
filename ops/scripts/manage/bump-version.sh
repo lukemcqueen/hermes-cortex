@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ── Hermes Cortex — Version Bumper ─────────────────────────────
-# Usage: bash src/scripts/bump-version.sh 1.1.0
+# Usage: bash ops/scripts/manage/bump-version.sh 1.1.0
 # Effect: Updates VERSION, install.sh, README badges in both repos,
 #         commits, tags, and pushes. Requires SSH access to both repos.
 

@@ -3,7 +3,7 @@
 # ⚠️ USER-LEVEL ONLY — must live in ~/.config/systemd/user/
 #    Never copy to /etc/systemd/system/ (causes port conflicts).
 #    Enable/start: systemctl --user enable/start com.hermes.health-server
-#    Template source: src/scripts/com.hermes.health-server.service (hermes-cortex repo)
+#    Template source: ops/scripts/com.hermes.health-server.service (hermes-cortex repo)
 #
 [Unit]
 Description=Hermes Cortex Health Server — self-monitoring API
@@ -14,7 +14,7 @@ After=network.target
 Type=simple
 Environment=PATH=%h/.local/bin:%h/.hermes/hermes-agent/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStartPre=/bin/mkdir -p %h/.hermes-cortex/health-server
-ExecStart=%h/.hermes/hermes-agent/venv/bin/python3 %h/.hermes/scripts/health-server.py
+ExecStart=%h/.hermes/hermes-agent/venv/bin/python3 %h/.hermes-cortex/scripts/health-server.py
 Restart=on-failure
 RestartSec=5
 StandardOutput=append:%h/.hermes-cortex/health-server/server.log

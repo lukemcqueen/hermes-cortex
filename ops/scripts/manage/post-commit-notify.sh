@@ -17,7 +17,7 @@
 #    - State file says we already notified for this commit
 #
 #  Install as git post-commit hook:
-#    cp src/scripts/post-commit-notify.sh ~/.hermes-cortex/hooks/post-commit
+#    cp ops/scripts/manage/post-commit-notify.sh ~/.hermes-cortex/hooks/post-commit
 #    chmod +x ~/.hermes-cortex/hooks/post-commit
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail

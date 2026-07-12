@@ -3,7 +3,7 @@
 # pre-commit-doc-audit.sh — Check that doc changes are reflected in DOCS-INDEX.md
 #
 # Runs as a pre-commit hook add-on. Checks if staged changes to
-# docs/, src/scripts/, src/skills/, deploy/nginx/ are accompanied
+# docs/, ops/scripts/, runtime/skills/, ops/install/deploy/nginx/ are accompanied
 # by corresponding updates to DOCS-INDEX.md, SKILLS-MANIFEST.md,
 # or cortex-update.sh MAP.
 #
@@ -11,12 +11,12 @@
 # No_agent watchdog pattern: stay quiet when clean.
 #
 # Install:
-#   ln -sf ~/hermes-cortex/src/scripts/pre-commit-doc-audit.sh \
+#   ln -sf ~/hermes-cortex/ops/scripts/pre-commit-doc-audit.sh \
 #     ~/hermes-cortex/.git/hooks/pre-commit-doc-audit
 #   echo 'bash .git/hooks/pre-commit-doc-audit' >> ~/hermes-cortex/.git/hooks/pre-commit
 #
 # Or call manually before git commit:
-#   bash ~/hermes-cortex/src/scripts/pre-commit-doc-audit.sh
+#   bash ~/hermes-cortex/ops/scripts/pre-commit-doc-audit.sh
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -59,15 +59,15 @@ if [[ "$SKILLS_CHANGED" -gt 0 && "$MANIFEST_CHANGED" -eq 0 ]]; then
 fi
 
 # ── Check 3: New/changed scripts should update cortex-update.sh MAP ──
-SCRIPTS_CHANGED=$(echo "$STAGED" | grep -c '^src/scripts/' 2>/dev/null || true)
-MAP_CHANGED=$(echo "$STAGED" | grep -c '^src/scripts/cortex-update\.sh$' 2>/dev/null || true)
+SCRIPTS_CHANGED=$(echo "$STAGED" | grep -c '^ops/scripts/' 2>/dev/null || true)
+MAP_CHANGED=$(echo "$STAGED" | grep -c '^ops/scripts/cortex-update\\.sh$' 2>/dev/null || true)
 
 if [[ "$SCRIPTS_CHANGED" -gt 0 && "$MAP_CHANGED" -eq 0 ]]; then
     # Only flag new scripts (not modifications to existing registered ones)
-    NEW_SCRIPTS=$(echo "$STAGED" | grep '^src/scripts/' | grep -v '^src/scripts/cortex-update\.sh$' | grep -v '__pycache__' || true)
+    NEW_SCRIPTS=$(echo "$STAGED" | grep '^ops/scripts/' | grep -v '^ops/scripts/cortex-update\\.sh$' | grep -v '__pycache__' || true)
     if [[ -n "$NEW_SCRIPTS" ]]; then
         echo "⚠️  DOCS AUDIT: New scripts staged but cortex-update.sh MAP was not updated."
-        echo "   → Register new scripts in src/scripts/cortex-update.sh using register()"
+        echo "   → Register new scripts in ops/scripts/cortex-update.sh using register()"
         issues=$((issues + 1))
     fi
 fi

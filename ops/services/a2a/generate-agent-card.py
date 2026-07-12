@@ -2,7 +2,7 @@
 """
 generate-agent-card.py — Generate an A2A-compliant Agent Card.
 
-Reads the local static card from src/a2a/agent-card.json (template with
+Reads the local static card from ops/services/a2a/agent-card.json (template with
 identity/skills) and overlays server-specific info from the environment
 (domain, port). Outputs the merged card to stdout or a target path.
 

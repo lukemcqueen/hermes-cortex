@@ -24,7 +24,7 @@ echo ""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null || echo "")"
 
 # Check if running from repo root
-if [[ ! -f "${SCRIPT_DIR}/src/loop-governance/setup.sh" ]]; then
+if [[ ! -f "${SCRIPT_DIR}/../core/governance/setup.sh" ]]; then
   echo "Could not find loop-governance setup script."
   echo "Run this from the hermes-cortex repo root."
   echo ""
@@ -34,11 +34,11 @@ if [[ ! -f "${SCRIPT_DIR}/src/loop-governance/setup.sh" ]]; then
 fi
 
 echo "  Step 1: Install loop-governance tools…"
-bash "${SCRIPT_DIR}/src/loop-governance/setup.sh" 2>&1 | grep -E "✓|⚠|✗|setup" | head -10
+bash "${SCRIPT_DIR}/../core/governance/setup.sh" 2>&1 | grep -E "✓|⚠|✗|setup" | head -10
 
 echo ""
 echo "  Step 2: Verify installation…"
-bash "${SCRIPT_DIR}/src/loop-governance/verify.sh" --quick 2>&1 | tail -3
+bash "${SCRIPT_DIR}/../core/governance/verify.sh" --quick 2>&1 | tail -3
 
 echo ""
 echo "╔═══════════════════════════════════════════════╗"

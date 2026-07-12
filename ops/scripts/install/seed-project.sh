@@ -350,7 +350,7 @@ deploy_agents_md() {
     info "  AGENTS.md → ${dest/$HOME/~}"
   elif [[ "$(cat "$dest" 2>/dev/null)" != "$content" ]]; then
     # Existing content differs from template — merge custom sections into seed
-    local merge_script="${REPO_DIR}/src/scripts/install/merge-agents-md.py"
+    local merge_script="${REPO_DIR}/ops/scripts/install/merge-agents-md.py"
     if [[ -f "$merge_script" ]]; then
       info "  Merging project-specific content from existing AGENTS.md…"
       local merged
@@ -433,7 +433,7 @@ deploy_precommit() {
   local project="$1"
   [[ "${COMPONENTS}" != "ALL" && "${COMPONENTS}" != *"pre-commit"* ]] && return 0
 
-  local hook_script="${REPO_DIR}/src/scripts/pre-commit-score"
+  local hook_script="${REPO_DIR}/ops/scripts/pre-commit-score"
   local hook_dest="${project}/.git/hooks/pre-commit"
 
   if [[ ! -d "${project}/.git" ]]; then

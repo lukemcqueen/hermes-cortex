@@ -55,7 +55,7 @@ case "${ACTION}" in
           issues+=("GIT:detached-head:${CORTEX_REPO}")
         fi
         # Check for unstaged/ uncommitted changes in scripts
-        DIRTY_SCRIPTS=$(git status --porcelain -- src/scripts/ 2>/dev/null | head -5)
+        DIRTY_SCRIPTS=$(git status --porcelain -- ops/scripts/ 2>/dev/null | head -5)
         if [ -n "${DIRTY_SCRIPTS}" ]; then
           issues+=("GIT:dirty-scripts:${CORTEX_REPO}")
         fi

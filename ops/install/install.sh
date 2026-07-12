@@ -1913,7 +1913,7 @@ ok
 #  11. Loop Governance — TDD Cycle Scoring & Self-Improvement
 # ─────────────────────────────────────────────────────────────
 step "Installing Loop Governance tools (score-cycle, loop-feedback, auto-apply)"
-LG_SOURCE="${SCRIPT_DIR}/src/loop-governance"
+LG_SOURCE="${SCRIPT_DIR}/../core/governance"
 LG_DEST="${CORTEX_DEPLOY_HOME}/loop-governance"
 HERMES_BIN="${CORTEX_DEPLOY_HOME}/bin"
 if [[ -d "$LG_SOURCE" ]]; then
@@ -1936,7 +1936,7 @@ if [[ -d "$LG_SOURCE" ]]; then
   ln -sf "${LG_DEST}/loop_config.py"  "${HERMES_BIN}/loop-config"
   info "  Installed loop-governance tools (v$(cat ${LG_DEST}/VERSION 2>/dev/null || echo '?'))"
 else
-  skip "no src/loop-governance/ directory in repo"
+  skip "no core/governance/ directory in repo"
 fi
 ok
 
@@ -1960,7 +1960,7 @@ fi
 #  12b. MCP Server Registration — Loop Governance Primary Enforcer
 # ─────────────────────────────────────────────────────────────
 step "Registering loop-governance MCP server (loop-gov-mcp.py)"
-MCP_SERVER_PATH="${SCRIPT_DIR}/src/mcp-servers/loop-gov-mcp.py"
+MCP_SERVER_PATH="${SCRIPT_DIR}/runtime/mcp-servers/loop-gov-mcp.py"
 if [[ -f "$MCP_SERVER_PATH" ]]; then
   if command -v hermes &>/dev/null; then
     if hermes mcp list 2>/dev/null | grep -q "loop-governance"; then
@@ -2108,10 +2108,10 @@ else
     cp -r "$REPO_DASHBOARD/"* "$DASHBOARD_DEST/"
   else
     # Download minimal version from GitHub
-    curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/src/dashboard/server.py" -o "$DASHBOARD_DEST/server.py"
-    curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/src/dashboard/com.hermes.cortex-dashboard.plist" -o "$DASHBOARD_PLIST"
-    mkdir -p "$DASHBOARD_DEST/static"
-    curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/src/dashboard/static/index.html" -o "$DASHBOARD_DEST/static/index.html"
+    curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/services/dashboard/server.py" -o "$DASHBOARD_DEST/server.py"
+    curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/services/dashboard/com.hermes.cortex-dashboard.plist" -o "$DASHBOARD_PLIST"
+    # Download static assets
+    curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/services/dashboard/static/index.html" -o "$DASHBOARD_DEST/static/index.html"
   fi
   
   # Create dedicated dashboard venv + install Flask

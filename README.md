@@ -240,6 +240,26 @@ Each source has isolated memory and .gitignore. The `/brain` slash command adapt
 
 ---
 
+## 🔄 Upgrading
+
+To upgrade an existing Hermes Cortex installation:
+
+```bash
+cd ~/hermes-cortex
+git pull --ff-only
+bash ops/scripts/cortex-update.sh          # delta update (changed files only)
+```
+
+The `cortex-update.sh` script auto-detects what files changed and deploys only the deltas. For a full re-deployment:
+
+```bash
+bash ops/scripts/cortex-update.sh --force-all
+```
+
+> **Note:** After a major version upgrade, your agents should `/reset` their sessions to pick up new skills and plugin configurations.
+
+---
+
 ## 🧠 Offline Knowledge Stack
 
 | Scenario | `prep-offline` mode | Content | Size |

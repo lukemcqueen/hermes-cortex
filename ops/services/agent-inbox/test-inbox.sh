@@ -62,8 +62,8 @@ fi
 # ── 4. XSS Protection ──
 echo ""
 echo "── 4. XSS Protection ──"
-grep -q 'html.escape(msg' ~/hermes-cortex/runtime/mcp-servers/agent-inbox/server.py && pass "Message body is HTML-escaped (server-side)" || fail "Missing html.escape in source"
-grep -q 'import html' ~/hermes-cortex/runtime/mcp-servers/agent-inbox/server.py && pass "html module imported" || fail "Missing import html"
+grep -q 'html.escape(msg' ~/hermes-cortex/ops/services/agent-inbox/server.py && pass "Message body is HTML-escaped (server-side)" || fail "Missing html.escape in source"
+grep -q 'import html' ~/hermes-cortex/ops/services/agent-inbox/server.py && pass "html module imported" || fail "Missing import html"
 
 # ── 5. MCP server registration ──
 echo ""

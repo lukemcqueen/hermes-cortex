@@ -109,6 +109,8 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
-| `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
-| `src/scripts/` | Shared libraries + 5 subdirectories: agent/, health/, install/, inbox/, manage/ — cron scripts, health checks, installers, inbox tools, management utilities |
-| `.gitignore` | Gitignore — excludes .agentkore, .env, secrets, brain data |
+|| `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
+|| `docs/integration-audit.md` | Integration audit — path consistency, script map, agent notes for three-layer repo health |
+|| `ops/scripts/` | Cron scripts, health checks, agent tools — 5 subdirectories: agent/, health/, install/, inbox/, manage/ |
+|| `core/governance/` | Governance engine — loop-governance DB, scoring, policy enforcement |
+|| `.gitignore` | Gitignore — excludes .agentkore, .env, secrets, brain data |

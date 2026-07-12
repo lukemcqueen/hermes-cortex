@@ -49,4 +49,4 @@ jobs:
           python -m pytest tests/ -v --tb=short
       - name: Run loop-governance tests
         run: |
-          python -m pytest src/loop-governance/tests/ -v --tb=short
+          python -m pytest core/governance/tests/ -v --tb=short

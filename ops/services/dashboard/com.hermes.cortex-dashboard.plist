@@ -6,11 +6,11 @@
     <string>com.hermes.cortex-dashboard</string>
     <key>ProgramArguments</key>
     <array>
-        <string>${CORTEX_DEPLOY_HOME}/dashboard/venv/bin/python3</string>
-        <string>${CORTEX_DEPLOY_HOME}/dashboard/server.py</string>
+        <string>$HOME/.hermes-cortex/dashboard/venv/bin/python3</string>
+        <string>$HOME/.hermes-cortex/dashboard/server.py</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>${CORTEX_DEPLOY_HOME}/dashboard</string>
+    <string>$HOME/.hermes-cortex/dashboard</string>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
@@ -25,8 +25,8 @@
         <string>https://bus.example.org:13002</string>
     </dict>
     <key>StandardOutPath</key>
-    <string>${CORTEX_HOME}/.hermes/logs/cortex-dashboard.log</string>
+    <string>$HOME/.hermes-cortex/logs/cortex-dashboard.log</string>
     <key>StandardErrorPath</key>
-    <string>${CORTEX_HOME}/.hermes/logs/cortex-dashboard.log</string>
+    <string>$HOME/.hermes-cortex/logs/cortex-dashboard.log</string>
 </dict>
 </plist>
