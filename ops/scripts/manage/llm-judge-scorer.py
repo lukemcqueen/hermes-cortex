@@ -84,12 +84,15 @@ def _get_langfuse_keys():
     if not env_path:
         env_path = os.environ.get("LANGFUSE_ENV_PATH")
     if not env_path:
-        env_path = os.path.expanduser("~/.hermes-cortex/.env")
+        env_path = os.path.expanduser("~/.hermes/.env")
     if env_path:
         env_path = os.path.expanduser(env_path)
 
-    with open(env_path, 'rb') as f:
-        raw = f.read()
+    try:
+        with open(env_path, 'rb') as f:
+            raw = f.read()
+    except FileNotFoundError:
+        return None, None
     pk = sk = None
     for line in raw.split(b'\n'):
         line = line.strip()

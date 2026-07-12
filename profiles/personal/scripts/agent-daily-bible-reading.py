@@ -237,7 +237,7 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096) -> str | None:
         result = subprocess.run(
             ["curl", "-s", "-w", "\n%{http_code}", "-X", "POST", DEEPSEEK_URL,
              "-H", "Content-Type: application/json",
-             "-H", f"Authorization: Bearer ***",
+             "-H", f"Authorization: Bearer {api_key}",
              "-d", payload],
             capture_output=True, text=True, timeout=180,
         )
