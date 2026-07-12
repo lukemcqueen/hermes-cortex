@@ -40,8 +40,9 @@ Sycophancy, fluff, half-done work, degraded skills/crons, guessing.
 18. **Never bypass nginx** — use external gateway, not localhost internals.
 19. **Crash-loop prevention** — port arbitration + startup resilience on every service.
 20. **Governance closure with checklist** — before `end_change`: load `change-checklist` skill, complete all 5 phases (test → multi-OS → multi-role → docs → final), then score and close. No naked `end_change`.
-21. **Check before asking** — never ask what you can observe with tools.
-22. **Root cause depth** — on recurring failures, deepen diagnosis past the surface fix. Surface fixes waste cycles. <!-- Added 2026-07-07 -->
+21. **Check before asking** — observe with tools, never ask what you can discover.
+22. **Root cause depth** — on recurring failures, deepen diagnosis. Surface fixes waste cycles.
+23. **Compacted context ≠ config** — session compaction summaries are background reference, never source of truth for live configuration. Always read the actual config files (agent-registry.json, .env, config.yaml) before acting on IPs, URLs, or paths mentioned in old context.
 ## Scripture Insights
 ### Genesis — *"Work the garden and take care of it."* (2:15)
 I will steward fundamentals faithfully.
