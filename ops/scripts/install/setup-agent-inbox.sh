@@ -87,11 +87,11 @@ fi
 WATCH_SCRIPT="${HOME}/.hermes-cortex/scripts/inbox-watch.sh"
 if [ ! -f "$WATCH_SCRIPT" ]; then
   warn "inbox-watch.sh not found — running cortex-update.sh..."
-  if [ -f "${HOME}/hermes-cortex/src/scripts/cortex-update.sh" ]; then
-    bash "${HOME}/hermes-cortex/src/scripts/cortex-update.sh" --force-all 2>/dev/null || true
+  if [ -f "${HOME}/hermes-cortex/ops/scripts/cortex-update.sh" ]; then
+    bash "${HOME}/hermes-cortex/ops/scripts/cortex-update.sh" --force-all 2>/dev/null || true
   fi
   if [ ! -f "$WATCH_SCRIPT" ]; then
-    warn "Still not found. Run: cd ~/hermes-cortex && git pull && bash src/scripts/cortex-update.sh --force-all"
+    warn "Still not found. Run: cd ~/hermes-cortex && git pull && bash ops/scripts/cortex-update.sh --force-all"
     exit 1
   fi
 fi

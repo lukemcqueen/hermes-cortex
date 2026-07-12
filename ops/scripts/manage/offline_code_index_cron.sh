@@ -13,7 +13,7 @@ OFFLINE_CODE="${HOME}/.hermes/bin/offline_code"
 
 if [ ! -x "$OFFLINE_CODE" ]; then
     echo "[offline-code-index] offline_code CLI not found at $OFFLINE_CODE"
-    echo "  Install: ln -sf ~/hermes-cortex/src/offline/offline_code.sh ~/.hermes/bin/offline_code"
+    echo "  Install: ln -sf ~/hermes-cortex/ops/offline/offline_code.sh ~/.hermes/bin/offline_code"
     exit 1
 fi
 

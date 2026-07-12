@@ -7,7 +7,7 @@ SCRIPT="$SCRIPT_DIR/session_mine.py"
 
 if [ ! -f "$SCRIPT" ]; then
     # Fallback to repo location
-    SCRIPT="$HOME/hermes-cortex/src/offline/session_mine.py"
+    SCRIPT="$HOME/hermes-cortex/ops/offline/session_mine.py"
 fi
 
 if [ ! -f "$SCRIPT" ]; then

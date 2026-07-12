@@ -7,7 +7,7 @@ SCRIPT="$HOME/.hermes-cortex/web-cache/web_cache.py"
 
 if [ ! -f "$SCRIPT" ]; then
     # Fallback to repo location
-    SCRIPT="$HOME/hermes-cortex/src/web-cache/web_cache.py"
+    SCRIPT="$HOME/hermes-cortex/ops/web-cache/web_cache.py"
 fi
 
 if [ ! -f "$SCRIPT" ]; then

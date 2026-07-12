@@ -14,9 +14,9 @@ set -euo pipefail
 # Priority: CORTEX_REPO env var > ~/.hermes-cortex/offline/ (install.sh dest) > ~/hermes-cortex/
 MINE_SCRIPT=""
 for candidate in \
-  "${CORTEX_REPO:-}/src/offline/session_mine.py" \
+  "${CORTEX_REPO:-}/ops/offline/session_mine.py" \
   "$HOME/.hermes/offline/session_mine.py" \
-  "$HOME/hermes-cortex/src/offline/session_mine.py"; do
+  "$HOME/hermes-cortex/ops/offline/session_mine.py"; do
   if [ -f "$candidate" ]; then
     MINE_SCRIPT="$candidate"
     break

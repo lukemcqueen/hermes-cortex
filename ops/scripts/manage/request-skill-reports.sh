@@ -114,7 +114,7 @@ for potential incorporation into the hermes-cortex upstream.
 
 Instructions:
   # Run once to report current skills:
-  bash ~/hermes-cortex/src/scripts/manage/collect-agent-skills.sh
+  bash ~/hermes-cortex/ops/scripts/manage/collect-agent-skills.sh
 
   # To set up automatic reporting (every 6h, no_agent):
   hermes cron create \

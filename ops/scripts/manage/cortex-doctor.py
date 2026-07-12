@@ -545,7 +545,7 @@ def check_services(res):
                 res.add("gbrain daemon", "PASS", "sync-watch active (launchd, legacy)")
             else:
                 res.add("gbrain daemon", "WARN", "Neither autopilot nor sync-watch active",
-                         "Run: bash ~/hermes-cortex/src/scripts/install-gbrain-sync.sh")
+                         "Run: bash ~/hermes-cortex/ops/scripts/install/install-gbrain-sync.sh")
     else:
         out = run_bg(["systemctl", "--user", "is-active", "gbrain-autopilot"], timeout=5)
         if out.strip() == "active":
@@ -556,7 +556,7 @@ def check_services(res):
                 res.add("gbrain daemon", "PASS", "sync-watch active (systemd, legacy)")
             else:
                 res.add("gbrain daemon", "WARN", "Neither autopilot nor sync-watch active",
-                         "Run: bash ~/hermes-cortex/src/scripts/install-gbrain-sync.sh")
+                         "Run: bash ~/hermes-cortex/ops/scripts/install/install-gbrain-sync.sh")
 
 
 def check_system(res):
@@ -871,7 +871,7 @@ def check_governance(res):
         if name not in config_text:
             res.add(f"MCP server ({name})", "FAIL", "not configured",
                      f"Run: hermes mcp add {name} --command ~/.hermes/hermes-agent/venv/bin/python3 "
-                     f"--args ~/hermes-cortex/src/mcp-servers/{server_script}")
+                     f"--args ~/hermes-cortex/runtime/mcp-servers/{server_script}")
             continue
 
         res.add(f"MCP server ({name})", "PASS", "configured in config.yaml")
@@ -918,10 +918,10 @@ def check_governance(res):
             res.add("Pre-commit hook", "PASS", "installed with governance check")
         else:
             res.add("Pre-commit hook", "WARN", "installed but may be outdated",
-                     "Run: cp ~/hermes-cortex/src/scripts/pre-commit-score ~/.hermes-cortex/hooks/pre-commit")
+                     "Run: cp ~/hermes-cortex/ops/scripts/pre-commit-score ~/.hermes-cortex/hooks/pre-commit")
     else:
         res.add("Pre-commit hook", "FAIL", f"not found at {expected_hook_path}",
-                 "Install: cp ~/hermes-cortex/src/scripts/pre-commit-score ~/.hermes-cortex/hooks/pre-commit\n"
+                 "Install: cp ~/hermes-cortex/ops/scripts/pre-commit-score ~/.hermes-cortex/hooks/pre-commit\n"
                  "Then: chmod +x ~/.hermes-cortex/hooks/pre-commit")
 
     # ── Pre-push hook (global) ────────────────────────────────
@@ -934,7 +934,7 @@ def check_governance(res):
             res.add("Pre-push hook", "WARN", "installed but may be outdated")
     else:
         res.add("Pre-push hook", "WARN", "not installed",
-                 "Install: cp ~/hermes-cortex/src/scripts/pre-push-pull ~/.hermes-cortex/hooks/pre-push\n"
+                 "Install: cp ~/hermes-cortex/ops/scripts/pre-push-pull ~/.hermes-cortex/hooks/pre-push\n"
                  "Then: chmod +x ~/.hermes-cortex/hooks/pre-push")
 
     # ── Score-cycle CLI ───────────────────────────────────────
@@ -955,12 +955,12 @@ def check_governance(res):
                 res.add("Score-cycle", "PASS", f"available at {found_score} → {target}")
             else:
                 res.add("Score-cycle", "WARN", f"symlink broken: {found_score} → {target}",
-                         "Re-run: bash ~/hermes-cortex/src/loop-governance/setup.sh")
+                         "Re-run: bash ~/hermes-cortex/ops/scripts/install/install-score-hook.sh")
         else:
             res.add("Score-cycle", "PASS", f"available at {found_score}")
     else:
         res.add("Score-cycle", "WARN", "not found in PATH",
-                 "Run: bash ~/hermes-cortex/src/loop-governance/setup.sh to deploy scoring tools")
+                 "Run: bash ~/hermes-cortex/ops/scripts/install/install-score-hook.sh to deploy scoring tools")
 
     # ── Stale governance locks (per-repo pattern) ──────────────
     if not state_dir.exists():
@@ -1031,7 +1031,7 @@ def check_install(res):
         out = run_bg(["bash", str(SYMLINK_AUDIT)], timeout=15)
         if "BROKEN" in out or "MISMATCH" in out:
             res.add("Symlinks", "WARN", "some symlinks need attention",
-                     "Run: bash ~/hermes-cortex/src/scripts/symlink-audit.sh")
+                     "Run: bash ~/hermes-cortex/ops/scripts/manage/symlink-audit.sh")
         elif "ALL OK" in out or "OK" in out:
             res.add("Symlinks", "PASS", "all symlinks valid")
         else:

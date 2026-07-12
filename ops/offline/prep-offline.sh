@@ -22,7 +22,7 @@ set -euo pipefail
 HOME="${HOME:-$(echo ~)}"
 ZIM_DIR="$HOME/offline/zim"
 LIBRARY_FILE="$HOME/offline/kiwix-library.xml"
-KIWIX_COMPOSE="$HOME/hermes-cortex/src/offline/kiwix-docker-compose.yml"
+KIWIX_COMPOSE="$HOME/hermes-cortex/ops/offline/kiwix-docker-compose.yml"
 KIWIX_COMPOSE_INSTALLED="$HOME/.hermes-cortex/offline/kiwix-docker-compose.yml"
 CACHE_SCRIPT="$HOME/.hermes-cortex/web-cache/web_cache.py"
 
@@ -129,7 +129,7 @@ download_zim() {
 
 generate_library() {
     header "GENERATING KIWIX LIBRARY"
-    python3 "$HOME/hermes-cortex/src/offline/offline_knowledge.py" generate-library
+    python3 "$HOME/hermes-cortex/ops/offline/offline_knowledge.py" generate-library
     info "Library file ready: $LIBRARY_FILE"
 }
 
@@ -371,7 +371,7 @@ main() {
     # Download Bible content (if requested)
     if [[ $include_bible -eq 1 ]]; then
         header "DOWNLOADING BIBLE CONTENT"
-        local bible_script="$HOME/hermes-cortex/src/offline/prep-bible.sh"
+        local bible_script="$HOME/hermes-cortex/ops/offline/prep-bible.sh"
         if [[ -f "$bible_script" ]]; then
             info "Downloading major language Bible translations…"
             bash "$bible_script" --langs=major 2>&1 || warn "Bible download had some failures"
@@ -383,7 +383,7 @@ main() {
     # Download hymn content (if requested)
     if [[ $include_hymns -eq 1 ]]; then
         header "DOWNLOADING HYMNS"
-        local hymn_script="$HOME/hermes-cortex/src/offline/prep-hymns.sh"
+        local hymn_script="$HOME/hermes-cortex/ops/offline/prep-hymns.sh"
         if [[ -f "$hymn_script" ]]; then
             info "Downloading public domain hymns from Open Hymnal Project…"
             bash "$hymn_script" 2>&1 || warn "Hymn download had some failures"

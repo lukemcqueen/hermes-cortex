@@ -7,7 +7,7 @@ SCRIPT="$SCRIPT_DIR/project_map.py"
 
 if [ ! -f "$SCRIPT" ]; then
     # Fallback to repo location
-    SCRIPT="$HOME/hermes-cortex/src/project-map/project_map.py"
+    SCRIPT="$HOME/hermes-cortex/ops/scripts/project-map/project_map.py"
 fi
 
 if [ ! -f "$SCRIPT" ]; then

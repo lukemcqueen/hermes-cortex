@@ -81,7 +81,7 @@ fi
 CUSTOM_SCRIPTS="${HOME}/.hermes-cortex/scripts"
 if [[ -d "${CUSTOM_SCRIPTS}" ]]; then
     # Check for any custom scripts not from the repo
-    REPO_SCRIPTS="${HOME}/hermes-cortex/src/scripts"
+    REPO_SCRIPTS="${HOME}/hermes-cortex/ops/scripts"
     CUSTOM_COUNT=0
     for f in "${CUSTOM_SCRIPTS}"/*.sh "${CUSTOM_SCRIPTS}"/*.py; do
         [[ -f "$f" ]] || continue

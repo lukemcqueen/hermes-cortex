@@ -7,7 +7,7 @@ SCRIPT="$SCRIPT_DIR/offline_knowledge.py"
 
 if [ ! -f "$SCRIPT" ]; then
     # Fallback to repo location
-    SCRIPT="$HOME/hermes-cortex/src/offline/offline_knowledge.py"
+    SCRIPT="$HOME/hermes-cortex/ops/offline/offline_knowledge.py"
 fi
 
 if [ ! -f "$SCRIPT" ]; then
