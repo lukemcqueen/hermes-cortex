@@ -131,7 +131,7 @@ fi
 # ── Level 4: Shared blocklist integrity check ─────────────────
 # blocked_ips.add is a cumulative shared blocklist — APPEND only.
 # Reject commits that shrink it (fewer IPs than HEAD).
-BLOCKED_IPS="deploy/nginx/blocked_ips.add"
+BLOCKED_IPS="ops/install/deploy/nginx/blocked_ips.add"
 if git diff --cached --name-only -- "$BLOCKED_IPS" 2>/dev/null | grep -q "$BLOCKED_IPS"; then
   OLD_COUNT=$(git show HEAD:"$BLOCKED_IPS" 2>/dev/null | grep -cP '^\d+\.\d+\.\d+\.\d+' || echo 0)
   NEW_COUNT=$(grep -cP '^\d+\.\d+\.\d+\.\d+' "$BLOCKED_IPS" 2>/dev/null || echo 0)
