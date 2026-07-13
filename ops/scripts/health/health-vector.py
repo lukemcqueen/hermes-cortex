@@ -246,7 +246,7 @@ def check_services() -> int:
     On macOS, checks running processes. Returns 0 if none are installed.
     """
     if _is_linux:
-        key_services = ["nginx", "ollama", "gbrain-autopilot"]
+        key_services = ["nginx", "ollama", "gbrain-sync"]
         any_installed = False
         all_running = True
         for svc in key_services:
@@ -338,8 +338,7 @@ def check_gbrain() -> int:
     if not shutil.which("gbrain"):
         return 0  # not installed on this system
     if _is_linux:
-        if _systemd_active("gbrain-autopilot.service") or \
-           _systemd_active("com.gbrain.autopilot"):
+        if _systemd_active("gbrain-sync.service"):
             return 1
     if _is_macos:
         if _launchd_active("com.gbrain.autopilot"):
