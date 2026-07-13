@@ -9,8 +9,8 @@
 set -euo pipefail
 
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
-SUBMIT_FILE="${CORTEX_REPO}/ops/install/ops/install/deploy/nginx/blocked_ips.submit"
-ADD_FILE="${CORTEX_REPO}/ops/install/ops/install/deploy/nginx/blocked_ips.add"
+SUBMIT_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.submit"
+ADD_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add"
 NEW_IPS=false
 PIPELINE_OUTPUT=""
 
