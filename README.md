@@ -148,6 +148,23 @@ See [`profiles/README.md`](profiles/README.md).
 
 > **🔒 Before installing:** Read the [Security Guide](docs/SECURITY.md).
 
+### 🐧 New Linux Server — Full Bootstrap
+
+Bare Ubuntu 24.04 VM? This single command does everything: installs Docker, Ollama, Hermes CLI, clones the repo, configures secrets, sets up nginx + Let's Encrypt SSL, hardens UFW and fail2ban, and verifies the stack.
+
+```bash
+# One-liner — no clone needed
+curl -fsSL https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/deploy/bootstrap.sh | bash
+```
+
+Expects: **Fresh Ubuntu 24.04 LTS** with SSH access. Interactive prompts for API keys and domain.
+Takes: **8–15 minutes** (mostly model downloads).
+
+> ⚠️ This is a *server bootstrap* — it installs Docker, nginx, Langfuse.
+> For a laptop/client install, use `install.sh` below.
+
+### 🖥️ Existing Machine — install.sh (macOS, Linux, WSL)
+
 **Quick start (30 seconds):** Try the governance scoring tools:
 
 ```bash

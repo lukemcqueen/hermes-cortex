@@ -350,7 +350,7 @@ else
 fi
 
 # Reload fail2ban
-if which fail2ban-client >/dev/null 2>&1; then
+if command -v fail2ban-client >/dev/null 2>&1; then
   if fail2ban-client reload nginx-badbots 2>&1; then
     echo "  ✓ fail2ban nginx-badbots reloaded"
   else
