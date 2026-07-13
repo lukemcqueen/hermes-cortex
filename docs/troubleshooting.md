@@ -694,7 +694,7 @@ This happens when you call `end_change()` but no cycle was logged with your task
 # 1. Check recent cycles for your task
 python3 -c "
 import sqlite3, os
-db = os.path.expanduser('~/.hermes-cortex/data/loop-governance.db')
+db = os.path.expanduser('~/.hermes-cortex/state/loop-governance.db')
 c = sqlite3.connect(db)
 r = c.execute('SELECT id, task_id, composite FROM loop_cycles ORDER BY id DESC LIMIT 10').fetchall()
 c.close()

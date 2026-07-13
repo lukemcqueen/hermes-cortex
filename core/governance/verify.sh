@@ -169,7 +169,7 @@ fi
 
 # ── 8. Database ─────────────────────────────────────────────
 info "8. Database"
-DB_PATH="${HOME}/.hermes-cortex/data/loop-governance.db"
+DB_PATH="${HOME}/.hermes-cortex/state/loop-governance.db"
 if [[ -f "$DB_PATH" ]]; then
   DB_SIZE=$(du -h "$DB_PATH" | cut -f1)
   pass "SQLite database: $DB_PATH ($DB_SIZE)"
@@ -179,7 +179,7 @@ fi
 
 # ── 9. Config ───────────────────────────────────────────────
 info "9. Config"
-CFG_PATH="${HOME}/.hermes-cortex/data/loop-governance-config.json"
+CFG_PATH="${HOME}/.hermes-cortex/state/loop-governance-config.json"
 if [[ -f "$CFG_PATH" ]]; then
   CFG_WEIGHTS=$("$PYTHON" -c "
 import json

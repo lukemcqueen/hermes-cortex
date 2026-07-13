@@ -28,7 +28,7 @@ from loop_db import LoopDB
 from loop_config import get_config, update_config, get_diff
 from loop_evaluator import LoopEvaluator
 
-DEFAULT_DB_PATH = os.path.expanduser("~/.hermes-cortex/data/loop-governance.db")
+DEFAULT_DB_PATH = os.path.expanduser("~/.hermes-cortex/state/loop-governance.db")
 
 
 def check_safety(changes: dict, config: dict) -> dict:

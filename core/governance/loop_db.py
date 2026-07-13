@@ -12,7 +12,7 @@ Schema (auto-created on first use):
 Usage:
     from loop_db import LoopDB
 
-    db = LoopDB("~/.hermes-cortex/data/loop-governance.db")
+    db = LoopDB("~/.hermes-cortex/state/loop-governance.db")
     db.log_cycle(task_id="task-1", cycle_num=1, completeness=8.0, ...)
     stats = db.get_summary_stats()
     db.close()
@@ -42,7 +42,7 @@ def content_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
-DEFAULT_DB_PATH = os.path.expanduser("~/.hermes-cortex/data/loop-governance.db")
+DEFAULT_DB_PATH = os.path.expanduser("~/.hermes-cortex/state/loop-governance.db")
 EVENTS_DIR = os.path.expanduser("~/.hermes-cortex/data/loop-events")
 
 
