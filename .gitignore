@@ -47,6 +47,7 @@ logs/
 *.p12
 # Negate our own scripts that legitimately contain "secret"
 !ops/scripts/secret-leak-detector.sh
+!ops/scripts/secret-leak-watchdog.py
 !ops/scripts/agents-doc-audit*
 .netrc
 

@@ -74,6 +74,7 @@ agent guidelines focused on general Hermes Cortex usage.
 | `llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | Weekday trace quality scoring |
 | `llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | Weekend trace quality scoring |
 | `offline-code-index` | `0 5 * * 0` | no_agent | Weekly corpus index refresh |
+| `secret-leak-watchdog` | `0 */4 * * *` | no_agent | Scans cron/session outputs for printf/echo credential leaks |
 | `process-mcp-agent-inbox-messages` | `*/30 * * * *` | LLM | Read + process new inbox messages |
 | | | | |
 | **Orchestrator-only (Moses primary, Esther backup):** | | | |
@@ -196,6 +197,6 @@ gh auth login --with-token < ~/.github_token
 **Three layers of defense:**
 1. **SOUL.md principle** — every agent has "Never Print Secrets" as a behavioral principle
 2. **Pre-commit audit** — `secret-leak-detector.sh` scans staged scripts for printf/echo + credential patterns
-3. **MCP tool gate** — the hermes-agent terminal tool flags `printf`/`echo` with credential-like literals as a dangerous pattern, requiring user approval
+3. **Runtime watchdog** — `secret-leak-watchdog` (no_agent cron, runs every 4h) scans cron outputs and session files for leaked credential patterns and alerts via inbox
 
 **Pattern:** `$(cat <file>)` inside a double-quoted string. The shell expands it after the tool call is logged. The command string shows the file path, never the file content. <!-- Added 2026-07-13 -->
