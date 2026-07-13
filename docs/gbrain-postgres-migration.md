@@ -1,228 +1,138 @@
-# gbrain PGLite → PostgreSQL Migration Guide
+# gbrain Postgres Migration — PGLite → Postgres + pgvector
 
-## Problem
+## Why
 
-**Symptom:** gbrain autopilot/sync fails every 5 minutes with:
+**PGLite (embedded WASM) is unreliable under Bun.** The WASM runtime consistently fails to initialize on several Linux configurations with `Aborted() — Build with -sASSERTIONS for more info.` This is a known PGLite + Bun incompatibility (the error message misleadingly references "the macOS 26.3 WASM bug," but it occurs on Linux too).
+
+**Switching to Postgres + pgvector solves this permanently** — no WASM, no embedded runtime, just a standard Postgres connection.
+
+## Architecture
+
 ```
-PGLite failed to initialize its WASM runtime.
-Aborted(). Build with -sASSERTIONS for more info.
-```
-
-**Root Cause:** PGLite WASM runtime is incompatible with Linux glibc/kernel versions. This is a known upstream issue (garrytan/gbrain#223).
-
-**Impact:** 
-- gbrain knowledge sync/autopilot completely broken
-- All gbrain-dependent Hermes features degraded
-- Auto-remediation cannot fix (requires engine switch)
-
----
-
-## Solution: Migrate to PostgreSQL Backend
-
-PGLite is a WASM-embedded PostgreSQL designed for browsers/edge. For production Linux servers, use native PostgreSQL.
-
-### Option A: Docker PostgreSQL (Recommended for cisnet02)
-
-**1. Create PostgreSQL container:**
-```bash
-docker run -d \
-  --name gbrain-postgres \
-  -e POSTGRES_USER=gbrain \
-  -e POSTGRES_PASSWORD=$(openssl rand -base64 24) \
-  -e POSTGRES_DB=gbrain \
-  -p 127.0.0.1:5433:5432 \
-  -v gbrain-pgdata:/var/lib/postgresql/data \
-  --restart unless-stopped \
-  postgres:16-alpine
+┌──────────────┐     ┌─────────────────┐     ┌──────────────────┐
+│  gbrain CLI  │────→│   gbrain sync    │────→│  Postgres (pgvec) │
+│  (bun run)   │     │  daemon (systemd)│     │  Docker container│
+└──────────────┘     └─────────────────┘     │  :15432 → :5432  │
+                                             └──────────────────┘
+                                                    │
+                                            ┌───────┴───────┐
+                                            │   pgvector    │
+                                            │  extension   │
+                                            │ (vector cols) │
+                                            └───────────────┘
 ```
 
-**2. Save credentials securely:**
-```bash
-# Get the generated password
-docker exec gbrain-postgres env | grep POSTGRES_PASSWORD
+## Setup
 
-# Store in secure location
-echo "postgresql://gbrain:PASSWORD@localhost:5433/gbrain" > ~/.hermes/private/gbrain-postgres-url.txt
-chmod 600 ~/.hermes/private/gbrain-postgres-url.txt
+### 1. Add to docker-compose
+
+Add this service to your existing docker-compose (e.g. `~/langfuse/docker-compose.yml`):
+
+```yaml
+  gbrain-postgres:
+    image: pgvector/pgvector:0.8.0-pg17
+    restart: unless-stopped
+    container_name: gbrain-postgres
+    mem_limit: 512m
+    memswap_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gbrain -d gbrain"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - gbrain-postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: gbrain
+      POSTGRES_PASSWORD: ${GBRAIN_PG_PASSWORD}
+      POSTGRES_DB: gbrain
 ```
 
-**3. Migrate gbrain:**
-```bash
-# Stop gbrain autopilot
-gbrain autopilot stop 2>/dev/null || true
+Add the volume:
 
-# Backup existing PGLite data (optional, for safety)
-cp -r ~/.gbrain ~/.gbrain.backup.pglite.$(date +%Y%m%d)
-
-# Reinitialize with PostgreSQL engine
-gbrain init --engine postgres --postgres-url 'postgresql://gbrain:PASSWORD@localhost:5433/gbrain'
-
-# Verify migration
-gbrain doctor
-
-# Restart autopilot
-gbrain autopilot start
+```yaml
+volumes:
+  gbrain-postgres-data:
 ```
 
-**4. Update cron job (if needed):**
-The autopilot cron should automatically pick up the new config. Verify:
-```bash
-gbrain autopilot status
+Add to `.env`:
+
+```env
+GBRAIN_PG_PASSWORD=<your-password-here>
 ```
 
----
-
-### Option B: System PostgreSQL (If Already Installed)
-
-**1. Create database and user:**
-```bash
-sudo -u postgres psql <<EOF
-CREATE USER gbrain WITH PASSWORD 'YOUR_PASSWORD';
-CREATE DATABASE gbrain OWNER gbrain;
-GRANT ALL PRIVILEGES ON DATABASE gbrain TO gbrain;
-EOF
-```
-
-**2. Initialize gbrain:**
-```bash
-gbrain init --engine postgres --postgres-url 'postgresql://gbrain:YOUR_PASSWORD@localhost:5432/gbrain'
-```
-
----
-
-### Option C: External PostgreSQL (Cloud/Remote)
-
-Use any PostgreSQL service (Neon, Supabase, RDS, etc.):
+### 2. Deploy
 
 ```bash
-gbrain init --engine postgres --postgres-url 'postgresql://user:password@host:port/database'
+sg docker -c "docker compose -f ~/langfuse/docker-compose.yml up -d"
 ```
 
----
-
-## Verification
-
-After migration, verify everything works:
-
-**1. Check gbrain health:**
-```bash
-gbrain doctor
-# Should show 90+ overall health score
-# [OK] connection → Successfully connected to PostgreSQL
-```
-
-**2. Test sync:**
-```bash
-gbrain sync --all --no-pull
-# Should complete without WASM errors
-```
-
-**3. Verify autopilot:**
-```bash
-gbrain autopilot status
-# Should show "running" with recent heartbeat
-```
-
-**4. Check Hermes integration:**
-```bash
-# Wait for next cron cycle (5 minutes)
-# Check cron output for successful runs
-hermes cron list | grep -A 5 "autopilot\|sync"
-```
-
----
-
-## Rollback (If Needed)
-
-If PostgreSQL migration fails, rollback to PGLite:
+### 3. Enable pgvector
 
 ```bash
-# Stop autopilot
-gbrain autopilot stop
-
-# Remove new config
-rm -rf ~/.gbrain
-
-# Restore backup
-cp -r ~/.gbrain.backup.pglite.* ~/.gbrain
-
-# Reinitialize PGLite
-gbrain init --engine pglite
-
-# Note: WASM issue will return, but data is preserved
+sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -c 'CREATE EXTENSION vector;'"
 ```
 
----
+### 4. Re-initialize gbrain
 
-## Post-Migration Cleanup
-
-**1. Remove old PGLite data (after confirming PostgreSQL works):**
 ```bash
-rm -rf ~/.gbrain.backup.pglite.*
+# Stop the sync daemon first
+systemctl --user stop gbrain-sync.service
+
+# Re-init with the database URL
+DATABASE_URL="postgresql://gbrain:<password>@127.0.0.1:15432/gbrain"
+gbrain init --url "$DATABASE_URL" --embedding-model ollama:nomic-embed-text:v1.5 --yes
+
+# Add your brain source
+gbrain sources add hermes-cortex --path ~/hermes-cortex
+gbrain sources default hermes-cortex
+
+# Restart the daemon
+systemctl --user start gbrain-sync.service
 ```
 
-**2. Update monitoring:**
-The enhanced `remediation-sensor.py` will now report gbrain as healthy.
+### 5. Import existing data
 
-**3. Document connection string:**
-Store PostgreSQL URL in secure location for future reference:
 ```bash
-# ~/.hermes/private/gbrain-postgres-url.txt
-# postgresql://gbrain:***@localhost:5433/gbrain
+# Stop daemon to free DB locks
+systemctl --user stop gbrain-sync.service
+
+# Force a fresh import (--force ignores old PGLite checkpoint)
+cd ~/hermes-cortex && gbrain import . --yes --force
+
+# Restart daemon
+systemctl --user start gbrain-sync.service
 ```
 
----
+> **Note:** The import runs embeddings via ollama (`nomic-embed-text:v1.5`). At ~1-3s per file, importing 800 files takes roughly 15-40 minutes. The sync daemon handles this incrementally.
+
+## Can this serve as a RAG database?
+
+**Yes.** This Postgres instance has pgvector installed, which provides:
+
+| Feature | How |
+|---------|-----|
+| **Vector similarity search** | `SELECT * FROM chunks ORDER BY embedding <=> $query_vector LIMIT 10` |
+| **Hybrid search** | gbrain combines pgvector (cosine distance) + Postgres tsvector (keyword) via RRF |
+| **Indexes** | IVFFlat (default), HNSW also available for faster ANN search |
+| **Any pgvector client** | LangChain, LlamaIndex, custom Python/Node — anything that speaks Postgres + pgvector |
+
+Agents on the same machine can connect via `127.0.0.1:15432` with user `gbrain`. The database contains:
+- `pages` — knowledge pages with slugs, content, metadata
+- `content_chunks` — chunked page content with embedding vectors
+- `links` — inter-page relationships
+- `facts` — structured fact extraction
 
 ## Troubleshooting
 
-### Connection Refused
-```bash
-# Check PostgreSQL is running
-docker ps | grep gbrain-postgres
-# or
-systemctl status postgresql
-
-# Check port binding
-netstat -tlnp | grep 5433
-```
-
-### Permission Denied
-```bash
-# Ensure gbrain user can access config
-chmod 600 ~/.gbrain/config.toml
-```
-
-### Migration Failures
-```bash
-# Check gbrain logs
-gbrain doctor --verbose
-
-# Check PostgreSQL logs
-docker logs gbrain-postgres
-# or
-sudo tail -f /var/log/postgresql/postgresql-*.log
-```
-
----
-
-## Why PostgreSQL > PGLite for Production
-
-| Aspect | PGLite | PostgreSQL |
-|--------|--------|------------|
-| **Runtime** | WASM in Bun/Node | Native binary |
-| **Compatibility** | Browser/edge only | All platforms |
-| **Performance** | ~10-50x slower | Native speed |
-| **Memory** | Limited by WASM heap | System RAM |
-| **Persistence** | File-based | Full ACID |
-| **Extensions** | Limited (pgvector only) | Full ecosystem |
-| **Production Ready** | ❌ No | ✅ Yes |
-
-**Bottom line:** PGLite is for development/demo. PostgreSQL is for production.
-
----
-
-## References
-
-- Upstream issue: https://github.com/garrytan/gbrain/issues/223
-- gbrain docs: https://gbrain.dev/docs/configuration
-- PostgreSQL Docker: https://hub.docker.com/_/postgres
+| Symptom | Fix |
+|---------|-----|
+| `PGLite failed to initialize its WASM runtime` | Already switched to Postgres — this error shouldn't appear. If it does, check `~/.gbrain/config.json` has `"engine": "postgres"` |
+| `Connection refused` on port 15432 | Container not started. Run `docker ps \| grep gbrain-postgres` and `docker compose up -d` |
+| `No pgvector extension` | Run `docker exec gbrain-postgres psql -U gbrain -d gbrain -c 'CREATE EXTENSION vector;'` |
+| `gbrain query` hangs | Sync daemon holds the DB lock. Stop it first: `systemctl --user stop gbrain-sync.service` |
+| Migration v0.32.2 fails | Known gbrain issue — apply with `gbrain apply-migrations --yes --force` or skip with `--schema-pack gbrain-base-v2` |
+| Docker permission denied | Use `sg docker -c "..."` or add user to docker group: `sudo usermod -aG docker $USER` |

@@ -18,6 +18,7 @@ from platform_utils import (
     service_running,
     restart_service,
     docker_container_running,
+    docker_available,
     is_macos,
     is_linux,
 )
@@ -36,10 +37,23 @@ UID = os.getuid()
 LANGFUSE_DIR = str(Path.home() / "langfuse")
 HERMES_SCRIPTS = Path.home() / ".hermes-cortex" / "scripts"
 CORTEX_REPO_ENV = os.environ.get("CORTEX_REPO", "")
+
+def _docker_via_sg(container: str) -> bool:
+    """Check if a Docker container is running via sg docker -c (fallback when user not in docker group)."""
+    try:
+        r = subprocess.run(
+            ["sg", "docker", "-c", f"docker ps --filter name={container} --format {{{{.Names}}}}"],
+            capture_output=True, text=True, timeout=10,
+        )
+        return r.stdout.strip() != ""
+    except Exception:
+        return False
+
+CORTEX_REPO_ENV = os.environ.get("CORTEX_REPO", "")
 if CORTEX_REPO_ENV:
-    CORTEX_SCRIPTS = Path(CORTEX_REPO_ENV) / "src" / "scripts"
+    CORTEX_SCRIPTS = Path(CORTEX_REPO_ENV) / "ops" / "scripts"
 else:
-    CORTEX_SCRIPTS = Path.home() / "hermes-cortex" / "src" / "scripts"
+    CORTEX_SCRIPTS = Path.home() / "hermes-cortex" / "ops" / "scripts"
 
 
 def _make_service(name: str, label: str = "", pgrep: str = "",
@@ -78,21 +92,23 @@ def _check_scripts() -> bool:
 
 
 SERVICES: list[dict] = [
-    _make_service("nginx", pgrep="nginx: master", restart_label="homebrew.mxcl.nginx", verify_cmd=["nginx", "-t"]),
-    # Langfuse: try multiple label formats for compatibility
+    _make_service("nginx", pgrep="nginx: master", restart_label="nginx.service", verify_cmd=["nginx", "-t"]),
+    # Langfuse: Docker container
     {
         "name": "Langfuse",
         "check": lambda lbl="langfuse-langfuse-web": (
-            docker_container_running(lbl) if lbl else False
+            docker_container_running(lbl)
+            if docker_available()
+            else _docker_via_sg(lbl)
         ),
         "restart_label": "langfuse-langfuse-web",
         "verify_label": "Langfuse",
     },
-    _make_service("Ollama", label="com.ollama.serve", pgrep="ollama"),
-    # gbrain: systemd user service (not Docker — don't check Docker)
-    _make_service("gbrain", label="gbrain-autopilot", pgrep="gbrain"),
-    # health-server: systemd user service — handles /health endpoint behind nginx
-    _make_service("health-server", label="com.hermes.health-server", pgrep="health-server"),
+    _make_service("Ollama", label="ollama.service", pgrep="ollama"),
+    # gbrain: systemd user service
+    _make_service("gbrain", label="gbrain-sync.service", pgrep="gbrain"),
+    # health-server: systemd user service
+    _make_service("health-server", label="health-vector.service", pgrep="health-vector"),
     {
         "name": "scripts",
         "check": _check_scripts,
@@ -160,7 +176,14 @@ def _try_restart(svc: dict) -> str | None:
     restart_label = svc.get("restart_label", name)
     if restart_label:
         try:
-            ok = restart_service(restart_label)
+            # Docker containers need special handling
+            if name == "Langfuse":
+                r = subprocess.run(["sg", "docker", "-c",
+                    f"docker compose -f {LANGFUSE_DIR}/docker-compose.yml restart langfuse-web"],
+                    capture_output=True, text=True, timeout=30)
+                ok = (r.returncode == 0)
+            else:
+                ok = restart_service(restart_label)
             if not ok:
                 # Provide more detailed error information
                 if is_macos():
@@ -213,33 +236,41 @@ def _fix_gbrain_orphan_process() -> str | None:
     # Only applies on Linux
     if not is_linux():
         return None
+    # Helper to run a command and return (stdout, stderr, returncode)
+    def _scoped_run(cmd: list[str]) -> tuple[str, str, int]:
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            return r.stdout.strip(), r.stderr.strip(), r.returncode
+        except Exception:
+            return "", "", -1
+
     # Check if systemd service is already active
-    out, _, rc = _run(["systemctl", "--user", "is-active", "gbrain-autopilot"])
+    out, _, rc = _scoped_run(["systemctl", "--user", "is-active", "gbrain-autopilot"])
     if rc == 0 and out.strip() == "active":
         return None  # systemd is managing it — nothing to fix
     # Look for orphan bun/raw gbrain autopilot processes
-    out, _, _ = _run(["pgrep", "-f", r"bun.*gbrain.*autopilot|gbrain.*autopilot"])
+    out, _, _ = _scoped_run(["pgrep", "-f", r"bun.*gbrain.*autopilot|gbrain.*autopilot"])
     if not out.strip():
         return None  # no raw process found
     pids = out.strip().split()
     killed = []
     for pid in pids:
         # Check this isn't the systemd-managed PID
-        sysd_pid, _, _ = _run(["systemctl", "--user", "show", "-p", "MainPID", "gbrain-autopilot"])
+        sysd_pid, _, _ = _scoped_run(["systemctl", "--user", "show", "-p", "MainPID", "gbrain-autopilot"])
         if sysd_pid.strip() and sysd_pid.strip() != "0":
             sp = sysd_pid.split("=")[-1]
             if pid == sp:
                 continue  # this IS the systemd-managed PID
-        _run(["kill", "-TERM", pid])
+        _scoped_run(["kill", "-TERM", pid])
         import time
         for _ in range(3):
-            alive, _, _ = _run(["kill", "-0", pid])
+            alive, _, _ = _scoped_run(["kill", "-0", pid])
             if alive != 0:
                 break
             time.sleep(1)
-        alive_check, _, _ = _run(["kill", "-0", pid])
+        alive_check, _, _ = _scoped_run(["kill", "-0", pid])
         if alive_check == 0:
-            _run(["kill", "-KILL", pid])
+            _scoped_run(["kill", "-KILL", pid])
             killed.append(f"{pid}(SIGKILL)")
         else:
             killed.append(f"{pid}(TERM)")

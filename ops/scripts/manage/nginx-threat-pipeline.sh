@@ -200,11 +200,14 @@ if [ ! -d "$CORTEX_REPO" ]; then
   error "Cortex repo not found at ${CORTEX_REPO} — skipping commit"
 else
   cd "$CORTEX_REPO"
-  if git diff --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null \
-     && git diff --cached --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null; then
+  BLOCKED_FILE="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
+  if [ ! -f "$BLOCKED_FILE" ]; then
+    log "  No blocked_ips.add file — nothing to commit"
+  elif git diff --quiet deploy/nginx/blocked_ips.add 2>/dev/null \
+     && git diff --cached --quiet deploy/nginx/blocked_ips.add 2>/dev/null; then
     log "  No changes to commit"
   else
-    git add ops/install/deploy/nginx/blocked_ips.add
+    git add deploy/nginx/blocked_ips.add
     IP_COUNT=$(git diff --cached --unified=0 ops/install/deploy/nginx/blocked_ips.add 2>/dev/null | \
       grep '^\+[0-9]' | grep -v '^+++' | wc -l) || true
     SKIP_SCORE=1 git commit -m "auto: block ${IP_COUNT} suspect IPs [pipeline]" 2>&1 || true
