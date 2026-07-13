@@ -1,0 +1,250 @@
+#cloud-config
+# ───────────────────────────────────────────────────────────────
+#  Hermes Cortex — Cloud VM Bootstrap (cloud-init)
+#  Target: Ubuntu 24.04 LTS on AWS EC2 or Hetzner Cloud
+#
+#  Usage:
+#    AWS:    Pass as user-data when launching EC2 instance
+#    Hetzner: Paste into "Cloud Config" field during server creation
+#
+#  After boot:
+#    1. ssh in as ubuntu (AWS) or root (Hetzner)
+#    2. sudo -Hu ubuntu cat ~/hermes-cortex/.env.example > .env
+#    3. Edit ~/hermes-cortex/.env with your secrets
+#    4. bash ~/hermes-cortex/ops/install/install.sh
+#    5. cortex-doctor.py --fix
+# ───────────────────────────────────────────────────────────────
+
+package_update: true
+package_upgrade: true
+
+packages:
+  # Core system
+  - curl
+  - wget
+  - git
+  - jq
+  - python3
+  - python3-pip
+  - python3-venv
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - unzip
+  - ufw
+
+  # nginx
+  - nginx
+  - nginx-extras
+
+  # SSL
+  - certbot
+  - python3-certbot-nginx
+
+  # Docker (installed via official repo below, but pull in deps)
+  - docker.io
+  - docker-compose-v2
+
+  # Monitoring
+  - htop
+  - iotop
+  - net-tools
+
+write_files:
+  # ── Step 1: UFW firewall rules ──
+  - path: /etc/ufw/applications.d/hermes-cortex
+    content: |
+      [Hermes-Health]
+      title=Hermes Cortex Health Server
+      description=Agent health endpoint (13007)
+      ports=13007/tcp
+
+      [Hermes-Dashboard]
+      title=Hermes Cortex Dashboard
+      description=Cortex dashboard UI (13001)
+      ports=13001/tcp
+
+      [Hermes-Langfuse]
+      title=Langfuse LLM Observability
+      description=Langfuse web UI (13002)
+      ports=13002/tcp
+
+      [Hermes-Inbox-API]
+      title=Hermes Agent Inbox API
+      description=Agent-to-agent messaging (13004)
+      ports=13004/tcp
+
+      [Hermes-Cortex-UI]
+      title=Hermes Desktop UI
+      description=Hermes web gateway (13005)
+      ports=13005/tcp
+
+  # ── Step 2: sysctl hardening ──
+  - path: /etc/sysctl.d/99-hermes-cortex.conf
+    content: |
+      # Hermes Cortex — kernel tuning for LLM serving
+      net.ipv4.tcp_keepalive_time = 60
+      net.ipv4.tcp_keepalive_intvl = 10
+      net.ipv4.tcp_keepalive_probes = 6
+      vm.swappiness = 10
+      vm.max_map_count = 262144
+
+  # ── Step 3: Systemd ollama service ──
+  - path: /etc/systemd/system/ollama.service
+    content: |
+      [Unit]
+      Description=Ollama LLM Server
+      After=network-online.target
+      StartLimitIntervalSec=300
+      StartLimitBurst=5
+
+      [Service]
+      Type=simple
+      User=ubuntu
+      ExecStart=/usr/local/bin/ollama serve
+      Environment=OLLAMA_HOST=127.0.0.1
+      Environment=OLLAMA_NUM_THREADS=2
+      Restart=always
+      RestartSec=30
+      NoNewPrivileges=yes
+      ProtectHome=read-only
+      PrivateTmp=yes
+
+      [Install]
+      WantedBy=multi-user.target
+
+  # ── Step 4: Journald rate limiting ──
+  - path: /etc/systemd/journald.conf.d/99-hermes-cortex.conf
+    content: |
+      [Journal]
+      RateLimitIntervalSec=30s
+      RateLimitBurst=20000
+
+  # ── Step 5: Hermes health check script (used by load balancer) ──
+  - path: /usr/local/bin/hermes-health-check
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      # Returns HTTP-ready health status for load balancer target group
+      set -euo pipefail
+      STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://127.0.0.1:13007/health 2>/dev/null || echo "000")
+      if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
+        echo "healthy"
+        exit 0
+      fi
+      echo "unhealthy (HTTP $STATUS)"
+      exit 1
+
+runcmd:
+  # ── Phase 1: System setup ──
+  - ufw --force enable
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow ssh
+  - ufw allow http
+  - ufw allow https
+  - ufw allow in on docker0 to any port 11434 proto tcp from 127.0.0.1  # Ollama
+  - sysctl --system
+
+  # ── Phase 2: Install Hermes Agent ──
+  - |
+    curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+  - |
+    # Add hermes to PATH for the ubuntu user
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/ubuntu/.bashrc
+
+  # ── Phase 3: Clone hermes-cortex ──
+  - |
+    git clone --depth 1 https://github.com/fleet-operator/hermes-cortex.git /home/ubuntu/hermes-cortex
+    chown -R ubuntu:ubuntu /home/ubuntu/hermes-cortex
+
+  # ── Phase 4: Install Ollama ──
+  - |
+    curl -fsSL https://ollama.com/install.sh | bash
+    systemctl enable ollama
+    systemctl start ollama
+
+  # ── Phase 5: Deploy Docker stack (Langfuse + ClickHouse) ──
+  - |
+    mkdir -p /home/ubuntu/langfuse
+    cp /home/ubuntu/hermes-cortex/ops/install/deploy/docker-compose.langfuse.yml /home/ubuntu/langfuse/docker-compose.yml
+    cp /home/ubuntu/hermes-cortex/ops/install/deploy/.env.example /home/ubuntu/langfuse/.env.example
+    if [ ! -f /home/ubuntu/langfuse/.env ]; then
+      cp /home/ubuntu/langfuse/.env.example /home/ubuntu/langfuse/.env
+      echo "⚠️  Edit /home/ubuntu/langfuse/.env with Langfuse secrets before starting stack"
+    fi
+    chown -R ubuntu:ubuntu /home/ubuntu/langfuse
+
+  # ── Phase 6: Download base models ──
+  - |
+    sudo -u ubuntu bash -c '
+      export OLLAMA_HOST=127.0.0.1
+      for model in nomic-embed-text:v1.5 qwen2.5-coder:3b; do
+        if ! /usr/local/bin/ollama list 2>/dev/null | grep -q "$model"; then
+          echo "Pulling $model..."
+          /usr/local/bin/ollama pull "$model" &
+        fi
+      done
+      wait
+    ' &
+
+  # ── Phase 7: nginx default landing page ──
+  - |
+    mkdir -p /var/www/html
+    cat > /var/www/html/index.html << 'HTML'
+    <!DOCTYPE html>
+    <html><head><title>Hermes Cortex</title>
+    <style>body{font-family:sans-serif;margin:2em;background:#111;color:#eee}
+    h1{color:#0f0} a{color:#4af}</style></head>
+    <body>
+    <h1>✅ Hermes Cortex</h1>
+    <p>This server is running the Hermes Cortex agent stack.</p>
+    <ul>
+      <li><a href="https://DOMAIN:13001/">Cortex Dashboard</a></li>
+      <li><a href="https://DOMAIN:13002/">Langfuse</a></li>
+      <li><a href="https://DOMAIN:13005/">Hermes UI</a></li>
+    </ul>
+    </body></html>
+    HTML
+
+  # ── Phase 8: Create .env from template ──
+  - |
+    if [ ! -f /home/ubuntu/hermes-cortex/.env ]; then
+      cp /home/ubuntu/hermes-cortex/.env.example /home/ubuntu/hermes-cortex/.env
+      chown ubuntu:ubuntu /home/ubuntu/hermes-cortex/.env
+      chmod 600 /home/ubuntu/hermes-cortex/.env
+      echo ""
+      echo "══════════════════════════════════════════════════════════════"
+      echo "  🛠️  NEXT STEPS — manual configuration required"
+      echo "══════════════════════════════════════════════════════════════"
+      echo ""
+      echo "  1. SSH into the server:"
+      echo "     ssh ubuntu@<server-ip>"
+      echo ""
+      echo "  2. Edit the .env file with your secrets:"
+      echo "     nano ~/hermes-cortex/.env"
+      echo ""
+      echo "  3. Set these required vars:"
+      echo "     - CORTEX_HEALTH_URL"
+      echo "     - CORTEX_INBOX_URL"
+      echo "     - CORTEX_INBOX_AUTH"
+      echo "     - AGENT_NAME"
+      echo "     - API keys (OPENROUTER_API_KEY, etc.)"
+      echo "     - LANGFUSE credentials"
+      echo "     - CORTEX_SSL_CERT_PATH"
+      echo "     - CORTEX_SSL_CERT_KEY_PATH"
+      echo ""
+      echo "  4. Run the full installer:"
+      echo "     cd ~/hermes-cortex && bash ops/install/install.sh"
+      echo ""
+      echo "  5. Verify with doctor:"
+      echo "     python3 ops/scripts/manage/cortex-doctor.py"
+      echo ""
+      echo "══════════════════════════════════════════════════════════════"
+    fi
+
+  # ── Phase 9: Cleanup and final ──
+  - systemctl daemon-reload
+  - systemctl enable ollama
+  - ufw reload
+  - echo "Bootstrap complete. See ~/hermes-cortex/.env config instructions above."

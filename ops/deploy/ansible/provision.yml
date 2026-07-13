@@ -1,0 +1,394 @@
+#!/usr/bin/env ansible-playbook
+---
+# ───────────────────────────────────────────────────────────────
+#  Hermes Cortex — Ansible Provisioning Playbook
+#  Target: Ubuntu 24.04 LTS
+#
+#  Usage:
+#    ansible-playbook -i inventory.yml ops/deploy/ansible/provision.yml
+#
+#  Inventory example (inventory.yml):
+#    all:
+#      hosts:
+#        hermes-agent:
+#          ansible_host: 1.2.3.4
+#          ansible_user: ubuntu
+#          ansible_ssh_private_key_file: ~/.ssh/hermes-key.pem
+#          vars:
+#            agent_name: joseph
+#            agent_domain: yourdomain.com
+#            is_orchestrator: false
+#            fleet_cidr: "10.0.0.0/8"
+#
+#  Tags:
+#    system       — base OS config, UFW, sysctl
+#    docker       — Docker engine + compose
+#    ollama       — Ollama install + model pull
+#    hermes       — Hermes agent install + repo clone
+#    langfuse     — Docker Compose stack
+#    nginx        — nginx + SSL
+#    verify       — health checks
+#    all          — everything (default)
+# ───────────────────────────────────────────────────────────────
+
+- name: Provision Hermes Cortex Agent
+  hosts: all
+  become: true
+  vars:
+    # Required — override in inventory
+    agent_name: "{{ agent_name | default('hermes') }}"
+    agent_domain: "{{ agent_domain | default('localhost') }}"
+    is_orchestrator: "{{ is_orchestrator | default(false) }}"
+    fleet_cidr: "{{ fleet_cidr | default('10.0.0.0/8') }}"
+
+    # Paths
+    hermes_home: "/home/{{ ansible_user }}/.hermes"
+    cortex_repo: "/home/{{ ansible_user }}/hermes-cortex"
+    cortex_deploy: "/home/{{ ansible_user }}/.hermes-cortex"
+    langfuse_dir: "/home/{{ ansible_user }}/langfuse"
+
+    # Port map
+    agent_ports:
+      - { port: 13001, name: dashboard }
+      - { port: 13002, name: langfuse }
+      - { port: 13004, name: inbox-api }
+      - { port: 13005, name: cortex-ui }
+      - { port: 13007, name: health }
+
+  pre_tasks:
+    - name: Gather required vars
+      assert:
+        that:
+          - agent_name is defined
+          - agent_domain is defined
+        fail_msg: "agent_name and agent_domain are required. Set in inventory.yml"
+
+  tasks:
+    # ═══════════════════════════════════════════════════════════
+    #  SYSTEM — base OS configuration
+    # ═══════════════════════════════════════════════════════════
+    - name: System — install base packages
+      tags: [system, all]
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - jq
+          - python3
+          - python3-pip
+          - python3-venv
+          - ca-certificates
+          - gnupg
+          - lsb-release
+          - unzip
+          - ufw
+          - nginx
+          - certbot
+          - python3-certbot-nginx
+          - htop
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: System — configure sysctl
+      tags: [system, all]
+      sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: true
+      loop:
+        - { key: net.ipv4.tcp_keepalive_time, value: "60" }
+        - { key: net.ipv4.tcp_keepalive_intvl, value: "10" }
+        - { key: net.ipv4.tcp_keepalive_probes, value: "6" }
+        - { key: vm.swappiness, value: "10" }
+        - { key: vm.max_map_count, value: "262144" }
+
+    - name: System — enable UFW
+      tags: [system, all]
+      ufw:
+        state: enabled
+        policy: deny
+        direction: incoming
+
+    - name: System — UFW allow SSH, HTTP, HTTPS
+      tags: [system, all]
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - 22
+        - 80
+        - 443
+
+    - name: System — UFW allow agent ports from fleet CIDR
+      tags: [system, all]
+      ufw:
+        rule: allow
+        port: "{{ item.port }}"
+        proto: tcp
+        src: "{{ fleet_cidr }}"
+      loop: "{{ agent_ports }}"
+
+    # ═══════════════════════════════════════════════════════════
+    #  DOCKER — engine + compose
+    # ═══════════════════════════════════════════════════════════
+    - name: Docker — install
+      tags: [docker, all]
+      block:
+        - name: Add Docker GPG key
+          apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
+
+        - name: Add Docker repo
+          apt_repository:
+            repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+            state: present
+
+        - name: Install Docker packages
+          apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+              - docker-compose-plugin
+            state: present
+            update_cache: true
+
+        - name: Add user to docker group
+          user:
+            name: "{{ ansible_user }}"
+            groups: docker
+            append: true
+
+        - name: Start and enable Docker
+          service:
+            name: docker
+            state: started
+            enabled: true
+
+    # ═══════════════════════════════════════════════════════════
+    #  OLLAMA — LLM server
+    # ═══════════════════════════════════════════════════════════
+    - name: Ollama — install
+      tags: [ollama, all]
+      block:
+        - name: Download ollama install script
+          get_url:
+            url: https://ollama.com/install.sh
+            dest: /tmp/ollama-install.sh
+            mode: 0755
+
+        - name: Run ollama installer
+          command: bash /tmp/ollama-install.sh
+          args:
+            creates: /usr/local/bin/ollama
+          notify: restart ollama
+
+        - name: Configure ollama systemd service
+          template:
+            src: ollama.service.j2
+            dest: /etc/systemd/system/ollama.service
+          notify: restart ollama
+
+        - name: Enable ollama service
+          systemd:
+            name: ollama
+            enabled: true
+            daemon_reload: true
+            state: started
+
+    - name: Ollama — pull base models
+      tags: [ollama, all]
+      become: false
+      command: "ollama pull {{ item }}"
+      loop:
+        - nomic-embed-text:v1.5
+        - qwen2.5-coder:3b
+      register: pull_result
+      changed_when: "'pulling' in pull_result.stdout"
+      until: pull_result is success
+      retries: 3
+      delay: 10
+      environment:
+        OLLAMA_HOST: "http://127.0.0.1:11434"
+      when: ollama_skip_pull is not defined
+
+    # ═══════════════════════════════════════════════════════════
+    #  HERMES AGENT — install + repo
+    # ═══════════════════════════════════════════════════════════
+    - name: Hermes — install agent
+      tags: [hermes, all]
+      block:
+        - name: Download Hermes install script
+          get_url:
+            url: https://hermes-agent.nousresearch.com/install.sh
+            dest: /tmp/hermes-install.sh
+            mode: 0755
+          register: hermes_download
+
+        - name: Run Hermes installer
+          command: bash /tmp/hermes-install.sh
+          args:
+            creates: "{{ ansible_user_dir }}/.local/bin/hermes"
+          become: false
+          environment:
+            HOME: "{{ ansible_user_dir }}"
+          when: hermes_download is success
+
+        - name: Clone hermes-cortex repo
+          git:
+            repo: https://github.com/fleet-operator/hermes-cortex.git
+            dest: "{{ cortex_repo }}"
+            depth: 1
+            force: true
+          become: false
+
+        - name: Create .env from template if absent
+          copy:
+            src: "{{ cortex_repo }}/.env.example"
+            dest: "{{ cortex_repo }}/.env"
+            owner: "{{ ansible_user }}"
+            group: "{{ ansible_user }}"
+            mode: 0600
+            remote_src: true
+          become: false
+
+        - name: Set agent identity in .env
+          lineinfile:
+            path: "{{ cortex_repo }}/.env"
+            regexp: "^#? ?{{ item.var }}="
+            line: "{{ item.var }}={{ item.value }}"
+            create: true
+          loop:
+            - { var: AGENT_NAME, value: "{{ agent_name }}" }
+            - { var: IS_ORCHESTRATOR, value: "{{ 'true' if is_orch else 'false' }}" }
+            - { var: CORTEX_NGINX_PORT_PREFIX, value: "13" }
+          become: false
+
+    # ═══════════════════════════════════════════════════════════
+    #  LANGFUSE — Docker Compose stack
+    # ═══════════════════════════════════════════════════════════
+    - name: Langfuse — deploy Docker stack
+      tags: [langfuse, all]
+      block:
+        - name: Create langfuse directory
+          file:
+            path: "{{ langfuse_dir }}"
+            state: directory
+            owner: "{{ ansible_user }}"
+            group: "{{ ansible_user }}"
+
+        - name: Copy docker-compose
+          copy:
+            src: "{{ cortex_repo }}/ops/install/deploy/docker-compose.langfuse.yml"
+            dest: "{{ langfuse_dir }}/docker-compose.yml"
+            remote_src: true
+
+        - name: Copy .env template
+          copy:
+            src: "{{ cortex_repo }}/ops/install/deploy/.env.example"
+            dest: "{{ langfuse_dir }}/.env"
+            owner: "{{ ansible_user }}"
+            group: "{{ ansible_user }}"
+            mode: 0600
+            remote_src: true
+          become: false
+
+        - name: Start Docker Compose
+          community.docker.docker_compose_v2:
+            project_src: "{{ langfuse_dir }}"
+            state: present
+            pull: true
+          become: false
+          environment:
+            DOCKER_HOST: "unix:///var/run/docker.sock"
+
+    # ═══════════════════════════════════════════════════════════
+    #  NGINX + SSL
+    # ═══════════════════════════════════════════════════════════
+    - name: Nginx — configure
+      tags: [nginx, all]
+      block:
+        - name: Create nginx config from template
+          template:
+            src: hermes-nginx.conf.j2
+            dest: /etc/nginx/sites-available/hermes-cortex.conf
+          notify: reload nginx
+
+        - name: Enable site
+          file:
+            src: /etc/nginx/sites-available/hermes-cortex.conf
+            dest: /etc/nginx/sites-enabled/hermes-cortex.conf
+            state: link
+          notify: reload nginx
+
+        - name: Remove default site
+          file:
+            path: /etc/nginx/sites-enabled/default
+            state: absent
+          notify: reload nginx
+
+    - name: SSL — obtain certificate (if domain is not localhost)
+      tags: [nginx, all]
+      command: >
+        certbot --nginx -d {{ agent_domain }} --non-interactive --agree-tos
+        --email admin@{{ agent_domain }} --redirect
+      args:
+        creates: "/etc/letsencrypt/live/{{ agent_domain }}/fullchain.pem"
+      when: agent_domain != 'localhost'
+
+    # ═══════════════════════════════════════════════════════════
+    #  VERIFY — health checks
+    # ═══════════════════════════════════════════════════════════
+    - name: Verify — run cortex-doctor
+      tags: [verify, all]
+      become: false
+      command: "python3 {{ cortex_repo }}/ops/scripts/manage/cortex-doctor.py --quiet"
+      register: doctor_result
+      changed_when: false
+      failed_when: doctor_result.rc >= 2
+      environment:
+        HOME: "{{ ansible_user_dir }}"
+
+    - name: Verify — doctor results
+      tags: [verify, all]
+      debug:
+        msg: "{{ doctor_result.stdout_lines[-5:] }}"
+
+    - name: Verify — check ollama responds
+      tags: [verify, all]
+      uri:
+        url: http://127.0.0.1:11434/api/tags
+        return_content: true
+      register: ollama_check
+      retries: 5
+      delay: 3
+      until: ollama_check.status == 200
+      changed_when: false
+
+    - name: Verify — check health endpoint
+      tags: [verify, all]
+      uri:
+        url: "http://127.0.0.1:13007/health"
+        return_content: true
+      register: health_check
+      retries: 3
+      delay: 2
+      until: health_check.status in (200, 401)
+      changed_when: false
+
+  handlers:
+    - name: restart ollama
+      systemd:
+        name: ollama
+        state: restarted
+        daemon_reload: true
+
+    - name: reload nginx
+      service:
+        name: nginx
+        state: reloaded

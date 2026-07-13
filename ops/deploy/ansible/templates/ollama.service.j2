@@ -1,0 +1,21 @@
+[Unit]
+Description=Ollama LLM Server (Ansible-managed)
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User={{ ansible_user }}
+ExecStart=/usr/local/bin/ollama serve
+Environment=OLLAMA_HOST=127.0.0.1
+Environment=OLLAMA_NUM_THREADS={{ ollama_threads | default('2') }}
+Environment=OLLAMA_KEEP_ALIVE={{ ollama_keep_alive | default('0') }}
+Restart=always
+RestartSec=30
+NoNewPrivileges=yes
+ProtectHome=read-only
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

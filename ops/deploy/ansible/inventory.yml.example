@@ -1,0 +1,30 @@
+# ───────────────────────────────────────────────────────────────
+#  Hermes Cortex — Ansible Inventory Example
+#  Copy to inventory.yml and fill in your values
+# ───────────────────────────────────────────────────────────────
+
+all:
+  vars:
+    # Default fleet CIDR — restrict agent ports to your network
+    fleet_cidr: "10.0.0.0/8"
+
+  hosts:
+    # ── Example: single agent on Hetzner ──
+    joseph:
+      ansible_host: 1.2.3.4
+      ansible_user: ubuntu
+      ansible_ssh_private_key_file: ~/.ssh/hermes-key.pem
+      vars:
+        agent_name: joseph
+        agent_domain: bus.example.org
+        is_orchestrator: false
+
+    # ── Example: orchestrator node ──
+    moses:
+      ansible_host: 5.6.7.8
+      ansible_user: ubuntu
+      ansible_ssh_private_key_file: ~/.ssh/hermes-key.pem
+      vars:
+        agent_name: moses
+        agent_domain: bus.example.org
+        is_orchestrator: true

@@ -1,0 +1,164 @@
+# Hermes Cortex — nginx reverse proxy (Ansible-managed)
+# Generated from template — do not edit manually
+
+upstream hermes-health {
+    server 127.0.0.1:8905;
+}
+
+upstream hermes-dashboard {
+    server 127.0.0.1:8901;
+}
+
+upstream hermes-langfuse {
+    server 127.0.0.1:3000;
+}
+
+upstream hermes-inbox {
+    server 127.0.0.1:8903;
+}
+
+upstream hermes-gateway {
+    server 127.0.0.1:8906;
+}
+
+# ── HTTP → HTTPS redirect ──
+server {
+    listen 80;
+    server_name {{ agent_domain }};
+
+    # Let's Encrypt ACME challenge
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# ── HTTPS server ──
+server {
+    listen 443 ssl http2;
+    server_name {{ agent_domain }};
+
+    ssl_certificate     /etc/letsencrypt/live/{{ agent_domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ agent_domain }}/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    # Security headers
+    add_header X-Frame-Options DENY;
+    add_header X-Content-Type-Options nosniff;
+    add_header Referrer-Policy strict-origin-when-cross-origin;
+
+    # Health endpoint (port 13007)
+    location /health {
+        proxy_pass http://hermes-health;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Dashboard (port 13001)
+    location / {
+        proxy_pass http://hermes-dashboard;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+
+# ── Dashboard subdomain ──
+server {
+    listen 13001 ssl http2;
+    server_name {{ agent_domain }};
+
+    ssl_certificate     /etc/letsencrypt/live/{{ agent_domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ agent_domain }}/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    location / {
+        proxy_pass http://hermes-dashboard;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+
+# ── Langfuse subdomain ──
+server {
+    listen 13002 ssl http2;
+    server_name {{ agent_domain }};
+
+    ssl_certificate     /etc/letsencrypt/live/{{ agent_domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ agent_domain }}/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    client_max_body_size 10m;
+
+    location / {
+        proxy_pass http://hermes-langfuse;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+
+# ── Inbox API subdomain ──
+server {
+    listen 13004 ssl http2;
+    server_name {{ agent_domain }};
+
+    ssl_certificate     /etc/letsencrypt/live/{{ agent_domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ agent_domain }}/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    auth_basic "Hermes Agent Inbox";
+    auth_basic_user_file /etc/nginx/.hermes-htpasswd;
+
+    location / {
+        proxy_pass http://hermes-inbox;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# ── Hermes Gateway subdomain ──
+server {
+    listen 13005 ssl http2;
+    server_name {{ agent_domain }};
+
+    ssl_certificate     /etc/letsencrypt/live/{{ agent_domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ agent_domain }}/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    location / {
+        proxy_pass http://hermes-gateway;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}

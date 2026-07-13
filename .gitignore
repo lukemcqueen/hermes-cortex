@@ -84,7 +84,7 @@ agent-inbox-private/
 src/agent-registry.json
 # Use src/agent-registry.json.example as the template
 .governance-*.json
-deploy/
+/deploy/
 src/scripts/
 plugins/
 src/scripts/install-crons.sh
