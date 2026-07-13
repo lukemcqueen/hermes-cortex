@@ -2,7 +2,9 @@
 # ─────────────────────────────────────────────────────────────────────
 #  gbrain-wrapper.sh — gbrain CLI wrapper with autopilot lifecycle mgmt
 #
-#  Manages the systemd autopilot service around every gbrain command.
+#  Cross-platform: Linux (systemd) + macOS (launchd)
+#
+#  Manages the gbrain autopilot service around every gbrain command.
 #  PGLite is single-connection — the autopilot holds the exclusive lock.
 #  Any CLI command (dream, sync, stats, sources list) will fail or hang
 #  unless the autopilot is stopped first.
@@ -22,11 +24,62 @@
 # ─────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
+# ── OS detection ───────────────────────────────────────────────────
+IS_MAC=false
+IS_LINUX=false
+case "$(uname -s)" in
+  Darwin) IS_MAC=true  ;;
+  Linux)  IS_LINUX=true ;;
+  *)      echo "[gbrain-wrapper] ⚠ Unknown OS: $(uname -s) — assuming Linux service semantics"
+          IS_LINUX=true ;;
+esac
+
+# ── Service management helpers ─────────────────────────────────────
+# On Linux:    systemctl --user
+# On macOS:    launchctl
+SERVICE_NAME_AUTOPILOT="gbrain-autopilot"
+SERVICE_NAME_LEGACY="com.gbrain.sync-watch"
+if $IS_MAC; then
+  SERVICE_NAME_AUTOPILOT="com.gbrain.autopilot"
+  SERVICE_NAME_LEGACY="com.gbrain.sync-watch"
+fi
+
+_service_is_active() {
+  local name="$1"
+  if $IS_LINUX; then
+    systemctl --user is-active --quiet "$name" 2>/dev/null
+  elif $IS_MAC; then
+    local out
+    out=$(launchctl list "$name" 2>/dev/null) || return 1
+    echo "$out" | grep -q '"PID"' && return 0 || return 1
+  fi
+}
+
+_service_stop() {
+  local name="$1"
+  if $IS_LINUX; then
+    systemctl --user stop "$name" 2>/dev/null || true
+  elif $IS_MAC; then
+    launchctl bootout gui/$(id -u)/"$name" 2>/dev/null || true
+  fi
+}
+
+_service_start() {
+  local name="$1"
+  if $IS_LINUX; then
+    systemctl --user start "$name" 2>/dev/null || \
+      echo "[gbrain-wrapper] ⚠ Could not start $name — run 'gbrain autopilot --install' first"
+  elif $IS_MAC; then
+    launchctl bootstrap gui/$(id -u)/"$name" 2>/dev/null || \
+      launchctl kickstart gui/$(id -u)/"$name" 2>/dev/null || \
+      echo "[gbrain-wrapper] ⚠ Could not start $name — run 'gbrain autopilot --install' first"
+  fi
+}
+
 # ── Environment ────────────────────────────────────────────────────
 export PATH="$HOME/.bun/bin:$PATH"
 export GBRAIN_AI_EMBED_TIMEOUT_MS=300000
 
-SERVICE="gbrain-autopilot.service"
 GBRAIN_BIN="$(command -v gbrain || echo "$HOME/.bun/bin/gbrain")"
 
 # ── Source shell profiles for API keys ────────────────────────────
@@ -43,10 +96,9 @@ error() { echo "[gbrain-wrapper] ❌ $*" >&2; }
 # ── Trap: guarantee autopilot restart on script exit ───────────────
 restart_autopilot_handler() {
     local EXIT_STATUS=$?
-    if ! systemctl --user is-active --quiet "$SERVICE" 2>/dev/null; then
-        log "Restarting autopilot (systemd)…"
-        systemctl --user start "$SERVICE" 2>/dev/null || \
-            log "⚠ Could not start $SERVICE — run 'gbrain autopilot --install' first"
+    if ! _service_is_active "$SERVICE_NAME_AUTOPILOT"; then
+        log "Restarting autopilot ($([ $IS_MAC ] && echo 'launchd' || echo 'systemd'))…"
+        _service_start "$SERVICE_NAME_AUTOPILOT"
     fi
     return "$EXIT_STATUS"
 }
@@ -64,12 +116,12 @@ if [ ! -x "$GBRAIN_BIN" ]; then
 fi
 
 # ── Step 1: Stop the autopilot ─────────────────────────────────────
-if systemctl --user is-active --quiet "$SERVICE" 2>/dev/null; then
-    log "Stopping autopilot (systemd)…"
-    systemctl --user stop "$SERVICE" 2>/dev/null || true
+if _service_is_active "$SERVICE_NAME_AUTOPILOT"; then
+    log "Stopping autopilot ($([ $IS_MAC ] && echo 'launchd' || echo 'systemd'))…"
+    _service_stop "$SERVICE_NAME_AUTOPILOT"
     # Wait for clean shutdown (up to 10s)
     for i in $(seq 1 10); do
-        if ! systemctl --user is-active --quiet "$SERVICE" 2>/dev/null; then
+        if ! _service_is_active "$SERVICE_NAME_AUTOPILOT"; then
             break
         fi
         sleep 1
