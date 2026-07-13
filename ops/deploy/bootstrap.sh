@@ -199,6 +199,11 @@ else
     read -rp "  Langfuse secret key (sk-lf-...):    " input
     LANGFUSE_SK="${input:-}"
 
+    echo ""
+    info "GitHub access (for agents to push changes to the repo)"
+    read -rp "  GitHub fine-grained PAT (ghp_...):    " input
+    GITHUB_TOKEN="${input:-}"
+
     # Generate htpasswd entry for inbox
     HTPASSWD_HASH=""
     if command -v openssl &>/dev/null && [[ -n "$INBOX_PASSWORD" ]]; then
@@ -374,6 +379,21 @@ if [[ ! -f "$LANGFUSE_DIR/.env" ]]; then
         chown "$REAL_USER:$REAL_USER" "$LANGFUSE_DIR/.env"
         chmod 600 "$LANGFUSE_DIR/.env"
     fi
+fi
+
+# Configure git credentials so agents can push changes
+if [[ -n "$GITHUB_TOKEN" ]]; then
+    sudo -u "$REAL_USER" git config --global credential.helper store
+    cat > "$REAL_HOME/.git-credentials" << CRED
+https://git:${GITHUB_TOKEN}@github.com
+CRED
+    chmod 600 "$REAL_HOME/.git-credentials"
+    chown "$REAL_USER:$REAL_USER" "$REAL_HOME/.git-credentials"
+    ok "Git credentials configured (HTTPS + credential.helper=store)"
+else
+    info "No GitHub token provided — git push will fail until credentials are set up."
+    info "  Run: git config --global credential.helper store"
+    info "  Then: echo 'https://git:ghp_YOUR_TOKEN@github.com' > ~/.git-credentials && chmod 600 ~/.git-credentials"
 fi
 
 # Run the install.sh as the real user
