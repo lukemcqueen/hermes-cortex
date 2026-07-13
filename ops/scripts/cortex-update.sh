@@ -60,7 +60,7 @@ if [[ -f "${REPO_DIR}/.env" ]]; then
 fi
 
 # ── Clean up stale files from old env architecture ───────────
-for stale in "${HOME}/.hermes/models.env" "${HOME}/.hermes/hermes-cortex.env" "${REPO_DIR}/deploy/hermes-services.env" "${REPO_DIR}/deploy/nginx/hermes-services.env"; do
+for stale in "${HOME}/.hermes/models.env" "${HOME}/.hermes/hermes-cortex.env" "${REPO_DIR}/ops/install/deploy/hermes-services.env" "${REPO_DIR}/ops/install/deploy/nginx/hermes-services.env"; do
   if [[ -f "$stale" ]]; then
     rm -f "$stale"
     echo "  → Removed stale env file: ${stale}"
@@ -551,13 +551,13 @@ update_symlinks() {
 }
 
 # ── Skill Sync ───────────────────────────────────────────────
-# Copies SKILL.md files and references/ from repo src/skills/
+# Copies SKILL.md files and references/ from repo runtime/skills/
 # to ~/.hermes/skills/. Uses the delta engine — only copies
 # files whose checksums differ from installed versions.
 sync_skills() {
-  local skill_repo="${REPO_DIR}/src/skills"
+  local skill_repo="${REPO_DIR}/runtime/skills"
   local skill_dest="${CORTEX_DEPLOY_HOME}/skills"
-  [[ -d "$skill_repo" ]] || { info "  No src/skills/ in repo — skipping skill sync"; return 0; }
+  [[ -d "$skill_repo" ]] || { info "  No runtime/skills/ in repo — skipping skill sync"; return 0; }
 
   local synced=0 skipped=0
   mkdir -p "$skill_dest"
@@ -676,7 +676,7 @@ JSON
 # OS-aware path substitution. Uses sudo on Linux for /etc/nginx/.
 deploy_nginx_configs() {
   [[ -n "${CORTEX_SKIP_NGINX:-}" ]] && { info "CORTEX_SKIP_NGINX set — skipping nginx deploy"; return 0; }
-  local nginx_src_dir="${REPO_DIR}/deploy/nginx"
+  local nginx_src_dir="${REPO_DIR}/ops/install/deploy/nginx"
   [[ -d "$nginx_src_dir" ]] || return 0
 
   local config_dir="${NGINX_CONFIG_DIR:-}"
@@ -842,7 +842,7 @@ deploy_system_scripts() {
   # Allow skipping nginx-related system scripts (e.g. on servers without sudo)
   [[ -n "${CORTEX_SKIP_NGINX:-}" ]] && { info "CORTEX_SKIP_NGINX set — skipping system script deploy"; return 0; }
   local deploy_dir="/usr/local/sbin"
-  local src_dir="${REPO_DIR}/deploy/nginx"
+  local src_dir="${REPO_DIR}/ops/install/deploy/nginx"
   local scripts=("install-nginx-full.sh" "hermes-nginx-clean-restart")
   local files_copied=0
 

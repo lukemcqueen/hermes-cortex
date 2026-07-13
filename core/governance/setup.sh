@@ -29,7 +29,7 @@ done
 SOURCE_DIR=""
 for dir in \
   "${HOME}/hermes-cortex/core/governance" \
-  "${HOME}/hermes-cortex/src/loop-governance" \
+  "${HOME}/hermes-cortex/core/governance" \
   "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null)" \
   "${HOME}/.hermes-cortex/skills/software-development/loop-governance/scripts"; do
   if [[ -n "$dir" && -f "${dir}/loop_scorer.py" ]]; then

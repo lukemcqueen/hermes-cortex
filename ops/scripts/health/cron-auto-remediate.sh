@@ -22,7 +22,7 @@ set -euo pipefail
 
 HERMES_SCRIPTS="${HOME}/.hermes-cortex/scripts"
 CORTEX_REPO="${HOME}/hermes-cortex"
-CORTEX_SCRIPTS="${CORTEX_REPO}/src/scripts"
+CORTEX_SCRIPTS="${CORTEX_REPO}/ops/scripts"
 ACTION="${1:-diagnose}"
 
 case "${ACTION}" in

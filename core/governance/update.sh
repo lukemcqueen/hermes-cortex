@@ -38,7 +38,7 @@ INSTALL_DIR=""
 for dir in \
   "${HOME}/.hermes-cortex/tools/loop-governance" \
   "${HOME}/.hermes-cortex/skills/software-development/loop-governance/scripts" \
-  "${HOME}/hermes-cortex/src/loop-governance"; do
+  "${HOME}/hermes-cortex/core/governance"; do
   if [[ -f "${dir}/VERSION" ]]; then
     INSTALL_DIR="$dir"
     break
@@ -64,7 +64,7 @@ info "Current version: ${CURRENT_VERSION}"
 echo ""
 
 # ── Determine source (repo or GitHub) ──────────────────────
-REPO_DIR="${HOME}/hermes-cortex/src/loop-governance"
+REPO_DIR="${HOME}/hermes-cortex/core/governance"
 
 if [[ -d "$REPO_DIR" && -f "${REPO_DIR}/VERSION" ]]; then
   # Local repo clone
@@ -75,7 +75,7 @@ if [[ -d "$REPO_DIR" && -f "${REPO_DIR}/VERSION" ]]; then
 else
   # Try to download from GitHub
   SOURCE_TYPE="remote"
-  SOURCE_VERSION=$(curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/src/loop-governance/VERSION" 2>/dev/null || echo "0.0.0")
+  SOURCE_VERSION=$(curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/core/governance/VERSION" 2>/dev/null || echo "0.0.0")
   info "Source: github.com/fleet-operator/hermes-cortex"
 fi
 
@@ -132,7 +132,7 @@ else
   info "Downloading from GitHub…"
   TMP_DIR=$(mktemp -d)
   curl -fsSL "https://github.com/fleet-operator/hermes-cortex/archive/refs/heads/main.tar.gz" | \
-    tar -xz -C "$TMP_DIR" --strip-components=2 "hermes-cortex-main/src/loop-governance/" 2>/dev/null || {
+    tar -xz -C "$TMP_DIR" --strip-components=3 "hermes-cortex-main/core/governance/" 2>/dev/null || {
     fail "Download failed. Check internet or mirror."
     rm -rf "$TMP_DIR"
     info "Restoring from backup…"

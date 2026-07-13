@@ -106,6 +106,19 @@ if [[ "$OS_ID" != "ubuntu" ]]; then
 fi
 ok "OS: $OS_ID $OS_VERSION ($(uname -m))"
 
+# Map Ubuntu version to codename (more reliable than lsb_release -cs)
+# Some VPS templates return wrong codename from lsb_release
+OS_CODENAME=""
+case "$OS_VERSION" in
+    24.04*) OS_CODENAME="noble"  ;;
+    24.10*) OS_CODENAME="oracular" ;;
+    22.04*) OS_CODENAME="jammy"  ;;
+    20.04*) OS_CODENAME="focal"  ;;
+    *)      OS_CODENAME="$(lsb_release -cs 2>/dev/null || echo 'noble')"
+            warn "Unknown Ubuntu version $OS_VERSION — using codename '$OS_CODENAME'" ;;
+esac
+info "Ubuntu codename: $OS_CODENAME"
+
 # Architecture
 ARCH="$(uname -m)"
 case "$ARCH" in
@@ -243,7 +256,7 @@ else
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
     chmod a+r /etc/apt/keyrings/docker.asc
 
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $OS_CODENAME stable" \
         > /etc/apt/sources.list.d/docker.list
 
     apt-get update -qq

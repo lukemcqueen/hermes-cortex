@@ -28,7 +28,7 @@ error() { echo -e "${RED}✗${RESET} $*"; }
 DO_START=false
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LANGFUSE_DIR="${HOME}/langfuse"
-COMPOSE_SRC="${SCRIPT_DIR}/../../deploy/docker-compose.langfuse.yml"
+COMPOSE_SRC="${SCRIPT_DIR}/../../install/deploy/docker-compose.langfuse.yml"
 
 for arg in "$@"; do
   case "$arg" in
@@ -70,7 +70,7 @@ if [[ ! -f "$COMPOSE_DEST" ]]; then
     info "Copied docker-compose.yml from repo"
   elif command -v curl &>/dev/null; then
     echo "  Downloading docker-compose.langfuse.yml from GitHub…"
-    curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/deploy/docker-compose.langfuse.yml" \
+    curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/install/deploy/docker-compose.langfuse.yml" \
       -o "$COMPOSE_DEST" && info "Downloaded docker-compose.yml from GitHub" \
       || warn "Download failed — will need manual copy"
   else

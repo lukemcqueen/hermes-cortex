@@ -49,7 +49,7 @@ if [[ "$DOCS_CHANGED" -gt 0 && "$DOCS_INDEX_CHANGED" -eq 0 ]]; then
 fi
 
 # ── Check 2: New/changed skills should update SKILLS-MANIFEST.md ──
-SKILLS_CHANGED=$(echo "$STAGED" | grep -c '^src/skills/' 2>/dev/null || true)
+SKILLS_CHANGED=$(echo "$STAGED" | grep -c '^runtime/skills/' 2>/dev/null || true)
 MANIFEST_CHANGED=$(echo "$STAGED" | grep -c '^docs/SKILLS-MANIFEST\.md$' 2>/dev/null || true)
 
 if [[ "$SKILLS_CHANGED" -gt 0 && "$MANIFEST_CHANGED" -eq 0 ]]; then
@@ -64,7 +64,7 @@ MAP_CHANGED=$(echo "$STAGED" | grep -c '^ops/scripts/cortex-update\\.sh$' 2>/dev
 
 if [[ "$SCRIPTS_CHANGED" -gt 0 && "$MAP_CHANGED" -eq 0 ]]; then
     # Only flag new scripts (not modifications to existing registered ones)
-    NEW_SCRIPTS=$(echo "$STAGED" | grep '^ops/scripts/' | grep -v '^ops/scripts/cortex-update\\.sh$' | grep -v '__pycache__' || true)
+    NEW_SCRIPTS=$(echo "$STAGED" | grep '^ops/scripts/' | grep -v '^ops/scripts/cortex-update\.sh$' | grep -v '__pycache__' || true)
     if [[ -n "$NEW_SCRIPTS" ]]; then
         echo "⚠️  DOCS AUDIT: New scripts staged but cortex-update.sh MAP was not updated."
         echo "   → Register new scripts in ops/scripts/cortex-update.sh using register()"

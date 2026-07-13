@@ -1878,7 +1878,7 @@ ok
 #  10. Install Hermes Skills — Shared skills from the repo
 # ─────────────────────────────────────────────────────────────
 step "Installing Hermes skills from repo"
-SKILLS_REPO="${SCRIPT_DIR}/src/skills"
+SKILLS_REPO="${SCRIPT_DIR}/../runtime/skills"
 HERMES_SKILLS="${CORTEX_DEPLOY_HOME}/skills"
 if [[ -d "$SKILLS_REPO" ]]; then
   count=0
@@ -1905,7 +1905,7 @@ if [[ -d "$SKILLS_REPO" ]]; then
   done < <(find "$SKILLS_REPO" -path "*/references/*" -type f -print0)
   info "  Installed ${count} skills (skipped existing)"
 else
-  skip "no src/skills/ directory in repo"
+  skip "no runtime/skills/ directory in repo"
 fi
 ok
 
@@ -1987,7 +1987,7 @@ ok
 #  12. Web Cache — Local Semantic Web Cache
 # ─────────────────────────────────────────────────────────────
 step "Installing Web Cache (semantic web result cache)"
-WEB_CACHE_REPO="${SCRIPT_DIR}/src/web-cache"
+WEB_CACHE_REPO="${SCRIPT_DIR}/../ops/web-cache"
 WEB_CACHE_DEST="${CORTEX_DEPLOY_HOME}/web-cache"
 HERMES_BIN="${CORTEX_DEPLOY_HOME}/bin"
 if [[ -d "$WEB_CACHE_REPO" ]]; then
@@ -2015,7 +2015,7 @@ if [[ -d "$WEB_CACHE_REPO" ]]; then
   "${WEB_CACHE_DEST}/.venv/bin/python3" "${WEB_CACHE_DEST}/web_cache.py" stats >/dev/null 2>&1 && \
     info "  Cache DB initialized"
 else
-  skip "no src/web-cache/ directory in repo"
+  skip "no ops/web-cache/ directory in repo"
 fi
 ok
 
@@ -2295,7 +2295,7 @@ fi
 # ─────────────────────────────────────────────────────────────
 step "Installing offline knowledge tools (cache cascade + ZIM viewer)"
 
-OFFLINE_REPO="${SCRIPT_DIR}/src/offline"
+OFFLINE_REPO="${SCRIPT_DIR}/../ops/offline"
 OFFLINE_DEST="${CORTEX_DEPLOY_HOME}/offline"
 
 if [[ -d "$OFFLINE_REPO" ]]; then

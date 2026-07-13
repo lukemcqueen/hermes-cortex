@@ -9,8 +9,8 @@
 set -euo pipefail
 
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
-SUBMIT_FILE="${CORTEX_REPO}/deploy/nginx/blocked_ips.submit"
-ADD_FILE="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
+SUBMIT_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.submit"
+ADD_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add"
 NEW_IPS=false
 PIPELINE_OUTPUT=""
 
@@ -71,10 +71,10 @@ PIPELINE_OUTPUT+="  ✓ Cleared blocked_ips.submit"$'\n'
 
 # ── Commit and push ──
 cd "$CORTEX_REPO"
-if git diff --quiet deploy/nginx/blocked_ips.add 2>/dev/null; then
+if git diff --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null; then
   log "  No git changes (unexpected) — skipping commit"
 else
-  git add deploy/nginx/blocked_ips.add deploy/nginx/blocked_ips.submit 2>/dev/null || git add deploy/nginx/blocked_ips.add
+  git add ops/install/deploy/nginx/blocked_ips.add ops/install/deploy/nginx/blocked_ips.submit 2>/dev/null || git add ops/install/deploy/nginx/blocked_ips.add
   SKIP_SCORE=1 git commit -m "auto: block ${NEW_COUNT} agent-submitted IPs [pipeline]" 2>&1 || true
 
   # Push with retry

@@ -51,7 +51,7 @@ configure_nginx() {
   fi
 
   # Ensure zone-defs include file is installed alongside the main config
-  local zone_defs_src="${SCRIPT_DIR}/../deploy/nginx/hermes-zone-defs.conf"
+  local zone_defs_src="${SCRIPT_DIR}/../../install/deploy/nginx/hermes-zone-defs.conf"
   local zone_defs_dst="${NGINX_CONFIG_DIR}/../hermes-zone-defs.conf"
   if [[ -f "$zone_defs_src" && ! -f "$zone_defs_dst" ]]; then
     cp "$zone_defs_src" "$zone_defs_dst"
@@ -64,7 +64,7 @@ configure_nginx() {
   fi
 
   # Try to deploy the hardened template from the repo (with OS path substitution)
-  local hardened_template="${SCRIPT_DIR}/../deploy/nginx/hermes-services.conf"
+  local hardened_template="${SCRIPT_DIR}/../../install/deploy/nginx/hermes-services.conf"
   if [[ -f "$hardened_template" ]]; then
     echo "  Deploying hardened nginx template from repo…"
     < "$hardened_template" subst_nginx_paths > "$config_file"
