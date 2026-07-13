@@ -178,6 +178,21 @@ All monitoring scripts output timestamps in Seoul time. Affects: `orch-team-heal
 
 ---
 
+## Pre-commit Hook: Bare Repo Compatibility
+
+`cortex-update.sh` sets `git config --global core.hooksPath` to the shared hooks directory so every repo on the machine gets the scoring hook. This **overrides** each repo's own `.git/hooks/` — including bare repositories used for deployment with `post-receive` scripts.
+
+**Fix built in:** `pin_repos_with_own_hooks()` runs before the global hooksPath is set. It scans `/home`, `/opt`, `/srv`, `/var/www`, `/var/repo` for `.git` dirs that have their own hooks (non-sample executable hook files). For each one, it sets a **local** `core.hooksPath` pointing to the repo's own hooks directory, so the global setting doesn't override it.
+
+Repo gets pinned automatically on every `cortex-update.sh` run. To check a specific repo:
+
+```bash
+git --git-dir=/path/to/repo.git config --local core.hooksPath
+# Returns /path/to/repo.git/hooks if pinned correctly
+```
+
+---
+
 ## Security: Secret Leak Prevention
 
 **The single most common agent security mistake:** passing secrets as literal strings in `terminal()` commands.

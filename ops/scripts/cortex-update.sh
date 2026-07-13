@@ -945,6 +945,56 @@ verify_services() {
 
 # ── Main ────────────────────────────────────────────────────
 
+# Pin local hooks for repos with their own hook scripts
+# BEFORE setting global hooksPath. This preserves deploy bare repo
+# hooks (post-receive, update) that would otherwise be overridden.
+pin_repos_with_own_hooks() {
+  local shared_hooks_dir="${CORTEX_DEPLOY_HOME}/hooks"
+  local pinned=0
+
+  # Strategy: find .git dirs in common repo locations, then check if each
+  # has repo-specific hooks. We scope the search to user-writable areas
+  # to avoid /proc, /sys, /dev noise.
+  #
+  # We use printf + path expansion instead of find -exec to stay
+  # compatible with unusual file names and avoid subshell overhead.
+  #
+  # A single find invocation covers both working-tree .git dirs
+  # AND bare repos (e.g. myrepo.git/ which git treats as .git itself).
+  # --maxdepth 8 avoids crawling deep node_modules, venvs, and caches.
+  while IFS= read -r -d '' git_dir; do
+    local hooks_path="${git_dir}/hooks"
+    
+    # Skip if hooks dir doesn't exist or is empty
+    [[ ! -d "$hooks_path" ]] && continue
+    
+    # Count non-hidden, non-trivial hook files (not just sample files)
+    local hook_count
+    hook_count=$(find "$hooks_path" -maxdepth 1 -type f ! -name '.*' ! -name '*.sample' 2>/dev/null | wc -l)
+    [[ "$hook_count" -eq 0 ]] && continue
+    
+    # Check if this repo already has a local hooksPath set
+    local current_local
+    current_local=$(git --git-dir="$git_dir" config --local core.hooksPath 2>/dev/null || echo "")
+    
+    if [[ "$current_local" != "$hooks_path" ]]; then
+      git --git-dir="$git_dir" config --local core.hooksPath "$hooks_path"
+      pinned=$((pinned + 1))
+      info "Pinned local hooks for $(dirname "$git_dir")"
+    fi
+  done < <(
+    # Search home directories, /opt, /srv, /var for git repos
+    # Limited depth to avoid crawling deep dependency trees
+    for base in /home /opt /srv /var/www /var/repo; do
+      [[ -d "$base" ]] && find "$base" \( -name ".git" -type d -o -name "*.git" -type d \) -maxdepth 8 -print0 2>/dev/null
+    done
+  )
+
+  if [[ "$pinned" -gt 0 ]]; then
+    info "  → ${pinned} repo(s) with local hooks preserved"
+  fi
+}
+
 install_precommit_hook() {
   local hooks_dir="${CORTEX_DEPLOY_HOME}/hooks"
   local hook_src="${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
@@ -974,6 +1024,10 @@ install_precommit_hook() {
 
   # Set global hooksPath — this makes ALL git repos on this machine
   # use the shared hooks dir. Per-repo .git/hooks/ is overridden.
+  #
+  # IMPORTANT: pin_repos_with_own_hooks() must run BEFORE this so any
+  # repo with its own hooks (e.g. bare deploy repos with post-receive)
+  # gets a local core.hooksPath override that preserves its behavior.
   local current_hooks_path
   current_hooks_path=$(git config --global core.hooksPath 2>/dev/null || echo "")
   if [[ "$current_hooks_path" != "$hooks_dir" ]]; then
@@ -1146,6 +1200,9 @@ main() {
     ln -sf "$_CORTEX_DEPLOY_SCRIPTS" "$_HERMES_AGENT_SCRIPTS"
     info "Created ~/.hermes-cortex/scripts/ symlink"
   fi
+
+  # Pin repos with their own hooks before setting global hooksPath
+  pin_repos_with_own_hooks
 
   # Install pre-commit scoring hook in repo
   install_precommit_hook
