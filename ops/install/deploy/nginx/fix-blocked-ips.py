@@ -12,7 +12,7 @@ handle the deploy themselves):
   python3 /path/to/fix-blocked-ips.py
 
 Install sudoers rule:
-  echo 'moses ALL=(root) NOPASSWD: /home/moses/hermes-cortex/deploy/nginx/fix-blocked-ips.py' | \
+  echo '$USER ALL=(root) NOPASSWD: $HOME/hermes-cortex/ops/install/deploy/nginx/fix-blocked-ips.py' | \
     sudo tee /etc/sudoers.d/moses
 """
 import os
