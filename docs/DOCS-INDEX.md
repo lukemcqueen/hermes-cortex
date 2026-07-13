@@ -36,6 +36,9 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/knowledge-isolation-architecture.md` | Knowledge isolation model — gbrain source isolation, federated vs isolated sources, pointer pattern integration |
 | `docs/seeding-brain-content.md` | Brain directory templates and starter content — get from 0 pages to searchable knowledge |
 | `docs/deploy-registry-pattern.md` | Multi-repo deploy registry — public/private split, brain-* branches, sync workflow |
+| `docs/cloud-deploy.md` | Cloud deployment runbook — AWS EC2 + Hetzner Cloud: sizing, ports, SSL, verification, costs, recovery |
+| `ops/deploy/cloud-init.yaml` | Cloud VM bootstrap — Ubuntu 24.04 user-data: Docker, Ollama, Hermes, Langfuse, UFW, systemd |
+| `ops/deploy/ansible/provision.yml` | Ansible provisioning playbook — idempotent: 16 tasks, 6 tags, nginx+ollama templates |
 | `docs/multica-assessment.md` | Multica assessment — multi-agent, multi-server orchestration platform evaluation |
 | `docs/design/DESIGN.md` | Design conventions — typography, color, spacing, UI (light/dark modes) |
 | `docs/deprecated-profile-model.md` | Archived v1.x profile-per-project model — legacy migration reference |

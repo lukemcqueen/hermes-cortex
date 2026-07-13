@@ -388,6 +388,20 @@ All you need is Hermes Agent, the repo, the MCP client, credentials, and a cron.
 
 ---
 
+## Cloud Deployment (Server Agents)
+
+If you're setting up a **server agent** (Joseph, Esther, Kustos, Gisu) rather than a client-only agent, see:
+
+| Resource | What it covers |
+|----------|---------------|
+| [`docs/cloud-deploy.md`](cloud-deploy.md) | Full runbook: AWS EC2 + Hetzner Cloud — instance sizing, security groups, DNS, SSL, verification, recovery |
+| [`ops/deploy/cloud-init.yaml`](../ops/deploy/cloud-init.yaml) | Bootstrap a fresh Ubuntu 24.04 VM → running Hermes agent in one user-data paste |
+| [`ops/deploy/ansible/provision.yml`](../ops/deploy/ansible/provision.yml) | Ansible playbook for idempotent provisioning (16 tasks, Docker, Ollama, Hermes, Langfuse, nginx) |
+
+**Principle:** Local/private-first. Cloud deployment is available for migration or scaling, not a replacement for local operation.
+
+---
+
 ## Done ✅
 
 You're connected. From now on:
