@@ -95,7 +95,8 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/templates/com.hermes.cortex-dashboard.plist` | Launchd plist for Cortex Dashboard |
 | `docs/templates/com.docker.docker.plist` | Launchd plist for Docker Desktop auto-start |
 | `docs/templates/com.hermes.health-push.plist` | Launchd plist — health vector push (every 10min, to Moses inbox) |
-| `docs/templates/com.hermes.gateway.plist` | Launchd plist — persistent Hermes Gateway daemon |
+|| `docs/templates/com.hermes.gateway.plist` | Launchd plist — persistent Hermes Gateway daemon |
+|| `docs/templates/skills/change-checklist/SKILL.md` | **Mandatory change-checklist skill** — load before every `end_change()`. AGENTS.md requires it. |
 
 ## Legal
 
