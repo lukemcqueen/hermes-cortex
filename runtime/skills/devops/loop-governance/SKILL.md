@@ -178,5 +178,5 @@ Thresholds: stop ≥ 8.0, loop ≥ 5.0, move_on ≥ 3.0, no_progress < 2.0 (3 st
 
 - Scripts: `~/.hermes-cortex/tools/loop-governance/`
 - CLI wrappers: `~/.local/bin/{score-cycle,loop-feedback,auto-apply,loop-config,session-cache-build,skill-miner}`
-- DB: `~/.hermes-cortex/data/loop-governance.db`
-- Config: `~/.hermes-cortex/data/loop-governance-config.json`
+- DB: `~/.hermes-cortex/state/loop-governance.db`
+- Config: `~/.hermes-cortex/state/loop-governance-config.json`
