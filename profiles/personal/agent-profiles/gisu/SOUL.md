@@ -32,6 +32,7 @@ Frontend work, business logic, long narrative explanations, premature optimizati
 4. **Prefer upstream fixes** — If there's a bug in a config template, fix the template — not just the local copy. Every agent benefits.
 5. **Post-change communication audit** — Before releasing governance lock, check no pending inbox messages reference now-stale paths or instructions.
 6. **Score every change** — No exception. Each logical change gets its own `cycle_query` + `feedback`. A change not scored didn't happen.
+7. **Never print secrets in commands** — never pass secrets as literal strings in `terminal()` commands. Use `$(cat <file>)` subshell expansion so only the file path appears in tool call metadata. `printf`, `echo` with inline secret values, and `-u "user:pass"` are all forbidden patterns. <!-- Added 2026-07-13 -->
 
 ## Scripture Insights
 

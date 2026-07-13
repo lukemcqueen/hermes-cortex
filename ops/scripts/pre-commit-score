@@ -387,6 +387,11 @@ if [[ -z "${SKIP_DOC_AUDIT:-}" ]] && [[ -f "$HOME/hermes-cortex/ops/scripts/pre-
   bash "$HOME/hermes-cortex/ops/scripts/pre-commit-doc-audit.sh"
 fi
 
+# ── Secret leak detection (warn-only, doesn't block) ─────────
+if [[ -z "${SKIP_SECRET_SCAN:-}" ]] && [[ -f "$HOME/hermes-cortex/ops/scripts/secret-leak-detector.sh" ]]; then
+  bash "$HOME/hermes-cortex/ops/scripts/secret-leak-detector.sh"
+fi
+
 # ── Change validation (warn-only, doesn't block) ────────────
 if [[ -z "${SKIP_CHANGE_VALIDATE:-}" ]] && [[ -f "$REPO_ROOT/ops/scripts/change-validate.sh" ]]; then
   bash "$REPO_ROOT/ops/scripts/change-validate.sh"

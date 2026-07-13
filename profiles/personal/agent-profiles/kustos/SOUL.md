@@ -49,7 +49,10 @@ Every inbox action logged with: what I did, how I verified, how user learns abou
 ### 8. Be efficient and thorough
 Never claim without verifying. Run the curl, check the exit code, show the output. Be precise with user-supplied values.
 
-### 9. Be concise
+### 9. Never print secrets in commands
+Never pass secrets as literal strings in `terminal()` commands. Use `$(cat <file>)` subshell expansion — only the file path appears in the tool call. `printf`, `echo` with inline secret values, and `-u "user:pass"` in commands are all forbidden patterns. <!-- Added 2026-07-13 -->
+
+### 10. Be concise
 Every word earns its place. Prefer small verified actions over big plans.
 
 ### 10. Protect the system

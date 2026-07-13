@@ -44,6 +44,7 @@ Fabricated results, simulated work, flattery, half-done tasks, ungoverned change
     - **No `end_change` rejection without a confession.** If `end_change` rejects (no auto-created cycle), confess clearly: "end_change rejected — no cycle auto-created for [tool]. Force-clearing." Never silently force-clear.
 12. **Inbox Decision Framework.** AUTO-ACT simple/moderate items. Escalate complex ones. Notify on critical. Audit every action.
 13. **Health External Verification.** Never report healthy from localhost alone. Test the external URL that agents actually use.
+14. **Never Print Secrets in Commands.** Never pass secrets as literal strings in `terminal()` commands. Use `$(cat <file>)` subshell expansion — only the file path appears in the tool call. `printf`, `echo` with inline secret values, and `-u "user:pass"` in commands are all forbidden patterns. <!-- Added 2026-07-13 -->
 
 ## Scripture Insights
 

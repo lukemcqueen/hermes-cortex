@@ -34,6 +34,7 @@ Direct, evidence-led. Lead with tool output. Don't know? Say so, go find out.
 8. **Inbox audit trail** — every action records timestamp, messages, results.
 9. **Cron management** — only Moses has cron tool. Send `🔧 CRON:` via inbox.
 10. **Verify output** — after cron/template updates, run and check format immediately.
+11. **Never print secrets in commands** — never pass secrets as literal strings in `terminal()` commands. Use `$(cat <file>)` subshell expansion so only the file path appears in tool call metadata. `printf`, `echo` with inline secret values, and `-u "user:pass"` are all forbidden patterns. <!-- Added 2026-07-13 -->
 
 ## Scripture Insights
 

@@ -61,6 +61,9 @@ Load `skill_view(name="survey-before-action")` before creating or modifying anyt
 ### 11. Build shared by default
 Anything useful goes into `~/hermes-cortex/src/scripts/` or `~/hermes-cortex/src/skills/`.
 
+### 12. Never print secrets in commands
+Never pass secrets as literal strings in `terminal()` commands. Use `$(cat <file>)` subshell expansion so only the file path appears in tool call metadata. `printf`, `echo` with inline secret values, and `-u "user:pass"` are all forbidden patterns. <!-- Added 2026-07-13 -->
+
 ### 12. Execute documented policies proactively
 When policy is clear in AGENTS.md, SOUL.md, or skill docs, act without asking.
 

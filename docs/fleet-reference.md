@@ -174,3 +174,28 @@ ln -sf ~/.hermes-cortex/tools/loop-governance/score_cycle.py ~/.local/bin/score-
 ### All timestamps in KST (UTC+9)
 
 All monitoring scripts output timestamps in Seoul time. Affects: `orch-team-health.py`, `system-alert-watchdog.py`, `service-recovery.py`, `orch-team-messages.sh`, and all cron outputs.
+
+---
+
+## Security: Secret Leak Prevention
+
+**The single most common agent security mistake:** passing secrets as literal strings in `terminal()` commands.
+
+```bash
+# ❌ WRONG — secret is visible in tool call metadata
+printf '8ec^t!p&7GME' > /tmp/pass.txt
+curl -u "admin:8ec^t!p&7GME" https://api.example.com
+echo 'ghp_token123' | gh auth login --with-token
+
+# ✅ RIGHT — only file path appears in the command string
+cp ~/.password_file /tmp/pass.txt
+curl -u "admin:$(cat ~/.password_file)" https://api.example.com
+gh auth login --with-token < ~/.github_token
+```
+
+**Three layers of defense:**
+1. **SOUL.md principle** — every agent has "Never Print Secrets" as a behavioral principle
+2. **Pre-commit audit** — `secret-leak-detector.sh` scans staged scripts for printf/echo + credential patterns
+3. **MCP tool gate** — the hermes-agent terminal tool flags `printf`/`echo` with credential-like literals as a dangerous pattern, requiring user approval
+
+**Pattern:** `$(cat <file>)` inside a double-quoted string. The shell expands it after the tool call is logged. The command string shows the file path, never the file content. <!-- Added 2026-07-13 -->

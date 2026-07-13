@@ -45,6 +45,9 @@ logs/
 *cred*
 *token*
 *.p12
+# Negate our own scripts that legitimately contain "secret"
+!ops/scripts/secret-leak-detector.sh
+!ops/scripts/agents-doc-audit*
 .netrc
 
 # OS junk
