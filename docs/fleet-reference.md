@@ -215,3 +215,63 @@ gh auth login --with-token < ~/.github_token
 3. **Runtime watchdog** — `secret-leak-watchdog` (no_agent cron, runs every 4h) scans cron outputs and session files for leaked credential patterns and alerts via inbox
 
 **Pattern:** `$(cat <file>)` inside a double-quoted string. The shell expands it after the tool call is logged. The command string shows the file path, never the file content. <!-- Added 2026-07-13 -->
+
+---
+
+## Model Fallback Chain
+
+Hermes Agent supports a global `fallback_providers` config — a chain of provider+model pairs tried in order when the primary model is unreachable or returns errors. This is configured in `~/.hermes/config.yaml` and applies to **all LLM-driven cron jobs and agent sessions** that don't pin a specific model.
+
+### Standard tiers
+
+| Tier | Provider | When | 
+|------|----------|------|
+| Primary | Paid API | Default — always tried first |
+| Fallback | Free/alt API | If primary API is unreachable |
+| Last resort | Local Ollama | If both upstream APIs fail — uses a small local model |
+
+No per-cron configuration needed — one config change covers everything.
+
+### Applying to a new server
+
+`~/.hermes/config.yaml` is per-machine and not synced via the repo. To install on a new server:
+
+```bash
+python3 -c "
+import yaml
+with open('/home/USER/.hermes/config.yaml') as f:
+    cfg = yaml.safe_load(f)
+
+# If the file doesn't exist yet, create it with defaults
+cfg.setdefault('fallback_providers', [])
+cfg['fallback_providers'] = [
+    {'provider': 'opencode-zen', 'model': 'deepseek-v4-flash',
+     'base_url': 'https://opencode.ai/zen/v1', 'api_mode': 'chat_completions'},
+    {'provider': 'custom:ollama-local', 'model': 'qwen2.5-coder:3b'},
+]
+with open('/home/USER/.hermes/config.yaml', 'w') as f:
+    yaml.dump(cfg, f)
+"
+```
+
+Replace `USER` with the actual username. The local Ollama model must be pulled:
+```bash
+ollama pull qwen2.5-coder:3b
+```
+
+### Verification
+
+```bash
+grep -A10 'fallback_providers' ~/.hermes/config.yaml
+```
+
+Expected output (models may differ per deployment):
+
+```yaml
+fallback_providers:
+  - provider: opencode-zen
+    model: deepseek-v4-flash
+    ...
+  - provider: custom:ollama-local
+    model: qwen2.5-coder:3b
+```
