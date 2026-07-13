@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/Users/luke/.hermes/mcp-venv/bin/python3
 import sys
 import os
 
@@ -306,7 +306,7 @@ Examples:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Global --db flag
-    parser.add_argument("--db", default=os.path.expanduser("~/.hermes-cortex/data/loop-governance.db"), help="Custom DB path (default: ~/.hermes-cortex/data/loop-governance.db)")
+    parser.add_argument("--db", default=os.path.expanduser("~/.hermes-cortex/state/loop-governance.db"), help="Custom DB path (default: ~/.hermes-cortex/state/loop-governance.db)")
 
     # list
     list_p = subparsers.add_parser("list", help="List cycles needing feedback")

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/Users/luke/.hermes/mcp-venv/bin/python3
 """
 Loop Governance Config — runtime thresholds and weights for the scoring system.
 
@@ -16,7 +16,7 @@ import json
 import os
 
 DEFAULT_CONFIG_PATH = os.path.expanduser(
-    "~/.hermes-cortex/data/loop-governance-config.json"
+    "~/.hermes-cortex/state/loop-governance-config.json"
 )
 
 DEFAULTS = {

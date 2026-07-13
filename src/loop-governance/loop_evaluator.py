@@ -1,3 +1,4 @@
+#!/Users/luke/.hermes/mcp-venv/bin/python3
 """
 Loop Evaluator — weekly analysis pipeline for self-improving loop governance.
 
@@ -23,7 +24,7 @@ import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-DEFAULT_DB_PATH = os.path.expanduser("~/.hermes-cortex/data/loop-governance.db")
+DEFAULT_DB_PATH = os.path.expanduser("~/.hermes-cortex/state/loop-governance.db")
 
 
 class LoopEvaluator:
