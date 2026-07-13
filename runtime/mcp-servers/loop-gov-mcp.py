@@ -190,6 +190,10 @@ def _write_lock(state: dict) -> None:
     path = _governance_lock_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(state, indent=2))
+    # Also write generic lock so enforcer (which may run from non-git cwd) finds it
+    generic = _generic_lock_path()
+    generic.parent.mkdir(parents=True, exist_ok=True)
+    generic.write_text(json.dumps(state, indent=2))
 
 
 def _release_lock() -> None:
@@ -197,6 +201,10 @@ def _release_lock() -> None:
     path = _governance_lock_path()
     if path.exists():
         path.unlink()
+    # Also clean up generic lock
+    generic = _generic_lock_path()
+    if generic.exists():
+        generic.unlink()
 
 
 # ── Embedding helpers ────────────────────────────────────────

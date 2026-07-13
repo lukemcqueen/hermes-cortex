@@ -694,7 +694,7 @@ This happens when you call `end_change()` but no cycle was logged with your task
 # 1. Check recent cycles for your task
 python3 -c "
 import sqlite3, os
-db = os.path.expanduser('~/.hermes-cortex/state/loop-governance.db')
+db = os.path.expanduser('~/.hermes-cortex/data/loop-governance.db')
 c = sqlite3.connect(db)
 r = c.execute('SELECT id, task_id, composite FROM loop_cycles ORDER BY id DESC LIMIT 10').fetchall()
 c.close()
@@ -832,13 +832,31 @@ Requires:
 - Ollama running with `nomic-embed-text:v1.5` pulled
 - `~/.hermes/scripts/hermes_models.py` on PYTHONPATH
 
+### 23. scoring-activity-watchdog fails: "DB not found"
+
+**Symptom:**
+```
+scoring-activity-watchdog: DB not found at ~/.hermes-cortex/state/loop-governance.db
+```
+
+**Root cause:** The actual loop-governance DB lives at `~/.hermes-cortex/data/` but scripts referenced `~/.hermes-cortex/state/`. This affected 17 files across docs, core governance scripts, cron scripts, and the pre-commit hook.
+
+**Fix applied 2026-07-13:** All references corrected from `state/` to `data/` in:
+- `core/governance/score_cycle.py`, `loop_evaluator.py`, `loop_db.py`, `loop_feedback.py`, `loop_config.py`, `auto_apply.py`, `verify.sh`
+- `ops/scripts/health/scoring-activity-watchdog.py`, `ops/scripts/manage/governance-auditor.py`
+- `.hermes-cortex/hooks/pre-commit`
+- `docs/pre-commit-scoring.md`, `docs/loop-governance-reference.md`, `docs/troubleshooting.md`
+- `runtime/skills/devops/loop-governance/SKILL.md`
+
+The MCP server (`loop-gov-mcp.py`) was also fixed to sync both slug-specific + generic lock files on `_write_lock` / `_release_lock`, preventing governance enforcer lock gaps when running from non-git cwds.
+
 ---
 
 ## Changelog
 
 | Version | Date | Changes |
 |---|---|---|
-| 1.6.0 | 2026-07-04 | Added #19 (loop-gov MCP import path), #20 (governance-enforcer plugin registration), #21 (governance-auditor section — supersedes score-auditor), #22 (session cache rebuild) |
+| 1.7.0 | 2026-07-13 | Added #23 (scoring-activity-watchdog DB path fix), corrected 17 stale `state/`→`data/` references across docs and core governance scripts, fixed MCP lock file sync to prevent enforcer gaps |
 | 1.5.0 | 2026-06-22 | Added #24 (Alembic migration fork troubleshooting, prevention protocol, diagnostics) |
 | 1.4.0 | 2026-06-10 | Rewrote #23 (Langfuse costs) — fixed schema from `langfuse.models` to `public.models`, corrected INSERT SQL for v3 schema, added opencode-zen/opencode-go provider subsection with deepseek-v4-flash-free pricing SQL |
 | 1.2.0 | 2026-06-06 | Added #21 (Langfuse fromTimestamp), #22 (dashboard no-traces), #23 (costs $0.00), #24 (pf firewall), #25 (fail2ban), updated port ranges |

@@ -48,7 +48,7 @@ After verifying: cycle_query(task_id="story-name") ← review the cycle
 |---------|-------------|-----|
 | `embedding failed` / `Ollama connection refused` | Ollama not running | `ollama serve` or `brew services restart ollama` |
 | `Model nomic-embed-text:v1.5 not found` | Model not pulled | `ollama pull nomic-embed-text:v1.5` (274 MB) |
-| `DB locked` | Concurrent score-cycle process | Wait and retry, or `rm ~/.hermes-cortex/state/loop-governance.db-journal` |
+| `DB locked` | Concurrent score-cycle process | Wait and retry, or `rm ~/.hermes-cortex/data/loop-governance.db-journal` |
 | `score-cycle not found` | Symlink missing | `bash ~/hermes-cortex/core/governance/setup.sh --symlinks-only` |
 | `warning: all tests failed — score may be inaccurate` | Test suite broken | Fix tests first, then re-score |
 | MCP tool returns `error` | MCP server not registered | `hermes mcp add --command python3 --args ~/hermes-cortex/src/mcp-servers/loop-gov-mcp.py loop-governance` |

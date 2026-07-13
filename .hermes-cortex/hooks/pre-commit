@@ -339,7 +339,7 @@ MSG_SLUG=$(echo "$COMMIT_MSG" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/
 TASK_ID="precommit-${REPO_NAME}-${BRANCH}/${MSG_SLUG}"
 
 # Auto-increment cycle number per task (so repeated commits with same message get cycles 1,2,3...)
-DB_PATH="$HOME/.hermes-cortex/state/loop-governance.db"
+DB_PATH="$HOME/.hermes-cortex/data/loop-governance.db"
 PREV_CYCLE=$(python3 -c "
 import sqlite3, os
 db = os.path.expanduser('$DB_PATH')

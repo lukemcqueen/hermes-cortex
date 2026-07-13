@@ -26,7 +26,7 @@ Every time you run `git commit`:
 4. **Queries** the loop-governance DB for the highest `cycle_num` with that task ID
 5. **Auto-increments**: previous cycle 3 → this commit becomes cycle 4
 6. **Runs `score-cycle`** with the task ID, staged file, and pass rate
-7. **Creates a cycle** in the loop-governance DB (at `~/.hermes-cortex/state/loop-governance.db`)
+7. **Creates a cycle** in the loop-governance DB (at `~/.hermes-cortex/data/loop-governance.db`)
 8. **Prints** the decision and task so you can follow up with feedback
 
 Note: step 6's governance-lock check is redundant — the MCP server already verified the lock at write time. But the scoring call itself is useful for keeping the DB populated.
