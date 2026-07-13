@@ -19,8 +19,8 @@ services:
     image: langfuse/langfuse-worker:3.206.0
     restart: always
     cpus: 0.5
-    mem_limit: 512m
-    memswap_limit: 512m
+    mem_limit: 1g
+    memswap_limit: 1g
     depends_on: &langfuse-depends-on
       clickhouse:
         condition: service_healthy
@@ -110,15 +110,15 @@ services:
     image: langfuse/langfuse:3.206.0
     restart: unless-stopped
     depends_on: *langfuse-depends-on
-    cpus: 0.5
-    mem_limit: 512m
-    memswap_limit: 512m
+    cpus: 1.0
+    mem_limit: 1g
+    memswap_limit: 1g
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/api/public/health || exit 1"]
       interval: 15s
       timeout: 10s
-      retries: 3
-      start_period: 240s
+      retries: 5
+      start_period: 120s
     ports:
       - "127.0.0.1:${LANGFUSE_PORT:-3000}:3000"
     # Auto-restart server if it exits (e.g. PostHog timeout crash)
@@ -129,7 +129,7 @@ services:
     environment:
       <<: *langfuse-env-base
       HOSTNAME: "0.0.0.0"
-      NODE_OPTIONS: "--max-old-space-size=512 --max-semi-space-size=64 --unhandled-rejections=warn"
+      NODE_OPTIONS: "--max-old-space-size=768 --max-semi-space-size=64 --unhandled-rejections=warn"
       NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3000}
       # ── Init vars — stay active for auth validation ──
       LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-hermes-cortex}
