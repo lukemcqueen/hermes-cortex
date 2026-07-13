@@ -59,6 +59,11 @@ INBOX_PASSWORD=""
 LANGFUSE_PK=""
 LANGFUSE_SK=""
 
+# SSL (set by interactive prompts)
+SSL_METHOD="1"
+SSL_SOURCE_HOST=""
+SSL_SOURCE_DOMAIN=""
+
 # ── Step tracking ──────────────────────────────────────────────────
 STEP_TOTAL=11
 STEP_CURRENT=0
@@ -182,6 +187,18 @@ else
 
     read -rp "  Let's Encrypt email (for SSL expiry notices): " input
     LE_EMAIL="${input:-}"
+
+    echo ""
+    info "SSL certificates"
+    echo "    1) Let's Encrypt (auto-provision — needs public DNS + port 80)"
+    echo "    2) Copy from another server (e.g. Moses/Joseph already has the cert)"
+    read -rp "  SSL method [1/2]: " input
+    SSL_METHOD="${input:-1}"
+    if [[ "$SSL_METHOD" == "2" ]]; then
+        read -rp "  Source server (user@host, e.g. root@joseph): " SSL_SOURCE_HOST
+        read -rp "  Domain on the certificate:                  " SSL_SOURCE_DOMAIN
+        AGENT_DOMAIN="${SSL_SOURCE_DOMAIN:-$AGENT_DOMAIN}"
+    fi
 
     echo ""
     info "API keys (can be left blank — edit ~/hermes-cortex/.env later)"
@@ -443,15 +460,42 @@ if [[ -n "$HTPASSWD_HASH" ]] && [[ ! -f /etc/nginx/.hermes-htpasswd ]]; then
     ok "htpasswd created for inbox API"
 fi
 
-# Let's Encrypt SSL
-if [[ "$AGENT_DOMAIN" != "localhost" ]] && [[ -n "$LE_EMAIL" ]]; then
+# ── SSL: Let's Encrypt or Copy from another server ──
+if [[ "$SSL_METHOD" == "2" ]] && [[ -n "${SSL_SOURCE_HOST:-}" ]]; then
+    info "Copying SSL certificate from $SSL_SOURCE_HOST..."
+    mkdir -p /etc/letsencrypt/live/"$AGENT_DOMAIN"
+    # Copy fullchain + privkey via SSH (assumes SSH key on source host)
+    scp -o StrictHostKeyChecking=accept-new \
+        "$SSL_SOURCE_HOST:/etc/letsencrypt/live/$AGENT_DOMAIN/fullchain.pem" \
+        "/etc/letsencrypt/live/$AGENT_DOMAIN/fullchain.pem" 2>/dev/null || \
+        warn "scp failed — you'll need to copy certs manually from $SSL_SOURCE_HOST"
+    scp -o StrictHostKeyChecking=accept-new \
+        "$SSL_SOURCE_HOST:/etc/letsencrypt/live/$AGENT_DOMAIN/privkey.pem" \
+        "/etc/letsencrypt/live/$AGENT_DOMAIN/privkey.pem" 2>/dev/null || \
+        warn "scp failed for privkey"
+    # Copy chain.pem and options-ssl-nginx.conf if available
+    scp -o StrictHostKeyChecking=accept-new \
+        "$SSL_SOURCE_HOST:/etc/letsencrypt/live/$AGENT_DOMAIN/chain.pem" \
+        "/etc/letsencrypt/live/$AGENT_DOMAIN/chain.pem" 2>/dev/null || true
+    scp -o StrictHostKeyChecking=accept-new \
+        "$SSL_SOURCE_HOST:/etc/letsencrypt/options-ssl-nginx.conf" \
+        "/etc/letsencrypt/options-ssl-nginx.conf" 2>/dev/null || true
+    scp -o StrictHostKeyChecking=accept-new \
+        "$SSL_SOURCE_HOST:/etc/letsencrypt/ssl-dhparams.pem" \
+        "/etc/letsencrypt/ssl-dhparams.pem" 2>/dev/null || true
+    chmod 755 /etc/letsencrypt/live/"$AGENT_DOMAIN"
+    chmod 644 /etc/letsencrypt/live/"$AGENT_DOMAIN"/*.pem 2>/dev/null || true
+    chmod 600 /etc/letsencrypt/live/"$AGENT_DOMAIN"/privkey.pem 2>/dev/null || true
+    systemctl reload nginx 2>/dev/null || true
+    ok "SSL certificates copied from $SSL_SOURCE_HOST"
+elif [[ "$AGENT_DOMAIN" != "localhost" ]] && [[ -n "$LE_EMAIL" ]]; then
     info "Requesting Let's Encrypt certificate for $AGENT_DOMAIN..."
     certbot --nginx -d "$AGENT_DOMAIN" --non-interactive --agree-tos \
         --email "$LE_EMAIL" --redirect 2>&1 || \
         warn "Let's Encrypt failed — check DNS and try: sudo certbot --nginx -d $AGENT_DOMAIN"
     ok "SSL certificate obtained"
 elif [[ "$AGENT_DOMAIN" != "localhost" ]]; then
-    warn "No email provided — skipping Let's Encrypt. Run later: sudo certbot --nginx -d $AGENT_DOMAIN"
+    warn "No email provided — skipping SSL. Run later: sudo certbot --nginx -d $AGENT_DOMAIN"
 else
     info "No domain — skipping SSL (localhost only)"
 fi
