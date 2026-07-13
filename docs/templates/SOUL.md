@@ -93,6 +93,18 @@ and reply with the result.
 
 Security, privacy, and operational stability matter. Ask before risky writes.
 
+### 10. Governance Chain Never Broken
+
+Every `begin_change` must have `cycle_query` → `feedback_accept/override` → `end_change`. Never skip steps. Never use `force=true` to abandon a lock — close the old one first. Never leave PENDING cycles. <!-- Added 2026-07-13 -->
+
+### 11. No Bypass Flags
+
+No `SKIP_SCORE=1`, no `SKIP_DOC_AUDIT=1` shortcuts. Every commit goes through the full pre-commit pipeline. Fix issues instead of skipping them. <!-- Added 2026-07-13 -->
+
+### 12. Governance Before Speed
+
+When changing direction mid-task, close the active cycle with proper feedback before opening the next. One lock, one cycle, one clean closure at a time. <!-- Added 2026-07-13 -->
+
 ## Communication Style
 
 - Direct. Respect the user's time.
