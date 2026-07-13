@@ -363,18 +363,18 @@ class TestSeedProject:
     # ── --skill-refs ─────────────────────────────────────────
 
     def test_skill_refs_linked(self, tmp_path):
-        """--skill-refs creates symlinks in .hermes-cortex/skills/."""
+        """--skill-refs registers skills in .hermes-cortex/skills.yaml always section."""
         repo = tmp_path / "repo"
         repo.mkdir()
         _init_repo(repo)
         rc, stdout, _ = _seed(repo, "--skill-refs=change-test-loop,engineering-approach")
         assert rc == 0, f"skill-refs seed failed:\n{stdout}"
-        skills_dir = repo / ".hermes-cortex" / "skills"
-        assert skills_dir.is_dir()
-        assert (skills_dir / "change-test-loop").is_symlink() or \
-               (skills_dir / "change-test-loop").is_dir()
-        assert (skills_dir / "engineering-approach").is_symlink() or \
-               (skills_dir / "engineering-approach").is_dir()
+        skills_yaml = repo / ".hermes-cortex" / "skills.yaml"
+        assert skills_yaml.is_file(), "skills.yaml not created"
+        content = skills_yaml.read_text()
+        assert "change-test-loop" in content, f"change-test-loop not in skills.yaml:\n{content}"
+        assert "engineering-approach" in content, f"engineering-approach not in skills.yaml:\n{content}"
+        assert "- name: change-test-loop" in content, f"not under always section:\n{content}"
 
     # ── --template ───────────────────────────────────────────
 
