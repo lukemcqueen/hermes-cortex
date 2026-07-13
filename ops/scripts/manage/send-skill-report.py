@@ -50,7 +50,7 @@ MANIFEST_FILE = STATE_DIR / "skills-manifest.json"
 CONTENTS_FILE = STATE_DIR / "skills-contents.json"
 
 # ── Rebuild manifest from current skills if possible ──────
-collect_script = HOME / "hermes-cortex" / "src" / "scripts" / "manage" / "collect-agent-skills.sh"
+collect_script = HOME / "hermes-cortex" / "ops" / "scripts" / "manage" / "collect-agent-skills.sh"
 if collect_script.exists():
     subprocess.run(["bash", str(collect_script)], capture_output=True)
 else:
