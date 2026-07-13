@@ -113,7 +113,7 @@ fi
 # Check that template files don't contain stale placeholders
 for f in $STAGED; do
   case "$f" in
-    deploy/nginx/hermes-services.conf)
+    ops/install/deploy/nginx/hermes-services.conf)
       # The template itself MUST have placeholders — that's normal
       pass "Template placeholders expected: $f"
       ;;

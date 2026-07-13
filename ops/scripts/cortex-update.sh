@@ -179,7 +179,7 @@ register "ops/scripts/agent/orch-weekly-auto-fix.py"    "${CORTEX_DEPLOY_HOME}/s
 # System watchdog scripts (no_agent cron jobs)
 register "ops/scripts/health/service-recovery.py"        "${CORTEX_DEPLOY_HOME}/scripts/service-recovery.py"
 register "ops/scripts/platform_utils.py"          "${CORTEX_DEPLOY_HOME}/scripts/platform_utils.py"
-register "profiles/personal/scripts/agent-daily-bible-reading.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-daily-bible-reading.py"
+register "ops/scripts/agent/agent-daily-bible-reading.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-daily-bible-reading.py"
 register "ops/scripts/health/langfuse-health-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/langfuse-health-watchdog.py"
 register "ops/scripts/manage/llm-judge-scorer.py"         "${CORTEX_DEPLOY_HOME}/scripts/llm-judge-scorer.py"
 register "ops/scripts/health/model-health-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/model-health-watchdog.py"
@@ -535,13 +535,13 @@ update_symlinks() {
 }
 
 # ── Skill Sync ───────────────────────────────────────────────
-# Copies SKILL.md files and references/ from repo runtime/skills/
+# Copies SKILL.md files and references/ from repo .hermes-cortex/skills/
 # to ~/.hermes/skills/. Uses the delta engine — only copies
 # files whose checksums differ from installed versions.
 sync_skills() {
-  local skill_repo="${REPO_DIR}/runtime/skills"
+  local skill_repo="${REPO_DIR}/.hermes-cortex/skills"
   local skill_dest="${CORTEX_DEPLOY_HOME}/skills"
-  [[ -d "$skill_repo" ]] || { info "  No runtime/skills/ in repo — skipping skill sync"; return 0; }
+  [[ -d "$skill_repo" ]] || { info "  No .hermes-cortex/skills/ in repo — skipping skill sync"; return 0; }
 
   local synced=0 skipped=0
   mkdir -p "$skill_dest"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # agent-ip-submission.sh — Process agent-submitted IPs into blocked_ips.add
 #
-# Agents (Gisu, Moses, Titus) write IPs to deploy/nginx/blocked_ips.submit.
+# Agents (Gisu, Moses, Titus) write IPs to ops/install/deploy/nginx/blocked_ips.submit.
 # This script validates, deduplicates, and merges them into blocked_ips.add,
 # then clears the submit file. Silent when no submissions (watchdog pattern).
 #
@@ -9,8 +9,8 @@
 set -euo pipefail
 
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
-SUBMIT_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.submit"
-ADD_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add"
+SUBMIT_FILE="${CORTEX_REPO}/ops/install/ops/install/deploy/nginx/blocked_ips.submit"
+ADD_FILE="${CORTEX_REPO}/ops/install/ops/install/deploy/nginx/blocked_ips.add"
 NEW_IPS=false
 PIPELINE_OUTPUT=""
 

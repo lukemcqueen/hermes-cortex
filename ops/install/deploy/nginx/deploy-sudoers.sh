@@ -11,7 +11,7 @@
 set -euo pipefail
 
 CORTEX_REPO="$(cd "$(dirname "$0")/../.." && pwd)"
-SOURCE_FILE="${CORTEX_REPO}/deploy/nginx/hermes-security"
+SOURCE_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/hermes-security"
 TARGET_FILE="/etc/sudoers.d/hermes-security"
 
 if [ ! -f "$SOURCE_FILE" ]; then

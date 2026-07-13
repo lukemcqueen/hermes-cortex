@@ -23,7 +23,7 @@ set -euo pipefail
 REPO_DIR="${CORTEX_REPO:-$HOME/hermes-cortex}"
 HERMES_SKILLS_DIR="$HOME/.hermes/skills"
 CORTEX_SKILLS_DIR="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}/skills"
-REPO_SKILLS_DIR="$REPO_DIR/runtime/skills"
+REPO_SKILLS_DIR="$REPO_DIR/.hermes-cortex/skills"
 # Also check bundled Hermes Agent skills (not truly "custom")
 HERMES_BUNDLED_SKILLS_DIR="$HOME/.hermes/hermes-agent/skills"
 STATE_DIR="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}/state"

@@ -330,7 +330,7 @@ def main():
     parser.add_argument("--key", help="Explicit SSL key path")
     parser.add_argument("--validate", action="store_true", help="Only run nginx -t, skip all other steps")
     parser.add_argument("--output", help="Write to custom output path instead of detected config_dir")
-    parser.add_argument("--template", help="Custom template path (default: repo deploy/nginx/hermes-services.conf)")
+    parser.add_argument("--template", help="Custom template path (default: repo ops/install/deploy/nginx/hermes-services.conf)")
     args = parser.parse_args()
 
     # ── Validate-only mode ──
