@@ -323,6 +323,11 @@ def main():
 
     # Verify prerequisites before starting
     _check_ollama_model()
+    
+    # Skip if Langfuse not configured (no keys available)
+    pk, sk = _get_langfuse_keys()
+    if not pk or not sk:
+        return  # silent exit — nothing to score without Langfuse
 
     # Fetch traces — fetch in bulk to find unscored ones
     if specific_trace:
