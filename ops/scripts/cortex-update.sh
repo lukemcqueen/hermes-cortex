@@ -968,6 +968,9 @@ pin_repos_with_own_hooks() {
     # Skip if hooks dir doesn't exist or is empty
     [[ ! -d "$hooks_path" ]] && continue
     
+    # Skip if this isn't a valid git repo (e.g. orphaned .git backup copies)
+    git --git-dir="$git_dir" rev-parse --git-dir &>/dev/null || continue
+    
     # Count non-hidden, non-trivial hook files (not just sample files)
     local hook_count
     hook_count=$(find "$hooks_path" -maxdepth 1 -type f ! -name '.*' ! -name '*.sample' 2>/dev/null | wc -l)
@@ -983,9 +986,10 @@ pin_repos_with_own_hooks() {
       info "Pinned local hooks for $(dirname "$git_dir")"
     fi
   done < <(
-    # Search home directories, /opt, /srv, /var for git repos
+    # Search home directories, /opt, /srv, /var, /Users for git repos
     # Limited depth to avoid crawling deep dependency trees
-    for base in /home /opt /srv /var/www /var/repo; do
+    # macOS: ~/Developer, ~/Sites, ~/git live under /Users
+    for base in /home /opt /srv /var/www /var/repo /Users; do
       [[ -d "$base" ]] && find "$base" \( -name ".git" -type d -o -name "*.git" -type d \) -maxdepth 8 -print0 2>/dev/null
     done
   )
