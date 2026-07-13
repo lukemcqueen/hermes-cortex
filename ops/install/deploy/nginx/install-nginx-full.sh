@@ -330,12 +330,16 @@ if nginx -s reload 2>&1; then
   echo "  ✓ nginx reload signal sent"
   # Sleep briefly and check if reload actually took effect
   sleep 2
-  if tail -5 /var/log/nginx/error.log 2>/dev/null | grep -q "still could not bind"; then
+  if tail -5 "${NGINX_LOG_DIR}/error.log" 2>/dev/null | grep -q "still could not bind"; then
     echo "  ⚠ Reload partially failed (port conflicts with old workers)"
     echo "  → Doing full restart to release stale bindings..."
     nginx -s quit 2>/dev/null
     sleep 1
-    systemctl start nginx 2>/dev/null || /usr/sbin/nginx 2>&1
+    if command -v systemctl >/dev/null 2>&1; then
+      systemctl start nginx 2>/dev/null || nginx 2>&1
+    else
+      nginx 2>&1
+    fi
     echo "  ✓ nginx restarted (new config active)"
   else
     echo "  ✓ nginx reloaded (new config active)"

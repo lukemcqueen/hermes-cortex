@@ -25,8 +25,31 @@ IPV4_RE = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
 PRIVATE_RANGES = re.compile(
     r"^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|0\.|169\.254\.|224\.|240\.)"
 )
-NGINX_BIN = "/usr/sbin/nginx"
-NGINX_CONF_DIR = "/etc/nginx"
+
+# Platform-aware nginx paths
+# Linux: /usr/sbin/nginx, /etc/nginx
+# macOS x86_64: /usr/local/bin/nginx, /usr/local/etc/nginx
+# macOS arm64: /opt/homebrew/bin/nginx, /opt/homebrew/etc/nginx
+def _detect_nginx_paths() -> tuple[str, str]:
+    """Detect nginx binary and config directory, platform-aware."""
+    candidates_bin = [
+        "/usr/sbin/nginx",
+        "/usr/local/bin/nginx",
+        "/opt/homebrew/bin/nginx",
+    ]
+    nginx_bin = next((p for p in candidates_bin if os.path.isfile(p)), "/usr/sbin/nginx")
+
+    if sys.platform == "darwin":
+        if os.uname().machine == "arm64":
+            conf_dir = "/opt/homebrew/etc/nginx"
+        else:
+            conf_dir = "/usr/local/etc/nginx"
+    else:
+        conf_dir = "/etc/nginx"
+
+    return nginx_bin, conf_dir
+
+NGINX_BIN, NGINX_CONF_DIR = _detect_nginx_paths()
 BLOCKED_CONF = os.path.join(NGINX_CONF_DIR, "blocked_ips.conf")
 ALLOW_MANUAL_CONF = os.path.join(NGINX_CONF_DIR, "allow-ips-manual.conf")
 

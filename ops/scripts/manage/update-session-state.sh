@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-REPO_DIR="/home/esther/hermes-cortex"
+REPO_DIR="${HOME:?}/hermes-cortex"
 VERBOSE=false
 
 # Parse args
