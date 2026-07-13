@@ -29,7 +29,7 @@ from pathlib import Path
 HOME = Path.home()
 CORTEX_ENV = HOME / "hermes-cortex" / ".env"
 REGISTRY_PATH = HOME / ".hermes-cortex" / "state" / "agent-registry.json"
-REGISTRY_TEMPLATE = HOME / "hermes-cortex" / "src" / "agent-registry.template.json"
+REGISTRY_TEMPLATE = HOME / "hermes-cortex" / "ops" / "install" / "deploy" / "agent-registry.template.json"
 REGISTRY_LOCAL = HOME / ".hermes-cortex" / "state" / "agent-registry.local.json"
 TIMEOUT = 3
 SERVICE_MAP = ["resources", "services", "no_errored_crons", "no_stale_crons",

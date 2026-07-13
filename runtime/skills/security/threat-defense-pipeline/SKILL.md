@@ -21,20 +21,20 @@ Layer 3: threat-pipeline cron (daily 5AM)        → deploys + commits blocked I
 
 ## How to Add a Blocked IP
 
-The single source of truth is **`deploy/nginx/blocked_ips.add`** in the hermes-cortex repo. One IP per line.
+The single source of truth is **`ops/install/deploy/nginx/blocked_ips.add`** in the hermes-cortex repo. One IP per line.
 
 ### Quick add (for agents with repo access):
 
 ```bash
 cd ~/hermes-cortex
-echo "1.2.3.4" >> deploy/nginx/blocked_ips.add
+echo "1.2.3.4" >> ops/install/deploy/nginx/blocked_ips.add
 ```
 
 ### Commit and deploy immediately:
 
 ```bash
 cd ~/hermes-cortex
-git add deploy/nginx/blocked_ips.add
+git add ops/install/deploy/nginx/blocked_ips.add
 SKIP_SCORE=1 git commit -m "auto: block <reason> [pipeline]"
 SKIP_PRE_PUSH=1 git push origin main
 ```
@@ -68,7 +68,7 @@ All three IP collection paths in the pipeline **reject private/reserved IPs**:
 | fail2ban extraction (scanner) | `src/scripts/manage/nginx-security-scanner.sh` | Same regex — added 2026-07-07 |
 | fail2ban extraction (pipeline) | `src/scripts/manage/nginx-threat-pipeline.sh` | `grep -vE` on private ranges — added 2026-07-07 |
 | agent-submitted IPs | `src/scripts/manage/nginx-threat-pipeline.sh` step 0 | Same `grep -vE` — added 2026-07-07 |
-| Config generator | `deploy/nginx/fix-blocked-ips.py` | `PRIVATE_RANGES` regex in `is_valid_public_ip()` |
+| Config generator | `ops/install/deploy/nginx/fix-blocked-ips.py` | `PRIVATE_RANGES` regex in `is_valid_public_ip()` |
 
 **Why this matters:** fail2ban can ban a LAN IP (your gateway/router) when attackers hit your server through its NAT. Without filtering, the pipeline blindly adds gateway IPs to the blocklist. These filters prevent that.
 

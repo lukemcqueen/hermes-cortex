@@ -1615,7 +1615,7 @@ docker compose -f ~/langfuse/docker-compose.yml up -d --force-recreate langfuse-
 
 **Also fix the repo source:**
 ```bash
-sed -i '' 's/postgresql:\\/\\/postgres:\\*\\*\\*@postgres/postgresql:\\/\\/postgres:***@postgres/' ~/hermes-cortex/deploy/docker-compose.langfuse.yml
+sed -i '' 's/postgresql:\\/\\/postgres:\\*\\*\\*@postgres/postgresql:\\/\\/postgres:***@postgres/' ~/hermes-cortex/ops/install/deploy/docker-compose.langfuse.yml
 ```
 
 ### Langfuse Web Container Cycles After Init

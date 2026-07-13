@@ -2040,7 +2040,7 @@ else
       cp "${SCRIPT_DIR}/docker-compose.langfuse.yml" "$LANGFUSE_COMPOSE"
     else
       # Download from GitHub
-      curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/deploy/docker-compose.langfuse.yml" -o "$LANGFUSE_COMPOSE"
+      curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/install/deploy/docker-compose.langfuse.yml" -o "$LANGFUSE_COMPOSE"
     fi
   fi
   

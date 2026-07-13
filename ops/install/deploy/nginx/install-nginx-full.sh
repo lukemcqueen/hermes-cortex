@@ -7,8 +7,8 @@
 #  Atomic: validates before reloading. Safe to re-run.
 #
 #  Sources:
-#    ~/hermes-cortex/deploy/nginx/blocked_ips.add   (IPs to block)
-#    ~/hermes-cortex/deploy/nginx/nginx-badbots.conf (fail2ban filter)
+~/hermes-cortex/ops/install/deploy/nginx/blocked_ips.add   (IPs to block)
+~/hermes-cortex/ops/install/deploy/nginx/nginx-badbots.conf (fail2ban filter)
 #
 #  Targets: (OS-aware — derived from uname -s)
 #    Linux:    /etc/nginx/              (nginx configs)
@@ -66,9 +66,9 @@ esac
 BACKUP_DIR="/etc/hermes-cortex-backups/$(date +%Y%m%d-%H%M%S)"
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
-BLOCKED_IPS="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
+BLOCKED_IPS="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add"
 ALLOW_IPS_MANUAL="${NGINX_DIR}/allow-ips-manual.conf"
-BADBOTS_CONF="${CORTEX_REPO}/deploy/nginx/nginx-badbots.conf"
+BADBOTS_CONF="${CORTEX_REPO}/ops/install/deploy/nginx/nginx-badbots.conf"
 ZONE_DEFS="${NGINX_DIR}/hermes-zone-defs.conf"
 SERVICES_CONF="${NGINX_DIR}/sites-enabled/hermes-services.conf"
 
@@ -104,7 +104,7 @@ echo "── Step 2: Nginx configs ──"
 
 # hermes-zone-defs.conf — include the health rate-limit zone if present
 # (the source file in the repo should already have it)
-for src in "${CORTEX_REPO}/deploy/nginx/hermes-zone-defs.conf" "${CORTEX_REPO}/deploy/nginx/hermes-services.conf"; do
+for src in "${CORTEX_REPO}/ops/install/deploy/nginx/hermes-zone-defs.conf" "${CORTEX_REPO}/ops/install/deploy/nginx/hermes-services.conf"; do
   base=$(basename "$src")
   # Only deploy if source file exists in the deploy directory
   # For now, zone defs and services live in the repo and are managed via git

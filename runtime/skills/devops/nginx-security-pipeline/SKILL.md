@@ -47,7 +47,7 @@ it on a host without nginx.
 
 ## Files
 
-### Source (`deploy/nginx/`)
+### Source (`ops/install/deploy/nginx/`)
 
 | File | Purpose |
 |------|---------|
@@ -77,8 +77,8 @@ it on a host without nginx.
 ### 1. Create the input files
 
 ```bash
-touch "${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/blocked_ips.add"
-touch "${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/nginx-badbots.conf"
+touch "${CORTEX_REPO:-$HOME/hermes-cortex}/ops/install/deploy/nginx/blocked_ips.add"
+touch "${CORTEX_REPO:-$HOME/hermes-cortex}/ops/install/deploy/nginx/nginx-badbots.conf"
 ```
 
 Populate `blocked_ips.add` with known bad IPs (one per line, bare IPs only).
@@ -168,9 +168,9 @@ bash ~/.hermes/scripts/deploy-blocked-ips.sh
 ### Block a new IP manually
 
 ```bash
-echo "1.2.3.4" >> "${CORTEX_REPO:-$HOME/hermes-cortex}/deploy/nginx/blocked_ips.add"
+echo "1.2.3.4" >> "${CORTEX_REPO:-$HOME/hermes-cortex}/ops/install/deploy/nginx/blocked_ips.add"
 # Deploy
-python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py
+python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py
 ```
 
 ### Allow an IP (never block)

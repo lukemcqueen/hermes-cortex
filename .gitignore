@@ -81,11 +81,10 @@ IMPROVEMENTS.md
 agent-inbox-private/
 
 # Agent registry (PII — real hostnames, URLs, IPs)
-src/agent-registry.json
-# Use src/agent-registry.json.example as the template
+agent-registry.json
+# Use ops/install/deploy/agent-registry.json.example as the template
 .governance-*.json
 /deploy/
-src/scripts/
+ops/scripts/
 plugins/
-src/scripts/install-crons.sh
 runtime/

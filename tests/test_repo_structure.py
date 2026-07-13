@@ -16,7 +16,7 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 def test_all_skills_have_skilL_md():
-    """Every skill directory under src/skills/ must have a SKILL.md."""
+    """Every skill directory under runtime/skills/ must have a SKILL.md."""
     skills_dir = os.path.join(REPO_ROOT, "runtime", "skills")
     missing = []
     for root, dirs, files in os.walk(skills_dir):

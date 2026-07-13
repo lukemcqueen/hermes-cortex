@@ -177,7 +177,7 @@ The full skill lifecycle runs across all agents:
 2. **Request** — Weekly (Mon 2am), Moses runs `request-skill-reports.sh` to prompt all agents to share skills.
 3. **Process** — Daily (3am), Moses runs `process-skill-reports.py` to compile incoming reports into a digest.
 4. **Evaluate** — Weekly (Tue 9am), an LLM-driven `skill-evaluate` cron reviews each custom skill for quality, structure, and upstreaming potential.
-5. **Upstream** — Skills approved for sharing are added to `hermes-cortex/src/skills/<category>/<name>/SKILL.md` and deployed fleet-wide via `cortex-update.sh` sync.
+5. **Upstream** — Skills approved for sharing are added to `hermes-cortex/runtime/skills/<category>/<name>/SKILL.md` and deployed fleet-wide via `cortex-update.sh` sync.
 
 See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md) for the manifest-based skill loading system (Titus).
 
