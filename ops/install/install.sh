@@ -1687,15 +1687,6 @@ else
   fi
 fi
 
-# ── Health Monitoring ───────────────────────────────────────────
-HEALTH_SERVER_PATH="${SCRIPTS_DIR}/health-server.py"
-if [[ -f "$(_scripts)/health-server.py" ]]; then
-  cp "$(_scripts)/health-server.py" "$HEALTH_SERVER_PATH" 2>/dev/null || \
-    warn "health-server.py copy failed"
-  chmod +x "$HEALTH_SERVER_PATH"
-  info "  Installed health-server.py"
-fi
-
 # orch-team-health.py is deliberately NOT installed here — it's
 # orchestrator-only (Moses polls peer agents). Peer agents don't need it.
 # It is deployed via the orch-* section in install-crons.sh.

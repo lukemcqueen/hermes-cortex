@@ -234,14 +234,10 @@ register "ops/scripts/install/install-cron-cost-tracking.py" "${CORTEX_DEPLOY_HO
 # Health monitoring
 register "ops/scripts/change-validate.sh"                  "${CORTEX_DEPLOY_HOME}/scripts/change-validate.sh"
 register "ops/scripts/pre-commit-doc-audit.sh"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-doc-audit.sh"
-register "ops/scripts/_port_arbitration.py"        "${CORTEX_DEPLOY_HOME}/scripts/_port_arbitration.py"
-register "ops/scripts/health/health-server.py"            "${CORTEX_DEPLOY_HOME}/scripts/health-server.py" "health-server"
 register "ops/scripts/health/health-vector.py"            "${CORTEX_DEPLOY_HOME}/scripts/health-vector.py"
 register "ops/scripts/health/health-vector-push.sh"       "${CORTEX_DEPLOY_HOME}/scripts/health-vector-push.sh"
 register "ops/scripts/health/report-agent-health.py"      "${CORTEX_DEPLOY_HOME}/scripts/report-agent-health.py"
 register "ops/scripts/manage/request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}/scripts/request-skill-reports.sh"
-register "ops/scripts/com.hermes.health-server.plist" "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" "health-server" "restart_health_server"
-register "ops/scripts/com.hermes.health-server.service" "${HOME}/.config/systemd/user/com.hermes.health-server.service" "health-server" "restart_health_server"
 
 # Shared model config loader (imported by many scripts)
 
@@ -386,26 +382,8 @@ restart_agent_inbox() {
 }
 
 restart_health_server() {
-  if launchctl list com.hermes.health-server &>/dev/null 2>&1; then
-    info "  Restarting Health Server (launchd)…"
-    launchctl unload "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" 2>/dev/null || true
-    mkdir -p "${HOME}/.hermes-cortex/health-server"
-    launchctl load "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" 2>&1 | sed 's/^/    /'
-    info "  Health Server restarted"
-  elif systemctl --user is-enabled com.hermes.health-server &>/dev/null 2>&1 || \
-       [[ -f "${HOME}/.config/systemd/user/com.hermes.health-server.service" ]]; then
-    info "  Restarting Health Server (systemd)…"
-    systemctl --user daemon-reload 2>/dev/null || true
-    systemctl --user enable com.hermes.health-server 2>/dev/null || true
-    systemctl --user restart com.hermes.health-server 2>&1 | sed 's/^/    /'
-    info "  Health Server restarted"
-  elif [[ -f "${HOME}/.hermes-cortex/scripts/health-server.py" ]]; then
-    # First-time on macOS: launchctl not registered yet, load it
-    info "  Loading Health Server for the first time…"
-    mkdir -p "${HOME}/.hermes-cortex/health-server"
-    launchctl load "${HOME}/Library/LaunchAgents/com.hermes.health-server.plist" 2>&1 | sed 's/^/    /'
-    info "  Health Server loaded"
-  fi
+  info "  health-server.py has been removed — use health-vector.service instead."
+  info "  Run: systemctl --user restart health-vector.service"
 }
 
 # ── Delta engine ────────────────────────────────────────────
@@ -1132,7 +1110,6 @@ main() {
         restart_langfuse)    restart_langfuse ;;
         restart_dashboard)   restart_dashboard ;;
         restart_agent_inbox) restart_agent_inbox ;;
-        restart_health_server) restart_health_server ;;
         *)                   warn "Unknown restart command: $cmd" ;;
       esac
     done

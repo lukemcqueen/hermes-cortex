@@ -1,4 +1,9 @@
-"""Tests for health-server.py core logic — CPU parsing, resource checks."""
+"""Tests for health-server.py core logic — CPU parsing, resource checks.
+
+⚠️ OBSOLETE — The FastAPI health-server.py has been removed in favor of
+health-vector.py (zero-dependency Python stdlib). These tests are preserved
+for reference only — the CPU parsing logic they test was part of the old server.
+"""
 
 from __future__ import annotations
 
