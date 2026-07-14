@@ -91,6 +91,52 @@ def _check_scripts() -> bool:
     return True
 
 
+def _check_bus_health() -> bool:
+    """Check agent-bus connectivity via health endpoint.
+    
+    The bus is external (bus.example.org:13004). We curl the
+    health endpoint with basic auth from hermes-inbox.conf.
+    Also falls back to local health-server on :8905.
+    """
+    import urllib.request
+    import urllib.error
+
+    # Try local first (faster, no network)
+    try:
+        r = urllib.request.urlopen("http://127.0.0.1:8905/health", timeout=5)
+        return r.getcode() == 200
+    except Exception:
+        pass
+
+    # Try external bus
+    conf = Path.home() / ".hermes-cortex" / "hermes-inbox.conf"
+    bus_url = os.environ.get("CORTEX_BUS_URL", "")
+    bus_auth = os.environ.get("CORTEX_INBOX_AUTH", "")
+    if conf.exists():
+        for line in conf.read_text().splitlines():
+            line = line.strip()
+            if "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            v = v.strip().strip("'\"")
+            if k == "CORTEX_BUS_URL" and not bus_url:
+                bus_url = v
+            elif k == "CORTEX_INBOX_AUTH" and not bus_auth:
+                bus_auth = v
+    if not bus_url:
+        return False
+    try:
+        req = urllib.request.Request(f"{bus_url.rstrip('/')}/health")
+        if bus_auth and ":" in bus_auth:
+            import base64
+            encoded = base64.b64encode(bus_auth.encode()).decode()
+            req.add_header("Authorization", f"Basic {encoded}")
+        r = urllib.request.urlopen(req, timeout=10)
+        return r.getcode() == 200
+    except Exception:
+        return False
+
+
 SERVICES: list[dict] = [
     _make_service("nginx", pgrep="nginx: master", restart_label="nginx.service", verify_cmd=["nginx", "-t"]),
     # Langfuse: Docker container
@@ -107,8 +153,17 @@ SERVICES: list[dict] = [
     _make_service("Ollama", label="ollama.service", pgrep="ollama"),
     # gbrain: systemd user service
     _make_service("gbrain", label="gbrain-autopilot.service", pgrep="gbrain"),
-    # agent-bus: systemd user service (replaces old health-server)
-    _make_service("agent-bus", label="hermes-agent-bus.service", pgrep="agent_bus.server"),
+    # agent-bus: remote PGMQ bus (no local systemd service)
+    # Check via health endpoint. Restart is handled server-side.
+    # Fallback check: local health-server on :8905 manages bus proxy.
+    {
+        "name": "agent-bus",
+        "check": lambda: (
+            _check_bus_health()
+        ),
+        "restart_label": "",
+        "verify_label": "agent-bus",
+    },
     {
         "name": "scripts",
         "check": _check_scripts,
@@ -317,6 +372,17 @@ def main():
             if orphan_msg:
                 actions.append(f"🔧 gbrain: {orphan_msg}")
             # Proceed with restart regardless — locks cleared, orphans dead
+
+        if name == "agent-bus":
+            # External service — no local systemd to restart
+            actions.append("⚠️ agent-bus: DOWN (bus is external, restart handled server-side)")
+            # Still do curl verify to log recovery
+            for _ in range(3):
+                if _check_bus_health():
+                    actions.append(f"🔄 agent-bus: recovered")
+                    break
+                time.sleep(5)
+            continue
 
         err = _try_restart(svc)
         if err:
