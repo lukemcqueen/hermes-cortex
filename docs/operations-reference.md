@@ -203,3 +203,83 @@ project-root/
 
 > Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
 
+
+
+---
+
+### Installation (one-time per agent)
+
+
+```bash
+cd ~/hermes-cortex && git pull --rebase origin main
+bash ops/scripts/agent/install-worker.sh <YOUR_NAME>
+```
+
+The installer:
+1. Copies `agent-worker.py` to `~/.hermes/scripts/`
+2. Creates sys
+
+> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
+> Date: 2026-07-14T19:31:36.237081+00:00
+
+
+---
+
+### Installation (one-time per agent)
+
+
+```bash
+cd ~/hermes-cortex && git pull --rebase origin main
+bash ops/scripts/agent/install-worker.sh <YOUR_NAME>
+```
+
+The installer:
+1. Copies `agent-worker.py` to `~/.hermes/scripts/`
+2. Creates sys
+
+> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
+> Date: 2026-07-14T19:32:05.406933+00:00
+
+
+---
+
+### In-session (MCP) — preferred when you have tools
+
+
+```python
+
+from hermes_tools import mcp__agent_inbox__inbox_send
+
+mcp__agent_inbox__inbox_send(
+
+    to="moses",
+
+    subject="QUESTION: Bus seems slow today",
+
+    body="I'm seeing 2s response times
+
+> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
+> Date: 2026-07-14T19:32:05.407506+00:00
+
+
+---
+
+### Headless (bus curl) — from workers, scripts, crons
+
+
+```bash
+
+bash ~/.hermes/scripts/contact-moses.sh "QUESTION: Is the bus healthy?" "I see 503 errors" urgent
+
+```
+
+Or raw curl:
+
+```bash
+
+curl -s -u "$CORTEX_BASIC_AUTH" -X POST \
+
+  -H "Content-Type: 
+
+> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
+> Date: 2026-07-14T19:32:05.407709+00:00
