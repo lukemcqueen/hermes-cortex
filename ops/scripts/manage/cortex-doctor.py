@@ -87,7 +87,7 @@ EXPECTED_MCP_SERVERS = {
 EXTERNAL_SERVICES = [
     ("Dashboard",      f"{EXTERNAL_BASE}:{_PORT_PREFIX}001/",       "401"),
     ("Langfuse",       f"{EXTERNAL_BASE}:{_PORT_PREFIX}002/",       "401"),
-    ("Agent Bus",      f"{EXTERNAL_BASE}:{_PORT_PREFIX}004/health", "200"),
+    ("Agent Bus",      f"{EXTERNAL_BASE}:{_PORT_PREFIX}004/health",       "401"),  # behind nginx auth_basic
 ]
 
 # Core install footprint (paths relative to HOME that should exist)
@@ -456,7 +456,17 @@ def check_services(res):
         else:
             res.add(f"Service ({name})", "WARN", f"HTTP {code} (unexpected)")
 
-    # Ollama
+    # ── Agent Bus direct health (bypasses nginx auth_basic) ──
+    bus_health = run_bg([CURL, "-s", "-o", "/dev/null", "-w", "%{http_code}",
+                         "http://127.0.0.1:8905/health", "--max-time", "5"])
+    if bus_health == "200":
+        res.add("Agent Bus (direct)", "PASS", "HTTP 200 — bus service healthy via localhost:8905")
+    else:
+        res.add("Agent Bus (direct)", "WARN",
+                f"HTTP {bus_health} or unreachable — bus may be down",
+                "Check: systemctl --user status agent-bus  OR  pgrep agent-bus")
+
+    # ── Ollama
     out = run_bg([CURL, "-s", "http://localhost:11434/api/tags", "--max-time", "5"])
     if out:
         try:

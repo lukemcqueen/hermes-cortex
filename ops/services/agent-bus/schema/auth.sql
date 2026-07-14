@@ -1,85 +1,96 @@
 -- ─────────────────────────────────────────────────────────────
--- Agent Bus — Permissions and Auth Tables
+-- Hermes Cortex Agent Bus — Auth Schema
+--
+-- Token-based authentication for the Agent Bus.
+-- Tokens are stored bcrypt-hashed (SHA-256 PBKDF2 currently).
+-- Each agent has a unique token that can be rotated independently.
+-- Tokens auto-expire after 90 days.
+--
+-- Tables:
+--   bus.tokens         — bearer token hashes per agent
+--   bus.permissions    — per-agent queue permissions
+--   bus.audit_log      — auth and operations audit trail
+--
+-- Functions:
+--   bus.audit()        — log an audit event
 -- ─────────────────────────────────────────────────────────────
 
--- Agent permissions (which queues each agent can read/write)
-CREATE TABLE IF NOT EXISTS bus.permissions (
+-- ── Agent tokens ────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS bus.tokens (
     agent_name      TEXT PRIMARY KEY,
-    can_read        TEXT[] DEFAULT '{}',
-    can_write       TEXT[] DEFAULT '{}',
-    is_admin        BOOLEAN DEFAULT false,
+    token_hash      TEXT NOT NULL,
+    is_active       BOOLEAN DEFAULT true,
+    rotated_at      TIMESTAMPTZ DEFAULT now(),
+    expires_at      TIMESTAMPTZ DEFAULT now() + INTERVAL '90 days',
     created_at      TIMESTAMPTZ DEFAULT now()
 );
 
--- Seed all fleet agents with least-privilege permissions
--- Agents can only read their own queue and write to moses
--- Moses (admin) can read/write everything
-INSERT INTO bus.permissions AS p (agent_name, can_read, can_write, is_admin)
-VALUES
-    ('moses',  ARRAY['inbox_moses'],   ARRAY['inbox_moses','inbox_esther','inbox_joseph','inbox_titus','inbox_gisu','inbox_kustos','workflow_dispatch','workflow_step_result','workflow_timeout'], true),
-    ('esther', ARRAY['inbox_esther'],  ARRAY['inbox_moses'], false),
-    ('joseph', ARRAY['inbox_joseph'],  ARRAY['inbox_moses'], false),
-    ('titus',  ARRAY['inbox_titus'],   ARRAY['inbox_moses'], false),
-    ('gisu',   ARRAY['inbox_gisu'],    ARRAY['inbox_moses'], false),
-    ('kustos', ARRAY['inbox_kustos'],  ARRAY['inbox_moses'], false)
-ON CONFLICT (agent_name) DO NOTHING;
+CREATE INDEX IF NOT EXISTS idx_tokens_hash
+    ON bus.tokens (token_hash)
+    WHERE is_active = true;
 
--- Bearer tokens (per-agent, bcrypt-hashed)
-CREATE TABLE IF NOT EXISTS bus.tokens (
-    agent_name      TEXT PRIMARY KEY REFERENCES bus.permissions(agent_name),
-    token_hash      TEXT NOT NULL,
+-- ── Permissions ─────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS bus.permissions (
+    agent_name      TEXT PRIMARY KEY,
+    can_send        BOOLEAN DEFAULT true,
+    can_read        BOOLEAN DEFAULT true,
+    can_archive     BOOLEAN DEFAULT true,
+    can_requeue     BOOLEAN DEFAULT true,
+    can_delete      BOOLEAN DEFAULT false,
+    can_admin       BOOLEAN DEFAULT false,
     created_at      TIMESTAMPTZ DEFAULT now(),
-    rotated_at      TIMESTAMPTZ,
-    expires_at      TIMESTAMPTZ DEFAULT (now() + interval '90 days'),
-    is_active       BOOLEAN DEFAULT true
+    updated_at      TIMESTAMPTZ DEFAULT now()
 );
 
--- Helper: validate a bearer token
--- Returns the agent name if valid, NULL otherwise
-CREATE OR REPLACE FUNCTION bus.validate_token(p_token TEXT)
-RETURNS TEXT AS $$
-DECLARE
-    v_agent TEXT;
-BEGIN
-    -- In production, use pgcrypto's crypt() for bcrypt comparison
-    -- For now, we compare against all active tokens
-    -- This will be replaced with proper bcrypt verification
-    SELECT t.agent_name INTO v_agent
-    FROM bus.tokens t
-    WHERE t.is_active = true
-      AND t.expires_at > now()
-      AND t.token_hash = p_token;  -- TODO: replace with crypt(p_token, token_hash)
-    
-    RETURN v_agent;
-END;
-$$ LANGUAGE plpgsql;
+-- Grant default permissions to fleet agents
+INSERT INTO bus.permissions (agent_name, can_send, can_read, can_archive, can_requeue, can_delete)
+VALUES
+    ('moses',  true,  true,  true,  true,  true),
+    ('esther', true,  true,  true,  true,  false),
+    ('joseph', true,  true,  true,  true,  false),
+    ('titus',  true,  true,  true,  true,  false),
+    ('gisu',   true,  true,  true,  true,  false),
+    ('kustos', false, true,  true,  false, false)
+ON CONFLICT (agent_name) DO NOTHING;
 
--- Audit log for all bus operations
+-- ── Audit log ───────────────────────────────────────────────
+
 CREATE TABLE IF NOT EXISTS bus.audit_log (
     id              BIGSERIAL PRIMARY KEY,
     agent_name      TEXT,
-    action          TEXT NOT NULL,     -- send, read, archive, requeue, delete
-    queue           TEXT,
-    detail          JSONB,
+    action          TEXT NOT NULL,          -- e.g. 'auth_failed', 'send', 'read', 'archive'
+    queue_name      TEXT,
+    details         JSONB,
     ip_address      TEXT,
-    success         BOOLEAN DEFAULT true,
+    user_agent      TEXT,
     created_at      TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_audit_agent ON bus.audit_log(agent_name, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_audit_queue ON bus.audit_log(queue, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created
+    ON bus.audit_log (created_at DESC);
 
--- Helper: log an audit entry
+CREATE INDEX IF NOT EXISTS idx_audit_log_agent
+    ON bus.audit_log (agent_name);
+
+-- ── Audit event function ────────────────────────────────────
+
 CREATE OR REPLACE FUNCTION bus.audit(
-    p_agent TEXT,
-    p_action TEXT,
-    p_queue TEXT DEFAULT NULL,
-    p_detail JSONB DEFAULT NULL,
-    p_ip TEXT DEFAULT NULL,
-    p_success BOOLEAN DEFAULT true
-) RETURNS VOID AS $$
+    p_agent_name    TEXT,
+    p_action        TEXT,
+    p_queue_name    TEXT DEFAULT NULL,
+    p_details       JSONB DEFAULT NULL,
+    p_ip_address    TEXT DEFAULT NULL,
+    p_user_agent    TEXT DEFAULT NULL
+) RETURNS BIGINT AS $$
+DECLARE
+    v_id BIGINT;
 BEGIN
-    INSERT INTO bus.audit_log (agent_name, action, queue, detail, ip_address, success)
-    VALUES (p_agent, p_action, p_queue, p_detail, p_ip, p_success);
+    INSERT INTO bus.audit_log (agent_name, action, queue_name, details, ip_address, user_agent)
+    VALUES (p_agent_name, p_action, p_queue_name, p_details, p_ip_address, p_user_agent)
+    RETURNING id INTO v_id;
+
+    RETURN v_id;
 END;
 $$ LANGUAGE plpgsql;
