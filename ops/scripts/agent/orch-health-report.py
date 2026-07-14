@@ -8,6 +8,9 @@ Two health methods:
   - http:   Poll agent's health-vector HTTP endpoint (server agents)
   - inbox:  Read agent's latest health push from the inbox (client-only agents)
 
+Laptop agents (Titus): use inbox method with a 4-hour grace period.
+  When offline but within grace, shows 🌙 offline instead of 🔴 unreachable.
+
 Usage:
   python3 orch-health-report.py
 
@@ -18,7 +21,6 @@ Output:
 
 from __future__ import annotations
 
-import base64
 import json
 import sys
 import time
@@ -35,6 +37,10 @@ TIMEOUT = 3
 SERVICE_MAP = ["resources", "services", "no_errored_crons", "no_stale_crons",
                "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok"]
 ICONS = {1: "🟢", 0: "⚪", -1: "🔴"}
+
+# Laptop grace period — shared with orch-team-health.py
+LAPTOP_GRACE_MINUTES = 240  # 4 hours — covers commute + workday sleep
+LAST_SEEN_FILE = HOME / ".hermes-cortex" / "state" / "last-seen.json"
 
 
 # ── Inbox connection ──
@@ -78,6 +84,7 @@ def _inbox_request(path: str) -> dict | None:
     url = f"{INBOX_CFG['url']}/{path.lstrip('/')}"
     headers = {"Accept": "application/json"}
     if INBOX_CFG["auth"]:
+        import base64
         encoded = base64.b64encode(INBOX_CFG["auth"].encode()).decode()
         headers["Authorization"] = f"Basic {encoded}"
     req = urllib.request.Request(url, headers=headers, method="GET")
@@ -85,6 +92,48 @@ def _inbox_request(path: str) -> dict | None:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
             return json.loads(resp.read().decode())
     except Exception:
+        return None
+
+
+# ── Last-seen tracking (laptop grace period, shared with orch-team-health.py) ──
+
+
+def _record_last_seen(agent_key: str, timestamp_iso: str) -> None:
+    """Persist the latest anchor timestamp for an inbox agent."""
+    if not LAST_SEEN_FILE.parent.exists():
+        LAST_SEEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+    seen = {}
+    if LAST_SEEN_FILE.exists():
+        try:
+            seen = json.loads(LAST_SEEN_FILE.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+    seen[agent_key] = timestamp_iso
+    LAST_SEEN_FILE.write_text(json.dumps(seen, indent=2))
+
+
+def _last_seen_minutes_ago(agent_key: str) -> int | None:
+    """Return minutes since agent's last anchor timestamp, or None if unknown."""
+    if not LAST_SEEN_FILE.exists():
+        return None
+    try:
+        seen = json.loads(LAST_SEEN_FILE.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+    ts_str = seen.get(agent_key, "")
+    if not ts_str:
+        return None
+    try:
+        ts_str = ts_str.replace("Z", "+00:00").replace("T", " ")
+        if "+" not in ts_str and ts_str.endswith("00:00"):
+            ts_str += "+00:00"
+        last = datetime.fromisoformat(ts_str)
+        now = datetime.now(timezone.utc)
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        delta = now - last
+        return int(delta.total_seconds() / 60)
+    except (ValueError, TypeError):
         return None
 
 
@@ -169,8 +218,9 @@ def _fetch_inbox_vector(agent_key: str) -> list[int] | None:
 
     Looks for the most recent message from this agent containing a
     ``{"v": [...]}`` vector. Searches both 'health' and 'general' topics.
-    Returns the vector or None. Returns None if the message is stale
-    (>4 hours old — laptop grace period).
+
+    Returns the vector or None. For laptop agents (inbox method), None can mean
+    offline — the caller checks _last_seen_minutes_ago() for grace period.
     """
     now = datetime.now(timezone.utc)
     for topic in ("health", "general"):
@@ -181,7 +231,6 @@ def _fetch_inbox_vector(agent_key: str) -> list[int] | None:
             continue
         messages = resp.get("messages", [])
         for msg in messages:
-            # Only consider messages from this agent
             if msg.get("from", "").strip().lower() != agent_key:
                 continue
             body = msg.get("body", "")
@@ -195,21 +244,10 @@ def _fetch_inbox_vector(agent_key: str) -> list[int] | None:
             else:
                 continue
             if "v" in parsed and isinstance(parsed["v"], list):
-                # Check message age — 30-min grace for real-time health
+                # Record last-seen timestamp for laptop grace period
                 ts_str = msg.get("timestamp", "")
                 if ts_str:
-                    try:
-                        ts_clean = ts_str.replace("Z", "+00:00")
-                        if "T" in ts_clean and "+" not in ts_clean and ts_clean.endswith("00:00"):
-                            ts_clean += "+00:00"
-                        msg_time = datetime.fromisoformat(ts_clean)
-                        if msg_time.tzinfo is None:
-                            msg_time = msg_time.replace(tzinfo=timezone.utc)
-                        age_hours = (now - msg_time).total_seconds() / 3600
-                        if age_hours > 0.5:
-                            return None  # Stale — treat as unreachable
-                    except (ValueError, TypeError):
-                        pass  # Can't parse timestamp — use the data anyway
+                    _record_last_seen(agent_key, ts_str)
                 return parsed["v"]
     return None
 
@@ -235,6 +273,12 @@ def build_snapshot() -> str:
             vec = _fetch_inbox_vector(key)
 
         if not vec:
+            # Check laptop grace period for inbox agents
+            if agent["method"] == "inbox":
+                mins_ago = _last_seen_minutes_ago(key)
+                if mins_ago is not None and mins_ago < LAPTOP_GRACE_MINUTES:
+                    lines.append(f"\n**{name}** 🌙 offline ({mins_ago}m)")
+                    continue
             lines.append(f"\n**{name}** 🔴 unreachable")
             continue
 
