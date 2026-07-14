@@ -415,6 +415,7 @@ if $UNINSTALL; then
   for job in \
     "agent-fixer" "system-heartbeat" "memory-to-brain-sync" \
     "system-alert-watchdog" "service-recovery" "inbox-sensor" "inbox-flag" \
+    "inbox-depth-watchdog" \
     "remediation-sensor" \
     "hermes-update" "gbrain-nightly-dream" "gbrain-update-sync" \
     "hermes-cortex-sync" "harvest-lessons" "memory-pruning" \
@@ -570,6 +571,17 @@ create_cron "inbox-sensor" "*/10 * * * *" \
   "" \
   "true"
 
+# Inbox depth watchdog (no_agent, every 1 min) — silent when empty, feeds context to agent-inbox
+create_cron "inbox-depth-watchdog" "*/1 * * * *" \
+  "inbox-depth-watchdog.sh" \
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "" \
+  "true"
+
 # ── 5. Governance Audit & Lock Cleanup ──────────────────────
 printf "\\n${CYAN}  5. Change Scoring Audit${RESET}\\\n"
 
@@ -635,8 +647,8 @@ create_cron "langfuse-health-watchdog" "0 * * * *" \
   "" \
   "true"
 
-# Agent inbox message processing (LLM, every 2h, cost-optimized with inbox-flag sensor)
-create_cron "agent-inbox" "0 */2 * * *" \
+# Agent inbox message processing (LLM, every 2min, triggered by depth watchdog)
+create_cron "agent-inbox" "*/2 * * * *" \
   "" \
   "Process the agent inbox using the Inbox Message Decision Framework. The inbox-flag sensor output is injected below as context — it shows which new messages (if any) are waiting for you.
 
