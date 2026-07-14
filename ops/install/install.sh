@@ -1075,7 +1075,7 @@ def check_gbrain_sources():
 def run():
     checks = {
         "Ollama": check_service("com.ollama.serve"),
-        # gbrain autopilot handles sync internally (PGLite single-connection).
+        # gbrain autopilot handles sync internally (Postgres multi-connection).
         "gbrain sync daemon": (
             check_service("com.gbrain.autopilot")
             if check_service("com.gbrain.autopilot")["status"] != "DOWN"
@@ -2473,7 +2473,7 @@ header "INSTALLATION SUMMARY"
 printf "\n${BOLD}✅ System components installed${RESET}\n"
 printf "  ${GREEN}•${RESET} Ollama           — LLM server (embedding: nomic-embed-text:v1.5)\n"
 printf "  ${GREEN}•${RESET} Bun              — JS runtime\n"
-printf "  ${GREEN}•${RESET} gbrain           — Knowledge brain (PGLite)\n"
+printf "  ${GREEN}•${RESET} gbrain           — Knowledge brain (Postgres + pgvector)\n"
 if [[ "$CORTEX_PROFILE" == "server" ]]; then
 printf "  ${GREEN}•${RESET} Langfuse         — LLM observability (Docker, port 3000)\n"
 printf "  ${GREEN}•${RESET} Cortex Dashboard — Flask companion app (port 8901)\n"
