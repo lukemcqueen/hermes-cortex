@@ -116,7 +116,7 @@ cp ~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/
 #        args: [~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py]
 #        enabled: true
 
-# 3. Create ~/.hermes/hermes-inbox.conf:
+# 3. Create ~/.hermes-cortex/hermes-inbox.conf:
 #    CORTEX_BUS_URL=https://moses-server:13004
 #    CORTEX_BUS_TOKEN=hbus_your_agent_token_here
 #    CORTEX_INBOX_URL=...  (optional fallback)
@@ -126,9 +126,9 @@ cp ~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/
 | File | Purpose |
 |------|---------|
 | `runtime/mcp-servers/agent-bus-mcp.py` | MCP tool server (only file needed) |
-| `~/.hermes/hermes-inbox.conf` | Bus URL + token config (see below) |
+| `~/.hermes-cortex/hermes-inbox.conf` | Bus URL + token config (see below) |
 
-### `~/.hermes/hermes-inbox.conf` reference
+### `~/.hermes-cortex/hermes-inbox.conf` reference
 
 Simple key=value file — one per line, `#` comments supported:
 
@@ -515,7 +515,7 @@ curl -sk --cert agent-cert.pem --key agent-key.pem \
 
 The `agent-bus-mcp.py` MCP tool now uses the Agent Bus as its **primary backend**.
 
-### Config Changes (update `~/.hermes/hermes-inbox.conf`)
+### Config Changes (update `~/.hermes-cortex/hermes-inbox.conf`)
 
 ```bash
 # New (Agent Bus — preferred):

@@ -18,7 +18,7 @@ Config (options in order of precedence):
   CORTEX_INBOX_AUTH=user:pass
   AGENT_NAME=moses
 
-  Or via ~/.hermes/hermes-inbox.conf (key=value format)
+  Or via ~/.hermes-cortex/hermes-inbox.conf (key=value format)
     CORTEX_BUS_URL=https://domain:13004
     CORTEX_BUS_TOKEN=hbus_...
 
@@ -73,7 +73,7 @@ from mcp.types import Tool, TextContent, CallToolResult
 # ═══════════════════════════════════════════════════════════════
 
 # File config paths
-CONFIG_FILE = HOME / ".hermes" / "hermes-inbox.conf"
+CONFIG_FILE = HOME / ".hermes-cortex" / "hermes-inbox.conf"
 PROXY_PATH = "/usr/local/bin/mcp-inbox-proxy"
 
 # ── Config keys ───────────────────────────────────────────────
@@ -543,7 +543,7 @@ def _inbox_read(args: dict) -> CallToolResult:
 
     msg = f"No messages found."
     if status2 == 401:
-        msg = "Read failed (HTTP 401). Configure CORTEX_BUS_TOKEN in ~/.hermes/hermes-inbox.conf"
+        msg = "Read failed (HTTP 401). Configure CORTEX_BUS_TOKEN in ~/.hermes-cortex/hermes-inbox.conf"
     return CallToolResult(content=[TextContent(type="text", text=msg)])
 
 
