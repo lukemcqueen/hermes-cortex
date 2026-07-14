@@ -106,7 +106,7 @@ Adapter layer — the Core schemas and Ops infrastructure stay unchanged.
 | Langfuse | 3000 | LLM trace observability | Node.js standalone, launchd |
 | Cortex Dashboard | 8901 | System + Langfuse companion | Flask + pure JS/HTML |
 | Health Server | 8905 | System health endpoint | Flask, launchd |
-| Agent Bus | **8905 (localhost-only)** | Agent Bus (PGMQ) — inter-agent messaging via agent-bus-mcp.py MCP server or API. Includes workflow engine + A2A task delegation |
+| Agent Bus | **8905 (localhost-only)** | Agent Bus (PGMQ) — inter-agent messaging via agent-bus-mcp.py MCP server or API. Includes workflow engine + A2A task delegation. nginx proxy on port **13004** with `auth_basic` |
 || nginx | 13001–13007 | Reverse proxy for all services | Homebrew, launchd |
 | MinIO | 9002 (S3 API), 9001 (console) | S3-compatible blob storage | Native binary, launchd |
 | ClickHouse | 8123 (HTTP), 9000 (native) | OLAP database for Langfuse traces | Native binary |

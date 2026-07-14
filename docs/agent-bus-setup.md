@@ -457,6 +457,33 @@ CORTEX_INBOX_AUTH=user:pass
 | `a2a-server` (port 8906) | Fallback for A2A tasks |
 | `inbox-flag.py`, `inbox-sensor.py` crons | Still poll old inbox for stats |
 
+## nginx Configuration
+
+The Agent Bus is proxied through nginx on port **13004** with the following setup (from the running config at `/etc/nginx/sites-available/hermes-services.conf`):
+
+| Setting | Value |
+|---------|-------|
+| SSL | Let's Encrypt (TLS 1.2 + 1.3) |
+| Auth | `auth_basic "Agent Bus"` with htpasswd |
+| Upstream | `agent_inbox_backend` → `127.0.0.1:8905` |
+| Rate limit | 20 req/s, burst 40 |
+| Body size | 50 MB max |
+| Public exceptions | None — the bus is fully auth'd at the nginx level |
+
+The nginx config has **no separate A2A location blocks**. All paths (`/api/pgmq/*`, `/a2a/*`, `/.well-known/*`, `/`) go through a single `location /` which proxies to the bus. The `Authorization` header is forwarded so the bus can enforce Bearer token auth on specific endpoints.
+
+### Auth flow
+
+```
+External agent → nginx :13004 → auth_basic (htpasswd) → bus :8905 → Bearer token
+```
+
+Two layers: `auth_basic` at nginx (server-level), Bearer tokens at the bus (per-queue granularity). MCP tools bypass nginx entirely — they talk to `localhost:8905` directly with Bearer tokens.
+
+### Public agent card (optional)
+
+To enable A2A discovery without auth, add a `location = /.well-known/agent-card.json` with `auth_basic off` before `location /`. The `deploy/nginx/agent-bus-nginx.conf` template has this pre-defined but commented out.
+
 ---
 
 || Path | Purpose |
