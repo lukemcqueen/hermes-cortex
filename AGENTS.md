@@ -138,37 +138,70 @@ Three axes when processing inbox messages:
 
 Only Moses has `cronjob` MCP tool. Others request via inbox with subject `🔧 CRON: create|update|remove`. Fields: `CRON_NAME`, `CRON_SCHEDULE`, `CRON_PROMPT`/`CRON_SCRIPT`, `CRON_DELIVER`, `CRON_REASON`.
 
-**Universal crons** (installed by `install-crons.sh` on every agent):
+**Universal crons** (installed by `install-crons.sh` on every agent — 36 jobs across 7 categories):
 
+### 1. Auto-Remediation Pipeline
 | Cron | Type | Schedule | Script / Skill | Deliver |
 |------|------|----------|----------------|---------|
-| `agent-auto-remediate` | LLM | `*/30 * * * *` | `auto-remediation` | origin |
+| `agent-fixer` | LLM+skill | `0 */2 * * *` | `auto-remediation` | origin |
 | `remediation-sensor` | no_agent | `*/5 * * * *` | `remediation-sensor.py` | local |
-| `system-alert-watchdog` | no_agent | `*/30 * * * *` | `system-alert-watchdog.py` | origin |
-| `agent-cron-failure-scanner` | no_agent | `*/30 * * * *` | `agent-cron-failure-scanner.py` | local |
-| `service-recovery` | no_agent | `*/5 * * * *` | `service-recovery.py` | origin |
-| `inbox-sensor` | no_agent | `*/10 * * * *` | `inbox-sensor.py` | local |
-| `governance-auditor` | no_agent | `0 */6 * * *` | `governance-auditor.py` | origin |
-| `memory-to-brain-sync` | no_agent | `0 */6 * * *` | `memory-to-brain-sync.py` | local |
-| `llm-judge-scorer-weekday` | no_agent | `0 12,20 * * 1-5` | `llm-judge-scorer.py` | local |
-| `offline-code-index` | no_agent | `0 5 * * 0` | `offline_code_index_cron.sh` | local |
-| `model-health-watchdog` | no_agent | `0 7 * * *` | `model-health-watchdog.py` | origin |
-| `agents-md-prune-scan` | no_agent | `0 4 * * 1-6` | `agents-md-prune-scan.py` | local |
-| `agents-md-prune-apply` | LLM | `30 4 * * 1-6` | prompt: review scan + apply moves | origin |
-|| `process-mcp-agent-inbox-messages` | LLM | `0 6-23 * * *` | inbox poll + failure check | origin |
-|| `collect-agent-skills` | no_agent | `0 */6 * * *` | `collect-agent-skills.sh` | local |
-|| `send-skill-report` | no_agent | `30 */6 * * *` | `send-skill-report.py` | local |
+| `inbox-flag` | no_agent | `*/10 * * * *` | `inbox-flag.py` | local |
+| `agent-apply-fixes` | no_agent | `*/10 * * * *` | `agent-apply-fixes.py` | local |
+| `agent-remediate-apply` | no_agent | `*/10 * * * *` | `agent-remediate-apply.py` | origin |
 
-**Orchestrator-only crons** (installed by `install-orch-crons.sh` on orchestrator machines):
-
+### 2. System Health Monitoring
 | Cron | Type | Schedule | Script / Skill | Deliver |
 |------|------|----------|----------------|---------|
-| `orch-team-messages` | no_agent | `*/10 * * * *` | `orch-team-messages.sh` | origin |
-| `orch-team-health` | no_agent | `*/10 * * * *` | `orch-team-health.py` | origin |
-| `orch-gbrain-doctor` | no_agent | `0 6 * * *` | `orch-gbrain-doctor.sh` | origin |
-| `skill-report-request` | no_agent | `0 2 * * 1` | `request-skill-reports.sh` | origin |
-| `skill-report-process` | no_agent | `0 3 * * *` | `process-skill-reports.py` | origin |
-| `skill-evaluate` | LLM | `0 9 * * 2` | evaluate collected skills | origin |
+| `system-alert-watchdog` | no_agent | `*/30 * * * *` | `system-alert-watchdog.py` | origin |
+| `service-recovery` | no_agent | `*/5 * * * *` | `service-recovery.py` | origin |
+| `model-health-watchdog` | no_agent | `0 7 * * *` | `model-health-watchdog.py` | origin |
+
+### 3. Knowledge & Memory
+| Cron | Type | Schedule | Script / Skill | Deliver |
+|------|------|----------|----------------|---------|
+| `memory-to-brain-sync` | no_agent | `0 */6 * * *` | `memory-to-brain-sync.py` | local |
+| `auto-save-sessions` | no_agent | `every 360m` | `auto-save-sessions.py` | local |
+| `memory-pruning` | LLM+prompt | `0 4 * * 1` | (consolidation prompt) | origin |
+| `harvest-lessons` | no_agent | `0 5 * * 1` | `harvest-lessons.sh` | origin |
+
+### 4. Agent Inbox Processing
+| Cron | Type | Schedule | Script / Skill | Deliver |
+|------|------|----------|----------------|---------|
+| `inbox-sensor` | no_agent | `*/10 * * * *` | `inbox-sensor.py` | local |
+| `agent-inbox` | LLM | `0 */2 * * *` | (inbox decision prompt) | origin |
+
+### 5. Governance & Quality
+| Cron | Type | Schedule | Script / Skill | Deliver |
+|------|------|----------|----------------|---------|
+| `governance-auditor` | no_agent | `0 */6 * * *` | `governance-auditor.py` | origin |
+| `scoring-activity-watchdog` | no_agent | `0 14,20 * * *` | `scoring-activity-watchdog.py` | origin |
+| `skill-miner` | no_agent | `0 6 * * 1` | `skill_miner.py` | origin |
+| `agent-weekly-loop-eval` | LLM+skill | `0 9 * * 1` | `loop-governance` | origin |
+| `session-cache-build` | no_agent | `0 5 * * 1` | `session_cache.py` | origin |
+| `cron-quality-watchdog` | no_agent | `*/10 * * * *` | `cron-quality-watchdog.py` | origin |
+
+### 6. Performance Scorer
+| Cron | Type | Schedule | Script / Skill | Deliver |
+|------|------|----------|----------------|---------|
+| `llm-judge-scorer-weekday` | no_agent | `0 12,20 * * 1-5` | `llm-judge-scorer.py` | local |
+| `llm-judge-scorer-weekend` | no_agent | `0 22 * * 0,6` | `llm-judge-scorer.py` | local |
+
+### 7. Deployment-Specific
+| Cron | Type | Schedule | Script / Skill | Deliver |
+|------|------|----------|----------------|---------|
+| `hermes-update` | no_agent | `23 22 * * *` | `hermes-update.sh` | local |
+| `hermes-cortex-sync` | no_agent | `33 22 * * *` | `hermes-cortex-sync.sh` | origin |
+| `gbrain-nightly-dream` | no_agent | `0 3 * * 6` | `gbrain-nightly-dream.sh` | origin |
+| `gbrain-update-sync` | no_agent | `0 2 * * 0` | `gbrain-update-sync.sh` | origin |
+| `threat-pipeline` | no_agent | `0 5 * * *` | `nginx-threat-pipeline.sh` | origin |
+| `agent-ip-submission` | no_agent | `*/30 * * * *` | `agent-ip-submission.sh` | origin |
+| `agent-daily-bible-reading` | no_agent | `0 1 * * *` | `agent-daily-bible-reading.py` | origin |
+| `agent-daily-soul-refinement` | LLM+skill | `0 23 * * *` | `soul-refinement` | origin |
+| `agents-md-prune-scan` | no_agent | `0 4 * * 1-6` | `agents-md-prune-scan.py` | local |
+| `agents-md-prune-apply` | LLM | `30 4 * * 1-6` | prompt + `context_from=scan` | origin |
+| `offline-code-index` | no_agent | `0 5 * * 0` | `offline_code_index_cron.sh` | local |
+| `collect-agent-skills` | no_agent | `0 */6 * * *` | `collect-agent-skills.sh` | local |
+| `send-skill-report` | no_agent | `30 */6 * * *` | `send-skill-report.py` | local |
 
 ## Skill Collection Pipeline
 
