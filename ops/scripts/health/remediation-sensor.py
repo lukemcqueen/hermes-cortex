@@ -426,7 +426,7 @@ def main():
     check_nginx()
     check_ssl_certs()  # NEW: SSL cert permissions
     check_certbot()  # NEW: certbot execution capability
-    check_gbrain_health()  # NEW: gbrain/PGLite WASM health
+    check_gbrain_health()  # gbrain Postgres connectivity
     check_web_cache()
     check_inbox_markers()
     check_errored_crons()

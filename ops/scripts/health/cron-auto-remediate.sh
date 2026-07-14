@@ -468,7 +468,7 @@ except Exception as e:
     echo "  fix-docker      — restart docker services"
     echo "  fix-purge       — purge system caches (memory, brew, docker)"
     echo "  fix-certs       — check and renew SSL certificates (certbot)"
-    echo "  fix-gbrain      — diagnose gbrain/PGLite WASM issues"
+    echo "  fix-gbrain      — diagnose gbrain Postgres connectivity"
     echo "  fix-ssl-perms   — check SSL cert permissions (reports what needs sudo)"
     echo "  fix-certbot-perms — check certbot lock/log permissions"
     exit 1
