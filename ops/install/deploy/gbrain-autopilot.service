@@ -8,7 +8,7 @@ StartLimitBurst=10
 Type=simple
 ExecStartPre=/bin/mkdir -p %h/.gbrain
 ExecStart=%h/.gbrain/autopilot-run.sh
-Restart=on-failure
+Restart=always
 RestartSec=30
 Environment=GBRAIN_AI_EMBED_TIMEOUT_MS=300000
 StandardOutput=append:%h/.gbrain/autopilot.log
