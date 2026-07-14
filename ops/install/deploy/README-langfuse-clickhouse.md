@@ -326,7 +326,70 @@ docker exec langfuse-clickhouse-1 clickhouse-client --query \
 
 4. **Verify merge recovery:** After restart, check `TotalMergeFailures` is 0 and merges start running. The `Merge` metric should show >0 and `MergeParts` events appear in `system.part_log`.
 
-**System log table TTLs are already in 02-low-memory.xml** (`<database_system>` section) and in the table definitions themselves. If data expired by TTL isn't being cleaned, it's because merges were failing — fix the memory issue first, and TTL cleanup follows automatically.
+---
+
+### ClickHouse merge failures (`CHECKSUM_DOESNT_MATCH`)
+
+**Symptom:** `system.text_log` repeatedly shows `Exception in merge_task: Checksum doesn't match: corrupted data. Reference: <hash1>. Actual: <hash2>`. The same part path (`/var/lib/clickhouse/store/.../data.bin`) appears in every error. Merges stall indefinitely on that table.
+
+**Root cause:** Data corruption in a ClickHouse part — the on-disk checksum stored at write time doesn't match a re-read. Common causes:
+- Host crash or power loss during a merge
+- Disk/filesystem errors (transient or permanent)
+- Restart during an active write
+
+**Diagnosis:**
+```bash
+# 1. Find the corrupted part (check system.text_log for the part name)
+docker exec langfuse-clickhouse-1 clickhouse-client --query \
+  "SELECT event_time, message FROM system.text_log WHERE level='Error' AND message LIKE '%checksum%' ORDER BY event_time DESC LIMIT 3" --vertical
+
+# 2. Check if the corrupted part is still active
+docker exec langfuse-clickhouse-1 clickhouse-client --query \
+  "SELECT database, table, name, active, level, bytes_on_disk FROM system.parts WHERE name LIKE '%<PART_NAME>%'"
+
+# 3. List all parts for the affected table to find the corruption lineage
+docker exec langfuse-clickhouse-1 clickhouse-client --query \
+  "SELECT database, table, name, active, level FROM system.parts WHERE database='system' AND table='part_log' ORDER BY level DESC"
+```
+
+**Fix:**
+
+1. **Drop the corrupted base part:**
+   ```bash
+   docker exec langfuse-clickhouse-1 clickhouse-client --query \
+     "ALTER TABLE <database>.<table> DROP PART '<corrupted_part_name>'"
+   ```
+   The part name is the first segment in the error path (e.g. `202607_1_1737_794` from path `.../202607_1_1737_794/data.bin`).
+
+2. **Check for derivative parts** (higher level that includes the corrupted data). The error may reference a different part name after each failed retry — these are new merge attempts that read the corrupted parent. Check `system.parts` for inactive parts at similar levels:
+   ```bash
+   docker exec langfuse-clickhouse-1 clickhouse-client --query \
+     "SELECT name, active, level FROM system.parts WHERE table='<affected_table>' AND level > 700 ORDER BY level"
+   ```
+
+3. **Remove orphan directories** from the store path directly:
+   ```bash
+   docker exec langfuse-clickhouse-1 bash -c \
+     "rm -rf /var/lib/clickhouse/store/<uuid>/<orphan_part>"
+   ```
+
+4. **Restart merge queue** to clear stale merge tasks:
+   ```bash
+   docker exec langfuse-clickhouse-1 clickhouse-client --query "SYSTEM STOP MERGES"
+   sleep 2
+   docker exec langfuse-clickhouse-1 clickhouse-client --query "SYSTEM START MERGES"
+   ```
+
+5. **Verify recovery:**
+   ```bash
+   docker exec langfuse-clickhouse-1 clickhouse-client --query \
+     "SELECT count() as errors_last_minute FROM system.text_log WHERE level='Error' AND message LIKE '%merge%' AND event_time > NOW() - INTERVAL 1 MINUTE"
+   ```
+   Should return `0`. New merges should appear in `system.merges` within seconds.
+
+6. **System tables auto-recover:** Tables like `system.part_log`, `system.trace_log`, `system.asynchronous_metric_log` are internal — dropping a corrupted part loses only the affected log entries. New entries accumulate in fresh parts automatically.
+
+---
 
 ### Langfuse Web crashes with OOM / `JavaScript heap out of memory`
 The web container's Node.js process hits the heap limit during startup, typically during ClickHouse model-match cache initialization. The log shows `FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory`.
