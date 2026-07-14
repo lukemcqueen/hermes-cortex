@@ -445,7 +445,7 @@ def apply_pruning(repo_root, content, candidates, config):
             continue  # Skip merge candidates — manual review needed
 
         # Determine target file
-        if target.startswith("docs/"):
+        if target.startswith("docs/") and target != "docs/":
             target_path = repo / target
         else:
             # Generate a filename from the heading
@@ -488,7 +488,7 @@ def apply_pruning(repo_root, content, candidates, config):
                     break
             if target:
                 safe_name = re.sub(r"[^a-z0-9]+", "-", heading.lower()).strip("-")
-                link = f"docs/{safe_name}.md" if not target.startswith("docs/") else target
+                link = f"docs/{safe_name}.md" if (not target.startswith("docs/") or target == "docs/") else target
                 new_lines.append(f"{'#' * level} {heading}")
                 new_lines.append("")
                 new_lines.append(f"> Content relocated to [`{link}`]({link}) for focused reference.")
