@@ -423,7 +423,7 @@ if $UNINSTALL; then
     "agent-daily-soul-refinement" \
     "llm-judge-scorer-weekday" "llm-judge-scorer-weekend" \
     "offline-code-index" "model-health-watchdog" \
-    "agent-inbox" "agent-remediate-apply" "agent-apply-fixes" \
+    "agent-remediate-apply" "agent-apply-fixes" \
     "governance-auditor" "threat-pipeline" "agent-ip-submission" \
     "scoring-activity-watchdog" "skill-miner" "agent-weekly-loop-eval" \
     "session-cache-build" "cron-quality-watchdog" \
@@ -516,7 +516,7 @@ create_cron "remediation-sensor" "*/5 * * * *" \
   "" \
   "true"
 
-# Inbox flag sensor (no_agent, every 10 min) — feeds context to agent-inbox
+# Inbox flag sensor (no_agent, every 10 min) — feeds context to inbox LLM crons
 create_cron "inbox-flag" "*/10 * * * *" \
   "inbox-flag.py" \
   "" \
@@ -571,7 +571,7 @@ create_cron "inbox-sensor" "*/10 * * * *" \
   "" \
   "true"
 
-# Inbox depth watchdog (no_agent, every 1 min) — silent when empty, feeds context to agent-inbox
+# Inbox depth watchdog (no_agent, every 1 min) — silent when empty, feeds context to inbox crons
 create_cron "inbox-depth-watchdog" "*/1 * * * *" \
   "inbox/inbox-depth-watchdog.sh" \
   "" \
@@ -646,50 +646,6 @@ create_cron "langfuse-health-watchdog" "0 * * * *" \
   "origin" \
   "" \
   "true"
-
-# Agent inbox message processing (LLM, every 2min, triggered by depth watchdog)
-create_cron "agent-inbox" "*/2 * * * *" \
-  "" \
-  "Process the agent inbox using the Inbox Message Decision Framework. The inbox-flag sensor output is injected below as context — it shows which new messages (if any) are waiting for you.
-
-## Standard inbox processing
-1. Read the context_from sensor output to see if there are new messages
-2. If no messages: output [SILENT] and nothing else
-3. If messages exist: use inbox-watch and inbox-read MCP tools
-4. For each unread message, use the Inbox Message Decision Framework:
-   - Assess Priority (critical/urgent/normal)
-   - Assess Actionability (AUTO-ACT / DELEGATE / ESCALATE / ACKNOWLEDGE)
-   - Assess Scope (simple/moderate/complex/multi-agent)
-5. Act according to the decision matrix
-6. Deliver a concise report of what was processed
-
-## Agent Cron Management (🔗 CRON requests)
-When an agent sends an inbox message with subject \`🔗 CRON: create|update|remove\`, process it.
-
-## OUTPUT FORMAT — FOLLOW EXACTLY
-Match this structure line for line. Your content replaces the values.
-Everything else stays: dashes, colons, spacing, line breaks.
-
-agent-inbox (JOB_ID) [YYYY-MM-DD HH:MM KST]
--------------
-
-Phase 1 — Messages found: 2 unread messages waiting
-- 🔗 CRON: create from titus — wants new disk-watchdog cron
-- [normal] from moses — system health check passed
-
-Phase 2 — Actions taken: 2 of 2 processed
-- Created disk-watchdog cron (schedule: */30 * * * *, no_agent)
-- Acknowledged health check — no action needed
-
-Phase 3 — Escalated: 0
-
-Result: Inbox empty. All items processed.
-
-📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo
-
-If nothing to report: output exactly [SILENT]" \
-  "" "" "origin" "" "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 # Agent-specific local fixer (no_agent script — reads markers, searches offline corpus, applies fixes)
 create_cron "agent-apply-fixes" "*/10 * * * *" \

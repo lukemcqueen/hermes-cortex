@@ -113,7 +113,7 @@ if $UNINSTALL; then
   echo ""
   printf "${CYAN}━━━ Uninstalling Orchestrator-Only Crons ━━━${RESET}\n\n"
   for job in \
-    "orch-team-messages" "orch-gbrain-doctor" \
+    "orch-team-messages" "orch-fleet-watchdog" "orch-gbrain-doctor" \
     "skill-report-request" "skill-report-process" "skill-evaluate"; do
     remove_cron "$job" 2>/dev/null || true
   done
