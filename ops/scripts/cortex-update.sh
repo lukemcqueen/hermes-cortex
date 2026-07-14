@@ -218,6 +218,7 @@ register "runtime/mcp-servers/agent-bus-mcp.py"         "${CORTEX_DEPLOY_HOME}/s
 
 # Inbox MCP tools
 register "ops/scripts/inbox/inbox-flag.py"              "${CORTEX_DEPLOY_HOME}/scripts/inbox-flag.py"
+register "ops/scripts/inbox/bus-audit-watchdog.py"      "${CORTEX_DEPLOY_HOME}/scripts/bus-audit-watchdog.py"
 register "ops/scripts/inbox/inbox-depth-watchdog.sh"    "${CORTEX_DEPLOY_HOME}/scripts/inbox-depth-watchdog.sh"
 register "ops/scripts/inbox/inbox-watch.sh"             "${CORTEX_DEPLOY_HOME}/scripts/inbox-watch.sh"
 register "ops/scripts/install/setup-agent-inbox.sh"       "${CORTEX_DEPLOY_HOME}/scripts/setup-agent-inbox.sh"
