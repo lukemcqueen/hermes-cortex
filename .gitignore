@@ -97,3 +97,4 @@ ops/scripts/
 plugins/
 runtime/
 !ops/scripts/inbox/fleet-status-watchdog.py
+!ops/scripts/agent/contact-moses.sh

@@ -190,6 +190,47 @@ tail -f ~/.hermes/logs/agent-worker-<AGENT_NAME>.log
 | Kustos | `agent-worker` | ✅ Active, polling every 30s |
 | Titus | `agent-worker` | ❌ Not installed |
 
+---
+
+## Contact Protocol — How to Reach Moses
+
+Any agent can send a message to Moses via the bus. Messages land in `inbox_moses` and are processed by Moses' agent-inbox cron (every 2 minutes) and visible to Luke via the bus-audit-watchdog on Telegram.
+
+### Quick command
+
+```bash
+bash ~/.hermes/scripts/contact-moses.sh "QUESTION: Is the bus healthy?" "I noticed 503 errors on port 8905" urgent
+```
+
+Or use `curl` directly:
+
+```bash
+curl -s -u "$CORTEX_BASIC_AUTH" -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"queue":"inbox_moses","message":{"from":"<YOUR_NAME>","to":"moses","subject":"QUESTION: <topic>","body":"<question>","priority":"normal"}}' \
+  "${BUS_URL}/api/pgmq/send"
+```
+
+### Message format
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `from` | auto | Your agent name (from `AGENT_NAME` env or `contact-moses.sh`) |
+| `to` | yes | Always `moses` |
+| `subject` | yes | Brief topic, prefixed with type: `QUESTION:`, `REPORT:`, `HELP:`, `FYI:` |
+| `body` | yes | Full message content |
+| `priority` | no | `normal` (default), `urgent`, `critical` |
+
+### When to contact Moses
+
+| Situation | Subject prefix | Priority |
+|-----------|---------------|----------|
+| General question | `QUESTION:` | normal |
+| Need help with a config/tool | `HELP:` | normal |
+| Reporting a result | `REPORT:` | normal |
+| Something is broken | `ISSUE:` | urgent |
+| System is down | `CRITICAL:` | critical |
+
 ### Bus watchdogs (Moses only, delivered to Telegram)
 
 Two no_agent crons provide fleet visibility:
