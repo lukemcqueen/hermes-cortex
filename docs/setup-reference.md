@@ -255,3 +255,13 @@ Agent crons follow a three-tier architecture based on task requirements:
 - `ops/scripts/agent-apply-fixes.py` — no_agent: searches offline code corpus for fix patterns
 
 Install: `bash ops/scripts/install-crons.sh`
+
+### First-time bootstrap
+
+After a fresh clone + setup, seed the loop-governance DB with scored cycles from git history:
+
+```bash
+cd ~/hermes-cortex && python3 ~/.hermes/scripts/populate-governance-db.py
+```
+
+This creates scored cycles from commits in the last 7 days so governance metrics (cycle counts, scoring activity, no_errored_crons) have baseline data from day one. **Only needed once per machine.**
