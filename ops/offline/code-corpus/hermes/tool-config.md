@@ -178,7 +178,7 @@ tools:
     enabled: true
     backend: gbrain          # gbrain | memdir | sqlite | chroma
 
-    # gbrain (recommended — PGLite, zero-config)
+    # gbrain (recommended — Postgres + pgvector via Docker, or PGLite for dev)
     gbrain:
       brain_dir: ~/brain/
       sources:

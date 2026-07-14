@@ -15,8 +15,8 @@
 ┌──────────────┐  ┌──────────────────┐  ┌────────────┐  ┌──────────────┐
 │   Langfuse   │  │  Cortex Dashboard│  │  Web Cache │  │   GBrain     │
 │  (LLM Obs.)  │  │   (Flask + JS)   │  │ (sqlite-vec│  │ (Knowledge)  │
-│ local:3000   │  │  local:8901      │  │  + Ollama) │  │ PGLite       │
-│ ext:13002    │  │  ext:13001       │  │  ~200MB    │  │ 4 sources    │
+│ local:3000   │  │  local:8901      │  │  + Ollama) │  │ local:15432  │
+│ ext:13002    │  │  ext:13001       │  │  ~200MB    │  │  pgvector)  │
 └──────────────┘  └──────────────────┘  └────────────┘  └──────────────┘
        │                   │                    │              │
        ▼                   ▼                    ▼              ▼
@@ -84,7 +84,7 @@ Adapter layer — the Core schemas and Ops infrastructure stay unchanged.
 | **Agent** | Hermes Agent | Self-improving runtime with learning loop, subagents, cron, Telegram interface |
 | **Observability** | Langfuse + Cortex Dashboard | Trace inspection, session replay, LLM evaluation scoring, system health monitoring |
 | **Cache** | Web Cache (sqlite-vec) | Local semantic cache for web_search results. Cuts API costs, enables offline fallback |
-| **Memory** | GBrain | Long-term knowledge graph via Markdown files across 4 sources (luke, amy, shared, default). PGLite engine with Ollama embeddings. Sync daemon + dream cycle |
+|| **Memory** | GBrain | Long-term knowledge graph via Markdown files across 4 sources (luke, amy, shared, default). **Postgres + pgvector** engine with Ollama embeddings. Sync daemon. Queryable by any agent via `:15432` |
 | **Offline** | kiwix ZIM + Code Corpus | Zero-internet operation: medical, travel, education, language, code generation. All local |
 | **Config** | GitHub (two-repo system) | Public repo: installer, skeleton, docs. Private repo: full config, scripts, dashboard, nginx config. Brain content on private branches |
 
@@ -113,7 +113,8 @@ Adapter layer — the Core schemas and Ops infrastructure stay unchanged.
 | Redis | 6379 | Queue broker for Langfuse | Native, launchd |
 | kiwix-serve | 8080 | ZIM content server (offline) | Docker, launchd |
 | Offline Reader | 8081 | Bible/hymns/reference browser | stdlib Python |
-| GBrain Autopilot | — | Memory sync daemon (autopilot) | Bun, PGLite, **systemd (user service)** — auto-starts on boot, auto-restarts on crash |
+|| GBrain Postgres | 15432 | Knowledge brain database (pgvector) | Docker, compose-managed in langfuse stack |
+| GBrain Sync | — | Memory sync daemon (Docker Postgres + pgvector) | Bun, **systemd (user service)** — auto-starts on boot |
 
 ## External Access
 
@@ -176,18 +177,11 @@ systemctl --user restart gbrain-autopilot.service
 journalctl --user -u gbrain-autopilot.service -f
 ```
 
-### Running gbrain Commands (the wrapper)
+### Running gbrain Commands
 
-Any cron or script that calls `gbrain <command>` while autopilot is running
-**must** go through `gbrain-wrapper.sh` to avoid PGLite lock contention:
+With Postgres, `gbrain query` and other CLI commands work **while the sync daemon is running** — no lock contention. Unlike PGLite, the Postgres engine supports concurrent connections.
 
-```bash
-~/.hermes/scripts/gbrain-wrapper.sh dream
-~/.hermes/scripts/gbrain-wrapper.sh stats
-```
-
-The wrapper stops the systemd autopilot, runs the command, and restarts it.
-See `docs/gbrain-pglite-recovery.md` for full details.
+See [`docs/gbrain-postgres-migration.md`](gbrain-postgres-migration.md) for setup and [`docs/gbrain-pglite-recovery.md`](gbrain-pglite-recovery.md) for legacy rollback.
 
 ### Initial Setup (fresh install)
 

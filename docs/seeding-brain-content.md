@@ -29,7 +29,7 @@ Create these three files to give your agent immediate context:
 ## Installed Tools
 - Hermes Agent — AI agent runtime
 - Ollama — local LLM server (nomic-embed-text:v1.5 for embeddings)
-- gbrain — knowledge brain (PGLite)
+- gbrain — knowledge brain (Postgres + pgvector, Docker)
 - Docker Desktop — for Langfuse, kiwix, etc.
 - nginx — reverse proxy (ports 13001+)
 - fail2ban — brute force protection
@@ -40,7 +40,7 @@ Create these three files to give your agent immediate context:
 |------|---------|
 | `~/.hermes/` | Hermes config, skills, plugins, cron, scripts |
 | `~/brain/` | Knowledge sources (this directory) |
-| `~/.gbrain/` | gbrain database (PGLite) |
+|| `~/.gbrain/` | gbrain database (Postgres via Docker, pgvector on `:15432`) |
 
 ## Services
 | Service | Port | Managed By |

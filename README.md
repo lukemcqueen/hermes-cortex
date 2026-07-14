@@ -82,7 +82,7 @@ Agent query → web_cache (50μs) → kiwix ZIM (localhost:8080) → gbrain (RAG
 - **Offline Knowledge** — Wikipedia, WikiMed, Wikivoyage, Wikibooks available locally via Docker ZIM server
 - **Offline Code Assistant** — 366 curated code snippets across 32 categories, 19 programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
 - **Offline Reader** — Zero-dependency web UI (`python3 ops/offline/offline-reader.py`) for Bible (55+ languages), hymns, and wiki reference
-- **gbrain** — Persistent knowledge brain (PGLite, zero-config, 4+ sources) with automatic 2-min sync daemon
+- **gbrain** — Persistent knowledge brain (Postgres + pgvector, Docker) with automatic sync daemon
 
 ### 📊 Observability Stack
 
@@ -215,7 +215,7 @@ CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 | 0 | **System Check** | Verifies OS, RAM, disk, Docker, network before touching anything |
 | 1 | **Ollama** | Native installer per OS; bound to localhost |
 | 2 | **Bun** | JavaScript runtime for gbrain |
-| 3 | **gbrain** | Persistent knowledge brain (PGLite, zero-config) |
+| 3 | **gbrain** | Persistent knowledge brain (Postgres + pgvector via Docker) |
 | 4 | **Brain dirs** | `~/brain/{default,…}` with MECE directory schema + .gitignore + git init |
 | 5 | **gbrain sync** | Launchd/systemd daemon — syncs brain every 2 minutes |
 | 6 | **Observability** † | Langfuse + Cortex Dashboard |

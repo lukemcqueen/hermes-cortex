@@ -421,7 +421,12 @@ if ! command -v gbrain &>/dev/null; then
   alias gbrain="$GBRAIN_CMD" 2>/dev/null || true
 fi
 
-# Init gbrain (PGLite, local)
+# ── gbrain database ──────────────────────────────────────────────
+# ⚠️ PGLite (WASM) is deprecated — use Postgres + pgvector for production.
+# See docs/gbrain-postgres-migration.md for the recommended setup.
+# This PGLite init is preserved as a quick-start fallback.
+
+# Init gbrain (PGLite, local — DEPRECATED, use Postgres + pgvector instead)
 step "Initializing gbrain with PGLite (local, zero-config)"
 if [[ -f "${CORTEX_HOME}/.gbrain/brain.pglite" ]]; then
   skip "brain already exists"

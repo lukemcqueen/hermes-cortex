@@ -1,5 +1,16 @@
 # gbrain PGLite Recovery & Maintenance Guide
 
+> **⚠️ DEPRECATED — July 2026**
+>
+> **PGLite (WASM) is no longer the recommended gbrain engine.** It has been replaced by **Postgres + pgvector**, which is more reliable (no WASM runtime issues), supports concurrent access, and can serve as a general-purpose RAG database.
+>
+> See [`docs/gbrain-postgres-migration.md`](gbrain-postgres-migration.md) for:
+> - Migration steps (PGLite → Postgres)
+> - docker-compose configuration
+> - RAG database usage
+>
+> This PGLite guide is preserved for **rollback reference only**.
+
 ## Overview
 
 gbrain uses **PGLite** — PostgreSQL compiled to WASM running inside Bun. It's single-connection, which means:

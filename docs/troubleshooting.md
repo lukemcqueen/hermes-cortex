@@ -618,11 +618,14 @@ cp -r /tmp/ollama-extract/lib/ollama/* ~/.local/lib/ollama/
 
 **Fix:** Bad disk sectors. Run `sudo tune2fs -c 1 /dev/mapper/vgmint-root && sudo reboot`, then `docker system prune -af` and pull images fresh.
 
-### 9. gbrain WASM error
+### 9. gbrain PGLite/WASM error
 
 **Symptom:** `[unhandledRejection] WebAssembly.Module doesn't parse at byte N`
+or `PGLite failed to initialize its WASM runtime`
 
-**Fix:** The PGLite WASM file landed on a bad block:
+**Fix:** The PGLite WASM engine is unreliable under Bun. **Migrate to Postgres + pgvector** (see [`docs/gbrain-postgres-migration.md`](gbrain-postgres-migration.md)).
+
+If you need a temporary quick-fix to reinstall the WASM runtime:
 ```bash
 bun remove -g gbrain
 rm -rf ~/.bun/install/global/node_modules/@electric-sql

@@ -12,7 +12,7 @@
 
 ## Core Concepts
 
-**What this repo is:** A public installer + skill set for [Hermes Agent](https://hermes-agent.nousresearch.com). Gets you Ollama, gbrain (PGLite), Langfuse, Cortex Dashboard, brain dirs, gbrain sync daemon, utility scripts.
+**What this repo is:** A public installer + skill set for [Hermes Agent](https://hermes-agent.nousresearch.com). Gets you Ollama, gbrain (Postgres + pgvector), Langfuse, Cortex Dashboard, brain dirs, gbrain sync daemon, utility scripts.
 
 ### Key Directories
 

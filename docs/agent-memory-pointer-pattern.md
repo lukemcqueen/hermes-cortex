@@ -206,7 +206,7 @@ Docker essential (observability). 3 GB VM stable.
 - **Hermes Agent** (any version with the `memory` tool)
 - **gbrain** (or any semantic search engine that indexes markdown files)
   - Install: `bun install -g github:garrytan/gbrain`
-  - Free, open-source, self-hosted (PGLite, no external DB needed)
+  - Free, open-source, self-hosted (Postgres + pgvector via Docker, or PGLite for dev)
 - **Cron system** (Hermes cronjob tool or system crontab)
 - **A private git repo** for the agent brain (optional but recommended for backup)
 
