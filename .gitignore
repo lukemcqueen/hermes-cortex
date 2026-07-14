@@ -49,6 +49,9 @@ logs/
 !ops/scripts/secret-leak-detector.sh
 !ops/scripts/secret-leak-watchdog.py
 !ops/scripts/agents-doc-audit*
+!ops/scripts/agent/agent-worker.py
+!ops/scripts/agent/install-worker.sh
+!ops/scripts/inbox/inbox-depth-watchdog.sh
 .netrc
 
 # OS junk

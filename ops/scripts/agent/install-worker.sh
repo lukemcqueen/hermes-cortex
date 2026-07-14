@@ -1,0 +1,126 @@
+#!/bin/bash
+# install-worker.sh — install agent-worker as a systemd --user service
+# Run once per agent machine. No Hermes cron needed.
+#
+# Usage:
+#   bash install-worker.sh              # interactive (prompts for agent name)
+#   bash install-worker.sh joseph       # or pass agent name as argument
+#
+# After install:
+#   systemctl --user status hermes-agent-worker
+#   journalctl --user -u hermes-agent-worker -f
+
+set -euo pipefail
+
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; RESET='\033[0m'
+info()  { echo -e "${GREEN}[INFO]${RESET} $*"; }
+warn()  { echo -e "${YELLOW}[WARN]${RESET} $*"; }
+err()   { echo -e "${RED}[ERR]${RESET} $*"; }
+
+# ── Config ──
+
+AGENT_NAME="${1:-}"
+if [ -z "$AGENT_NAME" ]; then
+  echo -n "Enter agent name (e.g. esther, joseph, gisu): "
+  read -r AGENT_NAME
+fi
+if [ -z "$AGENT_NAME" ]; then
+  err "Agent name required"
+  exit 1
+fi
+
+CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}"
+HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
+WORKER_SCRIPT_SRC="${CORTEX_REPO}/ops/scripts/agent/agent-worker.py"
+WORKER_SCRIPT_DST="${HERMES_HOME}/scripts/agent-worker.py"
+SERVICE_FILE="${HOME}/.config/systemd/user/hermes-agent-worker.service"
+CONFIG_FILE="${CORTEX_DEPLOY_HOME}/hermes-inbox.conf"
+
+# ── Check prerequisites ──
+
+info "Installing agent-worker for: ${CYAN}${AGENT_NAME}${RESET}"
+
+if [ ! -f "$WORKER_SCRIPT_SRC" ]; then
+  warn "No local repo at ${CORTEX_REPO}. Will download from GitHub."
+  WORKER_SCRIPT_SRC="https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/scripts/agent/agent-worker.py"
+fi
+
+if [ ! -f "$CONFIG_FILE" ]; then
+  warn "Config not found: ${CONFIG_FILE}"
+  warn "Create it with: BUS_URL, CORTEX_BASIC_AUTH, AGENT_NAME"
+fi
+
+# ── Ensure systemd user dir ──
+
+mkdir -p "${HOME}/.config/systemd/user"
+mkdir -p "${HERMES_HOME}/scripts"
+
+# ── Copy worker script ──
+
+if [ -f "$WORKER_SCRIPT_SRC" ]; then
+  cp "$WORKER_SCRIPT_SRC" "$WORKER_SCRIPT_DST"
+  info "Copied worker script to ${WORKER_SCRIPT_DST}"
+else
+  info "Downloading from GitHub..."
+  curl -sL -o "$WORKER_SCRIPT_DST" "$WORKER_SCRIPT_SRC"
+fi
+chmod +x "$WORKER_SCRIPT_DST"
+
+# ── Create systemd service file ──
+
+cat > "$SERVICE_FILE" << SERVICEEOF
+[Unit]
+Description=Hermes Agent Worker — ${AGENT_NAME}
+Documentation=https://github.com/fleet-operator/hermes-cortex
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env python3 ${WORKER_SCRIPT_DST}
+Restart=always
+RestartSec=10
+Environment=AGENT_NAME=${AGENT_NAME}
+EnvironmentFile=${CONFIG_FILE}
+Environment=OLLAMA_URL=http://localhost:11434
+Environment=OLLAMA_MODEL=qwen2.5-coder:3b
+Environment=POLL_INTERVAL=30
+Environment=VT_SECONDS=120
+Environment=MAX_RETRIES=3
+
+[Install]
+WantedBy=default.target
+SERVICEEOF
+
+info "Created service: ${SERVICE_FILE}"
+
+# ── Check service file contains agent config ──
+
+grep -q "AGENT_NAME=${AGENT_NAME}" "$SERVICE_FILE" || {
+  err "Service file does not contain AGENT_NAME=${AGENT_NAME}"
+  exit 1
+}
+
+# ── Reload systemd and enable ──
+
+systemctl --user daemon-reload 2>/dev/null || true
+systemctl --user enable hermes-agent-worker 2>/dev/null && \
+  info "Service enabled (will auto-start on boot)" || \
+  warn "Could not enable service (systemd user mode OK)"
+
+systemctl --user restart hermes-agent-worker 2>/dev/null && \
+  info "Service started" || \
+  warn "Could not start service. Try: systemctl --user start hermes-agent-worker"
+
+# ── Verify ──
+
+sleep 2
+if systemctl --user is-active hermes-agent-worker >/dev/null 2>&1; then
+  info "${GREEN}✓${RESET} hermes-agent-worker is ACTIVE for ${CYAN}${AGENT_NAME}${RESET}"
+else
+  warn "Service not active. Check: journalctl --user -u hermes-agent-worker -n 20"
+fi
+
+info "Done. Worker logs: ${HERMES_HOME}/logs/agent-worker-${AGENT_NAME}.log"
+info "Worker flags: ${HERMES_HOME}/state/worker-pending/"
