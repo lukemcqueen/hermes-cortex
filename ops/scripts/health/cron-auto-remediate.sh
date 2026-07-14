@@ -319,10 +319,10 @@ except Exception as e:
     echo "CERTS_RENEWED:${certs_renewed}"
     ;;
 
-  # ── Fix gbrain PGLite WASM issues ───────────────────────────
+  # ── Fix gbrain Postgres issues ────────────────────────────
   fix-gbrain)
-    # PGLite WASM failures on Linux require upstream fix or engine switch
-    # This action provides diagnostics and workaround options
+    # gbrain migrated to Postgres (pgvector). Check connectivity
+    # to the configured database.
     echo "GBRAIN_DIAGNOSTIC:"
     
     # Check gbrain installation
@@ -333,27 +333,20 @@ except Exception as e:
     
     # Check gbrain config
     GBRAIN_HOME="${HOME}/.gbrain"
-    if [ -f "${GBRAIN_HOME}/config.toml" ]; then
-      engine=$(grep -E "^engine\s*=" "${GBRAIN_HOME}/config.toml" 2>/dev/null | cut -d= -f2 | tr -d ' "')
-      echo "  engine: ${engine:-pglite}"
+    if [ -f "${GBRAIN_HOME}/config.json" ]; then
+      engine=$(grep '"engine"' "${GBRAIN_HOME}/config.json" 2>/dev/null | cut -d'"' -f4)
+      echo "  engine: ${engine:-unknown}"
     fi
     
-    # Run gbrain doctor and capture health score
-    health_output=$(gbrain doctor 2>&1 | grep "Overall health score" || echo "unknown")
-    echo "  health: ${health_output}"
+    # Run gbrain doctor
+    health_output=$(gbrain doctor --fast 2>&1 | grep -i "health\|error\|fail" || echo "unknown")
+    echo "  health: ${health_output:-no issues reported}"
     
-    # Check for WASM error patterns
-    sync_output=$(gbrain sync --all --no-pull 2>&1 || true)
-    if echo "${sync_output}" | grep -qi "pglite failed to initialize its wasm runtime"; then
-      echo "  wasm_status: FAILED - PGLite WASM runtime error"
-      echo "  workaround: Switch to PostgreSQL engine:"
-      echo "    gbrain init --engine postgres --postgres-url 'postgresql://user:pass@host:5432/dbname'"
-      echo "  upstream_issue: https://github.com/garrytan/gbrain/issues/223"
-    elif echo "${sync_output}" | grep -qi "aborted.*wasm"; then
-      echo "  wasm_status: FAILED - WASM aborted"
-      echo "  workaround: Switch to PostgreSQL engine or upgrade glibc"
+    # Check Postgres container
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q gbrain-postgres; then
+      echo "  postgres_container: running"
     else
-      echo "  wasm_status: OK"
+      echo "  postgres_container: NOT RUNNING"
     fi
     ;;
 

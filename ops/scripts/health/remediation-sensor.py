@@ -229,46 +229,26 @@ def check_errored_crons():
 
 
 def check_gbrain_health():
-    """Check gbrain/PGLite health.
-    
-    Detects PGLite WASM runtime failures (common on Linux with glibc/kernel incompat).
-    Runs gbrain sync --no-pull and checks for WASM abort errors.
-    
-    NOTE: On Linux, PGLite WASM failures are expected/benign — gbrain operates
-    in filesystem mode and passes all doctor checks. The upstream macOS 26.3 WASM
-    bug (#223) is macOS-specific. Skip WASM checks on Linux entirely.
+    """Check gbrain Postgres connectivity.
+
+    gbrain migrated to Postgres (pgvector). This checks that the autopilot
+    service is active and the configured database is reachable.
     """
-    # Skip WASM checks on Linux — gbrain uses filesystem mode, WASM failure is benign
-    if sys.platform.startswith("linux"):
-        # Still check connection health on Linux
-        out, err, rc = run("gbrain sync --all --no-pull 2>&1", timeout=60)
-        combined = (out + " " + err).lower()
-        if rc != 0 and "could not connect" in combined:
-            add_issue("gbrain_connection_failure", "high", "gbrain cannot connect to configured database", {
-                "error_snippet": (out + err)[:300],
-            })
-        return
-    
     # Check if gbrain is installed
-    if not os.path.exists(os.path.expanduser("~/.gbrain")):
+    gbrain_home = os.path.expanduser("~/.gbrain")
+    if not os.path.exists(gbrain_home):
         return  # gbrain not installed, skip
-    
-    # Run gbrain sync and capture output
-    out, err, rc = run("gbrain sync --all --no-pull 2>&1", timeout=60)
+
+    # Run gbrain doctor to verify health
+    out, err, rc = run("gbrain doctor --fast 2>&1", timeout=60)
     combined = (out + " " + err).lower()
-    
-    # Check for PGLite WASM failure patterns
-    if "pglite failed to initialize its wasm runtime" in combined:
-        add_issue("gbrain_wasm_failure", "critical", "gbrain PGLite WASM runtime failed to initialize", {
-            "error_snippet": (out + err)[:500],
-            "upstream_issue": "https://github.com/garrytan/gbrain/issues/223",
-        })
-    elif "aborted()" in combined and "wasm" in combined:
-        add_issue("gbrain_wasm_failure", "critical", "gbrain PGLite WASM aborted", {
-            "error_snippet": (out + err)[:500],
-        })
-    elif rc != 0 and "could not connect" in combined:
+
+    if rc != 0 and "could not connect" in combined:
         add_issue("gbrain_connection_failure", "high", "gbrain cannot connect to configured database", {
+            "error_snippet": (out + err)[:300],
+        })
+    elif rc != 0:
+        add_issue("gbrain_health_check_failed", "medium", "gbrain doctor reported issues", {
             "error_snippet": (out + err)[:300],
         })
 

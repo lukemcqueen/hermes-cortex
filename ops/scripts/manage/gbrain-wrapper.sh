@@ -5,7 +5,8 @@
 #  Cross-platform: Linux (systemd) + macOS (launchd)
 #
 #  Manages the gbrain autopilot service around every gbrain command.
-#  PGLite is single-connection — the autopilot holds the exclusive lock.
+#  Postgres handles concurrent connections — autopilot stop ensures
+#  exclusive CLI access and prevents lock contention during maintenance.
 #  Any CLI command (dream, sync, stats, sources list) will fail or hang
 #  unless the autopilot is stopped first.
 #
@@ -38,10 +39,8 @@ esac
 # On Linux:    systemctl --user
 # On macOS:    launchctl
 SERVICE_NAME_AUTOPILOT="gbrain-autopilot"
-SERVICE_NAME_LEGACY="com.gbrain.sync-watch"
 if $IS_MAC; then
   SERVICE_NAME_AUTOPILOT="com.gbrain.autopilot"
-  SERVICE_NAME_LEGACY="com.gbrain.sync-watch"
 fi
 
 _service_is_active() {
@@ -131,8 +130,7 @@ else
 fi
 
 # ── Clear stale lock files (from previous crashes) ─────────────────
-for lock in "$HOME/.gbrain/autopilot.lock" "$HOME/.gbrain/cycle.lock" \
-            "$HOME/.gbrain/brain.pglite/.gbrain-lock/lock"; do
+for lock in "$HOME/.gbrain/autopilot.lock" "$HOME/.gbrain/cycle.lock"; do
     [ -e "$lock" ] && rm -f "$lock" && log "Cleared stale lock: $lock"
 done
 
