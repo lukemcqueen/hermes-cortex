@@ -33,6 +33,11 @@
     <merges_mutations_memory_usage_soft_limit>0</merges_mutations_memory_usage_soft_limit>
     <merges_mutations_memory_usage_to_ram_ratio>0.3</merges_mutations_memory_usage_to_ram_ratio>
 
+    <!-- ── Cache caps — defaults assume 64+ GiB, but we're at 2 GiB ── -->
+    <uncompressed_cache_size>268435456</uncompressed_cache_size>         <!-- 256 MB (default 8 GB) -->
+    <mark_cache_size>134217728</mark_cache_size>                         <!-- 128 MB (default 5 GB) -->
+    <cache_size_to_ram_max_ratio>0.4</cache_size_to_ram_max_ratio>       <!-- max 40% RAM for all caches -->
+
     <!-- ── Disable verbose system log tables ── -->
     <text_log>
         <database>system</database>
