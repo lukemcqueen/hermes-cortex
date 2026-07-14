@@ -422,18 +422,23 @@ if ! command -v gbrain &>/dev/null; then
 fi
 
 # ── gbrain database ──────────────────────────────────────────────
-# ⚠️ PGLite (WASM) is deprecated — use Postgres + pgvector for production.
-# See docs/gbrain-postgres-migration.md for the recommended setup.
-# This PGLite init is preserved as a quick-start fallback.
-
-# Init gbrain (PGLite, local — DEPRECATED, use Postgres + pgvector instead)
-step "Initializing gbrain with PGLite (local, zero-config)"
-if [[ -f "${CORTEX_HOME}/.gbrain/brain.pglite" ]]; then
-  skip "brain already exists"
+# Init gbrain (Postgres + pgvector — production default)
+# Requires Postgres 17 with pgvector 0.8+ running locally.
+# See docs/gbrain-postgres-migration.md for detailed setup.
+step "Initializing gbrain with Postgres + pgvector"
+if "$GBRAIN_CMD" doctor --json --fast 2>/dev/null | grep -q '"connection":'; then
+  skip "brain already initialized"
 else
-  "$GBRAIN_CMD" init --pglite --embedding-model ollama:nomic-embed-text:v1.5 --yes 2>/dev/null || \
-    "$GBRAIN_CMD" init --pglite --embedding-model ollama:nomic-embed-text:v1.5
-  ok
+  # Try Postgres on common ports (5432, 5433, 15432)
+  for pgport in 5433 5432 15432; do
+    if pg_isready -p "$pgport" -q 2>/dev/null; then
+      DB_URL="postgresql://${USER:-luke}@localhost:${pgport}/gbrain"
+      "$GBRAIN_CMD" init --url "$DB_URL" --embedding-model ollama:nomic-embed-text:v1.5 --yes 2>/dev/null && \
+        { ok "gbrain initialized on Postgres port ${pgport}"; break; }
+    fi
+  done || {
+    warn "No Postgres with gbrain database found — install Postgres 17 + pgvector and run 'gbrain init --url postgresql://...'"
+  }
 fi
 
 # Apply any pending migrations
@@ -733,7 +738,7 @@ help_text = f"""/brain — Search your gbrain knowledge base
   /brain what's on my mind?
   /brain --help                Show this help
 
-Results from local gbrain (PGLite) at ~/.gbrain/brain.pglite.
+Results from local gbrain (Postgres + pgvector) at postgresql://localhost:5433/gbrain.
 """
 lines.append('_HELP_TEXT = ' + repr(help_text))
 lines.append('')
