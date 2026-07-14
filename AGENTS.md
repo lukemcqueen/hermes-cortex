@@ -28,6 +28,18 @@
 | `.hermes-cortex/` | Agent infra: sessions, memory, skills.yaml |
 | `agent-inbox-private/` | Git-backed agent message store |
 
+## Skill loading
+
+**Every session start:** read `.hermes-cortex/skills.yaml` and load all `always`
+skills via `skill_view(name)`. Before each task, classify with `agent-flow`,
+then load `on_task` skills matching the classification.
+
+Skills live in a single global location (`~/.hermes/skills/`) — no drift, no
+stale copies across repos. To add a fleet-wide skill, upstream it to
+`hermes-cortex/runtime/skills/<category>/<name>/SKILL.md`.
+
+Documentation: [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md)
+
 ### Project Directory Convention
 
 > Content relocated to [`docs/operations-reference.md`](docs/operations-reference.md) for focused reference.
