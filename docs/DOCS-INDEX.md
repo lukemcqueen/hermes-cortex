@@ -52,8 +52,13 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
-|| `docs/troubleshooting.md` | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse, Linux |
-|| `docs/skills-manifest-reference.md` | Skills manifest — how to manage project-level skills via YAML |
+||| `docs/troubleshooting.md` | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse, Linux |
+||| `docs/fleet-status-current.md` | Fleet status table — agent worker status across all fleet members |
+||| `docs/message-format.md` | Agent inbox message format — field reference, subject prefixes, priority levels |
+||| `docs/1-auto-remediation-pipeline.md` | Auto-remediation pipeline cron schedule reference |
+||| `docs/5-governance-quality.md` | Governance & Quality cron schedule reference — scoring, auditing, enforcement |
+||| `docs/7-deployment-specific.md` | Deployment-specific cron schedule reference — update, status, deploy crons |
+||| `docs/skills-manifest-reference.md` | Skills manifest — how to manage project-level skills via YAML |
 | `docs/reference/skill-loading.md` | Skill loading protocol — every agent loads skills on session start |
 || `docs/gbrain-stale-lock-detection.md` | gbrain stale lock file detection & auto-recovery — root cause, automated fix via service-recovery, manual diagnostics |
 | `docs/cron-job-recipes.md` | 10 reusable cron recipes — Bible reading, system alerts, memory pruning, morning briefing, and more |
