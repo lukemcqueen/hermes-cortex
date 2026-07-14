@@ -152,17 +152,8 @@ Each agent can install an `agent-worker` systemd `--user` service that polls the
 
 ### Installation (one-time per agent)
 
-```bash
-cd ~/hermes-cortex && git pull --rebase origin main
-bash ops/scripts/agent/install-worker.sh <YOUR_NAME>
-```
-
-The installer:
-1. Copies `agent-worker.py` to `~/.hermes/scripts/`
-2. Creates systemd `--user` service at `~/.config/systemd/user/hermes-agent-worker.service`
-3. Auto-grants bus permissions if running on the bus machine
-4. Starts the service via `systemctl --user start`
-5. Verifies it's running
+> Content relocated to [`docs/operations-reference.md`](docs/operations-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ### Config
 
@@ -193,14 +184,8 @@ tail -f ~/.hermes/logs/agent-worker-<AGENT_NAME>.log
 
 ### Fleet status (current)
 
-| Agent | Worker | Status |
-|-------|--------|--------|
-| Moses | `agent-worker` | ✅ Active, polling every 30s |
-| Esther | `agent-worker` | ✅ Confirmed working |
-| Joseph | `agent-worker` | ✅ Confirmed working |
-| Gisu | `agent-worker` | ✅ Active, polling every 30s |
-| Kustos | `agent-worker` | ✅ Active, polling every 30s |
-| Titus | `agent-worker` | ❌ Not installed |
+> Content relocated to [`docs/fleet-reference.md`](docs/fleet-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ---
 
@@ -210,80 +195,18 @@ Any agent can send a message to Moses. Choose the right channel:
 
 ### In-session (MCP) — preferred when you have tools
 
-```python
-
-from hermes_tools import mcp__agent_inbox__inbox_send
-
-mcp__agent_inbox__inbox_send(
-
-    to="moses",
-
-    subject="QUESTION: Bus seems slow today",
-
-    body="I'm seeing 2s response times on port 8905",
-
-    priority="normal"
-
-
-)
-
-```
-
-Best for: human-readable questions, reports, help requests during your session.
-
-Permanent: git-backed, survives restarts.
+> Content relocated to [`docs/operations-reference.md`](docs/operations-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ### Headless (bus curl) — from workers, scripts, crons
 
-```bash
-
-bash ~/.hermes/scripts/contact-moses.sh "QUESTION: Is the bus healthy?" "I see 503 errors" urgent
-
-```
-
-Or raw curl:
-
-```bash
-
-curl -s -u "$CORTEX_BASIC_AUTH" -X POST \
-
-  -H "Content-Type: application/json" \
-
-  -d '{"queue":"inbox_moses","message":{"from":"<YOUR_NAME>","to":"moses","subject":"QUESTION: <topic>","body":"<question>","priority":"normal"}}' \
-
-  "${BUS_URL}/api/pgmq/send"
-
-```
-
-Best for: automated step results, no_agent cron outputs, worker data.
-
-Ephemeral: Postgres PGMQ — archived after processing.
+> Content relocated to [`docs/operations-reference.md`](docs/operations-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ### Message format
 
-| Field | Required | Description |
-
-|-------|----------|-------------|
-
-| `subject` | yes | Prefix with type: `QUESTION:`, `REPORT:`, `HELP:`, `ISSUE:`, `CRITICAL:` |
-
-| `body` | yes | Full message content |
-
-| `priority` | no | `normal` (default), `urgent`, `critical` |
-
-| Situation | Subject prefix | Priority |
-
-|-----------|---------------|----------|
-
-| General question | `QUESTION:` | normal |
-
-| Need help with config/tool | `HELP:` | normal |
-
-| Reporting a result | `REPORT:` | normal |
-
-| Something is broken | `ISSUE:` | urgent |
-
-| System is down | `CRITICAL:` | critical |
+> Content relocated to [`docs/operations-reference.md`](docs/operations-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ### Bus watchdogs (Moses only, delivered to Telegram)
 
@@ -306,13 +229,9 @@ Only Moses has `cronjob` MCP tool. Others request via inbox with subject `🔧 C
 **Universal crons** (installed by `install-crons.sh` on every agent — 36 jobs across 7 categories):
 
 ### 1. Auto-Remediation Pipeline
-| Cron | Type | Schedule | Script / Skill | Deliver |
-|------|------|----------|----------------|---------|
-| `agent-fixer` | LLM+skill | `0 */2 * * *` | `auto-remediation` | origin |
-| `remediation-sensor` | no_agent | `*/5 * * * *` | `remediation-sensor.py` | local |
-| `inbox-flag` | no_agent | `*/10 * * * *` | `inbox-flag.py` | local |
-| `agent-apply-fixes` | no_agent | `*/10 * * * *` | `agent-apply-fixes.py` | local |
-| `agent-remediate-apply` | no_agent | `*/10 * * * *` | `agent-remediate-apply.py` | origin |
+
+> Content relocated to [`docs/fleet-reference.md`](docs/fleet-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ### 2. System Health Monitoring
 | Cron | Type | Schedule | Script / Skill | Deliver |
@@ -338,14 +257,9 @@ Only Moses has `cronjob` MCP tool. Others request via inbox with subject `🔧 C
 | `agent-inbox` | LLM | `*/2 * * * *` | (inbox decision prompt + depth watchdog context) | origin |
 
 ### 5. Governance & Quality
-| Cron | Type | Schedule | Script / Skill | Deliver |
-|------|------|----------|----------------|---------|
-| `governance-auditor` | no_agent | `0 */6 * * *` | `governance-auditor.py` | origin |
-| `scoring-activity-watchdog` | no_agent | `0 14,20 * * *` | `scoring-activity-watchdog.py` | origin |
-| `skill-miner` | no_agent | `0 6 * * 1` | `skill_miner.py` | origin |
-| `agent-weekly-loop-eval` | LLM+skill | `0 9 * * 1` | `loop-governance` | origin |
-| `session-cache-build` | no_agent | `0 5 * * 1` | `session_cache.py` | origin |
-| `cron-quality-watchdog` | no_agent | `*/10 * * * *` | `cron-quality-watchdog.py` | origin |
+
+> Content relocated to [`docs/operations-reference.md`](docs/operations-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ### 6. Performance Scorer
 | Cron | Type | Schedule | Script / Skill | Deliver |
@@ -354,21 +268,9 @@ Only Moses has `cronjob` MCP tool. Others request via inbox with subject `🔧 C
 | `llm-judge-scorer-weekend` | no_agent | `0 22 * * 0,6` | `llm-judge-scorer.py` | local |
 
 ### 7. Deployment-Specific
-| Cron | Type | Schedule | Script / Skill | Deliver |
-|------|------|----------|----------------|---------|
-| `hermes-update` | no_agent | `23 22 * * *` | `hermes-update.sh` | local |
-| `hermes-cortex-sync` | no_agent | `33 22 * * *` | `hermes-cortex-sync.sh` | origin |
-| `gbrain-nightly-dream` | no_agent | `0 3 * * 6` | `gbrain-nightly-dream.sh` | origin |
-| `gbrain-update-sync` | no_agent | `0 2 * * 0` | `gbrain-update-sync.sh` | origin |
-| `threat-pipeline` | no_agent | `0 5 * * *` | `nginx-threat-pipeline.sh` | origin |
-| `agent-ip-submission` | no_agent | `*/30 * * * *` | `agent-ip-submission.sh` | origin |
-| `agent-daily-bible-reading` | no_agent | `0 1 * * *` | `agent-daily-bible-reading.py` | origin |
-| `agent-daily-soul-refinement` | LLM+skill | `0 23 * * *` | `soul-refinement` | origin |
-| `agents-md-prune-scan` | no_agent | `0 4 * * 1-6` | `agents-md-prune-scan.py` | local |
-| `agents-md-prune-apply` | LLM | `30 4 * * 1-6` | prompt + `context_from=scan` | origin |
-| `offline-code-index` | no_agent | `0 5 * * 0` | `offline_code_index_cron.sh` | local |
-| `collect-agent-skills` | no_agent | `0 */6 * * *` | `collect-agent-skills.sh` | local |
-| `send-skill-report` | no_agent | `30 */6 * * *` | `send-skill-report.py` | local |
+
+> Content relocated to [`docs/fleet-reference.md`](docs/fleet-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ## Skill Collection Pipeline
 
