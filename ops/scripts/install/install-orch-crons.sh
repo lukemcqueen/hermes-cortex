@@ -355,6 +355,25 @@ create_cron "orch-team-health" "*/10 * * * *" \
   "" \
   "true"
 
+# Fleet health report — hourly weekday, twice Saturday (no_agent, Telegram-ready)
+create_cron "orch-health-report-weekday" "0 9-18 * * 1-5" \
+  "orch-health-report.py" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+create_cron "orch-health-report-saturday" "0 11,17 * * 6" \
+  "orch-health-report.py" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
 # ── 2. Daily gbrain brain health check ──────────────────
 printf "${CYAN}  2. Daily gbrain Brain Health Check${RESET}\n"
 

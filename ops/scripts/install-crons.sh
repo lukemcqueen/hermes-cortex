@@ -625,6 +625,16 @@ create_cron "model-health-watchdog" "0 7 * * *" \
   "" \
   "true"
 
+# Langfuse health + ClickHouse merge watchdog (silent when healthy, every hour)
+create_cron "langfuse-health-watchdog" "0 * * * *" \
+  "langfuse-health-watchdog.py" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
 # Agent inbox message processing (LLM, every 2h, cost-optimized with inbox-flag sensor)
 create_cron "agent-inbox" "0 */2 * * *" \
   "" \

@@ -228,6 +228,9 @@ register "ops/scripts/manage/ek-session-snapshot.py"     "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/agent/orch-team-health.py"         "${CORTEX_DEPLOY_HOME}/scripts/orch-team-health.py"
 register "ops/scripts/agent/orch-gbrain-doctor.sh"       "${CORTEX_DEPLOY_HOME}/scripts/orch-gbrain-doctor.sh"
 
+# Orchestrator health report — periodic agent fleet snapshot (no_agent cron)
+register "ops/scripts/agent/orch-health-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/orch-health-report.py"
+
 # Cron cost tracking — SQLite store + deployment script
 register "ops/scripts/cost_store.py"               "${CORTEX_DEPLOY_HOME}/scripts/cost_store.py"
 register "ops/scripts/install/install-cron-cost-tracking.py" "${CORTEX_DEPLOY_HOME}/scripts/install-cron-cost-tracking.py"
