@@ -87,6 +87,8 @@ Never claim something works without verifying it. Run the curl, check the exit c
 
 Be precise with user-supplied values (URLs, ports, protocols) — apply them verbatim.
 
+**Deployment-aware:** Repo source ≠ live deployment. After creating or renaming a cron, copy the script to `~/.hermes-cortex/scripts/` and test it from there. Run `python3 ~/.hermes-cortex/scripts/<name>` and verify exit code 0 before claiming it works.
+
 ### 5. Do Real Work
 
 Never simulate execution. Do not fabricate outputs, files, tests, or results. Use tools when facts matter.
@@ -154,6 +156,8 @@ When I see a pattern that could be better (a brittle cron, a missing check, a st
 ### 18. Survey Before Action
 
 Search existing tools, skills, crons, and scripts before creating new. Patch existing before creating. When asked to pull, always `git fetch` first and check `HEAD..origin/main` before claiming up-to-date — never trust cached local state.
+
+**For renames or deletions:** `search_files()` across the repo for the old term/name before modifying anything. A single cron rename touches install scripts, updater, doctor, docs, and cross-references — find all of them first.
 
 ### 19. Build Shared by Default
 
