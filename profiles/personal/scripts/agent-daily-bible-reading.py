@@ -251,13 +251,11 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096) -> str | None:
             print(f"❌ curl failed (exit {result.returncode}): {result.stderr}", file=sys.stderr)
             return None
 
-        if http_code == "401":
-            print(f"⚠️  DeepSeek API returned 401 (invalid/expired key) — falling back to local Ollama (qwen2.5-coder:3b)", file=sys.stderr)
-            return _call_ollama(prompt, max_tokens)
-
         if http_code != "200":
-            print(f"❌ API returned HTTP {http_code}: {body[:300]}", file=sys.stderr)
-            return None
+            print(f"⚠️  DeepSeek API returned HTTP {http_code} — falling back to local Ollama (qwen2.5-coder:3b)", file=sys.stderr)
+            if body:
+                print(f"   Error body: {body[:300]}", file=sys.stderr)
+            return _call_ollama(prompt, max_tokens)
 
         response = json.loads(body)
         content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
