@@ -200,14 +200,24 @@ if [ ! -d "$CORTEX_REPO" ]; then
   error "Cortex repo not found at ${CORTEX_REPO} — skipping commit"
 else
   cd "$CORTEX_REPO"
-  BLOCKED_FILE="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"
+  BLOCKED_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add"
   if [ ! -f "$BLOCKED_FILE" ]; then
     log "  No blocked_ips.add file — nothing to commit"
-  elif git diff --quiet deploy/nginx/blocked_ips.add 2>/dev/null \
-     && git diff --cached --quiet deploy/nginx/blocked_ips.add 2>/dev/null; then
+  elif ! git ls-files --error-unmatch ops/install/deploy/nginx/blocked_ips.add &>/dev/null; then
+    log "  blocked_ips.add exists but is untracked — first-time commit"
+    git add ops/install/deploy/nginx/blocked_ips.add
+    IP_COUNT=$(wc -l < "$BLOCKED_FILE" | tr -d ' ') || true
+    SKIP_SCORE=1 git commit -m "auto: initial blocklist with ${IP_COUNT} IPs [pipeline]" 2>&1 || true
+    if git diff --cached --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null; then
+      PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Committed initial ${IP_COUNT} IPs to repo"$'\n'
+    else
+      log "  ⚠ Git commit failed for new file — may need manual add"
+    fi
+  elif git diff --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null \
+     && git diff --cached --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null; then
     log "  No changes to commit"
   else
-    git add deploy/nginx/blocked_ips.add
+    git add ops/install/deploy/nginx/blocked_ips.add
     IP_COUNT=$(git diff --cached --unified=0 ops/install/deploy/nginx/blocked_ips.add 2>/dev/null | \
       grep '^\+[0-9]' | grep -v '^+++' | wc -l) || true
     SKIP_SCORE=1 git commit -m "auto: block ${IP_COUNT} suspect IPs [pipeline]" 2>&1 || true
