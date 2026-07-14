@@ -1697,8 +1697,8 @@ else
   fi
 fi
 
-# orch-team-health.py has been removed — superseded by fleet-status-watchdog.
-# fleet-status-watchdog is deployed via the general cron installer.
+# orch-fleet-watchdog replaces the old orch-team-health — now a general
+# cron managed by the Hermes cron system. Peer agents don't need it.
 
 # ── Auto-Save Active Sessions Script ──────────────────────────────
 AUTO_SAVE_PATH="${SCRIPTS_DIR}/auto-save-sessions.py"

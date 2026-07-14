@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """agent-health-monitor.py — Cross-server health poller for Moses (DEPRECATED).
 
-⚠  This script is deprecated. Superseded by fleet-status-watchdog.py.
+⚠  This script is deprecated. Superseded by orch-fleet-watchdog.py.
 
 no_agent watchdog pattern:
   Empty stdout → silent (no state change)

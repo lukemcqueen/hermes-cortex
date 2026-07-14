@@ -82,4 +82,4 @@ Include in your report:
 - `agent-registry.json` — canonical source of `health_url` per agent
 - nginx site configs in `/etc/nginx/sites-enabled/` — check `listen` directives
 - `report-agent-health.py` — push-based health reporter script
-|- `agent-health-monitor.py` — cross-server health poller (deprecated, superseded by fleet-status-watchdog)
+|- `agent-health-monitor.py` — cross-server health poller (deprecated, superseded by orch-fleet-watchdog)

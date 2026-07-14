@@ -365,6 +365,17 @@ create_cron "orch-health-report-saturday" "0 11,17 * * 6" \
   "" \
   "true"
 
+# Fleet watchdog — cross-agent health polling (no_agent, Telegram alerts)
+# Orchestrator-only: Moses primary, Esther backup
+create_cron "orch-fleet-watchdog" "*/5 * * * *" \
+  "orch-fleet-watchdog.py" \
+  "" \
+  "" \
+  "" \
+  "telegram:1270130526" \
+  "" \
+  "true"
+
 # ── 2. Daily gbrain brain health check ──────────────────
 printf "${CYAN}  2. Daily gbrain Brain Health Check${RESET}\n"
 

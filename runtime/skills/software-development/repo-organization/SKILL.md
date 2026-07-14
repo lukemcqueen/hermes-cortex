@@ -51,7 +51,7 @@ hermes-cortex/
 │   ├── scripts/               # Runable scripts (watchdogs, utilities)
 │   │   ├── system-alert-watchdog.py
 │   │   ├── service-recovery.py
-│   │   ├── fleet-status-watchdog.py
+│   │   ├── orch-fleet-watchdog.py
 │   │   └── ...
 │   ├── skills/                # Canonical skills (organized by domain)
 │   │   ├── software-development/
@@ -101,7 +101,7 @@ hermes-cortex/
 | `kebab-case` | `system-alert-watchdog.py`, `service-recovery.py` | Source files, scripts, configs — **default** |
 | `snake_case` | `loop_scorer.py`, `score_cycle.py` | Python modules (PEP 8). Only for importable modules |
 | `PascalCase` | — | Never in file names. Only for Python classes inside files |
-| Descriptive names | `fleet-status-watchdog.py` | Describe WHAT the file does, not how. Human-readable |
+| Descriptive names | `orch-fleet-watchdog.py` | Describe WHAT the file does, not how. Human-readable |
 | No abbreviations | `product-requirements/` not `prd/` | Every new name must be understandable without context |
 
 ### Cron Jobs

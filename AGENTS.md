@@ -215,10 +215,10 @@ Two no_agent crons provide fleet visibility:
 | Watchdog | Schedule | Output | Silent when |
 |----------|----------|--------|-------------|
 | `bus-audit-watchdog` | `*/1 * * * *` | New message events to Telegram (`sender → recipient action @KST`) | No new messages |
-| `fleet-status-watchdog` | `*/5 * * * *` | Dashboard: agent health, active workflows with step progress, stalled step alerts | No active workflows + no issues |
+| `orch-fleet-watchdog` | `*/5 * * * *` | Dashboard: agent health, active workflows with step progress, stalled step alerts | No active workflows + no issues |
 
 - `bus-audit-watchdog` — every send event: `esther → moses send @18:06:39 KST`, `system → joseph workflow_step(review) @18:08:28 KST`
-- `fleet-status-watchdog` — every 5 min if busy: shows ✅ active / ⚠️ idle / 🌙 offline per agent, workflow chain with ✅▶⏳ per step, stalled step detection (>5 min running)
+- `orch-fleet-watchdog` — every 5 min if busy: shows ✅ active / ⚠️ idle / 🌙 offline per agent, workflow chain with ✅▶⏳ per step, stalled step detection (>5 min running)
 
 ---
 

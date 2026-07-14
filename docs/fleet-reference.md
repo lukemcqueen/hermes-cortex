@@ -78,7 +78,7 @@ agent guidelines focused on general Hermes Cortex usage.
 | `process-mcp-agent-inbox-messages` | `*/30 * * * *` | LLM | Read + process new inbox messages |
 | | | | |
 | **Orchestrator-only (Moses primary, Esther backup):** | | | |
-| `fleet-status-watchdog` | `*/5 * * * *` | no_agent | Fleet status — cross-agent health polling (state-change alerts, delivered via Telegram) |
+| `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | Orchestrator fleet health polling (state-change alerts, delivered via Telegram) |
 | `orch-gbrain-doctor` | `0 6 * * *` | no_agent | Daily gbrain brain health check via gbrain-wrapper.sh (pauses autopilot, runs doctor, reports failures) |
 | `orch-team-messages` | `*/10 * * * *` | no_agent | Flag urgent agent messages |
 | `orch-process-agent-messages` | `*/10 * * * *` | LLM | Process inbox remediation markers |
@@ -174,7 +174,7 @@ ln -sf ~/.hermes-cortex/tools/loop-governance/score_cycle.py ~/.local/bin/score-
 
 ### All timestamps in KST (UTC+9)
 
-All monitoring scripts output timestamps in Seoul time. Affects: `fleet-status-watchdog.py`, `system-alert-watchdog.py`, `service-recovery.py`, `orch-team-messages.sh`, and all cron outputs.
+All monitoring scripts output timestamps in Seoul time. Affects: `orch-fleet-watchdog.py`, `system-alert-watchdog.py`, `service-recovery.py`, `orch-team-messages.sh`, and all cron outputs.
 
 ---
 
