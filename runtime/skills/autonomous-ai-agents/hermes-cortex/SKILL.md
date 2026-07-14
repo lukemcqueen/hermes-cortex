@@ -57,7 +57,7 @@ The installer runs **13 steps**:
 | Component | Port | Purpose |
 |-----------|------|---------|
 | Ollama | 11434 | Local LLM serving |
-| gbrain | — | Knowledge brain (PGLite) |
+| gbrain | — | Knowledge brain (Postgres + pgvector) |
 | Langfuse | 3000 | LLM observability (Docker) |
 | Cortex Dashboard | 8901 | System health + Langfuse companion |
 | ClickHouse (Langfuse) | 8123/9000 | Analytics DB for Langfuse v3 |
@@ -199,7 +199,7 @@ gbrain runs two launchd daemons — know which one matters:
 - **`com.gbrain.autopilot`** — Self-maintaining brain daemon. Handles sync, extract, embed, lint, and backlinks in a 150s internal loop. This is the **primary** daemon.
 - **`com.gbrain.sync-watch`** — Custom bash script polling `gbrain sync` every 120s. **Redundant** when autopilot runs.
 
-**Why sync-watch fails:** PGLite 0.4.3 only supports one connection per data directory. Autopilot holds the exclusive lock; sync-watch crashes every cycle with "PGLite failed to initialize its WASM runtime" — the error is actually lock contention, not a WASM bug.
+**Why sync-watch fails:** autopilot holds the exclusive lock; sync-watch crashes every cycle because it can't connect while the autopilot is running.
 
 **If autopilot is healthy, disable sync-watch:**
 ```bash
@@ -350,16 +350,13 @@ from the built-in `default` source.
 **Redundancy with autopilot:** The autopilot (`gbrain autopilot`) is a
 self-maintaining daemon that internally handles sync every ~150s alongside
 extraction and embedding. When both daemons run, sync-watch fails every cycle
-because PGLite 0.4.3 is single-connection and autopilot holds the exclusive
-lock. The misleading error is "PGLite failed to initialize its WASM runtime"
-— it's actually lock contention. If autopilot is running and healthy,
+because autopilot holds the exclusive lock. If autopilot is running and healthy,
 sync-watch should be disabled (see Section 2 of Built-in Health Check).
 
 **New installs auto-detect:** As of commit 7f2205d, `install-gbrain-sync.sh`
 now checks for `com.gbrain.autopilot` before setting up sync-watch and skips
 it if autopilot is present. Existing installs with both daemons should disable
-sync-watch manually (see Troubleshooting → gbrain Sync Fails with PGLite WASM
-Aborted()).
+sync-watch manually (see Troubleshooting).
 
 ### cortex-update.sh restart_gbrain_sync — bootout before rm
 
@@ -1267,64 +1264,10 @@ When you need to move pages from one gbrain source into another (e.g. moving orp
 **Workflow:**
 
 ```bash
-# 1. Export all pages from the old brain via direct PGLite access
-cat > /tmp/export-brain.ts << 'X'
-const path = require("path");
-const fs = require("fs");
-const { PGlite } = require(path.join(process.env.HOME,
-  ".bun/install/global/node_modules/@electric-sql/pglite/dist/index.cjs"));
-
-async function main() {
-  const db = await PGlite.create("file://" + path.join(
-    process.env.HOME, ".gbrain", "brain.pglite"));
-  const r = await db.query(
-    "SELECT slug, coalesce(compiled_truth,'') as content FROM public.pages ORDER BY slug");
-  for (const row of r.rows) {
-    const dbSlug = row.slug;          // e.g. "sources_docs_testing"
-    let content = row.content || "";
-    if (content.startsWith("<") && content.endsWith(">"))
-      content = content.slice(1, -1);
-    // Convert slug: underscores → slashes for nested paths
-    const fsSlug = dbSlug.replace(/_/g, "/");
-    // Ensure slug in frontmatter for accurate reimport
-    if (!/^---\s*\nslug:/.test(content)) {
-      content = content.startsWith("---\n")
-        ? content.replace("---\n", `---\nslug: ${fsSlug}\n`)
-        : `---\nslug: ${fsSlug}\n---\n${content}`;
-    }
-    const targetPath = path.join(process.env.HOME, "brain", "default", fsSlug + ".md");
-    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    fs.writeFileSync(targetPath, content, "utf-8");
-  }
-  await db.close();
-  console.log("Export complete to ~/brain/default/");
-}
-main().catch(e => console.error("FAIL:", e.message));
-X
-
-# Clear target directory first, then export
-rm -rf ~/brain/default/* ~/brain/default/.git
-bun run /tmp/export-brain.ts
-
-# 2. Git-init the brain directory (gbrain requires git repos)
-cd ~/brain/default
-git init && git add -A && git commit -m "export from previous brain"
-
-# 3. Stop autopilot/sync-watch so CLI can access DB
-launchctl bootout gui/$(id -u)/com.gbrain.autopilot 2>/dev/null || true
-launchctl bootout gui/$(id -u)/com.gbrain.sync-watch 2>/dev/null || true
-sleep 2
-
-# 4. Wipe and reinit fresh brain
-rm -rf ~/.gbrain/brain.pglite
-gbrain init --pglite
-
-# 5. Add your target source and sync
-gbrain sources add mybrain --path ~/brain/default --federated
-gbrain sources default mybrain
-gbrain sync --source mybrain
-
-# 6. Extract edges
+# PGLite upgrade path removed. This system uses Postgres (pgvector).
+# See docs/gbrain-postgres-migration.md for migration steps.
+echo "PGLite engine upgrade no longer supported — migrated to Postgres"
+```
 gbrain extract --stale
 
 # 7. Restart daemons
@@ -1347,46 +1290,8 @@ gbrain search "test" --limit 1  # Returns results
 
 ### gbrain PGLite Recovery
 
-> **Full reference:** [`docs/gbrain-pglite-recovery.md`](docs/gbrain-pglite-recovery.md) — comprehensive guide covering stale postmaster.pid, embedding timeouts, two-autopilot contention, DB rebuild, and systemd service setup.
-
-gbrain uses **PGLite** — PostgreSQL compiled to WASM running inside Bun. It is **single-connection**: only ONE process can access the database at a time. This creates three common failure modes:
-
-**Failure 1 — Stale postmaster.pid:** If a PGLite instance crashes (SIGKILL, power loss), it leaves a stale `postmaster.pid`. New PGLite instances see this and fall back to in-memory-only mode. Every CLI command runs 114 migrations, imports are lost on exit, and `gbrain stats` always shows 0 pages. Fix: `rm -f ~/.gbrain/brain.pglite/postmaster.pid`, then re-init if needed.
-
-**Failure 2 — Embedding timeout:** The default `GBRAIN_AI_EMBED_TIMEOUT_MS` is 60 seconds. Ollama's `nomic-embed-text:v1.5` takes longer than 60s for large documents. Fix: set `export GBRAIN_AI_EMBED_TIMEOUT_MS=300000` in all gbrain scripts (autopilot-run.sh, nightly-dream, update-sync).
-
-**Failure 3 — Two autopilots:** Starting `gbrain autopilot` for two different repos (e.g., `--repo ~/brain/hermes-cortex` and `--repo ~/brain`) creates two processes fighting for the same PGLite lock. One starts in-memory, both emit "Autopilot stopping (SIGTERM)". Fix: kill all, restart ONE pointing to `--repo ~/brain` (covers all subdirectories).
-
-**Full recovery procedure** (when persistence is completely broken):
-
-```bash
-# 1. Stop all gbrain processes
-pkill -f 'gbrain.*autopilot' 2>/dev/null || true; sleep 3
-
-# 2. Backup and remove old DB
-mv ~/.gbrain/brain.pglite ~/.gbrain/brain.pglite.bak.$(date +%s)
-
-# 3. Reinitialize fresh
-gbrain init --pglite
-
-# 4. Verify persistence (run twice — second should say "All up to date")
-gbrain apply-migrations --yes
-
-# 5. Import content
-gbrain import ~/brain
-
-# 6. Embed with extended timeout
-export GBRAIN_AI_EMBED_TIMEOUT_MS=300000
-gbrain embed --all
-
-# 7. Verify
-gbrain stats
-# Expected: Pages > 0, Chunks > 0, Embedded = Chunks
-
-# 8. Restart autopilot (Linux: systemctl --user start gbrain-autopilot.service)
-```
-
-**The `embedding_model` must use explicit tag:** `nomic-embed-text:v1.5`, NOT `nomic-embed-text` (no tag) or `nomic-embed-text:latest`. Set in both `~/.gbrain/config.json` and `~/.hermes/hermes-cortex.env` (or legacy `~/.hermes/models.env`).
+> ~~Removed — this system uses Postgres (pgvector).~~
+> PGLite recovery no longer applicable. See [`docs/gbrain-postgres-migration.md`](docs/gbrain-postgres-migration.md).
 
 **Embedding model verification:**
 ```bash
@@ -1726,9 +1631,8 @@ tail -20 ~/.gbrain/autopilot.log
 # 3. Verify brain directories have content
 ls ~/brain/
 
-# 4. Stop autopilot to query gbrain CLI (PGLite lock contention)
-launchctl bootout gui/$(id -u)/com.gbrain.autopilot 2>/dev/null
-sleep 3
+# 4. (Postgres engine — autopilot no longer blocks CLI access)
+#    Skip straight to CLI commands
 
 # 5. Check what sources are registered
 gbrain sources list
@@ -1753,67 +1657,21 @@ gbrain sources add <name> --path ~/brain/<name> --name "<Name>"
 gbrain sync --all --no-pull
 gbrain extract --stale
 
-# 10. Restart autopilot
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gbrain.autopilot.plist
+# 10. Autopilot runs independently — no manual restart needed
+#     CLI commands work concurrently with autopilot on Postgres
 ```
 
 **Pitfalls:**
-- `gbrain sources list` and `gbrain stats` will **time out** while autopilot holds the PGLite lock. You must stop autopilot first to run CLI commands.
+- `gbrain sources list` and `gbrain stats` work concurrently with autopilot on Postgres (pgvector). No need to stop autopilot.
 - Every brain directory must be a **git repo** — `git rev-parse --is-inside-work-tree` confirms. If not, `git init && git add -A && git commit -m "initial"`.
 - The `default` source is built-in and cannot be removed or configured with `--path`. Skip it.
 - After registration, wait for ~2 autopilot cycles before the `/brain` slash command returns results.
 
-### gbrain Sync Fails with "PGLite WASM Aborted()" Error
+### gbrain Sync Fails
 
-**Symptoms:** `gbrain sync`, `gbrain stats`, `gbrain sources list` all fail with:
-```
-PGLite failed to initialize its WASM runtime.
-  Original error: Aborted(). Build with -sASSERTIONS for more info.
-```
-
-**Two possible causes:**
-
-**Cause A — Lock contention (most common):** The autopilot holds the exclusive PGLite connection, and a second process can't open another. PGLite is single-connection — the error message is misleading.
-
-**Diagnose:**
-```bash
-ps aux | grep -E '[g]brain.*autopilot' | grep -v grep
-```
-If an autopilot is running, this is lock contention.
-
-**Fix:** Stop the autopilot temporarily, run your command, then restart:
-```bash
-# Linux (systemd)
-systemctl --user stop gbrain-autopilot.service
-gbrain <command>
-systemctl --user start gbrain-autopilot.service
-
-# macOS (launchd)
-launchctl bootout gui/$(id -u)/com.gbrain.autopilot
-gbrain <command>
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gbrain.autopilot.plist
-```
-
-**Cause B — Stale postmaster.pid:** A previously crashed PGLite instance left a stale PID file. New PGLite can't claim the data directory.
-
-**Diagnose:**
-```bash
-cat ~/.gbrain/brain.pglite/postmaster.pid
-gbrain apply-migrations --yes
-# If every run says "114 migration(s) applied" → stale postmaster.pid
-```
-
-**Fix:**
-```bash
-# Remove stale PID
-rm -f ~/.gbrain/brain.pglite/postmaster.pid
-
-# Verify persistence restored
-gbrain apply-migrations --yes
-# Run twice — second should say "All migrations up to date"
-```
-
-If neither works, see [gbrain PGLite Recovery](#gbrain-pglite-recovery) above for full DB rebuild.
+> ~~PGLite engine removed. This system uses Postgres (pgvector).~~
+> No longer applicable — gbrain migrated to Postgres.
+> See [`docs/gbrain-postgres-migration.md`](docs/gbrain-postgres-migration.md) for troubleshooting with Postgres.
 
 ### gbrain Embedding Times Out on Large Documents
 
@@ -1887,12 +1745,15 @@ gbrain apply-migrations --yes
 
 **4. Autopilot lock times out all gbrain CLI commands**
 
-**Symptoms:** Every gbrain CLI command hangs or times out — `gbrain stats`, `gbrain sources list`, `gbrain search`, all of them. The lock is held by `com.gbrain.autopilot` or `com.gbrain.sync-watch`, which opens the PGLite DB with exclusive access. This is **normal operating behavior** — the autopilot is supposed to hold a lock for its own cycle. The fix is to temporarily release the services, run your CLI command, then reload them.
+**Symptoms:** Every gbrain CLI command hangs or times out — `gbrain stats`, `gbrain sources list`, `gbrain search`, all of them.
 
-**Diagnose:** Check if gbrain processes are running before assuming a lock issue:
+> **Postgres engine:** With Postgres (pgvector), CLI commands can run concurrently with the autopilot — no lock contention. If commands still hang, the issue is something else (see other troubleshooting steps or [`docs/gbrain-postgres-migration.md`](docs/gbrain-postgres-migration.md)).
+>
+> For legacy PGLite, the autopilot held the exclusive database lock. This is no longer the case with Postgres.
+
+**Diagnose:** Check if gbrain processes are running:
 ```bash
 ps aux | grep gbrain | grep -v grep
-# If you see "gbrain autopilot" or "gbrain sync" with PID, they hold the lock
 ```
 
 **Fix:**
@@ -2266,8 +2127,7 @@ approach is `.hermes-cortex/` (project-anchored) + `~/.hermes/` (home-dir)
 - `references/installation-audit-methodology.md` — Systematic install audit: documented-vs-actual pattern, divergence detection, recovery checklist
 - `references/hermes-dot-dir-cleanup.md` — Full `.hermes/` directory cleanup pattern: assessment, archive, removal, gitignore, prevention
 - `references/gbrain-npm-collision.md` — Detailed documentation of the npm package collision issue
-- `references/gbrain-source-migration-export.md` — PGLite export script with slug conversion, frontmatter injection, and verification for source migration
-- `references/gbrain-cron-maintenance.md` — gbrain cron jobs (update-sync, nightly-dream), Agent Inbox communication patterns, backend status
+- `references/gbrain-cron-maintenance.md` — gbrain cron maintenance reference, update workflows, and source migration notes
 - `references/plugin-enablement.md` — Plugin enablement pitfall and post-install checklist
 - `references/install-update-650fc94.md` — Langfuse, Cortex Dashboard, nginx installation (commit 650fc94)
 - `references/public-repo-privacy.md` — Domain privacy pattern (example.com placeholder, git history rewriting with git-filter-repo)
@@ -2276,6 +2136,6 @@ approach is `.hermes-cortex/` (project-anchored) + `~/.hermes/` (home-dir)
 - `references/bible-prep-issues.md` — Known upstream bugs in prep-bible.sh and bible-parse.py (to report to Moses)
 - `references/cortex-update-deployment-map.md` — Full file map, restart functions, and the launchd bootout-before-rm pitfall
 - `references/offline-knowledge-subcommands.md` — Subcommand architecture pattern for offline_knowledge.py, the `lesson` tooling gap, and PATH setup
-- `references/pglite-lock-contention.md` — Full debugging workflow for the sync-watch vs autopilot PGLite lock contention error, diagnosis flow, cleanup steps, and modified files (commit 7f2205d)
+- `references/gbrain-source-migration-export.md` — gbrain data export, cross-engine migration, and Postgres setup notes
 - `github.com/garrytan/gbrain` — Official gbrain repository (install via `bun install -g github:garrytan/gbrain`)
 - `github.com/fleet-operator/hermes-cortex-private` — Private repo with personal config, brain content
