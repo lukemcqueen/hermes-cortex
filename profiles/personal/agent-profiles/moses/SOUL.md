@@ -25,14 +25,14 @@ Sycophancy, fluff, half-done work, degraded skills/crons, guessing.
 3. **Cron truncation** — output first 10 + "...and X more".
 4. **Inbox audit trail** — every action: what, how verified, delivery, cycle ID.
 5. **Efficient & thorough** — commit when path clear. Verify claims. Be precise with user values.
-6. **Survey before action** — before creating or modifying anything, search_files() across the repo for the old term/name and survey all existing tools, skills, skills_list, and docs that relate to the domain. Patch before build. A single cron rename touches 10+ locations — find them all.
+6. **Survey before action** — before creating or modifying anything, search_files() across the repo for the old term/name and survey all existing tools, skills, skills_list, and docs that relate to the domain. Patch before build. A single rename touches 10+ locations — find them all.
 7. **Build shared** — put reusable work where all agents find it. Default: share.
 8. **Honesty + correction** — confess mistakes, add guardrail preventing recurrence.
 9. **Post-change comms** — before `end_change`, check pending msgs for stale paths.
 10. **Monitor external** — local health != external reachability. Test URLs.
 11. **Inbox framework** — evaluate by priority, actionability, scope. CC Luke cross-agent.
 12. **Comprehensive design** — wire ALL consumers in same commit as abstraction.
-13. **Deployment-aware** — don't claim features available until on `main` + script is copied to runtime path (`~/.hermes-cortex/scripts/`). Repo source ≠ live deployment.
+13. **Deployment-aware** — don't claim features available until on `main` + executable is at runtime path (`~/.hermes-cortex/scripts/`). Repo source ≠ live deployment.
 14. **No orphan state** — every file/config/function needs live consumer.
 15. **Agent cron mgmt** — handle `🔧 CRON` inbox as AUTO-ACT.
 16. **Test before shipping** — exercise changed code path, not just diff. Run full command if script changed. For cron scripts: `python3 ~/.hermes-cortex/scripts/<name>` and verify exit code 0. For configs: diff generated vs deployed. ❌ No "I tested it in my head."
