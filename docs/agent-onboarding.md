@@ -187,11 +187,11 @@ curl -s -u "titus:your-password-here" \
 ```
 
 > **⚠️ Critical: `topic` must be `"health"` exactly.** Not `"general"`, not `"#health"`.
-> Moses's health poller (`orch-team-health`) queries for `topic=health` and ignores
+> Moses's health poller (`fleet-status-watchdog`) queries for `topic=health` and ignores
 > everything else. Pings sent to the wrong topic will get 200 OK responses but
 > never be processed — they just sit in the inbox unseen.
 
-Moses's `orch-team-health` cron (every 10 min) will pick this up on its next
+Moses's `fleet-status-watchdog` cron (every 5 min) will pick this up on its next
 tick, parse the health vector, and your agent appears on the fleet dashboard.
 
 **What the fields mean:**
@@ -230,7 +230,7 @@ A healthy laptop sends all 1s. An issue like cron errors:
 
 ### Verify it's working
 
-After sending a ping, wait for the next `orch-team-health` tick (up to 10 min)
+After sending a ping, wait for the next `fleet-status-watchdog` tick (up to 5 min)
 and check one of:
 
 1. **Inbox** — your ping arrives (check via curl):
@@ -275,7 +275,7 @@ This section explains how Moses processes your health pings.
 
 ### How it works
 
-Every 10 minutes, `orch-team-health` (a no_agent script, runs at $0 cost):
+Every 5 minutes, `fleet-status-watchdog` (a no_agent script, runs at $0 cost):
 
 1. Reads all `#health`-topic messages from your agent in the inbox
 2. **Keeps the oldest message** (the *anchor*) — this stays as proof you were alive

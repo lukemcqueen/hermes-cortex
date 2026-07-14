@@ -38,7 +38,7 @@ SERVICE_MAP = ["resources", "services", "no_errored_crons", "no_stale_crons",
                "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok"]
 ICONS = {1: "🟢", 0: "⚪", -1: "🔴"}
 
-# Laptop grace period — shared with orch-team-health.py
+# Laptop grace period — shared with fleet-status-watchdog.py
 LAPTOP_GRACE_MINUTES = 30  # 30 min — covers quick coffee breaks / lid closes
 LAST_SEEN_FILE = HOME / ".hermes-cortex" / "state" / "last-seen.json"
 
@@ -95,7 +95,7 @@ def _inbox_request(path: str) -> dict | None:
         return None
 
 
-# ── Last-seen tracking (laptop grace period, shared with orch-team-health.py) ──
+# ── Last-seen tracking (laptop grace period, shared with fleet-status-watchdog.py) ──
 
 
 def _record_last_seen(agent_key: str, timestamp_iso: str) -> None:
@@ -140,7 +140,7 @@ def _last_seen_minutes_ago(agent_key: str) -> int | None:
 # ── Agent loading ──
 
 def _get_agents() -> list[dict]:
-    """Load agents from registry with local overrides, same as orch-team-health.py."""
+    """Load agents from registry with local overrides, same as fleet-status-watchdog.py."""
     agents = []
     registry = {}
     local_overrides = {}

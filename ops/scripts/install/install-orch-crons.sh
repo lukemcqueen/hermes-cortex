@@ -39,7 +39,7 @@ if ! $_IS_ORCH; then
 fi
 
 if ! $_IS_ORCH; then
-  echo "✗ This script installs orchestrator-only crons (orch-team-messages, orch-team-health)."
+  echo "✗ This script installs orchestrator-only crons (orch-team-messages)."
   echo "  IS_ORCHESTRATOR is not set to 'true' — only orchestrators need these crons."
   echo "  If you are a worker agent, you do NOT need orchestration crons."
   echo "  To run on this machine, set IS_ORCHESTRATOR=true in ~/hermes-cortex/.env"
@@ -113,7 +113,7 @@ if $UNINSTALL; then
   echo ""
   printf "${CYAN}━━━ Uninstalling Orchestrator-Only Crons ━━━${RESET}\n\n"
   for job in \
-    "orch-team-messages" "orch-team-health" "orch-gbrain-doctor" \
+    "orch-team-messages" "orch-gbrain-doctor" \
     "skill-report-request" "skill-report-process" "skill-evaluate"; do
     remove_cron "$job" 2>/dev/null || true
   done
@@ -339,15 +339,6 @@ printf "${CYAN}  1. Orchestrator-Specific Crons${RESET}\n"
 # Cross-agent health and team messages (every 10 min)
 create_cron "orch-team-messages" "*/10 * * * *" \
   "orch-team-messages.sh" \
-  "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
-
-create_cron "orch-team-health" "*/10 * * * *" \
-  "orch-team-health.py" \
   "" \
   "" \
   "" \

@@ -1697,9 +1697,8 @@ else
   fi
 fi
 
-# orch-team-health.py is deliberately NOT installed here — it's
-# orchestrator-only (Moses polls peer agents). Peer agents don't need it.
-# It is deployed via the orch-* section in install-crons.sh.
+# orch-team-health.py has been removed — superseded by fleet-status-watchdog.
+# fleet-status-watchdog is deployed via the general cron installer.
 
 # ── Auto-Save Active Sessions Script ──────────────────────────────
 AUTO_SAVE_PATH="${SCRIPTS_DIR}/auto-save-sessions.py"

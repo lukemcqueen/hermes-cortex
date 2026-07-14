@@ -78,7 +78,7 @@ agent guidelines focused on general Hermes Cortex usage.
 | `process-mcp-agent-inbox-messages` | `*/30 * * * *` | LLM | Read + process new inbox messages |
 | | | | |
 | **Orchestrator-only (Moses primary, Esther backup):** | | | |
-| `orch-team-health` | `*/10 * * * *` | no_agent | Orchestrator cross-agent health polling (state-change alerts) |
+| `fleet-status-watchdog` | `*/5 * * * *` | no_agent | Fleet status — cross-agent health polling (state-change alerts, delivered via Telegram) |
 | `orch-gbrain-doctor` | `0 6 * * *` | no_agent | Daily gbrain brain health check via gbrain-wrapper.sh (pauses autopilot, runs doctor, reports failures) |
 | `orch-team-messages` | `*/10 * * * *` | no_agent | Flag urgent agent messages |
 | `orch-process-agent-messages` | `*/10 * * * *` | LLM | Process inbox remediation markers |
@@ -89,7 +89,7 @@ When creating a new cron, prefix it to signal scope so other agents know whether
 
 | Prefix | Meaning | Example |
 |--------|---------|---------|
-| `orch-*` | **Orchestrator-only** — runs only on orchestrators (Moses, Esther) | `orch-team-health` |
+| `orch-*` | **Orchestrator-only** — runs only on orchestrators (Moses, Esther) | `orch-team-messages` |
 | `agent-*` | **LLM-driven** — agent reasons each tick; installable on any machine | `agent-auto-remediate` |
 | `local-*` | **This server only** — NOT shared with or installed on peer agents. Combine with `agent-` as `local-agent-*` for LLM-driven local crons. | `local-agent-daily-news-brief` |
 | no prefix | **General no_agent** — safe for any agent to run, no LLM tokens used | `remediation-sensor` |
@@ -98,7 +98,7 @@ When creating a new cron, prefix it to signal scope so other agents know whether
 
 ### Orchestrator gate
 
-Orchestrator-only scripts (`install-orch-crons.sh`, `orch-team-messages.sh`, `orch-team-health.py`)
+Orchestrator-only scripts (`install-orch-crons.sh`, `orch-team-messages.sh`)
 check `IS_ORCHESTRATOR=true` in `~/hermes-cortex/.env` before running. This replaces the
 older hostname-based guard (`moses`/`esther`), which remains as fallback for backward compat.
 
@@ -174,7 +174,7 @@ ln -sf ~/.hermes-cortex/tools/loop-governance/score_cycle.py ~/.local/bin/score-
 
 ### All timestamps in KST (UTC+9)
 
-All monitoring scripts output timestamps in Seoul time. Affects: `orch-team-health.py`, `system-alert-watchdog.py`, `service-recovery.py`, `orch-team-messages.sh`, and all cron outputs.
+All monitoring scripts output timestamps in Seoul time. Affects: `fleet-status-watchdog.py`, `system-alert-watchdog.py`, `service-recovery.py`, `orch-team-messages.sh`, and all cron outputs.
 
 ---
 

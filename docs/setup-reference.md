@@ -89,7 +89,7 @@ No authentication. No TLS. Plain HTTP — the vector contains no secrets, just b
 
 ### How it works
 
-1. **Server agents** (`health_method: "http"`): Moses' `orch-team-health.py` cron (`*/10 * * * *`) fetches each agent's vector via HTTP.
+1. **Server agents** (`health_method: "http"`): Moses' `fleet-status-watchdog.py` cron (`*/5 * * * *`) fetches each agent's vector via HTTP.
 2. **Client-only agents** (`health_method: "inbox"`): Titus runs `health-vector-push.sh` via launchd every 10 minutes, POSTing his vector to Moses' inbox API with his own Basic Auth credentials.
 3. **Change detection**: The poller fingerprints each vector. No output = no change. Alerts fire only on state transitions:
    - `🔴 Titus ❌ ollama` (service went down)
@@ -115,7 +115,7 @@ No authentication. No TLS. Plain HTTP — the vector contains no secrets, just b
    curl -s http://127.0.0.1:<PORT>/
    # → {"v":[...], "h":"hostname", "t":...}
    ```
-5. Moses' `orch-team-health.py` picks it up automatically once the `health_url` is set in `~/.hermes-cortex/state/agent-registry.json`.
+5. Moses' `fleet-status-watchdog.py` picks it up automatically once the `health_url` is set in `~/.hermes-cortex/state/agent-registry.json`.
 
 ### Deployment (Titus / macOS client-only)
 
@@ -140,7 +140,7 @@ Titus cannot be polled (no inbound). Instead he pushes to Moses' inbox:
 |------|---------|
 | `ops/scripts/health/health-vector.py` | Health vector generator + HTTP server (cross-platform) |
 | `ops/scripts/health/health-vector-push.sh` | Inbox push script for client-only agents |
-| `ops/scripts/agent/orch-team-health.py` | Orchestrator poller (no_agent cron) |
+| `ops/scripts/agent/fleet-status-watchdog.py` | Fleet health poller (no_agent cron) |
 | `ops/scripts/agent/orch-health-report.py` | Health snapshot report — formatted for Telegram delivery |
 | `src/agent-registry.template.json` | Agent registry template (fill during setup → `~/.hermes-cortex/state/agent-registry.json`) |
 | `docs/templates/com.hermes.health-push.plist` | macOS launchd template for Titus |

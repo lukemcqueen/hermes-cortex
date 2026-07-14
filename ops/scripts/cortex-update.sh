@@ -229,8 +229,7 @@ register "ops/scripts/agent/orch-inbox-processor.py"   "${CORTEX_DEPLOY_HOME}/sc
 register "ops/scripts/agent/check-agent-messages.sh"    "${CORTEX_DEPLOY_HOME}/scripts/check-agent-messages.sh"
 register "ops/scripts/manage/ek-session-snapshot.py"     "${CORTEX_DEPLOY_HOME}/scripts/ek-session-snapshot.py"
 
-# Orchestrator health polling (Moses primary, Esther backup)
-register "ops/scripts/agent/orch-team-health.py"         "${CORTEX_DEPLOY_HOME}/scripts/orch-team-health.py"
+# Orchestrator health polling — superseded by fleet-status-watchdog (general cron)
 register "ops/scripts/agent/orch-gbrain-doctor.sh"       "${CORTEX_DEPLOY_HOME}/scripts/orch-gbrain-doctor.sh"
 
 # Orchestrator health report — periodic agent fleet snapshot (no_agent cron)

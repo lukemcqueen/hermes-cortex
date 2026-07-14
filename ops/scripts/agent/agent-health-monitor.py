@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
 """agent-health-monitor.py — Cross-server health poller for Moses (DEPRECATED).
 
-⚠  This script is deprecated. Use orch-team-health.py instead, which
-   supports the agent-registry.json health_method field (both 'http' for
-   servers and 'inbox' for client-only agents like Titus).
-
-   The active cron (orch-team-health) handles Titus via inbox — he pushes
-   his health vector using health-vector-push.sh and Moses reads it from
-   the inbox. Never try to HTTP-poll Titus directly. He is not a server.
+⚠  This script is deprecated. Superseded by fleet-status-watchdog.py.
 
 no_agent watchdog pattern:
   Empty stdout → silent (no state change)

@@ -1107,7 +1107,7 @@ AGENT_HEALTH_FILE = Path.home() / ".hermes-cortex" / "state" / "agent-health-dat
 @app.route("/api/agents")
 @_cached("agents", ttl=10)
 def api_agents():
-    """Read structured health data written by orch-team-health.py."""
+    """Read structured health data written by fleet-status-watchdog.py."""
     if AGENT_HEALTH_FILE.exists():
         try:
             data = json.loads(AGENT_HEALTH_FILE.read_text())
@@ -1119,7 +1119,7 @@ def api_agents():
 
 def _agents_data() -> dict:
     """Non-cached helper for /api/all aggregation.
-    Preserves the 9-service health vector from orch-team-health.py.
+    Preserves the 9-service health vector from fleet-status-watchdog.py.
     Only enriches Moses with local resource data (disk, memory)."""
     agents = {}
     if AGENT_HEALTH_FILE.exists():
