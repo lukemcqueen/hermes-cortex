@@ -15,7 +15,7 @@ Config (options in order of precedence):
 
   # Fallback — old inbox (deprecated, remove when full cutover complete)
   CORTEX_INBOX_URL=...       # (was primary, now fallback)
-  CORTEX_INBOX_AUTH=user:pass
+  CORTEX_BASIC_AUTH=user:pass (Basic auth for nginx — username:password)
   AGENT_NAME=moses
 
   Or via ~/.hermes-cortex/hermes-inbox.conf (key=value format)
@@ -83,7 +83,7 @@ bus_token = os.environ.get("CORTEX_BUS_TOKEN", "")
 
 # Deprecated fallback: old inbox URL + Basic auth (also used for nginx bus auth)
 inbox_url = os.environ.get("CORTEX_INBOX_URL", "")
-inbox_auth = os.environ.get("CORTEX_INBOX_AUTH", "")
+inbox_auth = os.environ.get("CORTEX_BASIC_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "")
 agent_name = os.environ.get("AGENT_NAME", "")
 
 # Support MOSES_* prefix (deprecated)
@@ -103,8 +103,9 @@ if CONFIG_FILE.exists():
         _KEY_MAP = {
             "CORTEX_BUS_URL": ("bus_url", False),
             "CORTEX_BUS_TOKEN": ("bus_token", False),
+            "CORTEX_BASIC_AUTH": ("inbox_auth", False),
             "CORTEX_INBOX_URL": ("inbox_url", True),
-            "CORTEX_INBOX_AUTH": ("inbox_auth", False),
+            "CORTEX_INBOX_AUTH": ("inbox_auth", True),
             "AGENT_NAME": ("agent_name", False),
             "MOSES_INBOX_URL": ("inbox_url", True),
             "MOSES_INBOX_AUTH": ("inbox_auth", True),
