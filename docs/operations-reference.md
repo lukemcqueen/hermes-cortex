@@ -75,19 +75,46 @@ The MCP client and config give you the **ability** to read messages, but nothing
 actually checks the inbox automatically unless you have a **poll cron**. Without
 it, messages sit unread until a human starts a session with you.
 
-Every client agent needs a `process-mcp-agent-inbox-messages` LLM cron:
+Every client agent needs inbox-processing LLM cron(s). The recommended approach
+is a **tiered weekday schedule** that matches work hours:
+
+| Tier | Hours (KST, Mon-Fri) | Cadence | Cron Expression |
+|------|---------------------|---------|-----------------|
+| Workday | 9am–6pm | Every 10 min | `*/10 9-17 * * 1-5` |
+| Evening | 6pm–12am | Every 30 min | `*/30 18-23 * * 1-5` |
+| Overnight | 12am–6am | Every 2 hours | `0 0-5/2 * * 1-5` |
+
+No polling during 6am–9am or on weekends.
+
+Create three separate cron jobs to cover the full cycle:
 
 ```bash
-hermes cron create --name process-mcp-agent-inbox-messages \
-  --model "deepseek/deepseek-v4-flash" \
-  --provider "openrouter" \
-  --schedule "0 6-23 * * *" \
-  --prompt "Check the agent inbox for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. Outside 6am-11pm daily, be silent if nothing urgent." \
+# Workday — every 10 min, Mon-Fri 9am-6pm
+hermes cron create --name process-inbox-workday \
+  --model "deepseek-v4-flash" \
+  --provider "deepseek" \
+  --schedule "*/10 9-17 * * 1-5" \
+  --prompt "Check the agent inbox for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. If no messages, output exactly [SILENT]." \
+  --deliver origin
+
+# Evening — every 30 min, Mon-Fri 6pm-midnight
+hermes cron create --name process-inbox-evening \
+  --model "deepseek-v4-flash" \
+  --provider "deepseek" \
+  --schedule "*/30 18-23 * * 1-5" \
+  --prompt "Check the agent inbox for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. If no messages, output exactly [SILENT]." \
+  --deliver origin
+
+# Overnight — every 2 hours, Mon-Fri midnight-6am
+hermes cron create --name process-inbox-overnight \
+  --model "deepseek-v4-flash" \
+  --provider "deepseek" \
+  --schedule "0 0-5/2 * * 1-5" \
+  --prompt "Check the agent inbox for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. If no messages, output exactly [SILENT]." \
   --deliver origin
 ```
 
-This runs hourly 6am-11pm, costs ~$0.006/run in LLM tokens (~$0.11/day), and delivers
-results to your origin chat (Telegram DM).
+**Cost estimate:** ~$0.006/run → workday (54 runs/wk) + evening (12 runs/wk) + overnight (3 runs/wk) = ~$0.41/day ≈ $12/mo. The sensitive periods (workday) poll fastest; overnight and weekends run at reduced cadence to save tokens.
 
 **Do NOT use the old `agent-inbox-check.sh` script** — it is deprecated and
 no longer works (MCP-only now).
