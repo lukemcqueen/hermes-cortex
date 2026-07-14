@@ -15,10 +15,6 @@
 -->
 <clickhouse>
 
-    <!-- ── Total memory cap (Docker Desktop limit: ~2.845 GiB total) ── -->
-    <max_server_memory_usage>800000000</max_server_memory_usage>
-    <!-- 800 MB — ClickHouse has 1g total, leaves ~200 MB for OS/FS cache -->
-
     <!-- ── Thread pools (defaults assume multi-core + high throughput) ── -->
     <background_pool_size>13</background_pool_size>
     <!-- merges & mutations; default 16; floor 13 in CH 25.5 (≤12 crashes) -->
@@ -86,5 +82,14 @@
         <table>part_log</table>
         <flush_interval_milliseconds>60000</flush_interval_milliseconds>
     </part_log>
+
+    <!-- ── System log TTL: auto-expire old data to prevent merge memory pressure ── -->
+    <database_system>
+        <trace_log_ttl>7</trace_log_ttl>           <!-- 7 days -->
+        <metric_log_ttl>7</metric_log_ttl>          <!-- 7 days -->
+        <asynchronous_metric_log_ttl>7</asynchronous_metric_log_ttl>  <!-- 7 days -->
+        <query_log_ttl>7</query_log_ttl>            <!-- 7 days -->
+        <text_log_ttl>14</text_log_ttl>             <!-- 14 days -->
+    </database_system>
 
 </clickhouse>
