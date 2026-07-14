@@ -136,9 +136,19 @@ cp ~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/
 | Platform | Bus Service | MCP Tools |
 |----------|------------|-----------|
 | **Linux** (server) | ✅ systemd `hermes-agent-bus.service` | ✅ Python (any venv) |
-| **macOS** | ❌ No Postgres host — runs headless MCP client only | ✅ Python (any venv) |
+| **macOS** | ✅ launchd (Postgres via Docker Desktop, bus via launchd `.plist`) | ✅ Python (any venv) |
 
-The bus requires Postgres (docker-based, port 15432), which is Linux-only in this deployment. macOS agents connect via nginx at `:13004` using `CORTEX_BUS_URL` and only run the MCP client (`agent-bus-mcp.py`)
+The bus is Python (cross-platform). Postgres runs in Docker (cross-platform). The only OS-specific piece is the service manager — systemd on Linux, launchd on macOS. To run on macOS:
+
+```bash
+# Postgres via Docker Desktop
+docker run -d --name gbrain-postgres -p 15432:5432 ...
+
+# Bus via launchd
+# Create ~/Library/LaunchAgents/com.hermes.agent-bus.plist
+# with: python3 -m uvicorn agent_bus.server:app --host 127.0.0.1 --port 8905
+# WorkingDirectory: ~/.hermes-cortex/bus/
+```
 
 ---
 
