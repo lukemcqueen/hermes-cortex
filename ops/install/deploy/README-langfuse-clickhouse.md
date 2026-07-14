@@ -279,6 +279,55 @@ Too many background pool settings reduced simultaneously.
 Fix: Keep only `background_pool_size` and `background_schedule_pool_size`.
 Restore all others to defaults.
 
+### ClickHouse merge failures (`MEMORY_LIMIT_EXCEEDED`, `TotalMergeFailures` climbing)
+
+**Symptom:** Watchdog reports `TotalMergeFailures` climbing rapidly. `system.errors` shows `MEMORY_LIMIT_EXCEEDED: (total) memory limit exceeded: would use 1.80 GiB ... maximum: 1.80 GiB`. No active merges run despite many unmerged parts.
+
+**Root cause:** ClickHouse cache defaults are tuned for 64+ GiB servers (`uncompressed_cache_size` = 8 GiB, `mark_cache_size` = 5 GiB). In a 2 GiB Docker container, these caches consume the bulk of available memory before background merges can start. Every merge attempt immediately hits the memory limit, and the `TotalMergeFailures` counter climbs with no recovery.
+
+**Diagnosis:**
+```bash
+# 1. Check merge failure count
+docker exec langfuse-clickhouse-1 clickhouse-client --query \
+  "SELECT name, value FROM system.metrics WHERE name IN ('TotalMergeFailures', 'NonAbortedMergeFailures', 'Merge')"
+
+# 2. Check cache sizes (should show changed=1 if capped)
+docker exec langfuse-clickhouse-1 clickhouse-client --query \
+  "SELECT name, value, changed FROM system.server_settings WHERE name IN ('uncompressed_cache_size','mark_cache_size','cache_size_to_ram_max_ratio')"
+
+# 3. Check memory pressure
+docker exec langfuse-clickhouse-1 clickhouse-client --query \
+  "SELECT name, formatReadableSize(value) FROM system.metrics WHERE name IN ('MemoryTracking','MMappedFileBytes')"
+
+# 4. Check which tables have the most parts
+docker exec langfuse-clickhouse-1 clickhouse-client --query \
+  "SELECT database, table, count() as parts, formatReadableSize(sum(bytes_on_disk)) as size FROM system.parts WHERE active=1 GROUP BY database,table ORDER BY parts DESC LIMIT 10"
+```
+
+**Fix (no memory increase needed):**
+
+1. **Cap cache sizes** in `clickhouse-config.d/02-low-memory.xml`:
+   ```xml
+   <uncompressed_cache_size>268435456</uncompressed_cache_size>  <!-- 256 MB -->
+   <mark_cache_size>134217728</mark_cache_size>                  <!-- 128 MB -->
+   <cache_size_to_ram_max_ratio>0.4</cache_size_to_ram_max_ratio>
+   ```
+
+2. **Restart ClickHouse** (container must be recreated for config re-read):
+   ```bash
+   docker restart langfuse-clickhouse-1
+   ```
+
+3. **Drop stale partitions** if system log tables accumulated old data:
+   ```bash
+   docker exec langfuse-clickhouse-1 clickhouse-client --query \
+     "ALTER TABLE system.trace_log DROP PARTITION '202606'"
+   ```
+
+4. **Verify merge recovery:** After restart, check `TotalMergeFailures` is 0 and merges start running. The `Merge` metric should show >0 and `MergeParts` events appear in `system.part_log`.
+
+**System log table TTLs are already in 02-low-memory.xml** (`<database_system>` section) and in the table definitions themselves. If data expired by TTL isn't being cleaned, it's because merges were failing — fix the memory issue first, and TTL cleanup follows automatically.
+
 ### Langfuse Web crashes with OOM / `JavaScript heap out of memory`
 The web container's Node.js process hits the heap limit during startup, typically during ClickHouse model-match cache initialization. The log shows `FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory`.
 

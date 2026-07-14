@@ -12,6 +12,16 @@
   - max_thread_pool_size / thread_pool_queue_size: keep at defaults (10000) — reducing
     triggers crash when combined with reduced background pools
   - All other background pool settings: keep at defaults (same crash-combination bug)
+
+  ⚠️ Cache caps (uncompressed_cache_size, mark_cache_size, cache_size_to_ram_max_ratio):
+  ClickHouse defaults assume 64+ GiB of RAM (8 GiB uncompressed cache, 5 GiB mark
+  cache). In a 2 GiB container, these defaults cause ALL merges to fail because caches
+  consume the available memory before background merges can run. Symptom:
+  TotalMergeFailures climbs indefinitely, all merges fail with MEMORY_LIMIT_EXCEEDED,
+  and system log tables accumulate stale parts that can't be cleaned up. Fix:
+  Set uncompressed_cache_size=256 MiB, mark_cache_size=128 MiB, and
+  cache_size_to_ram_max_ratio=0.4. See README-langfuse-clickhouse.md "ClickHouse merge
+  failures (MEMORY_LIMIT_EXCEEDED, TotalMergeFailures climbing)" for diagnosis steps.
 -->
 <clickhouse>
 
