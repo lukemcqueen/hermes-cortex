@@ -37,6 +37,19 @@ WORKER_SCRIPT_DST="${HERMES_HOME}/scripts/agent-worker.py"
 SERVICE_FILE="${HOME}/.config/systemd/user/hermes-agent-worker.service"
 CONFIG_FILE="${CORTEX_DEPLOY_HOME}/hermes-inbox.conf"
 
+# ── Grant bus permissions ──
+info "Granting bus permissions for ${CYAN}${AGENT_NAME}${RESET}..."
+if command -v docker &>/dev/null && docker ps --filter name=gbrain --format "{{.Names}}" 2>/dev/null | grep -q gbrain; then
+  docker exec gbrain-postgres psql -U gbrain -d gbrain -c \
+    "UPDATE bus.permissions SET can_write = CASE WHEN NOT (can_write @> '{workflow_step_result}'::text[]) THEN can_write || '{workflow_step_result}' ELSE can_write END WHERE agent_name = '${AGENT_NAME}';" \
+    2>/dev/null && info "${GREEN}✓${RESET} Bus permissions granted" || warn "Could not grant permissions"
+else
+  warn "Cannot access bus DB remotely. Ask Moses to grant permissions:"
+  warn "  Moses: UPDATE bus.permissions SET can_write = can_write || '{workflow_step_result}' WHERE agent_name = '${AGENT_NAME}';"
+fi
+
+# ── Check prerequisites ──
+
 # ── Check prerequisites ──
 
 info "Installing agent-worker for: ${CYAN}${AGENT_NAME}${RESET}"
