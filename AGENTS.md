@@ -134,6 +134,76 @@ Three axes when processing inbox messages:
 
 ---
 
+## Agent Worker — Automated Inbox Processing
+
+Each agent can install an `agent-worker` systemd `--user` service that polls their inbox every 30s and auto-processes `workflow_step` messages via local Ollama. No Hermes cron, no Moses dependency.
+
+### Installation (one-time per agent)
+
+```bash
+cd ~/hermes-cortex && git pull --rebase origin main
+bash ops/scripts/agent/install-worker.sh <YOUR_NAME>
+```
+
+The installer:
+1. Copies `agent-worker.py` to `~/.hermes/scripts/`
+2. Creates systemd `--user` service at `~/.config/systemd/user/hermes-agent-worker.service`
+3. Auto-grants bus permissions if running on the bus machine
+4. Starts the service via `systemctl --user start`
+5. Verifies it's running
+
+### Config
+
+The worker reads from `~/.hermes-cortex/hermes-inbox.conf`:
+```ini
+BUS_URL=http://bus-host:8905
+CORTEX_BASIC_AUTH=<your-basic-auth>
+AGENT_NAME=<your-name>
+```
+
+Also accepts `CORTEX_BUS_URL` and `CORTEX_INBOX_AUTH` if your config uses those names.
+
+### How it works
+
+1. Polls `inbox_<agent>` every 30s via `curl`
+2. Finds messages with `type: workflow_step`
+3. If `human_review: true` → writes flag file to `~/.hermes/state/worker-pending/`, archives message (agent handles in-session)
+4. Else → sends prompt to local Ollama (`qwen2.5-coder:3b`), posts result to `workflow_step_result`
+5. Idempotent: tracks completed step IDs locally to prevent double-processing on restart
+6. On failure (3 retries) → writes error flag file, archives message
+
+### Verify it's working
+
+```bash
+systemctl --user status hermes-agent-worker
+tail -f ~/.hermes/logs/agent-worker-<AGENT_NAME>.log
+```
+
+### Fleet status (current)
+
+| Agent | Worker | Status |
+|-------|--------|--------|
+| Moses | `agent-worker` | ✅ Active, polling every 30s |
+| Esther | `agent-worker` | ✅ Confirmed working |
+| Joseph | `agent-worker` | ✅ Confirmed working |
+| Gisu | `agent-worker` | ✅ Active, polling every 30s |
+| Kustos | `agent-worker` | ✅ Active, polling every 30s |
+| Titus | `agent-worker` | ❌ Not installed |
+
+### Bus watchdogs (Moses only, delivered to Telegram)
+
+Two no_agent crons provide fleet visibility:
+
+| Watchdog | Schedule | Output | Silent when |
+|----------|----------|--------|-------------|
+| `bus-audit-watchdog` | `*/1 * * * *` | New message events to Telegram (`sender → recipient action @KST`) | No new messages |
+| `fleet-status-watchdog` | `*/5 * * * *` | Dashboard: agent health, active workflows with step progress, stalled step alerts | No active workflows + no issues |
+
+- `bus-audit-watchdog` — every send event: `esther → moses send @18:06:39 KST`, `system → joseph workflow_step(review) @18:08:28 KST`
+- `fleet-status-watchdog` — every 5 min if busy: shows ✅ active / ⚠️ idle / 🌙 offline per agent, workflow chain with ✅▶⏳ per step, stalled step detection (>5 min running)
+
+---
+
 ## Agent Cron Management
 
 Only Moses has `cronjob` MCP tool. Others request via inbox with subject `🔧 CRON: create|update|remove`. Fields: `CRON_NAME`, `CRON_SCHEDULE`, `CRON_PROMPT`/`CRON_SCRIPT`, `CRON_DELIVER`, `CRON_REASON`.
