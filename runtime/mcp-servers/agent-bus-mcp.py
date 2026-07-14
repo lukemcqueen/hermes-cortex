@@ -81,7 +81,7 @@ PROXY_PATH = "/usr/local/bin/mcp-inbox-proxy"
 bus_url = os.environ.get("CORTEX_BUS_URL", "")
 bus_token = os.environ.get("CORTEX_BUS_TOKEN", "")
 
-# Deprecated fallback: old inbox URL + Basic auth
+# Deprecated fallback: old inbox URL + Basic auth (also used for nginx bus auth)
 inbox_url = os.environ.get("CORTEX_INBOX_URL", "")
 inbox_auth = os.environ.get("CORTEX_INBOX_AUTH", "")
 agent_name = os.environ.get("AGENT_NAME", "")
@@ -104,7 +104,7 @@ if CONFIG_FILE.exists():
             "CORTEX_BUS_URL": ("bus_url", False),
             "CORTEX_BUS_TOKEN": ("bus_token", False),
             "CORTEX_INBOX_URL": ("inbox_url", True),
-            "CORTEX_INBOX_AUTH": ("inbox_auth", True),
+            "CORTEX_INBOX_AUTH": ("inbox_auth", False),
             "AGENT_NAME": ("agent_name", False),
             "MOSES_INBOX_URL": ("inbox_url", True),
             "MOSES_INBOX_AUTH": ("inbox_auth", True),
