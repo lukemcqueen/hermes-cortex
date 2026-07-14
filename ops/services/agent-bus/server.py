@@ -392,17 +392,30 @@ async def health():
 
 @app.get("/.well-known/agent-card.json")
 async def agent_card():
-    """A2A agent discovery card."""
+    """A2A agent discovery card (public, no auth)."""
     return {
         "name": "hermes-cortex-bus",
-        "version": "1.0.0",
-        "description": "Hermes Cortex Agent Bus — PGMQ message queue",
-        "capabilities": ["messaging", "workflow"],
+        "version": "2.0.0",
+        "description": "Hermes Cortex Agent Bus — PGMQ message queue + workflow engine + A2A task delegation",
+        "capabilities": [
+            "pgmq_messaging",
+            "workflow_dispatch",
+            "workflow_routing",
+            "human_in_the_loop",
+            "a2a_task_delegation",
+            "deterministic_routing",
+        ],
         "endpoints": {
             "send": "POST /api/pgmq/send",
             "read": "POST /api/pgmq/read",
             "archive": "POST /api/pgmq/archive",
+            "workflows": "GET /api/workflows",
+            "dispatch": "POST /api/workflows/dispatch",
+            "hil": "POST /api/workflows/hil",
+            "a2a_tasks": "POST /a2a/task",
+            "agents": "GET /a2a/agents",
             "health": "GET /health",
+            "dashboard": "GET /",
         },
     }
 
