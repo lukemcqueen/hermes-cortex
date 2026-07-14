@@ -70,6 +70,78 @@ Layer 1: mTLS ── "this machine has a valid client certificate"
 
 ---
 
+## Setup: Orchestrator vs Regular Agent
+
+### Orchestrator (Moses / Esther)
+
+Full setup — runs the bus service + Postgres schema:
+
+```bash
+# 1. Install the bus (Postgres schema, tokens, systemd service)
+bash ~/hermes-cortex/ops/scripts/install/install-bus.sh
+
+# 2. Copy MCP server to Hermes scripts
+cp ~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/
+
+# 3. Deploy nginx config (add to /etc/nginx/sites-available/hermes-services.conf)
+#    Template: ~/hermes-cortex/ops/services/agent-bus/nginx.conf
+
+# 4. Register orchestrator-only crons
+bash ~/hermes-cortex/ops/scripts/install/install-orch-crons.sh
+```
+
+| File | Purpose |
+|------|---------|
+| `ops/services/agent-bus/server.py` | Bus service (FastAPI, port 8905) |
+| `runtime/agent_bus/queue.py` | PGMQ queue client |
+| `ops/services/agent-bus/schema/queue.sql` | PGMQ schema |
+| `ops/services/agent-bus/schema/auth.sql` | Token/permissions schema |
+| `ops/services/agent-bus/schema/workflow.sql` | Workflow + A2A schema |
+| `runtime/mcp-servers/agent-bus-mcp.py` | MCP tool server |
+| `ops/scripts/inbox/workflow-*.py` | Workflow cron scripts |
+| `ops/services/agent-bus/nginx.conf` | nginx template |
+
+### Regular Agent (Joseph, Gisu, Kustos, Titus)
+
+Lightweight setup — MCP client only, no bus service:
+
+```bash
+# 1. Copy MCP server
+cp ~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/
+
+# 2. Add to ~/.hermes/config.yaml:
+#    mcp_servers:
+#      agent-bus:
+#        command: python3
+#        args: [~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py]
+#        enabled: true
+
+# 3. Create ~/.hermes/hermes-inbox.conf:
+#    CORTEX_BUS_URL=https://moses-server:13004
+#    CORTEX_BUS_TOKEN=hbus_your_agent_token_here
+#    CORTEX_INBOX_URL=...  (optional fallback)
+#    AGENT_NAME=<your-name>
+```
+
+| File | Purpose |
+|------|---------|
+| `runtime/mcp-servers/agent-bus-mcp.py` | MCP tool server (only file needed) |
+| `~/.hermes/hermes-inbox.conf` | Bus URL + token config |
+| `~/.hermes/config.yaml` | MCP server registration |
+
+**What a regular agent does NOT need:** Postgres, docker, bus systemd service, nginx, workflow cron scripts, auth.sql/queue.sql/workflow.sql, the circuit breaker, or any file in `ops/scripts/inbox/`.
+
+### Cross-Platform Support
+
+| Platform | Bus Service | MCP Tools |
+|----------|------------|-----------|
+| **Linux** (server) | ✅ systemd `hermes-agent-bus.service` | ✅ Python (any venv) |
+| **macOS** | ❌ No Postgres host — runs headless MCP client only | ✅ Python (any venv) |
+
+The bus requires Postgres (docker-based, port 15432), which is Linux-only in this deployment. macOS agents connect via nginx at `:13004` using `CORTEX_BUS_URL` and only run the MCP client (`agent-bus-mcp.py`)
+
+---
+
 ## Queues
 
 Every fleet agent has two queues:

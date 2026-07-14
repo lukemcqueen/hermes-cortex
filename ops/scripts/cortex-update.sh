@@ -69,7 +69,7 @@ done
 
 # Also source it if present (overrides deploy env for inbox vars)
 if [[ -f "${HOME}/.hermes/.env" ]]; then
-  set -a; source "${HOME}/.hermes-cortex/.env"; set +a
+  set -a; source "${HOME}/.hermes/.env"; set +a
 fi
 CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}"
 STATE_DIR="${CORTEX_DEPLOY_HOME}/state"
@@ -212,9 +212,9 @@ register "ops/scripts/manage/harvest-lessons.sh"         "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/send-skill-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/send-skill-report.py"
 register "ops/scripts/state_tracker.py"           "${CORTEX_DEPLOY_HOME}/scripts/state_tracker.py"
 
+register "runtime/mcp-servers/agent-bus-mcp.py"         "${CORTEX_DEPLOY_HOME}/scripts/agent-bus-mcp.py"
+
 # Inbox MCP tools
-register "ops/scripts/inbox/inbox-mcp.sh"               "${CORTEX_DEPLOY_HOME}/scripts/inbox-mcp.sh"
-register "ops/scripts/inbox/inbox-mcp-updated.py"       "${CORTEX_DEPLOY_HOME}/scripts/inbox-mcp-updated.py"
 register "ops/scripts/inbox/inbox-flag.py"              "${CORTEX_DEPLOY_HOME}/scripts/inbox-flag.py"
 register "ops/scripts/inbox/inbox-watch.sh"             "${CORTEX_DEPLOY_HOME}/scripts/inbox-watch.sh"
 register "ops/scripts/install/setup-agent-inbox.sh"       "${CORTEX_DEPLOY_HOME}/scripts/setup-agent-inbox.sh"
@@ -318,9 +318,21 @@ register "ops/services/dashboard/com.hermes.cortex-dashboard.plist" "${HOME}/Lib
 register "ops/services/agent-inbox/server.py"              "${CORTEX_DEPLOY_HOME}/agent-inbox/server.py" "agent-inbox" "restart_agent_inbox"
 register "ops/services/agent-inbox/com.hermes.agent-inbox.plist" "${HOME}/Library/LaunchAgents/com.hermes.agent-inbox.plist" "agent-inbox"
 
+# Agent Bus
+register "ops/services/agent-bus/server.py"              "${CORTEX_DEPLOY_HOME}/bus/server.py" "agent-bus" "restart_agent_bus"
+register "ops/services/agent-bus/nginx.conf"             "${CORTEX_DEPLOY_HOME}/bus/nginx.conf"
+
 # Service definitions
 register "ops/scripts/install/os-config.sh"               "${CORTEX_DEPLOY_HOME}/scripts/os-config.sh"
 register "ops/scripts/install/service-writer.sh"          "${CORTEX_DEPLOY_HOME}/scripts/service-writer.sh"
+
+restart_agent_bus() {
+  if systemctl --user is-active --quiet hermes-agent-bus 2>/dev/null; then
+    info "  Restarting Agent Bus (systemd)…"
+    systemctl --user daemon-reload 2>/dev/null || true
+    systemctl --user restart hermes-agent-bus 2>&1 | sed 's/^/    /'
+  fi
+}
 
 # ── Service restart helpers ─────────────────────────────────
 
@@ -1202,11 +1214,11 @@ main() {
       ln -sf "$_CORTEX_DEPLOY_SCRIPTS" "$_HERMES_AGENT_SCRIPTS"
       info "Linked ~/.hermes-cortex/scripts/ (directory symlink)"
     else
-      warn "~/.hermes-cortex/scripts/ has unique files: $_UNIQUE — not replacing"
+      warn "~/.hermes/scripts/ has unique files: $_UNIQUE — not replacing"
     fi
   elif [ ! -e "$_HERMES_AGENT_SCRIPTS" ]; then
     ln -sf "$_CORTEX_DEPLOY_SCRIPTS" "$_HERMES_AGENT_SCRIPTS"
-    info "Created ~/.hermes-cortex/scripts/ symlink"
+    info "Created ~/.hermes/scripts/ symlink"
   fi
 
   # Pin repos with their own hooks before setting global hooksPath

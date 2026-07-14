@@ -87,7 +87,7 @@ EXPECTED_MCP_SERVERS = {
 EXTERNAL_SERVICES = [
     ("Dashboard",      f"{EXTERNAL_BASE}:{_PORT_PREFIX}001/",       "401"),
     ("Langfuse",       f"{EXTERNAL_BASE}:{_PORT_PREFIX}002/",       "401"),
-    ("Inbox API",      f"{EXTERNAL_BASE}:{_PORT_PREFIX}004/health", "200"),
+    ("Agent Bus",      f"{EXTERNAL_BASE}:{_PORT_PREFIX}004/health", "200"),
 ]
 
 # Core install footprint (paths relative to HOME that should exist)
