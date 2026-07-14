@@ -413,7 +413,51 @@ curl -sk --cert agent-cert.pem --key agent-key.pem \
 
 ---
 
-## File Reference
+## Migration Guide: Old Inbox → Agent Bus
+
+The `inbox-mcp.py` MCP tool now uses the Agent Bus as its **primary backend**.
+
+### Config Changes (update `~/.hermes/hermes-inbox.conf`)
+
+```bash
+# New (Agent Bus — preferred):
+CORTEX_BUS_URL=https://bus.example.org:13004
+CORTEX_BUS_TOKEN=hbus_your_token_here
+AGENT_NAME=moses
+
+# Old (still supported as fallback, optional):
+CORTEX_INBOX_URL=https://old-inbox.example.com     # was primary, now fallback
+CORTEX_INBOX_AUTH=user:pass
+```
+
+### What Changed
+
+| Function | Old Backend | New Backend |
+|----------|-------------|-------------|
+| `inbox_send` | POST to `/send` (file inbox) | POST to `/api/pgmq/send` (PGMQ queue) |
+| `inbox_read` | GET `/api/inbox` (file list) | POST `/api/pgmq/read` (dequeue) |
+| `inbox_delete` | DELETE `/api/delete/{name}` | POST `/api/pgmq/archive` (UUID-based) |
+| `inbox_list_agents` | File-based registry | Bus `/a2a/agents` API |
+| A2A task operations | SQLite in old inbox server | Postgres `a2a_tasks` table via bus |
+
+**Zero agent disruption** — same MCP tool names, same input schemas. All migration is behind the interface.
+
+### Stale Files Cleaned Up
+
+| Removed | Reason |
+|---------|--------|
+| `~/.hermes/scripts/inbox-mcp.sh` | Old shell wrapper, replaced by `.py` |
+| `~/.hermes/scripts/inbox-mcp-updated.py` | Old version, merged into main `inbox-mcp.py` |
+
+### Stale Services Kept as Fallback
+
+| Service | Why Kept |
+|---------|----------|
+| `hermes-agent-inbox.service` (port 8903) | Fallback in URL chain |
+| `a2a-server` (port 8906) | Fallback for A2A tasks |
+| `inbox-flag.py`, `inbox-sensor.py` crons | Still poll old inbox for stats |
+
+---
 
 || Path | Purpose |
 ||------|---------|
