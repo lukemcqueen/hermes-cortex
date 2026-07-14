@@ -39,7 +39,7 @@ SERVICE_MAP = ["resources", "services", "no_errored_crons", "no_stale_crons",
 ICONS = {1: "🟢", 0: "⚪", -1: "🔴"}
 
 # Laptop grace period — shared with orch-team-health.py
-LAPTOP_GRACE_MINUTES = 240  # 4 hours — covers commute + workday sleep
+LAPTOP_GRACE_MINUTES = 30  # 30 min — covers quick coffee breaks / lid closes
 LAST_SEEN_FILE = HOME / ".hermes-cortex" / "state" / "last-seen.json"
 
 

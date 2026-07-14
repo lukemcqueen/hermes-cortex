@@ -52,8 +52,8 @@ TIMEOUT = 5
 HEALTH_TOPIC = "health"
 
 # Grace period for laptop/client agents (no alert if last seen within this window)
-# Titus is a macOS laptop that sleeps — 4h grace avoids false alerts on lid close
-LAPTOP_GRACE_MINUTES = 240
+# Titus is a macOS laptop that sleeps — 30m grace avoids false alerts on lid close
+LAPTOP_GRACE_MINUTES = 30
 
 LAST_SEEN_FILE = HOME / ".hermes-cortex" / "state" / "last-seen.json"
 
