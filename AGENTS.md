@@ -130,7 +130,7 @@ Three axes when processing inbox messages:
 | Soul refinement | Fill mandatory gaps | Each agent | Daily 23:00 |
 | Session start | Read AGENTS.md + own SOUL.md | Each agent | Every session |
 
-**Mandatory sections:** SOUL.md: Identity, Mission, Behavioral Principles (Loop Gov + Inbox Framework), Communication, Scripture. AGENTS.md: Execution Contract, Loop Gov, Inbox Framework, Doc Freshness.
+**Mandatory sections:** SOUL.md: Identity, Mission, Behavioral Principles (Loop Gov + Inbox Framework), Communication, Scripture. AGENTS.md: Execution Contract, Loop Gov, Inbox Framework, Doc Freshness, Contact Protocol
 
 ---
 
