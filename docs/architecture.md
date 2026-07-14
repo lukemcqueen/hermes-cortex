@@ -12,20 +12,21 @@
 └──────┬──────────────────────────────────┬────────────────────┘
        │                                  │
        ▼                                  ▼
-┌──────────────┐  ┌──────────────────┐  ┌────────────┐  ┌──────────────┐
-│   Langfuse   │  │  Cortex Dashboard│  │  Web Cache │  │   GBrain     │
-│  (LLM Obs.)  │  │   (Flask + JS)   │  │ (sqlite-vec│  │ (Knowledge)  │
-│ local:3000   │  │  local:8901      │  │  + Ollama) │  │ local:15432  │
-│ ext:13002    │  │  ext:13001       │  │  ~200MB    │  │  pgvector)  │
-└──────────────┘  └──────────────────┘  └────────────┘  └──────────────┘
-       │                   │                    │              │
-       ▼                   ▼                    ▼              ▼
+┌──────────────┐  ┌──────────────────┐  ┌────────────┐  ┌──────────────┐  ┌────────────────┐
+│   Langfuse   │  │  Cortex Dashboard│  │  Web Cache │  │   GBrain     │  │  Agent Bus     │
+│  (LLM Obs.)  │  │   (Flask + JS)   │  │ (sqlite-vec│  │ (Knowledge)  │  │  (PGMQ Queue)  │
+│ local:3000   │  │  local:8901      │  │  + Ollama) │  │ local:15432  │  │ local:8905     │
+│ ext:13002    │  │  ext:13001       │  │  ~200MB    │  │  pgvector)  │  │ ext:13004     │
+│              │  │                   │  │            │  │ bus queues  │  │ (waiting)     │
+└──────────────┘  └──────────────────┘  └────────────┘  └──────┬───────┘  └────────────────┘
+       │                   │                    │              │                │
+       ▼                   ▼                    ▼              ▼                ▼
 ┌──────────────────────────────────────────────────────────────────────┐
 │              nginx Reverse Proxy (macOS Host)                        │
 │  :13001 → Cortex Dashboard (port 8901, HTTPS)                       │
 │  :13002 → Langfuse (port 3000, HTTPS)                               │
-│  :13007 → Health Server (port 8905, HTTPS)                           │
-│  TLS + Basic Auth on all external ports, rate-limited               │
+│  :13004 → Agent Bus (port 8905, HTTPS) — PGMQ message queue         │
+│  :13007 → Health Server (port 8905, HTTPS) — legacy                 │
 └──────────────────────────────────────────────────────────────────────┘
        │
        ▼
@@ -65,7 +66,7 @@ The repository is organized into three distinct layers, each with a well-defined
 │                                                                │
 │  ops/install/        — install.sh, deploy/, nginx configs      │
 │  ops/scripts/        — Health, inbox, archive, agent scripts   │
-│  ops/services/       — Dashboard, agent-inbox, A2A             │
+│  ops/services/       — Dashboard, agent-inbox, agent-bus, A2A  │
 │  ops/offline/        — Kiwix, code corpus, offline reader      │
 │  ops/web-cache/      — SQLite-vec semantic cache               │
 └────────────────────────────────────────────────────────────────┘

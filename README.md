@@ -59,9 +59,10 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 
 | Category | Crons | What |
 |----------|-------|------|
-| **Health** | `orch-team-health`, `system-alert-watchdog`, `model-health-watchdog` | Every 5-30 min health checks across all agents |
+| **Health** | `orch-team-health`, `system-alert-watchdog`, `model-health-watchdog`, `bus-health-check` | Every 5-30 min health checks across all agents |
 | **Recovery** | `service-recovery`, `agent-apply-fixes`, `remediation-sensor` | Auto-restart crashed services, apply fixes |
 | **Governance** | `governance-auditor`, `scoring-activity-watchdog` | Score tracking, lock cleanup, audit trails |
+| **Messaging** | `bus-inbox-watch` | Every 10 min — reports pending messages across all agent queues |
 | **Sync** | `hermes-cortex-sync`, `memory-to-brain-sync`, `gbrain-update-sync` | Pull updates, persist memory, sync brain |
 | **Security** | `threat-pipeline`, `agent-ip-submission` | Block threats, report IPs |
 | **Maintenance** | `memory-pruning`, `skill-miner`, `harvest-lessons`, `session-cache-build` | Weekly consolidation, skill extraction, lesson learning |
@@ -116,7 +117,7 @@ integration from operations:
 |-------|-----------|---------|----------|
 | **Cortex Core** | `core/` | Schemas, governance, identity | Canonical type definitions, loop governance engine, agent identity contracts — zero runtime dependency |
 | **Cortex Runtime** | `runtime/` | Hermes Agent bridge | Governance enforcer plugin, MCP servers, git hooks, skill definitions |
-| **Cortex Ops** | `ops/` | Fleet operations | Installers, health scripts, watchdogs, offline stack, dashboard, web cache, cron infrastructure |
+|| **Cortex Ops** | `ops/` | Fleet operations | Installers, health scripts, watchdogs, offline stack, dashboard, agent-bus, web cache, cron infrastructure |
 
 The boundary is directional: **Core ← Runtime ← Ops**. Core knows nothing about
 Hermes Agent. Runtime translates Core contracts into Hermes-compatible hooks and

@@ -125,14 +125,14 @@ bash ~/hermes-cortex/ops/scripts/install-crons.sh --uninstall
 
 ### Agent summary
 
-||| Agent | Role | Host | Services | Inbox method | Health auth |
-|||-------|------|------|----------|-------------|-------------|
-||| Moses | Primary orchestrator | moses-server (Linux) | Gateway + nginx proxy :13004 | HTTP poll (self) | **No auth** |
-||| Esther | Backup orchestrator | worker-5 (Linux) | Gateway + nginx proxy :14004 | HTTP poll (+bkup inbox) | **No auth** |
-||| Gisu | Remote server | worker-3 (Linux) | Health endpoint :13007 | HTTP poll → Moses inbox | **No auth** |
-||| **Joseph** | **Remote server** | **worker-2 (Linux)** | **Health endpoint :12007** | **HTTP poll → Moses inbox** | **No auth** |
-||| Kustos | Remote server | worker-4 (Linux) | Health endpoint :13007 | HTTP poll → Moses inbox | **No auth** |
-||| Titus | macOS developer | LAM2 (Apple M1, 16GB) | Client only; Ollama crons use qwen2.5-coder:7b-iq3_xs | Push health to Moses inbox | N/A |
+|||| Agent | Role | Host | Services | Inbox method | Agent Bus | Health auth |
+||||-------|------|------|----------|-------------|-----------|-------------|
+|||| Moses | Primary orchestrator | moses-server (Linux) | Gateway + nginx proxy :13004 | HTTP poll (self) | **Admin** — runs bus (:8905), PG access | **No auth** |
+|||| Esther | Backup orchestrator | worker-5 (Linux) | Gateway + nginx proxy :14004 | HTTP poll (+bkup inbox) | **Standby** — has bus PG access | **No auth** |
+|||| Gisu | Remote server | worker-3 (Linux) | Health endpoint :13007 | HTTP poll → Moses inbox | **Bearer token** — MCP only | **No auth** |
+|||| **Joseph** | **Remote server** | **worker-2 (Linux)** | **Health endpoint :12007** | **HTTP poll → Moses inbox** | **Bearer token** — MCP only | **No auth** |
+|||| Kustos | Remote server | worker-4 (Linux) | Health endpoint :13007 | HTTP poll → Moses inbox | **Bearer token** — MCP only | **No auth** |
+|||| Titus | macOS developer | LAM2 (Apple M1, 16GB) | Client only; Ollama crons use qwen2.5-coder:7b-iq3_xs | Push health to Moses inbox | **Bearer token** — MCP only | N/A |
 
 > **Health endpoint auth:** The health server block (`xx007`) has **no auth_basic** — it is intentionally open so Moses can poll every agent without managing per-agent credentials. This is by design: the health endpoint exposes only a compact 9-element ternary status vector with no secrets, no PII, no write operations. See `hermes-services.conf` lines 345-384 for the server block (note the absence of `auth_basic`).
 

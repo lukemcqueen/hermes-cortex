@@ -12,7 +12,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
 | `AGENTS.md` | Agent guidelines — read by AI tools on session start |
 | `docs/setup-reference.md` | Deployment setup across Luke's multi-machine fleet |
-|| `docs/operations-reference.md` | Operations — inbox architecture, offline code, common tasks |
+||| `docs/operations-reference.md` | Operations — inbox architecture, Agent Bus, offline code, common tasks ||
 || `docs/agent-onboarding.md` | Agent onboarding — step-by-step guide for client-only agents to connect to Moses and the fleet |
 || `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
 | `docs/env-vars.md` | Environment variable reference — CORTEX_* vars, SSL, deploy scripts |
@@ -29,7 +29,9 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
-| `docs/architecture.md` | System architecture overview — layers, services, port map, security stack |
+|| `docs/architecture.md` | System architecture overview — layers, services, port map, security stack |
+| `docs/agent-bus-setup.md` | **Agent Bus** — PGMQ-based Postgres message queue replacing file inbox |
+| `docs/agent-inbox-setup.md` | Agent inbox setup — file-based inbox architecture, dual-server failover |
 | `docs/service-layer-decision.md` | **Fleet-wide decision:** User-level systemd (Linux) / LaunchAgents (macOS) for all agent services. Full HC-Party architecture review with 6-role weighted matrix. |
 | `docs/linux-service-layer.md` | Linux service layer guide — user-level systemd, reboot survivability, template, migration from stale system units |
 | `docs/macos-service-layer.md` | macOS service layer guide — LaunchAgents vs LaunchDaemons, plist templates, migration guide, fleet service map |

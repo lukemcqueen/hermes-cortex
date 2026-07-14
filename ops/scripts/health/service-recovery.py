@@ -107,8 +107,8 @@ SERVICES: list[dict] = [
     _make_service("Ollama", label="ollama.service", pgrep="ollama"),
     # gbrain: systemd user service
     _make_service("gbrain", label="gbrain-autopilot.service", pgrep="gbrain"),
-    # health-server: systemd user service
-    _make_service("health-server", label="com.hermes.health-server.service", pgrep="health-server"),
+    # agent-bus: systemd user service (replaces old health-server)
+    _make_service("agent-bus", label="hermes-agent-bus.service", pgrep="agent_bus.server"),
     {
         "name": "scripts",
         "check": _check_scripts,

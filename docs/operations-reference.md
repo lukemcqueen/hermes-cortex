@@ -8,7 +8,30 @@ the root agent guidelines focused on general Hermes Cortex usage.
 
 ## Agent Inbox Architecture
 
-The agent inbox has two layers that are easy to confuse:
+### The Agent Bus (new) — PGMQ-based Postgres queue system
+
+The Agent Bus replaces the file-based inbox with a Postgres-native message queue.
+Port **8905**, powered by `bus` schema on gbrain Postgres (port 15432).
+
+**Key differences from old inbox:**
+
+| Feature | Old Inbox (file-based) | Agent Bus (PGMQ) |
+|---------|-----------------------|-------------------|
+| Storage | Markdown files | Postgres (`bus.messages` table) |
+| Auth | Basic auth (shared htpasswd) | Bearer tokens + mTLS (per-agent) |
+| Routing | LLM-controlled cron ($156/yr) | Deterministic (`route_if` string match) |
+| SLA | None | Visibility timeout + DLQ + recovery |
+| Observability | Logs only | SQL views + JSON dashboard |
+| Port | 8903 (server.py) | 8905 (systemd service) |
+| Nginx | 13004 → 8903 | 13004 → 8905 (after cutover) |
+
+**Service:** `hermes-agent-bus.service` — systemd user service, auto-starts on boot.
+**Circuit breaker:** Auto-degrades to old inbox if Postgres is unavailable (3 failures → file fallback).
+
+### Old Inbox (file-based, deprecating)
+
+The original agent inbox still runs on port **8903**. It will be kept in read-only mode
+or removed entirely after all agents are confirmed on the bus.
 
 ### Two layers, not one
 
