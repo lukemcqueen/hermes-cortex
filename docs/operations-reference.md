@@ -186,20 +186,109 @@ Load `skill_view(name="offline-code")` for full usage docs.
 
 - **No PII in this repo.** No personal paths, hostnames, emails, API keys, or tokens. Use placeholders (`$HOME/`, `~/`, `<username>`). Every agent MUST grep for personal identifiers before committing.
 - No secrets. `.env`, `*.pem`, `*.key` are gitignored.
-- Keep docs current when changing install behavior.
-
+|- Keep docs current when changing install behavior.
 
 ---
 
-### Project Directory Convention
+### Installation (one-time per agent)
+
+```bash
+cd ~/hermes-cortex && git pull --rebase origin main
+bash ops/scripts/agent/install-worker.sh <YOUR_NAME>
+```
+
+The installer:
+1. Copies `agent-worker.py` to `~/.hermes/scripts/`
+2. Creates systemd `--user` service at `~/.config/systemd/user/hermes-agent-worker.service`
+3. Auto-grants bus permissions if running on the bus machine
+4. Starts the service via `systemctl --user start`
+5. Verifies it's running
+
+> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
+> Date: 2026-07-15T00:00:00+00:00
+
+---
+
+### In-session (MCP) — preferred when you have tools
+
+```python
+
+from hermes_tools import mcp__agent_inbox__inbox_send
+
+mcp__agent_inbox__inbox_send(
+
+    to="moses",
+
+    subject="QUESTION: Bus seems slow today",
+
+    body="I'm seeing 2s response times on port 8905",
+
+    priority="normal"
+
+
+)
+```
+
+Best for: human-readable questions, reports, help requests during your session.
+
+Permanent: git-backed, survives restarts.
+
+> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
+> Date: 2026-07-15T00:00:00+00:00
+
+---
+
+### Message format
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `subject` | yes | Prefix with type: `QUESTION:`, `REPORT:`, `HELP:`, `ISSUE:`, `CRITICAL:` |
+| `body` | yes | Full message content |
+| `priority` | no | `normal` (default), `urgent`, `critical` |
+
+| Situation | Subject prefix | Priority |
+|-----------|---------------|----------|
+| General question | `QUESTION:` | normal |
+| Need help with config/tool | `HELP:` | normal |
+| Reporting a result | `REPORT:` | normal |
+| Something is broken | `ISSUE:` | urgent |
+| System is down | `CRITICAL:` | critical |
+
+> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
+> Date: 2026-07-15T00:00:00+00:00
+
+### Headless (bus curl) — from workers, scripts, crons
+
+```bash
+
+
+bash ~/.hermes/scripts/contact-moses.sh "QUESTION: Is the bus healthy?" "I see 503 errors" urgent
 
 
 ```
-project-root/
-├── .hermes-cortex/           # Agent infra (hidden, near code)
-│   ├── sessions/current.md   # Active session state
-│   ├── sessions/archive/     # Timestamped snapshots
-│   ├── memory/               # Gitignored — per-user MEMORY.md, USER.md
+
+Or raw curl:
+
+```bash
+
+
+curl -s -u "$CORTEX_BASIC_AUTH" -X POST \
+
+
+  -H "Content-Type: application/json" \
+
+
+  -d '{"queue":"inbox_moses","message":{"from":"<YOUR_NAME>","to":"moses","subject":"QUESTION: <topic>","body":"<question>","priority":"normal"}}' \
+
+
+  "${BUS_URL}/api/pgmq/send"
+
+
+```
+
+Best for: automated step results, no_agent cron outputs, worker data.
+
+Ephemeral: Postgres PGMQ — archived after processing.
 
 > Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
-
+> Date: 2026-07-15T00:00:00+00:00

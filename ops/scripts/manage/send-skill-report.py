@@ -104,10 +104,17 @@ payload = {
 }
 
 # ── Send via JSON POST ──────────────────────────────────────
-api_url = CORTEX_INBOX_URL.rstrip("/") + "/api/send"
+api_url = CORTEX_INBOX_URL.rstrip("/") + "/api/pgmq/send"
+
+# Wrap in PGMQ format: queue + message body
+pgmq_payload = {
+    "queue": "inbox_moses",
+    "message": payload,
+}
+
 req = Request(
     api_url,
-    data=json.dumps(payload).encode("utf-8"),
+    data=json.dumps(pgmq_payload).encode("utf-8"),
     headers={"Content-Type": "application/json"},
     method="POST",
 )

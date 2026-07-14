@@ -139,3 +139,19 @@ Each stage consumes the output of the prior one, reducing rework and enforcing q
 - Custom skills — skills installed locally but not in the repo
 
 **Output:** Top 5 findings sent to `to=moses` (default) with `cc=luke` via the agent inbox. Moses reviews, consolidates, and pushes to hermes-cortex.
+
+---
+
+### 5. Governance & Quality
+
+| Cron | Type | Schedule | Script / Skill | Deliver |
+|------|------|----------|----------------|---------|
+| `governance-auditor` | no_agent | `0 */6 * * *` | `governance-auditor.py` | origin |
+| `scoring-activity-watchdog` | no_agent | `0 14,20 * * *` | `scoring-activity-watchdog.py` | origin |
+| `skill-miner` | no_agent | `0 6 * * 1` | `skill_miner.py` | origin |
+| `agent-weekly-loop-eval` | LLM+skill | `0 9 * * 1` | `loop-governance` | origin |
+| `session-cache-build` | no_agent | `0 5 * * 1` | `session_cache.py` | origin |
+| `cron-quality-watchdog` | no_agent | `*/10 * * * *` | `cron-quality-watchdog.py` | origin |
+
+> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
+> Date: 2026-07-15T00:00:00+00:00

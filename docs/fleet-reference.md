@@ -178,6 +178,22 @@ All monitoring scripts output timestamps in Seoul time. Affects: `orch-team-heal
 
 ---
 
+### Fleet status (current)
+
+| Agent | Worker | Status |
+|-------|--------|--------|
+| Moses | `agent-worker` | ✅ Active, polling every 30s |
+| Esther | `agent-worker` | ✅ Confirmed working |
+| Joseph | `agent-worker` | ✅ Confirmed working |
+| Gisu | `agent-worker` | ✅ Active, polling every 30s |
+| Kustos | `agent-worker` | ✅ Active, polling every 30s |
+| Titus | `agent-worker` | ❌ Not installed |
+
+> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
+> Date: 2026-07-15T00:00:00+00:00
+
+---
+
 ## Pre-commit Hook: Bare Repo Compatibility
 
 `cortex-update.sh` sets `git config --global core.hooksPath` to the shared hooks directory so every repo on the machine gets the scoring hook. This **overrides** each repo's own `.git/hooks/` — including bare repositories used for deployment with `post-receive` scripts.
@@ -275,3 +291,41 @@ fallback_providers:
   - provider: custom:ollama-local
     model: qwen2.5-coder:3b
 ```
+
+---
+
+### 1. Auto-Remediation Pipeline
+
+| Cron | Type | Schedule | Script / Skill | Deliver |
+|------|------|----------|----------------|---------|
+| `agent-fixer` | LLM+skill | `0 */2 * * *` | `auto-remediation` | origin |
+| `remediation-sensor` | no_agent | `*/5 * * * *` | `remediation-sensor.py` | local |
+| `inbox-flag` | no_agent | `*/10 * * * *` | `inbox-flag.py` | local |
+| `agent-apply-fixes` | no_agent | `*/10 * * * *` | `agent-apply-fixes.py` | local |
+| `agent-remediate-apply` | no_agent | `*/10 * * * *` | `agent-remediate-apply.py` | origin |
+
+> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
+> Date: 2026-07-15T00:00:00+00:00
+
+---
+
+### 7. Deployment-Specific
+
+| Cron | Type | Schedule | Script / Skill | Deliver |
+|------|------|----------|----------------|---------|
+| `hermes-update` | no_agent | `23 22 * * *` | `hermes-update.sh` | local |
+| `hermes-cortex-sync` | no_agent | `33 22 * * *` | `hermes-cortex-sync.sh` | origin |
+| `gbrain-nightly-dream` | no_agent | `0 3 * * 6` | `gbrain-nightly-dream.sh` | origin |
+| `gbrain-update-sync` | no_agent | `0 2 * * 0` | `gbrain-update-sync.sh` | origin |
+| `threat-pipeline` | no_agent | `0 5 * * *` | `nginx-threat-pipeline.sh` | origin |
+| `agent-ip-submission` | no_agent | `*/30 * * * *` | `agent-ip-submission.sh` | origin |
+| `agent-daily-bible-reading` | no_agent | `0 1 * * *` | `agent-daily-bible-reading.py` | origin |
+| `agent-daily-soul-refinement` | LLM+skill | `0 23 * * *` | `soul-refinement` | origin |
+| `agents-md-prune-scan` | no_agent | `0 4 * * 1-6` | `agents-md-prune-scan.py` | local |
+| `agents-md-prune-apply` | LLM | `30 4 * * 1-6` | prompt + `context_from=scan` | origin |
+| `offline-code-index` | no_agent | `0 5 * * 0` | `offline_code_index_cron.sh` | local |
+| `collect-agent-skills` | no_agent | `0 */6 * * *` | `collect-agent-skills.sh` | local |
+| `send-skill-report` | no_agent | `30 */6 * * *` | `send-skill-report.py` | local |
+
+> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
+> Date: 2026-07-15T00:00:00+00:00
