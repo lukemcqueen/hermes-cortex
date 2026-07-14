@@ -112,8 +112,8 @@ def main():
                 chain.append(f'{who}{ic}')
             lines.append(f'│  {wf_name} {"→".join(chain)}')
 
-    if stalled: lines.append(f'│ ⚠️ Stalled: {', '.join(stalled)}')
-    if inbox_pend: lines.append(f'│ 📬 Pending: {', '.join(inbox_pend)}')
+    if stalled: lines.append(f'│ ⚠️ Stalled: {", ".join(stalled)}')
+    if inbox_pend: lines.append(f'│ 📬 Pending: {", ".join(inbox_pend)}')
     lines.append('└' + '─'*46)
     print('\n'.join(lines))
 
