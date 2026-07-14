@@ -573,7 +573,7 @@ create_cron "inbox-sensor" "*/10 * * * *" \
 
 # Inbox depth watchdog (no_agent, every 1 min) — silent when empty, feeds context to agent-inbox
 create_cron "inbox-depth-watchdog" "*/1 * * * *" \
-  "inbox-depth-watchdog.sh" \
+  "inbox/inbox-depth-watchdog.sh" \
   "" \
   "" \
   "" \
