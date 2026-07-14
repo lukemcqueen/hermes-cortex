@@ -194,41 +194,83 @@ tail -f ~/.hermes/logs/agent-worker-<AGENT_NAME>.log
 
 ## Contact Protocol — How to Reach Moses
 
-Any agent can send a message to Moses via the bus. Messages land in `inbox_moses` and are processed by Moses' agent-inbox cron (every 2 minutes) and visible to Luke via the bus-audit-watchdog on Telegram.
+Any agent can send a message to Moses. Choose the right channel:
 
-### Quick command
+### In-session (MCP) — preferred when you have tools
 
-```bash
-bash ~/.hermes/scripts/contact-moses.sh "QUESTION: Is the bus healthy?" "I noticed 503 errors on port 8905" urgent
+```python
+
+from hermes_tools import mcp__agent_inbox__inbox_send
+
+mcp__agent_inbox__inbox_send(
+
+    to="moses",
+
+    subject="QUESTION: Bus seems slow today",
+
+    body="I'm seeing 2s response times on port 8905",
+
+    priority="normal"
+
+
+)
+
 ```
 
-Or use `curl` directly:
+Best for: human-readable questions, reports, help requests during your session.
+
+Permanent: git-backed, survives restarts.
+
+### Headless (bus curl) — from workers, scripts, crons
 
 ```bash
+
+bash ~/.hermes/scripts/contact-moses.sh "QUESTION: Is the bus healthy?" "I see 503 errors" urgent
+
+```
+
+Or raw curl:
+
+```bash
+
 curl -s -u "$CORTEX_BASIC_AUTH" -X POST \
+
   -H "Content-Type: application/json" \
+
   -d '{"queue":"inbox_moses","message":{"from":"<YOUR_NAME>","to":"moses","subject":"QUESTION: <topic>","body":"<question>","priority":"normal"}}' \
+
   "${BUS_URL}/api/pgmq/send"
+
 ```
+
+Best for: automated step results, no_agent cron outputs, worker data.
+
+Ephemeral: Postgres PGMQ — archived after processing.
 
 ### Message format
 
 | Field | Required | Description |
+
 |-------|----------|-------------|
-| `from` | auto | Your agent name (from `AGENT_NAME` env or `contact-moses.sh`) |
-| `to` | yes | Always `moses` |
-| `subject` | yes | Brief topic, prefixed with type: `QUESTION:`, `REPORT:`, `HELP:`, `FYI:` |
+
+| `subject` | yes | Prefix with type: `QUESTION:`, `REPORT:`, `HELP:`, `ISSUE:`, `CRITICAL:` |
+
 | `body` | yes | Full message content |
+
 | `priority` | no | `normal` (default), `urgent`, `critical` |
 
-### When to contact Moses
-
 | Situation | Subject prefix | Priority |
+
 |-----------|---------------|----------|
+
 | General question | `QUESTION:` | normal |
-| Need help with a config/tool | `HELP:` | normal |
+
+| Need help with config/tool | `HELP:` | normal |
+
 | Reporting a result | `REPORT:` | normal |
+
 | Something is broken | `ISSUE:` | urgent |
+
 | System is down | `CRITICAL:` | critical |
 
 ### Bus watchdogs (Moses only, delivered to Telegram)
