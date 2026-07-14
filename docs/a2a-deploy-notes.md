@@ -11,7 +11,7 @@
 | Before | After |
 |--------|-------|
 | Separate `a2a-server.py` on port 8906 | Merged into `server.py` on port 8903 |
-| Separate `a2a-mcp.py` MCP server | Tools merged into `inbox-mcp.py` as `inbox_*` prefix |
+| Separate `a2a-mcp.py` MCP server | Tools merged into `agent-bus-mcp.py` as `inbox_*` prefix |
 | Systemd service `a2a-server.service` | Not needed — inbox server handles A2A |
 | nginx upstream `a2a_backend` | Routes to existing `agent_inbox_backend` |
 
@@ -20,7 +20,7 @@
 1. Stop the old A2A server: `kill $(lsof -t -i:8906)`
 2. Remove the systemd service: `sudo systemctl disable --now a2a-server; sudo rm /etc/systemd/system/a2a-server.service`
 3. Update inbox server: `cp src/agent-inbox/server.py ~/.hermes-cortex/agent-inbox/server.py`
-4. Update inbox MCP: `cp src/mcp-servers/inbox-mcp.py ~/.hermes-cortex/scripts/inbox-mcp.py`
+4. Update MCP server: `cp runtime/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/agent-bus-mcp.py`
 5. Disable old A2A MCP in `~/.hermes/config.yaml`: set `a2a-bridge.enabled: false`
 6. Restart inbox server
 7. All A2A endpoints are now at `/a2a/*` on the same port (8903)

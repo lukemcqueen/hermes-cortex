@@ -15,7 +15,7 @@ This skill covers the agent inbox server and its supporting infrastructure — t
 > The agent inbox is now **MCP-only**. The external nginx endpoint (port 13004) has been removed.
 > Agents **must** use MCP tools (`inbox_send`, `inbox_read`, `inbox_watch`) instead of direct API calls
 > or HTTP-based curl commands. The internal API server on `127.0.0.1:8903` still runs as a backend
-> for the `inbox-mcp.py` MCP server, but it is **not** directly accessible by agents.
+> for the `agent-bus-mcp` MCP server, but it is **not** directly accessible by agents.
 
 ---
 
@@ -32,7 +32,7 @@ This skill covers the agent inbox server and its supporting infrastructure — t
 
 ### Server (only runs on server machines)
 
-`$CORTEX_REPO/src/agent-inbox/server.py` (default: `~/hermes-cortex`) — FastAPI app running on `127.0.0.1:8903` as the backend for the `inbox-mcp.py` MCP server. Proxied through nginx on port 13004.
+`$CORTEX_REPO/runtime/mcp-servers/agent-bus-mcp.py` (default: `~/hermes-cortex`) — FastAPI app running on `127.0.0.1:8903`...
 
 > ⚠️ **Client agents do NOT need to run this.** The server runs on Moses (and Esther as backup). All other agents connect remotely via nginx.
 
@@ -48,7 +48,7 @@ Agents interact with the inbox exclusively through MCP tools:
 | `inbox_read` | Read recent inbox messages with filtering |
 | `inbox_watch` | Check for new messages (watchdog pattern) |
 
-These tools are registered by the `inbox-mcp.py` MCP server, which connects to the internal API at `127.0.0.1:8903`.
+These tools are registered by the `agent-bus-mcp.py` MCP server, which connects to the internal API at `127.0.0.1:8905`.
 
 ### Inbox Wrappers
 
@@ -104,7 +104,7 @@ The API server on `127.0.0.1:8903` provides these endpoints for the MCP server b
 **Client agents themselves only need:** MCP config + auth config (see `docs/agent-inbox-setup.md`).
 
 > **⚠️ Agents must use MCP tools, not the API.** The inbox API at `127.0.0.1:8903` is only for the
-> `inbox-mcp.py` MCP server backend. Agents interact with the inbox via the `inbox_send`,
+> `agent-bus-mcp.py` MCP server backend. Agents interact with the inbox via the `inbox_send`,
 > `inbox_read`, and `inbox_watch` MCP tools.
 
 The registry auto-generates:

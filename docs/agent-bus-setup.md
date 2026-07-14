@@ -415,7 +415,7 @@ curl -sk --cert agent-cert.pem --key agent-key.pem \
 
 ## Migration Guide: Old Inbox → Agent Bus
 
-The `inbox-mcp.py` MCP tool now uses the Agent Bus as its **primary backend**.
+The `agent-bus-mcp.py` MCP tool now uses the Agent Bus as its **primary backend**.
 
 ### Config Changes (update `~/.hermes/hermes-inbox.conf`)
 
@@ -447,7 +447,7 @@ CORTEX_INBOX_AUTH=user:pass
 | Removed | Reason |
 |---------|--------|
 | `~/.hermes/scripts/inbox-mcp.sh` | Old shell wrapper, replaced by `.py` |
-| `~/.hermes/scripts/inbox-mcp-updated.py` | Old version, merged into main `inbox-mcp.py` |
+| `~/.hermes/scripts/inbox-mcp-updated.py` | Old version, merged into main `agent-bus-mcp.py` |
 
 ### Stale Services Kept as Fallback
 

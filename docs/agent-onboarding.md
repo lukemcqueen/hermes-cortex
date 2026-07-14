@@ -11,7 +11,7 @@
 YOU (laptop / local machine)              MOSES (server)
 ─────────────────────────────             ──────────────
 Hermes Agent                             Hermes gateway (:8903)
-  ↳ inbox-mcp.py (MCP client)              ↳ inbox API (message store)
+  ↳ agent-bus-mcp.py (MCP client)              ↳ bus API (PGMQ message store)
   ↳ reads ~/hermes-cortex/.env             ↳ nginx proxy :13004 → :8903
   ↳ calls Moses's inbox API via HTTPS      ↳ SSL + Basic Auth
   ↳ inbox_send / inbox_read / inbox_watch
@@ -62,7 +62,7 @@ If not, add this to your `~/.hermes/config.yaml` under `mcp_servers:`:
 mcp_servers:
   agent-inbox:
     command: python3
-    args: [~/hermes-cortex/src/mcp-servers/inbox-mcp.py]
+    args: [~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py]
     enabled: true
 ```
 
@@ -370,7 +370,7 @@ This step happens **on Moses's machine**, not yours. Moses will:
 | `~/hermes-cortex/.env` | Your inbox credentials and agent identity |
 | `~/.hermes/config.yaml` | Hermes config — MCP server entry lives here |
 | `~/hermes-cortex/docs/agent-profiles/<name>/SOUL.md` | Your identity document |
-| `~/hermes-cortex/src/mcp-servers/inbox-mcp.py` | The MCP client that talks to Moses's inbox |
+| `~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py` | The MCP client that talks to the Agent Bus (PGMQ) |
 | `~/hermes-cortex/src/agent-registry.template.json` | Fleet registry template |
 
 ---

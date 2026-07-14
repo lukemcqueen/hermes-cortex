@@ -11,7 +11,7 @@ The agent inbox is a...
 1. **Agent-to-agent messaging** (topic channels, threads, priority) via `inbox_send` / `inbox_read`
 2. **A2A cross-server task delegation** (JSON-RPC task lifecycle) via `inbox_send_task` / `inbox_get_task`
 
-Both use the **same backend server** (port 8903), the **same MCP server** (`inbox-mcp.py`), and the **same message store** (`~/hermes-cortex-private/messages/inbox/`).
+Both use the **same backend server** (port 8903), the **same MCP server** (`agent-bus-mcp.py`), and the **same message store** (`~/hermes-cortex-private/messages/inbox/`).
 
 ---
 
@@ -45,7 +45,7 @@ Both use the **same backend server** (port 8903), the **same MCP server** (`inbo
 
 ## Complete Tool Reference
 
-The `inbox-mcp.py` MCP server registers **10 tools**:
+The `agent-bus-mcp.py` MCP server registers **10 tools**:
 
 ### Messaging (4 tools)
 
@@ -302,7 +302,7 @@ If upgrading from the standalone A2A server (pre-2026-07-05):
 1. **Stop old A2A server** — `kill $(lsof -t -i:8906)`
 2. **Remove old systemd service** — `sudo systemctl disable --now a2a-server; sudo rm /etc/systemd/system/a2a-server.service`
 3. **Update inbox server.py** — `cp src/agent-inbox/server.py ~/.hermes-cortex/agent-inbox/server.py`
-4. **Update inbox-mcp.py** — `cp src/mcp-servers/inbox-mcp.py ~/.hermes-cortex/scripts/inbox-mcp.py`
+4. **Deploy MCP server** — `cp runtime/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/agent-bus-mcp.py`
 5. **Disable old a2a-bridge MCP** — set `enabled: false` in `~/.hermes/config.yaml`
 6. **Restart inbox server** — `kill <pid>; cd ~/.hermes-cortex/agent-inbox && python3 -m uvicorn server:app --host 127.0.0.1 --port 8903`
 7. **All A2A tools are now `inbox_*`** — use `inbox_list_agents`, `inbox_send_task`, etc. via the same MCP server

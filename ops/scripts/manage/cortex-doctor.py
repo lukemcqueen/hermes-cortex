@@ -79,7 +79,7 @@ except (FileNotFoundError, OSError, IndexError):
 
 # Expected MCP servers
 EXPECTED_MCP_SERVERS = {
-    "agent-inbox": "inbox-mcp.py",
+    "agent-bus": "agent-bus-mcp.py",
     "loop-governance": "loop-gov-mcp.py",
 }
 

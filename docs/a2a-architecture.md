@@ -87,7 +87,7 @@ Agents fetch this via `inbox_discover` to learn what remote agents can do.
 Mapping of agent names → server URLs, roles, and accessibility flags.
 Maintained manually or via the health monitoring system.
 
-### 5. MCP Tools (all in `inbox-mcp.py`)
+### 5. MCP Tools (all in `agent-bus-mcp.py`)
 
 **Inbox messaging (existing):**
 | Tool | Purpose |
@@ -187,6 +187,6 @@ Or via systemd/supervisord if configured.
 If you had the old standalone A2A server (port 8906):
 1. Stop the old A2A server: `kill <pid>`
 2. Update inbox server.py to the merged version (done in `src/agent-inbox/server.py`)
-3. Update inbox-mcp.py to include A2A bridge tools (done in `src/mcp-servers/inbox-mcp.py`)
+3. Update agent-bus-mcp.py to include A2A bridge tools (done in `runtime/mcp-servers/agent-bus-mcp.py`)
 4. Disable old a2a-bridge MCP in `~/.hermes/config.yaml` (set `enabled: false`)
 5. All A2A tools are now available as `inbox_*` tools via the same MCP server

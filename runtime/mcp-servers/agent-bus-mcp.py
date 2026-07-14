@@ -2,7 +2,7 @@
 """
 Agent Bus MCP Server — Hermes Cortex agent messaging + task delegation.
 
-SAME tool interface as the old inbox-mcp.py — ZERO agent disruption.
+SAME tool interface as the old `inbox-mcp.py` — ZERO agent disruption.
 Backend switched to the Agent Bus (Postgres-native PGMQ on port 8905).
 
 PRIMARY: Agent Bus (Bearer token auth)
