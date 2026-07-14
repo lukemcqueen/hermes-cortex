@@ -138,11 +138,15 @@ DEFAULT_AGENT = agent_name
 
 _ENDPOINTS = []  # list of (label, base_url, headers_dict)
 
-# 1. Agent Bus (primary) — Bearer token auth
+# 1. Agent Bus (external via nginx) — Basic auth for nginx auth_basic
+#    nginx forwards X-Forwarded-User: <agent>, backend trusts it
 if bus_url:
     bus_base = bus_url.rstrip("/").rstrip("send").rstrip("api/inbox").rstrip("/")
-    headers = {"Authorization": f"Bearer {bus_token}"} if bus_token else {}
-    _ENDPOINTS.append(("Agent Bus", bus_base, headers))
+    headers = {}
+    if inbox_auth:
+        encoded = base64.b64encode(inbox_auth.encode()).decode()
+        headers = {"Authorization": "Basic " + encoded}
+    _ENDPOINTS.append(("Agent Bus (external)", bus_base, headers))
 
 # 2. Agent Bus localhost (development / same-machine) — Bearer token
 if bus_url and "localhost" not in bus_url and "127.0.0.1" not in bus_url:
