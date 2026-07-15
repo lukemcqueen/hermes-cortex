@@ -139,24 +139,21 @@ DEFAULT_AGENT = agent_name
 
 _ENDPOINTS = []  # list of (label, base_url, headers_dict)
 
-# 1. Agent Bus (external via nginx) — Basic auth for nginx auth_basic
-#    nginx forwards X-Forwarded-User: <agent>, backend trusts it
+# 1. Agent Bus — Bearer token preferred, Basic auth fallback for nginx proxied
 if bus_url:
     bus_base = bus_url.rstrip("/").rstrip("send").rstrip("api/inbox").rstrip("/")
     headers = {}
-    if inbox_auth:
+    if bus_token:
+        headers = {"Authorization": f"Bearer {bus_token}"}
+    elif inbox_auth:
         encoded = base64.b64encode(inbox_auth.encode()).decode()
         headers = {"Authorization": "Basic " + encoded}
-    _ENDPOINTS.append(("Agent Bus (external)", bus_base, headers))
+    _ENDPOINTS.append(("Agent Bus", bus_base, headers))
 
-# 2. Agent Bus localhost (development / same-machine) — Bearer token
-if bus_url and "localhost" not in bus_url and "127.0.0.1" not in bus_url:
-    # If bus_url is external, also add localhost as a faster 2nd try
+# 2. No configured bus URL — try localhost as primary
+if not bus_url:
     headers = {"Authorization": f"Bearer {bus_token}"} if bus_token else {}
-    _ENDPOINTS.append(("Agent Bus (local)", "http://127.0.0.1:8905", headers))
-elif not bus_url:
-    # No bus URL configured at all — try localhost as primary
-    _ENDPOINTS.append(("Agent Bus (local)", "http://127.0.0.1:8905", {}))
+    _ENDPOINTS.append(("Agent Bus (local)", "http://127.0.0.1:8903", headers))
 
 # 3. Old inbox (fallback) — Basic auth
 if inbox_url:
