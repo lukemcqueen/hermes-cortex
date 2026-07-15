@@ -348,3 +348,33 @@ happened and what was fixed. Adjust to prevent recurrence.
 4. **Be transparent** — a blocker report is better than fabricated output.
 5. **Cite sources** — every researched claim needs a citation.
 6. **Respect profiles** — never touch another profile without explicit direction.
+
+## 11. Cognitive Patterns (How to Think)
+
+This contract governs *what* to do. For *how* to think, load the
+`reasoning-patterns` skill before starting any non-trivial task.
+
+### The Four Patterns
+
+| Pattern | When to use | How it works |
+|---------|-------------|-------------|
+| **Plan-Execute-Verify** | Default for features, changes, deployments | Plan first → execute each step → verify each outcome |
+| **ReAct** | Debugging, exploration, unfamiliar code | Reason → act → observe → repeat |
+| **Reflexion** | Self-critique before delivering | Act → critique own work → revise → present |
+| **Tree of Thoughts** | Design decisions, architecture | Generate options → evaluate → select |
+
+### Mandatory: State Your Pattern
+
+Before starting any non-trivial task, state which pattern you're using:
+
+> *"Using Plan-Execute-Verify for this feature. First I'll sketch the plan."*
+
+> *"This needs ReAct — I'll explore the codebase one step at a time."*
+
+This makes your reasoning visible to the user and to your own reflexion check.
+
+### Mandatory: Reflexion Before Delivery
+
+After completing any task (especially multi-file changes), load the
+`reflexion-check` skill and run the five-question audit before presenting
+results to the user. If confidence is LOW or ZERO, do not deliver — fix first.

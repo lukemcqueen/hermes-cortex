@@ -112,7 +112,19 @@ Verification: <how to confirm it works — test, curl, script>
 - Identify which units can run in parallel (no dependency chain)
 - Flag units that could be deferred if scope needs cutting
 
-### Step 4: Execute
+### Step 4: Reflexion — Self-Critique Decomposition
+
+Before presenting the decomposition, critique it:
+
+- [ ] Are any units too large (>2 hours)? Split them.
+- [ ] Are any units too small (<5 minutes)? Merge them.
+- [ ] Are the dependencies real or imagined? (If two units share state but
+  no code, they may be parallel.)
+- [ ] Is each unit independently verifiable? (If you can't verify a unit
+  without building the next one, the split is wrong.)
+- [ ] Are there hidden assumptions about what already exists?
+
+### Step 5: Execute
 
 - Complete one unit fully before moving to the next
 - Verify each unit before declaring it done

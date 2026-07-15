@@ -53,13 +53,22 @@ This ensures every agent has the right procedural knowledge for the project
 before touching any code — without copying skill files (no drift, no bloat).
 
 See `docs/skills-manifest-reference.md` in the hermes-cortex repo for details.
+See `references/skill-discovery-rationale.md` for why this step exists and when it can be removed.
 
 ## How to route
 
 1. Read the user's request.
-2. Match it against the **trigger phrases** in each pattern below (first-best or dominant match wins).
-3. Follow that pattern's **toolset requirements**, **output format**, and **checklist**.
-4. If the request spans multiple patterns (e.g., "design the API then build it"), run the **planning** pattern first, then the **api** pattern.
+2. **Match the reasoning pattern first** — load `reasoning-patterns` and select:
+   - **Plan-Execute-Verify (default)** for most tasks — write a plan, execute steps, verify each
+   - **ReAct** for debugging/exploration — reason, act, observe, repeat
+   - **Reflexion** to self-critique before delivering (always pair with PEV or ReAct)
+   - **Tree of Thoughts** for design trade-offs
+   
+   State your chosen pattern explicitly: *"Using Plan-Execute-Verify with Reflexion check."*
+3. Then match the **workflow pattern** against trigger phrases below.
+4. Follow that pattern's toolset requirements, output format, and checklist.
+5. If the request spans multiple patterns (e.g., "design the API then build it"), prefix with planning:
+   *"First I'll use Tree of Thoughts to evaluate API designs, then Plan-Execute-Verify to implement."*
 
 ---
 
