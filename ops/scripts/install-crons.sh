@@ -475,7 +475,7 @@ printf "${CYAN}  1. Auto-Remediation Pipeline${RESET}\\\n"
 # LLM-driven auto-remediation tiered (workday: hourly M-F 9-6pm, evening: every 2h M-F 6-12am, overnight: once M-F 3am)
 create_cron "agent-fixer-workday" "0 9-17 * * 1-5" \
   "" \
-  "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
+  "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
 ## OUTPUT FORMAT — FOLLOW EXACTLY
 Match this structure line for line. Your content replaces the values.
@@ -505,7 +505,7 @@ If nothing to report: output exactly [SILENT]" \
 
 create_cron "agent-fixer-evening" "0 18,20,22 * * 1-5" \
   "" \
-  "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
+  "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
 ## OUTPUT FORMAT — FOLLOW EXACTLY
 Match this structure line for line. Your content replaces the values.
@@ -535,7 +535,7 @@ If nothing to report: output exactly [SILENT]" \
 
 create_cron "agent-fixer-overnight" "0 3 * * 1-5" \
   "" \
-  "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
+  "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
 ## OUTPUT FORMAT — FOLLOW EXACTLY
 Match this structure line for line. Your content replaces the values.
