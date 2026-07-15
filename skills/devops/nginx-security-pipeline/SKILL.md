@@ -65,7 +65,7 @@ it on a host without nginx.
 | `/etc/nginx/allow-ips-manual.conf` | Manual allow list — `allow X.X.X.X;` per line, overrides blocked_ips.conf |
 | `~/hermes-cortex/.env` | Single source of truth — gitignored per-machine config with `CORTEX_*` vars, auto-sourced by deploy scripts |
 
-### Scanner (`src/scripts/`)
+### Scanner (`ops/scripts/`)
 
 | File | Purpose |
 |------|---------|

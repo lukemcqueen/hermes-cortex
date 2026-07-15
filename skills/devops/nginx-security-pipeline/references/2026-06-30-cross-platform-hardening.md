@@ -46,6 +46,6 @@ and auto-detects macOS (Intel + ARM) vs Linux paths.
 
 ## Files
 
-- `src/scripts/nginx-threat-pipeline.sh` — the pipeline script (tracked in repo)
+- `ops/scripts/manage/nginx-threat-pipeline.sh` — the pipeline script (tracked in repo)
 - `deploy/nginx/install-nginx-full.sh` — deploy script (already tracked)
-- `src/scripts/nginx-security-scanner.sh` — daily scanner (already tracked)
+- `ops/scripts/manage/nginx-security-scanner.sh` — daily scanner (already tracked)

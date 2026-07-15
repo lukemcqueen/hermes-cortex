@@ -64,7 +64,7 @@ The session cache provides fast pre-work context lookups via `cache_search()`.
 On first use (or when `Cache DB not found`), it must be initialized:
 
 ```bash
-PYTHONPATH=~/.hermes/scripts python3 ~/hermes-cortex/src/loop-governance/session_cache.py build
+PYTHONPATH=~/.hermes/scripts python3 ~/hermes-cortex/core/governance/session_cache.py build
 ```
 
 This embeds session files, loop DB cycles, and skills using `nomic-embed-text:v1.5` 
@@ -84,7 +84,7 @@ no-op, but Phase 3 still applies — the habit of checking matters more than the
 on `PYTHONPATH`. Running from the repo directory (`~/hermes-cortex/src/loop-governance/`) 
 may fail with `ModuleNotFoundError: No module named 'hermes_models'`. Fix:
 ```bash
-PYTHONPATH=/home/esther/.hermes/scripts python3 src/loop-governance/session_cache.py build
+PYTHONPATH=/home/esther/.hermes/scripts python3 core/governance/session_cache.py build
 ```
 
 ## Agent Workflow (MANDATORY — applies every change)
