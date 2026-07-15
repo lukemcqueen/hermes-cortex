@@ -3,7 +3,7 @@
 > *An open-source installer, skill set, and fleet management system for your personal Hermes AI agent.*
 > *Privacy-first, offline-capable, multi-agent orchestration — runs on your own hardware.*
 
-**Version: 1.0.0** · [![GitHub](https://img.shields.io/github/license/fleet-operator/hermes-cortex)](LICENSE) · [Hermes Agent](https://hermes-agent.nousresearch.com)
+**Version: 2.0.0** · [![GitHub](https://img.shields.io/github/license/fleet-operator/hermes-cortex)](LICENSE) · [Hermes Agent](https://hermes-agent.nousresearch.com)
 
 ![Hermes Cortex](docs/assets/avatar.png)
 

@@ -82,7 +82,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `ops/offline/offline_code.py` | Offline code assistant — search/generate from 518 curated code snippets across 32 categories via Ollama RAG |
 | `ops/offline/prep-code.sh` | Build the code snippet corpus and vector index for offline coding |
 | `ops/offline/code-corpus/generate.py` | Auto-discovers snippets modules, writes formatted .md snippet files with YAML frontmatter |
-| `src/web-cache/SKILL.md` | Web cache skill — local semantic cache for web_search and web_extract |
+| `ops/web-cache/SKILL.md` | Web cache skill — local semantic cache for web_search and web_extract |
 | `deploy/patches/hermes-langfuse-cost-fixes.patch.md` | Patch notes for Langfuse cost calculation fixes |
 
 ## Skills
