@@ -167,7 +167,10 @@ def _try_restart(svc: dict) -> str | None:
     verify = svc.get("verify_cmd")
     if verify:
         try:
-            r = subprocess.run(verify, capture_output=True, text=True, timeout=10)
+            # Use sudo for nginx -t: cert files, error logs, and the 'user'
+            # directive all require root-level access to validate.
+            cmd = ["sudo"] + verify if name == "nginx" else verify
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             if r.returncode != 0:
                 return f"❌ {name}: pre-flight check failed ({r.stderr.strip()[:200]}) — not restarting"
         except FileNotFoundError:
