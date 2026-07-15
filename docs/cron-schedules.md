@@ -36,8 +36,10 @@
 | `inbox-depth-watchdog` | `*/1 * * * *` | no_agent | `inbox/inbox-depth-watchdog.sh` | local | — |
 | `system-alert-watchdog` | `*/30 * * * *` | no_agent | `system-alert-watchdog.py` | origin | — |
 | `agent-ip-submission` | `*/30 * * * *` | no_agent | `agent-ip-submission.sh` | origin | — |
-| `agent-fixer` | `0 */2 * * *` | LLM | deepseek-v4-flash auto-remediation | origin | — |
 | `agent-inbox-evening` | `0 18,20,22 * * 1-5` | LLM | deepseek-v4-flash inbox processing | origin | — |
+| `agent-fixer-workday` | `0 9-17 * * 1-5` | LLM | deepseek-v4-flash auto-remediation (auto-remediation skill) | origin | — |
+| `agent-fixer-evening` | `0 18,20,22 * * 1-5` | LLM | deepseek-v4-flash auto-remediation (auto-remediation skill) | origin | — |
+| `agent-fixer-overnight` | `0 3 * * 1-5` | LLM | deepseek-v4-flash auto-remediation (auto-remediation skill) | origin | — |
 | `langfuse-health-watchdog` | `0 * * * *` | no_agent | `langfuse-health-watchdog.py` | origin | — |
 
 ## DAILY
