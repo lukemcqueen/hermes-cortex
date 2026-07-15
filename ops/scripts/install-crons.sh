@@ -414,8 +414,7 @@ if $UNINSTALL; then
   printf "${CYAN}━━━ Uninstalling Hermes Cron Jobs ━━━${RESET}\n\n"
   for job in \
     "agent-fixer-workday" "agent-fixer-evening" "agent-fixer-overnight" "system-heartbeat" "memory-to-brain-sync" \
-    "system-alert-watchdog" "service-recovery" "bus-sensor" "bus-flag" \
-    "bus-depth-watchdog" \
+    "system-alert-watchdog" "service-recovery" \
     "remediation-sensor" \
     "hermes-update" "gbrain-nightly-dream" "gbrain-update-sync" \
     "hermes-cortex-sync" "harvest-lessons" "memory-pruning" \
@@ -573,15 +572,6 @@ create_cron "remediation-sensor" "*/5 * * * *" \
   "" \
   "true"
 
-# Inbox flag sensor (no_agent, every 10 min) — feeds context to bus LLM crons
-create_cron "bus-flag" "*/10 * * * *" \
-  "bus-flag.py" \
-  "" \
-  "" \
-  "" \
-  "local" \
-  "" \
-  "true"
 
 # ── 2. System Health Monitoring ──────────────────────────────
 printf "\\n${CYAN}  2. System Health Monitoring${RESET}\\\n"
@@ -619,25 +609,6 @@ create_cron "memory-to-brain-sync" "0 */6 * * *" \
 # ── 4. Agent Bus Processing ───────────────────────────────────
 printf "\\n${CYAN}   4. Agent Bus Processing${RESET}\\\n"
 
-create_cron "bus-sensor" "*/10 * * * *" \
-  "bus-sensor.py" \
-  "" \
-  "" \
-  "" \
-  "local" \
-  "" \
-  "true"
-
-# Inbox depth watchdog (no_agent, every 1 min) — silent when empty, feeds context to bus crons
-create_cron "bus-depth-watchdog" "*/1 * * * *" \
-  "bus/bus-depth-watchdog.sh" \
-  "" \
-  "" \
-  "" \
-  "local" \
-  "" \
-  "" \
-  "true"
 
 # ── 5. Governance Audit & Lock Cleanup ──────────────────────
 printf "\\n${CYAN}  5. Change Scoring Audit${RESET}\\\n"
@@ -703,15 +674,6 @@ create_cron "langfuse-health-watchdog" "0 * * * *" \
   "origin" \
   "" \
   "true"
-
-# Daily gbrain brain health check — pauses autopilot, runs doctor, restarts (macOS + Linux)
-create_cron "agent-gbrain-doctor" "0 6 * * *" \
-  "agent-gbrain-doctor.sh" \
-  "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
   "true"
 
 # Agent-specific local fixer (no_agent script — reads markers, searches offline corpus, applies fixes)

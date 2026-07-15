@@ -381,14 +381,6 @@ printf "${CYAN}  2. Daily gbrain Brain Health Check${RESET}\n"
 
 # Uses gbrain-wrapper.sh to pause autopilot, run doctor, restart.
 # no_agent silent pattern: output only when issues found.
-create_cron "agent-gbrain-doctor" "0 6 * * *" \
-  "agent-gbrain-doctor.sh" \
-  "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
 
 # ── 3. Skill Report Pipeline (orchestrator-only) ──────────
 printf "${CYAN}  3. Skill Report Pipeline${RESET}\n"
