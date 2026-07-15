@@ -904,9 +904,9 @@ detect_stale_services() {
         stale_found=$((stale_found + 1))
       fi
     done
-    # Guard: [[ returns 1 when false (no stale services). With set -e,
-    # function would return 1 and trigger errexit on the caller side.
-    [[ "$stale_found" -gt 0 ]] && echo "" || true
+    if [[ "$stale_found" -gt 0 ]]; then
+        echo ""
+    fi
 
   elif [[ "$os" == "Darwin" ]]; then
     for label in "com.hermes.a2a-server"; do
@@ -1013,7 +1013,13 @@ pin_repos_with_own_hooks() {
     # Limited depth to avoid crawling deep dependency trees
     # macOS: ~/Developer, ~/Sites, ~/git live under /Users
     for base in /home /opt /srv /var/www /var/repo /Users; do
-      [[ -d "$base" ]] && find "$base" \( -name ".git" -type d -o -name "*.git" -type d \) -maxdepth 8 -print0 2>/dev/null || true
+      if [[ -d "$base" ]]; then
+        # find may return non-zero on permissioned subdirectories (e.g.
+        # /var/www without read access). These are expected access errors
+        # for a non-root search — not a pipeline failure. || true signals
+        # that find's exit code is not meaningful for flow control here.
+        find "$base" \( -name ".git" -type d -o -name "*.git" -type d \) -maxdepth 8 -print0 2>/dev/null || true
+      fi
     done
   )
 
