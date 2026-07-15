@@ -303,7 +303,7 @@ def check_repo(res):
     run(["git", "-C", str(CORTEX_REPO), "fetch", "origin", "--quiet"], timeout=15)
     behind = run_bg(["git", "-C", str(CORTEX_REPO), "rev-list", "--count", "HEAD..origin/main"])
     if behind and behind != "0":
-        res.add("Repo sync", "WARN", f"{behind} commit(s) behind origin/main", "Run: git pull --rebase")
+        res.add("Repo sync", "WARN", f"{behind} commit(s) behind origin/main", "REQUIRED: git pull --rebase")
     else:
         res.add("Repo sync", "PASS", "up to date with origin/main")
 
@@ -312,12 +312,41 @@ def check_repo(res):
     repo_agents = CORTEX_REPO / "AGENTS.md"
     if not hermes_agents.exists():
         res.add("AGENTS.md sync", "WARN", "~/.hermes/AGENTS.md missing",
-                "Run: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
+                "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
     elif hermes_agents.stat().st_mtime < repo_agents.stat().st_mtime:
         res.add("AGENTS.md sync", "WARN", "~/.hermes/AGENTS.md is stale",
-                "Run: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
+                "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
     else:
         res.add("AGENTS.md sync", "PASS")
+
+
+def check_soul_sync(res):
+    """Check SOUL.md is synced from repo template."""
+    template = CORTEX_REPO / "docs" / "templates" / "SOUL.md"
+    if not template.exists():
+        res.add("SOUL.md template", "WARN", "template not found at docs/templates/SOUL.md",
+                "REQUIRED: verify repo is up to date")
+        return
+
+    # Check ~/.hermes/SOUL.md
+    hermes_soul = Path.home() / ".hermes" / "SOUL.md"
+    if not hermes_soul.exists():
+        res.add("SOUL.md sync (~/.hermes)", "WARN", "~/.hermes/SOUL.md missing",
+                "REQUIRED: cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md && customize for your role")
+    elif hermes_soul.stat().st_mtime < template.stat().st_mtime:
+        res.add("SOUL.md sync (~/.hermes)", "WARN", "~/.hermes/SOUL.md is stale",
+                "REQUIRED: update from template: cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md && re-apply customization")
+    else:
+        res.add("SOUL.md sync (~/.hermes)", "PASS")
+
+    # Check repo profile SOUL.md for moses
+    repo_soul = CORTEX_REPO / "profiles" / "personal" / "agent-profiles" / "moses" / "SOUL.md"
+    if repo_soul.exists():
+        if repo_soul.stat().st_mtime < template.stat().st_mtime:
+            res.add("SOUL.md sync (repo profile)", "WARN", "profiles/moses/SOUL.md is stale",
+                    "REQUIRED: cp ~/hermes-cortex/docs/templates/SOUL.md profiles/personal/agent-profiles/moses/SOUL.md && re-apply customization")
+        else:
+            res.add("SOUL.md sync (repo profile)", "PASS")
 
 
 def check_skills(res):
@@ -1299,7 +1328,7 @@ def main():
     do_watch = "--watch" in args
     compact = "--quiet" in args
 
-    all_checks = [check_repo, check_skills, check_crons, check_scripts, check_services,
+    all_checks = [check_repo, check_soul_sync, check_skills, check_crons, check_scripts, check_services,
                    check_system, check_config, check_nginx, check_governance, check_install]
 
     if not res.json_mode:
@@ -1313,11 +1342,37 @@ def main():
             for fn in all_checks:
                 fn(res)
             res.print_summary(compact=compact)
+
+        # ── Enforcement footer ──────────────────────────────────
+        if res.warn_count > 0 or res.fail_count > 0:
+            print("  ═══════════════════════════════════════════════════")
+            print("  🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above")
+            print()
+            needs_fix = [c for c in res.checks if c["status"] != "PASS" and c["fix"]]
+            if needs_fix:
+                for c in needs_fix:
+                    print(f"    {c['fix']}")
+            print()
+            print("  After resolving, run doctor again to confirm.")
+            print("  ═══════════════════════════════════════════════════\n")
             time.sleep(30)
     else:
         for fn in all_checks:
             fn(res)
         res.print_summary(compact=compact)
+
+        # ── Enforcement footer ──────────────────────────────────
+        if res.warn_count > 0 or res.fail_count > 0:
+            print("  ═══════════════════════════════════════════════════")
+            print("  🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above")
+            print()
+            needs_fix = [c for c in res.checks if c["status"] != "PASS" and c["fix"]]
+            if needs_fix:
+                for c in needs_fix:
+                    print(f"    {c['fix']}")
+            print()
+            print("  After resolving, run doctor again to confirm.")
+            print("  ═══════════════════════════════════════════════════\n")
 
         if do_fix:
             apply_fixes(res)
