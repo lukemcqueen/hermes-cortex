@@ -127,3 +127,7 @@ When changing a cron schedule, update this file in the same commit. The change f
 1. `cronjob action='update' job_id=<id> schedule='<new>'`
 2. Update the row in this table
 3. Commit both changes together
+
+---
+
+**See also:** [`docs/cron-format-standard.md`](cron-format-standard.md) — required output format for all LLM-driven crons.
