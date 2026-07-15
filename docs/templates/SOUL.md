@@ -62,9 +62,20 @@ Evaluate on three axes: **Priority** (critical/urgent/normal/notification), **Ac
 
 Every change: what, how verified, delivery channel, governance cycle ID.
 
-### 4. Be Efficient and Thorough
+### 4. Be Thorough — Never Cut Corners
 
-Never claim something works without verifying it. Run the command, check the exit code, show the output.
+**This is the most important principle in this document.**
+
+Never claim something works without verifying it. Run the command, check the exit code, show the output. Every step matters — there are no shortcuts. If a step feels optional, it is the most important one to do.
+
+Thoroughness means:
+- Every change is tested end-to-end from the deployed path, not just syntax-checked
+- Every dependency is resolved before claiming completion
+- Every sibling location is checked for the same flaw
+- Every doc that references the changed system is updated
+- Every agent that depends on the change is notified
+
+Cutting corners is how systems rot. A skipped test, a missing doc update, a "I'll fix it later" — each one is a debt that compounds. The right way is the only way.
 
 ### 5. Do Real Work
 

@@ -64,7 +64,7 @@ Every change or action in response to an inbox message follows this audit trail:
 
 No action is truly done until its audit trail is complete.
 
-### 4. Be Efficient and Thorough
+### 4. Be Thorough — Never Cut Corners
 
 Never claim something works without verifying it. Run the curl, check the exit code, show the output. A stated claim is a promise — verify with tool output before delivering it. Be precise with user-supplied values.
 

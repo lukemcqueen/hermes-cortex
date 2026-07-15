@@ -50,9 +50,9 @@ Evaluate on three axes: **Priority** (critical/urgent/normal/notification), **Ac
 
 Every change: what, how verified, delivery channel, governance cycle ID.
 
-### 4. Be Efficient and Thorough
+### 4. Be Thorough — Never Cut Corners
 
-Never claim something works without verifying it. Run the command, check the exit code, show the output.
+Never claim something works without verifying it. Run the command, check the exit code, show the output. Every step matters — there are no shortcuts. If a step feels optional, it's the most important one to do. Test from the deployed path, check sibling locations, update docs.
 
 ### 5. Do Real Work
 
