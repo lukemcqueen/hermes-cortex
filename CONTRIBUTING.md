@@ -17,7 +17,7 @@
 **Hermes Cortex** is a public GitHub repo (`fleet-operator/hermes-cortex`) containing:
 
 - **Source scripts** in `ops/scripts/` — watchdogs, installers, utilities
-- **Canonical skills** in `runtime/skills/` — organized by domain
+- **Canonical skills** in `skills/` — organized by domain
 - **Documentation** in `docs/` — guides, templates, troubleshooting
 - **Deployment configs** in `deploy/` — nginx, Docker, patches
 - **Service/agent infra** in `ops/services/` (agent-bus, dashboard, a2a) and `runtime/mcp-servers/` (inbox, loop-governance)
@@ -36,7 +36,7 @@ Load them at the start of any contribution session:
 | `engineering-approach` | Communication standards, CLI design, version management | **Always** — communication with the user |
 | `public-contribution` | Decision tree for what to share, genericization patterns, commit workflow | When deciding what belongs in the public repo |
 | `repo-organization` | Canonical directory structure, naming conventions, consolidation rules | When deciding where a file goes |
-| `hermes-agent-skill-authoring` | In-repo SKILL.md format, frontmatter requirements, quality checks | When writing/editing a skill in `runtime/skills/` |
+| `hermes-agent-skill-authoring` | In-repo SKILL.md format, frontmatter requirements, quality checks | When writing/editing a skill in `skills/` |
 | `loop-governance` | Scoring workflow, cycle management, governance DB | **Always** — until the MCP server auto-loads it |
 | `two-hard-rules` | Both hard rules (loop governance + share improvements) | **Always** — reinforcement |
 
@@ -109,7 +109,7 @@ this same turn, you can skip this step.
 | Type | Home | Also register in |
 |------|------|-----------------|
 | Source script | `ops/scripts/<kebab-name>.py` or `.sh` | `cortex-update.sh` MAP (see MAP format below) |
-| Canonical skill | `runtime/skills/<category>/<name>/SKILL.md` | `docs/SKILLS-MANIFEST.md` |
+|| Canonical skill | `skills/<category>/<name>/SKILL.md` | `docs/SKILLS-MANIFEST.md` |
 | Documentation | `docs/<slug>.md` | `docs/DOCS-INDEX.md` |
 | Config template | `docs/templates/<name>` | — |
 |    Nginx config | `ops/install/deploy/nginx/<name>.conf` | — |
@@ -198,7 +198,7 @@ You must answer **NO** to ALL of these before proceeding:
 
 | Question | If YES → | 
 |----------|----------|
-| Did you create or modify a **file** in `ops/scripts/`, `runtime/skills/`, or `deploy/`? | Update `cortex-update.sh` MAP or `docs/SKILLS-MANIFEST.md` |
+| | Did you create or modify a **file** in `ops/scripts/`, `skills/`, or `deploy/`? | Update `cortex-update.sh` MAP or `docs/SKILLS-MANIFEST.md` |
 | Did you create or modify a **documentation file** (any `.md` in `docs/`)? | Update `docs/DOCS-INDEX.md` with new/changed entry |
 | Did you add a **new configuration template**? | Add to `docs/DOCS-INDEX.md` under Templates |
 | Did you add a **service or daemon**? | Update `docs/linux-service-layer.md` or `docs/macos-service-layer.md` fleet service map |
@@ -213,7 +213,7 @@ You must answer **NO** to ALL of these before proceeding:
 The verification is simple:
 ```bash
 # After staging all files, check if docs/ or templates/ changed
-git diff --cached --name-only | grep -E '^(docs|runtime/skills|ops/install/deploy/nginx)/' > /tmp/dirty_docs.txt
+git diff --cached --name-only | grep -E '^(docs|skills|ops/install/deploy/nginx)/' > /tmp/dirty_docs.txt
 # If non-empty, run the table above against each changed file
 ```
 
@@ -327,7 +327,7 @@ mcp_loop_governance_end_change(task_id="<your-task-id>")
 
 | Contribution | Where it goes | Agent benefit |
 |-------------|---------------|---------------|
-| **New canonical skill** | `runtime/skills/<category>/<name>/SKILL.md` | Every agent can load your workflow |
+|| **New canonical skill** | `skills/<category>/<name>/SKILL.md` | Every agent can load your workflow |
 | **New script** | `ops/scripts/<name>.py` + MAP in cortex-update.sh | Every agent gets the tool on `cortex-update` |
 | **Docs improvement** | `docs/<slug>.md` + DOCS-INDEX.md | Every agent can discover and read it |
 | **Bug fix** | Same location as the bug | Every agent stops hitting the same bug |
@@ -368,13 +368,13 @@ that needs to be installed on agent machines, register it here:
 | `ops/scripts/<name>` | `~/.hermes-cortex/scripts/<name>` |
 || `ops/services/agent-inbox/` files | `~/.hermes-cortex/agent-inbox/` |
 | `ops/services/dashboard/` files | `~/.hermes-cortex/dashboard/` |
-| `runtime/skills/<category>/<name>/` | `~/.hermes/skills/<category>/<name>/` (via symlink) |
+|| `skills/<category>/<name>/` | `~/.hermes/skills/<category>/<name>/` (via symlink) |
 | `core/governance/` files | `~/.hermes-cortex/loop-governance/` |
 |    `ops/install/deploy/nginx/` | `~/.hermes-cortex/nginx/` |
 | `docs/` | Read from repo (no deployment needed) |
 | `install.sh` | `~/.hermes-cortex/install.sh` |
 
-> **Note:** Skills from `runtime/skills/` are symlinked during `cortex-update.sh` to
+> **Note:** Skills from `skills/` are symlinked during `cortex-update.sh` to
 > `~/.hermes/skills/<category>/<name>/`. The skill_loader loads from
 > `~/.hermes/skills/` — the symlink makes the repo the source of truth.
 

@@ -3,7 +3,7 @@
 # pre-commit-doc-audit.sh — Check that doc changes are reflected in DOCS-INDEX.md
 #
 # Runs as a pre-commit hook add-on. Checks if staged changes to
-# docs/, ops/scripts/, runtime/skills/, ops/install/deploy/nginx/ are accompanied
+# docs/, ops/scripts/, skills/, ops/install/deploy/nginx/ are accompanied
 # by corresponding updates to DOCS-INDEX.md, SKILLS-MANIFEST.md,
 # or cortex-update.sh MAP.
 #

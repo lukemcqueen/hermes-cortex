@@ -16,8 +16,8 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 def test_all_skills_have_skilL_md():
-    """Every skill directory under runtime/skills/ must have a SKILL.md."""
-    skills_dir = os.path.join(REPO_ROOT, "runtime", "skills")
+    """Every skill directory under skills/ must have a SKILL.md."""
+    skills_dir = os.path.join(REPO_ROOT, "skills")
     missing = []
     for root, dirs, files in os.walk(skills_dir):
         # Skip non-skill subdirectories (references, templates, scripts, assets)
@@ -81,7 +81,7 @@ def test_install_steps_match_readme():
 
 def test_skill_names_no_jargon():
     """Skill names should be clear, not jargon."""
-    skills_dir = os.path.join(REPO_ROOT, "runtime", "skills")
+    skills_dir = os.path.join(REPO_ROOT, "skills")
     jargon_patterns = ["hc-", "ak-", "prd-"]
     issues = []
     for root, dirs, _ in os.walk(skills_dir):
@@ -119,7 +119,7 @@ def test_version_consistency():
 
 def test_no_duplicate_skill_names():
     """No two skills should have the same name."""
-    skills_dir = os.path.join(REPO_ROOT, "runtime", "skills")
+    skills_dir = os.path.join(REPO_ROOT, "skills")
     names = []
     for root, dirs, files in os.walk(skills_dir):
         if "SKILL.md" in files:

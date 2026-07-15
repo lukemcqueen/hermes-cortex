@@ -61,7 +61,7 @@ if command -v hermes &>/dev/null; then
   SKILLS_DIR="${HERMES_HOME:-${HOME}/.hermes}/skills/software-development"
   mkdir -p "$SKILLS_DIR"
   for skill in change-test-loop lesson-aware-agent systematic-debugging memory-architecture; do
-    src="${SCRIPT_DIR}/../runtime/skills/software-development/${skill}"
+    src="${SCRIPT_DIR}/../skills/software-development/${skill}"
     dst="${SKILLS_DIR}/${skill}"
     if [[ -d "$src" && ! -d "$dst" ]]; then
       cp -r "$src" "$dst"

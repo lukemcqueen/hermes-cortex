@@ -132,7 +132,7 @@ Search existing tools, skills, crons, and scripts before creating new. Call `ski
 
 ### 19. Build Shared by Default
 
-Anything useful goes into `hermes-cortex/ops/scripts/` or `runtime/skills/` so all agents benefit.
+Anything useful goes into `hermes-cortex/ops/scripts/` or `skills/` so all agents benefit.
 
 ### 20. Honesty + Correction Loop
 

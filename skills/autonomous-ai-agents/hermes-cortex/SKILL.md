@@ -777,14 +777,14 @@ Hermes Cortex uses a three-layer skill model with different purposes per layer. 
 
 | Layer | Location | Purpose | Managed by |
 |-------|----------|---------|-----------|
-| **Canonical source** | `~/hermes-cortex/runtime/skills/` | Public reusable skills distributed by the installer. These are the curated set — ~40 skills across devops, software-development, MCP, github, etc. | `git push` to repo |
+| **Canonical source** | `~/hermes-cortex/skills/` | Public reusable skills distributed by the installer. These are the curated set — ~40 skills across devops, software-development, MCP, github, etc. | `git push` to repo |
 | **Global installed** | `~/.hermes/skills/` | Hermes Agent's primary skill directory (~150 skills). Contains cortex skills + ecosystem skills (apple/, creative/, gaming/, mlops/, testing/, etc.) | `cortex-update.sh sync_skills()` + manual additions |
 | **Project overrides** | `~/hermes-cortex/.hermes-cortex/skills/` | Project-specific skill overrides tracked in the repo. Hermes checks this FIRST when working in the hermes-cortex repo, falling back to `~/.hermes/skills/` for anything not found here. These are condensed versions (e.g. 72-line agent-contract vs 990-line global). | Tracked in repo (project-specific) |
 
 ### How Skills Flow
 
 ```
-runtime/skills/ (canonical, ~40 skills)
+skills/ (canonical, ~40 skills)
     ↓  cortex-update.sh --force-all: sync_skills() checksums each SKILL.md
 ~/.hermes-cortex/skills/  →  (symlink)  →  ~/.hermes/skills/ (global, ~150 skills)
                                                     ↑
@@ -798,7 +798,7 @@ runtime/skills/ (canonical, ~40 skills)
 Scripts and skills flow in opposite directions:
 
 **Scripts:** `ops/scripts/` → `~/.hermes-cortex/scripts/` → (symlink) → `~/.hermes/scripts/`
-**Skills:** `runtime/skills/` → `~/.hermes-cortex/skills/` → (symlink resolves to) `~/.hermes/skills/`
+**Skills:** `skills/` → `~/.hermes-cortex/skills/` → (symlink resolves to) `~/.hermes/skills/`
 
 Scripts: `~/.hermes-cortex/scripts/` is primary, `~/.hermes/scripts/` is the cron-resolution symlink target.
 Skills: `~/.hermes/skills/` is primary (Hermes Agent loads from here), `~/.hermes-cortex/skills/` is the symlink pointing back.

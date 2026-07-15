@@ -54,4 +54,4 @@ Cost is proportional to run frequency. At `$0.006/run` (deepseek-v4-flash rate):
 
 - `docs/cron-schedules.md` — canonical schedule reference for all crons
 - `cron-format-standard` skill — full standard with 3 concrete examples and workflow
-- `runtime/skills/devops/cron-format-standard/SKILL.md` — skill source in repo
+- `skills/devops/cron-format-standard/SKILL.md` — skill source in repo

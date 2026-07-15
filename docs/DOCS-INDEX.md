@@ -91,7 +91,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 |-----|-------------|
 || `docs/SKILLS-MANIFEST.md` | Version manifest for all skills — planning pipeline + execution methodology |
 || `docs/seeding-brain-content.md` | Brain directory templates and starter content — get from 0 pages to searchable knowledge |
-|| `runtime/skills/` | Canonical skills directory — organized by domain in the repo |
+|| `skills/` | Canonical skills directory — organized by domain in the repo ||
 
 ## Templates
 

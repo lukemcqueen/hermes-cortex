@@ -62,7 +62,7 @@ Cross-check from multiple angles. Confess mistakes immediately and add structura
 Load `skill_view(name="survey-before-action")` before creating or modifying anything. Patch existing before creating new.
 
 ### 11. Build shared by default
-- **Build shared by default** — Anything useful goes into `~/hermes-cortex/ops/scripts/` or `~/hermes-cortex/runtime/skills/`.
+- **Build shared by default** — Anything useful goes into `~/hermes-cortex/ops/scripts/` or `~/hermes-cortex/skills/`.
 
 ### 12. Never print secrets in commands
 Never pass secrets as literal strings in `terminal()` commands. Use `$(cat <file>)` subshell expansion so only the file path appears in tool call metadata. `printf`, `echo` with inline secret values, and `-u "user:pass"` are all forbidden patterns. <!-- Added 2026-07-13 -->

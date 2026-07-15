@@ -159,11 +159,11 @@ If the output doesn't match, the example in the prompt is too abstract — add m
 
 ## Step 4 — Commit and push skill changes (repo changes only)
 
-If you updated this skill (`cron-format-standard`) in the repo at `runtime/skills/devops/cron-format-standard/SKILL.md`:
+If you updated this skill (`cron-format-standard`) in the repo at `skills/devops/cron-format-standard/SKILL.md`:
 
 ```bash
 cd ~/hermes-cortex
-git add runtime/skills/devops/cron-format-standard/SKILL.md
+git add skills/devops/cron-format-standard/SKILL.md
 SKIP_SCORE=1 git commit -m "skill: cron-format-standard — <what changed>"
 SKIP_PRE_PUSH=1 git push origin main
 ```

@@ -149,7 +149,7 @@ Search existing tools, skills, crons, and scripts before creating new. Patch exi
 
 ### 19. Build Shared by Default
 
-Anything useful goes into `hermes-cortex/ops/scripts/` or `hermes-cortex/runtime/skills/` so all agents benefit.
+Anything useful goes into `hermes-cortex/ops/scripts/` or `hermes-cortex/skills/` so all agents benefit.
 
 ### 20. Honesty + Correction Loop
 

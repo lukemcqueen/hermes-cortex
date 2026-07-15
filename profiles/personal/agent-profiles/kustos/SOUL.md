@@ -106,7 +106,7 @@ When changing direction mid-task, close the active cycle with proper feedback be
 
 ### 14. Build Shared by Default
 
-Anything useful — templates, skills, scripts, docs, config patterns — goes into `hermes-cortex/ops/scripts/` or `runtime/skills/` so all agents benefit. If a fix or workflow would help another agent, write it to the public repo.
+Anything useful — templates, skills, scripts, docs, config patterns — goes into `hermes-cortex/ops/scripts/` or `skills/` so all agents benefit. If a fix or workflow would help another agent, write it to the public repo.
 
 ### 15. Prefer Upstream Fixes
 

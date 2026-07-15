@@ -1878,7 +1878,7 @@ ok
 #  10. Install Hermes Skills — Shared skills from the repo
 # ─────────────────────────────────────────────────────────────
 step "Installing Hermes skills from repo"
-SKILLS_REPO="${SCRIPT_DIR}/../runtime/skills"
+SKILLS_REPO="${SCRIPT_DIR}/../skills"
 HERMES_SKILLS="${CORTEX_DEPLOY_HOME}/skills"
 if [[ -d "$SKILLS_REPO" ]]; then
   count=0
@@ -1905,7 +1905,7 @@ if [[ -d "$SKILLS_REPO" ]]; then
   done < <(find "$SKILLS_REPO" -path "*/references/*" -type f -print0)
   info "  Installed ${count} skills (skipped existing)"
 else
-  skip "no runtime/skills/ directory in repo"
+  skip "no skills/ directory in repo"
 fi
 ok
 

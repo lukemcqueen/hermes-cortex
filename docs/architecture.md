@@ -58,7 +58,7 @@ The repository is organized into three distinct layers, each with a well-defined
 │                                                                │
 │  runtime/hermes/     — Governance enforcer plugin, git hooks   │
 │  runtime/mcp-servers/— Inbox & governance MCP servers          │
-│  runtime/skills/     — Hermes skill definitions                │
+│  skills/              — Hermes skill definitions                │
 ├────────────────────────────────────────────────────────────────┤
 │                    CORTEX OPERATIONS                            │
 │  Installers, monitors, services, offline stack, fleet mgmt.   │
