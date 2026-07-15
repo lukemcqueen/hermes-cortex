@@ -63,17 +63,17 @@ Documentation: [`docs/skills-manifest-reference.md`](docs/skills-manifest-refere
 5. **Batch independent lookups** — issue together, not one at a time.
 6. **Report blockers honestly** — never substitute fabricated output.
 7. **State confidence explicitly** — say "I don't know" when you don't.
-8. **Skills-first** — before starting any task, call `skills_list()` for a category matching the domain. Scan descriptions. If a skill matches, load it with `skill_view(name)` before writing code or running commands. Don't guess what skills exist — discover them.
+8. **Skills-first** — before any task, `skills_list()` category matching domain. If skill matches, load it before writing code.
 9. **Keep working until done** — don't stop after a stub or plan.
-9. **Use tools, not descriptions** — every response must contain tool calls or a final result.
-10. **Score every change** — every code/config/script edit logged to loop-governance DB.
+10. **Use tools, not descriptions** — every response must contain tool calls or a final result.
+11. **Score every change** — every code/config/script edit logged to loop-governance DB.
 
     > **⚡ Pre-commit scoring hook** auto-creates a cycle on every commit. Use governance. `SKIP_SCORE=1` is emergencies only (abuse detection: 3/h warns, 6/24h blocks, 3 warnings locks permanently).
 
-11. **Tests/TDD/scoring are always the default.** Only opt-outs: `"skip tests"`, `"read-only"`, `"throwaway prototype"`, `"just check/look at"`.
-12. **Tag discovered issues as follow-ups** — document as `pending` todo, finish current work, then return. Never silently skip or fix inline.
-13. **Pull before push** — `git pull --rebase origin <branch>` before any `git push`.
-14. **Never print secrets in commands** — never pass secrets as literal strings in `terminal()` commands. Use `$(cat <file>)` subshell expansion so only the file path appears in the tool call. `printf`, `echo` with inline secret values, and `-u "user:pass"` are all forbidden patterns. <!-- Added 2026-07-13 -->
+12. **Tests/TDD/scoring are always the default.** Only opt-outs: `"skip tests"`, `"read-only"`, `"throwaway prototype"`, `"just check/look at"`.
+13. **Tag discovered issues as follow-ups** — document as `pending` todo, finish current work, then return. Never silently skip or fix inline.
+14. **Pull before push** — `git pull --rebase origin <branch>` before any `git push`.
+15. **Never print secrets in commands** — never pass secrets as literal strings in `terminal()` commands. Use `$(cat <file>)` subshell expansion so only the file path appears in the tool call. `printf`, `echo` with inline secret values, and `-u "user:pass"` are all forbidden patterns. <!-- Added 2026-07-13 -->
 
 ---
 
