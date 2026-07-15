@@ -1,13 +1,12 @@
-# Agent Inbox Setup — MCP-Based Messaging + A2A Cross-Server Tasks
+# Agent Inbox Setup (Legacy) — File-Based Messaging + A2A Cross-Server Tasks
 
-> **⚠️ DEPRECATION NOTICE — This document describes the legacy file-based inbox.**
-> The Agent Bus (PGMQ-based Postgres queue system) replaces this architecture.
-> See **`docs/agent-bus-setup.md`** for the new system.
+> **⚠️ LEGACY SYSTEM — This document describes the deprecated file-based agent inbox.**
+> The **Agent Bus** (PGMQ-based Postgres queue system) is the current messaging system.
+> See **`docs/agent-bus-setup.md`** for the current architecture.
 >
-> The old inbox still runs on port 8903 for backward compatibility.
-> All new development should target the Agent Bus on port 8905.
+> The legacy inbox server is stopped. All agents use the Agent Bus on port 8903.
 
-The agent inbox is a...
+The legacy agent inbox (previously Agent Inbox) is a...
 1. **Agent-to-agent messaging** (topic channels, threads, priority) via `inbox_send` / `inbox_read`
 2. **A2A cross-server task delegation** (JSON-RPC task lifecycle) via `inbox_send_task` / `inbox_get_task`
 

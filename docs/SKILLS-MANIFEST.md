@@ -21,7 +21,7 @@ their domain.
 | `product-requirements` | 1.0.0 | Concise 1-page PRD template — 14 sections | `skill_view(name='product-requirements')` |
 | `agent-flow` | 1.1.0 | Workflow router — 12 patterns, manifest-aware skill loading (always + on_task from .hermes-cortex/skills.yaml) | `skill_view(name='agent-flow')` |
 | `agent-contract` | 1.0.0 | Non-negotiable execution rules — real work, no simulation | `skill_view(name='agent-contract')` |
-| `agent-inbox` | 1.0.0 | Web-based agent messaging system — topic channels, thread support, priority field, JSON API | `skill_view(name='agent-inbox')` |
+| `agent-inbox` (skill) | `agent-inbox` | 1.0.0 | Web-based agent messaging system (previously Agent Inbox) — topic channels, thread support, priority field, JSON API | `skill_view(name='agent-inbox')` |
 | `dev-plan` | 2.1.0 | Plan mode — write actionable markdown plans, no execution | `skill_view(name='dev-plan')` |
 | `change-test-loop` | 2.0.0 | LEARN-RED-GREEN-REFACTOR loop — lesson-aware memory, confidence scoring, retry limits | `skill_view(name='change-test-loop')` |
 | `lesson-aware-agent` | 1.0.0 | Universal lesson injection — search lessons before every action, save lessons after every fix | `skill_view(name='lesson-aware-agent')` |
@@ -41,7 +41,7 @@ their domain.
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
-| `inbox-remediation` | 1.0.0 | Auto-remediate hermes-cortex issues reported by peer agents via agent inbox — reads remediation markers, applies fixes, marks done | `skill_view(name='inbox-remediation')` |
+| `inbox-remediation` | 1.0.0 | Auto-remediate hermes-cortex issues reported by peer agents via the Agent Bus (previously Agent Inbox) — reads remediation markers, applies fixes, marks done | `skill_view(name='inbox-remediation')` |
 | `nginx-security-pipeline` | 1.0.0 | Self-maintaining nginx security pipeline — IP blocking, fail2ban, atomic deploy, and daily scanner for nginx reverse proxies. Platform-aware (macOS/Linux). | `skill_view(name='nginx-security-pipeline')` |
 | `nginx-web-app-deployment` | 1.0.0 | Deploy web apps behind nginx — upstream config, SSL, rate limiting, launchd/systemd, multi-layer testing | `skill_view(name='nginx-web-app-deployment')` |
 | `package-security` | 1.0.0 | Age-gated package installation — verifies packages are ≥14 days old before install. Covers PyPI, npm, crates.io, Homebrew. | `skill_view(name='package-security')` |
@@ -51,9 +51,9 @@ their domain.
 
 | Script | Type | Purpose | Schedule |
 |--------|------|---------|----------|
-| `collect-agent-skills.sh` | no_agent | Agent-side: diffs local skills against upstream repo, reports custom skills to Moses inbox | every 6h per agent |
+|| `collect-agent-skills.sh` | no_agent | Agent-side: diffs local skills against upstream repo, reports custom skills to Moses via Agent Bus | every 6h per agent |
 | `request-skill-reports.sh` | no_agent | Moses-side: sends inbox broadcast to all registered agents requesting skill reports | daily 2:05am |
-| `process-skill-reports.py` | no_agent | Moses-side: reads skill-report messages from inbox, compiles digest for review | every 6h (:15) |
+|| `process-skill-reports.py` | no_agent | Moses-side: reads skill-report messages from Agent Bus, compiles digest for review | every 6h (:15) |
 
 ## Social Media
 

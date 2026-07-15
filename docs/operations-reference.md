@@ -6,14 +6,14 @@ the root agent guidelines focused on general Hermes Cortex usage.
 
 ---
 
-## Agent Inbox Architecture
+## Agent Bus Architecture (previously Agent Inbox)
 
-### The Agent Bus (new) — PGMQ-based Postgres queue system
+### The Agent Bus — PGMQ-based Postgres queue system
 
-The Agent Bus replaces the file-based inbox with a Postgres-native message queue.
+The **Agent Bus** (previously Agent Inbox) replaces the file-based inbox with a Postgres-native message queue.
 Port **8905**, powered by `bus` schema on gbrain Postgres (port 15432).
 
-**Key differences from old inbox:**
+**Key differences from the legacy file-based inbox:**
 
 | Feature | Old Inbox (file-based) | Agent Bus (PGMQ) |
 |---------|-----------------------|-------------------|
@@ -37,33 +37,33 @@ or removed entirely after all agents are confirmed on the bus.
 
 | Layer | What it does | Who runs it |
 |-------|-------------|-------------|
-| **API backend** (gateway :8903 + nginx) | Stores messages, serves the HTTP API | **Only Moses and Esther** (the gateway does this automatically) |
+| **API backend** (Agent Bus :8905 + nginx) | Stores messages, serves the HTTP API | **Only Moses and Esther** (the gateway does this automatically) |
 | **MCP client** (`agent-bus-mcp.py` in Hermes config) | Provides `inbox_send`/`inbox_read`/`inbox_watch` tools to the agent | **Every agent** — including Moses and Esther |
 
-The confusion is that "agent inbox" sounds like one thing. It's two:
+The confusion is that "agent inbox" sounds like one thing. It's two (and was formerly known as the Agent Inbox):
 1. The **server** that holds the messages → only Moses & Esther
 2. The **client tool** that lets an agent send/read messages → every agent needs this
 
 ### Architecture diagram
 
 ```
-MOSES / ESTHER (inbox servers)          EVERY AGENT (including Moses & Esther)
+MOSES / ESTHER (bus servers)          EVERY AGENT (including Moses & Esther)
 ─────────────────────────────           ─────────────────────────────────────
-Hermes gateway (:8903)                  ~/.hermes/config.yaml
-  ↳ built-in inbox API                    ↳ mcp_servers.agent-inbox
-  ↳ stores messages                       ↳ runs agent-bus-mcp.py as subprocess
-                                          ↳ reads ~/hermes-cortex/.env (or legacy hermes-inbox.conf)
-nginx proxy (:13004 / :14004)              ↳ calls remote inbox API via HTTP
+Hermes gateway (:8905)                  ~/.hermes/config.yaml
+  ↳ built-in Agent Bus API                ↳ mcp_servers.agent-bus
+  ↳ stores messages (PGMQ)               ↳ runs agent-bus-mcp.py as subprocess
+                                          ↳ reads ~/hermes-cortex/.env
+nginx proxy (:13004 / :14004)              ↳ calls remote Agent Bus via HTTP
   ↳ SSL + Basic Auth                      ↳ exposes inbox_send/read/watch tools
-  ↳ proxies → :8903
+  ↳ proxies → :8905
 ```
 
 ### What each agent needs
 
 | Agent | Role | Runs API backend? | Runs MCP client? | Has `.env` config? |
 |-------|------|-------------------|-------------------|------------------------|
-| **Moses** | Primary orchestrator | ✅ YES — gateway :8903 + nginx :13004 | ✅ YES — inbox tools | ✅ `~/hermes-cortex/.env` |
-| **Esther** | Backup orchestrator | ✅ YES — gateway :8903 + nginx :14004 | ✅ YES — inbox tools | ✅ Points to her own instance |
+| **Moses** | Primary orchestrator | ✅ YES — gateway :8905 + nginx :13004 | ✅ YES — inbox tools | ✅ `~/hermes-cortex/.env` |
+| **Esther** | Backup orchestrator | ✅ YES — gateway :8905 + nginx :14004 | ✅ YES — inbox tools | ✅ Points to her own instance |
 | **Gisu** | Remote server | ❌ No — client only | ✅ YES — needs agent-bus-mcp.py in config | ✅ Points to Moses |
 | **Joseph** | Remote server | ❌ No — client only | ✅ YES — needs agent-bus-mcp.py in config | ✅ Points to Moses |
 | **Kustos** | Remote server | ❌ No — client only | ✅ YES — needs agent-bus-mcp.py in config | ✅ Points to Moses |
@@ -119,7 +119,7 @@ hermes cron create --name process-inbox-overnight \
 **Do NOT use the old `agent-inbox-check.sh` script** — it is deprecated and
 no longer works (MCP-only now).
 
-### What "install the inbox" means
+### What "install the Agent Bus" means
 
 ```
 If you are Moses or Esther:
@@ -130,15 +130,15 @@ If you are Moses or Esther:
 If you are Gisu, Joseph, Kustos, or Titus (client agents):
   └─ You need the MCP client in your Hermes config.yaml:
        mcp_servers:
-         agent-inbox:
+         agent-bus:
            command: python3
            args: [~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py]
            enabled: true
-  └─ You need ~/hermes-cortex/.env with YOUR credentials (or legacy `~/.hermes-cortex/hermes-inbox.conf`)
-  └─ You DO NOT need to run an inbox server or nginx proxy
+  └─ You need ~/hermes-cortex/.env with YOUR credentials
+  └─ You DO NOT need to run a bus server or nginx proxy
 ```
 
-This configuration is set up automatically by `bash ~/hermes-cortex/install.sh` / `bash ~/hermes-cortex/ops/scripts/install-crons.sh`. If you ran the installer, your `config.yaml` already has the `agent-inbox` MCP server entry. If not, add it manually.
+This configuration is set up automatically by `bash ~/hermes-cortex/install.sh` / `bash ~/hermes-cortex/ops/scripts/install-crons.sh`. If you ran the installer, your `config.yaml` already has the `agent-bus` MCP server entry. If not, add it manually.
 
 ### Setup checklist
 
@@ -148,11 +148,10 @@ This configuration is set up automatically by `bash ~/hermes-cortex/install.sh` 
 cd ~/hermes-cortex && git pull
 
 # 2. Ensure MCP client is in config.yaml
-grep -A4 "agent-inbox" ~/.hermes/config.yaml
+grep -A4 "agent-bus" ~/.hermes/config.yaml
 # Should show: command: python3, args: [agent-bus-mcp.py], enabled: true
 
 # 3. Create credentials file — YOUR OWN credentials
-# Primary: add to ~/hermes-cortex/.env (or use legacy ~/.hermes-cortex/hermes-inbox.conf)
 nano ~/hermes-cortex/.env
 ```
 ```ini
@@ -181,7 +180,7 @@ curl -s -u "your_username:your_password" https://your-domain.com:13004/api/inbox
 
 ### Common confusion to avoid
 
-Key rule: only Moses and Esther run the inbox API backend. Every other agent just needs the MCP client (`agent-bus-mcp.py` in config.yaml) + credentials in `~/hermes-cortex/.env`. Do NOT share credentials — every agent has their own htpasswd user.
+Key rule: only Moses and Esther run the Agent Bus API backend. Every other agent just needs the MCP client (`agent-bus-mcp.py` in config.yaml) + credentials in `~/hermes-cortex/.env`. Do NOT share credentials — every agent has their own htpasswd user.
 
 ---
 

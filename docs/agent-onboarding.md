@@ -10,14 +10,14 @@
 ```
 YOU (laptop / local machine)              MOSES (server)
 ─────────────────────────────             ──────────────
-Hermes Agent                             Hermes gateway (:8903)
-  ↳ agent-bus-mcp.py (MCP client)              ↳ bus API (PGMQ message store)
-  ↳ reads ~/hermes-cortex/.env             ↳ nginx proxy :13004 → :8903
-  ↳ calls Moses's inbox API via HTTPS      ↳ SSL + Basic Auth
+Hermes Agent                             Hermes gateway (:8905)
+  ↳ agent-bus-mcp.py (MCP client)              ↳ Agent Bus API (PGMQ message store)
+  ↳ reads ~/hermes-cortex/.env             ↳ nginx proxy :13004 → :8905
+  ↳ calls Moses's Agent Bus via HTTPS      ↳ SSL + Basic Auth
   ↳ inbox_send / inbox_read / inbox_watch
 ```
 
-**You run the client. Moses runs the server. That's it.**
+**You run the client. Moses runs the server (Agent Bus). That's it.**
 
 ---
 
@@ -39,8 +39,8 @@ Send Moses an inbox message (or the human asks Moses) with subject:
 
 Moses will:
 1. Create an htpasswd entry for you on the nginx gateway
-2. Give you your **inbox username** and **inbox password**
-3. Confirm the inbox URL (typically `https://example.com:13004`)
+2. Give you your **inbox username** and **inbox password** (the Agent Bus uses the same credentials)
+3. Confirm the Agent Bus URL (typically `https://example.com:13004`)
 
 > ⚠ **Do not share credentials.** Every agent has their own username/password.
 
@@ -51,7 +51,7 @@ Moses will:
 Check if the installer already did this:
 
 ```bash
-grep -A4 "agent-inbox" ~/.hermes/config.yaml
+grep -A4 "agent-bus" ~/.hermes/config.yaml
 ```
 
 If you see `command: python3` and `enabled: true`, skip to Step 3.
@@ -60,7 +60,7 @@ If not, add this to your `~/.hermes/config.yaml` under `mcp_servers:`:
 
 ```yaml
 mcp_servers:
-  agent-inbox:
+  agent-bus:
     command: python3
     args: [~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py]
     enabled: true
@@ -70,7 +70,7 @@ Restart Hermes to pick it up:
 
 ```bash
 hermes mcp list
-# Should show "agent-inbox" in the list
+# Should show "agent-bus" in the list
 ```
 
 ---
@@ -95,7 +95,7 @@ chmod 600 ~/hermes-cortex/.env
 
 ---
 
-## Step 4 — Verify You Can Reach the Inbox
+## Step 4 — Verify You Can Reach the Agent Bus
 
 ```bash
 curl -s -u "titus:your-password-here" \
@@ -127,7 +127,8 @@ This runs hourly from 6am-11pm, costs ~$0.006/run in LLM tokens (~$0.11/day),
 and delivers results to your origin chat (typically Telegram DM).
 
 > ⚠ Do NOT create a cron named `agent-inbox-check` or use the old `agent-inbox-check.sh`
-> script — it is deprecated and no longer works. Always use `process-mcp-agent-inbox-messages`.
+> script — it is **deprecated** and no longer works. Always use `process-mcp-agent-inbox-messages`.
+> See **`docs/agent-bus-setup.md`** for the current Agent Bus architecture.
 
 ---
 
@@ -153,11 +154,11 @@ At minimum, every SOUL.md must include:
 | Behavioral Principles | Loop governance, inbox decision framework, honesty |
 | Scriptural Insight | One behavioral commitment shaped by Scripture |
 
-**Essential behavioral principles for a client-only agent:**
+| **Essential behavioral principles for a client-only agent:**
 
 1. **Loop governance always** — `begin_change` → work → `cycle_query` → `feedback` → `end_change`. No exceptions.
-2. **Inbox decision framework** — classify every inbox message by Priority × Actionability × Scope. AUTO-ACT moderate/simple items. Escalate complex ones.
-3. **Health via inbox** — you have no HTTP health endpoint. Report health by sending inbox messages to Moses with topic `#health`.
+2. **Inbox decision framework** — classify every Agent Bus message by Priority × Actionability × Scope. AUTO-ACT moderate/simple items. Escalate complex ones.
+3. **Health via Agent Bus** — you have no HTTP health endpoint. Report health by sending messages to Moses with topic `#health` via the Agent Bus.
 4. **Poll, don't wait** — your cron is your ears. Check it every tick.
 
 See existing SOUL.md files for reference:
@@ -170,7 +171,7 @@ See existing SOUL.md files for reference:
 ## Step 7 — Send Your First Health Ping
 
 Once everything above is working, introduce yourself to the fleet by sending
-a health ping to Moses. Use `curl` directly against the inbox API —
+a health ping to Moses. Use `curl` directly against the Agent Bus API —
 this is the recommended approach for regular health pings:
 
 ```bash
@@ -337,12 +338,10 @@ This step happens **on Moses's machine**, not yours. Moses will:
 
 ---
 
-## Daily Life as a Client Agent
+| **Daily Life as a Client Agent** |
 
 | Activity | How it works |
 |----------|-------------|
-| **Receiving instructions** | Moses sends inbox messages → your poll cron picks them up → you process them |
-| **Reporting results** | Send inbox messages back with subject `✅ Done: <summary>` → Moses reads on his next tick |
 | **Reporting health** | Send JSON health pings via `curl` to `.../api/send` with `topic: "health"` (exact). Oldest ping stays as anchor, newer ones deleted. See [Step 7](#step-7--send-your-first-health-ping). |
 | **Requesting cron changes** | Send Moses an inbox with subject `🔧 CRON: create|update|remove <name>` |
 | **Asking for help** | Send `🔴 Blocked: <issue>` to Moses — he'll investigate |

@@ -1,19 +1,19 @@
 # A2A Deployment Notes — OBSOLETE
 
-> **⚠️ A2A is now merged into the Agent Inbox server.**
+> **⚠️ A2A is now merged into the Agent Bus (previously Agent Inbox).**
 > As of 2026-07-05, there is no separate A2A server process.
 > The standalone `docs/templates/a2a-server.service` was **deleted on 2026-07-09**. Do not recreate it.
-> All A2A JSON-RPC endpoints are served by the inbox backend on port 8903.
+> All A2A JSON-RPC endpoints are served by the Agent Bus on port 8905.
 > See [`a2a-architecture.md`](a2a-architecture.md) for the current design.
 
 ## What Changed
 
 | Before | After |
 |--------|-------|
-| Separate `a2a-server.py` on port 8906 | Merged into `server.py` on port 8903 |
+| Separate `a2a-server.py` on port 8906 | Merged into Agent Bus `server.py` on port 8905 |
 | Separate `a2a-mcp.py` MCP server | Tools merged into `agent-bus-mcp.py` as `inbox_*` prefix |
-| Systemd service `a2a-server.service` | Not needed — inbox server handles A2A |
-| nginx upstream `a2a_backend` | Routes to existing `agent_inbox_backend` |
+| Systemd service `a2a-server.service` | Not needed — Agent Bus handles A2A |
+| nginx upstream `a2a_backend` | Routes to existing `agent_bus_backend` |
 
 ## Migration (if upgrading from standalone A2A)
 

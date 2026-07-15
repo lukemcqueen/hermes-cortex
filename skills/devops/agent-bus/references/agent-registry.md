@@ -8,7 +8,7 @@
 
 Centralizes all agent metadata so scripts don't hardcode agent names.
 `orch-team-messages.sh` reads routing targets dynamically from here.
-`generate-inbox-wrappers.py` generates per-agent watch scripts from here.
+`generate-bus-wrappers.py` generates per-agent watch scripts from here.
 
 ## Schema
 
@@ -19,7 +19,7 @@ Centralizes all agent metadata so scripts don't hardcode agent names.
     "<agent-key>": {
       "name": "Display Name",
       "description": "What this agent does",
-      "inbox_user": "agent username for inbox (MCP auth)",
+      "inbox_user": "agent username for bus (MCP auth)",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local"
     }
@@ -35,7 +35,7 @@ Centralizes all agent metadata so scripts don't hardcode agent names.
 ## Adding a New Agent
 
 1. Add entry to the registry JSON
-2. Create config: `~/.hermes/agent-inbox-<agent>.conf` with URL, user, pass
-3. Run: `python3 ~/.hermes/scripts/generate-inbox-wrappers.py --apply-crons`
+2. Create config: `~/.hermes/agent-bus-<agent>.conf` with URL, user, pass
+3. Run: `python3 ~/.hermes/scripts/generate-bus-wrappers.py --apply-crons`
 
-> **Note:** The inbox is now MCP-only. Agents use `inbox_send`, `inbox_read`, and `inbox_watch` MCP tools, not direct API calls.
+> **Note:** The Agent Bus is now MCP-only. Agents use `inbox_send`, `inbox_read`, and `inbox_watch` MCP tools, not direct API calls.

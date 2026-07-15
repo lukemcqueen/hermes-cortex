@@ -1,14 +1,14 @@
 # A2A Agent-to-Agent Architecture
 
-> **⚠️ DESIGN UPDATE (2026-07-05):** A2A is now fully merged into the Agent Inbox.
-> There is ONE backend server on `:8903`, ONE MCP server (`inbox-mcp`), and ONE message store.
-> The old standalone `a2a-server.py` (port 8906) and `a2a-mcp.py` are archived.
+> **⚠️ LEGACY SYSTEM (2026-07-05):** A2A is now fully merged into the Agent Bus.
+> There is ONE backend server on `:8905`, ONE MCP server (`agent-bus-mcp.py`), and ONE message store.
+> The old standalone file-based `server.py` (port 8903) and `a2a-mcp.py` are archived/legacy.
 
 ## Overview
 
 The A2A protocol enables Hermes Cortex agents on **different servers** to discover each other, delegate tasks, and share results using the industry-standard [Agent2Agent Protocol v1.0](https://a2a-protocol.org) (Linux Foundation).
 
-A2A is a **protocol layer** on top of the existing agent inbox — same message store, same API, same MCP tools. The only difference is the JSON-RPC envelope used for cross-server task delegation.
+A2A is a **protocol layer** on top of the existing Agent Bus — same message store, same API, same MCP tools. The only difference is the JSON-RPC envelope used for cross-server task delegation.
 
 ## Design Principles
 
@@ -26,7 +26,7 @@ A2A is a **protocol layer** on top of the existing agent inbox — same message 
 
 ```
 ┌─────────────────────────────────────────────┐     ┌─────────────────────────────────────────────┐
-│  Agent Inbox Server (:8903)                  │     │  Remote Agent Inbox Server (:8903)           │
+│  Agent Bus Server (:8905)                    │     │  Remote Agent Bus Server (:8905)            │
 │                                              │     │                                              │
 │  FastAPI App                                 │     │  FastAPI App                                 │
 │  ├── /api/inbox/*  — REST (agent messages)   │     │  ├── /api/inbox/*  — REST                   │
@@ -39,8 +39,8 @@ A2A is a **protocol layer** on top of the existing agent inbox — same message 
 │         │  ├── /a2a/*     → Basic + mTLS      │            │  ├── /a2a/*     → Basic + mTLS      │
 │         │  └── /.well-known/agent-card         │            │  └── /.well-known/agent-card         │
 │         │                                     │            │                                     │
-│  Storage:                                     │     Storage:                                     │
-│  ├── ~/hermes-cortex-private/messages/inbox/  │     ├── ~/hermes-cortex-private/messages/inbox/  │
+│  Storage: PGMQ Postgres queues                │     Storage: PGMQ Postgres queues                │
+│  ├── bus schema on gbrain Postgres (:15432)  │     ├── bus schema on gbrain Postgres (:15432)  │
 │  └── ~/.hermes-cortex/a2a/                    │     └── ~/.hermes-cortex/a2a/                    │
 │       ├── agent-registry.json                  │          ├── agent-registry.json                  │
 │       ├── agent-card.json                     │          ├── agent-card.json                     │
@@ -53,7 +53,7 @@ A2A is a **protocol layer** on top of the existing agent inbox — same message 
 
 ## Components
 
-### 1. Agent Inbox Server (`src/agent-inbox/server.py`)
+### 1. Agent Bus Server (`ops/services/agent-bus/server.py`)
 
 The single backend that serves everything:
 
@@ -64,7 +64,7 @@ The single backend that serves everything:
 - **`/health`** — System health (now includes A2A task count)
 - **`/`** — HTML dashboard UI (unchanged)
 
-Runs on `127.0.0.1:8903`. Exposed externally via nginx on `:13004`.
+Runs on `127.0.0.1:8905`. Exposed externally via nginx on `:13004`.
 
 ### 2. A2A Task State Database (`~/.hermes-cortex/a2a/task-state.db`)
 
@@ -74,7 +74,7 @@ SQLite database tracking A2A task lifecycle:
 - Relates inbox messages to task IDs via `inbox_message_filename`
 - Survives server restarts
 
-### 3. Agent Card (`ops/services/a2a/agent-card.json`)
+### 3. Agent Card (`ops/services/agent-bus/agent-card.json`)
 
 Static JSON file describing this agent's capabilities, published at:
 - `https://domain.com:13004/.well-known/agent-card.json`
@@ -166,10 +166,10 @@ Agent A                         Agent B (via inbox server :8903)
 
 ## Starting the Server
 
-The inbox server is typically started via the Hermes agent-inbox script:
+The bus server is typically started via the Hermes agent-bus script:
 ```bash
-cd ~/.hermes/agent-inbox
-python3 -m uvicorn server:app --host 127.0.0.1 --port 8903
+cd ~/.hermes-cortex/agent-bus
+python3 -m uvicorn server:app --host 127.0.0.1 --port 8905
 ```
 
 Or via systemd/supervisord if configured.
@@ -178,7 +178,7 @@ Or via systemd/supervisord if configured.
 
 | Port | Service | Purpose |
 |------|---------|---------|
-| 8903 | Inbox server | REST + A2A JSON-RPC + Dashboard UI |
+| 8905 | Agent Bus server | REST + A2A JSON-RPC + Dashboard UI |
 | 8905 | Health server | Compact health checks |
 | 13004 | nginx | External gateway for inbox + A2A |
 

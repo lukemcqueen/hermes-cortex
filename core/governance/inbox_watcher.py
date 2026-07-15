@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """
-Inbox Watcher — checks the agent inbox for new messages from other agents.
+Inbox Watcher — checks for new messages from other agents via file-based fallback inbox.
+
+**⚠️ LEGACY: The file-based inbox is deprecated in favor of the PGMQ Agent Bus (port 8903).**
+This script only works on machines with the private repo mounted
+(`~/hermes-cortex-private/messages/inbox/`). Use MCP tools (`inbox_send` / `inbox_read` / `inbox_watch`)
+for Agent Bus access.
 
 Runs at session start (I call it manually) and can run as a cron.
 Flags messages that need my attention: skill-miner findings, requests,

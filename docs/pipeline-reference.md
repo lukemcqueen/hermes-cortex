@@ -31,7 +31,7 @@ Discovers agent-developed skills from remote agents and evaluates them for upstr
 
 | Step | Tool | Schedule | LLM? | Output |
 |------|------|----------|------|--------|
-| Request | `request-skill-reports.sh` | Daily 02:05 | ✗ | Inbox broadcast to agents |
+| Request | `request-skill-reports.sh` | Daily 02:05 | ✗ | Agent Bus broadcast to agents |
 | Collect | `collect-agent-skills.sh` (agent-side) | Every 6h per agent | ✗ | Full SKILL.md → Moses inbox |
 | Digest | `process-skill-reports.py` | Every 6h at :15 | ✗ | Summary digest → Telegram |
 | Evaluate | `evaluate-skill-reports` (LLM cron) | Daily 03:00 | ✓ | Scored recommendations → Telegram |
@@ -130,7 +130,7 @@ Each stage consumes the output of the prior one, reducing rework and enforcing q
 
 ## Skill Miner (Automated, Runs Weekly)
 
-`skill-miner` runs every Monday 6am on each agent's machine. It scans local data for reusable patterns, scores them, and sends top findings to Moses via the agent inbox. No manual effort needed.
+`skill-miner` runs every Monday 6am on each agent's machine. It scans local data for reusable patterns, scores them, and sends top findings to Moses via the Agent Bus (previously Agent Inbox). No manual effort needed.
 
 **What it mines (PII-scrubbed):**
 - Loop governance DB — high-scoring TDD cycles
@@ -138,7 +138,7 @@ Each stage consumes the output of the prior one, reducing rework and enforcing q
 - Agent memory — MEMORY.md, USER.md content
 - Custom skills — skills installed locally but not in the repo
 
-**Output:** Top 5 findings sent to `to=moses` (default) with `cc=luke` via the agent inbox. Moses reviews, consolidates, and pushes to hermes-cortex.
+**Output:** Top 5 findings sent to `to=moses` (default) with `cc=luke` via the Agent Bus. Moses reviews, consolidates, and pushes to hermes-cortex.
 
 ---
 

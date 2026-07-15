@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Agent Inbox v2 — threaded messaging with topic channels.
+"""Agent Inbox v2 (Legacy File Fallback) — threaded messaging with topic channels.
 
-A lightweight internal forum for Hermes Cortex agents.
+A lightweight internal forum for Hermes Cortex agents (DEPRECATED — use Agent Bus instead).
 Topics group conversations, threads group replies, and the UI
 provides full transparency into all agent communications.
 
@@ -45,7 +45,7 @@ else:
 for d in [INBOX_DIR, PROCESSED_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title="Agent Inbox")
+app = FastAPI(title="Agent Inbox (Legacy File Fallback — use Agent Bus instead)")
 
 # ── Topic definitions ────────────────────────────────────────
 TOPICS = {
