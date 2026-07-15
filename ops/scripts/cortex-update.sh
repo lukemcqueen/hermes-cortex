@@ -1009,17 +1009,34 @@ verify_services() {
 pin_repos_with_own_hooks() {
   local shared_hooks_dir="${CORTEX_DEPLOY_HOME}/hooks"
   local pinned=0
+  local tmp_gitlist
+  tmp_gitlist=$(mktemp) || return 1
 
   # Strategy: find .git dirs in common repo locations, then check if each
   # has repo-specific hooks. We scope the search to user-writable areas
   # to avoid /proc, /sys, /dev noise.
   #
-  # We use printf + path expansion instead of find -exec to stay
-  # compatible with unusual file names and avoid subshell overhead.
-  #
   # A single find invocation covers both working-tree .git dirs
   # AND bare repos (e.g. myrepo.git/ which git treats as .git itself).
   # --maxdepth 8 avoids crawling deep node_modules, venvs, and caches.
+  #
+  # Uses a temp file instead of process substitution <() for macOS
+  # bash 3.2 compatibility (bash 3.2 does not support <() syntax).
+  {
+    # Search home directories, /opt, /srv, /var, /Users for git repos
+    # Limited depth to avoid crawling deep dependency trees
+    # macOS: ~/Developer, ~/Sites, ~/git live under /Users
+    for base in /home /opt /srv /var/www /var/repo /Users; do
+      if [[ -d "$base" ]]; then
+        # find may return non-zero on permissioned subdirectories (e.g.
+        # /var/www without read access). These are expected access errors
+        # for a non-root search — not a pipeline failure. || true signals
+        # that find's exit code is not meaningful for flow control here.
+        find "$base" \( -name ".git" -type d -o -name "*.git" -type d \) -maxdepth 8 -print0 2>/dev/null || true
+      fi
+    done
+  } > "$tmp_gitlist"
+
   while IFS= read -r -d '' git_dir; do
     local hooks_path="${git_dir}/hooks"
     
@@ -1043,20 +1060,9 @@ pin_repos_with_own_hooks() {
       pinned=$((pinned + 1))
       info "Pinned local hooks for $(dirname "$git_dir")"
     fi
-  done < <(
-    # Search home directories, /opt, /srv, /var, /Users for git repos
-    # Limited depth to avoid crawling deep dependency trees
-    # macOS: ~/Developer, ~/Sites, ~/git live under /Users
-    for base in /home /opt /srv /var/www /var/repo /Users; do
-      if [[ -d "$base" ]]; then
-        # find may return non-zero on permissioned subdirectories (e.g.
-        # /var/www without read access). These are expected access errors
-        # for a non-root search — not a pipeline failure. || true signals
-        # that find's exit code is not meaningful for flow control here.
-        find "$base" \( -name ".git" -type d -o -name "*.git" -type d \) -maxdepth 8 -print0 2>/dev/null || true
-      fi
-    done
-  )
+  done < "$tmp_gitlist"
+
+  rm -f "$tmp_gitlist"
 
   if [[ "$pinned" -gt 0 ]]; then
     info "  → ${pinned} repo(s) with local hooks preserved"
