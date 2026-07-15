@@ -25,11 +25,11 @@ from urllib.error import URLError
 HOME = Path.home()
 
 # ── Source config from .env ─────────────────────────────────
-CORTEX_BUS_URL = os.environ.get("CORTEX_BUS_URL", "")
-CORTEX_BUS_TOKEN = os.environ.get("CORTEX_BUS_TOKEN", "")
+CORTEX_INBOX_URL = os.environ.get("CORTEX_INBOX_URL", "")
+CORTEX_INBOX_AUTH = os.environ.get("CORTEX_INBOX_AUTH", "")
 
 env_file = HOME / "hermes-cortex" / ".env"
-if env_file.exists() and (not CORTEX_BUS_URL or not CORTEX_BUS_TOKEN):
+if env_file.exists() and (not CORTEX_INBOX_URL or not CORTEX_INBOX_AUTH):
     try:
         for line in env_file.read_text().splitlines():
             line = line.strip()
@@ -37,15 +37,15 @@ if env_file.exists() and (not CORTEX_BUS_URL or not CORTEX_BUS_TOKEN):
                 continue
             k, v = line.split("=", 1)
             v = v.strip().strip("'\"")
-            if k == "CORTEX_BUS_URL" and not CORTEX_BUS_URL:
-                CORTEX_BUS_URL = v
-            elif k == "CORTEX_BUS_TOKEN" and not CORTEX_BUS_TOKEN:
-                CORTEX_BUS_TOKEN = v
+            if k == "CORTEX_INBOX_URL" and not CORTEX_INBOX_URL:
+                CORTEX_INBOX_URL = v
+            elif k == "CORTEX_INBOX_AUTH" and not CORTEX_INBOX_AUTH:
+                CORTEX_INBOX_AUTH = v
     except Exception:
         pass
 
 # ── Silent exit if not configured ─────────────────────────
-if not CORTEX_BUS_URL or not CORTEX_BUS_TOKEN:
+if not CORTEX_INBOX_URL or not CORTEX_INBOX_AUTH:
     sys.exit(0)
 
 STATE_DIR = HOME / ".hermes-cortex" / "state"
@@ -98,22 +98,23 @@ for i, s in enumerate(manifest.get("skills", [])):
 
 body_text = "\n".join(lines)
 
-# ── Send via Agent Bus PGMQ API ─────────────────────────────
-# Bus expects: POST /api/pgmq/send with Bearer token
-# Body: {"queue": "moses-inbox", "message": {...}, "priority": 0}
-bus_url = CORTEX_BUS_URL.rstrip("/")
-api_url = f"{bus_url}/api/pgmq/send"
+# ── Send via Agent Bus Inbox API ─────────────────────────────
+# Inbox expects: POST /api/send with Basic auth (user:pass)
+# Body: {"from": ..., "to": ..., "subject": ..., "body": ..., "topic": ...}
+import base64
+
+bus_url = CORTEX_INBOX_URL.rstrip("/")
+api_url = f"{bus_url}/api/send"
+
+# Build Basic auth header from user:pass
+auth_b64 = base64.b64encode(CORTEX_INBOX_AUTH.encode()).decode()
 
 payload = {
-    "queue": "moses-inbox",
-    "message": {
-        "from": hostname,
-        "subject": f"Skill Report: {custom_total} custom skills",
-        "body": body_text,
-        "topic": "reports",
-        "priority": "normal",
-    },
-    "priority": 0,
+    "from": hostname,
+    "to": "moses",
+    "subject": f"Skill Report: {custom_total} custom skills",
+    "body": body_text,
+    "topic": "reports",
 }
 
 req = Request(
@@ -121,14 +122,14 @@ req = Request(
     data=json.dumps(payload).encode("utf-8"),
     headers={
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {CORTEX_BUS_TOKEN}",
+        "Authorization": f"Basic {auth_b64}",
     },
     method="POST",
 )
 
 try:
     urlopen(req, timeout=30)
-    print(f"Sent {custom_total} custom skills from {hostname} to Moses bus", flush=True)
+    print(f"Sent {custom_total} custom skills from {hostname} to Moses inbox", flush=True)
 except URLError as e:
     print(f"ERR: Failed to send skill report: {e}", flush=True)
     sys.exit(1)
