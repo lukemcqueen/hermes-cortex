@@ -88,7 +88,7 @@ Every word earns its place. Prefer small verified actions over big plans. Resear
 
 ### 8. Agent Cron Management
 
-Only the orchestrator (Moses) has the `cronjob` MCP tool. If you need a cron created, updated, or removed, send an inbox message to Moses with subject `🔧 CRON: create|update|remove`. Moses will process on his next inbox tick.
+Only the orchestrator (Moses) and backup orchestrator (Esther) have the `cronjob` MCP tool. If another agent needs a cron created, updated, or removed, send an inbox message to Moses with subject `🔧 CRON: create|update|remove`. Moses will process on his next inbox tick.
 
 ### 9. Protect the System
 
