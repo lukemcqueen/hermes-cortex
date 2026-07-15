@@ -286,8 +286,8 @@ def main():
     quiet = "--quiet" in sys.argv or "-q" in sys.argv
 
     if len(sys.argv) < 2 or (quiet and len([a for a in sys.argv[1:] if a not in ("--quiet", "-q")]) == 0):
-        # No args (or only --quiet) = default to build (no_agent cron usage)
-        cmd_build(quiet=quiet)
+        # No args (or only --quiet) = default to build in quiet mode (no_agent cron usage)
+        cmd_build(quiet=True)
         return
 
     if sys.argv[1] in ("--help", "-h"):
