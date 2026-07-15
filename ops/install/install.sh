@@ -2103,7 +2103,7 @@ else
   mkdir -p "$DASHBOARD_DEST"
   
   # Copy from repo
-  REPO_DASHBOARD="${SCRIPT_DIR}/src/dashboard"
+  REPO_DASHBOARD="$(dirname "$SCRIPT_DIR")/services/dashboard"
   if [[ -d "$REPO_DASHBOARD" ]]; then
     cp -r "$REPO_DASHBOARD/"* "$DASHBOARD_DEST/"
   else
@@ -2312,7 +2312,7 @@ if [[ -d "$OFFLINE_REPO" ]]; then
   info "  Installed offline knowledge cascade tool + lesson database"
 
   # Copy project-map tool
-  PROJECT_MAP_REPO="${SCRIPT_DIR}/src/project-map"
+  PROJECT_MAP_REPO="$(dirname "$SCRIPT_DIR")/scripts/project-map"
   if [[ -d "$PROJECT_MAP_REPO" ]]; then
     cp "${PROJECT_MAP_REPO}/project_map.py" "$OFFLINE_DEST/"
     chmod +x "${OFFLINE_DEST}/project_map.py"

@@ -583,14 +583,14 @@ Two layers: `auth_basic` at nginx (server-level), Bearer tokens at the bus (per-
 
 ### Public agent card (optional)
 
-To enable A2A discovery without auth, add a `location = /.well-known/agent-card.json` with `auth_basic off` before `location /`. The `deploy/nginx/agent-bus-nginx.conf` template has this pre-defined but commented out.
+To enable A2A discovery without auth, add a `location = /.well-known/agent-card.json` with `auth_basic off` before `location /`. The `ops/services/agent-bus/nginx.conf` template has this pre-defined but commented out.
 
 ---
 
 || Path | Purpose |
 ||------|---------|
-|| `src/agent_bus/queue.sql` | Postgres schema | *Moved to `ops/services/agent-bus/schema/queue.sql`* |
-|| `src/agent_bus/auth.sql` | Postgres schema | *Moved to `ops/services/agent-bus/schema/auth.sql`* |
+|| `ops/services/agent-bus/schema/queue.sql` | Postgres schema | |
+|| `ops/services/agent-bus/schema/auth.sql` | Postgres schema | |
 || `ops/services/agent-bus/schema/workflow.sql` | Workflow engine + A2A schema | |
 || `runtime/agent_bus/queue.py` | Python `BusClient` for queue operations | |
 || `runtime/agent_bus/server.py` | FastAPI server (port 8905) | |
@@ -612,5 +612,5 @@ To enable A2A discovery without auth, add a `location = /.well-known/agent-card.
 || `ops/scripts/inbox/workflow-sla-watchdog.py` | Workflow SLA watchdog cron | |
 || `ops/scripts/inbox/test-bus.py` | Integration test suite (50 tests) | |
 || `runtime/agent_bus/scripts/issue-agent-token.py` | Token generation CLI | |
-|| `deploy/nginx/agent-bus-nginx.conf` | nginx mTLS + TLS 1.3 config template | |
+|| `ops/services/agent-bus/nginx.conf` | nginx mTLS + TLS 1.3 config template | |
 || `ops/scripts/install/install-bus.sh` | Complete setup script | |

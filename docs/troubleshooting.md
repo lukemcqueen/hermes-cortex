@@ -166,7 +166,7 @@ pip3 install flask
 
 **Symptom:** Clicking "Langfuse ↗" or "View All →" on the dashboard opens a broken link.
 
-**Fix:** Edit `src/dashboard/static/index.html` and update the `LANGFUSE_HOST` and `LANGFUSE_EXTERNAL` constants at the top of the `<script>` section:
+**Fix:** Edit `ops/services/dashboard/static/index.html` and update the `LANGFUSE_HOST` and `LANGFUSE_EXTERNAL` constants at the top of the `<script>` section:
 
 ```javascript
 const LANGFUSE_HOST = 'http://localhost:3000';      // Your internal Langfuse URL
@@ -457,7 +457,7 @@ launchctl unload ~/Library/LaunchAgents/ollama.plist
 launchctl load ~/Library/LaunchAgents/ollama.plist
 ```
 
-**On fresh install:** `install-ollama.sh` now includes these env vars by default (macOS and Linux service writers). Run `bash ~/hermes-cortex/src/scripts/install/install-ollama.sh` to regenerate the service file.
+**On fresh install:** `install-ollama.sh` now includes these env vars by default (macOS and Linux service writers). Run `bash ~/hermes-cortex/ops/scripts/install/install-ollama.sh` to regenerate the service file.
 
 ---
 
@@ -683,7 +683,7 @@ The `loop-gov-mcp.py` server blocks `write_file`, `patch`, `terminal`, `skill_ma
 hermes mcp list | grep loop-governance
 
 # 2. If not registered, add it:
-hermes mcp add loop-governance --command python3 --args ~/hermes-cortex/src/mcp-servers/loop-gov-mcp.py
+hermes mcp add loop-governance --command python3 --args ~/hermes-cortex/runtime/mcp-servers/loop-gov-mcp.py
 
 # 3. Restart the Hermes session for the MCP server to load
 #    → Exit and re-enter the chat session
@@ -767,7 +767,7 @@ cortex-update --status
 
 ```python
 # In ~/.hermes-cortex/scripts/mcp-servers/loop-gov-mcp.py
-# AND ~/hermes-cortex/src/mcp-servers/loop-gov-mcp.py
+# AND ~/hermes-cortex/runtime/mcp-servers/loop-gov-mcp.py
 
 # Ensure hermes_models.py is importable from any Hermes deployment
 _HERMES_HOME = Path.home() / ".hermes"
@@ -818,7 +818,7 @@ ls -la ~/.hermes/runtime/hermes/governance-enforcer/  # should show plugin.yaml,
 
 **Root cause:** The `get_scored_tasks()` function in the old `score-auditor.py` searched for DB tables named `cycles` or `cycle_scores`, but the actual table created by `loop_db.py` is named `loop_cycles`. This caused `get_scored_tasks()` to return an empty set every time, making every modified file appear "unscored."
 
-**Status:** `score-auditor` was renamed to `governance-auditor` and fully rewritten. The new implementation (`src/scripts/manage/governance-auditor.py`) uses a file-system scan approach, not `get_scored_tasks()`, so this bug no longer applies.
+**Status:** `score-auditor` was renamed to `governance-auditor` and fully rewritten. The new implementation (`ops/scripts/manage/governance-auditor.py`) uses a file-system scan approach, not `get_scored_tasks()`, so this bug no longer applies.
 
 ### 22. Session cache / cache_search not working
 

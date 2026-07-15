@@ -309,17 +309,16 @@ offline_knowledge query "symptoms of malaria"
 |--------|---------|
 | `ops/install/install.sh` | **Main installer** (moved from root in v2.0.0) |
 | `ops/install/quick-start.sh` | Quickstart (moved from root in v2.0.0) |
-| `cortex-update.sh` | Deploy scripts from repo to `~/.hermes/scripts/` — run after every `git pull` |
-| `cortex-doctor.py` | System diagnostics, fix common issues |
-| `install-score-hook.sh` | Install/remove pre-commit scoring hooks on any repo |
-| `install-crons.sh` | Install/remove all 37 maintenance cron jobs |
-| `cleanup-stale-locks.sh` | Remove orphaned governance locks (>12h, folded into `governance-auditor`) |
-| `hermes-update.sh` | Silent nightly update of Hermes Agent |
-| `hermes-cortex-sync.sh` | Nightly git pull of hermes-cortex repo |
-| `nginx-threat-pipeline.sh` | Daily nginx log scan + auto-ban repeat attackers |
-| `deploy-blocked-ips.sh` | Deploy shared blocklist across fleet |
-| `analyze-failures.py` | Analyze cron failure patterns |
-| `template-diff-check.py` | Detect template drift across agents |
+| `ops/scripts/cortex-update.sh` | Deploy scripts from repo to `~/.hermes/scripts/` — run after every `git pull` |
+| `ops/scripts/manage/cortex-doctor.py` | System diagnostics, fix common issues |
+| `ops/scripts/install/install-score-hook.sh` | Install/remove pre-commit scoring hooks on any repo |
+| `ops/scripts/install-crons.sh` | Install/remove all 37 maintenance cron jobs |
+| `ops/scripts/manage/hermes-update.sh` | Silent nightly update of Hermes Agent |
+| `ops/scripts/manage/hermes-cortex-sync.sh` | Nightly git pull of hermes-cortex repo |
+| `ops/scripts/manage/nginx-threat-pipeline.sh` | Daily nginx log scan + auto-ban repeat attackers |
+| `ops/scripts/manage/deploy-blocked-ips.sh` | Deploy shared blocklist across fleet |
+| `ops/scripts/manage/analyze-failures.py` | Analyze cron failure patterns |
+| `ops/scripts/manage/template-diff-check.py` | Detect template drift across agents |
 
 ---
 

@@ -51,7 +51,7 @@ After verifying: cycle_query(task_id="story-name") ← review the cycle
 | `DB locked` | Concurrent score-cycle process | Wait and retry, or `rm ~/.hermes-cortex/data/loop-governance.db-journal` |
 | `score-cycle not found` | Symlink missing | `bash ~/hermes-cortex/core/governance/setup.sh --symlinks-only` |
 | `warning: all tests failed — score may be inaccurate` | Test suite broken | Fix tests first, then re-score |
-| MCP tool returns `error` | MCP server not registered | `hermes mcp add --command python3 --args ~/hermes-cortex/src/mcp-servers/loop-gov-mcp.py loop-governance` |
+| MCP tool returns `error` | MCP server not registered | `hermes mcp add --command python3 --args ~/hermes-cortex/runtime/mcp-servers/loop-gov-mcp.py loop-governance` |
 
 **Fallback protocol:** If scoring is genuinely blocked (Ollama down, DB corrupt, network unreachable):
 1. Diagnose with `bash ~/.hermes-cortex/tools/loop-governance/verify.sh`
@@ -65,7 +65,7 @@ After verifying: cycle_query(task_id="story-name") ← review the cycle
 bash ~/hermes-cortex/core/governance/setup.sh
 
 # Register MCP server (so agents can use MCP tools)
-hermes mcp add --command python3 --args ~/hermes-cortex/src/mcp-servers/loop-gov-mcp.py loop-governance
+hermes mcp add --command python3 --args ~/hermes-cortex/runtime/mcp-servers/loop-gov-mcp.py loop-governance
 
 # Pull embedding model (required for scoring)
 ollama pull nomic-embed-text:v1.5

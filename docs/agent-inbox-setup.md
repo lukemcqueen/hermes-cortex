@@ -92,7 +92,7 @@ Every agent needs these two things to communicate via the inbox:
 agent-inbox:
   command: python3
   args:
-    - ~/hermes-cortex/src/mcp-servers/inbox-mcp.py
+    - ~/hermes-cortex/runtime/mcp-servers/inbox-mcp.py
   enabled: true
 ```
 
@@ -149,7 +149,7 @@ Only run this if you are a **designated server machine** that hosts the inbox ba
 
 ### 2a. Deploy server.py
 
-`cortex-update.sh` copies `src/agent-inbox/server.py` to `~/.hermes-cortex/agent-inbox/server.py`. Run:
+`cortex-update.sh` copies `ops/services/agent-inbox/server.py` to `~/.hermes-cortex/agent-inbox/server.py`. Run:
 
 ```bash
 bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all
@@ -171,7 +171,7 @@ launchctl load ~/Library/LaunchAgents/com.hermes.agent-inbox.plist
 
 **Manual (for testing):**
 ```bash
-cd ~/hermes-cortex/src/agent-inbox
+cd ~/hermes-cortex/ops/services/agent-inbox
 python3 -m uvicorn server:app --host 127.0.0.1 --port 8903
 ```
 
@@ -301,7 +301,7 @@ If upgrading from the standalone A2A server (pre-2026-07-05):
 
 1. **Stop old A2A server** — `kill $(lsof -t -i:8906)`
 2. **Remove old systemd service** — `sudo systemctl disable --now a2a-server; sudo rm /etc/systemd/system/a2a-server.service`
-3. **Update inbox server.py** — `cp src/agent-inbox/server.py ~/.hermes-cortex/agent-inbox/server.py`
+3. **Update inbox server.py** — `cp ops/services/agent-inbox/server.py ~/.hermes-cortex/agent-inbox/server.py`
 4. **Deploy MCP server** — `cp runtime/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/agent-bus-mcp.py`
 5. **Disable old a2a-bridge MCP** — set `enabled: false` in `~/.hermes/config.yaml`
 6. **Restart inbox server** — `kill <pid>; cd ~/.hermes-cortex/agent-inbox && python3 -m uvicorn server:app --host 127.0.0.1 --port 8903`

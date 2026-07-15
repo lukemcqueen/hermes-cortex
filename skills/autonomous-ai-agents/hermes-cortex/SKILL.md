@@ -421,7 +421,7 @@ nginx -t && nginx -s reload
 
 ### Loop-Governance Module — Setup Pitfalls
 
-The loop-governance module (`src/loop-governance/`) was added for TDD cycle scoring. First-time setup must account for these issues:
+The loop-governance module (`core/governance/`) was added for TDD cycle scoring. First-time setup must account for these issues:
 
 **1. macOS default bash (3.2) lacks `declare -A`**
 
@@ -437,13 +437,13 @@ The repo files are named with underscores (`score_cycle.py`, `loop_feedback.py`,
 
 ```bash
 # CORRECT
-ln -sf ~/hermes-cortex/src/loop-governance/score_cycle.py ~/.local/bin/score-cycle
-ln -sf ~/hermes-cortex/src/loop-governance/loop_feedback.py ~/.local/bin/loop-feedback
-ln -sf ~/hermes-cortex/src/loop-governance/auto_apply.py ~/.local/bin/auto-apply
-ln -sf ~/hermes-cortex/src/loop-governance/loop_config.py ~/.local/bin/loop-config
+ln -sf ~/hermes-cortex/core/governance/score_cycle.py ~/.local/bin/score-cycle
+ln -sf ~/hermes-cortex/core/governance/loop_feedback.py ~/.local/bin/loop-feedback
+ln -sf ~/hermes-cortex/core/governance/auto_apply.py ~/.local/bin/auto-apply
+ln -sf ~/hermes-cortex/core/governance/loop_config.py ~/.local/bin/loop-config
 
 # WRONG — file doesn't exist
-ln -sf ~/hermes-cortex/src/loop-governance/score-cycle.py ~/.local/bin/score-cycle  # NO
+ln -sf ~/hermes-cortex/core/governance/score-cycle.py ~/.local/bin/score-cycle  # NO
 ```
 
 If you symlink to a nonexistent target, bash will follow the dead symlink when using `cat >` and create a stub file at the target path. This corrupts the source file. Verify all targets exist:
@@ -461,7 +461,7 @@ After running `setup.sh`, register the loop-governance MCP server so agents can 
 ```bash
 hermes mcp add \
   --command $HOME/.hermes/mcp-venv/bin/python3 \
-  --args ~/hermes-cortex/src/mcp-servers/loop-gov-mcp.py \
+  --args ~/hermes-cortex/runtime/mcp-servers/loop-gov-mcp.py \
   loop-governance
 ```
 
@@ -512,7 +512,7 @@ If the system's decision was wrong, use `loop-feedback override <id> --note "...
 
 **Deployment convention:** New enforcement scripts must be registered in `cortex-update.sh` via `register()`. They deploy to `~/.hermes-cortex/scripts/` — the cron scheduler resolves scripts from there via `SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"`. Do NOT manually copy to `~/.hermes/scripts/`; use `cortex-update.sh --force-all` to deploy properly.
 
-**Verification:** Run `bash ~/hermes-cortex/src/loop-governance/verify.sh` — expects 14/14 passed, 0 warnings, 0 failures.
+**Verification:** Run `bash ~/hermes-cortex/core/governance/verify.sh` — expects 14/14 passed, 0 warnings, 0 failures.
 
 **Template for new projects:** Copy the standalone template from the hermes-cortex repo's `docs/templates/AGENTS-loop-governance.md` to add loop-governance rules to any project's AGENTS.md. See skill reference `agents-loop-governance-template.md`.
 
@@ -531,8 +531,8 @@ ls ~/.pyenv/versions/ | grep '^3\\.1[2-9]'
 
 # Update shebang:
 sed -i '' '1s|#!/usr/bin/env python3|#!/Users/\$(whoami)/.local/bin/python3.12|' \\
-  ~/hermes-cortex/src/loop-governance/score_cycle.py \
-  ~/hermes-cortex/src/loop-governance/loop_feedback.py
+  ~/hermes-cortex/core/governance/score_cycle.py \
+  ~/hermes-cortex/core/governance/loop_feedback.py
 ```
 
 When deploying to a new machine, verify `python3 --version` resolves to 3.12+. The `install.sh` probes `python3 python3.12` (plus any available 3.13/3.14) in order and selects the first 3.12+ with sqlite3 extension support.
@@ -548,7 +548,7 @@ hermes cron list | grep "inbox-processor\\|inbox-watchdog"
 
 ### cortex-update.sh offline_knowledge symlink blocks deploy
 
-**PROBLEM:** `cortex-update.sh --force-all` maps `~/.hermes-cortex/bin/offline_knowledge` from the repo's `src/offline/offline_knowledge.py`. If the `~/.hermes-cortex/bin/` directory does not exist, the symlink creation fails with:
+**PROBLEM:** `cortex-update.sh --force-all` maps `~/.hermes-cortex/bin/offline_knowledge` from the repo's `ops/offline/offline_knowledge.py`. If the `~/.hermes-cortex/bin/` directory does not exist, the symlink creation fails with:
 ```
 ln: $HOME/.hermes-cortex/bin/offline_knowledge: No such file or directory
 ```
@@ -604,8 +604,8 @@ launchctl list com.hermes.health-server
 ```
 
 **Affected files in the cortex repo (fixes applied in commit e1ff1c7):**
-- `src/scripts/com.hermes.health-server.plist` — paths used `$HOME`
-- `src/dashboard/com.hermes.cortex-dashboard.plist` — paths used `CORTEX_HOME`
+- `ops/scripts/com.hermes.health-server.plist` — paths used `$HOME`
+- `ops/services/dashboard/com.hermes.cortex-dashboard.plist` — paths used `CORTEX_HOME`
 
 **PREVENT:** Before creating or modifying any launchd plist, verify every path is
 a hardcoded absolute path for the target user. The `~/` tilde prefix does work
@@ -743,7 +743,7 @@ project/.hermes-cortex/.seed-backups/
 |-----------|----------------|--------|
 | AGENTS.md | Templated agent guidelines with project name, date, commit. Includes contract rules 1-11 and loop-gov scoring section. | `docs/templates/AGENTS.seed.md` or custom `--template` |
 | .hermes-cortex | Dir structure: sessions/archive/, memory/, skills/ + .gitignore (excludes memory, db, secrets). | Built-in |
-| pre-commit | Loop-governance pre-commit hook via install-score-hook.sh | `src/scripts/pre-commit-score` |
+| pre-commit | Loop-governance pre-commit hook via install-score-hook.sh | `ops/scripts/pre-commit-score` |
 | loop-gov | score-cycle + loop-feedback wrappers in .hermes-cortex/loop-governance/ | Wrapper scripts |
 | skills | Selected skills from ~/.hermes/skills/ into project's .hermes-cortex/skills/ | ~/.hermes/skills/ (via symlink) |
 
@@ -791,7 +791,7 @@ skills/ (canonical, ~40 skills)
                                             ~110 ecosystem skills untouched by sync
 ```
 
-**Key relationship:** `~/.hermes-cortex/skills/` is a symlink → `~/.hermes/skills/`. When `cortex-update.sh` calls `sync_skills()`, it copies from `src/skills/` to `~/.hermes-cortex/skills/`, the write resolves through the symlink to `~/.hermes/skills/`. Non-cortex skills (apple/, creative/, gaming/, etc.) are completely untouched — `sync_skills()` only overwrites files whose checksums differ from the source.
+**Key relationship:** `~/.hermes-cortex/skills/` is a symlink → `~/.hermes/skills/`. When `cortex-update.sh` calls `sync_skills()`, it copies from `skills/` to `~/.hermes-cortex/skills/`, the write resolves through the symlink to `~/.hermes/skills/`. Non-cortex skills (apple/, creative/, gaming/, etc.) are completely untouched — `sync_skills()` only overwrites files whose checksums differ from the source.
 
 ### Contrast with Script Deployment
 
@@ -809,10 +809,10 @@ The `sync_skills()` function in `cortex-update.sh` (lines 442-479) uses a checks
 
 ```bash
 # Called during every --force-all or delta update
-# Compares SHA256 of src/skills/<file> vs installed destination
+# Compares SHA256 of skills/<file> vs installed destination
 # Only copies when checksums differ — preserves non-cortex skills
 sync_skills() {
-  local skill_repo="${REPO_DIR}/src/skills"
+  local skill_repo="${REPO_DIR}/skills"
   local skill_dest="${HERMES_HOME}/skills"  # resolves via symlink → ~/.hermes/skills/
   
   while IFS= read -r -d '' skill_file; do
@@ -831,8 +831,8 @@ sync_skills() {
 ```
 
 The delta engine means:
-- Only skills in `src/skills/` are ever touched — ~110 unique ecosystem skills (apple/, creative/, gaming/, mlops/, testing/) are completely safe
-- New skills added to `src/skills/` get installed on next `cortex-update.sh --force-all`
+- Only skills in `skills/` are ever touched — ~110 unique ecosystem skills (apple/, creative/, gaming/, mlops/, testing/) are completely safe
+- New skills added to `skills/` get installed on next `cortex-update.sh --force-all`
 - Updated skill files (checksum changed) get overwritten automatically
 - No manual copying needed — reverse direction (repo ← ~/.hermes/skills/) is for when you create a skill in the agent and want to commit it to the repo
 
@@ -1092,11 +1092,11 @@ After pulling latest cortex code and running `cortex-update.sh`, verify the upda
 
 ### 1. Check Deployment Map Completeness
 
-New files in `scripts/` (repo root) are NOT auto-registered unless they have a `register()` line in `cortex-update.sh`. Files in `src/scripts/` are only registered if explicitly listed. Run:
+New files in `scripts/` (repo root) are NOT auto-registered unless they have a `register()` line in `cortex-update.sh`. Files in `ops/scripts/` are only registered if explicitly listed. Run:
 
 ```bash
 cd ~/hermes-cortex
-git diff --name-only HEAD~1..HEAD | grep "^scripts/\|^src/"
+git diff --name-only HEAD~1..HEAD | grep "^scripts/\|^ops/"
 ```
 
 Then cross-reference against the register map in `cortex-update.sh`:
@@ -1105,9 +1105,9 @@ Then cross-reference against the register map in `cortex-update.sh`:
 grep "^register " ~/.hermes/scripts/cortex-update.sh | grep -o '"[^"]*"' | head -80
 ```
 
-Any new file in the diff that isn't in the register map won't deploy automatically. Add the missing `register()` line and re-deploy.
+git diff --name-only HEAD~1..HEAD | grep "^scripts/\|^ops/"
 
-**Common misses:** scripts at `scripts/` root level (e.g. `scripts/moses-inbox-remediate.sh`), new skill directories under `src/skills/` (these ARE auto-synced by `sync_skills()` — no register line needed).
+**Common misses:** scripts at `scripts/` root level (e.g. `scripts/moses-inbox-remediate.sh`), new skill directories under `skills/` (these ARE auto-synced by `sync_skills()` — no register line needed).
 
 ### 2. Test Companion Scripts
 
@@ -1145,8 +1145,8 @@ If missing, create them per the new skill's setup instructions. Common patterns:
 The most common drift: installed watchdog scripts lag behind the repo. The `--force-all` flag catches these, but verify:
 
 ```bash
-diff ~/hermes-cortex/src/scripts/health/system-alert-watchdog.py ~/.hermes/scripts/system-alert-watchdog.py
-diff ~/hermes-cortex/src/scripts/health/service-recovery.py ~/.hermes/scripts/service-recovery.py
+diff ~/hermes-cortex/ops/scripts/health/system-alert-watchdog.py ~/.hermes/scripts/system-alert-watchdog.py
+diff ~/hermes-cortex/ops/scripts/health/service-recovery.py ~/.hermes/scripts/service-recovery.py
 ```
 
 Zero output = in sync. Any diff means the installed version is stale.

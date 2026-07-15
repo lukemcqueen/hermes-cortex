@@ -307,6 +307,18 @@ def check_repo(res):
     else:
         res.add("Repo sync", "PASS", "up to date with origin/main")
 
+    # Check AGENTS.md is synced to ~/.hermes/AGENTS.md
+    hermes_agents = Path.home() / ".hermes" / "AGENTS.md"
+    repo_agents = CORTEX_REPO / "AGENTS.md"
+    if not hermes_agents.exists():
+        res.add("AGENTS.md sync", "WARN", "~/.hermes/AGENTS.md missing",
+                "Run: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
+    elif hermes_agents.stat().st_mtime < repo_agents.stat().st_mtime:
+        res.add("AGENTS.md sync", "WARN", "~/.hermes/AGENTS.md is stale",
+                "Run: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
+    else:
+        res.add("AGENTS.md sync", "PASS")
+
 
 def check_skills(res):
     """2. Skills manifest: skills.yaml exists, valid YAML, has required always skills."""

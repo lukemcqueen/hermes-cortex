@@ -69,7 +69,7 @@ To migrate a project from file-copy to manifest:
 rm -rf .hermes-cortex/skills/*
 
 # 2. Re-seed to get the manifest
-bash ~/hermes-cortex/src/scripts/install/seed-project.sh --project=/path/to/project
+bash ~/hermes-cortex/ops/scripts/install/seed-project.sh --project=/path/to/project
 ```
 
 ## Generating the manifest
@@ -78,7 +78,7 @@ Run `seed-project.sh` which writes `.hermes-cortex/skills.yaml` with the default
 skill set. Use `--skill-refs` to customize:
 
 ```bash
-bash ~/hermes-cortex/src/scripts/install/seed-project.sh \
+bash ~/hermes-cortex/ops/scripts/install/seed-project.sh \\
   --project=~/Developer/my-api \
   --skill-refs=change-test-loop,code-review,systematic-debugging
 ```

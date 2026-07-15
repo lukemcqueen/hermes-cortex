@@ -94,7 +94,7 @@ agent-registry.json
 .governance-*.json
 /deploy/
 ops/scripts/
-plugins/
+# plugins/ — removed 2026-07: this dir never existed at root
 runtime/
 !ops/scripts/agent/orch-fleet-watchdog.py
 !ops/scripts/agent/contact-moses.sh
