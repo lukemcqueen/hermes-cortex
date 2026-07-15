@@ -12,12 +12,12 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
 | `AGENTS.md` | Agent guidelines — read by AI tools on session start |
 | `docs/setup-reference.md` | Deployment setup across Luke's multi-machine fleet |
-||| `docs/operations-reference.md` | Operations — inbox architecture, Agent Bus, offline code, common tasks ||
+|| `docs/operations-reference.md` | Operations — inbox architecture, Agent Bus, offline code, common tasks |
 || `docs/agent-onboarding.md` | Agent onboarding — step-by-step guide for client-only agents to connect to Moses and the fleet |
 || `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
 | `docs/env-vars.md` | Environment variable reference — CORTEX_* vars, SSL, deploy scripts |
 | `install.sh` | Single-command installer (idempotent, safe to re-run) |
-| `src/scripts/ (flat shared libs), src/scripts/agent/, health/, install/, inbox/, manage/install/check-system.sh` | System compatibility check before installing |
+|| `ops/scripts/` | Health checks, watchdogs, governance, installers — 139 scripts across 5 subdirectories |
 
 ## Security
 
@@ -60,9 +60,9 @@ A lightweight map of all project documents. Files are grouped by topic.
 ||| `docs/fleet-reference.md` | Deployment-specific cron schedule reference — update, status, deploy crons |
 ||| `docs/skills-manifest-reference.md` | Skills manifest — how to manage project-level skills via YAML |
 | `docs/reference/skill-loading.md` | Skill loading protocol — every agent loads skills on session start |
-|| `docs/gbrain-stale-lock-detection.md` | gbrain stale lock file detection & auto-recovery — root cause, automated fix via service-recovery, manual diagnostics |
-|| `docs/cron-schedules.md` | **Canonical cron schedule reference** — every cron, schedule, type, script, delivery. Update whenever schedules change. |
-|| `docs/cron-format-standard.md` | **Cron output format standard** — required format for all LLM-driven cron outputs: header, phases, cost footer, [SILENT]. Cross-references the cron-format-standard skill. |
+||| `docs/gbrain-stale-lock-detection.md` | gbrain stale lock file detection & auto-recovery — root cause, automated fix via service-recovery, manual diagnostics |
+||| `docs/cron-schedules.md` | **Canonical cron schedule reference** — every cron, schedule, type, script, delivery. Update whenever schedules change. |
+||| `docs/cron-format-standard.md` | **Cron output format standard** — required format for all LLM-driven cron outputs: header, phases, cost footer, [SILENT]. Cross-references the cron-format-standard skill. |
 | `docs/cron-job-recipes.md` | 10 reusable cron recipes — Bible reading, system alerts, memory pruning, morning briefing, and more |
 | `docs/computer-specs.md` | Hardware specs guide — RAM tiers, recommended models (Intel vs Apple Silicon), ZIM content bundles |
 | `deploy/docker-compose.langfuse.yml` | Langfuse v3 Docker stack — ClickHouse, MinIO, Redis, Postgres |
@@ -72,7 +72,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `docs/offline-travel-stack.md` | Offline knowledge scenarios — jungle travel, development, kid learning |
-| `docs/offline-code-tutorials/` | Per-language code snippets in `ops/offline/code-corpus/` (26 languages, 386 files) |
+|| `ops/offline/code-corpus/` | Per-language code snippets (26 languages, 386 files) — indexed by `offline_code` tool |
 | `ops/offline/SKILL.md` | Offline-knowledge skill — cascade cache + kiwix ZIM usage protocol + Code Assistant |
 | `ops/offline/prep-bible.sh` | Bible translation downloader — 55+ languages |
 | `ops/offline/prep-hymns.sh` | Public domain hymn downloader — scores (PDF), notation (ABC), audio (MIDI) |
@@ -91,7 +91,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 |-----|-------------|
 || `docs/SKILLS-MANIFEST.md` | Version manifest for all skills — planning pipeline + execution methodology |
 || `docs/seeding-brain-content.md` | Brain directory templates and starter content — get from 0 pages to searchable knowledge |
-|| `src/skills/` | Canonical skills directory — organized by domain in the repo |
+|| `runtime/skills/` | Canonical skills directory — organized by domain in the repo |
 
 ## Templates
 

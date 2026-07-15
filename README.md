@@ -55,7 +55,7 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 
 ### 🩺 Self-Healing Operations
 
-**37 cron jobs** keep the system healthy without human intervention:
+**49 cron jobs** keep the system healthy without human intervention:
 
 | Category | Crons | What |
 |----------|-------|------|
@@ -221,7 +221,7 @@ CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 | 5 | **gbrain sync** | Launchd/systemd daemon — syncs brain every 2 minutes |
 | 6 | **Observability** † | Langfuse + Cortex Dashboard |
 | 7 | **`/brain` plugin** | Hermes slash command for gbrain queries |
-| 8 | **Scripts** | 127+ scripts: health checks, watchdogs, sync, governance, security |
+| 8 | **Scripts** | 139+ scripts: health checks, watchdogs, sync, governance, security |
 | 9 | **Plugin enable** | Auto-activates in Hermes config |
 | 10 | **Skills** | 8+ shared skills installed to `~/.hermes/skills/` |
 | 11 | **Web Cache** | Semantic web result cache (sqlite-vec + Ollama) |
@@ -229,7 +229,7 @@ CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 | 13 | **Offline Reader** | `python3 ops/offline/offline-reader.py` — zero-dependency web UI |
 | 14 | **Code Corpus** | 366 snippets across 32 categories, 19 languages; RAG index via Ollama |
 | 15 | **Auto-Update** | `auto-update.sh` — silent cron-based content updater |
-| 16 | **Cron Jobs** | 37 maintenance crons: health, security, sync, recovery, reporting |
+| 16 | **Cron Jobs** | 49 maintenance crons: health, security, sync, recovery, reporting |
 | 17 | **nginx** † | Reverse proxy for Langfuse + Dashboard + hardening |
 | | *† Server profile only* | |
 
