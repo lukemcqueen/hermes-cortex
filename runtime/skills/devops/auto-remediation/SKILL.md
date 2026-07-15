@@ -1,6 +1,7 @@
 ---
 name: auto-remediation
 description: Auto-remediate cron job failures, agent inbox requests, and service issues. Checks every 5m and fixes known failure patterns silently.
+related_skills: [inbox-remediation, cron-quality-gate, orch-weekly-auto-fix, offline-code]
 ---
 
 # Auto-Remediation

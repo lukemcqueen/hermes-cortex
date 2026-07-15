@@ -1,9 +1,9 @@
-name: product-requirements
 ---
+name: product-requirements
 title: product-requirements
 version: 1.0.0
 type: skill
-description: Concise 1-page PRD template for lightweight product requirements documentation
+description: "Concise 1-page PRD template: problem, scope, functional/non-functional requirements, edge cases, acceptance criteria, risks, rollout strategy, and success metrics."
 author: Hermes Agent
 tags: [prd, product, requirements, template, documentation]
 ---

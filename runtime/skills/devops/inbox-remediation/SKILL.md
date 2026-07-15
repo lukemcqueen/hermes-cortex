@@ -7,7 +7,7 @@ license: MIT
 metadata:
   hermes:
     tags: [cron, remediation, inbox, multi-agent, auto-fix]
-    related_skills: [orch-weekly-auto-fix, agent-inbox, public-contribution]
+    related_skills: [auto-remediation, orch-weekly-auto-fix, agent-inbox, public-contribution]
 ---
 
 # Moses Inbox Remediation

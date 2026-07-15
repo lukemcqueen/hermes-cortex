@@ -8,6 +8,7 @@ pinned: true
 metadata:
   hermes:
     tags: [governance, rules, discipline, compliance]
+    related_skills: [agent-contract, loop-governance, change-checklist, public-contribution]
 ---
 
 # ⚠️ TWO HARD RULES — Every Agent Must Follow
