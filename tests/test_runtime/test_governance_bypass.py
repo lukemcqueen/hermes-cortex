@@ -1,7 +1,7 @@
 """
 Governance Bypass Test Suite — Tests for the governance enforcer plugin.
 
-Tests every code path in runtime/hermes/governance-enforcer/__init__.py:
+Tests every code path in plugins/hermes-governance-enforcer/__init__.py:
 
   - _is_write_tool           Write tool classification matrix
   - _is_terminal_write       Terminal command pattern matching

@@ -1,0 +1,78 @@
+# Example: Repetitive delegation pattern — investigate → fix → verify
+name: investigate-and-fix
+version: 1.0.0
+description: "Investigate a problem, apply a fix, and verify it resolves"
+start_step: investigate
+
+steps:
+  - name: investigate
+    assigned_to: moses
+    prompt: >
+      Investigate the issue: {{issue_description}}
+      Check logs, configs, and running services.
+      Identify root cause.
+    skills: [terminal, search_files]
+    timeout_seconds: 600
+    route_if:
+      found_root_cause: apply_fix
+      needs_more_info: gather_data
+      _fallback: escalate
+
+  - name: gather_data
+    assigned_to: titus
+    prompt: >
+      Collect additional data for: {{issue_description}}
+      Run diagnostics, capture metrics, gather logs.
+    timeout_seconds: 300
+    route_if:
+      success: investigate  # Return to investigate with more data
+      _fallback: escalate
+
+  - name: apply_fix
+    assigned_to: moses
+    prompt: >
+      Apply the fix for {{issue_description}}.
+      Root cause: {{steps.investigate.result.root_cause}}
+      Implement the solution and verify it deploys.
+    skills: [terminal, patch, write_file]
+    timeout_seconds: 900
+    route_if:
+      success: verify
+      _fallback: escalate
+
+  - name: verify
+    assigned_to: moses
+    prompt: >
+      Verify the fix resolved {{issue_description}}.
+      Check that the service is healthy and the issue no longer reproduces.
+    skills: [terminal]
+    timeout_seconds: 300
+    route_if:
+      success: _end
+      needs_rollback: rollback
+      _fallback: escalate
+
+  - name: rollback
+    assigned_to: moses
+    prompt: >
+      Roll back the fix for {{issue_description}}.
+      Something went wrong during verification.
+      Restore to previous stable state.
+    skills: [terminal, git]
+    timeout_seconds: 600
+    route_if:
+      success: _end:rolled-back
+      _fallback: escalate
+
+  - name: escalate
+    assigned_to: luke
+    prompt: "Investigation/fix pipeline failed for: {{issue_description}}. Needs human attention."
+    human_review: true
+    timeout_seconds: 3600
+    max_retries: 0
+    route_if:
+      _fallback: _end:escalated
+
+tags:
+  category: operations
+  owner: moses

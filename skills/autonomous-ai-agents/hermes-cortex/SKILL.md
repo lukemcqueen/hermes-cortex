@@ -461,7 +461,7 @@ After running `setup.sh`, register the loop-governance MCP server so agents can 
 ```bash
 hermes mcp add \
   --command $HOME/.hermes/mcp-venv/bin/python3 \
-  --args ~/hermes-cortex/runtime/mcp-servers/loop-gov-mcp.py \
+  --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py \
   loop-governance
 ```
 

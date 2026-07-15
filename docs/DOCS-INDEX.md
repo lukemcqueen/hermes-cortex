@@ -52,7 +52,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
-||| `docs/new-harness.md` | Task Harness architecture proposal — deterministic task control: state machine, lease, interruption, completion gates |\n|| `docs/research/new_harness/` | Harness spec research — consolidated v2 requirements, Moses/Esther specs, ChatGPT draft |\n|| `runtime/mcp-servers/task-control-mcp.py` | Task Control Authority MCP server — single deterministic gate for task lifecycle, scope, and completion |\n|| `docs/troubleshooting.md` | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse, Linux |
+||| `docs/new-harness.md` | Task Harness architecture proposal — deterministic task control: state machine, lease, interruption, completion gates |\n|| `docs/research/new_harness/` | Harness spec research — consolidated v2 requirements, Moses/Esther specs, ChatGPT draft |\n|| `mcp-servers/loop-gov-mcp.py` | Harness v3 governance MCP server — state machine, ledger, issues, interruption protocol, completion gates |\n|| `docs/troubleshooting.md` | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse, Linux |
 ||| `docs/fleet-reference.md` | Fleet status table — agent worker status across all fleet members |
 ||| `docs/operations-reference.md` | Agent inbox message format — field reference, subject prefixes, priority levels |
 ||| `docs/fleet-reference.md` | Auto-remediation pipeline cron schedule reference |

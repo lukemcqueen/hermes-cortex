@@ -130,6 +130,20 @@ class LoopDB:
                 ON loop_cycles(timestamp);
             CREATE INDEX IF NOT EXISTS idx_cycles_decision
                 ON loop_cycles(decision);
+
+            CREATE TABLE IF NOT EXISTS task_events (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp   TEXT NOT NULL DEFAULT (datetime('now')),
+                task_id     TEXT NOT NULL,
+                agent       TEXT,
+                event_type  TEXT NOT NULL,
+                from_state  TEXT,
+                to_state    TEXT,
+                detail      TEXT
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_task_events_task
+                ON task_events(task_id);
         """)
         self.conn.commit()
 
@@ -217,6 +231,36 @@ class LoopDB:
             VALUES (?, ?)
         """, (config_json, diff))
         self.conn.commit()
+
+    # ── Task Events ──────────────────────────────────────────────────────────
+
+    def log_task_event(self, task_id: str, event_type: str,
+                       agent: str = "", from_state: str = "",
+                       to_state: str = "", detail: str = "") -> int:
+        """Log a task event (state transition, issue, interruption, etc.).
+
+        Returns the row ID of the inserted event.
+        """
+        self._lock()
+        try:
+            cur = self.conn.execute("""
+                INSERT INTO task_events (task_id, agent, event_type, from_state, to_state, detail)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (task_id, agent, event_type, from_state, to_state, detail))
+            self.conn.commit()
+            return cur.lastrowid or 0
+        finally:
+            self._unlock()
+
+    def get_task_events(self, task_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get events for a task, newest first."""
+        rows = self.conn.execute("""
+            SELECT * FROM task_events
+            WHERE task_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+        """, (task_id, limit)).fetchall()
+        return [dict(r) for r in rows]
 
     # ── Read ─────────────────────────────────────────────────────────────────
 

@@ -892,7 +892,7 @@ def check_governance(res):
 
     # ── Governance plugin ────────────────────────────────────
     plugin_dir = HERMES_HOME / "plugins" / "governance-enforcer"
-    plugin_src = CORTEX_REPO / "runtime" / "hermes" / "governance-enforcer"
+    plugin_src = CORTEX_REPO / "plugins" / "hermes-governance-enforcer"
     plugin_enabled = "governance-enforcer" in config_text and "enabled" in config_text
 
     if plugin_dir.exists() and (plugin_dir / "__init__.py").exists():
@@ -903,10 +903,10 @@ def check_governance(res):
                 res.add("Plugin symlink", "PASS", f"symlinked to {target}")
             else:
                 res.add("Plugin symlink", "WARN", f"symlinked to {target} (not ~/hermes-cortex/.hermes-cortex/...)",
-                         "Re-create: ln -sf ~/hermes-cortex/runtime/hermes/governance-enforcer ~/.hermes/plugins/")
+                         "Re-create: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/")
     else:
         res.add("Governance plugin", "FAIL", "not installed",
-                 "Install: ln -sf ~/hermes-cortex/runtime/hermes/governance-enforcer ~/.hermes/plugins/\n"
+                 "Install: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/\n"
                  "Then: hermes plugins enable governance-enforcer --allow-tool-override\n"
                  "Then: /reset (new session)")
 
@@ -919,17 +919,17 @@ def check_governance(res):
 
     # Plugin source integrity
     if plugin_src.exists() and (plugin_src / "__init__.py").exists():
-        res.add("Plugin source", "PASS", "source in repo at runtime/hermes/governance-enforcer")
+        res.add("Plugin source", "PASS", "source in repo at plugins/hermes-governance-enforcer")
     else:
         res.add("Plugin source", "FAIL", "source missing in repo",
-                 "Check: ~/hermes-cortex/runtime/hermes/governance-enforcer/")
+                 "Check: ~/hermes-cortex/plugins/hermes-governance-enforcer/")
 
     # ── MCP servers ──────────────────────────────────────────
     for name, server_script in EXPECTED_MCP_SERVERS.items():
         if name not in config_text:
             res.add(f"MCP server ({name})", "FAIL", "not configured",
                      f"Run: hermes mcp add {name} --command ~/.hermes/hermes-agent/venv/bin/python3 "
-                     f"--args ~/hermes-cortex/runtime/mcp-servers/{server_script}")
+                     f"--args ~/hermes-cortex/mcp-servers/{server_script}")
             continue
 
         res.add(f"MCP server ({name})", "PASS", "configured in config.yaml")
@@ -1177,7 +1177,7 @@ print('ADDED')
     # Fix: governance plugin not installed/symlinked
     if "Governance plugin" in fix_map and fix_map["Governance plugin"] == "FAIL":
         plugin_dir = HERMES_HOME / "plugins" / "governance-enforcer"
-        plugin_src = CORTEX_REPO / ".hermes-cortex" / "plugins" / "governance-enforcer"
+        plugin_src = CORTEX_REPO / "plugins" / "hermes-governance-enforcer"
         if plugin_src.exists():
             if _run_fix("Symlinking governance plugin",
                         ["ln", "-sf", str(plugin_src), str(plugin_dir)]):

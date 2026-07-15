@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 # Wrapper for loop-gov-mcp.py — uses dedicated venv with mcp package
-exec ~/.hermes-cortex/mcp-servers/venv/bin/python3 "$HOME/hermes-cortex/runtime/mcp-servers/loop-gov-mcp.py" "$@"
+exec ~/.hermes-cortex/mcp-servers/venv/bin/python3 "$HOME/hermes-cortex/mcp-servers/loop-gov-mcp.py" "$@"

@@ -15,18 +15,76 @@ Outside a git repo, the generic fallback ``.governance-generic.json`` is used.
 This is the structural enforcement layer that I, as an agent, cannot bypass
 or talk my way out of — the block comes from outside myself.
 
-Install: ln -sf ~/hermes-cortex/runtime/hermes/governance-enforcer ~/.hermes/plugins/
+Harness v3 integration: the PolicyEngine (core/governance/policy_engine.py)
+evaluates tool calls against ABAC rules ADDITIVELY to the binary lock check.
+The engine can only *narrow* permissions (DENY override), never widen.
+The lock check remains as a separate fallback gate per §9 step 1 of
+harness-v2-requirements.md.
+
+Agent identity (§1.6) is derived locally from hostname since the Hermes
+pre_tool_call hook does not pass agent identity from the runtime.
+
+Install: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/
 """
 
 import json
 import os
 import re
+import socket
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 
+# ── PolicyEngine import (add repo core/ to sys.path) ──────────────────────
+_CORTEX_REPO = Path.home() / "hermes-cortex"
+_CORE_PATH = _CORTEX_REPO / "core"
+if _CORE_PATH.exists() and str(_CORE_PATH) not in sys.path:
+    sys.path.insert(0, str(_CORE_PATH))
+
+try:
+    from governance.policy_engine import (
+        DENY_OVERRIDES,
+        PolicyEffect,
+        PolicyEngine,
+        build_context,
+    )
+    _ENGINE = PolicyEngine()
+    _ENGINE_AVAILABLE = True
+except ImportError:
+    _ENGINE = None
+    _ENGINE_AVAILABLE = False
+
+
+def _local_agent_identity() -> str:
+    """Derive local agent identity from hostname (§1.6).
+
+    Falls back to environment variable, then hostname, then 'unknown'.
+    This is the authoritative identity source since the pre_tool_call hook
+    does not pass agent identity from the Hermes runtime.
+    """
+    return os.environ.get("AGENT_NAME") or socket.gethostname().split(".")[0] or "unknown"
+
+
+def _read_task_fields() -> dict:
+    """Read task-derived fields from the governance lock file."""
+    lock_path = _governance_lock_path()
+    if not lock_path.exists():
+        return {}
+    try:
+        state = json.loads(lock_path.read_text())
+        return {
+            "task_id": state.get("task_id", ""),
+            "task_status": state.get("status", ""),
+            "task_allowed_scope": state.get("allowed_scope", []),
+        }
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+# ── Lock path ─────────────────────────────────────────────────────────────
 
 def _governance_lock_path() -> Path:
     """Return a repo-scoped governance lock path.
@@ -134,6 +192,40 @@ def _is_write_tool(tool_name: str, args: Dict[str, Any]) -> bool:
     return False
 
 
+def _build_block_response(tool_name: str, args: Dict[str, Any], message: str) -> Dict[str, str]:
+    """Build a standardized block response for the pre_tool_call hook."""
+    lock_path = _governance_lock_path()
+    if tool_name == "terminal":
+        extra = "\n  Command preview: " + str(args.get('command', ''))[:120] + "..."
+    elif tool_name == "cronjob":
+        extra = "\n  Action: " + str(args.get('action', ''))
+    else:
+        extra = ""
+
+    return {
+        "action": "block",
+        "message": (
+            f"GOVERNANCE LOCK REQUIRED\n\n"
+            f"Tool '{tool_name}' modifies system state{extra}\n\n"
+            f"{message}\n\n"
+            f"This repo requires an active governance lock at:\n"
+            f"  {lock_path}\n\n"
+            f"Call begin_change() first:\n"
+            f"  mcp_loop_governance_begin_change(\n"
+            f"    task_id=\"<short-description>\",\n"
+            f"    description=\"<what this does>\"\n"
+            f"  )\n\n"
+            f"After the change, score and release:\n"
+            f"  mcp_loop_governance_cycle_query(task_id=\"<task>\")\n"
+            f"  mcp_loop_governance_feedback_accept(cycle_id=N, note=\"verified: ...\")\n"
+            f"  mcp_loop_governance_end_change(task_id=\"<task>\")\n\n"
+            f"This enforcement comes from ~/.hermes/plugins/governance-enforcer/ (source: ~/hermes-cortex/plugins/hermes-governance-enforcer/).\n"
+            f"Lock files are scoped per git repo — two repos can govern independently.\n"
+            f"I cannot bypass or disable this mid-session."
+        ),
+    }
+
+
 def register(ctx):
     """Register the governance enforcer plugin hooks."""
 
@@ -172,6 +264,54 @@ def register(ctx):
         if tool_name == "cronjob" and args.get("action") in ("list", "run"):
             return None
 
+        # ── Harness v3: PolicyEngine evaluation (ADDITIVE — can only narrow) ──
+        if _ENGINE_AVAILABLE:
+            task_fields = _read_task_fields()
+            # Determine resource path for scope checking
+            resource = ""
+            if tool_name in ("write_file", "patch"):
+                resource = args.get("path", "")
+            elif tool_name == "terminal":
+                resource = args.get("command", "")[:80]
+            elif tool_name == "cronjob":
+                resource = f"cron:{args.get('action', '')}:{args.get('name', '')}"
+            elif tool_name == "skill_manage":
+                resource = f"skill:{args.get('action', '')}:{args.get('name', '')}"
+
+            ctx = build_context(
+                tool=tool_name,
+                agent=_local_agent_identity(),
+                command=args.get("command", ""),
+                cron_action=args.get("action", ""),
+                skill_action=args.get("action", ""),
+                resource=resource,
+                has_lock=_has_governance_lock(),
+            )
+            # Populate task-derived fields
+            ctx.task_id = task_fields.get("task_id", "")
+            ctx.task_status = task_fields.get("task_status", "")
+            ctx.task_allowed_scope = task_fields.get("task_allowed_scope", [])
+
+            result = _ENGINE.evaluate(ctx)
+            if result.effect == PolicyEffect.DENY:
+                return _build_block_response(
+                    tool_name, args,
+                    f"Denied by policy: {result.rule}\n"
+                    f"  Agent: {ctx.agent}\n"
+                    f"  Resource: {ctx.resource}\n"
+                    f"  Matched rules: {', '.join(result.matched_rules)}"
+                )
+
+            # REQUIRE_APPROVAL result also blocks (for now — future: async approval)
+            if result.effect == PolicyEffect.REQUIRE_APPROVAL:
+                return _build_block_response(
+                    tool_name, args,
+                    f"Requires approval: {result.rule}\n"
+                    f"  Agent: {ctx.agent}\n"
+                    f"  Resource: {ctx.resource}"
+                )
+
+        # ── Binary lock check (fallback gate — engine can only narrow) ──
         if _has_governance_lock():
             return None
 
@@ -200,7 +340,7 @@ def register(ctx):
                 "  mcp_loop_governance_cycle_query(task_id=\"<task>\")\n"
                 "  mcp_loop_governance_feedback_accept(cycle_id=N, note=\"verified: ...\")\n"
                 "  mcp_loop_governance_end_change(task_id=\"<task>\")\n\n"
-                "This enforcement comes from ~/.hermes/plugins/governance-enforcer/ (source: ~/hermes-cortex/runtime/hermes/governance-enforcer/).\n"
+                "This enforcement comes from ~/.hermes/plugins/governance-enforcer/ (source: ~/hermes-cortex/plugins/hermes-governance-enforcer/).\n"
                 "Lock files are scoped per git repo — two repos can govern independently.\n"
                 "I cannot bypass or disable this mid-session."
             ),

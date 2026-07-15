@@ -683,7 +683,7 @@ The `loop-gov-mcp.py` server blocks `write_file`, `patch`, `terminal`, `skill_ma
 hermes mcp list | grep loop-governance
 
 # 2. If not registered, add it:
-hermes mcp add loop-governance --command python3 --args ~/hermes-cortex/runtime/mcp-servers/loop-gov-mcp.py
+hermes mcp add loop-governance --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
 
 # 3. Restart the Hermes session for the MCP server to load
 #    → Exit and re-enter the chat session
@@ -767,7 +767,7 @@ cortex-update --status
 
 ```python
 # In ~/.hermes-cortex/scripts/mcp-servers/loop-gov-mcp.py
-# AND ~/hermes-cortex/runtime/mcp-servers/loop-gov-mcp.py
+# AND ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
 
 # Ensure hermes_models.py is importable from any Hermes deployment
 _HERMES_HOME = Path.home() / ".hermes"
@@ -792,7 +792,7 @@ hermes mcp test loop-governance
 
 ### 20. Governance-enforcer plugin installed but not blocking writes
 
-**Symptom:** Write tools (write_file, patch, terminal write commands) work even when no governance lock is active. The plugin files exist at `~/.hermes/runtime/hermes/governance-enforcer/` but have no effect.
+**Symptom:** Write tools (write_file, patch, terminal write commands) work even when no governance lock is active. The plugin files exist at `~/.hermes/plugins/hermes-governance-enforcer/` but have no effect.
 
 **Root cause:** The plugin is symlinked in the plugins directory but **not registered** in `~/.hermes/config.yaml` under `plugins.enabled`. Hermes only loads plugins listed there.
 
@@ -809,7 +809,7 @@ hermes config set plugins.enabled '["observability/langfuse", "governance-enforc
 Verify:
 ```bash
 hermes config show  # should show plugins.enabled including governance-enforcer
-ls -la ~/.hermes/runtime/hermes/governance-enforcer/  # should show plugin.yaml, __init__.py
+ls -la ~/.hermes/plugins/hermes-governance-enforcer/  # should show plugin.yaml, __init__.py
 ```
 
 ### 21. `governance-auditor` always reports `had_issues: true` (historical — old `score-auditor`)

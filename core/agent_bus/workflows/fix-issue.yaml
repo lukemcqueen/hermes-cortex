@@ -1,0 +1,75 @@
+# Example: Fix a GitHub issue — review, branch, fix, PR
+name: fix-issue
+version: 1.0.0
+description: "Review a GitHub issue, create a fix branch, write code, submit PR"
+start_step: reproduce
+deadline_seconds: 7200  # 2 hour SLA
+
+steps:
+  - name: reproduce
+    assigned_to: titus
+    prompt: >
+      Reproduce the issue from the description.
+      Issue: {{issue_url}}
+      Verify the bug exists, note the exact steps to reproduce,
+      and capture any error messages.
+    skills: [terminal, github]
+    timeout_seconds: 600
+    max_retries: 1
+    route_if:
+      success: implement_fix
+      cant_reproduce: clarify_issue
+      _fallback: _fail
+
+  - name: clarify_issue
+    assigned_to: luke  # Human-in-the-loop
+    prompt: "Could not reproduce issue {{issue_url}}. Provide more details."
+    human_review: true
+    timeout_seconds: 3600
+    max_retries: 0
+    route_if:
+      approved: implement_fix
+      rejected: _end:cannot-reproduce
+      _fallback: _end:cannot-reproduce
+
+  - name: implement_fix
+    assigned_to: joseph
+    prompt: >
+      Create a fix for the issue.
+      Issue: {{issue_url}}
+      Steps to reproduce: {{steps.reproduce.result}}
+      Branch from main, implement the fix, write tests.
+    skills: [terminal, git]
+    timeout_seconds: 1800
+    max_retries: 1
+    route_if:
+      success: submit_pr
+      _fallback: raise_for_human
+
+  - name: submit_pr
+    assigned_to: moses
+    prompt: >
+      Submit a PR for the fix.
+      Branch: {{steps.implement_fix.result.branch}}
+      Commit: {{steps.implement_fix.result.commit}}
+      Create a PR description explaining the fix and attaching test results.
+    skills: [github]
+    timeout_seconds: 600
+    route_if:
+      success: _end
+      _fallback: _fail
+
+  - name: raise_for_human
+    assigned_to: luke  # Escalation
+    prompt: "Fix implementation failed for {{issue_url}}. Human intervention needed."
+    human_review: true
+    timeout_seconds: 7200
+    max_retries: 0
+    route_if:
+      approved: submit_pr
+      rejected: _end:cannot-fix
+      _fallback: _end:cannot-fix
+
+tags:
+  category: development
+  owner: moses

@@ -116,7 +116,7 @@ integration from operations:
 | Layer | Directory | Purpose | Contents |
 |-------|-----------|---------|----------|
 | **Cortex Core** | `core/` | Schemas, governance, identity | Canonical type definitions, loop governance engine, agent identity contracts — zero runtime dependency |
-| **Cortex Runtime** | `runtime/` | Hermes Agent bridge | Governance enforcer plugin, MCP servers, git hooks, skill definitions |
+| **Cortex Runtime** | `plugins/`, `mcp-servers/`, `core/agent_bus/` | Hermes Agent bridge | Governance enforcer plugin (`plugins/hermes-governance-enforcer/`), MCP servers (`mcp-servers/`), agent bus library (`core/agent_bus/`) |
 || **Cortex Ops** | `ops/` | Fleet operations | Installers, health scripts, watchdogs, offline stack, dashboard, agent-bus, web cache, cron infrastructure |
 
 The boundary is directional: **Core ← Runtime ← Ops**. Core knows nothing about

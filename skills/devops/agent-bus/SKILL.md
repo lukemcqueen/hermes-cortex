@@ -32,11 +32,11 @@ This skill covers the Agent Bus server and its supporting infrastructure — the
 
 ### Server (only runs on server machines)
 
-`$CORTEX_REPO/runtime/mcp-servers/agent-bus-mcp.py` (default: `~/hermes-cortex`) — FastAPI app running on `127.0.0.1:8903`, backed by PGMQ queues...
+`$CORTEX_REPO/mcp-servers/agent-bus-mcp.py` (default: `~/hermes-cortex`) — FastAPI app running on `127.0.0.1:8903`, backed by PGMQ queues...
 
 > ⚠️ **Client agents do NOT need to run this.** The server runs on Moses (and Esther as backup). All other agents connect remotely via nginx.
 
-Storage: PGMQ queues in PostgreSQL via the `agent_bus` backend (`~/hermes-cortex/runtime/agent_bus/`).
+Storage: PGMQ queues in PostgreSQL via the `agent_bus` backend (`~/hermes-cortex/core/agent_bus/`).
 
 ### MCP Tools
 

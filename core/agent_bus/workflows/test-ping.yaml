@@ -1,0 +1,21 @@
+name: test-ping
+version: "1.0"
+description: "Simple ping test to verify workflow engine end-to-end"
+tags:
+  owner: moses
+  category: test
+start_step: ping
+steps:
+  - name: ping
+    prompt: |
+      Run a health check: execute `echo pong` in the terminal and report the result verbatim.
+      Do not make any changes — just verify the workflow engine can dispatch steps.
+    skills:
+      - terminal
+    assigned_to: moses
+    max_retries: 1
+    timeout_seconds: 60
+    human_review: false
+    route_if:
+      success: _end
+      _fallback: _fail

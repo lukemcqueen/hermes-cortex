@@ -74,6 +74,13 @@ class PolicyContext:
     resource_classification: str = ""   # "public", "confidential", "pii"
     resource_owner: str = ""            # Owner of the resource being modified
 
+    # Task-derived fields (§4.1 of harness-v3-requirements)
+    task_id: str = ""
+    task_status: str = ""
+    task_criterion_id: str = ""
+    task_step_id: str = ""
+    task_allowed_scope: list[str] = field(default_factory=list)
+
     def __post_init__(self):
         if not self.time:
             self.time = datetime.utcnow().isoformat()
@@ -163,6 +170,25 @@ def during_business_hours(ctx: PolicyContext) -> bool:
     return 8 <= hour < 18
 
 
+def in_task_scope(ctx: PolicyContext) -> bool:
+    """True when ctx.resource matches one of the active task's allowed_scope globs."""
+    if not ctx.task_allowed_scope:
+        return True  # no task = no scope restriction beyond the existing lock check
+    return any(fnmatch.fnmatch(ctx.resource, pat) for pat in ctx.task_allowed_scope)
+
+
+def has_valid_provenance(ctx: PolicyContext) -> bool:
+    """True when a criterion_id/step_id were supplied and are non-empty.
+
+    Full validation (criterion exists on the active task) happens in the
+    envelope check in the MCP tool layer, where the ledger is directly
+    available — this predicate only screens for the field being present,
+    since PolicyContext deliberately stays engine-agnostic about ledger
+    internals.
+    """
+    return bool(ctx.task_criterion_id and ctx.task_step_id)
+
+
 # ── Policy engine ───────────────────────────────────────────────────────────
 
 
@@ -194,6 +220,13 @@ class PolicyEngine:
         These can be overridden by adding higher-priority rules.
         """
         self.rules = [
+            # Write outside active task's allowed_scope — highest priority
+            PolicyRule(
+                effect=PolicyEffect.DENY, subject="*", action="write", resource="*",
+                condition=lambda ctx: ctx.has_governance_lock and bool(ctx.task_id) and not in_task_scope(ctx),
+                description="Write outside active task's allowed_scope",
+                priority=20,
+            ),
             # Lock present → allow everything (current behavior)
             PolicyRule(
                 effect=PolicyEffect.ALLOW,

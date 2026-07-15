@@ -81,7 +81,7 @@ Full setup — runs the bus service + Postgres schema:
 bash ~/hermes-cortex/ops/scripts/install/install-bus.sh
 
 # 2. Copy MCP server to Hermes scripts
-cp ~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/
+cp ~/hermes-cortex/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/
 
 # 3. Deploy nginx config (add to /etc/nginx/sites-available/hermes-services.conf)
 #    Template: ~/hermes-cortex/ops/services/agent-bus/nginx.conf
@@ -93,11 +93,11 @@ bash ~/hermes-cortex/ops/scripts/install/install-orch-crons.sh
 | File | Purpose |
 |------|---------|
 | `ops/services/agent-bus/server.py` | Bus service (FastAPI, port 8903) |
-| `runtime/agent_bus/queue.py` | PGMQ queue client |
+| `core/agent_bus/queue.py` | PGMQ queue client |
 | `ops/services/agent-bus/schema/queue.sql` | PGMQ schema |
 | `ops/services/agent-bus/schema/auth.sql` | Token/permissions schema |
 | `ops/services/agent-bus/schema/workflow.sql` | Workflow + A2A schema |
-| `runtime/mcp-servers/agent-bus-mcp.py` | MCP tool server |
+| `mcp-servers/agent-bus-mcp.py` | MCP tool server |
 | `ops/scripts/inbox/workflow-*.py` | Workflow cron scripts |
 | `ops/services/agent-bus/nginx.conf` | nginx template |
 
@@ -107,13 +107,13 @@ Lightweight setup — MCP client only, no bus service:
 
 ```bash
 # 1. Copy MCP server
-cp ~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/
+cp ~/hermes-cortex/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/
 
 # 2. Add to ~/.hermes/config.yaml:
 #    mcp_servers:
 #      agent-bus:
 #        command: python3
-#        args: [~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py]
+#        args: [~/hermes-cortex/mcp-servers/agent-bus-mcp.py]
 #        enabled: true
 
 # 3. Create ~/.hermes-cortex/hermes-inbox.conf:
@@ -126,7 +126,7 @@ cp ~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/
 
 | File | Purpose |
 |------|---------|
-| `runtime/mcp-servers/agent-bus-mcp.py` | MCP tool server (only file needed) |
+| `mcp-servers/agent-bus-mcp.py` | MCP tool server (only file needed) |
 | `~/.hermes-cortex/hermes-inbox.conf` | Bus URL + token config (see below) |
 
 ### `~/.hermes-cortex/hermes-inbox.conf` reference
@@ -407,7 +407,7 @@ curl -sk -H "Authorization: Bearer ***" \
   -H "Content-Type: application/json" \
   -X POST -d '{
     "workflow_name": "research-then-write",
-    "workflow_source": "$HOME/hermes-cortex/runtime/agent_bus/workflows/research-then-write.yaml",
+    "workflow_source": "$HOME/hermes-cortex/core/agent_bus/workflows/research-then-write.yaml",
     "payload": {"topic": "Postgres SKIP LOCKED"}
   }' \
   https://your-domain.com:13004/api/workflows/dispatch
@@ -437,9 +437,9 @@ Decisions: `approve`, `reject`, `request_changes`.
 
 | File | Description |
 |------|-------------|
-| `runtime/agent_bus/workflows/research-then-write.yaml` | Research topic → write report |
-| `runtime/agent_bus/workflows/fix-issue.yaml` | Reproduce → fix → PR, with HIL escalation |
-| `runtime/agent_bus/workflows/investigate-and-fix.yaml` | Investigate → fix → verify → rollback |
+| `core/agent_bus/workflows/research-then-write.yaml` | Research topic → write report |
+| `core/agent_bus/workflows/fix-issue.yaml` | Reproduce → fix → PR, with HIL escalation |
+| `core/agent_bus/workflows/investigate-and-fix.yaml` | Investigate → fix → verify → rollback |
 
 
 ---
@@ -592,18 +592,18 @@ To enable A2A discovery without auth, add a `location = /.well-known/agent-card.
 || `ops/services/agent-bus/schema/queue.sql` | Postgres schema | |
 || `ops/services/agent-bus/schema/auth.sql` | Postgres schema | |
 || `ops/services/agent-bus/schema/workflow.sql` | Workflow engine + A2A schema | |
-|| `runtime/agent_bus/queue.py` | Python `BusClient` for queue operations | |
-|| `runtime/agent_bus/server.py` | FastAPI server (port 8905) | |
-|| `runtime/agent_bus/auth.py` | Bearer token validation | |
-|| `runtime/agent_bus/circuit_breaker.py` | Auto-fallback to file backend | |
-|| `runtime/agent_bus/workflow/__init__.py` | Workflow models (Workflow, WorkflowStep, RouteIf) | |
-|| `runtime/agent_bus/workflow/yaml_loader.py` | YAML parser + DAG validator (`yaml.safe_load`) | |
-|| `runtime/agent_bus/workflow/db.py` | Postgres CRUD: workflows, steps, audit, A2A tasks | |
-|| `runtime/agent_bus/workflow/dispatcher.py` | Dispatch engine: queue → workflow rows → step dispatch | |
-|| `runtime/agent_bus/workflow/router.py` | Route evaluator: `route_if` matching + next step dispatch | |
-|| `runtime/agent_bus/workflow/sla_watchdog.py` | Timeout detection, retry/DLQ, DLQ depth monitor | |
-|| `runtime/agent_bus/workflow/human_gate.py` | Human-in-the-loop: approve/reject/request_changes | |
-|| `runtime/agent_bus/workflows/*.yaml` | Example workflow definitions (3 pre-built) | |
+|| `core/agent_bus/queue.py` | Python `BusClient` for queue operations | |
+|| `core/agent_bus/server.py` | FastAPI server (port 8905) | |
+|| `core/agent_bus/auth.py` | Bearer token validation | |
+|| `core/agent_bus/circuit_breaker.py` | Auto-fallback to file backend | |
+|| `core/agent_bus/workflow/__init__.py` | Workflow models (Workflow, WorkflowStep, RouteIf) | |
+|| `core/agent_bus/workflow/yaml_loader.py` | YAML parser + DAG validator (`yaml.safe_load`) | |
+|| `core/agent_bus/workflow/db.py` | Postgres CRUD: workflows, steps, audit, A2A tasks | |
+|| `core/agent_bus/workflow/dispatcher.py` | Dispatch engine: queue → workflow rows → step dispatch | |
+|| `core/agent_bus/workflow/router.py` | Route evaluator: `route_if` matching + next step dispatch | |
+|| `core/agent_bus/workflow/sla_watchdog.py` | Timeout detection, retry/DLQ, DLQ depth monitor | |
+|| `core/agent_bus/workflow/human_gate.py` | Human-in-the-loop: approve/reject/request_changes | |
+|| `core/agent_bus/workflows/*.yaml` | Example workflow definitions (3 pre-built) | |
 || `ops/services/agent-bus/server.py` | Bus server (service source) | |
 || `ops/scripts/inbox/bus-health-check.py` | E2E health check cron | |
 || `ops/scripts/inbox/bus-inbox-watch.py` | Inbox watch cron | |
@@ -611,6 +611,6 @@ To enable A2A discovery without auth, add a `location = /.well-known/agent-card.
 || `ops/scripts/inbox/workflow-router.py` | Workflow route cron | |
 || `ops/scripts/inbox/workflow-sla-watchdog.py` | Workflow SLA watchdog cron | |
 || `ops/scripts/inbox/test-bus.py` | Integration test suite (50 tests) | |
-|| `runtime/agent_bus/scripts/issue-agent-token.py` | Token generation CLI | |
+|| `core/agent_bus/scripts/issue-agent-token.py` | Token generation CLI | |
 || `ops/services/agent-bus/nginx.conf` | nginx mTLS + TLS 1.3 config template | |
 || `ops/scripts/install/install-bus.sh` | Complete setup script | |

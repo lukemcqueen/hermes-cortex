@@ -1960,7 +1960,7 @@ fi
 #  12b. MCP Server Registration — Loop Governance Primary Enforcer
 # ─────────────────────────────────────────────────────────────
 step "Registering loop-governance MCP server (loop-gov-mcp.py)"
-MCP_SERVER_PATH="${SCRIPT_DIR}/runtime/mcp-servers/loop-gov-mcp.py"
+MCP_SERVER_PATH="${SCRIPT_DIR}/mcp-servers/loop-gov-mcp.py"
 if [[ -f "$MCP_SERVER_PATH" ]]; then
   if command -v hermes &>/dev/null; then
     if hermes mcp list 2>/dev/null | grep -q "loop-governance"; then

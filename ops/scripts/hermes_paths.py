@@ -20,7 +20,7 @@ from pathlib import Path
 def ensure_scripts_path() -> None:
     """Add the scripts directory to sys.path if not already present.
 
-    Works both in-repo (ops/offline/, ops/services/, runtime/mcp-servers/)
+    Works both in-repo (ops/offline/, ops/services/, mcp-servers/)
     and at deployment (~/.hermes-cortex/offline/, ~/.hermes-cortex/tools/).
     """
     this_dir = Path(__file__).resolve().parent

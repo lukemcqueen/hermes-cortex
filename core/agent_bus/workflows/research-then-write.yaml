@@ -1,0 +1,33 @@
+# Example: Research, then write a report using the research
+name: research-then-write
+version: 1.0.0
+description: "Research a topic, then write a summary report"
+start_step: research
+deadline_seconds: 3600  # 1 hour total SLA
+
+steps:
+  - name: research
+    assigned_to: gisu
+    prompt: "Research the topic: {{topic}}. Find 5-10 key facts, data points, and citations."
+    skills: [web_search, web_extract]
+    timeout_seconds: 600  # 10 min per step
+    max_retries: 1
+    route_if:
+      success: write_report
+      _fallback: _fail
+
+  - name: write_report
+    assigned_to: joseph
+    prompt: >
+      Write a structured report based on the research findings.
+      Topic: {{topic}}
+      Research: {{steps.research.result}}
+    timeout_seconds: 900  # 15 min
+    max_retries: 1
+    route_if:
+      success: _end
+      _fallback: _fail
+
+tags:
+  category: research
+  owner: moses

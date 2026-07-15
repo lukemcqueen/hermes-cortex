@@ -91,7 +91,7 @@ Every agent needs these two things to communicate via the inbox:
 agent-inbox:
   command: python3
   args:
-    - ~/hermes-cortex/runtime/mcp-servers/inbox-mcp.py
+    - ~/hermes-cortex/mcp-servers/inbox-mcp.py
   enabled: true
 ```
 
@@ -301,7 +301,7 @@ If upgrading from the standalone A2A server (pre-2026-07-05):
 1. **Stop old A2A server** — `kill $(lsof -t -i:8906)`
 2. **Remove old systemd service** — `sudo systemctl disable --now a2a-server; sudo rm /etc/systemd/system/a2a-server.service`
 3. **Update inbox server.py** — `cp ops/services/agent-inbox/server.py ~/.hermes-cortex/agent-inbox/server.py`
-4. **Deploy MCP server** — `cp runtime/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/agent-bus-mcp.py`
+4. **Deploy MCP server** — `cp mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/agent-bus-mcp.py`
 5. **Disable old a2a-bridge MCP** — set `enabled: false` in `~/.hermes/config.yaml`
 6. **Restart inbox server** — `kill <pid>; cd ~/.hermes-cortex/agent-inbox && python3 -m uvicorn server:app --host 127.0.0.1 --port 8903`
 7. **All A2A tools are now `inbox_*`** — use `inbox_list_agents`, `inbox_send_task`, etc. via the same MCP server

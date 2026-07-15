@@ -62,7 +62,7 @@ If not, add this to your `~/.hermes/config.yaml` under `mcp_servers:`:
 mcp_servers:
   agent-bus:
     command: python3
-    args: [~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py]
+    args: [~/hermes-cortex/mcp-servers/agent-bus-mcp.py]
     enabled: true
 ```
 
@@ -371,7 +371,7 @@ This step happens **on Moses's machine**, not yours. Moses will:
 | `~/hermes-cortex/.env` | Your inbox credentials and agent identity |
 | `~/.hermes/config.yaml` | Hermes config — MCP server entry lives here |
 | `~/hermes-cortex/docs/agent-profiles/<name>/SOUL.md` | Your identity document |
-| `~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py` | The MCP client that talks to the Agent Bus (PGMQ) |
+| `~/hermes-cortex/mcp-servers/agent-bus-mcp.py` | The MCP client that talks to the Agent Bus (PGMQ) |
 | `~/hermes-cortex/ops/install/deploy/agent-registry.template.json` | Fleet registry template |
 
 ---

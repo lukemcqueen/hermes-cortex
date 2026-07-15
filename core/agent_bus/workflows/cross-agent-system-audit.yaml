@@ -1,0 +1,99 @@
+name: cross-agent-system-audit
+version: "1.0.0"
+description: "Cross-agent system audit — tests all agents, message delivery, workflow routing, and audit visibility"
+tags:
+  owner: moses
+  category: test
+  enterprise: "true"
+start_step: bus-health-check
+deadline_seconds: 3600
+steps:
+  - name: bus-health-check
+    prompt: |
+      Run a bus health check. Execute: curl -s http://127.0.0.1:8905/health
+      Report the status, backend, queue count, and timestamp verbatim.
+      Also check queue depths: curl -s -H "X-Forwarded-User: moses" http://127.0.0.1:8905/api/pgmq/queues
+      Summarize: how many queues, which have messages pending.
+    skills:
+      - terminal
+    assigned_to: moses
+    max_retries: 2
+    timeout_seconds: 120
+    human_review: false
+    route_if:
+      success: gather-system-stats
+      _fallback: escalate
+
+  - name: gather-system-stats
+    prompt: |
+      Gather system statistics. Execute: df -h / && free -h && uptime
+      Report disk usage, memory usage, and uptime.
+    skills:
+      - terminal
+    assigned_to: moses
+    max_retries: 1
+    timeout_seconds: 60
+    route_if:
+      success: dispatch-remote-checks
+      _fallback: escalate
+
+  - name: dispatch-remote-checks
+    prompt: |
+      The orchestration layer has dispatched parallel tasks to Titus (disk check),
+      Joseph (services check), Gisu (security check), and Kustos (validation).
+      Report that these agents will process their tasks when their inbox crons fire.
+      Summarize the current state: all inbox queues exist, all agents have tokens.
+    skills:
+      - terminal
+    assigned_to: moses
+    max_retries: 1
+    timeout_seconds: 60
+    route_if:
+      success: verify-convergence
+      _fallback: escalate
+
+  - name: verify-convergence
+    prompt: |
+      Check if the remote agents have completed their tasks.
+      Read the current workflow and step states from the bus API.
+      Check: curl -s -H "X-Forwarded-User: moses" http://127.0.0.1:8905/api/workflows | python3 -m json.tool
+      Report which agents have completed their steps and which are pending.
+    skills:
+      - terminal
+    assigned_to: moses
+    max_retries: 2
+    timeout_seconds: 120
+    route_if:
+      success: compile-report
+      _fallback: escalate
+
+  - name: compile-report
+    prompt: |
+      Compile the full system audit report from all completed steps.
+      Include: bus health, system stats, remote agent task statuses.
+      Write the report to ~/system-audit-report-{{workflow_id}}.md
+      The file should be a structured markdown summary.
+    skills:
+      - terminal
+      - write_file
+    assigned_to: moses
+    max_retries: 1
+    timeout_seconds: 120
+    route_if:
+      success: _end
+      _fallback: escalate
+
+  - name: escalate
+    prompt: |
+      A workflow step has failed. Check the workflow state via the bus API.
+      Report the failure details to the human operator.
+      Workflow ID: {{workflow_id}}
+      Failed step: {{step_name}}
+    skills:
+      - terminal
+    assigned_to: luke
+    max_retries: 0
+    timeout_seconds: 3600
+    human_review: true
+    route_if:
+      _fallback: _end:escalated

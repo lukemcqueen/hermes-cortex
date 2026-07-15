@@ -150,9 +150,9 @@ When explicitly directed to add a cron to another Hermes profile (e.g. Esther):
 - **Manual test ≠ scheduler test.** Running `python3 ~/.hermes-cortex/scripts/<script>` tests the script logic but does NOT update the cron scheduler's `last_status`. The doctor reads the scheduler's recorded status, not the script exit code. After fixing a cron, ALWAYS run `cronjob action='run' job_id=<id>` to refresh the scheduler's status, then run the doctor to confirm it clears. The user will see what the doctor shows — never claim a cron is "fixed" until the doctor confirms it.
 - **Never guess job IDs.** Always `cronjob action='list'` first before update/remove.
 - **no_agent scripts must handle silent-on-success correctly.** If the command prints "Already up to date." on stdout, the script must detect and suppress it — otherwise a "success" delivers noise to the user every tick.
-- **no_agent scripts that import from project modules need PYTHONPATH.** Cron jobs run in a bare environment — no PYTHONPATH, no project venv. If a no_agent Python script imports from a project module (e.g. `agent_bus` under `~/hermes-cortex/runtime/`), it must handle both at the script level:
+- **no_agent scripts that import from project modules need PYTHONPATH.** Cron jobs run in a bare environment — no PYTHONPATH, no project venv. If a no_agent Python script imports from a project module (e.g. `agent_bus` under `~/hermes-cortex/core/agent_bus/`), it must handle both at the script level:
   1. **Shebang** to the project's venv python: `#!/home/moses/.hermes/hermes-agent/venv/bin/python3`
-  2. **sys.path** before any project imports: `sys.path.insert(0, "/home/moses/hermes-cortex/runtime")`
+  2. **sys.path** before any project imports: `sys.path.insert(0, "/home/moses/hermes-cortex/core")`
   3. **Test** outside cron first: `/home/moses/.hermes/hermes-agent/venv/bin/python3 script.py`
   Without both, the cron silently fails with `ModuleNotFoundError` on every tick.
 - **Delivery matters for cron jobs.** `deliver='local'` logs only. `deliver='origin'` delivers to the creating session (which may not exist at cron time). For unattended crons that should notify on error, set deliver to a live channel (e.g. `telegram:chat_id`).

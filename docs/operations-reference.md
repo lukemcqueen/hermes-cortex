@@ -132,7 +132,7 @@ If you are Gisu, Joseph, Kustos, or Titus (client agents):
        mcp_servers:
          agent-bus:
            command: python3
-           args: [~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py]
+           args: [~/hermes-cortex/mcp-servers/agent-bus-mcp.py]
            enabled: true
   └─ You need ~/hermes-cortex/.env with YOUR credentials
   └─ You DO NOT need to run a bus server or nginx proxy

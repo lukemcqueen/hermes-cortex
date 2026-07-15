@@ -56,8 +56,8 @@ The repository is organized into three distinct layers, each with a well-defined
 │  Hermes Agent integration — plugins, MCPs, hooks, skills.     │
 │  Thin bridge: policies from Core → enforcement in Runtime.     │
 │                                                                │
-│  runtime/hermes/     — Governance enforcer plugin, git hooks   │
-│  runtime/mcp-servers/— Inbox & governance MCP servers          │
+│  plugins/hermes-     — Governance enforcer plugin, git hooks   │
+│  mcp-servers/— Inbox & governance MCP servers          │
 │  skills/              — Hermes skill definitions                │
 ├────────────────────────────────────────────────────────────────┤
 │                    CORTEX OPERATIONS                            │
