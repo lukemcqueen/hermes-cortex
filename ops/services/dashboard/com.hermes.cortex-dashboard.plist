@@ -22,7 +22,7 @@
         <key>PATH</key>
         <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
         <key>LANGFUSE_EXTERNAL</key>
-        <string>https://bus.example.org:13002</string>
+        <string>https://your-domain.com:13002</string>
     </dict>
     <key>StandardOutPath</key>
     <string>$HOME/.hermes-cortex/logs/cortex-dashboard.log</string>

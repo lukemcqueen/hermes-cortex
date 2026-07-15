@@ -168,7 +168,7 @@ Agent A                         Agent B (via inbox server :8903)
 
 The inbox server is typically started via the Hermes agent-inbox script:
 ```bash
-cd /home/moses/.hermes/agent-inbox
+cd ~/.hermes/agent-inbox
 python3 -m uvicorn server:app --host 127.0.0.1 --port 8903
 ```
 

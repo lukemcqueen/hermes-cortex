@@ -94,6 +94,39 @@ for FILE in $STAGED_FILES; do
       echo "$FILE|literal_secret_var|$MATCHES" >> "$DETECTION_FILE"
     fi
   fi
+
+  # === Pattern 5: PII — hardcoded /home/<user>/ paths ===
+  # Matches: /home/moses/, /home/luke/, /home/<any-real-username>/
+  # Skips: /home/user/, /home/nobody/
+  if echo "$STAGED_CONTENT" | grep -Pn "/home/[a-z]{2,12}/" >/dev/null 2>&1; then
+    MATCHES=$(echo "$STAGED_CONTENT" | grep -Pn "/home/[a-z]{2,12}/" 2>/dev/null || true)
+    # Filter out allowlisted patterns
+    SAFE_MATCHES=""
+    while IFS= read -r line; do
+      if ! echo "$line" | grep -qE "/home/(user|nobody|pi|ubuntu|ec2-user)/"; then
+        SAFE_MATCHES="${SAFE_MATCHES}${line}"$'\n'
+      fi
+    done <<< "$MATCHES"
+    if [[ -n "$SAFE_MATCHES" ]]; then
+      echo "$FILE|pii_home_path|$SAFE_MATCHES" >> "$DETECTION_FILE"
+    fi
+  fi
+
+  # === Pattern 6: PII — non-placeholder domains in URL examples ===
+  # Matches: https://somedomain.com or http://custom.server.net
+  # Skips: your-domain.com, example.com, github.com, etc.
+  if echo "$STAGED_CONTENT" | grep -Po "https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}" >/dev/null 2>&1; then
+    MATCHES=$(echo "$STAGED_CONTENT" | grep -Pn "https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}" 2>/dev/null || true)
+    SAFE_MATCHES=""
+    while IFS= read -r line; do
+      if ! echo "$line" | grep -qE "(your-domain|example\.(com|org|net|io)|localhost|127\.0\.0\.1|github\.com|gitlab\.com|bitbucket\.org|pypi\.org|npmjs\.com|docker\.com|python\.org|nodejs\.org|nginx\.org|apache\.org|letsencrypt\.org|stackoverflow\.com|npm\.|docker\.|documentation\.|hermes-agent\.nousresearch|raw\.githubusercontent|ollama\.com|apple\.com|gutenberg\.org|ankiweb\.net|webtoons\.com|talktomeinkorean\.com|howtostudykorean\.com|docs\.pytest|apps\.ankiweb)"; then
+        SAFE_MATCHES="${SAFE_MATCHES}${line}"$'\n'
+      fi
+    done <<< "$MATCHES"
+    if [[ -n "$SAFE_MATCHES" ]]; then
+      echo "$FILE|pii_real_domain|$SAFE_MATCHES" >> "$DETECTION_FILE"
+    fi
+  fi
 done
 
 # Report findings
@@ -126,6 +159,18 @@ if [[ -s "$DETECTION_FILE" ]]; then
         error "Literal secret value in variable assignment in ${FILE}:"
         echo "   ${MATCH_LINE}"
         echo "   → Use: VAR=\$(cat ~/secret_file)  (subshell, no leakage)"
+        echo ""
+        ;;
+      pii_home_path)
+        error "PII — hardcoded /home/<user>/ path in ${FILE}:"
+        echo "   ${MATCH_LINE}"
+        echo "   → Use: \$HOME or ~/ instead of /home/username/"
+        echo ""
+        ;;
+      pii_real_domain)
+        warn "PII — non-placeholder domain in ${FILE}:"
+        echo "   ${MATCH_LINE}"
+        echo "   → Use: your-domain.com or example.com for examples"
         echo ""
         ;;
     esac

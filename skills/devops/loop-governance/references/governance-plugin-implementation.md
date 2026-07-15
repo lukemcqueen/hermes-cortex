@@ -207,8 +207,8 @@ Examples:
 
 | Repo root | Lock file |
 |-----------|-----------|
-| `/home/luke/hermes-cortex` | `~/.hermes-cortex/state/.governance-hermes-cortex.json` |
-| `/home/luke/project-b` | `~/.hermes-cortex/state/.governance-project-b.json` |
+| `/home/user/hermes-cortex` | `~/.hermes-cortex/state/.governance-hermes-cortex.json` |
+| `/home/user/project-b` | `~/.hermes-cortex/state/.governance-project-b.json` |
 | Outside a git repo | `~/.hermes-cortex/state/.governance-generic.json` |
 
 This means you can have an active governance lock in `hermes-cortex` and start a completely independent governance session in `project-b` — they don't interfere. A stale lock from one repo never accidentally covers writes in another.

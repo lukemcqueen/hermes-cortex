@@ -244,7 +244,7 @@ curl -sk --cert agent-cert.pem --key agent-key.pem \
     "priority": 0,
     "correlation_id": "wf-001"
   }' \
-  https://bus.example.org:13004/api/pgmq/send
+  https://your-domain.com:13004/api/pgmq/send
 ```
 
 ### Read Example
@@ -254,7 +254,7 @@ curl -sk --cert agent-cert.pem --key agent-key.pem \
   -H "Authorization: Bearer hbus_<token>" \
   -H "Content-Type: application/json" \
   -X POST -d '{"queue": "inbox_moses", "vt": 60}' \
-  https://bus.example.org:13004/api/pgmq/read
+  https://your-domain.com:13004/api/pgmq/read
 ```
 
 Returns:
@@ -280,7 +280,7 @@ curl -sk --cert agent-cert.pem --key agent-key.pem \
   -H "Authorization: Bearer hbus_<token>" \
   -H "Content-Type: application/json" \
   -X POST -d '{"queue": "inbox_moses", "msg_id": "<uuid>"}' \
-  https://bus.example.org:13004/api/pgmq/archive
+  https://your-domain.com:13004/api/pgmq/archive
 ```
 
 ---
@@ -397,7 +397,7 @@ curl -sk -H "Authorization: Bearer ***" \
     "payload": {"key": "value"},
     "priority": 5
   }' \
-  https://bus.example.org:13004/api/workflows/dispatch
+  https://your-domain.com:13004/api/workflows/dispatch
 ```
 
 Or via file path:
@@ -407,10 +407,10 @@ curl -sk -H "Authorization: Bearer ***" \
   -H "Content-Type: application/json" \
   -X POST -d '{
     "workflow_name": "research-then-write",
-    "workflow_source": "/home/moses/hermes-cortex/runtime/agent_bus/workflows/research-then-write.yaml",
+    "workflow_source": "$HOME/hermes-cortex/runtime/agent_bus/workflows/research-then-write.yaml",
     "payload": {"topic": "Postgres SKIP LOCKED"}
   }' \
-  https://bus.example.org:13004/api/workflows/dispatch
+  https://your-domain.com:13004/api/workflows/dispatch
 ```
 
 ### Human-in-the-Loop
@@ -428,7 +428,7 @@ curl -sk -H "Authorization: Bearer ***" \
     "decision": "approve",
     "feedback": "Looks good, proceed"
   }' \
-  https://bus.example.org:13004/api/workflows/hil
+  https://your-domain.com:13004/api/workflows/hil
 ```
 
 Decisions: `approve`, `reject`, `request_changes`.
@@ -521,7 +521,7 @@ The `agent-bus-mcp.py` MCP tool now uses the Agent Bus as its **primary backend*
 
 |```bash
 # New (Agent Bus — preferred):
-CORTEX_BUS_URL=https://bus.example.org:13004
+CORTEX_BUS_URL=https://your-domain.com:13004
 CORTEX_BUS_TOKEN=hbus_your_token_here
 CORTEX_BASIC_AUTH=user:pass   (nginx Basic auth — required for external connections)
 AGENT_NAME=moses

@@ -16,7 +16,7 @@ all:
       ansible_ssh_private_key_file: ~/.ssh/hermes-key.pem
       vars:
         agent_name: joseph
-        agent_domain: bus.example.org
+        agent_domain: your-domain.com
         is_orchestrator: false
 
     # ── Example: orchestrator node ──
@@ -26,5 +26,5 @@ all:
       ansible_ssh_private_key_file: ~/.ssh/hermes-key.pem
       vars:
         agent_name: moses
-        agent_domain: bus.example.org
+        agent_domain: your-domain.com
         is_orchestrator: true

@@ -10,7 +10,7 @@ FALLBACK: Old file-based inbox (Basic auth, port 8903, being deprecated)
 
 Config (options in order of precedence):
   # Primay — Agent Bus (new)
-  CORTEX_BUS_URL=https://bus.example.org:13004
+  CORTEX_BUS_URL=https://your-domain.com:13004
   CORTEX_BUS_TOKEN=hbus_...
 
   # Fallback — old inbox (deprecated, remove when full cutover complete)

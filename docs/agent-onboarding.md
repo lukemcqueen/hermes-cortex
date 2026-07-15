@@ -242,7 +242,7 @@ and check one of:
 
 2. **Agent health data** (Moses can check):
    ```bash
-   python3 -c "import json;d=json.load(open('/home/moses/.hermes/state/agent-health-data.json'));print(d.get('titus', {}).get('reachable'))"
+   python3 -c "import json;d=json.load(open('~/.hermes/state/agent-health-data.json'));print(d.get('titus', {}).get('reachable'))"
    ```
 
 3. **Dashboard** — open the Cortex Dashboard URL. Your agent card should appear

@@ -66,6 +66,7 @@ Before making any change, map the full scope. A single cron rename can touch 10+
 - [ ] **Category awareness**: is this orchestrator-only (orch-*) or general? Update the `fleet-reference.md` cron table category column
 - [ ] **Test run**: after deploy, run the actual script to verify exit code 0
 - [ ] **Governance lock symlink**: the enforcer checks `.governance-generic.json` but locks create `.governance-hermes-cortex.json`. Ensure `ln -sf .governance-hermes-cortex.json ~/.hermes-cortex/state/.governance-generic.json` exists before attempting write operations.
+- [ ] **PII scan**: run `bash ~/hermes-cortex/ops/scripts/secret-leak-detector.sh` and review any PII warnings before pushing. Check for real domains, `/home/<username>/` paths, and email addresses in new/changed files.
 
 ## The Checklist
 

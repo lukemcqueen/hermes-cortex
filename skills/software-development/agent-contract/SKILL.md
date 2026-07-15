@@ -146,6 +146,25 @@ scheduler's status, not the script exit code. Always:
 Manual script execution ≠ scheduler verification. The user sees what the
 doctor shows.
 
+### 2.7 No PII in Public Repo
+
+> **This repo is public (MIT). Never commit personally-identifiable information.**
+
+PII that must NEVER appear in tracked files:
+- Real domain names (use `your-domain.com` or `example.com`)
+- Real user home paths (use `$HOME`, `~`, or `/home/user/`)
+- Email addresses
+- Server hostnames or IP addresses
+- API keys, tokens, or passwords (handled by secret-leak-detector.sh)
+- Any value that would identify a specific person, server, or deployment
+
+**Prevention:**
+- The pre-commit hook runs `secret-leak-detector.sh` which scans for PII patterns
+- Review warnings before pushing — they are WARN-ONLY (don't block commit)
+- If you add a URL example, use `your-domain.com` as the domain
+- If you reference a path, use `$HOME` or `~` instead of `/home/username/`
+- Never paste real config output containing domains or credentials
+
 ---
 
 ## 3. Verification Rules

@@ -9,7 +9,7 @@
 #   bash deploy-blocked-ips.sh --check   # dry-run (generate + validate only)
 #
 # Requires NOPASSWD:
-#   moses ALL=(root) NOPASSWD: /home/moses/hermes-cortex/ops/install/deploy/nginx/fix-blocked-ips.py
+#   moses ALL=(root) NOPASSWD: $HOME/hermes-cortex/ops/install/deploy/nginx/fix-blocked-ips.py
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
