@@ -12,7 +12,7 @@
 #
 #  no_agent-safe: silent exit (0) when nothing new to report.
 #
-#  Requires (from ~/hermes-cortex/.env or ~/.hermes/hermes-inbox.conf):
+#  Requires (from ~/hermes-cortex/.env or ~/.hermes-cortex/hermes-inbox.conf):
 #    CORTEX_INBOX_URL  — Moses inbox API base URL
 #    CORTEX_INBOX_AUTH — "user:pass" for Basic Auth (optional)
 #
@@ -32,8 +32,8 @@ MANIFEST_FILE="$STATE_DIR/skills-manifest.json"
 # ── Source config ───────────────────────────────────────────
 if [[ -f "${HOME}/hermes-cortex/.env" ]]; then
   set -a; source "${HOME}/hermes-cortex/.env"; set +a
-elif [[ -f "${HOME}/.hermes/hermes-inbox.conf" ]]; then
-  source "${HOME}/.hermes/hermes-inbox.conf"
+elif [[ -f "${HOME}/.hermes-cortex/hermes-inbox.conf" ]]; then
+  source "${HOME}/.hermes-cortex/hermes-inbox.conf"
 fi
 
 # ── Build manifest via Python ──────────────────────────────

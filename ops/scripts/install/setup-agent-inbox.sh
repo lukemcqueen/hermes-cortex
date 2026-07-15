@@ -14,7 +14,7 @@
 #
 #  Requires:
 #    - Hermes CLI (hermes cron create)
-#    - ~/.hermes/hermes-inbox.conf with CORTEX_INBOX_AUTH
+#    - ~/.hermes-cortex/hermes-inbox.conf with CORTEX_INBOX_AUTH
 #    - curl (for API calls)
 #    - Pulled hermes-cortex (for inbox-watch.sh)
 #
@@ -97,7 +97,7 @@ if [ ! -f "$WATCH_SCRIPT" ]; then
 fi
 
 # Check auth config
-AUTH_FILE="${HOME}/.hermes/hermes-inbox.conf"
+AUTH_FILE="${HOME}/.hermes-cortex/hermes-inbox.conf"
 AUTH_OK=false
 if [ -f "$AUTH_FILE" ]; then
   # shellcheck disable=SC1090
@@ -108,7 +108,7 @@ if [ -f "$AUTH_FILE" ]; then
   fi
 fi
 if ! $AUTH_OK; then
-  warn "No auth credentials found in ~/.hermes/hermes-inbox.conf"
+  warn "No auth credentials found in ~/.hermes-cortex/hermes-inbox.conf"
   warn "Create it with:"
   echo "    CORTEX_INBOX_URL=\"https://your-domain.com:13004\""
   echo "    CORTEX_INBOX_AUTH=\"user:pass\""
@@ -187,7 +187,7 @@ For each unread message:
 
 1. Fetch the full message via the inbox API:
    \`\`\`bash
-   source ~/.hermes/hermes-inbox.conf
+   source ~/.hermes-cortex/hermes-inbox.conf
    curl -s -u \"\$CORTEX_INBOX_AUTH\" \
      \"${INBOX_URL}/api/inbox?for=${AGENT}&unread_only=true\"
    \`\`\`

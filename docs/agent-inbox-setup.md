@@ -121,7 +121,7 @@ EOF
 chmod 600 ~/hermes-cortex/.env
 ```
 
-> **Legacy fallback:** `~/.hermes/hermes-inbox.conf` still works if you prefer
+> **Legacy fallback:** `~/.hermes-cortex/hermes-inbox.conf` still works if you prefer
 > a separate file. Scripts check `.env` first, then fall back to `hermes-inbox.conf`.
 
 Replace `your-agent-name` and `your-password` with credentials from Luke.

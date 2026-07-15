@@ -65,7 +65,7 @@ Sources under `~/hermes-cortex/` → dest under `~/.hermes/` or `~/`.
 
 > ⚠️ **server.py is deployed to all agents by cortex-update.sh (having the file on disk is harmless).**
 > **But it should only be RUN on designated server machines** (Moses, Esther backup).
-> Client agents (Titus, Gisu, Joseph, Kustos) must NOT start server.py. They connect remotely via MCP tools pointed at the server URL in `~/.hermes/hermes-inbox.conf`.
+> Client agents (Titus, Gisu, Joseph, Kustos) must NOT start server.py. They connect remotely via MCP tools pointed at the server URL in `~/.hermes-cortex/hermes-inbox.conf`.
 
 ### Templates (guarded — only if dest missing)
 | `docs/templates/MEMORY.seed.md` | `~/.hermes/memories/MEMORY.md` | |

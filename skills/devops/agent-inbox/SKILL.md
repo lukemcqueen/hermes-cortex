@@ -26,7 +26,7 @@ This skill covers the agent inbox server and its supporting infrastructure — t
 | **Client agent** | You connect to an existing inbox (Titus, Gisu, Joseph, Kustos, new agents) | **No** — just MCP tools + auth config |
 | **Server agent** | Your machine runs the inbox backend (Moses, Esther backup) | Yes — server.py + nginx |
 
-**If in doubt, you're a client.** Only the designated server machines run `server.py`. Client agents use `inbox_send` / `inbox_read` / `inbox_watch` MCP tools pointed at the remote server URL via `CORTEX_INBOX_URL` in `~/.hermes/hermes-inbox.conf`.
+**If in doubt, you're a client.** Only the designated server machines run `server.py`. Client agents use `inbox_send` / `inbox_read` / `inbox_watch` MCP tools pointed at the remote server URL via `CORTEX_INBOX_URL` in `~/.hermes-cortex/hermes-inbox.conf`.
 
 ## Architecture
 

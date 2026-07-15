@@ -14,11 +14,11 @@
 #       args: [~/hermes-cortex/runtime/mcp-servers/inbox-mcp.py]
 #       enabled: true
 #
-#  2. Create ~/.hermes/hermes-inbox.conf with your credentials:
+#  2. Create ~/.hermes-cortex/hermes-inbox.conf with your credentials:
 #     CORTEX_INBOX_URL="https://your-domain.com:13004"
 #     CORTEX_INBOX_AUTH="your-agent-name:your-password"
 #     AGENT_NAME="your-agent-name"
-#     chmod 600 ~/.hermes/hermes-inbox.conf
+#     chmod 600 ~/.hermes-cortex/hermes-inbox.conf
 #
 #  3. Create a poll cron (LLM-driven, uses MCP inbox_watch tool):
 #     hermes cron create --name agent-inbox-check \

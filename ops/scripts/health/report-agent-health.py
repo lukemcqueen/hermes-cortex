@@ -14,7 +14,7 @@ Reads dashboard health at http://127.0.0.1:8901/api/health
 and POSTs the structured result to Moses's agent inbox for
 dashboard consumption.
 
-Configuration (env vars or ~/.hermes/hermes-inbox.conf):
+Configuration (env vars or ~/.hermes-cortex/hermes-inbox.conf):
   CORTEX_INBOX_URL     — Moses inbox MCP endpoint (POST via internal API)
   CORTEX_INBOX_AUTH    — "user:pass" for Basic Auth
   AGENT_NAME           — name to report as (default: hostname)

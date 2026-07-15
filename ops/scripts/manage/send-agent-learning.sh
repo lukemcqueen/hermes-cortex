@@ -15,7 +15,7 @@ set -euo pipefail
 # ── Config: source inbox credentials ──
 INBOX_URL="https://your-domain.com:13004/send"
 INBOX_AUTH=""
-CONFIG_FILE="${HOME}/.hermes/hermes-inbox.conf"
+CONFIG_FILE="${HOME}/.hermes-cortex/hermes-inbox.conf"
 if [[ -f "$CONFIG_FILE" ]]; then
     source "$CONFIG_FILE"
     INBOX_URL="${CORTEX_INBOX_URL:-$INBOX_URL}/send"

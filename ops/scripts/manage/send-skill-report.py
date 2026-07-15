@@ -25,7 +25,7 @@ CORTEX_INBOX_URL = os.environ.get("CORTEX_INBOX_URL", "")
 CORTEX_INBOX_AUTH = os.environ.get("CORTEX_INBOX_AUTH", "")
 
 for conf in [HOME / "hermes-cortex" / ".env",
-             HOME / ".hermes" / "hermes-inbox.conf"]:
+             HOME / ".hermes-cortex" / "hermes-inbox.conf"]:
     if conf.exists():
         try:
             for line in conf.read_text().splitlines():

@@ -19,7 +19,7 @@
 #    hermes cron create name=agent-inbox schedule="0 */2 * * *" \
 #      prompt="Process inbox messages..." context_from=<job_id>
 #
-#  Auth: Uses ~/.hermes/hermes-inbox.conf if present (BASIC auth).
+#  Auth: Uses ~/.hermes-cortex/hermes-inbox.conf if present (BASIC auth).
 #  Or set INBOX_AUTH env var to "user:pass".
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -55,11 +55,11 @@ INBOX_URL="${INBOX_API_URL:-https://your-domain.com:13004/api/inbox}"
 AUTH=""
 
 # Try loading auth from config file — check new name first, fall back to old
-AUTH_FILE="${HOME}/.hermes/hermes-inbox.conf"
+AUTH_FILE="${HOME}/.hermes-cortex/hermes-inbox.conf"
 if [ ! -f "$AUTH_FILE" ]; then
-  AUTH_FILE="${HOME}/.hermes/moses-inbox.conf"
+  AUTH_FILE="${HOME}/.hermes-cortex/moses-inbox.conf"
   if [ -f "$AUTH_FILE" ]; then
-    echo "[deprecated] Rename ~/.hermes/moses-inbox.conf → ~/.hermes/hermes-inbox.conf" >&2
+    echo "[deprecated] Rename ~/.hermes/moses-inbox.conf → ~/.hermes-cortex/hermes-inbox.conf" >&2
   fi
 fi
 if [ -f "$AUTH_FILE" ]; then

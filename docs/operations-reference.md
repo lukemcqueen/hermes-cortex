@@ -134,7 +134,7 @@ If you are Gisu, Joseph, Kustos, or Titus (client agents):
            command: python3
            args: [~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py]
            enabled: true
-  └─ You need ~/hermes-cortex/.env with YOUR credentials (or legacy `~/.hermes/hermes-inbox.conf`)
+  └─ You need ~/hermes-cortex/.env with YOUR credentials (or legacy `~/.hermes-cortex/hermes-inbox.conf`)
   └─ You DO NOT need to run an inbox server or nginx proxy
 ```
 
@@ -152,7 +152,7 @@ grep -A4 "agent-inbox" ~/.hermes/config.yaml
 # Should show: command: python3, args: [agent-bus-mcp.py], enabled: true
 
 # 3. Create credentials file — YOUR OWN credentials
-# Primary: add to ~/hermes-cortex/.env (or use legacy ~/.hermes/hermes-inbox.conf)
+# Primary: add to ~/hermes-cortex/.env (or use legacy ~/.hermes-cortex/hermes-inbox.conf)
 nano ~/hermes-cortex/.env
 ```
 ```ini
