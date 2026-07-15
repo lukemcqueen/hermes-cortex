@@ -212,7 +212,7 @@ register "ops/scripts/manage/gbrain-update-sync.sh"     "${CORTEX_DEPLOY_HOME}/s
 register "ops/scripts/manage/gbrain-wrapper.sh"         "${CORTEX_DEPLOY_HOME}/scripts/gbrain-wrapper.sh"
 register "ops/scripts/manage/gbrain-doctor-summary.py"   "${CORTEX_DEPLOY_HOME}/scripts/gbrain-doctor-summary.py"
 register "ops/scripts/manage/harvest-lessons.sh"         "${CORTEX_DEPLOY_HOME}/scripts/harvest-lessons.sh"
-# (Removed: send-skill-report.py — API endpoint /api/send no longer exists)
+register "ops/scripts/manage/send-skill-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/send-skill-report.py"
 register "ops/scripts/state_tracker.py"           "${CORTEX_DEPLOY_HOME}/scripts/state_tracker.py"
 
 register "runtime/mcp-servers/agent-bus-mcp.py"         "${CORTEX_DEPLOY_HOME}/scripts/agent-bus-mcp.py"

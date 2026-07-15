@@ -12,9 +12,9 @@
 #
 #  no_agent-safe: silent exit (0) when nothing new to report.
 #
-#  Requires (from ~/hermes-cortex/.env or ~/.hermes-cortex/hermes-inbox.conf):
-#    CORTEX_INBOX_URL  — Moses inbox API base URL
-#    CORTEX_INBOX_AUTH — "user:pass" for Basic Auth (optional)
+#  Requires (from ~/hermes-cortex/.env):
+#    CORTEX_BUS_URL      — Moses Agent Bus URL
+#    CORTEX_BUS_TOKEN    — Bearer token for bus auth
 #
 #  Deployed to agents via cortex-update.sh.
 # ─────────────────────────────────────────────────────────────

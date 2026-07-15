@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""send-skill-report.py — Agent-side: auto-send skill manifest to Moses.
+"""send-skill-report.py — Agent-side: auto-send skill manifest to Moses via Agent Bus.
 
 Designed to run as a no_agent cron (every 6h). Reads the skills
 manifest written by collect-agent-skills.sh and sends it to Moses
-inbox via JSON API. Silent when no custom skills to report.
+via PGMQ Agent Bus. Silent when no custom skills to report.
 
-Requires CORTEX_INBOX_URL and CORTEX_INBOX_AUTH (from .env or hermes-inbox.conf).
+Requires (from ~/hermes-cortex/.env):
+  CORTEX_BUS_URL      — Moses Agent Bus URL (e.g. http://localhost:8903)
+  CORTEX_BUS_TOKEN    — Bearer token for bus auth
+
+For remote agents, CORTEX_BUS_URL must point to Moses's external bus
+endpoint (not localhost).
 """
 
-import base64
 import json
 import os
 import subprocess
@@ -20,41 +24,39 @@ from urllib.error import URLError
 
 HOME = Path.home()
 
-# ── Source config from .env or hermes-inbox.conf ──────────
-CORTEX_INBOX_URL = os.environ.get("CORTEX_INBOX_URL", "")
-CORTEX_INBOX_AUTH = os.environ.get("CORTEX_INBOX_AUTH", "")
+# ── Source config from .env ─────────────────────────────────
+CORTEX_BUS_URL = os.environ.get("CORTEX_BUS_URL", "")
+CORTEX_BUS_TOKEN = os.environ.get("CORTEX_BUS_TOKEN", "")
 
-for conf in [HOME / "hermes-cortex" / ".env",
-             HOME / ".hermes-cortex" / "hermes-inbox.conf"]:
-    if conf.exists():
-        try:
-            for line in conf.read_text().splitlines():
-                line = line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                k, v = line.split("=", 1)
-                v = v.strip().strip("'\"")
-                if k == "CORTEX_INBOX_URL" and not CORTEX_INBOX_URL:
-                    CORTEX_INBOX_URL = v
-                elif k == "CORTEX_INBOX_AUTH" and not CORTEX_INBOX_AUTH:
-                    CORTEX_INBOX_AUTH = v
-        except Exception:
-            pass
+env_file = HOME / "hermes-cortex" / ".env"
+if env_file.exists() and (not CORTEX_BUS_URL or not CORTEX_BUS_TOKEN):
+    try:
+        for line in env_file.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            v = v.strip().strip("'\"")
+            if k == "CORTEX_BUS_URL" and not CORTEX_BUS_URL:
+                CORTEX_BUS_URL = v
+            elif k == "CORTEX_BUS_TOKEN" and not CORTEX_BUS_TOKEN:
+                CORTEX_BUS_TOKEN = v
+    except Exception:
+        pass
 
 # ── Silent exit if not configured ─────────────────────────
-if not CORTEX_INBOX_URL:
+if not CORTEX_BUS_URL or not CORTEX_BUS_TOKEN:
     sys.exit(0)
 
 STATE_DIR = HOME / ".hermes-cortex" / "state"
 MANIFEST_FILE = STATE_DIR / "skills-manifest.json"
 CONTENTS_FILE = STATE_DIR / "skills-contents.json"
 
-# ── Rebuild manifest from current skills if possible ──────
+# ── Rebuild manifest from current skills ───────────────────
 collect_script = HOME / "hermes-cortex" / "ops" / "scripts" / "manage" / "collect-agent-skills.sh"
 if collect_script.exists():
     subprocess.run(["bash", str(collect_script)], capture_output=True)
 else:
-    # Fallback: try deployed copy
     deployed = HOME / ".hermes-cortex" / "scripts" / "collect-agent-skills.sh"
     if deployed.exists():
         subprocess.run(["bash", str(deployed)], capture_output=True)
@@ -95,31 +97,38 @@ for i, s in enumerate(manifest.get("skills", [])):
     lines.append("")
 
 body_text = "\n".join(lines)
-payload = {
-    "from": hostname,
-    "subject": f"Skill Report: {custom_total} custom skills",
-    "body": body_text,
-    "topic": "reports",
-    "priority": "normal",
-}
 
-# ── Send via JSON POST to agent-inbox API ───────────────────
-# Use /api/send (not /api/pgmq/send — agent-inbox, not PGMQ bus)
-api_url = CORTEX_INBOX_URL.rstrip("/") + "/api/send"
+# ── Send via Agent Bus PGMQ API ─────────────────────────────
+# Bus expects: POST /api/pgmq/send with Bearer token
+# Body: {"queue": "moses-inbox", "message": {...}, "priority": 0}
+bus_url = CORTEX_BUS_URL.rstrip("/")
+api_url = f"{bus_url}/api/pgmq/send"
+
+payload = {
+    "queue": "moses-inbox",
+    "message": {
+        "from": hostname,
+        "subject": f"Skill Report: {custom_total} custom skills",
+        "body": body_text,
+        "topic": "reports",
+        "priority": "normal",
+    },
+    "priority": 0,
+}
 
 req = Request(
     api_url,
     data=json.dumps(payload).encode("utf-8"),
-    headers={"Content-Type": "application/json"},
+    headers={
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {CORTEX_BUS_TOKEN}",
+    },
     method="POST",
 )
-if CORTEX_INBOX_AUTH and ":" in CORTEX_INBOX_AUTH:
-    encoded = base64.b64encode(CORTEX_INBOX_AUTH.encode()).decode()
-    req.add_header("Authorization", f"Basic {encoded}")
 
 try:
     urlopen(req, timeout=30)
-    print(f"Sent {custom_total} custom skills to Moses inbox", flush=True)
+    print(f"Sent {custom_total} custom skills from {hostname} to Moses bus", flush=True)
 except URLError as e:
     print(f"ERR: Failed to send skill report: {e}", flush=True)
     sys.exit(1)
