@@ -205,7 +205,6 @@ register "ops/scripts/agent/install-worker.sh"      "${CORTEX_DEPLOY_HOME}/scrip
 # by deploy_system_scripts() below. Old register entries removed.
 
 # Deployment-specific cron scripts
-register "ops/install/deploy/agent-inbox.py"              "${CORTEX_DEPLOY_HOME}/scripts/agent-inbox.py"
 register "ops/scripts/manage/auto-save-sessions.py"      "${CORTEX_DEPLOY_HOME}/scripts/auto-save-sessions.py"
 register "ops/scripts/agent/agent-health-monitor.py"    "${CORTEX_DEPLOY_HOME}/scripts/agent-health-monitor.py"
 register "ops/scripts/manage/gbrain-nightly-dream.sh"   "${CORTEX_DEPLOY_HOME}/scripts/gbrain-nightly-dream.sh"
