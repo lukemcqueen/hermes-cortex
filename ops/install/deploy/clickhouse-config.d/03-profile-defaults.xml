@@ -7,10 +7,10 @@
 <clickhouse>
     <profiles>
         <default>
-            <!-- Per-query memory limit: 500MB -->
-            <max_memory_usage>500000000</max_memory_usage>
-            <!-- Spill to disk when GROUP BY exceeds 300MB -->
-            <max_bytes_before_external_group_by>300000000</max_bytes_before_external_group_by>
+            <!-- Per-query memory limit: 2GB (matches 2GB container) -->
+            <max_memory_usage>2000000000</max_memory_usage>
+            <!-- Spill to disk when GROUP BY exceeds 1GB -->
+            <max_bytes_before_external_group_by>1000000000</max_bytes_before_external_group_by>
             <!-- Max threads per query (1 CPU core allocated) -->
             <max_threads>2</max_threads>
             <!-- Smaller blocks = less memory per query -->
