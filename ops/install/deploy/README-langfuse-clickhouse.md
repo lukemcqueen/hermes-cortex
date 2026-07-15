@@ -326,6 +326,26 @@ docker exec langfuse-clickhouse-1 clickhouse-client --query \
 
 4. **Verify merge recovery:** After restart, check `TotalMergeFailures` is 0 and merges start running. The `Merge` metric should show >0 and `MergeParts` events appear in `system.part_log`.
 
+5. **If merges still fail after restart — check config actually applied:**
+   ```bash
+   docker exec langfuse-clickhouse-1 clickhouse-client --query \
+     "SELECT name, value, changed FROM system.server_settings \
+      WHERE name IN ('uncompressed_cache_size','mark_cache_size','cache_size_to_ram_max_ratio')"
+   ```
+   If `changed=0` for any cache setting, the config file wasn't read. Common cause: the repo has the fix but the **deployed copy** in `~/langfuse/clickhouse-config.d/` is stale. Compare:
+   ```bash
+   diff ~/hermes-cortex/ops/install/deploy/clickhouse-config.d/02-low-memory.xml \
+        ~/langfuse/clickhouse-config.d/02-low-memory.xml
+   ```
+   If different, copy from repo and restart:
+   ```bash
+   cp ~/hermes-cortex/ops/install/deploy/clickhouse-config.d/02-low-memory.xml \
+      ~/langfuse/clickhouse-config.d/
+   chmod 644 ~/langfuse/clickhouse-config.d/*.xml
+   docker restart langfuse-clickhouse-1
+   ```
+   Then re-check `changed=1` on all three cache settings.
+
 ---
 
 ### ClickHouse merge failures (`CHECKSUM_DOESNT_MATCH`)
