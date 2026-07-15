@@ -704,6 +704,16 @@ create_cron "langfuse-health-watchdog" "0 * * * *" \
   "" \
   "true"
 
+# Daily gbrain brain health check — pauses autopilot, runs doctor, restarts (macOS + Linux)
+create_cron "agent-gbrain-doctor" "0 6 * * *" \
+  "agent-gbrain-doctor.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
 # Agent-specific local fixer (no_agent script — reads markers, searches offline corpus, applies fixes)
 create_cron "agent-apply-fixes" "*/10 * * * *" \
   "agent-apply-fixes.py" \

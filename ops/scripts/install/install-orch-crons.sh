@@ -113,7 +113,7 @@ if $UNINSTALL; then
   echo ""
   printf "${CYAN}━━━ Uninstalling Orchestrator-Only Crons ━━━${RESET}\n\n"
   for job in \
-    "orch-team-messages" "orch-fleet-watchdog" "orch-gbrain-doctor" \
+    "orch-team-messages" "orch-fleet-watchdog" \
     "skill-report-request" "skill-report-process" "skill-evaluate"; do
     remove_cron "$job" 2>/dev/null || true
   done
@@ -381,8 +381,8 @@ printf "${CYAN}  2. Daily gbrain Brain Health Check${RESET}\n"
 
 # Uses gbrain-wrapper.sh to pause autopilot, run doctor, restart.
 # no_agent silent pattern: output only when issues found.
-create_cron "orch-gbrain-doctor" "0 6 * * *" \
-  "orch-gbrain-doctor.sh" \
+create_cron "agent-gbrain-doctor" "0 6 * * *" \
+  "agent-gbrain-doctor.sh" \
   "" \
   "" \
   "" \

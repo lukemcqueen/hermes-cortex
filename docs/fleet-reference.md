@@ -76,10 +76,10 @@ agent guidelines focused on general Hermes Cortex usage.
 | `offline-code-index` | `0 5 * * 0` | no_agent | Weekly corpus index refresh |
 | `secret-leak-watchdog` | `0 */4 * * *` | no_agent | Scans cron/session outputs for printf/echo credential leaks |
 | `process-mcp-agent-inbox-messages` | `*/30 * * * *` | LLM | Read + process new inbox messages |
+| `agent-gbrain-doctor` | `0 6 * * *` | no_agent | Daily gbrain brain health check — pauses autopilot, runs doctor, restarts (macOS + Linux) |
 | | | | |
 | **Orchestrator-only (Moses primary, Esther backup):** | | | |
 | `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | Orchestrator fleet health polling (state-change alerts, delivered via Telegram) |
-| `orch-gbrain-doctor` | `0 6 * * *` | no_agent | Daily gbrain brain health check via gbrain-wrapper.sh (pauses autopilot, runs doctor, reports failures) |
 | `orch-team-messages` | `*/10 * * * *` | no_agent | Flag urgent agent messages |
 | `orch-process-agent-messages` | `*/10 * * * *` | LLM | Process inbox remediation markers |
 

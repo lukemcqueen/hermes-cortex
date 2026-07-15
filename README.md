@@ -67,7 +67,7 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 | **Security** | `threat-pipeline`, `agent-ip-submission` | Block threats, report IPs |
 | **Maintenance** | `memory-pruning`, `skill-miner`, `harvest-lessons`, `session-cache-build` | Weekly consolidation, skill extraction, lesson learning |
 | **Content** | `agent-daily-bible-reading`, `agent-daily-soul-refinement`, `offline-code-index` | Daily spiritual, weekly doc audits, code indexing |
-| **Reports** | `orch-health-report`, `orch-team-messages`, `orch-gbrain-doctor` | Scheduled health briefings, message flags, brain quality |
+| **Reports** | `orch-health-report`, `orch-team-messages`, `agent-gbrain-doctor` | Scheduled health briefings, message flags, brain quality |
 
 All crons follow the **silent-when-good** pattern — zero output when healthy, targeted alerts on state changes.
 

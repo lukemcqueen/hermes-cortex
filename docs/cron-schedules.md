@@ -50,7 +50,7 @@
 | `agent-inbox-overnight` | `0 3 * * 1-5` | LLM | deepseek-v4-flash inbox processing | origin | — |
 | `threat-pipeline` | `0 5 * * *` | no_agent | `nginx-threat-pipeline.sh` | origin | — |
 | `agent-card-daily` | `0 6 * * *` | no_agent | `generate-agent-card.py` | local | — |
-| `orch-gbrain-doctor` | `0 6 * * *` | no_agent | `orch-gbrain-doctor.sh` | origin | yes |
+| `agent-gbrain-doctor` | `0 6 * * *` | no_agent | `agent-gbrain-doctor.sh` | origin | — |
 | `local-agent-daily-news-brief` | `0 7 * * *` | LLM | deepseek-v4-flash news briefing | Telegram | local |
 | `model-health-watchdog` | `0 7 * * *` | no_agent | `model-health-watchdog.py` | origin | — |
 | `upwork-job-scanner` | `0 8 * * *` | LLM | deepseek-v4-flash Upwork scanner | Telegram | — |
@@ -99,12 +99,11 @@ These crons run only on Moses and Esther (defined by `IS_ORCHESTRATOR=true`):
 
 | Cron | Schedule | Type |
 |------|----------|------|
-| `orch-fleet-watchdog` | `*/5 * * * *` | no_agent |
-| `orch-team-messages` | `*/10 * * * *` | no_agent |
-| `orch-gbrain-doctor` | `0 6 * * *` | no_agent |
-| `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent |
-| `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent |
-| `skill-report-request` | `0 2 * * 1` | no_agent |
+|| `orch-fleet-watchdog` | `*/5 * * * *` | no_agent |
+|| `orch-team-messages` | `*/10 * * * *` | no_agent |
+|| `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent |
+|| `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent |
+|| `skill-report-request` | `0 2 * * 1` | no_agent |
 
 ## Local-only summary
 
