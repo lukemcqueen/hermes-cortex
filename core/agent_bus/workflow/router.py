@@ -234,8 +234,11 @@ def poll_and_route(max_messages: int = 10) -> list[str]:
                 if wf_id:
                     processed.append(wf_id)
         except RouteError as e:
-            bus.requeue("workflow_step_result", msg["msg_id"], str(e)[:500])
+            # Use the actual queue the message came from (may be DLQ)
+            actual_queue = msg.get("queue", "workflow_step_result")
+            bus.requeue(actual_queue, msg["msg_id"], str(e)[:500])
         except Exception as e:
-            bus.requeue("workflow_step_result", msg["msg_id"], str(e)[:500])
+            actual_queue = msg.get("queue", "workflow_step_result")
+            bus.requeue(actual_queue, msg["msg_id"], str(e)[:500])
     
     return processed
