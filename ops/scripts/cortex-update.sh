@@ -170,9 +170,6 @@ register "ops/scripts/install/install-post-commit-hook.sh"    "${CORTEX_DEPLOY_H
 # Template drift checker (runs during cortex-update.sh)
 register "ops/scripts/manage/template-diff-check.py"          "${CORTEX_DEPLOY_HOME}/scripts/template-diff-check.py"
 
-# Kustos inbox check (no_agent watchdog)
-register "ops/scripts/agent/kustos-inbox-check.py"   "${CORTEX_DEPLOY_HOME}/scripts/kustos-inbox-check.py"
-
 # Moses inbox remediation
 register "ops/scripts/agent/orch-inbox-remediate.sh"  "${CORTEX_DEPLOY_HOME}/scripts/orch-inbox-remediate.sh"
 
