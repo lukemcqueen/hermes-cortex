@@ -13,35 +13,39 @@
 #   pipeline, research, writing, review, planning
 
 always:
-  - name: change-test-loop
-    why: TDD discipline for every code change
-  - name: engineering-approach
-    why: Project conventions, engineering standards
-  - name: save-lesson
-    why: Auto-save bug fixes for compound learning
+  - name: agent-flow
+    why: Workflow router — classifies task, dispatches pattern + skills
+  - name: reasoning-patterns
+    why: Choose how to think — ReAct, Plan-Execute-Verify, Reflexion, or ToT
+  - name: reflexion-check
+    why: Self-critique before delivering — catch blind spots
+  - name: change-checklist
+    why: Mandatory pre-ship verification before end_change()
   - name: survey-before-action
-    why: Check before creating — prevent redundant work
-  - name: dev-plan
-    why: Plan mode for multi-step features
+    why: Check existing resources before creating — prevent redundant work
+  - name: agent-contract
+    why: Non-negotiable execution rules — honesty, verification, citations
 
 on_task:
   debug:
     - name: systematic-debugging
-      why: 6-phase root cause analysis
+      why: 6-phase root cause analysis with feedback loop
   review:
     - name: code-review
       why: Two-axis review (standards + spec)
-    - name: architecture-review
-      why: Decision matrices, trade-off analysis
   planning:
-    - name: spike
-      why: Throwaway experiments before building
+    - name: task-decomposition
+      why: Break large tasks into verifiable units (INVEST)
+    - name: dev-plan
+      why: Write actionable markdown plans
   enterprise:
+    - name: task-decomposition
+      why: Break large features into verifiable slices
     - name: subagent-driven-development
-      why: Parallel subagent task execution
+      why: Execute plans via parallel sub-agents
   api:
-    - name: test-driven-development
-      why: RED-GREEN-REFACTOR for endpoint work
+    - name: api-documentation
+      why: OpenAPI specs, schemas, auth docs
   pipeline:
-    - name: git-deployment-workflow
-      why: Deploy from bare repos
+    - name: ci-cd-pipeline
+      why: GitHub Actions, caching, deployment patterns

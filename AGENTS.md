@@ -77,6 +77,70 @@ Documentation: [`docs/skills-manifest-reference.md`](docs/skills-manifest-refere
 
 ---
 
+## Pre-Task Sequence — Mandatory Before Every Task
+
+This is NOT optional. Every task starts with this exact sequence,
+regardless of task size, urgency, or domain.
+
+### Step 1: Load Always Skills
+
+Read `.hermes-cortex/skills.yaml` (or `skills.yaml` in the project root).
+Call `skill_view(name)` for every skill in the `always` section.
+
+These skills define HOW you think and work — they are active context
+for the entire task, not one-time loads.
+
+### Step 2: Select Reasoning Pattern
+
+Load `reasoning-patterns` (already loaded from Step 1) and choose:
+
+| Pattern | When |
+|---------|------|
+| **Plan-Execute-Verify** | Default — write plan, execute steps, verify each |
+| **ReAct** | Debugging, exploration — reason, act, observe |
+| **Reflexion** | Add to any pattern when quality is critical |
+| **Tree of Thoughts** | Design decisions with trade-offs |
+
+**State your choice:** *"Using Plan-Execute-Verify with Reflexion check."*
+
+### Step 3: Classify with Agent-Flow
+
+Load `agent-flow` (already loaded from Step 1). Match the request against
+the 12 workflow patterns. This determines toolset, output format, and
+checklist.
+
+### Step 4: Load On-Task Skills
+
+After classification, read `.hermes-cortex/skills.yaml` again and call
+`skill_view(name)` for every skill in the `on_task` section matching
+your classification. Also call `skills_list()` for the relevant category
+to discover skills not in the manifest.
+
+### Step 5: Call Survey-Before-Action
+
+Call `skill_view(name="survey-before-action")` and run its checklist BEFORE
+creating any file, writing any code, or running any command. Search for
+existing resources first.
+
+### Step 6: Work
+
+Execute the task using the loaded skills, following the chosen reasoning
+pattern and the classified workflow pattern's checklist.
+
+### Step 7: Reflexion Check Before Delivery
+
+After completing the work but BEFORE presenting results:
+1. Load `reflexion-check` and run the five-question audit
+2. Score confidence (HIGH / MEDIUM / LOW / ZERO)
+3. If LOW or ZERO: fix before delivering
+
+### Step 8: Change Checklist Before End Change
+
+For code/config/cron changes: load `change-checklist` and run all phases
+before calling end_change(). Phase 6 (Reflexion) is mandatory.
+
+---
+
 ## Loop Governance — Mandatory Agent Workflow
 
 **Every change requires this sequence:**

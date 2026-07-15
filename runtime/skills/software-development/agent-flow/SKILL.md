@@ -22,10 +22,12 @@ Before routing, check for a skills manifest at `.hermes-cortex/skills.yaml` (or
 
 If it exists:
 
-1. Read the `always` section and load each skill with `skill_view(name)`.
-   These are core to this project — TDD discipline, conventions, lesson-saving.
-2. After classifying the task (see below), read the `on_task` section for
-   your classification and load those skills too.
+1. **Load `always` skills** — Read the `always` section and call `skill_view(name)`
+   for each skill. These define HOW to think and work: reasoning patterns,
+   execution contract, pre-ship checklist. **Do not proceed without loading these.**
+2. **Classify the task** (see "How to route" below).
+3. **Load `on_task` skills** — After classifying, read the `on_task` section for
+   your classification and call `skill_view(name)` for each matching skill.
 
 ### Critical step: search for relevant skills you don't know about
 
