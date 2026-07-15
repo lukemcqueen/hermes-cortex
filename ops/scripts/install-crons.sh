@@ -413,7 +413,7 @@ if $UNINSTALL; then
   echo ""
   printf "${CYAN}━━━ Uninstalling Hermes Cron Jobs ━━━${RESET}\n\n"
   for job in \
-    "agent-fixer" "system-heartbeat" "memory-to-brain-sync" \
+    "agent-fixer-workday" "agent-fixer-evening" "agent-fixer-overnight" "system-heartbeat" "memory-to-brain-sync" \
     "system-alert-watchdog" "service-recovery" "inbox-sensor" "inbox-flag" \
     "inbox-depth-watchdog" \
     "remediation-sensor" \
@@ -472,31 +472,34 @@ setup_ollama_provider
 # ── 1. Auto-Remediation Pipeline ────────────────────────────
 printf "${CYAN}  1. Auto-Remediation Pipeline${RESET}\\\n"
 
-# LLM-driven auto-remediation (every 2h)
-create_cron "agent-fixer" "0 */2 * * *" \
+# LLM-driven auto-remediation tiered (workday: hourly M-F 9-6pm, evening: every 2h M-F 6-12am, overnight: once M-F 3am)
+create_cron "agent-fixer-workday" "0 9-17 * * 1-5" \
   "" \
   "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
-## OUTPUT FORMAT — FOLLOW EXACTLY
-Match this structure line for line. Your content replaces the values.
-Everything else stays: dashes, colons, spacing, line breaks.
+If nothing to report: output exactly [SILENT]" \
+  "auto-remediation" \
+  "terminal,file,web" \
+  "origin" \
+  "$HOME" \
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-agent-fixer (JOB_ID) [YYYY-MM-DD HH:MM KST]
--------------
+create_cron "agent-fixer-evening" "0 18,20,22 * * 1-5" \
+  "" \
+  "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
-Phase 1 — Issues found: 2 active issues detected
-- [nginx] port 13001 unreachable
-- [disk] /var/log at 85% capacity
+If nothing to report: output exactly [SILENT]" \
+  "auto-remediation" \
+  "terminal,file,web" \
+  "origin" \
+  "$HOME" \
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-Phase 2 — Fixes applied: 2 of 2 resolved
-- nginx: service restart succeeded
-- disk: log rotation freed 2.3GB
-
-Phase 3 — Unresolved: 0 remaining
-
-Result: All issues fixed. System nominal.
-
-📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo
+create_cron "agent-fixer-overnight" "0 3 * * 1-5" \
+  "" \
+  "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
 If nothing to report: output exactly [SILENT]" \
   "auto-remediation" \

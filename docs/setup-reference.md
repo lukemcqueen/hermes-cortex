@@ -244,7 +244,7 @@ Agent crons follow a three-tier architecture based on task requirements:
 | Tier | Approach | When to use | Examples | Cost |
 |------|----------|-------------|----------|------|
 | **no_agent + API** | Python script + single deepseek API call | Deterministic orchestration + one creative generation | `agent-daily-bible-reading`, `agent-remediate-apply` | $0 / ~$0.01/run |
-| **LLM-driven (deepseek)** | Full agent loop on deepseek-v4-flash | Needs Hermes tools (session_search, memory, patch) | `agent-daily-soul-refinement`, `memory-pruning`, `agent-fixer` | ~$0.01/run |
+| **LLM-driven (deepseek)** | Full agent loop on deepseek-v4-flash | Needs Hermes tools (session_search, memory, patch) | `agent-daily-soul-refinement`, `memory-pruning`, `agent-fixer-workday` | ~$0.01/run |
 | **no_agent script** | Python/shell, no LLM | Deterministic checks, sensors, watchdogs | `remediation-sensor`, `model-health-watchdog`, `inbox-flag` | $0 |
 
 **Migration from qwen2.5-coder:3b:** The 3B model is excellent for single-shot tasks but lacks the reasoning capacity for multi-step agentic workflows. Crons needing multi-tool chaining have been migrated to the first two tiers. Example: `agent-apply-fixes` was an LLM cron on qwen (every 10min, 9.6k token → 29min inference); converted to a no_agent script searching the offline code corpus instead — 4.5s per run, zero LLM cost.

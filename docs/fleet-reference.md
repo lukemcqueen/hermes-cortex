@@ -298,7 +298,9 @@ fallback_providers:
 
 | Cron | Type | Schedule | Script / Skill | Deliver |
 |------|------|----------|----------------|---------|
-| `agent-fixer` | LLM+skill | `0 */2 * * *` | `auto-remediation` | origin |
+| `agent-fixer-workday` | LLM+skill | `0 9-17 * * 1-5` | `auto-remediation` | origin |
+| `agent-fixer-evening` | LLM+skill | `0 18,20,22 * * 1-5` | `auto-remediation` | origin |
+| `agent-fixer-overnight` | LLM+skill | `0 3 * * 1-5` | `auto-remediation` | origin |
 | `remediation-sensor` | no_agent | `*/5 * * * *` | `remediation-sensor.py` | local |
 | `inbox-flag` | no_agent | `*/10 * * * *` | `inbox-flag.py` | local |
 | `agent-apply-fixes` | no_agent | `*/10 * * * *` | `agent-apply-fixes.py` | local |
