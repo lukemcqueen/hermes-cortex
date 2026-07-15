@@ -427,7 +427,7 @@ if $UNINSTALL; then
     "governance-auditor" "threat-pipeline" "agent-ip-submission" \
     "scoring-activity-watchdog" "skill-miner" "agent-weekly-loop-eval" \
     "session-cache-build" "cron-quality-watchdog" \
-    "collect-agent-skills" "send-skill-report"; do
+    "collect-agent-skills"; do
     remove_cron "$job"
   done
   info "Uninstall complete"
@@ -1019,15 +1019,9 @@ create_cron "collect-agent-skills" "0 */6 * * *" \
   "" \
   "true"
 
-# Send skill report to Moses every 6h — reads manifest, sends via API
-create_cron "send-skill-report" "30 */6 * * *" \
-  "send-skill-report.py" \
-  "" \
-  "" \
-  "" \
-  "local" \
-  "" \
-  "true"
+# (Removed: send-skill-report — API endpoint /api/send no longer exists.
+#  Agent inbox migrated to Agent Bus (PGMQ). Collect-agent-skills.sh
+#  still runs independently; this reporter cron was dead code.)
 
 echo ""
 printf "${CYAN}━━━ Summary ━━━${RESET}\n"
