@@ -53,6 +53,7 @@ logs/
 !ops/scripts/agent/install-worker.sh
 !ops/scripts/inbox/inbox-depth-watchdog.sh
 !ops/scripts/inbox/bus-audit-watchdog.py
+!ops/scripts/bus/workflow-inspector.py
 .netrc
 
 # OS junk
