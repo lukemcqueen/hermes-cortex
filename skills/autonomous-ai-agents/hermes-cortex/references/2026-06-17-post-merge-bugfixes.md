@@ -12,11 +12,11 @@ After merging 8 new commits into `~/Developer/AI/hermes-cortex` (HEAD `7641f867`
 ModuleNotFoundError: No module named 'platform_utils'
 ```
 
-**Root cause:** `platform_utils.py` was added to `src/scripts/` in the new commits
+**Root cause:** `platform_utils.py` was added to `ops/scripts/` in the new commits
 but never registered in `cortex-update.sh`'s `register()` MAP. The file existed in
 the repo but wasn't copied to `~/.hermes/scripts/`.
 
-**Fix:** Added `register "src/scripts/platform_utils.py"` to `cortex-update.sh`
+**Fix:** Added `register "ops/scripts/platform_utils.py"` to `cortex-update.sh`
 and manually `cp`'d the file.
 
 ## Bug 2: Python 3.9 Type-Hint Incompatibility

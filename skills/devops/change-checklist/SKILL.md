@@ -150,15 +150,15 @@ Different agents have different setups. Your change shouldn't break them.
 Changes that affect other agents' workflow must be documented.
 
 - [ ] **New script added?**
-  - Register in `cortex-update.sh` with `register()` call (use the canonical `ops/` path, not legacy `src/`)
+  - Register in `cortex-update.sh` with `register()` call (use the canonical `ops/` path)
   - Add script path to `install-crons.sh` or `install-orch-crons.sh` if it's a cron
 
 - [ ] **New skill added?**
   - Add with SKILL.md under `*/skills/<category>/<name>/`
   - Add to `docs/skills-manifest-reference.md` if it should be auto-loaded
 
-- [ ] **After a repo path restructure (e.g. `src/` → `ops/`):**
-  - Scan deployed scripts for stale references: `grep -rn 'hermes-cortex/src/' ~/.hermes-cortex/scripts/ ~/.hermes/scripts/ ~/.hermes-cortex/hooks/ ~/.hermes-cortex/offline/`
+- [ ] **After a repo path restructure:**
+  - Scan deployed scripts for stale references: `grep -rn 'hermes-cortex/src/' ~/.hermes-cortex/scripts/ ~/.hermes/scripts/ ~/.hermes-cortex/hooks/`
   - Fix live execution paths first (not comments), then update config paths in `~/.hermes/config.yaml`
   - Create backward-compat symlinks from old paths to new paths for any remaining references
   - Update `repo-organization` skill's canonical directory tree if the layout changed

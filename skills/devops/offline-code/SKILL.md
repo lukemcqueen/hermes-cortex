@@ -121,13 +121,13 @@ offline_code gen "binary search tree" --model qwen2.5-coder:7b
 offline_code gen "api endpoint" --model qwen2.5-coder:3b
 ```
 
-The corpus lives at `~/hermes-cortex/src/offline/code-corpus/` with 366 snippets across 25 languages. Index stored at `~/offline/code-index.json`.
+The corpus lives at `~/hermes-cortex/ops/offline/code-corpus/` with 366 snippets across 25 languages. Index stored at `~/offline/code-index.json`.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| `offline_code: command not found` | `ln -sf ~/hermes-cortex/src/offline/offline_code.sh ~/.hermes/bin/offline_code` |
+| `offline_code: command not found` | `ln -sf ~/hermes-cortex/ops/offline/offline_code.sh ~/.hermes/bin/offline_code` |
 | `nomic-embed-text:v1.5 not found` | `ollama pull nomic-embed-text:v1.5` |
 | `qwen2.5-coder not found` | `ollama pull qwen2.5-coder:3b` (minimum, auto-detects higher) |
 | `Index is current` on `--force` | Use `--force` flag to rebuild |

@@ -81,7 +81,7 @@ already-loaded `qwen2.5-coder:3b`. Build during low-load periods or accept that
 no-op, but Phase 3 still applies — the habit of checking matters more than the DB).
 
 **Pitfall — import path:** The script needs `hermes_models.py` from `~/.hermes/scripts/`
-on `PYTHONPATH`. Running from the repo directory (`~/hermes-cortex/src/loop-governance/`) 
+on `PYTHONPATH`. Running from the repo directory (`~/hermes-cortex/core/governance/`) 
 may fail with `ModuleNotFoundError: No module named 'hermes_models'`. Fix:
 ```bash
 PYTHONPATH=/home/esther/.hermes/scripts python3 core/governance/session_cache.py build

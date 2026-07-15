@@ -177,12 +177,12 @@ SKIP_PRE_PUSH=1 git push origin main
 
 ## Step 5 — Propagate to other agents
 
-The skill at `src/skills/` is synced automatically to all agents on the next `cortex-update.sh` run. The `sync_skills()` function in `cortex-update.sh` copies `src/skills/` → `~/.hermes/skills/` incrementally (only changed files). You do NOT need to manually copy anything.
+The skill at `skills/` is synced automatically to all agents on the next `cortex-update.sh` run. The `sync_skills()` function in `cortex-update.sh` copies `skills/` → `~/.hermes/skills/` incrementally (only changed files). You do NOT need to manually copy anything.
 
 To force an immediate sync on another agent:
 ```bash
 # On the target agent's machine:
-bash ~/hermes-cortex/src/scripts/cortex-update.sh
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 # OR just:
 bash ~/hermes-cortex/install.sh --skip-existing
 ```

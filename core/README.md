@@ -7,7 +7,7 @@ Canonical schemas, workflow state, policy, and identity contracts. This layer de
 | Directory | Purpose | Status |
 |-----------|---------|--------|
 | `schemas/` | Canonical type definitions: WorkflowRun, Policy, KnowledgeRecord, Approval | Populated (KnowledgeRecord, WorkflowRun + state machine) |
-|    `governance/` | Loop governance engine — DB, scorer, feedback, evaluator, skill miner | Populated (migrated from `src/loop-governance/`) (old `src/` tree removed July 2026) |
+|    `governance/` | Loop governance engine — DB, scorer, feedback, evaluator, skill miner | Populated (migrated to `core/governance/` July 2026) |
 | `identity/` | Agent identity contracts — workload identity, signed messages, credential model | Populated (AgentIdentity, IdentityRegistry, SignedMessage) |
 
 ## Design Rules

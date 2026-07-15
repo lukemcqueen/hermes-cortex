@@ -11,7 +11,7 @@
 ## Deployment Flow
 
 ```
-Repo source (src/scripts/ or src/loop-governance/)
+Repo source (ops/scripts/ or core/governance/)
     ↓  cortex-update.sh --force-all (via register() lines)
 ~/.hermes-cortex/scripts/<file>
     ↓  sync-scripts.sh (copy, not symlink — cron sandbox blocks external symlinks)
@@ -22,14 +22,14 @@ Script runs
 
 ## Adding a New Script
 
-1. Create the script in the repo under `src/scripts/` or `src/loop-governance/`
-2. Add a `register()` line in `src/scripts/cortex-update.sh`:
+1. Create the script in the repo under `ops/scripts/` or `core/governance/`
+2. Add a `register()` line in `ops/scripts/cortex-update.sh`:
    ```bash
-   register "src/scripts/my-script.py" "${HERMES_HOME}/scripts/my-script.py"
+   register "ops/scripts/my-script.py" "${HERMES_HOME}/scripts/my-script.py"
    ```
 3. Deploy via cortex-update:
    ```bash
-   bash ~/hermes-cortex/src/scripts/cortex-update.sh --force-all
+   bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all
    ```
 4. Copy to cron directory:
    ```bash

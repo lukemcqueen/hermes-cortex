@@ -321,7 +321,7 @@ ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
 
 # Run cortex-update to ensure repo is current:
 cd ~/hermes-cortex && git pull origin main
-bash src/scripts/cortex-update.sh
+bash ops/scripts/cortex-update.sh
 
 # Then /reset the agent session
 ```
