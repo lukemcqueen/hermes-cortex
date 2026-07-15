@@ -414,8 +414,8 @@ if $UNINSTALL; then
   printf "${CYAN}━━━ Uninstalling Hermes Cron Jobs ━━━${RESET}\n\n"
   for job in \
     "agent-fixer-workday" "agent-fixer-evening" "agent-fixer-overnight" "system-heartbeat" "memory-to-brain-sync" \
-    "system-alert-watchdog" "service-recovery" "inbox-sensor" "inbox-flag" \
-    "inbox-depth-watchdog" \
+    "system-alert-watchdog" "service-recovery" "bus-sensor" "bus-flag" \
+    "bus-depth-watchdog" \
     "remediation-sensor" \
     "hermes-update" "gbrain-nightly-dream" "gbrain-update-sync" \
     "hermes-cortex-sync" "harvest-lessons" "memory-pruning" \
@@ -574,8 +574,8 @@ create_cron "remediation-sensor" "*/5 * * * *" \
   "true"
 
 # Inbox flag sensor (no_agent, every 10 min) — feeds context to bus LLM crons
-create_cron "inbox-flag" "*/10 * * * *" \
-  "inbox-flag.py" \
+create_cron "bus-flag" "*/10 * * * *" \
+  "bus-flag.py" \
   "" \
   "" \
   "" \
@@ -619,8 +619,8 @@ create_cron "memory-to-brain-sync" "0 */6 * * *" \
 # ── 4. Agent Bus Processing ───────────────────────────────────
 printf "\\n${CYAN}   4. Agent Bus Processing${RESET}\\\n"
 
-create_cron "inbox-sensor" "*/10 * * * *" \
-  "inbox-sensor.py" \
+create_cron "bus-sensor" "*/10 * * * *" \
+  "bus-sensor.py" \
   "" \
   "" \
   "" \
@@ -629,7 +629,7 @@ create_cron "inbox-sensor" "*/10 * * * *" \
   "true"
 
 # Inbox depth watchdog (no_agent, every 1 min) — silent when empty, feeds context to bus crons
-create_cron "inbox-depth-watchdog" "*/1 * * * *" \
+create_cron "bus-depth-watchdog" "*/1 * * * *" \
   "bus/bus-depth-watchdog.sh" \
   "" \
   "" \
