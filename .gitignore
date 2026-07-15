@@ -96,5 +96,6 @@ agent-registry.json
 ops/scripts/
 # plugins/ — removed 2026-07: this dir never existed at root
 runtime/
+!runtime/mcp-servers/task-control-mcp.py
 !ops/scripts/agent/orch-fleet-watchdog.py
 !ops/scripts/agent/contact-moses.sh
