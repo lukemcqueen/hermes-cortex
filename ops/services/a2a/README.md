@@ -8,7 +8,7 @@ This directory contains the A2A (Agent2Agent) v1.0 implementation.
 |------|---------|--------|
 | `agent-card.json` | Static Agent Card for this server (12 skills) | ✅ Done |
 | `generate-agent-card.py` | no_agent generator for the Agent Card | ✅ Done |
-| `a2a-server.py` | A2A-compliant HTTP server (FastAPI, port 8906) | ✅ Done |
+| `a2a-server.py` | A2A-compliant HTTP server — **removed 2026-07-15** (merged into agent-bus server.py) | ❌ Removed |
 | `agent-registry.template.json` | Template for agent server addresses | ✅ Done (in `src/`) |
 
 ## MCP Tools

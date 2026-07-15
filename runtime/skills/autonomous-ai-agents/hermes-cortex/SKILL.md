@@ -75,7 +75,7 @@ Hermes Cortex uses a **two-directory deployment model**:
 **How scripts flow:** Repo source → `cortex-update.sh --force-all` → `~/.hermes-cortex/scripts/` → symlink → `~/.hermes/scripts/`. Do NOT manually copy scripts to `~/.hermes/scripts/` — always use `cortex-update.sh` to deploy, then create symlinks.
 
 **To add a new cortex script:**
-1. Add `register "src/path/to/script" "${HERMES_HOME}/scripts/name"` to `cortex-update.sh`
+1. Add `register "ops/path/to/script" "${HERMES_HOME}/scripts/name"` to `cortex-update.sh`
 2. Run `bash ~/.hermes-cortex/scripts/cortex-update.sh --force-all`
 3. Create symlink: `ln -sf ~/.hermes-cortex/scripts/name ~/.hermes/scripts/name`
 4. Register in `install-crons.sh` if it's a cron script
@@ -236,7 +236,7 @@ Only registered files get auto-deployed when changed. See `references/cortex-upd
 for the full current map (core scripts, self-remediation, offline tools, dashboard, agent inbox, templates, langfuse).
 
 **New file additions:** When adding a new script to the repo, add a `register()` line to `cortex-update.sh`
-(src/scripts/cortex-update.sh) so it gets auto-deployed on next update. Files in `scripts/` (not `src/scripts/`)
+(ops/scripts/cortex-update.sh) so it gets auto-deployed on next update. Files in `scripts/` (not `ops/scripts/`)
 need `scripts/` prefix in the source path, e.g. `register "scripts/weekly-auto-fix.py"`.
 
 See `references/cortex-update-deployment-map.md` for the complete map, update modes (delta/force/status),
@@ -777,14 +777,14 @@ Hermes Cortex uses a three-layer skill model with different purposes per layer. 
 
 | Layer | Location | Purpose | Managed by |
 |-------|----------|---------|-----------|
-| **Canonical source** | `~/hermes-cortex/src/skills/` | Public reusable skills distributed by the installer. These are the curated set — ~40 skills across devops, software-development, MCP, github, etc. | `git push` to repo |
+| **Canonical source** | `~/hermes-cortex/runtime/skills/` | Public reusable skills distributed by the installer. These are the curated set — ~40 skills across devops, software-development, MCP, github, etc. | `git push` to repo |
 | **Global installed** | `~/.hermes/skills/` | Hermes Agent's primary skill directory (~150 skills). Contains cortex skills + ecosystem skills (apple/, creative/, gaming/, mlops/, testing/, etc.) | `cortex-update.sh sync_skills()` + manual additions |
 | **Project overrides** | `~/hermes-cortex/.hermes-cortex/skills/` | Project-specific skill overrides tracked in the repo. Hermes checks this FIRST when working in the hermes-cortex repo, falling back to `~/.hermes/skills/` for anything not found here. These are condensed versions (e.g. 72-line agent-contract vs 990-line global). | Tracked in repo (project-specific) |
 
 ### How Skills Flow
 
 ```
-src/skills/ (canonical, ~40 skills)
+runtime/skills/ (canonical, ~40 skills)
     ↓  cortex-update.sh --force-all: sync_skills() checksums each SKILL.md
 ~/.hermes-cortex/skills/  →  (symlink)  →  ~/.hermes/skills/ (global, ~150 skills)
                                                     ↑
@@ -797,8 +797,8 @@ src/skills/ (canonical, ~40 skills)
 
 Scripts and skills flow in opposite directions:
 
-**Scripts:** `src/scripts/` → `~/.hermes-cortex/scripts/` → (symlink) → `~/.hermes/scripts/`
-**Skills:** `src/skills/` → `~/.hermes-cortex/skills/` → (symlink resolves to) `~/.hermes/skills/`
+**Scripts:** `ops/scripts/` → `~/.hermes-cortex/scripts/` → (symlink) → `~/.hermes/scripts/`
+**Skills:** `runtime/skills/` → `~/.hermes-cortex/skills/` → (symlink resolves to) `~/.hermes/skills/`
 
 Scripts: `~/.hermes-cortex/scripts/` is primary, `~/.hermes/scripts/` is the cron-resolution symlink target.
 Skills: `~/.hermes/skills/` is primary (Hermes Agent loads from here), `~/.hermes-cortex/skills/` is the symlink pointing back.
@@ -849,7 +849,7 @@ rm -rf ~/.hermes-cortex/skills
 ln -s ~/.hermes/skills ~/.hermes-cortex/skills
 
 # 3. Verify with cortex-update
-bash ~/.hermes-cortex/src/scripts/cortex-update.sh --force-all
+bash ~/.hermes-cortex/ops/scripts/cortex-update.sh --force-all
 # Expected output: "Skills: N updated, M unchanged"
 ```
 

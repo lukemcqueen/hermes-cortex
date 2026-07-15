@@ -72,5 +72,5 @@ ExecStopPost=/bin/rm -f %h/.service-name/service.pid
 
 ## Live Example: health-server on Moses
 - Service: `com.hermes.health-server.service`
-- Script: `~/hermes-cortex/src/scripts/health-server.py` (see `_check_port_conflict()` function)
+- Script: `~/hermes-cortex/ops/scripts/health/health-server.py` (see `_check_port_conflict()` function)
 - Service file: `~/.config/systemd/user/com.hermes.health-server.service`

@@ -446,9 +446,9 @@ hermes cron create \
 
 | Path | Purpose |
 |------|---------|
-| `src/skills/devops/eval-harness/SKILL.md` | This skill |
-| `src/scripts/run-evals.py` | Eval execution engine |
-| `src/scripts/analyze-failures.py` | Weekly failure analysis |
+| `runtime/skills/devops/eval-harness/SKILL.md` | This skill |
+| `ops/scripts/run-evals.py` | Eval execution engine |
+| `ops/scripts/analyze-failures.py` | Weekly failure analysis |
 | `evals/` | Eval definitions (YAML) |
 | `evals/graders/` | Grader implementations (Python) |
 | `~/.hermes-cortex/evals/traces/` | Captured eval traces |

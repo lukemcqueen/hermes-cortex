@@ -20,7 +20,7 @@
 - **Canonical skills** in `runtime/skills/` — organized by domain
 - **Documentation** in `docs/` — guides, templates, troubleshooting
 - **Deployment configs** in `deploy/` — nginx, Docker, patches
-- **Service/agent infra** in `src/` — inbox server, dashboard, MCP servers
+- **Service/agent infra** in `ops/services/` (agent-bus, dashboard, a2a) and `runtime/mcp-servers/` (inbox, loop-governance)
 
 When you make an improvement here, every agent running `cortex-update.sh` gets it
 on their next pull. This is the force multiplier.
@@ -366,7 +366,7 @@ that needs to be installed on agent machines, register it here:
 | Repo path → | Installed path |
 |-------------|---------------|
 | `ops/scripts/<name>` | `~/.hermes-cortex/scripts/<name>` |
-| `src/agent-inbox/` files | `~/.hermes-cortex/agent-inbox/` |
+|| `ops/services/agent-inbox/` files | `~/.hermes-cortex/agent-inbox/` |
 | `ops/services/dashboard/` files | `~/.hermes-cortex/dashboard/` |
 | `runtime/skills/<category>/<name>/` | `~/.hermes/skills/<category>/<name>/` (via symlink) |
 | `core/governance/` files | `~/.hermes-cortex/loop-governance/` |

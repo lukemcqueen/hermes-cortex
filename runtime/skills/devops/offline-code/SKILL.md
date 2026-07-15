@@ -30,7 +30,7 @@ A two-tier local coding assistant: **search** a curated corpus of algorithms and
 
 ```bash
 # Step 1: Symlink the CLI wrapper
-ln -sf ~/hermes-cortex/src/offline/offline_code.sh ~/.hermes/bin/offline_code
+ln -sf ~/hermes-cortex/ops/offline/offline_code.sh ~/.hermes/bin/offline_code
 
 # Step 2: Verify CLI
 offline_code stats

@@ -555,7 +555,7 @@ CORTEX_INBOX_AUTH=user:pass   # old name, use CORTEX_BASIC_AUTH instead
 | Service | Why Kept |
 |---------|----------|
 | `hermes-agent-inbox.service` (port 8903) | Fallback in URL chain |
-| `a2a-server` (port 8906) | Fallback for A2A tasks |
+| `a2a-server` (port 8906) | **Removed 2026-07-15** — functionality merged into agent-bus server.py |
 | `inbox-flag.py`, `inbox-sensor.py` crons | Still poll old inbox for stats |
 
 ## nginx Configuration

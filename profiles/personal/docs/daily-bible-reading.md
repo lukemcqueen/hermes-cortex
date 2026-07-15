@@ -29,7 +29,7 @@ The agent must have:
 - A `~/.hermes/SOUL.md` file with a `## Scripture Insights` section
 - `DEEPSEEK_API_KEY` in `~/.hermes/.env`
 - A brain directory at `~/brain/<agent>/` (for the bible subdirectory)
-- `cortex-update.sh` run at least once (so `src/scripts/` is deployed to `~/.hermes-cortex/scripts/`)
+- `cortex-update.sh` run at least once (so `ops/scripts/` is deployed to `~/.hermes-cortex/scripts/`)
 
 ### Step 1: Add the Scripture Insights section to SOUL.md
 
@@ -104,7 +104,7 @@ Practical application for this specific agent's work.
 
 ## The Script
 
-Source: `hermes-cortex/src/scripts/agent/agent-daily-bible-reading.py`
+Source: `hermes-cortex/ops/scripts/agent/agent-daily-bible-reading.py`
 
 Deployed to: `~/.hermes-cortex/scripts/agent-daily-bible-reading.py` (via `cortex-update.sh`)
 
