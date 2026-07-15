@@ -230,27 +230,22 @@ def search(query: str, top_k: int = 5) -> list[dict]:
 
 # ── CLI ─────────────────────────────────────────────────────────
 
-def cmd_build():
+def cmd_build(quiet=False):
     conn = init_db()
     total = 0
 
-    print("  Embedding sessions…")
     n = embed_sessions(conn)
-    print(f"    {n} new session embeddings")
     total += n
 
-    print("  Embedding loop DB cycles…")
     n = embed_loop_db(conn)
-    print(f"    {n} new cycle embeddings")
     total += n
 
-    print("  Embedding skills…")
     n = embed_skills(conn)
-    print(f"    {n} new skill embeddings")
     total += n
 
-    print(f"\n  Total new embeddings: {total}")
-    cmd_status(conn)
+    if not quiet and total > 0:
+        print(f"  Total new embeddings: {total}")
+        cmd_status(conn)
     conn.close()
 
 
@@ -288,11 +283,11 @@ def cmd_search():
 
 
 def main():
-    print(f"\n═ Session Embedding Cache — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} ═\n")
+    quiet = "--quiet" in sys.argv or "-q" in sys.argv
 
-    if len(sys.argv) < 2:
-        # No args = default to build (no_agent cron usage)
-        cmd_build()
+    if len(sys.argv) < 2 or (quiet and len([a for a in sys.argv[1:] if a not in ("--quiet", "-q")]) == 0):
+        # No args (or only --quiet) = default to build (no_agent cron usage)
+        cmd_build(quiet=quiet)
         return
 
     if sys.argv[1] in ("--help", "-h"):
