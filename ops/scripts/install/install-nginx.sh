@@ -85,7 +85,7 @@ upstream langfuse_backend {
     server 127.0.0.1:${langfuse_port};
 }
 
-upstream agent_inbox_backend {
+upstream agent_bus_backend {
     server 127.0.0.1:8903;
 }
 

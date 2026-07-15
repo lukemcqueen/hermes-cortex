@@ -19,7 +19,7 @@
 
 1. Stop the old A2A server: `kill $(lsof -t -i:8906)`
 2. Remove the systemd service: `sudo systemctl disable --now a2a-server; sudo rm /etc/systemd/system/a2a-server.service`
-3. Update inbox server: `cp src/agent-inbox/server.py ~/.hermes-cortex/agent-inbox/server.py`
+3. Update inbox server: `cp ops/services/agent-bus/server.py ~/.hermes-cortex/agent-bus/server.py`
 4. Update MCP server: `cp runtime/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/agent-bus-mcp.py`
 5. Disable old A2A MCP in `~/.hermes/config.yaml`: set `a2a-bridge.enabled: false`
 6. Restart inbox server

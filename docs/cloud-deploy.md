@@ -36,7 +36,7 @@ Local/private-first — this enables migration when needed, not a replacement fo
 | Inbound | 443 | 0.0.0.0/0 | HTTPS |
 | Inbound | 13001 | Fleet IPs or internal CIDR | Cortex Dashboard |
 | Inbound | 13002 | Fleet IPs or internal CIDR | Langfuse |
-| Inbound | 13004 | Fleet IPs or internal CIDR | Agent Inbox API |
+| Inbound | 13004 | Fleet IPs or internal CIDR | Agent Bus API (previously Agent Inbox) |
 | Inbound | 13005 | Fleet IPs or internal CIDR | Hermes UI |
 | Inbound | 13007 | Fleet IPs or internal CIDR | Health endpoint |
 

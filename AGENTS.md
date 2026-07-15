@@ -26,7 +26,7 @@
 | `install.sh` | Single-command installer |
 | `deploy/` | Langfuse + ClickHouse docker-compose |
 | `.hermes-cortex/` | Agent infra: sessions, memory, skills.yaml |
-| `agent-inbox-private/` | Git-backed agent message store |
+| `agent-inbox-private/` | Git-backed agent message store (deprecated — file-based fallback; active messaging is PGMQ Agent Bus) |
 
 ## Skill loading
 
@@ -167,11 +167,11 @@ This deployment uses the `hermes-cortex` profile (not the bundled Hermes `person
 | Name | Type | Schedule | Purpose |
 |------|------|----------|---------|
 | remediation-sensor | no_agent | */5 * * * * | Detect system issues |
-| inbox-flag | no_agent | */10 * * * * | Flag new inbox messages |
+|| inbox-flag | no_agent | */10 * * * * | Flag new bus messages (file-based fallback) |
 | system-alert-watchdog | no_agent | */30 * * * * | Monitor system alerts |
 | service-recovery | no_agent | */5 * * * * | Auto-recover services |
 | memory-to-brain-sync | no_agent | 0 */6 * * * | Sync memory to gbrain |
-| inbox-sensor | no_agent | */10 * * * * | Detect inbox activity |
+|| inbox-sensor | no_agent | */10 * * * * | Detect bus activity |
 | hermes-update | no_agent | 23 22 * * * | Nightly Hermes update |
 | gbrain-nightly-dream | no_agent | 0 3 * * 6 | Weekly gbrain dream |
 | gbrain-update-sync | no_agent | 0 2 * * 0 | Weekly gbrain sync |
@@ -186,7 +186,7 @@ This deployment uses the `hermes-cortex` profile (not the bundled Hermes `person
 | llm-judge-scorer-weekend | no_agent | 0 22 * * 0,6 | Weekend LLM evaluation |
 | offline-code-index | no_agent | 0 5 * * 0 | Weekly offline code index |
 | model-health-watchdog | no_agent | 0 7 * * * | Daily model health check |
-| agent-inbox | LLM+prompt | */2 * * * * | Process agent inbox |
+|| agent-bus | LLM+prompt | */2 * * * * | Process Agent Bus messages |
 | agent-remediate-apply | no_agent | */10 * * * * | Apply remediation fixes |
 | scoring-activity-watchdog | no_agent | 0 14,20 * * * | Monitor scoring activity |
 | skill-miner | no_agent | 0 6 * * 1 | Weekly skill mining |
@@ -201,7 +201,7 @@ This deployment uses the `hermes-cortex` profile (not the bundled Hermes `person
 | collect-agent-skills | no_agent | 0 */6 * * * | Collect skill usage data |
 | send-skill-report | no_agent | 30 */6 * * * | Send skill reports |
 | langfuse-health-watchdog | no_agent | 0 * * * * | Langfuse ClickHouse health |
-| inbox-depth-watchdog | no_agent | */1 * * * * | Monitor inbox backlog depth |
+|| inbox-depth-watchdog | no_agent | */1 * * * * | Monitor bus backlog depth |
 | agent-fixer-workday | LLM+skill | 0 9-17 * * 1-5 | Auto-remediation workday |
 | agent-fixer-evening | LLM+skill | 0 18,20,22 * * 1-5 | Auto-remediation evening |
 | agent-fixer-overnight | LLM+skill | 0 3 * * 1-5 | Auto-remediation overnight |
@@ -218,13 +218,13 @@ When nginx is started outside systemd (e.g., by running `sudo nginx` directly), 
 
 The `langfuse-health-watchdog` reports ClickHouse `TotalMergeFailures`. This is a known Langfuse/ClickHouse issue. Check the watchdog output at `~/.hermes/cron/output/2df43e4b224a/` for details.
 
-### 4. Agent Inbox Processing
+### 4. Agent Bus Processing
 | Cron | Type | Schedule | Script / Skill | Deliver |
 |------|------|----------|----------------|---------|
-| `inbox-depth-watchdog` | no_agent | `*/1 * * * *` | `inbox-depth-watchdog.sh` | local |
-| `inbox-sensor` | no_agent | `*/10 * * * *` | `inbox-sensor.py` | local |
-| `inbox-flag` | no_agent | `*/10 * * * *` | `inbox-flag.py` | local |
-| `agent-inbox` | LLM | `*/2 * * * *` | (inbox decision prompt + depth watchdog context) | origin |
+| `inbox-depth-watchdog` | no_agent | `*/1 * * * *` | `bus/bus-depth-watchdog.sh` (file-based fallback) | local |
+| `inbox-sensor` | no_agent | `*/10 * * * *` | `bus/bus-sensor.py` (PGMQ bus) | local |
+| `inbox-flag` | no_agent | `*/10 * * * *` | `bus/bus-flag.py` (file-based fallback) | local |
+| `agent-bus` | LLM | `*/2 * * * *` | (Agent Bus decision prompt + depth watchdog context) | origin |
 
 ### 5. Governance & Quality
 
@@ -246,7 +246,7 @@ The `langfuse-health-watchdog` reports ClickHouse `TotalMergeFailures`. This is 
 
 The full skill lifecycle runs across all agents:
 
-1. **Collect** — Every agent runs `collect-agent-skills.sh` every 6h, scanning both `~/.hermes/skills/` and `~/.hermes-cortex/skills/` for SKILL.md files not in the upstream repo. Custom skills are reported to Moses inbox (topic: `reports`).
+1. **Collect** — Every agent runs `collect-agent-skills.sh` every 6h, scanning both `~/.hermes/skills/` and `~/.hermes-cortex/skills/` for SKILL.md files not in the upstream repo. Custom skills are reported to Moses via the Agent Bus (topic: `reports`).
 2. **Request** — Weekly (Mon 2am), Moses runs `request-skill-reports.sh` to prompt all agents to share skills.
 3. **Process** — Daily (3am), Moses runs `process-skill-reports.py` to compile incoming reports into a digest.
 4. **Evaluate** — Weekly (Tue 9am), an LLM-driven `skill-evaluate` cron reviews each custom skill for quality, structure, and upstreaming potential.
@@ -266,6 +266,6 @@ Previously inlined content moved to:
 | Loop Governance setup, troubleshooting, full tables | [`docs/loop-governance-reference.md`](docs/loop-governance-reference.md) |
 | Pipeline Reference (lessons, sessions, skills, memory, quality) | [`docs/pipeline-reference.md`](docs/pipeline-reference.md) |
 | Fleet Reference (agent summary, cron jobs, auto-remediation) | [`docs/fleet-reference.md`](docs/fleet-reference.md) |
-| Operations Reference (inbox architecture, offline code, rules) | [`docs/operations-reference.md`](docs/operations-reference.md) |
+| Operations Reference (bus architecture, offline code, rules) | [`docs/operations-reference.md`](docs/operations-reference.md) |
 | Health monitoring, agent setup | [`docs/setup-reference.md`](docs/setup-reference.md) |
 | Symlink policy (Hermes vs Cortex layout) | [`docs/symlink-policy.md`](docs/symlink-policy.md) |

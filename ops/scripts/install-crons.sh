@@ -487,7 +487,7 @@ agent-fixer-workday (JOB_ID) [YYYY-MM-DD HH:MM KST]
 Phase 1 — Issues found: 0 issues
 - All crons healthy. All services running.
 
-Phase 2 — Inbox: Empty.
+Phase 2 — Bus: Empty.
 
 Phase 3 — System: Disk 37%, Memory 46GB/62GB.
 
@@ -517,7 +517,7 @@ agent-fixer-evening (JOB_ID) [YYYY-MM-DD HH:MM KST]
 Phase 1 — Issues found: 0 issues
 - All crons healthy. All services running.
 
-Phase 2 — Inbox: Empty.
+Phase 2 — Bus: Empty.
 
 Phase 3 — System: Disk 37%, Memory 46GB/62GB.
 
@@ -547,7 +547,7 @@ agent-fixer-overnight (JOB_ID) [YYYY-MM-DD HH:MM KST]
 Phase 1 — Issues found: 0 issues
 - All crons healthy. All services running.
 
-Phase 2 — Inbox: Empty.
+Phase 2 — Bus: Empty.
 
 Phase 3 — System: Disk 37%, Memory 46GB/62GB.
 
@@ -573,7 +573,7 @@ create_cron "remediation-sensor" "*/5 * * * *" \
   "" \
   "true"
 
-# Inbox flag sensor (no_agent, every 10 min) — feeds context to inbox LLM crons
+# Inbox flag sensor (no_agent, every 10 min) — feeds context to bus LLM crons
 create_cron "inbox-flag" "*/10 * * * *" \
   "inbox-flag.py" \
   "" \
@@ -616,8 +616,8 @@ create_cron "memory-to-brain-sync" "0 */6 * * *" \
   "" \
   "true"
 
-# ── 4. Agent Inbox Processing ────────────────────────────────
-printf "\\n${CYAN}  4. Agent Inbox Processing${RESET}\\\n"
+# ── 4. Agent Bus Processing ───────────────────────────────────
+printf "\\n${CYAN}   4. Agent Bus Processing${RESET}\\\n"
 
 create_cron "inbox-sensor" "*/10 * * * *" \
   "inbox-sensor.py" \
@@ -628,9 +628,9 @@ create_cron "inbox-sensor" "*/10 * * * *" \
   "" \
   "true"
 
-# Inbox depth watchdog (no_agent, every 1 min) — silent when empty, feeds context to inbox crons
+# Inbox depth watchdog (no_agent, every 1 min) — silent when empty, feeds context to bus crons
 create_cron "inbox-depth-watchdog" "*/1 * * * *" \
-  "inbox/inbox-depth-watchdog.sh" \
+  "bus/bus-depth-watchdog.sh" \
   "" \
   "" \
   "" \
@@ -740,7 +740,7 @@ create_cron "scoring-activity-watchdog" "0 14,20 * * *" \
   "" \
   "true"
 
-# Loop-governance: skill miner — mines local data, sends findings via inbox
+# Loop-governance: skill miner — mines local data, sends findings via bus
 create_cron "skill-miner" "0 6 * * 1" \
   "skill_miner.py" \
   "" \

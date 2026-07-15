@@ -30,7 +30,7 @@ Port **8905**, powered by `bus` schema on gbrain Postgres (port 15432).
 
 ### Old Inbox (file-based, deprecating)
 
-The original agent inbox still runs on port **8903**. It will be kept in read-only mode
+The original legacy agent inbox (file-based) still runs on port **8903** for backward compatibility. It will be kept in read-only mode
 or removed entirely after all agents are confirmed on the bus.
 
 ### Two layers, not one
@@ -94,7 +94,7 @@ hermes cron create --name process-inbox-workday \
   --model "deepseek-v4-flash" \
   --provider "deepseek" \
   --schedule "*/10 9-17 * * 1-5" \
-  --prompt "Check the agent inbox for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. If no messages, output exactly [SILENT]." \
+  --prompt "Check the Agent Bus for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. If no messages, output exactly [SILENT]." \
   --deliver origin
 
 # Evening — every 30 min, Mon-Fri 6pm-midnight
@@ -102,7 +102,7 @@ hermes cron create --name process-inbox-evening \
   --model "deepseek-v4-flash" \
   --provider "deepseek" \
   --schedule "*/30 18-23 * * 1-5" \
-  --prompt "Check the agent inbox for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. If no messages, output exactly [SILENT]." \
+  --prompt "Check the Agent Bus for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. If no messages, output exactly [SILENT]." \
   --deliver origin
 
 # Overnight — every 2 hours, Mon-Fri midnight-6am
@@ -110,7 +110,7 @@ hermes cron create --name process-inbox-overnight \
   --model "deepseek-v4-flash" \
   --provider "deepseek" \
   --schedule "0 0-5/2 * * 1-5" \
-  --prompt "Check the agent inbox for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. If no messages, output exactly [SILENT]." \
+  --prompt "Check the Agent Bus for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. If no messages, output exactly [SILENT]." \
   --deliver origin
 ```
 

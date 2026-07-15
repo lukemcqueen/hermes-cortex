@@ -20,7 +20,7 @@
 - **Canonical skills** in `skills/` — organized by domain
 - **Documentation** in `docs/` — guides, templates, troubleshooting
 - **Deployment configs** in `deploy/` — nginx, Docker, patches
-- **Service/agent infra** in `ops/services/` (agent-bus, dashboard, a2a) and `runtime/mcp-servers/` (inbox, loop-governance)
+- **Service/agent infra** in `ops/services/` (agent-bus, dashboard, a2a) and `runtime/mcp-servers/` (agent-bus-mcp, loop-governance)
 
 When you make an improvement here, every agent running `cortex-update.sh` gets it
 on their next pull. This is the force multiplier.
@@ -352,7 +352,7 @@ mcp_loop_governance_end_change(task_id="<your-task-id>")
 | **Forgetting cortex-update.sh MAP** | Script exists in repo but never deploys | Register new scripts in the MAP immediately |
 | **Not genericizing PII** | Real domain in public repo | Apply genericization transforms before commit |
 | **Skipping end-to-end test** | `$HOME` literal string in cron workdir, cron fails silently | Run the actual CLI to verify before push |
-| **Stale inbox instructions** | Told another agent to use a path you just renamed | Audit post-push communications (Step 9) |
+| **Stale bus instructions** | Told another agent to use a path you just renamed | Audit post-push communications (Step 9) |
 | **Describing un-pushed features** | Agent tries feature that doesn't exist on their main | "Pull to HEAD first, then this works" |
 | **Half-wired abstractions** | Created config file with 0 readers | Wire all consumers in the same commit |
 | **Wrong naming** | Skill directory `my-skill` but SKILL.md has `name: My Skill` | Directory name must match `name:` in frontmatter |
@@ -366,7 +366,7 @@ that needs to be installed on agent machines, register it here:
 | Repo path → | Installed path |
 |-------------|---------------|
 | `ops/scripts/<name>` | `~/.hermes-cortex/scripts/<name>` |
-|| `ops/services/agent-inbox/` files | `~/.hermes-cortex/agent-inbox/` |
+|| `ops/services/<service>/` files | `~/.hermes-cortex/<service>/` |
 | `ops/services/dashboard/` files | `~/.hermes-cortex/dashboard/` |
 || `skills/<category>/<name>/` | `~/.hermes/skills/<category>/<name>/` (via symlink) |
 | `core/governance/` files | `~/.hermes-cortex/loop-governance/` |
@@ -390,5 +390,5 @@ bureaucratic, but to ensure that:
 - **Nothing breaks silently** (end-to-end verification)
 - **Nothing is lost** (DOCS-INDEX, SKILLS-MANIFEST, git)
 
-If you're unsure about anything — ask the human (Luke) or send an inbox message
+If you're unsure about anything — ask the human (Luke) or send a message via the Agent Bus
 to Moses, who maintains the repo and its conventions.
