@@ -183,7 +183,87 @@ steps:
 - ❌ Single-service app deployed to one platform (use one version, save CI time)
 - ❌ When matrix multiplies CI time 6x for no benefit
 
-### 5. Deployment Environments
+### 5. Cache Eviction Management
+
+GitHub caches have a 7-day eviction policy (LRU, 10GB limit). For
+active branches, old caches can pile up. Manage them:
+
+```yaml
+# Delete caches on PR close to prevent thrashing
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const caches = await github.rest.actions.getActionsCacheList({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            for (const cache of caches.data.actions_caches) {
+              if (cache.key.includes(context.payload.pull_request.head.ref)) {
+                await github.rest.actions.deleteActionsCacheByKey({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  key: cache.key,
+                });
+              }
+            }
+```
+
+**Cache key strategy:** Use `${{ github.sha }}` or `${{ github.run_id }}` in
+the primary key only for build artifacts (Docker images). For dependencies,
+always use a hash of the manifest file.
+
+### 6. OIDC Authentication for Cloud Providers
+
+Instead of storing cloud credentials as GitHub Secrets, use OIDC:
+
+```yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Needed for OIDC
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456:role/github-actions-deploy
+          aws-region: us-east-1
+      # Now use aws CLI without any stored secrets
+      - run: aws s3 sync ./dist s3://myapp-bucket
+```
+
+**Benefits:** No long-lived credentials, automatic rotation, audit trail in
+CloudTrail. Supported by AWS, GCP, Azure, and HashiCorp Vault.
+
+### 7. Actions Version Updates
+
+Keep action versions current with Dependabot:
+
+```yaml
+# .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "ci"
+```
+
+This automatically opens PRs when `actions/checkout@v4` has a newer version
+(`v5` is coming), keeping your pipeline secure.
 
 ```yaml
 environments:

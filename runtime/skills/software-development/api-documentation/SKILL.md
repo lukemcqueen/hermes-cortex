@@ -30,6 +30,21 @@ early and gives both frontend and backend a contract to work against.
 
 **Workflow:** Spec → Review → Implement → Verify spec matches code.
 
+### OpenAPI Version: 3.1 vs 3.0
+
+Use **OpenAPI 3.1** (released 2021, widely supported by 2025+).
+
+| Feature | 3.0.x | 3.1.0 |
+|---------|-------|-------|
+| Schema format | Swagger-specific subset of JSON Schema | **Full JSON Schema 2020-12** — reuse your existing schemas |
+| Nullable | `nullable: true` workaround | Use `type: ["string", "null"]` (native JSON Schema) |
+| Examples | `example` per field | `examples` array per field |
+| Webhooks | Not supported | Native `webhooks` section |
+| Identifiers | Relative `$ref` only | Absolute URIs supported |
+| Discriminator | Custom `discriminator` | Native `oneOf`/`anyOf` polymorphism |
+| License | SPDX identifier | Full license object (name, URL, identifier) |
+| Tools | Swagger UI 3.x, Redoc | Swagger UI 5.x, Redocly, Stoplight
+
 ### 2. Complete Endpoint Documentation
 
 Every endpoint MUST document:

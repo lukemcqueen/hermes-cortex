@@ -51,18 +51,31 @@ The area of the codebase affected:
 - Max 72 characters — this is what appears in `git log --oneline`
 - Lowercase after type/scope: `feat: add login` not `feat: Add login`
 
-### Body (optional)
+### Body
 
 - Explain WHAT changed and WHY, not HOW
 - Separate from subject with blank line
 - Wrap at 72 characters
 - Use bullet points for multiple reasons
+- Angular convention: **body is mandatory** for all commits except `docs`
 
-### Footer (optional)
+### Footer
 
-- Breaking changes: `BREAKING CHANGE: <description>`
+- Breaking changes: `BREAKING CHANGE: <description>` or use `!` after type/scope:
+  `feat(api)!: remove deprecated v1 endpoints`
 - Issue references: `Closes #123`, `Refs #456`
 - Co-authors: `Co-authored-by: Name <email>`
+- Reviewed-by: `Reviewed-by: Name <email>`
+
+### SemVer Mapping
+
+| Commit type | Version bump | Example |
+|-------------|-------------|---------|
+| `feat!` or `BREAKING CHANGE` | MAJOR | `feat!: change auth token format` |
+| `feat` | MINOR | `feat: add user preferences endpoint` |
+| `fix` | PATCH | `fix: handle empty request body` |
+| `perf` | PATCH | `perf: cache pagination count query` |
+| Other types | No bump | `docs: update README` |
 
 ## Examples
 

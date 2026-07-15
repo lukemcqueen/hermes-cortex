@@ -133,6 +133,26 @@ async def validation_exception_handler(request, exc):
 
 ### 5. Retry Pattern
 
+**Recommended library:** `tenacity` — battle-tested, handles jitter, async, and edge cases.
+
+```python
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    retry=retry_if_exception_type((ConnectionError, TimeoutError)),
+    before_sleep=lambda retry_state: logger.warning("retry_attempt",
+        extra={"func": retry_state.fn.__name__, "attempt": retry_state.attempt_number,
+               "next_delay_s": retry_state.next_action.sleep}),
+)
+def fetch_data(url: str) -> dict:
+    response = requests.get(url, timeout=5.0)
+    response.raise_for_status()
+    return response.json()
+```
+
+**Manual implementation (no dependencies):**
 ```python
 import time
 from functools import wraps
@@ -150,6 +170,9 @@ def retry(max_attempts=3, base_delay=1.0, backoff=2.0, exceptions=(ConnectionErr
                     last_exception = e
                     if attempt < max_attempts:
                         delay = base_delay * (backoff ** (attempt - 1))
+                        # Add jitter: ±25% random spread
+                        import random
+                        delay *= 1 + random.uniform(-0.25, 0.25)
                         logger.warning("retry_attempt",
                             extra={"func": func.__name__, "attempt": attempt, "next_delay_s": delay})
                         time.sleep(delay)
@@ -161,6 +184,9 @@ def retry(max_attempts=3, base_delay=1.0, backoff=2.0, exceptions=(ConnectionErr
     return decorator
 ```
 
+**Jitter is critical.** Without jitter, multiple retrying clients synchronize
+(thundering herd). Add ±25% random spread to every delay.
+
 **When to retry:**
 - ✅ Network errors, timeouts, rate limits (429)
 - ❌ Validation errors (4xx client errors)
@@ -171,8 +197,36 @@ def retry(max_attempts=3, base_delay=1.0, backoff=2.0, exceptions=(ConnectionErr
 
 ### 6. Circuit Breaker Pattern (for production services)
 
-When a downstream service is failing, stop trying for a while:
+When a downstream service is failing, stop trying for a while.
 
+**Recommended library:** `pybreaker` or `resilient-circuit` (supports PostgreSQL for distributed state).
+
+```python
+from pybreaker import CircuitBreaker
+
+breaker = CircuitBreaker(fail_max=5, reset_timeout=30)
+
+@breaker
+def call_external_api(payload: dict) -> dict:
+    response = requests.post("https://api.partner.com/charge",
+                             json=payload, timeout=10.0)
+    response.raise_for_status()
+    return response.json()
+
+def handle_payment(order_id: str, amount: float):
+    try:
+        result = call_external_api({"order_id": order_id, "amount": amount})
+        return {"status": "success", "transaction": result}
+    except pybreaker.CircuitBreakerError:
+        # Circuit is open — queue for retry instead of failing
+        queue_payment_for_retry(order_id, amount)
+        return {"status": "queued", "retry_in_s": 30}
+    except Exception as e:
+        logger.error("payment_failed", extra={"order_id": order_id, "error": str(e)})
+        raise
+```
+
+**Manual implementation (no dependencies):**
 ```python
 import time
 from enum import Enum
@@ -211,7 +265,68 @@ class CircuitBreaker:
             raise
 ```
 
-### 7. Graceful Degradation
+### 7. Error Classification (TRANSIENT / FATAL / DEGRADED)
+
+Not all errors are equal. Classify before deciding how to handle:
+
+```python
+from enum import Enum
+
+class ErrorType(Enum):
+    TRANSIENT = "transient"   # Retry (network timeout, 503, 429)
+    FATAL = "fatal"           # Fail fast (validation, auth, 400)
+    DEGRADED = "degraded"     # Fallback (3rd party down, feature unavailable)
+
+class ErrorClassifier:
+    @staticmethod
+    def classify(exception) -> ErrorType:
+        if isinstance(exception, (TimeoutError, ConnectionError)):
+            return ErrorType.TRANSIENT
+        if isinstance(exception, (ValidationError, PermissionError)):
+            return ErrorType.FATAL
+        if isinstance(exception, ThirdPartyDownError):
+            return ErrorType.DEGRADED
+        return ErrorType.FATAL  # Default: safe
+
+def handle_error(exception):
+    error_type = ErrorClassifier.classify(exception)
+    if error_type == ErrorType.TRANSIENT:
+        return retry_with_backoff(lambda: raise_or_return(exception))
+    elif error_type == ErrorType.FATAL:
+        raise exception
+    elif error_type == ErrorType.DEGRADED:
+        return fallback_response()
+```
+
+### 8. Fallback Routing (Stripe pattern)
+
+When primary service fails, try an alternative:
+
+```python
+def process_payment(amount: float, currency: str) -> dict:
+    """Try primary processor, fall back to secondary."""
+    providers = [
+        ("stripe", stripe_charge),
+        ("paypal", paypal_charge),
+        ("local_fallback", manual_hold_charge),
+    ]
+    last_error = None
+    for provider_name, provider_fn in providers:
+        try:
+            result = provider_fn(amount, currency)
+            logger.info("payment_processed",
+                extra={"provider": provider_name, "amount": amount})
+            return result
+        except Exception as e:
+            logger.warning("payment_fallback",
+                extra={"provider": provider_name, "error": str(e)})
+            last_error = e
+            continue
+    raise PaymentFailedError("All providers failed") from last_error
+```
+
+
+### 10. Graceful Degradation
 
 When a non-critical dependency fails, degrade instead of crashing:
 

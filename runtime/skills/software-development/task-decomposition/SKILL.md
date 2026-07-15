@@ -67,6 +67,22 @@ Step D:     (needs C) Auth middleware
   depends:  C
 ```
 
+### Quality Gate: INVEST Criteria
+
+Every decomposed unit should be **INVEST**:
+
+| Letter | Stands for | Means | Check |
+|--------|-----------|-------|-------|
+| **I** | **Independent** | Can be delivered in any order (minimize dependencies) | Can I build this without waiting for another unit? |
+| **N** | **Negotiable** | Scope can vary — not a rigid spec | Can I cut scope on this unit if needed? |
+| **V** | **Valuable** | Delivers user-visible value on its own | Does this produce something demonstrable? |
+| **E** | **Estimable** | Team can estimate effort with confidence | Do I know roughly how long this takes? |
+| **S** | **Small** | Fits in one sprint / work session (≤2 hours for agents) | Can I finish this in a single focused session? |
+| **T** | **Testable** | Clear pass/fail criteria | Can I verify this is done objectively? |
+
+**Rule of thumb:** If a unit fails INVEST on any letter, split further or
+merge with an adjacent unit. INVEST failures are early warnings of:
+
 ## Process
 
 ### Step 1: Understand the full scope

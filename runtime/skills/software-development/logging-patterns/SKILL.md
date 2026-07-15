@@ -41,15 +41,97 @@ logger.info({"event": "user_login", "user_id": user_id, "ip": ip, "method": "oau
 
 Structure enables: `grep user_login | jq 'select(.method == "oauth")'`.
 
-### 2. Log Levels
+#### Python Libraries
 
-| Level | When to use | Production default |
-|-------|-------------|-------------------|
-| `DEBUG` | Development details, trace execution path | Off |
-| `INFO` | Normal operation events (startup, shutdown, state transitions) | On |
-| `WARNING` | Something unexpected but non-fatal (rate limit approaching, deprecation) | On |
-| `ERROR` | Recoverable failure (API request failed, DB timeout, task retry) | On |
-| `CRITICAL` | Unrecoverable failure (app won't start, data corruption detected) | Alert |
+| Library | When to use |
+|---------|-------------|
+| `structlog` | **Recommended** for new projects — wraps stdlib, auto-injects context, JSON output by default, middleware for FastAPI |
+| `python-json-logger` | Lightweight — adds JSON formatting to stdlib with minimal config |
+| `loguru` | Simple — zero-config, colored console, easy rotation. Less structured than structlog |
+| `stdlib logging` + `dictConfig` | When you can't add dependencies — configure via YAML dictionary |
+
+**structlog example (recommended):**
+```python
+import structlog
+
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        structlog.processors.JSONRenderer(),
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
+
+logger = structlog.get_logger()
+logger.info("user_login", user_id=user_id, ip=ip, method="oauth")
+```
+
+**dictConfig YAML template (stdlib):**
+```yaml
+version: 1
+formatters:
+  json:
+    format: "%(asctime)s %(levelname)s %(name)s %(message)s"
+    class: pythonjsonlogger.jsonlogger.JsonFormatter
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: json
+    stream: ext://sys.stdout
+  file:
+    class: logging.handlers.RotatingFileHandler
+    formatter: json
+    filename: /var/log/app.json
+    maxBytes: 10485760  # 10MB
+    backupCount: 5
+root:
+  level: INFO
+  handlers: [console, file]
+```
+
+### 2. Field Schema Standards
+
+Align with **Elastic Common Schema (ECS)** or **OpenTelemetry** semantic conventions for interoperability with observability platforms.
+
+**Standard field names:**
+```json
+{
+    "@timestamp": "2026-07-15T14:30:00.000Z",
+    "log.level": "INFO",
+    "event.action": "user_login",
+    "service.name": "api-gateway",
+    "service.version": "1.2.3",
+    "trace.id": "abc123def456",
+    "span.id": "span789",
+    "user.id": "user_42",
+    "client.ip": "203.0.113.42",
+    "duration.ms": 342,
+    "error.type": "ConnectionRefusedError",
+    "error.message": "Connection refused: db:5432"
+}
+```
+
+| Field | ECS name | Required | Example |
+|-------|----------|----------|---------|
+| Timestamp | `@timestamp` | Always | RFC3339 UTC |
+| Log level | `log.level` | Always | `INFO`, `ERROR` |
+| Event name | `event.action` | Always | `payment_processed` |
+| Service name | `service.name` | Always | `api-gateway` |
+| Service version | `service.version` | Deploy | `1.2.3` |
+| Trace ID | `trace.id` | Request ctx | `abc123` |
+| Duration | `duration.ms` | Perf-relevant | `342` |
+| Error type | `error.type` | On failure | `ConnectionRefusedError` |
+| Error message | `error.message` | On failure | `Connection refused: db:5432` |
 
 **Rule of thumb:** If a human wouldn't care about it in production, it's `DEBUG`.
 If a human needs to act on it, it's `ERROR` or `CRITICAL`.
