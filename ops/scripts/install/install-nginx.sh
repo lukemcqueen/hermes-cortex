@@ -85,6 +85,14 @@ upstream langfuse_backend {
     server 127.0.0.1:${langfuse_port};
 }
 
+upstream agent_inbox_backend {
+    server 127.0.0.1:8903;
+}
+
+upstream health_backend {
+    server 127.0.0.1:8905;
+}
+
 # Cortex Dashboard — port ${listen_dashboard}
 server {
     listen ${listen_dashboard};
