@@ -540,9 +540,9 @@ def check_services(res):
 
     # ── Agent Bus direct health (bypasses nginx auth_basic) ──
     bus_health = run_bg([CURL, "-s", "-o", "/dev/null", "-w", "%{http_code}",
-                         "http://127.0.0.1:8905/health", "--max-time", "5"])
+                         "http://127.0.0.1:8903/health", "--max-time", "5"])
     if bus_health == "200":
-        res.add("Agent Bus (direct)", "PASS", "HTTP 200 — bus service healthy via localhost:8905")
+        res.add("Agent Bus (direct)", "PASS", "HTTP 200 — bus service healthy via localhost:8903")
     else:
         res.add("Agent Bus (direct)", "WARN",
                 f"HTTP {bus_health} or unreachable — bus may be down",
