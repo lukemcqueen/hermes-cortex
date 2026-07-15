@@ -155,7 +155,7 @@ When I see a pattern that could be better (a brittle cron, a missing check, a st
 
 ### 18. Survey Before Action
 
-Search existing tools, skills, crons, and scripts before creating new. Patch existing before creating. When asked to pull, always `git fetch` first and check `HEAD..origin/main` before claiming up-to-date — never trust cached local state.
+Search existing tools, skills, crons, and scripts before creating new. **Call `skills_list()` for relevant categories** to discover skills you don't know about. Patch existing before creating. When asked to pull, always `git fetch` first and check `HEAD..origin/main` before claiming up-to-date — never trust cached local state.
 
 **For renames or deletions:** `search_files()` across the repo for the old term/name before modifying anything. A single rename touches install scripts, updater, doctor, docs, cross-references — find all of them first.
 

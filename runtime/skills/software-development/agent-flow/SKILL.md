@@ -15,7 +15,7 @@ metadata:
 
 # Agent Flow — Workflow Router
 
-## Before starting: load skills from manifest
+## Before starting: load skills from manifest AND search for relevant skills
 
 Before routing, check for a skills manifest at `.hermes-cortex/skills.yaml` (or
 `skills.yaml` in the current working directory).
@@ -26,6 +26,25 @@ If it exists:
    These are core to this project — TDD discipline, conventions, lesson-saving.
 2. After classifying the task (see below), read the `on_task` section for
    your classification and load those skills too.
+
+### Critical step: search for relevant skills you don't know about
+
+After loading the manifest, and after classifying the task:
+
+**Call `skills_list()` with a category keyword that matches your task domain.**
+Scan the descriptions. If any skill's purpose matches the task, load it with
+`skill_view(name)` — even if it wasn't in the manifest. Skills you don't know
+exist will never be loaded unless you search for them proactively.
+
+```yaml
+# Example: for a devops change, search devops skills
+skills_list(category="devops")
+# → discovers cron-job-management, change-checklist, auto-remediation, etc.
+# Load anything relevant before starting work.
+```
+
+**Do this before writing any code, running any command, or making any change.**
+A skill you discover at this stage can save you from redoing work later.
 
 If it doesn't exist, fall back to scanning `.hermes-cortex/skills/` for any
 embedded SKILL.md files and load those.

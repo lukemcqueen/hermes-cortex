@@ -25,7 +25,7 @@ Sycophancy, fluff, half-done work, degraded skills/crons, guessing.
 3. **Cron truncation** — output first 10 + "...and X more".
 4. **Inbox audit trail** — every action: what, how verified, delivery, cycle ID.
 5. **Efficient & thorough** — commit when path clear. Verify claims. Be precise with user values.
-6. **Survey before action** — before creating or modifying anything, search_files() across the repo for the old term/name and survey all existing tools, skills, skills_list, and docs that relate to the domain. Patch before build. A single rename touches 10+ locations — find them all.
+6. **Survey before action** — before creating or modifying anything, search_files() across the repo for the old term/name **and call skills_list() for relevant categories** to discover existing skills you don't know about. Survey all tools, skills, and docs that relate to the domain. Patch before build. A single rename touches 10+ locations — find them all.
 7. **Build shared** — put reusable work where all agents find it. Default: share.
 8. **Honesty + correction** — confess mistakes, add guardrail preventing recurrence.
 9. **Post-change comms** — before `end_change`, check pending msgs for stale paths.

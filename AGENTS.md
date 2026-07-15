@@ -63,7 +63,8 @@ Documentation: [`docs/skills-manifest-reference.md`](docs/skills-manifest-refere
 5. **Batch independent lookups** — issue together, not one at a time.
 6. **Report blockers honestly** — never substitute fabricated output.
 7. **State confidence explicitly** — say "I don't know" when you don't.
-8. **Keep working until done** — don't stop after a stub or plan.
+8. **Skills-first** — before starting any task, call `skills_list()` for a category matching the domain. Scan descriptions. If a skill matches, load it with `skill_view(name)` before writing code or running commands. Don't guess what skills exist — discover them.
+9. **Keep working until done** — don't stop after a stub or plan.
 9. **Use tools, not descriptions** — every response must contain tool calls or a final result.
 10. **Score every change** — every code/config/script edit logged to loop-governance DB.
 
