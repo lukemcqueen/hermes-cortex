@@ -65,6 +65,7 @@ Before making any change, map the full scope. A single cron rename can touch 10+
 - [ ] **Cross-references**: grep for old term in other scripts' comments, docstrings, deprecation notices
 - [ ] **Category awareness**: is this orchestrator-only (orch-*) or general? Update the `fleet-reference.md` cron table category column
 - [ ] **Test run**: after deploy, run the actual script to verify exit code 0
+- [ ] **Governance lock symlink**: the enforcer checks `.governance-generic.json` but locks create `.governance-hermes-cortex.json`. Ensure `ln -sf .governance-hermes-cortex.json ~/.hermes-cortex/state/.governance-generic.json` exists before attempting write operations.
 
 ## The Checklist
 
@@ -77,6 +78,7 @@ See `references/testing-deployable-scripts.md` for detailed testing patterns by 
   - `bash script.sh --help` or `python3 script.py` — confirm it runs without errors
   - If it produces a config: verify the output has correct paths for the OS you're on
   - If it's a cron job: create it with `cronjob(action='run')` and inspect the delivery
+  - ⚠️ **Manual `python3 script.py` does NOT update the cron scheduler's `last_status`.** The doctor reads the scheduler's recorded status, not the script exit code. After fixing a cron, ALWAYS run `cronjob action='run' job_id=<id>` to refresh the scheduler's status. Then run the doctor to confirm it clears.
   - ⚠️ **Don't test in isolation** — run the full command, not an imported function
 
 - [ ] **Config changes:** Diff generated vs deployed
@@ -207,7 +209,7 @@ Changes that affect other agents' workflow must be documented.
 
 | Anti-pattern | Why it's wrong |
 |---|---|
-| "I tested it manually" | Manual = ad-hoc, not repeatable, no proof. Run the actual tool. |
+| "I tested it manually" | Manual = ad-hoc, not repeatable, no proof. Run the actual tool. Also: manual `python3 script.py` doesn't update the cron scheduler's `last_status` — the doctor reads scheduler status, not script exit code. |
 | "It's just a small config change" | Small changes break prod too. Same checklist applies. |
 | "I already did the main work, the rest is trivial" | The omitted work (docs, deploy, doctor, push) is where trust breaks. The work isn't done until it's ALL done. |
 | "Other OS can wait" | It won't. Ship OS-agnostic on day one. |

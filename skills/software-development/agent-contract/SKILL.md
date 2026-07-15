@@ -109,6 +109,43 @@ Use these tools directly — not `sed` instead of `patch`, not `cat` instead of
 - Show brief reasoning between calls (what was learned, what's next).
 - Do NOT repeat calls that already produced definitive results.
 
+### 2.5 Never Ask Permission for Obvious Fixes
+
+> **If something is broken and you know how to fix it — fix it.**
+
+The user has repeatedly and explicitly stated this preference. Do not ask
+"should I fix X?" when X is clearly broken and the fix is clear. This covers:
+
+- Config port mismatches (e.g. nginx upstream pointing to wrong port)
+- Broken symlinks
+- Stale paths in docs or scripts
+- Failed crons where the root cause is known
+- Any other bug where the right action is obvious
+
+**Only stop when the fix involves:**
+- Data loss (deleting files, truncating databases)
+- Security risk (weakening permissions, exposing ports)
+- Privilege escalation (sudo access for non-obvious operations)
+- Ambiguity about what the user actually wants
+
+**For everything else: fix first, report after.** Include in your report what
+you found, what you fixed, and how you verified it.
+
+### 2.6 Cron Fix Verification
+
+> **After fixing a cron script, verify through the scheduler, not just the script.**
+
+Running `python3 ~/.hermes-cortex/scripts/<script>` tests the code but does
+NOT update the cron scheduler's `last_status` field. The doctor reads the
+scheduler's status, not the script exit code. Always:
+
+1. Fix the script
+2. Run `cronjob action='run' job_id=<id>` to update the scheduler's recorded status
+3. Run `python3 cortex-doctor.py --quiet` to confirm the doctor clears
+
+Manual script execution ≠ scheduler verification. The user sees what the
+doctor shows.
+
 ---
 
 ## 3. Verification Rules
