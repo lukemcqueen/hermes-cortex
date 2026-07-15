@@ -308,6 +308,76 @@ def check_repo(res):
         res.add("Repo sync", "PASS", "up to date with origin/main")
 
 
+def check_skills(res):
+    """2. Skills manifest: skills.yaml exists, valid YAML, has required always skills."""
+    skills_yaml = CORTEX_HOME / "skills.yaml"
+    template_yaml = CORTEX_REPO / "docs" / "templates" / "skills.yaml"
+
+    if not skills_yaml.exists():
+        res.add("Skills manifest", "FAIL", f"Not found at {skills_yaml}",
+                "Run: cp docs/templates/skills.yaml ~/.hermes-cortex/skills.yaml")
+        return
+
+    try:
+        import yaml
+        with open(skills_yaml) as f:
+            data = yaml.safe_load(f)
+    except ImportError:
+        # Fallback: just check the file exists and has content
+        content = skills_yaml.read_text()
+        if "always:" not in content or "on_task:" not in content:
+            res.add("Skills manifest", "FAIL", "Missing 'always' or 'on_task' sections",
+                    f"Compare with template: {template_yaml}")
+            return
+        res.add("Skills manifest (basic)", "PASS", f"found at {skills_yaml}")
+        return
+    except (yaml.YAMLError, OSError) as e:
+        res.add("Skills manifest", "FAIL", f"YAML parse error: {e}",
+                f"Check syntax: python3 -c \"import yaml; yaml.safe_load(open('{skills_yaml}'))\"")
+        return
+
+    if not isinstance(data, dict):
+        res.add("Skills manifest", "FAIL", "Root is not a mapping",
+                "Check YAML structure has 'always:' at root")
+        return
+
+    always = data.get("always", [])
+    on_task = data.get("on_task", {})
+
+    # Check required always skills
+    required = ["agent-flow", "reasoning-patterns", "reflexion-check", "change-checklist",
+                 "survey-before-action", "agent-contract"]
+    always_names = {s.get("name") if isinstance(s, dict) else s for s in (always or [])}
+    missing = [r for r in required if r not in always_names]
+
+    if missing:
+        res.add("Skills manifest: always", "FAIL",
+                f"Missing required skills: {', '.join(missing)}",
+                f"Add to always section: cp {template_yaml} {skills_yaml}")
+    else:
+        res.add("Skills manifest: always", "PASS", f"all {len(required)} required skills present")
+
+    # Check on_task covers key classifications
+    expected_on_task = {"debug", "review", "planning", "enterprise"}
+    on_task_keys = set(on_task.keys()) if isinstance(on_task, dict) else set()
+    missing_on = expected_on_task - on_task_keys
+    if missing_on:
+        res.add("Skills manifest: on_task", "WARN",
+                f"Missing classifications: {', '.join(sorted(missing_on))}",
+                f"Add on_task entries for these agent-flow patterns")
+    else:
+        res.add("Skills manifest: on_task", "PASS", "covers debug, review, planning, enterprise")
+
+    # Check template is newer than deployed manifest
+    if template_yaml.exists() and skills_yaml.exists():
+        tmpl_mtime = template_yaml.stat().st_mtime
+        skills_mtime = skills_yaml.stat().st_mtime
+        if tmpl_mtime > skills_mtime + 1:  # 1-second tolerance
+            res.add("Skills manifest: template", "WARN",
+                    "Template is newer than deployed manifest",
+                    f"Run: cp {template_yaml} {skills_yaml}")
+
+
 def check_crons(res):
     """2. Cron audit: all expected crons registered, workdirs valid, run status, extra crons."""
     if not JOBS_FILE.exists():
@@ -1217,7 +1287,7 @@ def main():
     do_watch = "--watch" in args
     compact = "--quiet" in args
 
-    all_checks = [check_repo, check_crons, check_scripts, check_services,
+    all_checks = [check_repo, check_skills, check_crons, check_scripts, check_services,
                    check_system, check_config, check_nginx, check_governance, check_install]
 
     if not res.json_mode:

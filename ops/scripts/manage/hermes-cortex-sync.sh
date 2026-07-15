@@ -79,4 +79,14 @@ fi
 # Restore stashed changes
 stash_pop
 
+# Deploy skills manifest from template
+SKILLS_TEMPLATE="$CORTEX_REPO/docs/templates/skills.yaml"
+SKILLS_DEST="$HOME/.hermes-cortex/skills.yaml"
+if [ -f "$SKILLS_TEMPLATE" ]; then
+    if [ ! -f "$SKILLS_DEST" ] || ! diff -q "$SKILLS_TEMPLATE" "$SKILLS_DEST" >/dev/null 2>&1; then
+        cp "$SKILLS_TEMPLATE" "$SKILLS_DEST"
+        log "skills.yaml deployed from template"
+    fi
+fi
+
 echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') cortex-sync] hermes-cortex updated, tools re-synced."
