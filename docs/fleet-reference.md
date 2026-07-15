@@ -55,14 +55,14 @@ agent guidelines focused on general Hermes Cortex usage.
 
 | Cron | Schedule | Type | Purpose |
 |------|----------|------|---------|
-| `agent-auto-remediate` | `*/30 * * * *` | LLM+skill | Auto-fix cron/inbox/service issues |
+|| `agent-auto-remediate` | `*/30 * * * *` | LLM+skill | Auto-fix cron/bus/service issues |
 | `remediation-sensor` | `*/5 * * * *` | no_agent | Companion diagnostics sensor |
 | `service-recovery` | `*/5 * * * *` | no_agent | Auto-restart crashed services |
 | `hermes-update` | `23 22 * * *` | no_agent | Daily Hermes upgrade + config migrate (output local only — Telegram delivery suppressed) |
 | `hermes-cortex-sync` | `33 22 * * *` | no_agent | Daily repo pull + tool re-sync |
 | `system-alert-watchdog` | `*/30 * * * *` | no_agent | Resource threshold alerts |
 | `agent-cron-failure-scanner` | `*/30 * * * *` | no_agent | Scans ALL cron outputs for recent failures (last 90 min) |
-| `inbox-sensor` | `*/10 * * * *` | no_agent | Detect new broadcast messages |
+| `inbox-sensor` | `*/10 * * * *` | no_agent | Detect new broadcast messages via Agent Bus |
 | `memory-to-brain-sync` | `0 */6 * * *` | no_agent | Memory persistence to gbrain |
 | `gbrain-nightly-dream` | `0 3 * * 6` | no_agent | Weekly gbrain knowledge enrichment |
 | `gbrain-update-sync` | `0 2 * * 0` | no_agent | Weekly gbrain update + health check |
@@ -75,13 +75,13 @@ agent guidelines focused on general Hermes Cortex usage.
 | `llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | Weekend trace quality scoring |
 | `offline-code-index` | `0 5 * * 0` | no_agent | Weekly corpus index refresh |
 | `secret-leak-watchdog` | `0 */4 * * *` | no_agent | Scans cron/session outputs for printf/echo credential leaks |
-| `process-mcp-agent-inbox-messages` | `*/30 * * * *` | LLM | Read + process new inbox messages |
+| `process-mcp-agent-inbox-messages` | `*/30 * * * *` | LLM | Read + process new Agent Bus messages |
 | `agent-gbrain-doctor` | `0 6 * * *` | no_agent | Daily gbrain brain health check — pauses autopilot, runs doctor, restarts (macOS + Linux) |
 | | | | |
 | **Orchestrator-only (Moses primary, Esther backup):** | | | |
 | `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | Orchestrator fleet health polling (state-change alerts, delivered via Telegram) |
 | `orch-team-messages` | `*/10 * * * *` | no_agent | Flag urgent agent messages |
-| `orch-process-agent-messages` | `*/10 * * * *` | LLM | Process inbox remediation markers |
+| `orch-process-agent-messages` | `*/10 * * * *` | LLM | Process Agent Bus remediation markers |
 
 ### Cron naming convention
 
@@ -125,7 +125,7 @@ bash ~/hermes-cortex/ops/scripts/install-crons.sh --uninstall
 
 ### Agent summary
 
-|||| Agent | Role | Host | Services | Inbox method | Agent Bus | Health auth |
+|| Agent | Role | Host | Services | Bus method | Agent Bus | Health auth |
 ||||-------|------|------|----------|-------------|-----------|-------------|
 |||| Moses | Primary orchestrator | moses-server (Linux) | Gateway + nginx proxy :13004 | HTTP poll (self) | **Admin** — runs bus (:8905), PG access | **No auth** |
 |||| Esther | Backup orchestrator | worker-5 (Linux) | Gateway + nginx proxy :14004 | HTTP poll (+bkup inbox) | **Standby** — has bus PG access | **No auth** |

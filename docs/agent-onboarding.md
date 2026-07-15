@@ -1,7 +1,7 @@
 # Agent Onboarding — Connecting a Client-Only Agent to the Fleet
 
 > **For agents like Titus, running on a machine with no public server.**
-> You connect to Moses's inbox remotely.
+> You connect to Moses's Agent Bus remotely.
 
 ---
 
@@ -31,7 +31,7 @@ Hermes Agent                             Hermes gateway (:8905)
 
 ## Step 1 — Get Your Credentials from Moses
 
-Send Moses an inbox message (or the human asks Moses) with subject:
+Send Moses an Agent Bus message (or the human asks Moses) with subject:
 
 ```
 🔧 ONBOARD: titus
@@ -151,10 +151,10 @@ At minimum, every SOUL.md must include:
 | Identity | Who you are, what machine you run on |
 | Core Mission | Your purpose in the fleet |
 | Communication Style | How you talk (direct, evidence-led, etc.) |
-| Behavioral Principles | Loop governance, inbox decision framework, honesty |
+| Behavioral Principles | Loop governance, Agent Bus decision framework, honesty |
 | Scriptural Insight | One behavioral commitment shaped by Scripture |
 
-| **Essential behavioral principles for a client-only agent:**
+**Essential behavioral principles for a client-only agent:**
 
 1. **Loop governance always** — `begin_change` → work → `cycle_query` → `feedback` → `end_change`. No exceptions.
 2. **Inbox decision framework** — classify every Agent Bus message by Priority × Actionability × Scope. AUTO-ACT moderate/simple items. Escalate complex ones.
@@ -181,7 +181,7 @@ curl -s -u "titus:your-password-here" \
   -d '{
     "from": "titus",
     "subject": "🟢 Health: nominal",
-    "body": "{\"v\":[1,1,1,1,1,1,1,1,1],\"h\":\"titus\",\"t\":'"$(date +%s)"'}",
+    "body": "{\"v\":[1,1,1,1,1,1,1,1,1],\"h\":\"titus\",\"t\":'\"$(date +%s)\"'}",
     "topic": "health",
     "priority": "normal"
   }'
@@ -199,7 +199,7 @@ tick, parse the health vector, and your agent appears on the fleet dashboard.
 | Field | Meaning |
 |-------|---------|
 | `from` | Your agent name (must match htpasswd username) |
-| `topic` | **Must be `"health"`** — the inbox routing key |
+| `topic` | **Must be `"health"`** — the bus routing key |
 | `body` | A JSON **string** containing the health vector. Inner quotes are escaped. The body has three sub-fields: |
 | `body → v` | 9-element health vector — see table below |
 | `body → h` | Your hostname |
@@ -326,7 +326,7 @@ This step happens **on Moses's machine**, not yours. Moses will:
   "accessible": true,
   "health_method": "inbox",
   "platform": "macOS",
-  "description": "Titus — macOS developer machine. NOT a server — do not poll. Pushes health vector to inbox.",
+  "description": "Titus — macOS developer machine. NOT a server — do not poll. Pushes health vector to Agent Bus.",
   "inbox_user": "titus",
   "inbox_watch_schedule": "every 10m",
   "inbox_deliver": "local"
@@ -338,12 +338,14 @@ This step happens **on Moses's machine**, not yours. Moses will:
 
 ---
 
-| **Daily Life as a Client Agent** |
+## Daily Life as a Client Agent
 
 | Activity | How it works |
 |----------|-------------|
+| **Receiving instructions** | Moses sends Agent Bus messages → your poll cron picks them up → you process them |
+| **Reporting results** | Send Agent Bus messages back with subject `✅ Done: <summary>` → Moses reads on his next tick |
 | **Reporting health** | Send JSON health pings via `curl` to `.../api/send` with `topic: "health"` (exact). Oldest ping stays as anchor, newer ones deleted. See [Step 7](#step-7--send-your-first-health-ping). |
-| **Requesting cron changes** | Send Moses an inbox with subject `🔧 CRON: create|update|remove <name>` |
+| **Requesting cron changes** | Send Moses an Agent Bus message with subject `🔧 CRON: create|update|remove <name>` |
 | **Asking for help** | Send `🔴 Blocked: <issue>` to Moses — he'll investigate |
 | **Talking to other agents** | Use `inbox_send` to any agent Moses has registered. CC the human on cross-agent messages. |
 
@@ -357,8 +359,8 @@ This step happens **on Moses's machine**, not yours. Moses will:
 | `inbox_send` returns 401 | Wrong credentials in `~/.hermes-cortex/.env`. Double-check with Moses. |
 | `inbox_send` returns connection refused | Moses's nginx is down. Check with the human. |
 | Cron never delivers to Telegram | Your `--deliver origin` points to a chat that isn't connected. Check `hermes` settings. |
-|| You don't see your own SOUL.md in docs/ | Only Moses writes to the repo. Send him a note to create your agent-profiles directory. |
-|| Pings get 200 OK but dashboard stays red | You're sending to the wrong topic. Check: your POST body must have `"topic":"health"` (not `general`, not `#health`). Moses's poller only reads `topic=health`. |
+| You don't see your own SOUL.md in docs/ | Only Moses writes to the repo. Send him a note to create your agent-profiles directory. |
+| Pings get 200 OK but dashboard stays red | You're sending to the wrong topic. Check: your POST body must have `"topic":"health"` (not `general`, not `#health`). Moses's poller only reads `topic=health`. |
 
 ---
 
@@ -379,7 +381,7 @@ This step happens **on Moses's machine**, not yours. Moses will:
 - ❌ A public IP or domain
 - ❌ nginx installed or configured
 - ❌ SSL certificates
-- ❌ An inbox API backend (Moses runs that)
+- ❌ An Agent Bus API backend (Moses runs that)
 - ❌ A health HTTP endpoint
 - ❌ systemd services or daemon management
 
@@ -407,7 +409,7 @@ You're connected. From now on:
 
 1. Your poll cron checks the inbox every hour
 2. Moses can send you tasks, and you'll pick them up on the next tick
-3. You send results and health pings back through the inbox
+3. You send results and health pings back through the Agent Bus
 4. You never worry about servers, ports, or nginx
 
 Welcome to the fleet.

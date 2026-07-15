@@ -1,16 +1,15 @@
----
-name: inbox-remediation
-description: "Auto-remediate hermes-cortex issues reported by peer agents via the agent inbox. Scans pending remediation markers every 10 minutes, reads the original message, applies the fix, and marks the request as done."
-version: 1.0.0
+|name: inbox-remediation
+description: "Auto-remediate hermes-cortex issues reported by peer agents via the Agent Bus. Scans pending remediation markers every 10 minutes, reads the original message, applies the fix, and marks the request as done."
+version: 1.1.0
 author: Moses
 license: MIT
 metadata:
   hermes:
-    tags: [cron, remediation, inbox, multi-agent, auto-fix]
-    related_skills: [auto-remediation, orch-weekly-auto-fix, agent-inbox, public-contribution]
+    tags: [cron, remediation, bus, multi-agent, auto-fix]
+    related_skills: [auto-remediation, orch-weekly-auto-fix, agent-bus, public-contribution]
 ---
 
-# Moses Inbox Remediation
+# Moses Inbox Remediation (Bus-Based)
 
 ## When to Use
 
