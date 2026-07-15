@@ -573,6 +573,7 @@ create_cron "remediation-sensor" "*/5 * * * *" \
   "true"
 
 
+
 # ── 2. System Health Monitoring ──────────────────────────────
 printf "\\n${CYAN}  2. System Health Monitoring${RESET}\\\n"
 
@@ -608,6 +609,7 @@ create_cron "memory-to-brain-sync" "0 */6 * * *" \
 
 # ── 4. Agent Bus Processing ───────────────────────────────────
 printf "\\n${CYAN}   4. Agent Bus Processing${RESET}\\\n"
+
 
 
 # ── 5. Governance Audit & Lock Cleanup ──────────────────────
@@ -674,7 +676,7 @@ create_cron "langfuse-health-watchdog" "0 * * * *" \
   "origin" \
   "" \
   "true"
-  "true"
+
 
 # Agent-specific local fixer (no_agent script — reads markers, searches offline corpus, applies fixes)
 create_cron "agent-apply-fixes" "*/10 * * * *" \
