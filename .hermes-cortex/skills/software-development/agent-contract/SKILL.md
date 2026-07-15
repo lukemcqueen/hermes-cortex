@@ -27,6 +27,8 @@ author: Titus (ported from AgentKore)
 11. **Protect secrets + auth** — never expose, never weaken
 12. **Cross-repo handoff** — when you identify a fix for an upstream repo you don't control, compile a verification report + fix prompt for the maintainer. Do not commit, push, or PR to the upstream repo yourself. If multiple rounds of gap-finding are needed, deliver each round as a standalone prompt.
 13. **Proactively fix pre-existing issues** — fix bugs, failing tests, broken code, stale comments, and any other problems discovered during work, even ones you didn't cause. Only skip if the fix requires destructive operations (data loss, privilege escalation) without user approval. Do not leave known issues unfixed.
+14. **Never ask permission for obvious fixes** — if something is broken and you know how to fix it, fix it. Do not ask "should I fix X?" when X is clearly broken. Only stop for destructive operations (data loss, security, privilege escalation) or genuine ambiguity about intent. For everything else: fix first, report after.
+15. **Cron fix verification — run through the scheduler** — `python3 script.py` tests code but does NOT update the cron scheduler's `last_status`. The doctor reads the scheduler's status, not the script exit code. Always run `cronjob action='run' job_id=<id>` after a cron fix and verify the doctor clears.
 
 ## Flow
 

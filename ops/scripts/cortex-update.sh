@@ -552,20 +552,54 @@ update_symlinks() {
 }
 
 # ── Skill Sync ───────────────────────────────────────────────
-# Copies SKILL.md files and references/ from repo .hermes-cortex/skills/
+# Copies SKILL.md files and references/ from repo skills/ directories
 # to ~/.hermes/skills/. Uses the delta engine — only copies
 # files whose checksums differ from installed versions.
+# Syncs from TWO locations:
+#   1. $REPO_DIR/skills/              — canonical global skills (categorized)
+#   2. $REPO_DIR/.hermes-cortex/skills/ — project-level overrides (flat)
 sync_skills() {
-  local skill_repo="${REPO_DIR}/.hermes-cortex/skills"
   local skill_dest="${CORTEX_DEPLOY_HOME}/skills"
-  [[ -d "$skill_repo" ]] || { info "  No .hermes-cortex/skills/ in repo — skipping skill sync"; return 0; }
-
   local synced=0 skipped=0
   mkdir -p "$skill_dest"
 
-  # Sync all SKILL.md files
+  # ── Pass 1: Root-level skills/ (canonical global skills) ──
+  local root_skills="${REPO_DIR}/skills"
+  if [[ -d "$root_skills" ]]; then
+    while IFS= read -r -d '' skill_file; do
+      local rel_path="${skill_file#$root_skills/}"
+      local dest="${skill_dest}/${rel_path}"
+      mkdir -p "$(dirname "$dest")"
+
+      if needs_update "$skill_file" "$dest"; then
+        copy_file "$skill_file" "$dest"
+        synced=$((synced + 1))
+      else
+        skipped=$((skipped + 1))
+      fi
+    done < <(find "$root_skills" -name "SKILL.md" -type f -print0)
+
+    # Sync reference files
+    while IFS= read -r -d '' ref_file; do
+      local rel_path="${ref_file#$root_skills/}"
+      local dest="${skill_dest}/${rel_path}"
+      mkdir -p "$(dirname "$dest")"
+
+      if needs_update "$ref_file" "$dest"; then
+        copy_file "$ref_file" "$dest"
+      fi
+    done < <(find "$root_skills" -path "*/references/*" -type f -print0)
+  fi
+
+  # ── Pass 2: Project-level overrides (.hermes-cortex/skills/) ──
+  local override_skills="${REPO_DIR}/.hermes-cortex/skills"
+  if [[ ! -d "$override_skills" ]]; then
+    info "  Skills: ${synced} updated, ${skipped} unchanged"
+    return 0
+  fi
+
   while IFS= read -r -d '' skill_file; do
-    local rel_path="${skill_file#$skill_repo/}"
+    local rel_path="${skill_file#$override_skills/}"
     local dest="${skill_dest}/${rel_path}"
     mkdir -p "$(dirname "$dest")"
 
@@ -575,18 +609,18 @@ sync_skills() {
     else
       skipped=$((skipped + 1))
     fi
-  done < <(find "$skill_repo" -name "SKILL.md" -type f -print0)
+  done < <(find "$override_skills" -name "SKILL.md" -type f -print0)
 
   # Sync reference files
   while IFS= read -r -d '' ref_file; do
-    local rel_path="${ref_file#$skill_repo/}"
+    local rel_path="${ref_file#$override_skills/}"
     local dest="${skill_dest}/${rel_path}"
     mkdir -p "$(dirname "$dest")"
 
     if needs_update "$ref_file" "$dest"; then
       copy_file "$ref_file" "$dest"
     fi
-  done < <(find "$skill_repo" -path "*/references/*" -type f -print0)
+  done < <(find "$override_skills" -path "*/references/*" -type f -print0)
 
   info "  Skills: ${synced} updated, ${skipped} unchanged"
 }
