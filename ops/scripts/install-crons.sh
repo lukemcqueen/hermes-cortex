@@ -477,6 +477,24 @@ create_cron "agent-fixer-workday" "0 9-17 * * 1-5" \
   "" \
   "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
+## OUTPUT FORMAT — FOLLOW EXACTLY
+Match this structure line for line. Your content replaces the values.
+Everything else stays: dashes, colons, spacing, line breaks.
+
+agent-fixer-workday (JOB_ID) [YYYY-MM-DD HH:MM KST]
+-------------
+
+Phase 1 — Issues found: 0 issues
+- All crons healthy. All services running.
+
+Phase 2 — Inbox: Empty.
+
+Phase 3 — System: Disk 37%, Memory 46GB/62GB.
+
+Result: Nothing to fix. All nominal.
+
+📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$0.03/mo
+
 If nothing to report: output exactly [SILENT]" \
   "auto-remediation" \
   "terminal,file,web" \
@@ -489,6 +507,24 @@ create_cron "agent-fixer-evening" "0 18,20,22 * * 1-5" \
   "" \
   "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
+## OUTPUT FORMAT — FOLLOW EXACTLY
+Match this structure line for line. Your content replaces the values.
+Everything else stays: dashes, colons, spacing, line breaks.
+
+agent-fixer-evening (JOB_ID) [YYYY-MM-DD HH:MM KST]
+-------------
+
+Phase 1 — Issues found: 0 issues
+- All crons healthy. All services running.
+
+Phase 2 — Inbox: Empty.
+
+Phase 3 — System: Disk 37%, Memory 46GB/62GB.
+
+Result: Nothing to fix. All nominal.
+
+📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$0.01/mo
+
 If nothing to report: output exactly [SILENT]" \
   "auto-remediation" \
   "terminal,file,web" \
@@ -500,6 +536,24 @@ If nothing to report: output exactly [SILENT]" \
 create_cron "agent-fixer-overnight" "0 3 * * 1-5" \
   "" \
   "Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
+
+## OUTPUT FORMAT — FOLLOW EXACTLY
+Match this structure line for line. Your content replaces the values.
+Everything else stays: dashes, colons, spacing, line breaks.
+
+agent-fixer-overnight (JOB_ID) [YYYY-MM-DD HH:MM KST]
+-------------
+
+Phase 1 — Issues found: 0 issues
+- All crons healthy. All services running.
+
+Phase 2 — Inbox: Empty.
+
+Phase 3 — System: Disk 37%, Memory 46GB/62GB.
+
+Result: Nothing to fix. All nominal.
+
+📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$0.002/mo
 
 If nothing to report: output exactly [SILENT]" \
   "auto-remediation" \
@@ -931,9 +985,11 @@ Everything else stays: dashes, colons, spacing, line breaks.
 agents-md-prune-apply (JOB_ID) [YYYY-MM-DD HH:MM KST]
 -------------
 
-Phase 1 — Scan: [N] candidates found
-Phase 2 — Review: [accepted N / rejected N]
-Phase 3 — Apply: [N] sections moved to docs/
+Phase 1 — Scan: 12 candidates found
+Phase 2 — Review: accepted 10 / rejected 2
+Phase 3 — Apply: 10 sections moved to docs/
+
+📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$0.18/mo
 
 If nothing to apply: output exactly [SILENT]" \
   "" "" "origin" \
