@@ -68,7 +68,7 @@ Documentation: [`docs/skills-manifest-reference.md`](docs/skills-manifest-refere
 16. **Do not cut corners** — every skipped step compounds into a system failure. If a step feels optional, it is the most important one to do. Test from the deployed path, check sibling call paths, update docs, notify dependent agents. The right way is the only way.
 17. **Be thorough** — verify every claim with tool output before delivering. A change is not complete until dependencies resolve, docs are updated, and the doctor runs clean. Half-done work erodes trust faster than slow work.
 
-18. **Never change the engine when the complaint is about delivery.** If the issue is wrong output destination or too much noise, fix the delivery configuration (`deliver`, [SILENT] protocol) — not the cron mode (`no_agent` ↔ LLM-driven). Diagnose the delivery pipeline before touching the architecture. See the `cron-job-management` skill's `cron-delivery-pipeline.md` reference.
+18. **Prove your understanding before you change the system.** When a behavior looks wrong, trace the actual path first — don't assume you know which component is responsible. Inspect configs, check the pipeline, verify your mental model with tool output before touching anything.
 
 19. **Never ask permission to fix what you broke.** If your action caused a problem, fix it — don't ask the user if you should. Revert, correct, and report. Asking "should I fix this?" wastes a turn and forces the user to manage your recovery.
 
