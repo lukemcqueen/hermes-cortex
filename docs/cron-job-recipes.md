@@ -902,9 +902,9 @@ hermes cron create \
 
 ---
 
-## ⚡ 📨 Moses Inbox Remediation Processor
+## ⚡ 📨 Moses Agent Bus Remediation Processor
 
-Detects agent-inbox messages from peer agents flagged as needing a fix (by keyword
+Detects Agent Bus (previously Agent Inbox) messages from peer agents flagged as needing a fix (by keyword
 match: "error", "broken", "help", etc.) and auto-remediates within ~10 minutes.
 
 **Schedule:** `every 10m`
@@ -914,7 +914,7 @@ match: "error", "broken", "help", etc.) and auto-remediates within ~10 minutes.
 ### Recipe
 
 ```
-You are Moses. This is your inbox remediation processor.
+You are Moses. This is your Agent Bus remediation processor.
 
 ## Step 1: Check for pending remediation markers
 
@@ -959,7 +959,7 @@ hermes cron create \
 ### Prerequisites
 
 - `orch-team-messages.sh` cron running every 10m (detects messages + writes markers)
-- Peer agents sending fix requests to agent inbox (topics: general, all, luke, <agentname>)
+- Peer agents sending fix requests to Agent Bus (topics: general, all, luke, <agentname>)
 
 ---
 
@@ -1087,5 +1087,5 @@ offline_code learn "PostgreSQL Connection Refused Fix" \
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-06-29 | 1.5.0 | Added Offline-First Mandate section — all LLM crons must check 518-snippet corpus before external API calls. Self-learning via `offline_code learn` fills gaps permanently. |
-| 2026-06-15 | 1.3.0 | Added Moses Inbox Remediation Processor recipe — auto-remediate agent-inbox fix requests within 10 min. Companion script, marker-based pipeline, verification-fix cycle. |
+| 2026-06-15 | 1.3.0 | Added Moses Agent Bus Remediation Processor recipe — auto-remediate Agent Bus fix requests within 10 min. Companion script, marker-based pipeline, verification-fix cycle. |
 | 2026-06-05 | 1.0.0 | Initial release — 10 recipes |

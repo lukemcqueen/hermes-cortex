@@ -32,11 +32,11 @@
 | `inbox-flag` | `*/10 * * * *` | no_agent | `inbox-flag.py` | local | — |
 | `inbox-sensor` | `*/10 * * * *` | no_agent | `inbox-sensor.py` | local | — |
 | `orch-team-messages` | `*/10 * * * *` | no_agent | `orch-team-messages.sh` | origin | yes |
-| `agent-inbox-workday` | `0 9-17 * * 1-5` | LLM | deepseek-v4-flash inbox processing | origin | — |
+| `agent-inbox-workday` | `0 9-17 * * 1-5` | LLM | deepseek-v4-flash Agent Bus processing | origin | — |
 | `inbox-depth-watchdog` | `*/1 * * * *` | no_agent | `inbox/inbox-depth-watchdog.sh` | local | — |
 | `system-alert-watchdog` | `*/30 * * * *` | no_agent | `system-alert-watchdog.py` | origin | — |
 | `agent-ip-submission` | `*/30 * * * *` | no_agent | `agent-ip-submission.sh` | origin | — |
-| `agent-inbox-evening` | `0 18,20,22 * * 1-5` | LLM | deepseek-v4-flash inbox processing | origin | — |
+| `agent-inbox-evening` | `0 18,20,22 * * 1-5` | LLM | deepseek-v4-flash Agent Bus processing | origin | — |
 | `agent-fixer-workday` | `0 9-17 * * 1-5` | LLM | deepseek-v4-flash auto-remediation (auto-remediation skill) | origin | — |
 | `agent-fixer-evening` | `0 18,20,22 * * 1-5` | LLM | deepseek-v4-flash auto-remediation (auto-remediation skill) | origin | — |
 | `agent-fixer-overnight` | `0 3 * * 1-5` | LLM | deepseek-v4-flash auto-remediation (auto-remediation skill) | origin | — |
@@ -47,7 +47,7 @@
 | Name | Schedule | Type | Script / Prompt | Deliver | Orch? |
 |------|----------|------|-----------------|---------|-------|
 | `agent-daily-bible-reading` | `0 1 * * *` | no_agent | `agent-daily-bible-reading.py` (local qwen2.5-coder:3b) | origin | — |
-| `agent-inbox-overnight` | `0 3 * * 1-5` | LLM | deepseek-v4-flash inbox processing | origin | — |
+| `agent-inbox-overnight` | `0 3 * * 1-5` | LLM | deepseek-v4-flash Agent Bus processing | origin | — |
 | `threat-pipeline` | `0 5 * * *` | no_agent | `nginx-threat-pipeline.sh` | origin | — |
 | `agent-card-daily` | `0 6 * * *` | no_agent | `generate-agent-card.py` | local | — |
 | `agent-gbrain-doctor` | `0 6 * * *` | no_agent | `agent-gbrain-doctor.sh` | origin | — |
