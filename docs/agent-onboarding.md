@@ -371,7 +371,7 @@ This step happens **on Moses's machine**, not yours. Moses will:
 | `~/.hermes/config.yaml` | Hermes config — MCP server entry lives here |
 | `~/hermes-cortex/docs/agent-profiles/<name>/SOUL.md` | Your identity document |
 | `~/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py` | The MCP client that talks to the Agent Bus (PGMQ) |
-| `~/hermes-cortex/src/agent-registry.template.json` | Fleet registry template |
+| `~/hermes-cortex/ops/install/deploy/agent-registry.template.json` | Fleet registry template |
 
 ---
 
