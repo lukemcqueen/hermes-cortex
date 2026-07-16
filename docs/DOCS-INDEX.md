@@ -29,8 +29,9 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
-|| `docs/architecture.md` | System architecture overview — layers, services, port map, security stack |
-| `docs/agent-bus-setup.md` | **Agent Bus** — PGMQ-based Postgres message queue replacing file inbox |
+||| `docs/architecture.md` | System architecture overview — layers, services, port map, security stack |
+|| `docs/agent-bus-setup.md` | **Agent Bus** — PGMQ-based Postgres message queue replacing file inbox |
+|| `docs/esther-bus-setup.md` | **Esther Bus Backup** — orchestrator-only guide: bus server, nginx with X-Forwarded-User, Postgres setup, verification |
 || `docs/agent-inbox-setup.md` | Agent inbox setup (legacy) — file-based inbox architecture (superseded by Agent Bus) |
 | `docs/service-layer-decision.md` | **Fleet-wide decision:** User-level systemd (Linux) / LaunchAgents (macOS) for all agent services. Full HC-Party architecture review with 6-role weighted matrix. |
 | `docs/linux-service-layer.md` | Linux service layer guide — user-level systemd, reboot survivability, template, migration from stale system units |

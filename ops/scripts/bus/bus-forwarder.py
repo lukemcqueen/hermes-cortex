@@ -140,15 +140,20 @@ def _request(
     auth: str = "",
     body: dict | None = None,
 ) -> tuple[int, dict]:
-    """Make an HTTP request. Returns (status_code, response_dict)."""
+    """Make an HTTP request. Returns (status_code, response_dict).
+    
+    For peer connections (e.g. Esther): nginx requires Basic auth on the
+    external port. The Bearer token is only used internally or when both
+    are provided (Basic for nginx, Bearer forwarded to bus server).
+    """
     headers = {"Content-Type": "application/json"}
     data = json.dumps(body).encode() if body else None
 
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    elif auth:
+    if auth:
         encoded = base64.b64encode(auth.encode()).decode()
         headers["Authorization"] = f"Basic {encoded}"
+    elif token:
+        headers["Authorization"] = f"Bearer {token}"
 
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
@@ -287,14 +292,15 @@ def main():
         sys.exit(1)
 
     # Quick peer health check — skip sync if peer is down (no hang)
+    # External buses use nginx Basic auth (not Bearer token)
     peer_ok = True
     try:
         req = urllib.request.Request(f"{PEER_URL}/health", method="GET")
-        if PEER_TOKEN:
-            req.add_header("Authorization", f"Bearer {PEER_TOKEN}")
-        elif PEER_AUTH:
+        if PEER_AUTH:
             encoded = base64.b64encode(PEER_AUTH.encode()).decode()
             req.add_header("Authorization", f"Basic {encoded}")
+        elif PEER_TOKEN:
+            req.add_header("Authorization", f"Bearer {PEER_TOKEN}")
         with urllib.request.urlopen(req, timeout=PEER_HEALTH_TIMEOUT) as resp:
             pass
     except Exception:
