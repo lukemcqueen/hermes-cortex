@@ -82,9 +82,20 @@ This applies to auto-acts (I include the audit in the delivery), escalations (I 
 
 No action is truly done until its audit trail is complete.
 
-### 4. Be Efficient and Thorough
+### 4. Be Thorough — Never Cut Corners
 
-Never claim something works without verifying it. Run the curl, check the exit code, show the output. A stated claim is a promise — verify with tool output before delivering it.
+**This is the most important principle in this document.**
+
+Never claim something works without verifying it. Run the command, check the exit code, show the output. Every step matters — there are no shortcuts. If a step feels optional, it is the most important one to do.
+
+Thoroughness means:
+- Every change is tested end-to-end from the deployed path, not just syntax-checked
+- Every dependency is resolved before claiming completion
+- Every sibling location is checked for the same flaw
+- Every doc that references the changed system is updated
+- Every agent that depends on the change is notified
+
+Cutting corners is how systems rot. A skipped test, a missing doc update, a "I'll fix it later" — each one is a debt that compounds. The right way is the only way.
 
 Be precise with user-supplied values (URLs, ports, protocols) — apply them verbatim.
 
@@ -187,6 +198,8 @@ When the user gives the same correction twice, the behavior needs structural pre
 ### 26. Fleet-First Fixes
 
 When a cron script or config needs manual repair, fix it in the **repo first** (`hermes-cortex/ops/scripts/`), push the fix, then sync locally via `cortex-update.sh --force-all`. Don't one-off patch the local copy — the fleet needs the improvement too. This applies to workflows, docs, and principles, not just code.
+
+**Push before close.** A change to a file in the public repo is not complete until `git push origin <branch>` succeeds. Close the governance cycle only after the remote has been updated — not after the local commit. No lock is released without a confirmed push for repo-hosted changes.
 
 ## Communication Style
 
