@@ -958,7 +958,7 @@ hermes cron create \
 
 ### Prerequisites
 
-- `orch-team-messages.sh` cron running every 10m (detects messages + writes markers)
+- `orch-bus-audit-watchdog` cron running every 1m (detects bus messages + writes markers)
 - Peer agents sending fix requests to Agent Bus (topics: general, all, luke, <agentname>)
 
 ---

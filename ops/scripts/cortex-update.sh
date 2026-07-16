@@ -164,7 +164,6 @@ register "core/governance/skill-miner-wrapper" "${CORTEX_DEPLOY_HOME}/scripts/sk
 register "core/governance/update.sh"           "${CORTEX_DEPLOY_HOME}/scripts/update.sh"
 
 register "ops/scripts/health/prod-watchdog.sh"          "${CORTEX_DEPLOY_HOME}/scripts/prod-watchdog.sh"
-register "ops/scripts/agent/orch-team-messages.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-team-messages.sh"
 register "ops/scripts/agent/orch-fleet-watchdog.py"   "${CORTEX_DEPLOY_HOME}/scripts/orch-fleet-watchdog.py"
 
 # Post-commit notification + installer

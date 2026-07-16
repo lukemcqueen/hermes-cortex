@@ -160,16 +160,6 @@ JSONEOF
   pass "Config created"
 fi
 
-# ── Agent Inbox Repo ─────────────────────────────────────────
-AGENT_INBOX="$HOME/agent-inbox-private"
-if [[ ! -d "$AGENT_INBOX/.git" ]]; then
-  info "Cloning agent-inbox-private repo…"
-  git clone https://github.com/fleet-operator/agent-inbox-private.git "$AGENT_INBOX" 2>/dev/null && pass "Inbox repo cloned" || warn "Could not clone inbox repo (access may be pending)"
-elif [[ "$CHECK_ONLY" != "1" && "$SYMLINKS_ONLY" != "1" ]]; then
-  info "Pulling agent-inbox-private…"
-  cd "$AGENT_INBOX" && git pull 2>/dev/null || true
-fi
-
 # ── Crons ──────────────────────────────────────────────────
 if [[ "$CHECK_ONLY" != "1" && "$SYMLINKS_ONLY" != "1" ]]; then
   if command -v hermes &>/dev/null; then

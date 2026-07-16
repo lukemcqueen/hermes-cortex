@@ -7,7 +7,7 @@
 ## Purpose
 
 Centralizes all agent metadata so scripts don't hardcode agent names.
-`orch-team-messages.sh` reads routing targets dynamically from here.
+Scripts read routing targets dynamically from the registry.
 `generate-bus-wrappers.py` generates per-agent watch scripts from here.
 
 ## Schema

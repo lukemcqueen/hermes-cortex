@@ -80,7 +80,7 @@ agent guidelines focused on general Hermes Cortex usage.
 | | | | |
 | **Orchestrator-only (Moses primary, Esther backup):** | | | |
 | `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | Orchestrator fleet health polling (state-change alerts, delivered via Telegram) |
-| `orch-team-messages` | `*/10 * * * *` | no_agent | Flag urgent agent messages |
+| `orch-bus-audit-watchdog` | `*/1 * * * *` | no_agent | Watch agent bus for urgent messages |
 | `orch-process-agent-messages` | `*/10 * * * *` | LLM | Process Agent Bus remediation markers |
 
 ### Cron naming convention
@@ -89,7 +89,7 @@ When creating a new cron, prefix it to signal scope so other agents know whether
 
 | Prefix | Meaning | Example |
 |--------|---------|---------|
-| `orch-*` | **Orchestrator-only** — runs only on orchestrators (Moses, Esther) | `orch-team-messages` |
+| `orch-*` | **Orchestrator-only** — runs only on orchestrators (Moses, Esther) |
 | `agent-*` | **LLM-driven** — agent reasons each tick; installable on any machine | `agent-auto-remediate` |
 | `local-*` | **This server only** — NOT shared with or installed on peer agents. Combine with `agent-` as `local-agent-*` for LLM-driven local crons. | `local-agent-daily-news-brief` |
 | no prefix | **General no_agent** — safe for any agent to run, no LLM tokens used | `remediation-sensor` |
@@ -98,7 +98,7 @@ When creating a new cron, prefix it to signal scope so other agents know whether
 
 ### Orchestrator gate
 
-Orchestrator-only scripts (`install-orch-crons.sh`, `orch-team-messages.sh`)
+Orchestrator-only scripts (`install-orch-crons.sh`)
 check `IS_ORCHESTRATOR=true` in `~/hermes-cortex/.env` before running. This replaces the
 older hostname-based guard (`moses`/`esther`), which remains as fallback for backward compat.
 
@@ -145,7 +145,7 @@ All in `ops/scripts/`, installed by `install.sh` + `install-crons.sh`:
 | `cron-auto-remediate.sh` | Shell | On-demand | Diagnostics + fix actions (fix-missing, fix-git, fix-perms, fix-purge) |
 | `system-alert-watchdog.py` | no_agent | Every 10m | Resource alerts + auto-cleanup |
 | `service-recovery.py` | no_agent | Every 5m | Auto-restart nginx, Ollama, gbrain, Langfuse |
-| `orch-team-messages.sh` | no_agent | Every 10m | Flags agent error messages with remediation markers |
+| `orch-bus-audit-watchdog.py` | no_agent | Every 1m | Inspects bus messages for urgent keywords + markers |
 | `agent-auto-remediate` (skill) | LLM cron | Every 5m | Checks errored crons + inbox remediation, applies fixes |
 
 **Skill:** `src/skills/devops/auto-remediation/SKILL.md`
@@ -174,7 +174,7 @@ ln -sf ~/.hermes-cortex/tools/loop-governance/score_cycle.py ~/.local/bin/score-
 
 ### All timestamps in KST (UTC+9)
 
-All monitoring scripts output timestamps in Seoul time. Affects: `orch-fleet-watchdog.py`, `system-alert-watchdog.py`, `service-recovery.py`, `orch-team-messages.sh`, and all cron outputs.
+All monitoring scripts output timestamps in Seoul time. Affects: `orch-fleet-watchdog.py`, `system-alert-watchdog.py`, `service-recovery.py`, `orch-bus-audit-watchdog.py`, and all cron outputs.
 
 ---
 

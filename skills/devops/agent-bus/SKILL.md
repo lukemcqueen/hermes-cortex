@@ -87,7 +87,7 @@ Messages support three priority levels:
 - `urgent` — yellow badge (⚠ URGENT), yellow border, `urgent_only=true` filter picks it up
 - `critical` — red pulsing badge (🔴 CRITICAL), red border, `urgent_only=true` filter picks it up
 
-Used by `orch-team-messages.sh` to auto-trigger remediation on urgent/critical without keyword matching.
+Used to auto-trigger remediation on urgent/critical without keyword matching.
 
 ### JSON API (Backend Only — Not for Direct Agent Use)
 
@@ -115,7 +115,6 @@ The API server on `127.0.0.1:8903` provides these endpoints for the MCP server b
 The registry auto-generates:
 - `~/.hermes/scripts/agent-bus-<agent>.sh` wrapper
 - A `bus-<agent>` cron job with the right schedule
-- Routing in `orch-team-messages.sh` (reads dynamically each run)
 
 ## Message File Format
 
@@ -133,19 +132,7 @@ status: unread
 Build passed all tests. Ready for staging deploy.
 ```
 
-## File Layout (Deprecated — File-Based Inbox)
-
-The old file-based inbox (now replaced by the PGMQ Agent Bus) used this layout:
-
-```
-`$CORTEX_REPO/ops/services/agent-bus-file-fallback/`
-├── server.py                          # Legacy file-based server (deprecated)
-├── references/
-│   └── agent-registry.md              # Registry schema reference
-├── agent-bus-fallback-check.sh        # Health check script (deprecated)
-├── com.hermes.agent-bus-fallback.plist # launchd plist (legacy)
-├── fallback-e2e.mjs                   # End-to-end test (legacy)
-└── test-fallback.sh                   # Test script (legacy)
+## File Layout
 
 ~/.hermes/
 ├── state/
@@ -153,7 +140,6 @@ The old file-based inbox (now replaced by the PGMQ Agent Bus) used this layout:
 ├── scripts/
 │   ├── agent-bus-watch.sh             # Shared watch script
 │   ├── agent-bus-<agent>.sh           # Per-agent wrappers
-│   ├── orch-team-messages.sh        # Reads registry, routes messages
 │   └── generate-bus-wrappers.py       # Wrapper generator
 └── agent-bus-<agent>.conf             # Per-agent config
 ```

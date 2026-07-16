@@ -87,7 +87,7 @@ hermes-cortex/
 ├── .gitignore
 ├── .github/                   # GitHub Actions, templates
 │
-└── agent-inbox-private/       # Agent messages repo (git submodule or clone)
+│                               # (no agent inbox — use Agent Bus MCP tools for messaging)
 ```
 
 ---

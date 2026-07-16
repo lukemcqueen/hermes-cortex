@@ -1161,46 +1161,21 @@ If the update revealed missing registrations, compatibility issues, or bugs, rep
 
 ### Where to Send
 
-Use the git-based agent inbox in the private repo:
+Use the **Agent Bus** via `inbox_send` MCP tool. Do NOT write files directly to any filesystem path:
 
 ```bash
-cat > ~/hermes-cortex-private/messages/inbox/$(date -u +%Y%m%d%H%M%S)-titus-to-moses.md << 'EOF'
----
-from: titus
-subject: <descriptive subject line>
-topic: moses
----
-
-<details of issue: what was found, what was fixed locally, any upstream changes needed>
-EOF
-
-cd ~/hermes-cortex-private
-git add messages/
-git commit -m "titus: <summary of report>"
-git pull --rebase origin main
-git push
+# Use inbox_send MCP tool — not file writes
+# Example via Hermes MCP:
+# inbox_send(to="moses", subject="<descriptive subject>", body="<details>", topic="moses")
 ```
 
-### What to Report
+| Tool | Purpose | Key params |
+|------|---------|------------|
+| `inbox_send` | Send message to another agent | `to`, `subject`, `body`, `topic`, `priority` |
+| `inbox_read` | Read recent messages | `limit`, `topic`, `unread_only` |
+| `inbox_watch` | Check for new messages | `limit` |
 
-| Signal | Action |
-|--------|--------|
-| New file missing from deployment map | Report the filename, what it does, and the register line added |
-| macOS/Linux compatibility gap | Report the affected script, the fix applied, and the platform |
-| Python 3.12+ requirement issue | Report the script and ensure the interpreter resolves to 3.12+ |
-| Hardcoded paths or UIDs | Report the hardcoded value and the dynamic alternative |
-| Missing imports | Report the script and the missing import |
-| New cron jobs that needed manual creation | Report which crons were created and their schedule |
-
-### Verification
-
-After sending, verify the message landed:
-
-```bash
-ls -la ~/hermes-cortex-private/messages/inbox/*titus-to-moses*
-```
-
-The `orch-team-messages.sh` cron (every 10m) will pick it up and Moses (or the inbox processor) will process it.
+> **⚠️ Agents must NOT write to `~/hermes-cortex-private/messages/inbox/` directly.** The file-based inbox is deprecated. All agent messaging goes through the PGMQ Agent Bus. Agents running in the Hermes Cortex fleet get `inbox_send` / `inbox_read` / `inbox_watch` as MCP tools automatically.
 
 ## Maintenance
 

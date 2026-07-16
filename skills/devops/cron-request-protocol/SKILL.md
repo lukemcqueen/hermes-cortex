@@ -82,10 +82,10 @@ CRON_REASON: This cron was replaced by agent-daily-market-report
 
 ### Workflow
 
-1. **Agent** sends inbox message to Moses with the format above
-2. **Moses' inbox cron** picks it up
+1. **Agent** sends inbox message to Moses via `inbox_send` MCP tool (Agent Bus, not file writes)
+2. **Moses' agent-bus cron** picks it up
 3. **Moses** validates the request, applies the change via `cronjob()` MCP tool
-4. **Moses** sends reply to the requesting agent confirming: ✅ applied or ❌ failed (with reason)
+4. **Moses** sends reply to the requesting agent via `inbox_send` confirming: ✅ applied or ❌ failed (with reason)
 5. **Moses** CC's Luke on all cron changes for visibility
 
 ### Field rules

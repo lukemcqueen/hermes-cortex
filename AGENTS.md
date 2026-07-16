@@ -26,7 +26,7 @@
 | `install.sh` | Single-command installer |
 | `deploy/` | Langfuse + ClickHouse docker-compose |
 | `.hermes-cortex/` | Agent infra: sessions, memory, skills.yaml |
-| `agent-inbox-private/` | Git-backed agent message store |
+| `hermes-cortex-private/` | Git-backed config and brain store |
 
 ## Skill loading
 

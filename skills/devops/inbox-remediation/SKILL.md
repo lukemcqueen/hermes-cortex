@@ -21,22 +21,20 @@ Load this skill when:
 ## Architecture
 
 ```
-[Peer Agent] sends message to inbox topic → general/luke/all/<agentname>
+[Peer Agent] sends message via Agent Bus (inbox_send MCP tool)
     ↓
-[orch-team-messages.sh] runs every 10m (no_agent)
+[orch-bus-audit-watchdog] runs every 1m (no_agent)
     ↓  Detects keywords: error, failed, broken, crash, help, etc.
     ↓  Writes remediation marker to ~/.hermes/state/remediate/
     ↓
 [orch-inbox-remediate.sh] companion script (no_agent)
-    ↓  Reads markers + original messages
+    ↓  Reads markers
     ↓  Outputs structured JSON: [{sender, subject, body, marker_file}]
     ↓
-[orch-process-agent-messages] LLM-driven cron every 10m
+[agent-remediate-apply] no_agent cron every 10m
     ↓  Reads companion script output
     ↓  Applies fix using terminal/web tools
-    ↓  Runs orch-weekly-auto-fix.py as safety net
     ↓  Moves marker to remediate/done/
-    ↓  Commits private repo state
     ↓
 [Reports to user] — compact summary of what was fixed
 ```
@@ -97,23 +95,18 @@ PROMPT
   --enabled-toolsets terminal,file,web
 ```
 
-### 3. Ensure the message detector is running
+### 3. Remediation is bus-driven
 
-The existing `orch-team-messages.sh` cron (every 10m, no_agent) handles step 1 of the pipeline — detecting new messages and writing remediation markers. Verify it's active:
+The `orch-bus-audit-watchdog` (every 1m, no_agent) handles detection — scanning bus messages for error/failure keywords and writing remediation markers. The `agent-remediate-apply` cron (every 10m) reads markers and applies fixes.
 
-```bash
-hermes cron list | grep orch-team-messages
-```
-
-If not present, create it:
-```bash
-cp hermes-cortex/scripts/orch-team-messages.sh ~/.hermes/scripts/
-hermes cron create --name "orch-team-messages" --schedule "every 10m" --script "orch-team-messages.sh" --no-agent --deliver origin
-```
+| Agent | Path | Schedule |
+|-------|------|----------|
+| Detection | `orch-bus-audit-watchdog.py` (no_agent) | Every 1m |
+| Remediation | `agent-remediate-apply.py` (no_agent) | Every 10m |
 
 ## Detection Keywords
 
-The `orch-team-messages.sh` script flags messages containing these keywords in the subject or body:
+The bus audit watchdog flags messages containing these keywords in the subject or body:
 
 - error
 - failed
@@ -127,17 +120,13 @@ The `orch-team-messages.sh` script flags messages containing these keywords in t
 - problem
 - script failure
 
-Messages in broadcast topics (luke, all, general, <agentname>) trigger remediation markers. Non-broadcast topics are Moses-direct messages (moved to processed/ without remediation).
-
 ## SLA
 
 | Step | Interval | Worst Case |
 |------|----------|------------|
-| Message detection | every 10m | ~10 min |
+| Message detection | every 1m | ~1 min |
 | Remediation processing | every 10m | ~10 min |
-| Total from send to fix | — | ~20 min |
-
-Since both agents run every 10m on offset schedules, practical worst case is ~10 minutes — the next tick of either job catches the new message.
+| Total from send to fix | — | ~11 min |
 
 ## Pitfalls
 

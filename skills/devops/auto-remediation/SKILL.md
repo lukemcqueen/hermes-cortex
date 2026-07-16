@@ -74,8 +74,8 @@ Check the agent inbox for messages from other agents (Titus, Joseph, Kustos, Gis
 - Escalations (agent tried to fix something and failed)
 
 **Where to check:**
-- `~/hermes-cortex-private/messages/inbox/` — broadcast messages addressed to `all` or from an agent asking for help
-- The `orch-team-messages.sh` output tells you what's new
+- The **Agent Bus** — use `inbox_read` MCP tool to check for new messages addressed to you
+- The `orch-bus-audit-watchdog` reports what's new
 
 **How to handle:**
 1. Read the message content

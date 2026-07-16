@@ -39,7 +39,7 @@ if ! $_IS_ORCH; then
 fi
 
 if ! $_IS_ORCH; then
-  echo "✗ This script installs orchestrator-only crons (orch-team-messages)."
+  echo "✗ This script installs orchestrator-only crons."
   echo "  IS_ORCHESTRATOR is not set to 'true' — only orchestrators need these crons."
   echo "  If you are a worker agent, you do NOT need orchestration crons."
   echo "  To run on this machine, set IS_ORCHESTRATOR=true in ~/hermes-cortex/.env"
@@ -113,7 +113,7 @@ if $UNINSTALL; then
   echo ""
   printf "${CYAN}━━━ Uninstalling Orchestrator-Only Crons ━━━${RESET}\n\n"
   for job in \
-    "orch-team-messages" "orch-fleet-watchdog" \
+    "orch-fleet-watchdog" \
     "skill-report-request" "skill-report-process" "skill-evaluate" \
     "orch-bus-forwarder-sync" "orch-bus-audit-watchdog" \
     "orch-bus-recover-timeouts" "orch-bus-confirmation-poller" \
@@ -338,16 +338,6 @@ remove_cron() {
 
 # ── 1. Orchestrator Crons ─────────────────────────────────
 printf "${CYAN}  1. Orchestrator-Specific Crons${RESET}\n"
-
-# Cross-agent health and team messages (every 10 min)
-create_cron "orch-team-messages" "*/10 * * * *" \
-  "orch-team-messages.sh" \
-  "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
 
 # Fleet health report — hourly weekday, twice Saturday (no_agent, Telegram-ready)
 create_cron "orch-health-report-weekday" "0 9-18 * * 1-5" \

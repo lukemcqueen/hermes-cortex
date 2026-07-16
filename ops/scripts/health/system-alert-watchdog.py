@@ -229,7 +229,7 @@ def check_gateway_log() -> dict:
 def check_inbox_staleness() -> dict:
     state_file = CORTEX_DEPLOY_HOME / "state" / "last-message-check"
     if not state_file.exists():
-        return {"status": "DEGRADED", "detail": "No state file — orch-team-messages may not have run"}
+        return {"status": "DEGRADED", "detail": "No state file — may not have run"}
     try:
         mtime = datetime.fromtimestamp(state_file.stat().st_mtime, tz=timezone.utc).astimezone()
         age = NOW - mtime
