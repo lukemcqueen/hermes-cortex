@@ -25,32 +25,40 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 # ── Config from environment ─────────────────────────────────
-# CORTEX_INBOX_URL is the primary source, with fallback
-CORTEX_INBOX_URL = os.environ.get("CORTEX_INBOX_URL", "")
-CORTEX_INBOX_AUTH = os.environ.get("CORTEX_INBOX_AUTH", "")
+# CORTEX_BUS_FALLBACK_URL is the primary source, with fallback to CORTEX_INBOX_URL
+CORTEX_BUS_FALLBACK_URL = os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or os.environ.get("CORTEX_INBOX_URL", "")
+CORTEX_BUS_AUTH = os.environ.get("CORTEX_BUS_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "")
 
 # Try reading from .env if env vars not set
-if not CORTEX_INBOX_URL:
+if not CORTEX_BUS_FALLBACK_URL:
     for conf in [Path.home() / "hermes-cortex" / ".env",
                  Path.home() / ".hermes" / "hermes-inbox.conf"]:
         if conf.exists():
             try:
                 for line in conf.read_text().splitlines():
                     line = line.strip()
-                    if line.startswith("CORTEX_INBOX_URL="):
+                    if line.startswith("CORTEX_BUS_FALLBACK_URL="):
                         val = line.split("=", 1)[1].strip().strip("'\"")
                         if val:
-                            CORTEX_INBOX_URL = val
+                            CORTEX_BUS_FALLBACK_URL = val
+                    elif line.startswith("CORTEX_INBOX_URL="):
+                        val = line.split("=", 1)[1].strip().strip("'\"")
+                        if val:
+                            CORTEX_BUS_FALLBACK_URL = val
+                    elif line.startswith("CORTEX_BUS_AUTH="):
+                        val = line.split("=", 1)[1].strip().strip("'\"")
+                        if val:
+                            CORTEX_BUS_AUTH = val
                     elif line.startswith("CORTEX_INBOX_AUTH="):
                         val = line.split("=", 1)[1].strip().strip("'\"")
                         if val:
-                            CORTEX_INBOX_AUTH = val
+                            CORTEX_BUS_AUTH = val
             except Exception:
                 pass
-        if CORTEX_INBOX_URL:
+        if CORTEX_BUS_FALLBACK_URL:
             break
 
-INBOX_URL = CORTEX_INBOX_URL.rstrip("/")
+INBOX_URL = CORTEX_BUS_FALLBACK_URL.rstrip("/")
 STATE_DIR = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state"
 PROCESSED_MARKER = STATE_DIR / "last-skill-report-processed.txt"
 
@@ -58,8 +66,8 @@ TOPIC_FILTER = "reports"
 
 def build_auth_header() -> dict:
     """Build Basic Auth header if credentials available."""
-    if CORTEX_INBOX_AUTH and ":" in CORTEX_INBOX_AUTH:
-        encoded = base64.b64encode(CORTEX_INBOX_AUTH.encode()).decode()
+    if CORTEX_BUS_AUTH and ":" in CORTEX_BUS_AUTH:
+        encoded = base64.b64encode(CORTEX_BUS_AUTH.encode()).decode()
         return {"Authorization": "Basic " + encoded}
     return {}
 

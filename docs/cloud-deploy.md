@@ -115,8 +115,8 @@ Required variables — set every one:
 | Variable | Example | Source |
 |----------|---------|--------|
 | `CORTEX_HEALTH_URL` | `https://yourdomain.com:13007/health` | Your domain + port |
-| `CORTEX_INBOX_URL` | `https://yourdomain.com:13004` | Your domain + port |
-| `CORTEX_INBOX_AUTH` | `moses:your-generated-password` | Fleet admin |
+| `CORTEX_BUS_FALLBACK_URL` | `https://yourdomain.com:13004` | Your domain + port (legacy: `CORTEX_INBOX_URL`) |
+| `CORTEX_BUS_AUTH` | `moses:your-generated-password` | Fleet admin (legacy: `CORTEX_INBOX_AUTH`) |
 | `AGENT_NAME` | `moses` | Match inbox auth user |
 | `IS_ORCHESTRATOR` | `false` | `true` only for Moses/Esther |
 | `OPENROUTER_API_KEY` | `sk-or-...` | openrouter.ai |

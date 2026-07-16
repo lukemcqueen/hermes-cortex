@@ -105,8 +105,8 @@ If you previously had a separate `a2a-bridge` MCP server enabled, disable it:
 ```bash
 # Primary config: ~/hermes-cortex/.env (all env vars, single source of truth)
 cat >> ~/hermes-cortex/.env << 'EOF'
-CORTEX_INBOX_URL="https://your-domain.com:13004"
-CORTEX_INBOX_AUTH="your-agent-name:your-password"
+CORTEX_BUS_FALLBACK_URL="https://your-domain.com:13004"
+CORTEX_BUS_AUTH="your-agent-name:your-password"
 AGENT_NAME="your-agent-name"
 EOF
 chmod 600 ~/hermes-cortex/.env
@@ -117,7 +117,7 @@ chmod 600 ~/hermes-cortex/.env
 
 Replace `your-agent-name` and `your-password` with credentials from Luke.
 
-**Auth is shared** — the same `CORTEX_INBOX_AUTH` is used for:
+**Auth is shared** — the same `CORTEX_BUS_AUTH` (or legacy `CORTEX_INBOX_AUTH`) is used for:
 - Reading/sending inbox messages (`inbox_read`, `inbox_send`)
 - A2A cross-server task delegation (`inbox_send_task`, `inbox_get_task`)
 - Fetching agent cards (`inbox_discover`)
@@ -128,7 +128,7 @@ curl -sk -u "your-agent-name:your-password" \
   https://your-domain.com:13004/api/inbox?unread_only=true
 ```
 
-**That's it for client agents.** If you're a client, stop here — you're done. The MCP tools connect to the remote server automatically via `CORTEX_INBOX_URL`. You do NOT need to run `server.py` or install nginx.
+**That's it for client agents.** If you're a client, stop here — you're done. The MCP tools connect to the remote server automatically via `CORTEX_BUS_FALLBACK_URL` (or legacy `CORTEX_INBOX_URL`). You do NOT need to run `server.py` or install nginx.
 
 > ✅ **Client agents:** Just the MCP config + auth config above. No server, no systemd, no nginx.
 
@@ -227,7 +227,7 @@ MCP server (Esther)                  nginx (Moses)                  Inbox Server
 ```
 
 - All A2A endpoints go through nginx on port 13004, which requires Basic Auth
-- The MCP server reads `CORTEX_INBOX_AUTH` from `hermes-inbox.conf` and includes it in every cross-server request
+- The MCP server reads `CORTEX_BUS_AUTH` (or legacy `CORTEX_INBOX_AUTH`) from `hermes-inbox.conf` and includes it in every cross-server request
 - mTLS client certs are also loaded if present (optional, for additional security)
 
 ---
@@ -276,8 +276,8 @@ hermes cron create --name process-mcp-agent-inbox-messages \
 
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
-| `inbox_watch` returns HTTP 401 | Wrong auth in `hermes-inbox.conf` | Check `CORTEX_INBOX_AUTH` value |
-| `inbox_send_task` returns HTTP 401 | A2A cross-server request missing auth | Check `CORTEX_INBOX_AUTH` is set (A2A reuses same creds) |
+| `inbox_watch` returns HTTP 401 | Wrong auth in `hermes-inbox.conf` | Check `CORTEX_BUS_AUTH` (or legacy `CORTEX_INBOX_AUTH`) value |
+| `inbox_send_task` returns HTTP 401 | A2A cross-server request missing auth | Check `CORTEX_BUS_AUTH` is set (A2A reuses same creds) |
 | Agent card returns 404 | `.well-known/agent-card.json` route missing | Ensure server.py has the agent card routes (merged since 2026-07-05) |
 | `inbox_watch` connection refused | MCP server not registered | Check `~/.hermes/config.yaml` for `agent-inbox` entry |
 | A2A task stuck in `submitted` | No inbox processor marking it `working` | Agent needs to read the A2A inbox message, or manually call `_mark_task_working()` |

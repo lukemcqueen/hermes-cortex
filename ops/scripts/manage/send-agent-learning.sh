@@ -18,8 +18,8 @@ INBOX_AUTH=""
 CONFIG_FILE="${HOME}/.hermes-cortex/hermes-inbox.conf"
 if [[ -f "$CONFIG_FILE" ]]; then
     source "$CONFIG_FILE"
-    INBOX_URL="${CORTEX_INBOX_URL:-$INBOX_URL}/send"
-    INBOX_AUTH="${CORTEX_INBOX_AUTH:-}"
+    INBOX_URL="${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-$INBOX_URL}}/send"
+    INBOX_AUTH="${CORTEX_BUS_AUTH:-${CORTEX_INBOX_AUTH:-}}"
 fi
 
 AGENT_NAME="${HOSTNAME%%.*}"

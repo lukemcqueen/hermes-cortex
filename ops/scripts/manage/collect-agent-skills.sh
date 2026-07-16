@@ -176,7 +176,8 @@ if [[ "$TOTAL" -eq 0 ]]; then
 fi
 
 # ── Send to Moses inbox via JSON API ────────────────────────
-if [[ -n "${CORTEX_INBOX_URL:-}" ]]; then
+BUS_URL="${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-}}"
+if [[ -n "$BUS_URL" ]]; then
   # Export vars for Python subprocess
   export STATE_DIR
 
@@ -187,8 +188,8 @@ from pathlib import Path
 state_dir = Path(os.environ["STATE_DIR"])
 manifest_file = state_dir / "skills-manifest.json"
 contents_dir = state_dir / "skill-contents"
-inbox_url = os.environ.get("CORTEX_INBOX_URL", "").rstrip("/") + "/api/send"
-auth_creds = os.environ.get("CORTEX_INBOX_AUTH", "")
+inbox_url = (os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or os.environ.get("CORTEX_INBOX_URL", "")).rstrip("/") + "/api/send"
+auth_creds = os.environ.get("CORTEX_BUS_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "")
 
 if not manifest_file.exists():
     exit(0)

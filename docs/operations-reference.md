@@ -155,8 +155,8 @@ grep -A4 "agent-bus" ~/.hermes/config.yaml
 nano ~/hermes-cortex/.env
 ```
 ```ini
-CORTEX_INBOX_URL="https://your-domain.com:13004"
-CORTEX_INBOX_AUTH="your_username:your_password"
+CORTEX_BUS_FALLBACK_URL="https://your-domain.com:13004"
+CORTEX_BUS_AUTH="your_username:your_password"
 AGENT_NAME="your_agent_name"
 ```
 ```bash

@@ -3,7 +3,7 @@
 # Usage: contact-moses.sh "subject" "body" [priority]
 #   priority: normal (default), urgent, critical
 #
-# Requires CORTEX_BASIC_AUTH or CORTEX_INBOX_AUTH in environment.
+# Requires CORTEX_BUS_AUTH, CORTEX_BASIC_AUTH, or CORTEX_INBOX_AUTH in environment.
 
 set -euo pipefail
 
@@ -12,7 +12,7 @@ SUBJECT="${1:-}"
 BODY="${2:-}"
 PRIORITY="${3:-normal}"
 
-AUTH="${CORTEX_BASIC_AUTH:-${CORTEX_INBOX_AUTH:-}}"
+AUTH="${CORTEX_BUS_AUTH:-${CORTEX_BASIC_AUTH:-${CORTEX_INBOX_AUTH:-}}}"
 BUS_URL="${BUS_URL:-${CORTEX_BUS_URL:-http://127.0.0.1:13004}}"
 
 if [ -z "$SUBJECT" ] || [ -z "$BODY" ]; then
@@ -22,7 +22,7 @@ if [ -z "$SUBJECT" ] || [ -z "$BODY" ]; then
 fi
 
 if [ -z "$AUTH" ]; then
-  echo "ERROR: CORTEX_BASIC_AUTH or CORTEX_INBOX_AUTH not set."
+  echo "ERROR: CORTEX_BUS_AUTH, CORTEX_BASIC_AUTH, or CORTEX_INBOX_AUTH not set."
   exit 1
 fi
 

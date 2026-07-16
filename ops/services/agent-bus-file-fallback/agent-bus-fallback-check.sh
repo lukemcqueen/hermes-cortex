@@ -15,8 +15,8 @@
 #       enabled: true
 #
 #  2. Create ~/.hermes-cortex/hermes-inbox.conf with your credentials:
-#     CORTEX_INBOX_URL="https://your-domain.com:13004"
-#     CORTEX_INBOX_AUTH="your-agent-name:your-password"
+#     CORTEX_BUS_FALLBACK_URL="https://your-domain.com:13004"
+#     CORTEX_BUS_FALLBACK_AUTH="your-agent-name:your-password"
 #     AGENT_NAME="your-agent-name"
 #     chmod 600 ~/.hermes-cortex/hermes-inbox.conf
 #

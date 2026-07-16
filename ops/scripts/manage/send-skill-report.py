@@ -25,11 +25,11 @@ from urllib.error import URLError
 HOME = Path.home()
 
 # ── Source config from .env ─────────────────────────────────
-CORTEX_INBOX_URL = os.environ.get("CORTEX_INBOX_URL", "")
-CORTEX_INBOX_AUTH = os.environ.get("CORTEX_INBOX_AUTH", "")
+CORTEX_BUS_FALLBACK_URL = os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or os.environ.get("CORTEX_INBOX_URL", "")
+CORTEX_BUS_AUTH = os.environ.get("CORTEX_BUS_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "")
 
 env_file = HOME / "hermes-cortex" / ".env"
-if env_file.exists() and (not CORTEX_INBOX_URL or not CORTEX_INBOX_AUTH):
+if env_file.exists() and (not CORTEX_BUS_FALLBACK_URL or not CORTEX_BUS_AUTH):
     try:
         for line in env_file.read_text().splitlines():
             line = line.strip()
@@ -37,15 +37,19 @@ if env_file.exists() and (not CORTEX_INBOX_URL or not CORTEX_INBOX_AUTH):
                 continue
             k, v = line.split("=", 1)
             v = v.strip().strip("'\"")
-            if k == "CORTEX_INBOX_URL" and not CORTEX_INBOX_URL:
-                CORTEX_INBOX_URL = v
-            elif k == "CORTEX_INBOX_AUTH" and not CORTEX_INBOX_AUTH:
-                CORTEX_INBOX_AUTH = v
+            if k == "CORTEX_BUS_FALLBACK_URL" and not CORTEX_BUS_FALLBACK_URL:
+                CORTEX_BUS_FALLBACK_URL = v
+            elif k == "CORTEX_INBOX_URL" and not CORTEX_BUS_FALLBACK_URL:
+                CORTEX_BUS_FALLBACK_URL = v
+            elif k == "CORTEX_BUS_AUTH" and not CORTEX_BUS_AUTH:
+                CORTEX_BUS_AUTH = v
+            elif k == "CORTEX_INBOX_AUTH" and not CORTEX_BUS_AUTH:
+                CORTEX_BUS_AUTH = v
     except Exception:
         pass
 
 # ── Silent exit if not configured ─────────────────────────
-if not CORTEX_INBOX_URL or not CORTEX_INBOX_AUTH:
+if not CORTEX_BUS_FALLBACK_URL or not CORTEX_BUS_AUTH:
     sys.exit(0)
 
 STATE_DIR = HOME / ".hermes-cortex" / "state"
@@ -103,11 +107,11 @@ body_text = "\n".join(lines)
 # Body: {"from": ..., "to": ..., "subject": ..., "body": ..., "topic": ...}
 import base64
 
-bus_url = CORTEX_INBOX_URL.rstrip("/")
+bus_url = CORTEX_BUS_FALLBACK_URL.rstrip("/")
 api_url = f"{bus_url}/api/send"
 
 # Build Basic auth header from user:pass
-auth_b64 = base64.b64encode(CORTEX_INBOX_AUTH.encode()).decode()
+auth_b64 = base64.b64encode(CORTEX_BUS_AUTH.encode()).decode()
 
 payload = {
     "from": hostname,

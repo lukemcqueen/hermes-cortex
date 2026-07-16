@@ -25,12 +25,12 @@ INBOX_URL=""
 INBOX_AUTH=""
 if [[ -f "${HOME}/hermes-cortex/.env" ]]; then
   set -a; source "${HOME}/hermes-cortex/.env"; set +a
-  INBOX_URL="${CORTEX_INBOX_URL:-}"
-  INBOX_AUTH="${CORTEX_INBOX_AUTH:-}"
+  INBOX_URL="${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-}}"
+  INBOX_AUTH="${CORTEX_BUS_AUTH:-${CORTEX_INBOX_AUTH:-}}"
 elif [[ -f "${HOME}/.hermes-cortex/hermes-inbox.conf" ]]; then
   source "${HOME}/.hermes-cortex/hermes-inbox.conf"
-  INBOX_URL="${CORTEX_INBOX_URL:-}"
-  INBOX_AUTH="${CORTEX_INBOX_AUTH:-}"
+  INBOX_URL="${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-}}"
+  INBOX_AUTH="${CORTEX_BUS_AUTH:-${CORTEX_INBOX_AUTH:-}}"
 fi
 
 LAST_RUN_FILE="$STATE_DIR/last-skill-report-request.txt"
@@ -96,7 +96,7 @@ REQUEST_ID="skill-req-${TIMESTAMP}"
 
 # Skip if inbox URL not configured
 if [[ -z "$INBOX_URL" ]]; then
-  echo "WARN: CORTEX_INBOX_URL not set — cannot send requests" >&2
+  echo "WARN: CORTEX_BUS_FALLBACK_URL (or CORTEX_INBOX_URL) not set — cannot send requests" >&2
   exit 1
 fi
 

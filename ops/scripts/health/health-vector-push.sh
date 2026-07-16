@@ -48,17 +48,17 @@ if [[ -f "$CONFIG_FILE" ]]; then
     . "$CONFIG_FILE"
 fi
 
-: "${CORTEX_INBOX_URL:=}"
-: "${CORTEX_INBOX_AUTH:=}"
+: "${CORTEX_BUS_FALLBACK_URL:=${CORTEX_INBOX_URL:=}}"
+: "${CORTEX_BUS_FALLBACK_AUTH:=${CORTEX_INBOX_AUTH:=}}"
 : "${AGENT_NAME:=titus}"
 
-if [[ -z "$CORTEX_INBOX_URL" ]]; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] CORTEX_INBOX_URL not set" >> "$ERROR_LOG"
+if [[ -z "$CORTEX_BUS_FALLBACK_URL" ]]; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] CORTEX_BUS_FALLBACK_URL not set" >> "$ERROR_LOG"
     exit 1
 fi
 
 # Use /api/send (JSON) endpoint — strip trailing /send if present, append /api/send
-API_URL="${CORTEX_INBOX_URL}"
+API_URL="${CORTEX_BUS_FALLBACK_URL}"
 API_URL="${API_URL%/send}"
 API_URL="${API_URL%/api/send}"
 API_URL="${API_URL}/api/send"
@@ -160,8 +160,8 @@ RESPONSE_FILE=$(mktemp /tmp/health-push-XXXXXX)
 trap 'rm -f "$RESPONSE_FILE"' EXIT
 
 CURL_ARGS=(-s -X POST -H "Content-Type: application/json" -d "$PAYLOAD" -w "\n%{http_code}" --max-time 10)
-if [[ -n "$CORTEX_INBOX_AUTH" ]]; then
-    CURL_ARGS=(-u "$CORTEX_INBOX_AUTH" "${CURL_ARGS[@]}")
+if [[ -n "$CORTEX_BUS_FALLBACK_AUTH" ]]; then
+    CURL_ARGS=(-u "$CORTEX_BUS_FALLBACK_AUTH" "${CURL_ARGS[@]}")
 fi
 
 FALLBACK_URLS=(

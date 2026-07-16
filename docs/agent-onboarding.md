@@ -80,8 +80,8 @@ hermes mcp list
 Update or Create `~/hermes-cortex/.env`:
 
 ```ini
-CORTEX_INBOX_URL="https://example.com:13004"
-CORTEX_INBOX_AUTH="titus:your-password-here"
+CORTEX_BUS_FALLBACK_URL="https://example.com:13004"
+CORTEX_BUS_AUTH="titus:your-password-here"
 AGENT_NAME="titus"
 ```
 

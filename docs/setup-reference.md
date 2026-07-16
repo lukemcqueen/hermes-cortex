@@ -123,8 +123,8 @@ Titus cannot be polled (no inbound). Instead he pushes to Moses' inbox:
 
 1. **Pull hermes-cortex** and set up `~/hermes-cortex/.env` with his own credentials:
    ```ini
-   CORTEX_INBOX_URL="https://your-domain.com:13004"
-   CORTEX_INBOX_AUTH="titus:<password>"
+   CORTEX_BUS_FALLBACK_URL="https://your-domain.com:13004"
+   CORTEX_BUS_AUTH="titus:<password>"
    AGENT_NAME="titus"
    ```
 2. Install the launchd agent:

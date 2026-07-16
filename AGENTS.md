@@ -227,11 +227,11 @@ Each agent can install an `agent-worker` systemd `--user` service that polls the
 The worker reads from `~/.hermes-cortex/hermes-inbox.conf`:
 ```ini
 BUS_URL=http://bus-host:8905
-CORTEX_BASIC_AUTH=<your-basic-auth>
+CORTEX_BUS_AUTH=<your-basic-auth>    (legacy: CORTEX_BASIC_AUTH)
 AGENT_NAME=<your-name>
 ```
 
-Also accepts `CORTEX_BUS_URL` and `CORTEX_INBOX_AUTH` if your config uses those names.
+Also accepts `CORTEX_BUS_FALLBACK_URL` and `CORTEX_BUS_AUTH` (primary names). Old names `CORTEX_BUS_URL` and `CORTEX_INBOX_AUTH` are deprecated but still work as fallback.
 
 ### How it works
 

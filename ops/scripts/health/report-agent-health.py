@@ -15,8 +15,8 @@ and POSTs the structured result to Moses's agent inbox for
 dashboard consumption.
 
 Configuration (env vars or ~/.hermes-cortex/hermes-inbox.conf):
-  CORTEX_INBOX_URL     — Moses inbox MCP endpoint (POST via internal API)
-  CORTEX_INBOX_AUTH    — "user:pass" for Basic Auth
+  CORTEX_BUS_FALLBACK_URL     — Moses inbox MCP endpoint (POST via internal API)
+  CORTEX_BUS_FALLBACK_AUTH    — "user:pass" for Basic Auth
   AGENT_NAME           — name to report as (default: hostname)
   EXTERNAL_HEALTH_URL  — external URL to verify reachability (Principle #14)
 
@@ -48,8 +48,8 @@ TIMEOUT = 15
 # ── Config ────────────────────────────────────────────────────
 
 # Load from config file first
-inbox_url = os.environ.get("CORTEX_INBOX_URL", "")
-inbox_auth = os.environ.get("CORTEX_INBOX_AUTH", "")
+inbox_url = os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or os.environ.get("CORTEX_INBOX_URL", "")
+inbox_auth = os.environ.get("CORTEX_BUS_FALLBACK_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "")
 agent_name = os.environ.get("AGENT_NAME", "")
 external_health_url = os.environ.get("EXTERNAL_HEALTH_URL", "")
 
@@ -64,8 +64,12 @@ if CONFIG_FILE.exists():
                     k, v = line.split("=", 1)
                     k = k.strip()
                     v = v.strip().strip("'\"")
-                    if k == "CORTEX_INBOX_URL" and not inbox_url:
+                    if k == "CORTEX_BUS_FALLBACK_URL" and not inbox_url:
                         inbox_url = v
+                    elif k == "CORTEX_INBOX_URL" and not inbox_url:
+                        inbox_url = v
+                    elif k == "CORTEX_BUS_FALLBACK_AUTH" and not inbox_auth:
+                        inbox_auth = v
                     elif k == "CORTEX_INBOX_AUTH" and not inbox_auth:
                         inbox_auth = v
                     elif k == "EXTERNAL_HEALTH_URL" and not external_health_url:
@@ -78,7 +82,7 @@ if not agent_name:
     agent_name = platform.node().split(".")[0]
 
 if not inbox_url:
-    print("ERROR: CORTEX_INBOX_URL not set", file=sys.stderr)
+    print("ERROR: CORTEX_BUS_FALLBACK_URL (or CORTEX_INBOX_URL) not set", file=sys.stderr)
     sys.exit(1)
 
 
