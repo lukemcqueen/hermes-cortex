@@ -251,9 +251,8 @@ except Exception:
   fi
 fi
 
-# ── Auto-release governance lock on successful score ───────────
-# (Lock will be re-created by the next begin_change call)
-trap 'rm -f "$GOVERNANCE_LOCK"' EXIT
+# ── Score the current commit ────────────────────────────────────
+# (Lock lifecycle managed by MCP server via begin/end_change)
 
 # Find score-cycle — try PATH, then common locations (resolve to full path)
 SCORE_CYCLE=""
