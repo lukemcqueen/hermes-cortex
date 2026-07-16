@@ -51,8 +51,8 @@ def _load_inbox_config() -> dict:
     config = {"url": "", "auth": ""}
 
     # Try environment variables first
-    env_url = os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or os.environ.get("CORTEX_INBOX_URL", "")
-    env_auth = os.environ.get("CORTEX_BUS_FALLBACK_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "")
+    env_url = os.environ.get("CORTEX_BUS_URL", "") or os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or os.environ.get("CORTEX_INBOX_URL", "")
+    env_auth = os.environ.get("CORTEX_BASIC_AUTH", "") or os.environ.get("CORTEX_BUS_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "")
     if env_url:
         config["url"] = env_url.rstrip("/")
     if env_auth:
@@ -67,11 +67,15 @@ def _load_inbox_config() -> dict:
             k, v = line.split("=", 1)
             k = k.strip()
             v = v.strip().strip("'\"")
-            if k == "CORTEX_BUS_FALLBACK_URL" and not config["url"]:
+            if k == "CORTEX_BUS_URL" and not config["url"]:
+                config["url"] = v.rstrip("/")
+            elif k == "CORTEX_BUS_FALLBACK_URL" and not config["url"]:
                 config["url"] = v.rstrip("/")
             elif k == "CORTEX_INBOX_URL" and not config["url"]:
                 config["url"] = v.rstrip("/")
-            elif k == "CORTEX_BUS_FALLBACK_AUTH" and not config["auth"]:
+            elif k == "CORTEX_BASIC_AUTH" and not config["auth"]:
+                config["auth"] = v
+            elif k == "CORTEX_BUS_AUTH" and not config["auth"]:
                 config["auth"] = v
             elif k == "CORTEX_INBOX_AUTH" and not config["auth"]:
                 config["auth"] = v

@@ -13,7 +13,7 @@ import base64
 from pathlib import Path
 
 AGENT_NAME = os.environ.get("AGENT_NAME", os.environ.get("USER", "unknown"))
-BUS_URL = os.environ.get("BUS_URL") or os.environ.get("CORTEX_BUS_URL", "http://127.0.0.1:8905")
+BUS_URL = os.environ.get("BUS_URL") or os.environ.get("CORTEX_BUS_URL", "http://127.0.0.1:8903")
 CORTEX_BASIC_AUTH = os.environ.get("CORTEX_BASIC_AUTH") or os.environ.get("CORTEX_BUS_AUTH") or os.environ.get("CORTEX_INBOX_AUTH", "")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5-coder:3b")
