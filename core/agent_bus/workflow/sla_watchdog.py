@@ -1,16 +1,22 @@
-"""
-Workflow SLA Watchdog + DLQ Monitor — combined cron job.
+"""Workflow SLA Watchdog + DLQ Monitor — combined cron job.
 
 Checks:
-  1. Running workflows past their deadline → mark timed_out, notify agent
-  2. All DLQ depths → alert if any have messages
-  3. Running steps past timeout → mark timed_out, handle retry/DLQ
+  1. Running workflows past their deadline -> mark timed_out, notify agent
+  2. All DLQ depths -> alert on growth trend (not absolute depth)
+  3. Running steps past timeout -> mark timed_out, handle retry/DLQ
 
 Silent when all clear (watchdog pattern — no output = all good).
+
+DLQ alert logic:
+  - Cascade DLQs (dlq_dlq): ANY depth -> critical alert (structural defect)
+  - Single DLQs: alert only if depth grew >20 since last check
+    (stable high depth is pre-existing, not actionable)
 """
 
 from __future__ import annotations
+import json
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 from agent_bus.queue import get_queue, BusClient
@@ -136,8 +142,17 @@ def _find_timed_out_steps(now: datetime) -> list[dict]:
         return [_row_to_dict(cur, r) for r in cur.fetchall()]
 
 
+DLQ_STATE_FILE = Path.home() / ".hermes-cortex" / "state" / "sla-watchdog-dlq-state.json"
+DLQ_ALERT_THRESHOLD = 20  # alert if DLQ depth grew by more than this since last check
+
+
 def _check_dlqs() -> list[str]:
-    """Check all DLQ queues for messages. Returns alert strings."""
+    """Check DLQ queues. Alerts on growth trend, not absolute depth.
+    
+    - Cascade DLQs (dlq_dlq): ANY depth > 0 -> critical alert
+    - Single DLQs: alert only if depth grew > DLQ_ALERT_THRESHOLD since last tick
+      (stable high depth means pre-existing artifacts, not active issues)
+    """
     bus = get_queue()
     alerts = []
     
@@ -146,27 +161,52 @@ def _check_dlqs() -> list[str]:
     except Exception:
         return ["⚠ Could not list queues for DLQ check"]
     
+    # Load previous depths
+    prev_depths: dict[str, int] = {}
+    if DLQ_STATE_FILE.exists():
+        try:
+            prev_depths = json.loads(DLQ_STATE_FILE.read_text())
+        except (json.JSONDecodeError, OSError):
+            prev_depths = {}
+    
+    # Check each DLQ
+    current_depths: dict[str, int] = {}
     for q in queues:
-        if q.get("dlq") and q.get("depth", 0) > 0:
-            dlq_name = q["name"]
-            depth = q["depth"]
-            parent_name = q.get("parent", dlq_name.replace("_dlq", ""))
-            
-            # DLQ-of-DLQ chains are a STRUCTURAL DEFECT — never normal.
-            # The bus.requeue() SQL guard should prevent these entirely.
-            # If one appears, something broke the guard (e.g. schema rollback).
-            if dlq_name.count("_dlq") > 1:
-                alerts.append(
-                    f"🔴 CRITICAL: Cascade DLQ '{dlq_name}' has {depth} messages. "
-                    f"Parent: {parent_name}. This indicates the DLQ guard "
-                    f"has failed — run test-bus-schema.sh immediately."
-                )
-                continue
-            
+        if not q.get("dlq"):
+            continue
+        
+        dlq_name = q["name"]
+        depth = q.get("depth", 0)
+        current_depths[dlq_name] = depth
+        
+        if depth == 0:
+            continue  # empty queue, no alert needed
+        
+        parent_name = q.get("parent", dlq_name.replace("_dlq", ""))
+        
+        # Cascade DLQs are a STRUCTURAL DEFECT — always alert
+        if dlq_name.count("_dlq") > 1:
             alerts.append(
-                f"⚠️ DLQ '{dlq_name}' has {depth} messages. "
+                f"🔴 CRITICAL: Cascade DLQ '{dlq_name}' has {depth} messages. "
+                f"Parent: {parent_name}. This indicates the DLQ guard "
+                f"has failed — run test-bus-schema.sh immediately."
+            )
+            continue
+        
+        # Single DLQ: check growth trend
+        prev_depth = prev_depths.get(dlq_name, 0)
+        delta = depth - prev_depth
+        
+        if delta > DLQ_ALERT_THRESHOLD:
+            alerts.append(
+                f"⚠️ DLQ '{dlq_name}' grew by {delta}→{depth} since last check. "
                 f"Source queue: {parent_name}"
             )
+        # else: stable or slow growth — no alert
+    
+    # Save current depths for next tick
+    DLQ_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    DLQ_STATE_FILE.write_text(json.dumps(current_depths))
     
     return alerts
 

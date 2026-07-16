@@ -391,7 +391,7 @@ BEGIN
         WHERE m.queue_name = q.name
           AND q.is_dlq = true
           AND m.state = ANY (ARRAY['pending', 'processing'])
-          AND m.enqueued_at < now() - interval '24 hours'
+          AND m.enqueued_at < now() - interval '6 hours'
         RETURNING 1
     )
     SELECT count(*) INTO v_archived FROM archived;
