@@ -409,7 +409,26 @@ When nginx is started outside systemd (e.g., by running `sudo nginx` directly), 
 
 ### Langfuse ClickHouse merge failures
 
-The `langfuse-health-watchdog` reports ClickHouse `TotalMergeFailures`. This is a known Langfuse/ClickHouse issue. Check the watchdog output at `~/.hermes/cron/output/2df43e4b224a/` for details.
+The `langfuse-health-watchdog` reports ClickHouse `TotalMergeFailures` climbing with background executor threads stuck. Root cause: system log tables (trace_log, text_log) accumulate 4+ GiB of data. When merges fail due to memory pressure and the executor backlog grows, all 45 background threads can get stuck — unable to merge (memory), unable to free memory (stuck threads). Deadlock.
+
+**Quick fix (nuke data volume, restart fresh):**
+```bash
+cd ~/langfuse
+docker compose stop langfuse-worker langfuse-web clickhouse
+docker compose rm -f clickhouse
+docker volume rm langfuse-clickhouse-data
+docker compose up -d clickhouse
+# Wait for healthy, then:
+docker compose up -d langfuse-worker langfuse-web
+```
+This drops ~75 MB of trace data (acceptable in staging). The low-memory config at `clickhouse-config.d/02-low-memory.xml` prevents recurrence by capping merge sizes (500 MB), cache (256/128 MB), and TTL-expiring system logs at 7 days.
+
+**If system logs still grow fast:**
+Reduce TTLs in `02-low-memory.xml`:
+- `trace_log_ttl` → `1` (1 day instead of 7)
+- `text_log_ttl` → `3` (3 days instead of 14)
+
+**Full reference:** `ops/install/deploy/README-langfuse-clickhouse.md`
 
 ### 5. Governance & Quality
 
