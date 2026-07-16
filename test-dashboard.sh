@@ -46,7 +46,11 @@ HTML=$(curl -sf http://localhost:8901/ 2>/dev/null || echo "")
 for id in view-dashboard view-bus view-langfuse bus-content-single nav-timestamp; do
   echo "$HTML" | grep -qF "id=\"$id\"" && pass "#$id" || fail "#$id missing"
 done
-echo "$HTML" | grep -qF "switchView(" && pass "switchView calls" || fail "switchView() missing"
+echo "$HTML" | grep -qF 'id="nav-dash"' && pass "nav-dash id exists" || fail "nav-dash missing"
+echo "$HTML" | grep -qF 'id="nav-bus"' && pass "nav-bus id exists" || fail "nav-bus missing"
+echo "$HTML" | grep -qF 'id="nav-langfuse"' && pass "nav-langfuse id exists" || fail "nav-langfuse missing"
+INLINE_EVENTS=$(echo "$HTML" | grep -cP ' onclick=' 2>/dev/null || true)
+[ "$INLINE_EVENTS" -eq 0 ] && pass "0 onclick attributes (CSP safe)" || fail "$INLINE_EVENTS onclick attributes"
 echo "$HTML" | grep -qF 'src="/dashboard.js"' && pass "dashboard.js" || fail "dashboard.js missing"
 for cid in lf-metrics lf-cost lf-traces lf-sessions lf-scores; do
   echo "$HTML" | grep -qF "id=\"$cid\"" && pass "Langfuse #$cid" || fail "Langfuse #$cid missing"
