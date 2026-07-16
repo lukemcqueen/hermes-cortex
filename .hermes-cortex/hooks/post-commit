@@ -25,7 +25,7 @@ set -euo pipefail
 # ── Paths ──
 STATE_FILE="${HOME}/.hermes/state/post-commit-notify"
 LOG_FILE="${STATE_FILE}.log"
-CONFIG_FILE="${HOME}/.hermes/hermes-inbox.conf"
+CONFIG_FILE=""  # Deprecated — env vars used instead
 
 # ── Helpers ──
 log()  { echo "[notify] $*" >> "$LOG_FILE"; }
