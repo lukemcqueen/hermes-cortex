@@ -208,6 +208,21 @@ Every file, config, and function needs a live consumer.
 
 Port arbitration + startup resilience on every service.
 
+#### 29. Test Before Release — Hard Enforcement
+
+**Before calling end_change() on any code/config change:**
+1. Load `change-checklist` skill
+2. Run the applicable test suite (`test-dashboard.sh` for dashboard changes)
+3. Verify **0 failures** — a single failure blocks the release
+4. If no test suite exists for the subsystem, create one or explicitly acknowledge the gap in the feedback_accept note
+5. Score confidence in the feedback note:
+   - `HIGH` = test suite passed with 0 failures
+   - `MEDIUM` = manual verification, no test suite
+   - `LOW` = untested — fix before end_change
+6. A `LOW` confidence score is equivalent to a failed checklist — **do not release**
+
+This rule exists because abstract principles ("be thorough") don't prevent shipping broken code. Concrete enforcement does. Every bug shipped without a test is a gap in the testing process itself.
+
 ## Scripture Insights
 
 > *This agent participates in daily bible reading. A cron (`agent-daily-bible-reading`) appends entries here each night.*

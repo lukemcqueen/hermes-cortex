@@ -93,6 +93,9 @@ done
 echo "$JS" | grep -qF "fetch('/api/bus').then" && pass "Bus refresh on click" || fail "Bus refresh on click missing"
 echo "$JS" | grep -qF "Connection error" && pass "Error state" || fail "Error state missing"
 echo "$JS" | grep -qF "All queues idle" && pass "Empty bus state" || fail "Empty bus state missing"
+# Regression: bus fetch must fire REGARDLESS of cache state (not guarded by && busData)
+echo "$JS" | grep -qF "if (view === 'bus')" && pass "Bus tab: unconditional fetch (not guarded by cache)" || fail "Bus tab: missing unconditional branch"
+echo "$JS" | grep -qF "if (view === 'langfuse')" && pass "Langfuse tab: unconditional fetch" || fail "Langfuse tab: missing unconditional branch"
 
 echo ""
 echo "═══ 6. DOM ID Cross-Reference ═══"
@@ -107,7 +110,33 @@ done < <(echo "$JS" | grep -oP "\$\(['\"](\w+)['\"]\)" | sed "s/^..//;s/..$//" |
 [ -z "$MISSING" ] && pass "All DOM IDs match" || fail "DOM IDs missing from HTML:$MISSING"
 
 echo ""
-echo "═══ 7. Standalone JS Files ═══"
+echo "═══ 8. Gap Coverage (Runtime / Edge Cases) ═══"
+
+# HTTP status codes
+echo "   HTTP status codes..."
+for p in / /bus /langfuse /api/bus /api/healthy; do
+  CODE=$(curl -so /dev/null -m 3 -w '%{http_code}' http://localhost:8901$p 2>/dev/null || echo "FAIL")
+  [ "$CODE" = "200" ] && pass "$p → 200" || fail "$p → $CODE"
+done
+
+# JS syntax check
+node --check ~/.hermes-cortex/dashboard/static/dashboard.js 2>/dev/null && pass "dashboard.js syntax valid" || fail "dashboard.js syntax INVALID"
+
+# CSP header allows our resources
+CSP=$(curl -skI -m 5 https://bus.example.org:13001/ 2>/dev/null | grep -i "content-security-policy" || echo "")
+[ -n "$CSP" ] && pass "CSP header present" || fail "CSP header missing"
+
+# Bus tab has error state in catch block
+echo "$JS" | grep -qF "Connection error" && pass "Bus tab: error state in catch" || fail "Bus tab: missing error state"
+
+# Bus tab has periodic refresh  
+echo "$JS" | grep -qF "currentView === 'bus'" && pass "Bus tab: periodic refresh" || fail "Bus tab: missing periodic refresh"
+
+# All inline scripts and event handlers removed from HTML
+echo "$HTML" | grep -cP ' onclick=' 2>/dev/null && INLINE_EVENTS=$(echo "$HTML" | grep -cP ' onclick=' 2>/dev/null || echo 0) || INLINE_EVENTS=0
+[ "$INLINE_EVENTS" -eq 0 ] && pass "Zero onclick attributes" || fail "$INLINE_EVENTS onclick attributes"
+echo "$HTML" | grep -cP '<script>(?!\s*src)' 2>/dev/null && INLINE_SCRIPTS=$(echo "$HTML" | grep -cP '<script>(?!\s*src)' 2>/dev/null || echo 0) || INLINE_SCRIPTS=0
+[ "$INLINE_SCRIPTS" -eq 0 ] && pass "Zero inline scripts in main page" || fail "$INLINE_SCRIPTS inline scripts"
 [ -f ~/.hermes-cortex/dashboard/static/bus.js ] && pass "bus.js exists" || fail "bus.js missing"
 [ -f ~/.hermes-cortex/dashboard/static/langfuse.js ] && pass "langfuse.js exists" || fail "langfuse.js missing"
 BS=$(wc -c < ~/.hermes-cortex/dashboard/static/bus.js 2>/dev/null || echo 0)
