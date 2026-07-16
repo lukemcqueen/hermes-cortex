@@ -1425,7 +1425,8 @@ print('ADDED')
 
 
 # ── Bus alert helpers ──────────────────────────────────────────
-_REPO_OWNERS_PATH = CORTEX_REPO / "docs" / "templates" / "repo-owners.yaml"
+_REPO_OWNERS_PATH = CORTEX_HOME / "config" / "repo-owners.yaml"
+_REPO_OWNERS_TEMPLATE = CORTEX_REPO / "docs" / "templates" / "repo-owners.yaml"
 _BUS_CONFIG_PATHS = [
     HOME / ".hermes-cortex" / "hermes-inbox.conf",
     HOME / "hermes-cortex" / ".env",
@@ -1433,18 +1434,25 @@ _BUS_CONFIG_PATHS = [
 
 
 def _load_repo_owners() -> dict:
-    """Load repo→agent mapping from repo-owners.yaml. Returns empty dict on failure."""
-    if not _REPO_OWNERS_PATH.exists():
-        return {}
-    try:
-        import yaml
-        with open(_REPO_OWNERS_PATH) as f:
-            data = yaml.safe_load(f)
-        if isinstance(data, dict) and "repos" in data:
-            return data["repos"]
-        return {}
-    except Exception:
-        return {}
+    """Load repo→agent mapping from repo-owners.yaml. Returns empty dict on failure.
+
+    Priority: ~/.hermes-cortex/config/repo-owners.yaml (per-machine config)
+    Fallback: docs/templates/repo-owners.yaml (repo template)
+    """
+    paths_to_try = [_REPO_OWNERS_PATH, _REPO_OWNERS_TEMPLATE]
+    for p in paths_to_try:
+        if not p.exists():
+            continue
+        try:
+            import yaml
+            with open(p) as f:
+                data = yaml.safe_load(f)
+            if isinstance(data, dict) and "repos" in data:
+                return data["repos"]
+            return {}
+        except Exception:
+            pass
+    return {}
 
 
 def _read_bus_token() -> str:
@@ -1511,7 +1519,10 @@ def dispatch_bus_alerts(res: Results):
     """After checks run, send bus alerts for actionable AGENTS.md findings."""
     owners = _load_repo_owners()
     if not owners:
-        print("  ℹ️  --bus-alert: no repo-owners.yaml found (create from docs/templates/repo-owners.yaml)")
+        print("  ℹ️  --bus-alert: no repo-owners.yaml found")
+        print("       Create ~/.hermes-cortex/config/repo-owners.yaml from template:")
+        print("       mkdir -p ~/.hermes-cortex/config")
+        print("       cp ~/hermes-cortex/docs/templates/repo-owners.yaml ~/.hermes-cortex/config/repo-owners.yaml")
         return
 
     token = _read_bus_token()
