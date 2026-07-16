@@ -154,6 +154,15 @@ else
 fi
 
 echo ""
+echo "═══ Y. Bus Failover Tests ═══"
+THIS_B=$(cd "$(dirname "$0")" && pwd)
+if [ -f "${THIS_B}/test-bus-failover.py" ]; then
+  python3 "${THIS_B}/test-bus-failover.py" || { F=$((F+1)); fail "bus-failover subtest failed (see above)"; }
+else
+  fail "test-bus-failover.py not found"; F=$((F+1))
+fi
+
+echo ""
 echo "═══════════════════════════════════════"
 echo "  $P passed, $F failed"
 echo "═══════════════════════════════════════"
