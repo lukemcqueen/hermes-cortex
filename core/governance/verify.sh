@@ -50,7 +50,8 @@ fi
 
 # ── 1. Python ──────────────────────────────────────────────
 info "1. Python"
-PYTHON=$(command -v python3 || command -v python || echo "")
+# Prefer 3.12+ for PEP 604 (str | None) syntax support
+PYTHON=$(command -v python3.12 || command -v python3 || command -v python || echo "")
 if [[ -z "$PYTHON" ]]; then
   fail "Python 3 not found"
 else

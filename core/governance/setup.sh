@@ -57,7 +57,8 @@ if [[ "$CHECK_ONLY" == "1" ]]; then
 fi
 
 # ── Python ──────────────────────────────────────────────────
-PYTHON=$(command -v python3 || command -v python || echo "")
+# Prefer 3.12+ for PEP 604 (str | None) syntax support
+PYTHON=$(command -v python3.12 || command -v python3 || command -v python || echo "")
 if [[ -z "$PYTHON" ]]; then
   fail "Python 3 not found. Install Python 3.11+ first."
   [[ "$CHECK_ONLY" == "1" ]] && exit 1

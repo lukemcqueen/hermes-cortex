@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.12
 """
 Auto-Apply Config Patches — closes the loop between evaluation and meta-learning.
 

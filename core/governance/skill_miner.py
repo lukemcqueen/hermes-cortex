@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.12
 # skill_miner.py — Parse Hermes skills and generate checksums for loop governance scoring
 import json, os, sys, hashlib
 from pathlib import Path

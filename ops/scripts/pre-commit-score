@@ -306,9 +306,9 @@ if [[ "$PARENT_COMMIT" != "0000000" ]]; then
   git show "$PARENT_COMMIT:$CODE_FILE" > "$PREV_FILE" 2>/dev/null || true
 fi
 
-# Run score-cycle — use ~/.pyenv/versions/3.13.*/bin/python3 if available
+# Run score-cycle — prefer 3.12+ for PEP 604 syntax support
 PYTHON_BIN="python3"
-for py in ~/.pyenv/versions/3.13.*/bin/python3; do
+for py in ~/.local/bin/python3.12 ~/.pyenv/versions/3.14.*/bin/python3 ~/.pyenv/versions/3.13.*/bin/python3 ~/.pyenv/versions/3.12.*/bin/python3; do
   if [[ -x "$py" ]]; then
     PYTHON_BIN="$py"
     break

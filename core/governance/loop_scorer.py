@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.12
 """
 Loop Scorer — uses nomic-embed-text to score code quality and detect loop progress.
 

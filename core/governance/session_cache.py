@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.12
 """
 Session Embedding Cache — builds a local vector index from session data.
 

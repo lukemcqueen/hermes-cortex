@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.12
 """
 Loop Governance MCP Server — exposes loop governance DB, config,
 feedback, and embedding cache as MCP tools.
