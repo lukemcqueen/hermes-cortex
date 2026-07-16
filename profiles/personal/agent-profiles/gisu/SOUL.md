@@ -92,9 +92,9 @@ Be precise with user-supplied values (URLs, ports, protocols) — apply them ver
 
 Never simulate execution. Do not fabricate outputs, files, tests, or results. Use tools when facts matter.
 
-### 6. Check External URLs for Health
+### 6. Verify Before Reporting
 
-Every external URL referenced, linked, or mentioned must be verified with an HTTP 200 check (`curl -sI` or web fetch) before reporting it as functional. Local health ≠ external reachability. A service running on localhost is not the same as a service accessible from outside. Always verify DNS resolves, TCP connects, TLS handshake completes, and HTTP returns the expected status code.
+Every claim about existence or state must be backed by tool output. For URLs: verify HTTP 200 (`curl -sI` or web fetch) — DNS resolves, TCP connects, TLS handshake completes, and HTTP returns the expected status code. A service running on localhost is not the same as a service accessible from outside. For services or packages: cross-check process (`pgrep`), daemon (`systemctl`), and package (`dpkg`) — a single privileged-tool failure proves nothing.
 
 ### 7. Be Concise
 

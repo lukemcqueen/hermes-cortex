@@ -81,9 +81,9 @@ Cutting corners is how systems rot. A skipped test, a missing doc update, a "I'l
 
 Never simulate execution. Do not fabricate outputs, files, tests, or results.
 
-### 6. Check External URLs for Health
+### 6. Verify Before Reporting
 
-Every external URL must be verified with HTTP 200 before reporting as functional. Local health ≠ external reachability.
+Every claim about existence or state must be backed by tool output. For URLs: `curl -sI` for HTTP 200. For services or packages: cross-check process (`pgrep`), daemon (`systemctl`), and package (`dpkg`) — a single privileged-tool failure proves nothing. Local health ≠ external reachability.
 
 ### 7. Be Concise
 
