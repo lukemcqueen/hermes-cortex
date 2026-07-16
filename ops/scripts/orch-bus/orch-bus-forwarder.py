@@ -340,44 +340,42 @@ def main():
         )
 
     state["last_run"] = datetime.now(timezone.utc).isoformat()
-    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    STATE_FILE.write_text(json.dumps(state, indent=2))
 
-    # ── Output (no_agent: empty = silent, only alert on errors) ──
+    # ── Output (no_agent: silent until issue) ──
+    # Only prints when something noteworthy happens:
+    #   - Peer went down (from up state)
+    #   - Peer came back (with drain summary)
+    #   - Sync errors occurred
     output = []
     now_str = datetime.now(timezone.utc).strftime("%H:%M UTC")
 
-    if p2l_fwd:
-        output.append(f"📥 [{now_str}] PEER→LOCAL: {len(p2l_fwd)} message(s) synced")
-        for f in p2l_fwd[:5]:
-            output.append(f"  • {f}")
-        if len(p2l_fwd) > 5:
-            output.append(f"  … +{len(p2l_fwd)-5} more")
+    # Clear peer_downed_at on successful sync (before writing state)
+    was_peer_down = "peer_downed_at" in state
 
-    if l2p_fwd:
-        output.append(f"📤 [{now_str}] LOCAL→PEER: {len(l2p_fwd)} message(s) synced")
-        for f in l2p_fwd[:5]:
-            output.append(f"  • {f}")
-        if len(l2p_fwd) > 5:
-            output.append(f"  … +{len(l2p_fwd)-5} more")
+    if peer_ok:
+        if was_peer_down:
+            state.pop("peer_downed_at", "")
+            p2l_count = len(p2l_fwd)
+            l2p_count = len(l2p_fwd)
+            output.append(f"✅ [{now_str}] Peer recovered — drained {p2l_count}→local, {l2p_count}→peer")
+        elif p2l_err or l2p_err:
+            if p2l_err:
+                output.append(f"⚠️  [{now_str}] PEER→LOCAL: {len(p2l_err)} failed")
+                for f in p2l_err[:3]:
+                    output.append(f"  • {f}")
+            if l2p_err:
+                output.append(f"⚠️  [{now_str}] LOCAL→PEER: {len(l2p_err)} failed")
+                for f in l2p_err[:3]:
+                    output.append(f"  • {f}")
+        # else: silent — normal sync, nothing to report
+    else:
+        if not was_peer_down:
+            state["peer_downed_at"] = datetime.now(timezone.utc).isoformat()
+            output.append(f"🔴 [{now_str}] Peer unreachable — sync paused")
+        # else: still down, silent — no repeated alerts
 
-    if p2l_err:
-        output.append(f"⚠️  [{now_str}] PEER→LOCAL: {len(p2l_err)} failed — peer unreachable?")
-        for f in p2l_err[:3]:
-            output.append(f"  • {f}")
-
-    if l2p_err:
-        output.append(f"⚠️  [{now_str}] LOCAL→PEER: {len(l2p_err)} failed — peer unreachable?")
-        for f in l2p_err[:3]:
-            output.append(f"  • {f}")
-
-    # Summary line
-    now = datetime.now(timezone.utc)
-    last_run = state.get("last_run", "")
-    p2l_total = state.get("total_peer_to_local", 0)
-    l2p_total = state.get("total_local_to_peer", 0)
-    seen_count = len(state.get("seen_peer_to_local", [])) + len(state.get("seen_local_to_peer", []))
-    output.append(f"Stats: {p2l_total} peer→local | {l2p_total} local→peer | {seen_count} tracked")
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    STATE_FILE.write_text(json.dumps(state, indent=2))
 
     if output:
         print("\n".join(output))
