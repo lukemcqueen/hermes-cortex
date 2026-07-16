@@ -2,131 +2,20 @@
 # ─────────────────────────────────────────────────────────────
 #  pre-commit-score — Git pre-commit hook (secondary logger)
 #
-#  SECONDARY LOGGER: the MCP server (loop-gov-mcp.py) is the
-#  primary enforcement layer. It blocks write tools without an
-#  active governance lock at the Hermes tool level — this hook
-#  is redundant for enforcement.
+#  NOTE: The MCP server (loop-gov-mcp.py) is the PRIMARY
+#  enforcement layer. It blocks write tools without an active
+#  governance lock at the Hermes tool level. This hook is a
+#  secondary logger that auto-scores on git commit for DB
+#  population.
 #
-#  What this hook adds: automatic score-cycle logging on every
-#  git commit so cycles appear in the DB without manual effort.
-#
-#  The governance-lock check below (Level 3) is a secondary
-#  safety net — the MCP server already blocks writes without
-#  a lock, so this should never fire for an MCP-connected agent.
-#
-#  Set SKIP_SCORE=1 to bypass (abuse detection: burst warns, hard limit blocks).
+#  There is NO SKIP_SCORE bypass.
+#  If the hook fails, the commit proceeds with a warning.
+#  Emergency bypass: git commit --no-verify (standard git).
 #
 #  Installed by: install-score-hook.sh
 #  Requires: score-cycle in PATH, loop-governance tools
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
-
-# ── SKIP_SCORE abuse detection ──────────────────────────────
-# Tracks usage and detects abuse patterns:
-#   Burst:   3+ skips in 60 min         → warning (still allowed)
-#   Hard:    6+ skips in 24h            → locked out
-#   Chronic: 3+ burst warnings          → locked out until file deleted
-#
-# State file: ~/.hermes-cortex/state/.skip-score-counter.json
-SKIP_COUNTER="${HOME}/.hermes-cortex/state/.skip-score-counter.json"
-BURST_MIN=60
-BURST_LIMIT=3
-HARD_LIMIT=6
-HARD_WINDOW=24
-CHRONIC_WARN_LIMIT=3
-
-if [[ "${SKIP_SCORE:-}" == "1" ]]; then
-  # Read or init counter
-  if [[ -f "$SKIP_COUNTER" ]]; then
-    ABUSE_DATA=$(python3 -c "
-import json, os, time
-fp = os.path.expanduser('$SKIP_COUNTER')
-try:
-    d = json.load(open(fp))
-except:
-    d = {'entries': [], 'warnings': 0}
-entries = d.get('entries', [])
-warnings = d.get('warnings', 0)
-
-now = time.time()
-# Prune old entries outside hard window
-cutoff_24h = now - ($HARD_WINDOW * 3600)
-fresh = [e for e in entries if e > cutoff_24h]
-cutoff_1h = now - ($BURST_MIN * 60)
-in_last_hour = len([e for e in fresh if e > cutoff_1h])
-
-d['entries'] = fresh
-d['warnings'] = warnings
-json.dump(d, open(fp, 'w'))
-
-print(f'{len(fresh)}|{warnings}|{in_last_hour}')
-" 2>/dev/null || echo "0|0|0")
-  else
-    ABUSE_DATA="0|0|0"
-  fi
-
-  IFS='|' read -r ENTRIES WARNINGS IN_HOUR <<< "$ABUSE_DATA"
-  ENTRIES=${ENTRIES:-0}
-  WARNINGS=${WARNINGS:-0}
-  IN_HOUR=${IN_HOUR:-0}
-
-  # Chronic abuse — locked out until file removed
-  if [[ "$WARNINGS" -ge "$CHRONIC_WARN_LIMIT" ]]; then
-    echo ""
-    echo "⛔  SKIP_SCORE=1 chronically abused (${WARNINGS} warnings)."
-    echo "    Abuse detected ${WARNINGS} times — bypass permanently disabled."
-    echo "    Remove ${SKIP_COUNTER} to reset, or follow governance."
-    echo ""
-    exit 1
-  fi
-
-  # Hard limit — too many skips in 24h
-  if [[ "$ENTRIES" -ge "$HARD_LIMIT" ]]; then
-    echo ""
-    echo "⛔  SKIP_SCORE=1 hard limit reached — ${ENTRIES}× in ${HARD_WINDOW}h."
-    echo "    Use governance: begin_change() → work → feedback_accept → end_change()"
-    echo "    Resets automatically as oldest uses age out (${HARD_WINDOW}h window)."
-    echo ""
-    exit 1
-  fi
-
-  # Record this skip
-  mkdir -p "$(dirname "$SKIP_COUNTER")"
-  python3 -c "
-import json, os, time
-fp = os.path.expanduser('$SKIP_COUNTER')
-try:
-    d = json.load(open(fp))
-except:
-    d = {'entries': [], 'warnings': 0}
-entries = d.get('entries', [])
-entries.append(time.time())
-cutoff = time.time() - ($HARD_WINDOW * 3600)
-d['entries'] = [e for e in entries if e > cutoff]
-json.dump(d, open(fp, 'w'))
-" 2>/dev/null || true
-
-  # Burst check — too many in short window (IN_HOUR excludes current skip)
-  CURRENT_BURST=$((IN_HOUR + 1))
-  if [[ "$CURRENT_BURST" -ge "$BURST_LIMIT" ]]; then
-    NEW_WARNINGS=$((WARNINGS + 1))
-    python3 -c "
-import json, os
-fp = os.path.expanduser('$SKIP_COUNTER')
-d = json.load(open(fp))
-d['warnings'] = $NEW_WARNINGS
-json.dump(d, open(fp, 'w'))
-" 2>/dev/null || true
-
-    echo ""
-    echo "⚠️  Abuse detected: ${CURRENT_BURST}× SKIP_SCORE=1 in the last ${BURST_MIN} min."
-    echo "    Warning ${NEW_WARNINGS}/${CHRONIC_WARN_LIMIT}. After ${CHRONIC_WARN_LIMIT}, bypass is locked out."
-    echo "    Use governance instead: begin_change() → ... → end_change()"
-    echo ""
-  fi
-
-  exit 0
-fi
 
 # ── Level 4: Shared blocklist integrity check ─────────────────
 # blocked_ips.add is a cumulative shared blocklist — APPEND only.
@@ -140,7 +29,7 @@ if git diff --cached --name-only -- "$BLOCKED_IPS" 2>/dev/null | grep -q "$BLOCK
     echo "❌  blocked_ips.add shrank from ${OLD_COUNT} to ${NEW_COUNT} IPs."
     echo "    This is a SHARED cumulative blocklist maintained by ALL agents."
     echo "    APPEND your IPs — never replace the file."
-    echo "    To bypass this check: SKIP_SCORE=1 git commit ..."
+    echo "    Use git commit --no-verify for emergency bypass."
     echo ""
     exit 1
   fi
@@ -199,7 +88,7 @@ except:
     echo "         ln -sf ~/.hermes-cortex/state/.governance-generic.json"
     echo "            ~/.hermes-cortex/state/.governance-${REPO_SLUG}.json"
     echo ""
-    echo "    To bypass this check:  SKIP_SCORE=1 git commit ..."
+    echo "    Use git commit --no-verify for emergency bypass."
     echo ""
     exit 1
   fi
@@ -241,7 +130,7 @@ try:
     print('⚠️  AGENTS.md missing required sections:')
     for s in data.get('missing_sections', []):
         print(f'   - {s}')
-    print('   Add them, or SKIP_SCORE=1 to bypass.')
+    print('   Add them, then commit again.')
 except Exception:
     print('⚠️  AGENTS.md check failed (non-parseable output)')
     print(sys.stdin.read())
@@ -326,7 +215,7 @@ done
 #
 # Known Hermes enforcement regex gap: the ^ anchor on git commit
 # only catches standalone commands. Compound commands bypass it:
-#   cd x && git commit      ← bypasses
+#   cd x && git commit      ← bypasses (use --no-verify if truly stuck)
 #   SKIP_SCORE=1 git commit ← bypasses  
 # Run git commit standalone to trigger the enforcement check.
 # ────────────────────────────────────────────────────────────────
@@ -372,7 +261,6 @@ SCORE_OUTPUT=$("$PYTHON_BIN" "$SCORE_CYCLE" \
     echo ""
     echo "   The commit will proceed but no cycle will be logged."
     echo "   Check whether governance was properly followed."
-    echo "   To bypass this check: SKIP_SCORE=1 git commit ..."
     echo ""
   fi
   rm -f "$SCORE_STDERR"
@@ -401,6 +289,6 @@ echo "📊  score-cycle: $DECISION (task=$TASK_ID, pass-pct=$PASS_PCT)"
 if [[ "$DECISION" == "ERROR" ]]; then
   echo ""
   echo "❌  score-cycle failed — commit blocked."
-  echo "    Set SKIP_SCORE=1 to bypass:  SKIP_SCORE=1 git commit ..."
+  echo "    Fix the score-cycle error, or use git commit --no-verify."
   exit 1
 fi

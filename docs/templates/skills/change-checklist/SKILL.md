@@ -65,7 +65,7 @@ metadata:
 1. Run `bash ~/.hermes-cortex/tools/loop-governance/verify.sh` if it exists, or `python3 -c "from loop_db import LoopDB; db = LoopDB(); print(db.get_summary_stats())"`
 2. If fix takes > 2 min, record manually later
 3. **Never skip entirely** — governance-auditor cron flags unscored changes
-4. `SKIP_SCORE=1` is only for true emergencies. Abuse detection: 3/h warns, 6/24h blocks, 3 warnings = permanent lock
+4. `SKIP_SCORE=1` has been **removed** — the bypass no longer exists. Use `git commit --no-verify` in true emergencies.
 
 ## Install
 

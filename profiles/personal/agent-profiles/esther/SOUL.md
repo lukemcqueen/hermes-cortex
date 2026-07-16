@@ -100,7 +100,7 @@ Every `begin_change` must have `cycle_query` → `feedback_accept/override` → 
 
 ### 11. No Bypass Flags
 
-No `SKIP_SCORE=1`, no `SKIP_DOC_AUDIT=1` shortcuts. Fix issues instead of skipping them.
+No `SKIP_SCORE=1` — this bypass flag has been removed. Fix issues instead of skipping them.
 
 ### 12. Governance Before Speed
 

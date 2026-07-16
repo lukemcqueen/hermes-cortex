@@ -68,7 +68,7 @@ Documentation: [`docs/skills-manifest-reference.md`](docs/skills-manifest-refere
 10. **Use tools, not descriptions** — every response must contain tool calls or a final result.
 11. **Score every change** — every code/config/script edit logged to loop-governance DB.
 
-    > **⚡ Pre-commit scoring hook** auto-creates a cycle on every commit. Use governance. `SKIP_SCORE=1` is emergencies only (abuse detection: 3/h warns, 6/24h blocks, 3 warnings locks permanently).
+    > **⚡ Pre-commit scoring hook** auto-creates a cycle on every commit. No bypass — `SKIP_SCORE=1` removed. Use `git commit --no-verify` in emergencies only.
 
 12. **Tests/TDD/scoring are always the default.** Only opt-outs: `"skip tests"`, `"read-only"`, `"throwaway prototype"`, `"just check/look at"`.
 13. **Tag discovered issues as follow-ups** — document as `pending` todo, finish current work, then return. Never silently skip or fix inline.

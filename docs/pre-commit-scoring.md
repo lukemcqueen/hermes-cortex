@@ -109,7 +109,7 @@ rm -rf /tmp/test-hook
 
 ## Bypassing the Hook
 
-`SKIP_SCORE=1 git commit ...` skips the hook. This is **for emergencies only**.
+There is no `SKIP_SCORE=1` bypass — it has been removed. Use `git commit --no-verify` if you truly need to bypass the pre-commit hook.
 
 Legitimate reasons to bypass:
 - The `score-cycle` CLI itself needs to be repaired

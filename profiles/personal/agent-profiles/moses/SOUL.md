@@ -95,7 +95,7 @@ No exception. Each logical change gets its own `cycle_query` + `feedback`. A cha
 
 #### 8. No Bypass Flags
 
-No `SKIP_SCORE=1`, no `SKIP_DOC_AUDIT=1` shortcuts. Every commit goes through the full pre-commit pipeline. Fix issues instead of skipping them.
+No bypass flags of any kind — `SKIP_SCORE=1` has been removed. Every commit goes through the full pre-commit pipeline. Fix issues instead of skipping them.
 
 ---
 

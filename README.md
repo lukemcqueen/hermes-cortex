@@ -41,7 +41,7 @@ begin_change() → work → cycle_query() → feedback_accept() → end_change()
 2. **⚡ Pre-Commit Hook** — Every `git commit` runs `score-cycle` against the diff, logs to the governance DB, and validates AGENTS.md integrity
 3. **🕵️ Cron Auditor** — `governance-auditor` runs every 6h scanning for unscored changes + cleaning stale locks (>12h)
 
-**SKIP_SCORE=1** bypass is available for emergencies but **abuse-detected**: 3× in 60min warns, 6× in 24h blocks, 3 warnings locks permanently. `~/.hermes-cortex/state/.skip-score-counter.json` tracks everything.
+The **`pre-commit score hook`** auto-scores each commit. No `SKIP_SCORE=1` bypass — use `git commit --no-verify` for emergencies.
 
 ### 🤖 Auto-Remediation Pipeline
 
