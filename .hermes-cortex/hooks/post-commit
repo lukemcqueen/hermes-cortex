@@ -8,7 +8,7 @@
 #
 #  Uses the SAME config loading pattern as inbox-mcp.py:
 #    1. CORTEX_INBOX_* environment variables
-#    2. ~/.hermes/hermes-inbox.conf (KEY=VALUE format, parsed line-by-line)
+#    2. ~/.hermes/cortex-bus.conf (KEY=VALUE format, parsed line-by-line)
 #    3. URL fallback chain: primary → fallback → third → localhost:8903
 #
 #  Silent when:

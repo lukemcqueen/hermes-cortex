@@ -32,8 +32,8 @@ MANIFEST_FILE="$STATE_DIR/skills-manifest.json"
 # ── Source config ───────────────────────────────────────────
 if [[ -f "${HOME}/hermes-cortex/.env" ]]; then
   set -a; source "${HOME}/hermes-cortex/.env"; set +a
-elif [[ -f "${HOME}/.hermes-cortex/hermes-inbox.conf" ]]; then
-  source "${HOME}/.hermes-cortex/hermes-inbox.conf"
+elif [[ -f "${HOME}/.hermes-cortex/cortex-bus.conf" ]]; then
+  source "${HOME}/.hermes-cortex/cortex-bus.conf"
 fi
 
 # ── Build manifest via Python ──────────────────────────────

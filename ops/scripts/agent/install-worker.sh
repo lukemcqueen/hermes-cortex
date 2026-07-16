@@ -35,7 +35,7 @@ HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 WORKER_SCRIPT_SRC="${CORTEX_REPO}/ops/scripts/agent/agent-worker.py"
 WORKER_SCRIPT_DST="${HERMES_HOME}/scripts/agent-worker.py"
 SERVICE_FILE="${HOME}/.config/systemd/user/hermes-agent-worker.service"
-CONFIG_FILE="${CORTEX_DEPLOY_HOME}/hermes-inbox.conf"
+CONFIG_FILE="${CORTEX_DEPLOY_HOME}/cortex-bus.conf"
 
 # ── Grant bus permissions ──
 info "Granting bus permissions for ${CYAN}${AGENT_NAME}${RESET}..."

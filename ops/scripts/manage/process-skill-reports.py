@@ -32,7 +32,7 @@ CORTEX_BUS_AUTH = os.environ.get("CORTEX_BUS_AUTH", "") or os.environ.get("CORTE
 # Try reading from .env if env vars not set
 if not CORTEX_BUS_FALLBACK_URL:
     for conf in [Path.home() / "hermes-cortex" / ".env",
-                 Path.home() / ".hermes" / "hermes-inbox.conf"]:
+                 Path.home() / ".hermes" / "cortex-bus.conf"]:
         if conf.exists():
             try:
                 for line in conf.read_text().splitlines():

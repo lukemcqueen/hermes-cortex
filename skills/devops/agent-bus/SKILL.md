@@ -31,7 +31,7 @@ This skill covers the Agent Bus server and its supporting infrastructure — the
 | **Client agent** | You connect to an existing Agent Bus (Titus, Gisu, Joseph, Kustos, new agents) | **No** — just MCP tools + auth config |
 | **Server agent** | Your machine runs the Bus backend (Moses, Esther backup) | Yes — server.py + nginx |
 
-**If in doubt, you're a client.** Only the designated server machines run `server.py`. Client agents use `inbox_send` / `inbox_read` / `inbox_watch` MCP tools pointed at the remote server URL via `CORTEX_BUS_FALLBACK_URL` (or legacy `CORTEX_INBOX_URL`) in `~/.hermes-cortex/hermes-inbox.conf`.
+**If in doubt, you're a client.** Only the designated server machines run `server.py`. Client agents use `inbox_send` / `inbox_read` / `inbox_watch` MCP tools pointed at the remote server URL via `CORTEX_BUS_FALLBACK_URL` (or legacy `CORTEX_INBOX_URL`) in `~/.hermes-cortex/cortex-bus.conf`.
 
 ## Architecture
 

@@ -14,7 +14,7 @@ Reads dashboard health at http://127.0.0.1:8901/api/health
 and POSTs the structured result to Moses's agent inbox for
 dashboard consumption.
 
-Configuration (env vars or ~/.hermes-cortex/hermes-inbox.conf):
+Configuration (env vars or ~/.hermes-cortex/cortex-bus.conf):
   CORTEX_BUS_FALLBACK_URL     — Moses inbox MCP endpoint (POST via internal API)
   CORTEX_BUS_FALLBACK_AUTH    — "user:pass" for Basic Auth
   AGENT_NAME           — name to report as (default: hostname)
@@ -40,7 +40,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 HOME = Path.home()
-CONFIG_FILE = HOME / ".hermes" / "hermes-inbox.conf"
+CONFIG_FILE = HOME / ".hermes" / "cortex-bus.conf"
 HEALTH_LOCAL = 'http://127.0.0.1:8901/api/health'
 STATE_FILE = HOME / ".hermes-cortex" / "state" / "agent-health-push-state.json"
 TIMEOUT = 15

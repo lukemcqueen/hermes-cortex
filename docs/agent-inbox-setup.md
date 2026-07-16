@@ -112,8 +112,8 @@ EOF
 chmod 600 ~/hermes-cortex/.env
 ```
 
-> **Legacy fallback:** `~/.hermes-cortex/hermes-inbox.conf` still works if you prefer
-> a separate file. Scripts check `.env` first, then fall back to `hermes-inbox.conf`.
+> **Legacy fallback:** `~/.hermes-cortex/cortex-bus.conf` still works if you prefer
+> a separate file. Scripts check `.env` first, then fall back to `cortex-bus.conf`.
 
 Replace `your-agent-name` and `your-password` with credentials from Luke.
 
@@ -196,7 +196,7 @@ Esther's Server                         Moses' Server
 2. inbox_send_task(agent="moses",
      description="Check disk space")
    → POST https://your-domain.com:13004/a2a/task
-     (with basic auth from hermes-inbox.conf)
+     (with basic auth from cortex-bus.conf)
    ← {id: "a2a-xxx", state: "submitted"}
 
 3. [Moses' inbox cron picks up the task]        Moses' server creates:
@@ -227,7 +227,7 @@ MCP server (Esther)                  nginx (Moses)                  Inbox Server
 ```
 
 - All A2A endpoints go through nginx on port 13004, which requires Basic Auth
-- The MCP server reads `CORTEX_BUS_AUTH` (or legacy `CORTEX_INBOX_AUTH`) from `hermes-inbox.conf` and includes it in every cross-server request
+- The MCP server reads `CORTEX_BUS_AUTH` (or legacy `CORTEX_INBOX_AUTH`) from `cortex-bus.conf` and includes it in every cross-server request
 - mTLS client certs are also loaded if present (optional, for additional security)
 
 ---
@@ -276,7 +276,7 @@ hermes cron create --name process-mcp-agent-inbox-messages \
 
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
-| `inbox_watch` returns HTTP 401 | Wrong auth in `hermes-inbox.conf` | Check `CORTEX_BUS_AUTH` (or legacy `CORTEX_INBOX_AUTH`) value |
+| `inbox_watch` returns HTTP 401 | Wrong auth in `cortex-bus.conf` | Check `CORTEX_BUS_AUTH` (or legacy `CORTEX_INBOX_AUTH`) value |
 | `inbox_send_task` returns HTTP 401 | A2A cross-server request missing auth | Check `CORTEX_BUS_AUTH` is set (A2A reuses same creds) |
 | Agent card returns 404 | `.well-known/agent-card.json` route missing | Ensure server.py has the agent card routes (merged since 2026-07-05) |
 | `inbox_watch` connection refused | MCP server not registered | Check `~/.hermes/config.yaml` for `agent-inbox` entry |

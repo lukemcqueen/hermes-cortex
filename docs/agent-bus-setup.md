@@ -116,7 +116,7 @@ cp ~/hermes-cortex/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/
 #        args: [~/hermes-cortex/mcp-servers/agent-bus-mcp.py]
 #        enabled: true
 
-# 3. Create ~/.hermes-cortex/hermes-inbox.conf:
+# 3. Create ~/.hermes-cortex/cortex-bus.conf:
 #    CORTEX_BUS_URL=https://moses-server:13004
 #    CORTEX_BUS_TOKEN=hbus_your_agent_token_here
 #    CORTEX_BUS_AUTH=username:password  (nginx Basic auth; legacy: CORTEX_BASIC_AUTH)
@@ -127,9 +127,9 @@ cp ~/hermes-cortex/mcp-servers/agent-bus-mcp.py ~/.hermes/scripts/
 | File | Purpose |
 |------|---------|
 | `mcp-servers/agent-bus-mcp.py` | MCP tool server (only file needed) |
-| `~/.hermes-cortex/hermes-inbox.conf` | Bus URL + token config (see below) |
+| `~/.hermes-cortex/cortex-bus.conf` | Bus URL + token config (see below) |
 
-### `~/.hermes-cortex/hermes-inbox.conf` reference
+### `~/.hermes-cortex/cortex-bus.conf` reference
 
 Simple key=value file — one per line, `#` comments supported:
 
@@ -146,7 +146,7 @@ Simple key=value file — one per line, `#` comments supported:
 | `MOSES_INBOX_URL` | ❌ No | — | DEPRECATED — use `CORTEX_BUS_FALLBACK_URL` instead |
 | `MOSES_INBOX_AUTH` | ❌ No | — | DEPRECATED — use `CORTEX_BUS_AUTH` instead |
 
-**Precedence:** Environment variables > `hermes-inbox.conf`. This means you can override the bus URL per-session without editing the config file.
+**Precedence:** Environment variables > `cortex-bus.conf`. This means you can override the bus URL per-session without editing the config file.
 | `~/.hermes/config.yaml` | MCP server registration |
 
 **What a regular agent does NOT need:** Postgres, docker, bus systemd service, nginx, workflow cron scripts, auth.sql/queue.sql/workflow.sql, the circuit breaker, or any file in `ops/scripts/inbox/`.
@@ -513,7 +513,7 @@ curl -sk --cert agent-cert.pem --key agent-key.pem \
 
 The `agent-bus-mcp.py` MCP tool now uses the Agent Bus as its **primary backend**.
 
-### Config Changes (update `~/.hermes-cortex/hermes-inbox.conf`)
+### Config Changes (update `~/.hermes-cortex/cortex-bus.conf`)
 
 |```bash
 # New (Agent Bus — preferred):

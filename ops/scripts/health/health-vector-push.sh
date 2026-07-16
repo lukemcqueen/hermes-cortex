@@ -23,12 +23,12 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 
-# Load config — try .env first, fallback to hermes-inbox.conf
+# Load config — try .env first, fallback to cortex-bus.conf
 CONFIG_FILE=""
 if [[ -f "${HOME}/hermes-cortex/.env" ]]; then
     CONFIG_FILE="${HOME}/hermes-cortex/.env"
-elif [[ -f "${HOME}/.hermes-cortex/hermes-inbox.conf" ]]; then
-    CONFIG_FILE="${HOME}/.hermes-cortex/hermes-inbox.conf"
+elif [[ -f "${HOME}/.hermes-cortex/cortex-bus.conf" ]]; then
+    CONFIG_FILE="${HOME}/.hermes-cortex/cortex-bus.conf"
 fi
 ERROR_LOG="/tmp/com.hermes.health-push.err"
 

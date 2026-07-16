@@ -20,7 +20,7 @@ Exit codes: 0 = pass   1 = warn   2 = fail
 --bus-alert:
     After checks run, sends AGENTS.md reminders via the Agent Bus
     to each repo's owning agent (mapped in docs/templates/repo-owners.yaml).
-    Requires CORTEX_BUS_TOKEN in env or hermes-inbox.conf.
+    Requires CORTEX_BUS_TOKEN in env or cortex-bus.conf.
 """
 
 import json
@@ -1429,7 +1429,7 @@ print('ADDED')
 _REPO_OWNERS_PATH = CORTEX_HOME / "config" / "repo-owners.yaml"
 _REPO_OWNERS_TEMPLATE = CORTEX_REPO / "docs" / "templates" / "repo-owners.yaml"
 _BUS_CONFIG_PATHS = [
-    HOME / ".hermes-cortex" / "hermes-inbox.conf",
+    HOME / ".hermes-cortex" / "cortex-bus.conf",
 ]
 
 
@@ -1582,7 +1582,7 @@ def dispatch_bus_alerts(res: Results):
     token = _read_bus_token()
     basic_auth = _read_basic_auth()
     if not token and not basic_auth:
-        print("  ℹ️  --bus-alert: no bus auth found (set CORTEX_BUS_TOKEN or CORTEX_BUS_AUTH in env or hermes-inbox.conf)")
+        print("  ℹ️  --bus-alert: no bus auth found (set CORTEX_BUS_TOKEN or CORTEX_BUS_AUTH in env or cortex-bus.conf)")
         return
 
     # Resolve primary bus URL (Moses) and fallback (Esther)

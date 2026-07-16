@@ -8,7 +8,7 @@
 #
 #  Uses the SAME config loading pattern as inbox-mcp.py:
 #    1. CORTEX_INBOX_* environment variables
-#    2. ~/.hermes-cortex/hermes-inbox.conf (KEY=VALUE format, parsed line-by-line)
+#    2. ~/.hermes-cortex/cortex-bus.conf (KEY=VALUE format, parsed line-by-line)
 #    3. URL fallback chain: primary → fallback → third → localhost:8903
 #
 #  Silent when:
@@ -25,7 +25,7 @@ set -euo pipefail
 # ── Paths ──
 STATE_FILE="${HOME}/.hermes-cortex/state/post-commit-notify"
 LOG_FILE="${STATE_FILE}.log"
-CONFIG_FILE="${HOME}/.hermes-cortex/hermes-inbox.conf"
+CONFIG_FILE="${HOME}/.hermes-cortex/cortex-bus.conf"
 
 # ── Helpers ──
 log()  { echo "[notify] $*" >> "$LOG_FILE"; }

@@ -225,7 +225,7 @@ Each agent can install an `agent-worker` systemd `--user` service that polls the
 
 ### Config
 
-The worker reads from `~/.hermes-cortex/hermes-inbox.conf`:
+The worker reads from `~/.hermes-cortex/cortex-bus.conf`:
 ```ini
 BUS_URL=http://bus-host:8905
 CORTEX_BUS_AUTH=<your-basic-auth>    (legacy: CORTEX_BASIC_AUTH)

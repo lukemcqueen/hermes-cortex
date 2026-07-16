@@ -27,8 +27,8 @@ if [[ -f "${HOME}/hermes-cortex/.env" ]]; then
   set -a; source "${HOME}/hermes-cortex/.env"; set +a
   INBOX_URL="${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-}}"
   INBOX_AUTH="${CORTEX_BUS_AUTH:-${CORTEX_INBOX_AUTH:-}}"
-elif [[ -f "${HOME}/.hermes-cortex/hermes-inbox.conf" ]]; then
-  source "${HOME}/.hermes-cortex/hermes-inbox.conf"
+elif [[ -f "${HOME}/.hermes-cortex/cortex-bus.conf" ]]; then
+  source "${HOME}/.hermes-cortex/cortex-bus.conf"
   INBOX_URL="${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-}}"
   INBOX_AUTH="${CORTEX_BUS_AUTH:-${CORTEX_INBOX_AUTH:-}}"
 fi
