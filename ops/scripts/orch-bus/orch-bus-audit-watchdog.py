@@ -47,6 +47,7 @@ def run_psql(query):
 
 def main():
     last_id = get_last_id()
+    STATE_FILE.touch()  # update mtime every tick — system-alert-watchdog checks freshness
 
     raw = run_psql(f"""
         SELECT m.msg_id, m.queue_name, left(m.body::text, 300), m.enqueued_at::timestamp::text

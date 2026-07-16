@@ -227,17 +227,17 @@ def check_gateway_log() -> dict:
     return _check_launchd("ai.hermes.gateway")
 
 def check_inbox_staleness() -> dict:
-    state_file = CORTEX_DEPLOY_HOME / "state" / "last-message-check"
+    state_file = HERMES_HOME / "state" / "bus-audit-watchdog.state"
     if not state_file.exists():
-        return {"status": "DEGRADED", "detail": "No state file — may not have run"}
+        return {"status": "DEGRADED", "detail": "No state file — bus-audit-watchdog may not have run"}
     try:
         mtime = datetime.fromtimestamp(state_file.stat().st_mtime, tz=timezone.utc).astimezone()
         age = NOW - mtime
-        if age < timedelta(minutes=15):
+        if age < timedelta(minutes=5):
             return {"status": "UP", "detail": f"Last scan: {age.total_seconds() / 60:.0f}m ago"}
-        elif age < timedelta(minutes=25):
+        elif age < timedelta(minutes=10):
             return {"status": "DEGRADED", "detail": f"Last scan: {age.total_seconds() / 60:.0f}m ago"}
-        return {"status": "DOWN", "detail": f"Last scan: {age.total_seconds() / 60:.0f}m ago — inbox polling stalled!"}
+        return {"status": "DOWN", "detail": f"Last scan: {age.total_seconds() / 60:.0f}m ago — bus-audit-watchdog stalled!"}
     except Exception as e:
         return {"status": "ERROR", "detail": f"Could not read state file: {e}"}
 
