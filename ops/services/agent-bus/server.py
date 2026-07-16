@@ -90,7 +90,7 @@ def _check_permission(agent: str, queue: str, action: str):
     bus = get_queue()
     bus._ensure_conn()
     with bus._conn.cursor() as cur:
-        column = "can_read" if action == "read" else "can_write"
+        column = "can_read" if action == "read" else "can_send"
         cur.execute(
             f"SELECT {column} FROM bus.permissions WHERE agent_name = %s",
             (agent,),
@@ -99,13 +99,10 @@ def _check_permission(agent: str, queue: str, action: str):
         if not row:
             raise HTTPException(403, f"Agent '{agent}' has no permissions configured")
         
-        allowed_queues = row[0] or []
-        is_admin = len(allowed_queues) > 0 and allowed_queues[0] == '*'  # future: wildcard support
-        
-        if not is_admin and queue not in allowed_queues:
+        if not row[0]:
             raise HTTPException(
                 403,
-                f"Agent '{agent}' does not have {action} access to queue '{queue}'"
+                f"Agent '{agent}' does not have {action} permission"
             )
 
 
