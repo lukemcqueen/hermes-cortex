@@ -53,7 +53,19 @@ TOKEN_PREFIX = "Bearer "
 
 
 def _authenticate(request: Request) -> str:
-    """Extract and validate Bearer token. Returns agent name."""
+    """Extract and validate credentials. Returns agent name.
+    
+    Two auth modes:
+    1. X-Forwarded-User — for nginx-authenticated external connections
+       (nginx validates Basic auth, forwards the username)
+    2. Bearer token — for direct/internal connections (Authorization: Bearer ***)
+    """
+    # Mode 1: nginx-authenticated — X-Forwarded-User header
+    forwarded_user = request.headers.get("X-Forwarded-User", "")
+    if forwarded_user:
+        return forwarded_user.strip()
+    
+    # Mode 2: Bearer token — direct connections
     auth = request.headers.get(AUTH_HEADER, "")
     
     if not auth.startswith(TOKEN_PREFIX):
