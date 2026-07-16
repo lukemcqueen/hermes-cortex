@@ -162,6 +162,7 @@ register "core/governance/update.sh"           "${CORTEX_DEPLOY_HOME}/scripts/up
 
 register "ops/scripts/health/prod-watchdog.sh"          "${CORTEX_DEPLOY_HOME}/scripts/prod-watchdog.sh"
 register "ops/scripts/agent/orch-team-messages.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-team-messages.sh"
+register "ops/scripts/agent/orch-fleet-watchdog.py"   "${CORTEX_DEPLOY_HOME}/scripts/orch-fleet-watchdog.py"
 
 # Post-commit notification + installer
 register "ops/scripts/manage/post-commit-notify.sh"          "${CORTEX_DEPLOY_HOME}/scripts/post-commit-notify.sh"
@@ -233,6 +234,10 @@ register "ops/scripts/manage/ek-session-snapshot.py"     "${CORTEX_DEPLOY_HOME}/
 # Fleet watchdog — cross-agent health polling (orch, deployed by install-orch-crons.sh)
 register "ops/scripts/agent/orch-fleet-watchdog.py"      "${CORTEX_DEPLOY_HOME}/scripts/orch-fleet-watchdog.py"
 register "ops/scripts/agent/agent-gbrain-doctor.sh"       "${CORTEX_DEPLOY_HOME}/scripts/agent-gbrain-doctor.sh"
+
+# gbrain autopilot — systemd user service (replaces old sync-watch cron/launchd)
+register "docs/templates/gbrain-autopilot.service"       "${HOME}/.config/systemd/user/gbrain-autopilot.service" "restart_gbrain_sync"
+register "ops/scripts/install/install-gbrain-sync.sh"    "${CORTEX_DEPLOY_HOME}/scripts/install-gbrain-sync.sh"
 
 # Orchestrator health report — periodic agent fleet snapshot (no_agent cron)
 register "ops/scripts/agent/orch-health-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/orch-health-report.py"

@@ -97,4 +97,5 @@ agent-registry.json
 ops/scripts/
 !ops/scripts/agent/orch-fleet-watchdog.py
 !ops/scripts/agent/contact-moses.sh
+!ops/scripts/agent/orch-fleet-watchdog.py
 !ops/scripts/health/service-recovery.py
