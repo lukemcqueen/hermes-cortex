@@ -309,13 +309,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ── Recover timed-out messages (run every minute) ───────────
+-- ── Recover timed-out messages (run every 5 minutes) ────────
 
 CREATE OR REPLACE FUNCTION bus.recover_timeouts()
 RETURNS INT AS $$
 DECLARE
-    v_count INT;
+    v_recovered INT := 0;
+    v_dlq_moved INT := 0;
+    v_archived INT := 0;
 BEGIN
+    -- Step 1: Retry processing messages below max_retries
     UPDATE bus.messages
     SET state = 'pending',
         visible_after = now(),
@@ -325,16 +328,22 @@ BEGIN
       AND timeout_at < now()
       AND retry_count < max_retries;
 
-    GET DIAGNOSTICS v_count = ROW_COUNT;
+    GET DIAGNOSTICS v_recovered = ROW_COUNT;
 
-    -- Move over-max-retries to DLQ (main queues) or delete (DLQ queues — no chaining)
+    -- Step 2: Move over-max-retries to DLQ — but only if NOT already in one.
+    -- DLQ messages that exhaust retries are DELETED (no deep-chain DLQ).
     WITH expired AS (
         UPDATE bus.messages m
         SET state = 'pending',
-            queue_name = CASE WHEN q.is_dlq THEN m.queue_name  -- stay in same queue (will be deleted below)
-                              ELSE m.queue_name || '_dlq' END,
+            -- If already in a DLQ: stay in same queue (will be deleted below)
+            -- If not in a DLQ: move to DLQ
+            queue_name = CASE
+                WHEN m.queue_name LIKE '%\_dlq' THEN m.queue_name
+                ELSE m.queue_name || '_dlq'
+            END,
             visible_after = now(),
-            timeout_at = NULL
+            timeout_at = NULL,
+            error = COALESCE(error, 'max retries exceeded — moved to DLQ')
         FROM bus.queues q
         WHERE m.queue_name = q.name
           AND m.state = 'processing'
@@ -342,7 +351,7 @@ BEGIN
           AND m.retry_count >= m.max_retries
         RETURNING m.msg_id, m.queue_name, q.is_dlq
     ),
-    -- Delete DLQ messages that have exhausted retries (no deeper chain)
+    -- Delete exhausted DLQ messages (no deeper chaining)
     deleted AS (
         DELETE FROM bus.messages m
         USING expired e
@@ -350,8 +359,21 @@ BEGIN
           AND e.is_dlq = true
         RETURNING 1
     )
-    SELECT count(*) INTO v_count FROM expired;
+    SELECT count(*) INTO v_dlq_moved FROM expired;
 
-    RETURN v_count;
+    -- Step 3: Auto-archive old DLQ messages stuck in pending state
+    -- (Messages that were moved to DLQ but never consumed)
+    WITH archived AS (
+        DELETE FROM bus.messages m
+        USING bus.queues q
+        WHERE m.queue_name = q.name
+          AND q.is_dlq = true
+          AND m.state = ANY (ARRAY['pending', 'processing'])
+          AND m.enqueued_at < now() - interval '24 hours'
+        RETURNING 1
+    )
+    SELECT count(*) INTO v_archived FROM archived;
+
+    RETURN v_recovered + v_dlq_moved + v_archived;
 END;
 $$ LANGUAGE plpgsql;
