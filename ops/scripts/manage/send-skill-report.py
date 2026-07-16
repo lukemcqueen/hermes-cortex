@@ -5,13 +5,16 @@ Designed to run as a no_agent cron (every 6h). Reads the skills
 manifest written by collect-agent-skills.sh and sends it to Moses
 via PGMQ Agent Bus. Silent when no custom skills to report.
 
-Requires (from ~/hermes-cortex/.env):
-  CORTEX_BUS_URL      — Moses Agent Bus URL (e.g. http://localhost:8903)
-  CORTEX_BUS_TOKEN    — Bearer token for bus auth
+Requires (from ~/.hermes-cortex/cortex-bus.conf, ~/hermes-cortex/.env,
+  or env vars):
+  CORTEX_BUS_URL         — Moses Agent Bus URL (primary)
+  CORTEX_BUS_FALLBACK_URL — Esther Agent Bus URL (fallback)
+  CORTEX_BUS_TOKEN       — Bearer token for bus auth
 
 For remote agents, CORTEX_BUS_URL must point to Moses's external bus
-endpoint (not localhost).
+endpoint (e.g. https://bus.example.org:13004).
 """
+from __future__ import annotations
 
 import json
 import os
@@ -24,39 +27,74 @@ from urllib.error import URLError
 
 HOME = Path.home()
 
-# ── Source config from .env ─────────────────────────────────
-CORTEX_BUS_FALLBACK_URL = os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or os.environ.get("CORTEX_INBOX_URL", "")
-CORTEX_BUS_AUTH = os.environ.get("CORTEX_BUS_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "")
 
-env_file = HOME / "hermes-cortex" / ".env"
-if env_file.exists() and (not CORTEX_BUS_FALLBACK_URL or not CORTEX_BUS_AUTH):
-    try:
-        for line in env_file.read_text().splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            v = v.strip().strip("'\"")
-            if k == "CORTEX_BUS_FALLBACK_URL" and not CORTEX_BUS_FALLBACK_URL:
-                CORTEX_BUS_FALLBACK_URL = v
-            elif k == "CORTEX_INBOX_URL" and not CORTEX_BUS_FALLBACK_URL:
-                CORTEX_BUS_FALLBACK_URL = v
-            elif k == "CORTEX_BUS_AUTH" and not CORTEX_BUS_AUTH:
-                CORTEX_BUS_AUTH = v
-            elif k == "CORTEX_INBOX_AUTH" and not CORTEX_BUS_AUTH:
-                CORTEX_BUS_AUTH = v
-    except Exception:
-        pass
+def _load_env(path: Path) -> dict:
+    """Load key=value pairs from a config file."""
+    env = {}
+    if path.exists():
+        try:
+            for line in path.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                env[k.strip()] = v.strip().strip("'\"")
+        except OSError:
+            pass
+    return env
 
-# ── Silent exit if not configured ─────────────────────────
-if not CORTEX_BUS_FALLBACK_URL or not CORTEX_BUS_AUTH:
+
+def _resolve_var(key: str, default: str = "") -> str:
+    """Resolve env var from env → config files → default."""
+    val = os.environ.get(key)
+    if val:
+        return val
+    for cfg_path in [
+        HOME / ".hermes-cortex" / "cortex-bus.conf",
+        HOME / "hermes-cortex" / ".env",
+    ]:
+        cfg = _load_env(cfg_path)
+        if key in cfg and cfg[key]:
+            return cfg[key]
+    return default
+
+
+# ── Resolve connection config ──
+BUS_URL = _resolve_var("CORTEX_BUS_URL")
+if not BUS_URL:
+    BUS_URL = _resolve_var("CORTEX_BUS_FALLBACK_URL")
+BUS_TOKEN = _resolve_var("CORTEX_BUS_TOKEN")
+
+# ── Resolve auth ──
+# Local (127.0.0.1/localhost): Bearer token
+# Remote (external via nginx): Basic auth
+CORTEX_BASIC_AUTH = _resolve_var("CORTEX_BASIC_AUTH")
+
+def _is_local(url: str) -> bool:
+    """Check if a URL points to localhost."""
+    host = url.split("://")[-1].split("/")[0].split(":")[0]
+    return host in ("127.0.0.1", "localhost", "::1")
+
+def _build_auth_headers(url: str) -> dict[str, str]:
+    """Build auth headers appropriate for the connection type."""
+    if _is_local(url):
+        return {"Authorization": f"Bearer {BUS_TOKEN}"} if BUS_TOKEN else {}
+    # Remote via nginx — use Basic auth
+    if CORTEX_BASIC_AUTH:
+        import base64
+        encoded = base64.b64encode(CORTEX_BASIC_AUTH.encode()).decode()
+        return {"Authorization": f"Basic {encoded}"}
+    return {}
+
+# ── Silent exit if not configured ──
+if not BUS_URL or not BUS_TOKEN:
     sys.exit(0)
 
 STATE_DIR = HOME / ".hermes-cortex" / "state"
 MANIFEST_FILE = STATE_DIR / "skills-manifest.json"
 CONTENTS_FILE = STATE_DIR / "skills-contents.json"
 
-# ── Rebuild manifest from current skills ───────────────────
+# ── Rebuild manifest from current skills ──
 collect_script = HOME / "hermes-cortex" / "ops" / "scripts" / "manage" / "collect-agent-skills.sh"
 if collect_script.exists():
     subprocess.run(["bash", str(collect_script)], capture_output=True)
@@ -65,7 +103,7 @@ else:
     if deployed.exists():
         subprocess.run(["bash", str(deployed)], capture_output=True)
 
-# ── Silent exit if no manifest or no custom skills ────────
+# ── Silent exit if no manifest or no custom skills ──
 if not MANIFEST_FILE.exists():
     sys.exit(0)
 
@@ -78,7 +116,7 @@ contents = []
 if CONTENTS_FILE.exists():
     contents = json.loads(CONTENTS_FILE.read_text())
 
-# ── Build message body ─────────────────────────────────────
+# ── Build message body ──
 hostname = os.uname().nodename
 lines = []
 lines.append(f"━━━ Skill Report — {hostname} ━━━")
@@ -102,23 +140,18 @@ for i, s in enumerate(manifest.get("skills", [])):
 
 body_text = "\n".join(lines)
 
-# ── Send via Agent Bus Inbox API ─────────────────────────────
-# Inbox expects: POST /api/send with Basic auth (user:pass)
-# Body: {"from": ..., "to": ..., "subject": ..., "body": ..., "topic": ...}
-import base64
-
-bus_url = CORTEX_BUS_FALLBACK_URL.rstrip("/")
-api_url = f"{bus_url}/api/send"
-
-# Build Basic auth header from user:pass
-auth_b64 = base64.b64encode(CORTEX_BUS_AUTH.encode()).decode()
+# ── Send via PGMQ Agent Bus ──
+bus_url = BUS_URL.rstrip("/")
+api_url = f"{bus_url}/api/pgmq/send"
 
 payload = {
-    "from": hostname,
-    "to": "moses",
-    "subject": f"Skill Report: {custom_total} custom skills",
-    "body": body_text,
-    "topic": "reports",
+    "queue": "inbox_moses",
+    "message": {
+        "from": hostname,
+        "subject": f"Skill Report: {custom_total} custom skills",
+        "body": body_text,
+        "topic": "reports",
+    },
 }
 
 req = Request(
@@ -126,14 +159,25 @@ req = Request(
     data=json.dumps(payload).encode("utf-8"),
     headers={
         "Content-Type": "application/json",
-        "Authorization": f"Basic {auth_b64}",
+        **_build_auth_headers(bus_url),
     },
     method="POST",
 )
 
 try:
-    urlopen(req, timeout=30)
-    print(f"Sent {custom_total} custom skills from {hostname} to Moses inbox", flush=True)
+    with urlopen(req, timeout=30) as resp:
+        result = json.loads(resp.read().decode())
+    msg_id = result.get("msg_id", "?")
+    print(f"Sent {custom_total} custom skills from {hostname} to Moses (msg_id={msg_id[:8]})", flush=True)
 except URLError as e:
+    body = ""
+    if hasattr(e, 'read'):
+        try:
+            body = e.read().decode()[:200]
+        except Exception:
+            body = str(e)
+    print(f"ERR: Failed to send skill report: HTTP {getattr(e, 'code', '?')} {body}", flush=True)
+    sys.exit(1)
+except (OSError, json.JSONDecodeError) as e:
     print(f"ERR: Failed to send skill report: {e}", flush=True)
     sys.exit(1)

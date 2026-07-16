@@ -983,7 +983,9 @@ create_cron "collect-agent-skills" "0 */6 * * *" \
   "" \
   "true"
 
-# (Removed: send-skill-report — API endpoint /api/send no longer exists.
+# (Restored: send-skill-report — rewritten to use /api/pgmq/send with Bearer/Basic auth.
+#  Now resolves CORTEX_BUS_URL → CORTEX_BUS_FALLBACK_URL, supports Basic auth for nginx proxy.
+#  Fixed: was using deprecated /api/send endpoint. See ops/scripts/manage/send-skill-report.py)
 #  Agent inbox migrated to Agent Bus (PGMQ). Collect-agent-skills.sh
 #  still runs independently; this reporter cron was dead code.)
 
