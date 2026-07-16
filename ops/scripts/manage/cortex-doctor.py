@@ -31,6 +31,7 @@ import sys
 import time
 import urllib.request
 import urllib.error
+import base64
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -1480,6 +1481,28 @@ def _read_bus_token() -> str:
     return ""
 
 
+def _read_basic_auth() -> str:
+    """Read Basic Auth credentials from env or config files."""
+    auth = os.environ.get("CORTEX_BASIC_AUTH", "")
+    if auth:
+        return auth
+    for cfg_path in _BUS_CONFIG_PATHS:
+        if not cfg_path.exists():
+            continue
+        try:
+            for line in cfg_path.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = (x.strip().strip("'\"").strip() for x in line.split("=", 1))
+                v = re.sub(r"\s+#.*$", "", v).strip()
+                if k == "CORTEX_BASIC_AUTH" and v:
+                    return v
+        except OSError:
+            pass
+    return ""
+
+
 def _send_bus_alert(repo_name: str, owner: str, bus_url: str, token: str) -> bool:
     """Send an AGENTS.md reminder message to the owning agent via the bus."""
     payload = {
@@ -1498,21 +1521,41 @@ def _send_bus_alert(repo_name: str, owner: str, bus_url: str, token: str) -> boo
         },
         "priority": 0,
     }
+    # Try Bearer token first (internal bus), fall back to Basic Auth (nginx proxy)
+    headers = {
+        "Content-Type": "application/json",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     try:
         req = urllib.request.Request(
             f"{bus_url}/api/pgmq/send",
             data=json.dumps(payload).encode(),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {token}",
-            },
+            headers=headers,
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
-            resp_data = resp.read().decode()
+            resp.read()
             return True
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError, json.JSONDecodeError) as e:
-        return False
+    except (urllib.error.HTTPError, urllib.error.URLError, OSError, json.JSONDecodeError):
+        # Bearer failed — try Basic Auth
+        basic_auth = _read_basic_auth()
+        if not basic_auth:
+            return False
+        encoded = base64.b64encode(basic_auth.encode()).decode()
+        headers["Authorization"] = f"Basic {encoded}"
+        try:
+            req = urllib.request.Request(
+                f"{bus_url}/api/pgmq/send",
+                data=json.dumps(payload).encode(),
+                headers=headers,
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                resp.read()
+                return True
+        except (urllib.error.HTTPError, urllib.error.URLError, OSError, json.JSONDecodeError):
+            return False
 
 
 def dispatch_bus_alerts(res: Results):
