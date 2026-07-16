@@ -613,16 +613,26 @@ When fixing test failures caused by missing i18n keys in mockT:
 When setting up a Python virtual environment:
 
 1. Check for pyenv-managed versions first: `pyenv versions` → `pyenv exec python3.13 --version`
-2. Prefer Python >= 3.11 that supports `str | None` annotations natively (3.9 needs `eval_type_backport`)
-3. Fallback chain: `pyenv exec python3.N` → `/opt/homebrew/bin/python3.N` → system `python3`
-4. Recreate venv if switching Python versions: `rm -rf .venv && pyenv exec python3.13 -m venv .venv`
-5. Update the project's `./run` script's `cmd_pip()` to use the same fallback chain
+2. Prefer Python >= 3.12 that supports `str | None` annotations natively (macOS ships 3.9 without it)
+3. On macOS: use `~/.local/bin/python3.12` (uv-managed) or `/opt/homebrew/bin/python3.12` — never system `python3` (that's 3.9)
+4. Fallback chain: `~/.local/bin/python3.12` → `/opt/homebrew/bin/python3.12` → `python3.12` → system `python3` (last resort with version guard)
+5. Recreate venv if switching Python versions: `rm -rf .venv && python3.12 -m venv .venv`
+6. Update the project's `./run` script's `cmd_pip()` to use the same fallback chain
+7. When adding a new `.py` script to the cortex repo, always set shebang to `#!/usr/bin/env python3.12` — the `env` fallback chain resolves `python3.12` on macOS via Homebrew or uv
 
-### Python portable shebangs — version guard required
+### Python portable shebangs — use python3.12 not python3
 
-`#!/usr/bin/env python3` is portable across machines, but on macOS it resolves to the system Python (3.9), which doesn't support union type syntax (`str | None`, `list[float] | None`). A bare `#!/usr/bin/env python3` shebang on a script using 3.10+ syntax will crash with `TypeError: unsupported operand type(s) for |`.
+`#!/usr/bin/env python3` on macOS resolves to the system Python (3.9), which doesn't support union type syntax (`str | None`, `list[float] | None`). This will crash with `TypeError: unsupported operand type(s) for |` on any script using 3.10+ syntax.
 
-**Mandatory pattern for every Python CLI tool (scripts with `#!/usr/bin/env python3` that may be symlinked to `~/.local/bin/`):**
+**Hermes Cortex standard:** Use explicit `#!/usr/bin/env python3.12` in ALL .py scripts. The `env` fallback resolves `python3.12` from PATH:
+- `~/.local/bin/python3.12` (uv-managed, canonical for Hermes)
+- `/opt/homebrew/bin/python3.12` (Homebrew fallback)
+- `~/.pyenv/versions/3.12.*/bin/python3.12` (pyenv fallback)
+
+This was applied fleet-wide on July 16, 2026 for all governance scripts, MCP servers, and cron scripts. Any new script should follow the same convention.
+
+**For scripts that MUST use `#!/usr/bin/env python3` (e.g., tools distributed via npm/pip that expect POSIX):**
+Add a runtime version guard as a safety net:
 
 ```python
 #!/usr/bin/env python3

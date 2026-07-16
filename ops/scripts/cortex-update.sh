@@ -403,7 +403,7 @@ restart_agent_inbox() {
     # Create venv if missing
     local inbox_dir="${CORTEX_DEPLOY_HOME}/agent-inbox"
     if [[ ! -d "${inbox_dir}/venv" ]]; then
-      python3 -m venv "${inbox_dir}/venv" 2>/dev/null || true
+      python3.12 -m venv "${inbox_dir}/venv" 2>/dev/null || python3 -m venv "${inbox_dir}/venv" 2>/dev/null || true
       "${inbox_dir}/venv/bin/pip" install fastapi uvicorn python-multipart 2>/dev/null || true
     fi
     launchctl load "$plist" 2>&1 | sed 's/^/    /'
@@ -1219,7 +1219,7 @@ main() {
   sync_code_corpus
 
   # Check template drift — warn if local SOUL.md is stale
-  if python3 "${CORTEX_DEPLOY_HOME}/scripts/template-diff-check.py" 2>/dev/null; then
+  if python3.12 "${CORTEX_DEPLOY_HOME}/scripts/template-diff-check.py" 2>/dev/null || python3 "${CORTEX_DEPLOY_HOME}/scripts/template-diff-check.py" 2>/dev/null; then
     :  # up to date — silent
   else
     warn "Template drift: run with --status to see details"

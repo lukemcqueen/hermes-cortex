@@ -101,8 +101,8 @@ if [[ "${1:-}" == "--check" ]]; then
   echo "  ${BOLD}Hermes Cortex — Prerequisites Check${RESET}"
   echo ""
 
-  # Python
-  PYTHON=$(command -v python3 || command -v python || echo "")
+  # Python — prefer 3.12+ (macOS ships 3.9 which breaks PEP 604)
+  PYTHON=$(command -v python3.12 || command -v python3 || command -v python || echo "")
   if [[ -n "$PYTHON" ]]; then
     VER=$("$PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
     echo "  ${GREEN}✓${RESET} Python ${VER} at ${PYTHON}"
@@ -1966,7 +1966,7 @@ if [[ -f "$MCP_SERVER_PATH" ]]; then
     if hermes mcp list 2>/dev/null | grep -q "loop-governance"; then
       skip "loop-governance MCP server already registered"
     else
-      if hermes mcp add loop-governance --command python3 --args "$MCP_SERVER_PATH" 2>/dev/null; then
+      if hermes mcp add loop-governance --command "$(find_best_python)" --args "$MCP_SERVER_PATH" 2>/dev/null; then
         info "  Registered: loop-governance MCP server"
         info "  → Primary write-tool enforcer. Blocks tools without governance lock."
       else
@@ -2117,7 +2117,8 @@ else
   # Create dedicated dashboard venv + install Flask
   if [[ ! -f "${DASHBOARD_DEST}/venv/bin/python3" ]]; then
     info "  Creating dedicated dashboard venv…"
-    python3 -m venv "${DASHBOARD_DEST}/venv"
+    BEST_PY=$(find_best_python)
+    $BEST_PY -m venv "${DASHBOARD_DEST}/venv"
     "${DASHBOARD_DEST}/venv/bin/pip" install flask --quiet
     info "  Dashboard venv ready"
   fi

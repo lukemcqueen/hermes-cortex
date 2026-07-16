@@ -30,7 +30,8 @@ metadata:
 
 - [ ] If paths changed: verify no Linux-only paths (`/home/`, `/etc/`) used on macOS, and no macOS-only paths used on Linux
 - [ ] If service files changed: verify LaunchAgent plists for macOS AND systemd service units for Linux
-- [ ] If scripts changed: verify shebangs (macOS ships Python 3.9; Hermes uses MCP venv Python 3.11)
+- [ ] If scripts changed: verify shebangs point to python3.12 (macOS ships Python 3.9 which breaks PEP 604; all Hermes projects require 3.12+)
+  - `~/.local/bin/python3.12` is the canonical macOS Hermes Python
 
 ## Phase 3 — Multi-Role Verification
 
