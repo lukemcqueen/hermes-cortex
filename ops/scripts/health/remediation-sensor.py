@@ -372,6 +372,45 @@ def check_certbot():
                 })
 
 
+def check_agent_bus():
+    """Check Hermes Cortex Agent Bus health.
+    
+    Checks that the Agent Bus service is active AND the endpoint responds.
+    Only reports an issue if BOTH checks fail (to avoid false positives
+    from one-off curl timeouts).
+    """
+    svc_ok = False
+    svc_out = ""
+    
+    if sys.platform == "darwin":
+        # Check launchd service: launchctl list returns "PID ExitCode Label"
+        # Non-empty PID (not "-") means service is running
+        svc_out, _, svc_rc = run("launchctl list com.hermes.agent-bus 2>/dev/null | awk 'NR==2 {print \\$1}'")
+        svc_ok = (svc_rc == 0 and svc_out.strip() not in ("", "-"))
+        
+        # Also check fallback service (legacy)
+        if not svc_ok:
+            fb_out, _, fb_rc = run("launchctl list com.hermes.agent-bus-fallback 2>/dev/null | awk 'NR==2 {print \\$1}'")
+            if fb_rc == 0 and fb_out.strip() not in ("", "-"):
+                svc_ok = True
+    elif sys.platform.startswith("linux"):
+        # Check systemd user service
+        svc_out, _, svc_rc = run("systemctl --user is-active hermes-agent-bus.service 2>/dev/null")
+        svc_ok = (svc_out.strip() == "active")
+    
+    # Probe endpoint on :8905
+    curl_out, _, curl_rc = run("curl -s -o /dev/null -w '%{http_code}' http://localhost:8905/health 2>/dev/null")
+    endpoint_ok = (curl_rc == 0 and curl_out.strip() == "200")
+    
+    if not svc_ok and not endpoint_ok:
+        add_issue("service_down", "high", "Agent Bus is down (service inactive + endpoint unreachable)", {
+            "service": "hermes-agent-bus.service",
+            "service_status": svc_out.strip() or "unknown",
+            "endpoint_http": curl_out.strip() or "unreachable",
+        })
+    # If at least one check passes, bus is healthy — stay silent
+
+
 def check_systemd_services():
     """Check critical systemd services (Linux only).
     
@@ -422,6 +461,7 @@ def main():
     check_disk()
     check_memory()
     check_services()
+    check_agent_bus()  # Agent Bus health check (before systemd services)
     check_systemd_services()  # Linux complement to check_services()
     check_nginx()
     check_ssl_certs()  # NEW: SSL cert permissions
