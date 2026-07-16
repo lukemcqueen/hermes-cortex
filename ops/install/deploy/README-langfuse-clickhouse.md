@@ -30,7 +30,7 @@ deploy/
 | File | Mount Target | Purpose |
 |------|-------------|---------|
 | `01-log-level.xml` | `config.d/` | Server-level: reduce ClickHouse logging |
-| `02-low-memory.xml` | `config.d/` | Server-level: tune thread pools, disable verbose system tables |
+| `02-low-memory.xml` | `config.d/` | **Default low-memory config** — thread pools, merge size caps, cache caps, system log TTL. Designed to run stably in a **2 GiB container**. See "Configuration Reference" below for all settings. |
 | `03-profile-defaults.xml` | `users.d/` | Profile-level: per-query memory, threads, block size |
 
 ---
@@ -279,72 +279,178 @@ Too many background pool settings reduced simultaneously.
 Fix: Keep only `background_pool_size` and `background_schedule_pool_size`.
 Restore all others to defaults.
 
-### ClickHouse merge failures (`MEMORY_LIMIT_EXCEEDED`, `TotalMergeFailures` climbing)
+### ClickHouse merge failures (`MEMORY_LIMIT_EXCEEDED`, `TotalMergeFailures` climbing, stuck bg threads)
 
-**Symptom:** Watchdog reports `TotalMergeFailures` climbing rapidly. `system.errors` shows `MEMORY_LIMIT_EXCEEDED: (total) memory limit exceeded: would use 1.80 GiB ... maximum: 1.80 GiB`. No active merges run despite many unmerged parts.
+**Symptom:** Watchdog reports `TotalMergeFailures` climbing rapidly (hundreds per hour). Server log shows:
+```
+MergeTreeBackgroundExecutor: Exception while executing background task:
+Code: 241. (total) memory limit exceeded: would use 1.80 GiB
+(attempt to allocate chunk of 4.16 MiB bytes), current RSS: 492.07 MiB,
+maximum: 1.80 GiB.
+```
+`MergeTreeBackgroundExecutorThreadsActive` shows many threads (45+) but `Merge` metric is 0 — threads stuck retrying merges that always fail. No recovery without intervention.
 
-**Root cause:** ClickHouse cache defaults are tuned for 64+ GiB servers (`uncompressed_cache_size` = 8 GiB, `mark_cache_size` = 5 GiB). In a 2 GiB Docker container, these caches consume the bulk of available memory before background merges can start. Every merge attempt immediately hits the memory limit, and the `TotalMergeFailures` counter climbs with no recovery.
+**Root cause (three compounding issues, must fix all):**
+
+1. **Merge size far exceeds RAM (the real killer):** ClickHouse's default `max_bytes_to_merge_at_max_space_in_pool` is **150 GB**. In a 2 GiB container, a single merge task tries to process parts totaling >100 GiB. It always hits the server memory cap (1.8 GiB = 90% of 2 GiB). Every attempt fails with `MEMORY_LIMIT_EXCEEDED`. The fix: cap each merge to **500 MB** so it fits in 1/4 of available memory.
+
+2. **Cache defaults assume 64+ GiB RAM:** ClickHouse defaults `uncompressed_cache_size` to 8 GiB and `mark_cache_size` to 5 GiB. In a 2 GiB container, these caches consume almost all memory before background merges can start. Fix: cap caches at 256 MB / 128 MB respectively.
+
+3. **Merge pool never reduces sizes:** The default `number_of_free_entries_in_pool_to_lower_max_size_of_merge = 8` waits for 8 free pool slots before shrinking merge sizes. With all 26 pool slots saturated by retrying failed merges, the size is never lowered — death spiral. Fix: set to 0 (immediately lower merge sizes).
 
 **Diagnosis:**
+
 ```bash
-# 1. Check merge failure count
-docker exec langfuse-clickhouse-1 clickhouse-client --query \
-  "SELECT name, value FROM system.metrics WHERE name IN ('TotalMergeFailures', 'NonAbortedMergeFailures', 'Merge')"
+# 1. Check server log for exact memory limit error
+docker exec langfuse-clickhouse-1 grep "MEMORY_LIMIT\|memory limit exceeded" \
+  /var/log/clickhouse-server/clickhouse-server.err.log
 
-# 2. Check cache sizes (should show changed=1 if capped)
+# 2. Check merge failure count
 docker exec langfuse-clickhouse-1 clickhouse-client --query \
-  "SELECT name, value, changed FROM system.server_settings WHERE name IN ('uncompressed_cache_size','mark_cache_size','cache_size_to_ram_max_ratio')"
+  "SELECT metric, value FROM system.metrics \
+   WHERE metric IN ('TotalMergeFailures','NonAbortedMergeFailures','Merge')"
 
-# 3. Check memory pressure
+# 3. Check current merge size cap (should be 536870912 = 500 MB)
 docker exec langfuse-clickhouse-1 clickhouse-client --query \
-  "SELECT name, formatReadableSize(value) FROM system.metrics WHERE name IN ('MemoryTracking','MMappedFileBytes')"
+  "SELECT name, value FROM system.merge_tree_settings \
+   WHERE name LIKE '%max_byte%merge%'"
 
-# 4. Check which tables have the most parts
+# 4. Check cache size caps applied (changed=1 means config took effect)
 docker exec langfuse-clickhouse-1 clickhouse-client --query \
-  "SELECT database, table, count() as parts, formatReadableSize(sum(bytes_on_disk)) as size FROM system.parts WHERE active=1 GROUP BY database,table ORDER BY parts DESC LIMIT 10"
+  "SELECT name, value, changed FROM system.server_settings \
+   WHERE name IN ('uncompressed_cache_size','mark_cache_size', \
+                  'cache_size_to_ram_max_ratio')"
+
+# 5. Check memory pressure
+docker exec langfuse-clickhouse-1 clickhouse-client --query \
+  "SELECT metric, formatReadableSize(value) FROM system.metrics \
+   WHERE metric = 'MergesMutationsMemoryTracking'"
+
+# 6. Check which tables have the most parts (cleanup candidates)
+docker exec langfuse-clickhouse-1 clickhouse-client --query \
+  "SELECT database, table, count() as parts, \
+   formatReadableSize(sum(bytes_on_disk)) as size \
+   FROM system.parts WHERE active=1 \
+   GROUP BY database,table ORDER BY parts DESC LIMIT 10"
 ```
 
-**Fix (no memory increase needed):**
+**Fix — apply these settings in `clickhouse-config.d/02-low-memory.xml`:**
 
-1. **Cap cache sizes** in `clickhouse-config.d/02-low-memory.xml`:
-   ```xml
-   <uncompressed_cache_size>268435456</uncompressed_cache_size>  <!-- 256 MB -->
-   <mark_cache_size>134217728</mark_cache_size>                  <!-- 128 MB -->
-   <cache_size_to_ram_max_ratio>0.4</cache_size_to_ram_max_ratio>
-   ```
+```xml
+<!-- ── Merge size: the critical fix ── -->
+<merge_tree>
+    <!-- Each merge capped to ~500 MB (default 150 GB!) so it fits in memory -->
+    <max_bytes_to_merge_at_max_space_in_pool>536870912</max_bytes_to_merge_at_max_space_in_pool>
+    <!-- 500 MB -->
+    <max_bytes_to_merge_at_min_space_in_pool>52428800</max_bytes_to_merge_at_min_space_in_pool>
+    <!-- 50 MB -->
+    <!-- Smaller blocks = less memory per merge operation -->
+    <merge_max_block_size>512</merge_max_block_size>
+    <!-- Immediately reduce merge sizes when pool is busy (avoid death spiral) -->
+    <number_of_free_entries_in_pool_to_lower_max_size_of_merge>0</number_of_free_entries_in_pool_to_lower_max_size_of_merge>
+    <!-- Faster retry after failed merge attempts -->
+    <merge_selecting_sleep_ms>1000</merge_selecting_sleep_ms>
+</merge_tree>
 
-2. **Restart ClickHouse** (container must be recreated for config re-read):
-   ```bash
-   docker restart langfuse-clickhouse-1
-   ```
+<!-- ── Merge memory: hard cap ── -->
+<!-- Stop scheduling new merges when they've consumed 512 MB -->
+<merges_mutations_memory_usage_soft_limit>536870912</merges_mutations_memory_usage_soft_limit>
 
-3. **Drop stale partitions** if system log tables accumulated old data:
-   ```bash
-   docker exec langfuse-clickhouse-1 clickhouse-client --query \
-     "ALTER TABLE system.trace_log DROP PARTITION '202606'"
-   ```
+<!-- ── Cache caps ── -->
+<uncompressed_cache_size>268435456</uncompressed_cache_size>    <!-- 256 MB -->
+<mark_cache_size>134217728</mark_cache_size>                    <!-- 128 MB -->
+<cache_size_to_ram_max_ratio>0.4</cache_size_to_ram_max_ratio>
+```
 
-4. **Verify merge recovery:** After restart, check `TotalMergeFailures` is 0 and merges start running. The `Merge` metric should show >0 and `MergeParts` events appear in `system.part_log`.
+**After editing, APPLY THE CHANGE (container must be recreated):**
 
-5. **If merges still fail after restart — check config actually applied:**
-   ```bash
-   docker exec langfuse-clickhouse-1 clickhouse-client --query \
-     "SELECT name, value, changed FROM system.server_settings \
-      WHERE name IN ('uncompressed_cache_size','mark_cache_size','cache_size_to_ram_max_ratio')"
-   ```
-   If `changed=0` for any cache setting, the config file wasn't read. Common cause: the repo has the fix but the **deployed copy** in `~/langfuse/clickhouse-config.d/` is stale. Compare:
-   ```bash
-   diff ~/hermes-cortex/ops/install/deploy/clickhouse-config.d/02-low-memory.xml \
-        ~/langfuse/clickhouse-config.d/02-low-memory.xml
-   ```
-   If different, copy from repo and restart:
-   ```bash
-   cp ~/hermes-cortex/ops/install/deploy/clickhouse-config.d/02-low-memory.xml \
-      ~/langfuse/clickhouse-config.d/
-   chmod 644 ~/langfuse/clickhouse-config.d/*.xml
-   docker restart langfuse-clickhouse-1
-   ```
-   Then re-check `changed=1` on all three cache settings.
+```bash
+# Stop and restart (restart alone does NOT re-read config files)
+cd ~/langfuse
+docker compose stop clickhouse
+docker compose up -d clickhouse
+
+# Wait for healthy
+sleep 15
+docker compose ps clickhouse
+
+# Verify all settings applied
+docker exec langfuse-clickhouse-1 clickhouse-client --query \
+  "SELECT name, value FROM system.merge_tree_settings WHERE changed = 1 \
+   ORDER BY name"
+```
+
+**Verify recovery:**
+
+```bash
+# TotalMergeFailures should be 0 after restart
+docker exec langfuse-clickhouse-1 clickhouse-client --query \
+  "SELECT metric, value FROM system.metrics \
+   WHERE metric IN ('TotalMergeFailures','NonAbortedMergeFailures','Merge')"
+```
+
+If `TotalMergeFailures` starts climbing again within hours, the config wasn't applied (check `changed=1` in `system.server_settings`). Common cause: the deployed `~/langfuse/clickhouse-config.d/` copy is stale — copy from repo:
+
+```bash
+cp ~/hermes-cortex/ops/install/deploy/clickhouse-config.d/02-low-memory.xml \
+   ~/langfuse/clickhouse-config.d/
+chmod 644 ~/langfuse/clickhouse-config.d/*.xml
+# Then stop + up -d as above
+```
+
+**Why `background_merges_mutations_concurrency_ratio` is NOT reduced:**
+
+Ideally we'd set `<background_merges_mutations_concurrency_ratio>1</background_merges_mutations_concurrency_ratio>` to halve concurrent merges (from 26 to 13). However, **ClickHouse 25.5-alpine crashes** (exit code 36) if more than 2 background pool settings are reduced simultaneously. `background_pool_size=13` and `background_schedule_pool_size=16` are already reduced. Adding a third triggers the bug. The default ratio of 2 is acceptable with the 500 MB merge cap — each merge uses much less memory so 26 concurrent tasks don't OOM.
+
+---
+
+### ClickHouse — Configuration Reference
+
+All settings in `02-low-memory.xml` — this is the **default low-memory configuration** for a **2 GiB container**. Each setting is tuned for stability over performance.
+
+#### MergeTree Settings (govern merge behavior)
+
+| Setting | Value (Default) | Why |
+|---------|-----------------|-----|
+| `max_bytes_to_merge_at_max_space_in_pool` | **500 MB** (150 GB) | **Critical.** Caps the total size of parts in a single merge. 150 GB always OOMs in 2 GiB. 500 MB fits in 1/4 of available RAM. |
+| `max_bytes_to_merge_at_min_space_in_pool` | **50 MB** (1 MB) | Minimum merge size threshold. Avoids merging tiny parts individually. |
+| `merge_max_block_size` | **512** (8192) | Rows per merge block. Smaller = less memory per merge. |
+| `number_of_free_entries_in_pool_to_lower_max_size_of_merge` | **0** (8) | Immediately shrink merge sizes when pool is busy. Default of 8 means the pool needs 8 free slots before reducing — in a saturated pool, that never happens (death spiral). |
+| `merge_selecting_sleep_ms` | **1000** (5000) | How long to wait between merge selection attempts. Faster retry after failures. |
+
+#### Server Settings (server-level config)
+
+| Setting | Value (Default) | Why |
+|---------|-----------------|-----|
+| `background_pool_size` | **13** (16) | Threads for background merges & mutations. Floor is 13 in CH 25.5 (≤12 crashes). |
+| `background_schedule_pool_size` | **16** (512) | Threads for periodic ops (replication, DNS, cleanup). Default 512 is excessive; 16 saves 496 threads + stacks (~2 GB of virtual address space). |
+| `max_concurrent_queries` | **25** (1000) | Max simultaneous queries. Reduces memory contention with background merges. |
+| `merges_mutations_memory_usage_soft_limit` | **512 MB** (0=unlimited) | Hard cap: stop scheduling new merges when existing merges use >512 MB total. |
+| `merges_mutations_memory_usage_to_ram_ratio` | **0.25** (0.3) | Fallback ratio if soft_limit is 0. Conservative to leave headroom for queries. |
+| `uncompressed_cache_size` | **256 MB** (8 GB) | Cache for decompressed data blocks. |  
+| `mark_cache_size` | **128 MB** (5 GB) | Cache for index marks (sparse index lookups). |
+| `cache_size_to_ram_max_ratio` | **0.4** (0.5) | Max fraction of RAM usable by all caches combined. |
+
+#### System Log TTL (prevent part accumulation)
+
+| Setting | Value | Why |
+|---------|-------|-----|
+| `trace_log_ttl` | 7 days | Auto-expire log entries. Without TTL, system tables accumulate parts forever, causing more merges. |
+| `metric_log_ttl` | 7 days | Same. |
+| `asynchronous_metric_log_ttl` | 7 days | Same. |
+| `query_log_ttl` | 7 days | Same. |
+| `text_log_ttl` | 14 days | Error logs kept longer for debugging. |
+
+#### What NOT to Change (CH 25.5-alpine crash risk)
+
+| Setting | Keep at | Reason |
+|---------|---------|--------|
+| `background_merges_mutations_concurrency_ratio` | **2** (default) | Reducing to 1 would be ideal (halves concurrent merges), but adding a 3rd reduced bg pool setting triggers SIGSEGV / exit 36 at startup. |
+| `background_common_pool_size` | 8 (default) | Same bug — >2 reduced bg pool settings crash. |
+| `background_fetches_pool_size` | 16 (default) | Same. |
+| `background_move_pool_size` | 8 (default) | Same. |
+| `max_thread_pool_size` | 10000 (default) | Same — reducing triggers crash when combined with reduced bg pools. |
+| `background_pool_size` | **≥13** | Floor is 13 in CH 25.5. Values ≤12 crash with SIGSEGV. |
 
 ---
 
