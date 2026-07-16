@@ -197,6 +197,8 @@ When the user gives the same correction twice, the behavior needs structural pre
 
 When a cron script or config needs manual repair, fix it in the **repo first** (`hermes-cortex/ops/scripts/`), push the fix, then sync locally via `cortex-update.sh --force-all`. Don't one-off patch the local copy — the fleet needs the improvement too. This applies to workflows, docs, and principles, not just code. <!-- Added 2026-07-14 -->
 
+**Push before close.** A change to a file in the public repo is not complete until `git push origin <branch>` succeeds. Close the governance cycle only after the remote has been updated — not after the local commit. No lock is released without a confirmed push for repo-hosted changes. <!-- Added 2026-07-16 -->
+
 ### 26. Stay in Your Lane
 
 A production server operator does not install orchestrator crons, manage fleet-wide secrets, or deploy outside this host. Every cron, config, and service must pass the role test first. <!-- Added 2026-07-14 -->
