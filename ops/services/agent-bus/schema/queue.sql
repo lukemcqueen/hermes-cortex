@@ -124,35 +124,40 @@ BEGIN
     FOR UPDATE SKIP LOCKED;
 
     IF NOT FOUND THEN
-        -- Check DLQ next
-        SELECT * INTO v_msg
-        FROM bus.messages
-        WHERE queue_name = p_queue || '_dlq'
-          AND state = 'pending'
-          AND visible_after <= now()
-        ORDER BY enqueued_at ASC
-        LIMIT 1
-        FOR UPDATE SKIP LOCKED;
+        -- Only auto-fallback to DLQ from a main queue, not from inside a DLQ
+        IF NOT EXISTS (SELECT 1 FROM bus.queues WHERE name = p_queue AND is_dlq = true) THEN
+            -- Check DLQ next
+            SELECT * INTO v_msg
+            FROM bus.messages
+            WHERE queue_name = p_queue || '_dlq'
+              AND state = 'pending'
+              AND visible_after <= now()
+            ORDER BY enqueued_at ASC
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED;
+
+            IF FOUND THEN
+                -- Return DLQ message
+                UPDATE bus.messages
+                SET state = 'processing',
+                    timeout_at = now() + (v_vt || ' seconds')::interval
+                WHERE msg_id = v_msg.msg_id;
+
+                RETURN jsonb_build_object(
+                    'msg_id', v_msg.msg_id::text,
+                    'queue', p_queue || '_dlq',
+                    'body', v_msg.body,
+                    'retry_count', v_msg.retry_count,
+                    'correlation_id', v_msg.correlation_id,
+                    'from_dlq', true,
+                    'enqueued_at', v_msg.enqueued_at
+                );
+            END IF;
+        END IF;
 
         IF NOT FOUND THEN
             RETURN NULL;
         END IF;
-
-        -- Return DLQ message
-        UPDATE bus.messages
-        SET state = 'processing',
-            timeout_at = now() + (v_vt || ' seconds')::interval
-        WHERE msg_id = v_msg.msg_id;
-
-        RETURN jsonb_build_object(
-            'msg_id', v_msg.msg_id::text,
-            'queue', p_queue || '_dlq',
-            'body', v_msg.body,
-            'retry_count', v_msg.retry_count,
-            'correlation_id', v_msg.correlation_id,
-            'from_dlq', true,
-            'enqueued_at', v_msg.enqueued_at
-        );
     END IF;
 
     -- Mark as processing with visibility timeout
@@ -322,17 +327,28 @@ BEGIN
 
     GET DIAGNOSTICS v_count = ROW_COUNT;
 
-    -- Move over-max-retries to DLQ
+    -- Move over-max-retries to DLQ (main queues) or delete (DLQ queues — no chaining)
     WITH expired AS (
-        UPDATE bus.messages
+        UPDATE bus.messages m
         SET state = 'pending',
-            queue_name = queue_name || '_dlq',
+            queue_name = CASE WHEN q.is_dlq THEN m.queue_name  -- stay in same queue (will be deleted below)
+                              ELSE m.queue_name || '_dlq' END,
             visible_after = now(),
             timeout_at = NULL
-        WHERE state = 'processing'
-          AND timeout_at < now()
-          AND retry_count >= max_retries
-        RETURNING msg_id, queue_name
+        FROM bus.queues q
+        WHERE m.queue_name = q.name
+          AND m.state = 'processing'
+          AND m.timeout_at < now()
+          AND m.retry_count >= m.max_retries
+        RETURNING m.msg_id, m.queue_name, q.is_dlq
+    ),
+    -- Delete DLQ messages that have exhausted retries (no deeper chain)
+    deleted AS (
+        DELETE FROM bus.messages m
+        USING expired e
+        WHERE m.msg_id = e.msg_id
+          AND e.is_dlq = true
+        RETURNING 1
     )
     SELECT count(*) INTO v_count FROM expired;
 
