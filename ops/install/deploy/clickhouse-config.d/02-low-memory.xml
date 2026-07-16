@@ -20,8 +20,17 @@
   TotalMergeFailures climbs indefinitely, all merges fail with MEMORY_LIMIT_EXCEEDED,
   and system log tables accumulate stale parts that can't be cleaned up. Fix:
   Set uncompressed_cache_size=256 MiB, mark_cache_size=128 MiB, and
-  cache_size_to_ram_max_ratio=0.4. See README-langfuse-clickhouse.md "ClickHouse merge
-  failures (MEMORY_LIMIT_EXCEEDED, TotalMergeFailures climbing)" for diagnosis steps.
+  cache_size_to_ram_max_ratio=0.4.
+
+  ⚠️ Merge size defaults: ClickHouse's default max_bytes_to_merge_at_max_space_in_pool
+  is 150 GB, which will always OOM in a 2 GiB container. Must be reduced drastically
+  so each merge operation fits within available memory.
+
+  Diagnosis:
+  - Check merge failures:  SELECT event, value FROM system.events WHERE event LIKE '%Merge%';
+  - Check memory limit:    SELECT name, value FROM system.server_settings WHERE name LIKE '%memory%';
+  - Check merge size:      SELECT name, value FROM system.merge_tree_settings WHERE name LIKE '%max_byte%';
+  - Check server log:      grep 'MEMORY_LIMIT\|MergeTreeBackgroundExecutor' /var/log/clickhouse-server/clickhouse-server.err.log
 -->
 <clickhouse>
 
@@ -31,17 +40,47 @@
     <background_schedule_pool_size>16</background_schedule_pool_size>
     <!-- periodic ops (replication, DNS, etc.); default 512 — biggest savings -->
 
-    <!-- ── Query concurrency ── -->
-    <max_concurrent_queries>50</max_concurrent_queries>
-    <!-- default 1000 -->
+    <!-- NOTE: background_merges_mutations_concurrency_ratio intentionally
+         NOT set here. CH 25.5-alpine crashes on >2 reduced background pool
+         settings (exit code 36 during init). background_pool_size=13 +
+         background_schedule_pool_size=16 are already reduced. Adding
+         a third triggers the bug. The default ratio of 2 gives 26
+         concurrent tasks, which is acceptable with small merge sizes. -->
 
-    <!-- ── Merge tuning (smaller blocks = less memory per merge) ── -->
+    <!-- ── Query concurrency ── -->
+    <max_concurrent_queries>25</max_concurrent_queries>
+    <!-- default 1000; reduced from 50 for more headroom -->
+
+    <!-- ── Merge memory limits ── -->
+    <!-- Hard soft limit: stop scheduling new merges when merges use >512 MB.
+         Default: 0 (unlimited) — combined with 0.3 ratio gives ~614 MB for 2GiB container.
+         Explicit limit prevents all merges from running simultaneously. -->
+    <merges_mutations_memory_usage_soft_limit>536870912</merges_mutations_memory_usage_soft_limit>
+    <!-- 512 MB -->
+    <!-- Fallback ratio if soft_limit is 0: uses memory_amount * ratio. -->
+    <merges_mutations_memory_usage_to_ram_ratio>0.25</merges_mutations_memory_usage_to_ram_ratio>
+
+    <!-- ── Merge tuning ── -->
     <merge_tree>
-        <merge_max_block_size>2048</merge_max_block_size>
-        <!-- default 8192 -->
+        <!-- Each merge fits in ~1/4 of available memory (default 150 GB will always OOM).
+             max_bytes_to_merge_at_max_space_in_pool: ~500 MB (default 150 GB!)
+             max_bytes_to_merge_at_min_space_in_pool: ~50 MB  (default 1 MB) -->
+        <max_bytes_to_merge_at_max_space_in_pool>536870912</max_bytes_to_merge_at_max_space_in_pool>
+        <!-- 500 MB -->
+        <max_bytes_to_merge_at_min_space_in_pool>52428800</max_bytes_to_merge_at_min_space_in_pool>
+        <!-- 50 MB -->
+
+        <!-- Smaller blocks = less memory per merge block.
+             Default: 8192. Currently: 2048. Reducing further to 512. -->
+        <merge_max_block_size>512</merge_max_block_size>
+
+        <!-- Immediately lower merge sizes when pool is full (no free slots).
+             Default: 8. Setting to 0 avoids the "stuck at big merges" death spiral. -->
+        <number_of_free_entries_in_pool_to_lower_max_size_of_merge>0</number_of_free_entries_in_pool_to_lower_max_size_of_merge>
+
+        <!-- Faster retry after failed merges (default 5000ms) -->
+        <merge_selecting_sleep_ms>1000</merge_selecting_sleep_ms>
     </merge_tree>
-    <merges_mutations_memory_usage_soft_limit>0</merges_mutations_memory_usage_soft_limit>
-    <merges_mutations_memory_usage_to_ram_ratio>0.3</merges_mutations_memory_usage_to_ram_ratio>
 
     <!-- ── Cache caps — defaults assume 64+ GiB, but we're at 2 GiB ── -->
     <uncompressed_cache_size>268435456</uncompressed_cache_size>         <!-- 256 MB (default 8 GB) -->
