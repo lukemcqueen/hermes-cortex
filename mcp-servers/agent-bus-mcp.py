@@ -162,12 +162,7 @@ if bus_url:
         headers = {"Authorization": "Basic " + encoded}
     _ENDPOINTS.append(("Agent Bus", bus_base, headers))
 
-# 2. No configured bus URL — try localhost as primary
-if not bus_url:
-    headers = {"Authorization": f"Bearer {bus_token}"} if bus_token else {}
-    _ENDPOINTS.append(("Agent Bus (local)", "http://127.0.0.1:8903", headers))
-
-# 3. Old inbox fallback (deprecated — use CORTEX_BUS_URL)
+# 2. Old inbox fallback (deprecated — use CORTEX_BUS_URL)
 if fallback_url:
     auth_headers = {}
     if fallback_auth:
@@ -175,15 +170,11 @@ if fallback_url:
         auth_headers = {"Authorization": "Basic " + encoded}
     _ENDPOINTS.append(("Old Inbox (fallback)", fallback_url, auth_headers))
 
-# 4. Old inbox localhost (last resort)
-auth_headers = {}
-if fallback_auth:
-    encoded = base64.b64encode(fallback_auth.encode()).decode()
-    auth_headers = {"Authorization": "Basic " + encoded}
-_ENDPOINTS.append(("Old Inbox (local fallback)", "http://127.0.0.1:8903", auth_headers))
+if not _ENDPOINTS:
+    log.warning("⚠️  No bus endpoints configured — set CORTEX_BUS_URL or CORTEX_BUS_FALLBACK_URL")
 
 log.info("Agent Bus MCP — agent=%s  bus=%s", DEFAULT_AGENT,
-         bool(bus_url) or "localhost (dev)")
+         bool(bus_url) or "not configured (set CORTEX_BUS_URL)")
 log.info("Endpoint chain:")
 for name, url, _ in _ENDPOINTS:
     log.info("  %s → %s", name, url)

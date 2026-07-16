@@ -12,10 +12,15 @@ The Agent Bus (port 8903, PGMQ-based) is the primary messaging system for Hermes
 This skill covers the Agent Bus server and its supporting infrastructure — the PGMQ-based backend, the JSON API, the agent registry, and the per-agent bus watch wrappers.
 
 > **⚠️ MCP-Only — No External HTTP Endpoint**
-> The Agent Bus is now **MCP-only**. The external nginx endpoint (port 13004) has been removed.
-> Agents **must** use MCP tools (`inbox_send`, `inbox_read`, `inbox_watch`) instead of direct API calls
-> or HTTP-based curl commands. The internal API server on `127.0.0.1:8903` still runs as a backend
-> for the `agent-bus-mcp` MCP server, but it is **not** directly accessible by agents.
+| The Agent Bus is now **MCP-only**. Agents **must** use MCP tools
+| (`inbox_send`, `inbox_read`, `inbox_watch`) instead of direct API calls.
+|
+| **No Localhost Fallback:** Every agent-facing bus connection uses
+| `CORTEX_BUS_URL` (Moses, primary) or `CORTEX_BUS_FALLBACK_URL` (Esther, secondary).
+| There is no localhost default. If neither URL is configured, the connection fails
+| cleanly — agents do NOT silently loop back to themselves. This applies to
+| `cortex-doctor.py --bus-alert`, `bus-sensor.py`, `bus-depth-watchdog.sh`,
+| `health-vector-push.sh`, and the `agent-bus-mcp.py` MCP endpoint chain.
 
 ---
 

@@ -1502,41 +1502,47 @@ def _read_basic_auth() -> str:
     return ""
 
 
-def _send_bus_alert(repo_name: str, owner: str, bus_url: str, token: str) -> bool:
-    """Send an AGENTS.md reminder message to the owning agent via the bus."""
-    payload = {
-        "queue": f"inbox_{owner}",
-        "message": {
-            "from": "doctor",
-            "subject": f"AGENTS.md missing: {repo_name}",
-            "body": (
-                f"AGENTS.md is missing from ~/{repo_name}. "
-                f"This repo was detected as a git project you maintain.\n\n"
-                f"Please create ~/{repo_name}/AGENTS.md with agent guidelines for this project. "
-                f"Template: ~/hermes-cortex/docs/templates/AGENTS.seed.md"
-            ),
-            "topic": "development",
-            "priority": "normal",
-        },
-        "priority": 0,
-    }
-    # Try Bearer token first (internal bus), fall back to Basic Auth (nginx proxy)
-    headers = {
-        "Content-Type": "application/json",
-    }
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    try:
-        req = urllib.request.Request(
-            f"{bus_url}/api/pgmq/send",
-            data=json.dumps(payload).encode(),
-            headers=headers,
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            resp.read()
-            return True
-    except (urllib.error.HTTPError, urllib.error.URLError, OSError, json.JSONDecodeError):
+def _send_bus_alert(repo_name: str, owner: str, bus_url: str, token: str,
+                    fallback_url: str = "") -> bool:
+    """Send an AGENTS.md reminder message to the owning agent via the bus.
+
+    Tries bus_url first (Moses, primary), fallback_url on failure (Esther).
+    """
+    def _do_send(url: str) -> bool:
+        payload = {
+            "queue": f"inbox_{owner}",
+            "message": {
+                "from": "doctor",
+                "subject": f"AGENTS.md missing: {repo_name}",
+                "body": (
+                    f"AGENTS.md is missing from ~/{repo_name}. "
+                    f"This repo was detected as a git project you maintain.\n\n"
+                    f"Please create ~/{repo_name}/AGENTS.md with agent guidelines for this project. "
+                    f"Template: ~/hermes-cortex/docs/templates/AGENTS.seed.md"
+                ),
+                "topic": "development",
+                "priority": "normal",
+            },
+            "priority": 0,
+        }
+        # Try Bearer token first (internal bus), fall back to Basic Auth (nginx proxy)
+        headers = {
+            "Content-Type": "application/json",
+        }
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        try:
+            req = urllib.request.Request(
+                f"{url}/api/pgmq/send",
+                data=json.dumps(payload).encode(),
+                headers=headers,
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                resp.read()
+                return True
+        except (urllib.error.HTTPError, urllib.error.URLError, OSError, json.JSONDecodeError):
+            pass
         # Bearer failed — try Basic Auth
         basic_auth = _read_basic_auth()
         if not basic_auth:
@@ -1545,7 +1551,7 @@ def _send_bus_alert(repo_name: str, owner: str, bus_url: str, token: str) -> boo
         headers["Authorization"] = f"Basic {encoded}"
         try:
             req = urllib.request.Request(
-                f"{bus_url}/api/pgmq/send",
+                f"{url}/api/pgmq/send",
                 data=json.dumps(payload).encode(),
                 headers=headers,
                 method="POST",
@@ -1555,6 +1561,13 @@ def _send_bus_alert(repo_name: str, owner: str, bus_url: str, token: str) -> boo
                 return True
         except (urllib.error.HTTPError, urllib.error.URLError, OSError, json.JSONDecodeError):
             return False
+
+    # Try primary URL first, then fallback
+    if _do_send(bus_url):
+        return True
+    if fallback_url:
+        return _do_send(fallback_url)
+    return False
 
 
 def dispatch_bus_alerts(res: Results):
@@ -1573,10 +1586,12 @@ def dispatch_bus_alerts(res: Results):
         print("  ℹ️  --bus-alert: no bus auth found (set CORTEX_BUS_TOKEN or CORTEX_BUS_AUTH in env or hermes-inbox.conf)")
         return
 
-    # Determine bus URL — env var, config file, or default
-    bus_url = os.environ.get("CORTEX_BUS_URL", "")
-    if not bus_url:
-        # Try config files
+    # Resolve primary bus URL (Moses) and fallback (Esther)
+    primary_url = os.environ.get("CORTEX_BUS_URL", "")
+    fallback_url = os.environ.get("CORTEX_BUS_FALLBACK_URL", "")
+
+    if not primary_url:
+        # Try config files for primary
         for cfg_path in _BUS_CONFIG_PATHS:
             if not cfg_path.exists():
                 continue
@@ -1588,14 +1603,39 @@ def dispatch_bus_alerts(res: Results):
                     k, v = (x.strip().strip("'\"").strip() for x in line.split("=", 1))
                     v = re.sub(r"\s+#.*$", "", v).strip()
                     if k == "CORTEX_BUS_URL" and v:
-                        bus_url = v
+                        primary_url = v
                         break
             except OSError:
                 pass
-            if bus_url:
+            if primary_url:
                 break
-    if not bus_url:
-        bus_url = "http://127.0.0.1:8903"
+
+    if not fallback_url:
+        # Try config files for fallback (Esther)
+        for cfg_path in _BUS_CONFIG_PATHS:
+            if not cfg_path.exists():
+                continue
+            try:
+                for line in cfg_path.read_text().splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    k, v = (x.strip().strip("'\"").strip() for x in line.split("=", 1))
+                    v = re.sub(r"\s+#.*$", "", v).strip()
+                    if k == "CORTEX_BUS_FALLBACK_URL" and v:
+                        fallback_url = v
+                        break
+            except OSError:
+                pass
+            if fallback_url:
+                break
+
+    if not primary_url and not fallback_url:
+        print("  ℹ️  --bus-alert: no bus URL configured — set CORTEX_BUS_URL (Moses) or CORTEX_BUS_FALLBACK_URL (Esther)")
+        return
+
+    # Determine which URL to try first
+    bus_url = primary_url or fallback_url
 
     sent = 0
     skipped = 0
@@ -1610,7 +1650,7 @@ def dispatch_bus_alerts(res: Results):
         if not owner:
             skipped += 1
             continue
-        if _send_bus_alert(repo_name, owner, bus_url, token):
+        if _send_bus_alert(repo_name, owner, bus_url, token, fallback_url=fallback_url):
             sent += 1
 
     if sent > 0:
