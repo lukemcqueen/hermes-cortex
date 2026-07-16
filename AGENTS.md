@@ -211,6 +211,8 @@ Three axes when processing inbox messages:
 > Content relocated to [`docs/setup-reference.md`](docs/setup-reference.md) for focused reference.
 > _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
+---
+
 ## Doc Freshness: AGENTS.md + SOUL.md
 
 | Layer | What | Who | Frequency |
@@ -235,7 +237,7 @@ Each agent can install an `agent-worker` systemd `--user` service that polls the
 
 ### Config
 
-> Content relocated to [`docs/reference/cortex-bus-config.md`](docs/reference/cortex-bus-config.md) for focused reference.
+> Content relocated to [`docs/setup-reference.md`](docs/setup-reference.md) for focused reference.
 > _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ### How it works
@@ -364,7 +366,9 @@ See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md) for
 
 This deployment uses the `hermes-cortex` profile (not the bundled Hermes `personal` profile). All cron jobs, skills, and configs are managed through the cortex layer.
 
-> Content relocated to [`docs/cron-jobs-reference.md`](docs/cron-jobs-reference.md) for focused reference.
+### Cron Jobs Reference
+
+> Full cron table relocated to [`docs/cron-jobs-reference.md`](docs/cron-jobs-reference.md) for focused reference.
 > _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ---
