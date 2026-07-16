@@ -38,7 +38,6 @@ or files at `~/.hermes/`. **Never replace these with symlinks to
 | `checkpoints/` | Session checkpoints | Hermes Agent session management |
 | `kanban/` + `kanban.db` | Kanban board state | Hermes kanban tool |
 | `gateway.*` | Gateway state | Hermes gateway process |
-| `a2a/` | A2A agent card | A2A protocol state |
 | `nginx/` | nginx config for Hermes gateway | Hermes gateway setup |
 | `templates/` | Template files | Hermes template system |
 | `repos.yaml` | Repo configuration | Hermes repo management |
@@ -108,9 +107,7 @@ transparently — no data is lost.
 ├── auth.json             [REAL]    ├── web-cache/        [REAL]
 ├── logs/                 [REAL]    ├── dashboard/        [REAL]
 ├── cache/                [REAL]    ├── health-server/    [REAL]
-├── a2a/                  [REAL]    ├── hooks/            [REAL]
 ├── sessions/             [REAL]    ├── mcp-servers/      [REAL]
-├── state/                [REAL]    ├── a2a/              [REAL]
 ├── data/                 [REAL]    ├── evals/            [REAL]
 ├── ... (Hermes runtime)            ├── certs/            [REAL]
 │                                   ├── agent-bus/      [REAL]

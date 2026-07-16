@@ -219,13 +219,7 @@ All endpoints except `/health` and `/.well-known/agent-card.json` require:
 | `GET` | `/api/bus/dashboard` | Bearer | JSON dashboard data |
 | `GET` | `/health` | None | Health check |
 || `GET` | `/` | Bearer | HTML dashboard with queue + workflow views |
-|| `GET` | `/.well-known/agent-card.json` | None | A2A discovery |
-|| `POST` | `/a2a/task` | Bearer | Create an A2A task |
-|| `GET` | `/a2a/task/{id}` | Bearer | Get A2A task status |
-|| `POST` | `/a2a/task/{id}/cancel` | Bearer | Cancel an A2A task |
-|| `GET` | `/a2a/agent-card` | Bearer | Bus agent card (capabilities) |
-|| `GET` | `/a2a/agents` | Bearer | List all fleet agents |
-|| `GET` | `/a2a/agent/{name}` | Bearer | Get agent details |
+|| `GET` | `/.well-known/agent-card.json` | None | Agent card discovery |
 || `POST` | `/api/workflows/dispatch` | Bearer | Dispatch a new workflow |
 || `GET` | `/api/workflows` | Bearer | List active workflows |
 || `GET` | `/api/workflows/{id}` | Bearer | Workflow details with steps |
@@ -555,7 +549,7 @@ CORTEX_INBOX_AUTH=user:pass   # old name, use CORTEX_BASIC_AUTH instead
 | Service | Why Kept |
 |---------|----------|
 | `hermes-agent-inbox.service` (port 8903) | Fallback in URL chain |
-| `a2a-server` (port 8906) | **Removed 2026-07-15** — functionality merged into agent-bus server.py |
+| `a2a-server` (port 8906) | **Removed** — functionality merged into agent-bus server.py |
 | `inbox-flag.py`, `inbox-sensor.py` crons | Still poll old inbox for stats |
 
 ## nginx Configuration
@@ -571,7 +565,7 @@ The Agent Bus is proxied through nginx on port **13004** with the following setu
 | Body size | 50 MB max |
 | Public exceptions | None — the bus is fully auth'd at the nginx level |
 
-The nginx config has **no separate A2A location blocks**. All paths (`/api/pgmq/*`, `/a2a/*`, `/.well-known/*`, `/`) go through a single `location /` which proxies to the bus. The `Authorization` header is forwarded so the bus can enforce Bearer token auth on specific endpoints.
+The nginx config has **no separate A2A location blocks**. All paths (`/api/pgmq/*`, `/.well-known/*`, `/`) go through a single `location /` which proxies to the bus. The `Authorization` header is forwarded so the bus can enforce Bearer token auth on specific endpoints.
 
 ### Auth flow
 
@@ -583,7 +577,7 @@ Two layers: `auth_basic` at nginx (server-level), Bearer tokens at the bus (per-
 
 ### Public agent card (optional)
 
-To enable A2A discovery without auth, add a `location = /.well-known/agent-card.json` with `auth_basic off` before `location /`. The `ops/services/agent-bus/nginx.conf` template has this pre-defined but commented out.
+To enable Agent card discovery without auth, add a `location = /.well-known/agent-card.json` with `auth_basic off` before `location /`. The `ops/services/agent-bus/nginx.conf` template has this pre-defined but commented out.
 
 ---
 

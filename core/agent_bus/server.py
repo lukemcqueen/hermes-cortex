@@ -15,7 +15,7 @@ Endpoints:
     GET    /api/pgmq/queue/{name}   — queue details
     GET    /health                  — health check
     GET    /                        — HTML dashboard
-    /.well-known/agent-card.json    — A2A discovery
+    /.well-known/agent-card.json    — agent discovery card
 
 Usage:
     uvicorn server:app --host 127.0.0.1 --port 8903
@@ -43,10 +43,6 @@ from agent_bus.workflow.dispatcher import dispatch_workflow, process_dispatch_me
 from agent_bus.workflow.router import process_step_result as router_process_step
 from agent_bus.workflow.human_gate import get_pending_hil, process_hil_response
 from agent_bus.workflow.db import get_workflow, get_steps_for_workflow, list_active_workflows
-from agent_bus.workflow.db import create_a2a_task, get_a2a_task, update_a2a_task, list_a2a_tasks_for_agent
-
-# Agent registry cache (from file, could move to PG later)
-A2A_REGISTRY_PATH = Path.home() / ".hermes-cortex" / "a2a" / "agent-registry.json"
 
 app = FastAPI(title="Hermes Cortex Agent Bus")
 
@@ -404,17 +400,16 @@ async def health():
 
 @app.get("/.well-known/agent-card.json")
 async def agent_card():
-    """A2A agent discovery card (public, no auth)."""
+    """Agent discovery card (public, no auth)."""
     return {
         "name": "hermes-cortex-bus",
         "version": "2.0.0",
-        "description": "Hermes Cortex Agent Bus — PGMQ message queue + workflow engine + A2A task delegation",
+        "description": "Hermes Cortex Agent Bus — PGMQ message queue + workflow engine",
         "capabilities": [
             "pgmq_messaging",
             "workflow_dispatch",
             "workflow_routing",
             "human_in_the_loop",
-            "a2a_task_delegation",
             "deterministic_routing",
         ],
         "endpoints": {
@@ -424,8 +419,6 @@ async def agent_card():
             "workflows": "GET /api/workflows",
             "dispatch": "POST /api/workflows/dispatch",
             "hil": "POST /api/workflows/hil",
-            "a2a_tasks": "POST /a2a/task",
-            "agents": "GET /a2a/agents",
             "health": "GET /health",
             "dashboard": "GET /",
         },
@@ -682,110 +675,6 @@ async def api_get_workflow(wf_id: str, request: Request):
     wf["steps"] = steps
     return wf
 
-
-# ── A2A Task Migration Endpoints ────────────────────────────
-
-# Backward-compatible A2A endpoints replacing the old a2a-server.py
-# Uses Postgres instead of SQLite. Same API surface as old inbox.
-
-
-def _load_agent_registry() -> dict:
-    """Load agent registry from JSON file."""
-    try:
-        if A2A_REGISTRY_PATH.exists():
-            return json.loads(A2A_REGISTRY_PATH.read_text())
-    except Exception:
-        pass
-    return {
-        "agents": [
-            {"name": "moses", "role": "orchestrator", "status": "active"},
-            {"name": "esther", "role": "backup", "status": "active"},
-            {"name": "joseph", "role": "developer", "status": "active"},
-            {"name": "titus", "role": "developer", "status": "active"},
-            {"name": "gisu", "role": "research", "status": "active"},
-            {"name": "kustos", "role": "security", "status": "active"},
-            {"name": "luke", "role": "human", "status": "active"},
-        ]
-    }
-
-
-@app.post("/a2a/task")
-async def a2a_create_task(request: Request):
-    """Create an A2A task (backward-compatible with old inbox API)."""
-    agent = _authenticate(request)
-    body = await request.json()
-    requester = body.get("requester", agent)
-    target = body.get("target_agent", body.get("agent", ""))
-    description = body.get("description", body.get("message", ""))
-    priority = body.get("priority", "normal")
-    
-    if not target or not description:
-        raise HTTPException(400, "target_agent and description are required")
-    
-    task_id = create_a2a_task(requester, target, description, priority)
-    return {"task_id": task_id, "status": "created"}
-
-
-@app.get("/a2a/task/{task_id}")
-async def a2a_get_task(task_id: str, request: Request):
-    """Get A2A task status."""
-    agent = _authenticate(request)
-    task = get_a2a_task(task_id)
-    if not task:
-        raise HTTPException(404, f"Task not found: {task_id}")
-    return task
-
-
-@app.post("/a2a/task/{task_id}/cancel")
-async def a2a_cancel_task(task_id: str, request: Request):
-    """Cancel an A2A task."""
-    agent = _authenticate(request)
-    task = get_a2a_task(task_id)
-    if not task:
-        raise HTTPException(404, f"Task not found: {task_id}")
-    if task["state"] in ("completed", "failed", "canceled", "rejected"):
-        raise HTTPException(400, f"Task already in terminal state: {task['state']}")
-    
-    update_a2a_task(task_id, "canceled", error="Canceled by requester")
-    return {"task_id": task_id, "status": "canceled"}
-
-
-@app.get("/a2a/agent-card")
-async def a2a_agent_card(request: Request):
-    """Return agent card (discoverability)."""
-    agent = _authenticate(request)
-    return {
-        "name": "hermes-cortex-bus",
-        "description": "Hermes Cortex Agent Bus — PGMQ message queue + workflow engine",
-        "version": "2.0.0",
-        "capabilities": [
-            "pgmq_messaging",
-            "workflow_dispatch",
-            "workflow_routing",
-            "human_in_the_loop",
-            "a2a_task_delegation",
-            "deterministic_routing",
-        ],
-        "agents": _load_agent_registry()["agents"],
-    }
-
-
-@app.get("/a2a/agents")
-async def a2a_list_agents(request: Request):
-    """List all known agents."""
-    agent = _authenticate(request)
-    return _load_agent_registry()
-
-
-@app.get("/a2a/agent/{name}")
-async def a2a_get_agent(name: str, request: Request):
-    """Get details for a specific agent."""
-    agent = _authenticate(request)
-    registry = _load_agent_registry()
-    for a in registry.get("agents", []):
-        if a["name"] == name:
-            return a
-    raise HTTPException(404, f"Agent not found: {name}")
 
 
 # ── Main ─────────────────────────────────────────────────────

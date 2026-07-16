@@ -16,7 +16,7 @@ Usage:
     python3 inbox-watcher.py --mark-read  # check + mark as processed
 
 Uses AGENT_INBOX_URL env var with fallback to external URL.
-Reads CORTEX_INBOX_AUTH from env or ~/.hermes-cortex/hermes-inbox.conf for Basic Auth.
+Reads CORTEX_BUS_AUTH (or legacy CORTEX_INBOX_AUTH) from env or ~/.hermes-cortex/hermes-inbox.conf for Basic Auth.
 """
 import base64
 import json
@@ -33,14 +33,14 @@ INBOX_URL = os.environ.get(
 )
 
 # ── Auth ──
-INBOX_AUTH = os.environ.get("CORTEX_INBOX_AUTH", "")
+INBOX_AUTH = os.environ.get("CORTEX_BUS_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "")
 if not INBOX_AUTH:
     config_path = Path.home() / ".hermes-cortex" / "hermes-inbox.conf"
     if config_path.exists():
         try:
             for line in config_path.read_text().splitlines():
                 line = line.strip()
-                if line.startswith("CORTEX_INBOX_AUTH="):
+                if line.startswith("CORTEX_BUS_AUTH=") or line.startswith("CORTEX_INBOX_AUTH="):
                     val = line.split("=", 1)[1].strip().strip("'\"")
                     if val:
                         INBOX_AUTH = val

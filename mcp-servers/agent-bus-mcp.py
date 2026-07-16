@@ -9,13 +9,15 @@ PRIMARY: Agent Bus (Bearer token auth)
 FALLBACK: Old file-based inbox (Basic auth, port 8903, being deprecated)
 
 Config (options in order of precedence):
-  # Primay — Agent Bus (new)
+  # Primary — Agent Bus
   CORTEX_BUS_URL=https://your-domain.com:13004
   CORTEX_BUS_TOKEN=hbus_...
 
+  # Auth for nginx proxy (Basic auth for agents without tokens)
+  CORTEX_BUS_AUTH=agent_name:password
+
   # Fallback — old inbox (deprecated, remove when full cutover complete)
-  CORTEX_INBOX_URL=...       # (was primary, now fallback)
-  CORTEX_BASIC_AUTH=user:pass (Basic auth for nginx — username:password)
+  CORTEX_BUS_FALLBACK_URL=...
   AGENT_NAME=moses
 
   Or via ~/.hermes-cortex/hermes-inbox.conf (key=value format)
@@ -30,9 +32,9 @@ Tools:
   inbox_list_agents  List all known agents
   inbox_get_agent    Get agent details
   inbox_discover     Fetch agent card
-  inbox_send_task    Submit A2A task
-  inbox_get_task     Poll A2A task status
-  inbox_cancel_task  Cancel A2A task
+  inbox_send_task    Delegate task to another agent (via inbox message)
+  inbox_get_task     Find a task by ID in inbox messages
+  inbox_cancel_task  Send cancel request for a pending task
 """
 
 import asyncio
@@ -77,25 +79,31 @@ CONFIG_FILE = HOME / ".hermes-cortex" / "hermes-inbox.conf"
 PROXY_PATH = "/usr/local/bin/mcp-inbox-proxy"
 
 # ── Config keys ───────────────────────────────────────────────
-# New primary: Bus URL + Bearer token
+# Primary: Bus URL + Bearer token (new)
 bus_url = os.environ.get("CORTEX_BUS_URL", "")
 bus_token = os.environ.get("CORTEX_BUS_TOKEN", "")
 
-# Deprecated fallback: old inbox URL + Basic auth (also used for nginx bus auth)
-inbox_url = os.environ.get("CORTEX_INBOX_URL", "")
-inbox_auth = os.environ.get("CORTEX_BASIC_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "")
+# Primary auth for nginx bus access
+bus_auth = os.environ.get("CORTEX_BUS_AUTH", "") or os.environ.get("CORTEX_BASIC_AUTH", "")
+
+# Fallback: old inbox URL (deprecated, use CORTEX_BUS_URL)
+fallback_url = os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or os.environ.get("CORTEX_INBOX_URL", "")
+fallback_auth = os.environ.get("CORTEX_BUS_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "") or os.environ.get("CORTEX_BASIC_AUTH", "")
 agent_name = os.environ.get("AGENT_NAME", "")
 
-# Support MOSES_* prefix (deprecated)
+# Support MOSES_* prefix (deprecated, remove eventually)
 _OLD_ENV_MAP = {
-    "MOSES_INBOX_URL": ("CORTEX_INBOX_URL", "inbox_url"),
-    "MOSES_INBOX_AUTH": ("CORTEX_INBOX_AUTH", "inbox_auth"),
+    "MOSES_INBOX_URL": ("CORTEX_BUS_FALLBACK_URL or CORTEX_INBOX_URL", "fallback_url"),
+    "MOSES_INBOX_AUTH": ("CORTEX_BUS_AUTH or CORTEX_INBOX_AUTH", "fallback_auth"),
 }
 for old_key, (new_key, var_name) in _OLD_ENV_MAP.items():
     val = os.environ.get(old_key, "")
-    if val and not locals()[var_name]:
+    if val and not locals()["fallback_url" if "URL" in old_key else "fallback_auth"]:
         log.warning("⚠️  %s is deprecated — use %s", old_key, new_key)
-        locals()[var_name] = val
+        if "URL" in old_key:
+            fallback_url = val
+        else:
+            fallback_auth = val
 
 # Parse config file (lower priority than env vars)
 if CONFIG_FILE.exists():
@@ -103,31 +111,35 @@ if CONFIG_FILE.exists():
         _KEY_MAP = {
             "CORTEX_BUS_URL": ("bus_url", False),
             "CORTEX_BUS_TOKEN": ("bus_token", False),
-            "CORTEX_BASIC_AUTH": ("inbox_auth", False),
-            "CORTEX_INBOX_URL": ("inbox_url", True),
-            "CORTEX_INBOX_AUTH": ("inbox_auth", True),
+            "CORTEX_BUS_AUTH": ("bus_auth", False),
+            "CORTEX_BUS_BASIC_AUTH": ("bus_auth", False),
+            "CORTEX_BASIC_AUTH": ("bus_auth", True),
+            "CORTEX_BUS_FALLBACK_URL": ("fallback_url", False),
+            "CORTEX_INBOX_URL": ("fallback_url", True),
+            "CORTEX_INBOX_AUTH": ("fallback_auth", True),
             "AGENT_NAME": ("agent_name", False),
-            "MOSES_INBOX_URL": ("inbox_url", True),
-            "MOSES_INBOX_AUTH": ("inbox_auth", True),
+            "MOSES_INBOX_URL": ("fallback_url", True),
+            "MOSES_INBOX_AUTH": ("fallback_auth", True),
         }
         for line in CONFIG_FILE.read_text().splitlines():
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
-            k, v = (x.strip().strip("'\"") for x in line.split("=", 1))
+            k, v = (x.strip().strip("'\"").strip() for x in line.split("=", 1))
             v = re.sub(r"\s+#.*$", "", v).strip()
             if k in _KEY_MAP:
                 var_name, is_deprecated = _KEY_MAP[k]
                 if not locals()[var_name]:
                     locals()[var_name] = v
                     if is_deprecated:
-                        log.warning("⚠️  %s in config is deprecated — use CORTEX_BUS_URL/CORTEX_BUS_TOKEN", k)
+                        log.warning("⚠️  %s in config is deprecated — use CORTEX_BUS_URL/CORTEX_BUS_TOKEN instead", k)
     except Exception as e:
         log.warning("Failed to read %s: %s", CONFIG_FILE, e)
 
 # ── Agent identity ────────────────────────────────────────────
-if not agent_name and inbox_auth and ":" in inbox_auth:
-    agent_name = inbox_auth.split(":", 1)[0]
+_auth = bus_auth or fallback_auth
+if not agent_name and _auth and ":" in _auth:
+    agent_name = _auth.split(":", 1)[0]
 if not agent_name:
     agent_name = os.environ.get("USER", "agent")
 DEFAULT_AGENT = agent_name
@@ -145,8 +157,8 @@ if bus_url:
     headers = {}
     if bus_token:
         headers = {"Authorization": f"Bearer {bus_token}"}
-    elif inbox_auth:
-        encoded = base64.b64encode(inbox_auth.encode()).decode()
+    elif bus_auth:
+        encoded = base64.b64encode(bus_auth.encode()).decode()
         headers = {"Authorization": "Basic " + encoded}
     _ENDPOINTS.append(("Agent Bus", bus_base, headers))
 
@@ -155,18 +167,18 @@ if not bus_url:
     headers = {"Authorization": f"Bearer {bus_token}"} if bus_token else {}
     _ENDPOINTS.append(("Agent Bus (local)", "http://127.0.0.1:8903", headers))
 
-# 3. Old inbox (fallback) — Basic auth
-if inbox_url:
+# 3. Old inbox fallback (deprecated — use CORTEX_BUS_URL)
+if fallback_url:
     auth_headers = {}
-    if inbox_auth:
-        encoded = base64.b64encode(inbox_auth.encode()).decode()
+    if fallback_auth:
+        encoded = base64.b64encode(fallback_auth.encode()).decode()
         auth_headers = {"Authorization": "Basic " + encoded}
-    _ENDPOINTS.append(("Old Inbox (fallback)", inbox_url, auth_headers))
+    _ENDPOINTS.append(("Old Inbox (fallback)", fallback_url, auth_headers))
 
 # 4. Old inbox localhost (last resort)
 auth_headers = {}
-if inbox_auth:
-    encoded = base64.b64encode(inbox_auth.encode()).decode()
+if fallback_auth:
+    encoded = base64.b64encode(fallback_auth.encode()).decode()
     auth_headers = {"Authorization": "Basic " + encoded}
 _ENDPOINTS.append(("Old Inbox (local fallback)", "http://127.0.0.1:8903", auth_headers))
 
@@ -346,7 +358,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="inbox_send_task",
-            description="Submit a task to an agent via the A2A protocol. Returns task ID for status polling.",
+            description="Delegate a task to another agent. Sends an inbox message with task_id, description, and priority. The target agent picks it up via inbox_watch.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -360,7 +372,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="inbox_get_task",
-            description="Poll the status of an A2A task on a remote agent.",
+            description="Find a task by ID in inbox messages. Searches messages from the target agent for a matching task_id.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -372,7 +384,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="inbox_cancel_task",
-            description="Cancel a pending A2A task on a remote agent.",
+            description="Send a cancel request for a pending task. Sends a cancel message to the target agent's inbox.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -609,17 +621,17 @@ def _inbox_delete(args: dict) -> CallToolResult:
 
 
 # ═══════════════════════════════════════════════════════════════
-#  A2A BRIDGE — Agent Discovery & Task Delegation
+# ── AGENT REGISTRY — Discovery & Agent Info ────────────────────
 # ═══════════════════════════════════════════════════════════════
 
 # Registry paths (file-based, used for remote agent discovery)
-A2A_REGISTRY = HOME / ".hermes-cortex" / "a2a" / "agent-registry.json"
+REGISTRY_FILE = HOME / ".hermes-cortex" / "a2a" / "agent-registry.json"
 STATE_REGISTRY = HOME / ".hermes" / "state" / "agent-registry.json"
 
 
 def _load_agent_registry() -> dict:
     """Load agent registry from file. Used for remote agent discovery."""
-    for path in [A2A_REGISTRY, STATE_REGISTRY]:
+    for path in [REGISTRY_FILE, STATE_REGISTRY]:
         if path.exists():
             try:
                 return json.loads(path.read_text())
@@ -648,31 +660,8 @@ def _normalize_agents(registry: dict) -> list[dict]:
     return sorted(result, key=lambda a: a["name"])
 
 
-def _try_get_agents_from_bus() -> list[dict] | None:
-    """Try to get agent list from the Agent Bus /a2a/agents endpoint."""
-    for label, base_url, headers in _ENDPOINTS:
-        if "Bus" not in label:
-            continue
-        status, body, _ = _http_json(label, base_url, headers, "GET", "a2a/agents")
-        if status == 200:
-            try:
-                data = json.loads(body)
-                return _normalize_agents(data)
-            except json.JSONDecodeError:
-                continue
-    return None
-
-
 def _resolve_agent_url(agent_name: str) -> str | None:
-    """Resolve an agent's URL. Tries bus first, then file registry."""
-    # Try the running bus's agent list
-    bus_agents = _try_get_agents_from_bus()
-    if bus_agents:
-        for a in bus_agents:
-            if a["name"] == agent_name and a.get("url"):
-                return a["url"]
-
-    # Fall back to file registry
+    """Resolve an agent's URL from the file registry."""
     registry = _load_agent_registry()
     entry = registry.get("agents", {}).get(agent_name)
     if entry:
@@ -680,39 +669,12 @@ def _resolve_agent_url(agent_name: str) -> str | None:
     return None
 
 
-def _a2a_http_get(url: str, timeout: int = 10) -> tuple[int, str]:
-    """Make A2A GET request."""
-    try:
-        req = urllib.request.Request(url, method="GET",
-            headers={"Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.status, resp.read().decode()
-    except urllib.error.HTTPError as e:
-        return e.code, e.read().decode(errors="replace")[:500]
-    except Exception as e:
-        return 0, str(e)
-
-
-def _a2a_http_post(url: str, data: bytes, timeout: int = 15) -> tuple[int, str]:
-    """Make A2A POST request."""
-    try:
-        req = urllib.request.Request(url, data=data, method="POST",
-            headers={"Content-Type": "application/json", "Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.status, resp.read().decode()
-    except urllib.error.HTTPError as e:
-        return e.code, e.read().decode(errors="replace")[:500]
-    except Exception as e:
-        return 0, str(e)
-
-
-# ── A2A Tool Implementations ─────────────────────────────────
+# ── Agent Discovery & Task Toolkit ─────────────────────────────
 
 def _inbox_list_agents(args: dict) -> CallToolResult:
-    agents = _try_get_agents_from_bus()
-    if agents is None:
-        registry = _load_agent_registry()
-        agents = _normalize_agents(registry)
+    """List agents from the file registry."""
+    registry = _load_agent_registry()
+    agents = _normalize_agents(registry)
 
     if not agents:
         return CallToolResult(content=[TextContent(type="text", text="No agents found.")])
@@ -731,14 +693,6 @@ def _inbox_get_agent(args: dict) -> CallToolResult:
     if not name:
         return CallToolResult(content=[TextContent(type="text", text="Error: 'name' is required.")])
 
-    # Try bus first
-    bus_agents = _try_get_agents_from_bus()
-    if bus_agents:
-        for a in bus_agents:
-            if a["name"] == name:
-                return CallToolResult(content=[TextContent(type="text", text=json.dumps(a, indent=2))])
-
-    # Fallback to file registry
     registry = _load_agent_registry()
     entry = registry.get("agents", {}).get(name)
     if entry:
@@ -758,28 +712,29 @@ def _inbox_discover(args: dict) -> CallToolResult:
             text=f"Agent '{agent}' not found. Run inbox_list_agents to see available agents."
         )])
 
-    card_urls = [
-        f"{base_url.rstrip('/')}/.well-known/agent-card.json",
-        f"{base_url.rstrip('/')}/a2a/agent-card",
-    ]
-    for card_url in card_urls:
-        status, body = _a2a_http_get(card_url)
-        if status == 200:
+    card_url = f"{base_url.rstrip('/')}/.well-known/agent-card.json"
+    try:
+        req = urllib.request.Request(card_url, method="GET",
+            headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read().decode()
             try:
                 card = json.loads(body)
                 return CallToolResult(content=[TextContent(type="text", text=json.dumps(card, indent=2))])
             except json.JSONDecodeError:
                 return CallToolResult(content=[TextContent(type="text",
                     text=f"Agent Card at {card_url} returned invalid JSON: {body[:200]}")])
-
-    return CallToolResult(content=[TextContent(type="text",
-        text=f"Could not fetch Agent Card for '{agent}' — tried {', '.join(card_urls)}."
-    )])
+    except urllib.error.HTTPError as e:
+        return CallToolResult(content=[TextContent(type="text",
+            text=f"Could not fetch Agent Card for '{agent}' (HTTP {e.code}): {e.read().decode(errors='replace')[:200]}")])
+    except Exception as e:
+        return CallToolResult(content=[TextContent(type="text",
+            text=f"Could not fetch Agent Card for '{agent}': {e}")])
 
 
 def _inbox_send_task(args: dict) -> CallToolResult:
-    """Submit A2A task. For local agents, uses bus endpoint.
-    For remote agents, sends directly to their A2A endpoint."""
+    """Send a task via inbox message. Uses inbox_send internally.
+    No separate A2A endpoint — the task arrives as a regular inbox message."""
     agent = args.get("agent", "")
     description = args.get("description", "")
     priority = args.get("priority", "normal")
@@ -787,87 +742,97 @@ def _inbox_send_task(args: dict) -> CallToolResult:
         return CallToolResult(content=[TextContent(type="text",
             text="Error: 'agent' and 'description' are required.")])
 
-    # 🟢 Try: Bus /a2a/task (for agents known to the bus)
-    status, body = _request("POST", "a2a/task", {
-        "target_agent": agent,
-        "requester": DEFAULT_AGENT,
-        "description": description,
-        "priority": priority,
-    })
-    if status == 200:
-        return CallToolResult(content=[TextContent(type="text", text=body)])
+    import uuid
+    task_id = str(uuid.uuid4())
 
-    # 🟡 Fallback: Send directly to remote agent's A2A endpoint
-    base_url = _resolve_agent_url(agent)
-    if base_url:
-        url = f"{base_url.rstrip('/')}/a2a/task"
-        payload = json.dumps({
-            "target_agent": agent,
-            "requester": DEFAULT_AGENT,
+    # Call inbox_send internally with structured task payload
+    send_args = {
+        "to": agent,
+        "topic": "tasks",
+        "subject": f"Task: {description[:80]}",
+        "body": json.dumps({
+            "type": "task_delegation",
+            "task_id": task_id,
             "description": description,
             "priority": priority,
-        }).encode()
-        status2, body2 = _a2a_http_post(url, payload)
-        if status2 == 200:
-            return CallToolResult(content=[TextContent(type="text", text=body2)])
-        return CallToolResult(content=[TextContent(type="text",
-            text=f"Task submission failed (HTTP {status2}): {body2[:300]}")])
+            "requester": DEFAULT_AGENT,
+        }, indent=2),
+        "priority": priority,
+    }
+    result = _inbox_send(send_args)
+    detail = result.content[0].text if hasattr(result, 'content') and result.content else "sent"
 
     return CallToolResult(content=[TextContent(type="text",
-        text=f"Task submission failed — no route to agent '{agent}'.")])
+        text=json.dumps({"task_id": task_id, "status": "created", "detail": detail}, indent=2))])
 
 
 def _inbox_get_task(args: dict) -> CallToolResult:
+    """Search inbox messages for a matching task_id."""
     agent = args.get("agent", "")
     task_id = args.get("task_id", "")
     if not agent or not task_id:
         return CallToolResult(content=[TextContent(type="text",
             text="Error: 'agent' and 'task_id' are required.")])
 
-    # 🟢 Try: Bus /a2a/task/{task_id}
-    status, body = _request("GET", f"a2a/task/{task_id}")
-    if status == 200:
-        return CallToolResult(content=[TextContent(type="text", text=body)])
-
-    # 🟡 Fallback: Direct to remote agent
-    base_url = _resolve_agent_url(agent)
-    if base_url:
-        url = f"{base_url.rstrip('/')}/a2a/task/{task_id}"
-        status2, body2 = _a2a_http_get(url)
-        if status2 == 200:
-            return CallToolResult(content=[TextContent(type="text", text=body2)])
+    # Search inbox for messages with matching task_id
+    status, body = _request("POST", "api/pgmq/read", {
+        "queue": f"inbox_{DEFAULT_AGENT}",
+        "vt": 1,
+        "batch_size": 50,
+    })
+    if status != 200:
         return CallToolResult(content=[TextContent(type="text",
-            text=f"Task query failed (HTTP {status2}): {body2[:300]}")])
+            text=f"Could not read inbox: HTTP {status}")])
+
+    try:
+        msgs = json.loads(body)
+        if isinstance(msgs, dict):
+            msgs = msgs.get("messages", msgs.get("data", []))
+        if isinstance(msgs, dict):
+            msgs = [msgs]
+    except json.JSONDecodeError:
+        msgs = []
+
+    for msg in msgs:
+        msg_body = msg.get("message", {})
+        if isinstance(msg_body, str):
+            try:
+                msg_body = json.loads(msg_body)
+            except json.JSONDecodeError:
+                msg_body = {"body": msg_body}
+        msg_body_str = json.dumps(msg_body)
+        if task_id in msg_body_str:
+            return CallToolResult(content=[TextContent(type="text",
+                text=json.dumps(msg, indent=2, default=str))])
 
     return CallToolResult(content=[TextContent(type="text",
-        text=f"Task '{task_id}' not found — no route to agent '{agent}'.")])
+        text=f"Task '{task_id}' not found in current inbox.")])
 
 
 def _inbox_cancel_task(args: dict) -> CallToolResult:
+    """Send a cancel request via inbox message."""
     agent = args.get("agent", "")
     task_id = args.get("task_id", "")
     if not agent or not task_id:
         return CallToolResult(content=[TextContent(type="text",
             text="Error: 'agent' and 'task_id' are required.")])
 
-    # 🟢 Try: Bus /a2a/task/{task_id}/cancel
-    status, body = _request("POST", f"a2a/task/{task_id}/cancel")
-    if status == 200:
-        return CallToolResult(content=[TextContent(type="text", text=body)])
-
-    # 🟡 Fallback: Direct to remote agent
-    base_url = _resolve_agent_url(agent)
-    if base_url:
-        url = f"{base_url.rstrip('/')}/a2a/task/{task_id}/cancel"
-        payload = json.dumps({"jsonrpc": "2.0", "id": 1}).encode()
-        status2, body2 = _a2a_http_post(url, payload)
-        if status2 == 200:
-            return CallToolResult(content=[TextContent(type="text", text=body2)])
-        return CallToolResult(content=[TextContent(type="text",
-            text=f"Task cancellation failed (HTTP {status2}): {body2[:300]}")])
+    send_args = {
+        "to": agent,
+        "topic": "tasks",
+        "subject": f"Cancel task: {task_id[:8]}...",
+        "body": json.dumps({
+            "type": "task_cancel",
+            "task_id": task_id,
+            "requester": DEFAULT_AGENT,
+        }, indent=2),
+        "priority": "urgent",
+    }
+    result = _inbox_send(send_args)
+    detail = result.content[0].text if hasattr(result, 'content') and result.content else "sent"
 
     return CallToolResult(content=[TextContent(type="text",
-        text=f"Task '{task_id}' not found — no route to agent '{agent}'.")])
+        text=json.dumps({"task_id": task_id, "status": "cancel_requested", "detail": detail}, indent=2))])
 
 
 # ═══════════════════════════════════════════════════════════════

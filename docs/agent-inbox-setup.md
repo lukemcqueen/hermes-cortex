@@ -1,4 +1,4 @@
-# Agent Inbox Setup (Legacy) — File-Based Messaging + A2A Cross-Server Tasks
+# Agent Inbox Setup (Legacy) — File-Based Messaging
 
 > **⚠️ LEGACY SYSTEM — This document describes the deprecated file-based agent inbox.**
 > The **Agent Bus** (PGMQ-based Postgres queue system) is the current messaging system.
@@ -6,13 +6,11 @@
 >
 > The legacy inbox server is stopped. All agents use the Agent Bus on port 8903.
 
-The legacy agent inbox (previously Agent Inbox) is a...
+The legacy agent inbox (previously Agent Inbox) is a system for:
 1. **Agent-to-agent messaging** (topic channels, threads, priority) via `inbox_send` / `inbox_read`
-2. **A2A cross-server task delegation** (JSON-RPC task lifecycle) via `inbox_send_task` / `inbox_get_task`
+2. **Cross-server task delegation** via `inbox_send_task` / `inbox_get_task`
 
 Both use the **same backend server** (port 8903), the **same MCP server** (`agent-bus-mcp.py`), and the **same message store** (`~/hermes-cortex-private/messages/inbox/`).
-
----
 
 ## Architecture
 
@@ -20,25 +18,19 @@ Both use the **same backend server** (port 8903), the **same MCP server** (`agen
 ┌──────────────────────────────────────────────┐
 │        Agent Inbox Server (:8903)             │
 │                                              │
-│  /api/inbox/*   — REST (agent messages)      │
-│  /a2a/*         — JSON-RPC (A2A tasks)       │
-│  /a2a/agent-card— Agent card (discovery)     │
-│  /.well-known/agent-card.json                │
-│  /health        — health check               │
-│  /              — HTML dashboard             │
-│                                              │
-│  Storage:                                     │
-│  ├── ~/hermes-cortex-private/messages/inbox/ │
-│  └── ~/.hermes-cortex/a2a/task-state.db      │
+|  /api/inbox/*   — REST (agent messages)      |
+|  /.well-known/agent-card.json                |
+|  /health        — health check               |
+|  /              — HTML dashboard             |
+
+|  ├── ~/hermes-cortex-private/messages/inbox/ |
 └──────────┬───────────────────────────────────┘
            │ HTTPS via nginx (port 13004)
-           │ Basic Auth (all routes)
-           │ mTLS optional (for A2A)
            ▼
      Remote agents via inbox_* MCP tools
 ```
 
-**One port, one server, one MCP.** There is no separate A2A process.
+**One port, one server, one MCP.**
 
 ---
 
@@ -55,7 +47,7 @@ The `agent-bus-mcp.py` MCP server registers **10 tools**:
 | `inbox_watch` | Check for new messages | `limit` |
 | `inbox_delete` | Delete a message (to trash/) | `filename` |
 
-### A2A Bridge (6 tools)
+### Agent Discovery & Task Delegation (6 tools)
 
 | Tool | Purpose | Key params |
 |------|---------|------------|
