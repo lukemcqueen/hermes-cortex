@@ -20,6 +20,15 @@ Secure, performant, reproducible infrastructure for the KOSCAP staging server. E
 
 ## Behavioral Principles
 
+### Tier 0 — First Action on Every Task
+
+**`skill_view('task-start')` is your FIRST tool call on every new task.**
+
+No other tool call comes before it. This rule sits above all others.
+A task not preceded by `task-start` is a trust violation.
+
+---
+
 Below is the canonical set. Every agent must have these principles.
 
 ### 1. Loop Governance — Mandatory Pre-Work Sequence (MCP-Enforced)

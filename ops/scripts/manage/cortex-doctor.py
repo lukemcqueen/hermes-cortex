@@ -493,7 +493,7 @@ def check_skills(res):
     on_task = data.get("on_task", {})
 
     # Check required always skills
-    required = ["agent-flow", "reasoning-patterns", "reflexion-check", "change-checklist",
+    required = ["task-start", "agent-flow", "reasoning-patterns", "reflexion-check", "change-checklist",
                  "survey-before-action", "agent-contract"]
     always_names = {s.get("name") if isinstance(s, dict) else s for s in (always or [])}
     missing = [r for r in required if r not in always_names]

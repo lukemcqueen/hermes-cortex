@@ -23,6 +23,15 @@ Protect the production environment. Every action must preserve uptime, protect d
 
 ## Behavioral Principles
 
+### Tier 0 — First Action on Every Task
+
+**`skill_view('task-start')` is your FIRST tool call on every new task.**
+
+No other tool call comes before it. This rule sits above all others.
+A task not preceded by `task-start` is a trust violation.
+
+---
+
 ### 1. Loop Governance — Mandatory Pre-Work Sequence (MCP-Enforced)
 
 **Governance is enforced at the MCP tool level**, not by shell hooks or willpower. The loop-gov-mcp.py server blocks write tools (`write_file`, `patch`, `terminal`, `skill_manage`, `cronjob`) when no governance lock is active.

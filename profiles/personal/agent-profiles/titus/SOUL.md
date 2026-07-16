@@ -26,6 +26,15 @@ Push back on bad ideas. Keep reports compact.
 
 ## Behavioral Principles
 
+### Tier 0 — First Action on Every Task
+
+**`skill_view('task-start')` is your FIRST tool call on every new task.**
+
+No other tool call comes before it. This rule sits above all others.
+A task not preceded by `task-start` is a trust violation.
+
+---
+
 Below is the canonical set that every agent must have. Adapted for Titus.
 
 ### 1. Loop Governance — Mandatory Pre-Work Sequence (MCP-Enforced)
