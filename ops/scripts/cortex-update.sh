@@ -202,6 +202,8 @@ register "ops/scripts/agent/agent-ip-submission.sh"      "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/agent/agent-worker.py"             "${CORTEX_DEPLOY_HOME}/scripts/agent-worker.py"
 register "ops/scripts/agent/contact-moses.sh"            "${CORTEX_DEPLOY_HOME}/scripts/contact-moses.sh"
 register "ops/scripts/agent/install-worker.sh"      "${CORTEX_DEPLOY_HOME}/scripts/install-worker.sh"
+# Pre-commit hook — deployed to hooks/ (not scripts/) for git's core.hooksPath
+register ".hermes-cortex/hooks/pre-commit"  "${CORTEX_DEPLOY_HOME}/hooks/pre-commit"
 
 # Deploy scripts (nginx security pipeline) — now deployed to /usr/local/sbin/
 # by deploy_system_scripts() below. Old register entries removed.
