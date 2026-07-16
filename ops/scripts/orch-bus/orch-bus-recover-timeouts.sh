@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # orch-bus-recover-timeouts.sh — no_agent cron; recovers stuck processing messages
-# Silent until issue. Reports only when >=10 messages recovered/archived.
+# Silent until issue. Reports only when >=50 messages recovered/archived.
 set -euo pipefail
 
 RESULT=$(sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \
