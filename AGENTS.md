@@ -208,6 +208,39 @@ Three axes when processing inbox messages:
 
 **After-action:** Deliver **what** (summary), **how verified** (tool output), **evidence** (excerpt), **cycle ID** (for code changes).
 
+### Confirmation Protocol — Required When correlation_id Present
+
+When a bus message includes a `correlation_id` field, the receiving agent
+**must** send a confirmation to the sender's inbox after processing it.
+
+**Confirmation message format** (send to `inbox_moses`):
+
+```json
+{
+  "queue": "inbox_moses",
+  "message": {
+    "correlation_id": "<original-correlation-id>",
+    "action_taken": "what you did (e.g. 'ran cortex-update.sh --force-all')",
+    "status": "success | failure | partial",
+    "details": "optional details about what was done"
+  },
+  "correlation_id": "<original-correlation-id>"
+}
+```
+
+The `correlation_id` at the root level is how the bus routes it. Include it
+inside `message` too as a fallback. The sender's confirmation tracker reads
+`inbox_moses` every 10m and matches `correlation_id` to update the tracking
+record.
+
+**Why this exists:** Without confirmations, the sender has no feedback loop.
+Messages move to "processing" state on the bus but the sender never knows if
+the agent read, understood, acted on, or completed the request. Confirmations
+close the loop.
+
+**Escalation:** If a message is not confirmed within the deadline (set by the
+sender), Moses escalates the pending message for human review.
+
 ---
 
 ## Doc Freshness: AGENTS.md + SOUL.md
