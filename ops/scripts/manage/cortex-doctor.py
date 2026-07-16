@@ -13,8 +13,14 @@ Usage:
     python3 cortex-doctor.py --fix            # auto-fix everything
     python3 cortex-doctor.py --watch          # re-check every 30s
     python3 cortex-doctor.py --quiet          # compact output
+    python3 cortex-doctor.py --bus-alert      # send bus messages for actionable issues
 
 Exit codes: 0 = pass   1 = warn   2 = fail
+
+--bus-alert:
+    After checks run, sends AGENTS.md reminders via the Agent Bus
+    to each repo's owning agent (mapped in docs/templates/repo-owners.yaml).
+    Requires CORTEX_BUS_TOKEN in env or hermes-inbox.conf.
 """
 
 import json
@@ -318,6 +324,106 @@ def check_repo(res):
                 "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
     else:
         res.add("AGENTS.md sync", "PASS")
+
+
+def check_dev_repo_agents(res):
+    """1b. Development repos: check each project-level git repo has an AGENTS.md."""
+    if not CORTEX_REPO.is_dir():
+        return  # skip if we can't find cortex repo (dev repos scan still makes sense without it)
+
+    # Find git repos in HOME (depth 2 max), excluding known non-project dirs
+    try:
+        raw = subprocess.run(
+            ["find", str(HOME), "-maxdepth", "3", "-name", ".git", "-type", "d"],
+            capture_output=True, text=True, timeout=15
+        ).stdout.strip()
+    except (subprocess.TimeoutExpired, OSError):
+        res.add("Dev repo AGENTS.md", "INFO", "could not scan home directory for git repos")
+        return
+
+    if not raw:
+        return  # no repos to check
+
+    # Directories that are NOT project repos — exclude from AGENTS.md check
+    EXCLUDED = {
+        HOME / ".git",
+        HOME / ".oh-my-zsh",
+        HOME / ".hermes",
+        HOME / ".brain",
+        HOME / "brain",
+        HOME / "__MACOSX",
+        HOME / "Desktop",
+        HOME / "Documents",
+        HOME / "Downloads",
+        HOME / "Music",
+        HOME / "Pictures",
+        HOME / "Videos",
+        HOME / "Library",
+        HOME / "Public",
+        HOME / "Templates",
+        HOME / "backups",
+        HOME / "docker-data",
+        HOME / "langfuse",
+    }
+
+    found_repos = []
+    for path in raw.split("\n"):
+        path = path.strip()
+        if not path:
+            continue
+        repo_dir = Path(path).parent.resolve()
+        # Skip excluded dirs and their subdirs
+        skip = False
+        for excl in EXCLUDED:
+            if str(repo_dir).startswith(str(excl)):
+                skip = True
+                break
+        if skip:
+            continue
+        # Skip the cortex repo itself (already checked in check_repo)
+        if repo_dir == CORTEX_REPO:
+            continue
+        found_repos.append(repo_dir)
+
+    if not found_repos:
+        return
+
+    missing = []
+    present = []
+    for repo in sorted(found_repos):
+        agents_path = repo / "AGENTS.md"
+        if agents_path.exists():
+            present.append(repo.name)
+        else:
+            missing.append(repo.name)
+
+    if missing:
+        for name in missing:
+            res.add(f"AGENTS.md ({name})", "WARN",
+                    "missing AGENTS.md in dev repo",
+                    f"Create: touch ~/{name}/AGENTS.md  then add agent guidelines for this project")
+    if present:
+        # Optional: check if AGENTS.md is stale (older than its git last commit)
+        for repo in found_repos:
+            agents_path = repo / "AGENTS.md"
+            if not agents_path.exists():
+                continue
+            try:
+                git_ts = subprocess.run(
+                    ["git", "-C", str(repo), "log", "-1", "--format=%ct", "HEAD"],
+                    capture_output=True, text=True, timeout=5
+                ).stdout.strip()
+                file_mtime = agents_path.stat().st_mtime
+                if git_ts and git_ts.isdigit():
+                    last_commit = int(git_ts)
+                    # If AGENTS.md hasn't been touched since the last 5 commits
+                    age_days = (file_mtime - last_commit) / 86400
+                    if age_days < 0:  # AGENTS.md older than last commit
+                        res.add(f"AGENTS.md ({repo.name})", "INFO",
+                                "possibly stale — last modified before latest commit",
+                                f"Review and update: ~/{repo.name}/AGENTS.md")
+            except (subprocess.TimeoutExpired, OSError, ValueError):
+                pass
 
 
 def check_soul_sync(res):
@@ -1318,6 +1424,147 @@ print('ADDED')
     return fixed, failed
 
 
+# ── Bus alert helpers ──────────────────────────────────────────
+_REPO_OWNERS_PATH = CORTEX_REPO / "docs" / "templates" / "repo-owners.yaml"
+_BUS_CONFIG_PATHS = [
+    HOME / ".hermes-cortex" / "hermes-inbox.conf",
+    HOME / "hermes-cortex" / ".env",
+]
+
+
+def _load_repo_owners() -> dict:
+    """Load repo→agent mapping from repo-owners.yaml. Returns empty dict on failure."""
+    if not _REPO_OWNERS_PATH.exists():
+        return {}
+    try:
+        import yaml
+        with open(_REPO_OWNERS_PATH) as f:
+            data = yaml.safe_load(f)
+        if isinstance(data, dict) and "repos" in data:
+            return data["repos"]
+        return {}
+    except Exception:
+        return {}
+
+
+def _read_bus_token() -> str:
+    """Read bus Bearer token from env or config files. Returns empty string if not found."""
+    # 1. Env var (highest priority)
+    token = os.environ.get("CORTEX_BUS_TOKEN", "")
+    if token:
+        return token
+
+    # 2. Config files
+    for cfg_path in _BUS_CONFIG_PATHS:
+        if not cfg_path.exists():
+            continue
+        try:
+            for line in cfg_path.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = (x.strip().strip("'\"").strip() for x in line.split("=", 1))
+                v = re.sub(r"\s+#.*$", "", v).strip()
+                if k == "CORTEX_BUS_TOKEN" and v:
+                    return v
+        except OSError:
+            pass
+    return ""
+
+
+def _send_bus_alert(repo_name: str, owner: str, bus_url: str, token: str) -> bool:
+    """Send an AGENTS.md reminder message to the owning agent via the bus."""
+    payload = {
+        "queue": f"inbox_{owner}",
+        "message": {
+            "from": "doctor",
+            "subject": f"AGENTS.md missing: {repo_name}",
+            "body": (
+                f"AGENTS.md is missing from ~/{repo_name}. "
+                f"This repo was detected as a git project you maintain.\n\n"
+                f"Please create ~/{repo_name}/AGENTS.md with agent guidelines for this project. "
+                f"Template: ~/hermes-cortex/docs/templates/AGENTS.seed.md"
+            ),
+            "topic": "development",
+            "priority": "normal",
+        },
+        "priority": 0,
+    }
+    try:
+        req = urllib.request.Request(
+            f"{bus_url}/api/pgmq/send",
+            data=json.dumps(payload).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {token}",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp_data = resp.read().decode()
+            return True
+    except (urllib.error.URLError, urllib.error.HTTPError, OSError, json.JSONDecodeError) as e:
+        return False
+
+
+def dispatch_bus_alerts(res: Results):
+    """After checks run, send bus alerts for actionable AGENTS.md findings."""
+    owners = _load_repo_owners()
+    if not owners:
+        print("  ℹ️  --bus-alert: no repo-owners.yaml found (create from docs/templates/repo-owners.yaml)")
+        return
+
+    token = _read_bus_token()
+    if not token:
+        print("  ℹ️  --bus-alert: CORTEX_BUS_TOKEN not found (set in env or hermes-inbox.conf)")
+        return
+
+    # Determine bus URL — env var, config file, or default
+    bus_url = os.environ.get("CORTEX_BUS_URL", "")
+    if not bus_url:
+        # Try config files
+        for cfg_path in _BUS_CONFIG_PATHS:
+            if not cfg_path.exists():
+                continue
+            try:
+                for line in cfg_path.read_text().splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    k, v = (x.strip().strip("'\"").strip() for x in line.split("=", 1))
+                    v = re.sub(r"\s+#.*$", "", v).strip()
+                    if k == "CORTEX_BUS_URL" and v:
+                        bus_url = v
+                        break
+            except OSError:
+                pass
+            if bus_url:
+                break
+    if not bus_url:
+        bus_url = "http://127.0.0.1:8903"
+
+    sent = 0
+    skipped = 0
+    for c in res.checks:
+        name = c["name"]
+        status = c["status"]
+        # Match AGENTS.md warnings: format is "AGENTS.md (<repo-name>)"
+        if not name.startswith("AGENTS.md (") or not name.endswith(")") or status not in ("WARN", "FAIL"):
+            continue
+        repo_name = name[len("AGENTS.md ("):-1]
+        owner = owners.get(repo_name)
+        if not owner:
+            skipped += 1
+            continue
+        if _send_bus_alert(repo_name, owner, bus_url, token):
+            sent += 1
+
+    if sent > 0:
+        print(f"  📬 Bus alerts sent: {sent} message(s) to owning agent(s)")
+    if skipped > 0:
+        print(f"  ℹ️  {skipped} repo(s) have no owner in repo-owners.yaml — skipped")
+
+
 # ── Main ─────────────────────────────────────────────────────────
 def main():
     args = set(sys.argv[1:])
@@ -1326,9 +1573,10 @@ def main():
     res.show_fixes = "--quiet" not in args
     do_fix = "--fix" in args
     do_watch = "--watch" in args
+    do_bus_alert = "--bus-alert" in args
     compact = "--quiet" in args
 
-    all_checks = [check_repo, check_soul_sync, check_skills, check_crons, check_scripts, check_services,
+    all_checks = [check_repo, check_dev_repo_agents, check_soul_sync, check_skills, check_crons, check_scripts, check_services,
                    check_system, check_config, check_nginx, check_governance, check_install]
 
     if not res.json_mode:
@@ -1359,6 +1607,8 @@ def main():
     else:
         for fn in all_checks:
             fn(res)
+        if do_bus_alert:
+            dispatch_bus_alerts(res)
         res.print_summary(compact=compact)
 
         # ── Enforcement footer ──────────────────────────────────
