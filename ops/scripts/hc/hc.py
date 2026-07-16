@@ -1,28 +1,26 @@
 #!/usr/bin/env python3
 """
-hc — Hermes Cortex CLI for humans.
+hc — Hermes Cortex CLI for humans. Runs direct against Postgres (docker exec).
+No curls, no API paths, no ACLs. Read any queue, see everything.
 
-No curls, no API paths. Just:
-  hc inbox             list your messages
+  hc inbox             list your messages (non-destructive read)
   hc inbox joseph      list joseph's messages
-  hc send joseph "Subject" "Body text"
+  hc send <a> <subj>   send a message (via POST to bus API)
   hc status            bus health + queue depths + fleet
   hc depth             all queue depths
   hc fleet             agent health statuses
-  hc watch             poll inbox every 5s
+  hc watch             watch ALL inbox queues (default)
+  hc watch moses       watch only moses' inbox (non-destructive)
   hc doctor            run cortex-doctor
   hc dashboard         open bus dashboard in browser
   hc env               show current config
   hc help              this message
 
-Config: ~/.hermes-cortex/hc.env (copied from .env.example)
-  HC_BUS_URL=https://your-domain.com:13004
-  HC_BUS_AUTH=moses:your-password
-  HC_AGENT=moses
+Config: ~/.hermes-cortex/hc.env
+  HC_AGENT=moses                          # your agent name (default)
 """
 
 import argparse
-import base64
 import json
 import os
 import subprocess
@@ -41,8 +39,6 @@ DEFAULT_AGENT = "moses"
 def load_config() -> dict:
     """Load config from hc.env (env vars override)."""
     config = {
-        "bus_url": os.environ.get("HC_BUS_URL", ""),
-        "bus_auth": os.environ.get("HC_BUS_AUTH", ""),
         "agent": os.environ.get("HC_AGENT", ""),
     }
 
@@ -54,114 +50,158 @@ def load_config() -> dict:
                     continue
                 k, v = (x.strip().strip("'\"").strip() for x in line.split("=", 1))
                 v = v.split("#")[0].strip()
-                if k == "HC_BUS_URL" and not config["bus_url"]:
-                    config["bus_url"] = v
-                elif k == "HC_BUS_AUTH" and not config["bus_auth"]:
-                    config["bus_auth"] = v
-                elif k == "HC_AGENT" and not config["agent"]:
+                if k == "HC_AGENT" and not config["agent"]:
                     config["agent"] = v
         except Exception:
             pass
 
     if not config["agent"]:
         config["agent"] = DEFAULT_AGENT
-    if not config["bus_url"]:
-        config["bus_url"] = "http://127.0.0.1:8903"
     return config
 
 
-# ── HTTP helpers ────────────────────────────────────────────────
+# ── Database helpers ────────────────────────────────────────────
 
-def _request(cfg: dict, method: str, path: str, body: dict = None) -> tuple[int, str]:
-    """Make an HTTP request to the bus API."""
-    import urllib.error
-    import urllib.request
-
-    url = f"{cfg['bus_url'].rstrip('/')}/{path.lstrip('/')}"
-    headers = {"Content-Type": "application/json", "Accept": "application/json"}
-
-    if cfg["bus_auth"]:
-        encoded = base64.b64encode(cfg["bus_auth"].encode()).decode()
-        headers["Authorization"] = f"Basic {encoded}"
-
-    data = json.dumps(body).encode() if body else None
+def _psql(query: str) -> str:
+    """Run a SQL query against the bus Postgres via docker exec."""
     try:
-        req = urllib.request.Request(url, data=data, method=method, headers=headers)
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            return resp.status, resp.read().decode()
-    except urllib.error.HTTPError as e:
-        return e.code, e.read().decode(errors="replace")[:1000]
+        r = subprocess.run(
+            ["docker", "exec", "gbrain-postgres", "psql",
+             "-U", "gbrain", "-d", "gbrain", "-t", "-c", query],
+            capture_output=True, text=True, timeout=10,
+        )
+        return r.stdout.strip() if r.returncode == 0 else f"ERROR: {r.stderr[:200]}"
+    except FileNotFoundError:
+        return "ERROR: docker not found"
+    except subprocess.TimeoutExpired:
+        return "ERROR: query timed out"
     except Exception as e:
-        return 0, str(e)
+        return f"ERROR: {e}"
 
 
-def _get_json(cfg: dict, path: str):
-    status, body = _request(cfg, "GET", path)
-    if status != 200:
-        return None, status, body
+def _psql_json(query: str):
+    """Run SQL and parse JSON result."""
+    raw = _psql(query)
+    if raw.startswith("ERROR"):
+        return None, raw
+    if not raw:
+        return None, "empty"
     try:
-        return json.loads(body), status, body
+        return json.loads(raw), None
     except json.JSONDecodeError:
-        return None, status, body
+        return None, raw[:200]
 
 
-def _post_json(cfg: dict, path: str, body: dict):
-    status, resp_body = _request(cfg, "POST", path, body)
-    if status != 200:
-        return None, status, resp_body
-    try:
-        return json.loads(resp_body), status, resp_body
-    except json.JSONDecodeError:
-        return None, status, resp_body
+def _get_messages(queue: str, limit: int = 20) -> list[dict]:
+    """Get pending messages from a queue (non-destructive read)."""
+    raw = _psql(f"""
+        SELECT row_to_json(m) FROM (
+            SELECT msg_id::text, queue_name, body, priority,
+                   retry_count, max_retries,
+                   enqueued_at::text, timeout_at::text, state
+            FROM bus.messages
+            WHERE queue_name = '{queue}'
+              AND state = 'pending'
+              AND visible_after <= now()
+            ORDER BY priority DESC, enqueued_at ASC
+            LIMIT {limit}
+        ) m;
+    """)
+    if not raw:
+        return []
+    results = []
+    for line in raw.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            results.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return results
+
+
+def _get_queue_depths() -> list[dict]:
+    """Get depth of all inbox queues via SQL."""
+    raw = _psql("""
+        SELECT row_to_json(d) FROM (
+            SELECT q.name,
+                   (SELECT count(*) FROM bus.messages
+                    WHERE queue_name = q.name
+                      AND state = 'pending'
+                      AND visible_after <= now()) AS depth
+            FROM bus.queues q
+            WHERE q.name LIKE 'inbox_%' AND q.is_dlq = false
+            ORDER BY q.name
+        ) d;
+    """)
+    if not raw:
+        return []
+    results = []
+    for line in raw.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            results.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return results
+
+
+def _send_message(queue: str, body: dict) -> str:
+    """Send a message via bus.send() SQL function."""
+    body_json = json.dumps(body).replace("'", "''")
+    result = _psql(f"SELECT bus.send('{queue}', '{body_json}'::jsonb, 0)")
+    if result and not result.startswith("ERROR"):
+        return f"✅ Sent to {queue[6:]}. msg_id={result}"
+    return f"❌ Send failed: {result}"
 
 
 # ── Formatting ──────────────────────────────────────────────────
 
 def _fmt_ts(ts_str: str) -> str:
-    """Format ISO timestamp to human-readable."""
     if not ts_str:
         return "?"
     try:
         dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-        local = dt.astimezone()
-        return local.strftime("%H:%M:%S")
+        return dt.astimezone().strftime("%H:%M:%S")
     except Exception:
         return ts_str[:19]
 
 
 def _msg_preview(msg: dict) -> str:
-    """Format a single message for display."""
-    msg_body = msg.get("message", {})
-    if isinstance(msg_body, str):
+    """Format a message for display."""
+    body_raw = msg.get("body", {})
+    if isinstance(body_raw, str):
         try:
-            msg_body = json.loads(msg_body)
+            body_raw = json.loads(body_raw)
         except json.JSONDecodeError:
-            msg_body = {"body": msg_body}
+            body_raw = {"body": body_raw}
 
-    pri = msg_body.get("priority", "normal")
+    pri = body_raw.get("priority", "normal")
     icon = "🔴" if pri == "critical" else ("🟡" if pri == "urgent" else "📩")
-    frm = msg_body.get("from", "?")
-    subj = msg_body.get("subject", "(no subject)")
-    body = msg_body.get("body", "")
-    ts = _fmt_ts(msg.get("enqueued_at", ""))
+    frm = body_raw.get("from", "?")
+    subj = body_raw.get("subject", "(no subject)")
 
-    # Try to detect structured task body
-    if isinstance(body, str) and body.startswith("{"):
+    body_text = body_raw.get("body", "")
+    if isinstance(body_text, str) and body_text.startswith("{"):
         try:
-            task = json.loads(body)
+            task = json.loads(body_text)
             if task.get("type") == "task_delegation":
-                body = f"[Task: {task.get('description','')[:100]}]"
+                body_text = f"[Task: {task.get('description','')[:100]}]"
             elif task.get("type") == "task_cancel":
-                body = f"[Cancel request for task: {task.get('task_id','')[:12]}...]"
+                body_text = f"[Cancel: {task.get('task_id','')[:12]}...]"
         except json.JSONDecodeError:
             pass
 
-    if len(str(body)) > 150:
-        body = str(body)[:150] + "..."
+    if len(str(body_text)) > 150:
+        body_text = str(body_text)[:150] + "..."
 
+    ts = _fmt_ts(msg.get("enqueued_at", ""))
     lines = [f"  {icon} [{ts}] {frm} → {subj}"]
-    if body:
-        for line in str(body).split("\\n"):
+    if body_text:
+        for line in str(body_text).split("\\n"):
             lines.append(f"     {line}")
     return "\n".join(lines)
 
@@ -169,28 +209,16 @@ def _msg_preview(msg: dict) -> str:
 # ── Commands ────────────────────────────────────────────────────
 
 def cmd_inbox(cfg: dict, args: list):
-    """Read messages from an agent's inbox."""
+    """Read messages from an agent's inbox (non-destructive)."""
     agent = args[0] if args else cfg["agent"]
+    queue = f"inbox_{agent}"
 
-    result = _post_json(cfg, "/api/pgmq/read", {
-        "queue": f"inbox_{agent}",
-        "vt": 60,
-        "batch_size": 20,
-    })
-    if result[0] is None:
-        print(f"❌ Could not read inbox: HTTP {result[1]} — {result[2][:100]}")
-        return
-
-    data = result[0]
-    msgs = data if isinstance(data, list) else data.get("data", [])
-    if isinstance(msgs, dict):
-        msgs = [msgs]
-
+    msgs = _get_messages(queue)
     if not msgs:
-        print(f"📬 No unread messages in inbox_{agent}.")
+        print(f"📬 No pending messages in {queue}.")
         return
 
-    print(f"📬 {len(msgs)} unread message(s) in inbox_{agent}:")
+    print(f"📬 {len(msgs)} pending message(s) in {queue}:")
     print()
     for m in msgs:
         print(_msg_preview(m))
@@ -205,61 +233,41 @@ def cmd_send(cfg: dict, args: list):
 
     agent = args[0]
     subject = args[1]
-    body = " ".join(args[2:]) if len(args) > 2 else ""
+    body_text = " ".join(args[2:]) if len(args) > 2 else subject
 
-    result = _post_json(cfg, "/api/pgmq/send", {
-        "queue": f"inbox_{agent}",
-        "message": {
-            "from": cfg["agent"],
-            "to": agent,
-            "topic": "general",
-            "subject": subject,
-            "body": body or subject,
-            "priority": "normal",
-        },
-        "priority": 0,
-    })
-    if result[0] is None:
-        print(f"❌ Send failed: HTTP {result[1]} — {result[2][:200]}")
-        return
-
-    msg_id = result[0].get("msg_id", result[0])
-    print(f"✅ Sent to {agent}. msg_id={msg_id}")
+    body = {
+        "from": cfg["agent"],
+        "to": agent,
+        "topic": "general",
+        "subject": subject,
+        "body": body_text,
+        "priority": "normal",
+    }
+    result = _send_message(f"inbox_{agent}", body)
+    print(result)
 
 
 def cmd_status(cfg: dict, args: list):
     """Show bus health + queue depths + fleet."""
-    # Health
-    health, status_code, _ = _get_json(cfg, "/health")
-    if health:
+    # Health via localhost API (no auth for health)
+    try:
+        import urllib.request
+        resp = urllib.request.urlopen("http://127.0.0.1:8903/health", timeout=5)
+        health = json.loads(resp.read().decode())
         status_icon = "✅" if health.get("status") == "ok" else "⚠️"
         print(f"{status_icon} Bus: {health.get('status', 'unknown')} ({health.get('backend', '?')})")
-        print(f"   Queues: {health.get('queues', '?')}")
-    else:
-        print(f"❌ Bus health: HTTP {status_code}")
+    except Exception:
+        print("❌ Bus health: unreachable")
 
     # Queue depths
-    queues, _, _ = _get_json(cfg, "/api/pgmq/queues")
     print()
+    queues = _get_queue_depths()
     if queues:
-        qlist = queues if isinstance(queues, list) else queues.get("queues", [])
-        if qlist and isinstance(qlist[0], dict):
-            # [{"name": "...", "depth": N}, ...]
-            inbox_qs = [q for q in qlist if q["name"].startswith("inbox_") and not q.get("dlq")]
-            print(f"📊 {len(inbox_qs)} inbox queue(s):")
-            for q in sorted(inbox_qs, key=lambda x: x["name"]):
-                d = q.get("depth", "?")
-                print(f"   {q['name']:30s}  depth={d}")
-        elif qlist and isinstance(qlist[0], str):
-            # ["queue_1", "queue_2"]
-            inbox_qs = sorted([q for q in qlist if q.startswith("inbox_") and "_dlq" not in q])
-            print(f"📊 {len(inbox_qs)} inbox queue(s):")
-            for q in inbox_qs:
-                depth, _, _ = _get_json(cfg, f"/api/pgmq/depth/{q}")
-                d = depth if isinstance(depth, int) else (depth.get("depth", "?") if isinstance(depth, dict) else "?")
-                print(f"   {q:30s}  depth={d}")
-        else:
-            print(f"📊 Queues: {len(qlist)} total")
+        print(f"📊 {len(queues)} inbox queue(s):")
+        for q in queues:
+            print(f"   {q['name']:30s}  depth={q['depth']}")
+    else:
+        print("📊 No inbox queues found.")
 
     # Fleet
     fleet = Path.home() / ".hermes" / "state" / "fleet-status.state"
@@ -278,34 +286,20 @@ def cmd_status(cfg: dict, args: list):
 
 
 def cmd_depth(cfg: dict, args: list):
-    """Show depth of a specific queue or all inbox queues."""
+    """Show depth of all inbox queues."""
     if args:
         agent = args[0]
-        result = _get_json(cfg, f"/api/pgmq/depth/inbox_{agent}")
-        print(f"📊 inbox_{agent} depth: {result[0] if result[0] is not None else result[1]}")
+        msgs = _get_messages(f"inbox_{agent}")
+        print(f"📊 inbox_{agent}: {len(msgs)} pending message(s)")
         return
 
-    # Show all inbox queues
-    queues, _, _ = _get_json(cfg, "/api/pgmq/queues")
-    if not queues:
-        print("❌ Could not list queues")
-        return
-
-    qlist = queues if isinstance(queues, list) else queues.get("queues", [])
-    if qlist and isinstance(qlist[0], dict):
-        inbox_qs = sorted([q for q in qlist if q["name"].startswith("inbox_") and not q.get("dlq")], key=lambda x: x["name"])
+    queues = _get_queue_depths()
+    if queues:
         print("📊 Queue depths:")
-        for q in inbox_qs:
-            print(f"   {q['name']:30s}  {q.get('depth', '?')}")
-    elif qlist and isinstance(qlist[0], str):
-        inbox_qs = sorted([q for q in qlist if q.startswith("inbox_") and "_dlq" not in q])
-        print("📊 Queue depths:")
-        for q in inbox_qs:
-            d, _, _ = _get_json(cfg, f"/api/pgmq/depth/{q}")
-            depth = d if isinstance(d, int) else (d.get("depth", "?") if isinstance(d, dict) else "?")
-            print(f"   {q:30s}  {depth}")
+        for q in queues:
+            print(f"   {q['name']:30s}  {q['depth']}")
     else:
-        print(f"📊 {len(qlist)} queue(s)")
+        print("📊 No inbox queues found.")
 
 
 def cmd_fleet(cfg: dict, args: list):
@@ -338,30 +332,55 @@ def cmd_fleet(cfg: dict, args: list):
         print(f"❌ Error reading fleet state: {e}")
 
 
-def cmd_watch(cfg: dict, args: list):
-    """Poll inbox continuously."""
-    agent = args[0] if args else cfg["agent"]
-    seen_ids = set()
-    interval = 5
+def _get_all_messages(limit_per_queue: int = 5) -> list[tuple[str, dict]]:
+    """Get pending messages from ALL inbox queues. Returns [(queue_name, msg), ...]."""
+    queues = _get_queue_depths()
+    results = []
+    for q in queues:
+        if q["depth"] > 0:
+            for m in _get_messages(q["name"], limit=limit_per_queue):
+                results.append((q["name"], m))
+    return results
 
-    print(f"👀 Watching inbox_{agent} (poll every {interval}s, Ctrl+C to stop)...")
+
+def cmd_watch(cfg: dict, args: list):
+    """Poll inbox continuously (non-destructive). Default: all queues."""
+    interval = 5
+    seen = set()
+
+    if args:
+        # Single agent watch
+        queue = f"inbox_{args[0]}"
+        print(f"👀 Watching {queue} (poll every {interval}s, Ctrl+C to stop)...")
+        print()
+        try:
+            while True:
+                for m in _get_messages(queue):
+                    mid = m.get("msg_id", "")
+                    if mid not in seen:
+                        seen.add(mid)
+                        print(_msg_preview(m))
+                        print()
+                time.sleep(interval)
+        except KeyboardInterrupt:
+            print("\n👋 Stopped.")
+        return
+
+    # All queues watch
+    print(f"👀 Watching ALL inbox queues (poll every {interval}s, Ctrl+C to stop)...")
     print()
     try:
         while True:
-            result = _post_json(cfg, "/api/pgmq/read", {
-                "queue": f"inbox_{agent}",
-                "vt": 30,
-                "batch_size": 5,
-            })
-            if result[0] is not None:
-                data = result[0]
-                msgs = data if isinstance(data, list) else data.get("data", [])
-                if isinstance(msgs, dict):
-                    msgs = [msgs]
-                new = [m for m in msgs if m.get("msg_id") not in seen_ids]
-                for m in new:
-                    seen_ids.add(m.get("msg_id"))
-                    print(_msg_preview(m))
+            for queue_name, m in _get_all_messages():
+                mid = m.get("msg_id", "")
+                if mid not in seen:
+                    seen.add(mid)
+                    agent = queue_name.replace("inbox_", "")
+                    agent_label = f"📬 [{agent}]" if agent else ""
+                    preview = _msg_preview(m)
+                    print(f"  {agent_label}")
+                    for line in preview.split("\n"):
+                        print(f"   {line}")
                     print()
             time.sleep(interval)
     except KeyboardInterrupt:
@@ -370,18 +389,19 @@ def cmd_watch(cfg: dict, args: list):
 
 def cmd_doctor(cfg: dict, args: list):
     """Run cortex-doctor."""
-    script = Path.home() / "hermes-cortex" / "ops" / "scripts" / "manage" / "cortex-doctor.py"
-    if not script.exists():
-        script = Path.home() / ".hermes-cortex" / "scripts" / "cortex-doctor.py"
-    if script.exists():
-        subprocess.run([sys.executable, str(script), "--quiet"])
-    else:
-        print("❌ cortex-doctor.py not found")
+    for path in [
+        Path.home() / "hermes-cortex" / "ops" / "scripts" / "manage" / "cortex-doctor.py",
+        Path.home() / ".hermes-cortex" / "scripts" / "cortex-doctor.py",
+    ]:
+        if path.exists():
+            subprocess.run([sys.executable, str(path), "--quiet"])
+            return
+    print("❌ cortex-doctor.py not found")
 
 
 def cmd_dashboard(cfg: dict, args: list):
     """Open bus dashboard in browser."""
-    url = f"{cfg['bus_url'].rstrip('/')}/"
+    url = "http://127.0.0.1:8903/"
     print(f"🌐 Opening {url} ...")
     try:
         webbrowser.open(url)
@@ -392,12 +412,13 @@ def cmd_dashboard(cfg: dict, args: list):
 def cmd_env(cfg: dict, args: list):
     """Show current config."""
     print("📋 hc Configuration:")
-    print(f"   HC_BUS_URL   = {cfg['bus_url']}")
-    auth_masked = cfg["bus_auth"][:cfg["bus_auth"].find(":") + 1] + "****" if ":" in cfg["bus_auth"] else "****"
-    print(f"   HC_BUS_AUTH  = {auth_masked}")
     print(f"   HC_AGENT     = {cfg['agent']}")
     print(f"   Config file  = {CONFIG_FILE}")
     print(f"   File exists  = {CONFIG_FILE.exists()}")
+    print(f"   Backend      = Postgres (direct via docker exec)")
+    print(f"   Auth         = None (admin-level access)")
+    print(f"\nTip: Any agent's inbox is readable:")
+    print(f"  hc inbox moses    hc inbox joseph    hc inbox esther")
 
 
 def cmd_help(cfg: dict, args: list):
@@ -406,12 +427,13 @@ def cmd_help(cfg: dict, args: list):
     print()
     print("Quick reference:")
     print(f"  hc inbox              — read your inbox ({cfg['agent']})")
-    print("  hc inbox <agent>      — read another agent's inbox")
+    print("  hc inbox <agent>      — read any agent's inbox")
     print("  hc send <a> <subj>    — send a message")
     print("  hc status             — bus health + queue depths + fleet")
     print("  hc depth [agent]      — queue depth (all or specific)")
     print("  hc fleet              — agent health statuses")
-    print("  hc watch [agent]      — continuously poll inbox")
+    print("  hc watch              — watch ALL inbox queues (default)")
+    print("  hc watch moses        — watch only moses' inbox")
     print("  hc doctor             — run cortex-doctor")
     print("  hc dashboard          — open bus dashboard")
     print("  hc env                — show config")
