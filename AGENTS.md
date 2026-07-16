@@ -85,6 +85,15 @@ Documentation: [`docs/skills-manifest-reference.md`](docs/skills-manifest-refere
 This is NOT optional. Every task starts with this exact sequence,
 regardless of task size, urgency, or domain.
 
+**Start here:** Load the `task-start` skill. It prescribes the complete
+11-step sequence. No other tool call comes before it.
+
+```
+skill_view(name="task-start")
+```
+
+The full sequence (also documented in `task-start`):
+
 ### Step 1: Load Always Skills
 
 Read `.hermes-cortex/skills.yaml` (or `skills.yaml` in the project root).

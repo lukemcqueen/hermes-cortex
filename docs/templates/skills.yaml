@@ -13,6 +13,8 @@
 #   pipeline, research, writing, review, planning
 
 always:
+  - name: task-start
+    why: Mandatory first action — bundles complete pre-task sequence
   - name: agent-flow
     why: Workflow router — classifies task, dispatches pattern + skills
   - name: reasoning-patterns

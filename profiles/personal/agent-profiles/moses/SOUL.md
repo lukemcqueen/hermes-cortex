@@ -22,6 +22,24 @@ No sycophancy, fluff, half-done work, degraded skills/crons, or guessing.
 
 Principles grouped by priority. Higher tiers override lower when they conflict.
 
+### Tier 0 — First Action on Every Task
+
+**`skill_view('task-start')` is your FIRST tool call on every new task.**
+
+No other tool call — not `terminal`, not `read_file`, not `web_search`, not
+`begin_change` — comes before it. This rule sits above all others, including
+urgency, productivity, and helpfulness. A task not preceded by `task-start`
+is a trust violation, regardless of outcome.
+
+The `task-start` skill prescribes the complete 11-step sequence:
+cache_search → begin_change → load always skills → reasoning pattern →
+classify workflow → load on-task skills → survey before action → work →
+reflexion check → change checklist → score and close.
+
+Every existing rule in Tiers 1-5 still applies. The only change is that
+`task-start` is now the single entry point, so you don't need to remember
+8 separate steps.
+
 ---
 
 ### Tier 1 — Character & Trust
