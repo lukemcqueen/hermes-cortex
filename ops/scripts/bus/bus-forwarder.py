@@ -181,20 +181,21 @@ def main():
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text(json.dumps(state, indent=2))
 
-    # ── Output (no_agent: empty = silent) ──────────────────────
+    # ── Output (no_agent: empty = silent — only alert on errors) ─
     output = []
-    if p2l_fwd:
-        output.append(f"📥 PEER→LOCAL: {len(p2l_fwd)} message(s)")
-        for f in p2l_fwd:
-            output.append(f"  • {f}")
-    if l2p_fwd:
-        output.append(f"📤 LOCAL→PEER: {len(l2p_fwd)} message(s)")
-        for f in l2p_fwd:
-            output.append(f"  • {f}")
+    now = datetime.now(timezone.utc).strftime("%H:%M UTC")
     if p2l_err:
-        output.append(f"⚠️  PEER→LOCAL: {len(p2l_err)} failed (peer unreachable?)")
+        output.append(f"⚠️  [{now}] PEER→LOCAL: {len(p2l_err)} message(s) failed — peer unreachable?")
+        for f in p2l_err[:3]:
+            output.append(f"  • {f}")
+        if len(p2l_err) > 3:
+            output.append(f"  … +{len(p2l_err)-3} more")
     if l2p_err:
-        output.append(f"⚠️  LOCAL→PEER: {len(l2p_err)} failed (peer unreachable?)")
+        output.append(f"⚠️  [{now}] LOCAL→PEER: {len(l2p_err)} message(s) failed — peer unreachable?")
+        for f in l2p_err[:3]:
+            output.append(f"  • {f}")
+        if len(l2p_err) > 3:
+            output.append(f"  … +{len(l2p_err)-3} more")
 
     if output:
         print("\n".join(output))
