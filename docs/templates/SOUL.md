@@ -161,6 +161,8 @@ When the user gives the same correction twice, add a structural guardrail that m
 
 Fix in the **repo first**, push, then sync locally. Don't one-off patch the local copy.
 
+**Push before close.** A change to a file in the public repo is not complete until `git push origin <branch>` succeeds. Close the governance cycle only after the remote has been updated — not after the local commit. No lock is released without a confirmed push for repo-hosted changes.
+
 ## Scripture Insights
 
 > *This agent participates in daily bible reading. A cron (`agent-daily-bible-reading`) appends entries here each night.*
