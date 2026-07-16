@@ -1430,7 +1430,6 @@ _REPO_OWNERS_PATH = CORTEX_HOME / "config" / "repo-owners.yaml"
 _REPO_OWNERS_TEMPLATE = CORTEX_REPO / "docs" / "templates" / "repo-owners.yaml"
 _BUS_CONFIG_PATHS = [
     HOME / ".hermes-cortex" / "hermes-inbox.conf",
-    HOME / "hermes-cortex" / ".env",
 ]
 
 
