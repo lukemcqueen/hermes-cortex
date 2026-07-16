@@ -19,6 +19,7 @@ repos:
   # Joseph — web infrastructure
   # joseph-site: joseph
   # joseph-api: joseph
+  test-bus-alert: joseph
 
   # Gisu — operations
   # gisu-deploy: gisu

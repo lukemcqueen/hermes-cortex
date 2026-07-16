@@ -1458,12 +1458,9 @@ def _load_repo_owners() -> dict:
 
 def _read_bus_token() -> str:
     """Read bus Bearer token from env or config files. Returns empty string if not found."""
-    # 1. Env var (highest priority)
     token = os.environ.get("CORTEX_BUS_TOKEN", "")
     if token:
         return token
-
-    # 2. Config files
     for cfg_path in _BUS_CONFIG_PATHS:
         if not cfg_path.exists():
             continue
@@ -1482,10 +1479,12 @@ def _read_bus_token() -> str:
 
 
 def _read_basic_auth() -> str:
-    """Read Basic Auth credentials from env or config files."""
-    auth = os.environ.get("CORTEX_BASIC_AUTH", "")
-    if auth:
-        return auth
+    """Read Basic Auth credentials from env or config files.
+    Checks CORTEX_BUS_AUTH (new), CORTEX_BASIC_AUTH, and CORTEX_INBOX_AUTH (legacy)."""
+    for env_key in ("CORTEX_BUS_AUTH", "CORTEX_BASIC_AUTH", "CORTEX_INBOX_AUTH"):
+        val = os.environ.get(env_key, "")
+        if val:
+            return val
     for cfg_path in _BUS_CONFIG_PATHS:
         if not cfg_path.exists():
             continue
@@ -1496,7 +1495,7 @@ def _read_basic_auth() -> str:
                     continue
                 k, v = (x.strip().strip("'\"").strip() for x in line.split("=", 1))
                 v = re.sub(r"\s+#.*$", "", v).strip()
-                if k == "CORTEX_BASIC_AUTH" and v:
+                if k in ("CORTEX_BUS_AUTH", "CORTEX_BASIC_AUTH", "CORTEX_INBOX_AUTH") and v:
                     return v
         except OSError:
             pass
@@ -1569,8 +1568,9 @@ def dispatch_bus_alerts(res: Results):
         return
 
     token = _read_bus_token()
-    if not token:
-        print("  ℹ️  --bus-alert: CORTEX_BUS_TOKEN not found (set in env or hermes-inbox.conf)")
+    basic_auth = _read_basic_auth()
+    if not token and not basic_auth:
+        print("  ℹ️  --bus-alert: no bus auth found (set CORTEX_BUS_TOKEN or CORTEX_BUS_AUTH in env or hermes-inbox.conf)")
         return
 
     # Determine bus URL — env var, config file, or default
