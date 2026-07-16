@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# hc — Hermes Cortex CLI entrypoint
+# Deployed to ~/.hermes-cortex/scripts/hc and linked to ~/.local/bin/hc
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+HC_PY="${SCRIPT_DIR}/hc.py"
+
+# Fall back to known installation paths
+if [ ! -f "$HC_PY" ]; then
+    for try in \
+        "${HOME}/hermes-cortex/ops/scripts/hc/hc.py" \
+        "${HOME}/.hermes-cortex/scripts/hc.py" \
+        "${HOME}/.local/bin/hc.py"; do
+        if [ -f "$try" ]; then
+            HC_PY="$try"
+            break
+        fi
+    done
+fi
+
+exec python3 "$HC_PY" "$@"
