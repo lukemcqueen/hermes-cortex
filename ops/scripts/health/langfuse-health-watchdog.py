@@ -149,24 +149,6 @@ def check_clickhouse_merges() -> str | None:
         if details:
             alerts.append(f"Details: {details}")
 
-    # Check for stuck bg threads (prior failures + no merges running)
-    if failures > 0:
-        details = _ch_query(
-            "SELECT "
-            "(SELECT value FROM system.metrics WHERE metric = 'Merge') AS am, "
-            "(SELECT value FROM system.metrics WHERE metric = 'BackgroundMergesAndMutationsPoolTask') AS pool, "
-            "(SELECT value FROM system.metrics WHERE metric = 'MergeTreeBackgroundExecutorThreadsActive') AS bg"
-        )
-        if details:
-            parts = details.split()
-            if len(parts) >= 3:
-                try:
-                    am, pool, bg = int(parts[0]), int(parts[1]), int(parts[2])
-                    if bg > 0 and am == 0 and pool == 0:
-                        alerts.append(f"Stuck: {bg} bg threads active but no merges running ({failures} prior failures)")
-                except ValueError:
-                    pass
-
     # Update state
     Path(CH_STATE_FILE).parent.mkdir(parents=True, exist_ok=True)
     Path(CH_STATE_FILE).write_text(str(failures))
