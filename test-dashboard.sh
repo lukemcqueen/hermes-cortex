@@ -145,6 +145,15 @@ LS=$(wc -c < ~/.hermes-cortex/dashboard/static/langfuse.js 2>/dev/null || echo 0
 [ "$LS" -gt 1000 ] && pass "langfuse.js $LS bytes" || fail "langfuse.js $LS bytes"
 
 echo ""
+echo "═══ X. Bus Schema Tests ═══"
+THIS_B=$(cd "$(dirname "$0")" && pwd)
+if [ -f "${THIS_B}/test-bus-schema.sh" ]; then
+  bash "${THIS_B}/test-bus-schema.sh" || { F=$((F+1)); fail "bus-schema subtest failed (see above)"; }
+else
+  fail "test-bus-schema.sh not found"; F=$((F+1))
+fi
+
+echo ""
 echo "═══════════════════════════════════════"
 echo "  $P passed, $F failed"
 echo "═══════════════════════════════════════"

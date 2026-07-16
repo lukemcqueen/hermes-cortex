@@ -152,10 +152,15 @@ def _check_dlqs() -> list[str]:
             depth = q["depth"]
             parent_name = q.get("parent", dlq_name.replace("_dlq", ""))
             
-            # Skip DLQ-of-DLQ chains — only report first-level DLQs
-            # Deeper levels are artifacts of a previous bug; this prevents
-            # noisy alerts until the cleanup cron archives them.
+            # DLQ-of-DLQ chains are a STRUCTURAL DEFECT — never normal.
+            # The bus.requeue() SQL guard should prevent these entirely.
+            # If one appears, something broke the guard (e.g. schema rollback).
             if dlq_name.count("_dlq") > 1:
+                alerts.append(
+                    f"🔴 CRITICAL: Cascade DLQ '{dlq_name}' has {depth} messages. "
+                    f"Parent: {parent_name}. This indicates the DLQ guard "
+                    f"has failed — run test-bus-schema.sh immediately."
+                )
                 continue
             
             alerts.append(

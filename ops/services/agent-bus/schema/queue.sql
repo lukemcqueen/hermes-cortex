@@ -244,13 +244,14 @@ BEGIN
 
         IF v_is_dlq THEN
             -- Already at end-of-line DLQ. Stay in place — reset visibility.
-            -- Message will be auto-archived by recover_timeouts() (24h rule).
+            -- Store caller error (if any) + structural marker so we can distinguish
+            -- legitimate DLQ messages from watchdog-sampled artifacts.
             UPDATE bus.messages
             SET state = 'pending',
                 visible_after = now(),
                 timeout_at = NULL,
                 retry_count = v_msg.retry_count,
-                error = COALESCE(p_error, 'max retries — DLQ end-of-line')
+                error = COALESCE(p_error || '; ', '') || 'max retries — DLQ end-of-line'
             WHERE msg_id = p_msg_id;
         ELSE
             -- Move to DLQ
