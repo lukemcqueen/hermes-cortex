@@ -1,70 +1,64 @@
 #!/usr/bin/env bash
-# ─────────────────────────────────────────────────────────────
-# health-vector-push.sh — Push 9-item health vector to Moses inbox
-#
-# Compact 9-bit health vector POSTed to Moses every 10 min.
-# Silent on success — no_agent watchdog stays quiet.
-# Errors → /tmp/com.hermes.health-push.err
-#
-# Vector layout (from agent-registry.json):
-#   [0] resources           — system resources OK
-#   [1] services            — core services running
-#   [2] no_errored_crons    — no cron jobs with recent errors
-#   [3] no_stale_crons      — no cron jobs gone stale
-#   [4] nginx               — nginx process running
-#   [5] ollama              — Ollama running
-#   [6] gbrain              — gbrain running
-#   [7] disk_ok             — disk space sufficient
-#   [8] gbrain_sources_ok   — gbrain source dirs exist
-#
-# Usage:
-#   AGENT_NAME=titus bash health-vector-push.sh
-# ─────────────────────────────────────────────────────────────
+# health-vector-push.sh — Push health vector to Moses via Agent Bus.
+# Runs as no_agent cron (every 5m). Silent when healthy.
+set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
+# ── Config ──
+HOME="${HOME:-/home/$(whoami)}"
+CONFIG_FILE="$HOME/.hermes-cortex/cortex-bus.conf"
+ENV_FILE="$HOME/hermes-cortex/.env"
+ERROR_LOG="$HOME/.hermes-cortex/logs/health-push-errors.log"
+mkdir -p "$(dirname "$ERROR_LOG")"
 
-# Load config — try .env first, fallback to cortex-bus.conf
-CONFIG_FILE=""
-if [[ -f "${HOME}/hermes-cortex/.env" ]]; then
-    CONFIG_FILE="${HOME}/hermes-cortex/.env"
-elif [[ -f "${HOME}/.hermes-cortex/cortex-bus.conf" ]]; then
-    CONFIG_FILE="${HOME}/.hermes-cortex/cortex-bus.conf"
+# ── Load config from env, then config files ──
+load_var() {
+  local key="$1"
+  local val="${!key:-}"
+  if [[ -n "$val" ]]; then echo "$val"; return; fi
+  for f in "$CONFIG_FILE" "$ENV_FILE"; do
+    [[ -f "$f" ]] || continue
+    local line
+    while IFS= read -r line; do
+      line="${line%%#*}"  # strip comments
+      [[ "$line" == "$key="* ]] || continue
+      echo "${line#*=}" | tr -d "'\""
+      return
+    done < "$f"
+  done
+  echo ""
+}
+
+CORTEX_BUS_URL="$(load_var CORTEX_BUS_URL)"
+CORTEX_BUS_FALLBACK_URL="$(load_var CORTEX_BUS_FALLBACK_URL)"
+CORTEX_BUS_TOKEN="$(load_var CORTEX_BUS_TOKEN)"
+CORTEX_BASIC_AUTH="$(load_var CORTEX_BASIC_AUTH)"
+AGENT_NAME="${AGENT_NAME:-$(load_var AGENT_NAME)}"
+AGENT_NAME="${AGENT_NAME:-titus}"
+
+# ── Resolve URL: primary, then fallback, then fail ──
+BUS_URL="${CORTEX_BUS_URL:-${CORTEX_BUS_FALLBACK_URL:-}}"
+if [[ -z "$BUS_URL" ]]; then
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] CORTEX_BUS_URL not set — cannot push health" >> "$ERROR_LOG"
+  exit 1
 fi
-ERROR_LOG="/tmp/com.hermes.health-push.err"
 
-# ── Load failure state helpers ───────────────────────────────────
-STATE_SCRIPT="${SCRIPT_DIR}/cron-failure-state.sh"
-if [[ -f "$STATE_SCRIPT" ]]; then
-    source "$STATE_SCRIPT"
+# Auth: localhost → Bearer, remote → Basic
+is_local() {
+  local host="${1#*://}"; host="${host%%/*}"; host="${host%%:*}"
+  [[ "$host" == "127.0.0.1" || "$host" == "localhost" ]]
+}
+
+AUTH_ARGS=()
+if is_local "$BUS_URL"; then
+  [[ -n "$CORTEX_BUS_TOKEN" ]] && AUTH_ARGS=(-H "Authorization: Bearer $CORTEX_BUS_TOKEN")
 else
-    # Fallback when running from repo vs deployed
-    STATE_SCRIPT2="${HOME}/.hermes-cortex/scripts/cron-failure-state.sh"
-    [[ -f "$STATE_SCRIPT2" ]] && source "$STATE_SCRIPT2"
-fi
-CRON_STATE_SCRIPT="health-vector-push"
-
-# ── Load config ────────────────────────────────────────────
-if [[ -f "$CONFIG_FILE" ]]; then
-    . "$CONFIG_FILE"
+  [[ -n "$CORTEX_BASIC_AUTH" ]] && AUTH_ARGS=(-u "$CORTEX_BASIC_AUTH")
 fi
 
-: "${CORTEX_BUS_FALLBACK_URL:=${CORTEX_INBOX_URL:=}}"
-: "${CORTEX_BUS_FALLBACK_AUTH:=${CORTEX_INBOX_AUTH:=}}"
-: "${AGENT_NAME:=titus}"
+# Endpoint
+API_URL="${BUS_URL%/}/api/pgmq/send"
 
-if [[ -z "$CORTEX_BUS_FALLBACK_URL" ]]; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] CORTEX_BUS_FALLBACK_URL not set" >> "$ERROR_LOG"
-    exit 1
-fi
-
-# Use /api/send (JSON) endpoint — strip trailing /send if present, append /api/send
-API_URL="${CORTEX_BUS_FALLBACK_URL}"
-API_URL="${API_URL%/send}"
-API_URL="${API_URL%/api/send}"
-API_URL="${API_URL}/api/send"
-
-# ── Vector: default all-1 healthy ──────────────────────────
-# Each check sets its slot to 0=n/a, -1=fail, or leaves 1=pass
+# ── Vector: default all-1 healthy ──
 V_RESOURCES=1     # [0]
 V_SERVICES=1      # [1]
 V_NO_ERR_CRONS=1  # [2]
@@ -92,12 +86,10 @@ command -v pgrep &>/dev/null && pgrep -f gbrain >/dev/null 2>&1 && SVC_OK=1
 [[ "$SVC_OK" -eq 0 ]] && V_SERVICES=-1
 
 # [2] no_errored_crons — check push error log
-if [[ -s "$ERROR_LOG" ]]; then
-    V_NO_ERR_CRONS=-1
-fi
+[[ -s "$ERROR_LOG" ]] && V_NO_ERR_CRONS=-1
 
 # [3] no_stale_crons — best-effort (delegated to orchestrator)
-# Currently always 1; actual stale detection is Moses' job.
+# Always 1; actual stale detection is Moses' job.
 
 # [4] nginx
 if command -v pgrep &>/dev/null; then
@@ -124,9 +116,7 @@ fi
 DF_OUTPUT=$(df / 2>/dev/null | tail -1)
 if [[ -n "$DF_OUTPUT" ]]; then
     PCT=$(echo "$DF_OUTPUT" | awk '{print $5}' | tr -d '%')
-    if [[ -n "$PCT" ]] && [[ "$PCT" -ge 90 ]]; then
-        V_DISK_OK=-1
-    fi
+    [[ -n "$PCT" ]] && [[ "$PCT" -ge 90 ]] && V_DISK_OK=-1
 fi
 
 # [8] gbrain_sources_ok — ~/brain has at least one non-empty subdirectory
@@ -135,8 +125,7 @@ if [[ -d "$BRAIN_HOME" ]]; then
     HAS_SOURCE=0
     for d in "$BRAIN_HOME"/*/; do
         if [[ -d "$d" ]] && [[ -n "$(ls -A "$d" 2>/dev/null)" ]]; then
-            HAS_SOURCE=1
-            break
+            HAS_SOURCE=1; break
         fi
     done
     [[ "$HAS_SOURCE" -eq 0 ]] && V_GBRAIN_SRC=-1
@@ -144,50 +133,36 @@ else
     V_GBRAIN_SRC=-1
 fi
 
-# ── Build inbox message (JSON format Moses can parse) ──────
+# ── Build PGMQ payload ──
 NOW_TS=$(date +%s)
 HNAME='t'
-# Build health vector payload via Python for proper JSON encoding
 PAYLOAD=$(python3 -c "
 import json
 body = json.dumps({'v': [$V_RESOURCES,$V_SERVICES,$V_NO_ERR_CRONS,$V_NO_STALE,$V_NGINX,$V_OLLAMA,$V_GBRAIN,$V_DISK_OK,$V_GBRAIN_SRC], 'h': '$HNAME', 't': $NOW_TS})
-msg = {'from': '$AGENT_NAME', 'subject': 'health', 'body': body}
+msg = {'queue': 'inbox_health_check', 'message': {'from': '$AGENT_NAME', 'subject': 'health', 'body': body}}
 print(json.dumps(msg))
-" 2>/dev/null || echo '{}')
+" 2>/dev/null || echo '{"queue":"inbox_health_check","message":{"from":"'$AGENT_NAME'","subject":"health","body":"{}"}}')
 
-# ── POST to inbox API with fallback (primary remote → local agent inbox) ──
+# ── POST to PGMQ Agent Bus ──
 RESPONSE_FILE=$(mktemp /tmp/health-push-XXXXXX)
 trap 'rm -f "$RESPONSE_FILE"' EXIT
 
-CURL_ARGS=(-s -X POST -H "Content-Type: application/json" -d "$PAYLOAD" -w "\n%{http_code}" --max-time 10)
-if [[ -n "$CORTEX_BUS_FALLBACK_AUTH" ]]; then
-    CURL_ARGS=(-u "$CORTEX_BUS_FALLBACK_AUTH" "${CURL_ARGS[@]}")
-fi
+HTTP_CODE=$(curl -s -X POST "${AUTH_ARGS[@]}" \
+  -H "Content-Type: application/json" \
+  -d "$PAYLOAD" \
+  -w "%{http_code}" \
+  -o "$RESPONSE_FILE" \
+  --max-time 10 "$API_URL" 2>/dev/null || echo "000")
 
 PUSH_OK=0
-ERR_MSG=""
-curl "${CURL_ARGS[@]}" "$API_URL" > "$RESPONSE_FILE" 2>/dev/null && {
-    HTTP_CODE=$(tail -1 "$RESPONSE_FILE")
-    case "$HTTP_CODE" in
-        2*) PUSH_OK=1 ;;
-        *) ERR_MSG="[$(date '+%Y-%m-%d %H:%M:%S')] HTTP $HTTP_CODE to $API_URL" ;;
-    esac
-} || {
-    ERR_MSG="[$(date '+%Y-%m-%d %H:%M:%S')] curl failed to $API_URL"
-}
+case "$HTTP_CODE" in
+    2*) PUSH_OK=1 ;;
+    *)  [[ "$HTTP_CODE" != "000" ]] && echo "[$(date '+%Y-%m-%d %H:%M:%S')] HTTP $HTTP_CODE to $API_URL" >> "$ERROR_LOG"
+        [[ "$HTTP_CODE" == "000" ]] && echo "[$(date '+%Y-%m-%d %H:%M:%S')] curl failed to $API_URL" >> "$ERROR_LOG" ;;
+esac
 
 if [[ "$PUSH_OK" -eq 0 ]]; then
-    ERR_HASH=$(cron_error_hash "health-vector-push: push failed")
-    if cron_should_report "$CRON_STATE_SCRIPT" "$ERR_HASH" 30; then
-        echo "$ERR_MSG" >> "$ERROR_LOG"
-        cron_record_failure "$CRON_STATE_SCRIPT" "$ERR_HASH" 30
-        exit 1
-    fi
-    exit 0
+    exit 1
 fi
 
-# ── Record success ─────────────────────────────────────────
-cron_record_success "$CRON_STATE_SCRIPT"
-
-# Silent success
 exit 0

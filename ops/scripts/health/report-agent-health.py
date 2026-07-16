@@ -48,8 +48,9 @@ TIMEOUT = 15
 # ── Config ────────────────────────────────────────────────────
 
 # Load from config file first
-inbox_url = os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or os.environ.get("CORTEX_INBOX_URL", "")
-inbox_auth = os.environ.get("CORTEX_BUS_FALLBACK_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "")
+inbox_url = os.environ.get("CORTEX_BUS_URL", "") or os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or os.environ.get("CORTEX_INBOX_URL", "")
+inbox_auth = os.environ.get("CORTEX_BASIC_AUTH", "") or os.environ.get("CORTEX_BUS_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "")
+bus_token = os.environ.get("CORTEX_BUS_TOKEN", "")
 agent_name = os.environ.get("AGENT_NAME", "")
 external_health_url = os.environ.get("EXTERNAL_HEALTH_URL", "")
 
@@ -64,14 +65,16 @@ if CONFIG_FILE.exists():
                     k, v = line.split("=", 1)
                     k = k.strip()
                     v = v.strip().strip("'\"")
-                    if k == "CORTEX_BUS_FALLBACK_URL" and not inbox_url:
+                    if k == "CORTEX_BUS_URL" and not inbox_url:
+                        inbox_url = v
+                    elif k == "CORTEX_BUS_FALLBACK_URL" and not inbox_url:
                         inbox_url = v
                     elif k == "CORTEX_INBOX_URL" and not inbox_url:
                         inbox_url = v
-                    elif k == "CORTEX_BUS_FALLBACK_AUTH" and not inbox_auth:
+                    elif k == "CORTEX_BASIC_AUTH" and not inbox_auth:
                         inbox_auth = v
-                    elif k == "CORTEX_INBOX_AUTH" and not inbox_auth:
-                        inbox_auth = v
+                    elif k == "CORTEX_BUS_TOKEN" and not bus_token:
+                        bus_token = v
                     elif k == "EXTERNAL_HEALTH_URL" and not external_health_url:
                         external_health_url = v
     except Exception:
@@ -210,27 +213,51 @@ def build_report(data: dict | None) -> dict:
 # ── Send to Moses inbox ────────────────────────────────────────
 
 def send_report(report: dict) -> bool:
-    """POST health report to Moses's agent inbox via form-encoded data."""
+    """POST health report to Moses via PGMQ Agent Bus."""
     try:
-        import urllib.parse
-        form_data = urllib.parse.urlencode({
-            "from": agent_name,
-            "topic": "health",
-            "subject": f"health-report {report.get('agent', 'unknown')} — {'healthy' if report.get('healthy', False) else 'issues'}",
-            "body": json.dumps(report, indent=2),
-        })
-        req = Request(inbox_url, data=form_data.encode(), headers={
-            "Content-Type": "application/x-www-form-urlencoded",
-            "User-Agent": "hermes-health-reporter/1.0",
-        })
-        if inbox_auth:
-            import base64
-            auth = base64.b64encode(inbox_auth.encode()).decode()
-            req.add_header("Authorization", f"Basic {auth}")
+        import base64
+        api_url = inbox_url.rstrip("/") + "/api/pgmq/send"
+
+        # Auth: localhost → Bearer, remote → Basic
+        host = api_url.split("://")[-1].split("/")[0].split(":")[0]
+        auth_header = ""
+        if host in ("127.0.0.1", "localhost", "::1"):
+            if bus_token:
+                auth_header = f"Bearer {bus_token}"
+        else:
+            if inbox_auth and ":" in inbox_auth:
+                auth_header = f"Basic {base64.b64encode(inbox_auth.encode()).decode()}"
+
+        headers = {"Content-Type": "application/json"}
+        if auth_header:
+            headers["Authorization"] = auth_header
+
+        payload = {
+            "queue": "inbox_moses",
+            "message": {
+                "from": agent_name,
+                "topic": "health",
+                "subject": f"health-report {report.get('agent', 'unknown')} — {'healthy' if report.get('healthy', False) else 'issues'}",
+                "body": json.dumps(report, indent=2),
+            },
+        }
+
+        req = Request(
+            api_url,
+            data=json.dumps(payload).encode(),
+            headers=headers,
+            method="POST",
+        )
         with urlopen(req, timeout=TIMEOUT) as resp:
             return resp.status == 200
     except (HTTPError, URLError, TimeoutError, OSError) as e:
-        print(f"ERROR: Failed to send report: {e}", file=sys.stderr)
+        body = ""
+        if hasattr(e, 'read'):
+            try:
+                body = e.read().decode()[:200]
+            except Exception:
+                pass
+        print(f"ERROR: Failed to send report: {e} {body}", file=sys.stderr)
         return False
 
 

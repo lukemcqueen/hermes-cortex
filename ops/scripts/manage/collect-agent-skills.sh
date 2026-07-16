@@ -175,11 +175,11 @@ if [[ "$TOTAL" -eq 0 ]]; then
   exit 0
 fi
 
-# ── Send to Moses inbox via JSON API ────────────────────────
-BUS_URL="${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-}}"
+# ── Send to Moses inbox via PGMQ Agent Bus ────────────────────
+BUS_URL="${CORTEX_BUS_URL:-${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-}}}"
 if [[ -n "$BUS_URL" ]]; then
   # Export vars for Python subprocess
-  export STATE_DIR
+  export STATE_DIR CORTEX_BUS_TOKEN CORTEX_BASIC_AUTH
 
   python3 << 'PYEOF'
 import json, os, sys, urllib.request, urllib.error, base64, time
@@ -188,8 +188,22 @@ from pathlib import Path
 state_dir = Path(os.environ["STATE_DIR"])
 manifest_file = state_dir / "skills-manifest.json"
 contents_dir = state_dir / "skill-contents"
-inbox_url = (os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or os.environ.get("CORTEX_INBOX_URL", "")).rstrip("/") + "/api/send"
-auth_creds = os.environ.get("CORTEX_BUS_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "")
+bus_url = (os.environ.get("CORTEX_BUS_URL", "") or os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or os.environ.get("CORTEX_INBOX_URL", "")).rstrip("/")
+
+# Auth: localhost → Bearer, remote → Basic
+host = bus_url.split("://")[-1].split("/")[0].split(":")[0]
+if host in ("127.0.0.1", "localhost", "::1"):
+    token = os.environ.get("CORTEX_BUS_TOKEN", "")
+    auth_header = f"Bearer {token}" if token else ""
+else:
+    auth_creds = os.environ.get("CORTEX_BASIC_AUTH", "")
+    if auth_creds and ":" in auth_creds:
+        encoded = base64.b64encode(auth_creds.encode()).decode()
+        auth_header = f"Basic {encoded}"
+    else:
+        auth_header = ""
+
+inbox_url = bus_url + "/api/pgmq/send"
 
 if not manifest_file.exists():
     exit(0)
@@ -235,22 +249,26 @@ for i, s in enumerate(manifest.get("skills", [])):
 
 body_text = "\n".join(parts)
 payload = {
-    "from": hostname,
-    "subject": f"Skill Report: {custom_total} custom skills",
-    "body": body_text,
-    "topic": "reports",
-    "priority": "normal",
+    "queue": "inbox_moses",
+    "message": {
+        "from": hostname,
+        "subject": f"Skill Report: {custom_total} custom skills",
+        "body": body_text,
+        "topic": "reports",
+        "priority": "normal",
+    },
 }
+
+headers = {"Content-Type": "application/json"}
+if auth_header:
+    headers["Authorization"] = auth_header
 
 req = urllib.request.Request(
     inbox_url,
     data=json.dumps(payload).encode("utf-8"),
-    headers={"Content-Type": "application/json"},
+    headers=headers,
     method="POST",
 )
-if auth_creds and ":" in auth_creds:
-    encoded = base64.b64encode(auth_creds.encode()).decode()
-    req.add_header("Authorization", f"Basic {encoded}")
 
 try:
     resp = urllib.request.urlopen(req, timeout=30)

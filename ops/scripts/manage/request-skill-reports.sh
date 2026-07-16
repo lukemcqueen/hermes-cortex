@@ -25,12 +25,14 @@ INBOX_URL=""
 INBOX_AUTH=""
 if [[ -f "${HOME}/hermes-cortex/.env" ]]; then
   set -a; source "${HOME}/hermes-cortex/.env"; set +a
-  INBOX_URL="${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-}}"
-  INBOX_AUTH="${CORTEX_BUS_AUTH:-${CORTEX_INBOX_AUTH:-}}"
+  INBOX_URL="${CORTEX_BUS_URL:-${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-}}}"
+  INBOX_AUTH="${CORTEX_BASIC_AUTH:-${CORTEX_BUS_AUTH:-${CORTEX_INBOX_AUTH:-}}}"
+  BUS_TOKEN="${CORTEX_BUS_TOKEN:-}"
 elif [[ -f "${HOME}/.hermes-cortex/cortex-bus.conf" ]]; then
   source "${HOME}/.hermes-cortex/cortex-bus.conf"
-  INBOX_URL="${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-}}"
-  INBOX_AUTH="${CORTEX_BUS_AUTH:-${CORTEX_INBOX_AUTH:-}}"
+  INBOX_URL="${CORTEX_BUS_URL:-${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-}}}"
+  INBOX_AUTH="${CORTEX_BASIC_AUTH:-${CORTEX_BUS_AUTH:-${CORTEX_INBOX_AUTH:-}}}"
+  BUS_TOKEN="${CORTEX_BUS_TOKEN:-}"
 fi
 
 LAST_RUN_FILE="$STATE_DIR/last-skill-report-request.txt"
@@ -138,29 +140,45 @@ or with 'none' if you have nothing new to report.
     continue
   fi
 
-  # Send via JSON POST to inbox API
+  # Send via PGMQ Agent Bus
   if python3 -c "
 import json, urllib.request, base64, sys
 
+bus_url = '$INBOX_URL'.rstrip('/')
+
+# Auth: localhost → Bearer, remote → Basic
+host = bus_url.split('://')[-1].split('/')[0].split(':')[0]
+if host in ('127.0.0.1', 'localhost', '::1'):
+    token = '$BUS_TOKEN'
+    header = f'Bearer {token}' if token else ''
+else:
+    auth_creds = '$INBOX_AUTH'
+    if auth_creds and ':' in auth_creds:
+        encoded = base64.b64encode(auth_creds.encode()).decode()
+        header = f'Basic {encoded}'
+    else:
+        header = ''
+
+headers = {'Content-Type': 'application/json'}
+if header:
+    headers['Authorization'] = header
+
 payload = {
-    'from': 'moses',
-    'to': '$agent',
-    'subject': '📋 Skill Report Request ($REQUEST_ID)',
-    'body': '''$BODY''',
-    'topic': 'operations',
-    'priority': 'normal',
+    'queue': 'inbox_$agent',
+    'message': {
+        'from': 'moses',
+        'subject': '📋 Skill Report Request ($REQUEST_ID)',
+        'body': '''$BODY''',
+        'topic': 'operations',
+        'priority': 'normal',
+    },
 }
 
-url = '$INBOX_URL'.rstrip('/') + '/api/send'
+url = bus_url + '/api/pgmq/send'
 req = urllib.request.Request(url,
     data=json.dumps(payload).encode('utf-8'),
-    headers={'Content-Type': 'application/json'},
+    headers=headers,
     method='POST')
-
-auth = '$INBOX_AUTH'
-if auth and ':' in auth:
-    encoded = base64.b64encode(auth.encode()).decode()
-    req.add_header('Authorization', f'Basic {encoded}')
 
 try:
     resp = urllib.request.urlopen(req, timeout=15)
