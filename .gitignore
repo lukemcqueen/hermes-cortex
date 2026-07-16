@@ -52,7 +52,11 @@ logs/
 !ops/scripts/agent/agent-worker.py
 !ops/scripts/agent/install-worker.sh
 !ops/scripts/inbox/inbox-depth-watchdog.sh
-!ops/scripts/inbox/bus-audit-watchdog.py
+!ops/scripts/orch-bus/orch-bus-audit-watchdog.py
+!ops/scripts/orch-bus/orch-bus-forwarder.py
+!ops/scripts/orch-bus/orch-bus-message-tracker.py
+!ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh
+!ops/scripts/orch-bus/orch-bus-recover-timeouts.sh
 !ops/scripts/bus/workflow-inspector.py
 .netrc
 
@@ -99,3 +103,4 @@ ops/scripts/
 !ops/scripts/agent/contact-moses.sh
 !ops/scripts/agent/orch-fleet-watchdog.py
 !ops/scripts/health/service-recovery.py
+/runtime

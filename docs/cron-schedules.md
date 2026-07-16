@@ -19,7 +19,11 @@
 
 | Name | Schedule | Type | Script / Prompt | Deliver | Orch? |
 |------|----------|------|-----------------|---------|-------|
-| `bus-audit-watchdog` | `*/1 * * * *` | no_agent | `bus-audit-watchdog.py` | Telegram | — |
+| `orch-bus-audit-watchdog` | `*/1 * * * *` | no_agent | `orch-bus-audit-watchdog.py` | Telegram | ✅ |
+| `orch-bus-forwarder-sync` | `*/2 * * * *` | no_agent | `orch-bus-forwarder.py` | origin | ✅ |
+| `orch-bus-recover-timeouts` | `*/5 * * * *` | no_agent | `orch-bus-recover-timeouts.sh` | origin | ✅ |
+| `orch-bus-confirmation-poller` | `every 10m` | no_agent | `orch-bus-message-tracker.py` | local | ✅ |
+| `orch-bus-confirmation-alert` | `every 60m` | no_agent | `orch-bus-message-tracker-alert.sh` | origin | ✅ |
 | `workflow-dispatcher` | `*/1 * * * *` | no_agent | `workflow-dispatcher.py` | local | — |
 | `workflow-router` | `*/1 * * * *` | no_agent | `workflow-router.py` | local | — |
 | `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | `orch-fleet-watchdog.py` | Telegram | yes |

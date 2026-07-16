@@ -131,9 +131,9 @@ register "ops/scripts/install/install-nginx.sh"           "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/install/install-cortex-update-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-cortex-update-cron.sh"
 register "ops/scripts/install-crons.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-crons.sh"
 register "ops/scripts/bus/workflow-inspector.py"          "${CORTEX_DEPLOY_HOME}/scripts/workflow-inspector.py"
-register "ops/scripts/bus/bus-message-tracker.py"     "${CORTEX_DEPLOY_HOME}/scripts/bus-message-tracker.py"
-register "ops/scripts/bus/bus-message-tracker-alert.sh"     "${CORTEX_DEPLOY_HOME}/scripts/bus-message-tracker-alert.sh"
-register "ops/scripts/bus/bus-forwarder.py"     "${CORTEX_DEPLOY_HOME}/scripts/bus-forwarder.py"
+register "ops/scripts/orch-bus/orch-bus-message-tracker.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker.py"
+register "ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker-alert.sh"
+register "ops/scripts/orch-bus/orch-bus-forwarder.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-forwarder.py"
 register "ops/scripts/install/install-orch-crons.sh"  "${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh"
 register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
 register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
@@ -226,11 +226,16 @@ register "mcp-servers/agent-bus-mcp.py"                "${CORTEX_DEPLOY_HOME}/sc
 
 # Inbox MCP tools
 register "ops/scripts/inbox/inbox-flag.py"              "${CORTEX_DEPLOY_HOME}/scripts/inbox-flag.py"
-register "ops/scripts/inbox/bus-audit-watchdog.py"      "${CORTEX_DEPLOY_HOME}/scripts/bus-audit-watchdog.py"
-register "ops/scripts/bus/bus-forwarder.py"              "${CORTEX_DEPLOY_HOME}/scripts/bus-forwarder.py"
 register "ops/scripts/inbox/inbox-depth-watchdog.sh"    "${CORTEX_DEPLOY_HOME}/scripts/inbox-depth-watchdog.sh"
 register "ops/scripts/inbox/inbox-watch.sh"             "${CORTEX_DEPLOY_HOME}/scripts/inbox-watch.sh"
 register "ops/scripts/install/setup-agent-inbox.sh"       "${CORTEX_DEPLOY_HOME}/scripts/setup-agent-inbox.sh"
+
+# Orchestrator bus tools (orch-bus-*) — deployed by install-orch-crons.sh
+register "ops/scripts/orch-bus/orch-bus-forwarder.py"          "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-forwarder.py"
+register "ops/scripts/orch-bus/orch-bus-audit-watchdog.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-audit-watchdog.py"
+register "ops/scripts/orch-bus/orch-bus-message-tracker.py"    "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker.py"
+register "ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker-alert.sh"
+register "ops/scripts/orch-bus/orch-bus-recover-timeouts.sh"   "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-recover-timeouts.sh"
 register "ops/scripts/manage/loop-gov-mcp.sh"            "${CORTEX_DEPLOY_HOME}/scripts/loop-gov-mcp.sh"
 register "ops/scripts/agent/agent-inbox-monitor.sh"     "${CORTEX_DEPLOY_HOME}/scripts/agent-inbox-monitor.sh"
 register "ops/scripts/agent/orch-inbox-processor.py"   "${CORTEX_DEPLOY_HOME}/scripts/orch-inbox-processor.py"
