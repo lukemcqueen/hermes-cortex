@@ -41,6 +41,3 @@
 | agent-fixer-workday | LLM+skill | 0 9-17 * * 1-5 | Auto-remediation workday |
 | agent-fixer-evening | LLM+skill | 0 18,20,22 * * 1-5 | Auto-remediation evening |
 | agent-fixer-overnight | LLM+skill | 0 3 * * 1-5 | Auto-remediation overnight |
-
-> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
-> Date: 2026-07-15T19:30:43.849964+00:00

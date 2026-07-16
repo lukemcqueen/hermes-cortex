@@ -206,8 +206,7 @@ Three axes when processing inbox messages:
 | normal | AUTO-ACT | AUTO-ACT | Escalate | Escalate |
 | notification | Acknowledge | Acknowledge | Acknowledge | Forward |
 
-**After-action:** Deliver **what** (summary), **how verified** (tool output), **evidence** (excerpt), **cycle ID** (for code changes).
-
+|**After-action:** Deliver **what** (summary), **how verified** (tool output), **evidence** (excerpt), **cycle ID** (for code changes).
 > Content relocated to [`docs/setup-reference.md`](docs/setup-reference.md) for focused reference.
 > _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
@@ -370,8 +369,6 @@ This deployment uses the `hermes-cortex` profile (not the bundled Hermes `person
 
 > Full cron table relocated to [`docs/cron-jobs-reference.md`](docs/cron-jobs-reference.md) for focused reference.
 > _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
-
----
 
 ## Troubleshooting
 
