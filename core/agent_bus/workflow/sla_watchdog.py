@@ -148,26 +148,18 @@ def _check_dlqs() -> list[str]:
     
     for q in queues:
         if q.get("dlq") and q.get("depth", 0) > 0:
-            # Sample the first few messages in the DLQ
             dlq_name = q["name"]
             depth = q["depth"]
-            
-            # Get a sample message for context
-            sample = bus.read(dlq_name, vt=5)
-            sample_info = ""
-            if sample:
-                body = sample.get("body", {})
-                if isinstance(body, dict):
-                    step_name = body.get("step_name", "")
-                    wf_id = body.get("workflow_id", "")
-                    if wf_id:
-                        sample_info = f" (e.g. step '{step_name}' in wf {wf_id[:8]})"
-                # Re-queue the sample
-                bus.requeue(dlq_name, sample["msg_id"], "sampled by watchdog")
-            
             parent_name = q.get("parent", dlq_name.replace("_dlq", ""))
+            
+            # Skip DLQ-of-DLQ chains — only report first-level DLQs
+            # Deeper levels are artifacts of a previous bug; this prevents
+            # noisy alerts until the cleanup cron archives them.
+            if dlq_name.count("_dlq") > 1:
+                continue
+            
             alerts.append(
-                f"⚠️ DLQ '{dlq_name}' has {depth} messages{sample_info}. "
+                f"⚠️ DLQ '{dlq_name}' has {depth} messages. "
                 f"Source queue: {parent_name}"
             )
     

@@ -211,6 +211,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ── Requeue (failed message — increment retry, reset vt) ────
+--
+-- GUARD: If the message is already in a DLQ and has hit max_retries,
+-- it stays in the same DLQ (end-of-line). Never creates DLQ-of-DLQ.
+-- The 24h auto-archive in recover_timeouts() will clean it up.
 
 CREATE OR REPLACE FUNCTION bus.requeue(
     p_queue TEXT,
@@ -220,6 +224,7 @@ CREATE OR REPLACE FUNCTION bus.requeue(
 DECLARE
     v_msg bus.messages;
     v_dlq TEXT;
+    v_is_dlq BOOLEAN;
 BEGIN
     SELECT * INTO v_msg
     FROM bus.messages
@@ -233,22 +238,38 @@ BEGIN
     v_msg.retry_count := v_msg.retry_count + 1;
 
     IF v_msg.retry_count >= v_msg.max_retries THEN
-        -- Move to DLQ
-        v_dlq := p_queue || '_dlq';
+        -- Check if we're already in a DLQ — never create DLQ-of-DLQ
+        SELECT EXISTS (SELECT 1 FROM bus.queues WHERE name = p_queue AND is_dlq = true)
+        INTO v_is_dlq;
 
-        -- Auto-create DLQ if needed
-        INSERT INTO bus.queues (name, is_dlq, parent_queue)
-        VALUES (v_dlq, true, p_queue)
-        ON CONFLICT (name) DO NOTHING;
+        IF v_is_dlq THEN
+            -- Already at end-of-line DLQ. Stay in place — reset visibility.
+            -- Message will be auto-archived by recover_timeouts() (24h rule).
+            UPDATE bus.messages
+            SET state = 'pending',
+                visible_after = now(),
+                timeout_at = NULL,
+                retry_count = v_msg.retry_count,
+                error = COALESCE(p_error, 'max retries — DLQ end-of-line')
+            WHERE msg_id = p_msg_id;
+        ELSE
+            -- Move to DLQ
+            v_dlq := p_queue || '_dlq';
 
-        UPDATE bus.messages
-        SET state = 'pending',
-            queue_name = v_dlq,
-            visible_after = now(),
-            timeout_at = NULL,
-            retry_count = v_msg.retry_count,
-            error = COALESCE(p_error, error)
-        WHERE msg_id = p_msg_id;
+            -- Auto-create DLQ if needed
+            INSERT INTO bus.queues (name, is_dlq, parent_queue)
+            VALUES (v_dlq, true, p_queue)
+            ON CONFLICT (name) DO NOTHING;
+
+            UPDATE bus.messages
+            SET state = 'pending',
+                queue_name = v_dlq,
+                visible_after = now(),
+                timeout_at = NULL,
+                retry_count = v_msg.retry_count,
+                error = COALESCE(p_error, 'max retries exceeded — moved to DLQ')
+            WHERE msg_id = p_msg_id;
+        END IF;
     ELSE
         UPDATE bus.messages
         SET state = 'pending',
