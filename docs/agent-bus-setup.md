@@ -198,6 +198,32 @@ Additionally, workflow queues:
 - **Dead letter:** After 3 failed deliveries (retries), the message moves to the DLQ.
 - **Auto-create:** Queues are auto-created on first `send()` to a new queue name.
 
+### DLQ Maintenance
+
+The `bus.recover_timeouts()` function (called every 5m by `orch-bus-recover-timeouts`) maintains DLQs:
+
+| Action | Condition |
+|--------|-----------|
+| **Requeue** | Messages stuck in `processing` with expired timeout, retries < max → back to `pending` |
+| **Delete** | Messages stuck in `processing` with retries ≥ max AND already in a DLQ (`is_dlq = true`) → deleted |
+| **Move to DLQ** | Messages stuck in `processing` with retries ≥ max AND NOT in a DLQ → moved to `{queue}_dlq` |
+| **Auto-archive** | DLQ messages older than **6 hours** → deleted (only when `is_dlq = true` on the queue) |
+
+**Important:** DLQ queues must have `is_dlq = true` in the `bus.queues` table. Without this flag, the auto-archive and chain-deletion never fire. To fix existing queues:
+
+```sql
+UPDATE bus.queues SET is_dlq = true WHERE name LIKE '%_dlq%' AND is_dlq = false;
+```
+
+**Normal baselines:**
+
+| Metric | Normal | Moderate | High |
+|--------|--------|----------|------|
+| Recoveries/tick | 0–5 | 5–50 | 50+ |
+| DLQ depth | < 50 | 50–200 | 200+ |
+
+The `orch-bus-recover-timeouts` cron is **silent below 50** recoveries — small timeouts are routine. DLQ messages < 6h old are pending; older ones auto-archive on each tick.
+
 ---
 
 ## REST API

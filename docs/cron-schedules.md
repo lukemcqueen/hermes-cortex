@@ -134,3 +134,9 @@ When changing a cron schedule, update this file in the same commit. The change f
 ---
 
 **See also:** [`docs/cron-format-standard.md`](cron-format-standard.md) — required output format for all LLM-driven crons.
+
+### Notes
+
+- `orch-bus-recover-timeouts` — **silent below 50** recoveries/tick. Routine visibility timeouts are normal; threshold was 10 before DLQ auto-archive fix. See [`agent-bus-setup.md`](agent-bus-setup.md#dlq-maintenance) for baselines.
+- `inbox-depth-watchdog` — monitors inbox backlog depth; alerts on buildup.
+- All `orch-*` crons run only on orchestrators (Moses/Esther).
