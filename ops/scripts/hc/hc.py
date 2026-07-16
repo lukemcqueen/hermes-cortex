@@ -9,6 +9,8 @@ No curls, no API paths, no ACLs. Read any queue, see everything.
   hc status            bus health + queue depths + fleet
   hc depth             all queue depths
   hc fleet             agent health statuses
+  hc bus               full bus dashboard (queue states, processing, stuck, DLQ)
+  hc bus --all         include archived activity
   hc watch             watch ALL inbox queues (default)
   hc watch moses       watch only moses' inbox (non-destructive)
   hc doctor            run cortex-doctor
@@ -387,6 +389,220 @@ def cmd_watch(cfg: dict, args: list):
         print("\n👋 Stopped.")
 
 
+def cmd_bus(cfg: dict, args: list):
+    """Show full bus dashboard: queue states, processing, stuck, DLQ, activity."""
+    show_all = "--all" in args or "-a" in args
+    show_archived = "--archived" in args
+
+    # ── Queue summary ────────────────────────────────────────
+    print("🚌 Agent Bus Dashboard")
+    print()
+
+    raw = _psql("""
+        SELECT row_to_json(q) FROM (
+            SELECT
+                q.name,
+                (SELECT count(*) FROM bus.messages WHERE queue_name = q.name AND state = 'pending' AND visible_after <= now()) AS pending,
+                (SELECT count(*) FROM bus.messages WHERE queue_name = q.name AND state = 'processing') AS processing,
+                0::bigint AS archived
+            FROM bus.queues q
+            WHERE q.name LIKE 'inbox_%' AND q.is_dlq = false
+            ORDER BY q.name
+        ) q;
+    """)
+    if raw and not raw.startswith("ERROR"):
+        queues = []
+        for line in raw.split("\n"):
+            line = line.strip()
+            if line:
+                try: queues.append(json.loads(line))
+                except: pass
+        print(f"📊 Queue Summary ({len(queues)} queues):")
+        print(f"   {'Queue':30s} {'Pending':>8s} {'Processing':>11s}")
+        print(f"   {'─'*30} {'─'*8} {'─'*11}")
+        total_pending = total_proc = 0
+        for q in queues:
+            total_pending += q["pending"]
+            total_proc += q["processing"]
+            name = q["name"].replace("inbox_", "")
+            icon = "⚠️" if q["processing"] > 0 else ("📬" if q["pending"] > 0 else "  ")
+            print(f"   {icon} {name:28s} {q['pending']:>8d} {q['processing']:>11d}")
+        print(f"   {'─'*30} {'─'*8} {'─'*11}")
+        print(f"   {'TOTAL':30s} {total_pending:>8d} {total_proc:>11d}")
+    print()
+
+    # ── Processing / In-flight ───────────────────────────────
+    raw = _psql("""
+        SELECT row_to_json(m) FROM (
+            SELECT msg_id::text, queue_name, body,
+                   enqueued_at::text, timeout_at::text,
+                   retry_count, max_retries, error
+            FROM bus.messages
+            WHERE state = 'processing'
+              AND queue_name LIKE 'inbox_%'
+            ORDER BY enqueued_at ASC
+            LIMIT 20
+        ) m;
+    """)
+    if raw and not raw.startswith("ERROR") and raw != "empty":
+        procs = []
+        for line in raw.split("\n"):
+            line = line.strip()
+            if line:
+                try: procs.append(json.loads(line))
+                except: pass
+        if procs:
+            print(f"⚙️  Processing ({len(procs)} message(s)):")
+            now_ts = datetime.now(timezone.utc)
+            for m in procs:
+                body = m.get("body", {})
+                if isinstance(body, str):
+                    try: body = json.loads(body)
+                    except: body = {}
+                frm = body.get("from", "?")
+                subj = body.get("subject", "(no subject)")[:40]
+                enq = m.get("enqueued_at", "")
+                tout = m.get("timeout_at", "")
+                elapsed = ""
+                overdue = ""
+                if tout:
+                    try:
+                        tout_dt = datetime.fromisoformat(tout.replace("Z", "+00:00"))
+                        remaining = (tout_dt - now_ts).total_seconds()
+                        if remaining > 0:
+                            elapsed = f"⏳ {remaining:.0f}s remaining"
+                        else:
+                            elapsed = f"⏰ {abs(remaining):.0f}s overdue"
+                            overdue = " ⚠️"
+                    except: pass
+                if enq:
+                    try:
+                        enq_dt = datetime.fromisoformat(enq.replace("Z", "+00:00"))
+                        age = (now_ts - enq_dt).total_seconds()
+                    except: age = 0
+                agent = m["queue_name"].replace("inbox_", "")
+                retry_info = f" (retry {m.get('retry_count',0)}/{m.get('max_retries',3)})" if m.get("retry_count", 0) > 0 else ""
+                print(f"   {agent:10s} ← {frm:10s} \"{subj}\"  {elapsed}{retry_info}{overdue}")
+            print()
+        else:
+            print(f"⚙️  No messages currently processing.")
+            print()
+
+    # ── Stuck / Timed out ────────────────────────────────────
+    raw = _psql("""
+        SELECT row_to_json(m) FROM (
+            SELECT msg_id::text, queue_name, body,
+                   enqueued_at::text, timeout_at::text,
+                   retry_count, max_retries, error
+            FROM bus.messages
+            WHERE state = 'processing'
+              AND timeout_at < now()
+              AND queue_name LIKE 'inbox_%'
+            ORDER BY timeout_at ASC
+            LIMIT 10
+        ) m;
+    """)
+    if raw and not raw.startswith("ERROR") and raw != "empty":
+        stuck = []
+        for line in raw.split("\n"):
+            line = line.strip()
+            if line:
+                try: stuck.append(json.loads(line))
+                except: pass
+        if stuck:
+            print(f"⏰  STUCK — Past Timeout ({len(stuck)}):")
+            now_ts = datetime.now(timezone.utc)
+            for m in stuck:
+                body = m.get("body", {})
+                if isinstance(body, str):
+                    try: body = json.loads(body)
+                    except: body = {}
+                subj = body.get("subject", "(no subject)")[:40]
+                tout = m.get("timeout_at", "")
+                overdue = "?"
+                if tout:
+                    try:
+                        tout_dt = datetime.fromisoformat(tout.replace("Z", "+00:00"))
+                        overdue = f"{(now_ts - tout_dt).total_seconds():.0f}s overdue"
+                    except: pass
+                agent = m["queue_name"].replace("inbox_", "")
+                retry = f" (retry {m.get('retry_count',0)}/{m.get('max_retries',3)})"
+                err = f" — {m.get('error', '')[:60]}" if m.get("error") else ""
+                print(f"   ⏰ {agent:10s} \"{subj}\"  {overdue}{retry}{err}")
+            print()
+
+    # ── DLQ ──────────────────────────────────────────────────
+    raw = _psql("""
+        SELECT row_to_json(d) FROM (
+            SELECT q.name,
+                   (SELECT count(*) FROM bus.messages
+                    WHERE queue_name = q.name AND state = 'pending') AS depth
+            FROM bus.queues q
+            WHERE q.name LIKE 'inbox_%_dlq' AND q.is_dlq = true
+              AND (SELECT count(*) FROM bus.messages
+                   WHERE queue_name = q.name AND state = 'pending') > 0
+            ORDER BY q.name
+        ) d;
+    """)
+    if raw and not raw.startswith("ERROR") and raw != "empty":
+        dlqs = []
+        for line in raw.split("\n"):
+            line = line.strip()
+            if line:
+                try: dlqs.append(json.loads(line))
+                except: pass
+        if dlqs:
+            print(f"🚫  Dead Letter Queues ({len(dlqs)}):")
+            for d in dlqs:
+                name = d["name"].replace("inbox_", "").replace("_dlq", "")
+                print(f"   🚫 {name:10s} {d['depth']} message(s) — max retries exceeded")
+            print()
+
+    # ── Recent activity (archived) ────────────────────────────
+    if show_all or show_archived:
+        raw = _psql("""
+            SELECT row_to_json(a) FROM (
+                SELECT msg_id, queue_name, body,
+                       archived_at, error
+                FROM bus.messages_archive
+                WHERE queue_name LIKE 'inbox_%'
+                ORDER BY archived_at DESC
+                LIMIT 15
+            ) a;
+        """)
+        if raw and not raw.startswith("ERROR") and raw != "empty":
+            archs = []
+            for line in raw.split("\n"):
+                line = line.strip()
+                if line:
+                    try: archs.append(json.loads(line))
+                    except: pass
+            if archs:
+                print(f"📜 Recent Activity (last {len(archs)} archived):")
+                for a in archs:
+                    body = a.get("body", {})
+                    if isinstance(body, str):
+                        try: body = json.loads(body)
+                        except: body = {}
+                    frm = body.get("from", "?")
+                    to = body.get("to", "?")
+                    subj = body.get("subject", "(no subject)")[:35]
+                    ts = a.get("archived_at", "")[:19] if a.get("archived_at") else ""
+                    err = f" ❌ {a.get('error','')[:40]}" if a.get("error") else " ✅"
+                    print(f"   [{ts}] {frm} → {to:10s} \"{subj}\"{err}")
+                print()
+        else:
+            if show_archived:
+                print("📜 No archived messages found.")
+                print()
+    elif total_pending == 0 and total_proc == 0:
+        print("📭 No activity. All queues idle.")
+        print()
+    else:
+        print("💡 Tip: use 'hc bus --all' or 'hc bus --archived' to see archived messages.")
+        print()
+
+
 def cmd_doctor(cfg: dict, args: list):
     """Run cortex-doctor."""
     for path in [
@@ -432,6 +648,8 @@ def cmd_help(cfg: dict, args: list):
     print("  hc status             — bus health + queue depths + fleet")
     print("  hc depth [agent]      — queue depth (all or specific)")
     print("  hc fleet              — agent health statuses")
+    print("  hc bus                — full bus dashboard (queues, processing, stuck, DLQ)")
+    print("  hc bus --all          — include archived activity")
     print("  hc watch              — watch ALL inbox queues (default)")
     print("  hc watch moses        — watch only moses' inbox")
     print("  hc doctor             — run cortex-doctor")
@@ -448,6 +666,7 @@ COMMANDS = {
     "status": cmd_status,
     "depth": cmd_depth,
     "fleet": cmd_fleet,
+    "bus": cmd_bus,
     "watch": cmd_watch,
     "doctor": cmd_doctor,
     "dashboard": cmd_dashboard,
