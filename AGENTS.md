@@ -208,40 +208,8 @@ Three axes when processing inbox messages:
 
 **After-action:** Deliver **what** (summary), **how verified** (tool output), **evidence** (excerpt), **cycle ID** (for code changes).
 
-### Confirmation Protocol — Required When correlation_id Present
-
-When a bus message includes a `correlation_id` field, the receiving agent
-**must** send a confirmation to the sender's inbox after processing it.
-
-**Confirmation message format** (send to `inbox_moses`):
-
-```json
-{
-  "queue": "inbox_moses",
-  "message": {
-    "correlation_id": "<original-correlation-id>",
-    "action_taken": "what you did (e.g. 'ran cortex-update.sh --force-all')",
-    "status": "success | failure | partial",
-    "details": "optional details about what was done"
-  },
-  "correlation_id": "<original-correlation-id>"
-}
-```
-
-The `correlation_id` at the root level is how the bus routes it. Include it
-inside `message` too as a fallback. The sender's confirmation tracker reads
-`inbox_moses` every 10m and matches `correlation_id` to update the tracking
-record.
-
-**Why this exists:** Without confirmations, the sender has no feedback loop.
-Messages move to "processing" state on the bus but the sender never knows if
-the agent read, understood, acted on, or completed the request. Confirmations
-close the loop.
-
-**Escalation:** If a message is not confirmed within the deadline (set by the
-sender), Moses escalates the pending message for human review.
-
----
+> Content relocated to [`docs/setup-reference.md`](docs/setup-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ## Doc Freshness: AGENTS.md + SOUL.md
 
@@ -267,14 +235,8 @@ Each agent can install an `agent-worker` systemd `--user` service that polls the
 
 ### Config
 
-The worker reads from `~/.hermes-cortex/cortex-bus.conf`:
-```ini
-BUS_URL=http://bus-host:8905
-CORTEX_BUS_AUTH=<your-basic-auth>    (legacy: CORTEX_BASIC_AUTH)
-AGENT_NAME=<your-name>
-```
-
-Also accepts `CORTEX_BUS_FALLBACK_URL` and `CORTEX_BUS_AUTH` (primary names). Old names `CORTEX_BUS_URL` and `CORTEX_INBOX_AUTH` are deprecated but still work as fallback.
+> Content relocated to [`docs/reference/cortex-bus-config.md`](docs/reference/cortex-bus-config.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ### How it works
 
@@ -402,45 +364,8 @@ See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md) for
 
 This deployment uses the `hermes-cortex` profile (not the bundled Hermes `personal` profile). All cron jobs, skills, and configs are managed through the cortex layer.
 
-### Cron Jobs Reference
-
-| Name | Type | Schedule | Purpose |
-|------|------|----------|---------|
-| remediation-sensor | no_agent | */5 * * * * | Detect system issues |
-| system-alert-watchdog | no_agent | */30 * * * * | Monitor system alerts |
-| service-recovery | no_agent | */5 * * * * | Auto-recover services |
-| memory-to-brain-sync | no_agent | 0 */6 * * * | Sync memory to gbrain |
-| hermes-update | no_agent | 23 22 * * * | Nightly Hermes update |
-| gbrain-nightly-dream | no_agent | 0 3 * * 6 | Weekly gbrain dream |
-| gbrain-update-sync | no_agent | 0 2 * * 0 | Weekly gbrain sync |
-| hermes-cortex-sync | no_agent | 33 22 * * * | Nightly cortex sync |
-| harvest-lessons | no_agent | 0 5 * * 1 | Weekly lesson harvest |
-| memory-pruning | LLM+prompt | 0 4 * * 1 | Weekly memory prune |
-| auto-save-sessions | no_agent | every 360m | Session persistence |
-| agent-daily-bible-reading | no_agent | 0 1 * * * | Daily scripture reading |
-| threat-pipeline | no_agent | 0 5 * * * | Daily nginx threat update |
-| agent-daily-soul-refinement | LLM+skill | 0 23 * * * | Daily SOUL.md refinement |
-| llm-judge-scorer-weekday | no_agent | 0 12,20 * * 1-5 | Weekday LLM evaluation |
-| llm-judge-scorer-weekend | no_agent | 0 22 * * 0,6 | Weekend LLM evaluation |
-| offline-code-index | no_agent | 0 5 * * 0 | Weekly offline code index |
-| model-health-watchdog | no_agent | 0 7 * * * | Daily model health check |
-| agent-remediate-apply | no_agent | */10 * * * * | Apply remediation fixes |
-| scoring-activity-watchdog | no_agent | 0 14,20 * * * | Monitor scoring activity |
-| skill-miner | no_agent | 0 6 * * 1 | Weekly skill mining |
-| agent-weekly-loop-eval | LLM+skill | 0 9 * * 1 | Weekly loop evaluation |
-| agent-ip-submission | no_agent | */30 * * * * | Submit IP to threat service |
-| agent-apply-fixes | no_agent | */10 * * * * | Apply fix markers |
-| cron-quality-watchdog | no_agent | */10 * * * * | Monitor cron output quality |
-| session-cache-build | no_agent | 0 5 * * 1 | Weekly session cache build |
-| agents-md-prune-scan | no_agent | 0 4 * * 1-6 | Daily AGENTS.md prune scan |
-| agents-md-prune-apply | LLM+prompt | 30 4 * * 1-6 | Daily AGENTS.md prune apply |
-| governance-auditor | no_agent | 0 */6 * * * | Governance compliance check |
-| collect-agent-skills | no_agent | 0 */6 * * * | Collect skill usage data |
-| send-skill-report | no_agent | 30 */6 * * * | Send skill reports |
-| langfuse-health-watchdog | no_agent | 0 * * * * | Langfuse ClickHouse health |
-| agent-fixer-workday | LLM+skill | 0 9-17 * * 1-5 | Auto-remediation workday |
-| agent-fixer-evening | LLM+skill | 0 18,20,22 * * 1-5 | Auto-remediation evening |
-| agent-fixer-overnight | LLM+skill | 0 3 * * 1-5 | Auto-remediation overnight |
+> Content relocated to [`docs/cron-jobs-reference.md`](docs/cron-jobs-reference.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ---
 

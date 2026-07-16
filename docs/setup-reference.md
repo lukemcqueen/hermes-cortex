@@ -265,3 +265,17 @@ cd ~/hermes-cortex && python3 ~/.hermes/scripts/populate-governance-db.py
 ```
 
 This creates scored cycles from commits in the last 7 days so governance metrics (cycle counts, scoring activity, no_errored_crons) have baseline data from day one. **Only needed once per machine.**
+
+
+---
+
+### Confirmation Protocol — Required When correlation_id Present
+
+
+When a bus message includes a `correlation_id` field, the receiving agent
+**must** send a confirmation to the sender's inbox after processing it.
+
+**Confirmation message format** (send to `inbox_mose
+
+> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
+> Date: 2026-07-16T19:31:16.193641+00:00
