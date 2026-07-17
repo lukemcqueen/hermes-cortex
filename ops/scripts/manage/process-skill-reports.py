@@ -93,10 +93,12 @@ def read_queue_messages(queue: str, vt: int = 30, limit: int = 10) -> list[dict]
 
 
 def archive_message(queue: str, msg_id: str) -> bool:
-    """Archive (delete) a processed message from the queue.
-    Uses DELETE /api/pgmq/delete (POST returns 405)."""
-    resp = bus_request("/api/pgmq/delete", {"queue": queue, "msg_id": msg_id}, method="DELETE")
-    # Success response is empty or has status
+    """Move a processed message from the queue to the archive table.
+    Uses POST /api/pgmq/archive (preserves message in bus.archives).
+    NEVER use DELETE /api/pgmq/delete — that hard-purges with no archive."""
+    if not msg_id:
+        return False
+    resp = bus_request("/api/pgmq/archive", {"queue": queue, "msg_id": msg_id, "archived_by": "process-skill-reports"}, method="POST")
     return "detail" not in resp
 
 
