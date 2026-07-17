@@ -78,6 +78,8 @@ if CONFIG_FILE.exists():
                         bus_token = v
                     elif k == "EXTERNAL_HEALTH_URL" and not external_health_url:
                         external_health_url = v
+                    elif k == "AGENT_NAME" and not agent_name:
+                        agent_name = v
     except Exception:
         pass
 
