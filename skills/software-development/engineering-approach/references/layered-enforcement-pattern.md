@@ -63,7 +63,7 @@ Any time you need to enforce a new rule across all agent sessions and projects:
 
 | Layer | File | Location |
 |-------|------|----------|
-| 0 | MCP server | `src/mcp-servers/loop-gov-mcp.py` |
+| 0 | MCP server | `mcp-servers/loop-gov-mcp.py` |
 | 1 | Pre-commit hook | `ops/scripts/pre-commit-score` |
 | 1 | Hook installer | `ops/scripts/install-score-hook.sh` |
 | 2 | SOUL.md directive | `~/.hermes/SOUL.md` |

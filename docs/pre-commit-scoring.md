@@ -226,6 +226,6 @@ bash ~/hermes-cortex/core/governance/setup.sh
 
 - [Adoption Enforcement (loop-governance skill)](../skills/software-development/loop-governance/SKILL.md#section-adoption-enforcement) — the four-layer enforcement model
 - `ops/scripts/pre-commit-score` — the hook script
-- `src/mcp-servers/loop-gov-mcp.py` — the primary enforcer MCP server
+- `mcp-servers/loop-gov-mcp.py` — the primary enforcer MCP server
 - `ops/scripts/cortex-update.sh` — deploys the hook via `install_precommit_hook()`
 - `core/governance/setup.sh` — installs `score-cycle` and `loop-feedback` CLI tools

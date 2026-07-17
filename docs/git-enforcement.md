@@ -116,7 +116,7 @@ If you're an agent working on this repo:
 ## Related
 
 - AGENTS.md — rule #10 (scoring), rule #13 (pull before push)
-- `src/mcp-servers/loop-gov-mcp.py` — primary enforcer MCP server
+- `mcp-servers/loop-gov-mcp.py` — primary enforcer MCP server
 - `ops/scripts/pre-push-pull` — the push hook implementation
 - `ops/scripts/pre-commit-score` — the commit hook implementation
 - `ops/scripts/install/install-score-hook.sh` — the installer
