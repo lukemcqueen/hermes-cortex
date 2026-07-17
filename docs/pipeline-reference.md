@@ -128,17 +128,23 @@ code-review (security scan, quality gate)
 
 Each stage consumes the output of the prior one, reducing rework and enforcing quality gates before code is written.
 
-## Skill Miner (Automated, Runs Weekly)
+## Skill Collection (Every 6h, All Agents → Moses)
 
-`skill-miner` runs every Monday 6am on each agent's machine. It scans local data for reusable patterns, scores them, and sends top findings to Moses via the Agent Bus (previously Agent Inbox). No manual effort needed.
+Every agent runs `collect-agent-skills.sh` every 6 hours. It scans `~/.hermes/skills/` and
+`~/.hermes-cortex/skills/` for SKILL.md files not in the upstream repo, then POSTs them
+to Moses' Agent Bus (`inbox_moses` queue, `topic: reports`) via PGMQ.
 
-**What it mines (PII-scrubbed):**
-- Loop governance DB — high-scoring TDD cycles
-- Session history — successful patterns
-- Agent memory — MEMORY.md, USER.md content
-- Custom skills — skills installed locally but not in the repo
+### Processing (Moses-side)
 
-**Output:** Top 5 findings sent to `to=moses` (default) with `cc=luke` via the Agent Bus. Moses reviews, consolidates, and pushes to hermes-cortex.
+Moses runs `skill-report-process` (no_agent, daily at 06:00 and 18:00 KST):
+
+1. Reads messages from `inbox_moses` PGMQ queue
+2. Filters for `Skill Report:` subjects
+3. Parses skill data (name, category, line count, age, description)
+4. Produces a formatted digest delivered to Telegram
+5. Archives processed messages from the queue
+
+**To review:** `skill_view(name="<skill>")` then upstream via `public-contribution` skill.
 
 ---
 
@@ -146,10 +152,9 @@ Each stage consumes the output of the prior one, reducing rework and enforcing q
 
 | Cron | Type | Schedule | Script / Skill | Deliver |
 |------|------|----------|----------------|---------|
-| `governance-auditor` | no_agent | `0 */6 * * *` | `governance-auditor.py` | origin |
-| `scoring-activity-watchdog` | no_agent | `0 14,20 * * *` | `scoring-activity-watchdog.py` | origin |
 | `skill-miner` | no_agent | `0 6 * * 1` | `skill_miner.py` | origin |
 | `agent-weekly-loop-eval` | LLM+skill | `0 9 * * 1` | `loop-governance` | origin |
+| `skill-report-process` | no_agent | `0 6,18 * * *` | `process-skill-reports.py` | origin |
 | `session-cache-build` | no_agent | `0 5 * * 1` | `session_cache.py` | origin |
 | `cron-quality-watchdog` | no_agent | `*/10 * * * *` | `cron-quality-watchdog.py` | origin |
 

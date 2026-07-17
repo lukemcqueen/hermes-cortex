@@ -1,108 +1,130 @@
 #!/usr/bin/env python3
 """process-skill-reports.py — Moses-side: compile agent skill reports
-from the inbox into a digest for Moses to review.
+from the PGMQ bus into a digest for Moses to review.
 
-Reads inbox messages from the "reports" topic and identifies
-skill-report messages (subject: "Skill Report:").
+Reads messages from the inbox_moses PGMQ queue, filters for skill-report
+messages (topic: reports, subject: "Skill Report:"), extracts skill data,
+and produces a formatted digest.
 
-Output: formatted digest to stdout (Telegram-friendly Markdown).
-         Silent when no new reports since last processed.
+Replaced the retired v1 HTTP /api/inbox with direct PGMQ queue reads.
 
 Usage:
     python3 process-skill-reports.py              # show pending reports
     python3 process-skill-reports.py --all        # show ALL reports (not just new)
-    python3 process-skill-reports.py --mark-read  # mark processed reports as read
+    python3 process-skill-reports.py --mark-read  # archive processed reports
 """
 
-import base64
 import json
 import os
 import re
 import sys
-from datetime import datetime
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.request import Request, urlopen
-from urllib.error import URLError
+from urllib.error import URLError, HTTPError
 
 # ── Config from environment ─────────────────────────────────
-# CORTEX_BUS_FALLBACK_URL is the primary source, with fallback to CORTEX_INBOX_URL
-CORTEX_BUS_FALLBACK_URL = os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or os.environ.get("CORTEX_INBOX_URL", "")
-CORTEX_BUS_AUTH = os.environ.get("CORTEX_BUS_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "")
+CORTEX_BUS_URL = os.environ.get("CORTEX_BUS_URL", "http://127.0.0.1:8903")
+CORTEX_BUS_TOKEN = os.environ.get("CORTEX_BUS_TOKEN", "")
 
 # Try reading from .env if env vars not set
-if not CORTEX_BUS_FALLBACK_URL:
+if not CORTEX_BUS_TOKEN:
     for conf in [Path.home() / "hermes-cortex" / ".env",
+                 Path.home() / ".hermes-cortex" / "cortex-bus.conf",
                  Path.home() / ".hermes" / "cortex-bus.conf"]:
         if conf.exists():
             try:
                 for line in conf.read_text().splitlines():
                     line = line.strip()
-                    if line.startswith("CORTEX_BUS_FALLBACK_URL="):
+                    if line.startswith("CORTEX_BUS_TOKEN="):
                         val = line.split("=", 1)[1].strip().strip("'\"")
                         if val:
-                            CORTEX_BUS_FALLBACK_URL = val
-                    elif line.startswith("CORTEX_INBOX_URL="):
+                            CORTEX_BUS_TOKEN = val
+                    elif line.startswith("CORTEX_BUS_URL=") and not CORTEX_BUS_URL:
                         val = line.split("=", 1)[1].strip().strip("'\"")
                         if val:
-                            CORTEX_BUS_FALLBACK_URL = val
-                    elif line.startswith("CORTEX_BUS_AUTH="):
-                        val = line.split("=", 1)[1].strip().strip("'\"")
-                        if val:
-                            CORTEX_BUS_AUTH = val
-                    elif line.startswith("CORTEX_INBOX_AUTH="):
-                        val = line.split("=", 1)[1].strip().strip("'\"")
-                        if val:
-                            CORTEX_BUS_AUTH = val
+                            CORTEX_BUS_URL = val
             except Exception:
                 pass
-        if CORTEX_BUS_FALLBACK_URL:
+        if CORTEX_BUS_TOKEN:
             break
 
-INBOX_URL = CORTEX_BUS_FALLBACK_URL.rstrip("/")
+BUS_URL = CORTEX_BUS_URL.rstrip("/")
 STATE_DIR = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state"
 PROCESSED_MARKER = STATE_DIR / "last-skill-report-processed.txt"
+QUEUE = "inbox_moses"
 
-TOPIC_FILTER = "reports"
 
-def build_auth_header() -> dict:
-    """Build Basic Auth header if credentials available."""
-    if CORTEX_BUS_AUTH and ":" in CORTEX_BUS_AUTH:
-        encoded = base64.b64encode(CORTEX_BUS_AUTH.encode()).decode()
-        return {"Authorization": "Basic " + encoded}
-    return {}
-
-def fetch_inbox_messages(topic: str = "", unread_only: bool = True) -> list[dict]:
-    """Fetch inbox messages from the agent inbox API."""
-    url = f"{INBOX_URL}/api/inbox"
-    params = []
-    if topic:
-        params.append(f"topic={topic}")
-    if unread_only:
-        params.append("unread_only=true")
-    if params:
-        url += "?" + "&".join(params)
+def bus_request(endpoint: str, data: dict | None = None) -> dict:
+    """Make an authenticated request to the PGMQ bus API."""
+    url = f"{BUS_URL}{endpoint}"
+    headers = {
+        "Authorization": f"Bearer {CORTEX_BUS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    body = json.dumps(data).encode() if data else None
 
     try:
-        req = Request(url)
-        for k, v in build_auth_header().items():
-            req.add_header(k, v)
-        with urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-        return data.get("messages", [])
-    except (URLError, json.JSONDecodeError, OSError) as e:
-        print(f"WARN: Could not fetch inbox: {e}", file=sys.stderr)
+        req = Request(url, data=body, headers=headers, method="POST" if data else "GET")
+        with urlopen(req, timeout=15) as resp:
+            raw = resp.read().decode()
+            return json.loads(raw) if raw else {}
+    except HTTPError as e:
+        err_body = e.read().decode() if e.fp else ""
+        print(f"WARN: HTTP {e.code} on {endpoint}: {err_body[:200]}", file=sys.stderr)
+        return {}
+    except (URLError, OSError, json.JSONDecodeError) as e:
+        print(f"WARN: Request failed on {endpoint}: {e}", file=sys.stderr)
+        return {}
+
+
+def read_queue_messages(queue: str, vt: int = 30, limit: int = 10) -> list[dict]:
+    """Read messages from a PGMQ queue. Returns list of message dicts."""
+    payload = {"queue": queue, "vt": vt, "limit": limit}
+    resp = bus_request("/api/pgmq/read", payload)
+    if not resp:
         return []
+    # PGMQ read returns a single message dict (not a list)
+    if isinstance(resp, dict) and "msg_id" in resp:
+        return [resp]
+    return []
 
-def mark_read(message_id: str) -> bool:
-    """Mark an inbox message as read."""
-    url = f"{INBOX_URL}/read/{message_id}"
-    try:
-        req = Request(url)
-        with urlopen(req, timeout=10):
-            return True
-    except (URLError, OSError) as e:
-        print(f"WARN: Could not mark {message_id} as read: {e}", file=sys.stderr)
-        return False
+
+def archive_message(queue: str, msg_id: str) -> bool:
+    """Archive (delete) a processed message from the queue."""
+    resp = bus_request("/api/pgmq/delete", {"queue": queue, "msg_id": msg_id})
+    return bool(resp)
+
+
+def extract_skill_report(msg: dict) -> dict | None:
+    """Extract skill report data from a bus message.
+    Returns dict with from, subject, body, timestamp or None if not a skill report.
+    """
+    inner = msg.get("body", {})
+    if isinstance(inner, str):
+        try:
+            inner = json.loads(inner)
+        except json.JSONDecodeError:
+            return None
+    if not isinstance(inner, dict):
+        return None
+
+    subject = inner.get("subject", "") or ""
+    topic = inner.get("topic", "") or ""
+
+    # Only process skill report messages
+    if "skill report" not in subject.lower() and topic.lower() != "reports":
+        return None
+
+    return {
+        "from": inner.get("from", "?"),
+        "subject": subject,
+        "body": inner.get("body", ""),
+        "timestamp": msg.get("enqueued_at", ""),
+        "msg_id": msg.get("msg_id", ""),
+    }
+
 
 def parse_skills_from_body(body: str) -> list[dict]:
     """Parse skill entries from the report body text."""
@@ -119,15 +141,18 @@ def parse_skills_from_body(body: str) -> list[dict]:
                 })
     return skills
 
+
 def extract_custom_count(body: str) -> int:
     """Extract the custom_skills count from the report body."""
     match = re.search(r"Custom skills[^:]*:\s*(\d+)", body)
     return int(match.group(1)) if match else 0
 
+
 def extract_total_count(body: str) -> int:
     """Extract the total_skills count."""
     match = re.search(r"Total skills[^:]*:\s*(\d+)", body)
     return int(match.group(1)) if match else 0
+
 
 def format_digest(reports: list[dict]) -> str:
     """Format skill reports into a Telegram-friendly digest."""
@@ -167,62 +192,66 @@ def format_digest(reports: list[dict]) -> str:
 
     return "\n".join(lines)
 
+
 def main():
     show_all = "--all" in sys.argv
     mark_read_flag = "--mark-read" in sys.argv
+    max_iterations = int(os.environ.get("MAX_READ_ITERATIONS", "20"))
 
-    # Fetch messages
-    if show_all:
-        messages = fetch_inbox_messages(topic=TOPIC_FILTER, unread_only=False)
-    else:
-        messages = fetch_inbox_messages(topic=TOPIC_FILTER, unread_only=True)
+    # Read messages from inbox_moses queue (PGMQ)
+    all_reports = []
+    seen_msg_ids = set()
 
-    if not messages:
-        return  # Silent — no new messages
+    for iteration in range(max_iterations):
+        messages = read_queue_messages(QUEUE, vt=60, limit=10)
+        if not messages:
+            break  # No more messages
 
-    # Filter to skill-report messages only
-    reports = [m for m in messages if "skill report" in m.get("subject", "").lower()]
+        for msg in messages:
+            msg_id = msg.get("msg_id", "")
+            if not msg_id or msg_id in seen_msg_ids:
+                continue
+            seen_msg_ids.add(msg_id)
 
-    if not reports:
-        return  # Silent
+            report = extract_skill_report(msg)
+            if report:
+                all_reports.append(report)
 
-    # Check if we've already processed these
+    if not all_reports:
+        return  # Silent — no skill reports found
+
+    # Filter out already-processed reports
     last_processed = ""
     if PROCESSED_MARKER.exists():
         last_processed = PROCESSED_MARKER.read_text().strip()
 
     if last_processed and not show_all:
-        new_reports = []
-        for r in reports:
-            msg_id = r.get("id", r.get("filename", ""))
-            if msg_id > last_processed:
-                new_reports.append(r)
-        reports = new_reports
+        new_reports = [r for r in all_reports if r.get("msg_id", "") > last_processed]
+        if not new_reports:
+            return  # All already processed
+        all_reports = new_reports
 
-    if not reports:
-        return  # All already processed
-
-    # Sort by sender name
-    reports.sort(key=lambda r: r.get("from", ""))
+    # Sort by sender
+    all_reports.sort(key=lambda r: r.get("from", ""))
 
     # Format digest
-    digest = format_digest(reports)
+    digest = format_digest(all_reports)
     print(digest)
 
-    # Mark read if requested
+    # Archive messages if --mark-read
     if mark_read_flag:
-        for report in reports:
-            msg_id = report.get("id", report.get("filename", ""))
+        archived_count = 0
+        for report in all_reports:
+            msg_id = report.get("msg_id", "")
             if msg_id:
-                mark_read(msg_id)
+                if archive_message(QUEUE, msg_id):
+                    archived_count += 1
 
         # Record latest processed message ID
-        latest_id = max(
-            r.get("id", r.get("filename", "")) for r in reports
-        )
+        latest_id = max(r.get("msg_id", "") for r in all_reports)
         STATE_DIR.mkdir(parents=True, exist_ok=True)
         PROCESSED_MARKER.write_text(latest_id)
-        print(f"\n*Marked {len(reports)} report(s) as read*")
+        print(f"\n*Archived {archived_count}/{len(all_reports)} report(s) from bus queue*")
 
 
 if __name__ == "__main__":

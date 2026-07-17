@@ -996,6 +996,17 @@ create_cron "collect-agent-skills" "0 */6 * * *" \
 #  Agent inbox migrated to Agent Bus (PGMQ). Collect-agent-skills.sh
 #  still runs independently; this reporter cron was dead code.)
 
+# Moses-side: process skill reports from PGMQ bus — only runs on orchestrator
+# Reads inbox_moses queue, filters for Skill Report messages, produces digest
+create_cron "skill-report-process" "0 6,18 * * *" \
+  "process-skill-reports.py" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
 echo ""
 printf "${CYAN}━━━ Summary ━━━${RESET}\n"
 if $DRY_RUN; then
