@@ -102,13 +102,15 @@ def read_queue_messages(queue: str, vt: int = 30, limit: int = 10) -> list[dict]
     resp = bus_request("/api/pgmq/read", payload)
     if not resp:
         return []
-    if isinstance(resp, dict) and "msg_id" in resp:
+    if isinstance(resp, dict) and resp.get("msg_id"):
         return [resp]
     return []
 
 
 def archive_message(queue: str, msg_id: str) -> bool:
     """Delete a processed message from the queue (DELETE method)."""
+    if not msg_id:
+        return False
     resp = bus_request("/api/pgmq/delete", {"queue": queue, "msg_id": msg_id}, method="DELETE")
     return "detail" not in resp
 
@@ -352,9 +354,13 @@ def main():
 
     if not reports:
         # Archive non-skill-report messages so they don't pile up
+        archived = 0
         for msg in messages:
-            archive_message(QUEUE, msg.get("msg_id", ""))
-        return  # Silent
+            if archive_message(QUEUE, msg.get("msg_id", "")):
+                archived += 1
+        if archived:
+            print(f"Cleaned {archived} non-report message(s) from queue", file=sys.stderr)
+        return  # Silent for normal operation
 
     # ── Phase 3: Build dedup sets ──
     repo_skills = _walk_skill_names(REPO_SKILLS_DIR, "repo")

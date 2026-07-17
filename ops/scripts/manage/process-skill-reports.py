@@ -87,7 +87,7 @@ def read_queue_messages(queue: str, vt: int = 30, limit: int = 10) -> list[dict]
     if not resp:
         return []
     # PGMQ read returns a single message dict (not a list)
-    if isinstance(resp, dict) and "msg_id" in resp:
+    if isinstance(resp, dict) and resp.get("msg_id"):
         return [resp]
     return []
 
