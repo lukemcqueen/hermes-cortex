@@ -173,8 +173,8 @@ register "ops/scripts/install/install-post-commit-hook.sh"    "${CORTEX_DEPLOY_H
 # Template drift checker (runs during cortex-update.sh)
 register "ops/scripts/manage/template-diff-check.py"          "${CORTEX_DEPLOY_HOME}/scripts/template-diff-check.py"
 
-# Moses inbox remediation
-register "ops/scripts/agent/orch-inbox-remediate.sh"  "${CORTEX_DEPLOY_HOME}/scripts/orch-inbox-remediate.sh"
+# Moses bus remediation (renamed from inbox)
+register "ops/scripts/bus/orch-bus-remediate.sh"  "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-remediate.sh"
 
 # Auto-remediation scripts
 register "ops/scripts/health/cron-auto-remediate.sh"     "${CORTEX_DEPLOY_HOME}/scripts/cron-auto-remediate.sh"
@@ -194,7 +194,7 @@ register "ops/scripts/health/scoring-activity-watchdog.py" "${CORTEX_DEPLOY_HOME
 register "ops/scripts/state_tracker.py"             "${CORTEX_DEPLOY_HOME}/scripts/state_tracker.py"
 register "ops/scripts/health/check-certs.py"               "${CORTEX_DEPLOY_HOME}/scripts/check-certs.py"
 # daily-bible-reading.sh was deleted from repo — replaced by agent-daily-bible-reading.py
-register "ops/scripts/inbox/generate-inbox-wrappers.py"   "${CORTEX_DEPLOY_HOME}/scripts/generate-inbox-wrappers.py"
+register "ops/scripts/bus/generate-bus-wrappers.py"      "${CORTEX_DEPLOY_HOME}/scripts/generate-bus-wrappers.py"
 register "ops/scripts/manage/nginx-security-scanner.sh"    "${CORTEX_DEPLOY_HOME}/scripts/nginx-security-scanner.sh"
 register "ops/scripts/manage/nginx-threat-pipeline.sh"     "${CORTEX_DEPLOY_HOME}/scripts/nginx-threat-pipeline.sh"
 register "ops/scripts/manage/deploy-blocked-ips.sh"        "${CORTEX_DEPLOY_HOME}/scripts/deploy-blocked-ips.sh"
@@ -224,10 +224,18 @@ register "ops/scripts/state_tracker.py"           "${CORTEX_DEPLOY_HOME}/scripts
 register "mcp-servers/agent-bus-mcp.py"                "${CORTEX_DEPLOY_HOME}/scripts/agent-bus-mcp.py"
 
 # Inbox MCP tools
+# Inbox→bus renamed scripts (source files moved to ops/scripts/bus/)
+# inbox-flag.py and inbox-sensor.py retained at ops/scripts/inbox/ for BWC
 register "ops/scripts/inbox/inbox-flag.py"              "${CORTEX_DEPLOY_HOME}/scripts/inbox-flag.py"
+register "ops/scripts/inbox/inbox-sensor.py"             "${CORTEX_DEPLOY_HOME}/scripts/inbox-sensor.py"
 register "ops/scripts/inbox/inbox-depth-watchdog.sh"    "${CORTEX_DEPLOY_HOME}/scripts/inbox-depth-watchdog.sh"
-register "ops/scripts/inbox/inbox-watch.sh"             "${CORTEX_DEPLOY_HOME}/scripts/inbox-watch.sh"
-register "ops/scripts/install/setup-agent-inbox.sh"       "${CORTEX_DEPLOY_HOME}/scripts/setup-agent-inbox.sh"
+register "ops/scripts/bus/bus-sensor.py"                "${CORTEX_DEPLOY_HOME}/scripts/bus-sensor.py"
+# bus-flag.py does not exist yet — inbox-flag.py at ops/scripts/inbox/ is the active version
+register "ops/scripts/bus/agent-bus-monitor.sh"         "${CORTEX_DEPLOY_HOME}/scripts/agent-bus-monitor.sh"
+register "ops/scripts/bus/orch-bus-processor.py"        "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-processor.py"
+register "ops/scripts/bus/orch-bus-remediate.sh"        "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-remediate.sh"
+register "ops/scripts/bus/generate-bus-wrappers.py"     "${CORTEX_DEPLOY_HOME}/scripts/generate-bus-wrappers.py"
+register "ops/scripts/install/setup-agent-bus.sh"       "${CORTEX_DEPLOY_HOME}/scripts/setup-agent-bus.sh"
 
 # Orchestrator bus tools (orch-bus-*) — deployed by install-orch-crons.sh
 register "ops/scripts/orch-bus/orch-bus-forwarder.py"          "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-forwarder.py"
@@ -236,8 +244,8 @@ register "ops/scripts/orch-bus/orch-bus-message-tracker.py"    "${CORTEX_DEPLOY_
 register "ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker-alert.sh"
 register "ops/scripts/orch-bus/orch-bus-recover-timeouts.sh"   "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-recover-timeouts.sh"
 register "ops/scripts/manage/loop-gov-mcp.sh"            "${CORTEX_DEPLOY_HOME}/scripts/loop-gov-mcp.sh"
-register "ops/scripts/agent/agent-inbox-monitor.sh"     "${CORTEX_DEPLOY_HOME}/scripts/agent-inbox-monitor.sh"
-register "ops/scripts/agent/orch-inbox-processor.py"   "${CORTEX_DEPLOY_HOME}/scripts/orch-inbox-processor.py"
+# agent-inbox-monitor.sh and orch-inbox-processor.py replaced by bus equivalents above
+# (ops/scripts/bus/agent-bus-monitor.sh, ops/scripts/bus/orch-bus-processor.py)
 # NOTE: check-agent-messages.sh was renamed to orch-check-agent-messages.sh (local only, not in repo)
 # The crontab on this server was updated to use the correct name.
 #register "ops/scripts/agent/check-agent-messages.sh"    "${CORTEX_DEPLOY_HOME}/scripts/check-agent-messages.sh"

@@ -109,7 +109,13 @@ ops/scripts/
 !ops/scripts/health/service-recovery.py
 !ops/scripts/inbox/inbox-sensor.py
 !ops/scripts/inbox/inbox-flag.py
-!ops/scripts/inbox/inbox-depth-watchdog.sh
+!ops/scripts/bus/
+!ops/scripts/bus/agent-bus-monitor.sh
+!ops/scripts/bus/orch-bus-processor.py
+!ops/scripts/bus/orch-bus-remediate.sh
+!ops/scripts/bus/generate-bus-wrappers.py
+!ops/scripts/bus/bus-sensor.py
+!ops/scripts/install/setup-agent-bus.sh
 !ops/scripts/health/heartbeat.py
 !ops/scripts/health/cron-quality-watchdog.py
 !ops/scripts/health/langfuse-health-watchdog.py
