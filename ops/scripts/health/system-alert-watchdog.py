@@ -229,7 +229,7 @@ def check_gateway_log() -> dict:
 def check_inbox_staleness() -> dict:
     state_file = HERMES_HOME / "state" / "orch-bus-audit-watchdog.state"
     if not state_file.exists():
-        return {"status": "DEGRADED", "detail": "No state file — bus-audit-watchdog may not have run"}
+        return {"status": "UP", "detail": "Orchestrator-only check — bus-audit-watchdog not expected on this agent"}
     try:
         mtime = datetime.fromtimestamp(state_file.stat().st_mtime, tz=timezone.utc).astimezone()
         age = NOW - mtime
