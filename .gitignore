@@ -51,15 +51,14 @@ logs/
 !ops/scripts/agents-doc-audit*
 !ops/scripts/agent/agent-worker.py
 !ops/scripts/agent/install-worker.sh
-!ops/scripts/inbox/inbox-depth-watchdog.sh
+!ops/scripts/orch-bus/orch-bus-depth-watchdog.sh
 !ops/scripts/orch-bus/orch-bus-audit-watchdog.py
 !ops/scripts/orch-bus/orch-bus-forwarder.py
 !ops/scripts/orch-bus/orch-bus-message-tracker.py
 !ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh
 !ops/scripts/orch-bus/orch-bus-recover-timeouts.sh
-!ops/scripts/bus/workflow-inspector.py
-!ops/scripts/bus/inbox-sensor.py
-!ops/scripts/bus/inbox-flag.py
+!ops/scripts/orch-bus/orch-bus-workflow-inspector.py
+!ops/scripts/orch-bus/orch-bus-sensor.py
 
 # OS junk
 .DS_Store
@@ -116,11 +115,17 @@ ops/scripts/
 !ops/scripts/bus/generate-bus-wrappers.py
 !ops/scripts/bus/bus-sensor.py
 !ops/scripts/install/setup-agent-bus.sh
+!ops/scripts/orch-bus/orch-bus-depth-watchdog.sh
+!ops/scripts/orch-bus/orch-bus-sensor.py
+!ops/scripts/orch-bus/orch-bus-health-check.py
 !ops/scripts/health/heartbeat.py
 !ops/scripts/health/cron-quality-watchdog.py
 !ops/scripts/health/langfuse-health-watchdog.py
 !ops/scripts/health/report-agent-health.py
 !ops/scripts/manage/governance-auditor.py
+!ops/scripts/manage/stale-ref-scanner.py
+!ops/scripts/manage/stale-ref-watchdog.sh
+!ops/scripts/manage/change-readiness.sh
 !ops/scripts/cron_format.py
 !ops/scripts/platform_utils.py
 /runtime

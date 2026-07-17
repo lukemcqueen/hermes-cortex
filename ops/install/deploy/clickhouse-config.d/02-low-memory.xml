@@ -65,8 +65,8 @@
         <!-- Each merge fits in ~1/4 of available memory (default 150 GB will always OOM).
              max_bytes_to_merge_at_max_space_in_pool: ~500 MB (default 150 GB!)
              max_bytes_to_merge_at_min_space_in_pool: ~50 MB  (default 1 MB) -->
-        <max_bytes_to_merge_at_max_space_in_pool>805306368</max_bytes_to_merge_at_max_space_in_pool>
-        <!-- 750 MB (increased from 500M to match higher memory limit) -->
+        <max_bytes_to_merge_at_max_space_in_pool>536870912</max_bytes_to_merge_at_max_space_in_pool>
+        <!-- 512 MB (memory limit increased from 3g to 6g, plenty of room for merge) -->
         <max_bytes_to_merge_at_min_space_in_pool>52428800</max_bytes_to_merge_at_min_space_in_pool>
         <!-- 50 MB -->
 

@@ -43,7 +43,7 @@ if [[ "$REPO_DIR" == "/" ]]; then
   else
     for candidate in \
       "$HOME/hermes-cortex" \
-      "$HOME/src/hermes-cortex" \
+      "$HOME/hermes-cortex" \
       "$HOME/git/hermes-cortex"; do
       if [[ -f "$candidate/AGENTS.md" ]]; then
         REPO_DIR="$candidate"
@@ -107,6 +107,18 @@ parse_args() {
 # ── File-to-destination map ─────────────────────────────────
 # Each entry: source_path dest_path [service_label] [restart_cmd]
 # source_path is relative to REPO_DIR
+#
+# ⚠️  RENAME HAZARD: When you rename or move source files in the repo,
+#    you MUST update the corresponding register() entry here. The sync
+#    silently skips entries whose source_path doesn't exist, leaving
+#    stale files in the deploy directory. After any rename:
+#      1. Update this register entry
+#      2. Run cortex-update.sh --force-all
+#      3. Delete the stale deploy file (it won't be cleaned up automatically)
+#
+#    Example: inbox→bus rename (Jul 2026) left 11 stale inbox-* files
+#    in deploy because the register paths weren't updated alongside the
+#    repo files. Verify with: comm -23 <(ls deploy) <(ls repo paths)
 MAP=()
 register() {
   local s1="${1:-}" s2="${2:-}" s3="${3:-}" s4="${4:-}"
@@ -130,11 +142,12 @@ register "ops/scripts/install/install-ollama.sh"          "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/install/install-nginx.sh"           "${CORTEX_DEPLOY_HOME}/scripts/install-nginx.sh"
 register "ops/scripts/install/install-cortex-update-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-cortex-update-cron.sh"
 register "ops/scripts/install-crons.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-crons.sh"
-register "ops/scripts/bus/workflow-inspector.py"          "${CORTEX_DEPLOY_HOME}/scripts/workflow-inspector.py"
+register "ops/scripts/orch-bus/orch-bus-workflow-inspector.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-workflow-inspector.py"
 register "ops/scripts/orch-bus/orch-bus-message-tracker.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker.py"
 register "ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker-alert.sh"
 register "ops/scripts/orch-bus/orch-bus-forwarder.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-forwarder.py"
 register "ops/scripts/install/install-orch-crons.sh"  "${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh"
+register "ops/scripts/install/orch-install-bus.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-install-bus.sh"
 register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
 register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
 register "ops/scripts/pre-push-pull"               "${CORTEX_DEPLOY_HOME}/scripts/pre-push-pull"
@@ -146,6 +159,9 @@ register "ops/scripts/health/check-external-services.sh"   "${CORTEX_DEPLOY_HOME
 register "ops/scripts/secret-leak-watchdog.py"            "${CORTEX_DEPLOY_HOME}/scripts/secret-leak-watchdog.py"
 register "ops/scripts/install-fallback-providers.py"    "${CORTEX_DEPLOY_HOME}/scripts/install-fallback-providers.py"
 register "ops/scripts/manage/cortex-doctor.py"              "${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py"
+register "ops/scripts/manage/stale-ref-scanner.py"            "${CORTEX_DEPLOY_HOME}/scripts/manage/stale-ref-scanner.py"
+register "ops/scripts/manage/stale-ref-watchdog.sh"            "${CORTEX_DEPLOY_HOME}/scripts/manage/stale-ref-watchdog.sh"
+register "ops/scripts/manage/change-readiness.sh"             "${CORTEX_DEPLOY_HOME}/scripts/manage/change-readiness.sh"
 register "ops/scripts/cron-failure-state.sh"       "${CORTEX_DEPLOY_HOME}/scripts/cron-failure-state.sh"
 register "ops/scripts/cron_failure_state.py"       "${CORTEX_DEPLOY_HOME}/scripts/cron_failure_state.py"
 register "ops/scripts/install/seed-project.sh"           "${CORTEX_DEPLOY_HOME}/scripts/seed-project.sh"
@@ -173,7 +189,7 @@ register "ops/scripts/install/install-post-commit-hook.sh"    "${CORTEX_DEPLOY_H
 # Template drift checker (runs during cortex-update.sh)
 register "ops/scripts/manage/template-diff-check.py"          "${CORTEX_DEPLOY_HOME}/scripts/template-diff-check.py"
 
-# Moses bus remediation (renamed from inbox)
+# Moses bus remediation
 register "ops/scripts/bus/orch-bus-remediate.sh"  "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-remediate.sh"
 
 # Auto-remediation scripts
@@ -183,7 +199,8 @@ register "ops/scripts/agent/orch-weekly-auto-fix.py"    "${CORTEX_DEPLOY_HOME}/s
 # System watchdog scripts (no_agent cron jobs)
 register "ops/scripts/health/service-recovery.py"        "${CORTEX_DEPLOY_HOME}/scripts/service-recovery.py"
 register "ops/scripts/platform_utils.py"          "${CORTEX_DEPLOY_HOME}/scripts/platform_utils.py"
-register "ops/scripts/agent/agent-daily-bible-reading.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-daily-bible-reading.py"
+# Agent daily bible reading (deployed from profile scripts)
+register "profiles/personal/scripts/agent-daily-bible-reading.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-daily-bible-reading.py"
 register "ops/scripts/health/langfuse-health-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/langfuse-health-watchdog.py"
 register "ops/scripts/manage/llm-judge-scorer.py"         "${CORTEX_DEPLOY_HOME}/scripts/llm-judge-scorer.py"
 register "ops/scripts/health/model-health-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/model-health-watchdog.py"
@@ -237,6 +254,9 @@ register "ops/scripts/bus/orch-bus-remediate.sh"        "${CORTEX_DEPLOY_HOME}/s
 register "ops/scripts/bus/generate-bus-wrappers.py"     "${CORTEX_DEPLOY_HOME}/scripts/generate-bus-wrappers.py"
 register "ops/scripts/install/setup-agent-bus.sh"       "${CORTEX_DEPLOY_HOME}/scripts/setup-agent-bus.sh"
 
+# Orchestrator bus monitoring tools
+register "ops/scripts/orch-bus/orch-bus-depth-watchdog.sh"  "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-depth-watchdog.sh"
+
 # Orchestrator bus tools (orch-bus-*) — deployed by install-orch-crons.sh
 register "ops/scripts/orch-bus/orch-bus-forwarder.py"          "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-forwarder.py"
 register "ops/scripts/orch-bus/orch-bus-audit-watchdog.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-audit-watchdog.py"
@@ -276,8 +296,15 @@ register "ops/scripts/manage/request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}
 
 # Shared model config loader (imported by many scripts)
 
-# Inbox sensor and health models
-register "ops/scripts/inbox/inbox-sensor.py"             "${CORTEX_DEPLOY_HOME}/scripts/inbox-sensor.py"
+# Orchestrator bus sensor and health models
+register "ops/scripts/orch-bus/orch-bus-sensor.py"        "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-sensor.py"
+register "ops/scripts/orch-bus/orch-bus-health-check.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-health-check.py"
+register "ops/scripts/orch-bus/orch-bus-watch.py"         "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-watch.py"
+register "ops/scripts/orch-bus/orch-bus-mcp-updated.py"   "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-mcp-updated.py"
+register "ops/scripts/orch-bus/orch-bus-workflow-dispatcher.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-workflow-dispatcher.py"
+register "ops/scripts/orch-bus/orch-bus-workflow-router.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-workflow-router.py"
+register "ops/scripts/orch-bus/orch-bus-workflow-sla-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-workflow-sla-watchdog.py"
+register "ops/scripts/orch-bus/test-orch-bus.py"            "${CORTEX_DEPLOY_HOME}/scripts/test-orch-bus.py"
 register "ops/scripts/health/model-health-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/model-health-watchdog.py"
 
 # Timezone helper (required by monitoring scripts)
@@ -285,9 +312,6 @@ register "ops/scripts/hermes_tz.py"                "${CORTEX_DEPLOY_HOME}/script
 
 # Remediation sensor (companion to agent-auto-remediate cron)
 register "ops/scripts/health/remediation-sensor.py"       "${CORTEX_DEPLOY_HOME}/scripts/remediation-sensor.py"
-
-# Inbox monitoring
-register "ops/scripts/inbox/inbox-sensor.py"             "${CORTEX_DEPLOY_HOME}/scripts/inbox-sensor.py"
 
 # Eval harness (agent reliability patterns)
 register "ops/scripts/manage/run-evals.py"                "${CORTEX_DEPLOY_HOME}/scripts/run-evals.py"
@@ -302,14 +326,10 @@ register "ops/scripts/manage/request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/manage/process-skill-reports.py"    "${CORTEX_DEPLOY_HOME}/scripts/process-skill-reports.py"
 # Agent inbox connection config — user creates manually
 
-# A2A Agent Card generator — daily cron generates Agent Card JSON
-register "ops/services/a2a/generate-agent-card.py"         "${CORTEX_DEPLOY_HOME}/scripts/generate-agent-card.py"
-
 # MCP inbox proxy — sudo'd HTTPS proxy with root-owned client cert
 register "ops/scripts/mcp-inbox-proxy"              "${CORTEX_DEPLOY_HOME}/scripts/mcp-inbox-proxy"
 
-# Agent inbox check (used by install.sh for cron setup)
-register "ops/services/agent-inbox/agent-inbox-check.sh"    "${CORTEX_DEPLOY_HOME}/scripts/agent-inbox-check.sh"
+# Agent inbox check is DEPRECATED — replaced by MCP tools. File retained in deploy for reference.
 
 # Lesson-aware scripts (Memory That Compounds)
 register "ops/scripts/manage/daily-lesson-mine.sh"      "${CORTEX_DEPLOY_HOME}/scripts/daily-lesson-mine.sh"
@@ -328,9 +348,9 @@ register "ops/offline/lessons.py"                 "${CORTEX_DEPLOY_HOME}/offline
 register "ops/offline/migrate_fts_reasoning.sql"  "${CORTEX_DEPLOY_HOME}/offline/migrate_fts_reasoning.sql"
 register "ops/offline/auto-update.sh"             "${CORTEX_DEPLOY_HOME}/offline/auto-update.sh"
 
-# A2A Agent-to-Agent Protocol
-register "ops/services/a2a/generate-agent-card.py"         "${CORTEX_DEPLOY_HOME}/scripts/generate-agent-card.py"
-register "ops/services/a2a/agent-card.json"                "${CORTEX_DEPLOY_HOME}/a2a/agent-card.json"
+# A2A Agent Card generator — generates agent identity cards for bus registry
+register "ops/services/bus/agent-card/generate-agent-card.py"         "${CORTEX_DEPLOY_HOME}/scripts/generate-agent-card.py"
+register "ops/services/bus/agent-card/agent-card.json"                "${CORTEX_DEPLOY_HOME}/bus/agent-card.json"
 
 # Templates → ~/.hermes/memories/ (guarded — only if dest missing)
 register "docs/templates/MEMORY.seed.md"      "${CORTEX_DEPLOY_HOME}/memories/MEMORY.md"
@@ -947,36 +967,8 @@ deploy_system_scripts() {
 # Detects known-dead services that should have been removed.
 # Runs on every agent after every update — both Linux + macOS.
 detect_stale_services() {
-  local os
-  os=$(uname -s)
-
-  if [[ "$os" == "Linux" ]]; then
-    local stale_found=0
-    for unit in "a2a-server"; do
-      if systemctl --user is-active --quiet "$unit" 2>/dev/null; then
-        warn "STALE: ${unit}.service (user-level) — deprecated, remove with:"
-        warn "  systemctl --user disable --now ${unit}"
-        stale_found=$((stale_found + 1))
-      fi
-      if systemctl is-active --quiet "$unit" 2>/dev/null; then
-        warn "STALE: ${unit}.service (system-level) — deprecated, remove with:"
-        warn "  sudo systemctl disable --now ${unit}"
-        stale_found=$((stale_found + 1))
-      fi
-    done
-    if [[ "$stale_found" -gt 0 ]]; then
-        echo ""
-    fi
-
-  elif [[ "$os" == "Darwin" ]]; then
-    for label in "com.hermes.a2a-server"; do
-      if launchctl list "$label" &>/dev/null 2>&1; then
-        warn "STALE: ${label} — deprecated, remove with:"
-        warn "  launchctl bootout gui/$(id -u)/${label}"
-        warn "  rm ~/Library/LaunchAgents/${label}.plist"
-      fi
-    done
-  fi
+  # No stale services to detect — old standalone server was merged into bus
+  :
 }
 
 # ── Post-update service verification ─────────────────────────
