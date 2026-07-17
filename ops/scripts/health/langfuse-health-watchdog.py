@@ -11,6 +11,7 @@ Runs every hour as a no_agent cron job. Produces output only on failure.
 """
 import json
 import os
+import shlex
 import subprocess
 import sys
 import time
@@ -38,6 +39,17 @@ def run(cmd: list[str]) -> dict:
             timeout=TIMEOUT,
             cwd=COMPOSE_DIR,
         )
+        # Retry docker commands with sg if permission denied (cron may not
+        # inherit docker group supplementary gid from /etc/group)
+        if r.returncode != 0 and "permission denied" in r.stderr.lower() and cmd[0] == "docker":
+            sg_cmd = " ".join(shlex.quote(c) for c in cmd)
+            r = subprocess.run(
+                ["sg", "docker", "-c", sg_cmd],
+                capture_output=True,
+                text=True,
+                timeout=TIMEOUT,
+                cwd=COMPOSE_DIR,
+            )
         return {"rc": r.returncode, "out": r.stdout.strip(), "err": r.stderr.strip()}
     except FileNotFoundError:
         return {"rc": -1, "out": "", "err": f"command not found: {cmd[0]}"}
