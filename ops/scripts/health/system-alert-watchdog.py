@@ -226,35 +226,6 @@ def check_gateway_log() -> dict:
     # macOS: check launchd (ai.hermes.gateway)
     return _check_launchd("ai.hermes.gateway")
 
-def check_inbox_staleness() -> dict:
-    state_file = HERMES_HOME / "state" / "orch-bus-audit-watchdog.state"
-    if not state_file.exists():
-        # Check if the cron is actually registered on this machine
-        cron_file = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")) / "cron" / "jobs.json"
-        watchdog_registered = False
-        try:
-            if cron_file.exists():
-                data = _json.loads(cron_file.read_text())
-                for job in data.get("jobs", []):
-                    if job.get("name") == "orch-bus-audit-watchdog":
-                        watchdog_registered = True
-                        break
-        except Exception:
-            pass
-        if watchdog_registered:
-            return {"status": "DEGRADED", "detail": "State file missing — orch-bus-audit-watchdog is registered but not running!"}
-        return {"status": "UP", "detail": "Orchestrator-only check — bus-audit-watchdog not expected on this agent"}
-    try:
-        mtime = datetime.fromtimestamp(state_file.stat().st_mtime, tz=timezone.utc).astimezone()
-        age = NOW - mtime
-        if age < timedelta(minutes=5):
-            return {"status": "UP", "detail": f"Last scan: {age.total_seconds() / 60:.0f}m ago"}
-        elif age < timedelta(minutes=10):
-            return {"status": "DEGRADED", "detail": f"Last scan: {age.total_seconds() / 60:.0f}m ago"}
-        return {"status": "DOWN", "detail": f"Last scan: {age.total_seconds() / 60:.0f}m ago — bus-audit-watchdog stalled!"}
-    except Exception as e:
-        return {"status": "ERROR", "detail": f"Could not read state file: {e}"}
-
 def check_memory_sync_freshness() -> dict:
     current = BRAIN_SHARED / "hermes-memory" / "current.md"
     if not current.exists():
@@ -498,7 +469,6 @@ def main():
         "gbrain sources": check_gbrain_sources(),
         "Docker (Langfuse)": check_docker_containers(),
         "Gateway activity": check_gateway_log(),
-        "Agent inbox scan": check_inbox_staleness(),
         "Memory→brain sync": check_memory_sync_freshness(),
     }
 
