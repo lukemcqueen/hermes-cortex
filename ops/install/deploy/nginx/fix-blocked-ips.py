@@ -23,7 +23,9 @@ import sys
 import time
 
 # ── Constants ──
-IPV4_RE = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
+IPV4_RE = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(/\d{1,2})?$")
+# CIDR_PREFIX_RE strips the /NN suffix for validation
+CIDR_PREFIX_RE = re.compile(r"^(.*?)(?:/\d{1,2})?$")
 PRIVATE_RANGES = re.compile(
     r"^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|0\.|169\.254\.|224\.|240\.)"
 )
@@ -127,28 +129,37 @@ def _fix_orphaned_nginx() -> str | None:
 
 
 def is_valid_public_ip(s: str) -> bool:
-    """Return True if s is a valid public IPv4 address (not private/reserved)."""
+    """Return True if s is a valid public IPv4 address (not private/reserved). Accepts CIDR notation."""
+    m = CIDR_PREFIX_RE.match(s)
+    ip_part = m.group(1) if m else s
     if not IPV4_RE.match(s):
         return False
-    parts = [int(p) for p in s.split(".")]
+    parts = [int(p) for p in ip_part.split(".")]
     if not all(0 <= p <= 255 for p in parts):
         return False
-    if PRIVATE_RANGES.match(s):
+    if PRIVATE_RANGES.match(ip_part):
         return False
     return True
 
 
 def repo_dir() -> str:
-    """Detect the hermes-cortex repo directory."""
+    """Detect the hermes-cortex repo directory by walking up from script location."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    candidate = os.path.dirname(os.path.dirname(script_dir))
-    if candidate.endswith("hermes-cortex") or os.path.isdir(os.path.join(candidate, ".git")):
-        return candidate
+    # Walk up from script location until we find .git or hit root
+    current = script_dir
+    while True:
+        if os.path.isdir(os.path.join(current, ".git")):
+            return current
+        parent = os.path.dirname(current)
+        if parent == current:
+            break  # hit filesystem root
+        current = parent
+    # Fallback: try ~/hermes-cortex
     home = os.environ.get("HOME") or os.path.expanduser("~")
     candidate2 = os.path.join(home, "hermes-cortex")
     if os.path.isdir(candidate2):
         return candidate2
-    return candidate
+    return script_dir
 
 
 def read_allow_lines() -> list[str]:
@@ -181,7 +192,7 @@ def read_manual_allowed() -> set[str]:
 def generate_config() -> tuple[list[str], str]:
     """Read blocked_ips.add, validate IPs, return (lines, summary_message)."""
     rdir = repo_dir()
-    source = os.path.join(rdir, "deploy", "nginx", "blocked_ips.add")
+    source = os.path.join(rdir, "ops", "install", "deploy", "nginx", "blocked_ips.add")
 
     if not os.path.exists(source):
         print(f"✗ Source not found: {source}")

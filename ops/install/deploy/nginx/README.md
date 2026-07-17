@@ -276,6 +276,59 @@ A cron job should run daily to:
 4. Re-run the deploy if changes were made
 5. Commit and push any new IPs/filters to the repository
 
-The pipeline (`src/scripts/nginx-threat-pipeline.sh`) handles all of this.
-It uses the legacy deploy script by default — the Python equivalent isn't
-integrated into the pipeline yet.
+The pipeline (`ops/scripts/manage/nginx-threat-pipeline.sh`) handles all of this.
+
+---
+
+## Migration: Legacy `deploy/` Symlink → Canonical `ops/install/deploy/nginx/`
+
+If you previously had this repo before the reorganization, you may have a
+legacy symlink that causes issues. Run this checklist once after pulling:
+
+### 1. Remove the legacy symlink
+
+```bash
+cd ~/hermes-cortex
+# Check if deploy is a symlink (not a real directory)
+ls -la deploy 2>/dev/null
+# If it shows: deploy -> ops/install/deploy
+rm deploy
+echo "✓ Legacy symlink removed"
+```
+
+**Warning:** `rm deploy` (without trailing slash) removes only the symlink.
+`rm -rf deploy/` (WITH trailing slash) follows the symlink and deletes
+the canonical files in `ops/install/deploy/nginx/` — do not add the slash.
+
+### 2. Verify the fix script reads from the canonical path
+
+```bash
+cd ~/hermes-cortex
+grep "source = os.path.join" ops/install/deploy/nginx/fix-blocked-ips.py
+# Should show: ops/install/deploy/nginx/blocked_ips.add
+# If it still says deploy/nginx/blocked_ips.add, pull the latest:
+git pull origin main
+```
+
+### 3. Pull the latest IPs and deploy
+
+```bash
+cd ~/hermes-cortex
+git pull origin main
+sudo -n ops/install/deploy/nginx/fix-blocked-ips.py
+# Expect: "✓ Generated: 14000+ blocked IPs"
+```
+
+### 4. Pull updated scripts
+
+```bash
+bash ops/scripts/cortex-update.sh --force-all
+```
+
+### 5. Verify no leftover symlinks
+
+```bash
+cd ~/hermes-cortex
+find . -maxdepth 2 -name 'deploy' -type l 2>/dev/null && \
+  echo "⚠ Legacy symlink still exists" || echo "✓ Clean"
+```

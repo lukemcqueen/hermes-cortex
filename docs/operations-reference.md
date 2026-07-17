@@ -233,6 +233,20 @@ The installer:
 > Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
 > Date: 2026-07-15T00:00:00+00:00
 
+### Config
+
+The worker reads from `~/.hermes-cortex/cortex-bus.conf`:
+```ini
+BUS_URL=http://bus-host:8905
+CORTEX_BUS_AUTH=<your-basic-auth>
+AGENT_NAME=<your-name>
+```
+
+Also accepts `CORTEX_BUS_FALLBACK_URL` and `CORTEX_BUS_AUTH` (primary names). Deprecated names `CORTEX_BUS_URL` and `CORTEX_INBOX_AUTH` still work as fallback.
+
+> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
+> Date: 2026-07-17T04:00:00+00:00
+
 ---
 
 ### In-session (MCP) — preferred when you have tools

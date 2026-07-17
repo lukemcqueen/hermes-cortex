@@ -1,0 +1,32 @@
+{
+  "name": "moses",
+  "description": "Orchestrator agent for Hermes Cortex — manages infrastructure, cron jobs, system health, agent inbox, and multi-agent orchestration across the fleet.",
+  "url": "https://your-domain.com:13004/a2a",
+  "provider": {
+    "name": "Hermes Cortex",
+    "version": "1.0"
+  },
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "skills": [
+    {"id": "a2a.agent-card", "name": "Agent Card", "description": "Serve A2A Agent Card for agent discovery"},
+    {"id": "a2a.task-delegation", "name": "Task Delegation", "description": "Submit and track tasks via A2A protocol"},
+    {"id": "system.health", "name": "System Health", "description": "Check server health, disk, memory, services, and Ollama status"},
+    {"id": "cron.management", "name": "Cron Management", "description": "Create, update, remove, list cron jobs across the fleet"},
+    {"id": "inbox.messaging", "name": "Inbox Messaging", "description": "Send and receive inter-agent messages with topic channels and priority"},
+    {"id": "loop.governance", "name": "Loop Governance", "description": "Score-cycle, feedback, and audit trail for all code changes"},
+    {"id": "auto.remediation", "name": "Auto-Remediation", "description": "Detect and fix common issues: cron failures, service crashes, disk pressure"},
+    {"id": "security.threat-pipeline", "name": "Threat Defense", "description": "fail2ban, nginx rate limiting, IP blocking, progressive banning"},
+    {"id": "knowledge.gbrain", "name": "gbrain Knowledge", "description": "Persistent knowledge brain with auto-sync, dream cycles, and search"},
+    {"id": "observability.langfuse", "name": "Langfuse Observability", "description": "LLM trace evaluation, quality scoring, and cost tracking"},
+    {"id": "bible.daily-reading", "name": "Daily Bible Reading", "description": "Generate daily SOUL.md scripture entries and brain pages"},
+    {"id": "soul.refinement", "name": "SOUL.md Refinement", "description": "Daily lesson mining, correction application, and principle codification"}
+  ],
+  "authentication": {
+    "type": "mTLS",
+    "verify": "required"
+  }
+}

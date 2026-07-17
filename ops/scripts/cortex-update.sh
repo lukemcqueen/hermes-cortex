@@ -238,7 +238,9 @@ register "ops/scripts/orch-bus/orch-bus-recover-timeouts.sh"   "${CORTEX_DEPLOY_
 register "ops/scripts/manage/loop-gov-mcp.sh"            "${CORTEX_DEPLOY_HOME}/scripts/loop-gov-mcp.sh"
 register "ops/scripts/agent/agent-inbox-monitor.sh"     "${CORTEX_DEPLOY_HOME}/scripts/agent-inbox-monitor.sh"
 register "ops/scripts/agent/orch-inbox-processor.py"   "${CORTEX_DEPLOY_HOME}/scripts/orch-inbox-processor.py"
-register "ops/scripts/agent/check-agent-messages.sh"    "${CORTEX_DEPLOY_HOME}/scripts/check-agent-messages.sh"
+# NOTE: check-agent-messages.sh was renamed to orch-check-agent-messages.sh (local only, not in repo)
+# The crontab on this server was updated to use the correct name.
+#register "ops/scripts/agent/check-agent-messages.sh"    "${CORTEX_DEPLOY_HOME}/scripts/check-agent-messages.sh"
 register "ops/scripts/manage/ek-session-snapshot.py"     "${CORTEX_DEPLOY_HOME}/scripts/ek-session-snapshot.py"
 
 # Fleet watchdog — cross-agent health polling (orch, deployed by install-orch-crons.sh)
