@@ -143,6 +143,7 @@ register "ops/scripts/install/install-nginx.sh"           "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/install/install-cortex-update-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-cortex-update-cron.sh"
 register "ops/scripts/install-crons.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-crons.sh"
 register "ops/scripts/orch-bus/orch-bus-workflow-inspector.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-workflow-inspector.py"
+register "ops/scripts/bus/bus-sensor.py"                 "${CORTEX_DEPLOY_HOME}/scripts/bus-sensor.py"
 register "ops/scripts/orch-bus/orch-bus-message-tracker.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker.py"
 register "ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker-alert.sh"
 register "ops/scripts/orch-bus/orch-bus-forwarder.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-forwarder.py"
