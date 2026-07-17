@@ -143,16 +143,23 @@ def is_valid_public_ip(s: str) -> bool:
 
 
 def repo_dir() -> str:
-    """Detect the hermes-cortex repo directory."""
+    """Detect the hermes-cortex repo directory by walking up from script location."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    candidate = os.path.dirname(os.path.dirname(script_dir))
-    if candidate.endswith("hermes-cortex") or os.path.isdir(os.path.join(candidate, ".git")):
-        return candidate
+    # Walk up from script location until we find .git or hit root
+    current = script_dir
+    while True:
+        if os.path.isdir(os.path.join(current, ".git")):
+            return current
+        parent = os.path.dirname(current)
+        if parent == current:
+            break  # hit filesystem root
+        current = parent
+    # Fallback: try ~/hermes-cortex
     home = os.environ.get("HOME") or os.path.expanduser("~")
     candidate2 = os.path.join(home, "hermes-cortex")
     if os.path.isdir(candidate2):
         return candidate2
-    return candidate
+    return script_dir
 
 
 def read_allow_lines() -> list[str]:
