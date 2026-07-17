@@ -23,7 +23,9 @@ import sys
 import time
 
 # ── Constants ──
-IPV4_RE = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
+IPV4_RE = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(/\d{1,2})?$")
+# CIDR_PREFIX_RE strips the /NN suffix for validation
+CIDR_PREFIX_RE = re.compile(r"^(.*?)(?:/\d{1,2})?$")
 PRIVATE_RANGES = re.compile(
     r"^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|0\.|169\.254\.|224\.|240\.)"
 )
@@ -127,13 +129,15 @@ def _fix_orphaned_nginx() -> str | None:
 
 
 def is_valid_public_ip(s: str) -> bool:
-    """Return True if s is a valid public IPv4 address (not private/reserved)."""
+    """Return True if s is a valid public IPv4 address (not private/reserved). Accepts CIDR notation."""
+    m = CIDR_PREFIX_RE.match(s)
+    ip_part = m.group(1) if m else s
     if not IPV4_RE.match(s):
         return False
-    parts = [int(p) for p in s.split(".")]
+    parts = [int(p) for p in ip_part.split(".")]
     if not all(0 <= p <= 255 for p in parts):
         return False
-    if PRIVATE_RANGES.match(s):
+    if PRIVATE_RANGES.match(ip_part):
         return False
     return True
 
