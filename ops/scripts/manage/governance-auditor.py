@@ -19,6 +19,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from state_tracker import StateTracker
+from typing import Optional
 
 
 def _cron_ts(name: str) -> str:
@@ -131,7 +132,7 @@ def find_recent_files() -> list[dict]:
 
     return results
 
-def _find_git_root(path: str) -> str | None:
+def _find_git_root(path: str) -> Optional[str]:
     """Walk up from path to find .git directory."""
     p = Path(path)
     for parent in [p] + list(p.parents):

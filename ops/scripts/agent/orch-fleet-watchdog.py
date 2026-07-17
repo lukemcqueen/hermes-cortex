@@ -29,6 +29,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from typing import Optional
 
 SCRIPT_DIR = Path(__file__).parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -83,7 +84,7 @@ def _get_agents() -> list[dict]:
     return agents
 
 
-def _fetch(url: str) -> dict | None:
+def _fetch(url: str) -> Optional[dict]:
     """Fetch health endpoint. Returns None if unreachable."""
     try:
         req = Request(url, headers={"Accept": "application/json", "User-Agent": "hermes-fleet-watchdog/1.0"})
@@ -93,7 +94,7 @@ def _fetch(url: str) -> dict | None:
         return None
 
 
-def _fingerprint(data: dict | None) -> str:
+def _fingerprint(data: Optional[dict]) -> str:
     """Stable fingerprint for change detection."""
     if data is None:
         return "unreachable"
@@ -161,7 +162,7 @@ def main():
     now: dict[str, str] = {}
     alerts: list[str] = []
     resolves: list[str] = []
-    poll_results: dict[str, dict | None] = {}
+    poll_results: dict[str, Optional[dict]] = {}
 
     for a in agents:
         key = a["key"]

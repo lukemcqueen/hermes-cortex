@@ -41,7 +41,7 @@ class CronFormat:
         kst = now.astimezone(timezone(timedelta(hours=9))) if not now.tzinfo else now
         return kst.strftime("%Y-%m-%d %H:%M KST")
 
-    def header(self, custom: str | None = None) -> "CronFormat":
+    def header(self, custom: Optional[str] = None) -> "CronFormat":
         """Add header line + separator."""
         if custom:
             self.parts.append(custom)
@@ -52,7 +52,7 @@ class CronFormat:
         self._started = True
         return self
 
-    def phase(self, title: str, summary: str, bullets: list[str] | None = None) -> "CronFormat":
+    def phase(self, title: str, summary: str, bullets: Optional[list[str]] = None) -> "CronFormat":
         """Add a Phase N section."""
         n = sum(1 for p in self.parts if p.startswith("Phase ")) + 1
         line = f"Phase {n} — {title}: {summary}"
@@ -69,7 +69,7 @@ class CronFormat:
         self.parts.append("")
         return self
 
-    def footer(self, model: str | None = None, cost: str = "$0") -> "CronFormat":
+    def footer(self, model: Optional[str] = None, cost: str = "$0") -> "CronFormat":
         """Add footer with cost info."""
         m = model or self.script_name
         self.parts.append(f"📊 {m} | {cost}")
@@ -91,13 +91,13 @@ class CronFormat:
 
     @staticmethod
     def simple(name: str, phase1_title: str, phase1_summary: str,
-               phase1_bullets: list[str] | None = None,
+               phase1_bullets: Optional[list[str]] = None,
                phase2_title: str = "", phase2_summary: str = "",
-               phase2_bullets: list[str] | None = None,
+               phase2_bullets: Optional[list[str]] = None,
                phase3_title: str = "", phase3_summary: str = "",
-               phase3_bullets: list[str] | None = None,
+               phase3_bullets: Optional[list[str]] = None,
                verdict: str = "Complete.",
-               model: str | None = None) -> str:
+               model: Optional[str] = None) -> str:
         """Quick builder for simple scripts."""
         cf = CronFormat(name, "JOB_ID")
         cf.header()
@@ -113,6 +113,7 @@ class CronFormat:
 
 # ── Timezone helper for import ──────────────────────────────
 from datetime import timedelta
+from typing import Optional
 
 
 # ── Standalone usage ───────────────────────────────────────

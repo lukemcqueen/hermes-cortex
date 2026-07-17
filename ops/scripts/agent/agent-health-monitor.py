@@ -41,6 +41,7 @@ PARENT_DIR = SCRIPT_DIR.parent
 if str(PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(PARENT_DIR))
 from hermes_tz import format_timestamp
+from typing import Optional
 
 HOME = Path.home()
 STATE_FILE = HOME / ".hermes" / "state" / "health-state.json"
@@ -67,7 +68,7 @@ def _get_agents() -> list[dict]:
     return agents
 
 
-def _fetch(url: str) -> dict | None:
+def _fetch(url: str) -> Optional[dict]:
     """Fetch health endpoint. Returns None if unreachable, else parsed JSON."""
     try:
         req = Request(url, headers={"Accept": "application/json", "User-Agent": "hermes-health-monitor/1.0"})
@@ -77,7 +78,7 @@ def _fetch(url: str) -> dict | None:
         return None
 
 
-def _fingerprint(data: dict | None) -> str:
+def _fingerprint(data: Optional[dict]) -> str:
     """Stable fingerprint for change detection."""
     if data is None:
         return "unreachable"

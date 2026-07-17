@@ -20,6 +20,7 @@ import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 # ── Config ──────────────────────────────────────────────────────────────────
 CRON_OUTPUT_DIR = Path(os.path.expanduser("~/.hermes/cron/output"))
@@ -53,7 +54,7 @@ def _get_jobs() -> list[dict]:
         return []
 
 
-def _find_latest_output(name: str) -> str | None:
+def _find_latest_output(name: str) -> Optional[str]:
     """Read the most recent output file for a named cron job."""
     job_dir = CRON_OUTPUT_DIR / name
     if not job_dir.is_dir():

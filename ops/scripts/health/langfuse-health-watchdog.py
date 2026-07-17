@@ -16,6 +16,7 @@ import sys
 import time
 import urllib.request
 from pathlib import Path
+from typing import Optional
 
 COMPOSE_DIR = str(Path.home() / "langfuse")
 WEB_URL = "http://localhost:3000"
@@ -44,7 +45,7 @@ def run(cmd: list[str]) -> dict:
         return {"rc": -2, "out": "", "err": "timed out"}
 
 
-def check_docker() -> str | None:
+def check_docker() -> Optional[str]:
     """Return error string if Docker daemon unreachable."""
     r = run(["docker", "ps"])
     if r["rc"] != 0:
@@ -52,7 +53,7 @@ def check_docker() -> str | None:
     return None
 
 
-def check_containers() -> str | None:
+def check_containers() -> Optional[str]:
     """Return error string if expected Langfuse containers aren't running."""
     r = run(["docker", "ps", "--format", "{{.Names}}"])
     if r["rc"] != 0:
@@ -78,7 +79,7 @@ def check_containers() -> str | None:
     return f"Missing containers: {', '.join(sorted(missing))}\n\nAll langfuse containers:\n{statuses}"
 
 
-def check_web() -> str | None:
+def check_web() -> Optional[str]:
     """Return error string if web UI is unreachable or wrong status."""
     try:
         req = urllib.request.Request(WEB_URL, method="GET")
@@ -92,7 +93,7 @@ def check_web() -> str | None:
         return f"Langfuse web check failed: {e}"
 
 
-def _ch_query(sql: str) -> str | None:
+def _ch_query(sql: str) -> Optional[str]:
     """Run a ClickHouse query via docker exec. Returns stdout or None on failure."""
     try:
         r = subprocess.run(
@@ -106,7 +107,7 @@ def _ch_query(sql: str) -> str | None:
         return None
 
 
-def check_clickhouse_merges() -> str | None:
+def check_clickhouse_merges() -> Optional[str]:
     """Check ClickHouse merge failure metrics. Returns alert string or None.
 
     Uses a state file to track TotalMergeFailures between runs and detect

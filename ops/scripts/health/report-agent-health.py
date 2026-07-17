@@ -38,6 +38,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from typing import Optional
 
 HOME = Path.home()
 CONFIG_FILE = HOME / ".hermes" / "cortex-bus.conf"
@@ -91,7 +92,7 @@ if not inbox_url:
 
 # ── Fetch local health ─────────────────────────────────────────
 
-def fetch_local_health() -> dict | None:
+def fetch_local_health() -> Optional[dict]:
     """Fetch from local health server."""
     try:
         req = Request(HEALTH_LOCAL, headers={"Accept": "application/json", "User-Agent": "hermes-health-reporter/1.0"})
@@ -141,7 +142,7 @@ def check_external_reachability() -> dict:
 
 # ── Fingerprint ────────────────────────────────────────────────
 
-def fingerprint(data: dict | None) -> str:
+def fingerprint(data: Optional[dict]) -> str:
     """Stable fingerprint for change detection."""
     if data is None:
         return "unreachable"
@@ -153,7 +154,7 @@ def fingerprint(data: dict | None) -> str:
 
 # ── Build health report ────────────────────────────────────────
 
-def build_report(data: dict | None) -> dict:
+def build_report(data: Optional[dict]) -> dict:
     """Build the health report payload for Moses inbox."""
     now_iso = datetime.now(timezone.utc).isoformat()
 

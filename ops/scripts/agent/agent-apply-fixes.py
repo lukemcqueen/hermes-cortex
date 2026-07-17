@@ -21,6 +21,7 @@ import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Optional
 
 HOME = Path.home()
 STATE_DIR = HOME / ".hermes" / "state"
@@ -150,7 +151,7 @@ def classify_issue(text: str) -> list[tuple[str, str, float]]:
 FIX_HANDLERS_MAP: dict[str, callable] = {}
 
 
-def apply_fix(marker: dict, handlers: dict) -> tuple[str | None, list]:
+def apply_fix(marker: dict, handlers: dict) -> tuple[Optional[str], list]:
     """Try to apply a fix based on marker content. Returns (result, classifications)."""
     subject = marker.get("subject", "")
     body = marker.get("body", "")

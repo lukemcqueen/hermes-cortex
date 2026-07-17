@@ -27,6 +27,7 @@ import time
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 HOME = Path.home()
 CORTEX_ENV = HOME / "hermes-cortex" / ".env"
@@ -85,7 +86,7 @@ def _load_inbox_config() -> dict:
 INBOX_CFG = _load_inbox_config()
 
 
-def _inbox_request(path: str) -> dict | None:
+def _inbox_request(path: str) -> Optional[dict]:
     """Make an authenticated GET to the inbox API. Returns parsed JSON or None."""
     if not INBOX_CFG["url"]:
         return None
@@ -120,7 +121,7 @@ def _record_last_seen(agent_key: str, timestamp_iso: str) -> None:
     LAST_SEEN_FILE.write_text(json.dumps(seen, indent=2))
 
 
-def _last_seen_minutes_ago(agent_key: str) -> int | None:
+def _last_seen_minutes_ago(agent_key: str) -> Optional[int]:
     """Return minutes since agent's last anchor timestamp, or None if unknown."""
     if not LAST_SEEN_FILE.exists():
         return None
@@ -206,7 +207,7 @@ def _get_agents() -> list[dict]:
 
 # ── HTTP fetch ──
 
-def _fetch(url: str) -> dict | None:
+def _fetch(url: str) -> Optional[dict]:
     """Fetch health vector from an agent via HTTP."""
     try:
         req = urllib.request.Request(url, headers={
@@ -221,7 +222,7 @@ def _fetch(url: str) -> dict | None:
 
 # ── Inbox fetch ──
 
-def _fetch_inbox_vector(agent_key: str) -> list[int] | None:
+def _fetch_inbox_vector(agent_key: str) -> Optional[list[int]]:
     """Read the latest health push from the inbox for a given agent.
 
     Looks for the most recent message from this agent containing a

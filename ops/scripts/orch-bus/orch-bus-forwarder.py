@@ -45,6 +45,7 @@ import urllib.request
 import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 HOME = Path.home()
 STATE_FILE = HOME / ".hermes-cortex" / "state" / "bus-forwarder-state.json"
@@ -138,7 +139,7 @@ def _request(
     url: str,
     token: str = "",
     auth: str = "",
-    body: dict | None = None,
+    body: Optional[dict] = None,
 ) -> tuple[int, dict]:
     """Make an HTTP request. Returns (status_code, response_dict).
     
@@ -171,7 +172,7 @@ def _request(
 
 def _read_bus(
     url: str, token: str, auth: str, queue: str
-) -> dict | None:
+) -> Optional[dict]:
     """Read (dequeue with vt=0 — peek without consuming) one message."""
     status, data = _request(
         "POST", f"{url}/api/pgmq/read",

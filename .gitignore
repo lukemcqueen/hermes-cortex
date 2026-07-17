@@ -58,7 +58,8 @@ logs/
 !ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh
 !ops/scripts/orch-bus/orch-bus-recover-timeouts.sh
 !ops/scripts/bus/workflow-inspector.py
-.netrc
+!ops/scripts/bus/inbox-sensor.py
+!ops/scripts/bus/inbox-flag.py
 
 # OS junk
 .DS_Store
@@ -101,9 +102,19 @@ agent-registry.json
 ops/scripts/
 !ops/scripts/agent/orch-fleet-watchdog.py
 !ops/scripts/agent/contact-moses.sh
-!ops/scripts/agent/orch-fleet-watchdog.py
+!ops/scripts/agent/agent-remediate-apply.py
+!ops/scripts/agent/agent-apply-fixes.py
+!ops/scripts/agent/agent-health-monitor.py
+!ops/scripts/agent/orch-health-report.py
 !ops/scripts/health/service-recovery.py
 !ops/scripts/inbox/inbox-sensor.py
 !ops/scripts/inbox/inbox-flag.py
 !ops/scripts/inbox/inbox-depth-watchdog.sh
+!ops/scripts/health/heartbeat.py
+!ops/scripts/health/cron-quality-watchdog.py
+!ops/scripts/health/langfuse-health-watchdog.py
+!ops/scripts/health/report-agent-health.py
+!ops/scripts/manage/governance-auditor.py
+!ops/scripts/cron_format.py
+!ops/scripts/platform_utils.py
 /runtime

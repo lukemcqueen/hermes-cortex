@@ -12,6 +12,7 @@ import time
 import hashlib
 import json
 from pathlib import Path
+from typing import Optional
 
 # Cross-platform service helpers
 from platform_utils import (
@@ -58,7 +59,7 @@ else:
 
 def _make_service(name: str, label: str = "", pgrep: str = "",
                   docker_sub: str = "", restart_label: str = "",
-                  verify_cmd: list | None = None) -> dict:
+                  verify_cmd: Optional[list] = None) -> dict:
     """Factory: create a service config that works on macOS and Linux."""
     return {
         "name": name,
@@ -80,7 +81,7 @@ def _check_scripts() -> bool:
     """Check if critical Hermes scripts are present and executable."""
     critical = [
         "heartbeat.py", "service-recovery.py", "system-alert-watchdog.py",
-        "orch-team-messages.sh", "cron-auto-remediate.sh",
+        "cron-auto-remediate.sh",
     ]
     for name in critical:
         sp = HERMES_SCRIPTS / name
@@ -106,9 +107,10 @@ SERVICES: list[dict] = [
     },
     _make_service("Ollama", label="ollama.service", pgrep="ollama"),
     # gbrain: systemd user service
-    _make_service("gbrain", label="gbrain-sync.service", pgrep="gbrain"),
-    # health-server: systemd user service
-    _make_service("health-server", label="health-vector.service", pgrep="health-vector"),
+    _make_service("gbrain", label="gbrain-autopilot.service", pgrep="gbrain"),
+    # agent-bus: systemd user service (hermes-agent-inbox on :8903)
+    # Acts as local PGMQ proxy/fallback for the bus.
+    _make_service("agent-bus", label="hermes-agent-inbox.service", pgrep="agent-inbox"),
     {
         "name": "scripts",
         "check": _check_scripts,
@@ -118,12 +120,12 @@ SERVICES: list[dict] = [
 ]
 
 
-def _try_restore_scripts() -> str | None:
+def _try_restore_scripts() -> Optional[str]:
     """Try to restore missing scripts from the cortex repo. Returns error or None."""
     restored = []
     critical = [
         "heartbeat.py", "service-recovery.py", "system-alert-watchdog.py",
-        "orch-team-messages.sh", "cron-auto-remediate.sh",
+        "cron-auto-remediate.sh",
         "daily-lesson-mine.sh", "update-session-state.sh",
         "langfuse-health-watchdog.py", "memory-to-brain-sync.py",
         "web-cache-backup.sh", "web-cache-prune.sh",
@@ -153,7 +155,7 @@ def _status_text(svc: dict) -> str:
         return f"❓ error ({e})"
 
 
-def _try_restart(svc: dict) -> str | None:
+def _try_restart(svc: dict) -> Optional[str]:
     """Attempt to restart a service. Returns error string or None on success."""
     name = svc["name"]
     now = time.time()
@@ -166,7 +168,10 @@ def _try_restart(svc: dict) -> str | None:
     verify = svc.get("verify_cmd")
     if verify:
         try:
-            r = subprocess.run(verify, capture_output=True, text=True, timeout=10)
+            # Use sudo for nginx -t: cert files, error logs, and the 'user'
+            # directive all require root-level access to validate.
+            cmd = ["sudo"] + verify if name == "nginx" else verify
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             if r.returncode != 0:
                 return f"❌ {name}: pre-flight check failed ({r.stderr.strip()[:200]}) — not restarting"
         except FileNotFoundError:
@@ -202,7 +207,7 @@ def _try_restart(svc: dict) -> str | None:
         return f"⚠️ {name} restart issued but not confirmed up after 3s"
 
 
-def _fix_gbrain_stale_lock() -> str | None:
+def _fix_gbrain_stale_lock() -> Optional[str]:
     """Check and remove stale gbrain autopilot lock file. Returns message or None."""
     lock = Path.home() / ".gbrain" / "autopilot.lock"
     if not lock.exists():
@@ -225,7 +230,7 @@ def _fix_gbrain_stale_lock() -> str | None:
         return f"lock check error: {e}"
 
 
-def _fix_gbrain_orphan_process() -> str | None:
+def _fix_gbrain_orphan_process() -> Optional[str]:
     """Detect and kill gbrain autopilot running outside systemd.
 
     If a bun/raw gbrain autopilot process is found but the systemd service
