@@ -16,6 +16,7 @@ Install sudoers rule:
     sudo tee /etc/sudoers.d/moses
 """
 import os
+from typing import Optional
 import re
 import signal
 import subprocess
@@ -58,7 +59,7 @@ BLOCKED_CONF = os.path.join(NGINX_CONF_DIR, "blocked_ips.conf")
 ALLOW_MANUAL_CONF = os.path.join(NGINX_CONF_DIR, "allow-ips-manual.conf")
 
 
-def _fix_orphaned_nginx() -> str | None:
+def _fix_orphaned_nginx() -> Optional[str]:
     """Detect and kill orphaned nginx master running outside systemd.
 
     When nginx is started manually (not via systemd), systemd loses track
@@ -66,6 +67,9 @@ def _fix_orphaned_nginx() -> str | None:
     starting. This function kills the orphan and returns a message.
     Returns None if no orphan found.
     """
+    # Skip if systemctl is not available (macOS, containers, etc.)
+    if not os.path.exists("/usr/bin/systemctl") and not os.path.exists("/bin/systemctl"):
+        return None
     # Check systemd status
     r = subprocess.run(
         ["systemctl", "is-active", "nginx"],
