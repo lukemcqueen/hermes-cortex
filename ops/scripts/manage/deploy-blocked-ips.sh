@@ -18,8 +18,7 @@ if [ ! -d "$CORTEX_REPO" ]; then
   CORTEX_REPO="$(cd "$SCRIPT_DIR/../.." && pwd 2>/dev/null || echo "$HOME/hermes-cortex")"
 fi
 
-# Sudoers NOPASSWD matches the old path (deploy/nginx/), not ops/install/deploy/nginx/
-FIX_SCRIPT="${CORTEX_REPO}/deploy/nginx/fix-blocked-ips.py"
+FIX_SCRIPT="${CORTEX_REPO}/ops/install/deploy/nginx/fix-blocked-ips.py"
 
 if [ ! -f "$FIX_SCRIPT" ]; then
   echo "[deploy-blocked-ips] ✗ fix-blocked-ips.py not found at ${FIX_SCRIPT}"
