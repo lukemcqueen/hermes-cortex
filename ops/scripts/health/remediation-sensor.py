@@ -69,7 +69,7 @@ def check_scripts():
     """Check for missing or non-executable scripts."""
     required_scripts = [
         "service-recovery.py", "system-alert-watchdog.py",
-        "cron-auto-remediate.sh",
+        "orch-team-messages.sh", "cron-auto-remediate.sh",
         "daily-lesson-mine.sh", "update-session-state.sh",
     ]
     for script in required_scripts:
@@ -394,17 +394,17 @@ def check_agent_bus():
             if fb_rc == 0 and fb_out.strip() not in ("", "-"):
                 svc_ok = True
     elif sys.platform.startswith("linux"):
-        # Check systemd user service
-        svc_out, _, svc_rc = run("systemctl --user is-active hermes-agent-bus.service 2>/dev/null")
+        # Check systemd user service — actual name is agent-bus.service, not hermes-agent-bus.service
+        svc_out, _, svc_rc = run("systemctl --user is-active agent-bus.service 2>/dev/null")
         svc_ok = (svc_out.strip() == "active")
     
-    # Probe endpoint on :8905
-    curl_out, _, curl_rc = run("curl -s -o /dev/null -w '%{http_code}' http://localhost:8905/health 2>/dev/null")
+    # Probe endpoint on :8903 (verified health endpoint)
+    curl_out, _, curl_rc = run("curl -s -o /dev/null -w '%{http_code}' http://localhost:8903/health 2>/dev/null")
     endpoint_ok = (curl_rc == 0 and curl_out.strip() == "200")
     
     if not svc_ok and not endpoint_ok:
         add_issue("service_down", "high", "Agent Bus is down (service inactive + endpoint unreachable)", {
-            "service": "hermes-agent-bus.service",
+            "service": "agent-bus.service",
             "service_status": svc_out.strip() or "unknown",
             "endpoint_http": curl_out.strip() or "unreachable",
         })
