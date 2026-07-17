@@ -103,4 +103,7 @@ ops/scripts/
 !ops/scripts/agent/contact-moses.sh
 !ops/scripts/agent/orch-fleet-watchdog.py
 !ops/scripts/health/service-recovery.py
+!ops/scripts/inbox/inbox-sensor.py
+!ops/scripts/inbox/inbox-flag.py
+!ops/scripts/inbox/inbox-depth-watchdog.sh
 /runtime
