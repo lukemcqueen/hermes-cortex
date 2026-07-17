@@ -56,7 +56,7 @@ PROCESSED_MARKER = STATE_DIR / "last-skill-report-processed.txt"
 QUEUE = "inbox_moses"
 
 
-def bus_request(endpoint: str, data: dict | None = None) -> dict:
+def bus_request(endpoint: str, data: dict | None = None, method: str | None = None) -> dict:
     """Make an authenticated request to the PGMQ bus API."""
     url = f"{BUS_URL}{endpoint}"
     headers = {
@@ -64,9 +64,10 @@ def bus_request(endpoint: str, data: dict | None = None) -> dict:
         "Content-Type": "application/json",
     }
     body = json.dumps(data).encode() if data else None
+    http_method = method or ("POST" if data else "GET")
 
     try:
-        req = Request(url, data=body, headers=headers, method="POST" if data else "GET")
+        req = Request(url, data=body, headers=headers, method=http_method)
         with urlopen(req, timeout=15) as resp:
             raw = resp.read().decode()
             return json.loads(raw) if raw else {}
@@ -92,9 +93,11 @@ def read_queue_messages(queue: str, vt: int = 30, limit: int = 10) -> list[dict]
 
 
 def archive_message(queue: str, msg_id: str) -> bool:
-    """Archive (delete) a processed message from the queue."""
-    resp = bus_request("/api/pgmq/delete", {"queue": queue, "msg_id": msg_id})
-    return bool(resp)
+    """Archive (delete) a processed message from the queue.
+    Uses DELETE /api/pgmq/delete (POST returns 405)."""
+    resp = bus_request("/api/pgmq/delete", {"queue": queue, "msg_id": msg_id}, method="DELETE")
+    # Success response is empty or has status
+    return "detail" not in resp
 
 
 def extract_skill_report(msg: dict) -> dict | None:
