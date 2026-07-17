@@ -4,12 +4,12 @@
 
 | File | What |
 |------|------|
-| `deploy/nginx/blocked_ips.add` | 11 storage scanner IPs (34.x, 136.x, etc.) |
-| `deploy/nginx/nginx-badbots.conf` | fail2ban filter — extended archive types + `/storage/` path |
-| `deploy/nginx/README.md` | Human setup + daily ops guide |
-| `deploy/nginx/install-nginx-full.sh` | **Legacy** bash deploy script — now superseded by `hermes-services-apply.py` |
-| `deploy/nginx/hermes-services-apply.py` | **Primary** Python deploy script — auto-SSL, port prefix, allow-ips-manual |
-| `deploy/nginx/fix-blocked-ips.py` | Helper — regenerates `blocked_ips.conf` if corrupted with bare IPs |
+| `ops/install/deploy/nginx/blocked_ips.add` | 11 storage scanner IPs (34.x, 136.x, etc.) |
+| `ops/install/deploy/nginx/nginx-badbots.conf` | fail2ban filter — extended archive types + `/storage/` path |
+| `ops/install/deploy/nginx/README.md` | Human setup + daily ops guide |
+| `ops/install/deploy/nginx/install-nginx-full.sh` | **Legacy** bash deploy script — now superseded by `hermes-services-apply.py` |
+| `ops/install/deploy/nginx/hermes-services-apply.py` | **Primary** Python deploy script — auto-SSL, port prefix, allow-ips-manual |
+| `ops/install/deploy/nginx/fix-blocked-ips.py` | Helper — regenerates `blocked_ips.conf` if corrupted with bare IPs |
 | `src/scripts/nginx-security-scanner.sh` | Daily scanner — auto-detect new IPs, auto-deploy |
 | `sudoers.d/hermes-security` | Passwordless sudo for deploy script + nginx + fail2ban |
 
@@ -26,9 +26,9 @@ git push origin main
 
 Share this workflow so every peer can deploy security:
 
-> **Nginx security pipeline deployed.** Run `python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py` to deploy.
-> **Setup for a new machine:** Copy the env template, install the legacy script (if needed), see `deploy/nginx/README.md`.
-> **Add new blocks:** Append bare IPs to `deploy/nginx/blocked_ips.add`, update `nginx-badbots.conf` filters, re-run the script.
+> **Nginx security pipeline deployed.** Run `python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py` to deploy.
+> **Setup for a new machine:** Copy the env template, install the legacy script (if needed), see `ops/install/deploy/nginx/README.md`.
+> **Add new blocks:** Append bare IPs to `ops/install/deploy/nginx/blocked_ips.add`, update `nginx-badbots.conf` filters, re-run the script.
 > **Manual allow list:** Add `allow IP;` to `/etc/nginx/allow-ips-manual.conf` on each machine to prevent blocks.
 
 ### 3. Create the daily cron job
@@ -54,8 +54,8 @@ chmod +x ~/.hermes/scripts/nginx-security-scanner.sh
 
 ```bash
 cd ~/hermes-cortex
-python3 deploy/nginx/hermes-services-apply.py --dry-run  # preview
-python3 deploy/nginx/hermes-services-apply.py             # deploy
+python3 ops/install/deploy/nginx/hermes-services-apply.py --dry-run  # preview
+python3 ops/install/deploy/nginx/hermes-services-apply.py             # deploy
 ```
 
 ### Legacy (used by cron pipeline)
@@ -73,7 +73,7 @@ path it doesn't update. The live config is correct. Use the Python script to avo
 Only needed if your pipeline cron references `/usr/local/sbin/install-nginx-full.sh`:
 
 ```bash
-sudo cp ~/hermes-cortex/deploy/nginx/install-nginx-full.sh /usr/local/sbin/install-nginx-full.sh
+sudo cp ~/hermes-cortex/ops/install/deploy/nginx/install-nginx-full.sh /usr/local/sbin/install-nginx-full.sh
 sudo chmod 755 /usr/local/sbin/install-nginx-full.sh
 ```
 
@@ -81,7 +81,7 @@ sudo chmod 755 /usr/local/sbin/install-nginx-full.sh
 
 ```bash
 # Python dry-run shows what would change
-python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py --dry-run
+python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py --dry-run
 # Confirm nginx config is valid
 sudo nginx -t && echo "✓ Config valid" || echo "✗ Config invalid"
 ```

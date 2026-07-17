@@ -68,8 +68,8 @@ them up automatically.
 ### 4. Ensure input files exist
 
 ```bash
-touch ~/hermes-cortex/deploy/nginx/blocked_ips.add
-touch ~/hermes-cortex/deploy/nginx/nginx-badbots.conf
+touch ~/hermes-cortex/ops/install/deploy/nginx/blocked_ips.add
+touch ~/hermes-cortex/ops/install/deploy/nginx/nginx-badbots.conf
 ```
 
 ### 5. Create the manual allow list on each machine (recommended)
@@ -91,13 +91,13 @@ EOF
 cd ~/hermes-cortex
 
 # Dry-run first to see what would change
-python3 deploy/nginx/hermes-services-apply.py --dry-run
+python3 ops/install/deploy/nginx/hermes-services-apply.py --dry-run
 
 # Deploy
-python3 deploy/nginx/hermes-services-apply.py
+python3 ops/install/deploy/nginx/hermes-services-apply.py
 
 # Or with explicit port prefix
-CORTEX_NGINX_PORT_PREFIX=12 python3 deploy/nginx/hermes-services-apply.py
+CORTEX_NGINX_PORT_PREFIX=12 python3 ops/install/deploy/nginx/hermes-services-apply.py
 ```
 
 What it does:
@@ -124,7 +124,7 @@ If the legacy script fails with `nginx: [emerg] unexpected end of file` in `bloc
 the config has bare IPs (missing `deny ... ;` wrapper). Fix with the helper script:
 
 ```bash
-python3 ~/hermes-cortex/deploy/nginx/fix-blocked-ips.py
+python3 ~/hermes-cortex/ops/install/deploy/nginx/fix-blocked-ips.py
 sudo cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf      # Linux
 # sudo cp /tmp/blocked_ips.conf.new /usr/local/etc/nginx/blocked_ips.conf  # macOS
 sudo /usr/local/sbin/install-nginx-full.sh
@@ -137,7 +137,7 @@ sudo /usr/local/sbin/install-nginx-full.sh
 Only needed if your pipeline cron references `/usr/local/sbin/install-nginx-full.sh`:
 
 ```bash
-sudo cp ~/hermes-cortex/deploy/nginx/install-nginx-full.sh /usr/local/sbin/install-nginx-full.sh
+sudo cp ~/hermes-cortex/ops/install/deploy/nginx/install-nginx-full.sh /usr/local/sbin/install-nginx-full.sh
 sudo chmod 755 /usr/local/sbin/install-nginx-full.sh
 ```
 
@@ -145,7 +145,7 @@ sudo chmod 755 /usr/local/sbin/install-nginx-full.sh
 
 ```bash
 # Python script shows what it would do
-python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py --dry-run
+python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py --dry-run
 # Config valid?
 sudo nginx -t && echo "✓ Config valid"
 ```
@@ -179,8 +179,8 @@ vim ~/hermes-cortex/.env
 #    CORTEX_SSL_DOMAIN=example.com
 
 # 3. Deploy (auto-sources the env file internally)
-python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py --dry-run
-python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py
+python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py --dry-run
+python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py
 ```
 
 ### Env var reference
@@ -237,7 +237,7 @@ Rate limited to 6 requests/minute per IP.
 Append bare IPs (one per line) to `blocked_ips.add`:
 
 ```bash
-echo "1.2.3.4" >> ~/hermes-cortex/deploy/nginx/blocked_ips.add
+echo "1.2.3.4" >> ~/hermes-cortex/ops/install/deploy/nginx/blocked_ips.add
 ```
 
 ### Update fail2ban filters
@@ -248,7 +248,7 @@ Edit `nginx-badbots.conf` with new `failregex` patterns as needed.
 
 ```bash
 # Preferred
-python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py
+python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py
 
 # Legacy (still works for IPs, but doesn't handle allow-ips-manual or port prefix)
 sudo /usr/local/sbin/install-nginx-full.sh
@@ -306,7 +306,7 @@ the canonical files in `ops/install/deploy/nginx/` — do not add the slash.
 cd ~/hermes-cortex
 grep "source = os.path.join" ops/install/deploy/nginx/fix-blocked-ips.py
 # Should show: ops/install/deploy/nginx/blocked_ips.add
-# If it still says deploy/nginx/blocked_ips.add, pull the latest:
+# If the old code still shows deploy/nginx/blocked_ips.add, pull the latest:
 git pull origin main
 ```
 
