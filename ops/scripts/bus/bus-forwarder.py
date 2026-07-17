@@ -400,13 +400,15 @@ def main():
         for f in l2p_err[:3]:
             output.append(f"  • {f}")
 
-    # Summary line
+    # Summary line — only print when there's actual activity
     now = datetime.now(timezone.utc)
     last_run = state.get("last_run", "")
     p2l_total = state.get("total_peer_to_local", 0)
     l2p_total = state.get("total_local_to_peer", 0)
-    seen_count = len(state.get("seen_peer_to_local", [])) + len(state.get("seen_local_to_peer", []))
-    output.append(f"Stats: {p2l_total} peer→local | {l2p_total} local→peer | {seen_count} tracked")
+    has_activity = bool(p2l_fwd or l2p_fwd or p2l_err or l2p_err)
+    if has_activity:
+        seen_count = len(state.get("seen_peer_to_local", [])) + len(state.get("seen_local_to_peer", []))
+        output.append(f"Stats: {p2l_total} peer→local | {l2p_total} local→peer | {seen_count} tracked")
 
     if output:
         print("\n".join(output))
