@@ -12,7 +12,6 @@ import time
 import hashlib
 import json
 from pathlib import Path
-from typing import Optional
 
 # Cross-platform service helpers
 from platform_utils import (
@@ -59,7 +58,7 @@ else:
 
 def _make_service(name: str, label: str = "", pgrep: str = "",
                   docker_sub: str = "", restart_label: str = "",
-                  verify_cmd: Optional[list] = None) -> dict:
+                  verify_cmd: list | None = None) -> dict:
     """Factory: create a service config that works on macOS and Linux."""
     return {
         "name": name,
@@ -120,7 +119,7 @@ SERVICES: list[dict] = [
 ]
 
 
-def _try_restore_scripts() -> Optional[str]:
+def _try_restore_scripts() -> str | None:
     """Try to restore missing scripts from the cortex repo. Returns error or None."""
     restored = []
     critical = [
@@ -155,7 +154,7 @@ def _status_text(svc: dict) -> str:
         return f"❓ error ({e})"
 
 
-def _try_restart(svc: dict) -> Optional[str]:
+def _try_restart(svc: dict) -> str | None:
     """Attempt to restart a service. Returns error string or None on success."""
     name = svc["name"]
     now = time.time()
@@ -207,7 +206,7 @@ def _try_restart(svc: dict) -> Optional[str]:
         return f"⚠️ {name} restart issued but not confirmed up after 3s"
 
 
-def _fix_gbrain_stale_lock() -> Optional[str]:
+def _fix_gbrain_stale_lock() -> str | None:
     """Check and remove stale gbrain autopilot lock file. Returns message or None."""
     lock = Path.home() / ".gbrain" / "autopilot.lock"
     if not lock.exists():
@@ -230,7 +229,7 @@ def _fix_gbrain_stale_lock() -> Optional[str]:
         return f"lock check error: {e}"
 
 
-def _fix_gbrain_orphan_process() -> Optional[str]:
+def _fix_gbrain_orphan_process() -> str | None:
     """Detect and kill gbrain autopilot running outside systemd.
 
     If a bun/raw gbrain autopilot process is found but the systemd service
