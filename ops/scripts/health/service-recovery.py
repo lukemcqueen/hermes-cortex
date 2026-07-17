@@ -13,6 +13,11 @@ import hashlib
 import json
 from pathlib import Path
 
+# Ensure scripts dir is on Python path for sibling modules
+_SCRIPT_DIR = Path(__file__).parent
+if str(_SCRIPT_DIR) not in __import__('sys').path:
+    __import__('sys').path.insert(0, str(_SCRIPT_DIR))
+
 # Cross-platform service helpers
 from platform_utils import (
     service_running,
