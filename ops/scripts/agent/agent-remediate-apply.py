@@ -15,13 +15,12 @@ import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
 
 HOME = Path.home()
 STATE_DIR = HOME / ".hermes" / "state"
 REMEDIATE_DIR = STATE_DIR / "remediate"
 DONE_DIR = REMEDIATE_DIR / "done"
-SENSOR_JOB_ID = "3f4e8b7a49fe"  # remediation-sensor
+SENSOR_JOB_ID = "2c71ffaf3a55"  # remediation-sensor
 SENSOR_OUTPUT_DIR = HOME / ".hermes" / "cron" / "output" / SENSOR_JOB_ID
 SEEN_FILE = STATE_DIR / "remediate-seen.txt"
 
@@ -59,7 +58,7 @@ def run_cmd(cmd: str, timeout: int = 30) -> tuple[str, str, int]:
         return "", str(e), -1
 
 
-def get_latest_sensor_output() -> Optional[str]:
+def get_latest_sensor_output() -> str | None:
     """Find and read the most recent remediation-sensor output."""
     if not SENSOR_OUTPUT_DIR.exists():
         return None
@@ -83,7 +82,7 @@ def save_seen_issues(ids: set[str]):
 # ── Fix Functions ───────────────────────────────────────────────
 
 
-def fix_nginx_issue(context: dict) -> Optional[str]:
+def fix_nginx_issue(context: dict) -> str | None:
     """Check nginx config and reload if needed."""
     log("🔧 Checking nginx...")
     ok, err, rc = run_cmd("nginx -t 2>&1")
@@ -97,7 +96,7 @@ def fix_nginx_issue(context: dict) -> Optional[str]:
     return None
 
 
-def fix_service_restart(context: dict) -> Optional[str]:
+def fix_service_restart(context: dict) -> str | None:
     """Restart a service that was reported as down."""
     service = context.get("service", "")
     if not service:
@@ -110,7 +109,7 @@ def fix_service_restart(context: dict) -> Optional[str]:
     return None
 
 
-def fix_web_cache_cleanup(context: dict) -> Optional[str]:
+def fix_web_cache_cleanup(context: dict) -> str | None:
     """Clean up large web cache."""
     cache_path = HOME / ".hermes" / "data" / "web_cache.sqlite"
     if not cache_path.exists():
@@ -126,7 +125,7 @@ def fix_web_cache_cleanup(context: dict) -> Optional[str]:
     return None
 
 
-def fix_ollama_stale(context: dict) -> Optional[str]:
+def fix_ollama_stale(context: dict) -> str | None:
     """Check if Ollama is running and responsive."""
     ok, err, rc = run_cmd("curl -sf http://localhost:11434/api/tags > /dev/null 2>&1")
     if rc == 0:
@@ -142,7 +141,7 @@ def fix_ollama_stale(context: dict) -> Optional[str]:
     return "⚠️ Ollama started (was not running)"
 
 
-def fix_disk_space(context: dict) -> Optional[str]:
+def fix_disk_space(context: dict) -> str | None:
     """Check disk usage and clean apt cache if needed."""
     ok, err, rc = run_cmd("df / | tail -1 | awk '{print $5}' | tr -d '%'")
     if not ok or rc != 0:
