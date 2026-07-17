@@ -1,7 +1,7 @@
 # Skills Manifest — Hermes Cortex
 
 Skills in this repo auto-install via `install.sh` step 10, which
-recursively copies `src/skills/` to `~/.hermes/skills/`, preserving category
+recursively copies `skills/` to `~/.hermes/skills/`, preserving category
 subdirectories. Skills are distributed across multiple categories matching
 their domain.
 

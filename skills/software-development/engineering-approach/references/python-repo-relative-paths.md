@@ -50,7 +50,7 @@ After cloning the repo to a new location, scan for `HOME /` path constructions
 in script files:
 
 ```bash
-grep -rn 'HOME.*/"' src/offline/*.py
+grep -rn 'HOME.*/"' ops/offline/*.py
 ```
 
 Every match is a candidate to switch to `Path(__file__).resolve().parent`.

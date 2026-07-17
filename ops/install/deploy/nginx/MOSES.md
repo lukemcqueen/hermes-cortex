@@ -10,7 +10,7 @@
 | `ops/install/deploy/nginx/install-nginx-full.sh` | **Legacy** bash deploy script — now superseded by `hermes-services-apply.py` |
 | `ops/install/deploy/nginx/hermes-services-apply.py` | **Primary** Python deploy script — auto-SSL, port prefix, allow-ips-manual |
 | `ops/install/deploy/nginx/fix-blocked-ips.py` | Helper — regenerates `blocked_ips.conf` if corrupted with bare IPs |
-| `src/scripts/nginx-security-scanner.sh` | Daily scanner — auto-detect new IPs, auto-deploy |
+| `ops/scripts/nginx-security-scanner.sh` | Daily scanner — auto-detect new IPs, auto-deploy |
 | `sudoers.d/hermes-security` | Passwordless sudo for deploy script + nginx + fail2ban |
 
 ## What You Need To Do
@@ -44,7 +44,7 @@ This runs at 6 AM daily, scans logs for new suspect IPs, and auto-deploys if it 
 If any peer needs it:
 
 ```bash
-cp ~/hermes-cortex/src/scripts/manage/nginx-security-scanner.sh ~/.hermes/scripts/
+cp ~/hermes-cortex/ops/scripts/manage/nginx-security-scanner.sh ~/.hermes/scripts/
 chmod +x ~/.hermes/scripts/nginx-security-scanner.sh
 ```
 

@@ -2,7 +2,7 @@
 Core Governance — Loop governance engine.
 
 This package is the canonical location for the loop-governance engine.
-The legacy location at src/loop-governance/ is a backward-compat shim.
+The legacy location at core/governance/ is a backward-compat shim.
 
 Modules (all expected to be run as scripts or imported individually):
     loop_db         — SQLite-backed governance database

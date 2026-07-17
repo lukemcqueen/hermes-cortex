@@ -36,7 +36,7 @@ Did an improvement, fix, or lesson just happen?
 │   │
 │   └── NO  → Is it already in the public repo?
 │       ├── NO  → Is it a:
-│       │   ├── Skill? → Copy to src/skills/ in public repo
+|       │   ├── Skill? → Copy to skills/ in public repo
 │       │   ├── Config template? → Update deploy/nginx/*.conf or docs/
 │       │   ├── Testament to how a problem was solved? → docs/ or README
 │       │   ├── New concept? → Create skill + update manifest
@@ -85,8 +85,8 @@ Before contributing, ask:
 
 | Target Location | What Goes There | When |
 |----------------|----------------|------|
-| `src/skills/software-development/` | Reusable workflows, meta-skills | After any repeatable insight |
-| `src/skills/devops/` | Deployment, infrastructure, nginx | After config/system improvement |
+| `skills/software-development/` | Reusable workflows, meta-skills | After any repeatable insight |
+| `skills/devops/` | Deployment, infrastructure, nginx | After config/system improvement |
 | `deploy/nginx/hermes-services.conf` | Reverse proxy templates | After nginx config evolution |
 | `docs/templates/SOUL.md` | Agent identity template | After SOUL.md improvement |
 | `docs/templates/SKILL.md` | Skill format template | After skill format evolves |
@@ -118,7 +118,7 @@ For each file being contributed, apply the **Genericization Patterns** table.
 
 ```bash
 # For a new skill:
-# Write to hermes-cortex/src/skills/<category>/<skill-name>/SKILL.md
+# Write to hermes-cortex/skills/<category>/<skill-name>/SKILL.md
 
 # For an existing file:
 # Patch or replace the file in hermes-cortex/

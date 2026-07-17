@@ -62,7 +62,7 @@ When renaming a cron (e.g. `fleet-status-watchdog` → `orch-fleet-watchdog`):
 
 The older template + installer pattern is preserved for reference but the active installers are `install-crons.sh` and `install-orch-crons.sh`.
 
-Legacy template at `src/loop-governance/crons.json` (if it still exists) is NOT the active pattern.
+Legacy template at `core/governance/crons.json` (if it still exists) is NOT the active pattern.
 
 For self-contained pull + install / check + alert jobs that should be silent on success:
 

@@ -148,7 +148,7 @@ All in `ops/scripts/`, installed by `install.sh` + `install-crons.sh`:
 | `orch-bus-audit-watchdog.py` | no_agent | Every 1m | Inspects bus messages for urgent keywords + markers |
 | `agent-auto-remediate` (skill) | LLM cron | Every 5m | Checks errored crons + inbox remediation, applies fixes |
 
-**Skill:** `src/skills/devops/auto-remediation/SKILL.md`
+**Skill:** `skills/devops/auto-remediation/SKILL.md`
 **Setup:** Silent when healthy, brief when fixes applied, escalate after 3 failures.
 
 ### Esther setup (backup orchestrator)

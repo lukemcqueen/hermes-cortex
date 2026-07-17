@@ -2,7 +2,7 @@
 
 > **Location:** `deploy/docker-compose.langfuse.yml`
 > **Config files:** `deploy/clickhouse-config.d/`
-> **Setup script:** `src/scripts/cortex-setup-langfuse.sh`
+> **Setup script:** `ops/scripts/install/cortex-setup-langfuse.sh`
 
 This directory deploys [Langfuse v3](https://langfuse.com) with ClickHouse, PostgreSQL,
 Redis, and MinIO for local LLM observability (tracing, scoring, cost tracking).
@@ -127,7 +127,7 @@ Create `~/langfuse/.env` with all required secrets:
 
 ```bash
 # Run the automated installer (recommended)
-bash src/scripts/cortex-setup-langfuse.sh --start
+bash ops/scripts/install/cortex-setup-langfuse.sh --start
 ```
 
 Or generate manually:
@@ -187,7 +187,7 @@ After the stack is running, create a Langfuse API key pair for Hermes:
 
 ```bash
 # Via the setup script
-bash src/scripts/cortex-setup-langfuse.sh
+bash ops/scripts/install/cortex-setup-langfuse.sh
 
 # Or manually via Postgres (after enabling pgcrypto):
 docker exec langfuse-postgres-1 psql -U postgres -d postgres -c "
@@ -604,11 +604,11 @@ python3 ~/hermes-cortex/deploy/extract_langfuse_env.py > ~/.hermes-cortex/.env
 ```bash
 # Scripts auto-deploy via cortex-update.sh --force-all
 # Or copy manually:
-cp ~/hermes-cortex/src/scripts/llm-judge-scorer.py ~/.hermes-cortex/scripts/
+cp ~/hermes-cortex/ops/scripts/manage/llm-judge-scorer.py ~/.hermes-cortex/scripts/
 chmod +x ~/.hermes-cortex/scripts/llm-judge-scorer.py
 
 # Also deploy the model health watchdog (recommended):
-cp ~/hermes-cortex/src/scripts/model-health-watchdog.py ~/.hermes-cortex/scripts/
+cp ~/hermes-cortex/ops/scripts/health/model-health-watchdog.py ~/.hermes-cortex/scripts/
 chmod +x ~/.hermes-cortex/scripts/model-health-watchdog.py
 ```
 

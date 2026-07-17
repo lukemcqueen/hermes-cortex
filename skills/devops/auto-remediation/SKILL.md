@@ -46,7 +46,7 @@ For each errored job, diagnose the failure:
 
 | Failure type | Auto-fix action |
 |---|---|
-| Script not found / missing path | Run `bun doctor` check; reinstall or copy from `$CORTEX_REPO/src/scripts/` |
+| Script not found / missing path | Run `bun doctor` check; reinstall or copy from `$CORTEX_REPO/ops/scripts/` |
 | Git error (detached HEAD, merge conflict) | `cd "${CORTEX_REPO:-$HOME/hermes-cortex}" && git checkout main && git pull --ff-only` |
 | Permission denied | `chmod +x ~/.hermes/scripts/<script>` |
 | Python import error | Re-activate venv; reinstall deps; check Python version |

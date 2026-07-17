@@ -31,7 +31,7 @@ They're part of the Agent Execution Contract (rules #10 and #13) and apply to ev
 
 ### `pre-commit` (rule #10: Score Every Change)
 
-Source: `src/scripts/pre-commit-score`
+Source: `ops/scripts/pre-commit-score`
 
 Runs `score-cycle` on staged changes for **automatic DB logging**. Enforcement of the governance lock is handled by the MCP server — this hook just ensures a cycle is recorded for every commit.
 
@@ -42,7 +42,7 @@ Runs `score-cycle` on staged changes for **automatic DB logging**. Enforcement o
 
 ### `pre-push` (rule #13: Pull Before Push, Always)
 
-Source: `src/scripts/pre-push-pull`
+Source: `ops/scripts/pre-push-pull`
 
 Fetches `origin/main` and checks if your local branch is behind. Only blocks on `main` — feature branches pass through.
 
@@ -59,16 +59,16 @@ Both hooks are deployed by a shared installer:
 
 ```bash
 # Auto-detect repos and install
-bash src/scripts/install/install-score-hook.sh
+bash ops/scripts/install/install-score-hook.sh
 
 # Install into a specific repo
-bash src/scripts/install/install-score-hook.sh --path ~/hermes-cortex
+bash ops/scripts/install/install-score-hook.sh --path ~/hermes-cortex
 
 # Check which repos have hooks
-bash src/scripts/install/install-score-hook.sh --check
+bash ops/scripts/install/install-score-hook.sh --check
 
 # Remove hooks
-bash src/scripts/install/install-score-hook.sh --remove
+bash ops/scripts/install/install-score-hook.sh --remove
 ```
 
 The installer copies the source scripts into `.git/hooks/` as standalone files (not symlinks). Re-run it after cloning a fresh copy of the repo.
@@ -117,7 +117,7 @@ If you're an agent working on this repo:
 
 - AGENTS.md — rule #10 (scoring), rule #13 (pull before push)
 - `src/mcp-servers/loop-gov-mcp.py` — primary enforcer MCP server
-- `src/scripts/pre-push-pull` — the push hook implementation
-- `src/scripts/pre-commit-score` — the commit hook implementation
-- `src/scripts/install/install-score-hook.sh` — the installer
+- `ops/scripts/pre-push-pull` — the push hook implementation
+- `ops/scripts/pre-commit-score` — the commit hook implementation
+- `ops/scripts/install/install-score-hook.sh` — the installer
 - `docs/troubleshooting.md` — general system issues

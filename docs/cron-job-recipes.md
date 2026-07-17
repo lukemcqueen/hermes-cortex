@@ -1063,7 +1063,7 @@ LLM cron fires
 hermes cron update <job-id> --skills auto-remediation,offline-code
 
 # The quality gate prompt block now includes an offline-first check.
-# See src/skills/devops/cron-quality-gate/SKILL.md for the full block.
+# See skills/devops/cron-quality-gate/SKILL.md for the full block.
 ```
 
 ### Self-Learning

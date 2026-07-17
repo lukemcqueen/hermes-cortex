@@ -64,10 +64,10 @@ All three IP collection paths in the pipeline **reject private/reserved IPs**:
 
 | Path | File | Filter |
 |------|------|--------|
-| nginx log scanner | `src/scripts/manage/nginx-security-scanner.sh` | `^127.\|10.\|172.(16-31).\|192.168.\|0.\|169.254.\|224.\|240.` |
-| fail2ban extraction (scanner) | `src/scripts/manage/nginx-security-scanner.sh` | Same regex — added 2026-07-07 |
-| fail2ban extraction (pipeline) | `src/scripts/manage/nginx-threat-pipeline.sh` | `grep -vE` on private ranges — added 2026-07-07 |
-| agent-submitted IPs | `src/scripts/manage/nginx-threat-pipeline.sh` step 0 | Same `grep -vE` — added 2026-07-07 |
+| nginx log scanner | `ops/scripts/manage/nginx-security-scanner.sh` | `^127.\|10.\|172.(16-31).\|192.168.\|0.\|169.254.\|224.\|240.` |
+| fail2ban extraction (scanner) | `ops/scripts/manage/nginx-security-scanner.sh` | Same regex — added 2026-07-07 |
+| fail2ban extraction (pipeline) | `ops/scripts/manage/nginx-threat-pipeline.sh` | `grep -vE` on private ranges — added 2026-07-07 |
+| agent-submitted IPs | `ops/scripts/manage/nginx-threat-pipeline.sh` step 0 | Same `grep -vE` — added 2026-07-07 |
 | Config generator | `ops/install/deploy/nginx/fix-blocked-ips.py` | `PRIVATE_RANGES` regex in `is_valid_public_ip()` |
 
 **Why this matters:** fail2ban can ban a LAN IP (your gateway/router) when attackers hit your server through its NAT. Without filtering, the pipeline blindly adds gateway IPs to the blocklist. These filters prevent that.
@@ -90,7 +90,7 @@ sudo fail2ban-client status sshd             # sshd ban list
 
 ## Pipeline Self-Healing
 
-The threat-pipeline script (`src/scripts/manage/nginx-threat-pipeline.sh`) uses `deploy-blocked-ips.sh` for minimal-root deploy:
+The threat-pipeline script (`ops/scripts/manage/nginx-threat-pipeline.sh`) uses `deploy-blocked-ips.sh` for minimal-root deploy:
 - Generates `blocked_ips.conf` from `blocked_ips.add` using `fix-blocked-ips.py` (no root)
 - Deploys with a single tight `sudo cp` rule (one specific path only)
 - Validates with `sudo nginx -t`, reloads with `sudo nginx -s reload`
@@ -104,7 +104,7 @@ The threat-pipeline script (`src/scripts/manage/nginx-threat-pipeline.sh`) uses 
 bash ~/.hermes/scripts/deploy-blocked-ips.sh
 
 # Or from the repo directly:
-bash ~/hermes-cortex/src/scripts/manage/deploy-blocked-ips.sh
+bash ~/hermes-cortex/ops/scripts/manage/deploy-blocked-ips.sh
 ```
 
 Generates `blocked_ips.conf` from `blocked_ips.add`, deploys with `sudo cp`,

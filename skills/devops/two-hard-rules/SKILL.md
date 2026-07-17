@@ -37,12 +37,12 @@ Every improvement you make that benefits other agents MUST go into the `hermes-c
 
 | What you built | Where it goes |
 |---------------|---------------|
-| A skill | `src/skills/<category>/<name>/` |
-| A script | `src/scripts/` + register in `cortex-update.sh` MAP |
+| A skill | `skills/<category>/<name>/` |
+| A script | `ops/scripts/` + register in `cortex-update.sh` MAP |
 | A workflow pattern | `docs/templates/` or shared skill |
 | A config improvement | Update the template/defaults |
 | A doc improvement | Update the relevant `.md` file |
-| A cron pattern | `src/scripts/install-crons.sh` |
+| A cron pattern | `ops/scripts/install-crons.sh` |
 
 **Not just your local profile.** The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
 

@@ -28,7 +28,7 @@ The offline knowledge tool provides a transparent **cascade lookup** across four
 hermes-cortex/install.sh    # steps 11 + 13 cover all offline tools
 
 # Step 2: Download content (interactive menu)
-hermes-cortex/src/offline/prep-offline.sh
+hermes-cortex/ops/offline/prep-offline.sh
 
 # Step 3: Verify
 offline_knowledge stats
@@ -81,7 +81,7 @@ docker compose -f ~/.hermes-cortex/offline/kiwix-docker-compose.yml up -d
 
 ```bash
 # 1. Download all content
-hermes-cortex/src/offline/prep-offline.sh --mode=travel   # or build/education/all
+hermes-cortex/ops/offline/prep-offline.sh --mode=travel   # or build/education/all
 
 # 2. Verify everything works
 offline_knowledge stats
@@ -109,10 +109,10 @@ offline_knowledge query "how to treat a snake bite in the jungle"
 | `offline_knowledge bible list` | List available translations |
 | `offline_knowledge hymns search "Amazing Grace"` | Search hymn lyrics across all hymns |
 | `offline_knowledge hymns list` | List hymn resources (PDF, ABC, XML) |
-| `./src/offline/prep-bible.sh --langs=all` | Download all Bible translations |
-| `./src/offline/prep-hymns.sh` | Download public domain hymns from Open Hymnal Project |
-| `python3 src/offline/offline-reader.py` | Launch local web UI for browsing Bible, hymns, and reference |
-| `./src/offline/auto-update.sh` | Check for content updates (silent if offline) |
+| `./ops/offline/prep-bible.sh --langs=all` | Download all Bible translations |
+| `./ops/offline/prep-hymns.sh` | Download public domain hymns from Open Hymnal Project |
+| `python3 ops/offline/offline-reader.py` | Launch local web UI for browsing Bible, hymns, and reference |
+| `./ops/offline/auto-update.sh` | Check for content updates (silent if offline) |
 | `offline_knowledge stats` | Full system status |
 | `offline_code search <query>` | Semantic + keyword search over 367 code snippets, 27 languages |
 | `offline_code search "<query>" --lang go` | Search filtered by language |
@@ -140,13 +140,13 @@ Arabic, Russian, and many more.
 
 ```bash
 # Download major world language translations:
-./src/offline/prep-bible.sh --langs=major
+./ops/offline/prep-bible.sh --langs=major
 
 # Download all 55+ translations:
-./src/offline/prep-bible.sh --langs=all
+./ops/offline/prep-bible.sh --langs=all
 
 # Combine with offline prep:
-./src/offline/prep-offline.sh --mode=travel --include-bible
+./ops/offline/prep-offline.sh --mode=travel --include-bible
 ```
 
 Search Bible verses:
@@ -171,13 +171,13 @@ Public domain hymns from the [Open Hymnal Project](https://openhymnal.org). Incl
 
 ```bash
 # Download the core hymnal:
-./src/offline/prep-hymns.sh
+./ops/offline/prep-hymns.sh
 
 # Download with seasonal editions:
-./src/offline/prep-hymns.sh --editions=all
+./ops/offline/prep-hymns.sh --editions=all
 
 # Combine with offline prep:
-./src/offline/prep-offline.sh --mode=travel --include-hymns
+./ops/offline/prep-offline.sh --mode=travel --include-hymns
 ```
 
 Search hymns:
@@ -194,7 +194,7 @@ Hymn content is ~35 MB total and works without Docker. View the PDF in any reade
 For non-technical users, a local web UI provides point-and-click access to all offline content:
 
 ```bash
-python3 src/offline/offline-reader.py
+python3 ops/offline/offline-reader.py
 # Opens http://localhost:8081 in your browser
 ```
 
@@ -211,10 +211,10 @@ A silent cron-friendly script that checks for content updates:
 
 ```bash
 # Manual check:
-./src/offline/auto-update.sh
+./ops/offline/auto-update.sh
 
 # Dry run:
-./src/offline/auto-update.sh --check
+./ops/offline/auto-update.sh --check
 
 # As a weekly cron job (no_agent, zero token cost):
 hermes cron create \
@@ -266,8 +266,8 @@ offline_code stats
 
 ### How It Works
 
-- **Corpus source:** `src/offline/code-corpus/snippets/*.py` — per-language Python modules export snippet definitions
-- **Generator:** `python3 src/offline/code-corpus/generate.py` writes formatted `.md` files with YAML frontmatter
+- **Corpus source:** `ops/offline/code-corpus/snippets/*.py` — per-language Python modules export snippet definitions
+- **Generator:** `python3 ops/offline/code-corpus/generate.py` writes formatted `.md` files with YAML frontmatter
 - **Embedding:** `offline_code index` batches snippets into groups of 10, embeds with Ollama `nomic-embed-text:v1.5` (768-dim)
 - **Search:** single-embed query → cosine similarity against stored embeddings + keyword boost
 - **Generation:** top-3 matching snippets injected as context → `qwen2.5-coder:3b` (or your model)
@@ -276,13 +276,13 @@ offline_code stats
 
 ```bash
 # 1. Create a new module or edit an existing one in:
-#    src/offline/code-corpus/snippets/<language>_snippets.py
+#    ops/offline/code-corpus/snippets/<language>_snippets.py
 #
 # Each module exports SNIPPETS — a list of 7-tuples:
 #   (rel_path, language, tags, title, description, source, code)
 
 # 2. Regenerate .md files
-python3 src/offline/code-corpus/generate.py
+python3 ops/offline/code-corpus/generate.py
 
 # 3. Rebuild index
 offline_code index --force

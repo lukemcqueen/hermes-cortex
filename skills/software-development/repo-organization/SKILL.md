@@ -47,16 +47,17 @@ hermes-cortex/
 ├── quick-start.sh             # 10-second TDD scoring setup
 ├── pytest.ini                 # Test configuration
 │
+├── skills/                    # Canonical skills (organized by domain)
+│   ├── software-development/
+│   ├── devops/
+│   ├── github/
+│   └── ...
+│
 ├── src/                       # All source code
 │   ├── scripts/               # Runable scripts (watchdogs, utilities)
 │   │   ├── system-alert-watchdog.py
 │   │   ├── service-recovery.py
 │   │   ├── orch-fleet-watchdog.py
-│   │   └── ...
-│   ├── skills/                # Canonical skills (organized by domain)
-│   │   ├── software-development/
-│   │   ├── devops/
-│   │   ├── github/
 │   │   └── ...
 │   ├── agent-inbox/           # Inbox server (FastAPI)
 │   ├── dashboard/             # Cortex dashboard
@@ -185,7 +186,7 @@ Run this to check the most common issues:
 
 ```bash
 # Check for name mismatch in skills
-for d in src/skills/software-development/*/; do
+for d in skills/software-development/*/; do
   name=$(basename "$d")
   yaml_name=$(grep "^name:" "$d/SKILL.md" 2>/dev/null | head -1 | cut -d: -f2- | tr -d ' ')
   if [ "$yaml_name" != "$name" ]; then
@@ -216,7 +217,7 @@ done
 When migrating an existing install to this standard:
 
 1. **Rename crons:** `cron-*` → `agent-*` for LLM-driven crons
-2. **Consolidate skills:** Move skill content from `~/.hermes/skills/` to `src/skills/` if it belongs in the repo
+2. **Consolidate skills:** Move skill content from `~/.hermes/skills/` to `skills/` if it belongs in the repo
 3. **Fix skill names:** Ensure `name:` in SKILL.md matches the directory name
 4. **Audit symlinks:** Replace hard copies with symlinks where files must exist in multiple locations
 5. **Clean .gitignore:** Add generated files (`.cron-version`, `*.db`, `IMPROVEMENTS.md`)

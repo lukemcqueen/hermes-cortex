@@ -92,16 +92,16 @@ valid cert paths are provided — this is intentional. SSL is mandatory, not opt
 
 ```bash
 # Defaults — auto-detects everything
-bash ~/hermes-cortex/src/scripts/cortex-update.sh
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 
 # With custom SSL and port prefix
 CORTEX_SSL_CERT_PATH=/etc/letsencrypt/live/mydomain.com/fullchain.pem \
 CORTEX_SSL_CERT_KEY_PATH=/etc/letsencrypt/live/mydomain.com/privkey.pem \
 CORTEX_NGINX_PORT_PREFIX=12 \
-bash ~/hermes-cortex/src/scripts/cortex-update.sh
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 
 # Skip nginx entirely (scripts-only update)
-CORTEX_SKIP_NGINX=1 bash ~/hermes-cortex/src/scripts/cortex-update.sh
+CORTEX_SKIP_NGINX=1 bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 ```
 
 > ⚠ **Legacy script:** `install-nginx-full.sh` is deprecated. Use `hermes-services-apply.py` above instead.

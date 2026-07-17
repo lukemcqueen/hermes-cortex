@@ -161,7 +161,7 @@ Changes that affect other agents' workflow must be documented.
   - Add to `docs/skills-manifest-reference.md` if it should be auto-loaded
 
 - [ ] **After a repo path restructure:**
-  - Scan deployed scripts for stale references: `grep -rn 'hermes-cortex/src/' ~/.hermes-cortex/scripts/ ~/.hermes/scripts/ ~/.hermes-cortex/hooks/`
+  - Scan deployed scripts for stale references: `grep -rn 'hermes-cortex/ops/' ~/.hermes-cortex/scripts/ ~/.hermes/scripts/ ~/.hermes-cortex/hooks/`
   - Fix live execution paths first (not comments), then update config paths in `~/.hermes/config.yaml`
   - Create backward-compat symlinks from old paths to new paths for any remaining references
   - Update `repo-organization` skill's canonical directory tree if the layout changed

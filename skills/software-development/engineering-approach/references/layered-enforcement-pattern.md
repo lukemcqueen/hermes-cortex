@@ -64,8 +64,8 @@ Any time you need to enforce a new rule across all agent sessions and projects:
 | Layer | File | Location |
 |-------|------|----------|
 | 0 | MCP server | `src/mcp-servers/loop-gov-mcp.py` |
-| 1 | Pre-commit hook | `src/scripts/pre-commit-score` |
-| 1 | Hook installer | `src/scripts/install-score-hook.sh` |
+| 1 | Pre-commit hook | `ops/scripts/pre-commit-score` |
+| 1 | Hook installer | `ops/scripts/install-score-hook.sh` |
 | 2 | SOUL.md directive | `~/.hermes/SOUL.md` |
-| 3 | Cron auditor | `src/scripts/manage/governance-auditor.py` |
-| 3 | Cron registration | `src/scripts/install-crons.sh` |
+| 3 | Cron auditor | `ops/scripts/manage/governance-auditor.py` |
+| 3 | Cron registration | `ops/scripts/install-crons.sh` |

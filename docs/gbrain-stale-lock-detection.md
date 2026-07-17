@@ -76,6 +76,6 @@ pgrep -fl gbrain
 
 ## See Also
 
-- Automatic recovery: `src/scripts/health/service-recovery.py` — `_fix_gbrain_stale_lock()`
+- Automatic recovery: `ops/scripts/health/service-recovery.py` — `_fix_gbrain_stale_lock()`
 - On-restart guardrail: `~/.gbrain/autopilot-run.sh` — stale lock cleanup before exec
 - LaunchAgent plist: `~/Library/LaunchAgents/com.gbrain.autopilot.plist`

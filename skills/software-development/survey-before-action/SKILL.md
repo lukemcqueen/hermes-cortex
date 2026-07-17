@@ -22,7 +22,7 @@ Run this BEFORE writing a new file, adding a cron, creating a skill, or modifyin
 
 Search these locations in order. Batch the independent searches together.
 
-search_files(pattern="<related-keywords>", path="~/hermes-cortex/src/scripts/", target="files")
+search_files(pattern="<related-keywords>", path="~/hermes-cortex/ops/scripts/", target="files")
 search_files(pattern="<related-keywords>", path="~/.hermes-cortex/scripts/", target="files")
 skills_list()
 cronjob(action="list")
@@ -55,7 +55,7 @@ Document in the commit message why none of the existing resources fit.
 
 ## Critical rules
 
-- Always search src/scripts/ first. This is the canonical location for installed scripts.
+- Always search ops/scripts/ first. This is the canonical location for installed scripts.
 - Always check skills_list(). If a skill already covers the workflow, use it.
 - Always check cronjob list. Existing cron patterns may already solve the problem.
 - If no match found: note it mentally. Do NOT skip this step next time.
@@ -80,8 +80,8 @@ Review messages from you. If any reference now-stale paths, commands, or instruc
 
 | I created/modified ... | I should put it in ... |
 |------------------------|------------------------|
-| A script | src/scripts/ + register in cortex-update.sh |
-| A skill | src/skills/<category>/<name>/ |
+| A script | ops/scripts/ + register in cortex-update.sh |
+| A skill | skills/<category>/<name>/ |
 | A cron pattern | Document in AGENTS.md |
 | A workflow/technique | Save as a skill or add reference to existing skill's references/ |
 | Machine/user specific | Keep private |
