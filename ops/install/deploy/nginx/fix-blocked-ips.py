@@ -185,7 +185,7 @@ def read_manual_allowed() -> set[str]:
 def generate_config() -> tuple[list[str], str]:
     """Read blocked_ips.add, validate IPs, return (lines, summary_message)."""
     rdir = repo_dir()
-    source = os.path.join(rdir, "deploy", "nginx", "blocked_ips.add")
+    source = os.path.join(rdir, "ops", "install", "deploy", "nginx", "blocked_ips.add")
 
     if not os.path.exists(source):
         print(f"✗ Source not found: {source}")
