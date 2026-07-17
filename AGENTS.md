@@ -206,11 +206,12 @@ Three axes when processing inbox messages:
 | normal | AUTO-ACT | AUTO-ACT | Escalate | Escalate |
 | notification | Acknowledge | Acknowledge | Acknowledge | Forward |
 
-|**After-action:** Deliver **what** (summary), **how verified** (tool output), **evidence** (excerpt), **cycle ID** (for code changes).
+**After-action:** Deliver **what** (summary), **how verified** (tool output), **evidence** (excerpt), **cycle ID** (for code changes).
+
+### Confirmation Protocol — Required When correlation_id Present
+
 > Content relocated to [`docs/setup-reference.md`](docs/setup-reference.md) for focused reference.
 > _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
-
----
 
 ## Doc Freshness: AGENTS.md + SOUL.md
 
@@ -236,7 +237,7 @@ Each agent can install an `agent-worker` systemd `--user` service that polls the
 
 ### Config
 
-> Content relocated to [`docs/setup-reference.md`](docs/setup-reference.md) for focused reference.
+> Content relocated to [`docs/reference/config.md`](docs/reference/config.md) for focused reference.
 > _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ### How it works
@@ -367,7 +368,7 @@ This deployment uses the `hermes-cortex` profile (not the bundled Hermes `person
 
 ### Cron Jobs Reference
 
-> Full cron table relocated to [`docs/cron-jobs-reference.md`](docs/cron-jobs-reference.md) for focused reference.
+> Content relocated to [`docs/cron-jobs-reference.md`](docs/cron-jobs-reference.md) for focused reference.
 > _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ## Troubleshooting

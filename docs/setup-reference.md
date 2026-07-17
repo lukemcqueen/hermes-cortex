@@ -271,53 +271,25 @@ This creates scored cycles from commits in the last 7 days so governance metrics
 
 ### Confirmation Protocol — Required When correlation_id Present
 
+
 When a bus message includes a `correlation_id` field, the receiving agent
 **must** send a confirmation to the sender's inbox after processing it.
 
-**Confirmation message format** (send to `inbox_moses`):
-
-```json
-{
-  "queue": "inbox_moses",
-  "message": {
-    "correlation_id": "<original-correlation-id>",
-    "action_taken": "what you did (e.g. 'ran cortex-update.sh --force-all')",
-    "status": "success | failure | partial",
-    "details": "optional details about what was done"
-  },
-  "correlation_id": "<original-correlation-id>"
-}
-```
-
-The `correlation_id` at the root level is how the bus routes it. Include it
-inside `message` too as a fallback. The sender's confirmation tracker reads
-`inbox_moses` every 10m and matches `correlation_id` to update the tracking
-record.
-
-**Why this exists:** Without confirmations, the sender has no feedback loop.
-Messages move to "processing" state on the bus but the sender never knows if
-the agent read, understood, acted on, or completed the request. Confirmations
-close the loop.
-
-**Escalation:** If a message is not confirmed within the deadline (set by the
-sender), Moses escalates the pending message for human review.
+**Confirmation message format** (send to `inbox_mose
 
 > Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
-> Updated: 2026-07-17
+> Date: 2026-07-16T19:33:18.754649+00:00
+
 
 ---
 
-### Agent Worker Config
+### Confirmation Protocol — Required When correlation_id Present
 
-The worker reads from `~/.hermes-cortex/cortex-bus.conf`:
 
-```ini
-BUS_URL=http://bus-host:8905
-CORTEX_BUS_AUTH=<your-basic-auth>    (legacy: CORTEX_BASIC_AUTH)
-AGENT_NAME=<your-name>
-```
+When a bus message includes a `correlation_id` field, the receiving agent
+**must** send a confirmation to the sender's inbox after processing it.
 
-Also accepts `CORTEX_BUS_FALLBACK_URL` and `CORTEX_BUS_AUTH` (primary names). Old names `CORTEX_BUS_URL` and `CORTEX_INBOX_AUTH` are deprecated but still work as fallback.
+**Confirmation message format** (send to `inbox_mose
 
 > Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
->>>>>>> c0ceff2 (docs: prune 3 sections from AGENTS.md to docs/ (confirmation protocol, config, cron table))
+> Date: 2026-07-16T19:33:40.440807+00:00

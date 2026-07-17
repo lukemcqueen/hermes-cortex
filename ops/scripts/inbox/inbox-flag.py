@@ -51,34 +51,23 @@ def main() -> int:
     seen = load_seen_ids()
 
     if not INBOX_DIR.exists():
-        return 1
+        # No inbox configured yet — not an error, just nothing to report
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        return 0
 
     # Find all message files addressed to Moses
     new_messages = []
     for f in sorted(INBOX_DIR.iterdir()):
         if not f.name.endswith(".md"):
             continue
-        if f.name in seen:
+        # Filename pattern: <timestamp>-<recipient>.md
+        # Messages for Moses end with -moses.md
+        if not f.name.rstrip(".md").endswith("-moses"):
+            # Also check inbox messages that might use the "to" field for moses
+            # But primarily rely on filename suffix
             continue
 
-        # Determine if this message is for Moses by checking:
-        # 1) Filename suffix (-moses.md) — fast path
-        # 2) YAML topic: field (topic: moses)
-        # 3) YAML to: field (to: moses)
-        is_for_moses = f.name.rstrip(".md").endswith("-moses")
-        if not is_for_moses:
-            try:
-                content_for_check = f.read_text(encoding="utf-8", errors="replace")
-                topic_match = re.search(r"^topic:\s*(.+)$", content_for_check, re.MULTILINE)
-                to_match = re.search(r"^to:\s*(.+)$", content_for_check, re.MULTILINE)
-                check_val = (topic_match and topic_match.group(1).strip().lower() == "moses")
-                to_val = (to_match and to_match.group(1).strip().lower() == "moses")
-                if check_val or to_val:
-                    is_for_moses = True
-            except Exception:
-                pass
-
-        if not is_for_moses:
+        if f.name in seen:
             continue
 
         # Parse basic info from the message file

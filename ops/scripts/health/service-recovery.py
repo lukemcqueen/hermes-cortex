@@ -80,7 +80,7 @@ def _check_scripts() -> bool:
     """Check if critical Hermes scripts are present and executable."""
     critical = [
         "heartbeat.py", "service-recovery.py", "system-alert-watchdog.py",
-        "cron-auto-remediate.sh",
+        "orch-team-messages.sh", "cron-auto-remediate.sh",
     ]
     for name in critical:
         sp = HERMES_SCRIPTS / name
@@ -106,10 +106,9 @@ SERVICES: list[dict] = [
     },
     _make_service("Ollama", label="ollama.service", pgrep="ollama"),
     # gbrain: systemd user service
-    _make_service("gbrain", label="gbrain-autopilot.service", pgrep="gbrain"),
-    # agent-bus: systemd user service (hermes-agent-inbox on :8903)
-    # Acts as local PGMQ proxy/fallback for the bus.
-    _make_service("agent-bus", label="hermes-agent-inbox.service", pgrep="agent-inbox"),
+    _make_service("gbrain", label="gbrain-sync.service", pgrep="gbrain"),
+    # health-server: systemd user service
+    _make_service("health-server", label="health-vector.service", pgrep="health-vector"),
     {
         "name": "scripts",
         "check": _check_scripts,
@@ -124,7 +123,7 @@ def _try_restore_scripts() -> str | None:
     restored = []
     critical = [
         "heartbeat.py", "service-recovery.py", "system-alert-watchdog.py",
-        "cron-auto-remediate.sh",
+        "orch-team-messages.sh", "cron-auto-remediate.sh",
         "daily-lesson-mine.sh", "update-session-state.sh",
         "langfuse-health-watchdog.py", "memory-to-brain-sync.py",
         "web-cache-backup.sh", "web-cache-prune.sh",
@@ -167,10 +166,7 @@ def _try_restart(svc: dict) -> str | None:
     verify = svc.get("verify_cmd")
     if verify:
         try:
-            # Use sudo for nginx -t: cert files, error logs, and the 'user'
-            # directive all require root-level access to validate.
-            cmd = ["sudo"] + verify if name == "nginx" else verify
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            r = subprocess.run(verify, capture_output=True, text=True, timeout=10)
             if r.returncode != 0:
                 return f"❌ {name}: pre-flight check failed ({r.stderr.strip()[:200]}) — not restarting"
         except FileNotFoundError:
