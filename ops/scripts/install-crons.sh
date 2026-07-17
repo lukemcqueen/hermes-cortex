@@ -996,10 +996,12 @@ create_cron "collect-agent-skills" "0 */6 * * *" \
 #  Agent inbox migrated to Agent Bus (PGMQ). Collect-agent-skills.sh
 #  still runs independently; this reporter cron was dead code.)
 
-# Moses-side: process skill reports from PGMQ bus — only runs on orchestrator
-# Reads inbox_moses queue, filters for Skill Report messages, produces digest
-create_cron "skill-report-process" "0 6,18 * * *" \
-  "process-skill-reports.py" \
+# Moses-side: skill triage pipeline — read, dedup, upstream, track
+# Reads inbox_moses queue, filters for Skill Report messages,
+# deduplicates against repo + bundle + decision history,
+# auto-upstreams genuinely new skills, commits and pushes
+create_cron "skill-triage" "0 6,18 * * *" \
+  "skill-triage.py" \
   "" \
   "" \
   "" \

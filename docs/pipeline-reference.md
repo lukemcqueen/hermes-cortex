@@ -136,15 +136,21 @@ to Moses' Agent Bus (`inbox_moses` queue, `topic: reports`) via PGMQ.
 
 ### Processing (Moses-side)
 
-Moses runs `skill-report-process` (no_agent, daily at 06:00 and 18:00 KST):
+Moses runs `skill-triage` (no_agent, daily at 06:00 and 18:00 KST):
 
-1. Reads messages from `inbox_moses` PGMQ queue
-2. Filters for `Skill Report:` subjects
-3. Parses skill data (name, category, line count, age, description)
-4. Produces a formatted digest delivered to Telegram
-5. Archives processed messages from the queue
-
-**To review:** `skill_view(name="<skill>")` then upstream via `public-contribution` skill.
+1. **Read** messages from `inbox_moses` PGMQ queue
+2. **Parse** skill data (name, category, line count, age, description, content)
+3. **Deduplicate** against:
+   - Upstream repo skills (`hermes-cortex/skills/` — 65 skills)
+   - Hermes Agent bundled skills (`~/.hermes/hermes-agent/skills/` — 72 skills)
+   - Previously reviewed decisions (state file)
+4. **Auto-upstream** genuinely new skills:
+   - Creates `skills/<category>/<name>/SKILL.md` in the repo
+   - Fills in name, description, and truncated content from the report
+   - Commits and pushes to `main`
+5. **Track** all decisions (upstreamed/skipped/rejected) in `~/.hermes-cortex/state/skill-decisions.json`
+6. **Archive** processed messages from the queue
+7. **Deliver** triage digest via Telegram (summarizing what was upstreamed, skipped, and why)
 
 ---
 
@@ -154,7 +160,7 @@ Moses runs `skill-report-process` (no_agent, daily at 06:00 and 18:00 KST):
 |------|------|----------|----------------|---------|
 | `skill-miner` | no_agent | `0 6 * * 1` | `skill_miner.py` | origin |
 | `agent-weekly-loop-eval` | LLM+skill | `0 9 * * 1` | `loop-governance` | origin |
-| `skill-report-process` | no_agent | `0 6,18 * * *` | `process-skill-reports.py` | origin |
+| `skill-triage` | no_agent | `0 6,18 * * *` | `skill-triage.py` | origin |
 | `session-cache-build` | no_agent | `0 5 * * 1` | `session_cache.py` | origin |
 | `cron-quality-watchdog` | no_agent | `*/10 * * * *` | `cron-quality-watchdog.py` | origin |
 

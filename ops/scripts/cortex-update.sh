@@ -325,6 +325,7 @@ register "ops/scripts/manage/send-agent-learning.sh"      "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/manage/collect-agent-skills.sh"     "${CORTEX_DEPLOY_HOME}/scripts/collect-agent-skills.sh"
 register "ops/scripts/manage/request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}/scripts/request-skill-reports.sh"
 register "ops/scripts/manage/process-skill-reports.py"    "${CORTEX_DEPLOY_HOME}/scripts/process-skill-reports.py"
+register "ops/scripts/manage/skill-triage.py"             "${CORTEX_DEPLOY_HOME}/scripts/skill-triage.py"
 # Agent inbox connection config — user creates manually
 
 # MCP inbox proxy — sudo'd HTTPS proxy with root-owned client cert
