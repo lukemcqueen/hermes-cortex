@@ -179,7 +179,7 @@ fi
 BUS_URL="${CORTEX_BUS_URL:-${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-}}}"
 if [[ -n "$BUS_URL" ]]; then
   # Export vars for Python subprocess
-  export STATE_DIR CORTEX_BUS_TOKEN CORTEX_BASIC_AUTH
+  export STATE_DIR CORTEX_BUS_TOKEN CORTEX_BASIC_AUTH CORTEX_BUS_AUTH
 
   python3 << 'PYEOF'
 import json, os, sys, urllib.request, urllib.error, base64, time
@@ -196,7 +196,7 @@ if host in ("127.0.0.1", "localhost", "::1"):
     token = os.environ.get("CORTEX_BUS_TOKEN", "")
     auth_header = f"Bearer {token}" if token else ""
 else:
-    auth_creds = os.environ.get("CORTEX_BASIC_AUTH", "")
+    auth_creds = os.environ.get("CORTEX_BASIC_AUTH", "") or os.environ.get("CORTEX_BUS_AUTH", "")
     if auth_creds and ":" in auth_creds:
         encoded = base64.b64encode(auth_creds.encode()).decode()
         auth_header = f"Basic {encoded}"
