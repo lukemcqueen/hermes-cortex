@@ -234,7 +234,7 @@ def send_report(report: dict) -> bool:
             headers["Authorization"] = auth_header
 
         payload = {
-            "queue": "inbox_moses",
+            "queue": "inbox_health_check",
             "message": {
                 "from": agent_name,
                 "topic": "health",
