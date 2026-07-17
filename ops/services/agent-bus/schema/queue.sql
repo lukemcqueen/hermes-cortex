@@ -368,6 +368,7 @@ RETURNS INT AS $$
 DECLARE
     v_recovered INT := 0;
     v_dlq_moved INT := 0;
+    v_dlq_step INT := 0;
     v_archived INT := 0;
 BEGIN
     -- Step 1: Retry processing messages below max_retries
@@ -382,36 +383,36 @@ BEGIN
 
     GET DIAGNOSTICS v_recovered = ROW_COUNT;
 
-    -- Step 2: Move over-max-retries to DLQ — but only if NOT already in one.
-    -- DLQ messages that exhaust retries are DELETED (no deep-chain DLQ).
-    WITH expired AS (
-        UPDATE bus.messages m
-        SET state = 'pending',
-            -- If already in a DLQ: stay in same queue (will be deleted below)
-            -- If not in a DLQ: move to DLQ
-            queue_name = CASE
-                WHEN m.queue_name LIKE '%\_dlq' THEN m.queue_name
-                ELSE m.queue_name || '_dlq'
-            END,
-            visible_after = now(),
-            timeout_at = NULL,
-            error = COALESCE(error, 'max retries exceeded — moved to DLQ')
-        FROM bus.queues q
+    -- Step 2: DELETE exhausted DLQ processing messages (no DLQ deep-chain).
+    -- Deletes before moving so we catch messages already in DLQ.
+    WITH deleted AS (
+        DELETE FROM bus.messages m
+        USING bus.queues q
         WHERE m.queue_name = q.name
+          AND q.is_dlq = true
           AND m.state = 'processing'
           AND m.timeout_at < now()
           AND m.retry_count >= m.max_retries
-        RETURNING m.msg_id, m.queue_name, q.is_dlq
-    ),
-    -- Delete exhausted DLQ messages (no deeper chaining)
-    deleted AS (
-        DELETE FROM bus.messages m
-        USING expired e
-        WHERE m.msg_id = e.msg_id
-          AND e.is_dlq = true
         RETURNING 1
     )
-    SELECT count(*) INTO v_dlq_moved FROM expired;
+    SELECT count(*) INTO v_dlq_moved FROM deleted;
+
+    -- Step 2b: Move exhausted processing messages from main queues to DLQ
+    UPDATE bus.messages m
+    SET state = 'pending',
+        queue_name = m.queue_name || '_dlq',
+        visible_after = now(),
+        timeout_at = NULL,
+        error = COALESCE(error, 'max retries exceeded — moved to DLQ')
+    FROM bus.queues q
+    WHERE m.queue_name = q.name
+      AND q.is_dlq = false
+      AND m.state = 'processing'
+      AND m.timeout_at < now()
+      AND m.retry_count >= m.max_retries;
+
+    GET DIAGNOSTICS v_dlq_step = ROW_COUNT;
+    v_dlq_moved := v_dlq_moved + v_dlq_step;
 
     -- Step 3: Auto-archive old DLQ messages stuck in pending state
     -- (Messages that were moved to DLQ but never consumed)
