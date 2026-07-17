@@ -229,6 +229,8 @@ def check_gateway_log() -> dict:
 def check_inbox_staleness() -> dict:
     state_file = HERMES_HOME / "state" / "orch-bus-audit-watchdog.state"
     if not state_file.exists():
+        if socket.gethostname() == "moses":
+            return {"status": "DEGRADED", "detail": "State file missing — orch-bus-audit-watchdog may not be running!"}
         return {"status": "UP", "detail": "Orchestrator-only check — bus-audit-watchdog not expected on this agent"}
     try:
         mtime = datetime.fromtimestamp(state_file.stat().st_mtime, tz=timezone.utc).astimezone()
