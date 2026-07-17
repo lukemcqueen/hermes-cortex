@@ -6,6 +6,13 @@
 #  LLM-driven crons) for auto-remediation, system health, web
 #  cache, and memory synchronization.
 #
+#  ONLY add crons here that belong in the repo — infrastructure
+#  other agents could use. Local-only crons (server-specific
+#  maintenance, personal briefings, ad-hoc watchdogs) go directly
+#  via `cronjob action='create' name='local-<name>'` and use
+#  the `local-*` prefix. They do NOT belong in this installer.
+#  See the cron-job-management skill for full naming convention.
+#
 #  Skips jobs that already exist (checks ~/.hermes/cron/jobs.json
 #  by job name). Safe to re-run — only creates missing jobs.
 #

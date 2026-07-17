@@ -1,6 +1,8 @@
 # Cron Schedules — Hermes Cortex
 
 > **Canonical schedule reference.** Every cron job in the fleet, its schedule, type, script/prompt, and delivery. Keep this file in sync whenever a cron is created, renamed, removed, or rescheduled.
+>
+> **Local-only crons:** Jobs with the `local-` prefix are server-specific and NOT in the repo installer. They're created directly via `cronjob action='create' name='local-<name>'`. Don't add them to `install-crons.sh`.
 
 ## Legend
 

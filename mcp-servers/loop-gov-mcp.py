@@ -648,7 +648,10 @@ def _begin_change(args: dict) -> CallToolResult:
     audit_note = ""
     released_session = ""
 
-    # Check if already locked
+    # ── Step 1: Resolve any existing lock (force path) BEFORE DB cycle ──
+    # For force=True: read old lock info and release it. The new lock file
+    # is NOT written yet — that happens only after DB cycle confirms.
+    # For normal (non-force): just check and reject if lock exists.
     existing = _read_lock()
     if existing is not None:
         if not force:
@@ -665,7 +668,7 @@ def _begin_change(args: dict) -> CallToolResult:
                     f"Call end_change('{existing.get('task_id')}') first, or use force=True to override."
                 )
             )])
-        # Force override: release current lock with audit trail
+        # Force override: build audit note and release old lock
         released_task = existing.get("task_id", "unknown")
         released_session = existing.get("session_id", "unknown")
         _release_lock()
@@ -677,26 +680,10 @@ def _begin_change(args: dict) -> CallToolResult:
             f"  New task:         {task_id}"
         )
 
-    # Create lock file with session ID, TTL, heartbeat
-    state = {
-        "task_id": task_id,
-        "description": description,
-        "started_at": now_iso,
-        "agent": os.environ.get("AGENT_NAME", "unknown"),
-        "session_id": session_id,
-        "ttl_seconds": ttl,
-        "heartbeat_at": now_iso,
-        "scored": False,
-        # Harness v3 extended fields (optional — empty = lightweight task mode)
-        "acceptance_criteria": args.get("acceptance_criteria", []),
-        "allowed_scope": args.get("allowed_scope", []),
-        "plan": args.get("plan", []),
-        "task_stack": [],
-        "status": "executing",
-    }
-    _write_lock(state)
-
-    # Create pending cycle in loop-governance DB
+    # ── Step 2: Create pending cycle in loop-governance DB (BEFORE new lock file) ──
+    # Critical ordering: if the DB write fails, no new lock file is written,
+    # preventing orphaned locks. For force=True, the old lock is already released
+    # but no NEW lock exists yet — the DB write must succeed to proceed.
     try:
         conn = _db()
         row = conn.execute(
@@ -728,10 +715,33 @@ def _begin_change(args: dict) -> CallToolResult:
             f"     3. mcp_loop_governance_end_change(task_id='{task_id}')"
         )
     except Exception as e:
-        pending_msg = (
-            f"\n⚠️  Could not create pending cycle: {e}\n"
-            f"   end_change will reject — force-clear with: rm {_governance_lock_path()}"
-        )
+        return CallToolResult(content=[TextContent(
+            type="text",
+            text=(
+                f"Error: Could not create pending cycle — lock NOT acquired.\n"
+                f"  DB error: {e}\n"
+                f"  No lock file was written — nothing to clean up."
+            )
+        )])
+
+    # ── Step 3: Write lock file (only after DB cycle confirmed) ──
+    state = {
+        "task_id": task_id,
+        "description": description,
+        "started_at": now_iso,
+        "agent": os.environ.get("AGENT_NAME", "unknown"),
+        "session_id": session_id,
+        "ttl_seconds": ttl,
+        "heartbeat_at": now_iso,
+        "scored": False,
+        # Harness v3 extended fields (optional — empty = lightweight task mode)
+        "acceptance_criteria": args.get("acceptance_criteria", []),
+        "allowed_scope": args.get("allowed_scope", []),
+        "plan": args.get("plan", []),
+        "task_stack": [],
+        "status": "executing",
+    }
+    _write_lock(state)
 
     prefix = "🔒 " if not force else "🔓⚠️ "
     force_msg = f" (forced — replaced session {released_session})" if force else ""

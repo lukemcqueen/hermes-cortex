@@ -227,7 +227,7 @@ def check_gateway_log() -> dict:
     return _check_launchd("ai.hermes.gateway")
 
 def check_inbox_staleness() -> dict:
-    state_file = HERMES_HOME / "state" / "bus-audit-watchdog.state"
+    state_file = HERMES_HOME / "state" / "orch-bus-audit-watchdog.state"
     if not state_file.exists():
         return {"status": "DEGRADED", "detail": "No state file — bus-audit-watchdog may not have run"}
     try:

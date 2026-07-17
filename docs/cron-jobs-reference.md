@@ -1,5 +1,7 @@
 ### Cron Jobs Reference
 
+> **Note:** `local-*` prefixed crons are server-specific and maintained outside the repo installer. They are created directly via `cronjob action='create'`. See the `cron-job-management` skill for full naming conventions and when to use the installer vs local-only creation.
+
 | Name | Type | Schedule | Purpose |
 |------|------|----------|---------|
 | remediation-sensor | no_agent | */5 * * * * | Detect system issues |
