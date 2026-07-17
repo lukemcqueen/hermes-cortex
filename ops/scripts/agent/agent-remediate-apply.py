@@ -20,7 +20,7 @@ HOME = Path.home()
 STATE_DIR = HOME / ".hermes" / "state"
 REMEDIATE_DIR = STATE_DIR / "remediate"
 DONE_DIR = REMEDIATE_DIR / "done"
-SENSOR_JOB_ID = "48b12ca4bfef"  # remediation-sensor (actual job ID)
+SENSOR_JOB_ID = "900f19048af7"  # remediation-sensor
 SENSOR_OUTPUT_DIR = HOME / ".hermes" / "cron" / "output" / SENSOR_JOB_ID
 SEEN_FILE = STATE_DIR / "remediate-seen.txt"
 
