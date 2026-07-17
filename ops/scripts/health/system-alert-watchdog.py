@@ -229,6 +229,20 @@ def check_gateway_log() -> dict:
 def check_inbox_staleness() -> dict:
     state_file = HERMES_HOME / "state" / "orch-bus-audit-watchdog.state"
     if not state_file.exists():
+        # Check if the cron is actually registered on this machine
+        cron_file = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")) / "cron" / "jobs.json"
+        watchdog_registered = False
+        try:
+            if cron_file.exists():
+                data = _json.loads(cron_file.read_text())
+                for job in data.get("jobs", []):
+                    if job.get("name") == "orch-bus-audit-watchdog":
+                        watchdog_registered = True
+                        break
+        except Exception:
+            pass
+        if watchdog_registered:
+            return {"status": "DEGRADED", "detail": "State file missing — orch-bus-audit-watchdog is registered but not running!"}
         return {"status": "UP", "detail": "Orchestrator-only check — bus-audit-watchdog not expected on this agent"}
     try:
         mtime = datetime.fromtimestamp(state_file.stat().st_mtime, tz=timezone.utc).astimezone()
