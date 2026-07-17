@@ -137,7 +137,21 @@ BEGIN
             FOR UPDATE SKIP LOCKED;
 
             IF FOUND THEN
-                -- Return DLQ message
+                -- vt=0 = peek: return DLQ message without consuming
+                IF v_vt = 0 THEN
+                    RETURN jsonb_build_object(
+                        'msg_id', v_msg.msg_id::text,
+                        'queue', p_queue || '_dlq',
+                        'body', v_msg.body,
+                        'retry_count', v_msg.retry_count,
+                        'correlation_id', v_msg.correlation_id,
+                        'from_dlq', true,
+                        'enqueued_at', v_msg.enqueued_at,
+                        'vt_zero_peek', true
+                    );
+                END IF;
+
+                -- Return DLQ message (normal — consume with vt)
                 UPDATE bus.messages
                 SET state = 'processing',
                     timeout_at = now() + (v_vt || ' seconds')::interval
@@ -158,6 +172,22 @@ BEGIN
         IF NOT FOUND THEN
             RETURN NULL;
         END IF;
+    END IF;
+
+    -- vt=0 = peek: return message body without changing state (true non-destructive read)
+    IF v_vt = 0 THEN
+        RETURN jsonb_build_object(
+            'msg_id', v_msg.msg_id::text,
+            'queue', p_queue,
+            'body', v_msg.body,
+            'priority', v_msg.priority,
+            'retry_count', v_msg.retry_count,
+            'max_retries', v_msg.max_retries,
+            'correlation_id', v_msg.correlation_id,
+            'from_dlq', false,
+            'enqueued_at', v_msg.enqueued_at,
+            'vt_zero_peek', true
+        );
     END IF;
 
     -- Mark as processing with visibility timeout

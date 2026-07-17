@@ -172,7 +172,13 @@ def _request(
 def _read_bus(
     url: str, token: str, auth: str, queue: str
 ) -> dict | None:
-    """Read (dequeue with vt=0 — peek without consuming) one message."""
+    """Read (peek with vt=0 — non-destructive) one message.
+    
+    With the vt=0 peek fix on the bus server, this reads the message body
+    WITHOUT changing its state. The message stays pending and is visible
+    to subsequent reads. After forwarding, _archive_bus() is called to
+    consume the message from the source queue.
+    """
     status, data = _request(
         "POST", f"{url}/api/pgmq/read",
         token=token, auth=auth,
@@ -196,6 +202,25 @@ def _send_bus(
         "POST", f"{url}/api/pgmq/send",
         token=token, auth=auth,
         body={"queue": queue, "message": body},
+    )
+    return status == 200
+
+
+def _archive_bus(
+    url: str, token: str, auth: str, queue: str, msg_id: str
+) -> bool:
+    """Archive (DELETE) a message from a bus queue after successful forwarding.
+    
+    This prevents the source message from cycling through processing→recover→pending
+    when vt=0 is used for reading. Without this, every forwarded message burns a
+    full retry cycle on the source bus.
+    """
+    if not msg_id:
+        return False
+    status, _ = _request(
+        "DELETE", f"{url}/api/pgmq/delete",
+        token=token, auth=auth,
+        body={"queue": queue, "msg_id": msg_id},
     )
     return status == 200
 
@@ -256,6 +281,10 @@ def _sync_direction(
                 seen.add(msg_id)
                 forwarded.append(f"{queue}/{msg_id[:8]}")
                 total += 1
+                # Archive source message to prevent processing→recover cycles
+                # Best-effort: if archive fails (e.g. message already consumed),
+                # the recover_timeouts cron handles cleanup
+                _archive_bus(source_url, source_token, source_auth, queue, msg_id)
             else:
                 errors.append(f"{queue}/{msg_id[:8]}")
                 break  # destination unreachable — stop this queue
