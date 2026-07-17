@@ -14,6 +14,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -219,6 +220,7 @@ def _call_ollama(prompt: str, max_tokens: int = 4096) -> str | None:
 
 def _call_deepseek(prompt: str, max_tokens: int = 4096) -> str | None:
     """Make a deepseek API call and return the cleaned response content.
+    Retries up to 3 times with exponential backoff on transient failures.
     Falls back to local Ollama if DEEPSEEK_API_KEY is not available."""
     api_key = get_deepseek_api_key()
     if not api_key:
@@ -232,57 +234,77 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096) -> str | None:
         "temperature": 0.7,
     })
 
-    body = ""
-    try:
-        result = subprocess.run(
-            ["curl", "-s", "-w", "\n%{http_code}", "-X", "POST", DEEPSEEK_URL,
-             "-H", "Content-Type: application/json",
-             "-H", f"Authorization: Bearer {api_key}",
-             "-d", payload],
-            capture_output=True, text=True, timeout=180,
-        )
+    # Retry loop: up to 3 attempts with exponential backoff
+    max_attempts = 3
+    last_error = None
 
-        # Split response body from HTTP status code
-        parts = result.stdout.strip().rsplit("\n", 1)
-        http_code = parts[-1] if len(parts) > 1 else "000"
-        body = parts[0] if len(parts) > 1 else result.stdout
+    for attempt in range(1, max_attempts + 1):
+        body = ""
+        try:
+            if attempt > 1:
+                wait = 2 ** (attempt + 1)  # 8s, 16s
+                print(f"⏳ Retry {attempt}/{max_attempts} after {wait}s...", file=sys.stderr)
+                time.sleep(wait)
 
-        if result.returncode != 0:
-            print(f"❌ curl failed (exit {result.returncode}): {result.stderr}", file=sys.stderr)
-            return None
+            result = subprocess.run(
+                ["curl", "-s", "-w", "\n%{http_code}", "-X", "POST", DEEPSEEK_URL,
+                 "-H", "Content-Type: application/json",
+                 "-H", f"Authorization: Bearer {api_key}",
+                 "-d", payload],
+                capture_output=True, text=True, timeout=180,
+            )
 
-        if http_code != "200":
-            print(f"⚠️  DeepSeek API returned HTTP {http_code} — falling back to local Ollama (qwen2.5-coder:3b)", file=sys.stderr)
-            if body:
-                print(f"   Error body: {body[:300]}", file=sys.stderr)
-            return _call_ollama(prompt, max_tokens)
+            # Split response body from HTTP status code
+            parts = result.stdout.strip().rsplit("\n", 1)
+            http_code = parts[-1] if len(parts) > 1 else "000"
+            body = parts[0] if len(parts) > 1 else result.stdout
 
-        response = json.loads(body)
-        content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
+            if result.returncode != 0:
+                last_error = f"curl failed (exit {result.returncode}): {result.stderr}"
+                print(f"❌ {last_error}", file=sys.stderr)
+                continue
 
-        if not content:
-            print(f"❌ Empty response from API", file=sys.stderr)
-            return None
+            if http_code != "200":
+                last_error = f"DeepSeek API returned HTTP {http_code}"
+                print(f"⚠️  {last_error}", file=sys.stderr)
+                if body:
+                    print(f"   Body: {body[:300]}", file=sys.stderr)
+                continue
 
-        # Clean up any markdown code block wrapping
-        content = content.strip()
-        if content.startswith("```"):
-            content = content.split("\n", 1)[-1] if "\n" in content else content[3:]
-            if content.endswith("```"):
-                content = content[:-3]
+            response = json.loads(body)
+            content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+            if not content:
+                last_error = "Empty response from API"
+                print(f"❌ {last_error}", file=sys.stderr)
+                continue
+
+            # Clean up any markdown code block wrapping
             content = content.strip()
+            if content.startswith("```"):
+                content = content.split("\n", 1)[-1] if "\n" in content else content[3:]
+                if content.endswith("```"):
+                    content = content[:-3]
+                content = content.strip()
 
-        return content
-    except json.JSONDecodeError as e:
-        print(f"❌ JSON parse error: {e}", file=sys.stderr)
-        print(f"   Body: {body[:500]}", file=sys.stderr)
-        return None
-    except subprocess.TimeoutExpired:
-        print(f"❌ API request timed out after 180s", file=sys.stderr)
-        return None
-    except Exception as e:
-        print(f"❌ Unexpected error: {e}", file=sys.stderr)
-        return None
+            return content
+        except json.JSONDecodeError as e:
+            last_error = f"JSON parse error: {e}"
+            print(f"❌ {last_error}", file=sys.stderr)
+            print(f"   Body: {body[:500]}", file=sys.stderr)
+            continue
+        except subprocess.TimeoutExpired:
+            last_error = "API request timed out after 180s"
+            print(f"❌ {last_error}", file=sys.stderr)
+            continue
+        except Exception as e:
+            last_error = f"Unexpected error: {e}"
+            print(f"❌ {last_error}", file=sys.stderr)
+            continue
+
+    # All retries exhausted — fall back to Ollama
+    print(f"⚠️  DeepSeek failed after {max_attempts} attempts ({last_error}) — falling back to local Ollama (qwen2.5-coder:3b)", file=sys.stderr)
+    return _call_ollama(prompt, max_tokens)
 
 
 def generate_soul_entry(book: str) -> str | None:
