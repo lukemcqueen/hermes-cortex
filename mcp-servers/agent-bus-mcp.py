@@ -615,14 +615,13 @@ def _inbox_delete(args: dict) -> CallToolResult:
 # ── AGENT REGISTRY — Discovery & Agent Info ────────────────────
 # ═══════════════════════════════════════════════════════════════
 
-# Registry paths (file-based, used for remote agent discovery)
-REGISTRY_FILE = HOME / ".hermes-cortex" / "a2a" / "agent-registry.json"
+# Registry path (file-based, used for remote agent discovery)
 STATE_REGISTRY = HOME / ".hermes" / "state" / "agent-registry.json"
 
 
 def _load_agent_registry() -> dict:
     """Load agent registry from file. Used for remote agent discovery."""
-    for path in [REGISTRY_FILE, STATE_REGISTRY]:
+    for path in [STATE_REGISTRY]:
         if path.exists():
             try:
                 return json.loads(path.read_text())
