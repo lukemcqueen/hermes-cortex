@@ -62,7 +62,6 @@
 | `memory-to-brain-sync` | `0 */6 * * *` | no_agent | `memory-to-brain-sync.py` | local | — |
 | `governance-auditor` | `0 */6 * * *` | no_agent | `governance-auditor.py` | origin | — |
 | `collect-agent-skills` | `0 */6 * * *` | no_agent | `collect-agent-skills.sh` | local | — |
-| `send-skill-report` | `30 */6 * * *` | no_agent | `send-skill-report.py` | local | — |
 | `scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `scoring-activity-watchdog.py` | origin | — |
 | `secret-leak-watchdog` | `0 */4 * * *` | no_agent | `secret-leak-watchdog.py` | origin | — |
 | `agent-daily-soul-refinement` | `0 23 * * *` | LLM | deepseek-v4-flash soul refinement | origin | — |
