@@ -35,7 +35,6 @@
 | `cron-quality-watchdog` | `*/10 * * * *` | no_agent | `cron-quality-watchdog.py` | origin | — |
 | `inbox-flag` | `*/10 * * * *` | no_agent | `inbox-flag.py` | local | — |
 | `inbox-sensor` | `*/10 * * * *` | no_agent | `inbox-sensor.py` | local | — |
-| `orch-team-messages` | `*/10 * * * *` | no_agent | REMOVED — file-based inbox deprecated. Use Agent Bus. |
 | `agent-inbox-workday` | `0 9-17 * * 1-5` | LLM | deepseek-v4-flash Agent Bus processing | origin | — |
 | `inbox-depth-watchdog` | `*/1 * * * *` | no_agent | `inbox/inbox-depth-watchdog.sh` | local | — |
 | `system-alert-watchdog` | `*/30 * * * *` | no_agent | `system-alert-watchdog.py` | origin | — |
@@ -102,11 +101,10 @@ These crons run only on Moses and Esther (defined by `IS_ORCHESTRATOR=true`):
 
 | Cron | Schedule | Type |
 |------|----------|------|
-|| `orch-fleet-watchdog` | `*/5 * * * *` | no_agent |
-|| `orch-team-messages` | — | REMOVED |
-|| `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent |
-|| `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent |
-|| `skill-report-request` | `0 2 * * 1` | no_agent |
+| `orch-fleet-watchdog` | `*/5 * * * *` | no_agent |
+| `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent |
+| `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent |
+| `skill-report-request` | `0 2 * * 1` | no_agent |
 
 ## Local-only summary
 
