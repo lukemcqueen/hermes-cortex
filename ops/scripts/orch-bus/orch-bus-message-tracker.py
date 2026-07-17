@@ -266,11 +266,9 @@ def cmd_alert(args):
 
 
 def cmd_report(args):
-    """Combined bus health report: tracker status + queue depths + DLQ health."""
-    print("📊 Bus Message Health Report")
-    print()
-
-    # Tracker status
+    """Combined bus health report: tracker status + queue depths + DLQ health.
+    Silent when everything is healthy — only outputs on issues."""
+    
     tracker = _tracker_load()
     msgs = tracker.get("messages", [])
     pending = [m for m in msgs if not m["confirmed"]]
@@ -285,6 +283,38 @@ def cmd_report(args):
             except (ValueError, TypeError):
                 pass
 
+    # Query queue depths
+    token = _get_token()
+    dlq_issues = []
+    queue_lines = []
+    try:
+        req = Request(f"{BUS_URL}/api/pgmq/queues",
+                      headers={"Authorization": f"Bearer {token}"},
+                      method="GET")
+        with urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+        queues = data.get("queues", []) if isinstance(data, dict) else data
+        inbox_queues = [q for q in queues if q.get("name", "").startswith("inbox_")]
+        for q in sorted(inbox_queues, key=lambda x: x["name"]):
+            name = q["name"]
+            depth = q.get("depth", 0)
+            processing = q.get("processing", 0)
+            is_dlq = q.get("dlq", False)
+            marker = " ⚠️ DLQ" if is_dlq and (depth > 0 or processing > 0) else ""
+            if is_dlq and (depth > 0 or processing > 0):
+                dlq_issues.append(f"{name}(depth={depth}, processing={processing})")
+            queue_lines.append(f"   {name:35s} depth={depth} processing={processing}{marker}")
+    except Exception as e:
+        queue_lines.append(f"  ⚠️ Could not query queues: {str(e)[:100]}")
+
+    # Silent exit if nothing to report
+    if not overdue and not dlq_issues and not pending:
+        return
+
+    print("📊 Bus Message Health Report")
+    print()
+
+    # Tracker status
     confirmed_count = len([m for m in msgs if m["confirmed"]])
     print(f"📬 Messages tracked: {len(msgs)}")
     print(f"   ✅ Confirmed: {confirmed_count}")
@@ -297,35 +327,14 @@ def cmd_report(args):
     print()
 
     # Queue depths
-    token = _get_token()
-    try:
-        req = Request(f"{BUS_URL}/api/pgmq/queues",
-                      headers={"Authorization": f"Bearer {token}"},
-                      method="GET")
-        with urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-        queues = data.get("queues", []) if isinstance(data, dict) else data
-        inbox_queues = [q for q in queues if q.get("name", "").startswith("inbox_")]
-        print(f"📨 Inbox queues ({len(inbox_queues)}):")
-        dlq_issues = []
-        for q in sorted(inbox_queues, key=lambda x: x["name"]):
-            name = q["name"]
-            depth = q.get("depth", 0)
-            processing = q.get("processing", 0)
-            is_dlq = q.get("dlq", False)
-            marker = " ⚠️ DLQ" if is_dlq and depth > 0 else ""
-            if depth > 0:
-                dlq_issues.append(name)
-            print(f"   {name:35s} depth={depth} processing={processing}{marker}")
-        if dlq_issues:
-            print(f"\n⚠️  DLQs with pending messages: {', '.join(dlq_issues)}")
-        else:
-            print("\n✅ No DLQ backlog")
-    except Exception as e:
-        print(f"  ⚠️ Could not query queues: {str(e)[:100]}")
+    print(f"📨 Inbox queues ({len(queue_lines)}):")
+    for line in queue_lines:
+        print(line)
+    if dlq_issues:
+        print(f"\n⚠️  DLQ backlog: {', '.join(dlq_issues)}")
     print()
 
-    # Summary line for cron delivery
+    # Summary line
     total = len(msgs)
     if overdue:
         print(f"Summary: {total} tracked | {confirmed_count} confirmed | {len(overdue)} overdue ⚠️")
