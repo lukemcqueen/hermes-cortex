@@ -775,7 +775,7 @@ deploy_nginx_configs() {
   [[ -d "$nginx_src_dir" ]] || return 0
 
   local config_dir="${NGINX_CONFIG_DIR:-}"
-  local brew_dir="${NGINX_BREW_DIR:-}"
+  local brew_dir="${NGINX_ROOT:-}"
   local log_dir="${NGINX_LOG_DIR:-}"
   local htpasswd="${NGINX_HTPASSWD:-}"
 
@@ -784,7 +784,7 @@ deploy_nginx_configs() {
     local os_script="${REPO_DIR}/ops/scripts/install/os-config.sh"
     [[ -f "$os_script" ]] && source "$os_script" 2>/dev/null || true
     config_dir="${NGINX_CONFIG_DIR:-}"
-    brew_dir="${NGINX_BREW_DIR:-}"
+    brew_dir="${NGINX_ROOT:-}"
     log_dir="${NGINX_LOG_DIR:-}"
     htpasswd="${NGINX_HTPASSWD:-}"
   fi
