@@ -17,8 +17,8 @@ A lightweight map of all project documents. Files are grouped by topic.
 || `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
 | `docs/fleet-update-protocol.md` | **NEW** — Fleet update bus protocol: UPDATE_REQUEST/RESULT, FIX_REQUEST/RESULT schemas for Moses→fleet orchestration |
 | `ops/scripts/lib/cortex_bus.py` | **Shared bus library** — HTTP API wrapper: bus_send, bus_read, bus_archive, bus_list_queues (used by all fleet scripts) |
-| `ops/scripts/push-agent/push-agent-update-handler.py` | **Push-agent update handler** — polls inbox for UPDATE_REQUEST, runs cortex-update, posts UPDATE_RESULT |
-| `ops/install/install-push-agent.sh` | **Push-agent installer** — lightweight installer for push-only agents: service + update handler, no Docker/nginx/gbrain |
+| `ops/scripts/agent/agent-message-handler.py` | **Agent message handler** — polls inbox for UPDATE_REQUEST, ROLLBACK_REQUEST, GIT_AUTH_CHECK; runs cortex-update, posts results |
+| `ops/install/install-agent-message-handler.sh` | **Agent message handler installer** — installs the inbox polling service as launchd (macOS) or systemd (Linux) |
 | `docs/env-vars.md` | Environment variable reference — CORTEX_* vars, SSL, deploy scripts |
 | `install.sh` | Single-command installer (idempotent, safe to re-run) |
 | `ops/install/install.sh` | Main installer script (moved from root in v2.0.0) |

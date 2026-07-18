@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
-# install-push-agent.sh — Lightweight installer for push-only agents
+# install-agent-message-handler.sh — Install the agent message handler service
 #
-# Installs the push-agent update handler + service registration.
-# Does NOT install Docker, nginx, gbrain, or orchestrator crons.
+# Installs agent-message-handler.py as a launchd (macOS) or systemd (Linux)
+# service that polls the agent's bus inbox and processes fleet commands.
 #
 # Set CORTEX_BUS_URL before installing so it's baked into the
 # service definition:
 #
 #   export CORTEX_BUS_URL=https://orchestrator-host:13004
 #   export AGENT_NAME=titus
+#   export CORTEX_BUS_AUTH=user:pass
 #
 # Usage:
-#   bash install-push-agent.sh              # interactive
-#   bash install-push-agent.sh --service-only  # just (re)register the service
+#   bash install-agent-message-handler.sh              # install + start
+#   bash install-agent-message-handler.sh --service-only  # just (re)register the service
 #
 # Compatible: Linux (systemd --user) and macOS (launchd)
 
@@ -20,8 +21,7 @@ set -euo pipefail
 
 REPO_DIR="${CORTEX_REPO:-$HOME/hermes-cortex}"
 AGENT_NAME="${AGENT_NAME:-$(hostname)}"
-SCRIPT_DIR="${REPO_DIR}/ops/scripts/push-agent"
-HANDLER_SCRIPT="${SCRIPT_DIR}/push-agent-update-handler.py"
+HANDLER_SCRIPT="${REPO_DIR}/ops/scripts/agent/agent-message-handler.py"
 
 # ── Colors ──
 GREEN='\033[0;32m'
@@ -45,7 +45,7 @@ fi
 # ── Service definition ──
 
 install_launchd() {
-    local label="com.hermes.push-agent-update-handler"
+    local label="com.hermes.agent-message-handler"
     local plist="$HOME/Library/LaunchAgents/${label}.plist"
 
     cat > "$plist" <<LAUNCHDPLIST
@@ -66,9 +66,9 @@ install_launchd() {
     <key>RunAtLoad</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>${HOME}/Library/Logs/hermes-push-agent.log</string>
+    <string>${HOME}/Library/Logs/hermes-agent-message-handler.log</string>
     <key>StandardErrorPath</key>
-    <string>${HOME}/Library/Logs/hermes-push-agent.err</string>
+    <string>${HOME}/Library/Logs/hermes-agent-message-handler.err</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>AGENT_NAME</key>
@@ -77,6 +77,8 @@ install_launchd() {
         <string>${CORTEX_BUS_URL}</string>
         <key>CORTEX_BUS_TOKEN</key>
         <string>${CORTEX_BUS_TOKEN}</string>
+        <key>CORTEX_BUS_AUTH</key>
+        <string>${CORTEX_BUS_AUTH}</string>
     </dict>
 </dict>
 </plist>
@@ -87,14 +89,14 @@ LAUNCHDPLIST
 }
 
 install_systemd() {
-    local unit_name="hermes-push-agent-update-handler"
+    local unit_name="hermes-agent-message-handler"
     local service_dir="${HOME}/.config/systemd/user"
     mkdir -p "$service_dir"
 
-    # Service unit (runs once)
+    # Service unit (runs once per tick)
     cat > "${service_dir}/${unit_name}.service" <<SYSTEMD_SERVICE
 [Unit]
-Description=Hermes Push Agent Update Handler
+Description=Hermes Agent Message Handler
 After=network-online.target
 Wants=network-online.target
 
@@ -104,6 +106,7 @@ ExecStart=${HANDLER_SCRIPT} --once
 Environment=AGENT_NAME=${AGENT_NAME}
 Environment=CORTEX_BUS_URL=${CORTEX_BUS_URL}
 Environment=CORTEX_BUS_TOKEN=${CORTEX_BUS_TOKEN}
+Environment=CORTEX_BUS_AUTH=${CORTEX_BUS_AUTH}
 StandardOutput=journal
 StandardError=journal
 
@@ -114,7 +117,7 @@ SYSTEMD_SERVICE
     # Timer unit (every 5 min)
     cat > "${service_dir}/${unit_name}.timer" <<SYSTEMD_TIMER
 [Unit]
-Description=Hermes Push Agent Update Handler Timer
+Description=Hermes Agent Message Handler Timer
 
 [Timer]
 OnCalendar=*:0/5
@@ -132,7 +135,7 @@ SYSTEMD_TIMER
 # ── Main ──
 
 echo ""
-echo "━━━ Push Agent Installer ──────────────────────"
+echo "━━━ Agent Message Handler Installer ──────────"
 echo "  Agent:      ${AGENT_NAME}"
 echo "  Platform:   $(uname -s)"
 echo "  Handler:    ${HANDLER_SCRIPT}"
@@ -158,18 +161,18 @@ fi
 
 # 3. Verify
 echo ""
-info "Push agent installed. Logs:"
+info "Agent message handler installed. Logs:"
 if $IS_MAC; then
-    echo "  tail -f ${HOME}/Library/Logs/hermes-push-agent.log"
+    echo "  tail -f ${HOME}/Library/Logs/hermes-agent-message-handler.log"
 elif $IS_LINUX; then
-    echo "  journalctl --user -u hermes-push-agent-update-handler.service -f"
+    echo "  journalctl --user -u hermes-agent-message-handler.service -f"
 fi
 
 cat <<HELP
 
 Next steps:
   1. Verify the handler can reach the bus via CORTEX_BUS_URL
-  2. The handler runs every 5 minutes and checks for UPDATE_REQUEST
-  3. When Moses pushes to main and dispatches, this agent auto-updates
+  2. The handler runs every 5 minutes and checks for UPDATE_REQUEST etc.
+  3. When Moses dispatches fleet commands, this agent processes them
 
 HELP

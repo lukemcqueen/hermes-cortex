@@ -201,7 +201,7 @@ Fleet agents use three types in the registry `role` field:
 
 - **orchestrators** use `orch-bus-*` scripts and `cronjob` MCP tool to manage fleet
 - **server-agents** run `install.sh` (full stack) and poll inbox for work
-- **dev-agents** run `install-push-agent.sh` (lightweight) and process UPDATE_REQUEST via `push-agent-update-handler.py`
+- **dev-agents** run `install-agent-message-handler.sh` (lightweight) and process UPDATE_REQUEST via `agent-message-handler.py`
 
 ## Timeouts
 
@@ -277,7 +277,7 @@ The `bus-git-auth-check.py` script SSHes into each server-agent and runs
 `git ls-remote origin HEAD` to confirm credentials work.
 
 For dev-agents (push-only, Titus), auth is verified on the agent side as part
-of `push-agent-update-handler.py` — if `git pull` fails, the handler reports
+of `agent-message-handler.py` — if `git pull` fails, the handler reports
 the failure in UPDATE_RESULT WITHOUT applying the update.
 
 ### Server-Agent Git Auth Check

@@ -27,7 +27,7 @@ Hermes Cortex runs a coordinated team of specialized AI agents, each with distin
 | **Kustos** 🛡️ | Security | Threat detection, blocklist management, access control |
 | **Gisu** 💬 | Communications | Inbox routing, message triage, cross-agent coordination |
 
-> **Agent Taxonomy:** Agents fill three role tiers. **Orchestrators** (Moses, Esther) run bus-based fleet orchestration scripts (`orch-bus-*`) and manage the update pipeline. **Server-agents** (Kustos, Gisu) run the full Hermes Cortex stack with inbox polling and bus health checks (`bus-*` scripts). **Dev-agents** (Titus, Joseph) are push-only — they receive update requests via their inbox and self-update via the `push-agent-update-handler`.
+> **Agent Taxonomy:** Agents fill three role tiers. **Orchestrators** (Moses, Esther) run bus-based fleet orchestration scripts (`orch-bus-*`) and manage the update pipeline. **Server-agents** (Kustos, Gisu) run the full Hermes Cortex stack with inbox polling and bus health checks (`bus-*` scripts). **Dev-agents** (Titus, Joseph) run the agent message handler to process fleet commands via their bus inbox.
 
 Agents communicate via a **PGMQ-based Agent Bus** with A2A (Agent-to-Agent) protocol — Postgres-backed message queues with auth, health monitoring, and fallover. No shared state, no race conditions.
 
@@ -299,7 +299,7 @@ Titus  ──UPDATE_RESULT──→ AgentBus ──→ Moses
 |--------|-------|----------|---------|
 | `orch-bus-*` | Orchestrator-only (Moses, Esther) — run from repo | `ops/scripts/orch-bus/` | `orch-bus-fleet-dispatch`, `orch-bus-fleet-rollback` |
 | `bus-*` | Fleet-wide — deployed to all agents | `ops/scripts/orch-bus/` (registered via `cortex-update.sh`) | `bus-sensor`, `bus-health-check`, `bus-readiness-check` |
-| `push-agent-*` | Dev-agent side — installed via `install-push-agent.sh` | `ops/scripts/push-agent/` | `push-agent-update-handler` |
+| `agent-message-handler` | Agent-side inbox handler | `ops/scripts/agent/` | Polls inbox for UPDATE_REQUEST, ROLLBACK_REQUEST, GIT_AUTH_CHECK |
 | `agent-*` | General agent crons | `ops/scripts/agent/` | `agent-inbox-poll` |
 
 ### Update Flow
@@ -307,7 +307,7 @@ Titus  ──UPDATE_RESULT──→ AgentBus ──→ Moses
 1. **Pre-flight:** `bus-readiness-check.py` verifies bus health, git state, and agent inbox queues
 2. **Dispatch:** `orch-bus-fleet-dispatch.py` sends `UPDATE_REQUEST` to each server-agent's inbox
 3. **Server-agents** poll their inbox, run `cortex-update.sh`, post `UPDATE_RESULT` back
-4. **Dev-agents** (push-only): `push-agent-update-handler` polls their inbox, runs `cortex-update`, posts `UPDATE_RESULT`
+4. **Dev-agents**: `agent-message-handler` polls their inbox, runs `cortex-update`, posts `UPDATE_RESULT`
 5. **Rollback:** `orch-bus-fleet-rollback.py` reads dispatch state and sends `ROLLBACK_REQUEST` to failed agents
 6. **Auth check:** `bus-git-auth-check.py` verifies each agent can pull from the remote
 
