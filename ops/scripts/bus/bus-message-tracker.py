@@ -22,7 +22,6 @@ from urllib.error import URLError
 
 CORTEX_HOME = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex"))
 TRACKER_DB = CORTEX_HOME / "data" / "message-tracker.json"
-BUS_URL = os.environ.get("CORTEX_BUS_URL", "http://127.0.0.1:8903")
 TOKEN_FILE = CORTEX_HOME / "cortex-bus.conf"
 
 
@@ -33,6 +32,9 @@ def _read_config(key: str) -> str:
             if line.startswith(f"{key}="):
                 return line.split("=", 1)[1].strip()
     return os.environ.get(key, "")
+
+
+BUS_URL = os.environ.get("CORTEX_BUS_URL", "") or _read_config("CORTEX_BUS_URL") or "http://127.0.0.1:8903"
 
 
 def _get_auth_header() -> tuple[str, str]:
