@@ -66,10 +66,48 @@ MCP_SERVERS_DIR = CORTEX_REPO / "mcp-servers"
 
 # Passthrough to subprocess for HTTP checks (avoid cert issues with urllib)
 CURL = os.environ.get("CURL_BIN", "curl")
-EXTERNAL_BASE = os.environ.get("CORTEX_DOCTOR_BASE", "")
-# Fall back to localhost when no domain is configured (PII-safe default)
-if not EXTERNAL_BASE:
-    EXTERNAL_BASE = "https://localhost"
+
+# ── External base URL resolution ──────────────────────────────
+# Priority order:
+# 1. CORTEX_DOCTOR_BASE env var (explicit override, PII-neutral)
+# 2. CORTEX_BUS_URL from env -> strip port to get scheme+host
+# 3. CORTEX_BUS_FALLBACK_URL from env -> strip port
+# 4. Read from cortex-bus.conf (present on every agent)
+# 5. Fall back to https://localhost (only works for Moses/Esther on the bus server)
+def _resolve_external_base() -> str:
+    base = os.environ.get("CORTEX_DOCTOR_BASE", "")
+    if base:
+        return base.rstrip("/")
+    
+    for env_key in ("CORTEX_BUS_URL", "CORTEX_BUS_FALLBACK_URL"):
+        url = os.environ.get(env_key, "")
+        if url:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            if parsed.scheme and parsed.hostname:
+                return f"{parsed.scheme}://{parsed.hostname}"
+    
+    # Try cortex-bus.conf
+    bus_conf = CORTEX_HOME / "cortex-bus.conf"
+    if bus_conf.exists():
+        try:
+            for line in bus_conf.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = (x.strip().strip("'\"").strip() for x in line.split("=", 1))
+                v = re.sub(r"\s+#.*$", "", v).strip()
+                if k in ("CORTEX_BUS_URL", "CORTEX_BUS_FALLBACK_URL") and v:
+                    from urllib.parse import urlparse
+                    parsed = urlparse(v)
+                    if parsed.scheme and parsed.hostname:
+                        return f"{parsed.scheme}://{parsed.hostname}"
+        except OSError:
+            pass
+    
+    return "https://localhost"
+
+EXTERNAL_BASE = _resolve_external_base()
 
 # Port prefix — read from CORTEX_HOME/.env, default to 13
 _PORT_PREFIX_ENV = CORTEX_HOME / ".env"
