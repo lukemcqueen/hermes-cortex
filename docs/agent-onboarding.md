@@ -320,7 +320,7 @@ This step happens **on Moses's machine**, not yours. Moses will:
 ```json
 "titus": {
   "name": "Titus",
-  "role": "developer",
+  "role": "dev-agent",
   "hostname": "titus",
   "is_server": false,
   "accessible": true,

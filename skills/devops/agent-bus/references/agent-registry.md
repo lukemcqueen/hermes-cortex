@@ -14,11 +14,11 @@ from the registry.
 `orch-fleet-watchdog.py` reads health URLs from here.
 Future fleet-update orchestration will read capability declarations from here.
 
-## Schema (v3)
+## Schema (v4)
 
 ```json
 {
-  "version": 3,
+  "version": 4,
   "health_vector_map": ["resources", "services", ...],
   "routing": {
     "broadcast_topics": ["luke", "all", "general"],
@@ -27,7 +27,7 @@ Future fleet-update orchestration will read capability declarations from here.
   "agents": {
     "<agent-key>": {
       "name": "Display Name",
-      "role": "orchestrator | developer | operations | ...",
+      "role": "orchestrator | server-agent | dev-agent",
       "hostname": "machine-hostname",
       "is_server": true,
       "is_orchestrator": false,

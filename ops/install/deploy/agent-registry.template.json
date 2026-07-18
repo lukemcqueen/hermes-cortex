@@ -31,7 +31,7 @@
     },
     "esther": {
       "name": "Esther",
-      "role": "orchestrator-backup",
+      "role": "orchestrator",
       "hostname": "esther",
       "is_server": true,
       "is_backup_orchestrator": true,
@@ -46,7 +46,7 @@
     },
     "joseph": {
       "name": "Joseph",
-      "role": "web-infrastructure",
+      "role": "server-agent",
       "hostname": "joseph",
       "is_server": true,
       "accessible": true,
@@ -60,7 +60,7 @@
     },
     "kustos": {
       "name": "Kustos",
-      "role": "web-infrastructure",
+      "role": "server-agent",
       "hostname": "kustos",
       "is_server": true,
       "accessible": true,
@@ -74,7 +74,7 @@
     },
     "gisu": {
       "name": "Gisu",
-      "role": "operations",
+      "role": "server-agent",
       "hostname": "gisu",
       "is_server": true,
       "accessible": true,
@@ -88,7 +88,7 @@
     },
     "titus": {
       "name": "Titus",
-      "role": "developer",
+      "role": "dev-agent",
       "hostname": "titus",
       "is_server": false,
       "accessible": true,

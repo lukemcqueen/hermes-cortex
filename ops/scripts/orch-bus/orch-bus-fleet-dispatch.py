@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-fleet-update-dispatch.py — Moses-side fleet update orchestrator.
+orch-bus-fleet-dispatch.py — Moses-side fleet update orchestrator.
 
 Sends UPDATE_REQUEST to fleet agents, collects results via inbox,
 evaluates outcomes, sends FIX_REQUEST for issues, and outputs
@@ -40,9 +40,6 @@ REGISTRY_PATH = HERMES_STATE / "agent-registry.json"
 CORTEX_REPO = HOME / "hermes-cortex"
 DISPATCH_LOG = HERMES_STATE / "fleet-update-state.json"
 
-# Agents that only push — cannot receive bus work items
-PUSH_ONLY_AGENTS = {"titus"}
-
 
 def log(msg: str):
     ts = datetime.now().strftime("%H:%M:%S")
@@ -75,8 +72,10 @@ def get_agents_for_update(registry: dict) -> list[dict]:
     for key, val in registry.get("agents", {}).items():
         caps = val.get("capabilities", {})
         bus_mode = caps.get("bus_mode", "poll")
-        if key in PUSH_ONLY_AGENTS:
-            continue  # handled separately
+        agent_role = val.get("role", "unknown")
+        # dev-agents don't receive bus work — they poll independently
+        if agent_role == "dev-agent":
+            continue
         if not caps.get("has_git", False):
             log(f"  ⚠️  {key} has no git — skipping")
             continue
@@ -209,7 +208,7 @@ def main():
 
     # ── Agent discovery ──
     agents = get_agents_for_update(registry)
-    push_only = [k for k in registry.get("agents", {}) if k in PUSH_ONLY_AGENTS]
+    push_only = [k for k, v in registry.get("agents", {}).items() if v.get("role") == "dev-agent"]
 
     if not args.json:
         log(f"Fleet update dispatch — SHA: {current_sha}")

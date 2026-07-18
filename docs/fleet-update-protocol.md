@@ -189,6 +189,20 @@ without re-executing.
 | Response deadline | deadline_minutes field + Moses timeout handler |
 | Confirmation tracking | Existing orch-bus-message-tracker polls for unconfirmed messages |
 
+## Agent Taxonomy
+
+Fleet agents use three types in the registry `role` field:
+
+| Type | bus_mode | Runs orchestrator crons? | Receives bus work? | Example |
+|------|----------|--------------------------|--------------------|---------|
+| **orchestrator** | `both` | Yes | Yes | Moses, Esther |
+| **server-agent** | `poll` | No | Yes (polls inbox) | Joseph, Kustos, Gisu |
+| **dev-agent** | `push_only` | No | No (push-only) | Titus |
+
+- **orchestrators** use `orch-bus-*` scripts and `cronjob` MCP tool to manage fleet
+- **server-agents** run `install.sh` (full stack) and poll inbox for work
+- **dev-agents** run `install-push-agent.sh` (lightweight) and process UPDATE_REQUEST via `push-agent-update-handler.py`
+
 ## Timeouts
 
 Moses waits `deadline_minutes` for each agent. If an agent doesn't respond:
