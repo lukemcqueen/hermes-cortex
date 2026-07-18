@@ -11,13 +11,14 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `README.md` | Project overview, quick start, and links |
 | `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
 | `AGENTS.md` | Agent guidelines — read by AI tools on session start |
-| `docs/setup-reference.md` | Deployment setup across Luke's multi-machine fleet |
-|| `docs/operations-reference.md` | Operations — inbox architecture, Agent Bus, offline code, common tasks |
+| `docs/setup-reference.md` | Deployment setup, health monitoring pipeline, Ollama model tier |
+| `docs/operations-reference.md` | Operations — inbox architecture, Agent Bus, offline code, common tasks |
 || `docs/agent-onboarding.md` | Agent onboarding — step-by-step guide for client-only agents to connect to Moses and the fleet |
 || `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
 | `docs/env-vars.md` | Environment variable reference — CORTEX_* vars, SSL, deploy scripts |
 | `install.sh` | Single-command installer (idempotent, safe to re-run) |
-|| `ops/scripts/` | Health checks, watchdogs, governance, installers — 139 scripts across 5 subdirectories |
+| `ops/install/install.sh` | Main installer script (moved from root in v2.0.0) |
+| | `ops/scripts/` | Health checks, watchdogs, governance, installers — 199+ scripts across subdirectories |
 
 ## Security
 
@@ -67,7 +68,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 |||| `docs/cron-format-standard.md` | **Cron output format standard** — required format for all LLM-driven cron outputs: header, phases, cost footer, [SILENT]. Cross-references the cron-format-standard skill. |
 | `docs/cron-job-recipes.md` | 10 reusable cron recipes — Bible reading, system alerts, memory pruning, morning briefing, and more |
 | `docs/computer-specs.md` | Hardware specs guide — RAM tiers, recommended models (Intel vs Apple Silicon), ZIM content bundles |
-| `deploy/docker-compose.langfuse.yml` | Langfuse v3 Docker stack — ClickHouse, MinIO, Redis, Postgres |
+| `ops/install/deploy/docker-compose.langfuse.yml` | Langfuse v3 Docker stack — ClickHouse, MinIO, Redis, Postgres |
 
 ## Knowledge & Offline
 
@@ -85,7 +86,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `ops/offline/prep-code.sh` | Build the code snippet corpus and vector index for offline coding |
 | `ops/offline/code-corpus/generate.py` | Auto-discovers snippets modules, writes formatted .md snippet files with YAML frontmatter |
 | `ops/web-cache/SKILL.md` | Web cache skill — local semantic cache for web_search and web_extract |
-| `deploy/patches/hermes-langfuse-cost-fixes.patch.md` | Patch notes for Langfuse cost calculation fixes |
+|  | **Legacy paths removed:** `deploy/` was a symlink to `ops/install/deploy/` — now canonical under `ops/`. `src/` was migrated to `core/` + `ops/` in v2.0.0. `runtime/` duplicated `core/` content and has been removed. |
 
 ## Skills
 

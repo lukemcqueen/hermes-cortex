@@ -146,7 +146,7 @@ Before modifying any file, check existing scripts, skills, and crons. Call `skil
 
 ### 19. Build Shared by Default
 
-Anything useful — templates, skills, scripts, docs, config patterns — goes into `hermes-cortex/ops/scripts/` or `runtime/skills/` so all agents benefit. If a fix or workflow would help another agent, write it to the public repo.
+Anything useful — templates, skills, scripts, docs, config patterns — goes into `hermes-cortex/ops/scripts/` or `skills/` so all agents benefit. If a fix or workflow would help another agent, write it to the public repo.
 
 ### 20. Honesty + Correction Loop
 

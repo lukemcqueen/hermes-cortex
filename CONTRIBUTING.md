@@ -112,8 +112,8 @@ this same turn, you can skip this step.
 || Canonical skill | `skills/<category>/<name>/SKILL.md` | `docs/SKILLS-MANIFEST.md` |
 | Documentation | `docs/<slug>.md` | `docs/DOCS-INDEX.md` |
 | Config template | `docs/templates/<name>` | — |
-|    Nginx config | `ops/install/deploy/nginx/<name>.conf` | — |
-|    Docker config | `ops/install/deploy/<name>.yml` or `deploy/docker/<name>.conf` | — |
+| Nginx config | `ops/install/deploy/nginx/<name>.conf` | — |
+| Docker config | `ops/install/deploy/<name>.yml` | — |
 | Test | `tests/<category>/test_<name>.py` | — |
 
 #### Service Layer Policy — Critical
@@ -334,7 +334,7 @@ mcp_loop_governance_end_change(task_id="<your-task-id>")
 | **Cron job** | Document in AGENTS.md or as install-crons.sh entry | Shared maintenance automation |
 | **Template improvement** | `docs/templates/<name>` | Better starting point for every new install |
 | **Tests** | `tests/<category>/test_<name>.py` | Higher confidence for every contributor |
-|    **Config improvement** | `ops/install/deploy/nginx/`, `ops/install/deploy/patches/` | Better defaults for every deploy |
+|    **Config improvement** | `ops/install/deploy/nginx/` | Better defaults for every deploy |
 
 ### What NOT to Contribute
 
@@ -370,7 +370,7 @@ that needs to be installed on agent machines, register it here:
 | `ops/services/dashboard/` files | `~/.hermes-cortex/dashboard/` |
 || `skills/<category>/<name>/` | `~/.hermes/skills/<category>/<name>/` (via symlink) |
 | `core/governance/` files | `~/.hermes-cortex/loop-governance/` |
-|    `ops/install/deploy/nginx/` | `~/.hermes-cortex/nginx/` |
+| `ops/install/deploy/nginx/` files | `~/.hermes-cortex/nginx/` |
 | `docs/` | Read from repo (no deployment needed) |
 | `install.sh` | `~/.hermes-cortex/install.sh` |
 

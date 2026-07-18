@@ -1,15 +1,17 @@
 ---
 name: requirements-elicitation
-description: "Requirements elicitation for Hermes Cortex — structured domain exploration, RICE/MoSCoW prioritization, and user-story output with acceptance criteria. Ported from AgentKore."
-version: 1.1.0
-author: Hermes Agent (ported from AgentKore)
+description: "Requirements elicitation for Hermes Cortex (a.k.a. elicit) — structured domain exploration, RICE/MoSCoW prioritization, and user-story output with acceptance criteria."
+version: 1.2.0
+author: Hermes Agent
 license: MIT
 category: software-development
 source: hermes-cortex
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [requirements, elicitation, specs, prioritization, rice, moscow, user-stories, acceptance-criteria, domain-exploration]
+    tags: [requirements, elicitation, specs, prioritization, rice, moscow, user-stories, acceptance-criteria, domain-exploration, elicit, hc-elicit]
+    aliases: [hc-elicit, elicit]
+    trigger_phrases: [elicit requirements, gather specs, requirements elicitation, hc elicit]
     related_skills: [plan, spike, subagent-driven-development]
 ---
 

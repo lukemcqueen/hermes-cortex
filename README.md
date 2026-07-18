@@ -27,7 +27,7 @@ Hermes Cortex runs a coordinated team of specialized AI agents, each with distin
 | **Kustos** 🛡️ | Security | Threat detection, blocklist management, access control |
 | **Gisu** 💬 | Communications | Inbox routing, message triage, cross-agent coordination |
 
-Agents communicate via a **git-backed inbox** with A2A (Agent-to-Agent) protocol — direct task submission, status polling, and cancellation. No shared state, no race conditions.
+Agents communicate via a **PGMQ-based Agent Bus** with A2A (Agent-to-Agent) protocol — Postgres-backed message queues with auth, health monitoring, and fallover. No shared state, no race conditions.
 
 ### 🔒 Loop Governance — Enforced Change Discipline
 
@@ -55,14 +55,14 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 
 ### 🩺 Self-Healing Operations
 
-**49 cron jobs** keep the system healthy without human intervention:
+**50 cron jobs** keep the system healthy without human intervention:
 
 | Category | Crons | What |
 |----------|-------|------|
 | **Health** | `orch-fleet-watchdog`, `system-alert-watchdog`, `model-health-watchdog`, `bus-health-check` | Every 5-30 min health checks across all agents |
 | **Recovery** | `service-recovery`, `agent-apply-fixes`, `remediation-sensor` | Auto-restart crashed services, apply fixes |
 | **Governance** | `governance-auditor`, `scoring-activity-watchdog` | Score tracking, lock cleanup, audit trails |
-| **Messaging** | `bus-inbox-watch` | Every 10 min — reports pending messages across all agent queues |
+| **Messaging** | `agent-bus-workday/evening/overnight` | Process agent-bus messages on schedule |
 | **Sync** | `hermes-cortex-sync`, `memory-to-brain-sync`, `gbrain-update-sync` | Pull updates, persist memory, sync brain |
 | **Security** | `threat-pipeline`, `agent-ip-submission` | Block threats, report IPs |
 | **Maintenance** | `memory-pruning`, `session-cache-build`, `orch-skill-lifecycle` | Weekly consolidation, daily skill lifecycle pipeline |
@@ -116,8 +116,8 @@ integration from operations:
 | Layer | Directory | Purpose | Contents |
 |-------|-----------|---------|----------|
 | **Cortex Core** | `core/` | Schemas, governance, identity | Canonical type definitions, loop governance engine, agent identity contracts — zero runtime dependency |
-| **Cortex Runtime** | `plugins/`, `mcp-servers/`, `core/agent_bus/` | Hermes Agent bridge | Governance enforcer plugin (`plugins/hermes-governance-enforcer/`), MCP servers (`mcp-servers/`), agent bus library (`core/agent_bus/`) |
-|| **Cortex Ops** | `ops/` | Fleet operations | Installers, health scripts, watchdogs, offline stack, dashboard, agent-bus, web cache, cron infrastructure |
+| **Cortex Runtime** | `mcp-servers/`, `plugins/` | Hermes Agent bridge | MCP servers (`mcp-servers/`), governance enforcer plugin (`plugins/hermes-governance-enforcer/`) |
+| **Cortex Ops** | `ops/` | Fleet operations | Installers (`ops/install/`), health scripts (`ops/scripts/health/`), watchdogs, offline stack, dashboard, agent-bus, web cache, cron infrastructure |
 
 The boundary is directional: **Core ← Runtime ← Ops**. Core knows nothing about
 Hermes Agent. Runtime translates Core contracts into Hermes-compatible hooks and
@@ -177,13 +177,13 @@ score-cycle --help                    # ready to use
 
 ```bash
 # Layer 1 — pre-commit hook (blocks commits without scoring):
-bash ~/.hermes-cortex/scripts/install-score-hook.sh --all
+bash ops/scripts/install/install-score-hook.sh --all
 
 # Layer 2 — SOUL.md directive (every Hermes session sees the rule):
 echo -e "\n## Mandatory Directives\n**Score every change** — run \`score-cycle\` after every file edit." >> ~/.hermes/SOUL.md
 
 # Layer 3 — cron auditor (checks every 6h for unscored changes + cleans stale locks):
-bash ~/.hermes/scripts/install-crons.sh --force
+bash ops/scripts/install-crons.sh --force
 ```
 
 **Full install (5-15 min):**
@@ -221,7 +221,7 @@ CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 | 5 | **gbrain sync** | Launchd/systemd daemon — syncs brain every 2 minutes |
 | 6 | **Observability** † | Langfuse + Cortex Dashboard |
 | 7 | **`/brain` plugin** | Hermes slash command for gbrain queries |
-| 8 | **Scripts** | 139+ scripts: health checks, watchdogs, sync, governance, security |
+| 8 | **Scripts** | 199+ scripts: health checks, watchdogs, sync, governance, security |
 | 9 | **Plugin enable** | Auto-activates in Hermes config |
 | 10 | **Skills** | 8+ shared skills installed to `~/.hermes/skills/` |
 | 11 | **Web Cache** | Semantic web result cache (sqlite-vec + Ollama) |
@@ -229,7 +229,7 @@ CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 | 13 | **Offline Reader** | `python3 ops/offline/offline-reader.py` — zero-dependency web UI |
 | 14 | **Code Corpus** | 366 snippets across 32 categories, 19 languages; RAG index via Ollama |
 | 15 | **Auto-Update** | `auto-update.sh` — silent cron-based content updater |
-| 16 | **Cron Jobs** | 49 maintenance crons: health, security, sync, recovery, reporting |
+| 16 | **Cron Jobs** | 50 maintenance crons: health, security, sync, recovery, reporting |
 | 17 | **nginx** † | Reverse proxy for Langfuse + Dashboard + hardening |
 | | *† Server profile only* | |
 
@@ -281,7 +281,7 @@ bash ops/scripts/cortex-update.sh --force-all
 ## 🧠 Offline Knowledge Stack
 
 | Scenario | `prep-offline` mode | Content | Size |
-|---|---|---|---|
+|----------|---------------------|---------|------|
 | 🌴 **Jungle Travel** | `--mode=travel` | WikiMed + Wikivoyage + Simple Wiki + Wiktionary | ~6 GB |
 | 🏗️ **Offline Dev** | `--mode=build` | Simple Wiki + Wikibooks + Wiktionary | ~7 GB |
 | 📚 **Kid Learning** | `--mode=education` | Simple Wiki + Wikibooks + Wikivoyage | ~5 GB |
@@ -305,14 +305,14 @@ offline_knowledge query "symptoms of malaria"
 
 ## 🔧 Key Scripts
 
-| **Key Scripts** | Purpose |
+| Script | Purpose |
 |--------|---------|
 | `ops/install/install.sh` | **Main installer** (moved from root in v2.0.0) |
-| `ops/install/quick-start.sh` | Quickstart (moved from root in v2.0.0) |
+| `ops/install/quick-start.sh` | Quickstart |
 | `ops/scripts/cortex-update.sh` | Deploy scripts from repo to `~/.hermes/scripts/` — run after every `git pull` |
 | `ops/scripts/manage/cortex-doctor.py` | System diagnostics, fix common issues |
 | `ops/scripts/install/install-score-hook.sh` | Install/remove pre-commit scoring hooks on any repo |
-| `ops/scripts/install-crons.sh` | Install/remove all 37 maintenance cron jobs |
+| `ops/scripts/install-crons.sh` | Install/remove all 50 maintenance cron jobs |
 | `ops/scripts/manage/hermes-update.sh` | Silent nightly update of Hermes Agent |
 | `ops/scripts/manage/hermes-cortex-sync.sh` | Nightly git pull of hermes-cortex repo |
 | `ops/scripts/manage/nginx-threat-pipeline.sh` | Daily nginx log scan + auto-ban repeat attackers |
@@ -328,7 +328,7 @@ offline_knowledge query "symptoms of malaria"
 |----------|---------------|
 | [Security Guide](docs/SECURITY.md) | 🔒 Port risks, file permissions, firewall setup, recovery |
 | [Architecture](docs/architecture.md) | System diagram, services, port map, design principles |
-| [Troubleshooting](docs/troubleshooting.md) | 25+ common issues and fixes |
+| [Troubleshooting](docs/troubleshooting.md) | Common issues and fixes |
 | [Loop Governance Reference](docs/loop-governance-reference.md) | Full governance workflow, scoring, enforcement layers |
 | [Fleet Reference](docs/fleet-reference.md) | Agent summary, cron table, auto-remediation pipeline |
 | [Setup Reference](docs/setup-reference.md) | Ollama config, env vars, cron tiers, model selection |
@@ -345,4 +345,4 @@ offline_knowledge query "symptoms of malaria"
 
 ---
 
-*Built by [@fleet-operator](https://github.com/fleet-operator) · Powered by 🦞 [Hermes Agent](https://hermes-agent.nousresearch.com) · Version `v1.0.0` · [MIT License](LICENSE) · See [Third-Party Licenses](docs/THIRD_PARTY_LICENSES.md) for component attributions*
+*Built by [@fleet-operator](https://github.com/fleet-operator) · Powered by 🦞 [Hermes Agent](https://hermes-agent.nousresearch.com) · Version `v2.0.0` · [MIT License](LICENSE) · See [Third-Party Licenses](docs/THIRD_PARTY_LICENSES.md) for component attributions*

@@ -278,18 +278,4 @@ When a bus message includes a `correlation_id` field, the receiving agent
 **Confirmation message format** (send to `inbox_mose
 
 > Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
-> Date: 2026-07-16T19:33:18.754649+00:00
-
-
----
-
-### Confirmation Protocol — Required When correlation_id Present
-
-
-When a bus message includes a `correlation_id` field, the receiving agent
-**must** send a confirmation to the sender's inbox after processing it.
-
-**Confirmation message format** (send to `inbox_mose
-
-> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
 > Date: 2026-07-16T19:33:40.440807+00:00

@@ -1,16 +1,17 @@
 ---
 name: architecture-review
-version: 1.1.0
-description: "Multi-role architecture review with weighted decision matrices, conflict resolution, and cost estimation."
+version: 1.2.0
+description: "Multi-role architecture review (a.k.a. HC-Party) with weighted decision matrices, conflict resolution, and cost estimation."
 category: software-development
 source: hermes-cortex (ported from AgentKore)
-author: Hermes Agent (ported from AgentKore)
+author: Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [architecture, design-review, decision-matrix, cost-estimation, conflict-resolution]
-    trigger_phrases: [architecture review, design review, evaluate approach]
+    tags: [architecture, design-review, decision-matrix, cost-estimation, conflict-resolution, party, hc-party]
+    aliases: [hc-party, party]
+    trigger_phrases: [architecture review, design review, evaluate approach, hc party, arch party]
     related_skills: [plan, writing-plans, spike, change-test-loop, codebase-design, systematic-debugging]
 ---
 
@@ -18,7 +19,7 @@ metadata:
 
 ## Overview
 
-A structured, multi-role architecture review process designed for complex design decisions. HC-Party assembles a panel of six expert personas, each evaluating the architecture from their unique vantage point using a weighted decision matrix. Conflicts are surfaced and resolved systematically, and cost estimates ground every recommendation in reality.
+A structured, multi-role architecture review process designed for complex design decisions (formerly known as HC-Party). It assembles a panel of six expert personas, each evaluating the architecture from their unique vantage point using a weighted decision matrix. Conflicts are surfaced and resolved systematically, and cost estimates ground every recommendation in reality.
 
 **Origin:** Ported from AgentKore into the Hermes Cortex skill set.
 
@@ -34,7 +35,7 @@ This skill activates when the user says one of the following phrases (or an equi
 - **"which approach should I choose"**
 - **"trade-off analysis"**
 
-If the user asks for a quick opinion on a small design decision, they might not need a full HC-Party. Use your judgment — when the decision is costly, complex, or irreversible, run the party.
+If the user asks for a quick opinion on a small design decision, they might not need a full Party. Use your judgment — when the decision is costly, complex, or irreversible, run the party.
 
 ---
 
@@ -133,7 +134,7 @@ Cost estimates should be **bracketed** (optimistic / likely / pessimistic) and i
 After all five phases, produce a final summary like this:
 
 ```
-# HC-Party Review: [System/Decision Name]
+# Architecture Review — Review: [System/Decision Name]
 
 ## Recommendation
 **Option [X]** — [1-sentence recommendation]

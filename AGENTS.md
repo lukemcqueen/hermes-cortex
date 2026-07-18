@@ -23,10 +23,9 @@
 | `docs/linux-service-layer.md` | Linux systemd `--user` service layer guide |
 | `docs/macos-service-layer.md` | macOS LaunchAgent service layer guide |
 | `docs/skills-manifest-reference.md` | Skills manifest — how to manage project-level skills |
-| `install.sh` | Single-command installer |
-| `deploy/` | Langfuse + ClickHouse docker-compose |
+| `ops/install/install.sh` | Single-command installer |
+| `ops/install/deploy/` | Langfuse + ClickHouse docker-compose |
 | `.hermes-cortex/` | Agent infra: sessions, memory, skills.yaml |
-| `hermes-cortex-private/` | Git-backed config and brain store |
 
 ## Skill loading
 
