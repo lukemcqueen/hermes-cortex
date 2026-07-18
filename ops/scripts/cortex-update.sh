@@ -293,7 +293,12 @@ register "ops/scripts/manage/request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/orch-bus/bus-sensor.py"        "${CORTEX_DEPLOY_HOME}/scripts/bus-sensor.py"
 register "ops/scripts/orch-bus/bus-health-check.py"  "${CORTEX_DEPLOY_HOME}/scripts/bus-health-check.py"
 register "ops/scripts/orch-bus/bus-watch.py"         "${CORTEX_DEPLOY_HOME}/scripts/bus-watch.py"
-register "ops/scripts/orch-bus/bus-mcp.py"   "${CORTEX_DEPLOY_HOME}/scripts/bus-mcp.py"
+register "ops/scripts/orch-bus/bus-watch.sh"         "${CORTEX_DEPLOY_HOME}/scripts/bus-watch.sh"
+register "ops/scripts/orch-bus/bus-mcp.py"           "${CORTEX_DEPLOY_HOME}/scripts/bus-mcp.py"
+register "ops/scripts/orch-bus/bus-readiness-check.py" "${CORTEX_DEPLOY_HOME}/scripts/bus-readiness-check.py"
+register "ops/scripts/orch-bus/bus-git-auth-check.py" "${CORTEX_DEPLOY_HOME}/scripts/bus-git-auth-check.py"
+register "ops/scripts/orch-bus/bus-clean-health-queue.py" "${CORTEX_DEPLOY_HOME}/scripts/bus-clean-health-queue.py"
+register "ops/scripts/orch-bus/bus-generate-wrappers.py" "${CORTEX_DEPLOY_HOME}/scripts/bus-generate-wrappers.py"
 register "ops/scripts/orch-bus/test-bus.py"            "${CORTEX_DEPLOY_HOME}/scripts/test-bus.py"
 register "ops/scripts/health/model-health-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/model-health-watchdog.py"
 
