@@ -134,19 +134,30 @@ SYSTEMD_TIMER
 
 # ── Main ──
 
+# ── Parse args ──
+SERVICE_ONLY=false
+for arg in "$@"; do
+  [[ "$arg" == "--service-only" ]] && SERVICE_ONLY=true
+done
+
 echo ""
 echo "━━━ Agent Message Handler Installer ──────────"
 echo "  Agent:      ${AGENT_NAME}"
 echo "  Platform:   $(uname -s)"
 echo "  Handler:    ${HANDLER_SCRIPT}"
+if $SERVICE_ONLY; then
+  echo "  Mode:       service-only (reuse existing script)"
+fi
 echo "───────────────────────────────────────────────"
 echo ""
 
-# 1. Verify handler exists
-if [[ ! -f "$HANDLER_SCRIPT" ]]; then
+# 1. Verify handler exists (skip in service-only mode — already deployed)
+if ! $SERVICE_ONLY; then
+  if [[ ! -f "$HANDLER_SCRIPT" ]]; then
     err "Handler not found: ${HANDLER_SCRIPT}"
     err "Clone the repo first: git clone https://github.com/fleet-operator/hermes-cortex.git"
     exit 1
+  fi
 fi
 
 # 2. Install service
