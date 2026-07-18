@@ -13,8 +13,8 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `AGENTS.md` | Agent guidelines — read by AI tools on session start |
 | `docs/setup-reference.md` | Deployment setup, health monitoring pipeline, Ollama model tier |
 | `docs/operations-reference.md` | Operations — inbox architecture, Agent Bus, offline code, common tasks |
-|| `docs/agent-onboarding.md` | Agent onboarding — step-by-step guide for client-only agents to connect to Moses and the fleet |
-|| `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
+| `docs/agent-onboarding.md` | Agent onboarding — step-by-step guide for client-only agents to connect to Moses and the fleet |
+| `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
 | `docs/fleet-update-protocol.md` | **NEW** — Fleet update bus protocol: UPDATE_REQUEST/RESULT, FIX_REQUEST/RESULT schemas for Moses→fleet orchestration |
 | `ops/scripts/lib/cortex_bus.py` | **Shared bus library** — HTTP API wrapper: bus_send, bus_read, bus_archive, bus_list_queues (used by all fleet scripts) |
 | `ops/scripts/agent/agent-message-handler.py` | **Agent message handler** — polls inbox for UPDATE_REQUEST, ROLLBACK_REQUEST, GIT_AUTH_CHECK; runs cortex-update, posts results |
@@ -22,7 +22,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/env-vars.md` | Environment variable reference — CORTEX_* vars, SSL, deploy scripts |
 | `install.sh` | Single-command installer (idempotent, safe to re-run) |
 | `ops/install/install.sh` | Main installer script (moved from root in v2.0.0) |
-| | `ops/scripts/` | Health checks, watchdogs, governance, installers — 199+ scripts across subdirectories |
+| `ops/scripts/` | Health checks, watchdogs, governance, installers — 160+ scripts across subdirectories |
 
 ## Security
 
@@ -34,11 +34,11 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
-||| `docs/architecture.md` | System architecture overview — layers, services, port map, security stack |
-|| `docs/agent-bus-setup.md` | **Agent Bus** — PGMQ-based Postgres message queue replacing file inbox |
+| `docs/architecture.md` | System architecture overview — layers, services, port map, security stack |
+| `docs/agent-bus-setup.md` | **Agent Bus** — PGMQ-based Postgres message queue replacing file inbox |
 | `ops/scripts/lib/cortex_bus.py` | **Cortex Bus library** — shared HTTP API wrapper over the Agent Bus: bus_send/bus_read/bus_archive/bus_list_queues |
-|| `docs/esther-bus-setup.md` | **Esther Bus Backup** — orchestrator-only guide: bus server, nginx with X-Forwarded-User, Postgres setup, verification |
-|| `docs/agent-inbox-setup.md` | Agent inbox setup (legacy) — file-based inbox architecture (superseded by Agent Bus) |
+| `docs/esther-bus-setup.md` | **Esther Bus Backup** — orchestrator-only guide: bus server, nginx with X-Forwarded-User, Postgres setup, verification |
+| `docs/agent-inbox-setup.md` | Agent inbox setup (legacy) — file-based inbox architecture (superseded by Agent Bus) |
 | `docs/service-layer-decision.md` | **Fleet-wide decision:** User-level systemd (Linux) / LaunchAgents (macOS) for all agent services. Full HC-Party architecture review with 6-role weighted matrix. |
 | `docs/linux-service-layer.md` | Linux service layer guide — user-level systemd, reboot survivability, template, migration from stale system units |
 | `docs/macos-service-layer.md` | macOS service layer guide — LaunchAgents vs LaunchDaemons, plist templates, migration guide, fleet service map |
@@ -58,19 +58,21 @@ A lightweight map of all project documents. Files are grouped by topic.
 ## Operations
 
 | Doc | Description |
-|-----|-------------|
-||| `docs/new-harness.md` | Task Harness architecture proposal — deterministic task control: state machine, lease, interruption, completion gates |\n|| `docs/research/new_harness/` | Harness spec research — consolidated v2 requirements, Moses/Esther specs, ChatGPT draft |\n|| `mcp-servers/loop-gov-mcp.py` | Harness v3 governance MCP server — state machine, ledger, issues, interruption protocol, completion gates |\n|| `docs/troubleshooting.md` | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse, Linux |
-||| `docs/fleet-reference.md` | Fleet status table — agent worker status across all fleet members |
-||| `docs/operations-reference.md` | Agent inbox message format — field reference, subject prefixes, priority levels |
-||| `docs/fleet-reference.md` | Auto-remediation pipeline cron schedule reference |
-||| `docs/operations-reference.md` | Governance & Quality cron schedule reference — scoring, auditing, enforcement |
-||| `docs/fleet-reference.md` | Deployment-specific cron schedule reference — update, status, deploy crons |
-||| `docs/skills-manifest-reference.md` | Skills manifest — how to manage project-level skills via YAML |
+| `docs/new-harness.md` | Task Harness architecture proposal — deterministic task control: state machine, lease, interruption, completion gates |
+| `docs/research/new_harness/` | Harness spec research — consolidated v2 requirements, Moses/Esther specs, ChatGPT draft |
+| `mcp-servers/loop-gov-mcp.py` | Harness v3 governance MCP server — state machine, ledger, issues, interruption protocol, completion gates |
+| `docs/troubleshooting.md` | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse, Linux |
+| `docs/fleet-reference.md` | Fleet status table — agent worker status across all fleet members |
+| `docs/operations-reference.md` | Agent inbox message format — field reference, subject prefixes, priority levels |
+| `docs/fleet-reference.md` | Auto-remediation pipeline cron schedule reference |
+| `docs/operations-reference.md` | Governance & Quality cron schedule reference — scoring, auditing, enforcement |
+| `docs/fleet-reference.md` | Deployment-specific cron schedule reference — update, status, deploy crons |
+| `docs/skills-manifest-reference.md` | Skills manifest — how to manage project-level skills via YAML |
 | `docs/reference/skill-loading.md` | Skill loading protocol — every agent loads skills on session start |
-||| `docs/gbrain-stale-lock-detection.md` | gbrain stale lock file detection & auto-recovery — root cause, automated fix via service-recovery, manual diagnostics |
-|||| `docs/cron-schedules.md` | **Canonical cron schedule reference** — every cron, schedule, type, script, delivery. Update whenever schedules change. |
-|||| `docs/cron-jobs-reference.md` | **Cron jobs inventory** — all 37 cron jobs with name, type, schedule, and purpose (extracted from AGENTS.md) |
-|||| `docs/cron-format-standard.md` | **Cron output format standard** — required format for all LLM-driven cron outputs: header, phases, cost footer, [SILENT]. Cross-references the cron-format-standard skill. |
+| `docs/gbrain-stale-lock-detection.md` | gbrain stale lock file detection & auto-recovery — root cause, automated fix via service-recovery, manual diagnostics |
+| `docs/cron-schedules.md` | **Canonical cron schedule reference** — every cron, schedule, type, script, delivery. Update whenever schedules change. |
+| `docs/cron-jobs-reference.md` | **Cron jobs inventory** — all cron jobs with name, type, schedule, and purpose (extracted from AGENTS.md) |
+| `docs/cron-format-standard.md` | **Cron output format standard** — required format for all LLM-driven cron outputs: header, phases, cost footer, [SILENT]. Cross-references the cron-format-standard skill. |
 | `docs/cron-job-recipes.md` | 10 reusable cron recipes — Bible reading, system alerts, memory pruning, morning briefing, and more |
 | `docs/computer-specs.md` | Hardware specs guide — RAM tiers, recommended models (Intel vs Apple Silicon), ZIM content bundles |
 | `ops/install/deploy/docker-compose.langfuse.yml` | Langfuse v3 Docker stack — ClickHouse, MinIO, Redis, Postgres |
@@ -80,7 +82,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `docs/offline-travel-stack.md` | Offline knowledge scenarios — jungle travel, development, kid learning |
-|| `ops/offline/code-corpus/` | Per-language code snippets (26 languages, 386 files) — indexed by `offline_code` tool |
+| `ops/offline/code-corpus/` | Per-language code snippets (26 languages, 386 files) — indexed by `offline_code` tool |
 | `ops/offline/SKILL.md` | Offline-knowledge skill — cascade cache + kiwix ZIM usage protocol + Code Assistant |
 | `ops/offline/prep-bible.sh` | Bible translation downloader — 55+ languages |
 | `ops/offline/prep-hymns.sh` | Public domain hymn downloader — scores (PDF), notation (ABC), audio (MIDI) |
@@ -97,9 +99,9 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
-|| `docs/SKILLS-MANIFEST.md` | Version manifest for all skills — planning pipeline + execution methodology |
-|| `docs/seeding-brain-content.md` | Brain directory templates and starter content — get from 0 pages to searchable knowledge |
-|| `skills/` | Canonical skills directory — organized by domain in the repo ||
+| `docs/SKILLS-MANIFEST.md` | Version manifest for all skills — planning pipeline + execution methodology |
+| `docs/seeding-brain-content.md` | Brain directory templates and starter content — get from 0 pages to searchable knowledge |
+| `skills/` | Canonical skills directory — organized by domain in the repo |
 
 ## Templates
 

@@ -57,7 +57,7 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 
 ### 🩺 Self-Healing Operations
 
-**50 cron jobs** keep the system healthy without human intervention:
+**160+ cron jobs** keep the system healthy without human intervention:
 
 | Category | Crons | What |
 |----------|-------|------|
@@ -100,7 +100,7 @@ Agent query → web_cache (50μs) → kiwix ZIM (localhost:8080) → gbrain (RAG
 
 | Layer | Technology | What it does |
 |-------|-----------|-------------|
-| Network | **pf firewall** | Default-deny, port-range rules, SSH rate-limiting |
+| Network | **UFW/firewall** | Default-deny, port-range rules, SSH rate-limiting |
 | Reverse Proxy | **nginx** | TLS + Basic Auth on all external ports, rate-limited (20 req/5s) |
 | Ban System | **fail2ban** | 4 jails with escalation (1h→4wk): http-auth, limit-req, botsearch, bad-request |
 | Access | **blocked_ips.add** | Shared cumulative blocklist maintained by ALL agents — append only |
@@ -231,7 +231,7 @@ CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 | 13 | **Offline Reader** | `python3 ops/offline/offline-reader.py` — zero-dependency web UI |
 | 14 | **Code Corpus** | 366 snippets across 32 categories, 19 languages; RAG index via Ollama |
 | 15 | **Auto-Update** | `auto-update.sh` — silent cron-based content updater |
-| 16 | **Cron Jobs** | 50 maintenance crons: health, security, sync, recovery, reporting |
+| 16 | **Cron Jobs** | 160+ maintenance crons: health, security, sync, recovery, reporting |
 | 17 | **nginx** † | Reverse proxy for Langfuse + Dashboard + hardening |
 | | *† Server profile only* | |
 
@@ -355,7 +355,7 @@ offline_knowledge query "symptoms of malaria"
 | `ops/scripts/cortex-update.sh` | Deploy scripts from repo to `~/.hermes/scripts/` — run after every `git pull` |
 | `ops/scripts/manage/cortex-doctor.py` | System diagnostics, fix common issues |
 | `ops/scripts/install/install-score-hook.sh` | Install/remove pre-commit scoring hooks on any repo |
-| `ops/scripts/install-crons.sh` | Install/remove all 50 maintenance cron jobs |
+| `ops/scripts/install-crons.sh` | Install/remove all 160+ maintenance cron jobs |
 | `ops/scripts/manage/hermes-update.sh` | Silent nightly update of Hermes Agent |
 | `ops/scripts/manage/hermes-cortex-sync.sh` | Nightly git pull of hermes-cortex repo |
 | `ops/scripts/manage/nginx-threat-pipeline.sh` | Daily nginx log scan + auto-ban repeat attackers |

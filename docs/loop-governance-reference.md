@@ -11,7 +11,7 @@
 |-----------|-----|---------|
 | Agent before coding | `cache_search(query)` | `mcp_loop_governance_cache_search(query="build user auth")` |
 | Agent session init | `config_show()` + `cycle_stats()` | At session start, query current thresholds + recent stats |
-| Agent after a cycle | `feedback_accept(id)` / `feedback_override(id, ...)` | Confirm or correct the decision |
+| Agent after a cycle | `feedback_accept(cycle_id=...)` / `feedback_override(cycle_id=..., ...)` | Confirm or correct the decision |
 | Agent reviewing cycles | `cycle_query(task_id="...")` | Check what was scored for a task |
 | Pre-commit hook | `score-cycle --task ... --pass-pct ...` | Runs automatically on `git commit` |
 | Script/CI pipeline | `score-cycle --task ... --json` | Programmatic scoring without MCP |

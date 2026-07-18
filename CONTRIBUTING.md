@@ -206,7 +206,7 @@ You must answer **NO** to ALL of these before proceeding:
 | Did you change a **cron schedule or script path**? | Update `docs/cron-job-recipes.md` or `docs/fleet-reference.md` |
 | Did you add a **new environment variable**? | Update `docs/env-vars.md` |
 | Did your change affect **agent behavior or session startup**? | Check if `AGENTS.md` or `README.md` needs updating |
-| Is your change significant enough that **another agent would benefit** from knowing about it? | Add a brief note to `docs/whats-new.md` or the relevant guide |
+| Is your change significant enough that **another agent would benefit** from knowing about it? | Add a brief note to the relevant guide or send an inbox message to the fleet |
 
 **If any answer is YES → update the corresponding doc before committing.**
 

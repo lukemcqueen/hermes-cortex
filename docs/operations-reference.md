@@ -23,7 +23,7 @@ Port **8905**, powered by `bus` schema on gbrain Postgres (port 15432).
 | SLA | None | Visibility timeout + DLQ + recovery |
 | Observability | Logs only | SQL views + JSON dashboard |
 | Port | 8903 (server.py) | 8905 (systemd service) |
-| Nginx | 13004 → 8903 | 13004 → 8905 (after cutover) |
+| Nginx | 13004 → 8903 (old inbox) | 13004 → 8905 (after cutover) |
 
 **Service:** `hermes-agent-bus.service` — systemd user service, auto-starts on boot.
 **Circuit breaker:** Auto-degrades to old inbox if Postgres is unavailable (3 failures → file fallback).

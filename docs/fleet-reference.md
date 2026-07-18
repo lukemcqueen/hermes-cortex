@@ -174,7 +174,7 @@ ln -sf ~/.hermes-cortex/tools/loop-governance/score_cycle.py ~/.local/bin/score-
 - `system-heartbeat` exits 1 with `❌ gbrain sync daemon: DOWN` on Linux (macOS-only service)
 - Loop governance `verify.sh` reports 1 warning about CLI symlink until step 6 above is done
 
-### All timestamps in KST (UTC+9)
+## All timestamps in KST (UTC+9)
 
 All monitoring scripts output timestamps in Seoul time. Affects: `orch-fleet-watchdog.py`, `system-alert-watchdog.py`, `service-recovery.py`, `bus-audit-watchdog.py`, and all cron outputs.
 
@@ -296,7 +296,9 @@ fallback_providers:
 
 ---
 
-### 1. Auto-Remediation Pipeline
+### 1. Auto-Remediation Pipeline (pruned from AGENTS.md, preserved for reference)
+
+> This section was moved from AGENTS.md as part of the fleet docs refactor. Content is preserved for backward reference but may be stale.
 
 | Cron | Type | Schedule | Script / Skill | Deliver |
 |------|------|----------|----------------|---------|
@@ -313,7 +315,9 @@ fallback_providers:
 
 ---
 
-### 7. Deployment-Specific
+### 7. Deployment-Specific Crons (pruned from AGENTS.md, preserved for reference)
+
+> This section was moved from AGENTS.md as part of the fleet docs refactor. Content is preserved for backward reference but may be stale.
 
 | Cron | Type | Schedule | Script / Skill | Deliver |
 |------|------|----------|----------------|---------|
