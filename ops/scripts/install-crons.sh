@@ -432,7 +432,7 @@ if $UNINSTALL; then
     "governance-auditor" "threat-pipeline" "agent-ip-submission" \
     "scoring-activity-watchdog" \
     "session-cache-build" "cron-quality-watchdog" \
-    "collect-agent-skills" "orch-skill-lifecycle"; do
+    "collect-agent-skills" "orch-skill-lifecycle" "agent-learning-collector"; do
     remove_cron "$job"
   done
   info "Uninstall complete"
@@ -712,18 +712,21 @@ create_cron "scoring-activity-watchdog" "0 14,20 * * *" \
 
 # Orch Skill Lifecycle: unified daily skill pipeline — replaces skill-miner, harvest-lessons,
 # skill-triage, agent-weekly-loop-eval, agent-daily-soul-refinement
+# Reads inbox_moses for BOTH Learning Report: and Skill Report: formats from ALL agents.
 create_cron "orch-skill-lifecycle" "0 4 * * *" \
   "" \
   "Load the orch-skill-lifecycle skill and follow the three-phase pipeline. Run the complete skill lifecycle for today.
 
 Phase 1 — Collection:
-1. Use session_search() to find today's sessions. Look for user corrections, workflow discoveries, bug fixes.
-2. Check inbox_moses PGMQ queue for Skill Report messages from fleet agents.
-3. Scan skill inventory for recently modified or potentially stale skills.
-4. Check git log for self-improvement patterns needing broader consolidation.
+1. Read inbox_moses PGMQ queue for ALL agent reports — both formats:
+   - \"Learning Report:\" from agent-learning-collector (skills delta, lessons, session stats)
+   - \"Skill Report:\" from collect-agent-skills.sh (full skill content)
+2. Check git log for self-improvement patterns needing broader consolidation
+3. Scan skill inventory for stale/modified skills
+4. If Monday: send skill report requests to all agents via request-skill-reports.sh
 
 Phase 2 — Evaluation:
-For each item found, classify it (new lesson / reinforcement / principle / new skill / consolidation / stale). Deduplicate against existing skills. If today is Monday, run the full deep evaluation pass.
+For each item found, classify it. Deduplicate against existing skills. Cross-reference across agents — if 3 agents report the same fix, it's a consolidation candidate. If today is Monday, run the full deep evaluation pass.
 
 Phase 3 — Upgrade:
 Execute approved actions: patch skills via skill_manage, create new ones, prune stale ones, update SOUL.md with principles, upstream new skills to the repo, archive processed bus messages.
@@ -739,6 +742,16 @@ create_cron "session-cache-build" "0 5 * * 1" \
   "" \
   "" \
   "origin" \
+  "" \
+  "true"
+
+# Agent learning collector — every 6h: collect skills delta + lessons + session stats from ALL agents
+create_cron "agent-learning-collector" "0 */6 * * *" \
+  "agent-learning-collector.py" \
+  "" \
+  "" \
+  "" \
+  "local" \
   "" \
   "true"
 

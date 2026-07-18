@@ -26,6 +26,61 @@ The cron has `terminal` + `file` + `web` tool access and uses `session_search()`
 | `agent-weekly-loop-eval` (Mon 09:00) | Removed | Evaluation (weekly deep) |
 | `agent-daily-soul-refinement` (23:00) | Removed | Evaluation + Upgrade (SOUL.md) |
 
+## Data Sources — Fleet Agents
+
+This pipeline collects from ALL agents in the fleet. Each agent runs `agent-learning-collector` (no_agent, every 6h) which sends structured reports to the bus.
+
+### Agent Data Collected
+
+| Source | What | Collection Method |
+|--------|------|-----------------|
+| **Skills** | New/modified SKILL.md files since last report | Hash-based delta detection |
+| **Lessons** | New lesson files in `~/brain/lessons/` | File count delta + metadata |
+| **Sessions** | Total/recent session counts | SQLite query on Hermes session DB |
+| **System** | Hostname, OS, Hermes version | Deterministic system query |
+
+### Bus Message Formats
+
+The pipeline reads `inbox_moses` PGMQ queue for TWO message formats:
+
+**1. Learning Report** (from `agent-learning-collector` — every 6h per agent):
+```
+Subject: Learning Report: N skills, M lessons — OR — Learning Report: heartbeat
+
+━━━ Learning Report — {hostname} ━━━
+Generated: {timestamp}
+Type: full
+Sessions: 142 total, 8 recent
+
+== Skills (2 changed) ==
+  [NEW] swap-refresh-logic (devops)
+     Handles SwapCached double-count in health reports
+  [MOD] session-cache-build (mlops)
+     Added retry on empty results
+
+== Lessons (1 new) ==
+  • PG CTE materialization quirk
+    Using WITH ... UPDATE ... RETURNING and WITH ... DELETE in the same
+    CTE doesn't see the updated rows — fix by separating into two CTEs
+```
+
+**2. Skill Report** (from `collect-agent-skills.sh` + `send-skill-report.py` — legacy):
+```
+Subject: Skill Report: N custom skills
+
+━━━ Skill Report — {hostname} ━━━
+...
+== Skill: name (category) ==
+{full SKILL.md content}
+```
+
+### Agent-Side Deployment
+
+Each fleet agent (Gisu, Titus, Esther, Joseph, Kustos, Moses) runs:
+- `agent-learning-collector` (no_agent, every 6h) — auto-discovers and reports
+- No LLM on the agent side — fully deterministic
+- Silent when nothing new (watchdog pattern)
+
 ## Pipeline Phases
 
 ### Phase 1 — Collection
