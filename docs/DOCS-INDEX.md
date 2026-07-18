@@ -15,6 +15,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/operations-reference.md` | Operations — inbox architecture, Agent Bus, offline code, common tasks |
 || `docs/agent-onboarding.md` | Agent onboarding — step-by-step guide for client-only agents to connect to Moses and the fleet |
 || `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
+| `docs/fleet-update-protocol.md` | **NEW** — Fleet update bus protocol: UPDATE_REQUEST/RESULT, FIX_REQUEST/RESULT schemas for Moses→fleet orchestration |
 | `docs/env-vars.md` | Environment variable reference — CORTEX_* vars, SSL, deploy scripts |
 | `install.sh` | Single-command installer (idempotent, safe to re-run) |
 | `ops/install/install.sh` | Main installer script (moved from root in v2.0.0) |
