@@ -396,6 +396,30 @@ def send_report(report: dict, dry_run: bool = False) -> bool:
         return False
 
 
+def _run_session_mining(dry_run: bool = False) -> None:
+    """Try to mine sessions for new lessons. Silent if session-mine CLI unavailable."""
+    import shutil
+    session_mine = shutil.which("session-mine")
+    if not session_mine:
+        return  # session-mine not installed — skip silently
+
+    try:
+        cmd = [session_mine, "mine", "--days", "1", "--auto"]
+        if dry_run:
+            cmd.append("--dry-run")
+            print(f"[DRY RUN] Would run: {' '.join(cmd)}", flush=True)
+            return
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True, text=True, timeout=300,
+        )
+        if result.returncode != 0:
+            print(f"WARN: session-mine exited {result.returncode}: {result.stderr[:200]}", file=sys.stderr, flush=True)
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError) as e:
+        print(f"WARN: session-mine failed: {e}", file=sys.stderr, flush=True)
+
+
 # ── Main ──────────────────────────────────────────────────────
 
 def main():
@@ -404,6 +428,9 @@ def main():
 
     state = load_state()
     t0 = time.time()
+
+    # Phase 0: Mine sessions for new lessons (if session-mine CLI available)
+    _run_session_mining(dry_run=dry_run)
 
     # Phase 1: Collect
     skills_delta = _get_skill_delta(state)
