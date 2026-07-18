@@ -13,13 +13,33 @@ import base64
 import json
 import os
 import time
+from pathlib import Path
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
-BUS_URL = os.environ.get("CORTEX_BUS_URL", "http://127.0.0.1:8903")
-BUS_FALLBACK_URL = os.environ.get("CORTEX_BUS_FALLBACK_URL", "")
-CORTEX_BUS_AUTH = os.environ.get("CORTEX_BUS_AUTH", "")
-CORTEX_BUS_TOKEN = os.environ.get("CORTEX_BUS_TOKEN", "")
+CONFIG_FILE = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "cortex-bus.conf"
+
+
+def _read_config(key: str) -> str:
+    """Read a value from cortex-bus.conf by key."""
+    if CONFIG_FILE.exists():
+        for line in CONFIG_FILE.read_text().splitlines():
+            if line.startswith(f"{key}="):
+                return line.split("=", 1)[1].strip()
+    return os.environ.get(key, "")
+
+
+BUS_URL = os.environ.get("CORTEX_BUS_URL", "") or _read_config("CORTEX_BUS_URL") or "http://127.0.0.1:8903"
+BUS_FALLBACK_URL = os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or _read_config("CORTEX_BUS_FALLBACK_URL")
+raw_auth = os.environ.get("CORTEX_BUS_AUTH", "") or _read_config("CORTEX_BASIC_AUTH")
+raw_token = os.environ.get("CORTEX_BUS_TOKEN", "") or _read_config("CORTEX_BUS_TOKEN")
+
+# Support both CORTEX_BASIC_AUTH and CORTEX_BUS_AUTH key names
+if not raw_auth:
+    raw_auth = _read_config("CORTEX_BUS_AUTH")
+
+CORTEX_BUS_AUTH = raw_auth
+CORTEX_BUS_TOKEN = raw_token
 
 
 def _get_auth_header() -> tuple[str, str]:
