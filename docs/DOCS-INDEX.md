@@ -134,7 +134,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 |-----|-------------|
 || `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
 || `docs/integration-audit.md` | Integration audit — path consistency, script map, agent notes for three-layer repo health |
-||| `ops/scripts/` | Cron scripts, health checks, agent tools — 6 subdirectories: agent/, health/, install/, inbox/, manage/, push-agent/ |
+||| `ops/scripts/` | Cron scripts, health checks, agent tools — 5 subdirectories: agent/, health/, install/, inbox/, manage/ |
 ||| `ops/scripts/lib/` | Shared Python libraries for fleet scripts — cortex_bus.py (bus HTTP API) |
 || `core/governance/` | Governance engine — loop-governance DB, scoring, policy enforcement |
 || `.gitignore` | Gitignore — excludes .agentkore, .env, secrets, brain data |

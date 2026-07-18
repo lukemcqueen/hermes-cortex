@@ -315,9 +315,9 @@ Titus  ──UPDATE_RESULT──→ AgentBus ──→ Moses
 
 All fleet scripts use `ops/scripts/lib/cortex_bus.py` — a shared HTTP API wrapper that reads `CORTEX_BUS_URL` / `CORTEX_BUS_FALLBACK_URL` from the environment. This eliminates the old pattern of `docker exec` calls into the Postgres container.
 
-### Push-Agent Install
+### Agent Message Handler (Inbox Polling)
 
-For dev-agents (macOS, partial stack): `ops/install/install-push-agent.sh` installs the update handler as a service without Docker, nginx, or gbrain.
+Every agent gets an `agent-message-handler` cron (every 5 minutes) via `install-crons.sh`. It polls the agent's bus inbox for UPDATE_REQUEST, ROLLBACK_REQUEST, and GIT_AUTH_CHECK messages, runs doctor on every tick, and reports health state changes. The handler script is deployed fleet-wide via `cortex-update.sh`.
 
 ---
 
