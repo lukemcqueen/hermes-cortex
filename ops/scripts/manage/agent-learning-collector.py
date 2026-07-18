@@ -396,17 +396,22 @@ def send_report(report: dict, dry_run: bool = False) -> bool:
         return False
 
 
-def _run_session_mining(dry_run: bool = False) -> None:
-    """Mine recent sessions for new lessons via session-mine CLI.
-    Every agent has the full Hermes stack (session-mine, Ollama, session DB).
-    If the CLI somehow isn't installed, skip silently."""
+def _run_session_mining(state: dict, dry_run: bool = False) -> None:
+    """Mine sessions for new lessons via session-mine CLI.
+    First run: mines ALL past sessions (bootstrap).
+    Subsequent: mines last 1 day (incremental).
+    Uses state['session_mining_bootstrap_done'] to track."""
     import shutil
     session_mine = shutil.which("session-mine") or str(HOME / ".hermes" / "bin" / "session-mine")
     if not session_mine or not Path(session_mine).is_file():
         return  # session-mine not installed — unlikely, but skip silently
 
+    # Bootstrap: mine all past sessions on first run, incremental after
+    bootstrap_done = state.get("session_mining_bootstrap_done", False)
+    days = 365 if not bootstrap_done else 1
+
     try:
-        cmd = [session_mine, "mine", "--days", "1", "--auto"]
+        cmd = [session_mine, "mine", "--days", str(days), "--auto"]
         if dry_run:
             cmd.append("--dry-run")
             print(f"[DRY RUN] Would run: {' '.join(cmd)}", flush=True)
@@ -418,6 +423,8 @@ def _run_session_mining(dry_run: bool = False) -> None:
         )
         if result.returncode != 0:
             print(f"WARN: session-mine exited {result.returncode}: {result.stderr[:200]}", file=sys.stderr, flush=True)
+        elif not bootstrap_done:
+            state["session_mining_bootstrap_done"] = True
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError) as e:
         print(f"WARN: session-mine failed: {e}", file=sys.stderr, flush=True)
 
@@ -431,8 +438,8 @@ def main():
     state = load_state()
     t0 = time.time()
 
-    # Phase 0: Mine sessions for new lessons (if session-mine CLI available)
-    _run_session_mining(dry_run=dry_run)
+    # Phase 0: Mine sessions for new lessons (bootstrap: all past, then incremental)
+    _run_session_mining(state, dry_run=dry_run)
 
     # Phase 1: Collect
     skills_delta = _get_skill_delta(state)
