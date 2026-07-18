@@ -103,19 +103,14 @@ def send_bus_result(queue: str, correlation_id: str, result_body: dict, subject:
         "correlation_id": correlation_id,
         "body": result_body,
     }
-    body_json = json.dumps(full_body).replace("'", "''")
     try:
-        r = subprocess.run(
-            ["docker", "exec", "gbrain-postgres", "psql", "-U", "gbrain", "-d", "gbrain",
-             "-t", "-A", "-c",
-             f"SELECT bus.send('{queue}', '{body_json}'::jsonb, 0)"],
-            capture_output=True, text=True, timeout=15
-        )
-        ok = r.returncode == 0 and r.stdout.strip() and "ERROR" not in r.stdout
+        from lib.cortex_bus import bus_send
+        result = bus_send(queue, full_body)
+        ok = result is not None
         if ok:
             log(f"Sent {subject} (corr={correlation_id[:8]}…)")
         else:
-            log(f"Failed to send {subject}: {r.stderr[:200]}")
+            log(f"Failed to send {subject}")
         return ok
     except Exception as e:
         log(f"Error sending {subject}: {e}")
@@ -125,14 +120,10 @@ def send_bus_result(queue: str, correlation_id: str, result_body: dict, subject:
 def read_inbox(queue: str, vt: int = 30) -> dict | None:
     """Read one message from inbox."""
     try:
-        r = subprocess.run(
-            ["docker", "exec", "gbrain-postgres", "psql", "-U", "gbrain", "-d", "gbrain",
-             "-t", "-A", "-c",
-             f"SELECT bus.read('{queue}', {vt})"],
-            capture_output=True, text=True, timeout=15
-        )
-        if r.returncode == 0 and r.stdout.strip():
-            return json.loads(r.stdout.strip())
+        from lib.cortex_bus import bus_read
+        raw = bus_read(queue, vt)
+        if raw and raw.get("msg_id"):
+            return raw
     except Exception:
         pass
     return None
@@ -294,15 +285,8 @@ def archive_message(queue: str, msg_id: str):
     """Archive a processed message from the inbox."""
     if not msg_id:
         return
-    try:
-        subprocess.run(
-            ["docker", "exec", "gbrain-postgres", "psql", "-U", "gbrain",
-             "-d", "gbrain", "-t", "-A", "-c",
-             f"SELECT bus.archive('{queue}', '{msg_id}')"],
-            capture_output=True, text=True, timeout=15
-        )
-    except Exception:
-        pass
+    from lib.cortex_bus import bus_archive
+    bus_archive(queue, msg_id)
 
 
 def main():

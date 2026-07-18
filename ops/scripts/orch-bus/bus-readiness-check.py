@@ -120,22 +120,15 @@ def main():
     # 6. Agent inbox queues exist  
     queues_ok = False
     try:
-        r = subprocess.run(
-            ["docker", "exec", "gbrain-postgres", "psql", "-U", "gbrain", "-d", "gbrain",
-             "-t", "-A", "-c",
-             "SELECT bus.list_queues()"],
-            capture_output=True, text=True, timeout=15
-        )
-        if r.returncode == 0 and r.stdout.strip():
-            raw = json.loads(r.stdout.strip())
-            queues = [q["name"] for q in raw if q.get("name", "").startswith("inbox_") and not q.get("name", "").endswith("_dlq")]
-            if queues:
-                queues_ok = len(queues) >= (agent_count - 1)
-                checks.append(check("Agent inbox queues", queues_ok, f"{len(queues)} queue(s) found: {', '.join(queues[:6])}"))
-            else:
-                checks.append(check("Agent inbox queues", False, "No inbox queues found"))
+        from lib.cortex_bus import bus_list_queues
+        queues = [q for q in bus_list_queues()
+                  if q.get("name", "").startswith("inbox_")
+                  and not q.get("name", "").endswith("_dlq")]
+        if queues:
+            queues_ok = len(queues) >= (agent_count - 1)
+            checks.append(check("Agent inbox queues", queues_ok, f"{len(queues)} queue(s) found: {', '.join(q['name'] for q in queues[:6])}"))
         else:
-            checks.append(check("Agent inbox queues", False, "Could not list queues"))
+            checks.append(check("Agent inbox queues", False, "No inbox queues found"))
     except Exception as e:
         checks.append(check("Agent inbox queues", False, str(e)))
 

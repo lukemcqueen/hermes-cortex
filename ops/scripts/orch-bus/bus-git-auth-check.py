@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-orch-bus-git-auth-check.py — Verify each agent can pull from the remote.
+bus-git-auth-check.py — Verify each agent can pull from the remote.
 
 Sends GIT_AUTH_CHECK to server-agents and collects GIT_AUTH_RESULT.
 For dev-agents, auth is verified locally or skipped (reported in UPDATE_RESULT).
 
 Usage:
-    python3 orch-bus-git-auth-check.py                    # dry-run
-    python3 orch-bus-git-auth-check.py --execute           # send checks
-    python3 orch-bus-git-auth-check.py --json              # machine-readable
+    python3 bus-git-auth-check.py                    # dry-run
+    python3 bus-git-auth-check.py --execute           # send checks
+    python3 bus-git-auth-check.py --json              # machine-readable
 
 Exit codes:
     0 = all agents authenticated
@@ -107,32 +107,20 @@ def send_git_auth_check(agent: str) -> bool:
             "expected_url": EXPECTED_REMOTE,
         },
     }
-    body_json = json.dumps(body).replace("'", "''")
     try:
-        r = subprocess.run(
-            ["docker", "exec", "gbrain-postgres", "psql", "-U", "gbrain", "-d", "gbrain",
-             "-t", "-A", "-c",
-             f"SELECT bus.send('inbox_{agent}', '{body_json}'::jsonb, 0)"],
-            capture_output=True, text=True, timeout=15
-        )
-        return r.returncode == 0 and r.stdout.strip() and "ERROR" not in r.stdout
+        from lib.cortex_bus import bus_send
+        result = bus_send(f"inbox_{agent}", body)
+        return result is not None
     except Exception:
         return False
 
 
 def read_inbox(vt: int = 30) -> dict | None:
     try:
-        r = subprocess.run(
-            ["docker", "exec", "gbrain-postgres", "psql", "-U", "gbrain", "-d", "gbrain",
-             "-t", "-A", "-c",
-             f"SELECT bus.read('inbox_moses', {vt})"],
-            capture_output=True, text=True, timeout=15
-        )
-        if r.returncode == 0 and r.stdout.strip():
-            return json.loads(r.stdout.strip())
+        from lib.cortex_bus import bus_read
+        return bus_read("inbox_moses", vt)
     except Exception:
-        pass
-    return None
+        return None
 
 
 def main():

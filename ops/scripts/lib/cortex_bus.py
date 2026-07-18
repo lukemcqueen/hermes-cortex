@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""
+cortex_bus.py — Shared bus interaction library for fleet scripts.
+
+Provides send/read/archive/list_queues functions using the Agent Bus HTTP API
+(CORTEX_BUS_URL, default http://127.0.0.1:8903).
+
+Usage:
+    from lib.cortex_bus import bus_send, bus_read, bus_archive, bus_list_queues
+"""
+
+import base64
+import json
+import os
+import time
+from urllib.error import URLError
+from urllib.request import Request, urlopen
+
+BUS_URL = os.environ.get("CORTEX_BUS_URL", "http://127.0.0.1:8903")
+BUS_FALLBACK_URL = os.environ.get("CORTEX_BUS_FALLBACK_URL", "")
+CORTEX_BUS_AUTH = os.environ.get("CORTEX_BUS_AUTH", "")
+CORTEX_BUS_TOKEN = os.environ.get("CORTEX_BUS_TOKEN", "")
+
+
+def _get_auth_header() -> tuple[str, str]:
+    """Return (scheme, credentials) for Authorization header."""
+    if CORTEX_BUS_TOKEN:
+        return ("Bearer", CORTEX_BUS_TOKEN)
+    if CORTEX_BUS_AUTH:
+        basic = base64.b64encode(CORTEX_BUS_AUTH.encode()).decode()
+        return ("Basic", basic)
+    return ("Basic", "")
+
+
+def _bus_post(endpoint: str, payload: dict, fallback: bool = False) -> dict:
+    """POST to bus API with retry and exponential backoff."""
+    scheme, creds = _get_auth_header()
+    base_url = BUS_FALLBACK_URL if (fallback and BUS_FALLBACK_URL) else BUS_URL
+    url = f"{base_url}{endpoint}"
+    data = json.dumps(payload).encode()
+    last_error = ""
+
+    for attempt in range(3):
+        try:
+            req = Request(url, data=data, headers={
+                "Content-Type": "application/json",
+                "Authorization": f"{scheme} {creds}" if creds else "",
+            })
+            with urlopen(req, timeout=15) as resp:
+                return json.loads(resp.read().decode())
+        except URLError as e:
+            last_error = str(e)
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+        except Exception as e:
+            last_error = str(e)
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+
+    # Fallback attempt if available
+    if not fallback and BUS_FALLBACK_URL:
+        try:
+            return _bus_post(endpoint, payload, fallback=True)
+        except Exception:
+            pass
+
+    raise ConnectionError(f"Bus API unreachable after 3 attempts: {last_error}")
+
+
+def bus_send(queue: str, message_body: dict) -> dict | None:
+    """Send a message to a bus queue. Returns response dict or None on failure."""
+    try:
+        payload = {
+            "queue": queue,
+            "message": json.dumps(message_body),
+            "correlation_id": message_body.get("correlation_id", ""),
+        }
+        return _bus_post("/api/pgmq/send", payload)
+    except (ConnectionError, Exception) as e:
+        return None
+
+
+def bus_read(queue: str, vt: int = 60) -> dict | None:
+    """Read one message from a bus queue. Returns parsed body or None."""
+    try:
+        payload = {"queue": queue, "vt": vt}
+        result = _bus_post("/api/pgmq/read", payload)
+        if result and result.get("msg_id"):
+            return result
+        return None
+    except (ConnectionError, Exception):
+        return None
+
+
+def bus_archive(queue: str, msg_id: str) -> bool:
+    """Archive a processed message. Returns True on success."""
+    if not msg_id:
+        return False
+    try:
+        _bus_post("/api/pgmq/archive", {"queue": queue, "msg_id": msg_id})
+        return True
+    except (ConnectionError, Exception):
+        return False
+
+
+def bus_list_queues() -> list[dict]:
+    """List all bus queues. Returns list of dicts with name, depth, dlq, processing."""
+    try:
+        scheme, creds = _get_auth_header()
+        req = Request(f"{BUS_URL}/api/pgmq/queues",
+                      headers={"Authorization": f"{scheme} {creds}"},
+                      method="GET")
+        with urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+        queues = data.get("queues", []) if isinstance(data, dict) else data
+        return queues
+    except Exception:
+        return []
+
+
+def bus_health() -> dict:
+    """Check bus health endpoint."""
+    try:
+        scheme, creds = _get_auth_header()
+        req = Request(f"{BUS_URL}/health",
+                      headers={"Authorization": f"{scheme} {creds}"},
+                      method="GET")
+        with urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read().decode())
+    except Exception:
+        return {"status": "unreachable"}

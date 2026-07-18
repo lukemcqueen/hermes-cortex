@@ -142,11 +142,10 @@ register "ops/scripts/install/install-ollama.sh"          "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/install/install-nginx.sh"           "${CORTEX_DEPLOY_HOME}/scripts/install-nginx.sh"
 register "ops/scripts/install/install-cortex-update-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-cortex-update-cron.sh"
 register "ops/scripts/install-crons.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-crons.sh"
-register "ops/scripts/orch-bus/orch-bus-workflow-inspector.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-workflow-inspector.py"
 register "ops/scripts/bus/bus-sensor.py"                 "${CORTEX_DEPLOY_HOME}/scripts/bus-sensor.py"
-register "ops/scripts/orch-bus/orch-bus-message-tracker.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker.py"
-register "ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker-alert.sh"
-register "ops/scripts/orch-bus/orch-bus-forwarder.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-forwarder.py"
+register "ops/scripts/orch-bus/bus-message-tracker.py"     "${CORTEX_DEPLOY_HOME}/scripts/bus-message-tracker.py"
+register "ops/scripts/orch-bus/bus-message-tracker-alert.sh" "${CORTEX_DEPLOY_HOME}/scripts/bus-message-tracker-alert.sh"
+register "ops/scripts/orch-bus/bus-forwarder.py"     "${CORTEX_DEPLOY_HOME}/scripts/bus-forwarder.py"
 register "ops/scripts/install/install-orch-crons.sh"  "${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh"
 register "ops/scripts/install/orch-install-bus.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-install-bus.sh"
 register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
@@ -190,7 +189,7 @@ register "ops/scripts/install/install-post-commit-hook.sh"    "${CORTEX_DEPLOY_H
 register "ops/scripts/manage/template-diff-check.py"          "${CORTEX_DEPLOY_HOME}/scripts/template-diff-check.py"
 
 # Moses bus remediation
-register "ops/scripts/bus/orch-bus-remediate.sh"  "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-remediate.sh"
+register "ops/scripts/bus/bus-remediate.sh"  "${CORTEX_DEPLOY_HOME}/scripts/bus-remediate.sh"
 
 # Auto-remediation scripts
 register "ops/scripts/health/cron-auto-remediate.sh"     "${CORTEX_DEPLOY_HOME}/scripts/cron-auto-remediate.sh"
@@ -248,23 +247,18 @@ register "ops/scripts/inbox/inbox-depth-watchdog.sh"    "${CORTEX_DEPLOY_HOME}/s
 register "ops/scripts/bus/bus-sensor.py"                "${CORTEX_DEPLOY_HOME}/scripts/bus-sensor.py"
 # bus-flag.py does not exist yet — inbox-flag.py at ops/scripts/inbox/ is the active version
 register "ops/scripts/bus/agent-bus-monitor.sh"         "${CORTEX_DEPLOY_HOME}/scripts/agent-bus-monitor.sh"
-register "ops/scripts/bus/orch-bus-processor.py"        "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-processor.py"
-register "ops/scripts/bus/orch-bus-remediate.sh"        "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-remediate.sh"
+register "ops/scripts/bus/bus-processor.py"        "${CORTEX_DEPLOY_HOME}/scripts/bus-processor.py"
+register "ops/scripts/bus/bus-remediate.sh"        "${CORTEX_DEPLOY_HOME}/scripts/bus-remediate.sh"
 register "ops/scripts/bus/generate-bus-wrappers.py"     "${CORTEX_DEPLOY_HOME}/scripts/generate-bus-wrappers.py"
 register "ops/scripts/install/setup-agent-bus.sh"       "${CORTEX_DEPLOY_HOME}/scripts/setup-agent-bus.sh"
 
-# Orchestrator bus monitoring tools
-register "ops/scripts/orch-bus/orch-bus-depth-watchdog.sh"  "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-depth-watchdog.sh"
-
-# Orchestrator bus tools (orch-bus-*) — deployed by install-orch-crons.sh
-register "ops/scripts/orch-bus/orch-bus-forwarder.py"          "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-forwarder.py"
-register "ops/scripts/orch-bus/orch-bus-audit-watchdog.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-audit-watchdog.py"
-register "ops/scripts/orch-bus/orch-bus-message-tracker.py"    "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker.py"
-register "ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker-alert.sh"
-register "ops/scripts/orch-bus/orch-bus-recover-timeouts.sh"   "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-recover-timeouts.sh"
+# Bus monitoring tools (fleet-wide)
+register "ops/scripts/orch-bus/bus-depth-watchdog.sh"  "${CORTEX_DEPLOY_HOME}/scripts/bus-depth-watchdog.sh"
+register "ops/scripts/orch-bus/bus-audit-watchdog.py"     "${CORTEX_DEPLOY_HOME}/scripts/bus-audit-watchdog.py"
+register "ops/scripts/orch-bus/bus-recover-timeouts.sh"   "${CORTEX_DEPLOY_HOME}/scripts/bus-recover-timeouts.sh"
 register "ops/scripts/manage/loop-gov-mcp.sh"            "${CORTEX_DEPLOY_HOME}/scripts/loop-gov-mcp.sh"
 # agent-inbox-monitor.sh and orch-inbox-processor.py replaced by bus equivalents above
-# (ops/scripts/bus/agent-bus-monitor.sh, ops/scripts/bus/orch-bus-processor.py)
+# (ops/scripts/bus/agent-bus-monitor.sh, ops/scripts/bus/bus-processor.py)
 # NOTE: check-agent-messages.sh was renamed to orch-check-agent-messages.sh (local only, not in repo)
 # The crontab on this server was updated to use the correct name.
 #register "ops/scripts/agent/check-agent-messages.sh"    "${CORTEX_DEPLOY_HOME}/scripts/check-agent-messages.sh"
@@ -295,15 +289,12 @@ register "ops/scripts/manage/request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}
 
 # Shared model config loader (imported by many scripts)
 
-# Orchestrator bus sensor and health models
-register "ops/scripts/orch-bus/orch-bus-sensor.py"        "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-sensor.py"
-register "ops/scripts/orch-bus/orch-bus-health-check.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-health-check.py"
-register "ops/scripts/orch-bus/orch-bus-watch.py"         "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-watch.py"
-register "ops/scripts/orch-bus/orch-bus-mcp-updated.py"   "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-mcp-updated.py"
-register "ops/scripts/orch-bus/orch-bus-workflow-dispatcher.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-workflow-dispatcher.py"
-register "ops/scripts/orch-bus/orch-bus-workflow-router.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-workflow-router.py"
-register "ops/scripts/orch-bus/orch-bus-workflow-sla-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-workflow-sla-watchdog.py"
-register "ops/scripts/orch-bus/test-orch-bus.py"            "${CORTEX_DEPLOY_HOME}/scripts/test-orch-bus.py"
+# Bus sensor and health tools (fleet-wide)
+register "ops/scripts/orch-bus/bus-sensor.py"        "${CORTEX_DEPLOY_HOME}/scripts/bus-sensor.py"
+register "ops/scripts/orch-bus/bus-health-check.py"  "${CORTEX_DEPLOY_HOME}/scripts/bus-health-check.py"
+register "ops/scripts/orch-bus/bus-watch.py"         "${CORTEX_DEPLOY_HOME}/scripts/bus-watch.py"
+register "ops/scripts/orch-bus/bus-mcp.py"   "${CORTEX_DEPLOY_HOME}/scripts/bus-mcp.py"
+register "ops/scripts/orch-bus/test-bus.py"            "${CORTEX_DEPLOY_HOME}/scripts/test-bus.py"
 register "ops/scripts/health/model-health-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/model-health-watchdog.py"
 
 # Timezone helper (required by monitoring scripts)
@@ -325,6 +316,8 @@ register "ops/scripts/manage/request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/manage/process-skill-reports.py"    "${CORTEX_DEPLOY_HOME}/scripts/process-skill-reports.py"
 register "ops/scripts/manage/agent-learning-collector.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-learning-collector.py"
 # orch-bus-* scripts are orchestrator-only — run from repo path
+# Shared bus library for fleet scripts
+register "ops/scripts/lib/cortex_bus.py" "${CORTEX_DEPLOY_HOME}/scripts/lib/cortex_bus.py"
 # Agent inbox connection config — user creates manually
 
 # MCP inbox proxy — sudo'd HTTPS proxy with root-owned client cert
