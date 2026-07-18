@@ -115,9 +115,9 @@ if $UNINSTALL; then
   for job in \
     "orch-fleet-watchdog" \
     "orch-skill-lifecycle" \
-    "orch-bus-forwarder-sync" "orch-bus-audit-watchdog" \
-    "orch-bus-recover-timeouts" "orch-bus-confirmation-poller" \
-    "orch-bus-confirmation-alert"; do
+    "bus-forwarder-sync" "bus-audit-watchdog" \
+    "bus-recover-timeouts" "bus-confirmation-poller" \
+    "bus-confirmation-alert"; do
     remove_cron "$job" 2>/dev/null || true
   done
   info "Uninstall complete"
