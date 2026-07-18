@@ -324,6 +324,8 @@ register "ops/scripts/manage/collect-agent-skills.sh"     "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/manage/request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}/scripts/request-skill-reports.sh"
 register "ops/scripts/manage/process-skill-reports.py"    "${CORTEX_DEPLOY_HOME}/scripts/process-skill-reports.py"
 register "ops/scripts/manage/agent-learning-collector.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-learning-collector.py"
+register "ops/scripts/manage/fleet-readiness-check.py"    "${CORTEX_DEPLOY_HOME}/scripts/fleet-readiness-check.py"
+register "ops/scripts/manage/fleet-update-dispatch.py"    "${CORTEX_DEPLOY_HOME}/scripts/fleet-update-dispatch.py"
 # Agent inbox connection config — user creates manually
 
 # MCP inbox proxy — sudo'd HTTPS proxy with root-owned client cert
