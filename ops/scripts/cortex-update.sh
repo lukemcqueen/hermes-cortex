@@ -385,12 +385,26 @@ restart_agent_bus() {
   fi
 }
 
+# ── gbrain upgrade ────────────────────────────────────────
+
+update_gbrain_binary() {
+  info "Checking gbrain version…"
+  local before
+  before=$(gbrain version 2>/dev/null || echo "none")
+  gbrain upgrade 2>&1 | sed 's/^/    /'
+  local after
+  after=$(gbrain version 2>/dev/null || echo "none")
+  if [[ "$before" != "$after" ]]; then
+    info "gbrain upgraded: $before → $after"
+  else
+    info "gbrain already current: $after"
+  fi
+}
+
 # ── Service restart helpers ─────────────────────────────────
 
 restart_gbrain_sync() {
   local autopilot_label="com.gbrain.autopilot"
-  # gbrain autopilot is the preferred sync daemon (handles sync, extract,
-  # embed, lint, and backlinks internally every ~150s).
   if [[ "$CORTEX_OS" == "macos" ]]; then
     if launchctl list "$autopilot_label" &>/dev/null 2>&1; then
       info "  Reloading gbrain autopilot…"
@@ -1237,6 +1251,9 @@ main() {
 
   # Deploy system scripts to /usr/local/sbin/ (root-owned, NOPASSWD-safe)
   deploy_system_scripts
+
+  # Check and upgrade gbrain binary (every run, not just when template changes)
+  update_gbrain_binary
 
   # Restart affected services
   if [[ ${#TO_RESTART[@]} -gt 0 ]]; then
