@@ -63,7 +63,13 @@ Before making any change, map the full scope. A single cron rename can touch 10+
 - [ ] **Deployed path**: after creating/recreating, verify `~/.hermes-cortex/scripts/<script>` exists at the runtime path (not just the repo)
 - [ ] **Doc index**: check `DOCS-INDEX.md` needs an entry update
 - [ ] **Cross-references**: grep for old term in other scripts' comments, docstrings, deprecation notices
-- [ ] **Category awareness**: is this orchestrator-only (orch-*) or general? Update the `fleet-reference.md` cron table category column
+- [ ] **Category awareness**: is this orchestrator-only (orch-*) or general? 
+  - **Decision rule**: does this need to run on EVERY agent or only orchestrators (Moses/Esther)?
+    - Orchestrator-only → `install-orch-crons.sh` with `orch-*` prefix
+    - All agents → `install-crons.sh` with `agent-*` or descriptive name
+    - Agent-side (no_agent) → `install-crons.sh` with `agent-*` prefix
+  - Update the `fleet-reference.md` cron table category column
+- [ ] **Doctor compatibility**: after updating `install-crons.sh` or `install-orch-crons.sh`, verify `cortex-doctor.py`'s `parse_expected_crons()` (reads main uninstall array, excludes orch) and `parse_orch_crons()` (reads orch uninstall array) properly cover the new entry. Run the doctor to confirm: `python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet`
 - [ ] **Test run**: after deploy, run the actual script to verify exit code 0
 - [ ] **Governance lock symlink**: the enforcer checks `.governance-generic.json` but locks create `.governance-hermes-cortex.json`. Ensure `ln -sf .governance-hermes-cortex.json ~/.hermes-cortex/state/.governance-generic.json` exists before attempting write operations.
 - [ ] **PII scan**: run `bash ~/hermes-cortex/ops/scripts/secret-leak-detector.sh` and review any PII warnings before pushing. Check for real domains, `/home/<username>/` paths, and email addresses in new/changed files.

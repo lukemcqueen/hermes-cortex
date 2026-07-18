@@ -114,7 +114,7 @@ if $UNINSTALL; then
   printf "${CYAN}━━━ Uninstalling Orchestrator-Only Crons ━━━${RESET}\n\n"
   for job in \
     "orch-fleet-watchdog" \
-    "skill-report-request" "skill-report-process" "skill-evaluate" \
+    "orch-skill-lifecycle" \
     "orch-bus-forwarder-sync" "orch-bus-audit-watchdog" \
     "orch-bus-recover-timeouts" "orch-bus-confirmation-poller" \
     "orch-bus-confirmation-alert"; do
@@ -428,34 +428,32 @@ printf "${CYAN}  2. Daily gbrain Brain Health Check${RESET}\n"
 # Uses gbrain-wrapper.sh to pause autopilot, run doctor, restart.
 # no_agent silent pattern: output only when issues found.
 
-# ── 3. Skill Report Pipeline (orchestrator-only) ──────────
-printf "${CYAN}  3. Skill Report Pipeline${RESET}\n"
+# ── 3. Skill Lifecycle Pipeline (orchestrator-only) ──────────
+printf "${CYAN}  3. Skill Lifecycle Pipeline${RESET}\n"
 
-# Weekly: request skill reports from all registered agents
-create_cron "skill-report-request" "0 2 * * 1" \
-  "request-skill-reports.sh" \
+# Unified daily skill lifecycle — replaces old skill-miner, skill-triage, harvest-lessons,
+# agent-weekly-loop-eval, agent-daily-soul-refinement
+# Reads inbox_moses for BOTH Learning Report: and Skill Report: formats from ALL agents.
+create_cron "orch-skill-lifecycle" "0 4 * * *" \
   "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
+  "Load the orch-skill-lifecycle skill and follow the three-phase pipeline. Run the complete skill lifecycle for today.
 
-# Daily: process collected skill reports into digest
-create_cron "skill-report-process" "0 3 * * *" \
-  "process-skill-reports.py" \
-  "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
+Phase 1 — Collection:
+1. Read inbox_moses PGMQ queue for ALL agent reports — both formats:
+   - \"Learning Report:\" from agent-learning-collector (skills delta, lessons, session stats)
+   - \"Skill Report:\" from collect-agent-skills.sh (full skill content)
+2. Check git log for self-improvement patterns needing broader consolidation
+3. Scan skill inventory for stale/modified skills
+4. If Monday: send skill report requests to all agents via request-skill-reports.sh
 
-# Weekly: evaluate collected skills and propose upstreaming
-create_cron "skill-evaluate" "0 9 * * 2" \
-  "" \
-  "You are running a scheduled skill evaluation cron for the Moses orchestrator.\n\nYour job is to:\n1. Run process-skill-reports.py to collect any pending skill reports\n2. For each reported custom skill, evaluate:\n   - Is it well-structured? (proper YAML frontmatter, description, behavioral principles)\n   - Is it useful across the fleet or specific to one agent?\n   - Should it be upstreamed to hermes-cortex/.hermes-cortex/skills/ or left as-is?\n3. Summarize findings and recommendations for each skill\n\n## OUTPUT FORMAT — FOLLOW EXACTLY\nMatch this structure line for line. Your content replaces the values.\nEverything else stays: dashes, colons, spacing, line breaks.\n\nskill-evaluate (JOB_ID) [YYYY-MM-DD HH:MM KST]\n-------------\n\nPhase 1 — Collection: 3 new skill reports from 2 agents\n- titus: 2 custom skills\n- esther: 1 custom skill\n\nPhase 2 — Evaluation: 3 total skills reviewed\n- auto-remediation: ⭐ 5, upstream\n  - Strengths: clear workflow, COST-SAVING mandate, self-learning\n  - Weaknesses: none\n  - Recommendation: upstream to shared skills\n\nPhase 3 — Upstream candidates: 2 ready for public-contribution\n- auto-remediation → hermes-cortex/skills/devops/auto-remediation/\n\nResult: 3 evaluated, 2 recommended for upstreaming.\n\nIf no new reports: output exactly [SILENT]\n\n📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$1.80/mo" \
-  "" "" "origin" "" "false" \
+Phase 2 — Evaluation:
+For each item found, classify it. Deduplicate against existing skills. Cross-reference across agents — if 3 agents report the same fix, it's a consolidation candidate. If today is Monday, run the full deep evaluation pass.
+
+Phase 3 — Upgrade:
+Execute approved actions: patch skills via skill_manage, create new ones, prune stale ones, update SOUL.md with principles, upstream new skills to the repo, archive processed bus messages.
+
+If nothing changed: output exactly [SILENT]" \
+  "orch-skill-lifecycle" "terminal,file,web" "origin" "" "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 echo ""
