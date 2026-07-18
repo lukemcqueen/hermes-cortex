@@ -362,6 +362,13 @@ def main():
             return False
 
         body = msg.get("body", {})
+        # PGMQ returns body as a JSON string — parse it if needed
+        if isinstance(body, str):
+            try:
+                body = json.loads(body)
+            except (json.JSONDecodeError, TypeError):
+                log(f"Failed to parse message body: {body[:100]}…")
+                return False
         subject = body.get("subject", "")
         correlation_id = msg.get("correlation_id", "")
 

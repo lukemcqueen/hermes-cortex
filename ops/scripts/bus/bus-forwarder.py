@@ -281,10 +281,12 @@ def _sync_direction(
                 seen.add(msg_id)
                 forwarded.append(f"{queue}/{msg_id[:8]}")
                 total += 1
-                # Archive source message to prevent processing→recover cycles
-                # Best-effort: if archive fails (e.g. message already consumed),
-                # the recover_timeouts cron handles cleanup
-                _archive_bus(source_url, source_token, source_auth, queue, msg_id)
+                # Archive source message ONLY for orchestrator queues (moses, esther)
+                # where the message was already processed locally. For server-agent
+                # queues (gisu, kustos, joseph, titus), the agent must archive it
+                # after processing — the forwarder only copies for warm standby.
+                if queue in ("inbox_moses", "inbox_esther"):
+                    _archive_bus(source_url, source_token, source_auth, queue, msg_id)
             else:
                 errors.append(f"{queue}/{msg_id[:8]}")
                 break  # destination unreachable — stop this queue
