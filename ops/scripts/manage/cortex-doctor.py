@@ -62,7 +62,7 @@ INSTALL_SCRIPT = CORTEX_REPO / "ops" / "install" / "install.sh"
 INSTALL_OLLAMA = SCRIPTS_SRC / "install" / "install-ollama.sh"
 INSTALL_SCORE_HOOK = SCRIPTS_SRC / "install" / "install-score-hook.sh"
 SYMLINK_AUDIT = SCRIPTS_SRC / "manage" / "symlink-audit.sh"
-MCP_SERVERS_DIR = CORTEX_REPO / "runtime" / "mcp-servers"
+MCP_SERVERS_DIR = CORTEX_REPO / "mcp-servers"
 
 # Passthrough to subprocess for HTTP checks (avoid cert issues with urllib)
 CURL = os.environ.get("CURL_BIN", "curl")
@@ -187,9 +187,30 @@ class Results:
 
     def print_summary(self, compact=False):
         if self.json_mode:
+            # Gather identity metadata
+            agent = os.environ.get("AGENT_NAME", "")
+            if not agent:
+                try:
+                    agent = subprocess.run(["hostname"], capture_output=True, text=True).stdout.strip()
+                except Exception:
+                    agent = "unknown"
+            try:
+                git_sha = subprocess.run(
+                    ["git", "-C", str(CORTEX_REPO), "rev-parse", "--short", "HEAD"],
+                    capture_output=True, text=True
+                ).stdout.strip()
+            except Exception:
+                git_sha = ""
+            version_file = CORTEX_REPO / "VERSION"
+            version = version_file.read_text().strip() if version_file.exists() else ""
+            healthy = self.fail_count == 0 and self.warn_count == 0
             print(json.dumps({
                 "summary": {"pass": self.pass_count, "warn": self.warn_count, "fail": self.fail_count, "info": self.info_count},
                 "checks": self.checks,
+                "agent": agent,
+                "git_sha": git_sha,
+                "version": version,
+                "healthy": healthy,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }, indent=2))
             return
@@ -1685,7 +1706,7 @@ def main():
             res.print_summary(compact=compact)
 
         # ── Enforcement footer ──────────────────────────────────
-        if res.warn_count > 0 or res.fail_count > 0:
+        if not res.json_mode and (res.warn_count > 0 or res.fail_count > 0):
             print("  ═══════════════════════════════════════════════════")
             print("  🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above")
             print()
@@ -1705,7 +1726,7 @@ def main():
         res.print_summary(compact=compact)
 
         # ── Enforcement footer ──────────────────────────────────
-        if res.warn_count > 0 or res.fail_count > 0:
+        if not res.json_mode and (res.warn_count > 0 or res.fail_count > 0):
             print("  ═══════════════════════════════════════════════════")
             print("  🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above")
             print()
