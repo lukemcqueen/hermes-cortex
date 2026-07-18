@@ -26,25 +26,38 @@ BUS_URL = os.environ.get("CORTEX_BUS_URL", "http://127.0.0.1:8903")
 TOKEN_FILE = CORTEX_HOME / "cortex-bus.conf"
 
 
-def _get_token():
-    """Read bus token from config file."""
-    if not TOKEN_FILE.exists():
-        # Fallback: try env
-        token = os.environ.get("CORTEX_BUS_TOKEN", "")
-        if token:
-            return token
-        print("ERROR: No bus token found", file=sys.stderr)
-        sys.exit(1)
-    for line in TOKEN_FILE.read_text().splitlines():
-        if line.startswith("CORTEX_BUS_TOKEN="):
-            return line.split("=", 1)[1].strip()
-    print("ERROR: CORTEX_BUS_TOKEN not found in config", file=sys.stderr)
+def _read_config(key: str) -> str:
+    """Read a value from cortex-bus.conf by key."""
+    if TOKEN_FILE.exists():
+        for line in TOKEN_FILE.read_text().splitlines():
+            if line.startswith(f"{key}="):
+                return line.split("=", 1)[1].strip()
+    return os.environ.get(key, "")
+
+
+def _get_auth_header() -> tuple[str, str]:
+    """Return (scheme, credentials) for bus auth.
+
+    Precedence:
+      1. Bearer token from CORTEX_BUS_TOKEN (env or config)
+      2. Basic auth from CORTEX_BASIC_AUTH (env or config)
+    """
+    import base64
+
+    token = os.environ.get("CORTEX_BUS_TOKEN", "") or _read_config("CORTEX_BUS_TOKEN")
+    if token:
+        return ("Bearer", token)
+    basic = os.environ.get("CORTEX_BASIC_AUTH", "") or _read_config("CORTEX_BASIC_AUTH")
+    if basic:
+        encoded = base64.b64encode(basic.encode()).decode()
+        return ("Basic", encoded)
+    print("ERROR: No bus auth configured (CORTEX_BUS_TOKEN or CORTEX_BASIC_AUTH)", file=sys.stderr)
     sys.exit(1)
 
 
 def _bus_post(endpoint: str, payload: dict) -> dict:
     """POST to bus API with retry and exponential backoff."""
-    token = _get_token()
+    scheme, creds = _get_auth_header()
     url = f"{BUS_URL}{endpoint}"
     data = json.dumps(payload).encode()
     last_error = ""
@@ -52,7 +65,7 @@ def _bus_post(endpoint: str, payload: dict) -> dict:
         try:
             req = Request(url, data=data, method="POST")
             req.add_header("Content-Type", "application/json")
-            req.add_header("Authorization", f"Bearer {token}")
+            req.add_header("Authorization", f"{scheme} {creds}")
             with urlopen(req, timeout=15) as resp:
                 return json.loads(resp.read().decode())
         except (URLError, OSError, TimeoutError) as e:
@@ -297,10 +310,10 @@ def cmd_report(args):
     print()
 
     # Queue depths
-    token = _get_token()
+    scheme, creds = _get_auth_header()
     try:
         req = Request(f"{BUS_URL}/api/pgmq/queues",
-                      headers={"Authorization": f"Bearer {token}"},
+                      headers={"Authorization": f"{scheme} {creds}"},
                       method="GET")
         with urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode())
