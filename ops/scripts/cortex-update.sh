@@ -1368,6 +1368,25 @@ main() {
   else
     info "Hermes not found — skip cron install (run install-crons.sh after Hermes setup)"
   fi
+
+  # ── Clean stale governance locks ─────────────────────────
+  for _lock in "$STATE_DIR"/.governance-*.json; do
+    [ -f "$_lock" ] || continue
+    local _lock_age _lock_heartbeat
+    _lock_age=$(stat -c %Y "$_lock" 2>/dev/null || echo 0)
+    _lock_heartbeat=$(python3 -c "import json; print(json.load(open('$_lock')).get('heartbeat_at','')[:19])" 2>/dev/null || echo "")
+    if [[ -n "$_lock_heartbeat" ]]; then
+      local _heartbeat_epoch
+      _heartbeat_epoch=$(date -d "$_lock_heartbeat" +%s 2>/dev/null || echo 0)
+      local _now
+      _now=$(date +%s)
+      if [[ $(( _now - _heartbeat_epoch )) -gt 3600 ]]; then
+        rm -f "$_lock"
+        info "Cleaned stale governance lock: $_lock"
+      fi
+    fi
+  done
+
   echo ""
 }
 

@@ -310,8 +310,7 @@ def send_report(report: dict, dry_run: bool = False) -> bool:
         ""
     )
     if not bus_url:
-        print("WARN: No bus URL configured — report not sent", file=sys.stderr)
-        return False
+        return False  # No bus configured — silent. Health pipeline handles this.
 
     bus_url = bus_url.rstrip("/")
     hostname = AGENT_NAME
@@ -391,10 +390,10 @@ def send_report(report: dict, dry_run: bool = False) -> bool:
                 body = e.read().decode()[:200]
             except Exception:
                 body = str(e)
-        print(f"ERR: Send failed: {getattr(e, 'code', '?')} {body}", flush=True)
+        print(f"ERR: Send failed: {getattr(e, 'code', '?')} {body}", file=sys.stderr, flush=True)
         return False
     except (OSError, json.JSONDecodeError) as e:
-        print(f"ERR: Send failed: {e}", flush=True)
+        print(f"ERR: Send failed: {e}", file=sys.stderr, flush=True)
         return False
 
 
@@ -478,7 +477,9 @@ def main():
         save_state(state)
 
     if not sent and not dry_run:
-        sys.exit(1)
+        # Bus unreachable is expected when no local bus is configured.
+        # Don't exit non-zero — health pipeline handles bus alerts.
+        pass
 
 
 if __name__ == "__main__":
