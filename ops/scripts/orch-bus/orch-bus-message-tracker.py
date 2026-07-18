@@ -23,36 +23,64 @@ from urllib.error import URLError
 CORTEX_HOME = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex"))
 TRACKER_DB = CORTEX_HOME / "data" / "message-tracker.json"
 BUS_URL = os.environ.get("CORTEX_BUS_URL", "http://127.0.0.1:8903")
-TOKEN_FILE = CORTEX_HOME / "cortex-bus.conf"
+BUS_FALLBACK_URL = os.environ.get(
+    "CORTEX_BUS_FALLBACK_URL",
+    os.environ.get("CORTEX_BUS_FALLBACK_URL", ""),
+)
+CONFIG_FILE = CORTEX_HOME / "cortex-bus.conf"
 
 
-def _get_token():
-    """Read bus token from config file."""
-    if not TOKEN_FILE.exists():
-        # Fallback: try env
-        token = os.environ.get("CORTEX_BUS_TOKEN", "")
-        if token:
-            return token
-        print("ERROR: No bus token found", file=sys.stderr)
-        sys.exit(1)
-    for line in TOKEN_FILE.read_text().splitlines():
-        if line.startswith("CORTEX_BUS_TOKEN="):
-            return line.split("=", 1)[1].strip()
-    print("ERROR: CORTEX_BUS_TOKEN not found in config", file=sys.stderr)
-    sys.exit(1)
+def _read_config(key: str) -> str:
+    """Read a value from config file. Returns empty string if not found."""
+    if CONFIG_FILE.exists():
+        for line in CONFIG_FILE.read_text().splitlines():
+            if line.startswith(f"{key}="):
+                return line.split("=", 1)[1].strip()
+    return ""
 
 
-def _bus_post(endpoint: str, payload: dict) -> dict:
-    """POST to bus API with retry and exponential backoff."""
-    token = _get_token()
-    url = f"{BUS_URL}{endpoint}"
+def _get_auth_header() -> tuple[str, str]:
+    """Return (scheme, credentials) for bus auth.
+    
+    Tries in order:
+      1. Bearer token from CORTEX_BUS_TOKEN (env or config)
+      2. Basic auth from CORTEX_BASIC_AUTH (env or config)
+    
+    Returns (scheme, value) where scheme is 'Bearer' or 'Basic'.
+    Falls back to ('Basic', '') if nothing configured.
+    """
+    import base64
+    
+    token = os.environ.get("CORTEX_BUS_TOKEN", "") or _read_config("CORTEX_BUS_TOKEN")
+    if token:
+        return ("Bearer", token)
+    
+    basic = os.environ.get("CORTEX_BASIC_AUTH", "") or _read_config("CORTEX_BASIC_AUTH")
+    if basic:
+        encoded = base64.b64encode(basic.encode()).decode()
+        return ("Basic", encoded)
+    
+    return ("Basic", "")
+
+
+def _bus_post(endpoint: str, payload: dict, fallback: bool = False) -> dict:
+    """POST to bus API with retry and exponential backoff.
+    
+    Args:
+        endpoint: API path (e.g. /api/pgmq/send)
+        payload: JSON-serializable dict
+        fallback: If True, use BUS_FALLBACK_URL instead of BUS_URL
+    """
+    scheme, creds = _get_auth_header()
+    base_url = BUS_FALLBACK_URL if (fallback and BUS_FALLBACK_URL) else BUS_URL
+    url = f"{base_url}{endpoint}"
     data = json.dumps(payload).encode()
     last_error = ""
     for attempt in range(3):
         try:
             req = Request(url, data=data, method="POST")
             req.add_header("Content-Type", "application/json")
-            req.add_header("Authorization", f"Bearer {token}")
+            req.add_header("Authorization", f"{scheme} {creds}")
             with urlopen(req, timeout=15) as resp:
                 return json.loads(resp.read().decode())
         except (URLError, OSError, TimeoutError) as e:
@@ -284,12 +312,12 @@ def cmd_report(args):
                 pass
 
     # Query queue depths
-    token = _get_token()
+    scheme, creds = _get_auth_header()
     dlq_issues = []
     queue_lines = []
     try:
         req = Request(f"{BUS_URL}/api/pgmq/queues",
-                      headers={"Authorization": f"Bearer {token}"},
+                      headers={"Authorization": f"{scheme} {creds}"},
                       method="GET")
         with urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode())
