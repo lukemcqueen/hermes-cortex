@@ -1769,20 +1769,6 @@ else
   warn "install-send-agent-learning-cron.sh not found — skipping agent-learning-sender cron setup"
 fi
 
-# ── Agent Message Handler (inbox polling service) ──────────────
-MESSAGE_HANDLER_SCRIPT="${SCRIPTS_DIR}/install-agent-message-handler.sh"
-if [[ -f "$MESSAGE_HANDLER_SCRIPT" ]]; then
-  if launchctl list com.hermes.agent-message-handler &>/dev/null 2>&1 || \
-     systemctl --user list-timers 2>/dev/null | grep -q com.hermes.agent-message-handler; then
-    skip "agent-message-handler service already registered"
-  else
-    bash "$MESSAGE_HANDLER_SCRIPT" --service-only 2>&1 | sed 's/^/  /'
-    info "  Installed agent-message-handler service (polls inbox every 5m)"
-  fi
-else
-  warn "install-agent-message-handler.sh not found — skipping inbox message handler setup"
-fi
-
 # ── Essential Hermes Crons ──────────────────────────────────────
 HERMES_CRONS_SCRIPT="${SCRIPTS_DIR}/install-crons.sh"
 if [[ -f "$HERMES_CRONS_SCRIPT" ]]; then

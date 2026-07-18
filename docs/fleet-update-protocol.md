@@ -201,7 +201,7 @@ Fleet agents use three types in the registry `role` field:
 
 - **orchestrators** use `orch-bus-*` scripts and `cronjob` MCP tool to manage fleet
 - **server-agents** run `install.sh` (full stack) and poll inbox for work
-- **dev-agents** run `install-agent-message-handler.sh` (lightweight) and process UPDATE_REQUEST via `agent-message-handler.py`
+- **dev-agents** use the `install-crons.sh` `agent-message-handler` cron to process UPDATE_REQUEST via `agent-message-handler.py`
 
 ## Timeouts
 

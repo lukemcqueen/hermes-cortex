@@ -614,12 +614,20 @@ create_cron "memory-to-brain-sync" "0 */6 * * *" \
   "true"
 
 # ── 4. Agent Bus Processing ───────────────────────────────────
-printf "\\n${CYAN}   4. Agent Bus Processing${RESET}\\\n"
+printf "\\\\n${CYAN}   4. Agent Bus Processing${RESET}\\\\\\n"
+
+# Agent message handler — polls inbox for UPDATE_REQUEST etc., runs --once per tick
+create_cron "agent-message-handler" "*/5 * * * *" \
+  "agent-message-handler.py" \
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
 
 
-
-# ── 5. Governance Audit & Lock Cleanup ──────────────────────
-printf "\\n${CYAN}  5. Change Scoring Audit${RESET}\\\n"
+# ── 5. Governance Audit & Lock Cleanup
 
 create_cron "governance-auditor" "0 */6 * * *" \
   "governance-auditor.py" \
