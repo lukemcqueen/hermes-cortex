@@ -286,25 +286,16 @@ def _resolve_env(key: str, default: str = "") -> str:
 def _build_auth_headers(url: str) -> dict[str, str]:
     """Build auth headers for the PGMQ bus.
     
-    Remote (nginx proxy): sends Basic auth. nginx validates, strips it,
-    and injects a Bearer token when proxying to the PGMQ backend.
-    Uses CORTEX_BASIC_AUTH (or CORTEX_BUS_AUTH).
-    
-    Local (no proxy): sends Bearer token directly to PGMQ.
-    Uses CORTEX_BUS_TOKEN.
-    
-    Both CORTEX_BASIC_AUTH and CORTEX_BUS_TOKEN may be configured on the
-    same machine — Basic is for this connection, Bearer is for other
-    use cases or server-side injection by nginx."""
-    host = url.split("://")[-1].split("/")[0].split(":")[0]
-    if host in ("127.0.0.1", "localhost", "::1"):
-        token = _resolve_env("CORTEX_BUS_TOKEN")
-        return {"Authorization": f"Bearer {token}"} if token else {}
+    Primary: Basic auth via CORTEX_BASIC_AUTH (or CORTEX_BUS_AUTH).
+    Fallback: Bearer token via CORTEX_BUS_TOKEN (for local/bare PGMQ)."""
     import base64
     basic = _resolve_env("CORTEX_BASIC_AUTH") or _resolve_env("CORTEX_BUS_AUTH")
     if basic and ":" in basic:
         encoded = base64.b64encode(basic.encode()).decode()
         return {"Authorization": f"Basic {encoded}"}
+    token = _resolve_env("CORTEX_BUS_TOKEN")
+    if token:
+        return {"Authorization": f"Bearer {token}"}
     return {}
 
 
