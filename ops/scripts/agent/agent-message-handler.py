@@ -149,7 +149,15 @@ def read_inbox(queue: str, vt: int = 30) -> dict | None:
 
 def process_update_request(msg_body: dict, correlation_id: str) -> dict:
     """Process an UPDATE_REQUEST and return UPDATE_RESULT body."""
-    request = msg_body.get("body", {})
+    request_raw = msg_body.get("body", {})
+    # Inner body is also a JSON string — parse if needed
+    if isinstance(request_raw, str):
+        try:
+            request = json.loads(request_raw)
+        except (json.JSONDecodeError, TypeError):
+            request = {}
+    else:
+        request = request_raw
     target_sha = request.get("target_sha", "unknown")
     target_version = request.get("target_version", "")
     run_doctor_flag = request.get("run_doctor", True)
@@ -206,7 +214,14 @@ def process_update_request(msg_body: dict, correlation_id: str) -> dict:
 
 def process_rollback_request(msg_body: dict) -> dict:
     """Process a ROLLBACK_REQUEST — git checkout previous SHA and verify."""
-    request = msg_body.get("body", {})
+    request_raw = msg_body.get("body", {})
+    if isinstance(request_raw, str):
+        try:
+            request = json.loads(request_raw)
+        except (json.JSONDecodeError, TypeError):
+            request = {}
+    else:
+        request = request_raw
     target_sha = request.get("target_sha", "HEAD~1")
     reason = request.get("reason", "No reason given")
 
@@ -259,7 +274,14 @@ def process_rollback_request(msg_body: dict) -> dict:
 
 def process_git_auth_check(msg_body: dict) -> dict:
     """Process a GIT_AUTH_CHECK — verify git can ls-remote."""
-    request = msg_body.get("body", {})
+    request_raw = msg_body.get("body", {})
+    if isinstance(request_raw, str):
+        try:
+            request = json.loads(request_raw)
+        except (json.JSONDecodeError, TypeError):
+            request = {}
+    else:
+        request = request_raw
     expected_url = request.get("expected_url", "")
 
     checks = []
