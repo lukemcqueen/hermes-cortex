@@ -15,4 +15,7 @@ if [ ! -f "$SCRIPT" ]; then
     exit 1
 fi
 
+# Ensure Hermes paths are on PYTHONPATH
+export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}${HOME}/.hermes-cortex/scripts"
+
 exec python3 "$SCRIPT" "$@"

@@ -397,11 +397,13 @@ def send_report(report: dict, dry_run: bool = False) -> bool:
 
 
 def _run_session_mining(dry_run: bool = False) -> None:
-    """Try to mine sessions for new lessons. Silent if session-mine CLI unavailable."""
+    """Mine recent sessions for new lessons via session-mine CLI.
+    Every agent has the full Hermes stack (session-mine, Ollama, session DB).
+    If the CLI somehow isn't installed, skip silently."""
     import shutil
-    session_mine = shutil.which("session-mine")
-    if not session_mine:
-        return  # session-mine not installed — skip silently
+    session_mine = shutil.which("session-mine") or str(HOME / ".hermes" / "bin" / "session-mine")
+    if not session_mine or not Path(session_mine).is_file():
+        return  # session-mine not installed — unlikely, but skip silently
 
     try:
         cmd = [session_mine, "mine", "--days", "1", "--auto"]
