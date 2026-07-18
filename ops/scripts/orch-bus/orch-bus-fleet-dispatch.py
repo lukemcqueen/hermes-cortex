@@ -25,14 +25,18 @@ Exit codes:
     2 = unrecoverable error
 """
 
+import sys
+from pathlib import Path
+# Allow lib/ import from repo path
+_SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(_SCRIPT_DIR.parent))    # adds ops/scripts/ to find lib/
+
 import json
 import os
 import subprocess
-import sys
 import time
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 
 HOME = Path.home()
 HERMES_STATE = HOME / ".hermes-cortex" / "state"
@@ -91,7 +95,7 @@ def get_agents_for_update(registry: dict) -> list[dict]:
 
 
 def send_bus_message(queue: str, body: dict, correlation_id: str = "") -> bool:
-    """Send a message to PGMQ via bus.send SQL function."""
+    """Send a message to PGMQ via bus library (CORTEX_BUS_URL)."""
     if not correlation_id:
         correlation_id = str(uuid.uuid4())
 
@@ -100,22 +104,13 @@ def send_bus_message(queue: str, body: dict, correlation_id: str = "") -> bool:
         **body,
         "correlation_id": correlation_id,
     }
-    # Escape single quotes for SQL
-    body_json = json.dumps(full_body).replace("'", "''")
     try:
-        r = subprocess.run(
-            ["docker", "exec", "gbrain-postgres", "psql", "-U", "gbrain", "-d", "gbrain",
-             "-t", "-A", "-c",
-             f"SELECT bus.send('{queue}', '{body_json}'::jsonb, 0)"],
-            capture_output=True, text=True, timeout=15
-        )
-        if r.returncode == 0 and r.stdout.strip() and "ERROR" not in r.stdout:
+        from lib.cortex_bus import bus_send
+        result = bus_send(queue, full_body)
+        if result is not None:
             log(f"  ✅ Sent UPDATE_REQUEST to {queue[6:]} (corr={correlation_id[:8]}…)")
             return True
-        log(f"  ❌ Send failed to {queue[6:]}: {r.stderr[:200] or r.stdout[:200]}")
-        return False
-    except subprocess.TimeoutExpired:
-        log(f"  ❌ Timeout sending to {queue[6:]}")
+        log(f"  ❌ Send failed to {queue[6:]}")
         return False
     except Exception as e:
         log(f"  ❌ Error sending to {queue[6:]}: {e}")
@@ -123,20 +118,10 @@ def send_bus_message(queue: str, body: dict, correlation_id: str = "") -> bool:
 
 
 def read_inbox_queue(queue: str, vt: int = 60) -> dict | None:
-    """Read one message from a PGMQ queue."""
+    """Read one message from a PGMQ queue via bus library (CORTEX_BUS_URL)."""
     try:
-        r = subprocess.run(
-            ["docker", "exec", "gbrain-postgres", "psql", "-U", "gbrain", "-d", "gbrain",
-             "-t", "-A", "-c",
-             f"SELECT bus.read('{queue}', {vt})"],
-            capture_output=True, text=True, timeout=15
-        )
-        if r.returncode == 0 and r.stdout.strip():
-            try:
-                return json.loads(r.stdout.strip())
-            except json.JSONDecodeError:
-                pass
-        return None
+        from lib.cortex_bus import bus_read
+        return bus_read(queue, vt)
     except Exception:
         return None
 

@@ -16,6 +16,9 @@ A lightweight map of all project documents. Files are grouped by topic.
 || `docs/agent-onboarding.md` | Agent onboarding — step-by-step guide for client-only agents to connect to Moses and the fleet |
 || `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
 | `docs/fleet-update-protocol.md` | **NEW** — Fleet update bus protocol: UPDATE_REQUEST/RESULT, FIX_REQUEST/RESULT schemas for Moses→fleet orchestration |
+| `ops/scripts/lib/cortex_bus.py` | **Shared bus library** — HTTP API wrapper: bus_send, bus_read, bus_archive, bus_list_queues (used by all fleet scripts) |
+| `ops/scripts/push-agent/push-agent-update-handler.py` | **Push-agent update handler** — polls inbox for UPDATE_REQUEST, runs cortex-update, posts UPDATE_RESULT |
+| `ops/install/install-push-agent.sh` | **Push-agent installer** — lightweight installer for push-only agents: service + update handler, no Docker/nginx/gbrain |
 | `docs/env-vars.md` | Environment variable reference — CORTEX_* vars, SSL, deploy scripts |
 | `install.sh` | Single-command installer (idempotent, safe to re-run) |
 | `ops/install/install.sh` | Main installer script (moved from root in v2.0.0) |
@@ -33,6 +36,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 |-----|-------------|
 ||| `docs/architecture.md` | System architecture overview — layers, services, port map, security stack |
 || `docs/agent-bus-setup.md` | **Agent Bus** — PGMQ-based Postgres message queue replacing file inbox |
+| `ops/scripts/lib/cortex_bus.py` | **Cortex Bus library** — shared HTTP API wrapper over the Agent Bus: bus_send/bus_read/bus_archive/bus_list_queues |
 || `docs/esther-bus-setup.md` | **Esther Bus Backup** — orchestrator-only guide: bus server, nginx with X-Forwarded-User, Postgres setup, verification |
 || `docs/agent-inbox-setup.md` | Agent inbox setup (legacy) — file-based inbox architecture (superseded by Agent Bus) |
 | `docs/service-layer-decision.md` | **Fleet-wide decision:** User-level systemd (Linux) / LaunchAgents (macOS) for all agent services. Full HC-Party architecture review with 6-role weighted matrix. |
@@ -130,6 +134,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 |-----|-------------|
 || `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
 || `docs/integration-audit.md` | Integration audit — path consistency, script map, agent notes for three-layer repo health |
-|| `ops/scripts/` | Cron scripts, health checks, agent tools — 5 subdirectories: agent/, health/, install/, inbox/, manage/ |
+||| `ops/scripts/` | Cron scripts, health checks, agent tools — 6 subdirectories: agent/, health/, install/, inbox/, manage/, push-agent/ |
+||| `ops/scripts/lib/` | Shared Python libraries for fleet scripts — cortex_bus.py (bus HTTP API) |
 || `core/governance/` | Governance engine — loop-governance DB, scoring, policy enforcement |
 || `.gitignore` | Gitignore — excludes .agentkore, .env, secrets, brain data |

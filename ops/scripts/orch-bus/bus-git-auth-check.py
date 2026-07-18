@@ -23,6 +23,10 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))    # deployed: lib/ is sibling
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo: lib/ in parent
+
+from lib.cortex_bus import bus_send, bus_read
 
 HOME = Path.home()
 HERMES_STATE = HOME / ".hermes-cortex" / "state"
@@ -108,7 +112,6 @@ def send_git_auth_check(agent: str) -> bool:
         },
     }
     try:
-        from lib.cortex_bus import bus_send
         result = bus_send(f"inbox_{agent}", body)
         return result is not None
     except Exception:
@@ -117,7 +120,6 @@ def send_git_auth_check(agent: str) -> bool:
 
 def read_inbox(vt: int = 30) -> dict | None:
     try:
-        from lib.cortex_bus import bus_read
         return bus_read("inbox_moses", vt)
     except Exception:
         return None

@@ -18,14 +18,16 @@ Exit codes:
     2 = no dispatch state found
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))    # deployed: lib/ is sibling
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo: lib/ in parent
+
 import json
 import os
-import subprocess
-import sys
 import time
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 
 HOME = Path.home()
 HERMES_STATE = HOME / ".hermes-cortex" / "state"
@@ -63,19 +65,14 @@ def send_rollback_request(agent: str, target_sha: str, reason: str, dispatch_id:
             "deadline_minutes": 10,
         },
     }
-    body_json = json.dumps(body).replace("'", "''")
     try:
-        r = subprocess.run(
-            ["docker", "exec", "gbrain-postgres", "psql", "-U", "gbrain", "-d", "gbrain",
-             "-t", "-A", "-c",
-             f"SELECT bus.send('inbox_{agent}', '{body_json}'::jsonb, 0)"],
-            capture_output=True, text=True, timeout=15
-        )
-        ok = r.returncode == 0 and r.stdout.strip() and "ERROR" not in r.stdout
+        from lib.cortex_bus import bus_send
+        result = bus_send(f"inbox_{agent}", body)
+        ok = result is not None
         if ok:
             log(f"  ✅ Sent ROLLBACK_REQUEST to {agent} → {target_sha[:8]}")
         else:
-            log(f"  ❌ Failed to send to {agent}: {r.stderr[:200]}")
+            log(f"  ❌ Failed to send to {agent}: bus_send returned None")
         return ok
     except Exception as e:
         log(f"  ❌ Error sending to {agent}: {e}")
@@ -84,14 +81,8 @@ def send_rollback_request(agent: str, target_sha: str, reason: str, dispatch_id:
 
 def read_inbox(vt: int = 30) -> dict | None:
     try:
-        r = subprocess.run(
-            ["docker", "exec", "gbrain-postgres", "psql", "-U", "gbrain", "-d", "gbrain",
-             "-t", "-A", "-c",
-             f"SELECT bus.read('inbox_moses', {vt})"],
-            capture_output=True, text=True, timeout=15
-        )
-        if r.returncode == 0 and r.stdout.strip():
-            return json.loads(r.stdout.strip())
+        from lib.cortex_bus import bus_read
+        return bus_read("inbox_moses", vt)
     except Exception:
         pass
     return None

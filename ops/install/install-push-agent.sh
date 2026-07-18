@@ -4,12 +4,10 @@
 # Installs the push-agent update handler + service registration.
 # Does NOT install Docker, nginx, gbrain, or orchestrator crons.
 #
-# The handler connects to the Agent Bus via HTTP API (CORTEX_BUS_URL).
-# On a remote dev-agent (e.g. Titus), set the following env vars
-# before installing so they're baked into the service definition:
+# Set CORTEX_BUS_URL before installing so it's baked into the
+# service definition:
 #
-#   export CORTEX_BUS_URL=https://your-domain:13004
-#   export CORTEX_BUS_TOKEN=hbus_...
+#   export CORTEX_BUS_URL=https://orchestrator-host:13004
 #   export AGENT_NAME=titus
 #
 # Usage:
@@ -170,7 +168,7 @@ fi
 cat <<HELP
 
 Next steps:
-  1. Confirm agent can reach the bus (docker on Moses, or direct PGMQ)
+  1. Verify the handler can reach the bus via CORTEX_BUS_URL
   2. The handler runs every 5 minutes and checks for UPDATE_REQUEST
   3. When Moses pushes to main and dispatches, this agent auto-updates
 

@@ -27,6 +27,8 @@ Hermes Cortex runs a coordinated team of specialized AI agents, each with distin
 | **Kustos** 🛡️ | Security | Threat detection, blocklist management, access control |
 | **Gisu** 💬 | Communications | Inbox routing, message triage, cross-agent coordination |
 
+> **Agent Taxonomy:** Agents fill three role tiers. **Orchestrators** (Moses, Esther) run bus-based fleet orchestration scripts (`orch-bus-*`) and manage the update pipeline. **Server-agents** (Kustos, Gisu) run the full Hermes Cortex stack with inbox polling and bus health checks (`bus-*` scripts). **Dev-agents** (Titus, Joseph) are push-only — they receive update requests via their inbox and self-update via the `push-agent-update-handler`.
+
 Agents communicate via a **PGMQ-based Agent Bus** with A2A (Agent-to-Agent) protocol — Postgres-backed message queues with auth, health monitoring, and fallover. No shared state, no race conditions.
 
 ### 🔒 Loop Governance — Enforced Change Discipline
@@ -275,6 +277,47 @@ bash ops/scripts/cortex-update.sh --force-all
 ```
 
 > **Note:** After a major version upgrade, your agents should `/reset` their sessions to pick up new skills and plugin configurations.
+
+---
+
+## 🚚 Fleet Update Pipeline
+
+The fleet update pipeline orchestrates coordinated rollouts across all agents using the Agent Bus:
+
+```
+Moses ──UPDATE_REQUEST──→ AgentBus ──→ Kustos (server-agent)
+                                          ──→ Gisu (server-agent)
+                                          ──→ Titus (dev-agent, polls inbox)
+Kustos ──UPDATE_RESULT──→ AgentBus ──→ Moses
+Gisu   ──UPDATE_RESULT──→ AgentBus ──→ Moses
+Titus  ──UPDATE_RESULT──→ AgentBus ──→ Moses
+```
+
+### Script Naming Convention
+
+| Prefix | Scope | Location | Examples |
+|--------|-------|----------|---------|
+| `orch-bus-*` | Orchestrator-only (Moses, Esther) — run from repo | `ops/scripts/orch-bus/` | `orch-bus-fleet-dispatch`, `orch-bus-fleet-rollback` |
+| `bus-*` | Fleet-wide — deployed to all agents | `ops/scripts/orch-bus/` (registered via `cortex-update.sh`) | `bus-sensor`, `bus-health-check`, `bus-readiness-check` |
+| `push-agent-*` | Dev-agent side — installed via `install-push-agent.sh` | `ops/scripts/push-agent/` | `push-agent-update-handler` |
+| `agent-*` | General agent crons | `ops/scripts/agent/` | `agent-inbox-poll` |
+
+### Update Flow
+
+1. **Pre-flight:** `bus-readiness-check.py` verifies bus health, git state, and agent inbox queues
+2. **Dispatch:** `orch-bus-fleet-dispatch.py` sends `UPDATE_REQUEST` to each server-agent's inbox
+3. **Server-agents** poll their inbox, run `cortex-update.sh`, post `UPDATE_RESULT` back
+4. **Dev-agents** (push-only): `push-agent-update-handler` polls their inbox, runs `cortex-update`, posts `UPDATE_RESULT`
+5. **Rollback:** `orch-bus-fleet-rollback.py` reads dispatch state and sends `ROLLBACK_REQUEST` to failed agents
+6. **Auth check:** `bus-git-auth-check.py` verifies each agent can pull from the remote
+
+### Shared Bus Library
+
+All fleet scripts use `ops/scripts/lib/cortex_bus.py` — a shared HTTP API wrapper that reads `CORTEX_BUS_URL` / `CORTEX_BUS_FALLBACK_URL` from the environment. This eliminates the old pattern of `docker exec` calls into the Postgres container.
+
+### Push-Agent Install
+
+For dev-agents (macOS, partial stack): `ops/install/install-push-agent.sh` installs the update handler as a service without Docker, nginx, or gbrain.
 
 ---
 

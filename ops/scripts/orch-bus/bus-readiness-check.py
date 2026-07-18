@@ -25,6 +25,10 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))    # deployed: lib/ is sibling
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo: lib/ in parent
+
+from lib.cortex_bus import bus_list_queues
 
 HOME = Path.home()
 CORTEX_REPO = HOME / "hermes-cortex"
@@ -120,7 +124,6 @@ def main():
     # 6. Agent inbox queues exist  
     queues_ok = False
     try:
-        from lib.cortex_bus import bus_list_queues
         queues = [q for q in bus_list_queues()
                   if q.get("name", "").startswith("inbox_")
                   and not q.get("name", "").endswith("_dlq")]
