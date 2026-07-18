@@ -159,6 +159,27 @@ def _check_launchd(job_label: str) -> dict:
     except Exception as e:
         return {"status": "ERROR", "detail": str(e)}
 
+def check_ollama() -> dict:
+    """Check Ollama via HTTP API first, fall back to platform-specific check.
+    
+    Ollama may be managed by the desktop app (macOS) instead of launchd.
+    The HTTP API works regardless of how it's started.
+    """
+    try:
+        req = urllib.request.Request(
+            "http://127.0.0.1:11434/api/tags",
+            method="GET",
+        )
+        resp = urllib.request.urlopen(req, timeout=5)
+        if resp.status == 200:
+            return {"status": "UP", "detail": "HTTP 200 on port 11434"}
+    except Exception:
+        pass
+    if is_linux:
+        return check_systemd("ollama")
+    return _check_launchd("com.ollama.serve")
+
+
 def check_service(label: str) -> dict:
     if is_linux:
         return check_systemd(label)
@@ -464,7 +485,7 @@ def main():
         gbrain_svc = "com.gbrain.autopilot"
 
     services = {
-        "Ollama": check_service(ollama_svc),
+        "Ollama": check_ollama(),
         "gbrain sync": check_service(gbrain_svc),
         "gbrain sources": check_gbrain_sources(),
         "Docker (Langfuse)": check_docker_containers(),
