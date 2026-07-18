@@ -27,7 +27,7 @@ A cross-document freshness system that ensures AGENTS.md (fleet coordination rul
 | **Template drift check** | `template-diff-check.py` runs during `cortex-update.sh` after every `git pull`. Compares local `~/.hermes/SOUL.md` against `docs/templates/SOUL.md` for missing sections, stale content markers, and deprecated patterns. | Each agent's own `cortex-update.sh` | Every `git pull` (typically daily) |
 | **Weekly audit** | `agents-doc-audit.py` checks all SOUL.md + AGENTS.md for mandatory section *presence* | Moses (orchestrator) | Monday 7am KST |
 | **Post-update broadcast** | Moses sends inbox message to all agents after modifying AGENTS.md or his SOUL.md | Moses (orchestrator) | On change |
-| **Daily gap fill** | `agent-daily-soul-refinement` cron (Channel C) fills mandatory section gaps | Each agent's own cron | Daily 23:00 |
+| **Daily gap fill** | `orch-skill-lifecycle` cron (orchestrator) evaluates agent data, patches skills/SOUL.md. Non-orchestrators use `agent-daily-soul-refinement` as fallback. | Per-agent | Daily 04:00 (orchestrator) or 23:00 (fallback) |
 | **Session-start check** | Every agent reads AGENTS.md + own SOUL.md at session start | Each agent | Every session |
 
 **Key insight:** The template drift check (Layer 1) is the earliest detection layer — it fires on every `git pull` before the agent even starts a work session. It detects *content* drift (stale markers, deprecated patterns), not just missing sections. The weekly audit catches anything structural that slipped through. The daily gap fill auto-recovers. The session-start check is the last resort.
@@ -239,7 +239,7 @@ When the framework evolves:
 2. Add the section to `DEFAULT_CONFIG` in `agents-doc-audit.py`:
    - Under `agents_files[].mandatory_sections` for weekly audit coverage
    - Under `hook_sections` if the pre-commit hook should enforce it too
-3. Update the `soul-refinement` skill's Channel C mandatory sections list
+3. Update the `orch-skill-lifecycle` skill to cover the new section in its evaluation criteria, or update the `soul-refinement` fallback skill's Channel C mandatory sections list
 4. Run `agents-doc-audit.py` to verify the new section shows as "missing" on current files
 5. Broadcast the change: `agents-doc-broadcast.py AGENTS.md "Added Doc Freshness section"`
 6. Patch the affected SOUL.md / AGENTS.md files

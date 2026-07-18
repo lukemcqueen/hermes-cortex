@@ -14,8 +14,8 @@ This server uses a layered naming system with **three prefix levels** that can b
 | Prefix | Scope | Examples |
 |--------|-------|---------|
 | `local-` | This server only (overrides base type) | `local-hermes-update`, `local-agent-daily-news-brief` |
-| `agent-` | LLM-driven, concept applies across all agents | `agent-auto-remediate`, `agent-weekly-loop-eval` |
-| (none) | no_agent watchdog, concept applies across all agents | `hermes-update`, `hermes-cortex-sync`, `skill-miner` |
+| `agent-` | LLM-driven, concept applies across all agents | `agent-auto-remediate`, `agent-inbox` |
+| (none) | no_agent watchdog, concept applies across all agents | `hermes-update`, `hermes-cortex-sync`, `cortex-doctor` |
 | `esther-` | Runs under Esther's profile | `esther-daily-sustainable-materials` |
 
 **Combining prefixes:** A cron that is LLM-driven AND this-server-only uses both: `local-agent-daily-news-brief`. The `local-` prefix always comes first.

@@ -65,8 +65,8 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 | **Messaging** | `bus-inbox-watch` | Every 10 min — reports pending messages across all agent queues |
 | **Sync** | `hermes-cortex-sync`, `memory-to-brain-sync`, `gbrain-update-sync` | Pull updates, persist memory, sync brain |
 | **Security** | `threat-pipeline`, `agent-ip-submission` | Block threats, report IPs |
-| **Maintenance** | `memory-pruning`, `skill-miner`, `harvest-lessons`, `session-cache-build` | Weekly consolidation, skill extraction, lesson learning |
-| **Content** | `agent-daily-bible-reading`, `agent-daily-soul-refinement`, `offline-code-index` | Daily spiritual, weekly doc audits, code indexing |
+| **Maintenance** | `memory-pruning`, `session-cache-build`, `orch-skill-lifecycle` | Weekly consolidation, daily skill lifecycle pipeline |
+| **Content** | `agent-daily-bible-reading`, `orch-skill-lifecycle`, `offline-code-index` | Daily spiritual, skill lifecycle (daily 04:00), code indexing |
 | **Reports** | `orch-health-report`, `agent-gbrain-doctor` | Scheduled health briefings, brain quality |
 
 All crons follow the **silent-when-good** pattern — zero output when healthy, targeted alerts on state changes.

@@ -322,7 +322,7 @@ Only Moses has `cronjob` MCP tool. Others request via inbox with subject `🔧 C
 | `memory-to-brain-sync` | no_agent | `0 */6 * * *` | `memory-to-brain-sync.py` | local |
 | `auto-save-sessions` | no_agent | `every 360m` | `auto-save-sessions.py` | local |
 | `memory-pruning` | LLM+prompt | `0 4 * * 1` | (consolidation prompt) | origin |
-| `harvest-lessons` | no_agent | `0 5 * * 1` | `harvest-lessons.sh` | origin |
+| *(replaced: `harvest-lessons` → `orch-skill-lifecycle`)* | | | | |
 
 ### 4. Agent Inbox Processing
 | Cron | Type | Schedule | Script / Skill | Deliver |

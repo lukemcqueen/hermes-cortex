@@ -49,12 +49,12 @@ All tools are symlinked at `~/.local/bin/`:
 | `auto-apply` | Auto-apply low-risk config patches from evaluated cycles |
 | `loop-config` | View/set runtime config (weights, thresholds) |
 | `session-cache-build` | Build/session search cache |
-| `skill-miner` | Mine scored cycles for reusable skill patterns |
+| `skill-miner` | *(Absorbed into `orch-skill-lifecycle` — fleet-wide unified pipeline)* |
 
 ## Weekly Evaluation Pipeline
 
 1. **Pull scored cycles** from the last 7 days via the loop evaluator
-2. **Run skill-miner** to extract reusable patterns from scored data
+2. *(Skill mining replaced by `orch-skill-lifecycle` — daily collection + evaluation + upgrade)*
 3. **Run auto-apply** to apply low-risk config changes
 4. **Report results**: cycles scored, skills mined, patches applied
 
@@ -161,7 +161,7 @@ auto-apply --dry-run          # preview without applying
 auto-apply                    # apply low-risk patches
 loop-config                   # show current config
 session-cache-build build     # rebuild session cache
-skill-miner                   # mine skills from scored cycles
+# skill mining: see orch-skill-lifecycle (unified daily pipeline)
 ```
 
 ## Scoring

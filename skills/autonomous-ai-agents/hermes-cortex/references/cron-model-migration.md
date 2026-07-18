@@ -41,10 +41,10 @@ Search: `grep -rn "qwen2.5-coder:3b\|<old-model>" ~/hermes-cortex/ --include="*.
 ## Current Model Inventory
 
 ### qwen2.5-coder:3b (local, zero cost)
-`agent-daily-bible-reading`, `agent-daily-soul-refinement`, `memory-pruning`, `orch-process-agent-messages`, `llm-judge-scorer-weekday/weekend`, `local-agent-agents-doc-audit`
+`agent-daily-bible-reading`, `orch-skill-lifecycle`, `memory-pruning`, `orch-process-agent-messages`, `llm-judge-scorer-weekday/weekend`, `local-agent-agents-doc-audit`
 
 ### deepseek-v4-flash (API, quality-sensitive)
-`agent-auto-remediate`, `agent-weekly-loop-eval`, `process-mcp-agent-inbox-messages`
+`orch-skill-lifecycle`, `process-mcp-agent-inbox-messages`
 
 ## Verification
 
