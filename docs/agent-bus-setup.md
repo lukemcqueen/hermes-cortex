@@ -200,7 +200,7 @@ Additionally, workflow queues:
 
 ### DLQ Maintenance
 
-The `bus.recover_timeouts()` function (called every 5m by `orch-bus-recover-timeouts`) maintains DLQs:
+The `bus.recover_timeouts()` function (called every 5m by `bus-recover-timeouts`) maintains DLQs:
 
 | Action | Condition |
 |--------|-----------|
@@ -222,7 +222,7 @@ UPDATE bus.queues SET is_dlq = true WHERE name LIKE '%_dlq%' AND is_dlq = false;
 | Recoveries/tick | 0–5 | 5–50 | 50+ |
 | DLQ depth | < 50 | 50–200 | 200+ |
 
-The `orch-bus-recover-timeouts` cron is **silent below 50** recoveries — small timeouts are routine. DLQ messages < 6h old are pending; older ones auto-archive on each tick.
+The `bus-recover-timeouts` cron is **silent below 50** recoveries — small timeouts are routine. DLQ messages < 6h old are pending; older ones auto-archive on each tick.
 
 ---
 

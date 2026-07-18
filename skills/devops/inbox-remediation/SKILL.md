@@ -23,7 +23,7 @@ Load this skill when:
 ```
 [Peer Agent] sends message via Agent Bus (inbox_send MCP tool)
     ↓
-[orch-bus-audit-watchdog] runs every 1m (no_agent)
+[bus-audit-watchdog] runs every 1m (no_agent)
     ↓  Detects keywords: error, failed, broken, crash, help, etc.
     ↓  Writes remediation marker to ~/.hermes/state/remediate/
     ↓
@@ -97,11 +97,11 @@ PROMPT
 
 ### 3. Remediation is bus-driven
 
-The `orch-bus-audit-watchdog` (every 1m, no_agent) handles detection — scanning bus messages for error/failure keywords and writing remediation markers. The `agent-remediate-apply` cron (every 10m) reads markers and applies fixes.
+The `bus-audit-watchdog` (every 1m, no_agent) handles detection — scanning bus messages for error/failure keywords and writing remediation markers. The `agent-remediate-apply` cron (every 10m) reads markers and applies fixes.
 
 | Agent | Path | Schedule |
 |-------|------|----------|
-| Detection | `orch-bus-audit-watchdog.py` (no_agent) | Every 1m |
+| Detection | `bus-audit-watchdog.py` (no_agent) | Every 1m |
 | Remediation | `agent-remediate-apply.py` (no_agent) | Every 10m |
 
 ## Detection Keywords

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""orch-bus-processor.py — Companion script for bus message processing.
+"""bus-processor.py — Companion script for bus message processing.
 
 Runs every 10m as a no_agent watchdog. Checks the Agent Bus for
 new broadcast messages via the local PGMQ endpoint.

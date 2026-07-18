@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-orch-bus-sensor.py — Companion script for orch-process-agent-messages.
+bus-sensor.py — Companion script for orch-process-agent-messages.
 
 Runs every 10m as a no_agent watchdog. Calls the Agent Bus API
 (via the PGMQ-based MCP backend endpoint) to check for new broadcast

@@ -7,7 +7,7 @@ when messages are waiting. Silent when empty (watchdog pattern).
 
 Usage as no_agent cron:
     hermes cron create name=bus-inbox-watch schedule="*/10 * * * *" \\
-      script=orch-bus-watch.py no_agent=true deliver=origin
+      script=bus-watch.py no_agent=true deliver=origin
 """
 
 import json

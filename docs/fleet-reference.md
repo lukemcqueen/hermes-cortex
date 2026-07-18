@@ -81,7 +81,7 @@ agent guidelines focused on general Hermes Cortex usage.
 | | | | |
 | **Orchestrator-only (Moses primary, Esther backup):** | | | |
 | `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | Orchestrator fleet health polling (state-change alerts, delivered via Telegram) |
-| `orch-bus-audit-watchdog` | `*/1 * * * *` | no_agent | Watch agent bus for urgent messages |
+| `bus-audit-watchdog` | `*/1 * * * *` | no_agent | Watch agent bus for urgent messages |
 | `orch-process-agent-messages` | `*/10 * * * *` | LLM | Process Agent Bus remediation markers |
 
 ### Cron naming convention
@@ -147,7 +147,7 @@ All in `ops/scripts/`, installed by `install.sh` + `install-crons.sh`:
 | `system-alert-watchdog.py` | no_agent | Every 10m | Resource alerts + auto-cleanup |
 | `swap-refresh.py` | no_agent | Daily 5 AM | Stale swap reclamation |
 | `service-recovery.py` | no_agent | Every 5m | Auto-restart nginx, Ollama, gbrain, Langfuse |
-| `orch-bus-audit-watchdog.py` | no_agent | Every 1m | Inspects bus messages for urgent keywords + markers |
+| `bus-audit-watchdog.py` | no_agent | Every 1m | Inspects bus messages for urgent keywords + markers |
 | `agent-auto-remediate` (skill) | LLM cron | Every 5m | Checks errored crons + inbox remediation, applies fixes |
 
 **Skill:** `skills/devops/auto-remediation/SKILL.md`
@@ -176,7 +176,7 @@ ln -sf ~/.hermes-cortex/tools/loop-governance/score_cycle.py ~/.local/bin/score-
 
 ### All timestamps in KST (UTC+9)
 
-All monitoring scripts output timestamps in Seoul time. Affects: `orch-fleet-watchdog.py`, `system-alert-watchdog.py`, `service-recovery.py`, `orch-bus-audit-watchdog.py`, and all cron outputs.
+All monitoring scripts output timestamps in Seoul time. Affects: `orch-fleet-watchdog.py`, `system-alert-watchdog.py`, `service-recovery.py`, `bus-audit-watchdog.py`, and all cron outputs.
 
 ---
 

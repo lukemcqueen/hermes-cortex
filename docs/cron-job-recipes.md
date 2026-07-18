@@ -992,7 +992,7 @@ hermes cron create \
 
 ### Prerequisites
 
-- `orch-bus-audit-watchdog` cron running every 1m (detects bus messages + writes markers)
+- `bus-audit-watchdog` cron running every 1m (detects bus messages + writes markers)
 - Peer agents sending fix requests to Agent Bus (topics: general, all, luke, <agentname>)
 
 ---

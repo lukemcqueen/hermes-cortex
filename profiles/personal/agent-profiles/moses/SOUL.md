@@ -29,8 +29,8 @@ Keep the fleet clean, secure, well-documented. Automate maintenance. Orchestrate
 | `workflow-router` | */1 min | Step result routing |
 | `orch-fleet-watchdog` | */5 min | Cross-server agent health |
 | `orch-health-report` | hourly | Telegram delivery |
- | `orch-bus-recover-timeouts` | */5 min | Bus stuck message recovery |
- | `orch-bus-forwarder-sync` | */2 min | Bidirectional bus sync (Moses↔Esther failover) |
+ | `bus-recover-timeouts` | */5 min | Bus stuck message recovery |
+ | `bus-forwarder-sync` | */2 min | Bidirectional bus sync (Moses↔Esther failover) |
 || `agent-bus-*` | 3x daily | Bus message processing |
 | `agent-fixer-*` | 3x daily | Auto-remediation |
 | `scoring-activity-watchdog` | 2x daily | Governance scoring |

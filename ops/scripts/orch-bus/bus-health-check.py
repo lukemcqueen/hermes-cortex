@@ -6,8 +6,8 @@ Sends a test message, reads it back, archives it. Reports round-trip latency.
 Exits non-zero if any step fails (triggers system-alert-watchdog).
 
 Usage as no_agent cron:
-    hermes cron create name=orch-bus-health-check schedule="*/5 * * * *" \\
-      script=orch-bus-health-check.py no_agent=true deliver=origin
+    hermes cron create name=bus-health-check schedule="*/5 * * * *" \\
+      script=bus-health-check.py no_agent=true deliver=origin
 """
 
 import os

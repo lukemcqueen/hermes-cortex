@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  orch-orch-bus-watch.sh — Poll Agent Bus via external API
+#  bus-watch.sh — Poll Agent Bus via external API
 #
 #  Designed for no_agent cron (watchdog pattern).
 #  Silent (exit 0, no output) when nothing new.
@@ -13,7 +13,7 @@
 #
 #  Usage as no_agent cron (run once on any machine with curl):
 #    hermes cron create name=bus-watch schedule="*/10 * * * *" \
-#      script=orch-bus-watch.sh no_agent=true deliver=origin
+#      script=bus-watch.sh no_agent=true deliver=origin
 #
 #  Or as context_source for an LLM cron:
 #    hermes cron create name=agent-bus schedule="0 */2 * * *" \

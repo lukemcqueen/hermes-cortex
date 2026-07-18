@@ -75,7 +75,7 @@ Check the agent inbox for messages from other agents (Titus, Joseph, Kustos, Gis
 
 **Where to check:**
 - The **Agent Bus** — use `inbox_read` MCP tool to check for new messages addressed to you
-- The `orch-bus-audit-watchdog` reports what's new
+- The `bus-audit-watchdog` reports what's new
 
 **How to handle:**
 1. Read the message content

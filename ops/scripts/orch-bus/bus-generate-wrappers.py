@@ -22,7 +22,7 @@ Registry format:
   }
 }
 
-Each wrapper sets CONFIG and execs agent-orch-bus-watch.sh.
+Each wrapper sets CONFIG and execs bus-watch.sh.
 Each cron job runs the wrapper on schedule.
 """
 import json
@@ -34,7 +34,7 @@ from pathlib import Path
 HOME = Path.home()
 SCRIPTS_DIR = HOME / ".hermes-cortex" / "scripts"
 REGISTRY_PATH = HOME / ".hermes-cortex" / "state" / "agent-registry.json"
-WATCH_SCRIPT = SCRIPTS_DIR / "agent-orch-bus-watch.sh"
+WATCH_SCRIPT = SCRIPTS_DIR / "bus-watch.sh"
 STATE_DIR = HOME / ".hermes-cortex" / "state"
 
 
@@ -56,7 +56,7 @@ def generate_wrapper(agent_name, agent_data, dry_run=False):
     wrapper_path = SCRIPTS_DIR / f"agent-bus-{agent_name}.sh"
     wrapper_content = f"""#!/bin/bash
 # Auto-generated from agent-registry.json
-CONFIG="${{HOME}}/.hermes/agent-bus-{agent_name}.conf" exec "${{HOME}}/.hermes-cortex/scripts/agent-orch-bus-watch.sh"
+CONFIG="${{HOME}}/.hermes/agent-bus-{agent_name}.conf" exec "${{HOME}}/.hermes-cortex/scripts/bus-watch.sh"
 """
     if dry_run:
         print(f"[DRY RUN] Would create: {wrapper_path}")

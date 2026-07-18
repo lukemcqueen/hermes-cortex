@@ -21,11 +21,11 @@
 
 | Name | Schedule | Type | Script / Prompt | Deliver | Orch? |
 |------|----------|------|-----------------|---------|-------|
-| `orch-bus-audit-watchdog` | `*/1 * * * *` | no_agent | `orch-bus-audit-watchdog.py` | Telegram | ✅ |
-| `orch-bus-forwarder-sync` | `*/2 * * * *` | no_agent | `orch-bus-forwarder.py` | origin | ✅ |
-| `orch-bus-recover-timeouts` | `*/5 * * * *` | no_agent | `orch-bus-recover-timeouts.sh` | origin | ✅ |
-| `orch-bus-confirmation-poller` | `every 10m` | no_agent | `orch-bus-message-tracker.py` | local | ✅ |
-| `orch-bus-confirmation-alert` | `every 60m` | no_agent | `orch-bus-message-tracker-alert.sh` | origin | ✅ |
+| `bus-audit-watchdog` | `*/1 * * * *` | no_agent | `bus-audit-watchdog.py` | Telegram | ✅ |
+| `bus-forwarder-sync` | `*/2 * * * *` | no_agent | `bus-forwarder.py` | origin | ✅ |
+| `bus-recover-timeouts` | `*/5 * * * *` | no_agent | `bus-recover-timeouts.sh` | origin | ✅ |
+| `bus-confirmation-poller` | `every 10m` | no_agent | `bus-message-tracker.py` | local | ✅ |
+| `bus-confirmation-alert` | `every 60m` | no_agent | `bus-message-tracker-alert.sh` | origin | ✅ |
 | `workflow-dispatcher` | `*/1 * * * *` | no_agent | `workflow-dispatcher.py` | local | — |
 | `workflow-router` | `*/1 * * * *` | no_agent | `workflow-router.py` | local | — |
 | `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | `orch-fleet-watchdog.py` | Telegram | yes |
@@ -136,6 +136,6 @@ When changing a cron schedule, update this file in the same commit. The change f
 
 ### Notes
 
-- `orch-bus-recover-timeouts` — **silent below 50** recoveries/tick. Routine visibility timeouts are normal; threshold was 10 before DLQ auto-archive fix. See [`agent-bus-setup.md`](agent-bus-setup.md#dlq-maintenance) for baselines.
+- `bus-recover-timeouts` — **silent below 50** recoveries/tick. Routine visibility timeouts are normal; threshold was 10 before DLQ auto-archive fix. See [`agent-bus-setup.md`](agent-bus-setup.md#dlq-maintenance) for baselines.
 - `inbox-depth-watchdog` — monitors inbox backlog depth; alerts on buildup.
 - All `orch-*` crons run only on orchestrators (Moses/Esther).

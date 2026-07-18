@@ -115,9 +115,9 @@ if $UNINSTALL; then
   for job in \
     "orch-fleet-watchdog" \
     "orch-skill-lifecycle" \
-    "orch-bus-forwarder-sync" "orch-bus-audit-watchdog" \
-    "orch-bus-recover-timeouts" "orch-bus-confirmation-poller" \
-    "orch-bus-confirmation-alert"; do
+    "bus-forwarder-sync" "bus-audit-watchdog" \
+    "bus-recover-timeouts" "bus-confirmation-poller" \
+    "bus-confirmation-alert"; do
     remove_cron "$job" 2>/dev/null || true
   done
   info "Uninstall complete"
@@ -369,12 +369,12 @@ create_cron "orch-fleet-watchdog" "*/5 * * * *" \
   "" \
   "true"
 
-# ── 1a. Orchestrator Bus Tools (orch-bus-*) ──────────────
+# ── 1a. Bus Tools (bus-*) ───────────────────────────
 printf "${CYAN}  1a. Orchestrator Bus Tools${RESET}\n"
 
 # Bidirectional bus sync — Moses primary ↔ Esther backup (every 2 min)
-create_cron "orch-bus-forwarder-sync" "*/2 * * * *" \
-  "orch-bus-forwarder.py" \
+create_cron "bus-forwarder-sync" "*/2 * * * *" \
+  "bus-forwarder.py" \
   "" \
   "" \
   "" \
@@ -383,8 +383,8 @@ create_cron "orch-bus-forwarder-sync" "*/2 * * * *" \
   "true"
 
 # Bus audit watchdog — new message events to Telegram (every 1 min)
-create_cron "orch-bus-audit-watchdog" "*/1 * * * *" \
-  "orch-bus-audit-watchdog.py" \
+create_cron "bus-audit-watchdog" "*/1 * * * *" \
+  "bus-audit-watchdog.py" \
   "" \
   "" \
   "" \
@@ -393,8 +393,8 @@ create_cron "orch-bus-audit-watchdog" "*/1 * * * *" \
   "true"
 
 # Stuck message recovery — Postgres processing timeouts (every 5 min)
-create_cron "orch-bus-recover-timeouts" "*/5 * * * *" \
-  "orch-bus-recover-timeouts.sh" \
+create_cron "bus-recover-timeouts" "*/5 * * * *" \
+  "bus-recover-timeouts.sh" \
   "Recover stuck processing messages from the bus Postgres database every 5 minutes" \
   "" \
   "" \
@@ -403,8 +403,8 @@ create_cron "orch-bus-recover-timeouts" "*/5 * * * *" \
   "true"
 
 # Bus confirmation poller — track message delivery confirmations (every 10m)
-create_cron "orch-bus-confirmation-poller" "every 10m" \
-  "orch-bus-message-tracker.py" \
+create_cron "bus-confirmation-poller" "every 10m" \
+  "bus-message-tracker.py" \
   "poll" \
   "" \
   "" \
@@ -413,8 +413,8 @@ create_cron "orch-bus-confirmation-poller" "every 10m" \
   "true"
 
 # Bus confirmation alert — alert on undelivered messages (every 60m)
-create_cron "orch-bus-confirmation-alert" "every 60m" \
-  "orch-bus-message-tracker-alert.sh" \
+create_cron "bus-confirmation-alert" "every 60m" \
+  "bus-message-tracker-alert.sh" \
   "alert" \
   "" \
   "" \

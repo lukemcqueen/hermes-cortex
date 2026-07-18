@@ -187,7 +187,7 @@ without re-executing.
 | At-least-once delivery | PGMQ auto-retry on read + vt timeout |
 | At-most-once execution | correlation_id dedup on agent side |
 | Response deadline | deadline_minutes field + Moses timeout handler |
-| Confirmation tracking | Existing orch-bus-message-tracker polls for unconfirmed messages |
+| Confirmation tracking | Existing bus-message-tracker polls for unconfirmed messages |
 
 ## Agent Taxonomy
 
@@ -273,7 +273,7 @@ Sent after agent reverts and verifies.
 ## Git Auth Verification
 
 Before dispatching an update, Moses verifies each agent can pull from the remote.
-The `orch-bus-git-auth-check.sh` script SSHes into each server-agent and runs
+The `bus-git-auth-check.py` script SSHes into each server-agent and runs
 `git ls-remote origin HEAD` to confirm credentials work.
 
 For dev-agents (push-only, Titus), auth is verified on the agent side as part
@@ -305,4 +305,4 @@ The agent responds with `GIT_AUTH_RESULT` containing `{authenticated: true/false
 
 - `agent-registry.json` — agent capability manifests (bus_mode, has_git, etc.)
 - `cortex-doctor.py --json` — structured doctor output consumed by this protocol
-- `orch-bus-message-tracker.py` — existing confirmation tracking infrastructure
+- `bus-message-tracker.py` — existing confirmation tracking infrastructure

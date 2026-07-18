@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# orch-bus-recover-timeouts.sh — no_agent cron; recovers stuck processing messages
+# bus-recover-timeouts.sh — no_agent cron; recovers stuck processing messages
 # Silent until issue. Reports only when >=50 messages recovered/archived.
 set -euo pipefail
 
