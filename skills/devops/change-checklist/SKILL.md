@@ -186,7 +186,8 @@ Changes that affect other agents' workflow must be documented.
 
 ### Phase 5: Final Verification
 
-- [ ] **Doctor runs clean** on the changed subsystem:
+- [ ] **Stale expected list cleanup**: if you removed any cron during this cycle, verify its name is also removed from the uninstall arrays in `install-crons.sh` and `install-orch-crons.sh`. The doctor reads these arrays as the *expected cron list*. A name in the uninstall array but no matching live cron = false ❌ on the doctor.
+- [ ] **Doctor runs clean** on the changed subsystem — confirm it shows `✅ Crons registered` (not ❌ Crons missing), `✅ Orch crons`, `✅ Crons total`:
   ```bash
   python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
   ```
