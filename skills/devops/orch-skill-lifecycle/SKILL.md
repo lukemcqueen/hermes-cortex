@@ -14,7 +14,7 @@ platforms: [linux, macos]
 
 Single daily cron (04:00 KST) that replaces 5 separate processes. Runs the full skill lifecycle end-to-end: **collect → evaluate → upgrade**.
 
-The cron has `terminal` + `file` + `web` tool access and uses `session_search()` for historical analysis.
+The cron has `terminal` + `file` + `web` tool access. It reads agent data from the PGMQ bus (inbox_moses queue) where each fleet agent's `agent-learning-collector` pushes structured reports every 6h.
 
 ## Replacements
 
