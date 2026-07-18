@@ -131,8 +131,11 @@ script_exists() {
   if [[ -f "${SCRIPTS_DIR}/${script}" ]]; then
     return 0
   fi
-  # Also check repo source
+  # Also check repo source (including subdirs like agent/, manage/, orch-bus/)
   if [[ -f "${SCRIPT_DIR}/${script}" ]]; then
+    return 0
+  fi
+  if find "${SCRIPT_DIR}" -maxdepth 2 -name "${script}" -type f 2>/dev/null | grep -q .; then
     return 0
   fi
   # Check CLI wrapper symlinks (loop-governance setup.sh)

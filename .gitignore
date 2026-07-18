@@ -104,6 +104,7 @@ ops/scripts/
 !ops/scripts/agent/agent-apply-fixes.py
 !ops/scripts/agent/agent-health-monitor.py
 !ops/scripts/agent/orch-health-report.py
+!ops/scripts/agent/agent-message-handler.py
 !ops/scripts/health/service-recovery.py
 !ops/scripts/inbox/inbox-sensor.py
 !ops/scripts/inbox/inbox-flag.py
