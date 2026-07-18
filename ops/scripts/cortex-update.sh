@@ -176,8 +176,7 @@ register "core/governance/cleanup-ollama.sh"  "${CORTEX_DEPLOY_HOME}/scripts/cle
 register "core/governance/inbox_watcher.py"    "${CORTEX_DEPLOY_HOME}/scripts/inbox_watcher.py"
 register "core/governance/session_cache.py"    "${CORTEX_DEPLOY_HOME}/scripts/session_cache.py"
 register "core/governance/setup.sh"            "${CORTEX_DEPLOY_HOME}/scripts/setup.sh"
-register "core/governance/skill_miner.py"      "${CORTEX_DEPLOY_HOME}/scripts/skill_miner.py"
-register "core/governance/skill-miner-wrapper" "${CORTEX_DEPLOY_HOME}/scripts/skill-miner-wrapper"
+register "core/governance/verify.sh"           "${CORTEX_DEPLOY_HOME}/scripts/verify.sh"
 register "core/governance/update.sh"           "${CORTEX_DEPLOY_HOME}/scripts/update.sh"
 
 register "ops/scripts/health/prod-watchdog.sh"          "${CORTEX_DEPLOY_HOME}/scripts/prod-watchdog.sh"
@@ -235,7 +234,6 @@ register "ops/scripts/manage/gbrain-nightly-dream.sh"   "${CORTEX_DEPLOY_HOME}/s
 register "ops/scripts/manage/gbrain-update-sync.sh"     "${CORTEX_DEPLOY_HOME}/scripts/gbrain-update-sync.sh"
 register "ops/scripts/manage/gbrain-wrapper.sh"         "${CORTEX_DEPLOY_HOME}/scripts/gbrain-wrapper.sh"
 register "ops/scripts/manage/gbrain-doctor-summary.py"   "${CORTEX_DEPLOY_HOME}/scripts/gbrain-doctor-summary.py"
-register "ops/scripts/manage/harvest-lessons.sh"         "${CORTEX_DEPLOY_HOME}/scripts/harvest-lessons.sh"
 register "ops/scripts/manage/send-skill-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/send-skill-report.py"
 register "ops/scripts/state_tracker.py"           "${CORTEX_DEPLOY_HOME}/scripts/state_tracker.py"
 
@@ -325,7 +323,6 @@ register "ops/scripts/manage/send-agent-learning.sh"      "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/manage/collect-agent-skills.sh"     "${CORTEX_DEPLOY_HOME}/scripts/collect-agent-skills.sh"
 register "ops/scripts/manage/request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}/scripts/request-skill-reports.sh"
 register "ops/scripts/manage/process-skill-reports.py"    "${CORTEX_DEPLOY_HOME}/scripts/process-skill-reports.py"
-register "ops/scripts/manage/skill-triage.py"             "${CORTEX_DEPLOY_HOME}/scripts/skill-triage.py"
 # Agent inbox connection config — user creates manually
 
 # MCP inbox proxy — sudo'd HTTPS proxy with root-owned client cert

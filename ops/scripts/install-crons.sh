@@ -424,16 +424,15 @@ if $UNINSTALL; then
     "system-alert-watchdog" "service-recovery" \
     "remediation-sensor" \
     "hermes-update" "gbrain-nightly-dream" "gbrain-update-sync" \
-    "hermes-cortex-sync" "harvest-lessons" "memory-pruning" \
+    "hermes-cortex-sync" "memory-pruning" \
     "auto-save-sessions" "agent-daily-bible-reading" \
-    "agent-daily-soul-refinement" \
     "llm-judge-scorer-weekday" "llm-judge-scorer-weekend" \
     "offline-code-index" "model-health-watchdog" \
     "agent-remediate-apply" "agent-apply-fixes" \
     "governance-auditor" "threat-pipeline" "agent-ip-submission" \
-    "scoring-activity-watchdog" "skill-miner" "agent-weekly-loop-eval" \
+    "scoring-activity-watchdog" \
     "session-cache-build" "cron-quality-watchdog" \
-    "collect-agent-skills"; do
+    "collect-agent-skills" "orch-skill-lifecycle"; do
     remove_cron "$job"
   done
   info "Uninstall complete"
@@ -711,52 +710,26 @@ create_cron "scoring-activity-watchdog" "0 14,20 * * *" \
   "" \
   "true"
 
-# Loop-governance: skill miner — mines local data, sends findings via bus
-create_cron "skill-miner" "0 6 * * 1" \
-  "skill_miner.py" \
+# Orch Skill Lifecycle: unified daily skill pipeline — replaces skill-miner, harvest-lessons,
+# skill-triage, agent-weekly-loop-eval, agent-daily-soul-refinement
+create_cron "orch-skill-lifecycle" "0 4 * * *" \
   "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
+  "Load the orch-skill-lifecycle skill and follow the three-phase pipeline. Run the complete skill lifecycle for today.
 
-# Loop-governance: weekly evaluation — report, skill miner, auto-apply, retention
-create_cron "agent-weekly-loop-eval" "0 9 * * 1" \
-  "" \
-  "Run the loop governance evaluation pipeline for the last 7 days, then run the skill miner, auto-apply safe config changes, and vacuum old cycles.
+Phase 1 — Collection:
+1. Use session_search() to find today's sessions. Look for user corrections, workflow discoveries, bug fixes.
+2. Check inbox_moses PGMQ queue for Skill Report messages from fleet agents.
+3. Scan skill inventory for recently modified or potentially stale skills.
+4. Check git log for self-improvement patterns needing broader consolidation.
 
-1. Generate the evaluation report using the loop-governance skill (last 7 days).
-2. Run the skill miner: report findings.
-3. Run auto-apply: report what was applied or skipped.
-4. Run DB retention (archive cycles older than 90 days).
-5. Deliver a combined message.
+Phase 2 — Evaluation:
+For each item found, classify it (new lesson / reinforcement / principle / new skill / consolidation / stale). Deduplicate against existing skills. If today is Monday, run the full deep evaluation pass.
 
-## OUTPUT FORMAT — FOLLOW EXACTLY
-Match this structure line for line. Your content replaces the values.
-Everything else stays: dashes, colons, spacing, line breaks.
+Phase 3 — Upgrade:
+Execute approved actions: patch skills via skill_manage, create new ones, prune stale ones, update SOUL.md with principles, upstream new skills to the repo, archive processed bus messages.
 
-agent-weekly-loop-eval (JOB_ID) [YYYY-MM-DD HH:MM KST]
--------------
-
-Phase 1 — Evaluation report: 7-day analysis complete
-- 43 cycles scored, avg score 7.2/10
-- 15 STOP decisions, 28 LOOP
-- Top task: fix-auth-403 (8 cycles, avg 8.1)
-
-Phase 2 — Skill miner: 2 new skill patterns identified
-- found recurrent \"docker-compose restart\" fix pattern
-- found \"nginx config reload after deploy\" pattern
-
-Phase 3 — Auto-apply + retention:
-- 4 safe config changes applied (threshold adjustments)
-- Archived 312 cycles older than 90 days
-- DB vacuumed: freed 1.8MB
-
-Result: Evaluation complete. 2 skills mined. DB cleaned.
-
-📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo" \
-  "loop-governance" "" "origin" "" "false" \
+If nothing changed: output exactly [SILENT]" \
+  "orch-skill-lifecycle" "terminal,file,web" "origin" "" "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 # Session embedding cache rebuild (weekly Monday 05:00 — universal, loop-governance)
@@ -819,16 +792,6 @@ create_cron "gbrain-update-sync" "0 2 * * 0" \
 # Daily hermes-cortex sync and update
 create_cron "hermes-cortex-sync" "33 22 * * *" \
   "hermes-cortex-sync.sh" \
-  "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
-
-# Weekly lesson harvesting
-create_cron "harvest-lessons" "0 5 * * 1" \
-  "harvest-lessons.sh" \
   "" \
   "" \
   "" \
@@ -907,38 +870,6 @@ create_cron "agent-ip-submission" "*/30 * * * *" \
   "" \
   "true"
 
-# Daily soul refinement (deepseek — needs Hermes tools: session_search, memory, patch) — universal
-create_cron "agent-daily-soul-refinement" "0 23 * * *" \
-  "" \
-  "Load the soul-refinement skill. Use session_search() to find today's sessions. Look for any user corrections, feedback, or behavior patterns worth noting. Update SOUL.md with insights. Keep it under 5KB.
-
-## OUTPUT FORMAT — FOLLOW EXACTLY
-Match this structure line for line. Your content replaces the values.
-Everything else stays: dashes, colons, spacing, line breaks.
-
-agent-daily-soul-refinement (JOB_ID) [YYYY-MM-DD HH:MM KST]
--------------
-
-Phase 1 — Session mining: found 12 sessions today
-- 3 corrections from user (fixed: nginx port naming, cron schedule typo)
-- 2 recurring questions (add to SOUL.md Patterns section)
-- 1 new tool quirk discovered (pgrep -x limitation)
-
-Phase 2 — SOUL.md update:
-- Added Communication Style section (user prefers bullet points)
-- Added nginx-reload pitfall (use nginx -t before systemctl reload)
-- Pruned stale Python 3.9 workaround (no longer deployed)
-
-Phase 3 — Size check: SOUL.md at 4.2KB (under 5KB limit)
-
-Result: SOUL.md refined. 2 corrections applied, 1 pattern added, 1 pitfall documented.
-
-📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo
-
-If nothing to report: output exactly [SILENT]" \
-  "soul-refinement" "" "origin" "" "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
-
 # ── AGENTS.md auto-trim: daily scan + LLM apply (M-Sa) ──
 # Phase 1: deterministic scan — silent when clean, JSON report when candidates found
 create_cron "agents-md-prune-scan" "0 4 * * 1-6" \
@@ -995,19 +926,6 @@ create_cron "collect-agent-skills" "0 */6 * * *" \
 #  Fixed: was using deprecated /api/send endpoint. See ops/scripts/manage/send-skill-report.py)
 #  Agent inbox migrated to Agent Bus (PGMQ). Collect-agent-skills.sh
 #  still runs independently; this reporter cron was dead code.)
-
-# Moses-side: skill triage pipeline — read, dedup, upstream, track
-# Reads inbox_moses queue, filters for Skill Report messages,
-# deduplicates against repo + bundle + decision history,
-# auto-upstreams genuinely new skills, commits and pushes
-create_cron "skill-triage" "0 6,18 * * *" \
-  "skill-triage.py" \
-  "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
 
 echo ""
 printf "${CYAN}━━━ Summary ━━━${RESET}\n"

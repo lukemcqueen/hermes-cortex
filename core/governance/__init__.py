@@ -14,5 +14,5 @@ Modules (all expected to be run as scripts or imported individually):
     auto_apply      — Auto-apply scoring fixes
     session_cache   — Session embedding cache
     inbox_watcher   — Watch inbox for governance-related messages
-    skill_miner     — Extract skill lessons from past cycles
+    (skill lifecycle moved to orch-skill-lifecycle cron)
 """
