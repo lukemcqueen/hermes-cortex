@@ -5,8 +5,17 @@ push-agent-update-handler.py — Update handler for push-only agents (e.g. Titus
 Polls the agent inbox for UPDATE_REQUEST messages, processes them,
 and sends UPDATE_RESULT back to the orchestrator.
 
+Uses the Agent Bus HTTP API — no Docker required. Connects via CORTEX_BUS_URL.
+
 Designed to run as a launchd plist (macOS) or systemd timer (Linux).
 Silent when no work to do — watchdog pattern.
+
+Env vars:
+    CORTEX_BUS_URL     Bus server URL (default http://127.0.0.1:8903)
+                       On remote agents, set to e.g. https://your-domain:13004
+    CORTEX_BUS_TOKEN   Bearer token for bus auth
+    CORTEX_BUS_AUTH    Basic auth string (user:pass) as fallback
+    AGENT_NAME         Agent identity (default: hostname)
 
 Usage:
     python3 push-agent-update-handler.py                  # single poll (cron/launchd)

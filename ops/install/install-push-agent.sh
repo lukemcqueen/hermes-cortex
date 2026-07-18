@@ -4,6 +4,14 @@
 # Installs the push-agent update handler + service registration.
 # Does NOT install Docker, nginx, gbrain, or orchestrator crons.
 #
+# The handler connects to the Agent Bus via HTTP API (CORTEX_BUS_URL).
+# On a remote dev-agent (e.g. Titus), set the following env vars
+# before installing so they're baked into the service definition:
+#
+#   export CORTEX_BUS_URL=https://your-domain:13004
+#   export CORTEX_BUS_TOKEN=hbus_...
+#   export AGENT_NAME=titus
+#
 # Usage:
 #   bash install-push-agent.sh              # interactive
 #   bash install-push-agent.sh --service-only  # just (re)register the service
@@ -67,6 +75,10 @@ install_launchd() {
     <dict>
         <key>AGENT_NAME</key>
         <string>${AGENT_NAME}</string>
+        <key>CORTEX_BUS_URL</key>
+        <string>${CORTEX_BUS_URL}</string>
+        <key>CORTEX_BUS_TOKEN</key>
+        <string>${CORTEX_BUS_TOKEN}</string>
     </dict>
 </dict>
 </plist>
@@ -92,6 +104,8 @@ Wants=network-online.target
 Type=oneshot
 ExecStart=${HANDLER_SCRIPT} --once
 Environment=AGENT_NAME=${AGENT_NAME}
+Environment=CORTEX_BUS_URL=${CORTEX_BUS_URL}
+Environment=CORTEX_BUS_TOKEN=${CORTEX_BUS_TOKEN}
 StandardOutput=journal
 StandardError=journal
 
