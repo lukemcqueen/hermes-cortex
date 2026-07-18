@@ -1355,12 +1355,14 @@ main() {
         info "Orch crons up to date" || warn "Orch cron install skipped"
     else
       # ── Non-orch guard: detect accidentally installed orch crons ──
-      local _orch_crons
-      _orch_crons=$(hermes cron list --all 2>/dev/null | grep -E "orch-(team-messages|team-health|gbrain-doctor)" || true)
-      if [[ -n "$_orch_crons" ]]; then
-        warn "Orch crons detected on non-orch agent — remove with:"
-        warn "  bash ${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh --uninstall"
-        echo "$_orch_crons"
+      if command -v hermes &>/dev/null && hermes cron --help &>/dev/null 2>&1; then
+        local _found
+        _found=$(hermes cron list --all 2>/dev/null | grep -E "orch-(team-messages|team-health|gbrain-doctor)" || true)
+        if [[ -n "$_found" ]]; then
+          warn "Orch crons detected on non-orch agent — remove with:"
+          warn "  bash ${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh --uninstall"
+          echo "$_found"
+        fi
       fi
     fi
   else
