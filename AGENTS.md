@@ -352,7 +352,7 @@ Only Moses has `cronjob` MCP tool. Others request via inbox with subject `🔧 C
 
 The full skill lifecycle runs across all agents via the unified daily pipeline:
 
-1. **Collect** — Every agent runs `agent-learning-collector` (no_agent, every 6h). Collects skills delta, lessons delta, and session stats. Sends "Learning Report" to `inbox_moses`. Silent when nothing new (watchdog pattern).
+1. **Collect** — Every agent runs `agent-learning-collector` (no_agent, every 6h). First, mines recent sessions via `session-mine` to extract new lessons. Then collects skills delta, lessons delta, and session stats. Sends "Learning Report" to `inbox_moses`. Silent when nothing new (watchdog pattern).
 2. **Evaluate + Upstream** — Moses runs `orch-skill-lifecycle` (LLM-driven, daily 04:00). Reads all agent reports from the bus, cross-references across agents, evaluates for consolidation/upstream candidates, patches skills, and pushes to the repo.
 
 See [`docs/pipeline-reference.md`](docs/pipeline-reference.md) for the detailed pipeline architecture.
@@ -420,7 +420,7 @@ Reduce TTLs in `02-low-memory.xml`:
 
 The full skill lifecycle runs across all agents via the unified daily pipeline:
 
-1. **Collect** — Every agent runs `agent-learning-collector` (no_agent, every 6h). Collects skills delta, lessons delta, and session stats. Sends "Learning Report" to `inbox_moses`. Silent when nothing new (watchdog pattern).
+1. **Collect** — Every agent runs `agent-learning-collector` (no_agent, every 6h). First, mines recent sessions via `session-mine` to extract new lessons. Then collects skills delta, lessons delta, and session stats. Sends "Learning Report" to `inbox_moses`. Silent when nothing new (watchdog pattern).
 2. **Evaluate + Upstream** — Moses runs `orch-skill-lifecycle` (LLM-driven, daily 04:00). Reads all agent reports from the bus, cross-references across agents, evaluates for consolidation/upstream candidates, patches skills, and pushes to the repo.
 
 See [`docs/pipeline-reference.md`](docs/pipeline-reference.md) for the detailed pipeline architecture.

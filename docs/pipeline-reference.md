@@ -128,7 +128,7 @@ Each stage consumes the output of the prior one, reducing rework and enforcing q
 
 ## Skill Collection (Every 6h, All Agents → Moses)
 
-Every agent runs `agent-learning-collector` (no_agent, every 6h). It scans local skills (hash-based delta), lessons, and session stats, then sends a compact "Learning Report" to `inbox_moses` via PGMQ.
+Every agent runs `agent-learning-collector` (no_agent, every 6h). First, it runs `session-mine mine --days 1 --auto` (bootstraps all history on first run) to extract lessons from recent sessions. Then it scans local skills (hash-based delta), and collects session stats, then sends a compact "Learning Report" to `inbox_moses` via PGMQ.
 
 Silent when nothing new (watchdog pattern). Every 24h sends a heartbeat even with no changes so Moses knows the agent is alive.
 

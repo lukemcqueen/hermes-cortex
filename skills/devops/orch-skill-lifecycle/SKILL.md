@@ -35,7 +35,7 @@ This pipeline collects from ALL agents in the fleet. Each agent runs `agent-lear
 | Source | What | Collection Method |
 |--------|------|-----------------|
 | **Skills** | New/modified SKILL.md files since last report | Hash-based delta detection |
-| **Lessons** | New lesson files in `~/brain/lessons/` | File count delta + metadata |
+| **Lessons** | New lesson files in `~/brain/lessons/` | `session-mine mine --days 1 --auto` (bootstraps all history on first run, then incremental) |
 | **Sessions** | Total/recent session counts | SQLite query on Hermes session DB |
 | **System** | Hostname, OS, Hermes version | Deterministic system query |
 
