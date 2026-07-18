@@ -93,6 +93,8 @@ def _get_session_db_path() -> Optional[Path]:
         CORTEX_HOME / "state.db",
         CORTEX_HOME / "hermes-agent" / "sessions.db",
         HOME / ".hermes-agent" / "sessions.db",
+        HOME / ".hermes" / "state.db",                # primary Hermes session store
+        HOME / ".hermes" / "data" / "sessions.db",
     ]
     for c in candidates:
         if c.exists():

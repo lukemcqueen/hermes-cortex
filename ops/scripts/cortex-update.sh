@@ -344,6 +344,7 @@ register "ops/offline/offline_code.sh"            "${CORTEX_DEPLOY_HOME}/offline
 register "ops/offline/kiwix-docker-compose.yml"   "${CORTEX_DEPLOY_HOME}/offline/kiwix-docker-compose.yml"
 register "ops/offline/prep-offline.sh"            "${CORTEX_DEPLOY_HOME}/offline/prep-offline.sh"
 register "ops/offline/session_mine.py"            "${CORTEX_DEPLOY_HOME}/offline/session_mine.py"
+register "ops/scripts/hermes_paths.py"             "${CORTEX_DEPLOY_HOME}/offline/hermes_paths.py"
 register "ops/offline/lessons.py"                 "${CORTEX_DEPLOY_HOME}/offline/lessons.py"
 register "ops/offline/migrate_fts_reasoning.sql"  "${CORTEX_DEPLOY_HOME}/offline/migrate_fts_reasoning.sql"
 register "ops/offline/auto-update.sh"             "${CORTEX_DEPLOY_HOME}/offline/auto-update.sh"
