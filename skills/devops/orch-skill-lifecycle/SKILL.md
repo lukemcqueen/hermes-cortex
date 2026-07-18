@@ -85,14 +85,17 @@ Gather raw material from all sources:
    - Heartbeat (no changes, but agent is alive)
 2. **Git log** — Check recent commits for self-improvement patterns needing broader consolidation
 3. **Skill inventory** — Scan repo skills for stale/modified files
-4. **Cross-reference** — Compare reports across agents for consolidation candidates
-   - Any pending skill-related requests
+4. **Doctor health check** — Run `cortex-doctor.py --quiet` and check for:
+   - ❌ Crons missing → stale entries in uninstall arrays (self-healing candidate)
+   - ❌ Orch crons → orchestrator cron issue
+   - ❌ Script integrity → missing deployed scripts
+5. **Cross-reference** — Compare reports across agents for consolidation candidates
 
-3. **Skill inventory scan** — Check all skills under `~/.hermes/skills/`:
+6. **Skill inventory scan** — Check all skills under `~/.hermes/skills/`:
    - List all SKILL.md files with modification dates
    - Check for stale references (paths, commands, URLs that no longer exist)
 
-4. **Pre-commit trail** — Check recent git commits in `~/hermes-cortex/` for:
+7. **Pre-commit trail** — Check recent git commits in `~/hermes-cortex/` for:
    - Self-improvement patches that may need broader consolidation
    - Patterns across multiple commits
 
@@ -144,7 +147,12 @@ Execute all approved actions:
 6. **Upstream new skills to repo** — For fleet-submitted skills:
    - Create `hermes-cortex/skills/<category>/<name>/SKILL.md`
    - `git add`, commit, push
-7. **Archive processed bus messages** — Clean inbox_moses for processed skill reports
+7. **Self-heal stale expected lists** — If doctor found ❌ Crons missing:
+   - Identify which cron names are in the uninstall arrays of `install-crons.sh` or `install-orch-crons.sh` but have no matching live cron
+   - Remove those names from the uninstall arrays
+   - The doctor reads these arrays as its expected cron list — a name there with no matching live cron causes a false ❌
+   - Commit and push the fix
+8. **Archive processed bus messages** — Clean inbox_moses for processed skill reports
 
 ### Verification
 
