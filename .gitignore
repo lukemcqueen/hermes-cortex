@@ -122,6 +122,8 @@ ops/scripts/
 !ops/scripts/health/cron-quality-watchdog.py
 !ops/scripts/health/langfuse-health-watchdog.py
 !ops/scripts/health/report-agent-health.py
+!ops/scripts/health/system-alert-watchdog.py
+!ops/scripts/health/swap-refresh.py
 !ops/scripts/manage/governance-auditor.py
 !ops/scripts/manage/stale-ref-scanner.py
 !ops/scripts/manage/stale-ref-watchdog.sh

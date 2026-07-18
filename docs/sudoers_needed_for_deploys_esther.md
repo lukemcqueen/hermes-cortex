@@ -16,6 +16,9 @@ esther ALL=(root) NOPASSWD: /usr/bin/cp /tmp/hermes-htpasswd /etc/nginx/.hermes-
 esther ALL=(root) NOPASSWD: /usr/bin/apt autoremove --purge -y
 esther ALL=(root) NOPASSWD: /usr/bin/apt clean
 
+# swap-refresh — called by daily swap-refresh cron
+esther ALL=(root) NOPASSWD: /sbin/swapoff, /sbin/swapon
+
 # fail2ban — read-only monitoring
 esther ALL=(root) NOPASSWD: /usr/bin/fail2ban-client status
 

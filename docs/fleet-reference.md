@@ -61,6 +61,7 @@ agent guidelines focused on general Hermes Cortex usage.
 | `hermes-update` | `23 22 * * *` | no_agent | Daily Hermes upgrade + config migrate (output local only — Telegram delivery suppressed) |
 | `hermes-cortex-sync` | `33 22 * * *` | no_agent | Daily repo pull + tool re-sync |
 | `system-alert-watchdog` | `*/30 * * * *` | no_agent | Resource threshold alerts |
+| `swap-refresh` | `0 5 * * *` | no_agent | Daily swap refresh (stale page reclamation) |
 | `agent-cron-failure-scanner` | `*/30 * * * *` | no_agent | Scans ALL cron outputs for recent failures (last 90 min) |
 | `inbox-sensor` | `*/10 * * * *` | no_agent | Detect new broadcast messages via Agent Bus |
 | `memory-to-brain-sync` | `0 */6 * * *` | no_agent | Memory persistence to gbrain |
@@ -144,6 +145,7 @@ All in `ops/scripts/`, installed by `install.sh` + `install-crons.sh`:
 |--------|------|----------|---------|
 | `cron-auto-remediate.sh` | Shell | On-demand | Diagnostics + fix actions (fix-missing, fix-git, fix-perms, fix-purge) |
 | `system-alert-watchdog.py` | no_agent | Every 10m | Resource alerts + auto-cleanup |
+| `swap-refresh.py` | no_agent | Daily 5 AM | Stale swap reclamation |
 | `service-recovery.py` | no_agent | Every 5m | Auto-restart nginx, Ollama, gbrain, Langfuse |
 | `orch-bus-audit-watchdog.py` | no_agent | Every 1m | Inspects bus messages for urgent keywords + markers |
 | `agent-auto-remediate` (skill) | LLM cron | Every 5m | Checks errored crons + inbox remediation, applies fixes |

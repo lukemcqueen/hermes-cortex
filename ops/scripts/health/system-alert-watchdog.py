@@ -37,7 +37,7 @@ _MODELS_ENV = load_models_env()
 _EMBEDDING_MODEL = _MODELS_ENV.get("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 
 MEM_PCT_WARN = 85
-SWAP_PCT_WARN = 90
+SWAP_PCT_WARN = 95
 DISK_PCT_WARN = 90
 
 alerts = []
@@ -308,7 +308,7 @@ def check_resources():
             swap_total_b = _kv("SwapTotal")
             swap_free_b = _kv("SwapFree")
             swap_cached_b = _kv("SwapCached")
-            swap_used_b = swap_total_b - swap_free_b + swap_cached_b
+            swap_used_b = swap_total_b - swap_free_b
             swap_pct = round(swap_used_b / swap_total_b * 100, 1) if swap_total_b else 0
             if swap_total_b:
                 details.append(f"Swap: {swap_pct}% ({round(swap_used_b/1048576,1)}MB / {round(swap_total_b/1048576,1)}MB)")

@@ -231,6 +231,40 @@ hermes cron create \
 
 ---
 
+## 💧 swap-refresh — Daily Swap Refresh
+
+**Type:** `no_agent` | **Schedule:** `0 5 * * *` (daily at 5 AM)
+**Script:** `swap-refresh.py`
+
+Reclaims stale swap pages by cycling swapoff/swapon. Safety-guarded: only runs when available RAM > swap_used + 1 GB.
+
+### Setup
+
+```bash
+# 1. Deploy the script
+cp ~/hermes-cortex/ops/scripts/health/swap-refresh.py ~/.hermes/scripts/swap-refresh.py
+chmod +x ~/.hermes/scripts/swap-refresh.py
+
+# 2. Add sudoers entry (NOPASSWD for swapoff/swapon)
+echo 'user ALL=(root) NOPASSWD: /sbin/swapoff, /sbin/swapon' | \
+  sudo tee /etc/sudoers.d/swap-refresh
+sudo chmod 440 /etc/sudoers.d/swap-refresh
+
+# 3. Create the cron job
+hermes cron create \
+  --name "swap-refresh" \
+  --schedule "0 5 * * *" \
+  --script "swap-refresh.py" \
+  --no-agent
+```
+
+### Verification
+
+Run manually: `python3 ~/.hermes/scripts/swap-refresh.py`
+Expected output: `[swap-refresh] Swap refreshed (X.XGB moved to RAM, X.XGB available)`
+
+---
+
 ## 🔧 Service Recovery Watchdog
 
 Auto-restarts critical services (nginx, Docker containers) if they go down. Checks every 5 minutes.

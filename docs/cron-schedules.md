@@ -40,6 +40,7 @@
 | `agent-inbox-workday` | `0 9-17 * * 1-5` | LLM | deepseek-v4-flash Agent Bus processing | origin | — |
 | `inbox-depth-watchdog` | `*/1 * * * *` | no_agent | `inbox/inbox-depth-watchdog.sh` | local | — |
 | `system-alert-watchdog` | `*/30 * * * *` | no_agent | `system-alert-watchdog.py` | origin | — |
+| `swap-refresh` | `0 5 * * *` | no_agent | `swap-refresh.py` | origin | — |
 | `agent-ip-submission` | `*/30 * * * *` | no_agent | `agent-ip-submission.sh` | origin | — |
 | `agent-inbox-evening` | `0 18,20,22 * * 1-5` | LLM | deepseek-v4-flash Agent Bus processing | origin | — |
 | `agent-fixer-workday` | `0 9-17 * * 1-5` | LLM | deepseek-v4-flash auto-remediation (auto-remediation skill) | origin | — |

@@ -312,6 +312,7 @@ Only Moses has `cronjob` MCP tool. Others request via inbox with subject `🔧 C
 | Cron | Type | Schedule | Script / Skill | Deliver |
 |------|------|----------|----------------|---------|
 | `system-alert-watchdog` | no_agent | `*/30 * * * *` | `system-alert-watchdog.py` | origin |
+| `swap-refresh` | no_agent | `0 5 * * *` | `swap-refresh.py` | origin |
 | `service-recovery` | no_agent | `*/5 * * * *` | `service-recovery.py` | origin |
 | `model-health-watchdog` | no_agent | `0 7 * * *` | `model-health-watchdog.py` | origin |
 

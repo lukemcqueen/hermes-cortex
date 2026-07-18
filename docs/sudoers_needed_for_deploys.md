@@ -16,6 +16,9 @@ luke ALL=(root) NOPASSWD: /usr/bin/cp /tmp/hermes-htpasswd /etc/nginx/.hermes-ht
 luke ALL=(root) NOPASSWD: /usr/bin/apt autoremove --purge -y
 luke ALL=(root) NOPASSWD: /usr/bin/apt clean
 
+# swap-refresh — called by daily swap-refresh cron
+luke ALL=(root) NOPASSWD: /sbin/swapoff, /sbin/swapon
+
 # fail2ban — read-only monitoring
 luke ALL=(root) NOPASSWD: /usr/bin/fail2ban-client status
 

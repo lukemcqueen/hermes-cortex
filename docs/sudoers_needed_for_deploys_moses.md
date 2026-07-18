@@ -16,6 +16,9 @@ moses ALL=(root) NOPASSWD: /usr/bin/cp /tmp/hermes-htpasswd /etc/nginx/.hermes-h
 moses ALL=(root) NOPASSWD: /usr/bin/apt autoremove --purge -y
 moses ALL=(root) NOPASSWD: /usr/bin/apt clean
 
+# swap-refresh — called by daily swap-refresh cron
+moses ALL=(root) NOPASSWD: /sbin/swapoff, /sbin/swapon
+
 # fail2ban — read-only monitoring
 moses ALL=(root) NOPASSWD: /usr/bin/fail2ban-client status
 
