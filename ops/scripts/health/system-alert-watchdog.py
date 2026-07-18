@@ -132,11 +132,11 @@ def _check_launchd(job_label: str) -> dict:
             pid = pid_match.group(1)
             exit_code = int(exit_match.group(1)) if exit_match else 0
             if exit_code not in (0, 256):
-                # Exit code 9 (SIGKILL) is normal when launched with --replace
-                # — the old process is intentionally killed during replacement.
+                # Exit codes 9 (SIGKILL) and 15 (SIGTERM) are normal when launchd
+                # replaces/reloads a job — the old process gets killed or terminated.
                 # The current process is alive (has PID), so this is a false positive.
-                if exit_code == 9:
-                    return {"status": "UP", "detail": f"PID {pid} (previous instance cleanly replaced, LastExitStatus=9 expected with --replace)"}
+                if exit_code in (9, 15):
+                    return {"status": "UP", "detail": f"PID {pid} (previous instance exited with signal {exit_code}, expected during restart/reload)"}
                 proc_name = job_label.split(".")[-1]
                 pg = subprocess.run(["pgrep", "-xf", f".*{proc_name}.*"], capture_output=True, timeout=5)
                 if pg.returncode == 0:
