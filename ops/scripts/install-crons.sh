@@ -433,6 +433,7 @@ if $UNINSTALL; then
     "scoring-activity-watchdog" \
     "session-cache-build" "cron-quality-watchdog" \
     "agent-learning-collector"; do
+    remove_cron "$job"
   done
   info "Uninstall complete"
   exit 0
