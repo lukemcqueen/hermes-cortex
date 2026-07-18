@@ -28,7 +28,24 @@
       "description": "Moses — orchestrator server, ports 13001-13007",
       "inbox_user": "moses",
       "inbox_watch_schedule": "every 10m",
-      "inbox_deliver": "local"
+      "inbox_deliver": "local",
+      "capabilities": {
+        "has_git": true,
+        "has_sudo": true,
+        "has_cron_tool": true,
+        "has_terminal": true,
+        "bus_mode": "both",
+        "maintenance_window": "any",
+        "git": {
+          "remote": "origin",
+          "default_branch": "main",
+          "repo_path": "~/hermes-cortex"
+        },
+        "deploy": {
+          "update_method": "cortex-update",
+          "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
+        }
+      }
     },
     "gisu": {
       "name": "Gisu",
@@ -42,7 +59,24 @@
       "description": "Gisu — operations server (set health_url locally, port 13007)",
       "inbox_user": "gisu",
       "inbox_watch_schedule": "every 10m",
-      "inbox_deliver": "local"
+      "inbox_deliver": "local",
+      "capabilities": {
+        "has_git": true,
+        "has_sudo": false,
+        "has_cron_tool": false,
+        "has_terminal": true,
+        "bus_mode": "poll",
+        "maintenance_window": "any",
+        "git": {
+          "remote": "origin",
+          "default_branch": "main",
+          "repo_path": "~/hermes-cortex"
+        },
+        "deploy": {
+          "update_method": "cortex-update",
+          "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
+        }
+      }
     },
     "joseph": {
       "name": "Joseph",
@@ -56,7 +90,24 @@
       "description": "Joseph — web/infra server (set health_url locally, port 12007, no auth)",
       "inbox_user": "joseph",
       "inbox_watch_schedule": "every 10m",
-      "inbox_deliver": "local"
+      "inbox_deliver": "local",
+      "capabilities": {
+        "has_git": true,
+        "has_sudo": true,
+        "has_cron_tool": false,
+        "has_terminal": true,
+        "bus_mode": "poll",
+        "maintenance_window": "off-peak",
+        "git": {
+          "remote": "origin",
+          "default_branch": "main",
+          "repo_path": "~/hermes-cortex"
+        },
+        "deploy": {
+          "update_method": "cortex-update",
+          "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
+        }
+      }
     },
     "kustos": {
       "name": "Kustos",
@@ -70,7 +121,24 @@
       "description": "k — security server (set health_url locally, port 13007)",
       "inbox_user": "kustos",
       "inbox_watch_schedule": "every 10m",
-      "inbox_deliver": "local"
+      "inbox_deliver": "local",
+      "capabilities": {
+        "has_git": true,
+        "has_sudo": true,
+        "has_cron_tool": false,
+        "has_terminal": true,
+        "bus_mode": "poll",
+        "maintenance_window": "any",
+        "git": {
+          "remote": "origin",
+          "default_branch": "main",
+          "repo_path": "~/hermes-cortex"
+        },
+        "deploy": {
+          "update_method": "cortex-update",
+          "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
+        }
+      }
     },
     "titus": {
       "name": "Titus",
@@ -83,7 +151,24 @@
       "description": "Titus — macOS developer machine. NOT a server — do not poll. Pushes health vector to inbox using health-vector-push.sh.",
       "inbox_user": "titus",
       "inbox_watch_schedule": "every 10m",
-      "inbox_deliver": "local"
+      "inbox_deliver": "local",
+      "capabilities": {
+        "has_git": true,
+        "has_sudo": false,
+        "has_cron_tool": false,
+        "has_terminal": true,
+        "bus_mode": "push_only",
+        "maintenance_window": "any",
+        "git": {
+          "remote": "origin",
+          "default_branch": "main",
+          "repo_path": "~/hermes-cortex"
+        },
+        "deploy": {
+          "update_method": "cortex-update",
+          "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
+        }
+      }
     },
     "esther": {
       "name": "Esther",
@@ -98,7 +183,24 @@
       "description": "Esther — backup orchestrator, sustainability & materials expert (set health_url locally, port 14007)",
       "inbox_user": "esther",
       "inbox_watch_schedule": "every 10m",
-      "inbox_deliver": "local"
+      "inbox_deliver": "local",
+      "capabilities": {
+        "has_git": true,
+        "has_sudo": true,
+        "has_cron_tool": true,
+        "has_terminal": true,
+        "bus_mode": "both",
+        "maintenance_window": "any",
+        "git": {
+          "remote": "origin",
+          "default_branch": "main",
+          "repo_path": "~/hermes-cortex"
+        },
+        "deploy": {
+          "update_method": "cortex-update",
+          "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
+        }
+      }
     }
   }
 }
