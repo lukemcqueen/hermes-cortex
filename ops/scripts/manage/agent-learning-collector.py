@@ -34,15 +34,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-# ── Paths ─────────────────────────────────────────────────────
+# ── Config ──────────────────────────────────────────────────────
 HOME = Path.home()
 STATE_DIR = HOME / ".hermes-cortex" / "state"
 SKILLS_DIR = HOME / ".hermes" / "skills"
 LESSONS_DIR = HOME / "brain" / "lessons"
 SESSION_DB = HOME / ".hermes-cortex" / "sessions.db"
 STATE_FILE = STATE_DIR / "agent-learning-collector-state.json"
-MANIFEST_FILE = STATE_DIR / "skills-manifest.json"
 
+# Agent identity — use AGENT_NAME env var (e.g. "gisu", "titus", "moses"),
+# fall back to hostname for backward compat
+AGENT_NAME = os.environ.get("AGENT_NAME") or os.uname().nodename
+
+# Repo path
 CORTEX_REPO = Path(os.environ.get("CORTEX_REPO", HOME / "hermes-cortex"))
 
 # ── Report thresholds ─────────────────────────────────────────
@@ -239,6 +243,7 @@ def _get_agent_context() -> dict:
     """Get agent system context."""
     import platform
     ctx = {
+        "agent_name": AGENT_NAME,
         "hostname": os.uname().nodename,
         "os": f"{platform.system()} {platform.release()}",
         "hermes_version": "unknown",
@@ -307,7 +312,7 @@ def send_report(report: dict, dry_run: bool = False) -> bool:
         return False
 
     bus_url = bus_url.rstrip("/")
-    hostname = os.uname().nodename
+    hostname = AGENT_NAME
 
     # Build message
     skills = report.get("skills", [])
