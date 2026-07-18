@@ -210,6 +210,97 @@ Moses waits `deadline_minutes` for each agent. If an agent doesn't respond:
 2. If still no response, mark agent as `unreachable` in the fleet report
 3. Include in Telegram summary
 
+---
+
+## ROLLBACK_REQUEST (Moses → Agent)
+
+Sent to revert an agent to a previous known-good SHA when an update fails.
+
+```json
+{
+  "from": "moses",
+  "to": "inbox_gisu",
+  "topic": "fleet-update",
+  "subject": "ROLLBACK_REQUEST",
+  "correlation_id": "uuid-v4",
+  "priority": "high",
+  "body": {
+    "target_sha": "4ef429e",
+    "reason": "Doctor failed after update: 2 warn, 1 fail",
+    "dispatch_id": "fleet-update-abc123-gisu",
+    "run_doctor": true,
+    "deadline_minutes": 10
+  }
+}
+```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `target_sha` | string | Git SHA to revert to |
+| `reason` | string | Why rollback is needed |
+| `dispatch_id` | string | Original dispatch ID for traceability |
+| `run_doctor` | bool | Whether to run doctor after rollback |
+| `deadline_minutes` | int | Max minutes before Moses considers agent unresponsive |
+
+## ROLLBACK_RESULT (Agent → Moses)
+
+Sent after agent reverts and verifies.
+
+```json
+{
+  "from": "gisu",
+  "to": "inbox_moses",
+  "topic": "fleet-update",
+  "subject": "ROLLBACK_RESULT",
+  "correlation_id": "<same uuid from request>",
+  "priority": "normal",
+  "body": {
+    "success": true,
+    "sha_before": "d2bb495",
+    "sha_after": "4ef429e",
+    "reverted": true,
+    "doctor": {"healthy": true, "pass": 39, "warn": 0, "fail": 0},
+    "duration_seconds": 7.3,
+    "errors": []
+  }
+}
+```
+
+---
+
+## Git Auth Verification
+
+Before dispatching an update, Moses verifies each agent can pull from the remote.
+The `orch-bus-git-auth-check.sh` script SSHes into each server-agent and runs
+`git ls-remote origin HEAD` to confirm credentials work.
+
+For dev-agents (push-only, Titus), auth is verified on the agent side as part
+of `push-agent-update-handler.py` — if `git pull` fails, the handler reports
+the failure in UPDATE_RESULT WITHOUT applying the update.
+
+### Server-Agent Git Auth Check
+
+Sent as a lightweight bus message (no update, just verification):
+
+```json
+{
+  "from": "moses",
+  "to": "inbox_gisu",
+  "topic": "fleet-update",
+  "subject": "GIT_AUTH_CHECK",
+  "correlation_id": "uuid-v4",
+  "priority": "normal",
+  "body": {
+    "remote": "origin",
+    "expected_url": "https://github.com/fleet-operator/hermes-cortex.git"
+  }
+}
+```
+
+The agent responds with `GIT_AUTH_RESULT` containing `{authenticated: true/false, remote_url: "...", error: "..."}`.
+
 ## See Also
 
 - `agent-registry.json` — agent capability manifests (bus_mode, has_git, etc.)

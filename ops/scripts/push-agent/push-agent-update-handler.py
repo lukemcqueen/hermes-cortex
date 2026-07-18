@@ -93,13 +93,13 @@ def run_doctor() -> dict:
         return {"healthy": False, "summary": {"pass": 0, "warn": 0, "fail": 0}, "error": str(e)}
 
 
-def send_bus_result(queue: str, correlation_id: str, result_body: dict) -> bool:
-    """Send UPDATE_RESULT or FIX_RESULT back to orchestrator."""
+def send_bus_result(queue: str, correlation_id: str, result_body: dict, subject: str = "UPDATE_RESULT") -> bool:
+    """Send a result message back to orchestrator."""
     full_body = {
         "from": AGENT_NAME,
         "to": "moses",
         "topic": "fleet-update",
-        "subject": "UPDATE_RESULT",
+        "subject": subject,
         "correlation_id": correlation_id,
         "body": result_body,
     }
@@ -113,12 +113,12 @@ def send_bus_result(queue: str, correlation_id: str, result_body: dict) -> bool:
         )
         ok = r.returncode == 0 and r.stdout.strip() and "ERROR" not in r.stdout
         if ok:
-            log(f"Sent UPDATE_RESULT (corr={correlation_id[:8]}…)")
+            log(f"Sent {subject} (corr={correlation_id[:8]}…)")
         else:
-            log(f"Failed to send result: {r.stderr[:200]}")
+            log(f"Failed to send {subject}: {r.stderr[:200]}")
         return ok
     except Exception as e:
-        log(f"Error sending result: {e}")
+        log(f"Error sending {subject}: {e}")
         return False
 
 
@@ -195,6 +195,116 @@ def process_update_request(msg_body: dict, correlation_id: str) -> dict:
     return result
 
 
+def process_rollback_request(msg_body: dict) -> dict:
+    """Process a ROLLBACK_REQUEST — git checkout previous SHA and verify."""
+    request = msg_body.get("body", {})
+    target_sha = request.get("target_sha", "HEAD~1")
+    reason = request.get("reason", "No reason given")
+
+    log(f"Processing ROLLBACK_REQUEST: → {target_sha[:12]} ({reason})")
+
+    # Get SHA before
+    try:
+        sha_before = subprocess.run(
+            ["git", "-C", str(CORTEX_REPO), "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, timeout=5
+        ).stdout.strip()
+    except Exception:
+        sha_before = "unknown"
+
+    # Checkout target SHA
+    try:
+        r = subprocess.run(
+            ["git", "-C", str(CORTEX_REPO), "checkout", target_sha],
+            capture_output=True, text=True, timeout=30
+        )
+        checkout_ok = r.returncode == 0
+        if not checkout_ok:
+            log(f"git checkout failed: {r.stderr[:200]}")
+    except subprocess.TimeoutExpired:
+        return {"success": False, "sha_before": sha_before, "sha_after": "failed",
+                "reverted": False, "errors": ["git checkout timed out"]}
+
+    # Get SHA after
+    try:
+        sha_after = subprocess.run(
+            ["git", "-C", str(CORTEX_REPO), "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, timeout=5
+        ).stdout.strip()
+    except Exception:
+        sha_after = "unknown"
+
+    # Run doctor
+    doctor = run_doctor()
+
+    return {
+        "success": checkout_ok and doctor.get("healthy", False),
+        "sha_before": sha_before,
+        "sha_after": sha_after,
+        "reverted": checkout_ok,
+        "doctor": doctor,
+        "duration_seconds": 0,
+        "errors": [] if checkout_ok else [f"git checkout failed"],
+    }
+
+
+def process_git_auth_check(msg_body: dict) -> dict:
+    """Process a GIT_AUTH_CHECK — verify git can ls-remote."""
+    request = msg_body.get("body", {})
+    expected_url = request.get("expected_url", "")
+
+    checks = []
+
+    try:
+        r = subprocess.run(["git", "version"], capture_output=True, text=True, timeout=5)
+        checks.append(("git installed", r.returncode == 0, r.stdout.strip()))
+    except FileNotFoundError:
+        return {"authenticated": False, "remote_url": "", "error": "git not found"}
+
+    try:
+        r = subprocess.run(
+            ["git", "-C", str(CORTEX_REPO), "remote", "get-url", "origin"],
+            capture_output=True, text=True, timeout=5
+        )
+        remote_url = r.stdout.strip()
+        checks.append(("remote URL", expected_url in remote_url, remote_url))
+    except Exception as e:
+        return {"authenticated": False, "remote_url": "", "error": str(e)}
+
+    try:
+        r = subprocess.run(
+            ["git", "-C", str(CORTEX_REPO), "ls-remote", "origin", "HEAD"],
+            capture_output=True, text=True, timeout=15
+        )
+        auth_ok = r.returncode == 0 and r.stdout.strip() != ""
+        checks.append(("ls-remote", auth_ok, r.stdout.strip()[:40] if auth_ok else r.stderr[:200]))
+    except Exception as e:
+        checks.append(("ls-remote", False, str(e)))
+
+    all_ok = all(c[1] for c in checks)
+    return {
+        "authenticated": all_ok,
+        "remote_url": remote_url if 'remote_url' in locals() else "unknown",
+        "error": "",
+        "checks": [{"name": c[0], "pass": c[1], "detail": c[2]} for c in checks],
+    }
+
+
+def archive_message(queue: str, msg_id: str):
+    """Archive a processed message from the inbox."""
+    if not msg_id:
+        return
+    try:
+        subprocess.run(
+            ["docker", "exec", "gbrain-postgres", "psql", "-U", "gbrain",
+             "-d", "gbrain", "-t", "-A", "-c",
+             f"SELECT bus.archive('{queue}', '{msg_id}')"],
+            capture_output=True, text=True, timeout=15
+        )
+    except Exception:
+        pass
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Push agent update handler")
@@ -226,26 +336,13 @@ def main():
             start = time.time()
             result_body = process_update_request(body, correlation_id)
             result_body["duration_seconds"] = round(time.time() - start, 1)
+            archive_message(inbox_queue, msg.get("msg_id", ""))
+            send_bus_result("inbox_moses", correlation_id, result_body, "UPDATE_RESULT")
 
-            # Archive the message
-            try:
-                subprocess.run(
-                    ["docker", "exec", "gbrain-postgres", "psql", "-U", "gbrain",
-                     "-d", "gbrain", "-t", "-A", "-c",
-                     f"SELECT bus.archive('{inbox_queue}', '{msg.get('msg_id', '')}')"],
-                    capture_output=True, text=True, timeout=15
-                )
-            except Exception:
-                pass
-
-            # Send result back
-            send_bus_result("inbox_moses", correlation_id, result_body)
-
-            # Track processed ID
             processed.add(correlation_id)
             state.setdefault("processed_ids", [])
             state["processed_ids"].append(correlation_id)
-            state["processed_ids"] = state["processed_ids"][-50:]  # keep last 50
+            state["processed_ids"] = state["processed_ids"][-50:]
             state["last_result"] = result_body
             save_state(state)
 
@@ -255,8 +352,37 @@ def main():
                 log(f"❌ Update had issues: {len(result_body['errors'])} error(s)")
             return True
 
+        elif subject == "ROLLBACK_REQUEST":
+            start = time.time()
+            result_body = process_rollback_request(body)
+            result_body["duration_seconds"] = round(time.time() - start, 1)
+            archive_message(inbox_queue, msg.get("msg_id", ""))
+            send_bus_result("inbox_moses", correlation_id, result_body, "ROLLBACK_RESULT")
+
+            processed.add(correlation_id)
+            state.setdefault("processed_ids", [])
+            state["processed_ids"].append(correlation_id)
+            state["processed_ids"] = state["processed_ids"][-50:]
+            save_state(state)
+
+            log(f"{'✅' if result_body['success'] else '❌'} Rollback: {result_body.get('sha_before', '?')[:8]} → {result_body.get('sha_after', '?')[:8]}")
+            return True
+
+        elif subject == "GIT_AUTH_CHECK":
+            result_body = process_git_auth_check(body)
+            archive_message(inbox_queue, msg.get("msg_id", ""))
+            send_bus_result("inbox_moses", correlation_id, result_body, "GIT_AUTH_RESULT")
+
+            processed.add(correlation_id)
+            state.setdefault("processed_ids", [])
+            state["processed_ids"].append(correlation_id)
+            state["processed_ids"] = state["processed_ids"][-50:]
+            save_state(state)
+
+            log(f"{'✅' if result_body['authenticated'] else '❌'} Git auth: {result_body.get('remote_url', '?')}")
+            return True
+
         elif subject == "FIX_REQUEST":
-            # FIX_REQUEST handling can go here in future iterations
             log(f"Received FIX_REQUEST (corr={correlation_id[:8]}…) — not yet implemented")
             return False
 

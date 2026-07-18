@@ -326,6 +326,8 @@ register "ops/scripts/manage/process-skill-reports.py"    "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/manage/agent-learning-collector.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-learning-collector.py"
 register "ops/scripts/orch-bus/orch-bus-readiness-check.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-readiness-check.py"
 register "ops/scripts/orch-bus/orch-bus-fleet-dispatch.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-fleet-dispatch.py"
+register "ops/scripts/orch-bus/orch-bus-fleet-rollback.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-fleet-rollback.py"
+register "ops/scripts/orch-bus/orch-bus-git-auth-check.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-git-auth-check.py"
 # Push agent scripts — deployed via install-push-agent.sh to non-orchestrator machines
 register "ops/scripts/push-agent/push-agent-update-handler.py" "${CORTEX_DEPLOY_HOME}/scripts/push-agent-update-handler.py"
 register "ops/install/install-push-agent.sh" "${CORTEX_DEPLOY_HOME}/install/install-push-agent.sh"
