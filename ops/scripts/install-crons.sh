@@ -428,12 +428,11 @@ if $UNINSTALL; then
     "auto-save-sessions" "agent-daily-bible-reading" \
     "llm-judge-scorer-weekday" "llm-judge-scorer-weekend" \
     "offline-code-index" "model-health-watchdog" \
-    "agent-remediate-apply" "agent-apply-fixes" \
+    "agent-remediate-apply" \
     "governance-auditor" "threat-pipeline" "agent-ip-submission" \
     "scoring-activity-watchdog" \
     "session-cache-build" "cron-quality-watchdog" \
-    "collect-agent-skills" "agent-learning-collector"; do
-    remove_cron "$job"
+    "agent-learning-collector"; do
   done
   info "Uninstall complete"
   exit 0
@@ -901,21 +900,12 @@ If nothing to apply: output exactly [SILENT]" \
 printf "${CYAN}  5. Skill Collection Pipeline${RESET}\n"
 
 # Collect custom skills every 6h — scans skills dirs, reports to Moses inbox
-create_cron "collect-agent-skills" "0 */6 * * *" \
-  "collect-agent-skills.sh" \
-  "" \
-  "" \
-  "" \
-  "local" \
-  "" \
-  "true"
-
-# (Restored: send-skill-report — rewritten to use /api/pgmq/send with Bearer/Basic auth.
+#  (Restored: send-skill-report — rewritten to use /api/pgmq/send with Bearer/Basic auth.
 #  Now resolves CORTEX_BUS_URL → CORTEX_BUS_FALLBACK_URL, supports Basic auth for nginx proxy.
 #  Fixed: was using deprecated /api/send endpoint. See ops/scripts/manage/send-skill-report.py)
 #  Agent inbox migrated to Agent Bus (PGMQ). Collect-agent-skills.sh
-#  still runs independently; this reporter cron was dead code.)
-
+#  still runs independently for on-demand requests; the cron was dead code,
+#  replaced by agent-learning-collector.
 echo ""
 printf "${CYAN}━━━ Summary ━━━${RESET}\n"
 if $DRY_RUN; then
