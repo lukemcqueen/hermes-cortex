@@ -43,9 +43,14 @@ CORTEX_UPDATE = CORTEX_REPO / "ops" / "scripts" / "cortex-update.sh"
 DOCTOR_PATH = CORTEX_REPO / "ops" / "scripts" / "manage" / "cortex-doctor.py"
 AGENT_NAME = os.environ.get("AGENT_NAME", HOME.name)
 
+# Allow lib/ import from repo path (used when deployed via cortex-update)
+_lib_path = str(CORTEX_REPO / "ops" / "scripts")
+if _lib_path not in sys.path:
+    sys.path.insert(0, _lib_path)
+
 # State file to track processed correlation_ids for idempotency
 STATE_DIR = HOME / ".hermes-cortex" / "state"
-STATE_FILE = STATE_DIR / "push-agent-update-state.json"
+STATE_FILE = STATE_DIR / "agent-message-state.json"
 STATE_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -95,10 +100,13 @@ def run_doctor() -> dict:
             [sys.executable, str(DOCTOR_PATH), "--json"],
             capture_output=True, text=True, timeout=30
         )
-        if r.returncode == 0 and r.stdout.strip():
-            start = r.stdout.index("{")
-            return json.loads(r.stdout[start:])
-        return {"healthy": False, "summary": {"pass": 0, "warn": 0, "fail": 0}}
+        if r.stdout.strip():
+            try:
+                start = r.stdout.index("{")
+                return json.loads(r.stdout[start:])
+            except (ValueError, json.JSONDecodeError):
+                pass
+        return {"healthy": False, "summary": {"pass": 0, "warn": 0, "fail": 0}, "error": "no JSON in doctor output"}
     except Exception as e:
         return {"healthy": False, "summary": {"pass": 0, "warn": 0, "fail": 0}, "error": str(e)}
 
@@ -338,7 +346,7 @@ def report_health_change(doctor: dict, prev_doctor: dict) -> None:
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="Push agent update handler")
+    parser = argparse.ArgumentParser(description="Agent message handler")
     parser.add_argument("--once", action="store_true", help="Single poll (default)")
     parser.add_argument("--watch", action="store_true", help="Continuous poll every 5 minutes")
     parser.add_argument("--interval", type=int, default=300, help="Poll interval in seconds (default 300)")
