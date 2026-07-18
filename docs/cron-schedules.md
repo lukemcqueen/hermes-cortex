@@ -64,10 +64,10 @@
 | `local-agent-daily-finance-brief` | `0 18 * * 1-5` | LLM | deepseek-v4-flash finance briefing | Telegram | local |
 | `memory-to-brain-sync` | `0 */6 * * *` | no_agent | `memory-to-brain-sync.py` | local | — |
 | `governance-auditor` | `0 */6 * * *` | no_agent | `governance-auditor.py` | origin | — |
-| `collect-agent-skills` | `0 */6 * * *` | no_agent | `collect-agent-skills.sh` | local | — |
+| `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local | — |
 | `scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `scoring-activity-watchdog.py` | origin | — |
 | `secret-leak-watchdog` | `0 */4 * * *` | no_agent | `secret-leak-watchdog.py` | origin | — |
-| `agent-daily-soul-refinement` | `0 23 * * *` | LLM | deepseek-v4-flash soul refinement | origin | — |
+| `orch-skill-lifecycle` | `0 4 * * *` | LLM | `orch-skill-lifecycle` skill | origin | — |
 | `hermes-update` | `23 22 * * *` | no_agent | `hermes-update.sh` | local | — |
 | `hermes-cortex-sync` | `33 22 * * *` | no_agent | `hermes-cortex-sync.sh` | origin | — |
 | `llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | `llm-judge-scorer.py` | local | — |

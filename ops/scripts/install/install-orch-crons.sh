@@ -439,12 +439,11 @@ create_cron "orch-skill-lifecycle" "0 4 * * *" \
   "Load the orch-skill-lifecycle skill and follow the three-phase pipeline. Run the complete skill lifecycle for today.
 
 Phase 1 — Collection:
-1. Read inbox_moses PGMQ queue for ALL agent reports — both formats:
-   - \"Learning Report:\" from agent-learning-collector (skills delta, lessons, session stats)
-   - \"Skill Report:\" from collect-agent-skills.sh (full skill content)
+1. Read inbox_moses PGMQ queue for ALL agent reports:
+   - \"Learning Report:\" from agent-learning-collector (skills delta, lessons, session stats — every 6h)
 2. Check git log for self-improvement patterns needing broader consolidation
 3. Scan skill inventory for stale/modified skills
-4. If Monday: send skill report requests to all agents via request-skill-reports.sh
+4. Cross-reference reports across agents for consolidation candidates
 
 Phase 2 — Evaluation:
 For each item found, classify it. Deduplicate against existing skills. Cross-reference across agents — if 3 agents report the same fix, it's a consolidation candidate. If today is Monday, run the full deep evaluation pass.

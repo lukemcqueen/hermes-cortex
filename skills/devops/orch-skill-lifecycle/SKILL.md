@@ -39,13 +39,12 @@ This pipeline collects from ALL agents in the fleet. Each agent runs `agent-lear
 | **Sessions** | Total/recent session counts | SQLite query on Hermes session DB |
 | **System** | Hostname, OS, Hermes version | Deterministic system query |
 
-### Bus Message Formats
+### Bus Message Format
 
-The pipeline reads `inbox_moses` PGMQ queue for TWO message formats:
+The pipeline reads `inbox_moses` PGMQ queue. Each agent sends a `Learning Report` every 6h via `agent-learning-collector`:
 
-**1. Learning Report** (from `agent-learning-collector` — every 6h per agent):
 ```
-Subject: Learning Report: N skills, M lessons — OR — Learning Report: heartbeat
+Subject: Learning Report: N skills, M lessons
 
 ━━━ Learning Report — {hostname} ━━━
 Generated: {timestamp}
@@ -64,14 +63,7 @@ Sessions: 142 total, 8 recent
     CTE doesn't see the updated rows — fix by separating into two CTEs
 ```
 
-**2. Skill Report** (from `collect-agent-skills.sh` + `send-skill-report.py` — legacy):
-```
-Subject: Skill Report: N custom skills
-
-━━━ Skill Report — {hostname} ━━━
-...
-== Skill: name (category) ==
-{full SKILL.md content}
+(Legacy only — replaced by Learning Report above)
 ```
 
 ### Agent-Side Deployment
@@ -87,15 +79,13 @@ Each fleet agent (Gisu, Titus, Esther, Joseph, Kustos, Moses) runs:
 
 Gather raw material from all sources:
 
-1. **Session mining** — `session_search()` for sessions since last run (~24h). Look for:
-   - User corrections or repeated guidance
-   - Workflow discoveries (new commands, tools, patterns)
-   - Bug fixes or error resolutions
-   - Configuration changes
-
-2. **Bus check** — Check `inbox_moses` PGMQ queue for:
-   - `Subject: Skill Report:` messages from fleet agents
-   - Parse skill name, category, description, content
+1. **Bus reports** — Read `inbox_moses` queue for Learning Reports from all fleet agents (agent-learning-collector, every 6h):
+   - Skills delta (new/modified SKILL.md files)
+   - Lessons delta (new files in ~/brain/lessons/)
+   - Heartbeat (no changes, but agent is alive)
+2. **Git log** — Check recent commits for self-improvement patterns needing broader consolidation
+3. **Skill inventory** — Scan repo skills for stale/modified files
+4. **Cross-reference** — Compare reports across agents for consolidation candidates
    - Any pending skill-related requests
 
 3. **Skill inventory scan** — Check all skills under `~/.hermes/skills/`:

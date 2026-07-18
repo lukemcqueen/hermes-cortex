@@ -51,9 +51,7 @@ their domain.
 
 | Script | Type | Purpose | Schedule |
 |--------|------|---------|----------|
-|| `collect-agent-skills.sh` | no_agent | Agent-side: diffs local skills against upstream repo, reports custom skills to Moses via Agent Bus | every 6h per agent |
-| `request-skill-reports.sh` | no_agent | Moses-side: sends inbox broadcast to all registered agents requesting skill reports | daily 2:05am |
-|| `process-skill-reports.py` | no_agent | Moses-side: reads skill-report messages from Agent Bus, compiles digest for review | every 6h (:15) |
+|| `agent-learning-collector.py` | no_agent | Agent-side: collects skills delta, lessons delta, session stats; sends Learning Report to Moses via Agent Bus | every 6h per agent |
 
 ## Social Media
 

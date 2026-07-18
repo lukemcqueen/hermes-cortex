@@ -327,9 +327,10 @@ fallback_providers:
 | `agent-daily-soul-refinement` | LLM+skill | `0 23 * * *` | `soul-refinement` | origin |
 | `agents-md-prune-scan` | no_agent | `0 4 * * 1-6` | `agents-md-prune-scan.py` | local |
 | `agents-md-prune-apply` | LLM | `30 4 * * 1-6` | prompt + `context_from=scan` | origin |
+| `agents-md-prune-apply` | LLM | `30 4 * * 1-6` | prompt + `context_from=scan` | origin |
 | `offline-code-index` | no_agent | `0 5 * * 0` | `offline_code_index_cron.sh` | local |
-| `collect-agent-skills` | no_agent | `0 */6 * * *` | `collect-agent-skills.sh` | local |
-| `send-skill-report` | no_agent | `30 */6 * * *` | `send-skill-report.py` | local |
+| `agent-learning-collector` | no_agent | `0 */6 * * *` | `agent-learning-collector.py` | local |
+| `orch-skill-lifecycle` | LLM+skill | `0 4 * * *` | `orch-skill-lifecycle` | origin |
 
 > Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
 > Date: 2026-07-15T00:00:00+00:00

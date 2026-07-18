@@ -31,10 +31,8 @@ Discovers agent-developed skills from remote agents and evaluates them for upstr
 
 | Step | Tool | Schedule | LLM? | Output |
 |------|------|----------|------|--------|
-| Request | `request-skill-reports.sh` | Daily 02:05 | ✗ | Agent Bus broadcast to agents |
-| Collect | `collect-agent-skills.sh` (agent-side) | Every 6h per agent | ✗ | Full SKILL.md → Moses inbox |
-| Digest | `process-skill-reports.py` | Every 6h at :15 | ✗ | Summary digest → Telegram |
-| Evaluate | `evaluate-skill-reports` (LLM cron) | Daily 03:00 | ✓ | Scored recommendations → Telegram |
+| Request | `agent-learning-collector` | Every 6h per agent | ✓ no_agent | Delta report (skills, lessons, sessions) → inbox_moses |
+| Evaluate | `orch-skill-lifecycle` | Daily 04:00 | LLM | Reads bus, cross-refs, upgrades skills → repo |
 
 **Closed loop:** Request → collect → digest → evaluate → upstream (via `public-contribution` skill).
 
@@ -130,27 +128,23 @@ Each stage consumes the output of the prior one, reducing rework and enforcing q
 
 ## Skill Collection (Every 6h, All Agents → Moses)
 
-Every agent runs `collect-agent-skills.sh` every 6 hours. It scans `~/.hermes/skills/` and
-`~/.hermes-cortex/skills/` for SKILL.md files not in the upstream repo, then POSTs them
-to Moses' Agent Bus (`inbox_moses` queue, `topic: reports`) via PGMQ.
+Every agent runs `agent-learning-collector` (no_agent, every 6h). It scans local skills (hash-based delta), lessons, and session stats, then sends a compact "Learning Report" to `inbox_moses` via PGMQ.
+
+Silent when nothing new (watchdog pattern). Every 24h sends a heartbeat even with no changes so Moses knows the agent is alive.
 
 ### Processing (Moses-side)
 
-Moses runs `skill-triage` (no_agent, daily at 06:00 and 18:00 KST):
+Moses runs `orch-skill-lifecycle` (LLM-driven, daily 04:00):
 
-1. **Read** messages from `inbox_moses` PGMQ queue
-2. **Parse** skill data (name, category, line count, age, description, content)
-3. **Deduplicate** against:
-   - Upstream repo skills (`hermes-cortex/skills/` — 65 skills)
-   - Hermes Agent bundled skills (`~/.hermes/hermes-agent/skills/` — 72 skills)
-   - Previously reviewed decisions (state file)
-4. **Auto-upstream** genuinely new skills:
-   - Creates `skills/<category>/<name>/SKILL.md` in the repo
-   - Fills in name, description, and truncated content from the report
-   - Commits and pushes to `main`
-5. **Track** all decisions (upstreamed/skipped/rejected) in `~/.hermes-cortex/state/skill-decisions.json`
-6. **Archive** processed messages from the queue
-7. **Deliver** triage digest via Telegram (summarizing what was upstreamed, skipped, and why)
+1. **Read** `inbox_moses` for all Learning Reports from fleet agents
+2. **Cross-reference** across agents — if 3 agents report the same fix, it's a consolidation candidate
+3. **Deduplicate** against existing skills in the repo
+4. **Classify** each item: patch existing skill / create new / merge duplicates / add principle to SOUL.md
+5. **Execute** changes: patch skills via skill_manage or repo edit, update SOUL.md, prune stale content
+6. **Upstream**: git commit + push → fleet pulls on next sync
+7. **Archive** processed messages from the queue
+
+On Monday: runs a deep evaluation pass (full dedup, staleness detection, cross-fleet merge candidates).
 
 ---
 
@@ -158,9 +152,8 @@ Moses runs `skill-triage` (no_agent, daily at 06:00 and 18:00 KST):
 
 | Cron | Type | Schedule | Script / Skill | Deliver |
 |------|------|----------|----------------|---------|
-| `skill-miner` | no_agent | `0 6 * * 1` | `skill_miner.py` | origin |
-| `agent-weekly-loop-eval` | LLM+skill | `0 9 * * 1` | `loop-governance` | origin |
-| `skill-triage` | no_agent | `0 6,18 * * *` | `skill-triage.py` | origin |
+| `orch-skill-lifecycle` | LLM+skill | `0 4 * * *` | `orch-skill-lifecycle` | origin |
+| `agent-learning-collector` | no_agent | `0 */6 * * *` | `agent-learning-collector.py` | local |
 | `session-cache-build` | no_agent | `0 5 * * 1` | `session_cache.py` | origin |
 | `cron-quality-watchdog` | no_agent | `*/10 * * * *` | `cron-quality-watchdog.py` | origin |
 

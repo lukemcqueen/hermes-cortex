@@ -350,15 +350,12 @@ Only Moses has `cronjob` MCP tool. Others request via inbox with subject `🔧 C
 
 ### Skill Collection Pipeline
 
-The full skill lifecycle runs across all agents:
+The full skill lifecycle runs across all agents via the unified daily pipeline:
 
-1. **Collect** — Every agent runs `collect-agent-skills.sh` every 6h, scanning both `~/.hermes/skills/` and `~/.hermes-cortex/skills/` for SKILL.md files not in the upstream repo. Custom skills are reported to Moses inbox (topic: `reports`).
-2. **Request** — Weekly (Mon 2am), Moses runs `request-skill-reports.sh` to prompt all agents to share skills.
-3. **Process** — Daily (3am), Moses runs `process-skill-reports.py` to compile incoming reports into a digest.
-4. **Evaluate** — Weekly (Tue 9am), an LLM-driven `skill-evaluate` cron reviews each custom skill for quality, structure, and upstreaming potential.
-5. **Upstream** — Skills approved for sharing are added to `hermes-cortex/skills/<category>/<name>/SKILL.md` and deployed fleet-wide via `cortex-update.sh` sync.
+1. **Collect** — Every agent runs `agent-learning-collector` (no_agent, every 6h). Collects skills delta, lessons delta, and session stats. Sends "Learning Report" to `inbox_moses`. Silent when nothing new (watchdog pattern).
+2. **Evaluate + Upstream** — Moses runs `orch-skill-lifecycle` (LLM-driven, daily 04:00). Reads all agent reports from the bus, cross-references across agents, evaluates for consolidation/upstream candidates, patches skills, and pushes to the repo.
 
-See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md) for the manifest-based skill loading system (Titus).
+See [`docs/pipeline-reference.md`](docs/pipeline-reference.md) for the detailed pipeline architecture.
 
 ---
 
@@ -421,15 +418,12 @@ Reduce TTLs in `02-low-memory.xml`:
 
 ### Skill Collection Pipeline
 
-The full skill lifecycle runs across all agents:
+The full skill lifecycle runs across all agents via the unified daily pipeline:
 
-1. **Collect** — Every agent runs `collect-agent-skills.sh` every 6h, scanning both `~/.hermes/skills/` and `~/.hermes-cortex/skills/` for SKILL.md files not in the upstream repo. Custom skills are reported to Moses via the Agent Bus (topic: `reports`).
-2. **Request** — Weekly (Mon 2am), Moses runs `request-skill-reports.sh` to prompt all agents to share skills.
-3. **Process** — Daily (3am), Moses runs `process-skill-reports.py` to compile incoming reports into a digest.
-4. **Evaluate** — Weekly (Tue 9am), an LLM-driven `skill-evaluate` cron reviews each custom skill for quality, structure, and upstreaming potential.
-5. **Upstream** — Skills approved for sharing are added to `hermes-cortex/skills/<category>/<name>/SKILL.md` and deployed fleet-wide via `cortex-update.sh` sync.
+1. **Collect** — Every agent runs `agent-learning-collector` (no_agent, every 6h). Collects skills delta, lessons delta, and session stats. Sends "Learning Report" to `inbox_moses`. Silent when nothing new (watchdog pattern).
+2. **Evaluate + Upstream** — Moses runs `orch-skill-lifecycle` (LLM-driven, daily 04:00). Reads all agent reports from the bus, cross-references across agents, evaluates for consolidation/upstream candidates, patches skills, and pushes to the repo.
 
-See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md) for the manifest-based skill loading system (Titus).
+See [`docs/pipeline-reference.md`](docs/pipeline-reference.md) for the detailed pipeline architecture.
 
 ---
 
