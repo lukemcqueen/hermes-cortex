@@ -94,7 +94,6 @@ def run_cortex_update() -> dict:
 
 def run_doctor() -> dict:
     """Run cortex-doctor.py --json and parse result."""
-    log("Running doctor...")
     try:
         r = subprocess.run(
             [sys.executable, str(DOCTOR_PATH), "--json"],
@@ -461,8 +460,10 @@ def main():
 
     def poll_and_check() -> None:
         nonlocal last_doctor
-        poll_once()
-        # Run doctor on every tick regardless of message activity
+        had_work = poll_once()
+        # Only run doctor when we actually processed a message
+        if not had_work:
+            return
         doctor = run_doctor()
         healthy = doctor.get("healthy", False)
         prev_healthy = last_doctor.get("healthy", True)
