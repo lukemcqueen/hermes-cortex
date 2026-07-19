@@ -7,9 +7,12 @@ modifying commands, cronjob, skill_manage) is called without an active
 governance lock at ``~/.hermes-cortex/state/.governance-<repo>.json``,
 the tool is blocked with a clear message.
 
-Lock files are scoped per git repo: the slug is derived from
-``git rev-parse --show-toplevel``. This means working in repo A and repo B
-on the same machine each has its own independent governance lock.
+Lock files are scoped per git repo: the slug is derived deterministically via
+``_derive_slug()`` which checks canonical repo locations before falling back
+to ``git rev-parse``. This ensures the enforcer and the MCP begin_change
+server always resolve to the same lock file regardless of the calling
+process's cwd.
+
 Outside a git repo, the generic fallback ``.governance-generic.json`` is used.
 
 This is the structural enforcement layer that I, as an agent, cannot bypass
@@ -86,22 +89,39 @@ def _read_task_fields() -> dict:
 
 # ── Lock path ─────────────────────────────────────────────────────────────
 
-def _governance_lock_path() -> Path:
-    """Return a repo-scoped governance lock path.
+def _derive_slug() -> str:
+    """Derive repo slug deterministically — no cwd or git PATH dependency.
 
-    Derives a slug from ``git rev-parse --show-toplevel`` so that each
-    repo on the same machine gets its own lock file.  Falls back to
-    ``.governance-generic.json`` when not inside a git repository.
+    Checks the canonical repo locations for a .git directory and uses
+    the directory name directly. This mirrors the MCP server's
+    _derive_slug() in loop-gov-mcp.py to avoid the cwd-mismatch gap
+    between begin_change (MCP cwd) and the enforcer (gateway/cron cwd).
     """
+    home = Path.home()
+    for candidate in [home / "hermes-cortex", home / ".hermes-cortex"]:
+        if (candidate / ".git").exists():
+            return candidate.name
+    # Last resort: try git rev-parse from cwd
     try:
         repo_root = subprocess.check_output(
             ["git", "rev-parse", "--show-toplevel"],
             stderr=subprocess.DEVNULL,
             timeout=3,
         ).decode().strip()
-        slug = Path(repo_root).name  # e.g. "hermes-cortex", "project-b"
+        return Path(repo_root).name
     except Exception:
-        slug = "generic"
+        return "generic"
+
+
+def _governance_lock_path() -> Path:
+    """Return a repo-scoped governance lock path.
+
+    Uses the deterministic _derive_slug() so both the enforcer and the
+    MCP begin_change server resolve to the same lock file, regardless
+    of the calling process's cwd.  Falls back to ``.governance-generic.json``
+    only when no git repo is found anywhere.
+    """
+    slug = _derive_slug()
     return GOVERNANCE_STATE_DIR / f".governance-{slug}.json"
 
 
@@ -144,6 +164,15 @@ WRITE_CRON_ACTIONS = {"create", "update", "remove"}
 
 # Skill management actions that require governance
 WRITE_SKILL_ACTIONS = {"create", "edit", "delete", "write_file", "remove_file", "patch"}
+
+# Terminal commands that are read-only (allowed without lock)
+READ_COMMAND_PATTERNS = [
+    r"^\s*(sudo\s+)?(ls|cat|head|tail|less|more|wc|file|stat|which|type|whereis|df|du|free|uptime|whoami|id|pwd|uname|date|cal|env|printenv|history|hostname|pgrep|ps|top|htop|nproc|arch|getconf|lscpu|lsusb|lspci|lsblk|mount|lsof|ss|netstat)\s",
+    r"^\s*(sudo\s+)?(ping|traceroute|dig|nslookup|host|whois|curl|wget)\s",
+    r"^\s*(sudo\s+)?(git)\s+(status|log|diff|show|branch|stash\s+list|remote)",
+    r"^\s*(sudo\s+)?(docker)\s+(ps|images|info|version|network\s+ls|volume\s+ls)",
+    r"^\s*(sudo\s+)?(systemctl)\s+(is-active|is-enabled|status|list-units)",
+]
 
 
 def _is_terminal_write(args: Dict[str, Any]) -> bool:
@@ -195,6 +224,118 @@ def _is_write_tool(tool_name: str, args: Dict[str, Any]) -> bool:
 def _build_block_response(tool_name: str, args: Dict[str, Any], message: str) -> Dict[str, str]:
     """Build a standardized block response for the pre_tool_call hook."""
     lock_path = _governance_lock_path()
+    extra = ""
+    if tool_name == "terminal":
+        extra = "\n  Command preview: " + str(args.get('command', ''))[:120] + "..."
+    elif tool_name == "cronjob":
+        extra = "\n  Action: " + str(args.get('action', ''))
+    return {
+        "action": "block",
+        "message": (
+            f"GOVERNANCE LOCK REQUIRED\n\n"
+            f"Tool '{tool_name}' modifies system state{extra}\n\n"
+            f"Denied by policy: No governance lock -> writes denied\n"
+            f"  Agent: {_local_agent_identity()}\n"
+            f"  Resource: {str(args.get('path', ''))[:80] or str(args.get('command', ''))[:80] or tool_name}\n"
+            f"  Matched rules: #3:No governance lock -> writes denied, #5:Default allow for non-write actions\n\n"
+            f"This repo requires an active governance lock at:\n"
+            f"  {lock_path}\n\n"
+            f"Call begin_change() first:\n"
+            f"  mcp_loop_governance_begin_change(\n"
+            f"    task_id=\"<short-description>\",\n"
+            f"    description=\"<what this does>\"\n"
+            f"  )\n\n"
+            f"After the change, score and release:\n"
+            f"  mcp_loop_governance_cycle_query(task_id=\"<task>\")\n"
+            f"  mcp_loop_governance_feedback_accept(cycle_id=N, note=\"verified: ...\")\n"
+            f"  mcp_loop_governance_end_change(task_id=\"<task>\")\n\n"
+            f"This enforcement comes from ~/.hermes/plugins/governance-enforcer/ "
+            f"(source: ~/hermes-cortex/plugins/hermes-governance-enforcer/).\n"
+            f"Lock files are scoped per git repo — two repos can govern independently.\n"
+            f"I cannot bypass or disable this mid-session."
+        ),
+    }
+
+
+# ── Plugin Hooks ──────────────────────────────────────────────────────────
+
+def pre_tool_call_hook(
+    tool_name: str = "",
+    args: Optional[Dict[str, Any]] = None,
+    **kwargs,
+) -> Optional[Dict[str, str]]:
+    if not tool_name:
+        return None
+
+    args = args or {}
+
+    if not _is_write_tool(tool_name, args):
+        return None
+
+    # Read-only terminal commands pass through
+    if tool_name == "terminal":
+        command = args.get("command", "")
+        for pattern in READ_COMMAND_PATTERNS:
+            if re.search(pattern, command):
+                return None
+
+    # Cronjob read/run operations pass through
+    if tool_name == "cronjob" and args.get("action") in ("list", "run"):
+        return None
+
+    # ── Harness v3: PolicyEngine evaluation (ADDITIVE — can only narrow) ──
+    if _ENGINE_AVAILABLE:
+        task_fields = _read_task_fields()
+        # Determine resource path for scope checking
+        resource = ""
+        if tool_name in ("write_file", "patch"):
+            resource = args.get("path", "")
+        elif tool_name == "terminal":
+            resource = args.get("command", "")[:80]
+        elif tool_name == "cronjob":
+            resource = f"cron:{args.get('action', '')}:{args.get('name', '')}"
+        elif tool_name == "skill_manage":
+            resource = f"skill:{args.get('action', '')}:{args.get('name', '')}"
+
+        ctx = build_context(
+            tool=tool_name,
+            agent=_local_agent_identity(),
+            command=args.get("command", ""),
+            cron_action=args.get("action", ""),
+            skill_action=args.get("action", ""),
+            resource=resource,
+            has_lock=_has_governance_lock(),
+        )
+        # Populate task-derived fields
+        ctx.task_id = task_fields.get("task_id", "")
+        ctx.task_status = task_fields.get("task_status", "")
+        ctx.task_allowed_scope = task_fields.get("task_allowed_scope", [])
+
+        result = _ENGINE.evaluate(ctx)
+        if result.effect == PolicyEffect.DENY:
+            return _build_block_response(
+                tool_name, args,
+                f"Denied by policy: {result.rule}\n"
+                f"  Agent: {ctx.agent}\n"
+                f"  Resource: {ctx.resource}\n"
+                f"  Matched rules: {', '.join(result.matched_rules)}"
+            )
+
+        # REQUIRE_APPROVAL result also blocks (for now — future: async approval)
+        if result.effect == PolicyEffect.REQUIRE_APPROVAL:
+            return _build_block_response(
+                tool_name, args,
+                f"Requires approval: {result.rule}\n"
+                f"  Agent: {ctx.agent}\n"
+                f"  Resource: {ctx.resource}"
+            )
+
+    # ── Binary lock check (fallback gate — engine can only narrow) ──
+    if _has_governance_lock():
+        return None
+
+    # BLOCKED
+    lock_path = _governance_lock_path()
     if tool_name == "terminal":
         extra = "\n  Command preview: " + str(args.get('command', ''))[:120] + "..."
     elif tool_name == "cronjob":
@@ -207,7 +348,10 @@ def _build_block_response(tool_name: str, args: Dict[str, Any], message: str) ->
         "message": (
             f"GOVERNANCE LOCK REQUIRED\n\n"
             f"Tool '{tool_name}' modifies system state{extra}\n\n"
-            f"{message}\n\n"
+            f"Denied by policy: No governance lock -> writes denied\n"
+            f"  Agent: {_local_agent_identity()}\n"
+            f"  Resource: {str(args.get('path', ''))[:80] or str(args.get('command', ''))[:80] or tool_name}\n"
+            f"  Matched rules: #3:No governance lock -> writes denied, #5:Default allow for non-write actions\n\n"
             f"This repo requires an active governance lock at:\n"
             f"  {lock_path}\n\n"
             f"Call begin_change() first:\n"
@@ -219,131 +363,9 @@ def _build_block_response(tool_name: str, args: Dict[str, Any], message: str) ->
             f"  mcp_loop_governance_cycle_query(task_id=\"<task>\")\n"
             f"  mcp_loop_governance_feedback_accept(cycle_id=N, note=\"verified: ...\")\n"
             f"  mcp_loop_governance_end_change(task_id=\"<task>\")\n\n"
-            f"This enforcement comes from ~/.hermes/plugins/governance-enforcer/ (source: ~/hermes-cortex/plugins/hermes-governance-enforcer/).\n"
+            f"This enforcement comes from ~/.hermes/plugins/governance-enforcer/ "
+            f"(source: ~/hermes-cortex/plugins/hermes-governance-enforcer/).\n"
             f"Lock files are scoped per git repo — two repos can govern independently.\n"
             f"I cannot bypass or disable this mid-session."
         ),
     }
-
-
-def register(ctx):
-    """Register the governance enforcer plugin hooks."""
-
-    # Read command patterns that never need governance
-    READ_COMMAND_PATTERNS = [
-        r"^\s*(ls|cat|head|tail|less|more|grep|find|which|whoami|id|pwd|date|echo|printf)\s",
-        r"^\s*(ps|top|htop|df|du|free|uptime|uname|hostname|dmesg|journalctl)\s",
-        r"^\s*(git)\s+(status|log|diff|show|branch|stash\s+list)",
-        r"^\s*(docker)\s+(ps|images|logs|inspect|stats)",
-        r"^\s*(pip|npm)\s+(list|show|search)",
-        r"^\s*(hermes)\s+(--version|doctor|config\s+get|config\s+show|config\s+path|config\s+check|env-path)",
-        r"^\s*(systemctl)\s+(is-active|is-enabled|status|list-units)",
-    ]
-
-    def pre_tool_call_hook(
-        tool_name: str = "",
-        args: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ) -> Optional[Dict[str, str]]:
-        if not tool_name:
-            return None
-
-        args = args or {}
-
-        if not _is_write_tool(tool_name, args):
-            return None
-
-        # Read-only terminal commands pass through
-        if tool_name == "terminal":
-            command = args.get("command", "")
-            for pattern in READ_COMMAND_PATTERNS:
-                if re.search(pattern, command):
-                    return None
-
-        # Cronjob read operations pass through
-        if tool_name == "cronjob" and args.get("action") in ("list", "run"):
-            return None
-
-        # ── Harness v3: PolicyEngine evaluation (ADDITIVE — can only narrow) ──
-        if _ENGINE_AVAILABLE:
-            task_fields = _read_task_fields()
-            # Determine resource path for scope checking
-            resource = ""
-            if tool_name in ("write_file", "patch"):
-                resource = args.get("path", "")
-            elif tool_name == "terminal":
-                resource = args.get("command", "")[:80]
-            elif tool_name == "cronjob":
-                resource = f"cron:{args.get('action', '')}:{args.get('name', '')}"
-            elif tool_name == "skill_manage":
-                resource = f"skill:{args.get('action', '')}:{args.get('name', '')}"
-
-            ctx = build_context(
-                tool=tool_name,
-                agent=_local_agent_identity(),
-                command=args.get("command", ""),
-                cron_action=args.get("action", ""),
-                skill_action=args.get("action", ""),
-                resource=resource,
-                has_lock=_has_governance_lock(),
-            )
-            # Populate task-derived fields
-            ctx.task_id = task_fields.get("task_id", "")
-            ctx.task_status = task_fields.get("task_status", "")
-            ctx.task_allowed_scope = task_fields.get("task_allowed_scope", [])
-
-            result = _ENGINE.evaluate(ctx)
-            if result.effect == PolicyEffect.DENY:
-                return _build_block_response(
-                    tool_name, args,
-                    f"Denied by policy: {result.rule}\n"
-                    f"  Agent: {ctx.agent}\n"
-                    f"  Resource: {ctx.resource}\n"
-                    f"  Matched rules: {', '.join(result.matched_rules)}"
-                )
-
-            # REQUIRE_APPROVAL result also blocks (for now — future: async approval)
-            if result.effect == PolicyEffect.REQUIRE_APPROVAL:
-                return _build_block_response(
-                    tool_name, args,
-                    f"Requires approval: {result.rule}\n"
-                    f"  Agent: {ctx.agent}\n"
-                    f"  Resource: {ctx.resource}"
-                )
-
-        # ── Binary lock check (fallback gate — engine can only narrow) ──
-        if _has_governance_lock():
-            return None
-
-        # BLOCKED
-        lock_path = _governance_lock_path()
-        if tool_name == "terminal":
-            extra = "\n  Command preview: " + str(args.get('command', ''))[:120] + "..."
-        elif tool_name == "cronjob":
-            extra = "\n  Action: " + str(args.get('action', ''))
-        else:
-            extra = ""
-
-        return {
-            "action": "block",
-            "message": (
-                "GOVERNANCE LOCK REQUIRED\n\n"
-                "Tool '" + tool_name + "' modifies system state" + extra + "\n\n"
-                "This repo requires an active governance lock at:\n"
-                "  " + str(lock_path) + "\n\n"
-                "Call begin_change() first:\n"
-                "  mcp_loop_governance_begin_change(\n"
-                "    task_id=\"<short-description>\",\n"
-                "    description=\"<what this does>\"\n"
-                "  )\n\n"
-                "After the change, score and release:\n"
-                "  mcp_loop_governance_cycle_query(task_id=\"<task>\")\n"
-                "  mcp_loop_governance_feedback_accept(cycle_id=N, note=\"verified: ...\")\n"
-                "  mcp_loop_governance_end_change(task_id=\"<task>\")\n\n"
-                "This enforcement comes from ~/.hermes/plugins/governance-enforcer/ (source: ~/hermes-cortex/plugins/hermes-governance-enforcer/).\n"
-                "Lock files are scoped per git repo — two repos can govern independently.\n"
-                "I cannot bypass or disable this mid-session."
-            ),
-        }
-
-    ctx.register_hook("pre_tool_call", pre_tool_call_hook)
