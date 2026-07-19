@@ -25,7 +25,11 @@ def _read_config(key: str) -> str:
     if CONFIG_FILE.exists():
         for line in CONFIG_FILE.read_text().splitlines():
             if line.startswith(f"{key}="):
-                return line.split("=", 1)[1].strip()
+                val = line.split("=", 1)[1].strip()
+                # Strip surrounding quotes (single or double) from config values
+                if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
+                    val = val[1:-1]
+                return val
     return os.environ.get(key, "")
 
 
