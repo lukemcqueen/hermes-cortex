@@ -1330,8 +1330,8 @@ def check_governance(res):
             ("WRITE_TOOLS includes text_to_speech", '"text_to_speech"' in enforcer_src),
             ("CONDITIONAL_WRITE_TOOLS includes process", '"process"' in enforcer_src),
             ("WRITE_PROCESS_ACTIONS defined", 'WRITE_PROCESS_ACTIONS' in enforcer_src),
-            ("python3 -c pattern present", "python3).*-c" in enforcer_src or 'python3).*?-c' in enforcer_src),
-            ("bash -c pattern present", "bash|sh|zsh).*-c" in enforcer_src or 'bash|sh|zsh).*?-c' in enforcer_src),
+            ("python3 -c pattern present", '(python|python3)\\s.*-c' in enforcer_src),
+            ("bash -c pattern present", '(bash|sh|zsh)\\s+-c' in enforcer_src),
         ]
         all_pass = True
         for label, ok in checks:
