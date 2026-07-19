@@ -835,7 +835,7 @@ def check_services(res):
             res.add("Agent Bus (direct)", "WARN",
                     f"HTTP {bus_url} — unexpected response")
     else:
-        # Non-orchestrator agent — check remote bus only
+        # Non-orchestrator agent — bus access via remote URLs only
         def _get_conf(key):
             val = os.environ.get(key, "")
             if val:
@@ -853,14 +853,15 @@ def check_services(res):
         if bus_url or bus_fallback:
             parts = []
             if bus_url:
-                parts.append(f"BUS_URL set")
+                parts.append("BUS_URL set")
             if bus_fallback:
-                parts.append(f"FALLBACK_URL set")
-            res.add("Agent Bus (direct)", "INFO",
-                    "No local bus daemon; " + " & ".join(parts))
+                parts.append("FALLBACK_URL set")
+            res.add("Agent Bus (direct)", "PASS",
+                    "Bus configured: " + " & ".join(parts))
         else:
-            res.add("Agent Bus (direct)", "SKIP",
-                    "No local bus daemon and no remote bus URL — not applicable")
+            res.add("Agent Bus (direct)", "FAIL",
+                    "No bus URLs configured",
+                    "Set CORTEX_BUS_URL (and CORTEX_BUS_FALLBACK_URL) in cortex-bus.conf")
 
     # ── Agent Bus end-to-end test (through nginx, same path as agents) ──
     _check_bus_e2e(res)
