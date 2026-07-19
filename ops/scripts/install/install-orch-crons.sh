@@ -374,7 +374,7 @@ printf "${CYAN}  1a. Orchestrator Bus Tools${RESET}\n"
 
 # Bidirectional bus sync — Moses primary ↔ Esther backup (every 2 min)
 create_cron "bus-forwarder-sync" "*/2 * * * *" \
-  "bus-forwarder.py" \
+  "orch-bus-forwarder.py" \
   "" \
   "" \
   "" \
@@ -384,7 +384,7 @@ create_cron "bus-forwarder-sync" "*/2 * * * *" \
 
 # Bus audit watchdog — new message events to Telegram (every 1 min)
 create_cron "bus-audit-watchdog" "*/1 * * * *" \
-  "bus-audit-watchdog.py" \
+  "orch-bus-audit-watchdog.py" \
   "" \
   "" \
   "" \
@@ -394,7 +394,7 @@ create_cron "bus-audit-watchdog" "*/1 * * * *" \
 
 # Stuck message recovery — Postgres processing timeouts (every 5 min)
 create_cron "bus-recover-timeouts" "*/5 * * * *" \
-  "bus-recover-timeouts.sh" \
+  "orch-bus-recover-timeouts.sh" \
   "Recover stuck processing messages from the bus Postgres database every 5 minutes" \
   "" \
   "" \
@@ -404,7 +404,7 @@ create_cron "bus-recover-timeouts" "*/5 * * * *" \
 
 # Bus confirmation poller — track message delivery confirmations (every 10m)
 create_cron "bus-confirmation-poller" "every 10m" \
-  "bus-message-tracker.py" \
+  "orch-bus-message-tracker.py" \
   "poll" \
   "" \
   "" \
@@ -414,7 +414,7 @@ create_cron "bus-confirmation-poller" "every 10m" \
 
 # Bus confirmation alert — alert on undelivered messages (every 60m)
 create_cron "bus-confirmation-alert" "every 60m" \
-  "bus-message-tracker-alert.sh" \
+  "orch-bus-message-tracker-alert.sh" \
   "alert" \
   "" \
   "" \
