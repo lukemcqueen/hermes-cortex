@@ -84,7 +84,7 @@ no-op, but Phase 3 still applies — the habit of checking matters more than the
 on `PYTHONPATH`. Running from the repo directory (`~/hermes-cortex/core/governance/`) 
 may fail with `ModuleNotFoundError: No module named 'hermes_models'`. Fix:
 ```bash
-PYTHONPATH=/home/esther/.hermes/scripts python3 core/governance/session_cache.py build
+PYTHONPATH=$HOME/.hermes/scripts python3 core/governance/session_cache.py build
 ```
 
 ## Agent Workflow (MANDATORY — applies every change)
