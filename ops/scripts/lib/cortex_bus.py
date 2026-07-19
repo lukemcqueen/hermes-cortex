@@ -101,11 +101,23 @@ def bus_send(queue: str, message_body: dict) -> dict | None:
 
 
 def bus_read(queue: str, vt: int = 60) -> dict | None:
-    """Read one message from a bus queue. Returns parsed body or None."""
+    """Read one message from a bus queue.
+
+    Auto-parses the PGMQ body (JSON string) into a dict so all consumers
+    get structured data without needing to know about the wire format.
+
+    Returns the full message dict with 'body' already parsed, or None.
+    """
     try:
         payload = {"queue": queue, "vt": vt}
         result = _bus_post("/api/pgmq/read", payload)
         if result and result.get("msg_id"):
+            # PGMQ stores messages as JSON strings — auto-parse the body
+            if isinstance(result.get("body"), str):
+                try:
+                    result["body"] = json.loads(result["body"])
+                except (json.JSONDecodeError, TypeError):
+                    pass
             return result
         return None
     except (ConnectionError, Exception):
