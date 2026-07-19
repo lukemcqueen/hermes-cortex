@@ -409,6 +409,83 @@ This pattern works for any policy you want to enforce at the tool level — the 
 
 ---
 
+## Coverage Table
+
+The enforcer intercepts tools at the `pre_tool_call` hook. Every agent tool
+is classified into one of three tiers:
+
+| Tier | Tools | What's Blocked |
+|------|-------|----------------|
+| **WRITE_TOOLS** | `write_file`, `patch`, `execute_code`, `memory`, `text_to_speech` | Tool use at all — requires governance lock unconditionally |
+| **CONDITIONAL** | `terminal`, `cronjob`, `skill_manage`, `process` | Specific write-type actions (see tables below) |
+| **READ-ONLY** | `read_file`, `search_files`, `session_search`, `skill_view`, `skills_list`, `clarify`, `vision_analyze`, `todo` | Nothing — always allowed |
+| **DELEGATION** | `delegate_task` | Not blocked — subagents have their own enforcer instance |
+
+### Conditional Tool Write Actions
+
+| Tool | Write Actions (blocked without lock) | Read Actions (allowed) |
+|------|--------------------------------------|----------------------|
+| `terminal` | `rm`, `mv`, `cp`, `git push`, `bash -c`, `python3 -c`, etc. (see pattern list) | `ls`, `cat`, `git status`, `python3 --version`, etc. |
+| `cronjob` | `create`, `update`, `remove` | `list`, `run` |
+| `skill_manage` | `create`, `edit`, `delete`, `write_file`, `remove_file`, `patch` | `view` (via separate `skill_view` tool) |
+| `process` | `write`, `submit`, `kill`, `close` | `list`, `poll`, `log`, `wait` |
+
+### Write Command Patterns (terminal)
+
+```
+rm|mv|cp|install|apt|apt-get|dpkg|pip|npm|brew|make|cmake|docker compose|kubectl
+systemctl|service   start|stop|restart|reload|enable|disable|daemon-reload
+chmod|chown|chattr|mkfs|fdisk|mount|umount|dd
+sed|awk|tee   -i
+git   push|commit|merge|rebase|reset|cherry-pick|branch -d/-D|tag
+cronjob   create|update|remove|delete
+python|python3   -c (inline code)
+bash|sh|zsh   -c (inline commands)
+python3   -m pip install
+wget -O, curl -o
+nohup
+docker   run|build|push|commit|tag|save|load|rmi|system prune
+crontab
+usermod|groupmod|useradd|groupadd|passwd
+ufw   enable|disable|allow|deny|reject|delete|reset
+nginx -s reload|stop|quit
+journalctl --rotate
+echo with > or >> redirect
+```
+
+## Upgrade: v1 (slug-based locks) → v2 (session-scoped locks)
+
+The upgrade is handled automatically by `cortex-update.sh`, but here's what
+happens and how to verify a clean upgrade.
+
+### What changed
+
+| Aspect | v1 (old) | v2 (new) |
+|--------|----------|----------|
+| **Lock file name** | `.governance-{repo-slug}.json` (e.g. `.governance-hermes-cortex.json`) | `.governance-{session_id}.json` (e.g. `.governance-sess_abc123.json`) |
+| **Repo identification** | CWD-dependent `git rev-parse` | Stored in lock content as `repo_slug` field |
+| **Enforcer check** | Single file by path | Scan all `.governance-*.json`, match by content |
+| **Multiple sessions** | Not supported (one lock per repo) | Each session gets its own file |
+| **Generic fallback** | `.governance-generic.json` written alongside every lock | Eliminated — not needed |
+
+### Upgrade steps
+
+1. `git pull && bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all`
+   - Cleans all stale slug-based lock files automatically
+   - Ensures the new enforcer source is deployed
+2. `/reset` (new Hermes session)
+   - The new enforcer loads with scan-based lock checking
+3. Verify:
+   - `bash ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --once`
+   - Should show: `Governance coverage — PASS — all bypass closures validated`
+   - Should show: `Governance locks — PASS — no lock files`
+
+### Mid-upgrade agents
+
+If you were mid-task when upgrading, your old lock file (without `repo_slug`)
+is accepted by the new enforcer as valid — you can finish your work and call
+`end_change()`. On the next `cortex-update` run, the old lock is cleaned.
+
 ## Key Lessons
 
 1. **MCP servers cannot block built-in tools** — they only provide new tools. Enforcement must happen at the plugin level.
@@ -418,3 +495,5 @@ This pattern works for any policy you want to enforce at the tool level — the 
 5. **Plugin changes require restart** — no hot-reload. Always `/reset` after installing or modifying a plugin.
 6. **The agent cannot bypass this** — because the block comes from the Hermes runtime (Python process), not from the model's output or SOUL.md text, the agent cannot talk its way out of it.
 7. **Every agent needs it** — if only one agent has the plugin, the others can freely skip governance. The source of truth is the repo; deploy the symlink to every agent.
+8. **Bypass coverage is structural, not complete** — the enforcer covers all built-in Hermes tools and common shell bypass patterns. It cannot intercept MCP tools (separate process), but no MCP tool currently allows arbitrary file writes.
+9. **Known coverage gaps (by design)** — `delegate_task` spawns subagents that have their own enforcer. `todo` is in-memory only. MCP tools run in a separate process and aren't intercepted by the plugin.

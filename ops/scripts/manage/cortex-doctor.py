@@ -1320,6 +1320,43 @@ def check_governance(res):
         else:
             res.add("Governance locks", "PASS", "no lock files")
 
+    # ── Governance bypass coverage (validate enforcer has all guards) ──
+    enforcer_path = CORTEX_REPO / "plugins" / "hermes-governance-enforcer" / "__init__.py"
+    if enforcer_path.exists():
+        enforcer_src = enforcer_path.read_text()
+        checks = [
+            ("WRITE_TOOLS includes execute_code", '"execute_code"' in enforcer_src),
+            ("WRITE_TOOLS includes memory", '"memory"' in enforcer_src),
+            ("WRITE_TOOLS includes text_to_speech", '"text_to_speech"' in enforcer_src),
+            ("CONDITIONAL_WRITE_TOOLS includes process", '"process"' in enforcer_src),
+            ("WRITE_PROCESS_ACTIONS defined", 'WRITE_PROCESS_ACTIONS' in enforcer_src),
+            ("python3 -c pattern present", "python3).*-c" in enforcer_src or 'python3).*?-c' in enforcer_src),
+            ("bash -c pattern present", "bash|sh|zsh).*-c" in enforcer_src or 'bash|sh|zsh).*?-c' in enforcer_src),
+        ]
+        all_pass = True
+        for label, ok in checks:
+            all_pass = all_pass and ok
+        if all_pass:
+            res.add("Governance coverage", "PASS", "all bypass closures validated")
+        else:
+            for label, ok in checks:
+                if not ok:
+                    res.add(f"Governance gap ({label})", "FAIL",
+                            f"enforcer source is missing required guard",
+                            f"Update {enforcer_path} to include the missing guard")
+
+        # Also check for legacy slug-based lock files (upgrade detection)
+        if state_dir.exists():
+            legacy = [f for f in state_dir.glob(".governance-*.json")
+                      if not f.name.startswith(".governance-sess_")]
+            if legacy:
+                for lf in legacy:
+                    res.add(f"Legacy lock ({lf.name})", "WARN",
+                            "slug-based naming superseded by session-scoped locks",
+                            f"Remove: rm -f {lf}")
+    else:
+        res.add("Governance coverage", "INFO", "enforcer source not found in repo")
+
 
 def check_install(res):
     """8. Install footprint: core files and directories present."""
