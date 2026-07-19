@@ -130,8 +130,8 @@ def _derive_slug() -> str:
     """Derive repo slug deterministically — no cwd or git PATH dependency.
 
     Checks the canonical repo locations for a .git directory and uses
-    the directory name directly. This avoids the cwd-mismatch gap
-    between begin_change (session cwd) and the enforcer (gateway/cron cwd).
+    the directory name directly. This slug is stored in the lock content
+    for the enforcer to match against — the lock filename is session-scoped.
     """
     for candidate in [HOME / "hermes-cortex", HOME / ".hermes-cortex"]:
         if (candidate / ".git").exists():
@@ -147,26 +147,15 @@ def _derive_slug() -> str:
         return "generic"
 
 
-def _governance_lock_path(slug: str | None = None) -> Path:
-    """Return a repo-scoped governance lock path.
+def _session_lock_path(session_id: str) -> Path:
+    """Return a unique lock file path per session.
 
-    Derives the slug deterministically via _derive_slug() so the
-    same path is produced regardless of the calling process's cwd.
-    Falls back to ``.governance-generic.json`` only when no git repo
-    is found anywhere.
-
-    When called from begin_change/end_change (which already know the
-    slug), pass the slug explicitly to skip re-derivation.
+    Each governance lock is named by its session ID, making it
+    impossible for two sessions to collide on the same file.
+    The enforcer scans all .governance-*.json files and matches
+    by the repo_slug stored in each lock's content.
     """
-    if slug:
-        return GOVERNANCE_STATE_DIR / f".governance-{slug}.json"
-    slug = _derive_slug()
-    return GOVERNANCE_STATE_DIR / f".governance-{slug}.json"
-
-
-def _generic_lock_path() -> Path:
-    """Return the generic lock path."""
-    return GOVERNANCE_STATE_DIR / ".governance-generic.json"
+    return GOVERNANCE_STATE_DIR / f".governance-{session_id}.json"
 
 
 # ── Lock helpers ─────────────────────────────────────────────
@@ -183,7 +172,6 @@ def _is_lock_stale(state: dict) -> bool:
     if not heartbeat_str:
         return False
     try:
-        # Parse ISO timestamp (handle both Z and +00:00 formats)
         hb_str = heartbeat_str.replace("Z", "+00:00").replace("+00:00", "+00:00")
         heartbeat = datetime.fromisoformat(hb_str)
         now = datetime.now(timezone.utc)
@@ -193,48 +181,37 @@ def _is_lock_stale(state: dict) -> bool:
         return False
 
 
-def _read_lock(slug: str | None = None) -> dict | None:
-    """Read the current lock file, return state dict or None.
-
-    First tries the repo-scoped path. If not found, falls back
-    to the generic lock (for enforcers running outside git cwd).
-    """
-    path = _governance_lock_path(slug)
+def _read_lock() -> dict | None:
+    """Read this session's lock file, return state dict or None."""
+    session_id = get_session_id()
+    path = _session_lock_path(session_id)
     if path.exists():
         try:
             return json.loads(path.read_text())
-        except (json.JSONDecodeError, OSError):
-            return None
-    # Fallback: try generic lock (enforcer bridge)
-    generic = _generic_lock_path()
-    if generic.exists():
-        try:
-            return json.loads(generic.read_text())
         except (json.JSONDecodeError, OSError):
             return None
     return None
 
 
 def _write_lock(state: dict) -> None:
-    """Write lock state to file."""
-    path = _governance_lock_path()
+    """Write lock state to a session-scoped file.
+
+    The lock filename uses the session_id so two sessions never
+    collide on the same file. The repo_slug in the content lets
+    the enforcer filter locks by repo.
+    """
+    session_id = state.get("session_id", get_session_id())
+    path = _session_lock_path(session_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(state, indent=2))
-    # Also write generic lock so enforcer (which may run from non-git cwd) finds it
-    generic = _generic_lock_path()
-    generic.parent.mkdir(parents=True, exist_ok=True)
-    generic.write_text(json.dumps(state, indent=2))
 
 
 def _release_lock() -> None:
-    """Remove the lock file."""
-    path = _governance_lock_path()
+    """Remove this session's lock file."""
+    session_id = get_session_id()
+    path = _session_lock_path(session_id)
     if path.exists():
         path.unlink()
-    # Also clean up generic lock
-    generic = _generic_lock_path()
-    if generic.exists():
-        generic.unlink()
 
 
 # ── Embedding helpers ────────────────────────────────────────
@@ -728,6 +705,7 @@ def _begin_change(args: dict) -> CallToolResult:
     state = {
         "task_id": task_id,
         "description": description,
+        "repo_slug": _derive_slug(),
         "started_at": now_iso,
         "agent": os.environ.get("AGENT_NAME", "unknown"),
         "session_id": session_id,
@@ -749,7 +727,7 @@ def _begin_change(args: dict) -> CallToolResult:
         type="text",
         text=(
             f"{prefix}Governance session started: {task_id} — {description}{force_msg}\n"
-            f"Lock file: {_governance_lock_path()}\n"
+            f"Lock file: {_session_lock_path(session_id)}\n"
             f"Session ID: {session_id}\n"
             f"TTL: {ttl}s\n"
             f"Use end_change('{task_id}') when done."
@@ -764,24 +742,20 @@ def _end_change(args: dict) -> CallToolResult:
     if not task_id:
         return CallToolResult(content=[TextContent(type="text", text="Error: task_id is required")])
 
-    # Step 1: Check if lock file exists
-    if not _governance_lock_path().exists():
+    # Step 1: Read this session's lock
+    session_id = get_session_id()
+    lock = _read_lock()
+    if lock is None:
         return CallToolResult(content=[TextContent(
             type="text", text="No governance session active. Nothing to release."
         )])
 
     # Step 2: Verify task_id matches
-    try:
-        existing = json.loads(_governance_lock_path().read_text())
-        stored_task = existing.get("task_id", "")
-        if stored_task and stored_task != task_id:
-            return CallToolResult(content=[TextContent(
-                type="text",
-                text=f"Error: Lock belongs to task '{stored_task}', not '{task_id}'. Use end_change('{stored_task}')."
-            )])
-    except (json.JSONDecodeError, OSError) as e:
+    stored_task = lock.get("task_id", "")
+    if stored_task and stored_task != task_id:
         return CallToolResult(content=[TextContent(
-            type="text", text=f"Error reading lock file: {e}. Remove manually: rm {_governance_lock_path()}"
+            type="text",
+            text=f"Error: Lock belongs to task '{stored_task}', not '{task_id}'. Use end_change('{stored_task}')."
         )])
 
     # Step 3: Check loop-governance DB for a scored cycle with this task_id
@@ -877,7 +851,7 @@ def _check_lock(args: dict | None = None) -> CallToolResult:
         text=json.dumps({
             "active": True,
             "lock": state,
-            "file": str(_governance_lock_path()),
+            "file": str(_session_lock_path(state.get("session_id", ""))),
         }, indent=2)
     )])
 

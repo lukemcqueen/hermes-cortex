@@ -1,19 +1,20 @@
 """
-Governance Enforcer Plugin — Hard blocks write tools unless governance lock exists.
+|Governance Enforcer Plugin — Hard blocks write tools unless governance lock exists.
 
 Uses the Hermes Plugin System's ``pre_tool_call`` hook to intercept tools
 before they execute. If a write-class tool (write_file, patch, terminal with
 modifying commands, cronjob, skill_manage) is called without an active
-governance lock at ``~/.hermes-cortex/state/.governance-<repo>.json``,
-the tool is blocked with a clear message.
+governance lock matching this repo, the tool is blocked with a clear message.
 
-Lock files are scoped per git repo: the slug is derived deterministically via
-``_derive_slug()`` which checks canonical repo locations before falling back
-to ``git rev-parse``. This ensures the enforcer and the MCP begin_change
-server always resolve to the same lock file regardless of the calling
-process's cwd.
+Lock files are **session-scoped** — named by session_id (e.g.
+``.governance-sess_abc123.json``) so multiple sessions can each hold a
+valid lock. The enforcer scans all ``.governance-*.json`` files and filters
+by the ``repo_slug`` field stored in each lock's content. This means the
+enforcer and the MCP begin_change server never disagree about which file
+to check, regardless of the calling process's cwd.
 
-Outside a git repo, the generic fallback ``.governance-generic.json`` is used.
+Stale locks (heartbeat exceeding TTL) are cleaned automatically during scan.
+Corrupt lock files are also cleaned up.
 
 This is the structural enforcement layer that I, as an agent, cannot bypass
 or talk my way out of — the block comes from outside myself.
@@ -72,30 +73,36 @@ def _local_agent_identity() -> str:
 
 
 def _read_task_fields() -> dict:
-    """Read task-derived fields from the governance lock file."""
-    lock_path = _governance_lock_path()
-    if not lock_path.exists():
-        return {}
-    try:
-        state = json.loads(lock_path.read_text())
-        return {
-            "task_id": state.get("task_id", ""),
-            "task_status": state.get("status", ""),
-            "task_allowed_scope": state.get("allowed_scope", []),
-        }
-    except (json.JSONDecodeError, OSError):
-        return {}
+    """Read task-derived fields from active lock files matching this repo.
+
+    Scans all .governance-*.json files for one whose repo_slug matches
+    the current repo. This is session-agnostic — any valid lock for this
+    repo suffices.
+    """
+    current_slug = _derive_slug()
+    for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json"), reverse=True):
+        try:
+            state = json.loads(lock_file.read_text())
+            if state.get("repo_slug") == current_slug:
+                return {
+                    "task_id": state.get("task_id", ""),
+                    "task_status": state.get("status", ""),
+                    "task_allowed_scope": state.get("allowed_scope", []),
+                }
+        except Exception:
+            continue
+    return {}
 
 
-# ── Lock path ─────────────────────────────────────────────────────────────
+# ── Lock scanning ─────────────────────────────────────────────────────────
 
 def _derive_slug() -> str:
     """Derive repo slug deterministically — no cwd or git PATH dependency.
 
     Checks the canonical repo locations for a .git directory and uses
     the directory name directly. This mirrors the MCP server's
-    _derive_slug() in loop-gov-mcp.py to avoid the cwd-mismatch gap
-    between begin_change (MCP cwd) and the enforcer (gateway/cron cwd).
+    _derive_slug() in loop-gov-mcp.py. The slug is used to match against
+    the repo_slug stored in each session-scoped lock file's content.
     """
     home = Path.home()
     for candidate in [home / "hermes-cortex", home / ".hermes-cortex"]:
@@ -113,16 +120,52 @@ def _derive_slug() -> str:
         return "generic"
 
 
-def _governance_lock_path() -> Path:
-    """Return a repo-scoped governance lock path.
+def _is_lock_stale(state: dict) -> bool:
+    """Check if a lock's heartbeat has exceeded its TTL."""
+    ttl = state.get("ttl_seconds", 3600)
+    heartbeat_str = state.get("heartbeat_at", state.get("started_at", ""))
+    if not heartbeat_str:
+        return False
+    try:
+        hb_str = heartbeat_str.replace("Z", "+00:00").replace("+00:00", "+00:00")
+        heartbeat = datetime.fromisoformat(hb_str)
+        now = datetime.now(timezone.utc)
+        elapsed = (now - heartbeat).total_seconds()
+        return elapsed > ttl
+    except (ValueError, TypeError):
+        return False
 
-    Uses the deterministic _derive_slug() so both the enforcer and the
-    MCP begin_change server resolve to the same lock file, regardless
-    of the calling process's cwd.  Falls back to ``.governance-generic.json``
-    only when no git repo is found anywhere.
+
+def _has_governance_lock() -> bool:
+    """Check if any non-stale governance lock exists for the current repo.
+
+    Scans all .governance-*.json files, filters by repo_slug matching
+    the current repo, and checks TTL staleness. Stale locks are cleaned
+    up automatically. Each session gets its own lock file (named by
+    session_id), so multiple sessions in the same repo can each hold
+    a valid lock.
     """
-    slug = _derive_slug()
-    return GOVERNANCE_STATE_DIR / f".governance-{slug}.json"
+    current_slug = _derive_slug()
+    for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
+        try:
+            state = json.loads(lock_file.read_text())
+            if state.get("repo_slug") != current_slug:
+                continue
+            if _is_lock_stale(state):
+                try:
+                    lock_file.unlink()
+                except OSError:
+                    pass
+                continue
+            task_id = state.get("task_id", "")
+            if task_id:
+                return True
+        except (json.JSONDecodeError, OSError):
+            try:
+                lock_file.unlink()  # corrupt — clean up
+            except OSError:
+                pass
+    return False
 
 
 # Tools that modify system state — require governance lock
@@ -196,19 +239,6 @@ def _is_skill_write(args: Dict[str, Any]) -> bool:
     return action in WRITE_SKILL_ACTIONS
 
 
-def _has_governance_lock() -> bool:
-    """Check if an active governance lock exists for the current repo."""
-    lock_path = _governance_lock_path()
-    if not lock_path.exists():
-        return False
-    try:
-        state = json.loads(lock_path.read_text())
-        task_id = state.get("task_id", "")
-        return bool(task_id)
-    except (json.JSONDecodeError, OSError):
-        return False
-
-
 def _is_write_tool(tool_name: str, args: Dict[str, Any]) -> bool:
     if tool_name in WRITE_TOOLS:
         return True
@@ -223,7 +253,6 @@ def _is_write_tool(tool_name: str, args: Dict[str, Any]) -> bool:
 
 def _build_block_response(tool_name: str, args: Dict[str, Any], message: str) -> Dict[str, str]:
     """Build a standardized block response for the pre_tool_call hook."""
-    lock_path = _governance_lock_path()
     extra = ""
     if tool_name == "terminal":
         extra = "\n  Command preview: " + str(args.get('command', ''))[:120] + "..."
@@ -238,8 +267,8 @@ def _build_block_response(tool_name: str, args: Dict[str, Any], message: str) ->
             f"  Agent: {_local_agent_identity()}\n"
             f"  Resource: {str(args.get('path', ''))[:80] or str(args.get('command', ''))[:80] or tool_name}\n"
             f"  Matched rules: #3:No governance lock -> writes denied, #5:Default allow for non-write actions\n\n"
-            f"This repo requires an active governance lock at:\n"
-            f"  {lock_path}\n\n"
+            f"No active governance lock for this repo.\n"
+            f"Session-scoped lock files scanned: ~/.hermes-cortex/state/.governance-*.json\n\n"
             f"Call begin_change() first:\n"
             f"  mcp_loop_governance_begin_change(\n"
             f"    task_id=\"<short-description>\",\n"
@@ -251,7 +280,7 @@ def _build_block_response(tool_name: str, args: Dict[str, Any], message: str) ->
             f"  mcp_loop_governance_end_change(task_id=\"<task>\")\n\n"
             f"This enforcement comes from ~/.hermes/plugins/governance-enforcer/ "
             f"(source: ~/hermes-cortex/plugins/hermes-governance-enforcer/).\n"
-            f"Lock files are scoped per git repo — two repos can govern independently.\n"
+            f"Lock files are session-scoped — each session gets its own file.\n"
             f"I cannot bypass or disable this mid-session."
         ),
     }
@@ -334,38 +363,5 @@ def pre_tool_call_hook(
     if _has_governance_lock():
         return None
 
-    # BLOCKED
-    lock_path = _governance_lock_path()
-    if tool_name == "terminal":
-        extra = "\n  Command preview: " + str(args.get('command', ''))[:120] + "..."
-    elif tool_name == "cronjob":
-        extra = "\n  Action: " + str(args.get('action', ''))
-    else:
-        extra = ""
-
-    return {
-        "action": "block",
-        "message": (
-            f"GOVERNANCE LOCK REQUIRED\n\n"
-            f"Tool '{tool_name}' modifies system state{extra}\n\n"
-            f"Denied by policy: No governance lock -> writes denied\n"
-            f"  Agent: {_local_agent_identity()}\n"
-            f"  Resource: {str(args.get('path', ''))[:80] or str(args.get('command', ''))[:80] or tool_name}\n"
-            f"  Matched rules: #3:No governance lock -> writes denied, #5:Default allow for non-write actions\n\n"
-            f"This repo requires an active governance lock at:\n"
-            f"  {lock_path}\n\n"
-            f"Call begin_change() first:\n"
-            f"  mcp_loop_governance_begin_change(\n"
-            f"    task_id=\"<short-description>\",\n"
-            f"    description=\"<what this does>\"\n"
-            f"  )\n\n"
-            f"After the change, score and release:\n"
-            f"  mcp_loop_governance_cycle_query(task_id=\"<task>\")\n"
-            f"  mcp_loop_governance_feedback_accept(cycle_id=N, note=\"verified: ...\")\n"
-            f"  mcp_loop_governance_end_change(task_id=\"<task>\")\n\n"
-            f"This enforcement comes from ~/.hermes/plugins/governance-enforcer/ "
-            f"(source: ~/hermes-cortex/plugins/hermes-governance-enforcer/).\n"
-            f"Lock files are scoped per git repo — two repos can govern independently.\n"
-            f"I cannot bypass or disable this mid-session."
-        ),
-    }
+    # BLOCKED — use build_block_response for a clean message
+    return _build_block_response(tool_name, args, "No governance lock -> writes denied")
