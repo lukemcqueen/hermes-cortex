@@ -832,8 +832,9 @@ def check_services(res):
                     "agent-bus process running but port 8903 unreachable",
                     "Check: systemctl --user status agent-bus")
         else:
-            res.add("Agent Bus (direct)", "WARN",
-                    f"HTTP {bus_url} — unexpected response")
+            res.add("Agent Bus (direct)", "FAIL",
+                    f"HTTP {bus_url} — unexpected response",
+                    "Check: systemctl --user status agent_bus")
     else:
         # Non-orchestrator agent — bus access via remote URLs only
         def _get_conf(key):
