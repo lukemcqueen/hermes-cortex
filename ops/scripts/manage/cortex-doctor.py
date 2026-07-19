@@ -821,29 +821,39 @@ def check_services(res):
             res.add(f"Service ({name})", "WARN", f"HTTP {code} (unexpected)")
 
     # ── Agent Bus direct health (bypasses nginx auth_basic) ──
-    # Downgraded to INFO if the remote bus path works (MCP-routed setups)
-    bus_health = run_bg([CURL, "-s", "-o", "/dev/null", "-w", "%{http_code}",
-                         "http://127.0.0.1:8903/health", "--max-time", "5"])
-    if bus_health == "200":
+    bus_url = run_bg([CURL, "-s", "-o", "/dev/null", "-w", "%{http_code}",
+                      "http://127.0.0.1:8903/health", "--max-time", "5"])
+    if bus_url == "200":
         res.add("Agent Bus (direct)", "PASS", "HTTP 200 — bus service healthy via localhost:8903")
-    elif bus_health == "000":
-        # Local daemon not running — check if remote bus works instead
-        try:
-            sys.path[0:0] = [str(CORTEX_REPO / "ops" / "scripts" / "lib")]
-            from cortex_bus import bus_health as _bh
-            h = _bh()
-            if h.get("status") == "ok":
+    elif bus_url == "000":
+        # Local daemon not running — check if a remote bus URL is configured
+        remote_url = os.environ.get("CORTEX_BUS_URL", "")
+        if not remote_url:
+            conf = CORTEX_HOME / "cortex-bus.conf"
+            if conf.exists():
+                for line in conf.read_text().splitlines():
+                    if line.startswith("CORTEX_BUS_URL="):
+                        val = line.split("=", 1)[1].strip().strip("\"'")
+                        if val:
+                            remote_url = val
+                        break
+        if remote_url and "127.0.0.1" not in remote_url:
+            remote_code = run_bg([CURL, "-s", "-o", "/dev/null", "-w", "%{http_code}",
+                                  f"{remote_url}/health", "--max-time", "5"])
+            if remote_code == "200":
                 res.add("Agent Bus (direct)", "INFO",
                         "Local bus daemon not found; traffic routed via MCP (remote bus healthy)")
             else:
-                raise ValueError(f"Unhealthy: {h}")
-        except Exception:
+                res.add("Agent Bus (direct)", "FAIL",
+                        f"Local daemon down, remote bus unreachable (HTTP {remote_code})",
+                        "Check CORTEX_BUS_URL in cortex-bus.conf")
+        else:
             res.add("Agent Bus (direct)", "FAIL",
-                    "Local daemon down AND remote unreachable",
-                    "Check: systemctl --user status agent-bus  OR  pgrep agent-bus")
+                    "Local bus daemon not running and no remote bus configured",
+                    "Set CORTEX_BUS_URL in cortex-bus.conf or start local daemon")
     else:
         res.add("Agent Bus (direct)", "WARN",
-                f"HTTP {bus_health} — unexpected response")
+                f"HTTP {bus_url} — unexpected response")
 
     # ── Agent Bus end-to-end test (through nginx, same path as agents) ──
     _check_bus_e2e(res)
