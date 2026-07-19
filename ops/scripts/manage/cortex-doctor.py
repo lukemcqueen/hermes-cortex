@@ -718,6 +718,96 @@ def check_scripts(res):
             res.add(f"Script ({name})", "FAIL", f"not found: {script}", "Run: bash cortex-update.sh --force-all")
 
 
+def _check_bus_e2e(res):
+    """End-to-end bus test: send → read → archive through the external URL.
+
+    Uses the same auth path as agent crons (cortex-bus.conf fallback),
+    so this validates the full chain that agents and handler use.
+    """
+    try:
+        sys.path[0:0] = [str(CORTEX_REPO / "ops" / "scripts" / "lib")]
+        from cortex_bus import bus_send, bus_read, bus_archive, bus_health
+    except ImportError:
+        res.add("Bus E2E test", "SKIP", "cortex_bus.py not importable")
+        return
+
+    # Check 1: Health endpoint via the configured URL
+    try:
+        h = bus_health()
+        status = h.get("status", "unknown")
+        if status == "ok":
+            res.add("Bus E2E (health)", "PASS", f"Status: {status} — backend: {h.get('backend', '?')}")
+        else:
+            res.add("Bus E2E (health)", "WARN", f"Status: {status}")
+    except Exception as e:
+        res.add("Bus E2E (health)", "FAIL", str(e), "Check CORTEX_BUS_URL in cortex-bus.conf")
+        return  # Can't proceed without a healthy bus
+
+    # Check 2: Full send → read → archive cycle
+    agent = os.environ.get("AGENT_NAME", "") or os.environ.get("USER", "unknown")
+    queue = f"inbox_{agent}"
+    test_cid = f"doctor-e2e-{os.urandom(4).hex()}"
+
+    # Drain any stale messages so we read back our own
+    for _ in range(10):
+        stale = bus_read(queue, vt=3)
+        if stale and stale.get("msg_id"):
+            bus_archive(queue, stale["msg_id"])
+        else:
+            break
+
+    try:
+        send_r = bus_send(queue, {
+            "from": agent, "to": agent,
+            "subject": "DOCTOR_TEST", "correlation_id": test_cid,
+            "body": json.dumps({"test": True})
+        })
+        if not send_r or not send_r.get("msg_id"):
+            res.add("Bus E2E (send)", "FAIL", f"No msg_id returned: {send_r}",
+                    "Check auth credentials in cortex-bus.conf")
+            return
+    except Exception as e:
+        res.add("Bus E2E (send)", "FAIL", str(e),
+                "Check: curl -u user:pass CORTEX_BUS_URL/api/pgmq/send")
+        return
+
+    import time
+
+    # Read back immediately — try a few times, vt so we own it
+    read_r = None
+    for attempt in range(3):
+        read_r = bus_read(queue, vt=30)
+        if read_r and read_r.get("msg_id"):
+            break
+        time.sleep(0.5)
+
+    if not read_r or not read_r.get("msg_id"):
+        res.add("Bus E2E (read)", "FAIL", "No message read back after send",
+                "Message may have been consumed by another process or VT expired")
+        return
+
+    body = read_r.get("body", {})
+    if not isinstance(body, dict):
+        res.add("Bus E2E (read)", "WARN",
+                f"body is {type(body).__name__}, expected dict — bus_read auto-parse may not be active")
+        body = {}
+
+    cid = body.get("correlation_id", "")
+    cid_ok = cid == test_cid
+    arch_ok = bus_archive(queue, read_r["msg_id"])
+
+    if cid_ok and arch_ok:
+        res.add("Bus E2E (send→read→archive)", "PASS",
+                f"correlation_id match — full cycle OK")
+    elif cid_ok:
+        res.add("Bus E2E (archive)", "WARN",
+                f"Sent and read OK but archiving failed", "Check PGMQ archive endpoint")
+    else:
+        res.add("Bus E2E (correlation_id)", "FAIL",
+                f"Expected {test_cid}, got {cid} — probably read another agent's message",
+                "Run: python3 ops/scripts/manage/bus-self-test.py")
+
+
 def check_services(res):
     """4. Service health: external endpoints, Ollama, gbrain."""
     for name, url, expected in EXTERNAL_SERVICES:
@@ -742,6 +832,9 @@ def check_services(res):
         res.add("Agent Bus (direct)", "WARN",
                 f"HTTP {bus_health} or unreachable — bus may be down",
                 "Check: systemctl --user status agent-bus  OR  pgrep agent-bus")
+
+    # ── Agent Bus end-to-end test (through nginx, same path as agents) ──
+    _check_bus_e2e(res)
 
     # ── Ollama
     out = run_bg([CURL, "-s", "http://localhost:11434/api/tags", "--max-time", "5"])
