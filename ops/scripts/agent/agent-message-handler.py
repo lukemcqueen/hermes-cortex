@@ -383,15 +383,42 @@ def main():
             return False
 
         body = msg.get("body", {})
+        msg_id = msg.get("msg_id", "")
+        correlation_id = msg.get("correlation_id", "")
+
         # PGMQ returns body as a JSON string — parse it if needed
         if isinstance(body, str):
             try:
                 body = json.loads(body)
             except (json.JSONDecodeError, TypeError):
-                log(f"Failed to parse message body: {body[:100]}…")
-                return False
+                # Plain-text body — try to match known keyword prefixes
+                body_str = body.strip()
+                known_prefixes = {
+                    "UPDATE_REQUEST:": "UPDATE_REQUEST",
+                    "ROLLBACK_REQUEST:": "ROLLBACK_REQUEST",
+                    "GIT_AUTH_CHECK:": "GIT_AUTH_CHECK",
+                    "FIX_REQUEST:": "FIX_REQUEST",
+                }
+                matched = None
+                for prefix, subject_val in known_prefixes.items():
+                    if body_str.startswith(prefix):
+                        rest = body_str[len(prefix):].strip()
+                        matched = {
+                            "subject": subject_val,
+                            "body": {"command": rest, "run_doctor": True} if subject_val == "UPDATE_REQUEST" else {"reason": rest},
+                        }
+                        break
+
+                if matched:
+                    body = matched
+                    log(f"Parsed plain-text body as {body['subject']}: {body_str[:80]}…")
+                else:
+                    # Archive unparseable so it doesn't loop forever
+                    log(f"Unparseable message body, archiving: {body_str[:100]}…")
+                    archive_message(inbox_queue, msg_id)
+                    return False
+
         subject = body.get("subject", "")
-        correlation_id = msg.get("correlation_id", "")
 
         # Idempotency check
         if correlation_id in processed:
