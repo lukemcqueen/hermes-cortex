@@ -821,14 +821,29 @@ def check_services(res):
             res.add(f"Service ({name})", "WARN", f"HTTP {code} (unexpected)")
 
     # ── Agent Bus direct health (bypasses nginx auth_basic) ──
+    # Downgraded to INFO if the remote bus path works (MCP-routed setups)
     bus_health = run_bg([CURL, "-s", "-o", "/dev/null", "-w", "%{http_code}",
                          "http://127.0.0.1:8903/health", "--max-time", "5"])
     if bus_health == "200":
         res.add("Agent Bus (direct)", "PASS", "HTTP 200 — bus service healthy via localhost:8903")
+    elif bus_health == "000":
+        # Local daemon not running — check if remote bus works instead
+        try:
+            sys.path[0:0] = [str(CORTEX_REPO / "ops" / "scripts" / "lib")]
+            from cortex_bus import bus_health as _bh
+            h = _bh()
+            if h.get("status") == "ok":
+                res.add("Agent Bus (direct)", "INFO",
+                        "Local bus daemon not found; traffic routed via MCP (remote bus healthy)")
+            else:
+                raise ValueError(f"Unhealthy: {h}")
+        except Exception:
+            res.add("Agent Bus (direct)", "FAIL",
+                    "Local daemon down AND remote unreachable",
+                    "Check: systemctl --user status agent-bus  OR  pgrep agent-bus")
     else:
         res.add("Agent Bus (direct)", "WARN",
-                f"HTTP {bus_health} or unreachable — bus may be down",
-                "Check: systemctl --user status agent-bus  OR  pgrep agent-bus")
+                f"HTTP {bus_health} — unexpected response")
 
     # ── Agent Bus end-to-end test (through nginx, same path as agents) ──
     _check_bus_e2e(res)
