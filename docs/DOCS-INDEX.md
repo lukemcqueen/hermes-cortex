@@ -69,6 +69,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/fleet-reference.md` | Deployment-specific cron schedule reference — update, status, deploy crons |
 | `docs/skills-manifest-reference.md` | Skills manifest — how to manage project-level skills via YAML |
 | `docs/reference/skill-loading.md` | Skill loading protocol — every agent loads skills on session start |
+| `docs/reference/cortex-bus-config.md` | **↗ Bus config guide** — install, auth resolution, message format, cron auth, troubleshooting |
 | `docs/gbrain-stale-lock-detection.md` | gbrain stale lock file detection & auto-recovery — root cause, automated fix via service-recovery, manual diagnostics |
 | `docs/cron-schedules.md` | **Canonical cron schedule reference** — every cron, schedule, type, script, delivery. Update whenever schedules change. |
 | `docs/cron-jobs-reference.md` | **Cron jobs inventory** — all cron jobs with name, type, schedule, and purpose (extracted from AGENTS.md) |
