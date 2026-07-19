@@ -13,7 +13,7 @@ platforms: [linux, macos]
 metadata:
   hermes:
     tags: [docs, governance, agents, audit, broadcast, soul, freshness]
-    related_skills: [soul-refinement, agent-inbox, documentation-scope, repo-organization, cron-job-management]
+    related_skills: [orch-skill-lifecycle, agent-inbox, documentation-scope, repo-organization, cron-job-management]
 ---
 
 # Doc Freshness — AGENTS.md + SOUL.md Governance
@@ -27,7 +27,7 @@ A cross-document freshness system that ensures AGENTS.md (fleet coordination rul
 | **Template drift check** | `template-diff-check.py` runs during `cortex-update.sh` after every `git pull`. Compares local `~/.hermes/SOUL.md` against `docs/templates/SOUL.md` for missing sections, stale content markers, and deprecated patterns. | Each agent's own `cortex-update.sh` | Every `git pull` (typically daily) |
 | **Weekly audit** | `agents-doc-audit.py` checks all SOUL.md + AGENTS.md for mandatory section *presence* | Moses (orchestrator) | Monday 7am KST |
 | **Post-update broadcast** | Moses sends inbox message to all agents after modifying AGENTS.md or his SOUL.md | Moses (orchestrator) | On change |
-| **Daily gap fill** | `orch-skill-lifecycle` cron (orchestrator) evaluates agent data, patches skills/SOUL.md. Non-orchestrators use `agent-daily-soul-refinement` as fallback. | Per-agent | Daily 04:00 (orchestrator) or 23:00 (fallback) |
+| **Daily gap fill** | `orch-skill-lifecycle` cron (orchestrator) evaluates agent data, patches skills/SOUL.md. Non-orchestrators use the bus to submit learning reports. | Per-agent | Daily 04:00 (orchestrator) |
 | **Session-start check** | Every agent reads AGENTS.md + own SOUL.md at session start | Each agent | Every session |
 
 **Key insight:** The template drift check (Layer 1) is the earliest detection layer — it fires on every `git pull` before the agent even starts a work session. It detects *content* drift (stale markers, deprecated patterns), not just missing sections. The weekly audit catches anything structural that slipped through. The daily gap fill auto-recovers. The session-start check is the last resort.
@@ -267,12 +267,12 @@ The canonical SOUL.md template lives at:
 
 It includes all mandatory sections with placeholder text. New agents should copy this to `~/.hermes/SOUL.md` and customize.
 
-## Integration with soul-refinement
+## Integration with orch-skill-lifecycle
 
-The `soul-refinement` skill's Channel C (daily 23:00) handles automatic gap filling:
+The `orch-skill-lifecycle` skill's daily 04:00 KST run handles automatic gap filling:
 - Scans SOUL.md for missing mandatory sections from the template
 - Patches gaps using template structure as reference
-- Marks additions with `<!-- Added YYYY-MM-DD via soul-refinement -->`
+- Marks additions with `<!-- Added YYYY-MM-DD via orch-skill-lifecycle -->`
 
 This means even if broadcast is missed, the gap is closed within 24 hours.
 
@@ -284,7 +284,7 @@ This means even if broadcast is missed, the gap is closed within 24 hours.
 - **Don't add one-off session artifacts as mandatory sections** — a section must apply to every agent, not just today's task
 - **The stale flag is normal mid-session** — only worry if it persists through a commit cycle
 - **Don't build a second AGENTS.md checker** — `agents-doc-audit.py` is the canonical tool. Before creating any new script, search existing tools that already handle the domain. The `check-agents-dot-md.py` → `agents-doc-audit.py` merge (July 2026) was caused by not searching first.
-- **`template-diff-check.py` is a structural/language check, not a content audit** — it detects missing sections and stale markers, but doesn't verify the quality or completeness of the content within those sections. The weekly `agents-doc-audit.py` and daily `soul-refinement` cron handle content-level gap filling.
-- **Template drift check only fires if you run `cortex-update.sh`** — agents that never pull or update will never see the template drift warning. The weekly audit and daily soul refinement cron are the fallback for those agents.
+- **`template-diff-check.py` is a structural/language check, not a content audit** — it detects missing sections and stale markers, but doesn't verify the quality or completeness of the content within those sections. The weekly `agents-doc-audit.py` and daily `orch-skill-lifecycle` cron handle content-level gap filling.
+- **Template drift check only fires if you run `cortex-update.sh`** — agents that never pull or update will never see the template drift warning. The weekly audit and daily `orch-skill-lifecycle` cron are the fallback for those agents.
 - **README accuracy decays faster than agent docs** — the README is public-facing and describes install methods, scripts, paths, and counts that drift with every commit. After any significant merge (new scripts, reorganized directories, new deploy artifacts), check `docs/DOCS-INDEX.md` AND `README.md` against the actual repo tree. A stale README is how new users get stuck on first install.
 - **Model pinning is required** for LLM-driven crons with data-collection scripts. If a cron fails with "context below 64K minimum", pin its model to one with >=64K context. Check `cronjob action=list` for `model: null` on LLM-driven crons and pin them.
