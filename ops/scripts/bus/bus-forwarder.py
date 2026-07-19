@@ -109,7 +109,13 @@ def _resolve_var(key: str, default: str = "") -> str:
 
 
 def _discover_queues() -> list[str]:
-    """Fetch the queue list from the local bus API. Falls back to hardcoded list."""
+    """Fetch the queue list from the local bus API. Falls back to hardcoded list.
+
+    Only syncs orchestrator queues (moses, esther). Agent queues are NOT
+    forwarded — they read directly from the primary bus. Forwarding agent
+    queues would archive (or vt=0-peek) messages before the agent can
+    process them, and there's no benefit since agent messages are per-agent.
+    """
     token = LOCAL_TOKEN
     url = f"{LOCAL_URL}/api/pgmq/queues"
     try:
@@ -119,18 +125,15 @@ def _discover_queues() -> list[str]:
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode())
         queues = data.get("queues", []) if isinstance(data, dict) else data
-        # Only sync inbox queues (skip DLQs — they're per-instance)
+        # Only sync orchestrator inboxes — skip agent queues
         inbox = sorted(set(
             q["name"] for q in queues
-            if q.get("name", "").startswith("inbox_")
-            and not q.get("dlq", False)
-            and "health_check" not in q.get("name", "")
+            if q.get("name", "") in ("inbox_moses", "inbox_esther")
         ))
         return inbox
     except Exception:
         # Fallback to hardcoded list
-        return ["inbox_moses", "inbox_esther", "inbox_joseph",
-                "inbox_titus", "inbox_gisu", "inbox_kustos"]
+        return ["inbox_moses", "inbox_esther"]
 
 
 def _request(
