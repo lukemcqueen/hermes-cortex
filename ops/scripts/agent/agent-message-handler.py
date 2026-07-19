@@ -330,7 +330,7 @@ def archive_message(queue: str, msg_id: str):
 
 
 def report_health_change(doctor: dict, prev_doctor: dict) -> None:
-    """Report health state change to Moses via bus."""
+    """Report health state change to inbox_health_check queue."""
     healthy = doctor.get("healthy", False)
     summary = doctor.get("summary", {})
     prev_healthy = prev_doctor.get("healthy", True)
@@ -359,7 +359,7 @@ def report_health_change(doctor: dict, prev_doctor: dict) -> None:
     }
     try:
         from lib.cortex_bus import bus_send
-        result = bus_send("inbox_moses", full_body)
+        result = bus_send("inbox_health_check", full_body)
         if result:
             log(f"Health report sent: {level}")
     except Exception as e:
