@@ -15,8 +15,9 @@ import os
 import sys
 from pathlib import Path
 
-REPO = Path(os.environ.get("CORTEX_REPO", ""))
-if not REPO.is_dir():
+REPO_VAR = os.environ.get("CORTEX_REPO", "")
+REPO = Path(REPO_VAR) if REPO_VAR else Path()
+if not REPO.is_dir() or not REPO_VAR:
     for c in [Path.home() / "hermes-cortex", Path.home() / "src" / "hermes-cortex"]:
         if c.is_dir() and (c / "AGENTS.md").exists():
             REPO = c
