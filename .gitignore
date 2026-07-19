@@ -129,6 +129,7 @@ ops/scripts/
 !ops/scripts/manage/stale-ref-watchdog.sh
 !ops/scripts/manage/change-readiness.sh
 !ops/scripts/manage/skill-triage.py
+!ops/scripts/manage/bus-self-test.py
 !ops/scripts/cron_format.py
 !ops/scripts/platform_utils.py
 /runtime
