@@ -1,1 +1,1 @@
-/home/esther/hermes-cortex/ops/scripts/agent/agents-doc-audit.py
+agent/agents-doc-audit.py
