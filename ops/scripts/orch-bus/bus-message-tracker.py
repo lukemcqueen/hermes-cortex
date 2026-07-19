@@ -116,7 +116,7 @@ def cmd_send(args):
 
     queue = args[0]
     message_text = args[1]
-    deadline_min = 60  # default 1 hour
+    deadline_min = 15  # default 15 minutes — agents should complete tasks in minutes
     correlation_id = str(uuid_mod.uuid4())
 
     # Parse optional args
