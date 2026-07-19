@@ -716,7 +716,7 @@ for row in r:
 A stale lock file can persist if a session was interrupted:
 
 ```bash
-rm -f ~/.hermes-cortex/state/.governance-active.json
+rm -f ~/.hermes-cortex/state/.governance-*
 # Then call begin_change() again
 ```
 

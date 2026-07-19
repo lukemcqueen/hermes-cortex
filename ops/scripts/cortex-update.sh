@@ -1373,6 +1373,7 @@ main() {
   fi
 
   # ── Clean stale governance locks ─────────────────────────
+  # First pass: clean locks whose heartbeat has exceeded TTL
   for _lock in "$STATE_DIR"/.governance-*.json; do
     [ -f "$_lock" ] || continue
     local _lock_age _lock_heartbeat
@@ -1387,6 +1388,38 @@ main() {
         rm -f "$_lock"
         info "Cleaned stale governance lock: $_lock"
       fi
+    fi
+  done
+
+  # Second pass: clean legacy slug-based lock files (upgrade from v1→v2)
+  # These use the old naming scheme .governance-{slug}.json or .governance-generic.json
+  # and are superseded by session-scoped locks. Check content for absence of
+  # session_id field to distinguish legacy from session-scoped locks.
+  for _legacy_lock in "$STATE_DIR"/.governance-*.json; do
+    [ -f "$_legacy_lock" ] || continue
+    local _has_session
+    _has_session=$(python3 -c "
+import json
+try:
+    s = json.load(open('$_legacy_lock'))
+    print('yes' if 'session_id' in s and s['session_id'] else 'no')
+except: print('no')
+" 2>/dev/null || echo "no")
+    # Legacy locks have no session_id — clean them unconditionally
+    if [[ "$_has_session" == "no" ]]; then
+      local _has_heartbeat_repo
+      _has_heartbeat_repo=$(python3 -c "
+import json
+try:
+    s = json.load(open('$_legacy_lock'))
+    hb = s.get('heartbeat_at', '')
+    task = s.get('task_id', '')
+    slug = s.get('repo_slug', '')
+    print(f'hb={hb}|task={task}|slug={slug}')
+except: print('error')
+" 2>/dev/null || echo "error")
+      rm -f "$_legacy_lock"
+      info "Cleaned legacy governance lock (upgrade): $_legacy_lock — $_has_heartbeat_repo"
     fi
   done
 

@@ -83,7 +83,8 @@ def _read_task_fields() -> dict:
     for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json"), reverse=True):
         try:
             state = json.loads(lock_file.read_text())
-            if state.get("repo_slug") == current_slug:
+            if state.get("repo_slug") is None or state.get("repo_slug") == current_slug:
+                # Legacy locks (no repo_slug) accepted for upgrade compat
                 return {
                     "task_id": state.get("task_id", ""),
                     "task_status": state.get("status", ""),
@@ -149,7 +150,8 @@ def _has_governance_lock() -> bool:
     for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
         try:
             state = json.loads(lock_file.read_text())
-            if state.get("repo_slug") != current_slug:
+            if state.get("repo_slug") is not None and state.get("repo_slug") != current_slug:
+                # Legacy locks (without repo_slug) are accepted for upgrade compat
                 continue
             if _is_lock_stale(state):
                 try:

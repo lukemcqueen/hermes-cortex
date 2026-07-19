@@ -195,59 +195,55 @@ systemctl is-active|is-enabled|status|list-units
 
 ### Location
 
-Lock files are **scoped per git repo**. Each repo on the same machine gets its own independent lock file:
+Lock files are **session-scoped** — each governance session gets its own
+file named by session ID:
 
 ```
-~/.hermes-cortex/state/.governance-{repo-slug}.json
+~/.hermes-cortex/state/.governance-{session_id}.json
 ```
 
-Where `{repo-slug}` is the basename of `git rev-parse --show-toplevel`.
+Example: `.governance-sess_abc123def456.json`
 
-Examples:
-
-| Repo root | Lock file |
-|-----------|-----------|
-| `/home/user/hermes-cortex` | `~/.hermes-cortex/state/.governance-hermes-cortex.json` |
-| `/home/user/project-b` | `~/.hermes-cortex/state/.governance-project-b.json` |
-| Outside a git repo | `~/.hermes-cortex/state/.governance-generic.json` |
-
-This means you can have an active governance lock in `hermes-cortex` and start a completely independent governance session in `project-b` — they don't interfere. A stale lock from one repo never accidentally covers writes in another.
+The repo slug is **stored in the lock file content**, not the filename.
+This eliminates all cwd-dependency: the enforcer scans all `.governance-*.json`
+files and matches by the `repo_slug` field. Multiple sessions in the same repo
+each get their own file.
 
 ### Created By
 
 `mcp_loop_governance_begin_change(task_id="...", description="...")`
 
-The `loop-gov-mcp.py` MCP server writes this file when `begin_change` is called.
+The `loop-gov-mcp.py` MCP server writes the session-scoped lock file when
+`begin_change` is called.
 
 ### Checked By
 
-The governance enforcer plugin's `_has_governance_lock()` function:
+The governance enforcer plugin's `_has_governance_lock()` function
+scans all `.governance-*.json` files, filters by `repo_slug` in content,
+checks TTL staleness, and cleans stale/corrupt files automatically:
 
 ```python
 GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 
-def _governance_lock_path() -> Path:
-    """Return repo-scoped lock path. Each repo gets its own file."""
-    try:
-        repo_root = subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"],
-            stderr=subprocess.DEVNULL, timeout=3,
-        ).decode().strip()
-        slug = Path(repo_root).name
-    except Exception:
-        slug = "generic"
-    return GOVERNANCE_STATE_DIR / f".governance-{slug}.json"
-
 def _has_governance_lock() -> bool:
-    lock_path = _governance_lock_path()
-    if not lock_path.exists():
-        return False
-    try:
-        state = json.loads(lock_path.read_text())
-        task_id = state.get("task_id", "")
-        return bool(task_id)
-    except (json.JSONDecodeError, OSError):
-        return False
+    current_slug = _derive_slug()
+    for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
+        try:
+            state = json.loads(lock_file.read_text())
+            # Legacy locks (no repo_slug) accepted for upgrade compat
+            if state.get("repo_slug") is not None and state.get("repo_slug") != current_slug:
+                continue
+            if _is_lock_stale(state):
+                lock_file.unlink()
+                continue
+            if state.get("task_id", ""):
+                return True
+        except (json.JSONDecodeError, OSError):
+            try:
+                lock_file.unlink()
+            except OSError:
+                pass
+    return False
 ```
 
 ### Format
@@ -256,15 +252,20 @@ def _has_governance_lock() -> bool:
 {
   "task_id": "fix-auth-403",
   "description": "Add rate limiting to auth endpoint",
+  "repo_slug": "hermes-cortex",
   "started_at": "2026-07-04T00:00:00",
   "agent": "joseph",
+  "session_id": "sess_abc123def456",
+  "ttl_seconds": 3600,
+  "heartbeat_at": "2026-07-04T00:00:00Z",
   "scored": false
 }
 ```
 
 ### Released By
 
-`mcp_loop_governance_end_change(task_id="...")` — deletes the lock file.
+`mcp_loop_governance_end_change(task_id="...")` — deletes the session's
+lock file.
 
 ### Critical: File Must Be Accessible
 
@@ -411,7 +412,7 @@ This pattern works for any policy you want to enforce at the tool level — the 
 ## Key Lessons
 
 1. **MCP servers cannot block built-in tools** — they only provide new tools. Enforcement must happen at the plugin level.
-2. **Lock files are per-repo** — each repo gets its own `.governance-{slug}.json`. A lock open in `hermes-cortex` doesn't affect work in `project-b`, and stale locks never accidentally cover writes in a different repo.
+2. **Lock files are session-scoped** — each session gets its own `.governance-{session_id}.json`. The `repo_slug` is stored in the lock content, so the enforcer scans all locks and matches by content. This eliminates the cwd-mismatch problem entirely. Multiple sessions in the same repo can each hold a valid lock.
 3. **The file system is the lock** — the governance lock is a file on disk. Any process on the same filesystem that reads it can enforce policy based on it. Processes on different filesystems can't — and that's a feature (remote backends block everything).
 4. **Plugins compose** — multiple plugins can register `pre_tool_call` handlers. First block wins. This means you can layer security policies (Docker policy + governance + rate limiting) as independent plugins.
 5. **Plugin changes require restart** — no hot-reload. Always `/reset` after installing or modifying a plugin.

@@ -58,7 +58,7 @@ Below is the canonical set. Every agent must have these principles.
 6. `mcp_loop_governance_end_change(task_id="<short-name>")` — release governance lock
 7. **If `end_change` rejects** ("no scored cycle found"): the MCP server did not auto-create a cycle for this tool type (known limitation: `patch` under lock doesn't log cycles). Do NOT silently force-clear. Instead:
    a. **Confess clearly** — state: "end_change rejected — no cycle auto-created for this tool type. Force-clearing lock."
-   b. Remove the lock file: `rm -f ~/.hermes-cortex/state/.governance-hermes-cortex.json`
+   b. Remove the lock file: `rm -f ~/.hermes-cortex/state/.governance-*`
    c. Document the missed auto-cycle in this section
 8. Verify: did you actually score the last change?
 

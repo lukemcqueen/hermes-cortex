@@ -47,7 +47,7 @@ A task not preceded by `task-start` is a trust violation.
 3. `mcp_loop_governance_end_change(task_id="<short-name>")` — release governance lock
 4. If `end_change` rejects ("no scored cycle found"): the MCP server did not auto-create a cycle for this tool type.
    a. **Confess clearly** — state: "end_change rejected — no cycle auto-created. Force-clearing."
-   b. `rm -f ~/.hermes-cortex/state/.governance-hermes-cortex.json`
+   b. `rm -f ~/.hermes-cortex/state/.governance-*`
 5. Verify: did you actually score the last change?
 
 **HARD RULE:** Never force-clear a lock without calling `end_change` first. The sequence must be: `cycle_query` → try `feedback_accept/override` → try `end_change` → only if that rejects → confess + force-clear. Skipping `end_change` is skipping the accountability checkpoint.

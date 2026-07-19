@@ -36,7 +36,7 @@ metadata:
 
 **IMPORTANT CORRECTION:** The `loop-gov-mcp.py` MCP server does NOT block Hermes write tools (`write_file`, `patch`, `terminal`, etc.). MCP servers only *provide* tools — they do not intercept or block Hermes built-in tools. The `begin_change()` / `end_change()` MCP tools create and release governance lock files, but the actual blocking must happen at the plugin level. If the plugin is not installed, there is NO structural enforcement — only self-discipline.
 
-**Lock files are per-repo:** Each git repo on the same machine gets its own lock at `~/.hermes-cortex/state/.governance-{repo-slug}.json`. A lock open in `hermes-cortex` doesn't affect work in `project-b`. See the governance-plugin-implementation.md reference for details.
+**Lock files are session-scoped:** Each governance session gets its own lock at `~/.hermes-cortex/state/.governance-{session_id}.json`. The repo slug is stored in the lock content so the enforcer scans and matches by content. Multiple sessions in the same repo each hold their own lock. See the governance-plugin-implementation.md reference for details.
 
 ## Tools
 
@@ -117,7 +117,7 @@ After each change, find and evaluate the auto-created cycle:
 **If no cycle was auto-created:** Known limitation — `patch` under active lock doesn't auto-create cycles. Follow the force-clear protocol:
    - Call `end_change(task_id)` — it will reject with "no scored cycle found"
    - **Confess clearly**: "end_change rejected — no cycle auto-created for this tool type. Force-clearing lock."
-   - `rm -f ~/.hermes-cortex/state/.governance-$(basename $(git rev-parse --show-toplevel 2>/dev/null || echo 'generic')).json`
+   - `rm -f ~/.hermes-cortex/state/.governance-*`
    - Never silently force-clear without calling `end_change` first.
 
 **Phase 3 is about awareness, not bureaucracy.** If you can't find a cycle, the system still knows you followed the pattern. The habit matters more than the DB entry.
