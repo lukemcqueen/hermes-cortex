@@ -836,19 +836,28 @@ def check_services(res):
                     f"HTTP {bus_url} — unexpected response")
     else:
         # Non-orchestrator agent — check remote bus only
-        remote_url = os.environ.get("CORTEX_BUS_URL", "")
-        if not remote_url:
+        def _get_conf(key):
+            val = os.environ.get(key, "")
+            if val:
+                return val
             conf = CORTEX_HOME / "cortex-bus.conf"
             if conf.exists():
                 for line in conf.read_text().splitlines():
-                    if line.startswith("CORTEX_BUS_URL="):
-                        val = line.split("=", 1)[1].strip().strip("\"'")
-                        if val and "127.0.0.1" not in val:
-                            remote_url = val
-                        break
-        if remote_url:
+                    if line.startswith(f"{key}="):
+                        v = line.split("=", 1)[1].strip().strip("\"'")
+                        if v and "127.0.0.1" not in v:
+                            return v
+            return ""
+        bus_url = _get_conf("CORTEX_BUS_URL")
+        bus_fallback = _get_conf("CORTEX_BUS_FALLBACK_URL")
+        if bus_url or bus_fallback:
+            parts = []
+            if bus_url:
+                parts.append(f"BUS_URL set")
+            if bus_fallback:
+                parts.append(f"FALLBACK_URL set")
             res.add("Agent Bus (direct)", "INFO",
-                    "No local bus daemon; traffic routed remotely")
+                    "No local bus daemon; " + " & ".join(parts))
         else:
             res.add("Agent Bus (direct)", "SKIP",
                     "No local bus daemon and no remote bus URL — not applicable")
