@@ -4,40 +4,34 @@ Give this to each fleet agent (Gisu, Kustos, Joseph, Titus).
 
 ---
 
-**Task:** Pull latest, force-update, run doctor, fix issues, report back
+Task: Pull latest, force-update, run doctor, fix issues, report back
 
-### 1. Pull latest from main branch
-
-```bash
+1. Pull latest from main branch:
+```
 cd ~/hermes-cortex && git pull --rebase origin main
 ```
 
-### 2. Force-update all scripts and services
-
-```bash
+2. Force-update all scripts and services:
+```
 bash ops/scripts/cortex-update.sh --force-all
 ```
 
-### 3. Run the doctor and inspect ALL warnings
-
-```bash
+3. Run the doctor and inspect ALL warnings:
+```
 python3 ops/scripts/manage/cortex-doctor.py
 ```
 
-Fix every ⚠️ and ❌, then re-run until it shows zero warnings. Common fixes:
-
+Fix every ⚠️ and ❌, then re-run until clean. Common fixes:
 - `git pull --rebase origin main` if behind
 - `bash ops/scripts/manage/symlink-audit.sh` for broken symlinks
-- Target: **✅ Overall: HEALTHY** with 0 warn · 0 fail
+- Target: ✅ Overall: HEALTHY with 0 warn · 0 fail
 
-### 4. Verify the bus is reachable
-
-```python
+4. Verify the bus is reachable:
+```
 python3 -c "from lib.cortex_bus import bus_send, bus_read, bus_archive; print('OK')"
 ```
 
-### 5. Send UPDATE_RESULT confirming completion
-
+5. Send UPDATE_RESULT confirming completion:
 ```python
 import json, os, sys
 sys.path.insert(0, os.path.expanduser('~/hermes-cortex/ops/scripts/lib'))
@@ -59,4 +53,4 @@ result = {
 bus_send('inbox_moses', result)
 ```
 
-> **Critical:** The inner `body` field must be a native dict, NOT `json.dumps()`'d — this avoids the double-encoding crash that's been blocking them.
+Critical: The inner body field must be a native dict, NOT json.dumps()'d — this avoids the double-encoding crash that's been blocking them.
