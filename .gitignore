@@ -97,39 +97,7 @@ agent-registry.json
 # Use ops/install/deploy/agent-registry.json.example as the template
 .governance-*.json
 /deploy/
-ops/scripts/
-!ops/scripts/agent/orch-fleet-watchdog.py
-!ops/scripts/agent/contact-moses.sh
-!ops/scripts/agent/agent-remediate-apply.py
-!ops/scripts/agent/agent-apply-fixes.py
-!ops/scripts/agent/agent-health-monitor.py
-!ops/scripts/agent/orch-health-report.py
-!ops/scripts/agent/agent-message-handler.py
-!ops/scripts/health/service-recovery.py
-!ops/scripts/inbox/inbox-sensor.py
-!ops/scripts/inbox/inbox-flag.py
-!ops/scripts/bus/
-!ops/scripts/bus/agent-bus-monitor.sh
-!ops/scripts/bus/orch-bus-processor.py
-!ops/scripts/bus/orch-bus-remediate.sh
-!ops/scripts/bus/generate-bus-wrappers.py
-!ops/scripts/bus/bus-sensor.py
-!ops/scripts/install/setup-agent-bus.sh
-!ops/scripts/orch-bus/orch-bus-depth-watchdog.sh
-!ops/scripts/orch-bus/orch-bus-sensor.py
-!ops/scripts/orch-bus/orch-bus-health-check.py
-!ops/scripts/health/heartbeat.py
-!ops/scripts/health/cron-quality-watchdog.py
-!ops/scripts/health/langfuse-health-watchdog.py
-!ops/scripts/health/report-agent-health.py
-!ops/scripts/health/system-alert-watchdog.py
-!ops/scripts/health/swap-refresh.py
-!ops/scripts/manage/governance-auditor.py
-!ops/scripts/manage/stale-ref-scanner.py
-!ops/scripts/manage/stale-ref-watchdog.sh
-!ops/scripts/manage/change-readiness.sh
-!ops/scripts/manage/skill-triage.py
-!ops/scripts/manage/bus-self-test.py
-!ops/scripts/cron_format.py
-!ops/scripts/platform_utils.py
+# ops/scripts/ is fully tracked — every script in here is intentional
+# and worth sharing with the fleet. New scripts are auto-tracked.
+# (Previously used per-file whitelist; fell out of sync too often.)
 /runtime
