@@ -114,7 +114,6 @@ if $UNINSTALL; then
   printf "${CYAN}━━━ Uninstalling Orchestrator-Only Crons ━━━${RESET}\n\n"
   for job in \
     "orch-fleet-watchdog" \
-    "bus-agent-response-test" \
     "orch-skill-lifecycle" \
     "bus-forwarder-sync" "bus-audit-watchdog" \
     "bus-recover-timeouts" "bus-confirmation-poller" \
@@ -397,16 +396,6 @@ create_cron "bus-audit-watchdog" "*/1 * * * *" \
 create_cron "bus-recover-timeouts" "*/5 * * * *" \
   "orch-bus-recover-timeouts.sh" \
   "Recover stuck processing messages from the bus Postgres database every 5 minutes" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
-
-# Agent response test — PING → PONG via bus (every 30 min, silent no_agent)
-create_cron "bus-agent-response-test" "*/30 * * * *" \
-  "orch-bus-agent-response-test.py" \
-  "" \
   "" \
   "" \
   "origin" \

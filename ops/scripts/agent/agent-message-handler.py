@@ -480,25 +480,6 @@ def main():
             log(f"Received FIX_REQUEST (corr={correlation_id[:8]}…) — not yet implemented")
             return False
 
-        elif subject == "PING":
-            # Auto-respond with PONG — no LLM, no processing
-            ping_body = body.get("body", {})
-            if isinstance(ping_body, str):
-                try:
-                    ping_body = json.loads(ping_body)
-                except (json.JSONDecodeError, TypeError):
-                    ping_body = {}
-            ping_id = ping_body.get("ping_id", f"unknown-{correlation_id[:8]}")
-            respond_to = ping_body.get("respond_to_queue", "inbox_moses")
-            log(f"PING from {body.get('from', '?')} → responding PONG (ping_id={ping_id[:20]})")
-            archive_message(inbox_queue, msg.get("msg_id", ""))
-            send_bus_result(
-                respond_to, correlation_id,
-                {"pong_id": ping_id, "status": "alive", "agent": AGENT_NAME, "timestamp": datetime.now(timezone.utc).isoformat()},
-                "PONG",
-            )
-            return True
-
         return False
 
     # Health state tracking (report on state change, not every tick)
