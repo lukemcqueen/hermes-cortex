@@ -42,7 +42,7 @@ To force re-evaluation on the next deploy:
 
 ```bash
 # Re-resolve SSL certs and port prefix from scratch (Python script, primary)
-python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py --force
+python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py --force
 
 # Or with the legacy bash script (not recommended)
 # CORTEX_FORCE_DEPLOY=1 sudo install-nginx-full.sh
@@ -114,23 +114,23 @@ CORTEX_SKIP_NGINX=1 bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 
 ```bash
 # Auto-detect
-python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py
+python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py
 
 # Dry-run (no files changed)
-python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py --dry-run
+python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py --dry-run
 
 # Explicit domain
-python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py --domain mydomain.com
+python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py --domain mydomain.com
 
 # Validate only
-python3 ~/hermes-cortex/deploy/nginx/hermes-services-apply.py --validate
+python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py --validate
 ```
 
 ---
 
 ## Template Placeholders
 
-These placeholders in `deploy/nginx/hermes-services.conf` are substituted at
+These placeholders in `ops/install/deploy/nginx/hermes-services.conf` are substituted at
 deploy time by all three scripts above:
 
 | Placeholder | Substituted with | Example value |
