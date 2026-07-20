@@ -30,6 +30,7 @@ Exit codes:
 
 import json
 import os
+import socket
 import subprocess
 import sys
 import time
@@ -384,6 +385,7 @@ def main():
     args = parser.parse_args()
 
     inbox_queue = f"inbox_{AGENT_NAME}"
+    log(f"Starting — polling {inbox_queue}")
     state = load_state()
     processed = set(state.get("processed_ids", []))
 
