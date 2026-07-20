@@ -146,6 +146,7 @@ register "ops/scripts/bus/bus-sensor.py"                 "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/orch-bus/orch-bus-message-tracker.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker.py"
 register "ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker-alert.sh"
 register "ops/scripts/orch-bus/orch-bus-forwarder.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-forwarder.py"
+register "ops/scripts/orch-bus/orch-bus-agent-response-test.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-agent-response-test.py"
 register "ops/scripts/install/install-orch-crons.sh"  "${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh"
 register "ops/scripts/install/orch-install-bus.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-install-bus.sh"
 register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
