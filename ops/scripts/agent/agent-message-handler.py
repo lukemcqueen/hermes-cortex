@@ -41,7 +41,18 @@ HOME = Path.home()
 CORTEX_REPO = HOME / "hermes-cortex"
 CORTEX_UPDATE = CORTEX_REPO / "ops" / "scripts" / "cortex-update.sh"
 DOCTOR_PATH = CORTEX_REPO / "ops" / "scripts" / "manage" / "cortex-doctor.py"
-AGENT_NAME = os.environ.get("AGENT_NAME", HOME.name)
+# Derive AGENT_NAME from env (set by cron/launchd) or cortex-bus.conf (fleet setup) or hostname
+AGENT_NAME = os.environ.get("AGENT_NAME", "")
+if not AGENT_NAME:
+    bus_conf = HOME / ".hermes-cortex" / "cortex-bus.conf"
+    if bus_conf.exists():
+        for line in bus_conf.read_text().splitlines():
+            if line.startswith("AGENT_NAME="):
+                val = line.split("=", 1)[1].strip().strip("\"'")
+                AGENT_NAME = val
+                break
+if not AGENT_NAME:
+    AGENT_NAME = HOME.name
 # Ensure lib.cortex_bus is importable
 from hermes_paths import ensure_scripts_path
 ensure_scripts_path()
