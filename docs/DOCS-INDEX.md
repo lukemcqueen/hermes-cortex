@@ -38,7 +38,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/agent-bus-setup.md` | **Agent Bus** — PGMQ-based Postgres message queue replacing file inbox |
 | `ops/scripts/lib/cortex_bus.py` | **Cortex Bus library** — shared HTTP API wrapper over the Agent Bus: bus_send/bus_read/bus_archive/bus_list_queues |
 | `docs/esther-bus-setup.md` | **Esther Bus Backup** — orchestrator-only guide: bus server, nginx with X-Forwarded-User, Postgres setup, verification |
-| `docs/agent-inbox-setup.md` | Agent inbox setup (legacy) — file-based inbox architecture (superseded by Agent Bus) |
+| ~~`docs/agent-inbox-setup.md`~~ | Agent inbox setup (legacy — file deleted; superseded by Agent Bus → `docs/agent-bus-setup.md`) |
 | `docs/service-layer-decision.md` | **Fleet-wide decision:** User-level systemd (Linux) / LaunchAgents (macOS) for all agent services. Full HC-Party architecture review with 6-role weighted matrix. |
 | `docs/linux-service-layer.md` | Linux service layer guide — user-level systemd, reboot survivability, template, migration from stale system units |
 | `docs/macos-service-layer.md` | macOS service layer guide — LaunchAgents vs LaunchDaemons, plist templates, migration guide, fleet service map |

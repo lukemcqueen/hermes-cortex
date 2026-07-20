@@ -11,7 +11,7 @@ repository root).
 
 ## Docker Images
 
-These images are referenced in `deploy/docker-compose.langfuse.yml` and
+These images are referenced in `ops/install/deploy/docker-compose.langfuse.yml` and
 `ops/offline/kiwix-docker-compose.yml`. They are pulled at runtime from their
 respective registries and run as-is (no modifications, redistribution, or
 embedding).
