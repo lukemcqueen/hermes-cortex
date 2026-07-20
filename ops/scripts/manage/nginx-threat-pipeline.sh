@@ -236,13 +236,20 @@ else
           break
         else
           PUSH_EXIT=$?
-          if [ $push_attempt -eq 1 ] && [ $PUSH_EXIT -eq 128 ]; then
-            log "  ⚠ Remote ahead — pulling and retrying"
+          if [ $push_attempt -eq 1 ]; then
+            [ $PUSH_EXIT -eq 128 ] && log "  ⚠ Remote ahead — pulling and retrying" || log "  ⚠ Push failed (code $PUSH_EXIT) — pulling and retrying"
             $TIMEOUT_CMD 15 git pull --rebase origin main 2>&1 || true
-          elif [ $push_attempt -eq 1 ]; then
-            log "  ⚠ Push failed (code $PUSH_EXIT) — pulling and retrying"
-            $TIMEOUT_CMD 15 git pull --rebase origin main 2>&1 || true
+            # If rebase created a conflict, abort to leave repo clean for next cycle
+            if git rebase --show-current &>/dev/null 2>&1; then
+              log "  ⚠ Rebase conflict — aborting to leave repo clean"
+              git rebase --abort 2>/dev/null || true
+              PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ⚠ Push blocked by remote conflict — will retry next cycle"$'\n'
+            fi
           else
+            # Check for leftover rebase conflict (in case the first attempt's abort also failed)
+            if git rebase --show-current &>/dev/null 2>&1; then
+              git rebase --abort 2>/dev/null || true
+            fi
             PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ⚠ Push failed after retry"$'\n'
           fi
         fi
@@ -255,7 +262,17 @@ else
           if [ $push_attempt -eq 1 ]; then
             log "  ⚠ Push failed (code $PUSH_EXIT) — pulling and retrying"
             git pull --rebase origin main 2>&1 || true
+            # If rebase created a conflict, abort to leave repo clean for next cycle
+            if git rebase --show-current &>/dev/null 2>&1; then
+              log "  ⚠ Rebase conflict — aborting to leave repo clean"
+              git rebase --abort 2>/dev/null || true
+              PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ⚠ Push blocked by remote conflict — will retry next cycle"$'\n'
+            fi
           else
+            # Check for leftover rebase conflict (in case the first attempt's abort also failed)
+            if git rebase --show-current &>/dev/null 2>&1; then
+              git rebase --abort 2>/dev/null || true
+            fi
             PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ⚠ Push failed after retry"$'\n'
           fi
         fi
