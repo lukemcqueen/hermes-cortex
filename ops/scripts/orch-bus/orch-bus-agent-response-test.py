@@ -32,11 +32,12 @@ BUS_HEALTH_FILE = STATE_DIR / "agent-response-bus-health.json"
 
 # Timeouts
 PING_WAIT = 300   # 5 min to wait for PONG responses
-PING_TTL = 3600   # Don't re-ping an agent that was tested within 1 hour
+PING_TTL = 1500   # 25 min — always re-ping on next cron tick (cron=*/30)
 
 # Track response rate windows
 HISTORY_MAX = 100  # max entries per agent
 ALERT_THRESHOLD = 0.5  # alert if response rate drops below 50%
+ALERT_MISSES = 2  # consecutive missed PONGs before alert (~60 min)
 
 
 def get_agents() -> list[dict]:
@@ -388,12 +389,12 @@ def main():
         if "prev_consecutive_misses" in agent_state:
             prev_misses = agent_state["prev_consecutive_misses"]
 
-        if consecutive >= 3 and prev_misses < 3:
+        if consecutive >= ALERT_MISSES and prev_misses < ALERT_MISSES:
             alerts.append(f"🔴 {name} ({key}) — no PONG response for {consecutive} consecutive checks")
-        elif consecutive >= 3 and consecutive % 6 == 0 and consecutive != prev_misses:
+        elif consecutive >= ALERT_MISSES and consecutive % 6 == 0 and consecutive != prev_misses:
             # Periodic reminder every 6 misses (~3 hours)
             alerts.append(f"🔴 {name} ({key}) — still silent after {consecutive} missed checks")
-        elif consecutive == 0 and prev_misses >= 3:
+        elif consecutive == 0 and prev_misses >= ALERT_MISSES:
             resolutions.append(f"✅ {name} ({key}) — responding again after {prev_misses} missed checks")
 
         # Save current misses for next comparison
@@ -408,7 +409,7 @@ def main():
                 if not agent_state["queue_growing_alerted"]:
                     alerts.append(f"⚠️  {name} ({key}) — inbox queue growing ({current_depth} messages pending)")
                     agent_state["queue_growing_alerted"] = True
-                elif current_depth > 10 and consecutive >= 3:
+                if current_depth > 10 and consecutive >= ALERT_MISSES:
                     # Escalate: queue growing + no response = critical
                     agent_state["queue_growing_alerted"] = True
         else:
@@ -448,7 +449,7 @@ def main():
 
         # Quick health summary
         total_agents = len(agents)
-        silent = sum(1 for a in agents if state["agents"].get(a["key"], {}).get("consecutive_misses", 0) >= 3)
+        silent = sum(1 for a in agents if state["agents"].get(a["key"], {}).get("consecutive_misses", 0) >= ALERT_MISSES)
         healthy = total_agents - silent
         output_lines.append(f"\n📊 Health: {healthy}/{total_agents} agents responding")
 
