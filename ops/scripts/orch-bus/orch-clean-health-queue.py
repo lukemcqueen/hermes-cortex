@@ -23,8 +23,9 @@ if not REPO.is_dir() or not REPO_VAR:
             REPO = c
             break
 
-sys.path[0:0] = [str(REPO / "ops" / "scripts" / "lib")]
-from cortex_bus import bus_read, bus_archive
+from hermes_paths import ensure_scripts_path
+ensure_scripts_path()
+from lib.cortex_bus import bus_read, bus_archive
 
 QUEUE = "inbox_health_check"
 MAX_PER_TICK = 50

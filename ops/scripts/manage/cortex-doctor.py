@@ -725,8 +725,9 @@ def _check_bus_e2e(res):
     so this validates the full chain that agents and handler use.
     """
     try:
-        sys.path[0:0] = [str(CORTEX_REPO / "ops" / "scripts" / "lib")]
-        from cortex_bus import bus_send, bus_read, bus_archive, bus_health
+        from hermes_paths import ensure_scripts_path
+        ensure_scripts_path()
+        from lib.cortex_bus import bus_send, bus_read, bus_archive, bus_health
     except ImportError:
         res.add("Bus E2E test", "SKIP", "cortex_bus.py not importable")
         return

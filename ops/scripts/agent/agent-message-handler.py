@@ -42,11 +42,9 @@ CORTEX_REPO = HOME / "hermes-cortex"
 CORTEX_UPDATE = CORTEX_REPO / "ops" / "scripts" / "cortex-update.sh"
 DOCTOR_PATH = CORTEX_REPO / "ops" / "scripts" / "manage" / "cortex-doctor.py"
 AGENT_NAME = os.environ.get("AGENT_NAME", HOME.name)
-
-# Allow lib/ import from repo path (used when deployed via cortex-update)
-_lib_path = str(CORTEX_REPO / "ops" / "scripts")
-if _lib_path not in sys.path:
-    sys.path.insert(0, _lib_path)
+# Ensure lib.cortex_bus is importable
+from hermes_paths import ensure_scripts_path
+ensure_scripts_path()
 
 # State file to track processed correlation_ids for idempotency
 STATE_DIR = HOME / ".hermes-cortex" / "state"
@@ -482,14 +480,18 @@ def main():
             return False
 
         elif subject == "DIAGNOSTIC_REQUEST":
-            # Run agent diagnostics and return result via state file
+            # Run agent diagnostics and return result via bus
             check = ""
             if isinstance(body.get("body"), dict):
                 check = body["body"].get("check", "")
+            respond_to = "inbox_moses"
+            if isinstance(body.get("body"), dict):
+                respond_to = body["body"].get("respond_to_queue", "inbox_moses")
             log(f"DIAGNOSTIC_REQUEST from {body.get('from', '?')}: check={check or 'all'}")
             archive_message(inbox_queue, msg.get("msg_id", ""))
 
-            # Run diagnostic as subprocess and write result to state file
+            # Run diagnostic as subprocess
+            result_body = {}
             try:
                 script = Path(__file__).resolve().parent / "agent-diagnostic.py"
                 cmd = [sys.executable, str(script)]
@@ -497,24 +499,15 @@ def main():
                     cmd += ["--check", check]
                 r = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
                 if r.returncode == 0 and r.stdout:
-                    diag_data = json.loads(r.stdout)
-                    # Write to state file for audit watchdog to pick up
-                    state_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", HOME / ".hermes-cortex")) / "state"
-                    state_dir.mkdir(parents=True, exist_ok=True)
-                    state_file = state_dir / "agent-diagnostic-result.json"
-                    state_data = {
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "request_corr": correlation_id,
-                        "check": check or "all",
-                        "request_from": body.get("from", "?"),
-                        "data": diag_data,
-                    }
-                    state_file.write_text(json.dumps(state_data, indent=2, default=str))
-                    log(f"Diagnostic result written to {state_file.name} ({len(str(state_data))}b)")
+                    result_body = json.loads(r.stdout)
                 else:
-                    log(f"Diagnostic script failed: {r.stderr[:200]}")
+                    result_body = {"error": r.stderr[:200] or "No output"}
             except Exception as e:
-                log(f"Diagnostic error: {e}")
+                result_body = {"error": str(e)[:200]}
+
+            log(f"Sending DIAGNOSTIC_RESULT to {respond_to} (corr={correlation_id[:8]}…)")
+            send_bus_result(respond_to, correlation_id, result_body, "DIAGNOSTIC_RESULT")
+            log(f"DIAGNOSTIC_RESULT sent (corr={correlation_id[:8]}…)")
             return True
 
         # Unknown subject — archive so it doesn't loop forever
