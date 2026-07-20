@@ -50,7 +50,17 @@ fi
 
 # ── Check prerequisites ──
 
-# ── Check prerequisites ──
+# ── Conflict warning ──
+
+if crontab -l 2>/dev/null | grep -q agent-message-handler; then
+  warn "⚠️  agent-message-handler cron detected — this worker will conflict with the handler!"
+  warn "   Both read from inbox_${AGENT_NAME} via the bus."
+  warn "   The worker uses vt=0 peek so non-workflow messages stay visible for the handler."
+else
+  info "  No handler cron detected."
+fi
+
+# ── Install ──
 
 info "Installing agent-worker for: ${CYAN}${AGENT_NAME}${RESET}"
 

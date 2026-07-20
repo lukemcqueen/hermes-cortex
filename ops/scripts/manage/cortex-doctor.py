@@ -907,6 +907,31 @@ def check_services(res):
                 res.add("gbrain daemon", "WARN", "Neither autopilot nor sync-watch active",
                          "Run: bash ~/hermes-cortex/ops/scripts/install/install-gbrain-sync.sh")
 
+    # ── Worker service conflict check ──
+    if IS_LINUX:
+        worker_active = run_bg(["systemctl", "--user", "is-active", "hermes-agent-worker"], timeout=5).strip()
+        if worker_active == "active":
+            handler_cron_active = run_bg(["crontab", "-l"], timeout=5)
+            has_handler = "agent-message-handler" in handler_cron_active
+            if has_handler:
+                res.add("worker-service", "WARN",
+                        "hermes-agent-worker active + agent-message-handler cron — "
+                        "worker consumes inbox messages with vt=120 and skips non-workflow types, "
+                        "preventing the handler from seeing them",
+                        "Stop/disable: systemctl --user stop hermes-agent-worker && "
+                        "systemctl --user disable hermes-agent-worker && "
+                        "rm ~/.config/systemd/user/hermes-agent-worker.service && "
+                        "systemctl --user daemon-reload")
+            else:
+                res.add("worker-service", "PASS",
+                        "hermes-agent-worker active (no handler cron — no conflict)")
+        elif worker_active == "inactive" or "inactive" in worker_active:
+            res.add("worker-service", "PASS", "hermes-agent-worker not active")
+        elif worker_active:
+            res.add("worker-service", "WARN",
+                    f"hermes-agent-worker state: {worker_active}",
+                    "systemctl --user status hermes-agent-worker")
+
 
 def check_system(res):
     """5. System resources: disk, memory, systemd service scope."""

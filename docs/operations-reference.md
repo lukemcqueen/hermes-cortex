@@ -245,7 +245,21 @@ AGENT_NAME=<your-name>
 Also accepts `CORTEX_BUS_FALLBACK_URL` and `CORTEX_BUS_AUTH` (primary names). Deprecated names `CORTEX_BUS_URL` and `CORTEX_INBOX_AUTH` still work as fallback.
 
 > Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
-> Date: 2026-07-17T04:00:00+00:00
+> Date: 2026-07-17T00:00:00+00:00
+
+> **⚠️ Conflict with agent-message-handler cron**
+> The worker reads inbox messages with `vt=0` (peek — doesn't consume).
+> Non-`workflow_step` messages stay visible for the `agent-message-handler` cron
+> which runs every 5 minutes and processes `UPDATE_REQUEST`, `DIAGNOSTIC_REQUEST`,
+> etc.
+>
+> If you upgrade the worker from an older version that used `vt=120`, you MUST
+> pull the latest code and restart:
+> ```bash
+> cd ~/hermes-cortex && git pull && bash ops/scripts/cortex-update.sh --force-all
+> systemctl --user restart hermes-agent-worker
+>```
+> Run `cortex-doctor` after to verify no warnings.
 
 ---
 

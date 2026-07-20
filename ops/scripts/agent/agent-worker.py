@@ -48,7 +48,8 @@ def _request(method, path, data=None, timeout=30):
 
 
 def read_inbox():
-    return _request("POST", "/api/pgmq/read", {"queue": f"inbox_{AGENT_NAME}", "count": 5, "vt": VT_SECONDS})
+    """Read (peek with vt=0 — don't consume) messages. Non-workflow messages stay pending for handler."""
+    return _request("POST", "/api/pgmq/read", {"queue": f"inbox_{AGENT_NAME}", "count": 5, "vt": 0})
 
 
 def archive_message(msg_id):
