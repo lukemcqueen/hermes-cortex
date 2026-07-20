@@ -51,7 +51,8 @@ if [ -z "$AGENT" ]; then
 fi
 
 # ── Config ─────────────────────────────────────────────────
-INBOX_URL="${INBOX_API_URL:-https://your-domain.com:13004/api/inbox}"
+# Bus API base URL (PGMQ endpoints: /api/pgmq/queues, /api/pgmq/read)
+BUS_URL="${CORTEX_BUS_URL:-https://your-domain.com:13004}"
 AUTH=""
 
 # Try loading auth from config file — check new name first, fall back to old
@@ -69,8 +70,8 @@ fi
 # Support multiple auth var names (CORTEX_ preferred, old MOSES_ fallback)
 AUTH="${INBOX_AUTH:-${CORTEX_INBOX_AUTH:-${MOSES_INBOX_AUTH:-}}}"
 
-# ── Poll ───────────────────────────────────────────────────
-URL="${INBOX_URL}?for=${AGENT}&unread_only=true"
+# ── Poll queue depth via bus API ────────────────────────────
+URL="${BUS_URL}/api/pgmq/queues"
 
 if [ -n "$AUTH" ]; then
   RESPONSE=$(curl -sf --max-time 15 -u "$AUTH" "$URL" 2>/dev/null || echo "")
@@ -84,7 +85,7 @@ if [ -z "$RESPONSE" ]; then
 fi
 
 # ── Parse and deliver ──────────────────────────────────────
-# Use python3 to safely parse JSON
+# Parse queue depths from bus API (/api/pgmq/queues)
 OUTPUT=$(echo "$RESPONSE" | python3 -c "
 import sys, json
 try:
@@ -92,27 +93,18 @@ try:
 except (json.JSONDecodeError, Exception):
     sys.exit(0)
 
-# Try both response shapes: {messages: [...]} or direct list
-msgs = data.get('messages') or data.get('inbox_msgs') or (data if isinstance(data, list) else [])
-if not msgs:
+agent = sys.argv[1] if len(sys.argv) > 1 else '?'
+queues = data.get('queues', [])
+inbox_queue = next((q for q in queues if q.get('name') == f'inbox_{agent}'), None)
+if not inbox_queue:
     sys.exit(0)
 
-count = len(msgs)
-print(f'📬 {count} new message(s) for {sys.argv[1]}:')
-print()
-for m in msgs:
-    pri = m.get('priority', 'normal')
-    icon = '🔴' if pri == 'critical' else ('🟡' if pri == 'urgent' else '📩')
-    frm = m.get('from', '?')
-    subj = m.get('subject', '(no subject)')
-    print(f'  {icon} From: {frm} | {subj}')
-    body = m.get('body', '')
-    if len(body) > 300:
-        body = body[:300] + '...'
-    # Indent body for readability
-    for line in body.split('\\n'):
-        print(f'    {line}')
-    print()
+depth = inbox_queue.get('depth', 0)
+if depth == 0:
+    sys.exit(0)
+
+print(f'📬 {depth} unread message(s) in inbox_{agent}')
+print(f'   (retrieve via bus_read or agent-message-handler)')
 " "$AGENT" 2>/dev/null || true)
 
 if [ -n "$OUTPUT" ]; then

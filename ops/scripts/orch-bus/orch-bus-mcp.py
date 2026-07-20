@@ -84,9 +84,9 @@ for CONFIG_FILE in CONFIG_FILES:
         except Exception as e:
             log.warning(f"Failed to read {CONFIG_FILE}: {e}")
 
-# Derive base URL: strip /send or /api/inbox from the configured URL
+# Derive base URL: strip trailing path from the configured CORTEX_BUS_URL
 if inbox_url:
-    BASE_URL = re.sub(r"/(send|api/inbox).*$", "", inbox_url)
+    BASE_URL = re.sub(r"/(send|api/pgmq/.*)$", "", inbox_url)
     IS_LOCAL_FALLBACK = False
 else:
     BASE_URL = "http://localhost:8903"

@@ -2,8 +2,11 @@
 """bus-processor.py — Companion script for bus message processing.
 
 Runs every 10m as a no_agent watchdog. Checks the Agent Bus for
-new broadcast messages via the local PGMQ endpoint.
+new broadcast messages via the bus library (lib.cortex_bus).
 Silent when nothing new.
+
+Uses bus_list_queues() to peek at queue depths (non-consuming),
+then bus_read() to inspect individual messages.
 
 Output shape:
 {
@@ -16,24 +19,21 @@ Output shape:
 """
 import json
 import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.request import Request, urlopen
-from urllib.error import URLError
+
+# Ensure the hermes-cortex scripts dir is in sys.path for lib.cortex_bus
+_HC_SCRIPTS = Path.home() / ".hermes-cortex" / "scripts"
+if str(_HC_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_HC_SCRIPTS))
+
+from lib.cortex_bus import bus_list_queues, bus_read, bus_archive
 
 HOME = Path.home()
 STATE_DIR = HOME / ".hermes" / "state"
 SEEN_FILE = STATE_DIR / "bus-broadcast-seen"
-
-# Bus connection details
-BUS_URL = os.environ.get("AGENT_BUS_URL", "http://localhost:8903")
-BUS_TOKEN = os.environ.get("AGENT_BUS_TOKEN", "")
 AGENT = os.environ.get("AGENT_NAME", "esther")
-
-# Token file fallback
-token_file = HOME / ".hermes" / "state" / "bus.token"
-if not BUS_TOKEN and token_file.exists():
-    BUS_TOKEN = token_file.read_text().strip()
 
 # Agent registry for broadcast topics
 REGISTRY_PATH = HOME / ".hermes" / "state" / "agent-registry.json"
@@ -58,37 +58,95 @@ def main() -> int:
     if SEEN_FILE.exists():
         seen = {line.strip() for line in SEEN_FILE.read_text().splitlines() if line.strip()}
 
-    headers = {"Authorization": f"Bearer {BUS_TOKEN}"} if BUS_TOKEN else {}
-    req = Request(f"{BUS_URL}/api/inbox?unread_only=true&for={AGENT}", headers=headers)
+    # Check all queues for our agent's inbox depth
+    inbox_queue = f"inbox_{AGENT}"
+    broadcast_topics = set(get_broadcast_topics())
 
     try:
-        resp = urlopen(req, timeout=10)
-        data = json.loads(resp.read().decode())
-    except (URLError, json.JSONDecodeError, OSError) as e:
-        result = {
+        queues = bus_list_queues()
+        inbox_info = next((q for q in queues if q.get("name") == inbox_queue), None)
+        if inbox_info is None:
+            print(json.dumps({
+                "has_work": False,
+                "unread_count": 0,
+                "urgent_count": 0,
+                "new_broadcasts": 0,
+                "error": f"Queue '{inbox_queue}' not found",
+                "last_check": datetime.now(timezone.utc).isoformat(),
+            }))
+            return 0
+
+        depth = inbox_info.get("depth", 0)
+        if depth == 0:
+            print(json.dumps({
+                "has_work": False,
+                "unread_count": 0,
+                "urgent_count": 0,
+                "new_broadcasts": 0,
+                "last_check": datetime.now(timezone.utc).isoformat(),
+            }))
+            return 0
+
+    except Exception as e:
+        print(json.dumps({
             "has_work": False,
+            "unread_count": 0,
+            "urgent_count": 0,
+            "new_broadcasts": 0,
             "error": str(e)[:200],
             "last_check": datetime.now(timezone.utc).isoformat(),
-        }
-        print(json.dumps(result))
+        }))
         return 0
 
-    messages = data.get("messages", []) if isinstance(data, dict) else []
-    unread_count = data.get("unread", len(messages)) if isinstance(data, dict) else len(messages)
+    # Peek at messages — read, inspect, archive (non-destructive)
+    unread_count = 0
+    urgent_count = 0
+    new_broadcasts = 0
+    messages_read = []
 
-    broadcast_topics = set(get_broadcast_topics())
-    new_broadcasts = [m for m in messages if m.get("topic", "").lower() in broadcast_topics]
+    for _ in range(min(depth, 20)):
+        msg = bus_read(inbox_queue, vt=30)
+        if not msg or not msg.get("msg_id"):
+            break
 
-    result = {
-        "has_work": len(new_broadcasts) > 0,
+        body = msg.get("body", {})
+        if isinstance(body, str):
+            try:
+                body = json.loads(body)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        topic = (body or {}).get("topic", "general") if isinstance(body, dict) else "general"
+        priority = (body or {}).get("priority", "normal") if isinstance(body, dict) else "normal"
+        msg_id = msg.get("msg_id", "")
+        corr = msg.get("correlation_id", "")
+
+        if topic in broadcast_topics:
+            unread_count += 1
+            if priority in ("urgent", "critical"):
+                urgent_count += 1
+            if corr not in seen and msg_id not in seen:
+                new_broadcasts += 1
+
+        messages_read.append(msg_id)
+        bus_archive(inbox_queue, msg_id)
+
+    # Record seen IDs
+    for mid in messages_read:
+        seen.add(mid)
+    SEEN_FILE.write_text("\n".join(sorted(seen)))
+
+    has_work = new_broadcasts > 0 or urgent_count > 0
+
+    print(json.dumps({
+        "has_work": has_work,
         "unread_count": unread_count,
-        "urgent_count": sum(1 for m in messages if m.get("priority") == "urgent" or m.get("priority") == "critical"),
-        "new_broadcasts": len(new_broadcasts),
+        "urgent_count": urgent_count,
+        "new_broadcasts": new_broadcasts,
         "last_check": datetime.now(timezone.utc).isoformat(),
-    }
-    print(json.dumps(result))
+    }))
     return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
