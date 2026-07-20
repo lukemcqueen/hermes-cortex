@@ -766,8 +766,8 @@ cortex-update --status
 **Fix — update the import path resolver in both the deployed and source copies:**
 
 ```python
-# In ~/.hermes-cortex/scripts/mcp-servers/loop-gov-mcp.py
-# AND ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+# In ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+# AND deployed: ~/.hermes-cortex/scripts/loop-gov-mcp.py
 
 # Ensure hermes_models.py is importable from any Hermes deployment
 _HERMES_HOME = Path.home() / ".hermes"
