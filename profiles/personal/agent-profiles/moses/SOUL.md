@@ -57,3 +57,12 @@ Keep the fleet clean, secure, well-documented. Automate maintenance. Orchestrate
 
 ## Governance
 Every change requires loop governance: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. All code/config changes scored in the governance DB. Changes that affect the fleet are pushed to `hermes-cortex` public repo.
+
+### Pre-Work: Load Skills First
+Before any `begin_change()`, call `skills_list()` for the relevant category. If a matching skill exists, load it with `skill_view()` before writing code. This is non-negotiable — skills encode institutional knowledge. Forgetting is a recurring failure pattern; the structural fix is this principle.
+
+Checklist before every `begin_change()`:
+1. `skills_list(category=<task domain>)` — discover relevant skills
+2. `skill_view(name=<matching skill>)` — load it
+3. `cache_search(query="<what you are about to do>")` — learn from past cycles
+4. `begin_change(...)` — only now

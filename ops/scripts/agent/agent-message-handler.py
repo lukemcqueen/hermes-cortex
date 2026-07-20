@@ -125,7 +125,8 @@ def send_bus_result(queue: str, correlation_id: str, result_body: dict, subject:
         result = bus_send(queue, full_body)
         ok = result is not None
         if ok:
-            log(f"Sent {subject} (corr={correlation_id[:8]}…)")
+            mid = result.get("msg_id", "?") if isinstance(result, dict) else "?"
+            log(f"Sent {subject} to {queue} (mid={mid[:8]}… corr={correlation_id[:8]}…)")
         else:
             log(f"Failed to send {subject}")
         return ok
@@ -134,11 +135,11 @@ def send_bus_result(queue: str, correlation_id: str, result_body: dict, subject:
         return False
 
 
-def read_inbox(queue: str, vt: int = 30) -> dict | None:
-    """Read one message from inbox."""
+def read_inbox(queue: str) -> dict | None:
+    """Read one message from queue, return parsed body or None."""
     try:
         from lib.cortex_bus import bus_read
-        raw = bus_read(queue, vt)
+        raw = bus_read(queue, vt=30)
         if raw and raw.get("msg_id"):
             return raw
     except Exception:
@@ -480,6 +481,45 @@ def main():
             log(f"Received FIX_REQUEST (corr={correlation_id[:8]}…) — not yet implemented")
             return False
 
+        elif subject == "DIAGNOSTIC_REQUEST":
+            # Run agent diagnostics and return result via state file
+            check = ""
+            if isinstance(body.get("body"), dict):
+                check = body["body"].get("check", "")
+            log(f"DIAGNOSTIC_REQUEST from {body.get('from', '?')}: check={check or 'all'}")
+            archive_message(inbox_queue, msg.get("msg_id", ""))
+
+            # Run diagnostic as subprocess and write result to state file
+            try:
+                script = Path(__file__).resolve().parent / "agent-diagnostic.py"
+                cmd = [sys.executable, str(script)]
+                if check:
+                    cmd += ["--check", check]
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                if r.returncode == 0 and r.stdout:
+                    diag_data = json.loads(r.stdout)
+                    # Write to state file for audit watchdog to pick up
+                    state_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", HOME / ".hermes-cortex")) / "state"
+                    state_dir.mkdir(parents=True, exist_ok=True)
+                    state_file = state_dir / "agent-diagnostic-result.json"
+                    state_data = {
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "request_corr": correlation_id,
+                        "check": check or "all",
+                        "request_from": body.get("from", "?"),
+                        "data": diag_data,
+                    }
+                    state_file.write_text(json.dumps(state_data, indent=2, default=str))
+                    log(f"Diagnostic result written to {state_file.name} ({len(str(state_data))}b)")
+                else:
+                    log(f"Diagnostic script failed: {r.stderr[:200]}")
+            except Exception as e:
+                log(f"Diagnostic error: {e}")
+            return True
+
+        # Unknown subject — archive so it doesn't loop forever
+        log(f"Unknown subject '{subject}', archiving (corr={correlation_id[:8]}…)")
+        archive_message(inbox_queue, msg_id)
         return False
 
     # Health state tracking (report on state change, not every tick)

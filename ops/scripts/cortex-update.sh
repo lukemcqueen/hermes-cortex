@@ -304,6 +304,7 @@ register "ops/scripts/health/model-health-watchdog.py"    "${CORTEX_DEPLOY_HOME}
 
 # Fleet agent message handler (polls inbox for UPDATE_REQUEST etc.)
 register "ops/scripts/agent/agent-message-handler.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-message-handler.py"
+register "ops/scripts/agent/agent-diagnostic.py"       "${CORTEX_DEPLOY_HOME}/scripts/agent-diagnostic.py"
 
 # Timezone helper (required by monitoring scripts)
 register "ops/scripts/hermes_tz.py"                "${CORTEX_DEPLOY_HOME}/scripts/hermes_tz.py"
