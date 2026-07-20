@@ -175,7 +175,7 @@ def main():
                 "count": len(responses),
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }, indent=2))
-        else:
+        elif responses:
             log(f"Collected {len(responses)} response(s)")
             for r in responses:
                 agent = r.get("from", "?")
