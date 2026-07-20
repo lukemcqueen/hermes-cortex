@@ -53,7 +53,7 @@ if not AGENT_NAME:
                 AGENT_NAME = val
                 break
 if not AGENT_NAME:
-    AGENT_NAME = HOME.name
+    AGENT_NAME = socket.gethostname()
 # Ensure lib.cortex_bus is importable
 from hermes_paths import ensure_scripts_path
 ensure_scripts_path()
