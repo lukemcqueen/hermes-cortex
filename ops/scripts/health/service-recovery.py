@@ -96,6 +96,12 @@ def _check_scripts() -> bool:
     return True
 
 
+def _is_orchestrator() -> bool:
+    """Check if this machine is an orchestrator (runs the Agent Bus server)."""
+    host = os.uname().nodename.lower()
+    return host in ("moses", "esther")
+
+
 SERVICES: list[dict] = [
     _make_service("nginx", pgrep="nginx: master", restart_label="nginx.service", verify_cmd=["nginx", "-t"]),
     # Langfuse: Docker container
@@ -112,16 +118,21 @@ SERVICES: list[dict] = [
     _make_service("Ollama", label="ollama.service", pgrep="ollama"),
     # gbrain: systemd user service
     _make_service("gbrain", label="gbrain-autopilot.service", pgrep="gbrain"),
-    # agent-bus: systemd user service (hermes-agent-inbox on :8903)
-    # Acts as local PGMQ proxy/fallback for the bus.
-    _make_service("agent-bus", label="hermes-agent-inbox.service", pgrep="agent-inbox"),
+]
+# agent-bus: only on orchestrator machines (Moses/Esther). Non-orchestrators
+# don't run the bus server and shouldn't try to recover it.
+if _is_orchestrator():
+    SERVICES.append(
+        _make_service("agent-bus", label="hermes-agent-inbox.service", pgrep="agent-inbox"),
+    )
+SERVICES.extend([
     {
         "name": "scripts",
         "check": _check_scripts,
         "restart_label": "",
         "verify_label": "Hermes scripts",
     },
-]
+])
 
 
 def _try_restore_scripts() -> str | None:
