@@ -136,7 +136,9 @@ def send_bus_result(queue: str, correlation_id: str, result_body: dict, subject:
         ok = result is not None
         if ok:
             mid = result.get("msg_id", "?") if isinstance(result, dict) else "?"
-            log(f"Sent {subject} to {queue} (mid={mid[:8]}… corr={correlation_id[:8]}…)")
+            if mid is None:
+                mid = "?"
+            log(f"Sent {subject} to {queue} (mid={mid[:8]}… corr={correlation_id[:8] if correlation_id else '?'}…)")
         else:
             log(f"Failed to send {subject}")
         return ok
@@ -151,6 +153,9 @@ def read_inbox(queue: str) -> dict | None:
         from lib.cortex_bus import bus_read
         raw = bus_read(queue, vt=30)
         if raw and raw.get("msg_id"):
+            # Normalize None fields that could cause subscript crashes downstream
+            if raw.get("correlation_id") is None:
+                raw["correlation_id"] = ""
             return raw
     except Exception:
         pass
@@ -395,8 +400,12 @@ def main():
             return False
 
         body = msg.get("body", {})
+        if body is None:
+            body = {}
         msg_id = msg.get("msg_id", "")
         correlation_id = msg.get("correlation_id", "")
+        if correlation_id is None:
+            correlation_id = ""
 
         # PGMQ returns body as a JSON string — parse it if needed
         if isinstance(body, str):

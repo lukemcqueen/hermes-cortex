@@ -122,6 +122,12 @@ def bus_read(queue: str, vt: int = 60) -> dict | None:
                     result["body"] = json.loads(result["body"])
                 except (json.JSONDecodeError, TypeError):
                     pass
+            # Normalize None body to empty dict so consumers never crash on body.get()
+            if result.get("body") is None:
+                result["body"] = {}
+            # Normalize None correlation_id to empty string for subscript safety
+            if result.get("correlation_id") is None:
+                result["correlation_id"] = ""
             return result
         return None
     except (ConnectionError, Exception):
