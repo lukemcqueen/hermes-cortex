@@ -97,9 +97,13 @@ def _check_scripts() -> bool:
 
 
 def _is_orchestrator() -> bool:
-    """Check if this machine is an orchestrator (runs the Agent Bus server)."""
-    host = os.uname().nodename.lower()
-    return host in ("moses", "esther")
+    """Check if this machine is an orchestrator (runs the Agent Bus server).
+    
+    Uses the same pattern as install.sh and cortex-update.sh:
+    short hostname matched against moses|esther.
+    """
+    short = os.uname().nodename.split(".")[0].lower()
+    return short in ("moses", "esther")
 
 
 SERVICES: list[dict] = [
