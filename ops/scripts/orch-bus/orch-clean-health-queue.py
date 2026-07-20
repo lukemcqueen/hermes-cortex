@@ -44,7 +44,10 @@ def main():
             break  # archive failed, stop
 
     if cleaned:
-        print(f"🧹 Archived {cleaned} health ping(s) from {QUEUE}")
+        if cleaned >= MAX_PER_TICK:
+            print(f"⚠️ Health queue overflow: archived {cleaned} pings (hit max per tick)",
+                  file=sys.stderr)
+        # else: silent — routine cleanup
 
 
 if __name__ == "__main__":
