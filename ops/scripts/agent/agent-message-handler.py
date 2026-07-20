@@ -397,6 +397,7 @@ def main():
                     "ROLLBACK_REQUEST:": "ROLLBACK_REQUEST",
                     "GIT_AUTH_CHECK:": "GIT_AUTH_CHECK",
                     "FIX_REQUEST:": "FIX_REQUEST",
+                    "DIAGNOSTIC_REQUEST:": "DIAGNOSTIC_REQUEST",
                 }
                 matched = None
                 for prefix, subject_val in known_prefixes.items():
