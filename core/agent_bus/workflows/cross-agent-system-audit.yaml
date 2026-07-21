@@ -12,7 +12,7 @@ steps:
     prompt: |
       Run a bus health check. Execute: curl -s http://127.0.0.1:8905/health
       Report the status, backend, queue count, and timestamp verbatim.
-      Also check queue depths: curl -s -H "X-Forwarded-User: moses" http://127.0.0.1:8905/api/pgmq/queues
+      Also check queue depths: curl -s http://127.0.0.1:8903/api/pgmq/queues
       Summarize: how many queues, which have messages pending.
     skills:
       - terminal
@@ -56,7 +56,7 @@ steps:
     prompt: |
       Check if the remote agents have completed their tasks.
       Read the current workflow and step states from the bus API.
-      Check: curl -s -H "X-Forwarded-User: moses" http://127.0.0.1:8905/api/workflows | python3 -m json.tool
+      Check: curl -s http://127.0.0.1:8903/api/workflows | python3 -m json.tool
       Report which agents have completed their steps and which are pending.
     skills:
       - terminal
