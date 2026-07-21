@@ -69,6 +69,36 @@ def log(msg: str):
     print(f"[{ts}] [{AGENT_NAME}] {msg}")
 
 
+def notify_telegram(message: str, subject: str = ""):
+    """Send a notification to Telegram via Bot API directly."""
+    try:
+        token_path = HOME / ".hermes" / ".env"
+        token = ""
+        if token_path.exists():
+            for line in token_path.read_text().splitlines():
+                line = line.strip()
+                if line.startswith("TELEGRAM_BOT_TOKEN="):
+                    token = line.split("=", 1)[1].strip().strip("'\"")
+                    break
+        if not token:
+            log("Telegram notify: no TELEGRAM_BOT_TOKEN found")
+            return
+        chat_id = "1270130526"  # Luke
+        text = f"{subject}\n{message}" if subject else message
+        # Escape HTML special chars
+        text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        import urllib.request, urllib.parse
+        data = urllib.parse.urlencode({"chat_id": chat_id, "text": text, "parse_mode": "HTML"}).encode()
+        req = urllib.request.Request(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            data=data,
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=10)
+    except Exception as e:
+        log(f"Telegram notify failed: {e}")
+
+
 def load_state() -> dict:
     if STATE_FILE.exists():
         try:
@@ -542,9 +572,17 @@ def main():
 
         subject = body.get("subject", "")
 
+        # Notify pickup
+        notify_telegram(
+            f"📥 [{AGENT_NAME}] Received {subject} from {body.get('from', '?')}",
+            f"📥 {AGENT_NAME}:{subject}",
+        )
+
         # Idempotency check
         if correlation_id in processed:
-            log(f"Skipping already-processed corr={correlation_id[:8]}…")
+            log(f"Skipping already-processed corr={correlation_id[:8] if correlation_id else ''}…")
+            # Archive so it doesn't loop forever
+            archive_message(inbox_queue, msg_id)
             return False
 
         if subject == "UPDATE_REQUEST":
@@ -564,8 +602,12 @@ def main():
 
             if result_body["success"]:
                 log(f"✅ Update successful: {result_body['git_sha_before']} → {result_body['git_sha_after']}")
+                notify_telegram(f"✅ [{AGENT_NAME}] Update: {result_body['git_sha_before'][:7]}→{result_body['git_sha_after'][:7]}",
+                                f"✅ {AGENT_NAME}:UPDATE")
             else:
                 log(f"❌ Update had issues: {len(result_body['errors'])} error(s)")
+                notify_telegram(f"❌ [{AGENT_NAME}] Update failed: {result_body['errors'][0][:120] if result_body['errors'] else 'unknown'}",
+                                f"❌ {AGENT_NAME}:UPDATE")
             return True
 
         elif subject == "ROLLBACK_REQUEST":
@@ -582,6 +624,10 @@ def main():
             save_state(state)
 
             log(f"{'✅' if result_body['success'] else '❌'} Rollback: {result_body.get('sha_before', '?')[:8]} → {result_body.get('sha_after', '?')[:8]}")
+            notify_telegram(
+                f"{'✅' if result_body['success'] else '❌'} [{AGENT_NAME}] Rollback: {result_body.get('sha_before', '?')[:7]}→{result_body.get('sha_after', '?')[:7]}",
+                f"{'✅' if result_body['success'] else '❌'} {AGENT_NAME}:ROLLBACK"
+            )
             return True
 
         elif subject == "GIT_AUTH_CHECK":
@@ -595,7 +641,12 @@ def main():
             state["processed_ids"] = state["processed_ids"][-50:]
             save_state(state)
 
-            log(f"{'✅' if result_body['authenticated'] else '❌'} Git auth: {result_body.get('remote_url', '?')}")
+            auth_ok = result_body.get('authenticated', False)
+            log(f"{'✅' if auth_ok else '❌'} Git auth: {result_body.get('remote_url', '?')}")
+            notify_telegram(
+                f"{'✅' if auth_ok else '❌'} [{AGENT_NAME}] Git auth: {result_body.get('remote_url', '?')[:60]}",
+                f"{'✅' if auth_ok else '❌'} {AGENT_NAME}:GIT_AUTH"
+            )
             return True
 
         elif subject == "EXEC":
@@ -613,6 +664,10 @@ def main():
             status = "✅" if result_body["success"] else "❌"
             stdout_preview = (result_body.get("stdout", "") or "")[:80].replace("\n", " ")
             log(f"{status} EXEC {result_body.get('command', '?')}: exit={result_body.get('exit_code', '?')}  {stdout_preview}")
+            notify_telegram(
+                f"{status} [{AGENT_NAME}] EXEC {result_body.get('command', '?')}: exit={result_body.get('exit_code', '?')} — {stdout_preview}",
+                f"{status} {AGENT_NAME}:EXEC"
+            )
             return True
 
         elif subject == "FIX_REQUEST":
@@ -648,11 +703,19 @@ def main():
             log(f"Sending DIAGNOSTIC_RESULT to {respond_to} (corr={correlation_id[:8]}…)")
             send_bus_result(respond_to, correlation_id, result_body, "DIAGNOSTIC_RESULT")
             log(f"DIAGNOSTIC_RESULT sent (corr={correlation_id[:8]}…)")
+            notify_telegram(
+                f"📋 [{AGENT_NAME}] Diagnostic sent to {respond_to}: {result_body.get('error', 'OK')[:80]}",
+                f"📋 {AGENT_NAME}:DIAGNOSTIC"
+            )
             return True
 
         # Unknown subject — archive so it doesn't loop forever
         log(f"Unknown subject '{subject}', archiving (corr={correlation_id[:8]}…)")
         archive_message(inbox_queue, msg_id)
+        notify_telegram(
+            f"⚠️ [{AGENT_NAME}] Unknown subject '{subject}' from {body.get('from', '?')}, archived",
+            f"⚠️ {AGENT_NAME}:UNKNOWN"
+        )
         return False
 
     # Health state tracking (report on state change, not every tick)
