@@ -2,25 +2,136 @@
 # ─────────────────────────────────────────────────────────────
 #  pre-commit-score — Git pre-commit hook (secondary logger)
 #
-#  NOTE: The MCP server (loop-gov-mcp.py) is the PRIMARY
-#  enforcement layer. It blocks write tools without an active
-#  governance lock at the Hermes tool level. This hook is a
-#  secondary logger that auto-scores on git commit for DB
-#  population.
+#  SECONDARY LOGGER: the MCP server (loop-gov-mcp.py) is the
+#  primary enforcement layer. It blocks write tools without an
+#  active governance lock at the Hermes tool level — this hook
+#  is redundant for enforcement.
 #
-#  There is NO SKIP_SCORE bypass.
-#  If the hook fails, the commit proceeds with a warning.
-#  Emergency bypass: git commit --no-verify (standard git).
+#  What this hook adds: automatic score-cycle logging on every
+#  git commit so cycles appear in the DB without manual effort.
+#
+#  The governance-lock check below (Level 3) is a secondary
+#  safety net — the MCP server already blocks writes without
+#  a lock, so this should never fire for an MCP-connected agent.
+#
+#  Set SKIP_SCORE=1 to bypass (abuse detection: burst warns, hard limit blocks).
 #
 #  Installed by: install-score-hook.sh
 #  Requires: score-cycle in PATH, loop-governance tools
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
+# ── SKIP_SCORE abuse detection ──────────────────────────────
+# Tracks usage and detects abuse patterns:
+#   Burst:   3+ skips in 60 min         → warning (still allowed)
+#   Hard:    6+ skips in 24h            → locked out
+#   Chronic: 3+ burst warnings          → locked out until file deleted
+#
+# State file: ~/.hermes-cortex/state/.skip-score-counter.json
+SKIP_COUNTER="${HOME}/.hermes-cortex/state/.skip-score-counter.json"
+BURST_MIN=60
+BURST_LIMIT=3
+HARD_LIMIT=6
+HARD_WINDOW=24
+CHRONIC_WARN_LIMIT=3
+
+if [[ "${SKIP_SCORE:-}" == "1" ]]; then
+  # Read or init counter
+  if [[ -f "$SKIP_COUNTER" ]]; then
+    ABUSE_DATA=$(python3 -c "
+import json, os, time
+fp = os.path.expanduser('$SKIP_COUNTER')
+try:
+    d = json.load(open(fp))
+except:
+    d = {'entries': [], 'warnings': 0}
+entries = d.get('entries', [])
+warnings = d.get('warnings', 0)
+
+now = time.time()
+# Prune old entries outside hard window
+cutoff_24h = now - ($HARD_WINDOW * 3600)
+fresh = [e for e in entries if e > cutoff_24h]
+cutoff_1h = now - ($BURST_MIN * 60)
+in_last_hour = len([e for e in fresh if e > cutoff_1h])
+
+d['entries'] = fresh
+d['warnings'] = warnings
+json.dump(d, open(fp, 'w'))
+
+print(f'{len(fresh)}|{warnings}|{in_last_hour}')
+" 2>/dev/null || echo "0|0|0")
+  else
+    ABUSE_DATA="0|0|0"
+  fi
+
+  IFS='|' read -r ENTRIES WARNINGS IN_HOUR <<< "$ABUSE_DATA"
+  ENTRIES=${ENTRIES:-0}
+  WARNINGS=${WARNINGS:-0}
+  IN_HOUR=${IN_HOUR:-0}
+
+  # Chronic abuse — locked out until file removed
+  if [[ "$WARNINGS" -ge "$CHRONIC_WARN_LIMIT" ]]; then
+    echo ""
+    echo "⛔  SKIP_SCORE=1 chronically abused (${WARNINGS} warnings)."
+    echo "    Abuse detected ${WARNINGS} times — bypass permanently disabled."
+    echo "    Remove ${SKIP_COUNTER} to reset, or follow governance."
+    echo ""
+    exit 1
+  fi
+
+  # Hard limit — too many skips in 24h
+  if [[ "$ENTRIES" -ge "$HARD_LIMIT" ]]; then
+    echo ""
+    echo "⛔  SKIP_SCORE=1 hard limit reached — ${ENTRIES}× in ${HARD_WINDOW}h."
+    echo "    Use governance: begin_change() → work → feedback_accept → end_change()"
+    echo "    Resets automatically as oldest uses age out (${HARD_WINDOW}h window)."
+    echo ""
+    exit 1
+  fi
+
+  # Record this skip
+  mkdir -p "$(dirname "$SKIP_COUNTER")"
+  python3 -c "
+import json, os, time
+fp = os.path.expanduser('$SKIP_COUNTER')
+try:
+    d = json.load(open(fp))
+except:
+    d = {'entries': [], 'warnings': 0}
+entries = d.get('entries', [])
+entries.append(time.time())
+cutoff = time.time() - ($HARD_WINDOW * 3600)
+d['entries'] = [e for e in entries if e > cutoff]
+json.dump(d, open(fp, 'w'))
+" 2>/dev/null || true
+
+  # Burst check — too many in short window (IN_HOUR excludes current skip)
+  CURRENT_BURST=$((IN_HOUR + 1))
+  if [[ "$CURRENT_BURST" -ge "$BURST_LIMIT" ]]; then
+    NEW_WARNINGS=$((WARNINGS + 1))
+    python3 -c "
+import json, os
+fp = os.path.expanduser('$SKIP_COUNTER')
+d = json.load(open(fp))
+d['warnings'] = $NEW_WARNINGS
+json.dump(d, open(fp, 'w'))
+" 2>/dev/null || true
+
+    echo ""
+    echo "⚠️  Abuse detected: ${CURRENT_BURST}× SKIP_SCORE=1 in the last ${BURST_MIN} min."
+    echo "    Warning ${NEW_WARNINGS}/${CHRONIC_WARN_LIMIT}. After ${CHRONIC_WARN_LIMIT}, bypass is locked out."
+    echo "    Use governance instead: begin_change() → ... → end_change()"
+    echo ""
+  fi
+
+  exit 0
+fi
+
 # ── Level 4: Shared blocklist integrity check ─────────────────
 # blocked_ips.add is a cumulative shared blocklist — APPEND only.
 # Reject commits that shrink it (fewer IPs than HEAD).
-BLOCKED_IPS="ops/install/deploy/nginx/blocked_ips.add"
+BLOCKED_IPS="deploy/nginx/blocked_ips.add"
 if git diff --cached --name-only -- "$BLOCKED_IPS" 2>/dev/null | grep -q "$BLOCKED_IPS"; then
   OLD_COUNT=$(git show HEAD:"$BLOCKED_IPS" 2>/dev/null | grep -cP '^\d+\.\d+\.\d+\.\d+' || echo 0)
   NEW_COUNT=$(grep -cP '^\d+\.\d+\.\d+\.\d+' "$BLOCKED_IPS" 2>/dev/null || echo 0)
@@ -29,7 +140,7 @@ if git diff --cached --name-only -- "$BLOCKED_IPS" 2>/dev/null | grep -q "$BLOCK
     echo "❌  blocked_ips.add shrank from ${OLD_COUNT} to ${NEW_COUNT} IPs."
     echo "    This is a SHARED cumulative blocklist maintained by ALL agents."
     echo "    APPEND your IPs — never replace the file."
-    echo "    Use git commit --no-verify for emergency bypass."
+    echo "    To bypass this check: SKIP_SCORE=1 git commit ..."
     echo ""
     exit 1
   fi
@@ -39,59 +150,50 @@ fi
 # The MCP server (loop-gov-mcp.py) already blocks write tools without
 # a lock. This check is a secondary safety net for direct-git operations.
 # Agent must call begin_change() before making changes.
-# Lock files are repo-scoped: .governance-<repo-slug>.json
+#
+# Lock files are SESSION-SCOPED: .governance-sess_<id>.json (named by
+# session_id). Multiple sessions can each hold a valid lock. The repo_slug
+# is stored INSIDE the lock file's content, not in the filename.
+# This mirrors the MCP plugin's _has_governance_lock() and _derive_slug().
+GOVERNANCE_STATE_DIR="${HOME}/.hermes-cortex/state"
 REPO_SLUG=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'generic')" 2>/dev/null || echo 'generic')
-GOVERNANCE_LOCK="${HOME}/.hermes-cortex/state/.governance-${REPO_SLUG}.json"
-GENERIC_LOCK="${HOME}/.hermes-cortex/state/.governance-generic.json"
 
-if [[ ! -f "$GOVERNANCE_LOCK" ]]; then
-  if [[ -f "$GENERIC_LOCK" ]]; then
-    # Generic lock exists but repo-scoped doesn't.
-    #
-    # IMPORTANT: The generic lock is SHARED across all concurrent Hermes
-    # sessions (Telegram, CLI, gateway). It belongs to another session's
-    # begin_change() — NOT to this commit. Never auto-migrate or block
-    # for it. Just note it and continue.
-    #
-    # Stale locks are cleaned up by a daily cleanup cron (not here).
-    STALE_INFO=$(python3 -c "
+# Scan all .governance-*.json files for one matching this repo
+LOCK_FOUND=0
+if [[ -d "$GOVERNANCE_STATE_DIR" ]]; then
+  for lock_file in "$GOVERNANCE_STATE_DIR"/.governance-*.json; do
+    [[ -f "$lock_file" ]] || continue
+    FILE_SLUG=$(python3 -c "
 import json
 try:
-    d = json.load(open('$GENERIC_LOCK'))
-    print(f\"{d.get('task_id','?')}|{d.get('description','?')}|{d.get('started_at','?')}\")
+    d = json.load(open('$lock_file'))
+    slug = d.get('repo_slug')
+    # Legacy locks (no repo_slug) accepted for upgrade compat
+    print(slug if slug else '$REPO_SLUG')
 except:
-    pass
+    print('')
 " 2>/dev/null)
-    if [[ -n "$STALE_INFO" ]]; then
-      IFS='|' read -r STALE_TASK STALE_DESC STALE_DATE <<< "$STALE_INFO"
-      echo ""
-      echo "ℹ️  Generic governance lock found (belongs to another session):"
-      echo "    task_id:     ${STALE_TASK}"
-      echo "    description: ${STALE_DESC}"
-      echo "    started_at:  ${STALE_DATE}"
-      echo "    This lock belongs to a different session — skipping."
-      echo "    (Stale locks are cleaned up by daily cleanup cron.)"
-      echo ""
+    if [[ "$FILE_SLUG" == "$REPO_SLUG" ]]; then
+      LOCK_FOUND=1
+      break
     fi
-    # Continue without scoring — not our lock, not our score
-    exit 0
-  else
-    # No lock at all — block with help message
-    echo ""
-    echo "❌  No active governance session."
-    echo "    You must call begin_change(task_id, description) before making changes."
-    echo "    Run: mcp_loop_governance_begin_change(task_id=\"fix-xyz\", description=\"...\")"
-    echo ""
-    echo "    💡 Tip: Always cd into your repo (e.g. 'cd ~/hermes-cortex') before"
-    echo "       calling begin_change() so the lock gets the correct repo slug."
-    echo "       If you already have a lock at .governance-generic.json, run:"
-    echo "         ln -sf ~/.hermes-cortex/state/.governance-generic.json"
-    echo "            ~/.hermes-cortex/state/.governance-${REPO_SLUG}.json"
-    echo ""
-    echo "    Use git commit --no-verify for emergency bypass."
-    echo ""
-    exit 1
-  fi
+  done
+fi
+
+if [[ "$LOCK_FOUND" -ne 1 ]]; then
+  # No session-scoped lock for this repo — block with help message
+  echo ""
+  echo "❌  No active governance session."
+  echo "    You must call begin_change(task_id, description) before making changes."
+  echo "    Run: mcp_loop_governance_begin_change(task_id=\"fix-xyz\", description=\"...\")"
+  echo ""
+  echo "    💡 Lock files are SESSION-SCOPED (.governance-sess_<id>.json) and"
+  echo "       matched by the repo_slug field inside the file. cd into the repo"
+  echo "       before calling begin_change() so it picks up the correct repo slug."
+  echo ""
+  echo "    To bypass this check:  SKIP_SCORE=1 git commit ..."
+  echo ""
+  exit 1
 fi
 
 # ── Level 2: AGENTS.md core requirements check via agents-doc-audit.py ──
@@ -130,7 +232,7 @@ try:
     print('⚠️  AGENTS.md missing required sections:')
     for s in data.get('missing_sections', []):
         print(f'   - {s}')
-    print('   Add them, then commit again.')
+    print('   Add them, or SKIP_SCORE=1 to bypass.')
 except Exception:
     print('⚠️  AGENTS.md check failed (non-parseable output)')
     print(sys.stdin.read())
@@ -140,9 +242,8 @@ except Exception:
   fi
 fi
 
-# ── Auto-release governance lock on successful score ───────────
-# (Lock will be re-created by the next begin_change call)
-trap 'rm -f "$GOVERNANCE_LOCK"' EXIT
+# ── Score the current commit ────────────────────────────────────
+# (Lock lifecycle managed by MCP server via begin/end_change)
 
 # Find score-cycle — try PATH, then common locations (resolve to full path)
 SCORE_CYCLE=""
@@ -196,9 +297,9 @@ if [[ "$PARENT_COMMIT" != "0000000" ]]; then
   git show "$PARENT_COMMIT:$CODE_FILE" > "$PREV_FILE" 2>/dev/null || true
 fi
 
-# Run score-cycle — use ~/.pyenv/versions/3.13.*/bin/python3 if available
+# Run score-cycle — prefer 3.12+ for PEP 604 syntax support
 PYTHON_BIN="python3"
-for py in ~/.pyenv/versions/3.13.*/bin/python3; do
+for py in ~/.local/bin/python3.12 ~/.pyenv/versions/3.14.*/bin/python3 ~/.pyenv/versions/3.13.*/bin/python3 ~/.pyenv/versions/3.12.*/bin/python3; do
   if [[ -x "$py" ]]; then
     PYTHON_BIN="$py"
     break
@@ -215,7 +316,7 @@ done
 #
 # Known Hermes enforcement regex gap: the ^ anchor on git commit
 # only catches standalone commands. Compound commands bypass it:
-#   cd x && git commit      ← bypasses (use --no-verify if truly stuck)
+#   cd x && git commit      ← bypasses
 #   SKIP_SCORE=1 git commit ← bypasses  
 # Run git commit standalone to trigger the enforcement check.
 # ────────────────────────────────────────────────────────────────
@@ -261,6 +362,7 @@ SCORE_OUTPUT=$("$PYTHON_BIN" "$SCORE_CYCLE" \
     echo ""
     echo "   The commit will proceed but no cycle will be logged."
     echo "   Check whether governance was properly followed."
+    echo "   To bypass this check: SKIP_SCORE=1 git commit ..."
     echo ""
   fi
   rm -f "$SCORE_STDERR"
@@ -273,6 +375,11 @@ rm -f "$PREV_FILE"
 # ── Documentation audit (warn-only, doesn't block) ──────────
 if [[ -z "${SKIP_DOC_AUDIT:-}" ]] && [[ -f "$HOME/hermes-cortex/ops/scripts/pre-commit-doc-audit.sh" ]]; then
   bash "$HOME/hermes-cortex/ops/scripts/pre-commit-doc-audit.sh"
+fi
+
+# ── Secret leak detection (warn-only, doesn't block) ─────────
+if [[ -z "${SKIP_SECRET_SCAN:-}" ]] && [[ -f "$HOME/hermes-cortex/ops/scripts/secret-leak-detector.sh" ]]; then
+  bash "$HOME/hermes-cortex/ops/scripts/secret-leak-detector.sh"
 fi
 
 # ── Change validation (warn-only, doesn't block) ────────────
@@ -289,6 +396,6 @@ echo "📊  score-cycle: $DECISION (task=$TASK_ID, pass-pct=$PASS_PCT)"
 if [[ "$DECISION" == "ERROR" ]]; then
   echo ""
   echo "❌  score-cycle failed — commit blocked."
-  echo "    Fix the score-cycle error, or use git commit --no-verify."
+  echo "    Set SKIP_SCORE=1 to bypass:  SKIP_SCORE=1 git commit ..."
   exit 1
 fi
