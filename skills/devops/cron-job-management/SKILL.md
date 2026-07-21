@@ -7,37 +7,90 @@ description: Create, name, list, and maintain Hermes cron jobs — no_agent watc
 
 When creating new cron jobs, renaming existing ones, listing all crons for display, or designing self-contained maintenance automation.
 
-## Naming convention
+## Naming convention — definitive
 
-This server uses a layered naming system with **three prefix levels** that can be combined:
+Every cron name starts with a **group prefix** that determines install scope, doctor validation, and update workflow:
 
-| Prefix | Scope | Examples |
-|--------|-------|---------|
-| `local-` | This server only (overrides base type) | `local-hermes-update`, `local-agent-daily-news-brief` |
-| `agent-` | LLM-driven, concept applies across all agents | `agent-auto-remediate`, `agent-inbox` |
-| (none) | no_agent watchdog, concept applies across all agents | `hermes-update`, `hermes-cortex-sync`, `cortex-doctor` |
-| `esther-` | Runs under Esther's profile | `esther-daily-sustainable-materials` |
+| Prefix | Scope | Who installs | Doctor validation |
+|--------|-------|-------------|-------------------|
+| `orch-` | Orchestrator-only (Moses, Esther). Bus infra, fleet watchdogs, health reports to Luke. | `install-orch-crons.sh` (in `ops/scripts/install/`) | `parse_orch_crons()` reads uninstall array from `install-orch-crons.sh` |
+| `agent-` | All agents with Hermes Agent. Remediation, monitoring, memory, knowledge, governance, scoring. | `install-crons.sh` (in `ops/scripts/`) | `parse_expected_crons()` reads uninstall array from `install-crons.sh` |
+| `local-` | This server only. Personal briefings, machine-specific maintenance. NOT in repo install scripts. | Created manually via `cronjob action='create' name='local-<name>'` | Skipped by doctor (not in any uninstall array) |
 
-**Combining prefixes:** A cron that is LLM-driven AND this-server-only uses both: `local-agent-daily-news-brief`. The `local-` prefix always comes first.
+**Combining:** `local-agent-*` when a cron is both concept-level AND this-server-only. The `local-` prefix always comes first.
 
 **Rules:**
-- Names are descriptive and human-readable — no abbreviations or cryptic codes
-- When renaming: `cronjob action='update' job_id=<id> name=<new-name>`
+- **Every cron in the repo MUST have a prefix** (`orch-` or `agent-`). Bare names like `system-alert-watchdog` or `remediation-sensor` are forbidden — they break doctor validation and create ambiguity about install scope. See the "Critical: uninstall array = doctor truth source" section below.
+- Names are descriptive and human-readable — no abbreviations or cryptic codes.
+- When renaming: `cronjob action='update' job_id=<id> name=<new-name>` — but read the full rename workflow below first.
 - **Do not batch-rename more than 3-4 crons without confirming with the user first.** Large batch renames (10+) are disruptive — the user may undo them entirely. Prefer step-by-step or ask.
-- `hermes cron` CLI commands (vs the cronjob tool) use a different schema. The cronjob tool is preferred for programmatic management.
+## Naming convention — definitive
 
-## Orchestrator-only crons — the `orch-*` prefix
+Every cron name starts with a **group prefix** that determines install scope, doctor validation, and update workflow:
 
-Crons that only run on orchestrator agents (Moses, Esther) use the `orch-*` prefix:
+| Prefix | Scope | Who installs | Doctor validation |
+|--------|-------|-------------|-------------------|
+| `orch-` | Orchestrator-only (Moses, Esther). Bus infra, fleet watchdogs, health reports to Luke. | `install-orch-crons.sh` (in `ops/scripts/install/`) | `parse_orch_crons()` reads uninstall array from `install-orch-crons.sh` |
+| `agent-` | All agents with Hermes Agent. Remediation, monitoring, memory, knowledge, governance, scoring. | `install-crons.sh` (in `ops/scripts/`) | `parse_expected_crons()` reads uninstall array from `install-crons.sh` |
+| `local-` | This server only. Personal briefings, machine-specific maintenance. NOT in repo install scripts. | Created manually via `cronjob action='create' name='local-<name>'` | Skipped by doctor (not in any uninstall array) |
 
-| Prefix | Example | Who installs | Doctor validation |
-|--------|---------|-------------|-------------------|
-| `orch-*` | `orch-fleet-watchdog` | `install-orch-crons.sh` (orchestrator-only installer) | `parse_orch_crons()` in cortex-doctor.py reads from its uninstall array |
+### Combining and nesting
 
-**Rules:**
-- `orch-*` crons must be in BOTH `install-orch-crons.sh` create_cron block AND the uninstall array (so doctor can find them)
-- The script file must be registered in `cortex-update.sh` via `register()`
-- After creation, copy the script to `~/.hermes-cortex/scripts/` — the cron runner reads from there, not the repo
+- `local-agent-*` — a cron that is both machine-specific AND concept-level. The `local-` prefix always comes first.
+- `orch-bus-*` — bus infrastructure crons (a sub-domain of orchestrator-only). All bus crons are orchestrator-only implicitly.
+- No bare names allowed. Every cron in the repo MUST have a valid prefix.
+
+### Critical rules
+
+#### 1. No bare names (enforced by doctor)
+
+Crons without a prefix (`orch-`, `agent-`, or `local-`) are **forbidden** in the repo. Examples of names that MUST be fixed if they exist:
+
+| Bare name | Correct name |
+|-----------|-------------|
+| `bus-audit-watchdog` | `orch-bus-audit-watchdog` |
+| `remediation-sensor` | `agent-remediation-sensor` |
+| `system-alert-watchdog` | `agent-system-alert-watchdog` |
+| `service-recovery` | `agent-service-recovery` |
+| `memory-to-brain-sync` | `agent-memory-to-brain-sync` |
+| `hermes-update` | `agent-hermes-update` |
+| `hermes-cortex-sync` | `agent-hermes-cortex-sync` |
+
+Prefix-less names break doctor validation because the doctor reads the uninstall arrays — and `parse_expected_crons()`/`parse_orch_crons()` only finds names in those arrays. A bare name that IS in the create section but ISN'T in the uninstall array silently passes doctor (no extra cron check) but causes drift.
+
+#### 2. Uninstall array = doctor truth source (enforced by architecture)
+
+`cortex-doctor.py` reads expected cron names from the **uninstall arrays** in `install-crons.sh` and `install-orch-crons.sh`. The doctor does NOT read the create sections. This means:
+
+```
+install-crons.sh                  cortex-doctor.py
+┌──────────────┐                 ┌──────────────────┐
+│ create_cron   │                 │                  │
+│   "agent-fx"  │  ──(ignored)──►│  parse_expected  │
+│               │                 │                  │
+│ for job in    │                 │  reads this      │
+│   "agent-fx"  │  ──(source)───►│  → expected list │
+│   "agent-mem" │                 │                  │
+│ ...; do       │                 └──────────────────┘
+└──────────────┘
+```
+
+**Every cron in a `create_cron` block MUST be in the corresponding uninstall array, with the exact same name.** If they drift:
+- Cron in create but NOT in uninstall → doctor doesn't check it → if it fails, nobody notices
+- Cron in uninstall but NOT in create → doctor says "missing!" → false FAIL
+- Same name in create and uninstall → doctor validates correctly ✓
+
+After any rename cycle, run `python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet` to verify arrays are in sync.
+
+#### 3. Create section is the install target; uninstall array is the doctor target
+
+When adding a new cron:
+1. Add `create_cron` block to the correct install script
+2. Add the EXACT SAME name to the uninstall array in the SAME file
+3. Register the script path in `cortex-update.sh`
+4. Run doctor to verify
+
+When renaming a cron, update BOTH arrays in the SAME commit. If you only update the create block, the old name stays in the uninstall array (doctor expects it) and no new cron is created with the new name (doctor misses it). This is the root cause of the July 2026 bus-rename bug.
 
 ## Cron rename workflow
 
@@ -46,15 +99,16 @@ When renaming a cron (e.g. `fleet-status-watchdog` → `orch-fleet-watchdog`):
 1. **Survey first**: `search_files()` for the old name across the entire repo
 2. **Remove old cron**: `cronjob action='remove' job_id=<id>`
 3. **Rename/relocate script**: move from old path to new path in repo (e.g. `ops/scripts/inbox/` → `ops/scripts/agent/`)
-4. **Update installer**: 
+4. **Update installer** — **critical: two-way sync required:**
    - Remove old name from `install-crons.sh` or `install-orch-crons.sh` uninstall array
-   - Add new name to the uninstall array (doctor reads this for expected crons)
-   - Add `create_cron` block for new name
+   - Add new name to the uninstall array (doctor reads this for expected crons — see "Critical: uninstall array = doctor truth source" above)
+   - Add `create_cron` block for new name with EXACTLY matching name string
+   - Verify: the same name appears in BOTH the create_cron call AND the uninstall array
 5. **Register in cortex-update.sh**: add `register()` call for new path
 6. **Deploy**: copy script to `~/.hermes-cortex/scripts/` — verify it exists (`ls -la`)
 7. **Create new cron**: `cronjob action='create' name=<new-name> ...`
 8. **Test**: `python3 ~/.hermes-cortex/scripts/<script>` — verify exit code 0
-9. **Update docs**: ALL doc references — README, AGENTS.md, fleet-reference.md, setup-reference.md, agent-onboarding.md, agent-registry.json comments, cross-refs in other scripts (comments, docstrings, deprecation notices)
+9. **Verify install script syntax**: `bash -n ~/hermes-cortex/ops/scripts/install-crons.sh` and `bash -n ~/hermes-cortex/ops/scripts/install/install-orch-crons.sh` — must pass with zero errors. The `fix-cron-duplicates.py --fix` script now auto-verifies and reverts on failure, but always double-check after manual edits.
 10. **Run doctor**: `python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet` — verify no failures
 11. **Commit & Push**
 
@@ -162,5 +216,6 @@ When explicitly directed to add a cron to another Hermes profile (e.g. Esther):
 - **Orchestrator-only crons.** If a cron should only run on the orchestrator (Moses), set `orchestrator_only: true` in crons.json. The installer will skip it on non-orchestrator machines.
 - **Ask before bulk operations.** Renaming 10+ crons at once without confirmation will likely get undone. Batch at most 3-4 in a turn, or step through each group with user sign-off between batches. The user may reject the whole convention after seeing it applied — confirm early.
 - **Undo is cheaper to prevent than to revert.** A batch of 22 renames takes 3-4 turns to undo because the cronjob tool has no rollback. Check with the user before applying a convention change to the entire cron table.
+- **Doctor truth source = uninstall array.** `cortex-doctor.py` reads expected cron names from the uninstall arrays in `install-crons.sh` and `install-orch-crons.sh`. If a cron name in the `create_cron` block doesn't match the uninstall array — or is missing from it entirely — the doctor reports false failures. Every rename MUST update BOTH the create block and the uninstall array. Run `cortex-doctor.py --quiet` after any rename to verify sync. See the "Critical: uninstall array = doctor truth source" section under Naming Convention above for the function-level detail.
 - **Cron execution paths have different inodes from the repo source path.** The cron execution paths (`~/.hermes-cortex/scripts/` and `~/.hermes/scripts/`) are hardlinked to each other but are **separate inodes** from the repo source (`hermes-cortex/ops/scripts/inbox/`). Fixing a script in the repo does **not** deploy to the cron paths — you must also `cp` the fixed file to `~/.hermes-cortex/scripts/` and `~/.hermes/scripts/`. Verify all inodes match (or the file content is identical) after deploying. This applies to every cron fix — always check what path the cron actually executes from before claiming the fix is live.
 - **Python f-string single-quote nesting bug.** When an f-string uses single quotes as the delimiter AND contains a curly-brace expression with a string literal inside (e.g. `f'│ Stalled: {", ".join(x)}'`), the inner single quotes in `', '` will break the outer string. Use double quotes for the outer delimiter and single quotes inside: `f"│ Stalled: {', '.join(x)}"`, or vice versa. Always `python3 -m py_compile script.py` to catch these syntax errors before deploying.
