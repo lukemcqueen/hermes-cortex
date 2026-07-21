@@ -503,6 +503,9 @@ def main():
         correlation_id = msg.get("correlation_id", "")
         if correlation_id is None:
             correlation_id = ""
+        # Fallback: correlation_id may be inside the body dict
+        if not correlation_id and isinstance(body, dict):
+            correlation_id = body.get("correlation_id", "") or ""
 
         # PGMQ returns body as a JSON string — parse it if needed
         if isinstance(body, str):
