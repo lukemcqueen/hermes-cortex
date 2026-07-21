@@ -1264,12 +1264,13 @@ main() {
   # Sync offline code corpus from repo
   sync_code_corpus
 
-  # Check template drift — warn if local SOUL.md is stale
-  if python3.12 "${CORTEX_DEPLOY_HOME}/scripts/template-diff-check.py" 2>/dev/null || python3 "${CORTEX_DEPLOY_HOME}/scripts/template-diff-check.py" 2>/dev/null; then
-    :  # up to date — silent
-  else
-    warn "Template drift: run with --status to see details"
-    warn "  Update ~/.hermes/SOUL.md to match the template"
+  # Sync SOUL.md from repo template to ~/.hermes/ — actual content sync
+  local template_soul="${REPO_DIR}/docs/templates/SOUL.md"
+  if [[ -f "$template_soul" ]]; then
+    if ! diff -q "$template_soul" "${hermes_home}/SOUL.md" >/dev/null 2>&1; then
+      copy_file "$template_soul" "${hermes_home}/SOUL.md"
+      info "  SOUL.md synced from template to ~/.hermes/"
+    fi
   fi
 
   # Deploy nginx configs (OS-aware path substitution, sudo on Linux)
