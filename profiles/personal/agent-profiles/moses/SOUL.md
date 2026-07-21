@@ -302,25 +302,33 @@ When a cron job is needed on this server but not in the shared fleet (e.g. a loc
 
 When the doctor reports ❌ Crons missing, check the uninstall arrays in `install-crons.sh` and `install-orch-crons.sh` before creating new crons. A stale expected list entry (old cron name in the uninstall array but no matching live cron) causes a false positive. Remove the stale name, commit, and push. The doctor reads these arrays as its expected cron list — keeping them truthful keeps the doctor truthful.
 
-#### 37. Session Todo Protocol — With Cross-Session Persistence
+#### 37. Session Todo Protocol — With Persistent DB Storage
 
-The `todo()` tool is **per-session** — it does not persist across sessions. Items you set in one session are gone when the next starts unless you explicitly save them. Use `~/.hermes-cortex/state/session-todo.json` as the persistence file.
+The `todo()` tool is **per-session** — it does not persist across sessions. Use the shared `bus.todos` Postgres table in gbrain for durable, fleet-visible todo storage.
 
-1. **On session start** — `todo()` to load prior list. Then `cat ~/.hermes-cortex/state/session-todo.json` to check for pending items. Run `session_search()` with 3+ queries about the likely topic area. Commit to the highest-priority item.
-2. **Before each `begin_change()`** — update todo status to `in_progress`. **Also write the updated list to `~/.hermes-cortex/state/session-todo.json`.**
-3. **After each `end_change()`** — mark completed items done. Write to persistence file.
-4. **End of session** — ensure all items accounted for. If items remain pending, save them to `~/.hermes-cortex/state/session-todo.json`. If all completed, write an empty `[]` to the file.
-5. **If interrupted mid-task** — write state immediately to the persistence file.
-6. **Persistence helper** — after any `todo(todos=[...])` call, also write:
-   ```bash
-   jq -n --argjson items '[...]' '{todos: $items}' > ~/.hermes-cortex/state/session-todo.json
-   ```
-   Or if `jq` is unavailable, use Python:
-   ```python
-   python3 -c "import json; json.dump({'todos': [...]}, open('$HOME/.hermes-cortex/state/session-todo.json','w'))"
-   ```
+**Setup:** Run `bus.todos` migration once (included in `cortex-update.sh`):
+```bash
+sg docker -c "docker exec -i gbrain-postgres psql -U gbrain -d gbrain" < ~/hermes-cortex/ops/services/agent-bus/schema/todos.sql
+```
 
-The todo list is the session's ground truth. Update it every time you enter or exit a change cycle. Every update must touch both the in-memory `todo()` tool AND the persistence file.
+**On session start:**
+1. `todo()` — load current Hermes tool state
+2. `todo-db.py pending` — print pending items as JSON from DB
+3. If items exist, restore them: `todo(todos=[{id, content, status, ...}], merge=true)`
+
+**Throughout session:**
+- Before each `begin_change()` — update todo status to `in_progress` via `todo()` AND `todo-db.py update <id> --status in_progress`
+- After each `end_change()` — mark completed via `todo-db.py update <id> --status completed`
+
+**End of session:**
+- `todo-db.py save-end` — archives completed/cancelled items, reports remaining pending
+
+**Other agents** can view your todos:
+```bash
+python3 ~/hermes-cortex/ops/scripts/manage/todo-db.py list --agent moses
+```
+
+The todo list is the session's ground truth. Update it every time you enter or exit a change cycle.
 
 #### 38. "Pull Latest" = Full Refresh — Never Partial
 
