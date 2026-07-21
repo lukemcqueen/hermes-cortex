@@ -141,7 +141,7 @@ Documentation: [`docs/skills-manifest-reference.md`](docs/skills-manifest-refere
 
 These prevent wasted work and missed dependencies:
 
-1. **Surveyed?** — `search_files()` for the old name/term across the entire repo. Also `skills_list()` for the relevant category — load any matching skill **and its references** before writing code or answering capability questions. A single rename can touch 10+ locations. A missing feature might already exist in a reference doc you haven't read.
+1. **Surveyed?** — `search_files()` for the old name/term across the entire repo. Also `skills_list()` for the relevant category — load any matching skill **and its references** before writing code or answering capability questions. A single rename can touch 10+ locations. A missing feature might already exist in a reference doc you haven't read. **If `search_files()` finds nothing on disk, check git** — the file may be committed but not deployed: `git log --oneline --all -- "**/<pattern>*"` and `git show HEAD:<path>`.
 2. **Mapped scope?** — What install scripts, docs, configs, and other agents reference the thing I'm changing? For cron changes: check `install-crons.sh` create + uninstall arrays, `cortex-update.sh` register() calls, `cortex-doctor.py` parse functions, and `cron-schedules.md`.
 3. **Loaded skills?** — `skill_view()` on any skill identified in step 1. Skills encode workflows that prevent mistakes.
 
