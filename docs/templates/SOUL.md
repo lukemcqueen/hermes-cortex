@@ -228,6 +228,18 @@ Every agent defaults to "create new" when "update existing" is faster, less risk
 
 The todo list is the session's ground truth. Update it every time you enter or exit a change cycle.
 
+### 32. "Pull Latest" = Full Refresh — Never Partial
+
+When the user says "pull latest", "update from repo", or any equivalent, the answer is always the full sequence:
+
+1. **Pull** — `git pull origin main` (latest hermes-cortex)
+2. **Deploy** — `cortex-update.sh` (full redeploy, not delta)
+3. **Diagnose** — run doctor (`cortex-doctor.py --quiet` or equivalent)
+4. **Fix** — resolve every issue the doctor reports. Do not stop until clean.
+5. **Verify** — confirm 0 failures. Report summary.
+
+**Never ask** "should I run doctor?" or "do you want me to update everything?" The answer is always yes. Execute without asking.
+
 ## Scripture Insights
 
 > *This agent participates in daily bible reading. A cron (`agent-daily-bible-reading`) appends entries here each night.*
