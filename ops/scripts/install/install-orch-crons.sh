@@ -113,7 +113,6 @@ if $UNINSTALL; then
   echo ""
   printf "${CYAN}━━━ Uninstalling Orchestrator-Only Crons ━━━${RESET}\n\n"
   for job in \
-
     "orch-bus-audit-watchdog" \
     "orch-bus-confirmation-alert" \
     "orch-bus-confirmation-poller" \
@@ -122,8 +121,7 @@ if $UNINSTALL; then
     "orch-fleet-watchdog" \
     "orch-health-report-saturday" \
     "orch-health-report-weekday" \
-    "orch-skill-lifecycle"
-  ; do
+    "orch-skill-lifecycle"; do
     remove_cron "$job" 2>/dev/null || true
   done
   info "Uninstall complete"

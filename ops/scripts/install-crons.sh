@@ -423,7 +423,6 @@ if $UNINSTALL; then
   echo ""
   printf "${CYAN}━━━ Uninstalling Hermes Cron Jobs ━━━${RESET}\n\n"
   for job in \
-
     "agent-agents-md-prune-apply" \
     "agent-agents-md-prune-scan" \
     "agent-auto-save-sessions" \
@@ -453,8 +452,7 @@ if $UNINSTALL; then
     "agent-service-recovery" \
     "agent-session-cache-build" \
     "agent-system-alert-watchdog" \
-    "agent-threat-pipeline"
-  ; do
+    "agent-threat-pipeline"; do
     remove_cron "$job"
   done
   info "Uninstall complete"

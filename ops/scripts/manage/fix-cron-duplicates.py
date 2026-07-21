@@ -89,7 +89,7 @@ def write_uninstall_array(path: Path, names: list[str]) -> bool:
     # Build new block with quotes, backslash-newline every N items
     lines = []
     for i, name in enumerate(names):
-        suffix = " \\" if i < len(names) - 1 else ""
+        suffix = " \\" if i < len(names) - 1 else "; do"
         lines.append(f'    "{name}"{suffix}')
     new_block = "\n" + "\n".join(lines) + "\n  "
     new_text = text[:m.start(1)] + new_block + text[m.end(1):]
