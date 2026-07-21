@@ -1241,6 +1241,25 @@ def check_governance(res):
             else:
                 res.add("Plugin symlink", "WARN", f"symlinked to {target} (not ~/hermes-cortex/.hermes-cortex/...)",
                          "Re-create: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/")
+        else:
+            # Not a symlink — copy mode: check deployed content matches repo source
+            deployed_init = plugin_dir / "__init__.py"
+            repo_init = plugin_src / "__init__.py"
+            if deployed_init.exists() and repo_init.exists():
+                import hashlib
+                deployed_hash = hashlib.sha256(deployed_init.read_bytes()).hexdigest()
+                repo_hash = hashlib.sha256(repo_init.read_bytes()).hexdigest()
+                if deployed_hash == repo_hash:
+                    res.add("Plugin content", "PASS", "copy matches repo source")
+                else:
+                    res.add("Plugin content", "FAIL",
+                            "deployed copy differs from repo — stale after git update",
+                            "REQUIRED: rm -rf ~/.hermes/plugins/governance-enforcer && "
+                            "ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/"
+                            " (replace copy with symlink so git pull keeps it fresh)")
+            else:
+                res.add("Plugin content", "WARN",
+                        "can't compare — source or deployed __init__.py missing")
     else:
         res.add("Governance plugin", "FAIL", "not installed",
                  "Install: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/\n"
