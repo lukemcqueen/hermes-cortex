@@ -1244,6 +1244,20 @@ main() {
   # Sync skills from repo (all SKILL.md + references/, only changed files)
   sync_skills
 
+  # Sync AGENTS.md to ~/.hermes/ so fleet agents read the same rules
+  local hermes_home="${HERMES_HOME:-${HOME}/.hermes}"
+  if needs_update "${REPO_DIR}/AGENTS.md" "${hermes_home}/AGENTS.md"; then
+    copy_file "${REPO_DIR}/AGENTS.md" "${hermes_home}/AGENTS.md"
+    info "  AGENTS.md synced to ~/.hermes/"
+  fi
+
+  # Sync skills.yaml timestamp so doctor doesn't false-warn about template drift
+  local template_yaml="${REPO_DIR}/docs/templates/skills.yaml"
+  local skills_yaml="${CORTEX_DEPLOY_HOME}/skills.yaml"
+  if [[ -f "$template_yaml" && -f "$skills_yaml" ]]; then
+    touch -r "$template_yaml" "$skills_yaml"
+  fi
+
   # Sync offline code corpus from repo
   sync_code_corpus
 
