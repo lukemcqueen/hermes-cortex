@@ -85,11 +85,30 @@ Gather raw material from all sources:
    - Heartbeat (no changes, but agent is alive)
 2. **Git log** — Check recent commits for self-improvement patterns needing broader consolidation
 3. **Skill inventory** — Scan repo skills for stale/modified files
-4. **Doctor health check** — Run `cortex-doctor.py --quiet` and check for:
+5. **Doctor health check** — Run `cortex-doctor.py --quiet` and check for:
    - ❌ Crons missing → stale entries in uninstall arrays (self-healing candidate)
    - ❌ Orch crons → orchestrator cron issue
    - ❌ Script integrity → missing deployed scripts
-5. **Cross-reference** — Compare reports across agents for consolidation candidates
+   - **Cross-reference** — Compare reports across agents for consolidation candidates
+
+8. **Session compliance audit** — Scan the orchestrator's recent session transcripts for self-improvement signals:
+   - User corrections: search for patterns where the user corrected Moses ("you should have", "don't ask", "fix permanently", "never ask me", "CODIFY THIS")
+   - Principle violations: search for Moses asking "want me to", "should I", or "do you want" about obvious fixes (Principle 12 violation)
+   - Session-start violations: check if `skill_view('task-start')` was called in the first 3 tool calls
+   - Governance violations: check if `begin_change` was used before any file writes
+   
+   **Collection method:** `session_search(query='correction|"never ask"|"fix permanently"|"CODIFY THIS"', limit=10)` to find recent sessions with user corrections. For each hit, extract:
+   - What was the correction?
+   - Which principle was violated?
+   - Was a guardrail already added?
+   - If no guardrail → create HIGH-priority evaluation item
+
+   **Output format:**
+   ```
+   Session compliance: N correction(s) found
+     - [UNGUARDED] Principle 12 violation: asked "want me to..." instead of fixing
+     - [GUARDED]   task-start not loaded at session start (guardrail added previously)
+   ```
 
 6. **Skill inventory scan** — Check all skills under `~/.hermes/skills/`:
    - List all SKILL.md files with modification dates

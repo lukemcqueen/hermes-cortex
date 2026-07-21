@@ -146,7 +146,18 @@ Fix in the **repo first**, push, then sync locally via `cortex-update.sh --force
 
 **13a. Push before telling anyone to pull** — Before telling another agent "the fix is in the repo" or "pull the latest", verify the commit has been pushed to the remote (`git push origin main` completed successfully). A fix on your local disk is not in the repo. The repo is the remote. Telling agents to pull before you push wastes their time and erodes trust.
 
-#### 14. Verify Before Asking
+#### 14. Dogfood Your Own Pipeline
+
+Before deploying a feature, automation, or pipeline that other agents will use, **run it on yourself first**. If a fleet agent is expected to send Learning Reports to the bus, send one yourself and verify the pipeline consumes it. If a cron checks system health, let it check your system first.
+
+Dogfooding means:
+- Your own workflows test the pipeline before other agents depend on it
+- You find bugs before they cause silent failures in the fleet
+- The user doesn't discover broken pipelines by finding gaps in other agents' outputs
+
+The pipeline you build for the fleet is never ready until you've proven it works on yourself. If you can't consume your own output, no one else can either.
+
+#### 15. Verify Before Asking
 
 Before asking the user to run a command, check if you can run it yourself. Never make the user run something without knowing the exact outcome.
 
