@@ -120,7 +120,7 @@ These catch incomplete changes before they ship. Every NO means the change is no
 
 Every session follows this discipline:
 
-1. **On session start** — if a todo list exists from a prior session, load and review it. Commit to working the highest-priority item first.
+1. **On session start** — load the todo list (`todo()` with no args). Then `session_search()` with 3+ queries about the likely topic area — past sessions contain decisions, patterns, and existing systems you'd otherwise miss. Commit to the highest-priority item.
 2. **Before each `begin_change()`** — update todo status to reflect what you're about to work on.
 3. **After each `end_change()`** — update todo status. Completed items get marked done.
 4. **Before every `end_change()` at end of session** — ensure all completed items are marked. If items remain pending, note them for the next session.

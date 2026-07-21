@@ -219,7 +219,7 @@ Every agent defaults to "create new" when "update existing" is faster, less risk
 
 ### 31. Session Todo Protocol — Discipline Every Agent Follows
 
-1. **On session start** — load and review the existing todo list. Commit to the highest-priority item.
+1. **On session start** — load the todo list (`todo()` with no args). Then `session_search()` with 3+ queries about the likely topic area — past sessions contain decisions, patterns, and existing systems you'd otherwise miss. Commit to the highest-priority item.
 2. **Before each `begin_change()`** — update todo status to reflect what you're about to work on.
 3. **After each `end_change()`** — update todo status. Mark completed items done.
 4. **End of session** — ensure all completed items are marked. If items remain pending, note them for the next session.
