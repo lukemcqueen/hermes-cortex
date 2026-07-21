@@ -487,30 +487,51 @@ def check_dev_repo_agents(res):
 
 
 def check_soul_sync(res):
-    """Check SOUL.md is synced from repo template."""
+    """Check SOUL.md is synced from repo template — content-based, not mtime."""
+    import re
     template = CORTEX_REPO / "docs" / "templates" / "SOUL.md"
     if not template.exists():
         res.add("SOUL.md template", "WARN", "template not found at docs/templates/SOUL.md",
                 "REQUIRED: verify repo is up to date")
         return
 
+    def _highest_principle(path):
+        text = path.read_text() if path.exists() else ""
+        nums = [int(m) for m in re.findall(r'^#{3,4} (\d+)\.', text, re.MULTILINE)]
+        return max(nums) if nums else 0
+
+    template_max = _highest_principle(template)
+
     # Check ~/.hermes/SOUL.md
     hermes_soul = Path.home() / ".hermes" / "SOUL.md"
     if not hermes_soul.exists():
-        res.add("SOUL.md sync (~/.hermes)", "WARN", "~/.hermes/SOUL.md missing",
+        res.add("SOUL.md sync (~/.hermes)", "FAIL", "~/.hermes/SOUL.md missing",
                 "REQUIRED: cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md && customize for your role")
-    elif hermes_soul.stat().st_mtime < template.stat().st_mtime:
-        res.add("SOUL.md sync (~/.hermes)", "WARN", "~/.hermes/SOUL.md is stale",
-                "REQUIRED: update from template: cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md && re-apply customization")
     else:
-        res.add("SOUL.md sync (~/.hermes)", "PASS")
+        agent_max = _highest_principle(hermes_soul)
+        if template_max > agent_max:
+            missing = template_max - agent_max
+            res.add("SOUL.md sync (~/.hermes)", "FAIL",
+                    f"Template has {template_max} principles, agent has {agent_max} -- {missing} missing",
+                    f"REQUIRED: merge template principles {agent_max+1}-{template_max} from docs/templates/SOUL.md into ~/.hermes/SOUL.md")
+        elif template_max < agent_max:
+            res.add("SOUL.md sync (~/.hermes)", "INFO",
+                    f"Agent has {agent_max} principles, template has {template_max} -- agent is ahead of template")
+        else:
+            res.add("SOUL.md sync (~/.hermes)", "PASS")
 
     # Check repo profile SOUL.md for moses
     repo_soul = CORTEX_REPO / "profiles" / "personal" / "agent-profiles" / "moses" / "SOUL.md"
     if repo_soul.exists():
-        if repo_soul.stat().st_mtime < template.stat().st_mtime:
-            res.add("SOUL.md sync (repo profile)", "WARN", "profiles/moses/SOUL.md is stale",
-                    "REQUIRED: cp ~/hermes-cortex/docs/templates/SOUL.md profiles/personal/agent-profiles/moses/SOUL.md && re-apply customization")
+        repo_max = _highest_principle(repo_soul)
+        if template_max > repo_max:
+            missing = template_max - repo_max
+            res.add("SOUL.md sync (repo profile)", "FAIL",
+                    f"Template has {template_max} principles, profile has {repo_max} -- {missing} missing",
+                    f"REQUIRED: merge template principles {repo_max+1}-{template_max} into profiles/personal/agent-profiles/moses/SOUL.md")
+        elif template_max < repo_max:
+            res.add("SOUL.md sync (repo profile)", "INFO",
+                    f"Profile has {repo_max} principles, template has {template_max} -- profile is ahead of template")
         else:
             res.add("SOUL.md sync (repo profile)", "PASS")
 

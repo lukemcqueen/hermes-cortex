@@ -161,17 +161,40 @@ The pipeline you build for the fleet is never ready until you've proven it works
 
 Before asking the user to run a command, check if you can run it yourself. Never make the user run something without knowing the exact outcome.
 
-#### 15. Recommend Improvements
+#### 16. Documentation is a First-Class Deliverable
 
-When you see a pattern that could be better (brittle cron, stale doc, missing check), mention it. Include what, why it matters, and optionally a proposed fix.
+A change is not complete until the docs are updated. Documentation is part of the deliverable, with the same priority as the code change itself. Before releasing the governance lock, verify that every doc that references the changed system has been updated. If another agent would be confused by the change without reading docs, the docs are incomplete.
 
-#### 16. Post-Change Communication Audit
+#### 17. Cleanup is Mandatory — Every Change Cleans Up After Itself
+
+"I'll fix it later" is the root cause of stale references, duplicate crons, and broken doctor checks. Every change must clean up its own artifacts:
+
+- **Install arrays**: If you rename a cron, update BOTH the `create_cron` call AND the uninstall array in the SAME commit. The doctor reads the uninstall array as the expected cron list — leaving a stale name creates false failures.
+- **Old cron jobs**: Create a new cron with a new name? Remove the old one in the same action. Cron jobs don't self-destruct.
+- **Stale script copies**: Deployed scripts (`~/.hermes-cortex/scripts/`, `~/.hermes/scripts/`) are separate inodes from repo source. After renaming a script, remove the old-named copy from both deploy directories.
+- **Test artifacts**: After debugging, delete test messages, markers, and correlation IDs. Stale artifacts confuse subsequent diagnostics.
+
+**Guardrail:** Before calling `end_change()` on any change that touches install scripts or cron jobs, run:
+```bash
+python3 ~/hermes-cortex/ops/scripts/manage/fix-cron-duplicates.py
+```
+Zero issues = cleanup complete.
+
+#### 18. Post-Change Communication Audit
 
 Before releasing the governance lock, check that no pending inbox messages reference stale paths.
 
-#### 17. Escalate on Repeat Corrections
+#### 19. Escalate on Repeat Corrections
 
 When the user gives the same correction twice, add a structural guardrail that makes the mistake impossible to repeat.
+
+#### 20. Install Script Arrays Are a Trust Boundary
+
+The doctor's expected-cron list is parsed from the uninstall arrays in `install-crons.sh` and `install-orch-crons.sh`:
+- `parse_expected_crons()` reads `install-crons.sh` uninstall array
+- `parse_orch_crons()` reads `install-orch-crons.sh` uninstall array
+
+Every `create_cron` name MUST have a matching entry in the same file's uninstall array. If they drift, the doctor silently validates the wrong set of crons. After any cron rename or addition, run fix-cron-duplicates.py then the doctor before closing the governance cycle.
 
 ---
 
@@ -179,17 +202,17 @@ When the user gives the same correction twice, add a structural guardrail that m
 
 Non-negotiable when they apply, but narrow in scope.
 
-#### 18. Protect the System
+#### 21. Protect the System
 
 Security, privacy, and operational stability matter. Scrub host-identifying data from all outputs. Ask before risky writes. Never bypass nginx — use external gateway, not localhost internals.
 
-#### 19. Never Print Secrets — Use $(cat) Instead
+#### 22. Never Print Secrets — Use $(cat) Instead
 
 Never pass secrets as literal strings in `terminal()` commands. Use `$(cat <file>)` subshell expansion so only the file path appears in tool call metadata. `printf`, `echo` with inline secret values, and `-u "user:pass"` are all forbidden patterns.
 
-#### 20. Monitor External Health
+#### 23. Verify Before Reporting
 
-Local health ≠ external reachability. Test URLs with HTTP GET and verify HTTP 200. Never kill old process before the new one is verified healthy.
+Every claim about existence or state must be backed by tool output. For URLs: `curl -sI` for HTTP 200. For services or packages: cross-check process (`pgrep`), daemon (`systemctl`), and package (`dpkg`) — a single privileged-tool failure proves nothing. Local health ≠ external reachability.
 
 ---
 
@@ -197,39 +220,49 @@ Local health ≠ external reachability. Test URLs with HTTP GET and verify HTTP 
 
 Narrow in scope. Apply when the context matches.
 
-#### 21. Build Shared by Default
+#### 24. Build Shared by Default
 
 Put reusable work where all agents find it. Default: share. Anything useful goes into `hermes-cortex/ops/scripts/` or `skills/` so all agents benefit.
 
-#### 22. Inbox Message Decision Framework
+#### 25. Inbox Message Decision Framework
 
 Evaluate on three axes: **Priority** (critical/urgent/normal/notification), **Actionability** (auto-act/delegate/escalate/acknowledge), **Scope** (simple/moderate/complex/multi-agent). Every action verified, delivered with evidence. CC Luke cross-agent.
 
-#### 23. Inbox Audit Trail
+#### 26. Inbox Audit Trail
 
 Every action: what, how verified, delivery channel, governance cycle ID.
 
-#### 24. Agent Cron Management
+#### 27. Agent Cron Management
 
 Handle `🔧 CRON` inbox messages as AUTO-ACT. Crons must have naming consistency between cron defs, scripts, and repo source — no wrappers.
 
-#### 25. Cron Fix Verification — Run Through the Scheduler
+#### 28. Cron Fix Verification — Run Through the Scheduler
 
 After fixing a cron script, `python3 script.py` tests the code but does NOT update the cron scheduler's `last_status`. The doctor reads the scheduler's recorded status, not the script exit code. Always run `cronjob action='run' job_id=<id>` after a cron fix and verify the doctor clears. Manual verification ≠ scheduler verification.
 
-#### 26. Deployment-Aware
+#### 29. Deployment-Aware
 
 Don't claim features available until on `main` + executable is at runtime path (`~/.hermes-cortex/scripts/`). Repo source ≠ live deployment.
 
-#### 27. No Orphan State
+#### 30. No Orphan State
 
 Every file, config, and function needs a live consumer.
 
-#### 28. Crash-Loop Prevention
+#### 31. Crash-Loop Prevention
 
 Port arbitration + startup resilience on every service.
 
-#### 29. Test Before Release — Hard Enforcement
+#### 32. Prove Existing Can't Handle It Before Creating New
+
+Before creating any new script, skill, config, mechanism, or message type:
+1. `search_files()` for existing solutions with 3+ different search terms
+2. `skills_list()` and load matching skills **and their references**
+3. Check if the existing system can be extended/wired instead of replaced
+4. If the capability exists but isn't wired, **wire it** — don't rebuild it
+
+Every agent defaults to "create new" when "update existing" is faster, less risky, and doesn't fragment the codebase. This is the most expensive mistake — it costs review time, merge conflicts, doc drift, and future confusion. Every new file is a debt that compounds. The right fix to an existing system is almost always smaller and safer than a parallel system.
+
+#### 33. Test Before Release — Hard Enforcement
 
 **Before calling end_change() on any code/config change:**
 1. Load `change-checklist` skill
@@ -244,13 +277,51 @@ Port arbitration + startup resilience on every service.
 
 This rule exists because abstract principles ("be thorough") don't prevent shipping broken code. Concrete enforcement does. Every bug shipped without a test is a gap in the testing process itself.
 
-#### 30. Local-* Cron Naming for Server-Specific Jobs
+#### 34. Pre-Ship Checklist — Before and After Every Change
+
+**Before starting work** — 3 questions to prevent wasted effort:
+1. **Surveyed?** — `search_files()` for old name across repo. `skills_list()` for relevant category.
+2. **Mapped scope?** — install scripts, docs, configs, other agents that reference this.
+3. **Loaded skills?** — `skill_view()` on matching skills before writing code.
+
+**After completing work** — 6 questions. Every NO means the change is not done:
+1. **Arrays synced?** — create names vs uninstall arrays match? Run fix-cron-duplicates.py.
+2. **Old thing removed?** — deleted the cron/script/config that was replaced?
+3. **Docs updated?** — every doc that references the changed thing.
+4. **Syntax valid?** — `bash -n` on .sh, `python3 -m py_compile` on .py.
+5. **Doctor clean?** — `cortex-doctor.py --quiet` shows 0 failures.
+6. **Pushed and deployed?** — `git push` succeeded. Runtime copies deployed.
+
+**Do not call end_change() until all 6 pass.**
+
+#### 35. Local-* Cron Naming for Server-Specific Jobs
 
 When a cron job is needed on this server but not in the shared fleet (e.g. a local cleanup, machine-specific monitor), name it `local-*` so everyone distinguishes fleet crons from server-specific ones. Fleet crons come from the repo. Local crons are for this server only and must not be pushed to other machines.
 
-#### 31. Self-Heal Stale Expected Lists
+#### 36. Self-Heal Stale Expected Lists
 
 When the doctor reports ❌ Crons missing, check the uninstall arrays in `install-crons.sh` and `install-orch-crons.sh` before creating new crons. A stale expected list entry (old cron name in the uninstall array but no matching live cron) causes a false positive. Remove the stale name, commit, and push. The doctor reads these arrays as its expected cron list — keeping them truthful keeps the doctor truthful.
+
+#### 37. Session Todo Protocol
+
+1. **On session start** — `todo()` to load prior list. Then `session_search()` with 3+ queries about the likely topic area. Commit to the highest-priority item.
+2. **Before each `begin_change()`** — update todo status to `in_progress`.
+3. **After each `end_change()`** — mark completed items done.
+4. **End of session** — ensure all items accounted for. If items remain pending, they carry to the next session.
+5. **If interrupted mid-task** — write state immediately.
+
+The todo list is the session's ground truth. Update it every time you enter or exit a change cycle.
+
+#### 38. "Pull Latest" = Full Refresh — Never Partial
+
+When the user says "pull latest", "update from repo", or any equivalent, the answer is always the full sequence:
+1. **Pull** — `git pull origin main` (latest hermes-cortex)
+2. **Deploy** — `cortex-update.sh --force-all` (full redeploy)
+3. **Diagnose** — run doctor (`cortex-doctor.py` or equivalent)
+4. **Fix** — resolve every issue the doctor reports. Do not stop until clean.
+5. **Verify** — confirm 0 failures. Report summary.
+
+**Never ask** "should I run doctor?" or "do you want me to update everything?" The answer is always yes. Execute without asking.
 
 <!-- Added 2026-07-20 -->
 
