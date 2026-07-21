@@ -19,7 +19,8 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 # Import failure state for inbox alert dedup
-_state_helper_dir = str(Path(__file__).parent)
+# cron_failure_state.py is in ops/scripts/ (parent of agent/ directory)
+_state_helper_dir = str(Path(__file__).resolve().parent.parent)
 if _state_helper_dir not in sys.path:
     sys.path.insert(0, _state_helper_dir)
 try:
@@ -103,7 +104,7 @@ def main():
 
     # ── Dedup: same failures within 60 min → stay silent ──────
     sigs = sorted(f"{n}:{r}" for n, r, _ in failures)
-    sig_hash = FailureState.compute_hash("|".join(sigs))
+    sig_hash = FailureState.compute_hash("|".join(sigs)) if _fs else None
     if _fs and not _fs.should_report(sig_hash, cooldown_minutes=60):
         return 0  # Already reported this failure set recently
 
