@@ -25,6 +25,8 @@ always:
     why: Mandatory pre-ship verification before end_change()
   - name: survey-before-action
     why: Check existing resources before creating — prevent redundant work
+  - name: cortex-preflight
+    why: Supporting pre-flight checks — git search, Hermes boundary, deploy verification
   - name: agent-contract
     why: Non-negotiable execution rules — honesty, verification, citations
 

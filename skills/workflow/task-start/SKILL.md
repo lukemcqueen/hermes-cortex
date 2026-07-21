@@ -12,6 +12,7 @@ related_skills:
   - agent-flow
   - reasoning-patterns
   - survey-before-action
+  - cortex-preflight
   - change-checklist
   - reflexion-check
   - loop-governance
@@ -63,25 +64,32 @@ After classification, load every skill matching your classification from the
 `on_task` section of `.hermes-cortex/skills.yaml`. Then call `skills_list()`
 for the relevant category to discover skills not in the manifest.
 
-### Step 7: Survey before action
+### Step 8: Survey before action (cortex-preflight)
 Load `survey-before-action` and run its checklist BEFORE creating any file,
 writing any code, or running any command. Search for existing resources first.
 
-### Step 8: Work
+Then load `cortex-preflight` and run its supplementary checks:
+- **Check git** for files committed but not deployed
+- **Hermes boundary** — confirm the file is ours to edit
+- **Verify deployment** — source changes need `cortex-update.sh`
+- **Stale references** — search all deploy locations for old names
+- **Cross-agent impact** — check if other agents are affected
+
+### Step 9: Work
 Execute the task using the loaded skills, following the chosen reasoning
 pattern and the classified workflow pattern's checklist.
 
-### Step 9: Reflexion check before delivery
+### Step 10: Reflexion check before delivery
 After completing the work but BEFORE presenting results:
 1. Load `reflexion-check` and run the five-question audit
 2. Score confidence (HIGH / MEDIUM / LOW / ZERO)
 3. If LOW or ZERO: fix before delivering
 
-### Step 10: Change checklist before end_change
+### Step 11: Change checklist before end_change
 For code/config/cron changes: load `change-checklist` and run all phases
 before calling `end_change()`. Phase 6 (Reflexion) is mandatory.
 
-### Step 11: Score and close
+### Step 12: Score and close
 ```python
 mcp_loop_governance_cycle_query(task_id="<task-id>")
 mcp_loop_governance_feedback_accept(id=<cycle-id>, note="<summary>")
@@ -97,12 +105,12 @@ mcp_loop_governance_end_change(task_id="<task-id>")
 | 3 | Load always skills | `skill_view()` per skill in `always` section |
 | 4 | Choose reasoning | `reasoning-patterns` skill |
 | 5 | Classify workflow | `agent-flow` skill |
-| 6 | Load on-task skills | `skill_view()` + `skills_list()` |
-| 7 | Survey before action | `survey-before-action` skill |
-| 8 | Work | (task execution) |
-| 9 | Reflexion check | `reflexion-check` skill |
-| 10 | Change checklist | `change-checklist` skill |
-| 11 | Score and close | `cycle_query` → `feedback_accept` → `end_change` |
+| 7 | Load on-task skills | `skill_view()` + `skills_list()` |
+| 8 | Survey + preflight | `survey-before-action` + `cortex-preflight` |
+| 9 | Work | (task execution) |
+| 10 | Reflexion check | `reflexion-check` skill |
+| 11 | Change checklist | `change-checklist` skill |
+| 12 | Score and close | `cycle_query` → `feedback_accept` → `end_change` |
 
 ## Why This Exists
 

@@ -7,7 +7,7 @@ description: >-
   correctness gaps. Systematic approach for identifying, verifying, and
   reporting stale references in docs directories.
 pinned: true
-related_skills: [survey-before-action, codebase-inspection]
+related_skills: [survey-before-action, cortex-preflight, codebase-inspection]
 ---
 
 # Documentation Auditing

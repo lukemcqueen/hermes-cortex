@@ -33,6 +33,7 @@ Load them at the start of any contribution session:
 | Skill | What it covers | Load when ... |
 |-------|---------------|---------------|
 | `survey-before-action` | Pre-flight checklist — search existing resources before creating new ones | **Always** — before any file create/modify |
+| `cortex-preflight` | Supporting pre-flight checks — git search, Hermes boundary, deploy verification | **Always** — after survey-before-action |
 | `engineering-approach` | Communication standards, CLI design, version management | **Always** — communication with the user |
 | `public-contribution` | Decision tree for what to share, genericization patterns, commit workflow | When deciding what belongs in the public repo |
 | `repo-organization` | Canonical directory structure, naming conventions, consolidation rules | When deciding where a file goes |

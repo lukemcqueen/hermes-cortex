@@ -3,7 +3,7 @@
 > **⚠️ THREE HARD RULES — Every Agent Must Follow**
 >
 > **RULE 1: LOAD TASK-START FIRST — `skill_view('task-start')` is your first tool call on every task.**
-> No other tool call precedes it. This rule sits above all others. A task not preceded by `task-start` is a trust violation. The `task-start` skill loads `survey-before-action`, `agent-flow`, `reasoning-patterns`, `reflexion-check`, `change-checklist`, and `agent-contract` — all mandatory before any work begins.
+> No other tool call precedes it. This rule sits above all others. A task not preceded by `task-start` is a trust violation. The `task-start` skill loads `survey-before-action`, `agent-flow`, `reasoning-patterns`, `reflexion-check`, `change-checklist`, and `agent-contract` — all mandatory before any work begins. Also load `cortex-preflight` (devops) for repo-specific pre-flight checks.
 >
 > **RULE 2: USE LOOP GOVERNANCE ALWAYS**
 > Every code/config/cron change: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. MCP server blocks write tools without a lock.
@@ -58,7 +58,7 @@
 
 **Every session starts by reading `.hermes-cortex/skills.yaml` and calling `skill_view(name)` for every skill listed in `always`.** These are loaded into context before your first task — not at task time. Loading them at session start means they're ready when you need them.
 
-The `always` section includes `task-start` (your first tool call on every task), `survey-before-action` (pre-flight checks before creating anything), `agent-flow` (workflow classification), and other mandatory thinking skills. Load them ONCE at session start, then use them on every task.
+The `always` section includes `task-start` (your first tool call on every task), `survey-before-action` (pre-flight checks before creating anything), `cortex-preflight` (repo-specific pre-flight checks), `agent-flow` (workflow classification), and other mandatory thinking skills. Load them ONCE at session start, then use them on every task.
 
 Before each task, classify with `agent-flow`, then load `on_task` skills matching that classification.
 
@@ -227,7 +227,8 @@ to discover skills not in the manifest.
 
 Call `skill_view(name="survey-before-action")` and run its checklist BEFORE
 creating any file, writing any code, or running any command. Search for
-existing resources first.
+existing resources first. Then call `skill_view(name="cortex-preflight")`
+and run its supplementary checks (git search, Hermes boundary, deploy verification).
 
 ### Step 6: Work
 

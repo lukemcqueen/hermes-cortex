@@ -7,7 +7,7 @@ description: >
   tool execution, result verification, failure transparency, source citation,
   cross-profile safety, and enforcement. Every agent MUST adhere.
 tags: [governance, execution, contract, honesty, verification, enforcement]
-related_skills: [change-checklist, agent-flow, two-hard-rules, loop-governance, survey-before-action]
+related_skills: [change-checklist, agent-flow, two-hard-rules, loop-governance, survey-before-action, cortex-preflight]
 ---
 
 # Agent Contract v2.0.0

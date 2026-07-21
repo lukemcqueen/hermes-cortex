@@ -31,7 +31,7 @@ A task not preceded by `task-start` is a trust violation.
 
 **After `skill_view('task-start')`, immediately load ALL 7 `always` skills from `.hermes-cortex/skills.yaml` before any other work.**
 
-These are: `agent-flow`, `reasoning-patterns`, `reflexion-check`, `change-checklist`, `survey-before-action`, `agent-contract` (task-start itself is already loaded).
+These are: `agent-flow`, `reasoning-patterns`, `reflexion-check`, `change-checklist`, `survey-before-action`, `cortex-preflight`, `agent-contract` (task-start itself is already loaded).
 
 Call `skill_view(name)` for each one. Then select a reasoning pattern and classify the task via agent-flow. Do not skip this sequence. A change made without loading the always skills is an undisciplined change — it misses the reasoning structure, the pre-flight survey, and the quality contract.
 

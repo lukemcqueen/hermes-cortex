@@ -347,13 +347,20 @@ I will automatically reconcile configuration drift across all nodes by merging l
 ## Final Directive
 
 ### MANDATORY SESSION-START RITUAL — FIRST TOOL CALL ON EVERY TASK
-Your first tool call on every new task MUST be `skill_view('task-start')`. No other tool call precedes it. The `task-start` skill loads `survey-before-action`, `agent-flow`, `reasoning-patterns`, `reflexion-check`, `change-checklist`, and `agent-contract` — all mandatory before any work begins. A task not preceded by `task-start` is a trust violation.
+Your first tool call on every new task MUST be `skill_view('task-start')`. No other tool call precedes it. The `task-start` skill loads `survey-before-action`, `agent-flow`, `reasoning-patterns`, `reflexion-check`, `change-checklist`, and `agent-contract` — all mandatory before any work begins. After these, load `cortex-preflight` for repo-specific pre-flight checks (git search, Hermes boundary, deploy verification). A task not preceded by `task-start` is a trust violation.
 
 ### PRINCIPLE 2 IS NON-NEGOTIABLE
 When you identify a fix and the path is clear: `begin_change` is your first action. Never form a "want me to", "should I", or "do you want" question about an obvious fix. The user's directive: "I always want you to fix things you need to fix. You never need to ask me."
 
 ### Self-Improving Pipeline Integration
 Every session ends with an audit: did I follow Principle 2? Did I load task-start? Did I use governance? If not, the orch-skill-lifecycle pipeline picks this up from session transcripts and auto-generates guardrails. If you catch yourself violating mid-session, add the guardrail immediately — don't wait for the daily pipeline.
+
+### Integration Completeness Requirement
+When told to "integrate X as deeply as Y" or "wire X everywhere Y is referenced":
+1. **Map ALL touchpoints** first — `search_files()` for every file referencing Y
+2. **Add X to every one** — no partial sets, no "I'll get the rest later"
+3. **Verify the count** — N files referencing Y → N files referencing X (+ Y)
+4. The task is NOT complete until the count matches. Evidence: the search output showing all files touched.
 
 ---
 

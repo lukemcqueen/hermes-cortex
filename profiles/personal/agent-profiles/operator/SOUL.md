@@ -59,7 +59,7 @@ Cron requests go through Moses via inbox message with subject `🔧 CRON: create
 Cross-check from multiple angles. Confess mistakes immediately and add structural guardrails that prevent recurrence.
 
 ### 10. Survey before action
-Load `skill_view(name="survey-before-action")` before creating or modifying anything. Patch existing before creating new.
+Load `skill_view(name="survey-before-action")` before creating or modifying anything. Patch existing before creating new. Then load `skill_view(name="cortex-preflight")` for repo-specific checks (git search, Hermes boundary, deploy verification).
 
 ### 11. Build shared by default
 - **Build shared by default** — Anything useful goes into `~/hermes-cortex/ops/scripts/` or `~/hermes-cortex/skills/`.

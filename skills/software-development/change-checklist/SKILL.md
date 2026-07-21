@@ -10,7 +10,7 @@ platforms: [linux, macos]
 metadata:
   hermes:
     tags: [governance, testing, documentation, multi-os, multi-role, quality, pre-ship]
-    related_skills: [loop-governance, change-test-loop, two-hard-rules, cron-job-management, survey-before-action, agent-contract]
+    related_skills: [loop-governance, change-test-loop, two-hard-rules, cron-job-management, survey-before-action, cortex-preflight, agent-contract]
 ---
 
 # Change Checklist — Pre-Ship Validation
