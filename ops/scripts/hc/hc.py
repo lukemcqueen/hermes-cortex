@@ -6,6 +6,7 @@ No curls, no API paths, no ACLs. Read any queue, see everything.
   hc inbox             list your messages (non-destructive read)
   hc inbox joseph      list joseph's messages
   hc send <a> <subj>   send a message (via POST to bus API)
+  hc exec <a> <cmd>    execute a script on a remote agent, wait for result
   hc status            bus health + queue depths + fleet
   hc depth             all queue depths
   hc fleet             agent health statuses
@@ -28,6 +29,7 @@ import os
 import subprocess
 import sys
 import time
+import uuid
 import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
@@ -637,6 +639,119 @@ def cmd_env(cfg: dict, args: list):
     print(f"  hc inbox moses    hc inbox joseph    hc inbox esther")
 
 
+def cmd_exec(cfg: dict, args: list):
+    """Execute a command on a remote agent via the bus.
+
+    Usage: hc exec <agent> <command> [args...]
+           hc exec <agent> -- <command with args>
+
+    Sends an EXEC message to the agent's inbox. The agent's
+    agent-message-handler picks it up within 5 minutes, runs
+    the command, and sends EXEC_RESULT back to inbox_moses.
+
+    The command must be a relative path under ~/.hermes-cortex/scripts/
+    on the target agent (e.g. 'manage/cortex-doctor.py --json').
+    """
+    if len(args) < 2:
+        print("Usage: hc exec <agent> <command> [args...]")
+        print()
+        print("Examples:")
+        print("  hc exec esther manage/cortex-doctor.py --json")
+        print("  hc exec gisu manage/cortex-doctor.py --quiet")
+        print("  hc exec joseph -- df -h /")
+        print()
+        print("Note: command resolves relative to ~/.hermes-cortex/scripts/ on target.")
+        print("      Use absolute paths with caution — only scripts under")
+        print("      ~/.hermes-cortex/scripts/ are guaranteed to exist fleet-wide.")
+        return
+
+    agent = args[0]
+    # Everything after agent is the command + params
+    command_parts = args[1:]
+    command = command_parts[0]
+    params = command_parts[1:]
+
+    # Generate unique correlation ID
+    corr_id = f"exec-{uuid.uuid4().hex[:12]}"
+
+    body = {
+        "from": cfg["agent"],
+        "to": agent,
+        "topic": "command",
+        "subject": "EXEC",
+        "correlation_id": corr_id,
+        "body": json.dumps({
+            "command": command,
+            "params": params,
+            "timeout": 120,
+        }),
+    }
+
+    queue = f"inbox_{agent}"
+    print(f"📤 Sending EXEC to {agent} (corr={corr_id})...")
+    result = _send_message(queue, body)
+    print(f"   {result}")
+    print()
+
+    # Poll inbox_moses for the result
+    moses_queue = f"inbox_{cfg['agent']}"
+    deadline = time.time() + 300  # 5 min max wait
+    poll_interval = 15  # every 15 seconds
+    print(f"⏳ Waiting for EXEC_RESULT from {agent} (poll every {poll_interval}s, max 5 min)...")
+    print()
+
+    while time.time() < deadline:
+        time.sleep(poll_interval)
+        msgs = _get_messages(moses_queue)
+        for msg in msgs:
+            body_raw = msg.get("body", {})
+            if isinstance(body_raw, str):
+                try:
+                    body_raw = json.loads(body_raw)
+                except json.JSONDecodeError:
+                    continue
+            msg_corr = body_raw.get("correlation_id", "")
+            msg_subj = body_raw.get("subject", "")
+            if msg_corr == corr_id and msg_subj == "EXEC_RESULT":
+                # Found our result
+                inner = body_raw.get("body", {})
+                if isinstance(inner, str):
+                    try:
+                        inner = json.loads(inner)
+                    except json.JSONDecodeError:
+                        inner = {"raw": inner}
+
+                success = inner.get("success", False)
+                stdout = inner.get("stdout", "")
+                stderr = inner.get("stderr", "")
+                exit_code = inner.get("exit_code", -1)
+                cmd_run = inner.get("command", command)
+
+                icon = "✅" if success else "❌"
+                print(f"{icon} EXEC_RESULT from {agent}:")
+                print(f"   Command: {cmd_run}")
+                print(f"   Exit:    {exit_code}")
+                if stdout:
+                    print(f"   stdout:  {stdout[:2000]}")
+                    if len(stdout) > 2000:
+                        print(f"            ... ({len(stdout)} chars total)")
+                if stderr:
+                    print(f"   stderr:  {stderr[:500]}")
+                    if len(stderr) > 500:
+                        print(f"            ... ({len(stderr)} chars total)")
+                print()
+                if not success:
+                    print("⚠️  Command failed (non-zero exit).")
+                return
+
+        print(f"   ⏳ still waiting... ({(deadline - time.time()):.0f}s remaining)")
+
+    print("❌ Timed out waiting for EXEC_RESULT.")
+    print(f"   The agent may not have agent-message-handler running, or the")
+    print(f"   command may have taken longer than 5 minutes.")
+    print(f"   Check with: hc inbox {agent}")
+
+
 def cmd_help(cfg: dict, args: list):
     """Show this help."""
     print(__doc__.strip())
@@ -645,6 +760,7 @@ def cmd_help(cfg: dict, args: list):
     print(f"  hc inbox              — read your inbox ({cfg['agent']})")
     print("  hc inbox <agent>      — read any agent's inbox")
     print("  hc send <a> <subj>    — send a message")
+    print("  hc exec <a> <cmd>    — execute a script on remote agent")
     print("  hc status             — bus health + queue depths + fleet")
     print("  hc depth [agent]      — queue depth (all or specific)")
     print("  hc fleet              — agent health statuses")
@@ -663,6 +779,7 @@ def cmd_help(cfg: dict, args: list):
 COMMANDS = {
     "inbox": cmd_inbox,
     "send": cmd_send,
+    "exec": cmd_exec,
     "status": cmd_status,
     "depth": cmd_depth,
     "fleet": cmd_fleet,

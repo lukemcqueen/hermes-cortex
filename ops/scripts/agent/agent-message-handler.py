@@ -336,6 +336,103 @@ def process_git_auth_check(msg_body: dict) -> dict:
     }
 
 
+def process_exec_command(msg_body: dict) -> dict:
+    """Process an EXEC command — run a script and return output.
+
+    Message body format:
+        command: str   — relative path under ~/.hermes-cortex/scripts/
+        params: list   — optional arguments to pass
+        timeout: int   — max seconds (default 60)
+
+    Returns:
+        success: bool
+        stdout: str
+        stderr: str
+        exit_code: int
+        command: str
+    """
+    request_raw = msg_body.get("body", {})
+    if isinstance(request_raw, str):
+        try:
+            request = json.loads(request_raw)
+        except (json.JSONDecodeError, TypeError):
+            request = {}
+    else:
+        request = request_raw
+
+    command = (request.get("command") or "").strip()
+    params = request.get("params") or []
+    timeout = int(request.get("timeout", 60))
+
+    if not command:
+        return {
+            "success": False,
+            "stdout": "",
+            "stderr": "No command specified",
+            "exit_code": -1,
+            "command": "",
+        }
+
+    # Resolve script path — relative under ~/.hermes-cortex/scripts/
+    scripts_dir = HOME / ".hermes-cortex" / "scripts"
+    script_path = scripts_dir / command
+
+    if not script_path.exists():
+        # Try as an absolute path
+        abs_path = Path(command)
+        if abs_path.exists() and abs_path.is_file():
+            script_path = abs_path
+        else:
+            return {
+                "success": False,
+                "stdout": "",
+                "stderr": f"Script not found: {command} (looked in {scripts_dir})",
+                "exit_code": -1,
+                "command": command,
+            }
+
+    log(f"Executing: {script_path} {' '.join(str(p) for p in params)}")
+
+    # Determine interpreter
+    cmd_parts = []
+    if script_path.suffix in (".py",):
+        cmd_parts = [sys.executable, str(script_path)]
+    elif script_path.suffix in (".sh", ".bash"):
+        cmd_parts = ["bash", str(script_path)]
+    else:
+        cmd_parts = [str(script_path)]
+    cmd_parts.extend(str(p) for p in params)
+
+    try:
+        r = subprocess.run(
+            cmd_parts,
+            capture_output=True, text=True, timeout=timeout
+        )
+        return {
+            "success": r.returncode == 0,
+            "stdout": r.stdout,
+            "stderr": r.stderr,
+            "exit_code": r.returncode,
+            "command": command,
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            "success": False,
+            "stdout": "",
+            "stderr": f"TIMEOUT after {timeout}s",
+            "exit_code": -1,
+            "command": command,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "stdout": "",
+            "stderr": str(e),
+            "exit_code": -1,
+            "command": command,
+        }
+
+
 def archive_message(queue: str, msg_id: str):
     """Archive a processed message from the inbox."""
     if not msg_id:
@@ -496,6 +593,23 @@ def main():
             save_state(state)
 
             log(f"{'✅' if result_body['authenticated'] else '❌'} Git auth: {result_body.get('remote_url', '?')}")
+            return True
+
+        elif subject == "EXEC":
+            start = time.time()
+            result_body = process_exec_command(body)
+            archive_message(inbox_queue, msg.get("msg_id", ""))
+            send_bus_result("inbox_moses", correlation_id, result_body, "EXEC_RESULT")
+
+            processed.add(correlation_id)
+            state.setdefault("processed_ids", [])
+            state["processed_ids"].append(correlation_id)
+            state["processed_ids"] = state["processed_ids"][-50:]
+            save_state(state)
+
+            status = "✅" if result_body["success"] else "❌"
+            stdout_preview = (result_body.get("stdout", "") or "")[:80].replace("\n", " ")
+            log(f"{status} EXEC {result_body.get('command', '?')}: exit={result_body.get('exit_code', '?')}  {stdout_preview}")
             return True
 
         elif subject == "FIX_REQUEST":
