@@ -111,6 +111,22 @@ When renaming a cron (e.g. `fleet-status-watchdog` → `orch-fleet-watchdog`):
 9. **Verify install script syntax**: `bash -n ~/hermes-cortex/ops/scripts/install-crons.sh` and `bash -n ~/hermes-cortex/ops/scripts/install/install-orch-crons.sh` — must pass with zero errors. The `fix-cron-duplicates.py --fix` script now auto-verifies and reverts on failure, but always double-check after manual edits.
 10. **Run doctor**: `python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet` — verify no failures
 11. **Commit & Push**
+12. **Notify fleet agents** via agent bus: cron has been renamed, pull latest
+
+### Bulk rename — migrating 10+ crons at once (e.g. bare-name → agent-*)
+
+For large batch renames (July 2026 migration: 25 bare-name crons → agent-*):
+
+1. **Update create sections** in `install-crons.sh` — rename all `create_cron "name"` to `create_cron "agent-name"`
+2. **Sync arrays**: `python3 ~/hermes-cortex/ops/scripts/manage/fix-cron-duplicates.py --fix`
+3. **Install new crons**: `bash ~/hermes-cortex/scripts/install-crons.sh`
+4. **Remove old bare-name crons**: 
+   - `python3 ~/hermes-cortex/scripts/manage/fix-cron-duplicates.py --gc` (scan)
+   - `python3 ~/hermes-cortex/scripts/manage/fix-cron-duplicates.py --gc --prune` (safe remove)
+5. **Orchestrator only** (Moses, Esther): also run `bash ~/hermes-cortex/scripts/install/install-orch-crons.sh --force`
+6. **Verify**: `python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet`
+
+This workflow is also available as a standalone skill: `skill_view(name='devops/cron-rename-migration')`.
 
 ## Canonical cron installer (crons.json + install-crons.py) — LEGACY, not in active use
 
