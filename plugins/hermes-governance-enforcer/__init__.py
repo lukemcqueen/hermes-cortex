@@ -28,39 +28,35 @@ from typing import Any, Dict, Optional
 GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 
 
-def _governance_lock_path() -> Path:
+def _governance_lock_path(session_id: str = "") -> Path:
     """Return a session-scoped governance lock path.
 
-    Uses the MCP loop governance system's naming convention:
-    ``.governance-<session_id>.json`` where session_id is derived from
-    the active lock file or falls back to generic naming.
-
-    Checks for any ``.governance-*.json`` file in the state directory
-    as a fallback so that session-scoped locks are recognized.
+    Uses the session_id to scope the lock so that each Hermes session
+    has its own independent governance lock. When no session_id is given
+    (fallback), returns a generic path — but the pre_tool_call hook always
+    passes the real session_id.
     """
+    if session_id:
+        return GOVERNANCE_STATE_DIR / f".governance-sess_{session_id}.json"
     return GOVERNANCE_STATE_DIR / ".governance-generic.json"
 
 
-def _find_any_governance_lock() -> Optional[Path]:
-    """Find any active governance lock file in the state directory.
+def _has_governance_lock(session_id: str = "") -> bool:
+    """Check if THIS session's governance lock exists.
 
-    Supports both legacy slug-based naming (``.governance-<repo>.json``),
-    session-scoped naming (``.governance-sess_*.json``), and generic
-    fallback (``.governance-generic.json``).
+    Only checks the lock file scoped to the given session_id — never
+    returns True for another session's lock. This prevents cross-session
+    lock sharing.
     """
+    lock_path = _governance_lock_path(session_id)
+    if not lock_path.exists():
+        return False
     try:
-        for f in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json"),
-                         key=lambda p: p.stat().st_mtime, reverse=True):
-            try:
-                state = json.loads(f.read_text())
-                task_id = state.get("task_id", "")
-                if task_id:
-                    return f
-            except (json.JSONDecodeError, OSError):
-                continue
-    except OSError:
-        pass
-    return None
+        state = json.loads(lock_path.read_text())
+        task_id = state.get("task_id", "")
+        return bool(task_id)
+    except (json.JSONDecodeError, OSError):
+        return False
 
 
 # Tools that modify system state — require governance lock
@@ -192,6 +188,9 @@ def register(ctx):
 
         args = args or {}
 
+        # Extract session_id from hook kwargs — this scopes the lock to THIS session
+        session_id = kwargs.get("session_id", "")
+
         if not _is_write_tool(tool_name, args):
             return None
 
@@ -206,11 +205,12 @@ def register(ctx):
         if tool_name == "cronjob" and args.get("action") in ("list", "run"):
             return None
 
-        if _has_governance_lock():
+        # Check for THIS session's lock — not ANY session's lock
+        if session_id and _has_governance_lock(session_id):
             return None
 
         # BLOCKED
-        lock_path = _governance_lock_path()
+        lock_path = _governance_lock_path(session_id)
         if tool_name == "terminal":
             extra = "\n  Command preview: " + str(args.get('command', ''))[:120] + "..."
         elif tool_name == "cronjob":
