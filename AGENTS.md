@@ -147,34 +147,14 @@ These prevent wasted work and missed dependencies:
 
 ### After completing work — 6 questions
 
-These catch incomplete changes before they ship. Every NO means the change is not done:
-
-1. **Arrays synced?** — If I touched cron install scripts: does every `create_cron` name have a matching entry in the same file's uninstall array? Run `fix-cron-duplicates.py` to verify.
-2. **Old thing removed?** — If I created a replacement (new cron name, new script, new config), did I delete the old one? Crons don't self-destruct. Stale scripts in deploy dirs don't self-delete.
-3. **Docs updated?** — Every doc that references the changed thing. At minimum: `cron-schedules.md`, `fleet-reference.md`, `AGENTS.md`, and any skill SKILL.md that mentions the old name.
-4. **Syntax valid?** — Ran `bash -n` on every `.sh` I changed, `python3 -m py_compile` on every `.py`. Install scripts with broken arrays silently fail.
-5. **Doctor clean?** — `python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet` — verify 0 failures.
-6. **Pushed and deployed?** — `git push` completed, runtime copies deployed (`cp` to `~/.hermes/`, `~/.hermes-cortex/scripts/`).
+> Content relocated to [`docs/reference/after-completing-work-6-questions.md`](docs/reference/after-completing-work-6-questions.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ## Session Todo Protocol
 
-Every session follows this discipline:
+> Content relocated to [`docs/reference/session-todo-protocol.md`](docs/reference/session-todo-protocol.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
-1. **On session start** — read `~/.hermes-cortex/data/TODO.md` (durable cross-session file). Then `todo()` to mirror in the session tool. Then `session_search()` with 3+ queries about the likely topic area — past sessions contain decisions, patterns, and existing systems you'd otherwise miss. Commit to the highest-priority item.
-2. **Before each `begin_change()`** — update todo status to reflect what you're about to work on.
-3. **After each `end_change()`** — update todo status. Mark completed items done.
-4. **End of session** — ensure all completed items are marked. Write todo state back to `~/.hermes-cortex/data/TODO.md`. If items remain pending, the file carries them to the next session.
-5. **If interrupted mid-task** — leave accurate statuses so the next session knows where to resume. Write to durable file immediately.
-6. **First session (no TODO.md exists)** — check `session_search("todo list pending items")` to reconstruct from past sessions, then create the durable file.
-
-The todo list is the session's ground truth. If an item isn't on it, it won't get done. If an item IS on it but stale, it creates confusion. Update it every time you enter or exit a change cycle.
-
-> **If any post-work answer is NO, the change is not complete.** Do not call `end_change()` until all 6 pass. This is not optional — it's Rule 3 (documentation) and Rule 4 (cleanup) in practice.
-
----
-
-=======
->>>>>>> ac07705 (Add RULE 4 to AGENTS.md and principle #27 to Kustos SOUL.md)
 ## Pre-Task Sequence — Mandatory Before Every Task
 
 This is NOT optional. Every task starts with this exact sequence,
