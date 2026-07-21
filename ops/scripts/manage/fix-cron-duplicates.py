@@ -91,8 +91,8 @@ def write_uninstall_array(path: Path, names: list[str]) -> bool:
     for i, name in enumerate(names):
         suffix = " \\" if i < len(names) - 1 else "; do"
         lines.append(f'    "{name}"{suffix}')
-    new_block = "\n" + "\n".join(lines) + "\n  "
-    new_text = text[:m.start(1)] + new_block + text[m.end(1):]
+    new_block = "\n".join(lines) + "\n  "
+    new_text = text[:m.start(1)] + new_block + text[m.end():]
     if new_text == text:
         return False  # No change
     path.write_text(new_text)
@@ -260,18 +260,110 @@ def fix_uninstall_arrays(dry_run: bool) -> int:
     return fixed
 
 
+def gc_orphans(dry_run: bool, do_prune: bool = False) -> int:
+    """Scan for orphan crons not in any install script.
+    With --prune, only removes no_agent crons whose deployed script is gone.
+    LLM-driven crons and local-* crons are always preserved."""
+    expected = set(read_uninstall_array(INSTALL_CRONS))
+    expected |= set(read_uninstall_array(INSTALL_ORCH_CRONS))
+
+    if not CRON_JOBS.exists():
+        return 0
+    try:
+        data = json.loads(CRON_JOBS.read_text())
+        jobs = data.get("jobs", []) if isinstance(data, dict) else data
+        running = {j.get("name", ""): j for j in jobs if isinstance(j, dict) and j.get("name")}
+    except (json.JSONDecodeError, OSError):
+        return 0
+
+    # Orphans: running but not expected
+    orphans = {n for n in running if n not in expected}
+
+    if not orphans:
+        print("  ✓ No orphan crons found")
+        return 0
+
+    print(f"  Found {len(orphans)} orphan cron(s) not in any install script:")
+
+    removed = 0
+    for name in sorted(orphans):
+        job = running[name]
+        is_noagent = job.get("no_agent", False)
+        is_local = name.startswith("local-")
+        script = job.get("script", "") or ""
+        # Check if deployed script file exists
+        deploy_home = HOME / ".hermes-cortex"
+        script_path = deploy_home / "scripts" / script if script else None
+        script_exists = script_path.exists() if script_path else False
+
+        context = []
+        if is_local:
+            context.append("local-only")
+        if not is_noagent:
+            context.append("LLM-driven")
+        if script:
+            context.append(f"script={'exists' if script_exists else 'GONE'}")
+        ctx = f" ({', '.join(context)})" if context else ""
+
+        # Safety: only prune no_agent orphans whose deployed script is gone
+        can_prune = is_noagent and script and not script_exists and not is_local
+
+        if do_prune and can_prune:
+            action = "[DRY-RUN] Would remove" if dry_run else "Removing"
+            print(f"    {action}: {name}{ctx}")
+            if not dry_run:
+                r = subprocess.run(
+                    [sys.executable, "-m", "hermes", "cron", "remove", "--force", name],
+                    capture_output=True, text=True, timeout=30,
+                )
+                if r.returncode == 0 or "not found" in r.stderr.lower():
+                    print(f"      ✓ Removed")
+                    removed += 1
+                else:
+                    print(f"      ✗ CLI failed: {r.stderr[:100]}")
+                    _remove_from_json(name)
+                    removed += 1
+        else:
+            reason = " (kept: " + (
+                "local-only" if is_local else
+                "LLM-driven, can't determine intentionality" if not is_noagent else
+                "script still exists, not orphaned" if script_exists else
+                "use --prune to remove"
+            ) + ")"
+            print(f"    ⚠ {name}{ctx}{reason}")
+
+    return removed
+
+
 def main():
     dry_run = "--dry-run" in sys.argv
     do_fix = "--fix" in sys.argv
+    do_gc = "--gc" in sys.argv
+    do_prune = "--prune" in sys.argv
 
     if not REPO.exists():
         print(f"  ✗ Repo not found: {REPO}")
         sys.exit(2)
 
+    mode = "SCAN ONLY"
+    if do_fix:
+        mode = "FIX"
+    elif do_gc:
+        mode = "GC" + (" + PRUNE" if do_prune else " (scan only)")
+    mode_str = f"DRY RUN — {mode}" if dry_run else mode
+
     print(f"═══ Cron Duplicate Fixer ═══")
     print(f"  Repo: {REPO}")
-    print(f"  Mode: {'DRY RUN' if dry_run else ('FIX' if do_fix else 'SCAN ONLY')}")
+    print(f"  Mode: {mode_str}")
     print()
+
+    if do_gc:
+        print("── Garbage Collection ──")
+        removed = gc_orphans(dry_run, do_prune)
+        print()
+        if removed > 0:
+            print(f"  Removed {removed} orphan cron(s)")
+        sys.exit(0)
 
     crons = load_cron_state()
     print(f"  Loaded {len(crons)} cron jobs from {CRON_JOBS.name}")

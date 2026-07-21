@@ -449,10 +449,13 @@ if $UNINSTALL; then
     "agent-remediate-apply" \
     "agent-remediation-sensor" \
     "agent-scoring-activity-watchdog" \
+    "agent-secret-leak-watchdog" \
     "agent-service-recovery" \
     "agent-session-cache-build" \
+    "agent-stale-ref-watchdog" \
     "agent-system-alert-watchdog" \
     "agent-threat-pipeline"; do
+  
     remove_cron "$job"
   done
   info "Uninstall complete"
@@ -952,3 +955,23 @@ fi
 if [[ "$FAILED" -gt 0 ]]; then
   exit 1
 fi
+
+# Secret leak watchdog (every 4h, scans cron outputs for leaked credentials)
+create_cron "agent-secret-leak-watchdog" "0 */4 * * *" \
+  "secret-leak-watchdog.py" \
+  "Scans cron outputs and session files for printf/echo credential leaks" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# Stale ref watchdog (daily, scans deployment layers for broken symlinks/paths)
+create_cron "agent-stale-ref-watchdog" "0 5 * * *" \
+  "manage/stale-ref-watchdog.sh" \
+  "stale-ref-watchdog -- nightly stale-path scan across all deploy layers" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
