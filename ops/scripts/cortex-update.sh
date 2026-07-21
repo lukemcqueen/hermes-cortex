@@ -1264,16 +1264,6 @@ main() {
   # Sync offline code corpus from repo
   sync_code_corpus
 
-  # Sync SOUL.md from repo template to ~/.hermes/ — actual content sync
-  local template_soul="${REPO_DIR}/docs/templates/SOUL.md"
-  if [[ -f "$template_soul" ]]; then
-    if ! diff -q "$template_soul" "${hermes_home}/SOUL.md" >/dev/null 2>&1; then
-      copy_file "$template_soul" "${hermes_home}/SOUL.md"
-      info "  SOUL.md synced from template to ~/.hermes/"
-    fi
-  fi
-
-  # Deploy nginx configs (OS-aware path substitution, sudo on Linux)
   deploy_nginx_configs
 
   # Deploy system scripts to /usr/local/sbin/ (root-owned, NOPASSWD-safe)
