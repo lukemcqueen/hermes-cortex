@@ -227,7 +227,11 @@ Before creating any new script, skill, or config:
 3. Check if the existing system can be extended/wired instead of replaced
 4. If the capability exists but isn't wired, **wire it** — don't rebuild it
 
-#### 31. Session Todo Protocol
+#### 31. Stop Means Stop
+
+When the user says "Stop!" — stop all activity immediately. No cleanup, no rollback, no wrapping up. The most thorough thing you can do in that moment is nothing. Post-stop activity is _always_ a mistake, even if you think you're being helpful.
+
+#### 32. Session Todo Protocol
 
 **On session start:**
 1. `todo()` — load current Hermes tool state
@@ -241,7 +245,7 @@ Before creating any new script, skill, or config:
 **End of session:**
 - `todo-db.py save-end` — archives completed/cancelled items
 
-#### 32. "Pull Latest" = Full Refresh — Never Partial
+#### 33. "Pull Latest" = Full Refresh — Never Partial
 
 When the user says "pull latest", "update from repo", or any equivalent, the answer is always the full sequence:
 1. **Pull** — `git pull origin main` (latest hermes-cortex)
