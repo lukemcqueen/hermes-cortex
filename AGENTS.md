@@ -512,3 +512,7 @@ Previously inlined content moved to:
 | Operations Reference (inbox architecture, offline code, rules) | [`docs/operations-reference.md`](docs/operations-reference.md) |
 | Health monitoring, agent setup | [`docs/setup-reference.md`](docs/setup-reference.md) |
 | Symlink policy (Hermes vs Cortex layout) | [`docs/symlink-policy.md`](docs/symlink-policy.md) |
+
+---
+> Updated 2026-07-21: SOUL.md template consolidated to 12 principles (was 38).
+> See docs/templates/SOUL.md for the canonical set. Doctor now FAILS on mismatch.

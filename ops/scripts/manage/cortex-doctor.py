@@ -479,9 +479,11 @@ def check_dev_repo_agents(res):
                     # If AGENTS.md hasn't been touched since the last 5 commits
                     age_days = (file_mtime - last_commit) / 86400
                     if age_days < 0:  # AGENTS.md older than last commit
-                        res.add(f"AGENTS.md ({repo.name})", "INFO",
-                                "possibly stale — last modified before latest commit",
-                                f"Review and update: ~/{repo.name}/AGENTS.md")
+                        res.add(f"AGENTS.md ({repo.name})", "FAIL",
+                                "stale — last modified before latest commit — must be updated",
+                                f"REQUIRED: Review and update: ~/{repo.name}/AGENTS.md. "
+                                f"Run: cd ~/{repo.name} && git diff HEAD~5..HEAD --name-only -- AGENTS.md | head -20 "
+                                f"to see what's changed. Merge recent patterns into AGENTS.md.")
             except (subprocess.TimeoutExpired, OSError, ValueError):
                 pass
 
