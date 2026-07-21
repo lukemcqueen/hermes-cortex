@@ -443,6 +443,7 @@ if $UNINSTALL; then
     "agent-llm-judge-scorer-weekend" \
     "agent-memory-pruning" \
     "agent-memory-to-brain-sync" \
+    "agent-message-handler" \
     "agent-model-health-watchdog" \
     "agent-offline-code-index" \
     "agent-remediate-apply" \
