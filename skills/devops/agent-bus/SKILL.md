@@ -17,6 +17,8 @@ metadata:
 
 The Agent Bus is a Postgres-native message queue (`lib/pgmq` implementation with `SKIP LOCKED`) running on port `:8903`, proxied through nginx. All inter-agent communication flows through it. It replaces the old file-based agent inbox.
 
+> **📐 Architecture reference:** See [`docs/reference/cortex-bus-config.md`](../../docs/reference/cortex-bus-config.md) for the full architecture — fleet topology, auth model, ACL/permissions, message consumption patterns, and forwarder design. This skill covers operational diagnostics only.
+
 Key architectural facts:
 - **Bus server** processes at `~/hermes-cortex/ops/services/agent-bus/server.py`
 - **Queue module** at `~/hermes-cortex/core/agent_bus/queue.py`

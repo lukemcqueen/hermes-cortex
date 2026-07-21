@@ -15,7 +15,7 @@
 ┌──────────────┐  ┌──────────────────┐  ┌────────────┐  ┌──────────────┐  ┌────────────────┐
 │   Langfuse   │  │  Cortex Dashboard│  │  Web Cache │  │   GBrain     │  │  Agent Bus     │
 │  (LLM Obs.)  │  │   (Flask + JS)   │  │ (sqlite-vec│  │ (Knowledge)  │  │  (PGMQ Queue)  │
-│ local:3000   │  │  local:8901      │  │  + Ollama) │  │ local:15432  │  │ local:8905     │
+│ local:3000   │  │  local:8901      │  │  + Ollama) │  │ local:15432  │  │ local:8903     │
 │ ext:13002    │  │  ext:13001       │  │  ~200MB    │  │  pgvector)  │  │ ext:13004     │
 │              │  │                   │  │            │  │ bus queues  │  │ (waiting)     │
 └──────────────┘  └──────────────────┘  └────────────┘  └──────┬───────┘  └────────────────┘
@@ -25,8 +25,8 @@
 │              nginx Reverse Proxy (macOS Host)                        │
 │  :13001 → Cortex Dashboard (port 8901, HTTPS)                       │
 │  :13002 → Langfuse (port 3000, HTTPS)                               │
-│  :13004 → Agent Bus (port 8905, HTTPS) — PGMQ message queue         │
-│  :13007 → Health Server (port 8905, HTTPS) — legacy                 │
+│  :13004 → Agent Bus (port 8903, HTTPS) — PGMQ message queue         │
+│  :13007 → Health Server (port 8905, HTTPS)                         │
 └──────────────────────────────────────────────────────────────────────┘
        │
        ▼
@@ -106,7 +106,7 @@ Adapter layer — the Core schemas and Ops infrastructure stay unchanged.
 | Langfuse | 3000 | LLM trace observability | Node.js standalone, launchd |
 | Cortex Dashboard | 8901 | System + Langfuse companion | Flask + pure JS/HTML |
 | Health Server | 8905 | System health endpoint | Flask, launchd |
-| Agent Bus | **8905 (localhost-only)** | Agent Bus (PGMQ) — inter-agent messaging via agent-bus-mcp.py MCP server or API. Includes workflow engine + A2A task delegation. nginx proxy on port **13004** with `auth_basic` |
+| Agent Bus | **8903** | Agent Bus (PGMQ) — inter-agent messaging. Health endpoint, web dashboard, pub/sub REST API. nginx proxy on port 13004 with `auth_basic` | FastAPI + Postgres PGMQ |
 || nginx | 13001–13007 | Reverse proxy for all services | Homebrew, launchd |
 | MinIO | 9002 (S3 API), 9001 (console) | S3-compatible blob storage | Native binary, launchd |
 | ClickHouse | 8123 (HTTP), 9000 (native) | OLAP database for Langfuse traces | Native binary |
