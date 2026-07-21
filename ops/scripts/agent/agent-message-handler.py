@@ -463,12 +463,15 @@ def process_exec_command(msg_body: dict) -> dict:
         }
 
 
-def archive_message(queue: str, msg_id: str):
-    """Archive a processed message from the inbox."""
+def archive_message(queue: str, msg_id: str) -> bool:
+    """Archive a processed message from the inbox. Returns True on success."""
     if not msg_id:
-        return
+        return False
     from lib.cortex_bus import bus_archive
-    bus_archive(queue, msg_id)
+    result = bus_archive(queue, msg_id)
+    if not result:
+        log(f"⚠️ Failed to archive message {msg_id[:8]}… in {queue}")
+    return result
 
 
 def report_health_change(doctor: dict, prev_doctor: dict) -> None:
