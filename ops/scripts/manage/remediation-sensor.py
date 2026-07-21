@@ -69,7 +69,7 @@ def check_scripts():
     """Check for missing or non-executable scripts."""
     required_scripts = [
         "service-recovery.py", "system-alert-watchdog.py",
-        "orch-team-messages.sh", "cron-auto-remediate.sh",
+        "cron-auto-remediate.sh",
         "daily-lesson-mine.sh", "update-session-state.sh",
     ]
     for script in required_scripts:
