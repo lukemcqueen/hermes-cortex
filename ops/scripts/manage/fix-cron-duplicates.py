@@ -96,6 +96,15 @@ def write_uninstall_array(path: Path, names: list[str]) -> bool:
     if new_text == text:
         return False  # No change
     path.write_text(new_text)
+    # Verify bash syntax after writing
+    import subprocess
+    r = subprocess.run(["bash", "-n", str(path)], capture_output=True, text=True, timeout=10)
+    if r.returncode != 0:
+        # Revert the change and warn
+        path.write_text(text)  # restore original
+        print(f"  ✗ BASH SYNTAX ERROR in {path.name}: {r.stderr[:200]}")
+        print(f"    Change reverted. Fix the uninstall array generator and re-run.")
+        return False
     return True
 
 

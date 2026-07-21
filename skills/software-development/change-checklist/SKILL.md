@@ -85,6 +85,7 @@ Run the actual script/config and verify it works. **No simulated output.**
   - Diff generated vs deployed config
 - [ ] **If cron:** does the script exit 0 when run manually?
 - [ ] **Syntax check:** `.sh` → `bash -n`, `.py` → `python3 -m py_compile`, `.yaml` → `yaml.safe_load()`
+  - If any `install-crons.sh` or `install-orch-crons.sh` was modified: **mandatory `bash -n`** on both files. This catches array formatting errors (trailing backslash, orphaned semicolons, blank lines in continuation blocks).
 
 ## Phase 2: Verify Multi-OS Compatibility
 

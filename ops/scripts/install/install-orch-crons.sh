@@ -118,6 +118,7 @@ if $UNINSTALL; then
     "orch-bus-confirmation-poller" \
     "orch-bus-forwarder-sync" \
     "orch-bus-recover-timeouts" \
+    "orch-clean-health-queue" \
     "orch-fleet-watchdog" \
     "orch-health-report-saturday" \
     "orch-health-report-weekday" \
@@ -420,6 +421,16 @@ create_cron "orch-bus-confirmation-poller" "every 10m" \
 create_cron "orch-bus-confirmation-alert" "every 60m" \
   "orch-bus-message-tracker-alert.sh" \
   "alert" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# Drain and archive health pings from inbox_health_check (every 10m)
+create_cron "orch-clean-health-queue" "*/10 * * * *" \
+  "orch-clean-health-queue.py" \
+  "Drain and archive health pings from inbox_health_check. Archives old pings and reports count." \
   "" \
   "" \
   "origin" \
