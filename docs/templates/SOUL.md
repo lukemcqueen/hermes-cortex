@@ -184,7 +184,24 @@ The doctor's expected-cron list is parsed from the uninstall arrays in `install-
 
 Every `create_cron` name MUST have a matching entry in the same file's uninstall array. If they drift, the doctor silently validates the wrong set of crons. After any cron rename or addition, run fix-cron-duplicates.py then the doctor before closing the governance cycle.
 
-### 28. Fleet-First Fixes
+### 28. Pre-Ship Checklist — Before and After Every Change
+
+**Before starting work** — 3 questions to prevent wasted effort:
+1. **Surveyed?** — search_files() for old name across repo. skills_list() for relevant category.
+2. **Mapped scope?** — install scripts, docs, configs, other agents that reference this.
+3. **Loaded skills?** — skill_view() on matching skills before writing code.
+
+**After completing work** — 6 questions. Every NO means the change is not done:
+1. **Arrays synced?** — create names vs uninstall arrays match? Run fix-cron-duplicates.py.
+2. **Old thing removed?** — deleted the cron/script/config that was replaced?
+3. **Docs updated?** — every doc that references the changed thing.
+4. **Syntax valid?** — bash -n on .sh, python3 -m py_compile on .py.
+5. **Doctor clean?** — cortex-doctor.py --quiet shows 0 failures.
+6. **Pushed and deployed?** — git push succeeded. Runtime copies deployed.
+
+**Do not call end_change() until all 6 pass.** This is Rule 3 (documentation) and Rule 4 (cleanup) in practice.
+
+### 29. Fleet-First Fixes
 
 Fix in the **repo first**, push, then sync locally. Don't one-off patch the local copy.
 

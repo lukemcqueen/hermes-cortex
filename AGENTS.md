@@ -86,6 +86,31 @@ Documentation: [`docs/skills-manifest-reference.md`](docs/skills-manifest-refere
 
 ---
 
+## Pre-Ship Checklist — Every Change, Before and After
+
+### Before starting work — 3 questions
+
+These prevent wasted work and missed dependencies:
+
+1. **Surveyed?** — `search_files()` for the old name/term across the entire repo. Also `skills_list()` for the relevant category — load any matching skill before writing code. A single rename can touch 10+ locations.
+2. **Mapped scope?** — What install scripts, docs, configs, and other agents reference the thing I'm changing? For cron changes: check `install-crons.sh` create + uninstall arrays, `cortex-update.sh` register() calls, `cortex-doctor.py` parse functions, and `cron-schedules.md`.
+3. **Loaded skills?** — `skill_view()` on any skill identified in step 1. Skills encode workflows that prevent mistakes.
+
+### After completing work — 6 questions
+
+These catch incomplete changes before they ship. Every NO means the change is not done:
+
+1. **Arrays synced?** — If I touched cron install scripts: does every `create_cron` name have a matching entry in the same file's uninstall array? Run `fix-cron-duplicates.py` to verify.
+2. **Old thing removed?** — If I created a replacement (new cron name, new script, new config), did I delete the old one? Crons don't self-destruct. Stale scripts in deploy dirs don't self-delete.
+3. **Docs updated?** — Every doc that references the changed thing. At minimum: `cron-schedules.md`, `fleet-reference.md`, `AGENTS.md`, and any skill SKILL.md that mentions the old name.
+4. **Syntax valid?** — Ran `bash -n` on every `.sh` I changed, `python3 -m py_compile` on every `.py`. Install scripts with broken arrays silently fail.
+5. **Doctor clean?** — `python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet` shows 0 failures. Don't close the governance cycle until it does.
+6. **Pushed and deployed?** — `git push origin main` succeeded. Runtime copies deployed: AGENTS.md → `~/.hermes/AGENTS.md`, scripts → `~/.hermes-cortex/scripts/`.
+
+> **If any post-work answer is NO, the change is not complete.** Do not call `end_change()` until all 6 pass. This is not optional — it's Rule 3 (documentation) and Rule 4 (cleanup) in practice.
+
+---
+
 ## Pre-Task Sequence — Mandatory Before Every Task
 
 This is NOT optional. Every task starts with this exact sequence,
