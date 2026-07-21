@@ -108,11 +108,24 @@ Documentation: [`docs/skills-manifest-reference.md`](docs/skills-manifest-refere
 19. **Push before telling anyone to pull** — Before telling another agent "the fix is in the repo" or "pull the latest", verify the commit has been pushed to the remote (`git push origin main` completed successfully). A fix on your local disk is not in the repo. The repo is the remote. Telling agents to pull before you push wastes their time and erodes trust.
 20. **'Pull latest' = full update cycle** — When the user says "pull latest", "update from repo", or similar, execute the complete sequence: `git pull`, then `cortex-update.sh --force-all`, then `cortex-doctor.py`, then fix every issue the doctor reports, then re-run doctor to confirm clean. Pulling fresh code is step one — a verified clean state is the deliverable. <!-- Added 2026-07-21 -->
 
-20. **Canonical "pull latest" / "update from repo"** — When the user says **"pull latest"**, **"update from repo"**, **"sync up"**, or any similar phrase, the definition is: **pull hermes-cortex → update everything (cortex-update.sh --force-all) → run doctor → fix every issue → verify clean**. This is NOT a git pull alone. It is the full pipeline. Do not stop until doctor passes with zero issues.
+21. **Persistent cross-session todos** — The `todo()` tool is per-session and ephemeral. For durable, fleet-visible task tracking, use the shared `bus.todos` table in gbrain Postgres:
+    - **Session start:** `todo-db.py pending` → load DB items → `todo(todos=..., merge=true)` to restore
+    - **During work:** Before `begin_change()` → `todo-db.py update <id> --status in_progress`. After `end_change()` → `todo-db.py update <id> --status completed`
+    - **Session end:** `todo-db.py save-end` — archives completed items, keeps pending for next session
+    - **Fleet visibility:** `todo-db.py list --agent <name>` to see any agent's tasks
+    - The `todo-db.py` CLI is deployed to `~/.hermes-cortex/scripts/todo-db.py` via `cortex-update.sh`
+    - See `todo-persistence` skill and SOUL.md Principle 37 for full protocol
+
+22. **Only modify files in our repo — never touch Hermes defaults** — Hermes Agent owns everything in `~/.hermes/`. Our repo (`~/hermes-cortex/`) is the only place we create and modify files. Before editing any file:
+    - If it's in `~/hermes-cortex/` → it's ours, modify freely
+    - If it's ONLY in `~/.hermes/` and NOT in the repo → it's a Hermes default — do NOT touch
+    - If you need to change something that only exists in `~/.hermes/`, create the source in our repo first (`~/hermes-cortex/`), then deploy via `cortex-update.sh`
+    - **Exception:** Live config files (`~/.hermes-cortex/state/*`, `~/.hermes/config.yaml`) are per-machine state, not skills — modify those directly
+    - **Hermes default skill examples** (do not edit): `task-start`, `session-manager`, `agent-flow`, `reasoning-patterns`, `reflexion-check`, `agent-contract`
+    - **Our skill examples** (edit freely): anything with a source in `~/hermes-cortex/skills/` or `~/hermes-cortex/ops/scripts/`
 
 ---
 
-<<<<<<< HEAD
 ## Pre-Ship Checklist — Every Change, Before and After
 
 ### Before starting work — 3 questions

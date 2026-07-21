@@ -80,8 +80,9 @@ The fix-cron-duplicates.py now auto-verifies and reverts on failure. If you writ
 
 **The rule:** Every session starts with:
 1. `todo()` — load the pending task list
-2. `session_search()` with 3+ queries about the topic area
-3. Check the context compaction for historical snapshots
+2. `todo-db.py pending` — load persistent DB-backed todos from prior sessions
+3. `session_search()` with 3+ queries about the topic area
+4. Check the context compaction for historical snapshots
 
 Only after loading context should you answer the user's first question.
 
