@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  cortex-update.sh — Pull + delta-update + service restart
+#  cortex-update.sh — Pull + full redeploy + service restart
 #
-#  Detects what changed in git, re-copies only the affected
-#  files to their destinations, and restarts affected services.
+#  Copies ALL mapped files to their destinations and restarts
+#  affected services. Default is full sync — no flags needed.
 #
 #  Usage:
-#    bash cortex-update.sh              # default: pull + update
-#    bash cortex-update.sh --dry-run    # show what would change
-#    bash cortex-update.sh --status     # compare local vs installed
-#    bash cortex-update.sh --force-all  # re-copy EVERYTHING
+#    bash cortex-update.sh                  # full redeploy (default)
+#    bash cortex-update.sh --delta          # only changed files
+#    bash cortex-update.sh --dry-run        # show what would change
+#    bash cortex-update.sh --status         # compare local vs installed
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -84,25 +84,26 @@ CHANGED=()
 TO_RESTART=()
 COPIED=0
 SKIPPED=0
-REMOVED=0
+FORCE_ALL=true
+DELTA=false
 
-parse_args() {
-  for arg in "$@"; do
-    case "$arg" in
-      --dry-run)    DRY_RUN=true ;;
-      --status)     STATUS_ONLY=true ;;
-      --force-all)  FORCE_ALL=true ;;
-      --help|-h)
-        echo "Usage: bash cortex-update.sh [--dry-run|--status|--force-all]"
-        echo ""
-        echo "  --dry-run     Show what would change without touching anything"
-        echo "  --status      Compare local repo vs installed files"
-        echo "  --force-all   Re-copy EVERYTHING (skip detection)"
-        exit 0
-        ;;
-    esac
-  done
-}
+# Parse options
+for arg in "$@"; do
+  case "$arg" in
+    --delta)     FORCE_ALL=false; DELTA=true ;;
+    --dry-run)   DRY_RUN=true ;;
+    --status)    STATUS_ONLY=true ;;
+    --force-all) FORCE_ALL=true ;;
+    --help|-h)
+      echo "Usage: bash cortex-update.sh [--dry-run|--delta|--status]"
+      echo ""
+      echo "  --dry-run    Show what would change without touching anything"
+      echo "  --delta      Only copy changed files (default: full redeploy)"
+      echo "  --status     Compare local repo vs installed files"
+      exit 0
+      ;;
+  esac
+done
 
 # ── File-to-destination map ─────────────────────────────────
 # Each entry: source_path dest_path [service_label] [restart_cmd]
@@ -1151,7 +1152,7 @@ install_precommit_hook() {
 }
 
 main() {
-  parse_args "$@"
+  # Args already parsed at top
   register
 
   # Source OS config for nginx path variables (NGINX_CONFIG_DIR, NGINX_LOG_DIR, NGINX_HTPASSWD)
