@@ -423,19 +423,38 @@ if $UNINSTALL; then
   echo ""
   printf "${CYAN}━━━ Uninstalling Hermes Cron Jobs ━━━${RESET}\n\n"
   for job in \
-    "agent-fixer-workday" "agent-fixer-evening" "agent-fixer-overnight" "system-heartbeat" "memory-to-brain-sync" \
-    "system-alert-watchdog" "service-recovery" \
-    "remediation-sensor" \
-    "hermes-update" "gbrain-nightly-dream" "gbrain-update-sync" \
-    "hermes-cortex-sync" "memory-pruning" \
-    "auto-save-sessions" "agent-daily-bible-reading" \
-    "llm-judge-scorer-weekday" "llm-judge-scorer-weekend" \
-    "offline-code-index" "model-health-watchdog" \
+
+    "agent-agents-md-prune-apply" \
+    "agent-agents-md-prune-scan" \
+    "agent-auto-save-sessions" \
+    "agent-cron-quality-watchdog" \
+    "agent-daily-bible-reading" \
+    "agent-fixer-evening" \
+    "agent-fixer-overnight" \
+    "agent-fixer-workday" \
+    "agent-gbrain-nightly-dream" \
+    "agent-gbrain-update-sync" \
+    "agent-governance-auditor" \
+    "agent-hermes-cortex-sync" \
+    "agent-hermes-update" \
+    "agent-ip-submission" \
+    "agent-langfuse-health-watchdog" \
+    "agent-learning-collector" \
+    "agent-llm-judge-scorer-weekday" \
+    "agent-llm-judge-scorer-weekend" \
+    "agent-memory-pruning" \
+    "agent-memory-to-brain-sync" \
+    "agent-message-handler" \
+    "agent-model-health-watchdog" \
+    "agent-offline-code-index" \
     "agent-remediate-apply" \
-    "governance-auditor" "threat-pipeline" "agent-ip-submission" \
-    "scoring-activity-watchdog" \
-    "session-cache-build" "cron-quality-watchdog" \
-    "agent-learning-collector"; do
+    "agent-remediation-sensor" \
+    "agent-scoring-activity-watchdog" \
+    "agent-service-recovery" \
+    "agent-session-cache-build" \
+    "agent-system-alert-watchdog" \
+    "agent-threat-pipeline"
+  ; do
     remove_cron "$job"
   done
   info "Uninstall complete"
@@ -572,7 +591,7 @@ If nothing to report: output exactly [SILENT]" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 # Companion sensor (no_agent, every 5 min)
-create_cron "remediation-sensor" "*/5 * * * *" \
+create_cron "agent-remediation-sensor" "*/5 * * * *" \
   "remediation-sensor.py" \
   "" \
   "" \
@@ -586,7 +605,7 @@ create_cron "remediation-sensor" "*/5 * * * *" \
 # ── 2. System Health Monitoring ──────────────────────────────
 printf "\\n${CYAN}  2. System Health Monitoring${RESET}\\\n"
 
-create_cron "system-alert-watchdog" "*/30 * * * *" \
+create_cron "agent-system-alert-watchdog" "*/30 * * * *" \
   "system-alert-watchdog.py" \
   "" \
   "" \
@@ -595,7 +614,7 @@ create_cron "system-alert-watchdog" "*/30 * * * *" \
   "" \
   "true"
 
-create_cron "service-recovery" "*/5 * * * *" \
+create_cron "agent-service-recovery" "*/5 * * * *" \
   "service-recovery.py" \
   "" \
   "" \
@@ -607,7 +626,7 @@ create_cron "service-recovery" "*/5 * * * *" \
 # ── 3. Knowledge & Memory ────────────────────────────────────
 printf "\\n${CYAN}  3. Knowledge & Memory${RESET}\\\n"
 
-create_cron "memory-to-brain-sync" "0 */6 * * *" \
+create_cron "agent-memory-to-brain-sync" "0 */6 * * *" \
   "memory-to-brain-sync.py" \
   "" \
   "" \
@@ -632,7 +651,7 @@ create_cron "agent-message-handler" "*/5 * * * *" \
 
 # ── 5. Governance Audit & Lock Cleanup
 
-create_cron "governance-auditor" "0 */6 * * *" \
+create_cron "agent-governance-auditor" "0 */6 * * *" \
   "governance-auditor.py" \
   "" \
   "" \
@@ -645,7 +664,7 @@ create_cron "governance-auditor" "0 */6 * * *" \
 printf "\n${CYAN}  6. Universal Agent Crons${RESET}\n"
 
 # LLM judge scorer — weekday (Mon-Fri 12:00 and 20:00)
-create_cron "llm-judge-scorer-weekday" "0 12,20 * * 1-5" \
+create_cron "agent-llm-judge-scorer-weekday" "0 12,20 * * 1-5" \
   "llm-judge-scorer.py" \
   "" \
   "" \
@@ -655,7 +674,7 @@ create_cron "llm-judge-scorer-weekday" "0 12,20 * * 1-5" \
   "true"
 
 # LLM judge scorer — weekend (Sat-Sun 22:00)
-create_cron "llm-judge-scorer-weekend" "0 22 * * 0,6" \
+create_cron "agent-llm-judge-scorer-weekend" "0 22 * * 0,6" \
   "llm-judge-scorer.py" \
   "" \
   "" \
@@ -665,7 +684,7 @@ create_cron "llm-judge-scorer-weekend" "0 22 * * 0,6" \
   "true"
 
 # Offline code index rebuild (weekly Sunday 05:00)
-create_cron "offline-code-index" "0 5 * * 0" \
+create_cron "agent-offline-code-index" "0 5 * * 0" \
   "offline_code_index_cron.sh" \
   "" \
   "" \
@@ -675,7 +694,7 @@ create_cron "offline-code-index" "0 5 * * 0" \
   "true"
 
 # Model health watchdog (daily 07:00)
-create_cron "model-health-watchdog" "0 7 * * *" \
+create_cron "agent-model-health-watchdog" "0 7 * * *" \
   "model-health-watchdog.py" \
   "" \
   "" \
@@ -685,7 +704,7 @@ create_cron "model-health-watchdog" "0 7 * * *" \
   "true"
 
 # Langfuse health + ClickHouse merge watchdog (silent when healthy, every hour)
-create_cron "langfuse-health-watchdog" "0 * * * *" \
+create_cron "agent-langfuse-health-watchdog" "0 * * * *" \
   "langfuse-health-watchdog.py" \
   "" \
   "" \
@@ -694,12 +713,6 @@ create_cron "langfuse-health-watchdog" "0 * * * *" \
   "" \
   "true"
 
-
-# Agent-specific local fixer (no_agent script — reads markers, searches offline corpus, applies fixes)
-create_cron "agent-apply-fixes" "*/10 * * * *" \
-  "agent-apply-fixes.py" \
-  "" \
-  "" "" "local" "" "true"
 
 # Agent remediation apply (no_agent script — reads sensor output, applies deterministic fixes)
 create_cron "agent-remediate-apply" "*/10 * * * *" \
@@ -712,7 +725,7 @@ create_cron "agent-remediate-apply" "*/10 * * * *" \
   "true"
 
 # Scoring activity watchdog — alerts if too few cycles logged today
-create_cron "scoring-activity-watchdog" "0 14,20 * * *" \
+create_cron "agent-scoring-activity-watchdog" "0 14,20 * * *" \
   "scoring-activity-watchdog.py" \
   "" \
   "" \
@@ -723,7 +736,7 @@ create_cron "scoring-activity-watchdog" "0 14,20 * * *" \
 
 
 # Session embedding cache rebuild (weekly Monday 05:00 — universal, loop-governance)
-create_cron "session-cache-build" "0 5 * * 1" \
+create_cron "agent-session-cache-build" "0 5 * * 1" \
   "session_cache.py" \
   "" \
   "" \
@@ -743,7 +756,7 @@ create_cron "agent-learning-collector" "0 */6 * * *" \
   "true"
 
 # Cron output quality gate (every 10 min, silent when healthy — universal)
-create_cron "cron-quality-watchdog" "*/10 * * * *" \
+create_cron "agent-cron-quality-watchdog" "*/10 * * * *" \
   "cron-quality-watchdog.py" \
   "" \
   "" \
@@ -760,7 +773,7 @@ create_cron "cron-quality-watchdog" "*/10 * * * *" \
 printf "\n${CYAN}  7. Deployment-Specific Crons${RESET}\n"
 
 # Daily Hermes Agent self-update
-create_cron "hermes-update" "23 22 * * *" \
+create_cron "agent-hermes-update" "23 22 * * *" \
   "hermes-update.sh" \
   "" \
   "" \
@@ -770,7 +783,7 @@ create_cron "hermes-update" "23 22 * * *" \
   "true"
 
 # Weekly gbrain dream for knowledge enrichment
-create_cron "gbrain-nightly-dream" "0 3 * * 6" \
+create_cron "agent-gbrain-nightly-dream" "0 3 * * 6" \
   "gbrain-nightly-dream.sh" \
   "" \
   "" \
@@ -780,7 +793,7 @@ create_cron "gbrain-nightly-dream" "0 3 * * 6" \
   "true"
 
 # Weekly gbrain update and health check
-create_cron "gbrain-update-sync" "0 2 * * 0" \
+create_cron "agent-gbrain-update-sync" "0 2 * * 0" \
   "gbrain-update-sync.sh" \
   "" \
   "" \
@@ -790,7 +803,7 @@ create_cron "gbrain-update-sync" "0 2 * * 0" \
   "true"
 
 # Daily hermes-cortex sync and update
-create_cron "hermes-cortex-sync" "33 22 * * *" \
+create_cron "agent-hermes-cortex-sync" "33 22 * * *" \
   "hermes-cortex-sync.sh" \
   "" \
   "" \
@@ -800,7 +813,7 @@ create_cron "hermes-cortex-sync" "33 22 * * *" \
   "true"
 
 # Weekly memory pruning and consolidation (deepseek — needs Hermes memory tool)
-create_cron "memory-pruning" "0 4 * * 1" \
+create_cron "agent-memory-pruning" "0 4 * * 1" \
   "" \
   "Consolidate Hermes agent memory and project agent instructions. Read MEMORY.md, USER.md from the active profile and project roots. Consolidate into compact pointers. Prune stale entries. Keep under 2,200 chars.
 
@@ -831,7 +844,7 @@ If nothing to report: output exactly [SILENT]" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 # Auto-save sessions every 6 hours
-create_cron "auto-save-sessions" "every 360m" \
+create_cron "agent-auto-save-sessions" "every 360m" \
   "auto-save-sessions.py" \
   "" \
   "" \
@@ -851,7 +864,7 @@ create_cron "agent-daily-bible-reading" "0 1 * * *" \
   "true"
 
 # Daily threat pipeline — scanner → fail2ban → deploy → commit → push
-create_cron "threat-pipeline" "0 5 * * *" \
+create_cron "agent-threat-pipeline" "0 5 * * *" \
   "nginx-threat-pipeline.sh" \
   "" \
   "" \
@@ -872,7 +885,7 @@ create_cron "agent-ip-submission" "*/30 * * * *" \
 
 # ── AGENTS.md auto-trim: daily scan + LLM apply (M-Sa) ──
 # Phase 1: deterministic scan — silent when clean, JSON report when candidates found
-create_cron "agents-md-prune-scan" "0 4 * * 1-6" \
+create_cron "agent-agents-md-prune-scan" "0 4 * * 1-6" \
   "agents-md-prune-scan.py" \
   "" \
   "" \
@@ -882,7 +895,7 @@ create_cron "agents-md-prune-scan" "0 4 * * 1-6" \
   "true"
 
 # Phase 2: LLM review + apply — reads scan output via context_from
-create_cron "agents-md-prune-apply" "30 4 * * 1-6" \
+create_cron "agent-agents-md-prune-apply" "30 4 * * 1-6" \
   "" \
   "Review the AGENTS.md pruning scan report injected below (via context_from=agents-md-prune-scan).
 If candidates exist and look correct, apply them by running:

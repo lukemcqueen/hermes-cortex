@@ -1,12 +1,18 @@
 # Agent Guidelines — Hermes Cortex
 
-> **⚠️ TWO HARD RULES — Every Agent Must Follow**
+> **⚠️ FOUR HARD RULES — Every Agent Must Follow**
 >
 > **RULE 1: USE LOOP GOVERNANCE ALWAYS**
 > Every code/config/cron change: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. MCP server blocks write tools without a lock.
 >
 > **RULE 2: SHARE IMPROVEMENTS TO THE PUBLIC REPO**
 > Every improvement that benefits other agents goes into `hermes-cortex`. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+>
+> **RULE 3: DOCUMENTATION IS NOT OPTIONAL**
+> Every change includes doc updates. If another agent would be confused by the change without reading an updated doc, the doc must be updated before the governance lock is released. `docs/`, `AGENTS.md`, `SOUL.md`, and `cron-schedules.md` must reflect reality after every change.
+>
+> **RULE 4: CLEAN UP AFTER YOURSELF**
+> If you rename a cron, update BOTH the `create_cron` call AND the uninstall array in the same commit. If you create a new cron with a new name, remove the old one. If you leave test artifacts, delete them before `end_change()`. The doctor's expected-cron list is parsed from install script uninstall arrays — drift between create and uninstall arrays breaks validation silently. Run `fix-cron-duplicates.py` before closing any cycle that touched install scripts.
 
 ---
 

@@ -63,6 +63,12 @@ Before making any change, map the full scope. A single cron rename can touch 10+
   - All agents → `install-crons.sh` with `agent-*` prefix
   - See [`docs/fleet-reference.md`](docs/fleet-reference.md) cron table
 - [ ] **Doctor compatibility**: after updating `install-crons.sh`, run the doctor to confirm: `python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet`
+- [ ] **Install array sync (non-negotiable)**: After any cron rename or addition, verify the `create_cron` block name matches the uninstall array entry EXACTLY. The doctor parses uninstall arrays as its expected cron list. Run:
+  ```bash
+  python3 ~/hermes-cortex/ops/scripts/manage/fix-cron-duplicates.py
+  ```
+  Zero issues = arrays are in sync.
+- [ ] **Old cron cleanup**: If you added a new cron with a new name, confirm the old one was removed. Crons don't self-destruct.
 - [ ] **Test run**: after deploy, run the actual script to verify exit code 0
 - [ ] **PII scan**: run `bash ~/hermes-cortex/ops/scripts/secret-leak-detector.sh` and review any PII warnings before pushing. Check for real domains, `/home/<username>/` paths, and email addresses in new/changed files.
 

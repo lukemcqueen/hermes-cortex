@@ -1,213 +1,196 @@
 # Fleet Reference (Luke's Deployment)
 
-> **⚠️ TWO HARD RULES — Every Agent Must Follow**
+> **⚠️ FOUR HARD RULES — Every Agent Must Follow**
 >
 > **RULE 1: USE LOOP GOVERNANCE ALWAYS**
-> Every code/config/cron change REQUIRES: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. No exceptions. If `end_change` rejects, confess and force-clear — never silently skip the loop. The MCP server blocks write tools without an active lock — this is enforced at the tool level, not optional.
+> Every code/config/cron change REQUIRES: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. No exceptions.
 >
 > **RULE 2: SHARE IMPROVEMENTS TO THE PUBLIC REPO**
-> Every improvement you make that benefits other agents MUST go into the `hermes-cortex` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
-
-This document contains fleet-specific guidance for Luke's multi-agent
-orchestration setup. It was relocated from `AGENTS.md` to keep the root
-agent guidelines focused on general Hermes Cortex usage.
-
----
-
-## Daily Priority Check-in
-
-**Cron jobs:**
-- `titus-daily-briefing` — 8:00am KST, posts to GitHub issue #1
-- `daily-priority-checkin` — 8:30am KST, delivers to `origin` (Telegram)
-
-**Purpose:** Start each day with focused alignment on the user's #1 priority, incorporating cross-agent context from Titus.
-
-**Workflow:**
-
-| Time | Agent | Action |
-|------|-------|--------|
-| 8:00am | Titus | Analyzes repos on Luke's MacBook (all except hermes-cortex). Posts briefing as comment on **GitHub issue #11** in fleet-operator/hermes-cortex |
-| 8:30am | Moses | Reads latest comment from **GitHub issue #11** via `gh api`. Asks user: "What is your #1 priority for today?" |
-| 8:30am+ | Moses | Breaks priority into 2-4 actionable tasks. Incorporates Titus's suggestions. Updates memory. Begins execution. |
-
-**Why GitHub Issues:** Cross-machine bridge — Titus writes repo comments, Moses reads via `gh api`. Natural audit trail.
-
-**Why this matters:** Prevents context-switching, builds historical record of focus areas, creates natural daily rhythm.
+> Every improvement you make that benefits other agents MUST go into the `hermes-cortex` repo.
+>
+> **RULE 3: DOCUMENTATION IS NOT OPTIONAL**
+> Every change includes doc updates. If another agent would be confused without reading an updated doc, the doc must be updated before the governance lock is released.
+>
+> **RULE 4: CLEAN UP AFTER YOURSELF**
+> If you rename a cron, update BOTH the `create_cron` call AND the uninstall array in the same commit. Run `fix-cron-duplicates.py` before closing any cycle that touched install scripts.
 
 ---
 
-## Luke's Deployment: Daily Priority Check-in
+## Agent Type Reference
 
-### Processing pipeline
+Every agent in the fleet falls into one of three types. This determines which install scripts apply, what crons they run, and what the doctor validates.
 
-| Step | Skill | Description |
-|------|-------|-------------|
-| Elicit | `requirements-elicitation` | Structured requirements gathering from user goals |
-| Review | `architecture-review` | Architecture review with weighted decision matrix |
-| Spec | `product-requirements` | 1-page PRD — problem, solution, constraints, open questions |
-| Slice | `story-decomposition` | Break feature into independently deliverable stories |
-| Build | `change-test-loop` | LEARN-RED-GREEN-REFACTOR with lesson-aware memory |
-| Review | `code-review` | Pre-commit review: security, quality, auto-fix |
+| Capability | Moses (orch) | Esther (orch) | Joseph | Kustos | Gisu | Titus |
+|------------|-------------|---------------|--------|--------|------|-------|
+| **Role** | Primary orchestrator | Backup orchestrator | Web/infra server | Security server | Operations server | macOS dev machine |
+| **Platform** | Linux | Linux | Linux | Linux | Linux | macOS |
+| **sudo** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **cronjob MCP tool** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Bus mode** | `both` (server + poll) | `both` (server + poll) | `poll` | `poll` | `poll` | `push_only` |
+| **Postgres access** | ✅ (direct) | ✅ (direct) | ❌ | ❌ | ❌ | ❌ |
+| **Install scripts** | `install-crons.sh` + `install-orch-crons.sh` | same | `install-crons.sh` only | same | same | same |
+| **Local bus daemon** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **nginx** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Has Ollama** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Has gbrain** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+
+### What this means for cron installs
+
+| Action | Orchestrators (Moses/Esther) | All other agents |
+|--------|------------------------------|------------------|
+| Run `install-crons.sh` | ✅ Creates all `agent-*` + bare crons | ✅ Creates all `agent-*` + bare crons |
+| Run `install-orch-crons.sh` | ✅ Creates `orch-*` crons (bus, fleet, health) | ❌ Guard blocks — exits with info message |
+| Run `cortex-doctor.py` | ✅ Validates all crons including `orch-*` | ✅ Validates only `agent-*` + bare crons, skips `orch-*` |
+| Create cron manually | ✅ Has `cronjob` MCP tool | ❌ Must request via inbox or edit `jobs.json` directly |
+
+### Cron naming convention (enforced)
+
+Every cron name MUST start with a group prefix. No bare names:
+
+| Prefix | Scope | Install script | Doctor validates | Runs on |
+|--------|-------|---------------|-----------------|---------|
+| `orch-*` | Orchestrator-only | `install-orch-crons.sh` | `parse_orch_crons()` | Moses, Esther |
+| `agent-*` | All agents | `install-crons.sh` | `parse_expected_crons()` | All agents |
+| `local-*` | This machine only | Manual `cronjob create` | Skipped by doctor | This machine only |
+
+**Rules:**
+- Every `create_cron` name MUST have a matching entry in the same file's uninstall array
+- After any cron rename or addition, run:
+  ```bash
+  python3 ~/hermes-cortex/ops/scripts/manage/fix-cron-duplicates.py
+  ```
+  Zero issues = arrays are in sync.
 
 ---
 
-## Luke's Deployment: Cron Jobs Reference
+## Current Cron State (52 jobs)
 
-| Cron | Schedule | Type | Purpose |
+### Orchestrator-only (`orch-*`) — 9 crons
+
+| Name | Schedule | Type | Script | Deliver |
+|------|----------|------|--------|---------|
+| `orch-bus-audit-watchdog` | `*/1 * * * *` | no_agent | `orch-bus-audit-watchdog.py` | Telegram |
+| `orch-bus-recover-timeouts` | `*/5 * * * *` | no_agent | `orch-bus-recover-timeouts.sh` | origin |
+| `orch-bus-confirmation-poller` | `every 10m` | no_agent | `orch-bus-message-tracker.py` | local |
+| `orch-bus-confirmation-alert` | `*/15 * * * *` | no_agent | `orch-bus-message-tracker-alert.sh` | Telegram |
+| `orch-bus-forwarder-sync` | `*/2 * * * *` | no_agent | `orch-bus-forwarder.py` | origin (PAUSED) |
+| `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | `orch-fleet-watchdog.py` | Telegram |
+| `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent | `orch-health-report.py` | origin |
+| `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent | `orch-health-report.py` | origin |
+| `orch-skill-lifecycle` | `0 4 * * *` | LLM | (skill) | origin |
+
+### All-agent crons (`agent-*`) — 23+ crons
+
+These run on every agent in the fleet. Created by `install-crons.sh`.
+
+| Name | Schedule | Type | Script | Deliver |
+|------|----------|------|--------|---------|
+| `agent-fixer-workday` | `0 9-17 * * 1-5` | LLM | auto-remediation skill | origin |
+| `agent-fixer-evening` | `0 18,20,22 * * 1-5` | LLM | auto-remediation skill | origin |
+| `agent-fixer-overnight` | `0 3 * * 1-5` | LLM | auto-remediation skill | origin |
+| `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `remediation-sensor.py` | local |
+| `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin |
+| `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local |
+| `agent-service-recovery` | `*/5 * * * *` | no_agent | `service-recovery.py` | origin |
+| `agent-system-alert-watchdog` | `*/30 * * * *` | no_agent | `system-alert-watchdog.py` | origin |
+| `agent-hermes-update` | `23 22 * * *` | no_agent | `hermes-update.sh` | local |
+| `agent-hermes-cortex-sync` | `33 22 * * *` | no_agent | `hermes-cortex-sync.sh` | origin |
+| `agent-memory-to-brain-sync` | `0 */6 * * *` | no_agent | `memory-to-brain-sync.py` | local |
+| `agent-governance-auditor` | `0 */6 * * *` | no_agent | `governance-auditor.py` | origin |
+| `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local |
+| `agent-cron-quality-watchdog` | `*/10 * * * *` | no_agent | `cron-quality-watchdog.py` | origin |
+| `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `scoring-activity-watchdog.py` | origin |
+| `agent-model-health-watchdog` | `0 7 * * *` | no_agent | `model-health-watchdog.py` | origin |
+| `agent-langfuse-health-watchdog` | `0 * * * *` | no_agent | `langfuse-health-watchdog.py` | origin |
+| `agent-memory-pruning` | `0 4 * * 1` | LLM | — | origin |
+| `agent-session-cache-build` | `0 5 * * 1` | no_agent | `session_cache.py` | origin |
+| `agent-daily-bible-reading` | `0 1 * * *` | no_agent | `agent-daily-bible-reading.py` | origin |
+| `agent-gbrain-nightly-dream` | `0 3 * * 6` | no_agent | `gbrain-nightly-dream.sh` | origin |
+| `agent-gbrain-update-sync` | `0 2 * * 0` | no_agent | `gbrain-update-sync.sh` | origin |
+| `agent-threat-pipeline` | `0 5 * * *` | no_agent | `nginx-threat-pipeline.sh` | origin |
+| `agent-ip-submission` | `*/30 * * * *` | no_agent | `agent-ip-submission.sh` | origin |
+| `agent-offline-code-index` | `0 5 * * 0` | no_agent | `offline_code_index_cron.sh` | local |
+| `agent-llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | `llm-judge-scorer.py` | local |
+| `agent-llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | `llm-judge-scorer.py` | local |
+| `agent-agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agents-md-prune-scan.py` | local |
+| `agent-agents-md-prune-apply` | `30 4 * * 1-6` | LLM | — | origin |
+| `agent-auto-save-sessions` | `every 360m` | no_agent | `auto-save-sessions.py` | local |
+
+### Local-only crons (`local-*`) — 5 crons
+
+These run only on this machine. NOT in repo installers.
+
+| Name | Schedule | Type | Deliver |
 |------|----------|------|---------|
-|| `agent-auto-remediate` | `*/30 * * * *` | LLM+skill | Auto-fix cron/bus/service issues |
-| `remediation-sensor` | `*/5 * * * *` | no_agent | Companion diagnostics sensor |
-| `service-recovery` | `*/5 * * * *` | no_agent | Auto-restart crashed services |
-| `hermes-update` | `23 22 * * *` | no_agent | Daily Hermes upgrade + config migrate (output local only — Telegram delivery suppressed) |
-| `hermes-cortex-sync` | `33 22 * * *` | no_agent | Daily repo pull + tool re-sync |
-| `system-alert-watchdog` | `*/30 * * * *` | no_agent | Resource threshold alerts |
-| `swap-refresh` | `0 5 * * *` | no_agent | Daily swap refresh (stale page reclamation) |
-| `agent-cron-failure-scanner` | `*/30 * * * *` | no_agent | Scans ALL cron outputs for recent failures (last 90 min) |
-| `inbox-sensor` | `*/10 * * * *` | no_agent | Detect new broadcast messages via Agent Bus |
-| `memory-to-brain-sync` | `0 */6 * * *` | no_agent | Memory persistence to gbrain |
-| `gbrain-nightly-dream` | `0 3 * * 6` | no_agent | Weekly gbrain knowledge enrichment |
-| `gbrain-update-sync` | `0 2 * * 0` | no_agent | Weekly gbrain update + health check |
-| `harvest-lessons` | `0 5 * * 1` | no_agent | Weekly lesson harvesting |
-| `memory-pruning` | `0 4 * * 1` | LLM+prompt | Weekly memory consolidation |
-| `auto-save-sessions` | `every 360m` | no_agent | Session state auto-save |
-| `agent-daily-bible-reading` | `0 1 * * *` | LLM+skill | Daily Bible reading |
-| `agent-daily-soul-refinement` | `0 23 * * *` | LLM+skill | Daily soul refinement |
-| `llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | Weekday trace quality scoring |
-| `llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | Weekend trace quality scoring |
-| `offline-code-index` | `0 5 * * 0` | no_agent | Weekly corpus index refresh |
-| `secret-leak-watchdog` | `0 */4 * * *` | no_agent | Scans cron/session outputs for printf/echo credential leaks |
-| `process-mcp-agent-inbox-messages` | `*/30 * * * *` | LLM | Read + process new Agent Bus messages |
-| `agent-gbrain-doctor` | `0 6 * * *` | no_agent | Daily gbrain brain health check — pauses autopilot, runs doctor, restarts (macOS + Linux) |
-| | | | |
-| **Orchestrator-only (Moses primary, Esther backup):** | | | |
-| `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | Orchestrator fleet health polling (state-change alerts, delivered via Telegram) |
-| `bus-audit-watchdog` | `*/1 * * * *` | no_agent | Watch agent bus for urgent messages |
-| `orch-process-agent-messages` | `*/10 * * * *` | LLM | Process Agent Bus remediation markers |
+| `local-agent-daily-news-brief` | `0 7 * * *` | LLM | Telegram |
+| `local-agent-daily-system-brief` | `0 9 * * *` | LLM | Telegram |
+| `local-agent-daily-finance-brief` | `0 18 * * 1-5` | LLM | Telegram |
+| `local-agent-agents-doc-audit` | `0 7 * * 1` | LLM | origin |
+| `local-ai-hot-topics-news` | `0 7 * * 1,3,5` | LLM | origin |
 
-### Cron naming convention
+### Manually-created LLM crons — 4 crons
 
-When creating a new cron, prefix it to signal scope so other agents know whether to install it:
+These run on this machine but use `agent-*` naming. Not in repo installers (intentional — they were created before the naming convention was enforced).
 
-| Prefix | Meaning | Example |
-|--------|---------|---------|
-| `orch-*` | **Orchestrator-only** — runs only on orchestrators (Moses, Esther) |
-| `agent-*` | **LLM-driven** — agent reasons each tick; installable on any machine | `agent-auto-remediate` |
-| `local-*` | **This server only** — NOT shared with or installed on peer agents. Combine with `agent-` as `local-agent-*` for LLM-driven local crons. | `local-agent-daily-news-brief` |
-| no prefix | **General no_agent** — safe for any agent to run, no LLM tokens used | `remediation-sensor` |
+| Name | Schedule | Type | Deliver |
+|------|----------|------|---------|
+| `agent-bus-workday` | `0 9-17 * * 1-5` | LLM | origin |
+| `agent-bus-evening` | `0 18,20,22 * * 1-5` | LLM | origin |
+| `agent-bus-overnight` | `0 3 * * 1-5` | LLM | origin |
+| `upwork-job-scanner` | `0 8 * * *` | LLM | Telegram |
 
-**Rule:** If a cron should stay on one machine and never appear on Titus, Gisu, or Joseph, prefix it `local-*`.
+### Other crons — 8 crons
 
-### Orchestrator gate
-
-Orchestrator-only scripts (`install-orch-crons.sh`)
-check `IS_ORCHESTRATOR=true` in `~/hermes-cortex/.env` before running. This replaces the
-older hostname-based guard (`moses`/`esther`), which remains as fallback for backward compat.
-
-| Agent | IS_ORCHESTRATOR | Reason |
-|-------|-----------------|--------|
-| Moses | `true` | Primary orchestrator |
-| Esther | `true` | Backup orchestrator |
-| Gisu | `false` (default) | Worker agent |
-| Joseph | `false` (default) | Worker agent |
-| Kustos | `false` (default) | Worker agent |
-
-**Management:**
-```bash
-hermes cron list
-bash ~/hermes-cortex/ops/scripts/install-crons.sh          # install/update all
-bash ~/hermes-cortex/ops/scripts/install-crons.sh --force  # recreate all
-bash ~/hermes-cortex/ops/scripts/install-crons.sh --dry-run
-bash ~/hermes-cortex/ops/scripts/install-crons.sh --uninstall
-```
+| Name | Schedule | Type | Script | Deliver |
+|------|----------|------|--------|---------|
+| `cron-quality-watchdog` | `*/10 * * * *` | no_agent | `cron-quality-watchdog.py` | origin |
+| `remediation-sensor` | `*/5 * * * *` | no_agent | `remediation-sensor.py` | local |
+| `service-recovery` | `*/5 * * * *` | no_agent | `service-recovery.py` | origin |
+| `system-alert-watchdog` | `*/30 * * * *` | no_agent | `system-alert-watchdog.py` | origin |
+| `memory-to-brain-sync` | `0 */6 * * *` | no_agent | `memory-to-brain-sync.py` | local |
+| `governance-auditor` | `0 */6 * * *` | no_agent | `governance-auditor.py` | origin |
+| `hermes-update` | `23 22 * * *` | no_agent | `hermes-update.sh` | local |
+| `hermes-cortex-sync` | `33 22 * * *` | no_agent | `hermes-cortex-sync.sh` | origin |
+| `threat-pipeline` | `0 5 * * *` | no_agent | `nginx-threat-pipeline.sh` | origin |
+| `model-health-watchdog` | `0 7 * * *` | no_agent | `model-health-watchdog.py` | origin |
+| `langfuse-health-watchdog` | `0 * * * *` | no_agent | `langfuse-health-watchdog.py` | origin |
+| `gbrain-nightly-dream` | `0 3 * * 6` | no_agent | `gbrain-nightly-dream.sh` | origin |
+| `gbrain-update-sync` | `0 2 * * 0` | no_agent | `gbrain-update-sync.sh` | origin |
+| `memory-pruning` | `0 4 * * 1` | LLM | — | origin |
+| `offline-code-index` | `0 5 * * 0` | no_agent | `offline_code_index_cron.sh` | local |
+| `llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | `llm-judge-scorer.py` | local |
+| `llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | `llm-judge-scorer.py` | local |
+| `session-cache-build` | `0 5 * * 1` | no_agent | `session_cache.py` | origin |
+| `agent-daily-bible-reading` | `0 1 * * *` | no_agent | `agent-daily-bible-reading.py` | origin |
+| `agent-ip-submission` | `*/30 * * * *` | no_agent | `agent-ip-submission.sh` | origin |
+| `agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agents-md-prune-scan.py` | local |
+| `agents-md-prune-apply` | `30 4 * * 1-6` | LLM | — | origin |
+| `secret-leak-watchdog` | `0 */4 * * *` | no_agent | `secret-leak-watchdog.py` | origin |
+| `scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `scoring-activity-watchdog.py` | origin |
+| `auto-save-sessions` | `every 360m` | no_agent | `auto-save-sessions.py` | local |
+| `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local |
+| `stale-ref-watchdog` | `0 5 * * *` | no_agent | `manage/stale-ref-watchdog.sh` | origin |
+| `orch-clean-health-queue` | `*/10 * * * *` | no_agent | `orch-clean-health-queue.py` | origin |
+| `local-fleet-dispatch-collector` | `every 15m` | no_agent | `local-fleet-dispatch-collector.sh` | origin |
 
 ---
 
-## Fleet Reference
+## Migration history
 
-### Agent summary
+**Jul 2026 — Bus cron duplication bug:** The `orch-bus-*` rename (commit d247880) created new `orch-bus-*` crons but did NOT remove the old `bus-*` crons. 5 duplicate pairs. Fixed Jul 21:
+1. Created `ops/scripts/manage/fix-cron-duplicates.py` — detects + removes duplicates
+2. Aligned `install-orch-crons.sh` create sections and uninstall arrays to `orch-bus-*`
+3. Removed dead `agent-apply-fixes` create_cron block
+4. Added AGENTS.md Rule 3 (doc) and Rule 4 (cleanup) to prevent recurrence
+5. Added install-array-sync check to change-checklist Phase 0
 
-|| Agent | Role | Host | Services | Bus method | Agent Bus | Health auth |
-||||-------|------|------|----------|-------------|-----------|-------------|
-||||| Moses | Primary orchestrator | moses-server (Linux) | Gateway + nginx proxy :13004 | HTTP poll (self) | **Admin** — runs bus (:8905), PG access | **No auth** |
-|||| Esther | Backup orchestrator | worker-5 (Linux) | Gateway + nginx proxy :14004 | HTTP poll (+bkup bus) | **Standby** — has bus PG access | **No auth** |
-|||| Gisu | Remote server | worker-3 (Linux) | Health endpoint :13007 | HTTP poll → Moses Agent Bus | **Bearer token** — MCP only | **No auth** |
-|||| **Joseph** | **Remote server** | **worker-2 (Linux)** | **Health endpoint :12007** | **HTTP poll → Moses Agent Bus** | **Bearer token** — MCP only | **No auth** |
-|||| Kustos | Remote server | worker-4 (Linux) | Health endpoint :13007 | HTTP poll → Moses Agent Bus | **Bearer token** — MCP only | **No auth** |
-|||| Titus | macOS dev-agent | LAM2 (Apple M1, 16GB) | Client only; Ollama crons use qwen2.5-coder:7b-iq3_xs | Push health to Moses via Agent Bus | **Bearer token** — MCP only | N/A |
+**Detection script:** `fix-cron-duplicates.py` is safe to run on ALL agent types (Linux/macOS, with/without sudo, with/without cron MCP tool). It falls back to direct `jobs.json` patching when the hermes CLI is unavailable.
 
-> **Health endpoint auth:** The health server block (`xx007`) has **no auth_basic** — it is intentionally open so Moses can poll every agent without managing per-agent credentials. This is by design: the health endpoint exposes only a compact 9-element ternary status vector with no secrets, no PII, no write operations. See `hermes-services.conf` lines 345-384 for the server block (note the absence of `auth_basic`).
-
-### Auto-remediation components
-
-All in `ops/scripts/`, installed by `install.sh` + `install-crons.sh`:
-
-| Script | Type | Schedule | Purpose |
-|--------|------|----------|---------|
-| `cron-auto-remediate.sh` | Shell | On-demand | Diagnostics + fix actions (fix-missing, fix-git, fix-perms, fix-purge) |
-| `system-alert-watchdog.py` | no_agent | Every 10m | Resource alerts + auto-cleanup |
-| `swap-refresh.py` | no_agent | Daily 5 AM | Stale swap reclamation |
-| `service-recovery.py` | no_agent | Every 5m | Auto-restart nginx, Ollama, gbrain, Langfuse |
-| `bus-audit-watchdog.py` | no_agent | Every 1m | Inspects bus messages for urgent keywords + markers |
-| `agent-auto-remediate` (skill) | LLM cron | Every 5m | Checks errored crons + inbox remediation, applies fixes |
-
-**Skill:** `skills/devops/auto-remediation/SKILL.md`
-**Setup:** Silent when healthy, brief when fixes applied, escalate after 3 failures.
-
-### Esther setup (backup orchestrator)
-
-```bash
-# 1. Run agent registry setup (prompts for real URLs)
-bash ~/.hermes-cortex/ops/scripts/install/setup-agent-registry.sh
-# 2. Install crons
-bash ~/.hermes-cortex/ops/scripts/install-crons.sh
-# 3. Copy orchestrator-specific scripts
-cp ~/hermes-cortex/ops/scripts/agent/orch-inbox-remediate.sh ~/.hermes/scripts/
-cp ~/hermes-cortex/ops/scripts/agent/orch-weekly-auto-fix.py ~/.hermes/scripts/
-# 4. Create orch-process-agent-messages cron (see agent-registry.json)
-# 5. Start gbrain autopilot
-gbrain autopilot --repo ~/brain/default --interval 300 &
-# 6. Fix score-cycle symlink (verify.sh expects this)
-ln -sf ~/.hermes-cortex/tools/loop-governance/score_cycle.py ~/.local/bin/score-cycle
-```
-
-**Known false positives:**
-- `system-heartbeat` exits 1 with `❌ gbrain sync daemon: DOWN` on Linux (macOS-only service)
-- Loop governance `verify.sh` reports 1 warning about CLI symlink until step 6 above is done
+---
 
 ## All timestamps in KST (UTC+9)
 
-All monitoring scripts output timestamps in Seoul time. Affects: `orch-fleet-watchdog.py`, `system-alert-watchdog.py`, `service-recovery.py`, `bus-audit-watchdog.py`, and all cron outputs.
-
----
-
-### Fleet status (current)
-
-| Agent | Worker | Status |
-|-------|--------|--------|
-| Moses | `agent-worker` | ✅ Active, polling every 30s |
-| Esther | `agent-worker` | ✅ Confirmed working |
-| Joseph | `agent-worker` | ✅ Confirmed working |
-| Gisu | `agent-worker` | ✅ Active, polling every 30s |
-| Kustos | `agent-worker` | ✅ Active, polling every 30s |
-| Titus | `agent-worker` | ❌ Not installed |
-
-> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
-> Date: 2026-07-15T00:00:00+00:00
-
----
-
-## Pre-commit Hook: Bare Repo Compatibility
-
-`cortex-update.sh` sets `git config --global core.hooksPath` to the shared hooks directory so every repo on the machine gets the scoring hook. This **overrides** each repo's own `.git/hooks/` — including bare repositories used for deployment with `post-receive` scripts.
-
-**Fix built in:** `pin_repos_with_own_hooks()` runs before the global hooksPath is set. It scans `/home`, `/opt`, `/srv`, `/var/www`, `/var/repo` for `.git` dirs that have their own hooks (non-sample executable hook files). For each one, it sets a **local** `core.hooksPath` pointing to the repo's own hooks directory, so the global setting doesn't override it.
-
-Repo gets pinned automatically on every `cortex-update.sh` run. To check a specific repo:
-
-```bash
-git --git-dir=/path/to/repo.git config --local core.hooksPath
-# Returns /path/to/repo.git/hooks if pinned correctly
-```
+All monitoring scripts output timestamps in Seoul time.
 
 ---
 
@@ -217,124 +200,20 @@ git --git-dir=/path/to/repo.git config --local core.hooksPath
 
 ```bash
 # ❌ WRONG — secret is visible in tool call metadata
-printf '8ec^t!p&7GME' > /tmp/pass.txt
-curl -u "admin:8ec^t!p&7GME" https://api.example.com
-echo 'ghp_token123' | gh auth login --with-token
+curl -u "admin:supersecret" https://api.example.com
 
 # ✅ RIGHT — only file path appears in the command string
-cp ~/.password_file /tmp/pass.txt
 curl -u "admin:$(cat ~/.password_file)" https://api.example.com
-gh auth login --with-token < ~/.github_token
 ```
 
 **Three layers of defense:**
-1. **SOUL.md principle** — every agent has "Never Print Secrets" as a behavioral principle
-2. **Pre-commit audit** — `secret-leak-detector.sh` scans staged scripts for printf/echo + credential patterns
-3. **Runtime watchdog** — `secret-leak-watchdog` (no_agent cron, runs every 4h) scans cron outputs and session files for leaked credential patterns and alerts via inbox
-
-**Pattern:** `$(cat <file>)` inside a double-quoted string. The shell expands it after the tool call is logged. The command string shows the file path, never the file content. <!-- Added 2026-07-13 -->
+1. **SOUL.md principle** — every agent has "Never Print Secrets"
+2. **Pre-commit audit** — `secret-leak-detector.sh` scans staged scripts
+3. **Runtime watchdog** — `secret-leak-watchdog` (no_agent, every 4h)
 
 ---
 
 ## Model Fallback Chain
 
-Hermes Agent supports a global `fallback_providers` config — a chain of provider+model pairs tried in order when the primary model is unreachable or returns errors. This is configured in `~/.hermes/config.yaml` and applies to **all LLM-driven cron jobs and agent sessions** that don't pin a specific model.
-
-### Standard tiers
-
-| Tier | Provider | When | 
-|------|----------|------|
-| Primary | Paid API | Default — always tried first |
-| Fallback | Free/alt API | If primary API is unreachable |
-| Last resort | Local Ollama | If both upstream APIs fail — uses a small local model |
-
-No per-cron configuration needed — one config change covers everything.
-
-### Applying to a new server
-
-`~/.hermes/config.yaml` is per-machine and not synced via the repo. To install on a new server:
-
-```bash
-python3 -c "
-import yaml
-with open('/home/USER/.hermes/config.yaml') as f:
-    cfg = yaml.safe_load(f)
-
-# If the file doesn't exist yet, create it with defaults
-cfg.setdefault('fallback_providers', [])
-cfg['fallback_providers'] = [
-    {'provider': 'opencode-zen', 'model': 'deepseek-v4-flash',
-     'base_url': 'https://opencode.ai/zen/v1', 'api_mode': 'chat_completions'},
-    {'provider': 'custom:ollama-local', 'model': 'qwen2.5-coder:3b'},
-]
-with open('/home/USER/.hermes/config.yaml', 'w') as f:
-    yaml.dump(cfg, f)
-"
-```
-
-Replace `USER` with the actual username. The local Ollama model must be pulled:
-```bash
-ollama pull qwen2.5-coder:3b
-```
-
-### Verification
-
-```bash
-grep -A10 'fallback_providers' ~/.hermes/config.yaml
-```
-
-Expected output (models may differ per deployment):
-
-```yaml
-fallback_providers:
-  - provider: opencode-zen
-    model: deepseek-v4-flash
-    ...
-  - provider: custom:ollama-local
-    model: qwen2.5-coder:3b
-```
-
----
-
-### 1. Auto-Remediation Pipeline (pruned from AGENTS.md, preserved for reference)
-
-> This section was moved from AGENTS.md as part of the fleet docs refactor. Content is preserved for backward reference but may be stale.
-
-| Cron | Type | Schedule | Script / Skill | Deliver |
-|------|------|----------|----------------|---------|
-| `agent-fixer-workday` | LLM+skill | `0 9-17 * * 1-5` | `auto-remediation` | origin |
-| `agent-fixer-evening` | LLM+skill | `0 18,20,22 * * 1-5` | `auto-remediation` | origin |
-| `agent-fixer-overnight` | LLM+skill | `0 3 * * 1-5` | `auto-remediation` | origin |
-| `remediation-sensor` | no_agent | `*/5 * * * *` | `remediation-sensor.py` | local |
-| `inbox-flag` | no_agent | `*/10 * * * *` | `inbox-flag.py` | local |
-| `agent-apply-fixes` | no_agent | `*/10 * * * *` | `agent-apply-fixes.py` | local |
-| `agent-remediate-apply` | no_agent | `*/10 * * * *` | `agent-remediate-apply.py` | origin |
-
-> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
-> Date: 2026-07-15T00:00:00+00:00
-
----
-
-### 7. Deployment-Specific Crons (pruned from AGENTS.md, preserved for reference)
-
-> This section was moved from AGENTS.md as part of the fleet docs refactor. Content is preserved for backward reference but may be stale.
-
-| Cron | Type | Schedule | Script / Skill | Deliver |
-|------|------|----------|----------------|---------|
-| `hermes-update` | no_agent | `23 22 * * *` | `hermes-update.sh` | local |
-| `hermes-cortex-sync` | no_agent | `33 22 * * *` | `hermes-cortex-sync.sh` | origin |
-| `gbrain-nightly-dream` | no_agent | `0 3 * * 6` | `gbrain-nightly-dream.sh` | origin |
-| `gbrain-update-sync` | no_agent | `0 2 * * 0` | `gbrain-update-sync.sh` | origin |
-| `threat-pipeline` | no_agent | `0 5 * * *` | `nginx-threat-pipeline.sh` | origin |
-| `agent-ip-submission` | no_agent | `*/30 * * * *` | `agent-ip-submission.sh` | origin |
-| `agent-daily-bible-reading` | no_agent | `0 1 * * *` | `agent-daily-bible-reading.py` | origin |
-| `agent-daily-soul-refinement` | LLM+skill | `0 23 * * *` | `soul-refinement` | origin |
-| `agents-md-prune-scan` | no_agent | `0 4 * * 1-6` | `agents-md-prune-scan.py` | local |
-| `agents-md-prune-apply` | LLM | `30 4 * * 1-6` | prompt + `context_from=scan` | origin |
-| `agents-md-prune-apply` | LLM | `30 4 * * 1-6` | prompt + `context_from=scan` | origin |
-| `offline-code-index` | no_agent | `0 5 * * 0` | `offline_code_index_cron.sh` | local |
-| `agent-learning-collector` | no_agent | `0 */6 * * *` | `agent-learning-collector.py` | local |
-| `orch-skill-lifecycle` | LLM+skill | `0 4 * * *` | `orch-skill-lifecycle` | origin |
-
-> Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
-> Date: 2026-07-15T00:00:00+00:00
+Configured in `~/.hermes/config.yaml` — standard chain: primary API → free API → local Ollama.
+See `config-template.yaml` for the canonical setup.
