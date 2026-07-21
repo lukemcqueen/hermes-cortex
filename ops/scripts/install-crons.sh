@@ -975,3 +975,50 @@ create_cron "agent-stale-ref-watchdog" "0 5 * * *" \
   "origin" \
   "" \
   "true"
+
+# ── Auto-prune old-format cron names ──
+# Remove legacy crons that lack the agent- prefix when an agent- replacement exists.
+# These accumulate from older installs that used bare names (e.g. 'cron-quality-watchdog'
+# before the convention became 'agent-cron-quality-watchdog').
+prune_old_cron_names() {
+  local jobs_file="${HERMES_HOME:-$HOME/.hermes}/cron/jobs.json"
+  local pruned=0
+  if [[ ! -f "$jobs_file" ]]; then
+    return 0
+  fi
+
+  while IFS=$'\t' read -r old_id old_name; do
+    # Derive the agent-prefixed name from the old name
+    local agent_name="agent-${old_name}"
+    # Check if the agent-prefixed version exists as a SEPARATE cron entry
+    if grep -q "\"name\": \"$agent_name\"" "$jobs_file" 2>/dev/null; then
+      echo "  Pruning duplicate: $old_name → (replaced by $agent_name)"
+      hermes cron remove "$old_id" 2>/dev/null || true
+      pruned=$((pruned + 1))
+    fi
+  done < <(python3 -c "
+import json, sys
+path = '$jobs_file'
+try:
+    with open(path) as f:
+        data = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    sys.exit(0)
+jobs = data.get('jobs', [])
+agent_names = {j['name'] for j in jobs if j['name'].startswith('agent-')}
+for j in jobs:
+    name = j['name']
+    # Skip agent-prefixed and local- prefixed crons
+    if name.startswith('agent-') or name.startswith('local-'):
+        continue
+    # Check if an agent- version exists
+    if f'agent-{name}' in agent_names:
+        print(f'{j[\"id\"]}\t{name}')
+" 2>/dev/null)
+
+  if [[ $pruned -gt 0 ]]; then
+    echo "  Pruned $pruned old-format cron name(s)"
+  fi
+}
+
+prune_old_cron_names
