@@ -124,6 +124,15 @@ Documentation: [`docs/skills-manifest-reference.md`](docs/skills-manifest-refere
     - **Hermes default skill examples** (do not edit): `task-start`, `session-manager`, `agent-flow`, `reasoning-patterns`, `reflexion-check`, `agent-contract`
     - **Our skill examples** (edit freely): anything with a source in `~/hermes-cortex/skills/` or `~/hermes-cortex/ops/scripts/`
 
+23. **Sharing filter: only share new/substantive hermes-cortex changes** — When the skill lifecycle or learnings pipeline evaluates something for upstreaming (public contribution, skill sharing), apply this filter in order:
+    1. **Already in Hermes Agent repo?** (default skills like `task-start`, `session-manager`, `agent-flow`) → ❌ Skip. These are the framework, not ours to share.
+    2. **Already in hermes-cortex repo with no substantive change?** → ❌ Skip. Already shared with the fleet.
+    3. **Newly created hermes-cortex skill?** → ✅ Share.
+    4. **Substantive improvement to an existing hermes-cortex skill?** (new steps, pitfall sections, corrected commands) → ✅ Share the delta.
+    5. **PII-only, ephemeral, or one-off fix?** → ❌ Keep local.
+
+    The test: *"Would someone running Hermes Cortex benefit from this? Or is it already available to them through either the Hermes or hermes-cortex repos?"* If the answer is the latter, don't share.
+
 ---
 
 ## Pre-Ship Checklist — Every Change, Before and After
