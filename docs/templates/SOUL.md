@@ -207,6 +207,26 @@ Fix in the **repo first**, push, then sync locally. Don't one-off patch the loca
 
 **Push before close.** A change to a file in the public repo is not complete until `git push origin <branch>` succeeds. Close the governance cycle only after the remote has been updated — not after the local commit. No lock is released without a confirmed push for repo-hosted changes.
 
+### 30. Prove Existing Can't Handle It Before Creating New
+
+Before creating any new script, skill, config, mechanism, or message type:
+1. `search_files()` for existing solutions with 3+ different search terms
+2. `skills_list()` and load matching skills **and their references**
+3. Check if the existing system can be extended/wired instead of replaced
+4. If the capability exists but isn't wired, **wire it** — don't rebuild it
+
+Every agent defaults to "create new" when "update existing" is faster, less risky, and doesn't fragment the codebase. This is the most expensive mistake — it costs review time, merge conflicts, doc drift, and future confusion. Every new file is a debt that compounds. The right fix to an existing system is almost always smaller and safer than a parallel system.
+
+### 31. Session Todo Protocol — Discipline Every Agent Follows
+
+1. **On session start** — load and review the existing todo list. Commit to the highest-priority item.
+2. **Before each `begin_change()`** — update todo status to reflect what you're about to work on.
+3. **After each `end_change()`** — update todo status. Mark completed items done.
+4. **End of session** — ensure all completed items are marked. If items remain pending, note them for the next session.
+5. **If interrupted mid-task** — leave accurate statuses so the next session knows where to resume.
+
+The todo list is the session's ground truth. Update it every time you enter or exit a change cycle.
+
 ## Scripture Insights
 
 > *This agent participates in daily bible reading. A cron (`agent-daily-bible-reading`) appends entries here each night.*

@@ -11,8 +11,17 @@
 > **RULE 3: DOCUMENTATION IS NOT OPTIONAL**
 > Every change includes doc updates. If another agent would be confused by the change without reading an updated doc, the doc must be updated before the governance lock is released. `docs/`, `AGENTS.md`, `SOUL.md`, and `cron-schedules.md` must reflect reality after every change.
 >
-> **RULE 4: CLEAN UP AFTER YOURSELF**
-> If you rename a cron, update BOTH the `create_cron` call AND the uninstall array in the same commit. If you create a new cron with a new name, remove the old one. If you leave test artifacts, delete them before `end_change()`. The doctor's expected-cron list is parsed from install script uninstall arrays — drift between create and uninstall arrays breaks validation silently. Run `fix-cron-duplicates.py` before closing any cycle that touched install scripts.
+**RULE 4: CLEAN UP AFTER YOURSELF**
+If you rename a cron, update BOTH the `create_cron` call AND the uninstall array in the same commit. If you create a new cron with a new name, remove the old one. If you leave test artifacts, delete them before `end_change()`. The doctor's expected-cron list is parsed from install script uninstall arrays — drift between create and uninstall arrays breaks validation silently. Run `fix-cron-duplicates.py` before closing any cycle that touched install scripts.
+
+**RULE 5: PROVE EXISTING CAN'T HANDLE IT BEFORE CREATING NEW**
+Before creating any new script, skill, config, mechanism, or message type:
+1. `search_files()` for existing solutions with 3+ different search terms
+2. `skills_list()` and load matching skills **and their references**
+3. Check if the existing system can be extended/wired instead of replaced
+4. If the capability exists but isn't wired, **wire it** — don't rebuild it
+
+This rule exists because every agent defaults to "create new" when "update existing" is faster, less risky, and doesn't fragment the codebase. Creating when you should have updated is the most expensive mistake — it costs review time, merge conflicts, doc drift, and future confusion. Every new file is a debt that compounds. The right fix to an existing system is almost always smaller and safer than a parallel system.
 
 ---
 
@@ -104,8 +113,20 @@ These catch incomplete changes before they ship. Every NO means the change is no
 2. **Old thing removed?** — If I created a replacement (new cron name, new script, new config), did I delete the old one? Crons don't self-destruct. Stale scripts in deploy dirs don't self-delete.
 3. **Docs updated?** — Every doc that references the changed thing. At minimum: `cron-schedules.md`, `fleet-reference.md`, `AGENTS.md`, and any skill SKILL.md that mentions the old name.
 4. **Syntax valid?** — Ran `bash -n` on every `.sh` I changed, `python3 -m py_compile` on every `.py`. Install scripts with broken arrays silently fail.
-5. **Doctor clean?** — `python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet` shows 0 failures. Don't close the governance cycle until it does.
-6. **Pushed and deployed?** — `git push origin main` succeeded. Runtime copies deployed: AGENTS.md → `~/.hermes/AGENTS.md`, scripts → `~/.hermes-cortex/scripts/`.
+5. **Doctor clean?** — `python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet` — verify 0 failures.
+6. **Pushed and deployed?** — `git push` completed, runtime copies deployed (`cp` to `~/.hermes/`, `~/.hermes-cortex/scripts/`).
+
+## Session Todo Protocol
+
+Every session follows this discipline:
+
+1. **On session start** — if a todo list exists from a prior session, load and review it. Commit to working the highest-priority item first.
+2. **Before each `begin_change()`** — update todo status to reflect what you're about to work on.
+3. **After each `end_change()`** — update todo status. Completed items get marked done.
+4. **Before every `end_change()` at end of session** — ensure all completed items are marked. If items remain pending, note them for the next session.
+5. **If interrupted mid-task** — leave the todo list with accurate statuses so the next session knows where to resume.
+
+The todo list is the session's ground truth. If an item isn't on it, it won't get done. If an item IS on it but stale, it creates confusion. Update it every time you enter or exit a change cycle.
 
 > **If any post-work answer is NO, the change is not complete.** Do not call `end_change()` until all 6 pass. This is not optional — it's Rule 3 (documentation) and Rule 4 (cleanup) in practice.
 
