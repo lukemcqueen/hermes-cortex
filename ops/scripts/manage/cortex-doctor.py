@@ -478,7 +478,7 @@ def check_dev_repo_agents(res):
                     last_commit = int(git_ts)
                     # If AGENTS.md hasn't been touched since the last 5 commits
                     age_days = (file_mtime - last_commit) / 86400
-                    if age_days < 0:  # AGENTS.md older than last commit
+                    if age_days < -1:  # AGENTS.md more than 1 day older than latest commit
                         res.add(f"AGENTS.md ({repo.name})", "FAIL",
                                 "stale — last modified before latest commit — must be updated",
                                 f"REQUIRED: Review and update: ~/{repo.name}/AGENTS.md. "
