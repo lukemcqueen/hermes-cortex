@@ -128,6 +128,34 @@ json.dump(d, open(fp, 'w'))
   exit 0
 fi
 
+# ── Level 5: SOUL.md template sync enforcement ────────────────
+# If a profile SOUL.md is staged, the template MUST also be staged.
+# The template is the canonical source of truth for all agents.
+# Every agent gets its principles from the template — never modify
+# a profile without updating the template first.
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
+STAGED_PROFILES=$(git diff --cached --name-only -- "profiles/personal/agent-profiles/*/SOUL.md" 2>/dev/null || true)
+STAGED_TEMPLATE=$(git diff --cached --name-only -- "docs/templates/SOUL.md" 2>/dev/null || true)
+if [[ -n "$STAGED_PROFILES" && -z "$STAGED_TEMPLATE" ]]; then
+  echo ""
+  echo "❌  SOUL.md profile changed without template update."
+  echo "    The template (docs/templates/SOUL.md) is the canonical source"
+  echo "    of truth for the 12 principles. Every agent profile must stay"
+  echo "    in sync with it."
+  echo ""
+  echo "    Staged profile(s):"
+  echo "$STAGED_PROFILES" | while IFS= read -r f; do echo "      $f"; done
+  echo ""
+  echo "    REQUIRED: Stage docs/templates/SOUL.md with the same changes."
+  echo "    If you added/removed/modified principles in the profile,"
+  echo "    do the same in the template. If you only changed agent-specific"
+  echo "    content (Identity/Mission/Traits/Communication/Scripture),"
+  echo "    no template update is needed — but you must still acknowledge this."
+  echo "    To bypass this check: SKIP_SCORE=1 git commit ..."
+  echo ""
+  exit 1
+fi
+
 # ── Level 4: Shared blocklist integrity check ─────────────────
 # blocked_ips.add is a cumulative shared blocklist — APPEND only.
 # Reject commits that shrink it (fewer IPs than HEAD).
