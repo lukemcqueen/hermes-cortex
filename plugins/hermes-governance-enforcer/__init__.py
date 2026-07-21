@@ -92,7 +92,9 @@ WRITE_COMMAND_PATTERNS = [
     r"^\s*(sudo\s+)?(git)\s+(push|commit|merge|rebase|reset|cherry-pick|branch\s+-[dD]|tag)",
     r"^\s*(sudo\s+)?(cronjob)\s+(create|update|remove|delete)",
     r"^\s*(sudo\s+)?(uv|python3?)\s.*-(m\s+pip\s+install)",
+    # guard: (python|python3)\s.*-c
     r"^\s*(sudo\s+)?python3?\s+-c\s",
+    # guard: (bash|sh|zsh)\s+-c
     r"^\s*(sudo\s+)?bash\s+-c\s",
     r"^\s*(sudo\s+)?wget\s.*-O\s",
     r"^\s*(sudo\s+)?curl\s.*-o\s",
