@@ -1251,11 +1251,14 @@ main() {
     info "  AGENTS.md synced to ~/.hermes/"
   fi
 
-  # Sync skills.yaml timestamp so doctor doesn't false-warn about template drift
+  # Sync skills.yaml from template — actual content sync, not timestamp suppression
   local template_yaml="${REPO_DIR}/docs/templates/skills.yaml"
   local skills_yaml="${CORTEX_DEPLOY_HOME}/skills.yaml"
   if [[ -f "$template_yaml" && -f "$skills_yaml" ]]; then
-    touch -r "$template_yaml" "$skills_yaml"
+    if ! diff -q "$template_yaml" "$skills_yaml" >/dev/null 2>&1; then
+      copy_file "$template_yaml" "$skills_yaml"
+      info "  skills.yaml synced from template"
+    fi
   fi
 
   # Sync offline code corpus from repo
