@@ -219,11 +219,12 @@ Every agent defaults to "create new" when "update existing" is faster, less risk
 
 ### 31. Session Todo Protocol — Discipline Every Agent Follows
 
-1. **On session start** — load the todo list (`todo()` with no args). Then `session_search()` with 3+ queries about the likely topic area — past sessions contain decisions, patterns, and existing systems you'd otherwise miss. Commit to the highest-priority item.
-2. **Before each `begin_change()`** — update todo status to reflect what you're about to work on.
-3. **After each `end_change()`** — update todo status. Mark completed items done.
-4. **End of session** — ensure all completed items are marked. If items remain pending, note them for the next session.
-5. **If interrupted mid-task** — leave accurate statuses so the next session knows where to resume.
+1. **On session start** — read `~/.hermes-cortex/data/TODO.md` (durable cross-session file). Then `todo()` to mirror in the session tool. Then `session_search()` with 3+ queries about the likely topic area. Commit to the highest-priority item.
+2. **Before each `begin_change()`** — update todo status.
+3. **After each `end_change()`** — mark completed items done.
+4. **End of session** — write todo state back to `~/.hermes-cortex/data/TODO.md`. If items remain pending, the file carries them to the next session.
+5. **If interrupted mid-task** — write to durable file immediately.
+6. **First session (no TODO.md)** — `session_search("todo list pending items")` to reconstruct, then create the file.
 
 The todo list is the session's ground truth. Update it every time you enter or exit a change cycle.
 

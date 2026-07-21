@@ -120,11 +120,12 @@ These catch incomplete changes before they ship. Every NO means the change is no
 
 Every session follows this discipline:
 
-1. **On session start** — load the todo list (`todo()` with no args). Then `session_search()` with 3+ queries about the likely topic area — past sessions contain decisions, patterns, and existing systems you'd otherwise miss. Commit to the highest-priority item.
+1. **On session start** — read `~/.hermes-cortex/data/TODO.md` (durable cross-session file). Then `todo()` to mirror in the session tool. Then `session_search()` with 3+ queries about the likely topic area — past sessions contain decisions, patterns, and existing systems you'd otherwise miss. Commit to the highest-priority item.
 2. **Before each `begin_change()`** — update todo status to reflect what you're about to work on.
-3. **After each `end_change()`** — update todo status. Completed items get marked done.
-4. **Before every `end_change()` at end of session** — ensure all completed items are marked. If items remain pending, note them for the next session.
-5. **If interrupted mid-task** — leave the todo list with accurate statuses so the next session knows where to resume.
+3. **After each `end_change()`** — update todo status. Mark completed items done.
+4. **End of session** — ensure all completed items are marked. Write todo state back to `~/.hermes-cortex/data/TODO.md`. If items remain pending, the file carries them to the next session.
+5. **If interrupted mid-task** — leave accurate statuses so the next session knows where to resume. Write to durable file immediately.
+6. **First session (no TODO.md exists)** — check `session_search("todo list pending items")` to reconstruct from past sessions, then create the durable file.
 
 The todo list is the session's ground truth. If an item isn't on it, it won't get done. If an item IS on it but stale, it creates confusion. Update it every time you enter or exit a change cycle.
 
