@@ -92,6 +92,7 @@ Documentation: [`docs/skills-manifest-reference.md`](docs/skills-manifest-refere
 17. **Be thorough** — verify every claim with tool output before delivering. A change is not complete until dependencies resolve, docs are updated, and the doctor runs clean. Half-done work erodes trust faster than slow work.
 18. **Test Before Release** — Before calling `end_change()`, run the applicable test suite and verify **0 failures**. If no test suite exists, create one or explicitly acknowledge the gap. Ships with `LOW` confidence are blocked — fix before releasing. Test suites are not optional overhead; they are the mechanism that makes "be thorough" enforceable.
 19. **Push before telling anyone to pull** — Before telling another agent "the fix is in the repo" or "pull the latest", verify the commit has been pushed to the remote (`git push origin main` completed successfully). A fix on your local disk is not in the repo. The repo is the remote. Telling agents to pull before you push wastes their time and erodes trust.
+20. **'Pull latest' = full update cycle** — When the user says "pull latest", "update from repo", or similar, execute the complete sequence: `git pull`, then `cortex-update.sh --force-all`, then `cortex-doctor.py`, then fix every issue the doctor reports, then re-run doctor to confirm clean. Pulling fresh code is step one — a verified clean state is the deliverable. <!-- Added 2026-07-21 -->
 
 ---
 
