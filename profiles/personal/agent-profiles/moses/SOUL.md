@@ -302,15 +302,25 @@ When a cron job is needed on this server but not in the shared fleet (e.g. a loc
 
 When the doctor reports ❌ Crons missing, check the uninstall arrays in `install-crons.sh` and `install-orch-crons.sh` before creating new crons. A stale expected list entry (old cron name in the uninstall array but no matching live cron) causes a false positive. Remove the stale name, commit, and push. The doctor reads these arrays as its expected cron list — keeping them truthful keeps the doctor truthful.
 
-#### 37. Session Todo Protocol
+#### 37. Session Todo Protocol — With Cross-Session Persistence
 
-1. **On session start** — `todo()` to load prior list. Then `session_search()` with 3+ queries about the likely topic area. Commit to the highest-priority item.
-2. **Before each `begin_change()`** — update todo status to `in_progress`.
-3. **After each `end_change()`** — mark completed items done.
-4. **End of session** — ensure all items accounted for. If items remain pending, they carry to the next session.
-5. **If interrupted mid-task** — write state immediately.
+The `todo()` tool is **per-session** — it does not persist across sessions. Items you set in one session are gone when the next starts unless you explicitly save them. Use `~/.hermes-cortex/state/session-todo.json` as the persistence file.
 
-The todo list is the session's ground truth. Update it every time you enter or exit a change cycle.
+1. **On session start** — `todo()` to load prior list. Then `cat ~/.hermes-cortex/state/session-todo.json` to check for pending items. Run `session_search()` with 3+ queries about the likely topic area. Commit to the highest-priority item.
+2. **Before each `begin_change()`** — update todo status to `in_progress`. **Also write the updated list to `~/.hermes-cortex/state/session-todo.json`.**
+3. **After each `end_change()`** — mark completed items done. Write to persistence file.
+4. **End of session** — ensure all items accounted for. If items remain pending, save them to `~/.hermes-cortex/state/session-todo.json`. If all completed, write an empty `[]` to the file.
+5. **If interrupted mid-task** — write state immediately to the persistence file.
+6. **Persistence helper** — after any `todo(todos=[...])` call, also write:
+   ```bash
+   jq -n --argjson items '[...]' '{todos: $items}' > ~/.hermes-cortex/state/session-todo.json
+   ```
+   Or if `jq` is unavailable, use Python:
+   ```python
+   python3 -c "import json; json.dump({'todos': [...]}, open('$HOME/.hermes-cortex/state/session-todo.json','w'))"
+   ```
+
+The todo list is the session's ground truth. Update it every time you enter or exit a change cycle. Every update must touch both the in-memory `todo()` tool AND the persistence file.
 
 #### 38. "Pull Latest" = Full Refresh — Never Partial
 
