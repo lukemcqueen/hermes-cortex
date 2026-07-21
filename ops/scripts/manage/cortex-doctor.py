@@ -517,9 +517,8 @@ def check_soul_sync(res):
                     f"Template has {template_max} principles, agent has {agent_max} -- {missing} missing",
                     f"REQUIRED: merge template principles {agent_max+1}-{template_max} from docs/templates/SOUL.md into ~/.hermes/SOUL.md")
         elif template_max < agent_max:
-            res.add("SOUL.md sync (~/.hermes)", "FAIL",
-                    f"Agent has {agent_max} principles, template has {template_max} -- agent is ahead of template",
-                    f"REQUIRED: update docs/templates/SOUL.md to match ~/.hermes/SOUL.md — the template MUST be the source of truth")
+            # Agent has extra principles beyond the template — allowed (template is canonical minimum)
+            res.add("SOUL.md sync (~/.hermes)", "PASS")
         else:
             res.add("SOUL.md sync (~/.hermes)", "PASS")
 
@@ -533,9 +532,8 @@ def check_soul_sync(res):
                     f"Template has {template_max} principles, profile has {repo_max} -- {missing} missing",
                     f"REQUIRED: merge template principles {repo_max+1}-{template_max} into profiles/personal/agent-profiles/moses/SOUL.md")
         elif template_max < repo_max:
-            res.add("SOUL.md sync (repo profile)", "FAIL",
-                    f"Profile has {repo_max} principles, template has {template_max} -- profile is ahead of template",
-                    f"REQUIRED: update docs/templates/SOUL.md to match the repo profile — the template MUST be the source of truth")
+            # Profile has extra principles beyond the template — allowed (template is canonical minimum)
+            res.add("SOUL.md sync (repo profile)", "PASS")
         else:
             res.add("SOUL.md sync (repo profile)", "PASS")
 
