@@ -1331,7 +1331,7 @@ main() {
   echo ""
   echo -e "${BOLD}━━━ Summary ━━━${RESET}"
   info "${COPIED} file(s) updated"
-  [[ "$REMOVED" -gt 0 ]] && warn "${REMOVED} deprecated file(s) removed"
+  [[ "${REMOVED:-0}" -gt 0 ]] && warn "${REMOVED} deprecated file(s) removed"
   if $DRY_RUN; then
     echo ""
     warn "DRY RUN — no files were actually modified."
