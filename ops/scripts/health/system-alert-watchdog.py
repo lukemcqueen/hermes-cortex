@@ -132,11 +132,17 @@ def _check_launchd(job_label: str) -> dict:
             pid = pid_match.group(1)
             exit_code = int(exit_match.group(1)) if exit_match else 0
             if exit_code not in (0, 256):
+                # Launchd encodes LastExitStatus differently for signals vs exits:
+                # - Killed by signal: LastExitStatus = signal_number (e.g. 9=SIGKILL, 15=SIGTERM)
+                # - Normal exit: LastExitStatus = exit_code << 8 (e.g. exit(75) → 19200)
                 # Exit codes 9 (SIGKILL) and 15 (SIGTERM) are normal when launchd
                 # replaces/reloads a job — the old process gets killed or terminated.
+                # Exit code 75 (EX_TEMPFAIL) is a voluntary handoff from the
+                # gateway's --replace mechanism — the old instance exits cleanly
+                # to let the new one take over (encoded as 19200 = 75 << 8).
                 # The current process is alive (has PID), so this is a false positive.
-                if exit_code in (9, 15):
-                    return {"status": "UP", "detail": f"PID {pid} (previous instance exited with signal {exit_code}, expected during restart/reload)"}
+                if exit_code in (9, 15) or exit_code == 19200:
+                    return {"status": "UP", "detail": f"PID {pid} (previous instance exited with {'signal' if exit_code < 256 else 'code'} {exit_code if exit_code < 256 else exit_code >> 8}, expected during restart/reload/replace)"}
                 proc_name = job_label.split(".")[-1]
                 pg = subprocess.run(["pgrep", "-xf", f".*{proc_name}.*"], capture_output=True, timeout=5)
                 if pg.returncode == 0:
