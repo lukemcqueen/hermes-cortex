@@ -373,15 +373,15 @@ def check_repo(res):
     else:
         res.add("Repo sync", "PASS", "up to date with origin/main")
 
-    # Check AGENTS.md is synced to ~/.hermes/AGENTS.md
+    # Check AGENTS.md is synced to ~/.hermes/AGENTS.md (content-based)
     hermes_agents = Path.home() / ".hermes" / "AGENTS.md"
     repo_agents = CORTEX_REPO / "AGENTS.md"
     if not hermes_agents.exists():
         res.add("AGENTS.md sync", "WARN", "~/.hermes/AGENTS.md missing",
                 "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
-    elif hermes_agents.stat().st_mtime < repo_agents.stat().st_mtime:
-        res.add("AGENTS.md sync", "WARN", "~/.hermes/AGENTS.md is stale",
-                "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
+    elif not hermes_agents.read_bytes() == repo_agents.read_bytes():
+        res.add("AGENTS.md sync", "WARN", "~/.hermes/AGENTS.md content differs from repo",
+                "REQUIRED: run cortex-update.sh --force-all (or cp if not deployed)")
     else:
         res.add("AGENTS.md sync", "PASS")
 
