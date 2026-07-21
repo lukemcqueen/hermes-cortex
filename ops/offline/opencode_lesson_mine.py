@@ -3,7 +3,7 @@
 Hermes Cortex — OpenCode Session Lesson Miner
 ─────────────────────────────────────────────
 Mines OpenCode session history for bug-fix lessons.
-Seeds the ~/brain/lessons/ database from OpenCode's rich history.
+Seeds the ~/brain/kustos/lessons/ database from OpenCode's rich history.
 
 Usage:
   opencode-mine                          # Interactive: review suggestions
@@ -24,7 +24,7 @@ from typing import Optional
 
 HOME = Path.home()
 OPENCODE_DB = HOME / ".local" / "share" / "opencode" / "opencode.db"
-LESSONS = HOME / "brain" / "lessons"
+LESSONS = HOME / "brain" / "kustos" / "lessons"
 
 # Error/fix patterns
 ERROR_PATTERNS = [

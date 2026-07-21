@@ -21,7 +21,7 @@ set -euo pipefail
 export PATH="$HOME/.hermes/bin:$HOME/.bun/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
 
 HERMES_DIR="$HOME/.hermes"
-LESSONS_DIR="$HOME/brain/lessons"
+LESSONS_DIR="$HOME/brain/kustos/lessons"
 REPOS_FILE="$HERMES_DIR/repos.yaml"
 
 # ── Helpers ──────────────────────────────────────────────────────

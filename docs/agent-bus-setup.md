@@ -520,8 +520,8 @@ systemctl --user enable --now hermes-agent-bus
 # 2. Verify it's running
 curl -s http://127.0.0.1:8905/health
 
-# 3. Configure nginx for mTLS (see agent-bus-nginx.conf)
-# Add bus server block to /etc/nginx/sites-enabled/hermes-services.conf
+# 3. Configure nginx for mTLS — add bus server block to /etc/nginx/sites-enabled/hermes-services.conf
+# (pattern in ops/install/deploy/nginx/hermes-services.conf)
 # Point port 13004 to localhost:8905
 
 # 4. Reload nginx

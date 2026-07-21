@@ -832,7 +832,7 @@ Examples:
             print(f"\n💻 Code:        ⚪ Not indexed (run: prep-code.sh)")
 
         # Lesson database stats
-        lesson_lessons_dir = HOME / "brain" / "lessons"
+        lesson_lessons_dir = HOME / "brain" / "kustos" / "lessons"
         lesson_lessons_count = len(list(lesson_lessons_dir.glob("*.md"))) if lesson_lessons_dir.exists() else 0
         lesson_index = HOME / "offline" / "lessons-index.json"
         if lesson_index.exists():

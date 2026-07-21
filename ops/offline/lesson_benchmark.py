@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
-LESSONS_DIR = HOME / "brain" / "lessons"
+LESSONS_DIR = HOME / "brain" / "kustos" / "lessons"
 
 # Discover offline scripts — try standard locations
 _cortex_env = os.environ.get("CORTEX_REPO", "")

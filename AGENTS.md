@@ -1,27 +1,39 @@
 # Agent Guidelines — Hermes Cortex
 
-> **⚠️ FOUR HARD RULES — Every Agent Must Follow**
+> **⚠️ THREE HARD RULES — Every Agent Must Follow**
 >
-> **RULE 1: USE LOOP GOVERNANCE ALWAYS**
+> **RULE 1: LOAD TASK-START FIRST — `skill_view('task-start')` is your first tool call on every task.**
+> No other tool call precedes it. This rule sits above all others. A task not preceded by `task-start` is a trust violation. The `task-start` skill loads `survey-before-action`, `agent-flow`, `reasoning-patterns`, `reflexion-check`, `change-checklist`, and `agent-contract` — all mandatory before any work begins.
+>
+> **RULE 2: USE LOOP GOVERNANCE ALWAYS**
 > Every code/config/cron change: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. MCP server blocks write tools without a lock.
 >
-> **RULE 2: SHARE IMPROVEMENTS TO THE PUBLIC REPO**
+> **RULE 3: SHARE IMPROVEMENTS TO THE PUBLIC REPO**
 > Every improvement that benefits other agents goes into `hermes-cortex`. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 >
-> **RULE 3: DOCUMENTATION IS NOT OPTIONAL**
+> **RULE 4: DOCUMENTATION IS NOT OPTIONAL**
 > Every change includes doc updates. If another agent would be confused by the change without reading an updated doc, the doc must be updated before the governance lock is released. `docs/`, `AGENTS.md`, `SOUL.md`, and `cron-schedules.md` must reflect reality after every change.
 >
-**RULE 4: CLEAN UP AFTER YOURSELF**
-If you rename a cron, update BOTH the `create_cron` call AND the uninstall array in the same commit. If you create a new cron with a new name, remove the old one. If you leave test artifacts, delete them before `end_change()`. The doctor's expected-cron list is parsed from install script uninstall arrays — drift between create and uninstall arrays breaks validation silently. Run `fix-cron-duplicates.py` before closing any cycle that touched install scripts.
-
-**RULE 5: PROVE EXISTING CAN'T HANDLE IT BEFORE CREATING NEW**
-Before creating any new script, skill, config, mechanism, or message type:
-1. `search_files()` for existing solutions with 3+ different search terms
-2. `skills_list()` and load matching skills **and their references**
-3. Check if the existing system can be extended/wired instead of replaced
-4. If the capability exists but isn't wired, **wire it** — don't rebuild it
-
-This rule exists because every agent defaults to "create new" when "update existing" is faster, less risky, and doesn't fragment the codebase. Creating when you should have updated is the most expensive mistake — it costs review time, merge conflicts, doc drift, and future confusion. Every new file is a debt that compounds. The right fix to an existing system is almost always smaller and safer than a parallel system.
+> **RULE 5: CLEAN UP AFTER YOURSELF**
+> If you rename a cron, update BOTH the `create_cron` call AND the uninstall array in the same commit. If you create a new cron with a new name, remove the old one. If you leave test artifacts, delete them before `end_change()`. The doctor's expected-cron list is parsed from install script uninstall arrays — drift between create and uninstall arrays breaks validation silently. Run `fix-cron-duplicates.py` before closing any cycle that touched install scripts.
+>
+> **RULE 6: PROVE EXISTING CAN'T HANDLE IT BEFORE CREATING NEW**
+> Before creating any new script, skill, config, mechanism, or message type:
+> 1. `search_files()` for existing solutions with 3+ different search terms
+> 2. `skills_list()` and load matching skills **and their references**
+> 3. Check if the existing system can be extended/wired instead of replaced
+> 4. If the capability exists but isn't wired, **wire it** — don't rebuild it
+>
+> This rule exists because every agent defaults to "create new" when "update existing" is faster, less risky, and doesn't fragment the codebase. Creating when you should have updated is the most expensive mistake — it costs review time, merge conflicts, doc drift, and future confusion. Every new file is a debt that compounds. The right fix to an existing system is almost always smaller and safer than a parallel system.
+>
+> **RULE 7: "PULL LATEST" = FULL REFRESH — DO NOT CUT CORNERS**
+> When the user says "pull latest", "update from repo", or any equivalent phrase, the sequence is:
+> 1. `git pull origin main` — pull latest hermes-cortex
+> 2. `cortex-update.sh --force-all` — update skills, crons, configs, scripts
+> 3. Run doctor — check everything (`hermes doctor`, `cortex doctor`, or equivalent)
+> 4. Fix every issue — do not stop until doctor reports clean
+> 5. Verify — confirm all services, crons, skills are in expected state
+> This is not just a pull. It is a full refresh: pull → update → diagnose → fix → verify clean. No partial work. If doctor finds issues, resolve them all before reporting done.
 
 ---
 
@@ -42,11 +54,13 @@ This rule exists because every agent defaults to "create new" when "update exist
 | `ops/install/deploy/` | Langfuse + ClickHouse docker-compose |
 | `.hermes-cortex/` | Agent infra: sessions, memory, skills.yaml |
 
-## Skill loading
+## Skill loading — NOT OPTIONAL
 
-**Every session start:** read `.hermes-cortex/skills.yaml` and load all `always`
-skills via `skill_view(name)`. Before each task, classify with `agent-flow`,
-then load `on_task` skills matching the classification.
+**Every session starts by reading `.hermes-cortex/skills.yaml` and calling `skill_view(name)` for every skill listed in `always`.** These are loaded into context before your first task — not at task time. Loading them at session start means they're ready when you need them.
+
+The `always` section includes `task-start` (your first tool call on every task), `survey-before-action` (pre-flight checks before creating anything), `agent-flow` (workflow classification), and other mandatory thinking skills. Load them ONCE at session start, then use them on every task.
+
+Before each task, classify with `agent-flow`, then load `on_task` skills matching that classification.
 
 Skills live in a single global location (`~/.hermes/skills/`) — no drift, no
 stale copies across repos. To add a fleet-wide skill, upstream it to
@@ -96,6 +110,7 @@ Documentation: [`docs/skills-manifest-reference.md`](docs/skills-manifest-refere
 
 ---
 
+<<<<<<< HEAD
 ## Pre-Ship Checklist — Every Change, Before and After
 
 ### Before starting work — 3 questions
@@ -134,6 +149,8 @@ The todo list is the session's ground truth. If an item isn't on it, it won't ge
 
 ---
 
+=======
+>>>>>>> ac07705 (Add RULE 4 to AGENTS.md and principle #27 to Kustos SOUL.md)
 ## Pre-Task Sequence — Mandatory Before Every Task
 
 This is NOT optional. Every task starts with this exact sequence,

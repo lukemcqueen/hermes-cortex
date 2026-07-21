@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
-LESSONS_DIR = HOME / "brain" / "lessons"
+LESSONS_DIR = HOME / "brain" / "kustos" / "lessons"
 OFFLINE_KNOWLEDGE = HOME / "Developer" / "AI" / "hermes-cortex" / "src" / "offline" / "offline_knowledge.py"
 
 # Ollama API for Qwen models

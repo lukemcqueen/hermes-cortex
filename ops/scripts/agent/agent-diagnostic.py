@@ -10,6 +10,7 @@ Outputs JSON with sections:
   system     — disk, memory, load
   agent      — version, git SHA
   cron       — handler cron last run time
+  docker     — Docker container health (production stack)
 
 Usage:
   python3 agent-diagnostic.py              # all checks
@@ -35,7 +36,7 @@ CONFIG_FILE = HOME / ".hermes-cortex" / "cortex-bus.conf"
 CORTEX_REPO = HOME / "hermes-cortex"
 
 # Bus API connection (used on worker agents that can't query DB directly)
-BUS_LOCAL = "http://127.0.0.1:8903"
+BUS_URL = None
 
 
 def _read_config(key: str) -> str:
@@ -57,13 +58,19 @@ def _read_config(key: str) -> str:
 
 
 def _bus_get(endpoint: str) -> dict:
-    """GET from local bus API. Returns {} on failure."""
-    token = os.environ.get("CORTEX_BUS_TOKEN", "") or _read_config("CORTEX_BUS_TOKEN")
+    """GET from remote bus API. Returns {} on failure."""
     try:
+        import sys
+        sys.path.insert(0, str(HOME / ".hermes-cortex" / "scripts"))
+        from lib.cortex_bus import _get_auth_header, _read_config as _bus_cfg
+        bus_url = _bus_cfg("CORTEX_BUS_URL") or os.environ.get("CORTEX_BUS_URL", "")
+        if not bus_url:
+            return {}
+        scheme, creds = _get_auth_header()
         from urllib.request import Request, urlopen
-        req = Request(f"{BUS_LOCAL}{endpoint}")
-        if token:
-            req.add_header("Authorization", f"Bearer {token}")
+        req = Request(f"{bus_url}{endpoint}")
+        if creds:
+            req.add_header("Authorization", f"{scheme} {creds}")
         with urlopen(req, timeout=5) as resp:
             return json.loads(resp.read().decode())
     except Exception:
@@ -246,6 +253,68 @@ def collect_cron() -> dict:
     return {"handler_cron": handler_cron}
 
 
+def collect_docker() -> dict:
+    """Docker container health for production stack (MWI/MWEB)."""
+    result = {}
+    raw = _run(["docker", "ps", "--format", "{{.Names}}\t{{.Status}}"], timeout=10)
+    if not raw:
+        result["error"] = "Docker unavailable or no containers"
+        return result
+
+    containers = []
+    unhealthy = []
+    for line in raw.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split("\t", 1)
+        name = parts[0].strip() if parts else line
+        status = parts[1].strip() if len(parts) > 1 else ""
+        entry = {"name": name, "status": status}
+        containers.append(entry)
+        if "unhealthy" in status.lower():
+            unhealthy.append(name)
+
+    result["total"] = len(containers)
+    result["containers"] = containers
+    result["healthy"] = len(unhealthy) == 0
+    if unhealthy:
+        result["unhealthy"] = unhealthy
+
+    return result
+
+
+def collect_docker() -> dict:
+    """Docker container health for production stack (MWI/MWEB)."""
+    result = {}
+    raw = _run(["docker", "ps", "--format", "{{.Names}}\t{{.Status}}"], timeout=10)
+    if not raw:
+        result["error"] = "Docker unavailable or no containers"
+        return result
+
+    containers = []
+    unhealthy = []
+    for line in raw.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split("\t", 1)
+        name = parts[0].strip() if parts else line
+        status = parts[1].strip() if len(parts) > 1 else ""
+        entry = {"name": name, "status": status}
+        containers.append(entry)
+        if "unhealthy" in status.lower():
+            unhealthy.append(name)
+
+    result["total"] = len(containers)
+    result["containers"] = containers
+    result["healthy"] = len(unhealthy) == 0
+    if unhealthy:
+        result["unhealthy"] = unhealthy
+
+    return result
+
+
 def collect_moses() -> dict:
     """Moses-only: query bus DB directly for DLQ details."""
     result = {}
@@ -279,11 +348,11 @@ def collect_moses() -> dict:
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Agent diagnostic collector")
-    parser.add_argument("--check", choices=["handler", "queue", "system", "agent", "cron", "all"],
+    parser.add_argument("--check", choices=["handler", "queue", "system", "agent", "cron", "docker", "all"],
                         default="all", help="Which checks to run")
     args = parser.parse_args()
 
-    checks = ["handler", "queue", "system", "agent", "cron"]
+    checks = ["handler", "queue", "system", "agent", "cron", "docker"]
     if args.check == "all":
         run = checks
     else:
@@ -303,6 +372,8 @@ def main():
         result["agent"] = collect_agent()
     if "cron" in run:
         result["cron"] = collect_cron()
+    if "docker" in run:
+        result["docker"] = collect_docker()
 
     # Moses-specific DB queries
     db = collect_moses()

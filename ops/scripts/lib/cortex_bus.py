@@ -2,8 +2,9 @@
 """
 cortex_bus.py — Shared bus interaction library for fleet scripts.
 
-Provides send/read/archive/list_queues functions using the Agent Bus HTTP API
-(CORTEX_BUS_URL, default http://127.0.0.1:8903).
+Provides send/read/archive/list_queues functions using the Agent Bus HTTP API.
+Bus URL is read from cortex-bus.conf (CORTEX_BUS_URL). No local fallback.
+Config file location: $CORTEX_DEPLOY_HOME/cortex-bus.conf or ~/.hermes-cortex/cortex-bus.conf
 
 Usage:
     from lib.cortex_bus import bus_send, bus_read, bus_archive, bus_list_queues
@@ -33,7 +34,7 @@ def _read_config(key: str) -> str:
     return os.environ.get(key, "")
 
 
-BUS_URL = os.environ.get("CORTEX_BUS_URL", "") or _read_config("CORTEX_BUS_URL") or "http://127.0.0.1:8903"
+BUS_URL = os.environ.get("CORTEX_BUS_URL", "") or _read_config("CORTEX_BUS_URL")
 BUS_FALLBACK_URL = os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or _read_config("CORTEX_BUS_FALLBACK_URL")
 raw_auth = os.environ.get("CORTEX_BUS_AUTH", "") or _read_config("CORTEX_BASIC_AUTH")
 raw_token = os.environ.get("CORTEX_BUS_TOKEN", "") or _read_config("CORTEX_BUS_TOKEN")
@@ -44,6 +45,12 @@ if not raw_auth:
 
 CORTEX_BUS_AUTH = raw_auth
 CORTEX_BUS_TOKEN = raw_token
+
+if not BUS_URL:
+    raise RuntimeError(
+        "CORTEX_BUS_URL not configured. Set in cortex-bus.conf or CORTEX_BUS_URL env var. "
+        f"(checked: {CONFIG_FILE})"
+    )
 
 
 def _get_auth_header() -> tuple[str, str]:

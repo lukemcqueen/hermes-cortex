@@ -82,8 +82,8 @@ If verification fails at any checkpoint:
 **Constraints:**
 | Type | Specification |
 |------|---------------|
-| Files I may touch | `ops/auth/middleware.py`, `tests/test_auth.py` |
-| Files I must NOT touch | `ops/auth/token.py` (being refactored in parallel branch) |
+| Files I may touch | `app/auth/middleware.py`, `tests/test_auth.py` |
+| Files I must NOT touch | `app/auth/token.py` (being refactored in parallel branch) |
 | Patterns to follow | `skills/software-development/change-test-loop/SKILL.md` |
 | Patterns to avoid | Do not add new dependencies, do not modify config schema |
 
