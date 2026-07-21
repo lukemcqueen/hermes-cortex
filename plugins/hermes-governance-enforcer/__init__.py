@@ -67,6 +67,9 @@ def _find_any_governance_lock() -> Optional[Path]:
 WRITE_TOOLS = {
     "write_file",
     "patch",
+    "execute_code",
+    "memory",
+    "text_to_speech",
 }
 
 # Tools that CAN modify system state but also have read-only uses
@@ -74,7 +77,11 @@ CONDITIONAL_WRITE_TOOLS = {
     "terminal",
     "cronjob",
     "skill_manage",
+    "process",
 }
+
+# Process actions that require governance
+WRITE_PROCESS_ACTIONS = {"write", "submit", "close", "kill"}
 
 # Terminal commands that modify state — require governance lock
 WRITE_COMMAND_PATTERNS = [
@@ -85,6 +92,8 @@ WRITE_COMMAND_PATTERNS = [
     r"^\s*(sudo\s+)?(git)\s+(push|commit|merge|rebase|reset|cherry-pick|branch\s+-[dD]|tag)",
     r"^\s*(sudo\s+)?(cronjob)\s+(create|update|remove|delete)",
     r"^\s*(sudo\s+)?(uv|python3?)\s.*-(m\s+pip\s+install)",
+    r"^\s*(sudo\s+)?python3?\s+-c\s",
+    r"^\s*(sudo\s+)?bash\s+-c\s",
     r"^\s*(sudo\s+)?wget\s.*-O\s",
     r"^\s*(sudo\s+)?curl\s.*-o\s",
     r"^\s*(sudo\s+)?nohup\s",
@@ -125,6 +134,11 @@ def _is_skill_write(args: Dict[str, Any]) -> bool:
     return action in WRITE_SKILL_ACTIONS
 
 
+def _is_process_write(args: Dict[str, Any]) -> bool:
+    action = args.get("action", "")
+    return action in WRITE_PROCESS_ACTIONS
+
+
 def _has_governance_lock() -> bool:
     """Check if an active governance lock exists in the state directory."""
     lock_path = _find_any_governance_lock()
@@ -146,6 +160,8 @@ def _is_write_tool(tool_name: str, args: Dict[str, Any]) -> bool:
     if tool_name == "cronjob" and _is_cronjob_write(args):
         return True
     if tool_name == "skill_manage" and _is_skill_write(args):
+        return True
+    if tool_name == "process" and _is_process_write(args):
         return True
     return False
 
