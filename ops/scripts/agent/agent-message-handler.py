@@ -588,138 +588,156 @@ def main():
             archive_message(inbox_queue, msg_id)
             return False
 
-        if subject == "UPDATE_REQUEST":
-            # Process
-            start = time.time()
-            result_body = process_update_request(body, correlation_id)
-            result_body["duration_seconds"] = round(time.time() - start, 1)
-            archive_message(inbox_queue, msg.get("msg_id", ""))
-            send_bus_result("inbox_moses", correlation_id, result_body, "UPDATE_RESULT")
+        try:
+            if subject == "UPDATE_REQUEST":
+                # Process
+                start = time.time()
+                result_body = process_update_request(body, correlation_id)
+                result_body["duration_seconds"] = round(time.time() - start, 1)
+                archive_message(inbox_queue, msg.get("msg_id", ""))
+                send_bus_result("inbox_moses", correlation_id, result_body, "UPDATE_RESULT")
 
-            processed.add(correlation_id)
-            state.setdefault("processed_ids", [])
-            state["processed_ids"].append(correlation_id)
-            state["processed_ids"] = state["processed_ids"][-50:]
-            state["last_result"] = result_body
-            save_state(state)
+                processed.add(correlation_id)
+                state.setdefault("processed_ids", [])
+                state["processed_ids"].append(correlation_id)
+                state["processed_ids"] = state["processed_ids"][-50:]
+                state["last_result"] = result_body
+                save_state(state)
 
-            if result_body["success"]:
-                log(f"✅ Update successful: {result_body['git_sha_before']} → {result_body['git_sha_after']}")
-                notify_telegram(f"✅ [{AGENT_NAME}] Update: {result_body['git_sha_before'][:7]}→{result_body['git_sha_after'][:7]}",
-                                f"✅ {AGENT_NAME}:UPDATE")
-            else:
-                log(f"❌ Update had issues: {len(result_body['errors'])} error(s)")
-                notify_telegram(f"❌ [{AGENT_NAME}] Update failed: {result_body['errors'][0][:120] if result_body['errors'] else 'unknown'}",
-                                f"❌ {AGENT_NAME}:UPDATE")
-            return True
+                if result_body["success"]:
+                    log(f"✅ Update successful: {result_body['git_sha_before']} → {result_body['git_sha_after']}")
+                    notify_telegram(f"✅ [{AGENT_NAME}] Update: {result_body['git_sha_before'][:7]}→{result_body['git_sha_after'][:7]}",
+                                    f"✅ {AGENT_NAME}:UPDATE")
+                else:
+                    log(f"❌ Update had issues: {len(result_body['errors'])} error(s)")
+                    notify_telegram(f"❌ [{AGENT_NAME}] Update failed: {result_body['errors'][0][:120] if result_body['errors'] else 'unknown'}",
+                                    f"❌ {AGENT_NAME}:UPDATE")
+                return True
 
-        elif subject == "ROLLBACK_REQUEST":
-            start = time.time()
-            result_body = process_rollback_request(body)
-            result_body["duration_seconds"] = round(time.time() - start, 1)
-            archive_message(inbox_queue, msg.get("msg_id", ""))
-            send_bus_result("inbox_moses", correlation_id, result_body, "ROLLBACK_RESULT")
+            elif subject == "ROLLBACK_REQUEST":
+                start = time.time()
+                result_body = process_rollback_request(body)
+                result_body["duration_seconds"] = round(time.time() - start, 1)
+                archive_message(inbox_queue, msg.get("msg_id", ""))
+                send_bus_result("inbox_moses", correlation_id, result_body, "ROLLBACK_RESULT")
 
-            processed.add(correlation_id)
-            state.setdefault("processed_ids", [])
-            state["processed_ids"].append(correlation_id)
-            state["processed_ids"] = state["processed_ids"][-50:]
-            save_state(state)
+                processed.add(correlation_id)
+                state.setdefault("processed_ids", [])
+                state["processed_ids"].append(correlation_id)
+                state["processed_ids"] = state["processed_ids"][-50:]
+                save_state(state)
 
-            log(f"{'✅' if result_body['success'] else '❌'} Rollback: {result_body.get('sha_before', '?')[:8]} → {result_body.get('sha_after', '?')[:8]}")
+                log(f"{'✅' if result_body['success'] else '❌'} Rollback: {result_body.get('sha_before', '?')[:8]} → {result_body.get('sha_after', '?')[:8]}")
+                notify_telegram(
+                    f"{'✅' if result_body['success'] else '❌'} [{AGENT_NAME}] Rollback: {result_body.get('sha_before', '?')[:7]}→{result_body.get('sha_after', '?')[:7]}",
+                    f"{'✅' if result_body['success'] else '❌'} {AGENT_NAME}:ROLLBACK"
+                )
+                return True
+
+            elif subject == "GIT_AUTH_CHECK":
+                result_body = process_git_auth_check(body)
+                archive_message(inbox_queue, msg.get("msg_id", ""))
+                send_bus_result("inbox_moses", correlation_id, result_body, "GIT_AUTH_RESULT")
+
+                processed.add(correlation_id)
+                state.setdefault("processed_ids", [])
+                state["processed_ids"].append(correlation_id)
+                state["processed_ids"] = state["processed_ids"][-50:]
+                save_state(state)
+
+                auth_ok = result_body.get('authenticated', False)
+                log(f"{'✅' if auth_ok else '❌'} Git auth: {result_body.get('remote_url', '?')}")
+                notify_telegram(
+                    f"{'✅' if auth_ok else '❌'} [{AGENT_NAME}] Git auth: {result_body.get('remote_url', '?')[:60]}",
+                    f"{'✅' if auth_ok else '❌'} {AGENT_NAME}:GIT_AUTH"
+                )
+                return True
+
+            elif subject == "EXEC":
+                start = time.time()
+                result_body = process_exec_command(body)
+                archive_message(inbox_queue, msg.get("msg_id", ""))
+                send_bus_result("inbox_moses", correlation_id, result_body, "EXEC_RESULT")
+
+                processed.add(correlation_id)
+                state.setdefault("processed_ids", [])
+                state["processed_ids"].append(correlation_id)
+                state["processed_ids"] = state["processed_ids"][-50:]
+                save_state(state)
+
+                status = "✅" if result_body["success"] else "❌"
+                stdout_preview = (result_body.get("stdout", "") or "")[:80].replace("\n", " ")
+                log(f"{status} EXEC {result_body.get('command', '?')}: exit={result_body.get('exit_code', '?')}  {stdout_preview}")
+                notify_telegram(
+                    f"{status} [{AGENT_NAME}] EXEC {result_body.get('command', '?')}: exit={result_body.get('exit_code', '?')} — {stdout_preview}",
+                    f"{status} {AGENT_NAME}:EXEC"
+                )
+                return True
+
+            elif subject == "FIX_REQUEST":
+                log(f"Received FIX_REQUEST (corr={correlation_id[:8]}…) — not yet implemented")
+                return False
+
+            elif subject == "DIAGNOSTIC_REQUEST":
+                # Run agent diagnostics and return result via bus
+                check = ""
+                if isinstance(body.get("body"), dict):
+                    check = body["body"].get("check", "")
+                respond_to = "inbox_moses"
+                if isinstance(body.get("body"), dict):
+                    respond_to = body["body"].get("respond_to_queue", "inbox_moses")
+                log(f"DIAGNOSTIC_REQUEST from {body.get('from', '?')}: check={check or 'all'}")
+                archive_message(inbox_queue, msg.get("msg_id", ""))
+
+                # Run diagnostic as subprocess
+                result_body = {}
+                try:
+                    script = Path(__file__).resolve().parent / "agent-diagnostic.py"
+                    cmd = [sys.executable, str(script)]
+                    if check:
+                        cmd += ["--check", check]
+                    r = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                    if r.returncode == 0 and r.stdout:
+                        result_body = json.loads(r.stdout)
+                    else:
+                        result_body = {"error": r.stderr[:200] or "No output"}
+                except Exception as e:
+                    result_body = {"error": str(e)[:200]}
+
+                log(f"Sending DIAGNOSTIC_RESULT to {respond_to} (corr={correlation_id[:8]}…)")
+                send_bus_result(respond_to, correlation_id, result_body, "DIAGNOSTIC_RESULT")
+                log(f"DIAGNOSTIC_RESULT sent (corr={correlation_id[:8]}…)")
+                notify_telegram(
+                    f"📋 [{AGENT_NAME}] Diagnostic sent to {respond_to}: {result_body.get('error', 'OK')[:80]}",
+                    f"📋 {AGENT_NAME}:DIAGNOSTIC"
+                )
+                return True
+
+            # Unknown subject — archive so it doesn't loop forever
+            log(f"Unknown subject '{subject}', archiving (corr={correlation_id[:8]}…)")
+            archive_message(inbox_queue, msg_id)
             notify_telegram(
-                f"{'✅' if result_body['success'] else '❌'} [{AGENT_NAME}] Rollback: {result_body.get('sha_before', '?')[:7]}→{result_body.get('sha_after', '?')[:7]}",
-                f"{'✅' if result_body['success'] else '❌'} {AGENT_NAME}:ROLLBACK"
+                f"⚠️ [{AGENT_NAME}] Unknown subject '{subject}' from {body.get('from', '?')}, archived",
+                f"⚠️ {AGENT_NAME}:UNKNOWN"
             )
-            return True
-
-        elif subject == "GIT_AUTH_CHECK":
-            result_body = process_git_auth_check(body)
-            archive_message(inbox_queue, msg.get("msg_id", ""))
-            send_bus_result("inbox_moses", correlation_id, result_body, "GIT_AUTH_RESULT")
-
-            processed.add(correlation_id)
-            state.setdefault("processed_ids", [])
-            state["processed_ids"].append(correlation_id)
-            state["processed_ids"] = state["processed_ids"][-50:]
-            save_state(state)
-
-            auth_ok = result_body.get('authenticated', False)
-            log(f"{'✅' if auth_ok else '❌'} Git auth: {result_body.get('remote_url', '?')}")
-            notify_telegram(
-                f"{'✅' if auth_ok else '❌'} [{AGENT_NAME}] Git auth: {result_body.get('remote_url', '?')[:60]}",
-                f"{'✅' if auth_ok else '❌'} {AGENT_NAME}:GIT_AUTH"
-            )
-            return True
-
-        elif subject == "EXEC":
-            start = time.time()
-            result_body = process_exec_command(body)
-            archive_message(inbox_queue, msg.get("msg_id", ""))
-            send_bus_result("inbox_moses", correlation_id, result_body, "EXEC_RESULT")
-
-            processed.add(correlation_id)
-            state.setdefault("processed_ids", [])
-            state["processed_ids"].append(correlation_id)
-            state["processed_ids"] = state["processed_ids"][-50:]
-            save_state(state)
-
-            status = "✅" if result_body["success"] else "❌"
-            stdout_preview = (result_body.get("stdout", "") or "")[:80].replace("\n", " ")
-            log(f"{status} EXEC {result_body.get('command', '?')}: exit={result_body.get('exit_code', '?')}  {stdout_preview}")
-            notify_telegram(
-                f"{status} [{AGENT_NAME}] EXEC {result_body.get('command', '?')}: exit={result_body.get('exit_code', '?')} — {stdout_preview}",
-                f"{status} {AGENT_NAME}:EXEC"
-            )
-            return True
-
-        elif subject == "FIX_REQUEST":
-            log(f"Received FIX_REQUEST (corr={correlation_id[:8]}…) — not yet implemented")
             return False
 
-        elif subject == "DIAGNOSTIC_REQUEST":
-            # Run agent diagnostics and return result via bus
-            check = ""
-            if isinstance(body.get("body"), dict):
-                check = body["body"].get("check", "")
-            respond_to = "inbox_moses"
-            if isinstance(body.get("body"), dict):
-                respond_to = body["body"].get("respond_to_queue", "inbox_moses")
-            log(f"DIAGNOSTIC_REQUEST from {body.get('from', '?')}: check={check or 'all'}")
-            archive_message(inbox_queue, msg.get("msg_id", ""))
-
-            # Run diagnostic as subprocess
-            result_body = {}
-            try:
-                script = Path(__file__).resolve().parent / "agent-diagnostic.py"
-                cmd = [sys.executable, str(script)]
-                if check:
-                    cmd += ["--check", check]
-                r = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
-                if r.returncode == 0 and r.stdout:
-                    result_body = json.loads(r.stdout)
-                else:
-                    result_body = {"error": r.stderr[:200] or "No output"}
-            except Exception as e:
-                result_body = {"error": str(e)[:200]}
-
-            log(f"Sending DIAGNOSTIC_RESULT to {respond_to} (corr={correlation_id[:8]}…)")
-            send_bus_result(respond_to, correlation_id, result_body, "DIAGNOSTIC_RESULT")
-            log(f"DIAGNOSTIC_RESULT sent (corr={correlation_id[:8]}…)")
+        except Exception as e:
+            log(f"❌ CRASH processing {subject}: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
+            archive_message(inbox_queue, msg_id)
+            send_bus_result("inbox_moses", correlation_id, {
+                "success": False,
+                "error": f"Handler crashed: {type(e).__name__}: {e}",
+                "command": subject,
+                "exit_code": -1,
+            }, f"{subject}_RESULT")
             notify_telegram(
-                f"📋 [{AGENT_NAME}] Diagnostic sent to {respond_to}: {result_body.get('error', 'OK')[:80]}",
-                f"📋 {AGENT_NAME}:DIAGNOSTIC"
+                f"❌ [{AGENT_NAME}] {subject} crashed: {type(e).__name__}: {str(e)[:80]}",
+                f"❌ {AGENT_NAME}:{subject}"
             )
             return True
-
-        # Unknown subject — archive so it doesn't loop forever
-        log(f"Unknown subject '{subject}', archiving (corr={correlation_id[:8]}…)")
-        archive_message(inbox_queue, msg_id)
-        notify_telegram(
-            f"⚠️ [{AGENT_NAME}] Unknown subject '{subject}' from {body.get('from', '?')}, archived",
-            f"⚠️ {AGENT_NAME}:UNKNOWN"
-        )
-        return False
 
     # Health state tracking (report on state change, not every tick)
     last_doctor = state.get("last_doctor", {})
