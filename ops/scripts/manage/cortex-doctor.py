@@ -221,7 +221,7 @@ class Results:
 
     def status_icon(self, s):
         if self.json_mode: return s
-        return {"PASS": "✅", "WARN": "⚠️ ", "FAIL": "❌", "INFO": "ℹ️ "}.get(s, "❓")
+        return {"PASS": "✅", "WARN": "⚠️ ", "FAIL": "❌", "SKIP": "➖", "INFO": "ℹ️ "}.get(s, "❓")
 
     def print_summary(self, compact=False):
         if self.json_mode:
@@ -678,7 +678,7 @@ def check_crons(res):
                 res.add(f"Extra cron ({name})", "WARN", f"did you mean '{suggestion}'?")
             info_total = len(extra) - len(warnings)
             if info_total > 0:
-                res.add("Extra crons", "INFO", f"{info_total} cron(s) not part of system (e.g. {', '.join(display[:3])}...)")
+                res.add("Extra crons", "INFO", f"{info_total} cron(s) not part of system — benign user/workday crons (e.g. {', '.join(display[:3])}...)")
 
     # ── Orchestrator-only crons ──
     # Validate separately: only expected on orchestrator machines
@@ -750,7 +750,7 @@ def _check_bus_e2e(res):
         ensure_scripts_path()
         from lib.cortex_bus import bus_send, bus_read, bus_archive, bus_health
     except ImportError:
-        res.add("Bus E2E test", "SKIP", "cortex_bus.py not importable")
+        res.add("Bus E2E test", "SKIP", "cortex_bus.py not importable — expected if bus is not deployed on this agent")
         return
 
     # Check 1: Health endpoint via the configured URL
