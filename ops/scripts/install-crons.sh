@@ -505,25 +505,10 @@ create_cron "agent-fixer-workday" "0 9-17 * * 1-5" \
   "" \
   "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
-## OUTPUT FORMAT — FOLLOW EXACTLY
-Match this structure line for line. Your content replaces the values.
-Everything else stays: dashes, colons, spacing, line breaks.
-
-agent-fixer-workday (JOB_ID) [YYYY-MM-DD HH:MM KST]
--------------
-
-Phase 1 — Issues found: 0 issues
-- All crons healthy. All services running.
-
-Phase 2 — Bus: Empty.
-
-Phase 3 — System: Disk 37%, Memory 46GB/62GB.
-
-Result: Nothing to fix. All nominal.
-
-📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$0.03/mo
-
-If nothing to report: output exactly [SILENT]" \
+SILENT WHEN HEALTHY: Produce NO output when everything is clean. No all-clear summaries,
+no \"nothing to report\" messages, no tables of zero counts. Only deliver output when you
+find something actionable — failed workflows, stuck messages, blocked items, or critical
+alerts. If all you did was run checks and everything is fine, stay completely silent." \
   "auto-remediation" \
   "terminal,file,web" \
   "origin" \
@@ -535,25 +520,10 @@ create_cron "agent-fixer-evening" "0 18,20,22 * * 1-5" \
   "" \
   "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
-## OUTPUT FORMAT — FOLLOW EXACTLY
-Match this structure line for line. Your content replaces the values.
-Everything else stays: dashes, colons, spacing, line breaks.
-
-agent-fixer-evening (JOB_ID) [YYYY-MM-DD HH:MM KST]
--------------
-
-Phase 1 — Issues found: 0 issues
-- All crons healthy. All services running.
-
-Phase 2 — Bus: Empty.
-
-Phase 3 — System: Disk 37%, Memory 46GB/62GB.
-
-Result: Nothing to fix. All nominal.
-
-📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$0.01/mo
-
-If nothing to report: output exactly [SILENT]" \
+SILENT WHEN HEALTHY: Produce NO output when everything is clean. No all-clear summaries,
+no \"nothing to report\" messages, no tables of zero counts. Only deliver output when you
+find something actionable — failed workflows, stuck messages, blocked items, or critical
+alerts. If all you did was run checks and everything is fine, stay completely silent." \
   "auto-remediation" \
   "terminal,file,web" \
   "origin" \
@@ -565,25 +535,10 @@ create_cron "agent-fixer-overnight" "0 3 * * 1-5" \
   "" \
   "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
-## OUTPUT FORMAT — FOLLOW EXACTLY
-Match this structure line for line. Your content replaces the values.
-Everything else stays: dashes, colons, spacing, line breaks.
-
-agent-fixer-overnight (JOB_ID) [YYYY-MM-DD HH:MM KST]
--------------
-
-Phase 1 — Issues found: 0 issues
-- All crons healthy. All services running.
-
-Phase 2 — Bus: Empty.
-
-Phase 3 — System: Disk 37%, Memory 46GB/62GB.
-
-Result: Nothing to fix. All nominal.
-
-📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$0.002/mo
-
-If nothing to report: output exactly [SILENT]" \
+SILENT WHEN HEALTHY: Produce NO output when everything is clean. No all-clear summaries,
+no \"nothing to report\" messages, no tables of zero counts. Only deliver output when you
+find something actionable — failed workflows, stuck messages, blocked items, or critical
+alerts. If all you did was run checks and everything is fine, stay completely silent." \
   "auto-remediation" \
   "terminal,file,web" \
   "origin" \
