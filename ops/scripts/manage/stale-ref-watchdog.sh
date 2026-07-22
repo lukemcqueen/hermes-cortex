@@ -20,7 +20,7 @@ DEPLOY_DIRS=(
 )
 for dir in "${DEPLOY_DIRS[@]}"; do
   if [ -d "$dir" ]; then
-    broken=$(find "$dir" -xtype l 2>/dev/null | head -20)
+    broken=$(find "$dir" -type l ! -exec test -e {} \; 2>/dev/null | head -20)
     if [ -n "$broken" ]; then
       echo "BROKEN symlinks in $dir:"
       echo "$broken"
