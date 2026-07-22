@@ -71,8 +71,8 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/skills-manifest-reference.md` | Skills manifest — how to manage project-level skills via YAML |
 | `docs/reference/skill-loading.md` | Skill loading protocol — every agent loads skills on session start |
 | `docs/reference/cortex-bus-config.md` | **↗ Bus config guide** — install, auth resolution, message format, cron auth, troubleshooting |
-| `docs/reference/after-completing-work-6-questions.md` | **Pre-ship checklist** — 6 validation questions every change must pass before end_change |
-| `docs/reference/session-todo-protocol.md` | **Session todo discipline** — durable cross-session todo management protocol |
+| `docs/reference/after-completing-work-6-questions.md` | **Pre-ship checklist** — 6-questions verification: arrays, cleanup, docs, syntax, doctor, push/deploy |
+| `docs/reference/session-todo-protocol.md` | **Session todo protocol** — todo() lifecycle: read durable file, update on cycles, write back at session end |
 | `docs/gbrain-stale-lock-detection.md` | gbrain stale lock file detection & auto-recovery — root cause, automated fix via service-recovery, manual diagnostics |
 | `docs/cron-schedules.md` | **Canonical cron schedule reference** — every cron, schedule, type, script, delivery. Update whenever schedules change. |
 | `docs/cron-jobs-reference.md` | **Cron jobs inventory** — all cron jobs with name, type, schedule, and purpose (extracted from AGENTS.md) |

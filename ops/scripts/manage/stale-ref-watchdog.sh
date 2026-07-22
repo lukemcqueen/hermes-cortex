@@ -20,7 +20,7 @@ DEPLOY_DIRS=(
 )
 for dir in "${DEPLOY_DIRS[@]}"; do
   if [ -d "$dir" ]; then
-    broken=$(find "$dir" -xtype l 2>/dev/null | head -20)
+    broken=$(find "$dir" -type l ! -exec test -e {} \; 2>/dev/null | head -20)
     if [ -n "$broken" ]; then
       echo "BROKEN symlinks in $dir:"
       echo "$broken"
@@ -38,7 +38,7 @@ echo "--- Cortex registered scripts ---"
 REGISTER_CHECK=(
   "$HOME/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
   "$HOME/hermes-cortex/ops/scripts/manage/stale-ref-watchdog.sh"
-  "$HOME/hermes-cortex/ops/scripts/cron-quality-watchdog.py"
+  "$HOME/hermes-cortex/ops/scripts/health/cron-quality-watchdog.py"
   "$HOME/hermes-cortex/ops/scripts/cron-failure-state.sh"
 )
 for script in "${REGISTER_CHECK[@]}"; do
@@ -56,7 +56,6 @@ echo ""
 echo "--- Cron deploy layer (~/.hermes/scripts) ---"
 CRON_SCRIPTS=(
   "agent-apply-fixes.py"
-  "agent-card-daily.py"
   "agent-ip-submission.sh"
   "agent-learning-collector.py"
   "agent-message-handler.py"
@@ -65,9 +64,7 @@ CRON_SCRIPTS=(
   "collect-agent-skills.sh"
   "cron-quality-watchdog.py"
   "governance-auditor.py"
-  "inbox-depth-watchdog.sh"
   "inbox-flag.py"
-  "inbox-sensor.py"
   "langfuse-health-watchdog.py"
   "llm-judge-scorer.py"
   "memory-to-brain-sync.py"

@@ -30,7 +30,6 @@ Exit codes:
 
 import json
 import os
-import socket
 import subprocess
 import sys
 import time
@@ -42,7 +41,7 @@ HOME = Path.home()
 CORTEX_REPO = HOME / "hermes-cortex"
 CORTEX_UPDATE = CORTEX_REPO / "ops" / "scripts" / "cortex-update.sh"
 DOCTOR_PATH = CORTEX_REPO / "ops" / "scripts" / "manage" / "cortex-doctor.py"
-# Derive AGENT_NAME from env (set by cron/launchd) or cortex-bus.conf (fleet setup) or hostname
+# Derive AGENT_NAME from env (set by cron/launchd) or cortex-bus.conf (fleet setup)
 AGENT_NAME = os.environ.get("AGENT_NAME", "")
 if not AGENT_NAME:
     bus_conf = HOME / ".hermes-cortex" / "cortex-bus.conf"
@@ -53,7 +52,8 @@ if not AGENT_NAME:
                 AGENT_NAME = val
                 break
 if not AGENT_NAME:
-    AGENT_NAME = socket.gethostname()
+    print(f"❌ AGENT_NAME not configured. Set AGENT_NAME= in ~/.hermes-cortex/cortex-bus.conf or export AGENT_NAME.", flush=True)
+    sys.exit(1)
 # Ensure lib.cortex_bus is importable
 from hermes_paths import ensure_scripts_path
 ensure_scripts_path()
