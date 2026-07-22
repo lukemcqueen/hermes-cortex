@@ -398,8 +398,8 @@ def check_agent_bus():
         svc_out, _, svc_rc = run("systemctl --user is-active agent-bus.service 2>/dev/null")
         svc_ok = (svc_out.strip() == "active")
     
-    # Probe endpoint on :8903 (verified health endpoint)
-    curl_out, _, curl_rc = run("curl -s -o /dev/null -w '%{http_code}' http://localhost:8903/health 2>/dev/null")
+    # Probe endpoint on :8905 (actual bus port — server.py uses CORTEX_BUS_PORT default 8905)
+    curl_out, _, curl_rc = run("curl -s -o /dev/null -w '%{http_code}' http://localhost:8905/health 2>/dev/null")
     endpoint_ok = (curl_rc == 0 and curl_out.strip() == "200")
     
     if not svc_ok and not endpoint_ok:
