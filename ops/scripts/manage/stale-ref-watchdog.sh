@@ -38,7 +38,7 @@ echo "--- Cortex registered scripts ---"
 REGISTER_CHECK=(
   "$HOME/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
   "$HOME/hermes-cortex/ops/scripts/manage/stale-ref-watchdog.sh"
-  "$HOME/hermes-cortex/ops/scripts/cron-quality-watchdog.py"
+  "$HOME/hermes-cortex/ops/scripts/health/cron-quality-watchdog.py"
   "$HOME/hermes-cortex/ops/scripts/cron-failure-state.sh"
 )
 for script in "${REGISTER_CHECK[@]}"; do
