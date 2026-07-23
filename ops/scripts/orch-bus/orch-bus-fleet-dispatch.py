@@ -95,9 +95,35 @@ def get_agents_for_update(registry: dict) -> list[dict]:
 
 
 def send_bus_message(queue: str, body: dict, correlation_id: str = "") -> bool:
-    """Send a message to PGMQ via bus library (CORTEX_BUS_URL)."""
+    """Send a message to PGMQ via bus library (CORTEX_BUS_URL).
+
+    Validates the body payload against the message subject's schema
+    before sending (handoff_schema).
+    """
     if not correlation_id:
         correlation_id = str(uuid.uuid4())
+
+    # Validate payload against handoff schema
+    subject = body.get("subject", "")
+    schema_map = {
+        "UPDATE_REQUEST": "UPDATE_REQUEST",
+        "EXEC": "EXEC",
+        "UPDATE_RESULT": "UPDATE_RESULT",
+        "EXEC_RESULT": "EXEC_RESULT",
+    }
+    if subject in schema_map:
+        try:
+            sys.path.insert(0, str(_SCRIPT_DIR.parent / "lib"))
+            from handoff_schema import validate_payload as _vh
+            payload = body.get("body", {})
+            if payload:
+                valid, errs = _vh(payload, schema_map[subject])
+                if not valid:
+                    log(f"  ⚠️  Schema validation WARNING for {subject} to {queue[6:]}:")
+                    for e in errs:
+                        log(f"       - {e}")
+        except ImportError:
+            pass  # handoff_schema not available — skip validation
 
     full_body = {
         "from": "moses",
@@ -249,6 +275,18 @@ def main():
 
                 if agent in pending and subj == "UPDATE_RESULT":
                     responses[agent] = body_payload
+                    # Validate UPDATE_RESULT against schema
+                    try:
+                        sys.path.insert(0, str(_SCRIPT_DIR.parent / "lib"))
+                        from handoff_schema import validate_payload as _vr
+                        svalid, serrs = _vr(body_payload, "UPDATE_RESULT")
+                        if not svalid:
+                            if not args.json:
+                                log(f"     ⚠️  UPDATE_RESULT schema violations:")
+                                for e in serrs:
+                                    log(f"        - {e}")
+                    except ImportError:
+                        pass
                     success = body_payload.get("success", False)
                     sha = body_payload.get("git_sha_after", "?")
                     if not args.json:

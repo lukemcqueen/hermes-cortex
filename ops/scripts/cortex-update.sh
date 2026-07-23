@@ -174,6 +174,8 @@ register "ops/scripts/manage/hermes-update.sh"            "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/manage/hermes-cortex-sync.sh"      "${CORTEX_DEPLOY_HOME}/scripts/hermes-cortex-sync.sh"
 register "ops/scripts/manage/update-session-state.sh"    "${CORTEX_DEPLOY_HOME}/scripts/update-session-state.sh"
 register "ops/scripts/manage/fleet-audit.py"             "${CORTEX_DEPLOY_HOME}/scripts/fleet-audit.py"
+register "ops/scripts/lib/handoff_schema.py"             "${CORTEX_DEPLOY_HOME}/scripts/lib/handoff_schema.py"
+register "ops/scripts/orch-bus/orch-bus-fleet-dispatch.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-fleet-dispatch.py"
 
 # Loop-governance scripts (deployed to scripts/ for cron use)
 register "core/governance/cleanup-ollama.sh"  "${CORTEX_DEPLOY_HOME}/scripts/cleanup-ollama.sh"

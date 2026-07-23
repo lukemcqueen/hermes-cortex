@@ -642,37 +642,77 @@ def cmd_env(cfg: dict, args: list):
 def cmd_exec(cfg: dict, args: list):
     """Execute a command on a remote agent via the bus.
 
-    Usage: hc exec <agent> <command> [args...]
+    Usage: hc exec <agent> <command> [args...] [--output-schema <name>]
            hc exec <agent> -- <command with args>
 
-    Sends an EXEC message to the agent's inbox. The agent's
-    agent-message-handler picks it up within 5 minutes, runs
-    the command, and sends EXEC_RESULT back to inbox_moses.
+    Validates the EXEC payload against handoff_schema before sending
+    and validates the EXEC_RESULT against the specified output schema.
 
-    The command must be a relative path under ~/.hermes-cortex/scripts/
-    on the target agent (e.g. 'manage/cortex-doctor.py --json').
+    Schemas: EXEC, EXEC_RESULT, WAVE_RESULT, UPDATE_REQUEST, UPDATE_RESULT
     """
-    if len(args) < 2:
-        print("Usage: hc exec <agent> <command> [args...]")
+    # Parse --output-schema from args
+    output_schema = "EXEC_RESULT"
+    clean_args = list(args)
+    for i in range(len(clean_args) - 1, -1, -1):
+        if clean_args[i] == "--output-schema" and i + 1 < len(clean_args):
+            output_schema = clean_args[i + 1]
+            clean_args.pop(i + 1)
+            clean_args.pop(i)
+            break
+
+    if len(clean_args) < 2:
+        print("Usage: hc exec <agent> <command> [args...] [--output-schema <name>]")
         print()
         print("Examples:")
         print("  hc exec esther manage/cortex-doctor.py --json")
         print("  hc exec gisu manage/cortex-doctor.py --quiet")
         print("  hc exec joseph -- df -h /")
+        print("  hc exec kustos manage/cortex-doctor.py --json --output-schema WAVE_RESULT")
+        print()
+        print(f"Available schemas: EXEC, EXEC_RESULT, WAVE_RESULT, UPDATE_REQUEST, UPDATE_RESULT")
         print()
         print("Note: command resolves relative to ~/.hermes-cortex/scripts/ on target.")
-        print("      Use absolute paths with caution — only scripts under")
-        print("      ~/.hermes-cortex/scripts/ are guaranteed to exist fleet-wide.")
+        print("      Use absolute paths with caution.")
         return
 
-    agent = args[0]
-    # Everything after agent is the command + params
-    command_parts = args[1:]
-    command = command_parts[0]
-    params = command_parts[1:]
+    agent = clean_args[0]
+    command = clean_args[1]
+    params = clean_args[2:]
+
+    # Import handoff_schema (available after deployment)
+    try:
+        sys.path.insert(0, str(Path.home() / ".hermes-cortex" / "scripts" / "lib"))
+        from handoff_schema import validate_payload as _validate
+        _HAS_SCHEMA = True
+    except ImportError:
+        try:
+            sys.path.insert(0, str(Path.home() / "hermes-cortex" / "ops" / "scripts" / "lib"))
+            from handoff_schema import validate_payload as _validate
+            _HAS_SCHEMA = True
+        except ImportError:
+            _HAS_SCHEMA = False
 
     # Generate unique correlation ID
     corr_id = f"exec-{uuid.uuid4().hex[:12]}"
+
+    exec_payload = {
+        "command": command,
+        "params": params,
+        "timeout": 120,
+        "output_schema": output_schema,
+    }
+
+    # Validate EXEC payload before sending
+    if _HAS_SCHEMA:
+        valid, errs = _validate(exec_payload, "EXEC")
+        if not valid:
+            print("❌ EXEC payload validation failed:")
+            for e in errs:
+                print(f"   - {e}")
+            print()
+            print("Fix the command and retry.")
+            return
+        print(f"✅ EXEC payload validated against schema")
 
     body = {
         "from": cfg["agent"],
@@ -680,11 +720,7 @@ def cmd_exec(cfg: dict, args: list):
         "topic": "command",
         "subject": "EXEC",
         "correlation_id": corr_id,
-        "body": json.dumps({
-            "command": command,
-            "params": params,
-            "timeout": 120,
-        }),
+        "body": json.dumps(exec_payload),
     }
 
     queue = f"inbox_{agent}"
@@ -721,16 +757,29 @@ def cmd_exec(cfg: dict, args: list):
                     except json.JSONDecodeError:
                         inner = {"raw": inner}
 
+                # Validate result against schema
+                if _HAS_SCHEMA and output_schema != "RAW":
+                    svalid, serrs = _validate(inner, output_schema)
+                    if svalid:
+                        print(f"✅ EXEC_RESULT validated against '{output_schema}' schema")
+                    else:
+                        print(f"⚠️  EXEC_RESULT schema violations ({output_schema}):")
+                        for e in serrs:
+                            print(f"   - {e}")
+
                 success = inner.get("success", False)
                 stdout = inner.get("stdout", "")
                 stderr = inner.get("stderr", "")
                 exit_code = inner.get("exit_code", -1)
                 cmd_run = inner.get("command", command)
+                duration = inner.get("duration_ms", None)
 
                 icon = "✅" if success else "❌"
                 print(f"{icon} EXEC_RESULT from {agent}:")
                 print(f"   Command: {cmd_run}")
                 print(f"   Exit:    {exit_code}")
+                if duration is not None:
+                    print(f"   Duration: {duration}ms")
                 if stdout:
                     print(f"   stdout:  {stdout[:2000]}")
                     if len(stdout) > 2000:
@@ -749,7 +798,6 @@ def cmd_exec(cfg: dict, args: list):
     print("❌ Timed out waiting for EXEC_RESULT.")
     print(f"   The agent may not have agent-message-handler running, or the")
     print(f"   command may have taken longer than 5 minutes.")
-    print(f"   Check with: hc inbox {agent}")
 
 
 def cmd_help(cfg: dict, args: list):
