@@ -145,16 +145,17 @@ BUS_CONFIG_PATHS = [
 # ── Dynamic registries (parsed from source) ─────────────────────
 
 def parse_expected_crons():
-    """Read expected universal cron names from install-crons.sh's uninstall array,
-    excluding orchestrator-only crons."""
+    """Read expected universal cron names from install-crons.sh's create_cron calls,
+    excluding orchestrator-only crons.
+
+    The source of truth for 'which crons should exist' is the set of create_cron calls,
+    NOT the uninstall array (which tracks names for cleanup purposes, including legacy
+    crons that no longer have create_cron entries).
+    """
     text = _read_file(INSTALL_CRONS)
     if not text:
         return []
-    m = re.search(r'for job in \\\n(.*?); do', text, re.DOTALL)
-    if not m:
-        return []
-    block = m.group(1)
-    names = re.findall(r'"([^"]+)"', block)
+    names = re.findall(r'^create_cron\s+"([^"]+)"', text, re.MULTILINE)
     orch_crons = set(parse_orch_crons())
     return [n for n in names if n != "system-heartbeat" and n not in orch_crons]
 
