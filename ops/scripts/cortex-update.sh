@@ -231,6 +231,8 @@ register "ops/scripts/state_tracker.py"             "${CORTEX_DEPLOY_HOME}/scrip
 register "ops/scripts/health/check-certs.py"               "${CORTEX_DEPLOY_HOME}/scripts/check-certs.py"
 # daily-bible-reading.sh was deleted from repo — replaced by agent-daily-bible-reading.py
 register "ops/scripts/bus/generate-bus-wrappers.py"      "${CORTEX_DEPLOY_HOME}/scripts/generate-bus-wrappers.py"
+# Bus self-test — any agent can run to verify bus connectivity
+register "ops/scripts/manage/bus-self-test.py"             "${CORTEX_DEPLOY_HOME}/scripts/bus-self-test.py"
 register "ops/scripts/manage/nginx-security-scanner.sh"    "${CORTEX_DEPLOY_HOME}/scripts/nginx-security-scanner.sh"
 register "ops/scripts/manage/nginx-threat-pipeline.sh"     "${CORTEX_DEPLOY_HOME}/scripts/nginx-threat-pipeline.sh"
 register "ops/scripts/manage/deploy-blocked-ips.sh"        "${CORTEX_DEPLOY_HOME}/scripts/deploy-blocked-ips.sh"

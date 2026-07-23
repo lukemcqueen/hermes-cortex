@@ -1,212 +1,194 @@
 #!/usr/bin/env python3
+"""Bus Self-Test — verify the full bus round-trip on this agent.
+
+Tests:
+  1. cortex_bus module importable
+  2. Bus health endpoint reachable
+  3. Send a test message to own inbox
+  4. Read it back
+  5. Archive it
+
+Outputs JSON for doctor integration. Exit code: 0 = all pass, 1 = any failure.
 """
-bus-self-test.py — Verify the Agent Bus connection chain end-to-end.
 
-Run this on ANY fleet machine to confirm the bus is reachable, auth works,
-and the full send→read→archive cycle completes.
+from __future__ import annotations
 
-Usage:
-    python3 ops/scripts/manage/bus-self-test.py
+import json
+import os
+import subprocess
+import sys
+import time
+import uuid
 
-Exit codes:
-    0 — All checks passed
-    1 — One or more checks failed
-"""
-import json, os, sys, base64
-from pathlib import Path
+CORTEX_DEPLOY_HOME = os.path.expanduser("~/.hermes-cortex")
+SCRIPTS_DIR = os.path.join(CORTEX_DEPLOY_HOME, "scripts")
+HOME = os.path.expanduser("~")
 
-# Add lib to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))
+# Agent name — prefer env, then config file, then hostname fallback
+AGENT_NAME = os.environ.get("AGENT_NAME", "")
+if not AGENT_NAME:
+    config_path = os.path.join(CORTEX_DEPLOY_HOME, "cortex-bus.conf")
+    if os.path.exists(config_path):
+        for line in open(config_path):
+            if line.startswith("AGENT_NAME="):
+                AGENT_NAME = line.split("=", 1)[1].strip()
+                break
+if not AGENT_NAME:
+    import socket
+    AGENT_NAME = socket.gethostname()
 
-PASS = "✅"
-FAIL = "❌"
-WARN = "⚠️"
 
-def check(description, result, detail=""):
-    icon = PASS if result else FAIL
-    print(f"  {icon} {description}")
-    if detail:
-        for line in detail.splitlines():
-            print(f"     {line}")
-    return result
+def log(msg: str):
+    ts = time.strftime("%H:%M:%S", time.gmtime())
+    print(f"[{ts}] [{AGENT_NAME}] {msg}", file=sys.stderr)
 
-def read_config(key: str) -> str:
-    """Read a value from cortex-bus.conf by key."""
-    config_path = Path.home() / ".hermes-cortex" / "cortex-bus.conf"
-    if config_path.exists():
-        for line in config_path.read_text().splitlines():
-            if line.startswith(f"{key}="):
-                return line.split("=", 1)[1].strip()
-    return ""
+
+def _find_cortex_bus() -> str | None:
+    """Find the directory containing the lib/ package with cortex_bus.py."""
+    candidates = [
+        SCRIPTS_DIR,                                          # ~/.hermes-cortex/scripts (contains lib/)
+        os.path.join(CORTEX_DEPLOY_HOME, "scripts"),           # same expanded differently
+        os.path.join(os.path.dirname(__file__), ".."),         # ops/scripts (from manage/)
+    ]
+    for path in candidates:
+        resolved = os.path.realpath(path)
+        if os.path.isfile(os.path.join(resolved, "lib", "cortex_bus.py")):
+            return resolved
+    return None
+
+
+def import_cortex_bus():
+    """Import and return cortex_bus module."""
+    parent = _find_cortex_bus()
+    if parent:
+        sys.path.insert(0, parent)
+    from lib import cortex_bus as _cb  # type: ignore
+    return _cb
+
+
+def test_import() -> dict:
+    """Test 1: cortex_bus importable."""
+    log("Test 1: cortex_bus import...")
+    try:
+        cb = import_cortex_bus()
+        log(f"  cortex_bus imported: send={hasattr(cb, 'bus_send')}, read={hasattr(cb, 'bus_read')}")
+        return {"test": "import", "status": "PASS", "detail": "cortex_bus importable"}
+    except Exception as e:
+        log(f"  FAIL: {e}")
+        return {"test": "import", "status": "FAIL", "detail": f"cortex_bus import failed: {e}"}
+
+
+def test_health() -> dict:
+    """Test 2: Bus health endpoint."""
+    log("Test 2: bus health endpoint...")
+    try:
+        cb = import_cortex_bus()
+        bus_url = getattr(cb, 'config', {}).get("CORTEX_BUS_URL", "")
+        if not bus_url:
+            bus_url = os.environ.get("CORTEX_BUS_URL", "http://127.0.0.1:8903")
+
+        import urllib.request
+        req = urllib.request.Request(f"{bus_url}/health", method="GET")
+        resp = urllib.request.urlopen(req, timeout=10)
+        body = resp.read().decode()
+        data = json.loads(body)
+        ok = data.get("status") == "ok"
+        log(f"  health: {data.get('status')} ({bus_url})")
+        return {
+            "test": "health",
+            "status": "PASS" if ok else "FAIL",
+            "detail": f"bus health: {data.get('status')} @ {bus_url}" if ok else f"unexpected response: {body[:100]}",
+        }
+    except Exception as e:
+        log(f"  FAIL: {e}")
+        return {"test": "health", "status": "FAIL", "detail": f"health check failed: {e}"}
+
+
+def test_roundtrip() -> dict:
+    """Test 3-5: Send → Read → Archive on own inbox."""
+    log("Test 3-5: send → read → archive round-trip...")
+    try:
+        cb = import_cortex_bus()
+        inbox = f"inbox_{AGENT_NAME}"
+        corr_id = f"bus-self-test-{uuid.uuid4().hex[:12]}"
+
+        # 3. Send
+        log(f"  Sending to {inbox} (corr={corr_id[:16]}...)")
+        send_result = cb.bus_send(inbox, {
+            "from": AGENT_NAME,
+            "to": AGENT_NAME,
+            "topic": "self-test",
+            "subject": "SELF_TEST",
+            "correlation_id": corr_id,
+            "body": {"test": True, "timestamp": time.time()},
+        })
+        if not send_result or not send_result.get("msg_id"):
+            return {"test": "roundtrip", "status": "FAIL", "detail": "bus_send returned no msg_id"}
+        sent_msg_id = send_result["msg_id"]
+        log(f"  Sent: msg_id={sent_msg_id}")
+
+        # 4. Read back
+        log("  Reading back...")
+        read_result = cb.bus_read(inbox, vt=10)
+        if not read_result:
+            return {"test": "roundtrip", "status": "FAIL", "detail": "bus_read returned nothing (message not found)"}
+        read_corr = read_result.get("correlation_id", "")
+        read_msg_id = read_result.get("msg_id", "")
+        log(f"  Read: corr={read_corr[:16] if read_corr else '?'}... msg_id={read_msg_id}")
+
+        if read_corr != corr_id:
+            return {"test": "roundtrip", "status": "FAIL", "detail": f"correlation_id mismatch: sent={corr_id} read={read_corr}"}
+
+        # 5. Archive
+        log("  Archiving...")
+        archive_result = cb.bus_archive(inbox, read_msg_id)
+        log(f"  Archived: {archive_result}")
+        return {
+            "test": "roundtrip",
+            "status": "PASS",
+            "detail": f"send→read→archive OK (msg_id={sent_msg_id[:12]}...)",
+        }
+
+    except Exception as e:
+        log(f"  FAIL: {e}")
+        return {"test": "roundtrip", "status": "FAIL", "detail": f"round-trip exception: {e}"}
+
 
 def main():
-    errors = 0
-    print("\n=== Bus Self-Test ===\n")
+    log(f"Bus Self-Test starting (agent={AGENT_NAME})")
+    results = []
 
-    # Check 1: Config file exists
-    config_path = Path.home() / ".hermes-cortex" / "cortex-bus.conf"
-    if not check("cortex-bus.conf exists", config_path.exists(), str(config_path)):
-        print("\n  Create it at ~/.hermes-cortex/cortex-bus.conf first.")
+    # Test 1: import
+    results.append(test_import())
 
-    # Check 2: Config has required keys
-    bus_url = os.environ.get("CORTEX_BUS_URL") or read_config("CORTEX_BUS_URL") or "http://127.0.0.1:8903"
-    basic_auth = os.environ.get("CORTEX_BUS_AUTH") or read_config("CORTEX_BASIC_AUTH") or read_config("CORTEX_BUS_AUTH") or ""
-    token = os.environ.get("CORTEX_BUS_TOKEN") or read_config("CORTEX_BUS_TOKEN") or ""
-    agent_name = os.environ.get("AGENT_NAME") or read_config("AGENT_NAME") or os.environ.get("USER", "unknown")
+    # Test 2: health endpoint
+    results.append(test_health())
 
-    check("CORTEX_BUS_URL found", bool(bus_url), f"  URL: {bus_url}")
-    check("Auth credentials found (Basic or Bearer)", bool(basic_auth or token),
-          f"  Basic auth: {'✓' if basic_auth else '✗'}  Bearer token: {'✓' if token else '✗'}")
-    check("AGENT_NAME found", bool(agent_name), f"  Agent: {agent_name}")
-
-    if not bus_url:
-        errors += 1
-        print("\n  ❌ Cannot continue without a bus URL.")
-
-    # Check 3: Auth method
-    scheme = "Bearer" if token else ("Basic" if basic_auth else "none")
-    creds = token if token else (base64.b64encode(basic_auth.encode()).decode() if basic_auth else "")
-    print(f"\n  Auth method: {scheme}")
-
-    # Check 4: Try to hit the health endpoint
-    import urllib.request, urllib.error
-    print(f"\n--- Network Tests ---\n")
-
-    try:
-        req = urllib.request.Request(
-            f"{bus_url}/health",
-            headers={"Authorization": f"{scheme} {creds}" if creds else ""}
-        )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-            healthy = data.get("status") == "ok"
-            check(f"Bus health endpoint ({bus_url}/health)", healthy,
-                  f"  Status: {data.get('status', 'unknown')}")
-            if not healthy:
-                errors += 1
-    except Exception as e:
-        check(f"Bus health endpoint ({bus_url}/health)", False, f"  Error: {e}")
-        errors += 1
-
-    # Check 5: List queues
-    try:
-        req = urllib.request.Request(
-            f"{bus_url}/api/pgmq/queues",
-            headers={"Authorization": f"{scheme} {creds}" if creds else ""}
-        )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-            queues = data.get("queues", []) if isinstance(data, dict) else data
-            inboxes = [q["name"] for q in queues if "inbox_" in q["name"]]
-            check(f"Bus API reachable — {len(queues)} queues found", True,
-                  f"  Your inbox: {'inbox_' + agent_name if 'inbox_' + agent_name in queues else 'NOT FOUND'}\n"
-                  f"  Fleet inboxes: {len([q for q in inboxes if not q.endswith('_dlq')])}")
-    except Exception as e:
-        check(f"Bus API reachable ({bus_url}/api/pgmq/queues)", False, f"  Error: {e}")
-        errors += 1
-
-    # Check 6: Full send → read → archive cycle
-    print(f"\n--- Write/Read Test ---\n")
-
-    queue_name = f"inbox_{agent_name}"
-    test_cid = f"self-test-{os.urandom(4).hex()}"
-
-    # Send
-    import subprocess
-    send_payload = json.dumps({
-        "queue": queue_name,
-        "message": json.dumps({
-            "from": agent_name, "to": agent_name,
-            "subject": "SELF_TEST", "correlation_id": test_cid,
-            "body": json.dumps({"test": True, "timestamp": os.urandom(4).hex()})
-        })
-    })
-    proc = subprocess.run(
-        ["curl", "-s", "-w", "\n%{http_code}", "-X", "POST",
-         "-H", "Content-Type: application/json",
-         "-H", f"Authorization: {scheme} {creds}",
-         "-d", send_payload, f"{bus_url}/api/pgmq/send"],
-        capture_output=True, text=True, timeout=15
-    )
-    lines = proc.stdout.strip().split("\n")
-    code = lines[-1] if len(lines) > 1 else "?"
-    body = lines[0] if len(lines) == 2 else "\n".join(lines[:-1])
-    http_ok = code == "200"
-    check(f"Send message to {queue_name}", http_ok, f"  HTTP {code}")
-
-    if http_ok:
-        try:
-            resp = json.loads(body)
-            check("  msg_id returned", bool(resp.get("msg_id")),
-                  f"  msg_id: {resp.get('msg_id', 'none')[:20]}...")
-        except:
-            check("  msg_id returned", False, f"  Body: {body[:80]}")
+    # Test 3-5: round-trip (only if import passed)
+    if results[0]["status"] == "PASS":
+        results.append(test_roundtrip())
     else:
-        errors += 1
-
-    # Read
-    import time
-    read_payload = json.dumps({"queue": queue_name, "vt": 10})
-    proc = subprocess.run(
-        ["curl", "-s", "-w", "\n%{http_code}", "-X", "POST",
-         "-H", "Content-Type: application/json",
-         "-H", f"Authorization: {scheme} {creds}",
-         "-d", read_payload, f"{bus_url}/api/pgmq/read"],
-        capture_output=True, text=True, timeout=15
-    )
-    lines = proc.stdout.strip().split("\n")
-    code = lines[-1]
-    read_result = "\n".join(lines[:-1])
-    try:
-        read_data = json.loads(read_result) if read_result.strip() else {}
-    except:
-        read_data = {}
-
-    has_msg = bool(read_data.get("msg_id"))
-    if has_msg:
-        # Parse body — could be JSON string or already a dict
-        body_raw = read_data.get("body", "")
-        if isinstance(body_raw, str):
-            try:
-                body_parsed: dict = json.loads(body_raw)
-            except:
-                body_parsed = {}
-        elif isinstance(body_raw, dict):
-            body_parsed = body_raw
-        else:
-            body_parsed = {}
-        cid = body_parsed.get("correlation_id", "missing")
-        cid_match = cid == test_cid
-        check(f"Read back from {queue_name}", True,
-              f"  msg_id: {read_data.get('msg_id', '')[:20]}...\n"
-              f"  correlation_id: {cid} {'✓' if cid_match else '✗ MISMATCH'}\n"
-              f"  subject: {body_parsed.get('subject', 'missing')}")
-
-        # Archive
-        archive_payload = json.dumps({"queue": queue_name, "msg_id": read_data["msg_id"]})
-        proc = subprocess.run(
-            ["curl", "-s", "-w", "\n%{http_code}", "-X", "POST",
-             "-H", "Content-Type: application/json",
-             "-H", f"Authorization: {scheme} {creds}",
-             "-d", archive_payload, f"{bus_url}/api/pgmq/archive"],
-            capture_output=True, text=True, timeout=10
-        )
-        arch_code = proc.stdout.strip().split("\n")[-1]
-        check(f"Archive message", arch_code == "200", f"  HTTP {arch_code}")
-    else:
-        check(f"Read back from {queue_name}", False,
-              f"  HTTP {code}\n  Response: {read_result[:100] if read_result else 'empty'}")
-        errors += 1
+        results.append({"test": "roundtrip", "status": "SKIP", "detail": "cortex_bus not importable — cannot test"})
 
     # Summary
-    print(f"\n---\n")
-    if errors == 0:
-        print(f"  {PASS} ALL CHECKS PASSED — bus path verified end-to-end")
-        print(f"  Auth: {scheme} → {bus_url} → agent: {agent_name}")
-        sys.exit(0)
-    else:
-        print(f"  {FAIL} {errors} check(s) failed")
-        sys.exit(1)
+    passed = sum(1 for r in results if r["status"] == "PASS")
+    failed = sum(1 for r in results if r["status"] == "FAIL")
+    skipped = sum(1 for r in results if r["status"] == "SKIP")
+    healthy = failed == 0
+
+    summary = {
+        "healthy": healthy,
+        "passed": passed,
+        "failed": failed,
+        "skipped": skipped,
+        "agent": AGENT_NAME,
+        "results": results,
+    }
+
+    print(json.dumps(summary, indent=2))
+    log(f"Result: {passed} pass, {failed} fail, {skipped} skip — {'HEALTHY' if healthy else 'ISSUES'}")
+    return 0 if healthy else 1
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

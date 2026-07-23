@@ -540,6 +540,17 @@ def main():
         if not correlation_id and isinstance(body, dict):
             correlation_id = body.get("correlation_id", "") or ""
 
+        # --- EARLY ARCHIVE ---
+        # Archive the message immediately after reading so the PGMQ
+        # visibility timeout can never cause a re-read loop. Even if the
+        # handler process crashes (uncaught BaseException, signal, OOM)
+        # during processing, the message is already gone from the queue.
+        # This is the primary archive; post-processing archives (in each
+        # subject handler and the exception handler) are fallbacks that
+        # silently succeed on already-archived messages.
+        archive_message(inbox_queue, msg_id)
+        # --- END EARLY ARCHIVE ---
+
         # PGMQ returns body as a JSON string — parse it if needed
         if isinstance(body, str):
             try:
@@ -587,17 +598,6 @@ def main():
             # Archive so it doesn't loop forever
             archive_message(inbox_queue, msg_id)
             return False
-
-        # --- EARLY ARCHIVE ---
-        # Archive the message immediately after reading so the PGMQ
-        # visibility timeout can never cause a re-read loop. Even if the
-        # handler process crashes (uncaught BaseException, signal, OOM)
-        # during processing, the message is already gone from the queue.
-        # This is the primary archive; post-processing archives (in each
-        # subject handler and the exception handler) are fallbacks that
-        # silently succeed on already-archived messages.
-        archive_message(inbox_queue, msg_id)
-        # --- END EARLY ARCHIVE ---
 
         try:
             if subject == "UPDATE_REQUEST":
