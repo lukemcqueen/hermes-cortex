@@ -34,7 +34,7 @@
         "has_sudo": true,
         "has_cron_tool": true,
         "has_terminal": true,
-        "bus_mode": "both",
+        "bus_access": "host",
         "maintenance_window": "any",
         "git": {
           "remote": "origin",
@@ -65,7 +65,7 @@
         "has_sudo": false,
         "has_cron_tool": false,
         "has_terminal": true,
-        "bus_mode": "poll",
+        "bus_access": "client",
         "maintenance_window": "any",
         "git": {
           "remote": "origin",
@@ -96,7 +96,7 @@
         "has_sudo": true,
         "has_cron_tool": false,
         "has_terminal": true,
-        "bus_mode": "poll",
+        "bus_access": "client",
         "maintenance_window": "off-peak",
         "git": {
           "remote": "origin",
@@ -127,7 +127,7 @@
         "has_sudo": true,
         "has_cron_tool": false,
         "has_terminal": true,
-        "bus_mode": "poll",
+        "bus_access": "client",
         "maintenance_window": "any",
         "git": {
           "remote": "origin",
@@ -157,7 +157,7 @@
         "has_sudo": false,
         "has_cron_tool": false,
         "has_terminal": true,
-        "bus_mode": "push_only",
+        "bus_access": "client",
         "maintenance_window": "any",
         "git": {
           "remote": "origin",
@@ -189,7 +189,7 @@
         "has_sudo": true,
         "has_cron_tool": true,
         "has_terminal": true,
-        "bus_mode": "both",
+        "bus_access": "host",
         "maintenance_window": "any",
         "git": {
           "remote": "origin",

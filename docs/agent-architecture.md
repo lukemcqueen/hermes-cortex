@@ -1,6 +1,10 @@
 # 🏗️ Hermes Cortex — Agent Architecture & Role Model
 
-> **Generic reference.** Defines the agent role system, what each role runs, and how observability flows between them. Replace `example.com` and bracketed placeholders with your deployment values.
+> **🪪 Scope:** This document serves two audiences:
+> - **General developers** — The role definitions, capability matrix, cron rules, and observability stack below are universal to Hermes Cortex and recommended for every multi-agent deployment.
+> - **Luke's deployment** — Sections marked with `⚡` are specific to Moses's multi-machine setup (Moses orchestrator, peer agents, KST timezone, Telegram delivery). Treat these as examples you can adapt.
+>
+> Everything unmarked is general guidance — apply it to any multi-agent setup using this repo.
 
 ---
 
@@ -22,19 +26,19 @@ Every agent in the fleet belongs to one of four roles. The role determines which
 | Capability | Orchestrator | Backup Orch | Server Agent | Dev Agent |
 |------------|:-----------:|:-----------:|:------------:|:---------:|
 | **`cronjob` MCP tool** | ✅ | ✅ | ❌ | ❌ |
-| **Bus mode** | `both` | `both` | `poll` | `push_only` |
+| **Bus access** | `host` | `host` | `client` | `client` |
 | **Local bus daemon** | ✅ | ✅ | ❌ | ❌ |
 | **Postgres (direct)** | ✅ | ✅ | ❌ | ❌ |
 | **nginx** | ✅ | ✅ | ✅ | ❌ |
 | **Ollama** | ✅ | ✅ | ✅ | ✅ |
-| **GBrain** | ✅ | ✅ | ✅ | ❌ |
+| **GBrain** | ✅ | ✅ | ✅ | ✅ |
 | **Langfuse** | ✅ | ✅ | ✅ | ✅ |
 | **sudo access** | ✅ | ✅ | ✅ | optional |
 
 ### What each capability means
 
 - **`cronjob` MCP tool** — Can create/update/remove cron jobs programmatically. Required for orchestrator-only crons and fleet management.
-- **Bus mode** — `both` = runs the bus server AND polls for messages. `poll` = reads messages from the shared bus. `push_only` = sends messages to the bus, doesn't run a local server.
+- **Bus access** — `host` = runs the bus server AND polls for messages. `client` = polls the shared bus for messages.
 - **Local bus daemon** — Runs a local PGMQ server instance. Required for orchestrators.
 - **Postgres (direct)** — Can connect to the shared Postgres database directly.
 - **nginx** — Runs nginx as a reverse proxy for services (Langfuse, dashboard, bus).
@@ -98,16 +102,16 @@ Every agent in the fleet belongs to one of four roles. The role determines which
 │                                                         │
 │  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐  │
 │  │  Hermes      │  │  Bus Client  │  │  Ollama         │  │
-│  │  Gateway     │  │  (push only) │  │  (local LLM)    │  │
+│  │  Gateway     │  │  (poll mode) │  │  (local LLM)    │  │
 │  └──────┬──────┘  └──────┬───────┘  └────────────────┘  │
 │         │                │                              │
-│  ┌──────┴────────────────┴───────┐                      │
-│  │  Project repos (hermes-cortex,│                      │
-│  │  project-1, project-2, ...)   │                      │
-│  └───────────────────────────────┘                      │
+│  ┌──────┴────────────────┴───────┐  ┌────────────────┐  │
+│  │  Project repos (hermes-cortex,│  │  GBrain        │  │
+│  │  project-1, project-2, ...)   │  │  (sync)        │  │
+│  └───────────────────────────────┘  └────────────────┘  │
 │                                                         │
 │  Crons: install-crons.sh (agent-* only)                 │
-│  No: nginx, gbrain, local bus daemon                    │
+│  No: nginx, local bus daemon                            │
 │  Observability: Langfuse (traces), cost tracking        │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -275,8 +279,8 @@ display:
 | Bus audit | ✅ | ✅ | ❌ | ❌ |
 | Bus message tracker | ✅ | ✅ | ❌ | ❌ |
 | Health reports | ✅ | ✅ | ❌ | ❌ |
-| nginx | ✅ | ✅ | ✅ | ❌ |
-| GBrain | ✅ | ✅ | ✅ | ❌ |
+|| GBrain | ✅ | ✅ | ✅ | ✅ |
+|| GBrain | ✅ | ✅ | ✅ | ✅ |
 | Local bus daemon | ✅ | ✅ | ❌ | ❌ |
 | Postgres | ✅ | ✅ | ❌ | ❌ |
 

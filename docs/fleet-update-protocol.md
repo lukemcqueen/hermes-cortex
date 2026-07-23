@@ -197,7 +197,7 @@ Fleet agents use three types in the registry `role` field:
 |------|----------|--------------------------|--------------------|---------|
 | **orchestrator** | `both` | Yes | Yes | Moses, Esther |
 | **server-agent** | `poll` | No | Yes (polls inbox) | Joseph, Kustos, Gisu |
-| **dev-agent** | `push_only` | No | No (push-only) | Titus |
+|| **dev-agent** | `poll` | No | Yes (polls inbox) | Titus |
 
 - **orchestrators** use `orch-bus-*` scripts and `cronjob` MCP tool to manage fleet
 - **server-agents** run `install.sh` (full stack) and poll inbox for work

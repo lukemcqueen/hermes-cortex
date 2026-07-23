@@ -299,7 +299,11 @@ Your very next tool calls after task-start MUST be, in this EXACT order:
 9. **`skill_view('cortex-preflight')`** — load repo-specific checks
 10. **`skill_view('agent-contract')`** — load execution rules
 
-Then select your reasoning pattern. Then classify with agent-flow. Then load on-task skills from skills.yaml.
+Then select your reasoning pattern. Then classify with agent-flow to determine the task's domain (e.g. documentation, infra, devops, data).
+
+**THEN: call `skills_list()` for the task domain and load every matching skill.** If your domain is not a category, search with 3+ related terms. Every matching skill must be loaded with `skill_view()` before you write any code or create any file. A skill not loaded is a mistake waiting to happen.
+
+Then load on-task skills from skills.yaml.
 
 **BEFORE creating any new cron, script, mechanism, or file: you MUST survey existing ones.** Run `search_files()` with 3+ different terms AND call `cronjob(action='list')` to see what already exists. If an existing script or cron can be extended to absorb the new capability, **extend it** — do not create a parallel system. A new creation when an existing extension was possible is a structural violation. Document the survey result: *\"Surveyed: found X existing system, chose to extend / nothing matched\"* in your feedback note.
 
