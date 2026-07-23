@@ -611,6 +611,33 @@ def check_skills(res):
                     "Template is newer than deployed manifest",
                     f"Run: cp {template_yaml} {skills_yaml}")
 
+    # Verify each named skill exists on disk
+    all_skill_names = set(always_names)
+    if isinstance(on_task, dict):
+        for skills_list in on_task.values():
+            for s in skills_list:
+                if isinstance(s, dict):
+                    all_skill_names.add(s.get("name", ""))
+                elif isinstance(s, str):
+                    all_skill_names.add(s)
+    all_skill_names.discard("")
+    missing_skills = []
+    skills_dir = HERMES_HOME / "skills"
+    for name in sorted(all_skill_names):
+        skill_dir = skills_dir / name.split("/")[0] / name.split("/")[-1] if "/" in name else skills_dir / name
+        if not skill_dir.exists() and not (skills_dir / name).exists():
+            # Check in repo as fallback
+            repo_skill = CORTEX_REPO / "skills" / name
+            if not repo_skill.exists():
+                missing_skills.append(name)
+    if missing_skills:
+        res.add("Skills manifest: disk check", "WARN",
+                f"{len(missing_skills)} skill(s) listed but not found on disk: {', '.join(missing_skills[:5])}",
+                f"Run: hermes skills update or check ~/.hermes/skills/")
+    else:
+        res.add("Skills manifest: disk check", "PASS",
+                f"all {len(all_skill_names)} skills found on disk")
+
 
 def check_crons(res):
     """2. Cron audit: all expected crons registered, workdirs valid, run status, extra crons."""
@@ -665,6 +692,21 @@ def check_crons(res):
             if len(stale) > 3:
                 res.add(f"Cron status ({len(stale)} total)", "WARN", f"unhealthy crons",
                          "Inspect and re-create unhealthy crons")
+
+    # Orphan cron detection: crons in scheduler not in expected list
+    orphan_crons = []
+    for name, job in registered.items():
+        if name not in expected_crons:
+            # Skip known prefixes that aren't in our expected list
+            if not any(name.startswith(p) for p in ["orch-", "agent-", "local-", "system-"]):
+                continue
+            orphan_crons.append(name)
+    if orphan_crons:
+        res.add(f"Orphan crons: {len(orphan_crons)}", "INFO",
+                f"Not in expected list: {', '.join(orphan_crons[:5])}",
+                "Run: hermes cron remove <name> for each orphan")
+    else:
+        res.add("Crons: orphans", "PASS", "no unexpected crons found")
 
     # Extra crons
     expected_set = set(expected_crons)
@@ -1027,6 +1069,36 @@ def check_system(res):
                     if len(parts) >= 3:
                         res.add("Memory", "PASS", f"{parts[2]} used / {parts[1]} total")
                     break
+
+    # ── Network safety check ──
+    # Check if any important services are listening on 0.0.0.0 (exposed to network)
+    if IS_LINUX:
+        ss_out = run_bg(["ss", "-tlnp"], timeout=5)
+        if ss_out:
+            exposed = []
+            for line in ss_out.splitlines():
+                if "0.0.0.0:11434" in line and "ollama" in line.lower():
+                    exposed.append("Ollama on 0.0.0.0:11434")
+                elif "0.0.0.0:8903" in line:
+                    exposed.append("Agent Bus on 0.0.0.0:8903")
+                elif "0.0.0.0:4000" in line and "langfuse" in line.lower():
+                    exposed.append("Langfuse on 0.0.0.0:4000")
+            if exposed:
+                for e in exposed:
+                    res.add("Network safety", "WARN", f"{e} — exposed to all network interfaces",
+                            "Configure nginx to proxy and bind service to 127.0.0.1 only")
+            else:
+                res.add("Network safety", "PASS", "no services exposed on 0.0.0.0")
+
+    # ── systemd user linger check (Linux only) ──
+    if IS_LINUX:
+        linger_out = run_bg(["loginctl", "show-user", os.environ.get("USER", "moses")], timeout=5)
+        if "Linger=yes" in linger_out or "Linger=on" in linger_out:
+            res.add("Systemd linger", "PASS", "enabled — user services survive reboot")
+        else:
+            res.add("Systemd linger", "WARN",
+                    "NOT enabled — user services die on logout/reboot",
+                    "Run: sudo loginctl enable-linger $(whoami)")
 
 
 def check_config(res):
@@ -1950,7 +2022,72 @@ def dispatch_bus_alerts(res: Results):
         print(f"  ℹ️  {skipped} repo(s) have no owner in repo-owners.yaml — skipped")
 
 
-# ── Main ─────────────────────────────────────────────────────────
+
+# ── Stale Deploy Check ───────────────────────────────────────────
+
+def check_stale_deploys(res):
+    """Check ~/.hermes-cortex/scripts/ for orphaned or mis-deployed files.
+
+    Scans cortex-update.sh for all registered source→dest mappings,
+    then cross-references against actual files in the deploy directory.
+    Flags:
+      - Files in deploy dir not in any mapping (orphans)
+      - Files that are symlinks when they should be copies
+      - Files whose source no longer exists in the repo
+    """
+    cortex_update = Path.home() / "hermes-cortex" / "ops" / "scripts" / "cortex-update.sh"
+    if not cortex_update.exists():
+        return
+
+    content = cortex_update.read_text()
+    deploy_home = Path.home() / ".hermes-cortex"
+    destinations = set()
+
+    # Parse register() calls: register "source" "dest" [service] [restart]
+    for line in content.splitlines():
+        line = line.strip()
+        if not line.startswith("register ") or line.startswith("#"):
+            continue
+        m = re.match(r'register\s+"([^"]+)"\s+"([^"]+)"', line)
+        if not m:
+            continue
+        src = m.group(1)
+        dest_str = m.group(2)
+        # Resolve CORTEX_DEPLOY_HOME and HOME vars
+        dest_str = dest_str.replace("${CORTEX_DEPLOY_HOME}", str(deploy_home))
+        dest_str = dest_str.replace("${HOME}", str(Path.home()))
+        dest = Path(dest_str)
+        destinations.add(dest)
+
+        # Check if source file exists
+        repo_src = Path.home() / "hermes-cortex" / src
+        if not repo_src.exists():
+            res.add(f"Deploy source missing", "FAIL",
+                    f"{src} → {dest_str}",
+                    f"Remove register line for {src} in cortex-update.sh")
+
+        # Check if deployed file is a symlink (should be a real copy)
+        if dest.is_symlink():
+            res.add(f"Deploy symlink: {dest.name}", "WARN",
+                    "Should be a copy, not a symlink",
+                    f"Run: cp --remove-destination $(readlink {dest}) {dest}")
+        elif dest.exists():
+            # Verify it's a regular file
+            if not dest.is_file():
+                res.add(f"Deploy not regular: {dest.name}", "WARN",
+                        "Not a regular file",
+                        f"Remove and re-deploy: rm {dest} && cortex-update.sh --force-all")
+
+    # Scan deploy scripts dir for orphans
+    scripts_dir = deploy_home / "scripts"
+    if scripts_dir.exists():
+        for f in sorted(scripts_dir.rglob("*")):
+            if f.is_file() and f.suffix in (".py", ".sh") and "__pycache__" not in str(f):
+                if f not in destinations:
+                    size = f.stat().st_size
+                    res.add(f"Stale deploy: {f.relative_to(deploy_home)}", "WARN",
+                            f"{size:,} bytes — not in any register() mapping",
+                            f"Remove: rm {f}")
 def main():
     args = set(sys.argv[1:])
     res = Results()
@@ -1963,10 +2100,10 @@ def main():
     compact = "--quiet" in args
 
     all_checks = [check_repo, check_dev_repo_agents, check_soul_sync, check_skills, check_crons, check_scripts, check_services,
-                   check_system, check_config, check_nginx, check_governance, check_install]
+                   check_system, check_config, check_nginx, check_governance, check_install, check_stale_deploys]
 
     if do_quick:
-        # Quick mode: skip skills manifest, nginx config — keep crons + scripts for safety
+        # Quick mode: skip skills manifest, nginx config, stale deploys — keep crons + scripts for safety
         all_checks = [check_repo, check_dev_repo_agents, check_soul_sync,
                       check_crons, check_scripts,
                       check_services, check_system, check_config,

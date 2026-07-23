@@ -80,6 +80,7 @@ export PATH="${BUN_PATH}:$PATH"
 DRY_RUN=false
 STATUS_ONLY=false
 FORCE_ALL=false
+CLEAN_STALE=false
 CHANGED=()
 TO_RESTART=()
 COPIED=0
@@ -94,6 +95,7 @@ for arg in "$@"; do
     --dry-run)   DRY_RUN=true ;;
     --status)    STATUS_ONLY=true ;;
     --force-all) FORCE_ALL=true ;;
+    --clean-stale) CLEAN_STALE=true ;;
     --help|-h)
       echo "Usage: bash cortex-update.sh [--dry-run|--delta|--status]"
       echo ""
@@ -583,8 +585,54 @@ check_each_mapped_file() {
 
 # ── Deprecated file cleanup ─────────────────────────────────
 
-# Known old files that may stick around after they're removed from the repo
-DEPRECATED_FILES=()  # populated by scanning the map for files that no longer exist in repo
+# Scans deploy dir for files not in MAP and removes them
+clean_stale_deploys() {
+  local cleaned=0
+  info "🧹 Scanning for stale deploy files..."
+
+  # Build list of all registered destinations
+  local dests=()
+  for entry in "${MAP[@]}"; do
+    local dest
+    IFS='|' read -r _ dest _ _ <<< "$entry"
+    dest="${dest/\${CORTEX_DEPLOY_HOME}/$CORTEX_DEPLOY_HOME}"
+    dest="${dest/\${HOME}/$HOME}"
+    dests+=("$dest")
+  done
+
+  # Scan the scripts dir for files not in the dest list
+  local scan_dir="${CORTEX_DEPLOY_HOME}/scripts"
+  if [[ -d "$scan_dir" ]]; then
+    while IFS= read -r -d '' f; do
+      local match=false
+      for d in "${dests[@]}"; do
+        if [[ "$f" == "$d" ]]; then
+          match=true
+          break
+        fi
+      done
+      if ! $match; then
+        local size
+        size=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || echo "?")
+        if $DRY_RUN; then
+          info "  [dry-run] Would remove stale: ${f/$HOME/\~} (${size} bytes)"
+        else
+          rm -f "$f"
+          info "  🗑️  Removed stale: ${f/$HOME/\~} (${size} bytes)"
+          ((cleaned++))
+        fi
+      fi
+    done < <(find "$scan_dir" -type f \( -name '*.py' -o -name '*.sh' \) -print0)
+  fi
+
+  if $DRY_RUN; then
+    info "  Dry-run complete — ${cleaned} would be removed"
+  elif [[ $cleaned -gt 0 ]]; then
+    info "  Cleaned ${cleaned} stale file(s)"
+  else
+    info "  No stale files found"
+  fi
+}
 
 # ── Symlinks ────────────────────────────────────────────────
 
@@ -1352,6 +1400,9 @@ main() {
 
   # Post-update service verification
   verify_services
+
+  # Auto-clean stale deploy files after force-all
+  clean_stale_deploys
 
   # Install/update universal crons (idempotent — skips existing)
   if command -v hermes &>/dev/null; then
