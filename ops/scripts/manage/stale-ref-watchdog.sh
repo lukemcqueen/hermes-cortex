@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 # stale-ref-watchdog — nightly stale-path scan across all deploy layers
-# Checks for:
-#   1. Broken symlinks in ~/.hermes/ and ~/.hermes-cortex/
-#   2. Deployed scripts referenced by crons that don't exist
-#   3. Orphaned cron script paths
+# SILENT on success (exit 0), verbose on failure (exit 1).
+# For no_agent cron: empty stdout = silent delivery.
 set -euo pipefail
 
 EXIT_CODE=0
+OUTPUT=""
 
-echo "[stale-ref-watchdog] $(date -u '+%Y-%m-%dT%H:%M:%SZ') — nightly stale-path scan"
-echo ""
+log() { OUTPUT+="$1"$'\n'; }
+
+log "[stale-ref-watchdog] $(date -u '+%Y-%m-%dT%H:%M:%SZ') — nightly stale-path scan"
+log ""
 
 # 1. Broken symlinks in deploy directories
-echo "--- Deploy symlinks ---"
+log "--- Deploy symlinks ---"
 DEPLOY_DIRS=(
   "$HOME/.hermes/scripts"
   "$HOME/.hermes/plugins"
@@ -22,19 +23,19 @@ for dir in "${DEPLOY_DIRS[@]}"; do
   if [ -d "$dir" ]; then
     broken=$(find "$dir" -type l ! -exec test -e {} \; 2>/dev/null | head -20)
     if [ -n "$broken" ]; then
-      echo "BROKEN symlinks in $dir:"
-      echo "$broken"
+      log "BROKEN symlinks in $dir:"
+      log "$broken"
       EXIT_CODE=1
     fi
   fi
 done
 if [ "$EXIT_CODE" -eq 0 ]; then
-  echo "  All symlinks valid"
+  log "  All symlinks valid"
 fi
-echo ""
+log ""
 
 # 2. Check registered script paths from cortex-update.sh MAP exist in repo
-echo "--- Cortex registered scripts ---"
+log "--- Cortex registered scripts ---"
 REGISTER_CHECK=(
   "$HOME/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
   "$HOME/hermes-cortex/ops/scripts/manage/stale-ref-watchdog.sh"
@@ -43,17 +44,17 @@ REGISTER_CHECK=(
 )
 for script in "${REGISTER_CHECK[@]}"; do
   if [ ! -f "$script" ]; then
-    echo "MISSING: $script"
+    log "MISSING: $script"
     EXIT_CODE=1
   fi
 done
 if [ "$EXIT_CODE" -eq 0 ]; then
-  echo "  All registered scripts present"
+  log "  All registered scripts present"
 fi
-echo ""
+log ""
 
 # 3. Check cron scripts deployed to ~/.hermes/scripts exist
-echo "--- Cron deploy layer (~/.hermes/scripts) ---"
+log "--- Cron deploy layer (~/.hermes/scripts) ---"
 CRON_SCRIPTS=(
   "agent-apply-fixes.py"
   "agent-ip-submission.sh"
@@ -78,22 +79,27 @@ CRON_SCRIPTS=(
 missing=0
 for script in "${CRON_SCRIPTS[@]}"; do
   if [ ! -f "$HOME/.hermes/scripts/$script" ]; then
-    echo "MISSING in ~/.hermes/scripts/: $script"
+    log "MISSING in ~/.hermes/scripts/: $script"
     missing=$((missing + 1))
   fi
 done
 if [ "$missing" -eq 0 ]; then
-  echo "  All cron scripts present in ~/.hermes/scripts/"
+  log "  All cron scripts present in ~/.hermes/scripts/"
 else
-  echo "  $missing cron script(s) missing"
+  log "  $missing cron script(s) missing"
   EXIT_CODE=1
 fi
-echo ""
+log ""
 
 if [ "$EXIT_CODE" -eq 0 ]; then
-  echo "[stale-ref-watchdog] ✓ No stale references found"
+  log "[stale-ref-watchdog] ✓ No stale references found"
 else
-  echo "[stale-ref-watchdog] ⚠ Stale references detected (exit=$EXIT_CODE)"
+  log "[stale-ref-watchdog] ⚠ Stale references detected (exit=$EXIT_CODE)"
+fi
+
+# Only print on failure — empty stdout = silent delivery
+if [ "$EXIT_CODE" -ne 0 ]; then
+  echo "$OUTPUT"
 fi
 
 exit $EXIT_CODE
