@@ -51,10 +51,10 @@ Agent sessions follow an unstructured path: describe intent, write code, maybe t
 | **1. Discovery** | Audit existing code, read docs, understand state | ✅ Yes | Shared context doc, risk register | 1-2 |
 | **2. Impl-Core** | Primary code — architecture, models, core logic | ❌ No | Core implementation | 2-4 |
 | **3. Impl-Polish** | Integration, edge cases, error handling | ❌ No | Complete feature | 2-4 |
-| **4. Quality** | Simplify AI-generated code, THEN write tests | ❌ No | Simplified code + test suite | 2-3 |
+| **4. Quality** | Simplify AI-generated code, THEN write tests, THEN adversarial verify | ❌ No | Simplified code + test suite + adversarial findings | 2-3 |
 | **5. Finalization** | Commit, close issues, update docs | ❌ No | Clean commit + carryover | 1 |
 
-**Why Quality before tests (Wave 4):** AI-generated code tends to be over-engineered. Running a simplification pass BEFORE writing tests prevents tests from pinning the AI patterns into place.
+**Why adversarial verification in Wave 4:** AI-generated code often passes standard tests but has hidden failure modes — swallowed errors, brittle assumptions, unhandled edge cases. The adversarial verifier actively tries to break the code: fuzzing inputs, corrupting state, sabotaging dependencies, attacking concurrency. If the code survives adversarial review, it earns certification. See PRD-006.
 
 ## Detailed Requirements
 
@@ -131,6 +131,32 @@ Between every wave, a **session-reviewer** audits the output on eight dimensions
 Only findings at confidence ≥ 80% reach the user. Lower-confidence findings are logged but not surfaced.
 
 **Acceptance:** A regressing change between waves is caught by the gate.
+
+### REQ-007a: Adversarial Verification Gate (Wave 4)
+
+Wave 4 (Quality) includes an adversarial verification step AFTER standard tests pass:
+
+```
+Wave 4 entry → Simplify generated code → Write standard tests
+  → Run standard test suite (must pass)
+  → ACTIVATE ADVERSARIAL VERIFIER
+    → Attack surface enumeration
+    → Input fuzzing
+    → State corruption
+    → Dependency sabotage
+    → Concurrency attacks
+    → Invariant violation
+    → Evidence packaging
+  → If findings: fix → re-verify → loop
+  → If certification: proceed to Wave 5
+```
+
+Adversarial verifier uses a DIFFERENT model than the implementer (e.g., implementer
+on a Tier 3 model, verifier on a Tier 1 model). Maturity level configurable:
+A1-A5 from PRD-006.
+
+**Acceptance:** A wave 4 quality gate with adversarial verification catches code
+that passes standard tests but has hidden failure modes.
 
 ### REQ-004: Crash Recovery (STATE.md)
 
