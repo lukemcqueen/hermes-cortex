@@ -426,6 +426,7 @@ if $UNINSTALL; then
     "agent-agents-md-prune-apply" \
     "agent-agents-md-prune-scan" \
     "agent-auto-save-sessions" \
+    "agent-cron-failure-scanner" \
     "agent-cron-quality-watchdog" \
     "agent-daily-bible-reading" \
     "agent-daily-soul-refinement" \
@@ -437,6 +438,9 @@ if $UNINSTALL; then
     "agent-governance-auditor" \
     "agent-hermes-cortex-sync" \
     "agent-hermes-update" \
+    "agent-inbox-evening" \
+    "agent-inbox-overnight" \
+    "agent-inbox-workday" \
     "agent-ip-submission" \
     "agent-langfuse-health-watchdog" \
     "agent-learning-collector" \
@@ -446,6 +450,7 @@ if $UNINSTALL; then
     "agent-memory-to-brain-sync" \
     "agent-message-handler" \
     "agent-model-health-watchdog" \
+    "agent-offline-code-index" \
     "agent-remediate-apply" \
     "agent-remediation-sensor" \
     "agent-scoring-activity-watchdog" \
@@ -457,6 +462,7 @@ if $UNINSTALL; then
     "agent-threat-pipeline" \
     "agent-weekly-loop-eval" \
     "agent-offline-code-index"; do
+
   
   
     remove_cron "$job"
