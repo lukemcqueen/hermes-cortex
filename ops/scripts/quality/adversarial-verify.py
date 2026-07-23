@@ -9,6 +9,7 @@ Usage:
     adversarial-verify.py --file <path> --level A1
     adversarial-verify.py --file <path> --level A2 [--json]
     adversarial-verify.py --dir <path> --level A2
+    adversarial-verify.py --dir <path> --level A2 --gate
 
 Maturity Levels:
     A1 — Attack Surface Enumeration (static analysis)
@@ -243,8 +244,10 @@ def main():
     parser.add_argument("--dir", "-d", help="Directory to analyze (all .py files)")
     parser.add_argument("--level", "-l", choices=["A0", "A1", "A2", "A3", "A4", "A5"],
                         default="A1", help="Adversarial maturity level (default: A1)")
-    parser.add_argument("--json", action="store_true", help="Machine-readable JSON output")
-    parser.add_argument("--output", "-o", help="Save findings to file")
+    parser.add_argument("--json", action="store_true", help="JSON output")
+    parser.add_argument("--gate", action="store_true",
+                        help="Gate mode: block commit if critical/high findings exist (pre-commit hook integration)")
+    parser.add_argument("--output", help="Save findings JSON to file")
     args = parser.parse_args()
 
     if not args.file and not args.dir:
@@ -371,7 +374,18 @@ def main():
             print(f"\n   Findings saved to: {output_path}")
 
     has_blockers = any(f.get("severity") in ("critical", "high") for f in all_findings)
-    sys.exit(1 if has_blockers else 0)
+
+    if args.gate:
+        if has_blockers:
+            print("\n🔴 GATE_BLOCKED — critical/high findings detected")
+            print("   Pre-commit adversarial gate rejected this change.")
+            print("   Fix findings or use SKIP_SCORE=1 to bypass.")
+            sys.exit(1)
+        else:
+            print("\n✅ GATE_PASSED — no critical/high findings")
+            sys.exit(0)
+    else:
+        sys.exit(1 if has_blockers else 0)
 
 
 if __name__ == "__main__":
