@@ -155,18 +155,28 @@ class LoopDB:
                   spec_hash: str = None, code_hash: str = None,
                   test_output_hash: str = None,
                   model_name: str = "nomic-embed-text:v1.5") -> int:
-        """Log a scored cycle and return the row ID."""
+        """Log a scored cycle and return the row ID.
+
+        Auto-accepts cycles with STOP decision (completed, composite >= 8.0)
+        by setting user_overrode=0. LOOP/MOVE_ON/no_progress cycles stay
+        NULL for human review via feedback_accept/feedback_override.
+        """
+        # Auto-accept STOP decisions — the LLM judge confirmed completion.
+        # LOOP/MOVE_ON/no_progress need human attention.
+        decision_upper = (decision or "").strip().upper()
+        user_overrode = 0 if decision_upper.startswith("STOP") else None
+
         self._lock()
         try:
             cur = self.conn.execute("""\
             INSERT INTO loop_cycles
                 (task_id, cycle_num, spec_hash, code_hash, test_output_hash,
                  completeness, quality, progress, composite, no_progress,
-                 decision, model_name)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 decision, model_name, user_overrode)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (task_id, cycle_num, spec_hash, code_hash, test_output_hash,
               completeness, quality, progress, composite,
-              1 if no_progress else 0, decision, model_name))
+              1 if no_progress else 0, decision, model_name, user_overrode))
             self.conn.commit()
 
             # Write JSON event

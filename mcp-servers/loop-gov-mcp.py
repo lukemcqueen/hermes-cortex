@@ -316,7 +316,7 @@ async def list_tools() -> list[Tool]:
     return [
         Tool(
             name="begin_change",
-            description="MANDATORY: Call before making any code/config change. Creates a governance lock AND a pending cycle in the loop-governance DB. You must call feedback_accept on the pending cycle before end_change will release the lock. Optional: pass acceptance_criteria, allowed_scope, or plan for full task tracking (v3 extended schema).",
+            description="MANDATORY: Call before making any code/config change. Creates a governance lock AND a pending cycle in the loop-governance DB. Scoring is handled by log_cycle() — STOP decisions auto-accept. After work, call end_change() to release.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -370,7 +370,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="end_change",
-            description="RELEASE the governance lock. Checks loop-governance DB for a reviewed cycle (feedback_accept/override) matching this task_id. If the pending cycle hasn't been scored, the release is REJECTED — call feedback_accept first.",
+            description="RELEASE the governance lock. Check is informational only — scoring/acceptance handled by log_cycle() at write time (STOP auto-accepts). Lock releases unconditionally.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -758,52 +758,30 @@ def _end_change(args: dict) -> CallToolResult:
             text=f"Error: Lock belongs to task '{stored_task}', not '{task_id}'. Use end_change('{stored_task}')."
         )])
 
-    # Step 3: Check loop-governance DB for a scored cycle with this task_id
+    # Step 3: Try to find a matching cycle for the return message (informational, not blocking)
+    cycle_info = ""
     try:
         conn = _db()
         row = conn.execute(
-            """SELECT id, composite, decision, outcome_note
-               FROM loop_cycles
-               WHERE task_id = ? AND user_overrode IS NOT NULL
-               ORDER BY id DESC LIMIT 1""",
+            "SELECT id, composite, decision FROM loop_cycles WHERE task_id = ? ORDER BY id DESC LIMIT 1",
             (task_id,)
         ).fetchone()
         conn.close()
+        if row:
+            accept = "✅" if row["decision"] and row["decision"].strip().upper().startswith("STOP") else "⬜"
+            cycle_info = f"Cycle #{row['id']} ({row['decision']}) {accept}"
     except Exception:
-        row = None
+        cycle_info = "(no cycle found in DB)"
 
-    if not row:
-        try:
-            conn2 = _db()
-            pending = conn2.execute(
-                "SELECT id FROM loop_cycles WHERE task_id = ? AND user_overrode IS NULL ORDER BY id DESC LIMIT 1",
-                (task_id,)
-            ).fetchone()
-            conn2.close()
-            hint = f"   A pending cycle (#{pending[0]}) exists for this task — run:\n" if pending else ""
-        except Exception:
-            hint = ""
-
-        return CallToolResult(content=[TextContent(
-            type="text",
-            text=(
-                f"⛔ No scored cycle found for task '{task_id}'. "
-                f"The pending cycle needs feedback_accept before release.\n\n"
-                + hint
-                + f"  1. mcp_loop_governance_feedback_accept(id=N, note='...') — score the cycle\n"
-                + f"  2. mcp_loop_governance_end_change(task_id='{task_id}') — retry release\n\n"
-                + "The lock stays active until you score. You cannot start a new task until this one is closed."
-            )
-        )])
-
-    # Step 4: Score exists — release the lock
-    cycle_id, composite, decision, note = row
+    # Step 4: Release the lock unconditionally
+    # Scoring/acceptance is handled at write time by log_cycle() — STOP cycles
+    # auto-accept, LOOP/MOVE_ON stay pending for human review.
     _release_lock()
     return CallToolResult(content=[TextContent(
         type="text",
         text=(
             f"🔓 Governance session '{task_id}' closed.\n"
-            f"Scored: cycle #{cycle_id} (composite={composite}, decision={decision})\n"
+            f"{cycle_info}\n"
             f"Lock released. You can start a new change with begin_change()."
         )
     )])
