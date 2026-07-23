@@ -192,7 +192,10 @@ def read_inbox(queue: str) -> dict | None:
     """Read one message from queue, return parsed body or None."""
     try:
         from lib.cortex_bus import bus_read
-        raw = bus_read(queue, vt=30)
+        # Use 120s VT (visibility timeout) for UPDATE_REQUEST which can take
+        # 40+ seconds running cortex-update.sh. 30s VT would expire mid-update,
+        # causing the message to reappear and the handler to lose its lock.
+        raw = bus_read(queue, vt=120)
         if raw and raw.get("msg_id"):
             # Normalize None fields that could cause subscript crashes downstream
             if raw.get("correlation_id") is None:
