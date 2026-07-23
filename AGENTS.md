@@ -46,12 +46,16 @@
 | Path | Purpose |
 |------|---------|
 | `docs/` | Guides, templates, reference docs |
-| `docs/service-layer-decision.md` | **Architecture decision: user-level only for agent services** |
+| `docs/agent-architecture.md` | **Agent roles, capability matrix, fleet architecture** |
+| `docs/fleet-update-protocol.md` | **Bus message schema for UPDATE_REQUEST → FIX_RESULT flow** |
+| `docs/prd/` | **Enterprise PRDs: loop engineering, cheat detection, adversarial verifier, delivery harness** |
+| `docs/service-layer-decision.md` | Architecture decision: user-level only for agent services |
 | `docs/linux-service-layer.md` | Linux systemd `--user` service layer guide |
 | `docs/macos-service-layer.md` | macOS LaunchAgent service layer guide |
 | `docs/skills-manifest-reference.md` | Skills manifest — how to manage project-level skills |
+| `profiles/personal/agent-profiles/` | **Agent SOUL.md profiles (moses, esther, joseph, gisu, kustos, titus, operator)** |
 | `ops/install/install.sh` | Single-command installer |
-| `ops/install/deploy/` | Langfuse + ClickHouse docker-compose |
+| `ops/install/deploy/` | Langfuse + ClickHouse docker-compose, agent-registry.json.example |
 | `.hermes-cortex/` | Agent infra: sessions, memory, skills.yaml |
 
 ## Skill loading — NOT OPTIONAL
@@ -508,6 +512,9 @@ Previously inlined content moved to:
 
 | Subject | Location |
 |---------|----------|
+| Agent roles, capability matrix, cron rules | [`docs/agent-architecture.md`](docs/agent-architecture.md) |
+| Fleet update protocol (bus message schema) | [`docs/fleet-update-protocol.md`](docs/fleet-update-protocol.md) |
+| Enterprise PRDs: loop engineering, cheat detection | [`docs/prd/`](docs/prd/) |
 | Ollama Model Tier, env vars, cron 3-tier | [`docs/setup-reference.md`](docs/setup-reference.md) |
 | Loop Governance setup, troubleshooting, full tables | [`docs/loop-governance-reference.md`](docs/loop-governance-reference.md) |
 | Pipeline Reference (lessons, sessions, skills, memory, quality) | [`docs/pipeline-reference.md`](docs/pipeline-reference.md) |
@@ -517,5 +524,5 @@ Previously inlined content moved to:
 | Symlink policy (Hermes vs Cortex layout) | [`docs/symlink-policy.md`](docs/symlink-policy.md) |
 
 ---
-> Updated 2026-07-21: SOUL.md template consolidated to 12 principles (was 38).
+> Updated 2026-07-23: Added references to agent-architecture, fleet-update-protocol, PRDs, agent profiles.
 > See docs/templates/SOUL.md for the canonical set. Doctor now FAILS on mismatch.
