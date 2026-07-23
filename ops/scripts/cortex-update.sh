@@ -608,6 +608,7 @@ clean_stale_deploys() {
     "offline-code-index-cron.sh"
     "skill_miner.py"
     "swap-refresh.py"
+    "nginx-threat-pipeline.sh"
   )
 
   # Build list of all registered destinations
