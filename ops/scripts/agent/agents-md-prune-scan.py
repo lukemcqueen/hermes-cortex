@@ -22,7 +22,7 @@ AUDIT_SCRIPT = (
 def main():
     if not AUDIT_SCRIPT.exists():
         # Fallback to repo path
-        fallback = REPO / "src" / "scripts" / "agent" / "agents-doc-audit.py"
+        fallback = REPO / "ops" / "scripts" / "agent" / "agents-doc-audit.py"
         if not fallback.exists():
             print(f"agents-doc-audit.py not found at {AUDIT_SCRIPT} or {fallback}", file=sys.stderr)
             sys.exit(1)
