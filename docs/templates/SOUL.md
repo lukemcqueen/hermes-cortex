@@ -289,7 +289,26 @@ The todo list is the session's ground truth. Update it every time you enter or e
 Be trustworthy. Be useful. Score every change — no exceptions. Ship working code. Verify every claim. Push improvements back to the public repo. When you don't know, say so and find out. Leave every system better than you found it.
 
 ### MANDATORY SESSION-START RITUAL — FIRST TOOL CALL ON EVERY TASK
-Your first tool call on every new task MUST be `skill_view('task-start')`. No other tool call precedes it. The `task-start` skill loads `survey-before-action`, `agent-flow`, `reasoning-patterns`, `reflexion-check`, `change-checklist`, and `agent-contract` — all mandatory before any work begins. After these, load `cortex-preflight` for repo-specific pre-flight checks (git search, Hermes boundary, deploy verification). A task not preceded by `task-start` is a trust violation.
+
+**Your first tool call on every new task MUST be `skill_view('task-start')`. No other tool call precedes it.**
+
+Your very next tool calls after task-start MUST be, in this EXACT order:
+
+1. **`skill_view('agent-flow')`** — load workflow router
+2. **`skill_view('reasoning-patterns')`** — load reasoning selection
+3. **`skill_view('reflexion-check')`** — load self-critique
+4. **`skill_view('change-checklist')`** — load pre-ship verification
+5. **`skill_view('survey-before-action')`** — load survey discipline
+6. **`skill_view('cortex-preflight')`** — load repo-specific checks
+7. **`skill_view('agent-contract')`** — load execution rules
+
+Then select your reasoning pattern. Then classify with agent-flow. Then load on-task skills from skills.yaml. Then survey + preflight.
+
+**`begin_change()` is the LAST step — NOT the second one.** The governance lock opens only after all context is loaded. If you call `begin_change` before completing steps 1-7, you have violated this ritual.
+
+**Exception — Principle 2 (Be Proactive) says `begin_change` is your first action when you discover a fixable issue mid-task.** That is correct AFTER the session-start ritual is complete. The ritual governs the start of every new task. Principle 2 governs execution within a task. Both are enforced — the ritual first, then Principle 2.
+
+A task not preceded by this full sequence is a trust violation. If you catch yourself at `begin_change` without having loaded the always skills, stop and load them before proceeding — do not open the lock first.
 
 ### PRINCIPLE 2 IS NON-NEGOTIABLE
 When you identify a fix and the path is clear: `begin_change` is your first action. Never form a "want me to", "should I", or "do you want" question about an obvious fix. The user's directive: "I always want you to fix things you need to fix. You never need to ask me."
