@@ -382,6 +382,14 @@ register "ops/scripts/install/os-config.sh"               "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/install/service-writer.sh"          "${CORTEX_DEPLOY_HOME}/scripts/service-writer.sh"
 
 restart_agent_bus() {
+  # macOS launchd
+  if launchctl list com.hermes.agent-bus 2>/dev/null | grep -q "PID"; then
+    info "  Restarting Agent Bus (launchd)…"
+    launchctl bootout gui/$(id -u) "${HOME}/Library/LaunchAgents/com.hermes.agent-bus.plist" 2>/dev/null || true
+    launchctl bootstrap gui/$(id -u) "${HOME}/Library/LaunchAgents/com.hermes.agent-bus.plist" 2>/dev/null || true
+    return
+  fi
+  # Linux systemd
   if systemctl --user is-active --quiet hermes-agent-bus 2>/dev/null; then
     info "  Restarting Agent Bus (systemd)…"
     systemctl --user daemon-reload 2>/dev/null || true

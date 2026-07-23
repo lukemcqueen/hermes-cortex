@@ -12,8 +12,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
 SCRIPTS_DIRS = [
-    REPO_ROOT / "src" / "scripts",
-    REPO_ROOT / "src" / "loop-governance",
+    REPO_ROOT / "ops" / "scripts",
+    REPO_ROOT / "core" / "governance",
 ]
 
 try:
