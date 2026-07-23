@@ -1,6 +1,14 @@
 # PRD: Delivery Harness — Spec-First Disciplined Delivery
 
-> **PRD-002 | Status: Draft | Date: 2026-07-23**
+> **PRD-002 | Status: SUPERSEDED | Date: 2026-07-23**
+>
+> ⚠️ **This PRD is superseded.** The delivery harness concept was absorbed into:
+> - **Wave orchestration** (`ops/scripts/manage/wave-orchestrate.py`) — 5-wave delivery pipeline
+> - **Outerloop** (`ops/scripts/manage/outerloop.py`) — evidence/verdict cycle
+> - **Change-checklist skill** — pre-ship verification (6-question checklist)
+>
+> See [`PRD-003-session-orchestration.md`](./PRD-003-session-orchestration.md) and
+> [`PRD-005-enterprise-integration-v2.md`](./PRD-005-enterprise-integration-v2.md) for current architecture.
 >
 > Derived from [Chachamaru127/claude-code-harness](https://github.com/Chachamaru127/claude-code-harness)
 

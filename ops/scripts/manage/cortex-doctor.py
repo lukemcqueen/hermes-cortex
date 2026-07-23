@@ -1959,13 +1959,19 @@ def main():
     do_fix = "--fix" in args
     do_watch = "--watch" in args
     do_bus_alert = "--bus-alert" in args
+    do_quick = "--quick" in args
     compact = "--quiet" in args
 
     all_checks = [check_repo, check_dev_repo_agents, check_soul_sync, check_skills, check_crons, check_scripts, check_services,
                    check_system, check_config, check_nginx, check_governance, check_install]
 
-    if not res.json_mode:
-        print("Hermes Cortex Doctor v2.0")
+    if do_quick:
+        # Quick mode: skip skills manifest, crons registry, script integrity, nginx config
+        all_checks = [check_repo, check_dev_repo_agents, check_soul_sync,
+                      check_services, check_system, check_config,
+                      check_governance, check_install]
+        if not res.json_mode:
+            print("Hermes Cortex Doctor — Quick Check")
 
     if do_watch:
         while True:
