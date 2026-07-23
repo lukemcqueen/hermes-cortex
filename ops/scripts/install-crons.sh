@@ -445,7 +445,6 @@ if $UNINSTALL; then
     "agent-memory-to-brain-sync" \
     "agent-message-handler" \
     "agent-model-health-watchdog" \
-    "agent-offline-code-index" \
     "agent-remediate-apply" \
     "agent-remediation-sensor" \
     "agent-scoring-activity-watchdog" \
@@ -633,16 +632,6 @@ create_cron "agent-llm-judge-scorer-weekday" "0 12,20 * * 1-5" \
 # LLM judge scorer — weekend (Sat-Sun 22:00)
 create_cron "agent-llm-judge-scorer-weekend" "0 22 * * 0,6" \
   "llm-judge-scorer.py" \
-  "" \
-  "" \
-  "" \
-  "local" \
-  "" \
-  "true"
-
-# Offline code index rebuild (weekly Sunday 05:00)
-create_cron "agent-offline-code-index" "0 5 * * 0" \
-  "offline_code_index_cron.sh" \
   "" \
   "" \
   "" \
