@@ -1491,6 +1491,10 @@ except: print('error')
     fi
   done
 
+  # ── Auto-run doctor after update ─────────────────────────
+  info "Running doctor to verify installation…"
+  python3 "${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py" --quiet 2>&1 || true
+
   echo ""
 }
 

@@ -2639,5 +2639,14 @@ printf "\n"
 printf "\n${GREEN}${BOLD}Hermes Cortex v${VERSION} installed. Enjoy! 🧠${RESET}\n"
 
 # Clear the EXIT trap and clean up remote temp dir
+
+# Auto-run cortex doctor after install
+DOCTOR_PATH="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/scripts/cortex-doctor.py"
+if command -v python3 &>/dev/null && [ -f "$DOCTOR_PATH" ]; then
+  echo ""
+  echo "━━━ Running post-install health check ━━━"
+  python3 "$DOCTOR_PATH" --quiet 2>&1 || true
+fi
+
 rm -rf "${REMOTE_CLEANUP}"
 trap - EXIT
