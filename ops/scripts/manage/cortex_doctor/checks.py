@@ -499,7 +499,7 @@ def check_scripts(res):
 
 
 def _check_bus_e2e(res):
-    """End-to-end bus test: send → read → archive through the external URL."""
+    """End-to-end bus test: config → health → self round-trip → stuck msgs → EXEC path."""
     try:
         from hermes_paths import ensure_scripts_path
         ensure_scripts_path()
@@ -509,23 +509,42 @@ def _check_bus_e2e(res):
                 "cortex_bus.py not importable — expected if bus is not deployed on this agent")
         return
 
-    try:
-        h = bus_health()
-        status = h.get("status", "unknown")
-        if status == "ok":
-            res.add("Bus E2E (health)", "PASS", f"Status: {status} — backend: {h.get('backend', '?')}")
-        else:
-            res.add("Bus E2E (health)", "WARN", f"Status: {status}")
-    except Exception as e:
-        res.add("Bus E2E (health)", "FAIL", str(e), "Check CORTEX_BUS_URL in cortex-bus.conf")
-        return
-
     agent = (os.environ.get("AGENT_NAME", "")
              or _read_config_from_bus_conf("AGENT_NAME")
              or os.environ.get("USER", "unknown"))
     queue = f"inbox_{agent}"
-    test_cid = f"doctor-e2e-{os.urandom(4).hex()}"
 
+    # ── 1. Config check ──
+    try:
+        from lib.cortex_bus import config as bus_config
+        bus_url = bus_config.get("CORTEX_BUS_URL", "")
+        fallback_url = bus_config.get("CORTEX_BUS_FALLBACK_URL", "")
+        if bus_url:
+            res.add("Bus config (URL)", "PASS", f"BUS_URL set")
+        else:
+            res.add("Bus config (URL)", "FAIL", "BUS_URL not set", "Set CORTEX_BUS_URL in cortex-bus.conf")
+        if fallback_url:
+            res.add("Bus config (fallback)", "PASS", f"FALLBACK_URL set")
+        else:
+            res.add("Bus config (fallback)", "WARN", "No FALLBACK_URL configured",
+                    "Add CORTEX_BUS_FALLBACK_URL in cortex-bus.conf for resilience")
+    except Exception:
+        pass
+
+    # ── 2. Health check ──
+    try:
+        h = bus_health()
+        status = h.get("status", "unknown")
+        if status == "ok":
+            res.add("Bus health", "PASS", f"Status: {status} — backend: {h.get('backend', '?')}")
+        else:
+            res.add("Bus health", "WARN", f"Status: {status}")
+    except Exception as e:
+        res.add("Bus health", "FAIL", str(e), "Check CORTEX_BUS_URL in cortex-bus.conf")
+        return
+
+    # ── 3. Self round-trip: send → read → archive ──
+    test_cid = f"doctor-e2e-{os.urandom(4).hex()}"
     try:
         send_r = bus_send(queue, {
             "from": agent, "to": agent,
@@ -533,11 +552,11 @@ def _check_bus_e2e(res):
             "body": json.dumps({"test": True}),
         })
         if not send_r or not send_r.get("msg_id"):
-            res.add("Bus E2E (send)", "FAIL", f"No msg_id returned: {send_r}",
+            res.add("Bus self (send)", "FAIL", f"No msg_id returned: {send_r}",
                     "Check auth credentials in cortex-bus.conf")
             return
     except Exception as e:
-        res.add("Bus E2E (send)", "FAIL", str(e),
+        res.add("Bus self (send)", "FAIL", str(e),
                 "Check: curl -u user:pass CORTEX_BUS_URL/api/pgmq/send")
         return
 
@@ -549,14 +568,12 @@ def _check_bus_e2e(res):
         time.sleep(0.5)
 
     if not read_r or not read_r.get("msg_id"):
-        res.add("Bus E2E (read)", "FAIL", "No message read back after send",
+        res.add("Bus self (read)", "FAIL", "No message read back after send",
                 "Message may have been consumed by another process or VT expired")
         return
 
     body = read_r.get("body", {})
     if not isinstance(body, dict):
-        res.add("Bus E2E (read)", "WARN",
-                f"body is {type(body).__name__}, expected dict — bus_read auto-parse may not be active")
         body = {}
 
     cid = body.get("correlation_id", "")
@@ -564,14 +581,58 @@ def _check_bus_e2e(res):
     arch_ok = bus_archive(queue, read_r["msg_id"])
 
     if cid_ok and arch_ok:
-        res.add("Bus E2E (send→read→archive)", "PASS",
+        res.add("Bus self (send→read→archive)", "PASS",
                 f"correlation_id match — full cycle OK")
     elif arch_ok:
-        res.add("Bus E2E (send→read→archive)", "PASS",
+        res.add("Bus self (send→read→archive)", "PASS",
                 f"read {cid or 'message'} instead of test — bus path OK")
     else:
-        res.add("Bus E2E (archive)", "WARN",
+        res.add("Bus self (archive)", "WARN",
                 f"Sent and read OK but archiving failed", "Check PGMQ archive endpoint")
+        return
+
+    # ── 4. Stuck processing messages ──
+    # Catches the exact symptom on Esther: handler reads but crashes before archive,
+    # leaving messages stuck in 'processing' state that loop forever on VT expiry.
+    # Query PGMQ API directly since health endpoint returns queue count, not per-queue details.
+    try:
+        import urllib.request
+        from lib.cortex_bus import config as bus_config
+        bus_url = bus_config.get("CORTEX_BUS_URL", "http://127.0.0.1:8903")
+        auth_token = bus_config.get("CORTEX_BUS_TOKEN", "")
+        req = urllib.request.Request(f"{bus_url}/api/pgmq/queues/{queue}")
+        if auth_token:
+            req.add_header("Authorization", f"Bearer {auth_token}")
+        resp = urllib.request.urlopen(req, timeout=8)
+        q_info = json.loads(resp.read().decode())
+        pending_count = q_info.get("pending_count", 0)
+        processing_count = q_info.get("processing_count", 0)
+        if processing_count > 0:
+            res.add("Bus stuck msgs", "FAIL",
+                    f"{processing_count} message(s) stuck in 'processing' state for {queue}",
+                    "Handler is crashing before archive — run: git pull && cortex-update.sh --force-all")
+        elif pending_count > 0:
+            res.add("Bus stuck msgs", "WARN",
+                    f"{pending_count} pending message(s) in {queue} — may be normal",
+                    "Check if another agent is sending to your inbox")
+        else:
+            res.add("Bus stuck msgs", "PASS",
+                    "No stuck messages — queue empty and healthy")
+    except Exception as e:
+        res.add("Bus stuck msgs", "SKIP",
+                f"Cannot query queue stats: {e}")
+
+    # ── 5. Handler script check ──
+    # Verify the handler script exists at the expected path (will be what processes EXEC)
+    handler_path = CORTEX_HOME / "scripts" / "agent-message-handler.py"
+    if handler_path.is_file():
+        handler_size = os.path.getsize(handler_path)
+        res.add("Bus handler", "PASS",
+                f"agent-message-handler.py exists ({handler_size} bytes)")
+    else:
+        res.add("Bus handler", "FAIL",
+                "agent-message-handler.py not found at expected path",
+                f"Run: cortex-update.sh --force-all (expected at {handler_path})")
 
 
 def check_services(res):
