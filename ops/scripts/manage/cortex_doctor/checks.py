@@ -516,9 +516,9 @@ def _check_bus_e2e(res):
 
     # ── 1. Config check ──
     try:
-        from lib.cortex_bus import config as bus_config
-        bus_url = bus_config.get("CORTEX_BUS_URL", "")
-        fallback_url = bus_config.get("CORTEX_BUS_FALLBACK_URL", "")
+        from lib.cortex_bus import BUS_URL, BUS_FALLBACK_URL
+        bus_url = BUS_URL
+        fallback_url = BUS_FALLBACK_URL
         if bus_url:
             res.add("Bus config (URL)", "PASS", f"BUS_URL set")
         else:
@@ -597,12 +597,16 @@ def _check_bus_e2e(res):
     # Query PGMQ API directly since health endpoint returns queue count, not per-queue details.
     try:
         import urllib.request
-        from lib.cortex_bus import config as bus_config
-        bus_url = bus_config.get("CORTEX_BUS_URL", "http://127.0.0.1:8903")
-        auth_token = bus_config.get("CORTEX_BUS_TOKEN", "")
+        from lib.cortex_bus import BUS_URL, CORTEX_BUS_TOKEN, CORTEX_BUS_AUTH
+        bus_url = BUS_URL
+        # Use Bearer if token available, otherwise Basic auth
+        scheme, creds = "Bearer", CORTEX_BUS_TOKEN
+        if not creds:
+            import base64
+            scheme, creds = "Basic", base64.b64encode(CORTEX_BUS_AUTH.encode()).decode()
         req = urllib.request.Request(f"{bus_url}/api/pgmq/queues/{queue}")
-        if auth_token:
-            req.add_header("Authorization", f"Bearer {auth_token}")
+        if creds:
+            req.add_header("Authorization", f"{scheme} {creds}")
         resp = urllib.request.urlopen(req, timeout=8)
         q_info = json.loads(resp.read().decode())
         pending_count = q_info.get("pending_count", 0)
@@ -646,13 +650,14 @@ def _check_self_stale(res):
             res.add("Doctor self", "SKIP", "Cannot find repo source to compare versions")
             return
 
-        # Compare modification times
-        deployed_mtime = deployed.stat().st_mtime
-        repo_mtime = repo_source.stat().st_mtime
+        # Compare content hash — tolerate small mtime drift from deploy/copy latency
+        import hashlib as _hl
+        deployed_hash = _hl.md5(deployed.read_bytes()).hexdigest()
+        repo_hash = _hl.md5(repo_source.read_bytes()).hexdigest()
 
-        if repo_mtime > deployed_mtime:
+        if deployed_hash != repo_hash:
             res.add("Doctor version", "WARN",
-                    "Running older version — repo source is newer",
+                    "Running older version — repo source differs",
                     "Run: cortex-update.sh --force-all")
         else:
             res.add("Doctor version", "PASS", "Deployed version matches repo")
