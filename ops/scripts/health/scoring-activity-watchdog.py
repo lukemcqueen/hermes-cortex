@@ -22,11 +22,13 @@ def _cron_ts(name: str) -> str:
 
 
 DB_PATH = os.path.expanduser("~/.hermes-cortex/data/loop-governance.db")
+COST_DB = os.path.expanduser("~/.hermes/cron/cron-costs.db")
 THRESHOLDS = {
     # hour: minimum cycles expected by that time
     14: 1,  # by 2pm: at least 1 change scored
     20: 2,  # by 8pm: at least 2 changes scored
 }
+COST_WARNING_DAILY = 0.25  # $0.25/day triggers cost alert
 
 
 def main():
@@ -66,6 +68,71 @@ def main():
         return 1
 
     # Silent on healthy
+    alerts = []
+
+    # ── Cost check ──────────────────────────────────────────
+    if os.path.exists(COST_DB):
+        try:
+            conn = sqlite3.connect(COST_DB)
+            today = datetime.now().date().isoformat()
+            cur = conn.execute(
+                "SELECT SUM(estimated_cost_usd) FROM cron_runs WHERE run_time >= ?",
+                (today,)
+            )
+            row = cur.fetchone()
+            daily_cost = row[0] if row and row[0] else 0.0
+            conn.close()
+            if daily_cost > COST_WARNING_DAILY:
+                alerts.append(
+                    f"⚠️  Daily cron cost ${daily_cost:.4f} exceeds ${COST_WARNING_DAILY:.2f} threshold. "
+                    f"Check ~/.hermes/cron/cron-costs.db for details."
+                )
+        except Exception as e:
+            alerts.append(f"⚠️  Cost DB check failed: {e}")
+
+    # ── Trace quality from Langfuse ─────────────────────────
+    try:
+        env_path = os.path.expanduser("~/.hermes/.env")
+        if os.path.exists(env_path):
+            pk = sk = ""
+            with open(env_path) as f:
+                for line in f:
+                    if line.startswith("HERMES_LANGFUSE_PUBLIC_KEY="):
+                        pk = line.strip().split("=", 1)[1]
+                    elif line.startswith("HERMES_LANGFUSE_SECRET_KEY="):
+                        sk = line.strip().split("=", 1)[1]
+            if pk and sk and "..." not in sk:
+                import urllib.request, urllib.error, json, base64
+                auth = base64.b64encode(f"{pk}:{sk}".encode()).decode()
+                since = (datetime.now() - timedelta(hours=48)).isoformat()
+                req = urllib.request.Request(
+                    f"http://localhost:3000/api/public/scores"
+                    f"?fromTimestamp={since}&name=overall&limit=50"
+                )
+                req.add_header("Authorization", f"Basic {auth}")
+                try:
+                    with urllib.request.urlopen(req, timeout=10) as resp:
+                        scores_data = json.loads(resp.read())
+                    low_scores = set()
+                    for s in scores_data.get("data", []):
+                        val = s.get("value", 10)
+                        if isinstance(val, (int, float)) and val < 4.0:
+                            low_scores.add(s.get("traceId", "?"))
+                    if low_scores:
+                        alerts.append(
+                            f"⚠️  {len(low_scores)} trace(s) scored below 4.0 in the last 48h. "
+                            f"Check Langfuse for details."
+                        )
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    if alerts:
+        ts = _cron_ts("scoring-activity-watchdog")
+        print(f"{ts} {' '.join(alerts)}")
+        return 1
+
     return 0
 
 

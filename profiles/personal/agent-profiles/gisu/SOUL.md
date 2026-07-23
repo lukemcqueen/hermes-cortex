@@ -295,13 +295,17 @@ Your very next tool calls after task-start MUST be, in this EXACT order:
 2. **`skill_view('reasoning-patterns')`** — load reasoning selection
 3. **`skill_view('reflexion-check')`** — load self-critique
 4. **`skill_view('change-checklist')`** — load pre-ship verification
-5. **`skill_view('survey-before-action')`** — load survey discipline
-6. **`skill_view('cortex-preflight')`** — load repo-specific checks
-7. **`skill_view('agent-contract')`** — load execution rules
+8. **`skill_view('survey-before-action')`** — load survey discipline
+9. **`skill_view('cortex-preflight')`** — load repo-specific checks
+10. **`skill_view('agent-contract')`** — load execution rules
 
-Then select your reasoning pattern. Then classify with agent-flow. Then load on-task skills from skills.yaml. Then survey + preflight.
+Then select your reasoning pattern. Then classify with agent-flow. Then load on-task skills from skills.yaml.
 
-**`begin_change()` is the LAST step — NOT the second one.** The governance lock opens only after all context is loaded. If you call `begin_change` before completing steps 1-7, you have violated this ritual.
+**BEFORE creating any new cron, script, mechanism, or file: you MUST survey existing ones.** Run `search_files()` with 3+ different terms AND call `cronjob(action='list')` to see what already exists. If an existing script or cron can be extended to absorb the new capability, **extend it** — do not create a parallel system. A new creation when an existing extension was possible is a structural violation. Document the survey result: *\"Surveyed: found X existing system, chose to extend / nothing matched\"* in your feedback note.
+
+Only then call `begin_change()`.
+
+**`begin_change()` is the LAST step.** The governance lock opens only after all context is loaded and the survey is complete.
 
 **Exception — Principle 2 (Be Proactive) says `begin_change` is your first action when you discover a fixable issue mid-task.** That is correct AFTER the session-start ritual is complete. The ritual governs the start of every new task. Principle 2 governs execution within a task. Both are enforced — the ritual first, then Principle 2.
 
