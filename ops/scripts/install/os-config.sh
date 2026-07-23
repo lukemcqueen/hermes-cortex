@@ -21,6 +21,39 @@ esac
 # ── Profile (role) ──────────────────────────────────────────
 CORTEX_PROFILE="${CORTEX_PROFILE:-server}"
 
+# ── Agent Type (role detection) ────────────────────────────
+# Used by scripts to self-audit: run only on correct agent type.
+# Values: orchestrator, server, dev
+# Detection: AGENT_TYPE env var → IS_ORCHESTRATOR → hostname → 'server'
+if [[ -n "${AGENT_TYPE:-}" ]]; then
+  CORTEX_AGENT_TYPE="$AGENT_TYPE"
+elif [[ "${IS_ORCHESTRATOR:-false}" == "true" ]]; then
+  CORTEX_AGENT_TYPE="orchestrator"
+else
+  local _host
+  _host=$(hostname -s 2>/dev/null || echo "unknown")
+  case "$_host" in
+    moses|esther) CORTEX_AGENT_TYPE="orchestrator" ;;
+    *)           CORTEX_AGENT_TYPE="server" ;;
+  esac
+fi
+
+# Self-audit: scripts call this to refuse on wrong agent type
+check_agent_type() {
+  local required="$1"
+  local script_name="${2:-${BASH_SOURCE[1]:-unknown}}"
+  if [[ "$CORTEX_AGENT_TYPE" != "$required" ]]; then
+    echo "❌ $script_name requires AGENT_TYPE=$required (current: $CORTEX_AGENT_TYPE)" >&2
+    echo "   On $required agents, run the appropriate install or update script." >&2
+    echo "   To remove this component if it should not be here:" >&2
+    echo "     AGENT_TYPE=$required bash $script_name --uninstall" >&2
+    return 1
+  fi
+  return 0
+}
+
+export CORTEX_AGENT_TYPE
+
 # ── Package Manager ─────────────────────────────────────────
 if [[ "$CORTEX_OS" == "macos" ]]; then
   PKG_MANAGER="brew"

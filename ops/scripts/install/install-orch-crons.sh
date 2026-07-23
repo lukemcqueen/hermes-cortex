@@ -17,36 +17,26 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-# ── Guard: orchestrator check via env var (with hostname fallback) ──
-# IS_ORCHESTRATOR is the primary gate. Set in ~/hermes-cortex/.env:
-#   IS_ORCHESTRATOR=true   (on orchestrators like Moses / Esther)
-#   IS_ORCHESTRATOR=false  (on all other agents — default)
+# ── Guard: orchestrator check via shared os-config.sh ──
+# Sources os-config.sh for AGENT_TYPE detection + check_agent_type helper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+OS_CONFIG="${SCRIPT_DIR}/os-config.sh"
+if [[ -f "$OS_CONFIG" ]]; then
+  source "$OS_CONFIG"
+fi
+# Backward compat: also check .env for IS_ORCHESTRATOR (pre-AGENT_TYPE installs)
 CORTEX_ENV="${REPO_DIR:-${HOME}/hermes-cortex}/.env"
 if [[ -f "$CORTEX_ENV" ]]; then
   set -a; source "$CORTEX_ENV"; set +a
 fi
+# Self-audit: refuse if not orchestrator
+check_agent_type "orchestrator" "${BASH_SOURCE[0]}" || {
+  echo "  Run --uninstall to remove any existing orch crons:"
+  echo "    bash ${BASH_SOURCE[0]} --uninstall"
+  exit 1
+}
 
-_IS_ORCH=false
-if [[ "${IS_ORCHESTRATOR:-false}" == "true" ]]; then
-  _IS_ORCH=true
-fi
-# Fallback: hostname check for backward compat with pre-1.4 installs
-if ! $_IS_ORCH; then
-  HOSTNAME="$(hostname -s 2>/dev/null || echo 'unknown')"
-  if [[ "$HOSTNAME" == "moses" || "$HOSTNAME" == "esther" ]]; then
-    _IS_ORCH=true
-  fi
-fi
-
-if ! $_IS_ORCH; then
-  echo "✗ This script installs orchestrator-only crons."
-  echo "  IS_ORCHESTRATOR is not set to 'true' — only orchestrators need these crons."
-  echo "  If you are a worker agent, you do NOT need orchestration crons."
-  echo "  To run on this machine, set IS_ORCHESTRATOR=true in ~/hermes-cortex/.env"
-  exit 0
-fi
-
-# ── Validate LLM cron model/provider env vars ──────────────
+# ── Repo path ──────────────────────────────────────────────
 # LLM-driven crons need a model + provider. Set these in ~/hermes-cortex/.env.
 # The install script sources .env above, so these will be picked up.
 # If not set, halt with a clear message showing where to set them.
