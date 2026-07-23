@@ -377,17 +377,21 @@ SCORE_OUTPUT=$("$PYTHON_BIN" "$SCORE_CYCLE" \
   --prev-code-file "$PREV_FILE" \
   --pass-pct "$PASS_PCT" \
   --json 2>"$SCORE_STDERR") || {
-  # score-cycle failed — show stderr, do NOT fake a decision
+  # score-cycle failed — show BOTH stderr AND stdout (DB failure writes to stdout)
+  echo ""
+  echo "❌  score-cycle FAILED — no governance cycle was recorded!" >&2
+  echo "" >&2
+  echo "    STDOUT (error details):" >&2
+  echo "$SCORE_OUTPUT" | sed 's/^/      /' >&2
+  echo "" >&2
   if [[ -s "$SCORE_STDERR" ]]; then
-    echo ""
-    echo "⚠️  score-cycle encountered an error (stderr follows):"
-    sed 's/^/   /' "$SCORE_STDERR"
-    echo ""
-    echo "   The commit will proceed but no cycle will be logged."
-    echo "   Check whether governance was properly followed."
-    echo "   To bypass this check: SKIP_SCORE=1 git commit ..."
-    echo ""
+    echo "    STDERR:" >&2
+    sed 's/^/      /' "$SCORE_STDERR" >&2
+    echo "" >&2
   fi
+  echo "    Without a cycle record, this commit is invisible to governance." >&2
+  echo "    Set SKIP_SCORE=1 to bypass or fix the DB issue." >&2
+  echo "" >&2
   rm -f "$SCORE_STDERR"
   SCORE_OUTPUT='{"decision":"LOOP","note":"score-cycle failed — no cycle logged"}'
 }

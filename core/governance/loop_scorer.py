@@ -252,7 +252,7 @@ def full_score(spec: str, output: str, previous: str = "", pass_pct: float = Non
     result["_dims"] = {"spec_snippet": spec[:80], "output_len": len(output)}
     result["warnings"] = warnings
 
-    # Optionally log to database — always attempt even if scoring degraded
+    # Optionally log to database — failure here is LOUD (no cycle = no governance)
     if db_path and task_id:
         try:
             from loop_db import LoopDB
@@ -276,6 +276,8 @@ def full_score(spec: str, output: str, previous: str = "", pass_pct: float = Non
             result["logged"] = False
             result["log_error"] = str(e)
             warnings.append(f"DB log failed: {e}")
+            # Loud failure — without a DB record, the cycle never exists
+            result["_db_failed"] = True
 
     return result
 
