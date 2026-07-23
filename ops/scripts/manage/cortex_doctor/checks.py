@@ -43,6 +43,21 @@ from .helpers import run, run_bg, http_get, read_file, process_running, find_sim
 from .results import Results
 
 
+def _read_config_from_bus_conf(key: str) -> str:
+    """Read a value from cortex-bus.conf by key. Returns '' if not found."""
+    conf_path = CORTEX_HOME / "cortex-bus.conf"
+    if not conf_path.exists():
+        return ""
+    try:
+        for line in conf_path.read_text().splitlines():
+            if line.startswith(f"{key}="):
+                val = line.split("=", 1)[1].strip().strip("\"'")
+                return val
+    except OSError:
+        pass
+    return ""
+
+
 def check_repo(res):
     """1. Repo integrity: on main, clean, up to date."""
     if not CORTEX_REPO.is_dir():
@@ -505,7 +520,9 @@ def _check_bus_e2e(res):
         res.add("Bus E2E (health)", "FAIL", str(e), "Check CORTEX_BUS_URL in cortex-bus.conf")
         return
 
-    agent = os.environ.get("AGENT_NAME", "") or os.environ.get("USER", "unknown")
+    agent = (os.environ.get("AGENT_NAME", "")
+             or _read_config_from_bus_conf("AGENT_NAME")
+             or os.environ.get("USER", "unknown"))
     queue = f"inbox_{agent}"
     test_cid = f"doctor-e2e-{os.urandom(4).hex()}"
 
