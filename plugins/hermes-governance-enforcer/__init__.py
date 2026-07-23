@@ -29,12 +29,12 @@ GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 
 
 def _governance_lock_path(session_id: str = "") -> Path:
-    """Return a session-scoped governance lock path.
+    """Return the governance lock path for the given session.
 
     Uses the session_id to scope the lock so that each Hermes session
     has its own independent governance lock. When no session_id is given
-    (fallback), returns a generic path — but the pre_tool_call hook always
-    passes the real session_id.
+    (fallback from Hermes plugin system), returns None — the caller
+    should scan for active locks instead.
     """
     if session_id:
         return GOVERNANCE_STATE_DIR / f".governance-sess_{session_id}.json"
@@ -137,17 +137,32 @@ def _is_process_write(args: Dict[str, Any]) -> bool:
     return action in WRITE_PROCESS_ACTIONS
 
 
-def _has_governance_lock() -> bool:
-    """Check if an active governance lock exists in the state directory."""
-    lock_path = _find_any_governance_lock()
-    if not lock_path:
-        return False
-    try:
-        state = json.loads(lock_path.read_text())
-        task_id = state.get("task_id", "")
-        return bool(task_id)
-    except (json.JSONDecodeError, OSError):
-        return False
+def _has_governance_lock(session_id: str = "") -> bool:
+    """Check if THIS session's governance lock exists.
+
+    When session_id is provided, checks for a session-scoped lock file.
+    When session_id is empty (fallback), scans for ANY session-scoped
+    lock in the state directory as a fallback check.
+    """
+    lock_path = _governance_lock_path(session_id)
+    if lock_path.exists():
+        try:
+            state = json.loads(lock_path.read_text())
+            return bool(state.get("task_id", ""))
+        except (json.JSONDecodeError, OSError):
+            return False
+    # Fallback: scan for any session-scoped lock when no session_id given
+    if not session_id and GOVERNANCE_STATE_DIR.exists():
+        for fpath in GOVERNANCE_STATE_DIR.iterdir():
+            fname = fpath.name
+            if fname.startswith(".governance-sess_") and fname.endswith(".json"):
+                try:
+                    state = json.loads(fpath.read_text())
+                    if state.get("task_id", ""):
+                        return True
+                except (json.JSONDecodeError, OSError):
+                    continue
+    return False
 
 
 def _is_write_tool(tool_name: str, args: Dict[str, Any]) -> bool:

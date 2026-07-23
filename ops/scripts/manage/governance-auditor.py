@@ -181,10 +181,12 @@ LOCK_MAX_AGE_HOURS = 12
 
 
 def _cleanup_stale_locks() -> list[str]:
-    """Remove repo-scoped governance locks older than 12h.
+    """Remove stale governance locks older than 12h.
 
-    Does NOT touch .governance-generic.json (shared across concurrent
-    Hermes sessions — Telegram, CLI, gateway all share it).
+    Only removes session-scoped locks (.governance-sess_*.json) that
+    are past the staleness threshold. The generic fallback
+    .governance-generic.json is never auto-removed (legacy format;
+    no longer created by current MCP server or plugin).
 
     Returns list of human-readable cleanup messages (empty = nothing done).
     """
