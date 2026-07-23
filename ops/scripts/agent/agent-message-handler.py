@@ -724,6 +724,30 @@ def main():
                 )
                 return True
 
+            # ── Result subjects (*_RESULT) — expected replies from fleet agents ──
+            if subject.endswith("_RESULT"):
+                status = "✅" if body.get("body", {}).get("success") else "❌"
+                result_from = body.get("from", "?")
+                result_preview = ""
+                result_body = body.get("body", {})
+                if isinstance(result_body, dict):
+                    exit_code = result_body.get("exit_code", "")
+                    stdout_preview = (result_body.get("stdout", "") or "")[:60].replace("\n", " ")
+                    if exit_code != "":
+                        result_preview = f" exit={exit_code} {stdout_preview}"
+                log(f"📬 Result {subject} from {result_from}:{result_preview}")
+                archive_message(inbox_queue, msg_id)
+                # Don't notify Telegram — results are consumed by AI sessions, not humans
+                state.setdefault("last_results", [])
+                state["last_results"].append({
+                    "subject": subject, "from": result_from,
+                    "correlation_id": correlation_id,
+                    "timestamp": time.time(),
+                })
+                state["last_results"] = state["last_results"][-20:]
+                save_state(state)
+                return True
+
             # Unknown subject — archive so it doesn't loop forever
             log(f"Unknown subject '{subject}', archiving (corr={correlation_id[:8]}…)")
             archive_message(inbox_queue, msg_id)
