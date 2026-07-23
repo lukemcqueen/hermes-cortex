@@ -173,6 +173,7 @@ register "ops/scripts/install/merge-agents-md.py"      "${CORTEX_DEPLOY_HOME}/sc
 register "ops/scripts/manage/hermes-update.sh"            "${CORTEX_DEPLOY_HOME}/scripts/hermes-update.sh"
 register "ops/scripts/manage/hermes-cortex-sync.sh"      "${CORTEX_DEPLOY_HOME}/scripts/hermes-cortex-sync.sh"
 register "ops/scripts/manage/update-session-state.sh"    "${CORTEX_DEPLOY_HOME}/scripts/update-session-state.sh"
+register "ops/scripts/manage/fleet-audit.py"             "${CORTEX_DEPLOY_HOME}/scripts/fleet-audit.py"
 
 # Loop-governance scripts (deployed to scripts/ for cron use)
 register "core/governance/cleanup-ollama.sh"  "${CORTEX_DEPLOY_HOME}/scripts/cleanup-ollama.sh"

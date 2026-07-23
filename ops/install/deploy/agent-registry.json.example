@@ -1,6 +1,6 @@
 {
-  "version": 3,
-  "description": "Agent registry for Hermes Cortex. health_method: 'http' for server agents with reachable health endpoints, 'inbox' for client-only agents that push via inbox.",
+  "version": 4,
+  "description": "Agent registry for Hermes Cortex v4. Every agent must have entries for all 5 fleet concerns: identity & trust, topology, choreography, economics, and sovereign control. health_method: 'http' for server agents with reachable health endpoints, 'inbox' for client-only agents that push via inbox.",
   "health_vector_map": [
     "resources", "services", "no_errored_crons", "no_stale_crons",
     "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok"
@@ -25,7 +25,7 @@
       "platform": "linux",
       "health_method": "http",
       "health_url": "https://your-domain.com:13007/health",
-      "description": "Moses — orchestrator server, ports 13001-13007",
+      "description": "Moses — primary orchestrator server, ports 13001-13007. Fleet command, bus server, Postgres, skill lifecycle, fleet watchdogs.",
       "inbox_user": "moses",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local",
@@ -45,6 +45,55 @@
           "update_method": "cortex-update",
           "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
         }
+      },
+      "fleet_concerns": {
+        "identity": {
+          "principal": {
+            "type": "assistant",
+            "permissions": "edit",
+            "tool_scope": [
+              "hermes-cortex",
+              "agent-bus",
+              "nginx",
+              "docker",
+              "postgres"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        "topology": {
+          "type": "hierarchical",
+          "parent": null
+        },
+        "choreography": {
+          "bus_access": "host",
+          "inbox": "inbox_moses",
+          "handoff_schemas": []
+        },
+        "economics": {
+          "budget": {
+            "daily_token_cap": 100000,
+            "concurrent_runs": 3,
+            "cost_center": "fleet-core"
+          }
+        },
+        "sovereign_control": {
+          "autonomy_tier": "F2",
+          "kill_switch": false,
+          "allow_destructive_ops": true,
+          "deny_paths": []
+        }
+      },
+      "observability": {
+        "langfuse": true,
+        "log_level": "debug",
+        "tracing": "all",
+        "judge_scorer": true
+      },
+      "service_layer": {
+        "type": "systemd",
+        "health_endpoint": true,
+        "auto_remediate": true
       }
     },
     "gisu": {
@@ -56,7 +105,7 @@
       "platform": "linux",
       "health_method": "http",
       "health_url": "https://your-gisu-host:13007/health",
-      "description": "Gisu — operations server (set health_url locally, port 13007)",
+      "description": "Gisu — operations server (set health_url locally, port 13007). Local maintenance and health reporting.",
       "inbox_user": "gisu",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local",
@@ -76,6 +125,56 @@
           "update_method": "cortex-update",
           "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
         }
+      },
+      "fleet_concerns": {
+        "identity": {
+          "principal": {
+            "type": "claw",
+            "permissions": "run",
+            "tool_scope": [
+              "hermes-cortex",
+              "local-services"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        "topology": {
+          "type": "hierarchical",
+          "parent": "moses"
+        },
+        "choreography": {
+          "bus_access": "client",
+          "inbox": "inbox_gisu",
+          "handoff_schemas": []
+        },
+        "economics": {
+          "budget": {
+            "daily_token_cap": 50000,
+            "concurrent_runs": 1,
+            "cost_center": "fleet-server"
+          }
+        },
+        "sovereign_control": {
+          "autonomy_tier": "F1",
+          "kill_switch": false,
+          "allow_destructive_ops": false,
+          "deny_paths": [
+            "*/nginx/**",
+            "*/docker/**",
+            "*.env"
+          ]
+        }
+      },
+      "observability": {
+        "langfuse": true,
+        "log_level": "info",
+        "tracing": "errors-only",
+        "judge_scorer": false
+      },
+      "service_layer": {
+        "type": "systemd",
+        "health_endpoint": true,
+        "auto_remediate": true
       }
     },
     "joseph": {
@@ -87,7 +186,7 @@
       "platform": "linux",
       "health_method": "http",
       "health_url": "https://your-domain.com:12007/health",
-      "description": "Joseph — web/infra server (set health_url locally, port 12007, no auth)",
+      "description": "Joseph — web/infra server (set health_url locally, port 12007, no auth). Hosts production web services.",
       "inbox_user": "joseph",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local",
@@ -107,6 +206,64 @@
           "update_method": "cortex-update",
           "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
         }
+      },
+      "fleet_concerns": {
+        "identity": {
+          "principal": {
+            "type": "claw",
+            "permissions": "run",
+            "tool_scope": [
+              "hermes-cortex",
+              "nginx",
+              "web-services"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        "topology": {
+          "type": "hierarchical",
+          "parent": "moses"
+        },
+        "choreography": {
+          "bus_access": "client",
+          "inbox": "inbox_joseph",
+          "handoff_schemas": [
+            {
+              "from": "moses",
+              "schema": "schema-v1",
+              "validator": "validate-handoff.sh"
+            }
+          ]
+        },
+        "economics": {
+          "budget": {
+            "daily_token_cap": 50000,
+            "concurrent_runs": 1,
+            "cost_center": "fleet-server"
+          }
+        },
+        "sovereign_control": {
+          "autonomy_tier": "F1",
+          "kill_switch": false,
+          "allow_destructive_ops": false,
+          "deny_paths": [
+            "*/nginx/sites-enabled/**",
+            "*/docker/**",
+            "*.env",
+            "*/secrets/**"
+          ]
+        }
+      },
+      "observability": {
+        "langfuse": true,
+        "log_level": "info",
+        "tracing": "all",
+        "judge_scorer": false
+      },
+      "service_layer": {
+        "type": "systemd",
+        "health_endpoint": true,
+        "auto_remediate": true
       }
     },
     "kustos": {
@@ -118,7 +275,7 @@
       "platform": "linux",
       "health_method": "http",
       "health_url": "https://your-kustos-host:13007/health",
-      "description": "k — security server (set health_url locally, port 13007)",
+      "description": "Kustos — security server (set health_url locally, port 13007). Firewall, fail2ban, IP blocking pipelines.",
       "inbox_user": "kustos",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local",
@@ -138,6 +295,59 @@
           "update_method": "cortex-update",
           "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
         }
+      },
+      "fleet_concerns": {
+        "identity": {
+          "principal": {
+            "type": "claw",
+            "permissions": "edit",
+            "tool_scope": [
+              "hermes-cortex",
+              "nginx",
+              "fail2ban",
+              "ip-blocking"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        "topology": {
+          "type": "hierarchical",
+          "parent": "moses"
+        },
+        "choreography": {
+          "bus_access": "client",
+          "inbox": "inbox_kustos",
+          "handoff_schemas": []
+        },
+        "economics": {
+          "budget": {
+            "daily_token_cap": 50000,
+            "concurrent_runs": 1,
+            "cost_center": "fleet-security"
+          }
+        },
+        "sovereign_control": {
+          "autonomy_tier": "F1",
+          "kill_switch": true,
+          "allow_destructive_ops": false,
+          "deny_paths": [
+            "*/iptables/**",
+            "*/ufw/**",
+            "*.env",
+            "*/secrets/**"
+          ]
+        }
+      },
+      "observability": {
+        "langfuse": true,
+        "log_level": "info",
+        "tracing": "all",
+        "judge_scorer": false
+      },
+      "service_layer": {
+        "type": "systemd",
+        "health_endpoint": true,
+        "auto_remediate": true
       }
     },
     "titus": {
@@ -148,7 +358,7 @@
       "accessible": true,
       "health_method": "inbox",
       "platform": "macOS",
-      "description": "Titus — macOS developer machine. NOT a server — do not poll. Pushes health vector to inbox using health-vector-push.sh.",
+      "description": "Titus — macOS developer machine. NOT a server — do not poll. Pushes health vector to inbox using health-vector-push.sh. Multiple project repos.",
       "inbox_user": "titus",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local",
@@ -168,6 +378,53 @@
           "update_method": "cortex-update",
           "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
         }
+      },
+      "fleet_concerns": {
+        "identity": {
+          "principal": {
+            "type": "assistant",
+            "permissions": "edit",
+            "tool_scope": [
+              "hermes-cortex"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        "topology": {
+          "type": "hierarchical",
+          "parent": "moses"
+        },
+        "choreography": {
+          "bus_access": "client",
+          "inbox": "inbox_titus",
+          "handoff_schemas": []
+        },
+        "economics": {
+          "budget": {
+            "daily_token_cap": 75000,
+            "concurrent_runs": 2,
+            "cost_center": "fleet-dev"
+          }
+        },
+        "sovereign_control": {
+          "autonomy_tier": "F1",
+          "kill_switch": false,
+          "allow_destructive_ops": false,
+          "deny_paths": [
+            "*.env"
+          ]
+        }
+      },
+      "observability": {
+        "langfuse": true,
+        "log_level": "debug",
+        "tracing": "all",
+        "judge_scorer": false
+      },
+      "service_layer": {
+        "type": "launchd",
+        "health_endpoint": false,
+        "auto_remediate": false
       }
     },
     "esther": {
@@ -180,7 +437,7 @@
       "platform": "linux",
       "health_method": "http",
       "health_url": "https://your-domain.com:14007/health",
-      "description": "Esther — backup orchestrator, sustainability & materials expert (set health_url locally, port 14007)",
+      "description": "Esther — backup orchestrator, sustainability & materials expert. Hot standby — same capabilities as Moses, takes over if primary is down.",
       "inbox_user": "esther",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local",
@@ -200,6 +457,53 @@
           "update_method": "cortex-update",
           "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
         }
+      },
+      "fleet_concerns": {
+        "identity": {
+          "principal": {
+            "type": "assistant",
+            "permissions": "edit",
+            "tool_scope": [
+              "hermes-cortex",
+              "agent-bus",
+              "nginx"
+            ],
+            "version": "1.0.0"
+          }
+        },
+        "topology": {
+          "type": "hierarchical",
+          "parent": "moses"
+        },
+        "choreography": {
+          "bus_access": "host",
+          "inbox": "inbox_esther",
+          "handoff_schemas": []
+        },
+        "economics": {
+          "budget": {
+            "daily_token_cap": 100000,
+            "concurrent_runs": 2,
+            "cost_center": "fleet-core"
+          }
+        },
+        "sovereign_control": {
+          "autonomy_tier": "F2",
+          "kill_switch": false,
+          "allow_destructive_ops": true,
+          "deny_paths": []
+        }
+      },
+      "observability": {
+        "langfuse": true,
+        "log_level": "info",
+        "tracing": "all",
+        "judge_scorer": true
+      },
+      "service_layer": {
+        "type": "systemd",
+        "health_endpoint": true,
+        "auto_remediate": true
       }
     }
   }
