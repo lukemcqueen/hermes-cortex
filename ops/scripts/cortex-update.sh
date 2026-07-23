@@ -145,12 +145,10 @@ register "ops/scripts/install/install-ollama.sh"          "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/install/install-nginx.sh"           "${CORTEX_DEPLOY_HOME}/scripts/install-nginx.sh"
 register "ops/scripts/install/install-cortex-update-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-cortex-update-cron.sh"
 register "ops/scripts/install-crons.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-crons.sh"
-register "ops/scripts/bus/bus-sensor.py"                 "${CORTEX_DEPLOY_HOME}/scripts/bus-sensor.py"
 register "ops/scripts/orch-bus/orch-bus-message-tracker.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker.py"
 register "ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker-alert.sh"
 register "ops/scripts/orch-bus/orch-bus-forwarder.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-forwarder.py"
 register "ops/scripts/install/install-orch-crons.sh"  "${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh"
-register "ops/scripts/install/orch-install-bus.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-install-bus.sh"
 register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
 register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
 register "ops/scripts/pre-push-pull"               "${CORTEX_DEPLOY_HOME}/scripts/pre-push-pull"
@@ -165,7 +163,6 @@ register "ops/scripts/manage/cortex-doctor.py"        "${CORTEX_DEPLOY_HOME}/scr
 register "ops/scripts/hc/hc.py"                      "${CORTEX_DEPLOY_HOME}/scripts/hc.py"
 register "ops/scripts/hc/hc"                         "${CORTEX_DEPLOY_HOME}/scripts/hc"
 register "ops/scripts/manage/stale-ref-watchdog.sh"            "${CORTEX_DEPLOY_HOME}/scripts/manage/stale-ref-watchdog.sh"
-register "ops/scripts/manage/change-readiness.sh"             "${CORTEX_DEPLOY_HOME}/scripts/manage/change-readiness.sh"
 register "ops/scripts/cron-failure-state.sh"       "${CORTEX_DEPLOY_HOME}/scripts/cron-failure-state.sh"
 register "ops/scripts/cron_failure_state.py"       "${CORTEX_DEPLOY_HOME}/scripts/cron_failure_state.py"
 register "ops/scripts/install/seed-project.sh"           "${CORTEX_DEPLOY_HOME}/scripts/seed-project.sh"
@@ -186,7 +183,6 @@ register "ops/scripts/orch-bus/orch-bus-fleet-dispatch.py" "${CORTEX_DEPLOY_HOME
 
 # Loop-governance scripts (deployed to scripts/ for cron use)
 register "core/governance/cleanup-ollama.sh"  "${CORTEX_DEPLOY_HOME}/scripts/cleanup-ollama.sh"
-register "core/governance/inbox_watcher.py"    "${CORTEX_DEPLOY_HOME}/scripts/inbox_watcher.py"
 register "core/governance/session_cache.py"    "${CORTEX_DEPLOY_HOME}/scripts/session_cache.py"
 register "core/governance/setup.sh"            "${CORTEX_DEPLOY_HOME}/scripts/setup.sh"
 register "core/governance/verify.sh"           "${CORTEX_DEPLOY_HOME}/scripts/verify.sh"
@@ -217,7 +213,7 @@ register "profiles/personal/scripts/agent-daily-bible-reading.py" "${CORTEX_DEPL
 register "ops/scripts/health/langfuse-health-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/langfuse-health-watchdog.py"
 register "ops/scripts/manage/llm-judge-scorer.py"         "${CORTEX_DEPLOY_HOME}/scripts/llm-judge-scorer.py"
 register "ops/scripts/health/model-health-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/model-health-watchdog.py"
-register "ops/scripts/manage/offline_code_index_cron.sh"  "${CORTEX_DEPLOY_HOME}/scripts/offline_code_index_cron.sh"
+register "ops/scripts/manage/offline-code-index-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/offline-code-index-cron.sh"
 register "ops/scripts/health/cron-quality-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/cron-quality-watchdog.py"
 register "ops/scripts/agent/agent-cron-failure-scanner.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-cron-failure-scanner.py"
 register "ops/scripts/health/scoring-activity-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/scoring-activity-watchdog.py"
@@ -254,13 +250,8 @@ register "mcp-servers/agent-bus-mcp.py"                "${CORTEX_DEPLOY_HOME}/sc
 
 # Inbox MCP tools
 # Inbox→bus renamed scripts (source files moved to ops/scripts/bus/)
-# inbox-flag.py and inbox-sensor.py retained at ops/scripts/inbox/ for BWC
+# inbox-flag.py retained at ops/scripts/inbox/ for BWC
 register "ops/scripts/inbox/inbox-flag.py"              "${CORTEX_DEPLOY_HOME}/scripts/inbox-flag.py"
-register "ops/scripts/inbox/inbox-sensor.py"             "${CORTEX_DEPLOY_HOME}/scripts/inbox-sensor.py"
-register "ops/scripts/inbox/inbox-depth-watchdog.sh"    "${CORTEX_DEPLOY_HOME}/scripts/inbox-depth-watchdog.sh"
-register "ops/scripts/bus/bus-sensor.py"                "${CORTEX_DEPLOY_HOME}/scripts/bus-sensor.py"
-# bus-flag.py does not exist yet — inbox-flag.py at ops/scripts/inbox/ is the active version
-register "ops/scripts/bus/agent-bus-monitor.sh"         "${CORTEX_DEPLOY_HOME}/scripts/agent-bus-monitor.sh"
 register "ops/scripts/bus/bus-processor.py"        "${CORTEX_DEPLOY_HOME}/scripts/bus-processor.py"
 register "ops/scripts/bus/bus-remediate.sh"        "${CORTEX_DEPLOY_HOME}/scripts/bus-remediate.sh"
 register "ops/scripts/bus/generate-bus-wrappers.py"     "${CORTEX_DEPLOY_HOME}/scripts/generate-bus-wrappers.py"
@@ -283,7 +274,7 @@ register "ops/scripts/agent/orch-fleet-watchdog.py"      "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/agent/agent-gbrain-doctor.sh"       "${CORTEX_DEPLOY_HOME}/scripts/agent-gbrain-doctor.sh"
 
 # gbrain autopilot — systemd user service (replaces old sync-watch cron/launchd)
-register "docs/templates/gbrain-autopilot.service"       "${HOME}/.config/systemd/user/gbrain-autopilot.service" "restart_gbrain_sync"
+register "ops/install/deploy/gbrain-autopilot.service"       "${HOME}/.config/systemd/user/gbrain-autopilot.service" "restart_gbrain_sync"
 register "ops/scripts/install/install-gbrain-sync.sh"    "${CORTEX_DEPLOY_HOME}/scripts/install-gbrain-sync.sh"
 
 # Orchestrator health report — periodic agent fleet snapshot (no_agent cron)
@@ -304,7 +295,6 @@ register "ops/scripts/manage/request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}
 # Shared model config loader (imported by many scripts)
 
 # Bus sensor and health tools (fleet-wide)
-register "ops/scripts/orch-bus/orch-bus-sensor.py"        "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-sensor.py"
 register "ops/scripts/orch-bus/orch-bus-health-check.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-health-check.py"
 register "ops/scripts/orch-bus/orch-bus-watch.py"         "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-watch.py"
 register "ops/scripts/orch-bus/orch-bus-watch.sh"         "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-watch.sh"
@@ -344,10 +334,6 @@ register "ops/scripts/manage/agent-learning-collector.py" "${CORTEX_DEPLOY_HOME}
 # orch-bus-* scripts are orchestrator-only — run from repo path
 # Shared bus library for fleet scripts
 register "ops/scripts/lib/cortex_bus.py" "${CORTEX_DEPLOY_HOME}/scripts/lib/cortex_bus.py"
-# Agent inbox connection config — user creates manually
-
-# MCP inbox proxy — sudo'd HTTPS proxy with root-owned client cert
-register "ops/scripts/mcp-inbox-proxy"              "${CORTEX_DEPLOY_HOME}/scripts/mcp-inbox-proxy"
 
 # Agent inbox check is DEPRECATED — replaced by MCP tools. File retained in deploy for reference.
 
@@ -386,10 +372,6 @@ register "ops/install/deploy/docker-compose.langfuse.yml"        "${HOME}/langfu
 register "ops/services/dashboard/server.py"               "${CORTEX_DEPLOY_HOME}/dashboard/server.py" "dashboard" "restart_dashboard"
 register "ops/services/dashboard/static/index.html"        "${CORTEX_DEPLOY_HOME}/dashboard/static/index.html" "dashboard"
 register "ops/services/dashboard/com.hermes.cortex-dashboard.plist" "${HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist" "dashboard"
-
-# Agent Inbox
-register "ops/services/agent-inbox/server.py"              "${CORTEX_DEPLOY_HOME}/agent-inbox/server.py" "agent-inbox" "restart_agent_inbox"
-register "ops/services/agent-inbox/com.hermes.agent-inbox.plist" "${HOME}/Library/LaunchAgents/com.hermes.agent-inbox.plist" "agent-inbox"
 
 # Agent Bus
 register "ops/services/agent-bus/server.py"              "${CORTEX_DEPLOY_HOME}/bus/server.py" "agent-bus" "restart_agent_bus"

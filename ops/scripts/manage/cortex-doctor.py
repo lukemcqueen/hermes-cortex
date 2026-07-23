@@ -1966,8 +1966,9 @@ def main():
                    check_system, check_config, check_nginx, check_governance, check_install]
 
     if do_quick:
-        # Quick mode: skip skills manifest, crons registry, script integrity, nginx config
+        # Quick mode: skip skills manifest, nginx config — keep crons + scripts for safety
         all_checks = [check_repo, check_dev_repo_agents, check_soul_sync,
+                      check_crons, check_scripts,
                       check_services, check_system, check_config,
                       check_governance, check_install]
         if not res.json_mode:
