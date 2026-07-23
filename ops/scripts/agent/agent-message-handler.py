@@ -793,8 +793,19 @@ def main():
 
     def poll_and_check() -> None:
         nonlocal last_doctor
-        had_work = poll_once()
-        # Only run doctor when we actually processed a message
+        # Process up to 25 messages per tick, or until the queue is empty.
+        # This prevents backlog: if Learning Reports or other non-urgent
+        # messages accumulate ahead of an UPDATE_REQUEST, a single poll_once()
+        # would take 5 ticks (25 min) to clear them. With the loop, the
+        # handler drains the queue on every tick.
+        had_work = False
+        tick_start = time.time()
+        for _ in range(25):
+            msg = poll_once()
+            if not msg:
+                break
+            had_work = True
+            # Don't run doctor after every message — run once at the end
         if not had_work:
             return
         doctor = run_doctor()
