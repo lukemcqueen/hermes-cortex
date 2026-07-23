@@ -6,6 +6,7 @@
 # Personal/local artifacts — PII protection
 cleanup_repos.sh
 patches/
+.hermes-cortex/plugins/
 
 # Secrets and credentials
 .env
