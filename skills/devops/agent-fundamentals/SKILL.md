@@ -129,7 +129,28 @@ Only after loading context should you answer the user's first question.
 
 ---
 
-## Summary: The 9 Fundamentals
+## 10. Update Memory + Session at Start AND End of Every Task
+
+**The mistakes:** Agent started work without checking memory for relevant facts, leading to wrong queries (Principle #9). Agent also finished work without saving corrections or new knowledge to memory, so the same mistakes repeated in the next session.
+
+**The rule:** Every task has a knowledge lifecycle — load before, save after.
+
+**At START:**
+1. **Search session history** — `session_search()` with 3+ queries about the task domain. Find patterns, pitfalls, and solutions from prior sessions.
+2. **Read memory** — What does my memory say about this domain, user preferences, or system conventions? Check before touching any code or running any command.
+3. **Load skills** — `skills_list()` for the category, `skill_view()` on matching skills.
+
+**At END (before closing the cycle):**
+1. **Save new facts to memory** — What did I learn that will matter in future sessions? User preferences, environment quirks, tool behaviors, schema details.
+2. **Save recurring workflows as skills** — If the task was complex (5+ calls) or involved a non-trivial workflow, offer to save it as a skill. If the user says yes, use `skill_manage(action='create')`.
+3. **Log guardrails for corrections** — If a user correction revealed a gap in my process, add a structural guardrail (patch a skill, update memory, or add a principle).
+4. **Session is auto-saved** — The system saves conversation transcripts automatically. Don't duplicate that effort.
+
+**Test:** Before calling `end_change()`, ask: "Does my memory reflect everything I learned in this task that the next session will need?" If no, write it now.
+
+---
+
+## Summary: The 10 Fundamentals
 
 | # | Principle | Prevents |
 |---|-----------|----------|
@@ -142,6 +163,7 @@ Only after loading context should you answer the user's first question.
 | 7 | Know the system before changing it | Silent breakage, duplicates |
 | 8 | Say "I don't know" honestly | False confidence corrections |
 | 9 | Check your own knowledge FIRST | Blind external queries, wasted turns |
+| 10 | Update memory at start AND end of every task | Repeating mistakes across sessions |
 
 ## Quick Reference: When You Hear These...
 
