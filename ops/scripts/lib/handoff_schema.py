@@ -328,6 +328,41 @@ UPDATE_RESULT_SCHEMA = {
     }
 }
 
+# KILL — kill signal for fleet-wide rollback / emergency stop
+KILL_SCHEMA = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "KILL",
+    "description": "Emergency kill signal for a fleet agent. Stops work, rolls back, records evidence.",
+    "type": "object",
+    "required": ["reason"],
+    "additionalProperties": False,
+    "properties": {
+        "reason": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "correlation_id": {"type": "string"},
+        "rollback": {"type": "boolean"},
+        "evidence_id": {"type": "string"},
+        "target": {"type": "string", "maxLength": 64},
+        "wave_session_id": {"type": "string"}
+    }
+}
+
+KILL_ACK_SCHEMA = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "KILL_ACK",
+    "description": "Acknowledgment from a fleet agent after processing a KILL signal.",
+    "type": "object",
+    "required": ["agent", "status"],
+    "additionalProperties": False,
+    "properties": {
+        "agent": {"type": "string"},
+        "status": {"type": "string", "enum": ["killed", "error", "not_found", "already_stopped"]},
+        "rollback_status": {"type": "string", "enum": ["rolled_back", "nothing_to_rollback", "failed", "not_attempted"]},
+        "running_task": {"type": "string"},
+        "evidence_id": {"type": "string"},
+        "wave_session_id": {"type": "string"}
+    }
+}
+
 
 # ── Load schemas into registry ─────────────────────────────────────
 
@@ -338,6 +373,8 @@ def init():
     register_schema("WAVE_RESULT", WAVE_RESULT_SCHEMA)
     register_schema("UPDATE_REQUEST", UPDATE_REQUEST_SCHEMA)
     register_schema("UPDATE_RESULT", UPDATE_RESULT_SCHEMA)
+    register_schema("KILL", KILL_SCHEMA)
+    register_schema("KILL_ACK", KILL_ACK_SCHEMA)
 
 
 # Auto-init

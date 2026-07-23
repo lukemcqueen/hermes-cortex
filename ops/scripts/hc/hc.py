@@ -14,6 +14,7 @@ No curls, no API paths, no ACLs. Read any queue, see everything.
   hc bus --all         include archived activity
   hc watch             watch ALL inbox queues (default)
   hc watch moses       watch only moses' inbox (non-destructive)
+  hc kill <agent>    send KILL signal to a fleet agent (emergency stop)
   hc doctor            run cortex-doctor
   hc dashboard         open bus dashboard in browser
   hc env               show current config
@@ -639,6 +640,64 @@ def cmd_env(cfg: dict, args: list):
     print(f"  hc inbox moses    hc inbox joseph    hc inbox esther")
 
 
+def cmd_kill(cfg: dict, args: list):
+    """Kill a fleet agent — emergency stop.
+
+    Usage: hc kill <agent> [--reason <why>] [--no-rollback] [--dry-run]
+
+    If no reason given, prompts for one. Sends KILL via bus + records
+    outerloop evidence + creates HITL escalation.
+    """
+    if not args:
+        print("Usage: hc kill <agent> [--reason <why>] [--no-rollback] [--dry-run]")
+        print("       hc kill all         # Kill every agent in the fleet")
+        print("       hc kill esther --reason 'Security breach'")
+        print("       hc kill esther --no-rollback --dry-run")
+        return
+
+    # Parse args
+    clean_args = list(args)
+    target = clean_args[0]
+    extra_args = []
+
+    reason = None
+    no_rollback = False
+    dry_run = False
+
+    i = 1
+    while i < len(clean_args):
+        if clean_args[i] == "--reason" and i + 1 < len(clean_args):
+            reason = clean_args[i + 1]
+            i += 2
+        elif clean_args[i] == "--no-rollback":
+            no_rollback = True
+            i += 1
+        elif clean_args[i] == "--dry-run":
+            dry_run = True
+            i += 1
+        else:
+            extra_args.append(clean_args[i])
+            i += 1
+
+    if not reason:
+        print("⚠️  Kill requires a reason. Provide one with --reason")
+        print("   Example: hc kill esther --reason 'Emergency maintenance'")
+        return
+
+    # Build fleet-kill-switch args
+    ks_script = str(Path.home() / "hermes-cortex" / "ops" / "scripts" / "manage" / "fleet-kill-switch.py")
+    ks_args = [sys.executable, ks_script, "--reason", reason]
+    if target != "all":
+        ks_args.extend(["--agent", target])
+    if no_rollback:
+        ks_args.append("--no-rollback")
+    if dry_run:
+        ks_args.append("--dry-run")
+
+    result = subprocess.run(ks_args, timeout=60, text=True)
+    sys.exit(result.returncode)
+
+
 def cmd_exec(cfg: dict, args: list):
     """Execute a command on a remote agent via the bus.
 
@@ -835,6 +894,7 @@ COMMANDS = {
     "watch": cmd_watch,
     "doctor": cmd_doctor,
     "dashboard": cmd_dashboard,
+    "kill": cmd_kill,
     "env": cmd_env,
     "help": cmd_help,
 }
