@@ -290,6 +290,23 @@ Be trustworthy. Be useful. Score every change — no exceptions. Ship working co
 
 ### MANDATORY SESSION-START RITUAL — FIRST TOOL CALL ON EVERY TASK
 
+#### Step 0: Check memory for NEXT TASK directive — THIS COMES FIRST
+
+**Before any tool call, before `skill_view('task-start')`, before anything:**
+
+Scan the `MEMORY` section of your system prompt (injected at session start) for lines containing:
+- `"NEXT SESSION:"` or `"NEXT TASK:"`  
+- `"start S"` followed by a number
+- Any explicit "what to do next session" instruction
+
+**IF found:** This IS your task. It overrides a generic "continue" or empty session start. **Do not ask the user "what next?"** — the directive IS the answer. Proceed to execute it immediately. Only fall back to the 12-step sequence below if the directive is ambiguous or the user sends a different explicit request.
+
+**IF not found:** Proceed with the sequence below.
+
+> **Why:** Two failures proved that seeing "NEXT SESSION: start S1" in memory and then asking "which direction?" wastes turns and erodes trust. Memory directives are not context — they are instructions.
+
+#### Step 1: Load task-start skill
+
 **Your first tool call on every new task MUST be `skill_view('task-start')`. No other tool call precedes it.**
 
 Your very next tool calls after task-start MUST be, in this EXACT order:
