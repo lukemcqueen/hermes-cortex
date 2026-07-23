@@ -121,7 +121,10 @@ def run_cortex_update() -> dict:
             capture_output=True, text=True, timeout=120
         )
         result = {
-            "success": r.returncode == 0,
+            # exit=1 is a soft failure (cortex-update.sh uses set -euo pipefail
+            # and needs_update returns 1 for unchanged files). Treat as success
+            # when no stderr output indicates a real error.
+            "success": r.returncode == 0 or (r.returncode == 1 and not r.stderr),
             "output": r.stdout[-2000:] if r.stdout else "",
             "stderr": r.stderr[-500:] if r.stderr else "",
             "exit_code": r.returncode,
