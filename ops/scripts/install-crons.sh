@@ -445,6 +445,7 @@ if $UNINSTALL; then
     "agent-memory-to-brain-sync" \
     "agent-message-handler" \
     "agent-model-health-watchdog" \
+    "agent-offline-code-index" \
     "agent-remediate-apply" \
     "agent-remediation-sensor" \
     "agent-scoring-activity-watchdog" \
@@ -454,6 +455,7 @@ if $UNINSTALL; then
     "agent-stale-ref-watchdog" \
     "agent-system-alert-watchdog" \
     "agent-threat-pipeline"; do
+  
   
     remove_cron "$job"
   done
