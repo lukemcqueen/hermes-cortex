@@ -588,6 +588,17 @@ def main():
             archive_message(inbox_queue, msg_id)
             return False
 
+        # --- EARLY ARCHIVE ---
+        # Archive the message immediately after reading so the PGMQ
+        # visibility timeout can never cause a re-read loop. Even if the
+        # handler process crashes (uncaught BaseException, signal, OOM)
+        # during processing, the message is already gone from the queue.
+        # This is the primary archive; post-processing archives (in each
+        # subject handler and the exception handler) are fallbacks that
+        # silently succeed on already-archived messages.
+        archive_message(inbox_queue, msg_id)
+        # --- END EARLY ARCHIVE ---
+
         try:
             if subject == "UPDATE_REQUEST":
                 # Process
