@@ -112,7 +112,24 @@ Only after loading context should you answer the user's first question.
 
 ---
 
-## Summary: The 8 Fundamentals
+## 9. Check Your Own Knowledge First (Memory → Session → Skills → External)
+
+**The mistake:** Agent needed the bus messages table schema. The column names (`msg_id`, `state`) and query patterns were already in memory. Instead of checking memory, agent went straight to PSQL, guessed wrong column names (`id`, `status`), hit errors, and wasted multiple turns.
+
+**The rule:** When you need to look something up, the order is ALWAYS:
+
+1. **Memory** — What does my persistent memory say? (user preferences, environment facts, tool quirks, schemas, conventions)
+2. **session_search()** — Was this topic discussed in a recent session? (FT5 search)
+3. **Skills** — Is there a skill that covers this domain? (`skills_list()` + `skill_view()`)
+4. **Then external sources** — Only now query DB, Web, Files, or remote APIs
+
+**Never** go to step 4 before steps 1–3. The schema, credentials, command syntax, or answer may already be in your own knowledge stores. Querying a database blind when the schema is in your memory is always the wrong path.
+
+**Signal: any time you write a `docker exec psql`, `curl`, `grep`, or `search_files()` call — pause and ask: "Is this in my memory or session history?"**
+
+---
+
+## Summary: The 9 Fundamentals
 
 | # | Principle | Prevents |
 |---|-----------|----------|
@@ -124,6 +141,7 @@ Only after loading context should you answer the user's first question.
 | 6 | Load context before working | Wrong turns, wasted hours |
 | 7 | Know the system before changing it | Silent breakage, duplicates |
 | 8 | Say "I don't know" honestly | False confidence corrections |
+| 9 | Check your own knowledge FIRST | Blind external queries, wasted turns |
 
 ## Quick Reference: When You Hear These...
 
