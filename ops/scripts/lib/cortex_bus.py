@@ -168,13 +168,18 @@ def bus_list_queues() -> list[dict]:
 
 
 def bus_health() -> dict:
-    """Check bus health endpoint."""
-    try:
-        scheme, creds = _get_auth_header()
-        req = Request(f"{BUS_URL}/health",
-                      headers={"Authorization": f"{scheme} {creds}"},
-                      method="GET")
-        with urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read().decode())
-    except Exception:
-        return {"status": "unreachable"}
+    """Check bus health endpoint — tries primary, then fallback."""
+    scheme, creds = _get_auth_header()
+
+    for base_url in (BUS_URL, BUS_FALLBACK_URL):
+        if not base_url:
+            continue
+        try:
+            req = Request(f"{base_url}/health",
+                          headers={"Authorization": f"{scheme} {creds}"},
+                          method="GET")
+            with urlopen(req, timeout=10) as resp:
+                return json.loads(resp.read().decode())
+        except Exception:
+            continue
+    return {"status": "unreachable"}
