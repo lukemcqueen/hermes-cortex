@@ -635,8 +635,34 @@ def _check_bus_e2e(res):
                 f"Run: cortex-update.sh --force-all (expected at {handler_path})")
 
 
+def _check_self_stale(res):
+    """Check if the running doctor is stale vs the repo source."""
+    try:
+        # This script's deployed path vs repo source path
+        deployed = Path(__file__).resolve()
+        repo_source = CORTEX_REPO / "ops" / "scripts" / "manage" / "cortex_doctor" / "checks.py"
+
+        if not repo_source.is_file():
+            res.add("Doctor self", "SKIP", "Cannot find repo source to compare versions")
+            return
+
+        # Compare modification times
+        deployed_mtime = deployed.stat().st_mtime
+        repo_mtime = repo_source.stat().st_mtime
+
+        if repo_mtime > deployed_mtime:
+            res.add("Doctor version", "WARN",
+                    "Running older version — repo source is newer",
+                    "Run: cortex-update.sh --force-all")
+        else:
+            res.add("Doctor version", "PASS", "Deployed version matches repo")
+    except Exception as e:
+        res.add("Doctor self", "SKIP", f"Version check error: {e}")
+
+
 def check_services(res):
-    """4. Service health: external endpoints, Ollama, gbrain."""
+    """4. Service health: external endpoints, Ollama, gbrain, bus, and self-version."""
+    _check_self_stale(res)
     # External services are orchestrator-only (Dashboard, Langfuse, Agent Bus)
     if AGENT_ROLE == "orchestrator":
         for name, url, expected in EXTERNAL_SERVICES:
