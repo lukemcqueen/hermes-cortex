@@ -425,9 +425,11 @@ if $UNINSTALL; then
   for job in \
     "agent-agents-md-prune-apply" \
     "agent-agents-md-prune-scan" \
+    "agent-apply-fixes" \
     "agent-auto-save-sessions" \
     "agent-cron-quality-watchdog" \
     "agent-daily-bible-reading" \
+    "agent-daily-soul-refinement" \
     "agent-fixer-evening" \
     "agent-fixer-overnight" \
     "agent-fixer-workday" \
@@ -454,7 +456,9 @@ if $UNINSTALL; then
     "agent-session-cache-build" \
     "agent-stale-ref-watchdog" \
     "agent-system-alert-watchdog" \
-    "agent-threat-pipeline"; do
+    "agent-threat-pipeline" \
+    "agent-weekly-loop-eval" \
+    "collect-agent-skills"; do
   
   
     remove_cron "$job"

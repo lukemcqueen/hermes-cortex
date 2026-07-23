@@ -303,11 +303,33 @@ def check_skills(res):
     missing_skills = []
     skills_dir = HERMES_HOME / "skills"
     for name in sorted(all_skill_names):
-        skill_dir = skills_dir / name.split("/")[0] / name.split("/")[-1] if "/" in name else skills_dir / name
-        if not skill_dir.exists() and not (skills_dir / name).exists():
-            repo_skill = CORTEX_REPO / "skills" / name
-            if not repo_skill.exists():
-                missing_skills.append(name)
+        # Check flat path first, then search within category subdirectories
+        skill_path = skills_dir / name
+        if skill_path.exists():
+            continue
+        # Search category subdirectories: skills/*/<name>/
+        found = False
+        if skills_dir.is_dir():
+            for cat_dir in skills_dir.iterdir():
+                if cat_dir.is_dir() and (cat_dir / name).is_dir():
+                    found = True
+                    break
+        if found:
+            continue
+        # Check repo skills with category subdirectory search
+        repo_skills = CORTEX_REPO / "skills"
+        found_repo = False
+        if repo_skills.is_dir():
+            for cat_dir in repo_skills.iterdir():
+                if cat_dir.is_dir() and (cat_dir / name).is_dir():
+                    found_repo = True
+                    break
+        if not found_repo:
+            # Also check flat path in repo as fallback
+            if (repo_skills / name).is_dir():
+                found_repo = True
+        if not found_repo:
+            missing_skills.append(name)
 
     if missing_skills:
         res.add("Skills manifest: disk check", "WARN",
