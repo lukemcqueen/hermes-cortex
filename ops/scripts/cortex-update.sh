@@ -1410,9 +1410,11 @@ main() {
       info "Crons up to date" || warn "Cron install skipped (no hermes CLI?)"
 
     # ── Orchestrator-only crons (team health, soul refinement, etc.) ──
-    # Guard: IS_ORCHESTRATOR=true from .env (or hostname fallback)
+    # Guard: AGENT_TYPE env var, or IS_ORCHESTRATOR, or hostname fallback
     _ORCH=false
-    if [[ "${IS_ORCHESTRATOR:-false}" == "true" ]]; then
+    if [[ "${AGENT_TYPE:-}" == "orchestrator" ]]; then
+      _ORCH=true
+    elif [[ "${IS_ORCHESTRATOR:-false}" == "true" ]]; then
       _ORCH=true
     fi
     if ! $_ORCH; then

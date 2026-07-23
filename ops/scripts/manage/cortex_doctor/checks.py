@@ -34,6 +34,7 @@ from .config import (
     EXPECTED_MCP_SERVERS,
     EXTERNAL_SERVICES,
     CORE_FOOTPRINT,
+    AGENT_ROLE,
     parse_expected_crons,
     parse_orch_crons,
     find_script_consumers,
@@ -536,18 +537,20 @@ def _check_bus_e2e(res):
 
 def check_services(res):
     """4. Service health: external endpoints, Ollama, gbrain."""
-    for name, url, expected in EXTERNAL_SERVICES:
-        try:
-            code = http_get(url, timeout=8)
-        except Exception as e:
-            res.add(f"Service ({name})", "FAIL", f"Connection error: {e}", "Check nginx")
-            continue
-        if code == expected or code in ("200", "301", "302", "401"):
-            res.add(f"Service ({name})", "PASS", f"HTTP {code}")
-        elif code == "000":
-            res.add(f"Service ({name})", "FAIL", "Connection refused", "Check nginx")
-        else:
-            res.add(f"Service ({name})", "WARN", f"HTTP {code} (unexpected)")
+    # External services are orchestrator-only (Dashboard, Langfuse, Agent Bus)
+    if AGENT_ROLE == "orchestrator":
+        for name, url, expected in EXTERNAL_SERVICES:
+            try:
+                code = http_get(url, timeout=8)
+            except Exception as e:
+                res.add(f"Service ({name})", "FAIL", f"Connection error: {e}", "Check nginx")
+                continue
+            if code == expected or code in ("200", "301", "302", "401"):
+                res.add(f"Service ({name})", "PASS", f"HTTP {code}")
+            elif code == "000":
+                res.add(f"Service ({name})", "FAIL", "Connection refused", "Check nginx")
+            else:
+                res.add(f"Service ({name})", "WARN", f"HTTP {code} (unexpected)")
 
     # Agent Bus direct health
     if process_running("agent_bus"):

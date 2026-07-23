@@ -42,6 +42,18 @@ MCP_SERVERS_DIR = CORTEX_REPO / "mcp-servers"
 # ── Passthrough ─────────────────────────────────────────────────
 CURL = os.environ.get("CURL_BIN", "curl")
 
+# ── Agent role detection ─────────────────────────────────────────
+# Roles: orchestrator, server, dev
+# Detection: AGENT_TYPE env var → IS_ORCHESTRATOR env var → hostname → fallback
+_agent_type = os.environ.get("AGENT_TYPE", "").lower().strip()
+if _agent_type in ("orchestrator", "server", "dev"):
+    AGENT_ROLE = _agent_type
+elif os.environ.get("IS_ORCHESTRATOR", "").lower() in ("true", "1", "yes"):
+    AGENT_ROLE = "orchestrator"
+else:
+    _hostname = os.uname().nodename.split(".")[0]
+    AGENT_ROLE = "orchestrator" if _hostname in ("moses", "esther") else "server"
+
 # ── External base URL resolution ────────────────────────────────
 def resolve_external_base() -> str:
     """Determine the external base URL for service health checks."""
@@ -161,7 +173,7 @@ def parse_orch_crons():
 
 def find_script_consumers():
     """Scan cortex scripts for .env variable names."""
-    scripts_dir = CORTEX_REPO / "src" / "scripts"
+    scripts_dir = SCRIPTS_SRC
     if not scripts_dir.is_dir():
         return {}
     known_vars = ["JUDGE_MODEL", "EMBEDDING_MODEL", "CODING_MODEL", "CREATIVE_MODEL", "DEFAULT_MODEL"]
