@@ -332,15 +332,44 @@ def main():
             sys.exit(1)
         return
 
-    if args.level in ("F2", "F3"):
-        print(f"⚠️  F{args.level[-1]} validation not yet implemented.")
-        print("   Run --level F1 for F1 validation (registry + permissions).")
-        print("   F2 adds: shared inbox, budgets, cost attribution.")
+    if args.level in ("F3",):
+        print(f"⚠️  F3 validation not yet implemented.")
         print("   F3 adds: unattended operation, kill switch, audit trail.")
         sys.exit(0)
 
-    # F1 validation
+    # Run F1 validation (F2 includes all F1 checks)
     results, total_issues = validate_f1(registry, suggest=args.suggest)
+
+    if args.level == "F2":
+        # Additional F2 checks: budget fields, cost_center, observability
+        for agent_key, agent in registry.get("agents", {}).items():
+            r = results.get(agent_key, {})
+            if not r:
+                continue
+            fleet = agent.get("fleet_concerns", {})
+            eco = fleet.get("economics", {})
+            budget = eco.get("budget", {})
+
+            # Check budget fields exist
+            if not budget:
+                r["issues"].append((f"{agent_key}.fleet_concerns.economics.budget", "MISSING (F2)"))
+            else:
+                if not budget.get("daily_token_cap") or budget["daily_token_cap"] == "{{TOKEN_CAP}}":
+                    r["issues"].append((f"{agent_key}.fleet_concerns.economics.budget.daily_token_cap",
+                                        "MISSING_OR_PLACEHOLDER (F2)"))
+                if not budget.get("cost_center") or budget["cost_center"] == "{{COST_CENTER}}":
+                    r["issues"].append((f"{agent_key}.fleet_concerns.economics.budget.cost_center",
+                                        "MISSING_OR_PLACEHOLDER (F2)"))
+
+            # Check observability langfuse
+            obs = agent.get("observability", {})
+            if not obs.get("langfuse"):
+                r["issues"].append((f"{agent_key}.observability.langfuse", "FALSE (F2: required for cost visibility)"))
+
+            # Recalculate pass/fail
+            r["pass"] = len(r["issues"]) == 0
+            total_issues = sum(len(v["issues"]) for v in results.values())
+
     output = format_results(results, suggest=args.suggest)
     print(output)
 
