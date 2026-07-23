@@ -372,33 +372,95 @@ def check_certbot():
                 })
 
 
+def _read_bus_config():
+    bus_url = os.environ.get("CORTEX_BUS_URL", "")
+    bus_auth = os.environ.get("CORTEX_BUS_AUTH", "")
+    
+    if bus_url:
+        if not bus_auth:
+            bus_auth = os.environ.get("CORTEX_BASIC_AUTH", "")
+        return bus_url, bus_auth
+    
+    conf_path = HOME / ".hermes-cortex" / "cortex-bus.conf"
+    if conf_path.exists():
+        try:
+            for line in conf_path.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, val = line.split("=", 1)
+                key, val = key.strip(), val.strip()
+                if key == "CORTEX_BUS_URL" and not bus_url:
+                    bus_url = val
+                elif key == "CORTEX_BUS_AUTH" and not bus_auth:
+                    bus_auth = val
+                elif key == "CORTEX_BASIC_AUTH" and not bus_auth:
+                    bus_auth = val
+        except (OSError, ValueError):
+            pass
+    
+    return bus_url, bus_auth
+
+
+def _is_local_url(url):
+    import urllib.parse
+    try:
+        parsed = urllib.parse.urlparse(url)
+        host = parsed.hostname or ""
+        return host in ("localhost", "127.0.0.1", "::1", "")
+    except Exception:
+        return True
+
+
 def check_agent_bus():
     """Check Hermes Cortex Agent Bus health.
     
-    Checks that the Agent Bus service is active AND the endpoint responds.
-    Only reports an issue if BOTH checks fail (to avoid false positives
-    from one-off curl timeouts).
+    Handles two modes:
+    - Remote bus: reads CORTEX_BUS_URL from env/config, probes that URL
+    - Local bus: checks launchd/systemd service + localhost:8905 health
     """
+    bus_url, bus_auth = _read_bus_config()
+    
+    # ── Remote bus mode ──
+    if bus_url and not _is_local_url(bus_url):
+        base = bus_url.rstrip("/").rstrip("send").rstrip("api/inbox").rstrip("/")
+        health_url = base + "/health"
+        
+        auth_header = ""
+        if bus_auth:
+            import base64 as b64mod
+            encoded = b64mod.b64encode(bus_auth.encode()).decode()
+            auth_header = f'-H "Authorization: Basic {encoded}"'
+        
+        curl_cmd = f"curl -s --max-time 10 {auth_header} -o /dev/null -w '%{{http_code}}' '{health_url}' 2>/dev/null"
+        curl_out, _, curl_rc = run(curl_cmd)
+        
+        if curl_rc == 0 and curl_out.strip() in ("200", "401", "403"):
+            return  # Remote bus reachable
+        
+        add_issue("service_down", "high", "Remote Agent Bus unreachable", {
+            "service": "hermes-agent-bus (remote)",
+            "url": health_url,
+            "endpoint_http": curl_out.strip() or "unreachable",
+        })
+        return
+    
+    # ── Local bus mode ──
     svc_ok = False
     svc_out = ""
     
     if sys.platform == "darwin":
-        # Check launchd service: launchctl list returns "PID ExitCode Label"
-        # Non-empty PID (not "-") means service is running
-        svc_out, _, svc_rc = run("launchctl list com.hermes.agent-bus 2>/dev/null | awk 'NR==2 {print \\$1}'")
+        svc_out, _, svc_rc = run("launchctl list com.hermes.agent-bus 2>/dev/null | awk 'NR==2 {print $1}'")
         svc_ok = (svc_rc == 0 and svc_out.strip() not in ("", "-"))
         
-        # Also check fallback service (legacy)
         if not svc_ok:
-            fb_out, _, fb_rc = run("launchctl list com.hermes.agent-bus-fallback 2>/dev/null | awk 'NR==2 {print \\$1}'")
+            fb_out, _, fb_rc = run("launchctl list com.hermes.agent-bus-fallback 2>/dev/null | awk 'NR==2 {print $1}'")
             if fb_rc == 0 and fb_out.strip() not in ("", "-"):
                 svc_ok = True
     elif sys.platform.startswith("linux"):
-        # Check systemd user service — actual name is agent-bus.service, not hermes-agent-bus.service
         svc_out, _, svc_rc = run("systemctl --user is-active agent-bus.service 2>/dev/null")
         svc_ok = (svc_out.strip() == "active")
     
-    # Probe endpoint on :8905 (actual bus port — server.py uses CORTEX_BUS_PORT default 8905)
     curl_out, _, curl_rc = run("curl -s -o /dev/null -w '%{http_code}' http://localhost:8905/health 2>/dev/null")
     endpoint_ok = (curl_rc == 0 and curl_out.strip() == "200")
     
@@ -408,7 +470,6 @@ def check_agent_bus():
             "service_status": svc_out.strip() or "unknown",
             "endpoint_http": curl_out.strip() or "unreachable",
         })
-    # If at least one check passes, bus is healthy — stay silent
 
 
 def check_systemd_services():
