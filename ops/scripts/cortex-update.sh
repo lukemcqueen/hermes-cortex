@@ -224,6 +224,9 @@ register "ops/scripts/health/langfuse-health-watchdog.py" "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/manage/llm-judge-scorer.py"         "${CORTEX_DEPLOY_HOME}/scripts/llm-judge-scorer.py"
 register "ops/scripts/health/model-health-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/model-health-watchdog.py"
 register "ops/scripts/manage/offline-code-index-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/offline-code-index-cron.sh"
+register "ops/scripts/manage/harvest-lessons.sh"         "${CORTEX_DEPLOY_HOME}/scripts/harvest-lessons.sh"
+register "core/governance/skill_miner.py"                "${CORTEX_DEPLOY_HOME}/scripts/skill_miner.py"
+register "ops/scripts/health/swap-refresh.py"            "${CORTEX_DEPLOY_HOME}/scripts/swap-refresh.py"
 register "ops/scripts/health/cron-quality-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/cron-quality-watchdog.py"
 register "ops/scripts/agent/agent-cron-failure-scanner.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-cron-failure-scanner.py"
 register "ops/scripts/health/scoring-activity-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/scoring-activity-watchdog.py"
@@ -314,7 +317,6 @@ register "ops/scripts/orch-bus/orch-bus-git-auth-check.py" "${CORTEX_DEPLOY_HOME
 register "ops/scripts/orch-bus/orch-clean-health-queue.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-clean-health-queue.py"
 register "ops/scripts/orch-bus/orch-bus-generate-wrappers.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-generate-wrappers.py"
 register "ops/scripts/orch-bus/orch-bus-test.py"            "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-test.py"
-register "ops/scripts/health/model-health-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/model-health-watchdog.py"
 
 # Fleet agent message handler (polls inbox for UPDATE_REQUEST etc.)
 register "ops/scripts/agent/agent-message-handler.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-message-handler.py"
@@ -598,6 +600,15 @@ clean_stale_deploys() {
   local cleaned=0
   info "🧹 Scanning for stale deploy files..."
 
+  # Files to preserve even if not registered (cron-referenced)
+  local preserve=(
+    "model-health-watchdog.py"
+    "harvest-lessons.sh"
+    "offline-code-index-cron.sh"
+    "skill_miner.py"
+    "swap-refresh.py"
+  )
+
   # Build list of all registered destinations
   local dests=()
   for entry in "${MAP[@]}"; do
@@ -613,20 +624,31 @@ clean_stale_deploys() {
   if [[ -d "$scan_dir" ]]; then
     while IFS= read -r -d '' f; do
       local match=false
+      # Check registered destinations
       for d in "${dests[@]}"; do
         if [[ "$f" == "$d" ]]; then
           match=true
           break
         fi
       done
+      # Check preserve list (cron-referenced scripts)
+      if ! $match; then
+        local basename="${f##*/}"
+        for p in "${preserve[@]}"; do
+          if [[ "$basename" == "$p" ]]; then
+            match=true
+            break
+          fi
+        done
+      fi
       if ! $match; then
         local size
         size=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || echo "?")
         if $DRY_RUN; then
-          info "  [dry-run] Would remove stale: ${f/$HOME/\~} (${size} bytes)"
+          info "  [dry-run] Would remove stale: ${f/$HOME/~} (${size} bytes)"
         else
           rm -f "$f"
-          info "  🗑️  Removed stale: ${f/$HOME/\~} (${size} bytes)"
+          info "  🗑️  Removed stale: ${f/$HOME/~} (${size} bytes)"
           ((cleaned++))
         fi
       fi
