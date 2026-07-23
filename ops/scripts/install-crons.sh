@@ -425,7 +425,6 @@ if $UNINSTALL; then
   for job in \
     "agent-agents-md-prune-apply" \
     "agent-agents-md-prune-scan" \
-    "agent-apply-fixes" \
     "agent-auto-save-sessions" \
     "agent-cron-quality-watchdog" \
     "agent-daily-bible-reading" \
@@ -457,7 +456,7 @@ if $UNINSTALL; then
     "agent-system-alert-watchdog" \
     "agent-threat-pipeline" \
     "agent-weekly-loop-eval" \
-    "collect-agent-skills"; do
+    "agent-offline-code-index"; do
   
   
     remove_cron "$job"
@@ -674,6 +673,17 @@ create_cron "agent-remediate-apply" "*/10 * * * *" \
   "" \
   "true"
 
+# Weekly loop governance evaluation (Monday 09:00 — evaluates last 7 days of loop-governance cycles)
+create_cron "agent-weekly-loop-eval" "0 9 * * 1" \
+  "" \
+  "Run the loop governance evaluation pipeline for the last 7 days, then run the skill miner, auto-apply fixes for any degraded scores, and report results. If everything is clean, output exactly [SILENT]" \
+  "loop-governance" \
+  "terminal,file,web" \
+  "origin" \
+  "" \
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+
 # Scoring activity watchdog — alerts if too few cycles logged today
 create_cron "agent-scoring-activity-watchdog" "0 14,20 * * *" \
   "scoring-activity-watchdog.py" \
@@ -752,6 +762,16 @@ create_cron "agent-gbrain-update-sync" "0 2 * * 0" \
   "" \
   "true"
 
+# Weekly offline code index rebuild (Sunday 05:00 — rebuilds local code search index)
+create_cron "agent-offline-code-index" "0 5 * * 0" \
+  "offline-code-index-cron.sh" \
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
+
 # Daily hermes-cortex sync and update
 create_cron "agent-hermes-cortex-sync" "33 22 * * *" \
   "hermes-cortex-sync.sh" \
@@ -812,6 +832,17 @@ create_cron "agent-daily-bible-reading" "0 1 * * *" \
   "origin" \
   "" \
   "true"
+
+# Daily SOUL.md refinement (23:00 — scans sessions for user corrections, improves agent identity)
+create_cron "agent-daily-soul-refinement" "0 23 * * *" \
+  "" \
+  "Load the soul-refinement skill. Use session_search() to find today's sessions. Look for any user corrections to your behavior, broken workflows, or feedback. If found, update SOUL.md accordingly. If nothing to refine, output exactly [SILENT]" \
+  "soul-refinement" \
+  "terminal,file" \
+  "origin" \
+  "" \
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 # Daily threat pipeline — scanner → fail2ban → deploy → commit → push
 create_cron "agent-threat-pipeline" "0 5 * * *" \
