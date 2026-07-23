@@ -25,45 +25,62 @@ AGENT_NAME="${1:-}"
 if [ -z "$AGENT_NAME" ]; then
     echo "Usage: $SCRIPT_NAME <agent-name>"
     echo "  e.g. $SCRIPT_NAME esther"
+    echo ""
+    echo "This script:"
+    echo "  1. Generates a Langfuse API key pair for the agent"
+    echo "  2. Sets HERMES_LANGFUSE_* in the agent's ~/.hermes/.env"
+    echo "  3. Installs the langfuse Python SDK"
+    echo "  4. Enables the Hermes Langfuse plugin"
+    echo "  5. Enables cost tracking (install-cron-cost-tracking.py)"
+    echo "  6. Restarts the Hermes gateway"
     exit 1
 fi
 
 # ── Configuration ──────────────────────────────────────────────
-# Point this to the external URL of the shared Langfuse instance.
-# Langfuse is typically behind nginx on port 13002 with auth_basic.
-# Change to match your fleet deployment.
+# Point this to the local Langfuse instance (Docker container name or localhost).
 SHARED_LANGFUSE_URL="${SHARED_LANGFUSE_URL:-http://localhost:3000}"
-SHARED_LANGFUSE_PUBLIC_KEY="${SHARED_LANGFUSE_PUBLIC_KEY:-}"
-SHARED_LANGFUSE_SECRET_KEY="${SHARED_LANGFUSE_SECRET_KEY:-}"
+# Docker Postgres container for key generation
+LANGFUSE_PG_CONTAINER="${LANGFUSE_PG_CONTAINER:-langfuse-postgres-1}"
+LANGFUSE_PG_DB="${LANGFUSE_PG_DB:-postgres}"
+LANGFUSE_PG_USER="${LANGFUSE_PG_USER:-postgres}"
 
 HERMES_HOME="${HOME}/.hermes"
 ENV_FILE="${HERMES_HOME}/.env"
 
 echo "━━━ Setting up Langfuse tracing for agent: ${AGENT_NAME} ━━━"
 
-# ── Step 1: Generate or use API keys ─────────────────────────
-if [ -z "$SHARED_LANGFUSE_PUBLIC_KEY" ] || [ -z "$SHARED_LANGFUSE_SECRET_KEY" ]; then
-    echo "❌ SHARED_LANGFUSE_PUBLIC_KEY and SHARED_LANGFUSE_SECRET_KEY must be set."
-    echo "   Export them before running this script, or pass via .env."
-    echo ""
-    echo "   To generate a new key pair on Moses:"
-    echo "     docker exec langfuse-postgres-1 psql -U postgres -d postgres -c \""
-    echo "       INSERT INTO api_keys (id, project_id, public_key, hashed_secret_key,"
-    echo "         fast_hashed_secret_key, display_secret_key, note, created_at)"
-    echo "       SELECT"
-    echo "         'cmqkey-' || gen_random_uuid()::text,"
-    echo "         'default-project',"
-    echo "         'pk-lf-' || encode(gen_random_bytes(16), 'hex'),"
-    echo "         crypt('sk-lf-' || encode(gen_random_bytes(16), 'hex'), gen_salt('bf')),"
-    echo "         encode(sha256('sk-lf-' || encode(gen_random_bytes(16), 'hex')::bytea), 'hex'),"
-    echo "         'sk-lf-' || encode(gen_random_bytes(16), 'hex'),"
-    echo "         '${AGENT_NAME} tracing key',"
-    echo "         CURRENT_TIMESTAMP;"
-    echo "   \""
-    echo ""
-    echo "   Then capture the displayed public and secret keys."
-    exit 1
-fi
+# ── Step 1: Generate API key pair ────────────────────────────
+echo "→ Generating Langfuse API key for ${AGENT_NAME}..."
+
+# Generate the key components in a way that's safe for shell
+PK="pk-lf-$(python3 -c "import secrets; print(secrets.token_hex(16))")"
+SK="sk-lf-$(python3 -c "import secrets; print(secrets.token_hex(16))")"
+
+# Insert into Postgres
+docker exec -i "${LANGFUSE_PG_CONTAINER}" psql -U "${LANGFUSE_PG_USER}" -d "${LANGFUSE_PG_DB}" \
+  -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;" \
+  -c "INSERT INTO api_keys (id, project_id, public_key, hashed_secret_key,
+       fast_hashed_secret_key, display_secret_key, note, created_at)
+     SELECT
+       'cmqkey-' || gen_random_uuid()::text,
+       'default-project',
+       '${PK}',
+       crypt('${SK}', gen_salt('bf')),
+       encode(sha256('${SK}'::bytea), 'hex'),
+       '${SK:0:8}...${SK: -4}',
+       '${AGENT_NAME} tracing key',
+       CURRENT_TIMESTAMP
+     WHERE NOT EXISTS (
+       SELECT 1 FROM api_keys WHERE note = '${AGENT_NAME} tracing key'
+     );" 2>/dev/null || {
+  echo "   ⚠️ Key insertion failed — agent may already have a key."
+  echo "   Check: docker exec ${LANGFUSE_PG_CONTAINER} psql -U ${LANGFUSE_PG_USER} -d ${LANGFUSE_PG_DB} -c \"SELECT public_key, note FROM api_keys WHERE note LIKE '%${AGENT_NAME}%';\""
+  exit 1
+}
+
+echo "   ✓ Key pair generated for ${AGENT_NAME}"
+echo "   Public key:  ${PK}"
+echo "   Secret key:  ${SK} (save this — cannot be retrieved later)"
 
 # ── Step 2: Set env vars ──────────────────────────────────────
 echo "→ Setting Hermes Langfuse env vars for ${AGENT_NAME}..."
@@ -76,8 +93,8 @@ fi
 cat >> "$ENV_FILE" <<EOF
 
 # Langfuse tracing (set by ${SCRIPT_NAME} on $(date +%Y-%m-%d))
-HERMES_LANGFUSE_PUBLIC_KEY=${SHARED_LANGFUSE_PUBLIC_KEY}
-HERMES_LANGFUSE_SECRET_KEY=${SHARED_LANGFUSE_SECRET_KEY}
+HERMES_LANGFUSE_PUBLIC_KEY=${PK}
+HERMES_LANGFUSE_SECRET_KEY=${SK}
 HERMES_LANGFUSE_BASE_URL=${SHARED_LANGFUSE_URL}
 HERMES_LANGFUSE_ENV=${AGENT_NAME}
 HERMES_LANGFUSE_RELEASE=v1
@@ -106,7 +123,17 @@ hermes plugins list 2>/dev/null | grep -q langfuse && \
     echo "   ✓ Langfuse plugin confirmed active" || \
     echo "   ⚠️ Langfuse plugin not listed."
 
-# ── Step 5: Enable token analytics ────────────────────────────
+# ── Step 5: Enable cost tracking ──────────────────────────────
+echo "→ Installing cron cost tracking..."
+if [ -f "${HOME}/.hermes-cortex/scripts/install-cron-cost-tracking.py" ]; then
+    python3 "${HOME}/.hermes-cortex/scripts/install-cron-cost-tracking.py" --force 2>/dev/null && \
+        echo "   ✓ Cost tracking enabled" || \
+        echo "   ⚠️ Cost tracking install failed"
+else
+    echo "   ⚪ Cost tracking script not found (not deployed yet)"
+fi
+
+# ── Step 6: Enable token analytics ────────────────────────────
 echo "→ Enabling token analytics display..."
 hermes config set dashboard.show_token_analytics true 2>/dev/null || true
 hermes config set display.show_cost true 2>/dev/null || true
@@ -114,7 +141,7 @@ echo "   ✓ Token analytics and cost display enabled"
 
 # ── Step 6: Verify connectivity ───────────────────────────────
 echo "→ Testing Langfuse connectivity..."
-AUTH=$(echo -n "${SHARED_LANGFUSE_PUBLIC_KEY}:${SHARED_LANGFUSE_SECRET_KEY}" | base64 -w0)
+AUTH=$(echo -n "${PK}:${SK}" | base64 -w0)
 HEALTH=$(curl -s -o /dev/null -w "%{http_code}" \
     -H "Authorization: Basic ${AUTH}" \
     "${SHARED_LANGFUSE_URL}/api/public/projects" 2>/dev/null || echo "000")
