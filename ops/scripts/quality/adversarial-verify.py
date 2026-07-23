@@ -192,14 +192,17 @@ def detect_cheat_patterns(file_path: str, lines: list[str]) -> list[dict]:
     findings = []
     content = "".join(lines)
 
-    # Pattern 1: Empty except blocks
-    empty_excepts = re.findall(r"except\s*(?:\w+\s*)*:\s*\n\s*(?:pass|#|'''|\"\"\")\s*\n", content)
-    if empty_excepts:
+    # Pattern 1: Empty except blocks (multi-line: except:\\n    pass)
+    empty_excepts = re.findall(r"except\s*(?:\w+\s*)*:[^\S\n]*\n\s*(?:pass|#|#.*|'''|\"\"\")\s*(?:\n|$)", content)
+    # Pattern 1b: Single-line: except: pass
+    inline_swallows = re.findall(r"except\s*(?:\w+\s*)*:\s*pass\s*(?:#|$)", content)
+    if empty_excepts or inline_swallows:
+        total = len(empty_excepts) + len(inline_swallows)
         findings.append({
             "finding_id": next_finding_id(),
             "technique": "cheat-detection",
             "pattern": "error-swallow",
-            "detail": f"Empty except block(s) detected: {len(empty_excepts)} occurrence(s)",
+            "detail": f"Empty except block(s) detected: {total} occurrence(s)",
             "severity": "high",
         })
 

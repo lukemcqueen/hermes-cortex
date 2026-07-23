@@ -81,6 +81,8 @@ def find_registry(path_hint=None):
         p = Path(path_hint)
         if p.exists():
             return p
+        # If explicitly provided, don't fall back — error out
+        return None
 
     candidates = [
         Path.home() / ".hermes-cortex" / "state" / "agent-registry.json",
