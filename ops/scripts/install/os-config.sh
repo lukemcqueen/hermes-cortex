@@ -30,7 +30,6 @@ if [[ -n "${AGENT_TYPE:-}" ]]; then
 elif [[ "${IS_ORCHESTRATOR:-false}" == "true" ]]; then
   CORTEX_AGENT_TYPE="orchestrator"
 else
-  local _host
   _host=$(hostname -s 2>/dev/null || echo "unknown")
   case "$_host" in
     moses|esther) CORTEX_AGENT_TYPE="orchestrator" ;;
