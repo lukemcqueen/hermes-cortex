@@ -120,15 +120,26 @@ def run_cortex_update() -> dict:
             ["bash", str(CORTEX_UPDATE), "--force-all"],
             capture_output=True, text=True, timeout=120
         )
-        return {
+        result = {
             "success": r.returncode == 0,
             "output": r.stdout[-2000:] if r.stdout else "",
             "stderr": r.stderr[-500:] if r.stderr else "",
             "exit_code": r.returncode,
         }
+        # Log result for diagnostics
+        stdout_tail = (r.stdout or "")[-200:].replace("\n", " ").strip()
+        stderr_tail = (r.stderr or "")[-200:].replace("\n", " ").strip()
+        log(f"cortex-update done: exit={r.returncode} {'✓' if result['success'] else '✗'}")
+        if stdout_tail:
+            log(f"  stdout: {stdout_tail}")
+        if stderr_tail:
+            log(f"  stderr: {stderr_tail}")
+        return result
     except subprocess.TimeoutExpired:
+        log("cortex-update TIMEOUT after 120s")
         return {"success": False, "output": "", "stderr": "TIMEOUT after 120s", "exit_code": -1}
     except Exception as e:
+        log(f"cortex-update ERROR: {e}")
         return {"success": False, "output": "", "stderr": str(e), "exit_code": -1}
 
 
