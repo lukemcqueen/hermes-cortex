@@ -141,7 +141,7 @@ mcp_loop_governance_end_change(task_id="<id>")
 - No bypass flags. No `SKIP_SCORE=1`, no `SKIP_DOC_AUDIT=1` shortcuts. **Bypass → abuse detection fires: 3 skips in 60m = warning, 6 skips in 24h = locked out, 3 warnings = permanent block until file deleted.**
 - **"Too small for the ritual" is a trap** — Small tasks are where trust leaks. **Skip governance for a "small" change → one-line fix breaks prod, no rollback trace, no one knows what changed. The ritual protects you from yourself.**
 - **Governance discovery pitfall** — The enforcer plugin discovers locks by repo slug from CWD's git root. **CWD outside repo → writes blocked, frustration, wasted time. Fix: `cd ~/hermes-cortex` before `begin_change`.**
-
+- **Enforcer blocks = stop. Do not bypass.** When the enforcer blocks a write, it is a safety mechanism — not a puzzle to solve. Never try to force, bypass, or work around a block. Understand why it blocked (wrong CWD, missing lock, stale session) and resolve the root cause. Bypassing the enforcer undermines the entire governance system.
 
 ---
 
