@@ -49,9 +49,10 @@ metadata:
 ## Phase 5 — Final Verification
 
 - [ ] Run `cortex-doctor.py` or equivalent health check
+- [ ] **Adversarial scan passed (code changes only):** `python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate` — **must exit 0**. For targeted scans: `--file <path>`.
 - [ ] Verify all services restart cleanly (launchctl list / systemctl status)
 - [ ] Verify symlinks are valid
-- [ ] Verify no stale paths remain (`grep -r '/home/luke\|${CORTEX_HOME}\|${CORTEX_DEPLOY}'` on changed files)
+- [ ] Verify no stale paths remain (`grep -r '/home/luke\\|${CORTEX_HOME}\\|${CORTEX_DEPLOY}'` on changed files)
 
 ## Closing the Cycle
 

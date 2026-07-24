@@ -265,17 +265,17 @@ Zero issues = cleanup complete.
    - `LOW` = untested — fix before end_change
 6. A `LOW` confidence score is equivalent to a failed checklist — **do not release**
 
-**Pre-ship checklist — 6 questions after work. Every NO means the change is not done:**
+**Pre-ship checklist — 7 questions after work. Every NO means the change is not done:**
 1. **Arrays synced?** — create names vs uninstall arrays match? Run fix-cron-duplicates.py.
 2. **Old thing removed?** — deleted the cron/script/config that was replaced?
 3. **Docs updated?** — every doc that references the changed thing.
 4. **Syntax valid?** — `bash -n` on .sh, `python3 -m py_compile` on .py.
 5. **Doctor clean?** — `cortex-doctor.py --quiet` shows 0 failures.
-6. **Pushed and deployed?** — `git push` succeeded. Runtime copies deployed.
+6. **Adversarial scan passed?** — `python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate` — **must exit 0**.
+7. **Pushed and deployed?** — `git push` succeeded. Runtime copies deployed.
 
-**Do not call end_change() until all 6 pass.**
-**Pre-ship checklist — 6 questions before end_change (enforced by Principle 3, step 0):**
-**+ Adversarial scan (code changes only):** `python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate`
+**Do not call end_change() until all 7 pass.**
+
 7. **MEDIUM requires justification.** Any release at MEDIUM confidence must include a documented explanation in the feedback_accept note stating why HIGH was not achievable. Three consecutive MEDIUM releases on the same subsystem without creating a test suite is a violation of Principle 2 (Be Proactive — you are choosing not to fix a repeated gap).
 
 #### 7. Upstream First — Fix in the Repo, Then Deploy

@@ -168,11 +168,12 @@ When you discover an issue, attempt the fix, verify it resolves the symptom, upd
 ---
 -1. **Pre-work checklist** — Run before `begin_change`: (a) `cache_search(query="<what you are about to do>")` to learn from past cycles; (b) Load always skills (`task-start`, `agent-flow`, `reasoning-patterns`, `survey-before-action`, `reflexion-check`, `change-checklist`, `agent-contract`); (c) If task has a domain, call `skills_list()` for that category and load matching skills; (d) Run `survey-before-action` checklist — search existing resources, prove existing can't handle it. **Do not open the lock until context is loaded.**
 **Fast path (one shot — copy-paste the full cycle):**
-0. **Pre-ship checklist mandatory** — Before any close step, ask yourself three questions:
+0. **Pre-ship checklist mandatory** — Before any close step, ask yourself four questions:
    1. **Did I update all relevant docs?** Template, SOUL.md, AGENTS.md, DOCS-INDEX.md, skills, cron-schedules, any doc referencing the changed thing.
-   2. **Did I verify the update/doctor works?** Syntax check, doctor run, adversarial scan, cron list, test the actual changed path.
-   3. **Did I commit and push?** `git status` clean, `git push` confirmed. Deployed via `cortex-update.sh --force-all`.
-   Only after all three: load `change-checklist` skill, run all phases, adversarial scan (`python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate`). **Do not proceed to step 1 until every item passes.**
+   2. **Did I verify the update/doctor works?** Syntax check, doctor run, cron list, test the actual changed path.
+   3. **Did the adversarial scan pass?** `python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate` — **must exit 0** for any code change. Critical/high findings block end_change.
+   4. **Did I commit and push?** `git status` clean, `git push` confirmed. Deployed via `cortex-update.sh --force-all`.
+   Only after all four: load `change-checklist` skill, run all phases. **Do not proceed to step 1 until every item passes.**
 **Discipline rules (skipping hurts more than doing):**
 - Every `begin_change` must have `cycle_query` → `feedback_accept/override` → `end_change`. **Skip → orphan cycle accumulates, scoring watchdog fires at 14:00/20:00, human must clean up N cycles manually (no bulk tool).** Never skip steps.
 - Never force-abandon a lock — close the old one properly first. **Force-abandon → stale lock file persists, blocks new sessions, requires manual deletion.**
@@ -283,19 +284,17 @@ Zero issues = cleanup complete.
    - `LOW` = untested — fix before end_change
 6. A `LOW` confidence score is equivalent to a failed checklist — **do not release**
 
-**Pre-ship checklist — 6 questions after work. Every NO means the change is not done:**
+**Pre-ship checklist — 7 questions after work. Every NO means the change is not done:**
 1. **Arrays synced?** — create names vs uninstall arrays match? Run fix-cron-duplicates.py.
 2. **Old thing removed?** — deleted the cron/script/config that was replaced?
 3. **Docs updated?** — every doc that references the changed thing.
 4. **Syntax valid?** — `bash -n` on .sh, `python3 -m py_compile` on .py.
 5. **Doctor clean?** — `cortex-doctor.py --quiet` shows 0 failures.
-6. **Pushed and deployed?** — `git push` succeeded. Runtime copies deployed.
-
-**Do not call end_change() until all 6 pass.**
-
+6. **Adversarial scan passed?** — `python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate` — **must exit 0**.
+7. **Pushed and deployed?** — `git push` succeeded. Runtime copies deployed.
+**Do not call end_change() until all 7 pass.**
+**Pre-ship checklist — 7 questions before end_change (enforced by Principle 3, step 0):**
 This rule exists because abstract principles ("be thorough") don't prevent shipping broken code. Concrete enforcement does. Every bug shipped without a test is a gap in the testing process itself.
-**Pre-ship checklist — 6 questions before end_change (enforced by Principle 3, step 0):**
-**+ Adversarial scan (code changes only):** `python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate`
 7. **MEDIUM requires justification.** Any release at MEDIUM confidence must include a documented explanation in the feedback_accept note stating why HIGH was not achievable. Three consecutive MEDIUM releases on the same subsystem without creating a test suite is a violation of Principle 2 (Be Proactive — you are choosing not to fix a repeated gap).
 
 #### 7. Upstream First — Fix in the Repo, Then Deploy
