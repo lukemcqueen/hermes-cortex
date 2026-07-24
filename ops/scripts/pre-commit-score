@@ -496,7 +496,7 @@ if [[ -f "$ADVERSARIAL_SCRIPT" ]]; then
   ADV_FAILED=0
   while IFS= read -r adv_file; do
     case "$adv_file" in
-      *.py|*.sh)
+      *.py|*.sh|*pre-commit-score)
         if ! ADV_OUTPUT=$(python3 "$ADVERSARIAL_SCRIPT" --file "$REPO_ROOT/$adv_file" --level A2 --gate 2>&1); then
           ADV_FAILED=$((ADV_FAILED + 1))
           echo "   ❌  $adv_file:" | sed 's/^/   /'
