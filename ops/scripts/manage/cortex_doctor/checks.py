@@ -939,6 +939,36 @@ def check_system(res):
                     "NOT enabled — user services die on logout/reboot",
                     "Run: sudo loginctl enable-linger $(whoami)")
 
+    # ── Stale systemd units check ──
+    # Catches duplicate/stale .service files still enabled and hitting restart limits.
+    # The expected active services below are the canonical Cortex user services.
+    expected_user_units = {
+        "hermes-cortex-dashboard.service",
+        "hermes-cortex-langfuse.service",
+        "hermes-cortex-agent-bus.service",
+        "gbrain-autopilot.service",
+    }
+    if IS_LINUX:
+        failed = run_bg(["systemctl", "--user", "list-units", "--state=failed",
+                         "--no-legend", "--no-pager"], timeout=5)
+        stale = []
+        if failed and failed.strip():
+            for line in failed.strip().split("\n"):
+                parts = line.split()
+                if parts:
+                    unit = parts[0]
+                    if unit not in expected_user_units:
+                        stale.append(unit)
+        if stale:
+            names = ", ".join(stale)
+            res.add("Systemd stale units", "WARN",
+                    f"{len(stale)} stale/failed unit(s): {names}",
+                    "systemctl --user disable --now <unit> && "
+                    "rm ~/.config/systemd/user/<unit> && "
+                    "systemctl --user daemon-reload")
+        else:
+            res.add("Systemd stale units", "PASS", "no unexpected failed units")
+
 
 def check_config(res):
     """6. Config consistency: hermes-cortex.env var cross-reference."""
