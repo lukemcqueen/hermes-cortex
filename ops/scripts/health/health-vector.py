@@ -246,7 +246,7 @@ def check_services() -> int:
     On macOS, checks running processes. Returns 0 if none are installed.
     """
     if _is_linux:
-        key_services = ["nginx", "ollama", "gbrain-sync"]
+        key_services = ["nginx", "gbrain-autopilot"]
         any_installed = False
         all_running = True
         for svc in key_services:
@@ -254,6 +254,11 @@ def check_services() -> int:
                 any_installed = True
             else:
                 all_running = False
+        # ollama may run as a standalone process without a systemd unit
+        if _pgrep("ollama"):
+            any_installed = True
+        else:
+            all_running = False
         if not any_installed:
             return 0  # none installed — not applicable
         return 1 if all_running else -1
