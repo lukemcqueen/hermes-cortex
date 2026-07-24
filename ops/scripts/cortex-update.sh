@@ -1349,6 +1349,7 @@ main() {
   if [[ -d "$enforcer_pycache" ]]; then
     rm -rf "$enforcer_pycache"
     info "Cleared stale pycache: plugins/hermes-governance-enforcer"
+    warn "⚠️  Run /reset to load the updated enforcer plugin in your current session"
   fi
 
   # Update symlinks if any web-cache or offline files changed
