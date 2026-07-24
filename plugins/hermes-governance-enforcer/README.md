@@ -228,20 +228,37 @@ each get their own file.
 The `loop-gov-mcp.py` MCP server writes the session-scoped lock file when
 `begin_change` is called.
 
-#### Session ID alignment via PID handoff
+#### Session ID alignment — Fixed-path marker (primary) + PID scan (fallback)
 
 The enforcer plugin receives the Hermes session ID via the `pre_tool_call` hook's
-`session_id` parameter. At each tool call, it writes this ID to a PID-scoped
-marker file at `.hermes-session-{PID}.id`. The MCP server (a child of the Hermes
-process) reads `.hermes-session-{PPID}.id` to learn the same session ID, ensuring
-both sides create and check lock files in the same namespace:
+`session_id` parameter. At each tool call, it writes this ID to TWO marker files:
+
+1. **Fixed-path marker** (`.hermes-session-current.id`) — primary. The MCP server
+   reads this by a known path, no PID arithmetic needed.
+2. **PID-scoped marker** (`.hermes-session-{PID}.id`) — legacy fallback for MCP
+   versions that predate the fixed path.
+
+The fixed-path approach was introduced because the MCP server is NOT a direct child
+of the Hermes process — there's a watchdog (`mcp_stdio_watchdog.py`) in between:
+```
+Hermes (PID=1001)
+  └── watchdog (PID=1002, PPID=1001)
+       └── MCP loop-gov (PID=1003, PPID=1002)
+```
+With the old PID-only handoff, `os.getppid()` inside the MCP returned the watchdog
+PID (1002), not the Hermes PID (1001). The markers never matched, causing every
+session's governance lock to be invisible to the enforcer.
+
+The fixed-path marker eliminates this chain. Both sides agree on the same path
+regardless of process ancestry:
 
 ```
-pre_tool_call fires (Hermes PID=1001)
-  └── enforcer writes .hermes-session-1001.id = "sess_abc123"
+pre_tool_call fires
+  └── enforcer writes .hermes-session-current.id = "sess_abc123"
+  └── enforcer writes .hermes-session-{PID}.id = "sess_abc123" (legacy)
 
-begin_change fires (MCP child of PID=1001)
-  └── MCP reads .hermes-session-{os.getppid()}.id = .hermes-session-1001.id
+begin_change fires (MCP, any depth)
+  └── MCP reads .hermes-session-current.id → "sess_abc123"
   └── creates .governance-sess_abc123.json
 
 next write tool fires
@@ -249,10 +266,9 @@ next write tool fires
   └── pass through
 ```
 
-This means the enforcer and MCP share the same lock namespace without schema
-changes to `begin_change`. If the PID marker is absent (e.g. MCP starts before
-any tool call), the MCP falls back to its UUID cache and Phase 2 (repo_slug scan)
-covers the mismatch.
+If both markers are absent (e.g. no tool call has fired yet), the MCP falls back to
+its cached `~/.hermes/session.id`, then generates a new UUID. Phase 2 (repo_slug
+scan) covers any remaining mismatch for backward compat with old MCP locks.
 
 ### Checked By
 

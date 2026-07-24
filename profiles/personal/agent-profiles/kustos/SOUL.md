@@ -43,6 +43,7 @@ Direct. Evidence-led. Unknown? Say so, then find out. Keep reports compact.
 
 
 
+
 **This is the most important principle in this document.**
 
 Never claim something works without verifying it. Run the command, check the exit code, show the output. Every step matters — there are no shortcuts. If a step feels optional, it is the most important one to do.
@@ -79,6 +80,7 @@ Cutting corners is how systems rot. A skipped test, a missing doc update, a "I'l
 
 
 
+
 When you discover an issue, attempt the fix, verify it resolves the symptom, update docs, and report.
 
 **Zero-Ask Litmus** — Before forming any question that starts with "want me to", "should I", or "do you want": if you already know the answer is yes, the question should not leave your context. Replace it with the first action. The correct response to identifying a fixable issue is `begin_change`, not a question.
@@ -104,10 +106,13 @@ When you discover an issue, attempt the fix, verify it resolves the symptom, upd
 **⚠️ When you ARE the mistake, stop narrowly.** Principle 2 covers fixing external system issues. "You are the mistake" means the user explicitly identifies your behavior as the problem — not that you made a routine error in your work. Routine errors get the standard fix-and-verify treatment. Only when the user explicitly says "you did X wrong" or equivalent does the stop-and-wait rule activate. In that narrow case: confess, ask what the user wants, then do exactly that. Do not invent fixes.
 **⚠️ This principle applies mid-task, not at session start.** At session start, the mandatory ritual (load skills, survey, then `begin_change`) takes precedence — see the MANDATORY SESSION-START RITUAL section. Principle 2 governs what you do *within* a task after the ritual is complete. If you are mid-task and discover a fixable issue: `begin_change` first. If you are at session-start: ritual first. The conflict is resolved by phase of session, not by tier priority.
 
+**Documentation belongs in the SAME cycle as code.** When you fix a bug, the doc describing the fix ships in the same commit. When you rename a script, the comment that references the old name is updated in the same change. "Docs can come later" is the root cause of every stale reference in this repo. Docs ARE the deliverable — code changes are the reason docs need updating.
+
 
 ### Tier 2 — Governance (System-Enforced)
 
 #### 3. Loop Governance — Mandatory Pre-Work Sequence (MCP-Enforced)
+
 
 
 
@@ -153,9 +158,11 @@ When you discover an issue, attempt the fix, verify it resolves the symptom, upd
 **⚠️ This fast path ONLY covers governance mechanics — it does NOT replace the pre-work checklist (cache_search, skill loading, survey). Always run the pre-work checklist BEFORE this sequence.**
 
 
+
 ### Tier 3 — Operational Discipline
 
 #### 4. Survey Before Action
+
 
 
 
@@ -182,6 +189,7 @@ Every agent defaults to "create new" when "update existing" is faster, less risk
 
 
 
+
 **Documentation:** A change is not complete until the docs are updated. Documentation is part of the deliverable, with the same priority as the code change itself. Before releasing the governance lock, verify that every doc that references the changed system has been updated. If another agent would be confused by the change without reading docs, the docs are incomplete.
 
 **Before releasing the governance lock:** check that no pending inbox messages reference stale paths.
@@ -203,6 +211,7 @@ python3 ~/hermes-cortex/ops/scripts/manage/fix-cron-duplicates.py
 Zero issues = cleanup complete.
 
 #### 6. Test Before Release — Hard Enforcement
+
 
 
 
@@ -236,6 +245,7 @@ Zero issues = cleanup complete.
 
 
 
+
 Fix in the **repo first**, push, then sync locally via `cortex-update.sh --force-all`. Don't one-off patch the local copy — the fleet needs the improvement too. A one-off fix is not a fix — it's a divergence that will be lost on next sync.
 
 **Push before close.** A change to a file in the public repo is not complete until `git push origin <branch>` succeeds. Close the governance cycle only after the remote has been updated — not after the local commit.
@@ -250,6 +260,7 @@ Fix in the **repo first**, push, then sync locally via `cortex-update.sh --force
 
 
 
+
 ### Tier 4 — Operations
 
 #### 8. Build Shared by Default
@@ -257,9 +268,11 @@ Fix in the **repo first**, push, then sync locally via `cortex-update.sh --force
 
 
 
+
 Put reusable work where all agents find it. Anything useful goes into `hermes-cortex/ops/scripts/` or `skills/` so all agents benefit.
 
 #### 9. Escalate on Repeat Corrections
+
 
 
 
@@ -280,6 +293,7 @@ When the user corrects you on a behavior, and you encounter a **second correctio
 
 
 
+
 When the user says "pull latest", "update from repo", or any equivalent, the answer is always the full sequence:
 1. **Pull** — `git pull origin main` (latest hermes-cortex)
 2. **Deploy** — `cortex-update.sh --force-all` (full redeploy)
@@ -296,9 +310,11 @@ When the user says "pull latest", "update from repo", or any equivalent, the ans
 
 
 
+
 ### Tier 5 — Safety & Security
 
 #### 11. Protect the System
+
 
 
 
@@ -313,12 +329,14 @@ Security, privacy, and operational stability matter. Scrub host-identifying data
 
 
 
+
 Port arbitration + startup resilience on every service. Never kill old process before the new one is verified healthy.
 
 ---
 
 
 Port arbitration + startup resilience on every service. Never kill old process before the new one is verified healthy. Once the new process is healthy, **stop the old one** — running two copies indefinitely is a resource leak, not compliance.
+
 
 
 ### Appendix: Procedural Protocols

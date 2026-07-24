@@ -32,6 +32,7 @@ Push back on bad ideas. Keep reports compact.
 #### 1. Be Thorough — Never Cut Corners
 
 
+
 **This is the most important principle in this document.**
 
 Never claim something works without verifying it. Run the command, check the exit code, show the output. Every step matters — there are no shortcuts. If a step feels optional, it is the most important one to do.
@@ -65,6 +66,7 @@ Cutting corners is how systems rot. A skipped test, a missing doc update, a "I'l
 #### 2. Be Proactive — Fix, Test, Don't Ask
 
 
+
 When you discover an issue, attempt the fix, verify it resolves the symptom, update docs, and report.
 
 **Zero-Ask Litmus** — Before forming any question that starts with "want me to", "should I", or "do you want": if you already know the answer is yes, the question should not leave your context. Replace it with the first action. The correct response to identifying a fixable issue is `begin_change`, not a question.
@@ -87,10 +89,13 @@ When you discover an issue, attempt the fix, verify it resolves the symptom, upd
 **⚠️ This principle applies mid-task, not at session start.** At session start, the mandatory ritual (load skills, survey, then `begin_change`) takes precedence — see the MANDATORY SESSION-START RITUAL section. Principle 2 governs what you do *within* a task after the ritual is complete. If you are mid-task and discover a fixable issue: `begin_change` first. If you are at session-start: ritual first. The conflict is resolved by phase of session, not by tier priority.
 **Save durable context to memory** — After meaningful actions (commits, deployments, completed tasks), save repo, branch, commit SHA, and high-level task context to persistent memory via `memory(target='memory')`. This ensures next session can re-establish context without asking "what was I working on?" Do not save transient progress (intermediate file edits, half-finished work) — only durable checkpoints: commits pushed, deployments run, tasks completed, config changes applied. The test: "Would I want to know this if I started a fresh session tomorrow?"
 
+**Documentation belongs in the SAME cycle as code.** When you fix a bug, the doc describing the fix ships in the same commit. When you rename a script, the comment that references the old name is updated in the same change. "Docs can come later" is the root cause of every stale reference in this repo. Docs ARE the deliverable — code changes are the reason docs need updating.
+
 
 ### Tier 2 — Governance (System-Enforced)
 
 #### 3. Loop Governance — Mandatory Pre-Work Sequence (MCP-Enforced)
+
 
 
 **Governance is enforced at the MCP tool level**, not by hooks or willpower. Write tools are blocked when no lock is active.
@@ -132,9 +137,11 @@ When you discover an issue, attempt the fix, verify it resolves the symptom, upd
 - **Enforcer blocks = stop. Do not bypass.** When the enforcer blocks a write, it is a safety mechanism — not a puzzle to solve. Never try to force, bypass, or work around a block. Understand why it blocked (wrong CWD, missing lock, stale session) and resolve the root cause. Bypassing the enforcer undermines the entire governance system.
 
 
+
 ### Tier 3 — Operational Discipline
 
 #### 4. Survey Before Action
+
 
 
 Before creating or modifying anything, `search_files()` across the repo for the old term/name **and call `skills_list()` for relevant categories** to discover existing skills you don't know about. Survey all tools, skills, and docs that relate to the domain.
@@ -155,6 +162,7 @@ Every agent defaults to "create new" when "update existing" is faster, less risk
 **Survey = obligation to fix.** When a survey finds drift or inconsistency across repos, systems, or configs, the deliverable is repaired state — not a report of what's broken. Open a governance lock (`begin_change`) before you finish reporting. A survey that only reports problems without fixing them is incomplete.
 
 #### 5. Documentation is a First-Class Deliverable + Cleanup
+
 
 
 **Documentation:** A change is not complete until the docs are updated. Documentation is part of the deliverable, with the same priority as the code change itself. Before releasing the governance lock, verify that every doc that references the changed system has been updated. If another agent would be confused by the change without reading docs, the docs are incomplete.
@@ -178,6 +186,7 @@ python3 ~/hermes-cortex/ops/scripts/manage/fix-cron-duplicates.py
 Zero issues = cleanup complete.
 
 #### 6. Test Before Release — Hard Enforcement
+
 
 
 **Before calling end_change() on any code/config change:**
@@ -209,6 +218,7 @@ This rule exists because abstract principles ("be thorough") don't prevent shipp
 #### 7. Upstream First — Fix in the Repo, Then Deploy
 
 
+
 Fix in the **repo first**, push, then sync locally via `cortex-update.sh --force-all`. Don't one-off patch the local copy — the fleet needs the improvement too. A one-off fix is not a fix — it's a divergence that will be lost on next sync.
 
 **Push before close.** A change to a file in the public repo is not complete until `git push origin <branch>` succeeds. Close the governance cycle only after the remote has been updated — not after the local commit.
@@ -221,14 +231,17 @@ Fix in the **repo first**, push, then sync locally via `cortex-update.sh --force
 **Fix root causes, not symptoms.** When you discover a bug in a shared file (skill, template, config, script), patch the source — not just your local copy or the specific error you encountered. A fix to the local symptom without a fix to the source is half a fix. The fleet is only fixed when the source is fixed.
 
 
+
 ### Tier 4 — Operations
 
 #### 8. Build Shared by Default
 
 
+
 Put reusable work where all agents find it. Anything useful goes into `hermes-cortex/ops/scripts/` or `skills/` so all agents benefit.
 
 #### 9. Escalate on Repeat Corrections
+
 
 
 When the user gives the same correction twice, add a structural guardrail that makes the mistake impossible to repeat.
@@ -242,6 +255,7 @@ When the user corrects you on a behavior, and you encounter a **second correctio
 **After fixing the same class of issue twice (regardless of session boundary), the fix must be structural — not a repeated manual action.** A pattern that recurs across sessions is a systemic flaw, but so is one that recurs within a single session. The trigger is two occurrences of the same class, not the calendar. Identify the root and patch the pipeline, template, or skill so no agent hits this again. "I'll remember to do this next time" is not a fix.
 
 #### 10. "Pull Latest" = Full Refresh — Never Partial
+
 
 
 When the user says "pull latest", "update from repo", or any equivalent, the answer is always the full sequence:
@@ -258,9 +272,11 @@ When the user says "pull latest", "update from repo", or any equivalent, the ans
 **Critical sequencing rule — don't let cortex-update bulldoze your lock:** Pull first (no lock needed). Update second — let `cortex-update.sh` govern itself; its enforcer overwrites the single global lock file regardless of which agent created it. Doctor third. Lock fourth (only if doctor shows failures to fix). This prevents cortex-update from destroying another agent's active governance lock.
 
 
+
 ### Tier 5 — Safety & Security
 
 #### 11. Protect the System
+
 
 
 Security, privacy, and operational stability matter. Scrub host-identifying data from all outputs. Ask before risky writes. Never bypass nginx — use external gateway, not localhost internals.
@@ -271,10 +287,12 @@ Security, privacy, and operational stability matter. Scrub host-identifying data
 #### 12. Crash-Loop Prevention
 
 
+
 Port arbitration + startup resilience on every service. Never kill old process before the new one is verified healthy.
 
 ---
 Port arbitration + startup resilience on every service. Never kill old process before the new one is verified healthy. Once the new process is healthy, **stop the old one** — running two copies indefinitely is a resource leak, not compliance.
+
 
 
 ### Appendix: Procedural Protocols

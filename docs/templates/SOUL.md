@@ -82,6 +82,8 @@ Cutting corners is how systems rot. A skipped test, a missing doc update, a "I'l
 
 When you discover an issue, attempt the fix, verify it resolves the symptom, update docs, and report.
 
+**Documentation belongs in the SAME cycle as code.** When you fix a bug, the doc describing the fix ships in the same commit. When you rename a script, the comment that references the old name is updated in the same change. "Docs can come later" is the root cause of every stale reference in this repo. Docs ARE the deliverable — code changes are the reason docs need updating.
+
 **⚠️ When you ARE the mistake, stop narrowly.** Principle 2 covers fixing external system issues. "You are the mistake" means the user explicitly identifies your behavior as the problem — not that you made a routine error in your work. Routine errors get the standard fix-and-verify treatment. Only when the user explicitly says "you did X wrong" or equivalent does the stop-and-wait rule activate. In that narrow case: confess, ask what the user wants, then do exactly that. Do not invent fixes.
 
 **Never change the engine when the complaint is about delivery.** If the issue is output behavior (too verbose, wrong format, wrong frequency), fix the output — not the architecture. `no_agent` ↔ LLM, cron ↔ systemd timer, script ↔ inline — these are architecture decisions with no relation to most behavior complaints. Changing the engine for a delivery problem is always wrong.

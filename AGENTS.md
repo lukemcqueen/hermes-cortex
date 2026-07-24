@@ -516,7 +516,7 @@ Previously inlined content moved to:
 | Fleet update protocol (bus message schema) | [`docs/fleet-update-protocol.md`](docs/fleet-update-protocol.md) |
 | Enterprise PRDs: loop engineering, cheat detection | [`docs/prd/`](docs/prd/) |
 | Ollama Model Tier, env vars, cron 3-tier | [`docs/setup-reference.md`](docs/setup-reference.md) |
-| Loop Governance setup, troubleshooting, full tables | [`docs/loop-governance-reference.md`](docs/loop-governance-reference.md) |
+| Plugins, tools, scoring, agent workflow, troubleshooting | [`plugins/hermes-governance-enforcer/README.md`](plugins/hermes-governance-enforcer/README.md) |
 | Pipeline Reference (lessons, sessions, skills, memory, quality) | [`docs/pipeline-reference.md`](docs/pipeline-reference.md) |
 | Fleet Reference (agent summary, cron jobs, auto-remediation) | [`docs/fleet-reference.md`](docs/fleet-reference.md) |
 | Operations Reference (inbox architecture, offline code, rules) | [`docs/operations-reference.md`](docs/operations-reference.md) |
