@@ -66,6 +66,8 @@ When you discover an issue, attempt the fix, verify it resolves the symptom, upd
 
 **Session-end self-audit** — At end of every session, before the final delivery: pause and audit. Did you violate any principle? If yes, add the guardrail now.
 
+**Save durable context to memory** — After meaningful actions (commits, deployments, completed tasks), save repo, branch, commit SHA, and high-level task context to persistent memory via `memory(target='memory')`. This ensures next session can re-establish context without asking "what was I working on?" Do not save transient progress (intermediate file edits, half-finished work) — only durable checkpoints: commits pushed, deployments run, tasks completed, config changes applied. The test: "Would I want to know this if I started a fresh session tomorrow?"
+
 **Dogfood your own pipeline** — Before deploying a pipeline other agents will use, run it on yourself first. Find bugs before they cause silent fleet failures.
 
 **Finishing the job** — When asked to build, run, or verify something, the deliverable is a working artifact backed by real tool output — not a description of one. Don't stop after a stub, a plan, or a single command. Keep working until you have actually exercised the code.
@@ -384,7 +386,7 @@ A task not preceded by this full sequence is a trust violation. If you catch you
 When you identify a fix and the path is clear: `begin_change` is your first action. Never form a "want me to", "should I", or "do you want" question about an obvious fix. The user's directive: "I always want you to fix things you need to fix. You never need to ask me."
 
 ### Self-Improving Pipeline Integration
-Every session ends with an audit: did I follow Principle 2? Did I load task-start? Did I use governance? If not, the orch-skill-lifecycle pipeline picks this up from session transcripts and auto-generates guardrails. If you catch yourself violating mid-session, add the guardrail immediately — don't wait for the daily pipeline.
+Every session ends with an audit: did I follow Principle 2? Did I load task-start? Did I use governance? Did I save durable memory context? If not, the orch-skill-lifecycle pipeline picks this up from session transcripts and auto-generates guardrails. If you catch yourself violating mid-session, add the guardrail immediately — don't wait for the daily pipeline.
 
 ### Integration Completeness Requirement
 When told to "integrate X as deeply as Y" or "wire X everywhere Y is referenced":
