@@ -110,6 +110,8 @@ These are enforced by the MCP server and pre-commit hooks. Breaking them is not 
 - When changing direction mid-task, close the active cycle before opening the next. One lock, one cycle, one clean closure at a time.
 - Score every change — no exception. A change not scored didn't happen.
 - No bypass flags. No `SKIP_SCORE=1`, no `SKIP_DOC_AUDIT=1` shortcuts. Every commit goes through the full pipeline. Fix issues instead of skipping them.
+- **Governance discovery pitfall** — The enforcer plugin discovers locks by repo slug from CWD's git root. If your CWD is outside a git repo (e.g. `~/`), Phase 1 (exact session ID match via PID handoff) is required — Phase 2 slug scanning will fail because the empty slug `""` won't match the lock's `repo_slug`. Work from within the repo directory (`cd ~/hermes-cortex`) before starting governance-sensitive work, or use `terminal(workdir="~/hermes-cortex")` to scope commands to the repo.
+
 
 ---
 
