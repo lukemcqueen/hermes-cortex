@@ -961,7 +961,7 @@ def check_system(res):
                         stale.append(unit)
         if stale:
             names = ", ".join(stale)
-            res.add("Systemd stale units", "WARN",
+            res.add("Systemd stale units", "FAIL",
                     f"{len(stale)} stale/failed unit(s): {names}",
                     "systemctl --user disable --now <unit> && "
                     "rm ~/.config/systemd/user/<unit> && "
