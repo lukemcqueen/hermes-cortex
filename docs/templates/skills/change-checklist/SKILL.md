@@ -12,7 +12,10 @@ metadata:
 
 # Change Checklist — Mandatory Pre-Close Verification
 
-> **⚠️ HARD RULE:** Load this skill (`skill_view(name="change-checklist")`) **before** calling `end_change()`. This is NOT optional — the AGENTS.md mandates it.
+> **⚠️ HARD RULES:**
+> 1. Load this skill (`skill_view(name="change-checklist")`) **before** calling `end_change()`. Not optional.
+> 2. **Run Phase 5 (Final Verification) before Closing the Cycle.** Do not proceed to Closing until every Phase 5 item passes, including the adversarial scan.
+> 3. **Adversarial scan is not optional for code changes.** `python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate` must exit 0. If it found findings, fix them. Do not close with findings.
 
 ## Pre-Work (Before `begin_change`)
 
