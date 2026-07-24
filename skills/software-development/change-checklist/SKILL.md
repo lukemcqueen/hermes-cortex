@@ -126,6 +126,22 @@ Changes that affect other agents' workflow must be documented.
 
 ## Phase 5: Final Verification
 
+- [ ] **Post-deploy symptom verification (substantial changes only):** After
+  commit, push, and deploy (`cortex-update.sh --force-all`), re-run the
+  **original failure mode** and confirm it resolves. A change that "looks
+  right" in the diff but hasn't been exercised on the live system is not
+  verified.
+  
+  Substantial = touches 3+ files, a service config, plugins, cron logic,
+  governance, or any change that fixes a reported bug. Examples:
+  - Enforcer plugin fix → test `begin_change` on the live system
+  - Cron fix → run `cronjob action='run'` and check status
+  - Config fix → restart service and verify endpoint responds
+  - Script rename → run doctor, verify expected vs actual align
+  
+  For trivial changes (typo fix, single-line comment, docs-only): mental
+  verification is sufficient. Document the scope in the cycle note.
+
 - [ ] **Stale expected list cleanup**: if you removed any cron during this cycle, verify its name is also removed from the uninstall arrays in `install-crons.sh`. The doctor reads these arrays as the expected cron list.
 - [ ] **Doctor runs clean**:
   ```bash
