@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
+SURVEY_MARKER = GOVERNANCE_STATE_DIR / ".cron-survey-done"
 
 log = logging.getLogger("governance-enforcer")
 
@@ -462,6 +463,30 @@ def register(ctx):
             # Cronjob read operations pass through
             if tool_name == "cronjob" and args.get("action") in ("list", "run"):
                 return None
+
+            # Survey gate: cronjob(create) requires survey-before-action marker
+            # Call cronjob(action='list') + search_files() + skills_list() BEFORE
+            # creating a new cron. Touch the marker to confirm survey done:
+            #   touch ~/.hermes-cortex/state/.cron-survey-done
+            if tool_name == "cronjob" and args.get("action") == "create":
+                if not SURVEY_MARKER.exists():
+                    return {
+                        "action": "block",
+                        "message": (
+                            "SURVEY REQUIRED BEFORE CRON CREATION\n\n"
+                            "Tool 'cronjob' action='create' requires a survey of existing resources.\n\n"
+                            "Run these steps FIRST:\n"
+                            "  1. cronjob(action='list')     — check existing crons for overlaps\n"
+                            "  2. search_files(...)          — check for existing scripts\n"
+                            "  3. skills_list()              — check for existing skills\n\n"
+                            "After completing the survey:\n"
+                            "  touch ~/.hermes-cortex/state/.cron-survey-done\n\n"
+                            "Then retry cronjob(action='create').\n"
+                            "The marker persists for this session.\n"
+                            "This enforcement is at ~/.hermes/plugins/governance-enforcer/.\n"
+                            "I cannot bypass or disable this.\n"
+                        ),
+                    }
 
             # Check for active governance lock (Phase 1 exact + Phase 2 scan)
             if _has_governance_lock(hermes_session_id):
