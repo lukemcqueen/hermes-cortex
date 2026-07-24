@@ -40,6 +40,10 @@ services:
       CLICKHOUSE_CLUSTER_ENABLED: "false"
       CLICKHOUSE_USER: default
       CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:?Missing LANGFUSE_CLICKHOUSE_PASSWORD in .env}
+      # Optimize for low-memory: skip CH read on ingestion, disable FINAL on OTel projects
+      LANGFUSE_SKIP_INGESTION_CLICKHOUSE_READ_MIN_PROJECT_CREATE_DATE: "2025-01-01"
+      LANGFUSE_SKIP_FINAL_FOR_OTEL_PROJECTS: "true"
+      LANGFUSE_CLICKHOUSE_DELETION_TIMEOUT_MS: "300000"  # 5min (default 10min)
 
       # ── Redis ──
       REDIS_HOST: redis
@@ -111,8 +115,10 @@ services:
     restart: unless-stopped
     depends_on: *langfuse-depends-on
     cpus: 1.0
-    mem_limit: 1g
-    memswap_limit: 1g
+    mem_limit: 1.5g
+    memswap_limit: 1.5g
+    ulimits:
+      core: 0
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/api/public/health || exit 1"]
       interval: 15s
@@ -129,8 +135,11 @@ services:
     environment:
       <<: *langfuse-env-base
       HOSTNAME: "0.0.0.0"
-      NODE_OPTIONS: "--max-old-space-size=768 --max-semi-space-size=64 --unhandled-rejections=warn"
+      NODE_OPTIONS: "--max-old-space-size=1024 --max-semi-space-size=64 --unhandled-rejections=warn"
       NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3000}
+      # ── Memory optimization (1.5GB limit, well below v3 recommended 4GB) ──
+      LANGFUSE_S3_CONCURRENT_WRITES: "10"          # default 50 — each socket costs memory
+      LANGFUSE_API_CLICKHOUSE_DISABLE_OBSERVATIONS_FINAL: "true"
       # ── Init vars — stay active for auth validation ──
       LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-hermes-cortex}
       LANGFUSE_INIT_PROJECT_ID: ${LANGFUSE_INIT_PROJECT_ID:-default-project}
