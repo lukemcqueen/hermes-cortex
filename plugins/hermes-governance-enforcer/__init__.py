@@ -377,8 +377,11 @@ def _is_write_tool(tool_name: str, args: Dict[str, Any]) -> bool:
 
 def _on_session_start(session_id: str, **kwargs):
     """Write session marker at session start so MCP finds it before begin_change."""
-    if session_id:
-        _write_session_marker(session_id)
+    try:
+        if session_id:
+            _write_session_marker(session_id)
+    except Exception:
+        log.error("on_session_start hook crashed:\n%s", traceback.format_exc())
 
 
 def register(ctx):
@@ -404,24 +407,6 @@ def register(ctx):
         r"^\s*(hermes)\s+(--version|doctor|config\s+get|config\s+show|config\s+path|config\s+check|env-path)",
         r"^\s*(systemctl)\s+(is-active|is-enabled|status|list-units)",
     ]
-
-    # ── Session-started hook ───────────────────────────────────
-    def on_session_start_hook(**kwargs: Any) -> None:
-        """Write PID-scoped marker at session start.
-
-        Fires exactly once when a new Hermes session begins. This ensures the
-        marker file exists before any MCP tool call (including begin_change),
-        so the MCP server can learn the correct Hermes session ID via the
-        PID handoff mechanism.
-        """
-        try:
-            hermes_session_id = kwargs.get("session_id", "")
-            if hermes_session_id:
-                _write_session_marker(hermes_session_id)
-        except Exception:
-            log.error("on_session_start hook crashed:\n%s", traceback.format_exc())
-
-    ctx.register_hook("on_session_start", on_session_start_hook)
 
     # ── Pre-tool-call hook ────────────────────────────────────
 

@@ -197,9 +197,51 @@ ps|top|htop|df|du|free|uptime|uname|hostname|dmesg|journalctl
 git status|log|diff|show|branch|stash list
 docker ps|images|logs|inspect|stats
 pip|npm list|show|search
-hermes --version|doctor|config get|config show|config path|config check
+hermes --version|doctor|config get|config show|config path|config check|env-path
 systemctl is-active|is-enabled|status|list-units
 ```
+
+---
+
+## Survey Gate for Cron Creation
+
+The enforcer implements a **survey-before-action gate** specifically for cron creation.
+Before `cronjob(action="create")` is allowed, the agent must demonstrate it has
+surveyed existing resources by creating a marker file:
+
+```bash
+touch ~/.hermes-cortex/state/.cron-survey-done
+```
+
+This marker is created **after** running:
+1. `cronjob(action='list')` — check existing crons for overlaps
+2. `search_files(...)` — check for existing scripts
+3. `skills_list()` — check for existing skills
+
+The gate exists because agents historically created redundant cron jobs
+and scripts instead of extending existing ones. The marker persists for the
+session. Without it, all cron creation is blocked.
+
+---
+
+## Fail-Closed Safety
+
+The enforcer wraps its entire `pre_tool_call` handler in a `try/except` block.
+If any unhandled exception occurs (disk I/O error, corrupt lock file,
+unexpected Python error), the handler **blocks all write operations**:
+
+```
+GOVERNANCE ENFORCER CRASHED — ALL WRITES BLOCKED
+The enforcer plugin encountered an internal error and
+cannot verify governance state.
+All write operations are blocked until the enforcer
+is reloaded or fixed.
+```
+
+This is a **fail-closed** design: uncertainty always defaults to blocking
+writes rather than allowing ungoverned changes. Recovery requires checking
+Hermes logs (`~/.hermes/logs/agent.log`) for the traceback, fixing the root
+cause, and restarting the session.
 
 ---
 
@@ -231,12 +273,14 @@ The `loop-gov-mcp.py` MCP server writes the session-scoped lock file when
 #### Session ID alignment — Fixed-path marker (primary) + PID scan (fallback)
 
 The enforcer plugin receives the Hermes session ID via the `pre_tool_call` hook's
-`session_id` parameter. At each tool call, it writes this ID to TWO marker files:
-
+`session_id` parameter. At each tool call, it writes this ID to **three** marker files:
 1. **Fixed-path marker** (`.hermes-session-current.id`) — primary. The MCP server
    reads this by a known path, no PID arithmetic needed.
 2. **PID-scoped marker** (`.hermes-session-{PID}.id`) — legacy fallback for MCP
    versions that predate the fixed path.
+3. **`~/.hermes/session.id`** — Hermes config directory cache, final fallback
+   for MCP when both state-directory markers are absent (e.g. on the very first
+   tool call of a session before the enforcer has fired).
 
 The fixed-path approach was introduced because the MCP server is NOT a direct child
 of the Hermes process — there's a watchdog (`mcp_stdio_watchdog.py`) in between:
@@ -273,15 +317,28 @@ scan) covers any remaining mismatch for backward compat with old MCP locks.
 ### Checked By
 
 The governance enforcer plugin's `_has_governance_lock()` function uses a
-**two-phase approach** to find the active lock:
+**three-phase approach** to find the active lock:
 
 1. **Phase 1 — Exact match (primary):** Looks for `.governance-{hermes_session_id}.json`.
    The session ID is passed to the enforcer via the Hermes `pre_tool_call` hook's `session_id`
-   parameter. The enforcer writes it to `.hermes-session-{PID}.id` so the MCP server
-   (a child process) can read it via `os.getppid()` — creating locks in the same namespace.
+   parameter. The enforcer writes it to a fixed-path marker so the MCP server
+   creates locks in the same namespace.
+
 2. **Phase 2 — Scan by repo_slug (fallback):** If exact match fails (backward compat with
    old MCP locks that predate PID handoff, or when run outside a git repo), scans all
-   `.governance-*.json` files and matches by `repo_slug` in content.
+   `.governance-*.json` files and matches by `repo_slug` in content. **Cross-session
+   protection:** when the current session and the lock both have a `session_id`, an
+   exact match is required — Session B cannot write using Session A's lock.
+
+3. **Phase 3 — Secondary lock marker (extra safety):** Checks the repo-located marker
+   at `.hermes-cortex/.governance-lock` as a fallback when the primary state directory
+   is inaccessible. The MCP server writes this alongside the primary lock during
+   `begin_change()`.
+
+On every call, the enforcer also **proactively purges stale locks** — any
+`.governance-*.json` file whose `heartbeat_at` exceeds its TTL is removed
+before the phase checks begin. This prevents lock accumulation and ensures
+stale sessions don't accidentally block new ones.
 
 ```python
 GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
@@ -401,17 +458,17 @@ bash ops/scripts/cortex-update.sh
 # Then /reset the agent session
 ```
 
-### Agent-Specific Paths
+### Common Path (All Agents)
 
-| Agent | Host | Repo Path |
-|-------|------|-----------|
-| Moses | Orchestrator | `~/hermes-cortex/plugins/hermes-governance-enforcer/` |
-| Esther | Backup orchestrator | `~/hermes-cortex/plugins/hermes-governance-enforcer/` |
-| Gisu | Work staging | `~/hermes-cortex/plugins/hermes-governance-enforcer/` |
-| Kustos | Work production | `~/hermes-cortex/plugins/hermes-governance-enforcer/` |
-| Joseph | Personal production | `~/hermes-cortex/plugins/hermes-governance-enforcer/` |
+All fleet agents use the same path pattern — plugin source in the Cortex repo
+is symlinked into `~/.hermes/plugins/`:
 
-The pattern is the same for all: plugin source in the Cortex repo → symlink into `~/.hermes/plugins/`.
+| Location | Path |
+|----------|------|
+| Source (repo) | `~/hermes-cortex/plugins/hermes-governance-enforcer/` |
+| Deployed (symlink) | `~/.hermes/plugins/governance-enforcer/` → source |
+
+The pattern is the same for all agents: repo source → symlink into `~/.hermes/plugins/`.
 
 ### Deploy Script (automated)
 
@@ -491,7 +548,7 @@ is classified into one of three tiers:
 | Tier | Tools | What's Blocked |
 |------|-------|----------------|
 | **WRITE_TOOLS** | `write_file`, `patch`, `execute_code`, `memory`, `text_to_speech` | Tool use at all — requires governance lock unconditionally |
-| **CONDITIONAL** | `terminal`, `cronjob`, `skill_manage`, `process` | Specific write-type actions (see tables below) |
+| **CONDITIONAL** | `terminal`, `cronjob`, `skill_manage`, `process`, `computer_use` | Specific write-type actions (see tables below) |
 | **READ-ONLY** | `read_file`, `search_files`, `session_search`, `skill_view`, `skills_list`, `clarify`, `vision_analyze`, `todo` | Nothing — always allowed |
 | **DELEGATION** | `delegate_task` | Not blocked — subagents have their own enforcer instance |
 
@@ -503,6 +560,7 @@ is classified into one of three tiers:
 | `cronjob` | `create`, `update`, `remove` | `list`, `run` |
 | `skill_manage` | `create`, `edit`, `delete`, `write_file`, `remove_file`, `patch` | `view` (via separate `skill_view` tool) |
 | `process` | `write`, `submit`, `kill`, `close` | `list`, `poll`, `log`, `wait` |
+| `computer_use` | `click`, `double_click`, `right_click`, `middle_click`, `drag`, `scroll`, `type`, `key`, `set_value`, `focus_app` | `capture`, `wait`, `list_apps`, `list_windows` |
 
 ### Write Command Patterns (terminal)
 
@@ -511,7 +569,7 @@ rm|mv|cp|install|apt|apt-get|dpkg|pip|npm|brew|make|cmake|docker compose|kubectl
 systemctl|service   start|stop|restart|reload|enable|disable|daemon-reload
 chmod|chown|chattr|mkfs|fdisk|mount|umount|dd
 sed|awk|tee   -i
-git   push|commit|merge|rebase|reset|cherry-pick|branch -d/-D|tag
+git   push|commit|merge|rebase|reset|cherry-pick|branch -d/-D|tag|stash|checkout|restore|clean|rm|mv|update-ref|config|submodule
 cronjob   create|update|remove|delete
 python|python3   -c (inline code)
 bash|sh|zsh   -c (inline commands)
@@ -524,7 +582,11 @@ usermod|groupmod|useradd|groupadd|passwd
 ufw   enable|disable|allow|deny|reject|delete|reset
 nginx -s reload|stop|quit
 journalctl --rotate
-echo with > or >> redirect
+echo|printf|cat|tee   with > or >> redirect
+printf|cat   with << heredoc
+touch|mkdir|ln|rsync|unzip|tar|mkfifo
+npx|yarn|go|cargo|flatpak|snap
+python3 script.py, node app.js, bash setup.sh (interpreter + .py/.js/.rb/.pl/.sh file)
 ```
 
 ## Upgrade: v1 (slug-based locks) → v2 (session-scoped locks)
@@ -567,6 +629,13 @@ is accepted by the new enforcer as valid — you can finish your work and call
 3. **The file system is the lock** — the governance lock is a file on disk. Any process on the same filesystem that reads it can enforce policy based on it. Processes on different filesystems can't — and that's a feature (remote backends block everything).
 4. **Plugins compose** — multiple plugins can register `pre_tool_call` handlers. First block wins. This means you can layer security policies (Docker policy + governance + rate limiting) as independent plugins.
 5. **Plugin changes require restart** — no hot-reload. Always `/reset` after installing or modifying a plugin.
+6. **The agent cannot bypass this** — because the block comes from the Hermes runtime (Python process), not from the model's output or SOUL.md text, the agent cannot talk its way out of it.
+7. **Every agent needs it** — if only one agent has the plugin, the others can freely skip governance. The source of truth is the repo; deploy the symlink to every agent.
+8. **Bypass coverage is structural, not complete** — the enforcer covers all built-in Hermes tools and common shell bypass patterns. It cannot intercept MCP tools (separate process), but no MCP tool currently allows arbitrary file writes.
+9. **Known coverage gaps (by design)** — `delegate_task` spawns subagents that have their own enforcer. `todo` is in-memory only. MCP tools run in a separate process and aren't intercepted by the plugin.
+10. **Survey gate prevents redundant cron creation** — cron creation is blocked until the agent demonstrates it has surveyed existing resources by creating `~/.hermes-cortex/state/.cron-survey-done`. This prevents duplicate cron jobs and scripts.
+11. **Fail-closed design** — if the enforcer encounters an internal error, it blocks ALL writes. Uncertainty defaults to blocking, not allowing. Recovery requires checking logs and restarting the session.
+12. **Three bridge files** — the enforcer writes the session ID to three locations for MCP discovery: fixed-path marker (primary), PID-scoped marker (legacy), and `~/.hermes/session.id` (cached fallback). This ensures lock discovery works even when the MCP server starts before the enforcer fires its first tool call.
 
 ## Session ID Handoff Architecture
 
@@ -624,8 +693,4 @@ bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all
 |-------|---------|-----|
 | Stale .pyc cache | Old enforcer code runs with old session ID logic | `rm -rf __pycache__ && /reset` |
 | Bridge file not written | MCP falls back to PID scan, finds wrong session | Check OSError logs in enforcer |
-| `$HERMES_SESSION_ID` env var used as Priority 1 | Lock filename has no `sess_` prefix | Ensure bridge file is Priority 1 (committed in loop-gov-mcp.py)
-6. **The agent cannot bypass this** — because the block comes from the Hermes runtime (Python process), not from the model's output or SOUL.md text, the agent cannot talk its way out of it.
-7. **Every agent needs it** — if only one agent has the plugin, the others can freely skip governance. The source of truth is the repo; deploy the symlink to every agent.
-8. **Bypass coverage is structural, not complete** — the enforcer covers all built-in Hermes tools and common shell bypass patterns. It cannot intercept MCP tools (separate process), but no MCP tool currently allows arbitrary file writes.
-9. **Known coverage gaps (by design)** — `delegate_task` spawns subagents that have their own enforcer. `todo` is in-memory only. MCP tools run in a separate process and aren't intercepted by the plugin.
+| `$HERMES_SESSION_ID` env var used as Priority 1 | Lock filename has no `sess_` prefix | Ensure bridge file is Priority 1 (committed in loop-gov-mcp.py) |

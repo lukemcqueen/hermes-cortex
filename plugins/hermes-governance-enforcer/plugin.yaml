@@ -1,4 +1,4 @@
 name: governance-enforcer
 description: "Enforces loop governance at the tool level — blocks write_file, patch, terminal (write commands), cronjob, and skill_manage unless an active governance lock exists via begin_change()."
 version: "1.0.0"
-author: Joseph (Hermes Cortex)
+author: Hermes Cortex
