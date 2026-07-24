@@ -47,21 +47,19 @@ Runs `score-cycle` on staged changes for **automatic DB logging**. Enforcement o
 
 Source: `ops/scripts/pre-push-pull`
 
-**Workflow order — verification happens BEFORE push, not during:**
+**Workflow order:**
 
 1. Make changes under governance (begin_change → work)
 2. **Update documentation** — docs, AGENTS.md, skills that other agents consume
-3. **Test the change** — run the actual changed code path and confirm it works
-4. **Create verification marker:** `touch ~/.hermes-cortex/state/.verification-done`
-5. Push — the hook then enforces three checks:
+3. Push — the hook enforces three checks:
 
-   | # | Check | Blocks if |
-   |---|-------|-----------|
+   | # | Check | What it does |
+   |---|-------|-------------|
    | 1 | Governance lock | No active `begin_change()` session for this repo |
-   | 2 | Verification gate | `.verification-done` marker missing (was step 3 skipped?) |
+   | 2 | Syntax check | Parses every changed `.py` (py_compile) and `.sh` (bash -n) file. Cannot be skipped — the hook runs the checker itself. |
    | 3 | Pull-before-push | Local `main` is behind `origin/main` |
 
-   On success, the marker is consumed. Next push needs a fresh marker.
+   All checks run automatically at push time. No marker files, no `touch` commands.
 
 | Exit | Meaning | Next step |
 |------|---------|-----------|
@@ -126,8 +124,8 @@ If you're an agent working on this repo:
 | Push blocked even though I just pulled | Remote received new commits since your last fetch | `git pull --rebase origin main` |
 | `score-cycle` not found warning | `loop-governance` tools not installed | `bash ~/hermes-cortex/core/governance/setup.sh` |
 | Hook not running at all | Hook not symlinked into `.hermes-cortex/hooks/` | Re-run `cortex-update.sh --force-all` |
-| `❌ Push blocked: change has not been verified` | `.verification-done` marker missing | Test the change, then `touch ~/.hermes-cortex/state/.verification-done` |
-| `❌ Push blocked: no active governance lock` | No `begin_change()` session for this repo | Call `begin_change(task_id, description)` first |
+| `❌ $file — syntax error` | `.py` file has a Python syntax error | Fix the error and re-push |
+| `❌ $file — shell syntax error` | `.sh` file has a shell syntax error | Fix the error and re-push |
 
 ---
 

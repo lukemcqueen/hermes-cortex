@@ -1342,8 +1342,8 @@ def check_governance(res):
         if "pre-push-pull" in push_content:
             features = []
             features.append("lock-check")
-            if ".verification-done" in push_content:
-                features.append("verify-gate")
+            if "Changed-files syntax check" in push_content:
+                features.append("syntax-check")
             res.add("Pre-push hook", "PASS", f"installed with {', '.join(features)}")
         else:
             res.add("Pre-push hook", "WARN", "installed but may be outdated")
