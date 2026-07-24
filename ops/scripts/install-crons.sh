@@ -625,16 +625,6 @@ create_cron "agent-governance-auditor" "0 */6 * * *" \
   "" \
   "true"
 
-# ── Budget watchdog (no_agent) — checks token budgets every 6h ──
-create_cron "agent-budget-watchdog" "0 */6 * * *" \
-  "budget-enforcer.py --watchdog --threshold 0.8" \
-  "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
-
 # ── 6. Universal Agent Crons ──────────────────────────────
 printf "\n${CYAN}  6. Universal Agent Crons${RESET}\n"
 
