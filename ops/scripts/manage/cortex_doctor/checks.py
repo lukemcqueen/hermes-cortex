@@ -205,55 +205,86 @@ def check_dev_repo_agents(res):
             pass
 
 
+def _extract_soul_markers(path):
+    """Extract all named bold-marker sub-points from a SOUL.md's Behavioral Principles section.
+    Returns a set of marker strings (e.g. 'Do real work', 'Verify every claim')."""
+    if not path.exists():
+        return set()
+    text = path.read_text()
+    # Find the Behavioral Principles section
+    m = re.search(r'## Behavioral Principles\n(.*?)(?=\n## Scripture|\n## Final Directive|\n## Patterns|$)', text, re.DOTALL)
+    if not m:
+        return set()
+    principles_text = m.group(1)
+    # Extract all **bold** markers from list items
+    markers = set()
+    for line in principles_text.split('\n'):
+        # Match: - **Marker** — description
+        bm = re.search(r'^\s*-\s+\*\*([^*]+)\*\*', line)
+        if bm:
+            markers.add(bm.group(1).strip())
+    return markers
+
+
 def check_soul_sync(res):
-    """Check SOUL.md is synced from repo template — content-based, not mtime."""
+    """Check SOUL.md is synced from repo template — for ALL agents."""
     template = CORTEX_REPO / "docs" / "templates" / "SOUL.md"
     if not template.exists():
         res.add("SOUL.md template", "WARN", "template not found at docs/templates/SOUL.md",
                 "REQUIRED: verify repo is up to date")
         return
 
-    def _highest_principle(path):
-        text = path.read_text() if path.exists() else ""
-        nums = [int(m) for m in re.findall(r'^#{3,4} (\d+)\.', text, re.MULTILINE)]
-        return max(nums) if nums else 0
+    template_markers = _extract_soul_markers(template)
+    template_count = len(template_markers)
 
-    template_max = _highest_principle(template)
+    def _check_one(label, path, fix_hint_prefix):
+        """Check a single SOUL.md against the template."""
+        if not path.exists():
+            res.add(f"SOUL.md sync ({label})", "FAIL", f"{path} missing",
+                    f"REQUIRED: {fix_hint_prefix}")
+            return
 
-    hermes_soul = Path.home() / ".hermes" / "SOUL.md"
-    if not hermes_soul.exists():
-        res.add("SOUL.md sync (~/.hermes)", "FAIL", "~/.hermes/SOUL.md missing",
-                "REQUIRED: cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md && customize for your role")
-    else:
-        agent_max = _highest_principle(hermes_soul)
-        if template_max > agent_max:
-            missing = template_max - agent_max
-            res.add("SOUL.md sync (~/.hermes)", "FAIL",
-                    f"Template has {template_max} principles, agent has {agent_max} -- {missing} missing",
+        agent_markers = _extract_soul_markers(path)
+        agent_count = len(agent_markers)
+
+        # Check principle count first
+        if template_count > agent_count + 2:  # allow small variance for agent-specific bullets
+            missing = template_count - agent_count
+            res.add(f"SOUL.md sync ({label})", "FAIL",
+                    f"Template has {template_count} markers, {path.name} has {agent_count} — {missing} missing",
                     f"REQUIRED: Run: python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py")
-        elif template_max < agent_max:
-            excess = agent_max - template_max
-            res.add("SOUL.md sync (~/.hermes)", "FAIL",
-                    f"Agent has {agent_max} principles, template has {template_max} -- {excess} excess",
-                    f"REQUIRED: consolidate ~/.hermes/SOUL.md to {template_max} principles matching docs/templates/SOUL.md")
-        else:
-            res.add("SOUL.md sync (~/.hermes)", "PASS")
+            return
 
-    repo_soul = CORTEX_REPO / "profiles" / "personal" / "agent-profiles" / "moses" / "SOUL.md"
-    if repo_soul.exists():
-        repo_max = _highest_principle(repo_soul)
-        if template_max > repo_max:
-            missing = template_max - repo_max
-            res.add("SOUL.md sync (repo profile)", "FAIL",
-                    f"Template has {template_max} principles, profile has {repo_max} -- {missing} missing",
-                    f"REQUIRED: merge template principles {repo_max+1}-{template_max} into profiles/personal/agent-profiles/moses/SOUL.md")
-        elif template_max < repo_max:
-            excess = repo_max - template_max
-            res.add("SOUL.md sync (repo profile)", "FAIL",
-                    f"Profile has {repo_max} principles, template has {template_max} -- {excess} excess",
-                    f"REQUIRED: consolidate profiles/personal/agent-profiles/moses/SOUL.md to {template_max} principles matching template")
-        else:
-            res.add("SOUL.md sync (repo profile)", "PASS")
+        # Check for missing content markers
+        missing_markers = template_markers - agent_markers
+        if missing_markers:
+            # Filter out agent-specific sub-points that don't apply
+            # (e.g. agent-specific maintainer instructions)
+            critical_missing = {m for m in missing_markers
+                                if not any(skip in m for skip in
+                                           ["This principle absorbs", "Template verse", "Replace with"])}
+            if critical_missing:
+                res.add(f"SOUL.md sync ({label})", "FAIL",
+                        f"Missing {len(critical_missing)} sub-points from template: {', '.join(sorted(critical_missing)[:5])}",
+                        f"REQUIRED: Run: python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py")
+                return
+
+        res.add(f"SOUL.md sync ({label})", "PASS")
+
+    # Check deployed copy
+    hermes_soul = Path.home() / ".hermes" / "SOUL.md"
+    _check_one("~/.hermes", hermes_soul,
+               "cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md && customize for your role")
+
+    # Check ALL agent profiles in the repo
+    profiles_dir = CORTEX_REPO / "profiles" / "personal" / "agent-profiles"
+    if profiles_dir.exists():
+        for profile_path in sorted(profiles_dir.iterdir()):
+            if profile_path.is_dir() and (profile_path / "SOUL.md").exists():
+                soul_path = profile_path / "SOUL.md"
+                agent_name = profile_path.name
+                _check_one(f"repo:{agent_name}", soul_path,
+                          f"cp ~/.hermes/SOUL.md {soul_path} (sync deployed → repo)")
 
 
 def check_skills(res):

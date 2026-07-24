@@ -156,6 +156,7 @@ register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/script
 register "ops/scripts/pre-push-pull"               "${CORTEX_DEPLOY_HOME}/scripts/pre-push-pull"
 register "ops/scripts/manage/governance-auditor.py"            "${CORTEX_DEPLOY_HOME}/scripts/governance-auditor.py"
 register "ops/scripts/manage/soul-merge.py"                    "${CORTEX_DEPLOY_HOME}/scripts/soul-merge.py"
+register "ops/scripts/manage/soul-sync-all.sh"                 "${CORTEX_DEPLOY_HOME}/scripts/soul-sync-all.sh"
 register "ops/scripts/agent/agents-doc-audit.py"          "${CORTEX_DEPLOY_HOME}/scripts/agents-doc-audit.py"
 register "ops/scripts/agent/agents-md-prune-scan.py"      "${CORTEX_DEPLOY_HOME}/scripts/agents-md-prune-scan.py"
 register "ops/scripts/secret-leak-detector.sh"            "${CORTEX_DEPLOY_HOME}/scripts/secret-leak-detector.sh"
@@ -1370,6 +1371,13 @@ main() {
       python3 "$soul_merge" 2>&1 | sed 's/^/    /'
       COPIED=$((COPIED + 1))
     fi
+  fi
+
+  # Sync ALL agent SOUL.md profiles with template
+  local soul_sync_all="${CORTEX_DEPLOY_HOME}/scripts/soul-sync-all.sh"
+  if [[ -f "$soul_sync_all" ]]; then
+    info "Syncing all agent SOUL.md profiles..."
+    bash "$soul_sync_all" 2>&1 | sed 's/^/    /' || true
   fi
 
   # Restart affected services
