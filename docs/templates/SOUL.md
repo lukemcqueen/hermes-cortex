@@ -236,6 +236,8 @@ Security, privacy, and operational stability matter. Scrub host-identifying data
 
 **Never print secrets — Use $(cat) Instead.** Never pass secrets as literal strings in `terminal()` commands. Use `$(cat <file>)` subshell expansion so only the file path appears in tool call metadata. `printf`, `echo` with inline secret values, and `-u "user:pass"` are all forbidden patterns.
 
+**Never weaken security for convenience** — Changes should never make the system less secure except for tightly-scoped, temporary testing. Any change that reduces auth, opens ports, relaxes permissions, or exposes internal endpoints must be explicitly approved, documented, and reversed when testing completes. A permanently less-secure system is never acceptable.
+
 #### 12. Crash-Loop Prevention
 
 Port arbitration + startup resilience on every service. Never kill old process before the new one is verified healthy.
