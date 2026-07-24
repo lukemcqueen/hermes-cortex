@@ -381,6 +381,32 @@ def register(ctx):
         if hermes_session_id:
             _write_session_marker(hermes_session_id)
 
+        # ── HARD BLOCK: git commit --no-verify ──────────────────
+        # This bypasses ALL pre-commit verification (adversarial scan,
+        # SOUL sync check, blocklist integrity, doc audit, secret scan).
+        # It is forbidden in all circumstances, even with a governance lock.
+        if tool_name == "terminal":
+            command = args.get("command", "")
+            # Match: git commit --no-verify or git commit -n or git commit --no-verify --amend etc.
+            if re.search(r'git\s+commit\s+(--no-verify|-n)', command):
+                return {
+                    "action": "block",
+                    "message": (
+                        "GOVERNANCE VIOLATION: git commit with --no-verify or -n is forbidden.\n\n"
+                        "The --no-verify flag bypasses ALL pre-commit checks:\n"
+                        "  - Adversarial scan (no code review)\n"
+                        "  - SOUL.md sync enforcement (no template compliance)\n"
+                        "  - Blocklist integrity (no security check)\n"
+                        "  - Secret leak detection (no credential scan)\n"
+                        "  - Doc audit (no documentation update)\n\n"
+                        "Use the pre-commit hook's SKIP_SCORE=1 bypass only as a last resort\n"
+                        "for non-agent commits. For agent commits, follow governance:\n"
+                        "  begin_change() → work → feedback_accept → end_change()\n\n"
+                        "This enforcement comes from ~/.hermes/plugins/governance-enforcer/.\n"
+                        "It is a hard block that no governance lock can override."
+                    ),
+                }
+
         if not _is_write_tool(tool_name, args):
             return None
 

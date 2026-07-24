@@ -113,29 +113,22 @@ def get_session_id() -> str:
     """Return a persistent session ID, creating one on first call.
 
     Priority:
-    1. $HERMES_SESSION_ID environment variable (set by Hermes gateway,
-       inherited by child MCP server process). This is the most
-       authoritative source — set fresh on every session start.
-    2. Fixed-path marker from the Hermes enforcer
+    1. Fixed-path marker from the Hermes enforcer
        (~/.hermes-cortex/state/.hermes-session-current.id)
-       This bypasses the PID-chain problem: even when the MCP server is
-       separated from Hermes by a watchdog process, the fixed path is
-       the same regardless of process ancestry.
-    3. PID-scoped marker scan (~/.hermes-cortex/state/.hermes-session-*.id)
+       This is the primary bridge — the enforcer writes its kwargs session ID
+       (with ``sess_`` prefix) on every pre_tool_call, so the MCP reads the
+       exact same value the enforcer uses for lock discovery.
+    2. PID-scoped marker scan (~/.hermes-cortex/state/.hermes-session-*.id)
        Fallback for MCP versions that don't support the fixed path.
-    4. Cached ~/.hermes/session.id (previous value from this session)
-    5. Generate new UUID-based ID (first call, no enforcer present)
-    """
-    # Priority 1: $HERMES_SESSION_ID env var (most authoritative)
-    hermes_sid = os.environ.get("HERMES_SESSION_ID", "")
-    if hermes_sid:
-        sid = hermes_sid.strip()
-        if sid:
-            SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
-            SESSION_FILE.write_text(sid)
-            return sid
+    3. Cached ~/.hermes/session.id (previous value from this session)
+    4. Generate new UUID-based ID (first call, no enforcer present)
 
-    # Priority 2: Fixed-path marker (primary — no PID needed)
+    Note: $HERMES_SESSION_ID env var is deliberately NOT used here because
+    its format (no ``sess_`` prefix) differs from the enforcer's kwargs
+    session_id format. Using it would create lock files the enforcer can't
+    find. The fixed-path marker is the correct bridge.
+    """
+    # Priority 1: Fixed-path marker (primary — from enforcer _write_session_marker)
     try:
         fixed = Path.home() / ".hermes-cortex" / "state" / ".hermes-session-current.id"
         if fixed.exists():
