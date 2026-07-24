@@ -619,8 +619,10 @@ clean_stale_deploys() {
   for entry in "${MAP[@]}"; do
     local dest
     IFS='|' read -r _ dest _ _ <<< "$entry"
-    dest="${dest/\${CORTEX_DEPLOY_HOME}/$CORTEX_DEPLOY_HOME}"
-    dest="${dest/\${HOME}/$HOME}"
+    # NOTE: MAP stores already-expanded paths (bash expands ${VAR} at register time).
+    # The old `\$` pattern substitution here was broken on bash 3.2.57 (macOS) —
+    # it incorrectly appended the replacement value even when the pattern
+    # didn't match, corrupting paths. Removed as unnecessary.
     dests+=("$dest")
   done
 
