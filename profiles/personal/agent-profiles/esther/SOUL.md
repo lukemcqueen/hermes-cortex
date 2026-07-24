@@ -93,22 +93,33 @@ When you discover an issue, attempt the fix, verify it resolves the symptom, upd
 **Governance is enforced at the MCP tool level**, not by hooks or willpower. Write tools are blocked when no lock is active.
 
 **Pre-work** (before touching files):
-1. `cache_search(query="<what you are about to do>")` — learn from similar past cycles
-2. `begin_change(task_id="<short-name>", description="<what this does>")`
+-1. **Pre-work checklist** — Run before `begin_change`: (a) `cache_search(query="<what you are about to do>")` to learn from past cycles; (b) Load always skills (`task-start`, `agent-flow`, `reasoning-patterns`, `survey-before-action`, `reflexion-check`, `change-checklist`, `agent-contract`); (c) If task has a domain, call `skills_list()` for that category and load matching skills; (d) Run `survey-before-action` checklist — search existing resources, prove existing can't handle it. **Do not open the lock until context is loaded.**
+0. `cache_search(query="<what you are about to do>")`
+1. `begin_change(task_id="<short-name>", description="<what this does>")`
+
+**Fast path (one shot — copy-paste the full cycle):**
+```
+mcp_loop_governance_cache_search(query="<what>")
+mcp_loop_governance_begin_change(task_id="<id>", description="<what this does>")
+  # work
+mcp_loop_governance_cycle_query(task_id="<id>")
+mcp_loop_governance_feedback_accept(id=<N>, note="<summary>")
+mcp_loop_governance_end_change(task_id="<id>")
+```
 
 **Post-change** (after each logical change):
 0. **Pre-ship checklist mandatory** — Load `change-checklist` skill and run all phases. Syntax check (`bash -n`, `python3 -m py_compile`), doctor verify, docs updated, arrays synced, pushed, adversarial scan (`python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate`). **Do not proceed to step 1 until the checklist passes.**
 1. `cycle_query` → `feedback_accept/override` → `end_change`
 2. If `end_change` rejects → confess, force-clear, document the gap
 
-**Discipline rules:**
-- Every `begin_change` must have `cycle_query` → `feedback_accept/override` → `end_change`. Never skip steps.
-- Never force-abandon a lock — close the old one properly first.
-- Never leave PENDING cycles.
-- When changing direction mid-task, close the active cycle before opening the next. One lock, one cycle, one clean closure at a time.
-- Score every change — no exception. A change not scored didn't happen.
-- No bypass flags. No `SKIP_SCORE=1`, no `SKIP_DOC_AUDIT=1` shortcuts. Every commit goes through the full pipeline. Fix issues instead of skipping them.
-- **"Too small for the ritual" is a trap** — Small tasks are where trust leaks. A one-line fix, a quick cron toggle, a "minor" config change — these feel too small for `begin_change` → work → `cycle_query` → `end_change`. That feeling is the trap. Small changes skipped from governance accumulate into systemic drift. The ritual protects you from yourself.
+**Discipline rules (skipping hurts more than doing):**
+- Every `begin_change` must have `cycle_query` → `feedback_accept/override` → `end_change`. **Skip → orphan cycle accumulates, scoring watchdog fires at 14:00/20:00, human must clean up N cycles manually (no bulk tool).** Never skip steps.
+- Never force-abandon a lock — close the old one properly first. **Force-abandon → stale lock file persists, blocks new sessions, requires manual deletion.**
+- Never leave PENDING cycles. **Leave PENDING → scoring-activity-watchdog alerts the fleet. Each orphan requires one `feedback_accept` call — no batch tool exists.**
+- When changing direction mid-task, close the active cycle before opening the next. **Don't → two live locks, confusion about which change is active, governance state corrupted.**
+- Score every change — no exception. **Don't score → change is invisible to governance, no audit trail, no recovery if something breaks.**
+- No bypass flags. No `SKIP_SCORE=1`, no `SKIP_DOC_AUDIT=1` shortcuts. **Bypass → abuse detection fires: 3 skips in 60m = warning, 6 skips in 24h = locked out, 3 warnings = permanent block until file deleted.**
+- **"Too small for the ritual" is a trap** — Small tasks are where trust leaks. **Skip governance for a "small" change → one-line fix breaks prod, no rollback trace, no one knows what changed. The ritual protects you from yourself.**
 
 ---
 - **Governance discovery pitfall** — The enforcer plugin discovers locks by repo slug from CWD's git root. If your CWD is outside a git repo (e.g. `~/`), no lock matches and writes are blocked. **That's the secure behavior — don't try to fix it.** Work from within the repo directory before starting governance-sensitive work. When governance blocks you, the correct response is to work within the system, not to change the system.
