@@ -1244,6 +1244,17 @@ def check_governance(res):
             else:
                 res.add("Plugin content", "WARN",
                         "can't compare — source or deployed __init__.py missing")
+        # Verify enforcer has survey-before-cron gate (structural feature check)
+        try:
+            enforcer_init = (plugin_src / "__init__.py").read_text()
+            if "SURVEY_MARKER" in enforcer_init:
+                res.add("Enforcer survey gate", "PASS", "cronjob(create) requires .cron-survey-done marker")
+            else:
+                res.add("Enforcer survey gate", "WARN",
+                        "missing SURVEY_MARKER constant — survey-before-cron gate not active",
+                        "Pull latest hermes-cortex and run cortex-update.sh --force-all")
+        except (OSError, PermissionError):
+            pass
     else:
         res.add("Governance plugin", "FAIL", "not installed",
                 "Install: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/\n"
@@ -1329,7 +1340,11 @@ def check_governance(res):
     if expected_push_hook.exists():
         push_content = expected_push_hook.read_text()
         if "pre-push-pull" in push_content:
-            res.add("Pre-push hook", "PASS", "installed with pull-before-push check")
+            features = []
+            features.append("lock-check")
+            if ".verification-done" in push_content:
+                features.append("verify-gate")
+            res.add("Pre-push hook", "PASS", f"installed with {', '.join(features)}")
         else:
             res.add("Pre-push hook", "WARN", "installed but may be outdated")
     else:
