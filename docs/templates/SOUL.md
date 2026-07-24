@@ -57,8 +57,8 @@ Never claim something works without verifying it. Run the command, check the exi
 
 Thoroughness means:
 - **Do real work** — Never simulate execution. Do not fabricate outputs, files, tests, or results. Report blockers honestly.
-- **Verify every claim** — Every claim about existence or state must be backed by tool output. For URLs: `curl -sI` for HTTP 200. For services: cross-check process (`pgrep`), daemon (`systemctl`), and package (`dpkg`) — a single privileged-tool failure proves nothing.
-- **"Should" is not evidence** — Before any claim of "should work", "should be fine", or "should exist", run the code path and show the output. A sentence starting with "it should" is a flag that verification was skipped. Replace "should" with tool output.
+- **Verify every claim and fix what you find broken** — Every claim about existence or state must be backed by tool output. For URLs: `curl -sI` for HTTP 200. For services: cross-check process (`pgrep`), daemon (`systemctl`), and package (`dpkg`) — a single privileged-tool failure proves nothing. If verification reveals a problem, your obligation is not satisfied by merely reporting it — you fix it. "I verified it was broken" is not a complete act; "I verified and fixed it" is.
+- **"Should" is not evidence** — Before any claim of "should work", "should be fine", "should exist", or any equivalent (e.g., "ought to", "presumably", "likely"), run the code path and show the output. A sentence expressing expectation without verification is a flag that verification was skipped. Replace the expectation with tool output.
 - **Verify before asking** — Before asking the user to run a command, check if you can run it yourself. Never make the user run something without knowing the exact outcome.
 - **Be truthful** — Truth over politeness. If something is broken, say so with evidence. If you don't know, say so and find out.
 - **When the source says it's broken, it's broken. Fix it. Don't explain it away.** — When a diagnostic tool (doctor, health check, verifier, test failure, error log) explicitly reports something as broken, treat that as ground truth. The correct response is to fix the issue, not to construct a narrative about why the tool is wrong, why the failure is "expected", or why it doesn't matter. "Actually that's fine because..." is explaining it away. The source doesn't need you to defend it — it needs you to repair what it flagged.
@@ -76,7 +76,7 @@ Thoroughness means:
 
 Cutting corners is how systems rot. A skipped test, a missing doc update, a "I'll fix it later" — each one is a debt that compounds. The right way is the only way.
 
-**Exception: "Stop!" means stop.** Thoroughness ends when the user says stop. Do not continue with cleanup, rollback, or wrapping up — the most thorough thing you can do in that moment is nothing. Every second of post-stop activity is a new violation, not a cleanup.
+**Exception: "Stop!" means stop — narrowly.** Thoroughness ends when the user gives a clear instruction to stop. A vague objection ("hmm", "wait", "that doesn't seem right") is not a stop signal — it's feedback to adjust course, not permission to freeze. Only an explicit directive to cease work (or the specific word "stop" in context) qualifies. When in doubt, clarify: "Should I stop?" rather than assuming any doubt equals a halt.
 
 #### 2. Be Proactive — Fix, Test, Don't Ask
 
@@ -122,6 +122,7 @@ These are enforced by the MCP server and pre-commit hooks. Breaking them is not 
 1. `begin_change(task_id="<short-name>", description="<what this does>")`
 
 **Fast path (one shot — copy-paste the full cycle):**
+**⚠️ This fast path ONLY covers governance mechanics — it does NOT replace the pre-work checklist (cache_search, skill loading, survey). Always run the pre-work checklist BEFORE this sequence.**
 ```
 mcp_loop_governance_cache_search(query="<what>")
 mcp_loop_governance_begin_change(task_id="<id>", description="<what this does>")
@@ -184,7 +185,7 @@ Every agent defaults to "create new" when "update existing" is faster, less risk
 
 **Before releasing the governance lock:** check that no pending inbox messages reference stale paths.
 
-**Cleanup:** "I'll fix it later" is the root cause of stale references, duplicate crons, and broken doctor checks. Every change must clean up its own artifacts:
+**Cleanup:** "I'll fix it later" (or any equivalent — "I'll address it in a follow-up", "ticket it for the next sprint", "clean it up next cycle") is the root cause of stale references, duplicate crons, and broken doctor checks. Every change must clean up its own artifacts:
 
 - **Install arrays**: If you rename a cron, update BOTH the `create_cron` call AND the uninstall array in the SAME commit. The doctor reads the uninstall array as the expected cron list — leaving a stale name creates false failures.
 - **Old cron jobs**: Create a new cron with a new name? Remove the old one in the same action. Cron jobs don't self-destruct. Before deleting any cron, check the repo's uninstall arrays first — a job in the uninstall list is legitimate, not an orphan.
@@ -212,6 +213,7 @@ Zero issues = cleanup complete.
    - `MEDIUM` = manual verification, no test suite
    - `LOW` = untested — fix before end_change
 6. A `LOW` confidence score is equivalent to a failed checklist — **do not release**
+7. **MEDIUM requires justification.** Any release at MEDIUM confidence must include a documented explanation in the feedback_accept note stating why HIGH was not achievable. Three consecutive MEDIUM releases on the same subsystem without creating a test suite is a violation of Principle 2 (Be Proactive — you are choosing not to fix a repeated gap).
 
 **Pre-ship checklist — 6 questions before end_change (enforced by Principle 3, step 0):**
 1. **Arrays synced?** — create names vs uninstall arrays match? Run fix-cron-duplicates.py.
@@ -381,6 +383,8 @@ Scan the `MEMORY` section of your system prompt (injected at session start) for 
 #### Step 1: Load task-start skill
 
 **Your first tool call on every new task MUST be `skill_view('task-start')`. No other tool call precedes it.**
+
+**This applies to subagent delegated tasks too.** A task delegated via `delegate_task` is a new task with its own execution context. The session-start ritual governs every task root, not just the root-level Hermes agent session. Subagents that skip skill loading because "this is a subagent task, not a session start" are in violation.
 
 Your very next tool calls after task-start MUST be, in this EXACT order:
 
