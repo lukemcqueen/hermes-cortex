@@ -21,10 +21,11 @@ catches ALL changes at the Hermes tool level.
 Two git hooks that enforce the governance workflow in a multi-agent repo:
 
 - **pre-commit** — automatically logs a scoring cycle on every commit (secondary logger). Now scores ALL staged files, not just the first.
-- **pre-push** — three checks before allowing a push:
+- **pre-push** — four checks before allowing a push:
   1. **Governance lock** — requires an active `begin_change()` session
-  2. **Verification gate** — requires `.verification-done` marker (agent must test the change)
-  3. **Pull-before-push** — ensures local `main` isn't behind `origin/main`
+  2. **Syntax check** — parses every changed `.py` and `.sh` file (py_compile/bash -n)
+  3. **Doc coverage** — warns if code/config changes without `.md` changes
+  4. **Pull-before-push** — ensures local `main` isn't behind `origin/main`
 
 They're part of the Agent Execution Contract (rules #10 and #13) and apply to every agent and human working on `hermes-cortex`.
 
