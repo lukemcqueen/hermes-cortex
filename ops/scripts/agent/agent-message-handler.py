@@ -255,8 +255,13 @@ def process_update_request(msg_body: dict, correlation_id: str) -> dict:
     doctor = run_doctor() if run_doctor_flag else {}
 
     # Build result
+    # Use fail_count == 0 as the success metric (not doctor['healthy']
+    # which also warns on `warn_count > 0`). Warnings like "behind
+    # origin/main" or "uncommitted changes" are normal operational
+    # states that shouldn't cause an UPDATE_RESULT to report failure.
+    doctor_fail = doctor.get("summary", {}).get("fail", 0) if doctor else 0
     result = {
-        "success": update_result["success"] and doctor.get("healthy", True),
+        "success": update_result["success"] and doctor_fail == 0,
         "git_sha_before": before,
         "git_sha_after": after,
         "version": doctor.get("version", ""),
