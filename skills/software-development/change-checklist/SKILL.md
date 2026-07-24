@@ -131,6 +131,11 @@ Changes that affect other agents' workflow must be documented.
   ```bash
   python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
   ```
+- [ ] **Propagation check** — if this change modified a template, shared config, or skill that other agents consume, verify downstream recipients:
+  ```bash
+  python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py --check   # for SOUL.md template changes
+  ```
+  Prevents the pattern of updating a template but forgetting to verify propagation.
 - [ ] **Verify no stale locks remain** (`mcp_loop_governance__check_lock`)
 - [ ] **Are all cycles scored?** No PENDING cycles should remain.
 - [ ] **Pre-commit validation ran** (check for "change-validate:" output)

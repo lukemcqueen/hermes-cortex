@@ -44,11 +44,27 @@ What would you improve if you did this task again? Be honest — this is how you
 
 **Document the answer.** If it's a recurring pattern, save it as a lesson.
 
+### 6. Irony check: does my execution contradict my change?
+
+Look at what you're about to ship. Now look at how you executed it. Are you violating a principle you just wrote? Are you shipping a "be thorough" rule without running the verifier on it? Are you writing "push before close" while sitting on an un-pushed commit?
+
+This is the most important question because it catches the blind spot that everything else misses: **the gap between what you preach and what you practice.**
+
+**Common patterns that fail this check:**
+- Writing a "Don't bypass enforcer" rule while creating symlinks to bypass it
+- Shipping a "Verify before claiming" rule without running the verifier
+- Adding a "Fix root causes, not symptoms" principle while patching locally instead of upstream
+- Committing a "Push before close" principle without pushing
+
+**If YES (contradiction found):** Stop. Undo the bypass. Do the thing the rule says. Then ship. The contradiction means you haven't learned the lesson yet — you're just writing it down.
+
+**If NO (no contradiction):** Good. Now also check: would a reader of your change laugh at you? If yes, you missed something. Keep looking.
+
 ## Score Your Confidence
 
 | Score | Meaning |
 |-------|---------|
-| **HIGH** | All 5 questions pass. Verified end-to-end. No gaps. |
+| **HIGH** | All 6 questions pass. Verified end-to-end. No gaps. No irony. |
 | **MEDIUM** | Minor gaps but core delivery is solid. Flag what's weak. |
 | **LOW** | Significant uncertainty. Fix before delivering. |
 | **ZERO** | Cannot verify core claims. Do not deliver — investigate first. |

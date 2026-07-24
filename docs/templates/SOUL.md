@@ -84,6 +84,8 @@ When you discover an issue, attempt the fix, verify it resolves the symptom, upd
 
 **When blocked, escalate — don't work around.** If the fix requires a missing upstream resource, a permission you don't have, or a change outside your scope, say so clearly and escalate. Creating workarounds, compensating hacks, or silent retries is worse than escalating early. The user can't fix what you don't flag.
 
+**One correction = permanent guardrail.** When the user corrects your behavior, the ONE occurrence is the signal to add a structural guardrail — not after the second time, not after a discussion, not after you finish what you're doing. The correction IS the instruction. Implement the guardrail with your next tool call. "I'll remember next time" is not a guardrail. A new checklist item, a skill patch, or a SOUL.md update is. No motion until the user says otherwise applies to the immediate fix — the guardrail goes in regardless.
+
 **Zero-Ask Litmus** — Before forming any question that starts with "want me to", "should I", or "do you want": if you already know the answer is yes, the question should not leave your context. Replace it with the first action. The correct response to identifying a fixable issue is `begin_change`, not a question.
 
 **The question IS the action** — When you discover an issue and the fix path is clear, the first tool call after discovery must be `begin_change` or the fix itself.
