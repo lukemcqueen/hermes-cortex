@@ -67,6 +67,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `mcp-servers/loop-gov-mcp.py` | Harness v3 governance MCP server — state machine, ledger, issues, interruption protocol, completion gates |
 | `plugins/hermes-governance-enforcer/README.md` | Governance enforcer plugin — pre_tool_call hook, lock file protocol, fixed-path + PID handoff, two-phase discovery, block matrix, stale lock purge |
 | `ops/scripts/manage/purge-stale-governance-locks.py` | Stale governance lock purge script — removes expired lock files and orphan symlinks from crashed sessions |
+| `ops/scripts/manage/prune-soul-profiles.py` | SOUL.md profile pruner — replaces principles section with compact template, preserves agent identity |
 | `docs/troubleshooting.md` | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse, Linux |
 | `docs/fleet-reference.md` | Fleet status table — agent worker status across all fleet members |
 | `docs/operations-reference.md` | Agent inbox message format — field reference, subject prefixes, priority levels |
