@@ -1338,6 +1338,45 @@ def check_governance(res):
     else:
         res.add("Governance coverage", "INFO", "enforcer source not found in repo")
 
+    # ── Git hooks verification ──
+    repo_hooks_dir = CORTEX_REPO / ".git" / "hooks"
+    deployed_hooks_dir = CORTEX_HOME / "hooks"
+    for hook_name in ("pre-commit", "post-merge"):
+        deployed_hook = deployed_hooks_dir / hook_name
+        git_hook = repo_hooks_dir / hook_name
+        repo_source = CORTEX_REPO / ".hermes-cortex" / "hooks" / hook_name
+
+        # Check 1: deployed hook exists
+        if not deployed_hook.exists():
+            res.add(f"Hook: {hook_name} (deployed)", "FAIL",
+                    f"missing at {deployed_hook}",
+                    "REQUIRED: Run: cortex-update.sh --force-all")
+            continue
+        res.add(f"Hook: {hook_name} (deployed)", "PASS", f"present at {deployed_hook}")
+
+        # Check 2: .git/hooks/ is a symlink to deployed
+        if git_hook.is_symlink() and os.readlink(str(git_hook)) == str(deployed_hook):
+            res.add(f"Hook: {hook_name} (.git)", "PASS", f"symlinked to deployed copy")
+        elif git_hook.exists():
+            res.add(f"Hook: {hook_name} (.git)", "WARN",
+                    "standalone copy — won't auto-update",
+                    f"REQUIRED: rm {git_hook} && ln -sf {deployed_hook} {git_hook}")
+        else:
+            res.add(f"Hook: {hook_name} (.git)", "FAIL",
+                    f"not installed: {git_hook}",
+                    f"REQUIRED: ln -sf {deployed_hook} {git_hook}")
+
+        # Check 3: deployed hook content matches repo source (MD5)
+        if repo_source.exists() and deployed_hook.exists():
+            dep_hash = hashlib.sha256(deployed_hook.read_bytes()).hexdigest()
+            src_hash = hashlib.sha256(repo_source.read_bytes()).hexdigest()
+            if dep_hash == src_hash:
+                res.add(f"Hook: {hook_name} (content)", "PASS", "matches repo source")
+            else:
+                res.add(f"Hook: {hook_name} (content)", "FAIL",
+                        "deployed hook differs from repo source",
+                        f"REQUIRED: Run: cortex-update.sh --force-all")
+
 
 def check_install(res):
     """8. Install footprint: core files and directories present."""

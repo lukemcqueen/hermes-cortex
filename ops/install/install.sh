@@ -1957,6 +1957,20 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────
+#  12c. Post-Merge Hook — Auto-deploy after git pull
+# ─────────────────────────────────────────────────────────────
+POST_MERGE_SRC="${CORTEX_REPO_DIR}/.hermes-cortex/hooks/post-merge"
+POST_MERGE_DST="${CORTEX_REPO_DIR}/.git/hooks/post-merge"
+if [[ -f "$POST_MERGE_SRC" ]]; then
+  step "Installing post-merge hook (auto cortex-update after git pull)…"
+  cp "$POST_MERGE_SRC" "$POST_MERGE_DST"
+  chmod +x "$POST_MERGE_DST"
+  info "  Installed: .git/hooks/post-merge → auto-runs cortex-update.sh --force-all after every pull"
+else
+  skip "post-merge hook not found at ${POST_MERGE_SRC}"
+fi
+
+# ─────────────────────────────────────────────────────────────
 #  12b. MCP Server Registration — Loop Governance Primary Enforcer
 # ─────────────────────────────────────────────────────────────
 step "Registering loop-governance MCP server (loop-gov-mcp.py)"
