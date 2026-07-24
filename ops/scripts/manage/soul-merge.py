@@ -7,6 +7,10 @@ Detects new principles and sub-points in the canonical template
 SOUL.md (~/.hermes/SOUL.md), preserving all agent-specific customization
 (identity, mission, traits, communication style, scripture, patterns).
 
+After merging, automatically syncs the updated content back to the repo
+profile (profiles/personal/agent-profiles/<agent>/SOUL.md) so the agent
+only needs to commit and push — no manual copy-back required.
+
 Usage:
     python3 soul-merge.py                              # merge ~/.hermes/SOUL.md
     python3 soul-merge.py --agent moses                 # merge another agent
@@ -17,6 +21,7 @@ Exit codes: 0 = up to date   1 = merged (changes made)   2 = error
 """
 
 import re
+import socket
 import sys
 from pathlib import Path
 
@@ -219,6 +224,39 @@ def _render_principles(principles: dict, template_principles: dict) -> str:
     return "\n".join(output_lines)
 
 
+def _resolve_agent_name(deployed_path: Path, agent_name_arg: str) -> str:
+    """Determine agent name from --agent arg, deployed path, or hostname."""
+    if agent_name_arg:
+        return agent_name_arg
+    # Check if deployed_path is under ~/.hermes/profiles/<name>/
+    try:
+        rel = deployed_path.relative_to(HERMES_HOME)
+        parts = rel.parts
+        if len(parts) >= 2 and parts[0] == "profiles":
+            return parts[1]
+    except ValueError:
+        pass
+    # Default: derive from hostname
+    return socket.gethostname().lower()
+
+
+def _sync_to_repo_profile(deployed_path: Path, merged_text: str, agent_name_arg: str):
+    """Copy the merged SOUL.md back to the repo profile so the agent only needs to commit."""
+    name = _resolve_agent_name(deployed_path, agent_name_arg)
+    repo_profile = PROFILES_DIR / name / "SOUL.md"
+
+    if not repo_profile.exists():
+        print(f"  ℹ️  No repo profile at {repo_profile} — skipping sync-back")
+        return
+
+    # Skip if deployed_path IS the repo profile (already in place)
+    if deployed_path.resolve() == repo_profile.resolve():
+        return
+
+    repo_profile.write_text(merged_text)
+    print(f"  🔄 Synced back to repo profile: {repo_profile}")
+
+
 def merge(agent_name: str = "", dry_run: bool = False, check_only: bool = False) -> int:
     """Merge template updates into agent's SOUL.md. Returns exit code."""
     if agent_name:
@@ -313,6 +351,9 @@ def merge(agent_name: str = "", dry_run: bool = False, check_only: bool = False)
 
     deployed_path.write_text(merged)
     print(f"✅ Merged template updates into {deployed_path}")
+
+    # Sync back to repo profile so agent just needs to commit
+    _sync_to_repo_profile(deployed_path, merged, agent_name)
     return 1
 
 
