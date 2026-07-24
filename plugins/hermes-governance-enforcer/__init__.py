@@ -33,6 +33,7 @@ import logging
 import os
 import re
 import subprocess
+import traceback
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -412,9 +413,12 @@ def register(ctx):
         so the MCP server can learn the correct Hermes session ID via the
         PID handoff mechanism.
         """
-        hermes_session_id = kwargs.get("session_id", "")
-        if hermes_session_id:
-            _write_session_marker(hermes_session_id)
+        try:
+            hermes_session_id = kwargs.get("session_id", "")
+            if hermes_session_id:
+                _write_session_marker(hermes_session_id)
+        except Exception:
+            log.error("on_session_start hook crashed:\n%s", traceback.format_exc())
 
     ctx.register_hook("on_session_start", on_session_start_hook)
 
@@ -425,70 +429,85 @@ def register(ctx):
         args: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> Optional[Dict[str, str]]:
-        if not tool_name:
-            return None
+        try:
+            if not tool_name:
+                return None
 
-        args = args or {}
+            args = args or {}
 
-        # ── ALWAYS write PID-scoped marker ──
-        # Write on EVERY tool call so the MCP server's get_session_id() can
-        # discover the Hermes session ID via the PID handoff at any point.
-        # This guarantees that mcp__loop_governance__begin_change finds the
-        # correct marker on the very first tool call of a session.
-        hermes_session_id = kwargs.get("session_id", "")
-        if hermes_session_id:
-            _write_session_marker(hermes_session_id)
+            # ── ALWAYS write PID-scoped marker ──
+            # Write on EVERY tool call so the MCP server's get_session_id() can
+            # discover the Hermes session ID via the PID handoff at any point.
+            # This guarantees that mcp__loop_governance__begin_change finds the
+            # correct marker on the very first tool call of a session.
+            hermes_session_id = kwargs.get("session_id", "")
+            if hermes_session_id:
+                _write_session_marker(hermes_session_id)
 
-        # ── Fast-path: genuinely read-only terminal commands ──
-        # Check BEFORE write classification. A command is truly read-only
-        # only when it matches a read pattern AND does NOT match any write
-        # pattern. This prevents `cat file > /tmp/out` from bypassing
-        # governance — it matches both read AND write patterns, so the
-        # read-only fast-path correctly rejects it.
-        if tool_name == "terminal":
-            command = args.get("command", "")
-            if any(re.search(p, command) for p in READ_COMMAND_PATTERNS):
-                if not _is_terminal_write(args):
-                    return None
+            # ── Fast-path: genuinely read-only terminal commands ──
+            # Check BEFORE write classification. A command is truly read-only
+            # only when it matches a read pattern AND does NOT match any write
+            # pattern. This prevents `cat file > /tmp/out` from bypassing
+            # governance — it matches both read AND write patterns, so the
+            # read-only fast-path correctly rejects it.
+            if tool_name == "terminal":
+                command = args.get("command", "")
+                if any(re.search(p, command) for p in READ_COMMAND_PATTERNS):
+                    if not _is_terminal_write(args):
+                        return None
 
-        if not _is_write_tool(tool_name, args):
-            return None
+            if not _is_write_tool(tool_name, args):
+                return None
 
-        # Cronjob read operations pass through
-        if tool_name == "cronjob" and args.get("action") in ("list", "run"):
-            return None
+            # Cronjob read operations pass through
+            if tool_name == "cronjob" and args.get("action") in ("list", "run"):
+                return None
 
-        # Check for active governance lock (Phase 1 exact + Phase 2 scan)
-        if _has_governance_lock(hermes_session_id):
-            return None
+            # Check for active governance lock (Phase 1 exact + Phase 2 scan)
+            if _has_governance_lock(hermes_session_id):
+                return None
 
-        # BLOCKED
-        if tool_name == "terminal":
-            extra = "\n  Command preview: " + str(args.get('command', ''))[:120] + "..."
-        elif tool_name == "cronjob":
-            extra = "\n  Action: " + str(args.get('action', ''))
-        else:
-            extra = ""
+            # BLOCKED
+            if tool_name == "terminal":
+                extra = "\n  Command preview: " + str(args.get('command', ''))[:120] + "..."
+            elif tool_name == "cronjob":
+                extra = "\n  Action: " + str(args.get('action', ''))
+            else:
+                extra = ""
 
-        return {
-            "action": "block",
-            "message": (
-                "GOVERNANCE LOCK REQUIRED\n\n"
-                "Tool '" + tool_name + "' modifies system state" + extra + "\n\n"
-                "This repo requires an active governance lock.\n"
-                "Call begin_change() first:\n"
-                "  mcp_loop_governance_begin_change(\n"
-                '    task_id="<short-description>",\n'
-                '    description="<what this does>"\n'
-                "  )\n\n"
-                "After the change, score and release:\n"
-                '  mcp_loop_governance_cycle_query(task_id="<task>")\n'
-                '  mcp_loop_governance_feedback_accept(cycle_id=N, note="verified: ...")\n'
-                '  mcp_loop_governance_end_change(task_id="<task>")\n\n'
-                "This enforcement comes from ~/.hermes/plugins/governance-enforcer/.\n"
-                "Lock files are scoped per git repo — two repos can govern independently.\n"
-                "I cannot bypass or disable this mid-session."
-            ),
-        }
+            return {
+                "action": "block",
+                "message": (
+                    "GOVERNANCE LOCK REQUIRED\n\n"
+                    "Tool '" + tool_name + "' modifies system state" + extra + "\n\n"
+                    "This repo requires an active governance lock.\n"
+                    "Call begin_change() first:\n"
+                    "  mcp_loop_governance_begin_change(\n"
+                    '    task_id="<short-description>",\n'
+                    '    description="<what this does>"\n'
+                    "  )\n\n"
+                    "After the change, score and release:\n"
+                    '  mcp_loop_governance_cycle_query(task_id="<task>")\n'
+                    '  mcp_loop_governance_feedback_accept(cycle_id=N, note="verified: ...")\n'
+                    '  mcp_loop_governance_end_change(task_id="<task>")\n\n'
+                    "This enforcement comes from ~/.hermes/plugins/governance-enforcer/.\n"
+                    "Lock files are scoped per git repo — two repos can govern independently.\n"
+                    "I cannot bypass or disable this mid-session."
+                ),
+            }
+        except Exception:
+            log.error("Governance enforcer crashed:\n%s", traceback.format_exc())
+            return {
+                "action": "block",
+                "message": (
+                    "GOVERNANCE ENFORCER CRASHED — ALL WRITES BLOCKED\n\n"
+                    "The enforcer plugin encountered an internal error and "
+                    "cannot verify governance state.\n\n"
+                    "All write operations are blocked until the enforcer "
+                    "is reloaded or fixed.\n"
+                    "Check Hermes logs for the full traceback.\n"
+                    "This is a safety measure — the enforcer always fails closed."
+                ),
+            }
 
     ctx.register_hook("pre_tool_call", pre_tool_call_hook)
