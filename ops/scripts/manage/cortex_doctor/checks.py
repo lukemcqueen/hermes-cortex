@@ -92,6 +92,24 @@ def check_repo(res):
 
     hermes_agents = Path.home() / ".hermes" / "AGENTS.md"
     repo_agents = CORTEX_REPO / "AGENTS.md"
+
+    # ── Deploy sync: is git HEAD deployed to runtime? ──
+    update_commit_file = CORTEX_HOME / "state" / "update-commit"
+    if update_commit_file.exists():
+        deployed_commit = update_commit_file.read_text().strip()
+        head_commit = run_bg(["git", "-C", str(CORTEX_REPO), "rev-parse", "HEAD"])
+        if deployed_commit and head_commit and deployed_commit != head_commit:
+            n_new = run_bg(["git", "-C", str(CORTEX_REPO), "rev-list", "--count", f"{deployed_commit}..HEAD"])
+            res.add("Deploy sync", "FAIL",
+                    f"HEAD ({head_commit[:12]}) ahead of last deploy ({deployed_commit[:12]}) — {n_new or '?'} commit(s) not deployed",
+                    "REQUIRED: Run: cortex-update.sh --force-all")
+        else:
+            res.add("Deploy sync", "PASS", "deployed commit matches HEAD")
+    else:
+        res.add("Deploy sync", "WARN", "state/update-commit not found — deploy status unknown",
+                "Run: cortex-update.sh --force-all (creates state/update-commit)")
+
+    hermes_agents = Path.home() / ".hermes" / "AGENTS.md"
     if not hermes_agents.exists():
         res.add("AGENTS.md sync", "WARN", "~/.hermes/AGENTS.md missing",
                 "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")

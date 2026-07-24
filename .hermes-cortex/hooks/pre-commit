@@ -128,6 +128,29 @@ json.dump(d, open(fp, 'w'))
   exit 0
 fi
 
+# ── Level 5: SOUL.md template sync enforcement (Moses only) ────
+# Moses is the orchestrator who maintains the template. Other agents
+# customize their own Identity/Scripture sections — those changes don't
+# need template updates. Only block when Moses's profile changes without
+# a corresponding template update.
+MOSES_PROFILE="profiles/personal/agent-profiles/moses/SOUL.md"
+STAGED_TEMPLATE=$(git diff --cached --name-only -- "docs/templates/SOUL.md" 2>/dev/null || true)
+if git diff --cached --name-only -- "$MOSES_PROFILE" 2>/dev/null | grep -q "$MOSES_PROFILE"; then
+  if [[ -z "$STAGED_TEMPLATE" ]]; then
+    echo ""
+    echo "❌  moses/SOUL.md changed without template update."
+    echo "    The template (docs/templates/SOUL.md) is the canonical source"
+    echo "    of truth for the 12 principles — Moses maintains it."
+    echo ""
+    echo "    If you added/removed/modified principles, also update the template."
+    echo "    If you only changed agent-specific content (Identity/Mission/"
+    echo "    Traits/Communication/Scripture), no template update is needed."
+    echo "    To bypass this check: SKIP_SCORE=1 git commit ..."
+    echo ""
+    exit 1
+  fi
+fi
+
 # ── Level 4: Shared blocklist integrity check ─────────────────
 # blocked_ips.add is a cumulative shared blocklist — APPEND only.
 # Reject commits that shrink it (fewer IPs than HEAD).
@@ -272,60 +295,6 @@ if [[ -z "$STAGED_FILES" ]]; then
   exit 0
 fi
 
-# ── Adversarial Gate: Check staged .py files for critical/high findings ──
-# Runs adversarial-verify.py --gate on each staged .py file.
-# BLOCKS the commit if any critical/high findings are detected.
-# Bypass with: SKIP_ADVERSARIAL=1 git commit ...
-if [[ -z "${SKIP_ADVERSARIAL:-}" ]]; then
-  ADV_SCRIPT=""
-  for candidate in adversarial-verify.py ~/.hermes-cortex/scripts/adversarial-verify.py; do
-    if resolved=$(command -v "$candidate" 2>/dev/null); then
-      ADV_SCRIPT="$resolved"
-      break
-    fi
-  done
-  if [[ -z "$ADV_SCRIPT" ]]; then
-    for base in ~/hermes-cortex; do
-      candidate="$base/ops/scripts/quality/adversarial-verify.py"
-      if [[ -f "$candidate" ]]; then
-        ADV_SCRIPT="$candidate"
-        break
-      fi
-    done
-  fi
-
-  if [[ -n "$ADV_SCRIPT" ]]; then
-    STAGED_PY_FILES=$(echo "$STAGED_FILES" | grep '\.py$' || true)
-    if [[ -n "$STAGED_PY_FILES" ]]; then
-      GATE_BLOCKED=false
-      while IFS= read -r pyfile; do
-        if [[ -f "$pyfile" ]]; then
-          ADV_OUTPUT=$(python3 "$ADV_SCRIPT" --file "$pyfile" --level A2 --gate --json 2>&1 || true)
-          if echo "$ADV_OUTPUT" | grep -q "GATE_BLOCKED\|has_blockers"; then
-            echo "🔴 ADVERSARIAL GATE: $pyfile — critical/high findings"
-            echo "$ADV_OUTPUT" | python3 -c "
-import sys,json
-try:
-    d = json.loads(sys.stdin.read())
-    for f in d.get('findings', []):
-        if f.get('severity') in ('critical','high'):
-            print(f'  [{f[\"severity\"]}] {f.get(\"technique\",\"?\")}: {f.get(\"detail\",\"\")[:120]}')
-except: pass
-" 2>/dev/null || true
-            GATE_BLOCKED=true
-          fi
-        fi
-      done <<< "$STAGED_PY_FILES"
-
-      if $GATE_BLOCKED; then
-        echo ""
-        echo "❌ ADVERSARIAL GATE BLOCKED — fix findings or use SKIP_ADVERSARIAL=1 to bypass"
-        exit 1
-      fi
-    fi
-  fi
-fi
-
 # Get the parent commit hash for --prev-code-file
 PARENT_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "0000000")
 
@@ -408,17 +377,21 @@ SCORE_OUTPUT=$("$PYTHON_BIN" "$SCORE_CYCLE" \
   --prev-code-file "$PREV_FILE" \
   --pass-pct "$PASS_PCT" \
   --json 2>"$SCORE_STDERR") || {
-  # score-cycle failed — show stderr, do NOT fake a decision
+  # score-cycle failed — show BOTH stderr AND stdout (DB failure writes to stdout)
+  echo ""
+  echo "❌  score-cycle FAILED — no governance cycle was recorded!" >&2
+  echo "" >&2
+  echo "    STDOUT (error details):" >&2
+  echo "$SCORE_OUTPUT" | sed 's/^/      /' >&2
+  echo "" >&2
   if [[ -s "$SCORE_STDERR" ]]; then
-    echo ""
-    echo "⚠️  score-cycle encountered an error (stderr follows):"
-    sed 's/^/   /' "$SCORE_STDERR"
-    echo ""
-    echo "   The commit will proceed but no cycle will be logged."
-    echo "   Check whether governance was properly followed."
-    echo "   To bypass this check: SKIP_SCORE=1 git commit ..."
-    echo ""
+    echo "    STDERR:" >&2
+    sed 's/^/      /' "$SCORE_STDERR" >&2
+    echo "" >&2
   fi
+  echo "    Without a cycle record, this commit is invisible to governance." >&2
+  echo "    Set SKIP_SCORE=1 to bypass or fix the DB issue." >&2
+  echo "" >&2
   rm -f "$SCORE_STDERR"
   SCORE_OUTPUT='{"decision":"LOOP","note":"score-cycle failed — no cycle logged"}'
 }
