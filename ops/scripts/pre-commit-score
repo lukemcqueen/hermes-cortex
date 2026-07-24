@@ -398,7 +398,7 @@ else:
 CYCLE_NUM=$((PREV_CYCLE + 1))
 
 SCORE_STDERR=$(mktemp)
-SCORE_OUTPUT=$("$PYTHON_BIN" "$SCORE_CYCLE" \
+SCORE_OUTPUT=$(timeout 30 "$PYTHON_BIN" "$SCORE_CYCLE" \
   --task "$TASK_ID" \
   --cycle "$CYCLE_NUM" \
   --code-file "$CODE_FILE" \
@@ -442,16 +442,27 @@ if [[ -z "${SKIP_CHANGE_VALIDATE:-}" ]] && [[ -f "$REPO_ROOT/ops/scripts/change-
   bash "$REPO_ROOT/ops/scripts/change-validate.sh"
 fi
 
-# ── Adversarial scan (code changes only, A2 level) ──────────
-# Auto-runs on every commit so agents don't forget. Failures are
-# advisory (A2 is surface analysis, not gate) but violations are logged.
+# ── Adversarial scan (staged files only, A2 level) ──────────
+# Auto-runs on every commit so agents don't forget. Only scans the
+# staged Python files to avoid the full-repo timeout (~60s+).
+# Failures are advisory (A2 is surface analysis, not gate).
 ADVERSARIAL_SCRIPT="$REPO_ROOT/ops/scripts/quality/adversarial-verify.py"
 if [[ -f "$ADVERSARIAL_SCRIPT" ]] && [[ -z "${SKIP_ADVERSARIAL:-}" ]]; then
-  ADV_OUTPUT=$(python3 "$ADVERSARIAL_SCRIPT" --dir "$REPO_ROOT" --level A2 --gate 2>&1 || true)
-  ADV_EXIT=$?
-  if [[ "$ADV_EXIT" -ne 0 ]]; then
-    echo "$ADV_OUTPUT" | grep -E "❌|FAIL|CRITICAL" | head -5 | sed 's/^/   /' || true
-    echo "⚠️  Adversarial scan flagged issues. Review above."
+  ADV_ISSUES=0
+  while IFS= read -r adv_file; do
+    case "$adv_file" in
+      *.py|*.sh)
+        ADV_OUTPUT=$(python3 "$ADVERSARIAL_SCRIPT" --file "$REPO_ROOT/$adv_file" --level A2 --gate 2>&1 || true)
+        if echo "$ADV_OUTPUT" | grep -qE "❌|FAIL|CRITICAL"; then
+          ADV_ISSUES=$((ADV_ISSUES + 1))
+          echo "   ⚠️  $adv_file:" | sed 's/^/   /'
+          echo "$ADV_OUTPUT" | grep -E "❌|FAIL|CRITICAL" | head -3 | sed 's/^/      /' || true
+        fi
+        ;;
+    esac
+  done <<< "$STAGED_FILES"
+  if [[ "$ADV_ISSUES" -gt 0 ]]; then
+    echo "⚠️  Adversarial scan flagged issues in ${ADV_ISSUES} file(s). Review above."
     echo "   To bypass: SKIP_ADVERSARIAL=1 git commit ..."
     echo ""
   fi

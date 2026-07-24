@@ -1329,6 +1329,28 @@ main() {
     check_each_mapped_file "delta"
   fi
 
+  # ── Clear stale __pycache__ for updated Python plugin files ──
+  # When a plugin source (.py) is updated via symlink, Python's .pyc
+  # bytecode cache can remain stale, loading old code on the next
+  # import. Clear any __pycache__ dirs in plugin directories.
+  for entry in "${MAP[@]}"; do
+    IFS='|' read -r src dest _ <<< "$entry"
+    if [[ "$dest" == *"/plugins/"* ]] && [[ "$src" == *.py ]]; then
+      plugin_dir="$(dirname "$dest")"
+      pycache_dir="${plugin_dir}/__pycache__"
+      if [[ -d "$pycache_dir" ]]; then
+        rm -rf "$pycache_dir"
+        info "Cleared stale pycache: ${pycache_dir/$HOME/\~}"
+      fi
+    fi
+  done
+  # Also clear pycache for the governance enforcer plugin (symlinked, not in MAP)
+  enforcer_pycache="${REPO_DIR}/plugins/hermes-governance-enforcer/__pycache__"
+  if [[ -d "$enforcer_pycache" ]]; then
+    rm -rf "$enforcer_pycache"
+    info "Cleared stale pycache: plugins/hermes-governance-enforcer"
+  fi
+
   # Update symlinks if any web-cache or offline files changed
   update_symlinks
 

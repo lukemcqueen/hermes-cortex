@@ -398,7 +398,7 @@ else:
 CYCLE_NUM=$((PREV_CYCLE + 1))
 
 SCORE_STDERR=$(mktemp)
-SCORE_OUTPUT=$("$PYTHON_BIN" "$SCORE_CYCLE" \
+SCORE_OUTPUT=$(timeout 30 "$PYTHON_BIN" "$SCORE_CYCLE" \
   --task "$TASK_ID" \
   --cycle "$CYCLE_NUM" \
   --code-file "$CODE_FILE" \

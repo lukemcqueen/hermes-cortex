@@ -1155,6 +1155,21 @@ def check_governance(res):
             target = os.readlink(str(plugin_dir))
             if plugin_src.exists() and str(plugin_src) in target:
                 res.add("Plugin symlink", "PASS", f"symlinked to {target}")
+                # Check for stale __pycache__ — source .py newer than .pyc
+                pycache_dir = plugin_src / "__pycache__"
+                if pycache_dir.exists():
+                    stale_count = 0
+                    for pyc in pycache_dir.glob("*.pyc"):
+                        py_name = pyc.name.rsplit(".", 2)[0] + ".py"
+                        py_source = plugin_src / py_name
+                        if py_source.exists() and pyc.stat().st_mtime < py_source.stat().st_mtime:
+                            stale_count += 1
+                    if stale_count:
+                        res.add("Plugin pycache", "WARN",
+                                f"{stale_count} stale .pyc file(s) — source is newer than compiled cache",
+                                f"Run: rm -rf {pycache_dir} && /reset (new session)")
+                    else:
+                        res.add("Plugin pycache", "PASS", "no stale .pyc files")
             else:
                 res.add("Plugin symlink", "WARN",
                         f"symlinked to {target} (not ~/hermes-cortex/.hermes-cortex/...)",

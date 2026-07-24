@@ -567,6 +567,64 @@ is accepted by the new enforcer as valid — you can finish your work and call
 3. **The file system is the lock** — the governance lock is a file on disk. Any process on the same filesystem that reads it can enforce policy based on it. Processes on different filesystems can't — and that's a feature (remote backends block everything).
 4. **Plugins compose** — multiple plugins can register `pre_tool_call` handlers. First block wins. This means you can layer security policies (Docker policy + governance + rate limiting) as independent plugins.
 5. **Plugin changes require restart** — no hot-reload. Always `/reset` after installing or modifying a plugin.
+
+## Session ID Handoff Architecture
+
+The enforcer and the MCP loop-governance server must agree on the session ID
+to discover lock files. They use a **bridge file** mechanism:
+
+### Data flow
+
+```
+Hermes session starts
+  → kwargs['session_id'] = 'sess_20260724_123456_abc123'  (with 'sess_' prefix)
+  → Enforcer pre_tool_call fires on every tool call
+    → _write_session_marker(hermes_session_id) writes:
+        1. ~/.hermes-cortex/state/.hermes-session-current.id  (primary bridge)
+        2. ~/.hermes-cortex/state/.hermes-session-{pid}.id     (PID fallback)
+        3. ~/.hermes/session.id                                (MCP cache fallback)
+  → MCP get_session_id() reads Priority 1:
+        1. .hermes-session-current.id    ← primary (written by enforcer)
+        2. .hermes-session-{pid}.id      ← PID scan (legacy fallback)
+        3. ~/.hermes/session.id          ← cached (final fallback)
+        4. Generate new UUID             ← no enforcer present (first tool call?)
+```
+
+### Critical rules
+
+1. **The session ID always has the `sess_` prefix** — kwargs delivers it as
+   `sess_20260724_...`. The bridge files and lock files use this exact format.
+2. **`$HERMES_SESSION_ID` env var should NOT be used** — its format has no
+   `sess_` prefix, so using it would create lock files the enforcer can't find.
+3. **The bridge file is written on EVERY pre_tool_call** — not just on write tools.
+   This ensures the MCP can discover the session ID even on the first tool call.
+4. **Stale `__pycache__` can hide old enforcer code** — after updating the enforcer
+   source, run: `rm -rf plugins/hermes-governance-enforcer/__pycache__ && /reset`
+   The doctor warns about this automatically via the "Plugin pycache" check.
+
+### Diagnostic: session ID mismatch
+
+If you see "No active governance session" when a lock file clearly exists:
+
+```bash
+# Check what session ID the enforcer is using
+cat ~/.hermes-cortex/state/.hermes-session-current.id
+
+# List all lock files
+ls ~/.hermes-cortex/state/.governance-*.json
+
+# If the filename (sess_<id>) doesn't match the bridge file content,
+# the handoff is broken. Run cortex-update to clear pycache and fix.
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all
+```
+
+### Root causes of drift
+
+| Cause | Symptom | Fix |
+|-------|---------|-----|
+| Stale .pyc cache | Old enforcer code runs with old session ID logic | `rm -rf __pycache__ && /reset` |
+| Bridge file not written | MCP falls back to PID scan, finds wrong session | Check OSError logs in enforcer |
+| `$HERMES_SESSION_ID` env var used as Priority 1 | Lock filename has no `sess_` prefix | Ensure bridge file is Priority 1 (committed in loop-gov-mcp.py)
 6. **The agent cannot bypass this** — because the block comes from the Hermes runtime (Python process), not from the model's output or SOUL.md text, the agent cannot talk its way out of it.
 7. **Every agent needs it** — if only one agent has the plugin, the others can freely skip governance. The source of truth is the repo; deploy the symlink to every agent.
 8. **Bypass coverage is structural, not complete** — the enforcer covers all built-in Hermes tools and common shell bypass patterns. It cannot intercept MCP tools (separate process), but no MCP tool currently allows arbitrary file writes.
