@@ -17,8 +17,9 @@ import sys
 
 # Template H2 sections — anything outside these is project-specific
 TEMPLATE_H2 = {
-    'Quick Reference', 'Project', 'Convention', 'Skill loading',
-    'Commands', 'Agent Contract', 'Loop Governance', 'Project Notes',
+    'Quick Reference', 'Quick Start', 'Conventions',
+    'Architecture', 'Project Rules',
+    'Relationship to SOUL.md', 'Agent Notes',
 }
 
 

@@ -117,7 +117,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 
 | Doc | Description |
 |-----|-------------|
-| `docs/templates/AGENTS.seed.md` | AGENTS.md seed template — agent contract, loop governance, skill loading |
+| `docs/templates/AGENTS.seed.md` | AGENTS.md seed template — project context, conventions, SOUL.md relationship principles |
 | `docs/templates/skills.yaml` | Skills manifest seed template — always + on_task sections |
 | `docs/templates/USER.seed.md` | User profile seed template — preferences, context, projects |
 | `docs/templates/memory-readme.seed.md` | Memory scoring rubric seed — compact version of memory/README.md |
