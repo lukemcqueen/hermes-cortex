@@ -54,6 +54,7 @@ def _read_config_from_bus_conf(key: str) -> str:
                 val = line.split("=", 1)[1].strip().strip("\"'")
                 return val
     except OSError:
+        log.warning("Could not read config file: %s", CONFIG_FILE)
         pass
     return ""
 
@@ -206,19 +207,21 @@ def check_dev_repo_agents(res):
 
 
 def _extract_soul_markers(path):
-    """Extract all named bold-marker sub-points from a SOUL.md's Behavioral Principles section.
-    Returns a set of marker strings (e.g. 'Do real work', 'Verify every claim')."""
+    """Extract all bold-marker sub-points from a SOUL.md file (across all sections).
+    Returns a set of marker strings (e.g. 'Do real work', 'Proactive', 'Orchestrator')."""
     if not path.exists():
         return set()
     text = path.read_text()
-    # Find the Behavioral Principles section
-    m = re.search(r'## Behavioral Principles\n(.*?)(?=\n## Scripture|\n## Final Directive|\n## Patterns|$)', text, re.DOTALL)
-    if not m:
-        return set()
-    principles_text = m.group(1)
-    # Extract all **bold** markers from list items
+    # Find the content after the frontmatter/YAML header (--- ... ---)
+    main_start = 0
+    if text.startswith('---'):
+        end = text.find('---', 3)
+        if end != -1:
+            main_start = end + 3
+    content = text[main_start:]
+    # Extract all **bold** markers from list items anywhere in the file
     markers = set()
-    for line in principles_text.split('\n'):
+    for line in content.split('\n'):
         # Match: - **Marker** — description
         bm = re.search(r'^\s*-\s+\*\*([^*]+)\*\*', line)
         if bm:
@@ -237,7 +240,7 @@ def check_soul_sync(res):
     template_markers = _extract_soul_markers(template)
     template_count = len(template_markers)
 
-    def _check_one(label, path, fix_hint_prefix):
+    def _check_one(label, path, fix_hint_prefix, agent_name=None):
         """Check a single SOUL.md against the template."""
         if not path.exists():
             res.add(f"SOUL.md sync ({label})", "FAIL", f"{path} missing",
@@ -247,8 +250,17 @@ def check_soul_sync(res):
         agent_markers = _extract_soul_markers(path)
         agent_count = len(agent_markers)
 
+        # Filter out orchestrator-only markers for non-orchestrator agents
+        # Orchestrators: moses, esther (identified by hostname in fleet convention)
+        orchestrators = {"moses", "esther"}
+        is_orchestrator = agent_name in orchestrators if agent_name else False
+        effective_template = template_markers
+        if not is_orchestrator and "Orchestrator" in effective_template:
+            effective_template = {m for m in template_markers if m != "Orchestrator"}
+        effective_t_count = len(effective_template)
+
         # Check principle count first
-        if template_count > agent_count + 2:  # allow small variance for agent-specific bullets
+        if effective_t_count > agent_count + 2:  # allow small variance for agent-specific bullets
             missing = template_count - agent_count
             res.add(f"SOUL.md sync ({label})", "FAIL",
                     f"Template has {template_count} markers, {path.name} has {agent_count} — {missing} missing",
@@ -256,7 +268,7 @@ def check_soul_sync(res):
             return
 
         # Check for missing content markers
-        missing_markers = template_markers - agent_markers
+        missing_markers = effective_template - agent_markers
         if missing_markers:
             # Filter out agent-specific sub-points that don't apply
             # (e.g. agent-specific maintainer instructions)
@@ -272,9 +284,11 @@ def check_soul_sync(res):
         res.add(f"SOUL.md sync ({label})", "PASS")
 
     # Check deployed copy
+    hostname = os.uname().nodename.split('.')[0]  # e.g. 'esther' or 'gisu'
     hermes_soul = Path.home() / ".hermes" / "SOUL.md"
     _check_one("~/.hermes", hermes_soul,
-               "cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md && customize for your role")
+               "cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md && customize for your role",
+               agent_name=hostname)
 
     # Check ALL agent profiles in the repo
     profiles_dir = CORTEX_REPO / "profiles" / "personal" / "agent-profiles"
@@ -284,7 +298,8 @@ def check_soul_sync(res):
                 soul_path = profile_path / "SOUL.md"
                 agent_name = profile_path.name
                 _check_one(f"repo:{agent_name}", soul_path,
-                          f"cp ~/.hermes/SOUL.md {soul_path} (sync deployed → repo)")
+                          f"cp ~/.hermes/SOUL.md {soul_path} (sync deployed → repo)",
+                          agent_name=agent_name)
 
 
 def check_skills(res):
