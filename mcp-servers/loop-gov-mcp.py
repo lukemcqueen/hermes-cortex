@@ -148,16 +148,12 @@ def get_session_id() -> str:
 # ── Governance Lock Path ─────────────────────────────────────
 
 def _derive_slug() -> str:
-    """Derive repo slug deterministically — no cwd or git PATH dependency.
+    """Derive repo slug matching the enforcer plugin's approach.
 
-    Checks the canonical repo locations for a .git directory and uses
-    the directory name directly. This slug is stored in the lock content
-    for the enforcer to match against — the lock filename is session-scoped.
+    Uses git rev-parse from cwd first (matching the enforcer's
+    _derive_repo_slug()), then falls back to canonical repo dirs.
+    Both phases of the enforcer's lock discovery now agree on slug.
     """
-    for candidate in [HOME / "hermes-cortex", HOME / ".hermes-cortex"]:
-        if (candidate / ".git").exists():
-            return candidate.name
-    # Last resort: try git rev-parse from cwd
     try:
         repo_root = subprocess.check_output(
             ["git", "rev-parse", "--show-toplevel"],
@@ -165,7 +161,11 @@ def _derive_slug() -> str:
         ).decode().strip()
         return Path(repo_root).name
     except Exception:
-        return "generic"
+        pass
+    for candidate in [HOME / "hermes-cortex", HOME / ".hermes-cortex"]:
+        if (candidate / ".git").exists():
+            return candidate.name
+    return "generic"
 
 
 def _session_lock_path(session_id: str) -> Path:

@@ -286,6 +286,23 @@ def register(ctx):
         r"^\s*(systemctl)\s+(is-active|is-enabled|status|list-units)",
     ]
 
+    # ── Session-started hook ───────────────────────────────────
+    def on_session_start_hook(**kwargs: Any) -> None:
+        """Write PID-scoped marker at session start.
+
+        Fires exactly once when a new Hermes session begins. This ensures the
+        marker file exists before any MCP tool call (including begin_change),
+        so the MCP server can learn the correct Hermes session ID via the
+        PID handoff mechanism.
+        """
+        hermes_session_id = kwargs.get("session_id", "")
+        if hermes_session_id:
+            _write_session_marker(hermes_session_id)
+
+    ctx.register_hook("on_session_start", on_session_start_hook)
+
+    # ── Pre-tool-call hook ────────────────────────────────────
+
     def pre_tool_call_hook(
         tool_name: str = "",
         args: Optional[Dict[str, Any]] = None,
@@ -295,6 +312,15 @@ def register(ctx):
             return None
 
         args = args or {}
+
+        # ── ALWAYS write PID-scoped marker ──
+        # Write on EVERY tool call so the MCP server's get_session_id() can
+        # discover the Hermes session ID via the PID handoff at any point.
+        # This guarantees that mcp__loop_governance__begin_change finds the
+        # correct marker on the very first tool call of a session.
+        hermes_session_id = kwargs.get("session_id", "")
+        if hermes_session_id:
+            _write_session_marker(hermes_session_id)
 
         if not _is_write_tool(tool_name, args):
             return None
@@ -309,11 +335,6 @@ def register(ctx):
         # Cronjob read operations pass through
         if tool_name == "cronjob" and args.get("action") in ("list", "run"):
             return None
-
-        # Extract Hermes session ID and write PID-scoped marker
-        hermes_session_id = kwargs.get("session_id", "")
-        if hermes_session_id:
-            _write_session_marker(hermes_session_id)
 
         # Check for active governance lock (Phase 1 exact + Phase 2 scan)
         if _has_governance_lock(hermes_session_id):
