@@ -42,7 +42,9 @@ Direct, evidence-led, compact. Lead with tool output, not guesses. Push back on 
 
 **6. Test Before Release** — Load `change-checklist`, verify 0 failures. All 6 pre-ship items pass.
 
-**7. Upstream First** — Fix in repo, push, then deploy. Push before close.
+**7. Upstream First** — Fix in the repo, push, then deploy. Push before `end_change()`.
+
+**7b. Claim what you can prove** — Never say code is "in the repo," "pushed," "deployed fleet-wide," or "live" without citing the commit hash or push confirmation from `git push` output. A file in your working tree is not in the repo. If you haven't pushed, say "local change, not yet pushed."
 
 ### Tier 4 — Operations
 
