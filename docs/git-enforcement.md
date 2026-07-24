@@ -18,10 +18,13 @@ catches ALL changes at the Hermes tool level.
 
 ## What This Is
 
-Two git hooks that assist common workflow practices in a multi-agent repo:
+Two git hooks that enforce the governance workflow in a multi-agent repo:
 
-- **pre-commit** — automatically logs a scoring cycle on every commit (secondary logger)
-- **pre-push** — ensures local `main` isn't behind `origin/main` before allowing a push
+- **pre-commit** — automatically logs a scoring cycle on every commit (secondary logger). Now scores ALL staged files, not just the first.
+- **pre-push** — three checks before allowing a push:
+  1. **Governance lock** — requires an active `begin_change()` session
+  2. **Verification gate** — requires `.verification-done` marker (agent must test the change)
+  3. **Pull-before-push** — ensures local `main` isn't behind `origin/main`
 
 They're part of the Agent Execution Contract (rules #10 and #13) and apply to every agent and human working on `hermes-cortex`.
 
@@ -40,16 +43,29 @@ Runs `score-cycle` on staged changes for **automatic DB logging**. Enforcement o
 | 0    | Scored (or skipped, or score-cycle absent) | Commit proceeds |
 | 1    | `score-cycle` failed unrecoverably | Check loop-governance setup |
 
-### `pre-push` (rule #13: Pull Before Push, Always)
+### `pre-push` (rules #13 + verification gate)
 
 Source: `ops/scripts/pre-push-pull`
 
-Fetches `origin/main` and checks if your local branch is behind. Only blocks on `main` — feature branches pass through.
+**Workflow order — verification happens BEFORE push, not during:**
+
+1. Make changes under governance (begin_change → work)
+2. **Test the change** — run the actual changed code path and confirm it works
+3. **Create verification marker:** `touch ~/.hermes-cortex/state/.verification-done`
+4. Push — the hook then enforces three checks:
+
+   | # | Check | Blocks if |
+   |---|-------|-----------|
+   | 1 | Governance lock | No active `begin_change()` session for this repo |
+   | 2 | Verification gate | `.verification-done` marker missing (was step 3 skipped?) |
+   | 3 | Pull-before-push | Local `main` is behind `origin/main` |
+
+   On success, the marker is consumed. Next push needs a fresh marker.
 
 | Exit | Meaning | Next step |
 |------|---------|-----------|
-| 0    | Local is up to date (or not `main`) | Push proceeds |
-| 1    | Local is N commits behind remote | `git pull --rebase origin main`, then push |
+| 0    | All checks passed + marker consumed | Push proceeds |
+| 1    | Any check failed | Fix the issue shown in the error message |
 
 ---
 
@@ -71,23 +87,23 @@ bash ops/scripts/install/install-score-hook.sh --check
 bash ops/scripts/install/install-score-hook.sh --remove
 ```
 
-The installer copies the source scripts into `.git/hooks/` as standalone files (not symlinks). Re-run it after cloning a fresh copy of the repo.
+The installer deploys the source scripts to `~/.hermes-cortex/scripts/` and `cortex-update.sh` creates symlinks from `.hermes-cortex/hooks/` to those scripts. This means git pull + cortex-update keeps hooks current without manual re-install.
 
 ---
 
 ## Bypass Mechanisms
 
-Emergency bypasses — use only when a hook is causing a false positive:
+Emergency bypass — use only when a hook is causing a false positive:
 
 ```bash
-# Skip pre-commit scoring
-SKIP_SCORE=1 git commit -m "..."
-
-# Skip pre-push pull check
-SKIP_PRE_PUSH=1 git push
+# Bypass all hooks (pre-commit + pre-push)
+git commit --no-verify -m "..."
+git push --no-verify
 ```
 
-These are documented in AGENTS.md rule #13 and mentioned in each hook's header comment. They're meant for lockstep merges or CI/CD flows where the pull was already handled upstream.
+Using `--no-verify` is logged to `no-verify-audit` cron and auditable. It's a conscious choice, not an invisible escape hatch. Pre-commit `SKIP_SCORE=1`, `SKIP_ADVERSARIAL`, and pre-push `SKIP_PRE_PUSH=1` bypass flags have all been removed — no env-var bypasses.
+
+These are documented in AGENTS.md rule #13 and mentioned in each hook's header comment.
 
 ---
 
@@ -108,8 +124,9 @@ If you're an agent working on this repo:
 |---------|-------|-----|
 | Push blocked even though I just pulled | Remote received new commits since your last fetch | `git pull --rebase origin main` |
 | `score-cycle` not found warning | `loop-governance` tools not installed | `bash ~/hermes-cortex/core/governance/setup.sh` |
-| Hook not running at all | Hook not copied into `.git/hooks/` | Re-run `install-score-hook.sh` |
-| Bypass env var not working | Exported in wrong shell or subprocess | Prefix directly: `SKIP_PRE_PUSH=1 git push` |
+| Hook not running at all | Hook not symlinked into `.hermes-cortex/hooks/` | Re-run `cortex-update.sh --force-all` |
+| `❌ Push blocked: change has not been verified` | `.verification-done` marker missing | Test the change, then `touch ~/.hermes-cortex/state/.verification-done` |
+| `❌ Push blocked: no active governance lock` | No `begin_change()` session for this repo | Call `begin_change(task_id, description)` first |
 
 ---
 

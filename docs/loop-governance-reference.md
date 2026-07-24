@@ -84,6 +84,9 @@ bash ~/.hermes-cortex/tools/loop-governance/verify.sh
 | Layer | What | How to install | Bypass |
 |-------|------|---------------|--------|
 | **Governance enforcer plugin** | **Primary** — blocks write tools at Hermes runtime via `pre_tool_call` hook | `ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/` + `/reset` | `allow_tool_override: true` (human override in config) |
-| Pre-commit hook | Runs `score-cycle` on every `git commit` | `bash ~/.hermes/scripts/install-score-hook.sh --all` | `SKIP_SCORE=1` (abuse detection) |
+| **Survey-before-cron gate** (enforcer plugin) | Blocks `cronjob(action='create')` unless `.cron-survey-done` marker exists. Agent must run `cronjob(list)` + `search_files()` + `skills_list()` first. | Ships with enforcer plugin. Activated on next `/reset` after git pull. | N/A (structural — cannot bypass mid-session) |
+| Pre-commit hook | Runs `score-cycle` on every `git commit` — now scores ALL staged files, not just the first. | `bash ~/.hermes/scripts/install-score-hook.sh --all` | `--no-verify` (logged to no-verify-audit cron) |
+| **Verification-before-push gate** (pre-push hook) | Blocks `git push` unless `.verification-done` marker exists. Agent must test the change before pushing. | Ships with pre-push hook (re-deployed by `cortex-update.sh`). | `--no-verify` (logged to no-verify-audit cron) |
+| Pre-push hook (secondary) | Pull-before-push check — blocks push if local `main` is behind `origin/main`. | Ships with pre-push hook. | `--no-verify` |
 | SOUL.md directive | Rule appears in every Hermes session's system prompt | Edit `~/.hermes/SOUL.md` | Remove the directive |
-| Cron auditor | `governance-auditor` scans every 6h for unscored changes + cleans stale locks (>12h) | Auto-created by `install-crons.sh` | N/A |
+| Cron auditor | `governance-auditor` scans every 6h for unscored changes + cleans stale locks (>12h) + now auto-scores unscoped files | Auto-created by `install-crons.sh` | N/A |
