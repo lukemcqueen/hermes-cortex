@@ -442,12 +442,33 @@ if [[ -z "${SKIP_CHANGE_VALIDATE:-}" ]] && [[ -f "$REPO_ROOT/ops/scripts/change-
   bash "$REPO_ROOT/ops/scripts/change-validate.sh"
 fi
 
-# ── Template guard: orchestrator-only ─────────────────────
-# Only orchestrator agents (moses, esther) can modify docs/templates/
-if echo "$STAGED_FILES" | grep -q "^docs/templates/"; then
+# ── Orchestrator-only paths guard ──────────────────────────
+# Only orchestrator agents (moses, esther) may modify these paths.
+# Non-orchestrators: commit changes from an orchestrator agent instead.
+ORCHESTRATOR_ONLY_PATHS=(
+  "^docs/templates/"
+  "^profiles/personal/agent-profiles/"
+  "^AGENTS\.md$"
+  "^ops/scripts/pre-commit-score$"
+  "^ops/scripts/install/"
+  "^ops/scripts/cortex-update\.sh$"
+  "^ops/scripts/manage/cortex_doctor/"
+  "^skills/"
+  "^tests/"
+  "test_.*\.py$"
+  ".*_test\.py$"
+  ".*_spec\.py$"
+)
+BLOCKED=""
+for pattern in "${ORCHESTRATOR_ONLY_PATHS[@]}"; do
+  if echo "$STAGED_FILES" | grep -qE "$pattern"; then
+    BLOCKED="$pattern"
+    break
+  fi
+done
+if [[ -n "$BLOCKED" ]]; then
   AGENT_TYPE="${AGENT_TYPE:-}"
   if [[ -z "$AGENT_TYPE" ]]; then
-    # Fallback: check hostname
     HOST="$(hostname -s 2>/dev/null || echo 'unknown')"
     case "$HOST" in
       moses|esther) AGENT_TYPE="orchestrator" ;;
@@ -456,10 +477,13 @@ if echo "$STAGED_FILES" | grep -q "^docs/templates/"; then
   fi
   if [[ "$AGENT_TYPE" != "orchestrator" ]]; then
     echo ""
-    echo "❌  Template modification blocked: docs/templates/ changes require orchestrator agent."
+    echo "❌  Orchestrator-only path blocked: ${BLOCKED}"
     echo "    Detected agent type: ${AGENT_TYPE:-unknown}"
-    echo "    Non-orchestrator agents may NOT modify template files."
-    echo "    Commit this change from an orchestrator agent (moses or esther) instead."
+    echo "    Non-orchestrator agents may NOT modify these paths:"
+    echo "      docs/templates/  profiles/  AGENTS.md"
+    echo "      pre-commit-score  install/  cortex-update.sh"
+    echo "      cortex_doctor/  skills/  tests/"
+    echo "    Commit this change from an orchestrator agent (moses or esther)."
     echo ""
     exit 1
   fi
