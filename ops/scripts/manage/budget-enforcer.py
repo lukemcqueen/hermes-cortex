@@ -13,11 +13,17 @@ Usage:
     budget-enforcer.py --threshold 0.8          # Alert at 80% of budget (default)
     budget-enforcer.py --json                   # Machine-readable output
 
-Exit codes:
-    0 — Under budget
-    1 — At/over budget (when --block)
-    2 — No budget data / agent not found
-"""
+|Exit codes:
+|    0 — Under budget
+|    1 — At/over budget (when --block)
+|    2 — No budget data / agent not found
+|
+|Watchdog mode (--watchdog):
+|    Quiet when under budget (empty stdout — nothing to report)
+|    Outputs alert when approaching or exceeding budget
+|    Always exits 0 (watchdog pattern — output IS the message)
+|    Use as: no_agent cron script for silent budget monitoring
+|"""
 
 import argparse
 import json
@@ -97,6 +103,8 @@ def main():
     parser.add_argument("--threshold", type=float, default=0.8,
                         help="Warning threshold as fraction of budget (default: 0.8)")
     parser.add_argument("--json", action="store_true", help="JSON output")
+    parser.add_argument("--watchdog", action="store_true",
+                        help="Watchdog mode: quiet when under budget, noisy when over (no_agent cron)")
     args = parser.parse_args()
 
     if not COST_DB.exists():
@@ -158,6 +166,25 @@ def main():
 
     if args.json:
         print(json.dumps(results, indent=2))
+        return
+
+    # Watchdog mode: quiet when under budget, noisy when over (no_agent cron pattern)
+    if args.watchdog:
+        any_alert = False
+        for r in results:
+            if r["over_budget"] or r["near_budget"]:
+                if not any_alert:
+                    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+                    print(f"[{ts}] budget-enforcer watchdog:")
+                    any_alert = True
+                icon = "🔴" if r["over_budget"] else "🟡"
+                status = "OVER BUDGET" if r["over_budget"] else f"Near budget (>={args.threshold*100:.0f}%)"
+                print(f"  {icon} {r['agent']} ({r['role']}) — {r['today_tokens']:,}/{r['daily_token_cap']:,} tokens ({r['usage_pct']:.1f}%) — {status}")
+        if not any_alert:
+            return  # silent — nothing to report (watchdog pattern)
+        print("")
+        print("  Budget enforcer is running in watchdog mode.")
+        print("  Use --block for hard enforcement (exit 1 when over budget).")
         return
 
     any_blocked = False

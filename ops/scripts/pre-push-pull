@@ -10,7 +10,7 @@
 #  or require a separate pull-rebase cycle.
 #
 #  Installed by: install-score-hook.sh
-#  Set SKIP_PRE_PUSH=1 to bypass:  SKIP_PRE_PUSH=1 git push
+#  No bypass flags — consistent with all other governance hooks.
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -41,16 +41,11 @@ fi
 if [[ "$LOCK_FOUND" -eq 0 ]]; then
   echo ""
   echo "❌  Push blocked: no active governance lock for this repository."
-  echo "    Call begin_change() before making changes, then push."
+  echo "    No bypass flags available — call begin_change() before making changes, then push."
   echo "    The lock file must exist at ~/.hermes-cortex/state/.governance-*.json"
   echo "    with repo_slug='$REPO_SLUG'."
-  echo "    Set SKIP_PRE_PUSH=1 to bypass:  SKIP_PRE_PUSH=1 git push"
   echo ""
   exit 1
-fi
-
-if [[ "${SKIP_PRE_PUSH:-}" == "1" ]]; then
-  exit 0
 fi
 
 # Get the remote and branch being pushed
@@ -75,7 +70,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   if ! git fetch origin "$branch" 2>/dev/null; then
     echo ""
     echo "❌  pre-push-pull: git fetch failed — cannot verify remote state."
-    echo "    Push blocked for safety. Set SKIP_PRE_PUSH=1 to bypass."
+    echo "    Push blocked for safety. No bypass flags available."
     echo ""
     exit 1
   fi
@@ -89,7 +84,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     echo "❌  pre-push-pull: Local branch '$branch' is $AHEAD commit(s) behind remote."
     echo "    Pull before push to avoid conflicts or lost changes:"
     echo "      git pull --rebase origin $branch"
-    echo "    Set SKIP_PRE_PUSH=1 to bypass:  SKIP_PRE_PUSH=1 git push"
+    echo "    No bypass flags available."
     echo ""
     exit 1
   fi

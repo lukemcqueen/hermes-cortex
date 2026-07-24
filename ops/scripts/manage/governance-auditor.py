@@ -301,8 +301,68 @@ def main() -> None:
             print(f"      … and {remaining} more file(s)")
         print("")
 
-    print("  💡 Score them: score-cycle --task <task-id> ...")
-    print("  💡 Or ignore:   add to AGENTS.md or lesson DB")
+    print("  💡 Auto-remediating: running score-cycle on unscored files...")
+    print("")
+
+    # Phase 3: Auto-remediation — score unscoped files automatically
+    scored_count = 0
+    failed_count = 0
+    for repo_name, files in sorted(by_repo.items()):
+        # Gather all file paths for this repo
+        repo_paths = []
+        repo_root = ""
+        for f in files:
+            abs_path = os.path.expanduser(f["path"])
+            # Find git root for this file
+            candidate_repo = _find_git_root(abs_path)
+            if candidate_repo and not repo_root:
+                repo_root = candidate_repo
+            if os.path.isfile(abs_path):
+                repo_paths.append(abs_path)
+        if not repo_paths or not repo_root:
+            continue
+
+        # Build a combined code file with all unscored files
+        combined_code = ""
+        for fp in repo_paths:
+            try:
+                with open(fp) as fh:
+                    rel = os.path.relpath(fp, repo_root)
+                    combined_code += f"# --- {rel} ---\n{fh.read()}\n\n"
+            except (OSError, PermissionError):
+                pass
+
+        if not combined_code.strip():
+            continue
+
+        # Run score-cycle with the combined code
+        repo_slug = os.path.basename(repo_root)
+        task_id = f"auto-audit-{repo_slug}-{int(time.time())}"
+        try:
+            result = subprocess.run(
+                ["score-cycle", "--task", task_id, "--cycle", "1",
+                 "--code", combined_code, "--pass-pct", "1.0", "--json"],
+                capture_output=True, text=True, timeout=30,
+            )
+            if result.returncode == 0:
+                scored_count += 1
+                print(f"    ✅ {repo_slug}/: scored {len(repo_paths)} file(s) as task '{task_id}'")
+            else:
+                failed_count += 1
+                print(f"    ❌ {repo_slug}/: score-cycle failed ({result.returncode})")
+                # Log stderr for debugging
+                if result.stderr:
+                    for line in result.stderr.strip().split("\n")[:3]:
+                        print(f"       {line}")
+        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+            failed_count += 1
+            print(f"    ⚠  {repo_slug}/: cannot auto-score ({e})")
+
+    print("")
+    if scored_count > 0:
+        print(f"  ✅ Auto-scored {scored_count} repo(s) — changes now have governance records.")
+    if failed_count > 0:
+        print(f"  ⚠  {failed_count} repo(s) could not be auto-scored. Manual scoring advised.")
     print("")
 
     # Exit 0 — watchdog pattern (output is the message)

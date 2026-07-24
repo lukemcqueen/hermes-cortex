@@ -286,13 +286,23 @@ if [[ -f "pytest.ini" ]] || ls pytest.ini setup.cfg pyproject.toml 2>/dev/null |
   fi
 fi
 
-# Pick the best file to use as --code-file
-CODE_FILE=$(echo "$STAGED_FILES" | head -1)
+# Collect ALL staged files into a single code file for scoring
+# (instead of only scoring the first file — which hides N-1 changes)
+ALL_CODE_FILE=$(mktemp)
+for staged_file in $STAGED_FILES; do
+  echo "# --- $staged_file ---" >> "$ALL_CODE_FILE"
+  git show :"$staged_file" 2>/dev/null >> "$ALL_CODE_FILE" || true
+  echo "" >> "$ALL_CODE_FILE"
+done
 
-# Try to get the previous version for diff comparison
+# Try to get the previous versions for progress comparison
 PREV_FILE=$(mktemp)
 if [[ "$PARENT_COMMIT" != "0000000" ]]; then
-  git show "$PARENT_COMMIT:$CODE_FILE" > "$PREV_FILE" 2>/dev/null || true
+  for staged_file in $STAGED_FILES; do
+    echo "# --- $staged_file ---" >> "$PREV_FILE"
+    git show "$PARENT_COMMIT:$staged_file" >> "$PREV_FILE" 2>/dev/null || true
+    echo "" >> "$PREV_FILE"
+  done
 fi
 
 # Run score-cycle — prefer 3.12+ for PEP 604 syntax support
@@ -348,7 +358,7 @@ SCORE_STDERR=$(mktemp)
 SCORE_OUTPUT=$(timeout 30 "$PYTHON_BIN" "$SCORE_CYCLE" \
   --task "$TASK_ID" \
   --cycle "$CYCLE_NUM" \
-  --code-file "$CODE_FILE" \
+  --code-file "$ALL_CODE_FILE" \
   --prev-code-file "$PREV_FILE" \
   --pass-pct "$PASS_PCT" \
   --json 2>"$SCORE_STDERR") || {
@@ -372,7 +382,7 @@ SCORE_OUTPUT=$(timeout 30 "$PYTHON_BIN" "$SCORE_CYCLE" \
 }
 rm -f "$SCORE_STDERR"
 
-rm -f "$PREV_FILE"
+rm -f "$PREV_FILE" "$ALL_CODE_FILE"
 
 # ── Documentation audit (warn-only, doesn't block) ──────────
 if [[ -z "${SKIP_DOC_AUDIT:-}" ]] && [[ -f "$HOME/hermes-cortex/ops/scripts/pre-commit-doc-audit.sh" ]]; then

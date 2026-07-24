@@ -1210,32 +1210,41 @@ install_precommit_hook() {
 
   mkdir -p "$hooks_dir"
 
-  # Deploy pre-commit-score to shared hooks dir
+  # Deploy pre-commit-score to shared hooks dir (symlink to prevent drift)
   local hook_dest="${hooks_dir}/pre-commit"
-  if needs_update "$hook_src" "$hook_dest"; then
-    cp "$hook_src" "$hook_dest"
-    chmod +x "$hook_dest"
-    info "Deployed shared pre-commit hook: ${hook_dest/$HOME/\\~}"
+  if [[ -L "$hook_dest" ]] && [[ "$(readlink "$hook_dest")" == "$hook_src" ]]; then
+    : # symlink already correct — no update needed
+  else
+    rm -f "$hook_dest"
+    ln -sf "$hook_src" "$hook_dest"
+    chmod +x "$hook_src"  # ensure source is executable
+    info "Symlinked shared pre-commit hook → ${hook_src/$HOME/\\~}"
   fi
 
-  # Deploy pre-push-pull to shared hooks dir
+  # Deploy pre-push-pull to shared hooks dir (symlink to prevent drift)
   if [[ -f "$push_src" ]]; then
     local push_dest="${hooks_dir}/pre-push"
-    if needs_update "$push_src" "$push_dest"; then
-      cp "$push_src" "$push_dest"
-      chmod +x "$push_dest"
-      info "Deployed shared pre-push hook: ${push_dest/$HOME/\\~}"
+    if [[ -L "$push_dest" ]] && [[ "$(readlink "$push_dest")" == "$push_src" ]]; then
+      : # symlink already correct
+    else
+      rm -f "$push_dest"
+      ln -sf "$push_src" "$push_dest"
+      chmod +x "$push_src"
+      info "Symlinked shared pre-push hook → ${push_src/$HOME/\\~}"
     fi
   fi
 
-  # Deploy post-commit-audit to shared hooks dir
+  # Deploy post-commit-audit to shared hooks dir (symlink to prevent drift)
   local postcommit_src="${CORTEX_DEPLOY_HOME}/scripts/post-commit-audit"
   if [[ -f "$postcommit_src" ]]; then
     local postcommit_dest="${hooks_dir}/post-commit"
-    if needs_update "$postcommit_src" "$postcommit_dest"; then
-      cp "$postcommit_src" "$postcommit_dest"
-      chmod +x "$postcommit_dest"
-      info "Deployed shared post-commit hook: ${postcommit_dest/$HOME/\\~}"
+    if [[ -L "$postcommit_dest" ]] && [[ "$(readlink "$postcommit_dest")" == "$postcommit_src" ]]; then
+      : # symlink already correct
+    else
+      rm -f "$postcommit_dest"
+      ln -sf "$postcommit_src" "$postcommit_dest"
+      chmod +x "$postcommit_src"
+      info "Symlinked shared post-commit hook → ${postcommit_src/$HOME/\\~}"
     fi
   fi
 
