@@ -285,7 +285,7 @@ WRITE_COMPUTER_USE_ACTIONS = {
 
 # Terminal commands that modify state — require governance lock
 WRITE_COMMAND_PATTERNS = [
-    r"^\s*(sudo\s+)?(rm|mv|cp|install|apt|apt-get|dpkg|pip|npm|brew|make|cmake|docker compose|kubectl)\s",
+    r"^\s*(sudo\s+)?(rm|mv|cp|install|apt|apt-get|dpkg|brew|make|cmake|docker compose|kubectl)\s",
     r"^\s*(sudo\s+)?(systemctl|service)\s+(start|stop|restart|reload|enable|disable|daemon-reload)\s",
     r"^\s*(sudo\s+)?(chmod|chown|chattr|mkfs|fdisk|mount|umount|dd)\s",
     r"^\s*(sudo\s+)?(sed|awk|tee)\s.*-i\s",
@@ -301,16 +301,16 @@ WRITE_COMMAND_PATTERNS = [
     r"^\s*(sudo\s+)?nohup\s",
     r"^\s*(sudo\s+)?docker\s+(run|build|push|commit|tag|save|load|rmi|system\s+prune)",
     r"^\s*(sudo\s+)?crontab\s",
-    r"^\s*(sudo\s+)?usermod|groupmod|useradd|groupadd|passwd",
+    r"^\s*(sudo\s+)?(usermod|groupmod|useradd|groupadd|passwd)\s",
     r"^\s*(sudo\s+)?ufw\s+(enable|disable|allow|deny|reject|delete|reset)",
     r"^\s*(sudo\s+)?nginx\s+(-s\s+(reload|stop|quit))",
     r"^\s*(sudo\s+)?journalctl\s+--rotate",
-    r"^\s*(sudo\s+)?(printf|cat|tee)\s+.*[>|>>]\s",
+    r"^\s*(sudo\s+)?(printf|cat|tee|head|tail|grep|find)\s+.*>\s",
     r"^\s*(sudo\s+)?(printf|cat)\s+.*<<\s",
-    r"^\s*(sudo\s+)?(touch|mkdir|ln|rsync|unzip|tar|mkfifo)\s",
+    r"^\s*(sudo\s+)?(touch|mkdir|ln|rsync|unzip|tar|mkfifo|tee)\s",
     r"^\s*(sudo\s+)?(npx|yarn|go|cargo|flatpak|snap)\s",
     r"^\s*(sudo\s+)?(pip3?|npm)\s+(install|uninstall|remove|update|upgrade)",
-    r"^\s*echo\s+.*[>|>>]\s",
+    r"^\s*echo\s+.*>\s",
 ]
 
 # Cronjob actions that require governance
@@ -434,15 +434,20 @@ def register(ctx):
         if hermes_session_id:
             _write_session_marker(hermes_session_id)
 
-        if not _is_write_tool(tool_name, args):
-            return None
-
-        # Read-only terminal commands pass through
+        # ── Fast-path: genuinely read-only terminal commands ──
+        # Check BEFORE write classification. A command is truly read-only
+        # only when it matches a read pattern AND does NOT match any write
+        # pattern. This prevents `cat file > /tmp/out` from bypassing
+        # governance — it matches both read AND write patterns, so the
+        # read-only fast-path correctly rejects it.
         if tool_name == "terminal":
             command = args.get("command", "")
-            for pattern in READ_COMMAND_PATTERNS:
-                if re.search(pattern, command):
+            if any(re.search(p, command) for p in READ_COMMAND_PATTERNS):
+                if not _is_terminal_write(args):
                     return None
+
+        if not _is_write_tool(tool_name, args):
+            return None
 
         # Cronjob read operations pass through
         if tool_name == "cronjob" and args.get("action") in ("list", "run"):
