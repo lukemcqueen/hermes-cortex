@@ -55,6 +55,7 @@ Document in the commit message why none of the existing resources fit.
 
 ## Critical rules
 
+- **Verify target file exists before editing.** Before calling `patch()`, `write_file()`, or any tool that modifies a file, confirm the exact target path exists with `read_file()` or `search_files(target="files")` first. Patching a nonexistent path silently fails — the edit never lands, regardless of what the session wording claims. The file-mutation verifier catches this mismatch after the fact; prevent it by checking first.
 - Always search ops/scripts/ first. This is the canonical location for installed scripts.
 - Always check skills_list(). If a skill already covers the workflow, use it.
 - Always check cronjob list. Existing cron patterns may already solve the problem.
