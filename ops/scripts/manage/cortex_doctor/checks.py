@@ -955,10 +955,18 @@ def check_system(res):
         if failed and failed.strip():
             for line in failed.strip().split("\n"):
                 parts = line.split()
-                if parts:
-                    unit = parts[0]
-                    if unit not in expected_user_units:
-                        stale.append(unit)
+                if len(parts) < 3:
+                    continue
+                # Format: [bullet] UNIT LOAD ACTIVE SUB DESCRIPTION
+                # bullet column only present for failed/masked units
+                offset = 1 if parts[0] == "●" else 0
+                unit = parts[offset]
+                load_state = parts[offset + 1] if len(parts) > offset + 1 else ""
+                # Skip masked units (system portal services on headless servers)
+                if load_state == "masked":
+                    continue
+                if unit not in expected_user_units:
+                    stale.append(unit)
         if stale:
             names = ", ".join(stale)
             res.add("Systemd stale units", "FAIL",
