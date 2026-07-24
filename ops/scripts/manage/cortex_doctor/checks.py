@@ -270,8 +270,8 @@ def check_soul_sync(res):
         # Check for missing content markers — only flag when agent has FEWER
         # markers than template (indicating content gap). Agents with more
         # markers have their own independently written principles section.
-        if agent_count < template_count:
-            missing_markers = template_markers - agent_markers
+        if agent_count < effective_t_count:
+            missing_markers = effective_template - agent_markers
             # Filter out agent-specific sub-points that don't apply
             # (e.g. agent-specific maintainer instructions)
             critical_missing = {m for m in missing_markers
