@@ -494,9 +494,11 @@ fi
 ADVERSARIAL_SCRIPT="$REPO_ROOT/ops/scripts/quality/adversarial-verify.py"
 if [[ -f "$ADVERSARIAL_SCRIPT" ]]; then
   ADV_FAILED=0
+  ADV_SCANNED=0
   while IFS= read -r adv_file; do
     case "$adv_file" in
       *.py|*.sh|*pre-commit-score)
+        ADV_SCANNED=$((ADV_SCANNED + 1))
         if ! ADV_OUTPUT=$(python3 "$ADVERSARIAL_SCRIPT" --file "$REPO_ROOT/$adv_file" --level A2 --gate 2>&1); then
           ADV_FAILED=$((ADV_FAILED + 1))
           echo "   ❌  $adv_file:" | sed 's/^/   /'
@@ -511,6 +513,9 @@ if [[ -f "$ADVERSARIAL_SCRIPT" ]]; then
     echo "    Fix the findings before committing."
     echo ""
     exit 1
+  fi
+  if [[ "$ADV_SCANNED" -gt 0 ]]; then
+    echo "✅  Adversarial verify: passed on ${ADV_SCANNED} file(s)"
   fi
 fi
 
