@@ -112,12 +112,33 @@ DEFAULT_TTL = 3600  # 1 hour
 def get_session_id() -> str:
     """Return a persistent session ID, creating one on first call.
 
-    The session ID lives in ~/.hermes/session.id and persists across
-    tool calls within one Hermes session. A new Hermes session (e.g. a
-    separate terminal window) gets its own ID.
+    Priority:
+    1. PID-scoped marker from the Hermes enforcer
+       (~/.hermes-cortex/state/.hermes-session-{PPID}.id)
+       This aligns the MCP's session ID namespace with the Hermes
+       session ID that the enforcer uses for lock checks.
+    2. Cached ~/.hermes/session.id (previous value from this session)
+    3. Generate new UUID-based ID (first call, no enforcer present)
     """
+    # Priority 1: Read PID-scoped marker from enforcer
+    try:
+        ppid = os.getppid()
+        marker = Path.home() / ".hermes-cortex" / "state" / f".hermes-session-{ppid}.id"
+        if marker.exists():
+            sid = marker.read_text().strip()
+            if sid:
+                # Cache it so future calls are instant
+                SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
+                SESSION_FILE.write_text(sid)
+                return sid
+    except (OSError, ValueError):
+        pass
+
+    # Priority 2: Cached value from a previous call
     if SESSION_FILE.exists():
         return SESSION_FILE.read_text().strip()
+
+    # Priority 3: Generate new ID
     sid = f"sess_{uuid.uuid4().hex[:12]}"
     SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
     SESSION_FILE.write_text(sid)
