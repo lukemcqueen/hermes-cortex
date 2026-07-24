@@ -92,9 +92,12 @@ def _is_lock_stale(state: dict, max_age: int = 7200) -> bool:
     started = state.get("started_at", "")
     if started:
         try:
-            from datetime import datetime
+            from datetime import datetime, timezone
             st = datetime.fromisoformat(started)
-            now = datetime.now()
+            # Fix: normalize timezone-aware timestamps (Z suffix) to naive UTC
+            if st.tzinfo is not None:
+                st = st.astimezone(timezone.utc).replace(tzinfo=None)
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
             age = (now - st).total_seconds()
             return age > effective_ttl * 2
         except (ValueError, TypeError):
