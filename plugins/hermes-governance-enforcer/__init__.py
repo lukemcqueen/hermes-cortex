@@ -311,6 +311,11 @@ WRITE_COMMAND_PATTERNS = [
     r"^\s*(sudo\s+)?(npx|yarn|go|cargo|flatpak|snap)\s",
     r"^\s*(sudo\s+)?(pip3?|npm)\s+(install|uninstall|remove|update|upgrade)",
     r"^\s*echo\s+.*>\s",
+    # guard: interpreter + script file execution
+    # Catches `python3 script.py`, `node app.js`, `bash setup.sh`, etc.
+    # The script argument must start with a non-dash character (excludes flags like -c, --version)
+    # Requires .py/.js/.rb/.pl/.sh extension to distinguish from interactive mode
+    r"^\s*(sudo\s+)?(python3(?:\.\d+)?|node|ruby|perl|bash|sh|zsh)\s+[^\s-][^\s]*\.(py|js|rb|pl|sh)(?:\s|$)",
 ]
 
 # Cronjob actions that require governance
