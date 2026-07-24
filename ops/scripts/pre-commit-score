@@ -125,7 +125,8 @@ json.dump(d, open(fp, 'w'))
     echo ""
   fi
 
-  exit 0
+  # SKIP_SCORE bypass active — continue to all verification steps below.
+  # Only the scoring step (lines 296-470) is skipped.
 fi
 
 # ── Level 5: SOUL.md template sync enforcement (ALL agents) ────
@@ -293,8 +294,8 @@ except Exception:
   fi
 fi
 
-# ── Score the current commit ────────────────────────────────────
-# (Lock lifecycle managed by MCP server via begin/end_change)
+# ── Score the current commit (skipped when SKIP_SCORE=1) ──────
+if [[ "${SKIP_SCORE:-}" != "1" ]]; then
 
 # Find score-cycle — try PATH, then common locations (resolve to full path)
 SCORE_CYCLE=""
@@ -427,6 +428,19 @@ rm -f "$SCORE_STDERR"
 
 rm -f "$PREV_FILE"
 
+# Decision check — only runs when scoring was actually executed
+if [[ -n "${SCORE_OUTPUT:-}" ]]; then
+  DECISION=$(echo "$SCORE_OUTPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('decision','LOOP'))" 2>/dev/null || echo "LOOP")
+  echo "📊  score-cycle: $DECISION (task=$TASK_ID, pass-pct=$PASS_PCT)"
+  if [[ "$DECISION" == "ERROR" ]]; then
+    echo ""
+    echo "❌  score-cycle failed — commit blocked."
+    echo "    Set SKIP_SCORE=1 to bypass:  SKIP_SCORE=1 git commit ..."
+    exit 1
+  fi
+fi
+fi  # end of SKIP_SCORE guard — scoring skipped, verification continues below
+
 # ── Documentation audit (warn-only, doesn't block) ──────────
 if [[ -z "${SKIP_DOC_AUDIT:-}" ]] && [[ -f "$HOME/hermes-cortex/ops/scripts/pre-commit-doc-audit.sh" ]]; then
   bash "$HOME/hermes-cortex/ops/scripts/pre-commit-doc-audit.sh"
@@ -455,17 +469,4 @@ if [[ -f "$ADVERSARIAL_SCRIPT" ]] && [[ -z "${SKIP_ADVERSARIAL:-}" ]]; then
     echo "   To bypass: SKIP_ADVERSARIAL=1 git commit ..."
     echo ""
   fi
-fi
-
-# Check decision — LOOP is normal for first cycle, STOP means done
-DECISION=$(echo "$SCORE_OUTPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('decision','LOOP'))" 2>/dev/null || echo "LOOP")
-
-echo "📊  score-cycle: $DECISION (task=$TASK_ID, pass-pct=$PASS_PCT)"
-
-# Only BLOCK on unrecoverable errors — LOOP/STOP/MOVE_ON all pass
-if [[ "$DECISION" == "ERROR" ]]; then
-  echo ""
-  echo "❌  score-cycle failed — commit blocked."
-  echo "    Set SKIP_SCORE=1 to bypass:  SKIP_SCORE=1 git commit ..."
-  exit 1
 fi
