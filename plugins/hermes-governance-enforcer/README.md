@@ -125,10 +125,22 @@ Hermes starts
   ├── PluginManager.discover_and_load()
   │     ├── Scans ~/.hermes/plugins/<name>/ for plugin.yaml + __init__.py
   │     ├── Calls plugin's register(ctx)
-  │     │     └── ctx.register_hook("pre_tool_call", handler)  ← registered
+  │     │     ├── ctx.register_hook("on_session_start", _on_session_start)
+  │     │     │     └── Writes .hermes-session-{PID}.id with real session ID
+  │     │     │         (MCP reads this via os.getppid() on begin_change)
+  │     │     └── ctx.register_hook("pre_tool_call", handler)  ← blocks writes
   │     └── Plugin loaded
   └── Agent loop begins
 ```
+
+**Key security property:** The session marker is written at session start, *before* any
+agent action. When the agent calls `begin_change` (an MCP tool), the MCP reads the
+marker and finds the real Hermes session ID — so both sides create and check lock
+files in the same namespace. Phase 1 exact match works on the first tool call.
+
+If `_derive_repo_slug()` returns `""` (Hermes running outside a git repo), Phase 2
+cannot match any lock. The enforcer blocks all writes. This is **correct behaviour** —
+if the repo is unknown, no writes get through.
 
 ### Tool Call Flow
 
@@ -216,33 +228,79 @@ each get their own file.
 The `loop-gov-mcp.py` MCP server writes the session-scoped lock file when
 `begin_change` is called.
 
+#### Session ID alignment via PID handoff
+
+The enforcer plugin receives the Hermes session ID via the `pre_tool_call` hook's
+`session_id` parameter. At each tool call, it writes this ID to a PID-scoped
+marker file at `.hermes-session-{PID}.id`. The MCP server (a child of the Hermes
+process) reads `.hermes-session-{PPID}.id` to learn the same session ID, ensuring
+both sides create and check lock files in the same namespace:
+
+```
+pre_tool_call fires (Hermes PID=1001)
+  └── enforcer writes .hermes-session-1001.id = "sess_abc123"
+
+begin_change fires (MCP child of PID=1001)
+  └── MCP reads .hermes-session-{os.getppid()}.id = .hermes-session-1001.id
+  └── creates .governance-sess_abc123.json
+
+next write tool fires
+  └── enforcer Phase 1 looks for .governance-sess_abc123.json → FOUND
+  └── pass through
+```
+
+This means the enforcer and MCP share the same lock namespace without schema
+changes to `begin_change`. If the PID marker is absent (e.g. MCP starts before
+any tool call), the MCP falls back to its UUID cache and Phase 2 (repo_slug scan)
+covers the mismatch.
+
 ### Checked By
 
-The governance enforcer plugin's `_has_governance_lock()` function
-scans all `.governance-*.json` files, filters by `repo_slug` in content,
-checks TTL staleness, and cleans stale/corrupt files automatically:
+The governance enforcer plugin's `_has_governance_lock()` function uses a
+**two-phase approach** to find the active lock:
+
+1. **Phase 1 — Exact match (primary):** Looks for `.governance-{hermes_session_id}.json`.
+   The session ID is passed to the enforcer via the Hermes `pre_tool_call` hook's `session_id`
+   parameter. The enforcer writes it to `.hermes-session-{PID}.id` so the MCP server
+   (a child process) can read it via `os.getppid()` — creating locks in the same namespace.
+2. **Phase 2 — Scan by repo_slug (fallback):** If exact match fails (backward compat with
+   old MCP locks that predate PID handoff, or when run outside a git repo), scans all
+   `.governance-*.json` files and matches by `repo_slug` in content.
 
 ```python
 GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 
-def _has_governance_lock() -> bool:
-    current_slug = _derive_slug()
+def _has_governance_lock(hermes_session_id: str = "") -> bool:
+    current_slug = _derive_repo_slug()
+    if not GOVERNANCE_STATE_DIR.exists():
+        return False
+
+    # ── Phase 1: Exact match by Hermes session ID ──
+    if hermes_session_id:
+        lock_path = GOVERNANCE_STATE_DIR / f".governance-{hermes_session_id}.json"
+        if lock_path.exists():
+            try:
+                state = json.loads(lock_path.read_text())
+                if state.get("task_id", "") and not _is_lock_stale(state):
+                    return True
+                if state.get("task_id", ""):
+                    lock_path.unlink(missing_ok=True)  # stale — clean
+            except (json.JSONDecodeError, OSError):
+                lock_path.unlink(missing_ok=True)
+
+    # ── Phase 2: Scan by repo_slug (backward compat fallback) ──
     for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
         try:
             state = json.loads(lock_file.read_text())
-            # Legacy locks (no repo_slug) accepted for upgrade compat
             if state.get("repo_slug") is not None and state.get("repo_slug") != current_slug:
                 continue
             if _is_lock_stale(state):
-                lock_file.unlink()
+                lock_file.unlink(missing_ok=True)
                 continue
             if state.get("task_id", ""):
                 return True
         except (json.JSONDecodeError, OSError):
-            try:
-                lock_file.unlink()
-            except OSError:
-                pass
+            lock_file.unlink(missing_ok=True)
     return False
 ```
 

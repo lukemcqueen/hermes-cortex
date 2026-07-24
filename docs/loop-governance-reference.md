@@ -83,6 +83,7 @@ bash ~/.hermes-cortex/tools/loop-governance/verify.sh
 
 | Layer | What | How to install | Bypass |
 |-------|------|---------------|--------|
+| **Governance enforcer plugin** | **Primary** — blocks write tools at Hermes runtime via `pre_tool_call` hook | `ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/` + `/reset` | `allow_tool_override: true` (human override in config) |
 | Pre-commit hook | Runs `score-cycle` on every `git commit` | `bash ~/.hermes/scripts/install-score-hook.sh --all` | `SKIP_SCORE=1` (abuse detection) |
 | SOUL.md directive | Rule appears in every Hermes session's system prompt | Edit `~/.hermes/SOUL.md` | Remove the directive |
 | Cron auditor | `governance-auditor` scans every 6h for unscored changes + cleans stale locks (>12h) | Auto-created by `install-crons.sh` | N/A |

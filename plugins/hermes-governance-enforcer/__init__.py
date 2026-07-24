@@ -55,16 +55,23 @@ def _write_session_marker(hermes_session_id: str) -> None:
 
 
 def _derive_repo_slug() -> str:
-    """Derive the current repo slug from git top-level."""
+    """Derive the current repo slug via git rev-parse.
+    Returns "" when outside a git repo — enforcer blocks all writes.
+    """
+    # Strategy 1: git rev-parse (fast, authoritative)
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],
             capture_output=True, text=True, timeout=5,
         )
         if result.returncode == 0:
-            return Path(result.stdout.strip()).name
+            git_dir = result.stdout.strip()
+            if git_dir:
+                return Path(git_dir).name
     except (OSError, subprocess.TimeoutExpired):
         pass
+
+    # Fallback: enforcer blocks all writes (correct behaviour)
     return ""
 
 
@@ -239,8 +246,19 @@ def _is_write_tool(tool_name: str, args: Dict[str, Any]) -> bool:
     return False
 
 
+def _on_session_start(session_id: str, **kwargs):
+    """Write session marker at session start so MCP finds it before begin_change."""
+    if session_id:
+        _write_session_marker(session_id)
+
+
 def register(ctx):
     """Register the governance enforcer plugin hooks."""
+
+    # Write session marker at session start — before any tool call
+    # This ensures the MCP server (child process) finds the Hermes session ID
+    # when begin_change runs, so both sides use the same namespace.
+    ctx.register_hook("on_session_start", _on_session_start)
 
     # Read command patterns that never need governance
     READ_COMMAND_PATTERNS = [
