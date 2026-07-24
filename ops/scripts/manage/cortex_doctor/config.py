@@ -61,6 +61,18 @@ def resolve_external_base() -> str:
     if base:
         return base.rstrip("/")
 
+    # Also check .env file (sourced by cortex-update.sh but not always in env)
+    _env_file = CORTEX_HOME / ".env"
+    try:
+        for _line in _env_file.read_text().splitlines():
+            _line = _line.strip()
+            if _line.startswith("CORTEX_DOCTOR_BASE="):
+                _val = _line.split("=", 1)[1].strip().strip('"').strip("'")
+                if _val:
+                    return _val.rstrip("/")
+    except (FileNotFoundError, OSError):
+        pass
+
     for env_key in ("CORTEX_BUS_URL", "CORTEX_BUS_FALLBACK_URL"):
         url = os.environ.get(env_key, "")
         if url:
