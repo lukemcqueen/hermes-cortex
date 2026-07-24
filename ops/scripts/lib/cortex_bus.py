@@ -71,7 +71,9 @@ def _bus_post(endpoint: str, payload: dict, fallback: bool = False) -> dict:
     data = json.dumps(payload).encode()
     last_error = ""
 
-    for attempt in range(3):
+    # When fallback is available, reduce primary retries so failover is faster
+    max_attempts = 1 if (not fallback and BUS_FALLBACK_URL) else 3
+    for attempt in range(max_attempts):
         try:
             req = Request(url, data=data, headers={
                 "Content-Type": "application/json",
@@ -81,11 +83,11 @@ def _bus_post(endpoint: str, payload: dict, fallback: bool = False) -> dict:
                 return json.loads(resp.read().decode())
         except URLError as e:
             last_error = str(e)
-            if attempt < 2:
+            if attempt < max_attempts - 1:
                 time.sleep(2 ** attempt)
         except Exception as e:
             last_error = str(e)
-            if attempt < 2:
+            if attempt < max_attempts - 1:
                 time.sleep(2 ** attempt)
 
     # Fallback attempt if available
