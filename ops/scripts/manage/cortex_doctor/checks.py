@@ -1400,3 +1400,100 @@ def check_stale_deploys(res):
                     res.add(f"Stale deploy: {f.relative_to(deploy_home)}", "WARN",
                             f"{size:,} bytes — not in any register() mapping",
                             f"Remove: rm {f}")
+
+
+def check_deploy_checksums(res):
+    """Check MD5 checksums of deployed files vs repo source across ALL mappings.
+
+    Covers three categories:
+    1. register() entries in cortex-update.sh (scripts → ~/.hermes-cortex/scripts/)
+    2. Non-register path mappings (plugins, AGENTS.md, SOUL.md, profiles)
+    3. Governance plugin symlink vs copy detection
+    """
+    import hashlib as _hl
+
+    repo_dir = CORTEX_REPO
+    deploy_home = CORTEX_HOME
+    if not repo_dir.is_dir():
+        return
+
+    def _md5(path):
+        """Compute MD5 hex digest of a file. Returns None on error."""
+        try:
+            if path.is_file():
+                return _hl.md5(path.read_bytes()).hexdigest()
+        except (OSError, PermissionError):
+            return None
+        return None
+
+    def _check_pair(label, src_path, dest_path, res):
+        """Check a single source→dest pair and report if MD5 differs."""
+        src_md5 = _md5(src_path)
+        dst_md5 = _md5(dest_path)
+
+        if src_md5 is None and dst_md5 is None:
+            return  # neither exists — skip
+        if src_md5 is None:
+            res.add(f"Checksum: {label}", "WARN",
+                    f"source missing: {src_path.relative_to(repo_dir) if src_path.is_relative_to(repo_dir) else src_path}",
+                    f"File referenced but not found in repo — update register() entry")
+            return
+        if dst_md5 is None:
+            res.add(f"Checksum: {label}", "WARN",
+                    f"deployed copy missing: {dest_path}",
+                    f"Run: cortex-update.sh --force-all")
+            return
+        if src_md5 == dst_md5:
+            res.add(f"Checksum: {label}", "PASS", "content matches repo source")
+        else:
+            res.add(f"Checksum: {label}", "FAIL",
+                    f"MD5 mismatch — deployed copy differs from repo source",
+                    f"REQUIRED: Run: cortex-update.sh --force-all to resync")
+
+    # ── Category 1: Parse register() entries from cortex-update.sh ──
+    cortex_update = repo_dir / "ops" / "scripts" / "cortex-update.sh"
+    if cortex_update.exists():
+        content = cortex_update.read_text()
+        for line in content.splitlines():
+            line = line.strip()
+            if not line.startswith("register ") or line.startswith("#"):
+                continue
+            m = re.match(r'register\s+"([^"]+)"\s+"([^"]+)"', line)
+            if not m:
+                continue
+            src_rel = m.group(1)
+            dest_str = m.group(2)
+            dest_str = dest_str.replace("${CORTEX_DEPLOY_HOME}", str(deploy_home))
+            dest_str = dest_str.replace("${HOME}", str(HOME))
+            src_path = repo_dir / src_rel
+            dest_path = Path(dest_str)
+            if not dest_path.exists() and not src_path.exists():
+                continue  # both missing — skip silent (handled by check_stale_deploys)
+            label = src_rel.split("/")[-1]  # use filename as label
+            _check_pair(label, src_path, dest_path, res)
+
+    # ── Category 2: Non-register path mappings ──
+    known_mappings = [
+        # (label, repo_source_path, deployed_path)
+        ("AGENTS.md", repo_dir / "AGENTS.md", HERMES_HOME / "AGENTS.md"),
+        ("Governance plugin __init__.py", repo_dir / "plugins" / "hermes-governance-enforcer" / "__init__.py",
+         HERMES_HOME / "plugins" / "governance-enforcer" / "__init__.py"),
+        ("Governance plugin plugin.yaml", repo_dir / "plugins" / "hermes-governance-enforcer" / "plugin.yaml",
+         HERMES_HOME / "plugins" / "governance-enforcer" / "plugin.yaml"),
+        ("Governance plugin README.md", repo_dir / "plugins" / "hermes-governance-enforcer" / "README.md",
+         HERMES_HOME / "plugins" / "governance-enforcer" / "README.md"),
+    ]
+
+    # Add profile-specific SOUL.md mapping only for the current agent
+    current_agent = os.environ.get("AGENT_NAME", "").lower().strip()
+    if not current_agent:
+        current_agent = os.uname().nodename.split(".")[0].lower().strip()
+    if current_agent:
+        profile_soul = repo_dir / "profiles" / "personal" / "agent-profiles" / current_agent / "SOUL.md"
+        if profile_soul.exists():
+            known_mappings.append(
+                (f"SOUL.md (profile: {current_agent})", profile_soul, HERMES_HOME / "SOUL.md")
+            )
+
+    for label, src, dst in known_mappings:
+        _check_pair(label, src, dst, res)

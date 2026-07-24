@@ -23,6 +23,7 @@ from .checks import (
     check_governance,
     check_install,
     check_stale_deploys,
+    check_deploy_checksums,
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
@@ -53,6 +54,7 @@ def main():
         check_governance,
         check_install,
         check_stale_deploys,
+        check_deploy_checksums,
     ]
 
     if do_quick:
