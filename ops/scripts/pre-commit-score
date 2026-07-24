@@ -496,8 +496,10 @@ if [[ -f "$ADVERSARIAL_SCRIPT" ]]; then
   ADV_FAILED=0
   ADV_SCANNED=0
   while IFS= read -r adv_file; do
-    case "$adv_file" in
-      *.py|*.sh|*pre-commit-score)
+    # Check by hashbang, not extension — catches extensionless scripts
+    ADV_FIRST_LINE=$(head -1 "$REPO_ROOT/$adv_file" 2>/dev/null)
+    case "$ADV_FIRST_LINE" in
+      *python*|*bash*|*sh*|*node*|*ruby*|*perl*)
         ADV_SCANNED=$((ADV_SCANNED + 1))
         if ! ADV_OUTPUT=$(python3 "$ADVERSARIAL_SCRIPT" --file "$REPO_ROOT/$adv_file" --level A2 --gate 2>&1); then
           ADV_FAILED=$((ADV_FAILED + 1))
