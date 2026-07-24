@@ -349,6 +349,7 @@ ORCHESTRATOR_ONLY_PATHS=(
   "^profiles/personal/agent-profiles/"
   "^AGENTS\.md$"
   "^ops/scripts/pre-commit-score$"
+  "^ops/scripts/pre-push-pull$"
   "^ops/scripts/install/"
   "^ops/scripts/cortex-update\.sh$"
   "^ops/scripts/manage/cortex_doctor/"

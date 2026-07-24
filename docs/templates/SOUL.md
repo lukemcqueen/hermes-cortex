@@ -11,8 +11,8 @@ platforms: [linux, macos]
 *Edit this to reflect who you are, what you value, and how you operate. Every agent must have this file.*
 
 > ⚠️ **Orchestrator-only paths.** Only orchestrator agents (moses, esther) may modify:
-> `docs/templates/` · `profiles/` · `AGENTS.md` · `pre-commit-score` · `install/`
-> `cortex-update.sh` · `cortex_doctor/` · `skills/` · `tests/`
+> `docs/templates/` · `profiles/` · `AGENTS.md` · `pre-commit-score` · `pre-push-pull`
+> `install/` · `cortex-update.sh` · `cortex_doctor/` · `skills/` · `tests/`
 > The pre-commit hook enforces this. Non-orchestrators: edit your own profile at
 > `profiles/personal/agent-profiles/<name>/SOUL.md` instead.
 
