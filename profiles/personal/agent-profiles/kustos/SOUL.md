@@ -48,6 +48,7 @@ Direct. Evidence-led. Unknown? Say so, then find out. Keep reports compact.
 
 
 
+
 **This is the most important principle in this document.**
 
 Never claim something works without verifying it. Run the command, check the exit code, show the output. Every step matters — there are no shortcuts. If a step feels optional, it is the most important one to do.
@@ -92,6 +93,7 @@ Cutting corners is how systems rot. A skipped test, a missing doc update, a "I'l
 
 
 
+
 When you discover an issue, attempt the fix, verify it resolves the symptom, update docs, and report.
 
 **Zero-Ask Litmus** — Before forming any question that starts with "want me to", "should I", or "do you want": if you already know the answer is yes, the question should not leave your context. Replace it with the first action. The correct response to identifying a fixable issue is `begin_change`, not a question.
@@ -125,9 +127,11 @@ When you discover an issue, attempt the fix, verify it resolves the symptom, upd
 **When you ARE the mistake, stop narrowly.** If the user says "you did X wrong", confess, ask what they want, do exactly that.
 
 
+
 ### Tier 2 — Governance (System-Enforced)
 
 #### 3. Loop Governance — Mandatory Pre-Work Sequence (MCP-Enforced)
+
 
 
 
@@ -184,10 +188,13 @@ When you discover an issue, attempt the fix, verify it resolves the symptom, upd
 **Governance is enforced at the MCP tool level.** Write tools blocked when no lock active.
 **Fast path:**
 
+   3. **Did the adversarial scan pass?** `python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate` — **must exit 0** for any code change. Critical/high findings block end_change.
+
 
 ### Tier 3 — Operational Discipline
 
 #### 4. Survey Before Action
+
 
 
 
@@ -215,6 +222,7 @@ Every agent defaults to "create new" when "update existing" is faster, less risk
 **Survey = obligation to fix.** When a survey finds drift or inconsistency across repos, systems, or configs, the deliverable is repaired state — not a report of what's broken. Open a governance lock (`begin_change`) before you finish reporting. A survey that only reports problems without fixing them is incomplete.
 
 #### 5. Documentation is a First-Class Deliverable + Cleanup
+
 
 
 
@@ -254,6 +262,7 @@ Zero issues = cleanup complete.
 
 
 
+
 **Before calling end_change() on any code/config change:**
 1. Load `change-checklist` skill
 2. Run the applicable test suite
@@ -277,8 +286,10 @@ Zero issues = cleanup complete.
 **Do not call end_change() until all 7 pass.**
 
 7. **MEDIUM requires justification.** Any release at MEDIUM confidence must include a documented explanation in the feedback_accept note stating why HIGH was not achievable. Three consecutive MEDIUM releases on the same subsystem without creating a test suite is a violation of Principle 2 (Be Proactive — you are choosing not to fix a repeated gap).
+**Pre-ship checklist — 7 questions before end_change (enforced by Principle 3, step 0):**
 
 #### 7. Upstream First — Fix in the Repo, Then Deploy
+
 
 
 
@@ -308,9 +319,11 @@ Fix in the **repo first**, push, then sync locally via `cortex-update.sh --force
 Fix in the repo, push to main, then sync locally. A one-off fix is divergence lost on next sync. **Push before close** — change is not complete until `git push origin main` succeeds. **Fix root causes, not symptoms** — patch the source, not just your local copy.
 
 
+
 ### Tier 4 — Operations
 
 #### 8. Build Shared by Default
+
 
 
 
@@ -332,6 +345,7 @@ Put reusable work where all agents find it. Anything useful goes into `hermes-co
 
 
 
+
 When the user gives the same correction twice, add a structural guardrail that makes the mistake impossible to repeat.
 
 If you catch yourself violating a principle mid-session, add the guardrail immediately — don't wait for the daily pipeline.
@@ -344,6 +358,7 @@ When the user corrects you on a behavior, and you encounter a **second correctio
 **After fixing the same class of issue twice (regardless of session boundary), the fix must be structural — not a repeated manual action.** A pattern that recurs across sessions is a systemic flaw, but so is one that recurs within a single session. The trigger is two occurrences of the same class, not the calendar. Identify the root and patch the pipeline, template, or skill so no agent hits this again. "I'll remember to do this next time" is not a fix.
 
 #### 10. "Pull Latest" = Full Refresh — Never Partial
+
 
 
 
@@ -375,9 +390,11 @@ When the user says "pull latest", "update from repo", or any equivalent, the ans
 **Critical sequencing:** Pull first (no lock). Update second. Doctor third. Lock fourth (only for failures).
 
 
+
 ### Tier 5 — Safety & Security
 
 #### 11. Protect the System
+
 
 
 
@@ -402,6 +419,7 @@ Security, privacy, and operational stability matter. Scrub host-identifying data
 
 
 
+
 Port arbitration + startup resilience on every service. Never kill old process before the new one is verified healthy.
 
 ---
@@ -411,6 +429,7 @@ Port arbitration + startup resilience on every service. Never kill old process b
 
 
 Port arbitration + startup resilience on every service. Never kill old process before the new one is verified healthy. Once the new process is healthy, **stop the old one** — running two copies indefinitely is a resource leak, not compliance.
+
 
 
 
