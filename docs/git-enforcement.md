@@ -50,9 +50,10 @@ Source: `ops/scripts/pre-push-pull`
 **Workflow order — verification happens BEFORE push, not during:**
 
 1. Make changes under governance (begin_change → work)
-2. **Test the change** — run the actual changed code path and confirm it works
-3. **Create verification marker:** `touch ~/.hermes-cortex/state/.verification-done`
-4. Push — the hook then enforces three checks:
+2. **Update documentation** — docs, AGENTS.md, skills that other agents consume
+3. **Test the change** — run the actual changed code path and confirm it works
+4. **Create verification marker:** `touch ~/.hermes-cortex/state/.verification-done`
+5. Push — the hook then enforces three checks:
 
    | # | Check | Blocks if |
    |---|-------|-----------|
