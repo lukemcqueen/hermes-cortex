@@ -29,6 +29,7 @@ Install: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plu
 """
 
 import json
+import logging
 import os
 import re
 import subprocess
@@ -36,6 +37,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
+
+log = logging.getLogger("governance-enforcer")
 
 
 def _write_session_marker(hermes_session_id: str) -> None:
@@ -49,18 +52,40 @@ def _write_session_marker(hermes_session_id: str) -> None:
 
     The PID-scoped marker (`.hermes-session-{pid}.id`) is kept for backward
     compat with MCP versions that scan by PPID.
+
+    As additional fallback, writes to ~/.hermes/session.id which the MCP's
+    Priority 4 reads as a cached value.
     """
     pid = os.getpid()
     try:
         GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
-        # Fixed-path marker (primary) — MCP reads this without needing PPID
+    except OSError as e:
+        log.warning("Cannot create governance state dir: %s", e)
+        return
+
+    # Fixed-path marker (primary) — MCP reads this without needing PPID
+    try:
         fixed_marker = GOVERNANCE_STATE_DIR / ".hermes-session-current.id"
         fixed_marker.write_text(hermes_session_id)
-        # PID-scoped marker (legacy fallback)
+    except OSError as e:
+        log.warning("Cannot write fixed-path session marker: %s", e)
+
+    # PID-scoped marker (legacy fallback)
+    try:
         pid_marker = GOVERNANCE_STATE_DIR / f".hermes-session-{pid}.id"
         pid_marker.write_text(hermes_session_id)
-    except OSError:
-        pass  # Best-effort — MCP will fall back to cached session.id
+    except OSError as e:
+        log.warning("Cannot write PID-scoped session marker: %s", e)
+
+    # Fallback: write to ~/.hermes/session.id (MCP Priority 4 cache)
+    # This ensures the MCP can find the session ID even when the
+    # governance state dir is unavailable.
+    try:
+        hermes_session_path = Path.home() / ".hermes" / "session.id"
+        hermes_session_path.parent.mkdir(parents=True, exist_ok=True)
+        hermes_session_path.write_text(hermes_session_id)
+    except OSError as e:
+        log.warning("Cannot write fallback session.id cache: %s", e)
 
 
 def _derive_repo_slug() -> str:
@@ -169,8 +194,19 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
     for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
         try:
             state = json.loads(lock_file.read_text())
-            if state.get("repo_slug") is not None and state.get("repo_slug") != current_slug:
-                continue
+            # When current_slug is "" (CWD not in a git repo), match
+            # any lock that has a real repo_slug. This fixes the common
+            # case where the Hermes gateway CWD (~/.hermes) is outside
+            # git, but MCP locks are created with repo_slug="hermes-cortex".
+            # Previously the comparison `"" != "hermes-cortex"` would skip
+            # every lock, making Phase 2 a no-op.
+            if current_slug:
+                if state.get("repo_slug") is not None and state.get("repo_slug") != current_slug:
+                    continue
+            else:
+                # No current slug — accept any lock with a repo_slug value
+                if state.get("repo_slug") is None:
+                    continue
             if _is_lock_stale(state):
                 try:
                     lock_file.unlink(missing_ok=True)
