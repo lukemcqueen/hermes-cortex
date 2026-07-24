@@ -153,6 +153,7 @@ register "ops/scripts/orch-bus/orch-bus-forwarder.py"     "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/install/install-orch-crons.sh"  "${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh"
 register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
 register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
+register "ops/scripts/post-commit-audit"           "${CORTEX_DEPLOY_HOME}/scripts/post-commit-audit"
 register "ops/scripts/pre-push-pull"               "${CORTEX_DEPLOY_HOME}/scripts/pre-push-pull"
 register "ops/scripts/manage/governance-auditor.py"            "${CORTEX_DEPLOY_HOME}/scripts/governance-auditor.py"
 register "ops/scripts/manage/purge-stale-governance-locks.py" "${CORTEX_DEPLOY_HOME}/scripts/purge-stale-governance-locks.py"
@@ -1224,6 +1225,17 @@ install_precommit_hook() {
       cp "$push_src" "$push_dest"
       chmod +x "$push_dest"
       info "Deployed shared pre-push hook: ${push_dest/$HOME/\\~}"
+    fi
+  fi
+
+  # Deploy post-commit-audit to shared hooks dir
+  local postcommit_src="${CORTEX_DEPLOY_HOME}/scripts/post-commit-audit"
+  if [[ -f "$postcommit_src" ]]; then
+    local postcommit_dest="${hooks_dir}/post-commit"
+    if needs_update "$postcommit_src" "$postcommit_dest"; then
+      cp "$postcommit_src" "$postcommit_dest"
+      chmod +x "$postcommit_dest"
+      info "Deployed shared post-commit hook: ${postcommit_dest/$HOME/\\~}"
     fi
   fi
 
