@@ -411,3 +411,4 @@ When told to "integrate X as deeply as Y" or "wire X everywhere Y is referenced"
 2. **Add X to every one** — no partial sets, no "I'll get the rest later"
 3. **Verify the count** — N files referencing Y → N files referencing X (+ Y)
 4. The task is NOT complete until the count matches. Evidence: the search output showing all files touched.
+
