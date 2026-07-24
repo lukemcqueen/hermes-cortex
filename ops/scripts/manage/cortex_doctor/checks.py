@@ -1203,9 +1203,9 @@ def check_governance(res):
                         if py_source.exists() and pyc.stat().st_mtime < py_source.stat().st_mtime:
                             stale_count += 1
                     if stale_count:
-                        res.add("Plugin pycache", "WARN",
+                        res.add("Plugin pycache", "FAIL",
                                 f"{stale_count} stale .pyc file(s) — source is newer than compiled cache",
-                                f"Run: rm -rf {pycache_dir} && /reset (new session)")
+                                f"REQUIRED: rm -rf {pycache_dir} && /reset (new session)")
                     else:
                         res.add("Plugin pycache", "PASS", "no stale .pyc files")
             else:
@@ -1293,8 +1293,14 @@ def check_governance(res):
 
     if expected_hook_path.exists():
         content = expected_hook_path.read_text()
-        if "score-cycle" in content and "governance" in content:
-            res.add("Pre-commit hook", "PASS", "installed with governance check")
+        has_enforcer_check = "governance-enforcer/__init__.py" in content
+        if has_enforcer_check and "score-cycle" in content and "governance" in content:
+            res.add("Pre-commit hook", "PASS", "installed governance + enforcer checks")
+        elif "score-cycle" in content and "governance" in content:
+            res.add("Pre-commit hook", "WARN",
+                    "missing enforcer plugin presence check",
+                    "Update: cp ~/hermes-cortex/ops/scripts/pre-commit-score ~/.hermes-cortex/hooks/pre-commit"
+                    " (current hook is missing enforcer verification)")
         else:
             res.add("Pre-commit hook", "WARN", "installed but may be outdated",
                     "Run: cp ~/hermes-cortex/ops/scripts/pre-commit-score ~/.hermes-cortex/hooks/pre-commit")
@@ -1396,6 +1402,13 @@ def check_governance(res):
             ("WRITE_PROCESS_ACTIONS defined", "WRITE_PROCESS_ACTIONS" in enforcer_src),
             ("python3 -c pattern present", r"(python|python3)\s.*-c" in enforcer_src),
             ("bash -c pattern present", r"(bash|sh|zsh)\s+-c" in enforcer_src),
+            ("script-exec pattern (python3 .py etc)", r"python3(?:\.\d+)?" in enforcer_src),
+            ("script-exec pattern (node .js etc)", r"node|ruby|perl" in enforcer_src),
+            ("fail-closed crash handler", "GOVERNANCE ENFORCER CRASHED" in enforcer_src),
+            ("pipe not caught as write (no [>|>>])", "[>|>>]" not in enforcer_src),
+            ("grouped passwd alternation", r"(usermod|groupmod|useradd|groupadd|passwd)\s" in enforcer_src),
+            ("read-check before write-check", "read-only fast-path" in enforcer_src),
+            ("no pip|npm in broad catch-all", "dpkg|brew" in enforcer_src and "pip|npm" not in enforcer_src.split("dpkg")[0]),
         ]
         all_pass = True
         for label, ok in checks:
@@ -1425,7 +1438,7 @@ def check_governance(res):
     # ── Git hooks verification ──
     repo_hooks_dir = CORTEX_REPO / ".git" / "hooks"
     deployed_hooks_dir = CORTEX_HOME / "hooks"
-    for hook_name in ("pre-commit", "post-merge"):
+    for hook_name in ("pre-commit", "post-commit", "post-merge"):
         deployed_hook = deployed_hooks_dir / hook_name
         git_hook = repo_hooks_dir / hook_name
         repo_source = CORTEX_REPO / ".hermes-cortex" / "hooks" / hook_name

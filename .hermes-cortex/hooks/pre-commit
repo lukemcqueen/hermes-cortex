@@ -14,119 +14,64 @@
 #  safety net — the MCP server already blocks writes without
 #  a lock, so this should never fire for an MCP-connected agent.
 #
-#  Set SKIP_SCORE=1 to bypass (abuse detection: burst warns, hard limit blocks).
+#  Set SKIP_SCORE=1 to bypass has been removed — no bypass flags.
 #
 #  Installed by: install-score-hook.sh
 #  Requires: score-cycle in PATH, loop-governance tools
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-# ── SKIP_SCORE abuse detection ──────────────────────────────
-# Tracks usage and detects abuse patterns:
-#   Burst:   3+ skips in 60 min         → warning (still allowed)
-#   Hard:    6+ skips in 24h            → locked out
-#   Chronic: 3+ burst warnings          → locked out until file deleted
-#
-# State file: ~/.hermes-cortex/state/.skip-score-counter.json
-SKIP_COUNTER="${HOME}/.hermes-cortex/state/.skip-score-counter.json"
-BURST_MIN=60
-BURST_LIMIT=3
-HARD_LIMIT=6
-HARD_WINDOW=24
-CHRONIC_WARN_LIMIT=3
-
-if [[ "${SKIP_SCORE:-}" == "1" ]]; then
-  # Read or init counter
-  if [[ -f "$SKIP_COUNTER" ]]; then
-    ABUSE_DATA=$(python3 -c "
-import json, os, time
-fp = os.path.expanduser('$SKIP_COUNTER')
-try:
-    d = json.load(open(fp))
-except:
-    d = {'entries': [], 'warnings': 0}
-entries = d.get('entries', [])
-warnings = d.get('warnings', 0)
-
-now = time.time()
-# Prune old entries outside hard window
-cutoff_24h = now - ($HARD_WINDOW * 3600)
-fresh = [e for e in entries if e > cutoff_24h]
-cutoff_1h = now - ($BURST_MIN * 60)
-in_last_hour = len([e for e in fresh if e > cutoff_1h])
-
-d['entries'] = fresh
-d['warnings'] = warnings
-json.dump(d, open(fp, 'w'))
-
-print(f'{len(fresh)}|{warnings}|{in_last_hour}')
-" 2>/dev/null || echo "0|0|0")
-  else
-    ABUSE_DATA="0|0|0"
-  fi
-
-  IFS='|' read -r ENTRIES WARNINGS IN_HOUR <<< "$ABUSE_DATA"
-  ENTRIES=${ENTRIES:-0}
-  WARNINGS=${WARNINGS:-0}
-  IN_HOUR=${IN_HOUR:-0}
-
-  # Chronic abuse — locked out until file removed
-  if [[ "$WARNINGS" -ge "$CHRONIC_WARN_LIMIT" ]]; then
+# ── Guard: git hooksPath must point to our hooks ─────────────
+# If core.hooksPath is unset or wrong, this pre-commit hook
+# wouldn't even be running — but we check anyway for safety.
+# The REAL danger is when hooksPath points elsewhere entirely,
+# meaning NO governance hooks run at all. We verify at the
+# start of every commit that the hooks directory is ours.
+EXPECTED_HOOKS="${HOME}/.hermes-cortex/hooks"
+ACTUAL_HOOKS=$(git config --get core.hooksPath 2>/dev/null || echo "")
+if [[ -z "$ACTUAL_HOOKS" ]]; then
     echo ""
-    echo "⛔  SKIP_SCORE=1 chronically abused (${WARNINGS} warnings)."
-    echo "    Abuse detected ${WARNINGS} times — bypass permanently disabled."
-    echo "    Remove ${SKIP_COUNTER} to reset, or follow governance."
+    echo "❌  core.hooksPath is not set — git hooks are NOT running for this repo!"
+    echo "    Set it: git config core.hooksPath '${EXPECTED_HOOKS}'"
     echo ""
     exit 1
-  fi
-
-  # Hard limit — too many skips in 24h
-  if [[ "$ENTRIES" -ge "$HARD_LIMIT" ]]; then
-    echo ""
-    echo "⛔  SKIP_SCORE=1 hard limit reached — ${ENTRIES}× in ${HARD_WINDOW}h."
-    echo "    Use governance: begin_change() → work → feedback_accept → end_change()"
-    echo "    Resets automatically as oldest uses age out (${HARD_WINDOW}h window)."
-    echo ""
-    exit 1
-  fi
-
-  # Record this skip
-  mkdir -p "$(dirname "$SKIP_COUNTER")"
-  python3 -c "
-import json, os, time
-fp = os.path.expanduser('$SKIP_COUNTER')
-try:
-    d = json.load(open(fp))
-except:
-    d = {'entries': [], 'warnings': 0}
-entries = d.get('entries', [])
-entries.append(time.time())
-cutoff = time.time() - ($HARD_WINDOW * 3600)
-d['entries'] = [e for e in entries if e > cutoff]
-json.dump(d, open(fp, 'w'))
-" 2>/dev/null || true
-
-  # Burst check — too many in short window (IN_HOUR excludes current skip)
-  CURRENT_BURST=$((IN_HOUR + 1))
-  if [[ "$CURRENT_BURST" -ge "$BURST_LIMIT" ]]; then
-    NEW_WARNINGS=$((WARNINGS + 1))
-    python3 -c "
-import json, os
-fp = os.path.expanduser('$SKIP_COUNTER')
-d = json.load(open(fp))
-d['warnings'] = $NEW_WARNINGS
-json.dump(d, open(fp, 'w'))
-" 2>/dev/null || true
-
-    echo ""
-    echo "⚠️  Abuse detected: ${CURRENT_BURST}× SKIP_SCORE=1 in the last ${BURST_MIN} min."
-    echo "    Warning ${NEW_WARNINGS}/${CHRONIC_WARN_LIMIT}. After ${CHRONIC_WARN_LIMIT}, bypass is locked out."
-    echo "    Use governance instead: begin_change() → ... → end_change()"
-    echo ""
-  fi
-
-  exit 0
 fi
+# Normalize paths for comparison (resolve ~ and relative paths)
+ACTUAL_HOOKS_RESOLVED=$(cd "$ACTUAL_HOOKS" 2>/dev/null && pwd || echo "$ACTUAL_HOOKS")
+if [[ "$ACTUAL_HOOKS_RESOLVED" != "$EXPECTED_HOOKS" ]]; then
+    echo ""
+    echo "❌  core.hooksPath points to '${ACTUAL_HOOKS_RESOLVED}' instead of '${EXPECTED_HOOKS}'"
+    echo "    Governance hooks are NOT installed for this repo."
+    echo "    Fix: git config core.hooksPath '${EXPECTED_HOOKS}'"
+    echo ""
+    exit 1
+fi
+
+# ── Pre-commit sentinel for no-verify detection ─────────────
+# Written at hook start. Post-commit hook checks for this file.
+# If missing, --no-verify was used and the event gets logged.
+SENTINEL="${GIT_DIR:-.git}/.pre-commit-ran"
+LOGDIR="${HOME}/.hermes-cortex/state"
+NO_VERIFY_LOG="${LOGDIR}/no-verify-log.json"
+mkdir -p "$LOGDIR"
+touch "$SENTINEL"
+
+# ── Enforcer plugin presence check (C5) ─────────────────────
+# If the governance enforcer plugin is not installed, block commit.
+ENFORCER_PLUGIN="${HOME}/.hermes/plugins/governance-enforcer/__init__.py"
+if [[ ! -f "$ENFORCER_PLUGIN" ]]; then
+  echo ""
+  echo "❌  Governance enforcer plugin not found at:"
+  echo "    ${ENFORCER_PLUGIN}"
+  echo "    Install it: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/"
+  echo "    Then run: /reset to load the plugin."
+  echo ""
+  exit 1
+fi
+
+# ── Orchestrator-only paths guard ──────────────────────────
+# Only orchestrator agents (moses, esther) may modify these paths.
+# Non-orchestrators: commit changes from an orchestrator agent instead.
 
 # ── Level 5: SOUL.md template sync enforcement (ALL agents) ────
 # Every agent's repo profile SOUL.md must stay in sync with the
@@ -174,7 +119,7 @@ for profile_path in "$PROFILES_DIR"/*/SOUL.md; do
 done
 
 if [ "$SOUL_FAILED" = "1" ]; then
-  echo "    To bypass this check: SKIP_SCORE=1 git commit ..."
+  echo "    No bypass flags — fix the SOUL.md sync issue."
   echo ""
   exit 1
 fi
@@ -191,7 +136,7 @@ if git diff --cached --name-only -- "$BLOCKED_IPS" 2>/dev/null | grep -q "$BLOCK
     echo "❌  blocked_ips.add shrank from ${OLD_COUNT} to ${NEW_COUNT} IPs."
     echo "    This is a SHARED cumulative blocklist maintained by ALL agents."
     echo "    APPEND your IPs — never replace the file."
-    echo "    To bypass this check: SKIP_SCORE=1 git commit ..."
+    echo "    No bypass flags — fix the issue or use --no-verify (not recommended)."
     echo ""
     exit 1
   fi
@@ -242,7 +187,7 @@ if [[ "$LOCK_FOUND" -ne 1 ]]; then
   echo "       matched by the repo_slug field inside the file. cd into the repo"
   echo "       before calling begin_change() so it picks up the correct repo slug."
   echo ""
-  echo "    To bypass this check:  SKIP_SCORE=1 git commit ..."
+  echo "    Use begin_change() in the correct repo directory."
   echo ""
   exit 1
 fi
@@ -280,10 +225,12 @@ if [[ -n "$AUDIT_SCRIPT" ]]; then
 import json, sys
 try:
     data = json.loads(sys.stdin.read())
-    print('⚠️  AGENTS.md missing required sections:')
-    for s in data.get('missing_sections', []):
-        print(f'   - {s}')
-    print('   Add them, or SKIP_SCORE=1 to bypass.')
+    missing = data.get('missing_sections', [])
+    if missing:
+        print('⚠️  AGENTS.md missing required sections:')
+        for s in missing:
+            print(f'   - {s}')
+        print('   No bypass flags — fix the issue.')
 except Exception:
     print('⚠️  AGENTS.md check failed (non-parseable output)')
     print(sys.stdin.read())
@@ -368,7 +315,7 @@ done
 # Known Hermes enforcement regex gap: the ^ anchor on git commit
 # only catches standalone commands. Compound commands bypass it:
 #   cd x && git commit      ← bypasses
-#   SKIP_SCORE=1 git commit ← bypasses  
+#   SKIP_SCORE=1 ← this no longer works — removed.  
 # Run git commit standalone to trigger the enforcement check.
 # ────────────────────────────────────────────────────────────────
 
@@ -418,7 +365,7 @@ SCORE_OUTPUT=$(timeout 30 "$PYTHON_BIN" "$SCORE_CYCLE" \
     echo "" >&2
   fi
   echo "    Without a cycle record, this commit is invisible to governance." >&2
-  echo "    Set SKIP_SCORE=1 to bypass or fix the DB issue." >&2
+  echo "    Fix the DB issue to proceed with governance." >&2
   echo "" >&2
   rm -f "$SCORE_STDERR"
   SCORE_OUTPUT='{"decision":"LOOP","note":"score-cycle failed — no cycle logged"}'
@@ -442,21 +389,65 @@ if [[ -z "${SKIP_CHANGE_VALIDATE:-}" ]] && [[ -f "$REPO_ROOT/ops/scripts/change-
   bash "$REPO_ROOT/ops/scripts/change-validate.sh"
 fi
 
+# ── Orchestrator-only paths guard ──────────────────────────
+# Only orchestrator agents (moses, esther) may modify these paths.
+# Non-orchestrators: commit changes from an orchestrator agent instead.
+ORCHESTRATOR_ONLY_PATHS=(
+  "^docs/templates/"
+  "^profiles/personal/agent-profiles/"
+  "^AGENTS\.md$"
+  "^ops/scripts/pre-commit-score$"
+  "^ops/scripts/pre-push-pull$"
+  "^ops/scripts/install/"
+  "^ops/scripts/cortex-update\.sh$"
+  "^ops/scripts/manage/cortex_doctor/"
+  "^skills/"
+  "^tests/"
+  "test_.*\.py$"
+  ".*_test\.py$"
+  ".*_spec\.py$"
+)
+BLOCKED=""
+for pattern in "${ORCHESTRATOR_ONLY_PATHS[@]}"; do
+  if echo "$STAGED_FILES" | grep -qE "$pattern"; then
+    BLOCKED="$pattern"
+    break
+  fi
+done
+if [[ -n "$BLOCKED" ]]; then
+  # Determine agent type by hostname only — env var is self-reported and bypassable
+  HOST="$(hostname -s 2>/dev/null || echo 'unknown')"
+  case "$HOST" in
+    moses|esther) AGENT_TYPE="orchestrator" ;;
+    *) AGENT_TYPE="server" ;;
+  esac
+  if [[ "$AGENT_TYPE" != "orchestrator" ]]; then
+    echo ""
+    echo "❌  Orchestrator-only path blocked: ${BLOCKED}"
+    echo "    Detected agent type: ${AGENT_TYPE:-unknown}"
+    echo "    Non-orchestrator agents may NOT modify these paths:"
+    echo "      docs/templates/  profiles/  AGENTS.md"
+    echo "      pre-commit-score  install/  cortex-update.sh"
+    echo "      cortex_doctor/  skills/  tests/"
+    echo "    Commit this change from an orchestrator agent (moses or esther)."
+    echo ""
+    exit 1
+  fi
+fi
+
 # ── Adversarial scan (staged files only, A2 level) ──────────
 # HARD GATE: blocks commit if critical/high findings exist. No bypass.
 ADVERSARIAL_SCRIPT="$REPO_ROOT/ops/scripts/quality/adversarial-verify.py"
 if [[ -f "$ADVERSARIAL_SCRIPT" ]]; then
   ADV_FAILED=0
+  ADV_SCANNED=0
   while IFS= read -r adv_file; do
-    case "$adv_file" in
-      *.py|*.sh)
-        if ! ADV_OUTPUT=$(python3 "$ADVERSARIAL_SCRIPT" --file "$REPO_ROOT/$adv_file" --level A2 --gate 2>&1); then
+    ADV_SCANNED=$((ADV_SCANNED + 1))
+    if ! ADV_OUTPUT=$(python3 "$ADVERSARIAL_SCRIPT" --file "$REPO_ROOT/$adv_file" --level A2 --gate 2>&1); then
           ADV_FAILED=$((ADV_FAILED + 1))
           echo "   ❌  $adv_file:" | sed 's/^/   /'
           echo "$ADV_OUTPUT" | grep -E "❌|FAIL|CRITICAL|Medium|High" | head -5 | sed 's/^/      /' || true
         fi
-        ;;
-    esac
   done <<< "$STAGED_FILES"
   if [[ "$ADV_FAILED" -gt 0 ]]; then
     echo ""
@@ -464,6 +455,9 @@ if [[ -f "$ADVERSARIAL_SCRIPT" ]]; then
     echo "    Fix the findings before committing."
     echo ""
     exit 1
+  fi
+  if [[ "$ADV_SCANNED" -gt 0 ]]; then
+    echo "✅  Adversarial verify: passed on ${ADV_SCANNED} file(s)"
   fi
 fi
 
@@ -476,6 +470,6 @@ echo "📊  score-cycle: $DECISION (task=$TASK_ID, pass-pct=$PASS_PCT)"
 if [[ "$DECISION" == "ERROR" ]]; then
   echo ""
   echo "❌  score-cycle failed — commit blocked."
-  echo "    Set SKIP_SCORE=1 to bypass:  SKIP_SCORE=1 git commit ..."
+  echo "    Fix the issue — no bypass flags available."
   exit 1
 fi
