@@ -83,6 +83,34 @@ if [[ "$SYNTAX_FAILED" -ne 0 ]]; then
   exit 1
 fi
 
+# ── Documentation coverage check ──────────────────────────
+# Heuristic: if code/config files changed, at least one .md
+# file should also change. Catches pushes that modify scripts
+# without updating docs — can't judge quality, but forces
+# agents to consciously skip doc updates rather than forget.
+HAS_CODE_CHANGE=0
+HAS_DOC_CHANGE=0
+if [[ -n "$CHANGED_FILES" ]]; then
+  while IFS= read -r cf; do
+    case "$cf" in
+      *.py|*.sh|*.yaml|*.yml|*.json|*.toml|*.conf|*.cfg|Dockerfile|*.plist|*.service)
+        HAS_CODE_CHANGE=1 ;;
+      *.md)
+        HAS_DOC_CHANGE=1 ;;
+    esac
+  done <<< "$CHANGED_FILES"
+fi
+
+if [[ "$HAS_CODE_CHANGE" -eq 1 && "$HAS_DOC_CHANGE" -eq 0 ]]; then
+  echo ""
+  echo "⚠️  Push includes code/config changes but no documentation (.md) changes."
+  echo "    If this change affects other agents, update the relevant docs."
+  echo "    Use --no-verify to bypass this warning for legitimate cases."
+  echo ""
+  # Soft warning — doesn't block. Hard gate would block here.
+  # exit 1
+fi
+
 # Get the remote and branch being pushed
 # Git passes: <local-ref> <local-sha> <remote-ref> <remote-sha>
 # We read from stdin (one line per ref being pushed)

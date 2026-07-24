@@ -56,8 +56,9 @@ Source: `ops/scripts/pre-push-pull`
    | # | Check | What it does |
    |---|-------|-------------|
    | 1 | Governance lock | No active `begin_change()` session for this repo |
-   | 2 | Syntax check | Parses every changed `.py` (py_compile) and `.sh` (bash -n) file. Cannot be skipped — the hook runs the checker itself. |
-   | 3 | Pull-before-push | Local `main` is behind `origin/main` |
+   | 2 | Syntax check | Parses every changed `.py` (py_compile) and `.sh` (bash -n) file at push time. Cannot be skipped — the hook runs the checker itself. |
+   | 3 | Doc coverage | Warns when code/config files change without a corresponding `.md` change. Soft warning — doesn't block, but reminds agents to update docs. |
+   | 4 | Pull-before-push | Local `main` is behind `origin/main` |
 
    All checks run automatically at push time. No marker files, no `touch` commands.
 
