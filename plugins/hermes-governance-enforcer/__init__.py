@@ -5,13 +5,36 @@ before they execute. If a write-class tool (write_file, patch, terminal with
 modifying commands, cronjob, skill_manage) is called without an active
 governance lock in the state directory, the tool is blocked.
 
-Lock discovery uses scan-by-content: all .governance-*.json files in
-~/.hermes-cortex/state/ are scanned and matched by repo_slug. This is immune
-to session-ID namespace mismatches between the Hermes plugin system and the
-MCP loop-governance server — any valid lock for this repo is accepted.
+Lock discovery uses a two-phase strategy:
 
-This is the structural enforcement layer that I, as an agent, cannot bypass
-or talk my way out of — the block comes from outside myself.
+Phase 1 — Exact match by Hermes session ID:
+  Checks for a companion lock file named .governance-sess_<Hermes_sid>.json.
+  If found, verifies the original MCP lock still exists. If the original
+  is gone (end_change was called), the companion is deleted immediately —
+  no stale window.
+
+Phase 2 — Scan by repo_slug (fallback):
+  Scans all .governance-*.json files, matches by repo_slug in content.
+  When a valid MCP lock is found for this repo, the enforcer creates a
+  companion lock named .governance-sess_<Hermes_sid>.json that points
+  back to the MCP lock via a ``companion_of`` field. Future checks in
+  this session skip the scan and use the exact match.
+
+This two-phase approach is immune to session-ID namespace mismatches
+between the Hermes plugin system and the MCP loop-governance server.
+Each Hermes session gets its own uniquely-named companion lock, so
+concurrent sessions on the same repo each have independent governance.
+
+NOTE: The companion approach provides per-session lock naming but does
+NOT prevent cross-session bleeding via Phase 2. Session A's MCP lock
+will satisfy Session B's Phase 2 scan, causing Session B to create a
+companion without ever calling begin_change. True per-session isolation
+requires the MCP begin_change tool to use the Hermes session ID directly
+(passing it as a parameter instead of generating its own UUID). This
+is a planned improvement; until then, this is the practical fix.
+
+This is the structural enforcement layer that I, as an agent, cannot
+bypass or talk my way out of — the block comes from outside myself.
 
 Install: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/
 """
@@ -67,38 +90,80 @@ def _is_lock_stale(state: dict, max_age: int = 7200) -> bool:
     return True  # no timestamps = stale
 
 
-def _has_governance_lock() -> bool:
-    """Check if ANY active governance lock exists for this repo.
+def _has_governance_lock(hermes_session_id: str = "") -> bool:
+    """Check if THIS session has an active governance lock for this repo.
 
-    Scans all .governance-*.json files in the state directory, matches
-    by repo_slug in content, checks staleness, and auto-cleans stale
-    or corrupt files. This approach is immune to session-ID namespace
-    mismatches — the MCP begin_change tool can create locks with any
-    session ID format and the enforcer will still find them.
+    Two-phase approach:
+
+    1. Exact match by Hermes session ID (Phase 1):
+       If a companion lock exists for this session's Hermes ID, verify
+       the original MCP lock still exists. If the original is gone
+       (end_change was called), delete the companion immediately.
+
+    2. Scan by repo_slug (Phase 2):
+       Fallback that scans all lock files and matches by repo_slug in
+       content. When a valid MCP lock is found, creates a companion
+       lock for this session's Hermes ID so future checks are Phase 1.
     """
     current_slug = _derive_repo_slug()
     if not GOVERNANCE_STATE_DIR.exists():
         return False
 
+    # ── Phase 1: Exact match by Hermes session ID ──
+    if hermes_session_id:
+        companion_path = GOVERNANCE_STATE_DIR / f".governance-sess_{hermes_session_id}.json"
+        if companion_path.exists():
+            try:
+                state = json.loads(companion_path.read_text())
+                mcp_sid = state.get("companion_of", "")
+                if mcp_sid:
+                    # Verify original MCP lock still exists
+                    mcp_path = GOVERNANCE_STATE_DIR / f".governance-{mcp_sid}.json"
+                    if mcp_path.exists():
+                        try:
+                            mcp_state = json.loads(mcp_path.read_text())
+                            if mcp_state.get("task_id", "") and not _is_lock_stale(mcp_state):
+                                return True
+                            # Stale MCP lock — clean both
+                            mcp_path.unlink(missing_ok=True)
+                        except (json.JSONDecodeError, OSError):
+                            pass
+                # Original is gone or stale — clean companion
+                companion_path.unlink(missing_ok=True)
+            except (json.JSONDecodeError, OSError):
+                companion_path.unlink(missing_ok=True)
+
+    # ── Phase 2: Scan by repo_slug (find MCP lock, create companion) ──
     for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
         try:
             state = json.loads(lock_file.read_text())
+            # Skip companion files during scan — they're Phase 1 only
+            if "companion_of" in state:
+                continue
             # Match by repo_slug in content (not filename)
             if state.get("repo_slug") is not None and state.get("repo_slug") != current_slug:
                 continue
             # Skip stale locks — auto-clean
             if _is_lock_stale(state):
                 try:
-                    lock_file.unlink()
+                    lock_file.unlink(missing_ok=True)
                 except OSError:
                     pass
                 continue
             if state.get("task_id", ""):
+                # Found a valid MCP lock for this repo
+                # Create companion lock for this Hermes session
+                if hermes_session_id:
+                    mcp_sid = state.get("session_id", "")
+                    companion = dict(state)
+                    companion["companion_of"] = mcp_sid
+                    companion_path = GOVERNANCE_STATE_DIR / f".governance-sess_{hermes_session_id}.json"
+                    companion_path.write_text(json.dumps(companion, indent=2))
                 return True
         except (json.JSONDecodeError, OSError):
             # Corrupt lock file — clean it
             try:
-                lock_file.unlink()
+                lock_file.unlink(missing_ok=True)
             except OSError:
                 pass
     return False
@@ -234,8 +299,11 @@ def register(ctx):
         if tool_name == "cronjob" and args.get("action") in ("list", "run"):
             return None
 
-        # Check for any active governance lock in this repo
-        if _has_governance_lock():
+        # Extract Hermes session ID from kwargs
+        hermes_session_id = kwargs.get("session_id", "")
+
+        # Check for active governance lock (Phase 1 exact + Phase 2 scan)
+        if _has_governance_lock(hermes_session_id):
             return None
 
         # BLOCKED
