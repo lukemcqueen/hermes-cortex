@@ -442,6 +442,21 @@ if [[ -z "${SKIP_CHANGE_VALIDATE:-}" ]] && [[ -f "$REPO_ROOT/ops/scripts/change-
   bash "$REPO_ROOT/ops/scripts/change-validate.sh"
 fi
 
+# ── Adversarial scan (code changes only, A2 level) ──────────
+# Auto-runs on every commit so agents don't forget. Failures are
+# advisory (A2 is surface analysis, not gate) but violations are logged.
+ADVERSARIAL_SCRIPT="$REPO_ROOT/ops/scripts/quality/adversarial-verify.py"
+if [[ -f "$ADVERSARIAL_SCRIPT" ]] && [[ -z "${SKIP_ADVERSARIAL:-}" ]]; then
+  ADV_OUTPUT=$(python3 "$ADVERSARIAL_SCRIPT" --dir "$REPO_ROOT" --level A2 --gate 2>&1 || true)
+  ADV_EXIT=$?
+  if [[ "$ADV_EXIT" -ne 0 ]]; then
+    echo "$ADV_OUTPUT" | grep -E "❌|FAIL|CRITICAL" | head -5 | sed 's/^/   /' || true
+    echo "⚠️  Adversarial scan flagged issues. Review above."
+    echo "   To bypass: SKIP_ADVERSARIAL=1 git commit ..."
+    echo ""
+  fi
+fi
+
 # Check decision — LOOP is normal for first cycle, STOP means done
 DECISION=$(echo "$SCORE_OUTPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('decision','LOOP'))" 2>/dev/null || echo "LOOP")
 
