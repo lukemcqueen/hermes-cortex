@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────
+#  post-merge — Auto-deploy after every git pull/merge
+#
+#  Fires after git pull (fetch + merge) completes. Runs
+#  cortex-update.sh --force-all to sync all deployed files
+#  to the new HEAD. This is the structural fix for "I pulled
+#  but forgot to deploy."
+#
+#  Skips if SKIP_POST_MERGE=1 is set (emergency bypass).
+# ─────────────────────────────────────────────────────────────
+set -euo pipefail
+
+if [[ "${SKIP_POST_MERGE:-}" == "1" ]]; then
+  echo "⚠️  post-merge: SKIP_POST_MERGE=1 — skipping cortex-update"
+  exit 0
+fi
+
+UPDATE_SCRIPT="${HOME}/hermes-cortex/ops/scripts/cortex-update.sh"
+if [[ ! -f "$UPDATE_SCRIPT" ]]; then
+  echo "⚠️  post-merge: cortex-update.sh not found at $UPDATE_SCRIPT"
+  echo "   Clone the repo first: cd ~ && git clone https://github.com/fleet-operator/hermes-cortex"
+  exit 0
+fi
+
+echo "━━━ post-merge: auto-deploying to match new HEAD ━━━"
+bash "$UPDATE_SCRIPT" --force-all 2>&1 | sed 's/^/   /'
+echo "━━━ post-merge: deploy complete ━━━"

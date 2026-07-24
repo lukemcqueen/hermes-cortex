@@ -135,6 +135,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `docs/git-enforcement.md` | Pre-commit scoring + pre-push pull-before-push hooks — install, bypass, troubleshooting |
+| `.git/hooks/post-merge` | Auto-deploy hook — runs `cortex-update.sh --force-all` after every `git pull`. Prevents stale deploys |
 
 ## Development
 

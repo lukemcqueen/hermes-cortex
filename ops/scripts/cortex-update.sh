@@ -247,6 +247,8 @@ register "ops/scripts/agent/contact-moses.sh"            "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/agent/install-worker.sh"      "${CORTEX_DEPLOY_HOME}/scripts/install-worker.sh"
 # Pre-commit hook — deployed to hooks/ (not scripts/) for git's core.hooksPath
 register ".hermes-cortex/hooks/pre-commit"  "${CORTEX_DEPLOY_HOME}/hooks/pre-commit"
+# Post-merge hook — auto-runs cortex-update.sh --force-all after every git pull
+register ".hermes-cortex/hooks/post-merge"   "${CORTEX_DEPLOY_HOME}/hooks/post-merge"
 
 # Deploy scripts (nginx security pipeline) — now deployed to /usr/local/sbin/
 # by deploy_system_scripts() below. Old register entries removed.

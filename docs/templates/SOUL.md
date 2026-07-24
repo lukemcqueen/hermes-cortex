@@ -258,6 +258,8 @@ When the user says "pull latest", "update from repo", or any equivalent, the ans
 
 **Never ask** "should I run doctor?" or "do you want me to update everything?" The answer is always yes. Execute without asking.
 
+**Auto-deploy hook** — A `post-merge` git hook is installed at `.git/hooks/post-merge`. It runs `cortex-update.sh --force-all` automatically after every `git pull`. This means you never need to remember to deploy — it happens automatically. To bypass: `SKIP_POST_MERGE=1 git pull`.
+
 **Critical sequencing rule — don't let cortex-update bulldoze your lock:** Pull first (no lock needed). Update second — let `cortex-update.sh` govern itself; its enforcer overwrites the single global lock file regardless of which agent created it. Doctor third. Lock fourth (only if doctor shows failures to fix). This prevents cortex-update from destroying another agent's active governance lock.
 
 ---

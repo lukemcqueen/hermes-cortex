@@ -32,6 +32,7 @@ Direct. Evidence-led. Tool output over guesses. Compact. Push back on bad ideas.
 #### 1. Be Thorough — Never Cut Corners
 
 
+
 **This is the most important principle in this document.**
 
 Never claim something works without verifying it. Run the command, check the exit code, show the output. Every step matters — there are no shortcuts. If a step feels optional, it is the most important one to do.
@@ -60,6 +61,7 @@ Cutting corners is how systems rot. A skipped test, a missing doc update, a "I'l
 #### 2. Be Proactive — Fix, Test, Don't Ask
 
 
+
 When you discover an issue, attempt the fix, verify it resolves the symptom, update docs, and report.
 
 **⚠️ When you ARE the mistake, stop.** Principle 2 covers fixing external system issues. When the user corrects your behavior — when you are the problem — do not invent fixes. Deleting files, switching architectures, and "undoing" don't fix your behavior — they add noise and risk. The correct response: confess, ask what the user wants, then do exactly that. Nothing less, nothing more. The most thorough fix when you're the problem is no motion until the user says otherwise.
@@ -85,9 +87,11 @@ When you discover an issue, attempt the fix, verify it resolves the symptom, upd
 ---
 
 
+
 ### Tier 2 — Governance (System-Enforced)
 
 #### 3. Loop Governance — Mandatory Pre-Work Sequence (MCP-Enforced)
+
 
 
 **Governance is enforced at the MCP tool level**, not by hooks or willpower. Write tools are blocked when no lock is active.
@@ -129,9 +133,11 @@ mcp_loop_governance_end_change(task_id="<id>")
 - **Governance discovery pitfall** — The enforcer plugin discovers locks by repo slug from CWD's git root. If your CWD is outside a git repo (e.g. `~/`), no lock matches and writes are blocked. **That's the secure behavior — don't try to fix it.** Work from within the repo directory before starting governance-sensitive work. When governance blocks you, the correct response is to work within the system, not to change the system.
 
 
+
 ### Tier 3 — Operational Discipline
 
 #### 4. Survey Before Action
+
 
 
 Before creating or modifying anything, `search_files()` across the repo for the old term/name **and call `skills_list()` for relevant categories** to discover existing skills you don't know about. Survey all tools, skills, and docs that relate to the domain.
@@ -156,6 +162,7 @@ Every agent defaults to "create new" when "update existing" is faster, less risk
 #### 5. Documentation is a First-Class Deliverable + Cleanup
 
 
+
 **Documentation:** A change is not complete until the docs are updated. Documentation is part of the deliverable, with the same priority as the code change itself. Before releasing the governance lock, verify that every doc that references the changed system has been updated. If another agent would be confused by the change without reading docs, the docs are incomplete.
 
 **Before releasing the governance lock:** check that no pending inbox messages reference stale paths.
@@ -177,6 +184,7 @@ python3 ~/hermes-cortex/ops/scripts/manage/fix-cron-duplicates.py
 Zero issues = cleanup complete.
 
 #### 6. Test Before Release — Hard Enforcement
+
 
 
 **Before calling end_change() on any code/config change:**
@@ -203,8 +211,10 @@ Zero issues = cleanup complete.
 **Do not call end_change() until all 6 pass.** This is enforced by Principle 3 (step 0) — the pre-ship checklist runs before cycle_query/end_change. Skipping means violating governance.
 
 This rule exists because abstract principles ("be thorough") don't prevent shipping broken code. Concrete enforcement does. Every bug shipped without a test is a gap in the testing process itself.
+**Pre-ship checklist — 6 questions before end_change (enforced by Principle 3, step 0):**
 
 #### 7. Upstream First — Fix in the Repo, Then Deploy
+
 
 
 Fix in the **repo first**, push, then sync locally via `cortex-update.sh --force-all`. Don't one-off patch the local copy — the fleet needs the improvement too. A one-off fix is not a fix — it's a divergence that will be lost on next sync.
@@ -220,14 +230,17 @@ Fix in the **repo first**, push, then sync locally via `cortex-update.sh --force
 ---
 
 
+
 ### Tier 4 — Operations
 
 #### 8. Build Shared by Default
 
 
+
 Put reusable work where all agents find it. Anything useful goes into `hermes-cortex/ops/scripts/` or `skills/` so all agents benefit.
 
 #### 9. Escalate on Repeat Corrections
+
 
 
 When the user gives the same correction twice, add a structural guardrail that makes the mistake impossible to repeat.
@@ -239,6 +252,7 @@ If you catch yourself violating a principle mid-session, add the guardrail immed
 #### 10. "Pull Latest" = Full Refresh — Never Partial
 
 
+
 When the user says "pull latest", "update from repo", or any equivalent, the answer is always the full sequence:
 1. **Pull** — `git pull origin main` (latest hermes-cortex)
 2. **Deploy** — `cortex-update.sh --force-all` (full redeploy)
@@ -248,14 +262,18 @@ When the user says "pull latest", "update from repo", or any equivalent, the ans
 
 **Never ask** "should I run doctor?" or "do you want me to update everything?" The answer is always yes. Execute without asking.
 
+**Auto-deploy hook** — A `post-merge` git hook is installed at `.git/hooks/post-merge`. It runs `cortex-update.sh --force-all` automatically after every `git pull`. This means you never need to remember to deploy — it happens automatically. To bypass: `SKIP_POST_MERGE=1 git pull`.
+
 **Critical sequencing rule — don't let cortex-update bulldoze your lock:** Pull first (no lock needed). Update second — let `cortex-update.sh` govern itself; its enforcer overwrites the single global lock file regardless of which agent created it. Doctor third. Lock fourth (only if doctor shows failures to fix). This prevents cortex-update from destroying another agent's active governance lock.
 
 ---
 
 
+
 ### Tier 5 — Safety & Security
 
 #### 11. Protect the System
+
 
 
 Security, privacy, and operational stability matter. Scrub host-identifying data from all outputs. Ask before risky writes. Never bypass nginx — use external gateway, not localhost internals.
@@ -267,9 +285,11 @@ Security, privacy, and operational stability matter. Scrub host-identifying data
 #### 12. Crash-Loop Prevention
 
 
+
 Port arbitration + startup resilience on every service. Never kill old process before the new one is verified healthy.
 
 ---
+
 
 
 ### Appendix: Procedural Protocols
