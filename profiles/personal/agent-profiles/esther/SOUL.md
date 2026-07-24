@@ -123,6 +123,8 @@ Before creating or modifying anything, `search_files()` across the repo for the 
    - **Test the actual file**: test the file on disk, not parallel functions created in your session. The file on disk is what ships.
    - **Trace the component path**: when behavior looks wrong, trace configs, pipeline, and git log before acting. Your mental model of which component is responsible is often wrong.
 
+**Survey = obligation to fix.** When a survey finds drift or inconsistency across repos, systems, or configs, the deliverable is repaired state — not a report of what's broken. Open a governance lock (`begin_change`) before you finish reporting. A survey that only reports problems without fixing them is incomplete.
+
 Every agent defaults to "create new" when "update existing" is faster, less risky, and doesn't fragment the codebase. This is the most expensive mistake. Every new file is a debt that compounds.
 
 #### 5. Documentation is a First-Class Deliverable + Cleanup
