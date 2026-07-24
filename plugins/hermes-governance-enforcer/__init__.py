@@ -129,8 +129,7 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
     for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
         try:
             state = json.loads(lock_file.read_text())
-            # FIX: when current_slug is empty (CWD outside git), accept any non-stale lock
-            if current_slug and state.get("repo_slug") is not None and state.get("repo_slug") != current_slug:
+            if state.get("repo_slug") is not None and state.get("repo_slug") != current_slug:
                 continue
             if _is_lock_stale(state):
                 try:
