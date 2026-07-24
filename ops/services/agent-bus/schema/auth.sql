@@ -52,7 +52,7 @@ VALUES
     ('joseph', true,  true,  true,  true,  false),
     ('titus',  true,  true,  true,  true,  false),
     ('gisu',   true,  true,  true,  true,  false),
-    ('kustos', false, true,  true,  false, false)
+    ('kustos', true,  true,  true,  true,  false)
 ON CONFLICT (agent_name) DO NOTHING;
 
 -- ── Audit log ───────────────────────────────────────────────
