@@ -860,6 +860,16 @@ create_cron "agent-threat-pipeline" "0 5 * * *" \
   "" \
   "true"
 
+# Daily swap refresh — clear swap cache (no_agent, safe: requires 1GB headroom)
+create_cron "local-swap-refresh" "0 5 * * *" \
+  "swap-refresh.py" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
 # Agent IP submission processor (every 30 min) — universal
 create_cron "agent-ip-submission" "*/30 * * * *" \
   "agent-ip-submission.sh" \
