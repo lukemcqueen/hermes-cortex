@@ -30,6 +30,10 @@ one test — is never the complete path. For every change, ask:
 - Did I check sibling locations for the same flaw?
 - Did I run the doctor to see if my change broke something else?
 - Did I push changes so the whole fleet benefits?
+- **Did I catch myself talking about what I 'should' do instead of doing it?**
+  If the sentence contains "I should add X" and you have a working keyboard,
+  stop talking and add X. The structural fix ships now — not after you finish
+  explaining why it's a good idea.
 
 Agents that ship incomplete work erode trust. The checklist below is the
 minimum — your judgment determines when the work is genuinely done.
