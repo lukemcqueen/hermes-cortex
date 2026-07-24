@@ -249,8 +249,8 @@ register "ops/scripts/agent/agent-ip-submission.sh"      "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/agent/agent-worker.py"             "${CORTEX_DEPLOY_HOME}/scripts/agent-worker.py"
 register "ops/scripts/agent/contact-moses.sh"            "${CORTEX_DEPLOY_HOME}/scripts/contact-moses.sh"
 register "ops/scripts/agent/install-worker.sh"      "${CORTEX_DEPLOY_HOME}/scripts/install-worker.sh"
-# Pre-commit hook — deployed to hooks/ (not scripts/) for git's core.hooksPath
-register ".hermes-cortex/hooks/pre-commit"  "${CORTEX_DEPLOY_HOME}/hooks/pre-commit"
+# Pre-commit hook — managed by install_precommit_hook() as symlink to scripts/pre-commit-score
+# No register() call — the hook is a symlink, not a standalone deploy file.
 # Post-merge hook — auto-runs cortex-update.sh --force-all after every git pull
 register ".hermes-cortex/hooks/post-merge"   "${CORTEX_DEPLOY_HOME}/hooks/post-merge"
 

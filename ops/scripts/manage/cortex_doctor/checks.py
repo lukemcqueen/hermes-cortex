@@ -1568,9 +1568,18 @@ def check_stale_deploys(res):
                     f"Remove register line for {src} in cortex-update.sh")
 
         if dest.is_symlink():
-            res.add(f"Deploy symlink: {dest.name}", "WARN",
-                    "Should be a copy, not a symlink",
-                    f"Run: cp --remove-destination $(readlink {dest}) {dest}")
+            # Resolve the symlink target — if it's a known register() destination,
+            # this is an intentional cortex-managed symlink (e.g. hook → script).
+            # The symlink "prevents drift" — when the source updates, the hook
+            # automatically follows without a redeploy. Skip the warning.
+            resolved = dest.resolve()
+            if resolved in destinations:
+                res.add(f"Deploy symlink: {dest.name}", "INFO",
+                        f"intentional — resolved to registered path {resolved.relative_to(deploy_home)}")
+            else:
+                res.add(f"Deploy symlink: {dest.name}", "WARN",
+                        "Should be a copy, not a symlink",
+                        f"Run: cp --remove-destination $(readlink {dest}) {dest}")
         elif dest.exists():
             if not dest.is_file():
                 res.add(f"Deploy not regular: {dest.name}", "WARN",
