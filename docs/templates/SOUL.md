@@ -124,7 +124,11 @@ mcp_loop_governance_end_change(task_id="<id>")
 ```
 
 **Post-change** (after each logical change):
-0. **Pre-ship checklist mandatory** — Load `change-checklist` skill and run all phases. Syntax check (`bash -n`, `python3 -m py_compile`), doctor verify, docs updated, arrays synced, pushed, adversarial scan (`python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate`). **Do not proceed to step 1 until the checklist passes.**
+0. **Pre-ship checklist mandatory** — Before any close step, ask yourself three questions:
+   1. **Did I update all relevant docs?** Template, SOUL.md, AGENTS.md, DOCS-INDEX.md, skills, cron-schedules, any doc referencing the changed thing.
+   2. **Did I verify the update/doctor works?** Syntax check, doctor run, adversarial scan, cron list, test the actual changed path.
+   3. **Did I commit and push?** `git status` clean, `git push` confirmed. Deployed via `cortex-update.sh --force-all`.
+   Only after all three: load `change-checklist` skill, run all phases, adversarial scan (`python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate`). **Do not proceed to step 1 until every item passes.**
 1. `cycle_query` → `feedback_accept/override` → `end_change`
 2. If `end_change` rejects → confess, force-clear, document the gap
 
