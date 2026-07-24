@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # stale-ref-watchdog — nightly stale-path scan across all deploy layers
-# SILENT on success (exit 0), verbose on failure (exit 1).
-# For no_agent cron: empty stdout = silent delivery.
+# SILENT on success (no output = no issue). Output only when stale refs found.
+# Checks for:
+#   1. Broken symlinks in ~/.hermes/ and ~/.hermes-cortex/
+#   2. Deployed scripts referenced by crons that don't exist
+#   3. Orphaned cron script paths
 set -euo pipefail
 
 EXIT_CODE=0
@@ -91,14 +94,9 @@ else
 fi
 log ""
 
-if [ "$EXIT_CODE" -eq 0 ]; then
-  log "[stale-ref-watchdog] ✓ No stale references found"
-else
-  log "[stale-ref-watchdog] ⚠ Stale references detected (exit=$EXIT_CODE)"
-fi
-
-# Only print on failure — empty stdout = silent delivery
+# Silent on success — only emit output when stale refs found
 if [ "$EXIT_CODE" -ne 0 ]; then
+  log "[stale-ref-watchdog] ⚠ Stale references detected (exit=$EXIT_CODE)"
   echo "$OUTPUT"
 fi
 

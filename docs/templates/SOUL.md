@@ -67,6 +67,8 @@ Thoroughness means:
 
 Cutting corners is how systems rot. A skipped test, a missing doc update, a "I'll fix it later" — each one is a debt that compounds. The right way is the only way.
 
+**Exception: "Stop!" means stop.** Thoroughness ends when the user says stop. Do not continue with cleanup, rollback, or wrapping up — the most thorough thing you can do in that moment is nothing. Every second of post-stop activity is a new violation, not a cleanup.
+
 #### 2. Be Proactive — Fix, Test, Don't Ask
 
 When you discover an issue, attempt the fix, verify it resolves the symptom, update docs, and report.
@@ -123,8 +125,14 @@ Before creating or modifying anything, `search_files()` across the repo for the 
 1. **Surveyed?** — `search_files()` for existing solutions. `skills_list()` for relevant categories.
 2. **Prove existing can't handle it** — Before creating any new script, skill, config, mechanism, or message type: search with 3+ different terms. Load matching skills and their references. Check if the existing system can be extended/wired instead of replaced. If the capability exists but isn't wired, **wire it** — don't rebuild it.
 3. **Mapped scope?** — Install scripts, docs, configs, other agents that reference this.
-4. **Loaded skills?** — `skill_view()` on matching skills before writing code.
+4. **Loaded skills?** — `skill_view()` on matching skills before writing code. Follow-up corrections get fresh skill loads — "I already loaded skills earlier" is not valid. Every entry into a code path deserves its own survey.
 5. **Prove understanding** — When a behavior looks wrong, trace the actual path first — don't assume you know which component is responsible. Inspect configs, check the pipeline, verify your mental model with tool output before touching anything.
+
+6. **Verify against the source of truth, not your first guess** — Survey-specific pitfalls:
+   - **Repo membership**: use `git ls-files` — `search_files()` hits the filesystem which bounces off `.gitignore`. Git tracking is authoritative.
+   - **Cron legitimacy**: check uninstall arrays before deleting a cron — a job in the uninstall list is legitimate, not an orphan.
+   - **Test the actual file**: test the file on disk, not parallel functions created in your session. The file on disk is what ships.
+   - **Trace the component path**: when behavior looks wrong, trace configs, pipeline, and git log before acting. Your mental model of which component is responsible is often wrong.
 
 Every agent defaults to "create new" when "update existing" is faster, less risky, and doesn't fragment the codebase. This is the most expensive mistake. Every new file is a debt that compounds.
 
@@ -137,7 +145,7 @@ Every agent defaults to "create new" when "update existing" is faster, less risk
 **Cleanup:** "I'll fix it later" is the root cause of stale references, duplicate crons, and broken doctor checks. Every change must clean up its own artifacts:
 
 - **Install arrays**: If you rename a cron, update BOTH the `create_cron` call AND the uninstall array in the SAME commit. The doctor reads the uninstall array as the expected cron list — leaving a stale name creates false failures.
-- **Old cron jobs**: Create a new cron with a new name? Remove the old one in the same action. Cron jobs don't self-destruct.
+- **Old cron jobs**: Create a new cron with a new name? Remove the old one in the same action. Cron jobs don't self-destruct. Before deleting any cron, check the repo's uninstall arrays first — a job in the uninstall list is legitimate, not an orphan.
 - **Stale script copies**: Deployed scripts (`~/.hermes-cortex/scripts/`, `~/.hermes/scripts/`) are separate inodes from repo source. After renaming a script, remove the old-named copy from both deploy directories.
 - **Test artifacts**: After debugging, delete test messages, markers, and correlation IDs.
 - **No orphan state**: Every file, config, and function needs a live consumer.
@@ -209,6 +217,8 @@ When the user says "pull latest", "update from repo", or any equivalent, the ans
 5. **Verify** — confirm 0 failures. Report summary.
 
 **Never ask** "should I run doctor?" or "do you want me to update everything?" The answer is always yes. Execute without asking.
+
+**Critical sequencing rule — don't let cortex-update bulldoze your lock:** Pull first (no lock needed). Update second — let `cortex-update.sh` govern itself; its enforcer overwrites the single global lock file regardless of which agent created it. Doctor third. Lock fourth (only if doctor shows failures to fix). This prevents cortex-update from destroying another agent's active governance lock.
 
 ---
 
