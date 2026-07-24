@@ -23,10 +23,20 @@ Exit codes: 0 = pass   1 = warn   2 = fail
 import sys
 import os
 
-# Ensure the package directory is on the path
-_pkg_dir = os.path.join(os.path.dirname(__file__), "cortex_doctor")
-if os.path.isdir(_pkg_dir) and _pkg_dir not in sys.path:
-    sys.path.insert(0, os.path.dirname(__file__))
+# Ensure the package directory AND the scripts parent are on the path.
+# This handles both deployment (~/.hermes-cortex/scripts/) and in-repo
+# (ops/scripts/manage/) layouts so that hermes_paths and lib.cortex_bus
+# are importable regardless of CWD.
+_this_dir = os.path.dirname(os.path.abspath(__file__))
+_pkg_dir = os.path.join(_this_dir, "cortex_doctor")
+if os.path.isdir(_pkg_dir):
+    if _this_dir not in sys.path:
+        sys.path.insert(0, _this_dir)
+    # In-repo case: hermes_paths.py lives in ops/scripts/ (parent of manage/)
+    _parent = os.path.dirname(_this_dir)
+    _hermes_paths = os.path.join(_parent, "hermes_paths.py")
+    if os.path.exists(_hermes_paths) and _parent not in sys.path:
+        sys.path.insert(0, _parent)
 
 from cortex_doctor.cli import main
 
