@@ -113,19 +113,21 @@ def get_session_id() -> str:
     """Return a persistent session ID, creating one on first call.
 
     Priority:
-    1. PID-scoped marker from the Hermes enforcer
-       (~/.hermes-cortex/state/.hermes-session-{PPID}.id)
-       This aligns the MCP's session ID namespace with the Hermes
-       session ID that the enforcer uses for lock checks.
-    2. Cached ~/.hermes/session.id (previous value from this session)
-    3. Generate new UUID-based ID (first call, no enforcer present)
+    1. Fixed-path marker from the Hermes enforcer
+       (~/.hermes-cortex/state/.hermes-session-current.id)
+       This bypasses the PID-chain problem: even when the MCP server is
+       separated from Hermes by a watchdog process, the fixed path is
+       the same regardless of process ancestry.
+    2. PID-scoped marker scan (~/.hermes-cortex/state/.hermes-session-*.id)
+       Fallback for MCP versions that don't support the fixed path.
+    3. Cached ~/.hermes/session.id (previous value from this session)
+    4. Generate new UUID-based ID (first call, no enforcer present)
     """
-    # Priority 1: Read PID-scoped marker from enforcer
+    # Priority 1: Fixed-path marker (primary — no PID needed)
     try:
-        ppid = os.getppid()
-        marker = Path.home() / ".hermes-cortex" / "state" / f".hermes-session-{ppid}.id"
-        if marker.exists():
-            sid = marker.read_text().strip()
+        fixed = Path.home() / ".hermes-cortex" / "state" / ".hermes-session-current.id"
+        if fixed.exists():
+            sid = fixed.read_text().strip()
             if sid:
                 # Cache it so future calls are instant
                 SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -134,11 +136,27 @@ def get_session_id() -> str:
     except (OSError, ValueError):
         pass
 
-    # Priority 2: Cached value from a previous call
+    # Priority 2: Scan all PID-scoped markers from the enforcer
+    # This handles the legacy case where only PID-scoped markers exist.
+    try:
+        state_dir = Path.home() / ".hermes-cortex" / "state"
+        for marker in sorted(state_dir.glob(".hermes-session-*.id")):
+            # Skip the fixed-path marker (already tried above)
+            if marker.name == ".hermes-session-current.id":
+                continue
+            sid = marker.read_text().strip()
+            if sid:
+                SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
+                SESSION_FILE.write_text(sid)
+                return sid
+    except (OSError, ValueError):
+        pass
+
+    # Priority 3: Cached value from a previous call
     if SESSION_FILE.exists():
         return SESSION_FILE.read_text().strip()
 
-    # Priority 3: Generate new ID
+    # Priority 4: Generate new ID
     sid = f"sess_{uuid.uuid4().hex[:12]}"
     SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
     SESSION_FILE.write_text(sid)
@@ -233,6 +251,45 @@ def _release_lock() -> None:
     path = _session_lock_path(session_id)
     if path.exists():
         path.unlink()
+
+
+def _purge_stale_locks() -> int:
+    """Proactively remove all stale lock files from ANY session.
+    
+    Fix GAP #9: scans all .governance-*.json files and removes those
+    whose heartbeat has exceeded their TTL. This prevents stale lock
+    buildup from crashed sessions and ensures every session starts clean.
+    
+    Returns the number of stale locks removed.
+    """
+    removed = 0
+    if not GOVERNANCE_STATE_DIR.exists():
+        return 0
+    for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
+        try:
+            if lock_file.is_symlink():
+                real_path = lock_file.resolve()
+                # Skip symlinks — we'll process the real file separately
+                continue
+            state = json.loads(lock_file.read_text())
+            if _is_lock_stale(state):
+                lock_file.unlink()
+                removed += 1
+        except (json.JSONDecodeError, OSError, ValueError):
+            try:
+                lock_file.unlink(missing_ok=True)
+                removed += 1
+            except OSError:
+                pass
+    # Also clean up orphan symlinks (pointing to deleted targets)
+    for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
+        try:
+            if lock_file.is_symlink() and not lock_file.exists():
+                lock_file.unlink()
+                removed += 1
+        except OSError:
+            pass
+    return removed
 
 
 # ── Embedding helpers ────────────────────────────────────────
@@ -723,6 +780,7 @@ def _begin_change(args: dict) -> CallToolResult:
         )])
 
     # ── Step 3: Write lock file (only after DB cycle confirmed) ──
+    has_plan = bool(args.get("plan", []))
     state = {
         "task_id": task_id,
         "description": description,
@@ -738,7 +796,8 @@ def _begin_change(args: dict) -> CallToolResult:
         "allowed_scope": args.get("allowed_scope", []),
         "plan": args.get("plan", []),
         "task_stack": [],
-        "status": "executing",
+        # Start in planning state when a plan is provided (fix GAP #6)
+        "status": "planning" if has_plan else "executing",
     }
     _write_lock(state)
 
@@ -781,16 +840,24 @@ def _end_change(args: dict) -> CallToolResult:
 
     # Step 3: Try to find a matching cycle for the return message (informational, not blocking)
     cycle_info = ""
+    cycle_warning = ""
     try:
         conn = _db()
         row = conn.execute(
-            "SELECT id, composite, decision FROM loop_cycles WHERE task_id = ? ORDER BY id DESC LIMIT 1",
+            "SELECT id, composite, decision, user_overrode FROM loop_cycles WHERE task_id = ? ORDER BY id DESC LIMIT 1",
             (task_id,)
         ).fetchone()
         conn.close()
         if row:
             accept = "✅" if row["decision"] and row["decision"].strip().upper().startswith("STOP") else "⬜"
+            scored = row["user_overrode"] is not None
             cycle_info = f"Cycle #{row['id']} ({row['decision']}) {accept}"
+            if not scored and row["decision"] in ("PENDING", "LOOP"):
+                cycle_warning = ("\n\n⚠️  CYCLE NOT SCORED — call cycle_query + feedback_accept to score.\n"
+                                 "   Unreviewed cycles accumulate and may trigger the scoring watchdog.")
+        else:
+            cycle_info = "(no cycle found in DB)"
+            cycle_warning = "\n\n⚠️  NO CYCLE RECORD — no governance cycle was created for this change."
     except Exception:
         cycle_info = "(no cycle found in DB)"
 
@@ -804,6 +871,7 @@ def _end_change(args: dict) -> CallToolResult:
             f"🔓 Governance session '{task_id}' closed.\n"
             f"{cycle_info}\n"
             f"Lock released. You can start a new change with begin_change()."
+            f"{cycle_warning}"
         )
     )])
 
@@ -813,7 +881,9 @@ def _check_lock(args: dict | None = None) -> CallToolResult:
 
     Updates heartbeat on every call to prevent staleness.
     Auto-releases locks whose heartbeat has exceeded TTL.
+    Proactively purges stale locks from other sessions (GAP #9).
     """
+    _purge_stale_locks()
     state = _read_lock()
     if state is None:
         return CallToolResult(content=[TextContent(
@@ -947,17 +1017,27 @@ def _feedback_accept(args: dict) -> CallToolResult:
     note = args.get("note", "")
     try:
         conn = _db()
-        existing = conn.execute("SELECT id FROM loop_cycles WHERE id = ?", (cycle_id,)).fetchone()
+        existing = conn.execute("SELECT id, decision FROM loop_cycles WHERE id = ?", (cycle_id,)).fetchone()
         if not existing:
             conn.close()
             return CallToolResult(content=[TextContent(
                 type="text",
                 text=f"Error: Cycle #{cycle_id} not found in loop-governance DB. Use cycle_query to find valid cycle IDs."
             )])
-        conn.execute("UPDATE loop_cycles SET user_overrode=0, outcome_note=? WHERE id=?", (note, cycle_id))
+        # Fix GAP #5: update decision from PENDING to MOVE_ON when accepted
+        # Don't overwrite STOP decisions (from pre-commit hook score-cycle)
+        current_decision = existing["decision"] or "PENDING"
+        new_decision = current_decision
+        if current_decision in ("PENDING", "LOOP"):
+            new_decision = "MOVE_ON"
+        conn.execute("UPDATE loop_cycles SET user_overrode=0, decision=?, outcome_note=? WHERE id=?",
+                     (new_decision, note, cycle_id))
         conn.commit()
         conn.close()
-        return CallToolResult(content=[TextContent(type="text", text=f"✅ Cycle #{cycle_id} marked as accepted.")])
+        return CallToolResult(content=[TextContent(
+            type="text",
+            text=f"✅ Cycle #{cycle_id} marked as accepted (decision: {current_decision} → {new_decision})."
+        )])
     except Exception as e:
         return CallToolResult(content=[TextContent(type="text", text=f"Error accepting cycle #{cycle_id}: {e}")])
 
@@ -1134,7 +1214,13 @@ def _advance_task_state(args: dict) -> CallToolResult:
 
 
 def _request_interruption(args: dict) -> CallToolResult:
-    """Push current task onto stack and create a sub-task."""
+    """Push current task onto stack and create a sub-task.
+    
+    Fix GAP #7: generates a unique sub-task_id by appending a counter suffix
+    to the parent's task_id, avoiding duplicate IDs in the task stack.
+    Fix GAP #3: enforces MAX_STACK_DEPTH (5) to prevent infinite-interrupt
+    resource exhaustion.
+    """
     task_id = args.get("task_id", "").strip()
     description = args.get("description", "").strip()
     reason = args.get("reason", "")
@@ -1163,22 +1249,36 @@ def _request_interruption(args: dict) -> CallToolResult:
             type="text", text=f"Cannot transition to interrupt_req from '{old_state}'."
         )])
 
+    # Fix GAP #3: Enforce max stack depth
+    MAX_STACK_DEPTH = 5
+    stack = state.get("task_stack", [])
+    if len(stack) >= MAX_STACK_DEPTH:
+        return CallToolResult(content=[TextContent(
+            type="text",
+            text=f"Cannot interrupt: stack depth limit ({MAX_STACK_DEPTH}) reached. "
+                 f"Resume a parent task first before creating new interruptions."
+        )])
+
+    # Fix GAP #7: Generate unique sub-task_id by appending counter suffix
+    sub_counter = len(stack) + 1
+    sub_task_id = f"{task_id}_sub{sub_counter}"
+
     # Save current state to task_stack
     stacked = {
         "task_id": state["task_id"],
         "description": state.get("description", ""),
+        "sub_task_id": sub_task_id,
         "status": old_state,
         "started_at": state.get("started_at", ""),
         "acceptance_criteria": state.get("acceptance_criteria", []),
         "allowed_scope": state.get("allowed_scope", []),
         "plan": state.get("plan", []),
     }
-    stack = state.get("task_stack", [])
     stack.append(stacked)
 
-    # Replace lock with interruption sub-task
+    # Replace lock with interruption sub-task (using unique sub_task_id)
     now_iso = _now_iso()
-    state["task_id"] = task_id
+    state["task_id"] = sub_task_id
     state["description"] = description
     state["status"] = "executing"
     state["started_at"] = now_iso
@@ -1188,15 +1288,16 @@ def _request_interruption(args: dict) -> CallToolResult:
     state["allowed_scope"] = []
     state["plan"] = []
 
-    detail = f"Interrupted by: {task_id} — {description}"
+    detail = f"Interrupted by: {sub_task_id} — {description}"
     if reason:
         detail += f" (reason: {reason})"
     _write_lock_and_log(state, "interruption_requested", detail)
 
     return CallToolResult(content=[TextContent(
         type="text",
-        text=f"⏸️ Interruption: '{stacked['task_id']}' suspended. New sub-task '{task_id}' started.\n"
+        text=f"⏸️ Interruption: '{stacked['task_id']}' suspended. New sub-task '{sub_task_id}' started.\n"
              f"  Stack depth: {len(stack)}\n"
+             f"  Max depth: {MAX_STACK_DEPTH}\n"
              f"  Use resume_from_interrupt to restore '{stacked['task_id']}' when done."
     )])
 
@@ -1390,6 +1491,29 @@ def _promote_issue_to_task(args: dict) -> CallToolResult:
     }
     _write_lock(state)
 
+    # Fix GAP #4: Create a cycle in loop-governance DB so promoted-issue
+    # tasks are traceable and have a cycle record for end_change.
+    try:
+        conn = _db()
+        row = conn.execute(
+            "SELECT COALESCE(MAX(cycle_num), 0) + 1 FROM loop_cycles WHERE task_id = ?",
+            (task_id,)
+        ).fetchone()
+        cycle_num = row[0] if row else 1
+        conn.execute(
+            """INSERT INTO loop_cycles
+               (task_id, cycle_num, completeness, quality, progress, composite,
+                no_progress, decision, user_overrode, outcome_note, session_id)
+               VALUES (?, ?, 0, 0, 0, 0, 0, 'PENDING', NULL, ?, ?)""",
+            (task_id, cycle_num, f"Promoted from issue: {description}", session_id)
+        )
+        conn.commit()
+        cycle_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.close()
+        cycle_msg = f"\n  Pending cycle #{cycle_id} created."
+    except Exception:
+        cycle_msg = "\n  (note: no cycle record — DB unavailable)"
+
     # Log as task event
     try:
         conn = _db()
@@ -1405,9 +1529,11 @@ def _promote_issue_to_task(args: dict) -> CallToolResult:
 
     return CallToolResult(content=[TextContent(
         type="text",
-        text=f"📌 Issue promoted to task '{task_id}': {description}\n"
-             f"  Lock created with TTL: {ttl}s\n"
-             f"  Use end_change('{task_id}') when done."
+        text=(
+            f"📌 Issue promoted to task '{task_id}': {description}\\n"
+            f"  Lock created with TTL: {ttl}s{cycle_msg}\\n"
+            f"  Use end_change('{task_id}') when done."
+        )
     )])
 
 

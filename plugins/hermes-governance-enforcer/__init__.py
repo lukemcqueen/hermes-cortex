@@ -39,19 +39,28 @@ GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 
 
 def _write_session_marker(hermes_session_id: str) -> None:
-    """Write the Hermes session ID to a PID-scoped marker file.
+    """Write the Hermes session ID to PID-scoped AND fixed-path marker files.
 
-    The MCP loop-governance server reads this file using os.getppid()
-    to learn the Hermes session ID, ensuring both sides use the same
-    namespace for lock filenames.
+    The MCP loop-governance server reads the fixed-path marker
+    (~/.hermes-cortex/state/.hermes-session-current.id) to learn the Hermes
+    session ID. This avoids the PID-chain problem: if there's a watchdog
+    between Hermes and the MCP server, os.getppid() in the MCP returns the
+    watchdog PID, not the Hermes PID.
+
+    The PID-scoped marker (`.hermes-session-{pid}.id`) is kept for backward
+    compat with MCP versions that scan by PPID.
     """
     pid = os.getpid()
-    marker = GOVERNANCE_STATE_DIR / f".hermes-session-{pid}.id"
     try:
         GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
-        marker.write_text(hermes_session_id)
+        # Fixed-path marker (primary) — MCP reads this without needing PPID
+        fixed_marker = GOVERNANCE_STATE_DIR / ".hermes-session-current.id"
+        fixed_marker.write_text(hermes_session_id)
+        # PID-scoped marker (legacy fallback)
+        pid_marker = GOVERNANCE_STATE_DIR / f".hermes-session-{pid}.id"
+        pid_marker.write_text(hermes_session_id)
     except OSError:
-        pass  # Best-effort — MCP will fall back to UUID
+        pass  # Best-effort — MCP will fall back to cached session.id
 
 
 def _derive_repo_slug() -> str:
@@ -133,6 +142,15 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
     current_slug = _derive_repo_slug()
     if not GOVERNANCE_STATE_DIR.exists():
         return False
+
+    # Proactively purge stale locks from any session (GAP #9)
+    for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
+        try:
+            state = json.loads(lock_file.read_text())
+            if _is_lock_stale(state):
+                lock_file.unlink(missing_ok=True)
+        except (json.JSONDecodeError, OSError):
+            lock_file.unlink(missing_ok=True)
 
     # ── Phase 1: Exact match by Hermes session ID ──
     if hermes_session_id:
@@ -276,8 +294,13 @@ def register(ctx):
     ctx.register_hook("on_session_start", _on_session_start)
 
     # Read command patterns that never need governance
+    # NOTE: echo/printf intentionally NOT included here — they appear in
+    # WRITE_COMMAND_PATTERNS with redirection operators (>|>>). If they were
+    # also in READ_COMMAND_PATTERNS, `echo "data" > file` would match the
+    # read pattern FIRST (line 330–332 in pre_tool_call_hook), bypassing
+    # the write-lock check. This was a confirmed bypass (GAP #1, July 2026).
     READ_COMMAND_PATTERNS = [
-        r"^\s*(ls|cat|head|tail|less|more|grep|find|which|whoami|id|pwd|date|echo|printf)\s",
+        r"^\s*(ls|cat|head|tail|less|more|grep|find|which|whoami|id|pwd|date)\s",
         r"^\s*(ps|top|htop|df|du|free|uptime|uname|hostname|dmesg|journalctl)\s",
         r"^\s*(git)\s+(status|log|diff|show|branch|stash\s+list)",
         r"^\s*(docker)\s+(ps|images|logs|inspect|stats)",
