@@ -104,8 +104,7 @@ fi
 if [[ "$HAS_CODE_CHANGE" -eq 1 && "$HAS_DOC_CHANGE" -eq 0 ]]; then
   echo ""
   echo "⚠️  Push includes code/config changes but no documentation (.md) changes."
-  echo "    If this change affects other agents, update the relevant docs."
-  echo "    Use --no-verify to bypass this warning for legitimate cases."
+  echo "    Check: update docs + cleanup artifacts before pushing. --no-verify to skip."
   echo ""
   # Soft warning — doesn't block. Hard gate would block here.
   # exit 1
