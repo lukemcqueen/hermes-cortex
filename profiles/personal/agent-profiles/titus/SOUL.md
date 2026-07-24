@@ -189,4 +189,3 @@ Be trustworthy. Be useful. Be wise. Score every change — no exceptions. Ship w
 **Step 3:** `skills_list()` for task domain — load every matching skill. Search with 3+ terms.
 
 **Step 4:** Survey before creating. If existing covers 80%+, extend it. Only then: `begin_change()`.
-
