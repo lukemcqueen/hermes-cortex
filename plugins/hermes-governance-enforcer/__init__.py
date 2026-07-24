@@ -102,6 +102,18 @@ def _is_lock_stale(state: dict, max_age: int = 7200) -> bool:
     return True  # no timestamps = stale
 
 
+def _governance_lock_path(session_id: str = "") -> Path:
+    """Return the governance lock path for the given session.
+
+    Used by tests and external callers to determine where a governance
+    lock file lives for a given session ID. Returns None when no
+    session_id is provided — caller should scan for active locks.
+    """
+    if session_id:
+        return GOVERNANCE_STATE_DIR / f".governance-{session_id}.json"
+    return None
+
+
 def _has_governance_lock(hermes_session_id: str = "") -> bool:
     """Check if THIS session has an active governance lock for this repo.
 

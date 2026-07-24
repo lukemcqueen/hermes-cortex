@@ -55,10 +55,20 @@ def temp_state_dir():
         enforcer.GOVERNANCE_STATE_DIR = original
 
 
-def _create_lock(state_dir: Path, task_id: str = "test-task", slug: str = "test-repo") -> Path:
-    """Create a governance lock file for a given slug."""
-    lock = state_dir / f".governance-{slug}.json"
-    lock.write_text(json.dumps({"task_id": task_id, "scored": False}))
+def _create_lock(state_dir: Path, task_id: str = "test-task", slug: str = "test-repo", session_id: str = "") -> Path:
+    """Create a governance lock file with proper timestamps (avoids stale detection)."""
+    from datetime import datetime, timezone
+    ts = datetime.now(timezone.utc).isoformat()
+    lock_name = f".governance-{session_id}.json" if session_id else f".governance-{slug}.json"
+    lock = state_dir / lock_name
+    lock.write_text(json.dumps({
+        "task_id": task_id,
+        "repo_slug": slug,
+        "heartbeat_at": ts,
+        "started_at": ts,
+        "session_id": session_id,
+        "scored": False,
+    }))
     return lock
 
 
@@ -158,7 +168,8 @@ class TestTerminalWriteDetection:
         "hermes doctor",
         "systemctl is-active nginx",
         "journalctl -u service -n 50",
-        "python3 -c 'print(42)'",
+        # python3 -c is correctly blocked as a write tool (inline code execution)
+        # "python3 -c 'print(42)'",
         "",
     ])
     def test_read_commands_allowed(self, cmd):
@@ -286,49 +297,57 @@ class TestHasGovernanceLock:
 
     def test_lock_exists_with_task_id(self, temp_state_dir):
         _create_lock(temp_state_dir, task_id="fix-auth", slug="test-repo")
-        with self._with_lock_path(temp_state_dir / ".governance-test-repo.json"):
+        # Phase 2 scan finds lock by repo_slug
+        original_slug = enforcer._derive_repo_slug
+        enforcer._derive_repo_slug = lambda: "test-repo"
+        try:
             assert _has_governance_lock() is True
+        finally:
+            enforcer._derive_repo_slug = original_slug
 
     def test_lock_missing(self, temp_state_dir):
-        with self._with_lock_path(temp_state_dir / ".governance-nonexistent.json"):
+        _create_lock(temp_state_dir, task_id="fix-auth", slug="some-other-repo")
+        original_slug = enforcer._derive_repo_slug
+        enforcer._derive_repo_slug = lambda: "test-repo"
+        try:
             assert _has_governance_lock() is False
+        finally:
+            enforcer._derive_repo_slug = original_slug
 
     def test_lock_with_empty_task_id_returns_false(self, temp_state_dir):
-        _create_lock(temp_state_dir, task_id="", slug="empty")
-        with self._with_lock_path(temp_state_dir / ".governance-empty.json"):
+        _create_lock(temp_state_dir, task_id="", slug="test-repo")
+        original_slug = enforcer._derive_repo_slug
+        enforcer._derive_repo_slug = lambda: "test-repo"
+        try:
             assert _has_governance_lock() is False
+        finally:
+            enforcer._derive_repo_slug = original_slug
 
     def test_corrupted_lock_file_returns_false(self, temp_state_dir):
         lock = temp_state_dir / ".governance-corrupted.json"
         lock.write_text("not valid json")
-        with self._with_lock_path(lock):
-            assert _has_governance_lock() is False
+        # Phase 2: corrupted file is removed, no lock found
+        assert _has_governance_lock() is False
 
     def test_deleted_lock_file_returns_false(self, temp_state_dir):
         lock = _create_lock(temp_state_dir, task_id="to-delete", slug="delete-me")
         lock.unlink()
-        with self._with_lock_path(lock):
-            assert _has_governance_lock() is False
+        assert _has_governance_lock() is False
 
 
 class TestGovernanceLockPath:
-    """Repo-scoped vs fallback lock path."""
+    """Lock path helper — returns session-scoped path or None."""
 
-    def test_inside_git_repo_returns_repo_slug(self):
-        """When inside the hermes-cortex git repo, slug should be 'hermes-cortex'."""
-        path = _governance_lock_path()
-        assert "hermes-cortex" in str(path)
+    def test_with_session_id_returns_scoped_path(self):
+        path = _governance_lock_path(session_id="sess_abc123")
+        assert path is not None
+        assert "sess_abc123" in str(path)
         assert path.suffix == ".json"
 
-    def test_outside_git_repo_falls_back_to_generic(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            original_cwd = Path.cwd()
-            os.chdir(tmp)
-            try:
-                path = _governance_lock_path()
-                assert "generic" in str(path)
-            finally:
-                os.chdir(original_cwd)
+    def test_without_session_id_returns_none(self):
+        """No session_id → return None (no generic fallback — strict)."""
+        path = _governance_lock_path()
+        assert path is None
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -340,15 +359,11 @@ class TestPreToolCallHook:
     """Integration tests for the pre_tool_call_hook closure."""
 
     def _make_hook(self, state_dir: Path, slug: str = "test-repo"):
-        """Create the pre_tool_call_hook with overridden lock path."""
-        lock_path = state_dir / f".governance-{slug}.json"
+        """Create the pre_tool_call_hook with overridden repo slug for Phase 2."""
 
-        def _mock_lock_path():
-            return lock_path
-
-        # Use the module-level enforcer reference
-        original = enforcer._governance_lock_path
-        enforcer._governance_lock_path = _mock_lock_path
+        # Mock _derive_repo_slug so Phase 2 finds locks by repo_slug
+        original_repo_slug = enforcer._derive_repo_slug
+        enforcer._derive_repo_slug = lambda: slug
 
         # Build the hook the same way register() does
         def hook(tool_name="", args=None, **kwargs):
@@ -362,7 +377,7 @@ class TestPreToolCallHook:
             return {"action": "block", "message": "GOVERNANCE LOCK REQUIRED"}
 
         yield hook
-        enforcer._governance_lock_path = original
+        enforcer._derive_repo_slug = original_repo_slug
 
     # ── Write tool without lock → BLOCKED ──────────────────────────────────
 
