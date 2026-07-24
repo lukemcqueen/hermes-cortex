@@ -48,6 +48,38 @@ if [[ "$LOCK_FOUND" -eq 0 ]]; then
   exit 1
 fi
 
+# ── Verification check ────────────────────────────────────
+# Before allowing a push, require that the change was tested.
+# The agent must create ~/.hermes-cortex/state/.verification-done
+# AFTER running the actual code change and confirming it works.
+# Examples of valid verification:
+#   Bash:  bash -n script.sh && ./script.sh --test
+#   Python: python3 -c "import py_compile; py_compile.compile('file.py', doraise=True)"
+#           && python3 script.py --test
+#   Hook:  verify the hook fires correctly (e.g. cron create block)
+VERIFICATION_MARKER="${GOVERNANCE_STATE_DIR}/.verification-done"
+if [[ ! -f "$VERIFICATION_MARKER" ]]; then
+  echo ""
+  echo "❌  Push blocked: change has not been verified."
+  echo "    You must test the change before pushing."
+  echo ""
+  echo "    Run the actual changed code path and confirm it works:"
+  echo "      - Python: python3 script.py --test"
+  echo "      - Shell:  bash -n script.sh && ./script.sh"
+  echo "      - Hook:   attempt the blocked action then confirm it blocked"
+  echo "      - Config: diff output vs expected"
+  echo ""
+  echo "    After verification succeeds:"
+  echo "      touch ~/.hermes-cortex/state/.verification-done"
+  echo "      git push"
+  echo ""
+  echo "    No bypass flags available — verification is a hard gate."
+  echo ""
+  exit 1
+fi
+# Consume the marker — push succeeds, next push needs fresh verification
+rm -f "$VERIFICATION_MARKER"
+
 # Get the remote and branch being pushed
 # Git passes: <local-ref> <local-sha> <remote-ref> <remote-sha>
 # We read from stdin (one line per ref being pushed)
