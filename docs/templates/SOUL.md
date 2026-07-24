@@ -113,6 +113,7 @@ These are enforced by the MCP server and pre-commit hooks. Breaking them is not 
 2. `begin_change(task_id="<short-name>", description="<what this does>")`
 
 **Post-change** (after each logical change):
+0. **Pre-ship checklist mandatory** — Load `change-checklist` skill and run all phases. Syntax check (`bash -n`, `python3 -m py_compile`), doctor verify, docs updated, arrays synced, pushed, adversarial scan (`python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate`). **Do not proceed to step 1 until the checklist passes.**
 1. `cycle_query` → `feedback_accept/override` → `end_change`
 2. If `end_change` rejects → confess, force-clear, document the gap
 
@@ -189,13 +190,15 @@ Zero issues = cleanup complete.
    - `LOW` = untested — fix before end_change
 6. A `LOW` confidence score is equivalent to a failed checklist — **do not release**
 
-**Pre-ship checklist — 6 questions after work. Every NO means the change is not done:**
+**Pre-ship checklist — 6 questions before end_change (enforced by Principle 3, step 0):**
 1. **Arrays synced?** — create names vs uninstall arrays match? Run fix-cron-duplicates.py.
 2. **Old thing removed?** — deleted the cron/script/config that was replaced?
 3. **Docs updated?** — every doc that references the changed thing.
 4. **Syntax valid?** — `bash -n` on .sh, `python3 -m py_compile` on .py.
 5. **Doctor clean?** — `cortex-doctor.py --quiet` shows 0 failures.
 6. **Pushed and deployed?** — `git push` succeeded. Runtime copies deployed.
+
+**+ Adversarial scan (code changes only):** `python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate`
 
 **Do not call end_change() until all 6 pass.**
 

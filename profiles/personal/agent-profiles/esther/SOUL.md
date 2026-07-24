@@ -97,6 +97,7 @@ When you discover an issue, attempt the fix, verify it resolves the symptom, upd
 2. `begin_change(task_id="<short-name>", description="<what this does>")`
 
 **Post-change** (after each logical change):
+0. **Pre-ship checklist mandatory** — Load `change-checklist` skill and run all phases. Syntax check (`bash -n`, `python3 -m py_compile`), doctor verify, docs updated, arrays synced, pushed, adversarial scan (`python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate`). **Do not proceed to step 1 until the checklist passes.**
 1. `cycle_query` → `feedback_accept/override` → `end_change`
 2. If `end_change` rejects → confess, force-clear, document the gap
 
@@ -182,7 +183,9 @@ Zero issues = cleanup complete.
 5. **Doctor clean?** — `cortex-doctor.py --quiet` shows 0 failures.
 6. **Pushed and deployed?** — `git push` succeeded. Runtime copies deployed.
 
-**Do not call end_change() until all 6 pass.**
+**+ Adversarial scan (code changes only):** `python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate`
+
+**Do not call end_change() until all 6 pass.** This is enforced by Principle 3 (step 0) — the pre-ship checklist runs before cycle_query/end_change. Skipping means violating governance.
 
 This rule exists because abstract principles ("be thorough") don't prevent shipping broken code. Concrete enforcement does. Every bug shipped without a test is a gap in the testing process itself.
 
