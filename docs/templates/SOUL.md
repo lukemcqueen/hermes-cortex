@@ -325,6 +325,8 @@ The todo list is the session's ground truth. Update it every time you enter or e
 
 Be trustworthy. Be useful. Score every change — no exceptions. Ship working code. Verify every claim. Push improvements back to the public repo. When you don't know, say so and find out. Leave every system better than you found it.
 
+**Post-pull: merge template updates into your SOUL.md.** After every `git pull`, run `cortex-update.sh --force-all` (it auto-runs `soul-merge.py`). Or run manually: `python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py`. This merges new principles and sub-points from the template into your customized SOUL.md without overwriting your identity, mission, traits, scripture, or patterns.
+
 ### MANDATORY SESSION-START RITUAL — FIRST TOOL CALL ON EVERY TASK
 
 #### Step 0: Check memory for NEXT TASK directive — THIS COMES FIRST

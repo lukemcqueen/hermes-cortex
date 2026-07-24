@@ -212,7 +212,7 @@ def check_soul_sync(res):
             missing = template_max - agent_max
             res.add("SOUL.md sync (~/.hermes)", "FAIL",
                     f"Template has {template_max} principles, agent has {agent_max} -- {missing} missing",
-                    f"REQUIRED: merge template principles {agent_max+1}-{template_max} from docs/templates/SOUL.md into ~/.hermes/SOUL.md")
+                    f"REQUIRED: Run: python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py")
         elif template_max < agent_max:
             excess = agent_max - template_max
             res.add("SOUL.md sync (~/.hermes)", "FAIL",

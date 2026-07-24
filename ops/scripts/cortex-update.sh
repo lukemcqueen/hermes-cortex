@@ -155,6 +155,7 @@ register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME
 register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
 register "ops/scripts/pre-push-pull"               "${CORTEX_DEPLOY_HOME}/scripts/pre-push-pull"
 register "ops/scripts/manage/governance-auditor.py"            "${CORTEX_DEPLOY_HOME}/scripts/governance-auditor.py"
+register "ops/scripts/manage/soul-merge.py"                    "${CORTEX_DEPLOY_HOME}/scripts/soul-merge.py"
 register "ops/scripts/agent/agents-doc-audit.py"          "${CORTEX_DEPLOY_HOME}/scripts/agents-doc-audit.py"
 register "ops/scripts/agent/agents-md-prune-scan.py"      "${CORTEX_DEPLOY_HOME}/scripts/agents-md-prune-scan.py"
 register "ops/scripts/secret-leak-detector.sh"            "${CORTEX_DEPLOY_HOME}/scripts/secret-leak-detector.sh"
@@ -1354,6 +1355,18 @@ main() {
 
   # Check and upgrade gbrain binary (every run, not just when template changes)
   update_gbrain_binary
+
+  # Merge template updates into agent SOUL.md (preserves customizations)
+  local soul_merge="${CORTEX_DEPLOY_HOME}/scripts/soul-merge.py"
+  if [[ -f "$soul_merge" ]]; then
+    if python3 "$soul_merge" --check >/dev/null 2>&1; then
+      : # up to date — silent
+    else
+      info "Merging template updates into SOUL.md..."
+      python3 "$soul_merge" 2>&1 | sed 's/^/    /'
+      COPIED=$((COPIED + 1))
+    fi
+  fi
 
   # Restart affected services
   if [[ ${#TO_RESTART[@]} -gt 0 ]]; then
