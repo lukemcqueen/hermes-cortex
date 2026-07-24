@@ -102,3 +102,6 @@ agent-registry.json
 # and worth sharing with the fleet. New scripts are auto-tracked.
 # (Previously used per-file whitelist; fell out of sync too often.)
 /runtime
+# Governance lock marker — written by begin_change() inside repo
+# as secondary protection alongside the primary lock in ~/.hermes-cortex/state/
+.hermes-cortex/.governance-lock

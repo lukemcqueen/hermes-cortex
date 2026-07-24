@@ -21,6 +21,54 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
+# ── Guard: git hooksPath must point to our hooks ─────────────
+# If core.hooksPath is unset or wrong, this pre-commit hook
+# wouldn't even be running — but we check anyway for safety.
+# The REAL danger is when hooksPath points elsewhere entirely,
+# meaning NO governance hooks run at all. We verify at the
+# start of every commit that the hooks directory is ours.
+EXPECTED_HOOKS="${HOME}/.hermes-cortex/hooks"
+ACTUAL_HOOKS=$(git config --get core.hooksPath 2>/dev/null || echo "")
+if [[ -z "$ACTUAL_HOOKS" ]]; then
+    echo ""
+    echo "❌  core.hooksPath is not set — git hooks are NOT running for this repo!"
+    echo "    Set it: git config core.hooksPath '${EXPECTED_HOOKS}'"
+    echo ""
+    exit 1
+fi
+# Normalize paths for comparison (resolve ~ and relative paths)
+ACTUAL_HOOKS_RESOLVED=$(cd "$ACTUAL_HOOKS" 2>/dev/null && pwd || echo "$ACTUAL_HOOKS")
+if [[ "$ACTUAL_HOOKS_RESOLVED" != "$EXPECTED_HOOKS" ]]; then
+    echo ""
+    echo "❌  core.hooksPath points to '${ACTUAL_HOOKS_RESOLVED}' instead of '${EXPECTED_HOOKS}'"
+    echo "    Governance hooks are NOT installed for this repo."
+    echo "    Fix: git config core.hooksPath '${EXPECTED_HOOKS}'"
+    echo ""
+    exit 1
+fi
+
+# ── Pre-commit sentinel for no-verify detection ─────────────
+# Written at hook start. Post-commit hook checks for this file.
+# If missing, --no-verify was used and the event gets logged.
+SENTINEL="${GIT_DIR:-.git}/.pre-commit-ran"
+LOGDIR="${HOME}/.hermes-cortex/state"
+NO_VERIFY_LOG="${LOGDIR}/no-verify-log.json"
+mkdir -p "$LOGDIR"
+touch "$SENTINEL"
+
+# ── Enforcer plugin presence check (C5) ─────────────────────
+# If the governance enforcer plugin is not installed, block commit.
+ENFORCER_PLUGIN="${HOME}/.hermes/plugins/governance-enforcer/__init__.py"
+if [[ ! -f "$ENFORCER_PLUGIN" ]]; then
+  echo ""
+  echo "❌  Governance enforcer plugin not found at:"
+  echo "    ${ENFORCER_PLUGIN}"
+  echo "    Install it: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/"
+  echo "    Then run: /reset to load the plugin."
+  echo ""
+  exit 1
+fi
+
 # ── Orchestrator-only paths guard ──────────────────────────
 # Only orchestrator agents (moses, esther) may modify these paths.
 # Non-orchestrators: commit changes from an orchestrator agent instead.

@@ -85,6 +85,7 @@ def _derive_repo_slug() -> str:
             if git_dir:
                 return Path(git_dir).name
     except (OSError, subprocess.TimeoutExpired):
+        log.warning("Cannot derive repo slug via git rev-parse")
         pass
 
     # Fallback: enforcer blocks all writes (correct behaviour)
@@ -104,6 +105,7 @@ def _is_lock_stale(state: dict, max_age: int = 7200) -> bool:
             age = (now - hb).total_seconds()
             return age > effective_ttl
         except (ValueError, TypeError):
+            log.warning("Cannot parse heartbeat timestamp: %s", heartbeat)
             pass
     started = state.get("started_at", "")
     if started:
@@ -117,6 +119,7 @@ def _is_lock_stale(state: dict, max_age: int = 7200) -> bool:
             age = (now - st).total_seconds()
             return age > effective_ttl * 2
         except (ValueError, TypeError):
+            log.warning("Cannot parse started_at timestamp: %s", started)
             pass
     return True  # no timestamps = stale
 
@@ -133,6 +136,23 @@ def _governance_lock_path(session_id: str = "") -> Path:
     return None
 
 
+def _secondary_lock_path() -> Path | None:
+    """Return path to the secondary lock marker inside the git repo.
+
+    The secondary marker lives at <repo_root>/.hermes-cortex/.governance-lock
+    and is written by the MCP server's begin_change() alongside the primary
+    lock in ~/.hermes-cortex/state/. The enforcer checks this as a fallback
+    when the primary lock directory is inaccessible.
+    """
+    current_slug = _derive_repo_slug()
+    if not current_slug:
+        return None
+    for candidate in [Path.home() / current_slug]:
+        if (candidate / ".git").exists():
+            return candidate / ".hermes-cortex" / ".governance-lock"
+    return None
+
+
 def _has_governance_lock(hermes_session_id: str = "") -> bool:
     """Check if THIS session has an active governance lock for this repo.
 
@@ -145,6 +165,10 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
     Phase 2 — Scan by repo_slug (fallback):
       If exact match fails (backward compat with old MCP locks), scans all
       .governance-*.json files and matches by repo_slug in content.
+
+    Phase 3 — Secondary lock marker (extra safety):
+      Checks the repo-located marker at .hermes-cortex/.governance-lock
+      as a fallback when the primary state directory is inaccessible.
     """
     current_slug = _derive_repo_slug()
     if not GOVERNANCE_STATE_DIR.exists():
@@ -173,9 +197,19 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
                 lock_path.unlink(missing_ok=True)
 
     # ── Phase 2: Scan by repo_slug (backward compat fallback) ──
+    # NOTE: This is a TIGHTENED fallback. When the lock has a session_id
+    # and the current session has an ID, we require an exact session match.
+    # This prevents cross-session bypass where Session B writes using
+    # Session A's lock. Old sessionless locks (no session_id field) are
+    # still accepted for backward compat with MCP versions before PID handoff.
     for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
         try:
             state = json.loads(lock_file.read_text())
+            # When current session has an ID AND lock has session_id,
+            # require exact match — closes cross-session bypass vector
+            lock_session = state.get("session_id", "")
+            if hermes_session_id and lock_session and lock_session != hermes_session_id:
+                continue
             # When current_slug is "" (CWD not in a git repo), match
             # any lock with a real repo_slug. This fixes Phase 2 being
             # a no-op when the Hermes gateway CWD (~/.hermes) is outside git.
@@ -189,6 +223,7 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
                 try:
                     lock_file.unlink(missing_ok=True)
                 except OSError:
+                    log.warning("Cannot remove stale lock file: %s", lock_file)
                     pass
                 continue
             if state.get("task_id", ""):
@@ -197,7 +232,27 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
             try:
                 lock_file.unlink(missing_ok=True)
             except OSError:
+                log.warning("Cannot remove unparseable lock file: %s", lock_file)
                 pass
+
+    # ── Phase 3: Secondary lock marker inside repo ──
+    # Check the repo-located marker when primary state directory
+    # doesn't exist or has no matching locks. The MCP server writes
+    # this alongside the primary lock during begin_change().
+    # Same session-match tightening as Phase 2.
+    secondary = _secondary_lock_path()
+    if secondary and secondary.exists():
+        try:
+            state = json.loads(secondary.read_text())
+            lock_session = state.get("session_id", "")
+            if hermes_session_id and lock_session and lock_session != hermes_session_id:
+                pass  # skip — not our session
+            elif state.get("task_id", ""):
+                return True
+        except (json.JSONDecodeError, OSError):
+            log.warning("Cannot read secondary lock marker: %s", secondary)
+            pass
+
     return False
 
 

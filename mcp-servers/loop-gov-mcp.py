@@ -134,6 +134,7 @@ def get_session_id() -> str:
                 SESSION_FILE.write_text(sid)
                 return sid
     except (OSError, ValueError):
+        log.warning("Expected failure for: except (OSError, ValueError)")
         pass
 
     # Priority 2: Scan all PID-scoped markers from the enforcer
@@ -150,6 +151,7 @@ def get_session_id() -> str:
                 SESSION_FILE.write_text(sid)
                 return sid
     except (OSError, ValueError):
+        log.warning("Expected failure for: except (OSError, ValueError)")
         pass
 
     # Priority 3: Cached value from a previous call
@@ -179,6 +181,7 @@ def _derive_slug() -> str:
         ).decode().strip()
         return Path(repo_root).name
     except Exception:
+        log.warning("Expected failure for: except Exception")
         pass
     for candidate in [HOME / "hermes-cortex", HOME / ".hermes-cortex"]:
         if (candidate / ".git").exists():
@@ -195,6 +198,25 @@ def _session_lock_path(session_id: str) -> Path:
     by the repo_slug stored in each lock's content.
     """
     return GOVERNANCE_STATE_DIR / f".governance-{session_id}.json"
+
+
+def _secondary_lock_path(state: dict) -> Path | None:
+    """Return the secondary lock marker path inside the git repo.
+
+    The secondary lock lives at <repo_root>/.hermes-cortex/.governance-lock
+    and is a lightweight marker that the enforcer checks as a fallback
+    when the primary lock directory is outside the repo.
+
+    Returns None if the repo slug can't be mapped to a known repo path.
+    """
+    repo_slug = state.get("repo_slug", "")
+    if not repo_slug:
+        return None
+    # Try known repo paths
+    for candidate in [HOME / repo_slug, HOME / ".hermes-cortex", HOME / "hermes-cortex"]:
+        if candidate.name == repo_slug and (candidate / ".git").exists():
+            return candidate / ".hermes-cortex" / ".governance-lock"
+    return None
 
 
 # ── Lock helpers ─────────────────────────────────────────────
@@ -238,19 +260,84 @@ def _write_lock(state: dict) -> None:
     The lock filename uses the session_id so two sessions never
     collide on the same file. The repo_slug in the content lets
     the enforcer filter locks by repo.
+
+    Also writes a secondary marker inside the git repo
+    (.hermes-cortex/.governance-lock) so the enforcer can find
+    governance state even when the primary lock directory is
+    outside the repo filesystem.
     """
     session_id = state.get("session_id", get_session_id())
     path = _session_lock_path(session_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(state, indent=2))
 
+    # Write secondary marker inside repo for extra safety
+    secondary = _secondary_lock_path(state)
+    if secondary:
+        secondary.parent.mkdir(parents=True, exist_ok=True)
+        secondary.write_text(json.dumps(state, indent=2))
+
 
 def _release_lock() -> None:
-    """Remove this session's lock file."""
+    """Remove this session's lock file and secondary marker."""
     session_id = get_session_id()
     path = _session_lock_path(session_id)
     if path.exists():
+        # Read state before unlinking so we know the repo_slug for cleanup
+        try:
+            state = json.loads(path.read_text())
+            secondary = _secondary_lock_path(state)
+            if secondary and secondary.exists():
+                secondary.unlink()
+        except (json.JSONDecodeError, OSError):
+            log.warning("Best-effort operation — expected failure: except (json.JSONDecodeError, OSError)")
+            pass
         path.unlink()
+
+
+# ── Force-acquire audit trail ────────────────────────────────
+
+FORCE_AUDIT_PATH = GOVERNANCE_STATE_DIR / "force-acquire-audit.json"
+
+
+def _log_force_acquire(
+    new_session: str,
+    new_task: str,
+    released_session: str,
+    released_task: str,
+) -> None:
+    """Persist a force-acquire event to an audit log outside the lock lifecycle.
+
+    This file lives alongside the lock files but is NEVER deleted by
+    _release_lock or _purge_stale_locks. It provides a persistent history
+    of all lock-stealing events for audit purposes.
+    """
+    try:
+        GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
+
+        existing = []
+        if FORCE_AUDIT_PATH.exists():
+            try:
+                existing = json.loads(FORCE_AUDIT_PATH.read_text())
+            except (json.JSONDecodeError, OSError):
+                existing = []
+
+        if not isinstance(existing, list):
+            existing = []
+
+        existing.append({
+            "timestamp": _now_iso(),
+            "new_session": new_session,
+            "new_task": new_task,
+            "released_session": released_session,
+            "released_task": released_task,
+            "type": "force_acquire",
+        })
+
+        FORCE_AUDIT_PATH.write_text(json.dumps(existing, indent=2))
+    except OSError:
+        log.warning("Best-effort operation — expected failure: except OSError")
+        pass
 
 
 def _purge_stale_locks() -> int:
@@ -280,6 +367,7 @@ def _purge_stale_locks() -> int:
                 lock_file.unlink(missing_ok=True)
                 removed += 1
             except OSError:
+                log.warning("Expected failure for: except OSError")
                 pass
     # Also clean up orphan symlinks (pointing to deleted targets)
     for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
@@ -288,6 +376,7 @@ def _purge_stale_locks() -> int:
                 lock_file.unlink()
                 removed += 1
         except OSError:
+            log.warning("Expected failure for: except OSError")
             pass
     return removed
 
@@ -348,7 +437,8 @@ def _db() -> sqlite3.Connection:
     try:
         conn.execute("ALTER TABLE loop_cycles ADD COLUMN session_id TEXT")
     except sqlite3.OperationalError:
-        pass  # column already exists
+        log.warning("SQL migration: column already exists — expected")
+        pass
 
     # Task events table (harness v3)
     conn.execute(
@@ -366,6 +456,7 @@ def _db() -> sqlite3.Connection:
     try:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_task_events_task ON task_events(task_id)")
     except sqlite3.OperationalError:
+        log.warning("Expected failure for: except sqlite3.OperationalError")
         pass
 
     conn.commit()
@@ -734,6 +825,8 @@ def _begin_change(args: dict) -> CallToolResult:
             f"  New session:      {session_id}\n"
             f"  New task:         {task_id}"
         )
+        # Persist force-acquire event to audit log outside lock lifecycle
+        _log_force_acquire(session_id, task_id, released_session, released_task)
 
     # ── Step 2: Create pending cycle in loop-governance DB (BEFORE new lock file) ──
     # Critical ordering: if the DB write fails, no new lock file is written,
@@ -1174,7 +1267,8 @@ def _write_lock_and_log(state: dict, event_type: str, detail: str = "") -> None:
         conn.commit()
         conn.close()
     except Exception:
-        pass  # event logging is best-effort
+        log.warning("Best-effort operation — expected failure: except Exception")
+        pass
 
 
 # ── State Machine Tool Implementations ───────────────────────
@@ -1536,6 +1630,7 @@ def _promote_issue_to_task(args: dict) -> CallToolResult:
         conn.commit()
         conn.close()
     except Exception:
+        log.warning("Expected failure for: except Exception")
         pass
 
     return CallToolResult(content=[TextContent(
