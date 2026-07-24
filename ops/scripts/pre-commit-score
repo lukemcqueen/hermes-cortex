@@ -442,6 +442,29 @@ if [[ -z "${SKIP_CHANGE_VALIDATE:-}" ]] && [[ -f "$REPO_ROOT/ops/scripts/change-
   bash "$REPO_ROOT/ops/scripts/change-validate.sh"
 fi
 
+# ── Template guard: orchestrator-only ─────────────────────
+# Only orchestrator agents (moses, esther) can modify docs/templates/
+if echo "$STAGED_FILES" | grep -q "^docs/templates/"; then
+  AGENT_TYPE="${AGENT_TYPE:-}"
+  if [[ -z "$AGENT_TYPE" ]]; then
+    # Fallback: check hostname
+    HOST="$(hostname -s 2>/dev/null || echo 'unknown')"
+    case "$HOST" in
+      moses|esther) AGENT_TYPE="orchestrator" ;;
+      *) AGENT_TYPE="server" ;;
+    esac
+  fi
+  if [[ "$AGENT_TYPE" != "orchestrator" ]]; then
+    echo ""
+    echo "❌  Template modification blocked: docs/templates/ changes require orchestrator agent."
+    echo "    Detected agent type: ${AGENT_TYPE:-unknown}"
+    echo "    Non-orchestrator agents may NOT modify template files."
+    echo "    Commit this change from an orchestrator agent (moses or esther) instead."
+    echo ""
+    exit 1
+  fi
+fi
+
 # ── Adversarial scan (staged files only, A2 level) ──────────
 # HARD GATE: blocks commit if critical/high findings exist. No bypass.
 ADVERSARIAL_SCRIPT="$REPO_ROOT/ops/scripts/quality/adversarial-verify.py"
