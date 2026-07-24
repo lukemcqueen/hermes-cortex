@@ -216,10 +216,17 @@ CONDITIONAL_WRITE_TOOLS = {
     "cronjob",
     "skill_manage",
     "process",
+    "computer_use",
 }
 
 # Process actions that require governance
 WRITE_PROCESS_ACTIONS = {"write", "submit", "close", "kill"}
+
+# Computer use actions that modify state — require governance lock
+WRITE_COMPUTER_USE_ACTIONS = {
+    "click", "double_click", "right_click", "middle_click",
+    "drag", "scroll", "type", "key", "set_value", "focus_app",
+}
 
 # Terminal commands that modify state — require governance lock
 WRITE_COMMAND_PATTERNS = [
@@ -227,7 +234,7 @@ WRITE_COMMAND_PATTERNS = [
     r"^\s*(sudo\s+)?(systemctl|service)\s+(start|stop|restart|reload|enable|disable|daemon-reload)\s",
     r"^\s*(sudo\s+)?(chmod|chown|chattr|mkfs|fdisk|mount|umount|dd)\s",
     r"^\s*(sudo\s+)?(sed|awk|tee)\s.*-i\s",
-    r"^\s*(sudo\s+)?(git)\s+(push|commit|merge|rebase|reset|cherry-pick|branch\s+-[dD]|tag)",
+    r"^\s*(sudo\s+)?(git)\s+(push|commit|merge|rebase|reset|cherry-pick|branch\s+-[dD]|tag|stash|checkout|restore|clean|rm|mv|update-ref|config|submodule)\s",
     r"^\s*(sudo\s+)?(cronjob)\s+(create|update|remove|delete)",
     r"^\s*(sudo\s+)?(uv|python3?)\s.*-(m\s+pip\s+install)",
     # guard: (python|python3)\s.*-c
@@ -243,6 +250,11 @@ WRITE_COMMAND_PATTERNS = [
     r"^\s*(sudo\s+)?ufw\s+(enable|disable|allow|deny|reject|delete|reset)",
     r"^\s*(sudo\s+)?nginx\s+(-s\s+(reload|stop|quit))",
     r"^\s*(sudo\s+)?journalctl\s+--rotate",
+    r"^\s*(sudo\s+)?(printf|cat|tee)\s+.*[>|>>]\s",
+    r"^\s*(sudo\s+)?(printf|cat)\s+.*<<\s",
+    r"^\s*(sudo\s+)?(touch|mkdir|ln|rsync|unzip|tar|mkfifo)\s",
+    r"^\s*(sudo\s+)?(npx|yarn|go|cargo|flatpak|snap)\s",
+    r"^\s*(sudo\s+)?(pip3?|npm)\s+(install|uninstall|remove|update|upgrade)",
     r"^\s*echo\s+.*[>|>>]\s",
 ]
 
@@ -279,6 +291,12 @@ def _is_process_write(args: Dict[str, Any]) -> bool:
     return action in WRITE_PROCESS_ACTIONS
 
 
+def _is_computer_use_write(args: Dict[str, Any]) -> bool:
+    """Check if a computer_use action modifies system state."""
+    action = args.get("action", "")
+    return action in WRITE_COMPUTER_USE_ACTIONS
+
+
 def _is_write_tool(tool_name: str, args: Dict[str, Any]) -> bool:
     if tool_name in WRITE_TOOLS:
         return True
@@ -289,6 +307,8 @@ def _is_write_tool(tool_name: str, args: Dict[str, Any]) -> bool:
     if tool_name == "skill_manage" and _is_skill_write(args):
         return True
     if tool_name == "process" and _is_process_write(args):
+        return True
+    if tool_name == "computer_use" and _is_computer_use_write(args):
         return True
     return False
 

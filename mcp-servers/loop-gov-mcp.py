@@ -838,9 +838,10 @@ def _end_change(args: dict) -> CallToolResult:
             text=f"Error: Lock belongs to task '{stored_task}', not '{task_id}'. Use end_change('{stored_task}')."
         )])
 
-    # Step 3: Try to find a matching cycle for the return message (informational, not blocking)
+    # Step 3: Require a scored cycle before releasing the lock
     cycle_info = ""
     cycle_warning = ""
+    has_cycle = False
     try:
         conn = _db()
         row = conn.execute(
@@ -849,21 +850,31 @@ def _end_change(args: dict) -> CallToolResult:
         ).fetchone()
         conn.close()
         if row:
+            has_cycle = True
             accept = "✅" if row["decision"] and row["decision"].strip().upper().startswith("STOP") else "⬜"
             scored = row["user_overrode"] is not None
             cycle_info = f"Cycle #{row['id']} ({row['decision']}) {accept}"
             if not scored and row["decision"] in ("PENDING", "LOOP"):
                 cycle_warning = ("\n\n⚠️  CYCLE NOT SCORED — call cycle_query + feedback_accept to score.\n"
                                  "   Unreviewed cycles accumulate and may trigger the scoring watchdog.")
-        else:
-            cycle_info = "(no cycle found in DB)"
-            cycle_warning = "\n\n⚠️  NO CYCLE RECORD — no governance cycle was created for this change."
-    except Exception:
-        cycle_info = "(no cycle found in DB)"
+    except Exception as e:
+        log.warning("end_change: cycle lookup failed: %s", e)
+        has_cycle = False
 
-    # Step 4: Release the lock unconditionally
-    # Scoring/acceptance is handled at write time by log_cycle() — STOP cycles
-    # auto-accept, LOOP/MOVE_ON stay pending for human review.
+    if not has_cycle:
+        return CallToolResult(content=[TextContent(
+            type="text",
+            text=(
+                "❌  Cannot release lock: no governance cycle found for this task.\n\n"
+                "    A cycle must be created (via any write tool under this lock) and scored\n"
+                "    before end_change() can release the lock.\n\n"
+                "    To score: mcp_loop_governance_cycle_query(task_id='<task>')\n"
+                "             mcp_loop_governance_feedback_accept(cycle_id=N, note='...')\n\n"
+                "    This prevents orphan cycles that silently accumulate in the governance DB."
+            )
+        )])
+
+    # Step 4: Release the lock
     _release_lock()
     return CallToolResult(content=[TextContent(
         type="text",
