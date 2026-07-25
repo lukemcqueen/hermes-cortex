@@ -55,7 +55,6 @@ def _read_config_from_bus_conf(key: str) -> str:
                 return val
     except OSError:
         log.warning("Could not read config file: %s", CONFIG_FILE)
-        pass
     return ""
 
 
@@ -203,7 +202,7 @@ def check_dev_repo_agents(res):
                             f"Run: cd ~/{repo.name} && git diff HEAD~5..HEAD --name-only -- AGENTS.md | head -20 "
                             f"to see what's changed. Merge recent patterns into AGENTS.md.")
         except (subprocess.TimeoutExpired, OSError, ValueError):
-            pass
+            continue  # git or stat failed — skip AGENTS.md age check for this repo
 
 
 def _extract_soul_markers(path):
@@ -595,7 +594,7 @@ def _check_bus_e2e(res):
             res.add("Bus config (fallback)", "WARN", "No FALLBACK_URL configured",
                     "Add CORTEX_BUS_FALLBACK_URL in cortex-bus.conf for resilience")
     except Exception:
-        pass
+        return  # cortex_bus not importable — bus checks handled by earlier import guard
 
     # ── 2. Health check ──
     try:
@@ -896,7 +895,7 @@ def check_system(res):
                         fix = "Free space: sudo journalctl --vacuum-size=500M; sudo apt autoremove"
                     res.add("Disk usage", status, f"{used} used / {avail} free ({pct}%)", fix)
                 except ValueError:
-                    pass
+                    _ = None  # malformed disk usage line — skip reporting for this mount
 
     if IS_MAC:
         total_mem = run_bg(["sysctl", "-n", "hw.memsize"], timeout=5)
@@ -1256,7 +1255,7 @@ def check_governance(res):
                         "missing SURVEY_MARKER constant — survey-before-cron gate not active",
                         "Pull latest hermes-cortex and run cortex-update.sh --force-all")
         except (OSError, PermissionError):
-            pass
+            _ = None  # plugin source not readable — skip survey gate check
     else:
         res.add("Governance plugin", "FAIL", "not installed",
                 "Install: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/\n"
@@ -1536,7 +1535,7 @@ def check_governance(res):
             if git_dir.is_dir() and d not in search_dirs:
                 search_dirs.append(d)
         except PermissionError:
-            pass
+            continue  # can't access this directory — skip
 
     found_redundant = 0
     for repo_dir in sorted(set(search_dirs)):
