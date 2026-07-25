@@ -21,7 +21,6 @@
 | `orch-bus-recover-timeouts` | `*/5 * * * *` | no_agent | `orch-bus-recover-timeouts.sh` | origin |
 | `orch-bus-confirmation-poller` | `every 10m` | no_agent | `orch-bus-message-tracker.py` | local |
 | `orch-bus-confirmation-alert` | `*/15 * * * *` | no_agent | `orch-bus-message-tracker-alert.sh` | Telegram |
-| `orch-bus-forwarder-sync` | `*/2 * * * *` | no_agent | `orch-bus-forwarder.py` | origin |
 | `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | `orch-fleet-watchdog.py` | Telegram |
 | `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent | `orch-health-report.py` | origin |
 | `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent | `orch-health-report.py` | origin |
@@ -54,18 +53,14 @@
 | `agent-gbrain-update-sync` | `0 2 * * 0` | no_agent | `gbrain-update-sync.sh` | origin |
 | `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `scoring-activity-watchdog.py` | origin |
 | `agent-session-cache-build` | `0 5 * * 1` | no_agent | `session_cache.py` | origin |
-| `agent-offline-code-index` | `0 5 * * 0` | no_agent | `offline_code_index_cron.sh` | local |
+| `agent-offline-code-index` | `0 5 * * 0` | no_agent | `offline-code-index-cron.sh` | local |
 | `agent-llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | `llm-judge-scorer.py` | local |
 | `agent-llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | `llm-judge-scorer.py` | local |
 | `agent-memory-pruning` | `0 4 * * 1` | LLM | (prompt) | origin |
 | `agent-auto-save-sessions` | `every 360m` | no_agent | `auto-save-sessions.py` | local |
 | `agent-stale-ref-watchdog` | `0 5 * * *` | no_agent | `manage/stale-ref-watchdog.sh` | origin |
-| `agent-upwork-job-scanner` | `0 8 * * *` | LLM | (prompt) | Telegram |
 | `agent-agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agents-md-prune-scan.py` | local |
 | `agent-agents-md-prune-apply` | `30 4 * * 1-6` | LLM | (prompt) | origin |
-| `agent-bus-workday` | `0 9-17 * * 1-5` | LLM | (prompt) | origin |
-| `agent-bus-evening` | `0 18,20,22 * * 1-5` | LLM | (prompt) | origin |
-| `agent-bus-overnight` | `0 3 * * 1-5` | LLM | (prompt) | origin |
 
 ## Local-only (`local-*` prefix)
 
@@ -77,12 +72,6 @@
 | `local-agent-agents-doc-audit` | `0 7 * * 1` | LLM | origin |
 | `local-ai-hot-topics-news` | `0 7 * * 1,3,5` | LLM | origin |
 
-## Unprefixed (legacy, NOT to be replicated)
-
-| Name | Schedule | Type | Script | Deliver |
-|------|----------|------|--------|---------|
-| `orch-clean-health-queue` | `*/10 * * * *` | no_agent | `orch-clean-health-queue.py` | origin |
-| `local-fleet-dispatch-collector` | `every 15m` | no_agent | `local-fleet-dispatch-collector.sh` | origin |
 
 ---
 
