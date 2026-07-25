@@ -1468,6 +1468,10 @@ def check_governance(res):
         res.add("Governance coverage", "INFO", "enforcer source not found in repo")
 
     # ── Git hooks verification ──
+    # When core.hooksPath is set globally, git ignores .git/hooks/ entirely.
+    # Any files or symlinks there are misleading dead weight — flag for removal.
+    # Only the deployed hooks at CORTEX_HOME/hooks/ are active.
+    hooks_via_global = bool(global_hooks_path.rstrip("/") == expected_hooks_path)
     repo_hooks_dir = CORTEX_REPO / ".git" / "hooks"
     deployed_hooks_dir = CORTEX_HOME / "hooks"
     for hook_name in ("pre-commit", "post-commit", "post-merge"):
@@ -1483,8 +1487,15 @@ def check_governance(res):
             continue
         res.add(f"Hook: {hook_name} (deployed)", "PASS", f"present at {deployed_hook}")
 
-        # Check 2: .git/hooks/ is a symlink to deployed
-        if git_hook.is_symlink() and os.readlink(str(git_hook)) == str(deployed_hook):
+        # Check 2: .git/hooks/ artifacts
+        if hooks_via_global:
+            # global hooksPath is set — .git/hooks/ is ignored by git entirely.
+            # Any file or symlink there is misleading dead weight.
+            if git_hook.is_symlink() or git_hook.exists():
+                res.add(f"Hook: {hook_name} (.git)", "WARN",
+                        f"redundant artifact — ignored by git (core.hooksPath is active)",
+                        f"REQUIRED: rm -f {git_hook}")
+        elif git_hook.is_symlink() and os.readlink(str(git_hook)) == str(deployed_hook):
             res.add(f"Hook: {hook_name} (.git)", "PASS", f"symlinked to deployed copy")
         elif git_hook.exists():
             res.add(f"Hook: {hook_name} (.git)", "WARN",
