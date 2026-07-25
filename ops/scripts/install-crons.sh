@@ -426,7 +426,6 @@ if $UNINSTALL; then
     "agent-agents-md-prune-apply" \
     "agent-agents-md-prune-scan" \
     "agent-auto-save-sessions" \
-    "agent-cron-failure-scanner" \
     "agent-cron-quality-watchdog" \
     "agent-fixer-evening" \
     "agent-fixer-overnight" \
@@ -436,9 +435,6 @@ if $UNINSTALL; then
     "agent-governance-auditor" \
     "agent-hermes-cortex-sync" \
     "agent-hermes-update" \
-    "agent-inbox-evening" \
-    "agent-inbox-overnight" \
-    "agent-inbox-workday" \
     "agent-ip-submission" \
     "agent-langfuse-health-watchdog" \
     "agent-learning-collector" \
@@ -457,8 +453,8 @@ if $UNINSTALL; then
     "agent-session-cache-build" \
     "agent-stale-ref-watchdog" \
     "agent-system-alert-watchdog" \
-    "agent-threat-pipeline" \
-    "agent-offline-code-index"; do
+    "agent-threat-pipeline"; do
+  
 
   
   
