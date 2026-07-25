@@ -82,7 +82,8 @@ if ! command -v hermes &>/dev/null; then
 fi
 
 # Check SOUL.md exists in repo
-PROFILE_SRC="$REPO_DIR/profiles/personal/agent-profiles/$AGENT/SOUL.md"
+PROFILE_SRC="$REPO_DIR/docs/templates/SOUL.md"
+SAGE_PROFILE_DEST="$CORTEX_DEPLOY_HOME/profiles/$AGENT/SOUL.md"
 if [[ ! -f "$PROFILE_SRC" ]]; then
     echo "⚠️  SOUL.md not found at: $PROFILE_SRC"
     echo "   Will use template instead"

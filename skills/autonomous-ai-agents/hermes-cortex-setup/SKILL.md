@@ -491,16 +491,14 @@ python3 ~/.hermes/scripts/populate-governance-db.py
 After setup, initialize the governance DB and session cache — see the loop-governance skill's `references/first-time-bootstrap.md` for the full first-run sequence (seed from git history, build cache, set hooksPath).
 
 # Profile skills
-cp -r ~/hermes-cortex/profiles/personal/skills/* ~/.hermes/skills/ 2>/dev/null
+# Personal skills no longer in repo — use ~/.hermes/skills/ directly
 
 # AGENTS.md metadata
 cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md
 
 # SOUL.md — the agent's identity
-mkdir -p ~/.hermes/agent-profiles
-cp -r ~/hermes-cortex/profiles/personal/agent-profiles/* ~/.hermes/agent-profiles/
-# The active SOUL.md goes at root:
-cp ~/hermes-cortex/profiles/personal/agent-profiles/<agent-name>/SOUL.md ~/.hermes/SOUL.md
+# Agent profiles removed from repo — use template directly
+cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md
 ```
 
 **Pitfall — SOUL.md path:** The canonical location is `~/.hermes/SOUL.md`, NOT `/home/moses/...` or any other user's home. Always verify the target directory exists before writing. If the user gives you a cross-user path, create it under the current user's `~/.hermes/` instead and inform them.
@@ -683,7 +681,8 @@ bun --version
 journalctl --user -u gbrain-sync.service --no-pager -n 10
 
 # 7. Agent profiles
-ls ~/.hermes/agent-profiles/*/SOUL.md
+# Agent profiles removed from repo — SOUL.md lives at ~/.hermes/SOUL.md
+ls ~/.hermes/SOUL.md
 cat ~/.hermes/SOUL.md | head -5
 
 # 8. Agent registry

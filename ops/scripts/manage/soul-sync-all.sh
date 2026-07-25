@@ -10,7 +10,7 @@ set -euo pipefail
 
 REPO_DIR="${HOME}/hermes-cortex"
 SOUL_MERGE="${REPO_DIR}/ops/scripts/manage/soul-merge.py"
-PROFILES_DIR="${REPO_DIR}/profiles/personal/agent-profiles"
+# profiles removed from repo — no longer synced from repo paths
 CHANGED=0
 
 echo "━━━ soul-sync-all: Syncing all agent SOUL.md profiles ━━━"

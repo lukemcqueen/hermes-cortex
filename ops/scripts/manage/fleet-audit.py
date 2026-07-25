@@ -204,9 +204,9 @@ def validate_f1(registry, suggest=False):
             agent_warnings.append(f"{agent_key}.health_method: '{health_method}' but is_server=false — non-servers should use 'inbox'")
 
         # Check SOUL.md profile exists
-        soul_path = Path.home() / "hermes-cortex" / "profiles" / "personal" / "agent-profiles" / agent_key / "SOUL.md"
+        soul_path = Path.home() / ".hermes" / "SOUL.md"
         if not soul_path.exists():
-            agent_warnings.append(f"{agent_key}: SOUL.md not found at profiles/personal/agent-profiles/{agent_key}/SOUL.md — run fleet-bootstrap.sh")
+            agent_warnings.append(f"{agent_key}: SOUL.md not found at ~/.hermes/SOUL.md — run: cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md")
         else:
             soul_size = soul_path.stat().st_size
             if soul_size < 500:

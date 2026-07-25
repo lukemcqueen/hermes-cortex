@@ -140,7 +140,7 @@ who you are, what you do, and how you operate.
 Copy the template:
 
 ```bash
-cp ~/hermes-cortex/docs/templates/SOUL.md ~/hermes-cortex/docs/agent-profiles/titus/SOUL.md
+cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md
 # Or create it from scratch
 ```
 
@@ -162,9 +162,9 @@ At minimum, every SOUL.md must include:
 4. **Poll, don't wait** — your cron is your ears. Check it every tick.
 
 See existing SOUL.md files for reference:
-- `docs/agent-profiles/moses/SOUL.md`
-- `docs/agent-profiles/gisu/SOUL.md`
-- `docs/agent-profiles/kustos/SOUL.md`
+- `~/.hermes/SOUL.md` (moses)
+- `~/.hermes/SOUL.md` (gisu)
+- `~/.hermes/SOUL.md` (kustos)
 
 ---
 
@@ -359,7 +359,7 @@ This step happens **on Moses's machine**, not yours. Moses will:
 | `inbox_send` returns 401 | Wrong credentials in `~/.hermes-cortex/.env`. Double-check with Moses. |
 | `inbox_send` returns connection refused | Moses's nginx is down. Check with the human. |
 | Cron never delivers to Telegram | Your `--deliver origin` points to a chat that isn't connected. Check `hermes` settings. |
-| You don't see your own SOUL.md in docs/ | Only Moses writes to the repo. Send him a note to create your agent-profiles directory. |
+| You don't see your own SOUL.md | Only Moses has access. Your SOUL.md lives at `~/.hermes/SOUL.md` |
 | Pings get 200 OK but dashboard stays red | You're sending to the wrong topic. Check: your POST body must have `"topic":"health"` (not `general`, not `#health`). Moses's poller only reads `topic=health`. |
 
 ---
@@ -370,7 +370,7 @@ This step happens **on Moses's machine**, not yours. Moses will:
 |------|---------|
 | `~/hermes-cortex/.env` | Your inbox credentials and agent identity |
 | `~/.hermes/config.yaml` | Hermes config — MCP server entry lives here |
-| `~/hermes-cortex/docs/agent-profiles/<name>/SOUL.md` | Your identity document |
+| `~/.hermes/SOUL.md` | Your identity document — copy from `docs/templates/SOUL.md` |
 | `~/hermes-cortex/mcp-servers/agent-bus-mcp.py` | The MCP client that talks to the Agent Bus (PGMQ) |
 | `~/hermes-cortex/ops/install/deploy/agent-registry.template.json` | Fleet registry template |
 

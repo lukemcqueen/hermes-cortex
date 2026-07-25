@@ -53,7 +53,7 @@
 | `docs/linux-service-layer.md` | Linux systemd `--user` service layer guide |
 | `docs/macos-service-layer.md` | macOS LaunchAgent service layer guide |
 | `docs/skills-manifest-reference.md` | Skills manifest — how to manage project-level skills |
-| `profiles/personal/agent-profiles/` | **Agent SOUL.md profiles (moses, esther, joseph, gisu, kustos, titus, operator)** |
+| `docs/templates/SOUL.md` | SOUL.md template — identity, mission, traits, behavioral principles, scripture, final directive. Canonical source; agents copy to `~/.hermes/SOUL.md` and customize |
 | `ops/install/install.sh` | Single-command installer |
 | `ops/install/deploy/` | Langfuse + ClickHouse docker-compose, agent-registry.json.example |
 | `.hermes-cortex/` | Agent infra: sessions, memory, skills.yaml |

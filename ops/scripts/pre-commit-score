@@ -73,58 +73,7 @@ fi
 # Only orchestrator agents (moses, esther) may modify these paths.
 # Non-orchestrators: commit changes from an orchestrator agent instead.
 
-# ── Level 5: SOUL.md template sync enforcement (ALL agents) ────
-# Every agent's repo profile SOUL.md must stay in sync with the
-# canonical template. When a profile is staged, check that it
-# hasn't fallen behind the template in principle content.
-STAGED_TEMPLATE=$(git diff --cached --name-only -- "docs/templates/SOUL.md" 2>/dev/null || true)
-PROFILES_DIR="profiles/personal/agent-profiles"
-SOUL_FAILED=0
-
-for profile_path in "$PROFILES_DIR"/*/SOUL.md; do
-  [[ -f "$profile_path" ]] || continue
-  profile_name=$(basename "$(dirname "$profile_path")")
-
-  # Check if this profile is staged
-  if ! git diff --cached --name-only -- "$profile_path" 2>/dev/null | grep -q "$profile_path"; then
-    continue  # not staged, skip
-  fi
-
-  # Extract principle markers from staged profile and from template
-  staged_profile=$(git show :"$profile_path" 2>/dev/null || cat "$profile_path")
-  template_text=$(cat "docs/templates/SOUL.md" 2>/dev/null)
-
-  # Simple marker count check: count #### N. principle headings in both
-  staged_count=$(echo "$staged_profile" | grep -cE '^#{3,4} [0-9]+\.' 2>/dev/null || echo 0)
-  template_count=$(echo "$template_text" | grep -cE '^#{3,4} [0-9]+\.' 2>/dev/null || echo 0)
-
-  # Also check bold markers in principles section (content-level)
-  # Extract the Behavioral Principles section from both
-  staged_principles=$(echo "$staged_profile" | sed -n '/## Behavioral Principles/,/^## /p' 2>/dev/null)
-  template_principles=$(echo "$template_text" | sed -n '/## Behavioral Principles/,/^## /p' 2>/dev/null)
-
-  # Get bold marker count
-  staged_markers=$(echo "$staged_principles" | grep -oE '\*\*[^*]+\*\*' | sort -u | wc -l)
-  template_markers=$(echo "$template_principles" | grep -oE '\*\*[^*]+\*\*' | sort -u | wc -l)
-
-  # Allow small variance for agent-specific bullets
-  if [ "$staged_markers" -lt "$((template_markers - 3))" ] 2>/dev/null; then
-    echo ""
-    echo "❌  ${profile_name}/SOUL.md is out of sync with the template."
-    echo "    Template has ~${template_markers} principle markers, profile has ~${staged_markers}."
-    echo "    Run: python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py"
-    echo ""
-    SOUL_FAILED=1
-  fi
-done
-
-if [ "$SOUL_FAILED" = "1" ]; then
-  echo "    No bypass flags — fix the SOUL.md sync issue."
-  echo ""
-  exit 1
-fi
-
-# ── Level 4: Shared blocklist integrity check ─────────────────
+# ── Orchestrator-only paths guard ──────────────────────────
 # blocked_ips.add is a cumulative shared blocklist — APPEND only.
 # Reject commits that shrink it (fewer IPs than HEAD).
 BLOCKED_IPS="deploy/nginx/blocked_ips.add"

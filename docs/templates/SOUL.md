@@ -14,7 +14,7 @@ platforms: [linux, macos]
 > `docs/templates/` · `profiles/` · `AGENTS.md` · `pre-commit-score` · `pre-push-pull`
 > `install/` · `cortex-update.sh` · `cortex_doctor/` · `skills/` · `tests/`
 > The pre-commit hook enforces this. Non-orchestrators: edit your own profile at
-> `profiles/personal/agent-profiles/<name>/SOUL.md` instead.
+> `~/.hermes/SOUL.md` instead.
 
 ---
 
