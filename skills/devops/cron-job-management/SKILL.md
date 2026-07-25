@@ -15,7 +15,7 @@ Every cron name starts with a **group prefix** that determines install scope, do
 |--------|-------|-------------|-------------------|
 | `orch-` | Orchestrator-only (Moses, Esther). Bus infra, fleet watchdogs, health reports to Luke. | `install-orch-crons.sh` (in `ops/scripts/install/`) | `parse_orch_crons()` reads uninstall array from `install-orch-crons.sh` |
 | `agent-` | All agents with Hermes Agent. Remediation, monitoring, memory, knowledge, governance, scoring. | `install-crons.sh` (in `ops/scripts/`) | `parse_expected_crons()` reads uninstall array from `install-crons.sh` |
-| `local-` | This server only. Personal briefings, machine-specific maintenance. NOT in repo install scripts. | Created manually via `cronjob action='create' name='local-<name>'` | Skipped by doctor (not in any uninstall array) |
+| `local-` | This server only. Personal briefings, machine-specific maintenance. NOT in repo install scripts. | Created manually via `cronjob action='create' name='local-<name>'` | Excluded by doctor — shows an `ℹ️` INFO message listing them. Rename to `local-<name>` to opt a cron out of doctor checks. |
 
 **Combining:** `local-agent-*` when a cron is both concept-level AND this-server-only. The `local-` prefix always comes first.
 
@@ -32,7 +32,7 @@ Every cron name starts with a **group prefix** that determines install scope, do
 |--------|-------|-------------|-------------------|
 | `orch-` | Orchestrator-only (Moses, Esther). Bus infra, fleet watchdogs, health reports to Luke. | `install-orch-crons.sh` (in `ops/scripts/install/`) | `parse_orch_crons()` reads uninstall array from `install-orch-crons.sh` |
 | `agent-` | All agents with Hermes Agent. Remediation, monitoring, memory, knowledge, governance, scoring. | `install-crons.sh` (in `ops/scripts/`) | `parse_expected_crons()` reads uninstall array from `install-crons.sh` |
-| `local-` | This server only. Personal briefings, machine-specific maintenance. NOT in repo install scripts. | Created manually via `cronjob action='create' name='local-<name>'` | Skipped by doctor (not in any uninstall array) |
+| `local-` | This server only. Personal briefings, machine-specific maintenance. NOT in repo install scripts. | Created manually via `cronjob action='create' name='local-<name>'` | Excluded by doctor — shows an `ℹ️` INFO message listing them. Rename to `local-<name>` to opt a cron out of doctor checks. |
 
 ### Combining and nesting
 
