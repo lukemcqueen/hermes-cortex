@@ -111,10 +111,10 @@ def check_repo(res: "Results") -> None:
 
     hermes_agents = Path.home() / ".hermes" / "AGENTS.md"
     if not hermes_agents.exists():
-        res.add("AGENTS.md sync", "WARN", "~/.hermes/AGENTS.md missing",
+        res.add("AGENTS.md sync", "FAIL", "~/.hermes/AGENTS.md missing",
                 "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
     elif not hermes_agents.read_bytes() == repo_agents.read_bytes():
-        res.add("AGENTS.md sync", "WARN", "~/.hermes/AGENTS.md content differs from repo",
+        res.add("AGENTS.md sync", "FAIL", "~/.hermes/AGENTS.md content differs from repo",
                 "REQUIRED: run cortex-update.sh --force-all (or cp if not deployed)")
     else:
         res.add("AGENTS.md sync", "PASS")
@@ -239,10 +239,9 @@ def check_soul_sync(res):
     template_markers = _extract_soul_markers(template)
     template_count = len(template_markers)
 
-    # Check deployed copy — advisory only (WARN, not FAIL)
-    # Local ~/.hermes/SOUL.md is the agent's own identity document,
-    # not a repo-managed file. Template drift is advisory but still
-    # checked thoroughly using the same marker-comparison logic.
+    # Check deployed copy — FAIL on missing content or size violations
+    # ~/.hermes/SOUL.md is the agent's identity document. It must follow
+    # the template and stay within the size budget.
     hostname = os.uname().nodename.split('.')[0]  # e.g. 'esther' or 'gisu'
     hermes_soul = Path.home() / ".hermes" / "SOUL.md"
     if hermes_soul.exists():
@@ -275,18 +274,18 @@ def check_soul_sync(res):
             # Check principle count
             if len(effective_template) > len(agent_markers) + 2:
                 missing = len(template_markers) - len(agent_markers)
-                res.add("SOUL.md template sync (~/.hermes)", "WARN",
+                res.add("SOUL.md template sync (~/.hermes)", "FAIL",
                         f"Template has {len(template_markers)} markers, local has {len(agent_markers)} — {missing} missing",
-                        "Optional: Run: python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py")
+                        "REQUIRED: Run: python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py")
             elif len(agent_markers) < len(effective_template):
                 missing_markers = effective_template - agent_markers
                 critical_missing = {m for m in missing_markers
                                     if not any(skip in m for skip in
                                                ["This principle absorbs", "Template verse", "Replace with"])}
                 if critical_missing:
-                    res.add("SOUL.md template sync (~/.hermes)", "WARN",
+                    res.add("SOUL.md template sync (~/.hermes)", "FAIL",
                             f"Missing {len(critical_missing)} sub-points: {', '.join(sorted(critical_missing)[:5])}",
-                            "Optional: Run: python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py")
+                            "REQUIRED: Run: python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py")
                 else:
                     res.add("SOUL.md template sync (~/.hermes)", "PASS")
             else:
