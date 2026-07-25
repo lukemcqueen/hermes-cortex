@@ -150,6 +150,7 @@ def check_dev_repo_agents(res: "Results") -> None:
         HOME / ".hermes",
         HOME / ".brain",
         HOME / "brain",
+        HOME / "gbrain",
         HOME / "__MACOSX",
         HOME / "Desktop",
         HOME / "Documents",

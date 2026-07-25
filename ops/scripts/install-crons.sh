@@ -811,19 +811,9 @@ create_cron "agent-auto-save-sessions" "every 360m" \
   "" \
   "true"
 
-# Daily bible reading (LLM-driven — reads daily-bible-reading skill, appends to SOUL.md)
-create_cron "agent-daily-bible-reading" "0 1 * * *" \
-  "" \
-  "Read the daily bible reading skill and produce today's scripture entry. Append the entry to ~/.hermes/SOUL.md under the Scripture Insights section." \
-  "agent-daily-bible-reading" \
-  "" \
-  "origin" \
-  "" \
-  "" \
-  "qwen2.5-coder:3b" \
-  "custom:ollama-local"
 
-# Daily threat pipeline — scanner → fail2ban → deploy → commit → push
+
+
 create_cron "agent-threat-pipeline" "0 5 * * *" \
   "nginx-threat-pipeline.sh" \
   "" \
