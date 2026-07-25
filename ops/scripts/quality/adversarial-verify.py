@@ -379,7 +379,8 @@ def main():
         if has_blockers:
             print("\n🔴 GATE_BLOCKED — critical/high findings detected")
             print("   Pre-commit adversarial gate rejected this change.")
-            print("   Fix findings or use SKIP_SCORE=1 to bypass.")
+            print("   Fix findings before committing — no bypass flags.")
+            print("   Use git commit --no-verify only in emergencies.")
             sys.exit(1)
         else:
             print("\n✅ GATE_PASSED — no critical/high findings")

@@ -58,7 +58,7 @@ def _read_config_from_bus_conf(key: str) -> str:
     return ""
 
 
-def check_repo(res):
+def check_repo(res: "Results") -> None:
     """1. Repo integrity: on main, clean, up to date."""
     if not CORTEX_REPO.is_dir():
         res.add(
@@ -120,7 +120,7 @@ def check_repo(res):
         res.add("AGENTS.md sync", "PASS")
 
 
-def check_dev_repo_agents(res):
+def check_dev_repo_agents(res: "Results") -> None:
     """1b. Development repos: check each project-level git repo has an AGENTS.md."""
     if not CORTEX_REPO.is_dir():
         return
@@ -205,7 +205,7 @@ def check_dev_repo_agents(res):
             continue  # git or stat failed — skip AGENTS.md age check for this repo
 
 
-def _extract_soul_markers(path):
+def _extract_soul_markers(path: Path) -> set:
     """Extract all bold-marker sub-points from a SOUL.md file (across all sections).
     Returns a set of marker strings (e.g. 'Do real work', 'Proactive', 'Orchestrator')."""
     if not path.exists():

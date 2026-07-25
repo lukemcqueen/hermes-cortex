@@ -14,6 +14,48 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
+# ── Git hooks integrity check ─────────────────────────────
+# Verify core.hooksPath points to our hooks directory.
+# If it doesn't, governance hooks aren't running at all.
+EXPECTED_HOOKS="${HOME}/.hermes-cortex/hooks"
+ACTUAL_HOOKS=$(git config --get core.hooksPath 2>/dev/null || echo "")
+if [[ -z "$ACTUAL_HOOKS" ]]; then
+    echo ""
+    echo "❌  Push blocked: core.hooksPath is not set — git hooks are NOT running for this repo!"
+    echo "    Set it: git config core.hooksPath '${EXPECTED_HOOKS}'"
+    echo ""
+    exit 1
+fi
+ACTUAL_HOOKS_RESOLVED=$(cd "$ACTUAL_HOOKS" 2>/dev/null && pwd || echo "$ACTUAL_HOOKS")
+if [[ "$ACTUAL_HOOKS_RESOLVED" != "$EXPECTED_HOOKS" ]]; then
+    echo ""
+    echo "❌  Push blocked: core.hooksPath points to '${ACTUAL_HOOKS_RESOLVED}' instead of '${EXPECTED_HOOKS}'"
+    echo "    Governance hooks are NOT installed for this repo."
+    echo "    Fix: git config core.hooksPath '${EXPECTED_HOOKS}'"
+    echo ""
+    exit 1
+fi
+
+# Verify hooks are not dangling symlinks
+for hook in pre-commit post-commit post-merge; do
+    if [[ -L "${EXPECTED_HOOKS}/${hook}" ]]; then
+        target=$(readlink "${EXPECTED_HOOKS}/${hook}")
+        if [[ ! -f "$target" ]] && [[ ! -f "${EXPECTED_HOOKS}/${target}" ]] && [[ ! -f "$(dirname "${EXPECTED_HOOKS}/${hook}")/${target}" ]]; then
+            echo ""
+            echo "❌  Push blocked: hook '${hook}' is a dangling symlink (→ ${target})"
+            echo "    Re-run: bash ~/hermes-cortex/ops/scripts/install-score-hook.sh"
+            echo ""
+            exit 1
+        fi
+    elif [[ ! -f "${EXPECTED_HOOKS}/${hook}" ]]; then
+        echo ""
+        echo "❌  Push blocked: hook '${hook}' not found at ${EXPECTED_HOOKS}/${hook}"
+        echo "    Re-run: bash ~/hermes-cortex/ops/scripts/install-score-hook.sh"
+        echo ""
+        exit 1
+    fi
+done
+
 # ── Governance lock check ─────────────────────────────────
 # Before allowing a push, verify an active governance lock exists.
 GOVERNANCE_STATE_DIR="${HOME}/.hermes-cortex/state"
@@ -28,8 +70,8 @@ try:
     d = json.load(open('$lock_file'))
     slug = d.get('repo_slug')
     print(slug if slug else '$REPO_SLUG')
-except:
-    print('')
+except Exception:
+    _ = None  # expected: empty/malformed lock file
 " 2>/dev/null)
     if [[ "$FILE_SLUG" == "$REPO_SLUG" ]]; then
       LOCK_FOUND=1
@@ -149,6 +191,45 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     echo "    No bypass flags available."
     echo ""
     exit 1
+  fi
+
+  # ── No-verify commit gate ──────────────────────────────
+  # Blocks pushes that include commits made with --no-verify.
+  # The post-commit hook logs these events; the pre-push hook
+  # catches them before code reaches the remote. Skips when
+  # remote_sha is empty (first push to new branch).
+  NO_VERIFY_LOG="${HOME}/.hermes-cortex/state/no-verify-log.json"
+  if [[ -f "$NO_VERIFY_LOG" ]] && [[ "$remote_sha" != "0000000000000000000000000000000000000000" ]]; then
+    NO_VERIFY_BLOCKED=0
+    NO_VERIFY_HASHES=$(python3 -c "
+import json, sys
+try:
+    data = json.load(open('$NO_VERIFY_LOG'))
+    for entry in data:
+        print(entry.get('commit', ''))
+except Exception:
+    _ = None  # expected: no no-verify log yet
+" 2>/dev/null || true)
+    if [[ -n "$NO_VERIFY_HASHES" ]]; then
+      PUSH_COMMITS=$(git rev-list "$remote_sha..$local_sha" 2>/dev/null || true)
+      if [[ -n "$PUSH_COMMITS" ]]; then
+        while IFS= read -r p_commit; do
+          if grep -qF "$p_commit" <<< "$NO_VERIFY_HASHES"; then
+            NO_VERIFY_BLOCKED=1
+            NV_MSG=$(git log -1 --format="%s" "$p_commit" 2>/dev/null || echo "unknown")
+            echo ""
+            echo "❌  Push blocked: commit ${p_commit::10} was made with --no-verify"
+            echo "    Message: ${NV_MSG}"
+            echo "    --no-verify bypasses the adversarial verify gate and all governance checks."
+            echo "    Re-do the commit through the pre-commit hook."
+            echo ""
+          fi
+        done <<< "$PUSH_COMMITS"
+      fi
+    fi
+    if [[ "$NO_VERIFY_BLOCKED" -ne 0 ]]; then
+      exit 1
+    fi
   fi
 done
 
