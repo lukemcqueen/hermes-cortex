@@ -91,6 +91,48 @@ if git diff --cached --name-only -- "$BLOCKED_IPS" 2>/dev/null | grep -q "$BLOCK
   fi
 fi
 
+# ── Governance: AGENTS.md content sync ───────────────────
+# ~/.hermes/AGENTS.md is the agent's operating rules. It must match
+# the repo source. Drift means the agent has stale governance.
+AGENTS_LOCAL="${HOME}/.hermes/AGENTS.md"
+if [[ -f "$AGENTS_LOCAL" ]] && [[ -f "AGENTS.md" ]]; then
+  if ! cmp --silent "$AGENTS_LOCAL" "AGENTS.md"; then
+    echo ""
+    echo "❌  ~/.hermes/AGENTS.md differs from repo AGENTS.md"
+    echo "    Governance: the current agent rules are stale."
+    echo "    Run: cp AGENTS.md ~/.hermes/AGENTS.md"
+    echo "    No bypass flags — governance is non-negotiable."
+    echo ""
+    exit 1
+  fi
+fi
+
+# ── Governance: SOUL.md template sync ────────────────────
+# ~/.hermes/SOUL.md is the agent's identity document. It must stay
+# in sync with the canonical template in docs/templates/SOUL.md.
+SOUL_LOCAL="${HOME}/.hermes/SOUL.md"
+SOUL_TEMPLATE="docs/templates/SOUL.md"
+if [[ -f "$SOUL_LOCAL" ]] && [[ -f "$SOUL_TEMPLATE" ]]; then
+  # Extract bold markers from the Behavioral Principles section of both
+  SOUL_LOCAL_MARKERS=$(sed -n '/## Behavioral Principles/,/^## /p' "$SOUL_LOCAL" | grep -oE '\*\*[^*]+\*\*' | sort -u)
+  SOUL_TMPL_MARKERS=$(sed -n '/## Behavioral Principles/,/^## /p' "$SOUL_TEMPLATE" | grep -oE '\*\*[^*]+\*\*' | sort -u)
+  LOCAL_COUNT=$(echo "$SOUL_LOCAL_MARKERS" | wc -l)
+  TMPL_COUNT=$(echo "$SOUL_TMPL_MARKERS" | wc -l)
+  # Allow small variance for agent-specific bullets (non-orchestrators skip "Orchestrator" marker)
+  THRESHOLD=$((TMPL_COUNT - 3))
+  if [[ "$LOCAL_COUNT" -lt "$THRESHOLD" ]] 2>/dev/null; then
+    MISSING=$((TMPL_COUNT - LOCAL_COUNT))
+    echo ""
+    echo "❌  ~/.hermes/SOUL.md is out of sync with the template."
+    echo "    Template has ~${TMPL_COUNT} principle markers, local has ~${LOCAL_COUNT} — ${MISSING} missing."
+    echo "    Governance: identity document must follow the template."
+    echo "    Run: python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py"
+    echo "    No bypass flags — governance is non-negotiable."
+    echo ""
+    exit 1
+  fi
+fi
+
 # ── Level 3: Governance lock check (secondary - MCP handles this) ───
 # The MCP server (loop-gov-mcp.py) already blocks write tools without
 # a lock. This check is a secondary safety net for direct-git operations.
