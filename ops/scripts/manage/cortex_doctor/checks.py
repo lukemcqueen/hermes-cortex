@@ -1506,6 +1506,47 @@ def check_governance(res):
                         "deployed hook differs from repo source",
                         f"REQUIRED: Run: cortex-update.sh --force-all")
 
+    # ── Redundant local git hooks (repos with own hooks despite core.hooksPath) ──
+    # When core.hooksPath is set globally, local .git/hooks/ are NEVER consulted
+    # by git. Any hooks there are misleading: agents may think they're active
+    # when they're not, or worse, they may become active if core.hooksPath is
+    # ever removed. Scan for them and flag for removal.
+    managed_hooks = {"pre-commit", "pre-push", "post-commit", "post-merge"}
+    search_dirs = [
+        CORTEX_REPO.resolve(),
+        HOME / "hermes-cortex-private",
+    ]
+    # Also scan home-level .git dirs for other repos that might have hooks
+    for d in HOME.iterdir():
+        if not d.is_dir():
+            continue
+        git_dir = d / ".git"
+        try:
+            if git_dir.is_dir() and d not in search_dirs:
+                search_dirs.append(d)
+        except PermissionError:
+            pass
+
+    found_redundant = 0
+    for repo_dir in sorted(set(search_dirs)):
+        git_hooks = repo_dir / ".git" / "hooks"
+        if not git_hooks.is_dir():
+            continue
+        for hook_file in git_hooks.iterdir():
+            if hook_file.name in managed_hooks and hook_file.is_file() and not hook_file.name.endswith(".sample"):
+                # This is a known managed hook in a local repo — redundant
+                found_redundant += 1
+                target = ""
+                if hook_file.is_symlink():
+                    target = f" → {os.readlink(str(hook_file))}"
+                res.add(f"Redundant hook ({repo_dir.name}/{hook_file.name})", "WARN",
+                        f"{hook_file}{target} — ignored by git when core.hooksPath is set",
+                        f"Remove: rm -f {hook_file}")
+
+    if found_redundant == 0 and global_hooks_path.rstrip("/") == expected_hooks_path:
+        res.add("Redundant local hooks", "PASS",
+                "no redundant hooks found in local .git/hooks directories")
+
 
 def check_install(res):
     """8. Install footprint: core files and directories present."""

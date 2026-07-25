@@ -247,6 +247,28 @@ print('ADDED')
             except (json.JSONDecodeError, KeyError):
                 pass
 
+    # Fix: redundant local git hooks → remove them
+    redundant_hooks = [k for k in fix_map if k.startswith("Redundant hook")]
+    if redundant_hooks:
+        for check_name in redundant_hooks:
+            # Extract the hook filepath from the check result
+            for c in res.checks:
+                if c["name"] == check_name:
+                    detail = c.get("detail", "")
+                    # Detail format: "/path/to/hook → /target — ignored by git..."
+                    path_part = detail.split(" — ")[0] if " — " in detail else detail
+                    # Take just the local hook filepath (before " → ")
+                    local_hook = path_part.split(" → ")[0].strip() if " → " in path_part else path_part.strip()
+                    if local_hook:
+                        hook_path = Path(local_hook)
+                        if hook_path.exists():
+                            if _run_fix(f"Removing redundant hook: {hook_path.name}",
+                                        ["rm", "-f", str(hook_path)]):
+                                fixed += 1
+                            else:
+                                failed += 1
+                    break
+
     if not res.json_mode:
         print(f"\n  Auto-fix: {fixed} fixed, {failed} failed\n")
 
