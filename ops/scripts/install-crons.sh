@@ -428,7 +428,6 @@ if $UNINSTALL; then
     "agent-auto-save-sessions" \
     "agent-cron-failure-scanner" \
     "agent-cron-quality-watchdog" \
-    "agent-daily-bible-reading" \
     "agent-fixer-evening" \
     "agent-fixer-overnight" \
     "agent-fixer-workday" \
@@ -813,16 +812,6 @@ create_cron "agent-auto-save-sessions" "every 360m" \
   "" \
   "" \
   "local" \
-  "" \
-  "true"
-
-# Daily bible reading (no_agent script — reads SOUL.md, calls deepseek API, appends)
-create_cron "agent-daily-bible-reading" "0 1 * * *" \
-  "agent-daily-bible-reading.py" \
-  "" \
-  "" \
-  "" \
-  "origin" \
   "" \
   "true"
 

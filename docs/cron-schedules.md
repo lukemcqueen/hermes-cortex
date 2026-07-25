@@ -49,7 +49,6 @@
 | `agent-memory-to-brain-sync` | `0 */6 * * *` | no_agent | `memory-to-brain-sync.py` | local |
 | `agent-governance-auditor` | `0 */6 * * *` | no_agent | `governance-auditor.py` | origin |
 | `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local |
-| `agent-daily-bible-reading` | `0 1 * * *` | no_agent | `agent-daily-bible-reading.py` | origin |
 | `agent-threat-pipeline` | `0 5 * * *` | no_agent | `nginx-threat-pipeline.sh` | origin |
 | `agent-gbrain-nightly-dream` | `0 3 * * 6` | no_agent | `gbrain-nightly-dream.sh` | origin |
 | `agent-gbrain-update-sync` | `0 2 * * 0` | no_agent | `gbrain-update-sync.sh` | origin |
