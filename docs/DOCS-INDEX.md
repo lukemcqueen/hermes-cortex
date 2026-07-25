@@ -20,7 +20,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/archive/` | Archived/superseded design docs (PRD-005 v1, etc.) |
 | `ops/scripts/lib/cortex_bus.py` | **Shared bus library** — HTTP API wrapper: bus_send, bus_read, bus_archive, bus_list_queues (used by all fleet scripts) |
 | `ops/scripts/agent/agent-message-handler.py` | **Agent message handler** — polls inbox for UPDATE_REQUEST, ROLLBACK_REQUEST, GIT_AUTH_CHECK; runs cortex-update, posts results |
-| `install-crons.sh` | Cron registration — creates agent-message-handler cron (inbox polling), auto-remediation, health, memory sync, scoring, and audit crons |
+| `ops/scripts/install-crons.sh` | Cron registration — creates agent-message-handler cron (inbox polling), auto-remediation, health, memory sync, scoring, and audit crons |
 | `docs/env-vars.md` | Environment variable reference — CORTEX_* vars, SSL, deploy scripts |
 | `install.sh` | Single-command installer (idempotent, safe to re-run) |
 | `ops/install/install.sh` | Main installer script (moved from root in v2.0.0) |
@@ -69,11 +69,8 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `ops/scripts/manage/purge-stale-governance-locks.py` | Stale governance lock purge script — removes expired lock files and orphan symlinks from crashed sessions |
 | `ops/scripts/manage/prune-soul-profiles.py` | SOUL.md profile pruner — replaces principles section with compact template, preserves agent identity |
 | `docs/troubleshooting.md` | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse, Linux |
-| `docs/fleet-reference.md` | Fleet status table — agent worker status across all fleet members |
-| `docs/operations-reference.md` | Agent inbox message format — field reference, subject prefixes, priority levels |
-| `docs/fleet-reference.md` | Auto-remediation pipeline cron schedule reference |
-| `docs/operations-reference.md` | Governance & Quality cron schedule reference — scoring, auditing, enforcement |
-| `docs/fleet-reference.md` | Deployment-specific cron schedule reference — update, status, deploy crons |
+| `docs/fleet-reference.md` | Fleet status table, cron schedules, auto-remediation, deploy schedules |
+| `docs/operations-reference.md` | Inbox message format, governance & quality cron schedules |
 | `docs/skills-manifest-reference.md` | Skills manifest — how to manage project-level skills via YAML |
 | `docs/reference/skill-loading.md` | Skill loading protocol — every agent loads skills on session start |
 | `docs/reference/cortex-bus-config.md` | **↗ Bus config guide** — install, auth resolution, message format, cron auth, troubleshooting |
@@ -139,15 +136,15 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `docs/git-enforcement.md` | Pre-commit scoring + pre-push pull-before-push hooks — install, bypass, troubleshooting |
-| `.git/hooks/post-merge` | Auto-deploy hook — runs `cortex-update.sh --force-all` after every `git pull`. Prevents stale deploys |
+| `.hermes-cortex/hooks/post-merge` | Auto-deploy hook (via `core.hooksPath`) — runs `cortex-update.sh --force-all` after every `git pull`. Prevents stale deploys |
 
 ## Development
 
 | Doc | Description |
 |-----|-------------|
-|| `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
-|| `docs/integration-audit.md` | Integration audit — path consistency, script map, agent notes for three-layer repo health |
-||| `ops/scripts/` | Cron scripts, health checks, agent tools — 5 subdirectories: agent/, health/, install/, inbox/, manage/ |
-||| `ops/scripts/lib/` | Shared Python libraries for fleet scripts — cortex_bus.py (bus HTTP API) |
-|| `core/governance/` | Governance engine — loop-governance DB, scoring, policy enforcement |
-|| `.gitignore` | Gitignore — excludes .agentkore, .env, secrets, brain data |
+| `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
+| `docs/integration-audit.md` | Integration audit — path consistency, script map, agent notes for three-layer repo health |
+| `ops/scripts/` | Cron scripts, health checks, agent tools — 5 subdirectories: agent/, health/, install/, inbox/, manage/ |
+| `ops/scripts/lib/` | Shared Python libraries for fleet scripts — cortex_bus.py (bus HTTP API) |
+| `core/governance/` | Governance engine — loop-governance DB, scoring, policy enforcement |
+| `.gitignore` | Gitignore — excludes .agentkore, .env, secrets, brain data |
