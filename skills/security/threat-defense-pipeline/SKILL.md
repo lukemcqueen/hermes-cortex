@@ -36,7 +36,9 @@ echo "1.2.3.4" >> ops/install/deploy/nginx/blocked_ips.add
 cd ~/hermes-cortex
 git add ops/install/deploy/nginx/blocked_ips.add
 SKIP_SCORE=1 git commit -m "auto: block <reason> [pipeline]"
-SKIP_PRE_PUSH=1 git push origin main
+# No SKIP_PRE_PUSH needed — the pipeline scripts create a temp
+# governance lock before pushing (see nginx-threat-pipeline.sh)
+git push origin main
 ```
 
 Then deploy live:

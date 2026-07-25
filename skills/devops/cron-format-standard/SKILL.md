@@ -165,13 +165,12 @@ If you updated this skill (`cron-format-standard`) in the repo at `skills/devops
 cd ~/hermes-cortex
 git add skills/devops/cron-format-standard/SKILL.md
 SKIP_SCORE=1 git commit -m "skill: cron-format-standard — <what changed>"
-SKIP_PRE_PUSH=1 git push origin main
 ```
+
+For pushes from no_agent cron scripts, see the temp governance lock pattern in `nginx-threat-pipeline.sh` or `agent-ip-submission.sh`.
 
 **About the SKIP flags:**
 - `SKIP_SCORE=1` — bypasses the pre-commit hook (which requires a governance `begin_change` MCP tool not available in cron mode or script context)
-- `SKIP_PRE_PUSH=1` — bypasses the pre-push hook (same requirement)
-- Both are documented in the repo's pre-commit hook and safe to use for routine cron-related commits
 
 **Important:** The `cronjob` API updates are NOT repo changes — they modify `~/.hermes/cron/jobs.json` directly. No git operation needed for prompt-only changes.
 

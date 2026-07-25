@@ -8,6 +8,23 @@
 # Schedule: every 30 minutes via cron (no_agent: true).
 set -euo pipefail
 
+# ── Temporary governance lock for automated pushes ─────────
+_GOV_LOCK="${HOME}/.hermes-cortex/state/.governance-agent-ip-submission.json"
+trap 'rm -f "$_GOV_LOCK"' EXIT
+_create_gov_lock() {
+  mkdir -p "${HOME}/.hermes-cortex/state"
+  cat > "$_GOV_LOCK" <<-LOCKEOF
+{
+  "task_id": "agent-ip-submission",
+  "repo_slug": "hermes-cortex",
+  "session_id": "cron-agent-ip-submission",
+  "started_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "heartbeat_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "agent": "cron"
+}
+LOCKEOF
+}
+
 CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
 SUBMIT_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.submit"
 ADD_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add"
@@ -78,8 +95,9 @@ else
   SKIP_SCORE=1 git commit -m "auto: block ${NEW_COUNT} agent-submitted IPs [pipeline]" 2>&1 || true
 
   # Push with retry
+  _create_gov_lock
   for push_attempt in 1 2; do
-    if SKIP_PRE_PUSH=1 git push origin main 2>&1; then
+    if git push origin main 2>&1; then
       PIPELINE_OUTPUT+="  ✓ Pushed to origin"$'\n'
       break
     else

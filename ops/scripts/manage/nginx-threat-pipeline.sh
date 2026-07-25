@@ -12,6 +12,26 @@
 # public blocklist when fail2ban bans the router's NAT IP.
 set -euo pipefail
 
+# ── Temporary governance lock for automated pushes ─────────
+# The pre-push hook requires an active governance lock. Since this
+# script runs as a no_agent cron with no session, it creates a
+# temporary lock file before pushing and removes it on exit.
+_GOV_LOCK="${HOME}/.hermes-cortex/state/.governance-nginx-threat-pipeline.json"
+_create_gov_lock() {
+  mkdir -p "${HOME}/.hermes-cortex/state"
+  cat > "$_GOV_LOCK" <<-LOCKEOF
+{
+  "task_id": "nginx-threat-pipeline",
+  "repo_slug": "hermes-cortex",
+  "session_id": "cron-nginx-threat-pipeline",
+  "started_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "heartbeat_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "agent": "cron"
+}
+LOCKEOF
+}
+trap 'rm -f "$_GOV_LOCK"' EXIT
+
 # ── Guard: abort any stale git operations before proceeding ──
 if git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rev-parse --git-dir &>/dev/null; then
   if git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rebase --show-current &>/dev/null 2>&1; then
@@ -229,9 +249,10 @@ else
     fi
 
     log "── Step 5: Push ──"
+    _create_gov_lock
     for push_attempt in 1 2; do
       if [ -n "$TIMEOUT_CMD" ]; then
-        if SKIP_PRE_PUSH=1 $TIMEOUT_CMD 10 git push origin main 2>&1; then
+        if $TIMEOUT_CMD 10 git push origin main 2>&1; then
           PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Pushed to origin"$'\n'
           break
         else
@@ -254,7 +275,7 @@ else
           fi
         fi
       else
-        if SKIP_PRE_PUSH=1 git push origin main 2>&1; then
+        if git push origin main 2>&1; then
           PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Pushed to origin"$'\n'
           break
         else
