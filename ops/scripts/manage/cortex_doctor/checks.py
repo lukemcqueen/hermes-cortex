@@ -476,25 +476,18 @@ def check_crons(res):
                 res.add(f"Cron status ({len(stale)} total)", "WARN", "unhealthy crons",
                         "Inspect and re-create unhealthy crons")
 
-    # ── local-* crons: user-specific, excluded from checking ──
-    local_crons = [name for name in registered if name.startswith("local-")]
-    if local_crons:
-        res.add("Local crons", "INFO",
-                f"{len(local_crons)} local-* cron(s) excluded from checking: {', '.join(local_crons[:5])}",
-                "Rename to local-<name> to opt a cron out of doctor checks")
-
     orphan_crons = []
     for name, job in registered.items():
         if name not in expected_crons:
             if name.startswith("local-"):
-                continue  # local-* crons are user-specific, excluded from checking
+                continue  # local-* crons silently excluded
             if not any(name.startswith(p) for p in ["orch-", "agent-", "system-"]):
                 continue
             orphan_crons.append(name)
     if orphan_crons:
         res.add(f"Orphan crons: {len(orphan_crons)}", "INFO",
                 f"Not in expected list: {', '.join(orphan_crons[:5])}",
-                "Run: hermes cron remove <name> for each orphan")
+                "Rename to local-<name> to opt a cron out of doctor checks")
     else:
         res.add("Crons: orphans", "PASS", "no unexpected crons found")
 
