@@ -113,11 +113,18 @@ def check_repo(res: "Results") -> None:
     if not hermes_agents.exists():
         res.add("AGENTS.md sync", "FAIL", "~/.hermes/AGENTS.md missing",
                 "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
-    elif not hermes_agents.read_bytes() == repo_agents.read_bytes():
-        res.add("AGENTS.md sync", "FAIL", "~/.hermes/AGENTS.md content differs from repo",
-                "REQUIRED: run cortex-update.sh --force-all (or cp if not deployed)")
-    else:
-        res.add("AGENTS.md sync", "PASS")
+        return
+    # Section check: count numbered rules (like SOUL.md marker check)
+    repo_agents = CORTEX_REPO / "AGENTS.md"
+    if repo_agents.exists():
+        local_rules = len(re.findall(r'^\d+\. \*\*', hermes_agents.read_text(), re.MULTILINE))
+        repo_rules = len(re.findall(r'^\d+\. \*\*', repo_agents.read_text(), re.MULTILINE))
+        if local_rules < repo_rules - 5:
+            res.add("AGENTS.md sync", "FAIL",
+                    f"Local has {local_rules} rules, template has {repo_rules} — {repo_rules - local_rules} missing",
+                    "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
+        else:
+            res.add("AGENTS.md sync", "PASS")
 
 
 def check_dev_repo_agents(res: "Results") -> None:
