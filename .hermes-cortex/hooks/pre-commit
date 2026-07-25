@@ -91,15 +91,29 @@ if git diff --cached --name-only -- "$BLOCKED_IPS" 2>/dev/null | grep -q "$BLOCK
   fi
 fi
 
-# ── Governance: AGENTS.md content sync ───────────────────
-# ~/.hermes/AGENTS.md is the agent's operating rules. It must match
-# the repo source. Drift means the agent has stale governance.
+# ── Governance: AGENTS.md section check ───────────────────
+# ~/.hermes/AGENTS.md is the agent's operating rules. It must exist
+# and contain the core numbered rules (like SOUL.md marker check).
+# Not byte-exact — each repo may have project-specific additions.
 AGENTS_LOCAL="${HOME}/.hermes/AGENTS.md"
-if [[ -f "$AGENTS_LOCAL" ]] && [[ -f "AGENTS.md" ]]; then
-  if ! cmp --silent "$AGENTS_LOCAL" "AGENTS.md"; then
+if [[ ! -f "$AGENTS_LOCAL" ]]; then
+  echo ""
+  echo "❌  ~/.hermes/AGENTS.md not found."
+  echo "    Governance: the agent's operating rules are missing."
+  echo "    Run: cp AGENTS.md ~/.hermes/AGENTS.md"
+  echo "    No bypass flags — governance is non-negotiable."
+  echo ""
+  exit 1
+fi
+if [[ -f "AGENTS.md" ]]; then
+  LOCAL_RULES=$(grep -cE '^[0-9]+\. \*\*' "$AGENTS_LOCAL" 2>/dev/null || echo 0)
+  REPO_RULES=$(grep -cE '^[0-9]+\. \*\*' "AGENTS.md" 2>/dev/null || echo 0)
+  THRESHOLD=$((REPO_RULES - 5))
+  if [[ "$LOCAL_RULES" -lt "$THRESHOLD" ]] 2>/dev/null; then
+    MISSING=$((REPO_RULES - LOCAL_RULES))
     echo ""
-    echo "❌  ~/.hermes/AGENTS.md differs from repo AGENTS.md"
-    echo "    Governance: the current agent rules are stale."
+    echo "❌  ~/.hermes/AGENTS.md is missing ${MISSING} numbered rule(s)"
+    echo "    Local has ${LOCAL_RULES}, template has ${REPO_RULES}"
     echo "    Run: cp AGENTS.md ~/.hermes/AGENTS.md"
     echo "    No bypass flags — governance is non-negotiable."
     echo ""
