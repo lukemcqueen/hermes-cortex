@@ -51,7 +51,7 @@ Every cron name MUST start with a group prefix. No bare names:
 |--------|-------|---------------|-----------------|---------|
 | `orch-*` | Orchestrator-only | `install-orch-crons.sh` | `parse_orch_crons()` | Moses, Esther |
 | `agent-*` | All agents | `install-crons.sh` | `parse_expected_crons()` | All agents |
-| `local-*` | This machine only | Manual `cronjob create` | Skipped by doctor | This machine only |
+| `local-*` | This machine only | Manual `cronjob create` | Silently excluded by doctor | This machine only |
 
 **Rules:**
 - Every `create_cron` name MUST have a matching entry in the same file's uninstall array

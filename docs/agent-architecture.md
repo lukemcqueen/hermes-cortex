@@ -124,7 +124,7 @@ Every agent in the fleet belongs to one of four roles. The role determines which
 |--------|-------|---------------|-----------------|---------|
 | `orch-*` | Orchestrator only | `install-orch-crons.sh` | `parse_orch_crons()` | Orchestrator, Backup Orch |
 | `agent-*` | All agents | `install-crons.sh` | `parse_expected_crons()` | Every agent |
-| `local-*` | This machine only | Manual `cronjob create` | Skipped by doctor | This machine |
+| `local-*` | This machine only | Manual `cronjob create` | Silently excluded by doctor | This machine |
 
 - **Orchestrators** run BOTH `install-crons.sh` and `install-orch-crons.sh`
 - **All other agents** run ONLY `install-crons.sh`
