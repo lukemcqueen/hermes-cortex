@@ -1383,36 +1383,64 @@ def check_governance(res):
                 "Run: bash ~/hermes-cortex/core/governance/setup.sh to deploy scoring tools")
 
     # ── Stale governance locks ──
+    # Uses heartbeat_at + ttl_seconds from the lock file.
+    # A lock with a recent heartbeat (within TTL) is actively held — not stale.
+    # Falls back to started_at > 24h for old locks without heartbeat_at.
     if not state_dir.exists():
         res.add("State directory", "INFO", "does not exist (will be created on first begin_change)")
     else:
         lock_files = list(state_dir.glob(".governance-*.json"))
         if lock_files:
             stale_count = 0
+            active_count = 0
             now = time.time()
             for lf in lock_files:
                 try:
                     lock_data = json.loads(lf.read_text())
-                    started = lock_data.get("started_at", "")
-                    if started:
+                    # Primary check: heartbeat + TTL
+                    heartbeat_str = lock_data.get("heartbeat_at", "")
+                    ttl = lock_data.get("ttl_seconds", 3600)
+                    if heartbeat_str:
                         try:
-                            started_ts = datetime.fromisoformat(started).timestamp()
-                            age_hours = (now - started_ts) / 3600
-                            if age_hours > 24:
+                            hb_clean = heartbeat_str.replace("Z", "+00:00")
+                            hb_ts = datetime.fromisoformat(hb_clean).timestamp()
+                            elapsed = now - hb_ts
+                            if elapsed > ttl:
                                 stale_count += 1
                                 res.add(f"Stale lock ({lf.name})", "WARN",
-                                        f"from {started} ({age_hours:.0f}h old)",
+                                        f"heartbeat expired {elapsed:.0f}s ago (TTL: {ttl}s)",
                                         f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
+                            else:
+                                active_count += 1
                         except (ValueError, TypeError):
                             stale_count += 1
                             res.add(f"Stale lock ({lf.name})", "WARN",
-                                    f"unparseable timestamp: {started}",
+                                    f"unparseable heartbeat: {heartbeat_str}",
                                     f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
                     else:
-                        stale_count += 1
-                        res.add(f"Stale lock ({lf.name})", "WARN",
-                                "no started_at field",
-                                f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
+                        # Fallback: no heartbeat — use started_at > 24h heuristic
+                        started = lock_data.get("started_at", "")
+                        if started:
+                            try:
+                                started_ts = datetime.fromisoformat(started).timestamp()
+                                age_hours = (now - started_ts) / 3600
+                                if age_hours > 24:
+                                    stale_count += 1
+                                    res.add(f"Stale lock ({lf.name})", "WARN",
+                                            f"from {started} ({age_hours:.0f}h old, no heartbeat)",
+                                            f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
+                                else:
+                                    active_count += 1
+                            except (ValueError, TypeError):
+                                stale_count += 1
+                                res.add(f"Stale lock ({lf.name})", "WARN",
+                                        f"unparseable timestamp: {started}",
+                                        f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
+                        else:
+                            stale_count += 1
+                            res.add(f"Stale lock ({lf.name})", "WARN",
+                                    "no heartbeat or started_at field",
+                                    f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
                 except (json.JSONDecodeError, OSError):
                     stale_count += 1
                     res.add(f"Stale lock ({lf.name})", "WARN",
@@ -1420,8 +1448,12 @@ def check_governance(res):
                             f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
 
             if stale_count == 0:
-                res.add("Governance locks", "PASS",
-                        f"{len(lock_files)} active lock(s), none stale")
+                if active_count > 0:
+                    res.add("Governance locks", "PASS",
+                            f"{active_count} lock(s) active, 0 stale")
+                else:
+                    res.add("Governance locks", "PASS",
+                            f"{len(lock_files)} lock(s), none stale")
         else:
             res.add("Governance locks", "PASS", "no lock files")
 
@@ -1458,9 +1490,13 @@ def check_governance(res):
                             f"Update {enforcer_path} to include the missing guard")
 
         if state_dir.exists():
+            # Lock files named .governance-{session_id}.json where session_id
+            # is a timestamp-based UUID (e.g. 20260725_164953_750cbfe2).
+            # Files with a descriptive slug instead of a session ID (e.g.
+            # .governance-fix-auth-bug.json) are legacy — flag them.
             legacy = [
                 f for f in state_dir.glob(".governance-*.json")
-                if not f.name.startswith(".governance-sess_")
+                if not re.match(r"\.governance-\d{8}_\d{6}_", f.name)
             ]
             if legacy:
                 for lf in legacy:
