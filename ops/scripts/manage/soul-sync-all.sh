@@ -27,24 +27,6 @@ if [ "$local_exit" -eq 1 ]; then
 fi
 echo ""
 
-# 2. Sync every repo profile
-if [ -d "$PROFILES_DIR" ]; then
-  for agent_dir in "$PROFILES_DIR"/*/; do
-    agent_name=$(basename "$agent_dir")
-    [ -n "$agent_name" ] || continue
-
-    echo "  → Agent: ${agent_name}..."
-    if python3 "$SOUL_MERGE" --agent="$agent_name" 2>&1 | sed 's/^/    /'; then
-      : # up to date
-    fi
-    agent_exit=$?
-    if [ "$agent_exit" -eq 1 ]; then
-      CHANGED=1
-    fi
-    echo ""
-  done
-fi
-
 if [ "$CHANGED" -eq 1 ]; then
   echo "⚠️  Some SOUL.md profiles were updated. Commit and push the changes."
 else
