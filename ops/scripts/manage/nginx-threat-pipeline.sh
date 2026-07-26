@@ -237,10 +237,11 @@ else
      && git diff --cached --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null; then
     log "  No changes to commit"
   else
+    _create_gov_lock
     git add ops/install/deploy/nginx/blocked_ips.add
     IP_COUNT=$(git diff --cached --unified=0 ops/install/deploy/nginx/blocked_ips.add 2>/dev/null | \
       grep '^\+[0-9]' | grep -v '^+++' | wc -l) || true
-    SKIP_SCORE=1 git commit -m "auto: block ${IP_COUNT} suspect IPs [pipeline]" 2>&1 || true
+    git commit -m "auto: block ${IP_COUNT} suspect IPs [pipeline]" 2>&1 || true
     # Check if commit succeeded (no staged changes = committed)
     if git diff --cached --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null; then
       PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Committed ${IP_COUNT} IPs to repo"$'\n'
@@ -249,7 +250,6 @@ else
     fi
 
     log "── Step 5: Push ──"
-    _create_gov_lock
     for push_attempt in 1 2; do
       if [ -n "$TIMEOUT_CMD" ]; then
         if $TIMEOUT_CMD 10 git push origin main 2>&1; then
