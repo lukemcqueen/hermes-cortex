@@ -606,6 +606,22 @@ def main():
                     archive_message(inbox_queue, msg_id)
                     return False
 
+        # Re-check correlation_id from parsed body (hc send embeds it inside the body JSON string)
+        if not correlation_id and isinstance(body, dict):
+            # First try body dict level
+            correlation_id = body.get("correlation_id", "") or ""
+            # If still empty, try inner body string (hc send wraps payload in body["body"])
+            if not correlation_id:
+                inner_raw = body.get("body", "")
+                if isinstance(inner_raw, str):
+                    try:
+                        inner = json.loads(inner_raw)
+                        if isinstance(inner, dict):
+                            correlation_id = inner.get("correlation_id", "") or ""
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+
+
         subject = body.get("subject", "")
 
         # Notify pickup

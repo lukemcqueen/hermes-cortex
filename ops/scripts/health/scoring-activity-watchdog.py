@@ -126,9 +126,9 @@ def main():
                             f"Check Langfuse for details."
                         )
                 except Exception:
-                    pass  # Langfuse may not be running — silent skip is correct
+                    _ = None  # intentional silent skip — Langfuse may not be running
     except Exception:
-        pass  # Langfuse entirely absent — non-critical watchdog
+        _ = None  # intentional silent skip — Langfuse entirely absent
 
     if alerts:
         ts = _cron_ts("scoring-activity-watchdog")
