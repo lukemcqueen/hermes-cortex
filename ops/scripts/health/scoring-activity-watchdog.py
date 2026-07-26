@@ -37,7 +37,6 @@ def main():
         return 1
 
     now = datetime.now()
-    today = now.date().isoformat()
     hour = now.hour
 
     # Skip check before first threshold hour
@@ -45,10 +44,13 @@ def main():
     if hour < min_hour:
         return 0
 
+    # DB timestamps are UTC — use a rolling 24h window instead of calendar-day
+    # boundary so KST-morning cycles (which are UTC "yesterday") are counted
+    yesterday_utc = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
     conn = sqlite3.connect(DB_PATH)
     cur = conn.execute(
         "SELECT COUNT(*) FROM loop_cycles WHERE timestamp >= ?",
-        (today,)
+        (yesterday_utc,)
     )
     count = cur.fetchone()[0]
     conn.close()
@@ -124,9 +126,9 @@ def main():
                             f"Check Langfuse for details."
                         )
                 except Exception:
-                    pass
+                    pass  # Langfuse may not be running — silent skip is correct
     except Exception:
-        pass
+        pass  # Langfuse entirely absent — non-critical watchdog
 
     if alerts:
         ts = _cron_ts("scoring-activity-watchdog")
