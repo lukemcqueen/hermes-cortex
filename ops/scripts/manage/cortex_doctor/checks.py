@@ -39,6 +39,16 @@ from .config import (
     parse_orch_crons,
     find_script_consumers,
 )
+
+
+# Cron names that intentionally exit non-zero as a designed alert mechanism.
+# These are watchdog scripts that exit 1 to signal "condition not met" (e.g.
+# low scoring activity, stale refs). The doctor should treat these as INFO
+# rather than WARN since the non-ok status is expected behavior.
+_ALERT_WATCHDOGS = {
+    "agent-scoring-activity-watchdog",
+    "agent-stale-ref-watchdog",
+}
 from .helpers import run, run_bg, http_get, read_file, process_running, find_similar_name
 from .results import Results
 
@@ -456,7 +466,12 @@ def check_crons(res):
             bad_workdir.append((name, wd))
         last_status = job.get("last_status", "")
         if last_status and last_status != "ok":
-            stale.append((name, last_status))
+            if name in _ALERT_WATCHDOGS:
+                res.add(f"Cron status ({name})", "INFO",
+                        f"last run: {last_status} (intentional alert — exit code indicates condition, not failure)",
+                        "This watchdog exits non-zero as a designed alert mechanism")
+            else:
+                stale.append((name, last_status))
 
     if not missing and not bad_workdir and not stale:
         res.add("Crons registered", "PASS", f"all {len(expected_crons)} expected crons present and healthy")
