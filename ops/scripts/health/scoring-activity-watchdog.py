@@ -61,6 +61,10 @@ def main():
         if hour >= thr_hour:
             expected = THRESHOLDS[thr_hour]
 
+    # Weekend grace: skip alert on Saturday/Sunday — low activity is expected
+    if now.weekday() >= 5:
+        expected = 0
+
     if count < expected:
         print(
             f"{_cron_ts('scoring-activity-watchdog')} ⚠️  Scoring activity low: {count} cycle(s) today "
