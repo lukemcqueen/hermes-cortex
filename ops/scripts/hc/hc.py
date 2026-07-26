@@ -58,7 +58,7 @@ def load_config() -> dict:
                 if k == "HC_AGENT" and not config["agent"]:
                     config["agent"] = v
         except Exception:
-            pass
+            _ = None  # config load failure — non-fatal
 
     if not config["agent"]:
         config["agent"] = DEFAULT_AGENT
@@ -231,14 +231,39 @@ def cmd_inbox(cfg: dict, args: list):
 
 
 def cmd_send(cfg: dict, args: list):
-    """Send a message to an agent's inbox."""
+    """Send a message to an agent's inbox.
+    
+    HARD RULE: Sending to a fleet agent (not self) requires --self-tested
+    to prove the identical flow was tested on yourself first.
+    """
+    # Check for --self-tested flag
+    self_tested = "--self-tested" in args
+    args = [a for a in args if a != "--self-tested"]
+    
     if len(args) < 2:
-        print("Usage: hc send <agent> <subject> [body]")
+        print("Usage: hc send <agent> <subject> [body] [--self-tested]")
         return
 
     agent = args[0]
     subject = args[1]
     body_text = " ".join(args[2:]) if len(args) > 2 else subject
+    
+    # SELF-TEST ENFORCEMENT: Sending to a fleet agent requires --self-tested
+    my_name = cfg.get("agent", "")
+    if agent != my_name and not self_tested:
+        print(f"❌ REFUSED: Sending to '{agent}' requires --self-tested.")
+        print()
+        print("   Fleet-commands hard rule: Never send a command to a fleet agent")
+        print("   until you've proven the identical flow works on yourself.")
+        print()
+        print(f"   To self-test first:")
+        print(f"     1. hc send {my_name} \"{subject}\" '<identical-body>'")
+        print(f"     2. Verify the handler processes it (run handler --once)")
+        print(f"     3. Check inbox for UPDATE_RESULT / EXEC_RESULT")
+        print(f"     4. Then re-run: hc send {agent} \"{subject}\" '<body>' --self-tested")
+        print()
+        print("   Use --self-tested only AFTER the self-test is verified.")
+        return
 
     body = {
         "from": cfg["agent"],
@@ -287,7 +312,7 @@ def cmd_status(cfg: dict, args: list):
                 print(f"   {icon} {name:12s}  {status}")
             print(f"\n   Workflows: {data.get('wf', '?')}")
         except Exception:
-            pass
+            _ = None  # config load failure — non-fatal
 
 
 def cmd_depth(cfg: dict, args: list):

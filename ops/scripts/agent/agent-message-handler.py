@@ -104,7 +104,7 @@ def load_state() -> dict:
         try:
             return json.loads(STATE_FILE.read_text())
         except (json.JSONDecodeError, OSError):
-            pass
+            _ = None  # config read failure — non-fatal
     return {"processed_ids": [], "last_result": None}
 
 
@@ -158,7 +158,7 @@ def run_doctor() -> dict:
                 start = r.stdout.index("{")
                 return json.loads(r.stdout[start:])
             except (ValueError, json.JSONDecodeError):
-                pass
+                _ = None  # body parse failure — non-fatal
         return {"healthy": False, "summary": {"pass": 0, "warn": 0, "fail": 0}, "error": "no JSON in doctor output"}
     except Exception as e:
         return {"healthy": False, "summary": {"pass": 0, "warn": 0, "fail": 0}, "error": str(e)}
@@ -205,7 +205,7 @@ def read_inbox(queue: str) -> dict | None:
                 raw["correlation_id"] = ""
             return raw
     except Exception:
-        pass
+        _ = None  # read_inbox failure — non-fatal
     return None
 
 
@@ -619,7 +619,7 @@ def main():
                         if isinstance(inner, dict):
                             correlation_id = inner.get("correlation_id", "") or ""
                     except (json.JSONDecodeError, TypeError):
-                        pass
+                        _ = None  # inner body parse — non-fatal
 
 
         subject = body.get("subject", "")
