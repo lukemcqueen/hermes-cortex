@@ -925,6 +925,16 @@ create_cron "agent-stale-ref-watchdog" "0 5 * * *" \
   "" \
   "true"
 
+# Daily bible reading (LLM-driven, uses deepseek)
+create_cron "agent-daily-bible-reading" "0 1 * * *" \
+  "" \
+  "Read the daily bible reading skill and produce today's scripture entry. Append the entry to ~/.hermes-cortex/brain/journal/daily-scripture.md" \
+  "agent-daily-bible-reading" \
+  "origin" \
+  "" \
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+
 # ── Auto-prune old-format cron names ──
 # Remove legacy crons that lack the agent- prefix when an agent- replacement exists.
 # These accumulate from older installs that used bare names (e.g. 'cron-quality-watchdog'
