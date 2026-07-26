@@ -137,6 +137,8 @@ Documentation: [`docs/skills-manifest-reference.md`](docs/skills-manifest-refere
 
     The test: *"Would someone running Hermes Cortex benefit from this? Or is it already available to them through either the Hermes or hermes-cortex repos?"* If the answer is the latter, don't share.
 
+24. **Self-test gate for fleet commands** — `hc send` refuses to send to fleet agents without `--self-tested` flag. This is CLI-enforced at the tool level, not a suggestion. Before dispatching any command to a fleet agent, run the self-test first and pass the flag. Additionally, never use bare `pass` in except blocks — adversarial verification flags these as bypasses. Use meaningful fallback logic or `# noqa` with justification.
+
 ---
 
 ## Pre-Ship Checklist — Every Change, Before and After
