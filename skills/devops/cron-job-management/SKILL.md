@@ -221,9 +221,9 @@ When explicitly directed to add a cron to another Hermes profile (e.g. Esther):
 - **Never guess job IDs.** Always `cronjob action='list'` first before update/remove.
 - **no_agent scripts must handle silent-on-success correctly.** If the command prints "Already up to date." on stdout, the script must detect and suppress it — otherwise a "success" delivers noise to the user every tick.
 - **no_agent scripts that import from project modules need PYTHONPATH.** Cron jobs run in a bare environment — no PYTHONPATH, no project venv. If a no_agent Python script imports from a project module (e.g. `agent_bus` under `~/hermes-cortex/core/agent_bus/`), it must handle both at the script level:
- 1. **Shebang** to the project's venv python: `#!/home/moses/.hermes/hermes-agent/venv/bin/python3`
- 2. **sys.path** before any project imports: `sys.path.insert(0, "/home/moses/hermes-cortex/core")`
- 3. **Test** outside cron first: `/home/moses/.hermes/hermes-agent/venv/bin/python3 script.py`
+ 1. **Shebang** to the project's venv python: `#!~/.hermes/hermes-agent/venv/bin/python3`
+ 2. **sys.path** before any project imports: `sys.path.insert(0, "~/hermes-cortex/core")`
+ 3. **Test** outside cron first: `~/.hermes/hermes-agent/venv/bin/python3 script.py`
  Without both, the cron silently fails with `ModuleNotFoundError` on every tick.
 - **Delivery matters for cron jobs.** `deliver='local'` logs only. `deliver='origin'` delivers to the creating session (which may not exist at cron time). For unattended crons that should notify on error, set deliver to a live channel (e.g. `telegram:chat_id`).
 - **Respect Esther's crons.** The Esther profile at `~/.hermes/profiles/esther/` has its own cron namespace. Never create, rename, or remove crons there unless explicitly directed.

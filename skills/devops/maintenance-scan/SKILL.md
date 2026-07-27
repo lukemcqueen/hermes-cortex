@@ -1,0 +1,134 @@
+---
+name: maintenance-scan
+description: >-
+  Systematic system health survey run proactively when the user gives an
+  open-ended directive to "find work" or "look for issues". 9-step
+  sequential scan: inbox → memory → doctor → crons → git → system →
+  analyze → fix → verify.
+version: 1.0.0
+category: devops
+author: Moses
+license: MIT
+platforms: [linux]
+related_skills:
+  - cortex-preflight
+  - survey-before-action
+  - change-checklist
+---
+
+# Maintenance Scan — Proactive System Survey
+
+## Trigger
+
+The user says any of:
+- "look for work that needs to be done"
+- "find what needs doing"
+- "scan for issues"
+- "proactive maintenance"
+- "find work"
+- Any open-ended directive without a specific task
+
+## When NOT to use
+
+- The user already specified a task → route with `agent-flow`
+- The user is asking a question or requesting research → use `agent-flow` / `research`
+- The user explicitly said "don't fix anything" or "read-only"
+
+## The 9-Step Scan
+
+Run in order. Each step is pass/fail — continue unless blocked.
+
+### Step 1: Inbox
+
+Check the agent bus for pending fleet messages BEFORE touching any tool or running any command. Other agents may have sent requests, reports, or alerts:
+
+```bash
+# Queue overview
+sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+  SELECT queue_name, state, COUNT(*) as count
+  FROM bus.messages
+  GROUP BY queue_name, state
+  ORDER BY queue_name, state;
+\""
+```
+
+Focus on `inbox_moses` pending messages — those are requests from fleet agents that need attention. Common patterns:
+- **Learning Reports**: Routine — handled by orch-skill-lifecycle cron (04:00 daily). Note and move on.
+- **CRON requests** from non-orchestrator agents: AUTO-ACT (create or update the requested cron).
+- **FIX_REQUEST / FIX_RESULT**: Fleet update round-trips — verify completion, escalate if stalled.
+- **EXEC results**: Command output from fleet agents — correlate with outstanding dispatch.
+
+Do NOT archive inbox messages here — the scan is discovery only. Actual processing happens via agent-bus crons or in-session handling.
+
+### Step 2: Memory & Session
+
+Check what you already know BEFORE querying any external system:
+
+1. **Memory** — `memory()` your persistent notes. Do you already know the schema, patterns, or answers you're about to look up?
+2. **session_search()** — 3+ queries about the domain. Was this discussed in a recent session?
+3. **Skills** — `skills_list()` for the domain, `skill_view()` on any matching skill.
+
+**Signal:** Any time you're about to write `docker exec psql`, `curl`, `grep`, or `search_files()` — pause and ask: "Is this in my memory or session history?" If yes, check there first. Going to external sources before checking your own knowledge is the most common wasted-turn pattern.
+
+### Step 3: Doctor
+```
+python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
+```
+Record: pass count, fail count, warn count. Note every ❌ and ⚠️ line.
+Exit 0 = clean. Exit 2 = failures present.
+
+### Step 4: Crons
+```
+cronjob(action='list')
+```
+Check every job for `last_status: failed`. Flag any paused without reason (`state: paused` with no `paused_reason`).
+
+### Step 5: Git
+```
+cd ~/hermes-cortex && git status --short
+```
+Empty = clean. Non-empty = investigate whether changes are intentional or stale.
+
+### Step 6: System
+```
+df -h / | tail -1        # disk %
+free -h | head -2        # RAM
+uptime                   # load
+```
+Hard thresholds: disk >80% used, available RAM <2GiB, load >CPU cores × 2 merit alert (document but don't fix without user approval).
+
+### Step 7: Analyze
+Cross-reference findings. Common patterns from the doctor:
+- `❌ AGENTS.md (<repo>)` → doc stale, review recent changes, update reference tables
+- `⚠️ Symlinks` → broken `.governance-generic.json` → remove stale lock reference
+- `⚠️ Repo clean` → uncommitted changes from prior work
+- `ℹ️ Extra crons` → informational, ignore
+- `➖ Bus E2E test` → optional test, ignore
+
+### Step 8: Fix
+Fix each issue without asking (Principle 2 — Be Proactive). Only escalate:
+- Data loss (rm -rf, DROP TABLE)
+- Privilege escalation
+- Service restart affecting production traffic
+
+For docs: edit → sync (`cp repo_path ~/.hermes/`) → commit → push → verify.
+
+### Step 9: Re-verify
+```
+python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
+```
+Confirm: 41 pass · 0 warn · 0 fail — or better than baseline.
+
+## Reporting Format
+
+```
+Found {N} issues:
+  ❌ {issue} — {what was done}
+  ❌ {issue} — {what was done}
+System healthy: disk {X}%, RAM {Y}Gi avail, load {Z}
+Doctor now {HEALTHY|WARNING|PASS} ✅
+```
+
+## Bonded Rule
+
+Do NOT ask "what should I work on?" after "look for work". Run the scan first.

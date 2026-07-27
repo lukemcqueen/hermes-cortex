@@ -15,7 +15,7 @@ behavioral_principles:
  - The brain directory structure needs git-init'd MECE subdirectories (19 dirs), not just flat kb/memories dirs.
  - The health-vector.py server binds to 127.0.0.1 by default; nginx proxies external traffic. No need to patch bind addresses — health-vector.py has zero pip dependencies and no EXTERNAL_HEALTH_URL requirement.
  - The gbrain CLI 'sources add' command can hang indefinitely on first run; use a timeout wrapper or configure the source path via the DB config directly.
- - When the user gives a cross-user path for SOUL.md (e.g. /home/moses/...), redirect to ~/.hermes/SOUL.md and inform them — never create files in another user's home.
+ - When the user gives a cross-user path for SOUL.md (e.g. ~/...), redirect to ~/.hermes/SOUL.md and inform them — never create files in another user's home.
  - The user prefers the short /health endpoint path for external health URLs, not /api/v1/health. The former returns a compact vector, the latter returns full JSON. Always default to /health unless the user specifies otherwise.
  - The health server exposes two endpoints with different response formats: /health (compact 9-element vector, ideal for orchestrator polling) and /api/v1/health (full JSON, ideal for debugging). When configuring EXTERNAL_HEALTH_URL, use /health per user preference.
  - The gbrain sources add command can hang indefinitely on first run because it initializes the embedding model or does I/O. Workaround: use timeout wrapper or pipe EOF into stdin. The timeout causes a non-zero exit even on success, so check actual source status separately.
@@ -501,7 +501,7 @@ cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md
 cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md
 ```
 
-**Pitfall — SOUL.md path:** The canonical location is `~/.hermes/SOUL.md`, NOT `/home/moses/...` or any other user's home. Always verify the target directory exists before writing. If the user gives you a cross-user path, create it under the current user's `~/.hermes/` instead and inform them.
+**Pitfall — SOUL.md path:** The canonical location is `~/.hermes/SOUL.md`, NOT `~/...` or any other user's home. Always verify the target directory exists before writing. If the user gives you a cross-user path, create it under the current user's `~/.hermes/` instead and inform them.
 
 ### 11. Persist PATH in Shell Config
 
