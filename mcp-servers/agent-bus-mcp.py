@@ -151,16 +151,14 @@ DEFAULT_AGENT = agent_name
 
 _ENDPOINTS = []  # list of (label, base_url, headers_dict)
 
-# 1. Agent Bus — Bearer token preferred, Basic auth fallback for nginx proxied
+# 1. Agent Bus — Bearer token preferred, then Basic auth for nginx proxies
 if bus_url:
     bus_base = bus_url.rstrip("/").rstrip("send").rstrip("api/inbox").rstrip("/")
-    headers = {}
     if bus_token:
-        headers = {"Authorization": f"Bearer {bus_token}"}
-    elif bus_auth:
+        _ENDPOINTS.append(("Agent Bus (Bearer)", bus_base, {"Authorization": f"Bearer {bus_token}"}))
+    if bus_auth:
         encoded = base64.b64encode(bus_auth.encode()).decode()
-        headers = {"Authorization": "Basic " + encoded}
-    _ENDPOINTS.append(("Agent Bus", bus_base, headers))
+        _ENDPOINTS.append(("Agent Bus (Basic)", bus_base, {"Authorization": "Basic " + encoded}))
 
 # 2. Old inbox fallback (deprecated — use CORTEX_BUS_URL)
 if fallback_url:

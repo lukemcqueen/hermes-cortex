@@ -15,7 +15,7 @@ import json
 import os
 import time
 from pathlib import Path
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 CONFIG_FILE = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "cortex-bus.conf"
@@ -81,6 +81,27 @@ def _bus_post(endpoint: str, payload: dict, fallback: bool = False) -> dict:
             })
             with urlopen(req, timeout=15) as resp:
                 return json.loads(resp.read().decode())
+        except HTTPError as e:
+            # If Bearer gets 401/403 and Basic auth is available, try Basic on same URL
+            if (
+                not fallback
+                and e.code in (401, 403)
+                and scheme == "Bearer"
+                and CORTEX_BUS_AUTH
+            ):
+                basic_creds = base64.b64encode(CORTEX_BUS_AUTH.encode()).decode()
+                try:
+                    req2 = Request(url, data=data, headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Basic {basic_creds}",
+                    })
+                    with urlopen(req2, timeout=15) as resp2:
+                        return json.loads(resp2.read().decode())
+                except Exception:
+                    pass  # Basic also failed — fall through to retry/fallback
+            last_error = str(e)
+            if attempt < max_attempts - 1:
+                time.sleep(2 ** attempt)
         except URLError as e:
             last_error = str(e)
             if attempt < max_attempts - 1:
