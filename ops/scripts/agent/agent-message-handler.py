@@ -655,11 +655,12 @@ def main():
         archive_message(inbox_queue, msg.get("msg_id", ""))
         send_bus_result("inbox_moses", correlation_id, result_body, result_subject)
 
-        # State tracking
-        processed.add(correlation_id)
-        state.setdefault("processed_ids", [])
-        state["processed_ids"].append(correlation_id)
-        state["processed_ids"] = state["processed_ids"][-50:]
+        # State tracking — only track non-empty correlation_ids
+        if correlation_id:
+          processed.add(correlation_id)
+          state.setdefault("processed_ids", [])
+          state["processed_ids"].append(correlation_id)
+          state["processed_ids"] = state["processed_ids"][-50:]
         state["last_result"] = result_body
         save_state(state)
 
