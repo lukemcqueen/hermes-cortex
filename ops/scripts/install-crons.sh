@@ -441,6 +441,9 @@ if $UNINSTALL; then
     "agent-bus-evening" \
     "agent-bus-overnight" \
     "agent-bus-workday" \
+    "agent-inbox-evening" \
+    "agent-inbox-overnight" \
+    "agent-inbox-workday" \
     "agent-ip-submission" \
     "agent-langfuse-health-watchdog" \
     "agent-learning-collector" \
@@ -659,7 +662,40 @@ create_cron "agent-bus-overnight" "0 3 * * 1-5" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 
-# ── 5. Governance Audit & Lock Cleanup
+# ── 5. Inbox Processing ────────────────────────────────
+printf "\n${CYAN}  5. Inbox Processing${RESET}\n"
+
+create_cron "agent-inbox-workday" "0 9-17 * * 1-5" \
+  "" \
+  "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: Produce NO output when nothing actionable." \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+
+create_cron "agent-inbox-evening" "0 18,20,22 * * 1-5" \
+  "" \
+  "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: Produce NO output when nothing actionable." \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+
+create_cron "agent-inbox-overnight" "0 3 * * 1-5" \
+  "" \
+  "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: Produce NO output when nothing actionable." \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+
+# ── 6. Governance Audit & Lock Cleanup
 
 create_cron "agent-governance-auditor" "0 */6 * * *" \
   "governance-auditor.py" \
@@ -670,8 +706,8 @@ create_cron "agent-governance-auditor" "0 */6 * * *" \
   "" \
   "true"
 
-# ── 6. Universal Agent Crons ──────────────────────────────
-printf "\n${CYAN}  6. Universal Agent Crons${RESET}\n"
+# ── 7. Universal Agent Crons ──────────────────────────────
+printf "\n${CYAN}  7. Universal Agent Crons${RESET}\n"
 
 # LLM judge scorer — weekday (Mon-Fri 12:00 and 20:00)
 create_cron "agent-llm-judge-scorer-weekday" "0 12,20 * * 1-5" \
@@ -799,12 +835,12 @@ create_cron "agent-cron-quality-watchdog" "*/10 * * * *" \
   "" \
   "true"
 
-# ── 7. Deployment-Specific Crons ─────────────────────────────
+# ── 8. Deployment-Specific Crons ─────────────────────────────
 # These are specific to Luke's deployment but tracked in the
 # repo so install-crons.sh --force can recreate them.
 # (All crons listed in the AGENTS.md reference table.)
 
-printf "\n${CYAN}  7. Deployment-Specific Crons${RESET}\n"
+printf "${CYAN}  8. Deployment-Specific Crons${RESET}\n"
 
 # Daily Hermes Agent self-update
 create_cron "agent-hermes-update" "23 22 * * *" \
@@ -957,8 +993,8 @@ If nothing to apply: output exactly [SILENT]" \
   "$HOME" "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-# ── 5. Skill Collection (universal — all agents) ──────────
-printf "${CYAN}  5. Skill Collection Pipeline${RESET}\n"
+# ── 9. Skill Collection (universal — all agents) ──────────
+printf "${CYAN}  9. Skill Collection Pipeline${RESET}\n"
 
 # Collect custom skills every 6h — scans skills dirs, reports to Moses inbox
 #  (Restored: send-skill-report — rewritten to use /api/pgmq/send with Bearer/Basic auth.
