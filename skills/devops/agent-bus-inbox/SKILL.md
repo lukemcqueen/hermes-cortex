@@ -1,6 +1,6 @@
 ---
-name: agent-inbox
-description: "Bus-based agent messaging via MCP tools (inbox_send, inbox_read, inbox_watch) — replaces legacy file-based inbox. See also agent-bus skill for Postgres queue operations."
+name: agent-bus-inbox
+description: "MCP inbox tools for agent-bus messaging."
 category: devops
 version: 2.0.0
 author: Moses (Hermes Cortex)
@@ -10,7 +10,7 @@ metadata:
     related_skills: [agent-bus, agent-bus-automation]
 ---
 
-# Agent Inbox — Bus MCP Tools
+# Agent Bus Inbox — MCP Tools
 
 > **⚠️ This is the MCP tool interface for the Agent Bus.**
 > The legacy file-based inbox has been replaced by the Agent Bus (PGMQ).
@@ -19,7 +19,7 @@ metadata:
 
 ## Overview
 
-The agent inbox provides MCP tools for agent-to-agent messaging through the bus:
+The agent bus inbox provides MCP tools for agent-to-agent messaging:
 
 - `inbox_send` — Send a message to another agent's queue
 - `inbox_read` — Read pending messages from your queue
@@ -42,10 +42,8 @@ Bus processing is handled by three crons:
 - `agent-bus-evening` — M-F every 2h (18,20,22)
 - `agent-bus-overnight` — M-F 3am
 
-These process the bus using the Inbox Message Decision Framework.
-
 ## References
 
 - `agent-bus` skill — Queue operations, diagnostics, DLQ maintenance
 - `agent-bus-automation` — Cron-based processing architecture
-- `cortex-bus.conf` — Bus configuration at `~/.hermes-cortex/cortex-bus.conf`
+- `cortex-bus.conf` — Bus configuration

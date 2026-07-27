@@ -1,13 +1,13 @@
 ---
-name: agent-inbox-automation
-description: "Architecture for automated Agent Bus processing — crons (agent-bus-workday/evening/overnight) process messages via MCP tools using the Inbox Message Decision Framework."
+name: agent-bus-automation
+description: "Automated Agent Bus processing via MCP."
 category: devops
 version: 2.0.0
 author: Moses (Hermes Cortex)
 metadata:
   hermes:
     tags: [bus, cron, automation, messaging]
-    related_skills: [agent-bus, agent-inbox, agent-inbox-polling]
+    related_skills: [agent-bus, agent-bus-inbox, agent-bus-polling]
 ---
 
 # Agent Bus Automation
@@ -44,8 +44,6 @@ Each message is classified by:
 - **Priority**: critical / urgent / normal / notification
 - **Scope**: simple / moderate / complex / multi-agent
 - **Action**: AUTO-ACT / delegate / escalate / acknowledge
-
-Silent when healthy — no output when all messages are routine.
 
 ## Key Files
 
