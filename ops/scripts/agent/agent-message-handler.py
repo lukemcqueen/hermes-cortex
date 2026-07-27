@@ -630,8 +630,8 @@ def main():
       f"📥 {AGENT_NAME}:{subject}",
     )
 
-    # Idempotency check
-    if correlation_id in processed:
+    # Idempotency check — skip for messages without correlation_id
+    if correlation_id and correlation_id in processed:
       log(f"Skipping already-processed corr={correlation_id[:8] if correlation_id else ''}…")
       # Archive so it doesn't loop forever
       archive_message(inbox_queue, msg_id)
