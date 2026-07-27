@@ -531,7 +531,7 @@ def check_crons(res):
 
 
 def check_scripts(res):
-  """3. Script integrity: all scripts referenced by crons exist."""
+  """3. Script integrity: all scripts referenced by crons exist and match repo source."""
   if not JOBS_FILE.exists():
     return
   try:
@@ -541,7 +541,10 @@ def check_scripts(res):
 
   jobs = data.get("jobs", []) if isinstance(data, dict) else data
   script_dirs = [HERMES_HOME / "scripts", CORTEX_HOME / "scripts", HOME / ".local" / "bin"]
+  repo_scripts = CORTEX_REPO / "ops" / "scripts"
+  import hashlib as _hl
   missing = []
+  mismatched = []
 
   for job in jobs:
     if not isinstance(job, dict):
@@ -551,20 +554,35 @@ def check_scripts(res):
       continue
     found = False
     for d in script_dirs:
-      if (d / script).exists():
+      deployed = d / script
+      if deployed.exists():
         found = True
+        # ── Content verification: compare MD5 with repo source ──
+        repo_source = repo_scripts / script
+        if repo_source.is_file():
+          try:
+            dep_md5 = _hl.md5(deployed.read_bytes()).hexdigest()
+            src_md5 = _hl.md5(repo_source.read_bytes()).hexdigest()
+            if dep_md5 != src_md5:
+              mismatched.append((job.get("name", "?"), script, deployed))
+          except (OSError, PermissionError):
+            pass  # can't read — skip content check
         break
     if not found and Path(script).is_absolute() and Path(script).exists():
       found = True
     if not found:
       missing.append((job.get("name", "?"), script))
 
-  if not missing:
-    res.add("Script integrity", "PASS", "all cron scripts found")
+  if not missing and not mismatched:
+    res.add("Script integrity", "PASS", "all cron scripts found and match repo source")
   else:
     for name, script in missing[:5]:
       res.add(f"Script ({name})", "FAIL", f"not found: {script}",
           "Run: bash cortex-update.sh ")
+    for name, script, deployed_path in mismatched[:5]:
+      res.add(f"Script content ({name})", "FAIL",
+          f"{script} — deployed copy differs from repo source",
+          f"REQUIRED: Run: cortex-update.sh to resync")
 
 
 def _check_bus_e2e(res):
