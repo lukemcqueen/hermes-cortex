@@ -727,7 +727,7 @@ The pre-commit hook checks for the governance lock file as a secondary safety ne
 If it fires during a direct `git commit` outside of an agent session:
 
 ```bash
-# Bypass: SKIP_SCORE=1 git commit -m "message"  (abuse detection enforced)
+# Bypass: git commit --no-verify -m "message"  (use only in emergencies)
 # Or create a governance lock first:
 mcp_loop_governance_begin_change(task_id="direct-commit", description="...")
 # Then commit, then:

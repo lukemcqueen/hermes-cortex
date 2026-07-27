@@ -93,7 +93,7 @@ fi
 if [[ "$issues" -gt 0 ]]; then
     echo "───"
     echo "📋 DOCS AUDIT: $issues documentation issue(s) found."
-    echo "   Fix them before committing — no bypass flags."
+    echo "   Fix them before committing (use git commit --no-verify in emergencies only)."
     echo ""
     exit 0  # Warn only — does NOT block commit (blocking would be too disruptive)
 fi
