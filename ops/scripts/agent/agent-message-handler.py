@@ -117,7 +117,7 @@ def run_cortex_update() -> dict:
   log("Running cortex-update.sh ...")
   try:
     r = subprocess.run(
-      ["bash", str(CORTEX_UPDATE), ""],
+      ["bash", str(CORTEX_UPDATE), "--force-all"],
       capture_output=True, text=True, timeout=120
     )
     result = {
