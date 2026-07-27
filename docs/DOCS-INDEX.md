@@ -16,6 +16,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/agent-onboarding.md` | Agent onboarding — step-by-step guide for client-only agents to connect to Moses and the fleet |
 | `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
 | `docs/fleet-update-protocol.md` | **NEW** — Fleet update bus protocol: UPDATE_REQUEST/RESULT, FIX_REQUEST/RESULT schemas for Moses→fleet orchestration |
+| `docs/fallback-architecture-survey.md` | **Moses fallback architecture** — failover survey, Esther's warm-standby bus, gaps & approaches |
 | `docs/cert-monitoring.md` | SSL/TLS cert monitoring — how certs are checked, renewed, alerted |
 | `docs/archive/` | Archived/superseded design docs (PRD-005 v1, etc.) |
 | `ops/scripts/lib/cortex_bus.py` | **Shared bus library** — HTTP API wrapper: bus_send, bus_read, bus_archive, bus_list_queues (used by all fleet scripts) |
