@@ -547,7 +547,7 @@ is classified into one of three tiers:
 
 | Tier | Tools | What's Blocked |
 |------|-------|----------------|
-| **WRITE_TOOLS** | `write_file`, `patch`, `execute_code`, `memory`, `text_to_speech` | Tool use at all — requires governance lock unconditionally |
+| **WRITE_TOOLS** | `write_file`, `patch`, `execute_code`, `memory`, `text_to_speech` | Tool use at all — requires governance lock unconditionally. Note: `execute_code` may also be blocked by Hermes' `approvals.cron_mode` before the enforcer's check fires — the block message you see depends on which system intercepts it first. Either way, the tool is correctly blocked. |
 | **CONDITIONAL** | `terminal`, `cronjob`, `skill_manage`, `process`, `computer_use` | Specific write-type actions (see tables below) |
 | **READ-ONLY** | `read_file`, `search_files`, `session_search`, `skill_view`, `skills_list`, `clarify`, `vision_analyze`, `todo` | Nothing — always allowed |
 | **DELEGATION** | `delegate_task` | Not blocked — subagents have their own enforcer instance |
@@ -602,7 +602,7 @@ happens and how to verify a clean upgrade.
 | **Repo identification** | CWD-dependent `git rev-parse` | Stored in lock content as `repo_slug` field |
 | **Enforcer check** | Single file by path | Scan all `.governance-*.json`, match by content |
 | **Multiple sessions** | Not supported (one lock per repo) | Each session gets its own file |
-| **Generic fallback** | `.governance-generic.json` written alongside every lock | Eliminated — not needed |
+| **Generic fallback** | `.governance-generic.json` written alongside every lock | Eliminated — session-scoped locks (`.governance-{session_id}.json`) used instead. All code references removed. |
 
 ### Upgrade steps
 

@@ -83,7 +83,7 @@ bash ~/.hermes-cortex/tools/loop-governance/verify.sh
 
 | Layer | What | How to install | Bypass |
 |-------|------|---------------|--------|
-| **Governance enforcer plugin** | **Primary** — blocks write tools at Hermes runtime via `pre_tool_call` hook | `ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/` + `/reset` | `allow_tool_override: true` (human override in config) |
+| **Governance enforcer plugin** | **Primary** — blocks write tools at Hermes runtime via `pre_tool_call` hook | `ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/` + `/reset` | ⛔ No override mechanism — the enforcer is structural. (`allow_tool_override` is NOT present in the Hermes Cortex production config — the enforcer always blocks without a lock.) |
 | **Survey-before-cron gate** (enforcer plugin) | Blocks `cronjob(action='create')` unless `.cron-survey-done` marker exists. Agent must run `cronjob(list)` + `search_files()` + `skills_list()` first. | Ships with enforcer plugin. Activated on next `/reset` after git pull. | N/A (structural — cannot bypass mid-session) |
 | Pre-commit hook | Runs `score-cycle` on every `git commit` — now scores ALL staged files, not just the first. | `bash ~/.hermes/scripts/install-score-hook.sh --all` | `--no-verify` (logged to no-verify-audit cron) |
 | **Syntax check gate** (pre-push hook) | Parses every changed `.py` (py_compile) and `.sh` (bash -n) file at push time. Cannot be skipped — the hook runs the checker itself. | Ships with pre-push hook (re-deployed by `cortex-update.sh`). | `--no-verify` |

@@ -828,6 +828,29 @@ def _begin_change(args: dict) -> CallToolResult:
         # Persist force-acquire event to audit log outside lock lifecycle
         _log_force_acquire(session_id, task_id, released_session, released_task)
 
+        # ── Fix GAP #1: Auto-score the replaced task's PENDING cycle ──
+        # The old task's PENDING cycle (composite=0, decision='PENDING') would
+        # otherwise orphan in the DB. Score it as overridden with a clear note.
+        try:
+            conn = _db()
+            old_row = conn.execute(
+                "SELECT id FROM loop_cycles WHERE task_id = ? AND decision = 'PENDING' AND user_overrode IS NULL ORDER BY id DESC LIMIT 1",
+                (released_task,)
+            ).fetchone()
+            if old_row:
+                conn.execute(
+                    "UPDATE loop_cycles SET user_overrode=1, decision='MOVE_ON', outcome_note=? WHERE id=?",
+                    (f"Auto-closed: force-acquire by task '{task_id}' (session {session_id}) replaced this task", old_row[0])
+                )
+                conn.commit()
+        except Exception:
+            log.warning("Could not auto-score replaced task cycle (non-critical)")
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                log.warning("Best-effort cleanup: conn close failed")
+
     # ── Step 2: Create pending cycle in loop-governance DB (BEFORE new lock file) ──
     # Critical ordering: if the DB write fails, no new lock file is written,
     # preventing orphaned locks. For force=True, the old lock is already released
@@ -1102,11 +1125,58 @@ def _config_set(args: dict) -> CallToolResult:
     if last not in section:
         return CallToolResult(content=[TextContent(type="text", text="Key not found: " + key)])
     old_val = section[last]
-    MAX_DELTA = 1.0
-    if abs(value - old_val) > MAX_DELTA:
-        return CallToolResult(content=[TextContent(type="text", text=f"Safety bound: max delta {MAX_DELTA}. {old_val} -> {value} exceeds that.")])
-    if value < 0 or value > 10:
-        return CallToolResult(content=[TextContent(type="text", text="Value must be between 0 and 10")])
+    # ── Config-aware delta enforcement (Fix GAP #2) ──
+    # Weights use auto_apply.max_weight_delta (default 0.10).
+    # Thresholds use auto_apply.max_threshold_delta (default 1.0).
+    # Read from the actual config so admin tuning is respected.
+    key_section = parts[0] if len(parts) >= 2 else ""
+    auto_apply = config.get("auto_apply", {})
+    if key_section == "weights":
+        max_delta = auto_apply.get("max_weight_delta", 0.10)
+        if abs(value - old_val) > max_delta:
+            return CallToolResult(content=[TextContent(
+                type="text",
+                text=f"Safety bound: max delta for weights is {max_delta:.2f}. "
+                     f"Cannot change from {old_val} to {value} (delta={abs(value-old_val):.3f})."
+            )])
+        if value < 0.05 or value > 0.80:
+            return CallToolResult(content=[TextContent(
+                type="text",
+                text=f"Weight must be between 0.05 and 0.80 (got {value})."
+            )])
+        # ── Weight-sum validation (Fix GAP #3) ──
+        # Changing one weight affects the total sum. Reject if the new sum
+        # would fall outside [0.8, 1.2], preventing silent scoring-model skew.
+        current_weights = config.get("weights", {})
+        other_sum = sum(v for k, v in current_weights.items() if k != last)
+        new_sum = other_sum + value
+        if new_sum < 0.8 or new_sum > 1.2:
+            return CallToolResult(content=[TextContent(
+                type="text",
+                text=f"Weight sum would be {new_sum:.2f} (outside [0.8, 1.2]). "
+                     f"Other weights sum to {other_sum:.2f}, proposed '{last}'={value}. "
+                     f"Adjust other weights first or choose a different value."
+            )])
+    elif key_section == "thresholds":
+        max_delta = auto_apply.get("max_threshold_delta", 1.0)
+        if abs(value - old_val) > max_delta:
+            return CallToolResult(content=[TextContent(
+                type="text",
+                text=f"Safety bound: max delta for thresholds is {max_delta:.2f}. "
+                     f"Cannot change from {old_val} to {value} (delta={abs(value-old_val):.2f})."
+            )])
+        if value < 0 or value > 10:
+            return CallToolResult(content=[TextContent(type="text", text="Value must be between 0 and 10")])
+    else:
+        # Non-structured keys (version, embed_weight, etc.) — basic bounds
+        if abs(value - old_val) > 1.0:
+            return CallToolResult(content=[TextContent(
+                type="text",
+                text=f"Safety bound: max delta 1.0 for generic keys."
+                     f" Cannot change from {old_val} to {value}."
+            )])
+        if value < 0 or value > 10:
+            return CallToolResult(content=[TextContent(type="text", text="Value must be between 0 and 10")])
     section[last] = value
     CONFIG_PATH.write_text(json.dumps(config, indent=2))
     return CallToolResult(content=[TextContent(type="text", text=json.dumps({
