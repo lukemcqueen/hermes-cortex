@@ -305,10 +305,12 @@ fi
 # ── Save state ──
 date -u +"%Y-%m-%dT%H:%M:%SZ" > "${HOME}/.hermes-cortex/state/nginx-threat-pipeline-lastrun"
 
-# ── Output (watchdog: silent unless changes) ──
+# ── Output (always notify for this exception cron) ──
+TS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
 if $NEW_IPS; then
-  TS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
   echo "[$TS nginx-threat-pipeline] ━━━ Threat Pipeline — ${TS} ━━━"
   echo "$PIPELINE_OUTPUT"
   echo "[$TS nginx-threat-pipeline] ━━━ Complete ━━━"
+else
+  echo "[$TS nginx-threat-pipeline] ✅ No threats detected"
 fi
