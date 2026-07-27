@@ -25,7 +25,10 @@ set -euo pipefail
 _os=$(uname -s)
 
 # Resolve target path — sudo may set HOME=/root, so find the real user's home
-REAL_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "$USER")}"
+# SUDO_USER handles sudo context. $USER handles direct runs.
+# logname is NOT used — it returns 'root' in automation/container
+# contexts (Hermes agent, cron, launchd), producing wrong paths.
+REAL_USER="${SUDO_USER:-$USER}"
 if [[ "$_os" == "Darwin" ]]; then
   REAL_HOME=$(dscl . -read "/Users/$REAL_USER" NFSHomeDirectory 2>/dev/null | awk '{print $2}')
 else
