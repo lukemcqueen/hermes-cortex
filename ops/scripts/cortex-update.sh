@@ -333,6 +333,7 @@ register "ops/scripts/orch-bus/orch-bus-test.py"            "${CORTEX_DEPLOY_HOM
 
 # Fleet agent message handler (polls inbox for UPDATE_REQUEST etc.)
 register "ops/scripts/agent/agent-message-handler.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-message-handler.py"
+register "ops/scripts/agent/commands.py"               "${CORTEX_DEPLOY_HOME}/scripts/commands.py"
 register "ops/scripts/agent/agent-diagnostic.py"       "${CORTEX_DEPLOY_HOME}/scripts/agent-diagnostic.py"
 
 # Timezone helper (required by monitoring scripts)
