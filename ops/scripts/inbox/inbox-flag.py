@@ -78,7 +78,7 @@ def main() -> int:
                 if check_val or to_val:
                     is_for_moses = True
             except Exception:
-                pass
+                is_for_moses = False  # regex parse failed — not for moses
 
         if not is_for_moses:
             continue
