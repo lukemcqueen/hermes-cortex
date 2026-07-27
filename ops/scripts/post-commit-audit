@@ -10,6 +10,12 @@ SENTINEL="${GIT_DIR:-.git}/.pre-commit-ran"
 LOGDIR="${HOME}/.hermes-cortex/state"
 NO_VERIFY_LOG="${LOGDIR}/no-verify-log.json"
 
+# Consume the reflexion token (written by reflexion-check, consumed after commit)
+REFLEXION_TOKEN="${LOGDIR}/.reflexion-done"
+if [[ -f "$REFLEXION_TOKEN" ]]; then
+  rm -f "$REFLEXION_TOKEN"
+fi
+
 # Clean up sentinel if it exists (pre-commit ran normally)
 if [[ -f "$SENTINEL" ]]; then
   rm -f "$SENTINEL"

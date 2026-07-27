@@ -147,6 +147,19 @@ if [[ -f "$SOUL_LOCAL" ]] && [[ -f "$SOUL_TEMPLATE" ]]; then
   fi
 fi
 
+# ── Reflexion gate: must run reflexion-check before committing ──
+REFLEXION_TOKEN="${HOME}/.hermes-cortex/state/.reflexion-done"
+if [[ ! -f "$REFLEXION_TOKEN" ]]; then
+  echo ""
+  echo "❌  Reflexion check not completed."
+  echo "    You must run the reflexion-check skill before committing:"
+  echo "      skill_view(name='reflexion-check')"
+  echo "    Answer all 6 questions, then commit."
+  echo "    No bypass flags — use --no-verify only in emergencies."
+  echo ""
+  exit 1
+fi
+
 # ── Level 3: Governance lock check (secondary - MCP handles this) ───
 # The MCP server (loop-gov-mcp.py) already blocks write tools without
 # a lock. This check is a secondary safety net for direct-git operations.
