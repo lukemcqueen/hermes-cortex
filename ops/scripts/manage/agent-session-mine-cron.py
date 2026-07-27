@@ -28,7 +28,7 @@ from pathlib import Path
 HOME = Path.home()
 STATE_DIR = HOME / ".hermes-cortex" / "state"
 STATE_FILE = STATE_DIR / "agent-session-mine-state.json"
-TIMEOUT = 600  # 10 minutes — session-mine can be slow on large session DBs
+TIMEOUT = 600  # 10 minutes — session-mine can be slow on large session DBs (bootstrap: 82s on this server)
 
 
 def load_state() -> dict:
