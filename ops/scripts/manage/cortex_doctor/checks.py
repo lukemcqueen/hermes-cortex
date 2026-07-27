@@ -1247,6 +1247,41 @@ def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
             continue  # lsattr failed or file removed — skip gracefully
 
 
+def _check_plugin_lock_helper(res):
+    """Check that the plugin lock helper (hermes-plugin-lock) is deployed and functional."""
+    helper_path = Path("/usr/local/sbin/hermes-plugin-lock")
+
+    # ── Helper binary exists and is executable ──
+    if not helper_path.exists():
+        res.add("Plugin lock helper", "FAIL",
+                "hermes-plugin-lock not found at /usr/local/sbin",
+                "Run: sudo cortex-update.sh or deploy manually from the repo")
+        return
+    if not os.access(str(helper_path), os.X_OK):
+        res.add("Plugin lock helper", "FAIL",
+                "hermes-plugin-lock exists but is not executable",
+                f"Fix: sudo chmod 755 {helper_path}")
+        return
+
+    # ── Functional test via NOPASSWD sudo (proves sudoers entry + helper work) ──
+    try:
+        result = subprocess.run(
+            ["sudo", "-n", str(helper_path), "status"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0:
+            res.add("Plugin lock helper", "PASS",
+                    f"helper + sudoers OK ({result.stdout.strip()[:60]})")
+        else:
+            res.add("Plugin lock helper", "FAIL",
+                    f"sudo -n hermes-plugin-lock status exited {result.returncode}: {result.stderr.strip()[:60]}",
+                    "Check sudoers entry: echo 'moses ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock' | sudo tee /etc/sudoers.d/hermes")
+    except (subprocess.TimeoutExpired, OSError) as e:
+        res.add("Plugin lock helper", "FAIL",
+                f"sudo -n hermes-plugin-lock status failed: {e}",
+                "Check sudoers entry and helper binary")
+
+
 def check_governance(res):
     """7. Governance system: plugin, pre-commit hook, MCP servers, lock files, score-cycle."""
     config_text = read_file(CONFIG_FILE)
@@ -1546,6 +1581,9 @@ def check_governance(res):
 
     # ── Immutability (chattr +i) checks ──
     _check_enforcer_immutability(res, plugin_dir, hooks_dir)
+
+    # ── Plugin lock helper (hermes-plugin-lock) ──
+    _check_plugin_lock_helper(res)
 
     # ── Governance bypass coverage ──
     enforcer_path = CORTEX_REPO / "plugins" / "hermes-governance-enforcer" / "__init__.py"

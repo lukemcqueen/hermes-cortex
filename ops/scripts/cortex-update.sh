@@ -1151,7 +1151,7 @@ deploy_governance_plugin() {
       warn "  Immutability not set — ask your human to deploy the helper and enable it:"
       warn "    sudo cp ${REPO_DIR}/ops/install/deploy/nginx/hermes-plugin-lock /usr/local/sbin/hermes-plugin-lock"
       warn "    sudo chmod 755 /usr/local/sbin/hermes-plugin-lock"
-      warn "    echo '${SUDO_USER:-${USER}} ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock' | sudo tee /etc/sudoers.d/hermes-plugin-lock"
+      warn "    echo '${SUDO_USER:-${USER}} ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock' | sudo tee /etc/sudoers.d/hermes"
       warn "    sudo /usr/local/sbin/hermes-plugin-lock lock"
     fi
   fi
