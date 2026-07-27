@@ -35,7 +35,9 @@ echo "1.2.3.4" >> ops/install/deploy/nginx/blocked_ips.add
 ```bash
 cd ~/hermes-cortex
 git add ops/install/deploy/nginx/blocked_ips.add
-SKIP_SCORE=1 git commit -m "auto: block <reason> [pipeline]"
+# SKIP_SCORE=1 has been REMOVED. Use _create_gov_lock instead
+# (see nginx-threat-pipeline.sh for the temp lock pattern)
+git commit -m "auto: block <reason> [pipeline]"
 # No SKIP_PRE_PUSH needed — the pipeline scripts create a temp
 # governance lock before pushing (see nginx-threat-pipeline.sh)
 git push origin main
@@ -96,8 +98,8 @@ The threat-pipeline script (`ops/scripts/manage/nginx-threat-pipeline.sh`) uses 
 - Generates `blocked_ips.conf` from `blocked_ips.add` using `fix-blocked-ips.py` (no root)
 - Deploys with a single tight `sudo cp` rule (one specific path only)
 - Validates with `sudo nginx -t`, reloads with `sudo nginx -s reload`
-- Git commits use `SKIP_SCORE=1` to bypass governance hooks
-- Git pushes use `SKIP_PRE_PUSH=1` to bypass pre-push pull checks
+- Git commits use a temp governance lock (see nginx-threat-pipeline.sh `_create_gov_lock` pattern) — no bypass flags needed
+- Git pushes (SKIP_PRE_PUSH=1 has been removed — pre-push hook is mandatory)
 
 ## Manual Deploy (for agents with sudo access)
 

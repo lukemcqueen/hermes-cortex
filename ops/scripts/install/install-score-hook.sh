@@ -238,10 +238,8 @@ info "Installed: ${INSTALLED}  |  Already current: ${SKIPPED}"
 if [[ "$INSTALLED" -gt 0 ]]; then
   echo ""
   echo "  Next steps:"
-  echo "    - Set SKIP_SCORE=1 to bypass on a specific commit:"
-  echo "        SKIP_SCORE=1 git commit -m \"...\""
-  echo "    - Set SKIP_PRE_PUSH=1 to bypass the pre-push pull check:"
-  echo "        SKIP_PRE_PUSH=1 git push"
+  echo "    - Bypass flags (SKIP_SCORE, SKIP_PRE_PUSH) have been REMOVED."
+  echo "      Use --no-verify for true emergencies only."
   echo "    - Re-run this script after cloning new repos"
   echo "    - Run with --check to see current hook status"
 fi

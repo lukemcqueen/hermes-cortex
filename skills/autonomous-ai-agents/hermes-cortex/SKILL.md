@@ -504,7 +504,7 @@ If the system's decision was wrong, use `loop-feedback override <id> --note "...
 
 | Layer | What | How to install | Bypass |
 |-------|------|---------------|--------|
-| Pre-commit hook | Runs `score-cycle` on every `git commit` | `bash ~/.hermes-cortex/scripts/install-score-hook.sh --all` | `SKIP_SCORE=1` |
+|| Pre-commit hook | Runs `score-cycle` on every `git commit` | `bash ~/.hermes-cortex/scripts/install-score-hook.sh --all` | Removed — use `_create_gov_lock` in scripts |
 | SOUL.md directive | Rule in every Hermes session's system prompt | Edit `~/.hermes/SOUL.md` (add Mandatory Directives section) | Remove the directive |
 | Cron auditor | Scans every 6h for unscored changes | Auto-created by `install-crons.sh` | N/A |
 

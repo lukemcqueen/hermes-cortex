@@ -92,10 +92,10 @@ if git diff --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null; then
   log "  No git changes (unexpected) — skipping commit"
 else
   git add ops/install/deploy/nginx/blocked_ips.add ops/install/deploy/nginx/blocked_ips.submit 2>/dev/null || git add ops/install/deploy/nginx/blocked_ips.add
-  SKIP_SCORE=1 git commit -m "auto: block ${NEW_COUNT} agent-submitted IPs [pipeline]" 2>&1 || true
-
-  # Push with retry
   _create_gov_lock
+  git commit -m "auto: block ${NEW_COUNT} agent-submitted IPs [pipeline]" 2>&1 || true
+
+  # Push with retry (lock already created above)
   for push_attempt in 1 2; do
     if git push origin main 2>&1; then
       PIPELINE_OUTPUT+="  ✓ Pushed to origin"$'\n'

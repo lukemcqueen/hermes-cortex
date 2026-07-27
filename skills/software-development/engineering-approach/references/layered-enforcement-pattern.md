@@ -14,7 +14,7 @@ Layer 0: MCP server (unbypassable gate)
 Layer 1: Pre-commit hook (hard gate)
   ├── Auto-scores every git commit for DB logging
   ├── Runs automatically per-repo
-  └── Bypassable via env var (SKIP_SCORE=1)
+  ├── Bypassable via env var (SKIP_SCORE=1 — REMOVED July 2026)
 
 Layer 2: SOUL.md directive (soft guidance)
   ├── Every agent session starts with the rule in slot #1
