@@ -104,7 +104,7 @@ try:
             if isinstance(j, dict) and j.get('name') == '$name':
                 sys.exit(0)
 except Exception:
-    pass
+    sys.exit(1)
 sys.exit(1)
 " 2>/dev/null; then
       return 0
@@ -201,7 +201,7 @@ try:
             sys.stdout.write(j.get("id", ""))
             sys.exit(0)
 except:
-    pass
+    sys.exit(1)
 sys.exit(1)
 PYEOF
     job_id=$(python3 "$_tmp" "$CRON_JOBS_FILE" "$name" 2>/dev/null || true)
@@ -425,16 +425,23 @@ if $UNINSTALL; then
   for job in \
     "agent-agents-md-prune-apply" \
     "agent-agents-md-prune-scan" \
+    "agent-apply-fixes" \
     "agent-auto-save-sessions" \
+    "agent-card-daily" \
     "agent-cron-quality-watchdog" \
+    "agent-daily-soul-refinement" \
     "agent-fixer-evening" \
     "agent-fixer-overnight" \
     "agent-fixer-workday" \
+    "agent-gbrain-doctor" \
     "agent-gbrain-nightly-dream" \
     "agent-gbrain-update-sync" \
     "agent-governance-auditor" \
     "agent-hermes-cortex-sync" \
     "agent-hermes-update" \
+    "agent-inbox-evening" \
+    "agent-inbox-overnight" \
+    "agent-inbox-workday" \
     "agent-ip-submission" \
     "agent-langfuse-health-watchdog" \
     "agent-learning-collector" \
@@ -453,7 +460,15 @@ if $UNINSTALL; then
     "agent-session-cache-build" \
     "agent-stale-ref-watchdog" \
     "agent-system-alert-watchdog" \
-    "agent-threat-pipeline"; do
+    "agent-threat-pipeline" \
+    "agent-weekly-loop-eval" \
+    "inbox-depth-watchdog" \
+    "inbox-flag" \
+    "inbox-sensor" \
+    "no-verify-audit" \
+    "skill-evaluate" \
+    "skill-report-process" \
+    "skill-report-request"; do
   
 
   
@@ -581,6 +596,16 @@ create_cron "agent-service-recovery" "*/5 * * * *" \
   "" \
   "true"
 
+# Daily gbrain health check (06:05, silent when healthy)
+create_cron "agent-gbrain-doctor" "5 6 * * *" \
+  "agent-gbrain-doctor.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
 # ── 3. Knowledge & Memory ────────────────────────────────────
 printf "\\n${CYAN}  3. Knowledge & Memory${RESET}\\\n"
 
@@ -599,6 +624,65 @@ printf "\\\\n${CYAN}   4. Agent Bus Processing${RESET}\\\\\\n"
 # Agent message handler — polls inbox for UPDATE_REQUEST etc., runs --once per tick
 create_cron "agent-message-handler" "*/5 * * * *" \
   "agent-message-handler.py" \
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
+
+# Inbox processing — weekday (hourly M-F 9-5), evening (every 2h M-F 6-10), overnight (3am M-F)
+create_cron "agent-inbox-workday" "0 9-17 * * 1-5" \
+  "" \
+  "Process pending inbox messages using the inbox decision framework. Read unread inbox messages, classify each by priority (critical/urgent/normal/notification) and scope (simple/moderate/complex/multi-agent), then auto-act on simple and moderate items, escalate complex items. Deliver a summary of what was processed." \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+
+create_cron "agent-inbox-evening" "0 18,20,22 * * 1-5" \
+  "" \
+  "Process pending inbox messages using the inbox decision framework. Read unread inbox messages, classify each by priority (critical/urgent/normal/notification) and scope (simple/moderate/complex/multi-agent), then auto-act on simple and moderate items, escalate complex items. Deliver a summary of what was processed." \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+
+create_cron "agent-inbox-overnight" "0 3 * * 1-5" \
+  "" \
+  "Process pending inbox messages using the inbox decision framework. Read unread inbox messages, classify each by priority (critical/urgent/normal/notification) and scope (simple/moderate/complex/multi-agent), then auto-act on simple and moderate items, escalate complex items. Overnight run — catch anything missed during the day." \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+
+# Inbox companion tools — depth watchdog, sensor, flag
+create_cron "inbox-depth-watchdog" "*/1 * * * *" \
+  "inbox-depth-watchdog.sh" \
+  "Inbox depth watchdog — monitors inbox backlog depth and alerts on buildup" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
+
+create_cron "inbox-sensor" "*/10 * * * *" \
+  "inbox-sensor.py" \
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
+
+create_cron "inbox-flag" "*/10 * * * *" \
+  "inbox-flag.py" \
   "" \
   "" \
   "" \
@@ -672,6 +756,16 @@ create_cron "agent-remediate-apply" "*/10 * * * *" \
   "" \
   "true"
 
+# Agent apply-fixes — companion to sensor: reads sensor output, applies deterministic fixes
+create_cron "agent-apply-fixes" "*/10 * * * *" \
+  "agent-apply-fixes.py" \
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
+
 # Scoring activity watchdog — alerts if too few cycles logged today
 create_cron "agent-scoring-activity-watchdog" "0 14,20 * * *" \
   "scoring-activity-watchdog.py" \
@@ -692,6 +786,38 @@ create_cron "agent-session-cache-build" "0 5 * * 1" \
   "origin" \
   "" \
   "true"
+
+# Daily agent card generation (06:00)
+create_cron "agent-card-daily" "0 6 * * *" \
+  "agent-card-daily.py" \
+  "Generate agent card daily using generate-agent-card.py with environment overrides" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
+
+# Weekly loop governance evaluation (Monday 09:00)
+create_cron "agent-weekly-loop-eval" "0 9 * * 1" \
+  "" \
+  "Run the loop governance evaluation pipeline for the last 7 days, then run the skill miner, auto-apply fixes for any degraded scores, and report results. If everything is clean, output exactly [SILENT]" \
+  "loop-governance" \
+  "" \
+  "origin" \
+  "" \
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+
+# Daily SOUL.md refinement (23:00) — learns from user corrections
+create_cron "agent-daily-soul-refinement" "0 23 * * *" \
+  "" \
+  "Load the soul-refinement skill. Use session_search() to find today's sessions. Look for any user corrections to your behavior, broken workflows, or feedback. If found, update SOUL.md accordingly. If nothing to refine, output exactly [SILENT]" \
+  "soul-refinement" \
+  "" \
+  "origin" \
+  "" \
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 # Agent learning collector — every 6h: collect skills delta + lessons + session stats from ALL agents
 create_cron "agent-learning-collector" "0 */6 * * *" \
@@ -934,6 +1060,50 @@ create_cron "agent-daily-bible-reading" "0 1 * * *" \
   "" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+
+# Skill reporting — request (Monday 02:00), process (daily 03:00), evaluate (Tuesday 09:00)
+create_cron "skill-report-request" "0 2 * * 1" \
+  "request-skill-reports.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+create_cron "skill-report-process" "0 3 * * *" \
+  "process-skill-reports.py" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+create_cron "skill-evaluate" "0 9 * * 2" \
+  "" \
+  "You are running a scheduled skill evaluation cron for the orchestrator.
+
+Your job is to:
+1. Run process-skill-reports.py to collect any pending skill reports
+2. For each reported custom skill, evaluate its quality, relevance, and whether it should be upstreamed to the repo
+3. Report findings on what was evaluated and what was decided" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+
+# No-verify audit — checks for --no-verify commits every 60m
+create_cron "no-verify-audit" "every 60m" \
+  "" \
+  "Check ~/.hermes-cortex/state/no-verify-log.json for new --no-verify audit events since the last check. If any new events exist since last checked, report them with commit hash, message, and timestamp." \
+  "" \
+  "terminal,file" \
+  "origin" \
+  "" \
+  "false"
 
 # ── Auto-prune old-format cron names ──
 # Remove legacy crons that lack the agent- prefix when an agent- replacement exists.
