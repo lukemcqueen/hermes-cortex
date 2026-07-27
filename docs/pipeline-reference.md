@@ -128,7 +128,13 @@ Each stage consumes the output of the prior one, reducing rework and enforcing q
 
 ## Skill Collection (Every 6h, All Agents → Moses)
 
-Every agent runs `agent-learning-collector` (no_agent, every 6h). First, it runs `session-mine mine --days 1 --auto` (bootstraps all history on first run) to extract lessons from recent sessions. Then it scans local skills (hash-based delta), and collects session stats, then sends a compact "Learning Report" to `inbox_moses` via PGMQ.
+Every agent runs `agent-learning-collector` (no_agent, every 6h). It scans local skills (hash-based delta), checks for pending learning reports in `~/brain/learnings/pending/`, collects session stats, and sends a compact "Learning Report" to `inbox_moses` via PGMQ. The collector runs in <1s — no heavy processing.
+
+Session mining (extracting lessons from past conversations) is handled by a separate overnight cron: `agent-session-mine` at 2am KST. It runs `session-mine mine --days 1 --auto`, which dumps mined lessons into `~/brain/lessons/`. The collector picks them up instantly on its next tick. On first run, it bootstraps all historical sessions.
+
+**On-demand trigger:** agents can run `agent-learning-collector.py --force` to flush learnings immediately without waiting for the 6h schedule.
+
+**Ad-hoc learning submissions:** any agent in an active session writes a structured `.md` file to `~/brain/learnings/pending/`. The next collector tick includes it in the report, then moves it to `~/brain/learnings/sent/`. See `docs/agent-learning-submissions.md` for file format.
 
 Silent when nothing new (watchdog pattern). Every 24h sends a heartbeat even with no changes so Moses knows the agent is alive.
 
