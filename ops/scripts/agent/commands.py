@@ -133,7 +133,7 @@ def _run_doctor() -> dict:
             start = result["stdout"].index("{")
             return json.loads(result["stdout"][start:])
         except (ValueError, json.JSONDecodeError):
-            pass
+            log("Doctor JSON output parse failed — falling through to defaults")
     return {"healthy": False, "summary": {"pass": 0, "warn": 0, "fail": 0}, "error": "no JSON"}
 
 
@@ -400,8 +400,8 @@ def handle_diagnostic(msg_body: dict, msg_raw: dict) -> dict:
                 parsed.setdefault("success", True)
             return parsed
         except json.JSONDecodeError:
-            pass
-    return {"success": False, "error": result["stderr"][:200] or "No output"}
+            log(f"Diagnostic JSON parse failed — output was not JSON")
+    return {"error": result["stderr"][:200] or "No output"}
 
 
 # ── LEARNINGS_REQUEST → LEARNINGS_RESULT ──
@@ -512,7 +512,7 @@ def handle_status(msg_body: dict, msg_raw: dict) -> dict:
                 if len(parts) >= 3:
                     result["memory"] = f"{parts[2]}M used / {parts[1]}M total"
     except Exception:
-        pass
+        log("free -m not available (expected on macOS)")
 
     # Cron health (list crons via Hermes CLI)
     try:
@@ -603,6 +603,8 @@ def handle_reboot(msg_body: dict, msg_raw: dict) -> dict:
 
 register_custom("DIAGNOSTIC_REQUEST", "DIAGNOSTIC_RESULT", handle_diagnostic,
                 "Run agent-diagnostic.py and return results")
+
+# Bus message subjects that don't match the XXX_REQUEST naming convention
 register_custom("EXEC", "EXEC_RESULT", handle_exec,
                 "Run a script under ~/.hermes-cortex/scripts/")
 register_custom("GIT_AUTH_CHECK", "GIT_AUTH_RESULT", handle_git_auth,

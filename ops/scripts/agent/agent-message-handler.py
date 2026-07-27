@@ -639,13 +639,14 @@ def main():
 
     try:
       # ── Dispatch via command registry ──
-      from commands import COMMANDS, dispatch as cmd_dispatch
+      from commands import dispatch as cmd_dispatch
 
-      cmd_info = COMMANDS.get(subject)
-      result_body = cmd_dispatch(subject, body, msg) if cmd_info else None
+      result_body = cmd_dispatch(subject, body, msg)
 
       if result_body is not None:
         # Command handled — track, notify, archive
+        from commands import COMMANDS
+        cmd_info = COMMANDS.get(subject)
         result_subject = cmd_info["result"] if cmd_info else f"{subject}_RESULT"
         start = time.time()
 
