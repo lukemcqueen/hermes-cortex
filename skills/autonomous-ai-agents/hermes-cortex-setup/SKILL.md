@@ -538,7 +538,7 @@ mkdir -p ~/.hermes/scripts
 
 for script in system-alert-watchdog.py service-recovery.py model-health-watchdog.py \
   remediation-sensor.py governance-auditor.py memory-to-brain-sync.py \
-  agent-apply-fixes.py inbox-sensor.py nginx-threat-pipeline.sh \
+  agent-apply-fixes.py nginx-threat-pipeline.sh \
   agent-ip-submission.sh; do
   repo_path=$(find ~/hermes-cortex/ops/scripts -name "$script" 2>/dev/null | head -1)
   if [ -n "$repo_path" ]; then
@@ -630,7 +630,7 @@ Expected output: "✓ Created: N new cron job(s)" where N is the number of scrip
 Main categories of universal crons:
 - **Health monitoring**: `system-alert-watchdog` (every 30m), `service-recovery` (every 5m), `model-health-watchdog` (daily)
 - **Governance**: `governance-auditor` (every 6h), `agent-weekly-loop-eval` (weekly)
-- **Inbox**: `inbox-sensor` (every 10m), `agent-inbox` (every 2h)
+- **Inbox**: `inbox-flag` (every 10m), `agent-inbox` (every 2h)
 - **Remediation**: `remediation-sensor` (every 5m), `agent-fixer` (every 2h)
 - **Security**: `threat-pipeline` (daily), `agent-ip-submission` (every 30m)
 - **Maintenance**: `memory-pruning` (weekly), `memory-to-brain-sync` (every 6h)

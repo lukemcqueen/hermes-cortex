@@ -1,5 +1,5 @@
 #!/bin/bash
-# inbox-depth-watchdog.sh — no_agent cron: checks bus inbox depth, silent when empty
+# orch-bus-depth-watchdog.sh — no_agent cron: checks bus inbox depth, silent when empty
 # Returns "MAIL:N" if depth > 0, nothing otherwise (watchdog pattern)
 # Schedule: */30 * * * * *  (every 30 seconds)
 

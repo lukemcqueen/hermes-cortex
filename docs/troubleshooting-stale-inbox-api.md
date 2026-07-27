@@ -6,7 +6,7 @@
 
 **Root cause:** The v1 HTTP inbox API was retired in favor of the PGMQ Agent Bus (`lib.cortex_bus`). Multiple scripts still had hardcoded references to the dead endpoint:
 
-- `bus/bus-sensor.py`, `bus/inbox-sensor.py`, `agent/inbox-sensor.py`, `inbox/inbox-sensor.py` — duplicate sensors polling the dead API
+- `bus/bus-sensor.py`, `agent/inbox-sensor.py`, `inbox/inbox-sensor.py` — duplicate sensors polling the dead API
 - `bus/agent-bus-monitor.sh` — shell script polling `/api/inbox`
 - `orch-bus/orch-bus-sensor.py` — same pattern on orchestrator side
 - `agent-bus-mcp.py` — had entire fallback block for `/api/inbox` in `_inbox_read()` and `_inbox_watch()`

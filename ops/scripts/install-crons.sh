@@ -427,7 +427,6 @@ if $UNINSTALL; then
     "agent-agents-md-prune-scan" \
     "agent-apply-fixes" \
     "agent-auto-save-sessions" \
-    "agent-card-daily" \
     "agent-cron-quality-watchdog" \
     "agent-daily-soul-refinement" \
     "agent-fixer-evening" \
@@ -462,9 +461,7 @@ if $UNINSTALL; then
     "agent-system-alert-watchdog" \
     "agent-threat-pipeline" \
     "agent-weekly-loop-eval" \
-    "inbox-depth-watchdog" \
     "inbox-flag" \
-    "inbox-sensor" \
     "no-verify-audit" \
     "skill-evaluate" \
     "skill-report-process" \
@@ -662,24 +659,6 @@ create_cron "agent-inbox-overnight" "0 3 * * 1-5" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-# Inbox companion tools — depth watchdog, sensor, flag
-create_cron "inbox-depth-watchdog" "*/1 * * * *" \
-  "inbox-depth-watchdog.sh" \
-  "Inbox depth watchdog — monitors inbox backlog depth and alerts on buildup" \
-  "" \
-  "" \
-  "local" \
-  "" \
-  "true"
-
-create_cron "inbox-sensor" "*/10 * * * *" \
-  "inbox-sensor.py" \
-  "" \
-  "" \
-  "" \
-  "local" \
-  "" \
-  "true"
 
 create_cron "inbox-flag" "*/10 * * * *" \
   "inbox-flag.py" \
@@ -788,14 +767,6 @@ create_cron "agent-session-cache-build" "0 5 * * 1" \
   "true"
 
 # Daily agent card generation (06:00)
-create_cron "agent-card-daily" "0 6 * * *" \
-  "agent-card-daily.py" \
-  "Generate agent card daily using generate-agent-card.py with environment overrides" \
-  "" \
-  "" \
-  "local" \
-  "" \
-  "true"
 
 # Weekly loop governance evaluation (Monday 09:00)
 create_cron "agent-weekly-loop-eval" "0 9 * * 1" \

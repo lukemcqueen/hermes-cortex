@@ -9,7 +9,6 @@
 | system-alert-watchdog | no_agent | */30 * * * * | Monitor system alerts |
 | service-recovery | no_agent | */5 * * * * | Auto-recover services |
 | memory-to-brain-sync | no_agent | 0 */6 * * * | Sync memory to gbrain |
-| inbox-sensor | no_agent | */10 * * * * | Detect bus activity |
 | hermes-update | no_agent | 23 22 * * * | Nightly Hermes update |
 | gbrain-nightly-dream | no_agent | 0 3 * * 6 | Weekly gbrain dream |
 | gbrain-update-sync | no_agent | 0 2 * * 0 | Weekly gbrain sync |
@@ -39,7 +38,6 @@
 | collect-agent-skills | no_agent | 0 */6 * * * | Collect skill usage data |
 | send-skill-report | no_agent | 30 */6 * * * | Send skill reports |
 | langfuse-health-watchdog | no_agent | 0 * * * * | Langfuse ClickHouse health |
-| inbox-depth-watchdog | no_agent | */1 * * * * | Monitor bus backlog depth |
 | agent-fixer-workday | LLM+skill | 0 9-17 * * 1-5 | Auto-remediation workday |
 | agent-fixer-evening | LLM+skill | 0 18,20,22 * * 1-5 | Auto-remediation evening |
 | agent-fixer-overnight | LLM+skill | 0 3 * * 1-5 | Auto-remediation overnight |

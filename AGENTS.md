@@ -408,9 +408,7 @@ Only Moses has `cronjob` MCP tool. Others request via inbox with subject `🔧 C
 ### 4. Agent Inbox Processing
 | Cron | Type | Schedule | Script / Skill | Deliver |
 |------|------|----------|----------------|---------|
-| `inbox-depth-watchdog` | no_agent | `*/1 * * * *` | `inbox-depth-watchdog.sh` | local |
-| `inbox-sensor` | no_agent | `*/10 * * * *` | `inbox-sensor.py` | local |
-| `inbox-flag` | no_agent | `*/10 * * * *` | `inbox-flag.py` | local |
+|| `inbox-flag` | no_agent | `*/10 * * * *` | `inbox-flag.py` | local |
 | `agent-inbox` | LLM | `*/2 * * * *` | (inbox decision prompt + depth watchdog context) | origin |
 
 ### 5. Governance & Quality
