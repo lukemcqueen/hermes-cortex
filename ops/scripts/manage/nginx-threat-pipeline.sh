@@ -2,7 +2,7 @@
 # nginx-threat-pipeline.sh — Extract, block, commit, push
 #
 # Pipeline: scan logs → collect fail2ban bans → deploy → commit → push
-# Silent when no new IPs (watchdog pattern).
+# Always reports status (never silent — security exception).
 # Cross-platform: Linux + macOS (Intel and Apple Silicon).
 # Schedule: daily at 5 AM via cron (no_agent: true).
 #
@@ -305,12 +305,26 @@ fi
 # ── Save state ──
 date -u +"%Y-%m-%dT%H:%M:%SZ" > "${HOME}/.hermes-cortex/state/nginx-threat-pipeline-lastrun"
 
-# ── Output (always notify for this exception cron) ──
+# ── Output (never silent — security exception) ──
 TS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
+echo "[$TS nginx-threat-pipeline] ━━━ Threat Pipeline — ${TS} ━━━"
 if $NEW_IPS; then
-  echo "[$TS nginx-threat-pipeline] ━━━ Threat Pipeline — ${TS} ━━━"
-  echo "$PIPELINE_OUTPUT"
-  echo "[$TS nginx-threat-pipeline] ━━━ Complete ━━━"
+  # Extract IPs from pipeline output and show compact list
+  ALL_IPS=$(printf '%s' "$PIPELINE_OUTPUT" | grep -oP '\+ Blocked: \K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' || true)
+  TOTAL_IP=$(echo "$ALL_IPS" | grep -c '[0-9]' 2>/dev/null || echo 0)
+  TOTAL_IP=$((TOTAL_IP + 0))
+  if [ "$TOTAL_IP" -gt 0 ]; then
+    FIRST=$(echo "$ALL_IPS" | head -10 | tr '\n' ' ')
+    COMPACT="${FIRST}"
+    if [ "$TOTAL_IP" -gt 10 ]; then
+      EXTRA=$((TOTAL_IP - 10))
+      COMPACT="${FIRST}… and ${EXTRA} more"
+    fi
+    echo "  Blocked: $COMPACT"
+  fi
+  # Show deploys / commits but skip raw IP lines
+  echo "$PIPELINE_OUTPUT" | grep -v '  + Blocked:' | grep -v '^ *$'
 else
-  echo "[$TS nginx-threat-pipeline] ✅ No threats detected"
+  echo "  ✓ No new threats found — pipeline healthy"
 fi
+echo "[$TS nginx-threat-pipeline] ━━━ Complete ━━━"
