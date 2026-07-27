@@ -26,6 +26,10 @@ cronjob action=list | grep agent-daily-bible-reading
 # If not, create it (run timezone-aware at 01:00 KST)
 cronjob action=create name=agent-daily-bible-reading \
   schedule="0 1 * * *" \
-  script=agent-daily-bi
-... [truncated]
+  model='{"provider": "deepseek", "model": "deepseek-chat"}' \
+  skill=agent-daily-bible-reading
+
+# Use a streaming model (deepseek-chat) instead of non-streaming (deepseek-v4-flash)
+# to avoid the 600s scheduler timeout on slow API responses.
+```
 --- End skill ---

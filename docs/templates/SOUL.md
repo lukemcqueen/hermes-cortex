@@ -185,6 +185,10 @@ A governance lock is established by `begin_change` and released by `end_change`.
 > 📖 This agent participates in daily bible reading. A cron (`agent-daily-bible-reading`)
 > appends entries here each night and writes rich brain pages to `~/brain/<agent>/bible/`.
 > See [`docs/daily-bible-reading.md`](../docs/daily-bible-reading.md) for setup.
+> ⚠️ **Model tip:** Use a **streaming model** (e.g., `deepseek-chat`, `claude-sonnet-4`) rather than
+> non-streaming (`deepseek-v4-flash`) for this cron. Non-streaming APIs can hit the 600s cron
+> timeout when the model takes too long to respond. Streaming models send tokens continuously
+> so the scheduler sees constant activity and won't kill the job.
 
 **To bootstrap:** add a `### <source> — *"[key quote]"*` entry below, then
 create the cron if desired. The daily-bible-reading script scans the last `### Book —` entry to determine

@@ -35,6 +35,14 @@ parse it programmatically.
 
 Sent when Moses pushes new code to main and the fleet should update.
 
+When an agent receives `UPDATE_REQUEST`, it:
+1. **`git pull origin main`** — pulls the latest code (so agents stuck on an old SHA get up to date)
+2. **`cortex-update.sh --force-all`** — deploys all registered files to disk
+3. **Runs doctor** (if `run_doctor: true`) — verifies all services are healthy
+4. **Sends `UPDATE_RESULT`** — reports success/fail, git SHA before/after, and doctor output
+
+> ⚠️ Agents that cannot `git pull` (auth failure, network down) report the failure in `UPDATE_RESULT` WITHOUT applying the update.
+
 ```json
 {
  "from": "moses",
@@ -171,6 +179,19 @@ Sent after agent executes a fix.
 ```
 
 ---
+
+## Response Guarantee
+
+Every message sent to an agent **always gets a response**, regardless of whether the handler succeeded:
+
+| Outcome | Response | `success` Field |
+|---------|----------|-----------------|
+| Handler completed | `{subject}_RESULT` with handler output | `true` |
+| Handler crashed (exception) | `{subject}_RESULT` with error detail | `false` |
+| Unknown subject | `{subject}_RESULT` with `"Unknown subject"` error | `false` |
+
+This means the sender (Moses or another agent) never hangs waiting for a response
+that will never come — every message eventually produces a result.
 
 ## Idempotency
 
