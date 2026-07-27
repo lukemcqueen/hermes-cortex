@@ -1248,38 +1248,55 @@ def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
 
 
 def _check_plugin_lock_helper(res):
-    """Check that the plugin lock helper (hermes-plugin-lock) is deployed and functional."""
+    """Check that the plugin lock helper (hermes-plugin-lock) is deployed and functional.
+    Linux:   /usr/local/sbin/hermes-plugin-lock  +  sudo -n  (needs sudoers entry)
+    macOS:   /usr/local/bin/hermes-plugin-lock   +  direct run  (chflags uchg, no root)
+    """
+    import platform as _platform
+    _is_macos = _platform.system() == "Darwin"
     helper_path = Path("/usr/local/sbin/hermes-plugin-lock")
+    deploy_path = "/usr/local/sbin"
+    if _is_macos:
+        helper_path = Path("/usr/local/bin/hermes-plugin-lock")
+        deploy_path = "/usr/local/bin"
 
     # ── Helper binary exists and is executable ──
     if not helper_path.exists():
         res.add("Plugin lock helper", "FAIL",
-                "hermes-plugin-lock not found at /usr/local/sbin",
-                "Run: sudo cortex-update.sh or deploy manually from the repo")
+                f"hermes-plugin-lock not found at {helper_path}",
+                f"Run: cortex-update.sh --force-all (deploys to {deploy_path}/)")
         return
     if not os.access(str(helper_path), os.X_OK):
         res.add("Plugin lock helper", "FAIL",
-                "hermes-plugin-lock exists but is not executable",
+                f"{helper_path} exists but is not executable",
                 f"Fix: sudo chmod 755 {helper_path}")
         return
 
-    # ── Functional test via NOPASSWD sudo (proves sudoers entry + helper work) ──
+    # ── Functional test ──
+    # Linux: sudo -n hermes-plugin-lock status  (proves sudoers entry + helper)
+    # macOS: hermes-plugin-lock status           (chflags uchg, no root needed)
     try:
+        cmd = ["sudo", "-n", str(helper_path), "status"]
+        if _is_macos:
+            cmd = [str(helper_path), "status"]
         result = subprocess.run(
-            ["sudo", "-n", str(helper_path), "status"],
-            capture_output=True, text=True, timeout=5,
+            cmd, capture_output=True, text=True, timeout=5,
         )
         if result.returncode == 0:
             res.add("Plugin lock helper", "PASS",
-                    f"helper + sudoers OK ({result.stdout.strip()[:60]})")
+                    f"helper OK ({result.stdout.strip()[:60]})")
         else:
+            fix = f"Deploy helper via cortex-update.sh"
+            if not _is_macos:
+                fix = ("Add sudoers entry: echo '$(whoami) ALL=(root) NOPASSWD: "
+                       f"{helper_path}' | sudo tee /etc/sudoers.d/hermes")
             res.add("Plugin lock helper", "FAIL",
-                    f"sudo -n hermes-plugin-lock status exited {result.returncode}: {result.stderr.strip()[:60]}",
-                    "Check sudoers entry: echo 'moses ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock' | sudo tee /etc/sudoers.d/hermes")
+                    f"hermes-plugin-lock status exited {result.returncode}: {result.stderr.strip()[:60]}",
+                    fix)
     except (subprocess.TimeoutExpired, OSError) as e:
         res.add("Plugin lock helper", "FAIL",
-                f"sudo -n hermes-plugin-lock status failed: {e}",
-                "Check sudoers entry and helper binary")
+                f"hermes-plugin-lock status failed: {e}",
+                "Check helper binary and deploy via cortex-update.sh")
 
 
 def check_governance(res):

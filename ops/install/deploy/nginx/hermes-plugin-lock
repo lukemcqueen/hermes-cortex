@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
 #  hermes-plugin-lock — Restricted lock/unlock for governance
-#  enforcer plugin __init__.py
+#  enforcer plugin __init__.py (Linux + macOS)
 #
-#  Installed to /usr/local/sbin/hermes-plugin-lock
-#  Sudoers: moses ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock
+#  Linux:   /usr/local/sbin/hermes-plugin-lock
+#           uses chattr +i (requires root NOPASSWD in sudoers)
+#  macOS:   /usr/local/bin/hermes-plugin-lock
+#           uses chflags uchg (no root needed for user-immutable)
 #
 #  ONLY operates on:
 #    ~/.hermes/plugins/governance-enforcer/__init__.py
@@ -13,16 +15,23 @@
 #  This is the ONLY command in sudoers related to plugin locking.
 #
 #  Usage:
-#    sudo hermes-plugin-lock lock     → chattr +i
-#    sudo hermes-plugin-lock unlock   → chattr -i
+#    sudo hermes-plugin-lock lock     → set immutable
+#    sudo hermes-plugin-lock unlock   → unset immutable
 #    sudo hermes-plugin-lock status   → show flags
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-# Hardcoded target — validated to exist before any chattr call
-# sudo may set HOME=/root, so resolve the real user's home
+# Detect platform
+_os=$(uname -s)
+
+# Resolve target path — sudo may set HOME=/root, so find the real user's home
 REAL_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "$USER")}"
-REAL_HOME="$(getent passwd "$REAL_USER" 2>/dev/null | cut -d: -f6)"
+if [[ "$_os" == "Darwin" ]]; then
+  REAL_HOME=$(dscl . -read "/Users/$REAL_USER" NFSHomeDirectory 2>/dev/null | awk '{print $2}')
+else
+  REAL_HOME="$(getent passwd "$REAL_USER" 2>/dev/null | cut -d: -f6)"
+fi
+: "${REAL_HOME:-$HOME}"
 TARGET="${REAL_HOME}/.hermes/plugins/governance-enforcer/__init__.py"
 
 if [[ ! -f "$TARGET" ]]; then
@@ -32,15 +41,27 @@ fi
 
 case "${1:-help}" in
   lock)
-    chattr +i "$TARGET"
+    if [[ "$_os" == "Darwin" ]]; then
+      chflags uchg "$TARGET"
+    else
+      chattr +i "$TARGET"
+    fi
     echo "LOCKED: $TARGET"
     ;;
   unlock)
-    chattr -i "$TARGET"
+    if [[ "$_os" == "Darwin" ]]; then
+      chflags nouchg "$TARGET"
+    else
+      chattr -i "$TARGET"
+    fi
     echo "UNLOCKED: $TARGET"
     ;;
   status)
-    lsattr "$TARGET"
+    if [[ "$_os" == "Darwin" ]]; then
+      ls -lO "$TARGET" | awk '{for(i=1;i<=NF;i++){if($i~/^[a-z]+chg/||$i~/^[a-z]+immutable/){print $0;exit}} print $0}'
+    else
+      lsattr "$TARGET"
+    fi
     ;;
   *)
     echo "Usage: $0 {lock|unlock|status}"

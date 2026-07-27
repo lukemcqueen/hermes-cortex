@@ -1039,12 +1039,16 @@ deploy_nginx_configs() {
 }
 
 # ── System Scripts Deploy ───────────────────────────────────────
-# Deploys admin scripts to /usr/local/sbin/ (root-owned, NOPASSWD-safe).
+# Deploys admin scripts to a system path (root-owned, NOPASSWD-safe).
+# Linux:   /usr/local/sbin/
+# macOS:   /usr/local/bin/   (no root needed for chflags uchg)
 # Uses sudo on Linux for the root-owned path.
 deploy_system_scripts() {
   # Allow skipping nginx-related system scripts (e.g. on servers without sudo)
   [[ -n "${CORTEX_SKIP_NGINX:-}" ]] && { info "CORTEX_SKIP_NGINX set — skipping system script deploy"; return 0; }
+  local _os; _os=$(uname -s)
   local deploy_dir="/usr/local/sbin"
+  [[ "$_os" == "Darwin" ]] && deploy_dir="/usr/local/bin"
   local src_dir="${REPO_DIR}/ops/install/deploy/nginx"
   local scripts=("install-nginx-full.sh" "hermes-nginx-clean-restart" "hermes-plugin-lock")
   local files_copied=0
@@ -1087,21 +1091,21 @@ deploy_system_scripts() {
 
 # ── Governance Plugin Deploy ──────────────────────────────────
 # Deploys the governance enforcer plugin as a COPY (not symlink)
-# so that chattr +i can be applied to the deployed copy without
+# so that immutability can be applied to the deployed copy without
 # locking the repo file. Handles symlink→copy migration.
+# Linux:   chattr +i via sudo hermes-plugin-lock (needs root)
+# macOS:   chflags uchg via hermes-plugin-lock (no root needed)
 deploy_governance_plugin() {
   local repo_plugin="${REPO_DIR}/plugins/hermes-governance-enforcer"
   local plugin_dir="${HOME}/.hermes/plugins/governance-enforcer"
   local files=("__init__.py" "plugin.yaml" "README.md")
   local changed=0
-  local _os
-  _os=$(uname -s)
+  local _os; _os=$(uname -s)
+  local _lock_prefix="sudo"
+  local _immutable_pattern="\-i-"
+  [[ "$_os" == "Darwin" ]] && _lock_prefix="" && _immutable_pattern="uchg"
 
   [[ -d "$repo_plugin" ]] || { warn "  Plugin source missing: ${repo_plugin}"; return 1; }
-
-  # ── Step 0: Skip immutability on macOS (no chattr) — copy+perms still work ──
-  local HAS_IMMUTABLE=false
-  [[ "$_os" != "Darwin" ]] && HAS_IMMUTABLE=true
 
   # ── Step 1: Convert symlink → copy if needed ──
   if [[ -L "$plugin_dir" ]]; then
@@ -1120,13 +1124,13 @@ deploy_governance_plugin() {
     local dest="${plugin_dir}/${file}"
     [[ ! -f "$src" ]] && continue
 
-    # Remove immutability if set (uses restricted helper — no raw sudo chattr)
-    if $HAS_IMMUTABLE && [[ -f "$dest" ]]; then
-      if hermes-plugin-lock status 2>/dev/null | grep -q "\-i-"; then
-        if sudo hermes-plugin-lock unlock; then
+    # Remove immutability if set (uses restricted helper)
+    if [[ -f "$dest" ]]; then
+      if hermes-plugin-lock status 2>/dev/null | grep -qE "$_immutable_pattern"; then
+        if ${_lock_prefix} hermes-plugin-lock unlock; then
           info "    Removed immutability: ${file}"
         else
-          warn "    Skipped ${file} — sudo hermes-plugin-lock unlock failed"
+          warn "    Skipped ${file} — hermes-plugin-lock unlock failed"
           continue
         fi
       fi
@@ -1144,15 +1148,24 @@ deploy_governance_plugin() {
   if [[ -f "$init_py" ]]; then
     chmod 444 "$init_py" 2>/dev/null || true
 
-    # ── Step 4: Set immutability (restricted helper, needs sudoers entry, Linux only) ──
-    if $HAS_IMMUTABLE && sudo hermes-plugin-lock lock; then
-      info "  chattr +i set on __init__.py"
-    elif $HAS_IMMUTABLE; then
-      warn "  Immutability not set — ask your human to deploy the helper and enable it:"
-      warn "    sudo cp ${REPO_DIR}/ops/install/deploy/nginx/hermes-plugin-lock /usr/local/sbin/hermes-plugin-lock"
-      warn "    sudo chmod 755 /usr/local/sbin/hermes-plugin-lock"
-      warn "    echo '${SUDO_USER:-${USER}} ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock' | sudo tee /etc/sudoers.d/hermes"
-      warn "    sudo /usr/local/sbin/hermes-plugin-lock lock"
+    # ── Step 4: Set immutability ──
+    if ${_lock_prefix} hermes-plugin-lock lock; then
+      if [[ "$_os" == "Darwin" ]]; then
+        info "  chflags uchg set on __init__.py"
+      else
+        info "  chattr +i set on __init__.py"
+      fi
+    else
+      warn "  Immutability not set — deploy the helper and enable it:"
+      if [[ "$_os" == "Darwin" ]]; then
+        warn "    sudo cp ${REPO_DIR}/ops/install/deploy/nginx/hermes-plugin-lock /usr/local/bin/hermes-plugin-lock"
+        warn "    sudo chmod 755 /usr/local/bin/hermes-plugin-lock"
+      else
+        warn "    sudo cp ${REPO_DIR}/ops/install/deploy/nginx/hermes-plugin-lock /usr/local/sbin/hermes-plugin-lock"
+        warn "    sudo chmod 755 /usr/local/sbin/hermes-plugin-lock"
+        warn "    echo '${SUDO_USER:-${USER}} ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock' | sudo tee /etc/sudoers.d/hermes"
+      fi
+      warn "    hermes-plugin-lock lock"
     fi
   fi
 
