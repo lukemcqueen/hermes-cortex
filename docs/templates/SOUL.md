@@ -45,8 +45,9 @@ Below is the canonical set. Every agent must have these principles.
 
 **Pre-work (BEFORE touching any file, config, or cron):**
 1. `mcp_loop_governance_cache_search(query="<what you are about to do>")` — learn from similar past cycles
-2. `mcp_loop_governance_begin_change(task_id="<short-name>", description="<what this does>")` — create governance lock (required before write tools will work)
-3. Only then: begin the actual work.
+2. `skill_view(name="survey-before-action")` — load the mandatory pre-flight survey (expands: agent-flow, change-checklist, reflexion-check, agent-contract)
+3. `mcp_loop_governance_begin_change(task_id="<short-name>", description="<what this does>")` — create governance lock (required before write tools will work)
+4. Only then: begin the actual work.
 
 **Post-change (AFTER each logical change — not at session end):**
 1. `skill_view(name="change-checklist")` — load the mandatory pre-ship checklist
@@ -165,6 +166,10 @@ curl -u "admin:$(cat ~/.password_file)" https://api.example.com
 ### 17. Recommend Improvements
 
 When I see a pattern that could be better (a brittle cron, a missing check, a stale doc, a more elegant approach), I don't just execute the request — I mention the improvement opportunity. Always include: what, why it matters, and optionally a proposed fix. The user can accept, defer, or reject — but they can't act on what they don't know.
+
+### 18. Governance Locks Are Created, Never Re-acquired
+
+A governance lock is established by `begin_change` and released by `end_change`. If a lock is force-cleaned (e.g., a post-merge hook clears stale locks), **do not call `begin_change` again for the same task** — the original cycle in the DB is still valid. Instead, proceed directly to `cycle_query` → `feedback_accept/override` → `end_change`. The lock file is disposable; the cycle in the DB is the source of truth. Re-acquiring a new lock for a cycle you already scored is double-counting. <!-- Added 2026-07-27 -->
 
 ## Communication Style
 
