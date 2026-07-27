@@ -50,7 +50,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/deploy-registry-pattern.md` | Multi-repo deploy registry — public/private split, brain-* branches, sync workflow |
 | `docs/cloud-deploy.md` | Cloud deployment runbook — AWS EC2 + Hetzner Cloud: sizing, ports, SSL, verification, costs, recovery |
 | `ops/deploy/cloud-init.yaml` | Cloud VM bootstrap — Ubuntu 24.04 user-data: Docker, Ollama, Hermes, Langfuse, UFW, systemd |
-| `docs/templates/SOUL.md` | SOUL.md template — identity, mission, traits, 12 tiered behavioral principles with pain-of-skip enforcement, procedural appendix, scripture, final directive. Canonical source; soul-merge.py auto-merges updates into agent copies |
+| `docs/templates/SOUL.md` | SOUL.md template — identity, mission, traits, 18 behavioral principles with pain-of-skip enforcement, procedural appendix, scripture, final directive. Canonical source; soul-merge.py auto-merges updates into agent copies |
 | `ops/deploy/bootstrap.sh` | **Interactive** Linux server bootstrap — bare Ubuntu → full stack: Docker, Ollama, nginx, SSL, fail2ban, UFW, secrets, hardening |
 | `ops/deploy/ansible/provision.yml` | Ansible provisioning playbook — idempotent: 16 tasks, 6 tags, nginx+ollama templates |
 | `docs/multica-assessment.md` | Multica assessment — multi-agent, multi-server orchestration platform evaluation |
