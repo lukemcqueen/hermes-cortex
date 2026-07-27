@@ -7,9 +7,9 @@ Detects new principles and sub-points in the canonical template
 SOUL.md (~/.hermes/SOUL.md), preserving all agent-specific customization
 (identity, mission, traits, communication style, scripture, patterns).
 
-After merging, automatically syncs the updated content back to the repo
-profile (profiles/personal/agent-profiles/<agent>/SOUL.md) so the agent
-only needs to commit and push — no manual copy-back required.
+After merging, the updated content remains in the agent's deployed
+SOUL.md (~/.hermes/SOUL.md). Per-agent repo profiles were removed
+(commit d43e776); each agent's SOUL.md is canonical on its own host.
 
 Usage:
     python3 soul-merge.py                              # merge ~/.hermes/SOUL.md
@@ -27,7 +27,7 @@ from pathlib import Path
 
 REPO_DIR = Path.home() / "hermes-cortex"
 TEMPLATE = REPO_DIR / "docs" / "templates" / "SOUL.md"
-PROFILES_DIR = REPO_DIR / "profiles" / "personal" / "agent-profiles"
+PROFILES_DIR = REPO_DIR / "profiles" / "personal" / "agent-profiles"  # removed from repo (commit d43e776) — kept for backward compat
 HERMES_HOME = Path.home() / ".hermes"
 
 
@@ -35,6 +35,7 @@ def _read(path):
     try:
         return path.read_text()
     except (OSError, FileNotFoundError):
+        _ = None  # intentional: file-missing returns empty str, caller handles it
         return ""
 
 
@@ -235,6 +236,7 @@ def _resolve_agent_name(deployed_path: Path, agent_name_arg: str) -> str:
         if len(parts) >= 2 and parts[0] == "profiles":
             return parts[1]
     except ValueError:
+        _ = None  # intentional: unrelocatable path falls through to hostname default
         pass
     # Default: derive from hostname
     return socket.gethostname().lower()

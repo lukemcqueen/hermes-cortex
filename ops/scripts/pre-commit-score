@@ -422,7 +422,7 @@ fi
 # Non-orchestrators: commit changes from an orchestrator agent instead.
 ORCHESTRATOR_ONLY_PATHS=(
   "^docs/templates/"
-  "^profiles/personal/agent-profiles/"
+  # "^profiles/personal/agent-profiles/"  # removed from repo (commit d43e776)
   "^AGENTS\.md$"
   "^ops/scripts/pre-commit-score$"
   "^ops/scripts/pre-push-pull$"

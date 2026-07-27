@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-# soul-sync-all.sh — Sync ALL agent SOUL.md profiles with template
+# soul-sync-local.sh — Sync the current agent's SOUL.md with template
 #
-# Runs soul-merge.py for every agent profile, then syncs the
-# current agent's deployed copy back to its repo profile.
-# Returns exit code 1 if any agent needed updates.
+# Runs soul-merge.py for the current agent only (hostname).
+# Agent profiles were removed from the repo (commit d43e776);
+# each agent syncs its own SOUL.md during its own update cycle.
+# Returns exit code 1 if merged, 0 if up to date.
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -13,7 +14,7 @@ SOUL_MERGE="${REPO_DIR}/ops/scripts/manage/soul-merge.py"
 # profiles removed from repo — no longer synced from repo paths
 CHANGED=0
 
-echo "━━━ soul-sync-all: Syncing all agent SOUL.md profiles ━━━"
+echo "━━━ soul-sync-local: Syncing current agent SOUL.md with template ━━━"
 
 # 1. Sync the current agent's deployed copy
 echo "  → Current agent ($(hostname))..."
@@ -30,6 +31,6 @@ echo ""
 if [ "$CHANGED" -eq 1 ]; then
   echo "⚠️  Some SOUL.md profiles were updated. Commit and push the changes."
 else
-  echo "✅ All SOUL.md profiles are current with the template."
+  echo "✅ Current agent SOUL.md is up to date with the template."
 fi
 exit "$CHANGED"

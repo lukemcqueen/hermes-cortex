@@ -1418,10 +1418,10 @@ main() {
     fi
   fi
 
-  # Sync ALL agent SOUL.md profiles with template
+  # Sync current agent SOUL.md with template (repo profiles removed per d43e776)
   local soul_sync_all="${CORTEX_DEPLOY_HOME}/scripts/soul-sync-all.sh"
   if [[ -f "$soul_sync_all" ]]; then
-    info "Syncing all agent SOUL.md profiles..."
+    info "Syncing current agent SOUL.md with template..."
     bash "$soul_sync_all" 2>&1 | sed 's/^/    /' || true
   fi
 
