@@ -1357,6 +1357,36 @@ def check_governance(res):
                 "Install: cp ~/hermes-cortex/ops/scripts/pre-push-pull ~/.hermes-cortex/hooks/pre-push\n"
                 "Then: chmod +x ~/.hermes-cortex/hooks/pre-push")
 
+    # ── Post-commit hook ──
+    expected_post_commit = hooks_dir / "post-commit"
+    expected_post_commit_src = CORTEX_HOME / "scripts" / "post-commit-audit"
+    if not expected_post_commit.exists():
+        res.add("Post-commit hook", "FAIL", "not installed",
+                "Install: ln -sf ~/.hermes-cortex/scripts/post-commit-audit ~/.hermes-cortex/hooks/post-commit")
+    elif expected_post_commit.is_symlink():
+        target = expected_post_commit.resolve()
+        if str(target) == str(expected_post_commit_src):
+            if os.access(str(expected_post_commit), os.X_OK):
+                res.add("Post-commit hook", "PASS",
+                        f"symlinked to post-commit-audit (executable)")
+            else:
+                res.add("Post-commit hook", "FAIL",
+                        "symlink target not executable",
+                        "Run: chmod +x ~/.hermes-cortex/scripts/post-commit-audit")
+        else:
+            res.add("Post-commit hook", "WARN",
+                    f"symlinks to {target} (expected {expected_post_commit_src})",
+                    f"Fix: ln -sf ~/.hermes-cortex/scripts/post-commit-audit ~/.hermes-cortex/hooks/post-commit")
+    else:
+        content = expected_post_commit.read_text()
+        if "post-commit-audit" in content:
+            res.add("Post-commit hook", "WARN",
+                    "is a file copy (expected symlink to post-commit-audit)")
+        else:
+            res.add("Post-commit hook", "WARN",
+                    "unknown content — expected post-commit-audit",
+                    "Install: ln -sf ~/.hermes-cortex/scripts/post-commit-audit ~/.hermes-cortex/hooks/post-commit")
+
     # ── Score-cycle CLI ──
     score_paths = [
         HOME / ".local" / "bin" / "score-cycle",
