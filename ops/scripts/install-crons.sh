@@ -449,6 +449,7 @@ if $UNINSTALL; then
     "agent-learning-collector" \
     "agent-llm-judge-scorer-weekday" \
     "agent-llm-judge-scorer-weekend" \
+    "agent-session-mine" \
     "agent-memory-pruning" \
     "agent-memory-to-brain-sync" \
     "agent-message-handler" \
@@ -818,6 +819,16 @@ create_cron "agent-daily-soul-refinement" "0 23 * * *" \
 # Agent learning collector — every 6h: collect skills delta + lessons + session stats from ALL agents
 create_cron "agent-learning-collector" "0 */6 * * *" \
   "agent-learning-collector.py" \
+  "" \
+  "" \
+  "" \
+  "local" \
+  "" \
+  "true"
+
+# Agent session mine — overnight: mines sessions and dumps lessons into ~/brain/lessons/
+create_cron "agent-session-mine" "0 2 * * *" \
+  "agent-session-mine-cron.py" \
   "" \
   "" \
   "" \

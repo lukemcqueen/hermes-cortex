@@ -3,12 +3,17 @@
 agent-learning-collector.py — Agent-side: collect learnings, skills, and session data
 and report to Moses via Agent Bus.
 
-Runs as a no_agent cron (every 6h). Collects four data sources:
+Runs as a no_agent cron (every 6h). Collects five data sources:
 
   1. Skills delta — new/modified SKILL.md files since last report
   2. Lessons delta — new lesson files in ~/brain/lessons/
-  3. Session stats — recent session activity from Hermes session DB
-  4. System context — agent hostname, OS, hermes version
+  3. Learnings (ad-hoc) — pending .md files in ~/brain/learnings/pending/
+  4. Session stats — recent session activity from Hermes session DB
+  5. System context — agent hostname, OS, hermes version
+
+Session mining (running session-mine to extract lessons) is handled by a
+separate overnight cron (agent-session-mine) that dumps mined lessons into
+~/brain/lessons/. The collector picks them up instantly via source #2 above.
 
 Sends a compact structured Learning Report to inbox_moses via PGMQ.
 Silent (exit 0) when nothing new to report.
@@ -538,8 +543,9 @@ def main():
     state = load_state()
     t0 = time.time()
 
-    # Phase 0: Mine sessions for new lessons (bootstrap: all past, then incremental)
-    _run_session_mining(state, dry_run=dry_run)
+    # Phase 0: Session mining is handled by a separate overnight cron
+    # (agent-session-mine) — it dumps mined lessons into ~/brain/lessons/
+    # which _get_lesson_delta() picks up instantly here.
 
     # Phase 1: Collect
     skills_delta = _get_skill_delta(state)
