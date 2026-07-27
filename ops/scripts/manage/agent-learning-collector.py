@@ -54,6 +54,11 @@ MAX_SKILLS_IN_REPORT = 20       # don't send more than this per cycle
 MAX_SESSION_DAYS = 1            # look back this many days for sessions
 SILENT_IF_NO_CHANGE = True      # watchdog pattern: no output = nothing
 
+# Pending learnings — agents write .md files here during sessions
+LEARNINGS_PENDING_DIR = HOME / "brain" / "learnings" / "pending"
+LEARNINGS_SENT_DIR = HOME / "brain" / "learnings" / "sent"
+MAX_LEARNINGS_IN_REPORT = 10
+
 MAX_REPORT_CHARS = 80000        # keep under bus message limit (~100KB)
 
 
@@ -69,6 +74,7 @@ def load_state() -> dict:
         "skill_hashes": {},
         "lesson_count": 0,
         "last_session_id": 0,
+        "sent_learning_hashes": {},
     }
 
 
@@ -200,6 +206,78 @@ def _get_lesson_delta(state: dict) -> list[dict]:
     return new_lessons
 
 
+def _hash_learning_file(filepath: Path) -> str:
+    """Stable hash combining filename + content for dedup (first 200 chars)."""
+    import hashlib
+    try:
+        content = filepath.read_bytes()
+        return hashlib.md5(content).hexdigest()[:16]
+    except OSError:
+        return ""
+
+
+def _parse_learning_frontmatter(text: str) -> dict[str, str]:
+    """Extract title and type from YAML frontmatter."""
+    meta = {"title": "", "type": "discovery"}
+    if text.startswith("---"):
+        end = text.find("---", 3)
+        if end > 0:
+            for line in text[3:end].split("\n"):
+                line = line.strip()
+                if line.startswith("title:"):
+                    meta["title"] = line[len("title:"):].strip().strip("'\"")
+                elif line.startswith("type:"):
+                    t = line[len("type:"):].strip().strip("'\"")
+                    if t in ("discovery", "lesson", "improvement"):
+                        meta["type"] = t
+    return meta
+
+
+def _extract_heading_title(text: str) -> str:
+    """Fallback: extract first # heading as title."""
+    for line in text.split("\n"):
+        line = line.strip()
+        if line.startswith("# ") and not line.startswith("##"):
+            return line[2:].strip()
+    return ""
+
+
+def _get_pending_learnings(state: dict) -> list[dict]:
+    """Find pending learning .md files that haven't been sent yet."""
+    sent_hashes = state.get("sent_learning_hashes", {})
+    new_learnings = []
+
+    if not LEARNINGS_PENDING_DIR.is_dir():
+        return new_learnings
+
+    for f in sorted(LEARNINGS_PENDING_DIR.glob("*.md")):
+        if not f.is_file():
+            continue
+
+        file_hash = _hash_learning_file(f)
+        if file_hash in sent_hashes:
+            continue
+
+        text = f.read_text(errors="replace")
+        meta = _parse_learning_frontmatter(text)
+        title = meta["title"] or _extract_heading_title(text) or f.stem.replace("-", " ").title()
+
+        new_learnings.append({
+            "file": f.name,
+            "path": str(f),
+            "hash": file_hash,
+            "title": title,
+            "type": meta["type"],
+            "preview": text[:1000],
+            "size": f.stat().st_size,
+        })
+
+        if len(new_learnings) >= MAX_LEARNINGS_IN_REPORT:
+            break
+
+    return new_learnings
+
+
 def _get_session_stats() -> dict:
     """Get recent session activity from Hermes session DB."""
     stats = {"total_sessions": 0, "recent_sessions": 0, "last_session_hours_ago": None}
@@ -299,8 +377,11 @@ def _build_auth_headers(url: str) -> dict[str, str]:
     return {}
 
 
-def send_report(report: dict, dry_run: bool = False) -> bool:
-    """Send learning report to Moses via PGMQ bus."""
+def send_report(report: dict, dry_run: bool = False) -> list[str]:
+    """Send learning report to Moses via PGMQ bus.
+
+    Returns list of file paths that were successfully sent (empty on failure).
+    """
     from urllib.request import Request, urlopen
     from urllib.error import URLError
 
@@ -310,7 +391,7 @@ def send_report(report: dict, dry_run: bool = False) -> bool:
         ""
     )
     if not bus_url:
-        return False  # No bus configured — silent. Health pipeline handles this.
+        return []  # No bus configured — silent. Health pipeline handles this.
 
     bus_url = bus_url.rstrip("/")
     hostname = AGENT_NAME
@@ -319,11 +400,13 @@ def send_report(report: dict, dry_run: bool = False) -> bool:
     skills = report.get("skills", [])
     lessons = report.get("lessons", [])
     stats = report.get("sessions", {})
+    learnings = report.get("learnings", [])
 
     lines = []
     lines.append(f"━━━ Learning Report — {hostname} ━━━")
     lines.append(f"Generated: {report.get('generated', '')}")
-    lines.append(f"Type: full" if (skills or lessons) else "Type: heartbeat")
+    has_content = bool(skills) or bool(lessons) or bool(learnings)
+    lines.append(f"Type: full" if has_content else "Type: heartbeat")
     lines.append(f"Sessions: {stats.get('total_sessions', 0)} total, "
                  f"{stats.get('recent_sessions', 0)} recent")
 
@@ -340,31 +423,47 @@ def send_report(report: dict, dry_run: bool = False) -> bool:
             lines.append(f"  • {l['title']}")
             lines.append(f"    {l['preview'][:200]}")
 
+    if learnings:
+        lines.append(f"\n== Learnings ({len(learnings)} pending) ==")
+        for lrn in learnings[:MAX_LEARNINGS_IN_REPORT]:
+            tag = {"discovery": "💡", "lesson": "📘", "improvement": "🔧"}.get(lrn['type'], "📄")
+            lines.append(f"  {tag} [{lrn['type']}] {lrn['title']}")
+            lines.append(f"    {lrn['preview'][:300]}")
+
     # Truncate to bus limit
     body_text = "\n".join(lines)
     if len(body_text) > MAX_REPORT_CHARS:
         body_text = body_text[:MAX_REPORT_CHARS] + "\n... [truncated]"
 
+    # Build subject line
+    subject_parts = []
+    if skills:
+        subject_parts.append(f"{len(skills)} skills")
+    if lessons:
+        subject_parts.append(f"{len(lessons)} lessons")
+    if learnings:
+        subject_parts.append(f"{len(learnings)} learnings")
+    subject = "Learning Report: " + (", ".join(subject_parts) if subject_parts else "heartbeat")
+
     payload = {
         "queue": "inbox_moses",
         "message": {
             "from": hostname,
-            "subject": (
-                f"Learning Report: {len(skills)} skills, {len(lessons)} lessons"
-                if (skills or lessons)
-                else f"Learning Report: heartbeat"
-            ),
+            "subject": subject,
             "body": body_text,
             "topic": "reports",
-            "priority": "high" if len(skills) > 0 else "normal",
+            "priority": "high" if (skills or learnings) else "normal",
         },
     }
+
+    # Collect file paths to return on success
+    sent_files = [lrn["path"] for lrn in learnings] if learnings else []
 
     if dry_run:
         print(f"[DRY RUN] Would send to {bus_url}")
         print(f"  Subject: {payload['message']['subject']}")
         print(f"  Body: {len(body_text)} chars")
-        return True
+        return sent_files if sent_files else ["(dry-run)"]
 
     api_url = f"{bus_url}/api/pgmq/send"
     headers = {"Content-Type": "application/json"}
@@ -381,8 +480,8 @@ def send_report(report: dict, dry_run: bool = False) -> bool:
         with urlopen(req, timeout=30) as resp:
             result = json.loads(resp.read().decode())
         msg_id = result.get("msg_id", "?")
-        print(f"Sent: {payload['message']['subject']} (msg_id={str(msg_id)[:8]})", flush=True)
-        return True
+        print(f"Sent: {subject} (msg_id={str(msg_id)[:8]})", flush=True)
+        return sent_files
     except URLError as e:
         body = ""
         if hasattr(e, 'read'):
@@ -391,10 +490,10 @@ def send_report(report: dict, dry_run: bool = False) -> bool:
             except Exception:
                 body = str(e)
         print(f"ERR: Send failed: {getattr(e, 'code', '?')} {body}", file=sys.stderr, flush=True)
-        return False
+        return []
     except (OSError, json.JSONDecodeError) as e:
         print(f"ERR: Send failed: {e}", file=sys.stderr, flush=True)
-        return False
+        return []
 
 
 def _run_session_mining(state: dict, dry_run: bool = False) -> None:
@@ -445,11 +544,12 @@ def main():
     # Phase 1: Collect
     skills_delta = _get_skill_delta(state)
     lessons_delta = _get_lesson_delta(state)
+    pending_learnings = _get_pending_learnings(state)
     session_stats = _get_session_stats()
     agent_ctx = _get_agent_context()
 
     # Phase 2: Decide if there's something to report
-    has_data = bool(skills_delta) or bool(lessons_delta)
+    has_data = bool(skills_delta) or bool(lessons_delta) or bool(pending_learnings)
     is_heartbeat_due = (t0 - state.get("last_run", 0) > 86400)  # heartbeat every 24h
 
     if not has_data and not is_heartbeat_due and not force:
@@ -463,20 +563,40 @@ def main():
         "sessions": session_stats,
         "skills": skills_delta,
         "lessons": lessons_delta,
+        "learnings": pending_learnings,
         "is_heartbeat": not has_data and is_heartbeat_due,
     }
 
     # Phase 4: Send
-    sent = send_report(report, dry_run=dry_run)
+    sent_files = send_report(report, dry_run=dry_run)
 
-    # Phase 5: Save state (only if successfully sent or dry run)
-    if sent or dry_run:
+    # Phase 5: Post-send cleanup — move sent learning files to sent/ dir
+    if sent_files and not dry_run:
+        LEARNINGS_SENT_DIR.mkdir(parents=True, exist_ok=True)
+        sent_hashes = state.get("sent_learning_hashes", {})
+        for fpath in sent_files:
+            src = Path(fpath)
+            if not src.exists():
+                continue
+            dest = LEARNINGS_SENT_DIR / src.name
+            # Avoid overwriting: append timestamp if conflict
+            if dest.exists():
+                stem = src.stem
+                ts = datetime.now().strftime("%Y%m%d%H%M%S")
+                dest = LEARNINGS_SENT_DIR / f"{stem}-{ts}.md"
+            src.rename(dest)
+            # Record hash so we don't re-send if agent recreates same content
+            sent_hashes[_hash_learning_file(dest)] = src.name
+        state["sent_learning_hashes"] = sent_hashes
+
+    # Phase 6: Save state (only if successfully sent or dry run)
+    if sent_files or dry_run:
         state["last_run"] = t0
         # Skill hashes were updated inside _get_skill_delta
         # Lesson count was updated inside _get_lesson_delta
         save_state(state)
 
-    if not sent and not dry_run:
+    if not sent_files and not dry_run:
         # Bus unreachable is expected when no local bus is configured.
         # Don't exit non-zero — health pipeline handles bus alerts.
         pass
