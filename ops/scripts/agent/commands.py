@@ -66,7 +66,6 @@ def dispatch(subject: str, msg_body: dict, msg_raw: dict) -> dict | None:
                 "success": False,
                 "command": subject,
                 "error": f"Handler crashed: {type(e).__name__}: {e}",
-                "duration_seconds": 0,
             }
     return None
 

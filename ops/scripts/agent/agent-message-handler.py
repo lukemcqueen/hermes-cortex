@@ -658,6 +658,7 @@ def main():
       # ── Dispatch via command registry ──
       from commands import dispatch as cmd_dispatch
 
+      start = time.time()
       result_body = cmd_dispatch(subject, body, msg)
 
       if result_body is not None:
@@ -665,10 +666,10 @@ def main():
         from commands import COMMANDS
         cmd_info = COMMANDS.get(subject)
         result_subject = cmd_info["result"] if cmd_info else f"{subject}_RESULT"
-        start = time.time()
 
         # Duration tracking
         result_body.setdefault("duration_seconds", round(time.time() - start, 1))
+        result_body.setdefault("success", True)  # assume success unless handler says otherwise
 
         archive_message(inbox_queue, msg.get("msg_id", ""))
         send_bus_result("inbox_moses", correlation_id, result_body, result_subject)
@@ -723,11 +724,18 @@ def main():
         save_state(state)
         return True
 
-      # Unknown subject — archive so it doesn't loop forever
-      log(f"Unknown subject '{subject}', archiving (corr={correlation_id[:8]}…)")
+      # Unknown subject — send error response so orchestrator knows
+      log(f"Unknown subject '{subject}', sending error (corr={correlation_id[:8]}…)")
+      error_body = {
+        "success": False,
+        "error": f"Unknown subject: {subject}",
+        "command": subject,
+        "duration_seconds": round(time.time() - start, 1),
+      }
+      send_bus_result("inbox_moses", correlation_id, error_body, f"{subject}_RESULT")
       archive_message(inbox_queue, msg_id)
       notify_telegram(
-        f"⚠️ [{AGENT_NAME}] Unknown subject '{subject}' from {body.get('from', '?')}, archived",
+        f"⚠️ [{AGENT_NAME}] Unknown subject '{subject}' from {body.get('from', '?')}, responded with error",
         f"⚠️ {AGENT_NAME}:UNKNOWN"
       )
       return False
@@ -742,6 +750,7 @@ def main():
         "error": f"Handler crashed: {type(e).__name__}: {e}",
         "command": subject,
         "exit_code": -1,
+        "duration_seconds": round(time.time() - start, 1),
       }, f"{subject}_RESULT")
       notify_telegram(
         f"❌ [{AGENT_NAME}] {subject} crashed: {type(e).__name__}: {str(e)[:80]}",
