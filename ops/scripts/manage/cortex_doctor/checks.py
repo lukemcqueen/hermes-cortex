@@ -1598,6 +1598,93 @@ def check_governance(res):
                 "no redundant hooks found in local .git/hooks directories")
 
 
+def check_local_hooksPath_overrides(res):
+    """7b. Scan all git repos for local core.hooksPath overrides that subvert the global setting.
+
+    When core.hooksPath is set globally, git respects it for ALL repos.
+    A local core.hooksPath (per-repo override) replaces the global setting
+    for that repo only, effectively bypassing the global governance hooks.
+
+    This check finds every git repo under $HOME and verifies its local
+    core.hooksPath either matches the global or is unset.
+    """
+    global_hooks_path = run_bg(["git", "config", "--global", "core.hooksPath"], timeout=5)
+    if not global_hooks_path:
+        res.add("Local hooksPath override check", "SKIP",
+                "Global core.hooksPath not set — cannot compare")
+        return
+
+    global_hooks = global_hooks_path.strip().rstrip("/")
+
+    # Find all git repos under HOME
+    try:
+        raw = subprocess.run(
+            ["find", str(HOME), "-maxdepth", "4", "-name", ".git", "-type", "d"],
+            capture_output=True, text=True, timeout=15,
+        ).stdout.strip()
+    except (subprocess.TimeoutExpired, OSError):
+        res.add("Local hooksPath override check", "INFO",
+                "could not scan home directory for git repos")
+        return
+
+    if not raw:
+        return
+
+    EXCLUDED = {
+        HOME / ".git",
+        HOME / ".oh-my-zsh",
+        HOME / ".hermes",
+        HOME / ".brain",
+        HOME / "__MACOSX",
+        HOME / "Desktop",
+        HOME / "Documents",
+        HOME / "Downloads",
+        HOME / "Music",
+        HOME / "Pictures",
+        HOME / "Videos",
+        HOME / "Library",
+        HOME / "Public",
+        HOME / "Templates",
+        HOME / "backups",
+        HOME / "docker-data",
+        HOME / "langfuse",
+    }
+
+    override_found = 0
+    for path in raw.split("\n"):
+        path = path.strip()
+        if not path:
+            continue
+        repo_dir = Path(path).parent.resolve()
+        skip = any(str(repo_dir).startswith(str(excl)) for excl in EXCLUDED)
+        if skip:
+            continue
+
+        # Check local core.hooksPath
+        local_hooks = run_bg(
+            ["git", "-C", str(repo_dir), "config", "--local", "core.hooksPath"],
+            timeout=5,
+        ).strip()
+
+        if not local_hooks:
+            continue  # no local override — inheriting global, good
+
+        local_hooks = local_hooks.rstrip("/")
+        if local_hooks == global_hooks:
+            continue  # local override matches global — benign
+
+        # Mismatch found: local override differs from global
+        override_found += 1
+        res.add(f"Local hooksPath override ({repo_dir.name})", "FAIL",
+                f"core.hooksPath → '{local_hooks}' (global is '{global_hooks}')",
+                f"Remove override: git -C {repo_dir} config --unset core.hooksPath  "
+                f"(or set it to '{global_hooks}' if intentional)")
+
+    if override_found == 0:
+        res.add("Local hooksPath override check", "PASS",
+                "no per-repo overrides — all repos inherit global hooksPath")
+
+
 def check_install(res):
     """8. Install footprint: core files and directories present."""
     missing = []

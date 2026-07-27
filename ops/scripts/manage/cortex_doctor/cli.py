@@ -21,6 +21,7 @@ from .checks import (
     check_config,
     check_nginx,
     check_governance,
+    check_local_hooksPath_overrides,
     check_install,
     check_stale_deploys,
     check_deploy_checksums,
@@ -52,6 +53,7 @@ def main():
         check_config,
         check_nginx,
         check_governance,
+        check_local_hooksPath_overrides,
         check_install,
         check_stale_deploys,
         check_deploy_checksums,
@@ -68,6 +70,7 @@ def main():
             check_system,
             check_config,
             check_governance,
+            check_local_hooksPath_overrides,
             check_install,
         ]
         if not res.json_mode:
