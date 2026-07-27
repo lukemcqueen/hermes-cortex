@@ -134,6 +134,7 @@ register() {
 
 # Scripts → ~/.hermes-cortex/scripts/
 register "ops/scripts/health/system-alert-watchdog.py"   "${CORTEX_DEPLOY_HOME}/scripts/system-alert-watchdog.py"
+register "ops/scripts/health/heartbeat.py"               "${CORTEX_DEPLOY_HOME}/scripts/heartbeat.py"
 register "ops/scripts/hermes_models.py"            "${CORTEX_DEPLOY_HOME}/scripts/hermes_models.py"
 register "ops/scripts/hermes_paths.py"             "${CORTEX_DEPLOY_HOME}/scripts/hermes_paths.py"
 register "ops/scripts/install/check-system.sh"             "${CORTEX_DEPLOY_HOME}/scripts/check-system.sh"

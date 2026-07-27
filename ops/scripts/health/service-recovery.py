@@ -127,7 +127,7 @@ SERVICES: list[dict] = [
 # don't run the bus server and shouldn't try to recover it.
 if _is_orchestrator():
     SERVICES.append(
-        _make_service("agent-bus", label="hermes-agent-bus.service", pgrep="agent-bus"),
+        _make_service("agent-bus", label="agent-bus.service", pgrep="agent-bus"),
     )
 SERVICES.extend([
     {
@@ -152,6 +152,11 @@ def _try_restore_scripts() -> str | None:
     for name in critical:
         target = HERMES_SCRIPTS / name
         source = CORTEX_SCRIPTS / name
+        if not source.exists():
+            # Search subdirectories (health/, manage/, etc.)
+            for sub in sorted(CORTEX_SCRIPTS.rglob(name)):
+                source = sub
+                break
         if not target.exists() and source.exists():
             try:
                 import shutil
