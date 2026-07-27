@@ -121,6 +121,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/templates/USER.seed.md` | User profile seed template — preferences, context, projects |
 | `docs/templates/memory-readme.seed.md` | Memory scoring rubric seed — compact version of memory/README.md |
 | `docs/templates/gitignore.brain` | Standard .gitignore for brain sources |
+| `docs/templates/SOUL.md` | **SOUL.md template** — agent identity, mission, behavioral principles, communication style, scripture/memory tips |
 | `docs/templates/com.hermes.cortex-dashboard.plist` | Launchd plist for Cortex Dashboard |
 | `docs/templates/com.docker.docker.plist` | Launchd plist for Docker Desktop auto-start |
 || `docs/templates/com.hermes.health-push.plist` | Launchd plist — health vector push (every 10min, to Moses via Agent Bus) |
