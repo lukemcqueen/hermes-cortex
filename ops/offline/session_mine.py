@@ -39,7 +39,7 @@ EMBEDDING_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 # ── Config ──────────────────────────────────────────────────
 HOME = Path.home()
 CORTEX_HOME = HOME / ".hermes-cortex"
-LESSONS = HOME / "brain" / "kustos" / "lessons"
+LESSONS = HOME / "brain" / "lessons"
 INDEX_FILE = HOME / "offline" / "lessons-index.json"
 
 SESSION_DB = CORTEX_HOME / "sessions.db"  # Hermes session store
