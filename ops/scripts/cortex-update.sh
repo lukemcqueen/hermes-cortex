@@ -404,7 +404,7 @@ register "ops/services/agent-bus/server.py"              "${CORTEX_DEPLOY_HOME}/
 register "ops/services/agent-bus/nginx.conf"             "${CORTEX_DEPLOY_HOME}/bus/nginx.conf"
 
 # Service definitions
-register "ops/scripts/install/os-config.sh"               "${CORTEX_DEPLOY_HOME}/scripts/os-config.sh"
+register "ops/scripts/install/os-config.sh"               "${CORTEX_DEPLOY_HOME}/scripts/install/os-config.sh"
 register "ops/scripts/install/service-writer.sh"          "${CORTEX_DEPLOY_HOME}/scripts/service-writer.sh"
 
 restart_agent_bus() {
@@ -1345,7 +1345,7 @@ main() {
   register
 
   # Source OS config for nginx path variables (NGINX_CONFIG_DIR, NGINX_LOG_DIR, NGINX_HTPASSWD)
-  local os_config="${CORTEX_DEPLOY_HOME}/scripts/os-config.sh"
+  local os_config="${CORTEX_DEPLOY_HOME}/scripts/install/os-config.sh"
   [[ -f "$os_config" ]] && source "$os_config" 2>/dev/null || true
 
   echo ""
