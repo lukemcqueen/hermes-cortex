@@ -79,13 +79,12 @@ export PATH="${BUN_PATH}:$PATH"
 
 DRY_RUN=false
 STATUS_ONLY=false
-FORCE_ALL=false
+FORCE_ALL=true
 CLEAN_STALE=false
 CHANGED=()
 TO_RESTART=()
 COPIED=0
 SKIPPED=0
-FORCE_ALL=true
 DELTA=false
 
 # Parse options
@@ -94,13 +93,18 @@ for arg in "$@"; do
     --delta)     FORCE_ALL=false; DELTA=true ;;
     --dry-run)   DRY_RUN=true ;;
     --status)    STATUS_ONLY=true ;;
-    --force-all) FORCE_ALL=true ;;
+    --force-all) ;;  # default since 2026-07-27
     --clean-stale) CLEAN_STALE=true ;;
     --help|-h)
       echo "Usage: bash cortex-update.sh [--dry-run|--delta|--status]"
       echo ""
       echo "  --dry-run    Show what would change without touching anything"
-      echo "  --delta      Only copy changed files (default: full redeploy)"
+      echo "  --delta      Skip files with matching commit hashes (legacy mode)"
+      echo "  --status     Show current deployment status"
+      echo "  --help       This message"
+      echo ""
+      echo "Default (no flags): Full deploy — checksums every file, deploys all changes."
+      echo "  --force-all is no longer needed — it's the default."
       echo "  --status     Compare local repo vs installed files"
       exit 0
       ;;
@@ -116,7 +120,7 @@ done
 #    silently skips entries whose source_path doesn't exist, leaving
 #    stale files in the deploy directory. After any rename:
 #      1. Update this register entry
-#      2. Run cortex-update.sh --force-all
+#      2. Run cortex-update.sh
 #      3. Delete the stale deploy file (it won't be cleaned up automatically)
 #
 #    Example: inbox→bus rename (Jul 2026) left 11 stale inbox-* files
@@ -250,7 +254,7 @@ register "ops/scripts/agent/contact-moses.sh"            "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/agent/install-worker.sh"      "${CORTEX_DEPLOY_HOME}/scripts/install-worker.sh"
 # Pre-commit hook — managed by install_precommit_hook() as symlink to scripts/pre-commit-score
 # No register() call — the hook is a symlink, not a standalone deploy file.
-# Post-merge hook — auto-runs cortex-update.sh --force-all after every git pull
+# Post-merge hook — auto-runs cortex-update.sh after every git pull
 register ".hermes-cortex/hooks/post-merge"   "${CORTEX_DEPLOY_HOME}/hooks/post-merge"
 
 # Deploy scripts (nginx security pipeline) — now deployed to /usr/local/sbin/
@@ -1242,22 +1246,22 @@ pin_repos_with_own_hooks() {
 
   while IFS= read -r -d '' git_dir; do
     local hooks_path="${git_dir}/hooks"
-    
+
     # Skip if hooks dir doesn't exist or is empty
     [[ ! -d "$hooks_path" ]] && continue
-    
+
     # Skip if this isn't a valid git repo (e.g. orphaned .git backup copies)
     git --git-dir="$git_dir" rev-parse --git-dir &>/dev/null || continue
-    
+
     # Count non-hidden, non-trivial hook files (not just sample files)
     local hook_count
     hook_count=$(find "$hooks_path" -maxdepth 1 -type f ! -name '.*' ! -name '*.sample' 2>/dev/null | wc -l)
     [[ "$hook_count" -eq 0 ]] && continue
-    
+
     # Check if this repo already has a local hooksPath set
     local current_local
     current_local=$(git --git-dir="$git_dir" config --local core.hooksPath 2>/dev/null || echo "")
-    
+
     if [[ "$current_local" != "$hooks_path" ]]; then
       git --git-dir="$git_dir" config --local core.hooksPath "$hooks_path"
       pinned=$((pinned + 1))

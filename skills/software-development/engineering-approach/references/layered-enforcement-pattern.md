@@ -6,25 +6,25 @@ A reusable architecture for enforcing agent rules across all projects using four
 
 ```
 Layer 0: MCP server (unbypassable gate)
-  ├── Blocks write tools without active governance lock
-  ├── Operates at Hermes tool level — catches ALL changes
-  ├── No bypass possible (framework-level enforcement)
-  └── Implemented by loop-gov-mcp.py
+ ├── Blocks write tools without active governance lock
+ ├── Operates at Hermes tool level — catches ALL changes
+ ├── No bypass possible (framework-level enforcement)
+ └── Implemented by loop-gov-mcp.py
 
 Layer 1: Pre-commit hook (hard gate)
-  ├── Auto-scores every git commit for DB logging
-  ├── Runs automatically per-repo
-  ├── Bypassable via env var (SKIP_SCORE=1 — REMOVED July 2026)
+ ├── Auto-scores every git commit for DB logging
+ ├── Runs automatically per-repo
+ ├── Bypassable via env var (SKIP_SCORE=1 — REMOVED July 2026)
 
 Layer 2: SOUL.md directive (soft guidance)
-  ├── Every agent session starts with the rule in slot #1
-  ├── Zero-touch — one edit, global effect
-  └── Non-blocking — agents can still ignore
+ ├── Every agent session starts with the rule in slot #1
+ ├── Zero-touch — one edit, global effect
+ └── Non-blocking — agents can still ignore
 
 Layer 3: Cron auditor (safety net)
-  ├── Periodic scan catches anything the other layers miss
-  ├── Silent when compliant, flags unscoped changes
-  └── Delivers to origin (Telegram/Slack) automatically
+ ├── Periodic scan catches anything the other layers miss
+ ├── Silent when compliant, flags unscoped changes
+ └── Delivers to origin (Telegram/Slack) automatically
 ```
 
 ## Why Four Layers
@@ -57,7 +57,7 @@ Any time you need to enforce a new rule across all agent sessions and projects:
 4. **Cron auditor** — Create a no_agent watchdog script, register in `install-crons.sh`
 5. **Register** — Add new files to `cortex-update.sh` for auto-deployment
 6. **Commit + push** — Push to origin/main so future installs get it
-7. **Deploy** — Run `cortex-update.sh --force-all` then `install-score-hook.sh --all`
+7. **Deploy** — Run `cortex-update.sh ` then `install-score-hook.sh --all`
 
 ## Files (from hermes-cortex repo)
 

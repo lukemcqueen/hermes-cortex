@@ -35,7 +35,7 @@ Note: step 6's governance-lock check is redundant — the MCP server already ver
 
 ```
 $ git commit -m "fix: nginx returns 0 for uninstalled"
-📊  score-cycle: LOOP 🔄 (task=precommit-hermes-cortex-main/fix-nginx-returns-0-for-uninstalled, pass-pct=100)
+📊 score-cycle: LOOP 🔄 (task=precommit-hermes-cortex-main/fix-nginx-returns-0-for-uninstalled, pass-pct=100)
 [main abc1234] fix: nginx returns 0 for uninstalled
 ```
 
@@ -51,7 +51,7 @@ If you already have `cortex-update` installed, the hook is deployed automaticall
 on every update. To force immediate installation:
 
 ```bash
-cortex-update --force-all
+cortex-update
 ```
 
 This:
@@ -82,7 +82,7 @@ git config --global core.hooksPath
 # → /home/<user>/.hermes-cortex/hooks
 
 ls ~/.hermes-cortex/hooks/
-# → pre-commit  (pre-push also present if deployed)
+# → pre-commit (pre-push also present if deployed)
 ```
 
 Then test on any repo:
@@ -90,7 +90,7 @@ Then test on any repo:
 ```bash
 cd /tmp && mkdir test-hook && cd test-hook && git init
 echo "hello" > test.txt && git add test.txt && git commit -m "test: hook works"
-# → 📊  score-cycle: LOOP 🔄 ...
+# → 📊 score-cycle: LOOP 🔄 ...
 rm -rf /tmp/test-hook
 ```
 
@@ -151,30 +151,30 @@ loop-feedback override 122 --note "Complete change, should STOP" --correct-decis
 ## Architecture
 
 ```
-                    ┌──────────────────────────────────┐
-                    │   Hermes Agent (every session)    │
-                    │  begin_change() → write tools →   │
-                    │  cycle_query → feedback_accept()  │
-                    └─────────┬────────────────────────┘
-                              │
-                    ┌─────────▼────────────────────────┐
-                    │   loop-gov-mcp.py (MCP server)    │
-                    │   PRIMARY ENFORCER                │
-                    │   Blocks write tools without      │
-                    │   active governance lock           │
-                    │   Catches ALL changes             │
-                    └─────────┬────────────────────────┘
-                              │ git commit
-                    ┌─────────▼────────────────────────┐
-                    │   pre-commit hook (score-cycle)   │
-                    │   SECONDARY LOGGER                │
-                    │   Auto-scores on commit           │
-                    └─────────┬────────────────────────┘
-                              │
-                    ┌─────────▼────────────────────────┐
-                    │   loop-governance.db              │
-                    │   ~/.hermes-cortex/data/                 │
-                    └──────────────────────────────────┘
+          ┌──────────────────────────────────┐
+          │  Hermes Agent (every session)  │
+          │ begin_change() → write tools →  │
+          │ cycle_query → feedback_accept() │
+          └─────────┬────────────────────────┘
+               │
+          ┌─────────▼────────────────────────┐
+          │  loop-gov-mcp.py (MCP server)  │
+          │  PRIMARY ENFORCER        │
+          │  Blocks write tools without   │
+          │  active governance lock      │
+          │  Catches ALL changes       │
+          └─────────┬────────────────────────┘
+               │ git commit
+          ┌─────────▼────────────────────────┐
+          │  pre-commit hook (score-cycle)  │
+          │  SECONDARY LOGGER        │
+          │  Auto-scores on commit      │
+          └─────────┬────────────────────────┘
+               │
+          ┌─────────▼────────────────────────┐
+          │  loop-governance.db       │
+          │  ~/.hermes-cortex/data/         │
+          └──────────────────────────────────┘
 ```
 
 A single `core.hooksPath` setting in `~/.gitconfig` makes every repo use the
@@ -209,8 +209,8 @@ score-cycle --task "test-diagnostic" --cycle 1 --code-file /dev/null --json
 ### Per-repo hook overrides global
 Some projects set `core.hooksPath` locally. Check:
 ```bash
-git config --local core.hooksPath  # should be empty
-git config core.hooksPath           # should show global path
+git config --local core.hooksPath # should be empty
+git config core.hooksPath      # should show global path
 ```
 
 ### score-cycle not found

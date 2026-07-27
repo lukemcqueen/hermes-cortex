@@ -197,7 +197,7 @@ credentials, it does not belong in the public repo without genericization.
 
 You must answer **NO** to ALL of these before proceeding:
 
-| Question | If YES → | 
+| Question | If YES → |
 |----------|----------|
 | | Did you create or modify a **file** in `ops/scripts/`, `skills/`, or `deploy/`? | Update `cortex-update.sh` MAP or `docs/SKILLS-MANIFEST.md` |
 | Did you create or modify a **documentation file** (any `.md` in `docs/`)? | Update `docs/DOCS-INDEX.md` with new/changed entry |

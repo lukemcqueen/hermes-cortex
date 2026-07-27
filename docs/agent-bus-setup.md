@@ -1,7 +1,7 @@
 # Agent Bus — Hermes Cortex Message Queue on Postgres + Workflow Engine
 
-> **Direct replacement for the file-based agent inbox.**  
-> Postgres-native message queue + deterministic workflow engine.  
+> **Direct replacement for the file-based agent inbox.**
+> Postgres-native message queue + deterministic workflow engine.
 > SLA enforcement, human-in-the-loop gates, full auditability, zero LLM cost for routing.
 
 ---

@@ -22,7 +22,7 @@ Hermes Cortex is the local AI infrastructure layer that provides:
 bun --version
 
 # Verify macOS (launchd required)
-uname -s  # Should return "Darwin"
+uname -s # Should return "Darwin"
 ```
 
 ### Run the Installer
@@ -72,11 +72,11 @@ Hermes Cortex uses a **two-directory deployment model**:
 | `~/.hermes-cortex/scripts/` | **Canonical runtime location** — all cortex scripts deployed here | `cortex-update.sh` register map |
 | `~/.hermes/scripts/` | **Cron resolution** — Hermes Agent cron scheduler looks here | Symlinks → `~/.hermes-cortex/scripts/` |
 
-**How scripts flow:** Repo source → `cortex-update.sh --force-all` → `~/.hermes-cortex/scripts/` → symlink → `~/.hermes/scripts/`. Do NOT manually copy scripts to `~/.hermes/scripts/` — always use `cortex-update.sh` to deploy, then create symlinks.
+**How scripts flow:** Repo source → `cortex-update.sh ` → `~/.hermes-cortex/scripts/` → symlink → `~/.hermes/scripts/`. Do NOT manually copy scripts to `~/.hermes/scripts/` — always use `cortex-update.sh` to deploy, then create symlinks.
 
 **To add a new cortex script:**
 1. Add `register "ops/path/to/script" "${HERMES_HOME}/scripts/name"` to `cortex-update.sh`
-2. Run `bash ~/.hermes-cortex/scripts/cortex-update.sh --force-all`
+2. Run `bash ~/.hermes-cortex/scripts/cortex-update.sh `
 3. Create symlink: `ln -sf ~/.hermes-cortex/scripts/name ~/.hermes/scripts/name`
 4. Register in `install-crons.sh` if it's a cron script
 
@@ -227,7 +227,7 @@ If the sync daemon's PID is unchanged after a cortex update, the old script is s
 memory and the update didn't actually take effect. See "Critical Pitfalls" below for the
 full pattern.
 
-No configuration fix needed — Moses patched this in the installer and cortex-update.sh. 
+No configuration fix needed — Moses patched this in the installer and cortex-update.sh.
 
 ### 3. Verify cortex-update.sh covers all deployed files
 
@@ -299,8 +299,8 @@ The real gbrain (garrytan/gbrain, 20.9k stars) is a Postgres-native personal kno
 
 **VERIFICATION:** After install, confirm:
 ```bash
-gbrain --version  # Should return version like "gbrain 0.42.25.0"
-which gbrain      # Should return ~/.bun/bin/gbrain
+gbrain --version # Should return version like "gbrain 0.42.25.0"
+which gbrain   # Should return ~/.bun/bin/gbrain
 ```
 
 ### gbrain Source Directory Requirements
@@ -388,14 +388,14 @@ bash ~/.hermes/scripts/install-gbrain-sync.sh
 new PID:
 
 ```bash
-ls -la ~/.gbrain/sync-watch.sh       # must exist
-launchctl list com.gbrain.sync-watch | grep PID  # should be different from before
-grep "skip default" ~/.gbrain/sync-watch.sh  # confirm --skip default is present
+ls -la ~/.gbrain/sync-watch.sh    # must exist
+launchctl list com.gbrain.sync-watch | grep PID # should be different from before
+grep "skip default" ~/.gbrain/sync-watch.sh # confirm --skip default is present
 ```
 
-### nginx zone-defs duplicate after --force-all
+### nginx zone-defs duplicate after
 
-**PROBLEM:** Running `cortex-update.sh --force-all` deploys `hermes-zone-defs.conf`
+**PROBLEM:** Running `cortex-update.sh ` deploys `hermes-zone-defs.conf`
 (which defines `limit_req_zone`, `limit_conn_zone`, and `map` blocks). If the main
 `nginx.conf` already defines the same zones from a previous setup, nginx fails with:
 ```
@@ -411,12 +411,12 @@ grep limit_req_zone /opt/homebrew/etc/nginx/nginx.conf /opt/homebrew/etc/nginx/h
 **FIX:** Comment out the zone definitions in `nginx.conf` — `hermes-zone-defs.conf` is the
 canonical source (included by `hermes-services.conf`):
 ```bash
-sed -i '' 's/^    limit_req_zone /    #limit_req_zone /' /opt/homebrew/etc/nginx/nginx.conf
-sed -i '' 's/^    limit_conn_zone /    #limit_conn_zone /' /opt/homebrew/etc/nginx/nginx.conf
+sed -i '' 's/^  limit_req_zone /  #limit_req_zone /' /opt/homebrew/etc/nginx/nginx.conf
+sed -i '' 's/^  limit_conn_zone /  #limit_conn_zone /' /opt/homebrew/etc/nginx/nginx.conf
 nginx -t && nginx -s reload
 ```
 
-**PREVENT:** After any `--force-all` update, always run `nginx -t`. If it fails with
+**PREVENT:** After any `` update, always run `nginx -t`. If it fails with
 "already bound", apply the fix above. The zone-defs file is the single source of truth.
 
 ### Loop-Governance Module — Setup Pitfalls
@@ -443,14 +443,14 @@ ln -sf ~/hermes-cortex/core/governance/auto_apply.py ~/.local/bin/auto-apply
 ln -sf ~/hermes-cortex/core/governance/loop_config.py ~/.local/bin/loop-config
 
 # WRONG — file doesn't exist
-ln -sf ~/hermes-cortex/core/governance/score-cycle.py ~/.local/bin/score-cycle  # NO
+ln -sf ~/hermes-cortex/core/governance/score-cycle.py ~/.local/bin/score-cycle # NO
 ```
 
 If you symlink to a nonexistent target, bash will follow the dead symlink when using `cat >` and create a stub file at the target path. This corrupts the source file. Verify all targets exist:
 ```bash
 for f in score-cycle loop-feedback auto-apply loop-config; do
-  target=$(readlink ~/.local/bin/$f)
-  [ -f "$target" ] && echo "✅ $f" || echo "❌ $f -> $target MISSING"
+ target=$(readlink ~/.local/bin/$f)
+ [ -f "$target" ] && echo "✅ $f" || echo "❌ $f -> $target MISSING"
 done
 ```
 
@@ -460,9 +460,9 @@ After running `setup.sh`, register the loop-governance MCP server so agents can 
 
 ```bash
 hermes mcp add \
-  --command $HOME/.hermes/mcp-venv/bin/python3 \
-  --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py \
-  loop-governance
+ --command $HOME/.hermes/mcp-venv/bin/python3 \
+ --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py \
+ loop-governance
 ```
 
 The MCP server exposes 7 tools: `cache_search`, `config_show`, `config_set`, `cycle_query`, `cycle_stats`, `feedback_accept`, `feedback_override`. These are the primary interface for agents -- the CLI (`score-cycle`, `loop-feedback`) is the fallback for pre-commit hooks and scripts.
@@ -510,7 +510,7 @@ If the system's decision was wrong, use `loop-feedback override <id> --note "...
 
 **Dogfood your own rules:** When you introduce a new rule or process that mandates scoring, immediately run `score-cycle` on your own changes to validate the tooling works end-to-end. This catches missing shebangs, Python version mismatches, scoring calibration gaps, and feedback CLI tooling issues before they hit production. The user will call you out if you mandate something and don't do it yourself — it erodes trust in the rule.
 
-**Deployment convention:** New enforcement scripts must be registered in `cortex-update.sh` via `register()`. They deploy to `~/.hermes-cortex/scripts/` — the cron scheduler resolves scripts from there via `SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"`. Do NOT manually copy to `~/.hermes/scripts/`; use `cortex-update.sh --force-all` to deploy properly.
+**Deployment convention:** New enforcement scripts must be registered in `cortex-update.sh` via `register()`. They deploy to `~/.hermes-cortex/scripts/` — the cron scheduler resolves scripts from there via `SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"`. Do NOT manually copy to `~/.hermes/scripts/`; use `cortex-update.sh ` to deploy properly.
 
 **Verification:** Run `bash ~/hermes-cortex/core/governance/verify.sh` — expects 14/14 passed, 0 warnings, 0 failures.
 
@@ -531,8 +531,8 @@ ls ~/.pyenv/versions/ | grep '^3\\.1[2-9]'
 
 # Update shebang:
 sed -i '' '1s|#!/usr/bin/env python3|#!/Users/\$(whoami)/.local/bin/python3.12|' \\
-  ~/hermes-cortex/core/governance/score_cycle.py \
-  ~/hermes-cortex/core/governance/loop_feedback.py
+ ~/hermes-cortex/core/governance/score_cycle.py \
+ ~/hermes-cortex/core/governance/loop_feedback.py
 ```
 
 When deploying to a new machine, verify `python3 --version` resolves to 3.12+. The `install.sh` probes `python3 python3.12` (plus any available 3.13/3.14) in order and selects the first 3.12+ with sqlite3 extension support.
@@ -548,7 +548,7 @@ hermes cron list | grep "inbox-processor\\|inbox-watchdog"
 
 ### cortex-update.sh offline_knowledge symlink blocks deploy
 
-**PROBLEM:** `cortex-update.sh --force-all` maps `~/.hermes-cortex/bin/offline_knowledge` from the repo's `ops/offline/offline_knowledge.py`. If the `~/.hermes-cortex/bin/` directory does not exist, the symlink creation fails with:
+**PROBLEM:** `cortex-update.sh ` maps `~/.hermes-cortex/bin/offline_knowledge` from the repo's `ops/offline/offline_knowledge.py`. If the `~/.hermes-cortex/bin/` directory does not exist, the symlink creation fails with:
 ```
 ln: $HOME/.hermes-cortex/bin/offline_knowledge: No such file or directory
 ```
@@ -557,7 +557,7 @@ This is a **non-fatal error by itself**, but if `cortex-update.sh` runs with `se
 **FIX:** Ensure the target directory exists before running cortex-update:
 ```bash
 mkdir -p ~/.hermes-cortex/bin
-bash ~/.hermes-cortex/scripts/cortex-update.sh --force-all
+bash ~/.hermes-cortex/scripts/cortex-update.sh
 ```
 
 **PREVENT:** When registering a new file that creates a symlink in `cortex-update.sh`, add a `mkdir -p` for the target directory before the `ln -sf` command, or use `ln -sf ... 2>/dev/null || true` to prevent a failed symlink from blocking the rest of the update.
@@ -567,13 +567,13 @@ before invoking `cortex-update.sh`, the delta engine sees `old_commit == new_com
 and exits with "Already up to date". Files that actually changed in the repo don't
 get deployed because the commit comparison passes through.
 
-**FIX:** Use `--force-all` to bypass commit comparison and checksum every file:
+**FIX:** Use `` to bypass commit comparison and checksum every file:
 ```bash
-bash ~/.hermes/scripts/cortex-update.sh --force-all
+bash ~/.hermes/scripts/cortex-update.sh
 ```
 
 **PREVENT:** Either (a) let `cortex-update.sh` handle its own `git pull` instead of
-pulling manually, or (b) always use `--force-all` after any manual pull.
+pulling manually, or (b) always use `` after any manual pull.
 
 ### Launchd plist paths — shell/CORTEX_HOME variables NOT expanded
 
@@ -589,7 +589,7 @@ agent-created plists.
 **DIAGNOSE:**
 ```bash
 launchctl list com.hermes.health-server
-# Look for: "LastExitStatus" = 78;  (EX_CONFIG)
+# Look for: "LastExitStatus" = 78; (EX_CONFIG)
 # Or: paths showing as literal "$HOME/..." instead of "/home/<username>/..."
 ```
 
@@ -616,7 +616,7 @@ use `/Users/<username>/` explicitly.
 ```bash
 launchctl load ~/Library/LaunchAgents/com.hermes.health-server.plist
 launchctl list com.hermes.health-server
-# Expected: "Program" = "/home/<username>/.hermes/..."  (expanded, not literal "$HOME")
+# Expected: "Program" = "/home/<username>/.hermes/..." (expanded, not literal "$HOME")
 # Expected: "LastExitStatus" = 0
 ```
 
@@ -631,7 +631,7 @@ deploying any .py file to production (cron jobs, install scripts, MCP servers):
 
 ```bash
 # Quick version check — must be 3.12+
-python3 --version  # Expected: Python 3.12+
+python3 --version # Expected: Python 3.12+
 python3 -c "import sys; assert sys.version_info >= (3, 12), 'Need 3.12+'"
 ```
 
@@ -642,7 +642,7 @@ python3 -c "import sys; assert sys.version_info >= (3, 12), 'Need 3.12+'"
 ls ~/.local/bin/python3.12
 
 # pyenv-managed
-pyenv install 3.12  # or 3.13
+pyenv install 3.12 # or 3.13
 pyenv global 3.12
 
 # Homebrew (fallback)
@@ -705,11 +705,11 @@ bash ~/.hermes-cortex/scripts/seed-project.sh --project=/path/to/project --mode=
 
 # Deploy specific components only
 bash ~/.hermes-cortex/scripts/seed-project.sh --project=/path/to/project \
-  --components=AGENTS.md,.hermes-cortex,pre-commit
+ --components=AGENTS.md,.hermes-cortex,pre-commit
 
 # Custom skill set
 bash ~/.hermes-cortex/scripts/seed-project.sh --project=/path/to/project \
-  --skill-refs=change-test-loop,engineering-approach,save-lesson
+ --skill-refs=change-test-loop,engineering-approach,save-lesson
 ```
 
 ### Modes
@@ -727,10 +727,10 @@ Every seed creates a timestamped backup under `.hermes-cortex/.seed-backups/<ts>
 ```
 project/.hermes-cortex/.seed-backups/
 ├── 20260626_150000-12345/
-│   ├── AGENTS.md              ← backed up BEFORE modify
-│   ├── .hermes-cortex/         ← excludes .seed-backups/ (circular)
-│   ├── .git/hooks/pre-commit
-│   └── manifest.json
+│  ├── AGENTS.md       ← backed up BEFORE modify
+│  ├── .hermes-cortex/     ← excludes .seed-backups/ (circular)
+│  ├── .git/hooks/pre-commit
+│  └── manifest.json
 ```
 
 **Restore from latest:** `seed-project.sh --restore=/path/to/project`
@@ -785,10 +785,10 @@ Hermes Cortex uses a three-layer skill model with different purposes per layer. 
 
 ```
 skills/ (canonical, ~40 skills)
-    ↓  cortex-update.sh --force-all: sync_skills() checksums each SKILL.md
-~/.hermes-cortex/skills/  →  (symlink)  →  ~/.hermes/skills/ (global, ~150 skills)
-                                                    ↑
-                                            ~110 ecosystem skills untouched by sync
+  ↓ cortex-update.sh : sync_skills() checksums each SKILL.md
+~/.hermes-cortex/skills/ → (symlink) → ~/.hermes/skills/ (global, ~150 skills)
+                          ↑
+                      ~110 ecosystem skills untouched by sync
 ```
 
 **Key relationship:** `~/.hermes-cortex/skills/` is a symlink → `~/.hermes/skills/`. When `cortex-update.sh` calls `sync_skills()`, it copies from `skills/` to `~/.hermes-cortex/skills/`, the write resolves through the symlink to `~/.hermes/skills/`. Non-cortex skills (apple/, creative/, gaming/, etc.) are completely untouched — `sync_skills()` only overwrites files whose checksums differ from the source.
@@ -808,31 +808,31 @@ Skills: `~/.hermes/skills/` is primary (Hermes Agent loads from here), `~/.herme
 The `sync_skills()` function in `cortex-update.sh` (lines 442-479) uses a checksum-based delta engine:
 
 ```bash
-# Called during every --force-all or delta update
+# Called during every or delta update
 # Compares SHA256 of skills/<file> vs installed destination
 # Only copies when checksums differ — preserves non-cortex skills
 sync_skills() {
-  local skill_repo="${REPO_DIR}/skills"
-  local skill_dest="${HERMES_HOME}/skills"  # resolves via symlink → ~/.hermes/skills/
-  
-  while IFS= read -r -d '' skill_file; do
-    if needs_update "$skill_file" "$dest"; then
-      copy_file "$skill_file" "$dest"
-    fi
-  done < <(find "$skill_repo" -name "SKILL.md" -type f -print0)
-  
-  # Also syncs reference files under each skill's references/ directory
-  while IFS= read -r -d '' ref_file; do
-    if needs_update "$ref_file" "$dest"; then
-      copy_file "$ref_file" "$dest"
-    fi
-  done < <(find "$skill_repo" -path "*/references/*" -type f -print0)
+ local skill_repo="${REPO_DIR}/skills"
+ local skill_dest="${HERMES_HOME}/skills" # resolves via symlink → ~/.hermes/skills/
+
+ while IFS= read -r -d '' skill_file; do
+  if needs_update "$skill_file" "$dest"; then
+   copy_file "$skill_file" "$dest"
+  fi
+ done < <(find "$skill_repo" -name "SKILL.md" -type f -print0)
+
+ # Also syncs reference files under each skill's references/ directory
+ while IFS= read -r -d '' ref_file; do
+  if needs_update "$ref_file" "$dest"; then
+   copy_file "$ref_file" "$dest"
+  fi
+ done < <(find "$skill_repo" -path "*/references/*" -type f -print0)
 }
 ```
 
 The delta engine means:
 - Only skills in `skills/` are ever touched — ~110 unique ecosystem skills (apple/, creative/, gaming/, mlops/, testing/) are completely safe
-- New skills added to `skills/` get installed on next `cortex-update.sh --force-all`
+- New skills added to `skills/` get installed on next `cortex-update.sh `
 - Updated skill files (checksum changed) get overwritten automatically
 - No manual copying needed — reverse direction (repo ← ~/.hermes/skills/) is for when you create a skill in the agent and want to commit it to the repo
 
@@ -842,14 +842,14 @@ The symlink was created once:
 
 ```bash
 # 1. Migrate any unique skills from old .hermes-cortex/skills/ that didn't exist in ~/.hermes/skills/
-#    Checked: only mcp-server-building and repo-organization were unique → copied manually
+#  Checked: only mcp-server-building and repo-organization were unique → copied manually
 
 # 2. Remove old directory, create symlink
 rm -rf ~/.hermes-cortex/skills
 ln -s ~/.hermes/skills ~/.hermes-cortex/skills
 
 # 3. Verify with cortex-update
-bash ~/.hermes-cortex/ops/scripts/cortex-update.sh --force-all
+bash ~/.hermes-cortex/ops/scripts/cortex-update.sh
 # Expected output: "Skills: N updated, M unchanged"
 ```
 
@@ -969,14 +969,14 @@ Write to `~/.hermes/.env` via Python (avoids shell `$` expansion in the secret k
 
 ```python
 lines = [
-    f"HERMES_LANGFUSE_PUBLIC_KEY={pk}",
-    f"HERMES_LANGFUSE_SECRET_KEY={sk}",
-    "HERMES_LANGFUSE_BASE_URL=http://localhost:3000",
-    "HERMES_LANGFUSE_ENV=local",
+  f"HERMES_LANGFUSE_PUBLIC_KEY={pk}",
+  f"HERMES_LANGFUSE_SECRET_KEY={sk}",
+  "HERMES_LANGFUSE_BASE_URL=http://localhost:3000",
+  "HERMES_LANGFUSE_ENV=local",
 ]
 with open(os.path.expanduser("~/.hermes/.env"), "a") as f:
-    for line in lines:
-        f.write(line + "\n")
+  for line in lines:
+    f.write(line + "\n")
 ```
 
 ### Enable the Plugin
@@ -1004,8 +1004,8 @@ Hermes Agent ships a built-in Langfuse observability plugin (`observability/lang
 pip install langfuse
 
 # 2. Create a Langfuse API key
-#    Option A: Via Langfuse UI at Settings → API Keys (requires catching the ~2s window)
-#    Option B: Via direct DB insert (when web container cycles restart)
+#  Option A: Via Langfuse UI at Settings → API Keys (requires catching the ~2s window)
+#  Option B: Via direct DB insert (when web container cycles restart)
 ```
 
 **Option B — Direct DB insert (recommended):**
@@ -1028,14 +1028,14 @@ print(f'BCRYPT: {bc}')
 # Insert into DB
 eval "$(cat /tmp/key-data.txt | sed 's/ //g')"
 docker exec langfuse-postgres-1 psql -U postgres -c "
-  INSERT INTO api_keys (id, created_at, note, public_key, hashed_secret_key, 
-    display_secret_key, project_id, organization_id, scope, is_in_app_agent_key)
-  VALUES (
-    'KEY_ID_PLACEHOLDER', now(), 'Hermes Agent Tracing', 
-    'PK_PLACEHOLDER', 'BCRYPT_PLACEHOLDER', 
-    'sk-lf-titus-...LAST4', 'default-project', 
-    (SELECT id FROM organizations LIMIT 1), 'PROJECT', false
-  );
+ INSERT INTO api_keys (id, created_at, note, public_key, hashed_secret_key,
+  display_secret_key, project_id, organization_id, scope, is_in_app_agent_key)
+ VALUES (
+  'KEY_ID_PLACEHOLDER', now(), 'Hermes Agent Tracing',
+  'PK_PLACEHOLDER', 'BCRYPT_PLACEHOLDER',
+  'sk-lf-titus-...LAST4', 'default-project',
+  (SELECT id FROM organizations LIMIT 1), 'PROJECT', false
+ );
 "
 ```
 
@@ -1048,15 +1048,15 @@ docker exec langfuse-postgres-1 psql -U postgres -c "
 python3 -c "
 import os, base64
 lines = [
-    'HERMES_LANGFUSE_PUBLIC_KEY=pk-lf-titus-YOUR_PUBLIC_KEY',
-    'HERMES_LANGFUSE_SECRET_KEY=sk-lf-titus-YOUR_SECRET_KEY',
-    'HERMES_LANGFUSE_BASE_URL=http://localhost:3000',
-    'HERMES_LANGFUSE_ENV=local',
-    'HERMES_LANGFUSE_RELEASE=1.0.0',
+  'HERMES_LANGFUSE_PUBLIC_KEY=pk-lf-titus-YOUR_PUBLIC_KEY',
+  'HERMES_LANGFUSE_SECRET_KEY=sk-lf-titus-YOUR_SECRET_KEY',
+  'HERMES_LANGFUSE_BASE_URL=http://localhost:3000',
+  'HERMES_LANGFUSE_ENV=local',
+  'HERMES_LANGFUSE_RELEASE=1.0.0',
 ]
 with open(os.path.expanduser('~/.hermes/.env'), 'a') as f:
-    for line in lines:
-        f.write(line + chr(10))
+  for line in lines:
+    f.write(line + chr(10))
 "
 ```
 
@@ -1125,7 +1125,7 @@ bash ~/.hermes/scripts/<new-script>.sh
 # For .py scripts: verify import works and exit code matches watchdog pattern
 python3 -c "import sys; sys.path.insert(0, '$HOME/.hermes/scripts'); import <script_basename>"
 python3 ~/.hermes/scripts/<script>.py
-echo "Exit: $?"  # Should be 0
+echo "Exit: $?" # Should be 0
 ```
 
 ### 3. Verify New Cron Jobs Were Created
@@ -1142,7 +1142,7 @@ If missing, create them per the new skill's setup instructions. Common patterns:
 
 ### 4. Check for Stale System-Alert / Service-Recovery Scripts
 
-The most common drift: installed watchdog scripts lag behind the repo. The `--force-all` flag catches these, but verify:
+The most common drift: installed watchdog scripts lag behind the repo. The `` flag catches these, but verify:
 
 ```bash
 diff ~/hermes-cortex/ops/scripts/health/system-alert-watchdog.py ~/.hermes/scripts/system-alert-watchdog.py
@@ -1214,8 +1214,8 @@ gbrain apply-migrations --yes
 ### Keep cortex-associated skills up to date
 
 ```bash
-hermes skills check          # Check all installed skills for updates
-hermes skills update <name>  # Update a specific skill
+hermes skills check     # Check all installed skills for updates
+hermes skills update <name> # Update a specific skill
 ```
 
 The `hermes-cortex` repo ships some local skills — these are updated via `git pull` in the repo, not via `hermes skills update`. Only hub/official skills are updated by `hermes skills update`.
@@ -1258,9 +1258,9 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gbrain.sync-watch.pl
 
 **Verify:**
 ```bash
-gbrain stats                # Should match original page count
-gbrain sources list         # mybrain has pages, default is empty
-gbrain search "test" --limit 1  # Returns results
+gbrain stats        # Should match original page count
+gbrain sources list     # mybrain has pages, default is empty
+gbrain search "test" --limit 1 # Returns results
 ```
 
 ### gbrain PGLite Recovery
@@ -1271,8 +1271,8 @@ gbrain search "test" --limit 1  # Returns results
 **Embedding model verification:**
 ```bash
 curl -s http://localhost:11434/api/embeddings \
-  -d '{"model":"nomic-embed-text:v1.5","prompt":"test"}' | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); print(f'{len(d[\"embedding\"])}d')"
+ -d '{"model":"nomic-embed-text:v1.5","prompt":"test"}' | \
+ python3 -c "import sys,json; d=json.load(sys.stdin); print(f'{len(d[\"embedding\"])}d')"
 # Expected: "768d"
 ```
 
@@ -1303,7 +1303,7 @@ gbrain sources list
 
 # Check which source is the active default
 gbrain sources current
-# Returns something like "source: mybrain  tier: brain_default"
+# Returns something like "source: mybrain tier: brain_default"
 
 # Set the brain-wide default source (for federated queries)
 gbrain sources default mybrain
@@ -1383,7 +1383,7 @@ launchctl list | grep -E "(ollama|gbrain|cortex|hermes|docker)"
 
 # Verify Docker container restart policies
 for c in $(docker ps -a -q); do
-  docker inspect "$c" --format '{{.Name}} {{.HostConfig.RestartPolicy.Name}}'
+ docker inspect "$c" --format '{{.Name}} {{.HostConfig.RestartPolicy.Name}}'
 done
 ```
 
@@ -1445,14 +1445,14 @@ the docker-compose file, and runs `docker compose up -d`. No more
 staring at `:?` expansion errors because someone forgot to create `.env`.
 
 **Common causes (if manual setup was used):**
-  - Missing `LANGFUSE_ENCRYPTION_KEY` (32-byte hex) — required at startup
-  - Missing `CLICKHOUSE_MIGRATION_URL` — must use `clickhouse://clickhouse:9000` (Go driver TCP), NOT `http://localhost:8123`
-  - `CLICKHOUSE_CLUSTER_ENABLED` must be `false` without Zookeeper
-  - Missing `LANGFUSE_S3_EVENT_UPLOAD_BUCKET` — Zod schema rejects missing required S3 vars
+ - Missing `LANGFUSE_ENCRYPTION_KEY` (32-byte hex) — required at startup
+ - Missing `CLICKHOUSE_MIGRATION_URL` — must use `clickhouse://clickhouse:9000` (Go driver TCP), NOT `http://localhost:8123`
+ - `CLICKHOUSE_CLUSTER_ENABLED` must be `false` without Zookeeper
+ - Missing `LANGFUSE_S3_EVENT_UPLOAD_BUCKET` — Zod schema rejects missing required S3 vars
 
 ```bash
 cd ~/langfuse
-docker compose logs langfuse-web  # Check for ZodError
+docker compose logs langfuse-web # Check for ZodError
 docker compose logs langfuse-worker
 docker compose up -d
 
@@ -1480,8 +1480,8 @@ docker logs langfuse-langfuse-web-1 --tail 10 2>&1 | grep P1000
 
 # 2. Verify the compose file has variable reference, not literal placeholder
 sed -n '/DATABASE_URL/p' ~/langfuse/docker-compose.yml | xxd
-# $  = 0x24  → variable reference (correct)
-# *  = 0x2a  → literal asterisk (wrong — hardcoded placeholder)
+# $ = 0x24 → variable reference (correct)
+# * = 0x2a → literal asterisk (wrong — hardcoded placeholder)
 ```
 
 **Fix:**
@@ -1511,9 +1511,9 @@ docker inspect langfuse-langfuse-web-1 --format '{{.RestartCount}}'
 **Catching the brief window (browsing works but browser starts too slow):**
 ```bash
 for i in $(seq 1 60); do
-  r=$(curl -sS --max-time 2 http://localhost:3000/ 2>/dev/null)
-  [ -n "$r" ] && echo "$r" | head -5 && break
-  sleep 2
+ r=$(curl -sS --max-time 2 http://localhost:3000/ 2>/dev/null)
+ [ -n "$r" ] && echo "$r" | head -5 && break
+ sleep 2
 done
 ```
 
@@ -1563,13 +1563,13 @@ launchctl load ~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist
 
 ```bash
 # Check backend services are running
-curl http://localhost:3000  # Langfuse v3 (health endpoint)
-curl http://localhost:8901  # Dashboard
+curl http://localhost:3000 # Langfuse v3 (health endpoint)
+curl http://localhost:8901 # Dashboard
 
 # Check nginx config
 nginx -t
 # Apple Silicon: /opt/homebrew/var/log/nginx/*.log
-# Intel Mac:    /usr/local/var/log/nginx/*.log
+# Intel Mac:  /usr/local/var/log/nginx/*.log
 tail -50 /opt/homebrew/var/log/nginx/*.log 2>/dev/null || tail -50 /usr/local/var/log/nginx/*.log
 
 # Restart nginx
@@ -1607,7 +1607,7 @@ tail -20 ~/.gbrain/autopilot.log
 ls ~/brain/
 
 # 4. (Postgres engine — autopilot no longer blocks CLI access)
-#    Skip straight to CLI commands
+#  Skip straight to CLI commands
 
 # 5. Check what sources are registered
 gbrain sources list
@@ -1619,10 +1619,10 @@ gbrain stats
 # 7. Compare registered sources vs brain directories
 # For each dir in ~/brain/ that has a git repo, register it
 for d in ~/brain/*/; do
-  name=$(basename "$d")
-  if [ -d "$d/.git" ]; then
-    echo "Need to register: $name"
-  fi
+ name=$(basename "$d")
+ if [ -d "$d/.git" ]; then
+  echo "Need to register: $name"
+ fi
 done
 
 # 8. Register each project as a gbrain source
@@ -1633,7 +1633,7 @@ gbrain sync --all --no-pull
 gbrain extract --stale
 
 # 10. Autopilot runs independently — no manual restart needed
-#     CLI commands work concurrently with autopilot on Postgres
+#   CLI commands work concurrently with autopilot on Postgres
 ```
 
 **Pitfalls:**
@@ -1703,7 +1703,7 @@ changes. Fix:
 
 ```bash
 cd ~/brain/default
-git status --short   # check for dirty files
+git status --short  # check for dirty files
 git add -A && git commit -m "clean state before migration"
 ```
 
@@ -1714,7 +1714,7 @@ Then re-run `gbrain apply-migrations --yes`.
 If `gbrain apply-migrations --yes` reports a migration is "WEDGED (3+ consecutive partials)":
 
 ```bash
-gbrain apply-migrations --force-retry <version> --yes  # e.g. 0.32.2
+gbrain apply-migrations --force-retry <version> --yes # e.g. 0.32.2
 gbrain apply-migrations --yes
 ```
 
@@ -1839,10 +1839,10 @@ This generates code snippet files across 20+ languages, builds embeddings with `
 
 ```bash
 # From the repo root
-python3 offline/offline_code.py search "flask rest api"    # Find relevant snippets
-python3 offline/offline_code.py gen "binary search tree"   # Generate code via Ollama
-python3 offline/offline_code.py index                      # Rebuild the search index
-python3 offline/offline_code.py stats                      # Corpus statistics
+python3 offline/offline_code.py search "flask rest api"  # Find relevant snippets
+python3 offline/offline_code.py gen "binary search tree"  # Generate code via Ollama
+python3 offline/offline_code.py index           # Rebuild the search index
+python3 offline/offline_code.py stats           # Corpus statistics
 ```
 
 **search** — Returns snippets ranked by cosine similarity (nomic-embed-text:v1.5), with language, tags, and score. Top matches include full code blocks.
@@ -1934,7 +1934,7 @@ When migrating away from profile-per-project:
 rm -rf ~/.hermes/profiles/*/
 
 # 2. Remove the zshrc shell function that auto-injected --profile
-#    Find and delete the entire hermes() function block from ~/.zshrc
+#  Find and delete the entire hermes() function block from ~/.zshrc
 
 # 3. Remove project registration file
 rm ~/.cortex-projects.json

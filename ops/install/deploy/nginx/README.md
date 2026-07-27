@@ -56,7 +56,7 @@ sudo install -o root -g root -m 0750 install-nginx-full.sh /usr/local/sbin/insta
 
 ```bash
 echo '<your-username> ALL=(root) NOPASSWD: /usr/local/sbin/install-nginx-full.sh' \
-  | sudo tee /etc/sudoers.d/hermes-security
+ | sudo tee /etc/sudoers.d/hermes-security
 sudo chmod 440 /etc/sudoers.d/hermes-security
 sudo visudo -cf /etc/sudoers.d/hermes-security
 ```
@@ -125,8 +125,8 @@ the config has bare IPs (missing `deny ... ;` wrapper). Fix with the helper scri
 
 ```bash
 python3 ~/hermes-cortex/ops/install/deploy/nginx/fix-blocked-ips.py
-sudo cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf      # Linux
-# sudo cp /tmp/blocked_ips.conf.new /usr/local/etc/nginx/blocked_ips.conf  # macOS
+sudo cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf   # Linux
+# sudo cp /tmp/blocked_ips.conf.new /usr/local/etc/nginx/blocked_ips.conf # macOS
 sudo /usr/local/sbin/install-nginx-full.sh
 ```
 
@@ -174,9 +174,9 @@ cp ~/hermes-cortex/.env.example ~/hermes-cortex/.env
 vim ~/hermes-cortex/.env
 
 # 2. Edit with your cert paths or domain
-#    CORTEX_SSL_CERT_PATH=/etc/letsencrypt/live/example.com/fullchain.pem
-#    CORTEX_SSL_CERT_KEY_PATH=/etc/letsencrypt/live/example.com/privkey.pem
-#    CORTEX_SSL_DOMAIN=example.com
+#  CORTEX_SSL_CERT_PATH=/etc/letsencrypt/live/example.com/fullchain.pem
+#  CORTEX_SSL_CERT_KEY_PATH=/etc/letsencrypt/live/example.com/privkey.pem
+#  CORTEX_SSL_DOMAIN=example.com
 
 # 3. Deploy (auto-sources the env file internally)
 python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py --dry-run
@@ -219,7 +219,7 @@ Moses polls every agent's health vector without managing per-agent credentials.
 ```bash
 # Config is written to sites-available/, symlinked in sites-enabled/
 ls -la /etc/nginx/sites-available/hermes-services.conf
-ls -la /etc/nginx/sites-enabled/hermes-services.conf  # → ../sites-available/hermes-services.conf
+ls -la /etc/nginx/sites-enabled/hermes-services.conf # → ../sites-available/hermes-services.conf
 # Health block should have 0 matches for auth_basic
 grep -c 'auth_basic' /etc/nginx/sites-enabled/hermes-services.conf
 ```
@@ -322,7 +322,7 @@ sudo -n ops/install/deploy/nginx/fix-blocked-ips.py
 ### 4. Pull updated scripts
 
 ```bash
-bash ops/scripts/cortex-update.sh --force-all
+bash ops/scripts/cortex-update.sh
 ```
 
 ### 5. Verify no leftover symlinks
@@ -330,5 +330,5 @@ bash ops/scripts/cortex-update.sh --force-all
 ```bash
 cd ~/hermes-cortex
 find . -maxdepth 2 -name 'deploy' -type l 2>/dev/null && \
-  echo "⚠ Legacy symlink still exists" || echo "✓ Clean"
+ echo "⚠ Legacy symlink still exists" || echo "✓ Clean"
 ```

@@ -472,14 +472,14 @@ config/staging/
 
 ## FAQ
 
-**Q: Why private → public sync and not the reverse?**  
+**Q: Why private → public sync and not the reverse?**
 A: The private repo contains secrets that must never enter the public repo. Syncing public→private and then stripping secrets is error-prone. Private→public ensures only sanitized content reaches the open-source repo.
 
-**Q: Can I use this pattern with a mono-repo?**  
+**Q: Can I use this pattern with a mono-repo?**
 A: Yes — use `.syncignore` and branch-permissions to simulate the same isolation within a single repository. However, the multi-repo approach is cleaner for MIT + proprietary separation.
 
-**Q: How do I rotate the sync token?**  
+**Q: How do I rotate the sync token?**
 A: Generate a new fine-grained access token with `contents:write` scope on the private repo, update the `SYNC_TOKEN` secret in the public repo's CI settings, and revoke the old token.
 
-**Q: What if a brain branch diverges between repos?**  
+**Q: What if a brain branch diverges between repos?**
 A: The sync script uses `--no-edit` merge commits for config overlays. If a conflict occurs, the sync workflow fails and alerts. Resolve by manually merging in the private repo and pushing upstream.

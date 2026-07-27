@@ -3,7 +3,7 @@
 ## Context
 
 After merging 8 new commits into `~/Developer/AI/hermes-cortex` (HEAD `7641f867`),
-`cortex-update.sh --force-all` was run. Three bugs emerged:
+`cortex-update.sh ` was run. Three bugs emerged:
 
 ## Bug 1: Missing platform_utils.py in Deployment Map
 
@@ -58,7 +58,7 @@ module-level list/dict literals at import time — no hoisting.
 ```bash
 $ python3 ~/.hermes/scripts/service-recovery.py
 $ echo $?
-0  # Silent exit — all services healthy, no errors
+0 # Silent exit — all services healthy, no errors
 ```
 
 ## Upstream Changes Needed

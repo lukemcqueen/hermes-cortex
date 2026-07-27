@@ -22,10 +22,10 @@ Two git hooks that enforce the governance workflow in a multi-agent repo:
 
 - **pre-commit** — automatically logs a scoring cycle on every commit (secondary logger). Now scores ALL staged files, not just the first.
 - **pre-push** — four checks before allowing a push:
-  1. **Governance lock** — requires an active `begin_change()` session
-  2. **Syntax check** — parses every changed `.py` and `.sh` file (py_compile/bash -n)
-  3. **Doc coverage** — warns if code/config changes without `.md` changes
-  4. **Pull-before-push** — ensures local `main` isn't behind `origin/main`
+ 1. **Governance lock** — requires an active `begin_change()` session
+ 2. **Syntax check** — parses every changed `.py` and `.sh` file (py_compile/bash -n)
+ 3. **Doc coverage** — warns if code/config changes without `.md` changes
+ 4. **Pull-before-push** — ensures local `main` isn't behind `origin/main`
 
 They're part of the Agent Execution Contract (rules #10 and #13) and apply to every agent and human working on `hermes-cortex`.
 
@@ -41,8 +41,8 @@ Runs `score-cycle` on staged changes for **automatic DB logging**. Enforcement o
 
 | Exit | Meaning | Next step |
 |------|---------|-----------|
-| 0    | Scored (or skipped, or score-cycle absent) | Commit proceeds |
-| 1    | `score-cycle` failed unrecoverably | Check loop-governance setup |
+| 0  | Scored (or skipped, or score-cycle absent) | Commit proceeds |
+| 1  | `score-cycle` failed unrecoverably | Check loop-governance setup |
 
 ### `pre-push` (rules #13 + verification gate)
 
@@ -54,19 +54,19 @@ Source: `ops/scripts/pre-push-pull`
 2. **Update documentation** — docs, AGENTS.md, skills that other agents consume
 3. Push — the hook enforces three checks:
 
-   | # | Check | What it does |
-   |---|-------|-------------|
-   | 1 | Governance lock | No active `begin_change()` session for this repo |
-   | 2 | Syntax check | Parses every changed `.py` (py_compile) and `.sh` (bash -n) file at push time. Cannot be skipped — the hook runs the checker itself. |
-   | 3 | Doc coverage | Warns when code/config files change without a corresponding `.md` change. Soft warning — doesn't block, but reminds agents to update docs. |
-   | 4 | Pull-before-push | Local `main` is behind `origin/main` |
+  | # | Check | What it does |
+  |---|-------|-------------|
+  | 1 | Governance lock | No active `begin_change()` session for this repo |
+  | 2 | Syntax check | Parses every changed `.py` (py_compile) and `.sh` (bash -n) file at push time. Cannot be skipped — the hook runs the checker itself. |
+  | 3 | Doc coverage | Warns when code/config files change without a corresponding `.md` change. Soft warning — doesn't block, but reminds agents to update docs. |
+  | 4 | Pull-before-push | Local `main` is behind `origin/main` |
 
-   All checks run automatically at push time. No marker files, no `touch` commands.
+  All checks run automatically at push time. No marker files, no `touch` commands.
 
 | Exit | Meaning | Next step |
 |------|---------|-----------|
-| 0    | All checks passed + marker consumed | Push proceeds |
-| 1    | Any check failed | Fix the issue shown in the error message |
+| 0  | All checks passed + marker consumed | Push proceeds |
+| 1  | Any check failed | Fix the issue shown in the error message |
 
 ---
 
@@ -125,7 +125,7 @@ If you're an agent working on this repo:
 |---------|-------|-----|
 | Push blocked even though I just pulled | Remote received new commits since your last fetch | `git pull --rebase origin main` |
 | `score-cycle` not found warning | `loop-governance` tools not installed | `bash ~/hermes-cortex/core/governance/setup.sh` |
-| Hook not running at all | Hook not symlinked into `.hermes-cortex/hooks/` | Re-run `cortex-update.sh --force-all` |
+| Hook not running at all | Hook not symlinked into `.hermes-cortex/hooks/` | Re-run `cortex-update.sh ` |
 | `❌ $file — syntax error` | `.py` file has a Python syntax error | Fix the error and re-push |
 | `❌ $file — shell syntax error` | `.sh` file has a shell syntax error | Fix the error and re-push |
 

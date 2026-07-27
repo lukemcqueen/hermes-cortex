@@ -63,15 +63,15 @@ Prefix-less names break doctor validation because the doctor reads the uninstall
 `cortex-doctor.py` reads expected cron names from the **uninstall arrays** in `install-crons.sh` and `install-orch-crons.sh`. The doctor does NOT read the create sections. This means:
 
 ```
-install-crons.sh                  cortex-doctor.py
-┌──────────────┐                 ┌──────────────────┐
-│ create_cron   │                 │                  │
-│   "agent-fx"  │  ──(ignored)──►│  parse_expected  │
-│               │                 │                  │
-│ for job in    │                 │  reads this      │
-│   "agent-fx"  │  ──(source)───►│  → expected list │
-│   "agent-mem" │                 │                  │
-│ ...; do       │                 └──────────────────┘
+install-crons.sh         cortex-doctor.py
+┌──────────────┐         ┌──────────────────┐
+│ create_cron  │         │         │
+│  "agent-fx" │ ──(ignored)──►│ parse_expected │
+│        │         │         │
+│ for job in  │         │ reads this   │
+│  "agent-fx" │ ──(source)───►│ → expected list │
+│  "agent-mem" │         │         │
+│ ...; do    │         └──────────────────┘
 └──────────────┘
 ```
 
@@ -100,10 +100,10 @@ When renaming a cron (e.g. `fleet-status-watchdog` → `orch-fleet-watchdog`):
 2. **Remove old cron**: `cronjob action='remove' job_id=<id>`
 3. **Rename/relocate script**: move from old path to new path in repo (e.g. `ops/scripts/inbox/` → `ops/scripts/agent/`)
 4. **Update installer** — **critical: two-way sync required:**
-   - Remove old name from `install-crons.sh` or `install-orch-crons.sh` uninstall array
-   - Add new name to the uninstall array (doctor reads this for expected crons — see "Critical: uninstall array = doctor truth source" above)
-   - Add `create_cron` block for new name with EXACTLY matching name string
-   - Verify: the same name appears in BOTH the create_cron call AND the uninstall array
+  - Remove old name from `install-crons.sh` or `install-orch-crons.sh` uninstall array
+  - Add new name to the uninstall array (doctor reads this for expected crons — see "Critical: uninstall array = doctor truth source" above)
+  - Add `create_cron` block for new name with EXACTLY matching name string
+  - Verify: the same name appears in BOTH the create_cron call AND the uninstall array
 5. **Register in cortex-update.sh**: add `register()` call for new path
 6. **Deploy**: copy script to `~/.hermes-cortex/scripts/` — verify it exists (`ls -la`)
 7. **Create new cron**: `cronjob action='create' name=<new-name> ...`
@@ -120,9 +120,9 @@ For large batch renames (July 2026 migration: 25 bare-name crons → agent-*):
 1. **Update create sections** in `install-crons.sh` — rename all `create_cron "name"` to `create_cron "agent-name"`
 2. **Sync arrays**: `python3 ~/hermes-cortex/ops/scripts/manage/fix-cron-duplicates.py --fix`
 3. **Install new crons**: `bash ~/hermes-cortex/scripts/install-crons.sh`
-4. **Remove old bare-name crons**: 
-   - `python3 ~/hermes-cortex/scripts/manage/fix-cron-duplicates.py --gc` (scan)
-   - `python3 ~/hermes-cortex/scripts/manage/fix-cron-duplicates.py --gc --prune` (safe remove)
+4. **Remove old bare-name crons**:
+  - `python3 ~/hermes-cortex/scripts/manage/fix-cron-duplicates.py --gc` (scan)
+  - `python3 ~/hermes-cortex/scripts/manage/fix-cron-duplicates.py --gc --prune` (safe remove)
 5. **Orchestrator only** (Moses, Esther): also run `bash ~/hermes-cortex/scripts/install/install-orch-crons.sh --force`
 6. **Verify**: `python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet`
 
@@ -137,18 +137,18 @@ Legacy template at `core/governance/crons.json` (if it still exists) is NOT the 
 For self-contained pull + install / check + alert jobs that should be silent on success:
 
 1. Write a script to `~/.hermes/scripts/<name>`:
-   - Shebang: `#!/usr/bin/env bash` or `#!/usr/bin/env python3`
-   - `set -euo pipefail` (bash) or proper error handling (Python)
-   - Capture command output and exit code
-   - On failure: echo error details, exit 1
-   - On clean success (up to date or updated OK): exit 0 with NO stdout
+  - Shebang: `#!/usr/bin/env bash` or `#!/usr/bin/env python3`
+  - `set -euo pipefail` (bash) or proper error handling (Python)
+  - Capture command output and exit code
+  - On failure: echo error details, exit 1
+  - On clean success (up to date or updated OK): exit 0 with NO stdout
 2. `chmod +x ~/.hermes/scripts/<name>` + syntax check (`bash -n` or `python3 -m py_compile`)
 3. Schedule with `cronjob`:
-   - `no_agent=True`
-   - `script=<name>` (resolves relative to `~/.hermes/scripts/`)
-   - `deliver` set to where errors should reach the user (e.g. Telegram)
-   - Empty stdout + exit 0 → silent, nothing delivered
-   - Any stdout or non-zero exit → delivered as error alert
+  - `no_agent=True`
+  - `script=<name>` (resolves relative to `~/.hermes/scripts/`)
+  - `deliver` set to where errors should reach the user (e.g. Telegram)
+  - Empty stdout + exit 0 → silent, nothing delivered
+  - Any stdout or non-zero exit → delivered as error alert
 
 ## Advanced: State-transition watchdogs — for dashboards that report multiple
 dynamic values (agent status, workflows, pending messages), simple exit-code
@@ -169,7 +169,7 @@ instead of a single compromise schedule. See `references/tiered-schedule-pattern
 When asked to list all crons, output in this compact format:
 
 ```
-name    schedule    type
+name  schedule  type
 ```
 
 Where `type` is one of:
@@ -180,14 +180,14 @@ Group blocks by frequency:
 
 ```
  HIGH-FREQUENCY
-  name    */5 * * * *    no_agent
-  name    */10 * * * *   LLM
+ name  */5 * * * *  no_agent
+ name  */10 * * * *  LLM
 
  DAILY
-  name    0 7 * * *      LLM
+ name  0 7 * * *   LLM
 
  INFREQUENT
-  name    0 6 * * 1      no_agent
+ name  0 6 * * 1   no_agent
 ```
 
 Do not use tables, borders, or rich formatting. Just the raw columns.
@@ -221,10 +221,10 @@ When explicitly directed to add a cron to another Hermes profile (e.g. Esther):
 - **Never guess job IDs.** Always `cronjob action='list'` first before update/remove.
 - **no_agent scripts must handle silent-on-success correctly.** If the command prints "Already up to date." on stdout, the script must detect and suppress it — otherwise a "success" delivers noise to the user every tick.
 - **no_agent scripts that import from project modules need PYTHONPATH.** Cron jobs run in a bare environment — no PYTHONPATH, no project venv. If a no_agent Python script imports from a project module (e.g. `agent_bus` under `~/hermes-cortex/core/agent_bus/`), it must handle both at the script level:
-  1. **Shebang** to the project's venv python: `#!/home/moses/.hermes/hermes-agent/venv/bin/python3`
-  2. **sys.path** before any project imports: `sys.path.insert(0, "/home/moses/hermes-cortex/core")`
-  3. **Test** outside cron first: `/home/moses/.hermes/hermes-agent/venv/bin/python3 script.py`
-  Without both, the cron silently fails with `ModuleNotFoundError` on every tick.
+ 1. **Shebang** to the project's venv python: `#!/home/moses/.hermes/hermes-agent/venv/bin/python3`
+ 2. **sys.path** before any project imports: `sys.path.insert(0, "/home/moses/hermes-cortex/core")`
+ 3. **Test** outside cron first: `/home/moses/.hermes/hermes-agent/venv/bin/python3 script.py`
+ Without both, the cron silently fails with `ModuleNotFoundError` on every tick.
 - **Delivery matters for cron jobs.** `deliver='local'` logs only. `deliver='origin'` delivers to the creating session (which may not exist at cron time). For unattended crons that should notify on error, set deliver to a live channel (e.g. `telegram:chat_id`).
 - **Respect Esther's crons.** The Esther profile at `~/.hermes/profiles/esther/` has its own cron namespace. Never create, rename, or remove crons there unless explicitly directed.
 - **shellcheck scripts.** Run `bash -n` after writing any bash script. A syntax error in a no_agent script means it silently fails forever.
@@ -234,9 +234,9 @@ When explicitly directed to add a cron to another Hermes profile (e.g. Esther):
 - **Undo is cheaper to prevent than to revert.** A batch of 22 renames takes 3-4 turns to undo because the cronjob tool has no rollback. Check with the user before applying a convention change to the entire cron table.
 - **Doctor truth source = uninstall array.** `cortex-doctor.py` reads expected cron names from the uninstall arrays in `install-crons.sh` and `install-orch-crons.sh`. If a cron name in the `create_cron` block doesn't match the uninstall array — or is missing from it entirely — the doctor reports false failures. Every rename MUST update BOTH the create block and the uninstall array. Run `cortex-doctor.py --quiet` after any rename to verify sync. See the "Critical: uninstall array = doctor truth source" section under Naming Convention above for the function-level detail.
 - **Patch the repo, then deploy — never patch execution paths directly.** The cron execution paths (`~/.hermes-cortex/scripts/` and `~/.hermes/scripts/`) are hardlinked to each other but are **separate inodes** from the repo source (e.g. `hermes-cortex/ops/scripts/manage/`). All deployed scripts are registered in `cortex-update.sh` via `register()`. The correct fix workflow is:
-  1. Patch the repo source file (e.g. `~/hermes-cortex/ops/scripts/manage/script.sh`)
-  2. Run `bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all` to deploy
-  3. Verify: `diff ~/hermes-cortex/ops/scripts/manage/script.sh ~/.hermes-cortex/scripts/script.sh`
-  
-  This applies to every cron fix. Never `cp` manually — that creates a one-off that won't survive the next `cortex-update.sh` run. Patching the repo means all agents benefit from the fix on their next deploy cycle.
+ 1. Patch the repo source file (e.g. `~/hermes-cortex/ops/scripts/manage/script.sh`)
+ 2. Run `bash ~/hermes-cortex/ops/scripts/cortex-update.sh ` to deploy
+ 3. Verify: `diff ~/hermes-cortex/ops/scripts/manage/script.sh ~/.hermes-cortex/scripts/script.sh`
+
+ This applies to every cron fix. Never `cp` manually — that creates a one-off that won't survive the next `cortex-update.sh` run. Patching the repo means all agents benefit from the fix on their next deploy cycle.
 - **Python f-string single-quote nesting bug.** When an f-string uses single quotes as the delimiter AND contains a curly-brace expression with a string literal inside (e.g. `f'│ Stalled: {", ".join(x)}'`), the inner single quotes in `', '` will break the outer string. Use double quotes for the outer delimiter and single quotes inside: `f"│ Stalled: {', '.join(x)}"`, or vice versa. Always `python3 -m py_compile script.py` to catch these syntax errors before deploying.

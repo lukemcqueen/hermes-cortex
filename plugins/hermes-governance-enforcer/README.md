@@ -16,15 +16,15 @@ A lifecycle hook fired by `hermes_cli.plugins.get_pre_tool_call_block_message()`
 
 ```python
 def handler(
-    tool_name: str,
-    args: dict,
-    session_id: str,
-    tool_call_id: str,
-    turn_id: str,
-    api_request_id: str,
-    task_id: str,
-    middleware_trace: list,
-    **kwargs,
+  tool_name: str,
+  args: dict,
+  session_id: str,
+  tool_call_id: str,
+  turn_id: str,
+  api_request_id: str,
+  task_id: str,
+  middleware_trace: list,
+  **kwargs,
 ) -> dict | None:
 ```
 
@@ -81,8 +81,8 @@ Later sources override earlier ones on name collision.
 
 ```
 <name>/
-├── plugin.yaml         # Manifest (name, version, description)
-└── __init__.py         # Must export register(ctx) function
+├── plugin.yaml     # Manifest (name, version, description)
+└── __init__.py     # Must export register(ctx) function
 ```
 
 ### `plugin.yaml` Format
@@ -98,8 +98,8 @@ author: Joseph (Hermes Cortex)
 
 ```python
 def register(ctx: PluginContext) -> None:
-    """Called by Hermes at startup. Register hooks, tools, and skills here."""
-    ctx.register_hook("pre_tool_call", my_handler)
+  """Called by Hermes at startup. Register hooks, tools, and skills here."""
+  ctx.register_hook("pre_tool_call", my_handler)
 ```
 
 The `PluginContext` object provides:
@@ -122,15 +122,15 @@ The `PluginContext` object provides:
 
 ```
 Hermes starts
-  ├── PluginManager.discover_and_load()
-  │     ├── Scans ~/.hermes/plugins/<name>/ for plugin.yaml + __init__.py
-  │     ├── Calls plugin's register(ctx)
-  │     │     ├── ctx.register_hook("on_session_start", _on_session_start)
-  │     │     │     └── Writes .hermes-session-{PID}.id with real session ID
-  │     │     │         (MCP reads this via os.getppid() on begin_change)
-  │     │     └── ctx.register_hook("pre_tool_call", handler)  ← blocks writes
-  │     └── Plugin loaded
-  └── Agent loop begins
+ ├── PluginManager.discover_and_load()
+ │   ├── Scans ~/.hermes/plugins/<name>/ for plugin.yaml + __init__.py
+ │   ├── Calls plugin's register(ctx)
+ │   │   ├── ctx.register_hook("on_session_start", _on_session_start)
+ │   │   │   └── Writes .hermes-session-{PID}.id with real session ID
+ │   │   │     (MCP reads this via os.getppid() on begin_change)
+ │   │   └── ctx.register_hook("pre_tool_call", handler) ← blocks writes
+ │   └── Plugin loaded
+ └── Agent loop begins
 ```
 
 **Key security property:** The session marker is written at session start, *before* any
@@ -146,15 +146,15 @@ if the repo is unknown, no writes get through.
 
 ```
 Model requests tool call
-  ├── tool_executor.py: execute_tool_call()
-  │     └── get_pre_tool_call_block_message(tool_name, args)
-  │           ├── Check thread-level tool whitelist (if set)
-  │           ├── invoke_hook("pre_tool_call", tool_name, args, ...)
-  │           │     ├── Plugin A handler returns None           → pass
-  │           │     ├── Plugin B handler returns None           → pass
-  │           │     └── Governance Enforcer returns block?     → STOP
-  │           └── First block message wins → tool is blocked
-  └── Tool executes (or blocked with message)
+ ├── tool_executor.py: execute_tool_call()
+ │   └── get_pre_tool_call_block_message(tool_name, args)
+ │      ├── Check thread-level tool whitelist (if set)
+ │      ├── invoke_hook("pre_tool_call", tool_name, args, ...)
+ │      │   ├── Plugin A handler returns None      → pass
+ │      │   ├── Plugin B handler returns None      → pass
+ │      │   └── Governance Enforcer returns block?   → STOP
+ │      └── First block message wins → tool is blocked
+ └── Tool executes (or blocked with message)
 ```
 
 ### Block Decision Matrix
@@ -184,7 +184,7 @@ The plugin blocks terminal commands matching these patterns:
 (sudo)? sed|awk.*-i
 (sudo)? git push|commit|merge|rebase|reset|cherry-pick|branch -d|-D
 (sudo)? cronjob create|update|remove|delete
-echo ... >|>>  (file redirection)
+echo ... >|>> (file redirection)
 (sudo)? docker run|build|push|commit|tag|save|load|rmi|system prune
 (sudo)? wget.*-O, curl.*-o, nohup, crontab, useradd, ufw, nginx -s reload
 ```
@@ -275,19 +275,19 @@ The `loop-gov-mcp.py` MCP server writes the session-scoped lock file when
 The enforcer plugin receives the Hermes session ID via the `pre_tool_call` hook's
 `session_id` parameter. At each tool call, it writes this ID to **three** marker files:
 1. **Fixed-path marker** (`.hermes-session-current.id`) — primary. The MCP server
-   reads this by a known path, no PID arithmetic needed.
+  reads this by a known path, no PID arithmetic needed.
 2. **PID-scoped marker** (`.hermes-session-{PID}.id`) — legacy fallback for MCP
-   versions that predate the fixed path.
+  versions that predate the fixed path.
 3. **`~/.hermes/session.id`** — Hermes config directory cache, final fallback
-   for MCP when both state-directory markers are absent (e.g. on the very first
-   tool call of a session before the enforcer has fired).
+  for MCP when both state-directory markers are absent (e.g. on the very first
+  tool call of a session before the enforcer has fired).
 
 The fixed-path approach was introduced because the MCP server is NOT a direct child
 of the Hermes process — there's a watchdog (`mcp_stdio_watchdog.py`) in between:
 ```
 Hermes (PID=1001)
-  └── watchdog (PID=1002, PPID=1001)
-       └── MCP loop-gov (PID=1003, PPID=1002)
+ └── watchdog (PID=1002, PPID=1001)
+    └── MCP loop-gov (PID=1003, PPID=1002)
 ```
 With the old PID-only handoff, `os.getppid()` inside the MCP returned the watchdog
 PID (1002), not the Hermes PID (1001). The markers never matched, causing every
@@ -298,16 +298,16 @@ regardless of process ancestry:
 
 ```
 pre_tool_call fires
-  └── enforcer writes .hermes-session-current.id = "sess_abc123"
-  └── enforcer writes .hermes-session-{PID}.id = "sess_abc123" (legacy)
+ └── enforcer writes .hermes-session-current.id = "sess_abc123"
+ └── enforcer writes .hermes-session-{PID}.id = "sess_abc123" (legacy)
 
 begin_change fires (MCP, any depth)
-  └── MCP reads .hermes-session-current.id → "sess_abc123"
-  └── creates .governance-sess_abc123.json
+ └── MCP reads .hermes-session-current.id → "sess_abc123"
+ └── creates .governance-sess_abc123.json
 
 next write tool fires
-  └── enforcer Phase 1 looks for .governance-sess_abc123.json → FOUND
-  └── pass through
+ └── enforcer Phase 1 looks for .governance-sess_abc123.json → FOUND
+ └── pass through
 ```
 
 If both markers are absent (e.g. no tool call has fired yet), the MCP falls back to
@@ -320,20 +320,20 @@ The governance enforcer plugin's `_has_governance_lock()` function uses a
 **three-phase approach** to find the active lock:
 
 1. **Phase 1 — Exact match (primary):** Looks for `.governance-{hermes_session_id}.json`.
-   The session ID is passed to the enforcer via the Hermes `pre_tool_call` hook's `session_id`
-   parameter. The enforcer writes it to a fixed-path marker so the MCP server
-   creates locks in the same namespace.
+  The session ID is passed to the enforcer via the Hermes `pre_tool_call` hook's `session_id`
+  parameter. The enforcer writes it to a fixed-path marker so the MCP server
+  creates locks in the same namespace.
 
 2. **Phase 2 — Scan by repo_slug (fallback):** If exact match fails (backward compat with
-   old MCP locks that predate PID handoff, or when run outside a git repo), scans all
-   `.governance-*.json` files and matches by `repo_slug` in content. **Cross-session
-   protection:** when the current session and the lock both have a `session_id`, an
-   exact match is required — Session B cannot write using Session A's lock.
+  old MCP locks that predate PID handoff, or when run outside a git repo), scans all
+  `.governance-*.json` files and matches by `repo_slug` in content. **Cross-session
+  protection:** when the current session and the lock both have a `session_id`, an
+  exact match is required — Session B cannot write using Session A's lock.
 
 3. **Phase 3 — Secondary lock marker (extra safety):** Checks the repo-located marker
-   at `.hermes-cortex/.governance-lock` as a fallback when the primary state directory
-   is inaccessible. The MCP server writes this alongside the primary lock during
-   `begin_change()`.
+  at `.hermes-cortex/.governance-lock` as a fallback when the primary state directory
+  is inaccessible. The MCP server writes this alongside the primary lock during
+  `begin_change()`.
 
 On every call, the enforcer also **proactively purges stale locks** — any
 `.governance-*.json` file whose `heartbeat_at` exceeds its TTL is removed
@@ -344,52 +344,52 @@ stale sessions don't accidentally block new ones.
 GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 
 def _has_governance_lock(hermes_session_id: str = "") -> bool:
-    current_slug = _derive_repo_slug()
-    if not GOVERNANCE_STATE_DIR.exists():
-        return False
-
-    # ── Phase 1: Exact match by Hermes session ID ──
-    if hermes_session_id:
-        lock_path = GOVERNANCE_STATE_DIR / f".governance-{hermes_session_id}.json"
-        if lock_path.exists():
-            try:
-                state = json.loads(lock_path.read_text())
-                if state.get("task_id", "") and not _is_lock_stale(state):
-                    return True
-                if state.get("task_id", ""):
-                    lock_path.unlink(missing_ok=True)  # stale — clean
-            except (json.JSONDecodeError, OSError):
-                lock_path.unlink(missing_ok=True)
-
-    # ── Phase 2: Scan by repo_slug (backward compat fallback) ──
-    for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
-        try:
-            state = json.loads(lock_file.read_text())
-            if state.get("repo_slug") is not None and state.get("repo_slug") != current_slug:
-                continue
-            if _is_lock_stale(state):
-                lock_file.unlink(missing_ok=True)
-                continue
-            if state.get("task_id", ""):
-                return True
-        except (json.JSONDecodeError, OSError):
-            lock_file.unlink(missing_ok=True)
+  current_slug = _derive_repo_slug()
+  if not GOVERNANCE_STATE_DIR.exists():
     return False
+
+  # ── Phase 1: Exact match by Hermes session ID ──
+  if hermes_session_id:
+    lock_path = GOVERNANCE_STATE_DIR / f".governance-{hermes_session_id}.json"
+    if lock_path.exists():
+      try:
+        state = json.loads(lock_path.read_text())
+        if state.get("task_id", "") and not _is_lock_stale(state):
+          return True
+        if state.get("task_id", ""):
+          lock_path.unlink(missing_ok=True) # stale — clean
+      except (json.JSONDecodeError, OSError):
+        lock_path.unlink(missing_ok=True)
+
+  # ── Phase 2: Scan by repo_slug (backward compat fallback) ──
+  for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
+    try:
+      state = json.loads(lock_file.read_text())
+      if state.get("repo_slug") is not None and state.get("repo_slug") != current_slug:
+        continue
+      if _is_lock_stale(state):
+        lock_file.unlink(missing_ok=True)
+        continue
+      if state.get("task_id", ""):
+        return True
+    except (json.JSONDecodeError, OSError):
+      lock_file.unlink(missing_ok=True)
+  return False
 ```
 
 ### Format
 
 ```json
 {
-  "task_id": "fix-auth-403",
-  "description": "Add rate limiting to auth endpoint",
-  "repo_slug": "hermes-cortex",
-  "started_at": "2026-07-04T00:00:00",
-  "agent": "joseph",
-  "session_id": "sess_abc123def456",
-  "ttl_seconds": 3600,
-  "heartbeat_at": "2026-07-04T00:00:00Z",
-  "scored": false
+ "task_id": "fix-auth-403",
+ "description": "Add rate limiting to auth endpoint",
+ "repo_slug": "hermes-cortex",
+ "started_at": "2026-07-04T00:00:00",
+ "agent": "joseph",
+ "session_id": "sess_abc123def456",
+ "ttl_seconds": 3600,
+ "heartbeat_at": "2026-07-04T00:00:00Z",
+ "scored": false
 }
 ```
 
@@ -425,10 +425,10 @@ ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/
 
 # Verify
 ls -la ~/.hermes/plugins/governance-enforcer/
-# Should show: __init__.py  plugin.yaml
+# Should show: __init__.py plugin.yaml
 
 # Restart Hermes for changes to take effect
-/reset   # or start a new hermes process
+/reset  # or start a new hermes process
 ```
 
 ### Debug Plugin Loading
@@ -477,10 +477,10 @@ For a clean install on any agent:
 ```bash
 mkdir -p ~/.hermes/plugins
 if [ -L ~/.hermes/plugins/governance-enforcer ] || [ -d ~/.hermes/plugins/governance-enforcer ]; then
-  echo "Plugin exists, skipping symlink"
+ echo "Plugin exists, skipping symlink"
 else
-  ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/
-  echo "Governance enforcer plugin installed. Restart Hermes to activate."
+ ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/
+ echo "Governance enforcer plugin installed. Restart Hermes to activate."
 fi
 ```
 
@@ -516,17 +516,17 @@ To write a custom policy plugin (e.g. block all `docker run` commands):
 import re
 
 def register(ctx):
-    def handler(tool_name, args, **kwargs):
-        if tool_name == "terminal":
-            command = args.get("command", "")
-            if re.search(r"docker\s+run", command):
-                return {
-                    "action": "block",
-                    "message": "Docker containers must be deployed via Docker Compose only. See ~/deploy/README.md",
-                }
-        return None  # everything else passes
+  def handler(tool_name, args, **kwargs):
+    if tool_name == "terminal":
+      command = args.get("command", "")
+      if re.search(r"docker\s+run", command):
+        return {
+          "action": "block",
+          "message": "Docker containers must be deployed via Docker Compose only. See ~/deploy/README.md",
+        }
+    return None # everything else passes
 
-    ctx.register_hook("pre_tool_call", handler)
+  ctx.register_hook("pre_tool_call", handler)
 ```
 
 ```yaml
@@ -566,24 +566,24 @@ is classified into one of three tiers:
 
 ```
 rm|mv|cp|install|apt|apt-get|dpkg|pip|npm|brew|make|cmake|docker compose|kubectl
-systemctl|service   start|stop|restart|reload|enable|disable|daemon-reload
+systemctl|service  start|stop|restart|reload|enable|disable|daemon-reload
 chmod|chown|chattr|mkfs|fdisk|mount|umount|dd
-sed|awk|tee   -i
-git   push|commit|merge|rebase|reset|cherry-pick|branch -d/-D|tag|stash|checkout|restore|clean|rm|mv|update-ref|config|submodule
-cronjob   create|update|remove|delete
-python|python3   -c (inline code)
-bash|sh|zsh   -c (inline commands)
-python3   -m pip install
+sed|awk|tee  -i
+git  push|commit|merge|rebase|reset|cherry-pick|branch -d/-D|tag|stash|checkout|restore|clean|rm|mv|update-ref|config|submodule
+cronjob  create|update|remove|delete
+python|python3  -c (inline code)
+bash|sh|zsh  -c (inline commands)
+python3  -m pip install
 wget -O, curl -o
 nohup
-docker   run|build|push|commit|tag|save|load|rmi|system prune
+docker  run|build|push|commit|tag|save|load|rmi|system prune
 crontab
 usermod|groupmod|useradd|groupadd|passwd
-ufw   enable|disable|allow|deny|reject|delete|reset
+ufw  enable|disable|allow|deny|reject|delete|reset
 nginx -s reload|stop|quit
 journalctl --rotate
-echo|printf|cat|tee   with > or >> redirect
-printf|cat   with << heredoc
+echo|printf|cat|tee  with > or >> redirect
+printf|cat  with << heredoc
 touch|mkdir|ln|rsync|unzip|tar|mkfifo
 npx|yarn|go|cargo|flatpak|snap
 python3 script.py, node app.js, bash setup.sh (interpreter + .py/.js/.rb/.pl/.sh file)
@@ -606,15 +606,15 @@ happens and how to verify a clean upgrade.
 
 ### Upgrade steps
 
-1. `git pull && bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all`
-   - Cleans all stale slug-based lock files automatically
-   - Ensures the new enforcer source is deployed
+1. `git pull && bash ~/hermes-cortex/ops/scripts/cortex-update.sh `
+  - Cleans all stale slug-based lock files automatically
+  - Ensures the new enforcer source is deployed
 2. `/reset` (new Hermes session)
-   - The new enforcer loads with scan-based lock checking
+  - The new enforcer loads with scan-based lock checking
 3. Verify:
-   - `bash ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --once`
-   - Should show: `Governance coverage — PASS — all bypass closures validated`
-   - Should show: `Governance locks — PASS — no lock files`
+  - `bash ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --once`
+  - Should show: `Governance coverage — PASS — all bypass closures validated`
+  - Should show: `Governance locks — PASS — no lock files`
 
 ### Mid-upgrade agents
 
@@ -646,30 +646,30 @@ to discover lock files. They use a **bridge file** mechanism:
 
 ```
 Hermes session starts
-  → kwargs['session_id'] = 'sess_20260724_123456_abc123'  (with 'sess_' prefix)
-  → Enforcer pre_tool_call fires on every tool call
-    → _write_session_marker(hermes_session_id) writes:
-        1. ~/.hermes-cortex/state/.hermes-session-current.id  (primary bridge)
-        2. ~/.hermes-cortex/state/.hermes-session-{pid}.id     (PID fallback)
-        3. ~/.hermes/session.id                                (MCP cache fallback)
-  → MCP get_session_id() reads Priority 1:
-        1. .hermes-session-current.id    ← primary (written by enforcer)
-        2. .hermes-session-{pid}.id      ← PID scan (legacy fallback)
-        3. ~/.hermes/session.id          ← cached (final fallback)
-        4. Generate new UUID             ← no enforcer present (first tool call?)
+ → kwargs['session_id'] = 'sess_20260724_123456_abc123' (with 'sess_' prefix)
+ → Enforcer pre_tool_call fires on every tool call
+  → _write_session_marker(hermes_session_id) writes:
+    1. ~/.hermes-cortex/state/.hermes-session-current.id (primary bridge)
+    2. ~/.hermes-cortex/state/.hermes-session-{pid}.id   (PID fallback)
+    3. ~/.hermes/session.id                (MCP cache fallback)
+ → MCP get_session_id() reads Priority 1:
+    1. .hermes-session-current.id  ← primary (written by enforcer)
+    2. .hermes-session-{pid}.id   ← PID scan (legacy fallback)
+    3. ~/.hermes/session.id     ← cached (final fallback)
+    4. Generate new UUID       ← no enforcer present (first tool call?)
 ```
 
 ### Critical rules
 
 1. **The session ID always has the `sess_` prefix** — kwargs delivers it as
-   `sess_20260724_...`. The bridge files and lock files use this exact format.
+  `sess_20260724_...`. The bridge files and lock files use this exact format.
 2. **`$HERMES_SESSION_ID` env var should NOT be used** — its format has no
-   `sess_` prefix, so using it would create lock files the enforcer can't find.
+  `sess_` prefix, so using it would create lock files the enforcer can't find.
 3. **The bridge file is written on EVERY pre_tool_call** — not just on write tools.
-   This ensures the MCP can discover the session ID even on the first tool call.
+  This ensures the MCP can discover the session ID even on the first tool call.
 4. **Stale `__pycache__` can hide old enforcer code** — after updating the enforcer
-   source, run: `rm -rf plugins/hermes-governance-enforcer/__pycache__ && /reset`
-   The doctor warns about this automatically via the "Plugin pycache" check.
+  source, run: `rm -rf plugins/hermes-governance-enforcer/__pycache__ && /reset`
+  The doctor warns about this automatically via the "Plugin pycache" check.
 
 ### Diagnostic: session ID mismatch
 
@@ -684,7 +684,7 @@ ls ~/.hermes-cortex/state/.governance-*.json
 
 # If the filename (sess_<id>) doesn't match the bridge file content,
 # the handoff is broken. Run cortex-update to clear pycache and fix.
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 ```
 
 ### Root causes of drift

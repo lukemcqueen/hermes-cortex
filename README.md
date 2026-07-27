@@ -171,8 +171,8 @@ Takes: **8–15 minutes** (mostly model downloads).
 **Quick start (30 seconds):** Try the governance scoring tools:
 
 ```bash
-bash core/governance/setup.sh    # install deps + symlinks
-score-cycle --help                    # ready to use
+bash core/governance/setup.sh  # install deps + symlinks
+score-cycle --help          # ready to use
 ```
 
 **Enforce scoring across all projects:**
@@ -238,11 +238,11 @@ CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 ### Configuration
 
 ```bash
-export CORTEX_OS="linux"                     # Auto-detected: darwin, linux, windows
-export CORTEX_PROFILE="laptop"               # 'server' (default) or 'laptop'
-export CORTEX_SOURCES="me,shared,default"    # Brain source names
-export CORTEX_HOME="$HOME"                   # User home directory
-export HERMES_HOME="$HOME/.hermes"           # Hermes config directory
+export CORTEX_OS="linux"           # Auto-detected: darwin, linux, windows
+export CORTEX_PROFILE="laptop"        # 'server' (default) or 'laptop'
+export CORTEX_SOURCES="me,shared,default"  # Brain source names
+export CORTEX_HOME="$HOME"          # User home directory
+export HERMES_HOME="$HOME/.hermes"      # Hermes config directory
 ```
 
 **OS Support:** macOS (launchd, Homebrew) · Linux (systemd, apt/dnf/pacman) · Windows (winget/choco, limited)
@@ -267,13 +267,13 @@ To upgrade an existing Hermes Cortex installation:
 ```bash
 cd ~/hermes-cortex
 git pull --ff-only
-bash ops/scripts/cortex-update.sh          # delta update (changed files only)
+bash ops/scripts/cortex-update.sh     # delta update (changed files only)
 ```
 
 The `cortex-update.sh` script auto-detects what files changed and deploys only the deltas. For a full re-deployment:
 
 ```bash
-bash ops/scripts/cortex-update.sh --force-all
+bash ops/scripts/cortex-update.sh
 ```
 
 > **Note:** After a major version upgrade, your agents should `/reset` their sessions to pick up new skills and plugin configurations.
@@ -286,11 +286,11 @@ The fleet update pipeline orchestrates coordinated rollouts across all agents us
 
 ```
 Moses ──UPDATE_REQUEST──→ AgentBus ──→ Kustos (server-agent)
-                                          ──→ Gisu (server-agent)
-                                          ──→ Titus (dev-agent, polls inbox)
+                     ──→ Gisu (server-agent)
+                     ──→ Titus (dev-agent, polls inbox)
 Kustos ──UPDATE_RESULT──→ AgentBus ──→ Moses
-Gisu   ──UPDATE_RESULT──→ AgentBus ──→ Moses
-Titus  ──UPDATE_RESULT──→ AgentBus ──→ Moses
+Gisu  ──UPDATE_RESULT──→ AgentBus ──→ Moses
+Titus ──UPDATE_RESULT──→ AgentBus ──→ Moses
 ```
 
 ### Script Naming Convention

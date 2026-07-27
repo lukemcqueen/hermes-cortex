@@ -6,10 +6,10 @@ via the Agent Bus (PGMQ). Agents receive requests, execute work, report results.
 ## Message Flow
 
 ```
-Moses → Agent:    UPDATE_REQUEST    (cortex-update + doctor)
-Agent → Moses:    UPDATE_RESULT     (success/fail + doctor JSON + git SHA)
-Moses → Agent:    FIX_REQUEST       (targeted fix instruction)
-Agent → Moses:    FIX_RESULT        (fix applied? + evidence)
+Moses → Agent:  UPDATE_REQUEST  (cortex-update + doctor)
+Agent → Moses:  UPDATE_RESULT   (success/fail + doctor JSON + git SHA)
+Moses → Agent:  FIX_REQUEST    (targeted fix instruction)
+Agent → Moses:  FIX_RESULT    (fix applied? + evidence)
 Moses → Telegram: Fleet status report (aggregated)
 ```
 
@@ -37,21 +37,21 @@ Sent when Moses pushes new code to main and the fleet should update.
 
 ```json
 {
-  "from": "moses",
-  "to": "inbox_gisu",
-  "topic": "fleet-update",
-  "subject": "UPDATE_REQUEST",
-  "correlation_id": "uuid-v4",
-  "priority": "normal",
-  "body": {
-    "target_sha": "d2bb495",
-    "target_version": "2.0.0",
-    "branch": "main",
-    "mode": "force-all",
-    "run_doctor": true,
-    "deadline_minutes": 30,
-    "summary": "feat(doctor): add structured JSON output"
-  }
+ "from": "moses",
+ "to": "inbox_gisu",
+ "topic": "fleet-update",
+ "subject": "UPDATE_REQUEST",
+ "correlation_id": "uuid-v4",
+ "priority": "normal",
+ "body": {
+  "target_sha": "d2bb495",
+  "target_version": "2.0.0",
+  "branch": "main",
+  "mode": "force-all",
+  "run_doctor": true,
+  "deadline_minutes": 30,
+  "summary": "feat(doctor): add structured JSON output"
+ }
 }
 ```
 
@@ -75,28 +75,28 @@ Sent by each agent after processing UPDATE_REQUEST.
 
 ```json
 {
-  "from": "gisu",
-  "to": "inbox_moses",
-  "topic": "fleet-update",
-  "subject": "UPDATE_RESULT",
-  "correlation_id": "<same uuid from request>",
-  "priority": "normal",
-  "body": {
-    "success": true,
-    "git_sha_before": "4ef429e",
-    "git_sha_after": "d2bb495",
-    "version": "2.0.0",
-    "update_output": "✓ 8 file(s) updated\n✓ All 4 cortex services managed by systemd (active)",
-    "doctor": {
-      "healthy": true,
-      "pass": 39,
-      "warn": 0,
-      "fail": 0,
-      "checks": [{"name": "Repo branch", "status": "PASS", "detail": "on 'main'"}]
-    },
-    "errors": [],
-    "duration_seconds": 45.2
-  }
+ "from": "gisu",
+ "to": "inbox_moses",
+ "topic": "fleet-update",
+ "subject": "UPDATE_RESULT",
+ "correlation_id": "<same uuid from request>",
+ "priority": "normal",
+ "body": {
+  "success": true,
+  "git_sha_before": "4ef429e",
+  "git_sha_after": "d2bb495",
+  "version": "2.0.0",
+  "update_output": "✓ 8 file(s) updated\n✓ All 4 cortex services managed by systemd (active)",
+  "doctor": {
+   "healthy": true,
+   "pass": 39,
+   "warn": 0,
+   "fail": 0,
+   "checks": [{"name": "Repo branch", "status": "PASS", "detail": "on 'main'"}]
+  },
+  "errors": [],
+  "duration_seconds": 45.2
+ }
 }
 ```
 
@@ -121,18 +121,18 @@ Sent when UPDATE_RESULT contains issues Moses can identify and fix.
 
 ```json
 {
-  "from": "moses",
-  "to": "inbox_kustos",
-  "topic": "fleet-update",
-  "subject": "FIX_REQUEST",
-  "correlation_id": "uuid-v4",
-  "priority": "high",
-  "body": {
-    "issue": "AGENTS.md needs sync",
-    "fix": "cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md",
-    "verify": "python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --json",
-    "deadline_minutes": 10
-  }
+ "from": "moses",
+ "to": "inbox_kustos",
+ "topic": "fleet-update",
+ "subject": "FIX_REQUEST",
+ "correlation_id": "uuid-v4",
+ "priority": "high",
+ "body": {
+  "issue": "AGENTS.md needs sync",
+  "fix": "cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md",
+  "verify": "python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --json",
+  "deadline_minutes": 10
+ }
 }
 ```
 
@@ -153,20 +153,20 @@ Sent after agent executes a fix.
 
 ```json
 {
-  "from": "kustos",
-  "to": "inbox_moses",
-  "topic": "fleet-update",
-  "subject": "FIX_RESULT",
-  "correlation_id": "<same uuid from request>",
-  "priority": "normal",
-  "body": {
-    "success": true,
-    "fix_output": "COPY OK",
-    "verify_output": "{\"summary\": {\"pass\": 39, \"warn\": 0, ...}}",
-    "doctor_healthy": true,
-    "duration_seconds": 2.1,
-    "errors": []
-  }
+ "from": "kustos",
+ "to": "inbox_moses",
+ "topic": "fleet-update",
+ "subject": "FIX_RESULT",
+ "correlation_id": "<same uuid from request>",
+ "priority": "normal",
+ "body": {
+  "success": true,
+  "fix_output": "COPY OK",
+  "verify_output": "{\"summary\": {\"pass\": 39, \"warn\": 0, ...}}",
+  "doctor_healthy": true,
+  "duration_seconds": 2.1,
+  "errors": []
+ }
 }
 ```
 
@@ -218,19 +218,19 @@ Sent to revert an agent to a previous known-good SHA when an update fails.
 
 ```json
 {
-  "from": "moses",
-  "to": "inbox_gisu",
-  "topic": "fleet-update",
-  "subject": "ROLLBACK_REQUEST",
-  "correlation_id": "uuid-v4",
-  "priority": "high",
-  "body": {
-    "target_sha": "4ef429e",
-    "reason": "Doctor failed after update: 2 warn, 1 fail",
-    "dispatch_id": "fleet-update-abc123-gisu",
-    "run_doctor": true,
-    "deadline_minutes": 10
-  }
+ "from": "moses",
+ "to": "inbox_gisu",
+ "topic": "fleet-update",
+ "subject": "ROLLBACK_REQUEST",
+ "correlation_id": "uuid-v4",
+ "priority": "high",
+ "body": {
+  "target_sha": "4ef429e",
+  "reason": "Doctor failed after update: 2 warn, 1 fail",
+  "dispatch_id": "fleet-update-abc123-gisu",
+  "run_doctor": true,
+  "deadline_minutes": 10
+ }
 }
 ```
 
@@ -250,21 +250,21 @@ Sent after agent reverts and verifies.
 
 ```json
 {
-  "from": "gisu",
-  "to": "inbox_moses",
-  "topic": "fleet-update",
-  "subject": "ROLLBACK_RESULT",
-  "correlation_id": "<same uuid from request>",
-  "priority": "normal",
-  "body": {
-    "success": true,
-    "sha_before": "d2bb495",
-    "sha_after": "4ef429e",
-    "reverted": true,
-    "doctor": {"healthy": true, "pass": 39, "warn": 0, "fail": 0},
-    "duration_seconds": 7.3,
-    "errors": []
-  }
+ "from": "gisu",
+ "to": "inbox_moses",
+ "topic": "fleet-update",
+ "subject": "ROLLBACK_RESULT",
+ "correlation_id": "<same uuid from request>",
+ "priority": "normal",
+ "body": {
+  "success": true,
+  "sha_before": "d2bb495",
+  "sha_after": "4ef429e",
+  "reverted": true,
+  "doctor": {"healthy": true, "pass": 39, "warn": 0, "fail": 0},
+  "duration_seconds": 7.3,
+  "errors": []
+ }
 }
 ```
 
@@ -286,16 +286,16 @@ Sent as a lightweight bus message (no update, just verification):
 
 ```json
 {
-  "from": "moses",
-  "to": "inbox_gisu",
-  "topic": "fleet-update",
-  "subject": "GIT_AUTH_CHECK",
-  "correlation_id": "uuid-v4",
-  "priority": "normal",
-  "body": {
-    "remote": "origin",
-    "expected_url": "https://github.com/fleet-operator/hermes-cortex.git"
-  }
+ "from": "moses",
+ "to": "inbox_gisu",
+ "topic": "fleet-update",
+ "subject": "GIT_AUTH_CHECK",
+ "correlation_id": "uuid-v4",
+ "priority": "normal",
+ "body": {
+  "remote": "origin",
+  "expected_url": "https://github.com/fleet-operator/hermes-cortex.git"
+ }
 }
 ```
 

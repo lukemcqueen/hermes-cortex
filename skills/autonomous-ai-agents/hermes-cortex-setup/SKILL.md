@@ -2,38 +2,38 @@
 name: hermes-cortex-setup
 description: Install and configure Hermes Cortex core components — Ollama, Bun, gbrain, health server, agent registry, hooks, cron jobs, and profile scaffolding on a target machine.
 behavioral_principles:
-  - Never install gbrain via pip3 or bare 'npm install -g gbrain' — the npm registry has a squatter package (old GPU JS library). Always use 'bun install -g github:garrytan/gbrain'.
-  - When installing Bun, prefer download-inspect-execute over raw curl|bash when the security scanner flags it.
-  - Always create a .env file in ~/hermes-cortex/ before running install-orch-crons.sh to avoid silent failure.
-  - When sudo is unavailable, install Ollama from GitHub releases tarballs (not the official install.sh which requires root).
-  - Before writing custom configs or inventing new approaches, check the repo's docs/ and ops/scripts/ first for existing documented solutions. Use the documented tools as primary; custom workarounds are a last resort.
-  - When setting up services on a target machine, inspect running configs FIRST — check /etc/nginx/sites-enabled/, systemctl --user list-units, ss -tlnp, ps aux. The deployed nginx upstream blocks define the correct internal ports. Never invent port assignments before checking what's already deployed. Check in order: (1) running machine configs, (2) hermes-cortex repo docs/, (3) agent-registry.template.json.
-  - For systemd user services that run bun/gbrain scripts, always set explicit PATH in Environment= — systemd does not inherit the user shell's PATH.
-  - Verify each install step with a version check or doctor command before proceeding to the next.
-  - After installing components, update PATH persistence in shell config (~/.bashrc) for Bun and ~/.local/bin.
-  - The canonical SOUL.md path is ~/.hermes/SOUL.md — never write to /home/<other-user>/ paths without verifying they exist.
-  - The brain directory structure needs git-init'd MECE subdirectories (19 dirs), not just flat kb/memories dirs.
-  - The health-vector.py server binds to 127.0.0.1 by default; nginx proxies external traffic. No need to patch bind addresses — health-vector.py has zero pip dependencies and no EXTERNAL_HEALTH_URL requirement.
-  - The gbrain CLI 'sources add' command can hang indefinitely on first run; use a timeout wrapper or configure the source path via the DB config directly.
-  - When the user gives a cross-user path for SOUL.md (e.g. /home/moses/...), redirect to ~/.hermes/SOUL.md and inform them — never create files in another user's home.
-  - The user prefers the short /health endpoint path for external health URLs, not /api/v1/health. The former returns a compact vector, the latter returns full JSON. Always default to /health unless the user specifies otherwise.
-  - The health server exposes two endpoints with different response formats: /health (compact 9-element vector, ideal for orchestrator polling) and /api/v1/health (full JSON, ideal for debugging). When configuring EXTERNAL_HEALTH_URL, use /health per user preference.
-  - The gbrain sources add command can hang indefinitely on first run because it initializes the embedding model or does I/O. Workaround: use timeout wrapper or pipe EOF into stdin. The timeout causes a non-zero exit even on success, so check actual source status separately.
-  - When setting up an agent on a target machine, always check the machine's existing deployed configs FIRST — especially /etc/nginx/sites-enabled/ and /etc/systemd/system/ and /etc/nginx/conf.d/. The actual upstream port definitions may differ from what the docs say. Check nginx configs for upstream blocks before choosing internal ports.
-  - Before writing custom configs or inventing port schemes, check three sources in order: (1) the running config on the machine itself (nginx sites-enabled, systemd services), (2) the hermes-cortex repo docs/ directory, (3) the agent-registry.template.json. Only after exhausting these three should you write a custom approach.
-  - Before importing markdown files into gbrain, stop the gbrain-sync.service daemon first — gbrain import fails with "Timed out waiting for PGLite lock" if the sync daemon holds the database lock. Restart sync after import completes.
-  - fail2ban, nginx config deployment, and apt package installation require sudo. When these steps are needed and sudo is unavailable, prepare config files at `~/.hermes-cortex/nginx/` and scripts at `~/.hermes-cortex/scripts/` with full terminal commands printed for the user to copy-paste. Never assume sudo is available.
-  - The health-vector.py service must run on port 8905 (127.0.0.1). This is what the deployed nginx `upstream health_backend` block expects. Do not change the port unless the nginx config explicitly defines a different upstream.
-  - After the `src/` → `ops/` repo migration (July 2026), many deployed scripts retained stale `src/` paths. When fixing a script that references `src/scripts/` or `src/loop-governance/`, check if the file moved to `ops/scripts/` or `runtime/loop-governance/`. The old `src/` tree was completely removed. Grep for `src/` references in any script you patch as a matter of course.
-  - Bus on 8903, health-vector on 8905. Never conflate them. The bus ExecStart must use the Hermes venv python (has uvicorn), not /usr/bin/python3.
-  - Name the bus service file agent-bus.service, not hermes-agent-bus.service. The doctor checks for exactly agent-bus.service.
-  - Verify bus setup at three layers: (1) systemctl is-active agent-bus.service, (2) curl :8903/health returns backend pgmq, (3) nginx upstream agent_bus_backend matches :8903. A running process on a port is not enough.
-  - After cortex-update --force-all, check ~/.hermes/scripts/ for symlinks that point outside the scripts dir. Cron's no_agent runtime rejects symlinks. Replace with real `cp` copies.
-  - no_agent cron scripts don't inherit Hermes env vars. If a script needs CORTEX_BUS_TOKEN or CORTEX_BUS_URL, ensure they're set via ~/.hermes-cortex/cortex-bus.conf, not just ~/hermes-cortex/.env.
-  - After running install-orch-crons.sh, always check for stale old-name duplicate crons (bus-* vs orch-bus-*) and remove them. The installer doesn't auto-uninstall renamed crons.
-  - When patching a no_agent cron script that uses `docker`, always wrap with `sg docker -c`. The cron runtime doesn't have docker group access even if the agent's shell does.
-  - After cortex-update --force-all, verify deployed cron scripts in ~/.hermes/scripts/ are real file copies, not symlinks to the repo. Cron runtime rejects symlinks that resolve outside ~/.hermes/scripts/.
-  - When running cortex-update.sh from its deployed location at ~/.hermes/scripts/, always export REPO_DIR=$HOME/hermes-cortex first. The script auto-detects REPO_DIR from $(dirname "${BASH_SOURCE[0]}") which resolves to ~/.hermes/scripts/ — not a git repo — and fails with "✗ Not a git repository".
+ - Never install gbrain via pip3 or bare 'npm install -g gbrain' — the npm registry has a squatter package (old GPU JS library). Always use 'bun install -g github:garrytan/gbrain'.
+ - When installing Bun, prefer download-inspect-execute over raw curl|bash when the security scanner flags it.
+ - Always create a .env file in ~/hermes-cortex/ before running install-orch-crons.sh to avoid silent failure.
+ - When sudo is unavailable, install Ollama from GitHub releases tarballs (not the official install.sh which requires root).
+ - Before writing custom configs or inventing new approaches, check the repo's docs/ and ops/scripts/ first for existing documented solutions. Use the documented tools as primary; custom workarounds are a last resort.
+ - When setting up services on a target machine, inspect running configs FIRST — check /etc/nginx/sites-enabled/, systemctl --user list-units, ss -tlnp, ps aux. The deployed nginx upstream blocks define the correct internal ports. Never invent port assignments before checking what's already deployed. Check in order: (1) running machine configs, (2) hermes-cortex repo docs/, (3) agent-registry.template.json.
+ - For systemd user services that run bun/gbrain scripts, always set explicit PATH in Environment= — systemd does not inherit the user shell's PATH.
+ - Verify each install step with a version check or doctor command before proceeding to the next.
+ - After installing components, update PATH persistence in shell config (~/.bashrc) for Bun and ~/.local/bin.
+ - The canonical SOUL.md path is ~/.hermes/SOUL.md — never write to /home/<other-user>/ paths without verifying they exist.
+ - The brain directory structure needs git-init'd MECE subdirectories (19 dirs), not just flat kb/memories dirs.
+ - The health-vector.py server binds to 127.0.0.1 by default; nginx proxies external traffic. No need to patch bind addresses — health-vector.py has zero pip dependencies and no EXTERNAL_HEALTH_URL requirement.
+ - The gbrain CLI 'sources add' command can hang indefinitely on first run; use a timeout wrapper or configure the source path via the DB config directly.
+ - When the user gives a cross-user path for SOUL.md (e.g. /home/moses/...), redirect to ~/.hermes/SOUL.md and inform them — never create files in another user's home.
+ - The user prefers the short /health endpoint path for external health URLs, not /api/v1/health. The former returns a compact vector, the latter returns full JSON. Always default to /health unless the user specifies otherwise.
+ - The health server exposes two endpoints with different response formats: /health (compact 9-element vector, ideal for orchestrator polling) and /api/v1/health (full JSON, ideal for debugging). When configuring EXTERNAL_HEALTH_URL, use /health per user preference.
+ - The gbrain sources add command can hang indefinitely on first run because it initializes the embedding model or does I/O. Workaround: use timeout wrapper or pipe EOF into stdin. The timeout causes a non-zero exit even on success, so check actual source status separately.
+ - When setting up an agent on a target machine, always check the machine's existing deployed configs FIRST — especially /etc/nginx/sites-enabled/ and /etc/systemd/system/ and /etc/nginx/conf.d/. The actual upstream port definitions may differ from what the docs say. Check nginx configs for upstream blocks before choosing internal ports.
+ - Before writing custom configs or inventing port schemes, check three sources in order: (1) the running config on the machine itself (nginx sites-enabled, systemd services), (2) the hermes-cortex repo docs/ directory, (3) the agent-registry.template.json. Only after exhausting these three should you write a custom approach.
+ - Before importing markdown files into gbrain, stop the gbrain-sync.service daemon first — gbrain import fails with "Timed out waiting for PGLite lock" if the sync daemon holds the database lock. Restart sync after import completes.
+ - fail2ban, nginx config deployment, and apt package installation require sudo. When these steps are needed and sudo is unavailable, prepare config files at `~/.hermes-cortex/nginx/` and scripts at `~/.hermes-cortex/scripts/` with full terminal commands printed for the user to copy-paste. Never assume sudo is available.
+ - The health-vector.py service must run on port 8905 (127.0.0.1). This is what the deployed nginx `upstream health_backend` block expects. Do not change the port unless the nginx config explicitly defines a different upstream.
+ - After the `src/` → `ops/` repo migration (July 2026), many deployed scripts retained stale `src/` paths. When fixing a script that references `src/scripts/` or `src/loop-governance/`, check if the file moved to `ops/scripts/` or `runtime/loop-governance/`. The old `src/` tree was completely removed. Grep for `src/` references in any script you patch as a matter of course.
+ - Bus on 8903, health-vector on 8905. Never conflate them. The bus ExecStart must use the Hermes venv python (has uvicorn), not /usr/bin/python3.
+ - Name the bus service file agent-bus.service, not hermes-agent-bus.service. The doctor checks for exactly agent-bus.service.
+ - Verify bus setup at three layers: (1) systemctl is-active agent-bus.service, (2) curl :8903/health returns backend pgmq, (3) nginx upstream agent_bus_backend matches :8903. A running process on a port is not enough.
+ - After cortex-update , check ~/.hermes/scripts/ for symlinks that point outside the scripts dir. Cron's no_agent runtime rejects symlinks. Replace with real `cp` copies.
+ - no_agent cron scripts don't inherit Hermes env vars. If a script needs CORTEX_BUS_TOKEN or CORTEX_BUS_URL, ensure they're set via ~/.hermes-cortex/cortex-bus.conf, not just ~/hermes-cortex/.env.
+ - After running install-orch-crons.sh, always check for stale old-name duplicate crons (bus-* vs orch-bus-*) and remove them. The installer doesn't auto-uninstall renamed crons.
+ - When patching a no_agent cron script that uses `docker`, always wrap with `sg docker -c`. The cron runtime doesn't have docker group access even if the agent's shell does.
+ - After cortex-update , verify deployed cron scripts in ~/.hermes/scripts/ are real file copies, not symlinks to the repo. Cron runtime rejects symlinks that resolve outside ~/.hermes/scripts/.
+ - When running cortex-update.sh from its deployed location at ~/.hermes/scripts/, always export REPO_DIR=$HOME/hermes-cortex first. The script auto-detects REPO_DIR from $(dirname "${BASH_SOURCE[0]}") which resolves to ~/.hermes/scripts/ — not a git repo — and fails with "✗ Not a git repository".
 trigger: User asks to install, set up, deploy, or bootstrap Hermes Cortex, or mentions 'cortex setup', 'install cortex', 'hermes-cortex components'. The cron health report shows an agent as 🔴 unreachable — the fix is often missing health server + agent registry on that machine.
 ---
 
@@ -79,10 +79,10 @@ Ollama's official `install.sh` requires root to install to `/usr/local`. When su
 
 ```bash
 # Detect the correct download URL (format changed to .tar.zst in v0.31+)
-OLLAMA_VERSION="v0.31.2"  # Latest stable as of Jul 2026
+OLLAMA_VERSION="v0.31.2" # Latest stable as of Jul 2026
 curl -fsSL --retry 3 --retry-delay 5 \
-  -o /tmp/ollama-linux-amd64.tar.zst \
-  "https://github.com/ollama/ollama/releases/download/${OLLAMA_VERSION}/ollama-linux-amd64.tar.zst"
+ -o /tmp/ollama-linux-amd64.tar.zst \
+ "https://github.com/ollama/ollama/releases/download/${OLLAMA_VERSION}/ollama-linux-amd64.tar.zst"
 
 # Extract
 mkdir -p /tmp/ollama-extract
@@ -153,7 +153,7 @@ bash /tmp/bun-install.sh
 # Verify
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
-bun --version   # Should output v1.3.x or later
+bun --version  # Should output v1.3.x or later
 ```
 
 **Pitfall:** The security scanner may block `curl https://bun.sh/install | bash` style piping. The download→inspect→run pattern above avoids this.
@@ -172,7 +172,7 @@ rm -f "$BUN_INSTALL/bin/gbrain" 2>/dev/null
 bun install -g github:garrytan/gbrain
 
 # Verify
-gbrain --version   # Should output 0.42.x or later
+gbrain --version  # Should output 0.42.x or later
 ```
 
 ### 4. Initialize gbrain
@@ -265,9 +265,9 @@ curl -s http://127.0.0.1:<PORT>/
 - `h` field shows the full hostname string (e.g. `"esther"`), not just the first letter
 - The compact vector at `/` and `/health` is all the orchestrator needs
 - **CRITICAL — add `Environment=PATH=` to the service unit.** `health-vector.py` uses `shutil.which()` to detect ollama and gbrain. Systemd does NOT inherit the user shell's PATH — if `~/.local/bin` and `~/.bun/bin` aren't in the service's PATH, both ollama and gbrain report as `0` (not installed), and `services` cascades to `-1` because not all key services are found. The vector goes from 7/9 → 5/7. Always include:
-  ```
-  Environment=PATH=/home/<user>/.local/bin:/home/<user>/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-  ```
+ ```
+ Environment=PATH=/home/<user>/.local/bin:/home/<user>/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ ```
 
 **CRITICAL — do NOT assign the nginx external port as the health server's internal port.** The deployed nginx config defines `upstream health_backend { server 127.0.0.1:8905; }`. The internal port is always **8905** for health. Check `/etc/nginx/sites-enabled/*` for the actual upstream definition before choosing — never invent a +1 pattern.
 
@@ -306,27 +306,27 @@ mkdir -p ~/.hermes-cortex/state
 
 cat > ~/.hermes-cortex/state/agent-registry.json << 'EOF'
 {
-  "version": 3,
-  "health_vector_map": [
-    "resources","services","no_errored_crons","no_stale_crons",
-    "nginx","ollama","gbrain","disk_ok","gbrain_sources_ok"
-  ],
-  "agents": {
-    "<agent-name>": {
-      "name": "<Agent Name>",
-      "role": "<role>",
-      "hostname": "<hostname>",
-      "is_server": true,
-      "accessible": true,
-      "platform": "linux",
-      "health_method": "http",
-      "health_url": "http://127.0.0.1:8905/api/v1/health",
-      "description": "<Agent Name> — <description>",
-      "inbox_user": "<agent-name>",
-      "inbox_watch_schedule": "every 10m",
-      "inbox_deliver": "local"
-    }
+ "version": 3,
+ "health_vector_map": [
+  "resources","services","no_errored_crons","no_stale_crons",
+  "nginx","ollama","gbrain","disk_ok","gbrain_sources_ok"
+ ],
+ "agents": {
+  "<agent-name>": {
+   "name": "<Agent Name>",
+   "role": "<role>",
+   "hostname": "<hostname>",
+   "is_server": true,
+   "accessible": true,
+   "platform": "linux",
+   "health_method": "http",
+   "health_url": "http://127.0.0.1:8905/api/v1/health",
+   "description": "<Agent Name> — <description>",
+   "inbox_user": "<agent-name>",
+   "inbox_watch_schedule": "every 10m",
+   "inbox_deliver": "local"
   }
+ }
 }
 EOF
 ```
@@ -409,7 +409,7 @@ After fixing, the health vector goes from `[1, -1, -1, 1, 1, 1, 0, 1, 1]` → `[
 ```bash
 # Option A: Add --skip-failed to the systemd service ExecStart
 # Original: ExecStart=... gbrain sync --watch
-# Fixed:    ExecStart=... gbrain sync --watch --skip-failed
+# Fixed:  ExecStart=... gbrain sync --watch --skip-failed
 systemctl --user daemon-reload
 systemctl --user restart gbrain-sync
 
@@ -451,24 +451,24 @@ The gbrain brain source needs a full directory tree, not just a flat kb director
 
 ```bash
 MECE_DIRS="archive civic companies concepts conversations deals \
-  hiring household ideas inbox media meetings org people personal \
-  programs projects prompts sources writing"
+ hiring household ideas inbox media meetings org people personal \
+ programs projects prompts sources writing"
 
 for source in default; do
-  source_dir="${HOME}/.gbrain/sources/${source}"
-  mkdir -p "$source_dir"
-  for dir in $MECE_DIRS; do
-    mkdir -p "${source_dir}/${dir}"
-  done
-  # Create index.md with schema docs
-  cat > "${source_dir}/index.md" << 'INDEXEOF'
+ source_dir="${HOME}/.gbrain/sources/${source}"
+ mkdir -p "$source_dir"
+ for dir in $MECE_DIRS; do
+  mkdir -p "${source_dir}/${dir}"
+ done
+ # Create index.md with schema docs
+ cat > "${source_dir}/index.md" << 'INDEXEOF'
 # Brain Source: default
 ...
 INDEXEOF
-  # Init git — gbrain requires git per source
-  git -C "${source_dir}" init
-  git -C "${source_dir}" add -A
-  git -C "${source_dir}" commit -m "init: default brain source"
+ # Init git — gbrain requires git per source
+ git -C "${source_dir}" init
+ git -C "${source_dir}" add -A
+ git -C "${source_dir}" commit -m "init: default brain source"
 done
 mkdir -p "${HOME}/.gbrain/sources/lessons"
 ```
@@ -509,7 +509,7 @@ Add `~/.local/bin` and `~/.bun/bin` to the user's PATH:
 
 ```bash
 grep -q '\.local/bin\|\.bun/bin' ~/.bashrc || {
-  cat >> ~/.bashrc << 'EOF'
+ cat >> ~/.bashrc << 'EOF'
 
 # Hermes Cortex paths
 export PATH="$HOME/.local/bin:$HOME/.bun/bin:$PATH"
@@ -537,27 +537,27 @@ mkdir -p ~/.hermes-cortex/scripts
 mkdir -p ~/.hermes/scripts
 
 for script in system-alert-watchdog.py service-recovery.py model-health-watchdog.py \
-  remediation-sensor.py governance-auditor.py memory-to-brain-sync.py \
-  agent-apply-fixes.py nginx-threat-pipeline.sh \
-  agent-ip-submission.sh; do
-  repo_path=$(find ~/hermes-cortex/ops/scripts -name "$script" 2>/dev/null | head -1)
-  if [ -n "$repo_path" ]; then
-    cp "$repo_path" ~/.hermes/scripts/"$script"
-    cp "$repo_path" ~/.hermes-cortex/scripts/"$script"
-  fi
+ remediation-sensor.py governance-auditor.py memory-to-brain-sync.py \
+ agent-apply-fixes.py nginx-threat-pipeline.sh \
+ agent-ip-submission.sh; do
+ repo_path=$(find ~/hermes-cortex/ops/scripts -name "$script" 2>/dev/null | head -1)
+ if [ -n "$repo_path" ]; then
+  cp "$repo_path" ~/.hermes/scripts/"$script"
+  cp "$repo_path" ~/.hermes-cortex/scripts/"$script"
+ fi
 done
 ```
 
 **Pitfall — cron security rejects absolute paths AND symlinks:** The `hermes cron create` tool has two validations:
 
 1. **Absolute path rejection** — pass just the filename, not the full path:
-   ```
-   Script path must be relative to ~/.hermes/scripts/. Got absolute or home-relative path: '...'
-   ```
+  ```
+  Script path must be relative to ~/.hermes/scripts/. Got absolute or home-relative path: '...'
+  ```
 2. **Symlink traversal rejection** — symlinks resolving outside the scripts dir are blocked:
-   ```
-   Failed to create job: Script path escapes the scripts directory via traversal: 'foo.py'
-   ```
+  ```
+  Failed to create job: Script path escapes the scripts directory via traversal: 'foo.py'
+  ```
 
 Always use `cp` (real file copy) and pass just the filename (e.g. `remediation-sensor.py`), never `~/hermes-cortex/...` or a symlink.
 
@@ -566,8 +566,8 @@ Always use `cp` (real file copy) and pass just the filename (e.g. `remediation-s
 ```bash
 # Helper modules needed by Hermes Cortex cron scripts
 for helper in platform_utils.py hermes_tz.py state_tracker.py hermes_models.py; do
-  find ~/hermes-cortex/ops/scripts -name "$helper" -exec cp {} ~/.hermes/scripts/ \; 2>/dev/null
-  find ~/hermes-cortex/ops/scripts -name "$helper" -exec cp {} ~/.hermes-cortex/scripts/ \; 2>/dev/null
+ find ~/hermes-cortex/ops/scripts -name "$helper" -exec cp {} ~/.hermes/scripts/ \; 2>/dev/null
+ find ~/hermes-cortex/ops/scripts -name "$helper" -exec cp {} ~/.hermes-cortex/scripts/ \; 2>/dev/null
 done
 ```
 
@@ -575,32 +575,32 @@ Without these, cron scripts fail silently at runtime with `ModuleNotFoundError`:
 
 ```
 File "system-alert-watchdog.py", line 32, in <module>
-    from hermes_tz import format_timestamp
+  from hermes_tz import format_timestamp
 ModuleNotFoundError: No module named 'hermes_tz'
 ```
 
-**Pitfall — scripts called as sibling subprocesses by cron-run handlers are NOT auto-deployed.** `cortex-update.sh --force-all` registers script paths in its internal map and deploys them to `CORTEX_DEPLOY_HOME` (`~/.hermes-cortex/scripts/`), but some handler scripts run from the cron path (`~/.hermes/scripts/`) and resolve sibling scripts at runtime via `Path(__file__).resolve().parent / "<sibling>.py"`. For example, `agent-message-handler.py` (every 2 min cron) calls `agent-diagnostic.py` as a subprocess using this sibling-path pattern. If `agent-diagnostic.py` only exists in `~/.hermes-cortex/scripts/` but not in `~/.hermes/scripts/`, the handler silently fails at runtime.
+**Pitfall — scripts called as sibling subprocesses by cron-run handlers are NOT auto-deployed.** `cortex-update.sh ` registers script paths in its internal map and deploys them to `CORTEX_DEPLOY_HOME` (`~/.hermes-cortex/scripts/`), but some handler scripts run from the cron path (`~/.hermes/scripts/`) and resolve sibling scripts at runtime via `Path(__file__).resolve().parent / "<sibling>.py"`. For example, `agent-message-handler.py` (every 2 min cron) calls `agent-diagnostic.py` as a subprocess using this sibling-path pattern. If `agent-diagnostic.py` only exists in `~/.hermes-cortex/scripts/` but not in `~/.hermes/scripts/`, the handler silently fails at runtime.
 
-After `cortex-update --force-all`, check for this pattern and sync siblings:
+After `cortex-update `, check for this pattern and sync siblings:
 
 ```bash
 # Find handlers that reference sibling subprocess calls via resolve().parent
 grep -rl "resolve().parent" ~/.hermes/scripts/ 2>/dev/null | while read handler; do
-  handler_dir=$(dirname "$handler")
-  # Extract script names referenced as siblings
-  grep -oP 'parent\s*/\s*"\K[^"]+' "$handler" 2>/dev/null | while read sibling; do
-    src="$HOME/.hermes-cortex/scripts/$sibling"
-    dst="$handler_dir/$sibling"
-    if [ -f "$src" ] && [ ! -f "$dst" ]; then
-      cp "$src" "$dst"
-      echo "Synced sibling: $sibling → $handler_dir/"
-    fi
-  done
-  # Also sync lib/ directory if handler has peer imports from lib.
-  if grep -q "from lib\." "$handler" 2>/dev/null; then
-    mkdir -p "$handler_dir/lib"
-    cp "$HOME/.hermes-cortex/scripts/lib/"*.py "$handler_dir/lib/" 2>/dev/null
+ handler_dir=$(dirname "$handler")
+ # Extract script names referenced as siblings
+ grep -oP 'parent\s*/\s*"\K[^"]+' "$handler" 2>/dev/null | while read sibling; do
+  src="$HOME/.hermes-cortex/scripts/$sibling"
+  dst="$handler_dir/$sibling"
+  if [ -f "$src" ] && [ ! -f "$dst" ]; then
+   cp "$src" "$dst"
+   echo "Synced sibling: $sibling → $handler_dir/"
   fi
+ done
+ # Also sync lib/ directory if handler has peer imports from lib.
+ if grep -q "from lib\." "$handler" 2>/dev/null; then
+  mkdir -p "$handler_dir/lib"
+  cp "$HOME/.hermes-cortex/scripts/lib/"*.py "$handler_dir/lib/" 2>/dev/null
+ fi
 done
 ```
 
@@ -662,7 +662,7 @@ After all steps, run the full verification:
 ```bash
 # 1. Systemd services
 systemctl --user list-units --type=service --state=active,running 2>/dev/null | \
-  grep -E 'ollama|health-vector|gbrain'
+ grep -E 'ollama|health-vector|gbrain'
 
 # 2. Health endpoint (compact vector)
 curl -s http://127.0.0.1:8905/
@@ -733,7 +733,7 @@ gbrain import . --yes
 systemctl --user start gbrain-sync.service
 
 # Verify
-gbrain query "test"    # Should return imported pages
+gbrain query "test"  # Should return imported pages
 ```
 
 **Pitfall — gbrain import requires the DB lock to be free.** If the sync daemon is running, gbrain import fails with "Timed out waiting for PGLite lock". Always stop the sync daemon before running import or any other write operation. Restart it afterward.
@@ -771,7 +771,7 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=/home/<user>/.hermes/hermes-agent/venv/bin/python3 \\
-  /home/<user>/hermes-cortex/ops/services/dashboard/server.py
+ /home/<user>/hermes-cortex/ops/services/dashboard/server.py
 Environment=HOME=/home/<user>
 Environment=CORTEX_DASHBOARD_PORT=8901
 Restart=on-failure
@@ -833,17 +833,17 @@ sudo apt-get install -y fail2ban
 
 # Copy Hermes Cortex badbots filter
 sudo cp ~/hermes-cortex/ops/install/deploy/nginx/nginx-badbots.conf \\
-  /etc/fail2ban/filter.d/nginx-badbots.conf
+ /etc/fail2ban/filter.d/nginx-badbots.conf
 
 # Create jail
 sudo tee /etc/fail2ban/jail.d/nginx-badbots.local << 'JAIL'
 [nginx-badbots]
-enabled  = true
-port     = http,https
-filter   = nginx-badbots
-logpath  = /var/log/nginx/access.log
+enabled = true
+port   = http,https
+filter  = nginx-badbots
+logpath = /var/log/nginx/access.log
 maxretry = 1
-bantime  = 86400
+bantime = 86400
 findtime = 86400
 JAIL
 

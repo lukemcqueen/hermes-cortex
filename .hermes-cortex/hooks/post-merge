@@ -3,7 +3,7 @@
 #  post-merge — Auto-deploy after every git pull/merge
 #
 #  Fires after git pull (fetch + merge) completes. Runs
-#  cortex-update.sh --force-all to sync all deployed files
+#  cortex-update.sh to sync all deployed files
 #  to the new HEAD. This is the structural fix for "I pulled
 #  but forgot to deploy."
 #
@@ -24,5 +24,5 @@ if [[ ! -f "$UPDATE_SCRIPT" ]]; then
 fi
 
 echo "━━━ post-merge: auto-deploying to match new HEAD ━━━"
-bash "$UPDATE_SCRIPT" --force-all 2>&1 | sed 's/^/   /'
+bash "$UPDATE_SCRIPT" 2>&1 | sed 's/^/   /'
 echo "━━━ post-merge: deploy complete ━━━"

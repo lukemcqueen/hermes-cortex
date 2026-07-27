@@ -89,26 +89,26 @@ Sources under `~/hermes-cortex/` → dest under `~/.hermes/` or `~/`.
 **Delta mode (default):** Compares the last-updated commit (stored at `~/.hermes/state/update-commit`)
 with the current repo HEAD via `git diff --name-only`. Only changed files are processed.
 
-**Force mode (`--force-all`):** Checks every registered file via sha256sum comparison, regardless
+**Force mode (``):** Checks every registered file via sha256sum comparison, regardless
 of git history. Copies any file whose hash differs from the installed version.
 
 **Status mode (`--status`):** Shows last update commit and current HEAD without making changes.
 
 ## macOS Compatibility — sha256sum Not Found
 
-**PROBLEM:** `cortex-update.sh --force-all` uses `sha256sum` for checksum comparison, but macOS (even 14.x) does not ship `sha256sum`. The command returns "not found", causing `needs_update()` to see two empty hashes, which match — so **every existing file is skipped** during force-all updates. Only brand-new files (destination missing) get copied.
+**PROBLEM:** `cortex-update.sh` uses `sha256sum` for checksum comparison, but macOS (even 14.x) does not ship `sha256sum`. The command returns "not found", causing `needs_update()` to see two empty hashes, which match — so **every existing file is skipped** during full updates. Only brand-new files (destination missing) get copied.
 
 **FIX (applied in commit f28552e):** The `needs_update()` function now detects the available checksum tool:
 
 ```bash
 if command -v sha256sum &>/dev/null; then
-  src_hash=$(sha256sum "$src" 2>/dev/null | cut -d' ' -f1)
-  dest_hash=$(sha256sum "$dest" 2>/dev/null | cut -d' ' -f1)
+ src_hash=$(sha256sum "$src" 2>/dev/null | cut -d' ' -f1)
+ dest_hash=$(sha256sum "$dest" 2>/dev/null | cut -d' ' -f1)
 elif command -v shasum &>/dev/null; then
-  src_hash=$(shasum -a 256 "$src" 2>/dev/null | cut -d' ' -f1)
-  dest_hash=$(shasum -a 256 "$dest" 2>/dev/null | cut -d' ' -f1)
+ src_hash=$(shasum -a 256 "$src" 2>/dev/null | cut -d' ' -f1)
+ dest_hash=$(shasum -a 256 "$dest" 2>/dev/null | cut -d' ' -f1)
 else
-  [[ "$src" -nt "$dest" ]] && return 0 || return 1
+ [[ "$src" -nt "$dest" ]] && return 0 || return 1
 fi
 ```
 
@@ -116,7 +116,7 @@ On macOS, `shasum -a 256` is the equivalent of `sha256sum` and is available nati
 
 **VERIFICATION:**
 ```bash
-bash ~/.hermes/scripts/cortex-update.sh --force-all
+bash ~/.hermes/scripts/cortex-update.sh
 diff ~/hermes-cortex/ops/scripts/health/system-alert-watchdog.py ~/.hermes/scripts/system-alert-watchdog.py
 # Should be identical (no diff output)
 ```
@@ -141,7 +141,7 @@ running" and skips regeneration. The plist then points to a deleted file.
 Fixed in commit 893ddc4. Verify after any cortex update:
 
 ```bash
-ls -la ~/.gbrain/sync-watch.sh       # must exist
-launchctl list com.gbrain.sync-watch | grep PID  # different from before
-grep "skip default" ~/.gbrain/sync-watch.sh  # --skip default present
+ls -la ~/.gbrain/sync-watch.sh    # must exist
+launchctl list com.gbrain.sync-watch | grep PID # different from before
+grep "skip default" ~/.gbrain/sync-watch.sh # --skip default present
 ```

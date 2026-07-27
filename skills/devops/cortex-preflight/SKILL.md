@@ -1,18 +1,18 @@
 ---
 name: cortex-preflight
 description: >-
-  Hermes Cortex supporting pre-flight checks — supplements Hermes default
-  survey-before-action with repo-specific checks: git search, Hermes boundary,
-  deployment verification.
+ Hermes Cortex supporting pre-flight checks — supplements Hermes default
+ survey-before-action with repo-specific checks: git search, Hermes boundary,
+ deployment verification.
 version: 1.0.0
 category: devops
 author: Moses (Hermes Cortex)
 license: MIT
 platforms: [linux, macos]
 related_skills:
-  - survey-before-action
-  - change-checklist
-  - agent-fundamentals
+ - survey-before-action
+ - change-checklist
+ - agent-fundamentals
 ---
 
 # Cortex Preflight — Supporting Pre-Flight Checks
@@ -36,7 +36,7 @@ git log --oneline --all -- "**/<pattern>*"
 git show HEAD:<path-to-file>
 ```
 
-**Common scenario:** Script exists in the repo (`ops/scripts/manage/foo.py`) but was never deployed to `~/.hermes-cortex/scripts/foo.py`. Running `cortex-update.sh --force-all` fixes this.
+**Common scenario:** Script exists in the repo (`ops/scripts/manage/foo.py`) but was never deployed to `~/.hermes-cortex/scripts/foo.py`. Running `cortex-update.sh ` fixes this.
 
 ### 2. Hermes boundary check
 
@@ -56,7 +56,7 @@ If you need to extend a Hermes default, create a **supporting skill** in the rep
 
 ### 3. Verify deployed copies match repo
 
-A source change in the repo is not deployed until `cortex-update.sh --force-all` runs:
+A source change in the repo is not deployed until `cortex-update.sh ` runs:
 
 ```bash
 # Check if a script is registered for deployment
@@ -66,7 +66,7 @@ grep -n "register.*<script-name>" ~/hermes-cortex/ops/scripts/cortex-update.sh
 ls -la ~/.hermes-cortex/scripts/<script-name>
 
 # If missing, deploy
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 ```
 
 ### 4. Check what agent type you are
@@ -94,13 +94,13 @@ Before renaming or removing a file, check **every** location that could referenc
 ```bash
 # Search ALL deploy locations — not just the obvious ones
 for dir in \
-  ~/hermes-cortex/ops/scripts/ \
-  ~/hermes-cortex/ops/install/ \
-  ~/hermes-cortex/ops/scripts/cortex_doctor/ \
-  ~/hermes-cortex/hooks/ \
-  ~/hermes-cortex/.hermes-cortex/ \    # skills, references, config
-  ; do
-  [ -d "$dir" ] && grep -rn "<old-name>" "$dir" 2>/dev/null
+ ~/hermes-cortex/ops/scripts/ \
+ ~/hermes-cortex/ops/install/ \
+ ~/hermes-cortex/ops/scripts/cortex_doctor/ \
+ ~/hermes-cortex/hooks/ \
+ ~/hermes-cortex/.hermes-cortex/ \  # skills, references, config
+ ; do
+ [ -d "$dir" ] && grep -rn "<old-name>" "$dir" 2>/dev/null
 done
 ```
 

@@ -100,7 +100,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `ops/offline/prep-code.sh` | Build the code snippet corpus and vector index for offline coding |
 | `ops/offline/code-corpus/generate.py` | Auto-discovers snippets modules, writes formatted .md snippet files with YAML frontmatter |
 | `ops/web-cache/SKILL.md` | Web cache skill — local semantic cache for web_search and web_extract |
-|  | **Legacy paths removed:** `deploy/` was a symlink to `ops/install/deploy/` — now canonical under `ops/`. `src/` was migrated to `core/` + `ops/` in v2.0.0. `runtime/` duplicated `core/` content and has been removed. |
+| | **Legacy paths removed:** `deploy/` was a symlink to `ops/install/deploy/` — now canonical under `ops/`. `src/` was migrated to `core/` + `ops/` in v2.0.0. `runtime/` duplicated `core/` content and has been removed. |
 
 ## Skills
 
@@ -136,7 +136,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `docs/git-enforcement.md` | Pre-commit scoring + pre-push pull-before-push hooks — install, bypass, troubleshooting |
-| `.hermes-cortex/hooks/post-merge` | Auto-deploy hook (via `core.hooksPath`) — runs `cortex-update.sh --force-all` after every `git pull`. Prevents stale deploys |
+| `.hermes-cortex/hooks/post-merge` | Auto-deploy hook (via `core.hooksPath`) — runs `cortex-update.sh ` after every `git pull`. Prevents stale deploys |
 
 ## Development
 

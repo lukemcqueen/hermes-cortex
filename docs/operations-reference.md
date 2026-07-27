@@ -47,15 +47,15 @@ The confusion is that "agent inbox" sounds like one thing. It's two (and was for
 ### Architecture diagram
 
 ```
-MOSES / ESTHER (bus servers)          EVERY AGENT (including Moses & Esther)
-─────────────────────────────           ─────────────────────────────────────
-Hermes gateway (:8905)                  ~/.hermes/config.yaml
-  ↳ built-in Agent Bus API                ↳ mcp_servers.agent-bus
-  ↳ stores messages (PGMQ)               ↳ runs agent-bus-mcp.py as subprocess
-                                          ↳ reads ~/hermes-cortex/.env
-nginx proxy (:13004 / :14004)              ↳ calls remote Agent Bus via HTTP
-  ↳ SSL + Basic Auth                      ↳ exposes inbox_send/read/watch tools
-  ↳ proxies → :8905
+MOSES / ESTHER (bus servers)     EVERY AGENT (including Moses & Esther)
+─────────────────────────────      ─────────────────────────────────────
+Hermes gateway (:8905)         ~/.hermes/config.yaml
+ ↳ built-in Agent Bus API        ↳ mcp_servers.agent-bus
+ ↳ stores messages (PGMQ)        ↳ runs agent-bus-mcp.py as subprocess
+                     ↳ reads ~/hermes-cortex/.env
+nginx proxy (:13004 / :14004)       ↳ calls remote Agent Bus via HTTP
+ ↳ SSL + Basic Auth           ↳ exposes inbox_send/read/watch tools
+ ↳ proxies → :8905
 ```
 
 ### What each agent needs
@@ -91,27 +91,27 @@ Create three separate cron jobs to cover the full cycle:
 ```bash
 # Workday — every 10 min, Mon-Fri 9am-6pm
 hermes cron create --name process-inbox-workday \
-  --model "deepseek-v4-flash" \
-  --provider "deepseek" \
-  --schedule "*/10 9-17 * * 1-5" \
-  --prompt "Check the Agent Bus for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. If no messages, output exactly [SILENT]." \
-  --deliver origin
+ --model "deepseek-v4-flash" \
+ --provider "deepseek" \
+ --schedule "*/10 9-17 * * 1-5" \
+ --prompt "Check the Agent Bus for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. If no messages, output exactly [SILENT]." \
+ --deliver origin
 
 # Evening — every 30 min, Mon-Fri 6pm-midnight
 hermes cron create --name process-inbox-evening \
-  --model "deepseek-v4-flash" \
-  --provider "deepseek" \
-  --schedule "*/30 18-23 * * 1-5" \
-  --prompt "Check the Agent Bus for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. If no messages, output exactly [SILENT]." \
-  --deliver origin
+ --model "deepseek-v4-flash" \
+ --provider "deepseek" \
+ --schedule "*/30 18-23 * * 1-5" \
+ --prompt "Check the Agent Bus for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. If no messages, output exactly [SILENT]." \
+ --deliver origin
 
 # Overnight — every 2 hours, Mon-Fri midnight-6am
 hermes cron create --name process-inbox-overnight \
-  --model "deepseek-v4-flash" \
-  --provider "deepseek" \
-  --schedule "0 0-5/2 * * 1-5" \
-  --prompt "Check the Agent Bus for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. If no messages, output exactly [SILENT]." \
-  --deliver origin
+ --model "deepseek-v4-flash" \
+ --provider "deepseek" \
+ --schedule "0 0-5/2 * * 1-5" \
+ --prompt "Check the Agent Bus for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. If no messages, output exactly [SILENT]." \
+ --deliver origin
 ```
 
 **Cost estimate:** ~$0.006/run → workday (54 runs/wk) + evening (12 runs/wk) + overnight (3 runs/wk) = ~$0.41/day ≈ $12/mo. The sensitive periods (workday) poll fastest; overnight and weekends run at reduced cadence to save tokens.
@@ -123,19 +123,19 @@ no longer works (MCP-only now).
 
 ```
 If you are Moses or Esther:
-  └─ You already have the API backend (it's part of the Hermes gateway)
-  └─ You already have the MCP client (it's in your config.yaml)
-  └─ You just need the nginx proxy setup
+ └─ You already have the API backend (it's part of the Hermes gateway)
+ └─ You already have the MCP client (it's in your config.yaml)
+ └─ You just need the nginx proxy setup
 
 If you are Gisu, Joseph, Kustos, or Titus (client agents):
-  └─ You need the MCP client in your Hermes config.yaml:
-       mcp_servers:
-         agent-bus:
-           command: python3
-           args: [~/hermes-cortex/mcp-servers/agent-bus-mcp.py]
-           enabled: true
-  └─ You need ~/hermes-cortex/.env with YOUR credentials
-  └─ You DO NOT need to run a bus server or nginx proxy
+ └─ You need the MCP client in your Hermes config.yaml:
+    mcp_servers:
+     agent-bus:
+      command: python3
+      args: [~/hermes-cortex/mcp-servers/agent-bus-mcp.py]
+      enabled: true
+ └─ You need ~/hermes-cortex/.env with YOUR credentials
+ └─ You DO NOT need to run a bus server or nginx proxy
 ```
 
 This configuration is set up automatically by `bash ~/hermes-cortex/install.sh` / `bash ~/hermes-cortex/ops/scripts/install-crons.sh`. If you ran the installer, your `config.yaml` already has the `agent-bus` MCP server entry. If not, add it manually.
@@ -164,10 +164,10 @@ chmod 600 ~/hermes-cortex/.env
 
 # 4. Verify you can talk to the inbox
 curl -s -u "your_username:your_password" \
-  https://your-domain.com:13004/api/inbox?limit=3
+ https://your-domain.com:13004/api/inbox?limit=3
 
 # 5. Create inbox-check cron (every 30 min):
-#    hermes cron create ...
+#  hermes cron create ...
 ```
 
 **Moses and Esther only — additionally:**
@@ -256,7 +256,7 @@ Also accepts `CORTEX_BUS_FALLBACK_URL` and `CORTEX_BUS_AUTH` (primary names). De
 > If you upgrade the worker from an older version that used `vt=120`, you MUST
 > pull the latest code and restart:
 > ```bash
-> cd ~/hermes-cortex && git pull && bash ops/scripts/cortex-update.sh --force-all
+> cd ~/hermes-cortex && git pull && bash ops/scripts/cortex-update.sh
 > systemctl --user restart hermes-agent-worker
 >```
 > Run `cortex-doctor` after to verify no warnings.
@@ -271,13 +271,13 @@ from hermes_tools import mcp__agent_inbox__inbox_send
 
 mcp__agent_inbox__inbox_send(
 
-    to="moses",
+  to="moses",
 
-    subject="QUESTION: Bus seems slow today",
+  subject="QUESTION: Bus seems slow today",
 
-    body="I'm seeing 2s response times on port 8905",
+  body="I'm seeing 2s response times on port 8905",
 
-    priority="normal"
+  priority="normal"
 
 
 )
@@ -329,13 +329,13 @@ Or raw curl:
 curl -s -u "$CORTEX_BASIC_AUTH" -X POST \
 
 
-  -H "Content-Type: application/json" \
+ -H "Content-Type: application/json" \
 
 
-  -d '{"queue":"inbox_moses","message":{"from":"<YOUR_NAME>","to":"moses","subject":"QUESTION: <topic>","body":"<question>","priority":"normal"}}' \
+ -d '{"queue":"inbox_moses","message":{"from":"<YOUR_NAME>","to":"moses","subject":"QUESTION: <topic>","body":"<question>","priority":"normal"}}' \
 
 
-  "${BUS_URL}/api/pgmq/send"
+ "${BUS_URL}/api/pgmq/send"
 
 
 ```

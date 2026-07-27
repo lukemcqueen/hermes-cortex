@@ -13,16 +13,16 @@ Redis, and MinIO for local LLM observability (tracing, scoring, cost tracking).
 
 ```
 deploy/
-├── docker-compose.langfuse.yml      # Main compose file
+├── docker-compose.langfuse.yml   # Main compose file
 ├── clickhouse-config.d/
-│   ├── 01-log-level.xml             # Reduces log level to warning
-│   ├── 02-low-memory.xml            # Thread pool + log table tuning
-│   └── 03-profile-defaults.xml      # Per-query limits (profiles → users.d/)
-├── config/                          # Optional: Hermes Cortex dashboard config
-├── nginx/                           # Optional: nginx proxy snippets
+│  ├── 01-log-level.xml       # Reduces log level to warning
+│  ├── 02-low-memory.xml      # Thread pool + log table tuning
+│  └── 03-profile-defaults.xml   # Per-query limits (profiles → users.d/)
+├── config/             # Optional: Hermes Cortex dashboard config
+├── nginx/              # Optional: nginx proxy snippets
 ├── patches/
-│   └── hermes-langfuse-cost-fixes.patch.md   # Historical: cost tracking fixes
-└── extract_langfuse_env.py          # Utility: extract env from running stack
+│  └── hermes-langfuse-cost-fixes.patch.md  # Historical: cost tracking fixes
+└── extract_langfuse_env.py     # Utility: extract env from running stack
 ```
 
 ### Where Config Files Mount
@@ -40,14 +40,14 @@ deploy/
 All containers have resource limits to prevent CPU/RAM contention with
 other services on the host:
 
-| Container     | CPU cap | Memory cap | Why |
+| Container   | CPU cap | Memory cap | Why |
 |---------------|---------|------------|-----|
-| ClickHouse    | 1.0 CPU | 2 GB       | Analytics DB — biggest memory consumer; capped generously |
-| Langfuse Web  | 0.5 CPU | 1.5 GB     | Next.js UI + API server; needs extra headroom for ClickHouse model-match cache init |
-| Langfuse Worker | 0.5 CPU | 512 MB   | Background trace processor; comfortably above idle usage (~400 MB) |
-| Postgres      | —       | —          | Minimal by nature (~47 MB) — no limit needed |
-| Redis         | —       | —          | Minimal (~11 MB) — no limit needed |
-| MinIO         | —       | —          | Minimal outside of large uploads (~143 MB) — no limit needed |
+| ClickHouse  | 1.0 CPU | 2 GB    | Analytics DB — biggest memory consumer; capped generously |
+| Langfuse Web | 0.5 CPU | 1.5 GB   | Next.js UI + API server; needs extra headroom for ClickHouse model-match cache init |
+| Langfuse Worker | 0.5 CPU | 512 MB  | Background trace processor; comfortably above idle usage (~400 MB) |
+| Postgres   | —    | —     | Minimal by nature (~47 MB) — no limit needed |
+| Redis     | —    | —     | Minimal (~11 MB) — no limit needed |
+| MinIO     | —    | —     | Minimal outside of large uploads (~143 MB) — no limit needed |
 
 These limits are defined in `docker-compose.langfuse.yml` via
 `cpus:` and `mem_limit:` / `memswap_limit:` on each service.
@@ -95,8 +95,8 @@ initialization.
 **Safe settings (the only two that work together):**
 
 ```xml
-<background_pool_size>13</background_pool_size>            <!-- floor 13; ≤12 crashes -->
-<background_schedule_pool_size>16</background_schedule_pool_size>  <!-- default 512 → 16 saves 496 threads -->
+<background_pool_size>13</background_pool_size>      <!-- floor 13; ≤12 crashes -->
+<background_schedule_pool_size>16</background_schedule_pool_size> <!-- default 512 → 16 saves 496 threads -->
 ```
 
 **Do NOT reduce these (they combine with above to trigger the crash):**
@@ -193,16 +193,16 @@ bash ops/scripts/install/cortex-setup-langfuse.sh
 docker exec langfuse-postgres-1 psql -U postgres -d postgres -c "
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 INSERT INTO api_keys (id, project_id, public_key, hashed_secret_key,
-  fast_hashed_secret_key, display_secret_key, note, created_at)
+ fast_hashed_secret_key, display_secret_key, note, created_at)
 SELECT
-  'cmqkey-' || gen_random_uuid()::text,
-  'default-project',
-  'pk-lf-' || encode(gen_random_bytes(16), 'hex'),
-  crypt('sk-lf-' || encode(gen_random_bytes(16), 'hex'), gen_salt('bf')),
-  encode(sha256('sk-lf-' || encode(gen_random_bytes(16), 'hex')::bytea), 'hex'),
-  'sk-lf-' || encode(gen_random_bytes(16), 'hex'),
-  'Hermes Agent tracing key',
-  CURRENT_TIMESTAMP;
+ 'cmqkey-' || gen_random_uuid()::text,
+ 'default-project',
+ 'pk-lf-' || encode(gen_random_bytes(16), 'hex'),
+ crypt('sk-lf-' || encode(gen_random_bytes(16), 'hex'), gen_salt('bf')),
+ encode(sha256('sk-lf-' || encode(gen_random_bytes(16), 'hex')::bytea), 'hex'),
+ 'sk-lf-' || encode(gen_random_bytes(16), 'hex'),
+ 'Hermes Agent tracing key',
+ CURRENT_TIMESTAMP;
 "
 ```
 
@@ -255,13 +255,13 @@ docker compose up -d
 The compose file uses specific version tags. To check for newer versions:
 
 ```bash
-docker compose pull    # pulls new images per docker-compose.yml tags
+docker compose pull  # pulls new images per docker-compose.yml tags
 docker compose down && docker compose up -d
 ```
 
 Current image tags:
-- `langfuse/langfuse:3.200.0`          — Web UI
-- `langfuse/langfuse-worker:3.200.0`   — Background worker
+- `langfuse/langfuse:3.200.0`     — Web UI
+- `langfuse/langfuse-worker:3.200.0`  — Background worker
 - `clickhouse/clickhouse-server:25.5-alpine` — Analytics DB
 - `postgres:16-alpine` — Metadata DB
 - `redis:7-alpine` — Queue & cache
@@ -303,35 +303,35 @@ maximum: 1.80 GiB.
 ```bash
 # 1. Check server log for exact memory limit error
 docker exec langfuse-clickhouse-1 grep "MEMORY_LIMIT\|memory limit exceeded" \
-  /var/log/clickhouse-server/clickhouse-server.err.log
+ /var/log/clickhouse-server/clickhouse-server.err.log
 
 # 2. Check merge failure count
 docker exec langfuse-clickhouse-1 clickhouse-client --query \
-  "SELECT metric, value FROM system.metrics \
-   WHERE metric IN ('TotalMergeFailures','NonAbortedMergeFailures','Merge')"
+ "SELECT metric, value FROM system.metrics \
+  WHERE metric IN ('TotalMergeFailures','NonAbortedMergeFailures','Merge')"
 
 # 3. Check current merge size cap (should be 536870912 = 500 MB)
 docker exec langfuse-clickhouse-1 clickhouse-client --query \
-  "SELECT name, value FROM system.merge_tree_settings \
-   WHERE name LIKE '%max_byte%merge%'"
+ "SELECT name, value FROM system.merge_tree_settings \
+  WHERE name LIKE '%max_byte%merge%'"
 
 # 4. Check cache size caps applied (changed=1 means config took effect)
 docker exec langfuse-clickhouse-1 clickhouse-client --query \
-  "SELECT name, value, changed FROM system.server_settings \
-   WHERE name IN ('uncompressed_cache_size','mark_cache_size', \
-                  'cache_size_to_ram_max_ratio')"
+ "SELECT name, value, changed FROM system.server_settings \
+  WHERE name IN ('uncompressed_cache_size','mark_cache_size', \
+         'cache_size_to_ram_max_ratio')"
 
 # 5. Check memory pressure
 docker exec langfuse-clickhouse-1 clickhouse-client --query \
-  "SELECT metric, formatReadableSize(value) FROM system.metrics \
-   WHERE metric = 'MergesMutationsMemoryTracking'"
+ "SELECT metric, formatReadableSize(value) FROM system.metrics \
+  WHERE metric = 'MergesMutationsMemoryTracking'"
 
 # 6. Check which tables have the most parts (cleanup candidates)
 docker exec langfuse-clickhouse-1 clickhouse-client --query \
-  "SELECT database, table, count() as parts, \
-   formatReadableSize(sum(bytes_on_disk)) as size \
-   FROM system.parts WHERE active=1 \
-   GROUP BY database,table ORDER BY parts DESC LIMIT 10"
+ "SELECT database, table, count() as parts, \
+  formatReadableSize(sum(bytes_on_disk)) as size \
+  FROM system.parts WHERE active=1 \
+  GROUP BY database,table ORDER BY parts DESC LIMIT 10"
 ```
 
 **Fix — apply these settings in `clickhouse-config.d/02-low-memory.xml`:**
@@ -339,17 +339,17 @@ docker exec langfuse-clickhouse-1 clickhouse-client --query \
 ```xml
 <!-- ── Merge size: the critical fix ── -->
 <merge_tree>
-    <!-- Each merge capped to ~500 MB (default 150 GB!) so it fits in memory -->
-    <max_bytes_to_merge_at_max_space_in_pool>536870912</max_bytes_to_merge_at_max_space_in_pool>
-    <!-- 500 MB -->
-    <max_bytes_to_merge_at_min_space_in_pool>52428800</max_bytes_to_merge_at_min_space_in_pool>
-    <!-- 50 MB -->
-    <!-- Smaller blocks = less memory per merge operation -->
-    <merge_max_block_size>512</merge_max_block_size>
-    <!-- Immediately reduce merge sizes when pool is busy (avoid death spiral) -->
-    <number_of_free_entries_in_pool_to_lower_max_size_of_merge>0</number_of_free_entries_in_pool_to_lower_max_size_of_merge>
-    <!-- Faster retry after failed merge attempts -->
-    <merge_selecting_sleep_ms>1000</merge_selecting_sleep_ms>
+  <!-- Each merge capped to ~500 MB (default 150 GB!) so it fits in memory -->
+  <max_bytes_to_merge_at_max_space_in_pool>536870912</max_bytes_to_merge_at_max_space_in_pool>
+  <!-- 500 MB -->
+  <max_bytes_to_merge_at_min_space_in_pool>52428800</max_bytes_to_merge_at_min_space_in_pool>
+  <!-- 50 MB -->
+  <!-- Smaller blocks = less memory per merge operation -->
+  <merge_max_block_size>512</merge_max_block_size>
+  <!-- Immediately reduce merge sizes when pool is busy (avoid death spiral) -->
+  <number_of_free_entries_in_pool_to_lower_max_size_of_merge>0</number_of_free_entries_in_pool_to_lower_max_size_of_merge>
+  <!-- Faster retry after failed merge attempts -->
+  <merge_selecting_sleep_ms>1000</merge_selecting_sleep_ms>
 </merge_tree>
 
 <!-- ── Merge memory: hard cap ── -->
@@ -357,8 +357,8 @@ docker exec langfuse-clickhouse-1 clickhouse-client --query \
 <merges_mutations_memory_usage_soft_limit>536870912</merges_mutations_memory_usage_soft_limit>
 
 <!-- ── Cache caps ── -->
-<uncompressed_cache_size>268435456</uncompressed_cache_size>    <!-- 256 MB -->
-<mark_cache_size>134217728</mark_cache_size>                    <!-- 128 MB -->
+<uncompressed_cache_size>268435456</uncompressed_cache_size>  <!-- 256 MB -->
+<mark_cache_size>134217728</mark_cache_size>          <!-- 128 MB -->
 <cache_size_to_ram_max_ratio>0.4</cache_size_to_ram_max_ratio>
 ```
 
@@ -376,8 +376,8 @@ docker compose ps clickhouse
 
 # Verify all settings applied
 docker exec langfuse-clickhouse-1 clickhouse-client --query \
-  "SELECT name, value FROM system.merge_tree_settings WHERE changed = 1 \
-   ORDER BY name"
+ "SELECT name, value FROM system.merge_tree_settings WHERE changed = 1 \
+  ORDER BY name"
 ```
 
 **Verify recovery:**
@@ -385,15 +385,15 @@ docker exec langfuse-clickhouse-1 clickhouse-client --query \
 ```bash
 # TotalMergeFailures should be 0 after restart
 docker exec langfuse-clickhouse-1 clickhouse-client --query \
-  "SELECT metric, value FROM system.metrics \
-   WHERE metric IN ('TotalMergeFailures','NonAbortedMergeFailures','Merge')"
+ "SELECT metric, value FROM system.metrics \
+  WHERE metric IN ('TotalMergeFailures','NonAbortedMergeFailures','Merge')"
 ```
 
 If `TotalMergeFailures` starts climbing again within hours, the config wasn't applied (check `changed=1` in `system.server_settings`). Common cause: the deployed `~/langfuse/clickhouse-config.d/` copy is stale — copy from repo:
 
 ```bash
 cp ~/hermes-cortex/ops/install/deploy/clickhouse-config.d/02-low-memory.xml \
-   ~/langfuse/clickhouse-config.d/
+  ~/langfuse/clickhouse-config.d/
 chmod 644 ~/langfuse/clickhouse-config.d/*.xml
 # Then stop + up -d as above
 ```
@@ -427,7 +427,7 @@ All settings in `02-low-memory.xml` — this is the **default low-memory configu
 | `max_concurrent_queries` | **25** (1000) | Max simultaneous queries. Reduces memory contention with background merges. |
 | `merges_mutations_memory_usage_soft_limit` | **512 MB** (0=unlimited) | Hard cap: stop scheduling new merges when existing merges use >512 MB total. |
 | `merges_mutations_memory_usage_to_ram_ratio` | **0.25** (0.3) | Fallback ratio if soft_limit is 0. Conservative to leave headroom for queries. |
-| `uncompressed_cache_size` | **256 MB** (8 GB) | Cache for decompressed data blocks. |  
+| `uncompressed_cache_size` | **256 MB** (8 GB) | Cache for decompressed data blocks. |
 | `mark_cache_size` | **128 MB** (5 GB) | Cache for index marks (sparse index lookups). |
 | `cache_size_to_ram_max_ratio` | **0.4** (0.5) | Max fraction of RAM usable by all caches combined. |
 
@@ -467,51 +467,51 @@ All settings in `02-low-memory.xml` — this is the **default low-memory configu
 ```bash
 # 1. Find the corrupted part (check system.text_log for the part name)
 docker exec langfuse-clickhouse-1 clickhouse-client --query \
-  "SELECT event_time, message FROM system.text_log WHERE level='Error' AND message LIKE '%checksum%' ORDER BY event_time DESC LIMIT 3" --vertical
+ "SELECT event_time, message FROM system.text_log WHERE level='Error' AND message LIKE '%checksum%' ORDER BY event_time DESC LIMIT 3" --vertical
 
 # 2. Check if the corrupted part is still active
 docker exec langfuse-clickhouse-1 clickhouse-client --query \
-  "SELECT database, table, name, active, level, bytes_on_disk FROM system.parts WHERE name LIKE '%<PART_NAME>%'"
+ "SELECT database, table, name, active, level, bytes_on_disk FROM system.parts WHERE name LIKE '%<PART_NAME>%'"
 
 # 3. List all parts for the affected table to find the corruption lineage
 docker exec langfuse-clickhouse-1 clickhouse-client --query \
-  "SELECT database, table, name, active, level FROM system.parts WHERE database='system' AND table='part_log' ORDER BY level DESC"
+ "SELECT database, table, name, active, level FROM system.parts WHERE database='system' AND table='part_log' ORDER BY level DESC"
 ```
 
 **Fix:**
 
 1. **Drop the corrupted base part:**
-   ```bash
-   docker exec langfuse-clickhouse-1 clickhouse-client --query \
-     "ALTER TABLE <database>.<table> DROP PART '<corrupted_part_name>'"
-   ```
-   The part name is the first segment in the error path (e.g. `202607_1_1737_794` from path `.../202607_1_1737_794/data.bin`).
+  ```bash
+  docker exec langfuse-clickhouse-1 clickhouse-client --query \
+   "ALTER TABLE <database>.<table> DROP PART '<corrupted_part_name>'"
+  ```
+  The part name is the first segment in the error path (e.g. `202607_1_1737_794` from path `.../202607_1_1737_794/data.bin`).
 
 2. **Check for derivative parts** (higher level that includes the corrupted data). The error may reference a different part name after each failed retry — these are new merge attempts that read the corrupted parent. Check `system.parts` for inactive parts at similar levels:
-   ```bash
-   docker exec langfuse-clickhouse-1 clickhouse-client --query \
-     "SELECT name, active, level FROM system.parts WHERE table='<affected_table>' AND level > 700 ORDER BY level"
-   ```
+  ```bash
+  docker exec langfuse-clickhouse-1 clickhouse-client --query \
+   "SELECT name, active, level FROM system.parts WHERE table='<affected_table>' AND level > 700 ORDER BY level"
+  ```
 
 3. **Remove orphan directories** from the store path directly:
-   ```bash
-   docker exec langfuse-clickhouse-1 bash -c \
-     "rm -rf /var/lib/clickhouse/store/<uuid>/<orphan_part>"
-   ```
+  ```bash
+  docker exec langfuse-clickhouse-1 bash -c \
+   "rm -rf /var/lib/clickhouse/store/<uuid>/<orphan_part>"
+  ```
 
 4. **Restart merge queue** to clear stale merge tasks:
-   ```bash
-   docker exec langfuse-clickhouse-1 clickhouse-client --query "SYSTEM STOP MERGES"
-   sleep 2
-   docker exec langfuse-clickhouse-1 clickhouse-client --query "SYSTEM START MERGES"
-   ```
+  ```bash
+  docker exec langfuse-clickhouse-1 clickhouse-client --query "SYSTEM STOP MERGES"
+  sleep 2
+  docker exec langfuse-clickhouse-1 clickhouse-client --query "SYSTEM START MERGES"
+  ```
 
 5. **Verify recovery:**
-   ```bash
-   docker exec langfuse-clickhouse-1 clickhouse-client --query \
-     "SELECT count() as errors_last_minute FROM system.text_log WHERE level='Error' AND message LIKE '%merge%' AND event_time > NOW() - INTERVAL 1 MINUTE"
-   ```
-   Should return `0`. New merges should appear in `system.merges` within seconds.
+  ```bash
+  docker exec langfuse-clickhouse-1 clickhouse-client --query \
+   "SELECT count() as errors_last_minute FROM system.text_log WHERE level='Error' AND message LIKE '%merge%' AND event_time > NOW() - INTERVAL 1 MINUTE"
+  ```
+  Should return `0`. New merges should appear in `system.merges` within seconds.
 
 6. **System tables auto-recover:** Tables like `system.part_log`, `system.trace_log`, `system.asynchronous_metric_log` are internal — dropping a corrupted part loses only the affected log entries. New entries accumulate in fresh parts automatically.
 
@@ -602,7 +602,7 @@ python3 ~/hermes-cortex/deploy/extract_langfuse_env.py > ~/.hermes-cortex/.env
 **Step 3 — Deploy the script:**
 
 ```bash
-# Scripts auto-deploy via cortex-update.sh --force-all
+# Scripts auto-deploy via cortex-update.sh
 # Or copy manually:
 cp ~/hermes-cortex/ops/scripts/manage/llm-judge-scorer.py ~/.hermes-cortex/scripts/
 chmod +x ~/.hermes-cortex/scripts/llm-judge-scorer.py
@@ -617,18 +617,18 @@ chmod +x ~/.hermes-cortex/scripts/model-health-watchdog.py
 ```bash
 # Create the LLM judge scorer cron (twice daily on weekdays)
 hermes cron create --name llm-judge-scorer-weekday \
-  --no-agent --script llm-judge-scorer.py \
-  --schedule "0 12,20 * * 1-5" --deliver origin
+ --no-agent --script llm-judge-scorer.py \
+ --schedule "0 12,20 * * 1-5" --deliver origin
 
 # Create weekend scorer (once on Saturday/Sunday)
 hermes cron create --name llm-judge-scorer-weekend \
-  --no-agent --script llm-judge-scorer.py \
-  --schedule "0 22 * * 0,6" --deliver origin
+ --no-agent --script llm-judge-scorer.py \
+ --schedule "0 22 * * 0,6" --deliver origin
 
 # Create model health watchdog (daily 7am — silent when healthy)
 hermes cron create --name model-health-watchdog \
-  --no-agent --script model-health-watchdog.py \
-  --schedule "0 7 * * *" --deliver origin
+ --no-agent --script model-health-watchdog.py \
+ --schedule "0 7 * * *" --deliver origin
 ```
 
 **Step 5 — Verify everything works:**
@@ -645,7 +645,7 @@ python3 ~/.hermes-cortex/scripts/model-health-watchdog.py --judge-model mannix/q
 
 # Via env var (comma-separated for multiple)
 JUDGE_MODEL="mannix/qwen2.5-coder:7b-iq3_xs,qwen2.5-coder:3b" \\
-  python3 ~/.hermes-cortex/scripts/model-health-watchdog.py --quiet
+ python3 ~/.hermes-cortex/scripts/model-health-watchdog.py --quiet
 
 # Verify crons are scheduled
 hermes cron list | grep -E 'llm-judge|model-health'

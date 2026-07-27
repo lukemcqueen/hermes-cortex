@@ -8,9 +8,9 @@ author: Hermes Cortex
 license: MIT
 platforms: [linux, macos]
 metadata:
-  hermes:
-    tags: [governance, testing, documentation, multi-os, multi-role, quality, pre-ship]
-    related_skills: [loop-governance, change-test-loop, two-hard-rules, cron-job-management, survey-before-action, cortex-preflight, agent-contract]
+ hermes:
+  tags: [governance, testing, documentation, multi-os, multi-role, quality, pre-ship]
+  related_skills: [loop-governance, change-test-loop, two-hard-rules, cron-job-management, survey-before-action, cortex-preflight, agent-contract]
 ---
 
 # Change Checklist — Pre-Ship Validation
@@ -31,9 +31,9 @@ one test — is never the complete path. For every change, ask:
 - Did I run the doctor to see if my change broke something else?
 - Did I push changes so the whole fleet benefits?
 - **Did I catch myself talking about what I 'should' do instead of doing it?**
-  If the sentence contains "I should add X" and you have a working keyboard,
-  stop talking and add X. The structural fix ships now — not after you finish
-  explaining why it's a good idea.
+ If the sentence contains "I should add X" and you have a working keyboard,
+ stop talking and add X. The structural fix ships now — not after you finish
+ explaining why it's a good idea.
 
 Agents that ship incomplete work erode trust. The checklist below is the
 minimum — your judgment determines when the work is genuinely done.
@@ -44,13 +44,13 @@ When creating or updating cron prompts, command output examples, or skill
 content in this session, apply these two principles:
 
 1. **Concrete examples, never abstract placeholders.** Show real-looking values
-   (`43 cycles scored`, `$0.006/run`, `2026-07-15 10:01 KST`), not annotated
-   templates (`[N] cycles`, `<cost>`, `<datetime>`). LLMs mimic concrete
-   structure faithfully; they interpret placeholders loosely.
+  (`43 cycles scored`, `$0.006/run`, `2026-07-15 10:01 KST`), not annotated
+  templates (`[N] cycles`, `<cost>`, `<datetime>`). LLMs mimic concrete
+  structure faithfully; they interpret placeholders loosely.
 
 2. **Be concise — every sentence must earn its place.** If a sentence doesn't
-   change agent behavior, it's token waste. After writing, review: "Would the
-   agent do anything differently if I deleted this?" If no, delete it.
+  change agent behavior, it's token waste. After writing, review: "Would the
+  agent do anything differently if I deleted this?" If no, delete it.
 
 ## Phase 0: Survey the Change Surface
 
@@ -64,14 +64,14 @@ Before making any change, map the full scope. A single cron rename can touch 10+
 - [ ] **Doc index**: check `DOCS-INDEX.md` needs an entry update
 - [ ] **Cross-references**: grep for old term in other scripts' comments, docstrings, deprecation notices
 - [ ] **Category awareness**: is this orchestrator-only (orch-*) or general?
-  - All agents → `install-crons.sh` with `agent-*` prefix
-  - See [`docs/fleet-reference.md`](docs/fleet-reference.md) cron table
+ - All agents → `install-crons.sh` with `agent-*` prefix
+ - See [`docs/fleet-reference.md`](docs/fleet-reference.md) cron table
 - [ ] **Doctor compatibility**: after updating `install-crons.sh`, run the doctor to confirm: `python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet`
 - [ ] **Install array sync (non-negotiable)**: After any cron rename or addition, verify the `create_cron` block name matches the uninstall array entry EXACTLY. The doctor parses uninstall arrays as its expected cron list. Run:
-  ```bash
-  python3 ~/hermes-cortex/ops/scripts/manage/fix-cron-duplicates.py
-  ```
-  Zero issues = arrays are in sync.
+ ```bash
+ python3 ~/hermes-cortex/ops/scripts/manage/fix-cron-duplicates.py
+ ```
+ Zero issues = arrays are in sync.
 - [ ] **Old cron cleanup**: If you added a new cron with a new name, confirm the old one was removed. Crons don't self-destruct.
 - [ ] **Test run**: after deploy, run the actual script to verify exit code 0
 - [ ] **PII scan**: run `bash ~/hermes-cortex/ops/scripts/secret-leak-detector.sh` and review any PII warnings before pushing. Check for real domains, `/home/<username>/` paths, and email addresses in new/changed files.
@@ -82,26 +82,26 @@ Run the actual script/config and verify it works. **No simulated output.**
 
 - [ ] **Did the change actually apply cleanly?** (No errors in write_file/patch/terminal)
 - [ ] **If code:** Run it with relevant inputs and verify real output
-  - `bash script.sh --help` or `python3 script.py`
-  - If it's a cron: run `cronjob action='run' job_id=<id>` — manual `python3 script.py` does NOT update the scheduler's `last_status`
+ - `bash script.sh --help` or `python3 script.py`
+ - If it's a cron: run `cronjob action='run' job_id=<id>` — manual `python3 script.py` does NOT update the scheduler's `last_status`
 - [ ] **If config:** does the service still start? (Restart/reload and check)
-  - nginx: `sudo nginx -t` to validate syntax
-  - Diff generated vs deployed config
+ - nginx: `sudo nginx -t` to validate syntax
+ - Diff generated vs deployed config
 - [ ] **If cron:** does the script exit 0 when run manually?
 - [ ] **Syntax check:** `.sh` → `bash -n`, `.py` → `python3 -m py_compile`, `.yaml` → `yaml.safe_load()`
-  - If any `install-crons.sh` or `install-orch-crons.sh` was modified: **mandatory `bash -n`** on both files. This catches array formatting errors (trailing backslash, orphaned semicolons, blank lines in continuation blocks).
+ - If any `install-crons.sh` or `install-orch-crons.sh` was modified: **mandatory `bash -n`** on both files. This catches array formatting errors (trailing backslash, orphaned semicolons, blank lines in continuation blocks).
 
 ## Phase 2: Verify Multi-OS Compatibility
 
 Every change that touches paths or system commands must work on both Linux and macOS.
 
 - [ ] **Path patterns:** Search changed files for:
-  - `/etc/nginx/` → must use `${NGINX_DIR}`
-  - `/home/luke/` or `/home/moses/` → must use `$HOME`
-  - `/opt/homebrew/` → must be guarded by OS check
+ - `/etc/nginx/` → must use `${NGINX_DIR}`
+ - `/home/luke/` or `/home/moses/` → must use `$HOME`
+ - `/opt/homebrew/` → must be guarded by OS check
 - [ ] **System commands:**
-  - `systemctl` → guard with `IS_LINUX`
-  - `launchctl` / `brew` → guard with `IS_MAC`
+ - `systemctl` → guard with `IS_LINUX`
+ - `launchctl` / `brew` → guard with `IS_MAC`
 - [ ] Is this change Linux-only, macOS-only, or cross-platform?
 - [ ] If cross-platform: did you test the relevant paths?
 
@@ -131,31 +131,31 @@ Changes that affect other agents' workflow must be documented.
 ## Phase 5: Final Verification
 
 - [ ] **Post-deploy symptom verification (substantial changes only):** After
-  commit, push, and deploy (`cortex-update.sh --force-all`), re-run the
-  **original failure mode** and confirm it resolves. A change that "looks
-  right" in the diff but hasn't been exercised on the live system is not
-  verified.
-  
-  Substantial = touches 3+ files, a service config, plugins, cron logic,
-  governance, or any change that fixes a reported bug. Examples:
-  - Enforcer plugin fix → test `begin_change` on the live system
-  - Cron fix → run `cronjob action='run'` and check status
-  - Config fix → restart service and verify endpoint responds
-  - Script rename → run doctor, verify expected vs actual align
-  
-  For trivial changes (typo fix, single-line comment, docs-only): mental
-  verification is sufficient. Document the scope in the cycle note.
+ commit, push, and deploy (`cortex-update.sh `), re-run the
+ **original failure mode** and confirm it resolves. A change that "looks
+ right" in the diff but hasn't been exercised on the live system is not
+ verified.
+
+ Substantial = touches 3+ files, a service config, plugins, cron logic,
+ governance, or any change that fixes a reported bug. Examples:
+ - Enforcer plugin fix → test `begin_change` on the live system
+ - Cron fix → run `cronjob action='run'` and check status
+ - Config fix → restart service and verify endpoint responds
+ - Script rename → run doctor, verify expected vs actual align
+
+ For trivial changes (typo fix, single-line comment, docs-only): mental
+ verification is sufficient. Document the scope in the cycle note.
 
 - [ ] **Stale expected list cleanup**: if you removed any cron during this cycle, verify its name is also removed from the uninstall arrays in `install-crons.sh`. The doctor reads these arrays as the expected cron list.
 - [ ] **Doctor runs clean**:
-  ```bash
-  python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
-  ```
+ ```bash
+ python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
+ ```
 - [ ] **Propagation check** — if this change modified a template, shared config, or skill that other agents consume, verify downstream recipients:
-  ```bash
-  python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py --check   # for SOUL.md template changes
-  ```
-  Prevents the pattern of updating a template but forgetting to verify propagation.
+ ```bash
+ python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py --check  # for SOUL.md template changes
+ ```
+ Prevents the pattern of updating a template but forgetting to verify propagation.
 - [ ] **Verify no stale locks remain** (`mcp_loop_governance__check_lock`)
 - [ ] **Are all cycles scored?** No PENDING cycles should remain.
 - [ ] **Pre-commit validation ran** (check for "change-validate:" output)

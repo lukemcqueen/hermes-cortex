@@ -161,5 +161,5 @@ AGENT_INBOX_PASS=your-inbox-password
 Sent via Operations topic:
 > **Subject:** gbrain-update-sync cron updated
 > **Body:** The gbrain-update-sync cron job has been updated to use backend-agnostic commands (gbrain upgrade, gbrain apply-migrations, gbrain doctor, gbrain sync) instead of pglite-specific commands. This works whether gbrain is on pglite or Postgres.
-> 
+>
 > Current gbrain status: pglite (default, health score 85/100). Other services (acme-royalty, MWI) are on Postgres.

@@ -12,11 +12,11 @@
 
 ```
 Repo source (ops/scripts/ or core/governance/)
-    ↓  cortex-update.sh --force-all (via register() lines)
+  ↓ cortex-update.sh (via register() lines)
 ~/.hermes-cortex/scripts/<file>
-    ↓  sync-scripts.sh (copy, not symlink — cron sandbox blocks external symlinks)
+  ↓ sync-scripts.sh (copy, not symlink — cron sandbox blocks external symlinks)
 ~/.hermes/scripts/<file>
-    ↓  cron scheduler resolves script
+  ↓ cron scheduler resolves script
 Script runs
 ```
 
@@ -24,21 +24,21 @@ Script runs
 
 1. Create the script in the repo under `ops/scripts/` or `core/governance/`
 2. Add a `register()` line in `ops/scripts/cortex-update.sh`:
-   ```bash
-   register "ops/scripts/my-script.py" "${HERMES_HOME}/scripts/my-script.py"
-   ```
+  ```bash
+  register "ops/scripts/my-script.py" "${HERMES_HOME}/scripts/my-script.py"
+  ```
 3. Deploy via cortex-update:
-   ```bash
-   bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all
-   ```
+  ```bash
+  bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+  ```
 4. Copy to cron directory:
-   ```bash
-   cp ~/.hermes-cortex/scripts/my-script.py ~/.hermes/scripts/my-script.py
-   ```
+  ```bash
+  cp ~/.hermes-cortex/scripts/my-script.py ~/.hermes/scripts/my-script.py
+  ```
 5. If it's a cron script, register in `install-crons.sh`:
-   ```bash
-   create_cron "my-cron" "0 */6 * * *" "my-script.py" "" "" "" "origin" "" "true"
-   ```
+  ```bash
+  create_cron "my-cron" "0 */6 * * *" "my-script.py" "" "" "" "origin" "" "true"
+  ```
 
 ## ⚠ Critical: Cron Sandbox
 
@@ -59,5 +59,5 @@ Previous approach replaced 42+ files with symlinks for consistency, but the cron
 
 ## Pitfalls
 
-- **`cortex-update.sh --force-all` requires `~/.hermes-cortex/bin/` to exist** — if missing, the `offline_knowledge` symlink fails and `set -e` stops the entire update.
-- **New register lines require `--force-all`** — delta mode skips files with matching commit hashes. Always run `cortex-update.sh --force-all` after adding register lines.
+- **`cortex-update.sh ` requires `~/.hermes-cortex/bin/` to exist** — if missing, the `offline_knowledge` symlink fails and `set -e` stops the entire update.
+- **New register lines require ``** — delta mode skips files with matching commit hashes. Always run `cortex-update.sh ` after adding register lines.

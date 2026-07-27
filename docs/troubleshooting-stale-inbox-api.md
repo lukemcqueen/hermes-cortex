@@ -41,12 +41,12 @@
 
 ```yaml
 mcp_servers:
-  loop-governance:
-    args:
-      - /home/user/hermes-cortex/runtime/mcp-servers/loop-gov-mcp.py   # ❌ doesn't exist
-  agent-bus:
-    args:
-      - /home/user/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py  # ❌ doesn't exist
+ loop-governance:
+  args:
+   - /home/user/hermes-cortex/runtime/mcp-servers/loop-gov-mcp.py  # ❌ doesn't exist
+ agent-bus:
+  args:
+   - /home/user/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py # ❌ doesn't exist
 ```
 
 The actual files are at `mcp-servers/` (not `runtime/mcp-servers/`). The `runtime/` prefix was a leftover from a directory rename that was never propagated to config.yaml.
@@ -55,19 +55,19 @@ The actual files are at `mcp-servers/` (not `runtime/mcp-servers/`). The `runtim
 
 ```yaml
 mcp_servers:
-  loop-governance:
-    args:
-      - /home/user/hermes-cortex/mcp-servers/loop-gov-mcp.py    # ✅ correct path
-  agent-bus:
-    args:
-      - /home/user/hermes-cortex/mcp-servers/agent-bus-mcp.py   # ✅ correct path
+ loop-governance:
+  args:
+   - /home/user/hermes-cortex/mcp-servers/loop-gov-mcp.py  # ✅ correct path
+ agent-bus:
+  args:
+   - /home/user/hermes-cortex/mcp-servers/agent-bus-mcp.py  # ✅ correct path
 ```
 
 **Verification:** The doctor checks `✅ MCP server (loop-governance) — configured in config.yaml` and `✅ MCP Python (loop-governance) — uses venv:` but does NOT verify the script file actually exists at the configured path. Consider adding a path-existence check to the doctor.
 
 ## Issue 4: cortex-update.sh Missing loop-gov-mcp Registration
 
-**Symptom:** `cortex-update.sh --force-all` does NOT deploy `loop-gov-mcp.py` anywhere.
+**Symptom:** `cortex-update.sh ` does NOT deploy `loop-gov-mcp.py` anywhere.
 
 **Check:** Search for `loop-gov-mcp.py` in `cortex-update.sh` — only `loop-gov-mcp.sh` (a shell wrapper) is registered, not the actual MCP server.
 
@@ -80,7 +80,7 @@ When removing scripts that hit the old HTTP inbox API:
 1. Check if the script is registered in `cortex-update.sh` (`register` lines)
 2. If registered, remove the registration line AND delete the source file
 3. `git rm` the source file from the repo
-4. After push, run `cortex-update.sh --force-all` to sync
+4. After push, run `cortex-update.sh ` to sync
 5. Manually remove any orphaned local copies (cortex-update doesn't delete files that no longer have a source mapping)
 
 The correct way to read the bus:
@@ -97,8 +97,8 @@ depth = inbox.get("depth", 0)
 # Read and process
 msg = bus_read(f"inbox_{agent}", vt=60)
 if msg:
-    body = msg.get("body", {})
-    bus_archive(f"inbox_{agent}", msg["msg_id"])
+  body = msg.get("body", {})
+  bus_archive(f"inbox_{agent}", msg["msg_id"])
 ```
 
 ```python
