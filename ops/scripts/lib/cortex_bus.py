@@ -12,6 +12,7 @@ Usage:
 
 import base64
 import json
+import logging
 import os
 import time
 from pathlib import Path
@@ -82,7 +83,7 @@ def _bus_post(endpoint: str, payload: dict, fallback: bool = False) -> dict:
             with urlopen(req, timeout=15) as resp:
                 return json.loads(resp.read().decode())
         except HTTPError as e:
-            # If Bearer gets 401/403 and Basic auth is available, try Basic on same URL
+            logging.getLogger("cortex_bus").debug("HTTPError %d for Bearer auth — trying Basic fallback", e.code)
             if (
                 not fallback
                 and e.code in (401, 403)
@@ -97,8 +98,10 @@ def _bus_post(endpoint: str, payload: dict, fallback: bool = False) -> dict:
                     })
                     with urlopen(req2, timeout=15) as resp2:
                         return json.loads(resp2.read().decode())
-                except Exception:
-                    pass  # Basic also failed — fall through to retry/fallback
+                except (HTTPError, URLError, OSError) as basic_err:
+                    logging.getLogger("cortex_bus").debug(
+                        "Basic auth fallback also failed for %s: %s", url, basic_err
+                    )
             last_error = str(e)
             if attempt < max_attempts - 1:
                 time.sleep(2 ** attempt)
@@ -106,7 +109,7 @@ def _bus_post(endpoint: str, payload: dict, fallback: bool = False) -> dict:
             last_error = str(e)
             if attempt < max_attempts - 1:
                 time.sleep(2 ** attempt)
-        except Exception as e:
+        except (HTTPError, URLError, OSError, json.JSONDecodeError) as e:
             last_error = str(e)
             if attempt < max_attempts - 1:
                 time.sleep(2 ** attempt)
@@ -115,8 +118,8 @@ def _bus_post(endpoint: str, payload: dict, fallback: bool = False) -> dict:
     if not fallback and BUS_FALLBACK_URL:
         try:
             return _bus_post(endpoint, payload, fallback=True)
-        except Exception:
-            pass
+        except (ConnectionError, OSError, json.JSONDecodeError) as fb_err:
+            logging.getLogger("cortex_bus").warning("Fallback bus also failed: %s", fb_err)
 
     raise ConnectionError(f"Bus API unreachable after 3 attempts: {last_error}")
 
@@ -139,7 +142,8 @@ def bus_send(queue: str, message_body: dict) -> dict | None:
             "correlation_id": message_body.get("correlation_id", ""),
         }
         return _bus_post("/api/pgmq/send", payload)
-    except (ConnectionError, Exception) as e:
+    except (ConnectionError, OSError, json.JSONDecodeError) as e:
+        logging.getLogger("cortex_bus").warning("bus_send failed: %s", e)
         return None
 
 
@@ -160,7 +164,7 @@ def bus_read(queue: str, vt: int = 60) -> dict | None:
                 try:
                     result["body"] = json.loads(result["body"])
                 except (json.JSONDecodeError, TypeError):
-                    pass
+                    logging.getLogger("cortex_bus").debug("Body not JSON — preserved as-is")
             # Normalize None body to empty dict so consumers never crash on body.get()
             if result.get("body") is None:
                 result["body"] = {}
@@ -172,13 +176,14 @@ def bus_read(queue: str, vt: int = 60) -> dict | None:
                 try:
                     result["body"]["body"] = json.loads(inner_body)
                 except (json.JSONDecodeError, TypeError):
-                    pass  # Leave as-is if not valid JSON
+                    logging.getLogger("cortex_bus").debug("Inner body not JSON — preserved as-is")
             # Normalize None correlation_id to empty string for subscript safety
             if result.get("correlation_id") is None:
                 result["correlation_id"] = ""
             return result
         return None
-    except (ConnectionError, Exception):
+    except (ConnectionError, OSError, json.JSONDecodeError) as e:
+        logging.getLogger("cortex_bus").warning("bus_read failed: %s", e)
         return None
 
 
@@ -189,7 +194,8 @@ def bus_archive(queue: str, msg_id: str) -> bool:
     try:
         _bus_post("/api/pgmq/archive", {"queue": queue, "msg_id": msg_id})
         return True
-    except (ConnectionError, Exception):
+    except (ConnectionError, OSError, json.JSONDecodeError) as e:
+        logging.getLogger("cortex_bus").warning("bus_archive failed: %s", e)
         return False
 
 
@@ -204,7 +210,8 @@ def bus_list_queues() -> list[dict]:
             data = json.loads(resp.read().decode())
         queues = data.get("queues", []) if isinstance(data, dict) else data
         return queues
-    except Exception:
+    except (OSError, json.JSONDecodeError, ConnectionError) as e:
+        logging.getLogger("cortex_bus").warning("bus_list_queues failed: %s", e)
         return []
 
 
@@ -221,6 +228,6 @@ def bus_health() -> dict:
                           method="GET")
             with urlopen(req, timeout=10) as resp:
                 return json.loads(resp.read().decode())
-        except Exception:
+        except (HTTPError, URLError, OSError, json.JSONDecodeError):
             continue
     return {"status": "unreachable"}

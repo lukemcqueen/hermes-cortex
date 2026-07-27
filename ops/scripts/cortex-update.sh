@@ -181,6 +181,8 @@ register "ops/scripts/manage/cortex_doctor/fix.py"     "${CORTEX_DEPLOY_HOME}/sc
 register "ops/scripts/manage/cortex_doctor/helpers.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/helpers.py"
 register "ops/scripts/manage/cortex_doctor/results.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/results.py"
 
+register "ops/scripts/manage/cortex-agent-manager.py"  "${CORTEX_DEPLOY_HOME}/scripts/cortex-agent-manager.py"
+
 register "ops/scripts/hc/hc.py"                      "${CORTEX_DEPLOY_HOME}/scripts/hc.py"
 register "ops/scripts/hc/hc"                         "${CORTEX_DEPLOY_HOME}/scripts/hc"
 register "ops/scripts/health/stale-ref-watchdog.sh"            "${CORTEX_DEPLOY_HOME}/scripts/manage/stale-ref-watchdog.sh"

@@ -40,6 +40,8 @@ CREATE TABLE IF NOT EXISTS bus.permissions (
     can_requeue     BOOLEAN DEFAULT true,
     can_delete      BOOLEAN DEFAULT false,
     can_admin       BOOLEAN DEFAULT false,
+    labels          JSONB DEFAULT '{}'::jsonb,
+    config          JSONB DEFAULT '{}'::jsonb,
     created_at      TIMESTAMPTZ DEFAULT now(),
     updated_at      TIMESTAMPTZ DEFAULT now()
 );
