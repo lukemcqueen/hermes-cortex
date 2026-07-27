@@ -791,7 +791,7 @@ create_cron "agent-learning-collector" "0 */6 * * *" \
 
 # Cron output quality gate (every 10 min, silent when healthy — universal)
 create_cron "agent-cron-quality-watchdog" "*/10 * * * *" \
-  "cron-quality-watchdog.py" \
+  "agent-cron-quality-watchdog.py" \
   "" \
   "" \
   "" \

@@ -93,7 +93,7 @@ Audit focused on gaps, duplicates, naming inconsistencies, and consolidation opp
 
 ### 14. Health scripts — 18 scripts in `health/` + 1 in `manage/`
 - Watchdogs, remediation, cert checks, memory checks, etc.
-- **Observation:** Each watchdog is separate script (e.g., `cron-quality-watchdog.py`,
+- **Observation:** Each watchdog is separate script (e.g., `agent-cron-quality-watchdog.py`,
   `model-health-watchdog.py`, `system-alert-watchdog.py`). Consolidating into
   a single `health-watchdog.py --type <check>` would reduce surface area but
   is a significant refactor.

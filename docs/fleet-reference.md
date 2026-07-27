@@ -98,7 +98,7 @@ These run on every agent in the fleet. Created by `install-crons.sh`.
 | `agent-memory-to-brain-sync` | `0 */6 * * *` | no_agent | `memory-to-brain-sync.py` | local |
 | `agent-governance-auditor` | `0 */6 * * *` | no_agent | `governance-auditor.py` | origin |
 | `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local |
-| `agent-cron-quality-watchdog` | `*/10 * * * *` | no_agent | `cron-quality-watchdog.py` | origin |
+| `agent-cron-quality-watchdog` | `*/10 * * * *` | no_agent | `agent-cron-quality-watchdog.py` | origin |
 | `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `scoring-activity-watchdog.py` | origin |
 | `agent-model-health-watchdog` | `0 7 * * *` | no_agent | `model-health-watchdog.py` | origin |
 | `agent-langfuse-health-watchdog` | `0 * * * *` | no_agent | `langfuse-health-watchdog.py` | origin |
@@ -143,7 +143,7 @@ These run on this machine but use `agent-*` naming. Not in repo installers (inte
 
 | Name | Schedule | Type | Script | Deliver |
 |------|----------|------|--------|---------|
-| `cron-quality-watchdog` | `*/10 * * * *` | no_agent | `cron-quality-watchdog.py` | origin |
+| `cron-quality-watchdog` | `*/10 * * * *` | no_agent | `agent-cron-quality-watchdog.py` | origin |
 | `remediation-sensor` | `*/5 * * * *` | no_agent | `remediation-sensor.py` | local |
 | `service-recovery` | `*/5 * * * *` | no_agent | `service-recovery.py` | origin |
 | `system-alert-watchdog` | `*/30 * * * *` | no_agent | `system-alert-watchdog.py` | origin |

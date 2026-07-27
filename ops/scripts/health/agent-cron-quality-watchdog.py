@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Cron Output Quality Watchdog — no_agent script.
+Cron Output Quality Watchdog — no_agent script. agent-cron-quality-watchdog.py
 
 Runs every 10 minutes. Checks the most recent delivery output from
 every LLM-driven (no_agent=False) cron job for quality issues:

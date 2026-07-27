@@ -42,7 +42,7 @@ log "--- Cortex registered scripts ---"
 REGISTER_CHECK=(
   "$HOME/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
   "$HOME/hermes-cortex/ops/scripts/manage/stale-ref-watchdog.sh"
-  "$HOME/hermes-cortex/ops/scripts/health/cron-quality-watchdog.py"
+  "$HOME/hermes-cortex/ops/scripts/health/agent-cron-quality-watchdog.py"
   "$HOME/hermes-cortex/ops/scripts/cron-failure-state.sh"
 )
 for script in "${REGISTER_CHECK[@]}"; do
@@ -66,7 +66,7 @@ CRON_SCRIPTS=(
   "agent-remediate-apply.py"
   "auto-save-sessions.py"
   "collect-agent-skills.sh"
-  "cron-quality-watchdog.py"
+  "agent-cron-quality-watchdog.py"
   "governance-auditor.py"
   "inbox-flag.py"
   "langfuse-health-watchdog.py"

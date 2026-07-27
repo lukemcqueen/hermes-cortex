@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-budget-enforcer.py — Per-agent token budget enforcement.
+agent-budget-enforcer.py — Per-agent token budget enforcement.
 
 Reads agent registry for budget.daily_token_cap, compares against
 today's token usage in cron-costs.db. Alerts when approaching or
 exceeding budget. Can block crons from running.
 
 Usage:
-    budget-enforcer.py                          # Check all agents
-    budget-enforcer.py --agent moses            # Check specific agent
-    budget-enforcer.py --block                  # Block over-budget crons (exit 1)
-    budget-enforcer.py --threshold 0.8          # Alert at 80% of budget (default)
-    budget-enforcer.py --json                   # Machine-readable output
+    agent-budget-enforcer.py                          # Check all agents
+    agent-budget-enforcer.py --agent moses            # Check specific agent
+    agent-budget-enforcer.py --block                  # Block over-budget crons (exit 1)
+    agent-budget-enforcer.py --threshold 0.8          # Alert at 80% of budget (default)
+    agent-budget-enforcer.py --json                   # Machine-readable output
 
 |Exit codes:
 |    0 — Under budget
@@ -175,7 +175,7 @@ def main():
             if r["over_budget"] or r["near_budget"]:
                 if not any_alert:
                     ts = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
-                    print(f"[{ts}] budget-enforcer watchdog:")
+                    print(f"[{ts}] agent-budget-enforcer watchdog:")
                     any_alert = True
                 icon = "🔴" if r["over_budget"] else "🟡"
                 status = "OVER BUDGET" if r["over_budget"] else f"Near budget (>={args.threshold*100:.0f}%)"

@@ -62,7 +62,7 @@ If all YES → deliver as normal.
 
 ## Watchdog Script
 
-Location: `~/.hermes/scripts/cron-quality-watchdog.py`
+Location: `~/.hermes/scripts/agent-cron-quality-watchdog.py`
 
 Runs as `no_agent=True` cron on schedule `*/10 * * * *`. Delivers to origin.
 
@@ -78,8 +78,8 @@ Runs as `no_agent=True` cron on schedule `*/10 * * * *`. Delivers to origin.
 
 ## Installation
 
-1. Create the script at `~/.hermes/scripts/cron-quality-watchdog.py`
-2. Create the cron: `*/10 * * * *`, no_agent=True, script=cron-quality-watchdog.py
+1. Create the script at `~/.hermes/scripts/agent-cron-quality-watchdog.py`
+2. Create the cron: `*/10 * * * *`, no_agent=True, script=agent-cron-quality-watchdog.py
 3. Append the quality gate block to every LLM cron prompt
 
 ## Adding to a new LLM cron
@@ -109,10 +109,10 @@ Always pin LLM crons explicitly (`provider=openrouter model=...`) so the drift g
 
 To update the watchdog script:
 ```bash
-patch ~/.hermes/scripts/cron-quality-watchdog.py
+patch ~/.hermes/scripts/agent-cron-quality-watchdog.py
 ```
 
 To check watchdog health:
 ```bash
-python3 ~/.hermes/scripts/cron-quality-watchdog.py
+python3 ~/.hermes/scripts/agent-cron-quality-watchdog.py
 ```

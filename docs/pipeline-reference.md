@@ -155,7 +155,7 @@ On Monday: runs a deep evaluation pass (full dedup, staleness detection, cross-f
 | `orch-skill-lifecycle` | LLM+skill | `0 4 * * *` | `orch-skill-lifecycle` | origin |
 | `agent-learning-collector` | no_agent | `0 */6 * * *` | `agent-learning-collector.py` | local |
 | `session-cache-build` | no_agent | `0 5 * * 1` | `session_cache.py` | origin |
-| `cron-quality-watchdog` | no_agent | `*/10 * * * *` | `cron-quality-watchdog.py` | origin |
+| `cron-quality-watchdog` | no_agent | `*/10 * * * *` | `agent-cron-quality-watchdog.py` | origin |
 
 > Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
 > Date: 2026-07-15T00:00:00+00:00

@@ -30,7 +30,7 @@
 | agent-weekly-loop-eval | LLM+skill | 0 9 * * 1 | Weekly loop evaluation |
 | agent-ip-submission | no_agent | */30 * * * * | Submit IP to threat service |
 | agent-apply-fixes | no_agent | */10 * * * * | Apply fix markers |
-| cron-quality-watchdog | no_agent | */10 * * * * | Monitor cron output quality |
+| agent-cron-quality-watchdog | no_agent | */10 * * * * | Monitor cron output quality |
 | session-cache-build | no_agent | 0 5 * * 1 | Weekly session cache build |
 | agents-md-prune-scan | no_agent | 0 4 * * 1-6 | Daily AGENTS.md prune scan |
 | agents-md-prune-apply | LLM+prompt | 30 4 * * 1-6 | Daily AGENTS.md prune apply |

@@ -39,7 +39,7 @@
 | `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local |
 | `agent-service-recovery` | `*/5 * * * *` | no_agent | `service-recovery.py` | origin |
 | `agent-system-alert-watchdog` | `*/30 * * * *` | no_agent | `system-alert-watchdog.py` | origin |
-| `agent-cron-quality-watchdog` | `*/10 * * * *` | no_agent | `cron-quality-watchdog.py` | origin |
+| `agent-cron-quality-watchdog` | `*/10 * * * *` | no_agent | `agent-cron-quality-watchdog.py` | origin |
 | `agent-langfuse-health-watchdog` | `0 * * * *` | no_agent | `langfuse-health-watchdog.py` | origin |
 | `agent-model-health-watchdog` | `0 7 * * *` | no_agent | `model-health-watchdog.py` | origin |
 | `agent-secret-leak-watchdog` | `0 */4 * * *` | no_agent | `secret-leak-watchdog.py` | origin |
