@@ -122,8 +122,17 @@ def _bus_post(endpoint: str, payload: dict, fallback: bool = False) -> dict:
 
 
 def bus_send(queue: str, message_body: dict) -> dict | None:
-    """Send a message to a bus queue. Returns response dict or None on failure."""
+    """Send a message to a bus queue. Returns response dict or None on failure.
+    
+    Auto-serializes the inner `body` field (if it's a dict) so callers don't
+    need to remember json.dumps() before passing it.
+    """
     try:
+        # Auto-serialize inner body if it's a dict (prevents double-encoding)
+        inner_body = message_body.get("body")
+        if isinstance(inner_body, dict):
+            message_body["body"] = json.dumps(inner_body)
+        
         payload = {
             "queue": queue,
             "message": json.dumps(message_body),
@@ -155,6 +164,15 @@ def bus_read(queue: str, vt: int = 60) -> dict | None:
             # Normalize None body to empty dict so consumers never crash on body.get()
             if result.get("body") is None:
                 result["body"] = {}
+            # Auto-parse inner body (the message's own `body` field)
+            # Prevents the two-level JSON problem where outer body is parsed
+            # but inner body is still a JSON string
+            inner_body = result["body"].get("body")
+            if isinstance(inner_body, str):
+                try:
+                    result["body"]["body"] = json.loads(inner_body)
+                except (json.JSONDecodeError, TypeError):
+                    pass  # Leave as-is if not valid JSON
             # Normalize None correlation_id to empty string for subscript safety
             if result.get("correlation_id") is None:
                 result["correlation_id"] = ""
