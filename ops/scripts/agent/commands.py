@@ -268,6 +268,7 @@ def handle_git_auth(msg_body: dict, msg_raw: dict) -> dict:
     checks.append({"name": "ls-remote", "pass": auth_ok, "detail": r["stdout"].strip()[:40] if auth_ok else r["stderr"][:200]})
 
     return {
+        "success": all(c["pass"] for c in checks),
         "authenticated": all(c["pass"] for c in checks),
         "remote_url": remote_url if remote_url else "unknown",
         "error": "",
@@ -395,10 +396,12 @@ def handle_diagnostic(msg_body: dict, msg_raw: dict) -> dict:
     if result["success"] and result["stdout"].strip():
         try:
             parsed = json.loads(result["stdout"])
+            if isinstance(parsed, dict):
+                parsed.setdefault("success", True)
             return parsed
         except json.JSONDecodeError:
             pass
-    return {"error": result["stderr"][:200] or "No output"}
+    return {"success": False, "error": result["stderr"][:200] or "No output"}
 
 
 # ── LEARNINGS_REQUEST → LEARNINGS_RESULT ──
