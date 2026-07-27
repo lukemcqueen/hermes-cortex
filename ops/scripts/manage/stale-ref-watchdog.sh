@@ -68,7 +68,6 @@ CRON_SCRIPTS=(
   "collect-agent-skills.sh"
   "agent-cron-quality-watchdog.py"
   "governance-auditor.py"
-  "inbox-flag.py"
   "langfuse-health-watchdog.py"
   "llm-judge-scorer.py"
   "memory-to-brain-sync.py"
