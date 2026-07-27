@@ -438,9 +438,9 @@ if $UNINSTALL; then
     "agent-governance-auditor" \
     "agent-hermes-cortex-sync" \
     "agent-hermes-update" \
-    "agent-inbox-evening" \
-    "agent-inbox-overnight" \
-    "agent-inbox-workday" \
+    "agent-bus-evening" \
+    "agent-bus-overnight" \
+    "agent-bus-workday" \
     "agent-ip-submission" \
     "agent-langfuse-health-watchdog" \
     "agent-learning-collector" \
@@ -461,7 +461,6 @@ if $UNINSTALL; then
     "agent-system-alert-watchdog" \
     "agent-threat-pipeline" \
     "agent-weekly-loop-eval" \
-    "inbox-flag" \
     "no-verify-audit" \
     "skill-evaluate" \
     "skill-report-process" \
@@ -628,20 +627,10 @@ create_cron "agent-message-handler" "*/5 * * * *" \
   "" \
   "true"
 
-# Inbox processing — weekday (hourly M-F 9-5), evening (every 2h M-F 6-10), overnight (3am M-F)
-create_cron "agent-inbox-workday" "0 9-17 * * 1-5" \
+# Bus processing — weekday (hourly M-F 9-5), evening (every 2h M-F 6-10), overnight (3am M-F)
+create_cron "agent-bus-workday" "0 9-17 * * 1-5" \
   "" \
-  "Process pending inbox messages using the inbox decision framework. Read unread inbox messages, classify each by priority (critical/urgent/normal/notification) and scope (simple/moderate/complex/multi-agent), then auto-act on simple and moderate items, escalate complex items. Deliver a summary of what was processed." \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
-
-create_cron "agent-inbox-evening" "0 18,20,22 * * 1-5" \
-  "" \
-  "Process pending inbox messages using the inbox decision framework. Read unread inbox messages, classify each by priority (critical/urgent/normal/notification) and scope (simple/moderate/complex/multi-agent), then auto-act on simple and moderate items, escalate complex items. Deliver a summary of what was processed." \
+  "Process the Agent Bus using the Inbox Message Decision Framework. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean." \
   "" \
   "" \
   "origin" \
@@ -649,9 +638,9 @@ create_cron "agent-inbox-evening" "0 18,20,22 * * 1-5" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-create_cron "agent-inbox-overnight" "0 3 * * 1-5" \
+create_cron "agent-bus-evening" "0 18,20,22 * * 1-5" \
   "" \
-  "Process pending inbox messages using the inbox decision framework. Read unread inbox messages, classify each by priority (critical/urgent/normal/notification) and scope (simple/moderate/complex/multi-agent), then auto-act on simple and moderate items, escalate complex items. Overnight run — catch anything missed during the day." \
+  "Process the Agent Bus messages. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean." \
   "" \
   "" \
   "origin" \
@@ -659,15 +648,15 @@ create_cron "agent-inbox-overnight" "0 3 * * 1-5" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-
-create_cron "inbox-flag" "*/10 * * * *" \
-  "inbox-flag.py" \
+create_cron "agent-bus-overnight" "0 3 * * 1-5" \
+  "" \
+  "Process the Agent Bus overnight. The bus-flag sensor output is injected as context. Check for any urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean." \
   "" \
   "" \
+  "origin" \
   "" \
-  "local" \
-  "" \
-  "true"
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 
 # ── 5. Governance Audit & Lock Cleanup

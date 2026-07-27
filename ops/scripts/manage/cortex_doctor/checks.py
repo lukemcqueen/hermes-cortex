@@ -870,7 +870,7 @@ def check_system(res):
             count = len(out.strip().split("\n"))
             res.add("Systemd scope", "WARN",
                     f"{count} Hermes service(s) found in /etc/systemd/system/ (must use ~/.config/systemd/user/)",
-                    "sudo systemctl disable --now hermes-dashboard hermes-health hermes-inbox hermes-gateway ; "
+                    "sudo systemctl disable --now hermes-dashboard hermes-health hermes-gateway ; "
                     "sudo rm /etc/systemd/system/hermes-*.service ; "
                     "sudo rm /etc/systemd/system/multi-user.target.wants/hermes-*.service ; "
                     "sudo systemctl daemon-reload")

@@ -270,8 +270,6 @@ register "mcp-servers/agent-bus-mcp.py"                "${CORTEX_DEPLOY_HOME}/sc
 
 # Inbox MCP tools
 # Inbox→bus renamed scripts (source files moved to ops/scripts/bus/)
-# inbox-flag.py retained at ops/scripts/inbox/ for BWC
-register "ops/scripts/inbox/inbox-flag.py"              "${CORTEX_DEPLOY_HOME}/scripts/inbox-flag.py"
 register "ops/scripts/bus/bus-processor.py"        "${CORTEX_DEPLOY_HOME}/scripts/bus-processor.py"
 register "ops/scripts/bus/bus-remediate.sh"        "${CORTEX_DEPLOY_HOME}/scripts/bus-remediate.sh"
 register "ops/scripts/bus/generate-bus-wrappers.py"     "${CORTEX_DEPLOY_HOME}/scripts/generate-bus-wrappers.py"
@@ -282,11 +280,7 @@ register "ops/scripts/orch-bus/orch-bus-depth-watchdog.sh"  "${CORTEX_DEPLOY_HOM
 register "ops/scripts/orch-bus/orch-bus-audit-watchdog.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-audit-watchdog.py"
 register "ops/scripts/orch-bus/orch-bus-recover-timeouts.sh"   "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-recover-timeouts.sh"
 register "ops/scripts/manage/loop-gov-mcp.sh"            "${CORTEX_DEPLOY_HOME}/scripts/loop-gov-mcp.sh"
-# agent-inbox-monitor.sh and orch-inbox-processor.py replaced by bus equivalents above
-# (ops/scripts/bus/agent-bus-monitor.sh, ops/scripts/bus/bus-processor.py)
-# NOTE: check-agent-messages.sh was renamed to orch-check-agent-messages.sh (local only, not in repo)
-# The crontab on this server was updated to use the correct name.
-#register "ops/scripts/agent/check-agent-messages.sh"    "${CORTEX_DEPLOY_HOME}/scripts/check-agent-messages.sh"
+# Bus-renamed scripts — everything under ops/scripts/bus/
 register "ops/scripts/manage/ek-session-snapshot.py"     "${CORTEX_DEPLOY_HOME}/scripts/ek-session-snapshot.py"
 
 # Fleet watchdog — cross-agent health polling (orch, deployed by install-orch-crons.sh)
@@ -480,25 +474,7 @@ restart_dashboard() {
     systemctl --user restart hermes-cortex-dashboard 2>&1 | sed 's/^/    /'
   fi
 }
-
-restart_agent_inbox() {
-  if launchctl list com.hermes.agent-inbox &>/dev/null 2>&1; then
-    info "  Restarting Agent Inbox…"
-    local plist="${HOME}/Library/LaunchAgents/com.hermes.agent-inbox.plist"
-    launchctl unload "$plist" 2>/dev/null || true
-    # Create venv if missing
-    local inbox_dir="${CORTEX_DEPLOY_HOME}/agent-inbox"
-    if [[ ! -d "${inbox_dir}/venv" ]]; then
-      python3.12 -m venv "${inbox_dir}/venv" 2>/dev/null || python3 -m venv "${inbox_dir}/venv" 2>/dev/null || true
-      "${inbox_dir}/venv/bin/pip" install fastapi uvicorn python-multipart 2>/dev/null || true
-    fi
-    launchctl load "$plist" 2>&1 | sed 's/^/    /'
-  elif [[ -f "${HOME}/.config/systemd/user/hermes-agent-inbox.service" ]]; then
-    info "  Restarting Agent Inbox (systemd)…"
-    systemctl --user daemon-reload 2>/dev/null || true
-    systemctl --user restart hermes-agent-inbox 2>&1 | sed 's/^/    /'
-  fi
-}
+# restart_agent_inbox — removed; use restart_agent_bus instead
 
 restart_health_server() {
   info "  health-server.py has been removed — use health-vector.service instead."
@@ -1540,7 +1516,6 @@ main() {
         restart_gbrain_sync) restart_gbrain_sync ;;
         restart_langfuse)    restart_langfuse ;;
         restart_dashboard)   restart_dashboard ;;
-        restart_agent_inbox) restart_agent_inbox ;;
         *)                   warn "Unknown restart command: $cmd" ;;
       esac
     done

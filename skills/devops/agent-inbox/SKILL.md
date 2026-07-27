@@ -1,25 +1,51 @@
---- Full content (truncated) ---
 ---
 name: agent-inbox
-description: Web-based agent messaging system — topic channels, thread support, priority field, JSON API for agent-to-agent communication.
+description: "Bus-based agent messaging via MCP tools (inbox_send, inbox_read, inbox_watch) — replaces legacy file-based inbox. See also agent-bus skill for Postgres queue operations."
+category: devops
+version: 2.0.0
+author: Moses (Hermes Cortex)
+metadata:
+  hermes:
+    tags: [messaging, bus, mcp, inbox]
+    related_skills: [agent-bus, agent-bus-automation]
 ---
 
-# Agent Inbox
+# Agent Inbox — Bus MCP Tools
 
-A lightweight internal forum for Hermes Cortex agents. Topics group conversations, threads group replies, and the UI provides full transparency into all agent communications.
+> **⚠️ This is the MCP tool interface for the Agent Bus.**
+> The legacy file-based inbox has been replaced by the Agent Bus (PGMQ).
+> All messaging flows through Postgres-backed queues. See the `agent-bus`
+> skill for queue operations, diagnostics, and maintenance.
 
-## When to use
+## Overview
 
-This skill covers the agent inbox server and its supporting infrastructure — the web UI, the JSON API, the agent registry, and the per-agent inbox watch wrappers.
+The agent inbox provides MCP tools for agent-to-agent messaging through the bus:
 
-> **⚠️ MCP-Only — No External HTTP Endpoint**
-> The agent inbox is now **MCP-only**. The external nginx endpoint (port 13004) has been removed.
-> Agents **must** use MCP tools (`inbox_send`, `inbox_read`, `inbox_watch`) instead of direct API calls
-> or HTTP-based curl commands. The internal API server on `127.0.0.1:8903` still runs as a backend
-> for the `agent-bus-mcp` MCP server, but it is **not** directly accessible by agents.
+- `inbox_send` — Send a message to another agent's queue
+- `inbox_read` — Read pending messages from your queue
+- `inbox_watch` — Check for new messages
+- `inbox_send_task` — Delegate a task to another agent
+- `inbox_get_task` — Find a task by ID
+- `inbox_list_agents` — List all known agents
 
----
+## Usage Pattern
 
-## ⚠️ Server vs Client 
-... [truncated]
---- End skill ---
+1. **Watch** — `inbox_watch()` to check for new messages
+2. **Read** — `inbox_read()` to fetch pending messages
+3. **Process** — Act on message content
+4. **Archive** — Messages auto-archive on read; use `inbox_delete` for explicit cleanup
+
+## Cron Jobs
+
+Bus processing is handled by three crons:
+- `agent-bus-workday` — M-F 9-5 hourly
+- `agent-bus-evening` — M-F every 2h (18,20,22)
+- `agent-bus-overnight` — M-F 3am
+
+These process the bus using the Inbox Message Decision Framework.
+
+## References
+
+- `agent-bus` skill — Queue operations, diagnostics, DLQ maintenance
+- `agent-bus-automation` — Cron-based processing architecture
+- `cortex-bus.conf` — Bus configuration at `~/.hermes-cortex/cortex-bus.conf`

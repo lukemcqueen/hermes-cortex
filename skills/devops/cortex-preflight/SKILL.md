@@ -87,17 +87,31 @@ cronjob action=list | grep "orch-"
 | server-agent (Joseph, Kustos, Gisu) | Local maintenance, health reports |
 | dev-agent (Titus) | Local reports, push-only bus |
 
-### 5. Check for stale deploy references
+### 5. Check for stale deploy references — EVERY deploy location
 
-Before renaming or removing a file, check how many deploy locations reference it:
+Before renaming or removing a file, check **every** location that could reference the old name. A single stale ref in an unchecked directory is a trust violation.
 
 ```bash
-# Search all deployment-related files
-grep -rn "<old-name>" ~/hermes-cortex/ops/scripts/cortex-update.sh
-grep -rn "<old-name>" ~/hermes-cortex/ops/install/
+# Search ALL deploy locations — not just the obvious ones
+for dir in \
+  ~/hermes-cortex/ops/scripts/ \
+  ~/hermes-cortex/ops/install/ \
+  ~/hermes-cortex/ops/scripts/cortex_doctor/ \
+  ~/hermes-cortex/hooks/ \
+  ~/hermes-cortex/.hermes-cortex/ \    # skills, references, config
+  ; do
+  [ -d "$dir" ] && grep -rn "<old-name>" "$dir" 2>/dev/null
+done
 ```
 
-A single rename can touch: `cortex-update.sh` (register + unregister), install scripts (create + uninstall arrays), `cortex-doctor.py` (parse functions), and `cron-schedules.md`.
+**Critical directories that are easy to forget:**
+- `cortex_doctor/` — contains checks, expected cron lists, and remediation hints
+- `hooks/` — pre-commit, pre-push scripts may reference service names
+- `config/` — repo-owners.yaml, skills manifests
+- `state/` — seen-file tracking (e.g., inbox-flag-seen)
+- `manage/` — subdirectory scripts (stale-ref-watchdog, etc.)
+
+A single rename can touch: `cortex-update.sh` (register + unregister), install scripts (create + uninstall arrays), `cortex-doctor/checks.py` (remediation hints), `check-system.sh` (service lists), `service-recovery.py` (service labels), and `cron-schedules.md`.
 
 ### 6. Verify other agents won't be affected
 

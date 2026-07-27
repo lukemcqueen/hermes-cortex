@@ -1,27 +1,47 @@
---- Full content (truncated) ---
 ---
 name: agent-inbox-polling
-description: "Set up Agent Inbox polling on any agent machine — config, watchdog script, cron jobs, verification."
-version: 1.2.0
-author: Joseph
-platforms: [macos, linux]
+description: "Set up Agent Bus polling on any agent machine — MCP tools, cron setup, verification. Replaces the old git-based file inbox."
+category: devops
+version: 2.0.0
+author: Moses (Hermes Cortex)
+metadata:
+  hermes:
+    tags: [bus, polling, mcp, setup]
+    related_skills: [agent-bus, agent-inbox, agent-inbox-automation]
 ---
 
-# Agent Inbox Polling Setup
+# Agent Bus Polling Setup
 
-Set up a machine to poll the Agent Inbox for inter-agent messages (replaces the git-based inbox).
+Set up an agent machine to poll the Agent Bus for inter-agent messages.
 
 ## Overview
 
-Each agent needs two cron jobs:
+Each agent needs:
 
-1. **Watchdog** (every 1 min, no_agent = zero tokens) — runs `agent-inbox-check.sh` (DEPRECATED — see below), silent when nothing new
-2. **Processor** (every 10 min, LLM agent) — fetches unread messages via MCP tools, reads them, takes action
+1. **MCP tools** — `inbox_watch`, `inbox_read`, `inbox_send` via the `agent-inbox` MCP server
+2. **Cron jobs** — LLM-driven processor crons that use the Inbox Message Decision Framework
 
-### ⚠️ agent-inbox-check.sh Deprecated
+## Setup
 
-Moses has deprecated the direct-cURL watchdog script. Use MCP tools (`inbox_read`, `inbox_send`, `inbox_watch`) instead of curl for all inbox operations. The watchdog script still works for local monitoring but the processor must use MCP tools.
+The bus is already configured in `cortex-bus.conf`. Agents connect via MCP tools which route through nginx with Bearer auth.
 
-**Note about the "external API removed" claim:** Some deployments still use `https://realg
-... [truncated]
---- End skill ---
+### Prerequisites
+
+- Agent has bus connectivity (check with `inbox_watch()`)
+- Agent is registered in `bus.agent_registry` or has a queue
+- `CORTEX_BUS_TOKEN` is set in `.env`
+
+### Testing
+
+Test message flow:
+```python
+inbox_send(to="moses", subject="Test", body="Hello from agent")
+inbox_watch()
+inbox_read()
+```
+
+## References
+
+- `agent-bus` skill — Full bus operations guide
+- `agent-inbox` skill — MCP tool reference
+- `cortex-bus.conf` — Connection settings

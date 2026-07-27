@@ -341,14 +341,12 @@ check_service_manager() {
             "com.gbrain.autopilot"
             "com.hermes.gateway"
             "com.hermes.cortex-dashboard"
-            "com.hermes.agent-inbox"
         )
         SERVICE_NAMES=(
             "Ollama"
             "gbrain autopilot"
             "Hermes Gateway"
             "Cortex Dashboard"
-            "Agent Inbox"
         )
         local svc_mgr="launchd"
     elif [[ "$os" == "Linux" ]]; then
@@ -358,14 +356,12 @@ check_service_manager() {
             "gbrain-autopilot"
             "hermes-gateway"
             "hermes-cortex-dashboard"
-            "hermes-agent-inbox"
         )
         SERVICE_NAMES=(
             "Ollama"
             "gbrain autopilot"
             "Hermes Gateway"
             "Cortex Dashboard"
-            "Agent Inbox"
         )
         local svc_mgr="systemd"
     else
