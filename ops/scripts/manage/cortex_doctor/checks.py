@@ -1195,6 +1195,58 @@ def nginx_available():
     return bool(out.strip())
 
 
+def _check_enforcer_permissions(res, plugin_dir, hooks_dir):
+    """Check that enforcement files have expected restrictive permissions."""
+    checks = [
+        ("Plugin __init__.py", plugin_dir / "__init__.py", 0o444),
+        ("Pre-commit hook script", hooks_dir / "pre-commit", 0o555),
+        ("Pre-push hook script", hooks_dir / "pre-push", 0o555),
+        ("Post-commit hook script", hooks_dir / "post-commit", 0o555),
+    ]
+    for label, path, want in checks:
+        if not path.exists() or path.is_symlink():
+            continue  # symlinks have different perms — skip
+        try:
+            have = path.stat().st_mode & 0o777
+            if have == want:
+                res.add(f"Perms: {label}", "PASS", f"{oct(want)}")
+            else:
+                res.add(f"Perms: {label}", "WARN",
+                        f"expected {oct(want)}, got {oct(have)}",
+                        f"Fix: chmod {oct(want)[2:]} {path}")
+        except OSError:
+            pass
+
+
+def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
+    """Check that critical enforcement files have the immutable (chattr +i) flag."""
+    targets = [
+        plugin_dir / "__init__.py",
+        hooks_dir / "pre-commit",
+        hooks_dir / "pre-push",
+        hooks_dir / "post-commit",
+    ]
+    for path in targets:
+        if not path.exists():
+            continue
+        try:
+            result = subprocess.run(
+                ["lsattr", str(path)],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode != 0:
+                continue
+            flags = result.stdout.split()[0] if result.stdout else ""
+            if "i" in flags:
+                res.add(f"Immutable: {path.name}", "PASS", "chattr +i set")
+            else:
+                res.add(f"Immutable: {path.name}", "WARN",
+                        "immutable flag not set — file is modifiable",
+                        f"Fix: sudo chattr +i {path}")
+        except (subprocess.TimeoutExpired, OSError, IndexError):
+            pass
+
+
 def check_governance(res):
     """7. Governance system: plugin, pre-commit hook, MCP servers, lock files, score-cycle."""
     config_text = read_file(CONFIG_FILE)
@@ -1486,6 +1538,12 @@ def check_governance(res):
                             f"{len(lock_files)} lock(s), none stale")
         else:
             res.add("Governance locks", "PASS", "no lock files")
+
+    # ── Permission checks on enforcement files ──
+    _check_enforcer_permissions(res, plugin_dir, hooks_dir)
+
+    # ── Immutability (chattr +i) checks ──
+    _check_enforcer_immutability(res, plugin_dir, hooks_dir)
 
     # ── Governance bypass coverage ──
     enforcer_path = CORTEX_REPO / "plugins" / "hermes-governance-enforcer" / "__init__.py"

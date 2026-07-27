@@ -198,6 +198,37 @@ print('ADDED')
                 print(f"  ✅ Done")
                 fixed += 1
 
+    # Fix: permissions on enforcement files
+    perm_fixes = [
+        ("Plugin __init__.py perms", "Perms: Plugin __init__.py",
+         HERMES_HOME / "plugins" / "governance-enforcer" / "__init__.py", 0o444),
+    ]
+    for label, key, path, want in perm_fixes:
+        if key in fix_map and "WARN" in str(fix_map.get(key, "")):
+            if path.exists() and not path.is_symlink():
+                want_str = oct(want)[2:]
+                if _run_fix(label, ["chmod", want_str, str(path)]):
+                    fixed += 1
+                else:
+                    failed += 1
+
+    # Fix: immutability on enforcement files
+    immutability_paths = [
+        ("Plugin immutability", "Immutable: __init__.py",
+         HERMES_HOME / "plugins" / "governance-enforcer" / "__init__.py"),
+        ("Pre-commit immutability", "Immutable: pre-commit",
+         CORTEX_HOME / "hooks" / "pre-commit"),
+        ("Pre-push immutability", "Immutable: pre-push",
+         CORTEX_HOME / "hooks" / "pre-push"),
+    ]
+    for label, key, path in immutability_paths:
+        if key in fix_map and "WARN" in str(fix_map.get(key, "")):
+            if path.exists():
+                if _run_fix(label, ["sudo", "chattr", "+i", str(path)]):
+                    fixed += 1
+                else:
+                    failed += 1
+
     # Fix: Ollama down
     if "Ollama" in fix_map and fix_map["Ollama"] == "FAIL":
         if _run_fix("Starting Ollama", ["systemctl", "--user", "start", "ollama"], timeout=10):

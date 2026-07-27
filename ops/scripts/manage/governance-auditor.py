@@ -222,6 +222,131 @@ def _cleanup_stale_locks() -> list[str]:
     return cleaned
 
 
+# ── Phase 4: Infrastructure integrity checks ────────────────────
+
+
+def _check_infrastructure() -> list[str]:
+    """Check that governance enforcement infrastructure is intact.
+
+    Returns list of issue messages (empty = all good, silent).
+    """
+    issues = []
+
+    # ── 1. Plugin symlink ──
+    plugin_link = os.path.expanduser("~/.hermes/plugins/governance-enforcer")
+    plugin_target = os.path.expanduser(
+        "~/hermes-cortex/plugins/hermes-governance-enforcer"
+    )
+    if not os.path.islink(plugin_link):
+        issues.append(
+            f"  🛡️  Governance plugin symlink MISSING at {plugin_link}.\n"
+            f"       Fix: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer "
+            f"{plugin_link}"
+        )
+    else:
+        actual_target = os.readlink(plugin_link)
+        if actual_target != plugin_target:
+            issues.append(
+                f"  🛡️  Plugin symlink points to {actual_target}\n"
+                f"       (expected {plugin_target}).\n"
+                f"       Fix: ln -sf {plugin_target} {plugin_link}"
+            )
+        elif not os.path.exists(os.path.join(plugin_link, "__init__.py")):
+            issues.append(
+                f"  🛡️  Plugin symlink exists but __init__.py missing at target.\n"
+                f"       Fix: Check that {plugin_target}/__init__.py exists"
+            )
+
+    # ── 2. Hook symlinks ──
+    hooks_dir = os.path.expanduser("~/.hermes-cortex/hooks")
+    expected_hooks = {
+        "pre-commit": os.path.expanduser("~/.hermes-cortex/scripts/pre-commit-score"),
+        "pre-push": os.path.expanduser("~/.hermes-cortex/scripts/pre-push-pull"),
+        "post-commit": os.path.expanduser("~/.hermes-cortex/scripts/post-commit-audit"),
+    }
+    for hook_name, expected_target in expected_hooks.items():
+        hook_path = os.path.join(hooks_dir, hook_name)
+        if not os.path.islink(hook_path) and not os.path.isfile(hook_path):
+            issues.append(
+                f"  🔗 {hook_name} hook MISSING at {hook_path}.\n"
+                f"       Fix: Run: cortex-update.sh --force-all"
+            )
+        elif os.path.islink(hook_path):
+            actual = os.readlink(hook_path)
+            if actual != expected_target:
+                issues.append(
+                    f"  🔗 {hook_name} symlink points to {actual}\n"
+                    f"       (expected {expected_target}).\n"
+                    f"       Fix: ln -sf {expected_target} {hook_path}"
+                )
+
+    # ── 3. hooksPath config ──
+    try:
+        r = subprocess.run(
+            ["git", "-C", os.path.expanduser("~/hermes-cortex"),
+             "config", "--get", "core.hooksPath"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode == 0:
+            actual_hp = r.stdout.strip()
+            expected_hp = hooks_dir
+            if actual_hp != expected_hp:
+                issues.append(
+                    f"  ⚙️  core.hooksPath is '{actual_hp}'\n"
+                    f"       (expected '{expected_hp}').\n"
+                    f"       Fix: git config --global core.hooksPath {expected_hp}"
+                )
+        else:
+            issues.append(
+                f"  ⚙️  core.hooksPath NOT SET.\n"
+                f"       Fix: git config --global core.hooksPath {hooks_dir}"
+            )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        issues.append("  ⚙️  Could not check core.hooksPath (git not available).")
+
+    # ── 4. Permissions ──
+    perm_checks = [
+        (os.path.expanduser("~/.hermes/plugins/governance-enforcer/__init__.py"), 0o444),
+    ]
+    for path, want in perm_checks:
+        if os.path.exists(path) and not os.path.islink(path):
+            try:
+                have = os.stat(path).st_mode & 0o777
+                if have != want:
+                    issues.append(
+                        f"  🔓 Permissions on {path}: {oct(have)}\n"
+                        f"       (expected {oct(want)}).\n"
+                        f"       Fix: chmod {oct(want)[2:]} {path}"
+                    )
+            except OSError:
+                pass
+
+    # ── 5. Immutability ──
+    immutable_targets = [
+        os.path.expanduser("~/.hermes/plugins/governance-enforcer/__init__.py"),
+        os.path.join(hooks_dir, "pre-commit"),
+        os.path.join(hooks_dir, "pre-push"),
+    ]
+    for path in immutable_targets:
+        if os.path.exists(path):
+            try:
+                r = subprocess.run(
+                    ["lsattr", path],
+                    capture_output=True, text=True, timeout=5,
+                )
+                if r.returncode == 0:
+                    flags = r.stdout.split()[0] if r.stdout else ""
+                    if "i" not in flags:
+                        issues.append(
+                            f"  🔓 Immutable flag MISSING on {path}.\n"
+                            f"       Fix: sudo chattr +i {path}"
+                        )
+            except (subprocess.TimeoutExpired, OSError, IndexError):
+                pass
+
+    return issues
+
+
 # ── Main ─────────────────────────────────────────────────────
 def main() -> None:
     output = []
@@ -232,6 +357,14 @@ def main() -> None:
         ts = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
         output.append(f"[{ts}] governance-auditor: cleaned {len(lock_msgs)} stale lock(s)")
         output.extend(lock_msgs)
+        output.append("")
+
+    # Phase 1b: Check governance infrastructure integrity
+    infra_msgs = _check_infrastructure()
+    if infra_msgs:
+        ts = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
+        output.append(f"[{ts}] governance-auditor: {len(infra_msgs)} infrastructure issue(s)")
+        output.extend(infra_msgs)
         output.append("")
 
     # Phase 2: Check for unscored changes

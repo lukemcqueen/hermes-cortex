@@ -4,7 +4,7 @@ health-vector.py — Hermes Cortex Agent Health Vector (9-item)
 
 Two modes:
   1. Standalone:  python3 health-vector.py        → JSON to stdout
-  2. HTTP server: python3 health-vector.py --serve  → serves on :13006
+  2. HTTP server: python3 health-vector.py --serve  → serves on :8905
 
 Service map (index → service name) from agent-registry.json:
   [0] resources           — system resources OK (CPU/mem not stressed)
@@ -414,7 +414,7 @@ def build_report() -> dict:
     }
 
 
-def serve_http(port: int = 13006):
+def serve_http(port: int = 8905):
     """Run as a lightweight HTTP server."""
     from http.server import HTTPServer, BaseHTTPRequestHandler
 

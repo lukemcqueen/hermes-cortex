@@ -1,22 +1,17 @@
-# health-vector.service — Hermes Cortex Agent Health Vector Server
+# health-vector.service — Hermes Cortex Agent Health Vector Server (internal :8905)
 #
 # ⚠️ USER-LEVEL ONLY — must live in ~/.config/systemd/user/
 #    Never copy to /etc/systemd/system/ (causes port conflicts).
 #    Enable/start: systemctl --user enable health-vector.service
 #    Template source: docs/templates/health-vector.service (hermes-cortex repo)
 #
-# Serve the health vector on the configured port (no auth, no TLS).
-# The orchestrator polls this endpoint to monitor agent health.
+# INTERNAL PORT: 8905 — nginx upstream health_backend expects this.
+# nginx proxies external :xx007 → internal :8905 for agent health polling.
+# Do NOT change this port — the nginx templates across all agent configs
+# reference 127.0.0.1:8905 for the health_backend upstream.
 #
-# Usage:
-#   systemctl --user enable health-vector.service
-#   systemctl --user start health-vector.service
-#
-# Override port via drop-in:
-#   systemctl --user edit health-vector.service
-#   [Service]
-#   ExecStart=
-#   ExecStart=/usr/bin/python3 %h/hermes-cortex/ops/scripts/health/health-vector.py --serve 13007
+# Override port only if the nginx config explicitly defines a different upstream.
+# Then patch BOTH the service ExecStart AND the nginx upstream server directive.
 
 [Unit]
 Description=Hermes Cortex Health Vector Server
@@ -24,7 +19,8 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 %h/hermes-cortex/ops/scripts/health/health-vector.py --serve 13007
+Environment=PATH=%h/.local/bin:%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/python3 %h/hermes-cortex/ops/scripts/health/health-vector.py --serve 8905
 Restart=always
 RestartSec=5
 StandardOutput=journal
