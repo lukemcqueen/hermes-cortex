@@ -600,3 +600,7 @@ def handle_reboot(msg_body: dict, msg_raw: dict) -> dict:
 
 register_custom("DIAGNOSTIC_REQUEST", "DIAGNOSTIC_RESULT", handle_diagnostic,
                 "Run agent-diagnostic.py and return results")
+register_custom("EXEC", "EXEC_RESULT", handle_exec,
+                "Run a script under ~/.hermes-cortex/scripts/")
+register_custom("GIT_AUTH_CHECK", "GIT_AUTH_RESULT", handle_git_auth,
+                "Verify git can ls-remote origin")
