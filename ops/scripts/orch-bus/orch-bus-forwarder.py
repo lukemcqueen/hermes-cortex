@@ -43,7 +43,7 @@ import os
 import sys
 import urllib.request
 import urllib.error
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -348,7 +348,7 @@ def main():
     #   - Peer came back (with drain summary)
     #   - Sync errors occurred
     output = []
-    now_str = datetime.now(timezone.utc).strftime("%H:%M UTC")
+    now_str = datetime.now(timezone(timedelta(hours=9))).strftime("%H:%M KST")
 
     # Clear peer_downed_at on successful sync (before writing state)
     was_peer_down = "peer_downed_at" in state

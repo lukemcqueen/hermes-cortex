@@ -13,7 +13,7 @@ Usage as no_agent cron:
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -42,7 +42,7 @@ def main():
         # Silent — watchdog pattern
         sys.exit(0)
     
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    now = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
     print(f"━━━ Agent Bus — {now} ━━━")
     
     if active:

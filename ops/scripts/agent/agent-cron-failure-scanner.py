@@ -112,7 +112,7 @@ def main():
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lines = [f"⚠️ Cron failure scan @ {ts}", ""]
     for name, reason, when in failures:
-        local_when = when.strftime("%H:%M:%S UTC")
+        local_when = when.strftime("%H:%M:%S KST")
         lines.append(f"• **{name}** ({local_when}): {reason}")
 
     body = "\n".join(lines)

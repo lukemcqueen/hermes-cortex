@@ -25,7 +25,7 @@ import re
 import sys
 import time
 import subprocess
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -42,7 +42,7 @@ try:
     from hermes_tz import format_timestamp
 except ImportError:
     def format_timestamp(fmt: str) -> str:
-        return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        return datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
 
 
 HOME = Path.home()

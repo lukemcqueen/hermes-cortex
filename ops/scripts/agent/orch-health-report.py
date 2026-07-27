@@ -25,7 +25,7 @@ import json
 import sys
 import time
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -266,7 +266,8 @@ def _fetch_inbox_vector(agent_key: str) -> Optional[list[int]]:
 def build_snapshot() -> str:
     """Build the health snapshot markdown string."""
     agents = _get_agents()
-    ts = datetime.now(timezone.utc).strftime("%a %H:%M UTC")
+    kst = timezone(timedelta(hours=9))
+    ts = datetime.now(kst).strftime("%a %H:%M KST")
     lines = [f"━━━ **Agent Health** — {ts} ━━━"]
 
     for agent in agents:

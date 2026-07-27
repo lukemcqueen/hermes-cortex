@@ -18,7 +18,7 @@ import json
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -164,7 +164,7 @@ def main() -> None:
         sys.exit(0)
 
     # Build a compact report
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    now = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
     print(f"## Cron Quality Watchdog — {now}")
     print()
     print(f"{len(issues)} issue(s) detected:")

@@ -29,7 +29,7 @@ import argparse
 import json
 import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 HOME = Path.home()
@@ -174,7 +174,7 @@ def main():
         for r in results:
             if r["over_budget"] or r["near_budget"]:
                 if not any_alert:
-                    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+                    ts = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
                     print(f"[{ts}] budget-enforcer watchdog:")
                     any_alert = True
                 icon = "🔴" if r["over_budget"] else "🟡"
