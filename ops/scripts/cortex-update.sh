@@ -615,6 +615,7 @@ clean_stale_deploys() {
     "skill_miner.py"
     "swap-refresh.py"
     "nginx-threat-pipeline.sh"
+    "koscap-workday-watchdog.py"
   )
 
   # Build list of all registered destinations
