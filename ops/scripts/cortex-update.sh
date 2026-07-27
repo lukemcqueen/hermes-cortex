@@ -1094,8 +1094,14 @@ deploy_governance_plugin() {
   local plugin_dir="${HOME}/.hermes/plugins/governance-enforcer"
   local files=("__init__.py" "plugin.yaml" "README.md")
   local changed=0
+  local _os
+  _os=$(uname -s)
 
   [[ -d "$repo_plugin" ]] || { warn "  Plugin source missing: ${repo_plugin}"; return 1; }
+
+  # ── Step 0: Skip immutability on macOS (no chattr) — copy+perms still work ──
+  local HAS_IMMUTABLE=false
+  [[ "$_os" != "Darwin" ]] && HAS_IMMUTABLE=true
 
   # ── Step 1: Convert symlink → copy if needed ──
   if [[ -L "$plugin_dir" ]]; then
@@ -1115,7 +1121,7 @@ deploy_governance_plugin() {
     [[ ! -f "$src" ]] && continue
 
     # Remove immutability if set (uses restricted helper — no raw sudo chattr)
-    if [[ -f "$dest" ]]; then
+    if $HAS_IMMUTABLE && [[ -f "$dest" ]]; then
       if hermes-plugin-lock status 2>/dev/null | grep -q "\-i-"; then
         if sudo hermes-plugin-lock unlock; then
           info "    Removed immutability: ${file}"
@@ -1138,13 +1144,15 @@ deploy_governance_plugin() {
   if [[ -f "$init_py" ]]; then
     chmod 444 "$init_py" 2>/dev/null || true
 
-    # ── Step 4: Set immutability (restricted helper, needs sudoers entry) ──
-    if sudo hermes-plugin-lock lock; then
+    # ── Step 4: Set immutability (restricted helper, needs sudoers entry, Linux only) ──
+    if $HAS_IMMUTABLE && sudo hermes-plugin-lock lock; then
       info "  chattr +i set on __init__.py"
-    else
-      warn "  Immutability not set — ask your human to run:"
+    elif $HAS_IMMUTABLE; then
+      warn "  Immutability not set — ask your human to deploy the helper and enable it:"
+      warn "    sudo cp ${REPO_DIR}/ops/install/deploy/nginx/hermes-plugin-lock /usr/local/sbin/hermes-plugin-lock"
+      warn "    sudo chmod 755 /usr/local/sbin/hermes-plugin-lock"
       warn "    echo '${SUDO_USER:-${USER}} ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock' | sudo tee /etc/sudoers.d/hermes-plugin-lock"
-      warn "    sudo hermes-plugin-lock lock"
+      warn "    sudo /usr/local/sbin/hermes-plugin-lock lock"
     fi
   fi
 

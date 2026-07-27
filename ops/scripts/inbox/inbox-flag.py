@@ -51,7 +51,9 @@ def main() -> int:
     seen = load_seen_ids()
 
     if not INBOX_DIR.exists():
-        return 1
+        # No file-based inbox directory — this system uses Agent Bus (PGMQ).
+        # Silent return is correct, not an error.
+        return 0
 
     # Find all message files addressed to Moses
     new_messages = []
