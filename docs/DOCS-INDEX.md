@@ -81,6 +81,8 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/cron-jobs-reference.md` | **Cron jobs inventory** — all cron jobs with name, type, schedule, and purpose (extracted from AGENTS.md) |
 | `docs/cron-format-standard.md` | **Cron output format standard** — required format for all LLM-driven cron outputs: header, phases, cost footer, [SILENT]. Cross-references the cron-format-standard skill. |
 | `docs/cron-job-recipes.md` | 10 reusable cron recipes — Bible reading, system alerts, memory pruning, morning briefing, and more |
+| `docs/agent-learning-submissions.md` | **Agent learning submissions** — how agents submit ad-hoc learnings via ~/brain/learnings/pending/ |
+| `docs/pipeline-reference.md` | **Skill lifecycle pipeline** — collection, evaluation, upgrade flow, cron tables |
 | `docs/computer-specs.md` | Hardware specs guide — RAM tiers, recommended models (Intel vs Apple Silicon), ZIM content bundles |
 | `ops/install/deploy/docker-compose.langfuse.yml` | Langfuse v3 Docker stack — ClickHouse, MinIO, Redis, Postgres |
 
