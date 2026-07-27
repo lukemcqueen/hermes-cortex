@@ -113,7 +113,24 @@ def save_state(state: dict):
 
 
 def run_cortex_update() -> dict:
-  """Run cortex-update.sh and capture output."""
+  """Run git pull then cortex-update.sh --force-all, capture output."""
+  log("Pulling latest code ...")
+  try:
+    pull = subprocess.run(
+      ["git", "-C", str(CORTEX_REPO), "pull", "origin", "main"],
+      capture_output=True, text=True, timeout=60
+    )
+    if pull.returncode != 0:
+      log(f"git pull had issues: {pull.stderr[:200]}")
+    else:
+      tail = (pull.stdout or "")[-200:].replace("\n", " ").strip()
+      if tail:
+        log(f"  {tail}")
+  except subprocess.TimeoutExpired:
+    log("git pull TIMEOUT after 60s")
+  except Exception as e:
+    log(f"git pull ERROR: {e}")
+
   log("Running cortex-update.sh ...")
   try:
     r = subprocess.run(
