@@ -1264,7 +1264,7 @@ def check_governance(res):
         if plugin_dir.is_symlink():
             target = os.readlink(str(plugin_dir))
             if plugin_src.exists() and str(plugin_src) in target:
-                res.add("Plugin symlink", "WARN",
+                res.add("Plugin symlink", "FAIL",
                         f"symlinked to {target} — should be a copy for chattr +i safety",
                         "Run: cortex-update.sh --force-all (converts symlink→copy automatically)")
                 # Check for stale __pycache__ — source .py newer than .pyc
