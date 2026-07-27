@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────
+#  hermes-plugin-lock — Restricted lock/unlock for governance
+#  enforcer plugin __init__.py
+#
+#  Installed to /usr/local/sbin/hermes-plugin-lock
+#  Sudoers: moses ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock
+#
+#  ONLY operates on:
+#    ~/.hermes/plugins/governance-enforcer/__init__.py
+#
+#  Path is hardcoded and validated below — no argument injection.
+#  This is the ONLY command in sudoers related to plugin locking.
+#
+#  Usage:
+#    sudo hermes-plugin-lock lock     → chattr +i
+#    sudo hermes-plugin-lock unlock   → chattr -i
+#    sudo hermes-plugin-lock status   → show flags
+# ─────────────────────────────────────────────────────────────
+set -euo pipefail
+
+# Hardcoded target — validated to exist before any chattr call
+# sudo may set HOME=/root, so resolve the real user's home
+REAL_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "$USER")}"
+REAL_HOME="$(getent passwd "$REAL_USER" 2>/dev/null | cut -d: -f6)"
+TARGET="${REAL_HOME}/.hermes/plugins/governance-enforcer/__init__.py"
+
+if [[ ! -f "$TARGET" ]]; then
+  echo "ERROR: Plugin __init__.py not found at $TARGET"
+  exit 1
+fi
+
+case "${1:-help}" in
+  lock)
+    chattr +i "$TARGET"
+    echo "LOCKED: $TARGET"
+    ;;
+  unlock)
+    chattr -i "$TARGET"
+    echo "UNLOCKED: $TARGET"
+    ;;
+  status)
+    lsattr "$TARGET"
+    ;;
+  *)
+    echo "Usage: $0 {lock|unlock|status}"
+    echo ""
+    echo "Restricted helper for governance enforcer plugin immutability."
+    echo "Only operates on: $TARGET"
+    exit 1
+    ;;
+esac

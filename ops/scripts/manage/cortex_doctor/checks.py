@@ -1215,7 +1215,7 @@ def _check_enforcer_permissions(res, plugin_dir, hooks_dir):
                         f"expected {oct(want)}, got {oct(have)}",
                         f"Fix: chmod {oct(want)[2:]} {path}")
         except OSError:
-            pass
+            continue  # file removed between stat and read — skip gracefully
 
 
 def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
@@ -1244,7 +1244,7 @@ def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
                         "immutable flag not set — file is modifiable",
                         f"Fix: sudo chattr +i {path}")
         except (subprocess.TimeoutExpired, OSError, IndexError):
-            pass
+            continue  # lsattr failed or file removed — skip gracefully
 
 
 def check_governance(res):
@@ -1264,7 +1264,9 @@ def check_governance(res):
         if plugin_dir.is_symlink():
             target = os.readlink(str(plugin_dir))
             if plugin_src.exists() and str(plugin_src) in target:
-                res.add("Plugin symlink", "PASS", f"symlinked to {target}")
+                res.add("Plugin symlink", "WARN",
+                        f"symlinked to {target} — should be a copy for chattr +i safety",
+                        "Run: cortex-update.sh --force-all (converts symlink→copy automatically)")
                 # Check for stale __pycache__ — source .py newer than .pyc
                 pycache_dir = plugin_src / "__pycache__"
                 if pycache_dir.exists():

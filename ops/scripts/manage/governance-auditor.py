@@ -214,7 +214,7 @@ def _cleanup_stale_locks() -> list[str]:
                 d = json.load(f)
             task_info = f" (task={d.get('task_id','?')}, started={d.get('started_at','?')})"
         except Exception:
-            pass
+            task_info = ""  # corrupt or unparseable lock — remove anyway with default info
 
         os.remove(fpath)
         cleaned.append(f"  🧹 Removed stale lock: {fname}{task_info} ({int(age_hours)}h old)")
@@ -232,30 +232,38 @@ def _check_infrastructure() -> list[str]:
     """
     issues = []
 
-    # ── 1. Plugin symlink ──
+    # ── 1. Plugin deployment — prefer copy over symlink ──
     plugin_link = os.path.expanduser("~/.hermes/plugins/governance-enforcer")
     plugin_target = os.path.expanduser(
         "~/hermes-cortex/plugins/hermes-governance-enforcer"
     )
-    if not os.path.islink(plugin_link):
-        issues.append(
-            f"  🛡️  Governance plugin symlink MISSING at {plugin_link}.\n"
-            f"       Fix: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer "
-            f"{plugin_link}"
-        )
-    else:
+
+    if os.path.islink(plugin_link):
         actual_target = os.readlink(plugin_link)
         if actual_target != plugin_target:
             issues.append(
                 f"  🛡️  Plugin symlink points to {actual_target}\n"
                 f"       (expected {plugin_target}).\n"
-                f"       Fix: ln -sf {plugin_target} {plugin_link}"
+                f"       Fix: cortex-update.sh --force-all (converts to copy)"
             )
-        elif not os.path.exists(os.path.join(plugin_link, "__init__.py")):
+        else:
             issues.append(
-                f"  🛡️  Plugin symlink exists but __init__.py missing at target.\n"
-                f"       Fix: Check that {plugin_target}/__init__.py exists"
+                f"  🛡️  Plugin is a symlink — should be a copy for chattr +i safety.\n"
+                f"       Run: cortex-update.sh --force-all (converts automatically)"
             )
+    elif os.path.isdir(plugin_link):
+        # Already a copy — check it has the files
+        init_py = os.path.join(plugin_link, "__init__.py")
+        if not os.path.exists(init_py):
+            issues.append(
+                f"  🛡️  Plugin directory exists but __init__.py missing.\n"
+                f"       Fix: cortex-update.sh --force-all"
+            )
+    else:
+        issues.append(
+            f"  🛡️  Governance plugin MISSING at {plugin_link}.\n"
+            f"       Fix: cortex-update.sh --force-all"
+        )
 
     # ── 2. Hook symlinks ──
     hooks_dir = os.path.expanduser("~/.hermes-cortex/hooks")
@@ -319,7 +327,7 @@ def _check_infrastructure() -> list[str]:
                         f"       Fix: chmod {oct(want)[2:]} {path}"
                     )
             except OSError:
-                pass
+                continue  # file removed between stat and chmod — skip gracefully
 
     # ── 5. Immutability ──
     immutable_targets = [
@@ -342,7 +350,7 @@ def _check_infrastructure() -> list[str]:
                             f"       Fix: sudo chattr +i {path}"
                         )
             except (subprocess.TimeoutExpired, OSError, IndexError):
-                pass
+                continue  # lsattr failed or file removed — skip gracefully
 
     return issues
 
@@ -463,7 +471,7 @@ def main() -> None:
                     rel = os.path.relpath(fp, repo_root)
                     combined_code += f"# --- {rel} ---\n{fh.read()}\n\n"
             except (OSError, PermissionError):
-                pass
+                continue  # can't read source file — skip for audit
 
         if not combined_code.strip():
             continue

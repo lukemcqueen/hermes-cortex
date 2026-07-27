@@ -116,8 +116,15 @@ print('ADDED')
         plugin_dir = HERMES_HOME / "plugins" / "governance-enforcer"
         plugin_src = CORTEX_REPO / "plugins" / "hermes-governance-enforcer"
         if plugin_src.exists():
-            if _run_fix("Symlinking governance plugin",
-                        ["ln", "-sf", str(plugin_src), str(plugin_dir)]):
+            # Remove existing dir/symlink — _run_fix verifies the result
+            _run_fix("Removing old plugin dir", ["rm", "-rf", str(plugin_dir)])
+            plugin_dir.mkdir(parents=True, exist_ok=True)
+            if _run_fix("Copying governance plugin from repo",
+                        ["cp", "-r", str(plugin_src) + "/.", str(plugin_dir)]):
+                init_py = plugin_dir / "__init__.py"
+                if init_py.exists():
+                    _run_fix("Setting perms on __init__.py",
+                             ["chmod", "444", str(init_py)])
                 fixed += 1
             else:
                 failed += 1

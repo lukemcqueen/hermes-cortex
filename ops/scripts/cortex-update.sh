@@ -295,6 +295,13 @@ register "ops/scripts/agent/agent-gbrain-doctor.sh"       "${CORTEX_DEPLOY_HOME}
 
 # gbrain autopilot — systemd user service (replaces old sync-watch cron/launchd)
 register "ops/install/deploy/gbrain-autopilot.service"       "${HOME}/.config/systemd/user/gbrain-autopilot.service" "restart_gbrain_sync"
+
+# Governance enforcer plugin — deployed as copy (not symlink) so chattr +i
+# doesn't lock the repo file. deploy_governance_plugin() handles the full
+# lifecycle: symlink→copy conversion, chmod 444, chattr +i.
+register "plugins/hermes-governance-enforcer/__init__.py"  "${HOME}/.hermes/plugins/governance-enforcer/__init__.py"
+register "plugins/hermes-governance-enforcer/plugin.yaml"  "${HOME}/.hermes/plugins/governance-enforcer/plugin.yaml"
+register "plugins/hermes-governance-enforcer/README.md"    "${HOME}/.hermes/plugins/governance-enforcer/README.md"
 register "ops/scripts/install/install-gbrain-sync.sh"    "${CORTEX_DEPLOY_HOME}/scripts/install-gbrain-sync.sh"
 
 # Orchestrator health report — periodic agent fleet snapshot (no_agent cron)
@@ -1039,7 +1046,7 @@ deploy_system_scripts() {
   [[ -n "${CORTEX_SKIP_NGINX:-}" ]] && { info "CORTEX_SKIP_NGINX set — skipping system script deploy"; return 0; }
   local deploy_dir="/usr/local/sbin"
   local src_dir="${REPO_DIR}/ops/install/deploy/nginx"
-  local scripts=("install-nginx-full.sh" "hermes-nginx-clean-restart")
+  local scripts=("install-nginx-full.sh" "hermes-nginx-clean-restart" "hermes-plugin-lock")
   local files_copied=0
 
   [[ -d "$src_dir" ]] || return 0
@@ -1076,6 +1083,73 @@ deploy_system_scripts() {
   local agent_link="${CORTEX_HOME}/.hermes-cortex/scripts/install-nginx-full.sh"
   [[ -f "$home_link" ]] && rm -f "$home_link"
   [[ -f "$agent_link" ]] && rm -f "$agent_link"
+}
+
+# ── Governance Plugin Deploy ──────────────────────────────────
+# Deploys the governance enforcer plugin as a COPY (not symlink)
+# so that chattr +i can be applied to the deployed copy without
+# locking the repo file. Handles symlink→copy migration.
+deploy_governance_plugin() {
+  local repo_plugin="${REPO_DIR}/plugins/hermes-governance-enforcer"
+  local plugin_dir="${HOME}/.hermes/plugins/governance-enforcer"
+  local files=("__init__.py" "plugin.yaml" "README.md")
+  local changed=0
+
+  [[ -d "$repo_plugin" ]] || { warn "  Plugin source missing: ${repo_plugin}"; return 1; }
+
+  # ── Step 1: Convert symlink → copy if needed ──
+  if [[ -L "$plugin_dir" ]]; then
+    local target
+    target=$(readlink "$plugin_dir")
+    info "  Converting plugin symlink → copy: ${target}"
+    rm -f "$plugin_dir"
+    mkdir -p "$plugin_dir"
+  fi
+
+  mkdir -p "$plugin_dir"
+
+  # ── Step 2: Copy files, handling immutability ──
+  for file in "${files[@]}"; do
+    local src="${repo_plugin}/${file}"
+    local dest="${plugin_dir}/${file}"
+    [[ ! -f "$src" ]] && continue
+
+    # Remove immutability if set (uses restricted helper — no raw sudo chattr)
+    if [[ -f "$dest" ]]; then
+      if hermes-plugin-lock status 2>/dev/null | grep -q "\-i-"; then
+        if sudo hermes-plugin-lock unlock; then
+          info "    Removed immutability: ${file}"
+        else
+          warn "    Skipped ${file} — sudo hermes-plugin-lock unlock failed"
+          continue
+        fi
+      fi
+    fi
+
+    if needs_update "$src" "$dest"; then
+      cp "$src" "$dest"
+      info "    Copied: ${file}"
+      changed=$((changed + 1))
+    fi
+  done
+
+  # ── Step 3: Set restrictive perms on __init__.py ──
+  local init_py="${plugin_dir}/__init__.py"
+  if [[ -f "$init_py" ]]; then
+    chmod 444 "$init_py" 2>/dev/null || true
+
+    # ── Step 4: Set immutability (restricted helper, needs sudoers entry) ──
+    if sudo hermes-plugin-lock lock; then
+      info "  chattr +i set on __init__.py"
+    else
+      warn "  Immutability not set — ask your human to run:"
+      warn "    echo '${SUDO_USER:-${USER}} ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock' | sudo tee /etc/sudoers.d/hermes-plugin-lock"
+      warn "    sudo hermes-plugin-lock lock"
+    fi
+  fi
+
+  [[ "$changed" -gt 0 ]] && info "  Plugin deployed: ${changed} file(s) updated"
+  return 0
 }
 
 # ── Stale Service Detector ─────────────────────────────────
@@ -1403,6 +1477,9 @@ main() {
 
   # Deploy system scripts to /usr/local/sbin/ (root-owned, NOPASSWD-safe)
   deploy_system_scripts
+
+  # Deploy governance enforcer plugin as copy (not symlink) for chattr +i safety
+  deploy_governance_plugin
 
   # Check and upgrade gbrain binary (every run, not just when template changes)
   update_gbrain_binary
