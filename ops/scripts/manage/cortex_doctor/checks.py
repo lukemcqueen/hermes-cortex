@@ -512,20 +512,20 @@ def check_crons(res):
                         f"{info_total} cron(s) not part of system — benign user/workday crons (e.g. {', '.join(display[:3])}...)")
 
     orch_crons_list = parse_orch_crons()
-    hostname = run_bg(["hostname", "-s"]).strip() or "unknown"
-    is_orch = hostname in ("moses", "esther")
+    is_orch = AGENT_ROLE == "orchestrator"
+    _orch_hostname = run_bg(["hostname", "-s"]).strip() or "unknown"
     if orch_crons_list:
         missing_orch = [n for n in orch_crons_list if n not in registered]
         if is_orch and missing_orch:
             res.add("Orch crons missing", "FAIL",
-                    f"orchestrator host '{hostname}' missing {len(missing_orch)}: {', '.join(missing_orch)}",
+                    f"orchestrator host '{_orch_hostname}' missing {len(missing_orch)}: {', '.join(missing_orch)}",
                     "Run: bash install-orch-crons.sh --force")
         elif is_orch and not missing_orch:
             res.add("Orch crons", "PASS",
-                    f"all {len(orch_crons_list)} orchestrator crons present (host: {hostname})")
+                    f"all {len(orch_crons_list)} orchestrator crons present (host: {_orch_hostname})")
         elif not is_orch and not missing_orch:
             res.add("Orch crons", "INFO",
-                    f"orchestrator crons exist on non-orch host '{hostname}' (ok if backup)")
+                    f"orchestrator crons exist on non-orch host '{_orch_hostname}' (ok if backup)")
 
     res.add("Crons total", "PASS" if len(registered) > 0 else "WARN", f"{len(registered)} jobs registered")
 

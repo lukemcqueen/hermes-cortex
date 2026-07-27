@@ -157,19 +157,31 @@ BUS_CONFIG_PATHS = [
 # ── Dynamic registries (parsed from source) ─────────────────────
 
 def parse_expected_crons():
-    """Read expected universal cron names from install-crons.sh's create_cron calls,
-    excluding orchestrator-only crons.
+    """Read expected cron names from install-crons.sh's create_cron calls,
+    conditionally including orchestrator-only crons based on AGENT_ROLE.
 
     The source of truth for 'which crons should exist' is the set of create_cron calls,
     NOT the uninstall array (which tracks names for cleanup purposes, including legacy
     crons that no longer have create_cron entries).
+
+    Agent role logic:
+    - orchestrator: universal crons + orch crons (full fleet set)
+    - server / dev: universal crons only (orch crons excluded)
     """
     text = _read_file(INSTALL_CRONS)
     if not text:
         return []
     names = re.findall(r'^create_cron\s+"([^"]+)"', text, re.MULTILINE)
     orch_crons = set(parse_orch_crons())
-    return [n for n in names if n != "system-heartbeat" and n not in orch_crons]
+
+    if AGENT_ROLE == "orchestrator":
+        # Orchestrator expects ALL crons: universal (from install-crons.sh) + orch crons
+        result = [n for n in names if n != "system-heartbeat"]
+        result.extend(sorted(orch_crons))
+        return result
+    else:
+        # Server / dev: universal crons only, exclude any that are orch-only
+        return [n for n in names if n != "system-heartbeat" and n not in orch_crons]
 
 
 def parse_orch_crons():
