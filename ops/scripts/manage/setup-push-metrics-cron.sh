@@ -26,9 +26,9 @@ if hermes cron list 2>/dev/null | grep -q "^Name:.*${CRON_NAME}"; then
   exit 0
 fi
 
-# Create the cron
-hermes cron create --name "${CRON_NAME}" \
-  --schedule "${CRON_SCHEDULE}" \
+# Create the cron (hermes cron create <schedule> --name ... --script ... --no-agent --deliver ...)
+hermes cron create "${CRON_SCHEDULE}" \
+  --name "${CRON_NAME}" \
   --no-agent \
   --script "${SCRIPT_NAME}" \
   --deliver local
