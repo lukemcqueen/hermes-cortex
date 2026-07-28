@@ -1718,12 +1718,6 @@ main() {
         warn "🚫 Bus server process (agent_bus) detected on non-orch agent"
         _warned=true
       fi
-      if systemctl --user is-active gbrain-autopilot &>/dev/null 2>&1; then
-        warn "🚫 gbrain autopilot running on non-orch agent — remove with:"
-        warn "    systemctl --user stop gbrain-autopilot"
-        warn "    systemctl --user disable gbrain-autopilot"
-        _warned=true
-      fi
       if $_warned; then
         warn "  These services should only run on orchestrator hosts (moses, esther)."
         warn "  Run cortex-update.sh after removing them to clean stale deploy files."

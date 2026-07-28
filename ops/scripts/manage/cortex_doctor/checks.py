@@ -838,11 +838,6 @@ def check_services(res):
       res.add("Bus (non-orch guard)", "WARN",
           "agent_bus process running on non-orch agent — should only run on orchestrator hosts",
           "Stop: systemctl --user stop agent-bus && systemctl --user disable agent-bus")
-    _gbrain_proc = run_bg(["systemctl", "--user", "is-active", "gbrain-autopilot"], timeout=5) or ""
-    if "active" in _gbrain_proc:
-      res.add("gbrain (non-orch guard)", "WARN",
-          "gbrain autopilot running on non-orch agent — should only run on orchestrator hosts",
-          "Stop: systemctl --user stop gbrain-autopilot && systemctl --user disable gbrain-autopilot")
 
   # Ollama
   out = run_bg([CURL, "-s", "http://localhost:11434/api/tags", "--max-time", "5"])
