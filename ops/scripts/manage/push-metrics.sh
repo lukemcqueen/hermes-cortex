@@ -23,24 +23,13 @@ set -euo pipefail
 # ── Config ──────────────────────────────────────────────────
 AGENT_NAME="${AGENT_NAME:-$(hostname)}"
 
-# Determine VictoriaMetrics URL
-VM_AUTH=""
-if [ -n "${VICTORIA_METRICS_URL:-}" ]; then
-  VICTORIA_URL="$VICTORIA_METRICS_URL"
-else
-  # Source cortex-bus.conf to get the Moses host (every agent has this)
-  bus_conf="${CORTEX_BUS_CONF:-${HOME}/.hermes-cortex/cortex-bus.conf}"
-  if [ -f "$bus_conf" ]; then
-    # shellcheck source=/dev/null
-    source "$bus_conf" 2>/dev/null || true
-    if [ -n "${CORTEX_BUS_URL:-}" ]; then
-      bus_host=$(echo "$CORTEX_BUS_URL" | sed -E 's|^https?://([^:/]+).*|\1|')
-      # VictoriaMetrics is behind nginx on port 13005 (bus is 13004)
-      VICTORIA_URL="https://${bus_host}:13005/api/v1/import/prometheus"
-      VM_AUTH="${CORTEX_BASIC_AUTH:-}"
-    fi
-  fi
+# VictoriaMetrics URL — REQUIRED. Set in hermes-cortex.env or ~/.hermes/.env.
+# Example: VICTORIA_METRICS_URL=https://domain:13005/api/v1/import/prometheus
+if [ -z "${VICTORIA_METRICS_URL:-}" ]; then
+  echo "[push-metrics] ERROR: VICTORIA_METRICS_URL not set — configure in hermes-cortex.env" >&2
+  exit 1
 fi
+VICTORIA_URL="$VICTORIA_METRICS_URL"
 export VICTORIA_URL
 
 MAX_RETRIES=3
@@ -94,9 +83,6 @@ push_metrics() {
       "-H" "Content-Type: text/plain; version=0.4.0"
       "--data-binary" "@-"
       "-w" "%{http_code}" "-o" "/dev/null")
-    if [ -n "${VM_AUTH:-}" ]; then
-      curl_args+=("-u" "${VM_AUTH}")
-    fi
 
     status=$(echo "${metrics}" | curl "${curl_args[@]}")
 

@@ -25,29 +25,19 @@ if ! command -v hermes &>/dev/null; then
 fi
 
 # ── Pre-flight: check VictoriaMetrics reachability ──────────
-# Derive VM URL the same way push-metrics.sh does
-VM_URL=""
-bus_conf="${CORTEX_BUS_CONF:-${HOME}/.hermes-cortex/cortex-bus.conf}"
-if [ -f "$bus_conf" ]; then
-  # shellcheck source=/dev/null
-  source "$bus_conf" 2>/dev/null || true
-  if [ -n "${CORTEX_BUS_URL:-}" ]; then
-    bus_host=$(echo "$CORTEX_BUS_URL" | sed -E 's|^https?://([^:/]+).*|\1|')
-    VM_URL="https://${bus_host}:13005/api/v1/import/prometheus"
-  fi
+# Uses VICTORIA_METRICS_URL env var (same source as push-metrics.sh)
+VM_URL="${VICTORIA_METRICS_URL:-}"
+if [ -z "$VM_URL" ]; then
+  echo "[setup-push-metrics] ⚠️  VICTORIA_METRICS_URL not set — cannot verify reachability"
+  echo "[setup-push-metrics] Set it in hermes-cortex.env or ~/.hermes/.env"
+  echo "[setup-push-metrics] Example: VICTORIA_METRICS_URL=https://domain:13005/api/v1/import/prometheus"
+  exit 0
 fi
 
-if [ -n "$VM_URL" ]; then
-  # Check reachability with auth from cortex-bus.conf
-  vm_auth=""
-  if [ -n "${CORTEX_BASIC_AUTH}" ]; then
-    vm_auth="-u ${CORTEX_BASIC_AUTH}"
-  fi
-  if ! curl -sf ${vm_auth:-} -o /dev/null --connect-timeout 5 "${VM_URL%/*}" >/dev/null 2>&1; then
-    echo "[setup-push-metrics] ⚠️  VictoriaMetrics not reachable at ${VM_URL%/*} — skipping cron install"
-    echo "[setup-push-metrics] Run this script again after nginx :13005 is deployed."
-    exit 0
-  fi
+if ! curl -sf -o /dev/null --connect-timeout 5 "${VM_URL%/*}" >/dev/null 2>&1; then
+  echo "[setup-push-metrics] ⚠️  VictoriaMetrics not reachable at ${VM_URL%/*} — skipping cron install"
+  echo "[setup-push-metrics] Run this script again after port forwarding is set up for port 13005."
+  exit 0
 fi
 
 # Check if the cron already exists
