@@ -205,10 +205,14 @@ case "${ACTION}" in
     ;;
 
   # ── Fix docker ────────────────────────────────────────────
+  # ⚠️ HARD RULE: NEVER add --volumes here. Docker volumes contain
+  # irreplaceable data (databases, state). The user deletes volumes
+  # manually if needed. This script only prunes dangling images and
+  # build cache.
   fix-docker)
     if command -v docker >/dev/null 2>&1; then
-      # Prune unused resources
-      docker system prune -f --volumes 2>/dev/null || true
+      # Prune unused images and build cache only — NEVER volumes
+      docker system prune -f 2>/dev/null || true
       echo "OK"
     else
       echo "NO-DOCKER"

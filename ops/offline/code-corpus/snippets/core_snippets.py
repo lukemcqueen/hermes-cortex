@@ -913,6 +913,7 @@ docker rmi <image_id>                           # remove image
 docker rm <container_id>                        # remove container
 docker system prune -f                          # clean up dangling resources
 docker system prune -a --volumes                # clean up EVERYTHING
+# 🔴 NEVER use --volumes in automated scripts — destroys irreplaceable data
 
 # ======= Debugging =======
 docker logs <container_id>                      # see logs

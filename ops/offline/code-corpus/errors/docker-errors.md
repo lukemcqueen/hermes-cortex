@@ -177,6 +177,7 @@ docker system df            # Check Docker disk usage
 
 # Fix 2: Clean up Docker resources
 docker system prune -a --volumes
+# 🔴 NEVER use --volumes in automated scripts — destroys irreplaceable data
 # Removes: stopped containers, unused networks, dangling images,
 #          unused build cache, and all volumes not used by a container
 
@@ -184,6 +185,7 @@ docker system prune -a --volumes
 docker container prune      # Remove stopped containers
 docker image prune -a       # Remove unused images
 docker volume prune         # Remove unused volumes
+# 🔴 NEVER run in automated scripts — destroys irreplaceable data
 docker builder prune        # Remove build cache
 
 # Fix 4: Limit log file size (global config)

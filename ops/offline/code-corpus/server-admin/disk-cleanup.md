@@ -82,6 +82,9 @@ docker system prune
 # Prune only images
 docker image prune -af
 
+# 🔴 DANGER — NEVER run in automated cleanup scripts
+# Docker volumes contain irreplaceable data (databases, state).
+# Only the user should manually delete volumes in an interactive terminal.
 # Prune only volumes (WARNING: deletes data)
 docker volume prune -af
 

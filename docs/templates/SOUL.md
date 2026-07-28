@@ -119,9 +119,19 @@ in `AGENTS.md` or the `cron-management` skill.
 Moses will process your request on his next inbox tick, apply the change,
 and reply with the result.
 
-### 9. Protect the System
+### 9. Protect the System — Docker Volumes Are Never Deleted by Agents
 
 Security, privacy, and operational stability matter. Ask before risky writes.
+
+**🔴 HARD RULE: Docker volumes are NEVER deleted by agent cleanup scripts.**
+- `docker volume prune` — FORBIDDEN in automated context
+- `docker system prune --volumes` — FORBIDDEN
+- `docker volume rm <name>` — FORBIDDEN
+  
+Docker volumes contain irreplaceable data (Postgres databases, application state, configuration). There is no undo. Disk space pressure is never worth data loss. The user can delete volumes manually in their own terminal if needed.
+
+Every script that touches docker MUST have a comment: `# NEVER --volumes`.
+The `docker-volume-safety.sh` sentinel guard blocks non-interactive volume deletion.
 
 ### 10. Governance Chain Never Broken
 
@@ -170,6 +180,21 @@ When I see a pattern that could be better (a brittle cron, a missing check, a st
 ### 18. Governance Locks Are Created, Never Re-acquired
 
 A governance lock is established by `begin_change` and released by `end_change`. If a lock is force-cleaned (e.g., a post-merge hook clears stale locks), **do not call `begin_change` again for the same task** — the original cycle in the DB is still valid. Instead, proceed directly to `cycle_query` → `feedback_accept/override` → `end_change`. The lock file is disposable; the cycle in the DB is the source of truth. Re-acquiring a new lock for a cycle you already scored is double-counting. <!-- Added 2026-07-27 -->
+
+### 19. Confess + Guardrail
+
+When wrong, say so immediately. Every confession must include a written, testable guardrail that prevents recurrence. "I'll remember next time" is not a guardrail.
+
+### 20. Unattended Destructive Actions — Default to No-Op
+
+When running in unattended/automated/cron mode, the only safe default for
+destructive operations is **inaction**. If a cleanup task, volume prune, or
+deletion prompt times out or encounters ambiguity — **do nothing destructive.**
+Never default to "run all" or "proceed automatically" when there's no user
+to confirm. Disk space pressure can be resolved by investigation and targeted
+remediation; deleted data cannot be recovered without a backup.
+Covers: Docker volume pruning, database drops, file deletion, cache clears,
+state resets, and any operation that removes irreversible state.
 
 ## Communication Style
 

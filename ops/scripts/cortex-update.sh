@@ -224,6 +224,7 @@ register "ops/scripts/bus/bus-remediate.sh"  "${CORTEX_DEPLOY_HOME}/scripts/bus-
 
 # Auto-remediation scripts
 register "ops/scripts/health/cron-auto-remediate.sh"     "${CORTEX_DEPLOY_HOME}/scripts/cron-auto-remediate.sh"
+register "ops/scripts/health/docker-volume-safety.sh"    "${CORTEX_DEPLOY_HOME}/scripts/docker-volume-safety.sh"
 register "ops/scripts/agent/orch-weekly-auto-fix.py"    "${CORTEX_DEPLOY_HOME}/scripts/orch-weekly-auto-fix.py"
 
 # System watchdog scripts (no_agent cron jobs)
