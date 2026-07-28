@@ -20,6 +20,12 @@
 
 set -euo pipefail
 
+# ── Source env (hermes-cortex.env) before configuration ─────
+_env_file="${HOME}/.hermes-cortex/hermes-cortex.env"
+if [ -f "$_env_file" ]; then
+  set -a; source "$_env_file" 2>/dev/null || true; set +a
+fi
+
 # ── Config ──────────────────────────────────────────────────
 AGENT_NAME="${AGENT_NAME:-$(hostname)}"
 
