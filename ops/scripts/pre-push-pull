@@ -233,4 +233,38 @@ except Exception:
   fi
 done
 
+# ── Doctor regression check ─────────────────────────────────
+# If scripts that define expected deploy/cron state changed,
+# run doctor and block if new failures were introduced.
+DOCTOR_BLOCKED=0
+CORTEX_DOCTOR="${HOME}/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
+if [[ -n "$CHANGED_FILES" ]] && [[ -f "$CORTEX_DOCTOR" ]]; then
+  DOCTOR_RELEVANT=0
+  while IFS= read -r cf; do
+    case "$cf" in
+      ops/scripts/cortex-update.sh|ops/scripts/install-crons.sh|ops/scripts/install/install-orch-crons.sh|ops/scripts/manage/cortex_doctor/*)
+        DOCTOR_RELEVANT=1 ;;
+    esac
+  done <<< "$CHANGED_FILES"
+  
+  if [[ "$DOCTOR_RELEVANT" -eq 1 ]]; then
+    DOCTOR_OUTPUT=$(cd "${HOME}/hermes-cortex/ops/scripts/manage" && python3 cortex-doctor.py --quiet 2>&1 || true)
+    if echo "$DOCTOR_OUTPUT" | grep -q "FAIL\|blocking\|ERROR\|Stale deploy:.*orch-\|missing.*cron"; then
+      echo ""
+      echo "❌  Push blocked: doctor found regressions after your changes."
+      echo "    cortex-update.sh / install-crons.sh / checks.py were modified."
+      echo "    Run doctor locally and fix all failures before pushing:"
+      echo "      cd ~/hermes-cortex/ops/scripts/manage && python3 cortex-doctor.py"
+      echo ""
+      echo "$DOCTOR_OUTPUT" | grep -E "FAIL|Stale deploy|missing|cron" | head -10
+      echo ""
+      DOCTOR_BLOCKED=1
+    fi
+  fi
+fi
+
+if [[ "$DOCTOR_BLOCKED" -ne 0 ]]; then
+  exit 1
+fi
+
 exit 0
