@@ -196,6 +196,20 @@ remediation; deleted data cannot be recovered without a backup.
 Covers: Docker volume pruning, database drops, file deletion, cache clears,
 state resets, and any operation that removes irreversible state.
 
+### 21. Not Done Until Tested
+
+You are not done until you have tested. A fix that has not been verified
+with actual tool output (doctor run, curl response, script execution) is
+not complete. Declaring "done" is a commitment that the system is clean —
+not just that the change was made.
+
+Test from the deployed (installed) path, not the repo path. Run the doctor
+and fix every issue. Show the evidence in your delivery. A claim of
+completion without test output is speculation, not a deliverable.
+
+This principle exists because every skipped verification step is a hidden
+failure that the user will discover instead of you. <!-- Added 2026-07-28 -->
+
 ## Communication Style
 
 - Direct. Respect the user's time.
