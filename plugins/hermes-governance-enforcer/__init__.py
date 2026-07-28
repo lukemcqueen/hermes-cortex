@@ -39,6 +39,7 @@ from typing import Any, Dict, Optional
 
 GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 SURVEY_MARKER = GOVERNANCE_STATE_DIR / ".cron-survey-done"
+SKILLS_MARKER = GOVERNANCE_STATE_DIR / ".skills-loaded"
 
 log = logging.getLogger("governance-enforcer")
 
@@ -472,6 +473,33 @@ def register(ctx):
                             "I cannot bypass or disable this.\n"
                         ),
                     }
+
+            # Skills gate: all write tools require .skills-loaded marker
+            # Load the session-start skills via skill_view() before begin_change
+            if not SKILLS_MARKER.exists():
+                return {
+                    "action": "block",
+                    "message": (
+                        "SKILLS MUST BE LOADED BEFORE WRITING\n\n"
+                        "Tool '" + tool_name + "' requires session-start skills loaded first.\n\n"
+                        "Load ALL 10 always skills via skill_view() before any write tool:\n"
+                        "  1. skill_view('agent-flow')\n"
+                        "  2. skill_view('reasoning-patterns')\n"
+                        "  3. skill_view('reflexion-check')\n"
+                        "  4. skill_view('change-checklist')\n"
+                        "  5. skill_view('session-start-discipline')\n"
+                        "  6. skill_view('fix-without-asking')\n"
+                        "  7. skill_view('agent-contract')\n"
+                        "  8. skill_view('survey-before-action')\n"
+                        "  9. skill_view('cortex-preflight')\n"
+                        "  10. skill_view('self-improvement-pipeline')\n\n"
+                        "After loading all 10:\n"
+                        "  touch ~/.hermes-cortex/state/.skills-loaded\n\n"
+                        "Then retry your write tool.\n"
+                        "This enforcement is at ~/.hermes/plugins/governance-enforcer/.\n"
+                        "I cannot bypass or disable this.\n"
+                    ),
+                }
 
             # Check for active governance lock (Phase 1 exact + Phase 2 scan)
             if _has_governance_lock(hermes_session_id):
