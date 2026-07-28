@@ -68,7 +68,7 @@ def run(cmd, timeout=15):
 def check_scripts():
     """Check for missing or non-executable scripts."""
     required_scripts = [
-        "service-recovery.py", "system-alert-watchdog.py",
+        "agent-service-recovery.py", "agent-system-alert-watchdog.py",
         "cron-auto-remediate.sh",
         "daily-lesson-mine.sh", "update-session-state.sh",
     ]

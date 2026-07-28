@@ -31,7 +31,7 @@ case "${ACTION}" in
     issues=()
 
     # Check script presence
-    for script in service-recovery.py system-alert-watchdog.py \
+    for script in agent-service-recovery.py agent-system-alert-watchdog.py \
                   cron-auto-remediate.sh \
                   daily-lesson-mine.sh update-session-state.sh; do
       if [ ! -f "${HERMES_SCRIPTS}/${script}" ]; then
@@ -162,7 +162,7 @@ case "${ACTION}" in
   # ── Fix missing scripts ──────────────────────────────────
   fix-missing)
     fixed=0
-    for script in service-recovery.py system-alert-watchdog.py \
+    for script in agent-service-recovery.py agent-system-alert-watchdog.py \
                   daily-lesson-mine.sh \
                   update-session-state.sh langfuse-health-watchdog.py \
                   langfuse-retention-prune.py lesson-compound-stats-brief.sh \
