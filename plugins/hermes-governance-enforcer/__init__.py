@@ -288,37 +288,37 @@ WRITE_COMPUTER_USE_ACTIONS = {
 
 # Terminal commands that modify state — require governance lock
 WRITE_COMMAND_PATTERNS = [
-    r"^\s*(sudo\s+)?(rm|mv|cp|install|apt|apt-get|dpkg|brew|make|cmake|docker compose|kubectl)\s",
-    r"^\s*(sudo\s+)?(systemctl|service)\s+(start|stop|restart|reload|enable|disable|daemon-reload)\s",
-    r"^\s*(sudo\s+)?(chmod|chown|chattr|mkfs|fdisk|mount|umount|dd)\s",
-    r"^\s*(sudo\s+)?(sed|awk|tee)\s.*-i\s",
-    r"^\s*(sudo\s+)?(git)\s+(push|commit|merge|rebase|reset|cherry-pick|branch\s+-[dD]|tag|stash|checkout|restore|clean|rm|mv|update-ref|config|submodule)\s",
-    r"^\s*(sudo\s+)?(cronjob)\s+(create|update|remove|delete)",
-    r"^\s*(sudo\s+)?(uv|python3?)\s.*-(m\s+pip\s+install)",
+    r"\s*(sudo\s+)?(rm|mv|cp|install|apt|apt-get|dpkg|brew|make|cmake|docker compose|kubectl)\s",
+    r"\s*(sudo\s+)?(systemctl|service)\s+(start|stop|restart|reload|enable|disable|daemon-reload)\s",
+    r"\s*(sudo\s+)?(chmod|chown|chattr|mkfs|fdisk|mount|umount|dd)\s",
+    r"\s*(sudo\s+)?(sed|awk|tee)\s.*-i\s",
+    r"\s*(sudo\s+)?(git)\s+(push|commit|merge|rebase|reset|cherry-pick|branch\s+-[dD]|tag|stash|checkout|restore|clean|rm|mv|update-ref|config|submodule)\s",
+    r"\s*(sudo\s+)?(cronjob)\s+(create|update|remove|delete)",
+    r"\s*(sudo\s+)?(uv|python3?)\s.*-(m\s+pip\s+install)",
     # guard: (python|python3)\s.*-c
-    r"^\s*(sudo\s+)?python3?\s+-c\s",
+    r"\s*(sudo\s+)?python3?\s+-c\s",
     # guard: (bash|sh|zsh)\s+-c
-    r"^\s*(sudo\s+)?bash\s+-c\s",
-    r"^\s*(sudo\s+)?wget\s.*-O\s",
-    r"^\s*(sudo\s+)?curl\s.*-o\s",
-    r"^\s*(sudo\s+)?nohup\s",
-    r"^\s*(sudo\s+)?docker\s+(run|build|push|commit|tag|save|load|rmi|system\s+prune)",
-    r"^\s*(sudo\s+)?crontab\s",
-    r"^\s*(sudo\s+)?(usermod|groupmod|useradd|groupadd|passwd)\s",
-    r"^\s*(sudo\s+)?ufw\s+(enable|disable|allow|deny|reject|delete|reset)",
-    r"^\s*(sudo\s+)?nginx\s+(-s\s+(reload|stop|quit))",
-    r"^\s*(sudo\s+)?journalctl\s+--rotate",
-    r"^\s*(sudo\s+)?(printf|cat|tee|head|tail|grep|find)\s+.*>\s",
-    r"^\s*(sudo\s+)?(printf|cat)\s+.*<<\s",
-    r"^\s*(sudo\s+)?(touch|mkdir|ln|rsync|unzip|tar|mkfifo|tee)\s",
-    r"^\s*(sudo\s+)?(npx|yarn|go|cargo|flatpak|snap)\s",
-    r"^\s*(sudo\s+)?(pip3?|npm)\s+(install|uninstall|remove|update|upgrade)",
-    r"^\s*echo\s+.*>\s",
+    r"\s*(sudo\s+)?bash\s+-c\s",
+    r"\s*(sudo\s+)?wget\s.*-O\s",
+    r"\s*(sudo\s+)?curl\s.*-o\s",
+    r"\s*(sudo\s+)?nohup\s",
+    r"\s*(sudo\s+)?docker\s+(run|build|push|commit|tag|save|load|rmi|system\s+prune)",
+    r"\s*(sudo\s+)?crontab\s",
+    r"\s*(sudo\s+)?(usermod|groupmod|useradd|groupadd|passwd)\s",
+    r"\s*(sudo\s+)?ufw\s+(enable|disable|allow|deny|reject|delete|reset)",
+    r"\s*(sudo\s+)?nginx\s+(-s\s+(reload|stop|quit))",
+    r"\s*(sudo\s+)?journalctl\s+--rotate",
+    r"\s*(sudo\s+)?(printf|cat|tee|head|tail|grep|find)\s+.*>\s",
+    r"\s*(sudo\s+)?(printf|cat)\s+.*<<\s",
+    r"\s*(sudo\s+)?(touch|mkdir|ln|rsync|unzip|tar|mkfifo|tee)\s",
+    r"\s*(sudo\s+)?(npx|yarn|go|cargo|flatpak|snap)\s",
+    r"\s*(sudo\s+)?(pip3?|npm)\s+(install|uninstall|remove|update|upgrade)",
+    r"\s*echo\s+.*>\s",
     # guard: interpreter + script file execution
     # Catches `python3 script.py`, `node app.js`, `bash setup.sh`, etc.
     # The script argument must start with a non-dash character (excludes flags like -c, --version)
     # Requires .py/.js/.rb/.pl/.sh extension to distinguish from interactive mode
-    r"^\s*(sudo\s+)?(python3(?:\.\d+)?|node|ruby|perl|bash|sh|zsh)\s+[^\s-][^\s]*\.(py|js|rb|pl|sh)(?:\s|$)",
+    r"\s*(sudo\s+)?(python3(?:\.\d+)?|node|ruby|perl|bash|sh|zsh)\s+[^\s-][^\s]*\.(py|js|rb|pl|sh)(?:\s|$)",
 ]
 
 # Cronjob actions that require governance
