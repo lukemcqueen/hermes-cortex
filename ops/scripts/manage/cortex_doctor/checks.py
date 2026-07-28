@@ -125,8 +125,26 @@ def check_repo(res: "Results") -> None:
     res.add("AGENTS.md size", "WARN",
         f"{agents_size/1024:.0f}K — target <15K for optimal loading",
         "Run: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
-  # Note: ~/.hermes/AGENTS.md is the profile copy and can differ per repo.
-  # No content-marker comparison against cortex repo — agents work in many repos.
+  # Content check: extract all bold markers for comparison (like SOUL.md does)
+  # ~/.hermes/AGENTS.md guides agent behavior — when working in this repo,
+  # it should have the same content rules as the repo copy.
+  repo_agents = CORTEX_REPO / "AGENTS.md"
+  if repo_agents.exists():
+    local_markers = _extract_agents_markers(hermes_agents)
+    repo_markers = _extract_agents_markers(repo_agents)
+
+    # Filter out the ⚠️ admonition marker (not a real rule)
+    effective_repo = {m for m in repo_markers if not m.startswith("\u26a0\ufe0f")}
+
+    # Allow agents to customize up to 2 markers (e.g. remove one rule, add one local note)
+    missing = effective_repo - local_markers
+    if len(missing) > 2:
+      res.add("AGENTS.md sync", "FAIL",
+          f"Local missing {len(missing)} content markers from template — "
+          f"e.g. '{list(sorted(missing))[:3]}'",
+          "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
+    else:
+      res.add("AGENTS.md sync", "PASS")
 
   # Private repo migration check
   _private = HOME / "hermes-cortex-private"
