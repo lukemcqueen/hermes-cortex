@@ -7,6 +7,10 @@
 #
 # Must be run on the agent machine after push-metrics.sh has
 # been deployed (via cortex-update.sh).
+#
+# Pre-flight check: verifies VictoriaMetrics is reachable before
+# creating the cron. Silent skip if unreachable (harmless for
+# fresh agent installs where Moses hasn't deployed VM yet).
 # ──────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -18,6 +22,27 @@ SCRIPT_NAME="push-metrics.sh"
 if ! command -v hermes &>/dev/null; then
   echo "[setup-push-metrics] ERROR: hermes CLI not found — install Hermes Agent first"
   exit 1
+fi
+
+# ── Pre-flight: check VictoriaMetrics reachability ──────────
+# Derive VM URL the same way push-metrics.sh does
+VM_URL=""
+bus_conf="${CORTEX_BUS_CONF:-${HOME}/.hermes-cortex/cortex-bus.conf}"
+if [ -f "$bus_conf" ]; then
+  # shellcheck source=/dev/null
+  source "$bus_conf" 2>/dev/null || true
+  if [ -n "${CORTEX_BUS_URL:-}" ]; then
+    bus_host=$(echo "$CORTEX_BUS_URL" | sed -E 's|^https?://([^:/]+).*|\1|')
+    VM_URL="https://${bus_host}:13005/api/v1/import/prometheus"
+  fi
+fi
+
+if [ -n "$VM_URL" ]; then
+  if ! curl -sf -o /dev/null --connect-timeout 5 "${VM_URL%/*}" >/dev/null 2>&1; then
+    echo "[setup-push-metrics] ⚠️  VictoriaMetrics not reachable at ${VM_URL%/*} — skipping cron install"
+    echo "[setup-push-metrics] Run this script again after nginx :13005 is deployed."
+    exit 0
+  fi
 fi
 
 # Check if the cron already exists
