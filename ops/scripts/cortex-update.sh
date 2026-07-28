@@ -1511,6 +1511,11 @@ main() {
     warn "⚠️  Run /reset to load the updated enforcer plugin in your current session"
   fi
 
+  # Re-lock hook scripts after deploy
+  if command -v hermes-plugin-lock &>/dev/null; then
+    sudo hermes-plugin-lock lock 2>/dev/null || true
+  fi
+
   # Update symlinks if any web-cache or offline files changed
   update_symlinks
 
