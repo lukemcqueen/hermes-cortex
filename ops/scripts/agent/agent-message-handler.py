@@ -759,8 +759,17 @@ def main():
         # Telegram — only for known actionable subjects, not STATUS or DOCTOR
         if subject not in ("STATUS_REQUEST", "DOCTOR_REQUEST"):
           emoji = "✅" if success else "❌"
+          # Grab a preview from script output if available
+          preview = ""
+          out = result_body.get("stdout", result_body.get("update_output", ""))
+          if out:
+            for line in out.strip().split("\n"):
+              clean = line.strip()
+              if clean and not clean.startswith("═") and not clean.startswith("━"):
+                preview = f" — {clean[:120]}"
+                break
           notify_telegram(
-            f"{emoji} [{AGENT_NAME}] {result_subject}: {'OK' if success else error_msg}",
+            f"{emoji} [{AGENT_NAME}] {result_subject}: {'OK' if success else error_msg}{preview}",
             f"{emoji} {AGENT_NAME}:{subject.split('_')[0]}"
           )
         return True
