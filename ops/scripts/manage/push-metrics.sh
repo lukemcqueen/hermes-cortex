@@ -24,6 +24,7 @@ set -euo pipefail
 AGENT_NAME="${AGENT_NAME:-$(hostname)}"
 
 # Determine VictoriaMetrics URL
+VM_AUTH=""
 if [ -n "${VICTORIA_METRICS_URL:-}" ]; then
   VICTORIA_URL="$VICTORIA_METRICS_URL"
 else
@@ -36,6 +37,7 @@ else
       bus_host=$(echo "$CORTEX_BUS_URL" | sed -E 's|^https?://([^:/]+).*|\1|')
       # VictoriaMetrics is behind nginx on port 13005 (bus is 13004)
       VICTORIA_URL="https://${bus_host}:13005/api/v1/import/prometheus"
+      VM_AUTH="${CORTEX_BASIC_AUTH:-}"
     fi
   fi
 fi
@@ -87,10 +89,16 @@ push_metrics() {
   metrics=$(collect_metrics)
 
   for attempt in $(seq 1 "${MAX_RETRIES}"); do
-    status=$(echo "${metrics}" | curl -s -X POST "${VICTORIA_URL}" \
-      -H "Content-Type: text/plain; version=0.4.0" \
-      --data-binary @- \
-      -w "%{http_code}" -o /dev/null)
+    # Build curl args — add basic auth if available from cortex-bus.conf
+    local curl_args=("-s" "-X" "POST" "${VICTORIA_URL}"
+      "-H" "Content-Type: text/plain; version=0.4.0"
+      "--data-binary" "@-"
+      "-w" "%{http_code}" "-o" "/dev/null")
+    if [ -n "${VM_AUTH:-}" ]; then
+      curl_args+=("-u" "${VM_AUTH}")
+    fi
+
+    status=$(echo "${metrics}" | curl "${curl_args[@]}")
 
     if [ "${status}" = "204" ]; then
       return 0

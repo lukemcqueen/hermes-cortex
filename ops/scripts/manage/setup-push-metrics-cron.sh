@@ -38,7 +38,12 @@ if [ -f "$bus_conf" ]; then
 fi
 
 if [ -n "$VM_URL" ]; then
-  if ! curl -sf -o /dev/null --connect-timeout 5 "${VM_URL%/*}" >/dev/null 2>&1; then
+  # Check reachability with auth from cortex-bus.conf
+  vm_auth=""
+  if [ -n "${CORTEX_BASIC_AUTH}" ]; then
+    vm_auth="-u ${CORTEX_BASIC_AUTH}"
+  fi
+  if ! curl -sf ${vm_auth:-} -o /dev/null --connect-timeout 5 "${VM_URL%/*}" >/dev/null 2>&1; then
     echo "[setup-push-metrics] ⚠️  VictoriaMetrics not reachable at ${VM_URL%/*} — skipping cron install"
     echo "[setup-push-metrics] Run this script again after nginx :13005 is deployed."
     exit 0
