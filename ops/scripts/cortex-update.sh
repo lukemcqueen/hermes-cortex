@@ -537,18 +537,6 @@ copy_file() {
   if $DRY_RUN; then
     echo "    would copy: $(basename "$src") → ${dest/$HOME/~}"
   else
-    # Handle immutable flag (+i) — temporarily remove, copy, re-add
-    local _was_immutable=false
-    if command -v lsattr &>/dev/null && lsattr "$dest" 2>/dev/null | grep -q '^....i' 2>/dev/null; then
-      if sudo -n chattr -i "$dest" 2>/dev/null; then
-        _was_immutable=true
-      else
-        warn "Cannot update ${dest/$HOME/~}: immutable flag (+i) set and no passwordless sudo for chattr"
-        warn "  → Run: sudo chattr -i $(dirname "$dest")/$(basename "$dest") && bash cortex-update.sh"
-        SKIPPED=$((SKIPPED + 1))
-        return 1
-      fi
-    fi
     cp "$src" "$dest"
     chmod 644 "$dest"
     # Preserve executable bit
@@ -558,10 +546,6 @@ copy_file() {
       case "$dest" in
         *.py|*.sh) chmod +x "$dest" ;;
       esac
-    fi
-    # Re-add immutable flag if it was set before
-    if $_was_immutable; then
-      sudo -n chattr +i "$dest" 2>/dev/null || true
     fi
     COPIED=$((COPIED + 1))
   fi
@@ -591,6 +575,11 @@ get_changed_files() {
 check_each_mapped_file() {
   local action="${1:-delta}"  # delta or full
   local src dest service restart_cmd
+
+  # Unlock hook scripts so cortex-update.sh can update them
+  if command -v hermes-plugin-lock &>/dev/null; then
+    sudo hermes-plugin-lock unlock 2>/dev/null || true
+  fi
 
   # Merge ORCH_MAP entries on orchestrator hosts
   local _is_orch=false
@@ -630,7 +619,7 @@ check_each_mapped_file() {
       if $matched; then
         if [[ -f "$full_src" ]]; then
           copy_file "$full_src" "$dest"
-          info "  Updated: ${dest/$HOME/\~}"
+          info "  Updated: ${dest/$HOME/~}"
           [[ -n "$service" && -n "$restart_cmd" ]] && TO_RESTART+=("$restart_cmd")
         fi
       fi
