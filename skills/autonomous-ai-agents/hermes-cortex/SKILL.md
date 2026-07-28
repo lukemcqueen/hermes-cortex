@@ -1175,7 +1175,7 @@ Use the **Agent Bus** via `inbox_send` MCP tool. Do NOT write files directly to 
 | `inbox_read` | Read recent messages | `limit`, `topic`, `unread_only` |
 | `inbox_watch` | Check for new messages | `limit` |
 
-> **⚠️ Agents must NOT write to `~/hermes-cortex-private/messages/inbox/` directly.** The file-based inbox is deprecated. All agent messaging goes through the PGMQ Agent Bus. Agents running in the Hermes Cortex fleet get `inbox_send` / `inbox_read` / `inbox_watch` as MCP tools automatically.
+> **⚠️ Agents must NOT write to `~/private-data/messages/inbox/` directly.** The file-based inbox is deprecated. All agent messaging goes through the PGMQ Agent Bus. Agents running in the Hermes Cortex fleet get `inbox_send` / `inbox_read` / `inbox_watch` as MCP tools automatically.
 
 ## Maintenance
 
@@ -1785,7 +1785,7 @@ Hermes Cortex uses a two-repo architecture:
 | Repo | Visibility | Contents |
 |------|-----------|----------|
 | **`hermes-cortex`** (public) | Public | `install.sh`, `docker-compose.langfuse.yml`, `dashboard/`, `nginx/`, skeleton config, architecture docs, bump-version script |
-| **`hermes-cortex-private`** (private) | Private | Full `config.yaml` with personal settings, brain content on `brain-*` branches, custom scripts, SSL certs |
+| **`private-data`** (private) | Private | Full `config.yaml` with personal settings, brain content on `brain-*` branches, custom scripts, SSL certs |
 
 **Domain Privacy Rule:** Use `example.com` as placeholder in public repo files. Put your real domain in private repo only. See `references/public-repo-privacy.md` for the full pattern including git history rewriting.
 
@@ -1808,8 +1808,8 @@ Hermes Cortex uses a two-repo architecture:
 
 **To apply personal config after public install:**
 ```bash
-git clone git@github.com:fleet-operator/hermes-cortex-private.git ~/hermes-cortex-private
-cp ~/hermes-cortex-private/config/config.yaml ~/.hermes/config.yaml
+git clone git@github.com:fleet-operator/private-data.git ~/private-data
+cp ~/private-data/config/config.yaml ~/.hermes/config.yaml
 ```
 
 **Architecture:**
@@ -2113,4 +2113,4 @@ approach is `.hermes-cortex/` (project-anchored) + `~/.hermes/` (home-dir)
 - `references/offline-knowledge-subcommands.md` — Subcommand architecture pattern for offline_knowledge.py, the `lesson` tooling gap, and PATH setup
 - `references/gbrain-source-migration-export.md` — gbrain data export, cross-engine migration, and Postgres setup notes
 - `github.com/garrytan/gbrain` — Official gbrain repository (install via `bun install -g github:garrytan/gbrain`)
-- `github.com/fleet-operator/hermes-cortex-private` — Private repo with personal config, brain content
+- `github.com/fleet-operator/private-data` — Private repo with personal config, brain content

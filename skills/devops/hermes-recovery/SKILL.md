@@ -178,7 +178,7 @@ After auth is set up, clone the project repos (see [github-repo-management](skil
 
 ```bash
 git clone https://github.com/fleet-operator/hermes-cortex.git
-git clone https://github.com/fleet-operator/hermes-cortex-private.git
+# ~/private-data/ is local only — restore from backup
 ```
 
 ### 7. Post-Recovery Stack Setup

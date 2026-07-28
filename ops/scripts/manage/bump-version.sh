@@ -8,7 +8,7 @@ set -euo pipefail
 
 VERSION="${1:?Usage: bump-version.sh <semver> (e.g. 1.1.0)}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PRIVATE_DIR="$(cd "$SCRIPT_DIR/../hermes-cortex-private" 2>/dev/null && pwd || echo "")"
+PRIVATE_DIR="$(cd "$SCRIPT_DIR/../private-data" 2>/dev/null && pwd || echo "")"
 
 # Validate semver format (X.Y.Z)
 if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
@@ -45,7 +45,7 @@ echo "  + Pushed to origin/main (tag: v${VERSION})"
 # ── Private repo ────────────────────────────────────────────
 if [[ -d "$PRIVATE_DIR" ]]; then
   echo ""
-  echo "-> Private repo: hermes-cortex-private"
+  echo "-> Private repo: private-data"
   cd "$PRIVATE_DIR"
 
   echo "$VERSION" > VERSION
@@ -68,4 +68,4 @@ fi
 echo ""
 echo "=== Hermes Cortex v${VERSION} released ==="
 echo "  Public:  git@github.com:fleet-operator/hermes-cortex.git (v${VERSION})"
-echo "  Private: git@github.com:fleet-operator/hermes-cortex-private.git (v${VERSION})"
+echo "  Private: git@github.com:fleet-operator/private-data.git (v${VERSION})"

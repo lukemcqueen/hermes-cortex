@@ -1621,6 +1621,25 @@ main() {
   # Auto-clean stale deploy files after force-all
   clean_stale_deploys
 
+  # ── Migrate: legacy private repos to ~/private-data/ ──
+  if [[ -d "$HOME/hermes-cortex-private" ]]; then
+    if [[ -d "$HOME/hermes-cortex-private/.git" ]]; then
+      info "Legacy private repo detected: ~/hermes-cortex-private"
+      info "  → Moving personal data to ~/private-data/ (no git)"
+      warn "  Content (decisions, bible, references, lessons, messages) stays local."
+      warn "  To migrate automatically, run:"
+      warn "    mv ~/hermes-cortex-private ~/private-data"
+      warn "    rm -rf ~/private-data/.git"
+      warn "  Or manually copy what you need and remove the repo."
+    else
+      info "~/hermes-cortex-private already migrated (no .git)"
+    fi
+  fi
+  if [[ -d "$HOME/agent-inbox-private" ]]; then
+    warn "Deprecated: ~/agent-inbox-private — file-based inbox is dead."
+    warn "  Remove it: rm -rf ~/agent-inbox-private"
+  fi
+
   # Install/update universal crons (idempotent — skips existing)
   if command -v hermes &>/dev/null; then
     CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME}" bash "${CORTEX_DEPLOY_HOME}/scripts/install-crons.sh" 2>/dev/null && \

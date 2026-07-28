@@ -37,7 +37,7 @@ du -sh ~/* ~/.[!.]* 2>/dev/null | sort -rh | head -30
 du -sh ~/.hermes/
 ls -la ~/.hermes/state.db ~/.hermes/kanban.db ~/.hermes/web-cache/cache.db
 ls ~/.hermes/*.json ~/.hermes/*.yaml 2>/dev/null
-for repo in ~/hermes-cortex ~/hermes-cortex-private ~/.hermes/hermes-agent; do
+for repo in ~/hermes-cortex ~/.hermes/hermes-agent; do
   if [ -d "$repo" ]; then
     git -C $repo log --oneline -1 2>/dev/null
     git -C $repo gc --auto 2>/dev/null
@@ -115,7 +115,7 @@ Use `git bundle` for portable full-repo snapshots (all branches, all tags):
 
 ```bash
 cd ~/hermes-cortex && git bundle create ~/backups/$BACKUP_DATE/repos/hermes-cortex-public.bundle --all
-cd ~/hermes-cortex-private && git bundle create ~/backups/$BACKUP_DATE/repos/hermes-cortex-private.bundle --all
+# ~/hermes-cortex-private no longer a git repo — backup via cp -r ~/hermes-cortex-private ~/backups/$BACKUP_DATE/private-data/
 cd ~/.hermes/hermes-agent && git bundle create ~/backups/$BACKUP_DATE/repos/hermes-agent.bundle --all
 ```
 

@@ -91,7 +91,6 @@ node_modules/
 .hermes-cortex/sessions/archive/
 .hermes-cortex/sessions/current.md
 IMPROVEMENTS.md
-agent-inbox-private/
 
 # Agent registry (PII — real hostnames, URLs, IPs)
 agent-registry.json
@@ -105,3 +104,4 @@ agent-registry.json
 # Governance lock marker — written by begin_change() inside repo
 # as secondary protection alongside the primary lock in ~/.hermes-cortex/state/
 .hermes-cortex/.governance-lock
+private-data/

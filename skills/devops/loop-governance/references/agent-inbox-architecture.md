@@ -5,11 +5,11 @@
 | Repo | Purpose | Access |
 |------|---------|--------|
 | `hermes-cortex` (public) | Code, skills, docs | Everyone (public) |
-| `hermes-cortex-private` (private) | Luke's + Amy's personal data | Luke + Amy only |
+| `private-data` (local) | Luke's + Amy's personal data | Luke + Amy only |
 
 ## Message Addressing (Legacy — File-Based Inbox)
 
-The file-based `agent-inbox-private` repo has been replaced by the **Agent Bus (PGMQ)**. All agent-to-agent messages now flow through Postgres-backed queues via MCP tools (`inbox_send`, `inbox_read`, `inbox_watch`). The information below documents the legacy system for reference only.
+The file-based `agent-inbox-private` (legacy, removed) repo has been replaced by the **Agent Bus (PGMQ)**. All agent-to-agent messages now flow through Postgres-backed queues via MCP tools (`inbox_send`, `inbox_read`, `inbox_watch`). The information below documents the legacy system for reference only.
 
 ## Message Addressing
 
@@ -36,7 +36,7 @@ Messages the agent sent or already read are excluded.
 
 ## Setup (Legacy — for reference only)
 
-The file-based `agent-inbox-private` repo is no longer used. New agents should use the Agent Bus (PGMQ) instead:
+The file-based `agent-inbox-private` (legacy, removed) repo is no longer used. New agents should use the Agent Bus (PGMQ) instead:
 - MCP tools: `inbox_send`, `inbox_read`, `inbox_watch`, `inbox_send_task`
 - Backend: Postgres via gbrain database
 - Setup: see `agent-bus` skill

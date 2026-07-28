@@ -179,7 +179,7 @@ python3 ~/.hermes/scripts/memory-compress.py
 
 ```
 Repos: public hermes-cortex (open-source skills/docs/scripts), private
-hermes-cortex-private (system config + brain-* branches). Brain data ONLY
+private-data (system config + brain-* branches). Brain data ONLY
 on brain-* branches. PII scrubbed.
 Active crons: conversation-export (6h→gbrain)... [keeps going]
 Skills created: cron-engineering, cortex-dashboard...

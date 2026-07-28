@@ -108,5 +108,5 @@ If the repo is new and history rewrite is too disruptive:
 ## Related Patterns
 
 - **Secrets management:** Never commit real API keys, passwords, or credentials to public repos. Use `.env.example` with placeholder values.
-- **Two-repo architecture:** Keep personal config in private repo (`hermes-cortex-private`), public installer in public repo (`hermes-cortex`).
+- **Two-repo architecture:** Keep personal config in private repo (`private-data`), public installer in public repo (`hermes-cortex`).
 - **SSL cert paths:** Use placeholder paths in public configs (`/usr/local/etc/nginx/ssl/example.com/`), real paths in private repo.

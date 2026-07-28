@@ -25,7 +25,7 @@ The **Deploy Registry Pattern** is a deployment architecture for Hermes Cortex t
 | Repository | Visibility | License | Contents |
 |---|---|---|---|
 | `hermes-cortex` | **Public** | MIT | Brain code, profiles, deploy scripts, documentation |
-| `hermes-cortex-private` | **Private** | Proprietary | Secrets, per-environment config, encrypted credentials |
+| `private-data` | **Private** | Proprietary | Secrets, per-environment config, encrypted credentials |
 
 ### Public Repo (`hermes-cortex`)
 
@@ -34,7 +34,7 @@ The **Deploy Registry Pattern** is a deployment architecture for Hermes Cortex t
 - CI/CD runs public tests and linting.
 - Brain data resides on `brain-*` branches (see [Branching Strategy](#branching-strategy)).
 
-### Private Repo (`hermes-cortex-private`)
+### Private Repo (`private-data`)
 
 - Tightly access-controlled.
 - Stores environment-specific configuration (e.g., `staging.env`, `production.env`).
@@ -285,10 +285,10 @@ hermes-cortex/
 └── .syncignore                # Files excluded from private → public sync
 ```
 
-### Private Repo (`hermes-cortex-private`)
+### Private Repo (`private-data`)
 
 ```
-hermes-cortex-private/
+private-data/
 ├── README.md
 ├── config/                    # Per-environment configuration
 │   ├── staging.env
@@ -332,9 +332,9 @@ git push -u origin main
 ### 2. Create the Private Repository
 
 ```bash
-mkdir hermes-cortex-private && cd hermes-cortex-private
+mkdir private-data && cd private-data
 git init
-git remote add private git@github.com:your-org/hermes-cortex-private.git
+git remote add private git@github.com:your-org/private-data.git
 # Create private structure as shown above
 git add .
 git commit -m "Initial private repo scaffold"
@@ -346,7 +346,7 @@ git push -u private main
 In the private repo clone, add the public repo as a remote:
 
 ```bash
-cd hermes-cortex-private
+cd private-data
 git remote add public git@github.com:your-org/hermes-cortex.git
 git fetch public
 git merge public/main --allow-unrelated-histories -m "Sync initial public state"
@@ -376,7 +376,7 @@ jobs:
           fetch-depth: 0
       - name: Sync upstream
         run: |
-          git remote add private https://x-access-token:${{ secrets.SYNC_TOKEN }}@github.com/your-org/hermes-cortex-private.git
+          git remote add private https://x-access-token:${{ secrets.SYNC_TOKEN }}@github.com/your-org/private-data.git
           bash scripts/sync-upstream.sh origin private
 ```
 

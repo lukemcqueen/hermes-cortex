@@ -126,6 +126,21 @@ def check_repo(res: "Results") -> None:
     else:
       res.add("AGENTS.md sync", "PASS")
 
+  # Private repo migration check
+  _private = HOME / "hermes-cortex-private"
+  _agent_inbox = HOME / "agent-inbox-private"
+  if _private.is_dir():
+    if (_private / ".git").is_dir():
+      res.add("Private repo", "WARN",
+          "~/hermes-cortex-private still has .git — migrate to ~/private-data/",
+          "mv ~/hermes-cortex-private ~/private-data && rm -rf ~/private-data/.git")
+    else:
+      res.add("Private repo", "INFO", "~/hermes-cortex-private migrated (no .git)")
+  if _agent_inbox.is_dir():
+    res.add("Private repo", "WARN",
+        "~/agent-inbox-private still exists — file-based inbox is dead",
+        "rm -rf ~/agent-inbox-private")
+
 
 def check_dev_repo_agents(res: "Results") -> None:
   """1b. Development repos: check each project-level git repo has an AGENTS.md."""
@@ -1741,7 +1756,6 @@ def check_governance(res):
   managed_hooks = {"pre-commit", "pre-push", "post-commit", "post-merge"}
   search_dirs = [
     CORTEX_REPO.resolve(),
-    HOME / "hermes-cortex-private",
   ]
   # Also scan home-level .git dirs for other repos that might have hooks
   for d in HOME.iterdir():

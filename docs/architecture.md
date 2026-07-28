@@ -94,7 +94,7 @@ Adapter layer — the Core schemas and Ops infrastructure stay unchanged.
 | Repo | Visibility | Contents |
 |------|-----------|----------|
 | `hermes-cortex` | **Public** | Installer (`install.sh`), skeleton config, architecture docs, skills (8), offline content, bump-version script. No secrets or brain data |
-| `hermes-cortex-private` | **Private** | Full system config (`config.yaml`), dashboard (Flask + JS), nginx config, 13 utility scripts, all cron setups |
+| `private-data` | **Local** | Full system config (`config.yaml`), dashboard (Flask + JS), nginx config, 13 utility scripts, all cron setups |
 | `brain-*` branches on private repo | **Private** | Brain content on `brain-luke`, `brain-amy`, `brain-shared`, `brain-default` branches. Each is a clean single-commit orphan branch synced via gbrain |
 
 ## Services
