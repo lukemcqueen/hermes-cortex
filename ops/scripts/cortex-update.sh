@@ -383,6 +383,7 @@ register "ops/scripts/manage/lesson-hit.sh"              "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/fix-cron-duplicates.py"  "${CORTEX_DEPLOY_HOME}/scripts/manage/fix-cron-duplicates.py"
 register "ops/scripts/manage/push-metrics.sh"     "${CORTEX_DEPLOY_HOME}/scripts/push-metrics.sh"
 register "ops/scripts/manage/setup-push-metrics-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/setup-push-metrics-cron.sh"
+register "ops/scripts/manage/agent-setup-metrics.sh" "${CORTEX_DEPLOY_HOME}/scripts/agent-setup-metrics.sh"
 
 # Offline tools
 register "ops/offline/offline_knowledge.py"       "${CORTEX_DEPLOY_HOME}/offline/offline_knowledge.py"
