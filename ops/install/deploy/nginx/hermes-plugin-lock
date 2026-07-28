@@ -1,33 +1,33 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
 #  hermes-plugin-lock — Restricted lock/unlock for governance
-#  enforcer plugin __init__.py (Linux + macOS)
+#  enforcement files (Linux + macOS)
 #
 #  Linux:   /usr/local/sbin/hermes-plugin-lock
 #           uses chattr +i (requires root NOPASSWD in sudoers)
 #  macOS:   /usr/local/bin/hermes-plugin-lock
 #           uses chflags uchg (no root needed for user-immutable)
 #
-#  ONLY operates on:
+#  Operates on:
 #    ~/.hermes/plugins/governance-enforcer/__init__.py
+#    ~/.hermes-cortex/scripts/pre-commit-score
+#    ~/.hermes-cortex/scripts/pre-push-pull
+#    ~/.hermes-cortex/scripts/post-commit-audit
+#    ~/.hermes-cortex/scripts/post-push-audit
 #
-#  Path is hardcoded and validated below — no argument injection.
-#  This is the ONLY command in sudoers related to plugin locking.
+#  Paths are hardcoded and validated — no argument injection.
+#  Each target that exists is locked; missing targets are skipped.
 #
 #  Usage:
-#    sudo hermes-plugin-lock lock     → set immutable
-#    sudo hermes-plugin-lock unlock   → unset immutable
-#    sudo hermes-plugin-lock status   → show flags
+#    sudo hermes-plugin-lock lock     → set immutable on all
+#    sudo hermes-plugin-lock unlock   → unset immutable on all
+#    sudo hermes-plugin-lock status   → show flags for all
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-# Detect platform
 _os=$(uname -s)
 
-# Resolve target path — sudo may set HOME=/root, so find the real user's home
-# SUDO_USER handles sudo context. $USER handles direct runs.
-# logname is NOT used — it returns 'root' in automation/container
-# contexts (Hermes agent, cron, launchd), producing wrong paths.
+# Resolve real user home (sudo may set HOME=/root)
 REAL_USER="${SUDO_USER:-$USER}"
 if [[ "$_os" == "Darwin" ]]; then
   REAL_HOME=$(dscl . -read "/Users/$REAL_USER" NFSHomeDirectory 2>/dev/null | awk '{print $2}')
@@ -35,42 +35,73 @@ else
   REAL_HOME="$(getent passwd "$REAL_USER" 2>/dev/null | cut -d: -f6)"
 fi
 : "${REAL_HOME:-$HOME}"
-TARGET="${REAL_HOME}/.hermes/plugins/governance-enforcer/__init__.py"
 
-if [[ ! -f "$TARGET" ]]; then
-  echo "ERROR: Plugin __init__.py not found at $TARGET"
-  exit 1
-fi
+TARGETS=(
+  "${REAL_HOME}/.hermes/plugins/governance-enforcer/__init__.py"
+  "${REAL_HOME}/.hermes-cortex/scripts/pre-commit-score"
+  "${REAL_HOME}/.hermes-cortex/scripts/pre-push-pull"
+  "${REAL_HOME}/.hermes-cortex/scripts/post-commit-audit"
+  "${REAL_HOME}/.hermes-cortex/scripts/post-push-audit"
+)
+
+_lock_file() {
+  if [[ "$_os" == "Darwin" ]]; then
+    chflags uchg "$1"
+  else
+    chattr +i "$1"
+  fi
+}
+
+_unlock_file() {
+  if [[ "$_os" == "Darwin" ]]; then
+    chflags nouchg "$1"
+  else
+    chattr -i "$1"
+  fi
+}
 
 case "${1:-help}" in
-  lock)
-    if [[ "$_os" == "Darwin" ]]; then
-      chflags uchg "$TARGET"
+  update)
+    local src="${REAL_HOME}/hermes-cortex/ops/install/deploy/nginx/hermes-plugin-lock"
+    if [[ -f "$src" ]]; then
+      cat "$src" > "${BASH_SOURCE[0]}" && chmod 755 "${BASH_SOURCE[0]}" && echo "UPDATED: ${BASH_SOURCE[0]} from $src"
     else
-      chattr +i "$TARGET"
+      echo "ERROR: source not found at $src"
+      exit 1
     fi
-    echo "LOCKED: $TARGET"
+    ;;
+  lock)
+    for t in "${TARGETS[@]}"; do
+      if [[ -f "$t" ]]; then
+        _lock_file "$t" && echo "LOCKED: $t" || echo "FAILED: $t"
+      fi
+    done
     ;;
   unlock)
-    if [[ "$_os" == "Darwin" ]]; then
-      chflags nouchg "$TARGET"
-    else
-      chattr -i "$TARGET"
-    fi
-    echo "UNLOCKED: $TARGET"
+    for t in "${TARGETS[@]}"; do
+      if [[ -f "$t" ]]; then
+        _unlock_file "$t" && echo "UNLOCKED: $t" || echo "FAILED: $t"
+      fi
+    done
     ;;
   status)
-    if [[ "$_os" == "Darwin" ]]; then
-      ls -lO "$TARGET" | awk '{for(i=1;i<=NF;i++){if($i~/^[a-z]+chg/||$i~/^[a-z]+immutable/){print $0;exit}} print $0}'
-    else
-      lsattr "$TARGET"
-    fi
+    for t in "${TARGETS[@]}"; do
+      if [[ -f "$t" ]]; then
+        if [[ "$_os" == "Darwin" ]]; then
+          ls -lO "$t" | awk -v f="$t" '{for(i=1;i<=NF;i++){if($i~/^[a-z]+chg/||$i~/^[a-z]+immutable/){print f": locked";exit}} print f": not locked"}'
+        else
+          lsattr "$t" 2>/dev/null || echo "$t: lsattr failed"
+        fi
+      fi
+    done
     ;;
   *)
     echo "Usage: $0 {lock|unlock|status}"
     echo ""
-    echo "Restricted helper for governance enforcer plugin immutability."
-    echo "Only operates on: $TARGET"
+    echo "Operates on:"
+    for t in "${TARGETS[@]}"; do
+      echo "  $t"
+    done
     exit 1
     ;;
 esac

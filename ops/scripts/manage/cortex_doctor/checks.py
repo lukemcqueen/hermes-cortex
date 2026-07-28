@@ -1272,13 +1272,16 @@ def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
     hooks_dir / "pre-commit",
     hooks_dir / "pre-push",
     hooks_dir / "post-commit",
+    hooks_dir / "post-push",
   ]
   for path in targets:
     if not path.exists():
       continue
+    # Resolve symlinks — the immutable flag is on the target file
+    real_path = path.resolve() if path.is_symlink() else path
     try:
       result = subprocess.run(
-        ["lsattr", str(path)],
+        ["lsattr", str(real_path)],
         capture_output=True, text=True, timeout=5,
       )
       if result.returncode != 0:
@@ -1289,9 +1292,9 @@ def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
       else:
         res.add(f"Immutable: {path.name}", "WARN",
             "immutable flag not set — file is modifiable",
-            f"Fix: sudo chattr +i {path}")
+            f"Fix: sudo chattr +i {real_path}")
     except (subprocess.TimeoutExpired, OSError, IndexError):
-      continue # lsattr failed or file removed — skip gracefully
+      continue # lsattr failed — skip gracefully
 
 
 def _check_plugin_lock_helper(res):
