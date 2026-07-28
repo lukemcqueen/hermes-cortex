@@ -39,9 +39,9 @@ else
   echo "[agent-setup-metrics] ✅ Wrote VICTORIA_METRICS_URL to ${env_file}"
 fi
 
-# Source it for the current shell
+# Source it for the current shell and export so child processes see it
 # shellcheck source=/dev/null
-source "$env_file" 2>/dev/null || true
+set -a; source "$env_file" 2>/dev/null || true; set +a
 
 # ── 3. Pre-flight check ──
 echo "[agent-setup-metrics] Checking VictoriaMetrics reachability..."
