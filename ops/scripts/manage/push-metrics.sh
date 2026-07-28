@@ -27,17 +27,16 @@ AGENT_NAME="${AGENT_NAME:-$(hostname)}"
 if [ -n "${VICTORIA_METRICS_URL:-}" ]; then
   VICTORIA_URL="$VICTORIA_METRICS_URL"
 else
-  # Default: try localhost first (works when running on Moses server)
   VICTORIA_URL="http://localhost:8428/api/v1/import/prometheus"
 
-  # Source cortex-bus.conf to get the Moses bus URL (every agent has this)
-  bus_conf="${CORTEX_BUS_CONF:-${HOME}/.hermes-cortex/cortex-bus.conf}"
-  if [ -f "$bus_conf" ]; then
-    # shellcheck source=/dev/null
-    source "$bus_conf" 2>/dev/null || true
-    if [ -n "${CORTEX_BUS_URL:-}" ]; then
-      bus_host=$(echo "$CORTEX_BUS_URL" | sed -E 's|^https?://([^:/]+).*|\1|')
-      if [ "$bus_host" != "127.0.0.1" ] && [ "$bus_host" != "localhost" ]; then
+  # If localhost isn't reachable, try deriving from cortex-bus.conf
+  if ! curl -sf "http://localhost:8428/health" >/dev/null 2>&1; then
+    bus_conf="${CORTEX_BUS_CONF:-${HOME}/.hermes-cortex/cortex-bus.conf}"
+    if [ -f "$bus_conf" ]; then
+      # shellcheck source=/dev/null
+      source "$bus_conf" 2>/dev/null || true
+      if [ -n "${CORTEX_BUS_URL:-}" ]; then
+        bus_host=$(echo "$CORTEX_BUS_URL" | sed -E 's|^https?://([^:/]+).*|\1|')
         # VictoriaMetrics is behind nginx on port 13005 (bus is 13004)
         VICTORIA_URL="https://${bus_host}:13005/api/v1/import/prometheus"
       fi
