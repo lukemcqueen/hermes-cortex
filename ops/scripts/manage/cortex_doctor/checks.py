@@ -10,7 +10,7 @@ import os
 import re
 import subprocess
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .config import (
@@ -1813,17 +1813,41 @@ def check_governance(res):
       _conn = sqlite3.connect(str(_loop_db))
       _conn.row_factory = sqlite3.Row
       _pending = _conn.execute(
-        "SELECT task_id, cycle_num, session_id, timestamp FROM loop_cycles WHERE decision='PENDING' LIMIT 10"
+        "SELECT id, task_id, cycle_num, session_id, timestamp FROM loop_cycles WHERE decision='PENDING' LIMIT 5000"
       ).fetchall()
       _pending_count = len(_pending)
       if _pending_count:
-        def _fmt(r):
-          sid = r['session_id'] or 'unknown'
-          return f"{r['task_id']}#{r['cycle_num']} ({sid[:12]}...)"
-        _lines = [_fmt(r) for r in _pending]
-        res.add(f"PENDING cycles", "FAIL",
-            f"{_pending_count} unscored cycle(s): {', '.join(_lines[:5])}",
-            f"Score them via feedback_accept or cancel with feedback_override")
+        # Auto-resolve cycles older than 24 hours (abandoned sessions)
+        _now = datetime.now()
+        _fresh = []
+        _stale_count = 0
+        for r in _pending:
+          try:
+            _ts = datetime.fromisoformat(r['timestamp'].replace('Z', ''))
+          except (ValueError, TypeError):
+            _ts = _now - timedelta(days=7)
+          if (_now - _ts).total_seconds() > 86400:
+            _conn.execute(
+              "UPDATE loop_cycles SET decision='MOVE_ON', outcome_note='auto-resolved by health check — >24h stale' WHERE id=?",
+              (r['id'],)
+            )
+            _stale_count += 1
+          else:
+            _fresh.append(r)
+        _conn.commit()
+        if _stale_count:
+          res.add(f"PENDING cycles", "INFO",
+              f"auto-resolved {_stale_count} cycle(s) >24h old (abandoned sessions)")
+        if _fresh:
+          def _fmt(r):
+            sid = r['session_id'] or 'unknown'
+            return f"{r['task_id']}#{r['cycle_num']} ({sid[:12]}...)"
+          _lines = [_fmt(r) for r in _fresh]
+          res.add(f"PENDING cycles", "FAIL",
+              f"{len(_fresh)} unscored cycle(s): {', '.join(_lines[:5])}",
+              f"Score them via feedback_accept or cancel with feedback_override")
+        else:
+          res.add("PENDING cycles", "PASS", "no unscored cycles")
       else:
         res.add("PENDING cycles", "PASS", "no unscored cycles")
       _conn.close()
