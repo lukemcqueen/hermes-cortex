@@ -43,6 +43,8 @@ if env_file.exists():
 
 def log(msg: str):
     ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
+    if msg is None:
+        msg = ""
     print(f"[{ts}] {msg}", file=sys.stderr)
 
 
@@ -87,6 +89,8 @@ def _notify_telegram(message: str):
     if not TELEGRAM_BOT_TOKEN:
         log("⚠️  TELEGRAM_BOT_TOKEN not set, skipping alert")
         return
+    if message is None:
+        message = "[No message content]"
     try:
         import urllib.request
         payload = json.dumps({

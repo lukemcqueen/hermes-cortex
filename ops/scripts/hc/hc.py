@@ -84,8 +84,10 @@ def _psql(query: str) -> str:
         return f"ERROR: {e}"
 
 
-def _psql_json(query: str):
-    """Run SQL and parse JSON result."""
+def _psql_json(query: str | None) -> tuple:
+    """Run a SQL query and parse the result as JSON."""
+    if query is None:
+        return None, "Query is None"
     raw = _psql(query)
     if raw.startswith("ERROR"):
         return None, raw
