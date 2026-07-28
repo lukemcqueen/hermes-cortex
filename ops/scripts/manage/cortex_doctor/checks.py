@@ -1788,6 +1788,20 @@ def check_governance(res):
     res.add("Redundant local hooks", "PASS",
         "no redundant hooks found in local .git/hooks directories")
 
+  # ── Bypass compliance check ──
+  # If post-push hook left a bypass marker, refuse to pass until cleared.
+  bypass_marker = state_dir / ".bypass-found"
+  if bypass_marker.exists():
+    bypass_details = bypass_marker.read_text().strip() if bypass_marker.stat().st_size > 0 else "unknown"
+    res.add("Governance bypass", "FAIL",
+        f"Bypass marker found: {bypass_marker}",
+        f"Previous push had --no-verify commits. Fix and clear the marker:\n"
+        f"  1. Re-do the commit through the pre-commit hook (no --no-verify)\n"
+        f"  2. Push properly (no --no-verify on push either)\n"
+        f"  3. rm -f {bypass_marker}")
+  else:
+    res.add("Governance bypass", "PASS", "no bypass markers found")
+
 
 def check_local_hooksPath_overrides(res):
   """7b. Scan all git repos for local core.hooksPath overrides that subvert the global setting.

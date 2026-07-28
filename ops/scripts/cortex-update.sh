@@ -365,6 +365,7 @@ register "ops/scripts/manage/collect-agent-skills.sh"     "${CORTEX_DEPLOY_HOME}
 
 # Migration scripts
 register_orch "ops/scripts/manage/migrate-orch-bus-names.sh"   "${CORTEX_DEPLOY_HOME}/scripts/migrate-orch-bus-names.sh"
+register "ops/scripts/post-push-audit"                     "${CORTEX_DEPLOY_HOME}/scripts/post-push-audit"
 register_orch "ops/scripts/manage/orch-request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-request-skill-reports.sh"
 register_orch "ops/scripts/manage/orch-process-skill-reports.py"    "${CORTEX_DEPLOY_HOME}/scripts/orch-process-skill-reports.py"
 register "ops/scripts/manage/agent-learning-collector.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-learning-collector.py"
@@ -1357,6 +1358,20 @@ install_precommit_hook() {
       ln -sf "$postcommit_src" "$postcommit_dest"
       chmod +x "$postcommit_src"
       info "Symlinked shared post-commit hook → ${postcommit_src/$HOME/\\~}"
+    fi
+  fi
+
+  # Deploy post-push-audit to shared hooks dir (symlink to prevent drift)
+  local postpush_src="${CORTEX_DEPLOY_HOME}/scripts/post-push-audit"
+  if [[ -f "$postpush_src" ]]; then
+    local postpush_dest="${hooks_dir}/post-push"
+    if [[ -L "$postpush_dest" ]] && [[ "$(readlink "$postpush_dest")" == "$postpush_src" ]]; then
+      : # symlink already correct
+    else
+      rm -f "$postpush_dest"
+      ln -sf "$postpush_src" "$postpush_dest"
+      chmod +x "$postpush_src"
+      info "Symlinked shared post-push hook → ${postpush_src/$HOME/\\~}"
     fi
   fi
 

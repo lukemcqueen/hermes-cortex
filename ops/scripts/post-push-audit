@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────
+#  post-push-audit — Git post-push hook
+#
+#  After a push completes, checks whether any commit in the
+#  pushed range bypassed the pre-commit hook (--no-verify).
+#  If so, writes a marker file that the doctor reads and FAILs.
+#
+#  This does NOT block the push — it creates accountability.
+#  The only way to clear the marker is to re-push properly
+#  through the pre-commit hook, then remove the marker.
+# ─────────────────────────────────────────────────────────────
+set -euo pipefail
+
+NO_VERIFY_LOG="${HOME}/.hermes-cortex/state/no-verify-log.json"
+BYPASS_MARKER="${HOME}/.hermes-cortex/state/.bypass-found"
+
+# Only run if no-verify log exists
+if [[ ! -f "$NO_VERIFY_LOG" ]]; then
+  exit 0
+fi
+
+# Read stdin for pushed refs (same format as pre-push)
+# Git passes: <local-ref> <local-sha> <remote-ref> <remote-sha>
+BYPASS_FOUND=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # Skip deletion pushes
+  if [[ "$local_sha" == "0000000000000000000000000000000000000000" ]]; then
+    continue
+  fi
+  # Skip new branch pushes (no remote sha to compare against)
+  if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
+    continue
+  fi
+
+  # Get commits in this push
+  PUSH_COMMITS=$(git rev-list "$remote_sha..$local_sha" 2>/dev/null || true)
+  if [[ -z "$PUSH_COMMITS" ]]; then
+    continue
+  fi
+
+  # Check each commit against the no-verify log
+  while IFS= read -r p_commit; do
+    if grep -qF "$p_commit" "$NO_VERIFY_LOG" 2>/dev/null; then
+      BYPASS_FOUND=1
+      COMMIT_MSG=$(git log -1 --format="%s" "$p_commit" 2>/dev/null || echo "unknown")
+      echo "⚠️  POST-PUSH: Commit ${p_commit::10} bypassed governance (--no-verify)"
+      echo "    Message: ${COMMIT_MSG}"
+    fi
+  done <<< "$PUSH_COMMITS"
+done
+
+if [[ "$BYPASS_FOUND" -eq 1 ]]; then
+  echo "⚠️  Bypass marker written to: $BYPASS_MARKER"
+  echo "    Doctor will FAIL until you re-push commits through the pre-commit hook."
+  echo "    To clear: git commit (without --no-verify) for the affected changes,"
+  echo "    then push properly, then: rm -f $BYPASS_MARKER"
+  touch "$BYPASS_MARKER"
+fi
+
+exit 0
