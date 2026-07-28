@@ -615,6 +615,29 @@ def handle_reboot(msg_body: dict, msg_raw: dict) -> dict:
     }
 
 
+# ── TASK_REQUEST: accept free-text task requests from other agents ──
+# Subject format: "Task: <description>" or "TASK_REQUEST"
+# Body format: {"body": {"task": "<description>"}} or plain text
+def handle_task(msg_body: dict, msg_raw: dict) -> dict:
+    request = _parse_body(msg_body.get("body", {}))
+    task_desc = request.get("task", "") or request.get("body", msg_body.get("body", ""))
+    if isinstance(task_desc, dict):
+        task_desc = str(task_desc)
+    task_desc = str(task_desc).strip()
+
+    sender = msg_raw.get("from", "?") if isinstance(msg_raw, dict) else "?"
+    log(f"📋 TASK_REQUEST from {sender}: {task_desc[:200]}")
+
+    return {
+        "success": True,
+        "command": "TASK_REQUEST",
+        "task": task_desc[:500],
+        "sender": sender,
+        "message": f"Task received from {sender}. Luke has been notified.",
+        "forwarded_to": "luke",
+    }
+
+
 # ── Register non-standard subjects that don't follow XXX_REQUEST naming ──
 
 register_custom("DIAGNOSTIC_REQUEST", "DIAGNOSTIC_RESULT", handle_diagnostic,
@@ -625,3 +648,5 @@ register_custom("EXEC", "EXEC_RESULT", handle_exec,
                 "Run a script under ~/.hermes-cortex/scripts/")
 register_custom("GIT_AUTH_CHECK", "GIT_AUTH_RESULT", handle_git_auth,
                 "Verify git can ls-remote origin")
+register_custom("TASK_REQUEST", "TASK_RESULT", handle_task,
+                "Accept free-text task requests from other agents (Gisu, Joseph, etc.)")

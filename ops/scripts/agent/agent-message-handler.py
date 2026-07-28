@@ -684,6 +684,19 @@ def main():
 
     subject = body.get("subject", "")
 
+    # Normalize free-text subjects to known command subjects
+    # "Task: fix the thing" → "TASK_REQUEST" (agents like Gisu use this format)
+    if subject.startswith("Task:") or subject.startswith("TASK:"):
+        task_desc = subject.split(":", 1)[1].strip()
+        subject = "TASK_REQUEST"
+        # Embed the task description into the body for the handler
+        if isinstance(body, dict):
+            body_body = body.get("body", {})
+            if isinstance(body_body, dict):
+                body_body["task"] = task_desc
+            else:
+                body["body"] = {"task": task_desc}
+
     # Check if this message targets this agent (labels, agent names)
     agent_labels = _load_agent_labels()
     should_process, skip_reason = _should_process(body, agent_labels)
