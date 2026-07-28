@@ -122,6 +122,38 @@ def check_archives_for_response(corr_id: str, expected_subject: str) -> bool:
     return len(rows) > 0
 
 
+def get_body_preview(corr_id: str, subject: str) -> str:
+    """Extract a one-line metrics summary from a RESULT body in archives."""
+    data = _psql_rows(f"""
+        SELECT body
+        FROM bus.archives
+        WHERE ((body::jsonb #>> '{{}}')::jsonb @> '{{\"correlation_id\": "{corr_id}"}}'::jsonb)
+          AND ((body::jsonb #>> '{{}}')::jsonb @> '{{\"subject\": "{subject}"}}'::jsonb)
+        ORDER BY archived_at DESC LIMIT 1
+    """)
+    if not data:
+        return ""
+    try:
+        raw = data[0]["body"]
+        # body is jsonb, outer message is jsonb: (body::jsonb #>> '{}')::jsonb
+        # The 'body' field inside is the actual result payload
+        blob = json.loads(raw)
+        inner = json.loads(blob) if isinstance(blob, str) else blob
+        payload = json.loads(inner["body"]) if isinstance(inner.get("body"), str) else inner.get("body", {})
+    except (json.JSONDecodeError, TypeError, KeyError):
+        return ""
+
+    if subject == "UPDATE_RESULT":
+        ok = payload.get("success", False)
+        sha = payload.get("git_sha_after", "?")[:8]
+        return f"success={'✅' if ok else '❌'} sha={sha}"
+    elif subject == "EXEC_RESULT":
+        ok = payload.get("success", False)
+        ec = payload.get("exit_code", "?")
+        return f"exit={ec} {'✅' if ok else '❌'}"
+    return ""
+
+
 def check_dlq_for_failure(corr_id: str) -> bool:
     """Check bus.messages DLQ for the correlation_id (handler crashed)."""
     rows = _psql_rows(f"""
@@ -180,7 +212,9 @@ def run_verifier():
             _psql(f"SELECT bus.verify_command('{corr_id}', 'verified')")
             log(f"    ✅ Verified — found matching {expected} in archives")
             stats["verified"] += 1
-            details.append(f"  ✅ {agent} → {expected}")
+            metrics = get_body_preview(corr_id, expected)
+            suffix = f" — {metrics}" if metrics else ""
+            details.append(f"  ✅ {agent} → {expected}{suffix}")
             continue
 
         # Phase 2: Check DLQ (handler crashed mid-processing)
