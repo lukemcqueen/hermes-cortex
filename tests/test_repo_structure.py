@@ -46,7 +46,7 @@ def test_no_dead_root_scripts():
         "verify-langfuse.py",
     }
     actual = set(os.listdir(scripts_dir)) - {"__pycache__"}
-    # These moved to ops/scripts/ or core/governance/
+    # These moved to ops/scripts/
     unexpected = actual - expected
     if unexpected:
         print(f"WARNING: Unexpected files in scripts/: {unexpected}")

@@ -202,8 +202,7 @@ test -x ~/.hermes-cortex/hooks/pre-commit && echo "executable" || echo "not exec
 ```bash
 # Manually test score-cycle
 score-cycle --task "test-diagnostic" --cycle 1 --code-file /dev/null --json
-# If this fails, the score-cycle CLI or loop-governance setup is broken.
-# Re-run: ~/hermes-cortex/core/governance/setup.sh
+# score-cycle is deprecated — MCP-based governance in use instead.
 ```
 
 ### Per-repo hook overrides global
@@ -215,10 +214,8 @@ git config core.hooksPath      # should show global path
 
 ### score-cycle not found
 The hook prints a warning and exits cleanly (doesn't block the commit).
-Install loop-governance tools:
-```bash
-bash ~/hermes-cortex/core/governance/setup.sh
-```
+score-cycle is deprecated — MCP-based governance tools are used instead.
+See docs/templates/AGENTS-loop-governance.md for the current workflow.
 
 ---
 
@@ -228,4 +225,4 @@ bash ~/hermes-cortex/core/governance/setup.sh
 - `ops/scripts/pre-commit-score` — the hook script
 - `mcp-servers/loop-gov-mcp.py` — the primary enforcer MCP server
 - `ops/scripts/cortex-update.sh` — deploys the hook via `install_precommit_hook()`
-- `core/governance/setup.sh` — installs `score-cycle` and `loop-feedback` CLI tools
+- `core/governance/setup.sh` — REMOVED July 2026. MCP-based governance replaces CLI tools.

@@ -272,8 +272,8 @@ done
 
 # If score-cycle doesn't exist, warn once per install
 if [[ -z "$SCORE_CYCLE" ]]; then
-  echo "⚠  score-cycle not found — skipping scoring (install loop-governance first)"
-  echo "   Run: bash ~/hermes-cortex/core/governance/setup.sh"
+  echo "⚠  score-cycle not found — skipping old scoring"
+  echo "   Current governance is MCP-based (begin_change → cycle_query → feedback_accept → end_change)"
   exit 0
 fi
 

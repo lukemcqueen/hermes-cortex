@@ -471,55 +471,6 @@ deploy_precommit() {
   info "  pre-commit hook installed (direct)"
 }
 
-deploy_loop_gov() {
-  local project="$1"
-  [[ "${COMPONENTS}" != "ALL" && "${COMPONENTS}" != *"loop-gov"* ]] && return 0
-
-  local lg_dir="${project}/.hermes-cortex/loop-governance"
-  local lg_source="${REPO_DIR}/core/governance"
-
-  if [[ "$MODE" == "diff" ]]; then
-    echo "  would create: ${lg_dir/$HOME/~}/score-cycle wrapper"
-    echo "  would create: ${lg_dir/$HOME/~}/loop-feedback wrapper"
-    return 0
-  fi
-
-  mkdir -p "$lg_dir"
-
-  # Create score-cycle wrapper
-  local score_wrapper="${lg_dir}/score-cycle"
-  cat > "$score_wrapper" <<'BASH'
-#!/usr/bin/env bash
-# Wrapper: project-level score-cycle → global score-cycle
-set -euo pipefail
-exec score-cycle "$@"
-BASH
-  chmod +x "$score_wrapper"
-
-  # Create loop-feedback wrapper
-  local feedback_wrapper="${lg_dir}/loop-feedback"
-  cat > "$feedback_wrapper" <<'BASH'
-#!/usr/bin/env bash
-# Wrapper: project-level loop-feedback → global loop-feedback
-set -euo pipefail
-exec loop-feedback "$@"
-BASH
-  chmod +x "$feedback_wrapper"
-
-  # Add to .gitignore
-  local gitignore="${project}/.hermes-cortex/.gitignore"
-  if ! grep -q "loop-gov.db\|loop-governance" "$gitignore" 2>/dev/null; then
-    cat >> "$gitignore" <<'EOF'
-
-# Loop governance database
-*.db
-loop-gov.db
-EOF
-  fi
-
-  info "  loop-gov wrappers in .hermes-cortex/loop-governance/"
-}
-
 # ── Skills Manifest ────────────────────────────────────────────
 
 deploy_manifest() {
@@ -713,7 +664,6 @@ main() {
   deploy_agents_md "$PROJECT" "$template" "$PROJECT_NAME"
   deploy_cortex_dir "$PROJECT"
   deploy_precommit "$PROJECT"
-  deploy_loop_gov "$PROJECT"
   deploy_manifest "$PROJECT" "$SKILL_REFS"
   deploy_skills "$PROJECT" "$SKILL_REFS"
 

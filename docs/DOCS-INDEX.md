@@ -155,5 +155,5 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/integration-audit.md` | Integration audit — path consistency, script map, agent notes for three-layer repo health |
 | `ops/scripts/` | Cron scripts, health checks, agent tools — 5 subdirectories: agent/, health/, install/, inbox/, manage/ |
 | `ops/scripts/lib/` | Shared Python libraries for fleet scripts — cortex_bus.py (bus HTTP API) |
-| `core/governance/` | Governance engine — loop-governance DB, scoring, policy enforcement |
+| `core/governance/` | REMOVED July 2026 — MCP-based governance replaces it |
 | `.gitignore` | Gitignore — excludes .agentkore, .env, secrets, brain data |

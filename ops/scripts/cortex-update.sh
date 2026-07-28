@@ -212,12 +212,9 @@ register "ops/scripts/lib/handoff_schema.py"             "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/quality/adversarial-verify.py"     "${CORTEX_DEPLOY_HOME}/scripts/adversarial-verify.py"
 register_orch "ops/scripts/orch-bus/orch-bus-fleet-dispatch.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-fleet-dispatch.py"
 
-# Loop-governance scripts (deployed to scripts/ for cron use)
-register "core/governance/cleanup-ollama.sh"  "${CORTEX_DEPLOY_HOME}/scripts/cleanup-ollama.sh"
+
+# (core/governance/ removed July 2026 — MCP-based governance replaces it)
 register "ops/scripts/manage/agent-session_cache.py"    "${CORTEX_DEPLOY_HOME}/scripts/agent-session_cache.py"
-register "core/governance/setup.sh"            "${CORTEX_DEPLOY_HOME}/scripts/setup.sh"
-register "core/governance/verify.sh"           "${CORTEX_DEPLOY_HOME}/scripts/verify.sh"
-register "core/governance/update.sh"           "${CORTEX_DEPLOY_HOME}/scripts/update.sh"
 
 register "ops/scripts/health/prod-watchdog.sh"          "${CORTEX_DEPLOY_HOME}/scripts/prod-watchdog.sh"
 register_orch "ops/scripts/agent/orch-fleet-watchdog.py"   "${CORTEX_DEPLOY_HOME}/scripts/orch-fleet-watchdog.py"
@@ -246,7 +243,7 @@ register "ops/scripts/manage/agent-llm-judge-scorer.py"         "${CORTEX_DEPLOY
 register "ops/scripts/health/agent-model-health-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/agent-model-health-watchdog.py"
 register "ops/scripts/manage/agent-offline-code-index-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/agent-offline-code-index-cron.sh"
 register "ops/scripts/manage/harvest-lessons.sh"         "${CORTEX_DEPLOY_HOME}/scripts/harvest-lessons.sh"
-register "core/governance/skill_miner.py"                "${CORTEX_DEPLOY_HOME}/scripts/skill_miner.py"
+# core/governance/skill_miner.py removed (old governance — July 2026)
 register "ops/scripts/health/swap-refresh.py"            "${CORTEX_DEPLOY_HOME}/scripts/swap-refresh.py"
 register "ops/scripts/health/agent-cron-quality-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-cron-quality-watchdog.py"
 register "ops/scripts/agent/agent-cron-failure-scanner.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-cron-failure-scanner.py"

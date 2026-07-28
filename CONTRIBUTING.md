@@ -370,7 +370,7 @@ that needs to be installed on agent machines, register it here:
 || `ops/services/<service>/` files | `~/.hermes-cortex/<service>/` |
 | `ops/services/dashboard/` files | `~/.hermes-cortex/dashboard/` |
 || `skills/<category>/<name>/` | `~/.hermes/skills/<category>/<name>/` (via symlink) |
-| `core/governance/` files | `~/.hermes-cortex/loop-governance/` |
+| `ops/scripts/manage/` files | `~/.hermes-cortex/scripts/` |
 | `ops/install/deploy/nginx/` files | `~/.hermes-cortex/nginx/` |
 | `docs/` | Read from repo (no deployment needed) |
 | `install.sh` | `~/.hermes-cortex/install.sh` |

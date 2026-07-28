@@ -171,7 +171,8 @@ Takes: **8–15 minutes** (mostly model downloads).
 **Quick start (30 seconds):** Try the governance scoring tools:
 
 ```bash
-bash core/governance/setup.sh  # install deps + symlinks
+# Pre-commit hook (auto-scoring via loop-governance MCP)
+bash ~/hermes-cortex/ops/scripts/pre-commit
 score-cycle --help          # ready to use
 ```
 

@@ -622,24 +622,13 @@ lets any agent find the tools regardless of which Hermes profile or project it's
 ├── AGENTS.md                                   ← Agent guidelines
 └── README.md                                   ← Public docs
 
-~/hermes-cortex/core/governance/         ← Canonical source (version controlled, public repo)
-├── loop_scorer.py                            Scoring engine
-├── score_cycle.py                            CLI: score a TDD cycle and log to DB
-├── loop_feedback.py                          CLI: accept/override decisions
-├── auto_apply.py                             CLI: apply safe config patches
-├── loop_evaluator.py                         Weekly analysis pipeline
-├── loop_db.py                                SQLite + JSON storage
-├── loop_config.py                            Runtime config reader/writer
-├── skill_miner.py                            Per-agent skill/session mining (sends to inbox)
-├── inbox_watcher.py                          Moses tool: checks agent inbox for new messages
-├── install-crons.py                          Cron installer from crons.json template
-├── crons.json                                Canonical cron definitions (versioned)
-├── setup.sh                                  Installer (idempotent)
-├── verify.sh                                 Health check
-├── update.sh                                 Versioned updater
-├── VERSION                                   Current version (semver)
-├── .gitignore                                Excludes per-machine data
-├── references/
+~/hermes-cortex/               ← DEPRECATED: core/governance/ removed July 2026
+                              ← Current governance is MCP-based:
+                              ←   ~/.hermes-cortex/scripts/loop-gov-mcp.py
+                              ←   MCP tools: begin_change, cycle_query, feedback_accept/override, end_change
+                              ←   Plugin: ~/.hermes/plugins/governance-enforcer/
+                              ←   DB: ~/.hermes/data/loop-governance.db
+                              ←   Skill: skills/devops/loop-governance/ (this file)
 │   ├── agent-inbox-architecture.md           Cross-machine inbox design
 │   ├── cron-management.md                    Cron template + argument order pitfall
 │   ├── data-schema.md                        DB schema reference
@@ -671,9 +660,16 @@ lets any agent find the tools regardless of which Hermes profile or project it's
 See `references/mcp-servers.md` for full tool descriptions and usage examples.
 ```
 
-**Installation flow for a new agent (Linux or macOS):**\n1. Clone the repo: `git clone https://github.com/fleet-operator/hermes-cortex.git`\n2. Run setup: `bash hermes-cortex/core/governance/setup.sh` (detects macOS automatically, suggests `brew install ollama` on Mac vs `curl | bash` on Linux)\n3. Verify: `bash hermes-cortex/core/governance/verify.sh`\n4. Symlinks are created to `~/.local/bin/` automatically\n5. If `~/.local/bin/` isn't in PATH, run: `export PATH="$HOME/.local/bin:$PATH"` (add to ~/.zshrc on macOS)
+**Installation:** Loop governance is installed automatically by `cortex-update.sh` (MCP server + plugin). The old CLI tools (`score-cycle`, `loop-feedback`) are deprecated.
 
-Or via the main installer: `bash hermes-cortex/install.sh` (includes loop-governance as step #11).
+**Usage in a session:**
+1. `mcp_loop_governance_begin_change(task_id="<name>", description="...")` — start a change
+2. Do the work (MCP server blocks write tools without a lock)
+3. `mcp_loop_governance_cycle_query(task_id="<name>")` — find the cycle
+4. `mcp_loop_governance_feedback_accept(id=N, note="...")` — score it
+5. `mcp_loop_governance_end_change(task_id="<name>")` — release the lock
+
+Or via the main installer: `bash hermes-cortex/install.sh` (loop-governance step removed in July 2026 — use cortex-update.sh instead).
 
 ## Database Retention
 

@@ -21,29 +21,12 @@ echo "║    TDD scoring + skills in 10 seconds        ║"
 echo "╚═══════════════════════════════════════════════╝"
 echo ""
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null || echo "")"
-
-# Check if running from repo root
-if [[ ! -f "${SCRIPT_DIR}/../core/governance/setup.sh" ]]; then
-  echo "Could not find loop-governance setup script."
-  echo "Run this from the hermes-cortex repo root."
-  echo ""
-  echo "  git clone https://github.com/fleet-operator/hermes-cortex.git"
-  echo "  cd hermes-cortex && bash quick-start.sh"
-  exit 1
-fi
-
-echo "  Step 1: Install loop-governance tools…"
-bash "${SCRIPT_DIR}/../core/governance/setup.sh" 2>&1 | grep -E "✓|⚠|✗|setup" | head -10
-
 echo ""
-echo "  Step 2: Verify installation…"
-bash "${SCRIPT_DIR}/../core/governance/verify.sh" --quick 2>&1 | tail -3
-
+echo "  Loop-governance CLI tools have been replaced by MCP-based governance."
+echo "  See docs/templates/AGENTS-loop-governance.md for current workflow:"
+echo "    begin_change → work → cycle_query → feedback_accept/override → end_change"
 echo ""
-echo "╔═══════════════════════════════════════════════╗"
-echo "║    Ready!                                     ║"
-echo "╚═══════════════════════════════════════════════╝"
+echo "  Quick-start for scoring: the pre-commit hook auto-creates cycles."
 echo ""
 echo "  Commands:"
 echo "    score-cycle --help"

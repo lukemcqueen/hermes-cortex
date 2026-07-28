@@ -1560,7 +1560,7 @@ def check_governance(res):
           "unknown content — expected post-commit-audit",
           "Install: ln -sf ~/.hermes-cortex/scripts/post-commit-audit ~/.hermes-cortex/hooks/post-commit")
 
-  # ── Score-cycle CLI ──
+  # ── Score-cycle CLI (old system) ──
   score_paths = [
     HOME / ".local" / "bin" / "score-cycle",
     Path("/usr/local/bin/score-cycle"),
@@ -1572,18 +1572,11 @@ def check_governance(res):
       found_score = p
       break
   if found_score:
-    if found_score.is_symlink():
-      target = os.readlink(str(found_score))
-      if Path(target).exists():
-        res.add("Score-cycle", "PASS", f"available at {found_score} → {target}")
-      else:
-        res.add("Score-cycle", "WARN", f"symlink broken: {found_score} → {target}",
-            "Re-run: bash ~/hermes-cortex/core/governance/setup.sh")
-    else:
-      res.add("Score-cycle", "PASS", f"available at {found_score}")
+    res.add("Score-cycle", "INFO",
+        f"Old score-cycle found at {found_score} — current governance uses MCP tools")
   else:
-    res.add("Score-cycle", "WARN", "not found in PATH",
-        "Run: bash ~/hermes-cortex/core/governance/setup.sh to deploy scoring tools")
+    res.add("Score-cycle", "OK",
+        "Legacy score-cycle not present — MCP-based governance in use")
 
   # ── Stale governance locks ──
   # Uses heartbeat_at + ttl_seconds from the lock file.

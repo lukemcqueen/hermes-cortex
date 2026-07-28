@@ -49,21 +49,18 @@ After verifying: cycle_query(task_id="story-name") ← review the cycle
 | `embedding failed` / `Ollama connection refused` | Ollama not running | `ollama serve` or `brew services restart ollama` |
 | `Model nomic-embed-text:v1.5 not found` | Model not pulled | `ollama pull nomic-embed-text:v1.5` (274 MB) |
 | `DB locked` | Concurrent score-cycle process | Wait and retry, or `rm ~/.hermes-cortex/data/loop-governance.db-journal` |
-| `score-cycle not found` | Symlink missing | `bash ~/hermes-cortex/core/governance/setup.sh --symlinks-only` |
+| `score-cycle not found` | Deprecated — MCP-based governance in use |
 | `warning: all tests failed — score may be inaccurate` | Test suite broken | Fix tests first, then re-score |
 | MCP tool returns `error` | MCP server not registered | `hermes mcp add --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py loop-governance` |
 
 **Fallback protocol:** If scoring is genuinely blocked (Ollama down, DB corrupt, network unreachable):
-1. Diagnose with `bash ~/.hermes-cortex/tools/loop-governance/verify.sh`
-2. If fix takes > 2 minutes, record the change manually by running `score-cycle` once the issue is resolved
+1. Fix the root cause (check Ollama, MCP server, etc.)
+2. If fix takes > 2 minutes, record the change manually once the issue is resolved
 3. Never skip entirely — the cron auditor will flag unscored changes
 
-## Setup first time
+## Setup first time (MCP-based — old CLI tools deprecated)
 
 ```bash
-# Full install — deps, symlinks, config, crons
-bash ~/hermes-cortex/core/governance/setup.sh
-
 # Register MCP server (so agents can use MCP tools)
 hermes mcp add --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py loop-governance
 
@@ -72,12 +69,9 @@ ollama pull nomic-embed-text:v1.5
 
 # Deploy pre-commit hooks across all repos
 bash ~/.hermes/scripts/install-score-hook.sh --all
-
-# Verify everything
-bash ~/.hermes-cortex/tools/loop-governance/verify.sh
 ```
 
-**Dependencies:** Ollama + **nomic-embed-text:v1.5** (for scoring — the only model required). 274 MB. Run `bash core/governance/cleanup-ollama.sh` to remove unnecessary models and free disk space.
+**Dependencies:** Ollama + **nomic-embed-text:v1.5** (for scoring — the only model required). 274 MB.
 
 ## Enforcement layers
 

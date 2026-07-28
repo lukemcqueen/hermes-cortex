@@ -57,7 +57,7 @@ MACOS_GUARDS_SH = [
 
 
 def _find_py_files():
-    """Find .py files in ops/scripts/ and core/governance/ (excluding __pycache__/archive)."""
+    """Find .py files in ops/scripts/ (excluding __pycache__/archive)."""
     files = []
     for d in SCRIPTS_DIRS:
         if d.exists():
@@ -69,7 +69,7 @@ def _find_py_files():
 
 
 def _find_sh_files():
-    """Find .sh files in ops/scripts/ and core/governance/."""
+    """Find .sh files in ops/scripts/."""
     sourced_only = {"os-config.sh", "cortex-profile.sh", "service-writer.sh"}
     files = []
     for d in SCRIPTS_DIRS:

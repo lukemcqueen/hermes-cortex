@@ -1910,37 +1910,6 @@ fi
 ok
 
 # ─────────────────────────────────────────────────────────────
-# 11. Loop Governance — TDD Cycle Scoring & Self-Improvement
-# ─────────────────────────────────────────────────────────────
-step "Installing Loop Governance tools (score-cycle, loop-feedback, auto-apply)"
-LG_SOURCE="${SCRIPT_DIR}/../core/governance"
-LG_DEST="${CORTEX_DEPLOY_HOME}/loop-governance"
-HERMES_BIN="${CORTEX_DEPLOY_HOME}/bin"
-if [[ -d "$LG_SOURCE" ]]; then
- mkdir -p "$LG_DEST" "$HERMES_BIN"
- # Copy all Python modules
- for f in "$LG_SOURCE"/*.py; do
-  cp "$f" "$LG_DEST/"
-  chmod +x "$LG_DEST/$(basename "$f")" 2>/dev/null || true
- done
- # Copy shell scripts
- for f in "$LG_SOURCE"/*.sh; do
-  cp "$f" "$LG_DEST/"
-  chmod +x "$LG_DEST/$(basename "$f")"
- done
- cp "$LG_SOURCE"/VERSION "$LG_DEST/"
- # Create symlinks for CLI tools
- ln -sf "${LG_DEST}/score_cycle.py" "${HERMES_BIN}/score-cycle"
- ln -sf "${LG_DEST}/loop_feedback.py" "${HERMES_BIN}/loop-feedback"
- ln -sf "${LG_DEST}/auto_apply.py"  "${HERMES_BIN}/auto-apply"
- ln -sf "${LG_DEST}/loop_config.py" "${HERMES_BIN}/loop-config"
- info " Installed loop-governance tools (v$(cat ${LG_DEST}/VERSION 2>/dev/null || echo '?'))"
-else
- skip "no core/governance/ directory in repo"
-fi
-ok
-
-# ─────────────────────────────────────────────────────────────
 # 12a. Score Pre-Commit Hooks — Install scoring hooks to all projects
 # ─────────────────────────────────────────────────────────────
 SCORE_HOOK_SCRIPT="${SCRIPTS_DIR}/install-score-hook.sh"

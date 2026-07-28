@@ -68,10 +68,7 @@ PULL_OUTPUT=$(GIT_EDITOR=true timeout 20 git pull --rebase origin main 2>&1) || 
     exit 1
 }
 
-# Re-sync tools (crons installed separately via install-crons.sh)
-if [ -f "core/governance/setup.sh" ]; then
-    timeout 10 bash core/governance/setup.sh 2>&1 | while IFS= read -r line; do log "$line"; done || true
-fi
+# Old governance re-sync removed (core/governance/ gone July 2026 — MCP-based replaces it)
 
 # Restore stashed changes
 stash_pop
