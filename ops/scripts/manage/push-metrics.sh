@@ -40,18 +40,29 @@ RETRY_DELAY=2
 collect_metrics() {
   local cpu_pct mem_pct disk_pct uptime_seconds
 
-  # CPU usage (Linux /proc/stat delta handled by VictoriaMetrics rate())
-  # This is a point-in-time snapshot; use rate(node_cpu_seconds_total) in Grafana
-  cpu_pct=$(top -bn1 2>/dev/null | awk '/Cpu\(s\)/ {print 100-$8}' || echo "0")
+  # CPU usage — macOS vs Linux
+  if [[ "$(uname)" == "Darwin" ]]; then
+    cpu_pct=$(ps -A -o %cpu | awk '{s+=$1} END {printf "%.1f", s}' 2>/dev/null || echo "0")
+  else
+    cpu_pct=$(top -bn1 2>/dev/null | awk '/Cpu\(s\)/ {print 100-$8}' || echo "0")
+  fi
 
-  # Memory usage percentage
-  mem_pct=$(free 2>/dev/null | awk '/Mem/ {printf "%.1f", $3/$2 * 100}' || echo "0")
+  # Memory usage percentage — macOS vs Linux
+  if [[ "$(uname)" == "Darwin" ]]; then
+    mem_pct=$(memory_pressure 2>/dev/null | awk '/percentage/ {print $5}' | tr -d '%' || echo "0")
+  else
+    mem_pct=$(free 2>/dev/null | awk '/Mem/ {printf "%.1f", $3/$2 * 100}' || echo "0")
+  fi
 
-  # Disk usage percentage (root partition)
+  # Disk usage percentage (root partition) — same on both
   disk_pct=$(df / 2>/dev/null | awk 'NR==2 {print $5}' | tr -d '%' || echo "0")
 
-  # Uptime in seconds
-  uptime_seconds=$(awk '{print $1}' /proc/uptime 2>/dev/null || echo "0")
+  # Uptime in seconds — macOS vs Linux
+  if [[ "$(uname)" == "Darwin" ]]; then
+    uptime_seconds=$(sysctl -n kern.boottime 2>/dev/null | awk -F'[= ,]' '{print $6}' | xargs -I{} echo "$(date +%s) - {}" | bc || echo "0")
+  else
+    uptime_seconds=$(awk '{print $1}' /proc/uptime 2>/dev/null || echo "0")
+  fi
 
   # Output Prometheus-format metrics
   cat <<EOF
