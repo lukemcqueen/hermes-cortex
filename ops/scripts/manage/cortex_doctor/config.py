@@ -116,23 +116,6 @@ try:
 except (FileNotFoundError, OSError, IndexError):
     pass
 
-# ── Gbrain non-orch allowlist ────────────────────────────────────
-# Set GBRAIN_ALLOW_NON_ORCH=true in .env to suppress the non-orch guard
-# for gbrain-autopilot on machines that legitimately need brain sync
-# without being an orchestrator (e.g. cisnet02).
-GBRAIN_ALLOW_NON_ORCH = os.environ.get("GBRAIN_ALLOW_NON_ORCH", "").lower() in ("true", "1", "yes")
-if not GBRAIN_ALLOW_NON_ORCH:
-    try:
-        for _line in _PORT_PREFIX_ENV.read_text().split("\n"):
-            _line = _line.strip()
-            if _line.startswith("GBRAIN_ALLOW_NON_ORCH="):
-                _val = _line.split("=", 1)[1].strip().strip('"').strip("'")
-                if _val.lower() in ("true", "1", "yes"):
-                    GBRAIN_ALLOW_NON_ORCH = True
-                    break
-    except (FileNotFoundError, OSError):
-        pass
-
 # ── Expected MCP servers ────────────────────────────────────────
 EXPECTED_MCP_SERVERS = {
     "agent-bus": "agent-bus-mcp.py",

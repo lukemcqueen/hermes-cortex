@@ -35,7 +35,6 @@ from .config import (
   EXTERNAL_SERVICES,
   CORE_FOOTPRINT,
   AGENT_ROLE,
-  GBRAIN_ALLOW_NON_ORCH,
   parse_expected_crons,
   parse_orch_crons,
   find_script_consumers,
@@ -840,11 +839,10 @@ def check_services(res):
           "agent_bus process running on non-orch agent — should only run on orchestrator hosts",
           "Stop: systemctl --user stop agent-bus && systemctl --user disable agent-bus")
     _gbrain_proc = run_bg(["systemctl", "--user", "is-active", "gbrain-autopilot"], timeout=5) or ""
-    if "active" in _gbrain_proc and not GBRAIN_ALLOW_NON_ORCH:
+    if "active" in _gbrain_proc:
       res.add("gbrain (non-orch guard)", "WARN",
           "gbrain autopilot running on non-orch agent — should only run on orchestrator hosts",
-          f"Stop: systemctl --user stop gbrain-autopilot && systemctl --user disable gbrain-autopilot\n"
-          f"  To allow gbrain on this host: set GBRAIN_ALLOW_NON_ORCH=true in ~/hermes-cortex/.env")
+          "Stop: systemctl --user stop gbrain-autopilot && systemctl --user disable gbrain-autopilot")
 
   # Ollama
   out = run_bg([CURL, "-s", "http://localhost:11434/api/tags", "--max-time", "5"])
