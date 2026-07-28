@@ -162,6 +162,7 @@ def run_verifier():
 
     log(f"Found {len(rows)} pending verification(s)")
     alerts = []
+    details = []
     stats = {"verified": 0, "retried": 0, "timed_out": 0, "failed_dlq": 0}
 
     for row in rows:
@@ -179,6 +180,7 @@ def run_verifier():
             _psql(f"SELECT bus.verify_command('{corr_id}', 'verified')")
             log(f"    ✅ Verified — found matching {expected} in archives")
             stats["verified"] += 1
+            details.append(f"  ✅ {agent} → {expected}")
             continue
 
         # Phase 2: Check DLQ (handler crashed mid-processing)
@@ -188,6 +190,7 @@ def run_verifier():
                    f"       Subject: {row['out_subject']}")
             log(msg)
             alerts.append(msg)
+            details.append(f"  ❌ {agent} → {expected} (DLQ)")
             continue
 
         # Phase 3: Retry if under limit
@@ -200,6 +203,7 @@ def run_verifier():
                       f"'{expected}', NULL, 600)")
                 log(f"    ✅ Retry sent")
                 stats["retried"] += 1
+                details.append(f"  🔄 {agent} → {expected} (retry {retry_count + 1}/{max_retries})")
             else:
                 log(f"    ❌ Retry send failed")
                 alerts.append(f"    ❌ Retry failed for {corr_id} to {agent}")
@@ -216,6 +220,7 @@ def run_verifier():
             log(msg)
             alerts.append(msg)
             stats["timed_out"] += 1
+            details.append(f"  ❌ {agent} → {expected} (timed out)")
 
     # 5. Cleanup old records
     cleaned = _psql("SELECT bus.cleanup_verifications(30)")
@@ -225,10 +230,12 @@ def run_verifier():
     if alerts:
         _notify_telegram("\n".join(alerts))
 
-    # 7. Output human-readable summary (stdout = delivered by cron)
+    # 7. Output per-command summary (stdout = delivered by cron)
     total = len(rows)
     if total > 0:
-        lines = [f"📋 Fleet Command Verifier"]
+        lines = [f"📋 Fleet Command Verifier — {total} checked"]
+        lines.extend(details)
+        lines.append("")
         if stats["verified"]:
             lines.append(f"  ✅ {stats['verified']} verified")
         if stats["retried"]:
@@ -237,7 +244,7 @@ def run_verifier():
             lines.append(f"  ❌ {stats['timed_out']} timed out")
         if stats["failed_dlq"]:
             lines.append(f"  ⚠️  {stats['failed_dlq']} in DLQ")
-        lines.append(f"  📊 {total} total — {stats['verified']}/{total} resolved")
+        lines.append(f"  📊 {stats['verified']}/{total} resolved")
         print("\n".join(lines))
     # else: silent exit — nothing to report
 
