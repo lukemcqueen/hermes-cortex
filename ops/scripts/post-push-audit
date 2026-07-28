@@ -56,6 +56,29 @@ if [[ "$BYPASS_FOUND" -eq 1 ]]; then
   echo "    To clear: git commit (without --no-verify) for the affected changes,"
   echo "    then push properly, then: rm -f $BYPASS_MARKER"
   touch "$BYPASS_MARKER"
+
+  # ── Telegram notification ─────────────────────────────
+  # No PII in repo — reads from ~/.hermes/.env
+  HERMES_ENV="${HOME}/.hermes/.env"
+  if [[ -f "$HERMES_ENV" ]]; then
+    set -o allexport
+    source "$HERMES_ENV"
+    set +o allexport
+    if [[ -n "$TELEGRAM_BOT_TOKEN" && -n "$TELEGRAM_HOME_CHANNEL" ]]; then
+      HOSTNAME=$(hostname -s 2>/dev/null || echo "unknown")
+      MSG="⚠️ Governance bypass on ${HOSTNAME}
+Commit ${p_commit::10} pushed with --no-verify
+Message: ${COMMIT_MSG}
+Agent: $(whoami 2>/dev/null || echo unknown)
+Action: doctor now FAILs until re-pushed through pre-commit hook"
+      curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+        -d "chat_id=${TELEGRAM_HOME_CHANNEL}" \
+        -d "text=${MSG}" \
+        -d "parse_mode=HTML" \
+        -o /dev/null -w "\n📨 Telegram notify: HTTP %{http_code}\n" 2>/dev/null || true
+      unset TELEGRAM_BOT_TOKEN TELEGRAM_HOME_CHANNEL TELEGRAM_ALLOWED_USERS
+    fi
+  fi
 fi
 
 exit 0

@@ -474,9 +474,11 @@ def register(ctx):
                         ),
                     }
 
-            # Skills gate: all write tools require .skills-loaded marker
-            # Load the session-start skills via skill_view() before begin_change
-            if not SKILLS_MARKER.exists():
+            # Skills gate: content-writing tools require .skills-loaded marker
+            # Terminal is exempt so the marker can be created via touch.
+            # This blocks patch, write_file, cronjob(create), skill_manage,
+            # process(write), and computer_use(write).
+            if not SKILLS_MARKER.exists() and tool_name not in ("terminal", "read_file", "search_files", "list_files", "web_search", "web_extract", "tool_search"):
                 return {
                     "action": "block",
                     "message": (
