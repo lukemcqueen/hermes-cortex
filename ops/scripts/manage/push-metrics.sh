@@ -34,7 +34,8 @@ else
   if [ -n "${CORTEX_BUS_URL:-}" ]; then
     bus_host=$(echo "$CORTEX_BUS_URL" | sed -E 's|^https?://([^:/]+).*|\1|')
     if [ "$bus_host" != "127.0.0.1" ] && [ "$bus_host" != "localhost" ]; then
-      VICTORIA_URL="http://${bus_host}:8428/api/v1/import/prometheus"
+      # VictoriaMetrics is behind nginx on port 13005 (bus is 13004)
+      VICTORIA_URL="https://${bus_host}:13005/api/v1/import/prometheus"
     fi
   fi
 fi
