@@ -431,6 +431,34 @@ def register(ctx):
             if hermes_session_id:
                 _write_session_marker(hermes_session_id)
 
+            # ── Skills gate: blocks ALL tools until always-section skills loaded ──
+            # Only skill_view, skills_list (to load skills), and terminal (to create
+            # the marker) are exempt. Everything else — reads, writes, searches —
+            # is blocked until ~/.hermes-cortex/state/.skills-loaded exists.
+            if not SKILLS_MARKER.exists():
+                if tool_name not in ("skill_view", "skills_list", "terminal"):
+                    return {
+                        "action": "block",
+                        "message": (
+                            "SKILLS MUST BE LOADED FIRST\n\n"
+                            "Tool '" + tool_name + "' blocked — always-section skills not loaded.\n\n"
+                            "Session-start sequence:\n"
+                            "  1. skill_view('task-start')        # bundles the complete sequence\n"
+                            "  2. skill_view('agent-flow')        # workflow router\n"
+                            "  3. skill_view('reasoning-patterns') # choose how to think\n"
+                            "  4. skill_view('reflexion-check')   # self-critique before deliver\n"
+                            "  5. skill_view('change-checklist')  # pre-ship verification\n"
+                            "  6. skill_view('survey-before-action')  # check existing resources\n"
+                            "  7. skill_view('cortex-preflight')  # repo-specific pre-flight\n"
+                            "  8. skill_view('agent-contract')    # execution rules\n\n"
+                            "After loading all 8:\n"
+                            "  touch ~/.hermes-cortex/state/.skills-loaded\n\n"
+                            "Then retry your tool.\n"
+                            "This enforcement is at ~/.hermes/plugins/governance-enforcer/.\n"
+                            "I cannot bypass or disable this.\n"
+                        ),
+                    }
+
             # ── Fast-path: genuinely read-only terminal commands ──
             # Check BEFORE write classification. A command is truly read-only
             # only when it matches a read pattern AND does NOT match any write
@@ -473,33 +501,6 @@ def register(ctx):
                             "I cannot bypass or disable this.\n"
                         ),
                     }
-
-            # Skills gate: content-writing tools require .skills-loaded marker
-            # Terminal is exempt so the marker can be created via touch.
-            # This blocks patch, write_file, cronjob(create), skill_manage,
-            # process(write), and computer_use(write).
-            if not SKILLS_MARKER.exists() and tool_name not in ("terminal", "read_file", "search_files", "list_files", "web_search", "web_extract", "tool_search"):
-                return {
-                    "action": "block",
-                    "message": (
-                        "SKILLS MUST BE LOADED BEFORE WRITING\n\n"
-                        "Tool '" + tool_name + "' requires session-start skills loaded first.\n\n"
-                        "Load ALL 8 always skills via skill_view() before any write tool:\n"
-                        "  1. skill_view('task-start')        # bundles the complete sequence\n"
-                        "  2. skill_view('agent-flow')        # workflow router\n"
-                        "  3. skill_view('reasoning-patterns') # choose how to think\n"
-                        "  4. skill_view('reflexion-check')   # self-critique before deliver\n"
-                        "  5. skill_view('change-checklist')  # pre-ship verification\n"
-                        "  6. skill_view('survey-before-action')  # check existing resources\n"
-                        "  7. skill_view('cortex-preflight')  # repo-specific pre-flight\n"
-                        "  8. skill_view('agent-contract')    # execution rules\n\n"
-                        "After loading all 8:\n"
-                        "  touch ~/.hermes-cortex/state/.skills-loaded\n\n"
-                        "Then retry your write tool.\n"
-                        "This enforcement is at ~/.hermes/plugins/governance-enforcer/.\n"
-                        "I cannot bypass or disable this.\n"
-                    ),
-                }
 
             # Check for active governance lock (Phase 1 exact + Phase 2 scan)
             if _has_governance_lock(hermes_session_id):
