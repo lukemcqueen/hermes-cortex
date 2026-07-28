@@ -1,7 +1,7 @@
 ---
 name: repo-organization
 description: "Canonical repo organization for Hermes Cortex — structure, naming, consolidation, symlinks, and audit procedures."
-version: 1.0.0
+version: 1.1.0
 author: Hermes Cortex (Moses)
 license: MIT
 platforms: [linux, macos]
@@ -107,10 +107,10 @@ hermes-cortex/
 
 ### Cron Jobs
 
-| Prefix | Example | Meaning |
-|--------|---------|---------|
-| `agent-*` | `agent-auto-remediate` | LLM-driven: an AI agent does the work |
-| No prefix | `service-recovery`, `system-alert-watchdog` | Script-driven: no agent involvement |
+| Prefix | Example | When to use |
+|--------|---------|-------------|
+| `agent-*` | `agent-system-alert-watchdog`, `agent-daily-bible-reading` | Runs on **every agent** — both LLM-driven crons and no_agent script crons. `agent-` means "fleet-wide", not "LLM-driven". |
+| `orch-*` | `orch-bus-audit-watchdog`, `orch-fleet-watchdog` | Runs only on **orchestrator** agents (Moses, Esther). Registered in `install-orch-crons.sh` and `register_orch` in `cortex-update.sh`. |
 
 ### Skills
 
@@ -167,7 +167,7 @@ Run this checklist when auditing the repo:
 ```
 [ ] No source code in ~/.hermes/
 [ ] No agent data in ~/hermes-cortex/ root
-[ ] All cron names follow agent-* / no-prefix convention
+[ ] All cron names follow `agent-*` (fleet-wide) or `orch-*` (orchestrator-only) convention
 [ ] All skill directory names match name: field in SKILL.md
 [ ] No stale .cron-version markers in git tracking
 [ ] AGENTS.md under 20K bytes
@@ -216,7 +216,7 @@ done
 
 When migrating an existing install to this standard:
 
-1. **Rename crons:** `cron-*` → `agent-*` for LLM-driven crons
+1. **Rename crons:** `cron-*` → `agent-*` to indicate fleet-wide scope (both LLM-driven and no_agent script crons)
 2. **Consolidate skills:** Move skill content from `~/.hermes/skills/` to `skills/` if it belongs in the repo
 3. **Fix skill names:** Ensure `name:` in SKILL.md matches the directory name
 4. **Audit symlinks:** Replace hard copies with symlinks where files must exist in multiple locations
