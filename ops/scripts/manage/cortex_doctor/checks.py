@@ -114,14 +114,32 @@ def check_repo(res: "Results") -> None:
     res.add("AGENTS.md sync", "FAIL", "~/.hermes/AGENTS.md missing",
         "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
     return
-  # Section check: count numbered rules (like SOUL.md marker check)
+  # Size check: warn if >15K, fail if >20K (like SOUL.md does)
+  agents_size = hermes_agents.stat().st_size
+  if agents_size > 20480:
+    res.add("AGENTS.md size", "FAIL",
+        f"{agents_size/1024:.0f}K — exceeds 20K maximum",
+        "Trim content: remove deprecated sections, consolidate verbose entries")
+    return
+  elif agents_size > 15360:
+    res.add("AGENTS.md size", "WARN",
+        f"{agents_size/1024:.0f}K — target <15K for optimal loading",
+        "Consider trimming unnecessary content")
+  # Content check: extract all bold markers for comparison (like SOUL.md does)
   repo_agents = CORTEX_REPO / "AGENTS.md"
   if repo_agents.exists():
-    local_rules = len(re.findall(r'^\d+\. \*\*', hermes_agents.read_text(), re.MULTILINE))
-    repo_rules = len(re.findall(r'^\d+\. \*\*', repo_agents.read_text(), re.MULTILINE))
-    if local_rules < repo_rules - 5:
+    local_markers = _extract_agents_markers(hermes_agents)
+    repo_markers = _extract_agents_markers(repo_agents)
+
+    # Filter out the ⚠️ admonition marker (not a real rule)
+    effective_repo = {m for m in repo_markers if not m.startswith("\u26a0\ufe0f")}
+
+    # Allow agents to customize up to 2 markers (e.g. remove one rule, add one local note)
+    missing = effective_repo - local_markers
+    if len(missing) > 2:
       res.add("AGENTS.md sync", "FAIL",
-          f"Local has {local_rules} rules, template has {repo_rules} — {repo_rules - local_rules} missing",
+          f"Local missing {len(missing)} content markers from template — "
+          f"e.g. '{list(sorted(missing))[:3]}'",
           "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
     else:
       res.add("AGENTS.md sync", "PASS")
@@ -226,6 +244,46 @@ def check_dev_repo_agents(res: "Results") -> None:
               f"to see what's changed. Merge recent patterns into AGENTS.md.")
     except (subprocess.TimeoutExpired, OSError, ValueError):
       continue # git or stat failed — skip AGENTS.md age check for this repo
+
+
+def _extract_agents_markers(path: Path) -> set:
+  """Extract all content-bearing bold markers from an AGENTS.md file.
+
+  Handles three formats:
+    - Blockquote rules:  > **RULE N: TITLE**
+    - Bullet principles: - **Title:** description
+    - Numbered items:    N. **Title** — description
+
+  Returns a set of bold-marker strings (e.g. 'RULE 1: LOAD TASK-START FIRST',
+  'Two-repo system', 'Real execution, no simulation')."""
+  if not path.exists():
+    return set()
+  text = path.read_text()
+  # Strip YAML frontmatter if present (AGENTS.md doesn't have it, but be safe)
+  main_start = 0
+  if text.startswith('---'):
+    end = text.find('---', 3)
+    if end != -1:
+      main_start = end + 3
+  content = text[main_start:]
+
+  markers = set()
+  for line in content.split('\n'):
+    # Format 1: > **BOLD TEXT** (blockquote rules — e.g. > **RULE 1: TITLE**)
+    bm = re.search(r'^>\s+\*\*([^*]+)\*\*', line)
+    if bm:
+      markers.add(bm.group(1).strip())
+      continue
+    # Format 2: - **BOLD TEXT** (bullet architecture principles)
+    bm = re.search(r'^\s*-\s+\*\*([^*]+)\*\*', line)
+    if bm:
+      markers.add(bm.group(1).strip())
+      continue
+    # Format 3: N. **BOLD TEXT** (numbered execution contract items)
+    bm = re.search(r'^\s*\d+\.\s+\*\*([^*]+)\*\*', line)
+    if bm:
+      markers.add(bm.group(1).strip())
+  return markers
 
 
 def _extract_soul_markers(path: Path) -> set:

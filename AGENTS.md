@@ -36,53 +36,21 @@
 > This is not just a pull. It is a full refresh: pull → update → diagnose → fix → verify clean. No partial work. If doctor finds issues, resolve them all before reporting done.
 
 ---
-
 ## Core Concepts
 
-**What this repo is:** A public installer + skill set for [Hermes Agent](https://hermes-agent.nousresearch.com). Gets you Ollama, gbrain (Postgres + pgvector), Langfuse, Cortex Dashboard, brain dirs, gbrain sync daemon, utility scripts.
+**What:** Public installer + skill set for [Hermes Agent](https://hermes-agent.nousresearch.com) — Ollama, gbrain, Langfuse, Dashboard, brain dirs, sync daemon, utility scripts.
 
-### Key Directories
+**Key dirs:** `docs/` (guides, templates), `ops/install/` (installer, deploy), `.hermes-cortex/` (sessions, memory, skills), skills at `~/.hermes/skills/<category>/<name>/`.
 
-| Path | Purpose |
-|------|---------|
-| `docs/` | Guides, templates, reference docs |
-| `docs/agent-architecture.md` | **Agent roles, capability matrix, fleet architecture** |
-| `docs/fleet-update-protocol.md` | **Bus message schema for UPDATE_REQUEST → FIX_RESULT flow** |
-| `docs/prd/` | **Enterprise PRDs: loop engineering, cheat detection, adversarial verifier, delivery harness** |
-| `docs/service-layer-decision.md` | Architecture decision: user-level only for agent services |
-| `docs/linux-service-layer.md` | Linux systemd `--user` service layer guide |
-| `docs/macos-service-layer.md` | macOS LaunchAgent service layer guide |
-| `docs/skills-manifest-reference.md` | Skills manifest — how to manage project-level skills |
-| `docs/templates/SOUL.md` | SOUL.md template — identity, mission, traits, behavioral principles, scripture, final directive. Canonical source; agents copy to `~/.hermes/SOUL.md` and customize |
-| `ops/install/install.sh` | Single-command installer |
-| `ops/install/deploy/` | Langfuse + ClickHouse docker-compose, agent-registry.json.example |
-| `.hermes-cortex/` | Agent infra: sessions, memory, skills.yaml |
+**Architecture principles:**
+- **Two-repo system** — public MIT + private for secrets
+- **PII-scrubbed** — no personal paths or domains
+- **Pointer memory** — MEMORY.md (~2,200 chars), full detail in gbrain
+- **State routing** — live context → session history → memory → docs
 
 ## Skill loading — NOT OPTIONAL
 
-**Every session starts by reading `.hermes-cortex/skills.yaml` and calling `skill_view(name)` for every skill listed in `always`.** These are loaded into context before your first task — not at task time. Loading them at session start means they're ready when you need them.
-
-The `always` section includes `task-start` (your first tool call on every task), `survey-before-action` (pre-flight checks before creating anything), `cortex-preflight` (repo-specific pre-flight checks), `agent-flow` (workflow classification), and other mandatory thinking skills. Load them ONCE at session start, then use them on every task.
-
-Before each task, classify with `agent-flow`, then load `on_task` skills matching that classification.
-
-Skills live in a single global location (`~/.hermes/skills/`) — no drift, no
-stale copies across repos. To add a fleet-wide skill, upstream it to
-`hermes-cortex/skills/<category>/<name>/SKILL.md`.
-
-Documentation: [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md)
-
-### Project Directory Convention
-
-> Content relocated to [`docs/operations-reference.md`](docs/operations-reference.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
-
-### Architecture Principles
-
-- **Two-repo system:** Public MIT repo + private repo for secrets
-- **PII-scrubbed:** No personal paths, domains, or credentials in this repo
-- **Pointer memory pattern:** MEMORY.md keeps compact pointers (~2,200 chars), full detail in gbrain
-- **State routing:** Live context → session history → memory → docs
+Every session: read `.hermes-cortex/skills.yaml`, call `skill_view()` for every skill in `always:` section. These define HOW you think — loaded at session start, active for every task. Then classify with `agent-flow` and load matching `on_task` skills. See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md).
 
 ---
 
@@ -153,131 +121,45 @@ These prevent wasted work and missed dependencies:
 
 ### After completing work — 6 questions
 
-> Content relocated to [`docs/reference/after-completing-work-6-questions.md`](docs/reference/after-completing-work-6-questions.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
-
+> See [`docs/reference/after-completing-work-6-questions.md`](docs/reference/after-completing-work-6-questions.md)
 ## Session Todo Protocol
 
-> Content relocated to [`docs/reference/session-todo-protocol.md`](docs/reference/session-todo-protocol.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
-
+> See [`docs/reference/session-todo-protocol.md`](docs/reference/session-todo-protocol.md)
 ## Pre-Task Sequence — Mandatory Before Every Task
 
-This is NOT optional. Every task starts with this exact sequence,
-regardless of task size, urgency, or domain.
+Load `skill_view(name="task-start")` first — it prescribes the complete 11-step sequence. Quick reference:
 
-**Start here:** Load the `task-start` skill. It prescribes the complete
-11-step sequence. No other tool call comes before it.
-
-```
-skill_view(name="task-start")
-```
-
-The full sequence (also documented in `task-start`):
-
-### Step 1: Load Always Skills
-
-Read `.hermes-cortex/skills.yaml` (or `skills.yaml` in the project root).
-Call `skill_view(name)` for every skill in the `always` section.
-
-These skills define HOW you think and work — they are active context
-for the entire task, not one-time loads.
-
-### Step 2: Select Reasoning Pattern
-
-Load `reasoning-patterns` (already loaded from Step 1) and choose:
-
-| Pattern | When |
-|---------|------|
-| **Plan-Execute-Verify** | Default — write plan, execute steps, verify each |
-| **ReAct** | Debugging, exploration — reason, act, observe |
-| **Reflexion** | Add to any pattern when quality is critical |
-| **Tree of Thoughts** | Design decisions with trade-offs |
-
-**State your choice:** *"Using Plan-Execute-Verify with Reflexion check."*
-
-### Step 3: Classify with Agent-Flow
-
-Load `agent-flow` (already loaded from Step 1). Match the request against
-the 12 workflow patterns. This determines toolset, output format, and
-checklist.
-
-### Step 4: Load On-Task Skills
-
-After classification, read `.hermes-cortex/skills.yaml` again and call
-`skill_view(name)` for every skill in the `on_task` section matching
-your classification. Also call `skills_list()` for the relevant category
-to discover skills not in the manifest.
-
-### Step 5: Call Survey-Before-Action
-
-Call `skill_view(name="survey-before-action")` and run its checklist BEFORE
-creating any file, writing any code, or running any command. Search for
-existing resources first. Then call `skill_view(name="cortex-preflight")`
-and run its supplementary checks (git search, Hermes boundary, deploy verification).
-
-### Step 6: Work
-
-Execute the task using the loaded skills, following the chosen reasoning
-pattern and the classified workflow pattern's checklist.
-
-### Step 7: Reflexion Check Before Delivery
-
-After completing the work but BEFORE presenting results:
-1. Load `reflexion-check` and run the five-question audit
-2. Score confidence (HIGH / MEDIUM / LOW / ZERO)
-3. If LOW or ZERO: fix before delivering
-
-### Step 8: Change Checklist Before End Change
-
-For code/config/cron changes: load `change-checklist` and run all phases
-before calling end_change(). Phase 6 (Reflexion) is mandatory.
+| Step | Action | Time |
+|------|--------|------|
+| 1 | `skill_view()` for every skill in skills.yaml `always:` section | Session start |
+| 2 | Select reasoning pattern: Plan-Execute-Verify (default), ReAct, Reflexion, ToT | Session start |
+| 3 | `agent-flow` — classify request against 12 workflow patterns | Per task |
+| 4 | `skill_view()` for `on_task` skills + `skills_list()` for category | Per task |
+| 5 | `skill_view(name="survey-before-action")` + `cortex-preflight` — check before creating | Per task |
+| 6 | Work — execute with loaded skills and chosen pattern | Per task |
+| 7 | `skill_view(name="reflexion-check")` — 5-question audit before delivery | Before deliver |
+| 8 | `skill_view(name="change-checklist")` — all phases before `end_change()` | Before close |
 
 ---
 
 ## Loop Governance — Mandatory Agent Workflow
 
-**Every change requires this sequence:**
+**Every change:**
+1. **Before:** `mcp_loop_governance_cache_search(query="<what>")` then `begin_change(task_id="...")`
+2. **After:** load `change-checklist` → `cycle_query` → `feedback_accept/override` → `end_change`
+3. **Push:** `git add -A && git commit && git pull --rebase origin main && git push`
 
-### Before work
-```python
-mcp_loop_governance_cache_search(query="<what you are about to do>")
-```
-
-### After each logical change — before closing the cycle
-```python
-# 1. Load the change-checklist skill (mandatory before end_change)
-skill_view(name="change-checklist")
-
-# 2. Verify all 5 phases: test, multi-OS, multi-role, docs, final
-# Run actual scripts. Diff outputs. Run doctor --quiet.
-
-# 3. Score the governance cycle
-mcp_loop_governance_cycle_query(task_id="<descriptive-name>")
-mcp_loop_governance_feedback_accept(cycle_id=N, note="verified: <how>")
-# OR if wrong:
-mcp_loop_governance_feedback_override(cycle_id=N, correct_decision="MOVE_ON", note="...")
-
-# 4. Push changes so all agents benefit
-git add -A && git commit -m "<descriptive message>"
-git pull --rebase origin main && git push origin main
-```
-
-**Enforcement:** MCP server blocks write tools without a lock. Pre-commit hook runs `score-cycle` on every commit. Cron auditor flags low cycle counts.
-
-Full reference: [`docs/loop-governance-reference.md`](docs/loop-governance-reference.md)
+**Enforcement:** MCP blocks write tools without a lock. Pre-commit scores every commit. Full reference: [`docs/loop-governance-reference.md`](docs/loop-governance-reference.md)
 
 ---
 
 ## Inbox Message Decision Framework
 
-Three axes when processing inbox messages:
-
-**Priority:** `critical` (immediate action) | `urgent` (same-day) | `normal` (same cycle) | `notification` (acknowledge)
-
-**Actionability:** AUTO-ACT (I have tools) → DELEGATE (needs another agent) → ESCALATE (needs human) → ACKNOWLEDGE (FYI)
-
-**Scope:** Simple (<3 calls, do now) | Moderate (3-10, report) | Complex (>10, escalate) | Multi-agent (delegate)
+| Axis | Values |
+|------|--------|
+| **Priority** | critical (immediate) | urgent (same-day) | normal (same cycle) | notification (ack) |
+| **Actionability** | AUTO-ACT | DELEGATE | ESCALATE | ACKNOWLEDGE |
+| **Scope** | Simple (<3 calls) | Moderate (3-10) | Complex (>10) | Multi-agent |
 
 ### Decision matrix
 
@@ -292,9 +174,7 @@ Three axes when processing inbox messages:
 
 ### Confirmation Protocol — Required When correlation_id Present
 
-> Content relocated to [`docs/setup-reference.md`](docs/setup-reference.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
-
+> See [`docs/setup-reference.md`](docs/setup-reference.md)
 ## Doc Freshness: AGENTS.md + SOUL.md
 
 | Layer | What | Who | Frequency |
@@ -310,71 +190,26 @@ Three axes when processing inbox messages:
 
 ## Agent Worker — Automated Inbox Processing
 
-Each agent can install an `agent-worker` systemd `--user` service that polls their inbox every 30s and auto-processes `workflow_step` messages via local Ollama. No Hermes cron, no Moses dependency.
+Install `hermes-agent-worker` systemd `--user` service to poll inbox every 30s and auto-process `workflow_step` messages via local Ollama. See [`docs/operations-reference.md`](docs/operations-reference.md) for setup, config, and fleet status.
 
-### Installation (one-time per agent)
-
-> Content relocated to [`docs/operations-reference.md`](docs/operations-reference.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above.
-
-### Config
-
-> Content relocated to [`docs/reference/config.md`](docs/reference/config.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
-
-### How it works
-
-1. Polls `inbox_<agent>` every 30s via `curl`
-2. Finds messages with `type: workflow_step`
-3. If `human_review: true` → writes flag file to `~/.hermes/state/worker-pending/`, archives message (agent handles in-session)
-4. Else → sends prompt to local Ollama (`qwen2.5-coder:3b`), posts result to `workflow_step_result`
-5. Idempotent: tracks completed step IDs locally to prevent double-processing on restart
-6. On failure (3 retries) → writes error flag file, archives message
-
-### Verify it's working
-
-```bash
-systemctl --user status hermes-agent-worker
-tail -f ~/.hermes/logs/agent-worker-<AGENT_NAME>.log
-```
-
-### Fleet status (current)
-
-> Content relocated to [`docs/fleet-reference.md`](docs/fleet-reference.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above.
+Verify: `systemctl --user status hermes-agent-worker`
 
 ---
 
 ## Contact Protocol — How to Reach Moses
 
-Any agent can send a message to Moses. Choose the right channel:
+| Channel | When | How |
+|---------|------|-----|
+| In-session (MCP) | Have tools, need reply | `inbox_send(agent="moses", ...)` — see `docs/operations-reference.md` |
+| Headless (bus curl) | From cron/script/worker | POST to bus endpoint — see `docs/operations-reference.md` |
+| Bus watchdogs (Moses only) | Fleet visibility | See below |
 
-### In-session (MCP) — preferred when you have tools
+**Bus watchdogs:**
 
-> Content relocated to [`docs/operations-reference.md`](docs/operations-reference.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above.
-
-### Headless (bus curl) — from workers, scripts, crons
-
-> Content relocated to [`docs/operations-reference.md`](docs/operations-reference.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above.
-
-### Message format
-
-> Content relocated to [`docs/operations-reference.md`](docs/operations-reference.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above.
-
-### Bus watchdogs (Moses only, delivered to Telegram)
-
-Two no_agent crons provide fleet visibility:
-
-| Watchdog | Schedule | Output | Silent when |
-|----------|----------|--------|-------------|
-| `bus-audit-watchdog` | `*/1 * * * *` | New message events to Telegram (`sender → recipient action @KST`) | No new messages |
-| `orch-fleet-watchdog` | `*/5 * * * *` | Dashboard: agent health, active workflows with step progress, stalled step alerts | No active workflows + no issues |
-
-- `bus-audit-watchdog` — every send event: `esther → moses send @18:06:39 KST`, `system → joseph workflow_step(review) @18:08:28 KST`
-- `orch-fleet-watchdog` — every 5 min if busy: shows ✅ active / ⚠️ idle / 🌙 offline per agent, workflow chain with ✅▶⏳ per step, stalled step detection (>5 min running)
+| Watchdog | Schedule | Reports |
+|----------|----------|---------|
+| `bus-audit-watchdog` | Every 1 min | New message events to Telegram |
+| `orch-fleet-watchdog` | Every 5 min | Agent health, workflow progress, stalled steps |
 
 ---
 
@@ -382,131 +217,19 @@ Two no_agent crons provide fleet visibility:
 
 Only Moses has `cronjob` MCP tool. Others request via inbox with subject `🔧 CRON: create|update|remove`. Fields: `CRON_NAME`, `CRON_SCHEDULE`, `CRON_PROMPT`/`CRON_SCRIPT`, `CRON_DELIVER`, `CRON_REASON`.
 
-**Universal crons** (installed by `install-crons.sh` on every agent — 36 jobs across 7 categories):
+**Universal crons** (install-crons.sh — 36 jobs across 7 categories). Full details at [`docs/fleet-reference.md`](docs/fleet-reference.md):
 
-### 1. Auto-Remediation Pipeline
+| Category | Key crons |
+|----------|-----------|
+| 1. Auto-Remediation | See fleet-reference.md |
+| 2. System Health | `system-alert-watchdog`, `swap-refresh`, `service-recovery`, `model-health-watchdog` |
+| 3. Knowledge & Memory | `memory-to-brain-sync`, `auto-save-sessions`, `memory-pruning` |
+| 4. Agent Inbox | `inbox-flag`, `agent-inbox` |
+| 5. Governance | See pipeline-reference.md |
+| 6. Performance Scorer | `llm-judge-scorer-weekday`, `llm-judge-scorer-weekend` |
+| 7. Deployment-Specific | See fleet-reference.md |
 
-> Content relocated to [`docs/fleet-reference.md`](docs/fleet-reference.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above.
-
-### 2. System Health Monitoring
-| Cron | Type | Schedule | Script / Skill | Deliver |
-|------|------|----------|----------------|---------|
-| `system-alert-watchdog` | no_agent | `*/30 * * * *` | `system-alert-watchdog.py` | origin |
-| `swap-refresh` | no_agent | `0 5 * * *` | `swap-refresh.py` | origin |
-| `service-recovery` | no_agent | `*/5 * * * *` | `service-recovery.py` | origin |
-| `model-health-watchdog` | no_agent | `0 7 * * *` | `model-health-watchdog.py` | origin |
-
-### 3. Knowledge & Memory
-| Cron | Type | Schedule | Script / Skill | Deliver |
-|------|------|----------|----------------|---------|
-| `memory-to-brain-sync` | no_agent | `0 */6 * * *` | `memory-to-brain-sync.py` | local |
-| `auto-save-sessions` | no_agent | `every 360m` | `auto-save-sessions.py` | local |
-| `memory-pruning` | LLM+prompt | `0 4 * * 1` | (consolidation prompt) | origin |
-| *(replaced: `harvest-lessons` → `orch-skill-lifecycle`)* | | | | |
-
-### 4. Agent Inbox Processing
-| Cron | Type | Schedule | Script / Skill | Deliver |
-|------|------|----------|----------------|---------|
-|| `inbox-flag` | no_agent | `*/10 * * * *` | `inbox-flag.py` | local |
-| `agent-inbox` | LLM | `*/2 * * * *` | (inbox decision prompt + depth watchdog context) | origin |
-
-### 5. Governance & Quality
-
-> Content relocated to [`docs/pipeline-reference.md`](docs/pipeline-reference.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above.
-
-### 6. Performance Scorer
-| Cron | Type | Schedule | Script / Skill | Deliver |
-|------|------|----------|----------------|---------|
-| `llm-judge-scorer-weekday` | no_agent | `0 12,20 * * 1-5` | `llm-judge-scorer.py` | local |
-| `llm-judge-scorer-weekend` | no_agent | `0 22 * * 0,6` | `llm-judge-scorer.py` | local |
-
-### 7. Deployment-Specific
-
-> Content relocated to [`docs/fleet-reference.md`](docs/fleet-reference.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above.
-
-### Skill Collection Pipeline
-
-The full skill lifecycle runs across all agents via the unified daily pipeline:
-
-1. **Collect** — Every agent runs `agent-learning-collector` (no_agent, every 6h). First, mines recent sessions via `session-mine` to extract new lessons. Then collects skills delta, lessons delta, and session stats. Sends "Learning Report" to `inbox_moses`. Silent when nothing new (watchdog pattern).
-2. **Evaluate + Upstream** — Moses runs `orch-skill-lifecycle` (LLM-driven, daily 04:00). Reads all agent reports from the bus, cross-references across agents, evaluates for consolidation/upstream candidates, patches skills, and pushes to the repo.
-
-See [`docs/pipeline-reference.md`](docs/pipeline-reference.md) for the detailed pipeline architecture.
-
----
-
-## Luke's Deployment: Profile Structure
-
-### Active Profiles
-
-This deployment uses the `hermes-cortex` profile (not the bundled Hermes `personal` profile). All cron jobs, skills, and configs are managed through the cortex layer.
-
-### Cron Jobs Reference
-
-> Content relocated to [`docs/cron-jobs-reference.md`](docs/cron-jobs-reference.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
-
-## Troubleshooting
-
-### Nginx started manually, systemd shows failed
-
-When nginx is started outside systemd (e.g., by running `sudo nginx` directly), the ports are already bound when systemd tries to start it, causing `bind() failed (98: Unknown error)`. The service continues running fine, but won't auto-restart on reboot. Fix: stop the manual instance and start via systemd.
-
-### Langfuse ClickHouse merge failures
-
-The `langfuse-health-watchdog` reports ClickHouse `TotalMergeFailures` climbing with background executor threads stuck. Root cause: system log tables (trace_log, text_log) accumulate 4+ GiB of data. When merges fail due to memory pressure and the executor backlog grows, all 45 background threads can get stuck — unable to merge (memory), unable to free memory (stuck threads). Deadlock.
-
-**Quick fix (nuke data volume, restart fresh):**
-```bash
-cd ~/langfuse
-docker compose stop langfuse-worker langfuse-web clickhouse
-docker compose rm -f clickhouse
-docker volume rm langfuse-clickhouse-data
-docker compose up -d clickhouse
-# Wait for healthy, then:
-docker compose up -d langfuse-worker langfuse-web
-```
-This drops ~75 MB of trace data (acceptable in staging). The low-memory config at `clickhouse-config.d/02-low-memory.xml` prevents recurrence by capping merge sizes (500 MB), cache (256/128 MB), and TTL-expiring system logs at 7 days.
-
-**If system logs still grow fast:**
-Reduce TTLs in `02-low-memory.xml`:
-- `trace_log_ttl` → `1` (1 day instead of 7)
-- `text_log_ttl` → `3` (3 days instead of 14)
-
-**Full reference:** `ops/install/deploy/README-langfuse-clickhouse.md`
-
-### 5. Governance & Quality
-
-> Content relocated to [`docs/pipeline-reference.md`](docs/pipeline-reference.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above.
-
-### 6. Performance Scorer
-
-| Cron | Type | Schedule | Script / Skill | Deliver |
-|------|------|----------|----------------|---------|
-| `llm-judge-scorer-weekday` | no_agent | `0 12,20 * * 1-5` | `llm-judge-scorer.py` | local |
-| `llm-judge-scorer-weekend` | no_agent | `0 22 * * 0,6` | `llm-judge-scorer.py` | local |
-
-### 7. Deployment-Specific
-
-> Content relocated to [`docs/fleet-reference.md`](docs/fleet-reference.md) for focused reference.
-> _Pruned by agents-doc-audit.py — the full content is preserved at the link above.
-
-### Skill Collection Pipeline
-
-The full skill lifecycle runs across all agents via the unified daily pipeline:
-
-1. **Collect** — Every agent runs `agent-learning-collector` (no_agent, every 6h). First, mines recent sessions via `session-mine` to extract new lessons. Then collects skills delta, lessons delta, and session stats. Sends "Learning Report" to `inbox_moses`. Silent when nothing new (watchdog pattern).
-2. **Evaluate + Upstream** — Moses runs `orch-skill-lifecycle` (LLM-driven, daily 04:00). Reads all agent reports from the bus, cross-references across agents, evaluates for consolidation/upstream candidates, patches skills, and pushes to the repo.
-
-See [`docs/pipeline-reference.md`](docs/pipeline-reference.md) for the detailed pipeline architecture.
-
----
-
-## Reference Docs
+**Skill Collection Pipeline:** Every agent runs `agent-learning-collector` (every 6h) → Moses runs `orch-skill-lifecycle` (daily 04:00) to evaluate and upstream. See [`docs/pipeline-reference.md`](docs/pipeline-reference.md).
 
 Previously inlined content moved to:
 
