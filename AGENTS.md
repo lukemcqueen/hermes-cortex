@@ -127,20 +127,8 @@ These prevent wasted work and missed dependencies:
 > See [`docs/reference/session-todo-protocol.md`](docs/reference/session-todo-protocol.md)
 ## Pre-Task Sequence — Mandatory Before Every Task
 
-Load `skill_view(name="task-start")` first — it prescribes the complete 11-step sequence. Quick reference:
-
-| Step | Action | Time |
-|------|--------|------|
-| 1 | `skill_view()` for every skill in skills.yaml `always:` section | Session start |
-| 2 | Select reasoning pattern: Plan-Execute-Verify (default), ReAct, Reflexion, ToT | Session start |
-| 3 | `agent-flow` — classify request against 12 workflow patterns | Per task |
-| 4 | `skill_view()` for `on_task` skills + `skills_list()` for category | Per task |
-| 5 | `skill_view(name="survey-before-action")` + `cortex-preflight` — check before creating | Per task |
-| 6 | Work — execute with loaded skills and chosen pattern | Per task |
-| 7 | `skill_view(name="reflexion-check")` — 5-question audit before delivery | Before deliver |
-| 8 | `skill_view(name="change-checklist")` — all phases before `end_change()` | Before close |
-
----
+> Content relocated to [`docs/pre-task-sequence-mandatory-before-every-task.md`](docs/pre-task-sequence-mandatory-before-every-task.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ## Loop Governance — Mandatory Agent Workflow
 
@@ -198,20 +186,8 @@ Verify: `systemctl --user status hermes-agent-worker`
 
 ## Contact Protocol — How to Reach Moses
 
-| Channel | When | How |
-|---------|------|-----|
-| In-session (MCP) | Have tools, need reply | `inbox_send(agent="moses", ...)` — see `docs/operations-reference.md` |
-| Headless (bus curl) | From cron/script/worker | POST to bus endpoint — see `docs/operations-reference.md` |
-| Bus watchdogs (Moses only) | Fleet visibility | See below |
-
-**Bus watchdogs:**
-
-| Watchdog | Schedule | Reports |
-|----------|----------|---------|
-| `bus-audit-watchdog` | Every 1 min | New message events to Telegram |
-| `orch-fleet-watchdog` | Every 5 min | Agent health, workflow progress, stalled steps |
-
----
+> Content relocated to [`docs/contact-protocol-how-to-reach-moses.md`](docs/contact-protocol-how-to-reach-moses.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ## Agent Cron Management
 

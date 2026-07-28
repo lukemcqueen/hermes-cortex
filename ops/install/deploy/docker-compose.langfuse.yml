@@ -154,9 +154,11 @@ services:
     image: clickhouse/clickhouse-server:25.5-alpine
     restart: always
     # ── Resource limits: prevent CPU contention with agent services ──
+    # Increasing mem_limit to 6g resolves ClickHouse merge failures on 15GB+ hosts.
+    # Adjust down to 2-3g on hosts with less RAM.
     cpus: 1.0
-    mem_limit: 3g
-    memswap_limit: 3g
+    mem_limit: 6g
+    memswap_limit: 6g
     healthcheck:
       test: ["CMD-SHELL", "clickhouse client -h localhost --query 'SELECT 1'"]
       interval: 5s

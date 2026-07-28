@@ -130,8 +130,8 @@ if [[ -f "$SOUL_LOCAL" ]] && [[ -f "$SOUL_TEMPLATE" ]]; then
   # Extract bold markers from the Behavioral Principles section of both
   SOUL_LOCAL_MARKERS=$(sed -n '/## Behavioral Principles/,/^## /p' "$SOUL_LOCAL" | grep -oE '\*\*[^*]+\*\*' | sort -u)
   SOUL_TMPL_MARKERS=$(sed -n '/## Behavioral Principles/,/^## /p' "$SOUL_TEMPLATE" | grep -oE '\*\*[^*]+\*\*' | sort -u)
-  LOCAL_COUNT=$(echo "$SOUL_LOCAL_MARKERS" | wc -l)
-  TMPL_COUNT=$(echo "$SOUL_TMPL_MARKERS" | wc -l)
+  LOCAL_COUNT=$(wc -l <<< "$SOUL_LOCAL_MARKERS")
+  TMPL_COUNT=$(wc -l <<< "$SOUL_TMPL_MARKERS")
   # Allow small variance for agent-specific bullets (non-orchestrators skip "Orchestrator" marker)
   THRESHOLD=$((TMPL_COUNT - 3))
   if [[ "$LOCAL_COUNT" -lt "$THRESHOLD" ]] 2>/dev/null; then
@@ -147,12 +147,85 @@ if [[ -f "$SOUL_LOCAL" ]] && [[ -f "$SOUL_TEMPLATE" ]]; then
   fi
 fi
 
-# ── Reflexion gate: must run reflexion-check before committing ──
-REFLEXION_TOKEN="${HOME}/.hermes-cortex/state/.reflexion-done"
-if [[ ! -f "$REFLEXION_TOKEN" ]]; then
+# ── Reflexion gate: verify skill_view('reflexion-check') was called this session ──
+# Query the session DB for proof the agent actually loaded the skill — not just
+# a file-presence check. The governance lock carries the session_id.
+if ! python3 -c "
+import sqlite3, json, os, glob, sys
+
+state_db = os.path.expanduser('~/.hermes/state.db')
+gov_dir = os.path.expanduser('~/.hermes-cortex/state')
+
+# Determine repo slug (same logic as governance lock check below)
+try:
+    repo_slug = os.path.basename(os.popen('git rev-parse --show-toplevel 2>/dev/null').read().strip() or 'generic')
+except:
+    repo_slug = 'generic'
+
+# Find the governance lock for this repo to get session_id
+session_id = None
+lock_files = glob.glob(os.path.join(gov_dir, '.governance-*.json'))
+for f in lock_files:
+    try:
+        d = json.load(open(f))
+        if d.get('repo_slug') == repo_slug:
+            session_id = d.get('session_id')
+            break
+    except (OSError, json.JSONDecodeError):
+        continue
+
+if not session_id:
+    # Fallback: no lock file — check the most recent non-cron session
+    if os.path.exists(state_db):
+        try:
+            conn = sqlite3.connect(state_db)
+            rows = conn.execute('''SELECT id FROM sessions WHERE id NOT LIKE 'cron_%' ORDER BY started_at DESC LIMIT 3''').fetchall()
+            conn.close()
+            for (sid,) in rows:
+                # Check each recent session for reflexion-check
+                conn2 = sqlite3.connect(state_db)
+                hits = conn2.execute('''SELECT 1 FROM messages WHERE session_id=? AND tool_name=? AND role=? AND content LIKE ? LIMIT 1''',
+                    (sid, 'skill_view', 'tool', '%reflexion-check%')).fetchone()
+                conn2.close()
+                if hits:
+                    session_id = sid
+                    break
+        except:
+            session_id = None  # Acceptable: fallback exhausted, will fail at gate below
+
+if not session_id:
+    print('NO-LOCK')
+    sys.exit(1)
+
+# Query the messages table for skill_view('reflexion-check') in this session
+if not os.path.exists(state_db):
+    print('NO-DB')
+    sys.exit(1)
+
+try:
+    conn = sqlite3.connect(state_db)
+    rows = conn.execute(
+        'SELECT content FROM messages WHERE session_id=? AND tool_name=? AND role=? ORDER BY id',
+        (session_id, 'skill_view', 'tool')
+    ).fetchall()
+    conn.close()
+except sqlite3.OperationalError:
+    print('NO-DB')
+    sys.exit(1)
+
+for (content_json,) in rows:
+    try:
+        d = json.loads(content_json)
+        if d.get('name') == 'reflexion-check':
+            sys.exit(0)
+    except (json.JSONDecodeError, AttributeError):
+        continue
+
+sys.exit(1)
+"; then
   echo ""
   echo "❌  Reflexion check not completed."
-  echo "    You must run the reflexion-check skill before committing:"
+  echo "    You must actually run the reflexion-check skill before committing:"
   echo "      skill_view(name='reflexion-check')"
   echo "    Answer all 6 questions, then commit."
   echo "    No bypass flags — use --no-verify only in emergencies."
