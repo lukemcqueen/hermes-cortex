@@ -30,12 +30,17 @@ else
   # Default: try localhost first (works when running on Moses server)
   VICTORIA_URL="http://localhost:8428/api/v1/import/prometheus"
 
-  # If CORTEX_BUS_URL is set and points to a remote host, derive VM host from it
-  if [ -n "${CORTEX_BUS_URL:-}" ]; then
-    bus_host=$(echo "$CORTEX_BUS_URL" | sed -E 's|^https?://([^:/]+).*|\1|')
-    if [ "$bus_host" != "127.0.0.1" ] && [ "$bus_host" != "localhost" ]; then
-      # VictoriaMetrics is behind nginx on port 13005 (bus is 13004)
-      VICTORIA_URL="https://${bus_host}:13005/api/v1/import/prometheus"
+  # Source cortex-bus.conf to get the Moses bus URL (every agent has this)
+  bus_conf="${CORTEX_BUS_CONF:-${HOME}/.hermes-cortex/cortex-bus.conf}"
+  if [ -f "$bus_conf" ]; then
+    # shellcheck source=/dev/null
+    source "$bus_conf" 2>/dev/null || true
+    if [ -n "${CORTEX_BUS_URL:-}" ]; then
+      bus_host=$(echo "$CORTEX_BUS_URL" | sed -E 's|^https?://([^:/]+).*|\1|')
+      if [ "$bus_host" != "127.0.0.1" ] && [ "$bus_host" != "localhost" ]; then
+        # VictoriaMetrics is behind nginx on port 13005 (bus is 13004)
+        VICTORIA_URL="https://${bus_host}:13005/api/v1/import/prometheus"
+      fi
     fi
   fi
 fi
