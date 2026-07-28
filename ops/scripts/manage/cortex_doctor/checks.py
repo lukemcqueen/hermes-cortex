@@ -119,12 +119,12 @@ def check_repo(res: "Results") -> None:
   if agents_size > 20480:
     res.add("AGENTS.md size", "FAIL",
         f"{agents_size/1024:.0f}K — exceeds 20K maximum",
-        "Trim content: remove deprecated sections, consolidate verbose entries")
+        "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
     return
   elif agents_size > 15360:
     res.add("AGENTS.md size", "WARN",
         f"{agents_size/1024:.0f}K — target <15K for optimal loading",
-        "Consider trimming unnecessary content")
+        "Run: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
   # Content check: extract all bold markers for comparison (like SOUL.md does)
   repo_agents = CORTEX_REPO / "AGENTS.md"
   if repo_agents.exists():
