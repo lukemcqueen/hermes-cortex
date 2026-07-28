@@ -220,7 +220,7 @@ register "core/governance/verify.sh"           "${CORTEX_DEPLOY_HOME}/scripts/ve
 register "core/governance/update.sh"           "${CORTEX_DEPLOY_HOME}/scripts/update.sh"
 
 register "ops/scripts/health/prod-watchdog.sh"          "${CORTEX_DEPLOY_HOME}/scripts/prod-watchdog.sh"
-register "ops/scripts/agent/orch-fleet-watchdog.py"   "${CORTEX_DEPLOY_HOME}/scripts/orch-fleet-watchdog.py"
+register_orch "ops/scripts/agent/orch-fleet-watchdog.py"   "${CORTEX_DEPLOY_HOME}/scripts/orch-fleet-watchdog.py"
 
 # Post-commit notification + installer
 register "ops/scripts/manage/post-commit-notify.sh"          "${CORTEX_DEPLOY_HOME}/scripts/post-commit-notify.sh"
@@ -235,7 +235,7 @@ register "ops/scripts/bus/agent-bus-remediate.sh"  "${CORTEX_DEPLOY_HOME}/script
 # Auto-remediation scripts
 register "ops/scripts/health/cron-auto-remediate.sh"     "${CORTEX_DEPLOY_HOME}/scripts/cron-auto-remediate.sh"
 register "ops/scripts/health/docker-volume-safety.sh"    "${CORTEX_DEPLOY_HOME}/scripts/docker-volume-safety.sh"
-register "ops/scripts/agent/orch-weekly-auto-fix.py"    "${CORTEX_DEPLOY_HOME}/scripts/orch-weekly-auto-fix.py"
+register_orch "ops/scripts/agent/orch-weekly-auto-fix.py"    "${CORTEX_DEPLOY_HOME}/scripts/orch-weekly-auto-fix.py"
 
 # System watchdog scripts (no_agent cron jobs)
 register "ops/scripts/health/agent-service-recovery.py"        "${CORTEX_DEPLOY_HOME}/scripts/agent-service-recovery.py"
@@ -300,7 +300,7 @@ register "ops/scripts/manage/loop-gov-mcp.sh"            "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/ek-session-snapshot.py"     "${CORTEX_DEPLOY_HOME}/scripts/ek-session-snapshot.py"
 
 # Fleet watchdog — cross-agent health polling (orch, deployed by install-orch-crons.sh)
-register "ops/scripts/agent/orch-fleet-watchdog.py"      "${CORTEX_DEPLOY_HOME}/scripts/orch-fleet-watchdog.py"
+register_orch "ops/scripts/agent/orch-fleet-watchdog.py"      "${CORTEX_DEPLOY_HOME}/scripts/orch-fleet-watchdog.py"
 register "ops/scripts/agent/agent-gbrain-doctor.sh"       "${CORTEX_DEPLOY_HOME}/scripts/agent-gbrain-doctor.sh"
 
 # gbrain autopilot — systemd user service (replaces old sync-watch cron/launchd)
@@ -315,7 +315,7 @@ register "plugins/hermes-governance-enforcer/README.md"    "${HOME}/.hermes/plug
 register "ops/scripts/install/install-gbrain-sync.sh"    "${CORTEX_DEPLOY_HOME}/scripts/install-gbrain-sync.sh"
 
 # Orchestrator health report — periodic agent fleet snapshot (no_agent cron)
-register "ops/scripts/agent/orch-health-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/orch-health-report.py"
+register_orch "ops/scripts/agent/orch-health-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/orch-health-report.py"
 
 # Cron cost tracking — SQLite store + deployment script
 register "ops/scripts/cost_store.py"               "${CORTEX_DEPLOY_HOME}/scripts/cost_store.py"
@@ -327,7 +327,7 @@ register "ops/scripts/pre-commit-doc-audit.sh"            "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/health/health-vector.py"            "${CORTEX_DEPLOY_HOME}/scripts/health-vector.py"
 register "ops/scripts/health/health-vector-push.sh"       "${CORTEX_DEPLOY_HOME}/scripts/health-vector-push.sh"
 register "ops/scripts/health/report-agent-health.py"      "${CORTEX_DEPLOY_HOME}/scripts/report-agent-health.py"
-register "ops/scripts/manage/orch-request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-request-skill-reports.sh"
+register_orch "ops/scripts/manage/orch-request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-request-skill-reports.sh"
 
 # Shared model config loader (imported by many scripts)
 
@@ -365,8 +365,8 @@ register "ops/scripts/manage/collect-agent-skills.sh"     "${CORTEX_DEPLOY_HOME}
 
 # Migration scripts
 register_orch "ops/scripts/manage/migrate-orch-bus-names.sh"   "${CORTEX_DEPLOY_HOME}/scripts/migrate-orch-bus-names.sh"
-register "ops/scripts/manage/orch-request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-request-skill-reports.sh"
-register "ops/scripts/manage/orch-process-skill-reports.py"    "${CORTEX_DEPLOY_HOME}/scripts/orch-process-skill-reports.py"
+register_orch "ops/scripts/manage/orch-request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-request-skill-reports.sh"
+register_orch "ops/scripts/manage/orch-process-skill-reports.py"    "${CORTEX_DEPLOY_HOME}/scripts/orch-process-skill-reports.py"
 register "ops/scripts/manage/agent-learning-collector.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-learning-collector.py"
 register "ops/scripts/manage/agent-session-mine-cron.py"   "${CORTEX_DEPLOY_HOME}/scripts/agent-session-mine-cron.py"
 # orch-bus-* scripts are orchestrator-only — run from repo path
