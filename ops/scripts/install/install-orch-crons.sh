@@ -150,7 +150,7 @@ try:
             if isinstance(j, dict) and j.get('name') == '$name':
                 sys.exit(0)
 except Exception:
-    pass
+    sys.exit(1)
 sys.exit(1)
 " 2>/dev/null; then
       return 0
@@ -234,7 +234,7 @@ try:
             sys.stdout.write(j.get("id", ""))
             sys.exit(0)
 except:
-    pass
+    sys.exit(1)
 sys.exit(1)
 PYEOF
     job_id=$(python3 "$_tmp" "$CRON_JOBS_FILE" "$name" 2>/dev/null || true)
