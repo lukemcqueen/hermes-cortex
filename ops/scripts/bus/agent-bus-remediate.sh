@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  bus-remediate.sh — Read pending remediation markers
+#  agent-bus-remediate.sh — Read pending remediation markers
 #
 #  Reads state/remediate/ for pending fix requests left by
 #  bus-sensor.py or bus-flag.py. Outputs structured JSON.

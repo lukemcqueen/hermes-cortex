@@ -183,30 +183,30 @@ Feature: Queue Sharding
 
 ---
 
-### Story BUS-P1-2: Prometheus Bus Metrics
+### Story BUS-P1-2: VictoriaMetrics Bus Metrics (Push Model)
 
 **As** an SRE operating the bus at scale,  
-**I want** Prometheus metrics for bus latency, queue depth, and error rates,  
-**So that** I can detect problems before agents report them.
+**I want** VictoriaMetrics metrics for bus latency, queue depth, and error rates pushed from each agent,  
+**So that** I can detect problems before agents report them without managing N scrape targets.
 
 ```gherkin
-Feature: Prometheus Bus Metrics
+Feature: VictoriaMetrics Bus Metrics (Push Model)
 
-  Scenario: Basic bus metrics exposed
+  Scenario: Basic bus metrics pushed
     Given the bus server is running
-    When I query `/metrics`
+    And metrics push loop is active
+    When I query VictoriaMetrics `http://victoria:8428/api/v1/query?query=bus_send_total`
     Then I see `bus_send_total{queue="inbox_moses"} N`
     And I see `bus_read_total{queue="inbox_moses"} N`
     And I see `bus_archive_total{queue="inbox_moses"} N`
     And I see `bus_send_duration_seconds_bucket{le="0.01"} N`
-    And I see `bus_queue_depth{queue="inbox_moses"} N`
 
   Scenario: Error metrics
     When a send request fails with HTTP 403
-    Then `bus_send_errors_total{queue="inbox_moses", reason="forbidden"} 1`
+    Then `bus_errors_total{queue="inbox_moses", operation="send", error_type="forbidden"} 1`
 
   Scenario: Queue depth histogram
-    When I query `/metrics`
+    When I query VictoriaMetrics for bus_queue_depth
     Then I see `bus_queue_depth{queue="inbox_moses"} N`
     And I see `bus_queue_depth{queue="inbox_moses_dlq"} N`
     And I see `bus_queue_depth{queue="workflow_dispatch"} N`
@@ -214,16 +214,19 @@ Feature: Prometheus Bus Metrics
   Scenario: Health endpoint unchanged
     Given I query `/health`
     Then the response is still `{"status":"ok","backend":"pgmq","queues":N}`
-    (metrics endpoint is separate from health)
+    (metrics push is separate from health — no /metrics scrape endpoint needed)
 ```
 
 **Acceptance criteria:**
-- [ ] `/metrics` endpoint returns Prometheus-format text
+- [ ] Metrics pushed to VictoriaMetrics `/api/v1/import/prometheus` every 60s
 - [ ] Counters: send, read, archive, requeue, archive_total (per queue)
 - [ ] Histograms: operation duration (send, read, archive)
 - [ ] Gauges: queue depth per queue, DLQ depth per queue
 - [ ] Error breakdowns: per error type and queue
-- [ ] No significant perf impact (< 1µs per operation)
+- [ ] Push uses Prometheus-compatible text exposition format (v0.4.0)
+- [ ] Retries with exponential backoff (3 attempts)
+- [ ] Agent label identifies source host/agent
+- [ ] No significant perf impact (< 1µs per operation, push is async)
 
 ---
 

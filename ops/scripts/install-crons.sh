@@ -156,9 +156,41 @@ create_cron() {
     exists=true
   fi
 
-  if $exists && ! $FORCE; then
-    SKIPPED=$((SKIPPED + 1))
-    return 0
+  if $exists; then
+    if ! $FORCE; then
+      # Drift detection: check if existing cron's script differs from desired
+      local _drift=false
+      if [[ -n "$script" && -f "$CRON_JOBS_FILE" ]] && command -v python3 &>/dev/null; then
+        local _cur_script
+        _cur_script=$(python3 -c "
+import json, sys
+try:
+    with open('$CRON_JOBS_FILE') as f:
+        data = json.load(f)
+    jobs = data.get('jobs', []) if isinstance(data, dict) else data
+    for j in jobs:
+        if isinstance(j, dict) and j.get('name') == '$name':
+            sys.stdout.write(j.get('script', '') or '')
+            sys.exit(0)
+except: pass
+sys.exit(1)
+" 2>/dev/null || true)
+        if [[ -n "$_cur_script" && "$_cur_script" != "$script" ]]; then
+          _drift=true
+          info "Drift detected: cron '${name}' script '${_cur_script}' → '${script}'"
+        fi
+      fi
+      if ! $_drift; then
+        SKIPPED=$((SKIPPED + 1))
+        return 0
+      fi
+      # Fall through to the edit path below (drift detected)
+      local _do_edit=true
+    else
+      local _do_edit=false
+    fi
+  else
+    local _do_edit=false
   fi
 
   # Verify script exists before creating cron
@@ -170,7 +202,7 @@ create_cron() {
 
   if $DRY_RUN; then
     local action="Create"
-    if $exists && $FORCE; then
+    if $exists && { $FORCE || ${_do_edit:-false}; }; then
       action="Update (force)"
     fi
     info "[DRY-RUN] ${action} cron: ${name}"
@@ -184,7 +216,7 @@ create_cron() {
   fi
 
   # Remove existing cron if --force — actually use edit to avoid duplicates
-  if $exists && $FORCE && [[ -n "$HERMES_CMD" ]]; then
+  if $exists && { $FORCE || ${_do_edit:-false}; } && [[ -n "$HERMES_CMD" ]]; then
     # Find job_id by name from jobs.json directly
     local job_id _tmp
     _tmp="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/state/_cron_find.py"
@@ -427,7 +459,11 @@ if $UNINSTALL; then
     "agent-agents-md-prune-scan" \
     "agent-apply-fixes" \
     "agent-auto-save-sessions" \
+    "agent-bus-evening" \
+    "agent-bus-overnight" \
+    "agent-bus-workday" \
     "agent-cron-quality-watchdog" \
+    "agent-daily-bible-reading" \
     "agent-daily-soul-refinement" \
     "agent-fixer-evening" \
     "agent-fixer-overnight" \
@@ -438,9 +474,6 @@ if $UNINSTALL; then
     "agent-governance-auditor" \
     "agent-hermes-cortex-sync" \
     "agent-hermes-update" \
-    "agent-bus-evening" \
-    "agent-bus-overnight" \
-    "agent-bus-workday" \
     "agent-inbox-evening" \
     "agent-inbox-overnight" \
     "agent-inbox-workday" \
@@ -449,7 +482,6 @@ if $UNINSTALL; then
     "agent-learning-collector" \
     "agent-llm-judge-scorer-weekday" \
     "agent-llm-judge-scorer-weekend" \
-    "agent-session-mine" \
     "agent-memory-pruning" \
     "agent-memory-to-brain-sync" \
     "agent-message-handler" \
@@ -461,14 +493,13 @@ if $UNINSTALL; then
     "agent-secret-leak-watchdog" \
     "agent-service-recovery" \
     "agent-session-cache-build" \
+    "agent-session-mine" \
     "agent-stale-ref-watchdog" \
     "agent-system-alert-watchdog" \
     "agent-threat-pipeline" \
     "agent-weekly-loop-eval" \
-    "no-verify-audit" \
-    "skill-evaluate" \
-    "skill-report-process" \
-    "skill-report-request"; do
+    "agent-no-verify-audit"; do
+  
   
 
   
@@ -565,7 +596,7 @@ alerts. If all you did was run checks and everything is fine, stay completely si
 
 # Companion sensor (no_agent, every 5 min)
 create_cron "agent-remediation-sensor" "*/5 * * * *" \
-  "remediation-sensor.py" \
+  "agent-remediation-sensor.py" \
   "" \
   "" \
   "" \
@@ -579,7 +610,7 @@ create_cron "agent-remediation-sensor" "*/5 * * * *" \
 printf "\\n${CYAN}  2. System Health Monitoring${RESET}\\\n"
 
 create_cron "agent-system-alert-watchdog" "*/30 * * * *" \
-  "system-alert-watchdog.py" \
+  "agent-system-alert-watchdog.py" \
   "" \
   "" \
   "" \
@@ -588,7 +619,7 @@ create_cron "agent-system-alert-watchdog" "*/30 * * * *" \
   "true"
 
 create_cron "agent-service-recovery" "*/5 * * * *" \
-  "service-recovery.py" \
+  "agent-service-recovery.py" \
   "" \
   "" \
   "" \
@@ -610,7 +641,7 @@ create_cron "agent-gbrain-doctor" "5 6 * * *" \
 printf "\\n${CYAN}  3. Knowledge & Memory${RESET}\\\n"
 
 create_cron "agent-memory-to-brain-sync" "0 */6 * * *" \
-  "memory-to-brain-sync.py" \
+  "agent-memory-to-brain-sync.py" \
   "" \
   "" \
   "" \
@@ -699,7 +730,7 @@ create_cron "agent-inbox-overnight" "0 3 * * 1-5" \
 # ── 6. Governance Audit & Lock Cleanup
 
 create_cron "agent-governance-auditor" "0 */6 * * *" \
-  "governance-auditor.py" \
+  "agent-governance-auditor.py" \
   "" \
   "" \
   "" \
@@ -712,7 +743,7 @@ printf "\n${CYAN}  7. Universal Agent Crons${RESET}\n"
 
 # LLM judge scorer — weekday (Mon-Fri 12:00 and 20:00)
 create_cron "agent-llm-judge-scorer-weekday" "0 12,20 * * 1-5" \
-  "llm-judge-scorer.py" \
+  "agent-llm-judge-scorer.py" \
   "" \
   "" \
   "" \
@@ -722,7 +753,7 @@ create_cron "agent-llm-judge-scorer-weekday" "0 12,20 * * 1-5" \
 
 # LLM judge scorer — weekend (Sat-Sun 22:00)
 create_cron "agent-llm-judge-scorer-weekend" "0 22 * * 0,6" \
-  "llm-judge-scorer.py" \
+  "agent-llm-judge-scorer.py" \
   "" \
   "" \
   "" \
@@ -732,7 +763,7 @@ create_cron "agent-llm-judge-scorer-weekend" "0 22 * * 0,6" \
 
 # Model health watchdog (daily 07:00)
 create_cron "agent-model-health-watchdog" "0 7 * * *" \
-  "model-health-watchdog.py" \
+  "agent-model-health-watchdog.py" \
   "" \
   "" \
   "" \
@@ -742,7 +773,7 @@ create_cron "agent-model-health-watchdog" "0 7 * * *" \
 
 # Langfuse health + ClickHouse merge watchdog (silent when healthy, every hour)
 create_cron "agent-langfuse-health-watchdog" "0 * * * *" \
-  "langfuse-health-watchdog.py" \
+  "agent-langfuse-health-watchdog.py" \
   "" \
   "" \
   "" \
@@ -773,7 +804,7 @@ create_cron "agent-apply-fixes" "*/10 * * * *" \
 
 # Scoring activity watchdog — alerts if too few cycles logged today
 create_cron "agent-scoring-activity-watchdog" "0 14,20 * * *" \
-  "scoring-activity-watchdog.py" \
+  "agent-scoring-activity-watchdog.py" \
   "" \
   "" \
   "" \
@@ -784,7 +815,7 @@ create_cron "agent-scoring-activity-watchdog" "0 14,20 * * *" \
 
 # Session embedding cache rebuild (weekly Monday 05:00 — universal, loop-governance)
 create_cron "agent-session-cache-build" "0 5 * * 1" \
-  "session_cache.py" \
+  "agent-session_cache.py" \
   "" \
   "" \
   "" \
@@ -855,7 +886,7 @@ printf "${CYAN}  8. Deployment-Specific Crons${RESET}\n"
 
 # Daily Hermes Agent self-update
 create_cron "agent-hermes-update" "23 22 * * *" \
-  "hermes-update.sh" \
+  "agent-hermes-update.sh" \
   "" \
   "" \
   "" \
@@ -865,7 +896,7 @@ create_cron "agent-hermes-update" "23 22 * * *" \
 
 # Weekly gbrain dream for knowledge enrichment
 create_cron "agent-gbrain-nightly-dream" "0 3 * * 6" \
-  "gbrain-nightly-dream.sh" \
+  "agent-gbrain-nightly-dream.sh" \
   "" \
   "" \
   "" \
@@ -875,7 +906,7 @@ create_cron "agent-gbrain-nightly-dream" "0 3 * * 6" \
 
 # Weekly gbrain update and health check
 create_cron "agent-gbrain-update-sync" "0 2 * * 0" \
-  "gbrain-update-sync.sh" \
+  "agent-gbrain-update-sync.sh" \
   "" \
   "" \
   "" \
@@ -885,7 +916,7 @@ create_cron "agent-gbrain-update-sync" "0 2 * * 0" \
 
 # Weekly offline code index rebuild (Sunday 05:00 — rebuilds local code search index)
 create_cron "agent-offline-code-index" "0 5 * * 0" \
-  "offline-code-index-cron.sh" \
+  "agent-offline-code-index-cron.sh" \
   "" \
   "" \
   "" \
@@ -895,7 +926,7 @@ create_cron "agent-offline-code-index" "0 5 * * 0" \
 
 # Daily hermes-cortex sync and update
 create_cron "agent-hermes-cortex-sync" "33 22 * * *" \
-  "hermes-cortex-sync.sh" \
+  "agent-hermes-cortex-sync.sh" \
   "" \
   "" \
   "" \
@@ -936,7 +967,7 @@ If nothing to report: output exactly [SILENT]" \
 
 # Auto-save sessions every 6 hours
 create_cron "agent-auto-save-sessions" "every 360m" \
-  "auto-save-sessions.py" \
+  "agent-auto-save-sessions.py" \
   "" \
   "" \
   "" \
@@ -948,7 +979,7 @@ create_cron "agent-auto-save-sessions" "every 360m" \
 
 
 create_cron "agent-threat-pipeline" "0 5 * * *" \
-  "nginx-threat-pipeline.sh" \
+  "agent-nginx-threat-pipeline.sh" \
   "" \
   "" \
   "" \
@@ -969,7 +1000,7 @@ create_cron "agent-ip-submission" "*/30 * * * *" \
 # ── AGENTS.md auto-trim: daily scan + LLM apply (M-Sa) ──
 # Phase 1: deterministic scan — silent when clean, JSON report when candidates found
 create_cron "agent-agents-md-prune-scan" "0 4 * * 1-6" \
-  "agents-md-prune-scan.py" \
+  "agent-agents-md-prune-scan.py" \
   "" \
   "" \
   "" \
@@ -1040,7 +1071,7 @@ fi
 
 # Secret leak watchdog (every 4h, scans cron outputs for leaked credentials)
 create_cron "agent-secret-leak-watchdog" "0 */4 * * *" \
-  "secret-leak-watchdog.py" \
+  "agent-secret-leak-watchdog.py" \
   "Scans cron outputs and session files for printf/echo credential leaks" \
   "" \
   "" \
@@ -1050,7 +1081,7 @@ create_cron "agent-secret-leak-watchdog" "0 */4 * * *" \
 
 # Stale ref watchdog (daily, scans deployment layers for broken symlinks/paths)
 create_cron "agent-stale-ref-watchdog" "0 5 * * *" \
-  "manage/stale-ref-watchdog.sh" \
+  "manage/agent-stale-ref-watchdog.sh" \
   "stale-ref-watchdog -- nightly stale-path scan across all deploy layers" \
   "" \
   "" \
@@ -1068,42 +1099,8 @@ create_cron "agent-daily-bible-reading" "0 1 * * *" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-# Skill reporting — request (Monday 02:00), process (daily 03:00), evaluate (Tuesday 09:00)
-create_cron "skill-report-request" "0 2 * * 1" \
-  "request-skill-reports.sh" \
-  "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
-
-create_cron "skill-report-process" "0 3 * * *" \
-  "process-skill-reports.py" \
-  "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
-
-create_cron "skill-evaluate" "0 9 * * 2" \
-  "" \
-  "You are running a scheduled skill evaluation cron for the orchestrator.
-
-Your job is to:
-1. Run process-skill-reports.py to collect any pending skill reports
-2. For each reported custom skill, evaluate its quality, relevance, and whether it should be upstreamed to the repo
-3. Report findings on what was evaluated and what was decided" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
-
 # No-verify audit — checks for --no-verify commits every 60m
-create_cron "no-verify-audit" "every 60m" \
+create_cron "agent-no-verify-audit" "every 60m" \
   "" \
   "Check ~/.hermes-cortex/state/no-verify-log.json for new --no-verify audit events since the last check. If any new events exist since last checked, report them with commit hash, message, and timestamp." \
   "" \

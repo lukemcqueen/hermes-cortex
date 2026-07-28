@@ -1,0 +1,16 @@
+# Grafana Dashboard Provisioning
+# ==============================
+# Dashboard JSON files placed in this directory are auto-loaded on container start.
+# User-created dashboards persist in the grafanadata volume.
+
+apiVersion: 1
+
+providers:
+  - name: "default"
+    orgId: 1
+    folder: ""
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

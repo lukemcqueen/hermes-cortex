@@ -102,7 +102,7 @@ git commit --no-verify -m "..."
 git push --no-verify
 ```
 
-Using `--no-verify` is logged to `no-verify-audit` cron and auditable. It's a conscious choice, not an invisible escape hatch. Pre-commit `SKIP_SCORE=1`, `SKIP_ADVERSARIAL`, and pre-push `SKIP_PRE_PUSH=1` bypass flags have all been removed — no env-var bypasses.
+Using `--no-verify` is logged to `agent-no-verify-audit` cron and auditable. It's a conscious choice, not an invisible escape hatch. Pre-commit `SKIP_SCORE=1`, `SKIP_ADVERSARIAL`, and pre-push `SKIP_PRE_PUSH=1` bypass flags have all been removed — no env-var bypasses.
 
 These are documented in AGENTS.md rule #13 and mentioned in each hook's header comment.
 

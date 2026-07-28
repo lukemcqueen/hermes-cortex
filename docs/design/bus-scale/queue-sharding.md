@@ -137,7 +137,8 @@ This is a rare operation (~once per order-of-magnitude scale).
 
 ### Shard Health
 
-Each shard's connectivity and depth are exposed via Prometheus metrics:
+Each shard's connectivity and depth are exposed via VictoriaMetrics metrics (pushed
+from the bus server):
 
 ```
 bus_shard_depth{shard="3", queue="inbox_moses"} 42

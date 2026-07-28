@@ -88,25 +88,25 @@ These run on every agent in the fleet. Created by `install-crons.sh`.
 | `agent-fixer-workday` | `0 9-17 * * 1-5` | LLM | auto-remediation skill | origin |
 | `agent-fixer-evening` | `0 18,20,22 * * 1-5` | LLM | auto-remediation skill | origin |
 | `agent-fixer-overnight` | `0 3 * * 1-5` | LLM | auto-remediation skill | origin |
-| `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `remediation-sensor.py` | local |
+| `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local |
 | `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin |
 | `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local |
-| `agent-service-recovery` | `*/5 * * * *` | no_agent | `service-recovery.py` | origin |
-| `agent-system-alert-watchdog` | `*/30 * * * *` | no_agent | `system-alert-watchdog.py` | origin |
-| `agent-hermes-update` | `23 22 * * *` | no_agent | `hermes-update.sh` | local |
-| `agent-hermes-cortex-sync` | `33 22 * * *` | no_agent | `hermes-cortex-sync.sh` | origin |
-| `agent-memory-to-brain-sync` | `0 */6 * * *` | no_agent | `memory-to-brain-sync.py` | local |
-| `agent-governance-auditor` | `0 */6 * * *` | no_agent | `governance-auditor.py` | origin |
+| `agent-service-recovery` | `*/5 * * * *` | no_agent | `agent-service-recovery.py` | origin |
+| `agent-system-alert-watchdog` | `*/30 * * * *` | no_agent | `agent-system-alert-watchdog.py` | origin |
+| `agent-hermes-update` | `23 22 * * *` | no_agent | `agent-hermes-update.sh` | local |
+| `agent-hermes-cortex-sync` | `33 22 * * *` | no_agent | `agent-hermes-cortex-sync.sh` | origin |
+| `agent-memory-to-brain-sync` | `0 */6 * * *` | no_agent | `agent-memory-to-brain-sync.py` | local |
+| `agent-governance-auditor` | `0 */6 * * *` | no_agent | `agent-governance-auditor.py` | origin |
 | `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local |
 | `agent-cron-quality-watchdog` | `*/10 * * * *` | no_agent | `agent-cron-quality-watchdog.py` | origin |
-| `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `scoring-activity-watchdog.py` | origin |
-| `agent-model-health-watchdog` | `0 7 * * *` | no_agent | `model-health-watchdog.py` | origin |
+| `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `agent-scoring-activity-watchdog.py` | origin |
+| `agent-model-health-watchdog` | `0 7 * * *` | no_agent | `agent-model-health-watchdog.py` | origin |
 | `agent-langfuse-health-watchdog` | `0 * * * *` | no_agent | `langfuse-health-watchdog.py` | origin |
 | `agent-memory-pruning` | `0 4 * * 1` | LLM | — | origin |
 | `agent-session-cache-build` | `0 5 * * 1` | no_agent | `session_cache.py` | origin |
 | `agent-daily-bible-reading` | `0 1 * * *` | no_agent | `agent-daily-bible-reading.py` | origin |
-| `agent-gbrain-nightly-dream` | `0 3 * * 6` | no_agent | `gbrain-nightly-dream.sh` | origin |
-| `agent-gbrain-update-sync` | `0 2 * * 0` | no_agent | `gbrain-update-sync.sh` | origin |
+| `agent-gbrain-nightly-dream` | `0 3 * * 6` | no_agent | `agent-gbrain-nightly-dream.sh` | origin |
+| `agent-gbrain-update-sync` | `0 2 * * 0` | no_agent | `agent-gbrain-update-sync.sh` | origin |
 | `agent-threat-pipeline` | `0 5 * * *` | no_agent | `nginx-threat-pipeline.sh` | origin |
 | `agent-ip-submission` | `*/30 * * * *` | no_agent | `agent-ip-submission.sh` | origin |
 | `agent-offline-code-index` | `0 5 * * 0` | no_agent | `offline_code_index_cron.sh` | local |
@@ -114,7 +114,7 @@ These run on every agent in the fleet. Created by `install-crons.sh`.
 | `agent-llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | `llm-judge-scorer.py` | local |
 | `agent-agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agents-md-prune-scan.py` | local |
 | `agent-agents-md-prune-apply` | `30 4 * * 1-6` | LLM | — | origin |
-| `agent-auto-save-sessions` | `every 360m` | no_agent | `auto-save-sessions.py` | local |
+| `agent-auto-save-sessions` | `every 360m` | no_agent | `agent-auto-save-sessions.py` | local |
 
 ### Local-only crons (`local-*`) — 5 crons
 
@@ -144,18 +144,18 @@ These run on this machine but use `agent-*` naming. Not in repo installers (inte
 | Name | Schedule | Type | Script | Deliver |
 |------|----------|------|--------|---------|
 | `cron-quality-watchdog` | `*/10 * * * *` | no_agent | `agent-cron-quality-watchdog.py` | origin |
-| `remediation-sensor` | `*/5 * * * *` | no_agent | `remediation-sensor.py` | local |
-| `service-recovery` | `*/5 * * * *` | no_agent | `service-recovery.py` | origin |
-| `system-alert-watchdog` | `*/30 * * * *` | no_agent | `system-alert-watchdog.py` | origin |
-| `memory-to-brain-sync` | `0 */6 * * *` | no_agent | `memory-to-brain-sync.py` | local |
-| `governance-auditor` | `0 */6 * * *` | no_agent | `governance-auditor.py` | origin |
-| `hermes-update` | `23 22 * * *` | no_agent | `hermes-update.sh` | local |
-| `hermes-cortex-sync` | `33 22 * * *` | no_agent | `hermes-cortex-sync.sh` | origin |
+| `remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local |
+| `service-recovery` | `*/5 * * * *` | no_agent | `agent-service-recovery.py` | origin |
+| `system-alert-watchdog` | `*/30 * * * *` | no_agent | `agent-system-alert-watchdog.py` | origin |
+| `memory-to-brain-sync` | `0 */6 * * *` | no_agent | `agent-memory-to-brain-sync.py` | local |
+| `governance-auditor` | `0 */6 * * *` | no_agent | `agent-governance-auditor.py` | origin |
+| `hermes-update` | `23 22 * * *` | no_agent | `agent-hermes-update.sh` | local |
+| `hermes-cortex-sync` | `33 22 * * *` | no_agent | `agent-hermes-cortex-sync.sh` | origin |
 | `threat-pipeline` | `0 5 * * *` | no_agent | `nginx-threat-pipeline.sh` | origin |
-| `model-health-watchdog` | `0 7 * * *` | no_agent | `model-health-watchdog.py` | origin |
+| `model-health-watchdog` | `0 7 * * *` | no_agent | `agent-model-health-watchdog.py` | origin |
 | `langfuse-health-watchdog` | `0 * * * *` | no_agent | `langfuse-health-watchdog.py` | origin |
-| `gbrain-nightly-dream` | `0 3 * * 6` | no_agent | `gbrain-nightly-dream.sh` | origin |
-| `gbrain-update-sync` | `0 2 * * 0` | no_agent | `gbrain-update-sync.sh` | origin |
+| `gbrain-nightly-dream` | `0 3 * * 6` | no_agent | `agent-gbrain-nightly-dream.sh` | origin |
+| `gbrain-update-sync` | `0 2 * * 0` | no_agent | `agent-gbrain-update-sync.sh` | origin |
 | `memory-pruning` | `0 4 * * 1` | LLM | — | origin |
 | `offline-code-index` | `0 5 * * 0` | no_agent | `offline_code_index_cron.sh` | local |
 | `llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | `llm-judge-scorer.py` | local |
@@ -165,12 +165,12 @@ These run on this machine but use `agent-*` naming. Not in repo installers (inte
 | `agent-ip-submission` | `*/30 * * * *` | no_agent | `agent-ip-submission.sh` | origin |
 | `agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agents-md-prune-scan.py` | local |
 | `agents-md-prune-apply` | `30 4 * * 1-6` | LLM | — | origin |
-| `secret-leak-watchdog` | `0 */4 * * *` | no_agent | `secret-leak-watchdog.py` | origin |
-| `scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `scoring-activity-watchdog.py` | origin |
-| `auto-save-sessions` | `every 360m` | no_agent | `auto-save-sessions.py` | local |
+| `secret-leak-watchdog` | `0 */4 * * *` | no_agent | `agent-secret-leak-watchdog.py` | origin |
+| `scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `agent-scoring-activity-watchdog.py` | origin |
+| `auto-save-sessions` | `every 360m` | no_agent | `agent-auto-save-sessions.py` | local |
 | `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local |
 | `agent-session-mine` | `0 2 * * *` | no_agent | `agent-session-mine-cron.py` | local |
-| `stale-ref-watchdog` | `0 5 * * *` | no_agent | `manage/stale-ref-watchdog.sh` | origin |
+| `stale-ref-watchdog` | `0 5 * * *` | no_agent | `manage/agent-stale-ref-watchdog.sh` | origin |
 | `orch-clean-health-queue` | `*/10 * * * *` | no_agent | `orch-clean-health-queue.py` | origin |
 | `local-fleet-dispatch-collector` | `every 15m` | no_agent | `local-fleet-dispatch-collector.sh` | origin |
 

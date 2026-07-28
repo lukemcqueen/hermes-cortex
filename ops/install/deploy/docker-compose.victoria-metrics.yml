@@ -1,0 +1,66 @@
+# VictoriaMetrics + Grafana — Metrics Stack
+# ============================================
+#
+# Replaces Prometheus with VictoriaMetrics single-node.
+# Uses PUSH model: agents POST Prometheus-format metrics to
+#   POST http://<host>:8428/api/v1/import/prometheus
+# Content-Type: text/plain; version=0.4.0
+# Body: prometheus_client.generate_latest() output (counters, histograms, gauges)
+#
+# Grafana served on :3030 (since :3000 is used by Langfuse).
+#
+# Deploy:
+#   docker compose -f docker-compose.victoria-metrics.yml up -d
+#   Verify: curl http://localhost:8428/api/v1/query?query=up
+#
+# Reference: https://docs.victoriametrics.com/single-server-victoriametrics/
+
+name: hc-metrics
+
+services:
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:latest
+    container_name: hc-victoria-metrics
+    restart: always
+    ports:
+      - "127.0.0.1:8428:8428"    # HTTP API — also accepts Prometheus push at /api/v1/import/prometheus
+    volumes:
+      - vmdata:/storage
+    command:
+      - "--storageDataPath=/storage"
+      - "--httpListenAddr=:8428"
+      - "--retentionPeriod=3"     # 3 months retention (change via .env)
+      - "--selfScrapeInterval=30s" # Monitor VictoriaMetrics itself
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8428/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: hc-grafana
+    depends_on:
+      victoriametrics:
+        condition: service_healthy
+    restart: always
+    ports:
+      - "127.0.0.1:3030:3000"    # :3030 on host since Langfuse uses :3000
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./config/grafana-datasources.yml:/etc/grafana/provisioning/datasources/victoriametrics.yml:ro
+      - ./config/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/default.yml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  vmdata:
+  grafanadata:

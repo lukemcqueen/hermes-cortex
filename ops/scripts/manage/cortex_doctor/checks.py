@@ -524,8 +524,9 @@ def check_crons(res):
       res.add("Orch crons", "PASS",
           f"all {len(orch_crons_list)} orchestrator crons present (host: {_orch_hostname})")
     elif not is_orch and not missing_orch:
-      res.add("Orch crons", "INFO",
-          f"orchestrator crons exist on non-orch host '{_orch_hostname}' (ok if backup)")
+      res.add("Orch crons on non-orch", "WARN",
+          f"{len(orch_crons_list)} orchestrator crons exist on non-orch host '{_orch_hostname}'",
+          "Run: bash install-orch-crons.sh --uninstall")
 
   res.add("Crons total", "PASS" if len(registered) > 0 else "WARN", f"{len(registered)} jobs registered")
 
@@ -814,6 +815,19 @@ def check_services(res):
           "Set CORTEX_BUS_URL (and CORTEX_BUS_FALLBACK_URL) in cortex-bus.conf")
 
   _check_bus_e2e(res)
+
+  # Non-orch guard: detect orchestrator-only services running on non-orch agents
+  if AGENT_ROLE != "orchestrator":
+    _bus_proc = run_bg(["pgrep", "-f", "agent_bus.server"], timeout=5) or ""
+    if "agent_bus" in _bus_proc:
+      res.add("Bus (non-orch guard)", "WARN",
+          "agent_bus process running on non-orch agent — should only run on orchestrator hosts",
+          "Stop: systemctl --user stop agent-bus && systemctl --user disable agent-bus")
+    _gbrain_proc = run_bg(["systemctl", "--user", "is-active", "gbrain-autopilot"], timeout=5) or ""
+    if "active" in _gbrain_proc:
+      res.add("gbrain (non-orch guard)", "WARN",
+          "gbrain autopilot running on non-orch agent — should only run on orchestrator hosts",
+          "Stop: systemctl --user stop gbrain-autopilot && systemctl --user disable gbrain-autopilot")
 
   # Ollama
   out = run_bg([CURL, "-s", "http://localhost:11434/api/tags", "--max-time", "5"])

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-system-alert-watchdog.py — System health + resource watchdog (merged heartbeat).
+agent-system-alert-watchdog.py — System health + resource watchdog (merged heartbeat).
 
 Silent (empty stdout) when all metrics within normal range.
 Non-empty stdout is delivered verbatim to the user (Telegram).

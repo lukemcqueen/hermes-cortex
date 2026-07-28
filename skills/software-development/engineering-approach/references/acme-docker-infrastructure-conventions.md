@@ -196,11 +196,8 @@ acme-platform/
 ├── minio/
 │   └── compose.yaml            # project: acme-minio (4-node erasure-coded)
 ├── observability/
-│   ├── compose.yaml            # project: acme-observability (Prom + Loki + Tempo + Grafana)
+│   ├── compose.yaml            # project: acme-observability (VictoriaMetrics + Grafana)
 │   └── config/
-│       ├── prometheus.yml
-│       ├── loki.yml
-│       ├── tempo.yml
 │       ├── grafana-datasources.yml
 │       └── grafana-dashboards.yml
 ├── backup/
@@ -242,7 +239,7 @@ Each compose file has:
 - **Published ports** (when configured via .env):
   - Keycloak: `8443:443` (HTTPS)
   - PostgreSQL: `5432:5432` (direct), `6432:6432` (PgBouncer)
-- **Internal ports fixed** — postgres:5432, redis:6379, nats:4222/6222/8222, vault:8200, minio:9000/9001, prometheus:9090, loki:3100, tempo:4317/4318, grafana:3000
+- **Internal ports fixed** — postgres:5432, redis:6379, nats:4222/6222/8222, vault:8200, minio:9000/9001, victoriametrics:8428, grafana:3000
 
 ### HA Topology
 

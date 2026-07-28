@@ -18,7 +18,7 @@ the design, decomposition, and implementation for closing those gaps.
 | 2 | **Inner body JSON auto-parse fix** | 🔴 P0 | 2 hours | Plan |
 | 3 | **Agent labels + targeted fleet updates** | 🔴 P0 | 4 hours | Plan |
 | 4 | **Queue sharding** (8 schemas, hash routing) | 🟡 P1 | 3-4 days | Plan |
-| 5 | **Prometheus bus metrics** | 🟡 P1 | 2-3 days | Plan |
+| 5 | **VictoriaMetrics bus metrics** (push model) | 🟡 P1 | 2-3 days | Plan |
 | 6 | **Long-poll read support** | 🟡 P1 | 2 days | Plan |
 | 7 | **Per-queue circuit breaker + backpressure** | 🟡 P1 | 2 days | Plan |
 | 8 | **`bus.audit_log`** (operations audit trail) | 🟢 P2 | 1 day | Plan |
@@ -57,7 +57,7 @@ All designs in this directory follow these principles:
 | [Inner Body JSON Fix](inner-body-json-fix.md) | Auto-parse inner body in `bus_send`/`bus_read` |
 | [Agent Labels + Targeted Updates](agent-labels.md) | Canary deployments via agent metadata |
 | [Queue Sharding](queue-sharding.md) | Horizontal scale via Postgres hash sharding |
-| [Prometheus Bus Metrics](prometheus-metrics.md) | Observable bus: latency, depth, error rates |
+| [VictoriaMetrics Bus Metrics](prometheus-metrics.md) | Observable bus: latency, depth, error rates (push model) |
 | [Long-Poll Read](long-poll-read.md) | Reduce PG load with HTTP long-poll |
 | [Per-Queue Circuit Breaker](circuit-breaker.md) | Backpressure, inbox limits, per-agent isolation |
 | [Bus Audit Log](audit-log.md) | Enterprise compliance — every operation logged |

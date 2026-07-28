@@ -27,7 +27,11 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `install.sh` | Single-command installer (idempotent, safe to re-run) |
 | `ops/install/install.sh` | Main installer script (moved from root in v2.0.0) |
 | `ops/scripts/` | Health checks, watchdogs, governance, installers — 160+ scripts across subdirectories |
-
+| `ops/scripts/manage/push-metrics.sh` | **Agent metrics push script** — Prometheus-format system metrics POSTed to central VictoriaMetrics. Used by all agents for observability. |
+| `ops/services/agent-bus/metrics.py` | **Bus metrics module** — prometheus_client definitions + async push client. Imported by bus server for queue-level observability. |
+| `ops/install/deploy/docker-compose.victoria-metrics.yml` | **VictoriaMetrics + Grafana stack** — Docker compose: metrics storage (3mo retention) + visualization dashboard. Grafana at :3030. |
+| `ops/install/deploy/config/grafana-datasources.yml` | **Auto-provisioned Grafana datasource** — points Grafana to VictoriaMetrics on stack deploy. |
+| `docs/design/bus-scale/prometheus-metrics.md` | **VictoriaMetrics bus metrics design** — push model architecture, metric definitions, push client implementation. |
 ## Security
 
 | Doc | Description |

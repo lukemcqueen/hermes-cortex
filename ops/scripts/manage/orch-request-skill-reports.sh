@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  request-skill-reports.sh — Moses-side: request skill reports
+#  orch-request-skill-reports.sh — Orchestrator-side: request skill reports
 #                              from all registered agents.
 #
 #  Reads agent-registry.json and sends an inbox message to
@@ -10,9 +10,9 @@
 #  Silent when sent successfully — errors only on failure.
 #
 #  Usage:
-#    bash request-skill-reports.sh              # send to all agents
-#    bash request-skill-reports.sh --dry-run    # show what would send
-#    bash request-skill-reports.sh --status     # show last request time
+#    bash orch-request-skill-reports.sh              # send to all agents
+#    bash orch-request-skill-reports.sh --dry-run    # show what would send
+#    bash orch-request-skill-reports.sh --status     # show last request time
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -35,7 +35,7 @@ elif [[ -f "${HOME}/.hermes-cortex/cortex-bus.conf" ]]; then
   BUS_TOKEN="${CORTEX_BUS_TOKEN:-}"
 fi
 
-LAST_RUN_FILE="$STATE_DIR/last-skill-report-request.txt"
+LAST_RUN_FILE="$STATE_DIR/last-orch-skill-report-request.txt"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 DRY_RUN=false
@@ -47,7 +47,7 @@ parse_args() {
       --dry-run) DRY_RUN=true ;;
       --status)  STATUS_ONLY=true ;;
       --help|-h)
-        echo "Usage: bash request-skill-reports.sh [--dry-run|--status]"
+        echo "Usage: bash orch-request-skill-reports.sh [--dry-run|--status]"
         echo "  --dry-run    Show what would be sent without sending"
         echo "  --status     Show last request time"
         exit 0

@@ -1,0 +1,22 @@
+# Grafana Datasource — VictoriaMetrics
+# =====================================
+# Provisioned automatically on container start.
+# Uses the Prometheus datasource type pointed at VictoriaMetrics' HTTP API.
+# VictoriaMetrics is fully Prometheus-compatible: same PromQL, same query API.
+
+apiVersion: 1
+
+datasources:
+  - name: VictoriaMetrics
+    type: prometheus
+    access: proxy
+    url: http://victoriametrics:8428
+    isDefault: true
+    editable: false
+    jsonData:
+      prometheusType: "VictoriaMetrics"
+      prometheusVersion: "1.148.0"
+      exemplarTraceIdDestinations:
+        - datasourceUid: "langfuse"
+          name: "trace_id"
+    version: 1

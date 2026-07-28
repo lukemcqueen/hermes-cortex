@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-secret-leak-watchdog.py — no_agent cron job
+agent-secret-leak-watchdog.py — no_agent cron job
 
 Scans recent cron outputs and session directories for credential-like
 patterns that indicate an agent leaked a secret via printf, echo, or
