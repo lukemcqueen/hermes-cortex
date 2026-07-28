@@ -496,7 +496,7 @@ create_cron "orch-skill-report-process" "0 3 * * *" \
 
 # Evaluate reported skills and decide on upstreaming (Tuesday 9am)
 create_cron "orch-skill-evaluate" "0 9 * * 2" \
-  "" \
+  "orch-skill-evaluate.sh" \
   "You are running a scheduled skill evaluation cron for the orchestrator.
 
 Your job is to:
