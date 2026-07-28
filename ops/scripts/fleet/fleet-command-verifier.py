@@ -115,8 +115,8 @@ def check_archives_for_response(corr_id: str, expected_subject: str) -> bool:
     rows = _psql_rows(f"""
         SELECT archived_at, body
         FROM bus.archives
-        WHERE body::jsonb @> '{{"correlation_id": "{corr_id}"}}'::jsonb
-          AND body::jsonb @> '{{"subject": "{expected_subject}"}}'::jsonb
+        WHERE ((body::jsonb #>> '{{}}')::jsonb @> '{{"correlation_id": "{corr_id}"}}'::jsonb)
+          AND ((body::jsonb #>> '{{}}')::jsonb @> '{{"subject": "{expected_subject}"}}'::jsonb)
         ORDER BY archived_at DESC LIMIT 1
     """)
     return len(rows) > 0
