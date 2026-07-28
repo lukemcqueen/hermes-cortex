@@ -797,6 +797,16 @@ def main():
         save_state(state)
         return True
 
+      # Silent subjects — known noise, just archive and move on
+      if subject in ("DOCTOR_TEST", "STATUS_REQUEST", "HEARTBEAT", "PING"):
+        log(f"Silently archived {subject} from {body.get('from', '?')}")
+        archive_message(inbox_queue, msg_id)
+        state.setdefault("last_noise", []).append(
+          {"subject": subject, "from": body.get("from"), "t": time.time()}
+        )
+        save_state(state)
+        return True
+
       # Unknown subject — send error response so orchestrator knows
       log(f"Unknown subject '{subject}', sending error (corr={correlation_id[:8]}…)")
       error_body = {
