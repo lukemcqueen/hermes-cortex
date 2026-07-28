@@ -21,10 +21,27 @@
 set -euo pipefail
 
 # ── Config ──────────────────────────────────────────────────
-VICTORIA_URL="${VICTORIA_METRICS_URL:-http://localhost:8428/api/v1/import/prometheus}"
+AGENT_NAME="${AGENT_NAME:-$(hostname)}"
+
+# Determine VictoriaMetrics URL
+if [ -n "${VICTORIA_METRICS_URL:-}" ]; then
+  VICTORIA_URL="$VICTORIA_METRICS_URL"
+else
+  # Default: try localhost first (works when running on Moses server)
+  VICTORIA_URL="http://localhost:8428/api/v1/import/prometheus"
+
+  # If CORTEX_BUS_URL is set and points to a remote host, derive VM host from it
+  if [ -n "${CORTEX_BUS_URL:-}" ]; then
+    bus_host=$(echo "$CORTEX_BUS_URL" | sed -E 's|^https?://([^:/]+).*|\1|')
+    if [ "$bus_host" != "127.0.0.1" ] && [ "$bus_host" != "localhost" ]; then
+      VICTORIA_URL="http://${bus_host}:8428/api/v1/import/prometheus"
+    fi
+  fi
+fi
+export VICTORIA_URL
+
 MAX_RETRIES=3
 RETRY_DELAY=2
-AGENT_NAME="${AGENT_NAME:-$(hostname)}"
 
 # ── Metric Collection ────────────────────────────────────────
 
