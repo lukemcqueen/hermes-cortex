@@ -867,8 +867,38 @@ def check_services(res):
     if out.strip() == "active":
       res.add("gbrain daemon", "PASS", "autopilot active (systemd)")
     else:
-      res.add("gbrain daemon", "WARN", "autopilot not active",
-          "Run: gbrain autopilot --install --repo ~/brain")
+      # Fallback: check if running via crontab (gbrain autopilot --install
+      # creates a crontab on machines without systemd user bus)
+      _cron_out = run_bg(["crontab", "-l"], timeout=5) or ""
+      if "autopilot-run.sh" in _cron_out:
+        res.add("gbrain daemon", "PASS", "autopilot active (crontab)")
+      else:
+        _hint = (
+            "Enable systemd user services and install gbrain autopilot:\\n"
+            "  1. loginctl enable-linger $USER\\n"
+            "  2. gbrain autopilot --install --repo ~/brain\\n"
+            "\\n"
+            "Or create ~/.config/systemd/user/gbrain-autopilot.service:\\n"
+            "[Unit]\\n"
+            "Description=GBrain Autopilot\\n"
+            "After=network-online.target\\n"
+            "StartLimitIntervalSec=300\\n"
+            "StartLimitBurst=10\\n"
+            "\\n"
+            "[Service]\\n"
+            "Type=simple\\n"
+            "ExecStart=%h/.gbrain/autopilot-run.sh\\n"
+            "Restart=always\\n"
+            "RestartSec=30\\n"
+            "StandardOutput=append:%h/.gbrain/autopilot.log\\n"
+            "StandardError=append:%h/.gbrain/autopilot.err\\n"
+            "\\n"
+            "[Install]\\n"
+            "WantedBy=default.target\\n"
+            "\\n"
+            "Then: systemctl --user daemon-reload && systemctl --user enable --now gbrain-autopilot"
+        )
+        res.add("gbrain daemon", "WARN", "autopilot not active", _hint)
 
   # Worker service conflict check
   if IS_LINUX:
