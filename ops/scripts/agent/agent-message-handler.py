@@ -749,27 +749,46 @@ def main():
 
         # Notification
         success = result_body.get("success", False)
-        error_msg = result_body.get("error", result_body.get("stderr", "unknown"))[:120]
+        # Check both 'errors' (plural) and 'error' (singular) for flexibility
+        err_list = result_body.get("errors", [])
+        err_single = result_body.get("error", "")
+        combined = err_list[:1] + ([err_single] if err_single else [])
+        if not combined:
+            combined = [result_body.get("stderr", "")]
+        error_msg = (combined[0] or "unknown")[:120]
         if success:
           log(f"✅ {subject} completed")
         else:
-          error_msg = result_body.get("error", result_body.get("stderr", "unknown"))[:120]
           log(f"❌ {subject} had issues: {error_msg}")
 
         # Telegram — only for known actionable subjects, not STATUS or DOCTOR
         if subject not in ("STATUS_REQUEST", "DOCTOR_REQUEST"):
           emoji = "✅" if success else "❌"
-          # Grab a preview from script output if available
+          # Build richer summary for UPDATE_RESULT (git SHA + doctor counts)
+          extra = ""
+          sha_after = result_body.get("git_sha_after", "")
+          doctor = result_body.get("doctor", {})
+          doc_sum = doctor.get("summary", {}) if isinstance(doctor, dict) else {}
+          doc_parts = []
+          if doc_sum.get("pass"):      doc_parts.append(f"P{doc_sum['pass']}")
+          if doc_sum.get("warn"):      doc_parts.append(f"W{doc_sum['warn']}")
+          if doc_sum.get("fail"):      doc_parts.append(f"F{doc_sum['fail']}")
+          if sha_after:
+            extra = f" SHA={sha_after}"
+          if doc_parts:
+            extra += f" doctor={'/'.join(doc_parts)}"
+          # Grab a preview from script output if available (only on failure, skip for clean UPDATEs)
           preview = ""
-          out = result_body.get("stdout", result_body.get("update_output", ""))
-          if out:
-            for line in out.strip().split("\n"):
-              clean = line.strip()
-              if clean and not clean.startswith("═") and not clean.startswith("━"):
-                preview = f" — {clean[:120]}"
-                break
+          if not success:
+            out = result_body.get("stdout", result_body.get("update_output", ""))
+            if out:
+              for line in out.strip().split("\n"):
+                clean = line.strip()
+                if clean and not clean.startswith("═") and not clean.startswith("━"):
+                  preview = f" — {clean[:120]}"
+                  break
           notify_telegram(
-            f"{emoji} [{AGENT_NAME}] {result_subject}: {'OK' if success else error_msg}{preview}",
+            f"{emoji} [{AGENT_NAME}] {result_subject}: {'OK' if success else error_msg}{extra}{preview}",
             f"{emoji} {AGENT_NAME}:{subject.split('_')[0]}"
           )
         return True
