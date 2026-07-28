@@ -1802,6 +1802,63 @@ def check_governance(res):
   else:
     res.add("Governance bypass", "PASS", "no bypass markers found")
 
+  # ── PENDING cycles ──
+  # Unscored cycles indicate begin_change was called but feedback_accept
+  # was never called. This is a governance leak.
+  _loop_db = CORTEX_HOME / "data" / "loop-governance.db"
+  _pending_count = 0
+  if _loop_db.exists():
+    try:
+      import sqlite3
+      _conn = sqlite3.connect(str(_loop_db))
+      _conn.row_factory = sqlite3.Row
+      _pending = _conn.execute(
+        "SELECT task_id, cycle_num, session_id, timestamp FROM loop_cycles WHERE decision='PENDING' LIMIT 10"
+      ).fetchall()
+      _pending_count = len(_pending)
+      if _pending_count:
+        def _fmt(r):
+          sid = r['session_id'] or 'unknown'
+          return f"{r['task_id']}#{r['cycle_num']} ({sid[:12]}...)"
+        _lines = [_fmt(r) for r in _pending]
+        res.add(f"PENDING cycles", "FAIL",
+            f"{_pending_count} unscored cycle(s): {', '.join(_lines[:5])}",
+            f"Score them via feedback_accept or cancel with feedback_override")
+      else:
+        res.add("PENDING cycles", "PASS", "no unscored cycles")
+      _conn.close()
+    except Exception as _exc:
+      res.add("PENDING cycles", "INFO", f"could not query: {_exc}")
+
+  # ── Orphaned lock files ──
+  # Lock files that exist but have no active MCP process.
+  _lock_files = sorted(state_dir.glob(".governance-*.json"))
+  if _lock_files:
+    # Check if any are actually stale (no MCP server running)
+    _mcp_running = bool(run_bg(["pgrep", "-f", "loop-gov-mcp"], timeout=5))
+    if not _mcp_running:
+      _names = ", ".join(f.name[:25] for f in _lock_files[:3])
+      res.add("Orphaned locks", "FAIL",
+          f"{len(_lock_files)} lock file(s) with no active MCP server: {_names}",
+          f"Clean: rm -f {' '.join(str(f) for f in _lock_files)}")
+    else:
+      res.add("Orphaned locks", "PASS", f"{len(_lock_files)} lock(s), MCP server active")
+  else:
+    res.add("Orphaned locks", "PASS", "no lock files")
+
+  # ── Skills gate presence ──
+  # Verify the enforcer has the skills-loaded gate (structural enforcement)
+  try:
+    _enforcer_init = (plugin_src / "__init__.py").read_text()
+    if "SKILLS_MARKER" in _enforcer_init:
+      res.add("Skills gate", "PASS", "enforcer blocks writes without .skills-loaded")
+    else:
+      res.add("Skills gate", "WARN",
+          "missing SKILLS_MARKER — skills gate not active",
+          "Pull latest hermes-cortex and run cortex-update.sh")
+  except (OSError, PermissionError):
+    _ = None
+
 
 def check_local_hooksPath_overrides(res):
   """7b. Scan all git repos for local core.hooksPath overrides that subvert the global setting.
