@@ -97,6 +97,44 @@ def _psql_json(query: str):
         return None, raw[:200]
 
 
+# ── Command Verification ────────────────────────────────────
+
+_EXPECTED_RESPONSE_MAP = {
+    "UPDATE_REQUEST": "UPDATE_RESULT",
+    "ROLLBACK_REQUEST": "ROLLBACK_RESULT",
+    "GIT_AUTH_CHECK": "GIT_AUTH_RESULT",
+    "DIAGNOSTIC_REQUEST": "DIAGNOSTIC_RESULT",
+    "EXEC": "EXEC_RESULT",
+}
+
+
+def _subject_to_expected_response(subject: str) -> str | None:
+    """Map a subject to its expected response, or None if fire-and-forget."""
+    return _EXPECTED_RESPONSE_MAP.get(subject, None)
+
+
+def _record_verification(
+    correlation_id: str,
+    agent: str,
+    command_type: str,
+    subject: str,
+    timeout_seconds: int = 600,
+) -> bool:
+    """Record a command dispatch in bus.command_verifications.
+
+    Returns True on success, False on DB error (send proceeds regardless).
+    """
+    expected = _subject_to_expected_response(subject)
+    expected_str = "NULL" if expected is None else f"'{expected}'"
+    q = f"SELECT bus.record_dispatch('{correlation_id}', '{agent}', " \
+        f"'{command_type}', '{subject}', {expected_str}, NULL, {timeout_seconds})"
+    result = _psql(q)
+    if result.startswith("ERROR") or not result:
+        print(f"  ⚠️  Verification recording failed (send still succeeded): {result[:100]}", file=sys.stderr)
+        return False
+    return True
+
+
 def _get_messages(queue: str, limit: int = 20) -> list[dict]:
     """Get pending messages from a queue (non-destructive read)."""
     raw = _psql(f"""
@@ -273,8 +311,18 @@ def cmd_send(cfg: dict, args: list):
         "body": body_text,
         "priority": "normal",
     }
+
+    # Add correlation_id for verifiability
+    corr_id = f"send-{uuid.uuid4().hex[:12]}"
+    body["correlation_id"] = corr_id
+
     result = _send_message(f"inbox_{agent}", body)
     print(result)
+
+    # Record verification (non-blocking — send succeeded regardless)
+    if not result.startswith("❌"):
+        msg_id = result.split("msg_id=")[-1].strip() if "msg_id=" in result else None
+        _record_verification(corr_id, agent, "SEND", subject)
 
 
 def cmd_status(cfg: dict, args: list):
@@ -812,6 +860,10 @@ def cmd_exec(cfg: dict, args: list):
     result = _send_message(queue, body)
     print(f"   {result}")
     print()
+
+    # Record verification (non-blocking — send succeeded regardless)
+    if not result.startswith("❌"):
+        _record_verification(corr_id, agent, "EXEC", "EXEC", 300)
 
     # Poll inbox_moses for the result
     moses_queue = f"inbox_{cfg['agent']}"

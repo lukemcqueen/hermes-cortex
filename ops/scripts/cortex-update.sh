@@ -163,6 +163,7 @@ register "ops/scripts/install-crons.sh"       "${CORTEX_DEPLOY_HOME}/scripts/ins
 register_orch "ops/scripts/orch-bus/orch-bus-message-tracker.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker.py"
 register_orch "ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker-alert.sh"
 register_orch "ops/scripts/orch-bus/orch-bus-forwarder.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-forwarder.py"
+register_orch "ops/scripts/fleet/fleet-command-verifier.py"   "${CORTEX_DEPLOY_HOME}/scripts/fleet-command-verifier.py"
 register "ops/scripts/install/install-orch-crons.sh"  "${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh"
 register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
 register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
