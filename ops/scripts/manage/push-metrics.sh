@@ -29,10 +29,18 @@ fi
 # ── Config ──────────────────────────────────────────────────
 AGENT_NAME="${AGENT_NAME:-$(hostname)}"
 
-# VictoriaMetrics URL — REQUIRED
+# ── Source environment ──────────────────────────────────────
+# Cron scheduler does not source hermes-cortex.env before running no_agent scripts.
+ENV_FILE="${HOME}/.hermes-cortex/hermes-cortex.env"
+if [ -f "$ENV_FILE" ]; then
+  # shellcheck source=/dev/null
+  set -a; source "$ENV_FILE"; set +a
+fi
+
+# VictoriaMetrics URL — optional; skip silently if not configured
 if [ -z "${VICTORIA_METRICS_URL:-}" ]; then
-  echo "[push-metrics] ERROR: VICTORIA_METRICS_URL not set — configure in hermes-cortex.env" >&2
-  exit 1
+  echo "[push-metrics] VICTORIA_METRICS_URL not set — metrics push disabled (this is optional)" >&2
+  exit 0
 fi
 VICTORIA_URL="$VICTORIA_METRICS_URL"
 export VICTORIA_URL
