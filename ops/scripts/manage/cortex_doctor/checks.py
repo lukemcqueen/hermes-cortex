@@ -860,23 +860,15 @@ def check_services(res):
     if '"PID"' in out:
       res.add("gbrain daemon", "PASS", "autopilot active (launchd)")
     else:
-      out2 = run_bg(["launchctl", "list", "com.gbrain.sync-watch"], timeout=5)
-      if '"PID"' in out2:
-        res.add("gbrain daemon", "PASS", "sync-watch active (launchd, legacy)")
-      else:
-        res.add("gbrain daemon", "WARN", "Neither autopilot nor sync-watch active",
-            "Run: bash ~/hermes-cortex/ops/scripts/install/install-gbrain-sync.sh")
+      res.add("gbrain daemon", "WARN", "autopilot not active",
+          "Run: gbrain autopilot --install --repo ~/brain")
   else:
     out = run_bg(["systemctl", "--user", "is-active", "gbrain-autopilot"], timeout=5)
     if out.strip() == "active":
       res.add("gbrain daemon", "PASS", "autopilot active (systemd)")
     else:
-      out2 = run_bg(["systemctl", "--user", "is-active", "com.gbrain.sync-watch"], timeout=5)
-      if out2.strip() == "active":
-        res.add("gbrain daemon", "PASS", "sync-watch active (systemd, legacy)")
-      else:
-        res.add("gbrain daemon", "WARN", "Neither autopilot nor sync-watch active",
-            "Run: bash ~/hermes-cortex/ops/scripts/install/install-gbrain-sync.sh")
+      res.add("gbrain daemon", "WARN", "autopilot not active",
+          "Run: gbrain autopilot --install --repo ~/brain")
 
   # Worker service conflict check
   if IS_LINUX:
