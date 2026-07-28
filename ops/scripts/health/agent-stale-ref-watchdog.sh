@@ -41,7 +41,7 @@ log ""
 log "--- Cortex registered scripts ---"
 REGISTER_CHECK=(
   "$HOME/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
-  "$HOME/hermes-cortex/ops/scripts/manage/stale-ref-watchdog.sh"
+  "$HOME/hermes-cortex/ops/scripts/health/agent-stale-ref-watchdog.sh"
   "$HOME/hermes-cortex/ops/scripts/health/agent-cron-quality-watchdog.py"
   "$HOME/hermes-cortex/ops/scripts/cron-failure-state.sh"
 )
