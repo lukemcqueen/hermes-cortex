@@ -337,6 +337,12 @@ register_orch "ops/scripts/orch-bus/orch-bus-readiness-check.py" "${CORTEX_DEPLO
 register_orch "ops/scripts/orch-bus/orch-bus-git-auth-check.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-git-auth-check.py"
 register_orch "ops/scripts/orch-bus/orch-clean-health-queue.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-clean-health-queue.py"
 register_orch "ops/scripts/orch-bus/orch-bus-generate-wrappers.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-generate-wrappers.py"
+register_orch "ops/scripts/orch-bus/orch-bus-audit-watchdog.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-audit-watchdog.py"
+register_orch "ops/scripts/orch-bus/orch-bus-recover-timeouts.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-recover-timeouts.sh"
+register_orch "ops/scripts/orch-bus/orch-bus-message-tracker.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker.py"
+register_orch "ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker-alert.sh"
+register_orch "ops/scripts/orch-bus/orch-bus-forwarder.py"       "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-forwarder.py"
+register_orch "ops/scripts/manage/stale-ref-watchdog.sh"         "${CORTEX_DEPLOY_HOME}/scripts/manage/stale-ref-watchdog.sh"
 register_orch "ops/scripts/orch-bus/orch-bus-test.py"            "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-test.py"
 
 # Fleet agent message handler (polls inbox for UPDATE_REQUEST etc.)
