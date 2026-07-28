@@ -1918,9 +1918,9 @@ def check_stale_deploys(res):
 
   for line in content.splitlines():
     line = line.strip()
-    if not line.startswith("register ") or line.startswith("#"):
+    if not (line.startswith("register ") or line.startswith("register_orch ")) or line.startswith("#"):
       continue
-    m = re.match(r'register\s+"([^"]+)"\s+"([^"]+)"', line)
+    m = re.match(r'register(?:_orch)?\s+"([^"]+)"\s+"([^"]+)"', line)
     if not m:
       continue
     src = m.group(1)
@@ -1928,6 +1928,11 @@ def check_stale_deploys(res):
     dest_str = dest_str.replace("${CORTEX_DEPLOY_HOME}", str(deploy_home))
     dest_str = dest_str.replace("${HOME}", str(Path.home()))
     dest = Path(dest_str)
+
+    # On non-orch hosts, skip register_orch entries (they don't deploy here)
+    if line.startswith("register_orch ") and AGENT_ROLE != "orchestrator":
+      continue
+
     destinations.add(dest)
 
     repo_src = Path.home() / "hermes-cortex" / src
