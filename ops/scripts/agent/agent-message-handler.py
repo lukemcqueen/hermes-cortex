@@ -63,6 +63,49 @@ STATE_DIR = HOME / ".hermes-cortex" / "state"
 STATE_FILE = STATE_DIR / "agent-message-state.json"
 STATE_DIR.mkdir(parents=True, exist_ok=True)
 
+# Agent labels file (created by cortex-agent-manager.py or manually)
+LABELS_FILE = HOME / ".hermes-cortex" / "agent-labels.json"
+
+
+def _load_agent_labels() -> dict:
+    """Load agent metadata labels from local file. Returns dict or {}."""
+    if LABELS_FILE.exists():
+        try:
+            raw = LABELS_FILE.read_text().strip()
+            if raw:
+                return json.loads(raw)
+        except (json.JSONDecodeError, OSError):
+            pass
+    return {}
+
+
+def _should_process(body: dict, labels: dict) -> tuple[bool, str]:
+    """Check if this message should be processed by this agent.
+    
+    Returns (should_process: bool, reason: str).
+    If target_labels or target_agents is present, only matching agents process.
+    If neither is present, all agents process (backward compatible).
+    """
+    target_agents = body.get("target_agents")
+    target_labels = body.get("target_labels", {})
+    
+    # If nothing specified, all agents process (backward compatible)
+    if not target_agents and not target_labels:
+        return True, ""
+    
+    # Check exact agent name match
+    if target_agents and AGENT_NAME in target_agents:
+        return True, "agent_name_match"
+    
+    # Check label match (ALL must match — AND logic)
+    if target_labels:
+        for key, value in target_labels.items():
+            if labels.get(key) != value:
+                return False, f"label_mismatch: {key}={labels.get(key, '<missing>')} != {value}"
+        return True, "label_match"
+    
+    return False, "no_match"
+
 
 def log(msg: str):
   ts = datetime.now().strftime("%H:%M:%S")
@@ -640,6 +683,14 @@ def main():
 
 
     subject = body.get("subject", "")
+
+    # Check if this message targets this agent (labels, agent names)
+    agent_labels = _load_agent_labels()
+    should_process, skip_reason = _should_process(body, agent_labels)
+    if not should_process:
+        log(f"Skipping {subject} — {skip_reason}")
+        archive_message(inbox_queue, msg_id)
+        return False
 
     # Notify pickup
     notify_telegram(

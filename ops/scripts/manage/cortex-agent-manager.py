@@ -170,6 +170,28 @@ def _create_queue(queue_name: str) -> bool:
         logger.warning("Queue creation failed for '%s': %s", queue_name, e)
         return False
 
+
+# ── Agent labels file ─────────────────────────────────────────
+
+
+def _write_agent_labels(agent_name: str, labels: dict) -> None:
+    """Write a local agent-labels.json for the handler to read during label checks.
+    
+    The labels file is written to the agent's CORTEX_HOME directory so
+    agent-message-handler.py can read it without bus access.
+    Labels are used for canary deployment targeting.
+    """
+    if not labels:
+        return
+    labels_path = CORTEX_HOME / "agent-labels.json"
+    try:
+        labels_path.write_text(json.dumps(labels, indent=2))
+        labels_path.chmod(0o644)
+        logger.info("Wrote agent labels to %s: %s", labels_path, labels)
+    except (IOError, OSError) as e:
+        logger.warning("Could not write agent labels file: %s", e)
+
+
 # ── Secrets storage ───────────────────────────────────────────
 
 
@@ -298,6 +320,10 @@ def cmd_add(args):
             )
         except Exception as e:
             logger.warning("Could not update bus labels: %s", e)
+    
+    # 8b. Write local labels file for agent label checks
+    _write_agent_labels(agent_name, labels)
+    
     _store_secret(agent_name, secret_data)
 
     # 9. Print config snippet
