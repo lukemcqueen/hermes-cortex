@@ -1718,10 +1718,11 @@ main() {
         warn "🚫 Bus server process (agent_bus) detected on non-orch agent"
         _warned=true
       fi
-      if systemctl --user is-active gbrain-autopilot &>/dev/null 2>&1; then
+      if systemctl --user is-active gbrain-autopilot &>/dev/null 2>&1 && [[ "${GBRAIN_ALLOW_NON_ORCH}" != "true" ]]; then
         warn "🚫 gbrain autopilot running on non-orch agent — remove with:"
         warn "    systemctl --user stop gbrain-autopilot"
         warn "    systemctl --user disable gbrain-autopilot"
+        warn "  To allow gbrain on this host: set GBRAIN_ALLOW_NON_ORCH=true in ${REPO_DIR}/.env"
         _warned=true
       fi
       if $_warned; then
