@@ -29,7 +29,7 @@ fi
 VM_URL="${VICTORIA_METRICS_URL:-}"
 if [ -z "$VM_URL" ]; then
   echo "[setup-push-metrics] ⚠️  VICTORIA_METRICS_URL not set — cannot verify reachability"
-  echo "[setup-push-metrics] Set it in hermes-cortex.env or ~/.hermes/.env"
+  echo "[setup-push-metrics] Set it in hermes-cortex.env (~/.hermes-cortex/hermes-cortex.env)"
   echo "[setup-push-metrics] Example: VICTORIA_METRICS_URL=https://domain:13005/api/v1/import/prometheus"
   exit 0
 fi
