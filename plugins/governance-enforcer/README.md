@@ -557,6 +557,37 @@ After calling `begin_change()`, the same tool should **pass**.
 
 ---
 
+## Cron / Cold-Session Bootstrap
+
+Cron sessions (detected by `cron_` prefix in the session ID) start with no
+`.skills-loaded` marker. The enforcer blocks all write tools until skills are
+loaded — but cron agents may not have `skill_view()` in their tool registry,
+creating a bootstrapping deadlock.
+
+**Solution:** The `_on_session_start` hook auto-creates `.skills-loaded` for
+cron sessions by:
+
+1. Reading `~/.hermes-cortex/skills.yaml` for the `always` section
+2. Verifying each of the 8 required skills has a `SKILL.md` on disk under
+   `~/.hermes/skills/`
+3. If all skills are present, calling `_auto_create_skills_marker()` with the
+   session ID — same function used when all `skill_view()` calls succeed
+
+This means the cron agent's first tool call is **not blocked** by the skills
+gate, because the marker was created during session initialization (before
+any tool call). The agent can then proceed to load skills for content.
+
+**Security properties:**
+- Only cron sessions (`cron_*` session IDs) get the bootstrap — interactive
+  sessions still require `skill_view()` calls
+- The bootstrap validates all 8 required skills exist on disk before creating
+  the marker
+- The marker content includes the session ID (same verification as interactive)
+- Missing skills.yaml or missing SKILL.md files → bootstrap skipped → cron
+  session is blocked (correct behavior for corrupted environments)
+
+---
+
 ## Writing Your Own pre_tool_call Plugin
 
 To write a custom policy plugin (e.g. block all `docker run` commands):

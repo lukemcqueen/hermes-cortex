@@ -441,12 +441,93 @@ def _is_write_tool(tool_name: str, args: Dict[str, Any]) -> bool:
 
 
 def _on_session_start(session_id: str, **kwargs):
-    """Write session marker at session start so MCP finds it before begin_change."""
+    """Write session marker at session start so MCP finds it before begin_change.
+
+    For cron/automated sessions (session_id starts with 'cron_'), also
+    auto-create the .skills-loaded marker if the 8 required always-section
+    skills exist on disk. This breaks the bootstrapping deadlock where cron
+    sessions can't load skills because all tools are blocked.
+
+    Interactive sessions are unaffected — they still require skill_view()
+    calls to create the marker, maintaining full governance security.
+    """
     try:
         if session_id:
             _write_session_marker(session_id)
+
+            # ── Cron bootstrap: auto-create .skills-loaded ──────────────
+            # Cron sessions start fresh with no skills-loaded marker. The
+            # enforcer blocks all write tools until skills are loaded, but
+            # cron agents may not have skill_view() in their tool registry.
+            # This bootstrap reads the always-section skills from disk and
+            # pre-creates the marker, so cron agents can proceed normally.
+            if session_id.startswith("cron_") and not SKILLS_MARKER.exists():
+                _bootstrap_cron_skills(session_id)
     except Exception:
         log.error("on_session_start hook crashed:\n%s", traceback.format_exc())
+
+
+def _bootstrap_cron_skills(session_id: str) -> bool:
+    """For cron sessions: verify always-section skills exist on disk and
+    auto-create the .skills-loaded marker.
+
+    Reads skills.yaml to find the 'always' section, then verifies each
+    skill has a SKILL.md file somewhere under ~/.hermes/skills/. If all
+    required skills are found on disk, creates the marker so the cron
+    agent can proceed without needing to call skill_view().
+
+    Returns True if marker was created, False if skills are incomplete
+    (cron agent will be blocked by the enforcer — but this is expected
+    for a corrupted/bootstrapping environment).
+    """
+    import yaml
+
+    skills_yaml = Path.home() / ".hermes-cortex" / "skills.yaml"
+    if not skills_yaml.exists():
+        log.warning("Cron bootstrap: skills.yaml not found at %s", skills_yaml)
+        return False
+
+    try:
+        with open(skills_yaml) as f:
+            manifest = yaml.safe_load(f)
+    except Exception as e:
+        log.warning("Cron bootstrap: cannot parse skills.yaml: %s", e)
+        return False
+
+    always_skills = manifest.get("always", []) if manifest else []
+    always_names = {s.get("name", "") for s in always_skills if isinstance(s, dict)}
+
+    # Must contain all required skills
+    if not _REQUIRED_SKILLS.issubset(always_names):
+        missing = _REQUIRED_SKILLS - always_names
+        log.warning(
+            "Cron bootstrap: skills.yaml missing required skills: %s", missing
+        )
+        return False
+
+    # Verify each required skill has a SKILL.md on disk
+    skills_root = Path.home() / ".hermes" / "skills"
+    for skill_name in _REQUIRED_SKILLS:
+        found = False
+        if skills_root.exists():
+            for skill_dir in skills_root.rglob(f"*/{skill_name}/SKILL.md"):
+                found = True
+                break
+        if not found:
+            log.warning(
+                "Cron bootstrap: SKILL.md not found for '%s' under %s",
+                skill_name, skills_root,
+            )
+            return False
+
+    # All skills verified — create marker
+    _auto_create_skills_marker(session_id)
+    log.info(
+        "Cron bootstrap: .skills-loaded auto-created for session %s "
+        "(verified %d always-section skills on disk)",
+        session_id, len(_REQUIRED_SKILLS),
+    )
+    return True
 
 
 def register(ctx):
@@ -517,20 +598,20 @@ def register(ctx):
                     if not _is_terminal_write(args):
                         return None
 
-            # ── Skills gate: blocks ALL write tools until skills loaded ──
+            # ── Skills gate: blocks WRITE tools until skills loaded ──
             # Uses content verification — bare `touch .skills-loaded` creates
             # an empty file that fails _check_skills_loaded_marker().
-            # Only skill_view and skills_list are exempt; terminal is NOT
-            # exempt here (read-only terminal is handled above).
+            # Read-only tools (read_file, search_files, session_search, cron list/run,
+            # web_search, vision_analyze, etc.) pass through — they can't modify state.
             # The enforcer auto-creates the marker when all 8 skills have
             # been loaded via actual skill_view() calls — no touch needed.
             if not _check_skills_loaded_marker(hermes_session_id):
-                if tool_name not in ("skill_view", "skills_list"):
+                if _is_write_tool(tool_name, args):
                     return {
                         "action": "block",
                         "message": (
-                            "SKILLS MUST BE LOADED FIRST\n\n"
-                            "Tool '" + tool_name + "' blocked — always-section skills not loaded.\n\n"
+                            "WRITE TOOLS BLOCKED — SKILLS MUST BE LOADED FIRST\n\n"
+                            "Tool '" + tool_name + "' modifies state — always-section skills not loaded.\n\n"
                             "Session-start sequence:\n"
                             "  1. skill_view('task-start')        # bundles the complete sequence\n"
                             "  2. skill_view('agent-flow')        # workflow router\n"
@@ -542,6 +623,8 @@ def register(ctx):
                             "  8. skill_view('agent-contract')    # execution rules\n\n"
                             "The marker is auto-created when all 8 are loaded.\n"
                             "Do NOT try to touch .skills-loaded directly — it will be rejected.\n\n"
+                            "Read-only tools (read_file, search_files, session_search,\n"
+                            "cron action=list/run, web tools, vision) ARE allowed.\n\n"
                             "This enforcement is at ~/.hermes/plugins/governance-enforcer/.\n"
                             "I cannot bypass or disable this.\n"
                         ),
