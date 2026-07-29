@@ -93,7 +93,7 @@ def detect_nginx_paths():
 
 # ── SSL cert discovery ───────────────────────────────────────────────
 
-def find_letsencrypt_certs(domain=None):
+def find_letsencrypt_certs(domain=""):
     """Search Let's Encrypt live directories for fullchain.pem + privkey.pem.
     If domain is given, look only for that domain.
     Returns (cert_path, key_path) or (None, None).
@@ -118,9 +118,13 @@ def find_letsencrypt_certs(domain=None):
                     if d.is_dir():
                         candidates.append(d)
                 except PermissionError:
-                    continue
+                    # Skip inaccessible paths — try next candidate
+                    pass
         except FileNotFoundError:
+            # LE live directory doesn't exist — no certs to discover
             return None, None
+    if not candidates:
+        return None, None
 
     for d in candidates:
         cert = d / "fullchain.pem"
@@ -135,7 +139,8 @@ def find_letsencrypt_certs(domain=None):
                 except PermissionError:
                     # Can't stat but paths exist — trust them (nginx reads as root)
                     return str(cert), str(key)
-                except OSError:
+                except OSError as _:
+                    # Stat failed — skip to next candidate
                     continue
             else:
                 # Fallback: check by absolute symlink path (LE live/ -> archive/)
@@ -145,15 +150,17 @@ def find_letsencrypt_certs(domain=None):
                     if alt_cert.is_file() and alt_key.is_file():
                         return str(cert), str(key)
                 except (PermissionError, OSError):
+                    # Archive path inaccessible — try next
                     continue
         except PermissionError:
+            # No access to candidate directory — try next
             continue
     return None, None
 
 
-def find_self_signed_certs(user_home=None):
+def find_self_signed_certs(user_home=""):
     """Search ~/certs/ for self-signed cert.pem / privkey.pem."""
-    home = Path(user_home) if user_home else Path.home()
+    home = Path(user_home).expanduser() if user_home else Path.home()
     cert_dir = home / "certs"
     if not cert_dir.is_dir():
         return None, None
@@ -183,7 +190,7 @@ def find_system_certs():
     return None, None
 
 
-def discover_ssl_certs(domain=None, explicit_cert=None, explicit_key=None, user_home=None):
+def discover_ssl_certs(domain="", explicit_cert=None, explicit_key=None, user_home=""):
     """Discover SSL certificates. Returns (cert_path, key_path) or (None, None)."""
     # Priority 1: Explicit paths from env/args
     # Use explicit paths even if we can't stat them (e.g. root-only LE certs).
@@ -386,16 +393,17 @@ def main():
                     print(f"  ✓ Preserved SSL cert: {cert_path}")
                     print(f"  ✓ Preserved port prefix: {port_prefix}xxx")
         except (OSError, PermissionError):
-            pass
+            # Live config unreadable — cert discovery below handles this
+            print("  ○ Could not read live config — certs will be auto-discovered")
 
     # ── SSL discovery (only if not preserved) ──
     if not cert_path:
-        domain = args.domain or os.environ.get("CORTEX_SSL_DOMAIN")
+        domain = args.domain or os.environ.get("CORTEX_SSL_DOMAIN") or ""
         cert_path, key_path = discover_ssl_certs(
             domain=domain,
             explicit_cert=args.cert,
             explicit_key=args.key,
-            user_home=cortex_home,
+            user_home=str(cortex_home),
         )
 
     # ── Process template ──
