@@ -192,7 +192,7 @@ Group blocks by frequency:
 
 Do not use tables, borders, or rich formatting. Just the raw columns.
 
-## Cron delivery modes — critical lesson
+## Cron Delivery Modes — Critical Lesson
 
 **Never change the engine when the complaint is about delivery.**
 
@@ -201,6 +201,70 @@ If a cron's output is going to the wrong place or producing too much noise:
 - **Mode** (`no_agent` ↔ LLM-driven) — this is about whether the task needs AI reasoning, not about delivery
 
 See `references/cron-delivery-pipeline.md` for the full diagnostic checklist and [SILENT] protocol rules.
+
+## Skill Attachments — Which Skill for Which Cron
+
+Skills load workflow context so the prompt can be short. Every LLM-driven cron
+should have a skill attached if one exists for its domain. This saves 30-70%
+of input tokens per run.
+
+### Cron-to-Skill Reference Table
+
+| Cron type | Best skill(s) | Best toolsets |
+|-----------|---------------|---------------|
+| `agent-bus-*` | `agent-inbox` | `terminal` |
+| `agent-inbox-*` | `agent-inbox-automation` | `terminal` |
+| `agent-fixer-*` | `auto-remediation` | `terminal, file, web` |
+| `orch-skill-lifecycle` | `orch-skill-lifecycle` | `terminal, file, web` |
+| `orch-skill-evaluate` | `skill-vetting` | `terminal, file` |
+| `agent-weekly-loop-eval` | `loop-governance` | `terminal, file` |
+| `agent-daily-soul-refinement` | `soul-refinement` | `terminal, file` |
+| `agent-agents-md-prune-apply` | `documentation-scope` | `terminal, file` |
+| `agent-memory-pruning` | (self-contained prompt) | `terminal, file` |
+| `local-daily-sustainability-briefing` | `content-production`, `content-humanizer` | `web, terminal, file` |
+| `agent-daily-bible-reading` | `agent-daily-bible-reading` | (none) |
+| All `no_agent=True` | (no_agent) | (no_agent) |
+
+### How to attach
+
+```
+cronjob action='update' \
+  job_id='<id>' \
+  skills='["skill-name"]'
+```
+
+Then patch the source in `install-crons.sh` or `install-orch-crons.sh`:
+```
+create_cron "agent-bus-workday" "0 9-17 * * 1-5" \
+  "" \
+  "<prompt>" \
+  "agent-inbox"  ← $5 = skill name
+  "terminal"     ← $6 = toolsets (doc only — set via API)
+  "origin" ...
+```
+
+### enabled_toolsets — Constrain What Tools a Cron Sees
+
+Every toolset you remove eliminates its JSON schema from every prompt turn.
+A cron that only reads files and runs terminal commands doesn't need
+web_search, browser, or delegate_task schemas. Saves 30-50% per run.
+
+```
+cronjob action='update' \
+  job_id='<id>' \
+  enabled_toolsets='["terminal","file"]'
+```
+
+Note: The `create_cron` function in install scripts collects the toolsets
+parameter ($6) but does NOT pass it via the CLI (the CLI doesn't support
+`--enabled-toolsets`). Always set toolsets via `cronjob action='update'`.
+
+### Cost Impact
+
+For 9 LLM-driven crons updated July 2026:
+- Skills attached → 30-70% prompt reduction
+- enabled_toolsets constrained → 30-50% schema reduction
+- Total: 50-85% token savings per LLM cron run
 
 ## Cross-profile cron management
 
