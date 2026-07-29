@@ -59,6 +59,13 @@ Document in the commit message why none of the existing resources fit.
 - Always search ops/scripts/ first. This is the canonical location for installed scripts.
 - Always check skills_list(). If a skill already covers the workflow, use it.
 - Always check cronjob list. Existing cron patterns may already solve the problem.
+- **Never trust a single zero-result `search_files`.** `search_files(target="files")` matches against **file basenames only** — not directory names or full paths. A search for `survey-before-action` returns 0 even when the directory `survey-before-action/` exists, because no file is named `survey-before-action`. When you get 0 results, ALWAYS verify with a second method before concluding the resource doesn't exist. Use ONE of:
+  - `ls <directory>` or `find <directory> -name "<pattern>"` via `terminal`
+  - `search_files(pattern="*", file_glob="SKILL.md", path="<dirname>")` — narrow the search area
+  - `git ls-tree -r HEAD --name-only | grep <pattern>` for files in git but not on disk
+  - `git log --oneline --all -- "**/<pattern>*"` for files that exist in git history
+  - `ls -d <path>/<pattern> 2>/dev/null` for directory existence checks
+  Failing to verify a zero-result means you WILL make false claims about what does and doesn't exist.
 - If no match found: note it mentally. Do NOT skip this step next time.
 
 ---
