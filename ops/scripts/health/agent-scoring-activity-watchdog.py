@@ -28,7 +28,7 @@ THRESHOLDS = {
     14: 1,  # by 2pm: at least 1 change scored
     20: 2,  # by 8pm: at least 2 changes scored
 }
-COST_WARNING_DAILY = 0.25  # $0.25/day triggers cost alert
+COST_WARNING_DAILY = 0.75  # $0.75/day triggers cost alert
 
 
 def main():
