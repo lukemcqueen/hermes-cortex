@@ -1,5 +1,5 @@
 ---
-name: change-checklist
+name: change-checklist-template
 version: 1.0.0
 category: governance
 description: "Mandatory verification checklist that every agent MUST load before closing a governance cycle (end_change). Referenced by AGENTS.md as a pre-close requirement."
