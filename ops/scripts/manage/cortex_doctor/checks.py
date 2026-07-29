@@ -2227,6 +2227,24 @@ def check_stale_skills(res):
   else:
     res.add("Stale skills: missing", "PASS", "all repo skills are deployed")
 
+  # ── 3. Ambiguous skill names (same name in multiple categories) ──
+  def _find_ambiguous(indexes, label):
+    """Detect when the same skill name appears in multiple categories."""
+    name_cats = {}
+    for (cat, name) in indexes:
+      name_cats.setdefault(name, []).append(cat)
+    ambiguous = {name: cats for name, cats in name_cats.items() if len(cats) > 1}
+    if ambiguous:
+      details = "; ".join(f"{name} → {', '.join(cats)}" for name, cats in sorted(ambiguous.items()))
+      res.add(f"Stale skills: ambiguous names ({label})", "WARN",
+          f"Skill name(s) exist in multiple categories: {details}",
+          f"Consolidate into one category: rm -rf ~/.hermes/skills/<keep-cat>/<name> (delete duplicate).")
+    else:
+      res.add(f"Stale skills: ambiguous names ({label})", "PASS", "no duplicate skill names")
+
+  _find_ambiguous(deployed.keys(), "deployed")
+  _find_ambiguous(repo_sk.keys(), "repo")
+
 
 def check_deploy_checksums(res):
   """Check MD5 checksums of deployed files vs repo source across ALL mappings.

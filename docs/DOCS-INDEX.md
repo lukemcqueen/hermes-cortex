@@ -67,8 +67,9 @@ A lightweight map of all project documents. Files are grouped by topic.
 ## Operations
 
 | Doc | Description |
-| `docs/new-harness.md` | Task Harness architecture proposal — deterministic task control: state machine, lease, interruption, completion gates |
-| `docs/research/new_harness/` | Harness spec research — consolidated v2 requirements, Moses/Esther specs, ChatGPT draft |
+|| `docs/new-harness.md` | Task Harness architecture proposal — deterministic task control: state machine, lease, interruption, completion gates |
+|| `docs/harness-features-spec.md` | **Harness features spec** — task state machine, MCP server, completion gates, adversarial tests, priority hierarchy |
+|| `docs/research/new_harness/` | Harness spec research — consolidated v2 requirements, Moses/Esther specs, ChatGPT draft |
 | `docs/loop-governance-reference.md` | Governance reference — MCP tools vs CLI, scoring guidelines, enforcement layers (no structural override — allow_tool_override not in production config) |
 | `docs/continuous-skill-suggestion.md` | **Design doc** — structural skill reminders during edits. After fixed enforcer bootstrap gate, the next gap: agents don't reload skills mid-task. Touch-trace writer + end_change suggestions |
 | `mcp-servers/loop-gov-mcp.py` | Harness v3 governance MCP server — state machine, ledger, issues, interruption protocol, completion gates |
