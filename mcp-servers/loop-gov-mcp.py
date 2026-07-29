@@ -107,6 +107,52 @@ GOVERNANCE_STATE_DIR = HOME / ".hermes-cortex" / "state"
 DEFAULT_TTL = 3600  # 1 hour
 
 
+# ── Dogfood Gate ─────────────────────────────────────────────
+# Structural enforcement: begin_change checks if the deployed governance
+# plugin matches the repo source. If not, the agent pushed code but didn't
+# run cortex-update.sh to deploy it locally. Block until they dogfood.
+
+import hashlib as _dogfood_hashlib
+
+GOVERNANCE_REPO_PATH = HOME / "hermes-cortex" / "plugins" / "hermes-governance-enforcer" / "__init__.py"
+GOVERNANCE_DEPLOY_PATH = HOME / ".hermes" / "plugins" / "governance-enforcer" / "__init__.py"
+
+
+def _require_dogfood() -> Optional[str]:
+    """Check if deployed plugin matches repo source.
+
+    Returns None if everything matches (dogfood is up to date).
+    Returns an error string blocking the change if dogfood is needed.
+    """
+    repo_file = GOVERNANCE_REPO_PATH
+    deploy_file = GOVERNANCE_DEPLOY_PATH
+
+    if not repo_file.exists() or not deploy_file.exists():
+        return None  # Can't check either path — allow
+
+    try:
+        repo_hash = _dogfood_hashlib.sha256(repo_file.read_bytes()).hexdigest()
+        deploy_hash = _dogfood_hashlib.sha256(deploy_file.read_bytes()).hexdigest()
+
+        if repo_hash != deploy_hash:
+            return (
+                "❌  DOGFOOD REQUIRED\n\n"
+                "    You pushed code to the repo but haven't deployed it locally.\n"
+                "    The governance plugin at ~/.hermes/plugins/governance-enforcer/ differs from\n"
+                "    the repo source (the commit you just pushed).\n\n"
+                "    Dogfooding means: deploy AND test.\n"
+                "      1. bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all\n"
+                "      2. Run the changed code path — verify it works with actual output\n"
+                "      3. Run doctor, fix every issue it reports\n"
+                "      4. Run doctor again — confirm clean before claiming anything\n\n"
+                "    Then call begin_change again.\n"
+                "    This enforcement is structural — cannot be bypassed."
+            )
+    except (OSError, PermissionError, FileNotFoundError):
+        pass  # If files can't be read, allow through
+    return None
+
+
 # ── Session ID ───────────────────────────────────────────────
 
 def get_session_id() -> str:
@@ -786,6 +832,11 @@ def _begin_change(args: dict) -> CallToolResult:
         return CallToolResult(content=[TextContent(type="text", text="Error: TTL must be at least 60 seconds")])
     if ttl > 86400:
         return CallToolResult(content=[TextContent(type="text", text="Error: TTL cannot exceed 86400 seconds (24 hours)")])
+
+    # ── Dogfood gate ──
+    dogfood_msg = _require_dogfood()
+    if dogfood_msg:
+        return CallToolResult(content=[TextContent(type="text", text=dogfood_msg)])
 
     session_id = get_session_id()
     now_iso = _now_iso()

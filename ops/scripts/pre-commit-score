@@ -69,6 +69,35 @@ if [[ ! -f "$ENFORCER_PLUGIN" ]]; then
   exit 1
 fi
 
+# ── Dogfood gate: deployed must match repo before commit ─────
+# If the agent pushed code without running cortex-update.sh to deploy
+# it locally and test it, block the commit. The agent must dogfood
+# (deploy + test) before committing to main.
+DOGFOOD_REPO="${HOME}/hermes-cortex/plugins/hermes-governance-enforcer/__init__.py"
+DOGFOOD_DEPLOY="${HOME}/.hermes/plugins/governance-enforcer/__init__.py"
+if [[ -f "$DOGFOOD_REPO" && -f "$DOGFOOD_DEPLOY" ]]; then
+  REPO_HASH=$(sha256sum "$DOGFOOD_REPO" | cut -d' ' -f1)
+  DEPLOY_HASH=$(sha256sum "$DOGFOOD_DEPLOY" | cut -d' ' -f1)
+  if [[ "$REPO_HASH" != "$DEPLOY_HASH" ]]; then
+    echo ""
+    echo "❌  DOGFOOD REQUIRED BEFORE COMMIT"
+    echo ""
+    echo "    The governance enforcer plugin in the repo differs from the deployed"
+    echo "    version at ~/.hermes/plugins/governance-enforcer/."
+    echo ""
+    echo "    Dogfooding means: deploy AND test before committing."
+    echo "      1. bash ops/scripts/cortex-update.sh --force-all"
+    echo "      2. Run the changed code path — verify it works with actual output"
+    echo "      3. Run doctor, fix every issue it reports"
+    echo "      4. Run doctor again — confirm clean"
+    echo ""
+    echo "    Then commit again."
+    echo "    This enforcement is structural — cannot be bypassed."
+    echo ""
+    exit 1
+  fi
+fi
+
 # ── Orchestrator-only paths guard ──────────────────────────
 # Only orchestrator agents (moses, esther) may modify these paths.
 # Non-orchestrators: commit changes from an orchestrator agent instead.
