@@ -42,8 +42,6 @@ TARGETS=(
   "${REAL_HOME}/.hermes-cortex/scripts/pre-push-pull"
   "${REAL_HOME}/.hermes-cortex/scripts/post-commit-audit"
   "${REAL_HOME}/.hermes-cortex/scripts/post-push-audit"
-  # Repo source — git mv carries chattr +i; include so sudo unlock works
-  "${REAL_HOME}/hermes-cortex/plugins/governance-enforcer/__init__.py"
 )
 
 _lock_file() {
