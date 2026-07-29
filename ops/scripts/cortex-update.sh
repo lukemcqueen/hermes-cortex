@@ -13,6 +13,24 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
+# ── Bash version check — macOS ships bash 3.2 (no -A, no **) ──
+# Homebrew installs bash 4+ at /opt/homebrew/bin/bash (arm64) or
+# /usr/local/bin/bash (x86_64). If running under old bash on macOS,
+# re-exec with brew bash.
+if [[ -z "${BASH_VERSINFO[*]:-}" || "${BASH_VERSINFO[0]:-0}" -lt 4 ]]; then
+  if [[ "$(uname -s 2>/dev/null || true)" == "Darwin" ]]; then
+    for brew_bash in /opt/homebrew/bin/bash /usr/local/bin/bash; do
+      if [[ -x "$brew_bash" ]]; then
+        exec "$brew_bash" "$0" "$@"
+      fi
+    done
+  fi
+  echo "ERROR: cortex-update.sh requires bash >= 4.0 (found bash ${BASH_VERSION:-unknown})."
+  echo "       On macOS: brew install bash"
+  echo "       On Linux: install bash via your package manager"
+  exit 1
+fi
+
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BOLD='\033[1m'; CYAN='\033[0;36m'; RESET='\033[0m'
 
