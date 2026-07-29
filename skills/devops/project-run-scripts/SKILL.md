@@ -93,7 +93,7 @@ Every project with Alembic migrations MUST have these two files:
 Copy this script from the skill's `scripts/` directory:
 
 ```bash
-cp $(dirname $(skill_view name=project-run-scripts file_path=scripts/check-alembic-heads.py 2>/dev/null || echo "$HOME/.hermes/skills/software-development/project-run-scripts/scripts/check-alembic-heads.py"))/*.py scripts/
+cp $(dirname $(skill_view name=project-run-scripts file_path=scripts/check-alembic-heads.py 2>/dev/null || echo "$HOME/.hermes/skills/devops/project-run-scripts/scripts/check-alembic-heads.py"))/*.py scripts/
 ```
 
 The script uses `re.DOTALL` to correctly parse multiline `down_revision` tuples
@@ -232,7 +232,7 @@ Every `./run` follows this structure:
 
 ## Canonical Template (replaces templates/run.sh)
 
-The canonical template is at `$HERMES_HOME/skills/software-development/project-run-scripts/templates/run.sh` — it is the definitive starting point for every new project. Customize: PROJECT_ROOT paths, service names, env var defaults, test runner commands.
+The canonical template is at `$HERMES_HOME/skills/devops/project-run-scripts/templates/run.sh` — it is the definitive starting point for every new project. Customize: PROJECT_ROOT paths, service names, env var defaults, test runner commands.
 
 ## Reference: Multi-Repo Audit
 

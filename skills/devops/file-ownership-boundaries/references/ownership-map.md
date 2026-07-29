@@ -23,7 +23,7 @@ grep -q "hermes-cortex" <<< "$filepath" && echo "OURS" || echo "CHECK FURTHER"
 - `~/.hermes/skills/software-development/reasoning-patterns/*`
 - `~/.hermes/skills/software-development/reflexion-check/*`
 - `~/.hermes/skills/software-development/agent-contract/*`
-- `~/.hermes/skills/software-development/survey-before-action/*`
+- `~/.hermes/skills/survey-before-action/*`
 - `~/.hermes/skills/software-development/change-checklist/*`
 
 ## Edit Freely (Our Skills)

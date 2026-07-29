@@ -221,7 +221,7 @@ See docs/templates/AGENTS-loop-governance.md for the current workflow.
 
 ## Related
 
-- [Adoption Enforcement (loop-governance skill)](../skills/software-development/loop-governance/SKILL.md#section-adoption-enforcement) — the four-layer enforcement model
+- [Adoption Enforcement (loop-governance skill)](../skills/devops/loop-governance/SKILL.md#section-adoption-enforcement) — the four-layer enforcement model
 - `ops/scripts/pre-commit-score` — the hook script
 - `mcp-servers/loop-gov-mcp.py` — the primary enforcer MCP server
 - `ops/scripts/cortex-update.sh` — deploys the hook via `install_precommit_hook()`

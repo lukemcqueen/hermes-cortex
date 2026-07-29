@@ -94,7 +94,7 @@ similarity (>0.75), +1 boost. This means scoring improves as the cache grows.
 The scorer module lives at `scripts/loop_scorer.py` in this skill directory (underscore so Python can import it directly). Run a demo from any directory:
 
 ```bash
-python3 ~/.hermes/skills/software-development/loop-governance/scripts/loop_scorer.py
+python3 ~/.hermes/skills/devops/loop-governance/scripts/loop_scorer.py
 ```
 
 Import the functions directly:
@@ -511,7 +511,7 @@ A weekly analysis pipeline (`loop_evaluator.py`) reads the loop governance DB an
 
 ```bash
 # Full report
-python3 ~/.hermes/skills/software-development/loop-governance/scripts/loop_evaluator.py
+python3 ~/.hermes/skills/devops/loop-governance/scripts/loop_evaluator.py
 
 # JSON output (for programmatic consumption)
 python3 loop_evaluator.py --json
