@@ -7,7 +7,7 @@ description: >-
   all bus tests should use the agent-facing path, not admin shortcuts.
 version: 1.0.0
 category: devops
-author: Hermes Cortex / Hermes Cortex
+author: Hermes Cortex
 platforms: [linux]
 ---
 

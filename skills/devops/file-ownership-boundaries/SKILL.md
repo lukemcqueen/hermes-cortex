@@ -58,7 +58,7 @@ Skills in `~/.hermes/skills/` come from two places. Know which is which:
 
 **Hermes Agent upstream skills (do NOT edit):** Any skill at `~/.hermes/hermes-agent/skills/` that does NOT have a matching source in `~/hermes-cortex/skills/`. This includes all skills in `apple/`, `creative/`, `email/`, `github/`, `media/`, `note-taking/`, `productivity/`, `research/`, `smart-home/`, `social-media/`, `software-development/spike`, and others shipped by upstream.
 
-**Our skills (edit freely):** All skills under `~/hermes-cortex/skills/<category>/<name>/`, including those that share names with Hermes defaults (we customized them — `root-cause-debugging`, `survey-before-action`). Skills with `author: Hermes Cortex` or `author: Moses` in frontmatter are ours.
+**Our skills (edit freely):** All skills under `~/hermes-cortex/skills/<category>/<name>/`, including those that share names with Hermes defaults (we customized them — `root-cause-debugging`, `survey-before-action`). Skills with `author: Hermes Cortex` in frontmatter are ours.
 
 **Name collisions:** The only Hermes upstream skill that shares a name with ours is `root-cause-debugging` — our v2.0.0 is customized (6-phase vs upstream's 4-phase), being renamed to `root-cause-debugging`.
 
@@ -66,7 +66,7 @@ Skills in `~/.hermes/skills/` come from two places. Know which is which:
 - Anything in `~/hermes-cortex/skills/<category>/<name>/`
 - Anything in `~/hermes-cortex/ops/scripts/`
 - Any skill WHERE `skill_manage(action='create')` was called (agent-created)
-- Skills with `author: Moses` or our team's author in frontmatter
+- Skills with `author: Hermes Cortex in frontmatter
 
 ## The Deployed Copy Trap
 

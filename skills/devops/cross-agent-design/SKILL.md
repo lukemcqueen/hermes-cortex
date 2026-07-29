@@ -8,7 +8,7 @@ description: >-
   processes it.
 version: 1.0.0
 category: devops
-author: Hermes Cortex (Hermes Cortex)
+author: Hermes Cortex
 created_from_session: agent-bus-architecture-survey
 related_skills:
   - survey-before-action

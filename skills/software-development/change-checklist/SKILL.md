@@ -3,7 +3,7 @@ name: change-checklist
 version: 2.0.0
 category: software-development
 description: "Mandatory pre-ship verification before calling end_change(). Covers Phase 0 survey, test, multi-OS, multi-role, docs, final verification, and reflexion. Every governance cycle must run this before closing."
-author: Hermes Cortex (Hermes Cortex)
+author: Hermes Cortex
 license: MIT
 platforms: [linux, macos]
 metadata:

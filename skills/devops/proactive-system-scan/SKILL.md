@@ -7,7 +7,7 @@ description: >-
   opportunities when the user gives an open-ended request like "find
   work" or "look for things that need doing." Runs doctor, cron health,
   git status, system health, and governance checks in parallel.
-author: Hermes Cortex (Hermes Cortex)
+author: Hermes Cortex
 license: MIT
 platforms: [linux, macos]
 ---

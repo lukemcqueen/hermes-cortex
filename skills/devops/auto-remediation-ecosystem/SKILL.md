@@ -1,7 +1,7 @@
 --- Full content (truncated) ---
 ---
 name: auto-remediation-ecosystem
-author: hermes
+author: Hermes Cortex
 created: 2026-06-15
 updated: 2026-06-15
 tags:

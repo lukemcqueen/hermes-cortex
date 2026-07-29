@@ -6,7 +6,7 @@ description: >-
  deployment verification.
 version: 1.0.0
 category: devops
-author: Hermes Cortex (Hermes Cortex)
+author: Hermes Cortex
 license: MIT
 platforms: [linux, macos]
 related_skills:

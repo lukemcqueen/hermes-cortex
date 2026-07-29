@@ -3,7 +3,7 @@ name: agent-bus-polling
 description: "Agent Bus polling setup — MCP tools, cron, verification."
 category: devops
 version: 2.0.0
-author: Hermes Cortex (Hermes Cortex)
+author: Hermes Cortex
 metadata:
   hermes:
     tags: [bus, polling, mcp, setup]

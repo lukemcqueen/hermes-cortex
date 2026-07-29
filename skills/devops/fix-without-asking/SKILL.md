@@ -5,7 +5,7 @@ description: |-
   Covers the litmus test, the failure pattern, and the concrete "never ask" guardrail.
   Triggers: "should I fix", "want me to", discovered anything wrong mid-task, user says "fix it"
 version: 1.2.0
-author: Hermes Cortex / Hermes Cortex
+author: Hermes Cortex
 license: MIT
 platforms: [linux, macos]
 metadata:
