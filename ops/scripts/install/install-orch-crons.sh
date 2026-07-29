@@ -503,7 +503,7 @@ Your job is to:
 1. Run orch-process-skill-reports.py to collect any pending skill reports
 2. For each reported custom skill, evaluate its quality, relevance, and whether it should be upstreamed to the repo
 3. Report findings on what was evaluated and what was decided" \
-  "" \
+  "skill-vetting" \
   "" \
   "origin" \
   "" \
