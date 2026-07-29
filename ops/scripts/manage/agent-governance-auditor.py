@@ -312,7 +312,7 @@ def _check_infrastructure() -> list[str]:
   except (subprocess.TimeoutExpired, FileNotFoundError):
     issues.append(" ⚙️ Could not check core.hooksPath (git not available).")
 
-  # ── 4. Permissions ──
+  # ── 4. Permissions — also accepts any permissions when chattr +i is set ──
   perm_checks = [
     (os.path.expanduser("~/.hermes/plugins/governance-enforcer/__init__.py"), 0o444),
   ]
@@ -321,6 +321,20 @@ def _check_infrastructure() -> list[str]:
       try:
         have = os.stat(path).st_mode & 0o777
         if have != want:
+          # Check if the file has chattr +i — if immutable, permissions
+          # are irrelevant (file cannot be modified regardless of bits).
+          # chattr +i is stronger than 0o444 alone.
+          try:
+            r = subprocess.run(
+              ["lsattr", path],
+              capture_output=True, text=True, timeout=5,
+            )
+            if r.returncode == 0:
+              flags = r.stdout.split()[0] if r.stdout else ""
+              if "i" in flags:
+                continue  # immutable flag set — skip permission warning
+          except (subprocess.TimeoutExpired, OSError, IndexError):
+            pass  # lsattr failed — proceed with standard permission warning
           issues.append(
             f" 🔓 Permissions on {path}: {oct(have)}\n"
             f"    (expected {oct(want)}).\n"
