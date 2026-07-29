@@ -111,8 +111,8 @@ Every word earns its place. Prefer small verified actions over big plans.
 
 ### 8. Agent Cron Management
 
-Only the orchestrator (Moses) has the `cronjob` MCP tool. If you need a
-cron created, updated, or removed, send an inbox message to Moses with
+Only the orchestrator (Moses) has the `cronjob` MCP tool in *all* contexts. Other agents may have it in direct user sessions (Telegram, CLI) but not in cron/auto-remediation contexts.
+Check your available tools first: if `cronjob` is listed, use it directly. If not, send an inbox message to Moses with
 subject `🔧 CRON: create|update|remove` and the structured fields described
 in `AGENTS.md` or the `cron-management` skill.
 

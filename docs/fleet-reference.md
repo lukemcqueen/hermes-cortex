@@ -25,7 +25,7 @@ Every agent in the fleet falls into one of three types. This determines which in
 | **Role** | Primary orchestrator | Backup orchestrator | Web/infra server | Security server | Operations server | macOS dev machine |
 | **Platform** | Linux | Linux | Linux | Linux | Linux | macOS |
 | **sudo** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **cronjob MCP tool** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+|| **cronjob MCP tool** | ✅ | ✅ | ❌ (partial) | ❌ | ❌ | ❌ (see note) |
 | **Bus mode** | `both` (server + poll) | `both` (server + poll) | `poll` | `poll` | `poll` | `push_only` |
 | **Postgres access** | ✅ (direct) | ✅ (direct) | ❌ | ❌ | ❌ | ❌ |
 | **Install scripts** | `install-crons.sh` + `install-orch-crons.sh` | same | `install-crons.sh` only | same | same | same |
@@ -33,6 +33,8 @@ Every agent in the fleet falls into one of three types. This determines which in
 | **nginx** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | **Has Ollama** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Has gbrain** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+
+> **Note on cronjob MCP tool availability:** Most non-orchestrator agents do not have the cronjob tool in any context. The macOS dev-agent (Titus) has it when running direct user sessions (Telegram DM, CLI) but not in cron/auto-remediation contexts. When running under a restricted toolset (e.g. cron), all non-orchestrator agents should route cron requests through Moses using the [cron-request-protocol](skills/devops/cron-request-protocol/SKILL.md).
 
 ### What this means for cron installs
 

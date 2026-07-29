@@ -1,11 +1,11 @@
 ---
 name: cron-request-protocol
-version: 1.1.0
+version: 1.2.0
 category: devops
 description: >
   Protocol for non-orchestrator agents to request cron job creation, updates,
-  or removal via the agent inbox. Only Moses has the cronjob MCP tool; all
-  other agents route requests through Moses using this protocol.
+  or removal via the agent inbox. Only Moses has the cronjob MCP tool in
+  all contexts; other agents route requests through Moses using this protocol.
 tags: [cron, inbox, protocol, multi-agent, orchestration]
 related_skills: [cron-job-management, agent-inbox, change-checklist]
 ---
@@ -14,8 +14,10 @@ related_skills: [cron-job-management, agent-inbox, change-checklist]
 
 ## Problem
 
-Only Moses has the `cronjob` MCP tool. Other agents (Titus, Gisu, Joseph,
+Only Moses has the `cronjob` MCP tool in all contexts. Other agents (Gisu, Joseph,
 Kustos, Esther) cannot create, update, or remove cron jobs directly.
+Note: some agents (e.g. Titus) may have the cronjob tool in direct user sessions
+but not in cron/auto-remediation contexts — when in doubt, route through Moses.
 
 ## Solution: Inbox-based CRON requests
 
