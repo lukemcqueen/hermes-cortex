@@ -2171,6 +2171,78 @@ def check_stale_deploys(res):
               f"Remove: rm {f}")
 
 
+def check_stale_skills(res):
+  """Check deployed skills for orphans (no repo source) and missing (not deployed).
+
+  Scans ~/.hermes/skills/<cat>/<name>/ vs ~/hermes-cortex/skills/<cat>/<name>/
+  and vs Hermes Agent default & optional skills.
+
+  Orphans are flagged as WARN. Missing skills (repo has them, deployed doesn't)
+  are flagged as INFO with remediation hint.
+  """
+  repo_skills = CORTEX_REPO / "skills"
+  deployed_skills = HERMES_HOME / "skills"
+  hermes_agent_dir = HERMES_HOME / "hermes-agent"
+
+  if not repo_skills.is_dir() or not deployed_skills.is_dir():
+    return
+
+  def _index_skills(root: Path) -> dict:
+    """Build {(cat, name): path} from root/<cat>/<name>/SKILL.md.
+    Also builds set of skill names (without category) for fuzzy matching."""
+    result = {}
+    if not root.is_dir():
+      return result
+    for cat_dir in root.iterdir():
+      if not cat_dir.is_dir() or cat_dir.name.startswith("."):
+        continue
+      for skill_dir in cat_dir.iterdir():
+        skill_md = skill_dir / "SKILL.md"
+        if skill_md.is_file():
+          result[(cat_dir.name, skill_dir.name)] = skill_md
+    return result
+
+  # ── Build indexes ──
+  deployed = _index_skills(deployed_skills)
+  repo_sk = _index_skills(repo_skills)
+
+  # Hermes defaults: both skills/ and optional-skills/
+  hermes_sk = {}
+  for subdir in ("skills", "optional-skills"):
+    hermes_sk.update(_index_skills(hermes_agent_dir / subdir))
+
+  # Build set of Hermes default skill names (without category) for loose matching
+  hermes_names = {name for (_cat, name) in hermes_sk}
+
+  # ── 1. Orphaned deployed skills ──
+  orphans = []
+  for (cat, name) in sorted(deployed.keys()):
+    in_repo = (cat, name) in repo_sk
+    in_hermes = (cat, name) in hermes_sk or name in hermes_names
+    if not in_repo and not in_hermes:
+      orphans.append(f"{cat}/{name}")
+
+  if orphans:
+    res.add(f"Stale skills: orphaned", "WARN",
+        f"{len(orphans)} deployed skill(s) have no repo or Hermes source: {', '.join(orphans[:12])}",
+        f"Remove: rm -rf ~/.hermes/skills/<cat>/<name> for each orphan, or add to repo/skills/")
+  else:
+    res.add("Stale skills: orphans", "PASS", "all deployed skills have a repo or Hermes source")
+
+  # ── 2. Missing deployed skills ──
+  missing = []
+  for (cat, name) in sorted(repo_sk.keys()):
+    if (cat, name) not in deployed:
+      missing.append(f"{cat}/{name}")
+
+  if missing:
+    res.add(f"Stale skills: missing", "INFO",
+        f"{len(missing)} repo skill(s) not deployed: {', '.join(missing[:12])}",
+        f"Run: cortex-update.sh --force-all")
+  else:
+    res.add("Stale skills: missing", "PASS", "all repo skills are deployed")
+
+
 def check_deploy_checksums(res):
   """Check MD5 checksums of deployed files vs repo source across ALL mappings.
 

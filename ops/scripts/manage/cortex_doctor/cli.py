@@ -24,6 +24,7 @@ from .checks import (
     check_local_hooksPath_overrides,
     check_install,
     check_stale_deploys,
+    check_stale_skills,
     check_deploy_checksums,
 )
 from .fix import apply_fixes
@@ -56,6 +57,7 @@ def main():
         check_local_hooksPath_overrides,
         check_install,
         check_stale_deploys,
+        check_stale_skills,
         check_deploy_checksums,
     ]
 
