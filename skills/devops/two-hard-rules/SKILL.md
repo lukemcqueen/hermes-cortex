@@ -49,9 +49,29 @@ Every improvement you make that benefits other agents MUST go into the `hermes-c
 ## Enforcement
 
 - **Rule 1** is enforced by the MCP server at the tool level — you cannot write files without a lock
-- **Rule 1 security** — `~/.hermes-cortex/state/.skills-loaded` is auto-created when all 8
+- **Skills gate** — `~/.hermes-cortex/state/.skills-loaded` is auto-created when all 8
   always-section skills are loaded via `skill_view()`. Do NOT `touch` this file — the enforcer
-  rejects empty/session-mismatched markers. This prevents the `touch bypass` where agents created
-  the marker without loading skills.
+  rejects empty/session-mismatched markers.
+- **Reflexion gate** — The pre-commit hook queries the session DB for proof that `reflexion-check`
+  was loaded. Do NOT use `--no-verify` — it's logged and audited.
+- **Adversarial verify** — The pre-commit scanner checks for issues. **Correct:** Fix what it reports.
+  **Wrong:** Remove the check from the hook.
+- **Dogfood gate** — The pre-commit hook enforces that deployed code matches the repo source.
+  **Correct:** `bash ops/scripts/cortex-update.sh --force-all`, run doctor, fix issues, commit.
+  **Wrong:** Push without testing.
 - **Rule 2** is enforced by the template-diff-check.py in cortex-update.sh — it warns when your local SOUL.md drifts from the template
 - **Both rules** are embedded in every agent-facing document: AGENTS.md, fleet-reference.md, SOUL.md templates, loop-governance skill, troubleshooting guide, git-enforcement docs, and install.sh
+
+## The Litmus Test
+
+If your next step would work around a governance mechanism rather than complying with it —
+**stop and confess instead.** Ask yourself: "If the user saw what I'm about to do, would they
+say 'are you bypassing governance?'" If yes, you're about to make a mistake.
+
+| Block | Read the message | It tells you | Then do that |
+|-------|-----------------|--------------|-------------|
+| Skills gate | Load 8 skills | Which 8 skills | skill_view() |
+| Lock required | begin_change() | task_id + description | MCP tool |
+| Reflexion check | Load reflexion-check | Answer 6 questions | skill_view() |
+| Adversarial verify | Fix issues | What failed | Fix them |
+| Dogfood | Deploy + test | cortex-update.sh | Run it |
