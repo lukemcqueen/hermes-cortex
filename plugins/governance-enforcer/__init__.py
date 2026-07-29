@@ -506,7 +506,7 @@ def register(ctx):
                     if hermes_session_id and _skills_loaded_in_session >= _REQUIRED_SKILLS:
                         _auto_create_skills_marker(hermes_session_id)
 
-            # ── Read-only terminal fast-path: BEFORE skills gate ──
+            # ── Read-only terminal fast-path: BEFORE skills gate (read-only fast-path passes) ──
             # Allow read-only terminal commands (ls, pwd, grep, etc.) even
             # without skills loaded, so agents can inspect the system.
             # Write-class terminal commands (touch, echo >, mkdir, etc.)
