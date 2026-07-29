@@ -24,7 +24,7 @@
 > 3. Check if the existing system can be extended/wired instead of replaced
 > 4. If the capability exists but isn't wired, **wire it** — don't rebuild it
 >
-> This rule exists because every agent defaults to "create new" when "update existing" is faster, less risky, and doesn't fragment the codebase. Creating when you should have updated is the most expensive mistake — it costs review time, merge conflicts, doc drift, and future confusion. Every new file is a debt that compounds. The right fix to an existing system is almost always smaller and safer than a parallel system.
+> This rule exists because every agent defaults to "create new" when "update existing" is faster. Every new file is a debt that compounds.
 >
 > **RULE 7: "PULL LATEST" = FULL REFRESH — DO NOT CUT CORNERS**
 > When the user says "pull latest", "update from repo", or any equivalent phrase, the sequence is:
@@ -33,24 +33,20 @@
 > 3. Run doctor — check everything (`hermes doctor`, `cortex doctor`, or equivalent)
 > 4. Fix every issue — do not stop until doctor reports clean
 > 5. Verify — confirm all services, crons, skills are in expected state
-> This is not just a pull. It is a full refresh: pull → update → diagnose → fix → verify clean. No partial work. If doctor finds issues, resolve them all before reporting done.
+> This is a full refresh: pull → update → diagnose → fix → verify clean.
 
 ---
 ## Core Concepts
 
-**What:** Public installer + skill set for [Hermes Agent](https://hermes-agent.nousresearch.com) — Ollama, gbrain, Langfuse, Dashboard, brain dirs, sync daemon, utility scripts.
+**What:** Public installer + skill set for [Hermes Agent](https://hermes-agent.nousresearch.com) — Ollama, gbrain, Langfuse, Dashboard, brain dirs, sync daemon.
 
-**Key dirs:** `docs/` (guides, templates), `ops/install/` (installer, deploy), `.hermes-cortex/` (sessions, memory, skills), skills at `~/.hermes/skills/<category>/<name>/`.
+**Key dirs:** `docs/` (guides), `ops/install/` (deploy), `.hermes-cortex/` (state, memory, skills), skills at `~/.hermes/skills/<category>/<name>/`.
 
-**Architecture principles:**
-- **Two-repo system** — public MIT + private for secrets
-- **PII-scrubbed** — no personal paths or domains
-- **Pointer memory** — MEMORY.md (~2,200 chars), full detail in gbrain
-- **State routing** — live context → session history → memory → docs
+**Principles:** Two-repo (public MIT + private), PII-scrubbed, pointer memory (MEMORY.md ~2.2K → gbrain), state routing (context → history → memory → docs).
 
 ## Skill loading — NOT OPTIONAL
 
-Every session: read `.hermes-cortex/skills.yaml`, call `skill_view()` for every skill in `always:` section. These define HOW you think — loaded at session start, active for every task. Then classify with `agent-flow` and load matching `on_task` skills. See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md).
+Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify with `agent-flow`, load matching `on_task` skills. See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md).
 
 ---
 
@@ -74,36 +70,27 @@ Every session: read `.hermes-cortex/skills.yaml`, call `skill_view()` for every 
 13. **Tag discovered issues as follow-ups** — document as `pending` todo, finish current work, then return. Never silently skip or fix inline.
 14. **Pull before push** — `git pull --rebase origin <branch>` before any `git push`.
 15. **Never print secrets in commands** — never pass secrets as literal strings in `terminal()` commands. Use `$(cat <file>)` subshell expansion so only the file path appears in the tool call. `printf`, `echo` with inline secret values, and `-u "user:pass"` are all forbidden patterns. <!-- Added 2026-07-13 -->
-16. **Do not cut corners** — every skipped step compounds into a system failure. If a step feels optional, it is the most important one to do. Test from the deployed path, check sibling call paths, update docs, notify dependent agents. The right way is the only way.
-17. **Be thorough** — verify every claim with tool output before delivering. A change is not complete until dependencies resolve, docs are updated, and the doctor runs clean. Half-done work erodes trust faster than slow work.
+16. **Do not cut corners** — Every skipped step compounds. Test from deployed path, check sibling paths, update docs.
+17. **Be thorough** — Verify every claim with tool output. A change isn't done until deps resolve, docs update, and doctor runs clean.
 18. **Test Before Release** — Before calling `end_change()`, run the applicable test suite and verify **0 failures**. If no test suite exists, create one or explicitly acknowledge the gap. Ships with `LOW` confidence are blocked — fix before releasing. Test suites are not optional overhead; they are the mechanism that makes "be thorough" enforceable.
-19. **Push before telling anyone to pull** — Before telling another agent "the fix is in the repo" or "pull the latest", verify the commit has been pushed to the remote (`git push origin main` completed successfully). A fix on your local disk is not in the repo. The repo is the remote. Telling agents to pull before you push wastes their time and erodes trust.
-20. **'Pull latest' = full update cycle** — When the user says "pull latest", "update from repo", or similar, execute the complete sequence: `git pull`, then `cortex-update.sh`, then `cortex-doctor.py`, then fix every issue the doctor reports, then re-run doctor to confirm clean. Pulling fresh code is step one — a verified clean state is the deliverable. <!-- Added 2026-07-21 -->
+19. **Push before telling anyone to pull** — Verify the commit is on the remote (`git push origin main` succeeded). A fix on local disk is not in the repo.
 
-21. **Persistent cross-session todos** — The `todo()` tool is per-session and ephemeral. For durable, fleet-visible task tracking, use the shared `bus.todos` table in gbrain Postgres:
-  - **Session start:** `todo-db.py pending` → load DB items → `todo(todos=..., merge=true)` to restore
-  - **During work:** Before `begin_change()` → `todo-db.py update <id> --status in_progress`. After `end_change()` → `todo-db.py update <id> --status completed`
-  - **Session end:** `todo-db.py save-end` — archives completed items, keeps pending for next session
-  - **Fleet visibility:** `todo-db.py list --agent <name>` to see any agent's tasks
-  - The `todo-db.py` CLI is deployed to `~/.hermes-cortex/scripts/todo-db.py` via `cortex-update.sh`
-  - See `todo-persistence` skill and SOUL.md Principle 37 for full protocol
 
-22. **Only modify files in our repo — never touch Hermes defaults** — Hermes Agent owns everything in `~/.hermes/`. Our repo (`~/hermes-cortex/`) is the only place we create and modify files. Before editing any file:
-  - If it's in `~/hermes-cortex/` → it's ours, modify freely
-  - If it's ONLY in `~/.hermes/` and NOT in the repo → it's a Hermes default — do NOT touch
-  - If you need to change something that only exists in `~/.hermes/`, create the source in our repo first (`~/hermes-cortex/`), then deploy via `cortex-update.sh`
-  - **Exception:** Live config files (`~/.hermes-cortex/state/*`, `~/.hermes/config.yaml`) are per-machine state, not skills — modify those directly
-  - **Hermes default skill examples** (do not edit): `task-start`, `session-manager`, `agent-flow`, `reasoning-patterns`, `reflexion-check`, `agent-contract`
-  - **Our skill examples** (edit freely): anything with a source in `~/hermes-cortex/skills/` or `~/hermes-cortex/ops/scripts/`
+21. **Persistent cross-session todos** — Use `todo-db.py` for fleet-visible task tracking (gbrain Postgres `bus.todos`). Session start: `todo-db.py pending` → `todo(merge=true)`. During work: update status via `todo-db.py update`. Session end: `todo-db.py save-end`. See `todo-persistence` skill for full protocol.
 
-23. **Sharing filter: only share new/substantive hermes-cortex changes** — When the skill lifecycle or learnings pipeline evaluates something for upstreaming (public contribution, skill sharing), apply this filter in order:
-  1. **Already in Hermes Agent repo?** (default skills like `task-start`, `session-manager`, `agent-flow`) → ❌ Skip. These are the framework, not ours to share.
-  2. **Already in hermes-cortex repo with no substantive change?** → ❌ Skip. Already shared with the fleet.
-  3. **Newly created hermes-cortex skill?** → ✅ Share.
-  4. **Substantive improvement to an existing hermes-cortex skill?** (new steps, pitfall sections, corrected commands) → ✅ Share the delta.
-  5. **PII-only, ephemeral, or one-off fix?** → ❌ Keep local.
+22. **Only modify files in our repo** — Hermes Agent owns `~/.hermes/`. Our repo (`~/hermes-cortex/`) is our workspace.
+  - `~/hermes-cortex/` → ours, modify freely
+  - `~/.hermes/` (not in repo) → Hermes default, do NOT touch — create source in our repo first, then deploy
+  - `~/.hermes-cortex/state/*`, `~/.hermes/config.yaml` → live config, modify directly
 
-  The test: *"Would someone running Hermes Cortex benefit from this? Or is it already available to them through either the Hermes or hermes-cortex repos?"* If the answer is the latter, don't share.
+23. **Sharing filter: only share new/substantive hermes-cortex changes** — Apply in order:
+  1. **Already in Hermes Agent repo?** → ❌ Skip (framework)
+  2. **Already in hermes-cortex repo?** → ❌ Skip (already shared)
+  3. **New hermes-cortex skill?** → ✅ Share
+  4. **Substantive improvement?** → ✅ Share delta
+  5. **PII-only / one-off?** → ❌ Keep local
+
+  Test: *"Would someone running Hermes Cortex benefit? Or is it already available?"*
 
 24. **Self-test gate for fleet commands** — `hc send` refuses to send to fleet agents without `--self-tested` flag. This is CLI-enforced at the tool level, not a suggestion. Before dispatching any command to a fleet agent, run the self-test first and pass the flag. Additionally, never use bare `pass` in except blocks — adversarial verification flags these as bypasses. Use meaningful fallback logic or `# noqa` with justification.
 
