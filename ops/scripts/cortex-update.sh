@@ -1222,7 +1222,7 @@ deploy_governance_plugin() {
     fi
 
     if needs_update "$src" "$dest"; then
-      cp "$src" "$dest"
+      cp -f "$src" "$dest"
       info "    Copied: ${file}"
       changed=$((changed + 1))
     fi
