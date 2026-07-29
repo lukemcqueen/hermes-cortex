@@ -762,8 +762,11 @@ update_symlinks() {
 #   2. $REPO_DIR/.hermes-cortex/skills/ — project-level overrides (flat)
 sync_skills() {
   local skill_dest="${CORTEX_DEPLOY_HOME}/skills"
-  local synced=0 skipped=0
+  local synced=0 skipped=0 removed=0
   mkdir -p "$skill_dest"
+
+  # Track source paths for stale-detection
+  declare -A source_dirs=()
 
   # ── Pass 1: Root-level skills/ (canonical global skills) ──
   local root_skills="${REPO_DIR}/skills"
@@ -772,7 +775,15 @@ sync_skills() {
       local rel_path="${skill_file#$root_skills/}"
       local dest="${skill_dest}/${rel_path}"
       mkdir -p "$(dirname "$dest")"
+      source_dirs["$(dirname "$rel_path")"]=1
 
+      # Name-collision detection: warn if categorized skill shares name with Hermes default
+      local skill_name
+      skill_name="$(basename "$(dirname "$skill_file")")"
+      local root_hermes_check="${skill_dest}/${skill_name}/SKILL.md"
+      if [[ "$rel_path" == */*/* ]] && [[ -f "$root_hermes_check" ]]; then
+        warn "  Name collision: ${rel_path%/*} — root Hermes default '${skill_name}' exists, deploy will shadow it"
+      fi
       if needs_update "$skill_file" "$dest"; then
         copy_file "$skill_file" "$dest"
         synced=$((synced + 1))
@@ -804,6 +815,7 @@ sync_skills() {
     local rel_path="${skill_file#$override_skills/}"
     local dest="${skill_dest}/${rel_path}"
     mkdir -p "$(dirname "$dest")"
+    source_dirs["$(dirname "$rel_path")"]=1
 
     if needs_update "$skill_file" "$dest"; then
       copy_file "$skill_file" "$dest"
@@ -824,7 +836,24 @@ sync_skills() {
     fi
   done < <(find "$override_skills" -path "*/references/*" -type f -print0)
 
-  info "  Skills: ${synced} updated, ${skipped} unchanged"
+  # ── Pass 3: Clean up stale deployed skills ──
+  # Remove skill dirs at destination that no longer exist in source
+  # Only check category directories (not root-level Hermes defaults)
+  while IFS= read -r -d '' deployed_skill; do
+    local rel="${deployed_skill#$skill_dest/}"
+    local dirname="${rel%/SKILL.md}"
+    # Skip root-level skills (no / in path = Hermes default)
+    if [[ "$dirname" != */* ]]; then
+      continue
+    fi
+    # Check if this directory exists in source
+    if [[ -z "${source_dirs[$dirname]:-}" ]]; then
+      rm -rf "$(dirname "$deployed_skill")"
+      removed=$((removed + 1))
+    fi
+  done < <(find "$skill_dest" -name "SKILL.md" -type f -print0)
+
+  info "  Skills: ${synced} updated, ${skipped} unchanged, ${removed} stale removed"
 }
 
 # ── Code Corpus Sync ───────────────────────────────────────
