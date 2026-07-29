@@ -50,7 +50,7 @@ Before editing any file, confirm it's ours to edit:
 | In `~/.hermes-cortex/state/*` | ✅ Live config — modify directly |
 | In `~/.hermes/config.yaml` | ✅ Live config — modify directly |
 
-**Don't** modify Hermes default skills: `task-start`, `session-manager`, `survey-before-action`, `agent-flow`, `reasoning-patterns`, `reflexion-check`, `agent-contract`, `public-contribution`, `change-checklist`.
+**Don't** modify Hermes default skills: `task-start`, `session-manager`, `survey-before-action`, `agent-flow`, `reasoning-patterns`, `reflexion-check`, `agent-contract`, `public-contribution`.
 
 If you need to extend a Hermes default, create a **supporting skill** in the repo instead.
 
