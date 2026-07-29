@@ -502,6 +502,24 @@ def register(ctx):
                         ),
                     }
 
+            # ── Bootstrap: allow terminal to create skills-loaded marker ──
+            # The skills gate (above) intentionally exempts terminal so agents
+            # can touch ~/.hermes-cortex/state/.skills-loaded before acquiring
+            # a governance lock. But the lock gate below re-blocks ALL write-
+            # class terminal calls — including this bootstrap touch — creating
+            # a deadlock where the agent can't create the marker because no
+            # lock exists, and can't acquire a lock because the marker doesn't
+            # exist.
+            #
+            # This check restores the intended flow: when no skills-loaded
+            # marker exists AND the tool is terminal, allow the call without
+            # a lock. After the marker is created, this path is never hit again.
+            # The skills gate already allowed terminal in this state — this
+            # just prevents the lock gate from re-blocking what was already
+            # intentionally released.
+            if tool_name == "terminal" and not SKILLS_MARKER.exists():
+                return None
+
             # Check for active governance lock (Phase 1 exact + Phase 2 scan)
             if _has_governance_lock(hermes_session_id):
                 return None
