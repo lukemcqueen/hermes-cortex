@@ -129,7 +129,8 @@ if [[ ! -f "$AGENTS_LOCAL" ]]; then
   echo ""
   echo "❌  ~/.hermes/AGENTS.md not found."
   echo "    Governance: the agent's operating rules are missing."
-  echo "    Run: cp AGENTS.md ~/.hermes/AGENTS.md"
+  echo "    Run: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md"
+  echo "    ⚠️  If local customizations exist, backup: cp ~/.hermes/AGENTS.md ~/.hermes/AGENTS.md.local"
   echo "    No bypass flags — governance is non-negotiable."
   echo ""
   exit 1
@@ -143,7 +144,8 @@ if [[ -f "AGENTS.md" ]]; then
     echo ""
     echo "❌  ~/.hermes/AGENTS.md is missing ${MISSING} numbered rule(s)"
     echo "    Local has ${LOCAL_RULES}, template has ${REPO_RULES}"
-    echo "    Run: cp AGENTS.md ~/.hermes/AGENTS.md"
+    echo "    Run: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md"
+    echo "    ⚠️  Backs up local-only content to ~/.hermes/AGENTS.md.local"
     echo "    No bypass flags — governance is non-negotiable."
     echo ""
     exit 1

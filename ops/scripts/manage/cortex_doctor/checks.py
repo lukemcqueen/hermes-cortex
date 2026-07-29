@@ -112,19 +112,19 @@ def check_repo(res: "Results") -> None:
   hermes_agents = Path.home() / ".hermes" / "AGENTS.md"
   if not hermes_agents.exists():
     res.add("AGENTS.md (~/.hermes)", "FAIL", "~/.hermes/AGENTS.md missing",
-        "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
+        "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md  ⚠️  Merges local-only content — check diff ~/.hermes/AGENTS.md ~/hermes-cortex/AGENTS.md before overwriting")
     return
   # Size check: warn if >15K, fail if >20K (like SOUL.md does)
   agents_size = hermes_agents.stat().st_size
   if agents_size > 20480:
     res.add("AGENTS.md size", "FAIL",
         f"{agents_size/1024:.0f}K — exceeds 20K maximum",
-        "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
+        "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md  ⚠️  Backs up local-only content to ~/.hermes/AGENTS.md.local")
     return
   elif agents_size > 15360:
     res.add("AGENTS.md size", "WARN",
         f"{agents_size/1024:.0f}K — target <15K for optimal loading",
-        "Run: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
+        "Run: diff ~/.hermes/AGENTS.md ~/hermes-cortex/AGENTS.md | head -50  then cp if safe  (⚠️  preserves customizations)")
   # Content check: extract all bold markers for comparison (like SOUL.md does)
   # ~/.hermes/AGENTS.md guides agent behavior — when working in this repo,
   # it should have the same content rules as the repo copy.
@@ -142,7 +142,7 @@ def check_repo(res: "Results") -> None:
       res.add("AGENTS.md sync", "FAIL",
           f"Local missing {len(missing)} content markers from template — "
           f"e.g. '{list(sorted(missing))[:3]}'",
-          "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md")
+          "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md  ⚠️  Backs up local-only content to ~/.hermes/AGENTS.md.local")
     else:
       res.add("AGENTS.md sync", "PASS")
 
