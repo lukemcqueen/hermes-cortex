@@ -1455,21 +1455,6 @@ def check_governance(res):
   plugin_src = CORTEX_REPO / "plugins" / "governance-enforcer"
   plugin_enabled = "governance-enforcer" in config_text and "enabled" in config_text
 
-  # ── Stale repo symlink check ──
-  # The old plugins/governance-enforcer symlink was removed from the repo
-  # (it was a backward-compat duplicate of plugins/governance-enforcer).
-  # If it still exists on disk, agents may be confused about which dir is real.
-  stale_repo_symlink = CORTEX_REPO / "plugins" / "governance-enforcer"
-  if stale_repo_symlink.exists():
-    if stale_repo_symlink.is_symlink():
-      res.add("Stale repo symlink", "FAIL",
-          f"found at {stale_repo_symlink} → {os.readlink(str(stale_repo_symlink))}",
-          "REQUIRED: cd ~/hermes-cortex && git checkout -- plugins/governance-enforcer && git rm plugins/governance-enforcer && git commit -m 'remove stale plugin symlink' && git push origin main")
-    else:
-      res.add("Stale repo dir", "FAIL",
-          f"found at {stale_repo_symlink} — should not exist",
-          "REQUIRED: rm -rf ~/hermes-cortex/plugins/governance-enforcer")
-
   if plugin_dir.exists() and (plugin_dir / "__init__.py").exists():
     res.add("Governance plugin", "PASS", "installed at ~/.hermes/plugins/governance-enforcer")
     if plugin_dir.is_symlink():
