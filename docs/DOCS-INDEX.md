@@ -23,7 +23,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `ops/scripts/lib/cortex_bus.py` | **Shared bus library** — HTTP API wrapper: bus_send, bus_read, bus_archive, bus_list_queues (used by all fleet scripts) |
 | `ops/scripts/agent/agent-message-handler.py` | **Agent message handler** — polls inbox for UPDATE_REQUEST, ROLLBACK_REQUEST, GIT_AUTH_CHECK; runs cortex-update, posts results |
 || `ops/scripts/install-crons.sh` | Cron registration — creates agent-message-handler cron (inbox polling), auto-remediation, health, memory sync, scoring, and audit crons |
-|| `docs/env-vars.md` | Environment variable reference — CORTEX_* vars, SSL, deploy scripts |
+|| `docs/env-vars.md` | Environment variable reference — CORTEX_* vars, SSL, deploy scripts, HERMES_SERVICES for nginx service split |
 || `install.sh` | Single-command installer (idempotent, safe to re-run) |
 || `ops/install/install.sh` | Main installer script (moved from root in v2.0.0) |
 || `docs/pre-commit-scoring.md` | Pre-commit scoring hook — TDD cycle scoring, loop governance integration, and enforcement model |
@@ -31,6 +31,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 || `ops/scripts/manage/push-metrics.sh` | **Agent metrics push script** — Prometheus-format system metrics POSTed to central VictoriaMetrics. Used by all agents for observability. |
 || `ops/services/agent-bus/metrics.py` | **Bus metrics module** — prometheus_client definitions + async push client. Imported by bus server for queue-level observability. |
 || `ops/install/deploy/docker-compose.victoria-metrics.yml` | **VictoriaMetrics + Grafana stack** — Docker compose: metrics storage (3mo retention) + visualization dashboard. Grafana at :3030. |
+| `docs/push-metrics-setup.md` | **Push metrics setup guide** — VictoriaMetrics + Grafana, per-agent push, nginx orch config |
 ## Security
 
 | Doc | Description |

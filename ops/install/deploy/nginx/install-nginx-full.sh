@@ -7,8 +7,8 @@
 #  Atomic: validates before reloading. Safe to re-run.
 #
 #  Sources:
-~/hermes-cortex/ops/install/deploy/nginx/blocked_ips.add   (IPs to block)
-~/hermes-cortex/ops/install/deploy/nginx/nginx-badbots.conf (fail2ban filter)
+#  ~/hermes-cortex/ops/install/deploy/nginx/blocked_ips.add   (IPs to block)
+#  ~/hermes-cortex/ops/install/deploy/nginx/nginx-badbots.conf (fail2ban filter)
 #
 #  Targets: (OS-aware — derived from uname -s)
 #    Linux:    /etc/nginx/              (nginx configs)
@@ -196,6 +196,40 @@ for src in "${CORTEX_REPO}/ops/install/deploy/nginx/hermes-zone-defs.conf" "${CO
         mkdir -p "${NGINX_CONFIG_DIR}"
         ln -sf "${NGINX_AVAILABLE_DIR}/${base}" "${NGINX_CONFIG_DIR}/${base}"
         echo "  ✓ Symlinked: ${NGINX_CONFIG_DIR}/${base} → ${NGINX_AVAILABLE_DIR}/${base}"
+      fi
+
+      # ── Deploy shared defaults to conf.d/ ──
+      SHARED_DEFAULTS_SRC="${CORTEX_REPO}/ops/install/deploy/nginx/hermes-services-shared-defaults.conf"
+      SHARED_DEFAULTS_DST="${NGINX_DIR}/conf.d/hermes-services-shared-defaults.conf"
+      if [ -f "$SHARED_DEFAULTS_SRC" ]; then
+        mkdir -p "$(dirname "$SHARED_DEFAULTS_DST")"
+        < "$SHARED_DEFAULTS_SRC" sed \
+          -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
+          -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
+          > "$SHARED_DEFAULTS_DST"
+        echo "  ✓ Deployed: hermes-services-shared-defaults.conf (paths substituted)"
+      fi
+
+      # ── Deploy extra services to services-enabled/ (grafana, bus, metrics) ──
+      EXTRAS_SRC="${CORTEX_REPO}/ops/install/deploy/nginx/orch-hermes-services.conf"
+      EXTRAS_DST="${NGINX_DIR}/services-enabled/orch-hermes-services.conf"
+      # Orchestrators (Moses, Esther) get extras; others get core only.
+      # Controlled via HERMES_SERVICES env var (comma-separated).
+      if [ -f "$EXTRAS_SRC" ] && grep -qiE 'grafana|bus|metrics|extra|all' <<< "${HERMES_SERVICES:-dashboard,langfuse,health}"; then
+        mkdir -p "${NGINX_DIR}/services-enabled"
+        < "$EXTRAS_SRC" sed \
+          -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
+          -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
+          -e "s|__NGINX_LOG_DIR__|${NGINX_LOG_DIR:-/var/log/nginx}|g" \
+          -e "s|__HTPASSWD_FILE__|${NGINX_DIR}/.hermes-htpasswd|g" \
+          -e "s|__NGINX_CONFIG_DIR__|${NGINX_DIR}|g" \
+          > "$EXTRAS_DST"
+        echo "  ✓ Extra services enabled: grafana, bus, metrics"
+      else
+        if [ -f "$EXTRAS_DST" ]; then
+          rm -f "$EXTRAS_DST"
+          echo "  ○ Extra services: disabled (core only)"
+        fi
       fi
     fi
   fi

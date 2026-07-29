@@ -135,7 +135,7 @@ deploy time by all three scripts above:
 
 | Placeholder | Substituted with | Example value |
 |-------------|-----------------|---------------|
-| `__NGINX_CONFIG_DIR__` | OS-aware nginx config directory | `/opt/homebrew/etc/nginx/servers` |
+| `__NGINX_CONFIG_DIR__` | OS-aware nginx root directory | `/etc/nginx` |
 | `__NGINX_LOG_DIR__` | OS-aware nginx log directory | `/opt/homebrew/var/log/nginx` |
 | `__HTPASSWD_FILE__` | htpasswd file path | `/opt/homebrew/etc/nginx/.htpasswd` |
 | `__CORTEX_HOME__` | User home directory | `/Users/luke` |

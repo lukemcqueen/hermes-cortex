@@ -354,7 +354,7 @@ def main():
     # Template path
     template_path = args.template
     if not template_path:
-        template_path = str(cortex_repo / "deploy" / "nginx" / "hermes-services.conf")
+        template_path = str(cortex_repo / "ops" / "install" / "deploy" / "nginx" / "hermes-services.conf")
     template = Path(template_path)
 
     if not template.is_file():
@@ -413,7 +413,7 @@ def main():
 
     processed = process_template(
         template_path=str(template),
-        nginx_config_dir=config_dir,
+        nginx_config_dir=config_dir.parent,
         nginx_log_dir=log_dir,
         htpasswd_file=htpasswd,
         cortex_home=cortex_home,
@@ -488,6 +488,80 @@ def main():
                     print(f"  ✓ Symlinked (sudo): {symlink_path} → {output_path}")
         finally:
             os.unlink(tmp.name)
+
+    # ── Deploy extra services to services-enabled/ (grafana, bus, metrics) ──
+    services_avail_dir = template.parent
+    services_enabled_dir = config_dir.parent / "services-enabled"
+    extras_conf = "orch-hermes-services.conf"
+    extra_src = services_avail_dir / extras_conf
+
+    # Orchestrators (Moses, Esther) get extras; others get core only.
+    # Controlled via HERMES_SERVICES env var (comma-separated).
+    hermes_services = os.environ.get("HERMES_SERVICES", "dashboard,langfuse,health").lower()
+    needs_extra = any(svc in hermes_services for svc in ["grafana", "bus", "metrics", "extra", "all"])
+
+    if extra_src.is_file() and needs_extra:
+        if args.dry_run:
+            print(f"  → Would enable extra services: {extras_conf} → services-enabled/")
+        else:
+            services_enabled_dir.mkdir(parents=True, exist_ok=True)
+            extra_processed = process_template(
+                template_path=str(extra_src),
+                nginx_config_dir=config_dir.parent,
+                nginx_log_dir=log_dir,
+                htpasswd_file=htpasswd,
+                cortex_home=cortex_home,
+                ssl_cert_path=cert_path,
+                ssl_cert_key_path=key_path,
+                port_prefix=port_prefix,
+            )
+            extra_dst = services_enabled_dir / extras_conf
+            tmp3 = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".conf")
+            try:
+                tmp3.write(extra_processed)
+                tmp3.close()
+                os.chmod(tmp3.name, 0o644)
+                _write_file(tmp3.name, extra_dst)
+                print(f"  ✓ Extra services enabled: {extra_dst}")
+            finally:
+                os.unlink(tmp3.name)
+    else:
+        if args.dry_run:
+            print(f"  → Would disable extra services (no match in HERMES_SERVICES={hermes_services})")
+        else:
+            extra_dst = services_enabled_dir / extras_conf
+            if extra_dst.exists():
+                extra_dst.unlink()
+                print(f"  ○ Extra services: disabled (HERMES_SERVICES={hermes_services})")
+
+    # ── Deploy shared defaults to conf.d/ ──
+    defaults_template = template.parent / "hermes-services-shared-defaults.conf"
+    if defaults_template.is_file():
+        conf_d_dir = config_dir.parent / "conf.d"
+        defaults_processd = process_template(
+            template_path=str(defaults_template),
+            nginx_config_dir=config_dir.parent,
+            nginx_log_dir=log_dir,
+            htpasswd_file=htpasswd,
+            cortex_home=cortex_home,
+            ssl_cert_path=cert_path,
+            ssl_cert_key_path=key_path,
+            port_prefix=port_prefix,
+        )
+        defaults_dst = conf_d_dir / "hermes-services-shared-defaults.conf"
+        if args.dry_run:
+            print(f"  → Would write:  {defaults_dst}")
+        else:
+            conf_d_dir.mkdir(parents=True, exist_ok=True)
+            tmp2 = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".conf")
+            try:
+                tmp2.write(defaults_processd)
+                tmp2.close()
+                os.chmod(tmp2.name, 0o644)
+                _write_file(tmp2.name, defaults_dst)
+                print(f"  ✓ Deployed: {defaults_dst}")
+            finally:
+                os.unlink(tmp2.name)
 
     # ── Test and reload ──
     skip_nginx = os.environ.get("CORTEX_SKIP_NGINX", "")
