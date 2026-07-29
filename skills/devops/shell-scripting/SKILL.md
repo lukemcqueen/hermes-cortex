@@ -2,7 +2,7 @@
 name: shell-scripting
 description: Shell scripting patterns, portability pitfalls, and cross-platform compatibility for bash/awk scripts in the Hermes Cortex ecosystem.
 version: 1.1.0
-author: Moses
+author: Hermes Cortex
 platforms: [linux, macos]
 ---
 

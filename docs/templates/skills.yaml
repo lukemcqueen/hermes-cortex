@@ -32,7 +32,7 @@ always:
 
 on_task:
   debug:
-    - name: systematic-debugging
+    - name: root-cause-debugging
       why: 6-phase root cause analysis with feedback loop
   review:
     - name: code-review

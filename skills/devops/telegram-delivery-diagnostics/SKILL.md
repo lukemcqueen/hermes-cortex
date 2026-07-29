@@ -2,7 +2,7 @@
 name: telegram-delivery-diagnostics
 description: Diagnose and fix Telegram delivery issues for Hermes cron jobs — delivery pipeline tracing, DNS/network diagnostics, adapter state verification, and known failure patterns.
 category: devops
-author: Moses
+author: Hermes Cortex
 version: 1.0.0
 platforms: [linux, macos]
 ---

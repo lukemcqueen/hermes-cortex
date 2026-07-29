@@ -2,7 +2,7 @@
 name: hermes-backup
 description: "Use when performing a full-system backup of a Hermes Agent server — survey, clean up caches, checkpoint databases, bundle repos and configs, compress, and write a manifest. Pairs with hermes-recovery for the restore side."
 version: 1.0.0
-author: Moses
+author: Hermes Cortex
 license: MIT
 metadata:
   hermes:

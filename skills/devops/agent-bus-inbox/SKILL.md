@@ -3,7 +3,7 @@ name: agent-bus-inbox
 description: "MCP inbox tools for agent-bus messaging."
 category: devops
 version: 2.0.0
-author: Moses (Hermes Cortex)
+author: Hermes Cortex (Hermes Cortex)
 metadata:
   hermes:
     tags: [messaging, bus, mcp, inbox]

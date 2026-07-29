@@ -3,7 +3,7 @@
 name: repository-management-and-deployment
 description: Manages complex repository integration, deployment workflows, Git merge operations, script synchronization, and automated configuration management for multi-environment deployments.
 version: 1.1.0
-author: Joseph
+author: Hermes Cortex
 license: MIT
 platforms: [linux, macos, windows]
 metadata:

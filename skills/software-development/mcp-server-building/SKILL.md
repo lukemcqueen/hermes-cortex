@@ -2,7 +2,7 @@
 name: mcp-server-building
 description: "Build, test, and debug MCP servers for Hermes Agent — logging, dependency checks, fix hints, and best practices."
 version: 1.0.0
-author: Hermes Cortex (Moses)
+author: Hermes Cortex
 license: MIT
 metadata:
   hermes:

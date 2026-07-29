@@ -3,7 +3,7 @@
 name: soul-refinement
 description: "Daily SOUL.md refinement process — mine sessions for lessons, apply corrections, codify principles. Optional per-agent Bible insight integration for daily Scripture reading."
 version: 1.0.0
-author: Moses (Hermes Cortex)
+author: Hermes Cortex (Hermes Cortex)
 license: MIT
 platforms: [macos, linux]
 metadata:

@@ -3,7 +3,7 @@ name: loop-governance
 version: 1.5.0
 category: devops
 description: "TDD cycle scoring, self-improvement, and governance system for Hermes Cortex. Scores completeness/quality/progress per cycle with nomic embeddings, logs to SQLite, collects user feedback via CLI, auto-applies config patches with safety bounds, and integrates weekly evaluation + retention. Runtime config, test suite, setup/verify/update scripts, and auto-remediation health checks."
-author: Moses (Hermes Cortex)
+author: Hermes Cortex (Hermes Cortex)
 license: MIT
 platforms: [linux, macos, windows]
 metadata:

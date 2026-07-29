@@ -2,7 +2,7 @@
 name: threat-defense-pipeline
 description: "Layered defense system: fail2ban jails + nginx IP blocking + daily auto-deploy pipeline. How to add blocked IPs, check jails, and deploy."
 version: 1.0.0
-author: Moses (hermes-cortex)
+author: Hermes Cortex (hermes-cortex)
 platforms: [linux, macos]
 trigger: when adding blocked IPs, checking threat activity, or troubleshooting blocked connections
 ---

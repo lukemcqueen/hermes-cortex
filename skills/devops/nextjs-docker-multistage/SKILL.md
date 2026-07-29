@@ -2,7 +2,7 @@
 name: nextjs-docker-multistage
 description: "Next.js Docker multi-stage builds with standalone output — minimal runtime images, no node_modules in production"
 version: 1.0.0
-author: Titus
+author: Hermes Cortex
 metadata:
   tags: [nextjs, docker, multi-stage, standalone, best-practices]
 ---

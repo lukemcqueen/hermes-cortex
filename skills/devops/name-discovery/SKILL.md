@@ -2,7 +2,7 @@
 name: name-discovery
 description: "Use when checking if a software/tool name is available for use — searches GitHub, web, and registries for conflicts, evaluates severity, and generates alternatives."
 version: 1.0.0
-author: Moses (Hermes Cortex)
+author: Hermes Cortex (Hermes Cortex)
 license: MIT
 metadata:
   hermes:

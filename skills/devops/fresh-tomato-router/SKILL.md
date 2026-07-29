@@ -2,7 +2,7 @@
 name: fresh-tomato-router
 description: Interact with FreshTomato/DD-WRT routers programmatically via curl — authentication, nvram access, port forwarding, DMZ, and configuration management.
 version: 1.0.0
-author: Moses
+author: Hermes Cortex
 trigger: when you need to check or modify router settings on a FreshTomato or DD-WRT based router
 platforms: [linux]
 ---

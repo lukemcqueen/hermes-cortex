@@ -2,7 +2,7 @@
 name: react-composition-patterns
 description: "React composition patterns that scale — compound components, state lifting, context interfaces, and avoiding boolean prop proliferation. Includes React 19 API changes. Use when refactoring components with many boolean props or building flexible component libraries."
 version: 1.0.0
-author: Titus (incorporating vercel-labs/agent-skills)
+author: Hermes Cortex (incorporating vercel-labs/agent-skills)
 metadata:
   tags: [react, composition, patterns, component-architecture, vercel]
   source: https://github.com/vercel-labs/agent-skills

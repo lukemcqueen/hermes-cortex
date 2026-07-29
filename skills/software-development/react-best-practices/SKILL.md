@@ -2,7 +2,7 @@
 name: react-best-practices
 description: "70+ React & Next.js performance optimization rules from Vercel Engineering — covers waterfalls, bundle size, server/client perf, re-renders, and JS micro-optimizations. Use when writing new components, reviewing code for perf issues, or optimizing data fetching."
 version: 1.0.0
-author: Titus (incorporating vercel-labs/agent-skills)
+author: Hermes Cortex (incorporating vercel-labs/agent-skills)
 metadata:
   tags: [react, nextjs, performance, optimization, vercel]
   source: https://github.com/vercel-labs/agent-skills

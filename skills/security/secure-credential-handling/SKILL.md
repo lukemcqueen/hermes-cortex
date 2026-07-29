@@ -2,7 +2,7 @@
 name: secure-credential-handling
 description: Handle passwords, API keys, tokens, and secrets securely when using terminal/read_file/execute_code tools — avoid exposing sensitive values in tool call parameters or chat output.
 version: 1.0.0
-author: Moses
+author: Hermes Cortex
 trigger: before reading or passing any credential file, password, API token, or secret
 ---
 

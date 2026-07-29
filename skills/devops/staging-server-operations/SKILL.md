@@ -3,7 +3,7 @@
 name: staging-server-operations
 description: "Safe operational practices for Docker-based staging servers — volume management, change verification, and database recovery patterns."
 version: 1.19.0
-author: Gisu (Hermes Agent)
+author: Hermes Cortex
 license: MIT
 platforms: [linux, darwin]
 metadata:

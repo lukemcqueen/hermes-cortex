@@ -17,7 +17,7 @@ always:
 
 on_task:
   debug:
-    - name: systematic-debugging
+    - name: root-cause-debugging
       why: 6-phase root cause analysis
   review:
     - name: code-review
@@ -37,7 +37,7 @@ on_task:
 |------|---------------------|
 | `simple-code` | — |
 | `enterprise` | subagent-driven-development, dev-plan, change-test-loop |
-| `debug` | systematic-debugging, save-lesson |
+| `debug` | root-cause-debugging, save-lesson |
 | `ui` | react-best-practices, react-component-testing, react-composition-patterns |
 | `api` | test-driven-development |
 | `db` | test-seed-uniqueness |
@@ -80,7 +80,7 @@ skill set. Use `--skill-refs` to customize:
 ```bash
 bash ~/hermes-cortex/ops/scripts/install/seed-project.sh \\
   --project=~/Developer/my-api \
-  --skill-refs=change-test-loop,code-review,systematic-debugging
+  --skill-refs=change-test-loop,code-review,root-cause-debugging
 ```
 
 This populates the `always` section. The `on_task` mappings come from the template.

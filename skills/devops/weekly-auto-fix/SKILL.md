@@ -2,7 +2,7 @@
 name: orch-weekly-auto-fix
 description: "After the weekly opportunity scan identifies issues, run auto-fix patterns — git pull, branch cleanup, Docker restart, permission fixes, disk cleanup — then verify each fix succeeded. Reduces manual intervention for known recurring problems."
 version: 1.1.0
-author: Moses
+author: Hermes Cortex
 license: MIT
 metadata:
   hermes:

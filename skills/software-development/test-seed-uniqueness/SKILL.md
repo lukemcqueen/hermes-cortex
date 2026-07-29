@@ -9,7 +9,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [testing, seed-data, factories, fixtures, database, uniqueness, pytest, factory-boy]
-    related_skills: [change-test-loop, subagent-driven-development, systematic-debugging]
+    related_skills: [change-test-loop, subagent-driven-development, root-cause-debugging]
 ---
 
 # Test Seed Data — Uniqueness Discipline

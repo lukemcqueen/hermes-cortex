@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [code-review, security, verification, quality, pre-commit, auto-fix, standards, spec]
-    related_skills: [subagent-driven-development, change-test-loop, systematic-debugging, codebase-design]
+    related_skills: [subagent-driven-development, change-test-loop, root-cause-debugging, codebase-design]
 ---
 
 # Two-Axis Code Verification
@@ -338,7 +338,7 @@ The `[verified]` prefix indicates independent two-axis review approved this chan
 
 - **subagent-driven-development** — Run this after EACH task as the quality gate. The two-axis architecture matches the two-stage review pattern.
 - **change-test-loop** — This pipeline verifies TDD discipline was followed — tests exist, tests pass, no regressions.
-- **systematic-debugging** — When bugs survive review, use the feedback loop approach to pin down what the review missed.
+- **root-cause-debugging** — When bugs survive review, use the feedback loop approach to pin down what the review missed.
 - **codebase-design** — Spec axis issues often trace back to shallow modules (no clean seam). Hand off to codebase-design for deepening recommendations.
 - **design-doc-audit** — Spec axis needs a spec. If the spec is missing or stale, use design-doc-audit to fix it first.
 

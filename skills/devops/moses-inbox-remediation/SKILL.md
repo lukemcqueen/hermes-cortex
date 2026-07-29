@@ -3,7 +3,7 @@
 name: moses-inbox-remediation
 description: "Auto-remediate hermes-cortex issues reported by peer agents via the agent inbox. Scans pending remediation markers every 10 minutes, reads the original message, applies the fix, and marks the request as done."
 version: 1.0.0
-author: Moses
+author: Hermes Cortex
 license: MIT
 metadata:
   hermes:

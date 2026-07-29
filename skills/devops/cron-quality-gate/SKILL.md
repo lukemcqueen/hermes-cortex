@@ -3,7 +3,7 @@ name: cron-quality-gate
 version: 1.0.0
 category: devops
 description: "Prevents LLM cron jobs from delivering garbage with a self-check quality gate and automated watchdog."
-author: Moses
+author: Hermes Cortex
 license: MIT
 metadata:
   hermes:

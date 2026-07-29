@@ -2,7 +2,7 @@
 name: react-view-transitions
 description: "Implement smooth native-browser animations between UI states using React's ViewTransition component and document.startViewTransition API. No third-party animation libraries needed. Covers shared element morphs, enter/exit, list reorder, and Next.js App Router integration."
 version: 1.0.0
-author: Titus (incorporating vercel-labs/agent-skills)
+author: Hermes Cortex (incorporating vercel-labs/agent-skills)
 metadata:
   tags: [react, nextjs, animations, view-transitions, vercel]
   source: https://github.com/vercel-labs/agent-skills

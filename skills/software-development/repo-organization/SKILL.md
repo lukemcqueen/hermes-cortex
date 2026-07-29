@@ -2,7 +2,7 @@
 name: repo-organization
 description: "Canonical repo organization for Hermes Cortex — structure, naming, consolidation, symlinks, and audit procedures."
 version: 1.1.0
-author: Hermes Cortex (Moses)
+author: Hermes Cortex
 license: MIT
 platforms: [linux, macos]
 metadata:

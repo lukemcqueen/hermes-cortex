@@ -3,7 +3,7 @@ name: agent-bus-automation
 description: "Automated Agent Bus processing via MCP."
 category: devops
 version: 2.0.0
-author: Moses (Hermes Cortex)
+author: Hermes Cortex (Hermes Cortex)
 metadata:
   hermes:
     tags: [bus, cron, automation, messaging]

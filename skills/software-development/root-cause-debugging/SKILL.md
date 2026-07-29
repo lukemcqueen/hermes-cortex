@@ -1,8 +1,8 @@
 ---
-name: systematic-debugging
+name: root-cause-debugging
 description: "6-phase root cause debugging: feedback loop, reproduce, pattern, hypothesise + instrument, fix, cleanup. Understand bugs before fixing."
 version: 2.0.0
-author: Hermes Agent (adapted from obra/superpowers + Matt Pocock/diagnosing-bugs)
+author: Hermes Cortex
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
@@ -11,7 +11,7 @@ metadata:
     related_skills: [change-test-loop, plan, subagent-driven-development, codebase-design]
 ---
 
-# Systematic Debugging
+# Root Cause Debugging
 
 ## Overview
 
@@ -372,7 +372,7 @@ For complex multi-component debugging, dispatch investigation subagents:
 delegate_task(
     goal="Investigate why [specific test/behavior] fails",
     context="""
-    Follow systematic-debugging skill:
+    Follow root-cause-debugging skill:
     0. Build a tight feedback loop first
     1. Reproduce and minimise
     2. Find pattern differences

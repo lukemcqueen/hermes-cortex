@@ -3,7 +3,7 @@ name: bus-queue-maintenance
 description: "Bus queue lifecycle — inspecting stuck messages, archiving orphaned messages, navigating state constraints, and performing routine queue cleanup. Complements agent-bus for the hands-on maintenance side."
 version: 1.0.0
 category: devops
-author: Moses
+author: Hermes Cortex
 platforms: [linux]
 ---
 

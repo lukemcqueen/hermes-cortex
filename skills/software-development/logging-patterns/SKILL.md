@@ -7,7 +7,7 @@ description: >
   injection, correlation IDs, sensitive data scrubbing, and rotation.
   Applies to Python, Node.js, shell scripts, and infrastructure.
 tags: [logging, observability, debugging, structured-logging, production]
-related_skills: [systematic-debugging, linux-performance-diagnostics, engineering-approach]
+related_skills: [root-cause-debugging, linux-performance-diagnostics, engineering-approach]
 ---
 
 # Logging Patterns

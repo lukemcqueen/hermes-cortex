@@ -3,13 +3,13 @@
 name: rails-data-pipeline-debugging
 description: "Debugging data transformation bugs in legacy Rails apps — tracing heuristic text-splitting, internationalisation helpers, and CPLEX/CSV import pipelines."
 version: 1.2.0
-author: Titus
+author: Hermes Cortex
 license: MIT
 platforms: [macos, linux]
 metadata:
   hermes:
     tags: [rails, debugging, data-pipeline, legacy, text-processing, heuristics]
-    related_skills: [systematic-debugging, change-test-loop, codebase-design]
+    related_skills: [root-cause-debugging, change-test-loop, codebase-design]
 ---
 
 # Rails Data Pipeline Debugging

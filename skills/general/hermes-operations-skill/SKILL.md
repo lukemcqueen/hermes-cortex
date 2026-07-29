@@ -3,7 +3,7 @@
 name: hermes-operations-skill
 description: "Practical Hermes Agent operations: cron management, inbox handling, system troubleshooting, and configuration for multi-machine deployments."
 version: 1.5
-author: Hermes Operator
+author: Hermes Cortex
 license: MIT
 platforms: [linux, macos, windows]
 metadata:

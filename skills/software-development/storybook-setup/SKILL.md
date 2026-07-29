@@ -3,7 +3,7 @@
 name: storybook-setup
 description: "Set up Storybook with Next.js (Vite) + Tailwind CSS + @storybook/test — init, Tailwind wiring, story patterns, build verification."
 version: 1.0.0
-author: Titus
+author: Hermes Cortex
 license: MIT
 metadata:
   hermes:

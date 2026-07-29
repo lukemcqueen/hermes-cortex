@@ -9,7 +9,7 @@ metadata:
   hermes:
     tags: [api, rest, graphql, http, debugging, testing, curl, integration]
     category: software-development
-    related_skills: [systematic-debugging, test-driven-development]
+    related_skills: [root-cause-debugging, test-driven-development]
 ---
 
 # API Testing & Debugging

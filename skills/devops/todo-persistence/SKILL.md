@@ -7,7 +7,7 @@ description: >-
   Covers the bus.todos table, todo-db.py CLI, session start/end protocol,
   and fleet-visible todo management. Replaces ephemeral per-session
   todo() tool with durable Postgres storage.
-author: Moses
+author: Hermes Cortex
 platforms: [linux]
 metadata:
   hermes:

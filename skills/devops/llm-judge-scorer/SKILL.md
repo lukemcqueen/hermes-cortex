@@ -3,7 +3,7 @@ name: llm-judge-scorer
 version: 1.0.0
 category: devops
 description: "LLM-as-Judge trace quality scorer. Evaluates Hermes conversation traces in Langfuse using a local Ollama model and posts quality scores back to Langfuse. Cron schedule: weekdays 12pm/8pm, weekends 10pm KST."
-author: Titus
+author: Hermes Cortex
 license: MIT
 metadata:
   hermes:

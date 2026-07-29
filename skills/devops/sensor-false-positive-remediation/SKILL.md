@@ -6,7 +6,7 @@ description: >-
   Handle false positives from the auto-remediation sensor pipeline.
   Covers the trace-before-create workflow for sensor-reported missing
   scripts and distinguishing stale sensor entries from genuine issues.
-author: Moses
+author: Hermes Cortex
 license: MIT
 metadata:
   hermes:

@@ -9,7 +9,7 @@ platforms: [linux]
 metadata:
   hermes:
     tags: [performance, optimization, batch, database, profiling, queries]
-    related_skills: [systematic-debugging, project-map, server-hardening]
+    related_skills: [root-cause-debugging, project-map, server-hardening]
 ---
 
 # Batch Job Optimization

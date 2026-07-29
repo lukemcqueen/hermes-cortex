@@ -3,7 +3,7 @@ name: self-improvement-pipeline
 description: "Transform user corrections and system warnings into permanent guardrails. Covers zero-ask discipline, doctor-warnings-as-required, session-end self-audit, dogfooding, and the full correction-to-guardrail feedback loop."
 version: 1.0.0
 category: devops
-author: Moses / Hermes Cortex
+author: Hermes Cortex / Hermes Cortex
 license: MIT
 platforms: [linux, macos]
 ---

@@ -2,7 +2,7 @@
 name: public-contribution
 description: "After any improvement, bug fix, workflow discovery, or lesson — pause and evaluate whether the insight is public-worthy for the Hermes Cortex OSS community. If yes, genericize and contribute."
 version: 1.0.0
-author: Moses
+author: Hermes Cortex
 license: MIT
 metadata:
   hermes:

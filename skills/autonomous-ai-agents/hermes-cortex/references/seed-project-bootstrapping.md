@@ -92,7 +92,7 @@ bash ~/.hermes-cortex/scripts/seed-project.sh --restore=/path/to/project@2026062
 - **Default (no `--legacy-copy`):** writes a YAML manifest that references global
   skills by name. No file copies, no drift. The `always` section is populated from
   `--skill-refs` (or the default set below). The `on_task` section provides
-  task-type mappings (debug → systematic-debugging, review → code-review, etc.).
+  task-type mappings (debug → root-cause-debugging, review → code-review, etc.).
 - **Legacy (`--legacy-copy`):** copies SKILL.md + references/ from global
   `~/.hermes/skills/` into `.hermes-cortex/skills/<name>/` (old behavior).
 - Default set: change-test-loop, engineering-approach, save-lesson, spike, dev-plan

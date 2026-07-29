@@ -7,7 +7,7 @@ description: >
   degradation, retry strategies, circuit breakers, user-facing error
   messages, and failure domain boundaries across Python and web apps.
 tags: [error-handling, exceptions, resilience, retry, robustness]
-related_skills: [systematic-debugging, logging-patterns, change-test-loop, engineering-approach]
+related_skills: [root-cause-debugging, logging-patterns, change-test-loop, engineering-approach]
 ---
 
 # Error Handling Patterns

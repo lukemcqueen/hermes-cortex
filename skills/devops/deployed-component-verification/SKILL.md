@@ -3,7 +3,7 @@ name: deployed-component-verification
 version: 1.1.0
 category: devops
 description: "Verify deployed components match their repo source — detect stale copies, validate symlinks, and ensure the fleet runs fresh code after git pulls."
-author: Moses
+author: Hermes Cortex
 license: MIT
 platforms: [linux, macos]
 metadata:

@@ -3,7 +3,7 @@ name: agent-fundamentals
 description: "Universal 'basic things every agent should know' — distilled from real frustration patterns across 10+ sessions. Prevents the most common corrections and wasted turns."
 version: 1.0.0
 category: devops
-author: Moses / Hermes Cortex
+author: Hermes Cortex / Hermes Cortex
 license: MIT
 platforms: [linux, macos]
 ---

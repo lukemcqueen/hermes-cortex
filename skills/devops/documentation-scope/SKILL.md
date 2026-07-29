@@ -7,7 +7,7 @@ description: >
   when and how to distinguish general (universal) content from deployment-
   specific content using scope banners and section tags. Keeps the public
   OSS repo usable by everyone while preserving Luke's personal deployment notes.
-author: Moses
+author: Hermes Cortex
 tags: [docs, scope, multi-audience, conventions, hermes-cortex]
 related_skills: [agent-contract, public-contribution]
 ---

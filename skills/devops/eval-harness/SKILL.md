@@ -2,7 +2,7 @@
 name: eval-harness
 description: "Systematic evaluation framework for agent capabilities — capability tests, regression suites, failure analysis"
 version: 1.0.0
-author: Moses
+author: Hermes Cortex
 metadata:
   tags: [eval, testing, reliability, autonomous-agents, quality-gates]
 ---

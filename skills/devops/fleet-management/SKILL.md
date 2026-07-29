@@ -7,7 +7,7 @@ description: >-
   ready score, fleet-audit CLI, adding/removing agents, and multi-slice
   fleet upgrades (S1-S4 pattern). Covers the 5 fleet concerns (identity,
   topology, choreography, economics, sovereign control) per PRD-005.
-author: Moses / Hermes Cortex
+author: Hermes Cortex / Hermes Cortex
 license: MIT
 platforms: [linux, macos]
 related_skills:

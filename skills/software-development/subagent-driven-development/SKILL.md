@@ -346,10 +346,10 @@ Include TDD instructions in every implementer context.
 
 The two-stage review process IS the code review. For final integration review, use the code-review skill's review dimensions.
 
-### With systematic-debugging
+### With root-cause-debugging
 
 If a subagent encounters bugs during implementation:
-1. Follow systematic-debugging process
+1. Follow root-cause-debugging process
 2. Find root cause before fixing
 3. Write regression test
 4. Resume implementation

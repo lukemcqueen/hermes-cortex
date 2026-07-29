@@ -16,7 +16,7 @@ An agent deep in a task will:
 - Edit a Dockerfile without loading `docker-management`
 - Touch a cron definition without loading `cron-job-management` or `cron-format-standard`
 - Write an nginx config without loading `nginx-security-pipeline`
-- Debug a test failure without loading `systematic-debugging`
+- Debug a test failure without loading `root-cause-debugging`
 - Create a new script without loading `shell-scripting` or `project-run-scripts`
 - Modify a failing cron without loading `cron-quality-gate` or `auto-remediation`
 

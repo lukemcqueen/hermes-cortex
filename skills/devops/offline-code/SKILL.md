@@ -3,7 +3,7 @@ name: offline-code
 version: 1.0.0
 category: devops
 description: "Offline code snippet search + generation using local Ollama models. Search a 518-snippet corpus across 32 categories with nomic-embed-text:v1.5, generate code with auto-detected qwen2.5-coder (3b on 4-8GB, 7b on 8-24GB, 14b on 24GB+). No internet needed."
-author: Titus
+author: Hermes Cortex
 license: MIT
 metadata:
   hermes:

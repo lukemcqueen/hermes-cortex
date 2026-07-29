@@ -2,7 +2,7 @@
 name: agent-health-monitoring
 description: Cross-server agent health monitoring using binary status vectors — deploy health endpoints on each agent, poll from orchestrator, alert on state transitions.
 version: 3.5.0
-author: Moses
+author: Hermes Cortex
 platforms: [macos, linux]
 ---
 

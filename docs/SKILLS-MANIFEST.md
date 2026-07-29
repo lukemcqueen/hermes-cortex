@@ -11,7 +11,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `pr-review` | 1.0.0 | Full PR review pipeline — whole-repo context, architecture analysis, lesson-DB pattern matching, test regression check, and formal review with inline comments. Zero external API costs. | `skill_view(name='pr-review')` |
 
-## Software Development (22 skills)
+## Software Development (21 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -28,12 +28,11 @@ their domain.
 | `public-contribution` | 1.0.0 | After any improvement, evaluate whether it's public-worthy and contribute | `skill_view(name='public-contribution')` |
 | `session-manager` | 1.1.0 | Session checkpoint/restore, context compression, progress tracking | `skill_view(name='session-manager')` |
 | `state-orchestrator` | 1.0.0 | Info routing — live context vs session vs memory vs docs | `skill_view(name='state-orchestrator')` |
-| `save-lesson` | 1.1.0 | Auto-save bug-fix lessons, promote to skills, handle structured bug reports | `skill_view(name='save-lesson')` |
 | `subagent-driven-development` | 1.0.0 | Execute plans via delegate_task subagents (2-stage review) | `skill_view(name='subagent-driven-development')` |
-| `systematic-debugging` | 2.0.0 | **6-phase** root cause debugging: feedback loop, reproduce, pattern, hypothesise, fix, cleanup. Ported from Matt Pocock's diagnosing-bugs. | `skill_view(name='systematic-debugging')` |
+| `save-lesson` | 1.1.0 | Auto-save bug-fix lessons, promote to skills, handle structured bug reports | `skill_view(name='save-lesson')` |
+| `root-cause-debugging` | 2.0.0 | **6-phase** root cause debugging: feedback loop, reproduce, pattern, hypothesise, fix, cleanup. Ported from Matt Pocock's diagnosing-bugs. | `skill_view(name='root-cause-debugging')` |
 | `code-review` | 3.0.0 | **Two-axis** pre-commit review: Standards (conventions + Fowler smells) + Spec (requirements). Parallel sub-agents. Plus security scan + auto-fix. Ported from Matt Pocock's code-review. | `skill_view(name='code-review')` |
 | `codebase-design` | 1.0.0 | **NEW** — Deep module vocabulary: module, interface, depth, seam, adapter, leverage, locality. Design testable modules with clean seams. Ported from Matt Pocock. | `skill_view(name='codebase-design')` |
-| `spike` | 1.0.0 | Throwaway experiments to validate ideas before build | `skill_view(name='spike')` |
 | `memory-architecture` | 1.0.0 | Agent memory system — MEMORY.md structure, privacy, gitignore | `skill_view(name='memory-architecture')` |
 | `ecosystem-audit` | 1.0.0 | Evaluate third-party tools for adoption, integration, or removal | `skill_view(name='ecosystem-audit')` |
 
@@ -51,7 +50,7 @@ their domain.
 
 | Script | Type | Purpose | Schedule |
 |--------|------|---------|----------|
-|| `agent-learning-collector.py` | no_agent | Agent-side: collects skills delta, lessons delta, session stats; sends Learning Report to Moses via Agent Bus | every 6h per agent |
+| `agent-learning-collector.py` | no_agent | Agent-side: collects skills delta, lessons delta, session stats; sends Learning Report to Moses via Agent Bus | every 6h per agent |
 
 ## Social Media
 
@@ -92,8 +91,8 @@ references remain.
 | 2026-06-11 | TDD merged into change-test-loop (v1.1.0), writing-plans merged into plan (v2.1.0) |
 | 2026-06-09 | Added public-contribution, skill-from-lesson (software-development), nginx-web-app-deployment (devops), SOUL.md template, updated nginx template |
 | 2026-06-09 | Added pr-review (github), package-security (devops). skill-from-lesson absorbed into save-lesson (v1.1.0). documentation-maintenance-audit absorbed into project-readiness. |
-|| 2026-06-15 | Added inbox-remediation devops skill v1.0.0 — auto-remediate hermes-cortex issues from agent inbox messages |
-|| 2026-06-15 | orch-weekly-auto-fix v1.1.0 — added verification phase: each fix re-checks its condition post-fix with PASS/FAIL/WARN output |
-|| 2026-06-17 | Added skill collection pipeline: collect-agent-skills.sh (agent-side reporter), request-skill-reports.sh (Moses orchestrator), process-skill-reports.py (digest compiler). Inbox server filename collision fix (microsecond precision). |
-||| 2026-06-12 | **Memory That Compounds** — change-test-loop v2.0.0 adds LEARN phase (search lessons before every code change). New lesson-aware-agent skill for universal injection. Daily lesson auto-miner (02:00 KST). Compound stats dashboard (02:30 KST). Replaced weekly mining with daily mining. |
-||| 2026-07-07 | **Pocock Upgrade** — Three skills imported/upgraded from Matt Pocock's skills repo (159k ★). New `codebase-design` (deep module vocabulary). `systematic-debugging` v2.0 (6-phase with feedback loop). `code-review` v3.0 (two-axis Standards + Spec with Fowler smells). Integrated into agent-flow and architecture-review. |
+| 2026-06-15 | Added inbox-remediation devops skill v1.0.0 — auto-remediate hermes-cortex issues from agent inbox messages |
+| 2026-06-15 | orch-weekly-auto-fix v1.1.0 — added verification phase: each fix re-checks its condition post-fix with PASS/FAIL/WARN output |
+| 2026-06-17 | Added skill collection pipeline: collect-agent-skills.sh (agent-side reporter), request-skill-reports.sh (Moses orchestrator), process-skill-reports.py (digest compiler). Inbox server filename collision fix (microsecond precision). |
+|| 2026-06-12 | **Memory That Compounds** — change-test-loop v2.0.0 adds LEARN phase (search lessons before every code change). New lesson-aware-agent skill for universal injection. Daily lesson auto-miner (02:00 KST). Compound stats dashboard (02:30 KST). Replaced weekly mining with daily mining. |
+|| 2026-07-07 | **Pocock Upgrade** — Three skills imported/upgraded from Matt Pocock's skills repo (159k ★). New `codebase-design` (deep module vocabulary). `root-cause-debugging` v2.0 (6-phase with feedback loop). `code-review` v3.0 (two-axis Standards + Spec with Fowler smells). Integrated into agent-flow and architecture-review. |

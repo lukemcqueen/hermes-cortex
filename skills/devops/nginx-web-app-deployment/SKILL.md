@@ -2,7 +2,7 @@
 name: nginx-web-app-deployment
 description: "Deploy a custom web app (Flask, Python, Node) behind nginx — upstream config, SSL, basic auth, rate limiting, launchd/systemd service, and multi-layer testing pattern."
 version: 1.0.0
-author: Moses
+author: Hermes Cortex
 platforms: [macos, linux]
 ---
 

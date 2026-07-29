@@ -4,7 +4,7 @@ version: 1.2.0
 category: devops
 description: "Agent Bus (PGMQ) operations — queue inspection, DLQ management, message recovery, auth, and health diagnostics. Covers the Postgres-backed message queue that replaces the legacy file inbox."
 platforms: [linux]
-author: Esther
+author: Hermes Cortex
 metadata:
   hermes:
     tags: [bus, pgmq, dlq, messaging, queue, postgres, recovery]

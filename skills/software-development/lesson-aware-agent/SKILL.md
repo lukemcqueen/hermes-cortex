@@ -93,7 +93,7 @@ Track the compounding effect to see tangible value:
 
 ## Integration Points
 
-### With systematic-debugging
+### With root-cause-debugging
 
 Before any debugging session:
 1. **LEARN** — search lessons for the error message

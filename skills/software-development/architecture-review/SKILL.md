@@ -12,7 +12,7 @@ metadata:
     tags: [architecture, design-review, decision-matrix, cost-estimation, conflict-resolution, party, hc-party]
     aliases: [hc-party, party]
     trigger_phrases: [architecture review, design review, evaluate approach, hc party, arch party]
-    related_skills: [plan, writing-plans, spike, change-test-loop, codebase-design, systematic-debugging]
+    related_skills: [plan, writing-plans, spike, change-test-loop, codebase-design, root-cause-debugging]
 ---
 
 # architecture-review: Architecture Review
@@ -205,4 +205,4 @@ After scoring by all 6 roles:
 - **writing-plans** — For documenting the chosen architecture in a structured design doc
 - **spike** — For prototyping the recommended approach before committing
 - **change-test-loop** — For implementing the chosen architecture with quality assurance built in
-- **systematic-debugging** — When architecture decisions lead to hard bugs, use the feedback loop approach to diagnose
+- **root-cause-debugging** — When architecture decisions lead to hard bugs, use the feedback loop approach to diagnose

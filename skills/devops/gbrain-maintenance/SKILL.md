@@ -3,7 +3,7 @@ name: gbrain-maintenance
 version: 2.0.0
 category: devops
 description: "Manage gbrain knowledge brain lifecycle — autopilot daemon, sync, dream cycle, service control, and cron integration."
-author: Moses
+author: Hermes Cortex
 license: MIT
 ---
 

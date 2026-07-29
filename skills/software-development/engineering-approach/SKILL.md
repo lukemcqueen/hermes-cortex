@@ -2,7 +2,7 @@
 name: engineering-approach
 description: "Engineering and communication standards for this project: terse, direct, skip explanations, always handle errors."
 version: 1.9.0
-author: Titus
+author: Hermes Cortex
 metadata:
   tags: [engineering-standards, communication, style-guide, best-practices]
 ---

@@ -7,7 +7,7 @@ description: >-
   analyze → fix → verify.
 version: 1.0.0
 category: devops
-author: Moses
+author: Hermes Cortex
 license: MIT
 platforms: [linux]
 related_skills:

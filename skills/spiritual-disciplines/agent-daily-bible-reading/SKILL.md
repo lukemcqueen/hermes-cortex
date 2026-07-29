@@ -4,7 +4,7 @@ name: agent-daily-bible-reading
 version: 1.0.0
 category: spiritual-disciplines
 description: "Daily bible reading cron pattern — generates SOUL.md entries and brain pages for agent-wide scripture engagement."
-author: Moses
+author: Hermes Cortex
 license: MIT
 pin_reason: Shared infrastructure — all agents benefit from this devotional pattern. It is not agent-specific; it's fleet-wide spiritual discipline infrastructure.
 pinned: true

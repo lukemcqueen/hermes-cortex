@@ -2,13 +2,13 @@
 name: codebase-design
 description: "Deep module vocabulary and design principles — module, interface, depth, seam, adapter, leverage, locality. Use when designing or improving a module's interface, finding deepening opportunities, deciding where a seam goes, or making code more testable."
 version: 1.0.0
-author: Titus (ported from Matt Pocock's skills)
+author: Hermes Cortex (ported from Matt Pocock's skills)
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [architecture, design, module, interface, depth, seam, testability]
-    related_skills: [architecture-review, design-doc-audit, systematic-debugging, change-test-loop]
+    related_skills: [architecture-review, design-doc-audit, root-cause-debugging, change-test-loop]
 ---
 
 # Codebase Design: Deep Modules
@@ -128,7 +128,7 @@ When a module is shallow, deepen it. The strategy depends on the dependency cate
 
 - **architecture-review** — Use deep module vocabulary when evaluating approach A vs B: compare their depth (interface size vs hidden complexity), seam placement, and adapter count.
 - **design-doc-audit** — Call out shallow modules when auditing design docs against codebase. The "deletion test" is a quick audit heuristic.
-- **systematic-debugging** — When a bug resists fixing, evaluate whether missing seam discipline (no clean interface to test against) is the root cause. Flag it as a post-mortem finding.
+- **root-cause-debugging** — When a bug resists fixing, evaluate whether missing seam discipline (no clean interface to test against) is the root cause. Flag it as a post-mortem finding.
 - **change-test-loop** — Apply deep module principles when designing the module before the first RED test.
 
 ## When to Use

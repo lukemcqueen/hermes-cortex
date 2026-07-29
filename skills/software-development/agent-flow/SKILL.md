@@ -10,7 +10,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [workflow, router, dispatch, patterns, code, debug, ui, api, db, data, pipeline, research, writing, review, planning]
-    related_skills: [dev-plan, spike, change-test-loop, systematic-debugging, code-review, subagent-driven-development, writing-plans, memory-architecture, codebase-design]
+    related_skills: [dev-plan, spike, change-test-loop, root-cause-debugging, code-review, subagent-driven-development, writing-plans, memory-architecture, codebase-design]
 ---
 
 # Agent Flow — Workflow Router
@@ -169,7 +169,7 @@ See `references/skill-discovery-rationale.md` for why this step exists and when 
 - `read_file` — examine source where error originates
 - `search_files` — grep for error patterns across codebase
 
-**Method: Load the `systematic-debugging` skill and follow its 6-phase process:**
+**Method: Load the `root-cause-debugging` skill and follow its 6-phase process:**
 
 1. **Phase 0 — Build a feedback loop.** Before theorizing, build a tight pass/fail signal: failing test, curl harness, CLI invocation, headless browser script, or bisection harness. Tighten it (faster, sharper, deterministic). Non-deterministic bugs: raise reproduction rate above 1%.
 2. **Phase 1 — Reproduce + minimise.** Run the loop, confirm the correct bug, shrink to smallest load-bearing scenario. Gather evidence: error messages, recent changes, data flow.
