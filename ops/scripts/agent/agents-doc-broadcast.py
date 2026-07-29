@@ -52,7 +52,7 @@ def main():
         print(f"**Action required:**")
         print(f"1. Read the updated {args.doc_type}")
         print(f"2. Check your own SOUL.md for gaps against the new template")
-        print(f"3. Your agent-daily-soul-refinement cron will auto-fill gaps (Channel C)")
+        print(f"3. The orch-skill-lifecycle cron (04:00 daily) will auto-fill gaps (Channel C)")
         print(f"")
         print(f"**Location:** `~/hermes-cortex/AGENTS.md` or `~/.hermes/SOUL.md`")
         print(f"**Reference template:** `~/hermes-cortex/docs/templates/SOUL.md`")

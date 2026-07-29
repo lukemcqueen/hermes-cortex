@@ -826,27 +826,7 @@ create_cron "agent-session-cache-build" "0 5 * * 1" \
 
 # Daily agent card generation (06:00)
 
-# Weekly loop governance evaluation (Monday 09:00)
-create_cron "agent-weekly-loop-eval" "0 9 * * 1" \
-  "" \
-  "Run the loop governance evaluation pipeline for the last 7 days, then run the skill miner, auto-apply fixes for any degraded scores, and report results. If everything is clean, output exactly [SILENT]" \
-  "loop-governance" \
-  "" \
-  "origin" \
-  "" \
-  "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
-
-# Daily SOUL.md refinement (23:00) — learns from user corrections
-create_cron "agent-daily-soul-refinement" "0 23 * * *" \
-  "" \
-  "Load the soul-refinement skill. Use session_search() to find today's sessions. Look for any user corrections to your behavior, broken workflows, or feedback. If found, update SOUL.md accordingly. If nothing to refine, output exactly [SILENT]" \
-  "soul-refinement" \
-  "" \
-  "origin" \
-  "" \
-  "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+# Replaced by orch-skill-lifecycle (install-orch-crons.sh, 04:00 daily)
 
 # Agent learning collector — every 6h: collect skills delta + lessons + session stats from ALL agents
 create_cron "agent-learning-collector" "0 */6 * * *" \

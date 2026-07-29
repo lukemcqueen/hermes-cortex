@@ -32,7 +32,7 @@ SILENT_IS_ZERO = 5  # bytes — output smaller than this when job should produce
 
 # LLM-driven crons we monitor (no_agent=False, prompt-based)
 MONITORED_CRONS = [
-    "agent-weekly-loop-eval",
+    # agent-weekly-loop-eval removed — absorbed into orch-skill-lifecycle
     "local-agent-daily-news-brief",
     "local-agent-daily-system-brief",
     "local-agent-daily-finance-brief",

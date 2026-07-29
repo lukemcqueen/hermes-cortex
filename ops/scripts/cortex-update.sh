@@ -265,7 +265,7 @@ register "ops/scripts/health/agent-langfuse-health-watchdog.py" "${CORTEX_DEPLOY
 register "ops/scripts/manage/agent-llm-judge-scorer.py"         "${CORTEX_DEPLOY_HOME}/scripts/agent-llm-judge-scorer.py"
 register "ops/scripts/health/agent-model-health-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/agent-model-health-watchdog.py"
 register "ops/scripts/manage/agent-offline-code-index-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/agent-offline-code-index-cron.sh"
-register "ops/scripts/manage/harvest-lessons.sh"         "${CORTEX_DEPLOY_HOME}/scripts/harvest-lessons.sh"
+# harvest-lessons.sh removed — absorbed into orch-skill-lifecycle (July 2026)
 # core/governance/skill_miner.py removed (old governance — July 2026)
 register "ops/scripts/health/swap-refresh.py"            "${CORTEX_DEPLOY_HOME}/scripts/swap-refresh.py"
 register "ops/scripts/health/agent-cron-quality-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-cron-quality-watchdog.py"
@@ -664,7 +664,6 @@ clean_stale_deploys() {
   # Files to preserve even if not registered (cron-referenced)
   local preserve=(
     "agent-model-health-watchdog.py"
-    "harvest-lessons.sh"
     "agent-offline-code-index-cron.sh"
     "skill_miner.py"
     "swap-refresh.py"

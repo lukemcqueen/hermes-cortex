@@ -7,7 +7,7 @@ and patches SOUL.md / cron output to replace placeholders with real costs.
 
 Usage:
   python3 cron-cost-inject.py agent-daily-bible-reading
-  python3 cron-cost-inject.py agent-daily-bible-reading agent-daily-soul-refinement
+  python3 cron-cost-inject.py agent-daily-bible-reading agent-learning-collector
 """
 
 import json
