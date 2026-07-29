@@ -498,6 +498,7 @@ if $UNINSTALL; then
     "agent-system-alert-watchdog" \
     "agent-threat-pipeline" \
     "agent-weekly-loop-eval" \
+    "agent-push-metrics" \
     "agent-no-verify-audit"; do
   
   
@@ -994,6 +995,16 @@ create_cron "agent-ip-submission" "*/30 * * * *" \
   "" \
   "" \
   "origin" \
+  "" \
+  "true"
+
+# Agent metrics push (every 5 min, no_agent) — pushes system metrics to VictoriaMetrics
+create_cron "agent-push-metrics" "every 5m" \
+  "push-metrics.sh" \
+  "" \
+  "" \
+  "" \
+  "local" \
   "" \
   "true"
 
