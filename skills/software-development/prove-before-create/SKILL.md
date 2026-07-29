@@ -114,7 +114,7 @@ saves more time than writing.
 
 ## Relationship to Other Skills
 
-- **survey-before-action** (Hermes default) — covers the general survey
+- **survey-before-action** (Hermes Cortex) — covers the general survey
   checklist. This skill adds the enforcement layer and the "extend, don't
   rebuild" rule.
 - **cortex-preflight** (repo-specific) — adds git search and deployment

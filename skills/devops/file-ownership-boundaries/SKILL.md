@@ -131,7 +131,7 @@ When the skill lifecycle or learnings pipeline evaluates something for upstreami
 
 - AGENTS.md item 22: Only modify files in our repo — never touch Hermes defaults
 - AGENTS.md item 23: Sharing filter — only share new/substantive hermes-cortex changes
-- `survey-before-action` skill: Pre-flight checklist before file edits (Hermes default, read-only)
+- `survey-before-action` skill: Pre-flight checklist before file edits (Hermes Cortex, read-only)
 - `repo-organization` skill: Repo structure and naming conventions
 - `public-contribution` skill: Decision tree for sharing improvements (Hermes default, read-only)
 - `change-checklist` (devops): Pre-ship validation that includes file-ownership checks in Phase 0
