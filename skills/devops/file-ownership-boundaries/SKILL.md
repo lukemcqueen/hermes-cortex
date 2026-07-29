@@ -47,17 +47,22 @@ Ask yourself these three questions IN ORDER:
    → Deployed runtime (`~/.hermes-cortex/scripts/`): find the repo source, edit there, then deploy
    → State/config: modify directly
 
-## What Are Hermes Defaults?
+## Identifying Our Skills vs Hermes Defaults
 
-Hermes Agent ships with bundled skills, config templates, and core modules. These are maintained by the Hermes project and should never be modified locally.
+Skills in `~/.hermes/skills/` come from two places. Know which is which:
 
-**Hermes default skills (do NOT edit):**
-- `task-start`, `session-manager`, `agent-flow`, `reasoning-patterns`
-- `reflexion-check`, `agent-contract`, `agent-inbox`, `hermes-agent`
-- `survey-before-action`, `public-contribution`, `orch-skill-lifecycle`
-- Any skill that does NOT have a source in `~/hermes-cortex/skills/`
+| Origin | Path check | Action |
+|--------|-----------|--------|
+| Hermes Cortex (ours) | In `~/hermes-cortex/skills/` | ✅ Edit the repo source, deploy via cortex-update.sh |
+| Hermes Agent (upstream) | In `~/.hermes/hermes-agent/skills/` but NOT in repo | ❌ Do not edit — create a supplement instead |
 
-**Heads-up: name collisions.** Some Hermes defaults share names with our repo skills (e.g. `change-checklist` exists in both Hermes defaults and `~/hermes-cortex/skills/devops/change-checklist/`). The Hermes default one loads from `software-development/change-checklist`; ours is at `devops/change-checklist` with `author: Moses`. Always check the category path and `author` field to know which is which.
+**Hermes Agent upstream skills (do NOT edit):** Any skill at `~/.hermes/hermes-agent/skills/` that does NOT have a matching source in `~/hermes-cortex/skills/`. This includes: `spike` (we mirror an identical copy at `software-development/spike`), and all skills in `apple/`, `creative/`, `email/`, `github/`, `media/`, `note-taking/`, `productivity/`, `research/`, `smart-home/`, `social-media/`, and others shipped by upstream.
+
+**Our skills (edit freely):** All skills under `~/hermes-cortex/skills/<category>/<name>/`, including those that share names with Hermes defaults (we customized them — `systematic-debugging`, `survey-before-action`). Skills with `author: Hermes Cortex` or `author: Moses` in frontmatter are ours.
+
+**Name collisions:** Two Hermes upstream skills share names with ours:
+- `spike` — our copy is IDENTICAL to Hermes v1.0.0
+- `systematic-debugging` — our v2.0.0 is customized (6-phase vs upstream's 4-phase)
 
 **Our skills (edit freely):**
 - Anything in `~/hermes-cortex/skills/<category>/<name>/`
@@ -86,8 +91,8 @@ If you need a capability that a Hermes default skill provides but it's missing s
 
 ## Pitfalls
 
-- ❌ Editing `task-start` to add todo restore — Hermes owns it, change gets lost
-- ❌ Editing `session-manager` to add todo lifecycle — same problem
+- ❌ Editing `spike` thinking it's ours — it's a Hermes default mirror, upstream overwrites
+- ❌ Editing a skill that's only at `~/.hermes/hermes-agent/skills/` — fleet can't get it
 - ❌ Patching `~/.hermes-cortex/scripts/` files — next deploy overwrites your edits
 - ❌ Creating a new file in `~/.hermes/skills/` — fleet can't get it; put it in the repo
 - ✅ Creating `todo-persistence` skill in our repo — correct: all agents get it, Hermes doesn't overwrite
@@ -97,7 +102,7 @@ If you need a capability that a Hermes default skill provides but it's missing s
 
 When the skill lifecycle or learnings pipeline evaluates something for upstreaming, apply this filter in order:
 
-1. **Is it a Hermes default skill?** (`task-start`, `session-manager`, etc.)
+1. **Is it a Hermes Agent upstream skill?** (at `~/.hermes/hermes-agent/skills/` but NOT in `~/hermes-cortex/skills/`)
    → ❌ Skip. The framework owns these — not ours to share.
 
 2. **Is it already in `hermes-cortex` repo with no substantive change?**
@@ -133,5 +138,6 @@ When the skill lifecycle or learnings pipeline evaluates something for upstreami
 - AGENTS.md item 23: Sharing filter — only share new/substantive hermes-cortex changes
 - `survey-before-action` skill: Pre-flight checklist before file edits (Hermes Cortex, read-only)
 - `repo-organization` skill: Repo structure and naming conventions
-- `public-contribution` skill: Decision tree for sharing improvements (Hermes default, read-only)
+- `spike` skill: Throwaway experiments to validate an idea (Hermes default mirror, read-only)
+- `public-contribution` skill: Decision tree for sharing improvements (ours)
 - `change-checklist` (devops): Pre-ship validation that includes file-ownership checks in Phase 0
