@@ -242,6 +242,7 @@ def _has_governance_lock() -> bool:
             try:
                 lock_file.unlink()
             except OSError:
+                log.warning("Cannot remove stale lock file: %s", lock_file)
                 pass
     return False
 ```
@@ -289,12 +290,17 @@ Before the plugin existed, a **loop-gov-mcp.py** script was written to provide `
 # Create the plugins directory if it doesn't exist
 mkdir -p ~/.hermes/plugins
 
-# Symlink the plugin from the Hermes Cortex repo
-ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
+# The plugin deploys as a COPY via cortex-update.sh (not symlink — enables chattr +i):
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all
+
+# Alternatively, manually copy and lock:
+cp -r ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/governance-enforcer
+sudo hermes-plugin-lock unlock   # remove old immutability if set
+sudo hermes-plugin-lock lock     # set chattr +i
 
 # Verify
 ls -la ~/.hermes/plugins/governance-enforcer/
-# Should show: __init__.py  plugin.yaml
+# Should show: __init__.py  plugin.yaml  README.md
 
 # Restart Hermes for changes to take effect
 /reset   # or start a new hermes process
@@ -315,11 +321,10 @@ The plugin source lives in the Hermes Cortex repo. To deploy to all agents:
 
 ```bash
 # Source of truth (commit and push first if modified)
-ls ~/hermes-cortex/plugins/governance-enforcer/
+ls ~/hermes-cortex/plugins/hermes-governance-enforcer/
 
-# On each agent machine, symlink:
-ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
-
+# Deployed via cortex-update.sh as a copy (not symlink):
+#   plugins/hermes-governance-enforcer/ → ~/.hermes/plugins/governance-enforcer/
 # Run cortex-update to ensure repo is current:
 cd ~/hermes-cortex && git pull origin main
 bash ops/scripts/cortex-update.sh
@@ -331,13 +336,13 @@ bash ops/scripts/cortex-update.sh
 
 | Agent | Host | Repo Path |
 |-------|------|-----------|
-| Moses | Orchestrator | `~/hermes-cortex/plugins/governance-enforcer/` |
-| Esther | Backup orchestrator | `~/hermes-cortex/plugins/governance-enforcer/` |
-| Gisu | Work staging | `~/hermes-cortex/plugins/governance-enforcer/` |
-| Kustos | Work production | `~/hermes-cortex/plugins/governance-enforcer/` |
-| Joseph | Personal production | `~/hermes-cortex/plugins/governance-enforcer/` |
+| Moses | Orchestrator | `~/hermes-cortex/plugins/hermes-governance-enforcer/` |
+| Esther | Backup orchestrator | `~/hermes-cortex/plugins/hermes-governance-enforcer/` |
+| Gisu | Work staging | `~/hermes-cortex/plugins/hermes-governance-enforcer/` |
+| Kustos | Work production | `~/hermes-cortex/plugins/hermes-governance-enforcer/` |
+| Joseph | Personal production | `~/hermes-cortex/plugins/hermes-governance-enforcer/` |
 
-The pattern is the same for all: plugin source in the Cortex repo → symlink into `~/.hermes/plugins/`.
+The pattern is the same for all: plugin source in the Cortex repo → copy into `~/.hermes/plugins/` via cortex-update.sh (not symlink — uses chattr +i for immutability). The old `plugins/governance-enforcer` symlink has been removed — always use `plugins/hermes-governance-enforcer/`.
 
 ### Deploy Script (automated)
 
@@ -385,7 +390,11 @@ To write a custom policy plugin (e.g. block all `docker run` commands):
 import re
 
 def register(ctx):
+    if ctx is None:
+        return
     def handler(tool_name, args, **kwargs):
+        if not tool_name or not args:
+            return None
         if tool_name == "terminal":
             command = args.get("command", "")
             if re.search(r"docker\s+run", command):
