@@ -542,6 +542,10 @@ copy_file() {
   if $DRY_RUN; then
     echo "    would copy: $(basename "$src") → ${dest/$HOME/~}"
   else
+    # macOS/Linux immutable flag: unlock before overwrite
+    if [[ -f "$dest" && ! -w "$dest" ]]; then
+      chflags nouchg "$dest" 2>/dev/null || chattr -i "$dest" 2>/dev/null || true
+    fi
     cp "$src" "$dest"
     chmod 644 "$dest"
     # Preserve executable bit
