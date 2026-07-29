@@ -58,7 +58,8 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/templates/SOUL.md` | SOUL.md template — identity, mission, traits, 18 behavioral principles with pain-of-skip enforcement, procedural appendix, scripture, final directive. Canonical source; soul-merge.py auto-merges updates into agent copies |
 | `ops/deploy/bootstrap.sh` | **Interactive** Linux server bootstrap — bare Ubuntu → full stack: Docker, Ollama, nginx, SSL, fail2ban, UFW, secrets, hardening |
 | `ops/deploy/ansible/provision.yml` | Ansible provisioning playbook — idempotent: 16 tasks, 6 tags, nginx+ollama templates |
-| `docs/multica-assessment.md` | Multica assessment — multi-agent, multi-server orchestration platform evaluation |
+|| `docs/multica-assessment.md` | Multica assessment — multi-agent, multi-server orchestration platform evaluation |
+|| `docs/plans/fleet-command-verifier.md` | **Fleet Command Verifier** — design plan: dispatch recording, periodic verification, retry, Telegram alerts for hc exec/send |
 | `docs/design/DESIGN.md` | Design conventions — typography, color, spacing, UI (light/dark modes) |
 | `docs/deprecated-profile-model.md` | Archived v1.x profile-per-project model — legacy migration reference |
 | `docs/agent-memory-pointer-pattern.md` | Compressed pointers + agent brain for unlimited context |
