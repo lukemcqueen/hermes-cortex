@@ -1335,9 +1335,26 @@ def _check_enforcer_permissions(res, plugin_dir, hooks_dir):
       if have == want:
         res.add(f"Perms: {label}", "PASS", f"{oct(want)}")
       else:
-        res.add(f"Perms: {label}", "WARN",
-            f"expected {oct(want)}, got {oct(have)}",
-            f"Fix: chmod {oct(want)[2:]} {path}")
+        # Check if file has chattr +i — if immutable, permissions
+        # are irrelevant (chattr +i is stronger than 0o444 alone)
+        is_immutable = False
+        try:
+          r = subprocess.run(
+            ["lsattr", str(path)],
+            capture_output=True, text=True, timeout=5,
+          )
+          if r.returncode == 0:
+            flags = r.stdout.split()[0] if r.stdout else ""
+            is_immutable = "i" in flags
+        except (subprocess.TimeoutExpired, OSError, IndexError):
+          pass
+        if is_immutable:
+          res.add(f"Perms: {label}", "PASS",
+              f"{oct(have)} (+ chattr +i) — immutable trumps")
+        else:
+          res.add(f"Perms: {label}", "WARN",
+              f"expected {oct(want)}, got {oct(have)}",
+              f"Fix: chmod {oct(want)[2:]} {path}")
     except OSError:
       continue # file removed between stat and read — skip gracefully
 

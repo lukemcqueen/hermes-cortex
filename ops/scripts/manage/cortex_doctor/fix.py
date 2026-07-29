@@ -7,6 +7,7 @@ check results and runs the appropriate fix command for each issue.
 
 import json
 import os
+import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
@@ -213,6 +214,22 @@ print('ADDED')
   for label, key, path, want in perm_fixes:
     if key in fix_map and "WARN" in str(fix_map.get(key, "")):
       if path.exists() and not path.is_symlink():
+        # Skip chmod if file has chattr +i — immutable flag makes
+        # chmod fail with "Operation not permitted"
+        is_immutable = False
+        try:
+          r = subprocess.run(
+            ["lsattr", str(path)],
+            capture_output=True, text=True, timeout=5,
+          )
+          if r.returncode == 0:
+            flags = r.stdout.split()[0] if r.stdout else ""
+            is_immutable = "i" in flags
+        except (subprocess.TimeoutExpired, OSError, IndexError):
+          pass
+        if is_immutable:
+          print(f" ⏭️  {label}: immutable flag set — skipping chmod")
+          continue
         want_str = oct(want)[2:]
         if _run_fix(label, ["chmod", want_str, str(path)]):
           fixed += 1
