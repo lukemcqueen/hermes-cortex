@@ -43,6 +43,70 @@ SKILLS_MARKER = GOVERNANCE_STATE_DIR / ".skills-loaded"
 
 log = logging.getLogger("governance-enforcer")
 
+# ── Skills-loading verification ────────────────────────────
+# The enforcer tracks actual skill_view() calls and auto-creates the
+# .skills-loaded marker with session-proof content when all 8 required
+# skills have been loaded. A bare `touch .skills-loaded` creates an
+# empty file that fails content verification — blocking the bypass.
+# See SOUL.md Principle 23 for agent-side guardrail.
+_REQUIRED_SKILLS: set = {
+    "task-start", "agent-flow", "reasoning-patterns",
+    "reflexion-check", "change-checklist", "survey-before-action",
+    "cortex-preflight", "agent-contract",
+}
+_skills_loaded_in_session: set = set()
+
+
+def _check_skills_loaded_marker(session_id: str = "") -> bool:
+    """Verify the .skills-loaded marker exists with valid session content.
+
+    The marker must contain session-proof content (not just exist).
+    A bare `touch .skills-loaded` creates an empty file that fails
+    this check — closing the file-existence bypass.
+
+    Verification logic:
+      - Session-content markers (content starts with 'session:'):
+        - With session_id: require exact match 'session:{session_id}'
+        - Without session_id: accept any valid 'session:*' marker
+      - Non-session-content (legacy): accept only when non-empty
+      - Empty/whitespace: always reject (touch bypass)
+    """
+    if not SKILLS_MARKER.exists():
+        return False
+    try:
+        content = SKILLS_MARKER.read_text().strip()
+        if not content or content.isspace():
+            # Empty or whitespace-only (touch bypass) → reject
+            return False
+        if content.startswith("session:"):
+            # Session-verified marker — check match
+            if session_id and content != f"session:{session_id}":
+                # Wrong session → reject
+                return False
+            # Matching session or no session_id passed → accept
+            return True
+        # Non-session, non-empty content (legacy backward compat) → accept
+        return True
+    except OSError:
+        return False
+
+
+def _auto_create_skills_marker(session_id: str) -> None:
+    """Write the .skills-loaded marker with session-specific proof content.
+
+    Called automatically when all 8 required skills have been loaded
+    via skill_view() in this session. The session_id in the content
+    prevents reuse across sessions and blocks `touch` bypass.
+    """
+    if not session_id:
+        return
+    try:
+        GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
+        SKILLS_MARKER.write_text(f"session:{session_id}")
+        log.info("Skills-loaded marker auto-created for session %s", session_id)
+    except OSError as e:
+        log.warning("Cannot auto-create skills-loaded marker: %s", e)
+
 
 def _write_session_marker(hermes_session_id: str) -> None:
     """Write the Hermes session ID to PID-scoped AND fixed-path marker files."""
@@ -431,12 +495,37 @@ def register(ctx):
             if hermes_session_id:
                 _write_session_marker(hermes_session_id)
 
-            # ── Skills gate: blocks ALL tools until always-section skills loaded ──
-            # Only skill_view, skills_list (to load skills), and terminal (to create
-            # the marker) are exempt. Everything else — reads, writes, searches —
-            # is blocked until ~/.hermes-cortex/state/.skills-loaded exists.
-            if not SKILLS_MARKER.exists():
-                if tool_name not in ("skill_view", "skills_list", "terminal"):
+            # ── Track skill_view calls ──
+            # Moved BEFORE the skills gate so agents can load skills.
+            # When all 8 required skills are loaded, the marker is
+            # auto-created with session-proof content.
+            if tool_name == "skill_view":
+                skill_name = args.get("name", "")
+                if skill_name:
+                    _skills_loaded_in_session.add(skill_name)
+                    if hermes_session_id and _skills_loaded_in_session >= _REQUIRED_SKILLS:
+                        _auto_create_skills_marker(hermes_session_id)
+
+            # ── Read-only terminal fast-path: BEFORE skills gate ──
+            # Allow read-only terminal commands (ls, pwd, grep, etc.) even
+            # without skills loaded, so agents can inspect the system.
+            # Write-class terminal commands (touch, echo >, mkdir, etc.)
+            # are blocked unless all 8 required skills are loaded.
+            if tool_name == "terminal":
+                command = args.get("command", "")
+                if any(re.search(p, command) for p in READ_COMMAND_PATTERNS):
+                    if not _is_terminal_write(args):
+                        return None
+
+            # ── Skills gate: blocks ALL write tools until skills loaded ──
+            # Uses content verification — bare `touch .skills-loaded` creates
+            # an empty file that fails _check_skills_loaded_marker().
+            # Only skill_view and skills_list are exempt; terminal is NOT
+            # exempt here (read-only terminal is handled above).
+            # The enforcer auto-creates the marker when all 8 skills have
+            # been loaded via actual skill_view() calls — no touch needed.
+            if not _check_skills_loaded_marker(hermes_session_id):
+                if tool_name not in ("skill_view", "skills_list"):
                     return {
                         "action": "block",
                         "message": (
@@ -451,25 +540,12 @@ def register(ctx):
                             "  6. skill_view('survey-before-action')  # check existing resources\n"
                             "  7. skill_view('cortex-preflight')  # repo-specific pre-flight\n"
                             "  8. skill_view('agent-contract')    # execution rules\n\n"
-                            "After loading all 8:\n"
-                            "  touch ~/.hermes-cortex/state/.skills-loaded\n\n"
-                            "Then retry your tool.\n"
+                            "The marker is auto-created when all 8 are loaded.\n"
+                            "Do NOT try to touch .skills-loaded directly — it will be rejected.\n\n"
                             "This enforcement is at ~/.hermes/plugins/governance-enforcer/.\n"
                             "I cannot bypass or disable this.\n"
                         ),
                     }
-
-            # ── Fast-path: genuinely read-only terminal commands ──
-            # Check BEFORE write classification. A command is truly read-only
-            # only when it matches a read pattern AND does NOT match any write
-            # pattern. This prevents `cat file > /tmp/out` from bypassing
-            # governance — it matches both read AND write patterns, so the
-            # read-only fast-path correctly rejects it.
-            if tool_name == "terminal":
-                command = args.get("command", "")
-                if any(re.search(p, command) for p in READ_COMMAND_PATTERNS):
-                    if not _is_terminal_write(args):
-                        return None
 
             if not _is_write_tool(tool_name, args):
                 return None
@@ -501,24 +577,6 @@ def register(ctx):
                             "I cannot bypass or disable this.\n"
                         ),
                     }
-
-            # ── Bootstrap: allow terminal to create skills-loaded marker ──
-            # The skills gate (above) intentionally exempts terminal so agents
-            # can touch ~/.hermes-cortex/state/.skills-loaded before acquiring
-            # a governance lock. But the lock gate below re-blocks ALL write-
-            # class terminal calls — including this bootstrap touch — creating
-            # a deadlock where the agent can't create the marker because no
-            # lock exists, and can't acquire a lock because the marker doesn't
-            # exist.
-            #
-            # This check restores the intended flow: when no skills-loaded
-            # marker exists AND the tool is terminal, allow the call without
-            # a lock. After the marker is created, this path is never hit again.
-            # The skills gate already allowed terminal in this state — this
-            # just prevents the lock gate from re-blocking what was already
-            # intentionally released.
-            if tool_name == "terminal" and not SKILLS_MARKER.exists():
-                return None
 
             # Check for active governance lock (Phase 1 exact + Phase 2 scan)
             if _has_governance_lock(hermes_session_id):

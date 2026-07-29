@@ -114,7 +114,7 @@ DEFAULT_TTL = 3600  # 1 hour
 
 import hashlib as _dogfood_hashlib
 
-GOVERNANCE_REPO_PATH = HOME / "hermes-cortex" / "plugins" / "hermes-governance-enforcer" / "__init__.py"
+GOVERNANCE_REPO_PATH = HOME / "hermes-cortex" / "plugins" / "governance-enforcer" / "__init__.py"
 GOVERNANCE_DEPLOY_PATH = HOME / ".hermes" / "plugins" / "governance-enforcer" / "__init__.py"
 
 

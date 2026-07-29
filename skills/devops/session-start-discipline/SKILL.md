@@ -1,19 +1,30 @@
-After these 10:
-- Select reasoning pattern
-- Classify with agent-flow
-- Load on-task skills
-- Run cronjob list + search_files
-- **Write the skills-loaded marker: `touch ~/.hermes-cortex/state/.skills-loaded`**
-- **THEN** call `begin_change`
+## Session Start — Mandatory Skill Loading
+
+**You must never `touch ~/.hermes-cortex/state/.skills-loaded`.** The enforcer
+auto-creates this marker when all 8 always-section skills have been loaded
+via actual `skill_view()` calls. A bare `touch` creates an empty file that
+fails content verification — blocking you until you load the real skills.
+
+## Sequence
+
+Load all 8 always-section skills. The marker follows automatically:
+
+1. `skill_view('task-start')` — bundles the complete pre-task sequence
+2. `skill_view('agent-flow')` — workflow router
+3. `skill_view('reasoning-patterns')` — reasoning mode selection
+4. `skill_view('reflexion-check')` — self-critique before delivery
+5. `skill_view('change-checklist')` — pre-ship verification
+6. `skill_view('survey-before-action')` — check existing resources first
+7. `skill_view('cortex-preflight')` — repo-specific pre-flight checks
+8. `skill_view('agent-contract')` — non-negotiable execution rules
+
+Then proceed to `begin_change()`. The marker is self-verifying — it contains
+your session ID, not just a file existence flag.
 
 ## Enforcement
 
-The governance enforcer plugin now blocks ALL write tools (patch, write_file,
-terminal with write commands, cronjob, skill_manage, process) unless
-`~/.hermes-cortex/state/.skills-loaded` exists. You cannot write anything
-without first loading the 10 always skills.
-
-After `end_change()`, the marker is automatically removed so the next task
-requires fresh loading. No bypass flags exist for this check.
+- The enforcer blocks ALL write tools without the marker
+- **Do NOT touch the marker file** — it will be rejected    
+- Load the skills instead; the marker follows
 
 ## Self-Verification

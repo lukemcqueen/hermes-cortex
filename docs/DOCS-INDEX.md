@@ -72,7 +72,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/loop-governance-reference.md` | Governance reference — MCP tools vs CLI, scoring guidelines, enforcement layers (no structural override — allow_tool_override not in production config) |
 | `docs/continuous-skill-suggestion.md` | **Design doc** — structural skill reminders during edits. After fixed enforcer bootstrap gate, the next gap: agents don't reload skills mid-task. Touch-trace writer + end_change suggestions |
 | `mcp-servers/loop-gov-mcp.py` | Harness v3 governance MCP server — state machine, ledger, issues, interruption protocol, completion gates |
-| `plugins/hermes-governance-enforcer/README.md` | Governance enforcer plugin — pre_tool_call hook, lock file protocol, fixed-path + PID handoff, two-phase discovery, block matrix, stale lock purge |
+| `plugins/governance-enforcer/README.md` | Governance enforcer plugin — pre_tool_call hook, lock file protocol, fixed-path + PID handoff, two-phase discovery, block matrix, stale lock purge |
 | `ops/scripts/manage/purge-stale-governance-locks.py` | Stale governance lock purge script — removes expired lock files and orphan symlinks from crashed sessions |
 | `ops/scripts/manage/prune-soul-profiles.py` | SOUL.md profile pruner — replaces principles section with compact template, preserves agent identity |
 | `docs/troubleshooting.md` | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse, Linux |

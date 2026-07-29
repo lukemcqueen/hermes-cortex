@@ -115,7 +115,7 @@ print('ADDED')
   # Fix: governance plugin not installed/symlinked
   if "Governance plugin" in fix_map and fix_map["Governance plugin"] == "FAIL":
     plugin_dir = HERMES_HOME / "plugins" / "governance-enforcer"
-    plugin_src = CORTEX_REPO / "plugins" / "hermes-governance-enforcer"
+    plugin_src = CORTEX_REPO / "plugins" / "governance-enforcer"
     if plugin_src.exists():
       # Remove existing dir/symlink — _run_fix verifies the result
       _run_fix("Removing old plugin dir", ["rm", "-rf", str(plugin_dir)])

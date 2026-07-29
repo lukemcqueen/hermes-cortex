@@ -333,7 +333,7 @@ Call `_cleanup_traces(session_id)` at:
 
 ## See Also
 
-- `plugins/hermes-governance-enforcer/__init__.py` — Governance enforcer (add here)
+- `plugins/governance-enforcer/__init__.py` — Governance enforcer (add here)
 - `mcp-servers/loop-gov-mcp.py` — Loop governance MCP server (extend end_change)
 - `AGENTS.md#rule-6` — "Prove existing can't handle it before creating new"
 - `docs/loop-governance-reference.md` — Loop governance reference

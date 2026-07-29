@@ -235,7 +235,7 @@ def _check_infrastructure() -> list[str]:
   # ── 1. Plugin deployment — prefer copy over symlink ──
   plugin_link = os.path.expanduser("~/.hermes/plugins/governance-enforcer")
   plugin_target = os.path.expanduser(
-    "~/hermes-cortex/plugins/hermes-governance-enforcer"
+    "~/hermes-cortex/plugins/governance-enforcer"
   )
 
   if os.path.islink(plugin_link):

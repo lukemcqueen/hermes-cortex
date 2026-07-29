@@ -1,7 +1,7 @@
 """
 Governance Bypass Test Suite — Tests for the governance enforcer plugin.
 
-Tests every code path in plugins/hermes-governance-enforcer/__init__.py:
+Tests every code path in plugins/governance-enforcer/__init__.py:
 
   - _is_write_tool           Write tool classification matrix
   - _is_terminal_write       Terminal command pattern matching
@@ -22,7 +22,7 @@ from pathlib import Path
 import pytest
 
 # ── Load the enforcer module (path has a hyphen, so standard import won't work) ─
-_ENFORCER_PATH = Path(__file__).resolve().parents[2] / "plugins" / "hermes-governance-enforcer" / "__init__.py"
+_ENFORCER_PATH = Path(__file__).resolve().parents[2] / "plugins" / "governance-enforcer" / "__init__.py"
 _spec = importlib.util.spec_from_file_location("governance_enforcer", _ENFORCER_PATH)
 enforcer = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(enforcer)

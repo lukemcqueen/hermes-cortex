@@ -329,9 +329,9 @@ register_orch "ops/install/deploy/gbrain-autopilot.service"       "${HOME}/.conf
 # Governance enforcer plugin — deployed as copy (not symlink) so chattr +i
 # doesn't lock the repo file. deploy_governance_plugin() handles the full
 # lifecycle: symlink→copy conversion, chmod 444, chattr +i.
-register "plugins/hermes-governance-enforcer/__init__.py"  "${HOME}/.hermes/plugins/governance-enforcer/__init__.py"
-register "plugins/hermes-governance-enforcer/plugin.yaml"  "${HOME}/.hermes/plugins/governance-enforcer/plugin.yaml"
-register "plugins/hermes-governance-enforcer/README.md"    "${HOME}/.hermes/plugins/governance-enforcer/README.md"
+register "plugins/governance-enforcer/__init__.py"  "${HOME}/.hermes/plugins/governance-enforcer/__init__.py"
+register "plugins/governance-enforcer/plugin.yaml"  "${HOME}/.hermes/plugins/governance-enforcer/plugin.yaml"
+register "plugins/governance-enforcer/README.md"    "${HOME}/.hermes/plugins/governance-enforcer/README.md"
 register "ops/scripts/install/install-gbrain-sync.sh"    "${CORTEX_DEPLOY_HOME}/scripts/install-gbrain-sync.sh"
 
 # Orchestrator health report — periodic agent fleet snapshot (no_agent cron)
@@ -1181,7 +1181,7 @@ deploy_system_scripts() {
 # Linux:   chattr +i via sudo hermes-plugin-lock (needs root)
 # macOS:   chflags uchg via hermes-plugin-lock (no root needed)
 deploy_governance_plugin() {
-  local repo_plugin="${REPO_DIR}/plugins/hermes-governance-enforcer"
+  local repo_plugin="${REPO_DIR}/plugins/governance-enforcer"
   local plugin_dir="${HOME}/.hermes/plugins/governance-enforcer"
   local files=("__init__.py" "plugin.yaml" "README.md")
   local changed=0
@@ -1560,10 +1560,10 @@ main() {
     fi
   done
   # Also clear pycache for the governance enforcer plugin (symlinked, not in MAP)
-  enforcer_pycache="${REPO_DIR}/plugins/hermes-governance-enforcer/__pycache__"
+  enforcer_pycache="${REPO_DIR}/plugins/governance-enforcer/__pycache__"
   if [[ -d "$enforcer_pycache" ]]; then
     rm -rf "$enforcer_pycache"
-    info "Cleared stale pycache: plugins/hermes-governance-enforcer"
+    info "Cleared stale pycache: plugins/governance-enforcer"
     warn "⚠️  Run /reset to load the updated enforcer plugin in your current session"
   fi
 

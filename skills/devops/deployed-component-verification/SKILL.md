@@ -57,7 +57,7 @@ enforcer plugin, critical enforcement hooks).
 import hashlib
 
 deployed_file = deployed / "__init__.py"
-repo_file = repo_root / "plugins" / "hermes-governance-enforcer" / "__init__.py"
+repo_file = repo_root / "plugins" / "governance-enforcer" / "__init__.py"
 
 if hashlib.sha256(deployed_file.read_bytes()).hexdigest() == \
    hashlib.sha256(repo_file.read_bytes()).hexdigest():
@@ -159,7 +159,7 @@ on every `--force-all` and need no staleness check. The exceptions are
 
 | Component | Deploy Path | Repo Source |
 |-----------|-------------|-------------|
-| Governance enforcer plugin | `~/.hermes/plugins/governance-enforcer/` | `plugins/hermes-governance-enforcer/` |
+| Governance enforcer plugin | `~/.hermes/plugins/governance-enforcer/` | `plugins/governance-enforcer/` |
 | Any manually linked Hermes plugin | `~/.hermes/plugins/*/` | `plugins/*/` |
 | MCP server scripts (if manually copied) | `~/.hermes/mcp-servers/` | `mcp-servers/` |
 
@@ -169,7 +169,7 @@ The canonical implementation is in `cortex-doctor.py` `check_governance()`:
 
 ```python
 plugin_dir = HERMES_HOME / "plugins" / "governance-enforcer"
-plugin_src = CORTEX_REPO / "plugins" / "hermes-governance-enforcer"
+plugin_src = CORTEX_REPO / "plugins" / "governance-enforcer"
 
 if plugin_dir.exists() and (plugin_dir / "__init__.py").exists():
     if plugin_dir.is_symlink():

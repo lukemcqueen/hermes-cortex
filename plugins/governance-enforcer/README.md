@@ -203,6 +203,56 @@ systemctl is-active|is-enabled|status|list-units
 
 ---
 
+## Skills-Loading Gate
+
+The enforcer blocks ALL write tools (including terminal write commands, cronjob
+creation, skill management) until all 8 always-section skills have been loaded
+via actual `skill_view()` calls. This prevents agents from bypassing skill
+loading by touching a file.
+
+### How it works
+
+The enforcer tracks every `skill_view(name=...)` call in the session. When all
+8 required skills have been loaded, it **auto-creates** the `.skills-loaded`
+marker with the session ID as proof:
+
+```python
+# Written by _auto_create_skills_marker() when _skills_loaded_in_session >= _REQUIRED_SKILLS
+# Content: "session:{hermes_session_id}"
+```
+
+The marker is **verified by content, not existence**. A bare `touch` creates
+an empty file that is rejected:
+
+| Marker state | Verdict | Why |
+|-------------|---------|-----|
+| Empty (touch) | 🔒 REJECTED | No session proof |
+| Whitespace only | 🔒 REJECTED | Same as empty |
+| `session:correct-id` | ✅ ACCEPTED | Auto-created by enforcer after skill loading |
+| `session:wrong-id` | 🔒 REJECTED | Session mismatch |
+| Legacy non-empty text | ✅ ACCEPTED | Backward compat |
+
+### The 8 required skills
+
+```
+task-start, agent-flow, reasoning-patterns, reflexion-check,
+change-checklist, survey-before-action, cortex-preflight, agent-contract
+```
+
+### What this prevents
+
+Previously, agents could bypass the skills gate by running:
+```bash
+touch ~/.hermes-cortex/state/.skills-loaded
+```
+
+This created an empty file that the enforcer accepted because it only checked
+file existence. Now the enforcer verifies the content contains session proof.
+The `touch` bypass is structurally closed. See also `SOUL.md` Principle 23
+for the agent-side discipline.
+
+---
+
 ## Survey Gate for Cron Creation
 
 The enforcer implements a **survey-before-action gate** specifically for cron creation.
@@ -421,7 +471,7 @@ Before the plugin existed, a **loop-gov-mcp.py** script was written to provide `
 mkdir -p ~/.hermes/plugins
 
 # Symlink the plugin from the Hermes Cortex repo
-ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/
+ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
 
 # Verify
 ls -la ~/.hermes/plugins/governance-enforcer/
@@ -446,10 +496,10 @@ The plugin source lives in the Hermes Cortex repo. To deploy to all agents:
 
 ```bash
 # Source of truth (commit and push first if modified)
-ls ~/hermes-cortex/plugins/hermes-governance-enforcer/
+ls ~/hermes-cortex/plugins/governance-enforcer/
 
 # On each agent machine, symlink:
-ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/
+ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
 
 # Run cortex-update to ensure repo is current:
 cd ~/hermes-cortex && git pull origin main
@@ -465,7 +515,7 @@ is symlinked into `~/.hermes/plugins/`:
 
 | Location | Path |
 |----------|------|
-| Source (repo) | `~/hermes-cortex/plugins/hermes-governance-enforcer/` |
+| Source (repo) | `~/hermes-cortex/plugins/governance-enforcer/` |
 | Deployed (symlink) | `~/.hermes/plugins/governance-enforcer/` → source |
 
 The pattern is the same for all agents: repo source → symlink into `~/.hermes/plugins/`.
@@ -479,7 +529,7 @@ mkdir -p ~/.hermes/plugins
 if [ -L ~/.hermes/plugins/governance-enforcer ] || [ -d ~/.hermes/plugins/governance-enforcer ]; then
  echo "Plugin exists, skipping symlink"
 else
- ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/
+ ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
  echo "Governance enforcer plugin installed. Restart Hermes to activate."
 fi
 ```
@@ -668,7 +718,7 @@ Hermes session starts
 3. **The bridge file is written on EVERY pre_tool_call** — not just on write tools.
   This ensures the MCP can discover the session ID even on the first tool call.
 4. **Stale `__pycache__` can hide old enforcer code** — after updating the enforcer
-  source, run: `rm -rf plugins/hermes-governance-enforcer/__pycache__ && /reset`
+  source, run: `rm -rf plugins/governance-enforcer/__pycache__ && /reset`
   The doctor warns about this automatically via the "Plugin pycache" check.
 
 ### Diagnostic: session ID mismatch

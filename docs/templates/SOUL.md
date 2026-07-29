@@ -210,6 +210,40 @@ completion without test output is speculation, not a deliverable.
 This principle exists because every skipped verification step is a hidden
 failure that the user will discover instead of you. <!-- Added 2026-07-28 -->
 
+### 22. Test Small Before Scaling
+
+Before applying any change repo-wide, system-wide, or to every agent:
+prove it works on one small case first. Run a tiny smoke test (5 tokens
+for a model, 1 file for a script pattern, 1 agent for a protocol change),
+observe real output, confirm the mechanism, then scale.
+
+A single successful small test takes seconds. A broken large change takes
+hours to unwind. Never assume something works — prove it with actual
+evidence on the smallest meaningful unit first. <!-- Added 2026-07-29 -->
+
+### 23. Skills-Loaded Guardrail — Never Bypass the Marker
+
+The `~/.hermes-cortex/state/.skills-loaded` marker is **auto-created** by
+the governance enforcer when all 8 always-section skills have been loaded
+via actual `skill_view()` calls. Do NOT touch this file directly. A bare
+`touch .skills-loaded` creates an empty file that the enforcer rejects —
+the marker must contain session-proof content to be valid.
+
+The enforcer now:
+- Tracks every `skill_view()` call in the session
+- Auto-creates the marker when all 8 skills are loaded (`task-start`,
+  `agent-flow`, `reasoning-patterns`, `reflexion-check`, `change-checklist`,
+  `survey-before-action`, `cortex-preflight`, `agent-contract`)
+- Rejects empty or session-mismatched markers
+
+This was a confirmed bypass pattern: agents would `touch .skills-loaded`
+instead of loading skills. The structural fix is at the enforcer level —
+it cannot be talked out of or patched around. Attempting the file-based
+bypass will only burn time and produce a blocked tool call.
+
+If you find yourself reaching for `touch .skills-loaded`, stop. Load the
+skills instead. The marker follows automatically. <!-- Added 2026-07-29 -->
+
 ## Communication Style
 
 - Direct. Respect the user's time.

@@ -1452,12 +1452,12 @@ def check_governance(res):
 
   # ── Governance plugin ──
   plugin_dir = HERMES_HOME / "plugins" / "governance-enforcer"
-  plugin_src = CORTEX_REPO / "plugins" / "hermes-governance-enforcer"
+  plugin_src = CORTEX_REPO / "plugins" / "governance-enforcer"
   plugin_enabled = "governance-enforcer" in config_text and "enabled" in config_text
 
   # ── Stale repo symlink check ──
   # The old plugins/governance-enforcer symlink was removed from the repo
-  # (it was a backward-compat duplicate of plugins/hermes-governance-enforcer).
+  # (it was a backward-compat duplicate of plugins/governance-enforcer).
   # If it still exists on disk, agents may be confused about which dir is real.
   stale_repo_symlink = CORTEX_REPO / "plugins" / "governance-enforcer"
   if stale_repo_symlink.exists():
@@ -1496,7 +1496,7 @@ def check_governance(res):
       else:
         res.add("Plugin symlink", "WARN",
             f"symlinked to {target} (not ~/hermes-cortex/.hermes-cortex/...)",
-            "Re-create: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/")
+            "Re-create: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/")
     else:
       deployed_init = plugin_dir / "__init__.py"
       repo_init = plugin_src / "__init__.py"
@@ -1509,7 +1509,7 @@ def check_governance(res):
           res.add("Plugin content", "FAIL",
               "deployed copy differs from repo — stale after git update",
               "REQUIRED: rm -rf ~/.hermes/plugins/governance-enforcer && "
-              "ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/"
+              "ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/"
               " (replace copy with symlink so git pull keeps it fresh)")
       else:
         res.add("Plugin content", "WARN",
@@ -1527,7 +1527,7 @@ def check_governance(res):
       _ = None # plugin source not readable — skip survey gate check
   else:
     res.add("Governance plugin", "FAIL", "not installed",
-        "Install: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/\n"
+        "Install: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/\n"
         "Then: hermes plugins enable governance-enforcer --allow-tool-override\n"
         "Then: /reset (new session)")
 
@@ -1539,10 +1539,10 @@ def check_governance(res):
         "Run: hermes plugins enable governance-enforcer --allow-tool-override")
 
   if plugin_src.exists() and (plugin_src / "__init__.py").exists():
-    res.add("Plugin source", "PASS", "source in repo at plugins/hermes-governance-enforcer")
+    res.add("Plugin source", "PASS", "source in repo at plugins/governance-enforcer")
   else:
     res.add("Plugin source", "FAIL", "source missing in repo",
-        "Check: ~/hermes-cortex/plugins/hermes-governance-enforcer/")
+        "Check: ~/hermes-cortex/plugins/governance-enforcer/")
 
   # ── MCP servers ──
   for name, server_script in EXPECTED_MCP_SERVERS.items():
@@ -1755,7 +1755,7 @@ def check_governance(res):
   _check_plugin_lock_helper(res)
 
   # ── Governance bypass coverage ──
-  enforcer_path = CORTEX_REPO / "plugins" / "hermes-governance-enforcer" / "__init__.py"
+  enforcer_path = CORTEX_REPO / "plugins" / "governance-enforcer" / "__init__.py"
   if enforcer_path.exists():
     enforcer_src = enforcer_path.read_text()
     checks = [
@@ -2317,11 +2317,11 @@ def check_deploy_checksums(res):
   known_mappings = [
     # (label, repo_source_path, deployed_path)
     ("AGENTS.md", repo_dir / "AGENTS.md", HERMES_HOME / "AGENTS.md"),
-    ("Governance plugin __init__.py", repo_dir / "plugins" / "hermes-governance-enforcer" / "__init__.py",
+    ("Governance plugin __init__.py", repo_dir / "plugins" / "governance-enforcer" / "__init__.py",
      HERMES_HOME / "plugins" / "governance-enforcer" / "__init__.py"),
-    ("Governance plugin plugin.yaml", repo_dir / "plugins" / "hermes-governance-enforcer" / "plugin.yaml",
+    ("Governance plugin plugin.yaml", repo_dir / "plugins" / "governance-enforcer" / "plugin.yaml",
      HERMES_HOME / "plugins" / "governance-enforcer" / "plugin.yaml"),
-    ("Governance plugin README.md", repo_dir / "plugins" / "hermes-governance-enforcer" / "README.md",
+    ("Governance plugin README.md", repo_dir / "plugins" / "governance-enforcer" / "README.md",
      HERMES_HOME / "plugins" / "governance-enforcer" / "README.md"),
   ]
 

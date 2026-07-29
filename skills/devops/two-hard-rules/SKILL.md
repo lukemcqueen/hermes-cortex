@@ -49,5 +49,9 @@ Every improvement you make that benefits other agents MUST go into the `hermes-c
 ## Enforcement
 
 - **Rule 1** is enforced by the MCP server at the tool level — you cannot write files without a lock
+- **Rule 1 security** — `~/.hermes-cortex/state/.skills-loaded` is auto-created when all 8
+  always-section skills are loaded via `skill_view()`. Do NOT `touch` this file — the enforcer
+  rejects empty/session-mismatched markers. This prevents the `touch bypass` where agents created
+  the marker without loading skills.
 - **Rule 2** is enforced by the template-diff-check.py in cortex-update.sh — it warns when your local SOUL.md drifts from the template
 - **Both rules** are embedded in every agent-facing document: AGENTS.md, fleet-reference.md, SOUL.md templates, loop-governance skill, troubleshooting guide, git-enforcement docs, and install.sh
