@@ -1,17 +1,27 @@
 # Cortex Core
 
-Canonical schemas, workflow state, policy, and identity contracts. This layer defines *what* the system knows and *how* it decides — without depending on any specific agent runtime.
+Canonical schemas, workflows, and policy contracts. This layer defines *what* the system knows and *how* it decides — without depending on any specific agent runtime.
 
 ## Contents
 
 | Directory | Purpose | Status |
 |-----------|---------|--------|
-| `schemas/` | Canonical type definitions: WorkflowRun, Policy, KnowledgeRecord, Approval | Populated (KnowledgeRecord, WorkflowRun + state machine) |
-|    `governance/` | Loop governance (DEPRECATED — removed July 2026. Use MCP-based loop-governance tools instead) | Removed |
-| `identity/` | Agent identity contracts — workload identity, signed messages, credential model | Populated (AgentIdentity, IdentityRegistry, SignedMessage) |
+| `agent_bus/` | Agent Bus implementation — PGMQ-based queue server, auth, circuit breaker, workflow engine | Active |
+| `governance/` | Loop governance schemas (DEPRECATED — removed July 2026. Use MCP-based loop-governance tools instead) | Removed |
+
+### agent_bus/
+
+| Module | Purpose |
+|--------|---------|
+| `server.py` | Agent Bus HTTP server — message send/read/archive/queue management over PGMQ |
+| `queue.py` | PGMQ queue operations — enqueue, dequeue, archive, metrics |
+| `auth.py` | Bus authentication — token validation, agent identity |
+| `circuit_breaker.py` | Circuit breaker pattern for bus connections — failure tracking, state transitions |
+| `workflow/` | Workflow orchestration: YAML-defined multi-step agent workflows (cross-agent-audit, fix-issue, research-then-write, etc.) |
+| `workflows/` | YAML workflow definitions — 6 workflows for agent-to-agent orchestration |
 
 ## Design Rules
 
 - **Zero runtime dependency** — Core types must not import Hermes Agent, LangGraph, or any execution runtime.
-- **Pydantic-first** — All canonical schemas use Pydantic for validation and serialization.
-- **Pluggable** — Policies and identity models define interfaces; concrete implementations live in the runtime adapter layer.
+- **Pydantic-driven** — Data models use Pydantic for validation and serialization.
+- **Pluggable** — Workflows, auth, and policy models define interfaces; concrete implementations live in the runtime adapter layer.

@@ -83,7 +83,7 @@ Agent query → web_cache (50μs) → kiwix ZIM (localhost:8080) → gbrain (RAG
 
 - **Web Cache** — Semantic search cache (sqlite-vec + Ollama embeddings, ~200MB LRU) — saves API costs
 - **Offline Knowledge** — Wikipedia, WikiMed, Wikivoyage, Wikibooks available locally via Docker ZIM server
-- **Offline Code Assistant** — 366 curated code snippets across 32 categories, 19 programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
+- **Offline Code Assistant** — 521 curated code snippets across 32 categories, 19 programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
 - **Offline Reader** — Zero-dependency web UI (`python3 ops/offline/offline-reader.py`) for Bible (55+ languages), hymns, and wiki reference
 - **gbrain** — Persistent knowledge brain (Postgres + pgvector, Docker) with automatic sync daemon
 
@@ -224,13 +224,13 @@ CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 | 5 | **gbrain sync** | Launchd/systemd daemon — syncs brain every 2 minutes |
 | 6 | **Observability** † | Langfuse + Cortex Dashboard |
 | 7 | **`/brain` plugin** | Hermes slash command for gbrain queries |
-| 8 | **Scripts** | 199+ scripts: health checks, watchdogs, sync, governance, security |
+| 8 | **Scripts** | 190 scripts: health checks, watchdogs, sync, governance, security |
 | 9 | **Plugin enable** | Auto-activates in Hermes config |
 | 10 | **Skills** | 8+ shared skills installed to `~/.hermes/skills/` |
 | 11 | **Web Cache** | Semantic web result cache (sqlite-vec + Ollama) |
 | 12 | **Offline Knowledge** | Cascade tool + kiwix ZIM Docker + prep scripts |
 | 13 | **Offline Reader** | `python3 ops/offline/offline-reader.py` — zero-dependency web UI |
-| 14 | **Code Corpus** | 366 snippets across 32 categories, 19 languages; RAG index via Ollama |
+| 14 | **Code Corpus** | 521 snippets across 32 categories, 19 languages; RAG index via Ollama |
 | 15 | **Auto-Update** | `auto-update.sh` — silent cron-based content updater |
 | 16 | **Cron Jobs** | 160+ maintenance crons: health, security, sync, recovery, reporting |
 | 17 | **nginx** † | Reverse proxy for Langfuse + Dashboard + hardening |
@@ -357,9 +357,9 @@ offline_knowledge query "symptoms of malaria"
 | `ops/scripts/manage/cortex-doctor.py` | System diagnostics, fix common issues |
 | `ops/scripts/install/install-score-hook.sh` | Install/remove pre-commit scoring hooks on any repo |
 | `ops/scripts/install-crons.sh` | Install/remove all 160+ maintenance cron jobs |
-| `ops/scripts/manage/hermes-update.sh` | Silent nightly update of Hermes Agent |
-| `ops/scripts/manage/hermes-cortex-sync.sh` | Nightly git pull of hermes-cortex repo |
-| `ops/scripts/manage/nginx-threat-pipeline.sh` | Daily nginx log scan + auto-ban repeat attackers |
+| `ops/scripts/manage/agent-hermes-update.sh` | Silent nightly update of Hermes Agent |
+| `ops/scripts/manage/agent-hermes-cortex-sync.sh` | Nightly git pull of hermes-cortex repo |
+| `ops/scripts/manage/agent-nginx-threat-pipeline.sh` | Daily nginx log scan + auto-ban repeat attackers |
 | `ops/scripts/manage/deploy-blocked-ips.sh` | Deploy shared blocklist across fleet |
 | `ops/scripts/manage/analyze-failures.py` | Analyze cron failure patterns |
 | `ops/scripts/manage/template-diff-check.py` | Detect template drift across agents |

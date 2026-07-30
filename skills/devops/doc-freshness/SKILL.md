@@ -219,11 +219,11 @@ When AGENTS.md or SOUL.md changes, notify all agents:
 
 ```bash
 # Dry run first
-python3 ~/.hermes-cortex/scripts/agents-doc-broadcast.py AGENTS.md \
+python3 ~/hermes-cortex/ops/scripts/agent/agents-doc-broadcast.py AGENTS.md \
   "Added Inbox Message Decision Framework section" --dry-run
 
 # Then actually broadcast (produces structured output for agent to send via inbox)
-python3 ~/.hermes-cortex/scripts/agents-doc-broadcast.py AGENTS.md \
+python3 ~/hermes-cortex/ops/scripts/agent/agents-doc-broadcast.py AGENTS.md \
   "Added Inbox Message Decision Framework section"
 ```
 

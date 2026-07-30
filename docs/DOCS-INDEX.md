@@ -76,7 +76,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `mcp-servers/loop-gov-mcp.py` | Harness v3 governance MCP server — state machine, ledger, issues, interruption protocol, completion gates |
 | `plugins/governance-enforcer/README.md` | Governance enforcer plugin — pre_tool_call hook, lock file protocol, fixed-path + PID handoff, two-phase discovery, block matrix, stale lock purge |
 | `ops/scripts/manage/purge-stale-governance-locks.py` | Stale governance lock purge script — removes expired lock files and orphan symlinks from crashed sessions |
-| `ops/scripts/manage/prune-soul-profiles.py` | SOUL.md profile pruner — replaces principles section with compact template, preserves agent identity |
+|  ~~`ops/scripts/manage/prune-soul-profiles.py`~~ | ~~SOUL.md profile pruner~~ *(file removed — not in repo)* |
 | `docs/troubleshooting.md` | 25+ common issues and fixes — Docker, Dashboard, install, nginx, Langfuse, Linux |
 | `docs/fleet-reference.md` | Fleet status table, cron schedules, auto-remediation, deploy schedules |
 | `docs/operations-reference.md` | Inbox message format, governance & quality cron schedules |
@@ -90,6 +90,18 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/cron-jobs-reference.md` | **Cron jobs inventory** — all cron jobs with name, type, schedule, and purpose (extracted from AGENTS.md) |
 | `docs/cron-format-standard.md` | **Cron output format standard** — required format for all LLM-driven cron outputs: header, phases, cost footer, [SILENT]. Cross-references the cron-format-standard skill. |
 | `docs/cron-job-recipes.md` | 10 reusable cron recipes — Bible reading, system alerts, memory pruning, morning briefing, and more |
+| `docs/agent-architecture.md` | **Agent architecture & role model** — orchestrator, backup, server-agent, dev-agent capability matrix |
+| `docs/agent-bus-setup.md` | Agent Bus setup guide — PGMQ queues, auth, fleet wiring |
+| `docs/model-tier-strategy.md` | Model selection strategy — two-model Ollama stack, rationale, tier architecture |
+| `docs/health-server-optimization.md` | Health vector server — keepalive, buffering, nginx config tuning |
+| `docs/orch-bus-setup.md` | **Orchestrator bus setup** — dedicated bus server for Moses |
+| `docs/orch-backup-bus-setup.md` | **Orchestrator backup bus** — Esther warm-standby bus failover |
+| `docs/symlink-policy.md` | **Symlink map** — `~/.hermes/` ↔ `~/.hermes-cortex/` directory orientation |
+| `docs/docker-registry-cache.md` | Docker registry mirror — local cache for pull throughput |
+| `docs/troubleshooting-stale-inbox-api.md` | Stale inbox API diagnostics — port conflicts, cert renewal impact |
+| `docs/governance-hardening-proposal.md` | Governance hardening proposal — structural override analysis, adversarial attack |
+| `docs/gbrain-postgres-migration.md` | gbrain Postgres migration — schema, migration procedure |
+| `docs/gbrain-v2-taxonomy.md` | gbrain v2 taxonomy — brain source categories and tag conventions |
 | `docs/agent-learning-submissions.md` | **Agent learning submissions** — how agents submit ad-hoc learnings via ~/brain/learnings/pending/ |
 | `docs/pre-task-sequence-mandatory-before-every-task.md` | Pre-task sequence reference table — relocated from AGENTS.md during doc pruning |
 | `docs/contact-protocol-how-to-reach-moses.md` | Contact protocol — how agents reach Moses, relocated from AGENTS.md during doc pruning |
@@ -102,14 +114,14 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `docs/offline-travel-stack.md` | Offline knowledge scenarios — jungle travel, development, kid learning |
-| `ops/offline/code-corpus/` | Per-language code snippets (26 languages, 386 files) — indexed by `offline_code` tool |
+| `ops/offline/code-corpus/` | Per-language code snippets (26 languages, 521 files) — indexed by `offline_code` tool |
 | `ops/offline/SKILL.md` | Offline-knowledge skill — cascade cache + kiwix ZIM usage protocol + Code Assistant |
 | `ops/offline/prep-bible.sh` | Bible translation downloader — 55+ languages |
 | `ops/offline/prep-hymns.sh` | Public domain hymn downloader — scores (PDF), notation (ABC), audio (MIDI) |
 | `ops/offline/bible-parse.py` | Multi-strategy Bible text parser (PG, eBible, WEB formats) → structured JSON |
 | `ops/offline/offline-reader.py` | Local web UI for Bible, hymns, and reference — zero dependencies, dark theme, fully offline |
 | `ops/offline/auto-update.sh` | Silent auto-update for offline content — set-and-forget via cron |
-| `ops/offline/offline_code.py` | Offline code assistant — search/generate from 518 curated code snippets across 32 categories via Ollama RAG |
+| `ops/offline/offline_code.py` | Offline code assistant — search/generate from 521 curated code snippets across 32 categories via Ollama RAG |
 | `ops/offline/prep-code.sh` | Build the code snippet corpus and vector index for offline coding |
 | `ops/offline/code-corpus/generate.py` | Auto-discovers snippets modules, writes formatted .md snippet files with YAML frontmatter |
 | `ops/web-cache/SKILL.md` | Web cache skill — local semantic cache for web_search and web_extract |
