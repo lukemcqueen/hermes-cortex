@@ -64,37 +64,10 @@ Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify
 10. **Use tools, not descriptions** — every response must contain tool calls or a final result.
 11. **Score every change** — every code/config/script edit logged to loop-governance DB.
 
-  > **⚡ Pre-commit scoring hook** auto-creates a cycle on every commit. No bypass — `SKIP_SCORE=1` removed. Use `git commit --no-verify` in emergencies only.
-
-12. **Tests/TDD/scoring are always the default.** Only opt-outs: `"skip tests"`, `"read-only"`, `"throwaway prototype"`, `"just check/look at"`.
-13. **Tag discovered issues as follow-ups** — document as `pending` todo, finish current work, then return. Never silently skip or fix inline.
-14. **Pull before push** — `git pull --rebase origin <branch>` before any `git push`.
-15. **Never print secrets in commands** — never pass secrets as literal strings in `terminal()` commands. Use `$(cat <file>)` subshell expansion so only the file path appears in the tool call. `printf`, `echo` with inline secret values, and `-u "user:pass"` are all forbidden patterns. <!-- Added 2026-07-13 -->
-16. **Do not cut corners** — Every skipped step compounds. Test from deployed path, check sibling paths, update docs.
-17. **Be thorough** — Verify every claim with tool output. A change isn't done until deps resolve, docs update, and doctor runs clean.
-18. **Test Before Release** — Before calling `end_change()`, run the applicable test suite and verify **0 failures**. If no test suite exists, create one or explicitly acknowledge the gap. Ships with `LOW` confidence are blocked — fix before releasing. Test suites are not optional overhead; they are the mechanism that makes "be thorough" enforceable.
-19. **Push before telling anyone to pull** — Verify the commit is on the remote (`git push origin main` succeeded). A fix on local disk is not in the repo.
-
-
-20. **Set `AGENT_ID` for orchestrator identity (REQUIRED)** — Before any git commit, set `AGENT_ID=moses` (orchestrators) or `AGENT_ID=<your-name>` (non-orch). The pre-commit hook uses this to enforce orchestrator-only paths. **There is no fallback** — if `AGENT_ID` is unset, the commit is blocked with an error. Non-orchestrators who modify restricted paths (`ops/scripts/`, `plugins/`, `mcp-servers/`, `skills/`, `.hermes-cortex/hooks/`, etc.) will have their commit blocked.
-
-21. **Persistent cross-session todos** — Use `todo-db.py` for fleet-visible task tracking (gbrain Postgres `bus.todos`). Session start: `todo-db.py pending` → `todo(merge=true)`. During work: update status via `todo-db.py update`. Session end: `todo-db.py save-end`. See `todo-persistence` skill for full protocol.
-
-22. **Only modify files in our repo** — Hermes Agent owns `~/.hermes/`. Our repo (`~/hermes-cortex/`) is our workspace.
-  - `~/hermes-cortex/` → ours, modify freely
-  - `~/.hermes/` (not in repo) → Hermes default, do NOT touch — create source in our repo first, then deploy
-  - `~/.hermes-cortex/state/*`, `~/.hermes/config.yaml` → live config, modify directly
-
-23. **Sharing filter: only share new/substantive hermes-cortex changes** — Apply in order:
-  1. **Already in Hermes Agent repo?** → ❌ Skip (framework)
-  2. **Already in hermes-cortex repo?** → ❌ Skip (already shared)
-  3. **New hermes-cortex skill?** → ✅ Share
-  4. **Substantive improvement?** → ✅ Share delta
-  5. **PII-only / one-off?** → ❌ Keep local
-
-  Test: *"Would someone running Hermes Cortex benefit? Or is it already available?"*
-
-24. **Self-test gate for fleet commands** — `hc send` refuses to send to fleet agents without `--self-tested` flag. This is CLI-enforced at the tool level, not a suggestion. Before dispatching any command to a fleet agent, run the self-test first and pass the flag. Additionally, never use bare `pass` in except blocks — adversarial verification flags these as bypasses. Use meaningful fallback logic or `# noqa` with justification.
+For the full behavioral principles (rules 12-24+), see `SOUL.md` — the governance
+principles, inbox framework, agent management, security rules, and ownership culture
+are documented there. This file covers Hermes-Cortex-specific workflow, not
+behavioral rules.
 
 ---
 
