@@ -326,14 +326,12 @@ register "ops/scripts/agent/agent-gbrain-doctor.sh"       "${CORTEX_DEPLOY_HOME}
 # gbrain autopilot — systemd user service (replaces old sync-watch cron/launchd)
 register_orch "ops/install/deploy/gbrain-autopilot.service"       "${HOME}/.config/systemd/user/gbrain-autopilot.service" "restart_gbrain_sync"
 
-# Governance enforcer plugin — deployed as copy (not symlink) so chattr +i
-# doesn't lock the repo file. deploy_governance_plugin() handles the full
-# lifecycle: symlink→copy conversion, chmod 444, chattr +i.
-register "plugins/governance-enforcer/__init__.py"  "${HOME}/.hermes/plugins/governance-enforcer/__init__.py"
-register "plugins/governance-enforcer/plugin.yaml"  "${HOME}/.hermes/plugins/governance-enforcer/plugin.yaml"
-register "plugins/governance-enforcer/README.md"    "${HOME}/.hermes/plugins/governance-enforcer/README.md"
-register "ops/scripts/install/install-gbrain-sync.sh"    "${CORTEX_DEPLOY_HOME}/scripts/install-gbrain-sync.sh"
+# Governance enforcer plugin — NOT registered in MAP. deploy_governance_plugin()
+# handles the full lifecycle: copy, chmod 444, chattr +i. Dual registration
+# causes copy_file() to add a source header that mismatches repo source,
+# triggering needs_update and a cp failure on locked files.
 
+register "ops/scripts/install/install-gbrain-sync.sh"    "${CORTEX_DEPLOY_HOME}/scripts/install-gbrain-sync.sh"
 # Orchestrator health report — periodic agent fleet snapshot (no_agent cron)
 register_orch "ops/scripts/agent/orch-health-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/orch-health-report.py"
 
