@@ -24,8 +24,8 @@ from datetime import datetime, timezone
 # ── Config ────────────────────────────────────────────────────
 
 DB_QUERY = [
-    "sg", "docker", "-c",
-    "docker exec -i gbrain-postgres psql -U gbrain -d gbrain -t -A -F '||'"
+    "psql", "-h", "localhost", "-p", "5433", "-U", "luke", "-d", "gbrain",
+    "-t", "-A", "-F", "||"
 ]
 
 AGENT_NAME = os.environ.get("AGENT_NAME") or subprocess.run(
