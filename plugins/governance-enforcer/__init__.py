@@ -25,7 +25,7 @@ Phase 2 scan fallback:
 This is the structural enforcement layer that I, as an agent, cannot bypass
 or talk my way out of — the block comes from outside myself.
 
-Install: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/
+Install: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
 """
 
 import json
@@ -720,7 +720,7 @@ def register(ctx):
             if tool_name in READ_TOOLS:
                 return None
 
-            # ── read-only terminal fast-path ─────────────────────────
+            # ── Read-only terminal fast-path: BEFORE skills gate ─────
             # Allow read-only terminal commands (ls, pwd, grep, etc.) even
             # without skills loaded, so agents can inspect the system.
             # Write-class terminal commands (touch, echo >, mkdir, etc.)

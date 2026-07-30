@@ -63,7 +63,7 @@ if [[ ! -f "$ENFORCER_PLUGIN" ]]; then
   echo ""
   echo "❌  Governance enforcer plugin not found at:"
   echo "    ${ENFORCER_PLUGIN}"
-  echo "    Install it: ln -sf ~/hermes-cortex/plugins/hermes-governance-enforcer ~/.hermes/plugins/"
+  echo "    Install it: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/"
   echo "    Then run: /reset to load the plugin."
   echo ""
   exit 1
@@ -82,6 +82,7 @@ if [[ -f "$DOGFOOD_REPO" && -f "$DOGFOOD_DEPLOY" ]]; then
     echo "🔄  DOGFOOD — governance plugin differs from repo source."
     echo "    Auto-deploying..."
     sudo hermes-plugin-lock unlock 2>/dev/null || true
+    sudo chmod 664 "$DOGFOOD_DEPLOY" 2>/dev/null || true
     if cp "$DOGFOOD_REPO" "$DOGFOOD_DEPLOY"; then
       sudo chmod 444 "$DOGFOOD_DEPLOY" 2>/dev/null || true
       sudo hermes-plugin-lock lock 2>/dev/null || true
