@@ -9,6 +9,26 @@ related_skills: [inbox-remediation, cron-quality-gate, orch-weekly-auto-fix, off
 
 Detect and fix cron job errors, agent inbox help requests, and service issues without waiting for the user to notice.
 
+## GOVERNANCE — MANDATORY FOR ALL WRITE ACTIONS
+
+The governance enforcer blocks write tools (write_file, patch, terminal, skill_manage, cronjob) unless a governance lock is active. Every remediation action that modifies state must follow:
+
+```
+begin_change(task_id="remediate-<thing>", description="Fix <issue>")
+  → do the work
+  → cycle_query(task_id="remediate-<thing>")
+  → feedback_accept(id=N, note="cron: auto-remediated")
+  → end_change(task_id="remediate-<thing>")
+```
+
+Examples:
+- Restarting a service → wrap the restart command
+- Patching a config file → wrap the patch
+- Running git operations → wrap the git commands
+- Removing stale files → wrap the file operation
+
+Do one governance cycle per logical change. Do NOT batch all fixes under one lock — each fix gets its own begin → end cycle so failures are isolated.
+
 ## COST-SAVING MANDATE: Offline-first
 
 Before calling `web_search()` or any external API during remediation:
