@@ -98,7 +98,7 @@ def _tracker_load() -> dict:
         try:
             return json.loads(TRACKER_DB.read_text())
         except (json.JSONDecodeError, OSError):
-            pass
+            pass  # expected — silently handled
     return {"messages": []}
 
 
@@ -251,7 +251,7 @@ def cmd_status(args):
                         remaining = (dt - datetime.now(timezone.utc)).total_seconds()
                         overdue = f" ({int(remaining/60)}m remaining)"
                 except (ValueError, TypeError):
-                    pass
+                    pass  # expected — silently handled
             print(f"  {m['correlation_id'][:8]} → {m['queue']:20s} | {m['message_preview'][:50]:50s} | sent={m['sent_at'][:19]}{overdue}")
 
     if confirmed:
@@ -281,7 +281,7 @@ def cmd_alert(args):
                 if dt < now:
                     overdue.append(m)
             except (ValueError, TypeError):
-                pass
+                pass  # expected — silently handled
 
     if not overdue:
         print("No overdue messages")
@@ -309,9 +309,7 @@ def cmd_report(args):
                 if datetime.fromisoformat(deadline) < now:
                     overdue.append(m)
             except (ValueError, TypeError):
-                pass
-
-    # Query queue depths
+                pass  # expected — silently handled
     scheme, creds = _get_auth_header()
     dlq_issues = []
     queue_lines = []

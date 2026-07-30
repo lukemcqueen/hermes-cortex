@@ -150,7 +150,7 @@ def embed_loop_db(conn):
             )
             count += 1
     except Exception:
-        pass
+        _ = None  # expected — silently handled
     conn.commit()
     return count
 

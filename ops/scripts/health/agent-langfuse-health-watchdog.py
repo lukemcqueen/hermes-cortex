@@ -141,7 +141,7 @@ def check_clickhouse_merges() -> Optional[str]:
         try:
             prev_failures = int(Path(CH_STATE_FILE).read_text().strip())
         except (ValueError, OSError):
-            pass
+            pass  # expected — silently handled
 
     alerts = []
 

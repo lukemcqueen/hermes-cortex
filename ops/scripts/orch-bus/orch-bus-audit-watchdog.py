@@ -38,13 +38,13 @@ def utc_to_kst(utc_str):
         dt = datetime.strptime(utc_str[:19], "%Y-%m-%d %H:%M:%S")
         dt_kst = dt + KST
         return dt_kst.strftime("%H:%M:%S")
-    except:
+    except Exception:
         return utc_str[11:19]
 
 def get_last_id():
     if STATE_FILE.exists():
         try: return STATE_FILE.read_text().strip()
-        except: pass
+        except Exception: continue
     return "00000000-0000-0000-0000-000000000000"
 
 def save_last_id(mid):
@@ -53,7 +53,7 @@ def save_last_id(mid):
 def load_state():
     if STATE_JSON.exists():
         try: return json.loads(STATE_JSON.read_text())
-        except: pass
+        except Exception: continue
     return {"dlq_seen": {}, "stuck_alerted": {}}
 
 def save_state(state):
@@ -109,8 +109,8 @@ def main():
                     msg_type = body.get("type", "")
                     if msg_type == "workflow_step":
                         action = f"workflow_step ({body.get('step_name', '')})"
-            except:
-                pass
+            except Exception:
+                _ = None  # expected — silently handled
             time_kst = utc_to_kst(ts)
             lines.append(f"`{sender}` → `{recipient}` `{action}` @{time_kst} KST")
             new_last_id = mid
@@ -194,8 +194,8 @@ def main():
         try:
             latest = run_psql("SELECT MAX(msg_id::text) FROM bus.messages;").strip()
             if latest: save_last_id(latest)
-        except:
-            pass
+        except Exception:
+            _ = None  # expected — silently handled
 
     save_state(state)
 

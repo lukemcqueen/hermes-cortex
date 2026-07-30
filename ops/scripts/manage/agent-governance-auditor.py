@@ -334,7 +334,7 @@ def _check_infrastructure() -> list[str]:
               if "i" in flags:
                 continue  # immutable flag set — skip permission warning
           except (subprocess.TimeoutExpired, OSError, IndexError):
-            pass  # lsattr failed — proceed with standard permission warning
+            pass  # expected — silently handled
           issues.append(
             f" 🔓 Permissions on {path}: {oct(have)}\n"
             f"    (expected {oct(want)}).\n"

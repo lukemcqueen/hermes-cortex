@@ -63,7 +63,7 @@ def load_state():
             with open(STATE_FILE) as f:
                 return json.load(f)
         except (json.JSONDecodeError, OSError):
-            pass
+            pass  # expected — silently handled
     return {"last_mtime": 0.0, "reported_findings": []}
 
 

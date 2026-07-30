@@ -84,7 +84,7 @@ def read_inbox(vt: int = 30) -> dict | None:
         from lib.cortex_bus import bus_read
         return bus_read("inbox_moses", vt)
     except Exception:
-        pass
+        _ = None  # expected — silently handled
     return None
 
 

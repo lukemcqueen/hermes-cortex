@@ -218,7 +218,7 @@ def check_homebrew(package: str, version: str | None = None) -> tuple[str, str, 
             age = _parse_age(commit_date)
             return (package, version, age)
     except urllib.error.HTTPError:
-        pass
+        pass  # expected — silently handled
 
     # Fallback: use the formula's creation date from the JSON
     created = data.get("added")

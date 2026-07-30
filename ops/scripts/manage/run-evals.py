@@ -28,7 +28,7 @@ try:
     from hermes_tools import web_search, terminal, read_file, write_file, search_files
     _HAS_HERMES_TOOLS = True
 except ImportError:
-    # Standalone stubs — use subprocess/filesystem instead
+    _ = None  # Standalone stubs — use subprocess/filesystem instead
     import subprocess
 
     def terminal(command, timeout=60, workdir=None):

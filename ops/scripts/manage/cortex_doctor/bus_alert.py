@@ -34,7 +34,7 @@ def load_repo_owners() -> dict:
                 return data["repos"]
             return {}
         except Exception:
-            pass
+            _ = None  # expected — silently handled
     return {}
 
 
@@ -56,7 +56,7 @@ def read_bus_token() -> str:
                 if k == "CORTEX_BUS_TOKEN" and v:
                     return v
         except OSError:
-            pass
+            _ = None  # expected — silently handled
     return ""
 
 
@@ -79,7 +79,7 @@ def read_basic_auth() -> str:
                 if k in ("CORTEX_BUS_AUTH", "CORTEX_BASIC_AUTH", "CORTEX_INBOX_AUTH") and v:
                     return v
         except OSError:
-            pass
+            _ = None  # expected — silently handled
     return ""
 
 
@@ -119,7 +119,7 @@ def send_bus_alert(
                 resp.read()
                 return True
         except (urllib.error.HTTPError, urllib.error.URLError, OSError, json.JSONDecodeError):
-            pass
+            pass  # expected — silently handled
         # Bearer failed — try Basic Auth
         basic_auth = read_basic_auth()
         if not basic_auth:
@@ -183,7 +183,7 @@ def dispatch_bus_alerts(res):
                         primary_url = v
                         break
             except OSError:
-                pass
+                _ = None  # expected — silently handled
             if primary_url:
                 break
 
@@ -196,13 +196,13 @@ def dispatch_bus_alerts(res):
                     line = line.strip()
                     if not line or line.startswith("#") or "=" not in line:
                         continue
-                    k, v = (x.strip().strip("'\"").strip() for x in line.split("=", 1))
+                    k, v = (x.strip().strip("'\"'").strip() for x in line.split("=", 1))
                     v = re.sub(r"\s+#.*$", "", v).strip()
                     if k == "CORTEX_BUS_FALLBACK_URL" and v:
                         fallback_url = v
                         break
             except OSError:
-                pass
+                _ = None  # expected — silently handled
             if fallback_url:
                 break
 

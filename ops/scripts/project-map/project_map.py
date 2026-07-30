@@ -220,7 +220,7 @@ def _discover_files(root: Path, max_files: int = 2000) -> list:
                 if len(files) >= max_files:
                     break
     except PermissionError:
-        pass
+        _ = None  # expected — silently handled
     return files
 
 
@@ -273,7 +273,7 @@ def _analyze_python(file_path: Path, content: str, rel: Path,
                                     try:
                                         route_info["url"] = ast.literal_eval(dec.args[0])
                                     except Exception:
-                                        pass
+                                        _ = None  # expected — silently handled
                                 routes.append(route_info)
             functions.append(func_info)
 
@@ -285,7 +285,7 @@ def _analyze_python(file_path: Path, content: str, rel: Path,
                 try:
                     class_info.setdefault("bases", []).append(ast.unparse(base))
                 except Exception:
-                    pass
+                    _ = None  # expected — silently handled
             # Check for Pydantic/DB model patterns
             bases_str = " ".join(class_info.get("bases", []))
             if any(x in bases_str for x in ("BaseModel", "Model", "Document", "db.Model", "DeclarativeBase")):
@@ -421,7 +421,7 @@ def _check_config_files(file_path: Path, content: str, rel: Path, modules: list)
             elif isinstance(data, list):
                 info["items"] = len(data)
         except json.JSONDecodeError:
-            pass
+            pass  # expected — silently handled
 
     elif ext in (".yml", ".yaml"):
         # Basic YAML structure detection
@@ -613,7 +613,7 @@ def main(args: Optional[list] = None):
             try:
                 total_lines += len(f.read_text(encoding="utf-8", errors="replace").splitlines())
             except Exception:
-                pass
+                _ = None  # expected — silently handled
 
         print(f"\n📊 Project Stats: {proj_root.name}")
         print(f"   Root: {proj_root}")

@@ -56,7 +56,7 @@ def purge() -> int:
                 lock_file.unlink(missing_ok=True)
                 removed += 1
             except OSError:
-                pass
+                _ = None  # expected — silently handled
 
     # Phase 2: Remove orphan symlinks (pointing to deleted targets)
     for lock_file in sorted(STATE_DIR.glob(".governance-*.json")):
@@ -65,7 +65,7 @@ def purge() -> int:
                 lock_file.unlink()
                 removed += 1
         except OSError:
-            pass
+            _ = None  # expected — silently handled
 
     # Phase 3: Remove orphan session markers (from ancient sessions)
     for marker in sorted(STATE_DIR.glob(".hermes-session-*.id")):
@@ -77,7 +77,7 @@ def purge() -> int:
                 marker.unlink()
                 removed += 1
         except OSError:
-            pass
+            _ = None  # expected — silently handled
 
     return removed
 

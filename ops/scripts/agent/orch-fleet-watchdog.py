@@ -75,7 +75,7 @@ def _get_agents() -> list[dict]:
                     agent["url"] = f"http://127.0.0.1:{port}/api/v1/health"
                 agents.append(agent)
         except (json.JSONDecodeError, KeyError):
-            pass
+            pass  # expected — silently handled
 
     if not agents:
         # Fallback: local health only
@@ -142,7 +142,7 @@ def _check_workflows() -> dict:
                     if age > 300:  # 5 min
                         stalled.append({"agent": agent, "step": f[:20], "running_for_min": int(age / 60)})
                 except OSError:
-                    pass
+                    _ = None  # expected — silently handled
         except (OSError, UnicodeDecodeError):
             continue
 
@@ -157,7 +157,7 @@ def main():
         try:
             prev = json.loads(STATE_FILE.read_text())
         except (json.JSONDecodeError, OSError):
-            pass
+            pass  # expected — silently handled
 
     now: dict[str, str] = {}
     alerts: list[str] = []

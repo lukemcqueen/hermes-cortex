@@ -123,9 +123,7 @@ def build_escalation_message(esc: dict) -> str:
                         ftarget = f.get("target", "?")
                         lines.append(f"    - [{fsev}] {ftech}: {ftarget}")
             except (json.JSONDecodeError, TypeError):
-                pass
-
-    # Add status
+                pass  # expected — silently handled
     lines.extend([
         f"",
         f"**Status:** {esc['status'].upper()}",

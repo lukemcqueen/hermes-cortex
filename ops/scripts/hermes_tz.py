@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Any
+from typing import Optional, Any, cast
 
 # Common timezone offsets (hours from UTC)
 # NOTE: CST is ambiguous (China Standard +8 vs Central US -6).
@@ -91,7 +91,7 @@ def get_timezone() -> timezone:
         # No override — use system local timezone
         local_dt = datetime.now().astimezone()
         if local_dt.tzinfo is not None:
-            return local_dt.tzinfo  # type: ignore
+            return cast(timezone, local_dt.tzinfo)
         return timezone.utc  # Fallback if somehow tzinfo is None
     
     # Try to parse the timezone specification
@@ -131,7 +131,7 @@ def get_timezone() -> timezone:
     # Unknown format — fall back to system local
     local_dt = datetime.now().astimezone()
     if local_dt.tzinfo is not None:
-        return local_dt.tzinfo  # type: ignore
+        return cast(timezone, local_dt.tzinfo)
     return timezone.utc
 
 

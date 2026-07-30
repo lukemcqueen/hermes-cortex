@@ -185,7 +185,7 @@ def parse_issues(text: str) -> list[dict]:
         try:
             return json.loads(array_match.group(0))
         except json.JSONDecodeError:
-            pass
+            pass  # expected — silently handled
     
     # Try parsing the whole file as JSON
     try:
@@ -193,7 +193,7 @@ def parse_issues(text: str) -> list[dict]:
         if isinstance(data, list):
             return data
     except json.JSONDecodeError:
-        pass
+        pass  # expected — silently handled
     
     return []
 

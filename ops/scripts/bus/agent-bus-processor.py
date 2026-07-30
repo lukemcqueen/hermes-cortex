@@ -48,7 +48,7 @@ def get_broadcast_topics() -> list[str]:
             topics = data.get("routing", {}).get("broadcast_topics", default_topics)
             return topics
     except (json.JSONDecodeError, KeyError):
-        pass
+        pass  # expected — silently handled
     return default_topics
 
 
@@ -114,7 +114,7 @@ def main() -> int:
             try:
                 body = json.loads(body)
             except (json.JSONDecodeError, TypeError):
-                pass
+                pass  # expected — silently handled
 
         topic = (body or {}).get("topic", "general") if isinstance(body, dict) else "general"
         priority = (body or {}).get("priority", "normal") if isinstance(body, dict) else "normal"

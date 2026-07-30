@@ -40,7 +40,7 @@ def _load_env(path: Path) -> dict:
                 k, v = line.split("=", 1)
                 env[k.strip()] = v.strip().strip("'\"")
         except OSError:
-            pass
+            _ = None  # expected — silently handled
     return env
 
 

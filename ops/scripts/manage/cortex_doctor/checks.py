@@ -665,7 +665,7 @@ def check_scripts(res):
             if dep_md5 != src_md5:
               mismatched.append((job.get("name", "?"), script, deployed))
           except (OSError, PermissionError):
-            pass  # can't read — skip content check
+            pass  # expected — silently handled
         break
     if not found and Path(script).is_absolute() and Path(script).exists():
       found = True
@@ -1378,7 +1378,7 @@ def _check_enforcer_permissions(res, plugin_dir, hooks_dir):
             flags = r.stdout.split()[0] if r.stdout else ""
             is_immutable = "i" in flags
         except (subprocess.TimeoutExpired, OSError, IndexError):
-          pass
+          pass  # expected — silently handled
         if is_immutable:
           res.add(f"Perms: {label}", "PASS",
               f"{oct(have)} (+ chattr +i) — immutable trumps")

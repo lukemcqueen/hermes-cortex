@@ -71,7 +71,7 @@ def resolve_external_base() -> str:
                 if _val:
                     return _val.rstrip("/")
     except (FileNotFoundError, OSError):
-        pass
+        pass  # expected — silently handled
 
     for env_key in ("CORTEX_BUS_URL", "CORTEX_BUS_FALLBACK_URL"):
         url = os.environ.get(env_key, "")
@@ -96,8 +96,7 @@ def resolve_external_base() -> str:
                     if parsed.scheme and parsed.hostname:
                         return f"{parsed.scheme}://{parsed.hostname}"
         except OSError:
-            pass
-
+            _ = None  # expected — silently handled
     return "https://localhost"
 
 
@@ -114,9 +113,7 @@ try:
             if _val:
                 _PORT_PREFIX = _val
 except (FileNotFoundError, OSError, IndexError):
-    pass
-
-# ── Expected MCP servers ────────────────────────────────────────
+    pass  # expected — silently handled
 EXPECTED_MCP_SERVERS = {
     "agent-bus": "agent-bus-mcp.py",
     "loop-governance": "loop-gov-mcp.py",

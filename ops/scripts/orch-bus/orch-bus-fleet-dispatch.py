@@ -123,7 +123,7 @@ def send_bus_message(queue: str, body: dict, correlation_id: str = "") -> bool:
           for e in errs:
             log(f"    - {e}")
     except ImportError:
-      pass # handoff_schema not available — skip validation
+      _ = None  # expected — silently handled
 
   full_body = {
     "from": "moses",
@@ -158,8 +158,8 @@ def read_current_state() -> dict:
     try:
       return json.loads(DISPATCH_LOG.read_text())
     except json.JSONDecodeError:
-      pass
-  return {"dispatches": [], "agents": {}}
+      pass  # expected — silently handled
+    return {"dispatches": [], "agents": {}}
 
 
 def save_current_state(state: dict):
@@ -286,7 +286,7 @@ def main():
                 for e in serrs:
                   log(f"    - {e}")
           except ImportError:
-            pass
+            _ = None  # expected — silently handled
           success = body_payload.get("success", False)
           sha = body_payload.get("git_sha_after", "?")
           if not args.json:

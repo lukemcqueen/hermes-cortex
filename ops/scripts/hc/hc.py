@@ -238,7 +238,7 @@ def _msg_preview(msg: dict) -> str:
             elif task.get("type") == "task_cancel":
                 body_text = f"[Cancel: {task.get('task_id','')[:12]}...]"
         except json.JSONDecodeError:
-            pass
+            pass  # expected — silently handled
 
     if len(str(body_text)) > 150:
         body_text = str(body_text)[:150] + "..."
@@ -494,7 +494,7 @@ def cmd_bus(cfg: dict, args: list):
             line = line.strip()
             if line:
                 try: queues.append(json.loads(line))
-                except: pass
+                except Exception: continue
         print(f"📊 Queue Summary ({len(queues)} queues):")
         print(f"   {'Queue':30s} {'Pending':>8s} {'Processing':>11s}")
         print(f"   {'─'*30} {'─'*8} {'─'*11}")
@@ -528,7 +528,7 @@ def cmd_bus(cfg: dict, args: list):
             line = line.strip()
             if line:
                 try: procs.append(json.loads(line))
-                except: pass
+                except Exception: continue
         if procs:
             print(f"⚙️  Processing ({len(procs)} message(s)):")
             now_ts = datetime.now(timezone.utc)
@@ -552,7 +552,7 @@ def cmd_bus(cfg: dict, args: list):
                         else:
                             elapsed = f"⏰ {abs(remaining):.0f}s overdue"
                             overdue = " ⚠️"
-                    except: pass
+                    except Exception: continue
                 if enq:
                     try:
                         enq_dt = datetime.fromisoformat(enq.replace("Z", "+00:00"))
@@ -586,7 +586,7 @@ def cmd_bus(cfg: dict, args: list):
             line = line.strip()
             if line:
                 try: stuck.append(json.loads(line))
-                except: pass
+                except Exception: continue
         if stuck:
             print(f"⏰  STUCK — Past Timeout ({len(stuck)}):")
             now_ts = datetime.now(timezone.utc)
@@ -602,7 +602,7 @@ def cmd_bus(cfg: dict, args: list):
                     try:
                         tout_dt = datetime.fromisoformat(tout.replace("Z", "+00:00"))
                         overdue = f"{(now_ts - tout_dt).total_seconds():.0f}s overdue"
-                    except: pass
+                    except Exception: continue
                 agent = m["queue_name"].replace("inbox_", "")
                 retry = f" (retry {m.get('retry_count',0)}/{m.get('max_retries',3)})"
                 err = f" — {m.get('error', '')[:60]}" if m.get("error") else ""
@@ -628,7 +628,7 @@ def cmd_bus(cfg: dict, args: list):
             line = line.strip()
             if line:
                 try: dlqs.append(json.loads(line))
-                except: pass
+                except Exception: continue
         if dlqs:
             print(f"🚫  Dead Letter Queues ({len(dlqs)}):")
             for d in dlqs:
@@ -654,7 +654,7 @@ def cmd_bus(cfg: dict, args: list):
                 line = line.strip()
                 if line:
                     try: archs.append(json.loads(line))
-                    except: pass
+                    except Exception: continue
             if archs:
                 print(f"📜 Recent Activity (last {len(archs)} archived):")
                 for a in archs:

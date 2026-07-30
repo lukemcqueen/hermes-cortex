@@ -61,8 +61,7 @@ def _get_agents() -> list[dict]:
                 if url:
                     agents.append({"key": key, "name": val.get("name", key), "url": url})
         except (json.JSONDecodeError, KeyError):
-            pass
-    # Always include Moses local
+            pass  # expected — silently handled
     if not any(a["key"] == "moses" for a in agents):
         agents.insert(0, {"key": "moses", "name": "Moses", "url": "http://127.0.0.1:8905/api/v1/health"})
     return agents
@@ -139,7 +138,7 @@ def main():
         try:
             prev = json.loads(STATE_FILE.read_text())
         except (json.JSONDecodeError, OSError):
-            pass
+            pass  # expected — silently handled
 
     now = {}
     alerts = []

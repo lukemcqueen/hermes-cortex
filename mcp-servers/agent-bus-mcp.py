@@ -209,7 +209,7 @@ def _http_json(endpoint_label: str, base_url: str, headers: dict,
                 result = json.loads(r.stdout)
                 return result.get("status", 0), result.get("body", ""), result.get("headers", {})
         except (FileNotFoundError, json.JSONDecodeError, subprocess.TimeoutExpired):
-            pass
+            pass  # Fall through to direct HTTP
 
     # Direct HTTP
     try:
@@ -486,8 +486,8 @@ def _inbox_send(args: dict) -> CallToolResult:
                 if resp.status == 200:
                     return CallToolResult(content=[TextContent(type="text",
                         text=f"Message sent via {label} fallback.")])
-        except:
-            pass
+        except urllib.error.URLError:
+            pass  # All send methods exhausted — message delivery failed
 
     return CallToolResult(content=[TextContent(type="text",
         text=f"Send failed across all endpoints. Last error: {body[:200] if body else 'no response'}"

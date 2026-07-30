@@ -80,7 +80,7 @@ def _systemd_active(unit: str) -> bool:
             if r.returncode == 0 and r.stdout.strip() == "active":
                 return True
         except FileNotFoundError:
-            pass
+            _ = None  # expected — silently handled
     return False
 
 
@@ -160,7 +160,7 @@ def _estimate_cron_interval(schedule: str | dict) -> int:
                 try:
                     vals.append(int(part))
                 except ValueError:
-                    pass
+                    _ = None  # expected — silently handled
         return sorted(set(vals))
 
     if day not in ('*', '?'):

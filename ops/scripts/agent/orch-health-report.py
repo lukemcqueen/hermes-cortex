@@ -116,7 +116,7 @@ def _record_last_seen(agent_key: str, timestamp_iso: str) -> None:
         try:
             seen = json.loads(LAST_SEEN_FILE.read_text())
         except (json.JSONDecodeError, OSError):
-            pass
+            pass  # expected — silently handled
     seen[agent_key] = timestamp_iso
     LAST_SEEN_FILE.write_text(json.dumps(seen, indent=2))
 
@@ -158,17 +158,17 @@ def _get_agents() -> list[dict]:
         try:
             registry = json.loads(REGISTRY_PATH.read_text())
         except (json.JSONDecodeError, OSError):
-            pass
+            pass  # expected — silently handled
     if not registry and REGISTRY_TEMPLATE.exists():
         try:
             registry = json.loads(REGISTRY_TEMPLATE.read_text())
         except (json.JSONDecodeError, OSError):
-            pass
+            pass  # expected — silently handled
     if REGISTRY_LOCAL.exists():
         try:
             local_overrides = json.loads(REGISTRY_LOCAL.read_text()).get("agents", {})
         except (json.JSONDecodeError, OSError):
-            pass
+            pass  # expected — silently handled
 
     for key, entry in registry.get("agents", {}).items():
         merged = dict(entry)

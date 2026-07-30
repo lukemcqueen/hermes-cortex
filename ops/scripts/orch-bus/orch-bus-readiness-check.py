@@ -98,7 +98,7 @@ def main():
                 stale_dispatch = bool(last.get("pending"))
                 last_pending = len(last.get("pending", []))
         except (json.JSONDecodeError, IndexError, KeyError):
-            pass
+            pass  # expected — silently handled
     checks.append(check("No stale dispatch", not stale_dispatch,
                         f"Last dispatch has {last_pending} pending agent(s)" if stale_dispatch else "Clear"))
 

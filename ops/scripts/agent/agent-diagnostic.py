@@ -104,7 +104,7 @@ def collect_handler() -> dict:
                         (datetime.now(timezone.utc) - ts).total_seconds()
                     )
                 except (ValueError, TypeError):
-                    pass
+                    pass  # expected — silently handled
         except (json.JSONDecodeError, OSError) as e:
             result["state_file_error"] = str(e)
     else:
@@ -247,7 +247,7 @@ def collect_cron() -> dict:
                             "name": f.stem,
                         }
                 except (json.JSONDecodeError, OSError):
-                    pass
+                    pass  # expected — silently handled
                 break
 
     return {"handler_cron": handler_cron}

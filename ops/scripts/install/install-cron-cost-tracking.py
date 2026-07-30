@@ -44,7 +44,7 @@ NOAGENT_NEW = """        )
                 "no_agent": True, "status": "ok",
             })
         except Exception:
-            pass
+            _ = None  # expected — silently handled
         return True, doc, output, None
 """
 
@@ -70,7 +70,7 @@ LLM_NEW = """        logger.info("Job '%s' completed successfully", job_name)
                 "status": "ok",
             })
         except Exception:
-            pass
+            _ = None  # expected — silently handled
         return True, output, final_response, None
 """
 
@@ -95,7 +95,7 @@ FAIL_INSERT = """        # Record partial token usage on failure (agent may be p
                     "status": "failure",
                 })
         except Exception:
-            pass
+            _ = None  # expected — silently handled
         return False, output, "", error_msg
 
     finally:"""
@@ -137,7 +137,7 @@ FACADE_NEW = """def _get_cost_store():
                 get_latest_run=get_latest_run,
             )
         except Exception:
-            pass
+            _ = None  # expected — silently handled
     return _COST_STORE
 
 

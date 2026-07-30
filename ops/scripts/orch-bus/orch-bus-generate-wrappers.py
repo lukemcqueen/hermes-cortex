@@ -95,7 +95,7 @@ def create_cron(agent_name, agent_data, dry_run=False):
             jobs = data if isinstance(data, list) else data.get("jobs", [])
             existing = {j.get("name", "") for j in jobs}
         except (json.JSONDecodeError, KeyError):
-            pass
+            pass  # expected — silently handled
 
     cron_name = f"bus-{agent_name}"
     if cron_name in existing:

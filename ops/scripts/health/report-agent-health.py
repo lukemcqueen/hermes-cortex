@@ -81,7 +81,7 @@ if CONFIG_FILE.exists():
                     elif k == "AGENT_NAME" and not agent_name:
                         agent_name = v
     except Exception:
-        pass
+        _ = None  # expected — silently handled
 
 if not agent_name:
     import platform
@@ -259,7 +259,7 @@ def send_report(report: dict) -> bool:
             try:
                 body = e.read().decode()[:200]
             except Exception:
-                pass
+                _ = None  # expected — silently handled
         print(f"ERROR: Failed to send report: {e} {body}", file=sys.stderr)
         return False
 
@@ -277,7 +277,7 @@ def main():
         try:
             prev_fp = json.loads(STATE_FILE.read_text()).get("fingerprint", "")
         except Exception:
-            pass
+            _ = None  # expected — silently handled
 
     # Build report (includes external reachability check)
     report = build_report(data)

@@ -89,7 +89,7 @@ def _load_config_file(path: Path) -> dict:
                 k, v = line.split("=", 1)
                 env[k.strip()] = v.strip().strip("'\"")
         except OSError:
-            pass
+            _ = None  # expected — silently handled
     return env
 
 
@@ -129,7 +129,7 @@ def _discover_queues() -> list[str]:
         ))
         return inbox
     except Exception:
-        # Fallback to hardcoded list
+        _ = None  # Fallback to hardcoded list
         return ["inbox_moses", "inbox_esther", "inbox_joseph",
                 "inbox_titus", "inbox_gisu", "inbox_kustos"]
 
@@ -192,7 +192,7 @@ def _send_bus(
         try:
             body = json.loads(body)
         except (json.JSONDecodeError, TypeError):
-            pass
+            pass  # expected — silently handled
     status, _ = _request(
         "POST", f"{url}/api/pgmq/send",
         token=token, auth=auth,

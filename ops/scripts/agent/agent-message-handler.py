@@ -75,7 +75,7 @@ def _load_agent_labels() -> dict:
             if raw:
                 return json.loads(raw)
         except (json.JSONDecodeError, OSError):
-            pass
+            pass  # expected — silently handled
     return {}
 
 

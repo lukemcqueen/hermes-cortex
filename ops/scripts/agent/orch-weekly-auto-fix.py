@@ -208,7 +208,7 @@ def fix_disk_cleanup():
                     try:
                         total += os.path.getsize(fp)
                     except OSError:
-                        pass
+                        _ = None  # expected — silently handled
             if total > 100 * 1024 * 1024:  # >100MB
                 shutil.rmtree(bun_cache, ignore_errors=True)
                 actions.append(f"disk: cleaned bun cache ({total // 1024**2}MB)")

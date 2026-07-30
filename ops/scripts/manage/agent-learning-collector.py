@@ -73,7 +73,7 @@ def load_state() -> dict:
         try:
             return json.loads(STATE_FILE.read_text())
         except (json.JSONDecodeError, OSError):
-            pass
+            pass  # expected — silently handled
     return {
         "last_run": 0,
         "skill_hashes": {},
@@ -317,7 +317,7 @@ def _get_session_stats() -> dict:
                 conn.close()
                 break
             except (sqlite3.Error, OSError):
-                pass
+                pass  # expected — silently handled
 
     return stats
 
@@ -340,7 +340,7 @@ def _get_agent_context() -> dict:
         if result.returncode == 0:
             ctx["hermes_version"] = result.stdout.strip()
     except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
+        pass  # expected — silently handled
     return ctx
 
 
@@ -362,7 +362,7 @@ def _resolve_env(key: str, default: str = "") -> str:
                     if line.startswith(f"{key}="):
                         return line.split("=", 1)[1].strip().strip("'\"")
             except OSError:
-                pass
+                _ = None  # expected — silently handled
     return default
 
 

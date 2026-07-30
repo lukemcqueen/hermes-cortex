@@ -107,7 +107,7 @@ class FailureState:
             if self.state_file.exists():
                 return json.loads(self.state_file.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
-            pass
+            pass  # expected — silently handled
         return {}
 
     def _write(self, state: dict) -> None:

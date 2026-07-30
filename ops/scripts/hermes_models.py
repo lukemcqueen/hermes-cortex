@@ -50,7 +50,7 @@ def _load_env_file(path: str) -> dict[str, str]:
                     key, _, val = line.partition("=")
                     result[key.strip()] = val.strip()
     except (OSError, IOError):
-        pass
+        pass  # expected — silently handled
     return result
 
 

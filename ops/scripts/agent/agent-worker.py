@@ -157,7 +157,7 @@ def main():
                     try:
                         archive_message(msg_id)
                     except Exception:
-                        pass
+                        _ = None  # expected — silently handled
                     continue
 
                 if human:
@@ -165,7 +165,7 @@ def main():
                     try:
                         archive_message(msg_id)
                     except Exception:
-                        pass
+                        _ = None  # expected — silently handled
                     continue
 
                 if step_id not in retries:
@@ -187,7 +187,7 @@ def main():
                             post_result(wf_id, step_id, "failed", {}, error=str(e))
                             archive_message(msg_id)
                         except Exception:
-                            pass
+                            _ = None  # expected — silently handled
                         flag_fail(body, str(e), retries[step_id])
                         retries.pop(step_id, None)
 

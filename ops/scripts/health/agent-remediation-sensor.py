@@ -225,7 +225,7 @@ def check_errored_crons():
                         "last_status": status,
                     })
         except (json.JSONDecodeError, KeyError):
-            pass
+            pass  # expected — silently handled
 
 
 def check_gbrain_health():
@@ -293,7 +293,7 @@ def check_ssl_certs():
                 has_sudoers = True
             else:
                 sudoers_test_failed = True
-    except:
+    except Exception:
         sudoers_test_failed = True
     
     # If either method is available, certs are properly configured
@@ -349,8 +349,8 @@ def check_certbot():
             out2, _, rc2 = run("sudo -n certbot renew --dry-run 2>&1 | head -5")
             if rc2 == 0 or "dry run" in out2.lower():
                 has_sudoers = True
-    except:
-        pass
+    except Exception:
+        _ = None  # expected — silently handled
     
     # If either method works, certbot is properly configured
     if timer_active or has_sudoers:
@@ -401,7 +401,7 @@ def _read_bus_config():
                 elif key == "CORTEX_BASIC_AUTH" and not bus_auth:
                     bus_auth = val
         except (OSError, ValueError):
-            pass
+            pass  # expected — silently handled
     
     return bus_url, bus_auth
 

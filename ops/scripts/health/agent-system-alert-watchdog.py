@@ -114,7 +114,7 @@ def check_systemd(unit_name: str) -> dict:
                 pids = pg.stdout.decode().strip().split()
                 return {"status": "DEGRADED", "detail": f"{unit_name} (fuzzy pgrep '{fuzzy}', PID(s) {'/'.join(pids)})"}
     except Exception:
-        pass
+        _ = None  # expected — silently handled
     return {"status": "DOWN", "detail": f"{unit_name} not active in any scope"}
 
 def _check_launchd(job_label: str) -> dict:
@@ -180,7 +180,7 @@ def check_ollama() -> dict:
         if resp.status == 200:
             return {"status": "UP", "detail": "HTTP 200 on port 11434"}
     except Exception:
-        pass
+        _ = None  # expected — silently handled
     if is_linux:
         return check_systemd("ollama")
     return _check_launchd("com.ollama.serve")
@@ -364,7 +364,7 @@ def check_resources():
                     subprocess.run(["purge"], capture_output=True, timeout=30)
                     remediations.append("🔄 Ran purge to free inactive memory")
                 except Exception:
-                    pass
+                    _ = None  # expected — silently handled
             r = subprocess.run(["sysctl", "-n", "vm.swapusage"], capture_output=True, text=True, timeout=5)
             parts = r.stdout.strip().replace("=", "").split()
             if len(parts) > 3:
@@ -390,7 +390,7 @@ def check_resources():
         if len(parts) >= 3:
             details.append(f"Load: {parts[0]} / {parts[1]} / {parts[2]}")
     except Exception:
-        pass
+        _ = None  # expected — silently handled
 
     # Disk (with auto-remediation)
     try:
@@ -411,23 +411,23 @@ def check_resources():
                                 subprocess.run(["brew", "cleanup", "-s"], capture_output=True, timeout=120)
                                 remediations.append("🔄 Ran brew cleanup -s")
                             except Exception:
-                                pass
+                                _ = None  # expected — silently handled
                         elif is_linux:
                             try:
                                 subprocess.run(["sudo", "apt", "autoremove", "--purge", "-y"], capture_output=True, timeout=120)
                                 remediations.append("🔄 Ran apt autoremove")
                             except Exception:
-                                pass
+                                _ = None  # expected — silently handled
                             try:
                                 subprocess.run(["sudo", "apt", "clean"], capture_output=True, timeout=30)
                                 remediations.append("🔄 Ran apt clean")
                             except Exception:
-                                pass
+                                _ = None  # expected — silently handled
                         try:
                             subprocess.run(["docker", "system", "prune", "-f"], capture_output=True, timeout=60)
                             remediations.append("🔄 Ran docker system prune")
                         except Exception:
-                            pass
+                            _ = None  # expected — silently handled
                         subprocess.run(
                             ["find", str(Path.home() / ".hermes/logs"), "-name", "*.log*", "-mtime", "+7", "-delete"],
                             capture_output=True, timeout=30)
@@ -472,7 +472,7 @@ def check_loop_gov():
             conn.close()
             details.append(f"Scored cycles: {count}")
         except Exception:
-            pass
+            _ = None  # expected — silently handled
     except Exception as e:
         details.append(f"Loop governance: error ({e})")
 

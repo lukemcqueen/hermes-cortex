@@ -226,7 +226,7 @@ print('ADDED')
             flags = r.stdout.split()[0] if r.stdout else ""
             is_immutable = "i" in flags
         except (subprocess.TimeoutExpired, OSError, IndexError):
-          pass
+          pass  # expected — silently handled
         if is_immutable:
           print(f" ⏭️  {label}: immutable flag set — skipping chmod")
           continue
@@ -300,9 +300,7 @@ print('ADDED')
               fixed += 1
             break
       except (json.JSONDecodeError, KeyError):
-        pass
-
-  # Fix: redundant local git hooks → remove them
+        pass  # expected — silently handled
   redundant_hooks = [k for k in fix_map if k.startswith("Redundant hook")]
   if redundant_hooks:
     for check_name in redundant_hooks:

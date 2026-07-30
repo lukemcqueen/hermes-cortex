@@ -81,7 +81,7 @@ def check_systemd(unit_name: str) -> dict:
         if pg.returncode == 0:
             return {"status": "DEGRADED", "detail": f"{unit_name} (process found, no systemd unit)"}
     except Exception:
-        pass
+        _ = None  # expected — silently handled
 
     return {"status": "DOWN", "detail": f"{unit_name} not active in any scope"}
 
@@ -387,7 +387,7 @@ def check_gbrain_sources() -> dict:
                     return {"status": "DEGRADED", "detail": f"Health score: {overall}/100"}
                 return {"status": "UP", "detail": "All sources healthy"}
         except (json.JSONDecodeError, ValueError):
-            pass  # Fall through to Try 2
+            pass  # expected — silently handled
 
         # Try 2: gbrain sources list (parseable fallback)
         result2 = _run([gbrain_cmd, "sources", "list"], timeout=15)

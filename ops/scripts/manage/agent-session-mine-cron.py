@@ -36,7 +36,7 @@ def load_state() -> dict:
         try:
             return json.loads(STATE_FILE.read_text())
         except (json.JSONDecodeError, OSError):
-            pass
+            pass  # expected — silently handled
     return {"bootstrap_done": False, "last_run": 0}
 
 

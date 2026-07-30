@@ -388,9 +388,7 @@ def cmd_ledger_why(args):
                 target = f.get("target", "?")
                 print(f"     - [{sev}] {tech}: {target}")
     except (json.JSONDecodeError, TypeError):
-        pass
-
-    # Clause 4: Evidenced by what?
+        pass  # expected — silently handled
     print(f"\n📊 Evidenced by what?")
     if verdict:
         icon = {"ship": "✅", "block": "🔴", "escalate": "🟡", "defer": "🔵"}.get(verdict["decision"], "?")

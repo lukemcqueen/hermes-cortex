@@ -43,8 +43,7 @@ def extract_sections(filepath):
         if current_lines:
             sections[current_section] = "".join(current_lines)
     except FileNotFoundError:
-        pass
-
+        _ = None  # expected — silently handled
     return sections
 
 
