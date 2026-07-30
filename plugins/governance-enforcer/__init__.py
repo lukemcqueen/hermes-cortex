@@ -97,10 +97,29 @@ def _auto_create_skills_marker(session_id: str) -> None:
     Called automatically when all 8 required skills have been loaded
     via skill_view() in this session. The session_id in the content
     prevents reuse across sessions and blocks `touch` bypass.
+
+    CRITICAL: Cron sessions (session_id starts with 'cron_') must NOT
+    overwrite the marker from an interactive session. Otherwise background
+    cron processes constantly invalidate the interactive session's marker,
+    creating a deadlock where write tools are blocked even though skills
+    were properly loaded.
     """
     if not session_id:
         return
     try:
+        # ── Cron sessions never overwrite interactive markers ──
+        # If the current marker has a valid non-cron session and this
+        # call is from a cron session, do nothing — preserve the
+        # interactive session's skills state.
+        current_marker = SKILLS_MARKER.read_text().strip() if SKILLS_MARKER.exists() else ""
+        is_cron = session_id.startswith("cron_")
+        if is_cron and current_marker.startswith("session:") and not current_marker.startswith("session:cron_"):
+            log.debug(
+                "Cron session %s skipped overwriting interactive session marker",
+                session_id[:20],
+            )
+            return
+
         GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
         SKILLS_MARKER.write_text(f"session:{session_id}")
         log.info("Skills-loaded marker auto-created for session %s", session_id)
