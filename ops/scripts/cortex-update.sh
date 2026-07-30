@@ -1332,6 +1332,11 @@ deploy_governance_plugin() {
     hermes plugins enable governance-enforcer 2>/dev/null || true
     info "  Plugin governance-enforcer reloaded (new code active on next session)"
   fi
+
+  # ── Clear stale __pycache__ ──
+  # Prevents false MD5 mismatches from stale .pyc bytecode
+  [[ -d "$plugin_dir/__pycache__" ]] && rm -rf "$plugin_dir/__pycache__"
+
   return 0
 }
 
@@ -1944,6 +1949,14 @@ except: print('error')
       info "Cleaned legacy governance lock (upgrade): $_legacy_lock — $_has_heartbeat_repo"
     fi
   done
+
+  # ── Clear stale __pycache__ before doctor runs ──────────
+  # After deploying updated Python scripts, old .pyc bytecode in
+  # __pycache__ directories can cause the doctor to compute MD5
+  # hashes against stale compiled bytecode instead of fresh
+  # source, producing false-positive checksum mismatches.
+  info "Clearing stale __pycache__ directories…"
+  find "${CORTEX_DEPLOY_HOME}/scripts" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
 
   # ── Auto-run doctor after update ─────────────────────────
   info "Running doctor to verify installation…"

@@ -217,5 +217,6 @@ Every `begin_change()` creates a new cycle in the loop-governance DB. When `cort
 | SOURCE header | Use `_content_md5()` on deployed paths |
 | Lock cleaned | Re-acquire lock with `begin_change()` |
 | Stale skills marker | `rm -f ~/.hermes-cortex/state/.skills-loaded` + reload all 8 always skills |
+| __pycache__ stale bytecode | Added to cortex-update.sh — auto-cleaned before doctor runs |
 | Drift prevention | Verify hooks are relative symlinks |
 | PENDING cycles | Score all before `end_change()` |
