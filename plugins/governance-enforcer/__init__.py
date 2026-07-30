@@ -153,12 +153,12 @@ def _check_skills_loaded_marker(session_id: str = "") -> bool:
             # Empty or whitespace-only (touch bypass) → reject
             return False
         if content.startswith("session:"):
-            # Cron sessions: accept ANY valid session:* marker.
-            # Cron sessions are barred from overwriting the marker
-            # (_auto_create_skills_marker line 175-179), so the
-            # only marker they can ever see is one created by the
-            # interactive session — trust it.
-            if session_id and session_id.startswith("cron_"):
+            # Cron/Background sessions: accept ANY valid session:* marker.
+            # Both cron_ and bg_ sessions are barred from overwriting the
+            # marker (_auto_create_skills_marker line 175-179), so the
+            # only marker they can ever see is one created by a non-daemon
+            # (interactive) session — trust it.
+            if session_id and (session_id.startswith("cron_") or session_id.startswith("bg_")):
                 return True
             # Session-verified marker — check match
             if session_id and content != f"session:{session_id}":
@@ -188,17 +188,17 @@ def _auto_create_skills_marker(session_id: str) -> None:
     if not session_id:
         return
     try:
-        # ── Cron sessions NEVER overwrite an existing marker ──
-        # If the current session is a cron and a marker already exists
-        # (from ANY session — interactive or cron), do nothing. This
-        # prevents the cascade where cron A creates the marker, then
-        # cron B overwrites it, then cron C overwrites B, etc.
+        # ── Cron/Background sessions NEVER overwrite an existing marker ──
+        # If the current session is a cron or bg (non-interactive daemon)
+        # and a marker already exists (from ANY session — interactive or
+        # daemon), do nothing. Prevents cascade: cron A creates marker,
+        # cron B overwrites A, then bg process overwrites B, etc.
         # Preserves the first marker set after boot.
         current_marker = SKILLS_MARKER.read_text().strip() if SKILLS_MARKER.exists() else ""
-        is_cron = session_id.startswith("cron_")
-        if is_cron and current_marker:
+        is_daemon = session_id.startswith("cron_") or session_id.startswith("bg_")
+        if is_daemon and current_marker:
             log.debug(
-                "Cron session %s skipped overwriting existing marker (preserving %s)",
+                "Non-interactive session %s skipped overwriting existing marker (preserving %s)",
                 session_id[:20],
                 current_marker[:40],
             )

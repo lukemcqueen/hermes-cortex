@@ -2023,6 +2023,78 @@ def check_governance(res):
     _ = None
 
 
+def check_hook_drift(res):
+    """Check deployed hooks match repo source — prevents stale hooks from
+    bypassing orchestrator-only path restrictions.
+
+    Each deployed hook in ~/.hermes-cortex/hooks/ should be a symlink
+    pointing to ~/.hermes-cortex/scripts/<name>. Compare the content of
+    the resolved script against the repo source in ops/scripts/.
+    """
+    import hashlib as _hl
+
+    HOOKS_DIR = CORTEX_HOME / "hooks"
+    REPO_HOOKS = CORTEX_REPO / "ops" / "scripts"
+    if not HOOKS_DIR.is_dir():
+        res.add("Hook content drift", "SKIP", "hooks directory not found")
+        return
+
+    # Hook → repo source mapping (pre-commit hook = pre-commit-score, etc.)
+    HOOK_MAP = {
+        "pre-commit": "pre-commit-score",
+        "pre-push": "pre-push-pull",
+        "post-commit": "post-commit-audit",
+        "post-push": "post-push-audit",
+        # post-merge is standalone — not checked here
+    }
+
+    for hook_name, repo_name in sorted(HOOK_MAP.items()):
+        hook_path = HOOKS_DIR / hook_name
+        if not hook_path.exists():
+            res.add(f"Hook drift: {hook_name}", "FAIL",
+                    f"hook not found at {hook_path}",
+                    f"Run: cortex-update.sh to deploy hooks")
+            continue
+
+        # Deployed: resolve symlink → compare target file
+        if hook_path.is_symlink():
+            deployed_target = hook_path.resolve()
+            while deployed_target.is_symlink():
+                deployed_target = deployed_target.resolve()
+        else:
+            deployed_target = hook_path
+
+        if not deployed_target.exists():
+            res.add(f"Hook drift: {hook_name}", "FAIL",
+                    f"symlink target {deployed_target} not found",
+                    f"Run: cortex-update.sh to recreate hook")
+            continue
+
+        # Repo source
+        repo_source = REPO_HOOKS / repo_name
+        if not repo_source.exists():
+            res.add(f"Hook drift: {hook_name}", "INFO",
+                    f"repo source {repo_source} not found — skipping")
+            continue
+
+        # Compare content
+        try:
+            dep_md5 = _hl.md5(deployed_target.read_bytes()).hexdigest()
+            src_md5 = _hl.md5(repo_source.read_bytes()).hexdigest()
+        except OSError:
+            res.add(f"Hook drift: {hook_name}", "WARN",
+                    "could not read file for hash comparison")
+            continue
+
+        if dep_md5 == src_md5:
+            res.add(f"Hook drift: {hook_name}", "PASS",
+                    f"deployed matches repo ({dep_md5[:8]})")
+        else:
+            res.add(f"Hook drift: {hook_name}", "FAIL",
+                    f"deployed {deployed_target.name} ({dep_md5[:8]}) != repo {repo_name} ({src_md5[:8]})",
+                    f"Run: cortex-update.sh to redeploy hook")
+
+
 def check_local_hooksPath_overrides(res):
   """7b. Scan all git repos for local core.hooksPath overrides that subvert the global setting.
 

@@ -21,6 +21,7 @@ from .checks import (
     check_config,
     check_nginx,
     check_governance,
+    check_hook_drift,
     check_local_hooksPath_overrides,
     check_install,
     check_stale_deploys,
@@ -67,6 +68,7 @@ def main():
         check_skills_version,
         check_todo_db,
         check_skill_drift,
+        check_hook_drift,
     ]
 
     if do_quick:
@@ -80,6 +82,7 @@ def main():
             check_system,
             check_config,
             check_governance,
+            check_hook_drift,
             check_local_hooksPath_overrides,
             check_install,
         ]
