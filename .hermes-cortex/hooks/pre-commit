@@ -186,6 +186,7 @@ fi
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
 ORCH_PATHS_FILE="$REPO_ROOT/docs/orchestrator-only-paths.txt"
 ORCH_VIOLATION=0
+STAGED_FILES=""  # placeholder — populated below if needed for orch check
 
 # Self-protection: the config file itself is always restricted
 # (hardcoded because it's self-referential — can't read from itself)
