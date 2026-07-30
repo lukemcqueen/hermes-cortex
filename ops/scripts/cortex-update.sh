@@ -1969,16 +1969,24 @@ except: print('error')
   # Prevents any agent (including root) from modifying enforcement
   # files outside the deploy pipeline. Only cortex-update.sh can
   # unlock, update, and relock these files.
-  info "Locking enforcement files (chattr +i)…"
-  local _lock_helper="${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock"
-  if [[ -f "$_lock_helper" ]]; then
-    bash "$_lock_helper" lock 2>&1 | sed 's/^/    /'
-  elif command -v hermes-plugin-lock &>/dev/null; then
-    hermes-plugin-lock lock 2>&1 | sed 's/^/    /'
+  info "Locking enforcement files…"
+  # Step 1: Lock via sudo hermes-plugin-lock (NOPASSWD — covers 5 core files)
+  if command -v hermes-plugin-lock &>/dev/null; then
+    sudo hermes-plugin-lock lock 2>&1 | sed 's/^/    /'
   else
     warn "  hermes-plugin-lock not found — enforcement files NOT locked"
-    warn "  Run cortex-update.sh to deploy it."
   fi
+  # Step 2: Lock new enforcement paths with chmod 444 (chattr +i needs sudoers)
+  # These are protected by chmod as a second layer. For full chattr +i
+  # protection, the user must run: sudo hermes-plugin-lock lock
+  for _new_enf in \
+    "${CORTEX_DEPLOY_HOME}/hooks/post-merge" \
+    "${CORTEX_DEPLOY_HOME}/tools/loop-governance/loop-gov-mcp.py" \
+    "${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock"; do
+    if [[ -f "$_new_enf" ]]; then
+      chmod 444 "$_new_enf" 2>/dev/null || true
+    fi
+  done
 
   # ── Clear stale __pycache__ before doctor runs ──────────
   # After deploying updated Python scripts, old .pyc bytecode in
