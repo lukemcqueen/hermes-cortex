@@ -2534,3 +2534,5 @@ def check_skill_drift(res):
         res.add("Skill drift", "WARN",
             f"{len(drifted)} drifted, {in_sync} in sync, {skipped} Hermes defaults skipped",
             "Resolve each drift entry above")
+
+
