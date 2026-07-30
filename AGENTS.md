@@ -26,16 +26,23 @@
 >
 > This rule exists because every agent defaults to "create new" when "update existing" is faster. Every new file is a debt that compounds.
 >
-> **RULE 7: DOCTOR OUTPUT IS DIAGNOSTIC — SUBMIT PROPOSALS TO ORCHESTRATOR**
-> The doctor's `🔶 Suggestion:` lines are diagnostic hints, not instructions.
-> Do NOT modify SOUL.md, AGENTS.md, or template files directly. Submit
-> proposed changes to the orchestrator (Moses) via inbox message with
-> subject `📝 PROPOSAL: <what>` and the change reason + content.
-> Orchestrator reviews and approves.
+> **RULE 7: ORCHESTRATOR-ONLY DOMAINS — SUBMIT PROPOSALS, DON'T EDIT**
+> Only orchestrators (Moses, Esther) may modify:
+>   • **Skills** — `skills/` directory, any skill creation or modification
+>   • **Cron scripts** — `ops/scripts/` (all running scripts), crons, install crons
+>   • **Governance** — `.hermes-cortex/hooks/`, pre-commit hook, enforcer plugins
+>   • **MCP servers** — `mcp-servers/`, `plugins/`, any tool that runs on the fleet
+>   • **Templates** — `AGENTS.md`, `SOUL.md`, `docs/templates/`, `docs/orchestrator-only-paths.txt`
+>   • **CI/CD** — `.github/workflows/`, `VERSION`, `ops/install/`
+>   • **Tests** — `tests/`, `profiles/`
+> Non-orchestrators: submit proposals to Moses via inbox `📝 PROPOSAL: <what>`.
+> The pre-commit hook blocks non-orchestrators from staging files in
+> `docs/orchestrator-only-paths.txt`. See that file for the current list.
 >
-> This rule exists because tool output looks like commands but is just
-> diagnostic feedback. Acting on unverified tool output leads to
-> unnecessary changes and template drift, which propagates to every agent.
+> This rule exists because edits to shared infrastructure propagate
+> to every agent without review. Stale doc references don't override
+> the hook — the path list IS the source of truth. If it's not on the
+> list but should be, message Moses.
 >
 > **RULE 8: "PULL LATEST" = FULL REFRESH — DO NOT CUT CORNERS**
 > When the user says "pull latest", "update from repo", or any equivalent phrase, the sequence is:
@@ -91,9 +98,25 @@ Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify
 
 ## 🛡️ Orchestrator-Only Paths
 
-Certain paths restricted to mosaic/esther. Pre-commit hook checks hostname + staged files against `docs/orchestrator-only-paths.txt` (committed version). Non-orchs: send bus message to Moses.
+Only Moses and Esther may modify these paths. The pre-commit hook
+enforces this by checking staged files against a committed list.
+Non-orchestrators who stage files under these paths get blocked.
 
-**How to Add:** Edit `docs/orchestrator-only-paths.txt`. The file itself is orchestrator-only + hook reads committed version (tamper-proof).
+**Protected domains:**
+| Domain | Paths |
+|--------|-------|
+| Skills | `skills/` |
+| Scripts & crons | `ops/scripts/`, `ops/install/` |
+| Governance | `.hermes-cortex/hooks/` |
+| MCP & plugins | `mcp-servers/`, `plugins/` |
+| Templates & config | `AGENTS.md`, `SOUL.md`, `docs/templates/`, `docs/orchestrator-only-paths.txt` |
+| CI/CD | `.github/workflows/`, `VERSION` |
+| Tests & profiles | `tests/`, `profiles/` |
+| Doctor | `cortex_doctor/` |
+
+**Source of truth:** `docs/orchestrator-only-paths.txt` (committed version).
+The hook reads this file — stale docs don't override it.
+To add a new path: edit that file. The file itself is orchestrator-only.
 
 ---
 

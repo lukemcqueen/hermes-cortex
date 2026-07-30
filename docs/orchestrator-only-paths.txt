@@ -16,4 +16,8 @@ cortex_doctor/
 tests/
 profiles/
 docs/templates/
+docs/orchestrator-only-paths.txt
 AGENTS.md
+SOUL.md
+.github/workflows/
+VERSION
