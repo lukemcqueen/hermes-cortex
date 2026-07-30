@@ -18,11 +18,12 @@ set -euo pipefail
 # temporary lock file before pushing and removes it on exit.
 _GOV_LOCK="${HOME}/.hermes-cortex/state/.governance-nginx-threat-pipeline.json"
 _create_gov_lock() {
+  local _slug; _slug=$(basename "${CORTEX_REPO:-${HOME}/hermes-cortex}")
   mkdir -p "${HOME}/.hermes-cortex/state"
   cat > "$_GOV_LOCK" <<-LOCKEOF
 {
   "task_id": "nginx-threat-pipeline",
-  "repo_slug": "hermes-cortex",
+  "repo_slug": "${_slug}",
   "session_id": "cron-nginx-threat-pipeline",
   "started_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
   "heartbeat_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",

@@ -13,10 +13,11 @@ _GOV_LOCK="${HOME}/.hermes-cortex/state/.governance-agent-ip-submission.json"
 trap 'rm -f "$_GOV_LOCK"' EXIT
 _create_gov_lock() {
   mkdir -p "${HOME}/.hermes-cortex/state"
+  local _slug; _slug=$(basename "${CORTEX_REPO:-${HOME}/hermes-cortex}")
   cat > "$_GOV_LOCK" <<-LOCKEOF
 {
   "task_id": "agent-ip-submission",
-  "repo_slug": "hermes-cortex",
+  "repo_slug": "${_slug}",
   "session_id": "cron-agent-ip-submission",
   "started_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
   "heartbeat_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
