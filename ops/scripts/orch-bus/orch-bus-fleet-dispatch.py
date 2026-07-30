@@ -124,6 +124,9 @@ def send_bus_message(queue: str, body: dict, correlation_id: str = "") -> bool:
             log(f"    - {e}")
     except ImportError:
       print("expected — silently handled", file=sys.stderr)
+
+  full_body = {
+    "from": "moses",
     **body,
     "correlation_id": correlation_id,
   }
@@ -284,6 +287,7 @@ def main():
                   log(f"    - {e}")
           except ImportError:
             print("expected — silently handled", file=sys.stderr)
+          success = body_payload.get("success", False)
           sha = body_payload.get("git_sha_after", "?")
           if not args.json:
             icon = "✅" if success else "❌"

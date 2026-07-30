@@ -44,6 +44,19 @@ def extract_sections(filepath):
             sections[current_section] = "".join(current_lines)
     except FileNotFoundError:
         print("expected — silently handled", file=sys.stderr)
+    return sections
+
+
+# ── Stale marker definitions ─────────────────────────────────
+#
+# Each entry: section_name -> list of (marker_string, description)
+# The check PASSES if ANY marker in the list is found in the section.
+# This lets us update markers as the template evolves without
+# false-positives from agents on different versions.
+
+STALE_MARKERS = {
+    "Loop Governance": [
+        # Version 2 markers (MCP-enforced, current as of 2026-07-03)
         ("MCP-enforced", "pre-commit hook enforcement → MCP server enforcement"),
         ("loop-gov-mcp.py", "MCP-level enforcement"),
         ("begin_change", "governance lock workflow"),

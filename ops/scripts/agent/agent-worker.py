@@ -157,7 +157,23 @@ def main():
                     try:
                         archive_message(msg_id)
                     except Exception:
-                        logging.getLogger(__name__).info("expected — silently handled")
+                        print("expected — silently handled", file=sys.stderr)
+                    continue
+
+                if human:
+                    flag_human(body)
+                    try:
+                        archive_message(msg_id)
+                    except Exception:
+                        print("expected — silently handled", file=sys.stderr)
+                    continue
+
+                if step_id not in retries:
+                    retries[step_id] = 0
+                retries[step_id] += 1
+
+                try:
+                    logging.info(f"  Ollama attempt {retries[step_id]}/{max_retries}...")
                     output = run_ollama(prompt)
                     post_result(wf_id, step_id, "success", {"output": output})
                     archive_message(msg_id)
@@ -171,7 +187,12 @@ def main():
                             post_result(wf_id, step_id, "failed", {}, error=str(e))
                             archive_message(msg_id)
                         except Exception:
-                            logging.getLogger(__name__).info("expected — silently handled")
+                            print("expected — silently handled", file=sys.stderr)
+                        flag_fail(body, str(e), retries[step_id])
+                        retries.pop(step_id, None)
+
+        except Exception as e:
+            logging.error(f"Cycle error: {e}")
 
         time.sleep(POLL_INTERVAL)
 

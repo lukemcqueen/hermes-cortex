@@ -363,6 +363,11 @@ def _resolve_env(key: str, default: str = "") -> str:
                         return line.split("=", 1)[1].strip().strip("'\"")
             except OSError:
                 print("expected — silently handled", file=sys.stderr)
+    return default
+
+
+def _build_auth_headers(url: str) -> dict[str, str]:
+    """Build auth headers for the PGMQ bus.
     
     Primary: Basic auth via CORTEX_BASIC_AUTH (or CORTEX_BUS_AUTH).
     Fallback: Bearer token via CORTEX_BUS_TOKEN (for local/bare PGMQ)."""

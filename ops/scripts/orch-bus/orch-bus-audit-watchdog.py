@@ -44,7 +44,8 @@ def utc_to_kst(utc_str):
 def get_last_id():
     if STATE_FILE.exists():
         try: return STATE_FILE.read_text().strip()
-        except Exception: continue
+        except Exception:
+            print("expected — silently handled", file=sys.stderr)
     return "00000000-0000-0000-0000-000000000000"
 
 def save_last_id(mid):
@@ -53,7 +54,8 @@ def save_last_id(mid):
 def load_state():
     if STATE_JSON.exists():
         try: return json.loads(STATE_JSON.read_text())
-        except Exception: continue
+        except Exception:
+            print("expected — silently handled", file=sys.stderr)
     return {"dlq_seen": {}, "stuck_alerted": {}}
 
 def save_state(state):

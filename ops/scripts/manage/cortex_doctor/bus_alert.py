@@ -35,6 +35,11 @@ def load_repo_owners() -> dict:
             return {}
         except Exception:
             print("expected — silently handled", file=sys.stderr)
+    return {}
+
+
+def read_bus_token() -> str:
+    """Read bus Bearer token from env or config files. Returns empty string if not found."""
     token = os.environ.get("CORTEX_BUS_TOKEN", "")
     if token:
         return token
@@ -52,6 +57,7 @@ def load_repo_owners() -> dict:
                     return v
         except OSError:
             print("expected — silently handled", file=sys.stderr)
+    return ""
 
 
 def read_basic_auth() -> str:
@@ -74,6 +80,7 @@ def read_basic_auth() -> str:
                     return v
         except OSError:
             print("expected — silently handled", file=sys.stderr)
+    return ""
 
 
 def send_bus_alert(
@@ -177,6 +184,17 @@ def dispatch_bus_alerts(res):
                         break
             except OSError:
                 print("expected — silently handled", file=sys.stderr)
+            if primary_url:
+                break
+
+    if not fallback_url:
+        for cfg_path in BUS_CONFIG_PATHS:
+            if not cfg_path.exists():
+                continue
+            try:
+                for line in cfg_path.read_text().splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
                         continue
                     k, v = (x.strip().strip("'\"'").strip() for x in line.split("=", 1))
                     v = re.sub(r"\s+#.*$", "", v).strip()
@@ -185,6 +203,12 @@ def dispatch_bus_alerts(res):
                         break
             except OSError:
                 print("expected — silently handled", file=sys.stderr)
+            if fallback_url:
+                break
+
+    if not primary_url and not fallback_url:
+        print(
+            "  ℹ️  --bus-alert: no bus URL configured — "
             "set CORTEX_BUS_URL (Moses) or CORTEX_BUS_FALLBACK_URL (Esther)"
         )
         return

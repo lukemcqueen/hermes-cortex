@@ -143,6 +143,10 @@ def _check_workflows() -> dict:
                         stalled.append({"agent": agent, "step": f[:20], "running_for_min": int(age / 60)})
                 except OSError:
                     print("expected — silently handled", file=sys.stderr)
+        except (OSError, UnicodeDecodeError):
+            continue
+
+    return {"active_count": active, "stalled": stalled}
 
 
 def main():
