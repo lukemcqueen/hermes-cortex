@@ -18,6 +18,11 @@ Load all 8 always-section skills. The marker follows automatically:
 7. `skill_view('cortex-preflight')` — repo-specific pre-flight checks
 8. `skill_view('agent-contract')` — non-negotiable execution rules
 
+Then restore any pending cross-session todos:
+
+9. `~/.hermes-cortex/scripts/todo-db.py pending` — query DB for pending items
+10. If items exist, `todo(todos=<json_items>, merge=true)` — restore to in-memory list
+
 Then proceed to `begin_change()`. The marker is self-verifying — it contains
 your session ID, not just a file existence flag.
 
