@@ -184,9 +184,9 @@ if echo "$STAGED_FILES" | grep -q "^docs/orchestrator-only-paths.txt"; then
   echo "   ❌  docs/orchestrator-only-paths.txt — orchestrator only"
 fi
 # Determine agent hostname from self-reported identity
-: "${AGENT_HOSTNAME:=$(hostname | cut -d. -f1 | tr '[:upper:]' '[:lower:]')}"
+: "${AGENT_ID:=$(hostname | cut -d. -f1 | tr '[:upper:]' '[:lower:]')}"
 ORCHESTRATORS="^(moses|esther)$"
-if ! echo "$AGENT_HOSTNAME" | grep -qE "$ORCHESTRATORS"; then
+if ! echo "$AGENT_ID" | grep -qE "$ORCHESTRATORS"; then
   # Non-orch agent — read the COMMITTED version of the config file
   # Using git show HEAD: ensures a tampered working copy can't bypass
   ORCH_CONFIG=$(git show HEAD:"${ORCH_PATHS_FILE#$REPO_ROOT/}" 2>/dev/null || cat "$ORCH_PATHS_FILE" 2>/dev/null)
@@ -204,7 +204,7 @@ if ! echo "$AGENT_HOSTNAME" | grep -qE "$ORCHESTRATORS"; then
   if [[ "$ORCH_VIOLATION" -eq 1 ]]; then
     echo ""
     echo "❌  Orchestrator-only files cannot be modified by non-orch agents."
-    echo "    Current host: $AGENT_HOSTNAME"
+    echo "    Current host: $AGENT_ID"
     echo "    This restriction is enforced: the path list is read from the"
     echo "    COMMITTED config (docs/orchestrator-only-paths.txt), not the"
     echo "    working copy. Editing the config file won't bypass it."
@@ -583,8 +583,8 @@ for pattern in "${ORCHESTRATOR_ONLY_PATHS[@]}"; do
   fi
 done
 if [[ -n "$BLOCKED" ]]; then
-  # Determine agent type from AGENT_HOSTNAME env var
-  HOST="${AGENT_HOSTNAME:-$(hostname -s 2>/dev/null || echo 'unknown')}"
+  # Determine agent type from AGENT_ID env var
+  HOST="${AGENT_ID:-$(hostname -s 2>/dev/null || echo 'unknown')}"
   case "$HOST" in
     moses|esther) AGENT_TYPE="orchestrator" ;;
     *) AGENT_TYPE="server" ;;
@@ -606,17 +606,17 @@ fi
 # ── Self-test: orchestrator guard must work when hook changes ──
 if echo "$STAGED_FILES" | grep -q "^ops/scripts/pre-commit-score$"; then
   echo "🧪  Self-test: orchestrator guard..."
-  # Test that AGENT_HOSTNAME controls orchestrator identity (the actual bug)
+  # Test that AGENT_ID controls orchestrator identity (the actual bug)
   # Test 1: titus → should NOT match moses|esther
-  AGENT_HOSTNAME=titus bash -c 'case "${AGENT_HOSTNAME:-$(hostname -s)}" in moses|esther) exit 1;; *) exit 0;; esac' 2>/dev/null
+  AGENT_ID=titus bash -c 'case "${AGENT_ID:-$(hostname -s)}" in moses|esther) exit 1;; *) exit 0;; esac' 2>/dev/null
   TEST1=$?
   # Test 2: moses → SHOULD match
-  AGENT_HOSTNAME=moses bash -c 'case "${AGENT_HOSTNAME:-$(hostname -s)}" in moses|esther) exit 0;; *) exit 1;; esac' 2>/dev/null
+  AGENT_ID=moses bash -c 'case "${AGENT_ID:-$(hostname -s)}" in moses|esther) exit 0;; *) exit 1;; esac' 2>/dev/null
   TEST2=$?
   if [[ $TEST1 -eq 0 && $TEST2 -eq 0 ]]; then
-    echo "✅  Self-test passed: AGENT_HOSTNAME controls orchestrator identity"
+    echo "✅  Self-test passed: AGENT_ID controls orchestrator identity"
   else
-    echo "❌  Self-test FAILED! AGENT_HOSTNAME is not controlling identity."
+    echo "❌  Self-test FAILED! AGENT_ID is not controlling identity."
     echo "    Non-orch (titus) blocked: $([ $TEST1 -eq 0 ] && echo 'PASS' || echo 'FAIL')"
     echo "    Orch (moses) recognized:  $([ $TEST2 -eq 0 ] && echo 'PASS' || echo 'FAIL')"
     exit 1
