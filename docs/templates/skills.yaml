@@ -15,6 +15,8 @@
 always:
   - name: task-start
     why: Mandatory first action — bundles complete pre-task sequence
+  - name: session-start-discipline
+    why: Restore cross-session todos, enforce skill-loading discipline at session start
   - name: agent-flow
     why: Workflow router — classifies task, dispatches pattern + skills
   - name: reasoning-patterns

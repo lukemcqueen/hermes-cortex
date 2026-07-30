@@ -476,7 +476,7 @@ printf "${CYAN}  4. Skill Report Pipeline${RESET}\\n"
 
 # Request skill reports from all agents (weekly Monday 2am)
 create_cron "orch-skill-report-request" "0 2 * * 1" \
-  "orch-request-skill-reports.sh" \
+  "orch-skill-report-request.sh" \
   "" \
   "" \
   "" \
@@ -486,7 +486,7 @@ create_cron "orch-skill-report-request" "0 2 * * 1" \
 
 # Process collected skill reports (daily 3am)
 create_cron "orch-skill-report-process" "0 3 * * *" \
-  "orch-process-skill-reports.py" \
+  "orch-skill-report-process.py" \
   "" \
   "" \
   "" \
@@ -500,7 +500,7 @@ create_cron "orch-skill-evaluate" "0 9 * * 2" \
   "You are running a scheduled skill evaluation cron for the orchestrator.
 
 Your job is to:
-1. Run orch-process-skill-reports.py to collect any pending skill reports
+1. Run orch-skill-report-process.py to collect any pending skill reports
 2. For each reported custom skill, evaluate its quality, relevance, and whether it should be upstreamed to the repo
 3. Report findings on what was evaluated and what was decided" \
   "skill-vetting" \

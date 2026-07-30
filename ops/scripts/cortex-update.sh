@@ -181,7 +181,7 @@ register "ops/scripts/install-crons.sh"       "${CORTEX_DEPLOY_HOME}/scripts/ins
 register_orch "ops/scripts/orch-bus/orch-bus-message-tracker.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker.py"
 register_orch "ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-message-tracker-alert.sh"
 register_orch "ops/scripts/orch-bus/orch-bus-forwarder.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-forwarder.py"
-register_orch "ops/scripts/fleet/fleet-command-verifier.py"   "${CORTEX_DEPLOY_HOME}/scripts/fleet-command-verifier.py"
+register_orch "ops/scripts/fleet/local-orch-fleet-command-verifier.py"   "${CORTEX_DEPLOY_HOME}/scripts/local-orch-fleet-command-verifier.py"
 register "ops/scripts/install/install-orch-crons.sh"  "${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh"
 register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
 register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
@@ -264,7 +264,7 @@ register "ops/scripts/platform_utils.py"          "${CORTEX_DEPLOY_HOME}/scripts
 register "ops/scripts/health/agent-langfuse-health-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-langfuse-health-watchdog.py"
 register "ops/scripts/manage/agent-llm-judge-scorer.py"         "${CORTEX_DEPLOY_HOME}/scripts/agent-llm-judge-scorer.py"
 register "ops/scripts/health/agent-model-health-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/agent-model-health-watchdog.py"
-register "ops/scripts/manage/agent-offline-code-index-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/agent-offline-code-index-cron.sh"
+register "ops/scripts/manage/agent-offline-code-index.sh" "${CORTEX_DEPLOY_HOME}/scripts/agent-offline-code-index.sh"
 # harvest-lessons.sh removed — absorbed into orch-skill-lifecycle (July 2026)
 # core/governance/skill_miner.py removed (old governance — July 2026)
 register "ops/scripts/health/swap-refresh.py"            "${CORTEX_DEPLOY_HOME}/scripts/swap-refresh.py"
@@ -347,7 +347,7 @@ register "ops/scripts/pre-commit-doc-audit.sh"            "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/health/health-vector.py"            "${CORTEX_DEPLOY_HOME}/scripts/health-vector.py"
 register "ops/scripts/health/health-vector-push.sh"       "${CORTEX_DEPLOY_HOME}/scripts/health-vector-push.sh"
 register "ops/scripts/health/report-agent-health.py"      "${CORTEX_DEPLOY_HOME}/scripts/report-agent-health.py"
-register_orch "ops/scripts/manage/orch-request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-request-skill-reports.sh"
+register_orch "ops/scripts/manage/orch-skill-report-request.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-skill-report-request.sh"
 
 # Shared model config loader (imported by many scripts)
 
@@ -392,8 +392,8 @@ register "ops/scripts/manage/collect-agent-skills.sh"     "${CORTEX_DEPLOY_HOME}
 # Migration scripts
 register_orch "ops/scripts/manage/migrate-orch-bus-names.sh"   "${CORTEX_DEPLOY_HOME}/scripts/migrate-orch-bus-names.sh"
 register "ops/scripts/post-push-audit"                     "${CORTEX_DEPLOY_HOME}/scripts/post-push-audit"
-register_orch "ops/scripts/manage/orch-request-skill-reports.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-request-skill-reports.sh"
-register_orch "ops/scripts/manage/orch-process-skill-reports.py"    "${CORTEX_DEPLOY_HOME}/scripts/orch-process-skill-reports.py"
+register_orch "ops/scripts/manage/orch-skill-report-request.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-skill-report-request.sh"
+register_orch "ops/scripts/manage/orch-skill-report-process.py"    "${CORTEX_DEPLOY_HOME}/scripts/orch-skill-report-process.py"
 register "ops/scripts/manage/agent-learning-collector.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-learning-collector.py"
 register "ops/scripts/manage/agent-session-mine-cron.py"   "${CORTEX_DEPLOY_HOME}/scripts/agent-session-mine-cron.py"
 # orch-bus-* scripts are orchestrator-only — run from repo path
@@ -407,7 +407,7 @@ register "ops/scripts/manage/daily-lesson-mine.sh"      "${CORTEX_DEPLOY_HOME}/s
 register "ops/scripts/manage/lesson-compound-stats.py"   "${CORTEX_DEPLOY_HOME}/scripts/lesson-compound-stats.py"
 register "ops/scripts/manage/lesson-hit.sh"              "${CORTEX_DEPLOY_HOME}/scripts/lesson-hit.sh"
 register "ops/scripts/manage/fix-cron-duplicates.py"  "${CORTEX_DEPLOY_HOME}/scripts/manage/fix-cron-duplicates.py"
-register "ops/scripts/manage/push-metrics.sh"     "${CORTEX_DEPLOY_HOME}/scripts/push-metrics.sh"
+register "ops/scripts/manage/agent-push-metrics.sh"     "${CORTEX_DEPLOY_HOME}/scripts/agent-push-metrics.sh"
 register "ops/scripts/manage/setup-push-metrics-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/setup-push-metrics-cron.sh"
 register "ops/scripts/manage/agent-setup-metrics.sh" "${CORTEX_DEPLOY_HOME}/scripts/agent-setup-metrics.sh"
 
@@ -664,7 +664,7 @@ clean_stale_deploys() {
   # Files to preserve even if not registered (cron-referenced)
   local preserve=(
     "agent-model-health-watchdog.py"
-    "agent-offline-code-index-cron.sh"
+    "agent-offline-code-index.sh"
     "skill_miner.py"
     "swap-refresh.py"
     "agent-nginx-threat-pipeline.sh"

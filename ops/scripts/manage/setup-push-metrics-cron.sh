@@ -16,7 +16,7 @@ set -euo pipefail
 
 CRON_NAME="agent-push-metrics"
 CRON_SCHEDULE="every 5m"
-SCRIPT_NAME="push-metrics.sh"
+SCRIPT_NAME="agent-push-metrics.sh"
 
 # Check if hermes CLI is available
 if ! command -v hermes &>/dev/null; then
@@ -25,7 +25,7 @@ if ! command -v hermes &>/dev/null; then
 fi
 
 # ── Pre-flight: check VictoriaMetrics reachability ──────────
-# Uses VICTORIA_METRICS_URL env var (same source as push-metrics.sh)
+# Uses VICTORIA_METRICS_URL env var (same source as agent-push-metrics.sh)
 VM_URL="${VICTORIA_METRICS_URL:-}"
 if [ -z "$VM_URL" ]; then
   echo "[setup-push-metrics] ⚠️  VICTORIA_METRICS_URL not set — cannot verify reachability"

@@ -45,8 +45,9 @@ if not CORTEX_BUS_TOKEN:
                         val = line.split("=", 1)[1].strip().strip("'\"")
                         if val:
                             CORTEX_BUS_URL = val
-            except Exception:
-                pass
+            except (IOError, OSError, UnicodeDecodeError, ValueError) as e:
+                # Config file unreadable or malformed — log and try next location
+                print(f"[config] Warning: skipping {conf}: {e}", file=sys.stderr)
         if CORTEX_BUS_TOKEN:
             break
 

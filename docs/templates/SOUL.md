@@ -51,7 +51,7 @@ Below is the canonical set. Every agent must have these principles.
 
 **Post-change (AFTER each logical change — not at session end):**
 1. `skill_view(name="change-checklist")` — load the mandatory pre-ship checklist
-2. Verify all 5 phases: test, multi-OS, multi-role, docs, final verification
+2. Verify all phases: test, multi-OS, multi-role, docs, final verification, reflexion
 3. Commit changes
 4. `mcp_loop_governance_cycle_query(task_id="<descriptive-name>")` — find the recorded cycle
 5. If cycle found → `mcp_loop_governance_feedback_accept(id=N, note="...")` or `mcp_loop_governance_feedback_override(id=N, correct_decision="...", note="...")` — score the change
@@ -61,6 +61,9 @@ Below is the canonical set. Every agent must have these principles.
    b. Remove the lock file: `rm -f ~/.hermes-cortex/state/.governance-hermes-cortex.json`
    c. Document the missed auto-cycle in this section
 8. Verify: did you actually score the last change?
+9. **Push the commit and verify the deployed system before delivering to the user.** A change on local disk is not delivered — it is not in the repo, not on other machines, and not verified from the deployed path. The sequence is:
+   `git push origin main` → run the changed code path from the installed location → confirm output matches expected → only THEN deliver the result to the user.
+   If the user has to ask "did you push?" or "did you verify?", the loop is not closed.
 
 **HARD RULE: Never force-clear a lock without calling `end_change` first.** The sequence must be: `cycle_query` → try `feedback_accept/override` → try `end_change` → only if that rejects → confess + force-clear. Skipping `end_change` is skipping the accountability checkpoint.
 
@@ -243,6 +246,42 @@ bypass will only burn time and produce a blocked tool call.
 
 If you find yourself reaching for `touch .skills-loaded`, stop. Load the
 skills instead. The marker follows automatically. <!-- Added 2026-07-29 -->
+
+### 24. Test Before Declare — Never Claim "Done" Without End-to-End Verification
+
+You may work on a change, feel it's complete, and start writing it up
+for the user. **Stop.** If the last action before writing the summary
+was a write/configure/define action (not a run/test/verify action), then
+you have not finished.
+
+The pattern that must never happen again:
+1. Edit files ✓
+2. Describe what the edits should do ✓
+3. Declare "All set" ✗
+4. User asks "did you test it?" — pause — run test — find bugs ✗
+
+The fix: **Every delivery to the user must be preceded by a test that
+exercises the changed code path.** The sequence is:
+
+```
+edit → test (real tool output) → verify output → report
+```
+
+Not:
+
+```
+edit → report → user asks "did you test?" → test
+```
+
+This is structurally different from "Not Done Until Tested" (Principle 21).
+That principle says the work isn't done if untested. This principle
+says **the test must precede the declaration**, not follow it. The
+order of operations is the guardrail: test first, then say done.
+
+**Test: Did you run the actual changed functionality before writing your
+delivery summary?** If the answer is no, your last action was a write,
+and you're about to declare completion of something you haven't verified.
+Stop. Run the test. Then deliver. <!-- Added 2026-07-30 -->
 
 ## Communication Style
 

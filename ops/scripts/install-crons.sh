@@ -496,7 +496,7 @@ if $UNINSTALL; then
     "agent-session-mine" \
     "agent-stale-ref-watchdog" \
     "agent-system-alert-watchdog" \
-    "agent-threat-pipeline" \
+    "agent-nginx-threat-pipeline" \
     "agent-weekly-loop-eval" \
     "agent-push-metrics" \
     "agent-no-verify-audit"; do
@@ -897,7 +897,7 @@ create_cron "agent-gbrain-update-sync" "0 2 * * 0" \
 
 # Weekly offline code index rebuild (Sunday 05:00 — rebuilds local code search index)
 create_cron "agent-offline-code-index" "0 5 * * 0" \
-  "agent-offline-code-index-cron.sh" \
+  "agent-offline-code-index.sh" \
   "" \
   "" \
   "" \
@@ -959,7 +959,7 @@ create_cron "agent-auto-save-sessions" "every 360m" \
 
 
 
-create_cron "agent-threat-pipeline" "0 5 * * *" \
+create_cron "agent-nginx-threat-pipeline" "0 5 * * *" \
   "agent-nginx-threat-pipeline.sh" \
   "" \
   "" \
@@ -980,7 +980,7 @@ create_cron "agent-ip-submission" "*/30 * * * *" \
 
 # Agent metrics push (every 5 min, no_agent) — pushes system metrics to VictoriaMetrics
 create_cron "agent-push-metrics" "every 5m" \
-  "push-metrics.sh" \
+  "agent-push-metrics.sh" \
   "" \
   "" \
   "" \

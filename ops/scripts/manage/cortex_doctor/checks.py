@@ -2341,3 +2341,77 @@ def check_deploy_checksums(res):
 
   for label, src, dst in known_mappings:
     _check_pair(label, src, dst, res)
+
+
+def check_script_naming(res):
+    """Check that cron script names match their cron names and follow prefix conventions."""
+    if not JOBS_FILE.exists():
+        return
+    try:
+        data = json.loads(JOBS_FILE.read_text())
+    except (json.JSONDecodeError, OSError):
+        return
+    jobs = data.get("jobs", []) if isinstance(data, dict) else data
+    for job in jobs:
+        if not isinstance(job, dict):
+            continue
+        name = job.get("name", "")
+        script = job.get("script", "")
+        if not name or not script:
+            continue
+
+        script_stem = Path(script).stem  # e.g. 'agent-foo' from 'manage/agent-foo.sh'
+
+        # Check 1: script name and cron name should share a base. Allow:
+        # - script starts with cron name (agent-foo → agent-foo.py) ✅
+        # - cron name starts with script name (agent-foo-weekday → agent-foo.py) ✅ (shared script)
+        # Normalize: replace _ with - for comparison (agent-session_cache = agent-session-cache)
+        script_norm = script_stem.replace("_", "-")
+        name_norm = name.replace("_", "-")
+        if not script_norm.startswith(name_norm) and not name_norm.startswith(script_norm):
+            res.add(f"Script naming: {name}", "WARN",
+                f"script '{script}' does not match cron name '{name}'",
+                "Rename the script to match the cron name, or vice versa")
+
+        # Check 2: script has correct prefix matching cron
+        if name.startswith("agent-") and not script_stem.startswith("agent-"):
+            res.add(f"Script prefix: {name}", "WARN",
+                f"script '{script}' lacks 'agent-' prefix",
+                f"Rename script to match cron name: {name}.sh (or .py)")
+        elif name.startswith("orch-") and not script_stem.startswith("orch-"):
+            res.add(f"Script prefix: {name}", "WARN",
+                f"script '{script}' lacks 'orch-' prefix",
+                f"Rename script to match cron name: {name}.sh (or .py)")
+        elif name.startswith("local-") and not script_stem.startswith("local-"):
+            res.add(f"Script prefix: {name}", "WARN",
+                f"script '{script}' lacks 'local-' prefix",
+                f"Rename script to match cron name: {name}.sh (or .py)")
+
+
+def check_skills_version(res):
+    """Check that all repo skills have a version field in frontmatter."""
+    SKILLS_DIR = CORTEX_REPO / "skills"
+    if not SKILLS_DIR.is_dir():
+        return
+    no_version = []
+    for skill_md in sorted(SKILLS_DIR.rglob("SKILL.md")):
+        try:
+            content = skill_md.read_text()
+        except (OSError, UnicodeDecodeError):
+            continue
+        if not re.search(r'^version:\s+\S', content, re.MULTILINE):
+            name = "unknown"
+            m = re.search(r'^name:\s+(.+)$', content, re.MULTILINE)
+            if m:
+                name = m.group(1).strip()
+            rel_path = skill_md.relative_to(CORTEX_REPO)
+            no_version.append((name, str(rel_path)))
+    if no_version:
+        for name, path in no_version[:10]:
+            res.add(f"Skill version: {name}", "WARN",
+                f"no version field — {path}",
+                "Add 'version: 1.0.0' to SKILL.md frontmatter")
+        if len(no_version) > 10:
+            res.add(f"Skills version ({len(no_version)} total)", "WARN",
+                f"{len(no_version) - 10} more skills missing version field",
+                "Add version to all SKILL.md files")

@@ -64,14 +64,14 @@ fi
 
 # ── 5. Test push ──
 echo "[agent-setup-metrics] Testing metrics push..."
-if [ -f "${HOME}/.hermes-cortex/scripts/push-metrics.sh" ]; then
-  if bash "${HOME}/.hermes-cortex/scripts/push-metrics.sh" 2>&1; then
+if [ -f "${HOME}/.hermes-cortex/scripts/agent-push-metrics.sh" ]; then
+  if bash "${HOME}/.hermes-cortex/scripts/agent-push-metrics.sh" 2>&1; then
     echo "[agent-setup-metrics] ✅ Test push SUCCEEDED"
   else
     echo "[agent-setup-metrics] ❌ Test push FAILED"
   fi
 else
-  echo "[agent-setup-metrics] ⚠️  push-metrics.sh not found — may need UPDATE_REQUEST first"
+  echo "[agent-setup-metrics] ⚠️  agent-push-metrics.sh not found — may need UPDATE_REQUEST first"
 fi
 
 echo "[agent-setup-metrics] === Setup complete ==="

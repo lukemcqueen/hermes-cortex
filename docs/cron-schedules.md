@@ -55,13 +55,13 @@
 | `agent-governance-auditor` | `0 */6 * * *` | no_agent | `agent-governance-auditor.py` | origin |
 | `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local |
 | `agent-session-mine` | `0 2 * * *` | no_agent | `agent-session-mine-cron.py` | local |
-| `agent-threat-pipeline` | `0 5 * * *` | no_agent | `agent-nginx-threat-pipeline.sh` | origin |
+| `agent-nginx-threat-pipeline` | `0 5 * * *` | no_agent | `agent-nginx-threat-pipeline.sh` | origin |
 | `agent-gbrain-doctor` | `5 6 * * *` | no_agent | `agent-gbrain-doctor.sh` | origin |
 | `agent-gbrain-nightly-dream` | `0 3 * * 6` | no_agent | `agent-gbrain-nightly-dream.sh` | origin |
 | `agent-gbrain-update-sync` | `0 2 * * 0` | no_agent | `agent-gbrain-update-sync.sh` | origin |
 | `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `agent-scoring-activity-watchdog.py` | origin |
 | `agent-session-cache-build` | `0 5 * * 1` | no_agent | `agent-session_cache.py` | origin |
-| `agent-offline-code-index` | `0 5 * * 0` | no_agent | `agent-offline-code-index-cron.sh` | local |
+| `agent-offline-code-index` | `0 5 * * 0` | no_agent | `agent-offline-code-index.sh` | local |
 | `agent-llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | `agent-llm-judge-scorer.py` | local |
 | `agent-llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | `agent-llm-judge-scorer.py` | local |
 | `agent-memory-pruning` | `0 4 * * 1` | LLM | (prompt) | origin |

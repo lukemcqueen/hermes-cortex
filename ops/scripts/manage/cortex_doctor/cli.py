@@ -26,6 +26,8 @@ from .checks import (
     check_stale_deploys,
     check_stale_skills,
     check_deploy_checksums,
+    check_script_naming,
+    check_skills_version,
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
@@ -59,6 +61,8 @@ def main():
         check_stale_deploys,
         check_stale_skills,
         check_deploy_checksums,
+        check_script_naming,
+        check_skills_version,
     ]
 
     if do_quick:
