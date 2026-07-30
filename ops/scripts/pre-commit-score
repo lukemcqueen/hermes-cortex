@@ -183,8 +183,8 @@ if echo "$STAGED_FILES" | grep -q "^docs/orchestrator-only-paths.txt"; then
   ORCH_VIOLATION=1
   echo "   ❌  docs/orchestrator-only-paths.txt — orchestrator only"
 fi
-
-AGENT_HOSTNAME=$(hostname | cut -d. -f1 | tr '[:upper:]' '[:lower:]')
+# Determine agent hostname from self-reported identity
+: "${AGENT_HOSTNAME:=$(hostname | cut -d. -f1 | tr '[:upper:]' '[:lower:]')}"
 ORCHESTRATORS="^(moses|esther)$"
 if ! echo "$AGENT_HOSTNAME" | grep -qE "$ORCHESTRATORS"; then
   # Non-orch agent — read the COMMITTED version of the config file
