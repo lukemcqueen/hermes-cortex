@@ -14,8 +14,11 @@ Usage:
     todo-db.py save-end         # archive completed, save pending (session end)
 """
 
+import functools
 import json
 import os
+import platform
+import shutil
 import subprocess
 import sys
 import uuid
@@ -23,10 +26,38 @@ from datetime import datetime, timezone
 
 # ── Config ────────────────────────────────────────────────────
 
-DB_QUERY = [
-    "sg", "docker", "-c",
-    "docker exec -i gbrain-postgres psql -U gbrain -d gbrain -t -A -F '||'"
-]
+GBRAIN_CONFIG = os.path.expanduser("~/.gbrain/config.json")
+
+@functools.lru_cache(maxsize=1)
+def _get_db_query() -> list[str]:
+    """Return platform-appropriate psql invocation.
+
+    macOS → reads ~/.gbrain/config.json, builds a direct psql call.
+    Linux  → uses sg docker ... (unchanged).
+    """
+    if platform.system() == "Darwin":
+        if os.path.exists(GBRAIN_CONFIG):
+            with open(GBRAIN_CONFIG) as f:
+                cfg = json.load(f)
+            url = cfg.get("database_url", "postgresql://gbrain:@127.0.0.1:15432/gbrain")
+        else:
+            url = "postgresql://gbrain:@127.0.0.1:15432/gbrain"
+        # postgresql://user:***@host:port/dbname → psql -h host -p port -U user -d dbname
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        return [
+            shutil.which("psql") or "/opt/homebrew/bin/psql",
+            "-h", parsed.hostname or "127.0.0.1",
+            "-p", str(parsed.port or 15432),
+            "-U", parsed.username or "gbrain",
+            "-d", parsed.path.lstrip("/") if parsed.path else "gbrain",
+            "-t", "-A", "-F", "||",
+        ]
+    # Linux — unchanged sg docker invocation
+    return [
+        "sg", "docker", "-c",
+        "docker exec -i gbrain-postgres psql -U gbrain -d gbrain -t -A -F '||'"
+    ]
 
 AGENT_NAME = os.environ.get("AGENT_NAME") or subprocess.run(
     ["python3", "-c", "import socket; print(socket.gethostname())"],
@@ -53,7 +84,7 @@ def psql(query: str, params: list | None = None) -> str:
                     replacement = f"'{p.replace(chr(39), chr(39)+chr(39))}'"
                 full_query = full_query[:idx] + replacement + full_query[idx+1:]
     result = subprocess.run(
-        DB_QUERY, input=full_query, capture_output=True, text=True, timeout=15
+        _get_db_query(), input=full_query, capture_output=True, text=True, timeout=15
     )
     if result.returncode != 0:
         print(f"ERROR: {result.stderr.strip()}", file=sys.stderr)
