@@ -461,7 +461,13 @@ def _on_session_start(session_id: str, **kwargs):
             # cron agents may not have skill_view() in their tool registry.
             # This bootstrap reads the always-section skills from disk and
             # pre-creates the marker, so cron agents can proceed normally.
-            if session_id.startswith("cron_") and not SKILLS_MARKER.exists():
+            #
+            # If a stale marker from a previous session exists (wrong session
+            # ID), it gets overwritten — stale markers must not block crons.
+            if session_id.startswith("cron_") and (
+                not SKILLS_MARKER.exists()
+                or not _check_skills_loaded_marker(session_id)
+            ):
                 _bootstrap_cron_skills(session_id)
     except Exception:
         log.error("on_session_start hook crashed:\n%s", traceback.format_exc())

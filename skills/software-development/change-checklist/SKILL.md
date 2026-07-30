@@ -229,6 +229,10 @@ Changes that affect other agents' workflow must be documented.
   ```
 - [ ] **Pre-commit validation ran** (check for "change-validate:" output in last commit)
 - [ ] **Governance cycle scored** — `feedback_accept()` called before `end_change()`
+- [ ] **Cron-governance compatibility** 🕐 — if hooks, plugins, or the enforcer were modified, verify the full governance cycle works in a cron session:
+  - `rm -f ~/.hermes-cortex/state/.skills-loaded` (clear stale marker)
+  - Create a test cron with skills requiring write tools — it must complete without enforcer blocks
+  - Delete the test cron after verification
 - [ ] **Change was pushed** — `git push origin main` (after `git pull --rebase`)
 - [ ] **Verify push succeeded** — `git log --oneline -1 origin/main` shows your latest commit (not just local `HEAD`)
 - [ ] **Deploy ran** — `bash ops/scripts/cortex-update.sh` after the push (not before)
