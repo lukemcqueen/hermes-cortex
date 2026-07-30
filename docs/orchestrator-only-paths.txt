@@ -19,7 +19,7 @@ tests/
 # ── Always-skills (orchestrator-managed) ──
 # These 8 skills are loaded every session by the enforcer. Non-orch agents
 # may read them but must NOT modify them. Changes go through Moses/Esther.
-skills/software-development/task-start/
+skills/workflow/task-start/
 skills/software-development/agent-flow/
 skills/software-development/reasoning-patterns/
 skills/software-development/reflexion-check/
