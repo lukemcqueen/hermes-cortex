@@ -568,7 +568,7 @@ copy_file() {
     if [[ -f "$dest" ]]; then
       local expected_hash=""
       if [[ -f "$manifest_file" ]]; then
-        expected_hash=$(grep "^${dest}=" "$manifest_file" 2>/dev/null | cut -d= -f2)
+        expected_hash=$(grep "^${dest}=" "$manifest_file" 2>/dev/null | cut -d= -f2) || true
       fi
       if [[ -n "$expected_hash" ]]; then
         local current_hash=""
