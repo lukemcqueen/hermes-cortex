@@ -1842,7 +1842,23 @@ def check_governance(res):
           f"not installed: {git_hook}",
           f"REQUIRED: ln -sf {deployed_hook} {git_hook}")
 
-    # Check 3: deployed hook content matches repo source (MD5)
+    # Check 3: deployed hook is a valid symlink
+    if deployed_hook.is_symlink():
+      target = os.readlink(str(deployed_hook))
+      target_path = Path(target) if target.startswith('/') else deployed_hook.parent / target
+      if target_path.exists():
+        res.add(f'Hook: {hook_name} (symlink)', 'PASS',
+            chr(8594) + ' ' + target)
+      else:
+        res.add(f'Hook: {hook_name} (symlink)', 'FAIL',
+            f'symlink target missing: {target}',
+            'REQUIRED: Run: cortex-update.sh to re-deploy hooks')
+    else:
+      res.add(f'Hook: {hook_name} (symlink)', 'WARN',
+          'not a symlink — may drift from updated source',
+          'REQUIRED: rm and re-deploy via cortex-update.sh')
+
+    # Check 4: deployed hook content matches repo source (SHA256)
     if repo_source.exists() and deployed_hook.exists():
       dep_hash = hashlib.sha256(deployed_hook.read_bytes()).hexdigest()
       src_hash = hashlib.sha256(repo_source.read_bytes()).hexdigest()

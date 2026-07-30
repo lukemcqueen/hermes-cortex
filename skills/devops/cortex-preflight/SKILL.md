@@ -177,7 +177,27 @@ The skills-loaded marker lives at `~/.hermes-cortex/state/.skills-loaded`. It is
 
 ### Pitfall 4: Hook symlinks prevent drift
 
-`.hermes-cortex/hooks/pre-commit` and `post-commit` must be **relative symlinks** — not copies — to `ops/scripts/pre-commit-score` and `ops/scripts/post-commit-audit` respectively. When they are symlinks, updating the source script automatically propagates to the hook without a redeploy. If they are file copies, the hook will drift from the repo source and the doctor will flag a checksum mismatch.
+Deployed hooks (`~/.hermes-cortex/hooks/`) are **absolute symlinks** created by
+`install_precommit_hook()` in `cortex-update.sh`. Each hook points to its source
+script in `~/.hermes-cortex/scripts/`:
+
+| Deployed hook | Symlink target |
+|---|---|
+| `hooks/pre-commit` | `scripts/pre-commit-score` |
+| `hooks/post-commit` | `scripts/post-commit-audit` |
+| `hooks/post-merge` | standalone (registered via `register()`) |
+
+When the symlinks are correct, updating the source script in `ops/scripts/` and
+running `cortex-update.sh` automatically propagates to the deployed hook. If a
+hook is a standalone file copy instead of a symlink, it will drift from the repo
+source and the doctor will flag it.
+
+**Repo `.hermes-cortex/hooks/` directory:** Contains only a `README.md`.
+The actual hook deploy is handled by `cortex-update.sh` at runtime —
+the repo directory tracks documentation, not deployable files.
+
+The doctor checks: (1) deployed hook exists, (2) it's a valid symlink to an
+existing target, (3) content matches the repo source.
 
 ### Pitfall 5: PENDING cycles accumulate
 
