@@ -178,6 +178,23 @@ if [[ -f "$SOUL_LOCAL" ]] && [[ -f "$SOUL_TEMPLATE" ]]; then
   fi
 fi
 
+# ── Template guard: only orchestrators modify docs/templates/ ──
+# This file is the identity document for ALL agents. Only Moses and Esther
+# (the orchestrators) should modify it. If a non-orch agent stages changes
+# to docs/templates/, block the commit.
+if echo "$STAGED_FILES" | grep -q "^docs/templates/"; then
+  AGENT_HOSTNAME=$(hostname | cut -d. -f1 | tr '[:upper:]' '[:lower:]')
+  ORCHESTRATORS="^(moses|esther)$"
+  if ! echo "$AGENT_HOSTNAME" | grep -qE "$ORCHESTRATORS"; then
+    echo ""
+    echo "❌  docs/templates/ can only be modified by orchestrators (Moses/Esther)."
+    echo "    Current host: $AGENT_HOSTNAME"
+    echo "    Send a bus message to Moses with your template change request."
+    echo ""
+    exit 1
+  fi
+fi
+
 # ── Reflexion gate: verify skill_view('reflexion-check') was called this session ──
 # Query the session DB for proof the agent actually loaded the skill — not just
 # a file-presence check. The governance lock carries the session_id.
