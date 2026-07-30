@@ -2,6 +2,7 @@
 ---
 title: Daily Bible Reading Cron
 name: daily-bible-reading
+version: 1.0.0
 description: >
   Daily cron job that reads one book of the Bible, extracts 3 lessons with
   practical application to server operations, and appends to SOUL.md.

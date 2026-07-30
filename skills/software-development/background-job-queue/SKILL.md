@@ -2,6 +2,7 @@
 ---
 title: Background Job Queue
 name: background-job-queue
+version: 1.0.0
 description: Add durable background job processing to a FastAPI/asyncpg app using arq. Covers project layout, job function contract, DB session management, worker entrypoint, Docker Compose service, run-script command, and testing strategy.
 trigger:
   - User says "add job queue", "arq", "background job", "worker", "durable task"
