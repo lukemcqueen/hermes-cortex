@@ -183,8 +183,8 @@ if echo "$STAGED_FILES" | grep -q "^docs/orchestrator-only-paths.txt"; then
   ORCH_VIOLATION=1
   echo "   ❌  docs/orchestrator-only-paths.txt — orchestrator only"
 fi
-# Determine agent hostname from self-reported identity
-: "${AGENT_ID:=$(hostname | cut -d. -f1 | tr '[:upper:]' '[:lower:]')}"
+# AGENT_ID is required — orchestrators use moses|esther, others use their name
+: "${AGENT_ID:?❌ AGENT_ID is not set — use AGENT_ID=moses (orchestrator) or AGENT_ID=<name> before any git commit}"
 ORCHESTRATORS="^(moses|esther)$"
 if ! echo "$AGENT_ID" | grep -qE "$ORCHESTRATORS"; then
   # Non-orch agent — read the COMMITTED version of the config file
@@ -583,8 +583,8 @@ for pattern in "${ORCHESTRATOR_ONLY_PATHS[@]}"; do
   fi
 done
 if [[ -n "$BLOCKED" ]]; then
-  # Determine agent type from AGENT_ID env var
-  HOST="${AGENT_ID:-$(hostname -s 2>/dev/null || echo 'unknown')}"
+  # Determine agent type from AGENT_ID env var — no fallback, fail closed
+  HOST="${AGENT_ID:?❌ AGENT_ID is not set — use AGENT_ID=moses (orchestrator) or AGENT_ID=<name>}"
   case "$HOST" in
     moses|esther) AGENT_TYPE="orchestrator" ;;
     *) AGENT_TYPE="server" ;;
@@ -592,7 +592,7 @@ if [[ -n "$BLOCKED" ]]; then
   if [[ "$AGENT_TYPE" != "orchestrator" ]]; then
     echo ""
     echo "❌  Orchestrator-only path blocked: ${BLOCKED}"
-    echo "    Detected agent type: ${AGENT_TYPE:-unknown}"
+    echo "    Detected agent type: ${AGENT_TYPE}"
     echo "    Non-orchestrator agents may NOT modify these paths:"
     echo "      docs/templates/  profiles/  AGENTS.md"
     echo "      pre-commit-score  install/  cortex-update.sh"

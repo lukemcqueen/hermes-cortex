@@ -76,7 +76,7 @@ Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify
 19. **Push before telling anyone to pull** — Verify the commit is on the remote (`git push origin main` succeeded). A fix on local disk is not in the repo.
 
 
-20. **Set `AGENT_ID` for orchestrator identity** — Before any git commit, set `AGENT_ID=moses` (orchestrators) or `AGENT_ID=<your-name>` (non-orch). The pre-commit hook uses this to enforce orchestrator-only paths. Without it, identity falls back to `$(hostname -s)`. Non-orchestrators who modify restricted paths (`ops/scripts/`, `plugins/`, `mcp-servers/`, `skills/`, `.hermes-cortex/hooks/`, etc.) will have their commit blocked.
+20. **Set `AGENT_ID` for orchestrator identity (REQUIRED)** — Before any git commit, set `AGENT_ID=moses` (orchestrators) or `AGENT_ID=<your-name>` (non-orch). The pre-commit hook uses this to enforce orchestrator-only paths. **There is no fallback** — if `AGENT_ID` is unset, the commit is blocked with an error. Non-orchestrators who modify restricted paths (`ops/scripts/`, `plugins/`, `mcp-servers/`, `skills/`, `.hermes-cortex/hooks/`, etc.) will have their commit blocked.
 
 21. **Persistent cross-session todos** — Use `todo-db.py` for fleet-visible task tracking (gbrain Postgres `bus.todos`). Session start: `todo-db.py pending` → `todo(merge=true)`. During work: update status via `todo-db.py update`. Session end: `todo-db.py save-end`. See `todo-persistence` skill for full protocol.
 
