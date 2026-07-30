@@ -254,8 +254,6 @@ When testing a bus or inter-agent feature, the test is incomplete until you prov
 - Session lesson reference 3: `references/2026-07-23-session-lessons.md` (always-skills ordering enforcement, Langfuse observability pipeline, config.yaml protection, Langfuse API limitations)
 - Session lesson reference 4: `references/2026-07-23b-session-lessons.md` (survey-before-creation enforcement, extend-before-create pattern, propagate to all agents, cost tracking patches, fleet data pipeline)
 - Session lesson reference 5: `references/session-reengagement-bridge.md` (interrupted session re-engagement, "what's next?" status-inquiry pattern, health-scan fallback protocol)
-- Session lesson reference 6: `references/2026-07-30-session-lessons.md` (governance guard verification, comprehensive stale-reference search, self-healing dogfood, AGENT_HOSTNAME env var, test-before-declare discipline)
-- Session lesson reference 7: `references/2026-07-30b-verify-deployed-not-repo.md` (verify from deployed path, not repo; all doctor warnings are your responsibility; check fleet impact before pushing)
 - Doctor severity philosophy: `references/doctor-severity-philosophy.md` (2026-07-25: SOUL.md/AGENTS.md must FAIL, not WARN — identity documents are non-negotiable)
 - Integration completeness: `references/integration-completeness-2026-07-21.md` (map all touchpoints before starting)
 - Multi-source research synthesis: `references/research-synthesis.md` (scan companion repos before writing PRDs; failure: 2026-07-23, missed 5 companion repos)
