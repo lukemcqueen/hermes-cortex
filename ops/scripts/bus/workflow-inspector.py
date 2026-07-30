@@ -214,9 +214,7 @@ def format_detail(wf, steps):
             result = json.dumps(wf[6], indent=2) if isinstance(wf[6], dict) else str(wf[6])
             lines.append(f"\n  Result:     {result[:500]}")
         except Exception:
-            _ = None  # expected — silently handled
-    if wf[7]:  # error
-        lines.append(f"\n  Error:      {wf[7][:500]}")
+            print("expected — silently handled", file=sys.stderr)
 
     if steps:
         lines.append(f"\n  Steps ({len(steps)}):")

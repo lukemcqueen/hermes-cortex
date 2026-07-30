@@ -35,7 +35,7 @@ def _read(path):
     try:
         return path.read_text()
     except (OSError, FileNotFoundError):
-        _ = None  # intentional: file-missing returns empty str, caller handles it
+        pass  # intentional: file-missing returns empty str, caller handles it
         return ""
 
 
@@ -236,7 +236,7 @@ def _resolve_agent_name(deployed_path: Path, agent_name_arg: str) -> str:
         if len(parts) >= 2 and parts[0] == "profiles":
             return parts[1]
     except ValueError:
-        _ = None  # intentional: unrelocatable path falls through to hostname default
+        print("expected — silently handled", file=sys.stderr)
         pass
     # Default: derive from hostname
     return socket.gethostname().lower()

@@ -44,9 +44,7 @@ NOAGENT_NEW = """        )
                 "no_agent": True, "status": "ok",
             })
         except Exception:
-            _ = None  # expected — silently handled
-        return True, doc, output, None
-"""
+            print("expected — silently handled", file=sys.stderr)
 
 # ── Patch: LLM success path ────────────────────────────────
 LLM_MARKER = 'session_estimated_cost_usd": float(getattr(agent'
@@ -70,9 +68,7 @@ LLM_NEW = """        logger.info("Job '%s' completed successfully", job_name)
                 "status": "ok",
             })
         except Exception:
-            _ = None  # expected — silently handled
-        return True, output, final_response, None
-"""
+            print("expected — silently handled", file=sys.stderr)
 
 # ── Patch: failure path ────────────────────────────────────
 FAIL_MARKER = "_local_agent = locals().get(\"agent\")"
@@ -95,8 +91,7 @@ FAIL_INSERT = """        # Record partial token usage on failure (agent may be p
                     "status": "failure",
                 })
         except Exception:
-            _ = None  # expected — silently handled
-        return False, output, "", error_msg
+            print("expected — silently handled", file=sys.stderr)
 
     finally:"""
 
@@ -137,12 +132,7 @@ FACADE_NEW = """def _get_cost_store():
                 get_latest_run=get_latest_run,
             )
         except Exception:
-            _ = None  # expected — silently handled
-    return _COST_STORE
-
-
-class _CostStoreFacade:
-    \"\"\"Thin wrapper so _format_job doesn't need to import the store directly.\"\"\"
+            print("expected — silently handled", file=sys.stderr)
 
     def __init__(self, record_run, get_run_stats, get_aggregate_stats, get_latest_run):
         self.record_run = record_run

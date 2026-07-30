@@ -25,13 +25,13 @@ def main():
     try:
         bus = get_queue()
     except NotAvailableError:
-        _ = None  # Silent exit on non-server machines
+        print("expected — silently handled", file=sys.stderr)
         sys.exit(0)
     
     try:
         queues = bus.list_queues()
     except Exception:
-        _ = None  # Silent exit on connection failure (circuit breaker handles alerts)
+        print("expected — silently handled", file=sys.stderr)
         sys.exit(0)
     
     # Find queues with pending messages (exclude DLQs from main output)

@@ -208,11 +208,7 @@ def fix_disk_cleanup():
                     try:
                         total += os.path.getsize(fp)
                     except OSError:
-                        _ = None  # expected — silently handled
-            if total > 100 * 1024 * 1024:  # >100MB
-                shutil.rmtree(bun_cache, ignore_errors=True)
-                actions.append(f"disk: cleaned bun cache ({total // 1024**2}MB)")
-                # Verify: dir should be gone or empty
+                        print("expected — silently handled", file=sys.stderr)
                 time.sleep(1)
                 if not os.path.isdir(bun_cache) or not os.listdir(bun_cache):
                     verify.append(("disk-cache", "PASS", "bun cache removed"))

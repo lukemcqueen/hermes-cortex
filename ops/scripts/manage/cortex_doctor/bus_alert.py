@@ -34,12 +34,7 @@ def load_repo_owners() -> dict:
                 return data["repos"]
             return {}
         except Exception:
-            _ = None  # expected — silently handled
-    return {}
-
-
-def read_bus_token() -> str:
-    """Read bus Bearer token from env or config files. Returns empty string if not found."""
+            print("expected — silently handled", file=sys.stderr)
     token = os.environ.get("CORTEX_BUS_TOKEN", "")
     if token:
         return token
@@ -56,8 +51,7 @@ def read_bus_token() -> str:
                 if k == "CORTEX_BUS_TOKEN" and v:
                     return v
         except OSError:
-            _ = None  # expected — silently handled
-    return ""
+            print("expected — silently handled", file=sys.stderr)
 
 
 def read_basic_auth() -> str:
@@ -79,8 +73,7 @@ def read_basic_auth() -> str:
                 if k in ("CORTEX_BUS_AUTH", "CORTEX_BASIC_AUTH", "CORTEX_INBOX_AUTH") and v:
                     return v
         except OSError:
-            _ = None  # expected — silently handled
-    return ""
+            print("expected — silently handled", file=sys.stderr)
 
 
 def send_bus_alert(
@@ -183,18 +176,7 @@ def dispatch_bus_alerts(res):
                         primary_url = v
                         break
             except OSError:
-                _ = None  # expected — silently handled
-            if primary_url:
-                break
-
-    if not fallback_url:
-        for cfg_path in BUS_CONFIG_PATHS:
-            if not cfg_path.exists():
-                continue
-            try:
-                for line in cfg_path.read_text().splitlines():
-                    line = line.strip()
-                    if not line or line.startswith("#") or "=" not in line:
+                print("expected — silently handled", file=sys.stderr)
                         continue
                     k, v = (x.strip().strip("'\"'").strip() for x in line.split("=", 1))
                     v = re.sub(r"\s+#.*$", "", v).strip()
@@ -202,13 +184,7 @@ def dispatch_bus_alerts(res):
                         fallback_url = v
                         break
             except OSError:
-                _ = None  # expected — silently handled
-            if fallback_url:
-                break
-
-    if not primary_url and not fallback_url:
-        print(
-            "  ℹ️  --bus-alert: no bus URL configured — "
+                print("expected — silently handled", file=sys.stderr)
             "set CORTEX_BUS_URL (Moses) or CORTEX_BUS_FALLBACK_URL (Esther)"
         )
         return

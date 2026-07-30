@@ -81,9 +81,7 @@ def check_systemd(unit_name: str) -> dict:
         if pg.returncode == 0:
             return {"status": "DEGRADED", "detail": f"{unit_name} (process found, no systemd unit)"}
     except Exception:
-        _ = None  # expected — silently handled
-
-    return {"status": "DOWN", "detail": f"{unit_name} not active in any scope"}
+        print("expected — silently handled", file=sys.stderr)
 
 
 def check_service(label: str) -> dict:

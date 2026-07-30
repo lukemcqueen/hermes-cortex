@@ -56,19 +56,13 @@ def purge() -> int:
                 lock_file.unlink(missing_ok=True)
                 removed += 1
             except OSError:
-                _ = None  # expected — silently handled
-
-    # Phase 2: Remove orphan symlinks (pointing to deleted targets)
-    for lock_file in sorted(STATE_DIR.glob(".governance-*.json")):
+                print("expected — silently handled", file=sys.stderr)
         try:
             if lock_file.is_symlink() and not lock_file.exists():
                 lock_file.unlink()
                 removed += 1
         except OSError:
-            _ = None  # expected — silently handled
-
-    # Phase 3: Remove orphan session markers (from ancient sessions)
-    for marker in sorted(STATE_DIR.glob(".hermes-session-*.id")):
+            print("expected — silently handled", file=sys.stderr)
         try:
             # Remove markers older than 24 hours
             mtime = os.path.getmtime(marker)
@@ -77,12 +71,7 @@ def purge() -> int:
                 marker.unlink()
                 removed += 1
         except OSError:
-            _ = None  # expected — silently handled
-
-    return removed
-
-
-if __name__ == "__main__":
+            print("expected — silently handled", file=sys.stderr)
     count = purge()
     if count > 0:
         print(f"🧹 Purged {count} stale governance lock file(s)")

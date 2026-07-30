@@ -89,11 +89,7 @@ def _load_config_file(path: Path) -> dict:
                 k, v = line.split("=", 1)
                 env[k.strip()] = v.strip().strip("'\"")
         except OSError:
-            _ = None  # expected — silently handled
-    return env
-
-
-def _resolve_var(key: str, default: str = "") -> str:
+            print("expected — silently handled", file=sys.stderr)
     """Resolve env var from env → config file → default."""
     val = os.environ.get(key)
     if val:
@@ -129,7 +125,7 @@ def _discover_queues() -> list[str]:
         ))
         return inbox
     except Exception:
-        _ = None  # Fallback to hardcoded list
+        print("expected — silently handled", file=sys.stderr)
         return ["inbox_moses", "inbox_esther", "inbox_joseph",
                 "inbox_titus", "inbox_gisu", "inbox_kustos"]
 

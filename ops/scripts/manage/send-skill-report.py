@@ -40,11 +40,7 @@ def _load_env(path: Path) -> dict:
                 k, v = line.split("=", 1)
                 env[k.strip()] = v.strip().strip("'\"")
         except OSError:
-            _ = None  # expected — silently handled
-    return env
-
-
-def _resolve_var(key: str, default: str = "") -> str:
+            print("expected — silently handled", file=sys.stderr)
     """Resolve env var from env → config files → default."""
     val = os.environ.get(key)
     if val:

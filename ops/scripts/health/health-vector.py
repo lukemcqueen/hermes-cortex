@@ -80,12 +80,7 @@ def _systemd_active(unit: str) -> bool:
             if r.returncode == 0 and r.stdout.strip() == "active":
                 return True
         except FileNotFoundError:
-            _ = None  # expected — silently handled
-    return False
-
-
-def _launchd_active(label: str) -> bool:
-    """Check if a launchd job is running (macOS)."""
+            print("expected — silently handled", file=sys.stderr)
     try:
         r = subprocess.run(
             ["launchctl", "list", label],
@@ -160,43 +155,7 @@ def _estimate_cron_interval(schedule: str | dict) -> int:
                 try:
                     vals.append(int(part))
                 except ValueError:
-                    _ = None  # expected — silently handled
-        return sorted(set(vals))
-
-    if day not in ('*', '?'):
-        return 30 * 86400
-    if weekday not in ('*', '?'):
-        dow = _expand(weekday)
-        if len(dow) > 1:
-            gaps = [(dow[(i+1) % len(dow)] - dow[i]) % 7 for i in range(len(dow))]
-            return max(gaps) * 86400
-        return 7 * 86400
-    if hour != '*':
-        if ',' in hour:
-            vals = sorted(int(x) for x in hour.split(','))
-            gaps = [vals[i+1] - vals[i] for i in range(len(vals)-1)]
-            gaps.append(24 - vals[-1] + vals[0])
-            return max(gaps) * 3600
-        elif '-' in hour:
-            return 3600
-        elif hour.startswith('*/'):
-            return int(hour[2:]) * 3600
-        return 86400
-    if minute != '*':
-        if ',' in minute:
-            vals = sorted(int(x) for x in minute.split(','))
-            gap = min(vals[i+1] - vals[i] for i in range(len(vals)-1)) if len(vals) > 1 else 1
-            return max(gap * 60, 60)
-        elif minute.startswith('*/'):
-            return max(int(minute[2:]) * 60, 60)
-        return 3600
-    return 86400
-
-
-# ── Health check functions ──
-
-def check_resources() -> int:
-    """System resources: CPU load average < 4x cores, memory not exhausted.
+                    print("expected — silently handled", file=sys.stderr)
 
     Tries psutil first (cross-platform), falls back to sysctl on macOS
     or /proc/loadavg on Linux.

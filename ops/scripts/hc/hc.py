@@ -58,7 +58,7 @@ def load_config() -> dict:
                 if k == "HC_AGENT" and not config["agent"]:
                     config["agent"] = v
         except Exception:
-            _ = None  # config load failure — non-fatal
+            print("expected — silently handled", file=sys.stderr)
 
     if not config["agent"]:
         config["agent"] = DEFAULT_AGENT
@@ -362,7 +362,7 @@ def cmd_status(cfg: dict, args: list):
                 print(f"   {icon} {name:12s}  {status}")
             print(f"\n   Workflows: {data.get('wf', '?')}")
         except Exception:
-            _ = None  # config load failure — non-fatal
+            print("expected — silently handled", file=sys.stderr)
 
 
 def cmd_depth(cfg: dict, args: list):

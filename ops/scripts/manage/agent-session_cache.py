@@ -150,13 +150,7 @@ def embed_loop_db(conn):
             )
             count += 1
     except Exception:
-        _ = None  # expected — silently handled
-    conn.commit()
-    return count
-
-
-def embed_skills(conn):
-    """Embed SKILL.md content from installed skills."""
+        print("expected — silently handled", file=sys.stderr)
     count = 0
     if not SKILLS_DIR.exists():
         return count

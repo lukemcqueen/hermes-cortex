@@ -1054,7 +1054,7 @@ def check_system(res):
             fix = "Free space: sudo journalctl --vacuum-size=500M; sudo apt autoremove"
           res.add("Disk usage", status, f"{used} used / {avail} free ({pct}%)", fix)
         except ValueError:
-          _ = None # malformed disk usage line — skip reporting for this mount
+          print("expected — silently handled", file=sys.stderr)
 
   if IS_MAC:
     total_mem = run_bg(["sysctl", "-n", "hw.memsize"], timeout=5)
@@ -1543,7 +1543,7 @@ def check_governance(res):
             "missing SURVEY_MARKER constant — survey-before-cron gate not active",
             "Pull latest hermes-cortex and run cortex-update.sh ")
     except (OSError, PermissionError):
-      _ = None # plugin source not readable — skip survey gate check
+      pass # plugin source not readable — skip survey gate check
   else:
     res.add("Governance plugin", "FAIL", "not installed",
         "Install: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/\n"
@@ -2023,7 +2023,7 @@ def check_governance(res):
           "missing SKILLS_MARKER — skills gate not active",
           "Pull latest hermes-cortex and run cortex-update.sh")
   except (OSError, PermissionError):
-    _ = None
+    pass
 
 
 def check_hook_drift(res):

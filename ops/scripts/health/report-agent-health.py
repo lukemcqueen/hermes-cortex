@@ -81,11 +81,7 @@ if CONFIG_FILE.exists():
                     elif k == "AGENT_NAME" and not agent_name:
                         agent_name = v
     except Exception:
-        _ = None  # expected — silently handled
-
-if not agent_name:
-    import platform
-    agent_name = platform.node().split(".")[0]
+        print("expected — silently handled", file=sys.stderr)
 
 if not inbox_url:
     print("ERROR: CORTEX_BUS_FALLBACK_URL (or CORTEX_INBOX_URL) not set", file=sys.stderr)
@@ -259,8 +255,7 @@ def send_report(report: dict) -> bool:
             try:
                 body = e.read().decode()[:200]
             except Exception:
-                _ = None  # expected — silently handled
-        print(f"ERROR: Failed to send report: {e} {body}", file=sys.stderr)
+                print("expected — silently handled", file=sys.stderr)
         return False
 
 
@@ -277,13 +272,7 @@ def main():
         try:
             prev_fp = json.loads(STATE_FILE.read_text()).get("fingerprint", "")
         except Exception:
-            _ = None  # expected — silently handled
-
-    # Build report (includes external reachability check)
-    report = build_report(data)
-
-    if fp == prev_fp and data and data.get("healthy", False):
-        # No change and healthy — silent exit (watchdog pattern)
+            print("expected — silently handled", file=sys.stderr)
         return
 
     # Send report

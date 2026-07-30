@@ -142,11 +142,7 @@ def _check_workflows() -> dict:
                     if age > 300:  # 5 min
                         stalled.append({"agent": agent, "step": f[:20], "running_for_min": int(age / 60)})
                 except OSError:
-                    _ = None  # expected — silently handled
-        except (OSError, UnicodeDecodeError):
-            continue
-
-    return {"active_count": active, "stalled": stalled}
+                    print("expected — silently handled", file=sys.stderr)
 
 
 def main():

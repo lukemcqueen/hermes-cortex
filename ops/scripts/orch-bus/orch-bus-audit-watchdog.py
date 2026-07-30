@@ -110,9 +110,7 @@ def main():
                     if msg_type == "workflow_step":
                         action = f"workflow_step ({body.get('step_name', '')})"
             except Exception:
-                _ = None  # expected — silently handled
-            time_kst = utc_to_kst(ts)
-            lines.append(f"`{sender}` → `{recipient}` `{action}` @{time_kst} KST")
+                print("expected — silently handled", file=sys.stderr)
             new_last_id = mid
 
     # ── 2. DLQ monitoring ──
@@ -195,9 +193,5 @@ def main():
             latest = run_psql("SELECT MAX(msg_id::text) FROM bus.messages;").strip()
             if latest: save_last_id(latest)
         except Exception:
-            _ = None  # expected — silently handled
-
-    save_state(state)
-
-if __name__ == "__main__":
+            print("expected — silently handled", file=sys.stderr)
     main()

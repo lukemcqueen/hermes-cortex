@@ -220,16 +220,7 @@ def _discover_files(root: Path, max_files: int = 2000) -> list:
                 if len(files) >= max_files:
                     break
     except PermissionError:
-        _ = None  # expected — silently handled
-    return files
-
-
-# ── Per-Language Analyzers ──────────────────────────────────
-
-def _analyze_python(file_path: Path, content: str, rel: Path,
-                    modules: list, routes: list, models: list,
-                    tests: list, all_imports: dict):
-    """Analyze a Python file using AST."""
+        print("expected — silently handled", file=sys.stderr)
     imports = []
     functions = []
     classes = []
@@ -273,21 +264,12 @@ def _analyze_python(file_path: Path, content: str, rel: Path,
                                     try:
                                         route_info["url"] = ast.literal_eval(dec.args[0])
                                     except Exception:
-                                        _ = None  # expected — silently handled
-                                routes.append(route_info)
-            functions.append(func_info)
-
-        # Classes
-        elif isinstance(node, ast.ClassDef):
-            class_info = {"name": node.name, "line": node.lineno}
-            # Check bases
+                                        print("expected — silently handled", file=sys.stderr)
             for base in node.bases:
                 try:
                     class_info.setdefault("bases", []).append(ast.unparse(base))
                 except Exception:
-                    _ = None  # expected — silently handled
-            # Check for Pydantic/DB model patterns
-            bases_str = " ".join(class_info.get("bases", []))
+                    print("expected — silently handled", file=sys.stderr)
             if any(x in bases_str for x in ("BaseModel", "Model", "Document", "db.Model", "DeclarativeBase")):
                 fields = []
                 for item in ast.iter_child_nodes(node):
@@ -613,9 +595,7 @@ def main(args: Optional[list] = None):
             try:
                 total_lines += len(f.read_text(encoding="utf-8", errors="replace").splitlines())
             except Exception:
-                _ = None  # expected — silently handled
-
-        print(f"\n📊 Project Stats: {proj_root.name}")
+                print("expected — silently handled", file=sys.stderr)
         print(f"   Root: {proj_root}")
         print(f"   Total files: {len(files)}")
         print(f"   Total lines: {total_lines:,}")

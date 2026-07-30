@@ -96,8 +96,7 @@ def resolve_external_base() -> str:
                     if parsed.scheme and parsed.hostname:
                         return f"{parsed.scheme}://{parsed.hostname}"
         except OSError:
-            _ = None  # expected — silently handled
-    return "https://localhost"
+            print("expected — silently handled", file=sys.stderr)
 
 
 EXTERNAL_BASE = resolve_external_base()

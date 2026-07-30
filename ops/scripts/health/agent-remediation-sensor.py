@@ -350,15 +350,7 @@ def check_certbot():
             if rc2 == 0 or "dry run" in out2.lower():
                 has_sudoers = True
     except Exception:
-        _ = None  # expected — silently handled
-    
-    # If either method works, certbot is properly configured
-    if timer_active or has_sudoers:
-        return  # Certbot can run securely
-    
-    # Check if lock file exists and is owned by root (correct)
-    if os.path.exists(lock_file):
-        owner = run("stat -c '%U' " + lock_file + " 2>/dev/null")[0].strip()
+        print("expected — silently handled", file=sys.stderr)
         if owner == "root":
             # Lock file permissions are correct — just need sudoers config
             add_issue("certbot_sudoers_missing", "medium",

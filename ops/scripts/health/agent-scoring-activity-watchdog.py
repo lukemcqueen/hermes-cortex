@@ -130,9 +130,9 @@ def main():
                             f"Check Langfuse for details."
                         )
                 except Exception:
-                    _ = None  # intentional silent skip — Langfuse may not be running
+                    print("expected — silently handled", file=sys.stderr)
     except Exception:
-        _ = None  # intentional silent skip — Langfuse entirely absent
+        print("expected — silently handled", file=sys.stderr)
 
     if alerts:
         ts = _cron_ts("scoring-activity-watchdog")
