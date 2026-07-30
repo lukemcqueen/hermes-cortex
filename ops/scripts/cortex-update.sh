@@ -1327,6 +1327,13 @@ deploy_governance_plugin() {
   fi
 
   [[ "$changed" -gt 0 ]] && info "  Plugin deployed: ${changed} file(s) updated"
+
+  # Reload plugin so new enforcer code takes effect on next session
+  if command -v hermes &>/dev/null; then
+    hermes plugins disable governance-enforcer 2>/dev/null || true
+    hermes plugins enable governance-enforcer 2>/dev/null || true
+    info "  Plugin governance-enforcer reloaded (new code active on next session)"
+  fi
   return 0
 }
 
