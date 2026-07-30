@@ -14,5 +14,33 @@ pre-push-pull
 install/
 cortex-update.sh
 cortex_doctor/
-skills/
 tests/
+
+# ── Always-skills (orchestrator-managed) ──
+# These 8 skills are loaded every session by the enforcer. Non-orch agents
+# may read them but must NOT modify them. Changes go through Moses/Esther.
+skills/software-development/task-start/
+skills/software-development/agent-flow/
+skills/software-development/reasoning-patterns/
+skills/software-development/reflexion-check/
+skills/software-development/change-checklist/
+skills/software-development/survey-before-action/
+skills/software-development/agent-contract/
+skills/devops/cortex-preflight/
+
+# ── Essential skills (orchestrator-managed) ──
+# Core workflows and infrastructure. Same rules as always-skills.
+skills/software-development/code-review/
+skills/devops/cron-job-management/
+skills/devops/fleet-management/
+skills/devops/loop-governance/
+skills/devops/self-improvement-pipeline/
+skills/devops/doc-freshness/
+skills/devops/deployed-component-verification/
+skills/devops/soul-refinement/
+skills/devops/skill-curation/
+skills/devops/repo-organization/
+skills/software-development/engineering-approach/
+skills/software-development/root-cause-debugging/
+skills/software-development/cross-agent-design/
+skills/software-development/agent-fundamentals/
