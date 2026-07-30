@@ -38,24 +38,24 @@ git show HEAD:<path-to-file>
 
 **Common scenario:** Script exists in the repo (`ops/scripts/manage/foo.py`) but was never deployed to `~/.hermes-cortex/scripts/foo.py`. Running `cortex-update.sh ` fixes this.
 
-### 2. GOVERNANCE FILE WORKFLOW — REPO FIRST, NEVER DEPLOYED COPY
+### 2. 🛡️ GOVERNANCE FILE WORKFLOW — ORCHESTRATORS ONLY
 
-**Hooks, enforcer plugin, skills, and all governance-protected files follow this rule:**
+**This rule is for orchestrators only (Moses, Esther). Non-orchestrators: stop here — send an inbox message to Moses requesting a change to any of these files.**
+
+If you ARE an orchestrator, hooks, enforcer plugin, and skills follow this rule:
 
 1. **Fix the REPO SOURCE first** in `~/hermes-cortex/` — never the deployed copy
-2. **Only orchestrators** (Moses, Esther) may modify these paths (enforced by pre-commit hook)
-3. **Non-orchestrators:** send an inbox message to Moses requesting the change
-4. **After fixing repo source:** commit, push, then run `cortex-update.sh --force-all` to deploy
-5. **A fix applied to the deployed copy WILL be overwritten** on the next cortex-update — you did real work for nothing
+2. **Commit, push**, then run `cortex-update.sh --force-all` to deploy
+3. **A fix applied to the deployed copy WILL be overwritten** on the next cortex-update
 
-**This rule exists because:** editing the deployed hook/enforcer/skill creates drift between repo and runtime. The next cortex-update overwrites your fix, leaving the system in the old broken state. Worse: the self-healing dogfood check will detect the drift and auto-deploy the repo version, undoing your fix in minutes.
-
-**Specific files subject to this rule:**
-- `~/.hermes/plugins/governance-enforcer/__init__.py` → repo source: `plugins/governance-enforcer/__init__.py`
-- `~/.hermes-cortex/scripts/pre-commit-score` → repo source: `ops/scripts/pre-commit-score`
+**Specific files (always fix repo source, never deployed copy):**
+- `~/.hermes/plugins/governance-enforcer/__init__.py` → `plugins/governance-enforcer/__init__.py`
+- `~/.hermes-cortex/scripts/pre-commit-score` → `ops/scripts/pre-commit-score`  
 - `~/.hermes-cortex/hooks/pre-commit` → symlink to `scripts/pre-commit-score`
-- `~/.hermes/skills/<category>/<name>/SKILL.md` → repo source: `skills/<category>/<name>/SKILL.md`
+- `~/.hermes/skills/<category>/<name>/SKILL.md` → `skills/<category>/<name>/SKILL.md`
 - All files in `~/.hermes-cortex/scripts/` with a `register()` entry in `cortex-update.sh`
+
+**Non-orchestrators:** if you discover a bug in hooks, enforcer, or skills, send an inbox message to Moses with `🔧 GOVERNANCE: <what's wrong>`. Do not attempt to fix the deployed copy — the pre-commit hook and dogfood check will block you.
 
 ### 3. Hermes boundary check
 
