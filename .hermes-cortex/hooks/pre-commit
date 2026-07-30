@@ -186,13 +186,7 @@ fi
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
 ORCH_PATHS_FILE="$REPO_ROOT/docs/orchestrator-only-paths.txt"
 ORCH_VIOLATION=0
-
-# Collect staged files early — needed by orchestrator guard and score-cycle below
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR \
-  | grep -v '\.lock$' \
-  | grep -v 'package-lock\.json\|yarn\.lock\|pnpm-lock\.yaml' \
-  | grep -v '\.svg$\|\.png$\|\.jpg$\|\.jpeg$\|\.gif$\|\.ico$' \
-  || true)
+STAGED_FILES=""  # placeholder — populated below if needed for orch check
 
 # Self-protection: the config file itself is always restricted
 # (hardcoded because it's self-referential — can't read from itself)
@@ -431,6 +425,17 @@ done
 if [[ -z "$SCORE_CYCLE" ]]; then
   echo "⚠  score-cycle not found — skipping old scoring"
   echo "   Current governance is MCP-based (begin_change → cycle_query → feedback_accept → end_change)"
+  exit 0
+fi
+
+# Collect staged files (skip deletions, binary files, lock files)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep -v '\.lock$' \
+  | grep -v 'package-lock\.json\|yarn\.lock\|pnpm-lock\.yaml' \
+  | grep -v '\.svg$\|\.png$\|\.jpg$\|\.jpeg$\|\.gif$\|\.ico$' \
+  || true)
+
+if [[ -z "$STAGED_FILES" ]]; then
   exit 0
 fi
 
