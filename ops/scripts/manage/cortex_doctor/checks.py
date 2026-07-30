@@ -373,6 +373,21 @@ def check_soul_sync(res):
           res.add("SOUL.md template sync (~/.hermes)", "PASS")
       else:
         res.add("SOUL.md template sync (~/.hermes)", "PASS")
+
+      # Reverse drift check: deployed has principle markers not in template
+      extra_in_deployed = agent_markers - effective_template
+      if extra_in_deployed:
+        real_extra = {m for m in extra_in_deployed
+               if not any(skip in m for skip in
+                     ["Scripture", "Bible", "Scripture Insights",
+                      "Replace with", "your agent", "your purpose",
+                      "your name", "your mission"])}
+        if real_extra:
+          res.add("SOUL.md reverse drift (~/.hermes)", "WARN",
+            f"Deployed has {len(real_extra)} markers not in template: {', '.join(sorted(real_extra)[:5])}",
+            "Copy new principles to docs/templates/SOUL.md so all agents get them.")
+      else:
+        res.add("SOUL.md reverse drift (~/.hermes)", "PASS")
     else:
       res.add("SOUL.md template", "WARN", "template not found at docs/templates/SOUL.md")
   else:
