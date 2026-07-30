@@ -33,13 +33,16 @@ import logging
 import os
 import re
 import subprocess
+import time
 import traceback
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 SURVEY_MARKER = GOVERNANCE_STATE_DIR / ".cron-survey-done"
 SKILLS_MARKER = GOVERNANCE_STATE_DIR / ".skills-loaded"
+SKILLS_STATE_FILE = GOVERNANCE_STATE_DIR / "skills-state.json"
 
 log = logging.getLogger("governance-enforcer")
 
@@ -55,6 +58,77 @@ _REQUIRED_SKILLS: set = {
     "cortex-preflight", "agent-contract",
 }
 _skills_loaded_in_session: set = set()
+
+
+def _read_skills_state() -> dict:
+    """Read and parse skills-state.json. Returns {} if missing or corrupt."""
+    try:
+        if SKILLS_STATE_FILE.exists():
+            with open(SKILLS_STATE_FILE) as f:
+                data = json.load(f)
+                if isinstance(data, dict) and "session_id" in data:
+                    return data
+    except (json.JSONDecodeError, OSError):
+        pass
+    return {}
+
+
+def _write_skills_state(
+    session_id: str,
+    always_loaded: set = None,
+    state_updates: dict = None,
+) -> dict:
+    """Write skills-state.json with current session skills state.
+
+    Merges with any existing state for the same session. Creates or updates
+    the always_skills dict with timestamps, and applies any additional
+    state_updates (task_type, workflow_state, etc.).
+
+    Returns the final state dict.
+    """
+    state = _read_skills_state()
+    if state.get("session_id") != session_id:
+        state = {
+            "session_id": session_id,
+            "always_skills": {},
+            "on_task_skills": {},
+            "workflow_state": {},
+        }
+
+    if always_loaded:
+        now = datetime.now(timezone.utc).isoformat()
+        if "always_skills" not in state:
+            state["always_skills"] = {}
+        for name in always_loaded:
+            if name not in state["always_skills"]:
+                state["always_skills"][name] = {
+                    "loaded_at": now,
+                    "verified": True,
+                }
+
+    if state_updates:
+        state.update(state_updates)
+
+    state["last_updated"] = datetime.now(timezone.utc).isoformat()
+    try:
+        GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
+        tmp = SKILLS_STATE_FILE.with_suffix(".tmp")
+        with open(tmp, "w") as f:
+            json.dump(state, f, indent=2)
+        tmp.rename(SKILLS_STATE_FILE)
+    except OSError as e:
+        log.warning("Cannot write skills-state.json: %s", e)
+    return state
+
+
+def _get_loaded_skills_summary() -> dict:
+    """Return a dict of {skill_name: bool} for all 8 required skills."""
+    state = _read_skills_state()
+    always = state.get("always_skills", {})
+    return {
+        s: s in always
+        for s in _REQUIRED_SKILLS
+    }
 
 
 def _check_skills_loaded_marker(session_id: str = "") -> bool:
@@ -123,6 +197,15 @@ def _auto_create_skills_marker(session_id: str) -> None:
         GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
         SKILLS_MARKER.write_text(f"session:{session_id}")
         log.info("Skills-loaded marker auto-created for session %s", session_id)
+
+        # ── Also write skills-state.json ──
+        # The JSON state tracks individual skill load times and workflow
+        # progress. Read by block messages to show which skills are loaded.
+        _write_skills_state(
+            session_id,
+            always_loaded=_skills_loaded_in_session.copy() if _skills_loaded_in_session else None,
+            state_updates={"skill_source": "user_session"},
+        )
     except OSError as e:
         log.warning("Cannot auto-create skills-loaded marker: %s", e)
 
@@ -565,7 +648,7 @@ def _bootstrap_cron_skills(session_id: str) -> bool:
     # All skills verified — create marker
     _auto_create_skills_marker(session_id)
     log.info(
-        "Cron bootstrap: .skills-loaded auto-created for session %s "
+        "Cron bootstrap: skills marker + state created for session %s "
         "(verified %d always-section skills on disk)",
         session_id, len(_REQUIRED_SKILLS),
     )
@@ -657,12 +740,23 @@ def register(ctx):
             # been loaded via actual skill_view() calls — no touch needed.
             if not _check_skills_loaded_marker(hermes_session_id):
                 if _is_write_tool(tool_name, args):
+                    # ── Build helpful block message ──
+                    # Read skills-state.json to show which skills are loaded.
+                    loaded = _get_loaded_skills_summary()
+                    loaded_count = sum(1 for v in loaded.values() if v)
+                    loaded_list = ", ".join(
+                        f"✅ {s}" if loaded[s] else f"  {s}"
+                        for s in _REQUIRED_SKILLS
+                    )
                     return {
                         "action": "block",
                         "message": (
-                            "WRITE TOOLS BLOCKED — SKILLS MUST BE LOADED FIRST\n\n"
-                            "Tool '" + tool_name + "' modifies state — always-section skills not loaded.\n\n"
-                            "Session-start sequence:\n"
+                            "🛑 Write tool blocked — session skills not fully loaded.\n\n"
+                            "Tool '" + tool_name + "' modifies state — "
+                            + str(loaded_count) + "/8 always-section skills loaded.\n\n"
+                            "Required always-section skills:\n"
+                            + loaded_list + "\n\n"
+                            "Load all 8 with:\n"
                             "  1. skill_view('task-start')        # bundles the complete sequence\n"
                             "  2. skill_view('agent-flow')        # workflow router\n"
                             "  3. skill_view('reasoning-patterns') # choose how to think\n"
@@ -672,7 +766,7 @@ def register(ctx):
                             "  7. skill_view('cortex-preflight')  # repo-specific pre-flight\n"
                             "  8. skill_view('agent-contract')    # execution rules\n\n"
                             "The marker is auto-created when all 8 are loaded.\n"
-                            "Do NOT try to touch .skills-loaded directly — it will be rejected.\n\n"
+                            "Do NOT try to set skills-state.json directly — it will be rejected.\n\n"
                             "Read-only tools (read_file, search_files, session_search,\n"
                             "skill_view, skills_list, web_search, web_extract,\n"
                             "vision_analyze, tool_search, tool_describe,\n"
