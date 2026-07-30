@@ -80,6 +80,43 @@ to handle immutability. This is handled by `cortex-update.sh`'s
 5. If sudoers configured → sudo hermes-plugin-lock lock  (re-applies +i)
 ```
 
+### Blanket Lock at End of Deploy
+
+For the full enforcement chain, a **blanket lock** runs at the END of
+`cortex-update.sh main()` after ALL files are deployed. This ensures
+every enforcement file is locked atomically, not just the ones the
+plugin deployer handled:
+
+```bash
+# Step 1: Lock via sudo hermes-plugin-lock (NOPASSWD — covers 5 core files)
+if command -v hermes-plugin-lock &>/dev/null; then
+  sudo hermes-plugin-lock lock
+fi
+# Step 2: Lock new paths with chmod 444 (if chattr +i needs sudo)
+for _target in "$POST_MERGE" "$MCP_SERVER" "$LOCK_HELPER"; do
+  if [[ -f "$_target" ]]; then
+    chmod 444 "$_target" 2>/dev/null || true
+  fi
+done
+```
+
+This pattern handles the bootstrap problem: old files get chattr +i via
+the old helper, new files get chmod 444 until the helper is updated.
+
+### Deployment Pitfall: Self-Lock Loop
+
+When the helper binary lists ITSELF as a target (for self-protection),
+every deploy must unlock the helper before overwriting it. Two mechanisms:
+
+1. **check_each_mapped_file()** does a blanket `sudo hermes-plugin-lock unlock`
+   at the start of the copy loop.
+2. **deploy_system_scripts()** has special handling for `hermes-plugin-lock`:
+   it tries `sudo -n "$dest" update` first (self-update), then falls back
+   to `sudo cp` if the self-update isn't available.
+
+Without this, the helper locks itself on deploy N, and deploy N+1 can't
+overwrite it — `cp` fails with "Operation not permitted" even via sudo.
+
 If the sudoers entry for `hermes-plugin-lock` is not set up, steps 2 and 5
 fail gracefully with a warning telling the user what to do.
 
@@ -94,7 +131,8 @@ For any agent operation that requires `sudo`, DO NOT give the agent raw
    - Has no argument injection surface
 2. Add a NOPASSWD sudoers entry for ONLY that script path
 
-**Canonical example:** `/usr/local/sbin/hermes-plugin-lock`:
+**Canonical example:** `/usr/local/sbin/hermes-plugin-lock` (or deployed to
+`~/.hermes-cortex/scripts/hermes-plugin-lock` for user-writable paths):
 
 ```bash
 #!/usr/bin/env bash
@@ -113,6 +151,73 @@ case "${1:-help}" in
 esac
 ```
 
+### Real-World: Multi-Target Restricted Helper
+
+A production lock helper typically manages MULTIPLE critical files — not
+just the enforcer plugin. The real `/usr/local/sbin/hermes-plugin-lock`
+on this system has 8 targets:
+
+```bash
+TARGETS=(
+  "${REAL_HOME}/.hermes/plugins/governance-enforcer/__init__.py"
+  "${REAL_HOME}/.hermes-cortex/scripts/pre-commit-score"
+  "${REAL_HOME}/.hermes-cortex/scripts/pre-push-pull"
+  "${REAL_HOME}/.hermes-cortex/scripts/post-commit-audit"
+  "${REAL_HOME}/.hermes-cortex/scripts/post-push-audit"
+  "${REAL_HOME}/.hermes-cortex/hooks/post-merge"
+  "${REAL_HOME}/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"
+  "${REAL_HOME}/.hermes-cortex/scripts/hermes-plugin-lock"    # self-protection
+)
+```
+
+Each target gets `chattr +i` (Linux) or `chflags uchg` (macOS) atomically.
+The helper also supports a `--self-update` command: when cortex-update.sh
+has a new version, the helper reads from the repo source and overwrites
+itself.
+
+### Deploying the Helper: Bootstrap Problem
+
+The helper is the ONLY NOPASSWD sudo entry on the system (by design — see
+sudoers below). This creates a bootstrap problem: how do you update the
+helper binary if `sudo cp` requires a password?
+
+Three approaches, in order of preference:
+
+1. **Register in MAP** (best) — Deploy the helper to `~/.hermes-cortex/scripts/`
+   via `cortex-update.sh`'s `register()` call. This path is user-writable,
+   so no sudo needed for the copy. The blanket lock at end of deploy then
+   applies `sudo hermes-plugin-lock lock` which covers all targets.
+2. **Self-update command** — If the helper is already at `/usr/local/sbin/`,
+   its `update` command reads from the repo source (`$REAL_HOME/hermes-cortex/...`)
+   and overwrites itself. Requires the update command to NOT use `local`
+   keyword (which breaks with `set -e` in bash case statements outside functions).
+3. **Direct deploy** — If the user has interactive sudo access, `sudo cp repo/src /usr/local/sbin/hermes-plugin-lock` works for one-time bootstrap.
+
+### chattr +i Requires Root (CAP_LINUX_IMMUTABLE)
+
+On Linux, `chattr +i` on ext4 requires the `CAP_LINUX_IMMUTABLE`
+capability, which is only available to root — even when the file
+is owned by the calling user:
+
+```bash
+# ❌ FAILS even on user-owned file if called as non-root
+chattr +i ~/myfile.txt
+# → "chattr: Operation not permitted while setting flags on ..."
+
+# ✅ WORKS when called from a root-owned process (e.g., via sudo helper)
+sudo hermes-plugin-lock lock
+```
+
+This means the restricted helper MUST be called via `sudo` (with NOPASSWD)
+for `chattr +i` to work. Running the same script directly (without sudo)
+will fail on the `chattr +i` calls, even though the file is user-owned
+and the script has permission to read/write it normally.
+
+**Fallback for files that cannot get chattr +i:** `chmod 444` (read-only
+for owner). This is weaker than chattr +i (root can still override), but
+stronger than the default 755. The doctor checks for chattr +i at FAIL
+level, so missing immutability is always visible.
+
 Sudoers entry (one-time setup by the human):
 
 ```
@@ -130,7 +235,7 @@ that one file, on that one path, with no argument injection possible.
 | Freshness after `--force-all` | Auto-fresh | Fresh (re-copied) |
 | Supports `chattr +i`? | ❌ Locks repo file | ✅ Locks only deployed copy |
 | Deployment complexity | Simple (`ln -sf`) | Lifecycle required (unlock→copy→relock) |
-| Doctor checks | PASS (or WARN since Jul 2026) | PASS + SHA256 + perms + immutability |
+| Doctor checks | PASS → FAIL if immutable flag missing (since Jul 2026) | PASS + SHA256 + perms + immutability |
 | Sudo needed | No | Yes (for chattr, via restricted helper) |
 
 ### Doctor Behavior (current as of Jul 2026)
