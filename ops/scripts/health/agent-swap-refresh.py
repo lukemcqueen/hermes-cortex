@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""swap-refresh.py — Daily swap refresh (no_agent cron).
+"""agent-swap-refresh.py — Daily swap refresh (no_agent cron).
 
 Safety: only runs when available RAM > swap_used + 1 GB buffer.
 Silent when conditions not met (safe no-op).
@@ -42,7 +42,7 @@ def main():
             capture_output=True, text=True, timeout=120,
         )
         if result.returncode != 0:
-            print(f"[swap-refresh] swapoff failed: {result.stderr.strip()}")
+            print(f"[agent-swap-refresh] swapoff failed: {result.stderr.strip()}")
             return
 
         result = subprocess.run(
@@ -50,17 +50,17 @@ def main():
             capture_output=True, text=True, timeout=120,
         )
         if result.returncode != 0:
-            print(f"[swap-refresh] swapon failed: {result.stderr.strip()}")
+            print(f"[agent-swap-refresh] swapon failed: {result.stderr.strip()}")
             return
 
         used_gb = round(swap_used / (1024**3), 1)
         avail_gb = round(mem_avail / (1024**3), 1)
-        print(f"[swap-refresh] Swap refreshed ({used_gb}GB moved to RAM, {avail_gb}GB available)")
+        print(f"[agent-swap-refresh] Swap refreshed ({used_gb}GB moved to RAM, {avail_gb}GB available)")
 
     except FileNotFoundError:
-        print("[swap-refresh] sudo or swapoff not found — missing NOPASSWD sudo entry?")
+        print("[agent-swap-refresh] sudo or swapoff not found — missing NOPASSWD sudo entry?")
     except subprocess.TimeoutExpired:
-        print("[swap-refresh] swapoff/swapon timed out (>120s)")
+        print("[agent-swap-refresh] swapoff/swapon timed out (>120s)")
 
 if __name__ == "__main__":
     main()

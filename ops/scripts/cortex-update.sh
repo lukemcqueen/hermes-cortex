@@ -268,7 +268,7 @@ register "ops/scripts/health/agent-model-health-watchdog.py"    "${CORTEX_DEPLOY
 register "ops/scripts/manage/agent-offline-code-index.sh" "${CORTEX_DEPLOY_HOME}/scripts/agent-offline-code-index.sh"
 # harvest-lessons.sh removed — absorbed into orch-skill-lifecycle (July 2026)
 # core/governance/skill_miner.py removed (old governance — July 2026)
-register "ops/scripts/health/swap-refresh.py"            "${CORTEX_DEPLOY_HOME}/scripts/swap-refresh.py"
+register "ops/scripts/health/agent-swap-refresh.py"            "${CORTEX_DEPLOY_HOME}/scripts/agent-swap-refresh.py"
 register "ops/scripts/health/agent-cron-quality-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-cron-quality-watchdog.py"
 register "ops/scripts/agent/agent-cron-failure-scanner.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-cron-failure-scanner.py"
 register "ops/scripts/health/agent-scoring-activity-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-scoring-activity-watchdog.py"
@@ -736,7 +736,7 @@ clean_stale_deploys() {
     "agent-model-health-watchdog.py"
     "agent-offline-code-index.sh"
     "skill_miner.py"
-    "swap-refresh.py"
+    "agent-swap-refresh.py"
     "agent-nginx-threat-pipeline.sh"
     "koscap-workday-watchdog.py"
   )
