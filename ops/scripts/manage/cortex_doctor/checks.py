@@ -1398,6 +1398,9 @@ def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
     hooks_dir / "pre-push",
     hooks_dir / "post-commit",
     hooks_dir / "post-push",
+    hooks_dir / "post-merge",
+    CORTEX_HOME / "tools/loop-governance/loop-gov-mcp.py",
+    Path("/usr/local/sbin/hermes-plugin-lock"),
   ]
   for path in targets:
     if not path.exists():
@@ -1415,9 +1418,9 @@ def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
       if "i" in flags:
         res.add(f"Immutable: {path.name}", "PASS", "chattr +i set")
       else:
-        res.add(f"Immutable: {path.name}", "WARN",
-            "immutable flag not set — file is modifiable",
-            f"Fix: sudo chattr +i {real_path}")
+        res.add(f"Immutable: {path.name}", "FAIL",
+            "immutable flag not set — enforcement file is modifiable",
+            f"Fix: sudo hermes-plugin-lock lock (or sudo chattr +i {real_path})")
     except (subprocess.TimeoutExpired, OSError, IndexError):
       continue # lsattr failed — skip gracefully
 

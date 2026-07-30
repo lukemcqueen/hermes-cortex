@@ -14,6 +14,9 @@
 #    ~/.hermes-cortex/scripts/pre-push-pull
 #    ~/.hermes-cortex/scripts/post-commit-audit
 #    ~/.hermes-cortex/scripts/post-push-audit
+#    ~/.hermes-cortex/hooks/post-merge
+#    ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+#    /usr/local/sbin/hermes-plugin-lock              (self-protection)
 #
 #  Paths are hardcoded and validated — no argument injection.
 #  Each target that exists is locked; missing targets are skipped.
@@ -42,7 +45,19 @@ TARGETS=(
   "${REAL_HOME}/.hermes-cortex/scripts/pre-push-pull"
   "${REAL_HOME}/.hermes-cortex/scripts/post-commit-audit"
   "${REAL_HOME}/.hermes-cortex/scripts/post-push-audit"
+  "${REAL_HOME}/.hermes-cortex/hooks/post-merge"
+  "${REAL_HOME}/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"
 )
+
+# ── Self-protection: the binary itself ────────────────────
+# On Linux, /usr/local/sbin/hermes-plugin-lock is root-owned.
+# sudo hermes-plugin-lock lock will chattr +i itself.
+# On macOS, /usr/local/bin/ is user-writable so no extra sudo needed.
+if [[ "$_os" == "Darwin" ]]; then
+  TARGETS+=("/usr/local/bin/hermes-plugin-lock")
+else
+  TARGETS+=("/usr/local/sbin/hermes-plugin-lock")
+fi
 
 _lock_file() {
   if [[ "$_os" == "Darwin" ]]; then
@@ -62,9 +77,17 @@ _unlock_file() {
 
 case "${1:-help}" in
   update)
-    local src="${REAL_HOME}/hermes-cortex/ops/install/deploy/nginx/hermes-plugin-lock"
+    local src
+    if [[ "$_os" == "Darwin" ]]; then
+      src="${REAL_HOME}/hermes-cortex/ops/install/deploy/nginx/hermes-plugin-lock"
+    else
+      src="${REAL_HOME}/hermes-cortex/ops/install/deploy/nginx/hermes-plugin-lock"
+    fi
     if [[ -f "$src" ]]; then
+      # Unlock self before overwriting
+      _unlock_file "${BASH_SOURCE[0]}" 2>/dev/null || true
       cat "$src" > "${BASH_SOURCE[0]}" && chmod 755 "${BASH_SOURCE[0]}" && echo "UPDATED: ${BASH_SOURCE[0]} from $src"
+      _lock_file "${BASH_SOURCE[0]}" 2>/dev/null || echo "WARN: could not self-lock after update"
     else
       echo "ERROR: source not found at $src"
       exit 1

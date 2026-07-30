@@ -1223,10 +1223,15 @@ deploy_system_scripts() {
     [[ ! -f "$src" ]] && continue
     if needs_update "$src" "$dest"; then
       if command -v sudo &>/dev/null; then
+        # Unlock self before overwriting (if already locked)
+        if [[ "$script" == "hermes-plugin-lock" ]]; then
+          sudo chattr -i "$dest" 2>/dev/null || true
+        fi
         sudo mkdir -p "$deploy_dir" 2>/dev/null || true
         if sudo cp "$src" "$dest" 2>/dev/null; then
           sudo chown root:root "$dest" 2>/dev/null || true
           sudo chmod 755 "$dest" 2>/dev/null || true
+          # Re-lock after update (will be re-applied by blanket lock at end)
           info "  Deployed: ${script} → ${deploy_dir}/"
           files_copied=$((files_copied + 1))
         else
@@ -1949,6 +1954,20 @@ except: print('error')
       info "Cleaned legacy governance lock (upgrade): $_legacy_lock — $_has_heartbeat_repo"
     fi
   done
+
+  # ── Lock all enforcement files after deployment ──────────
+  # Prevents any agent (including root) from modifying enforcement
+  # files outside the deploy pipeline. Only cortex-update.sh can
+  # unlock, update, and relock these files.
+  info "Locking enforcement files (chattr +i)…"
+  if command -v sudo &>/dev/null && command -v hermes-plugin-lock &>/dev/null; then
+    sudo hermes-plugin-lock lock 2>&1 | sed 's/^/    /'
+  elif command -v hermes-plugin-lock &>/dev/null; then
+    hermes-plugin-lock lock 2>&1 | sed 's/^/    /'
+  else
+    warn "  hermes-plugin-lock not found — enforcement files NOT locked"
+    warn "  Deploy with: cortex-update.sh (deploy_system_scripts step)"
+  fi
 
   # ── Clear stale __pycache__ before doctor runs ──────────
   # After deploying updated Python scripts, old .pyc bytecode in
