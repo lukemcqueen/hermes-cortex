@@ -1,46 +1,19 @@
 # Orchestrator-Only Paths
 # ========================
 # Only Moses and Esther (orchestrators) may modify files under these paths.
-# Add one path per line. Globs supported (e.g., docs/templates/).
-# Lines starting with # are comments. Empty lines are ignored.
+# Non-orchestrators are blocked by the pre-commit hook.
+# These are BROAD directory-level entries so any new file added under these
+# trees is automatically protected. Add more specific globs only when needed.
 #
-# The pre-commit hook reads this file and blocks commits from non-orch agents.
-
-docs/templates/
-profiles/
-AGENTS.md
-pre-commit-score
-pre-push-pull
-install/
-cortex-update.sh
+# Scripts, plugins, hooks, skills, tools — all orchestrator-only
+ops/scripts/
+ops/install/
+plugins/
+mcp-servers/
+skills/
+.hermes-cortex/hooks/
 cortex_doctor/
 tests/
-
-# ── Always-skills (orchestrator-managed) ──
-# These 8 skills are loaded every session by the enforcer. Non-orch agents
-# may read them but must NOT modify them. Changes go through Moses/Esther.
-skills/workflow/task-start/
-skills/software-development/agent-flow/
-skills/software-development/reasoning-patterns/
-skills/software-development/reflexion-check/
-skills/software-development/change-checklist/
-skills/software-development/survey-before-action/
-skills/software-development/agent-contract/
-skills/devops/cortex-preflight/
-
-# ── Essential skills (orchestrator-managed) ──
-# Core workflows and infrastructure. Same rules as always-skills.
-skills/software-development/code-review/
-skills/devops/cron-job-management/
-skills/devops/fleet-management/
-skills/devops/loop-governance/
-skills/devops/self-improvement-pipeline/
-skills/devops/doc-freshness/
-skills/devops/deployed-component-verification/
-skills/devops/soul-refinement/
-skills/devops/skill-curation/
-skills/devops/repo-organization/
-skills/software-development/engineering-approach/
-skills/software-development/root-cause-debugging/
-skills/software-development/cross-agent-design/
-skills/software-development/agent-fundamentals/
+profiles/
+docs/templates/
+AGENTS.md
