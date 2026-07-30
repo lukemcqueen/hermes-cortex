@@ -2442,3 +2442,80 @@ def check_todo_db(res):
         res.add("Todo DB connectivity", "FAIL",
             f"todo-db.py output not valid JSON: {out[:200]}",
             "Check gbrain Postgres: sg docker -c 'docker exec gbrain-postgres psql -U gbrain -d gbrain -c \"SELECT 1\"'")
+
+
+def check_skill_drift(res):
+    """Check for drift between repo source and deployed skills.
+
+    Scans every skill in ~/.hermes/skills/ that has a matching path
+    in ~/hermes-cortex/skills/. Reports which direction the drift is:
+
+      PASS — deployed == repo source (in sync)
+      WARN — repo source has changed, deploy pending (normal after edit)
+      WARN — deployed copy is newer, repo source stale (agent forgot to commit)
+
+    Skills without a repo counterpart (Hermes defaults) are skipped.
+    """
+    deploy_skills = HOME / ".hermes" / "skills"
+    repo_skills = CORTEX_REPO / "skills"
+    if not deploy_skills.is_dir() or not repo_skills.is_dir():
+        return
+
+    drifted = []  # (skill_name, direction, repo_md5, deployed_md5, mtime_detail)
+    in_sync = 0
+    skipped = 0
+
+    for skill_md in sorted(deploy_skills.rglob("SKILL.md")):
+        rel = skill_md.relative_to(deploy_skills)
+        repo_md = repo_skills / rel
+
+        if not repo_md.is_file():
+            skipped += 1  # Hermes default — not ours
+            continue
+
+        try:
+            dep_md5 = hashlib.md5(skill_md.read_bytes()).hexdigest()
+            src_md5 = hashlib.md5(repo_md.read_bytes()).hexdigest()
+        except (OSError, PermissionError):
+            skipped += 1
+            continue
+
+        if dep_md5 == src_md5:
+            in_sync += 1
+            continue
+
+        # Drift detected — determine direction via mtime (coarse) and git status
+        skill_name = skill_md.parent.name
+        cat_dir = skill_md.parent.parent.name
+        label = f"{cat_dir}/{skill_name}"
+
+        repo_mtime = repo_md.stat().st_mtime
+        dep_mtime = skill_md.stat().st_mtime
+
+        if dep_mtime > repo_mtime + 60:  # 1-minute tolerance for filesystem jitter
+            direction = "deployed-newer"
+            hint = f"Deployed copy is newer than repo source ({skill_md}). Commit the repo source before cortex-update overwrites it."
+        elif repo_mtime > dep_mtime + 60:
+            direction = "repo-newer"
+            hint = f"Repo source has changed but deployed copy is stale ({repo_md}). Run cortex-update.sh."
+        else:
+            # Mtimes are within tolerance — treat as equal-content different
+            direction = "content-mismatch"
+            hint = f"Content differs but timestamps similar ({skill_md}). Likely needs cortex-update.sh."
+
+        drifted.append((label, direction, hint))
+
+    for label, direction, hint in drifted:
+        if direction == "deployed-newer":
+            res.add(f"Skill drift: {label}", "WARN", hint,
+                "Copy the deployed changes to the repo source first, then commit.")
+        else:
+            res.add(f"Skill drift: {label}", "WARN", hint,
+                "Run: cortex-update.sh")
+
+    if not drifted and in_sync > 0:
+        res.add("Skill drift", "PASS", f"{in_sync} skills in sync, {skipped} Hermes defaults skipped")
+    elif in_sync > 0:
+        res.add("Skill drift", "WARN",
+            f"{len(drifted)} drifted, {in_sync} in sync, {skipped} Hermes defaults skipped",
+            "Resolve each drift entry above")

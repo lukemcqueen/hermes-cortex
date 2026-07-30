@@ -806,6 +806,18 @@ sync_skills() {
         warn "  Name collision: ${rel_path%/*} — root Hermes default '${skill_name}' exists, deploy will shadow it"
       fi
       if needs_update "$skill_file" "$dest"; then
+        # Drift guardrail: if deployed copy is newer, warn before overwriting
+        if [[ -f "$dest" ]] && [[ "$dest" -nt "$skill_file" ]]; then
+          warn "  SKILL DRIFT: ${rel_path%/*} — deployed copy is newer than repo source!"
+          warn "    → Repo: $skill_file"
+          warn "    → Deployed: $dest"
+          warn "    → Copy the deployed changes to the repo source, then cortex-update.sh will sync."
+          warn "    → Use --force to override this guardrail."
+          if [[ "${FORCE:-false}" != "true" ]]; then
+            skipped=$((skipped + 1))
+            continue
+          fi
+        fi
         copy_file "$skill_file" "$dest"
         synced=$((synced + 1))
       else
