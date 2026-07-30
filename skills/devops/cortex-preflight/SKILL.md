@@ -169,11 +169,18 @@ This means the raw MD5 between the repo source and the deployed copy will always
 
 `cortex-update.sh` runs `purge-stale-governance-locks.py` at the end of its run, which removes **every** `.governance-*.json` lock file — including the current session's lock. After a deploy, your lock will be gone. **Re-acquire with `begin_change()` after deploy** before making further changes.
 
-### Pitfall 3: Skills-loaded marker gets stale from cron sessions
+### Pitfall 3: Skills-loaded marker gets stale from cron sessions (FIXED)
 
 The skills-loaded marker lives at `~/.hermes-cortex/state/.skills-loaded`. It is **session-scoped** — a cron job that loads skills creates this marker, and because it was created by a different session (cron), your session's skill loads won't be recognized. The governance enforcer plugin blocks write tools until marker is valid.
 
-**Fix:** `rm -f ~/.hermes-cortex/state/.skills-loaded` then load all 8 always-section skills manually.
+**Permanent fix (deployed 2026-07-30):** The enforcer now has a guard that prevents cron sessions from ever overwriting an existing `.skills-loaded` marker:
+- `_auto_create_skills_marker()`: if the current session is a cron and ANY marker exists (from any session), do nothing
+- `_on_session_start()`: cron sessions skip the skills bootstrap entirely if a marker already exists
+
+**Result:** Once an interactive session loads all 8 always-section skills and creates the marker, NO cron session can overwrite it. The marker persists for the entire interactive session.
+
+**If you hit this before the permanent fix was deployed:**
+`rm -f ~/.hermes-cortex/state/.skills-loaded` then load all 8 always-section skills manually.
 
 ### Pitfall 4: Hook symlinks prevent drift
 

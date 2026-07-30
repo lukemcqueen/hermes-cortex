@@ -173,24 +173,27 @@ def _auto_create_skills_marker(session_id: str) -> None:
     prevents reuse across sessions and blocks `touch` bypass.
 
     CRITICAL: Cron sessions (session_id starts with 'cron_') must NOT
-    overwrite the marker from an interactive session. Otherwise background
-    cron processes constantly invalidate the interactive session's marker,
+    overwrite the marker from any other session. Otherwise background
+    cron processes constantly invalidate each other's markers,
     creating a deadlock where write tools are blocked even though skills
-    were properly loaded.
+    were properly loaded. Once a marker exists, crons never touch it.
     """
     if not session_id:
         return
     try:
-        # ── Cron sessions never overwrite interactive markers ──
-        # If the current marker has a valid non-cron session and this
-        # call is from a cron session, do nothing — preserve the
-        # interactive session's skills state.
+        # ── Cron sessions NEVER overwrite an existing marker ──
+        # If the current session is a cron and a marker already exists
+        # (from ANY session — interactive or cron), do nothing. This
+        # prevents the cascade where cron A creates the marker, then
+        # cron B overwrites it, then cron C overwrites B, etc.
+        # Preserves the first marker set after boot.
         current_marker = SKILLS_MARKER.read_text().strip() if SKILLS_MARKER.exists() else ""
         is_cron = session_id.startswith("cron_")
-        if is_cron and current_marker.startswith("session:") and not current_marker.startswith("session:cron_"):
+        if is_cron and current_marker:
             log.debug(
-                "Cron session %s skipped overwriting interactive session marker",
+                "Cron session %s skipped overwriting existing marker (preserving %s)",
                 session_id[:20],
+                current_marker[:40],
             )
             return
 
@@ -581,13 +584,19 @@ def _on_session_start(session_id: str, **kwargs):
             # This bootstrap reads the always-section skills from disk and
             # pre-creates the marker, so cron agents can proceed normally.
             #
-            # If a stale marker from a previous session exists (wrong session
-            # ID), it gets overwritten — stale markers must not block crons.
-            if session_id.startswith("cron_") and (
-                not SKILLS_MARKER.exists()
-                or not _check_skills_loaded_marker(session_id)
-            ):
-                _bootstrap_cron_skills(session_id)
+            # IMPORTANT: If a marker from ANY session already exists, do
+            # NOT overwrite it. This prevents the cascade where cron A
+            # creates the marker, then cron B overwrites it with its own,
+            # then cron C overwrites B, etc. The first session (interactive
+            # or cron) to create the marker owns it for the boot cycle.
+            if session_id.startswith("cron_"):
+                if SKILLS_MARKER.exists():
+                    log.debug(
+                        "Cron session %s skipped bootstrap — marker already exists",
+                        session_id[:20],
+                    )
+                elif not _check_skills_loaded_marker(session_id):
+                    _bootstrap_cron_skills(session_id)
     except Exception:
         log.error("on_session_start hook crashed:\n%s", traceback.format_exc())
 
