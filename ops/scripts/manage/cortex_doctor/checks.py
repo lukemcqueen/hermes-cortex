@@ -1400,7 +1400,7 @@ def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
     hooks_dir / "post-push",
     hooks_dir / "post-merge",
     CORTEX_HOME / "tools/loop-governance/loop-gov-mcp.py",
-    Path("/usr/local/sbin/hermes-plugin-lock"),
+    CORTEX_HOME / "scripts/hermes-plugin-lock",
   ]
   for path in targets:
     if not path.exists():

@@ -192,6 +192,7 @@ register "ops/scripts/manage/agent-governance-auditor.py"            "${CORTEX_D
 register "ops/scripts/manage/purge-stale-governance-locks.py" "${CORTEX_DEPLOY_HOME}/scripts/purge-stale-governance-locks.py"
 # prune-soul-profiles.py removed — profiles no longer in repo
 register "ops/scripts/manage/soul-merge.py"                    "${CORTEX_DEPLOY_HOME}/scripts/soul-merge.py"
+register "ops/install/deploy/nginx/hermes-plugin-lock"           "${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock"
 register "ops/scripts/manage/soul-sync-all.sh"                 "${CORTEX_DEPLOY_HOME}/scripts/soul-sync-all.sh"
 register "ops/scripts/agent/agents-doc-audit.py"          "${CORTEX_DEPLOY_HOME}/scripts/agents-doc-audit.py"
 register "ops/scripts/agent/agent-agents-md-prune-scan.py"      "${CORTEX_DEPLOY_HOME}/scripts/agent-agents-md-prune-scan.py"
@@ -669,8 +670,11 @@ check_each_mapped_file() {
   local action="${1:-delta}"  # delta or full
   local src dest service restart_cmd
 
-  # Unlock hook scripts so cortex-update.sh can update them
-  if command -v hermes-plugin-lock &>/dev/null; then
+  # Unlock enforcement files so cortex-update.sh can update them
+  local _lock_helper="${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock"
+  if [[ -f "$_lock_helper" ]]; then
+    bash "$_lock_helper" unlock 2>/dev/null || true
+  elif command -v hermes-plugin-lock &>/dev/null; then
     sudo hermes-plugin-lock unlock 2>/dev/null || true
   fi
 
@@ -1212,7 +1216,7 @@ deploy_system_scripts() {
   local deploy_dir="/usr/local/sbin"
   [[ "$_os" == "Darwin" ]] && deploy_dir="/usr/local/bin"
   local src_dir="${REPO_DIR}/ops/install/deploy/nginx"
-  local scripts=("install-nginx-full.sh" "hermes-nginx-clean-restart" "hermes-plugin-lock")
+  local scripts=("install-nginx-full.sh" "hermes-nginx-clean-restart")
   local files_copied=0
 
   [[ -d "$src_dir" ]] || return 0
@@ -1324,14 +1328,14 @@ deploy_governance_plugin() {
     else
       warn "  Immutability not set — deploy the helper and enable it:"
       if [[ "$_os" == "Darwin" ]]; then
-        warn "    sudo cp ${REPO_DIR}/ops/install/deploy/nginx/hermes-plugin-lock /usr/local/bin/hermes-plugin-lock"
-        warn "    sudo chmod 755 /usr/local/bin/hermes-plugin-lock"
+        warn "    cp ${REPO_DIR}/ops/install/deploy/nginx/hermes-plugin-lock /usr/local/bin/hermes-plugin-lock"
+        warn "    chmod 755 /usr/local/bin/hermes-plugin-lock"
       else
-        warn "    sudo cp ${REPO_DIR}/ops/install/deploy/nginx/hermes-plugin-lock /usr/local/sbin/hermes-plugin-lock"
-        warn "    sudo chmod 755 /usr/local/sbin/hermes-plugin-lock"
-        warn "    echo '${SUDO_USER:-${USER}} ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock' | sudo tee /etc/sudoers.d/hermes"
+        warn "    cp ${REPO_DIR}/ops/install/deploy/nginx/hermes-plugin-lock ${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock"
+        warn "    chmod 755 ${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock"
+        warn "    Run: bash ${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock lock"
       fi
-      warn "    hermes-plugin-lock lock"
+      warn "    Run: bash ${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock lock"
     fi
   fi
 
@@ -1966,13 +1970,14 @@ except: print('error')
   # files outside the deploy pipeline. Only cortex-update.sh can
   # unlock, update, and relock these files.
   info "Locking enforcement files (chattr +i)…"
-  if command -v sudo &>/dev/null && command -v hermes-plugin-lock &>/dev/null; then
-    sudo hermes-plugin-lock lock 2>&1 | sed 's/^/    /'
+  local _lock_helper="${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock"
+  if [[ -f "$_lock_helper" ]]; then
+    bash "$_lock_helper" lock 2>&1 | sed 's/^/    /'
   elif command -v hermes-plugin-lock &>/dev/null; then
     hermes-plugin-lock lock 2>&1 | sed 's/^/    /'
   else
     warn "  hermes-plugin-lock not found — enforcement files NOT locked"
-    warn "  Deploy with: cortex-update.sh (deploy_system_scripts step)"
+    warn "  Run cortex-update.sh to deploy it."
   fi
 
   # ── Clear stale __pycache__ before doctor runs ──────────

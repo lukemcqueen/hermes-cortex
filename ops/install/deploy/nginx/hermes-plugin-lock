@@ -50,13 +50,11 @@ TARGETS=(
 )
 
 # ── Self-protection: the binary itself ────────────────────
-# On Linux, /usr/local/sbin/hermes-plugin-lock is root-owned.
-# sudo hermes-plugin-lock lock will chattr +i itself.
-# On macOS, /usr/local/bin/ is user-writable so no extra sudo needed.
+# Deployed to ~/.hermes-cortex/scripts/ (user-owned, chattr +i works without sudo)
 if [[ "$_os" == "Darwin" ]]; then
   TARGETS+=("/usr/local/bin/hermes-plugin-lock")
 else
-  TARGETS+=("/usr/local/sbin/hermes-plugin-lock")
+  TARGETS+=("${REAL_HOME}/.hermes-cortex/scripts/hermes-plugin-lock")
 fi
 
 _lock_file() {
