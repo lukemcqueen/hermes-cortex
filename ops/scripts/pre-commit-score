@@ -583,8 +583,8 @@ for pattern in "${ORCHESTRATOR_ONLY_PATHS[@]}"; do
   fi
 done
 if [[ -n "$BLOCKED" ]]; then
-  # Determine agent type by hostname only — env var is self-reported and bypassable
-  HOST="$(hostname -s 2>/dev/null || echo 'unknown')"
+  # Determine agent type from AGENT_HOSTNAME env var
+  HOST="${AGENT_HOSTNAME:-$(hostname -s 2>/dev/null || echo 'unknown')}"
   case "$HOST" in
     moses|esther) AGENT_TYPE="orchestrator" ;;
     *) AGENT_TYPE="server" ;;

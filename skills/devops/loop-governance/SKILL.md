@@ -967,3 +967,4 @@ communication design (three-repo separation, message flow, pitfalls).
 5. **Measure, don't guess** — the scoring function replaces "feels right" with quantitative evidence. Trust the score, not the instinct.
 # Non-orch test
 # test
+# test non-orch
