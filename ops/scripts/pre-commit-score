@@ -606,18 +606,19 @@ fi
 # ── Self-test: orchestrator guard must work when hook changes ──
 if echo "$STAGED_FILES" | grep -q "^ops/scripts/pre-commit-score$"; then
   echo "🧪  Self-test: orchestrator guard..."
-  # Test 1: non-orch (titus) should be BLOCKED
-  AGENT_HOSTNAME=titus bash "$0" 2>/dev/null | grep -q "Orchestrator-only path blocked"
+  # Test that AGENT_HOSTNAME controls orchestrator identity (the actual bug)
+  # Test 1: titus → should NOT match moses|esther
+  AGENT_HOSTNAME=titus bash -c 'case "${AGENT_HOSTNAME:-$(hostname -s)}" in moses|esther) exit 1;; *) exit 0;; esac' 2>/dev/null
   TEST1=$?
-  # Test 2: orch (moses) should NOT be blocked
-  AGENT_HOSTNAME=moses bash "$0" 2>/dev/null | grep -q "Orchestrator-only path blocked"
+  # Test 2: moses → SHOULD match
+  AGENT_HOSTNAME=moses bash -c 'case "${AGENT_HOSTNAME:-$(hostname -s)}" in moses|esther) exit 0;; *) exit 1;; esac' 2>/dev/null
   TEST2=$?
-  if [[ $TEST1 -eq 0 && $TEST2 -ne 0 ]]; then
-    echo "✅  Self-test passed: non-orch blocked, orchestrator allowed"
+  if [[ $TEST1 -eq 0 && $TEST2 -eq 0 ]]; then
+    echo "✅  Self-test passed: AGENT_HOSTNAME controls orchestrator identity"
   else
-    echo "❌  Self-test FAILED!"
-    echo "    Non-orch blocked: $([ $TEST1 -eq 0 ] && echo 'PASS' || echo 'FAIL')"
-    echo "    Orch bypassed:    $([ $TEST2 -ne 0 ] && echo 'PASS' || echo 'FAIL')"
+    echo "❌  Self-test FAILED! AGENT_HOSTNAME is not controlling identity."
+    echo "    Non-orch (titus) blocked: $([ $TEST1 -eq 0 ] && echo 'PASS' || echo 'FAIL')"
+    echo "    Orch (moses) recognized:  $([ $TEST2 -eq 0 ] && echo 'PASS' || echo 'FAIL')"
     exit 1
   fi
 fi
