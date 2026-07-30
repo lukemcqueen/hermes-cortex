@@ -652,7 +652,15 @@ def check_scripts(res):
         repo_source = repo_scripts / script
         if repo_source.is_file():
           try:
-            dep_md5 = _hl.md5(deployed.read_bytes()).hexdigest()
+            # Strip SOURCE header from deployed copy (cortex-update.sh prepends it)
+            _raw = deployed.read_bytes()
+            _text = _raw.decode("utf-8", errors="surrogateescape")
+            _lines = _text.splitlines(keepends=True)
+            if len(_lines) >= 3 and _lines[0].startswith("# SOURCE:") and "Do NOT edit" in _lines[1]:
+              _content = "".join(_lines[3:])
+            else:
+              _content = _text
+            dep_md5 = _hl.md5(_content.encode("utf-8", errors="surrogateescape")).hexdigest()
             src_md5 = _hl.md5(repo_source.read_bytes()).hexdigest()
             if dep_md5 != src_md5:
               mismatched.append((job.get("name", "?"), script, deployed))
@@ -830,7 +838,15 @@ def _check_self_stale(res):
 
     # Compare content hash — tolerate small mtime drift from deploy/copy latency
     import hashlib as _hl
-    deployed_hash = _hl.md5(deployed.read_bytes()).hexdigest()
+    # Strip SOURCE header from deployed copy before hashing (cortex-update.sh prepends it)
+    _raw = deployed.read_bytes()
+    _text = _raw.decode("utf-8", errors="surrogateescape")
+    _lines = _text.splitlines(keepends=True)
+    if len(_lines) >= 3 and _lines[0].startswith("# SOURCE:") and "Do NOT edit" in _lines[1]:
+      _content = "".join(_lines[3:])
+    else:
+      _content = _text
+    deployed_hash = _hl.md5(_content.encode("utf-8", errors="surrogateescape")).hexdigest()
     repo_hash = _hl.md5(repo_source.read_bytes()).hexdigest()
 
     if deployed_hash != repo_hash:
