@@ -1090,15 +1090,15 @@ create_cron "agent-daily-bible-reading" "0 1 * * *" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-# No-verify audit — checks for --no-verify commits every 60m
+# No-verify audit — no-agent script checks for --no-verify commits every 60m
 create_cron "agent-no-verify-audit" "every 60m" \
+  "agent-no-verify-audit.py" \
   "" \
-  "Check ~/.hermes-cortex/state/no-verify-log.json for new --no-verify audit events since the last check. If any new events exist since last checked, report them with commit hash, message, and timestamp." \
   "" \
-  "terminal,file" \
+  "" \
   "origin" \
   "" \
-  "false"
+  "true"
 
 # ── Auto-prune old-format cron names ──
 # Remove legacy crons that lack the agent- prefix when an agent- replacement exists.

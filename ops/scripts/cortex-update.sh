@@ -188,6 +188,7 @@ register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/script
 register "ops/scripts/post-commit-audit"           "${CORTEX_DEPLOY_HOME}/scripts/post-commit-audit"
 register "ops/scripts/pre-push-pull"               "${CORTEX_DEPLOY_HOME}/scripts/pre-push-pull"
 register "ops/scripts/manage/no-verify-audit.py"               "${CORTEX_DEPLOY_HOME}/scripts/manage/no-verify-audit.py"
+register "ops/scripts/agent-no-verify-audit.py"                "${CORTEX_DEPLOY_HOME}/scripts/agent-no-verify-audit.py"
 register "ops/scripts/manage/agent-governance-auditor.py"            "${CORTEX_DEPLOY_HOME}/scripts/agent-governance-auditor.py"
 register "ops/scripts/manage/purge-stale-governance-locks.py" "${CORTEX_DEPLOY_HOME}/scripts/purge-stale-governance-locks.py"
 # prune-soul-profiles.py removed — profiles no longer in repo
