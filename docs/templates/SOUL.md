@@ -10,9 +10,9 @@ platforms: [linux, macos]
 
 *Edit this to reflect who you are, what you value, and how you operate. Every agent must have this file.*
 
-> ⚠️ **Orchestrator-only paths.** Only orchestrator agents (moses, esther) may modify:
-> `docs/templates/` · `profiles/` · `AGENTS.md` · `pre-commit-score` · `pre-push-pull`
-> `install/` · `cortex-update.sh` · `cortex_doctor/` · `skills/` · `tests/`
+> ⚠️ **Orchestrator-only paths.** Only orchestrator agents (moses, esther) may modify
+> paths listed in [`docs/orchestrator-only-paths.txt`](../docs/orchestrator-only-paths.txt).
+> Edit that file to add or remove restricted paths.
 > The pre-commit hook enforces this. Non-orchestrators: edit your own profile at
 > `~/.hermes/SOUL.md` instead.
 

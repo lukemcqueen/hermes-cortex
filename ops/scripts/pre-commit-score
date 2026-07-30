@@ -178,20 +178,37 @@ if [[ -f "$SOUL_LOCAL" ]] && [[ -f "$SOUL_TEMPLATE" ]]; then
   fi
 fi
 
-# ── Template guard: only orchestrators modify docs/templates/ ──
-# This file is the identity document for ALL agents. Only Moses and Esther
-# (the orchestrators) should modify it. If a non-orch agent stages changes
-# to docs/templates/, block the commit.
-if echo "$STAGED_FILES" | grep -q "^docs/templates/"; then
+# ── Orchestrator-only paths guard (config-driven) ──
+# Reads docs/orchestrator-only-paths.txt and blocks non-orch agents
+# from committing to any path listed there.
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
+ORCH_PATHS_FILE="$REPO_ROOT/docs/orchestrator-only-paths.txt"
+ORCH_VIOLATION=0
+if [[ -f "$ORCH_PATHS_FILE" ]]; then
   AGENT_HOSTNAME=$(hostname | cut -d. -f1 | tr '[:upper:]' '[:lower:]')
   ORCHESTRATORS="^(moses|esther)$"
   if ! echo "$AGENT_HOSTNAME" | grep -qE "$ORCHESTRATORS"; then
-    echo ""
-    echo "❌  docs/templates/ can only be modified by orchestrators (Moses/Esther)."
-    echo "    Current host: $AGENT_HOSTNAME"
-    echo "    Send a bus message to Moses with your template change request."
-    echo ""
-    exit 1
+    # Non-orch agent — check every path in the config file
+    while IFS= read -r orch_path || [[ -n "$orch_path" ]]; do
+      # Skip comments and blank lines
+      [[ "$orch_path" =~ ^#.*$ ]] && continue
+      [[ -z "$orch_path" ]] && continue
+      # Trim trailing slash for matching
+      orch_path="${orch_path%/}"
+      if echo "$STAGED_FILES" | grep -q "^${orch_path}"; then
+        ORCH_VIOLATION=1
+        echo "   ❌  $orch_path/ — orchestrator only"
+      fi
+    done < "$ORCH_PATHS_FILE"
+    if [[ "$ORCH_VIOLATION" -eq 1 ]]; then
+      echo ""
+      echo "❌  Orchestrator-only files cannot be modified by non-orch agents."
+      echo "    Current host: $AGENT_HOSTNAME"
+      echo "    Send a bus message to Moses/Esther with your change request."
+      echo "    Add or remove paths in: docs/orchestrator-only-paths.txt"
+      echo ""
+      exit 1
+    fi
   fi
 fi
 

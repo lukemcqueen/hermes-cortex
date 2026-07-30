@@ -1,0 +1,18 @@
+# Orchestrator-Only Paths
+# ========================
+# Only Moses and Esther (orchestrators) may modify files under these paths.
+# Add one path per line. Globs supported (e.g., docs/templates/).
+# Lines starting with # are comments. Empty lines are ignored.
+#
+# The pre-commit hook reads this file and blocks commits from non-orch agents.
+
+docs/templates/
+profiles/
+AGENTS.md
+pre-commit-score
+pre-push-pull
+install/
+cortex-update.sh
+cortex_doctor/
+skills/
+tests/
