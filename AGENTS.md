@@ -33,6 +33,7 @@
 > 3. Run doctor — check everything (`hermes doctor`, `cortex doctor`, or equivalent)
 > 4. Fix every issue — do not stop until doctor reports clean
 > 5. Verify — confirm all services, crons, skills are in expected state
+> This is a full refresh: pull → update → diagnose → fix → verify clean.
 
 ---
 ## Core Concepts
@@ -44,6 +45,7 @@
 **Principles:** Two-repo (public MIT + private), PII-scrubbed, pointer memory (MEMORY.md ~2.2K → gbrain), state routing (context → history → memory → docs).
 
 ## Skill loading — NOT OPTIONAL
+
 Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify with `agent-flow`, load matching `on_task` skills. See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md).
 
 ---
@@ -61,43 +63,126 @@ Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify
 9. **Keep working until done** — don't stop after a stub or plan.
 10. **Use tools, not descriptions** — every response must contain tool calls or a final result.
 11. **Score every change** — every code/config/script edit logged to loop-governance DB.
-  > **⚡ Pre-commit scoring hook** auto-creates a cycle on every commit. No bypass. Use `git commit --no-verify` in emergencies only.
+
+  > **⚡ Pre-commit scoring hook** auto-creates a cycle on every commit. No bypass — `SKIP_SCORE=1` removed. Use `git commit --no-verify` in emergencies only.
+
 12. **Tests/TDD/scoring are always the default.** Only opt-outs: `"skip tests"`, `"read-only"`, `"throwaway prototype"`, `"just check/look at"`.
-13. **Tag discovered issues as follow-ups** — document as `pending` todo, finish current work, then return. Never silently skip.
+13. **Tag discovered issues as follow-ups** — document as `pending` todo, finish current work, then return. Never silently skip or fix inline.
 14. **Pull before push** — `git pull --rebase origin <branch>` before any `git push`.
-15. **Never print secrets in commands** — use `$(cat <file>)` subshell expansion. `printf`, `echo` with inline secrets, and `-u "user:pass"` are forbidden.
+15. **Never print secrets in commands** — never pass secrets as literal strings in `terminal()` commands. Use `$(cat <file>)` subshell expansion so only the file path appears in the tool call. `printf`, `echo` with inline secret values, and `-u "user:pass"` are all forbidden patterns. <!-- Added 2026-07-13 -->
 16. **Do not cut corners** — Every skipped step compounds. Test from deployed path, check sibling paths, update docs.
 17. **Be thorough** — Verify every claim with tool output. A change isn't done until deps resolve, docs update, and doctor runs clean.
-18. **Test Before Release** — Before `end_change()`, run the applicable test suite with **0 failures**. If no test suite exists, create one or acknowledge the gap. `LOW` confidence ships are blocked.
-19. **Push before telling anyone to pull** — Verify the commit is on the remote. A fix on local disk is not in the repo.
-20. **Set `AGENT_ID` for orchestrator identity (REQUIRED)** — Before any git commit, set `AGENT_ID=moses` (orchestrators) or `AGENT_ID=<your-name>` (non-orch). **There is no fallback** — if unset, the commit is blocked.
-21. **Persistent cross-session todos** — Use `todo-db.py` for fleet-visible task tracking. See `todo-persistence` skill.
-22. **Only modify files in our repo** — `~/hermes-cortex/` → ours. `~/.hermes/` (not in repo) → do NOT touch. `~/.hermes-cortex/state/*`, `~/.hermes/config.yaml` → live config.
-23. **Sharing filter: only share new/substantive changes** — Already in Hermes Agent? ❌. Already in hermes-cortex? ❌. New skill? ✅. Improvement? ✅. PII-only? ❌. Test: *"Would someone running Hermes Cortex benefit?"*
-24. **Self-test gate for fleet commands** — `hc send` refuses without `--self-tested`. Never use bare `pass` in except blocks.
+18. **Test Before Release** — Before calling `end_change()`, run the applicable test suite and verify **0 failures**. If no test suite exists, create one or explicitly acknowledge the gap. Ships with `LOW` confidence are blocked — fix before releasing. Test suites are not optional overhead; they are the mechanism that makes "be thorough" enforceable.
+19. **Push before telling anyone to pull** — Verify the commit is on the remote (`git push origin main` succeeded). A fix on local disk is not in the repo.
+
+
+20. **Set `AGENT_ID` for orchestrator identity (REQUIRED)** — Before any git commit, set `AGENT_ID=moses` (orchestrators) or `AGENT_ID=<your-name>` (non-orch). The pre-commit hook uses this to enforce orchestrator-only paths. **There is no fallback** — if `AGENT_ID` is unset, the commit is blocked with an error. Non-orchestrators who modify restricted paths (`ops/scripts/`, `plugins/`, `mcp-servers/`, `skills/`, `.hermes-cortex/hooks/`, etc.) will have their commit blocked.
+
+21. **Persistent cross-session todos** — Use `todo-db.py` for fleet-visible task tracking (gbrain Postgres `bus.todos`). Session start: `todo-db.py pending` → `todo(merge=true)`. During work: update status via `todo-db.py update`. Session end: `todo-db.py save-end`. See `todo-persistence` skill for full protocol.
+
+22. **Only modify files in our repo** — Hermes Agent owns `~/.hermes/`. Our repo (`~/hermes-cortex/`) is our workspace.
+  - `~/hermes-cortex/` → ours, modify freely
+  - `~/.hermes/` (not in repo) → Hermes default, do NOT touch — create source in our repo first, then deploy
+  - `~/.hermes-cortex/state/*`, `~/.hermes/config.yaml` → live config, modify directly
+
+23. **Sharing filter: only share new/substantive hermes-cortex changes** — Apply in order:
+  1. **Already in Hermes Agent repo?** → ❌ Skip (framework)
+  2. **Already in hermes-cortex repo?** → ❌ Skip (already shared)
+  3. **New hermes-cortex skill?** → ✅ Share
+  4. **Substantive improvement?** → ✅ Share delta
+  5. **PII-only / one-off?** → ❌ Keep local
+
+  Test: *"Would someone running Hermes Cortex benefit? Or is it already available?"*
+
+24. **Self-test gate for fleet commands** — `hc send` refuses to send to fleet agents without `--self-tested` flag. This is CLI-enforced at the tool level, not a suggestion. Before dispatching any command to a fleet agent, run the self-test first and pass the flag. Additionally, never use bare `pass` in except blocks — adversarial verification flags these as bypasses. Use meaningful fallback logic or `# noqa` with justification.
 
 ---
 
 ## 🛡️ Orchestrator-Only Paths
 
-Certain paths restricted to mosaic/esther. Pre-commit hook checks hostname + staged files against `docs/orchestrator-only-paths.txt` (committed version). Non-orchs: send bus message to Moses.
+Certain paths in the repo are restricted to orchestrator agents (Moses and Esther) only.
 
-**How to Add:** Edit `docs/orchestrator-only-paths.txt`. The file itself is orchestrator-only + hook reads committed version (tamper-proof).
+### How It Works
+
+The pre-commit hook checks two things before every commit:
+
+1. **Is the agent an orchestrator?** — Checks hostname against `^(moses|esther)$`
+2. **Is any staged file in a restricted path?** — Reads `docs/orchestrator-only-paths.txt` from the **committed** version (never the working copy)
+
+If a non-orch agent tries to edit a restricted file, the commit is blocked with:
+
+```
+   ❌  docs/templates/ — orchestrator only
+
+❌  Orchestrator-only files cannot be modified by non-orch agents.
+    Current host: joseph
+    Send a bus message to Moses/Esther with your change request.
+```
+
+### Tamper-Proof Design
+
+- **Self-protecting**: `docs/orchestrator-only-paths.txt` itself is hardcoded as an orchestrator-only path — editing it won't bypass the restriction
+- **Committed config wins**: The hook reads the committed version of the config file, not the working copy. A non-orch agent editing the config file to remove restrictions is still blocked
+- **`git commit --no-verify` bypass**: Documented but discouraged — the pre-commit scoring hook logs bypasses
+
+### How to Add a Path
+
+Edit `docs/orchestrator-only-paths.txt` and add one path per line. That's it — the hook reads it dynamically.
+
+```
+# Example
+docs/templates/
+profiles/
+AGENTS.md
+```
+
+### How to Request a Change (Non-Orch Agents)
+
+Send a bus message to Moses with:
+- Subject: `🔧 TEMPLATE: add|remove <path>`
+- Body: why the path needs to be orchestrator-only (or why it no longer does)
+
+Moses will process the request and update the config file.
+
+### Doctor Detection
+
+The `cortex-doctor.py --quiet` check includes:
+
+- `✅ Skill drift` — detects when deployed skills differ from repo source
+- `✅ SOUL.md template sync` — checks deployed SOUL.md follows the template
+- `✅ SOUL.md reverse drift` — detects when deployed SOUL.md has template-only changes that weren't committed
 
 ---
 
-## Pre-Ship Checklist — Every Change
+## Pre-Ship Checklist — Every Change, Before and After
 
-### Before starting — 3 questions
-1. **Surveyed?** — `search_files()` for old name/term. `skills_list()` for category. Check git if disk finds nothing.
-2. **Mapped scope?** — What scripts, docs, configs reference the change? For crons: install scripts, update.sh, doctor, schedules.
-3. **Loaded skills?** — `skill_view()` on identified skills.
+### Before starting work — 3 questions
+
+These prevent wasted work and missed dependencies:
+
+1. **Surveyed?** — `search_files()` for the old name/term across the entire repo. Also `skills_list()` for the relevant category — load any matching skill **and its references** before writing code or answering capability questions. A single rename can touch 10+ locations. A missing feature might already exist in a reference doc you haven't read. **If `search_files()` finds nothing on disk, check git** — the file may be committed but not deployed: `git log --oneline --all -- "**/<pattern>*"` and `git show HEAD:<path>`.
+2. **Mapped scope?** — What install scripts, docs, configs, and other agents reference the thing I'm changing? For cron changes: check `install-crons.sh` create + uninstall arrays, `cortex-update.sh` register() calls, `cortex-doctor.py` parse functions, and `cron-schedules.md`.
+3. **Loaded skills?** — `skill_view()` on any skill identified in step 1. Skills encode workflows that prevent mistakes.
 
 ### After completing work — 6 questions
-> See [`docs/reference/after-completing-work-6-questions.md`](docs/reference/after-completing-work-6-questions.md)
 
-## Loop Governance
-**Every change:** `cache_search` → `begin_change` → work → load `change-checklist` → `cycle_query` → `feedback_accept/override` → `end_change` → `git push`. MCP blocks writes without lock. Pre-commit scores every commit.
+> See [`docs/reference/after-completing-work-6-questions.md`](docs/reference/after-completing-work-6-questions.md)
+## Session Todo Protocol
+
+> See [`docs/reference/session-todo-protocol.md`](docs/reference/session-todo-protocol.md)
+## Pre-Task Sequence — Mandatory Before Every Task
+
+> Content relocated to [`docs/pre-task-sequence-mandatory-before-every-task.md`](docs/pre-task-sequence-mandatory-before-every-task.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
+
+## Loop Governance — Mandatory Agent Workflow
+
+**Every change:**
+1. **Before:** `mcp_loop_governance_cache_search(query="<what>")` then `begin_change(task_id="...")`
+2. **After:** load `change-checklist` → `cycle_query` → `feedback_accept/override` → `end_change`
+3. **Push:** `git add -A && git commit && git pull --rebase origin main && git push`
+
+**Enforcement:** MCP blocks write tools without a lock. Pre-commit scores every commit. Full reference: [`docs/loop-governance-reference.md`](docs/loop-governance-reference.md)
 
 ---
 
@@ -105,8 +190,11 @@ Certain paths restricted to mosaic/esther. Pre-commit hook checks hostname + sta
 
 | Axis | Values |
 |------|--------|
-| **Priority** | critical | urgent | normal | notification |
-| **Scope** | Simple (<3) | Moderate (3-10) | Complex (>10) | Multi-agent |
+| **Priority** | critical (immediate) | urgent (same-day) | normal (same cycle) | notification (ack) |
+| **Actionability** | AUTO-ACT | DELEGATE | ESCALATE | ACKNOWLEDGE |
+| **Scope** | Simple (<3 calls) | Moderate (3-10) | Complex (>10) | Multi-agent |
+
+### Decision matrix
 
 | Prio → | Simple | Moderate | Complex | Multi-agent |
 |--------|--------|----------|---------|-------------|
@@ -115,41 +203,70 @@ Certain paths restricted to mosaic/esther. Pre-commit hook checks hostname + sta
 | normal | AUTO-ACT | AUTO-ACT | Escalate | Escalate |
 | notification | Acknowledge | Acknowledge | Acknowledge | Forward |
 
-**After-action:** Deliver what, how verified, evidence excerpt, cycle ID. See [`docs/setup-reference.md`](docs/setup-reference.md).
+**After-action:** Deliver **what** (summary), **how verified** (tool output), **evidence** (excerpt), **cycle ID** (for code changes).
 
-## Doc Freshness
-| Layer | What | Who | When |
-|-------|------|-----|------|
-| Weekly audit | Check mandatory sections | Moses | Mon 7am KST |
-| Broadcast | Notify on change | Moses | On change |
-| Soul refinement | Fill gaps | Each agent | Daily 23:00 |
-| Session start | Read AGENTS.md + SOUL.md | Each agent | Every session |
+### Confirmation Protocol — Required When correlation_id Present
+
+> See [`docs/setup-reference.md`](docs/setup-reference.md)
+## Doc Freshness: AGENTS.md + SOUL.md
+
+| Layer | What | Who | Frequency |
+|-------|------|-----|-----------|
+| Weekly audit | Check mandatory sections | Moses | Monday 7am KST |
+| Broadcast | Inbox message after changes | Moses | On change |
+| Soul refinement | Fill mandatory gaps | Each agent | Daily 23:00 |
+| Session start | Read AGENTS.md + own SOUL.md | Each agent | Every session |
+
+**Mandatory sections:** SOUL.md: Identity, Mission, Behavioral Principles (Loop Gov + Inbox Framework), Communication, Scripture. AGENTS.md: Execution Contract, Loop Gov, Inbox Framework, Doc Freshness, Contact Protocol
 
 ---
 
-## Agent Worker
-Install `hermes-agent-worker` systemd `--user` service to poll inbox every 30s. See [`docs/operations-reference.md`](docs/operations-reference.md).
+## Agent Worker — Automated Inbox Processing
+
+Install `hermes-agent-worker` systemd `--user` service to poll inbox every 30s and auto-process `workflow_step` messages via local Ollama. See [`docs/operations-reference.md`](docs/operations-reference.md) for setup, config, and fleet status.
+
+Verify: `systemctl --user status hermes-agent-worker`
 
 ---
 
-## Contact Protocol
-> See [`docs/contact-protocol-how-to-reach-moses.md`](docs/contact-protocol-how-to-reach-moses.md)
+## Contact Protocol — How to Reach Moses
+
+> Content relocated to [`docs/contact-protocol-how-to-reach-moses.md`](docs/contact-protocol-how-to-reach-moses.md) for focused reference.
+> _Pruned by agents-doc-audit.py — the full content is preserved at the link above._
 
 ## Agent Cron Management
-Only Moses has `cronjob` MCP. Others request via inbox with subject `🔧 CRON: create|update|remove`.
 
-Universal crons (36 jobs, 7 categories): See [`docs/fleet-reference.md`](docs/fleet-reference.md). **Skill Collection:** `agent-learning-collector` (every 6h) → `orch-skill-lifecycle` (daily 04:00). See [`docs/pipeline-reference.md`](docs/pipeline-reference.md).
+Only Moses has `cronjob` MCP tool. Others request via inbox with subject `🔧 CRON: create|update|remove`. Fields: `CRON_NAME`, `CRON_SCHEDULE`, `CRON_PROMPT`/`CRON_SCRIPT`, `CRON_DELIVER`, `CRON_REASON`.
+
+**Universal crons** (install-crons.sh — 36 jobs across 7 categories). Full details at [`docs/fleet-reference.md`](docs/fleet-reference.md):
+
+| Category | Key crons |
+|----------|-----------|
+| 1. Auto-Remediation | See fleet-reference.md |
+| 2. System Health | `system-alert-watchdog`, `swap-refresh`, `service-recovery`, `model-health-watchdog` |
+| 3. Knowledge & Memory | `memory-to-brain-sync`, `auto-save-sessions`, `memory-pruning` |
+| 4. Agent Inbox | `inbox-flag`, `agent-inbox` |
+| 5. Governance | See pipeline-reference.md |
+| 6. Performance Scorer | `llm-judge-scorer-weekday`, `llm-judge-scorer-weekend` |
+| 7. Deployment-Specific | See fleet-reference.md |
+
+**Skill Collection Pipeline:** Every agent runs `agent-learning-collector` (every 6h) → Moses runs `orch-skill-lifecycle` (daily 04:00) to evaluate and upstream. See [`docs/pipeline-reference.md`](docs/pipeline-reference.md).
+
+Previously inlined content moved to:
 
 | Subject | Location |
 |---------|----------|
-| Agent roles, cron rules | [`docs/agent-architecture.md`](docs/agent-architecture.md) |
-| Fleet update protocol | [`docs/fleet-update-protocol.md`](docs/fleet-update-protocol.md) |
-| Ollama tier, env vars, setup | [`docs/setup-reference.md`](docs/setup-reference.md) |
-| Plugins, scoring, workflow | [`plugins/governance-enforcer/README.md`](plugins/governance-enforcer/README.md) |
-| Pipeline Reference | [`docs/pipeline-reference.md`](docs/pipeline-reference.md) |
-| Fleet Reference | [`docs/fleet-reference.md`](docs/fleet-reference.md) |
-| Operations Reference | [`docs/operations-reference.md`](docs/operations-reference.md) |
-| Symlink policy | [`docs/symlink-policy.md`](docs/symlink-policy.md) |
+| Agent roles, capability matrix, cron rules | [`docs/agent-architecture.md`](docs/agent-architecture.md) |
+| Fleet update protocol (bus message schema) | [`docs/fleet-update-protocol.md`](docs/fleet-update-protocol.md) |
+| Enterprise PRDs: loop engineering, cheat detection | [`docs/prd/`](docs/prd/) |
+| Ollama Model Tier, env vars, cron 3-tier | [`docs/setup-reference.md`](docs/setup-reference.md) |
+| Plugins, tools, scoring, agent workflow, troubleshooting | [`plugins/governance-enforcer/README.md`](plugins/governance-enforcer/README.md) |
+| Pipeline Reference (lessons, sessions, skills, memory, quality) | [`docs/pipeline-reference.md`](docs/pipeline-reference.md) |
+| Fleet Reference (agent summary, cron jobs, auto-remediation) | [`docs/fleet-reference.md`](docs/fleet-reference.md) |
+| Operations Reference (inbox architecture, offline code, rules) | [`docs/operations-reference.md`](docs/operations-reference.md) |
+| Health monitoring, agent setup | [`docs/setup-reference.md`](docs/setup-reference.md) |
+| Symlink policy (Hermes vs Cortex layout) | [`docs/symlink-policy.md`](docs/symlink-policy.md) |
 
 ---
-> See docs/templates/SOUL.md for canonical set. Doctor FAILS on mismatch.
+> Updated 2026-07-23: Added references to agent-architecture, fleet-update-protocol, PRDs, agent profiles.
+> See docs/templates/SOUL.md for the canonical set. Doctor now FAILS on mismatch.
