@@ -720,7 +720,7 @@ def register(ctx):
             if tool_name in READ_TOOLS:
                 return None
 
-            # ── Read-only terminal fast-path: BEFORE skills gate ─────
+            # ── read-only terminal fast-path ─────────────────────────
             # Allow read-only terminal commands (ls, pwd, grep, etc.) even
             # without skills loaded, so agents can inspect the system.
             # Write-class terminal commands (touch, echo >, mkdir, etc.)
