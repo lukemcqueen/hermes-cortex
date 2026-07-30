@@ -1286,12 +1286,10 @@ deploy_governance_plugin() {
     local dest="${plugin_dir}/${file}"
     [[ ! -f "$src" ]] && continue
 
-    # Remove immutability if set (uses restricted helper)
+    # Remove immutability if set (uses sudo helper)
     if [[ -f "$dest" ]]; then
-      if hermes-plugin-lock status 2>/dev/null | grep -qE "$_immutable_pattern"; then
-        ${_lock_prefix} hermes-plugin-lock unlock || true
-        info "    Removed immutability: ${file}"
-      fi
+      ${_lock_prefix} hermes-plugin-lock unlock 2>/dev/null || true
+      info "    Removed immutability: ${file}"
     fi
 
     # ALWAYS copy — chattr-protected files come only from repo source
