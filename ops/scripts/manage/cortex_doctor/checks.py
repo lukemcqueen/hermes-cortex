@@ -1810,7 +1810,7 @@ def check_governance(res):
   hooks_via_global = bool(global_hooks_path.rstrip("/") == expected_hooks_path)
   repo_hooks_dir = CORTEX_REPO / ".git" / "hooks"
   deployed_hooks_dir = CORTEX_HOME / "hooks"
-  for hook_name in ("pre-commit", "post-commit", "post-merge"):
+  for hook_name in ("pre-commit", "pre-push", "post-commit", "post-merge", "post-push"):
     deployed_hook = deployed_hooks_dir / hook_name
     git_hook = repo_hooks_dir / hook_name
     repo_source = CORTEX_REPO / ".hermes-cortex" / "hooks" / hook_name
@@ -1842,8 +1842,10 @@ def check_governance(res):
           f"not installed: {git_hook}",
           f"REQUIRED: ln -sf {deployed_hook} {git_hook}")
 
-    # Check 3: deployed hook is a valid symlink
-    if deployed_hook.is_symlink():
+    # Check 3: deployed hook is a valid symlink (post-merge is intentionally standalone)
+    if hook_name == 'post-merge':
+      pass  # intentionally standalone — registered via register() in cortex-update.sh
+    elif deployed_hook.is_symlink():
       target = os.readlink(str(deployed_hook))
       target_path = Path(target) if target.startswith('/') else deployed_hook.parent / target
       if target_path.exists():

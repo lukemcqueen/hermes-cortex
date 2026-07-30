@@ -184,7 +184,9 @@ script in `~/.hermes-cortex/scripts/`:
 | Deployed hook | Symlink target |
 |---|---|
 | `hooks/pre-commit` | `scripts/pre-commit-score` |
+| `hooks/pre-push` | `scripts/pre-push-pull` |
 | `hooks/post-commit` | `scripts/post-commit-audit` |
+| `hooks/post-push` | `scripts/post-push-audit` |
 | `hooks/post-merge` | standalone (registered via `register()`) |
 
 When the symlinks are correct, updating the source script in `ops/scripts/` and
