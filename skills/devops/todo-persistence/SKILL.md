@@ -130,6 +130,28 @@ todo-db.py list --agent joseph --status in_progress
 - ❌ **Forgetting to update status** — stale `pending` items from old sessions clutter the restore step. If a session ended abruptly, clean up stale items on next start.
 - ❌ **Hardcoding UUIDs** — never hardcode a todo UUID. Always retrieve it via `todo-db.py pending` or `todo-db.py list`.
 
+## Known Issues
+
+### ⚠️ `todo-db.py update` May Silently Fail
+
+The `todo-db.py update <uuid> --status completed` command prints `✅` even when the SQL never reaches Postgres. This happens because the `DB_QUERY` wraps psql in `sg docker -c "docker exec -i psql ..."` — the `input=` parameter (which sends the SQL query via stdin) is consumed by the outer shell (`sg`), not by psql itself.
+
+**Symptom:** `todo-db.py update` says `✅ Todo updated` but the DB still shows `pending`.
+
+**Verification:** Run the pending command and cross-check:
+```bash
+todo-db.py pending | python3 -c "import json,sys; d=json.load(sys.stdin); [print(i['content'][:60], i['status']) for i in d]"
+```
+
+**Workaround:** Run the UPDATE directly via docker exec:
+```bash
+sg docker -c "docker exec -i gbrain-postgres psql -U gbrain -d gbrain -t -A -F '||'" <<< "UPDATE bus.todos SET status = 'completed', updated_at = now() WHERE id = '<full-uuid>'::uuid;"
+```
+
+**Long-term fix:** The `psql()` helper in `todo-db.py` needs to pipe stdin directly to psql instead of through `sg`. Currently blocked by docker group-permission requirements.
+
+---
+
 ## Reference
 
 - Schema: `~/hermes-cortex/ops/services/agent-bus/schema/todos.sql`
