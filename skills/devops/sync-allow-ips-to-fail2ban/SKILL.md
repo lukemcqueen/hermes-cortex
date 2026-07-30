@@ -1,6 +1,7 @@
 --- Full content (truncated) ---
 ---
 name: sync-allow-ips-to-fail2ban
+version: 1.0.0
 description: Sync IPs from allow-ips-manual.conf to fail2ban ignoreip
 ---
 

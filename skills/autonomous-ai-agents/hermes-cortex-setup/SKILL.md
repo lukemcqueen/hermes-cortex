@@ -1,5 +1,6 @@
 ---
 name: hermes-cortex-setup
+version: 1.0.0
 description: Install and configure Hermes Cortex core components — Ollama, Bun, gbrain, health server, agent registry, hooks, cron jobs, and profile scaffolding on a target machine.
 behavioral_principles:
  - Never install gbrain via pip3 or bare 'npm install -g gbrain' — the npm registry has a squatter package (old GPU JS library). Always use 'bun install -g github:garrytan/gbrain'.

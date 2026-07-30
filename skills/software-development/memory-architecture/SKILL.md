@@ -1,5 +1,6 @@
 ---
 name: memory-architecture
+version: 1.0.0
 description: "Design and maintain agent memory system: MEMORY.md structure, privacy boundaries, gitignore per brain source, seed templates, pointer pattern, and PII prevention. Use when asked: 'clean up memory', 'separate public from private', 'prevent PII leakage', 'organize memory', 'seed memory files', 'gitignore memory'."
 ---
 

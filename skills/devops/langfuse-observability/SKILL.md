@@ -1,5 +1,6 @@
 ---
 name: langfuse-observability
+version: 1.0.0
 description: Wire a self-hosted Langfuse instance to Hermes Agent — generate API keys, configure env vars, enable the bundled plugin, install SDK, and verify traces flow.
 ---
 

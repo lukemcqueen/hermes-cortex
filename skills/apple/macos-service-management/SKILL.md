@@ -1,6 +1,7 @@
 --- Full content (truncated) ---
 ---
 name: macos-service-management
+version: 1.0.0
 description: Manage and troubleshoot macOS launchd services — plist authoring, exit code diagnosis, variable expansion rules, and service lifecycle
 category: apple
 ---

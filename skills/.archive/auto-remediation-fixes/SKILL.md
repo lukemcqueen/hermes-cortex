@@ -1,6 +1,7 @@
 --- Full content (truncated) ---
 ---
 name: auto-remediation-fixes
+version: 1.0.0
 description: Essential auto-remediation fixes for staging server guardian — timeout patterns, provider drift fixes, and operational hygiene for cron job errors and agent inbox remediation.
 ---
 

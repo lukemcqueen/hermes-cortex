@@ -1,5 +1,6 @@
 ---
 name: cron-cost-tracking
+version: 1.0.0
 description: SQLite-backed per-run token usage and cost tracking for Hermes cron jobs. Deploys cost_store.py and patches scheduler.py / cronjob_tools.py.
 tags: [cron, cost, tokens, observability, hermes]
 related_skills: [hermes-agent, cortex-update]

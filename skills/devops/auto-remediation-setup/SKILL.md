@@ -1,6 +1,7 @@
 --- Full content (truncated) ---
 ---
 name: auto-remediation-setup
+version: 1.0.0
 author: Hermes Cortex
 created: 2026-06-15
 updated: 2026-06-15

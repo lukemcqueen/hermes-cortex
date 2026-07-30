@@ -1,5 +1,6 @@
 ---
 name: bus-inbox-check
+version: 1.0.0
 description: Check agent bus inbox depth and read messages via HTTP API — for use in LLM cron context where inbox_read MCP tool is unavailable.
 ---
 

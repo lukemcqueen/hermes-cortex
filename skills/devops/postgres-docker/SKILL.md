@@ -1,6 +1,7 @@
 --- Full content (truncated) ---
 ---
 name: postgres-docker
+version: 1.0.0
 category: devops
 description: Tune and configure PostgreSQL running inside Docker containers — custom configs, mounts, command overrides, and the listen_addresses pitfall.
 ---

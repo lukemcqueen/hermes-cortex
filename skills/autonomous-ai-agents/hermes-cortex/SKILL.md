@@ -1,5 +1,6 @@
 ---
 name: hermes-cortex
+version: 1.0.0
 description: Install, configure, and maintain Hermes Cortex — the observability and knowledge layer for Hermes Agent (Ollama, gbrain, Langfuse, Cortex Dashboard, nginx, launchd services, Hermes plugins, offline code assistant, offline content auto-update).
 tags: [setup, installation, ollama, gbrain, langfuse, dashboard, nginx, launchd, macos, plugins, docker-compose, offline, code-assistant, rag, bible, hymns]
 related_skills: [hermes-agent, docker-compose-common-issues]

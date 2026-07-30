@@ -1,6 +1,7 @@
 --- Full content (truncated) ---
 ---
 name: cwr-file-processing
+version: 1.0.0
 description: >-
   CISAC CWR (Common Works Registration) file processing for music copyright
   societies. Covers export generation (Rails + Python), ACK response handling,

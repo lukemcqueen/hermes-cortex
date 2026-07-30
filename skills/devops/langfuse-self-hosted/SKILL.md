@@ -1,5 +1,6 @@
 ---
 name: langfuse-self-hosted
+version: 1.0.0
 description: Deploy, configure, and wire Langfuse v3 with ClickHouse for LLM observability — Docker compose, SIGSEGV-safe ClickHouse tuning, Hermes Langfuse plugin setup, OTLP endpoint troubleshooting.
 ---
 

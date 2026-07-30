@@ -1,5 +1,6 @@
 ---
 name: prevent-crash-looping
+version: 1.0.0
 description: How to prevent systemd service crash-looping from port conflicts, missing directories, and failed dependencies
 category: devops
 ---

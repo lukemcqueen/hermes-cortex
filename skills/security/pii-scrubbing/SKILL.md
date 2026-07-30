@@ -1,5 +1,6 @@
 ---
 name: pii-scrubbing
+version: 1.0.0
 category: security
 description: >-
   Systematically scrub Personally Identifiable Information (PII) from a

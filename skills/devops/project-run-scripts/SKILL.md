@@ -1,5 +1,6 @@
 ---
 name: project-run-scripts
+version: 1.0.0
 description: "DEFINITIVE canonical template for ./run — single bash CLI entrypoint covering Docker lifecycle, dev servers, testing, database management, linting, and utility commands. Applies to ANY tech stack: Python/FastAPI, Rails, Go, Node/Next.js, Rust. Every repo MUST have this file."
 related_skills:
   - python-dependency-management

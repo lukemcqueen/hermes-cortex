@@ -1,5 +1,6 @@
 ---
 name: korean-language-learning
+version: 1.0.0
 title: Korean Language Learning for Older English Speakers
 category: productivity
 tags:

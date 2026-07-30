@@ -1,5 +1,6 @@
 ---
 name: codebase-portability
+version: 1.0.0
 category: devops
 description: >-
   Systematically find and fix hardcoded absolute paths across scripts, docs,

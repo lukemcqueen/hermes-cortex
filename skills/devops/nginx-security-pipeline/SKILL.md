@@ -1,5 +1,6 @@
 ---
 name: nginx-security-pipeline
+version: 1.0.0
 category: devops
 description: >-
   Set up nginx security with IP blocking, fail2ban integration, daily automated

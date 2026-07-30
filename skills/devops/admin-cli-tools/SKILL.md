@@ -1,5 +1,6 @@
 ---
 name: admin-cli-tools
+version: 1.0.0
 category: development
 tags: [cli, bus, postgres, admin, hermes-cortex]
 trigger: building or maintaining CLI tools that interact with the agent bus, message queues, or Postgres backend

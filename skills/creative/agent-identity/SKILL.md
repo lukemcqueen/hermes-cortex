@@ -1,6 +1,7 @@
 --- Full content (truncated) ---
 ---
 name: agent-identity
+version: 1.0.0
 description: "Create, research, and iterate on your agent identity document (SOUL.md). Research a source figure (biblical, historical, literary), extract character attributes from primary texts, map them to behavioral operating principles, and write or update SOUL.md using the template in hermes-cortex."
 ---
 

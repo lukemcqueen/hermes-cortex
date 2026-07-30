@@ -1,5 +1,6 @@
 ---
 name: linux-server-hardening
+version: 1.0.0
 category: devops
 description: >-
   Systematic Linux server hardening with tiered prioritization. Covers UFW

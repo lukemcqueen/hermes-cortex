@@ -1,6 +1,7 @@
 --- Full content (truncated) ---
 ---
 name: hermes-gateway-operations
+version: 1.0.0
 description: >-
   Diagnose, configure, and maintain Hermes messaging gateway platforms
   (Telegram, Discord, WhatsApp, etc.). Covers connectivity troubleshooting,

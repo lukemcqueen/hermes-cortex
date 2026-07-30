@@ -1,5 +1,6 @@
 ---
 name: health-external-verification
+version: 1.0.0
 description: Verify your health endpoint is externally reachable by testing the URL end-to-end instead of assuming local-only based on process checks.
 ---
 

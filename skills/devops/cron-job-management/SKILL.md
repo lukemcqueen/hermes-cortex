@@ -1,5 +1,6 @@
 ---
 name: cron-job-management
+version: 1.0.0
 description: Create, name, list, and maintain Hermes cron jobs — no_agent watchdog scripts, naming conventions, and the user's preferred listing format.
 ---
 

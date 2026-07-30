@@ -1,6 +1,7 @@
 ---
 title: Linux Performance Diagnostics
 name: linux-performance-diagnostics
+version: 1.0.0
 description: Systematic "system is slow" diagnosis — baseline resource check, CPU frequency scaling analysis, process/core affinity mapping, container-level activity, and differentiation between transient vs chronic bottlenecks.
 category: devops
 triggers:
