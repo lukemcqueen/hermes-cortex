@@ -2329,6 +2329,16 @@ def check_stale_skills(res):
     in_repo = (cat, name) in repo_sk
     in_hermes = (cat, name) in hermes_sk or name in hermes_names
     if not in_repo and not in_hermes:
+      # Double-check: Hermes built-in skills have metadata.hermes in SKILL.md
+      # even when not found in hermes_agent_dir (e.g. on macOS where the
+      # path may differ). Skip these — they're not orphans.
+      skill_md = deployed[(cat, name)]
+      try:
+        fm_text = skill_md.read_text().split('---', 2)
+        if len(fm_text) >= 2 and 'metadata:\n  hermes:' in fm_text[1]:
+          continue  # Hermes built-in skill — not an orphan
+      except (OSError, ValueError):
+        pass
       orphans.append(f"{cat}/{name}")
 
   if orphans:
