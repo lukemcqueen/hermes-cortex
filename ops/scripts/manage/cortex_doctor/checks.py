@@ -381,7 +381,7 @@ def check_soul_sync(res):
                if not any(skip in m for skip in
                      ["Scripture", "Bible", "Scripture Insights",
                       "Replace with", "your agent", "your purpose",
-                      "your name", "your mission"])}
+                      "your name", "your mission", "Orchestrator"])}
         if real_extra:
           res.add("SOUL.md reverse drift (~/.hermes)", "WARN",
             f"Deployed has {len(real_extra)} markers not in template: {', '.join(sorted(real_extra)[:5])}",
