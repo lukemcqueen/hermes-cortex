@@ -603,6 +603,25 @@ if [[ -n "$BLOCKED" ]]; then
   fi
 fi
 
+# ── Self-test: orchestrator guard must work when hook changes ──
+if echo "$STAGED_FILES" | grep -q "^ops/scripts/pre-commit-score$"; then
+  echo "🧪  Self-test: orchestrator guard..."
+  # Test 1: non-orch (titus) should be BLOCKED
+  AGENT_HOSTNAME=titus bash "$0" 2>/dev/null | grep -q "Orchestrator-only path blocked"
+  TEST1=$?
+  # Test 2: orch (moses) should NOT be blocked
+  AGENT_HOSTNAME=moses bash "$0" 2>/dev/null | grep -q "Orchestrator-only path blocked"
+  TEST2=$?
+  if [[ $TEST1 -eq 0 && $TEST2 -ne 0 ]]; then
+    echo "✅  Self-test passed: non-orch blocked, orchestrator allowed"
+  else
+    echo "❌  Self-test FAILED!"
+    echo "    Non-orch blocked: $([ $TEST1 -eq 0 ] && echo 'PASS' || echo 'FAIL')"
+    echo "    Orch bypassed:    $([ $TEST2 -ne 0 ] && echo 'PASS' || echo 'FAIL')"
+    exit 1
+  fi
+fi
+
 # ── Adversarial scan (staged files only, A2 level) ──────────
 # HARD GATE: blocks commit if critical/high findings exist. No bypass.
 ADVERSARIAL_SCRIPT="$REPO_ROOT/ops/scripts/quality/adversarial-verify.py"

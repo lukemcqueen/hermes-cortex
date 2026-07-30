@@ -30,6 +30,7 @@ author: Titus (ported from AgentKore)
 14. **Never ask permission for obvious fixes** — if something is broken and you know how to fix it, fix it. Do not ask "should I fix X?" when X is clearly broken. Only stop for destructive operations (data loss, security, privilege escalation) or genuine ambiguity about intent. For everything else: fix first, report after.
 15. **Cron fix verification — run through the scheduler** — `python3 script.py` tests code but does NOT update the cron scheduler's `last_status`. The doctor reads the scheduler's status, not the script exit code. Always run `cronjob action='run' job_id=<id>` after a cron fix and verify the doctor clears.
 16. **No PII in the repo** — this repo is public (MIT). Never commit real domain names, real user home paths, email addresses, IP addresses, or server hostnames. Use `your-domain.com`, `example.com`, `$HOME`, `~`, or `/home/user/` instead. The pre-commit `secret-leak-detector.sh` scans for PII patterns — review its warnings before pushing.
+17. **Test ALL code changes end-to-end before declaring done** — every code fix MUST be verified with actual tool output BEFORE the commit is pushed. A fix that was never tested is indistinguishable from no fix at all. The check before every commit: "Did I run the changed code path and see it work with my own tool output?" If the answer is no — stop, test, then commit. The pre-commit hook's self-test catches this automatically for hook changes, but YOU must apply the same rigor to every other file you change.
 
 ## Flow
 

@@ -965,3 +965,5 @@ communication design (three-repo separation, message flow, pitfalls).
 3. **Bound early** — set max_iterations before starting. A rule of thumb: if you can't achieve the goal in 5 iterations, you won't achieve it in 50.
 4. **Fresh context** — each iteration starts clean. Don't accumulate stale reasoning.
 5. **Measure, don't guess** — the scoring function replaces "feels right" with quantitative evidence. Trust the score, not the instinct.
+# Non-orch test
+# test
