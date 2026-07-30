@@ -603,24 +603,24 @@ if [[ -n "$BLOCKED" ]]; then
   fi
 fi
 
-# ── Self-test: orchestrator guard must work when hook changes ──
-if echo "$STAGED_FILES" | grep -q "^ops/scripts/pre-commit-score$"; then
-  echo "🧪  Self-test: orchestrator guard..."
-  # Test that AGENT_ID controls orchestrator identity (the actual bug)
-  # Test 1: titus → should NOT match moses|esther
-  AGENT_ID=titus bash -c 'case "${AGENT_ID:-$(hostname -s)}" in moses|esther) exit 1;; *) exit 0;; esac' 2>/dev/null
-  TEST1=$?
-  # Test 2: moses → SHOULD match
-  AGENT_ID=moses bash -c 'case "${AGENT_ID:-$(hostname -s)}" in moses|esther) exit 0;; *) exit 1;; esac' 2>/dev/null
-  TEST2=$?
-  if [[ $TEST1 -eq 0 && $TEST2 -eq 0 ]]; then
-    echo "✅  Self-test passed: AGENT_ID controls orchestrator identity"
-  else
-    echo "❌  Self-test FAILED! AGENT_ID is not controlling identity."
-    echo "    Non-orch (titus) blocked: $([ $TEST1 -eq 0 ] && echo 'PASS' || echo 'FAIL')"
-    echo "    Orch (moses) recognized:  $([ $TEST2 -eq 0 ] && echo 'PASS' || echo 'FAIL')"
-    exit 1
-  fi
+# ── Self-test: orchestrator guard must work on EVERY commit ──
+# If this fails, the hook is broken and ALL commits would bypass the guard.
+# Governance fails CLOSED — a broken guard blocks everything.
+echo "🧪  Self-test: orchestrator guard..."
+# Test 1: titus → should NOT match moses|esther
+AGENT_ID=titus bash -c 'case "${AGENT_ID:-$(hostname -s)}" in moses|esther) exit 1;; *) exit 0;; esac' 2>/dev/null
+TEST1=$?
+# Test 2: moses → SHOULD match
+AGENT_ID=moses bash -c 'case "${AGENT_ID:-$(hostname -s)}" in moses|esther) exit 0;; *) exit 1;; esac' 2>/dev/null
+TEST2=$?
+if [[ $TEST1 -eq 0 && $TEST2 -eq 0 ]]; then
+  echo "✅  Self-test passed: AGENT_ID controls orchestrator identity"
+else
+  echo "❌  Self-test FAILED! AGENT_ID is not controlling identity."
+  echo "    Non-orch (titus) blocked: $([ $TEST1 -eq 0 ] && echo 'PASS' || echo 'FAIL')"
+  echo "    Orch (moses) recognized:  $([ $TEST2 -eq 0 ] && echo 'PASS' || echo 'FAIL')"
+  echo "    GOVERNANCE IS BROKEN — blocking all commits until fixed."
+  exit 1
 fi
 
 # ── Adversarial scan (staged files only, A2 level) ──────────
