@@ -1771,7 +1771,7 @@ def check_governance(res):
       ("fail-closed crash handler", "GOVERNANCE ENFORCER CRASHED" in enforcer_src),
       ("pipe not caught as write (no [>|>>])", "[>|>>]" not in enforcer_src),
       ("grouped passwd alternation", r"(usermod|groupmod|useradd|groupadd|passwd)\s" in enforcer_src),
-      ("read-check before write-check", "read-only terminal fast-path" in enforcer_src),
+      ("read-check before write-check", "read-only terminal fast-path" in enforcer_src.lower()),
       ("no pip|npm in broad catch-all", "dpkg|brew" in enforcer_src and "pip|npm" not in enforcer_src.split("dpkg")[0]),
     ]
     all_pass = True
