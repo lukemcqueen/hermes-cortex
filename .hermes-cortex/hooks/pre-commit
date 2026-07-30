@@ -178,6 +178,52 @@ if [[ -f "$SOUL_LOCAL" ]] && [[ -f "$SOUL_TEMPLATE" ]]; then
   fi
 fi
 
+# ── Orchestrator-only paths guard (config-driven, tamper-proof) ──
+# Reads the COMMITTED version of docs/orchestrator-only-paths.txt
+# (never the working copy) so a non-orch agent can't edit their
+# way out of the restriction. The config file itself is hardcoded
+# as an orchestrator-only path (self-protecting).
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
+ORCH_PATHS_FILE="$REPO_ROOT/docs/orchestrator-only-paths.txt"
+ORCH_VIOLATION=0
+
+# Self-protection: the config file itself is always restricted
+# (hardcoded because it's self-referential — can't read from itself)
+if echo "$STAGED_FILES" | grep -q "^docs/orchestrator-only-paths.txt"; then
+  ORCH_VIOLATION=1
+  echo "   ❌  docs/orchestrator-only-paths.txt — orchestrator only"
+fi
+
+AGENT_HOSTNAME=$(hostname | cut -d. -f1 | tr '[:upper:]' '[:lower:]')
+ORCHESTRATORS="^(moses|esther)$"
+if ! echo "$AGENT_HOSTNAME" | grep -qE "$ORCHESTRATORS"; then
+  # Non-orch agent — read the COMMITTED version of the config file
+  # Using git show HEAD: ensures a tampered working copy can't bypass
+  ORCH_CONFIG=$(git show HEAD:"${ORCH_PATHS_FILE#$REPO_ROOT/}" 2>/dev/null || cat "$ORCH_PATHS_FILE" 2>/dev/null)
+  if [[ -n "$ORCH_CONFIG" ]]; then
+    while IFS= read -r orch_path || [[ -n "$orch_path" ]]; do
+      [[ "$orch_path" =~ ^#.*$ ]] && continue
+      [[ -z "$orch_path" ]] && continue
+      orch_path="${orch_path%/}"
+      if echo "$STAGED_FILES" | grep -q "^${orch_path}"; then
+        ORCH_VIOLATION=1
+        echo "   ❌  $orch_path/ — orchestrator only"
+      fi
+    done <<< "$ORCH_CONFIG"
+  fi
+  if [[ "$ORCH_VIOLATION" -eq 1 ]]; then
+    echo ""
+    echo "❌  Orchestrator-only files cannot be modified by non-orch agents."
+    echo "    Current host: $AGENT_HOSTNAME"
+    echo "    This restriction is enforced: the path list is read from the"
+    echo "    COMMITTED config (docs/orchestrator-only-paths.txt), not the"
+    echo "    working copy. Editing the config file won't bypass it."
+    echo "    Send a bus message to Moses/Esther with your change request."
+    echo ""
+    exit 1
+  fi
+fi
+
 # ── Reflexion gate: verify skill_view('reflexion-check') was called this session ──
 # Query the session DB for proof the agent actually loaded the skill — not just
 # a file-presence check. The governance lock carries the session_id.
