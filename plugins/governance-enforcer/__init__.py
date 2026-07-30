@@ -153,6 +153,13 @@ def _check_skills_loaded_marker(session_id: str = "") -> bool:
             # Empty or whitespace-only (touch bypass) → reject
             return False
         if content.startswith("session:"):
+            # Cron sessions: accept ANY valid session:* marker.
+            # Cron sessions are barred from overwriting the marker
+            # (_auto_create_skills_marker line 175-179), so the
+            # only marker they can ever see is one created by the
+            # interactive session — trust it.
+            if session_id and session_id.startswith("cron_"):
+                return True
             # Session-verified marker — check match
             if session_id and content != f"session:{session_id}":
                 # Wrong session → reject
