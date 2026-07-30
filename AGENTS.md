@@ -96,6 +96,62 @@ Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify
 
 ---
 
+## 🛡️ Orchestrator-Only Paths
+
+Certain paths in the repo are restricted to orchestrator agents (Moses and Esther) only.
+
+### How It Works
+
+The pre-commit hook checks two things before every commit:
+
+1. **Is the agent an orchestrator?** — Checks hostname against `^(moses|esther)$`
+2. **Is any staged file in a restricted path?** — Reads `docs/orchestrator-only-paths.txt` from the **committed** version (never the working copy)
+
+If a non-orch agent tries to edit a restricted file, the commit is blocked with:
+
+```
+   ❌  docs/templates/ — orchestrator only
+
+❌  Orchestrator-only files cannot be modified by non-orch agents.
+    Current host: joseph
+    Send a bus message to Moses/Esther with your change request.
+```
+
+### Tamper-Proof Design
+
+- **Self-protecting**: `docs/orchestrator-only-paths.txt` itself is hardcoded as an orchestrator-only path — editing it won't bypass the restriction
+- **Committed config wins**: The hook reads the committed version of the config file, not the working copy. A non-orch agent editing the config file to remove restrictions is still blocked
+- **`git commit --no-verify` bypass**: Documented but discouraged — the pre-commit scoring hook logs bypasses
+
+### How to Add a Path
+
+Edit `docs/orchestrator-only-paths.txt` and add one path per line. That's it — the hook reads it dynamically.
+
+```
+# Example
+docs/templates/
+profiles/
+AGENTS.md
+```
+
+### How to Request a Change (Non-Orch Agents)
+
+Send a bus message to Moses with:
+- Subject: `🔧 TEMPLATE: add|remove <path>`
+- Body: why the path needs to be orchestrator-only (or why it no longer does)
+
+Moses will process the request and update the config file.
+
+### Doctor Detection
+
+The `cortex-doctor.py --quiet` check includes:
+
+- `✅ Skill drift` — detects when deployed skills differ from repo source
+- `✅ SOUL.md template sync` — checks deployed SOUL.md follows the template
+- `✅ SOUL.md reverse drift` — detects when deployed SOUL.md has template-only changes that weren't committed
+
+---
+
 ## Pre-Ship Checklist — Every Change, Before and After
 
 ### Before starting work — 3 questions
