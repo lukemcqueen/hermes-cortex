@@ -1223,10 +1223,16 @@ deploy_system_scripts() {
     [[ ! -f "$src" ]] && continue
     if needs_update "$src" "$dest"; then
       if command -v sudo &>/dev/null; then
-        # Unlock self before overwriting (if already locked)
-        if [[ "$script" == "hermes-plugin-lock" ]]; then
-          sudo chattr -i "$dest" 2>/dev/null || true
+        # ── Self-deploy via update command (binary can update itself) ──
+        if [[ "$script" == "hermes-plugin-lock" ]] && [[ -f "$dest" ]]; then
+          sudo -n "$dest" update 2>/dev/null && {
+            info "  Self-updated: ${script} → ${deploy_dir}/"
+            files_copied=$((files_copied + 1))
+            continue
+          } || true
+          # Fall through to sudo cp if update failed (old binary with broken update)
         fi
+        # ── Standard deploy (requires NOPASSWD for cp) ──
         sudo mkdir -p "$deploy_dir" 2>/dev/null || true
         if sudo cp "$src" "$dest" 2>/dev/null; then
           sudo chown root:root "$dest" 2>/dev/null || true

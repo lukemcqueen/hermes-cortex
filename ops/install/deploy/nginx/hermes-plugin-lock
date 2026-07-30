@@ -77,19 +77,16 @@ _unlock_file() {
 
 case "${1:-help}" in
   update)
-    local src
-    if [[ "$_os" == "Darwin" ]]; then
-      src="${REAL_HOME}/hermes-cortex/ops/install/deploy/nginx/hermes-plugin-lock"
+    _this_script="$0"
+    _repo_source="${REAL_HOME}/hermes-cortex/ops/install/deploy/nginx/hermes-plugin-lock"
+    if [[ -f "$_repo_source" ]]; then
+      # Unlock self before overwriting (if immutable)
+      _unlock_file "$_this_script" 2>/dev/null || true
+      cat "$_repo_source" > "$_this_script" && chmod 755 "$_this_script" && echo "UPDATED: $_this_script from repo"
+      # Re-lock after update
+      _lock_file "$_this_script" 2>/dev/null || echo "WARN: could not self-lock after update"
     else
-      src="${REAL_HOME}/hermes-cortex/ops/install/deploy/nginx/hermes-plugin-lock"
-    fi
-    if [[ -f "$src" ]]; then
-      # Unlock self before overwriting
-      _unlock_file "${BASH_SOURCE[0]}" 2>/dev/null || true
-      cat "$src" > "${BASH_SOURCE[0]}" && chmod 755 "${BASH_SOURCE[0]}" && echo "UPDATED: ${BASH_SOURCE[0]} from $src"
-      _lock_file "${BASH_SOURCE[0]}" 2>/dev/null || echo "WARN: could not self-lock after update"
-    else
-      echo "ERROR: source not found at $src"
+      echo "ERROR: repo source not found at $_repo_source"
       exit 1
     fi
     ;;
