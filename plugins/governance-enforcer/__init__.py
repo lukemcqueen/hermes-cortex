@@ -332,6 +332,23 @@ WRITE_TOOLS = {
     "text_to_speech",
 }
 
+# Tools that NEVER modify system state — completely exempt from skills gate
+# These inspect, read, search, or discover — they can't create/edit/delete anything.
+# The skills gate (write-tool block) must never block these, as that would
+# create a deadlock where the agent can't read to determine what to load.
+READ_TOOLS = {
+    "read_file",
+    "search_files",
+    "session_search",
+    "web_search",
+    "web_extract",
+    "vision_analyze",
+    "skill_view",
+    "skills_list",
+    "tool_search",
+    "tool_describe",
+}
+
 # Tools that CAN modify system state but also have read-only uses
 CONDITIONAL_WRITE_TOOLS = {
     "terminal",
@@ -593,7 +610,15 @@ def register(ctx):
                     if hermes_session_id and _skills_loaded_in_session >= _REQUIRED_SKILLS:
                         _auto_create_skills_marker(hermes_session_id)
 
-            # ── Read-only terminal fast-path: BEFORE skills gate (read-only fast-path passes) ──
+            # ── Read-only tools exempt from skills gate ─────────────
+            # Read-only tools (read_file, search_files, web_search, skill_view, etc.)
+            # are completely exempt from the skills gate. They can't modify system state,
+            # and blocking them creates a deadlock where the agent can't read to
+            # determine what skills to load. This check runs BEFORE the skills gate.
+            if tool_name in READ_TOOLS:
+                return None
+
+            # ── Read-only terminal fast-path: BEFORE skills gate ─────
             # Allow read-only terminal commands (ls, pwd, grep, etc.) even
             # without skills loaded, so agents can inspect the system.
             # Write-class terminal commands (touch, echo >, mkdir, etc.)
@@ -630,6 +655,8 @@ def register(ctx):
                             "The marker is auto-created when all 8 are loaded.\n"
                             "Do NOT try to touch .skills-loaded directly — it will be rejected.\n\n"
                             "Read-only tools (read_file, search_files, session_search,\n"
+                            "skill_view, skills_list, web_search, web_extract,\n"
+                            "vision_analyze, tool_search, tool_describe,\n"
                             "cron action=list/run, web tools, vision) ARE allowed.\n\n"
                             "This enforcement is at ~/.hermes/plugins/governance-enforcer/.\n"
                             "I cannot bypass or disable this.\n"
