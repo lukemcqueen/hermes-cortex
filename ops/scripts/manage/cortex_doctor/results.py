@@ -94,7 +94,7 @@ class Results:
                 detail = f" — {c['detail']}" if c["detail"] else ""
                 print(f"  {label}{detail}")
                 if self.show_fixes and c["fix"] and c["status"] != "PASS":
-                    print(f"         → {c['fix']}")
+                    print(f"         🔶 Suggestion: {c['fix']}")
 
         total = self.pass_count + self.warn_count + self.fail_count + self.info_count
         overall = "HEALTHY"
