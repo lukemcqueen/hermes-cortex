@@ -1092,7 +1092,7 @@ create_cron "agent-daily-bible-reading" "0 1 * * *" \
 
 # No-verify audit — no-agent script checks for --no-verify commits every 60m
 create_cron "agent-no-verify-audit" "every 60m" \
-  "agent-no-verify-audit.py" \
+  "manage/agent-no-verify-audit.py" \
   "" \
   "" \
   "" \
