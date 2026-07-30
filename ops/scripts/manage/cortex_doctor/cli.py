@@ -28,6 +28,7 @@ from .checks import (
     check_deploy_checksums,
     check_script_naming,
     check_skills_version,
+    check_todo_db,
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
@@ -63,6 +64,7 @@ def main():
         check_deploy_checksums,
         check_script_naming,
         check_skills_version,
+        check_todo_db,
     ]
 
     if do_quick:

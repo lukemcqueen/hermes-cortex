@@ -562,6 +562,28 @@ If you're setting up a **server agent** (Joseph, Esther, Kustos, Gisu) rather th
 
 ---
 
+## Shared Database (gbrain Postgres)
+
+Every fleet agent has access to the shared **gbrain Postgres** database running on Moses's server. It provides:
+
+- **Agent Bus** (PGMQ message queues) — inbox/outbox for fleet communication
+- **`bus.todos`** — durable, fleet-visible todo persistence (via `todo-db.py`)
+- **`bus.loop_governance`** — shared cycle scoring across agents
+
+You don't need to install or manage Postgres yourself — your `cortex-update.sh` deploys the DB schemas automatically as part of the full stack.
+
+**Verify your DB connectivity:** The doctor checks this:
+
+```bash
+python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py
+```
+
+Look for `Todo DB connectivity` — should show `PASS` with your pending item count.
+
+**First sign something's wrong:** If `todo-db.py pending` returns errors on session start, gbrain Postgres may be down on Moses's end.
+
+---
+
 ## Done ✅
 
 You're connected. From now on:

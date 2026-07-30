@@ -2415,3 +2415,30 @@ def check_skills_version(res):
             res.add(f"Skills version ({len(no_version)} total)", "WARN",
                 f"{len(no_version) - 10} more skills missing version field",
                 "Add version to all SKILL.md files")
+
+
+def check_todo_db(res):
+    """Check that todo-db.py exists and can reach Postgres."""
+    todo_script = CORTEX_HOME / "scripts" / "todo-db.py"
+    if not todo_script.is_file():
+        res.add("Todo DB script", "FAIL",
+            f"Not found at {todo_script}",
+            "Run: cortex-update.sh to deploy todo-db.py")
+        return
+
+    # Quick connectivity test — run `todo-db.py pending` and check for valid JSON
+    out = run_bg(["python3", str(todo_script), "pending"], timeout=15)
+    if not out:
+        res.add("Todo DB connectivity", "FAIL",
+            "todo-db.py pending returned no output",
+            "Check gbrain Postgres is running: sg docker -c 'docker ps | grep gbrain-postgres'")
+        return
+
+    try:
+        data = json.loads(out)
+        count = len(data) if isinstance(data, list) else 0
+        res.add("Todo DB connectivity", "PASS", f"Postgres reachable, {count} pending item(s)")
+    except (json.JSONDecodeError, TypeError):
+        res.add("Todo DB connectivity", "FAIL",
+            f"todo-db.py output not valid JSON: {out[:200]}",
+            "Check gbrain Postgres: sg docker -c 'docker exec gbrain-postgres psql -U gbrain -d gbrain -c \"SELECT 1\"'")
