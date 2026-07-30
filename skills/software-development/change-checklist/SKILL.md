@@ -206,9 +206,10 @@ Changes that affect other agents' workflow must be documented.
   - Update comments in `deploy/nginx/hermes-services.conf` (the template itself)
   - Verify deploy scripts (`cortex-update.sh`, `install-nginx-full.sh`, `hermes-services-apply.py`) handle the new placeholder
 
-- [ ] **Agent workflow changed?**
+- [ ] **Agent workflow changed?** 🛡️
   - Update `AGENTS.md` if the execution contract, governance, or inbox framework changed
   - Update relevant agent `SOUL.md` files if their behavioral principles changed
+  - 🛡️ **Doc audit for every change**: `grep -rn \"<feature-name>\" AGENTS.md docs/agent-onboarding.md` — if zero matches, the change is undocumented for other agents
 
 - [ ] **New deployment dependency?**
   - Update `docs/agent-onboarding.md`
@@ -229,6 +230,8 @@ Changes that affect other agents' workflow must be documented.
 - [ ] **Pre-commit validation ran** (check for "change-validate:" output in last commit)
 - [ ] **Governance cycle scored** — `feedback_accept()` called before `end_change()`
 - [ ] **Change was pushed** — `git push origin main` (after `git pull --rebase`)
+- [ ] **Verify push succeeded** — `git log --oneline -1 origin/main` shows your latest commit (not just local `HEAD`)
+- [ ] **Deploy ran** — `bash ops/scripts/cortex-update.sh` after the push (not before)
 - [ ] **Cron delivery audit:** If you created or modified a cron job, verify its `deliver` destination actually goes somewhere visible. `deliver: "origin"` delivers nowhere if the cron was created from a script or non-chat context. No_agent watchdogs with `deliver: "local"` are invisible. Alerts should go to a chat the user sees.
 - [ ] **Timeout/deadline audit:** If you set a timeout, deadline, or alert threshold, verify it matches expected task duration. An agent completing a fix in 5 minutes should not have a 60-minute deadline. Rule of thumb: deadline = 3× expected worst-case completion time. A 15-minute default catches most failures within one alert cycle.
 
