@@ -707,9 +707,9 @@ check_each_mapped_file() {
   local _lock_helper="${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock"
   if [[ "$_os" == "Darwin" ]]; then
     if [[ -f "$_lock_helper" ]]; then
-      bash "$_lock_helper" unlock 2>/dev/null || true
+      bash "$_lock_helper" unlock --cortex-update 2>/dev/null || true
     elif command -v hermes-plugin-lock &>/dev/null; then
-      hermes-plugin-lock unlock 2>/dev/null || true
+      hermes-plugin-lock unlock --cortex-update 2>/dev/null || true
     fi
   else
     # Linux: non-root chattr -i fails with "Operation not permitted", so

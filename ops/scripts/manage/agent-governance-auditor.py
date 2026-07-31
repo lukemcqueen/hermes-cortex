@@ -361,7 +361,7 @@ def _check_infrastructure() -> list[str]:
           if "i" not in flags:
             issues.append(
               f" 🔓 Immutable flag MISSING on {path}.\n"
-              f"    Fix: sudo chattr +i {path}"
+              f"    Fix: sudo hermes-plugin-lock lock"
             )
       except (subprocess.TimeoutExpired, OSError, IndexError):
         continue # lsattr failed or file removed — skip gracefully

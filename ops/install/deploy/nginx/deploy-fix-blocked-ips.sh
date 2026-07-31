@@ -18,7 +18,7 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
-CORTEX_REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+CORTEX_REPO="$(cd "$(dirname "$0")/../../../.." && pwd)"
 SRC="${CORTEX_REPO}/ops/install/deploy/nginx/fix-blocked-ips.py"
 DEST="/usr/local/sbin/fix-blocked-ips.py"
 SUDOERS_FILE="/etc/sudoers.d/hermes-security"

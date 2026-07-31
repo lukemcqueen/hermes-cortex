@@ -16,9 +16,14 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
-if [ ! -d "$CORTEX_REPO" ]; then
-  CORTEX_REPO="$(cd "$SCRIPT_DIR/../.." && pwd 2>/dev/null || echo "$HOME/hermes-cortex")"
+# Resolve repo root robustly: prefer env, then git toplevel, then 3-up from
+# ops/scripts/manage/ (this file's canonical location).
+CORTEX_REPO="${CORTEX_REPO:-}"
+if [ -z "$CORTEX_REPO" ] || [ ! -d "$CORTEX_REPO" ]; then
+  CORTEX_REPO="$(cd "$SCRIPT_DIR" && git rev-parse --show-toplevel 2>/dev/null || true)"
+fi
+if [ -z "$CORTEX_REPO" ] || [ ! -d "$CORTEX_REPO" ]; then
+  CORTEX_REPO="$(cd "$SCRIPT_DIR/../../.." && pwd 2>/dev/null || echo "$HOME/hermes-cortex")"
 fi
 
 # P1-A hardening (2026-07-31): prefer the root-owned immutable deployed copy

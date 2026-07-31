@@ -62,7 +62,10 @@ if [[ "$_os" == "Darwin" ]]; then
 else
   REAL_HOME="$(getent passwd "$REAL_USER" 2>/dev/null | cut -d: -f6)"
 fi
-: "${REAL_HOME:-$HOME}"
+# ASSIGN the fallback (a bare `: "${REAL_HOME:-$HOME}"` validates but does
+# NOT set the variable — if getent fails, REAL_HOME stays empty and every
+# TARGET resolves to a root-level path).
+REAL_HOME="${REAL_HOME:-$HOME}"
 
 TARGETS=(
   "${REAL_HOME}/.hermes/plugins/governance-enforcer/__init__.py"
@@ -169,6 +172,18 @@ case "${1:-help}" in
     _this_script="$0"
     _repo_source="${REAL_HOME}/hermes-cortex/ops/install/deploy/nginx/hermes-plugin-lock"
     if [[ -f "$_repo_source" ]]; then
+      # P1-A hardening: only deploy from COMMITTED repo source. The working
+      # tree is user-writable — allowing `update` from an edited copy would
+      # be root code execution (edit the helper, then sudo update). Compare
+      # working tree against HEAD; refuse on any diff.
+      if ! git -C "${REAL_HOME}/hermes-cortex" diff --quiet HEAD -- \
+          ops/install/deploy/nginx/hermes-plugin-lock 2>/dev/null; then
+        echo "⛔ REFUSED: repo source has UNCOMMITTED changes." >&2
+        echo "   Commit (or revert) ops/install/deploy/nginx/hermes-plugin-lock" >&2
+        echo "   before self-update — the helper only deploys committed code." >&2
+        _audit "update" "REFUSED" "uncommitted-source" 1
+        exit 1
+      fi
       # Unlock self before overwriting (if immutable)
       _unlock_file "$_this_script" 2>/dev/null || true
       cat "$_repo_source" > "$_this_script" && chmod 755 "$_this_script" && echo "UPDATED: $_this_script from repo"

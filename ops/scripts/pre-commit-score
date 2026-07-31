@@ -74,29 +74,32 @@ fi
 # P1-A hardening (2026-07-31): the previous self-heal auto-deployed the
 # enforcer via direct `sudo unlock + cp + lock`, bypassing cortex-update
 # (the sanctioned deploy path). Now:
+#   • Trigger is COMMITTED HEAD ≠ deployed (a dirty working tree is never
+#     trusted — editing the repo copy must not push it into the deployed
+#     enforcer). This also fixes the false block: when HEAD == deployed but
+#     the working tree has uncommitted edits, cortex-update could not have
+#     resolved the old check (it deploys from origin, not local edits).
 #   • Orchestrator authoring a NEW enforcer change (AGENT_ID=moses|esther
-#     AND the staged change touches the enforcer) → auto-deploy, so the
-#     commit that introduces the change can land (origin/main doesn't have
-#     it yet — cortex-update could not satisfy the check pre-push).
-#   • Everyone else with deployed ≠ repo (or committed ≠ deployed) → HARD
-#     BLOCK: run cortex-update.sh. No silent drift acceptance.
-# Compare against `git show HEAD:` (committed truth), not the working tree,
-# so a dirty tree can't inject content into the deployed enforcer.
+#     AND the staged change touches the enforcer) → auto-deploy the working
+#     tree, so the commit that introduces the change can land (origin/main
+#     doesn't have it yet — cortex-update could not satisfy the check
+#     pre-push). The orchestrator is the sanctioned author of this file.
+#   • Everyone else with HEAD ≠ deployed → HARD BLOCK: run cortex-update.sh.
+#     No silent drift acceptance.
 DOGFOOD_REPO="${HOME}/hermes-cortex/plugins/governance-enforcer/__init__.py"
 DOGFOOD_DEPLOY="${HOME}/.hermes/plugins/governance-enforcer/__init__.py"
 DOGFOOD_HEAD=$(cd "${HOME}/hermes-cortex" && git show HEAD:plugins/governance-enforcer/__init__.py 2>/dev/null | sha256sum | cut -d' ' -f1 || echo "")
-if [[ -n "$DOGFOOD_HEAD" && -f "$DOGFOOD_REPO" && -f "$DOGFOOD_DEPLOY" ]]; then
-  REPO_HASH=$(sha256sum "$DOGFOOD_REPO" | cut -d' ' -f1)
+if [[ -n "$DOGFOOD_HEAD" && -f "$DOGFOOD_DEPLOY" ]]; then
   DEPLOY_HASH=$(sha256sum "$DOGFOOD_DEPLOY" | cut -d' ' -f1)
   STAGED_ENFORCER=$(git diff --cached --name-only 2>/dev/null | grep -c '^plugins/governance-enforcer/__init__.py$' || true)
   IS_ORCH=0
   case "${AGENT_ID:-}" in
     moses|esther) IS_ORCH=1 ;;
   esac
-  if [[ "$REPO_HASH" != "$DEPLOY_HASH" ]]; then
+  if [[ "$DOGFOOD_HEAD" != "$DEPLOY_HASH" ]]; then
     if [[ "$IS_ORCH" == "1" && "$STAGED_ENFORCER" -gt 0 ]]; then
       echo ""
-      echo "🔄  DOGFOOD — enforcer differs from deployed copy."
+      echo "🔄  DOGFOOD — committed enforcer differs from deployed copy."
       echo "    Orchestrator authoring detected (staged enforcer change). Auto-deploying via sanctioned helper..."
       sudo hermes-plugin-lock unlock --cortex-update 2>/dev/null || true
       cp -f "$DOGFOOD_REPO" "$DOGFOOD_DEPLOY" 2>/dev/null || true
@@ -104,7 +107,7 @@ if [[ -n "$DOGFOOD_HEAD" && -f "$DOGFOOD_REPO" && -f "$DOGFOOD_DEPLOY" ]]; then
       echo "✅  Auto-deployed: $(basename "$DOGFOOD_DEPLOY")"
     else
       echo ""
-      echo "❌  DOGFOOD — governance enforcer deployed copy differs from repo source."
+      echo "❌  DOGFOOD — governance enforcer deployed copy differs from committed repo source."
       echo "    The enforcement chain may only be updated via the sanctioned path."
       echo "    Run (allowed for every agent):"
       echo "      bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
