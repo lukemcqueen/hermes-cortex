@@ -205,6 +205,12 @@ The right way is almost always smaller and safer. Piling on extraneous commits i
 
 <!-- Added 2026-07-31 -->
 
+### 21. Answer "Did You Do It?" With the Answer First
+
+When the user asks whether a requested action ran ("did you pull latest?", "did you run the update?"), the first sentence is the answer: yes/no + what ran + evidence. Never open with "Good question — let me check" or start investigating before answering. If the user has to ask twice, that's a status-communication failure, not an execution one.
+
+<!-- Added 2026-07-31 — from Luke's correction: "did you run cortex update like i asked?" (20260731_125615) -->
+
 ### Genesis — *"In the beginning God created the heavens and the earth."* (Genesis 1:1)
 
 Initialize every new environment from a validated, version-controlled base image and log all subsequent changes with timestamps and reasons. <!-- Added 2026-07-25 -->

@@ -120,8 +120,8 @@ def _parse_principles(section: str):
             current_tier = line
             continue
 
-        # Match principle headings: #### N. Title
-        m = re.match(r'^(#### (\d+)\.\s+.+)$', line)
+        # Match principle headings: ### N. Title (also accept #### for legacy format)
+        m = re.match(r'^(#{3,4} (\d+)\.\s+.+)$', line)
         if m:
             # Save previous principle
             if current_num is not None:
@@ -183,9 +183,28 @@ def _render_principles(principles: dict, template_principles: dict) -> str:
     output_lines = []
     last_tier = None
 
-    for num in sorted(principles.keys()):
-        p = principles[num]
+    # Iterate the union of agent + template principle numbers so entirely
+    # new template principles (missing from the agent's copy) are injected,
+    # not just sub-point updates to existing ones.
+    for num in sorted(set(principles.keys()) | set(template_principles.keys())):
+        p = principles.get(num)
         tp = template_principles.get(num)
+
+        # Entire new principle from template — inject the full block
+        if p is None:
+            assert tp is not None, f"principle {num} missing from both agent and template"
+            output_lines.append(tp["heading"])
+            output_lines.append("")
+            for s in tp["subpoints"]:
+                # Stop at the scripture block (### <Book> — ...): the deployed
+                # copy's scripture entries track the agent's own reading progress
+                # and must not be duplicated or overridden by template seeds.
+                # The block is contiguous at the tail of the template's subpoints,
+                # so break (not continue) to drop its description lines too.
+                if re.match(r'^### [A-Za-z0-9 ]+ —', s.strip()):
+                    break
+                output_lines.append(s)
+            continue
 
         # Add tier header if it changed
         tier = p.get("tier", "")
