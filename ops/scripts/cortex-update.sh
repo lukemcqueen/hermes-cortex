@@ -604,6 +604,11 @@ copy_file() {
       else
         sudo -n chattr -i "$dest" 2>/dev/null || sudo -n "$(command -v hermes-plugin-lock 2>/dev/null || echo /usr/local/sbin/hermes-plugin-lock)" unlock 2>/dev/null || true
       fi
+      # Unlocking the immutable flag does NOT restore write permission —
+      # a file left 444 by a previous lock run (deploy_governance_plugin /
+      # end-of-script chmod 444) still fails `cp` with "Permission denied".
+      # Restore owner-write so the copy below can overwrite it.
+      chmod u+w "$dest" 2>/dev/null || sudo -n chmod u+w "$dest" 2>/dev/null || true
     fi
 
     # ── Add source header ────────────────────────────────────
