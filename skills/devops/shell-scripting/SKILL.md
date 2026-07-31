@@ -138,6 +138,45 @@ xxd <<< "$workdir"                            # see the literal byte values
 
 **Best practice for paths in scripts that will run on multiple machines:** Always `"$HOME"` (un-escaped) when you intend the user's home directory. Use a full absolute path like `"/home/moses"` only when the path must be hardcoded (and document why). Use `"${HOME}/subdir"` when you need a subdirectory. Never `"\$HOME"` — it never does what you want in this context.
 
+## Testing a Script Block in Isolation (Hook Guards, Conditionals)
+
+When you change a conditional guard inside a larger bash script (git hooks,
+installer guards), you often **can't trigger the changed branch from your own
+environment** — e.g. orchestrators skip the non-orch guard in
+`pre-commit-score` by design, and an in-flight sibling change may not be
+deployed yet. Extract the block and run it with stubs instead of staging a
+real commit:
+
+1. **Extract the real block, anchored on stable markers** (never line
+   numbers — they shift the moment you edit):
+   ```bash
+   awk '/^REPO_ROOT=/{p=1} p{print} /Reflexion gate/{exit}' \
+     ops/scripts/pre-commit-score > /tmp/guard-block.sh
+   ```
+2. **Prepend a stub preamble** forcing the branch you can't reach:
+   ```bash
+   set -euo pipefail
+   _detect_orch() { return 1; }          # force the non-orch branch
+   _log_impersonation() { echo >/dev/null; }
+   ```
+3. **Run from the real repo** so `git show HEAD:` / `git rev-parse` resolve.
+   Case matrix (bug → fix → enforcement preserved):
+   - *bug*: point the config path at a nonexistent file → expect the failure
+     (silent exit 1)
+   - *fixed*: apply the one-line fix → expect pass-through
+   - *guard*: stub STAGED_FILES with a restricted path → expect block + exit 1
+4. **Re-run against the DEPLOYED copy after deploy** — verify the runtime
+   path, not just the source (`diff deployed repo` first; line numbers
+   differ between source and deployed).
+5. **sed delimiter pitfall:** when the pattern contains `||`, `s|old|new|`
+   dies with "unknown option to `s'`" — use `@`: `s@old@new@`.
+
+Worked example (2026-07-31): `pre-commit-score` ORCH_CONFIG silent failure —
+`set -euo pipefail` + `VAR=$(git show HEAD:... || cat ... 2>/dev/null)` died
+silently (exit 1, no output) in repos without `docs/orchestrator-only-paths.txt`.
+Reproduced via this harness, fixed with `|| true`, all three cases verified,
+deployed, doctor clean.
+
 ## Awk Portability
 
 ### Beware: mawk vs gawk syntax
