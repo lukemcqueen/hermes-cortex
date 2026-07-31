@@ -84,16 +84,45 @@ _FILENAME_DOMAIN_SKILLS = {
 }
 # Path fragments that override the extension-based suggestion
 _PATH_CTX_HINTS = {
-    "test":    "test-driven-development",
-    "spec":    "test-driven-development",
-    "deploy":  "cortex-preflight",
-    "install": "cortex-preflight",
-    "cron":    "cron-job-management",
+    "test":      "test-driven-development",
+    "spec":      "test-driven-development",
+    "deploy":    "cortex-preflight",
+    "install":   "cortex-preflight",
+    "cron":      "cron-job-management",
+    "docs":      "documentation-auditing",
+    "reference": "documentation-auditing",
 }
 # Tracking: {session_id: {ext_or_filename: warning_count}}
 _domain_warnings: dict = {}
 # Previous action context: {session_id: {"last_action": str}}
 _prev_action: dict = {}
+
+# ── Adversarial commit gate ───────────────────────────
+# Before git commit/push of critical-system changes, require
+# adversarial-verifier skill. Same 💡/⛔/✅ pattern as domain gate.
+# MUST stay in sync with ops/scripts/cortex_doctor/ paths.
+_ADVERSARIAL_COMMIT_PATTERNS = [
+    r"\bgit\s+commit\b",
+    r"\bgit\s+push\b",
+]
+_ADVERSARIAL_CRITICAL_PATHS = [
+    "tests/",
+    "ops/scripts/cortex_doctor/",
+    "ops/scripts/manage/",
+    "plugins/governance-enforcer/",
+    "hooks/",
+    "mcp-servers/",
+]
+_adversarial_warnings: dict = {}  # {session_id: count}
+# Critical path display names per prefix (for the 💡 message)
+_ADVERSARIAL_DISPLAY = {
+    "tests/": "tests/",
+    "ops/scripts/cortex_doctor/": "doctor scripts",
+    "ops/scripts/manage/": "management scripts",
+    "plugins/governance-enforcer/": "governance enforcer plugin",
+    "hooks/": "repo hooks",
+    "mcp-servers/": "MCP servers",
+}
 
 
 def _detect_domain_skill_needed(tool_name: str, args: dict) -> tuple:
@@ -734,6 +763,102 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
         return {"action": "block", "message": msg}
 
 
+def _check_adversarial_commit_gate(
+    tool_name: str, args: dict, session_id: str,
+) -> Optional[dict]:
+    """Check if the agent has loaded adversarial-verifier before committing/pushing
+    critical-system changes.
+
+    Same 💡/⛔/✅ pattern as the domain skill gate. Blocks git commit/push
+    when staged changes touch critical paths and adversarial-verifier hasn't
+    been loaded in this session.
+
+    Returns None (pass through) or {"action": "block", "message": str}.
+    """
+    if tool_name != "terminal":
+        return None
+    command = args.get("command", "")
+    if not any(re.search(p, command) for p in _ADVERSARIAL_COMMIT_PATTERNS):
+        return None
+
+    # Skill already loaded — clear warnings and pass
+    if "adversarial-verifier" in _skills_loaded_in_session:
+        _adversarial_warnings.pop(session_id, None)
+        return None
+
+    # Check what files are about to be shipped
+    try:
+        if re.search(r"^\s*git\s+commit\b", command):
+            result = subprocess.run(
+                ["git", "diff", "--cached", "--name-only"],
+                capture_output=True, text=True, timeout=5,
+                cwd=Path.home() / "hermes-cortex",
+            )
+        else:
+            # git push — check commits to push
+            result = subprocess.run(
+                ["git", "diff", "@{upstream}..HEAD", "--name-only"],
+                capture_output=True, text=True, timeout=5,
+                cwd=Path.home() / "hermes-cortex",
+            )
+        if result.returncode != 0:
+            # May not have upstream — check last commit
+            result = subprocess.run(
+                ["git", "diff", "HEAD~1..HEAD", "--name-only"],
+                capture_output=True, text=True, timeout=5,
+                cwd=Path.home() / "hermes-cortex",
+            )
+        staged = [s.strip() for s in result.stdout.strip().split("\n") if s.strip()]
+    except (OSError, subprocess.TimeoutExpired):
+        return None  # Can't determine — don't block
+
+    # Check if any staged/pushed file is in a critical path
+    critical_hits = []
+    for staged_file in staged:
+        for critical_path in _ADVERSARIAL_CRITICAL_PATHS:
+            if staged_file == critical_path or staged_file.startswith(critical_path):
+                critical_hits.append(staged_file)
+                break
+
+    if not critical_hits:
+        return None  # No critical paths affected — pass
+
+    # Format readable path descriptions
+    path_descriptions = set()
+    for hit in critical_hits:
+        for prefix, desc in _ADVERSARIAL_DISPLAY.items():
+            if hit.startswith(prefix):
+                path_descriptions.add(desc)
+                break
+
+    # Track warnings
+    count = _adversarial_warnings.get(session_id, 0)
+    _adversarial_warnings[session_id] = count + 1
+
+    if count == 0:
+        msg = (
+            "💡 ADVERSARIAL VERIFICATION SUGGESTION\n\n"
+            "You are shipping changes to "
+            + ", ".join(sorted(path_descriptions))
+            + " without adversarial verification loaded.\n\n"
+            "**adversarial-verifier** systematically breaks code before it ships. "
+            "Load it to certify the change:\n\n"
+            "  skill_view(name='adversarial-verifier')\n\n"
+            "Then retry the command. Read-only tools ARE still available.\n"
+        )
+        return {"action": "block", "message": msg}
+
+    msg = (
+        "⛔ ADVERSARIAL VERIFICATION REQUIRED\n\n"
+        f"You have been warned {count} time(s) this session about shipping "
+        "critical changes without adversarial verification.\n\n"
+        "You must load and run it before shipping:\n"
+        "  skill_view(name='adversarial-verifier')\n\n"
+        "Then retry the command.\n"
+    )
+    return {"action": "block", "message": msg}
+
+
 def _on_session_start(session_id: str, **kwargs):
     """Write session marker at session start so MCP finds it before begin_change.
 
@@ -987,6 +1112,15 @@ def register(ctx):
             if domain_result is not None:
                 # Block with educational message
                 return domain_result
+
+            # ── Adversarial commit gate ──
+            # Before git commit/push of critical-system changes: require
+            # adversarial-verifier loaded. Same 💡/⛔/✅ as domain gate.
+            adversarial_result = _check_adversarial_commit_gate(
+                tool_name, args, hermes_session_id,
+            )
+            if adversarial_result is not None:
+                return adversarial_result
 
             # Survey gate: cronjob(create) requires survey-before-action marker
             # Call cronjob(action='list') + search_files() + skills_list() BEFORE

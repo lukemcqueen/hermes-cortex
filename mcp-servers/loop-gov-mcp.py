@@ -1044,12 +1044,6 @@ def _end_change(args: dict) -> CallToolResult:
     # Step 4: Release the lock
     _release_lock()
 
-    # Clean up skills-loaded marker for next task
-    import os as _os
-    _skills_marker = _os.path.expanduser("~/.hermes-cortex/state/.skills-loaded")
-    if _os.path.exists(_skills_marker):
-        _os.remove(_skills_marker)
-
     return CallToolResult(content=[TextContent(
         type="text",
         text=(

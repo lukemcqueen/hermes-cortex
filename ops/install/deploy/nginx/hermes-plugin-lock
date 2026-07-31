@@ -71,6 +71,13 @@ _unlock_file() {
   else
     chattr -i "$1"
   fi
+  # After unlocking a .py file, clear stale bytecode and touch source
+  # so Python recompiles on next import (mtime > pycache mtime).
+  if [[ "$1" == *.py ]]; then
+    local _dir; _dir="$(dirname "$1")"
+    rm -rf "${_dir}/__pycache__" 2>/dev/null || true
+    touch "$1" 2>/dev/null || true
+  fi
 }
 
 case "${1:-help}" in
