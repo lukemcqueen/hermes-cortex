@@ -41,6 +41,26 @@ var=$((var + 1))
 : $((var++))
 ```
 
+### `set -e` + failed command substitution in an assignment = silent exit
+
+A **silent-kill trap** distinct from `((var++))`: `VAR=$(cmd || fallback)` — when BOTH the command and its fallback fail, the assignment's exit status is the command substitution's non-zero status, and `set -e` aborts the script with **exit 1 and NO output** (stderr is typically already `2>/dev/null`'d):
+
+```bash
+# ❌ KILLS THE SCRIPT silently when both branches fail
+set -euo pipefail
+ORCH_CONFIG=$(git show HEAD:docs/config.txt 2>/dev/null || cat docs/config.txt 2>/dev/null)
+#   → file missing at HEAD AND on disk → both fail → assignment returns 1
+#     → set -e exits before the next line, no message printed
+
+# ✅ Safe — || true makes the LAST command of the AND-OR list always succeed
+ORCH_CONFIG=$(git show HEAD:docs/config.txt 2>/dev/null || cat docs/config.txt 2>/dev/null || true)
+if [[ -n "$ORCH_CONFIG" ]]; then ... fi   # empty = "no config", gate on -n
+```
+
+**The rule:** any optional/config file read with fallbacks must terminate the chain with `|| true`, and downstream logic must gate on `[[ -n $VAR ]]`. A missing optional file should mean "feature off", never "script dies".
+
+**Real bug (2026-07-31):** `pre-commit-score`'s orchestrator-only-paths guard read `docs/orchestrator-only-paths.txt` this way. Repos without the file (all KOSCAP repos) had EVERY non-orch commit fail with exit 1 and zero output. One `|| true` fixed it fleet-wide.
+
 ### `set -u` + uninitialized counter variable = premature exit
 
 When a script uses `set -u` (or `set -euo pipefail`) and a variable like `REMOVED` is only conditionally incremented (e.g., inside a loop that may iterate zero times), referencing it without a default value causes an immediate exit:
