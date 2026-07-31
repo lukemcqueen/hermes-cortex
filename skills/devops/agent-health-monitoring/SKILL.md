@@ -69,20 +69,22 @@ no PII, no version info — just eight bytes of binary flags.
 
 ## ⚠️ Two Vector Formats in Play
 
-There are **two different health vector formats** in the ecosystem. Confusing them
-is the #1 source of misdiagnosed health alerts. Always check which backend serves
-the endpoint you are polling.
+There is **one** deployed health vector format in the ecosystem. Earlier
+documentation described a FastAPI `health-server.py` variant — that file was
+**removed from the repo** (July 2026, commit `42fb8374`, "remove redundant
+FastAPI health-server") and `health-vector.py` running via `health-vector.service`
+is the **only** deployed server. Do not look for `health-server.py` — it does
+not exist in the repo and is not deployed anywhere in the fleet.
 
 | Format | Source | Vector length | Indices mean | Used by |
 |--------|--------|---------------|--------------|---------|
-| **Compact health** | `health-server.py` → `_build_compact_health()` | **9 elements** | Aggregated check results (see below) | Deployed `:13007/health` and `:12007/health` endpoints (nginx proxy to `:8905`) |
-| **Compact (health-vector.py variant)** | `health-vector.py` → `get_vector()` | **9 elements** (after migration — was 8-element legacy) | Same aggregated checks as compact format | Deployed on agents using the lightweight `health-vector.py` instead of FastAPI `health-server.py`; must keep CHECK_FUNCTIONS in sync with the 9-element standard |
+| **Compact health** | `health-vector.py` → `CHECK_FUNCTIONS` / `get_vector()` | **9 elements** | Aggregated check results (see below) | Every deployed health endpoint (`:13007/health`, `:12007/health`, `:14007/health` — nginx proxy to `:8905`) |
 
 ### Compact Health Format (DEPLOYED) — 9-element `v` array
 
-This is the format returned by every currently deployed health endpoint
-(`health-server.py` on port 8905, proxied via nginx, or `health-vector.py`
-with the migrated CHECK_FUNCTIONS — see `references/health-vector-schema-migration.md`).
+This is the format returned by every deployed health endpoint
+(`health-vector.py` via `health-vector.service` — see
+`references/health-vector-schema-migration.md` for the 8→9 element migration).
 
 ```python
 v = [
@@ -276,10 +278,14 @@ for compact display in health reports:
 | Esther | `"e"` |
 | Titus | `"t"` |
 
-Set this by patching the `HOSTNAME` variable near the top of `health-vector.py`:
+Set by `HEALTH_HOSTNAME` env var, falling back to the hostname's first character
+(`moses` → `m`, `gisu` → `g`, `titus` → `t`). Override per-machine if the
+hostname doesn't match the table:
 ```python
-HOSTNAME = "m"  # was: os.uname().nodename.split(".")[0]
+HOSTNAME = os.environ.get("HEALTH_HOSTNAME") or os.uname().nodename.split(".")[0][:1].lower() or "m"
 ```
+Run the service with `Environment=HEALTH_HOSTNAME=m` in the unit if the hostname
+ever diverges from the convention.
 
 **Bind address:** The server binds to **127.0.0.1** (loopback) when behind an
 nginx proxy to avoid port conflicts. nginx terminates TLS on `0.0.0.0`.
@@ -713,9 +719,11 @@ The orchestrator poller (`orch-team-health.py`) has a hardcoded `SERVICE_MAP` th
 | **Inbox API endpoint is `/api/inbox`, not `/api/messages`** | orch-health-report.py used `/api/messages?topic=health&from=titus` which returned 404 | The correct inbox JSON API endpoint is `GET /api/inbox?topic=<topic>&unread_only=false&for_=<agent>`. It returns `{"count": N, "messages": [...]}`. There is no `from` filter — filter messages by `msg.get("from")` client-side after fetching. See the `_fetch_inbox_vector()` implementation in both orch-health-report.py and orch-team-health.py. |
 | **Endpoint path is `/health`, not bare `/`** | Poller gets 404 on the root endpoint | The health-vector server serves at `GET /health`, not `GET /`. `curl -s http://127.0.0.1:8905/health`, not `http://...:8905/`. |
 | **Sharing untested URLs** | User calls you out for sending configs without verification | Test EVERY endpoint with `curl --max-time 5` from the external perspective before sharing with the user or peer agents. Do NOT only test from localhost — that only proves nginx is up locally. Check from the agent's perspective by reading the nginx access log for their IP or by using an external port checker. When an agent reports a connectivity issue, test ALL external endpoints (dashboard, langfuse, inbox, health) before diagnosing — a single endpoint being down vs all being down tells you whether it's a per-service or per-server/network problem. |
-| **Old `health-vector.service` vs new `com.hermes.health-server.service`** | Both systemd services exist, both claim port 8905. On boot they conflict — one fails to bind. | The old `health-vector.service` (standalone `health-vector.py` — lightweight check functions) is deprecated. The new `com.hermes.health-server.service` runs `health-server.py` (FastAPI with full checks including schedule-aware stale detection, logging, and runtime hardening). Migrate: `systemctl --user disable health-vector.service && systemctl --user enable --now com.hermes.health-server.service`. Next boot only the new service starts. |
+| **Old `com.hermes.health-server.service` vs current `health-vector.service`** | Docs mention a FastAPI `health-server.py` service on port 8905 — it was **removed from the repo** (July 2026). If `com.hermes.health-server.service` still exists on a machine it's an orphan from a pre-removal deploy. | The **current** canonical server is `health-vector.service` running `health-vector.py --serve 8905` (9-element compact vector, schedule-aware stale detection). If both units exist, disable the orphan: `systemctl --user disable --now com.hermes.health-server.service && systemctl --user enable --now health-vector.service`. Verify with `systemctl --user list-units | grep health`. |
 | **`check_services()` returns -1 when none are installed** | On macOS or agents without nginx/ollama/gbrain, `check_services()` iterates all key services and returns -1 if any is missing — even if the service isn't supposed to be there. | Fix: detect whether any key service is **installed** before checking. On Linux, check systemd unit existence. If none are present, return `0` (not applicable). On macOS, if no relevant processes are found via pgrep, return `0` instead of `-1`. |
 | **Ollama GPU crash cascade** | Health endpoint times out because Ollama crashes the GPU driver (Vulkan on old Intel HD 4000 iGPU, Ivy Bridge 2012). Ollama's vk::DeviceLostError destabilizes system resources, causing the health server to OOM-restart repeatedly (23+ restarts observed). The health vector looks broken but it's actually a cascading failure from Ollama. | Force Ollama to CPU-only on machines with old/incompatible GPUs: set OLLAMA_GPU_LAYER=false (or --cpu flag). On Ivy Bridge / HD 4000 era hardware, the iGPU does not support Vulkan fully. Check restart count: systemctl --user show com.hermes.health-server.service -p NRestarts. Check ollama journal: journalctl --user -u ollama.service --since 1 hour ago --no-pager. If you see vk::DeviceLostError in ollama logs, the GPU is the root cause. |
 | **Orphan service: `Loaded: not-found` + `Active: active (running)`** | `systemctl --user status <service>` shows `Loaded: not-found` but the service is still running. The unit file was deleted/removed but the process from a previous load is alive. It will NOT auto-start on reboot. | Don't restart blindly — that fails because the unit file is missing. Find the source unit (check repo `ops/install/` or private repo) and re-install: `cp <source> ~/.config/systemd/user/ && systemctl --user daemon-reload && systemctl --user restart <service>`. If no source unit exists, the service was intentionally removed — stop the orphan cleanly. Cross-reference with `ss -tlnp | grep python3` to match ports to PIDs. |
 | **Bus liveness vs health vector disagreement** | Agent shows offline (bus audit log) but green (HTTP health vector). You investigate a non-issue. | Check both signals before deciding. Bus-offline + health-green = alive but idle. Bus-offline + health-down = real problem. See the Two Orthogonal Monitoring Systems section above. |
+| **Paused cron trips stale/errored checks (FIXED 2026-07-31)** | A paused job (`enabled: false`, e.g. `orch-bus-forwarder-sync` paused for maintenance) keeps its old `last_run_at`. The stale check computes elapsed vs its schedule (e.g. `*/2 * * * *`) and flags it permanently stale — health index 3 red forever. Same for a paused job with a frozen `last_status: error`. | `check_no_stale_crons()` and `check_no_errored_crons()` skip jobs with `enabled != true`. Paused jobs are intentionally not running — their frozen timestamps/statuses must not drive the health vector. If health index 2 or 3 is red, first check whether the offender is paused before blaming the cron. |
+| **Gateway restart interrupts in-flight LLM crons** | A gateway restart ("Stopping gateway for restart...", drain timeout at 180s) kills in-flight cron sessions. They are marked `interrupted` → `last_status: error` with NO output file written. Health index 2 goes red until each cron completes a new run. All affected crons share the exact same `last_run_at` timestamp (the interruption moment). | Not a cron bug — recovery is automatic on the next scheduled run. Verify: same-timestamp errors across several crons + gateway shutdown log lines at that moment. To confirm the crons re-ran, check `~/.hermes/logs/agent.log` for new `cron_<jobid>_<newer-timestamp>` sessions. If the red persists past the next run, then investigate the cron itself. |
 | **Errored cron feeds health vector index 2** | Health shows -1 at index 2 (no_errored_crons). A watchdog exited non-zero legitimately detecting a real problem (e.g. ClickHouse merge failures from langfuse-health-watchdog). | Read the failing cron output from cron output dir. Fix the underlying problem, not the health check. The watchdog and health vector are working correctly. |

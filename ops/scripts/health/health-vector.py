@@ -49,7 +49,11 @@ SERVICE_MAP = [
     "gbrain_sources_ok",
 ]
 
-HOSTNAME = os.environ.get("HEALTH_HOSTNAME", "t")
+HOSTNAME = (
+    os.environ.get("HEALTH_HOSTNAME")
+    or os.uname().nodename.split(".")[0][:1].lower()
+    or "m"
+)
 
 
 # ── Helpers ──
@@ -279,6 +283,8 @@ def check_no_errored_crons() -> int:
         data = json.loads(jobs_json.read_text())
         jobs = data if isinstance(data, list) else data.get("jobs", [])
         for j in jobs:
+            if not j.get("enabled", True):
+                continue  # paused/disabled jobs don't run — frozen status is not actionable
             if j.get("last_status") == "error":
                 return -1
         return 1
@@ -296,6 +302,8 @@ def check_no_stale_crons() -> int:
         jobs = data if isinstance(data, list) else data.get("jobs", [])
         now = time.time()
         for j in jobs:
+            if not j.get("enabled", True):
+                continue  # paused/disabled jobs don't run — never stale
             last_run = j.get("last_run_at")
             if not last_run or "T" not in str(last_run):
                 continue
@@ -316,10 +324,10 @@ def check_no_stale_crons() -> int:
 
 def check_nginx() -> int:
     """nginx: 1 = running, 0 = not installed, -1 = installed but down."""
-    if not shutil.which("nginx"):
-        return 0  # not installed on this system
     if _pgrep("nginx"):
         return 1
+    if not shutil.which("nginx"):
+        return 0  # not installed on this system
     return -1
 
 
