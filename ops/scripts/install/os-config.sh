@@ -58,6 +58,38 @@ check_agent_type() {
 
 export CORTEX_AGENT_TYPE
 
+# ── Agent identity (git authorship) ────────────────────────
+# ~/.hermes-cortex/agent.env is the per-host identity file
+# (gitignored — the hostname→agent mapping is infrastructure and
+# must NEVER be committed to the public repo). Format:
+#   AGENT_NAME=gisu
+# Orchestrator hosts derive AGENT_NAME from hostname (moses|esther);
+# non-orch hosts must have it provisioned once (each machine's
+# /home/<user> is a separate physical box, so the file is per-machine
+# even though the home path string is shared).
+AGENT_ENV_FILE="${HERMES_CORTEX_HOME:-${HOME}/.hermes-cortex}/agent.env"
+
+ensure_agent_identity() {
+  AGENT_NAME=""
+  if [[ -f "$AGENT_ENV_FILE" ]]; then
+    AGENT_NAME=$(grep -E '^AGENT_NAME=' "$AGENT_ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+  fi
+  # Orchestrator hosts: hostname IS the agent name — write if missing
+  if [[ -z "$AGENT_NAME" && "$CORTEX_AGENT_TYPE" == "orchestrator" ]]; then
+    AGENT_NAME=$(hostname -s 2>/dev/null || echo "unknown")
+    if [[ "$AGENT_NAME" != "unknown" ]]; then
+      mkdir -p "$(dirname "$AGENT_ENV_FILE")" 2>/dev/null || true
+      printf 'AGENT_NAME=%s\n' "$AGENT_NAME" > "$AGENT_ENV_FILE" 2>/dev/null || true
+    fi
+  fi
+  export AGENT_NAME
+}
+
+# Git author identity derived from AGENT_NAME — set by cortex-update.sh
+# into the repo's git config so commits carry the agent's identity.
+git_author_name()  { echo "${AGENT_NAME:-unknown}-agent"; }
+git_author_email() { echo "${AGENT_NAME:-unknown}@hermes.local"; }
+
 # ── Package Manager ─────────────────────────────────────────
 if [[ "$CORTEX_OS" == "macos" ]]; then
   PKG_MANAGER="brew"

@@ -54,6 +54,45 @@ _log_impersonation() {
   } >> "$ALERT_FILE" 2>/dev/null || true
 }
 
+# ── Agent identity (git authorship) ─────────────────────────
+# ~/.hermes-cortex/agent.env is the per-host identity file (gitignored).
+# cortex-update.sh sets the repo's git user from it; this hook VERIFIES
+# the commit author matches, so agent commits are attributed to the agent
+# (never the shared human account) without requiring AGENT_ID at runtime.
+AGENT_ENV_FILE="${HOME}/.hermes-cortex/agent.env"
+AGENT_NAME=""
+if [[ -f "$AGENT_ENV_FILE" ]]; then
+  AGENT_NAME=$(grep -E '^AGENT_NAME=' "$AGENT_ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+fi
+export AGENT_NAME
+
+# Author of the commit being created (config may be overridden by env).
+_AUTHOR_NAME=$(git var GIT_AUTHOR_IDENT 2>/dev/null | sed -E 's/^(.*) <.*$/\1/')
+_AUTHOR_EMAIL=$(git var GIT_AUTHOR_IDENT 2>/dev/null | sed -E 's/^.*<([^>]*)>.*$/\1/')
+if [[ -z "${AGENT_NAME:-}" || "$AGENT_NAME" == "unknown" ]]; then
+  echo ""
+  echo "❌  Agent identity not provisioned."
+  echo "    ~/.hermes-cortex/agent.env is missing AGENT_NAME."
+  echo "    Run: echo 'AGENT_NAME=<your-agent>' > ~/.hermes-cortex/agent.env"
+  echo "    Then: bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
+  echo "    (This keeps agent commits attributed to the agent, not the human.)"
+  echo ""
+  exit 1
+fi
+# Orchestrator hosts must have agent.env AGENT_NAME == hostname (moses|esther).
+# A mismatch here is a provisioning error or an impersonation attempt.
+if _detect_orch; then
+  _host_now=$(hostname -s 2>/dev/null || echo "unknown")
+  if [[ "$AGENT_NAME" != "$_host_now" ]]; then
+    _log_impersonation "AGENT_NAME=${AGENT_NAME} on host ${_host_now}"
+    echo ""
+    echo "❌  agent.env AGENT_NAME (${AGENT_NAME}) does not match orchestrator host (${_host_now})."
+    echo "    Fix: echo 'AGENT_NAME=${_host_now}' > ~/.hermes-cortex/agent.env"
+    echo ""
+    exit 1
+  fi
+fi
+
 # ── Guard: git hooksPath must point to our hooks ─────────────
 # If core.hooksPath is unset or wrong, this pre-commit hook
 # wouldn't even be running — but we check anyway for safety.
@@ -279,7 +318,7 @@ if [[ "$IS_ORCH" != "1" ]]; then
   if [[ "$ORCH_VIOLATION" -eq 1 ]]; then
     echo ""
     echo "❌  Orchestrator-only files cannot be modified by non-orch agents."
-    echo "    Current host: $AGENT_ID"
+    echo "    Current host: $(hostname -s 2>/dev/null || echo unknown) (detected from hostname+home-dir)"
     echo "    This restriction is enforced: the path list is read from the"
     echo "    COMMITTED config (docs/orchestrator-only-paths.txt), not the"
     echo "    working copy. Editing the config file won't bypass it."

@@ -1618,6 +1618,20 @@ main() {
   local os_config="${CORTEX_DEPLOY_HOME}/scripts/install/os-config.sh"
   [[ -f "$os_config" ]] && source "$os_config" 2>/dev/null || true
 
+  # ── Agent identity (git authorship) ──
+  # Read/provision ~/.hermes-cortex/agent.env (per-host, gitignored) and set
+  # the repo's git identity so commits carry the agent's name, not the shared
+  # account's. Non-orch hosts must have agent.env provisioned (the hostname→
+  # agent mapping is infrastructure and stays out of the public repo).
+  ensure_agent_identity 2>/dev/null || true
+  if [[ -n "${AGENT_NAME:-}" && "$AGENT_NAME" != "unknown" ]]; then
+    git config user.name  "$(git_author_name)"  2>/dev/null || true
+    git config user.email "$(git_author_email)" 2>/dev/null || true
+    info "Agent identity: ${AGENT_NAME} (git author: $(git_author_name) <$(git_author_email)>)"
+  else
+    warn "AGENT_NAME not provisioned — run: echo 'AGENT_NAME=<your-agent>' > ~/.hermes-cortex/agent.env"
+  fi
+
   echo ""
   echo -e "${BOLD}━━━ Cortex Update ━━━${RESET}"
   echo ""
