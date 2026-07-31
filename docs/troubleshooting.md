@@ -780,7 +780,7 @@ fi
 _home="${_home:-$HOME}"
 ```
 
-**Status:** local working-tree patch exists on the macOS host (in `ops/scripts/` — orchestrator-only path, pending Moses to merge upstream). See `docs/orchestrator-only-paths.txt`.
+**Status:** ✅ **Fixed in repo (2026-08-01)** — the `command -v getent` guard + `$HOME` fallback now ships in all 5 `cortex-update.sh` sites and `ops/scripts/install/os-config.sh`. Pull latest + run cortex-update to get it; no manual patch needed.
 
 ### 21. `sudo hermes-plugin-lock lock` hangs/fails on macOS
 
@@ -798,7 +798,7 @@ else
 fi
 ```
 
-**Status:** local working-tree patch exists on the macOS host (orchestrator-only path, pending Moses).
+**Status:** ✅ **Fixed in repo (2026-08-01)** — the Darwin no-sudo branch is merged in the "Locking enforcement files…" step, and also applied to the sibling "Re-lock hook scripts after deploy" site (same flaw class).
 
 ### 22. `chflags: /usr/local/bin/hermes-plugin-lock: Permission denied` (FAILED line)
 
@@ -823,6 +823,8 @@ sudo chown "$USER":staff /usr/local/bin/hermes-plugin-lock
 
 Or accept the `FAILED:` line; the home copy is the protected one.
 
+**Status:** ✅ **Now automatic (2026-08-01)** — `deploy_system_scripts()` chowns the Darwin system copy to the invoking user (`sudo chown "$(id -un)":staff`) on both the self-update and `sudo cp` paths. The manual chown below is no longer required on fresh deploys.
+
 ### 23. After cortex-update, `begin_change`/write tools block: lock was purged
 
 **Symptom:** The update finishes, then your next `terminal`/`patch` call is refused with `GOVERNANCE LOCK REQUIRED`.
@@ -845,7 +847,7 @@ Then score all PENDING cycles (`cycle_query` → `feedback_accept`) and `end_cha
 
 **Fix:** score them — for cycles whose work you can verify, `feedback_accept`; for stale/unknown ones, `feedback_override(correct_decision="MOVE_ON")` with a note.
 
-> ⚠️ **Known bug (2026-07-31):** `_feedback_override` in `mcp-servers/loop-gov-mcp.py` sets `user_overrode=1` and `outcome_note` but **never updates the `decision` column** — PENDING cycles stay PENDING after an override, so the doctor keeps failing. `feedback_accept` works correctly (it sets `decision`). Workaround until Moses merges a fix: after overriding, set the decision directly:
+> ✅ **Fixed (2026-08-01):** `_feedback_override` in `mcp-servers/loop-gov-mcp.py` now sets the `decision` column (`UPDATE … SET user_overrode=1, decision=?, outcome_note=?`), so PENDING cycles become `MOVE_ON` on override and the doctor clears. Workaround below kept for reference on older deployed copies:
 > ```bash
 > sqlite3 ~/.hermes-cortex/data/loop-governance.db \
 >   "UPDATE loop_cycles SET decision='MOVE_ON' WHERE id=<id> AND user_overrode=1 AND decision='PENDING';"
