@@ -597,8 +597,13 @@ copy_file() {
     fi
 
     # macOS/Linux immutable flag: unlock before overwrite
+    # Linux: chattr -i needs root — use sudo. macOS: chflags works as owner.
     if [[ -f "$dest" && ! -w "$dest" ]]; then
-      chflags nouchg "$dest" 2>/dev/null || chattr -i "$dest" 2>/dev/null || true
+      if [[ "$(uname -s)" == "Darwin" ]]; then
+        chflags nouchg "$dest" 2>/dev/null || true
+      else
+        sudo -n chattr -i "$dest" 2>/dev/null || sudo -n "$(command -v hermes-plugin-lock 2>/dev/null || echo /usr/local/sbin/hermes-plugin-lock)" unlock 2>/dev/null || true
+      fi
     fi
 
     # ── Add source header ────────────────────────────────────
@@ -673,12 +678,26 @@ check_each_mapped_file() {
   local action="${1:-delta}"  # delta or full
   local src dest service restart_cmd
 
-  # Unlock enforcement files so cortex-update.sh can update them
+  # Unlock enforcement files so cortex-update.sh can update them.
+  # Linux: chattr -i needs root — use the NOPASSWD sudo helper.
+  # macOS: chflags uchg works without root — plain bash is fine.
+  local _os; _os=$(uname -s)
   local _lock_helper="${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock"
-  if [[ -f "$_lock_helper" ]]; then
-    bash "$_lock_helper" unlock 2>/dev/null || true
-  elif command -v hermes-plugin-lock &>/dev/null; then
-    sudo hermes-plugin-lock unlock 2>/dev/null || true
+  if [[ "$_os" == "Darwin" ]]; then
+    if [[ -f "$_lock_helper" ]]; then
+      bash "$_lock_helper" unlock 2>/dev/null || true
+    elif command -v hermes-plugin-lock &>/dev/null; then
+      hermes-plugin-lock unlock 2>/dev/null || true
+    fi
+  else
+    # Linux: non-root chattr -i fails with "Operation not permitted", so
+    # the previous `bash "$_lock_helper" unlock` silently left files locked
+    # and the cp below aborted. Route through the sudo helper (NOPASSWD).
+    if command -v hermes-plugin-lock &>/dev/null; then
+      sudo -n hermes-plugin-lock unlock 2>/dev/null || true
+    elif [[ -f "$_lock_helper" ]]; then
+      sudo -n "$_lock_helper" unlock 2>/dev/null || bash "$_lock_helper" unlock 2>/dev/null || true
+    fi
   fi
 
   # Merge ORCH_MAP entries on orchestrator hosts

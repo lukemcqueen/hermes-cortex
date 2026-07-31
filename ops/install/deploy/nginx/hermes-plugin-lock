@@ -50,9 +50,11 @@ TARGETS=(
 )
 
 # ── Self-protection: the binary itself ────────────────────
-# Deployed to ~/.hermes-cortex/scripts/ (user-owned, chattr +i works without sudo)
+# Deployed to ~/.hermes-cortex/scripts/ (user-owned, chflags/chattr works
+# without sudo on macOS; chattr needs root on Linux)
 if [[ "$_os" == "Darwin" ]]; then
   TARGETS+=("/usr/local/bin/hermes-plugin-lock")
+  TARGETS+=("${REAL_HOME}/.hermes-cortex/scripts/hermes-plugin-lock")
 else
   TARGETS+=("${REAL_HOME}/.hermes-cortex/scripts/hermes-plugin-lock")
 fi
