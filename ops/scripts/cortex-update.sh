@@ -157,7 +157,8 @@ register() {
   MAP+=("${s1}|${s2}|${s3}|${s4}")
 }
 
-# register_orch — Only register on orchestrator hosts (moses, esther, or AGENT_TYPE=orchestrator)
+# register_orch — Only register on orchestrator hosts (hostname moses|esther
+# AND matching /home/<hostname> home dir; env vars grant no orch powers)
 # After calling this, the sync loop handles ORCH_MAP entries the same as MAP.
 ORCH_MAP=()
 register_orch() {
@@ -723,13 +724,17 @@ check_each_mapped_file() {
   fi
 
   # Merge ORCH_MAP entries on orchestrator hosts
+  # Orchestrator = hostname moses|esther AND matching home dir. Env vars
+  # (AGENT_TYPE / IS_ORCHESTRATOR) grant NO orch powers — they are spoofable.
   local _is_orch=false
-  local _host
+  local _host _home _user
   _host=$(hostname -s 2>/dev/null || echo "unknown")
+  _user=$(id -un 2>/dev/null || echo "$USER")
+  _home=$(getent passwd "$_user" 2>/dev/null | cut -d: -f6)
+  _home="${_home:-$HOME}"
   case "$_host" in
-    moses|esther) _is_orch=true ;;
+    moses|esther) [[ "$_home" == "/home/$_host" ]] && _is_orch=true ;;
   esac
-  [[ "${AGENT_TYPE:-}" == "orchestrator" || "${IS_ORCHESTRATOR:-false}" == "true" ]] && _is_orch=true
 
   local entries=("${MAP[@]}")
   if $_is_orch && [[ ${#ORCH_MAP[@]} -gt 0 ]]; then
@@ -795,9 +800,16 @@ clean_stale_deploys() {
   # Also protect ORCH_MAP destinations on orchestrator hosts
   if [[ ${#ORCH_MAP[@]} -gt 0 ]]; then
     local _is_orch=false
-    local _host; _host=$(hostname -s 2>/dev/null || echo "unknown")
-    case "$_host" in moses|esther) _is_orch=true ;; esac
-    [[ "${AGENT_TYPE:-}" == "orchestrator" || "${IS_ORCHESTRATOR:-false}" == "true" ]] && _is_orch=true
+    local _host _home _user
+    _host=$(hostname -s 2>/dev/null || echo "unknown")
+    _user=$(id -un 2>/dev/null || echo "$USER")
+    _home=$(getent passwd "$_user" 2>/dev/null | cut -d: -f6)
+    _home="${_home:-$HOME}"
+    # Orchestrator = hostname moses|esther AND matching home dir. Env vars
+    # (AGENT_TYPE / IS_ORCHESTRATOR) grant NO orch powers — they are spoofable.
+    case "$_host" in
+      moses|esther) [[ "$_home" == "/home/$_host" ]] && _is_orch=true ;;
+    esac
     if $_is_orch; then
       for entry in "${ORCH_MAP[@]}"; do
         IFS='|' read -r _ dest _ _ <<< "$entry"
@@ -1892,19 +1904,16 @@ main() {
       info "Crons up to date" || warn "Cron install skipped (no hermes CLI?)"
 
     # ── Orchestrator-only crons (team health, soul refinement, etc.) ──
-    # Guard: AGENT_TYPE env var, or IS_ORCHESTRATOR, or hostname fallback
+    # Guard: hostname moses|esther AND matching home dir. Env vars
+    # (AGENT_TYPE / IS_ORCHESTRATOR) grant NO orch powers — they are spoofable.
     _ORCH=false
-    if [[ "${AGENT_TYPE:-}" == "orchestrator" ]]; then
-      _ORCH=true
-    elif [[ "${IS_ORCHESTRATOR:-false}" == "true" ]]; then
-      _ORCH=true
-    fi
-    if ! $_ORCH; then
-      ORCH_HOST=$(hostname -s 2>/dev/null || echo "unknown")
-      case "$ORCH_HOST" in
-        moses|esther) _ORCH=true ;;
-      esac
-    fi
+    ORCH_HOST=$(hostname -s 2>/dev/null || echo "unknown")
+    ORCH_USER=$(id -un 2>/dev/null || echo "$USER")
+    ORCH_HOME=$(getent passwd "$ORCH_USER" 2>/dev/null | cut -d: -f6)
+    ORCH_HOME="${ORCH_HOME:-$HOME}"
+    case "$ORCH_HOST" in
+      moses|esther) [[ "$ORCH_HOME" == "/home/$ORCH_HOST" ]] && _ORCH=true ;;
+    esac
     if $_ORCH; then
       CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME}" bash "${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh" 2>/dev/null && \
         info "Orch crons up to date" || warn "Orch cron install skipped"

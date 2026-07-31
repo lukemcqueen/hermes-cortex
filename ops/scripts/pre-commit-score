@@ -21,6 +21,39 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
+# ── Orchestrator detection (hostname + home-dir, never env) ──
+# Orchestrator hosts are identified by TWO independent signals:
+#   1. hostname -s is moses or esther
+#   2. the real account home is /home/moses or /home/esther
+# AGENT_ID / AGENT_TYPE env vars grant NO privileges here — a
+# non-orchestrator host cannot impersonate an orchestrator by
+# setting them (that is the hole this replaces).
+_detect_orch() {
+  local _host _home _user
+  _host=$(hostname -s 2>/dev/null || echo "unknown")
+  _user=$(id -un 2>/dev/null || echo "$USER")
+  _home=$(getent passwd "$_user" 2>/dev/null | cut -d: -f6)
+  _home="${_home:-$HOME}"
+  case "$_host" in
+    moses|esther)
+      [[ "$_home" == "/home/$_host" ]] && return 0
+      ;;
+  esac
+  return 1
+}
+
+# ── Impersonation watchtower ────────────────────────────────
+# When an AGENT_ID claims moses|esther but this host is NOT an
+# orchestrator, that is an impersonation attempt. LOUD: append to
+# the alert file (delivered to Telegram by a no_agent watchdog).
+ALERT_FILE="${HOME}/.hermes-cortex/state/impersonation-alerts.log"
+_log_impersonation() {
+  local claimed="${1:-unknown}"
+  {
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] IMPERSONATION: AGENT_ID=${claimed} claimed on host $(hostname -s 2>/dev/null) — non-orchestrator host cannot be moses/esther"
+  } >> "$ALERT_FILE" 2>/dev/null || true
+}
+
 # ── Guard: git hooksPath must point to our hooks ─────────────
 # If core.hooksPath is unset or wrong, this pre-commit hook
 # wouldn't even be running — but we check anyway for safety.
@@ -93,9 +126,14 @@ if [[ -n "$DOGFOOD_HEAD" && -f "$DOGFOOD_DEPLOY" ]]; then
   DEPLOY_HASH=$(sha256sum "$DOGFOOD_DEPLOY" | cut -d' ' -f1)
   STAGED_ENFORCER=$(git diff --cached --name-only 2>/dev/null | grep -c '^plugins/governance-enforcer/__init__.py$' || true)
   IS_ORCH=0
-  case "${AGENT_ID:-}" in
-    moses|esther) IS_ORCH=1 ;;
-  esac
+  if _detect_orch; then
+    IS_ORCH=1
+  else
+    # A claimed orchestrator identity on a non-orch host is an impersonation attempt
+    case "${AGENT_ID:-}" in
+      moses|esther) _log_impersonation "$AGENT_ID" ;;
+    esac
+  fi
   if [[ "$DOGFOOD_HEAD" != "$DEPLOY_HASH" ]]; then
     if [[ "$IS_ORCH" == "1" && "$STAGED_ENFORCER" -gt 0 ]]; then
       echo ""
@@ -215,10 +253,15 @@ if echo "$STAGED_FILES" | grep -q "^docs/orchestrator-only-paths.txt"; then
   ORCH_VIOLATION=1
   echo "   ❌  docs/orchestrator-only-paths.txt — orchestrator only"
 fi
-# AGENT_ID is required — orchestrators use moses|esther, others use their name
-: "${AGENT_ID:?❌ AGENT_ID is not set — use AGENT_ID=moses (orchestrator) or AGENT_ID=<name> before any git commit}"
-ORCHESTRATORS="^(moses|esther)$"
-if ! echo "$AGENT_ID" | grep -qE "$ORCHESTRATORS"; then
+# Orchestrator identity is host-derived (hostname + home-dir), never env.
+# AGENT_ID is no longer required and grants no privileges.
+IS_ORCH=0
+_detect_orch && IS_ORCH=1
+if [[ "$IS_ORCH" != "1" ]]; then
+  # A claimed orchestrator identity on a non-orch host is an impersonation attempt
+  case "${AGENT_ID:-}" in
+    moses|esther) _log_impersonation "$AGENT_ID" ;;
+  esac
   # Non-orch agent — read the COMMITTED version of the config file
   # Using git show HEAD: ensures a tampered working copy can't bypass
   ORCH_CONFIG=$(git show HEAD:"${ORCH_PATHS_FILE#$REPO_ROOT/}" 2>/dev/null || cat "$ORCH_PATHS_FILE" 2>/dev/null)
@@ -636,12 +679,16 @@ for pattern in "${ORCHESTRATOR_ONLY_PATHS[@]}"; do
   fi
 done
 if [[ -n "$BLOCKED" ]]; then
-  # Determine agent type from AGENT_ID env var — no fallback, fail closed
-  HOST="${AGENT_ID:?❌ AGENT_ID is not set — use AGENT_ID=moses (orchestrator) or AGENT_ID=<name>}"
-  case "$HOST" in
-    moses|esther) AGENT_TYPE="orchestrator" ;;
-    *) AGENT_TYPE="server" ;;
-  esac
+  # Orchestrator identity is host-derived (hostname + home-dir), never env.
+  # AGENT_ID is no longer required and grants no privileges.
+  AGENT_TYPE="server"
+  if _detect_orch; then
+    AGENT_TYPE="orchestrator"
+  else
+    case "${AGENT_ID:-}" in
+      moses|esther) _log_impersonation "$AGENT_ID" ;;
+    esac
+  fi
   if [[ "$AGENT_TYPE" != "orchestrator" ]]; then
     echo ""
     echo "❌  Orchestrator-only path blocked: ${BLOCKED}"
@@ -660,18 +707,31 @@ fi
 # If this fails, the hook is broken and ALL commits would bypass the guard.
 # Governance fails CLOSED — a broken guard blocks everything.
 echo "🧪  Self-test: orchestrator guard..."
-# Test 1: titus → should NOT match moses|esther
-AGENT_ID=titus bash -c 'case "${AGENT_ID:-$(hostname -s)}" in moses|esther) exit 1;; *) exit 0;; esac' 2>/dev/null
-TEST1=$?
-# Test 2: moses → SHOULD match
-AGENT_ID=moses bash -c 'case "${AGENT_ID:-$(hostname -s)}" in moses|esther) exit 0;; *) exit 1;; esac' 2>/dev/null
-TEST2=$?
-if [[ $TEST1 -eq 0 && $TEST2 -eq 0 ]]; then
-  echo "✅  Self-test passed: AGENT_ID controls orchestrator identity"
+# Test 1: _detect_orch returns 0 when the host IS an orchestrator (moses|esther
+#         hostname AND /home/<hostname> home), 1 otherwise. Env vars never flip it.
+if _detect_orch; then
+  # On an orch host: an AGENT_ID of a non-orch name must NOT demote us.
+  _ORCH_HOST=1
 else
-  echo "❌  Self-test FAILED! AGENT_ID is not controlling identity."
-  echo "    Non-orch (titus) blocked: $([ $TEST1 -eq 0 ] && echo 'PASS' || echo 'FAIL')"
-  echo "    Orch (moses) recognized:  $([ $TEST2 -eq 0 ] && echo 'PASS' || echo 'FAIL')"
+  # On a non-orch host: claiming AGENT_ID=moses must NOT promote us.
+  _ORCH_HOST=0
+fi
+# Test 2: the detection must be env-independent — simulate a spoofed claim
+# and confirm it changes nothing.
+if _detect_orch; then
+  _SPOOF_DEMOTES=$(AGENT_ID=titus _detect_orch && echo "wrong-promote" || echo "ok-still-orch")
+else
+  _SPOOF_PROMOTES=$(AGENT_ID=moses _detect_orch && echo "SPOOFED" || echo "ok-still-blocked")
+fi
+if [[ "$_ORCH_HOST" -eq 1 ]]; then
+  echo "✅  Self-test passed: host detected as orchestrator (hostname+home-dir)"
+  echo "    Env spoof check: $_SPOOF_DEMOTES"
+elif [[ "$_SPOOF_PROMOTES" == "ok-still-blocked" ]]; then
+  echo "✅  Self-test passed: non-orch host stays blocked even with AGENT_ID=moses"
+else
+  echo "❌  Self-test FAILED! Orchestrator identity is env-influenced."
+  echo "    Host: $([ "$_ORCH_HOST" -eq 1 ] && echo orch || echo non-orch)"
+  echo "    Spoof check: ${_SPOOF_PROMOTES:-$_SPOOF_DEMOTES}"
   echo "    GOVERNANCE IS BROKEN — blocking all commits until fixed."
   exit 1
 fi

@@ -24,18 +24,23 @@ CORTEX_PROFILE="${CORTEX_PROFILE:-server}"
 # ── Agent Type (role detection) ────────────────────────────
 # Used by scripts to self-audit: run only on correct agent type.
 # Values: orchestrator, server, dev
-# Detection: AGENT_TYPE env var → IS_ORCHESTRATOR → hostname → 'server'
-if [[ -n "${AGENT_TYPE:-}" ]]; then
-  CORTEX_AGENT_TYPE="$AGENT_TYPE"
-elif [[ "${IS_ORCHESTRATOR:-false}" == "true" ]]; then
-  CORTEX_AGENT_TYPE="orchestrator"
-else
-  _host=$(hostname -s 2>/dev/null || echo "unknown")
-  case "$_host" in
-    moses|esther) CORTEX_AGENT_TYPE="orchestrator" ;;
-    *)           CORTEX_AGENT_TYPE="server" ;;
-  esac
-fi
+# Detection: hostname moses|esther AND matching /home/<hostname> home dir
+# → orchestrator; otherwise 'server'. AGENT_TYPE / IS_ORCHESTRATOR env vars
+# grant NO orch powers — they are spoofable and never promote a host.
+_os_host=$(hostname -s 2>/dev/null || echo "unknown")
+_os_user=$(id -un 2>/dev/null || echo "$USER")
+_os_home=$(getent passwd "$_os_user" 2>/dev/null | cut -d: -f6)
+_os_home="${_os_home:-$HOME}"
+case "$_os_host" in
+  moses|esther)
+    if [[ "$_os_home" == "/home/$_os_host" ]]; then
+      CORTEX_AGENT_TYPE="orchestrator"
+    else
+      CORTEX_AGENT_TYPE="server"
+    fi
+    ;;
+  *) CORTEX_AGENT_TYPE="server" ;;
+esac
 
 # Self-audit: scripts call this to refuse on wrong agent type
 check_agent_type() {

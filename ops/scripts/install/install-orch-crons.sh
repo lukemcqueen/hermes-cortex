@@ -18,7 +18,9 @@
 set -euo pipefail
 
 # ── Guard: orchestrator check via shared os-config.sh ──
-# Sources os-config.sh for AGENT_TYPE detection + check_agent_type helper.
+# Sources os-config.sh for agent-type detection (hostname+home-dir
+# authoritative) + check_agent_type helper. IS_ORCHESTRATOR env/.env
+# values grant no orch powers — os-config never promotes from env.
 # os-config.sh deploys to ${CORTEX_DEPLOY_HOME}/scripts/install/ while this
 # script deploys flat to scripts/ — resolve from either location.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
@@ -34,7 +36,8 @@ if [[ -z "$OS_CONFIG" ]]; then
   exit 1
 fi
 source "$OS_CONFIG"
-# Backward compat: also check .env for IS_ORCHESTRATOR (pre-AGENT_TYPE installs)
+# .env is sourced for cron config values (model, provider) — NOT for role.
+# Role comes exclusively from os-config.sh's hostname+home-dir detection.
 CORTEX_ENV="${REPO_DIR:-${HOME}/hermes-cortex}/.env"
 if [[ -f "$CORTEX_ENV" ]]; then
   set -a; source "$CORTEX_ENV"; set +a
