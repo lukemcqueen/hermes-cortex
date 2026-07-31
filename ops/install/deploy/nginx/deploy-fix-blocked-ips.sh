@@ -25,11 +25,19 @@ CORTEX_REPO="$(cd "$SCRIPT_DIR/../../../.." && pwd 2>/dev/null || true)"
 [ -n "$CORTEX_REPO" ] || CORTEX_REPO="$(cd "$SCRIPT_DIR" && git rev-parse --show-toplevel 2>/dev/null || true)"
 SRC="${CORTEX_REPO}/ops/install/deploy/nginx/fix-blocked-ips.py"
 DEST="/usr/local/sbin/fix-blocked-ips.py"
-SUDOERS_FILE="/etc/sudoers.d/hermes-security"
+# Single sudoers file policy (2026-07-31): ALL hermes rules live in
+# /etc/sudoers.d/hermes — no separate hermes-security file.
+SUDOERS_FILE="/etc/sudoers.d/hermes"
 
 [ -f "$SRC" ] || { echo "✗ Source not found: ${SRC}"; exit 1; }
 
 echo "━━━ Deploying root-owned immutable fix-blocked-ips.py ━━━"
+
+# 0. Remove the obsolete hermes-security split file (one-file policy)
+if [ -f /etc/sudoers.d/hermes-security ]; then
+  echo "  Removing obsolete /etc/sudoers.d/hermes-security (one-file policy)"
+  rm -f /etc/sudoers.d/hermes-security
+fi
 
 # 1. Remove the OLD repo-path sudoers entry from EVERY sudoers.d file.
 #    The old entry (from /etc/sudoers.d/hermes, deployed 2026-07-27)

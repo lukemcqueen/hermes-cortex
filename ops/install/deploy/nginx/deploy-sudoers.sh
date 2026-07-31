@@ -12,7 +12,16 @@ set -euo pipefail
 
 CORTEX_REPO="$(cd "$(dirname "$0")/../../../.." && pwd)"
 SOURCE_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/hermes-security"
-TARGET_FILE="/etc/sudoers.d/hermes-security"
+# Single sudoers file policy (2026-07-31): ALL hermes rules deploy to
+# /etc/sudoers.d/hermes. hermes-security was the old split target — kept
+# as the repo source name for continuity, but the deploy target is hermes.
+TARGET_FILE="/etc/sudoers.d/hermes"
+
+# Remove the obsolete split file if present (one-file policy)
+if [ -f /etc/sudoers.d/hermes-security ]; then
+  echo "  Removing obsolete /etc/sudoers.d/hermes-security (one-file policy)"
+  rm -f /etc/sudoers.d/hermes-security
+fi
 
 if [ ! -f "$SOURCE_FILE" ]; then
   echo "✗ Source file not found at ${SOURCE_FILE}"

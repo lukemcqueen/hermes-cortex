@@ -1,5 +1,6 @@
 # Hermes sudoers — minimal passwordless sudo for automation
-# Deployed at /etc/sudoers.d/hermes
+# Single-file policy (2026-07-31): deployed at /etc/sudoers.d/hermes
+# (the obsolete /etc/sudoers.d/hermes-security split is removed on deploy)
 #
 # Moses agent — nginx management (called by crons)
 moses ALL=(root) NOPASSWD: /usr/sbin/nginx -t
