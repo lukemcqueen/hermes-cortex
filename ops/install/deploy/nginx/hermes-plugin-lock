@@ -16,15 +16,40 @@
 #    ~/.hermes-cortex/scripts/post-push-audit
 #    ~/.hermes-cortex/hooks/post-merge
 #    ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
-#    /usr/local/sbin/hermes-plugin-lock              (self-protection)
+#    ~/.hermes-cortex/hooks/                    (directory — symlink guard)
+#    /usr/local/sbin/hermes-plugin-lock         (self-protection)
 #
 #  Paths are hardcoded and validated — no argument injection.
 #  Each target that exists is locked; missing targets are skipped.
 #
-#  Usage:
-#    sudo hermes-plugin-lock lock     → set immutable on all
-#    sudo hermes-plugin-lock unlock   → unset immutable on all
-#    sudo hermes-plugin-lock status   → show flags for all
+#  ── Usage (2026-07-31 hardening) ───────────────────────────
+#    sudo hermes-plugin-lock lock                      → any agent may lock
+#    sudo hermes-plugin-lock status                    → any agent may inspect
+#    sudo hermes-plugin-lock unlock --cortex-update    → SANCTIONED: the only
+#        sanctioned unlock channel. cortex-update.sh passes this token
+#        (it is the designated deploy mechanism for the enforcement chain).
+#        Allowed for every agent — this is the intended update path.
+#    sudo hermes-plugin-lock unlock --orchestrator     → ORCHESTRATOR EXCEPTION:
+#        manual maintenance, bound to the Unix account (SUDO_USER/USER must
+#        be moses or esther). NOT an env var — an account-level boundary.
+#    hermes-plugin-lock update --cortex-update / --orchestrator
+#        → self-update, gated identically (rewrites the helper itself).
+#
+#  Any unlock/update WITHOUT a valid token is REFUSED and AUDIT-LOGGED.
+#  lock/status need no token.
+#
+#  ── Why args, not env vars ─────────────────────────────────
+#  sudoers on this host has env_reset with NO env_keep/SETENV —
+#  `sudo CORTEX_UPDATE=1 cmd` is rejected by sudo itself. Command-line
+#  args pass through sudoers command matching, so the token must be
+#  an argument. Verified: `sudo -n CORTEX_UPDATE=1 …` → "sorry, you
+#  are not allowed to set the following environment variables".
+#
+#  ── Audit ──────────────────────────────────────────────────
+#  Every unlock/update attempt (accepted OR refused) is appended to
+#  /var/log/hermes-enforcement.log (Linux; root-owned, append-only
+#  chattr +a) or ~/.hermes-cortex/state/enforcement-audit.log (macOS).
+#  governance-auditor.py surfaces unauthorized attempts.
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -47,6 +72,10 @@ TARGETS=(
   "${REAL_HOME}/.hermes-cortex/scripts/post-push-audit"
   "${REAL_HOME}/.hermes-cortex/hooks/post-merge"
   "${REAL_HOME}/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"
+  # hooks DIRECTORY itself — chattr +i on the dir prevents symlink swaps
+  # (hooks/pre-commit is a symlink; without dir immutability an attacker
+  # can rm the symlink and re-point it at an arbitrary script)
+  "${REAL_HOME}/.hermes-cortex/hooks"
 )
 
 # ── Self-protection: the binary itself ────────────────────
@@ -75,15 +104,68 @@ _unlock_file() {
   fi
   # After unlocking a .py file, clear stale bytecode and touch source
   # so Python recompiles on next import (mtime > pycache mtime).
-  if [[ "$1" == *.py ]]; then
+  if [[ -f "$1" && "$1" == *.py ]]; then
     local _dir; _dir="$(dirname "$1")"
     rm -rf "${_dir}/__pycache__" 2>/dev/null || true
     touch "$1" 2>/dev/null || true
   fi
 }
 
+# ── Audit log (2026-07-31) ─────────────────────────────────
+# Linux: /var/log/hermes-enforcement.log — root-owned, append-only.
+#   First use creates it (helper runs as root via NOPASSWD sudo) and
+#   sets chattr +a so even the moses account can't truncate/rotate it
+#   (only root-owned chattr -a can).
+# macOS: ~/.hermes-cortex/state/enforcement-audit.log (no root here).
+AUDIT_LOG="/var/log/hermes-enforcement.log"
+[[ "$_os" == "Darwin" ]] && AUDIT_LOG="${REAL_HOME}/.hermes-cortex/state/enforcement-audit.log"
+
+_audit() {
+  # args: action result channel exit_code
+  local line
+  line="$(date -u +%Y-%m-%dT%H:%M:%SZ) | $1 | $2 | $3 | user=${REAL_USER} | exit=$4"
+  # First-use setup (Linux, root): create + make append-only
+  if [[ "$_os" != "Darwin" && ! -f "$AUDIT_LOG" ]]; then
+    touch "$AUDIT_LOG" 2>/dev/null && chattr +a "$AUDIT_LOG" 2>/dev/null || true
+  fi
+  echo "$line" >> "$AUDIT_LOG" 2>/dev/null || true
+}
+
+# ── Sanctioned-caller gate (2026-07-31) ────────────────────
+# unlock/update mutate the enforcement chain. Valid tokens:
+#   --cortex-update  → cortex-update.sh (the sanctioned deploy path);
+#                      allowed for every agent (fleet updates).
+#   --orchestrator   → manual maintenance; REQUIRES the invoking Unix
+#                      account to be an orchestrator (moses|esther).
+#                      Bound to SUDO_USER (set by sudo) / USER, NOT to
+#                      the self-asserted AGENT_ID env var.
+# No token, or a token from a non-orchestrator account → REFUSED + logged.
+_require_sanctioned_caller() {
+  local action="$1" token="${2:-}" ok=0 channel=""
+  if [[ "$token" == "--cortex-update" ]]; then
+    ok=1; channel="cortex-update"
+  elif [[ "$token" == "--orchestrator" ]]; then
+    case "$REAL_USER" in
+      moses|esther) ok=1; channel="orchestrator-${REAL_USER}" ;;
+    esac
+  fi
+  if [[ "$ok" == "1" ]]; then
+    _audit "$action" "ACCEPTED" "$channel" 0
+    return 0
+  fi
+  _audit "$action" "REFUSED" "${token:-no-token}" 1
+  echo "⛔ REFUSED: the enforcement chain may only be updated via the sanctioned path." >&2
+  echo "  1. Run the sanctioned update (allowed for every agent):" >&2
+  echo "       bash ~/hermes-cortex/ops/scripts/cortex-update.sh" >&2
+  echo "     It deploys, relocks, and verifies automatically." >&2
+  echo "  2. Or send an inbox PROPOSAL to Moses/Esther to ship the change fleet-wide." >&2
+  echo "  This attempt was logged. (token=${token:-none})" >&2
+  return 1
+}
+
 case "${1:-help}" in
   update)
+    _require_sanctioned_caller "update" "${2:-}" || exit 1
     _this_script="$0"
     _repo_source="${REAL_HOME}/hermes-cortex/ops/install/deploy/nginx/hermes-plugin-lock"
     if [[ -f "$_repo_source" ]]; then
@@ -99,21 +181,22 @@ case "${1:-help}" in
     ;;
   lock)
     for t in "${TARGETS[@]}"; do
-      if [[ -f "$t" ]]; then
+      if [[ -e "$t" ]]; then
         _lock_file "$t" && echo "LOCKED: $t" || echo "FAILED: $t"
       fi
     done
     ;;
   unlock)
+    _require_sanctioned_caller "unlock" "${2:-}" || exit 1
     for t in "${TARGETS[@]}"; do
-      if [[ -f "$t" ]]; then
+      if [[ -e "$t" ]]; then
         _unlock_file "$t" && echo "UNLOCKED: $t" || echo "FAILED: $t"
       fi
     done
     ;;
   status)
     for t in "${TARGETS[@]}"; do
-      if [[ -f "$t" ]]; then
+      if [[ -e "$t" ]]; then
         if [[ "$_os" == "Darwin" ]]; then
           ls -lO "$t" | awk -v f="$t" '{for(i=1;i<=NF;i++){if($i~/^[a-z]+chg/||$i~/^[a-z]+immutable/){print f": locked";exit}} print f": not locked"}'
         else
@@ -123,11 +206,16 @@ case "${1:-help}" in
     done
     ;;
   *)
-    echo "Usage: $0 {lock|unlock|status}"
-    echo ""
-    echo "Operates on:"
+    echo "Usage: $0 {lock|status} | {unlock|update} {--cortex-update|--orchestrator}" >&2
+    echo "" >&2
+    echo "  lock/status              → any agent" >&2
+    echo "  unlock --cortex-update   → sanctioned (cortex-update.sh)" >&2
+    echo "  unlock --orchestrator    → orchestrator account only (moses|esther)" >&2
+    echo "  update (same tokens)     → self-update, gated identically" >&2
+    echo "" >&2
+    echo "Operates on:" >&2
     for t in "${TARGETS[@]}"; do
-      echo "  $t"
+      echo "  $t" >&2
     done
     exit 1
     ;;

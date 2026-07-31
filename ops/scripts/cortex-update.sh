@@ -13,6 +13,13 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
+# ── Sanctioned unlock channel (2026-07-31) ──
+# hermes-plugin-lock restricts unlock/update to a command-line token:
+#   sudo hermes-plugin-lock unlock --cortex-update
+# (env vars DON'T survive sudo on this host — sudoers has env_reset with
+# no SETENV/env_keep — so the token must be an argument, not an export.)
+# macOS runs the helper without sudo, where the arg token also works.
+
 # ── Bash version check — macOS ships bash 3.2 (no -A, no **) ──
 # Homebrew installs bash 4+ at /opt/homebrew/bin/bash (arm64) or
 # /usr/local/bin/bash (x86_64). If running under old bash on macOS,
@@ -317,6 +324,12 @@ register_orch "ops/scripts/orch-bus/orch-bus-depth-watchdog.sh"  "${CORTEX_DEPLO
 register_orch "ops/scripts/orch-bus/orch-bus-audit-watchdog.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-audit-watchdog.py"
 register_orch "ops/scripts/orch-bus/orch-bus-recover-timeouts.sh"   "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-recover-timeouts.sh"
 register "ops/scripts/manage/loop-gov-mcp.sh"            "${CORTEX_DEPLOY_HOME}/scripts/loop-gov-mcp.sh"
+# P1-A hardening (2026-07-31): the enforcement MCP server itself must run
+# from the IMMUTABLE deployed copy, not the user-writable repo working tree
+# (config.yaml previously booted it from ~/hermes-cortex/mcp-servers/ — an
+# agent could edit that file and silently disable begin_change enforcement).
+# Register the real server to the tools/ path the lock helper protects.
+register "mcp-servers/loop-gov-mcp.py"            "${CORTEX_DEPLOY_HOME}/tools/loop-governance/loop-gov-mcp.py"
 # Bus-renamed scripts — everything under ops/scripts/bus/
 register "ops/scripts/manage/ek-session-snapshot.py"     "${CORTEX_DEPLOY_HOME}/scripts/ek-session-snapshot.py"
 
@@ -603,7 +616,10 @@ copy_file() {
       if [[ "$(uname -s)" == "Darwin" ]]; then
         chflags nouchg "$dest" 2>/dev/null || true
       else
-        sudo -n chattr -i "$dest" 2>/dev/null || sudo -n "$(command -v hermes-plugin-lock 2>/dev/null || echo /usr/local/sbin/hermes-plugin-lock)" unlock 2>/dev/null || true
+        # P1-A hardening: route exclusively through the gated helper
+        # (direct chattr bypasses the sanctioned-caller gate). The
+        # --cortex-update token passes through sudoers arg matching.
+        sudo -n "$(command -v hermes-plugin-lock 2>/dev/null || echo /usr/local/sbin/hermes-plugin-lock)" unlock --cortex-update 2>/dev/null || true
       fi
       # Unlocking the immutable flag does NOT restore write permission —
       # a file left 444 by a previous lock run (deploy_governance_plugin /
@@ -700,9 +716,9 @@ check_each_mapped_file() {
     # the previous `bash "$_lock_helper" unlock` silently left files locked
     # and the cp below aborted. Route through the sudo helper (NOPASSWD).
     if command -v hermes-plugin-lock &>/dev/null; then
-      sudo -n hermes-plugin-lock unlock 2>/dev/null || true
+      sudo -n hermes-plugin-lock unlock --cortex-update 2>/dev/null || true
     elif [[ -f "$_lock_helper" ]]; then
-      sudo -n "$_lock_helper" unlock 2>/dev/null || bash "$_lock_helper" unlock 2>/dev/null || true
+      sudo -n "$_lock_helper" unlock --cortex-update 2>/dev/null || bash "$_lock_helper" unlock --cortex-update 2>/dev/null || true
     fi
   fi
 
@@ -1244,7 +1260,7 @@ deploy_system_scripts() {
   local deploy_dir="/usr/local/sbin"
   [[ "$_os" == "Darwin" ]] && deploy_dir="/usr/local/bin"
   local src_dir="${REPO_DIR}/ops/install/deploy/nginx"
-  local scripts=("install-nginx-full.sh" "hermes-nginx-clean-restart")
+  local scripts=("install-nginx-full.sh" "hermes-nginx-clean-restart" "hermes-plugin-lock")
   local files_copied=0
 
   [[ -d "$src_dir" ]] || return 0
@@ -1257,7 +1273,7 @@ deploy_system_scripts() {
       if command -v sudo &>/dev/null; then
         # ── Self-deploy via update command (binary can update itself) ──
         if [[ "$script" == "hermes-plugin-lock" ]] && [[ -f "$dest" ]]; then
-          sudo -n "$dest" update 2>/dev/null && {
+          sudo -n "$dest" update --cortex-update 2>/dev/null && {
             info "  Self-updated: ${script} → ${deploy_dir}/"
             files_copied=$((files_copied + 1))
             continue
@@ -1331,7 +1347,7 @@ deploy_governance_plugin() {
 
     # Remove immutability if set (uses sudo helper)
     if [[ -f "$dest" ]]; then
-      ${_lock_prefix} hermes-plugin-lock unlock 2>/dev/null || true
+      ${_lock_prefix} hermes-plugin-lock unlock --cortex-update 2>/dev/null || true
       info "    Removed immutability: ${file}"
     fi
 

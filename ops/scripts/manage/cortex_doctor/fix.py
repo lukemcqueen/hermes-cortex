@@ -248,7 +248,9 @@ print('ADDED')
   for label, key, path in immutability_paths:
     if key in fix_map and "WARN" in str(fix_map.get(key, "")):
       if path.exists():
-        if _run_fix(label, ["sudo", "chattr", "+i", str(path)]):
+        # Route through the gated helper (lock is open to all agents);
+        # direct chattr bypasses the sanctioned-caller gate.
+        if _run_fix(label, ["sudo", "hermes-plugin-lock", "lock"]):
           fixed += 1
         else:
           failed += 1

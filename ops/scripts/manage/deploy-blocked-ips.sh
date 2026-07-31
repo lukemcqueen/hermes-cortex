@@ -8,8 +8,11 @@
 #   bash deploy-blocked-ips.sh           # full deploy via sudo
 #   bash deploy-blocked-ips.sh --check   # dry-run (generate + validate only)
 #
-# Requires NOPASSWD:
-#   moses ALL=(root) NOPASSWD: $HOME/hermes-cortex/ops/install/deploy/nginx/fix-blocked-ips.py
+# Requires NOPASSWD (deployed root-owned immutable copy — NOT the repo copy,
+# which is user-writable and would be an arbitrary-root-code-execution hole):
+#   moses ALL=(root) NOPASSWD: /usr/local/sbin/fix-blocked-ips.py
+# Deploy the root copy with:
+#   sudo bash ~/hermes-cortex/ops/install/deploy/nginx/deploy-fix-blocked-ips.sh
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,7 +21,14 @@ if [ ! -d "$CORTEX_REPO" ]; then
   CORTEX_REPO="$(cd "$SCRIPT_DIR/../.." && pwd 2>/dev/null || echo "$HOME/hermes-cortex")"
 fi
 
-FIX_SCRIPT="${CORTEX_REPO}/ops/install/deploy/nginx/fix-blocked-ips.py"
+# P1-A hardening (2026-07-31): prefer the root-owned immutable deployed copy
+# at /usr/local/sbin. Fall back to the repo copy ONLY for --check (read-only).
+FIX_SCRIPT="/usr/local/sbin/fix-blocked-ips.py"
+if [ ! -f "$FIX_SCRIPT" ]; then
+  FIX_SCRIPT="${CORTEX_REPO}/ops/install/deploy/nginx/fix-blocked-ips.py"
+  echo "[deploy-blocked-ips] ⚠ using repo copy — deploy the root-owned copy:" >&2
+  echo "[deploy-blocked-ips]   sudo bash ~/hermes-cortex/ops/install/deploy/nginx/deploy-fix-blocked-ips.sh" >&2
+fi
 
 if [ ! -f "$FIX_SCRIPT" ]; then
   echo "[deploy-blocked-ips] ✗ fix-blocked-ips.py not found at ${FIX_SCRIPT}"

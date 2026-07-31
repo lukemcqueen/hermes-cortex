@@ -44,6 +44,20 @@
 > the hook — the path list IS the source of truth. If it's not on the
 > list but should be, message Moses.
 >
+> **RULE 7b: ENFORCEMENT CHAIN — cortex-update.sh IS THE ONLY UPDATE PATH**
+> The immutable enforcement files (governance enforcer plugin,
+> pre-commit/pre-push/post-commit/post-push hooks, loop-gov-mcp.py,
+> hermes-plugin-lock) may ONLY be updated by running:
+>   `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`
+> Direct `sudo hermes-plugin-lock unlock` is REFUSED for non-orchestrator
+> accounts (audit-logged to /var/log/hermes-enforcement.log). The only
+> exceptions are the sanctioned `--cortex-update` token (used by
+> cortex-update.sh itself) and the `--orchestrator` token (moses|esther
+> manual maintenance). If the DOGFOOD pre-commit check blocks you because
+> the deployed enforcer differs from the repo: run cortex-update.sh, reload
+> the 8 always-skills (the deploy invalidates the skills marker), re-acquire
+> your governance lock (the deploy purges locks), then retry the commit.
+>
 > **RULE 8: "PULL LATEST" = FULL REFRESH — DO NOT CUT CORNERS**
 > When the user says "pull latest", "update from repo", or any equivalent phrase, the sequence is:
 > 1. `git pull origin main` — pull latest hermes-cortex

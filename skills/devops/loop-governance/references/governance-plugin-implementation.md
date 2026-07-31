@@ -290,13 +290,15 @@ Before the plugin existed, a **loop-gov-mcp.py** script was written to provide `
 # Create the plugins directory if it doesn't exist
 mkdir -p ~/.hermes/plugins
 
-# The plugin deploys as a COPY via cortex-update.sh (not symlink — enables chattr +i):
+# The plugin deploys as a COPY via cortex-update.sh (not symlink — enables chattr +i).
+# cortex-update.sh is the ONLY sanctioned way to update the enforcement chain
+# (hermes-plugin-lock unlock/update require the --cortex-update token or an
+# orchestrator account since 2026-07-31):
 bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all
 
-# Alternatively, manually copy and lock:
-cp -r ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/governance-enforcer
-sudo hermes-plugin-lock unlock   # remove old immutability if set
-sudo hermes-plugin-lock lock     # set chattr +i
+# Manual maintenance (ORCHESTRATOR ACCOUNT ONLY — moses|esther):
+sudo hermes-plugin-lock unlock --orchestrator   # remove old immutability if set
+sudo hermes-plugin-lock lock                    # set chattr +i (any agent may lock)
 
 # Verify
 ls -la ~/.hermes/plugins/governance-enforcer/

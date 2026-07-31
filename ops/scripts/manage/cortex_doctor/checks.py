@@ -1402,6 +1402,10 @@ def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
     CORTEX_HOME / "tools/loop-governance/loop-gov-mcp.py",
     CORTEX_HOME / "scripts/hermes-plugin-lock",
   ]
+  # P1-A hardening (2026-07-31): the hooks DIRECTORY itself must be immutable
+  # (symlink-swap guard — hooks/pre-commit is a symlink; without dir +i an
+  # attacker can rm the symlink and re-point it at an arbitrary script).
+  targets.append(hooks_dir)
   for path in targets:
     if not path.exists():
       continue
@@ -1420,7 +1424,7 @@ def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
       else:
         res.add(f"Immutable: {path.name}", "FAIL",
             "immutable flag not set — enforcement file is modifiable",
-            f"Fix: sudo hermes-plugin-lock lock (or sudo chattr +i {real_path})")
+            f"Fix: sudo hermes-plugin-lock lock")
     except (subprocess.TimeoutExpired, OSError, IndexError):
       continue # lsattr failed — skip gracefully
 
@@ -1527,9 +1531,8 @@ def check_governance(res):
         else:
           res.add("Plugin content", "FAIL",
               "deployed copy differs from repo — stale after git update",
-              "REQUIRED: rm -rf ~/.hermes/plugins/governance-enforcer && "
-              "ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/"
-              " (replace copy with symlink so git pull keeps it fresh)")
+              "REQUIRED: bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
+              " (sanctioned deploy path — deploys, relocks, and verifies)")
       else:
         res.add("Plugin content", "WARN",
             "can't compare — source or deployed __init__.py missing")
@@ -1614,15 +1617,15 @@ def check_governance(res):
     elif "score-cycle" in content and "governance" in content:
       res.add("Pre-commit hook", "WARN",
           "missing enforcer plugin presence check",
-          "Update: cp ~/hermes-cortex/ops/scripts/pre-commit-score ~/.hermes-cortex/hooks/pre-commit"
+          "Update: bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
           " (current hook is missing enforcer verification)")
     else:
       res.add("Pre-commit hook", "WARN", "installed but may be outdated",
-          "Run: cp ~/hermes-cortex/ops/scripts/pre-commit-score ~/.hermes-cortex/hooks/pre-commit")
+          "Run: bash ~/hermes-cortex/ops/scripts/cortex-update.sh")
   else:
     res.add("Pre-commit hook", "FAIL", f"not found at {expected_hook_path}",
-        "Install: cp ~/hermes-cortex/ops/scripts/pre-commit-score ~/.hermes-cortex/hooks/pre-commit\n"
-        "Then: chmod +x ~/.hermes-cortex/hooks/pre-commit")
+        "Install: bash ~/hermes-cortex/ops/scripts/cortex-update.sh\n"
+        "The sanctioned deploy path installs and locks all hooks.")
 
   # ── Pre-push hook ──
   expected_push_hook = hooks_dir / "pre-push"

@@ -74,11 +74,14 @@ to handle immutability. This is handled by `cortex-update.sh`'s
 
 ```
 1. Check if deployed file has chattr +i
-2. If immutable → sudo hermes-plugin-lock unlock  (removes +i)
+2. If immutable → sudo hermes-plugin-lock unlock --cortex-update  (sanctioned token; removes +i)
 3. Copy updated files from repo
 4. chmod 444 on __init__.py
 5. If sudoers configured → sudo hermes-plugin-lock lock  (re-applies +i)
 ```
+> **Since 2026-07-31** `unlock`/`update` are gated: they require the
+> `--cortex-update` token (cortex-update.sh) or an orchestrator Unix account
+> (`--orchestrator`). Plain `sudo hermes-plugin-lock unlock` is REFUSED + audit-logged.
 
 ### Blanket Lock at End of Deploy
 
@@ -108,10 +111,10 @@ the old helper, new files get chmod 444 until the helper is updated.
 When the helper binary lists ITSELF as a target (for self-protection),
 every deploy must unlock the helper before overwriting it. Two mechanisms:
 
-1. **check_each_mapped_file()** does a blanket `sudo hermes-plugin-lock unlock`
+1. **check_each_mapped_file()** does a blanket `sudo hermes-plugin-lock unlock --cortex-update`
    at the start of the copy loop.
 2. **deploy_system_scripts()** has special handling for `hermes-plugin-lock`:
-   it tries `sudo -n "$dest" update` first (self-update), then falls back
+   it tries `sudo -n "$dest" update --cortex-update` first (self-update), then falls back
    to `sudo cp` if the self-update isn't available.
 
 Without this, the helper locks itself on deploy N, and deploy N+1 can't
@@ -454,13 +457,13 @@ Add a check like `_check_plugin_lock_helper()` when:
 ### Copy Deployment Lifecycle — Platform Detail
 
 On **Linux**:
-1. Check `chattr +i` via `lsattr` — if set → `sudo hermes-plugin-lock unlock`
+1. Check `chattr +i` via `lsattr` — if set → `sudo hermes-plugin-lock unlock --cortex-update`
 2. Copy updated files from repo
 3. `chmod 444` on `__init__.py`
 4. `sudo hermes-plugin-lock lock`
 
 On **macOS**:
-1. Check `chflags uchg` via `ls -lO` — if set → `sudo hermes-plugin-lock unlock`
+1. Check `chflags uchg` via `ls -lO` — if set → `sudo hermes-plugin-lock unlock --cortex-update`
 2. Copy updated files from repo  
 3. `chmod 444` on `__init__.py`
 4. `sudo hermes-plugin-lock lock`
