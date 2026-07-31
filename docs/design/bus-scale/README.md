@@ -66,6 +66,6 @@ All designs in this directory follow these principles:
 ## Related Documents
 
 - [`docs/reference/cortex-bus-config.md`](../../reference/cortex-bus-config.md) — Current bus configuration guide
-- [`docs/agent-bus-setup.md`](../../agent-bus-setup.md) — Bus setup and operation guide
+- [`docs/orch-bus-setup.md`](../../orch-bus-setup.md) — Bus setup and operation guide
 - [`docs/fleet-update-protocol.md`](../../fleet-update-protocol.md) — Fleet update message schemas
 - [`docs/agent-architecture.md`](../../agent-architecture.md) — Agent roles and capability matrix

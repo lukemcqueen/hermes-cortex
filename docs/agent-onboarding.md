@@ -128,7 +128,7 @@ and delivers results to your origin chat (typically Telegram DM).
 
 > ⚠ Do NOT create a cron named `agent-inbox-check` or use the old `agent-inbox-check.sh`
 > script — it is **deprecated** and no longer works. Always use `process-mcp-agent-inbox-messages`.
-> See **`docs/agent-bus-setup.md`** for the current Agent Bus architecture.
+> See **`docs/orch-bus-setup.md`** for the current Agent Bus architecture (orchestrator-only).
 
 ---
 

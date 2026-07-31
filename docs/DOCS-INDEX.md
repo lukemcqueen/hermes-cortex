@@ -47,7 +47,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/reference/cortex-bus-config.md` | **Cortex Bus Config Guide** — full architecture reference: fleet topology, auth model, ACL/permissions, message consumption, forwarder, troubleshooting |
 | `ops/scripts/lib/cortex_bus.py` | **Cortex Bus library** — shared HTTP API wrapper over the Agent Bus: bus_send/bus_read/bus_archive/bus_list_queues |
 | `docs/esther-bus-setup.md` | **Esther Bus Backup** — orchestrator-only guide: bus server, nginx with X-Forwarded-User, Postgres setup, verification |
-| ~~`docs/agent-inbox-setup.md`~~ | Agent inbox setup (legacy — file deleted; superseded by Agent Bus → `docs/agent-bus-setup.md`) |
+| ~~`docs/agent-inbox-setup.md`~~ | Agent inbox setup (legacy — file deleted; superseded by Agent Bus → `docs/orch-bus-setup.md`) |
 | `docs/service-layer-decision.md` | **Fleet-wide decision:** User-level systemd (Linux) / LaunchAgents (macOS) for all agent services. Full HC-Party architecture review with 6-role weighted matrix. |
 | `docs/linux-service-layer.md` | Linux service layer guide — user-level systemd, reboot survivability, template, migration from stale system units |
 | `docs/macos-service-layer.md` | macOS service layer guide — LaunchAgents vs LaunchDaemons, plist templates, migration guide, fleet service map |
@@ -94,7 +94,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/cron-format-standard.md` | **Cron output format standard** — required format for all LLM-driven cron outputs: header, phases, cost footer, [SILENT]. Cross-references the cron-format-standard skill. |
 | `docs/cron-job-recipes.md` | 10 reusable cron recipes — Bible reading, system alerts, memory pruning, morning briefing, and more |
 | `docs/agent-architecture.md` | **Agent architecture & role model** — orchestrator, backup, server-agent, dev-agent capability matrix |
-| `docs/agent-bus-setup.md` | Agent Bus setup guide — PGMQ queues, auth, fleet wiring |
+| `docs/orch-bus-setup.md` | Agent Bus setup guide — PGMQ queues, auth, fleet wiring (orchestrator-only) |
 | `docs/model-tier-strategy.md` | Model selection strategy — two-model Ollama stack, rationale, tier architecture |
 | `docs/health-server-optimization.md` | Health vector server — keepalive, buffering, nginx config tuning |
 | `docs/orch-bus-setup.md` | **Orchestrator bus setup** — dedicated bus server for Moses |
