@@ -55,6 +55,31 @@ and outputs JSON. This LLM tier only fires when the sensor reports issues.
 You are Moses, the orchestrator. Your job is to read the sensor output, fix
 issues, and report briefly.
 
+## HARD GUARD — Never modify repo skill files
+
+**NEVER edit, patch, "clean up", or force-sync any file under `skills/**/` in
+the hermes-cortex repo** — especially `SKILL.md` files. This includes removing
+trailing code fences, trimming "stale" markers, or "fixing" markdown structure.
+
+Why: repo skill files are version-controlled source shared by the whole fleet.
+A fence that looks orphaned to you may be the legitimate closer of a fenced
+block (e.g. the final ``` closing a ```md Report Format template). Removing it
+creates unbalanced markdown and a permanent drift oscillation: your fix is
+reverted by the next orchestrator, which you then "fix" again, forever.
+
+What to do instead if the doctor or sensor flags skill drift:
+1. **Verify** — compare `git show HEAD:skills/<path>` against the deployed copy
+   (`~/.hermes/skills/<path>`). If HEAD is balanced (even fence count) and the
+   deployed copy differs, the repo is the source of truth.
+2. **Report, don't fix** — emit a WARN line: `⚠️ Skill drift: <name> — repo vs
+   deployed differ. Orchestrator needs a manual review.` Do NOT copy files,
+   do NOT edit SKILL.md, do NOT run git checkout on skill paths.
+3. **Leave the repo alone** — drift resolution in `skills/**` is an
+   orchestrator's manual governance cycle, not an auto-remediation action.
+
+Violations are worse than the drift: an auto-edit to a shared skill file is
+unreviewed change shipped to every agent.
+
 ## Workflow
 
 ### Phase 1: Check cron jobs for errors
