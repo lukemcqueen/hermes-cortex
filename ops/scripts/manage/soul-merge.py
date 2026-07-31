@@ -173,38 +173,39 @@ def _find_missing_subpoints(template_subs: list, agent_subs: list) -> list:
     return missing
 
 
+def _title_key(heading: str) -> str:
+    """Normalize a principle heading to a number-agnostic title key.
+
+    Local SOULs accumulate agent-specific principles and their numbering
+    drifts from the template's (e.g. local P11 'No Bypass Flags' vs template
+    P11 'No Buck-Passing'). Matching must be by title, not number.
+    """
+    return re.sub(r'^#{3,4}\s*\d+\.\s*', '', heading).strip().lower()
+
+
 def _render_principles(principles: dict, template_principles: dict) -> str:
     """Render the principles section, merging template updates into agent copy.
 
-    For each principle in the template that doesn't exist in the agent's copy,
-    inject the entire principle from the template.
-    For principles that exist in both, inject missing sub-points.
+    Matching is by principle TITLE, not number. Number-only matching injected
+    template subpoints into the wrong local principle (observed 2026-07-31:
+    template P17 'Never Print Secrets' Pattern line landed in local P17
+    'Recommend Improvements'; template P20 'Take Responsibility' bullet landed
+    in local P20 'Unattended Destructive Actions'), and re-injected them on
+    every cortex-update.
+
+    For each local principle, merge missing sub-points from the template
+    principle with the same title. Template principles whose title is absent
+    from the agent's copy are injected in template order.
     """
+    template_by_title = {_title_key(tp["heading"]): tp for tp in template_principles.values()}
+    local_by_title = {_title_key(p["heading"]): p for p in principles.values()}
     output_lines = []
     last_tier = None
 
-    # Iterate the union of agent + template principle numbers so entirely
-    # new template principles (missing from the agent's copy) are injected,
-    # not just sub-point updates to existing ones.
-    for num in sorted(set(principles.keys()) | set(template_principles.keys())):
-        p = principles.get(num)
-        tp = template_principles.get(num)
-
-        # Entire new principle from template — inject the full block
-        if p is None:
-            assert tp is not None, f"principle {num} missing from both agent and template"
-            output_lines.append(tp["heading"])
-            output_lines.append("")
-            for s in tp["subpoints"]:
-                # Stop at the scripture block (### <Book> — ...): the deployed
-                # copy's scripture entries track the agent's own reading progress
-                # and must not be duplicated or overridden by template seeds.
-                # The block is contiguous at the tail of the template's subpoints,
-                # so break (not continue) to drop its description lines too.
-                if re.match(r'^### [A-Za-z0-9 ]+ —', s.strip()):
-                    break
-                output_lines.append(s)
-            continue
+    # 1. Render local principles in order, merging same-title template subpoints
+    for num in sorted(principles.keys()):
+        p = principles[num]
+        tp = template_by_title.get(_title_key(p["heading"]))
 
         # Add tier header if it changed
         tier = p.get("tier", "")
@@ -240,6 +241,28 @@ def _render_principles(principles: dict, template_principles: dict) -> str:
             if line == "---" and output_lines and output_lines[-1] == "---":
                 continue  # deduplicate dashes
             output_lines.append(line)
+
+    # 2. Inject template principles whose title is absent from the agent's copy
+    for tnum in sorted(template_principles.keys()):
+        tp = template_principles[tnum]
+        if _title_key(tp["heading"]) in local_by_title:
+            continue
+        # Stop at the scripture block (### <Book> — ...): the deployed
+        # copy's scripture entries track the agent's own reading progress
+        # and must not be duplicated or overridden by template seeds.
+        # The block is contiguous at the tail of the template's subpoints,
+        # so break (not continue) to drop its description lines too.
+        subs = []
+        for s in tp["subpoints"]:
+            if re.match(r'^### [A-Za-z0-9 ]+ —', s.strip()):
+                break
+            subs.append(s)
+        if output_lines and output_lines[-1].strip() != "":
+            output_lines.append("")
+        output_lines.append(tp["heading"])
+        output_lines.append("")
+        output_lines.extend(subs)
+        output_lines.append("")
 
     return "\n".join(output_lines)
 
@@ -306,34 +329,22 @@ def merge(agent_name: str = "", dry_run: bool = False, check_only: bool = False)
     template_p = _parse_principles(template_principles_text)
     agent_p = _parse_principles(agent_principles_text)
 
-    # Find new principles and missing sub-points
+    # Find new principles and missing sub-points — matched by TITLE, not
+    # number: local SOUL numbering drifts from the template (agents add their
+    # own principles), and number-only matching mis-attributed template
+    # subpoints to the wrong local principle.
+    local_by_title = {_title_key(p["heading"]): p for p in agent_p.values()}
     new_principles = []
     new_subpoints = []
 
     for num in sorted(template_p.keys()):
         tp = template_p[num]
-        if num not in agent_p:
-            # Entire new principle
-            new_principles.append(num)
-            # Render it with tier context
-            tier = tp.get("tier", "")
-            heading = tp["heading"]
-            subpoints = tp["subpoints"]
-            block = []
-            if tier:
-                block.append("")
-                block.append(tier)
-                block.append("")
-            block.append(heading)
-            block.append("")
-            # Only include named sub-points (skip the generic "This principle absorbs" and long descriptions)
-            # Actually include everything — the template content is canonical
-            for s in subpoints:
-                block.append(s)
-            new_principles.append(block)
+        ap = local_by_title.get(_title_key(tp["heading"]))
+        if ap is None:
+            # Entire new principle (title absent from the agent's copy)
+            new_principles.append(tp["heading"])
         else:
-            # Check for new sub-points
-            ap = agent_p[num]
+            # Check for new sub-points in the same-title principle
             missing = _find_missing_subpoints(tp["subpoints"], ap["subpoints"])
             if missing:
                 new_subpoints.append((num, tp["heading"], missing))
@@ -346,10 +357,8 @@ def merge(agent_name: str = "", dry_run: bool = False, check_only: bool = False)
 
     # Report what would change
     if new_principles:
-        for item in new_principles:
-            if isinstance(item, int):
-                h = template_p[item]["heading"]
-                print(f"  📄 New principle: {h}")
+        for h in new_principles:
+            print(f"  📄 New principle: {h}")
     if new_subpoints:
         for num, heading, subs in new_subpoints:
             marker = re.search(r'\*\*([^*]+)\*\*', heading)
