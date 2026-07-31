@@ -398,6 +398,7 @@ register_orch "ops/scripts/manage/orch-skill-report-request.sh"    "${CORTEX_DEP
 register_orch "ops/scripts/manage/orch-skill-report-process.py"    "${CORTEX_DEPLOY_HOME}/scripts/orch-skill-report-process.py"
 register "ops/scripts/manage/agent-learning-collector.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-learning-collector.py"
 register "ops/scripts/manage/agent-session-mine-cron.py"   "${CORTEX_DEPLOY_HOME}/scripts/agent-session-mine-cron.py"
+register_orch "ops/scripts/manage/session-correction-scan.py" "${CORTEX_DEPLOY_HOME}/scripts/session-correction-scan.py"
 # orch-bus-* scripts are orchestrator-only — run from repo path
 # Shared bus library for fleet scripts
 register "ops/scripts/lib/cortex_bus.py" "${CORTEX_DEPLOY_HOME}/scripts/lib/cortex_bus.py"

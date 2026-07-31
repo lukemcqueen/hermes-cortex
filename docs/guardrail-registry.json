@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "generated": "2026-07-31",
+  "description": "Machine-readable guardrail registry: correction-class -> enforcement artifact(s). Consumed by ops/scripts/manage/session-correction-scan.py (P0-1). A correction class is UNGUARDED if absent here; RECIDIVISM if present but the class recurs.",
+  "classes": {
+    "verify-before-declare": {
+      "artifacts": [
+        "SOUL.md:Principle-21-Not-Done-Until-Tested",
+        "SOUL.md:Principle-24-Test-Before-Declare",
+        "skill:reflexion-check:Q2-verify-claims",
+        "skill:change-checklist:Phase-1-Test"
+      ],
+      "added": "2026-07-30"
+    },
+    "repeat-correction": {
+      "artifacts": [
+        "SOUL.md:Principle-19-Confess-Guardrail",
+        "skill:self-improvement-pipeline",
+        "hook:post-push-audit"
+      ],
+      "added": "2026-07-29"
+    },
+    "no-permanent-fix": {
+      "artifacts": [
+        "SOUL.md:Principle-19-Confess-Guardrail",
+        "SOUL.md:Principle-25-Own-Every-Issue",
+        "skill:change-checklist:workmanship"
+      ],
+      "added": "2026-07-30"
+    },
+    "trust-language-breach": {
+      "artifacts": [
+        "SOUL.md:Principle-19-Confess-Guardrail",
+        "skill:reflexion-check:Q6-irony",
+        "docs/governance-improvement-plan-gaps.md:G9"
+      ],
+      "added": "2026-07-31"
+    },
+    "bypass-attempt": {
+      "artifacts": [
+        "hook:pre-commit-score:orchestrator-path-guard",
+        "hook:post-push-audit:bypass-detection",
+        "doctor:check_governance",
+        "chattr-immutable-chain"
+      ],
+      "added": "2026-07-30"
+    },
+    "drift-deployed-vs-repo": {
+      "artifacts": [
+        "doctor:check_deploy_checksums",
+        "doctor:check_skill_drift",
+        "doctor:check_stale_deploys",
+        "cortex-update.sh:register()"
+      ],
+      "added": "2026-07-30"
+    },
+    "naming-clarity": {
+      "artifacts": [
+        "doctor:check_script_naming",
+        "doctor:check_skills_version",
+        "docs/fleet-reference.md:cron-table"
+      ],
+      "added": "2026-07-30"
+    },
+    "cross-agent-forgot": {
+      "artifacts": [
+        "cortex-update.sh:register_orch()",
+        "docs/fleet-update-protocol.md:UPDATE_REQUEST/RESULT",
+        "docs/orchestrator-only-paths.txt"
+      ],
+      "added": "2026-07-28"
+    },
+    "bus-messaging": {
+      "artifacts": [
+        "doctor:_check_bus_e2e",
+        "ops/scripts/manage/orch-bus-audit-watchdog.py",
+        "doctor:check_services"
+      ],
+      "added": "2026-07-27"
+    },
+    "ceremony-friction": {
+      "artifacts": [
+        "enforcer:readonly-terminal-fast-path",
+        "enforcer:_is_readonly_terminal_command",
+        "enforcer:_is_subagent_session"
+      ],
+      "added": "2026-07-31",
+      "note": "P0-2 fail-closed terminal policy + subagent marker guard (governance-improvement-plan-gaps G2, F-03)"
+    },
+    "docs-stale": {
+      "artifacts": [
+        "AGENTS.md:Rule-4-Documentation-Not-Optional",
+        "skill:doc-freshness",
+        "skill:documentation-auditing",
+        "DOCS-INDEX.md"
+      ],
+      "added": "2026-07-28"
+    },
+    "skill-not-loaded": {
+      "artifacts": [
+        "skills.yaml:always-section",
+        "skill:task-start:Step-3",
+        "enforcer:_check_skills_loaded_marker"
+      ],
+      "added": "2026-07-29"
+    },
+    "dont-ask-just-fix": {
+      "artifacts": [
+        "SOUL.md:Principle-13-Verify-Before-Asking",
+        "SOUL.md:Principle-14-Be-Proactive",
+        "agent-contract:Rule-14"
+      ],
+      "added": "2026-07-27"
+    },
+    "governance-not-followed": {
+      "artifacts": [
+        "AGENTS.md:Rule-2-Loop-Governance",
+        "enforcer:governance-lock-required",
+        "mcp-servers/loop-gov-mcp.py"
+      ],
+      "added": "2026-07-26"
+    },
+    "verification-artifact": {
+      "artifacts": [
+        "SOUL.md:Principle-21-Not-Done-Until-Tested",
+        "agent-contract:Rule-17",
+        "skill:change-checklist:Phase-5"
+      ],
+      "added": "2026-07-30"
+    }
+  },
+  "known_gaps": [
+    "P0-3 verify-before-declare structural gate (end_change evidence) — planned, not yet shipped",
+    "P2-9 trust-language enforcement at recidivism layer — planned, not yet shipped",
+    "EVIDENCE_COMMANDS allowlist for P0-3 — planned",
+    "doctor bypass-attempt counter with trend — planned (MAJOR-04)"
+  ]
+}

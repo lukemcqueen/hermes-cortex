@@ -32,6 +32,7 @@ import json
 import logging
 import os
 import re
+import sqlite3
 import subprocess
 import time
 import traceback
@@ -250,6 +251,38 @@ def _get_loaded_skills_summary() -> dict:
     }
 
 
+def _is_subagent_session(session_id: str) -> bool:
+    """Detect delegate_task subagent sessions via state.db.
+
+    Subagents spawn with date-based session IDs (e.g. 20260731_123105_8b1c9a)
+    — NOT the documented bg_ prefix — so prefix guards miss them. They ARE
+    distinguishable: the sessions table records `parent_session_id` and
+    `source='subagent'` for delegated children. Treating them like daemons
+    prevents them from stealing the parent's .skills-loaded marker, which
+    was blocking parent write tools mid-task (live 2026-07-31, 3×).
+    """
+    if not session_id or not session_id.startswith("20"):
+        return False
+    try:
+        db = Path.home() / ".hermes" / "state.db"
+        if not db.exists():
+            return False
+        conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=3)
+        try:
+            row = conn.execute(
+                "SELECT source, parent_session_id FROM sessions WHERE id = ?",
+                (session_id,),
+            ).fetchone()
+            if row:
+                source, parent = row
+                return source == "subagent" or bool(parent)
+        finally:
+            conn.close()
+    except Exception:
+        log.warning("Cannot query state.db for subagent detection", exc_info=True)
+    return False
+
+
 def _check_skills_loaded_marker(session_id: str = "") -> bool:
     """Verify the .skills-loaded marker exists with valid session content.
 
@@ -272,12 +305,16 @@ def _check_skills_loaded_marker(session_id: str = "") -> bool:
             # Empty or whitespace-only (touch bypass) → reject
             return False
         if content.startswith("session:"):
-            # Cron/Background sessions: accept ANY valid session:* marker.
-            # Both cron_ and bg_ sessions are barred from overwriting the
-            # marker (_auto_create_skills_marker line 175-179), so the
-            # only marker they can ever see is one created by a non-daemon
-            # (interactive) session — trust it.
-            if session_id and (session_id.startswith("cron_") or session_id.startswith("bg_")):
+            # Cron/Background/Subagent sessions: accept ANY valid session:*
+            # marker. All three are barred from overwriting the marker
+            # (_auto_create_skills_marker daemon guard + _is_subagent_session),
+            # so the only marker they can ever see is one created by a
+            # non-daemon (interactive) session — trust it.
+            if session_id and (
+                session_id.startswith("cron_")
+                or session_id.startswith("bg_")
+                or _is_subagent_session(session_id)
+            ):
                 return True
             # Session-verified marker — check match
             if session_id and content != f"session:{session_id}":
@@ -307,14 +344,19 @@ def _auto_create_skills_marker(session_id: str) -> None:
     if not session_id:
         return
     try:
-        # ── Cron/Background sessions NEVER overwrite an existing marker ──
-        # If the current session is a cron or bg (non-interactive daemon)
-        # and a marker already exists (from ANY session — interactive or
-        # daemon), do nothing. Prevents cascade: cron A creates marker,
-        # cron B overwrites A, then bg process overwrites B, etc.
-        # Preserves the first marker set after boot.
+        # ── Cron/Background/Subagent sessions NEVER overwrite an existing marker ──
+        # If the current session is a daemon (cron/bg) or a delegated subagent
+        # (date-based ID but parent_session_id set in state.db) and a marker
+        # already exists (from ANY session — interactive or daemon), do nothing.
+        # Prevents cascade: subagent A creates marker, subagent B overwrites A,
+        # then the parent interactive session is blocked mid-task. Preserves the
+        # first marker set after boot.
         current_marker = SKILLS_MARKER.read_text().strip() if SKILLS_MARKER.exists() else ""
-        is_daemon = session_id.startswith("cron_") or session_id.startswith("bg_")
+        is_daemon = (
+            session_id.startswith("cron_")
+            or session_id.startswith("bg_")
+            or _is_subagent_session(session_id)
+        )
         if is_daemon and current_marker:
             log.debug(
                 "Non-interactive session %s skipped overwriting existing marker (preserving %s)",
@@ -651,6 +693,68 @@ def _is_terminal_write(args: Dict[str, Any]) -> bool:
     return False
 
 
+# Read-only terminal commands that NEVER need a governance lock.
+# Fail-closed policy (2026-07-31, governance-improvement-plan-gaps G2):
+# a terminal command is lock-free ONLY when it matches this strict allowlist
+# AND contains no metacharacters that could compose a write. Everything else
+# falls through to the governance lock check.
+#
+# Security invariants (from adversarial review):
+#  - Interpreter -c forms (python3 -c, bash -c, node -e ...) are NEVER
+#    allowlisted: "no write intent" is not observable from the command string
+#    (G1). They stay hard-blocked without a lock.
+#  - `doctor --fix` is NOT read-only (G3): it mutates the fleet.
+#  - sqlite3 CLI is NOT allowlisted: `.shell`, `-cmd`, multi-statement, and
+#    load_extension all execute beyond a SELECT (G4).
+READONLY_COMMAND_PATTERNS = [
+    r"^\s*(ls|cat|head|tail|less|more|grep|find|which|whoami|id|pwd|date|stat|file|du|wc|sort|uniq|diff|comm|env|printenv|getent|nproc|lscpu|lsblk|pgrep)(?:\s|$)",
+    r"^\s*(ps|top|htop|df|free|uptime|uname|hostname|dmesg|journalctl|ss|netstat)(?:\s|$)",
+    r"^\s*(git)\s+(status|log|diff|show|branch|stash\s+list)",
+    r"^\s*(docker)\s+(ps|images|logs|inspect|stats)",
+    r"^\s*(pip|npm)\s+(list|show|search)",
+    r"^\s*(hermes)\s+(--version|doctor|config\s+get|config\s+show|config\s+path|config\s+check|env-path)",
+    r"^\s*(systemctl)\s+(is-active|is-enabled|status|list-units)",
+    # curl GET/HEAD health checks — read-only. POST/PUT/DELETE/-d/-o/-O/-F/-X
+    # are excluded because they mutate remote or local state.
+    r"^\s*curl\s+(-s\s+)?(-o\s+/dev/null\s+)?-s?I\s+",
+    r"^\s*curl\s+(-s\s+)?-s\s+(https?://|file:///dev/|localhost:|127\.0\.0\.1:)",
+]
+
+# Metacharacters that make a command compound/write-capable — a read-allowlisted
+# prefix with any of these appended is NOT read-only (e.g. `git status > file`,
+# `ls | grep x`, `grep foo; rm bar`). Rejects redirects, pipes, separators,
+# command substitution, and backgrounding.
+_COMMAND_COMPOUND_METACHARS = re.compile(r"[>|;&`]|\$\(")
+
+
+def _is_readonly_terminal_command(command: str) -> bool:
+    """Fail-closed read-only terminal check.
+
+    A terminal command is lock-free ONLY when:
+      1. it matches a strict read-only allowlist pattern, AND
+      2. it contains no compound metacharacters (>, |, ;, &, `, $(), newline)
+         that could turn the read primitive into a write.
+
+    Everything else (interpreters, sqlite3 CLI, curl POST, wget, ssh, scp,
+    redirections, compound commands) requires a governance lock.
+    """
+    if not command:
+        return False
+    # `doctor --fix` mutates the fleet (P1-5 auto-reconcile) — never read-only
+    if re.search(r"hermes\s+doctor", command) and re.search(r"--fix|-f\b", command):
+        return False
+    # Compound/redirect/pipe/background/substitution → NOT read-only
+    if _COMMAND_COMPOUND_METACHARS.search(command):
+        return False
+    # Multi-line commands are never read-only
+    if "\n" in command:
+        return False
+    for pattern in READONLY_COMMAND_PATTERNS:
+        if re.search(pattern, command):
+            return True
+    return False
+
+
 def _is_cronjob_write(args: Dict[str, Any]) -> bool:
     action = args.get("action", "")
     return action in WRITE_CRON_ACTIONS
@@ -675,8 +779,15 @@ def _is_computer_use_write(args: Dict[str, Any]) -> bool:
 def _is_write_tool(tool_name: str, args: Dict[str, Any]) -> bool:
     if tool_name in WRITE_TOOLS:
         return True
-    if tool_name == "terminal" and _is_terminal_write(args):
-        return True
+    if tool_name == "terminal":
+        # Fail-closed terminal policy (2026-07-31): a terminal command is
+        # write-class UNLESS it is strictly read-only (allowlist + no
+        # compound metacharacters). This closes the historical fail-open:
+        # `curl -X POST -d`, `wget URL`, `ssh host 'rm -rf'`, and
+        # `git status > ~/.bashrc` all previously passed the lock check
+        # because they didn't match WRITE_COMMAND_PATTERNS.
+        command = args.get("command", "")
+        return not _is_readonly_terminal_command(command)
     if tool_name == "cronjob" and _is_cronjob_write(args):
         return True
     if tool_name == "skill_manage" and _is_skill_write(args):
@@ -969,22 +1080,6 @@ def register(ctx):
     # when begin_change runs, so both sides use the same namespace.
     ctx.register_hook("on_session_start", _on_session_start)
 
-    # Read command patterns that never need governance
-    # NOTE: echo/printf intentionally NOT included here — they appear in
-    # WRITE_COMMAND_PATTERNS with redirection operators (>|>>). If they were
-    # also in READ_COMMAND_PATTERNS, `echo "data" > file` would match the
-    # read pattern FIRST (line 330–332 in pre_tool_call_hook), bypassing
-    # the write-lock check. This was a confirmed bypass (GAP #1, July 2026).
-    READ_COMMAND_PATTERNS = [
-        r"^\s*(ls|cat|head|tail|less|more|grep|find|which|whoami|id|pwd|date)\s",
-        r"^\s*(ps|top|htop|df|du|free|uptime|uname|hostname|dmesg|journalctl)\s",
-        r"^\s*(git)\s+(status|log|diff|show|branch|stash\s+list)",
-        r"^\s*(docker)\s+(ps|images|logs|inspect|stats)",
-        r"^\s*(pip|npm)\s+(list|show|search)",
-        r"^\s*(hermes)\s+(--version|doctor|config\s+get|config\s+show|config\s+path|config\s+check|env-path)",
-        r"^\s*(systemctl)\s+(is-active|is-enabled|status|list-units)",
-    ]
-
     # ── Pre-tool-call hook ────────────────────────────────────
 
     def pre_tool_call_hook(
@@ -1027,15 +1122,16 @@ def register(ctx):
                 return None
 
             # ── Read-only terminal fast-path: BEFORE skills gate ─────
-            # Allow read-only terminal commands (ls, pwd, grep, etc.) even
-            # without skills loaded, so agents can inspect the system.
-            # Write-class terminal commands (touch, echo >, mkdir, etc.)
-            # are blocked unless all 8 required skills are loaded.
+            # Allow strictly read-only terminal commands (ls, pwd, grep, git
+            # status, curl -sI, etc.) even without skills loaded, so agents
+            # can inspect the system. Strict = allowlist match AND no compound
+            # metacharacters (>, |, ;, &, `, $(), newline). Everything else
+            # (interpreters, sqlite3 CLI, curl POST, wget, ssh, redirections)
+            # falls through to the skills gate + governance lock check.
             if tool_name == "terminal":
                 command = args.get("command", "")
-                if any(re.search(p, command) for p in READ_COMMAND_PATTERNS):
-                    if not _is_terminal_write(args):
-                        return None
+                if _is_readonly_terminal_command(command):
+                    return None
 
             # ── Skills gate: blocks WRITE tools until skills loaded ──
             # Uses content verification — bare `touch .skills-loaded` creates
