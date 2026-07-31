@@ -755,6 +755,96 @@ diff ~/.hermes/SOUL.md ~/hermes-cortex/docs/templates/SOUL.md
 cortex-update --status
 ```
 
+## 🍎 macOS-Specific Cortex Update Issues
+
+Issues that appear when running `pull latest` + `cortex-update.sh` on a macOS host (all verified on macOS 14, arm64, 2026-07-31). These are distinct from the Linux service-layer differences — they break the update **script itself**.
+
+### 20. `cortex-update.sh` aborts: `getent: command not found`
+
+**Symptom:** The update exits early with `getent: command not found` (or silently fails under `set -euo pipefail`) on macOS.
+
+**Root cause:** macOS has no `getent(1)`. `cortex-update.sh` (and `ops/scripts/install/os-config.sh`) resolve the real user's home with:
+
+```bash
+_home=$(getent passwd "$_user" 2>/dev/null | cut -d: -f6)
+```
+
+On macOS `getent` is not found → command substitution returns empty (or aborts the script under `pipefail`), leaving `CORTEX_HOME` / `_home` / `ORCH_HOME` / `_os_home` unset and any orch-detection logic dead.
+
+**Fix:** guard the lookup and fall back to `$HOME`:
+
+```bash
+if command -v getent &>/dev/null; then
+  _home=$(getent passwd "$_user" 2>/dev/null | cut -d: -f6)
+fi
+_home="${_home:-$HOME}"
+```
+
+**Status:** local working-tree patch exists on the macOS host (in `ops/scripts/` — orchestrator-only path, pending Moses to merge upstream). See `docs/orchestrator-only-paths.txt`.
+
+### 21. `sudo hermes-plugin-lock lock` hangs/fails on macOS
+
+**Symptom:** During the "Locking enforcement files…" step the update aborts or hangs at `sudo hermes-plugin-lock lock`.
+
+**Root cause:** On macOS there is no NOPASSWD sudoers rule; `sudo` prompts for a password, which fails in a non-interactive cron/agent context and aborts under `pipefail`. `chflags uchg` does **not** need root when the file is user-owned — the helper must run **without** sudo on Darwin.
+
+**Fix:** on Darwin, invoke the deployed helper directly:
+
+```bash
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  bash "${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock" lock 2>&1 || warn "enforcement files NOT locked (macOS)"
+else
+  sudo hermes-plugin-lock lock 2>&1
+fi
+```
+
+**Status:** local working-tree patch exists on the macOS host (orchestrator-only path, pending Moses).
+
+### 22. `chflags: /usr/local/bin/hermes-plugin-lock: Permission denied` (FAILED line)
+
+**Symptom:** The update prints:
+
+```
+chflags: /usr/local/bin/hermes-plugin-lock: Permission denied
+FAILED: /usr/local/bin/hermes-plugin-lock
+LOCKED: /Users/<user>/.hermes-cortex/scripts/hermes-plugin-lock
+```
+
+The doctor still passes this check (`Plugin lock helper ✅`) — it is cosmetic, not fatal.
+
+**Root cause:** `deploy_system_scripts()` deployed the system copy to `/usr/local/bin/hermes-plugin-lock` with `sudo` earlier, so it is `root:homebrew`-owned. `chflags uchg` on a **root-owned** file requires root even on macOS. The user-owned home copy (`~/.hermes-cortex/scripts/hermes-plugin-lock`) locks fine — that is the copy the enforcer uses.
+
+**Fix (optional):** make the system copy user-owned so `chflags` works:
+
+```bash
+sudo chown "$USER":staff /usr/local/bin/hermes-plugin-lock
+~/hermes-cortex/ops/scripts/cortex-update.sh   # direct path — re-locks cleanly
+```
+
+Or accept the `FAILED:` line; the home copy is the protected one.
+
+### 23. After cortex-update, `begin_change`/write tools block: lock was purged
+
+**Symptom:** The update finishes, then your next `terminal`/`patch` call is refused with `GOVERNANCE LOCK REQUIRED`.
+
+**Root cause:** `cortex-update.sh` runs `purge-stale-governance-locks.py` at the end, which removes **every** `.governance-*.json` lock — including your active session's. The DB cycle is the source of truth; the lock file is disposable.
+
+**Fix:** re-acquire after every deploy:
+
+```
+mcp_loop_governance_begin_change(task_id="post-update", description="...")
+```
+
+Then score all PENDING cycles (`cycle_query` → `feedback_accept`) and `end_change` — the doctor reports `❌ PENDING cycles` until they are scored.
+
+### 24. Doctor reports `❌ PENDING cycles` left by other sessions
+
+**Symptom:** After an update, doctor fails on PENDING cycles even though you scored your own.
+
+**Root cause:** Any prior session (including crons) that called `begin_change` but ended without `feedback_accept/override` leaves a PENDING cycle. They accumulate and the doctor counts them as a failure.
+
+**Fix:** score them — for cycles whose work you can verify, `feedback_accept`; for stale/unknown ones, `feedback_override(correct_decision="MOVE_ON")` with a note.
+
 ## 🧠 Scoring / Loop Governance Issues
 
 ### 19. Loop-gov MCP server fails: `ModuleNotFoundError: No module named 'hermes_models'`
