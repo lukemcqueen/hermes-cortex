@@ -49,6 +49,9 @@ HOME = Path.home()
 STATE_FILE = HOME / ".hermes-cortex" / "state" / "fleet-state.json"
 DASHBOARD_FILE = HOME / ".hermes-cortex" / "state" / "fleet-data.json"
 REGISTRY_PATH = HOME / ".hermes-cortex" / "state" / "agent-registry.json"
+REGISTRY_TEMPLATE = HOME / "hermes-cortex" / "ops" / "install" / "deploy" / "agent-registry.template.json"
+REGISTRY_LOCAL = HOME / ".hermes-cortex" / "state" / "agent-registry.local.json"
+CORTEX_ENV = HOME / "hermes-cortex" / ".env"
 INBOX_DIR = HOME / ".hermes" / "inbox"
 TIMEOUT = 10
 
@@ -58,28 +61,75 @@ AGENT_PORTS: dict[str, int] = {
     "esther": 8905,
 }
 
+# Health vector map — index i of the agent's {"v": [...]} vector maps to this
+SERVICE_MAP = ["resources", "services", "no_errored_crons", "no_stale_crons",
+               "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok"]
+
 
 def _get_agents() -> list[dict]:
-    """Load agents from registry, fall back to known ports."""
+    """Load agents from registry with local overrides (same as orch-health-report.py).
+
+    The base registry (agent-registry.json) is deployed from the PII-scrubbed
+    template and holds placeholder URLs. Real endpoints live in
+    agent-registry.local.json (git-ignored, machine-specific). Without the
+    merge, every agent polls your-domain.com and shows permanently
+    unreachable — the watchdog goes blind to real outages.
+    """
     agents = []
+    registry = {}
+    local_overrides = {}
+
     if REGISTRY_PATH.exists():
         try:
-            data = json.loads(REGISTRY_PATH.read_text())
-            for key, val in data.get("agents", {}).items():
-                url = (val.get("health_url") or "").strip()
-                agent = {"key": key, "name": val.get("name", key)}
-                if url:
-                    agent["url"] = url
-                else:
-                    port = AGENT_PORTS.get(key, 8905)
-                    agent["url"] = f"http://127.0.0.1:{port}/api/v1/health"
-                agents.append(agent)
-        except (json.JSONDecodeError, KeyError):
+            registry = json.loads(REGISTRY_PATH.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass  # expected — silently handled
+    if not registry and REGISTRY_TEMPLATE.exists():
+        try:
+            registry = json.loads(REGISTRY_TEMPLATE.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass  # expected — silently handled
+    if REGISTRY_LOCAL.exists():
+        try:
+            local_overrides = json.loads(REGISTRY_LOCAL.read_text()).get("agents", {})
+        except (json.JSONDecodeError, OSError):
             pass  # expected — silently handled
 
+    for key, entry in registry.get("agents", {}).items():
+        merged = dict(entry)
+        if key in local_overrides:
+            merged.update(local_overrides[key])
+        if not merged.get("accessible", False):
+            continue
+        method = merged.get("health_method", "http")
+        name = merged.get("name", key.capitalize())
+        if method == "http":
+            url = (merged.get("health_url") or "").strip()
+            if url:
+                agents.append({"key": key, "name": name, "url": url})
+            else:
+                port = AGENT_PORTS.get(key, 8905)
+                agents.append({"key": key, "name": name,
+                               "url": f"http://127.0.0.1:{port}/api/v1/health"})
+        # inbox-method agents (e.g. Titus) are polled via inbox, not HTTP —
+        # the watchdog only checks HTTP health, so they are skipped here.
+
     if not agents:
-        # Fallback: local health only
-        agents.append({"key": "local", "name": "Local", "url": "http://127.0.0.1:8905/api/v1/health"})
+        # Fallback: Moses health URL from .env, then localhost
+        moses_url = os.environ.get("CORTEX_HEALTH_URL", "")
+        if not moses_url and CORTEX_ENV.exists():
+            for line in CORTEX_ENV.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                if k.strip() == "CORTEX_HEALTH_URL":
+                    moses_url = v.strip().strip("'\"")
+        if moses_url:
+            agents.append({"key": "moses", "name": "Moses", "url": moses_url})
+        else:
+            # Fallback: local health only
+            agents.append({"key": "local", "name": "Local", "url": "http://127.0.0.1:8905/api/v1/health"})
 
     return agents
 
@@ -89,9 +139,31 @@ def _fetch(url: str) -> Optional[dict]:
     try:
         req = Request(url, headers={"Accept": "application/json", "User-Agent": "hermes-fleet-watchdog/1.0"})
         with urlopen(req, timeout=TIMEOUT) as resp:
-            return json.loads(resp.read().decode())
+            data = json.loads(resp.read().decode())
+        return _normalize(data)
     except (HTTPError, URLError, json.JSONDecodeError, TimeoutError, OSError):
         return None
+
+
+def _normalize(data: Optional[dict]) -> Optional[dict]:
+    """Normalize agent health payloads into the {healthy, issues} shape.
+
+    Agents push a compact vector: {"v": [1, 1, 1, 1, 1, 1, 1, 1, 1], "h": "m", "t": ...}
+    where each index maps to SERVICE_MAP and 1 = ok, 0 = degraded, -1 = down.
+    The bus health endpoint returns the richer {"healthy", "issues", "checks"}
+    shape. Both must collapse to the same fingerprint/alert contract.
+    """
+    if data is None:
+        return None
+    vec = data.get("v") if isinstance(data, dict) else None
+    if isinstance(vec, list):
+        issues = []
+        for i, v in enumerate(vec):
+            if v == -1 and i < len(SERVICE_MAP):
+                issues.append({"check": SERVICE_MAP[i], "severity": "high",
+                               "detail": f"{SERVICE_MAP[i]} down"})
+        return {"healthy": not any(v == -1 for v in vec), "issues": issues}
+    return data
 
 
 def _fingerprint(data: Optional[dict]) -> str:
