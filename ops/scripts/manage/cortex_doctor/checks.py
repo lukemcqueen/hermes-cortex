@@ -2608,6 +2608,38 @@ def check_skills_version(res):
                 "Add version to all SKILL.md files")
 
 
+def check_skill_fences(res):
+    """Detect repo SKILL.md files with unbalanced markdown code fences.
+
+    The agent-fixer has stripped trailing ``` fences from skills five times
+    (change-test-loop: 14568284, 2214153d, f41f8f76, 297ffa9d + 2026-08-01
+    working-tree corruption), and 134 skills were imported as truncated
+    skill_view dumps (9a9efa91) with odd fence counts. An odd fence count
+    corrupts rendering for every agent that loads the skill.
+    """
+    SKILLS_DIR = CORTEX_REPO / "skills"
+    if not SKILLS_DIR.is_dir():
+        return
+    unbalanced = []
+    for skill_md in sorted(SKILLS_DIR.rglob("SKILL.md")):
+        try:
+            content = skill_md.read_text()
+        except (OSError, UnicodeDecodeError):
+            continue
+        n = sum(1 for line in content.splitlines() if line.lstrip().startswith("```"))
+        if n % 2 != 0:
+            rel = skill_md.relative_to(CORTEX_REPO)
+            unbalanced.append((n, str(rel)))
+    if unbalanced:
+        for n, path in unbalanced[:10]:
+            res.add("Skill fences", "WARN", f"{path} — {n} fences (unbalanced)",
+                "Restore the missing/stray fence (git checkout -- <file>)")
+        if len(unbalanced) > 10:
+            res.add(f"Skill fences ({len(unbalanced)} total)", "WARN",
+                f"{len(unbalanced) - 10} more files unbalanced",
+                "Most are 9a9efa91 truncated imports — re-collect from Joseph")
+
+
 def check_todo_db(res):
     """Check that todo-db.py exists and can reach Postgres."""
     todo_script = CORTEX_HOME / "scripts" / "todo-db.py"

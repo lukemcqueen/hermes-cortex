@@ -250,6 +250,32 @@ if [[ -f "AGENTS.md" ]]; then
   fi
 fi
 
+# ── Markdown fence balance check ──────────────────────────
+# Blocks commits that add .md files with unbalanced code fences.
+# The agent-fixer stripped trailing fences from skills 5x (2026-07-30/31,
+# change-test-loop: 14568284/2214153d/f41f8f76/297ffa9d + working tree).
+# An odd fence count corrupts rendering for every agent that loads the file.
+STAGED_MD=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null | grep '\.md$' || true)
+if [[ -n "$STAGED_MD" ]]; then
+  FENCE_FAILED=0
+  while IFS= read -r mdfile; do
+    [[ -f "$mdfile" ]] || continue
+    FENCE_COUNT=$(grep -c '^```' "$mdfile" 2>/dev/null || true)
+    if [[ $((FENCE_COUNT % 2)) -ne 0 ]]; then
+      echo ""
+      echo "❌  $mdfile — unbalanced markdown code fences ($FENCE_COUNT, must be even)."
+      echo "    A fence stripper corrupted this file. Restore the missing fence"
+      echo "    (git checkout -- <file>) or fix the stray fence, then re-commit."
+      echo "    No bypass flags — unbalanced fences break every agent that loads it."
+      echo ""
+      FENCE_FAILED=1
+    fi
+  done <<< "$STAGED_MD"
+  if [[ "$FENCE_FAILED" -ne 0 ]]; then
+    exit 1
+  fi
+fi
+
 # ── Governance: SOUL.md template sync ────────────────────
 # ~/.hermes/SOUL.md is the agent's identity document. It must stay
 # in sync with the canonical template in docs/templates/SOUL.md.
