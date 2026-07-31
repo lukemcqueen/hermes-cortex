@@ -29,7 +29,9 @@ CORTEX_PROFILE="${CORTEX_PROFILE:-server}"
 # grant NO orch powers — they are spoofable and never promote a host.
 _os_host=$(hostname -s 2>/dev/null || echo "unknown")
 _os_user=$(id -un 2>/dev/null || echo "$USER")
-_os_home=$(getent passwd "$_os_user" 2>/dev/null | cut -d: -f6)
+if command -v getent &>/dev/null; then
+  _os_home=$(getent passwd "$_os_user" 2>/dev/null | cut -d: -f6)
+fi
 _os_home="${_os_home:-$HOME}"
 case "$_os_host" in
   moses|esther)

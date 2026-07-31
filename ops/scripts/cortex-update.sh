@@ -49,11 +49,17 @@ REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 
 # ── Detect real user (works even under sudo) ─────────────────
 if [ -n "${SUDO_USER:-}" ]; then
-  CORTEX_HOME="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+  if command -v getent &>/dev/null; then
+    CORTEX_HOME="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+  fi
+  CORTEX_HOME="${CORTEX_HOME:-$HOME}"
 elif [ -n "${HOME:-}" ]; then
   CORTEX_HOME="${HOME}"
 else
-  CORTEX_HOME="$(getent passwd "$(whoami)" | cut -d: -f6)"
+  if command -v getent &>/dev/null; then
+    CORTEX_HOME="$(getent passwd "$(whoami)" | cut -d: -f6)"
+  fi
+  CORTEX_HOME="${CORTEX_HOME:-$HOME}"
 fi
 
 # Walk up to find repo root (signature file: AGENTS.md at the root)
@@ -730,7 +736,9 @@ check_each_mapped_file() {
   local _host _home _user
   _host=$(hostname -s 2>/dev/null || echo "unknown")
   _user=$(id -un 2>/dev/null || echo "$USER")
-  _home=$(getent passwd "$_user" 2>/dev/null | cut -d: -f6)
+  if command -v getent &>/dev/null; then
+    _home=$(getent passwd "$_user" 2>/dev/null | cut -d: -f6)
+  fi
   _home="${_home:-$HOME}"
   case "$_host" in
     moses|esther) [[ "$_home" == "/home/$_host" ]] && _is_orch=true ;;
@@ -803,7 +811,9 @@ clean_stale_deploys() {
     local _host _home _user
     _host=$(hostname -s 2>/dev/null || echo "unknown")
     _user=$(id -un 2>/dev/null || echo "$USER")
-    _home=$(getent passwd "$_user" 2>/dev/null | cut -d: -f6)
+    if command -v getent &>/dev/null; then
+      _home=$(getent passwd "$_user" 2>/dev/null | cut -d: -f6)
+    fi
     _home="${_home:-$HOME}"
     # Orchestrator = hostname moses|esther AND matching home dir. Env vars
     # (AGENT_TYPE / IS_ORCHESTRATOR) grant NO orch powers — they are spoofable.
@@ -1286,6 +1296,9 @@ deploy_system_scripts() {
         # ── Self-deploy via update command (binary can update itself) ──
         if [[ "$script" == "hermes-plugin-lock" ]] && [[ -f "$dest" ]]; then
           sudo -n "$dest" update --cortex-update 2>/dev/null && {
+            if [[ "$_os" == "Darwin" ]]; then
+              sudo chown "$(id -un)":staff "$dest" 2>/dev/null || true
+            fi
             info "  Self-updated: ${script} → ${deploy_dir}/"
             files_copied=$((files_copied + 1))
             continue
@@ -1295,7 +1308,13 @@ deploy_system_scripts() {
         # ── Standard deploy (requires NOPASSWD for cp) ──
         sudo mkdir -p "$deploy_dir" 2>/dev/null || true
         if sudo cp "$src" "$dest" 2>/dev/null; then
-          sudo chown root:root "$dest" 2>/dev/null || true
+          # macOS: keep system copy user-owned so chflags uchg works as owner.
+          # Linux: root-owned — helper is invoked via sudo anyway.
+          if [[ "$_os" == "Darwin" ]]; then
+            sudo chown "$(id -un)":staff "$dest" 2>/dev/null || true
+          else
+            sudo chown root:root "$dest" 2>/dev/null || true
+          fi
           sudo chmod 755 "$dest" 2>/dev/null || true
           # Re-lock after update (will be re-applied by blanket lock at end)
           info "  Deployed: ${script} → ${deploy_dir}/"
@@ -1739,7 +1758,11 @@ main() {
 
   # Re-lock hook scripts after deploy
   if command -v hermes-plugin-lock &>/dev/null; then
-    sudo hermes-plugin-lock lock 2>/dev/null || true
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+      hermes-plugin-lock lock 2>/dev/null || true
+    else
+      sudo hermes-plugin-lock lock 2>/dev/null || true
+    fi
   fi
 
   # Update symlinks if any web-cache or offline files changed
@@ -1926,7 +1949,9 @@ main() {
     _ORCH=false
     ORCH_HOST=$(hostname -s 2>/dev/null || echo "unknown")
     ORCH_USER=$(id -un 2>/dev/null || echo "$USER")
-    ORCH_HOME=$(getent passwd "$ORCH_USER" 2>/dev/null | cut -d: -f6)
+    if command -v getent &>/dev/null; then
+      ORCH_HOME=$(getent passwd "$ORCH_USER" 2>/dev/null | cut -d: -f6)
+    fi
     ORCH_HOME="${ORCH_HOME:-$HOME}"
     case "$ORCH_HOST" in
       moses|esther) [[ "$ORCH_HOME" == "/home/$ORCH_HOST" ]] && _ORCH=true ;;
@@ -2040,11 +2065,22 @@ except: print('error')
   # files outside the deploy pipeline. Only cortex-update.sh can
   # unlock, update, and relock these files.
   info "Locking enforcement files…"
-  # Step 1: Lock via sudo hermes-plugin-lock (NOPASSWD — covers 5 core files)
-  if command -v hermes-plugin-lock &>/dev/null; then
-    sudo hermes-plugin-lock lock 2>&1 | sed 's/^/    /'
+  # Step 1: Lock via hermes-plugin-lock (Linux: sudo NOPASSWD — covers 5 core files)
+  # macOS: no NOPASSWD sudoers — chflags uchg works as the file owner, run directly.
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock" ]]; then
+      bash "${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock" lock 2>&1 | sed 's/^/    /' || warn "  enforcement files NOT locked (macOS)"
+    elif command -v hermes-plugin-lock &>/dev/null; then
+      hermes-plugin-lock lock 2>&1 | sed 's/^/    /' || warn "  enforcement files NOT locked (macOS)"
+    else
+      warn "  hermes-plugin-lock not found — enforcement files NOT locked"
+    fi
   else
-    warn "  hermes-plugin-lock not found — enforcement files NOT locked"
+    if command -v hermes-plugin-lock &>/dev/null; then
+      sudo hermes-plugin-lock lock 2>&1 | sed 's/^/    /'
+    else
+      warn "  hermes-plugin-lock not found — enforcement files NOT locked"
+    fi
   fi
   # Step 2: Lock new enforcement paths with chmod 444 (chattr +i needs sudoers)
   # These are protected by chmod as a second layer. For full chattr +i
