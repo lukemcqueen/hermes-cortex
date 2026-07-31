@@ -590,6 +590,8 @@ Before shipping changes to installer scripts (`install-crons.sh`, `setup.sh`, et
 
 | Pitfall | Symptom | Fix |
 |---------|---------|------|
+| `declare -A` (associative arrays) on macOS | `declare: -A: invalid option` on macOS (ships bash 3.2, needs 4+) | Use parallel indexed arrays: `ARR_KEYS=() ARR_VALS=()` + numeric-index loop. Or use a Python script for complex maps. |
+|---------|---------|------|
 | `set -e` + `((var++))` | Script exits silently mid-function when counter is 0 | Use `var=$((var + 1))` or `: $((var++))` |
 | `\\$` in double-quoted strings | Literal string `$HOME` passed instead of expanded path | Remove `\\` before `$`: `"$HOME"` not `"\\$HOME"` |
 | Bare `if` in mawk | `awk: line 2: syntax error at or near if` on Ubuntu | Wrap awk body in `{ }` |

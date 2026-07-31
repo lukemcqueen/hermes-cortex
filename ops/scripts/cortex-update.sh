@@ -378,6 +378,9 @@ register "ops/scripts/hermes_tz.py"                "${CORTEX_DEPLOY_HOME}/script
 # Remediation sensor (companion to agent-auto-remediate cron)
 register "ops/scripts/health/agent-remediation-sensor.py"       "${CORTEX_DEPLOY_HOME}/scripts/agent-remediation-sensor.py"
 
+# ClickHouse system log cleanup (weekly threshold-based truncation)
+register "ops/scripts/health/ch-truncate-system-logs.sh"        "${CORTEX_DEPLOY_HOME}/scripts/ch-truncate-system-logs.sh"
+
 # Eval harness (agent reliability patterns)
 register "ops/scripts/manage/run-evals.py"                "${CORTEX_DEPLOY_HOME}/scripts/run-evals.py"
 register "ops/scripts/manage/analyze-failures.py"         "${CORTEX_DEPLOY_HOME}/scripts/analyze-failures.py"

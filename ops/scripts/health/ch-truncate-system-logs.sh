@@ -1,14 +1,42 @@
 #!/usr/bin/env bash
-# ch-truncate-system-logs.sh — Truncate ClickHouse verbose system log tables.
+# ch-truncate-system-logs.sh — Truncate ClickHouse verbose system log tables
+# that have exceeded their size threshold. Silent on success (empty stdout =
+# no delivery). Designed for weekly cron schedule.
 set -euo pipefail
-CH_CLIENT="docker exec langfuse-clickhouse-1 clickhouse-client"
-TABLES=("asynchronous_metric_log" "metric_log" "latency_log" "processors_profile_log" "trace_log" "query_log" "error_log" "part_log")
-TRUNCATED=0; SKIPPED=0
-for table in "${TABLES[@]}"; do
-  if $CH_CLIENT --query "EXISTS system.$table" 2>/dev/null | grep -q 1; then
-    $CH_CLIENT --query "TRUNCATE TABLE system.$table" 2>/dev/null && ((TRUNCATED++)) || ((SKIPPED++))
-  else
-    ((SKIPPED++))
+
+CONTAINER="langfuse-clickhouse-1"
+CH_CLIENT="docker exec $CONTAINER clickhouse-client"
+
+# Thresholds in bytes — table only truncated when it exceeds this size
+THRESHOLD_10MB=$((10 * 1024 * 1024))
+THRESHOLD_25MB=$((25 * 1024 * 1024))
+
+# Parallel arrays: tables and their thresholds (bash 3.x compat — no associative arrays)
+TABLES=("asynchronous_metric_log" "trace_log" "query_log" "processors_profile_log" "metric_log")
+THRESHOLDS=("$THRESHOLD_25MB" "$THRESHOLD_10MB" "$THRESHOLD_10MB" "$THRESHOLD_10MB" "$THRESHOLD_10MB")
+
+# Note: latency_log (Langfuse SDK data) and error_log (diagnostic) are excluded
+# intentionally — they're small and useful.
+
+TRUNCATED=0
+for i in "${!TABLES[@]}"; do
+  TABLE=${TABLES[$i]}
+  THRESHOLD=${THRESHOLDS[$i]}
+  BYTES=$($CH_CLIENT --query "
+    SELECT sum(bytes_on_disk)
+    FROM system.parts
+    WHERE active=1 AND table='${TABLE}' AND database='system'
+  " 2>/dev/null | tr -d ' \n')
+
+  BYTES=${BYTES:-0}
+
+  if [ "$BYTES" -gt "$THRESHOLD" ]; then
+    MB=$((BYTES / 1048576))
+    $CH_CLIENT --query "TRUNCATE TABLE system.${TABLE}" 2>/dev/null
+    echo "🧹 Truncated system.${TABLE} (${MB} MB)"
+    TRUNCATED=1
   fi
 done
-echo "[$(date '+%H:%M')] [ch-truncate] Truncated $TRUNCATED system log tables ($SKIPPED skipped)"
+
+# Silent exit = no delivery when healthy
+[ "$TRUNCATED" -eq 0 ] && exit 0
