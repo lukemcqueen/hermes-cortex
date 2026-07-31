@@ -171,6 +171,16 @@ This means the raw MD5 between the repo source and the deployed copy will always
 
 ### Pitfall 3: Skills-loaded marker gets stale from daemon sessions (FIXED)
 
+> **Additional trigger (confirmed 2026-07-31):** `cortex-update.sh` **re-deploys the
+> enforcer plugin** (`plugins/governance-enforcer/` is a registered deploy path),
+> which resets the plugin's in-memory session tracking. After ANY cortex-update
+> run, the interactive session's `.skills-loaded` marker is treated as invalid —
+> the very next `terminal()` call is blocked with "session skills not fully loaded"
+> even though all 8 skills were loaded minutes earlier. This recurs after EVERY
+> cortex-update in the same session. Recovery: reload the 8 always-section skills
+> via `skill_view()` (the enforcer tracks the calls and auto-recreates the marker).
+> Budget for this when planning a session that runs cortex-update mid-task.
+
 The skills-loaded marker lives at `~/.hermes-cortex/state/.skills-loaded`. It is **session-scoped** — a daemon session (cron job or background subagent) that loads skills creates this marker, and because it was created by a different session, your session's skill loads won't be recognized. The governance enforcer plugin blocks write tools until marker is valid.
 
 **Permanent fix (deployed 2026-07-30):** The enforcer now has a guard that prevents daemon sessions (both `cron_` and `bg_` prefixed) from ever overwriting an existing `.skills-loaded` marker:
