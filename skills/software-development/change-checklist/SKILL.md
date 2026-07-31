@@ -52,15 +52,20 @@ Load this skill **before calling `end_change()`** on any change that:
 - Updates docs that other agents consume
 - Changes `cortex-update.sh` or `install-crons.sh`
 
-## Phase 0b: Load Relevant Skills (Before begin_change)
+## Phase 0b: Load Domain Skills (Before begin_change)
 
-Before opening a governance lock, ensure you have the right domain knowledge loaded:
+**Run `survey-before-action` Phase 0a before opening a governance lock.** This is a mandatory pre-step that loads domain knowledge for the operation type and file extension you're about to work on.
 
-- [ ] **skills_list()** for the category matching your task (e.g. 'devops' for bus changes, 'survey' for research tasks)
-- [ ] **skill_view()** on any matching skill — read the full content, not just the description
+The Phase 0a mapping table covers: crons, shell scripts, deploy scripts, nginx configs, Docker/compose, Python modules, tests, nginx, Docker, Markdown, Makefiles — and includes a `skills_list()` discovery fallback for file types without a dedicated skill.
+
+Checklist:
+
+- [ ] **Already loaded all domain skills?** — Re-read survey-before-action Phase 0a. Load any skill in the operation-axis or extension-axis table that matches your change.
+- [ ] **Ran skills_list() fallback?** — After the table lookup, run `skills_list(category=<domain>)` to discover skills the mapping author didn't think of.
+- [ ] **Loaded related skills?** — If a loaded skill lists `related_skills`, load those too.
 - [ ] **Verify loaded** — a skill isn't loaded until you've read its content via skill_view(). Just knowing the name exists doesn't count.
 
-> **Common failure:** Starting work with zero skills loaded, getting corrected by the user mid-task, then having to redo work. Load skills first, even for "trivial" tasks.
+> **Common failure:** Starting work with zero domain skills loaded, making portability or convention mistakes, getting corrected mid-task, redoing work. Load domain skills BEFORE begin_change() — not after.
 
 ## Phase 0: Survey the Change Surface
 

@@ -1,6 +1,6 @@
 ---
 name: survey-before-action
-version: 1.3.0
+version: 1.4.0
 category: software-development
 description: >-
   Mandatory pre-flight checklist before creating or modifying any file.
@@ -19,6 +19,87 @@ related_skills: [change-checklist, skills_list, cron-job-management]
 Run this BEFORE writing any file, adding a cron, creating a skill, or modifying any existing resource. Do not skip, batch, or defer.
 
 ## Survey
+
+### Phase 0a: Load Domain Skills for the Operation Type
+
+**Before searching existing resources, load domain knowledge for what you're about to build.** The 8 always-skills (task-start, agent-flow, survey-before-action, etc.) teach you HOW to work. Domain skills teach you WHAT the craft requires — pitfalls, portability, conventions, gotchas.
+
+Without domain skills, agents make preventable mistakes: writing `.sh` files with bash portability bugs, creating crons with wrong output formats, patching nginx with macOS paths on Linux.
+
+**The rule: for the first file you create or modify, check both axes — operation and extension — and load EVERY matching skill.**
+
+#### Operation-Axis Triggers (strongest signal)
+
+| If you're doing this ... | Load these skills |
+|---|---|
+| Creating or fixing a cron | `cron-job-management`, `cron-format-standard` |
+| Writing a shell script (any purpose) | `shell-scripting` |
+| Writing a deployment / install script | `shell-scripting`, `cortex-preflight`, `server-administration` |
+| Configuring nginx | `nginx-web-app-deployment` (or `nginx-security-pipeline` if security-focused) |
+| Configuring Docker / compose | `docker-management`, `env-aware-compose-wrapper` |
+| Building a web app service | `nginx-web-app-deployment`, `prevent-crash-looping` |
+| Writing tests (any language) | `test-driven-development` |
+| Debugging a failure | `root-cause-debugging` (or `systematic-debugging`) |
+| Performance diagnosis | `linux-performance-diagnostics` |
+| Cross-agent feature / protocol | `cross-agent-design` |
+| Installing packages | `package-security` |
+| Creating a skill | `hermes-agent-skill-authoring` |
+| Writing documentation | `documentation-auditing`, `doc-freshness` |
+| System security change | `linux-server-hardening`, `security-audit` |
+| Deploying Langfuse | `langfuse-self-hosted` |
+| Configuring Ollama | `ollama-setup` |
+| Setting up CI/CD | `ci-cd-pipeline` |
+| Building MCP server | `mcp-server-building` |
+| SSH / auth / credential change | `secure-credential-handling` |
+
+#### Extension-Axis Triggers (secondary, when operation isn't specialized)
+
+If the operation isn't in the table above, fall back to file extension:
+
+| File extension | Load these skills |
+|---|---|
+| `.sh` / `.bash` | `shell-scripting` |
+| `.py` (module-level, not one-shot) | `codebase-design`, `python-debugpy` |
+| `.py` (one-shot script) | `error-handling` |
+| `.conf` (nginx) | `nginx-web-app-deployment` |
+| `.yaml` / `.yml` (Docker) | `docker-management` |
+| `.yaml` / `.yml` (general) | `skills_list` fallback |
+| `.md` | `documentation-auditing` |
+| Makefile | `project-run-scripts` |
+| `.json` | `skills_list` fallback — no dedicated skill |
+| `.sql` | `skills_list` fallback — known gap, no dedicated skill |
+| `.toml` | `skills_list` fallback — known gap |
+| `.env` | `pii-scrubbing`, `secure-credential-handling` |
+
+#### Discovery Fallback — Always Run
+
+After loading the matched skills, always run a discovery sweep for skills you didn't know existed:
+
+```python
+# Category derived from the primary file type or operation domain
+# e.g. 'devops' for .sh / cron / docker, 'software-development' for .py
+skills_list(category="devops")
+skills_list(category="software-development")
+# If you load a skill that references others, load those too
+related = skill_view(name="X").related_skills or []
+for name in related:
+    skill_view(name=name)
+```
+
+This catches the skills the mapping table author didn't think of. **A skill you never load can never save you from a mistake.**
+
+#### When to Load
+
+This Phase 0a runs AFTER you've loaded the 8 always-skills (task-start, agent-flow, etc.) and AFTER you've classified the task with agent-flow (Step 5), but BEFORE you open a governance lock (begin_change). It supplements the "on-task skills" from the manifest.
+
+Sequence:
+1. ✅ Always skills loaded (task-start)
+2. ✅ Task classified (agent-flow)
+3. ✅ Domain skills loaded ← **you are here**
+4. → begin_change (governance lock)
+5. → Search existing resources (Phase 1)
+
+**Why before begin_change:** You cannot know what to lock if you don't know what domain knowledge you need. Loading domain skills first means your first change is informed.
 
 ### 1. Search for existing resources
 
@@ -143,9 +224,9 @@ After pushing to main, verify outbound messages match the deployed state. If you
 When the task is a comprehensive repo review, the per-operation checklist above is too narrow. Run this instead:
 
 1. **Structural integrity** — README vs Reality, VERSION consistency, DOCS-INDEX stale paths
-2. **Git-tracked build artifacts** — `git ls-files | grep -E '(__pycache__|\.pyc$)'` 
+2. **Git-tracked build artifacts** — `git ls-files | grep -E '(__pycache__|\\.pyc$)'` 
 3. **.gitignore accuracy** — stale negated patterns for deleted files; missing ignores for artifacts found
-4. **Skill duplicates** — `find . -name SKILL.md -exec sh -c 'basename $(dirname $_)' \; | sort | uniq -d`
+4. **Skill duplicates** — `find . -name SKILL.md -exec sh -c 'basename $(dirname $_)' \\; | sort | uniq -d`
 5. **Doc-vs-reality** — docker-compose links, script counts, cron counts, alleged file paths
 6. **Test paths** — search tests for stale source paths (`src/`, `deploy/`, etc.)
 7. **Mid-survey user requests** — tag as follow-up, finish current step, return immediately
@@ -153,3 +234,5 @@ When the task is a comprehensive repo review, the per-operation checklist above 
 ## Why this exists
 
 Created after building `check-agents-dot-md.py` when `agents-doc-audit.py` already existed. A 15-second search would have prevented the redundant work.
+
+Phase 0a was added per Luke's directive after Esther identified the gap: agents load always-skills (governance/process) but skip domain skills (craft knowledge). Without domain skills, agents make preventable mistakes — bash portability bugs, wrong cron output formats, path conventions for the wrong OS.

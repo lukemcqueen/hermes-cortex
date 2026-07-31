@@ -59,6 +59,96 @@ _REQUIRED_SKILLS: set = {
 }
 _skills_loaded_in_session: set = set()
 
+# ── Domain skill gate ──────────────────────────────────
+# Before write_file/patch, check if the file type's domain
+# skill has been loaded. First offense → suggest (educate).
+# Repeat → block (enforce). Path context refines suggestion.
+# MUST stay in sync with survey-before-action Phase 0a.
+_EXT_DOMAIN_SKILLS = {
+    ".sh":    ("shell-scripting",           "Bash portability, strict-mode, path patterns"),
+    ".bash":  ("shell-scripting",           "Bash portability, strict-mode, path patterns"),
+    ".py":    ("codebase-design",           "Module depth, seams, testability patterns"),
+    ".conf":  ("nginx-web-app-deployment",  "nginx upstream, SSL, auth configs"),
+    ".yml":   ("docker-management",         "Docker compose, layering, networking"),
+    ".yaml":  ("docker-management",         "Docker compose, layering, networking"),
+    ".md":    ("documentation-auditing",    "Cross-ref freshness, stale-path detection"),
+    ".env":   ("secure-credential-handling","Secrets, PII, gitignore patterns"),
+    ".toml":  None,   # known gap
+    ".json":  None,   # known gap
+    ".sql":   None,   # known gap
+}
+_FILENAME_DOMAIN_SKILLS = {
+    "Makefile":     ("project-run-scripts",  "Docker lifecycle, dev servers, testing"),
+    "Dockerfile":   ("docker-management",    "Multi-stage, layer caching, security"),
+    ".env":         ("secure-credential-handling","Secrets, PII, gitignore patterns"),
+}
+# Path fragments that override the extension-based suggestion
+_PATH_CTX_HINTS = {
+    "test":    "test-driven-development",
+    "spec":    "test-driven-development",
+    "deploy":  "cortex-preflight",
+    "install": "cortex-preflight",
+    "cron":    "cron-job-management",
+}
+# Tracking: {session_id: {ext_or_filename: warning_count}}
+_domain_warnings: dict = {}
+# Previous action context: {session_id: {"last_action": str}}
+_prev_action: dict = {}
+
+
+def _detect_domain_skill_needed(tool_name: str, args: dict) -> tuple:
+    """Detect what domain skill an agent needs before a file write.
+
+    Returns (skill_name_or_None, why_message_or_None).
+
+    Intelligence sources (in priority order):
+      1. Filename match (Makefile, Dockerfile)
+      2. Path-context hint (file under tests/, deploy/, etc.)
+      3. Extension match (.sh, .py, .yml, etc.)
+    """
+    if tool_name not in ("write_file", "patch"):
+        return None, None
+    path = args.get("path", "")
+    if not path:
+        return None, None
+    fname = Path(path).name
+    ext = Path(path).suffix.lower() if Path(path).suffix else ""
+
+    # 1. Filename match
+    if fname in _FILENAME_DOMAIN_SKILLS:
+        entry = _FILENAME_DOMAIN_SKILLS[fname]
+        return entry[0], entry[1]
+
+    # 1b. Dotfile match — files like .env, .gitignore, etc.
+    # Path('.env').suffix is '' because the whole name is the "extension"
+    if fname.startswith('.') and ext == '':
+        dot_name = fname  # e.g. ".env"
+        if dot_name in _FILENAME_DOMAIN_SKILLS:
+            entry = _FILENAME_DOMAIN_SKILLS[dot_name]
+            return entry[0], entry[1]
+        # Also check the extension map with the dot-name as extension
+        if dot_name in _EXT_DOMAIN_SKILLS:
+            entry = _EXT_DOMAIN_SKILLS[dot_name]
+            if entry is not None:
+                return entry[0], entry[1]
+            return None, None  # known gap
+
+    # 2. Path-context hint — look for known fragments in the full path
+    path_lower = path.lower()
+    for fragment, ctx_skill in _PATH_CTX_HINTS.items():
+        if fragment in path_lower:
+            return ctx_skill, f"File in `{fragment}/` context — this skill covers the workflow patterns"
+
+    # 3. Extension match
+    if ext in _EXT_DOMAIN_SKILLS:
+        entry = _EXT_DOMAIN_SKILLS[ext]
+        if entry is None:
+            return None, None  # known gap, no dedicated skill
+        return entry[0], entry[1]
+
+    # 4. Unknown — no mapping
+    return None, None
+
 
 def _read_skills_state() -> dict:
     """Read and parse skills-state.json. Returns {} if missing or corrupt."""
@@ -569,6 +659,81 @@ def _is_write_tool(tool_name: str, args: Dict[str, Any]) -> bool:
     return False
 
 
+def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Optional[dict]:
+    """Check if the agent has loaded the domain skill for the file being written.
+
+    Intelligence model:
+      - Detects file type via extension, filename, or path context
+      - First offense per session → WARN + educate (pass through)
+      - Repeat offense per session → BLOCK (escalate)
+      - Known gap (no skill exists) → pass through silently
+      - Skill already loaded → pass through (clear warnings)
+      - Context-aware: if agent just created a cron, suggest cron-job-management
+
+    Returns None (pass through) or {"action": "warn"|"block", "message": str}.
+    """
+    skill_name, why = _detect_domain_skill_needed(tool_name, args)
+    if skill_name is None:
+        return None  # No mapping or known gap — pass through
+
+    # Check if skill is already loaded
+    if skill_name in _skills_loaded_in_session:
+        # Clear any prior warnings for this file type
+        if session_id in _domain_warnings:
+            _domain_warnings[session_id].pop(skill_name, None)
+        return None  # Skill loaded — pass through silently
+
+    # Also check context — was the previous action related?
+    # If agent just created a cron, also check cron-job-management
+    prev = _prev_action.get(session_id, {})
+    context_skills = set()
+    if prev.get("last_action") == "cronjob_create":
+        context_skills.add("cron-job-management")
+    if skill_name in context_skills or not skill_name:
+        return None  # Context skill already covers it — pass through
+
+    # Extract file info for the message
+    path = args.get("path", "")
+    fname = Path(path).name if path else "file"
+    ext = Path(path).suffix.lower() if path and Path(path).suffix else fname
+
+    # Track warnings per file-type key
+    if session_id not in _domain_warnings:
+        _domain_warnings[session_id] = {}
+    warning_key = ext if ext else fname
+    warning_count = _domain_warnings[session_id].get(warning_key, 0)
+    _domain_warnings[session_id][warning_key] = warning_count + 1
+
+    if warning_count == 0:
+        # 1st offense: EDUCATE — block with a teaching message
+        # The agent resolves this by loading the skill and retrying.
+        msg = (
+            f"💡 DOMAIN SKILL SUGGESTION\n\n"
+            f"You are writing `{fname}` without `{skill_name}` loaded.\n\n"
+            f"**{skill_name}** covers: {why}\n\n"
+            f"Load it:\n"
+            f"  skill_view(name='{skill_name}')\n\n"
+            f"Or discover related skills:\n"
+            f"  skills_list(category='devops')\n\n"
+            f"The write is blocked until you load the skill. "
+            f"Read-only tools ARE available.\n"
+        )
+        return {"action": "block", "message": msg}
+    else:
+        # 2nd+ offense: BLOCK
+        msg = (
+            f"⛔ DOMAIN SKILL REQUIRED\n\n"
+            f"You have been warned {warning_count} time(s) this session about "
+            f"writing `{ext if ext else fname}` files without loading `{skill_name}`.\n\n"
+            f"This skill exists to prevent the exact type of mistakes you keep making:\n"
+            f"  {why}\n\n"
+            f"You must load it before writing:\n"
+            f"  skill_view(name='{skill_name}')\n\n"
+            f"After loading, retry the write. Read-only tools ARE still available.\n"
+        )
+        return {"action": "block", "message": msg}
+
+
 def _on_session_start(session_id: str, **kwargs):
     """Write session marker at session start so MCP finds it before begin_change.
 
@@ -798,6 +963,30 @@ def register(ctx):
             # Cronjob read operations pass through
             if tool_name == "cronjob" and args.get("action") in ("list", "run"):
                 return None
+
+            # ── Track previous action context ──
+            # Connects related operations — if agent just created a cron,
+            # the next write_file(.sh) knows it's a cron script.
+            if hermes_session_id and tool_name == "cronjob" and args.get("action") == "create":
+                _prev_action[hermes_session_id] = {"last_action": "cronjob_create"}
+            elif hermes_session_id:
+                # Track other write tools for context awareness
+                current_action = None
+                if tool_name == "write_file":
+                    current_action = "write_file"
+                elif tool_name == "terminal":
+                    current_action = "terminal"
+                if current_action:
+                    _prev_action[hermes_session_id] = {"last_action": current_action}
+
+            # ── Domain skill gate ──
+            # Before write_file/patch: require domain skill loading.
+            # First block educates. Repeat block escalates.
+            # After the agent loads the skill, the gate passes silently.
+            domain_result = _check_domain_skill_gate(tool_name, args, hermes_session_id)
+            if domain_result is not None:
+                # Block with educational message
+                return domain_result
 
             # Survey gate: cronjob(create) requires survey-before-action marker
             # Call cronjob(action='list') + search_files() + skills_list() BEFORE

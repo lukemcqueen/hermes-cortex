@@ -46,7 +46,11 @@ Call `skill_view(name)` for every skill listed in the `always` section of
 These skills define HOW you think and work — they are active context
 for the entire task, not one-time loads. **Do not skip this step.**
 
-### Step 4: Select reasoning pattern
+### Step 4: Load domain skills (new Phase 0a)
+
+After classification but BEFORE begin_change, run `survey-before-action` Phase 0a — the operation-type × file-extension domain-skill mapping table. Load ALL matching skills. Discovery fallback: `skills_list(category=<domain>)`.
+
+### Step 5: Select reasoning pattern
 Load `reasoning-patterns` and choose:
 - **Plan-Execute-Verify** (default) — write a plan, execute steps, verify each
 - **ReAct** — debugging, exploration
