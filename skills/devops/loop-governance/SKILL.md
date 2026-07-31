@@ -559,6 +559,18 @@ Every score call ──► loop_scorer.py ──► LoopDB (SQLite + JSON)
                               (Telegram)      (safe config updates)
 ```
 
+## Lock Lifecycle & Enforcement Update Surface
+
+Lock files and the immutable chain have failure modes beyond the skills marker. Hard-won lessons from P1-A (2026-07-31). Full detail: `references/lock-lifecycle-race.md` (mechanism + verification) and `references/enforcement-update-surface.md` (complete write-path audit + sanctioned-caller gate design).
+
+**Mid-write lock theft:** every purge path — the enforcer's `_has_governance_lock()` pre-scan + Phase 2 scan, the MCP's `_purge_stale_locks()`, and `purge-stale-governance-locks.py` — used to delete any `.governance-*.json` that failed `json.loads`. `_write_lock()` wrote non-atomically (`write_text`), so a concurrent purge read mid-write caught partial JSON and deleted a FRESH lock. Symptom: `begin_change` succeeds, then seconds later `check_lock` says inactive and the file is gone. **Fix (shipped):** atomic writes (temp + rename, same fs) + purge loops skip unparseable files (never delete what you can't parse — it is being written). Locks now carry `session_type` (cron/bg/interactive); cron/bg sessions never purge interactive locks.
+
+**Sticky marker per governance lock:** `_check_skills_loaded_marker()` accepts a valid `session:*` marker when the session holds an active governance lock — the lock is stronger proof than the marker. A concurrent session stomping `.skills-loaded` can no longer block a locked session's write tools mid-task; the touch bypass stays closed (empty marker still fails).
+
+**Session-identity marker race (`.hermes-session-current.id`):** distinct from the skills marker — the enforcer resolves the *current session id* from the shared fixed-path file `~/.hermes-cortex/state/.hermes-session-current.id`, which ANY concurrent session (party subagents, background workers, parallel conversations) can overwrite. Symptom (confirmed 2026-07-31): your fresh `.governance-<session>.json` lock exists with a valid heartbeat, yet `check_lock` returns inactive and write tools block with "GOVERNANCE LOCK REQUIRED" — the enforcer looks up the lock under the stomped id. State dir shows two+ lock files (yours + a subagent's) and the marker holding a third, unrelated id. **Recovery:** re-acquire with `begin_change()` (creates the lock under the currently-resolved id), reload the 8 always-skills so the marker matches, then proceed. This compounds with Pitfall 3 (skills marker) — both live in the same shared state dir.
+
+**Enforcement update surface:** to enforce "cortex-update is the ONLY way to update locked files", audit ALL write paths, not just the lock helper: the pre-commit DOGFOOD self-heal (auto-deploys the enforcer on commit — convert to a BLOCK), doctor remediation hints that say `cp` hooks directly (re-point to cortex-update.sh), the `hermes-plugin-lock update` self-update channel, and sudoers env_reset (callers must use explicit `sudo CORTEX_UPDATE=1 cmd` assignment — plain `export` does not survive sudo). macOS chflags needs no root → script-level gating is the only lever there.
+
 ## Error Handling & Resilience
 
 The scoring pipeline **must not block development** when a dependency is down. Every component degrades gracefully:

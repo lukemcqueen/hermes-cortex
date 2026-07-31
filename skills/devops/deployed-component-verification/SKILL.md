@@ -259,6 +259,49 @@ to copy (for chattr +i hardening). When it finds a copy, it verifies:
 - **Hooks** (`pre-commit`, `pre-push`, `post-commit`) — COPY. These are
   enforcement entry points and should be immutable.
 
+## Running Code ≠ Deployed File — the Gateway Memory Trap
+
+The doctor's staleness checks compare files on DISK (repo vs deployed copy).
+They do NOT prove the RUNNING process executes the new code. The Hermes
+gateway loads plugins (including the governance enforcer) into memory at
+STARTUP. A gateway that started before a deploy keeps running the OLD
+enforcer logic even when the deployed file hash matches the repo.
+
+**Confirmed 2026-07-31:** after deploying the P1-A enforcer fix
+(sticky-lock + atomic lock writes), write tools were still blocked with
+"8/8 skills loaded ✅" — the gateway (started 11:33) was running the
+pre-fix enforcer loaded at boot, while the on-disk file (deployed 14:04)
+had the fix. The doctor reported "enforcer deployed==repo hash MATCH"
+because it checks disk, not memory. The gateway cannot self-restart
+(pattern-blocked from inside); schedule it detached:
+`systemd-run --user --on-active=3s --unit=hermes-gw-restart hermes gateway restart`.
+
+**Rule:** after ANY enforcer/hook/plugin change that affects governance,
+restart the gateway before testing the new behavior. "Hash match" proves
+deployment, not activation.
+
+### DOGFOOD Compare: use `git show HEAD:`, never the dirty working tree
+
+The pre-commit DOGFOOD gate must compare COMMITTED HEAD vs deployed, not
+the working tree vs deployed. A dirty working tree:
+- Triggers false blocks that cortex-update.sh can't resolve (it deploys
+  from origin, not local edits) — HEAD==deployed but tree dirty.
+- Allows an uncommitted edit to be pushed into the deployed enforcer by
+  the auto-deploy path (dirty-tree injection).
+
+Orchestrator-authoring exception (AGENT_ID=moses|esther AND staged
+enforcer change) auto-deploys the working tree — the orchestrator is the
+sanctioned author. Everyone else with HEAD≠deployed gets the hard block.
+
+### Update-from-working-tree is root code execution
+
+`hermes-plugin-lock update` reads its source from the repo working tree
+(user-writable). Without a committed-source guard, ANY agent can edit the
+helper copy, then `sudo hermes-plugin-lock update --cortex-update` (the
+token is forgeable) to install their modified code as root. Guard:
+`git diff --quiet HEAD -- ops/install/deploy/nginx/hermes-plugin-lock` —
+refuse with exit 1 + audit entry when uncommitted changes exist.
+
 ## Components Requiring Staleness Checks
 
 Most components deployed by `cortex-update.sh` `register()` are freshly copied

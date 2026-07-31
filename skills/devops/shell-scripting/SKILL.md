@@ -185,6 +185,58 @@ END {
 # ❌ Don't use asort / asorti / PROCINFO (gawk-only)
 ```
 
+## Resolving the Repo Root from a Nested Script — Count the Depth
+
+`CORTEX_REPO="$(cd "$(dirname "$0")/../.." && pwd)"` only works when the
+script sits exactly 2 levels below the repo root. A script in
+`ops/install/deploy/nginx/` is 4 levels deep — `../..` resolves to
+`.../ops/install`, and every path built on it doubles a segment:
+
+```
+Source not found: .../ops/install/ops/install/deploy/nginx/fix-blocked-ips.py
+                              ^^^^^^^^^^^^^ duplicated segment
+```
+
+**Confirmed 2026-07-31:** this bug existed in THREE sibling deploy scripts
+(`deploy-fix-blocked-ips.sh`, `deploy-sudoers.sh`, `deploy-blocked-ips.sh`)
+and surfaced as a user-visible failure only in one. When you find one
+path-walk-up bug, grep the whole tree for the same pattern:
+`grep -rn 'dirname "$0"/\.\.' ops/`.
+
+**Robust pattern** — prefer git, fall back to counted walk-up:
+
+```bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CORTEX_REPO="$(cd "$SCRIPT_DIR" && git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -z "$CORTEX_REPO" ] || [ ! -d "$CORTEX_REPO" ]; then
+  CORTEX_REPO="$(cd "$SCRIPT_DIR/../../../.." && pwd 2>/dev/null || echo "$HOME/hermes-cortex")"
+fi
+```
+
+**Verify by running from the script's real location**, not an inline test:
+inline `$(dirname "$0")` inside a `bash -c` string gives `$0` = the shell,
+so the test silently tests the wrong path. Compute from the actual script
+path (`SCRIPT=/abs/path/script.sh; dirname "$SCRIPT"`) or run the script
+itself.
+
+## `: "${VAR:-$HOME}"` Validates but Does NOT Assign
+
+A bare `:` with parameter expansion is a validate-only idiom — it expands
+the fallback and discards it. `VAR` stays EMPTY, and every downstream path
+built on it resolves to a root-level path (or a literal). If you need the
+fallback applied, ASSIGN:
+
+```bash
+# ❌ REAL_HOME stays empty if getent fails — TARGETS become /.hermes/...
+: "${REAL_HOME:-$HOME}"
+# ✅ assigns the fallback
+REAL_HOME="${REAL_HOME:-$HOME}"
+```
+
+**Detection:** any `: "${VAR:-...}"` line followed by uses of `$VAR` is a
+latent bug. The idiom only makes sense when the point is to *fail loudly*
+under `set -u` — if you want the default, assign it.
+
 ## Idempotent Installer Patterns: Dual Detection
 
 When an installer script (e.g., `install-crons.sh`) must avoid creating duplicate
