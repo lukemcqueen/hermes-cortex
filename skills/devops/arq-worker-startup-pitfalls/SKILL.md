@@ -77,7 +77,7 @@ environment (overrides env_file):
 ```yaml
     environment:
       REDIS_HOST: redis
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-koscap}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-your-redis-password}
       REDIS_PORT: 6379
 ```
 

@@ -6,13 +6,13 @@ description: >-
   CISAC CWR (Common Works Registration) file processing for music copyright
   societies. Covers export generation (Rails + Python), ACK response handling,
   validation (structural + custom rules + field-level), share calculations,
-  pub_share conversion, and ACK file analysis. Dual-stack: koscap-mwi
-  (Rails/PostgreSQL) and koscap-works (Python/FastAPI/Next.js).
+  pub_share conversion, and ACK file analysis. Dual-stack: client-mwi
+  (Rails/PostgreSQL) and client-works (Python/FastAPI/Next.js).
 trigger: >-
   When the task involves CWR export, CWR import, ACK file analysis,
   share validation, pub_share conversion, or CWR format validation.
   Load this skill before editing any CWR-related code in either
-  koscap-mwi (Rails) or koscap-works (Python) projects.
+  client-mwi (Rails) or client-works (Python) projects.
 domain: music copyright, CISAC CWR 2.1, collective rights management
 ---
 

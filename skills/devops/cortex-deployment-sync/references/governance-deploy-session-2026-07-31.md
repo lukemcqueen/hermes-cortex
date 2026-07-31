@@ -1,6 +1,6 @@
 # Governance Deploy Session Trace — 2026-07-31
 
-Full reproduction of the immutable-governance-file deploy failure and the proper recovery path. KOSCAP staging server (Linux, Ubuntu 24.04).
+Full reproduction of the immutable-governance-file deploy failure and the proper recovery path. Client staging server (Linux, Ubuntu 24.04).
 
 ## Trigger
 

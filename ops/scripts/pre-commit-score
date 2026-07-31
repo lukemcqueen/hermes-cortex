@@ -306,8 +306,8 @@ if [[ "$IS_ORCH" != "1" ]]; then
   # Repo-aware: a repo without docs/orchestrator-only-paths.txt (neither at
   # HEAD nor on disk) has NO orchestrator-only restrictions. The || true keeps
   # the read from failing the whole script under set -euo pipefail — a missing
-  # config means "nothing restricted", never "block all commits". (KOSCAP repos
-  # hit this: no config file → git show AND cat both fail → silent exit 1.)
+  # config means "nothing restricted", never "block all commits". (Repos without
+  # the config hit this: git show AND cat both fail → silent exit 1.)
   ORCH_CONFIG=$(git show HEAD:"${ORCH_PATHS_FILE#$REPO_ROOT/}" 2>/dev/null || cat "$ORCH_PATHS_FILE" 2>/dev/null || true)
   if [[ -n "$ORCH_CONFIG" ]]; then
     while IFS= read -r orch_path || [[ -n "$orch_path" ]]; do

@@ -59,7 +59,7 @@ if [[ -n "$ORCH_CONFIG" ]]; then ... fi   # empty = "no config", gate on -n
 
 **The rule:** any optional/config file read with fallbacks must terminate the chain with `|| true`, and downstream logic must gate on `[[ -n $VAR ]]`. A missing optional file should mean "feature off", never "script dies".
 
-**Real bug (2026-07-31):** `pre-commit-score`'s orchestrator-only-paths guard read `docs/orchestrator-only-paths.txt` this way. Repos without the file (all KOSCAP repos) had EVERY non-orch commit fail with exit 1 and zero output. One `|| true` fixed it fleet-wide.
+**Real bug (2026-07-31):** `pre-commit-score`'s orchestrator-only-paths guard read `docs/orchestrator-only-paths.txt` this way. Repos without the file (e.g. client project repos) had EVERY non-orch commit fail with exit 1 and zero output. One `|| true` fixed it fleet-wide.
 
 ### `set -u` + uninitialized counter variable = premature exit
 

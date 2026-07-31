@@ -41,7 +41,7 @@ curl -s -o /dev/null -w "HTTP %{http_code}" \
 ## Fix
 
 ```bash
-cd /home/app/mwi/koscap-mwi
+cd /path/to/app/client-mwi
 source .env
 ./run generate-configs
 ./run build tomcat

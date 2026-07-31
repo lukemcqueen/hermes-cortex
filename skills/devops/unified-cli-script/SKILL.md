@@ -4,7 +4,7 @@ name: unified-cli-script
 version: 1.0.0
 description: >-
   Design a unified ./run CLI script for multi-environment Docker Compose
-  deployments. Covers the _compose() wrapper, KOSCAP_ENV requirement,
+  deployments. Covers the _compose() wrapper, CLIENT_ENV requirement,
   prominent env display, compose override files, and git hook compatibility.
 triggers:
   - user asks to update ./run for env support

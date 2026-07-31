@@ -13,7 +13,7 @@ metadata:
 
 # Staging Server Operations
 
-This skill covers the recurring maintenance operations for the KOSCAP staging
+This skill covers the recurring maintenance operations for the client staging
 server: hermes-cortex pull-and-integrate, Docker volume management, cron
 auditing, database recovery, and change verification.
 
