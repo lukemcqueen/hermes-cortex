@@ -158,11 +158,14 @@ create_cron() {
 
   if $exists; then
     if ! $FORCE; then
-      # Drift detection: check if existing cron's script differs from desired
+      # Drift detection: check if existing cron's script OR skill differs from desired.
+      # Script-only checks miss skill renames on LLM crons (empty script) — e.g. the
+      # agent-inbox → agent-bus-* rename (2026-07-27) left deployed jobs referencing
+      # non-existent skills, silently skipped by the scheduler every fire. Compare both.
       local _drift=false
-      if [[ -n "$script" && -f "$CRON_JOBS_FILE" ]] && command -v python3 &>/dev/null; then
-        local _cur_script
-        _cur_script=$(python3 -c "
+      if { [[ -n "$script" || -n "$skill" ]] && [[ -f "$CRON_JOBS_FILE" ]]; } && command -v python3 &>/dev/null; then
+        local _cur_script _cur_skill
+        IFS=$'\x1f' read -r _cur_script _cur_skill < <(python3 -c "
 import json, sys
 try:
     with open('$CRON_JOBS_FILE') as f:
@@ -170,14 +173,18 @@ try:
     jobs = data.get('jobs', []) if isinstance(data, dict) else data
     for j in jobs:
         if isinstance(j, dict) and j.get('name') == '$name':
-            sys.stdout.write(j.get('script', '') or '')
+            sys.stdout.write((j.get('script', '') or '') + '\x1f' + (j.get('skill', '') or '') + '\n')
             sys.exit(0)
 except: pass
 sys.exit(1)
-" 2>/dev/null || true)
-        if [[ -n "$_cur_script" && "$_cur_script" != "$script" ]]; then
+" 2>/dev/null || true) || true
+        if [[ -n "$script" && -n "$_cur_script" && "$_cur_script" != "$script" ]]; then
           _drift=true
           info "Drift detected: cron '${name}' script '${_cur_script}' → '${script}'"
+        fi
+        if [[ -n "$skill" && -n "$_cur_skill" && "$_cur_skill" != "$skill" ]]; then
+          _drift=true
+          info "Drift detected: cron '${name}' skill '${_cur_skill}' → '${skill}'"
         fi
       fi
       if ! $_drift; then
