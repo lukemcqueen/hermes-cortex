@@ -99,6 +99,9 @@ agent-registry.json
 # Use ops/install/deploy/agent-registry.json.example as the template
 .governance-*.json
 /deploy/
+# Per-machine allow list — NEVER commit (PII: real client IPs live only
+# at /etc/nginx/allow-ips-manual.conf on each host)
+allow-ips-manual.conf
 # ops/scripts/ is fully tracked — every script in here is intentional
 # and worth sharing with the fleet. New scripts are auto-tracked.
 # (Previously used per-file whitelist; fell out of sync too often.)
