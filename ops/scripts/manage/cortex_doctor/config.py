@@ -118,6 +118,11 @@ EXPECTED_MCP_SERVERS = {
     "loop-governance": "loop-gov-mcp.py",
 }
 
+# MCP servers deployed only on orchestrator hosts (register_orch in
+# cortex-update.sh). The doctor must not FAIL non-orchestrator hosts for
+# missing these, and must not auto-add them via --fix.
+ORCH_ONLY_MCP_SERVERS = {"agent-bus"}
+
 # ── External services ───────────────────────────────────────────
 EXTERNAL_SERVICES = [
     ("Dashboard", f"{EXTERNAL_BASE}:{_PORT_PREFIX}001/", "401"),

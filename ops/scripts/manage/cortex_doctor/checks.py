@@ -32,6 +32,7 @@ from .config import (
   MCP_SERVERS_DIR,
   CURL,
   EXPECTED_MCP_SERVERS,
+  ORCH_ONLY_MCP_SERVERS,
   EXTERNAL_SERVICES,
   CORE_FOOTPRINT,
   AGENT_ROLE,
@@ -1567,7 +1568,21 @@ def check_governance(res):
         "Check: ~/hermes-cortex/plugins/governance-enforcer/")
 
   # ── MCP servers ──
+  is_orch = AGENT_ROLE == "orchestrator"
   for name, server_script in EXPECTED_MCP_SERVERS.items():
+    # Orchestrator-only MCP servers (register_orch in cortex-update.sh) are
+    # expected only on orchestrator hosts. On other hosts, absence is correct
+    # and presence is drift worth a warning, not a failure.
+    if name in ORCH_ONLY_MCP_SERVERS and not is_orch:
+      if name in config_text:
+        res.add(f"MCP server ({name})", "WARN",
+            f"configured on non-orchestrator host — {name} is orchestrator-only",
+            f"Remove the {name} mcp_servers entry from ~/.hermes/config.yaml")
+      else:
+        res.add(f"MCP server ({name})", "PASS",
+            "not configured (correct for non-orchestrator)")
+      continue
+
     if name not in config_text:
       res.add(f"MCP server ({name})", "FAIL", "not configured",
           f"Run: hermes mcp add {name} --command ~/.hermes/hermes-agent/venv/bin/python3 "

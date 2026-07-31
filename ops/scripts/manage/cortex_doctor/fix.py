@@ -25,7 +25,9 @@ from .config import (
   SYMLINK_AUDIT,
   MCP_SERVERS_DIR,
   EXPECTED_MCP_SERVERS,
+  ORCH_ONLY_MCP_SERVERS,
   CURL,
+  AGENT_ROLE,
 )
 from .helpers import run, run_bg
 
@@ -70,6 +72,9 @@ def apply_fixes(res):
 
   # Fix: MCP server not configured
   for name, server_script in EXPECTED_MCP_SERVERS.items():
+    # Never auto-add orchestrator-only MCP servers to non-orchestrator hosts.
+    if name in ORCH_ONLY_MCP_SERVERS and AGENT_ROLE != "orchestrator":
+      continue
     if f"MCP server ({name})" in fix_map and fix_map[f"MCP server ({name})"] == "FAIL":
       if CONFIG_FILE.exists() and CORTEX_REPO.exists():
         mcp_path = MCP_SERVERS_DIR / server_script
@@ -103,6 +108,8 @@ print('ADDED')
 
   # Fix: MCP server uses bare python3 instead of venv
   for name in EXPECTED_MCP_SERVERS:
+    if name in ORCH_ONLY_MCP_SERVERS and AGENT_ROLE != "orchestrator":
+      continue
     if f"MCP Python ({name})" in fix_map and fix_map[f"MCP Python ({name})"] == "WARN":
       venv_python = HERMES_HOME / "hermes-agent" / "venv" / "bin" / "python3"
       if venv_python.exists():
