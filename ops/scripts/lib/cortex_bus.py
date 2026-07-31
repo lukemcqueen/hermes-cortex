@@ -216,18 +216,34 @@ def bus_list_queues() -> list[dict]:
 
 
 def bus_health() -> dict:
-    """Check bus health endpoint — tries primary, then fallback."""
+    """Check bus health endpoint — tries primary, then fallback, with Bearer→Basic auth fallback."""
     scheme, creds = _get_auth_header()
+    logger = logging.getLogger("cortex_bus")
+
+    def _try(base_url: str, auth_scheme: str, auth_creds: str):
+        req = Request(f"{base_url}/health",
+                      headers={"Authorization": f"{auth_scheme} {auth_creds}"},
+                      method="GET")
+        with urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read().decode())
 
     for base_url in (BUS_URL, BUS_FALLBACK_URL):
         if not base_url:
             continue
         try:
-            req = Request(f"{base_url}/health",
-                          headers={"Authorization": f"{scheme} {creds}"},
-                          method="GET")
-            with urlopen(req, timeout=10) as resp:
-                return json.loads(resp.read().decode())
-        except (HTTPError, URLError, OSError, json.JSONDecodeError):
+            return _try(base_url, scheme, creds)
+        except HTTPError as e:
+            if e.code in (401, 403) and scheme == "Bearer" and CORTEX_BUS_AUTH:
+                # Mirror _bus_post: Bearer token may be stale — fall back to Basic auth
+                basic_creds = base64.b64encode(CORTEX_BUS_AUTH.encode()).decode()
+                try:
+                    return _try(base_url, "Basic", basic_creds)
+                except (HTTPError, URLError, OSError, json.JSONDecodeError) as basic_err:
+                    logger.debug("bus_health: Basic auth fallback failed for %s: %s", base_url, basic_err)
+                    continue
+            logger.debug("bus_health: %s returned HTTP %d %s", base_url, e.code, e.reason)
+            continue
+        except (URLError, OSError, json.JSONDecodeError) as e:
+            logger.debug("bus_health: %s unreachable: %s", base_url, e)
             continue
     return {"status": "unreachable"}

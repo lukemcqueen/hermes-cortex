@@ -261,17 +261,38 @@ try:
 except:
     repo_slug = 'generic'
 
-# Find the governance lock for this repo to get session_id
+# Find the governance lock for this repo to get session_id.
+# Prefer the current session's own lock (HERMES_SESSION_ID), then any
+# interactive (non-cron) lock, then the first matching lock. Multiple
+# agents (interactive + cron remediation) can hold locks on the same
+# repo simultaneously — picking a cron session's lock here would fail
+# the reflexion gate for an interactive commit that did the ritual.
 session_id = None
 lock_files = glob.glob(os.path.join(gov_dir, '.governance-*.json'))
+current_session = os.environ.get('HERMES_SESSION_ID', '')
+matching = []
 for f in lock_files:
     try:
         d = json.load(open(f))
         if d.get('repo_slug') == repo_slug:
-            session_id = d.get('session_id')
-            break
+            matching.append((f, d))
     except (OSError, json.JSONDecodeError):
         continue
+# 1) Exact current-session match
+for f, d in matching:
+    if current_session and d.get('session_id') == current_session:
+        session_id = d.get('session_id')
+        break
+# 2) First interactive (non-cron) lock
+if not session_id:
+    for f, d in matching:
+        sid = d.get('session_id') or ''
+        if not sid.startswith('cron_') and not sid.startswith('bg_'):
+            session_id = sid
+            break
+# 3) Fallback: first matching lock
+if not session_id and matching:
+    session_id = matching[0][1].get('session_id')
 
 if not session_id:
     # Fallback: no lock file — check the most recent non-cron session
