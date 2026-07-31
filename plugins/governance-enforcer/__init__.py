@@ -42,8 +42,20 @@ from typing import Any, Dict, Optional
 
 GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 SURVEY_MARKER = GOVERNANCE_STATE_DIR / ".cron-survey-done"
-SKILLS_MARKER = GOVERNANCE_STATE_DIR / ".skills-loaded"
-SKILLS_STATE_FILE = GOVERNANCE_STATE_DIR / "skills-state.json"
+# ── Skills-loading proof: PER-SESSION files (2026-08-01) ──────────────
+# Previously a single shared .skills-loaded file gated every session on a
+# machine. Concurrent sessions (telegram + cli 1 + cli 2 on one server)
+# each loaded skills and overwrote that one file with their own session ID,
+# blocking the other sessions' write tools mid-task. Now each session owns
+# its proof at state/skills-loaded/<session_id> and its state at
+# state/skills-state/<session_id>.json — sessions physically cannot stomp
+# each other. The legacy single-file constants below are kept so the
+# doctor's structural check and backward-compat references still resolve,
+# but new code never reads or writes them (see _skills_marker_dir()).
+SKILLS_MARKER = GOVERNANCE_STATE_DIR / ".skills-loaded"          # legacy — inert
+SKILLS_STATE_FILE = GOVERNANCE_STATE_DIR / "skills-state.json"   # legacy — inert
+SKILLS_MARKER_DIR = GOVERNANCE_STATE_DIR / "skills-loaded"       # per-session markers
+SKILLS_STATE_DIR = GOVERNANCE_STATE_DIR / "skills-state"         # per-session state
 
 log = logging.getLogger("governance-enforcer")
 
@@ -180,15 +192,65 @@ def _detect_domain_skill_needed(tool_name: str, args: dict) -> tuple:
     return None, None
 
 
-def _read_skills_state() -> dict:
-    """Read and parse skills-state.json. Returns {} if missing or corrupt."""
+def _skills_marker_dir() -> Path:
+    """Per-session skills marker dir — derived at call time so tests can
+    repoint GOVERNANCE_STATE_DIR without reloading the module."""
+    return GOVERNANCE_STATE_DIR / "skills-loaded"
+
+
+def _skills_state_dir() -> Path:
+    """Per-session skills state dir (same call-time derivation rationale)."""
+    return GOVERNANCE_STATE_DIR / "skills-state"
+
+
+def _session_marker_path(session_id: str) -> Path:
+    """Path of THIS session's skills-loaded marker file."""
+    _assert_safe_session_id(session_id)
+    return _skills_marker_dir() / session_id
+
+
+def _skills_state_path(session_id: str) -> Path:
+    """Path of THIS session's skills-state JSON file."""
+    _assert_safe_session_id(session_id)
+    return _skills_state_dir() / f"{session_id}.json"
+
+
+def _assert_safe_session_id(session_id: str) -> None:
+    """Reject session IDs that could escape the state dirs via path traversal.
+
+    Hermes generates session IDs server-side (timestamp_hex), so this is
+    defense-in-depth: a hostile or corrupted session ID must never be able
+    to write a marker/state file outside state/skills-loaded|skills-state
+    (e.g. ``../evil`` or ``a/b``). Raises ValueError — callers treat it
+    like a missing marker (graceful failure).
+    """
+    if (
+        not session_id
+        or session_id in (".", "..")
+        or "/" in session_id
+        or "\\" in session_id
+        or "\x00" in session_id
+    ):
+        raise ValueError(f"Unsafe session_id: {session_id!r}")
+
+
+def _read_skills_state(session_id: str = "") -> dict:
+    """Read THIS session's skills-state file. Returns {} if missing or corrupt.
+
+    Per-session state files (skills-state/<session_id>.json) replaced the
+    shared skills-state.json on 2026-08-01 — concurrent sessions can no
+    longer clobber each other's progress.
+    """
+    if not session_id:
+        return {}
     try:
-        if SKILLS_STATE_FILE.exists():
-            with open(SKILLS_STATE_FILE) as f:
+        path = _skills_state_path(session_id)
+        if path.exists():
+            with open(path) as f:
                 data = json.load(f)
-                if isinstance(data, dict) and "session_id" in data:
+                if isinstance(data, dict):
                     return data
-    except (json.JSONDecodeError, OSError):
+    except (json.JSONDecodeError, OSError, ValueError):
         pass
     return {}
 
@@ -198,7 +260,7 @@ def _write_skills_state(
     always_loaded: set = None,
     state_updates: dict = None,
 ) -> dict:
-    """Write skills-state.json with current session skills state.
+    """Write THIS session's skills-state file.
 
     Merges with any existing state for the same session. Creates or updates
     the always_skills dict with timestamps, and applies any additional
@@ -206,8 +268,10 @@ def _write_skills_state(
 
     Returns the final state dict.
     """
-    state = _read_skills_state()
-    if state.get("session_id") != session_id:
+    if not session_id:
+        return {}
+    state = _read_skills_state(session_id)
+    if not state:
         state = {
             "session_id": session_id,
             "always_skills": {},
@@ -231,19 +295,21 @@ def _write_skills_state(
 
     state["last_updated"] = datetime.now(timezone.utc).isoformat()
     try:
-        GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
-        tmp = SKILLS_STATE_FILE.with_suffix(".tmp")
+        path = _skills_state_path(session_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
         with open(tmp, "w") as f:
             json.dump(state, f, indent=2)
-        tmp.rename(SKILLS_STATE_FILE)
-    except OSError as e:
+        tmp.rename(path)
+    except (OSError, ValueError) as e:
         log.warning("Cannot write skills-state.json: %s", e)
     return state
 
 
-def _get_loaded_skills_summary() -> dict:
-    """Return a dict of {skill_name: bool} for all 8 required skills."""
-    state = _read_skills_state()
+def _get_loaded_skills_summary(session_id: str = "") -> dict:
+    """Return a dict of {skill_name: bool} for all 8 required skills
+    for the given session."""
+    state = _read_skills_state(session_id)
     always = state.get("always_skills", {})
     return {
         s: s in always
@@ -257,9 +323,12 @@ def _is_subagent_session(session_id: str) -> bool:
     Subagents spawn with date-based session IDs (e.g. 20260731_123105_8b1c9a)
     — NOT the documented bg_ prefix — so prefix guards miss them. They ARE
     distinguishable: the sessions table records `parent_session_id` and
-    `source='subagent'` for delegated children. Treating them like daemons
-    prevents them from stealing the parent's .skills-loaded marker, which
-    was blocking parent write tools mid-task (live 2026-07-31, 3×).
+    `source='subagent'` for delegated children.
+
+    LEGACY (2026-08-01): This was used to keep subagents from stealing the
+    shared .skills-loaded marker. Markers are now per-session files, so the
+    guard class is obsolete — retained for the guardrail registry and any
+    future lock-lifecycle logic that needs subagent awareness.
     """
     if not session_id or not session_id.startswith("20"):
         return False
@@ -300,112 +369,85 @@ def _session_type(session_id: str) -> str:
 
 
 def _check_skills_loaded_marker(session_id: str = "") -> bool:
-    """Verify the .skills-loaded marker exists with valid session content.
+    """Verify THIS session's per-session skills marker exists with valid content.
 
-    The marker must contain session-proof content (not just exist).
-    A bare `touch .skills-loaded` creates an empty file that fails
-    this check — closing the file-existence bypass.
+    Per-session marker files (state/skills-loaded/<session_id>) replaced the
+    single shared .skills-loaded file on 2026-08-01 (P1-A structural fix,
+    gap-doc candidate #3). Concurrent sessions on one machine each own their
+    marker, so no session can ever stomp another's skills-loaded proof —
+    telegram + cli sessions on the same server no longer block each other.
+    This removes the entire guard class that was bolted onto the shared file
+    (daemon guard, subagent guard, sticky-marker-per-lock).
+
+    Content verification is preserved, so the touch bypass stays closed:
+    a bare `touch` creates an empty file that fails the exact-match rule.
 
     Verification logic:
-      - Session-content markers (content starts with 'session:'):
-        - With session_id: require exact match 'session:{session_id}'
-        - Without session_id: accept any valid 'session:*' marker
-      - Non-session-content (legacy): accept only when non-empty
-      - Empty/whitespace: always reject (touch bypass)
+      - With session_id: the file must exist AND contain exactly
+        'session:{session_id}' (empty/whitespace/wrong-id all fail)
+      - Without session_id (bootstrap/legacy callers): any valid per-session
+        marker proves skills were loaded by SOME session
     """
-    if not SKILLS_MARKER.exists():
-        return False
-    try:
-        content = SKILLS_MARKER.read_text().strip()
-        if not content or content.isspace():
-            # Empty or whitespace-only (touch bypass) → reject
-            return False
-        if content.startswith("session:"):
-            # Cron/Background/Subagent sessions: accept ANY valid session:*
-            # marker. All three are barred from overwriting the marker
-            # (_auto_create_skills_marker daemon guard + _is_subagent_session),
-            # so the only marker they can ever see is one created by a
-            # non-daemon (interactive) session — trust it.
-            if session_id and (
-                session_id.startswith("cron_")
-                or session_id.startswith("bg_")
-                or _is_subagent_session(session_id)
-            ):
-                return True
-            # ── P1-A: Sticky marker per governance lock ──
-            # A session that holds an ACTIVE governance lock is immune to
-            # marker theft. The lock is stronger proof of discipline than the
-            # marker: the session already proved governance by calling
-            # begin_change(). This fixes the live race where a concurrent
-            # session (previous-conversation process, cli-source run, or
-            # long-lived LLM cron) stomps the shared .skills-loaded marker
-            # mid-task, blocking write tools even while a lock is held.
-            # The marker must still be a valid session:* marker (skills were
-            # loaded by SOME session) — an empty/touch file still fails.
-            if session_id and _has_governance_lock(session_id):
-                return True
-            # Session-verified marker — check match
-            if session_id and content != f"session:{session_id}":
-                # Wrong session → reject
+    if session_id:
+        try:
+            path = _session_marker_path(session_id)
+            if not path.exists():
                 return False
-            # Matching session or no session_id passed → accept
-            return True
-        # Non-session, non-empty content (legacy backward compat) → accept
-        return True
+            content = path.read_text().strip()
+            return content == f"session:{session_id}"
+        except (OSError, ValueError):
+            return False
+    # No session_id: accept any valid per-session marker
+    try:
+        if not _skills_marker_dir().exists():
+            return False
+        for path in _skills_marker_dir().iterdir():
+            try:
+                if path.is_file() and path.read_text().strip().startswith("session:"):
+                    return True
+            except OSError:
+                continue
     except OSError:
         return False
+    return False
 
 
 def _auto_create_skills_marker(session_id: str) -> None:
-    """Write the .skills-loaded marker with session-specific proof content.
+    """Write THIS session's per-session skills marker with session-proof content.
 
     Called automatically when all 8 required skills have been loaded
-    via skill_view() in this session. The session_id in the content
-    prevents reuse across sessions and blocks `touch` bypass.
+    via skill_view() in this session. Each session owns a marker file at
+    state/skills-loaded/<session_id> — concurrent sessions can never
+    overwrite each other (the pre-2026-08-01 shared .skills-loaded file had
+    this race and required daemon/subagent/lock guards; per-session files
+    make the whole guard class unnecessary).
 
-    CRITICAL: Cron sessions (session_id starts with 'cron_') must NOT
-    overwrite the marker from any other session. Otherwise background
-    cron processes constantly invalidate each other's markers,
-    creating a deadlock where write tools are blocked even though skills
-    were properly loaded. Once a marker exists, crons never touch it.
+    Content is 'session:{session_id}' — prevents reuse across sessions and
+    blocks `touch` bypass (empty file fails _check_skills_loaded_marker).
+    Written atomically (temp + rename) so a reader never sees a
+    half-written marker.
     """
     if not session_id:
         return
     try:
-        # ── Cron/Background/Subagent sessions NEVER overwrite an existing marker ──
-        # If the current session is a daemon (cron/bg) or a delegated subagent
-        # (date-based ID but parent_session_id set in state.db) and a marker
-        # already exists (from ANY session — interactive or daemon), do nothing.
-        # Prevents cascade: subagent A creates marker, subagent B overwrites A,
-        # then the parent interactive session is blocked mid-task. Preserves the
-        # first marker set after boot.
-        current_marker = SKILLS_MARKER.read_text().strip() if SKILLS_MARKER.exists() else ""
-        is_daemon = (
-            session_id.startswith("cron_")
-            or session_id.startswith("bg_")
-            or _is_subagent_session(session_id)
-        )
-        if is_daemon and current_marker:
-            log.debug(
-                "Non-interactive session %s skipped overwriting existing marker (preserving %s)",
-                session_id[:20],
-                current_marker[:40],
-            )
-            return
-
-        GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
-        SKILLS_MARKER.write_text(f"session:{session_id}")
+        marker_dir = _skills_marker_dir()
+        marker_dir.mkdir(parents=True, exist_ok=True)
+        path = _session_marker_path(session_id)
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(f"session:{session_id}")
+        tmp.rename(path)  # atomic — readers never see a half-written marker
         log.info("Skills-loaded marker auto-created for session %s", session_id)
 
-        # ── Also write skills-state.json ──
-        # The JSON state tracks individual skill load times and workflow
-        # progress. Read by block messages to show which skills are loaded.
+        # ── Also write this session's skills-state file ──
+        # Tracks individual skill load times and workflow progress. Read by
+        # block messages to show which skills are loaded. Per-session file
+        # (skills-state/<session_id>.json) — no cross-session bleed.
         _write_skills_state(
             session_id,
             always_loaded=_skills_loaded_in_session.copy() if _skills_loaded_in_session else None,
             state_updates={"skill_source": "user_session"},
         )
-    except OSError as e:
+    except (OSError, ValueError) as e:
         log.warning("Cannot auto-create skills-loaded marker: %s", e)
 
 
@@ -1025,20 +1067,20 @@ def _on_session_start(session_id: str, **kwargs):
         if session_id:
             _write_session_marker(session_id)
 
-            # ── Cron bootstrap: auto-create .skills-loaded ──────────────
+            # ── Cron bootstrap: auto-create per-session skills marker ──
             # Cron sessions start fresh with no skills-loaded marker. The
             # enforcer blocks all write tools until skills are loaded, but
             # cron agents may not have skill_view() in their tool registry.
             # This bootstrap reads the always-section skills from disk and
             # pre-creates the marker, so cron agents can proceed normally.
             #
-            # IMPORTANT: If a marker from ANY session already exists, do
-            # NOT overwrite it. This prevents the cascade where cron A
-            # creates the marker, then cron B overwrites it with its own,
-            # then cron C overwrites B, etc. The first session (interactive
-            # or cron) to create the marker owns it for the boot cycle.
+            # Markers are per-session files (skills-loaded/<session_id>),
+            # so a cron session creating its own marker can never touch
+            # another session's proof (pre-2026-08-01 shared-file race is
+            # structurally gone — no "first marker owns the boot cycle"
+            # rule needed anymore).
             if session_id.startswith("cron_"):
-                if SKILLS_MARKER.exists():
+                if _session_marker_path(session_id).exists():
                     log.debug(
                         "Cron session %s skipped bootstrap — marker already exists",
                         session_id[:20],
@@ -1183,8 +1225,9 @@ def register(ctx):
             if not _check_skills_loaded_marker(hermes_session_id):
                 if _is_write_tool(tool_name, args):
                     # ── Build helpful block message ──
-                    # Read skills-state.json to show which skills are loaded.
-                    loaded = _get_loaded_skills_summary()
+                    # Read this session's skills-state file to show which
+                    # skills are loaded.
+                    loaded = _get_loaded_skills_summary(hermes_session_id)
                     loaded_count = sum(1 for v in loaded.values() if v)
                     loaded_list = ", ".join(
                         f"✅ {s}" if loaded[s] else f"  {s}"

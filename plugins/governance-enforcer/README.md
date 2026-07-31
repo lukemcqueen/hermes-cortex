@@ -213,24 +213,34 @@ loading by touching a file.
 ### How it works
 
 The enforcer tracks every `skill_view(name=...)` call in the session. When all
-8 required skills have been loaded, it **auto-creates** the `.skills-loaded`
-marker with the session ID as proof:
+8 required skills have been loaded, it **auto-creates a per-session marker**
+with the session ID as proof:
 
 ```python
 # Written by _auto_create_skills_marker() when _skills_loaded_in_session >= _REQUIRED_SKILLS
+# Path:    ~/.hermes-cortex/state/skills-loaded/{session_id}
 # Content: "session:{hermes_session_id}"
 ```
+
+**Per-session files (since 2026-08-01):** each session owns its own marker
+file under `state/skills-loaded/<session_id>`. The previous single shared
+`state/.skills-loaded` file was the source of a multi-session race — on a
+server with several sessions (telegram + cli 1 + cli 2), any session loading
+skills overwrote the one file and blocked the other sessions' write tools
+mid-task. With per-session files, concurrent sessions physically cannot stomp
+each other. The old global `.skills-loaded` file is now inert (ignored).
 
 The marker is **verified by content, not existence**. A bare `touch` creates
 an empty file that is rejected:
 
 | Marker state | Verdict | Why |
 |-------------|---------|-----|
+| No per-session file | 🔒 REJECTED | Skills not proven loaded |
 | Empty (touch) | 🔒 REJECTED | No session proof |
 | Whitespace only | 🔒 REJECTED | Same as empty |
 | `session:correct-id` | ✅ ACCEPTED | Auto-created by enforcer after skill loading |
 | `session:wrong-id` | 🔒 REJECTED | Session mismatch |
-| Legacy non-empty text | ✅ ACCEPTED | Backward compat |
+| Old global `.skills-loaded` | 🔒 IGNORED | Legacy file, superseded by per-session markers |
 
 ### The 8 required skills
 
@@ -247,9 +257,9 @@ touch ~/.hermes-cortex/state/.skills-loaded
 ```
 
 This created an empty file that the enforcer accepted because it only checked
-file existence. Now the enforcer verifies the content contains session proof.
-The `touch` bypass is structurally closed. See also `SOUL.md` Principle 23
-for the agent-side discipline.
+file existence. Now the enforcer verifies the content contains session proof
+in a per-session file. The `touch` bypass is structurally closed. See also
+`SOUL.md` Principle 23 for the agent-side discipline.
 
 ---
 
@@ -560,12 +570,12 @@ After calling `begin_change()`, the same tool should **pass**.
 ## Cron / Cold-Session Bootstrap
 
 Cron sessions (detected by `cron_` prefix in the session ID) start with no
-`.skills-loaded` marker. The enforcer blocks all write tools until skills are
+per-session skills marker. The enforcer blocks all write tools until skills are
 loaded — but cron agents may not have `skill_view()` in their tool registry,
 creating a bootstrapping deadlock.
 
-**Solution:** The `_on_session_start` hook auto-creates `.skills-loaded` for
-cron sessions by:
+**Solution:** The `_on_session_start` hook auto-creates a per-session marker
+(`state/skills-loaded/<cron-session-id>`) for cron sessions by:
 
 1. Reading `~/.hermes-cortex/skills.yaml` for the `always` section
 2. Verifying each of the 8 required skills has a `SKILL.md` on disk under

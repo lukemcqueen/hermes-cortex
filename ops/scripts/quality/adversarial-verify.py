@@ -189,22 +189,54 @@ def generate_fuzz_inputs(funcs: list[dict]) -> list[dict]:
 
 
 def detect_cheat_patterns(file_path: str, lines: list[str]) -> list[dict]:
-    """Detect known cheat patterns in the code."""
+    """Detect known cheat patterns in the code.
+
+    Code-only detection: cheat patterns (empty excepts, type suppression)
+    are source-code constructs — docs, configs, and prose must not be
+    flagged for code examples they contain.
+
+    NOTE (2026-08-01): the previous empty-except regex
+    `except\\s*(?:\\w+\\s*)*:` used nested quantifiers and was
+    catastrophically slow (exponential backtracking) on any file
+    containing 'except' followed by a long word/space run — the
+    pre-commit adversarial gate hung for minutes on ordinary files.
+    Replaced with linear, bounded patterns. Bare `except:` (swallows
+    everything) stays HIGH (gate blocker); a typed exception swallow is
+    a maintainability smell → MEDIUM (reported, does not block).
+    """
+    # Cheat patterns are code constructs — only scan actual code files
+    if Path(file_path).suffix not in {".py", ".ts", ".tsx", ".js", ".jsx"}:
+        return []
     findings = []
     content = "".join(lines)
 
-    # Pattern 1: Empty except blocks (multi-line: except:\n    pass)
-    empty_excepts = re.findall(r"except\s*(?:\w+\s*)*:[^\S\n]*\n\s*(?:pass|#|#.*|'''|\"\"\")\s*(?:\n|$)", content)
+    # Pattern 1: Empty except blocks (multi-line: except:\\n    pass)
+    # Linear: `[^\\n:]*` bounded to the rest of the line — no nested quantifiers.
+    empty_excepts = re.findall(
+        r"except\b[^\n:]*:\s*(?:\n[ \t]*)?(?:pass|#.*)(?:\n|$)",
+        content,
+    )
     # Pattern 1b: Single-line: except: pass  (or _ = None)
-    inline_swallows = re.findall(r"except\s*(?:\w+\s*)*:\s*(?:pass|_ = None)\s*(?:#|$)", content)
+    inline_swallows = re.findall(
+        r"except\b[^\n:]*:\s*(?:pass|_ = None)\s*(?:#|$)",
+        content,
+    )
     if empty_excepts or inline_swallows:
         total = len(empty_excepts) + len(inline_swallows)
+        # Bare `except:` swallows ALL exceptions — genuine blocker.
+        # Typed except with pass/comment — smell, not a security blocker.
+        has_bare = any(
+            re.match(r"except\s*:", e) for e in (empty_excepts + inline_swallows)
+        )
         findings.append({
             "finding_id": next_finding_id(),
             "technique": "cheat-detection",
             "pattern": "error-swallow",
-            "detail": f"Empty except block(s) detected: {total} occurrence(s)",
-            "severity": "high",
+            "detail": (
+                f"Empty except block(s) detected: {total} occurrence(s)"
+                + (" (includes bare except: — swallows every exception)" if has_bare else "")
+            ),
+            "severity": "high" if has_bare else "medium",
         })
 
     # Pattern 2: Type suppression

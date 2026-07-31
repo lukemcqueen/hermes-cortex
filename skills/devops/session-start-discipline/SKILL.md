@@ -13,10 +13,13 @@ related_skills:
 
 ## Session Start — Mandatory Skill Loading
 
-**You must never `touch ~/.hermes-cortex/state/.skills-loaded`.** The enforcer
-auto-creates this marker when all 9 always-section skills have been loaded
-via actual `skill_view()` calls. A bare `touch` creates an empty file that
-fails content verification — blocking you until you load the real skills.
+**You must never `touch` the skills marker.** The enforcer auto-creates a
+per-session marker at `~/.hermes-cortex/state/skills-loaded/<session-id>` when
+all 9 always-section skills have been loaded via actual `skill_view()` calls.
+A bare `touch` creates an empty file that fails content verification — blocking
+you until you load the real skills. Each session owns its own marker file, so
+concurrent sessions (telegram + cli 1 + cli 2 on one server) never stomp each
+other.
 
 ## Sequence
 
@@ -61,7 +64,7 @@ See also:
   when the enforcer blocks per-tool writes
 
 ```bash
-cat ~/.hermes-cortex/state/.skills-loaded
+cat ~/.hermes-cortex/state/skills-loaded/<your-session-id>
 # Expected: session:<current-session-id>
 ```
 
@@ -94,11 +97,13 @@ subagents will hit the same write-block and fail to apply file changes.
 You loaded all 9 skills. `echo` and `pwd` work fine. But a longer command
 like `python3 adversarial-verify.py` gets blocked. The enforcer re-checks
 the marker at each `terminal()` call — quick commands pass through before
-the re-check catches the stale session, longer commands don't.
+the re-check catches the missing marker, longer commands don't.
 
-**To confirm:** `cat ~/.hermes-cortex/state/.skills-loaded` — if the session
-ID doesn't match your current session, the marker was overwritten.
+**To confirm:** `cat ~/.hermes-cortex/state/skills-loaded/<your-session-id>` — if
+the file is missing or empty, your skills weren't loaded this session (or the
+enforcer plugin was redeployed, which resets in-memory tracking).
 
-**Workaround:** Call `skill_view('<any>')` immediately before each write tool
-to re-establish the marker with your session ID. A single `skill_view` call
-triggers the enforcer's auto-create with your current session ID.
+**Workaround:** Call `skill_view('<any>')` to trigger the enforcer's auto-create
+with your current session ID. Note: with per-session marker files (2026-08-01)
+another session can NO LONGER overwrite your marker — a blocked write means
+*your* session's marker is missing, not that it was stolen.

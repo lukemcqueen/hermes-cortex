@@ -82,10 +82,11 @@
       "artifacts": [
         "enforcer:readonly-terminal-fast-path",
         "enforcer:_is_readonly_terminal_command",
-        "enforcer:_is_subagent_session"
+        "enforcer:per-session-skills-markers (skills-loaded/<session_id>)",
+        "enforcer:_is_subagent_session (legacy — superseded by per-session markers)"
       ],
       "added": "2026-07-31",
-      "note": "P0-2 fail-closed terminal policy + subagent marker guard (governance-improvement-plan-gaps G2, F-03)"
+      "note": "P0-2 fail-closed terminal policy; 2026-08-01: per-session skills markers structurally fix the multi-session race (gap-doc P1-A candidate #3)"
     },
     "docs-stale": {
       "artifacts": [

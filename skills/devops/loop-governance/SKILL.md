@@ -565,7 +565,12 @@ Lock files and the immutable chain have failure modes beyond the skills marker. 
 
 **Mid-write lock theft:** every purge path — the enforcer's `_has_governance_lock()` pre-scan + Phase 2 scan, the MCP's `_purge_stale_locks()`, and `purge-stale-governance-locks.py` — used to delete any `.governance-*.json` that failed `json.loads`. `_write_lock()` wrote non-atomically (`write_text`), so a concurrent purge read mid-write caught partial JSON and deleted a FRESH lock. Symptom: `begin_change` succeeds, then seconds later `check_lock` says inactive and the file is gone. **Fix (shipped):** atomic writes (temp + rename, same fs) + purge loops skip unparseable files (never delete what you can't parse — it is being written). Locks now carry `session_type` (cron/bg/interactive); cron/bg sessions never purge interactive locks.
 
-**Sticky marker per governance lock:** `_check_skills_loaded_marker()` accepts a valid `session:*` marker when the session holds an active governance lock — the lock is stronger proof than the marker. A concurrent session stomping `.skills-loaded` can no longer block a locked session's write tools mid-task; the touch bypass stays closed (empty marker still fails).
+**Sticky marker per governance lock — SUPERSEDED (2026-08-01):** the sticky-marker
+rule was the P1-A patch for the shared-file race: `_check_skills_loaded_marker()`
+accepted a valid `session:*` marker when the session held an active governance lock.
+It is now obsolete — markers are per-session files (`state/skills-loaded/<session_id>`),
+so no concurrent session can steal the marker in the first place. The lock-based
+exception and the daemon/subagent guards were removed with the shared file.
 
 **Session-identity marker race (`.hermes-session-current.id`):** distinct from the skills marker — the enforcer resolves the *current session id* from the shared fixed-path file `~/.hermes-cortex/state/.hermes-session-current.id`, which ANY concurrent session (party subagents, background workers, parallel conversations) can overwrite. Symptom (confirmed 2026-07-31): your fresh `.governance-<session>.json` lock exists with a valid heartbeat, yet `check_lock` returns inactive and write tools block with "GOVERNANCE LOCK REQUIRED" — the enforcer looks up the lock under the stomped id. State dir shows two+ lock files (yours + a subagent's) and the marker holding a third, unrelated id. **Recovery:** re-acquire with `begin_change()` (creates the lock under the currently-resolved id), reload the 8 always-skills so the marker matches, then proceed. This compounds with Pitfall 3 (skills marker) — both live in the same shared state dir.
 

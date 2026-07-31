@@ -2035,11 +2035,11 @@ def check_governance(res):
   # Verify the enforcer has the skills-loaded gate (structural enforcement)
   try:
     _enforcer_init = (plugin_src / "__init__.py").read_text()
-    if "SKILLS_MARKER" in _enforcer_init:
-      res.add("Skills gate", "PASS", "enforcer blocks writes without .skills-loaded")
+    if "SKILLS_MARKER_DIR" in _enforcer_init:
+      res.add("Skills gate", "PASS", "enforcer blocks writes without per-session skills markers")
     else:
       res.add("Skills gate", "WARN",
-          "missing SKILLS_MARKER — skills gate not active",
+          "missing SKILLS_MARKER_DIR — skills gate not active",
           "Pull latest hermes-cortex and run cortex-update.sh")
   except (OSError, PermissionError):
     pass

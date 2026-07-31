@@ -6,9 +6,10 @@
 
 ## Problem
 
-The `.skills-loaded` marker ensures agents load always-section skills at session/task
-start. But it's a **one-time gate**. Once open, there's nothing structural that reminds
-agents to load task-specific skills discovered *during* a complex edit session.
+The per-session skills-loaded marker (`~/.hermes-cortex/state/skills-loaded/<session-id>`)
+ensures agents load always-section skills at session/task start. But it's a **one-time gate**.
+Once open, there's nothing structural that reminds agents to load task-specific skills
+discovered *during* a complex edit session.
 
 ### Behavioral Gap
 

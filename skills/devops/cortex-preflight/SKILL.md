@@ -171,29 +171,37 @@ This means the raw MD5 between the repo source and the deployed copy will always
 
 ### Pitfall 3: Skills-loaded marker gets stale from daemon sessions (FIXED)
 
-> **Additional trigger (confirmed 2026-07-31):** `cortex-update.sh` **re-deploys the
-> enforcer plugin** (`plugins/governance-enforcer/` is a registered deploy path),
-> which resets the plugin's in-memory session tracking. After ANY cortex-update
-> run, the interactive session's `.skills-loaded` marker is treated as invalid —
-> the very next `terminal()` call is blocked with "session skills not fully loaded"
-> even though all 8 skills were loaded minutes earlier. This recurs after EVERY
-> cortex-update in the same session. Recovery: reload the 8 always-section skills
-> via `skill_view()` (the enforcer tracks the calls and auto-recreates the marker).
-> Budget for this when planning a session that runs cortex-update mid-task.
+> **FIXED (2026-08-01):** per-session marker files made this entire pitfall
+> obsolete. `cortex-update.sh` re-deploying the enforcer plugin no longer
+> invalidates your session's skills proof — your marker file at
+> `state/skills-loaded/<session-id>` survives the plugin reload, so write tools
+> keep working after a cortex-update. (Pre-fix behaviour, kept for history: the
+> redeploy reset the plugin's in-memory tracking and the shared marker was
+> treated as invalid, forcing a reload of the 8 always-skills after every
+> cortex-update.)
 
-The skills-loaded marker lives at `~/.hermes-cortex/state/.skills-loaded`. It is **session-scoped** — a daemon session (cron job or background subagent) that loads skills creates this marker, and because it was created by a different session, your session's skill loads won't be recognized. The governance enforcer plugin blocks write tools until marker is valid.
+The skills-loaded proof lives at `~/.hermes-cortex/state/skills-loaded/<session_id>` —
+**one file per session** (since 2026-08-01). Each session that loads all 8
+always-section skills auto-creates its OWN marker via `_auto_create_skills_marker()`.
+Concurrent sessions (telegram, cli 1, cli 2 on one server; cron jobs; background
+subagents) can never overwrite each other's proof, because they never share a
+file. The governance enforcer plugin blocks write tools until THIS session's
+marker is valid.
 
-**Permanent fix (deployed 2026-07-30):** The enforcer now has a guard that prevents daemon sessions (both `cron_` and `bg_` prefixed) from ever overwriting an existing `.skills-loaded` marker:
-- `_auto_create_skills_marker()`: if the current session starts with `cron_` or `bg_` and ANY marker exists, do nothing
-- `_on_session_start()`: daemon sessions skip the skills bootstrap if a marker already exists
-- `_check_skills_loaded_marker()`: daemon sessions accept ANY valid `session:*` marker, trusting the first interactive session's proof
+**Why per-session files:** the pre-2026-08-01 single shared
+`~/.hermes-cortex/state/.skills-loaded` file was raced by every concurrent
+session — any session loading skills overwrote the one file with its own ID,
+blocking the other sessions' write tools mid-task (observed 6× in one session).
+The daemon guard (cron_/bg_), subagent guard, and P1-A sticky-marker-per-lock
+rule were all patches on that shared file; per-session files remove the shared
+state entirely, so the whole guard class was deleted.
 
-**P1-A hardening (2026-07-31):** `_check_skills_loaded_marker()` also accepts a valid `session:*` marker when the session holds an **active governance lock** — the sticky-marker-per-governance-lock rule. A concurrent session (previous conversation process, cli-source run, long-lived LLM cron) can stomp `.skills-loaded` but can no longer block a locked session's write tools mid-task. Lock files are written atomically (temp+rename) and purge loops never delete unparseable (mid-write) lock files; locks carry `session_type` so a cron session never purges an interactive lock.
+**Result:** each session's marker is created when it loads all 8 skills and
+persists for the session. No session can take another's marker away.
 
-**Result:** Once an interactive session loads all 8 always-section skills and creates the marker, NO daemon session can overwrite it. The marker persists for the entire interactive session.
-
-**If you hit this before the permanent fix was deployed:**
-`rm -f ~/.hermes-cortex/state/.skills-loaded` then load all 8 always-section skills manually.
+**Recovery if write tools are blocked:**
+1. Load all 8 always-section skills via `skill_view()` (the marker auto-creates)
+2. Write tools unblocked
 
 ### Pitfall 4: Hook symlinks prevent drift
 
@@ -229,7 +237,7 @@ Every `begin_change()` creates a new cycle in the loop-governance DB. When `cort
 |-------|-----------|
 | SOURCE header | Use `_content_md5()` on deployed paths |
 | Lock cleaned | Re-acquire lock with `begin_change()` |
-| Stale skills marker | `rm -f ~/.hermes-cortex/state/.skills-loaded` + reload all 8 always skills |
+| Stale skills marker | Reload the 8 always skills — per-session marker (`state/skills-loaded/<session-id>`) auto-creates |
 | __pycache__ stale bytecode | Fixed in hermes-plugin-lock (auto-clears on unlock) |
 | Drift prevention | Verify hooks are relative symlinks |
 | PENDING cycles | Score all before `end_change()` |

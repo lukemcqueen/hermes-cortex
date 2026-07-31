@@ -1,6 +1,11 @@
 # Skills Session Manager v2 — Design
 
-> **Problem:** Agents forget to load always-section skills on session start, forget task-relevant skills mid-session, and skip mandatory execution steps (docs, push, verify). The current binary `.skills-loaded` marker is fragile and provides no guidance.
+> **Status:** Design doc. Parts implemented: `skills-state.json` (per-session,
+> 2026-08-01) + per-session marker files (`state/skills-loaded/<session_id>`)
+> now replace the single shared binary `.skills-loaded` marker — see
+> `plugins/governance-enforcer/README.md`. Remaining proposals below are open.
+
+> **Problem:** Agents forget to load always-section skills on session start, forget task-relevant skills mid-session, and skip mandatory execution steps (docs, push, verify). The original binary `.skills-loaded` marker (single shared file) was fragile and provided no guidance.
 
 ## Root Cause Analysis
 

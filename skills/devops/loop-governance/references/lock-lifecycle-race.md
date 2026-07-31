@@ -8,20 +8,25 @@ in one session: `begin_change` succeeded (lock file written), then within second
 marker also kept flipping to a different session ID mid-task, blocking terminal/write
 tools 4× in ~15 minutes.
 
-## Root cause 1 — marker race (`.skills-loaded`)
+## Root cause 1 — marker race (`.skills-loaded`) → STRUCTURALLY FIXED 2026-08-01
 
-The shared marker file is written by `_auto_create_skills_marker(session_id)` whenever
-any session completes the 8 always-skill loads. Daemon guard covers `cron_`/`bg_`
+The old shared marker file was written by `_auto_create_skills_marker(session_id)` whenever
+any session completed the 8 always-skill loads. Daemon guard covered `cron_`/`bg_`
 prefixes + `_is_subagent_session` (state.db `source='subagent'` or `parent_session_id`),
 but NOT:
 - `cli`-source sessions with date-based IDs (e.g. `hermes` CLI run from cron/terminal)
 - a previous conversation's still-live process (telegram source, same gateway) that
   keeps re-loading skills and re-stomping the marker
 
-Fix (shipped): **sticky marker per governance lock** — `_check_skills_loaded_marker()`
-returns True for a valid `session:*` marker when the session holds an active governance
-lock. The lock is stronger proof of discipline than the marker. Empty/touch marker
-still fails (bypass closed).
+**Structural fix (2026-08-01): per-session marker files.** Each session writes
+its own proof at `~/.hermes-cortex/state/skills-loaded/<session_id>` (content
+`session:<session_id>`, atomic temp+rename). `_check_skills_loaded_marker()`
+reads ONLY the calling session's file. No session can ever touch another's
+marker — the shared file (and every guard bolted onto it: daemon guard,
+subagent guard, sticky-marker-per-lock) is gone. Gap-doc P1-A candidate #3,
+implemented after the sticky-marker patch proved insufficient for
+non-locked interactive sessions. Regression tests:
+`TestSkillsMarkerPerSession::test_second_session_does_not_invalidate_first`.
 
 ## Root cause 2 — lock theft by purge loops (the actual blocker)
 

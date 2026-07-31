@@ -17,21 +17,27 @@ platforms: [linux, macos]
 
 Hermes creates sessions with different ID prefixes depending on the session type. Every guard in the enforcer must cover ALL non-interactive prefixes.
 
-| Prefix | Source | Can overwrite marker? | Guard needed? |
-|--------|--------|-----------------------|---------------|
-| `20260730_...` (date-based) | Interactive Telegram/DM | Yes (should own the marker) | No (primary user) |
-| `cron_...` | Scheduled cron job | No — blocked by daemon guard | Yes |
-| `bg_...` | Background subagent (delegate_task, etc.) | No — blocked by daemon guard | Yes |
-| `cli`-source date-based | CLI-invoked session (cron/terminal `hermes` runs) | Blocked by sticky-lock (P1-A) | Yes — protected via lock |
+| Prefix | Source | Marker behaviour (per-session, 2026-08-01+) |
+|--------|--------|-----------------------------------------------|
+| `20260730_...` (date-based) | Interactive Telegram/DM / CLI | Owns its own marker file — never touches other sessions' |
+| `cron_...` | Scheduled cron job | Owns its own marker (bootstrap-created) |
+| `bg_...` | Background subagent (delegate_task, etc.) | Owns its own marker |
+| `cli`-source date-based | CLI-invoked session (cron/terminal `hermes` runs) | Owns its own marker |
 
-**P1-A fix (2026-07-31):** the shared `.skills-loaded` marker race (any concurrent session stomping it mid-task) is now neutralized by the **sticky-marker-per-governance-lock** rule: `_check_skills_loaded_marker()` accepts a valid `session:*` marker when the session holds an active governance lock. The lock is stronger proof of discipline than the marker. Locks also carry `session_type` (cron/bg/interactive) and purge loops never delete unparseable (mid-write) lock files.
+**Per-session markers (2026-08-01):** the shared `.skills-loaded` file race is
+**structurally eliminated** — each session writes its own proof at
+`state/skills-loaded/<session_id>`, so no session can ever stomp another's.
+The entire guard class bolted onto the shared file (daemon guard, subagent
+guard, sticky-marker-per-governance-lock) is obsolete and was removed.
+This was gap-doc P1-A candidate #3 ("per-session marker files"), the
+documented structural fix.
 
 **Rule:** When adding a session-type guard, use `session_id.startswith("cron_") or session_id.startswith("bg_")`. Do NOT create separate `is_cron` and `is_bg` booleans — future prefixes will be missed.
 
 **Guard locations in the enforcer:**
-- `_auto_create_skills_marker()` — prevent daemon overwrite of `.skills-loaded`
-- `_check_skills_loaded_marker()` — allow daemons to accept any `session:*` marker
-- `_on_session_start()` — skip bootstrap when marker exists
+- `_auto_create_skills_marker()` — writes `state/skills-loaded/<session_id>` (atomic temp+rename)
+- `_check_skills_loaded_marker()` — reads THIS session's own marker; exact content match
+- `_on_session_start()` — cron bootstrap creates the cron session's OWN marker
 
 **Checklist when modifying:**
 - [ ] Search for ALL existing prefix guards: `grep -n 'cron_\|bg_' plugins/governance-enforcer/__init__.py`
@@ -62,32 +68,34 @@ The `begin_change()` MCP tool has a DOGFOOD check: if the deployed enforcer (`~/
 
 ---
 
-## 3. The Skills-Loaded Marker Race
+## 3. The Skills-Loaded Marker Race (FIXED — per-session files, 2026-08-01)
 
-The `.skills-loaded` file at `~/.hermes-cortex/state/.skills-loaded` is a single file. ALL concurrent Hermes sessions write to it. When session B loads skills, it overwrites session A's marker. Session A's writes are then blocked because `_check_skills_loaded_marker()` sees session B's ID.
+**The old design:** `.skills-loaded` at `~/.hermes-cortex/state/` was a single
+file. ALL concurrent Hermes sessions wrote to it. When session B loaded skills,
+it overwrote session A's marker. Session A's writes were then blocked because
+`_check_skills_loaded_marker()` saw session B's ID.
 
-**Session types that race:**
-- Interactive session (you) — `session:20260730_142641_0dafe4a4`
-- Background subagent — `session:bg_163714_c841c8`
-- Cron session — `session:cron_b33bc9b07c55_...`
+**The fix:** per-session marker files at `~/.hermes-cortex/state/skills-loaded/<session_id>`,
+plus per-session state at `state/skills-state/<session_id>.json`. Each session
+writes and reads only its OWN files — concurrent sessions (telegram, cli 1,
+cli 2 on one server) can never stomp each other. The daemon guard, subagent
+guard, and sticky-marker-per-lock rules were removed; they're no longer needed.
 
-**How the daemon guard fixes this:**
-- `_auto_create_skills_marker()`: if session starts with `cron_` or `bg_` and ANY marker exists, do NOT overwrite
-- `_check_skills_loaded_marker()`: if session starts with `cron_` or `bg_` and marker is `session:*`, return True (accept any)
-- Result: the first interactive session to load skills "owns" the marker for its entire lifetime
-
-**If your writes are blocked (the marker has a different session ID):**
+**If your writes are blocked (marker missing or wrong content):**
 ```
-cat ~/.hermes-cortex/state/.skills-loaded
+cat ~/.hermes-cortex/state/skills-loaded/<your-session-id>
+# → session:<your-session-id>  (valid)
+# → empty / missing            (skills not loaded this session)
 ```
-→ `session:bg_163714_c841c8` (not your session)
 
 **Fix:**
-1. `rm -f ~/.hermes-cortex/state/.skills-loaded` (clear stale marker)
-2. Load all 8 always-section skills → marker recreated with YOUR session ID
-3. Write tools unblocked
+1. Load all 8 always-section skills via `skill_view()` → your session's marker
+   is auto-created
+2. Write tools unblocked
 
-**Watch out:** If a daemon session (cron or bg) is still running, it may re-overwrite the marker. Work fast, or kill the daemon process first.
+**Legacy files:** the old `~/.hermes-cortex/state/.skills-loaded` and
+`skills-state.json` files are inert — the enforcer no longer reads them. They
+can be deleted once all sessions have restarted with the new enforcer.
 
 ---
 
@@ -151,17 +159,17 @@ Two mechanisms deploy the enforcer:
 When modifying the enforcer, test these scenarios:
 
 - [ ] **Interactive session:** write tools work with correct marker
-- [ ] **Cron session:** marker NOT overwritten if one already exists
-- [ ] **Background session (`bg_`):** same guard as cron
-- [ ] **Multiple concurrent sessions:** daemon sessions don't steal the marker
-- [ ] **No marker exists:** daemon sessions CAN create one (first boot scenario)
+- [ ] **Concurrent interactive sessions (multi-session):** session A and session B both load skills — neither blocks the other (regression test: `TestSkillsMarkerPerSession::test_second_session_does_not_invalidate_first`)
+- [ ] **Cron session:** bootstrap creates its OWN marker without touching interactive sessions
+- [ ] **Background session (`bg_`):** owns its own marker
+- [ ] **Touch bypass closed:** empty/whitespace marker file → rejected
 - [ ] **DOGFOOD sync:** deploy via `cortex-update.sh` — does `begin_change()` work?
 - [ ] **Cross-machine pull:** another agent's enforcer commit arrives via pull — does DOGFOOD handle it?
 
-**Quick test for daemon guard:**
+**Quick test for per-session markers:**
 ```bash
-echo "session:test" > ~/.hermes-cortex/state/.skills-loaded
-# Then check: do cron/bg sessions respect the guard?
+echo "session:test" > ~/.hermes-cortex/state/skills-loaded/test-session
+# Check: does _check_skills_loaded_marker("test-session") accept only exact content?
 ```
 
 ---

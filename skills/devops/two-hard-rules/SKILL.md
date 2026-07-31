@@ -49,9 +49,10 @@ Every improvement you make that benefits other agents MUST go into the `hermes-c
 ## Enforcement
 
 - **Rule 1** is enforced by the MCP server at the tool level — you cannot write files without a lock
-- **Skills gate** — `~/.hermes-cortex/state/.skills-loaded` is auto-created when all 8
-  always-section skills are loaded via `skill_view()`. Do NOT `touch` this file — the enforcer
-  rejects empty/session-mismatched markers.
+- **Skills gate** — `~/.hermes-cortex/state/skills-loaded/<session-id>` is auto-created when all 8
+  always-section skills are loaded via `skill_view()`. Do NOT `touch` it — the enforcer
+  rejects empty/session-mismatched markers. Per-session files mean concurrent sessions
+  never stomp each other's proof.
 - **Reflexion gate** — The pre-commit hook queries the session DB for proof that `reflexion-check`
   was loaded. Do NOT use `--no-verify` — it's logged and audited.
 - **Adversarial verify** — The pre-commit scanner checks for issues. **Correct:** Fix what it reports.

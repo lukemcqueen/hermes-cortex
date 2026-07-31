@@ -38,6 +38,12 @@ _is_cronjob_write = enforcer._is_cronjob_write
 _is_skill_write = enforcer._is_skill_write
 _has_governance_lock = enforcer._has_governance_lock
 _governance_lock_path = enforcer._governance_lock_path
+_check_skills_loaded_marker = enforcer._check_skills_loaded_marker
+_auto_create_skills_marker = enforcer._auto_create_skills_marker
+_session_marker_path = enforcer._session_marker_path
+_read_skills_state = enforcer._read_skills_state
+_write_skills_state = enforcer._write_skills_state
+_get_loaded_skills_summary = enforcer._get_loaded_skills_summary
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -431,3 +437,138 @@ class TestPreToolCallHook:
         hook = iter(self._make_hook(temp_state_dir))
         result = next(hook)(tool_name="write_file", args={"path": "/tmp/x"})
         assert result["action"] == "block", "Empty task_id should not count as active lock"
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# SKILLS-LOADED MARKER — per-session files (multi-session race fix, 2026-08-01)
+# ═════════════════════════════════════════════════════════════════════════════
+# Regression: the old design used ONE shared ~/.hermes-cortex/state/.skills-loaded
+# file. Concurrent sessions (telegram + cli 1 + cli 2 on one server) each loaded
+# skills and overwrote that single file with their own session ID, blocking the
+# other sessions' write tools mid-task. Per-session marker files
+# (state/skills-loaded/<session_id>) make the race structurally impossible.
+
+
+class TestSkillsMarkerPerSession:
+    """Per-session skills-loaded markers — concurrent sessions can't stomp each other."""
+
+    def test_session_creates_own_marker(self, temp_state_dir):
+        _auto_create_skills_marker("session_A")
+        assert _check_skills_loaded_marker("session_A") is True
+
+    def test_second_session_does_not_invalidate_first(self, temp_state_dir):
+        """THE multi-session race: B loading skills must not block A."""
+        _auto_create_skills_marker("session_A")
+        _auto_create_skills_marker("session_B")   # B loads skills concurrently
+        # Old shared-file code: B's write overwrote the single marker, so A's
+        # check saw 'session:B' ≠ 'session:A' → blocked. Per-session files: both pass.
+        assert _check_skills_loaded_marker("session_A") is True
+        assert _check_skills_loaded_marker("session_B") is True
+
+    def test_three_sessions_telegram_cli_cli(self, temp_state_dir):
+        """Titus-style: telegram + cli 1 + cli 2 on one server."""
+        for sid in ("20260731_telegram_aaa111", "20260731_cli1_bbb222", "20260731_cli2_ccc333"):
+            _auto_create_skills_marker(sid)
+        for sid in ("20260731_telegram_aaa111", "20260731_cli1_bbb222", "20260731_cli2_ccc333"):
+            assert _check_skills_loaded_marker(sid) is True, f"{sid} was stomped"
+
+    def test_touch_bypass_closed(self, temp_state_dir):
+        path = _session_marker_path("session_X")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("")          # bare `touch`
+        assert _check_skills_loaded_marker("session_X") is False
+
+    def test_whitespace_marker_rejected(self, temp_state_dir):
+        path = _session_marker_path("session_X")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("   \n")
+        assert _check_skills_loaded_marker("session_X") is False
+
+    def test_wrong_session_content_rejected(self, temp_state_dir):
+        path = _session_marker_path("session_X")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("session:someone_else")
+        assert _check_skills_loaded_marker("session_X") is False
+
+    def test_missing_marker_rejected(self, temp_state_dir):
+        assert _check_skills_loaded_marker("ghost_session") is False
+
+    def test_no_session_id_accepts_any_valid_marker(self, temp_state_dir):
+        _auto_create_skills_marker("session_A")
+        assert _check_skills_loaded_marker("") is True
+
+    def test_no_session_id_no_markers_rejected(self, temp_state_dir):
+        assert _check_skills_loaded_marker("") is False
+
+    def test_cron_session_owns_its_marker(self, temp_state_dir):
+        """Cron bootstrap creates the cron session's OWN marker without
+        touching an interactive session's proof."""
+        _auto_create_skills_marker("20260731_interactive_zzz")
+        _auto_create_skills_marker("cron_b33bc9b07c55_20260731")
+        assert _check_skills_loaded_marker("cron_b33bc9b07c55_20260731") is True
+        assert _check_skills_loaded_marker("20260731_interactive_zzz") is True
+
+    def test_legacy_single_file_marker_is_inert(self, temp_state_dir):
+        """Old .skills-loaded global file must NOT gate anything anymore."""
+        (temp_state_dir / ".skills-loaded").write_text("session:old_legacy")
+        assert _check_skills_loaded_marker("old_legacy") is False
+        assert _check_skills_loaded_marker("20260731_fresh_abc") is False
+
+    def test_path_traversal_session_id_rejected(self, temp_state_dir):
+        """A hostile session ID must never escape the marker dir (../evil)."""
+        # create with a traversal id → must not write outside the dir
+        _auto_create_skills_marker("../evil")
+        assert (temp_state_dir / "evil").exists() is False, "traversal wrote outside!"
+        # check with traversal id → graceful False, no crash
+        assert _check_skills_loaded_marker("../evil") is False
+        assert _check_skills_loaded_marker("a/b") is False
+        assert _check_skills_loaded_marker("..") is False
+
+    def test_slash_session_id_does_not_write_nested(self, temp_state_dir):
+        _auto_create_skills_marker("sess/with/slash")
+        assert (temp_state_dir / "skills-loaded" / "sess").exists() is False
+
+
+class TestSkillsStatePerSession:
+    """Per-session skills-state files — no cross-session bleed."""
+
+    def test_state_is_isolated_per_session(self, temp_state_dir):
+        _write_skills_state("sess_A", always_loaded={"task-start"})
+        _write_skills_state("sess_B", always_loaded={"agent-flow"})
+        assert set(_read_skills_state("sess_A")["always_skills"]) == {"task-start"}
+        assert set(_read_skills_state("sess_B")["always_skills"]) == {"agent-flow"}
+        assert "task-start" not in _read_skills_state("sess_B")["always_skills"]
+
+    def test_physical_files_are_distinct(self, temp_state_dir):
+        _write_skills_state("sess_A", always_loaded={"task-start"})
+        _write_skills_state("sess_B", always_loaded={"agent-flow"})
+        files = sorted(p.name for p in (temp_state_dir / "skills-state").iterdir())
+        assert files == ["sess_A.json", "sess_B.json"]
+
+    def test_summary_is_per_session(self, temp_state_dir):
+        _write_skills_state("sess_A", always_loaded={"task-start", "agent-flow"})
+        _write_skills_state("sess_B", always_loaded={"change-checklist"})
+        assert _get_loaded_skills_summary("sess_A")["task-start"] is True
+        assert _get_loaded_skills_summary("sess_A")["change-checklist"] is False
+        assert _get_loaded_skills_summary("sess_B")["change-checklist"] is True
+
+    def test_same_session_merge_appends(self, temp_state_dir):
+        _write_skills_state("sess_A", always_loaded={"task-start"})
+        _write_skills_state("sess_A", always_loaded={"agent-flow"})
+        assert set(_read_skills_state("sess_A")["always_skills"]) == {"task-start", "agent-flow"}
+
+    def test_missing_state_returns_empty(self, temp_state_dir):
+        assert _read_skills_state("nobody") == {}
+
+    def test_corrupt_state_json_returns_empty(self, temp_state_dir):
+        """Corrupt/unparseable state file must not crash the enforcer."""
+        state_dir = temp_state_dir / "skills-state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / "sess_X.json").write_text("{ not valid json !!!")
+        assert _read_skills_state("sess_X") == {}
+
+    def test_unsafe_session_id_state_graceful(self, temp_state_dir):
+        """Traversal session IDs fail gracefully in state read/write."""
+        _write_skills_state("../evil", always_loaded={"task-start"})
+        assert (temp_state_dir / "evil.json").exists() is False
+        assert _read_skills_state("../evil") == {}
