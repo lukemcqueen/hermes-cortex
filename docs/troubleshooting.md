@@ -845,6 +845,12 @@ Then score all PENDING cycles (`cycle_query` → `feedback_accept`) and `end_cha
 
 **Fix:** score them — for cycles whose work you can verify, `feedback_accept`; for stale/unknown ones, `feedback_override(correct_decision="MOVE_ON")` with a note.
 
+> ⚠️ **Known bug (2026-07-31):** `_feedback_override` in `mcp-servers/loop-gov-mcp.py` sets `user_overrode=1` and `outcome_note` but **never updates the `decision` column** — PENDING cycles stay PENDING after an override, so the doctor keeps failing. `feedback_accept` works correctly (it sets `decision`). Workaround until Moses merges a fix: after overriding, set the decision directly:
+> ```bash
+> sqlite3 ~/.hermes-cortex/data/loop-governance.db \
+>   "UPDATE loop_cycles SET decision='MOVE_ON' WHERE id=<id> AND user_overrode=1 AND decision='PENDING';"
+> ```
+
 ## 🧠 Scoring / Loop Governance Issues
 
 ### 19. Loop-gov MCP server fails: `ModuleNotFoundError: No module named 'hermes_models'`
