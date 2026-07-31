@@ -221,6 +221,15 @@ def _discover_files(root: Path, max_files: int = 2000) -> list:
                     break
     except PermissionError:
         print("expected — silently handled", file=sys.stderr)
+    return files
+
+
+# ── Per-Language Analyzers ──────────────────────────────────
+
+def _analyze_python(file_path: Path, content: str, rel: Path,
+                    modules: list, routes: list, models: list,
+                    tests: list, all_imports: dict):
+    """Analyze a Python file using AST."""
     imports = []
     functions = []
     classes = []
@@ -265,6 +274,13 @@ def _discover_files(root: Path, max_files: int = 2000) -> list:
                                         route_info["url"] = ast.literal_eval(dec.args[0])
                                     except Exception:
                                         print("expected — silently handled", file=sys.stderr)
+                                routes.append(route_info)
+            functions.append(func_info)
+
+        # Classes
+        elif isinstance(node, ast.ClassDef):
+            class_info = {"name": node.name, "line": node.lineno}
+            # Check bases
             for base in node.bases:
                 try:
                     class_info.setdefault("bases", []).append(ast.unparse(base))

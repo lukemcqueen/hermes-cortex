@@ -85,6 +85,11 @@ def read_inbox(vt: int = 30) -> dict | None:
         return bus_read("inbox_moses", vt)
     except Exception:
         print("expected — silently handled", file=sys.stderr)
+    return None
+
+
+def get_previous_good_sha(dispatch_list: list, current_sha: str) -> str:
+    """Find the SHA before the failed dispatch for rollback target."""
     for i, d in enumerate(dispatch_list):
         if d.get("sha") == current_sha and i > 0:
             return dispatch_list[i - 1]["sha"]
