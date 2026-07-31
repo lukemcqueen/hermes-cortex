@@ -836,7 +836,7 @@ clean_stale_deploys() {
         else
           rm -f "$f"
           info "  🗑️  Removed stale: ${f/$HOME/~} (${size} bytes)"
-          ((cleaned++))
+          cleaned=$((cleaned + 1))
         fi
       fi
     done < <(find "$scan_dir" -type f \( -name '*.py' -o -name '*.sh' \) -print0)
