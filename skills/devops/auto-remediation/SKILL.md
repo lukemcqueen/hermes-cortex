@@ -82,6 +82,28 @@ unreviewed change shipped to every agent.
 
 ## Workflow
 
+### Phase 0: Verify repo skill fence balance — DETECT, don't fix
+
+Before anything else, check whether any repo SKILL.md has unbalanced markdown
+code fences. The agent-fixer has stripped trailing ``` fences from skills
+**five times** (change-test-loop: 14568284, 2214153d, f41f8f76, 297ffa9d, and
+2026-08-01 working-tree corruption). Unbalanced fences corrupt every agent
+that loads the skill. The HARD GUARD above prevents fixing; this step detects.
+
+```bash
+cd "$CORTEX_REPO" 2>/dev/null || cd ~/hermes-cortex
+for f in $(find skills -name 'SKILL.md'); do
+  n=$(grep -c '^```' "$f")
+  if [ $((n % 2)) -ne 0 ]; then echo "UNBALANCED: $f ($n fences)"; fi
+done
+```
+
+- **0 output lines** → balanced. Proceed to Phase 1.
+- **Any UNBALANCED lines** → emit a WARN:
+  `⚠️ Unbalanced code fences: <path> (<n> fences) — orchestrator needs a manual git checkout.`
+  Do NOT edit the file yourself (HARD GUARD). The lifecycle cron
+  (`orch-skill-lifecycle`, 04:00) will revert it on the next run.
+
 ### Phase 1: Check cron jobs for errors
 
 Use `cronjob(action='list')` to list all jobs. Filter for `last_status=error` or jobs that haven't run recently.

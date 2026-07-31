@@ -263,8 +263,6 @@ corrupt, network unreachable):
 **Per-story governance flow:**
 
 ```
-
-```
 1. cache_search(task_description)     ← before coding, learn from past cycles
 2. [coding work — RED-GREEN-REFACTOR]
 3. cycle_query(task_id="story-name")  ← after completion, review the cycle

@@ -484,11 +484,8 @@ After every change (code, config, script, or deployment), log it to the loop-gov
 **Path B — CLI tools (for hooks/scripts):**
 ```bash
 score-cycle --task <task-id> --cycle <N> --code-file <file> --prev-code-file <file> --pass-pct <pass-rate>
-``` This applies to ALL changes — not just TDD cycles. For config/IT changes with no tests, pass `--pass-pct 100` if verification succeeded.
-
-```bash
-score-cycle --task <task-id> --cycle <N> --code-file <file> --prev-code-file <file> --pass-pct <pass-rate>
 ```
+This applies to ALL changes — not just TDD cycles. For config/IT changes with no tests, pass `--pass-pct 100` if verification succeeded.
 
 **Scoring guidelines by change type:**
 
@@ -1243,9 +1240,7 @@ When you need to move pages from one gbrain source into another (e.g. moving orp
 # PGLite upgrade path removed. This system uses Postgres (pgvector).
 # See docs/gbrain-postgres-migration.md for migration steps.
 echo "PGLite engine upgrade no longer supported — migrated to Postgres"
-```
 gbrain extract --stale
-
 # 7. Restart daemons
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gbrain.autopilot.plist
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gbrain.sync-watch.plist

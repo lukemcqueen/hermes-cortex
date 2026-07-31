@@ -161,7 +161,6 @@ docker compose exec api sh -c "rm -f /app/alembic/versions/*auto_merge* /app/ale
 ```
 
 Then verify the root cause (migration chain fork, wrong `down_revision`, corrupt file).
-```
 
 ## psql — Dual-Mode
 

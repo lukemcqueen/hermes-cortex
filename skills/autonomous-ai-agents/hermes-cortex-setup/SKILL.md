@@ -500,7 +500,6 @@ cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md
 # SOUL.md — the agent's identity
 # Agent profiles removed from repo — use template directly
 cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md
-```
 
 **Pitfall — SOUL.md path:** The canonical location is `~/.hermes/SOUL.md`, NOT `~/...` or any other user's home. Always verify the target directory exists before writing. If the user gives you a cross-user path, create it under the current user's `~/.hermes/` instead and inform them.
 

@@ -164,7 +164,6 @@ If a session is interrupted (timeout, crash, manual stop, user walks away), the 
 
 Write a `SESSION_RECOVERY.md` in the working directory or append to MEMORY.md with:
 
-```markdown
 ## Session Recovery — YYYY-MM-DD HH:MM UTC
 
 ### Last Known State

@@ -65,7 +65,6 @@ Sessions: 142 total, 8 recent
 ```
 
 (Legacy only — replaced by Learning Report above)
-```
 
 ### Agent-Side Deployment
 
