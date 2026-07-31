@@ -307,6 +307,10 @@ def _write_lock(state: dict) -> None:
     collide on the same file. The repo_slug in the content lets
     the enforcer filter locks by repo.
 
+    P1-A fix: writes atomically (temp file + rename) so a concurrent
+    purge scan (_purge_stale_locks / enforcer _has_governance_lock)
+    never reads a partial JSON and deletes a fresh lock mid-write.
+
     Also writes a secondary marker inside the git repo
     (.hermes-cortex/.governance-lock) so the enforcer can find
     governance state even when the primary lock directory is
@@ -315,13 +319,18 @@ def _write_lock(state: dict) -> None:
     session_id = state.get("session_id", get_session_id())
     path = _session_lock_path(session_id)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(state, indent=2))
+    # Atomic write: temp file in same dir + rename (same filesystem)
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(state, indent=2))
+    tmp.rename(path)
 
     # Write secondary marker inside repo for extra safety
     secondary = _secondary_lock_path(state)
     if secondary:
         secondary.parent.mkdir(parents=True, exist_ok=True)
-        secondary.write_text(json.dumps(state, indent=2))
+        tmp2 = secondary.with_suffix(".tmp")
+        tmp2.write_text(json.dumps(state, indent=2))
+        tmp2.rename(secondary)
 
 
 def _release_lock() -> None:
@@ -392,7 +401,12 @@ def _purge_stale_locks() -> int:
     Fix GAP #9: scans all .governance-*.json files and removes those
     whose heartbeat has exceeded their TTL. This prevents stale lock
     buildup from crashed sessions and ensures every session starts clean.
-    
+
+    P1-A fix: NEVER deletes unparseable files. An unparseable lock file
+    is a lock being written right now (atomic rename window) — deleting
+    it steals another session's fresh lock. Only parseable-and-stale
+    locks are removed.
+
     Returns the number of stale locks removed.
     """
     removed = 0
@@ -409,12 +423,8 @@ def _purge_stale_locks() -> int:
                 lock_file.unlink()
                 removed += 1
         except (json.JSONDecodeError, OSError, ValueError):
-            try:
-                lock_file.unlink(missing_ok=True)
-                removed += 1
-            except OSError:
-                log.warning("Expected failure for: except OSError")
-                pass
+            # P1-A: unparseable = possibly mid-write. Leave it — never delete.
+            log.warning("Skipping unparseable lock file (mid-write?): %s", lock_file.name)
     # Also clean up orphan symlinks (pointing to deleted targets)
     for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
         try:
@@ -955,6 +965,14 @@ def _begin_change(args: dict) -> CallToolResult:
         "started_at": now_iso,
         "agent": os.environ.get("AGENT_NAME", "unknown"),
         "session_id": session_id,
+        # P1-A: differentiate cron/daemon locks from interactive locks so
+        # purge loops (enforcer + MCP + purge script) never let a cron
+        # session delete an interactive session's fresh lock.
+        "session_type": (
+            "cron" if session_id.startswith("cron_")
+            else "bg" if session_id.startswith("bg_")
+            else "interactive"
+        ),
         "ttl_seconds": ttl,
         "heartbeat_at": now_iso,
         "scored": False,

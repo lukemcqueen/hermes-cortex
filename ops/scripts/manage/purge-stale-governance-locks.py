@@ -50,6 +50,9 @@ def purge() -> int:
         return 0
 
     # Phase 1: Remove stale real files
+    # P1-A: NEVER delete unparseable files — an unparseable lock is a lock
+    # being written right now (non-atomic write). Deleting it steals another
+    # session's fresh lock. Only parseable-and-stale locks are removed.
     for lock_file in sorted(STATE_DIR.glob(".governance-*.json")):
         try:
             if lock_file.is_symlink():
@@ -59,11 +62,7 @@ def purge() -> int:
                 lock_file.unlink()
                 removed += 1
         except (json.JSONDecodeError, OSError, ValueError):
-            try:
-                lock_file.unlink(missing_ok=True)
-                removed += 1
-            except OSError:
-                print("expected — silently handled", file=sys.stderr)
+            print(f"skipping unparseable lock file (mid-write?): {lock_file.name}", file=sys.stderr)
         try:
             if lock_file.is_symlink() and not lock_file.exists():
                 lock_file.unlink()

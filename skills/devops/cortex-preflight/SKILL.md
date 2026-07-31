@@ -188,6 +188,8 @@ The skills-loaded marker lives at `~/.hermes-cortex/state/.skills-loaded`. It is
 - `_on_session_start()`: daemon sessions skip the skills bootstrap if a marker already exists
 - `_check_skills_loaded_marker()`: daemon sessions accept ANY valid `session:*` marker, trusting the first interactive session's proof
 
+**P1-A hardening (2026-07-31):** `_check_skills_loaded_marker()` also accepts a valid `session:*` marker when the session holds an **active governance lock** — the sticky-marker-per-governance-lock rule. A concurrent session (previous conversation process, cli-source run, long-lived LLM cron) can stomp `.skills-loaded` but can no longer block a locked session's write tools mid-task. Lock files are written atomically (temp+rename) and purge loops never delete unparseable (mid-write) lock files; locks carry `session_type` so a cron session never purges an interactive lock.
+
 **Result:** Once an interactive session loads all 8 always-section skills and creates the marker, NO daemon session can overwrite it. The marker persists for the entire interactive session.
 
 **If you hit this before the permanent fix was deployed:**

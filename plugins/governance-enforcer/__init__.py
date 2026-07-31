@@ -283,6 +283,22 @@ def _is_subagent_session(session_id: str) -> bool:
     return False
 
 
+def _session_type(session_id: str) -> str:
+    """Classify a session for lock-lifecycle purposes.
+
+    P1-A: cron/daemon locks must not purge interactive locks. The prefix
+    is the reliable signal (cron_ = scheduler, bg_ = background subagent).
+    Everything else (date-based interactive, cli-source) is interactive.
+    """
+    if not session_id:
+        return "interactive"
+    if session_id.startswith("cron_"):
+        return "cron"
+    if session_id.startswith("bg_"):
+        return "bg"
+    return "interactive"
+
+
 def _check_skills_loaded_marker(session_id: str = "") -> bool:
     """Verify the .skills-loaded marker exists with valid session content.
 
@@ -315,6 +331,18 @@ def _check_skills_loaded_marker(session_id: str = "") -> bool:
                 or session_id.startswith("bg_")
                 or _is_subagent_session(session_id)
             ):
+                return True
+            # ── P1-A: Sticky marker per governance lock ──
+            # A session that holds an ACTIVE governance lock is immune to
+            # marker theft. The lock is stronger proof of discipline than the
+            # marker: the session already proved governance by calling
+            # begin_change(). This fixes the live race where a concurrent
+            # session (previous-conversation process, cli-source run, or
+            # long-lived LLM cron) stomps the shared .skills-loaded marker
+            # mid-task, blocking write tools even while a lock is held.
+            # The marker must still be a valid session:* marker (skills were
+            # loaded by SOME session) — an empty/touch file still fails.
+            if session_id and _has_governance_lock(session_id):
                 return True
             # Session-verified marker — check match
             if session_id and content != f"session:{session_id}":
@@ -514,14 +542,29 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
     if not GOVERNANCE_STATE_DIR.exists():
         return False
 
-    # Proactively purge stale locks from any session (GAP #9)
+    # Proactively purge stale locks from any session (GAP #9).
+    # P1-A hardening: an UNPARSEABLE lock file is a lock being written RIGHT
+    # NOW (non-atomic write in loop-gov-mcp._write_lock) — deleting it steals
+    # another session's fresh lock. Never delete unparseable files; only
+    # delete locks that parse AND are stale. Also: a cron/daemon session
+    # must never purge an interactive session's lock.
+    current_type = _session_type(hermes_session_id)
     for lock_file in sorted(GOVERNANCE_STATE_DIR.glob(".governance-*.json")):
         try:
             state = json.loads(lock_file.read_text())
             if _is_lock_stale(state):
+                # Cron/daemon sessions must not purge interactive locks
+                lock_owner_type = _session_type(state.get("session_id", ""))
+                if current_type in ("cron", "bg") and lock_owner_type == "interactive":
+                    log.debug(
+                        "Skipping stale interactive lock %s from %s session",
+                        lock_file.name, current_type,
+                    )
+                    continue
                 lock_file.unlink(missing_ok=True)
         except (json.JSONDecodeError, OSError):
-            lock_file.unlink(missing_ok=True)
+            # Unparseable = possibly mid-write. Leave it — never delete.
+            log.debug("Skipping unparseable lock file (mid-write?): %s", lock_file.name)
 
     # ── Phase 1: Exact match by Hermes session ID ──
     if hermes_session_id:
@@ -569,11 +612,8 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
             if state.get("task_id", ""):
                 return True
         except (json.JSONDecodeError, OSError):
-            try:
-                lock_file.unlink(missing_ok=True)
-            except OSError:
-                log.warning("Cannot remove unparseable lock file: %s", lock_file)
-                pass
+            # P1-A: unparseable = possibly mid-write. Leave it — never delete.
+            log.debug("Skipping unparseable lock file (mid-write?): %s", lock_file.name)
 
     # ── Phase 3: Secondary lock marker inside repo ──
     # Check the repo-located marker when primary state directory

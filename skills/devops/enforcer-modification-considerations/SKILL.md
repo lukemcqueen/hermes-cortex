@@ -22,6 +22,9 @@ Hermes creates sessions with different ID prefixes depending on the session type
 | `20260730_...` (date-based) | Interactive Telegram/DM | Yes (should own the marker) | No (primary user) |
 | `cron_...` | Scheduled cron job | No — blocked by daemon guard | Yes |
 | `bg_...` | Background subagent (delegate_task, etc.) | No — blocked by daemon guard | Yes |
+| `cli`-source date-based | CLI-invoked session (cron/terminal `hermes` runs) | Blocked by sticky-lock (P1-A) | Yes — protected via lock |
+
+**P1-A fix (2026-07-31):** the shared `.skills-loaded` marker race (any concurrent session stomping it mid-task) is now neutralized by the **sticky-marker-per-governance-lock** rule: `_check_skills_loaded_marker()` accepts a valid `session:*` marker when the session holds an active governance lock. The lock is stronger proof of discipline than the marker. Locks also carry `session_type` (cron/bg/interactive) and purge loops never delete unparseable (mid-write) lock files.
 
 **Rule:** When adding a session-type guard, use `session_id.startswith("cron_") or session_id.startswith("bg_")`. Do NOT create separate `is_cron` and `is_bg` booleans — future prefixes will be missed.
 
