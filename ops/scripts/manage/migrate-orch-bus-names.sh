@@ -4,8 +4,8 @@
 # WHAT: After the ops/scripts/orch-bus/ rename (bus-* → orch-bus-*), these
 # orphan files remain:
 #   ops/scripts/bus/bus-forwarder.py           → superseded by orch-bus/orch-bus-forwarder.py
-#   ops/scripts/bus/bus-message-tracker.py     → superseded by orch-bus/orch-bus-message-tracker.py
-#   ops/scripts/bus/bus-message-tracker-alert.sh → superseded by orch-bus/orch-bus-message-tracker-alert.sh
+#   ops/scripts/bus/bus-message-tracker.py     → superseded by orch-bus/orch-bus-confirmation-poller.py
+#   ops/scripts/bus/bus-message-tracker-alert.sh → superseded by orch-bus/orch-bus-confirmation-alert.sh
 #
 # These were never registered in cortex-update.sh and are not deployed
 # anywhere. This script:
@@ -25,7 +25,7 @@ HERMES_SCRIPTS="$HOME/.hermes/scripts"
 # Files to clean up: old source path → new source path (for verification)
 declare -A ORPHANS
 ORPHANS["ops/scripts/bus/bus-forwarder.py"]="ops/scripts/orch-bus/orch-bus-forwarder.py"
-ORPHANS["ops/scripts/bus/bus-message-tracker.py"]="ops/scripts/orch-bus/orch-bus-message-tracker.py"
+ORPHANS["ops/scripts/bus/bus-message-tracker.py"]="ops/scripts/orch-bus/orch-bus-confirmation-poller.py"
 
 # Old deploy names that might exist as stale copies (only the 3 orphans
 # that were never registered — bus/bus-* had no register lines in cortex-update.sh)

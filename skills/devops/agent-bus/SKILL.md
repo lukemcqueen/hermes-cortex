@@ -137,9 +137,9 @@ If messages older than 6 hours are present, `is_dlq` may be broken (see Common I
 
 The threshold (50) is set in `ops/scripts/orch-bus/orch-bus-recover-timeouts.sh` as `RECOVER_THRESHOLD=50`.
 
-### 7. Health Report Monitoring (`orch-bus-message-tracker.py report`)
+### 7. Health Report Monitoring (`orch-bus-confirmation-poller.py report`)
 
-The `orch-bus-confirmation-alert` cron (every 60m) runs `orch-bus-message-tracker.py report` producing a combined bus health report covering message tracker status + queue depths + DLQ health.
+The `orch-bus-confirmation-alert` cron (every 60m) runs `orch-bus-confirmation-poller.py report` producing a combined bus health report covering message tracker status + queue depths + DLQ health.
 
 **Report behaviour:**
 - **Silent when healthy** — no output if no DLQ backlog, no overdue confirmations, no pending messages. Zero stdout = zero notification.
@@ -147,7 +147,7 @@ The `orch-bus-confirmation-alert` cron (every 60m) runs `orch-bus-message-tracke
 - **Reports on overdue confirmations** — tracked messages past their confirmation deadline.
 
 **Common gotcha — processing messages in DLQ hidden from alerts:**
-The DLQ alert code in `cmd_report()` at `ops/scripts/orch-bus/orch-bus-message-tracker.py` initially only checked `depth > 0` for DLQ queues. Messages in `processing` state were invisible. The fix adds `or processing > 0` to both the marker and `dlq_issues` detection.
+The DLQ alert code in `cmd_report()` at `ops/scripts/orch-bus/orch-bus-confirmation-poller.py` initially only checked `depth > 0` for DLQ queues. Messages in `processing` state were invisible. The fix adds `or processing > 0` to both the marker and `dlq_issues` detection.
 
 ```python
 # Before (missed processing messages):
@@ -370,7 +370,7 @@ Note: The bus at `:8903` is a direct local connection. It's also proxied through
 ## References
 
 - `references/dlq-isdlq-fix.md` — Full reproduction of the `is_dlq = false` bug: symptoms, diagnosis, fix, and verification
-- `references/dlq-monitor-fix.md` — DLQ alert fix: processing state detection + silent-when-clean pattern for `orch-bus-message-tracker.py report`
+- `references/dlq-monitor-fix.md` — DLQ alert fix: processing state detection + silent-when-clean pattern for `orch-bus-confirmation-poller.py report`
 - `references/cross-server-architecture.md` — Per-server independent Postgres architecture: why local `inbox_moses` sends don't reach Moses, fleet port map, and correct curl pattern for cross-server messages
 - `core/agent_bus/queue.py` — Queue creation, DLQ logic, send/read/archive
 - `ops/services/agent-bus/server.py` — HTTP API, auth, dashboard

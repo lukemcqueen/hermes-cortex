@@ -73,8 +73,8 @@ Every cron name MUST start with a group prefix. No bare names:
 |------|----------|------|--------|---------|
 | `orch-bus-audit-watchdog` | `*/1 * * * *` | no_agent | `orch-bus-audit-watchdog.py` | Telegram |
 | `orch-bus-recover-timeouts` | `*/5 * * * *` | no_agent | `orch-bus-recover-timeouts.sh` | origin |
-| `orch-bus-confirmation-poller` | `every 10m` | no_agent | `orch-bus-message-tracker.py` | local |
-| `orch-bus-confirmation-alert` | `*/15 * * * *` | no_agent | `orch-bus-message-tracker-alert.sh` | Telegram |
+| `orch-bus-confirmation-poller` | `every 10m` | no_agent | `orch-bus-confirmation-poller.py` | local |
+| `orch-bus-confirmation-alert` | `*/15 * * * *` | no_agent | `orch-bus-confirmation-alert.sh` | Telegram |
 | `orch-bus-forwarder-sync` | `*/2 * * * *` | no_agent | `orch-bus-forwarder.py` | origin (PAUSED) |
 | `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | `orch-fleet-watchdog.py` | Telegram |
 | `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent | `orch-health-report.py` | origin |

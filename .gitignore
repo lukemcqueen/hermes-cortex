@@ -56,8 +56,8 @@ logs/
 !ops/scripts/orch-bus/orch-bus-depth-watchdog.sh
 !ops/scripts/orch-bus/orch-bus-audit-watchdog.py
 !ops/scripts/orch-bus/orch-bus-forwarder.py
-!ops/scripts/orch-bus/orch-bus-message-tracker.py
-!ops/scripts/orch-bus/orch-bus-message-tracker-alert.sh
+!ops/scripts/orch-bus/orch-bus-confirmation-poller.py
+!ops/scripts/orch-bus/orch-bus-confirmation-alert.sh
 !ops/scripts/orch-bus/orch-bus-recover-timeouts.sh
 !ops/scripts/orch-bus/orch-bus-workflow-inspector.py
 !ops/scripts/orch-bus/orch-bus-sensor.py

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-bus-message-tracker.py — Track sent bus messages, collect confirmations, alert on failures.
+orch-bus-confirmation-poller.py — Track sent bus messages, collect confirmations, alert on failures.
 
 Three modes:
   1. send     — Send a message via bus, record in tracker, return job_id
@@ -9,10 +9,10 @@ Three modes:
   4. alert    — List messages past deadline with no confirmation
 
 Usage:
-  python3 bus-message-tracker.py send <queue> <message> [--deadline <minutes>] [--correlation-id <uuid>]
-  python3 bus-message-tracker.py poll
-  python3 bus-message-tracker.py status
-  python3 bus-message-tracker.py alert [--deadline <minutes>]
+  python3 orch-bus-confirmation-poller.py send <queue> <message> [--deadline <minutes>] [--correlation-id <uuid>]
+  python3 orch-bus-confirmation-poller.py poll
+  python3 orch-bus-confirmation-poller.py status
+  python3 orch-bus-confirmation-poller.py alert [--deadline <minutes>]
 """
 import json, os, sys, time, uuid as uuid_mod
 from datetime import datetime, timezone, timedelta

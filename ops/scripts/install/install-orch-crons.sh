@@ -424,7 +424,7 @@ create_cron "orch-bus-recover-timeouts" "*/5 * * * *" \
 
 # Bus confirmation poller — track message delivery confirmations (every 10m)
 create_cron "orch-bus-confirmation-poller" "every 10m" \
-  "orch-bus-message-tracker.py" \
+  "orch-bus-confirmation-poller.py" \
   "poll" \
   "" \
   "" \
@@ -434,7 +434,7 @@ create_cron "orch-bus-confirmation-poller" "every 10m" \
 
 # Bus confirmation alert — alert on undelivered messages (every 60m)
 create_cron "orch-bus-confirmation-alert" "every 60m" \
-  "orch-bus-message-tracker-alert.sh" \
+  "orch-bus-confirmation-alert.sh" \
   "alert" \
   "" \
   "" \
