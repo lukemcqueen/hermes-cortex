@@ -14,7 +14,7 @@ The old file-based inbox is legacy/deprecated.
 
 - Replace "agent inbox" → "agent bus" where it describes the current system
 - Add "(previously Agent Inbox)" on first mention in a doc
-- Do NOT modify: agent-bus-setup.md, nginx configs, systemd units, ops/services/
+- Do NOT modify: orch-bus-setup.md, nginx configs, systemd units, ops/services/
 - Do NOT change cron job names/definitions
 - Keep legacy doc (agent-inbox-setup.md) as-is with stronger legacy framing
 
@@ -33,7 +33,7 @@ Three concurrent searches found 22+41+12 unique files touching the org:
 | File | Category | Notes |
 |------|----------|-------|
 | agent-inbox-setup.md | Legacy | Doc IS the legacy system; title marked "(Legacy)", deprecation notice strengthened |
-| agent-bus-setup.md | Excluded | "already correct" per user; not modified |
+| orch-bus-setup.md | Excluded | "already correct" per user; not modified |
 | operations-reference.md | Change | Major section renamed; ports 8903→8905; architecture diagram; cron prompt examples |
 | fleet-reference.md | Change | "Inbox method" → "Bus method"; "Moses inbox" → "Moses Agent Bus" |
 | architecture.md | Skipped | Already used "Agent Bus" everywhere; no changes needed |

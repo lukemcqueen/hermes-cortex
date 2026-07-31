@@ -157,8 +157,8 @@ if [[ ! -f "$AGENTS_LOCAL" ]]; then
   exit 1
 fi
 if [[ -f "AGENTS.md" ]]; then
-  LOCAL_RULES=$(grep -cE '^[0-9]+\. \*\*' "$AGENTS_LOCAL" 2>/dev/null || echo 0)
-  REPO_RULES=$(grep -cE '^[0-9]+\. \*\*' "AGENTS.md" 2>/dev/null || echo 0)
+  LOCAL_RULES=$(grep -cE '^[0-9]+\. \*\*' "$AGENTS_LOCAL" 2>/dev/null || true)
+  REPO_RULES=$(grep -cE '^[0-9]+\. \*\*' "AGENTS.md" 2>/dev/null || true)
   THRESHOLD=$((REPO_RULES - 5))
   if [[ "$LOCAL_RULES" -lt "$THRESHOLD" ]] 2>/dev/null; then
     MISSING=$((REPO_RULES - LOCAL_RULES))

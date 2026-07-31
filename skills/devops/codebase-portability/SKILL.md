@@ -488,7 +488,7 @@ Also check camelCase / PascalCase / SCREAMING_SNAKE if the term is composable.
 | **Change** | Replace with new term, add legacy note on first mention | Descriptions of the current system |
 | **Legacy** | Keep old name but mark "(previously OldName)" | First mention in a doc about the new system |
 | **Historical** | Keep as-is — intentional record of what existed | Migration docs, changelogs, research notes |
-| **Excluded** | Do not touch per user instructions | agent-bus-setup.md, systemd units, cron names |
+| **Excluded** | Do not touch per user instructions | orch-bus-setup.md, systemd units, cron names |
 | **Name-only** | Keep filename/command/script name unchanged | Cron names like agent-inbox-workday |
 
 **Step 3 — Plan.** For each "Change" and "Legacy" match, decide the exact

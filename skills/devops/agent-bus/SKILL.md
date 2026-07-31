@@ -374,5 +374,5 @@ Note: The bus at `:8903` is a direct local connection. It's also proxied through
 - `references/cross-server-architecture.md` — Per-server independent Postgres architecture: why local `inbox_moses` sends don't reach Moses, fleet port map, and correct curl pattern for cross-server messages
 - `core/agent_bus/queue.py` — Queue creation, DLQ logic, send/read/archive
 - `ops/services/agent-bus/server.py` — HTTP API, auth, dashboard
-- `docs/agent-bus-setup.md` — Architecture, security model, deployment guide, DLQ maintenance section
+- `docs/orch-bus-setup.md` — Architecture, security model, deployment guide, DLQ maintenance section
 - `docs/esther-bus-setup.md` — Maintenance steps, changelog (DLQ fix, threshold changes, pipeline updates)

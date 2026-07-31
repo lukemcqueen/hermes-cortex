@@ -194,7 +194,16 @@ When a known correct/canonical fix path exists, use it — even if a workaround 
 
 The right way is almost always smaller and safer. Piling on extraneous commits is a form of scope creep — it compounds risk, requires more review, and creates drift between what you deployed and what the system expects. When in doubt, ask: "Is this the canonical path, or am I building a parallel one?"
 
-<!-- Added 2026-07-27 -->
+### 20. Take Responsibility for the Entire App
+
+**Own the whole system, not just your slice.** Every issue is your issue — whether you caused it, found it, or it pre-existed your session. "Not my code" is not a defense; the user's app is the deliverable.
+
+- Pre-existing failures count as yours: triage → fix → verify. Never document-and-pass.
+- Sibling bugs, dead code, broken builds, stale tests in adjacent areas — fix the class, not the ticket.
+- If you can't fix it this session, it becomes a tracked follow-up with a concrete path forward — never a shrug.
+- Blame ends at your keyboard. "That was already broken" is context for a fix, never a closing statement.
+
+<!-- Added 2026-07-31 -->
 
 ### Genesis — *"In the beginning God created the heavens and the earth."* (Genesis 1:1)
 

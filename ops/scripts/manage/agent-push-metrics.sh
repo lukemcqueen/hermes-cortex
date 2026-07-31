@@ -85,6 +85,9 @@ collect_metrics() {
     mem_total_mb=$(( mem_total / 1048576 ))
     mem_used_mb=$(( mem_used / 1048576 ))
     mem_cached_mb=$(( mem_cached / 1048576 ))
+    # Available approximated as total - used (no free(1) equivalent on macOS)
+    mem_avail_mb=$(( mem_total_mb - mem_used_mb ))
+    [ "$mem_avail_mb" -lt 0 ] && mem_avail_mb=0
 
     # Swap (macOS)
     swap_total=$(sysctl -n vm.swapusage 2>/dev/null | awk '{print $4}' | tr -d 'M' || echo "0")

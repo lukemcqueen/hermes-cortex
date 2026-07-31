@@ -246,7 +246,7 @@ orchestrators (Moses, Esther) who use `host`.
 - `agent-bus` skill — bus operations, DLQ management, recovery
 - `cortex-preflight` skill — general pre-flight checks (manually authored)
 - `docs/reference/cortex-bus-config.md` — detailed config and auth resolution
-- `docs/agent-bus-setup.md` — full setup guide with architecture overview
+- `docs/orch-bus-setup.md` — full setup guide with architecture overview
 - `agent-message-handler.py` — fleet-wide no_agent consumer (every 5 min)
 
 ## Deployment Pattern: Fleet-Wide Features
