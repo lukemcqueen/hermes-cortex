@@ -17,6 +17,7 @@ Install sudoers rule:
 """
 import os
 from typing import Optional
+import ipaddress
 import re
 import signal
 import subprocess
@@ -177,20 +178,66 @@ def read_allow_lines() -> list[str]:
     return allow_lines
 
 
+def _parse_allow_entry(line: str) -> Optional[str]:
+    """Parse one line from allow-ips-manual.conf into a bare IP/CIDR.
+
+    Handles trailing comments and whitespace that the old
+    ``line[6:].rstrip(";")`` parsing missed: ``allow 203.0.113.10;   # vendor``
+    keeps the comment attached after rstrip (rstrip only strips at
+    end-of-string), so IPV4_RE rejected the entry and the IP was silently
+    never allow-listed. Splitting on ``;`` first separates the IP from
+    everything after it.
+    """
+    line = line.strip()
+    if not line.startswith("allow "):
+        return None
+    # Split on ';' to drop trailing comments/whitespace, then strip again
+    ip_part = line.split(";", 1)[0].removeprefix("allow ").strip()
+    if not ip_part:
+        return None
+    return ip_part
+
+
 def read_manual_allowed() -> set[str]:
-    """Read IPs from allow-ips-manual.conf that must never be in the blocklist."""
+    """Read IPs/CIDRs from allow-ips-manual.conf that must never be in the blocklist.
+
+    Supports plain IPs, CIDR ranges, and trailing inline comments.
+    """
     manual = set()
     if os.path.exists(ALLOW_MANUAL_CONF):
         with open(ALLOW_MANUAL_CONF) as f:
             for line in f:
-                line = line.strip()
-                if line.startswith("allow ") and line.endswith(";"):
-                    ip = line[6:].rstrip(";").strip()
-                    if IPV4_RE.match(ip):
-                        manual.add(ip)
+                ip = _parse_allow_entry(line)
+                if ip is None:
+                    continue
+                if IPV4_RE.match(ip):
+                    manual.add(ip)
         if manual:
-            print(f"  📋 {len(manual)} IPs in manual allow list — excluded from blocklist")
+            print(f"  📋 {len(manual)} entries in manual allow list — excluded from blocklist")
     return manual
+
+
+def _is_allowed(ip: str, manual_allowed: set[str]) -> bool:
+    """Return True if ip is allow-listed, either exact or inside an allowed CIDR.
+
+    Exact-match checks (`ip in manual_allowed`) were the old behavior and
+    silently failed for CIDR allows like ``198.51.100.0/24`` — a blocked IP
+    inside the range was never recognized. This checks containment instead.
+    """
+    if ip in manual_allowed:
+        return True
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    for entry in manual_allowed:
+        if "/" in entry:
+            try:
+                if addr in ipaddress.ip_network(entry, strict=False):
+                    return True
+            except ValueError:
+                continue
+    return False
 
 
 def generate_config() -> tuple[list[str], str]:
@@ -213,10 +260,10 @@ def generate_config() -> tuple[list[str], str]:
             if not line or line.startswith("#"):
                 continue
             if is_valid_public_ip(line):
-                if line not in manual_allowed:
-                    ips.append(line)
-                else:
+                if _is_allowed(line, manual_allowed):
                     skipped.append(f"{line} (allow-listed)")
+                else:
+                    ips.append(line)
             else:
                 skipped.append(line)
 
