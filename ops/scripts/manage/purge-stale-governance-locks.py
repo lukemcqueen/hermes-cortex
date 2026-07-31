@@ -8,6 +8,12 @@ orphan symlinks pointing to deleted targets.
 
 Designed as a no_agent cron (silent when clean, reports only
 when locks were removed).
+
+FIXED 2026-07-31: the main block (count = purge(), output, exit) was
+inadvertently indented inside the def, so the script only defined the
+function and exited 0 — the purge cron was a silent no-op. The loop
+also referenced an undefined `marker` variable (NameError) in what was
+meant to be a separate 24h marker cleanup. Both are corrected here.
 """
 
 import json
@@ -18,6 +24,7 @@ from pathlib import Path
 
 STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 DEFAULT_TTL = 3600  # 1 hour
+MARKER_MAX_AGE = 86400  # 24 hours
 
 
 def _is_lock_stale(state: dict) -> bool:
@@ -37,7 +44,7 @@ def _is_lock_stale(state: dict) -> bool:
 
 
 def purge() -> int:
-    """Remove stale lock files. Returns count removed."""
+    """Remove stale lock files and old session markers. Returns count removed."""
     removed = 0
     if not STATE_DIR.exists():
         return 0
@@ -63,19 +70,27 @@ def purge() -> int:
                 removed += 1
         except OSError:
             print("expected — silently handled", file=sys.stderr)
+
+    # Phase 2: Remove stale session marker files (.hermes-session-*.id) older than 24h.
+    # NOTE: previously inlined in the lock loop with an undefined `marker`
+    # variable, which crashed the loop. Moved to its own loop here.
+    for marker in sorted(STATE_DIR.glob(".hermes-session-*.id")):
         try:
-            # Remove markers older than 24 hours
             mtime = os.path.getmtime(marker)
             age = (datetime.now().timestamp() - mtime)
-            if age > 86400:  # 24 hours
+            if age > MARKER_MAX_AGE:  # 24 hours
                 marker.unlink()
                 removed += 1
         except OSError:
             print("expected — silently handled", file=sys.stderr)
-    count = purge()
-    if count > 0:
-        print(f"🧹 Purged {count} stale governance lock file(s)")
-    else:
-        # Silent — no_agent cron with empty stdout = no delivery
-        pass
-    sys.exit(0)
+
+    return removed
+
+
+count = purge()
+if count > 0:
+    print(f"🧹 Purged {count} stale governance lock file(s)")
+else:
+    # Silent — no_agent cron with empty stdout = no delivery
+    pass
+sys.exit(0)
