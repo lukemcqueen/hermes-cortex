@@ -12,6 +12,13 @@ moses ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx
 # Moses agent — blocked IP deploy (tight single path)
 moses ALL=(root) NOPASSWD: /bin/cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf
 
+# Moses agent — governance enforcement helper (2026-07-31 hardening)
+# Gated inside the helper: unlock/update require --cortex-update (sanctioned)
+# or --orchestrator (moses|esther Unix account). lock/status open to all.
+moses ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock
+# Root-owned immutable blocked-IP generator (see deploy-fix-blocked-ips.sh)
+moses ALL=(root) NOPASSWD: /usr/local/sbin/fix-blocked-ips.py
+
 # Moses agent — htpasswd deploy
 moses ALL=(root) NOPASSWD: /usr/bin/cp /tmp/hermes-htpasswd /etc/nginx/.hermes-htpasswd
 
