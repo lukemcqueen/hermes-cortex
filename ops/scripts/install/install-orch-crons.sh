@@ -18,12 +18,22 @@
 set -euo pipefail
 
 # ── Guard: orchestrator check via shared os-config.sh ──
-# Sources os-config.sh for AGENT_TYPE detection + check_agent_type helper
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OS_CONFIG="${SCRIPT_DIR}/os-config.sh"
-if [[ -f "$OS_CONFIG" ]]; then
-  source "$OS_CONFIG"
+# Sources os-config.sh for AGENT_TYPE detection + check_agent_type helper.
+# os-config.sh deploys to ${CORTEX_DEPLOY_HOME}/scripts/install/ while this
+# script deploys flat to scripts/ — resolve from either location.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
+OS_CONFIG=""
+for candidate in "${SCRIPT_DIR}/os-config.sh" "${SCRIPT_DIR}/install/os-config.sh"; do
+  if [[ -f "$candidate" ]]; then
+    OS_CONFIG="$candidate"
+    break
+  fi
+done
+if [[ -z "$OS_CONFIG" ]]; then
+  echo "ERROR: os-config.sh not found (needed for check_agent_type). Run cortex-update.sh to deploy." >&2
+  exit 1
 fi
+source "$OS_CONFIG"
 # Backward compat: also check .env for IS_ORCHESTRATOR (pre-AGENT_TYPE installs)
 CORTEX_ENV="${REPO_DIR:-${HOME}/hermes-cortex}/.env"
 if [[ -f "$CORTEX_ENV" ]]; then
@@ -59,8 +69,11 @@ if [[ -z "$LLM_CRON_MODEL" || -z "$LLM_CRON_PROVIDER" ]]; then
   exit 1
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
-source "${SCRIPT_DIR}/os-config.sh"
+# os-config.sh already sourced at the top (guard block) — path resolution
+# there covers both repo-sibling and deployed-subdir layouts. Keep this
+# explicit re-source only if os-config.sh changed; otherwise it is redundant.
+[[ -n "$OS_CONFIG" ]] || OS_CONFIG="${SCRIPT_DIR}/os-config.sh"
+source "$OS_CONFIG"
 
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 CRON_JOBS_FILE="${HERMES_HOME}/cron/jobs.json"
