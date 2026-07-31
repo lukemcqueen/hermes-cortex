@@ -1623,14 +1623,17 @@ main() {
   # the repo's git identity so commits carry the agent's name, not the shared
   # account's. Non-orch hosts must have agent.env provisioned (the hostname→
   # agent mapping is infrastructure and stays out of the public repo).
-  ensure_agent_identity 2>/dev/null || true
-  if [[ -n "${AGENT_NAME:-}" && "$AGENT_NAME" != "unknown" ]]; then
-    git config user.name  "$(git_author_name)"  2>/dev/null || true
-    git config user.email "$(git_author_email)" 2>/dev/null || true
-    info "Agent identity: ${AGENT_NAME} (git author: $(git_author_name) <$(git_author_email)>)"
-  else
-    warn "AGENT_NAME not provisioned — run: echo 'AGENT_NAME=<your-agent>' > ~/.hermes-cortex/agent.env"
+  # AGENT_NAME env var takes priority; failure to resolve identity fails the
+  # update with a clear message (never silently continues with unknown-agent).
+  if ! ensure_agent_identity; then
+    error "Agent identity not provisioned — cannot set git authorship."
+    error "Set AGENT_NAME=<your-agent> in the environment, or create:"
+    error "  ${HOME}/.hermes-cortex/agent.env  (AGENT_NAME=<your-agent>)"
+    exit 1
   fi
+  git config user.name  "$(git_author_name)"  2>/dev/null || true
+  git config user.email "$(git_author_email)" 2>/dev/null || true
+  info "Agent identity: ${AGENT_NAME} (git author: $(git_author_name) <$(git_author_email)>)"
 
   echo ""
   echo -e "${BOLD}━━━ Cortex Update ━━━${RESET}"

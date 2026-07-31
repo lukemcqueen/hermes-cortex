@@ -70,9 +70,15 @@ export CORTEX_AGENT_TYPE
 AGENT_ENV_FILE="${HERMES_CORTEX_HOME:-${HOME}/.hermes-cortex}/agent.env"
 
 ensure_agent_identity() {
-  AGENT_NAME=""
-  if [[ -f "$AGENT_ENV_FILE" ]]; then
-    AGENT_NAME=$(grep -E '^AGENT_NAME=' "$AGENT_ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+  # Priority: 1) AGENT_NAME env var, 2) agent.env file, 3) hostname (orch only).
+  # Picks up the env first so CI / wrapper scripts can inject identity without
+  # touching the per-host file.
+  AGENT_NAME="${AGENT_NAME:-}"
+  if [[ -z "$AGENT_NAME" || "$AGENT_NAME" == "unknown" ]]; then
+    AGENT_NAME=""
+    if [[ -f "$AGENT_ENV_FILE" ]]; then
+      AGENT_NAME=$(grep -E '^AGENT_NAME=' "$AGENT_ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+    fi
   fi
   # Orchestrator hosts: hostname IS the agent name — write if missing
   if [[ -z "$AGENT_NAME" && "$CORTEX_AGENT_TYPE" == "orchestrator" ]]; then
@@ -82,13 +88,23 @@ ensure_agent_identity() {
       printf 'AGENT_NAME=%s\n' "$AGENT_NAME" > "$AGENT_ENV_FILE" 2>/dev/null || true
     fi
   fi
+  # Fail closed with a clear message — never emit "unknown-agent".
+  if [[ -z "$AGENT_NAME" || "$AGENT_NAME" == "unknown" ]]; then
+    echo "❌ Agent identity not provisioned." >&2
+    echo "    Set AGENT_NAME=<your-agent> in the environment, or create:" >&2
+    echo "      $AGENT_ENV_FILE" >&2
+    echo "    containing: AGENT_NAME=<your-agent>" >&2
+    echo "    Then re-run: bash ~/hermes-cortex/ops/scripts/cortex-update.sh" >&2
+    return 1
+  fi
   export AGENT_NAME
 }
 
 # Git author identity derived from AGENT_NAME — set by cortex-update.sh
 # into the repo's git config so commits carry the agent's identity.
-git_author_name()  { echo "${AGENT_NAME:-unknown}-agent"; }
-git_author_email() { echo "${AGENT_NAME:-unknown}@hermes.local"; }
+# Both fail closed when AGENT_NAME is unset (never emit "unknown-agent").
+git_author_name()  { [[ -n "${AGENT_NAME:-}" && "$AGENT_NAME" != "unknown" ]] || { echo "❌ AGENT_NAME not provisioned" >&2; return 1; }; echo "${AGENT_NAME}-agent"; }
+git_author_email() { [[ -n "${AGENT_NAME:-}" && "$AGENT_NAME" != "unknown" ]] || { echo "❌ AGENT_NAME not provisioned" >&2; return 1; }; echo "${AGENT_NAME}@hermes.local"; }
 
 # ── Package Manager ─────────────────────────────────────────
 if [[ "$CORTEX_OS" == "macos" ]]; then

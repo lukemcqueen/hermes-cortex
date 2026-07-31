@@ -99,5 +99,5 @@ v = [
 | Esther | `"e"` |
 | Titus | `"t"` |
 
-Set via `AGENT_ID` env var or falls back to the first character of `SERVER_NAME`
-(first segment of `platform.node()`).
+Set via `HEALTH_HOSTNAME` env var or falls back to the first character of
+`os.uname().nodename` (hostname — AGENT_ID is obsolete and not used here).

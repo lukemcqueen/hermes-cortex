@@ -289,9 +289,11 @@ the working tree vs deployed. A dirty working tree:
 - Allows an uncommitted edit to be pushed into the deployed enforcer by
   the auto-deploy path (dirty-tree injection).
 
-Orchestrator-authoring exception (AGENT_ID=moses|esther AND staged
+Orchestrator-authoring exception (host detected via `_detect_orch` AND staged
 enforcer change) auto-deploys the working tree — the orchestrator is the
 sanctioned author. Everyone else with HEAD≠deployed gets the hard block.
+(AGENT_ID is obsolete; the hook only uses it to log claimed-identity
+impersonation attempts.)
 
 ### Update-from-working-tree is root code execution
 

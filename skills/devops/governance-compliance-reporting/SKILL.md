@@ -121,7 +121,7 @@ When a diagnostic tool (doctor, commit review, system scan) produces findings:
 
 ## Phase 6: Execute the Rollback
 
-After the review, when the user directs you to revert: see `references/revert-execution-protected-branch.md` for the protected-branch revert technique (squash revert commits through the pre-commit hook), AGENT_ID sourcing, and the full hook pipeline.
+After the review, when the user directs you to revert: see `references/revert-execution-protected-branch.md` for the protected-branch revert technique (squash revert commits through the pre-commit hook), identity sourcing (agent.env / AGENT_NAME — AGENT_ID is obsolete), and the full hook pipeline.
 
 ## Pitfalls
 

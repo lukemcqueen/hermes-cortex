@@ -31,9 +31,8 @@ Git creates one revert commit per target commit, in reverse chronological order.
 # Move HEAD back to the tip before reverts, keep all changes staged
 git reset --soft <the-tip-before-reverts>
 
-# Commit through the pre-commit hook with AGENT_ID set
-AGENT_ID=$(grep ^AGENT_NAME ~/.hermes-cortex/cortex-bus.conf | cut -d= -f2) \
-  git commit -m "revert: strip N unwanted commits (<range>)
+# Commit through the pre-commit hook (identity auto-sourced from agent.env)
+git commit -m "revert: strip N unwanted commits (<range>)
   
   Reverts commits that violated governance/violated orchestrator-only paths.
   Preserves <key-commits-to-keep>.
@@ -48,8 +47,7 @@ The pre-commit hook runs all checks (doc audit, secret leak scan, change-validat
 ### 3. Push
 
 ```bash
-AGENT_ID=$(grep ^AGENT_NAME ~/.hermes-cortex/cortex-bus.conf | cut -d= -f2) \
-  git push origin main
+git push origin main
 ```
 
 ## Determining What to Keep vs Revert
@@ -90,15 +88,26 @@ git merge-base --is-ancestor <commit> <your-base-commit> && echo "ancestral" || 
 
 Ancestral commits stay even after reset. Only "on top" commits are removed by the revert.
 
-## Required: Set AGENT_ID Before Any Hook-Mediated Git Command
+## Required: Agent Identity Is Auto-Sourced — Do NOT Set AGENT_ID
 
-Every hook-based operation (commit, push) needs AGENT_ID. Source it from the authoritative config:
+Hook-based operations (commit, push) no longer need `AGENT_ID`. Identity comes from
+`~/.hermes-cortex/agent.env` (`AGENT_NAME=<your-agent>`), provisioned by
+`cortex-update.sh` (or the `AGENT_NAME` env var). The hook fails closed with setup
+instructions if it is missing. Do NOT hardcode or export `AGENT_ID` — it is obsolete
+and grants no privileges.
 
 ```bash
-AGENT_ID=$(grep ^AGENT_NAME ~/.hermes-cortex/cortex-bus.conf | cut -d= -f2)
+# Verify identity is provisioned (no action needed if this prints a name):
+cat ~/.hermes-cortex/agent.env   # → AGENT_NAME=<your-agent>
 ```
 
-Do NOT hardcode `AGENT_ID=moses` — the config file is the single source of truth.
+If `agent.env` is missing, provision it once per host (the hostname→agent mapping is
+infrastructure and stays out of the public repo):
+
+```bash
+echo 'AGENT_NAME=<your-agent>' > ~/.hermes-cortex/agent.env
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+```
 
 ## Full Pre-Commit Hook Pipeline
 
@@ -109,7 +118,7 @@ When committing through the hook, these checks run in order:
 3. **Secret leak detector** — flags echo+pipe patterns, hardcoded tokens
 4. **Syntax check** — Python/bash/nginx syntax validation
 5. **Change-validate** — OS-aware paths, cross-platform guards
-6. **Orchestrator self-test** — verifies AGENT_ID controls identity
+6. **Orchestrator self-test** — verifies identity is host-derived (env can't spoof)
 7. **Adversarial verify** — scans for 30+ attack patterns
 8. **Score-cycle** — logs the commit to loop-governance DB
 

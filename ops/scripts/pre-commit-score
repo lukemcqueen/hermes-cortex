@@ -60,8 +60,8 @@ _log_impersonation() {
 # the commit author matches, so agent commits are attributed to the agent
 # (never the shared human account) without requiring AGENT_ID at runtime.
 AGENT_ENV_FILE="${HOME}/.hermes-cortex/agent.env"
-AGENT_NAME=""
-if [[ -f "$AGENT_ENV_FILE" ]]; then
+AGENT_NAME="${AGENT_NAME:-}"
+if [[ -z "$AGENT_NAME" && -f "$AGENT_ENV_FILE" ]]; then
   AGENT_NAME=$(grep -E '^AGENT_NAME=' "$AGENT_ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 fi
 export AGENT_NAME
