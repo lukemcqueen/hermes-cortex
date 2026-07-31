@@ -145,6 +145,8 @@ numeric_inputs = [
 python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <path> --level A2
 ```
 
+**🚨 CRITICAL: a static scan returning 0 findings is NOT adversarial verification.** The script is a static analysis pass — it enumerates surfaces but does not execute the function. "0 findings" from `--file X --level A2` means *nothing about runtime boundary behavior*. You MUST ALSO manually execute the function/parser against boundary inputs (including `-1`, `nan`, `inf`, `None`, empty, whitespace, hex, underscores, non-ASCII) and check what it actually returns. Real bugs found this way (2026-07-31, `parse_restart_drain_timeout`): negative → silently clamped to 0.0, NaN → silently 0.0, `inf` accepted, all with no warning because `float()` succeeds. The static scanner reported 0 findings on all of them.
+
 ### Technique B: State Corruption (A3)
 
 For every state mutation point, simulate failure:
