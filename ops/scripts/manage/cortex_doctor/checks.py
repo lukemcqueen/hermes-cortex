@@ -1807,12 +1807,13 @@ def check_governance(res):
 
     if state_dir.exists():
       # Lock files named .governance-{session_id}.json where session_id
-      # is a timestamp-based UUID (e.g. 20260725_164953_750cbfe2).
+      # is a timestamp-based UUID (e.g. 20260725_164953_750cbfe2) or a
+      # cron/background session id (e.g. cron_<hash>_20260731_120022).
       # Files with a descriptive slug instead of a session ID (e.g.
       # .governance-fix-auth-bug.json) are legacy — flag them.
       legacy = [
         f for f in state_dir.glob(".governance-*.json")
-        if not re.match(r"\.governance-\d{8}_\d{6}_", f.name)
+        if not re.search(r"\d{8}_\d{6}", f.name)
       ]
       if legacy:
         for lf in legacy:
