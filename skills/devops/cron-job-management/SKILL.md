@@ -213,8 +213,8 @@ of input tokens per run.
 
 | Cron type | Best skill(s) | Best toolsets |
 |-----------|---------------|---------------|
-| `agent-bus-*` | `agent-inbox` | `terminal` |
-| `agent-inbox-*` | `agent-inbox-automation` | `terminal` |
+| `agent-bus-*` | `agent-bus-automation` | `terminal` |
+| `agent-inbox-*` | `agent-bus-automation` | `terminal` |
 | `agent-fixer-*` | `auto-remediation` | `terminal, file, web` |
 | `orch-skill-lifecycle` | `orch-skill-lifecycle` | `terminal, file, web` |
 | `orch-skill-evaluate` | `skill-vetting` | `terminal, file` |
@@ -239,7 +239,7 @@ Then patch the source in `install-crons.sh` or `install-orch-crons.sh`:
 create_cron "agent-bus-workday" "0 9-17 * * 1-5" \
   "" \
   "<prompt>" \
-  "agent-inbox"  ← $5 = skill name
+  "agent-bus-automation"  ← $5 = skill name
   "terminal"     ← $6 = toolsets (doc only — set via API)
   "origin" ...
 ```

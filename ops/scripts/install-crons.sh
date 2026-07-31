@@ -667,7 +667,7 @@ create_cron "agent-message-handler" "*/5 * * * *" \
 create_cron "agent-bus-workday" "0 9-17 * * 1-5" \
   "" \
   "Process the Agent Bus using the Inbox Message Decision Framework. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean." \
-  "agent-inbox" \
+  "agent-bus-automation" \
   "terminal" \
   "origin" \
   "" \
@@ -677,7 +677,7 @@ create_cron "agent-bus-workday" "0 9-17 * * 1-5" \
 create_cron "agent-bus-evening" "0 18,20,22 * * 1-5" \
   "" \
   "Process the Agent Bus messages. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean." \
-  "agent-inbox" \
+  "agent-bus-automation" \
   "terminal" \
   "origin" \
   "" \
@@ -687,7 +687,7 @@ create_cron "agent-bus-evening" "0 18,20,22 * * 1-5" \
 create_cron "agent-bus-overnight" "0 3 * * 1-5" \
   "" \
   "Process the Agent Bus overnight. The bus-flag sensor output is injected as context. Check for any urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean." \
-  "agent-inbox" \
+  "agent-bus-automation" \
   "terminal" \
   "origin" \
   "" \
@@ -701,7 +701,7 @@ printf "\n${CYAN}  5. Inbox Processing${RESET}\n"
 create_cron "agent-inbox-workday" "0 9-17 * * 1-5" \
   "" \
   "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: Produce NO output when nothing actionable." \
-  "agent-inbox-automation" \
+  "agent-bus-automation" \
   "terminal" \
   "origin" \
   "" \
@@ -711,7 +711,7 @@ create_cron "agent-inbox-workday" "0 9-17 * * 1-5" \
 create_cron "agent-inbox-evening" "0 18,20,22 * * 1-5" \
   "" \
   "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: Produce NO output when nothing actionable." \
-  "agent-inbox-automation" \
+  "agent-bus-automation" \
   "terminal" \
   "origin" \
   "" \
@@ -721,7 +721,7 @@ create_cron "agent-inbox-evening" "0 18,20,22 * * 1-5" \
 create_cron "agent-inbox-overnight" "0 3 * * 1-5" \
   "" \
   "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: Produce NO output when nothing actionable." \
-  "agent-inbox-automation" \
+  "agent-bus-automation" \
   "terminal" \
   "origin" \
   "" \
