@@ -1302,7 +1302,8 @@ def _feedback_override(args: dict) -> CallToolResult:
                 type="text",
                 text=f"Error: Cycle #{cycle_id} not found in loop-governance DB. Use cycle_query to find valid cycle IDs."
             )])
-        conn.execute("UPDATE loop_cycles SET user_overrode=1, outcome_note=? WHERE id=?", (correct_note, cycle_id))
+        conn.execute("UPDATE loop_cycles SET user_overrode=1, decision=?, outcome_note=? WHERE id=?",
+                     (correct, correct_note, cycle_id))
         conn.commit()
         conn.close()
         return CallToolResult(content=[TextContent(type="text", text=f"⏩ Cycle #{cycle_id} overridden → {correct}.")])
