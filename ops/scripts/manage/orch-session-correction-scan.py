@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-session-correction-scan.py — Correction→Guardrail Recidivism Scanner (P0-1).
+orch-session-correction-scan.py — Correction→Guardrail Recidivism Scanner (P0-1).
 
 Scans the Hermes session DB (~/.hermes/state.db) for USER corrections,
 classifies them into signal categories, checks each against the guardrail
@@ -20,11 +20,11 @@ host). Report-only by default — run with --enforce to also file governance
 cycles for top unguarded items (future P0-3 integration).
 
 Usage:
-    python3 session-correction-scan.py                 # report last 7 days
-    python3 session-correction-scan.py --days 30       # longer window
-    python3 session-correction-scan.py --all           # full history
-    python3 session-correction-scan.py --json          # machine-readable
-    python3 session-correction-scan.py --sample        # labeled sample audit
+    python3 orch-session-correction-scan.py                 # report last 7 days
+    python3 orch-session-correction-scan.py --days 30       # longer window
+    python3 orch-session-correction-scan.py --all           # full history
+    python3 orch-session-correction-scan.py --json          # machine-readable
+    python3 orch-session-correction-scan.py --sample        # labeled sample audit
 
 Exit codes: 0 = report delivered (findings or not — stdout IS the message),
 2 = error (script failed to run). Non-zero exits other than 2 are avoided:

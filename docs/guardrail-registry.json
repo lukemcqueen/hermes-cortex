@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "generated": "2026-07-31",
-  "description": "Machine-readable guardrail registry: correction-class -> enforcement artifact(s). Consumed by ops/scripts/manage/session-correction-scan.py (P0-1). A correction class is UNGUARDED if absent here; RECIDIVISM if present but the class recurs.",
+  "description": "Machine-readable guardrail registry: correction-class -> enforcement artifact(s). Consumed by ops/scripts/manage/orch-session-correction-scan.py (P0-1). A correction class is UNGUARDED if absent here; RECIDIVISM if present but the class recurs.",
   "classes": {
     "verify-before-declare": {
       "artifacts": [

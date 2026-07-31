@@ -74,7 +74,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/loop-governance-reference.md` | Governance reference — MCP tools vs CLI, scoring guidelines, enforcement layers (no structural override — allow_tool_override not in production config) |
 | `docs/governance-improvement-plan.md` | **Friction-driven governance roadmap** — session-mined friction taxonomy, mapped guardrails, P0/P1/P2 enforcement plan (correction→guardrail scanner, read-only whitelist, verify-before-declare gate) |
 | `docs/governance-improvement-plan-gaps.md` | **Multi-role gap review of the improvement plan** — 3-role HC-Party findings (3 SHOWSTOPPER / 7 MAJOR / 5 MINOR), corrected implementation order, Esther adversarial-verify evaluation. Corrects plan premises: P0-2 as written was an RCE hole; corpus is 18,857 user msgs not 416k |
-| `docs/guardrail-registry.json` | **Machine-readable guardrail registry (P0-1a)** — correction-class → enforcement artifact mapping, consumed by `session-correction-scan.py` |
+| `docs/guardrail-registry.json` | **Machine-readable guardrail registry (P0-1a)** — correction-class → enforcement artifact mapping, consumed by `orch-session-correction-scan.py` |
 | `docs/continuous-skill-suggestion.md` | **Design doc** — structural skill reminders during edits. After fixed enforcer bootstrap gate, the next gap: agents don't reload skills mid-task. Touch-trace writer + end_change suggestions |
 | `mcp-servers/loop-gov-mcp.py` | Harness v3 governance MCP server — state machine, ledger, issues, interruption protocol, completion gates |
 | `plugins/governance-enforcer/README.md` | Governance enforcer plugin — pre_tool_call hook, lock file protocol, fixed-path + PID handoff, two-phase discovery, block matrix, stale lock purge |

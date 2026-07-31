@@ -479,7 +479,7 @@ printf "${CYAN}  4. Correction Recidivism Scan${RESET}\n"
 # registry, flags unguarded + recidivism. no_agent — stdout is the report.
 # Orchestrator-only: state.db lives on the orchestrator host.
 create_cron "orch-session-correction-scan" "0 22 * * 0" \
-  "session-correction-scan.py" \
+  "orch-session-correction-scan.py" \
   "" \
   "" \
   "" \
