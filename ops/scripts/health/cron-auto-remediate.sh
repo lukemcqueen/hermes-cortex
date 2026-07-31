@@ -164,9 +164,9 @@ case "${ACTION}" in
     fixed=0
     for script in agent-service-recovery.py agent-system-alert-watchdog.py \
                   daily-lesson-mine.sh \
-                  update-session-state.sh langfuse-health-watchdog.py \
+                  update-session-state.sh agent-langfuse-health-watchdog.py \
                   langfuse-retention-prune.py lesson-compound-stats-brief.sh \
-                  llm-judge-scorer.py memory-to-brain-sync.py memory-compress.py \
+                  llm-judge-scorer.py agent-memory-to-brain-sync.py memory-compress.py \
                   web-cache-backup.sh web-cache-prune.sh; do
       if [ ! -f "${HERMES_SCRIPTS}/${script}" ] && [ -f "${CORTEX_SCRIPTS}/${script}" ]; then
         cp "${CORTEX_SCRIPTS}/${script}" "${HERMES_SCRIPTS}/${script}"

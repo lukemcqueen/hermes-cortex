@@ -84,7 +84,7 @@ _last_restart: dict[str, float] = {}
 def _check_scripts() -> bool:
     """Check if critical Hermes scripts are present and executable."""
     critical = [
-        "heartbeat.py", "service-recovery.py", "system-alert-watchdog.py",
+        "heartbeat.py", "agent-service-recovery.py", "agent-system-alert-watchdog.py",
         "cron-auto-remediate.sh",
     ]
     for name in critical:
@@ -143,10 +143,10 @@ def _try_restore_scripts() -> str | None:
     """Try to restore missing scripts from the cortex repo. Returns error or None."""
     restored = []
     critical = [
-        "heartbeat.py", "service-recovery.py", "system-alert-watchdog.py",
+        "heartbeat.py", "agent-service-recovery.py", "agent-system-alert-watchdog.py",
         "cron-auto-remediate.sh",
         "daily-lesson-mine.sh", "update-session-state.sh",
-        "langfuse-health-watchdog.py", "memory-to-brain-sync.py",
+        "agent-langfuse-health-watchdog.py", "agent-memory-to-brain-sync.py",
         "web-cache-backup.sh", "web-cache-prune.sh",
     ]
     for name in critical:
