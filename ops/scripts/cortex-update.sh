@@ -1827,7 +1827,11 @@ main() {
       : # up to date — silent
     else
       info "Merging template updates into SOUL.md..."
-      python3 "$soul_merge" 2>&1 | sed 's/^/    /'
+      # soul-merge exits 1 after a SUCCESSFUL merge (0=up-to-date, 1=merged,
+      # 2=error — asserted in tests/test_soul_merge.py). Without || true the
+      # exit-1 pipeline aborts the whole update under set -euo pipefail,
+      # skipping the state save, doctor, and enforcement re-lock.
+      python3 "$soul_merge" 2>&1 | sed 's/^/    /' || true
       COPIED=$((COPIED + 1))
     fi
   fi
