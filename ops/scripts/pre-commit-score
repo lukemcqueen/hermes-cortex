@@ -719,8 +719,10 @@ fi
 # Test 2: the detection must be env-independent — simulate a spoofed claim
 # and confirm it changes nothing.
 if _detect_orch; then
-  _SPOOF_DEMOTES=$(AGENT_ID=titus _detect_orch && echo "wrong-promote" || echo "ok-still-orch")
+  # On an orch host: AGENT_ID=titus must NOT demote us — env is ignored.
+  _SPOOF_DEMOTES=$(AGENT_ID=titus _detect_orch && echo "ok-still-orch (env ignored)" || echo "DEMOTED-BY-ENV")
 else
+  # On a non-orch host: claiming AGENT_ID=moses must NOT promote us.
   _SPOOF_PROMOTES=$(AGENT_ID=moses _detect_orch && echo "SPOOFED" || echo "ok-still-blocked")
 fi
 if [[ "$_ORCH_HOST" -eq 1 ]]; then
