@@ -107,6 +107,8 @@ Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify
 22. **Only modify files in our repo** — `~/hermes-cortex/` → ours. `~/.hermes/` (not in repo) → do NOT touch. `~/.hermes-cortex/state/*`, `~/.hermes/config.yaml` → live config.
 23. **Sharing filter: only share new/substantive changes** — Already in Hermes Agent? ❌. Already in hermes-cortex? ❌. New skill? ✅. Improvement? ✅. PII-only? ❌. Test: *"Would someone running Hermes Cortex benefit?"*
 24. **Self-test gate for fleet commands** — `hc send` refuses without `--self-tested`. Never use bare `pass` in except blocks.
+25. **Skill stub guard + recovery** — `cortex-update.sh` refuses to overwrite a FULL deployed skill with a truncated repo stub (SKILL STUB GUARD, `is_skill_stub` check — stubs are <1500 bytes AND contain `Full content (truncated)` or `--- End skill ---`). The doctor FAILs on repo stubs (130 known from the Jul-17 9a9efa91 truncated imports). Recovery path: `agent-skill-stub-audit.py --send` on the source agent (Joseph/luke-server) → bus `skill-stub-recovery` payloads → `agent-message-handler` stages them → orchestrator copies full content over `skills/` → `cortex-update.sh`. Do NOT hand-fix stub content in the repo from memory — re-collect from the source agent so the recovery is verifiable.
+26. **Restart the gateway for enforcer changes** — after `cortex-update.sh` deploys a newer governance enforcer plugin, the running gateway may still execute the old in-memory copy. Verify with the doctor's `Plugin content` check; if it shows the deployed copy differs from repo while the repo is current, run `hermes gateway restart` from a separate shell (NOT from inside the gateway process — blocked by the enforcer).
 
 ---
 
