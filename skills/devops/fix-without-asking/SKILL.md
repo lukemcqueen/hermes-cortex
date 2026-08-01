@@ -3,7 +3,7 @@ name: fix-without-asking
 description: |-
   When you discover an issue mid-task, the correct response is begin_change — not a question.
   Covers the litmus test, the failure pattern, and the concrete "never ask" guardrail.
-  Triggers: "should I fix", "want me to", discovered anything wrong mid-task, user says "fix it"
+  Triggers: 'should I fix', 'want me to', discovered anything wrong mid-task, user says 'fix it'
 version: 1.2.0
 author: Hermes Cortex
 license: MIT

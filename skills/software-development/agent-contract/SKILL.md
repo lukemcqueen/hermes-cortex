@@ -4,7 +4,7 @@ description: |
   Core execution contract: real work, honest results, verified outputs, minimal changes.
   The fundamental ruleset for coding agents.
 
-  Triggers: "agent rules", "execution rules", "do not simulate", "agent contract", "how should you behave"
+  Triggers: 'agent rules', 'execution rules', 'do not simulate', 'agent contract', 'how should you behave'
 version: 1.0.0
 author: Titus (ported from AgentKore)
 ---

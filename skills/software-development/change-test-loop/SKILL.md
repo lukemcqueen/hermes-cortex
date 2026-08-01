@@ -4,7 +4,7 @@ description: |
   Small changes with real verification, bounded retries, self-healing.
   One change at a time. Never batch. Never skip verification.
 
-  Triggers: "fix tests", "make tests pass", "refactor", "change-test loop", "debug failing test"
+  Triggers: 'fix tests', 'make tests pass', 'refactor', 'change-test loop', 'debug failing test'
 version: 1.1.0
 author: Titus (ported from AgentKore)
 ---
