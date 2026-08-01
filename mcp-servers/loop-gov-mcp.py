@@ -155,10 +155,15 @@ def _require_dogfood() -> Optional[str]:
 
 # ── Session ID ───────────────────────────────────────────────
 
-def get_session_id() -> str:
+def get_session_id(args: dict | None = None) -> str:
     """Return a persistent session ID, creating one on first call.
 
     Priority:
+    0. Per-call session_id injected into the tool call args by the
+       governance-enforcer plugin (runs in the Hermes gateway, knows the
+       real session ID from kwargs). This is the ONLY reliable signal:
+       the MCP server is one shared process for all sessions, and the
+       shared marker files below are clobbered by concurrent sessions.
     1. Fixed-path marker from the Hermes enforcer
        (~/.hermes-cortex/state/.hermes-session-current.id)
        This bypasses the PID-chain problem: even when the MCP server is
@@ -169,6 +174,14 @@ def get_session_id() -> str:
     3. Cached ~/.hermes/session.id (previous value from this session)
     4. Generate new UUID-based ID (first call, no enforcer present)
     """
+    # Priority 0: per-call session ID injected by the enforcer plugin
+    if isinstance(args, dict):
+        sid = args.get("session_id", "")
+        if isinstance(sid, str) and sid.strip():
+            sid = sid.strip()
+            SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
+            SESSION_FILE.write_text(sid)
+            return sid
     # Priority 1: Fixed-path marker (primary — no PID needed)
     try:
         fixed = Path.home() / ".hermes-cortex" / "state" / ".hermes-session-current.id"
@@ -288,9 +301,9 @@ def _is_lock_stale(state: dict) -> bool:
         return False
 
 
-def _read_lock() -> dict | None:
+def _read_lock(args: dict | None = None) -> dict | None:
     """Read this session's lock file, return state dict or None."""
-    session_id = get_session_id()
+    session_id = get_session_id(args)
     path = _session_lock_path(session_id)
     if path.exists():
         try:
@@ -300,7 +313,7 @@ def _read_lock() -> dict | None:
     return None
 
 
-def _write_lock(state: dict) -> None:
+def _write_lock(state: dict, args: dict | None = None) -> None:
     """Write lock state to a session-scoped file.
 
     The lock filename uses the session_id so two sessions never
@@ -316,7 +329,7 @@ def _write_lock(state: dict) -> None:
     governance state even when the primary lock directory is
     outside the repo filesystem.
     """
-    session_id = state.get("session_id", get_session_id())
+    session_id = state.get("session_id", get_session_id(args))
     path = _session_lock_path(session_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     # Atomic write: temp file in same dir + rename (same filesystem)
@@ -333,9 +346,9 @@ def _write_lock(state: dict) -> None:
         tmp2.rename(secondary)
 
 
-def _release_lock() -> None:
+def _release_lock(args: dict | None = None) -> None:
     """Remove this session's lock file and secondary marker."""
-    session_id = get_session_id()
+    session_id = get_session_id(args)
     path = _session_lock_path(session_id)
     if path.exists():
         # Read state before unlinking so we know the repo_slug for cleanup
@@ -848,7 +861,7 @@ def _begin_change(args: dict) -> CallToolResult:
     if dogfood_msg:
         return CallToolResult(content=[TextContent(type="text", text=dogfood_msg)])
 
-    session_id = get_session_id()
+    session_id = get_session_id(args)
     now_iso = _now_iso()
 
     # Defaults for audit trail (may be overwritten by force-override below)
@@ -859,7 +872,7 @@ def _begin_change(args: dict) -> CallToolResult:
     # For force=True: read old lock info and release it. The new lock file
     # is NOT written yet — that happens only after DB cycle confirms.
     # For normal (non-force): just check and reject if lock exists.
-    existing = _read_lock()
+    existing = _read_lock(args)
     if existing is not None:
         if not force:
             return CallToolResult(content=[TextContent(
@@ -878,7 +891,7 @@ def _begin_change(args: dict) -> CallToolResult:
         # Force override: build audit note and release old lock
         released_task = existing.get("task_id", "unknown")
         released_session = existing.get("session_id", "unknown")
-        _release_lock()
+        _release_lock(args)
         audit_note = (
             f"Lock overridden by force=True.\n"
             f"  Released session: {released_session}\n"
@@ -984,7 +997,7 @@ def _begin_change(args: dict) -> CallToolResult:
         # Start in planning state when a plan is provided (fix GAP #6)
         "status": "planning" if has_plan else "executing",
     }
-    _write_lock(state)
+    _write_lock(state, args)
 
     prefix = "🔒 " if not force else "🔓⚠️ "
     force_msg = f" (forced — replaced session {released_session})" if force else ""
@@ -1008,8 +1021,8 @@ def _end_change(args: dict) -> CallToolResult:
         return CallToolResult(content=[TextContent(type="text", text="Error: task_id is required")])
 
     # Step 1: Read this session's lock
-    session_id = get_session_id()
-    lock = _read_lock()
+    session_id = get_session_id(args)
+    lock = _read_lock(args)
     if lock is None:
         return CallToolResult(content=[TextContent(
             type="text", text="No governance session active. Nothing to release."
@@ -1060,7 +1073,7 @@ def _end_change(args: dict) -> CallToolResult:
         )])
 
     # Step 4: Release the lock
-    _release_lock()
+    _release_lock(args)
 
     return CallToolResult(content=[TextContent(
         type="text",
@@ -1081,7 +1094,7 @@ def _check_lock(args: dict | None = None) -> CallToolResult:
     Proactively purges stale locks from other sessions (GAP #9).
     """
     _purge_stale_locks()
-    state = _read_lock()
+    state = _read_lock(args)
     if state is None:
         return CallToolResult(content=[TextContent(
             type="text", text=json.dumps({"active": False, "lock": None}, indent=2)
@@ -1097,7 +1110,7 @@ def _check_lock(args: dict | None = None) -> CallToolResult:
             "heartbeat_at": state.get("heartbeat_at"),
             "ttl_seconds": state.get("ttl_seconds", DEFAULT_TTL),
         }
-        _release_lock()
+        _release_lock(args)
         return CallToolResult(content=[TextContent(
             type="text",
             text=json.dumps({
@@ -1110,7 +1123,7 @@ def _check_lock(args: dict | None = None) -> CallToolResult:
 
     # Refresh heartbeat
     state["heartbeat_at"] = _now_iso()
-    _write_lock(state)
+    _write_lock(state, args)
 
     return CallToolResult(content=[TextContent(
         type="text",
@@ -1379,9 +1392,9 @@ def _record_issue(args: dict) -> CallToolResult:
 # ── State Machine Helpers ────────────────────────────────────
 
 
-def _verify_lock_for_task(task_id: str) -> tuple[dict | None, str]:
+def _verify_lock_for_task(task_id: str, args: dict | None = None) -> tuple[dict | None, str]:
     """Verify the active lock matches the given task_id. Returns (state, error_msg)."""
-    state = _read_lock()
+    state = _read_lock(args)
     if state is None:
         return None, "No active governance lock."
     stored_task = state.get("task_id", "")
@@ -1390,9 +1403,9 @@ def _verify_lock_for_task(task_id: str) -> tuple[dict | None, str]:
     return state, ""
 
 
-def _write_lock_and_log(state: dict, event_type: str, detail: str = "") -> None:
+def _write_lock_and_log(state: dict, event_type: str, detail: str = "", args: dict | None = None) -> None:
     """Update the lock file and log a task event."""
-    _write_lock(state)
+    _write_lock(state, args)
     try:
         conn = _db()
         conn.execute(
@@ -1426,7 +1439,7 @@ def _advance_task_state(args: dict) -> CallToolResult:
     if not new_state:
         return CallToolResult(content=[TextContent(type="text", text="Error: new_state is required")])
 
-    state, err = _verify_lock_for_task(task_id)
+    state, err = _verify_lock_for_task(task_id, args)
     if err:
         return CallToolResult(content=[TextContent(type="text", text=err)])
 
@@ -1450,7 +1463,7 @@ def _advance_task_state(args: dict) -> CallToolResult:
     detail = f"Transition: {old_state} → {new_state}"
     if reason:
         detail += f" — {reason}"
-    _write_lock_and_log(state, "state_transition", detail)
+    _write_lock_and_log(state, "state_transition", detail, args)
 
     return CallToolResult(content=[TextContent(
         type="text",
@@ -1476,7 +1489,7 @@ def _request_interruption(args: dict) -> CallToolResult:
     if not description:
         return CallToolResult(content=[TextContent(type="text", text="Error: description is required")])
 
-    state, err = _verify_lock_for_task(task_id)
+    state, err = _verify_lock_for_task(task_id, args)
     if err:
         return CallToolResult(content=[TextContent(type="text", text=err)])
 
@@ -1537,7 +1550,7 @@ def _request_interruption(args: dict) -> CallToolResult:
     detail = f"Interrupted by: {sub_task_id} — {description}"
     if reason:
         detail += f" (reason: {reason})"
-    _write_lock_and_log(state, "interruption_requested", detail)
+    _write_lock_and_log(state, "interruption_requested", detail, args)
 
     return CallToolResult(content=[TextContent(
         type="text",
@@ -1550,7 +1563,7 @@ def _request_interruption(args: dict) -> CallToolResult:
 
 def _resume_from_interrupt(args: dict) -> CallToolResult:
     """Pop task_stack and restore the parent task."""
-    state = _read_lock()
+    state = _read_lock(args)
     if state is None:
         return CallToolResult(content=[TextContent(type="text", text="No active governance lock.")])
 
@@ -1573,7 +1586,7 @@ def _resume_from_interrupt(args: dict) -> CallToolResult:
     state["plan"] = parent.get("plan", [])
 
     detail = f"Resumed: {parent['task_id']} (stack depth: {len(stack)})"
-    _write_lock_and_log(state, "interruption_resumed", detail)
+    _write_lock_and_log(state, "interruption_resumed", detail, args)
 
     return CallToolResult(content=[TextContent(
         type="text",
@@ -1589,7 +1602,7 @@ def _request_completion(args: dict) -> CallToolResult:
     if not task_id:
         return CallToolResult(content=[TextContent(type="text", text="Error: task_id is required")])
 
-    state, err = _verify_lock_for_task(task_id)
+    state, err = _verify_lock_for_task(task_id, args)
     if err:
         return CallToolResult(content=[TextContent(type="text", text=err)])
 
@@ -1610,7 +1623,7 @@ def _request_completion(args: dict) -> CallToolResult:
     if not acs:
         state["completion_verified"] = True
         state["completion_detail"] = "No acceptance criteria (lightweight task)"
-        _write_lock_and_log(state, "completion_verified", "Auto-verified: lightweight task (no ACs)")
+        _write_lock_and_log(state, "completion_verified", "Auto-verified: lightweight task (no ACs)", args)
         return CallToolResult(content=[TextContent(
             type="text",
             text=f"✅ Task '{task_id}' has no acceptance criteria — auto-verified.\n"
@@ -1669,7 +1682,7 @@ def _request_completion(args: dict) -> CallToolResult:
     # All passed — mark as completion_verified
     state["completion_verified"] = True
     state["completion_detail"] = "; ".join(passed)
-    _write_lock_and_log(state, "completion_verified", state["completion_detail"])
+    _write_lock_and_log(state, "completion_verified", state["completion_detail"], args)
 
     return CallToolResult(content=[TextContent(
         type="text",
@@ -1692,7 +1705,7 @@ def _promote_issue_to_task(args: dict) -> CallToolResult:
         return CallToolResult(content=[TextContent(type="text", text="Error: description is required")])
 
     # Must not have an active lock
-    existing = _read_lock()
+    existing = _read_lock(args)
     if existing is not None:
         return CallToolResult(content=[TextContent(
             type="text",
@@ -1700,7 +1713,7 @@ def _promote_issue_to_task(args: dict) -> CallToolResult:
                  f"Complete or cancel the current task first."
         )])
 
-    session_id = get_session_id()
+    session_id = get_session_id(args)
     now_iso = _now_iso()
 
     # Optionally look up the issue for the detail
@@ -1735,7 +1748,7 @@ def _promote_issue_to_task(args: dict) -> CallToolResult:
         "task_stack": [],
         "status": "executing",
     }
-    _write_lock(state)
+    _write_lock(state, args)
 
     # Fix GAP #4: Create a cycle in loop-governance DB so promoted-issue
     # tasks are traceable and have a cycle record for end_change.

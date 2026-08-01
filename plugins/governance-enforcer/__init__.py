@@ -1184,6 +1184,24 @@ def register(ctx):
             if hermes_session_id:
                 _write_session_marker(hermes_session_id)
 
+            # ── Per-call session-ID injection into MCP governance calls ──
+            # The loop-governance MCP server is ONE shared process serving ALL
+            # sessions (spawned once per gateway). Its get_session_id() can
+            # never learn the caller's Hermes session from a shared marker
+            # file — concurrent sessions clobber .hermes-session-current.id
+            # (the harden-hook cross-session lock bug). The enforcer runs
+            # IN the gateway and knows the real session_id from kwargs, so it
+            # injects it into the tool call args. args is passed by reference
+            # through invoke_hook → tool executor → mcp_tool._handler →
+            # session.call_tool(arguments=args), so the MCP server sees
+            # session_id on every call — transparent to the agent session.
+            if (
+                hermes_session_id
+                and isinstance(args, dict)
+                and tool_name.startswith("mcp__loop_governance__")
+            ):
+                args["session_id"] = hermes_session_id
+
             # ── Track skill_view calls ──
             # Moved BEFORE the skills gate so agents can load skills.
             # When all 8 required skills are loaded, the marker is
