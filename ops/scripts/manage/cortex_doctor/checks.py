@@ -2664,8 +2664,12 @@ def check_skill_stubs(res):
             content = skill_md.read_text()
         except (OSError, UnicodeDecodeError):
             continue
-        if "Full content (truncated)" in content or (
-            "--- End skill ---" in content and len(content) < 1500
+        # Stubs are ~1KB. The size guard applies to BOTH markers — a full
+        # doc that merely quotes 'Full content (truncated)' (e.g. the
+        # hermes-cortex skill doc) is not a stub.
+        if len(content) < 1500 and (
+            "Full content (truncated)" in content
+            or "--- End skill ---" in content
         ):
             rel = skill_md.relative_to(CORTEX_REPO)
             stubs.append((skill_md.stat().st_size, str(rel)))

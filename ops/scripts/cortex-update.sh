@@ -938,17 +938,20 @@ update_symlinks() {
 # Returns 0 if the file is a truncated skill stub, 1 otherwise.
 # Mirrors cortex-doctor check_skill_stubs markers: literal
 # 'Full content (truncated)' (Jul-17 1KB import stubs) or an
-# '--- End skill ---' dump under 1500 bytes.
+# '--- End skill ---' dump under 1500 bytes. BOTH markers require
+# the file to be SMALL (< 1500 bytes) — a full doc that merely
+# quotes the marker string (e.g. this doc) is not a stub.
 is_skill_stub() {
   local f="$1"
   [[ -f "$f" ]] || return 1
+  local size
+  size=$(wc -c < "$f" 2>/dev/null || echo 0)
+  [[ "$size" -ge 1500 ]] && return 1
   if grep -q "Full content (truncated)" "$f" 2>/dev/null; then
     return 0
   fi
   if grep -q -- "--- End skill ---" "$f" 2>/dev/null; then
-    local size
-    size=$(wc -c < "$f" 2>/dev/null || echo 0)
-    [[ "$size" -lt 1500 ]] && return 0
+    return 0
   fi
   return 1
 }

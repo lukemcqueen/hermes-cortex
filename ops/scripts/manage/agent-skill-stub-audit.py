@@ -41,7 +41,11 @@ if env_names:
 
 
 def is_stub(content: str) -> bool:
-    return STUB_MARKER in content or (content and "End skill ---" in content and len(content) < 1500)
+    # Stubs are ~1KB. Size guard applies to BOTH markers — a full doc that
+    # merely quotes the marker string is not a stub.
+    if not content or len(content) >= 1500:
+        return False
+    return STUB_MARKER in content or "End skill ---" in content
 
 
 def scan_skills_dir(d: Path) -> dict:
