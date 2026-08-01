@@ -1,0 +1,327 @@
+{
+  "version": 1,
+  "description": "mycortex golden known-answer set — retrieval parity is measurable, not asserted (S-001). Pass = primary expected path in engine top-3. Federated gate: 100%. Isolated gate: >=90%.",
+  "pinned_at": "2026-08-01T20:15:00Z",
+  "sources": {
+    "hermes-cortex": {
+      "mode": "git",
+      "sha": "967021c6130460dd2e21990111be494d637c0455",
+      "scope": "federated"
+    },
+    "moses": {
+      "mode": "local",
+      "sha": "df0af40559dd2368e12be8a57032dba077a4ef16da45e61ebef1b075b3988e40",
+      "scope": "isolated"
+    }
+  },
+  "queries": [
+    {
+      "id": "HC-001",
+      "query": "loop governance",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "docs/loop-governance-reference.md",
+        "skills/devops/loop-governance/SKILL.md",
+        "docs/pre-commit-scoring.md"
+      ]
+    },
+    {
+      "id": "HC-002",
+      "query": "bus architecture",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "docs/bus-architecture.md",
+        "docs/architecture.md",
+        "docs/agent-architecture.md"
+      ]
+    },
+    {
+      "id": "HC-003",
+      "query": "pre-commit scoring",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "docs/pre-commit-scoring.md",
+        "docs/loop-governance-reference.md",
+        "skills/devops/loop-governance/SKILL.md"
+      ]
+    },
+    {
+      "id": "HC-004",
+      "query": "cron schedules",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "docs/cron-schedules.md",
+        "docs/cron-jobs-reference.md",
+        "docs/cron-job-recipes.md"
+      ]
+    },
+    {
+      "id": "HC-005",
+      "query": "agent memory pointer pattern",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "docs/agent-memory-pointer-pattern.md",
+        "docs/knowledge-isolation-architecture.md",
+        "docs/seeding-brain-content.md"
+      ]
+    },
+    {
+      "id": "HC-006",
+      "query": "gbrain postgres migration",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "docs/gbrain-postgres-migration.md",
+        "docs/knowledge-isolation-architecture.md",
+        "docs/gbrain-v2-taxonomy.md"
+      ]
+    },
+    {
+      "id": "HC-007",
+      "query": "knowledge isolation architecture",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "docs/knowledge-isolation-architecture.md",
+        "docs/agent-memory-pointer-pattern.md",
+        "docs/seeding-brain-content.md"
+      ]
+    },
+    {
+      "id": "HC-008",
+      "query": "skills manifest",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "docs/skills-manifest-reference.md",
+        "docs/SKILLS-MANIFEST.md",
+        "docs/agent-onboarding.md"
+      ]
+    },
+    {
+      "id": "HC-009",
+      "query": "fleet update protocol",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "docs/fleet-update-protocol.md",
+        "docs/fleet-reference.md",
+        "docs/agent-onboarding.md"
+      ]
+    },
+    {
+      "id": "HC-010",
+      "query": "agent onboarding",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "docs/agent-onboarding.md",
+        "docs/agent-architecture.md",
+        "docs/fleet-reference.md"
+      ]
+    },
+    {
+      "id": "HC-011",
+      "query": "backup orchestrator failover",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "docs/backup-orch-failover-runbook.md",
+        "docs/orch-backup-bus-setup.md",
+        "docs/esther-bus-setup.md"
+      ]
+    },
+    {
+      "id": "HC-012",
+      "query": "cron job management",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "skills/devops/cron-job-management/SKILL.md",
+        "docs/cron-job-recipes.md",
+        "docs/cron-jobs-reference.md"
+      ]
+    },
+    {
+      "id": "HC-013",
+      "query": "shell scripting pitfalls",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "skills/devops/shell-scripting/SKILL.md",
+        "docs/agent-onboarding.md",
+        "docs/architecture.md"
+      ]
+    },
+    {
+      "id": "HC-014",
+      "query": "two hard rules",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "skills/devops/two-hard-rules/SKILL.md",
+        "docs/loop-governance-reference.md",
+        "docs/pre-commit-scoring.md"
+      ]
+    },
+    {
+      "id": "HC-015",
+      "query": "repo organization",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "skills/software-development/repo-organization/SKILL.md",
+        "docs/skills-manifest-reference.md",
+        "docs/agent-onboarding.md"
+      ]
+    },
+    {
+      "id": "HC-016",
+      "query": "story decomposition",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "skills/software-development/story-decomposition/SKILL.md",
+        "docs/elicit/2026-08-01_mycortex-stories.md",
+        "docs/design/mycortex-DESIGN.md"
+      ]
+    },
+    {
+      "id": "HC-017",
+      "query": "cortex deployment sync",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "skills/devops/cortex-deployment-sync/SKILL.md",
+        "docs/fleet-update-protocol.md",
+        "docs/agent-onboarding.md"
+      ]
+    },
+    {
+      "id": "HC-018",
+      "query": "secret leak detector",
+      "source": "hermes-cortex",
+      "scope": "federated",
+      "expected_top3": [
+        "ops/scripts/secret-leak-detector.sh",
+        "docs/SECURITY.md",
+        "docs/agent-onboarding.md"
+      ]
+    },
+    {
+      "id": "MO-001",
+      "query": "behavioral principles",
+      "source": "moses",
+      "scope": "isolated",
+      "expected_top3": [
+        "principles.md",
+        "references/moses-brain-autonomy.md",
+        "README.md"
+      ]
+    },
+    {
+      "id": "MO-002",
+      "query": "hallucination guard",
+      "source": "moses",
+      "scope": "isolated",
+      "expected_top3": [
+        "references/hallucination-guard.md",
+        "references/moses-brain-autonomy.md",
+        "README.md"
+      ]
+    },
+    {
+      "id": "MO-003",
+      "query": "cross session notes",
+      "source": "moses",
+      "scope": "isolated",
+      "expected_top3": [
+        "references/cross-session-notes.md",
+        "references/INDEX.md",
+        "README.md"
+      ]
+    },
+    {
+      "id": "MO-004",
+      "query": "docker vm memory decision",
+      "source": "moses",
+      "scope": "isolated",
+      "expected_top3": [
+        "decisions/docker-vm-3gb.md",
+        "references/docker.md",
+        "decisions/INDEX.md"
+      ]
+    },
+    {
+      "id": "MO-005",
+      "query": "isolation over permissions",
+      "source": "moses",
+      "scope": "isolated",
+      "expected_top3": [
+        "decisions/isolation-over-permissions.md",
+        "references/moses-brain-autonomy.md",
+        "principles.md"
+      ]
+    },
+    {
+      "id": "MO-006",
+      "query": "crons reference",
+      "source": "moses",
+      "scope": "isolated",
+      "expected_top3": [
+        "references/crons.md",
+        "decisions/INDEX.md",
+        "README.md"
+      ]
+    },
+    {
+      "id": "MO-007",
+      "query": "moses brain autonomy",
+      "source": "moses",
+      "scope": "isolated",
+      "expected_top3": [
+        "references/moses-brain-autonomy.md",
+        "principles.md",
+        "references/hallucination-guard.md"
+      ]
+    },
+    {
+      "id": "MO-008",
+      "query": "post reboot",
+      "source": "moses",
+      "scope": "isolated",
+      "expected_top3": [
+        "references/post-reboot.md",
+        "references/docker.md",
+        "references/crons.md"
+      ]
+    },
+    {
+      "id": "MO-009",
+      "query": "amy business",
+      "source": "moses",
+      "scope": "isolated",
+      "expected_top3": [
+        "references/amy-business.md",
+        "references/INDEX.md",
+        "README.md"
+      ]
+    },
+    {
+      "id": "MO-010",
+      "query": "repos reference",
+      "source": "moses",
+      "scope": "isolated",
+      "expected_top3": [
+        "references/repos.md",
+        "references/crons.md",
+        "README.md"
+      ]
+    }
+  ]
+}

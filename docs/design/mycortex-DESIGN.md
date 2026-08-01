@@ -4,6 +4,7 @@
 > **Date:** 2026-08-01
 > **Stakeholders:** Luke · Moses · Esther · fleet (Titus, Joseph, Gisu, Kustos)
 > **Design doc for:** the "mycortex" knowledge brain replacing gbrain (garrytan/gbrain, bun, autopilot daemon)
+> **Implementation note (2026-08-01, S-003 landed):** the shipped `ops/services/mycortex/schema/mycortex.sql` deviates from §2 in four tested ways — (1) `sources.host` DEFAULT `'localhost'` (design's `current_setting('hostname', true)` returns NULL and violates NOT NULL); (2) RLS visibility is a SECURITY DEFINER helper `mycortex.is_source_visible(source_id, role)` called from both policies — policy subqueries evaluate with the CALLER's privileges, so the design's inline `source_grants` subquery fails with "permission denied for table source_grants"; (3) chunks policy applies the same predicate explicitly (no reliance on page-RLS cascade — FORCE RLS + superuser-owner policy evaluation makes cascade leaky); (4) `mycortex_ingest` gets explicit ALL policies on pages/content_chunks (RLS default-denies DML without them). S-003 AC battery `tests/test-mycortex-schema.sh` (15 checks) green.
 
 ---
 

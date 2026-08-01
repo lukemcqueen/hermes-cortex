@@ -395,6 +395,11 @@ register "ops/scripts/agent/agent-diagnostic.py"       "${CORTEX_DEPLOY_HOME}/sc
 # Timezone helper (required by monitoring scripts)
 register "ops/scripts/hermes_tz.py"                "${CORTEX_DEPLOY_HOME}/scripts/hermes_tz.py"
 
+# mycortex knowledge brain (gbrain replacement) — schema, migration runner, parity harness
+register "ops/services/mycortex/migrate.py"          "${CORTEX_DEPLOY_HOME}/services/mycortex/migrate.py"
+register "ops/services/mycortex/schema/mycortex.sql"  "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/mycortex.sql"
+register "ops/scripts/manage/mycortex-parity.py"      "${CORTEX_DEPLOY_HOME}/scripts/mycortex-parity.py"
+
 # Remediation sensor (companion to agent-auto-remediate cron)
 register "ops/scripts/health/agent-remediation-sensor.py"       "${CORTEX_DEPLOY_HOME}/scripts/agent-remediation-sensor.py"
 
@@ -1808,6 +1813,22 @@ main() {
 
   # Sync offline code corpus from repo
   sync_code_corpus
+
+  # ── Apply mycortex schema migrations (DDL path) ──────────────
+  # cortex-update.sh is a file-copier with NO DDL path (party-2 SS1). The
+  # schema reaches existing agents via ops/services/mycortex/migrate.py,
+  # invoked AFTER file sync. Idempotent: schema_version-gated no-op when
+  # current. Fails the update loudly if the runner errors (schema matters).
+  local mycortex_migrate="${CORTEX_DEPLOY_HOME}/services/mycortex/migrate.py"
+  if [[ -f "$mycortex_migrate" ]]; then
+    info "Applying mycortex migrations…"
+    if python3 "$mycortex_migrate"; then
+      : # migrations applied / already current
+    else
+      error "mycortex migrate.py FAILED — schema may be missing on this host"
+      exit 1
+    fi
+  fi
 
   deploy_nginx_configs
 

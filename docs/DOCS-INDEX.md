@@ -67,6 +67,12 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/elicit/2026-08-01_mycortex-elicitation.md` | **mycortex elicitation (pass 1)** — requirements for gbrain replacement: domain decomposition, RICE/MoSCoW, source model, decommission plan |
 | `docs/design/mycortex-DESIGN.md` | **mycortex design v2** — gbrain replacement: git-truth + shared-Postgres index + thin Python; schema v001 (fail-closed RLS, role split), migration runner, 9-phase decommission, test strategy. 2× 6-role party-reviewed |
 | `docs/elicit/2026-08-01_mycortex-stories.md` | **mycortex stories (16 vertical slices)** — S-001..S-016 with Given/When/Then AC: harness, schema, sync, search, CLI+/brain, lessons, deploy, parity, decommission, semantic v1.1, MCP v1.2 |
+| `ops/services/mycortex/schema/mycortex.sql` | **mycortex schema v001** — sources/pages/content_chunks/source_grants/ingest_log/query_log/schema_version; fail-closed RLS (FORCE + policies), role split (admin/ingest/reader), PII gate CHECK, `log_query()` SECURITY DEFINER |
+| `ops/services/mycortex/migrate.py` | **mycortex migration runner** — schema_version-gated psql runner, invoked by cortex-update.sh after file sync (the DDL path); `--db-name` override for test DBs |
+| `ops/scripts/manage/mycortex-parity.py` | **mycortex parity harness** — golden known-answer set runner: `--mode baseline` (records gbrain results → `tests/fixtures/gbrain-baseline.json`), `--mode check` (pass rate vs mycortex; 100% federated / ≥90% isolated gates) |
+| `tests/fixtures/golden-queries.json` | **Golden known-answer set** — 28 queries (18 federated hermes-cortex, 10 isolated moses) with expected top-3 paths, pinned to source SHAs |
+| `tests/test-mycortex-schema.sh` | **S-003 AC battery** — scratch-DB RLS isolation-leak (as mycortex_reader), PII gate, role split, idempotent migration |
+| `tests/test_mycortex_parity.py` | **S-001 parity tests** — fixture-engine pass-rate/gate coverage, golden-set integrity |
 
 ## Operations
 
