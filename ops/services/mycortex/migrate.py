@@ -60,6 +60,7 @@ def _psql_base(db_name: str) -> list[str]:
             "-U", parsed.username or "gbrain",
             "-d", db_name,  # explicit target DB (design P2-SS1)
             "-v", "ON_ERROR_STOP=1",
+            "-t", "-A",  # tuples-only, unaligned — headers break current_version()
         ]
     # Linux — container exec
     return [
