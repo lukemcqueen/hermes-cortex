@@ -158,6 +158,16 @@ For each collected item, classify and decide:
 
 Execute all approved actions:
 
+> 🔒 **FENCE-SAFETY RULE (before ANY skill edit):** run the fence-balance check on
+> the target file first — count lines that START with a triple-backtick fence
+> (the doctor's `check_skill_fences` does this); an odd count = unbalanced.
+> **Never** "remove stray fences", "clean up backticks",
+> or "fix markdown" on a file that currently scans BALANCED — that is exactly the
+> destructive pattern that corrupted change-test-loop/SKILL.md 5+ times. Only fix
+> a file verified UNBALANCED, remove precisely the stray line, and re-verify even.
+> `git pull --ff-only` before any edit (fresh state — a peer may have landed the
+> fix already; never re-implement or step on concurrent work).
+
 1. **Patch existing skill** — `skill_manage(action='patch', ...)` with new pitfall, corrected step, updated path
 2. **Create new skill** — `skill_manage(action='create', ...)` for genuinely new discoveries (from fleet or own work)
 3. **Merge skills** — Read both, compose unified SKILL.md, delete old
@@ -178,9 +188,10 @@ Execute all approved actions:
 After all changes:
 1. Confirm skills are readable: `skill_view(name)` for each changed skill
 2. Check syntax: `skill_manage(action='patch')` returns a diff — verify it looks correct
-3. Verify SOUL.md is valid markdown
-4. Run `cronjob action='list'` to confirm old crons are gone
-5. If Monday: verify the session cache exists and is current
+3. **Fence balance on every changed SKILL.md** — even fence count, before commit. Any file with an odd count blocks the commit anyway (pre-commit gate), but verify BEFORE staging, not after.
+4. Verify SOUL.md is valid markdown
+5. Run `cronjob action='list'` to confirm old crons are gone
+6. If Monday: verify the session cache exists and is current
 
 ## Output Format
 
