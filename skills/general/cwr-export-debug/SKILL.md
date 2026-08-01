@@ -1,5 +1,6 @@
 ---
 name: cwr-export-debug
+version: 1.0.0
 category: software-development
 description: Debug why CWR exports produce zero songs — trace the full export pipeline from UI → controller → job → engine → batch exporter, checking each layer for silent drop points.
 ---

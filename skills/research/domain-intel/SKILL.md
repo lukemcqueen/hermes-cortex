@@ -1,5 +1,6 @@
 ---
 name: domain-intel
+version: 1.0.0
 description: Passive recon of subdomains, SSL certs, WHOIS, and DNS.
 platforms: [linux, macos, windows]
 ---
