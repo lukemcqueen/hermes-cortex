@@ -196,10 +196,15 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   # ── No-verify commit gate ──────────────────────────────
   # Blocks pushes that include commits made with --no-verify.
   # The post-commit hook logs these events; the pre-push hook
-  # catches them before code reaches the remote. Skips when
-  # remote_sha is empty (first push to new branch).
+  # catches them before code reaches the remote.
+  # 2026-08-02 hardening: previously SKIPPED when remote_sha was empty
+  # ("first push to new branch") — past-Moses pushed governance-destroying
+  # commits to a temp-push branch (empty remote_sha → gate skipped) then
+  # merged to main (7dbba626 removed core/governance/). Now a new-branch
+  # push is checked against origin/main instead: any no-verify commit not
+  # already on main is blocked, closing the temp-branch bypass.
   NO_VERIFY_LOG="${HOME}/.hermes-cortex/state/no-verify-log.json"
-  if [[ -f "$NO_VERIFY_LOG" ]] && [[ "$remote_sha" != "0000000000000000000000000000000000000000" ]]; then
+  if [[ -f "$NO_VERIFY_LOG" ]]; then
     NO_VERIFY_BLOCKED=0
     NO_VERIFY_HASHES=$(python3 -c "
 import json, sys
@@ -211,20 +216,28 @@ except Exception:
     _ = None  # expected: no no-verify log yet
 " 2>/dev/null || true)
     if [[ -n "$NO_VERIFY_HASHES" ]]; then
-      PUSH_COMMITS=$(git rev-list "$remote_sha..$local_sha" 2>/dev/null || true)
-      if [[ -n "$PUSH_COMMITS" ]]; then
-        while IFS= read -r p_commit; do
-          if grep -qF "$p_commit" <<< "$NO_VERIFY_HASHES"; then
-            NO_VERIFY_BLOCKED=1
-            NV_MSG=$(git log -1 --format="%s" "$p_commit" 2>/dev/null || echo "unknown")
-            echo ""
-            echo "❌  Push blocked: commit ${p_commit::10} was made with --no-verify"
-            echo "    Message: ${NV_MSG}"
-            echo "    --no-verify bypasses the adversarial verify gate and all governance checks."
-            echo "    Re-do the commit through the pre-commit hook."
-            echo ""
-          fi
-        done <<< "$PUSH_COMMITS"
+      # Compare base: existing branch → remote_sha; new branch → origin/main
+      if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
+        BASE_SHA=$(git rev-parse origin/main 2>/dev/null || echo "")
+      else
+        BASE_SHA="$remote_sha"
+      fi
+      if [[ -n "$BASE_SHA" ]]; then
+        PUSH_COMMITS=$(git rev-list "$BASE_SHA..$local_sha" 2>/dev/null || true)
+        if [[ -n "$PUSH_COMMITS" ]]; then
+          while IFS= read -r p_commit; do
+            if grep -qF "$p_commit" <<< "$NO_VERIFY_HASHES"; then
+              NO_VERIFY_BLOCKED=1
+              NV_MSG=$(git log -1 --format="%s" "$p_commit" 2>/dev/null || echo "unknown")
+              echo ""
+              echo "❌  Push blocked: commit ${p_commit::10} was made with --no-verify"
+              echo "    Message: ${NV_MSG}"
+              echo "    --no-verify bypasses the adversarial verify gate and all governance checks."
+              echo "    Re-do the commit through the pre-commit hook."
+              echo ""
+            fi
+          done <<< "$PUSH_COMMITS"
+        fi
       fi
     fi
     if [[ "$NO_VERIFY_BLOCKED" -ne 0 ]]; then

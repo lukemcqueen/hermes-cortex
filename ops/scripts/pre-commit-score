@@ -700,9 +700,11 @@ SCORE_OUTPUT=$(timeout 30 "$PYTHON_BIN" "$SCORE_CYCLE" \
   fi
   echo "    Without a cycle record, this commit is invisible to governance." >&2
   echo "    Fix the DB issue to proceed with governance." >&2
+  echo "    Hard block (2026-08-02): a missing governance record is a bypass, not a warning." >&2
+  echo "    Do NOT use --no-verify — fix the scorer/DB instead." >&2
   echo "" >&2
   rm -f "$SCORE_STDERR"
-  SCORE_OUTPUT='{"decision":"LOOP","note":"score-cycle failed — no cycle logged"}'
+  exit 1
 }
 rm -f "$SCORE_STDERR"
 
