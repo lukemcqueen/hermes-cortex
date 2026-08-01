@@ -220,6 +220,16 @@ CREATE POLICY mycortex_chunks_ingest ON mycortex.content_chunks
     FOR ALL TO mycortex_ingest
     USING (true) WITH CHECK (true);
 
+-- Admin = audit role: orchestrators must see ALL pages/chunks (incl. isolated)
+-- to manage PII gates, grants, and query audit. FORCE RLS otherwise default-denies
+-- admin (no policy applies) — the GRANT SELECT in the grants section would be useless.
+CREATE POLICY mycortex_pages_admin ON mycortex.pages
+    FOR SELECT TO mycortex_admin
+    USING (true);
+CREATE POLICY mycortex_chunks_admin ON mycortex.content_chunks
+    FOR SELECT TO mycortex_admin
+    USING (true);
+
 -- ── Grants (role split) ────────────────────────────────────────────────
 GRANT USAGE ON SCHEMA mycortex TO mycortex_admin, mycortex_ingest, mycortex_reader;
 
@@ -233,6 +243,6 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON mycortex.pages, mycortex.content_chunks,
 GRANT USAGE ON SEQUENCE mycortex.ingest_log_id_seq TO mycortex_ingest;
 REVOKE ALL ON mycortex.sources, mycortex.source_grants, mycortex.query_log, mycortex.schema_version FROM mycortex_ingest;
 
--- mycortex_reader — SELECT on pages/chunks (RLS-filtered), sources (id,name,is_federated only)
+-- mycortex_reader — SELECT on pages/chunks (RLS-filtered), sources (id,name,is_federated,search_config only)
 GRANT SELECT ON mycortex.pages, mycortex.content_chunks TO mycortex_reader;
-GRANT SELECT (id, name, is_federated) ON mycortex.sources TO mycortex_reader;
+GRANT SELECT (id, name, is_federated, search_config) ON mycortex.sources TO mycortex_reader;

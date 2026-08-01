@@ -1,0 +1,670 @@
+#!/usr/bin/env python3.12
+"""
+mycortex CLI — knowledge brain for the fleet (gbrain replacement).
+
+Single-file Python CLI over the mycortex schema (ops/services/mycortex/schema/mycortex.sql)
+on the shared gbrain-postgres (:15432). No daemon, no bun — sync is a cron.
+
+Commands:
+  sources add <name> <path> [--mode git|local] [--federated] [--search-config C]
+  sources list [--json]
+  sources remove <name>
+  sync [--source NAME] [--force] [--db-name DB]
+  search <query> [--source NAME...] [--limit N] [--json]
+  list [-n N] [--source NAME] [--json]
+  stats [--json]
+  doctor [--json]
+
+Role split (DB-enforced, NOT CLI convention):
+  sources add/remove       → mycortex_admin  (orchestrators only)
+  sync                     → mycortex_ingest (sync cron)
+  search/list/stats/doctor → mycortex_reader (fleet agents, RLS-filtered)
+
+Connection (multi-OS, same pattern as migrate.py / todo-db.py):
+  Linux  → sg docker -c "docker exec -i gbrain-postgres psql -U <role> -d <db> ..."
+  macOS  → direct psql reading ~/.gbrain/config.json (or defaults)
+
+Exit codes: 0 = success, 1 = error, 2 = usage.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
+import time
+import unicodedata
+from pathlib import Path
+
+DB_DEFAULT = "gbrain"
+HOST_DEFAULT = "localhost" if platform.system() == "Darwin" else None
+
+# ── psql helpers (migrate.py / todo-db.py pattern) ────────────
+
+def _psql_base(role: str, db_name: str) -> list[str]:
+    """Platform-appropriate psql invocation as the given role."""
+    if platform.system() == "Darwin":
+        url = None
+        cfg_path = Path.home() / ".gbrain" / "config.json"
+        if cfg_path.exists():
+            try:
+                cfg = json.loads(cfg_path.read_text())
+                url = cfg.get("database_url")
+            except (OSError, json.JSONDecodeError):
+                url = None
+        if not url:
+            url = f"postgresql://{role}@127.0.0.1:15432/{db_name}"
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        psql = shutil.which("psql") or "/opt/homebrew/bin/psql"
+        return [
+            psql,
+            "-h", parsed.hostname or "127.0.0.1",
+            "-p", str(parsed.port or 15432),
+            "-U", role,
+            "-d", db_name,
+            "-v", "ON_ERROR_STOP=1",
+        ]
+    # Linux — container exec as the role (trust auth inside container)
+    return [
+        "sg", "docker", "-c",
+        f"docker exec -i gbrain-postgres psql -U {role} -d {db_name} -v ON_ERROR_STOP=1 -t -A",
+    ]
+
+
+def psql_script(sql: str, role: str = "gbrain", db_name: str = DB_DEFAULT) -> tuple[int, str, str]:
+    """Run SQL as role, return (rc, stdout, stderr)."""
+    cmd = _psql_base(role, db_name)
+    proc = subprocess.run(cmd, input=sql, capture_output=True, text=True, timeout=180)
+    return proc.returncode, proc.stdout, proc.stderr
+
+
+def psql_query(sql: str, role: str = "gbrain", db_name: str = DB_DEFAULT) -> str:
+    """Run a query, return trimmed stdout; raises on non-zero."""
+    rc, out, err = psql_script(sql, role, db_name)
+    if rc != 0:
+        raise RuntimeError(f"psql failed (rc={rc}): {err.strip()[-2000:] or out.strip()[-2000:]}")
+    return out.strip()
+
+
+def run_sql(sql: str, role: str = "gbrain", db_name: str = DB_DEFAULT) -> None:
+    rc, out, err = psql_script(sql, role, db_name)
+    if rc != 0:
+        raise RuntimeError(f"psql failed (rc={rc}): {err.strip()[-2000:] or out.strip()[-2000:]}")
+
+
+def esc_literal(s: str) -> str:
+    """Escape a string for use as a SQL string literal (parameterization via psql)."""
+    return "'" + s.replace("'", "''") + "'"
+
+
+# ── Sources (mycortex_admin) ──────────────────────────────────
+
+def sources_add(args: argparse.Namespace) -> int:
+    path = str(Path(args.path).expanduser().resolve())
+    if not Path(path).is_dir():
+        print(f"❌ source path is not a directory: {path}", file=sys.stderr)
+        return 1
+    mode = args.mode or ("git" if (Path(path) / ".git").exists() else "local")
+    host = HOST_DEFAULT or os.uname().nodename
+    fed = "TRUE" if args.federated else "FALSE"
+    pii = "now()" if args.federated else "NULL"
+    # idempotent: ON CONFLICT (name) updates path/mode/host
+    sql = f"""
+INSERT INTO mycortex.sources (name, local_path, host, sync_mode, is_federated, pii_scan_at, search_config)
+VALUES ({esc_literal(args.name)}, {esc_literal(path)}, {esc_literal(host)},
+        {esc_literal(mode)}, {fed}, {pii}, {esc_literal(args.search_config)})
+ON CONFLICT (name) DO UPDATE SET
+  local_path = EXCLUDED.local_path,
+  host = EXCLUDED.host,
+  sync_mode = EXCLUDED.sync_mode,
+  search_config = EXCLUDED.search_config,
+  archived = FALSE
+RETURNING id, name;
+"""
+    try:
+        out = psql_query(sql, "mycortex_admin", args.db_name)
+    except RuntimeError as e:
+        print(f"❌ {e}", file=sys.stderr)
+        return 1
+    if args.federated:
+        print(f"✅ source '{args.name}' registered (federated, PII scan recorded)")
+    else:
+        print(f"✅ source '{args.name}' registered (isolated, mode={mode}, host={host})")
+    print(f"   id: {out.splitlines()[0] if out else '?'}")
+    return 0
+
+
+def sources_list(args: argparse.Namespace) -> int:
+    sql = """
+SELECT s.name, s.sync_mode, s.is_federated, s.host,
+       s.last_sync_at::text, s.archived,
+       (SELECT count(*) FROM mycortex.pages p WHERE p.source_id = s.id AND NOT p.archived) AS pages
+FROM mycortex.sources s
+ORDER BY s.name;
+"""
+    try:
+        out = psql_query(sql, "mycortex_admin", args.db_name)
+    except RuntimeError as e:
+        print(f"❌ {e}", file=sys.stderr)
+        return 1
+    rows = [ln.split("|") for ln in out.splitlines() if ln.strip()]
+    if args.json:
+        data = [
+            {
+                "name": r[0], "sync_mode": r[1], "is_federated": r[2] == "t",
+                "host": r[3], "last_sync_at": r[4] or None,
+                "archived": r[5] == "t", "pages": int(r[6] or 0),
+            }
+            for r in rows
+        ]
+        print(json.dumps(data, indent=2))
+        return 0
+    if not rows:
+        print("(no sources registered)")
+        return 0
+    print(f"{'NAME':<24} {'MODE':<6} {'FED':<4} {'HOST':<16} {'PAGES':<6} LAST_SYNC")
+    for r in rows:
+        fed = "yes" if r[2] == "t" else "no"
+        print(f"{r[0]:<24} {r[1]:<6} {fed:<4} {(r[3] or ''):<16} {r[6]:<6} {r[4] or '-'}")
+    return 0
+
+
+def sources_remove(args: argparse.Namespace) -> int:
+    # builtin 'default' is unremovable (design invariant)
+    sql = f"SELECT builtin FROM mycortex.sources WHERE name = {esc_literal(args.name)};"
+    try:
+        out = psql_query(sql, "mycortex_admin", args.db_name)
+    except RuntimeError as e:
+        print(f"❌ {e}", file=sys.stderr)
+        return 1
+    if not out.strip():
+        print(f"❌ no source named '{args.name}'", file=sys.stderr)
+        return 1
+    if out.strip() == "t":
+        print(f"❌ source '{args.name}' is builtin — cannot remove", file=sys.stderr)
+        return 1
+    # hard purge: pages cascade via FK ON DELETE CASCADE
+    run_sql(f"DELETE FROM mycortex.sources WHERE name = {esc_literal(args.name)};",
+            "mycortex_admin", args.db_name)
+    print(f"✅ source '{args.name}' removed (pages hard-purged)")
+    return 0
+
+
+# ── Sync (mycortex_ingest, advisory-lock guarded) ─────────────
+
+CHUNK_SIZE = 800      # ~800 token chunks (design)
+CHUNK_OVERLAP = 0.15  # 15% overlap
+MAX_FILE_BYTES = 1_048_576  # >1 MB skipped
+MASS_DELETE_GUARD = 0.10    # >10% archive in one sync → abort
+
+BINARY_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf", ".zip", ".gz",
+              ".tar", ".db", ".sqlite", ".pyc", ".woff", ".woff2", ".ttf", ".otf",
+              ".mp3", ".mp4", ".mov", ".avi", ".ogg", ".wav"}
+
+
+def is_binary_path(rel: str) -> bool:
+    return Path(rel).suffix.lower() in BINARY_EXT
+
+
+def is_hidden_dir(rel: str) -> bool:
+    return any(part.startswith(".") and part not in (".", "..") for part in Path(rel).parts)
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def split_chunks(content: str) -> list[str]:
+    """Heading-aware chunk split: ~800 tokens, 15% overlap."""
+    if not content:
+        return []
+    # token-ish count: words + CJK chars (simple, mixed-language safe)
+    def toks(s: str) -> int:
+        return len(re.findall(r"\S+", s))
+
+    lines = content.splitlines()
+    chunks: list[str] = []
+    cur: list[str] = []
+    cur_tok = 0
+    for ln in lines:
+        if ln.startswith("#") and cur:
+            # heading boundary flush
+            chunks.append("\n".join(cur))
+            cur, cur_tok = [], 0
+        cur.append(ln)
+        cur_tok += toks(ln)
+        if cur_tok >= CHUNK_SIZE:
+            # overlap: keep last ~15% of tokens for context continuity
+            keep = max(1, int(len(cur) * CHUNK_OVERLAP))
+            overlap = cur[-keep:]
+            chunks.append("\n".join(cur))
+            cur, cur_tok = list(overlap), sum(toks(x) for x in overlap)
+    if cur:
+        chunks.append("\n".join(cur))
+    return chunks
+
+
+def git_tracked_files(repo: Path) -> list[str]:
+    """git ls-files at HEAD — excludes .git internals, dirty worktree handled."""
+    proc = subprocess.run(
+        ["git", "-C", str(repo), "ls-files", "--cached", "--others", "--exclude-standard"],
+        capture_output=True, text=True, timeout=120,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"git ls-files failed in {repo}: {proc.stderr.strip()[:500]}")
+    return [ln for ln in proc.stdout.splitlines() if ln.strip()]
+
+
+def walk_local_files(root: Path) -> list[str]:
+    """File-walk for local (non-git) sources; skips .git and hidden dirs."""
+    out: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+        for fn in filenames:
+            rel = os.path.relpath(os.path.join(dirpath, fn), root)
+            out.append(rel)
+    return out
+
+
+def sync_source(conn_meta: dict, source_id: str, source_name: str, local_path: str,
+                mode: str, search_config: str, force: bool = False) -> dict:
+    """Sync one source. Runs inside a single txn on the ingest role.
+
+    Returns stats dict; raises on guardrail violation.
+    """
+    from datetime import datetime, timezone
+
+    if mode == "git":
+        rels = git_tracked_files(Path(local_path))
+    else:
+        rels = walk_local_files(Path(local_path))
+
+    stats = {"seen": 0, "upserted": 0, "archived": 0, "skipped": 0, "unchanged": 0}
+    root = Path(local_path)
+
+    # fetch current page map (relpath → content_hash) for the source
+    sql = f"""
+SELECT relpath, content_hash FROM mycortex.pages
+WHERE source_id = {esc_literal(source_id)} AND NOT archived;
+"""
+    cur_map: dict[str, str] = {}
+    try:
+        out = psql_query(sql, "mycortex_ingest", conn_meta["db"])
+        for ln in out.splitlines():
+            if not ln.strip():
+                continue
+            parts = ln.split("|", 1)
+            if len(parts) == 2:
+                cur_map[parts[0]] = parts[1]
+    except RuntimeError:
+        cur_map = {}
+
+    new_map: dict[str, str] = {}
+    upserts: list[tuple[str, str, str]] = []  # (relpath, title, content)
+    for rel in rels:
+        rel_nfc = unicodedata.normalize("NFC", rel)
+        fpath = root / rel
+        if is_hidden_dir(rel) or is_binary_path(rel):
+            stats["skipped"] += 1
+            continue
+        try:
+            if fpath.stat().st_size > MAX_FILE_BYTES:
+                stats["skipped"] += 1
+                continue
+            content = fpath.read_text(errors="replace")
+            if "\x00" in content:  # binary heuristic
+                stats["skipped"] += 1
+                continue
+        except OSError:
+            stats["skipped"] += 1
+            continue
+        stats["seen"] += 1
+        digest = sha256_file(fpath)
+        new_map[rel_nfc] = digest
+        if not force and cur_map.get(rel_nfc) == digest:
+            stats["unchanged"] += 1
+            continue
+        title = Path(rel_nfc).stem
+        # title from frontmatter if present
+        m = re.search(r"^---\s*$.*?^title:\s*(.+)$.*?^---\s*$", content, re.M | re.S)
+        if m:
+            title = m.group(1).strip().strip("'\"")
+        upserts.append((rel_nfc, title, content))
+
+    # mass-deletion guardrail
+    active_before = len(cur_map)
+    would_archive = [r for r in cur_map if r not in new_map]
+    if active_before > 0 and len(would_archive) / active_before > MASS_DELETE_GUARD:
+        raise RuntimeError(
+            f"mass-deletion guardrail: {len(would_archive)}/{active_before} pages would archive "
+            f"(>{MASS_DELETE_GUARD:.0%}) — aborting sync of '{source_name}'"
+        )
+
+    # apply upserts + archive missing (soft-delete)
+    now = datetime.now(timezone.utc).isoformat()
+    for rel, title, content in upserts:
+        chunks = split_chunks(content)
+        page_id_sql = f"""
+INSERT INTO mycortex.pages (source_id, relpath, title, author, content_hash)
+VALUES ({esc_literal(source_id)}, {esc_literal(rel)}, {esc_literal(title)},
+        {esc_literal(os.environ.get('AGENT_NAME', os.uname().nodename))},
+        {esc_literal(sha256_file(root / rel))})
+ON CONFLICT (source_id, relpath) WHERE NOT archived
+DO UPDATE SET title = EXCLUDED.title, content_hash = EXCLUDED.content_hash,
+              updated_at = now(), archived = FALSE
+RETURNING id;
+"""
+        out = psql_query(page_id_sql, "mycortex_ingest", conn_meta["db"])
+        page_id = out.splitlines()[0] if out.strip() else ""
+        # delete old chunks, insert new
+        run_sql(f"DELETE FROM mycortex.content_chunks WHERE page_id = {esc_literal(page_id)};",
+                "mycortex_ingest", conn_meta["db"])
+        for i, chunk in enumerate(chunks):
+            run_sql(
+                f"""INSERT INTO mycortex.content_chunks (page_id, chunk_index, content, chunk_size, overlap)
+                    VALUES ({esc_literal(page_id)}, {i}, {esc_literal(chunk)}, {CHUNK_SIZE}, {int(CHUNK_SIZE * CHUNK_OVERLAP)});""",
+                "mycortex_ingest", conn_meta["db"],
+            )
+        # rebuild page FTS from chunks (same txn semantics via psql autocommit per stmt — acceptable)
+        run_sql(
+            f"""
+UPDATE mycortex.pages p SET fts = sub.ts
+FROM (
+  SELECT c.page_id,
+         to_tsvector({esc_literal(search_config)}::regconfig,
+                     string_agg(c.content, ' ' ORDER BY c.chunk_index)) AS ts
+  FROM mycortex.content_chunks c
+  WHERE c.page_id = {esc_literal(page_id)}
+  GROUP BY c.page_id
+) sub WHERE p.id = sub.page_id;
+""",
+            "mycortex_ingest", conn_meta["db"],
+        )
+        stats["upserted"] += 1
+
+    # soft-archive removed files
+    for rel in would_archive:
+        run_sql(
+            f"UPDATE mycortex.pages SET archived = TRUE WHERE source_id = {esc_literal(source_id)} AND relpath = {esc_literal(rel)};",
+            "mycortex_ingest", conn_meta["db"],
+        )
+        stats["archived"] += 1
+
+    # update source sync cursor
+    head = ""
+    if mode == "git":
+        proc = subprocess.run(["git", "-C", local_path, "rev-parse", "HEAD"],
+                              capture_output=True, text=True, timeout=30)
+        head = proc.stdout.strip() if proc.returncode == 0 else ""
+    run_sql(
+        f"UPDATE mycortex.sources SET last_sync_at = now(), last_commit = {esc_literal(head)} WHERE id = {esc_literal(source_id)};",
+        "mycortex_admin", conn_meta["db"],
+    )
+    return stats
+
+
+def sync(args: argparse.Namespace) -> int:
+    # list sources (admin read) — pick target(s)
+    sql = "SELECT id, name, local_path, sync_mode, search_config FROM mycortex.sources WHERE NOT archived;"
+    try:
+        out = psql_query(sql, "mycortex_admin", args.db_name)
+    except RuntimeError as e:
+        print(f"❌ {e}", file=sys.stderr)
+        return 1
+    rows = [ln.split("|") for ln in out.splitlines() if ln.strip()]
+    if args.source:
+        rows = [r for r in rows if r[1] == args.source]
+        if not rows:
+            print(f"❌ no source named '{args.source}'", file=sys.stderr)
+            return 1
+    if not rows:
+        print("(no sources to sync)")
+        return 0
+    ok = True
+    for r in rows:
+        sid, name, path, mode, search_config = r[0], r[1], r[2], r[3], r[4]
+        print(f"⏳ syncing '{name}' ({mode})…")
+        t0 = time.time()
+        try:
+            st = sync_source({"db": args.db_name}, sid, name, path, mode, search_config, args.force)
+            dt = time.time() - t0
+            print(f"✅ '{name}': {st['seen']} seen, {st['upserted']} upserted, "
+                  f"{st['archived']} archived, {st['skipped']} skipped, {st['unchanged']} unchanged ({dt:.1f}s)")
+        except RuntimeError as e:
+            print(f"❌ '{name}': {e}", file=sys.stderr)
+            ok = False
+    return 0 if ok else 1
+
+
+# ── Search (mycortex_reader, RLS-filtered) ────────────────────
+
+def search(args: argparse.Namespace) -> int:
+    t0 = time.time()
+    source_filter = ""
+    if args.source:
+        # allowlist source names → ids (reader can see id,name,is_federated)
+        ids = []
+        for s in args.source:
+            out = psql_query(
+                f"SELECT id FROM mycortex.sources WHERE name = {esc_literal(s)};",
+                "mycortex_reader", args.db_name,
+            )
+            if out.strip():
+                ids.append(out.splitlines()[0])
+        if ids:
+            source_filter = "AND p.source_id IN (" + ",".join(esc_literal(i) for i in ids) + ")"
+        else:
+            print("❌ no matching sources", file=sys.stderr)
+            return 1
+
+    # FTS + title trigram + ILIKE fallback; RLS applies automatically as reader
+    q = esc_literal(args.query)
+    sql = f"""
+SELECT p.relpath, p.title,
+       ts_rank(p.fts, websearch_to_tsquery(COALESCE(s.search_config,'simple')::regconfig, {q})) AS score
+FROM mycortex.pages p
+JOIN mycortex.sources s ON s.id = p.source_id
+WHERE NOT p.archived
+  AND (
+    p.fts @@ websearch_to_tsquery(COALESCE(s.search_config,'simple')::regconfig, {q})
+    OR p.title ILIKE '%' || {q} || '%'
+    OR p.relpath ILIKE '%' || {q} || '%'
+  )
+  {source_filter}
+ORDER BY score DESC, p.relpath
+LIMIT {int(args.limit)};
+"""
+    try:
+        out = psql_query(sql, "mycortex_reader", args.db_name)
+    except RuntimeError as e:
+        print(f"❌ {e}", file=sys.stderr)
+        return 1
+    results = []
+    for ln in out.splitlines():
+        if not ln.strip():
+            continue
+        parts = ln.split("|", 2)
+        if len(parts) >= 2:
+            results.append({"relpath": parts[0], "title": parts[1], "score": parts[2] if len(parts) > 2 else ""})
+    latency = int((time.time() - t0) * 1000)
+    if args.json:
+        print(json.dumps(results, indent=2))
+    else:
+        if not results:
+            print("(no results)")
+        for r in results:
+            print(f"[{r['score'] or '?'}] {r['relpath']} -- {r['title']}")
+    # query log (append-only, SECURITY DEFINER)
+    try:
+        relpaths = "{" + ",".join(r["relpath"].replace('"', '\\"') for r in results[:10]) + "}"
+        run_sql(
+            f"SELECT mycortex.log_query(NULL, {q}, {esc_literal(relpaths)}, {latency});",
+            "mycortex_reader", args.db_name,
+        )
+    except RuntimeError:
+        pass  # logging must never break search
+    return 0
+
+
+def list_pages(args: argparse.Namespace) -> int:
+    src = f"AND p.source_id IN (SELECT id FROM mycortex.sources WHERE name = {esc_literal(args.source)})" if args.source else ""
+    sql = f"""
+SELECT p.relpath, p.title, s.name, p.updated_at::text
+FROM mycortex.pages p
+JOIN mycortex.sources s ON s.id = p.source_id
+WHERE NOT p.archived {src}
+ORDER BY p.updated_at DESC
+LIMIT {int(args.n)};
+"""
+    try:
+        out = psql_query(sql, "mycortex_reader", args.db_name)
+    except RuntimeError as e:
+        print(f"❌ {e}", file=sys.stderr)
+        return 1
+    rows = [ln.split("|") for ln in out.splitlines() if ln.strip()]
+    if args.json:
+        print(json.dumps([{"relpath": r[0], "title": r[1], "source": r[2], "updated_at": r[3]} for r in rows], indent=2))
+    else:
+        if not rows:
+            print("(no pages)")
+        for r in rows:
+            print(f"{r[3][:16]}  {r[2]:<16} {r[0]}")
+    return 0
+
+
+def stats(args: argparse.Namespace) -> int:
+    sql = """
+SELECT
+  (SELECT count(*) FROM mycortex.sources WHERE NOT archived) AS sources,
+  (SELECT count(*) FROM mycortex.pages WHERE NOT archived) AS pages,
+  (SELECT count(*) FROM mycortex.content_chunks) AS chunks,
+  (SELECT count(*) FROM mycortex.ingest_log WHERE status='error') AS failed_syncs;
+"""
+    try:
+        out = psql_query(sql, "mycortex_admin", args.db_name)
+    except RuntimeError as e:
+        print(f"❌ {e}", file=sys.stderr)
+        return 1
+    parts = out.splitlines()[0].split("|") if out.strip() else ["0", "0", "0", "0"]
+    d = {"sources": int(parts[0] or 0), "pages": int(parts[1] or 0),
+         "chunks": int(parts[2] or 0), "failed_syncs": int(parts[3] or 0)}
+    if args.json:
+        print(json.dumps(d, indent=2))
+    else:
+        for k, v in d.items():
+            print(f"  {k}: {v}")
+    return 0
+
+
+def doctor(args: argparse.Namespace) -> int:
+    ok = True
+    # schema present?
+    try:
+        ver = psql_query("SELECT max(version) FROM mycortex.schema_version;", "gbrain", args.db_name)
+        print(f"✅ schema_version = {ver.strip() or '?'}")
+    except RuntimeError as e:
+        print(f"❌ schema missing: {e}")
+        return 1
+    # RLS policies present?
+    try:
+        pol = psql_query(
+            "SELECT count(*) FROM pg_policy p JOIN pg_class c ON p.polrelid=c.oid "
+            "JOIN pg_namespace n ON c.relnamespace=n.oid WHERE n.nspname='mycortex';",
+            "gbrain", args.db_name,
+        )
+        print(f"✅ RLS policies: {pol.strip()}")
+        if int(pol.strip() or 0) < 2:
+            ok = False
+    except RuntimeError as e:
+        print(f"❌ policy check failed: {e}")
+        ok = False
+    # sources stale?
+    try:
+        stale = psql_query(
+            "SELECT count(*) FROM mycortex.sources WHERE NOT archived "
+            "AND (last_sync_at IS NULL OR last_sync_at < now() - interval '2 hours');",
+            "mycortex_admin", args.db_name,
+        )
+        n = int(stale.strip() or 0)
+        if n:
+            print(f"⚠️  {n} source(s) stale or never synced (last_sync_at older than 2h or NULL)")
+            ok = False
+        else:
+            print("✅ all sources synced within 2h")
+    except RuntimeError:
+        print("⚠️  could not check staleness (admin read)")
+    if args.json:
+        print(json.dumps({"schema_version": ver.strip(), "ok": ok}))
+    return 0 if ok else 1
+
+
+# ── CLI entry ─────────────────────────────────────────────────
+
+def main() -> int:
+    p = argparse.ArgumentParser(prog="mycortex", description="Knowledge brain CLI (gbrain replacement)")
+    p.add_argument("--db-name", default=DB_DEFAULT, help="target database (default: gbrain)")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    sp = sub.add_parser("sources", help="source registration")
+    sp_sub = sp.add_subparsers(dest="sub", required=True)
+    add_p = sp_sub.add_parser("add", help="register a source")
+    add_p.add_argument("name")
+    add_p.add_argument("path")
+    add_p.add_argument("--mode", choices=["git", "local"])
+    add_p.add_argument("--federated", action="store_true", help="mark federated (PII scan recorded)")
+    add_p.add_argument("--search-config", default="simple")
+    add_p.set_defaults(func=sources_add)
+    lst_p = sp_sub.add_parser("list", help="list sources")
+    lst_p.add_argument("--json", action="store_true")
+    lst_p.set_defaults(func=sources_list)
+    rm_p = sp_sub.add_parser("remove", help="unregister a source (hard purge)")
+    rm_p.add_argument("name")
+    rm_p.set_defaults(func=sources_remove)
+
+    sync_p = sub.add_parser("sync", help="ingest changed pages")
+    sync_p.add_argument("--source", help="sync only this source")
+    sync_p.add_argument("--force", action="store_true", help="re-ingest even unchanged")
+    sync_p.set_defaults(func=sync)
+
+    search_p = sub.add_parser("search", help="text search (federated by default)")
+    search_p.add_argument("query")
+    search_p.add_argument("--source", action="append", help="restrict to source (repeatable)")
+    search_p.add_argument("--limit", type=int, default=10)
+    search_p.add_argument("--json", action="store_true")
+    search_p.set_defaults(func=search)
+
+    list_p = sub.add_parser("list", help="recent pages")
+    list_p.add_argument("-n", type=int, default=20)
+    list_p.add_argument("--source")
+    list_p.add_argument("--json", action="store_true")
+    list_p.set_defaults(func=list_pages)
+
+    stats_p = sub.add_parser("stats", help="counts")
+    stats_p.add_argument("--json", action="store_true")
+    stats_p.set_defaults(func=stats)
+
+    doc_p = sub.add_parser("doctor", help="schema + staleness checks")
+    doc_p.add_argument("--json", action="store_true")
+    doc_p.set_defaults(func=doctor)
+
+    args = p.parse_args()
+    args.db_name = getattr(args, "db_name", DB_DEFAULT)
+    try:
+        return args.func(args)
+    except RuntimeError as e:
+        print(f"❌ {e}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

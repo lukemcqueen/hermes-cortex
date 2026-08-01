@@ -128,6 +128,7 @@ if $UNINSTALL; then
     "orch-fleet-watchdog" \
     "orch-health-report-saturday" \
     "orch-health-report-weekday" \
+    "orch-mycortex-sync" \
     "orch-skill-lifecycle" \
     "orch-skill-evaluate" \
     "orch-skill-report-request" \
@@ -388,6 +389,20 @@ create_cron "orch-fleet-watchdog" "*/5 * * * *" \
   "" \
   "" \
   "telegram:1270130526" \
+  "" \
+  "true"
+
+# ── 1b. Mycortex knowledge brain sync ────────────────────
+# Syncs registered sources into the mycortex schema (gbrain replacement).
+# no_agent watchdog pattern: silent on success, output only on failure.
+# Jittered per host inside the wrapper (stable hostname-derived offset);
+# advisory lock makes multi-host sync safe. Every 15 min per design §6.
+create_cron "orch-mycortex-sync" "*/15 * * * *" \
+  "orch-mycortex-sync.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
   "" \
   "true"
 
