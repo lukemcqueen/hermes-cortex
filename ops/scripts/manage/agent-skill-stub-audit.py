@@ -7,14 +7,15 @@ Agents' LOCAL copies were always full: both ~/.hermes/skills/<cat>/<name>/SKILL.
 AND the collector's state/skill-contents/idx_N.txt cache.
 
 This script scans the local machine for FULL copies of the stubbed skills and
-prints a compact JSON report of what's recoverable. Run on each source agent
-via EXEC; the orchestrator collects the reports.
+sends them to Moses via the bus. AGENTS DO NOT WRITE THE REPO — they only
+send; Moses (the orchestrator) collects the messages and restores the full
+content into skills/ on the repo side.
 
 Naming: agent-* prefix (fleet-wide — runs on every agent).
 
 Usage:
     python3 agent-skill-stub-audit.py                    # scan, print recoverable
-    python3 agent-skill-stub-audit.py --send             # also bus-send report to Moses
+    python3 agent-skill-stub-audit.py --send             # bus-send full copies to Moses
 
 Exit codes: 0 = found recoverable content, 1 = nothing, 2 = error
 """

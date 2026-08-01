@@ -816,6 +816,41 @@ def main():
         save_state(state)
         return True
 
+      # ── Skill Stub Recovery — stage payload for orchestrator restore ──
+      # Fleet agents send full skill content here (agents cannot write the
+      # repo). This is NOT noise and NOT an error: extract the payload, write
+      # it to the staging dir, then archive the message. The orchestrator's
+      # restore step reads the staging dir and replaces stub skills.
+      if subject.startswith("Skill Stub Recovery"):
+        try:
+          payload = body.get("body", {})
+          if isinstance(payload, str):
+            payload = json.loads(payload)
+          stage_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state" / "skill-stub-recovery"
+          stage_dir.mkdir(parents=True, exist_ok=True)
+          host = payload.get("hostname", body.get("from", "unknown"))
+          part = payload.get("part", 0)
+          parts = payload.get("parts", 1)
+          skills = payload.get("skills", {})
+          if isinstance(skills, dict) and skills:
+            out_file = stage_dir / f"{host}-part{part}of{parts}.json"
+            out_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2))
+            log(f"📦 Staged Skill Stub Recovery from {host} part {part}/{parts} ({len(skills)} skills) → {out_file.name}")
+            archive_message(inbox_queue, msg_id)
+            state.setdefault("last_staged", []).append(
+              {"subject": subject, "from": body.get("from"), "skills": len(skills), "t": time.time()}
+            )
+            state["last_staged"] = state["last_staged"][-20:]
+            save_state(state)
+            return True
+          log(f"⚠️ Skill Stub Recovery from {body.get('from', '?')} had no skills dict — archiving raw")
+          archive_message(inbox_queue, msg_id)
+          return True
+        except Exception as e:
+          log(f"❌ Failed to stage Skill Stub Recovery: {type(e).__name__}: {e}")
+          archive_message(inbox_queue, msg_id)
+          return False
+
       # Silent subjects — known noise, just archive and move on
       if subject in ("DOCTOR_TEST", "STATUS_REQUEST", "HEARTBEAT", "PING"):
         log(f"Silently archived {subject} from {body.get('from', '?')}")
