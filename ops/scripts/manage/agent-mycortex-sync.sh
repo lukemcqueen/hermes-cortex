@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  orch-mycortex-sync.sh — mycortex knowledge brain sync (orch)
+#  agent-mycortex-sync.sh — mycortex knowledge brain sync (per-host)
 #
-#  Cron: orch-mycortex-sync (install-orch-crons.sh), */15 * * * *
+#  Cron: agent-mycortex-sync (install-crons.sh), */15 * * * *
 #
 #  no_agent watchdog pattern:
 #    Empty stdout + exit 0  → silent (nothing to report)
@@ -14,7 +14,7 @@
 #  syncs safe regardless.
 #
 #  Uses the deployed CLI — NEVER edit the deployed copy.
-#  Source: ops/scripts/manage/orch-mycortex-sync.sh
+#  Source: ops/scripts/manage/agent-mycortex-sync.sh
 # ─────────────────────────────────────────────────────────────
 set -uo pipefail
 
@@ -22,7 +22,7 @@ CORTEX_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}"
 MYCORTEX="${CORTEX_HOME}/scripts/mycortex"
 
 if [[ ! -x "$MYCORTEX" ]]; then
-  echo "❌ orch-mycortex-sync: mycortex CLI not found at ${MYCORTEX} — run cortex-update.sh"
+  echo "❌ agent-mycortex-sync: mycortex CLI not found at ${MYCORTEX} — run cortex-update.sh"
   exit 1
 fi
 
@@ -33,7 +33,7 @@ sleep "$offset"
 out="$("$MYCORTEX" sync 2>&1)"
 rc=$?
 if [[ $rc -ne 0 ]]; then
-  echo "❌ orch-mycortex-sync failed (rc=${rc}):"
+  echo "❌ agent-mycortex-sync failed (rc=${rc}):"
   echo "$out"
   exit 1
 fi

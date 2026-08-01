@@ -247,8 +247,8 @@ CREATE POLICY mycortex_chunks_select ON mycortex.content_chunks
 
 ### 3.2 Deployment
 
-- **cortex-update.sh register():** `ops/services/mycortex/migrate.py` (invoked after file sync — the DDL path) + `ops/scripts/manage/mycortex` (CLI) + `ops/services/mycortex/schema/mycortex.sql` (v001 source) + `agent-mycortex-sync.sh` / `orch-mycortex-sync.sh`.
-- **Cron:** `orch-mycortex-sync` — every 15 min, jittered per host, orchestrators (shared sources) **and host-local sources sync on their own host** (advisory lock makes multi-host safe). Registered in `install-orch-crons.sh` (+ uninstall array).
+- **cortex-update.sh register():** `ops/services/mycortex/migrate.py` (invoked after file sync — the DDL path) + `ops/scripts/manage/mycortex` (CLI) + `ops/services/mycortex/schema/mycortex.sql` (v001 source) + `agent-mycortex-sync.sh`.
+- **Cron:** `agent-mycortex-sync` — every 15 min, jittered per host, **per-host (NOT orchestrator-only — D4)**: shared sources sync from the orchestrator host, host-local sources sync on their own host (advisory lock makes multi-host safe). Registered in `install-crons.sh` (+ uninstall array).
 - **/brain command:** rewrite `gbrain-command` plugin → `mycortex-command` (name + aliases), presets rebuilt from `mycortex sources list` (fixes the NameError/broken-presets bug), output delimited as data + source cited, instruction-shaped content neutralized in code (not prose) — prompt-injection guardrail with a failure-mode test.
 - **install.sh:** step 3 gbrain → mycortex (copy CLI, run migrate.py v001, register default sources: hermes-cortex + local brain dirs).
 
@@ -305,7 +305,7 @@ Phase 9  VERIFY      bible/lessons/memory-sync crons healthy; bus schema intact;
 | `agent-memory-to-brain-sync` | KEEP | **No** (markdown→git only) | Verify it writes `~/brain/shared/hermes-memory/`, not `public.*` (G12 check) |
 | `agent-daily-bible-reading` | KEEP | **No** (file write to `~/brain/<agent>/bible/`) | Regression-tested in S-013 |
 | `agent-learning-collector` | KEEP | **No** (writes `~/brain/lessons/`) | lessons becomes mycortex source |
-| `orch-mycortex-sync` | ADD | No | The replacement for autopilot; advisory-lock guarded |
+| `agent-mycortex-sync` | ADD | No | The replacement for autopilot; advisory-lock guarded (per-host, not orchestrator-only) |
 | `local-mycortex-retention` | ADD | No | query_log/ingest_log prune >90d; archived pages purge >7d |
 
 **Keep-rule:** every kept cron verified to have zero `gbrain`/`pglite`/`public.*` references before P4. Doctor's expected-cron list updated in the same commit as the remove (both arrays).

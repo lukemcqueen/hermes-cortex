@@ -351,54 +351,97 @@ WHERE source_id = {esc_literal(source_id)} AND NOT archived;
         )
 
     # apply upserts + archive missing (soft-delete)
+    # BATCHED: 5 psql calls per source total (vs 4/page before) — docker exec
+    # overhead made the initial sync ~10s/page (hours for 1600 files; design
+    # perf target: 1500 files in 30s). One call each for: page upsert, id
+    # lookup, stale-chunk delete, chunk insert, FTS rebuild.
     now = datetime.now(timezone.utc).isoformat()
-    for rel, title, content in upserts:
-        chunks = split_chunks(content)
-        page_id_sql = f"""
-INSERT INTO mycortex.pages (source_id, relpath, title, author, content_hash)
-VALUES ({esc_literal(source_id)}, {esc_literal(rel)}, {esc_literal(title)},
-        {esc_literal(os.environ.get('AGENT_NAME', os.uname().nodename))},
-        {esc_literal(sha256_file(root / rel))})
-ON CONFLICT (source_id, relpath) WHERE NOT archived
-DO UPDATE SET title = EXCLUDED.title, content_hash = EXCLUDED.content_hash,
-              updated_at = now(), archived = FALSE
-RETURNING id;
-"""
-        out = psql_query(page_id_sql, "mycortex_ingest", conn_meta["db"])
-        page_id = out.splitlines()[0] if out.strip() else ""
-        # delete old chunks, insert new
-        run_sql(f"DELETE FROM mycortex.content_chunks WHERE page_id = {esc_literal(page_id)};",
-                "mycortex_ingest", conn_meta["db"])
-        for i, chunk in enumerate(chunks):
+
+    if upserts:
+        # A. upsert all pages (single statement, VALUES)
+        page_values = ",\n".join(
+            f"({esc_literal(source_id)}, {esc_literal(rel)}, {esc_literal(title)}, "
+            f"{esc_literal(os.environ.get('AGENT_NAME', os.uname().nodename))}, "
+            f"{esc_literal(sha256_file(root / rel))})"
+            for rel, title, content in upserts
+        )
+        run_sql(
+            "INSERT INTO mycortex.pages (source_id, relpath, title, author, content_hash)\n"
+            "VALUES\n" + page_values + "\n"
+            "ON CONFLICT (source_id, relpath) WHERE NOT archived\n"
+            "DO UPDATE SET title = EXCLUDED.title, content_hash = EXCLUDED.content_hash,\n"
+            "              updated_at = now(), archived = FALSE;",
+            "mycortex_ingest", conn_meta["db"],
+        )
+        # B. resolve page ids for the upserted relpaths (one call)
+        rel_list = ",\n".join(esc_literal(rel) for rel, _, _ in upserts)
+        id_out = psql_query(
+            "SELECT relpath, id FROM mycortex.pages\n"
+            f"WHERE source_id = {esc_literal(source_id)} AND NOT archived\n"
+            f"  AND relpath IN ({rel_list});",
+            "mycortex_ingest", conn_meta["db"],
+        )
+        page_ids: dict[str, str] = {}
+        for ln in id_out.splitlines():
+            if ln.strip():
+                parts = ln.split("|", 1)
+                if len(parts) == 2:
+                    page_ids[parts[0]] = parts[1]
+
+        # C. delete stale chunks for all upserted pages (one call)
+        if page_ids:
+            ids = ",\n".join(esc_literal(i) for i in page_ids.values())
             run_sql(
-                f"""INSERT INTO mycortex.content_chunks (page_id, chunk_index, content, chunk_size, overlap)
-                    VALUES ({esc_literal(page_id)}, {i}, {esc_literal(chunk)}, {CHUNK_SIZE}, {int(CHUNK_SIZE * CHUNK_OVERLAP)});""",
+                f"DELETE FROM mycortex.content_chunks WHERE page_id IN ({ids});",
                 "mycortex_ingest", conn_meta["db"],
             )
-        # rebuild page FTS from chunks (same txn semantics via psql autocommit per stmt — acceptable)
-        run_sql(
-            f"""
-UPDATE mycortex.pages p SET fts = sub.ts
-FROM (
-  SELECT c.page_id,
-         to_tsvector({esc_literal(search_config)}::regconfig,
-                     string_agg(c.content, ' ' ORDER BY c.chunk_index)) AS ts
-  FROM mycortex.content_chunks c
-  WHERE c.page_id = {esc_literal(page_id)}
-  GROUP BY c.page_id
-) sub WHERE p.id = sub.page_id;
-""",
-            "mycortex_ingest", conn_meta["db"],
-        )
-        stats["upserted"] += 1
 
-    # soft-archive removed files
-    for rel in would_archive:
+        # D. insert all chunks (one statement, VALUES joined to page ids)
+        chunk_values: list[str] = []
+        for rel, _, content in upserts:
+            pid = page_ids.get(rel)
+            if not pid:
+                continue
+            for i, chunk in enumerate(split_chunks(content)):
+                chunk_values.append(
+                    f"({esc_literal(pid)}, {i}, {esc_literal(chunk)}, {CHUNK_SIZE}, {int(CHUNK_SIZE * CHUNK_OVERLAP)})"
+                )
+        if chunk_values:
+            run_sql(
+                "INSERT INTO mycortex.content_chunks (page_id, chunk_index, content, chunk_size, overlap)\n"
+                "VALUES\n" + ",\n".join(chunk_values) + ";",
+                "mycortex_ingest", conn_meta["db"],
+            )
+
+        # E. rebuild FTS for upserted pages (one call)
+        if page_ids:
+            ids = ",\n".join(esc_literal(i) for i in page_ids.values())
+            run_sql(
+                "UPDATE mycortex.pages p SET fts = sub.ts\n"
+                "FROM (\n"
+                "  SELECT c.page_id,\n"
+                f"         to_tsvector({esc_literal(search_config)}::regconfig,\n"
+                "                     string_agg(c.content, ' ' ORDER BY c.chunk_index)) AS ts\n"
+                "  FROM mycortex.content_chunks c\n"
+                f"  WHERE c.page_id IN ({ids})\n"
+                "  GROUP BY c.page_id\n"
+                ") sub WHERE p.id = sub.page_id;",
+                "mycortex_ingest", conn_meta["db"],
+            )
+        stats["upserted"] += len(upserts)
+
+    # soft-archive removed files (batched — one call)
+    if would_archive:
+        arch_values = ",\n".join(
+            f"({esc_literal(source_id)}, {esc_literal(rel)})" for rel in would_archive
+        )
         run_sql(
-            f"UPDATE mycortex.pages SET archived = TRUE WHERE source_id = {esc_literal(source_id)} AND relpath = {esc_literal(rel)};",
+            "UPDATE mycortex.pages SET archived = TRUE\n"
+            "FROM (VALUES\n" + arch_values + "\n) AS v(sid, rel)\n"
+            "WHERE pages.source_id = v.sid::uuid AND pages.relpath = v.rel;",
             "mycortex_ingest", conn_meta["db"],
         )
-        stats["archived"] += 1
+        stats["archived"] += len(would_archive)
 
     # update source sync cursor
     head = ""
@@ -433,6 +476,9 @@ def sync(args: argparse.Namespace) -> int:
     ok = True
     for r in rows:
         sid, name, path, mode, search_config = r[0], r[1], r[2], r[3], r[4]
+        if not path:
+            print(f"⏭  '{name}': no local_path — nothing to sync (builtin placeholder)")
+            continue
         print(f"⏳ syncing '{name}' ({mode})…")
         t0 = time.time()
         try:

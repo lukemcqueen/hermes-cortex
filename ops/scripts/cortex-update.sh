@@ -419,8 +419,8 @@ register "ops/services/mycortex/import-gbrain.py"     "${CORTEX_DEPLOY_HOME}/ser
 register "ops/services/mycortex/schema/mycortex.sql"  "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/mycortex.sql"
 register "ops/scripts/manage/mycortex"                "${CORTEX_DEPLOY_HOME}/scripts/mycortex"
 register "ops/scripts/manage/mycortex-parity.py"      "${CORTEX_DEPLOY_HOME}/scripts/mycortex-parity.py"
-# orch-mycortex-sync cron wrapper — orchestrator-only (deployed via ORCH_MAP)
-register_orch "ops/scripts/manage/orch-mycortex-sync.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-mycortex-sync.sh"
+# agent-mycortex-sync cron wrapper — per-host sync (design D4: NOT orchestrator-only)
+register "ops/scripts/manage/agent-mycortex-sync.sh"  "${CORTEX_DEPLOY_HOME}/scripts/agent-mycortex-sync.sh"
 
 # Remediation sensor (companion to agent-auto-remediate cron)
 register "ops/scripts/health/agent-remediation-sensor.py"       "${CORTEX_DEPLOY_HOME}/scripts/agent-remediation-sensor.py"

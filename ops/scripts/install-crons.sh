@@ -491,6 +491,7 @@ if $UNINSTALL; then
     "agent-memory-pruning" \
     "agent-memory-to-brain-sync" \
     "agent-message-handler" \
+    "agent-mycortex-sync" \
     "agent-model-health-watchdog" \
     "agent-nginx-threat-pipeline" \
     "agent-no-verify-audit" \
@@ -653,6 +654,20 @@ create_cron "agent-memory-to-brain-sync" "0 */6 * * *" \
   "" \
   "" \
   "local" \
+  "" \
+  "true"
+
+# mycortex knowledge brain sync — every 15 min (design D4: per-host, NOT
+# orchestrator-only). Syncs this host's registered sources into the mycortex
+# schema. no_agent watchdog pattern: silent on success, output only on
+# failure. Jittered per host inside the wrapper (stable hostname-derived
+# offset); advisory lock makes multi-host sync safe.
+create_cron "agent-mycortex-sync" "*/15 * * * *" \
+  "agent-mycortex-sync.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
   "" \
   "true"
 
