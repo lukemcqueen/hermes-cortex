@@ -147,6 +147,7 @@ def main() -> int:
         return 0
 
     print(f"mycortex schema: current={current}, applying {len(pending)} migration(s) to DB '{args.db_name}'")
+    applied_max = current
     for version, path in pending:
         label = f"v{version:03d} ({path.name})"
         sql = path.read_text()
@@ -170,8 +171,12 @@ def main() -> int:
             return 1
         if args.verbose and out:
             print(out.strip()[-2000:])
+        applied_max = version
 
-    print(f"mycortex schema at version {max(v for v, _ in migrations)} — done")
+    if args.dry_run:
+        print(f"  [dry-run] no changes made — schema stays at version {current}")
+    else:
+        print(f"mycortex schema at version {applied_max} — done")
     return 0
 
 
