@@ -64,6 +64,9 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/design/DESIGN.md` | Design conventions — typography, color, spacing, UI (light/dark modes) |
 | `docs/deprecated-profile-model.md` | Archived v1.x profile-per-project model — legacy migration reference |
 | `docs/agent-memory-pointer-pattern.md` | Compressed pointers + agent brain for unlimited context |
+| `docs/elicit/2026-08-01_mycortex-elicitation.md` | **mycortex elicitation (pass 1)** — requirements for gbrain replacement: domain decomposition, RICE/MoSCoW, source model, decommission plan |
+| `docs/design/mycortex-DESIGN.md` | **mycortex design v2** — gbrain replacement: git-truth + shared-Postgres index + thin Python; schema v001 (fail-closed RLS, role split), migration runner, 9-phase decommission, test strategy. 2× 6-role party-reviewed |
+| `docs/elicit/2026-08-01_mycortex-stories.md` | **mycortex stories (16 vertical slices)** — S-001..S-016 with Given/When/Then AC: harness, schema, sync, search, CLI+/brain, lessons, deploy, parity, decommission, semantic v1.1, MCP v1.2 |
 
 ## Operations
 
