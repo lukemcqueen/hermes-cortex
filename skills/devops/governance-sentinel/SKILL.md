@@ -1,4 +1,3 @@
---- Full content (truncated) ---
 ---
 name: governance-sentinel
 version: 1.0.0
@@ -28,6 +27,53 @@ Load this skill when the task involves:
 ## Pipeline Position
 
 ```
-gbrain-update-sync → GOVERNANCE-SENTINEL → daily police 
-... [truncated]
---- End skill ---
+gbrain-update-sync → GOVERNANCE-SENTINEL → daily police logs
+```
+
+The sentinel runs **after** the brain snapshot is refreshed (so it sees the
+latest state) and **before** the police logs (so its insights are available
+for the daily governance report).
+
+## What It Does
+
+1. **Scrape brain sync snapshots** — read the latest gbrain sync output for
+   codepath patterns (repeated file paths, recurring operation types,
+   agent activity signatures).
+2. **Extract patterns** — cluster the scraped activity into codepath families:
+   which scripts, crons, or workflows recur most.
+3. **Compile weekly insights** — aggregate the daily observations into
+   weekly governance themes (drift sources, hot paths, risky patterns).
+4. **Store verdicts in `dream.json`** — each run appends a verdict record
+   (timestamp, pattern summary, confidence, suggested follow-up) for
+   retrospection. `dream.json` is the sentinel's persistent memory.
+
+## dream.json Format
+
+```json
+{
+  "verdicts": [
+    {
+      "ts": "2026-08-01T03:00:00Z",
+      "patterns": ["ops/scripts/cortex-update.sh x4", "cron agent-fixer-* x3"],
+      "confidence": 0.8,
+      "suggestion": "Review cortex-update lock purge interaction"
+    }
+  ]
+}
+```
+
+## Running the Sentinel
+
+```bash
+# Manual run
+python3 ~/hermes-cortex/src/loop-governance/governance-sentinel.py
+
+# Verify the verdict landed
+python3 -c "import json; print(len(json.load(open('~/.hermes-cortex/state/dream.json'))['verdicts']))"
+```
+
+## Related
+- `loop-governance` — the cycle-scoring system it reflects on
+- `gbrain-maintenance` — the sync step it follows
+- `soul-refinement` — daily SOUL.md insights (companion)
+- `orch-weekly-auto-fix` — weekly opportunity scan (consumer of insights)
