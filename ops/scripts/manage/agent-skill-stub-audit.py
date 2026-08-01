@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""skill-stub-audit.py — Fleet-side audit for truncated skill recovery.
+"""agent-skill-stub-audit.py — Fleet-side audit for truncated skill recovery.
 
 The Jul-17 skill imports (9a9efa91, 2347d26a, 70160929) landed in the repo
 as ~1KB stubs because the old collector truncated bus messages at 1000 chars.
@@ -10,9 +10,11 @@ This script scans the local machine for FULL copies of the stubbed skills and
 prints a compact JSON report of what's recoverable. Run on each source agent
 via EXEC; the orchestrator collects the reports.
 
+Naming: agent-* prefix (fleet-wide — runs on every agent).
+
 Usage:
-    python3 skill-stub-audit.py                    # scan, print recoverable
-    python3 skill-stub-audit.py --send             # also bus-send report to Moses
+    python3 agent-skill-stub-audit.py                    # scan, print recoverable
+    python3 agent-skill-stub-audit.py --send             # also bus-send report to Moses
 
 Exit codes: 0 = found recoverable content, 1 = nothing, 2 = error
 """
