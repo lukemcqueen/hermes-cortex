@@ -477,6 +477,12 @@ def sync(args: argparse.Namespace) -> int:
     for r in rows:
         sid, name, path, mode, search_config = r[0], r[1], r[2], r[3], r[4]
         if not path:
+            # Builtin placeholder (e.g. 'default') — nothing to sync, but mark
+            # the cursor so the doctor's staleness check doesn't flag it.
+            run_sql(
+                f"UPDATE mycortex.sources SET last_sync_at = now() WHERE id = {esc_literal(sid)};",
+                "mycortex_admin", args.db_name,
+            )
             print(f"⏭  '{name}': no local_path — nothing to sync (builtin placeholder)")
             continue
         print(f"⏳ syncing '{name}' ({mode})…")
