@@ -68,6 +68,26 @@ if ignore_file.exists():
 hostname = os.uname().nodename
 timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
+# ── Stub-recovery cache (2026-08-02) ─────────────────────
+# If the deployed SKILL.md was overwritten by a truncated stub (the Jul-17
+# imports landed ~1KB stubs via the old 1000-char bus truncation, then
+# cortex-update synced them over the full copies), the previous run's
+# skill-contents cache is the ONLY surviving full source. Load it up front
+# so a stub read from disk never overwrites full content in the report.
+existing_full_cache = {}  # skill_name -> full content from previous run
+_old_manifest_file = state_dir / "skills-manifest.json"
+if _old_manifest_file.exists():
+    try:
+        _old_manifest = json.loads(_old_manifest_file.read_text())
+        for _i, _s in enumerate(_old_manifest.get("skills", [])):
+            _cf = contents_dir / f"idx_{_i}.txt"
+            if _cf.exists():
+                _c = _cf.read_text(errors="replace")
+                if "Full content (truncated)" not in _c and len(_c) > 1000:
+                    existing_full_cache[_s.get("name", "")] = _c
+    except (OSError, json.JSONDecodeError, ValueError):
+        pass  # corrupt old cache — proceed with fresh scan
+
 skills_list = []
 seen_paths = set()
 
@@ -96,6 +116,14 @@ def scan_dir(search_dir):
 
         text = skill_file.read_text(errors="replace")
         name = skill_file.parent.name
+
+        # Stub guard: if the deployed copy is a truncated stub but we have a
+        # full copy in the previous run's cache, send the FULL content — never
+        # let a stub overwrite the surviving full version.
+        if "Full content (truncated)" in text or len(text) <= 1000:
+            cached_full = existing_full_cache.get(name)
+            if cached_full:
+                text = cached_full
 
         # Skip if in the ignore list (personal/private skills)
         if name.lower() in ignored_skills:
