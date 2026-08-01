@@ -935,6 +935,24 @@ update_symlinks() {
 }
 
 # ── Skill Sync ───────────────────────────────────────────────
+# Returns 0 if the file is a truncated skill stub, 1 otherwise.
+# Mirrors cortex-doctor check_skill_stubs markers: literal
+# 'Full content (truncated)' (Jul-17 1KB import stubs) or an
+# '--- End skill ---' dump under 1500 bytes.
+is_skill_stub() {
+  local f="$1"
+  [[ -f "$f" ]] || return 1
+  if grep -q "Full content (truncated)" "$f" 2>/dev/null; then
+    return 0
+  fi
+  if grep -q -- "--- End skill ---" "$f" 2>/dev/null; then
+    local size
+    size=$(wc -c < "$f" 2>/dev/null || echo 0)
+    [[ "$size" -lt 1500 ]] && return 0
+  fi
+  return 1
+}
+
 # Copies SKILL.md files and references/ from repo skills/ directories
 # to ~/.hermes/skills/. Uses the delta engine — only copies
 # files whose checksums differ from installed versions.
@@ -966,6 +984,20 @@ sync_skills() {
         warn "  Name collision: ${rel_path%/*} — root Hermes default '${skill_name}' exists, deploy will shadow it"
       fi
       if needs_update "$skill_file" "$dest"; then
+        # Truncation guard: never overwrite a FULL deployed skill with a
+        # truncated repo stub. The doctor FAILs on repo stubs, but that's
+        # post-hoc — this prevents the damage at deploy time.
+        if [[ -f "$dest" ]] && is_skill_stub "$skill_file" && ! is_skill_stub "$dest"; then
+          warn "  SKILL STUB GUARD: ${rel_path%/*} — repo source is a truncated stub, refusing to overwrite full deployed copy!"
+          warn "    → Repo: $skill_file"
+          warn "    → Deployed: $dest"
+          warn "    → Restore the full repo source (agent-skill-stub-audit.py --send), then cortex-update.sh will sync."
+          warn "    → Use FORCE=true to override this guardrail."
+          if [[ "${FORCE:-false}" != "true" ]]; then
+            skipped=$((skipped + 1))
+            continue
+          fi
+        fi
         # Drift guardrail: if deployed copy is newer, warn before overwriting
         if [[ -f "$dest" ]] && [[ "$dest" -nt "$skill_file" ]]; then
           warn "  SKILL DRIFT: ${rel_path%/*} — deployed copy is newer than repo source!"
@@ -1011,6 +1043,19 @@ sync_skills() {
     source_dirs["$(dirname "$rel_path")"]=1
 
     if needs_update "$skill_file" "$dest"; then
+      # Truncation guard (same as Pass 1): never overwrite a FULL deployed
+      # skill with a truncated repo stub.
+      if [[ -f "$dest" ]] && is_skill_stub "$skill_file" && ! is_skill_stub "$dest"; then
+        warn "  SKILL STUB GUARD: ${rel_path%/*} — repo source is a truncated stub, refusing to overwrite full deployed copy!"
+        warn "    → Repo: $skill_file"
+        warn "    → Deployed: $dest"
+        warn "    → Restore the full repo source, then cortex-update.sh will sync."
+        warn "    → Use FORCE=true to override this guardrail."
+        if [[ "${FORCE:-false}" != "true" ]]; then
+          skipped=$((skipped + 1))
+          continue
+        fi
+      fi
       copy_file "$skill_file" "$dest"
       synced=$((synced + 1))
     else

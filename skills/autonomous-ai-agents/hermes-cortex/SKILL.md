@@ -803,7 +803,7 @@ Skills: `~/.hermes/skills/` is primary (Hermes Agent loads from here), `~/.herme
 
 ### cortex-update.sh sync_skills()
 
-The `sync_skills()` function in `cortex-update.sh` (lines 442-479) uses a checksum-based delta engine:
+The `sync_skills()` function in `cortex-update.sh` uses a checksum-based delta engine:
 
 ```bash
 # Called during every or delta update
@@ -827,6 +827,18 @@ sync_skills() {
  done < <(find "$skill_repo" -path "*/references/*" -type f -print0)
 }
 ```
+
+**Truncation guard (since 2026-08-02):** `sync_skills()` refuses to overwrite a
+FULL deployed `SKILL.md` with a truncated repo stub. A stub is detected by the
+same markers the doctor's `check_skill_stubs` uses — the literal
+`Full content (truncated)` string (Jul-17 1KB import stubs) or an
+`--- End skill ---` dump under 1500 bytes. When the repo source is a stub and
+the deployed copy is not, the copy is skipped with a `SKILL STUB GUARD` warning
+(override with `FORCE=true`). Full repo sources always deploy (repo is the
+source of truth). This prevents the 131 known repo stubs from clobbering full
+copies on agents that still have them. Recovery path:
+`agent-skill-stub-audit.py --send` on source agents restores full content into
+`skills/`, then a normal `cortex-update.sh` syncs it out.
 
 The delta engine means:
 - Only skills in `skills/` are ever touched — ~110 unique ecosystem skills (apple/, creative/, gaming/, mlops/, testing/) are completely safe
