@@ -1,6 +1,5 @@
---- Full content (truncated) ---
 ---
-name: prd-lite
+title: prd-lite
 version: 1.0.0
 type: skill
 description: Concise 1-page PRD template for lightweight product requirements documentation
@@ -32,6 +31,22 @@ Off-nominal inputs, error states, concurrent access, boundary conditions to hand
 Concrete pass/fail conditions that define "done" for this work.
 
 ## 8. Risks & Mitigations
-Top 2–3 risks with poten
-... [truncated]
---- End skill ---
+Top 2–3 risks with potential impact and planned mitigations.
+
+## 9. Rollout Strategy
+How the change reaches users — feature flag, staged rollout, dark launch, etc.
+
+## 10. Success Metrics
+Quantitative signals (KPIs, counters, SLIs) used to decide if the change is working.
+
+## 11. Dependencies
+External teams, upstream services, third-party libraries, or prerequisite work required.
+
+## 12. Open Questions
+Decisions yet to be made; list the decision-maker and deadline for each.
+
+## 13. Timeline
+Brief milestone cadence — kickoff, design review, implementation, QA, release target.
+
+## 14. Appendix / References (optional)
+Links to related docs, designs, research, or prior art.
