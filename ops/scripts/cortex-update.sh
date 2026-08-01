@@ -337,6 +337,24 @@ register "ops/scripts/manage/loop-gov-mcp.sh"            "${CORTEX_DEPLOY_HOME}/
 # agent could edit that file and silently disable begin_change enforcement).
 # Register the real server to the tools/ path the lock helper protects.
 register "mcp-servers/loop-gov-mcp.py"            "${CORTEX_DEPLOY_HOME}/tools/loop-governance/loop-gov-mcp.py"
+# Loop-governance scoring stack (restored 2026-08-02 from live deployed copies
+# — removed from repo in 7dbba626, leaving the pre-commit scorer unversioned).
+# score_cycle.py is what pre-commit-score invokes via ~/.local/bin/score-cycle.
+register "core/governance/score_cycle.py"          "${CORTEX_DEPLOY_HOME}/tools/loop-governance/score_cycle.py"
+register "core/governance/loop_scorer.py"          "${CORTEX_DEPLOY_HOME}/tools/loop-governance/loop_scorer.py"
+register "core/governance/loop_db.py"              "${CORTEX_DEPLOY_HOME}/tools/loop-governance/loop_db.py"
+register "core/governance/loop_config.py"          "${CORTEX_DEPLOY_HOME}/tools/loop-governance/loop_config.py"
+register "core/governance/loop_evaluator.py"       "${CORTEX_DEPLOY_HOME}/tools/loop-governance/loop_evaluator.py"
+register "core/governance/loop_feedback.py"        "${CORTEX_DEPLOY_HOME}/tools/loop-governance/loop_feedback.py"
+register "core/governance/policy_engine.py"        "${CORTEX_DEPLOY_HOME}/tools/loop-governance/policy_engine.py"
+register "core/governance/auto_apply.py"           "${CORTEX_DEPLOY_HOME}/tools/loop-governance/auto_apply.py"
+register "core/governance/skill_miner.py"          "${CORTEX_DEPLOY_HOME}/tools/loop-governance/skill_miner.py"
+register "core/governance/__init__.py"             "${CORTEX_DEPLOY_HOME}/tools/loop-governance/__init__.py"
+register "core/governance/setup.sh"                "${CORTEX_DEPLOY_HOME}/tools/loop-governance/setup.sh"
+register "core/governance/update.sh"               "${CORTEX_DEPLOY_HOME}/tools/loop-governance/update.sh"
+register "core/governance/verify.sh"               "${CORTEX_DEPLOY_HOME}/tools/loop-governance/verify.sh"
+register "core/governance/cleanup-ollama.sh"       "${CORTEX_DEPLOY_HOME}/tools/loop-governance/cleanup-ollama.sh"
+register "core/governance/VERSION"                 "${CORTEX_DEPLOY_HOME}/tools/loop-governance/VERSION"
 # Bus-renamed scripts — everything under ops/scripts/bus/
 register "ops/scripts/manage/ek-session-snapshot.py"     "${CORTEX_DEPLOY_HOME}/scripts/ek-session-snapshot.py"
 
