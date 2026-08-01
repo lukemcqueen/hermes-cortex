@@ -2,7 +2,7 @@
 """send-skill-report.py — Agent-side: auto-send skill manifest to Moses via Agent Bus.
 
 Designed to run as a no_agent cron (every 6h). Reads the skills
-manifest written by collect-agent-skills.sh and sends it to Moses
+manifest written by agent-collect-skills.sh and sends it to Moses
 via PGMQ Agent Bus. Silent when no custom skills to report.
 
 Requires (from ~/.hermes-cortex/cortex-bus.conf, ~/hermes-cortex/.env,
@@ -95,11 +95,11 @@ MANIFEST_FILE = STATE_DIR / "skills-manifest.json"
 CONTENTS_FILE = STATE_DIR / "skills-contents.json"
 
 # ── Rebuild manifest from current skills ──
-collect_script = HOME / "hermes-cortex" / "ops" / "scripts" / "manage" / "collect-agent-skills.sh"
+collect_script = HOME / "hermes-cortex" / "ops" / "scripts" / "manage" / "agent-collect-skills.sh"
 if collect_script.exists():
     subprocess.run(["bash", str(collect_script)], capture_output=True)
 else:
-    deployed = HOME / ".hermes-cortex" / "scripts" / "collect-agent-skills.sh"
+    deployed = HOME / ".hermes-cortex" / "scripts" / "agent-collect-skills.sh"
     if deployed.exists():
         subprocess.run(["bash", str(deployed)], capture_output=True)
 

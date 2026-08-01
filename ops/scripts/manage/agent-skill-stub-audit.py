@@ -111,7 +111,7 @@ def main():
 
     if send:
         # bus-send the full contents back to Moses inbox — CHUNKED (90KB cap,
-        # same pattern as collect-agent-skills.sh). One message per chunk.
+        # same pattern as agent-collect-skills.sh). One message per chunk.
         try:
             from lib.cortex_bus import bus_send  # deployed alongside
         except ImportError:

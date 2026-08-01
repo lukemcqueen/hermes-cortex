@@ -1040,7 +1040,7 @@ printf "${CYAN}  9. Skill Collection Pipeline${RESET}\n"
 #  Now resolves CORTEX_BUS_URL → CORTEX_BUS_FALLBACK_URL, supports Basic auth for nginx proxy.
 #  Fixed: was using deprecated /api/send endpoint. See ops/scripts/manage/send-skill-report.py)
 #  Agent inbox migrated to Agent Bus (PGMQ). Collect-agent-skills.sh
-#  Note: collect-agent-skills.sh script still on disk for manual debugging,
+#  Note: agent-collect-skills.sh script still on disk for manual debugging,
 #  but the cron is removed — agent-learning-collector handles all collection.
 echo ""
 printf "${CYAN}━━━ Summary ━━━${RESET}\n"

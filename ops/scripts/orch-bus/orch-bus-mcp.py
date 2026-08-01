@@ -54,7 +54,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent, CallToolResult
 
 # ── Config Loading ────────────────────────────────────────────
-# Same pattern as report-agent-health.py and collect-agent-skills.sh
+# Same pattern as report-agent-health.py and agent-collect-skills.sh
 CONFIG_FILES = [
     Path.home() / "hermes-cortex" / ".env",
     Path.home() / ".hermes" / "cortex-bus.conf",

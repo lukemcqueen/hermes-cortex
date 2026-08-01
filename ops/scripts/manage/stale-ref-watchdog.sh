@@ -65,7 +65,7 @@ CRON_SCRIPTS=(
   "agent-message-handler.py"
   "agent-remediate-apply.py"
   "agent-auto-save-sessions.py"
-  "collect-agent-skills.sh"
+  "agent-collect-skills.sh"
   "agent-cron-quality-watchdog.py"
   "agent-governance-auditor.py"
   "agent-langfuse-health-watchdog.py"

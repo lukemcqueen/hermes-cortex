@@ -4,7 +4,7 @@
 #                              from all registered agents.
 #
 #  Reads agent-registry.json and sends an inbox message to
-#  each agent asking them to run collect-agent-skills.sh.
+#  each agent asking them to run agent-collect-skills.sh.
 #
 #  Designed to run as a cron job on Moses (e.g. weekly).
 #  Silent when sent successfully — errors only on failure.
@@ -110,19 +110,19 @@ for agent in "${AGENTS[@]}"; do
 
 Hi $agent,
 
-Please run collect-agent-skills.sh and share your custom skills.
+Please run agent-collect-skills.sh and share your custom skills.
 This helps Moses discover and evaluate agent-developed skills
 for potential incorporation into the hermes-cortex upstream.
 
 Instructions:
   # Run once to report current skills:
-  bash ~/hermes-cortex/ops/scripts/manage/collect-agent-skills.sh
+  bash ~/hermes-cortex/ops/scripts/manage/agent-collect-skills.sh
 
   # To set up automatic reporting (every 6h, no_agent):
   hermes cron create \
-    name=collect-agent-skills \
+    name=agent-collect-skills \
     every 6h \
-    script=~/.hermes-cortex/scripts/collect-agent-skills.sh \
+    script=~/.hermes-cortex/scripts/agent-collect-skills.sh \
     no_agent=true \
     deliver=local
 

@@ -414,7 +414,7 @@ register "ops/scripts/manage/analyze-failures.py"         "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/manage/send-agent-learning.sh"      "${CORTEX_DEPLOY_HOME}/scripts/send-agent-learning.sh"
 
 # Skill collection pipeline
-register "ops/scripts/manage/collect-agent-skills.sh"     "${CORTEX_DEPLOY_HOME}/scripts/collect-agent-skills.sh"
+register "ops/scripts/manage/agent-collect-skills.sh"      "${CORTEX_DEPLOY_HOME}/scripts/agent-collect-skills.sh"
 register "ops/scripts/manage/agent-skill-stub-audit.py"   "${CORTEX_DEPLOY_HOME}/scripts/agent-skill-stub-audit.py"
 
 # Migration scripts

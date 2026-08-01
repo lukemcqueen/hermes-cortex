@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  collect-agent-skills.sh — Agent-side skill manifest reporter
+#  agent-collect-skills.sh — Agent-side skill manifest reporter
 #
 #  Scans BOTH ~/.hermes/skills/ (Hermes native) AND
 #  ~/.hermes-cortex/skills/ (cortex deploy) for SKILL.md files
