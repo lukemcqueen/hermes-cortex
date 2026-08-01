@@ -213,7 +213,7 @@ custom_total = manifest.get("custom_skills", 0)
 if custom_total == 0:
     exit(0)
 
-# Read skill contents from individual files
+# Read skill contents from individual files (FULL content — no truncation)
 contents = []
 if contents_dir.is_dir():
     for i in range(len(manifest.get("skills", []))):
@@ -221,68 +221,101 @@ if contents_dir.is_dir():
         contents.append(cf.read_text() if cf.exists() else "")
 
 hostname = os.uname().nodename
+total_skills = manifest.get("total_skills", 0)
+generated = manifest.get("generated", "")
 
-# Build body text
-parts = []
-parts.append(f"━━━ Skill Report — {manifest.get('sender', hostname)} ━━━")
-parts.append(f"Generated: {manifest.get('generated', '')}")
-parts.append(f"Total skills installed: {manifest.get('total_skills', 0)}")
-parts.append(f"Custom skills (not upstream): {custom_total}")
-parts.append("")
+# ── Build chunked messages with FULL skill content ──────────
+# Bus limit is ~100KB per message. Skills average 3-10KB each, so a report
+# with many skills must be split across multiple messages. Each message
+# carries full (untruncated) content for a subset of skills. The subject
+# keeps the "Skill Report:" prefix (downstream filters on it) with a
+# part counter; the body keeps the "== Skill:" markers and the count
+# lines so orch-skill-report-process.py can still parse every part.
+MAX_BODY_BYTES = 90_000  # safety margin under the 100KB bus cap
 
-for i, s in enumerate(manifest.get("skills", [])):
+header_lines = [
+    f"━━━ Skill Report — {manifest.get('sender', hostname)} ━━━",
+    f"Generated: {generated}",
+    f"Total skills installed: {total_skills}",
+    f"Custom skills (not upstream): {custom_total}",
+    "",
+]
+
+def build_skill_block(i, s):
     name = s.get("name", "?")
     catg = s.get("category", "")
     tag = f" ({catg})" if catg else ""
-    parts.append(f"== Skill: {name}{tag} ==")
-    parts.append(f"Lines: {s.get('lines', 0)} | Age: {s.get('age_days', 0)}d")
-    parts.append(f"Description: {s.get('summary', '')}")
-    parts.append("")
-    parts.append("--- Full content (truncated) ---")
     content = contents[i] if i < len(contents) else "(content unavailable)"
-    if len(content) > 1000:
-        parts.append(content[:1000] + "\n... [truncated]")
-    else:
-        parts.append(content)
-    parts.append("--- End skill ---")
-    parts.append("")
+    return "\n".join([
+        f"== Skill: {name}{tag} ==",
+        f"Lines: {s.get('lines', 0)} | Age: {s.get('age_days', 0)}d",
+        f"Description: {s.get('summary', '')}",
+        "",
+        "--- Full content ---",
+        content,
+        "--- End skill ---",
+        "",
+    ])
 
-body_text = "\n".join(parts)
-payload = {
-    "queue": "inbox_moses",
-    "message": {
-        "from": hostname,
-        "subject": f"Skill Report: {custom_total} custom skills",
-        "body": body_text,
-        "topic": "reports",
-        "priority": "normal",
-    },
-}
+# Split skills into chunks that each fit under the size cap
+chunks = []
+current_chunk = []
+current_size = 0
+for i, s in enumerate(manifest.get("skills", [])):
+    block = build_skill_block(i, s)
+    block_size = len(block.encode("utf-8"))
+    if current_chunk and current_size + block_size > MAX_BODY_BYTES:
+        chunks.append(current_chunk)
+        current_chunk = []
+        current_size = 0
+    current_chunk.append(block)
+    current_size += block_size
+if current_chunk:
+    chunks.append(current_chunk)
 
+# ── Send each chunk as its own inbox message ────────────────
 headers = {"Content-Type": "application/json"}
 if auth_header:
     headers["Authorization"] = auth_header
 
-req = urllib.request.Request(
-    inbox_url,
-    data=json.dumps(payload).encode("utf-8"),
-    headers=headers,
-    method="POST",
-)
-
-try:
-    resp = urllib.request.urlopen(req, timeout=30)
-    print(f"Sent {custom_total} custom skills to Moses inbox", flush=True)
-except urllib.error.HTTPError as e:
-    if e.code == 413:
-        print(f"WARN: Report too large ({len(body_text)} bytes, max 100KB) — will be split in next run", file=sys.stderr, flush=True)
-        # Save the count for the record but don't retry
-        print(f"WARN: {custom_total} custom skills found but not sent (too large)", file=sys.stderr, flush=True)
+sent_any = False
+for ci, chunk in enumerate(chunks):
+    body_text = "\n".join(header_lines + chunk)
+    if len(chunks) > 1:
+        subject = f"Skill Report: {custom_total} custom skills (part {ci+1}/{len(chunks)})"
     else:
-        print(f"WARN: HTTP {e.code} sending skill report: {e}", file=sys.stderr, flush=True)
-    exit(0)  # Non-fatal — will retry next cycle
-except urllib.error.URLError as e:
-    print(f"WARN: Failed to send skill report: {e}", file=sys.stderr, flush=True)
+        subject = f"Skill Report: {custom_total} custom skills"
+
+    payload = {
+        "queue": "inbox_moses",
+        "message": {
+            "from": hostname,
+            "subject": subject,
+            "body": body_text,
+            "topic": "reports",
+            "priority": "normal",
+        },
+    }
+
+    req = urllib.request.Request(
+        inbox_url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+
+    try:
+        resp = urllib.request.urlopen(req, timeout=30)
+        sent_any = True
+        print(f"Sent part {ci+1}/{len(chunks)} ({len(chunk)} skills) to Moses inbox", flush=True)
+    except urllib.error.HTTPError as e:
+        print(f"WARN: HTTP {e.code} sending skill report part {ci+1}: {e}", file=sys.stderr, flush=True)
+    except urllib.error.URLError as e:
+        print(f"WARN: Failed to send skill report part {ci+1}: {e}", file=sys.stderr, flush=True)
+        exit(1)
+
+if not sent_any and chunks:
+    print(f"WARN: {custom_total} custom skills found but not sent (delivery failed)", file=sys.stderr, flush=True)
     exit(1)
 PYEOF
 fi
