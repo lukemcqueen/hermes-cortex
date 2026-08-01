@@ -27,8 +27,7 @@
 | `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent | `orch-health-report.py` | origin |
 | `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent | `orch-health-report.py` | origin |
 | `orch-skill-lifecycle` | `0 4 * * *` | LLM | (orch-skill-lifecycle skill) | origin |
-| `orch-skill-report-request` | `0 2 * * 1` | no_agent | `orch-request-skill-reports.sh` | origin |
-| `orch-skill-report-process` | `0 3 * * *` | no_agent | `orch-process-skill-reports.py` | origin |
+| `orch-skill-report-request` | `0 2 * * 1` | no_agent | `orch-skill-report-request.sh` | origin |
 | `orch-skill-evaluate` | `0 9 * * 2` | LLM | (prompt) | origin |
 
 ## All-agent (`agent-*` prefix)

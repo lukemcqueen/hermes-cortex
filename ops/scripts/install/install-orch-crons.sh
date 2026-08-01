@@ -130,7 +130,6 @@ if $UNINSTALL; then
     "orch-health-report-weekday" \
     "orch-skill-lifecycle" \
     "orch-skill-evaluate" \
-    "orch-skill-report-process" \
     "orch-skill-report-request" \
     "orch-session-correction-scan"; do
     remove_cron "$job" 2>/dev/null || true
@@ -509,16 +508,6 @@ printf "${CYAN}  4. Skill Report Pipeline${RESET}\\n"
 # Request skill reports from all agents (weekly Monday 2am)
 create_cron "orch-skill-report-request" "0 2 * * 1" \
   "orch-skill-report-request.sh" \
-  "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
-
-# Process collected skill reports (daily 3am)
-create_cron "orch-skill-report-process" "0 3 * * *" \
-  "orch-skill-report-process.py" \
   "" \
   "" \
   "" \

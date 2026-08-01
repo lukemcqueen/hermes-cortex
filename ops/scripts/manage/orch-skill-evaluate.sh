@@ -7,7 +7,7 @@
 #  is injected as context for the LLM prompt, which then
 #  evaluates each skill and decides on upstreaming.
 #
-#  Dependencies: orch-process-skill-reports.py
+#  Dependencies: orch-skill-report-process.py
 #
 #  Usage:
 #    bash orch-skill-evaluate.sh              # normal run
@@ -29,9 +29,9 @@ echo "## Phase 1 — Pending Skill Reports"
 echo ""
 
 if $MARK_READ; then
-  python3 "$SCRIPT_DIR/orch-process-skill-reports.py" --mark-read 2>&1 || echo "(collector encountered an error — see above)"
+  python3 "$SCRIPT_DIR/orch-skill-report-process.py" --mark-read 2>&1 || echo "(collector encountered an error — see above)"
 else
-  python3 "$SCRIPT_DIR/orch-process-skill-reports.py" 2>&1 || echo "(collector encountered an error — see above)"
+  python3 "$SCRIPT_DIR/orch-skill-report-process.py" 2>&1 || echo "(collector encountered an error — see above)"
 fi
 
 echo ""

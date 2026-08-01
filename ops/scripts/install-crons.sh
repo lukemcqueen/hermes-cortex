@@ -471,7 +471,6 @@ if $UNINSTALL; then
     "agent-bus-workday" \
     "agent-cron-quality-watchdog" \
     "agent-daily-bible-reading" \
-    "agent-daily-soul-refinement" \
     "agent-fixer-evening" \
     "agent-fixer-overnight" \
     "agent-fixer-workday" \
@@ -493,7 +492,10 @@ if $UNINSTALL; then
     "agent-memory-to-brain-sync" \
     "agent-message-handler" \
     "agent-model-health-watchdog" \
+    "agent-nginx-threat-pipeline" \
+    "agent-no-verify-audit" \
     "agent-offline-code-index" \
+    "agent-push-metrics" \
     "agent-remediate-apply" \
     "agent-remediation-sensor" \
     "agent-scoring-activity-watchdog" \
@@ -502,11 +504,8 @@ if $UNINSTALL; then
     "agent-session-cache-build" \
     "agent-session-mine" \
     "agent-stale-ref-watchdog" \
-    "agent-system-alert-watchdog" \
-    "agent-nginx-threat-pipeline" \
-    "agent-weekly-loop-eval" \
-    "agent-push-metrics" \
-    "agent-no-verify-audit"; do
+    "agent-system-alert-watchdog"; do
+  
   
   
 

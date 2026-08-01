@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""orch-process-skill-reports.py — Orchestrator-side: compile agent skill reports
+"""orch-skill-report-process.py — Orchestrator-side: compile agent skill reports
 from the PGMQ bus into a digest for Moses to review.
 
 Reads messages from the inbox_moses PGMQ queue, filters for skill-report
@@ -9,9 +9,9 @@ and produces a formatted digest.
 Replaced the retired v1 HTTP /api/inbox with direct PGMQ queue reads.
 
 Usage:
-    python3 orch-process-skill-reports.py              # show pending reports
-    python3 orch-process-skill-reports.py --all        # show ALL reports (not just new)
-    python3 orch-process-skill-reports.py --mark-read  # archive processed reports
+    python3 orch-skill-report-process.py              # show pending reports
+    python3 orch-skill-report-process.py --all        # show ALL reports (not just new)
+    python3 orch-skill-report-process.py --mark-read  # archive processed reports
 """
 
 import json
@@ -99,7 +99,7 @@ def archive_message(queue: str, msg_id: str) -> bool:
     NEVER use DELETE /api/pgmq/delete — that hard-purges with no archive."""
     if not msg_id:
         return False
-    resp = bus_request("/api/pgmq/archive", {"queue": queue, "msg_id": msg_id, "archived_by": "orch-process-skill-reports"}, method="POST")
+    resp = bus_request("/api/pgmq/archive", {"queue": queue, "msg_id": msg_id, "archived_by": "orch-skill-report-process"}, method="POST")
     return "detail" not in resp
 
 
