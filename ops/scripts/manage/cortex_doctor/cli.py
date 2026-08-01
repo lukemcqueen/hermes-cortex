@@ -30,6 +30,7 @@ from .checks import (
     check_script_naming,
     check_skills_version,
     check_skill_fences,
+    check_skill_stubs,
     check_todo_db,
     check_skill_drift,
 )
@@ -68,6 +69,7 @@ def main():
         check_script_naming,
         check_skills_version,
         check_skill_fences,
+        check_skill_stubs,
         check_todo_db,
         check_skill_drift,
         check_hook_drift,
@@ -87,6 +89,7 @@ def main():
             check_hook_drift,
             check_local_hooksPath_overrides,
             check_install,
+            check_skill_stubs,
         ]
         if not res.json_mode:
             print("Hermes Cortex Doctor — Quick Check")

@@ -2640,6 +2640,48 @@ def check_skill_fences(res):
                 "Most are 9a9efa91 truncated imports — re-collect from Joseph")
 
 
+def check_skill_stubs(res):
+    """Detect repo SKILL.md files that are truncated stubs.
+
+    The Jul-17 imports (9a9efa91, 2347d26a, 70160929) landed 131 skills as
+    ~1KB stubs because the old collect-agent-skills.sh truncated bus messages
+    at 1000 chars. Stub files carry the literal 'Full content (truncated)'
+    marker and cut off mid-content. Any agent that loads a stubbed skill gets
+    a broken playbook — this is a FAIL, not a WARN.
+
+    Recovery: the full content survives in agent-local
+    state/skill-contents/idx_N.txt caches (always full — only delivery was
+    cut). Run the fleet recovery: deploy agent-skill-stub-audit.py, EXEC it
+    with --send on each source agent, then restore the returned content into
+    skills/ and re-run cortex-update.
+    """
+    SKILLS_DIR = CORTEX_REPO / "skills"
+    if not SKILLS_DIR.is_dir():
+        return
+    stubs = []
+    for skill_md in sorted(SKILLS_DIR.rglob("SKILL.md")):
+        try:
+            content = skill_md.read_text()
+        except (OSError, UnicodeDecodeError):
+            continue
+        if "Full content (truncated)" in content or (
+            "--- End skill ---" in content and len(content) < 1500
+        ):
+            rel = skill_md.relative_to(CORTEX_REPO)
+            stubs.append((skill_md.stat().st_size, str(rel)))
+    if stubs:
+        for size, path in stubs[:10]:
+            res.add("Skill stubs", "FAIL",
+                f"{path} — {size} bytes, truncated (Full content (truncated))",
+                "Replace with full copy from agent state/skill-contents cache: "
+                "EXEC agent-skill-stub-audit.py --send on each source agent, then "
+                "copy the returned full content over skills/ and run cortex-update.sh")
+        if len(stubs) > 10:
+            res.add(f"Skill stubs ({len(stubs)} total)", "FAIL",
+                f"{len(stubs) - 10} more truncated skills",
+                "Most are 9a9efa91 truncated imports — replace with full copies from agent caches")
+
+
 def check_todo_db(res):
     """Check that todo-db.py exists and can reach Postgres."""
     todo_script = CORTEX_HOME / "scripts" / "todo-db.py"
