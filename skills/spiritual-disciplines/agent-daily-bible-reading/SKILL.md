@@ -46,6 +46,24 @@ and at least one bootstrapped entry (e.g. Genesis). The script scans the last
 
 Silent when all 66 canonical books are covered.
 
+## SOUL.md Size Guardrail (doctor FAIL prevention)
+
+The doctor FAILs SOUL.md above 20K and WARNs above 15K (`check_soul_sync` in
+`cortex_doctor/checks.py`). Each bible entry is ~400-800 chars, so unbounded
+appends eventually break the doctor. **Keep only the last 1-2 `### Book —`
+entries in SOUL.md.**
+
+- **Anchor requirement:** the script scans the **last** `### Book —` entry to
+  find the next book — never archive the final entry.
+- **Archive rule:** when the Scripture Insights section exceeds ~2,500 chars
+  (roughly 3 entries), move the OLDEST entries to
+  `~/brain/<agent>/bible/archive/SOUL-archive.md` (append, with a `## <Book>`
+  header) and remove them from SOUL.md. Full text already lives in
+  `~/brain/<agent>/bible/<book>.md`, so the SOUL entry is a pointer, not the
+  store.
+- Keep the archive file itself bounded (~50K) — older entries live in brain
+  pages already; the archive is a convenience, not a duplicate store.
+
 ## Artifacts Created
 
 | Artifact | Path | Size |
