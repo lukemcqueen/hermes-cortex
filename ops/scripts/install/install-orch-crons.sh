@@ -454,12 +454,6 @@ create_cron "orch-clean-health-queue" "*/10 * * * *" \
   "" \
   "true"
 
-# ── 2. Daily gbrain brain health check ──────────────────
-printf "${CYAN}  2. Daily gbrain Brain Health Check${RESET}\n"
-
-# Uses gbrain-wrapper.sh to pause autopilot, run doctor, restart.
-# no_agent silent pattern: output only when issues found.
-
 # ── 3. Skill Lifecycle Pipeline (orchestrator-only) ──────────
 printf "${CYAN}  3. Skill Lifecycle Pipeline${RESET}\n"
 
