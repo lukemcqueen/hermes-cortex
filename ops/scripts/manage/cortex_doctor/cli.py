@@ -33,6 +33,7 @@ from .checks import (
     check_skill_stubs,
     check_todo_db,
     check_skill_drift,
+    check_mycortex_parity,
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
@@ -72,6 +73,7 @@ def main():
         check_skill_stubs,
         check_todo_db,
         check_skill_drift,
+        check_mycortex_parity,
         check_hook_drift,
     ]
 
