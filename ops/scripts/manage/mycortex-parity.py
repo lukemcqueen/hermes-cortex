@@ -199,12 +199,41 @@ def mode_baseline(args) -> int:
     return 0
 
 
+def _registered_sources() -> set[str]:
+    """Names of sources registered on THIS host (per-host model, design D4).
+
+    The moses source lives on Moses' host; a parity run on Esther must not
+    fail isolated queries for sources that exist elsewhere.
+    """
+    try:
+        proc = subprocess.run(
+            ["mycortex", "sources", "list", "--json"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if proc.returncode == 0:
+            data = json.loads(proc.stdout)
+            return {str(s.get("name")) for s in data if isinstance(s, dict) and s.get("name")}
+    except Exception:
+        pass
+    # Fallback: if we can't enumerate, assume all sources exist (old behavior)
+    return set()
+
+
 def mode_check(args) -> int:
     golden = load_golden(args.golden)
     queries = golden.get("queries", [])
     results: list[dict] = []
+    registered = _registered_sources() if args.engine == "mycortex" else set()
+    skipped = 0
     for i, q in enumerate(queries, 1):
         qid = q.get("id", f"q{i}")
+        # Per-host: skip isolated queries whose source isn't registered here.
+        if args.engine == "mycortex" and q.get("scope") == "isolated" and registered:
+            src = q.get("source")
+            if src and src not in registered:
+                print(f"  ⏭ [{i}/{len(queries)}] {qid}: source '{src}' not on this host — skipped")
+                skipped += 1
+                continue
         try:
             if args.engine == "gbrain":
                 paths = run_gbrain(q["query"])
@@ -222,6 +251,11 @@ def mode_check(args) -> int:
         results.append(evaluate_query(q, paths))
         print(f"  [{i}/{len(queries)}] {qid}: {'PASS' if results[-1]['passed'] else 'FAIL'} → {top3(paths)}")
 
+    if skipped:
+        print(f"  (skipped {skipped} query(s) for sources not on this host)")
+    if not results:
+        print("  ❌ no applicable queries — nothing to gate", file=sys.stderr)
+        return 1
     rates = compute_pass_rate(results)
     print(f"\nPass rates: federated={rates['federated']:.0%} (need {FEDERATED_PASS_REQUIRED:.0%})  "
           f"isolated={rates['isolated']:.0%} (need {ISOLATED_PASS_REQUIRED:.0%})")

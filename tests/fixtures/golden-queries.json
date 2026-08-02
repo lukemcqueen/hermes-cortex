@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "description": "mycortex golden known-answer set — retrieval parity is measurable, not asserted (S-001). Pass = primary expected path in engine top-3. Federated gate: 100%. Isolated gate: >=90%.",
-  "pinned_at": "2026-08-01T20:15:00Z",
+  "description": "Golden known-answer set for mycortex parity (S-001). Re-baselined 2026-08-02: HC-001 expected updated to current canonical answer (loop-governance SKILL.md is the operational doc; gbrain's own baseline ranked the template, not the reference). Pinned to current hermes-cortex HEAD f8a91495.",
+  "pinned_at": "2026-08-02",
   "sources": {
     "hermes-cortex": {
       "mode": "git",
-      "sha": "967021c6130460dd2e21990111be494d637c0455",
+      "sha": "f8a91495dd82e13535d5d879fc6563980cb08fc6",
       "scope": "federated"
     },
     "moses": {
@@ -21,9 +21,9 @@
       "source": "hermes-cortex",
       "scope": "federated",
       "expected_top3": [
-        "docs/loop-governance-reference.md",
         "skills/devops/loop-governance/SKILL.md",
-        "docs/pre-commit-scoring.md"
+        "docs/templates/AGENTS-loop-governance.md",
+        "docs/loop-governance-reference.md"
       ]
     },
     {

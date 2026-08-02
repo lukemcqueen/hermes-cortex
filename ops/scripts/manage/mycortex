@@ -338,10 +338,18 @@ WHERE source_id = {esc_literal(source_id)} AND NOT archived;
             stats["unchanged"] += 1
             continue
         title = Path(rel_nfc).stem
-        # title from frontmatter if present
-        m = re.search(r"^---\s*$.*?^title:\s*(.+)$.*?^---\s*$", content, re.M | re.S)
+        # title from frontmatter if present — `title:` (docs) or `name:` (skills).
+        # [^\n]+ (not .+) because re.S makes . match newlines → multi-line titles.
+        m = re.search(r"^---\s*$.*?^title:\s*([^\n]+)$.*?^---\s*$", content, re.M | re.S)
+        if not m:
+            m = re.search(r"^---\s*$.*?^name:\s*([^\n]+)$.*?^---\s*$", content, re.M | re.S)
         if m:
             title = m.group(1).strip().strip("'\"")
+        else:
+            # fallback: first H1 heading is the document's real title
+            h = re.search(r"^#\s+(.+)$", content, re.M)
+            if h:
+                title = h.group(1).strip()
         upserts.append((rel_nfc, title, content))
 
     # mass-deletion guardrail
@@ -414,15 +422,20 @@ WHERE source_id = {esc_literal(source_id)} AND NOT archived;
                 "FROM _mc_ids t JOIN (VALUES\n" + ",\n".join(chunk_values) + "\n"
                 ") AS v(relpath, chunk_index, content, chunk_size, overlap) ON v.relpath = t.relpath;"
             )
-        # E. rebuild FTS for upserted pages (join temp ids)
+        # E. rebuild FTS for upserted pages (join temp ids) — title weighted 'A'
+        # (docs with the query in their title outrank index files), relpath 'B',
+        # content 'C'.
         parts.append(
             "UPDATE mycortex.pages pg SET fts = sub.ts\n"
             "FROM (\n"
             "  SELECT c.page_id,\n"
-            f"         to_tsvector({esc_literal(search_config)}::regconfig,\n"
-            "                     string_agg(c.content, ' ' ORDER BY c.chunk_index)) AS ts\n"
+            f"         setweight(to_tsvector({esc_literal(search_config)}::regconfig, COALESCE(pg2.title, '')), 'A') ||\n"
+            f"         setweight(to_tsvector({esc_literal(search_config)}::regconfig, COALESCE(pg2.relpath, '')), 'B') ||\n"
+            f"         setweight(to_tsvector({esc_literal(search_config)}::regconfig,\n"
+            "                     string_agg(c.content, ' ' ORDER BY c.chunk_index)), 'C') AS ts\n"
             "  FROM mycortex.content_chunks c JOIN _mc_ids t ON c.page_id = t.id\n"
-            "  GROUP BY c.page_id\n"
+            "  JOIN mycortex.pages pg2 ON pg2.id = c.page_id\n"
+            "  GROUP BY c.page_id, pg2.title, pg2.relpath\n"
             ") sub WHERE pg.id = sub.page_id;"
         )
         stats["upserted"] += len(upserts)
@@ -548,7 +561,8 @@ def search(args: argparse.Namespace) -> int:
             print("❌ no matching sources", file=sys.stderr)
             return 1
 
-    # FTS + title trigram + ILIKE fallback; RLS applies automatically as reader
+    # FTS + title trigram + ILIKE fallback; RLS applies automatically as reader.
+    # ts_rank default weights {0.1,0.2,0.4,1.0} = D/C/B/A — title (A) dominates.
     q = esc_literal(args.query)
     sql = f"""
 SELECT p.relpath, p.title,
