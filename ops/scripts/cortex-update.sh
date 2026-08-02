@@ -421,6 +421,8 @@ register "ops/scripts/manage/mycortex-parity.py"      "${CORTEX_DEPLOY_HOME}/scr
 register "ops/scripts/manage/agent-mycortex-sync.sh"  "${CORTEX_DEPLOY_HOME}/scripts/agent-mycortex-sync.sh"
 # daily parity-diff watchdog — enforces S-010 zero-regression window during flip gate
 register "ops/scripts/manage/local-mycortex-parity.sh" "${CORTEX_DEPLOY_HOME}/scripts/local-mycortex-parity.sh"
+# daily retention — prune ingest_log >90d, purge archived pages >7d (S-016)
+register "ops/scripts/manage/local-mycortex-retention.py" "${CORTEX_DEPLOY_HOME}/scripts/local-mycortex-retention.py"
 
 # Remediation sensor (companion to agent-auto-remediate cron)
 register "ops/scripts/health/agent-remediation-sensor.py"       "${CORTEX_DEPLOY_HOME}/scripts/agent-remediation-sensor.py"
@@ -1496,6 +1498,40 @@ deploy_governance_plugin() {
   return 0
 }
 
+# ── Mycortex Command Plugin Deploy ──────────────────────────
+# Deploys the mycortex-command plugin (the /brain + /mycortex slash
+# commands, gbrain-command replacement) as a plain COPY to
+# ~/.hermes/plugins/. Not immutable — it's a user command, not enforcement.
+deploy_mycortex_plugin() {
+  local repo_plugin="${REPO_DIR}/plugins/mycortex-command"
+  local plugin_dir="${HOME}/.hermes/plugins/mycortex-command"
+  local files=("__init__.py" "plugin.yaml")
+  local changed=0
+
+  [[ -d "$repo_plugin" ]] || { warn "  Plugin source missing: ${repo_plugin}"; return 1; }
+  mkdir -p "$plugin_dir"
+
+  for file in "${files[@]}"; do
+    local src="${repo_plugin}/${file}"
+    local dest="${plugin_dir}/${file}"
+    [[ ! -f "$src" ]] && continue
+    cp -f "$src" "$dest"
+    info "    Copied: ${file}"
+    changed=$((changed + 1))
+  done
+
+  [[ "$changed" -gt 0 ]] && info "  Plugin mycortex-command deployed: ${changed} file(s) updated"
+
+  # Reload plugin so the new command is active on next session
+  if command -v hermes &>/dev/null; then
+    hermes plugins disable mycortex-command 2>/dev/null || true
+    hermes plugins enable mycortex-command 2>/dev/null || true
+    info "  Plugin mycortex-command reloaded (active on next session)"
+  fi
+
+  return 0
+}
+
 # ── Stale Service Detector ─────────────────────────────────
 # Detects known-dead services that should have been removed.
 # Runs on every agent after every update — both Linux + macOS.
@@ -1898,6 +1934,9 @@ main() {
 
   # Deploy governance enforcer plugin as copy (not symlink) for chattr +i safety
   deploy_governance_plugin
+
+  # Deploy mycortex-command plugin (/brain + /mycortex slash commands)
+  deploy_mycortex_plugin
 
   # Check and upgrade gbrain binary (every run, not just when template changes)
   update_gbrain_binary

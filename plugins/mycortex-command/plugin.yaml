@@ -1,0 +1,5 @@
+name: mycortex-command
+version: 1.0.0
+description: "Query your mycortex knowledge brain. Usage: /brain [source] <query> (aliases: /mycortex)"
+author: Hermes Cortex
+hooks: []

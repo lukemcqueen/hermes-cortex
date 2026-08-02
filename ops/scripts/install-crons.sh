@@ -490,6 +490,7 @@ if $UNINSTALL; then
     "agent-message-handler" \
     "agent-mycortex-sync" \
     "local-mycortex-parity" \
+    "local-mycortex-retention" \
     "agent-model-health-watchdog" \
     "agent-nginx-threat-pipeline" \
     "agent-no-verify-audit" \
@@ -664,6 +665,18 @@ create_cron "agent-mycortex-sync" "*/15 * * * *" \
 # only when the gate regresses (watchdog pattern, alerts the owner).
 create_cron "local-mycortex-parity" "0 5 * * *" \
   "local-mycortex-parity.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# daily mycortex retention — prune ingest_log >90d, hard-purge archived
+# pages past the 7-day soft-delete window (S-016). no_agent: silent when
+# nothing pruned, one-line summary when rows are removed.
+create_cron "local-mycortex-retention" "0 6 * * *" \
+  "local-mycortex-retention.py" \
   "" \
   "" \
   "" \
