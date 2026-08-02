@@ -303,6 +303,13 @@ register "ops/scripts/agent/install-worker.sh"      "${CORTEX_DEPLOY_HOME}/scrip
 # No register() call — the hook is a symlink, not a standalone deploy file.
 # Post-merge hook — auto-runs cortex-update.sh after every git pull
 register ".hermes-cortex/hooks/post-merge"   "${CORTEX_DEPLOY_HOME}/hooks/post-merge"
+# Least privilege: git hooks run only as the owning user, so group/other need
+# nothing. git does NOT track group/other bits (stores 100755/100644 only), so
+# a 700 file in the repo would still deploy as 755 — enforce 700 here in the
+# deploy path instead. chattr +i (hermes-plugin-lock TARGETS) then makes it
+# immutable-but-executable. Do NOT move this into the chmod-444 loop — 444
+# kills the execute bit and git silently ignores non-executable hooks.
+chmod 700 "${CORTEX_DEPLOY_HOME}/hooks/post-merge" 2>/dev/null || true
 
 # Deploy scripts (nginx security pipeline) — now deployed to /usr/local/sbin/
 # by deploy_system_scripts() below. Old register entries removed.
