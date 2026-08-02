@@ -2349,13 +2349,26 @@ def check_stale_deploys(res):
 
   scripts_dir = deploy_home / "scripts"
   if scripts_dir.exists():
+    # Local-only no_agent cron scripts — NOT in repo, created per-host.
+    # They are intentionally absent from register() mappings; must not be
+    # flagged as stale. Mirrors the preserve list in cortex-update.sh
+    # clean_stale_deploys(). (2026-08-02: adding the doctor cron-runtime
+    # check surfaced these as "stale" — they were already preserved by the
+    # deployer, the doctor just didn't know about them.)
+    preserve = {
+      "agent-daily-bible-reading.py",
+      "local-clickhouse-log-cleanup.sh",
+      "local-push-metrics.sh",
+      "local-threat-pipeline.sh",
+    }
     for f in sorted(scripts_dir.rglob("*")):
       if f.is_file() and f.suffix in (".py", ".sh") and "__pycache__" not in str(f):
-        if f not in destinations:
-          size = f.stat().st_size
-          res.add(f"Stale deploy: {f.relative_to(deploy_home)}", "WARN",
-              f"{size:,} bytes — not in any register() mapping",
-              f"Remove: rm {f}")
+        if f in destinations or f.name in preserve:
+          continue
+        size = f.stat().st_size
+        res.add(f"Stale deploy: {f.relative_to(deploy_home)}", "WARN",
+            f"{size:,} bytes — not in any register() mapping",
+            f"Remove: rm {f}")
 
 
 def check_stale_skills(res):
