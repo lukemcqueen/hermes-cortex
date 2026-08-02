@@ -1,6 +1,6 @@
 ---
 name: mycortex
-version: 1.0.0
+version: 1.1.0
 category: devops
 description: "Use for mycortex knowledge brain work or gbrain migration."
 author: Hermes Cortex
@@ -84,7 +84,10 @@ mycortex doctor [--json]
 - ✅ **Every agent has its own gbrain-postgres + mycortex schema and populates its OWN sources** (per-host model, design D4). Esther's 642 pages / 3582 chunks import on her host DB (worker-5) is correct behavior — each agent does this for itself. **Moses-host DB now populated too (2026-08-02): 6 sources, 3265 pages, 37546 chunks** — `hermes-cortex` + `default` federated, `moses`/`luke`/`lessons`/`shared` isolated. Command used: `python3 ops/services/mycortex/import-gbrain.py --federated hermes-cortex --federated default` + `mycortex sources add <name> <path>` + `mycortex sync`. Do NOT read another agent's status line as this host's state.
 - ✅ Cron `agent-mycortex-sync` (S-009) — every 15 min, per-host (NOT orchestrator-only, design D4), no_agent wrapper, registered in `install-crons.sh` (both arrays)
 - ✅ Sync performance: batched VALUES-join SQL — 1552 files in ~3s (design target 1500/30s)
-- ⏳ Remaining: /brain plugin rewrite (S-007 — CLI part shipped, `mycortex-command` plugin not yet created), parity gate (S-010 — harness exists, not wired to pre-commit), retention cron (S-016 — `local-mycortex-retention` not registered), gbrain decommission (S-011..S-015)
+- ✅ **S-007 /brain plugin rewrite (2026-08-02):** `plugins/mycortex-command/` — versioned plugin (replaces install.sh's generated gbrain-command). Registers `/brain` + `/mycortex`. Dynamic source presets from `mycortex sources list --json` (no hardcoded list — fixes broken-presets bug). Output is data-delimited in a code block with source+path+score citations; instruction-shaped chunk content rendered as data, never followed (injection guardrail, verified). Deployed by `deploy_mycortex_plugin()` in cortex-update.sh; install.sh step 7 copies the repo plugin, step 15 enables it.
+- ✅ **S-010 parity gate (2026-08-02):** wired to BOTH the doctor (`check_mycortex_parity` in cortex_doctor/checks.py) AND a daily `local-mycortex-parity` no_agent cron (silent on pass, alerts on regression). Note: wired to doctor+cron, not pre-commit — the doctor/cron path is the enforcement.
+- ✅ **S-016 retention cron (2026-08-02):** `local-mycortex-retention` — daily 06:00 no_agent cron. `ops/scripts/manage/local-mycortex-retention.py` prunes ingest_log >90d and hard-purges archived pages >7d (soft-delete window), runs as `mycortex_ingest` (DML role), counts eligible rows BEFORE delete, has `--dry-run`. Registered in install-crons.sh (create + uninstall arrays) + cortex-update.sh register.
+- ⏳ Remaining: gbrain decommission phases (S-011 done: autopilot disabled, gbrain crons removed; S-012 tombstone/purge is time-gated — 30-day window after flip, do NOT force; S-013/S-014/S-015 = post-flip verify, v1.1 semantic, v1.2 MCP)
 
 ### Who can register sources (design D4 — read before assuming "orchestrator-only")
 
