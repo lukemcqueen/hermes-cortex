@@ -1106,6 +1106,9 @@ def check_system(res):
   # ── Stale systemd units check ──
   # Catches duplicate/stale .service files still enabled and hitting restart limits.
   # The expected active services below are the canonical Cortex user services.
+  # Units that are DISABLED (intentionally stopped — e.g. decommissioned
+  # gbrain-autopilot/gbrain-sync) are skipped: a disabled unit in failed
+  # state is the intended post-decommission state, not an operational issue.
   expected_user_units = {
     "hermes-cortex-dashboard.service",
     "hermes-cortex-langfuse.service",
@@ -1129,6 +1132,10 @@ def check_system(res):
         if load_state == "masked":
           continue
         if unit not in expected_user_units:
+          # Skip DISABLED units — intentionally stopped (decommissioned)
+          en = run_bg(["systemctl", "--user", "is-enabled", unit], timeout=5)
+          if en.strip() == "disabled":
+            continue
           stale.append(unit)
     if stale:
       names = ", ".join(stale)
