@@ -861,6 +861,29 @@ def main():
         save_state(state)
         return True
 
+      # Issue-report subjects — agents pushing findings TO the orchestrator
+      # (ISSUES:, IMPROVEMENTS:, PROPOSAL:, RE: ...). These are reports, not
+      # commands: a command registry lookup is the wrong shape (there is no
+      # *_REQUEST to run). Do NOT error, do NOT archive — leave the message
+      # in the queue so the orchestrator's inbox_read picks it up, and mark
+      # processed so the next handler tick skips it (idempotency path below
+      # archives it only after it has been surfaced). Fixes the "Unknown
+      # subject" drop of kustos's doctor-fails report (2026-08-03).
+      _issue_prefixes = ("ISSUES:", "🚨 ISSUES:", "IMPROVEMENTS:", "PROPOSAL:", "RE: ")
+      if subject.startswith(_issue_prefixes):
+        log(f"📋 Issue report '{subject}' from {body.get('from', '?')} — left in queue for orchestrator")
+        notify_telegram(
+          f"📋 [{AGENT_NAME}] Issue report from {body.get('from', '?')}: {subject}",
+          f"📋 {AGENT_NAME}:ISSUE_REPORT",
+        )
+        if correlation_id:
+          processed.add(correlation_id)
+          state.setdefault("processed_ids", [])
+          state["processed_ids"].append(correlation_id)
+          state["processed_ids"] = state["processed_ids"][-50:]
+        save_state(state)
+        return True
+
       # Unknown subject — send error response so orchestrator knows
       log(f"Unknown subject '{subject}', sending error (corr={correlation_id[:8]}…)")
       error_body = {

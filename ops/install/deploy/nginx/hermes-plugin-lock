@@ -73,7 +73,10 @@ TARGETS=(
   "${REAL_HOME}/.hermes-cortex/scripts/pre-push-pull"
   "${REAL_HOME}/.hermes-cortex/scripts/post-commit-audit"
   "${REAL_HOME}/.hermes-cortex/scripts/post-push-audit"
-  "${REAL_HOME}/.hermes-cortex/hooks/post-merge"
+  # NOTE: hooks/post-merge deliberately EXCLUDED — git ignores non-executable
+  # hooks, and an immutable (chattr +i) 444 hook silently breaks the
+  # auto-deploy-on-pull mechanism. It must stay executable + replaceable
+  # (2026-08-03, Titus ISSUE-2).
   "${REAL_HOME}/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"
   # hooks DIRECTORY itself — chattr +i on the dir prevents symlink swaps
   # (hooks/pre-commit is a symlink; without dir immutability an attacker

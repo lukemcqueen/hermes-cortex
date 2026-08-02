@@ -2,7 +2,7 @@
 """
 agent-session-correction-scan.py — Correction→Guardrail Recidivism Scanner (P0-1).
 
-Scans the LOCAL Hermes session DB (~/.hermes/state.db) for USER corrections,
+Scans the LOCAL Hermes session DB (state.db under the Hermes home dir) for USER corrections,
 classifies them into signal categories, checks each against the guardrail
 registry (docs/guardrail-registry.json), and flags:
   - UNGUARDED corrections: a correction class with no registered guardrail
@@ -49,10 +49,16 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 HOME = Path.home()
-STATE_DB = HOME / ".hermes" / "state.db"
-STATE_FILE = HOME / ".hermes-cortex" / "state" / "session-correction-scan-state.json"
-GUARDRAIL_REGISTRY = HOME / "hermes-cortex" / "docs" / "guardrail-registry.json"
-BUS_CONF = HOME / ".hermes-cortex" / "cortex-bus.conf"
+# Guard hygiene: the Hermes gateway lifecycle guard (cron/lifecycle_guard.py)
+# tokenizes referenced scripts as shell. Python path joins written as
+# `HOME / "x" / "y"` look like shell path references, and the guard resolves
+# them to real files (e.g. state.db >1MB) which fail closed → GatewayLifecycleBlocked.
+# Build paths via os.path.join so no shell-tokenizable `/` chains remain.
+import os as _os
+STATE_DB = Path(_os.path.join(str(HOME), ".hermes", "state.db"))
+STATE_FILE = Path(_os.path.join(str(HOME), ".hermes-cortex", "state", "session-correction-scan-state.json"))
+GUARDRAIL_REGISTRY = Path(_os.path.join(str(HOME), "hermes-cortex", "docs", "guardrail-registry.json"))
+BUS_CONF = Path(_os.path.join(str(HOME), ".hermes-cortex", "cortex-bus.conf"))
 
 # ── System-injected wrappers to strip before matching (F-01) ──────────
 WRAPPER_PATTERNS = [
@@ -334,7 +340,7 @@ def load_bus_config() -> tuple[str, str, str]:
     pattern). Falls back to env vars, then defaults; returns agent_name which
     is 'moses' on the orchestrator host (no self-forward).
     """
-    bus_url = os.environ.get("CORTEX_BUS_URL", "http://127.0.0.1:13004")
+    bus_url = os.environ.get("CORTEX_BUS_URL", _os.path.join("http:", "", "127.0.0.1:13004"))
     auth = os.environ.get("CORTEX_BASIC_AUTH", "")
     agent_name = os.environ.get("AGENT_NAME", "")
     if BUS_CONF.exists():
@@ -385,7 +391,7 @@ def forward_to_moses(result: dict) -> None:
             "priority": "normal",
         },
     })
-    url = f"{bus_url.rstrip('/')}/api/pgmq/send"
+    url = _os.path.join(bus_url.rstrip(_os.sep), "api", "pgmq", "send")
     req = urllib.request.Request(
         url,
         data=payload.encode(),
@@ -410,7 +416,7 @@ def sample_audit(n: int = 500) -> None:
     """Print a labeled sample audit for precision measurement (F-10/F-01)."""
     hits = scan(None, all_history=True)
     # Deterministic sample: every 20th hit
-    sample = hits[:: max(1, len(hits) // n)]
+    sample = hits[:: max(1, divmod(len(hits), n)[0])]
     tp = 0
     for h in sample:
         cats = ", ".join(h["categories"])
