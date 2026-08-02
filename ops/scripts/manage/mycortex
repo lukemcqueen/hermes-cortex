@@ -16,7 +16,8 @@ Commands:
   doctor [--json]
 
 Role split (DB-enforced, NOT CLI convention):
-  sources add/remove       → mycortex_admin  (orchestrators only)
+  sources add/remove       → mycortex_admin  (per-host registration — ANY agent registers
+                             its own local sources; orchestrator-only for FEDERATION/grants)
   sync                     → mycortex_ingest (sync cron)
   search/list/stats/doctor → mycortex_reader (fleet agents, RLS-filtered)
 

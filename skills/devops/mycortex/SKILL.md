@@ -75,10 +75,14 @@ mycortex doctor [--json]
 - ✅ S-001 golden parity harness, S-003 schema v001 (deployed, 15/15 tests green)
 - ✅ CLI built (sources/sync/search/list/stats/doctor), verified end-to-end on scratch DB
 - ✅ `import-gbrain.py` (one-shot additive gbrain→mycortex copy, idempotent, dry-run, --federated with PII gate) — registered in cortex-update.sh
-- ✅ Prod import on esther: 642 pages / 3582 chunks migrated, `hermes-cortex` + `default` federated (PII gate recorded) — run via `python3 ~/.hermes-cortex/services/mycortex/import-gbrain.py --federated hermes-cortex --federated default`
+- ⚠️ **Shared fleet DB (gbrain-postgres on the moses host) still has 0 sources / 0 pages (verified 2026-08-02).** Esther's "642 pages / 3582 chunks" import ran on HER OWN host DB (worker-5), not the shared index — the shared DB's `ingest_log` is empty. **Do not treat that status line as fleet-wide prod.** The real prod import on the shared DB is still pending: run `python3 ~/.hermes-cortex/services/mycortex/import-gbrain.py --federated hermes-cortex --federated default` + `sources add` for the shared sources from the moses host.
 - ✅ Cron `agent-mycortex-sync` (S-009) — every 15 min, per-host (NOT orchestrator-only, design D4), no_agent wrapper, registered in `install-crons.sh` (both arrays)
 - ✅ Sync performance: batched VALUES-join SQL — 1552 files in ~3s (design target 1500/30s)
-- ⏳ Remaining: parity gate (S-010), gbrain decommission (S-011..S-016)
+- ⏳ Remaining: shared-DB prod import + source registration, parity gate (S-010), gbrain decommission (S-011..S-016)
+
+### Who can register sources (design D4 — read before assuming "orchestrator-only")
+
+**Source registration is per-host, NOT orchestrator-only.** Design D4 + install.sh: each host registers its OWN local brain dirs (`hermes-cortex` + `~/brain/<agent>`) at install time, and the per-host `agent-mycortex-sync` cron syncs them. The `mycortex_admin` DB role is required for registration — on Linux any user in the docker group can `sg docker exec psql -U mycortex_admin` (trust auth) on the host that runs the container. The "orchestrators only" label applies to **federation + grants + PII gate** (turning a source `is_federated=true`, writing `source_grants`), not to registering your own local source. If you see 0 sources on a host you own and the shared-DB import hasn't run, **register your own sources — don't wait for an orchestrator**.
 
 See `references/migration-2026-08-02.md` for the full session trace: schema fixes, CLI verification outputs, and what remains.
 
