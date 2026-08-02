@@ -58,8 +58,7 @@ Continuation of the gbrain → mycortex migration (stories S-001..S-016 in
 
 ## Remaining (as of session end)
 
-1. `orch-mycortex-sync` cron in `install-orch-crons.sh` (create + uninstall
-   arrays; doctor parses uninstall arrays as expected list).
+1. ~~`orch-mycortex-sync` cron~~ → **DONE, renamed `agent-mycortex-sync`** — registered in `install-crons.sh` (create line 665 + uninstall line 494), running every 15 min. The `orch-` variant was a stale orphan (per-host design D4 is NOT orchestrator-only); removed 2026-08-02.
 2. Run `cortex-update.sh` to deploy CLI + import-gbrain; then prod import
    (`import-gbrain.py`) and `sources add` for real brain dirs on esther.
 3. Score PENDING cycles #1252/#1254/#1255 and `end_change` the open
