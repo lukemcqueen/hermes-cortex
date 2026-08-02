@@ -423,6 +423,8 @@ register "ops/scripts/manage/mycortex"                "${CORTEX_DEPLOY_HOME}/scr
 register "ops/scripts/manage/mycortex-parity.py"      "${CORTEX_DEPLOY_HOME}/scripts/mycortex-parity.py"
 # agent-mycortex-sync cron wrapper — per-host sync (design D4: NOT orchestrator-only)
 register "ops/scripts/manage/agent-mycortex-sync.sh"  "${CORTEX_DEPLOY_HOME}/scripts/agent-mycortex-sync.sh"
+# daily parity-diff watchdog — enforces S-010 zero-regression window during flip gate
+register "ops/scripts/manage/parity-diff.sh"          "${CORTEX_DEPLOY_HOME}/scripts/parity-diff.sh"
 
 # Remediation sensor (companion to agent-auto-remediate cron)
 register "ops/scripts/health/agent-remediation-sensor.py"       "${CORTEX_DEPLOY_HOME}/scripts/agent-remediation-sensor.py"

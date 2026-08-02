@@ -492,6 +492,7 @@ if $UNINSTALL; then
     "agent-memory-to-brain-sync" \
     "agent-message-handler" \
     "agent-mycortex-sync" \
+    "local-mycortex-parity" \
     "agent-model-health-watchdog" \
     "agent-nginx-threat-pipeline" \
     "agent-no-verify-audit" \
@@ -664,6 +665,18 @@ create_cron "agent-memory-to-brain-sync" "0 */6 * * *" \
 # offset); advisory lock makes multi-host sync safe.
 create_cron "agent-mycortex-sync" "*/15 * * * *" \
   "agent-mycortex-sync.sh" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# daily mycortex parity watchdog — enforces the S-010 zero-regression
+# window during the gbrain flip gate. no_agent: silent on pass, emits
+# only when the gate regresses (watchdog pattern, alerts the owner).
+create_cron "local-mycortex-parity" "0 5 * * *" \
+  "parity-diff.sh" \
   "" \
   "" \
   "" \

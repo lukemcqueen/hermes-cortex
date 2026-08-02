@@ -59,6 +59,7 @@
 | `agent-gbrain-nightly-dream` | `0 3 * * 6` | no_agent | `agent-gbrain-nightly-dream.sh` | origin | *(decommission-pending — mycortex replaces)*
 | `agent-gbrain-update-sync` | `0 2 * * 0` | no_agent | `agent-gbrain-update-sync.sh` | origin | *(decommission-pending — mycortex replaces)*
 | `agent-mycortex-sync` | `*/15 * * * *` | no_agent | `agent-mycortex-sync.sh` | origin | *(knowledge brain sync — replaces gbrain autopilot)*
+| `local-mycortex-parity` | `0 5 * * *` | no_agent | `parity-diff.sh` | origin | *(daily parity gate watchdog — S-010 zero-regression window; silent on pass)*
 | `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `agent-scoring-activity-watchdog.py` | origin |
 | `agent-session-cache-build` | `0 5 * * 1` | no_agent | `agent-session_cache.py` | origin |
 | `agent-offline-code-index` | `0 5 * * 0` | no_agent | `agent-offline-code-index.sh` | local |

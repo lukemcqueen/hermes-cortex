@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""memory-to-brain-sync.py — Sync Hermes agent memory → gbrain (long-term brain)
+"""memory-to-brain-sync.py — Sync Hermes agent memory → shared brain (mycortex source)
 
 Reads MEMORY.md and USER.md from the active Hermes profile,
-formats them as searchable gbrain pages under ~/brain/shared/hermes-memory/,
-then git-commits so the gbrain sync daemon picks them up.
+formats them as searchable pages under ~/brain/shared/hermes-memory/,
+then git-commits. The hermes-cortex source is ingested by mycortex
+(the knowledge brain) like any local source.
 
 Designed to run as a cron job alongside conversation export.
+No gbrain binary or public.* table dependency (S-011 keep-rule).
 """
 
 import os
