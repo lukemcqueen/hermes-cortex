@@ -2222,9 +2222,11 @@ except: print('error')
   # Step 2: Lock new enforcement paths with chmod 444 (chattr +i needs sudoers)
   # These are protected by chmod as a second layer. For full chattr +i
   # protection, the user must run: sudo hermes-plugin-lock lock
-  # NOTE: hooks/post-merge is deliberately EXCLUDED — git ignores
-  # non-executable hooks, so locking it to 444 silently breaks the
-  # auto-deploy-on-pull mechanism (2026-08-03, Titus ISSUE-2).
+  # NOTE: hooks/post-merge is EXCLUDED from chmod 444 only — git ignores
+  # non-executable hooks, so 444 would kill the auto-deploy-on-pull
+  # mechanism. It IS still locked chattr +i by hermes-plugin-lock TARGETS
+  # (immutable but executable, deployed 755). See hermes-plugin-lock.
+  # (2026-08-03, Titus ISSUE-2).
   for _new_enf in \
     "${CORTEX_DEPLOY_HOME}/tools/loop-governance/loop-gov-mcp.py" \
     "${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock"; do
