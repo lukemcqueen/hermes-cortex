@@ -35,7 +35,15 @@ import sys
 import time
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+# Resolve the hermes-cortex repo root from either runtime location:
+#   repo:   <root>/ops/scripts/manage/mycortex-parity.py  → parents[3]
+#   deploy: ~/.hermes-cortex/scripts/mycortex-parity.py   → parents[2]
+_HERE = Path(__file__).resolve()
+_REPO_CANDIDATES = [
+    _HERE.parents[3],          # repo layout
+    _HERE.parents[2],          # deployed layout (~/.hermes-cortex)
+]
+REPO_ROOT = next((p for p in _REPO_CANDIDATES if (p / "tests" / "fixtures").is_dir()), _HERE.parents[3])
 DEFAULT_GOLDEN = REPO_ROOT / "tests" / "fixtures" / "golden-queries.json"
 DEFAULT_BASELINE = REPO_ROOT / "tests" / "fixtures" / "gbrain-baseline.json"
 
