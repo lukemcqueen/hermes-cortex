@@ -900,6 +900,23 @@ def main():
 
   def poll_and_check() -> None:
     nonlocal last_doctor
+    # Heartbeat freshness marker: heartbeat.py's check_inbox_staleness() reads
+    # HERMES_HOME/state/last-message-check (default ~/.hermes/state/). The old
+    # file-based inbox (check-agent-messages.sh) wrote this file; the handler
+    # is the inbox poller now, so it must keep the marker fresh or heartbeat
+    # reports "Agent inbox scan: DOWN" permanently. Write both the HERMES_HOME
+    # path (what heartbeat reads) and the legacy ~/.hermes-cortex/state path
+    # (what older docs/crons referenced) — cheap and covers all hosts.
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for _state_dir in (
+        Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")) / "state",
+        HOME / ".hermes-cortex" / "state",
+    ):
+        try:
+            _state_dir.mkdir(parents=True, exist_ok=True)
+            (_state_dir / "last-message-check").write_text(stamp)
+        except OSError:
+            pass  # best-effort — heartbeat may be absent on this host
     # Process up to 25 messages per tick, or until the queue is empty.
     # This prevents backlog: if Learning Reports or other non-urgent
     # messages accumulate ahead of an UPDATE_REQUEST, a single poll_once()

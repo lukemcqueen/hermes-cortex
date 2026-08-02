@@ -47,7 +47,7 @@ RESULT=$(curl -s -u "$AUTH" -X POST \
   "${BUS_URL}/api/pgmq/send" 2>&1)
 
 if echo "$RESULT" | grep -q '"msg_id"'; then
-  echo "✅ Delivered. Message ID: $(echo "$RESULT" | jq -r '.msg_id 2>/dev/null || echo "?"')"
+  echo "✅ Delivered. Message ID: $(echo "$RESULT" | jq -r '.msg_id' 2>/dev/null || echo "?")"
 else
   echo "❌ Failed: $RESULT"
   exit 1

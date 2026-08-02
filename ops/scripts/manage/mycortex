@@ -51,13 +51,29 @@ def _psql_base(role: str, db_name: str) -> list[str]:
     """Platform-appropriate psql invocation as the given role."""
     if platform.system() == "Darwin":
         url = None
-        cfg_path = Path.home() / ".gbrain" / "config.json"
+        # mycortex owns its connection config — never depend on gbrain's file
+        # (decommissioning gbrain must not break the replacement brain).
+        # Resolution order: env → ~/.hermes-cortex/mycortex.conf → legacy
+        # ~/.gbrain/config.json → defaults.
+        cfg_path = Path.home() / ".hermes-cortex" / "mycortex.conf"
         if cfg_path.exists():
             try:
                 cfg = json.loads(cfg_path.read_text())
                 url = cfg.get("database_url")
             except (OSError, json.JSONDecodeError):
                 url = None
+        if not url:
+            env_url = os.environ.get("MYCORTEX_DB_URL", "")
+            if env_url:
+                url = env_url
+        if not url:
+            legacy_cfg = Path.home() / ".gbrain" / "config.json"
+            if legacy_cfg.exists():
+                try:
+                    cfg = json.loads(legacy_cfg.read_text())
+                    url = cfg.get("database_url")
+                except (OSError, json.JSONDecodeError):
+                    url = None
         if not url:
             url = f"postgresql://{role}@127.0.0.1:15432/{db_name}"
         from urllib.parse import urlparse
@@ -346,10 +362,14 @@ WHERE source_id = {esc_literal(source_id)} AND NOT archived;
         if m:
             title = m.group(1).strip().strip("'\"")
         else:
-            # fallback: first H1 heading is the document's real title
-            h = re.search(r"^#\s+(.+)$", content, re.M)
-            if h:
-                title = h.group(1).strip()
+            # fallback: first H1 heading is the document's real title — markdown
+            # only. `^#\s+(.+)$` also matches shell comment separators (e.g.
+            # "# ────────" in .sh/.py), which polluted titles with box-drawing
+            # chars and broke title-weighted ranking for non-md sources.
+            if rel_nfc.lower().endswith(".md"):
+                h = re.search(r"^#\s+(.+)$", content, re.M)
+                if h:
+                    title = h.group(1).strip()
         upserts.append((rel_nfc, title, content))
 
     # mass-deletion guardrail
