@@ -816,6 +816,15 @@ clean_stale_deploys() {
     "agent-swap-refresh.py"
     "agent-nginx-threat-pipeline.sh"
     "koscap-workday-watchdog.py"
+    # Local-only no_agent cron scripts — NOT in repo, created per-host.
+    # Must survive clean_stale_deploys; the cron scheduler resolves them
+    # through the ~/.hermes/scripts → ~/.hermes-cortex/scripts symlink.
+    # (2026-08-02: these were being deleted every deploy, which the doctor's
+    # check_scripts correctly surfaced once the runtime path was unified.)
+    "agent-daily-bible-reading.py"
+    "local-clickhouse-log-cleanup.sh"
+    "local-push-metrics.sh"
+    "local-threat-pipeline.sh"
   )
 
   # Build list of all registered destinations

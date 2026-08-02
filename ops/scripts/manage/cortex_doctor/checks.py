@@ -651,7 +651,21 @@ def check_scripts(res):
       if deployed.exists():
         found = True
         # ── Content verification: compare MD5 with repo source ──
+        # Repo layout is NOT flat: scripts live under ops/scripts/<subdir>/
+        # (health/, manage/, agent/, install/, bus/). Look up the real source
+        # by basename, preferring the closest match. (Before 2026-08-02 this
+        # used repo_scripts / script directly — a flat path — so scripts in
+        # subdirectories silently skipped the MD5 check and stale deployed
+        # copies passed. That let the stale Jul-31 watchdog with gbrain
+        # checks survive a doctor PASS.)
         repo_source = repo_scripts / script
+        if not repo_source.is_file():
+          try:
+            matches = sorted(repo_scripts.rglob(script))
+            if matches:
+              repo_source = matches[0]
+          except OSError:
+            pass
         if repo_source.is_file():
           try:
             # Strip SOURCE header from deployed copy (cortex-update.sh adds it;
@@ -690,6 +704,57 @@ def check_scripts(res):
           f"{script} — deployed copy differs from repo source",
           f"REQUIRED: Run: cortex-update.sh to resync")
 
+
+def check_cron_runtime_scripts(res):
+  """Cron runtime path integrity: ~/.hermes/scripts must resolve to the SAME
+  tree as ~/.hermes-cortex/scripts (cortex-update deploy target).
+
+  The cron scheduler resolves every no_agent job's script against
+  HERMES_HOME/scripts (cron/scheduler.py enforces containment there). If
+  that path is a SEPARATE real directory instead of a symlink (or an
+  equivalent resolution), the scheduler executes stale deployed files and
+  `check_deploy_checksums` still reports PASS (it only checks
+  ~/.hermes-cortex/scripts). Detected 2026-08-02: watchdog ran a frozen
+  Jul-31 copy with gbrain checks after the gbrain→mycortex migration.
+
+  Expected end state (cortex-update.sh): ~/.hermes/scripts is a symlink to
+  ~/.hermes-cortex/scripts, OR both resolve to the same directory.
+  """
+  runtime = HERMES_HOME / "scripts"
+  deploy = CORTEX_HOME / "scripts"
+
+  try:
+    runtime_resolved = runtime.resolve()
+    deploy_resolved = deploy.resolve()
+  except OSError:
+    res.add("Cron runtime scripts", "FAIL", "cannot resolve script dirs",
+        "Check permissions on ~/.hermes and ~/.hermes-cortex")
+    return
+
+  if not runtime.exists():
+    res.add("Cron runtime scripts", "FAIL",
+        f"{runtime} missing — scheduler will fail every no_agent cron",
+        "Run: bash cortex-update.sh (it creates the symlink)")
+    return
+  if not deploy.exists():
+    res.add("Cron runtime scripts", "WARN",
+        f"{deploy} missing — deploy target absent",
+        "Run: bash cortex-update.sh")
+    return
+
+  if runtime_resolved == deploy_resolved:
+    if runtime.is_symlink():
+      res.add("Cron runtime scripts", "PASS",
+          f"{runtime.name} → {str(deploy_resolved).replace(str(HOME), '~')} (symlink)")
+    else:
+      res.add("Cron runtime scripts", "PASS",
+          "resolves to the same directory as deploy target")
+    return
+
+  # Divergent real directory — the stale-cron-copy failure mode
+  res.add("Cron runtime scripts", "FAIL",
+      f"{runtime} is a separate directory from {deploy} — cron scripts run STALE copies",
+      "Remove unique files from ~/.hermes/scripts (back them up first), then run: bash cortex-update.sh to symlink")
 
 def _check_bus_e2e(res):
   """End-to-end bus test: config → health → self round-trip → stuck msgs → EXEC path."""
