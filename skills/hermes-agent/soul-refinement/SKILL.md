@@ -82,6 +82,66 @@ Each message has a unique ID (its filename, e.g. `20260613163202-luke`). This se
 - **Don't bloat.** One-off edge cases → memory or lesson, not SOUL.md.
 - **Mark additions.** Prefix new entries with `<!-- Added YYYY-MM-DD -->`.
 
+## Template Curation — Consolidation & Size Budget (learned 2026-08-03)
+
+The template (`docs/templates/SOUL.md`) and deployed `~/.hermes/SOUL.md` have a
+**size budget enforced by the doctor** (`check_soul_sync` in cortex_doctor/checks.py):
+**WARN >15K, FAIL >20K.** A template that grows past 20K makes every fresh
+deploy FAIL its own identity document — the budget must win over content growth.
+
+### Canonical structure: 12 principles
+
+Principles accumulate from user corrections. When the count drifts toward
+20-30+, **consolidate by theme** back to the canonical 12 (2026-08-03: 34 → 12):
+
+1. Loop Governance — Mandatory Pre-Work Sequence (MCP-Enforced)
+2. Inbox Message Decision Framework (+ audit trail)
+3. Verify Before Declare — Real Work, Real Output
+4. Be Proactive — Fix, Test, Document
+5. Own Every Issue — Fix First, Prove Second
+6. Always Do the Right Way — Canonical Paths
+7. Be Concise — Every Word Earns Its Place
+8. Protect the System — Security, Privacy, Stability
+9. Design for the Full Deployment Matrix
+10. Test Small Before Scaling
+11. Agent Cron Management
+12. Not Done Until Tested — End-to-End Verification
+
+### Consolidation rules
+
+- **Merge by theme, preserve every guardrail.** Each merged principle carries
+  the actionable content of all its source principles (provenance dates inline).
+- **Marker preservation is mandatory.** The doctor's `_extract_soul_markers`
+  extracts bolded phrases (`- **What I did**`, `- **Proactive**`, etc.) and
+  requires template ↔ deployed parity. After any merge, verify:
+  ```bash
+  python3 -c "
+  import sys; sys.path.insert(0, 'ops/scripts/manage')
+  from cortex_doctor.checks import _extract_soul_markers
+  from pathlib import Path
+  m = _extract_soul_markers(Path('docs/templates/SOUL.md'))
+  print(len(m))"  # must equal the pre-merge count (14 as of 2026-08-03)
+  ```
+  The audit-trail markers ("What I did", "How I verified", "How the user learns
+  about it", "Where it's logged") must stay **bold list items** — inlining them
+  as prose silently drops them from the marker set.
+- **Scripture stays at ONE anchor entry.** The daily-bible cron needs the LAST
+  `### Book —` entry to know the next book. Keep exactly one (e.g. Colossians);
+  archive older entries (full content lives in `~/brain/<agent>/bible/`).
+- **Do NOT raise the doctor thresholds** to accommodate a bloated template —
+  the content must fit the budget, not the budget stretch to the content.
+- **Keep the template under 20K** (ideally ≤16K so a fresh deploy lands at WARN,
+  not FAIL).
+
+### Sync after curation
+
+1. Patch `docs/templates/SOUL.md` (repo source)
+2. Rebuild deployed `~/.hermes/SOUL.md` from template + agent-specific sections
+   (Identity / Core Mission / Core Traits / Final Directive) — use a script, not
+   manual copy, to avoid dropping the Hermes-docs paragraph
+3. Run the doctor `check_soul_sync` — markers 14/14, sync PASS, size ≤ WARN
+4. Commit template + skill together; broadcast via `agents-doc-broadcast.py`
+
 ## Pitfalls
 
 - **Don't append the same lesson twice.** If a principle already covers the gap, strengthen it rather than adding another.
