@@ -233,26 +233,26 @@ def check_errored_crons():
 
 
 def check_gbrain_health():
-    """Check gbrain Postgres connectivity.
+    """Check mycortex (gbrain replacement) health via CLI doctor.
 
-    gbrain migrated to Postgres (pgvector). This checks that the autopilot
-    service is active and the configured database is reachable.
+    gbrain was decommissioned 2026-08-02 (mycortex replaces). This checks
+    the mycortex CLI doctor instead of the removed gbrain binary.
     """
-    # Check if gbrain is installed
-    gbrain_home = os.path.expanduser("~/.gbrain")
-    if not os.path.exists(gbrain_home):
-        return  # gbrain not installed, skip
+    # Check if mycortex CLI is installed
+    cli = os.path.expanduser("~/.hermes-cortex/scripts/mycortex")
+    if not os.path.exists(cli):
+        return  # mycortex not installed, skip
 
-    # Run gbrain doctor to verify health
-    out, err, rc = run("gbrain doctor --fast 2>&1", timeout=60)
+    # Run mycortex doctor to verify health
+    out, err, rc = run(f"{cli} doctor --json 2>&1", timeout=60)
     combined = (out + " " + err).lower()
 
     if rc != 0 and "could not connect" in combined:
-        add_issue("gbrain_connection_failure", "high", "gbrain cannot connect to configured database", {
+        add_issue("gbrain_connection_failure", "high", "mycortex cannot connect to configured database", {
             "error_snippet": (out + err)[:300],
         })
     elif rc != 0:
-        add_issue("gbrain_health_check_failed", "medium", "gbrain doctor reported issues", {
+        add_issue("gbrain_health_check_failed", "medium", "mycortex doctor reported issues", {
             "error_snippet": (out + err)[:300],
         })
 

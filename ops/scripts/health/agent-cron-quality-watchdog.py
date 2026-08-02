@@ -36,8 +36,6 @@ MONITORED_CRONS = [
     "local-agent-daily-news-brief",
     "local-agent-daily-system-brief",
     "local-agent-daily-finance-brief",
-    "gbrain-update-sync",
-    "gbrain-nightly-dream",
 ]
 
 

@@ -338,13 +338,11 @@ check_service_manager() {
         # macOS: launchd labels
         SERVICES=(
             "com.ollama.serve"
-            "com.gbrain.autopilot"
             "com.hermes.gateway"
             "com.hermes.cortex-dashboard"
         )
         SERVICE_NAMES=(
             "Ollama"
-            "gbrain autopilot"
             "Hermes Gateway"
             "Cortex Dashboard"
         )
@@ -358,7 +356,6 @@ check_service_manager() {
         )
         SERVICE_NAMES=(
             "Ollama"
-            "gbrain autopilot"
             "Hermes Gateway"
             "Cortex Dashboard"
         )

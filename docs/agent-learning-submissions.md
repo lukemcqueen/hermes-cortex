@@ -5,6 +5,11 @@ Any Hermes Cortex agent can submit ad-hoc learnings to the orchestrator
 
 ## Quick Start
 
+The `~/brain/learnings/pending` and `~/brain/learnings/sent` directories are
+auto-created by the `agent-learning-collector` on its first tick (every 6h)
+and by `bootstrap-brain.sh` during install — the `mkdir -p` below is only
+needed for immediate use before the first collector run.
+
 During an active session, write a structured `.md` file:
 
 ```bash

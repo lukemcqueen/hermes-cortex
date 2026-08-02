@@ -346,74 +346,31 @@ def check_gbrain_sources() -> dict:
         return total, never_synced, zero_pages
 
     try:
-        bun_path = Path.home() / ".bun" / "bin"
-        gbrain_cmd = str(bun_path / "gbrain")
+        cli = Path.home() / ".hermes-cortex" / "scripts" / "mycortex"
+        if not cli.exists():
+            return {"status": "UNKNOWN", "detail": "mycortex not installed — run install.sh"}
 
-        if not bun_path.exists() or not Path(gbrain_cmd).exists():
-            return {"status": "UNKNOWN", "detail": "gbrain not installed — run install.sh"}
-
-        # Try 1: gbrain doctor --json (authoritative)
+        # mycortex doctor --json (gbrain decommissioned 2026-08-02)
+        result = _run([str(cli), "doctor", "--json"], timeout=30)
+        # doctor exits 0 iff ok — authoritative. stdout mixes human lines
+        # with a trailing JSON line, so fall back to rc on parse failure.
+        if result.returncode != 0:
+            return {"status": "DEGRADED", "detail": f"mycortex doctor rc={result.returncode}"}
+        import json as _json
         try:
-            result = _run([gbrain_cmd, "doctor", "--json"], timeout=30)
-            if result.returncode == 0 and result.stdout.strip():
-                import json as _json
-                data = _json.loads(result.stdout)
-                checks = data.get("doctor", {}).get("checks", [])
-                failures = []
-                for check in checks:
-                    name = check.get("name", "")
-                    status = check.get("status", "")
-                    msg = check.get("message", "")
-                    if status == "fail" and any(kw in name for kw in ["sync", "embed", "source", "cycle"]):
-                        failures.append(f"{name}: {msg[:120]}")
-                    elif status == "warn" and name in ("sync_freshness", "cycle_freshness", "orphan_ratio"):
-                        failures.append(f"{name}: {msg[:120]}")
-
-                sync_checks = [c for c in checks if c.get("name") == "sync_freshness"]
-                if sync_checks:
-                    sync_msg = sync_checks[0].get("message", "")
-                    if "never" in sync_msg.lower() or "0 page" in sync_msg.lower():
-                        failures.append(f"Sources never synced or have 0 pages: {sync_msg[:150]}")
-
-                if failures:
-                    detail = "; ".join(failures[:3])
-                    more = f" (+{len(failures) - 3} more)" if len(failures) > 3 else ""
-                    return {"status": "DEGRADED", "detail": f"{detail}{more}"}
-
-                overall = data.get("overall_health_score", -1)
-                if 0 <= overall < 50:
-                    return {"status": "DEGRADED", "detail": f"Health score: {overall}/100"}
-                return {"status": "UP", "detail": "All sources healthy"}
-        except (json.JSONDecodeError, ValueError):
-            pass  # expected — silently handled
-
-        # Try 2: gbrain sources list (parseable fallback)
-        result2 = _run([gbrain_cmd, "sources", "list"], timeout=15)
-        if result2.returncode == 0 and result2.stdout.strip():
-            total, never_synced, zero_pages = _parse_sources_list(result2.stdout)
-            issues = []
-            if never_synced > 0:
-                issues.append(f"{never_synced} source(s) never synced")
-            if zero_pages > 0 and zero_pages == total:
-                issues.append("all sources have 0 pages")
-            elif zero_pages > 0:
-                issues.append(f"{zero_pages} source(s) have 0 pages")
-
-            if issues:
-                return {"status": "DEGRADED", "detail": "; ".join(issues[:2])}
-            if total == 0:
-                return {"status": "UNKNOWN", "detail": "no gbrain sources found"}
-            return {"status": "UP", "detail": f"{total} source(s), all synced"}
-
-        # Try 3: can't even list sources
-        return {"status": "UNKNOWN", "detail": "gbrain available but sources list failed — run bootstrap-brain.sh"}
+            data = _json.loads(result.stdout)
+            if data.get("ok"):
+                return {"status": "UP", "detail": f"schema {data.get('schema_version', '?')}"}
+            return {"status": "DEGRADED", "detail": "mycortex doctor reported issues"}
+        except (_json.JSONDecodeError, ValueError):
+            return {"status": "UP", "detail": "doctor OK (rc=0)"}
 
     except FileNotFoundError:
-        return {"status": "UNKNOWN", "detail": "gbinary not found in PATH"}
+        return {"status": "UNKNOWN", "detail": "mycortex CLI not found"}
     except subprocess.TimeoutExpired:
-        return {"status": "UNKNOWN", "detail": "gbrain check timed out"}
+        return {"status": "UNKNOWN", "detail": "mycortex check timed out"}
     except Exception as e:
-        return {"status": "UNKNOWN", "detail": f"gbrain check: {e}"}
+        return {"status": "UNKNOWN", "detail": f"mycortex check: {e}"}
 
 
 def check_inbox_staleness() -> dict:

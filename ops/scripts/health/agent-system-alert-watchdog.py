@@ -192,23 +192,6 @@ def check_service(label: str) -> dict:
     return _check_launchd(label)
 
 
-def _service_enabled(name: str) -> bool:
-    """True if a systemd user service is ENABLED (intends to run).
-
-    Disabled unit = intended post-decommission state (gbrain), not an alert.
-    """
-    if not is_linux:
-        return True
-    unit = name if name.endswith(".service") else f"{name}.service"
-    try:
-        out = subprocess.run(
-            ["systemctl", "--user", "is-enabled", unit],
-            capture_output=True, text=True, timeout=10,
-        ).stdout.strip()
-    except Exception:
-        return True
-    return out == "enabled"
-
 def check_docker_containers() -> dict:
     containers = {
         "ClickHouse": "langfuse-clickhouse-1",
@@ -284,49 +267,35 @@ def check_memory_sync_freshness() -> dict:
     else:
         return {"status": "DOWN", "detail": f"Last sync: {age.total_seconds() / 3600:.1f}h ago — stale!"}
 
-def check_gbrain_sources() -> dict:
-    """Check gbrain autopilot is running. Avoids DB-lock contention with running autopilot."""
+def check_mycortex() -> dict:
+    """Check mycortex (gbrain replacement) health via the CLI doctor.
+
+    gbrain was decommissioned 2026-08-02; mycortex is a cron-synced Postgres
+    index with no daemon. Doctor verifies schema version + source freshness.
+    """
+    cli = Path.home() / ".hermes-cortex" / "scripts" / "mycortex"
+    if not cli.exists():
+        return {"status": "UNKNOWN", "detail": "mycortex CLI not installed"}
     try:
-        bun_path = Path.home() / ".bun" / "bin"
-        gbrain_cmd = str(bun_path / "gbrain")
-        if not bun_path.exists() or not Path(gbrain_cmd).exists():
-            return {"status": "UNKNOWN", "detail": "gbrain not installed"}
-        # Check autopilot process directly via pgrep — no DB lock needed
-        pg = subprocess.run(
-            ["pgrep", "-f", "gbrain.*autopilot"],
-            capture_output=True, timeout=5,
+        r = subprocess.run(
+            [str(cli), "doctor", "--json"],
+            capture_output=True, text=True, timeout=30,
         )
-        if pg.returncode != 0:
-            return {"status": "DOWN", "detail": "gbrain-autopilot not active in any scope"}
-        pids = pg.stdout.decode().strip().split()
-        # Verify autopilot log is recent (last 10 min)
-        log = Path.home() / ".gbrain" / "autopilot.log"
-        log_ok = True
-        if log.exists():
-            age = (NOW - datetime.fromtimestamp(log.stat().st_mtime, tz=timezone.utc).astimezone()).total_seconds()
-            if age > 600:
-                # Log stale — check journald (autopilot may log via systemd, not to file)
-                try:
-                    jctl = subprocess.run(
-                        ["journalctl", "--user", "-u", "gbrain-autopilot.service",
-                         "--since", "10 minutes ago", "--no-pager", "-n", "5"],
-                        capture_output=True, text=True, timeout=5,
-                    )
-                    if jctl.returncode == 0 and jctl.stdout.strip():
-                        log_ok = True  # Journald has recent activity
-                    else:
-                        log_ok = False
-                except (FileNotFoundError, subprocess.TimeoutExpired):
-                    log_ok = False
-                if not log_ok:
-                    return {"status": "DEGRADED", "detail": f"autopilot PID(s) {'/'.join(pids)} but log stale ({age:.0f}s)"}
-        return {"status": "UP", "detail": f"autopilot PID(s) {'/'.join(pids)}"}
-    except FileNotFoundError:
-        return {"status": "UNKNOWN", "detail": "pgrep not found"}
+        # doctor exits 0 iff ok — authoritative. stdout mixes human lines
+        # with a trailing JSON line, so fall back to rc on parse failure.
+        if r.returncode != 0:
+            return {"status": "DOWN", "detail": f"mycortex doctor rc={r.returncode}"}
+        try:
+            data = _json.loads(r.stdout)
+            if data.get("ok"):
+                return {"status": "UP", "detail": f"schema {data.get('schema_version', '?')}"}
+            return {"status": "DEGRADED", "detail": "mycortex doctor reported issues"}
+        except _json.JSONDecodeError:
+            return {"status": "UP", "detail": "doctor OK (rc=0)"}
     except subprocess.TimeoutExpired:
-        return {"status": "UNKNOWN", "detail": "autopilot check timed out"}
+        return {"status": "UNKNOWN", "detail": "mycortex doctor timed out"}
     except Exception as e:
-        return {"status": "UNKNOWN", "detail": f"gbrain check: {e}"}
+        return {"status": "UNKNOWN", "detail": f"mycortex check: {e}"}
 
 # ── Legacy resource checks (from original system-alert-watchdog.py) ──
 
@@ -501,25 +470,13 @@ def main():
     check_resources()
 
     # Phase 2: Service availability checks
-    if is_linux:
-        ollama_svc = "ollama"
-        gbrain_svc = "gbrain-autopilot"
-    else:
-        ollama_svc = "com.ollama.serve"
-        gbrain_svc = "com.gbrain.autopilot"
-
     services = {
         "Ollama": check_ollama(),
-        "gbrain sources": check_gbrain_sources(),
+        "mycortex": check_mycortex(),
         "Docker (Langfuse)": check_docker_containers(),
         "Gateway activity": check_gateway_log(),
         "Memory→brain sync": check_memory_sync_freshness(),
     }
-    # gbrain sync daemon — DECOMMISSIONED 2026-08-02: only monitor when the
-    # unit is still ENABLED (half-state). A disabled unit is the intended
-    # post-decommission state, not an alert.
-    if _service_enabled(gbrain_svc):
-        services["gbrain sync"] = check_service(gbrain_svc)
 
     # Add service statuses to details/alerts
     for name, result in services.items():

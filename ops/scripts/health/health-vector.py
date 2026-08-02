@@ -13,9 +13,9 @@ Service map (index → service name) from agent-registry.json:
   [3] no_stale_crons      — no cron jobs gone stale
   [4] nginx               — nginx process running
   [5] ollama              — Ollama process running
-  [6] gbrain              — gbrain sync daemon running
+  [6] mycortex            — mycortex (gbrain replacement) doctor healthy
   [7] disk_ok             — disk has sufficient free space
-  [8] gbrain_sources_ok   — gbrain source directories exist
+  [8] gbrain_sources_ok   — brain source directories exist
 
 Output: {"v":[1,1,-1,1,1,1,1,1,1],"h":"hostname","t":1700000000}
   v[i] =  1  → healthy
@@ -44,7 +44,7 @@ SERVICE_MAP = [
     "no_stale_crons",
     "nginx",
     "ollama",
-    "gbrain",
+    "mycortex",
     "disk_ok",
     "gbrain_sources_ok",
 ]
@@ -270,7 +270,7 @@ def check_services() -> int:
         return 1 if all_running else -1
     else:
         # macOS: pgrep-based — return 1 if any found running, 0 if none installed
-        for pat in ["nginx", "ollama", "gbrain"]:
+        for pat in ["nginx", "ollama"]:
             if _pgrep(pat, exact=True) or _pgrep(pat, exact=False, full=True):
                 return 1
         return 0
@@ -348,19 +348,27 @@ def check_ollama() -> int:
     return -1
 
 
-def check_gbrain() -> int:
-    """gbrain: 1 = running, 0 = not installed, -1 = installed but down."""
-    if not shutil.which("gbrain"):
+def check_mycortex() -> int:
+    """mycortex (gbrain replacement): 1 = healthy, 0 = not installed, -1 = installed but down."""
+    cli = os.path.expanduser("~/.hermes-cortex/scripts/mycortex")
+    if not os.path.exists(cli):
         return 0  # not installed on this system
-    if _is_linux:
-        if _systemd_active("gbrain-sync.service"):
-            return 1
-    if _is_macos:
-        if _launchd_active("com.gbrain.autopilot"):
-            return 1
-    if _pgrep("gbrain", exact=False, full=True):
-        return 1
-    return -1
+    try:
+        r = subprocess.run(
+            [cli, "doctor", "--json"],
+            capture_output=True, text=True, timeout=30,
+        )
+        # doctor exits 0 iff ok — authoritative. stdout mixes human lines
+        # with a trailing JSON line, so fall back to rc on parse failure.
+        if r.returncode != 0:
+            return -1
+        try:
+            data = json.loads(r.stdout)
+            return 1 if data.get("ok") else -1
+        except (json.JSONDecodeError, ValueError):
+            return 1  # rc=0 means doctor passed
+    except Exception:
+        return -1
 
 
 def check_disk_ok() -> int:
@@ -404,7 +412,7 @@ CHECK_FUNCTIONS = [
     check_no_stale_crons,
     check_nginx,
     check_ollama,
-    check_gbrain,
+    check_mycortex,
     check_disk_ok,
     check_gbrain_sources_ok,
 ]

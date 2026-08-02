@@ -614,12 +614,15 @@ def _inbox_delete(args: dict) -> CallToolResult:
 # ═══════════════════════════════════════════════════════════════
 
 # Registry path (file-based, used for remote agent discovery)
-STATE_REGISTRY = HOME / ".hermes" / "state" / "agent-registry.json"
+# Canonical: ~/.hermes-cortex/state/agent-registry.json (setup-agent-registry.sh)
+# Legacy fallback: ~/.hermes/state/agent-registry.json (pre-2026-07 installs)
+STATE_REGISTRY = HOME / ".hermes-cortex" / "state" / "agent-registry.json"
+LEGACY_STATE_REGISTRY = HOME / ".hermes" / "state" / "agent-registry.json"
 
 
 def _load_agent_registry() -> dict:
     """Load agent registry from file. Used for remote agent discovery."""
-    for path in [STATE_REGISTRY]:
+    for path in [STATE_REGISTRY, LEGACY_STATE_REGISTRY]:
         if path.exists():
             try:
                 return json.loads(path.read_text())

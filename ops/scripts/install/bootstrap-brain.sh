@@ -99,6 +99,12 @@ if [[ ! -d "$BRAIN_DIR" ]]; then
   exit 1
 fi
 
+# ── Step 0: Bootstrap learnings dirs (ad-hoc learning submissions) ──
+# Agents write structured .md files to ~/brain/learnings/pending/ during
+# sessions; the agent-learning-collector picks them up and moves them to
+# sent/ after upload. Create both now so the channel exists on fresh installs.
+mkdir -p "${BRAIN_DIR}/learnings/pending" "${BRAIN_DIR}/learnings/sent"
+
 BRAIN_SOURCES=()
 while IFS= read -r -d '' dir; do
   name=$(basename "$dir")

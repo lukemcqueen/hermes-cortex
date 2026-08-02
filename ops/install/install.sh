@@ -989,99 +989,46 @@ def check_memory_sync_freshness():
     return {"status": "DOWN", "detail": f"Last sync: {age.total_seconds() / 3600:.1f}h ago — stale!"}
 
 
-def check_gbrain_sources():
-  """Check gbrain source health: flag 'never synced' or '0 pages' sources.
+def check_mycortex():
+  """Check mycortex (gbrain replacement) health via the CLI doctor.
 
-  Gracefully degrades when gbrain doctor is unavailable:
-   - Falls back to parsing 'sources list' output
-   - Returns UNKNOWN (not DOWN) when gbrain isn't installed
+  gbrain was decommissioned 2026-08-02. mycortex is a cron-synced Postgres
+  index with no daemon; doctor verifies schema version + source freshness.
+  Returns UNKNOWN (not DOWN) when mycortex isn't installed.
   """
-  def _run(args, timeout=15):
-    env = os.environ.copy()
-    env["PATH"] = f"{Path.home() / '.bun/bin'}:{env.get('PATH', '')}"
-    return subprocess.run(
-      args, capture_output=True, text=True, timeout=timeout,
-      env=env, cwd=str(Path.home() / "brain"),
-    )
-  def _parse_sources_list(output):
-    lines = output.strip().split("\n")
-    total = never_synced = zero_pages = 0
-    for line in lines:
-      parts = line.split()
-      if len(parts) >= 3 and parts[2].isdigit():
-        pages = int(parts[2]); total += 1
-        if pages == 0: zero_pages += 1
-        if "never synced" in line.lower(): never_synced += 1
-    return total, never_synced, zero_pages
+  cli = Path.home() / ".hermes-cortex" / "scripts" / "mycortex"
+  if not cli.exists():
+    return {"status": "UNKNOWN", "detail": "mycortex not installed — run install.sh"}
   try:
-    bun_path = Path.home() / ".bun" / "bin"
-    gbrain_cmd = str(bun_path / "gbrain")
-    if not bun_path.exists() or not Path(gbrain_cmd).exists():
-      return {"status": "UNKNOWN", "detail": "gbrain not installed — run install.sh"}
-    # Try 1: gbrain doctor --json
+    result = subprocess.run(
+      [str(cli), "doctor", "--json"],
+      capture_output=True, text=True, timeout=30,
+    )
+    # doctor exits 0 iff ok — authoritative. stdout mixes human lines
+    # with a trailing JSON line, so fall back to rc on parse failure.
+    if result.returncode != 0:
+      return {"status": "DEGRADED", "detail": f"mycortex doctor rc={result.returncode}"}
+    import json as _json
     try:
-      result = _run([gbrain_cmd, "doctor", "--json"], timeout=30)
-      if result.returncode == 0 and result.stdout.strip():
-        import json as _json
-        data = _json.loads(result.stdout)
-        checks = data.get("doctor", {}).get("checks", [])
-        failures = []
-        for check in checks:
-          name = check.get("name", ""); status = check.get("status", ""); msg = check.get("message", "")
-          if status == "fail" and any(kw in name for kw in ["sync", "embed", "source", "cycle"]):
-            failures.append(f"{name}: {msg[:120]}")
-          elif status == "warn" and name in ("sync_freshness", "cycle_freshness", "orphan_ratio"):
-            failures.append(f"{name}: {msg[:120]}")
-        sync_checks = [c for c in checks if c.get("name") == "sync_freshness"]
-        if sync_checks:
-          sync_msg = sync_checks[0].get("message", "")
-          if "never" in sync_msg.lower() or "0 page" in sync_msg.lower():
-            failures.append(f"Sources never synced: {sync_msg[:150]}")
-        if failures:
-          detail = "; ".join(failures[:3])
-          more = f" (+{len(failures)-3} more)" if len(failures) > 3 else ""
-          return {"status": "DEGRADED", "detail": f"{detail}{more}"}
-        overall = data.get("overall_health_score", -1)
-        if 0 <= overall < 50:
-          return {"status": "DEGRADED", "detail": f"Health score: {overall}/100"}
-        return {"status": "UP", "detail": "All sources healthy"}
-    except (json.JSONDecodeError, ValueError):
-      pass
-    # Try 2: gbrain sources list
-    result2 = _run([gbrain_cmd, "sources", "list"], timeout=15)
-    if result2.returncode == 0 and result2.stdout.strip():
-      total, never_synced, zero_pages = _parse_sources_list(result2.stdout)
-      issues = []
-      if never_synced > 0:
-        issues.append(f"{never_synced} source(s) never synced")
-      if zero_pages > 0 and zero_pages == total:
-        issues.append("all sources have 0 pages")
-      elif zero_pages > 0:
-        issues.append(f"{zero_pages} source(s) have 0 pages")
-      if issues:
-        return {"status": "DEGRADED", "detail": "; ".join(issues[:2])}
-      if total == 0:
-        return {"status": "UNKNOWN", "detail": "no gbrain sources found"}
-      return {"status": "UP", "detail": f"{total} source(s), all synced"}
-    return {"status": "UNKNOWN", "detail": "gbrain available but sources list failed — run bootstrap-brain.sh"}
-  except FileNotFoundError:
-    return {"status": "UNKNOWN", "detail": "gbinary not found in PATH"}
+      data = _json.loads(result.stdout)
+      if data.get("ok"):
+        return {"status": "UP", "detail": f"schema {data.get('schema_version', '?')}"}
+      return {"status": "DEGRADED", "detail": "mycortex doctor reported issues"}
+    except (_json.JSONDecodeError, ValueError):
+      return {"status": "UP", "detail": "doctor OK (rc=0)"}
   except subprocess.TimeoutExpired:
-    return {"status": "UNKNOWN", "detail": "gbrain check timed out"}
+    return {"status": "UNKNOWN", "detail": "mycortex check timed out"}
   except Exception as e:
-    return {"status": "UNKNOWN", "detail": f"gbrain check: {e}"}
+    return {"status": "UNKNOWN", "detail": f"mycortex check: {e}"}
 
 
 def run():
   checks = {
     "Ollama": check_service("com.ollama.serve"),
-    # gbrain autopilot handles sync internally (Postgres multi-connection).
-    "gbrain sync daemon": (
-      check_service("com.gbrain.autopilot")
-      if check_service("com.gbrain.autopilot")["status"] != "DOWN"
-      else check_service("com.gbrain.sync-watch")
-    ),
-    "gbrain sources": check_gbrain_sources(),
+    # gbrain sync daemon DECOMMISSIONED 2026-08-02 — mycortex replaces it
+    # (cron-synced Postgres index, no daemon to check). Health is verified
+    # via the mycortex CLI doctor below.
+    "mycortex": check_mycortex(),
     "Gateway activity": check_gateway_log(),
     "Memory→brain sync": check_memory_sync_freshness(),
     "Disk usage": check_disk_usage(),

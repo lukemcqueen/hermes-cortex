@@ -540,6 +540,16 @@ def main():
     dry_run = "--dry-run" in sys.argv
     force = "--force" in sys.argv
 
+    # Self-heal: ensure the learnings dirs exist. Agents write ad-hoc
+    # learnings to ~/brain/learnings/pending/ during sessions; the dir may
+    # not exist on fresh installs. Creating it here means every fleet agent
+    # bootstraps it on the next collector tick (runs every 6h).
+    try:
+        LEARNINGS_PENDING_DIR.mkdir(parents=True, exist_ok=True)
+        LEARNINGS_SENT_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass  # silent — watchdog pattern; next tick retries
+
     state = load_state()
     t0 = time.time()
 

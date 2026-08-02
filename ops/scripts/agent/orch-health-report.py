@@ -36,7 +36,7 @@ REGISTRY_TEMPLATE = HOME / "hermes-cortex" / "ops" / "install" / "deploy" / "age
 REGISTRY_LOCAL = HOME / ".hermes-cortex" / "state" / "agent-registry.local.json"
 TIMEOUT = 3
 SERVICE_MAP = ["resources", "services", "no_errored_crons", "no_stale_crons",
-               "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok"]
+               "nginx", "ollama", "mycortex", "disk_ok", "gbrain_sources_ok"]
 ICONS = {1: "🟢", 0: "⚪", -1: "🔴"}
 
 # Laptop grace period — shared with orch-fleet-watchdog.py

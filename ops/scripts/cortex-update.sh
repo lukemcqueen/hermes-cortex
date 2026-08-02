@@ -1514,7 +1514,7 @@ verify_services() {
 
   if [[ "$os" == "Darwin" ]]; then
     local any_missing=0
-    for label in com.ollama.serve com.gbrain.autopilot com.hermes.gateway com.hermes.cortex-dashboard com.hermes.agent-inbox; do
+    for label in com.ollama.serve com.hermes.gateway com.hermes.cortex-dashboard com.hermes.agent-inbox; do
       if ! launchctl list "$label" &>/dev/null 2>&1; then
         warn "$label: not registered with launchd"
         any_missing=$((any_missing + 1))

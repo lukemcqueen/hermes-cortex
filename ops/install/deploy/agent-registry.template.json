@@ -3,7 +3,7 @@
   "description": "Agent registry for Hermes Cortex v4. Template — copy to ~/.hermes-cortex/state/agent-registry.json and fill in real URLs and settings during setup. Every agent MUST have entries for all 5 fleet concerns: identity & trust, topology, choreography, economics, and sovereign control.",
   "health_vector_map": [
     "resources", "services", "no_errored_crons", "no_stale_crons",
-    "nginx", "ollama", "gbrain", "disk_ok", "gbrain_sources_ok"
+    "nginx", "ollama", "mycortex", "disk_ok", "gbrain_sources_ok"
   ],
   "routing": {
     "broadcast_topics": [
