@@ -1,0 +1,17 @@
+# ─────────────────────────────────────────────────────────────
+# Git attributes — merge drivers for machine-generated files
+# ─────────────────────────────────────────────────────────────
+# blocked_ips.add / blocked_ips.submit are append-only, one-IP-per-line
+# blocklists regenerated independently by the agent-nginx-threat-pipeline
+# cron on MULTIPLE hosts. Without a merge driver, every pull/rebase where
+# two hosts appended IPs conflicts (the classic blocked_ips.add conflict).
+#
+# `merge=union` is a built-in git driver: when both sides modify the file,
+# the result is the concatenation of both versions — no conflict markers,
+# no IPs lost. Duplicate lines are harmless (nginx deny dedupes implicitly
+# and fix-blocked-ips.py tolerates them). The pipeline's own
+# `git pull --rebase` retry now succeeds instead of aborting.
+#
+# Applied 2026-08-02 (Joseph) to eliminate blocked_ips.add pull conflicts.
+ops/install/deploy/nginx/blocked_ips.add merge=union
+ops/install/deploy/nginx/blocked_ips.submit merge=union
