@@ -69,11 +69,11 @@
 ---
 ## Core Concepts
 
-**What:** Public installer + skill set for [Hermes Agent](https://hermes-agent.nousresearch.com) — Ollama, gbrain, Langfuse, Dashboard, brain dirs, sync daemon.
+**What:** Public installer + skill set for [Hermes Agent](https://hermes-agent.nousresearch.com) — Ollama, mycortex, Langfuse, Dashboard, brain dirs, sync daemon.
 
 **Key dirs:** `docs/` (guides), `ops/install/` (deploy), `.hermes-cortex/` (state, memory, skills), skills at `~/.hermes/skills/<category>/<name>/`.
 
-**Principles:** Two-repo (public MIT + private), PII-scrubbed, pointer memory (MEMORY.md ~2.2K → gbrain), state routing (context → history → memory → docs).
+**Principles:** Two-repo (public MIT + private), PII-scrubbed, pointer memory (MEMORY.md ~2.2K → mycortex), state routing (context → history → memory → docs).
 
 ## Skill loading — NOT OPTIONAL
 Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify with `agent-flow`, load matching `on_task` skills. See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md).
