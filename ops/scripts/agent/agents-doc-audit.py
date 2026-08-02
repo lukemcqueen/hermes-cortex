@@ -657,9 +657,8 @@ def check_git_freshness(file_path):
                 result["git_date"] = r.stdout.strip()
                 # Compare disk vs git
                 git_dt = datetime.strptime(
-                    r.stdout.strip().split(" ")[0] + "T" + r.stdout.strip().split(" ")[1],
-                    "%Y-%m-%dT%H:%M:%S",
-                ).replace(tzinfo=timezone.utc)
+                    r.stdout.strip(), "%Y-%m-%d %H:%M:%S %z"
+                ).astimezone(timezone.utc)
                 # Stale if disk is older than latest git commit for that file
                 result["stale"] = disk_mtime < git_dt
         except Exception:

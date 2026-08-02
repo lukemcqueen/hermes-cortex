@@ -84,6 +84,8 @@ Evaluate every inbox message on three axes: **Priority** (critical/urgent/normal
 | normal | AUTO-ACT | AUTO-ACT | Escalate to user | Escalate to user |
 | notification | Acknowledge | Acknowledge | Acknowledge | Forward if needed |
 
+#### Inbox Audit Trail
+
 **Audit trail — every action in response to an inbox message is complete only when it has:**
 - **What I did** — the change or action
 - **How I verified** — the test, curl check, or confirmation
