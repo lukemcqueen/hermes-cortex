@@ -38,5 +38,8 @@ for i in "${!TABLES[@]}"; do
   fi
 done
 
-# Silent exit = no delivery when healthy
-[ "$TRUNCATED" -eq 0 ] && exit 0
+# Silent exit = no delivery when healthy. Exit 0 in ALL cases — the
+# truncation messages above are informational, not errors. A non-zero
+# exit here makes the cron report "Script exited with code 1" every
+# time a table was actually truncated (false failure).
+exit 0
