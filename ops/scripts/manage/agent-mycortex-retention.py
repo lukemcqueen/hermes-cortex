@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-local-mycortex-retention.py — prune stale mycortex audit/archived data (S-016).
+agent-mycortex-retention.py — prune stale mycortex audit/archived data (S-016).
 
 Runs as a no_agent cron (daily). Silent (empty stdout) when nothing pruned or
 pruning succeeds with nothing to do. Emits a one-line summary when rows ARE

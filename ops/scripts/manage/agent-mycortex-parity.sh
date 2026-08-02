@@ -6,7 +6,7 @@
 # Prints the failure summary + rates when the gate regresses, so the
 # cron delivery path alerts the fleet owner.
 #
-# Used by the daily 'local-mycortex-parity' cron (no_agent mode).
+# Used by the daily 'agent-mycortex-parity' cron (no_agent mode).
 set -u
 
 REPO="${HOME}/hermes-cortex"

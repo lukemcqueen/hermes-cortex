@@ -489,8 +489,8 @@ if $UNINSTALL; then
     "agent-memory-to-brain-sync" \
     "agent-message-handler" \
     "agent-mycortex-sync" \
-    "local-mycortex-parity" \
-    "local-mycortex-retention" \
+    "agent-mycortex-parity" \
+    "agent-mycortex-retention" \
     "agent-model-health-watchdog" \
     "agent-nginx-threat-pipeline" \
     "agent-no-verify-audit" \
@@ -664,8 +664,8 @@ create_cron "agent-mycortex-sync" "*/15 * * * *" \
 # daily mycortex parity watchdog — enforces the S-010 zero-regression
 # window during the gbrain flip gate. no_agent: silent on pass, emits
 # only when the gate regresses (watchdog pattern, alerts the owner).
-create_cron "local-mycortex-parity" "0 5 * * *" \
-  "local-mycortex-parity.sh" \
+create_cron "agent-mycortex-parity" "0 5 * * *" \
+  "agent-mycortex-parity.sh" \
   "" \
   "" \
   "" \
@@ -676,8 +676,8 @@ create_cron "local-mycortex-parity" "0 5 * * *" \
 # daily mycortex retention — prune ingest_log >90d, hard-purge archived
 # pages past the 7-day soft-delete window (S-016). no_agent: silent when
 # nothing pruned, one-line summary when rows are removed.
-create_cron "local-mycortex-retention" "0 6 * * *" \
-  "local-mycortex-retention.py" \
+create_cron "agent-mycortex-retention" "0 6 * * *" \
+  "agent-mycortex-retention.py" \
   "" \
   "" \
   "" \

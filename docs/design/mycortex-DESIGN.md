@@ -332,7 +332,7 @@ Phase 9  VERIFY      bible/lessons/memory-sync crons healthy; bus schema intact;
 | `agent-daily-bible-reading` | KEEP | **No** (file write to `~/brain/<agent>/bible/`) | Regression-tested in S-013 |
 | `agent-learning-collector` | KEEP | **No** (writes `~/brain/lessons/`) | lessons becomes mycortex source |
 | `agent-mycortex-sync` | ADD | No | The replacement for autopilot; advisory-lock guarded (per-host, not orchestrator-only) |
-| `local-mycortex-retention` | ADD | No | query_log/ingest_log prune >90d; archived pages purge >7d |
+| `agent-mycortex-retention` | ADD | No | query_log/ingest_log prune >90d; archived pages purge >7d |
 
 **Keep-rule:** every kept cron verified to have zero `gbrain`/`pglite`/`public.*` references before P4. Doctor's expected-cron list updated in the same commit as the remove (both arrays).
 
