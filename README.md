@@ -65,7 +65,7 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 | **Recovery** | `service-recovery`, `agent-apply-fixes`, `remediation-sensor` | Auto-restart crashed services, apply fixes |
 | **Governance** | `governance-auditor`, `scoring-activity-watchdog` | Score tracking, lock cleanup, audit trails |
 | **Messaging** | `agent-bus-workday/evening/overnight` | Process agent-bus messages on schedule |
-| **Sync** | `hermes-cortex-sync`, `memory-to-brain-sync`, `gbrain-update-sync` | Pull updates, persist memory, sync brain |
+| **Sync** | `hermes-cortex-sync`, `memory-to-brain-sync`, `agent-mycortex-sync` | Pull updates, persist memory, sync knowledge brain (every 15 min) |
 | **Security** | `threat-pipeline`, `agent-ip-submission` | Block threats, report IPs |
 | **Maintenance** | `memory-pruning`, `session-cache-build`, `orch-skill-lifecycle` | Weekly consolidation, daily skill lifecycle pipeline |
 | **Content** | `agent-daily-bible-reading`, `orch-skill-lifecycle`, `offline-code-index` | Daily spiritual, skill lifecycle (daily 04:00), code indexing |
@@ -78,14 +78,14 @@ All crons follow the **silent-when-good** pattern — zero output when healthy, 
 A cascade retrieval system that works with or without internet:
 
 ```
-Agent query → web_cache (50μs) → kiwix ZIM (localhost:8080) → gbrain (RAG) → LLM (always)
+Agent query → web_cache (50μs) → kiwix ZIM (localhost:8080) → mycortex (RAG) → LLM (always)
 ```
 
 - **Web Cache** — Semantic search cache (sqlite-vec + Ollama embeddings, ~200MB LRU) — saves API costs
 - **Offline Knowledge** — Wikipedia, WikiMed, Wikivoyage, Wikibooks available locally via Docker ZIM server
 - **Offline Code Assistant** — 521 curated code snippets across 32 categories, 19 programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
 - **Offline Reader** — Zero-dependency web UI (`python3 ops/offline/offline-reader.py`) for Bible (55+ languages), hymns, and wiki reference
-- **gbrain** — Persistent knowledge brain (Postgres + pgvector, Docker) with automatic sync daemon
+- **mycortex** — Fleet knowledge brain: git repos as source of truth → shared Postgres index (FTS + pg_texample; pgvector semantic slice in v1.1) → thin Python CLI + 15-min cron sync. No daemon, no bun. **Inspired by [gbrain](https://github.com/garrytan/gbrain)** (garrytan, MIT) — the same Postgres-native knowledge-brain idea, re-architected with fail-closed RLS source isolation, per-host registration, and a PII federation gate. [Design doc](docs/design/mycortex-DESIGN.md) · [Migration stories](docs/elicit/2026-08-01_mycortex-stories.md)
 
 ### 📊 Observability Stack
 
@@ -235,6 +235,7 @@ CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 | 16 | **Cron Jobs** | 160+ maintenance crons: health, security, sync, recovery, reporting |
 | 17 | **nginx** † | Reverse proxy for Langfuse + Dashboard + hardening |
 | | *† Server profile only* | |
+| | *The knowledge brain is migrating from gbrain → **mycortex** (git-truth + shared Postgres index; see [design](docs/design/mycortex-DESIGN.md)). gbrain remains installed for backward compatibility; mycortex is deployed and synced via `cortex-update.sh` + the `agent-mycortex-sync` cron.* | |
 
 ### Configuration
 
