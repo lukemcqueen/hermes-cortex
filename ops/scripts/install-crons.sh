@@ -676,7 +676,7 @@ create_cron "agent-mycortex-sync" "*/15 * * * *" \
 # window during the gbrain flip gate. no_agent: silent on pass, emits
 # only when the gate regresses (watchdog pattern, alerts the owner).
 create_cron "local-mycortex-parity" "0 5 * * *" \
-  "parity-diff.sh" \
+  "local-mycortex-parity.sh" \
   "" \
   "" \
   "" \
