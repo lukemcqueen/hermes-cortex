@@ -35,7 +35,7 @@ def _psql_base(role: str, db_name: str) -> list[str]:
     """Platform-appropriate psql invocation (same pattern as mycortex CLI)."""
     if platform.system() == "Darwin":
         url = None
-        cfg_path = Path.home() / ".hermes-cortex" / "mycortex.conf"
+        cfg_path = Path(os.path.join(str(Path.home()), ".hermes-cortex", "mycortex.conf"))
         if cfg_path.exists():
             try:
                 cfg = __import__("json").loads(cfg_path.read_text())

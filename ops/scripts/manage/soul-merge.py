@@ -22,6 +22,7 @@ Exit codes: 0 = up to date   1 = merged (changes made)   2 = error
 
 import re
 import socket
+import subprocess
 import sys
 from pathlib import Path
 
@@ -183,6 +184,33 @@ def _title_key(heading: str) -> str:
     return re.sub(r'^#{3,4}\s*\d+\.\s*', '', heading).strip().lower()
 
 
+def _previous_template_titles() -> set:
+    """Titles from the previous committed template version (via git).
+
+    Used to distinguish *stale pre-consolidation template principles* (safe
+    to drop) from *genuinely agent-specific principles* (never in any
+    template — must be preserved). Returns the title-key set of the template
+    at the commit before the one that introduced the current template.
+    """
+    titles: set = set()
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(REPO_DIR), "log", "-2", "--format=%H", "--",
+             "docs/templates/SOUL.md"],
+            capture_output=True, text=True, timeout=15,
+        ).stdout.split()
+        if len(out) >= 2:
+            prev = subprocess.run(
+                ["git", "-C", str(REPO_DIR), "show", f"{out[1]}:docs/templates/SOUL.md"],
+                capture_output=True, text=True, timeout=15,
+            ).stdout
+            for heading in re.findall(r"^#{3,4} \d+\..+$", prev, re.M):
+                titles.add(_title_key(heading))
+    except Exception:
+        pass  # git unavailable → fall back to template-only rebuild
+    return titles
+
+
 def _render_principles(principles: dict, template_principles: dict) -> str:
     """Render the principles section, merging template updates into agent copy.
 
@@ -263,6 +291,88 @@ def _render_principles(principles: dict, template_principles: dict) -> str:
         output_lines.append("")
         output_lines.extend(subs)
         output_lines.append("")
+
+    return "\n".join(output_lines)
+
+
+def _render_consolidated(principles: dict, template_principles: dict, stale_titles: set) -> str:
+    """Render the principles section after a template consolidation.
+
+    The template is authoritative: render its principles in template order
+    (merging missing template subpoints into same-title local principles).
+    Agent principles whose title is in the template are merged; agent
+    principles whose title is in NEITHER the template NOR the previous
+    template are genuinely agent-specific and preserved; everything else
+    (stale pre-consolidation template content) is dropped.
+    """
+    template_by_title = {_title_key(tp["heading"]): tp for tp in template_principles.values()}
+    local_by_title = {_title_key(p["heading"]): p for p in principles.values()}
+    output_lines = []
+    last_tier = None
+    dropped = []
+
+    # 1. Render template principles in template order
+    for tnum in sorted(template_principles.keys()):
+        tp = template_principles[tnum]
+        p = local_by_title.get(_title_key(tp["heading"]))
+
+        tier = tp.get("tier", "")
+        if tier and tier != last_tier:
+            if tier not in output_lines:
+                output_lines.append("")
+                output_lines.append(tier)
+                output_lines.append("")
+            last_tier = tier
+
+        output_lines.append(tp["heading"])
+        output_lines.append("")
+
+        rendered_subs = list(tp["subpoints"])
+        if p:
+            # Merge missing sub-points from the template into local copy
+            missing = _find_missing_subpoints(tp["subpoints"], p["subpoints"])
+            if missing:
+                if rendered_subs and rendered_subs[-1].strip() == "":
+                    for ms in missing:
+                        rendered_subs.insert(-1, ms)
+                else:
+                    rendered_subs.extend(missing)
+                    rendered_subs.append("")
+
+        for line in rendered_subs:
+            if line == "---" and output_lines and output_lines[-1] == "---":
+                continue
+            output_lines.append(line)
+
+    # 2. Keep genuinely agent-specific principles (never in any template)
+    for num in sorted(principles.keys()):
+        p = principles[num]
+        title_key = _title_key(p["heading"])
+        if title_key in template_by_title:
+            continue
+        if title_key in stale_titles:
+            dropped.append(p["heading"])
+            continue
+        # Genuinely agent-specific — preserve
+        tier = p.get("tier", "")
+        if tier and tier != last_tier:
+            if tier not in output_lines:
+                output_lines.append("")
+                output_lines.append(tier)
+                output_lines.append("")
+            last_tier = tier
+        output_lines.append(p["heading"])
+        output_lines.append("")
+        for line in p["subpoints"]:
+            if line == "---" and output_lines and output_lines[-1] == "---":
+                continue
+            output_lines.append(line)
+        output_lines.append("")
+
+    if dropped:
+        print(f"  🗑️  Dropped {len(dropped)} stale pre-consolidation principle(s):")
+        for h in dropped:
+            print(f"       • {h}")
 
     return "\n".join(output_lines)
 
@@ -349,7 +459,30 @@ def merge(agent_name: str = "", dry_run: bool = False, check_only: bool = False)
             if missing:
                 new_subpoints.append((num, tp["heading"], missing))
 
-    changes = bool(new_principles) or bool(new_subpoints)
+    # ── Consolidation detection ─────────────────────────────────────────
+    # If the template has FEWER principles than the deployed copy, the
+    # template was consolidated (34→12, 2026-08-02). Pre-fix behaviour
+    # APPENDED template principles on top of stale pre-consolidation ones,
+    # stacking 34 old + 12 new = 46 principles and blowing the size budget
+    # (Joseph report 2026-08-03: deployed SOUL ballooned to 26,957 B, doctor
+    # FAIL). On consolidation, REBUILD the section from the template as
+    # authoritative, dropping stale template-origin principles while keeping
+    # genuinely agent-specific ones (title never in any template version).
+    #
+    # Gate on stale titles actually being PRESENT in the agent copy: an
+    # agent with extra custom principles (13 > 12) but no old-template
+    # leftovers must NOT re-trigger consolidation on every run (idempotency).
+    # "Stale" = title in the PREVIOUS template but NOT in the current one —
+    # titles that survived the consolidation (Loop Governance, Be Concise…)
+    # exist in both and must not count as stale.
+    stale_titles = _previous_template_titles().difference(
+        {_title_key(tp["heading"]) for tp in template_p.values()}
+    )
+    agent_title_keys = {_title_key(p["heading"]) for p in agent_p.values()}
+    has_stale = bool(stale_titles.intersection(agent_title_keys))
+    consolidation = len(template_p) < len(agent_p) and has_stale
+
+    changes = bool(new_principles) or bool(new_subpoints) or consolidation
 
     if not changes:
         print(f"✅ SOUL.md is up to date with template. No merge needed.")
@@ -376,7 +509,17 @@ def merge(agent_name: str = "", dry_run: bool = False, check_only: bool = False)
     before = _principles_before(agent_text)
     after = _principles_after(agent_text)
 
-    merged_principles = _render_principles(agent_p, template_p)
+    if consolidation:
+        # Rebuild the section from the template as authoritative. Render
+        # template principles in template order; keep only agent principles
+        # whose title is NOT in the template AND NOT in the previous template
+        # (genuinely agent-specific — preserved); drop stale pre-consolidation
+        # template-origin principles.
+        merged_principles = _render_consolidated(
+            agent_p, template_p, stale_titles=stale_titles
+        )
+    else:
+        merged_principles = _render_principles(agent_p, template_p)
     merged = before + "## Behavioral Principles\n\n" + merged_principles + "\n\n" + after
 
     deployed_path.write_text(merged)

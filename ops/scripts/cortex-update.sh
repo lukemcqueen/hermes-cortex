@@ -305,11 +305,20 @@ register "ops/scripts/agent/install-worker.sh"      "${CORTEX_DEPLOY_HOME}/scrip
 register ".hermes-cortex/hooks/post-merge"   "${CORTEX_DEPLOY_HOME}/hooks/post-merge"
 # Least privilege: git hooks run only as the owning user, so group/other need
 # nothing. git does NOT track group/other bits (stores 100755/100644 only), so
-# a 700 file in the repo would still deploy as 755 — enforce 700 here in the
-# deploy path instead. chattr +i (hermes-plugin-lock TARGETS) then makes it
+# a 700 file in the repo would still deploy as 755 — enforce 700 at deploy
+# time. chattr +i (hermes-plugin-lock TARGETS) then makes it
 # immutable-but-executable. Do NOT move this into the chmod-444 loop — 444
 # kills the execute bit and git silently ignores non-executable hooks.
-chmod 700 "${CORTEX_DEPLOY_HOME}/hooks/post-merge" 2>/dev/null || true
+#
+# Mode overrides are applied in check_each_mapped_file() AFTER the
+# enforcement unlock + copy (Titus 2026-08-03: register-time chmod ran before
+# the unlock, failed silently on the immutable file, and needs_update() only
+# compares content — so an identical-content file was never re-copied and a
+# stale 444 mode stuck. Enforcing post-unlock, unconditionally, fixes mode
+# drift even when content hasn't changed.)
+declare -A MODE_OVERRIDES=(
+  ["${CORTEX_DEPLOY_HOME}/hooks/post-merge"]="700"
+)
 
 # Deploy scripts (nginx security pipeline) — now deployed to /usr/local/sbin/
 # by deploy_system_scripts() below. Old register entries removed.
@@ -807,6 +816,20 @@ check_each_mapped_file() {
           info "  Updated: ${dest/$HOME/~}"
           [[ -n "$service" && -n "$restart_cmd" ]] && TO_RESTART+=("$restart_cmd")
         fi
+      fi
+    fi
+  done
+
+  # ── Enforce per-file mode overrides (post-unlock, unconditional) ──
+  # Runs after the enforcement unlock + copy so a mode change propagates even
+  # when needs_update() skipped the copy (content identical). A stale mode on
+  # an immutable file would otherwise stick forever (Titus 2026-08-03).
+  local _mode_dest _mode_val
+  for _mode_dest in "${!MODE_OVERRIDES[@]}"; do
+    _mode_val="${MODE_OVERRIDES[$_mode_dest]}"
+    if [[ -f "$_mode_dest" ]]; then
+      if ! chmod "$_mode_val" "$_mode_dest" 2>/dev/null; then
+        warn "  mode override failed for ${_mode_dest/$HOME/~} (chmod $_mode_val)"
       fi
     fi
   done
@@ -2090,6 +2113,10 @@ main() {
     # ── Orchestrator-only crons (team health, soul refinement, etc.) ──
     # Guard: hostname moses|esther AND matching home dir. Env vars
     # (AGENT_TYPE / IS_ORCHESTRATOR) grant NO orch powers — they are spoofable.
+    # NOTE: _ORCH=false is the DEFAULT of the host-detection variable, NOT a
+    # bypass flag. Setting it true here grants nothing — the orchestrator-only
+    # paths restriction is enforced by the pre-commit hook, which reads the
+    # committed docs/orchestrator-only-paths.txt independently of this script.
     _ORCH=false
     ORCH_HOST=$(hostname -s 2>/dev/null || echo "unknown")
     ORCH_USER=$(id -un 2>/dev/null || echo "$USER")
