@@ -71,11 +71,16 @@ mycortex doctor [--json]
 - End-to-end CLI test on a scratch DB: `CREATE DATABASE mycortex_test` → `migrate.py --db-name mycortex_test` → add source (local mode) → sync → search → verify isolation (reader sees ZERO rows from isolated source, even with `--source`; grant → reader sees it).
 - **Never test against the prod `gbrain` DB** — always `--db-name mycortex_test`.
 
+## Python requirements
+
+**All mycortex scripts use `#!/usr/bin/env python3` (portable)** — no `python3.12` hardcoding. Verified 2026-08-02: hosts run python3.10–3.12; code parses clean at 3.10 (no match/case or 3.12-only syntax). The earlier `python3.12` shebangs broke `agent-mycortex-sync` on python3.10/3.11 hosts (`env: 'python3.12': No such file or directory`, cron rc=127) — fixed fleet-wide. No venv/uv needed: stdlib-only, no external deps. If you add a script, use `#!/usr/bin/env python3`.
+
 ## Migration Status (2026-08-02, session completed the deploy)
 
 - ✅ S-001 golden parity harness, S-003 schema v001 (deployed, 15/15 tests green)
 - ✅ CLI built (sources/sync/search/list/stats/doctor), verified end-to-end on scratch DB
 - ✅ `import-gbrain.py` (one-shot additive gbrain→mycortex copy, idempotent, dry-run, --federated with PII gate) — registered in cortex-update.sh
+- ✅ Schema v002 + v003 migrations shipped (2026-08-02): v002 = admin RLS policies + reader search_config grant (existing hosts were stuck at v1 without them); v003 = admin SELECT on schema_version (doctor fix). Both registered in cortex-update.sh.
 - ✅ **Every agent has its own gbrain-postgres + mycortex schema and populates its OWN sources** (per-host model, design D4). Esther's 642 pages / 3582 chunks import on her host DB (worker-5) is correct behavior — each agent does this for itself. **Moses-host DB now populated too (2026-08-02): 6 sources, 3265 pages, 37546 chunks** — `hermes-cortex` + `default` federated, `moses`/`luke`/`lessons`/`shared` isolated. Command used: `python3 ops/services/mycortex/import-gbrain.py --federated hermes-cortex --federated default` + `mycortex sources add <name> <path>` + `mycortex sync`. Do NOT read another agent's status line as this host's state.
 - ✅ Cron `agent-mycortex-sync` (S-009) — every 15 min, per-host (NOT orchestrator-only, design D4), no_agent wrapper, registered in `install-crons.sh` (both arrays)
 - ✅ Sync performance: batched VALUES-join SQL — 1552 files in ~3s (design target 1500/30s)
@@ -94,6 +99,8 @@ See `references/migration-2026-08-02.md` for the full session trace: schema fixe
 - **Sync writes are per-statement psql autocommits** — the sync loop is not one big txn; a crash mid-sync leaves partial upserts (acceptable: re-sync is idempotent by content_hash).
 - **git mode uses `git ls-files --cached --others --exclude-standard`** — excludes .git internals and honors .gitignore.
 - **macOS migrate.py needs `-t -A`** in `_psql_base` — missing it makes `current_version()` parse the `coalesce` column header as a version (fixed 2026-08-02 by Titus).
+- **macOS CLI needs `-t -A` in `_psql_base` too** — the CLI's Darwin branch was missing `-t -A` (only Linux had it), breaking every `|`-parsing subcommand (sources list/stats/sync/list) with IndexError/ValueError on Darwin (Titus, 2026-08-02). Fixed — Darwin now has `-t -A` like Linux.
+- **`mycortex doctor` must run as `mycortex_admin`, not `gbrain`** — doctor hardcoded role `gbrain` which doesn't exist on macOS (roles are mycortex_admin/ingest/reader); also `gbrain` needs SELECT on schema_version (v003 grants it to admin). Fixed 2026-08-02 (Titus + Moses).
 - **gbrain slugs ≠ mycortex relpaths — import must map, not copy.** gbrain stores `slug` relpaths (extension-stripped + lowercased: `skills/.../skill` for `SKILL.md`, `docs/agent-architecture` for `.md`). mycortex's canonical relpath is the REAL file path (golden queries assert `.md`/`SKILL.md`). Copying slugs verbatim makes the first sync's mass-deletion guardrail fire (every imported page looks "missing" → 642/642 abort). import-gbrain.py walks each source tree, builds slug→real map, inserts with real paths, and prunes slug-path dupes — fully idempotent across re-runs.
 - **A post-pass relpath rewrite breaks import idempotency.** If the transform (slug→real) happens AFTER insert, re-running the import inserts fresh slug rows that no longer conflict with the already-renamed rows → duplicates (observed: 642 pages became 1279 after 2 runs). The mapping must live IN the INSERT (ON CONFLICT on the real path) plus a prune step, so re-runs upsert the same rows.
 - **Per-row psql through `sg docker` is ~1s/call — batch with VALUES joins.** The original sync loop did 4 psql calls per page (~10s/page → hours for 1600 files). Batched to 5 calls per source total (page upsert, id lookup, chunk delete, chunk insert, FTS rebuild) using `INSERT ... VALUES (...),(...)` and `UPDATE ... FROM (VALUES ...) AS v(...)` — 1552 files in ~3s. Any tool that shells out to psql per row (sync, import, migration) must batch; also remember `::uuid` casts when joining VALUES text against uuid FK columns.

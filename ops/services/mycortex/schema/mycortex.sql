@@ -236,7 +236,7 @@ GRANT USAGE ON SCHEMA mycortex TO mycortex_admin, mycortex_ingest, mycortex_read
 -- mycortex_admin — orchestrator-only: source registration, PII gate, grants, DDL
 GRANT CREATE ON SCHEMA mycortex TO mycortex_admin;
 GRANT ALL ON mycortex.sources, mycortex.source_grants TO mycortex_admin;
-GRANT SELECT ON mycortex.pages, mycortex.content_chunks, mycortex.ingest_log TO mycortex_admin;
+GRANT SELECT ON mycortex.pages, mycortex.content_chunks, mycortex.ingest_log, mycortex.schema_version TO mycortex_admin;
 
 -- mycortex_ingest — DML on pages/content_chunks/ingest_log ONLY; NO sources access
 GRANT SELECT, INSERT, UPDATE, DELETE ON mycortex.pages, mycortex.content_chunks, mycortex.ingest_log TO mycortex_ingest;

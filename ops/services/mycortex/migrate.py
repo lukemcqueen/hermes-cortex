@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.12
+#!/usr/bin/env python3
 """
 mycortex migrate.py — schema_version-gated migration runner for the mycortex schema.
 

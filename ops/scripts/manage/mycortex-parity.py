@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.12
+#!/usr/bin/env python3
 """
 mycortex-parity.py — golden known-answer parity runner (S-001).
 

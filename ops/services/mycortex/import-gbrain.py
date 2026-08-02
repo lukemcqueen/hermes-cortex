@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.12
+#!/usr/bin/env python3
 """
 import-gbrain.py — one-shot gbrain → mycortex data migration (additive only).
 

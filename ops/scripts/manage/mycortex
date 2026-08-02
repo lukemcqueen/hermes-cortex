@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.12
+#!/usr/bin/env python3
 """
 mycortex CLI — knowledge brain for the fleet (gbrain replacement).
 
@@ -70,6 +70,7 @@ def _psql_base(role: str, db_name: str) -> list[str]:
             "-U", role,
             "-d", db_name,
             "-v", "ON_ERROR_STOP=1",
+            "-t", "-A",
         ]
     # Linux — container exec as the role (trust auth inside container)
     return [
@@ -623,7 +624,7 @@ def doctor(args: argparse.Namespace) -> int:
     ok = True
     # schema present?
     try:
-        ver = psql_query("SELECT max(version) FROM mycortex.schema_version;", "gbrain", args.db_name)
+        ver = psql_query("SELECT max(version) FROM mycortex.schema_version;", "mycortex_admin", args.db_name)
         print(f"✅ schema_version = {ver.strip() or '?'}")
     except RuntimeError as e:
         print(f"❌ schema missing: {e}")
@@ -633,7 +634,7 @@ def doctor(args: argparse.Namespace) -> int:
         pol = psql_query(
             "SELECT count(*) FROM pg_policy p JOIN pg_class c ON p.polrelid=c.oid "
             "JOIN pg_namespace n ON c.relnamespace=n.oid WHERE n.nspname='mycortex';",
-            "gbrain", args.db_name,
+            "mycortex_admin", args.db_name,
         )
         print(f"✅ RLS policies: {pol.strip()}")
         if int(pol.strip() or 0) < 2:
