@@ -417,6 +417,7 @@ register "ops/scripts/hermes_tz.py"                "${CORTEX_DEPLOY_HOME}/script
 register "ops/services/mycortex/migrate.py"          "${CORTEX_DEPLOY_HOME}/services/mycortex/migrate.py"
 register "ops/services/mycortex/import-gbrain.py"     "${CORTEX_DEPLOY_HOME}/services/mycortex/import-gbrain.py"
 register "ops/services/mycortex/schema/mycortex.sql"  "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/mycortex.sql"
+register "ops/services/mycortex/schema/v002__rls-admin-reader-grants.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/v002__rls-admin-reader-grants.sql"
 register "ops/scripts/manage/mycortex"                "${CORTEX_DEPLOY_HOME}/scripts/mycortex"
 register "ops/scripts/manage/mycortex-parity.py"      "${CORTEX_DEPLOY_HOME}/scripts/mycortex-parity.py"
 # agent-mycortex-sync cron wrapper — per-host sync (design D4: NOT orchestrator-only)
