@@ -84,7 +84,7 @@ mycortex doctor [--json]
 - ✅ **Every agent has its own gbrain-postgres + mycortex schema and populates its OWN sources** (per-host model, design D4). Esther's 642 pages / 3582 chunks import on her host DB (worker-5) is correct behavior — each agent does this for itself. **Moses-host DB now populated too (2026-08-02): 6 sources, 3265 pages, 37546 chunks** — `hermes-cortex` + `default` federated, `moses`/`luke`/`lessons`/`shared` isolated. Command used: `python3 ops/services/mycortex/import-gbrain.py --federated hermes-cortex --federated default` + `mycortex sources add <name> <path>` + `mycortex sync`. Do NOT read another agent's status line as this host's state.
 - ✅ Cron `agent-mycortex-sync` (S-009) — every 15 min, per-host (NOT orchestrator-only, design D4), no_agent wrapper, registered in `install-crons.sh` (both arrays)
 - ✅ Sync performance: batched VALUES-join SQL — 1552 files in ~3s (design target 1500/30s)
-- ⏳ Remaining: parity gate (S-010), gbrain decommission (S-011..S-016)
+- ⏳ Remaining: /brain plugin rewrite (S-007 — CLI part shipped, `mycortex-command` plugin not yet created), parity gate (S-010 — harness exists, not wired to pre-commit), retention cron (S-016 — `local-mycortex-retention` not registered), gbrain decommission (S-011..S-015)
 
 ### Who can register sources (design D4 — read before assuming "orchestrator-only")
 

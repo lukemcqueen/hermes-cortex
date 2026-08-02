@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS mycortex.content_chunks (
     content       TEXT NOT NULL,
     chunk_size    INT,                            -- params recorded per chunk for re-embed
     overlap       INT,
-    -- v1.1 semantic slice (added by migration v002 — NOT in v001):
+    -- v1.1 semantic slice (added by migration v004 — NOT in v001):
     -- embedding    vector(768),
     -- embedding_model TEXT,
     -- embedding_dim  INT,
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS mycortex.content_chunks (
 );
 
 -- v1.2: links deferred (no extractor in v1 — no entity-graph in v1, per anti-architecture)
--- CREATE TABLE mycortex.links (...);   -- created by migration v003
+-- CREATE TABLE mycortex.links (...);   -- created by migration v005
 
 CREATE TABLE IF NOT EXISTS mycortex.source_grants (
     role_name     TEXT NOT NULL,

@@ -14,7 +14,7 @@ pinned to source SHAs. Two modes:
 
 Engines (--engine):
   gbrain   — subprocess `gbrain search <query> --limit <n>` (text output)
-  mycortex — subprocess `mycortex search <query> --json` (S-007 CLI, not yet built)
+  mycortex — subprocess `mycortex search <query> --json` (deployed CLI, S-004/005/006)
   fixture  — read canned results from --fixture-file (tests only)
 
 Exit codes: 0 = gate passed / baseline recorded; 1 = gate failed or error.
@@ -23,7 +23,7 @@ Usage:
   mycortex-parity.py --mode baseline
   mycortex-parity.py --mode check --engine gbrain
   mycortex-parity.py --mode check --engine fixture --fixture-file /tmp/results.json
-  mycortex-parity.py --mode check --engine mycortex   # after S-007 lands
+  mycortex-parity.py --mode check --engine mycortex   # live CLI
 """
 from __future__ import annotations
 
@@ -87,7 +87,7 @@ def run_gbrain(query: str, limit: int = 10) -> list[str]:
 
 
 def run_mycortex(query: str, limit: int = 10, source: str | None = None) -> list[str]:
-    """mycortex search → [relpath, ...] in rank order (S-007 CLI, not yet built)."""
+    """mycortex search → [relpath, ...] in rank order (deployed CLI)."""
     cmd = ["mycortex", "search", query, "--json", "--limit", str(limit)]
     if source:
         cmd += ["--source", source]
@@ -95,7 +95,7 @@ def run_mycortex(query: str, limit: int = 10, source: str | None = None) -> list
     if proc.returncode != 0:
         raise RuntimeError(
             f"mycortex search failed (rc={proc.returncode}): {proc.stderr.strip() or proc.stdout.strip()}"
-            "\n  → mycortex CLI not deployed yet (S-007). Use --engine gbrain or --engine fixture."
+            "\n  → is `mycortex` on PATH? Deployed to ~/.hermes-cortex/scripts (or use --engine gbrain / --engine fixture)."
         )
     try:
         data = json.loads(proc.stdout)

@@ -58,7 +58,7 @@ This is not a rearchitecture of the knowledge model — it is the same shape gbr
 
 ### 1.2 Gap resolutions (condensed; full list in Appendix A)
 
-- **Schema versioning:** `mycortex_schema_version` table + numbered migrations (v001, v002…); semantic slice = v002 (ALTER ADD COLUMN), not a new system.
+- **Schema versioning:** `mycortex_schema_version` table + numbered migrations (v001, v002…); semantic slice = v004 (ALTER ADD COLUMN), not a new system.
 - **Sync cursor:** `sources.last_sync_at`, `last_commit` (git sources), per-source sync state — makes parity deterministic.
 - **Index strategy:** UNIQUE (`sources.name`), (`pages.source_id, relpath`), (`content_chunks.page_id, offset`); GIN on FTS tsvector; GIN trigram (pg_texample); FK indexes. `pg_texample` extension added at install.
 - **Search config per source:** `source.search_config` column, default `simple` (mixed-language safe: Korean bible, English lessons). Never blind `english`.
@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS mycortex.content_chunks (
     content       TEXT NOT NULL,
     chunk_size    INT,                            -- params recorded per chunk for re-embed
     overlap       INT,
-    -- v1.1 semantic slice (added by migration v002 — NOT in v001):
+    -- v1.1 semantic slice (added by migration v004 — NOT in v001):
     -- embedding    vector(768),
     -- embedding_model TEXT,
     -- embedding_dim  INT,
@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS mycortex.content_chunks (
 );
 
 -- v1.2: links deferred (no extractor in v1 — no entity-graph in v1, per anti-architecture)
--- CREATE TABLE mycortex.links (...);   -- created by migration v003
+-- CREATE TABLE mycortex.links (...);   -- created by migration v005
 
 CREATE TABLE IF NOT EXISTS mycortex.source_grants (
     role_name     TEXT NOT NULL,
@@ -256,8 +256,8 @@ CREATE POLICY mycortex_chunks_select ON mycortex.content_chunks
 ### 3.3 Slices
 
 - **v1 (text-first):** schema v001 (fail-closed RLS), migrate.py, sync, FTS+trigram search, CLI, /brain rewrite, sources (hermes-cortex + moses + shared + default), lessons backup+PII-gate+git-init, deploy, parity gate, gbrain decommission steps 1–4.
-- **v1.1 (semantic, hard date ≤30 days after v1 GA):** migration v002 (embedding column), `mycortex ask`, hybrid FTS+vector, embed cron (ollama nomic-embed-text:v1.5). **Pre-sliced stories** shipped with v1 so it cannot be silently deferred.
-- **v1.2 (could):** mycortex MCP server (localhost, agent token), `links` table + wikilink extractor (migration v003), query_log dashboards.
+- **v1.1 (semantic, hard date ≤30 days after v1 GA):** migration v004 (embedding column), `mycortex ask`, hybrid FTS+vector, embed cron (ollama nomic-embed-text:v1.5). **Pre-sliced stories** shipped with v1 so it cannot be silently deferred.
+- **v1.2 (could):** mycortex MCP server (localhost, agent token), `links` table + wikilink extractor (migration v005), query_log dashboards.
 
 ---
 
@@ -296,6 +296,31 @@ Phase 9  VERIFY      bible/lessons/memory-sync crons healthy; bus schema intact;
 
 ---
 
+## 5. Test Strategy
+
+- **Fixtures:** `mycortex_test` schema + synthetic brain dirs (git + local). Sync/search take a `--db-name` / path override. **Never touch prod dirs or `bus`. Hermeticity guard: tests refuse to run against `gbrain` DB / prod paths** (fail fast, not silently).
+- **Golden known-answer set:** `tests/fixtures/golden-queries.json` — 25–30 queries, per source, expected top-3 paths, **pinned to source content SHAs** (re-baseline only on intentional restructure, documented).
+- **gbrain baseline:** `tests/fixtures/gbrain-baseline.json` — captured in Phase 0 while gbrain runs, same SHAs.
+- **Parity script:** `ops/scripts/manage/mycortex-parity.py` — runs golden set vs mycortex, computes pass rate, diffs vs baseline. **Wired to CI/pre-commit** so the gate can't silently rot.
+- **Failure-mode tests (pytest, extend existing tests/):**
+  - re-sync idempotency, crash-resume, delete-propagation (soft-delete + re-ingest window)
+  - **source-isolation leak test** — isolated source must NOT appear in federated results; runs as `mycortex_reader` (not superuser) so RLS is actually exercised
+  - **RLS policy-presence test** — fail-closed: doctor + test assert policies exist before any data is queryable
+  - **concurrent-sync race test** — two processes, advisory lock serializes, second skips+logs
+  - **mass-deletion guardrail test** — >10% archive aborts sync
+  - mtime-staleness (content change with same mtime+size caught by sha256)
+  - /brain preset resolution regression (each preset → registered source)
+  - **prompt-injection test** — fixture page with "ignore previous instructions" → assert citation, not compliance
+  - **PII-gate test** — `is_federated=true` without `pii_scan_at` rejected by CHECK
+  - **migration-on-live-data test** — v004 ALTER over populated v001
+  - CLI JSON contract (versioned), bus-untouched regression (schema present after apply + after public drop)
+- **Perf smoke:** search < 200ms on 2k pages; sync of 1,500 files fits 30s cron window.
+- **Rollback drill:** tested re-enable-autopilot + restore-from-dump, scripted.
+- **macOS smoke checklist:** psql wrapper abstraction; manual checklist since no macOS CI runner.
+- **Doctor integration:** staleness flag + cron-health wiring; post-decommission smoke cron for 14 days.
+
+---
+
 ## 6. Cron Dependency Map (pass-2 SS8 resolution)
 
 | Cron | Keep/Remove | gbrain binary dep? | Notes |
@@ -313,32 +338,7 @@ Phase 9  VERIFY      bible/lessons/memory-sync crons healthy; bus schema intact;
 
 ---
 
-## 5. Test Strategy
-
-- **Fixtures:** `mycortex_test` schema + synthetic brain dirs (git + local). Sync/search take a `--db-name` / path override. **Never touch prod dirs or `bus`. Hermeticity guard: tests refuse to run against `gbrain` DB / prod paths** (fail fast, not silently).
-- **Golden known-answer set:** `tests/fixtures/golden-queries.json` — 25–30 queries, per source, expected top-3 paths, **pinned to source content SHAs** (re-baseline only on intentional restructure, documented).
-- **gbrain baseline:** `tests/fixtures/gbrain-baseline.json` — captured in Phase 0 while gbrain runs, same SHAs.
-- **Parity script:** `ops/scripts/manage/mycortex-parity.py` — runs golden set vs mycortex, computes pass rate, diffs vs baseline. **Wired to CI/pre-commit** so the gate can't silently rot.
-- **Failure-mode tests (pytest, extend existing tests/):**
-  - re-sync idempotency, crash-resume, delete-propagation (soft-delete + re-ingest window)
-  - **source-isolation leak test** — isolated source must NOT appear in federated results; runs as `mycortex_reader` (not superuser) so RLS is actually exercised
-  - **RLS policy-presence test** — fail-closed: doctor + test assert policies exist before any data is queryable
-  - **concurrent-sync race test** — two processes, advisory lock serializes, second skips+logs
-  - **mass-deletion guardrail test** — >10% archive aborts sync
-  - mtime-staleness (content change with same mtime+size caught by sha256)
-  - /brain preset resolution regression (each preset → registered source)
-  - **prompt-injection test** — fixture page with "ignore previous instructions" → assert citation, not compliance
-  - **PII-gate test** — `is_federated=true` without `pii_scan_at` rejected by CHECK
-  - **migration-on-live-data test** — v002 ALTER over populated v001
-  - CLI JSON contract (versioned), bus-untouched regression (schema present after apply + after public drop)
-- **Perf smoke:** search < 200ms on 2k pages; sync of 1,500 files fits 30s cron window.
-- **Rollback drill:** tested re-enable-autopilot + restore-from-dump, scripted.
-- **macOS smoke checklist:** psql wrapper abstraction; manual checklist since no macOS CI runner.
-- **Doctor integration:** staleness flag + cron-health wiring; post-decommission smoke cron for 14 days.
-
----
-
-## 6. Success Metrics
+## 7. Success Metrics
 
 1. **Parity:** golden set passes ≥100% top-3 federated / ≥90% isolated, diff vs gbrain baseline = no regressions.
 2. **Decommission complete:** gbrain binary + autopilot + 3 crons + public tables gone; brain dirs fully searchable via mycortex.
@@ -349,7 +349,7 @@ Phase 9  VERIFY      bible/lessons/memory-sync crons healthy; bus schema intact;
 
 ---
 
-## 7. Open Decisions (post-party-2 — confirmed by both passes)
+## 8. Open Decisions (post-party-2 — confirmed by both passes)
 
 | # | Question | Recommendation | Confirmed by |
 |---|---|---|---|
@@ -361,7 +361,7 @@ Phase 9  VERIFY      bible/lessons/memory-sync crons healthy; bus schema intact;
 | D6 | /brain name | `mycortex-command` + aliases; injection guard in code | Pass 1 + 2 (Sec/Prod) |
 | D7 | Semantic timing | v1.1 hard date ≤30 days after v1 GA; pre-sliced stories | Pass 1 + 2 (Prod) |
 | D8 | Dream/synthesis | Not built | Pass 1 + 2 (no consumer) |
-| D9 | links table | Deferred to v1.2 (v003 migration) — no extractor in v1 | Pass 2 (Arch/Prod) |
+| D9 | links table | Deferred to v1.2 (v005 migration) — no extractor in v1 | Pass 2 (Arch/Prod) |
 | D10 | Deployment DDL | `migrate.py` runner invoked by cortex-update.sh (cortex-update itself has no psql path) | Pass 2 (SRE) |
 | D11 | RLS timing | Fail-closed policies in v001, same transaction; FORCE RLS; tables owned by superuser | Pass 2 (Sec/QA) |
 

@@ -55,9 +55,10 @@
 | `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local |
 | `agent-session-mine` | `0 2 * * *` | no_agent | `agent-session-mine-cron.py` | local |
 | `agent-nginx-threat-pipeline` | `0 5 * * *` | no_agent | `agent-nginx-threat-pipeline.sh` | origin |
-| `agent-gbrain-doctor` | `5 6 * * *` | no_agent | `agent-gbrain-doctor.sh` | origin |
-| `agent-gbrain-nightly-dream` | `0 3 * * 6` | no_agent | `agent-gbrain-nightly-dream.sh` | origin |
-| `agent-gbrain-update-sync` | `0 2 * * 0` | no_agent | `agent-gbrain-update-sync.sh` | origin |
+| `agent-gbrain-doctor` | `5 6 * * *` | no_agent | `agent-gbrain-doctor.sh` | origin | *(decommission-pending — mycortex replaces; see mycortex-DESIGN.md §6)*
+| `agent-gbrain-nightly-dream` | `0 3 * * 6` | no_agent | `agent-gbrain-nightly-dream.sh` | origin | *(decommission-pending — mycortex replaces)*
+| `agent-gbrain-update-sync` | `0 2 * * 0` | no_agent | `agent-gbrain-update-sync.sh` | origin | *(decommission-pending — mycortex replaces)*
+| `agent-mycortex-sync` | `*/15 * * * *` | no_agent | `agent-mycortex-sync.sh` | origin | *(knowledge brain sync — replaces gbrain autopilot)*
 | `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `agent-scoring-activity-watchdog.py` | origin |
 | `agent-session-cache-build` | `0 5 * * 1` | no_agent | `agent-session_cache.py` | origin |
 | `agent-offline-code-index` | `0 5 * * 0` | no_agent | `agent-offline-code-index.sh` | local |
@@ -74,7 +75,6 @@
 | `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin |
 | `agent-daily-soul-refinement` | `0 23 * * *` | LLM | soul-refinement skill | origin |
 | `agent-weekly-loop-eval` | `0 9 * * 1` | LLM | loop-governance skill | origin |
-| `agent-gbrain-doctor` | `5 6 * * *` | no_agent | `agent-gbrain-doctor.sh` | origin |
 | `agent-no-verify-audit` | `every 60m` | LLM | (prompt) | origin |
 
 ## Local-only (`local-*` prefix)
