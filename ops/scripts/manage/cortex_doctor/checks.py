@@ -2359,7 +2359,6 @@ def check_stale_deploys(res):
       "agent-daily-bible-reading.py",
       "local-clickhouse-log-cleanup.sh",
       "local-push-metrics.sh",
-      "local-threat-pipeline.sh",
     }
     for f in sorted(scripts_dir.rglob("*")):
       if f.is_file() and f.suffix in (".py", ".sh") and "__pycache__" not in str(f):

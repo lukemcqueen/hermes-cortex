@@ -824,7 +824,6 @@ clean_stale_deploys() {
     "agent-daily-bible-reading.py"
     "local-clickhouse-log-cleanup.sh"
     "local-push-metrics.sh"
-    "local-threat-pipeline.sh"
   )
 
   # Build list of all registered destinations
