@@ -293,6 +293,7 @@ def sync_source(conn_meta: dict, source_id: str, source_name: str, local_path: s
 
     stats = {"seen": 0, "upserted": 0, "archived": 0, "skipped": 0, "unchanged": 0}
     root = Path(local_path)
+    t_start = datetime.now(timezone.utc)
 
     # fetch current page map (relpath → content_hash) for the source
     sql = f"""
@@ -353,12 +354,25 @@ WHERE source_id = {esc_literal(source_id)} AND NOT archived;
         )
 
     # apply upserts + archive missing (soft-delete)
-    # BATCHED: 5 psql calls per source total (vs 4/page before) — docker exec
-    # overhead made the initial sync ~10s/page (hours for 1600 files; design
-    # perf target: 1500 files in 30s). One call each for: page upsert, id
-    # lookup, stale-chunk delete, chunk insert, FTS rebuild.
-    now = datetime.now(timezone.utc).isoformat()
+    # SINGLE-SESSION + ADVISORY LOCK (design §3.1, S-005 AC):
+    #   pg_try_advisory_lock(42, hashtext('mycortex:'||source_id)) → if lock
+    #   unavailable, SKIP + log (never block). One psql script per source runs
+    #   ALL DML in the SAME session so the lock spans the whole sync; a crash
+    #   rolls back the txn and the session end auto-releases the lock.
+    #   BATCHED: VALUES joins (perf target 1500 files/30s).
+    lock_key = f"mycortex:{source_id}"
+    head = ""
+    if mode == "git":
+        proc = subprocess.run(["git", "-C", local_path, "rev-parse", "HEAD"],
+                              capture_output=True, text=True, timeout=30)
+        head = proc.stdout.strip() if proc.returncode == 0 else ""
 
+    parts: list[str] = []
+    parts.append(
+        f"SELECT pg_try_advisory_lock(42, hashtext('{lock_key}')) AS __locked \\gset\n"
+        "\\if :__locked\n"
+        "BEGIN;"
+    )
     if upserts:
         # A. upsert all pages (single statement, VALUES)
         page_values = ",\n".join(
@@ -367,69 +381,50 @@ WHERE source_id = {esc_literal(source_id)} AND NOT archived;
             f"{esc_literal(sha256_file(root / rel))})"
             for rel, title, content in upserts
         )
-        run_sql(
+        parts.append(
             "INSERT INTO mycortex.pages (source_id, relpath, title, author, content_hash)\n"
             "VALUES\n" + page_values + "\n"
             "ON CONFLICT (source_id, relpath) WHERE NOT archived\n"
             "DO UPDATE SET title = EXCLUDED.title, content_hash = EXCLUDED.content_hash,\n"
-            "              updated_at = now(), archived = FALSE;",
-            "mycortex_ingest", conn_meta["db"],
+            "              updated_at = now(), archived = FALSE;"
         )
-        # B. resolve page ids for the upserted relpaths (one call)
+        # B. resolve page ids into a session temp table (one call)
         rel_list = ",\n".join(esc_literal(rel) for rel, _, _ in upserts)
-        id_out = psql_query(
+        parts.append(
+            "CREATE TEMP TABLE _mc_ids AS\n"
             "SELECT relpath, id FROM mycortex.pages\n"
             f"WHERE source_id = {esc_literal(source_id)} AND NOT archived\n"
-            f"  AND relpath IN ({rel_list});",
-            "mycortex_ingest", conn_meta["db"],
+            f"  AND relpath IN ({rel_list});"
         )
-        page_ids: dict[str, str] = {}
-        for ln in id_out.splitlines():
-            if ln.strip():
-                parts = ln.split("|", 1)
-                if len(parts) == 2:
-                    page_ids[parts[0]] = parts[1]
-
-        # C. delete stale chunks for all upserted pages (one call)
-        if page_ids:
-            ids = ",\n".join(esc_literal(i) for i in page_ids.values())
-            run_sql(
-                f"DELETE FROM mycortex.content_chunks WHERE page_id IN ({ids});",
-                "mycortex_ingest", conn_meta["db"],
-            )
-
-        # D. insert all chunks (one statement, VALUES joined to page ids)
+        # C. delete stale chunks for all upserted pages
+        parts.append(
+            "DELETE FROM mycortex.content_chunks c USING _mc_ids t WHERE c.page_id = t.id;"
+        )
+        # D. insert all chunks (VALUES joined to temp-table page ids)
         chunk_values: list[str] = []
         for rel, _, content in upserts:
-            pid = page_ids.get(rel)
-            if not pid:
-                continue
             for i, chunk in enumerate(split_chunks(content)):
                 chunk_values.append(
-                    f"({esc_literal(pid)}, {i}, {esc_literal(chunk)}, {CHUNK_SIZE}, {int(CHUNK_SIZE * CHUNK_OVERLAP)})"
+                    f"({esc_literal(rel)}, {i}, {esc_literal(chunk)}, {CHUNK_SIZE}, {int(CHUNK_SIZE * CHUNK_OVERLAP)})"
                 )
         if chunk_values:
-            run_sql(
+            parts.append(
                 "INSERT INTO mycortex.content_chunks (page_id, chunk_index, content, chunk_size, overlap)\n"
-                "VALUES\n" + ",\n".join(chunk_values) + ";",
-                "mycortex_ingest", conn_meta["db"],
+                "SELECT t.id, v.chunk_index, v.content, v.chunk_size, v.overlap\n"
+                "FROM _mc_ids t JOIN (VALUES\n" + ",\n".join(chunk_values) + "\n"
+                ") AS v(relpath, chunk_index, content, chunk_size, overlap) ON v.relpath = t.relpath;"
             )
-
-        # E. rebuild FTS for upserted pages (one call)
-        if page_ids:
-            ids = ",\n".join(esc_literal(i) for i in page_ids.values())
-            run_sql(
-                "UPDATE mycortex.pages p SET fts = sub.ts\n"
-                "FROM (\n"
-                "  SELECT c.page_id,\n"
-                f"         to_tsvector({esc_literal(search_config)}::regconfig,\n"
-                "                     string_agg(c.content, ' ' ORDER BY c.chunk_index)) AS ts\n"
-                "  FROM mycortex.content_chunks c\n"
-                f"  WHERE c.page_id IN ({ids})\n"
-                "  GROUP BY c.page_id\n"
-                ") sub WHERE p.id = sub.page_id;",
-                "mycortex_ingest", conn_meta["db"],
-            )
+        # E. rebuild FTS for upserted pages (join temp ids)
+        parts.append(
+            "UPDATE mycortex.pages pg SET fts = sub.ts\n"
+            "FROM (\n"
+            "  SELECT c.page_id,\n"
+            f"         to_tsvector({esc_literal(search_config)}::regconfig,\n"
+            "                     string_agg(c.content, ' ' ORDER BY c.chunk_index)) AS ts\n"
+            "  FROM mycortex.content_chunks c JOIN _mc_ids t ON c.page_id = t.id\n"
+            "  GROUP BY c.page_id\n"
+            ") sub WHERE pg.id = sub.page_id;"
+        )
         stats["upserted"] += len(upserts)
 
     # soft-archive removed files (batched — one call)
@@ -437,20 +432,52 @@ WHERE source_id = {esc_literal(source_id)} AND NOT archived;
         arch_values = ",\n".join(
             f"({esc_literal(source_id)}, {esc_literal(rel)})" for rel in would_archive
         )
-        run_sql(
+        parts.append(
             "UPDATE mycortex.pages SET archived = TRUE\n"
             "FROM (VALUES\n" + arch_values + "\n) AS v(sid, rel)\n"
-            "WHERE pages.source_id = v.sid::uuid AND pages.relpath = v.rel;",
-            "mycortex_ingest", conn_meta["db"],
+            "WHERE pages.source_id = v.sid::uuid AND pages.relpath = v.rel;"
         )
         stats["archived"] += len(would_archive)
 
-    # update source sync cursor
-    head = ""
-    if mode == "git":
-        proc = subprocess.run(["git", "-C", local_path, "rev-parse", "HEAD"],
-                              capture_output=True, text=True, timeout=30)
-        head = proc.stdout.strip() if proc.returncode == 0 else ""
+    # ingest_log (same txn, ingest role has DML on it) — S-005 crash-resume AC
+    parts.append(
+        "INSERT INTO mycortex.ingest_log (source_id, started_at, finished_at, pages_seen, "
+        "pages_upserted, pages_archived, pages_skipped, status)\n"
+        f"VALUES ({esc_literal(source_id)}, {esc_literal(t_start.isoformat())}, now(), "
+        f"{stats['seen']}, {stats['upserted']}, {stats['archived']}, {stats['skipped']}, 'ok');"
+    )
+    parts.append(
+        "COMMIT;\n"
+        f"SELECT pg_advisory_unlock(42, hashtext('{lock_key}'));\n"
+        "\\else\n"
+        "SELECT 'LOCKED_SKIP' AS status;\n"
+        "\\endif"
+    )
+    script = "\n".join(parts)
+    try:
+        rc, out, err = psql_script(script, "mycortex_ingest", conn_meta["db"])
+    except RuntimeError as e:
+        # log the failed sync for audit (stats.failed_syncs reads status='error')
+        try:
+            psql_script(
+                "INSERT INTO mycortex.ingest_log (source_id, started_at, finished_at, pages_seen, "
+                "pages_upserted, pages_archived, pages_skipped, status, error)\n"
+                f"VALUES ({esc_literal(source_id)}, {esc_literal(t_start.isoformat())}, now(), "
+                f"{stats['seen']}, {stats['upserted']}, {stats['archived']}, {stats['skipped']}, 'error', "
+                f"{esc_literal(str(e)[:500])});",
+                "mycortex_ingest", conn_meta["db"],
+            )
+        except RuntimeError:
+            pass
+        raise
+    if rc != 0:
+        raise RuntimeError(f"sync failed (rc={rc}): {err.strip()[-2000:] or out.strip()[-2000:]}")
+    if "LOCKED_SKIP" in out:
+        # concurrent sync holds the lock — skip + log (never block)
+        print(f"⏭  '{source_name}': advisory lock held by another sync — skipped")
+        return {**stats, "skipped_lock": True}
+
+    # update source sync cursor (admin role — ingest has no sources access)
     run_sql(
         f"UPDATE mycortex.sources SET last_sync_at = now(), last_commit = {esc_literal(head)} WHERE id = {esc_literal(source_id)};",
         "mycortex_admin", conn_meta["db"],

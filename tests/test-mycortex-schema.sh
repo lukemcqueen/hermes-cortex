@@ -68,7 +68,9 @@ else
   fail "re-run did not report no-op"
 fi
 VER=$($PSQL -c "SELECT max(version) FROM mycortex.schema_version;" 2>/dev/null)
-[ "$VER" = "1" ] && pass "schema_version = 1" || fail "schema_version = $VER (expected 1)"
+# Expected version = number of migration files: mycortex.sql=1 + each vNNN__*.sql
+EXPECTED_VER=$(( $(ls "${REPO_DIR}/ops/services/mycortex/schema/"v*.sql 2>/dev/null | wc -l | tr -d ' ') + 1 ))
+[ "$VER" = "$EXPECTED_VER" ] && pass "schema_version = $EXPECTED_VER" || fail "schema_version = $VER (expected $EXPECTED_VER)"
 
 echo ""
 echo "═══ Seed: federated + isolated sources with pages ═══"
