@@ -519,17 +519,9 @@ restart_agent_bus() {
 # ── gbrain upgrade ────────────────────────────────────────
 
 update_gbrain_binary() {
-  info "Checking gbrain version…"
-  local before
-  before=$(gbrain version 2>/dev/null || echo "none")
-  gbrain upgrade 2>&1 | sed 's/^/    /'
-  local after
-  after=$(gbrain version 2>/dev/null || echo "none")
-  if [[ "$before" != "$after" ]]; then
-    info "gbrain upgraded: $before → $after"
-  else
-    info "gbrain already current: $after"
-  fi
+  # gbrain DECOMMISSIONED 2026-08-02 — binary kept for rollback until the
+  # 30-day purge window closes, but deploy no longer upgrades it.
+  :
 }
 
 # ── Service restart helpers ─────────────────────────────────
