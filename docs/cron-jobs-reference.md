@@ -11,8 +11,8 @@
 | agent-service-recovery | no_agent | */5 * * * * | Auto-recover services |
 | agent-memory-to-brain-sync | no_agent | 0 */6 * * * | Sync memory to gbrain |
 | hermes-update | no_agent | 23 22 * * * | Nightly Hermes update |
-| agent-gbrain-nightly-dream | no_agent | 0 3 * * 6 | Weekly gbrain dream |
-| agent-gbrain-update-sync | no_agent | 0 2 * * 0 | Weekly gbrain sync |
+| agent-gbrain-nightly-dream | ~~no_agent~~ | ~~0 3 * * 6~~ | ⚠️ STALE/REMOVED 2026-08-02 — gbrain decommissioned; no consumer (verified) |
+| agent-gbrain-update-sync | ~~no_agent~~ | ~~0 2 * * 0~~ | ⚠️ STALE/REMOVED 2026-08-02 — obsolete with gbrain binary uninstall |
 | agent-hermes-cortex-sync | no_agent | 33 22 * * * | Nightly cortex sync |
 | memory-pruning | LLM+prompt | 0 4 * * 1 | Weekly memory prune |
 | agent-auto-save-sessions | no_agent | every 360m | Session persistence |
@@ -37,7 +37,7 @@
 | agent-fixer-workday | LLM+skill | 0 9-17 * * 1-5 | Auto-remediation workday |
 | agent-fixer-evening | LLM+skill | 0 18,20,22 * * 1-5 | Auto-remediation evening |
 | agent-fixer-overnight | LLM+skill | 0 3 * * 1-5 | Auto-remediation overnight |
-| agent-gbrain-doctor | no_agent | 5 6 * * * | Daily gbrain health check |
+| agent-gbrain-doctor | ~~no_agent~~ | ~~5 6 * * *~~ | ⚠️ STALE/REMOVED 2026-08-02 — gbrain decommissioned; mycortex replaces (`mycortex doctor`) |
 | agent-message-handler | no_agent | */5 * * * * | Agent bus message handler |
 | agent-secret-leak-watchdog | no_agent | 0 */4 * * * | Scan for leaked credentials |
 | agent-stale-ref-watchdog | no_agent | 0 5 * * * | Check for stale file references |
