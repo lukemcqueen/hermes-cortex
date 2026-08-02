@@ -502,6 +502,7 @@ if $UNINSTALL; then
     "agent-secret-leak-watchdog" \
     "agent-service-recovery" \
     "agent-session-cache-build" \
+    "agent-session-correction-scan" \
     "agent-session-mine" \
     "agent-stale-ref-watchdog" \
     "agent-system-alert-watchdog"; do
@@ -1111,6 +1112,21 @@ create_cron "agent-no-verify-audit" "every 60m" \
   "" \
   "" \
   "origin" \
+  "" \
+  "true"
+
+# ── Correction→Guardrail Recidivism Scan (weekly) ─────────
+# P0-1: scans LOCAL state.db for user corrections, classifies, checks guardrail
+# registry, flags unguarded + recidivism. Runs on EVERY agent (each host's
+# state.db holds that agent's own corrections). Non-orchestrator agents
+# forward a condensed report to inbox_moses so Moses can fold per-agent
+# recidivism into enforcer work. no_agent — stdout is the report.
+create_cron "agent-session-correction-scan" "0 22 * * 0" \
+  "manage/agent-session-correction-scan.py" \
+  "" \
+  "" \
+  "" \
+  "local" \
   "" \
   "true"
 

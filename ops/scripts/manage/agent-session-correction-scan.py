@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 """
-orch-session-correction-scan.py — Correction→Guardrail Recidivism Scanner (P0-1).
+agent-session-correction-scan.py — Correction→Guardrail Recidivism Scanner (P0-1).
 
-Scans the Hermes session DB (~/.hermes/state.db) for USER corrections,
+Scans the LOCAL Hermes session DB (~/.hermes/state.db) for USER corrections,
 classifies them into signal categories, checks each against the guardrail
 registry (docs/guardrail-registry.json), and flags:
   - UNGUARDED corrections: a correction class with no registered guardrail
   - RECIDIVISM: the same class recurring after a guardrail was added
     (guardrail too weak → escalate to structural)
+
+Runs on EVERY agent (agent- prefix, install-crons.sh) — each host's state.db
+holds that agent's own corrections. The orchestrator's enforcer work is fed by
+the per-agent reports, which this script forwards to inbox_moses automatically
+when running on a non-orchestrator host (AGENT_NAME != moses).
 
 Corpus discipline (per governance-improvement-plan-gaps F-01):
   - role='user' only
@@ -15,16 +20,13 @@ Corpus discipline (per governance-improvement-plan-gaps F-01):
   - system-injected wrappers stripped before matching
   - phrase-level regexes, never bare words (no false-positive flood)
 
-Runs as an orchestrator-only weekly cron (state.db lives on the orchestrator
-host). Report-only by default — run with --enforce to also file governance
-cycles for top unguarded items (future P0-3 integration).
-
 Usage:
-    python3 orch-session-correction-scan.py                 # report last 7 days
-    python3 orch-session-correction-scan.py --days 30       # longer window
-    python3 orch-session-correction-scan.py --all           # full history
-    python3 orch-session-correction-scan.py --json          # machine-readable
-    python3 orch-session-correction-scan.py --sample        # labeled sample audit
+    python3 agent-session-correction-scan.py                 # report last 7 days
+    python3 agent-session-correction-scan.py --days 30       # longer window
+    python3 agent-session-correction-scan.py --all           # full history
+    python3 agent-session-correction-scan.py --json          # machine-readable
+    python3 agent-session-correction-scan.py --sample        # labeled sample audit
+    python3 agent-session-correction-scan.py --no-forward    # skip bus forward (debug)
 
 Exit codes: 0 = report delivered (findings or not — stdout IS the message),
 2 = error (script failed to run). Non-zero exits other than 2 are avoided:
@@ -39,7 +41,9 @@ import json
 import os
 import re
 import sqlite3
+import subprocess
 import sys
+import urllib.request
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -48,6 +52,7 @@ HOME = Path.home()
 STATE_DB = HOME / ".hermes" / "state.db"
 STATE_FILE = HOME / ".hermes-cortex" / "state" / "session-correction-scan-state.json"
 GUARDRAIL_REGISTRY = HOME / "hermes-cortex" / "docs" / "guardrail-registry.json"
+BUS_CONF = HOME / ".hermes-cortex" / "cortex-bus.conf"
 
 # ── System-injected wrappers to strip before matching (F-01) ──────────
 WRAPPER_PATTERNS = [
@@ -322,6 +327,85 @@ def scan(days: int | None, all_history: bool) -> list[dict]:
     return hits
 
 
+def load_bus_config() -> tuple[str, str, str]:
+    """Load (bus_url, auth, agent_name) from cortex-bus.conf.
+
+    Agents push to the orchestrator's bus via the HTTP API (contact-moses.sh
+    pattern). Falls back to env vars, then defaults; returns agent_name which
+    is 'moses' on the orchestrator host (no self-forward).
+    """
+    bus_url = os.environ.get("CORTEX_BUS_URL", "http://127.0.0.1:13004")
+    auth = os.environ.get("CORTEX_BASIC_AUTH", "")
+    agent_name = os.environ.get("AGENT_NAME", "")
+    if BUS_CONF.exists():
+        for line in BUS_CONF.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("CORTEX_BUS_URL="):
+                bus_url = line.split("=", 1)[1].strip().strip("\"'")
+            elif line.startswith("CORTEX_BASIC_AUTH="):
+                auth = line.split("=", 1)[1].strip().strip("\"'")
+            elif line.startswith("AGENT_NAME="):
+                agent_name = line.split("=", 1)[1].strip().strip("\"'")
+    return bus_url, auth, agent_name
+
+
+def forward_to_moses(result: dict) -> None:
+    """Send a condensed report to inbox_moses via the bus HTTP API.
+
+    Non-orchestrator agents forward their correction-scan findings so Moses
+    can fold per-agent recidivism into enforcer work. Orchestrator hosts skip
+    (their report is delivered to the user directly). Best-effort: failures
+    are logged to stderr, never fatal (exit stays 0).
+    """
+    bus_url, auth, agent_name = load_bus_config()
+    if agent_name.lower() in ("moses", "esther", ""):
+        return  # orchestrator host — no self-forward
+    if not auth:
+        print("ℹ️  No CORTEX_BASIC_AUTH — skipping forward to Moses.", file=sys.stderr)
+        return
+    recid = result.get("recidivism_categories", {})
+    summary = {
+        "agent": agent_name,
+        "window_days": result.get("window_days", 7),
+        "total_hits": result.get("scanned_hits", 0),
+        "by_category": result.get("by_category", {}),
+        "recidivism": recid,
+        "unguarded": result.get("unguarded_categories", {}),
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    subject = f"📊 CORRECTION SCAN: {agent_name} — {summary['total_hits']} hit(s), {len(recid)} recidivism"
+    body = json.dumps(summary, indent=2, ensure_ascii=False)
+    payload = json.dumps({
+        "queue": "inbox_moses",
+        "message": {
+            "from": agent_name,
+            "to": "moses",
+            "subject": subject,
+            "body": body,
+            "priority": "normal",
+        },
+    })
+    url = f"{bus_url.rstrip('/')}/api/pgmq/send"
+    req = urllib.request.Request(
+        url,
+        data=payload.encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    import base64
+    token = base64.b64encode(auth.encode()).decode()
+    req.add_header("Authorization", f"Basic {token}")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            resp_body = resp.read().decode()
+        if '"msg_id"' in resp_body:
+            print(f"📤 Correction scan forwarded to Moses ({subject})")
+        else:
+            print(f"⚠️  Forward to Moses: unexpected response: {resp_body[:200]}", file=sys.stderr)
+    except Exception as e:
+        print(f"⚠️  Forward to Moses failed (non-fatal): {type(e).__name__}: {e}", file=sys.stderr)
+
+
 def sample_audit(n: int = 500) -> None:
     """Print a labeled sample audit for precision measurement (F-10/F-01)."""
     hits = scan(None, all_history=True)
@@ -340,6 +424,7 @@ def main():
     parser.add_argument("--all", action="store_true", help="Scan full history (no window)")
     parser.add_argument("--json", action="store_true", help="JSON output")
     parser.add_argument("--sample", action="store_true", help="Labeled sample audit mode")
+    parser.add_argument("--no-forward", action="store_true", help="Skip bus forward to Moses (debug)")
     parser.add_argument("--enforce", action="store_true", help="File governance cycles for top unguarded (future)")
     args = parser.parse_args()
 
@@ -406,6 +491,10 @@ def main():
         if not registry:
             print("\nℹ️  guardrail-registry.json not found — all categories reported unguarded.")
             print("   Create it at docs/guardrail-registry.json (P0-1a).")
+
+    # Forward to Moses on non-orchestrator hosts (feeds enforcer work).
+    if not args.no_forward:
+        forward_to_moses(result)
 
     # Exit 0 always — findings are the report (no_agent cron delivers stdout).
     # Only exit 2 on genuine errors (state.db missing etc.).

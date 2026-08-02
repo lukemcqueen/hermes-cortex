@@ -130,8 +130,7 @@ if $UNINSTALL; then
     "orch-health-report-weekday" \
     "orch-skill-lifecycle" \
     "orch-skill-evaluate" \
-    "orch-skill-report-request" \
-    "orch-session-correction-scan"; do
+    "orch-skill-report-request"; do
     remove_cron "$job" 2>/dev/null || true
   done
   info "Uninstall complete"
@@ -481,23 +480,8 @@ If nothing changed: output exactly [SILENT]" \
   "orch-skill-lifecycle" "terminal,file,web" "origin" "" "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-# ── 4. Correction→Guardrail Recidivism Scan (weekly) ────────
-printf "${CYAN}  4. Correction Recidivism Scan${RESET}\n"
-
-# P0-1: scans state.db for user corrections, classifies, checks guardrail
-# registry, flags unguarded + recidivism. no_agent — stdout is the report.
-# Orchestrator-only: state.db lives on the orchestrator host.
-create_cron "orch-session-correction-scan" "0 22 * * 0" \
-  "orch-session-correction-scan.py" \
-  "" \
-  "" \
-  "" \
-  "telegram:1270130526" \
-  "" \
-  "true"
-
 # ── 4. Skill Report Pipeline ──────────────────────────────
-printf "${CYAN}  4. Skill Report Pipeline${RESET}\\n"
+printf "${CYAN}  4. Skill Report Pipeline${RESET}\n"
 
 # Request skill reports from all agents (weekly Monday 2am)
 create_cron "orch-skill-report-request" "0 2 * * 1" \
