@@ -1,5 +1,6 @@
 ---
 name: pokemon-player
+version: 1.0.0
 description: "Play Pokemon via headless emulator + RAM reads."
 tags: [gaming, pokemon, emulator, pyboy, gameplay, gameboy]
 platforms: [linux, macos, windows]

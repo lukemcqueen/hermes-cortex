@@ -70,12 +70,15 @@ mycortex doctor [--json]
 - End-to-end CLI test on a scratch DB: `CREATE DATABASE mycortex_test` → `migrate.py --db-name mycortex_test` → add source (local mode) → sync → search → verify isolation (reader sees ZERO rows from isolated source, even with `--source`; grant → reader sees it).
 - **Never test against the prod `gbrain` DB** — always `--db-name mycortex_test`.
 
-## Migration Status (2026-08-02)
+## Migration Status (2026-08-02, session completed the deploy)
 
 - ✅ S-001 golden parity harness, S-003 schema v001 (deployed, 15/15 tests green)
 - ✅ CLI built (sources/sync/search/list/stats/doctor), verified end-to-end on scratch DB
 - ✅ `import-gbrain.py` (one-shot additive gbrain→mycortex copy, idempotent, dry-run, --federated with PII gate) — registered in cortex-update.sh
-- ⏳ Pending: `orch-mycortex-sync` cron (S-009), prod import + source registration on esther (0 sources/0 pages as of 2026-08-02), parity gate (S-010), gbrain decommission (S-011..S-016)
+- ✅ Prod import on esther: 642 pages / 3582 chunks migrated, `hermes-cortex` + `default` federated (PII gate recorded) — run via `python3 ~/.hermes-cortex/services/mycortex/import-gbrain.py --federated hermes-cortex --federated default`
+- ✅ Cron `agent-mycortex-sync` (S-009) — every 15 min, per-host (NOT orchestrator-only, design D4), no_agent wrapper, registered in `install-crons.sh` (both arrays)
+- ✅ Sync performance: batched VALUES-join SQL — 1552 files in ~3s (design target 1500/30s)
+- ⏳ Remaining: parity gate (S-010), gbrain decommission (S-011..S-016)
 
 See `references/migration-2026-08-02.md` for the full session trace: schema fixes, CLI verification outputs, and what remains.
 
@@ -86,6 +89,10 @@ See `references/migration-2026-08-02.md` for the full session trace: schema fixe
 - **Sync writes are per-statement psql autocommits** — the sync loop is not one big txn; a crash mid-sync leaves partial upserts (acceptable: re-sync is idempotent by content_hash).
 - **git mode uses `git ls-files --cached --others --exclude-standard`** — excludes .git internals and honors .gitignore.
 - **macOS migrate.py needs `-t -A`** in `_psql_base` — missing it makes `current_version()` parse the `coalesce` column header as a version (fixed 2026-08-02 by Titus).
+- **gbrain slugs ≠ mycortex relpaths — import must map, not copy.** gbrain stores `slug` relpaths (extension-stripped + lowercased: `skills/.../skill` for `SKILL.md`, `docs/agent-architecture` for `.md`). mycortex's canonical relpath is the REAL file path (golden queries assert `.md`/`SKILL.md`). Copying slugs verbatim makes the first sync's mass-deletion guardrail fire (every imported page looks "missing" → 642/642 abort). import-gbrain.py walks each source tree, builds slug→real map, inserts with real paths, and prunes slug-path dupes — fully idempotent across re-runs.
+- **A post-pass relpath rewrite breaks import idempotency.** If the transform (slug→real) happens AFTER insert, re-running the import inserts fresh slug rows that no longer conflict with the already-renamed rows → duplicates (observed: 642 pages became 1279 after 2 runs). The mapping must live IN the INSERT (ON CONFLICT on the real path) plus a prune step, so re-runs upsert the same rows.
+- **Per-row psql through `sg docker` is ~1s/call — batch with VALUES joins.** The original sync loop did 4 psql calls per page (~10s/page → hours for 1600 files). Batched to 5 calls per source total (page upsert, id lookup, chunk delete, chunk insert, FTS rebuild) using `INSERT ... VALUES (...),(...)` and `UPDATE ... FROM (VALUES ...) AS v(...)` — 1552 files in ~3s. Any tool that shells out to psql per row (sync, import, migration) must batch; also remember `::uuid` casts when joining VALUES text against uuid FK columns.
+- **Empty local_path sources are builtin placeholders — mark them synced.** `sync` skips sources with empty local_path (e.g. builtin `default`); if the skip branch doesn't update `last_sync_at`, `mycortex doctor` flags them stale forever. Update the cursor on skip.
 
 ## Related
 

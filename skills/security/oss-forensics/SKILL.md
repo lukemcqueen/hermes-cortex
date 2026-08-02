@@ -1,5 +1,6 @@
 ---
 name: oss-forensics
+version: 1.0.0
 description: |
   Supply chain investigation, evidence recovery, and forensic analysis for GitHub repositories.
   Covers deleted commit recovery, force-push detection, IOC extraction, multi-source evidence
