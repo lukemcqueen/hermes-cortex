@@ -154,7 +154,6 @@ JOIN mycortex.sources ms ON ms.name = gs.name AND ms.name = $$%s$$
 WHERE gp.deleted_at IS NULL
 ON CONFLICT (source_id, relpath) WHERE NOT archived
 DO UPDATE SET content_hash = EXCLUDED.content_hash,
-              title = EXCLUDED.title,
               updated_at = EXCLUDED.updated_at;
 """ % source_name
         run_sql(sql, db, verbose)
@@ -171,7 +170,6 @@ LEFT JOIN (VALUES
 WHERE gp.deleted_at IS NULL
 ON CONFLICT (source_id, relpath) WHERE NOT archived
 DO UPDATE SET content_hash = EXCLUDED.content_hash,
-              title = EXCLUDED.title,
               updated_at = EXCLUDED.updated_at;
 """ % (source_name, slug_values)
     run_sql(sql, db, verbose)
@@ -252,12 +250,16 @@ UPDATE mycortex.pages p
 SET fts = sub.ts
 FROM (
   SELECT c.page_id,
-         to_tsvector(COALESCE(s.search_config, 'simple')::regconfig,
-                     string_agg(c.content, ' ' ORDER BY c.chunk_index)) AS ts
+         setweight(to_tsvector(COALESCE(s.search_config, 'simple')::regconfig,
+                     replace(replace(COALESCE(pg.title, ''), '/', ' '), '-', ' ')), 'A') ||
+         setweight(to_tsvector(COALESCE(s.search_config, 'simple')::regconfig,
+                     replace(replace(COALESCE(pg.relpath, ''), '/', ' '), '-', ' ')), 'B') ||
+         setweight(to_tsvector(COALESCE(s.search_config, 'simple')::regconfig,
+                     string_agg(c.content, ' ' ORDER BY c.chunk_index)), 'C') AS ts
   FROM mycortex.content_chunks c
   JOIN mycortex.pages pg ON pg.id = c.page_id
   JOIN mycortex.sources s ON s.id = pg.source_id
-  GROUP BY c.page_id, s.search_config
+  GROUP BY c.page_id, s.search_config, pg.title, pg.relpath
 ) sub
 WHERE sub.page_id = p.id
   AND p.fts IS DISTINCT FROM sub.ts;
