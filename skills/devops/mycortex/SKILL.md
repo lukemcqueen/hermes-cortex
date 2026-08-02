@@ -62,6 +62,7 @@ mycortex doctor [--json]
    `FOR SELECT TO mycortex_admin USING (true)` policies. Admin = audit role.
 3. **`sources.host` DEFAULT is 'localhost'** (not `current_setting('hostname',...)` — that GUC returns NULL and violates NOT NULL). CLI passes the real host explicitly.
 4. **Chunks RLS does NOT rely on page-RLS cascade** — policy subqueries evaluate as the table owner (superuser, bypasses RLS), so the chunks policy independently applies the same federated/grant predicate.
+5. **Schema fixes must ship as numbered migrations (`vNNN__*.sql`), not just edits to v001.** Gotchas 1+2 (admin policies, reader search_config grant) were originally fixed ONLY in the v001 file — hosts that had already applied v001 (schema_version=1) never got them: admin queries returned 0 rows and search failed `permission denied for table sources`. Fix: `v002__rls-admin-reader-grants.sql` (idempotent CREATE POLICY IF NOT EXISTS + GRANT). If you patch the schema, add a migration for existing hosts — do not rely on v001 edits reaching anyone who applied earlier.
 
 ## Testing
 
@@ -75,14 +76,14 @@ mycortex doctor [--json]
 - ✅ S-001 golden parity harness, S-003 schema v001 (deployed, 15/15 tests green)
 - ✅ CLI built (sources/sync/search/list/stats/doctor), verified end-to-end on scratch DB
 - ✅ `import-gbrain.py` (one-shot additive gbrain→mycortex copy, idempotent, dry-run, --federated with PII gate) — registered in cortex-update.sh
-- ⚠️ **Shared fleet DB (gbrain-postgres on the moses host) still has 0 sources / 0 pages (verified 2026-08-02).** Esther's "642 pages / 3582 chunks" import ran on HER OWN host DB (worker-5), not the shared index — the shared DB's `ingest_log` is empty. **Do not treat that status line as fleet-wide prod.** The real prod import on the shared DB is still pending: run `python3 ~/.hermes-cortex/services/mycortex/import-gbrain.py --federated hermes-cortex --federated default` + `sources add` for the shared sources from the moses host.
+- ✅ **Every agent has its own gbrain-postgres + mycortex schema and populates its OWN sources** (per-host model, design D4). Esther's 642 pages / 3582 chunks import on her host DB (worker-5) is correct behavior — each agent does this for itself. **Moses-host DB now populated too (2026-08-02): 6 sources, 3265 pages, 37546 chunks** — `hermes-cortex` + `default` federated, `moses`/`luke`/`lessons`/`shared` isolated. Command used: `python3 ops/services/mycortex/import-gbrain.py --federated hermes-cortex --federated default` + `mycortex sources add <name> <path>` + `mycortex sync`. Do NOT read another agent's status line as this host's state.
 - ✅ Cron `agent-mycortex-sync` (S-009) — every 15 min, per-host (NOT orchestrator-only, design D4), no_agent wrapper, registered in `install-crons.sh` (both arrays)
 - ✅ Sync performance: batched VALUES-join SQL — 1552 files in ~3s (design target 1500/30s)
-- ⏳ Remaining: shared-DB prod import + source registration, parity gate (S-010), gbrain decommission (S-011..S-016)
+- ⏳ Remaining: parity gate (S-010), gbrain decommission (S-011..S-016)
 
 ### Who can register sources (design D4 — read before assuming "orchestrator-only")
 
-**Source registration is per-host, NOT orchestrator-only.** Design D4 + install.sh: each host registers its OWN local brain dirs (`hermes-cortex` + `~/brain/<agent>`) at install time, and the per-host `agent-mycortex-sync` cron syncs them. The `mycortex_admin` DB role is required for registration — on Linux any user in the docker group can `sg docker exec psql -U mycortex_admin` (trust auth) on the host that runs the container. The "orchestrators only" label applies to **federation + grants + PII gate** (turning a source `is_federated=true`, writing `source_grants`), not to registering your own local source. If you see 0 sources on a host you own and the shared-DB import hasn't run, **register your own sources — don't wait for an orchestrator**.
+**Source registration is per-host, NOT orchestrator-only.** Design D4 + install.sh: each host registers its OWN local brain dirs (`hermes-cortex` + `~/brain/<agent>`) at install time, and the per-host `agent-mycortex-sync` cron syncs them. Every agent runs its own gbrain-postgres with the mycortex schema and populates its own sources — this is the per-host model, not a shared fleet index. The `mycortex_admin` DB role is required for registration — on Linux any user in the docker group can `sg docker exec psql -U mycortex_admin` (trust auth) on the host that runs the container. The "orchestrators only" label applies to **federation + grants + PII gate** (turning a source `is_federated=true`, writing `source_grants`), not to registering your own local source. If you see 0 sources on your own host, **register + import your own sources — don't wait for an orchestrator and don't read another agent's status as your own**.
 
 See `references/migration-2026-08-02.md` for the full session trace: schema fixes, CLI verification outputs, and what remains.
 
