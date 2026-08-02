@@ -353,7 +353,6 @@ check_service_manager() {
         # Linux: systemd user service names
         SERVICES=(
             "ollama"
-            "gbrain-autopilot"
             "hermes-gateway"
             "hermes-cortex-dashboard"
         )

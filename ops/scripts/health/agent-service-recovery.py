@@ -120,8 +120,8 @@ SERVICES: list[dict] = [
         "verify_label": "Langfuse",
     },
     _make_service("Ollama", label="ollama.service", pgrep="ollama"),
-    # gbrain: systemd user service
-    _make_service("gbrain", label="gbrain-autopilot.service", pgrep="gbrain"),
+    # gbrain: DECOMMISSIONED 2026-08-02 (mycortex replaces) — service left
+    # unregistered so the recovery loop never restarts a decommissioned daemon.
 ]
 # agent-bus: only on orchestrator machines (Moses/Esther). Non-orchestrators
 # don't run the bus server and shouldn't try to recover it.

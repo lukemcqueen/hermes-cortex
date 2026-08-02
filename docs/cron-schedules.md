@@ -55,9 +55,6 @@
 | `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local |
 | `agent-session-mine` | `0 2 * * *` | no_agent | `agent-session-mine-cron.py` | local |
 | `agent-nginx-threat-pipeline` | `0 5 * * *` | no_agent | `agent-nginx-threat-pipeline.sh` | origin |
-| `agent-gbrain-doctor` | `5 6 * * *` | no_agent | `agent-gbrain-doctor.sh` | origin | *(decommission-pending — mycortex replaces; see mycortex-DESIGN.md §6)*
-| `agent-gbrain-nightly-dream` | `0 3 * * 6` | no_agent | `agent-gbrain-nightly-dream.sh` | origin | *(decommission-pending — mycortex replaces)*
-| `agent-gbrain-update-sync` | `0 2 * * 0` | no_agent | `agent-gbrain-update-sync.sh` | origin | *(decommission-pending — mycortex replaces)*
 | `agent-mycortex-sync` | `*/15 * * * *` | no_agent | `agent-mycortex-sync.sh` | origin | *(knowledge brain sync — replaces gbrain autopilot)*
 | `local-mycortex-parity` | `0 5 * * *` | no_agent | `local-mycortex-parity.sh` | origin | *(daily parity gate watchdog — S-010 zero-regression window; silent on pass)*
 | `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `agent-scoring-activity-watchdog.py` | origin |

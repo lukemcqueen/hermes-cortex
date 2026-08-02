@@ -122,8 +122,10 @@ case "${ACTION}" in
           issues+=("SERVICE:ollama.service:down")
         fi
       fi
-      # Gbrain autopilot (handles sync, extract, embed, lint internally)
-      if ! systemctl --user is-active gbrain-autopilot >/dev/null 2>&1; then
+      # Gbrain autopilot — DECOMMISSIONED 2026-08-02 (mycortex replaces).
+      # Only flag when the unit is still ENABLED but inactive (half-state).
+      if ! systemctl --user is-active gbrain-autopilot >/dev/null 2>&1 \
+         && systemctl --user is-enabled gbrain-autopilot >/dev/null 2>&1; then
         issues+=("SERVICE:gbrain-autopilot:down")
       fi
     fi

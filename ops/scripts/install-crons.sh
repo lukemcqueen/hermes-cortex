@@ -474,9 +474,6 @@ if $UNINSTALL; then
     "agent-fixer-evening" \
     "agent-fixer-overnight" \
     "agent-fixer-workday" \
-    "agent-gbrain-doctor" \
-    "agent-gbrain-nightly-dream" \
-    "agent-gbrain-update-sync" \
     "agent-governance-auditor" \
     "agent-hermes-cortex-sync" \
     "agent-hermes-update" \
@@ -629,16 +626,6 @@ create_cron "agent-system-alert-watchdog" "*/30 * * * *" \
 
 create_cron "agent-service-recovery" "*/5 * * * *" \
   "agent-service-recovery.py" \
-  "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
-
-# Daily gbrain health check (06:05, silent when healthy)
-create_cron "agent-gbrain-doctor" "5 6 * * *" \
-  "agent-gbrain-doctor.sh" \
   "" \
   "" \
   "" \
@@ -906,26 +893,6 @@ create_cron "agent-hermes-update" "23 22 * * *" \
   "" \
   "" \
   "local" \
-  "" \
-  "true"
-
-# Weekly gbrain dream for knowledge enrichment
-create_cron "agent-gbrain-nightly-dream" "0 3 * * 6" \
-  "agent-gbrain-nightly-dream.sh" \
-  "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
-
-# Weekly gbrain update and health check
-create_cron "agent-gbrain-update-sync" "0 2 * * 0" \
-  "agent-gbrain-update-sync.sh" \
-  "" \
-  "" \
-  "" \
-  "origin" \
   "" \
   "true"
 

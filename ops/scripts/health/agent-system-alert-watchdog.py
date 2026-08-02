@@ -191,6 +191,24 @@ def check_service(label: str) -> dict:
         return check_systemd(label)
     return _check_launchd(label)
 
+
+def _service_enabled(name: str) -> bool:
+    """True if a systemd user service is ENABLED (intends to run).
+
+    Disabled unit = intended post-decommission state (gbrain), not an alert.
+    """
+    if not is_linux:
+        return True
+    unit = name if name.endswith(".service") else f"{name}.service"
+    try:
+        out = subprocess.run(
+            ["systemctl", "--user", "is-enabled", unit],
+            capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+    except Exception:
+        return True
+    return out == "enabled"
+
 def check_docker_containers() -> dict:
     containers = {
         "ClickHouse": "langfuse-clickhouse-1",
@@ -492,14 +510,16 @@ def main():
 
     services = {
         "Ollama": check_ollama(),
-        "gbrain sync": check_service(gbrain_svc),
         "gbrain sources": check_gbrain_sources(),
         "Docker (Langfuse)": check_docker_containers(),
         "Gateway activity": check_gateway_log(),
         "Memory→brain sync": check_memory_sync_freshness(),
     }
-
-    icons = {"UP": "✅", "DEGRADED": "⚠️", "DOWN": "❌", "ERROR": "🔴", "UNKNOWN": "❓"}
+    # gbrain sync daemon — DECOMMISSIONED 2026-08-02: only monitor when the
+    # unit is still ENABLED (half-state). A disabled unit is the intended
+    # post-decommission state, not an alert.
+    if _service_enabled(gbrain_svc):
+        services["gbrain sync"] = check_service(gbrain_svc)
 
     # Add service statuses to details/alerts
     for name, result in services.items():

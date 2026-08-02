@@ -310,8 +310,6 @@ register ".hermes-cortex/hooks/post-merge"   "${CORTEX_DEPLOY_HOME}/hooks/post-m
 # Deployment-specific cron scripts
 register "ops/scripts/manage/agent-auto-save-sessions.py"      "${CORTEX_DEPLOY_HOME}/scripts/agent-auto-save-sessions.py"
 register "ops/scripts/agent/agent-health-monitor.py"    "${CORTEX_DEPLOY_HOME}/scripts/agent-health-monitor.py"
-register "ops/scripts/manage/agent-gbrain-nightly-dream.sh"   "${CORTEX_DEPLOY_HOME}/scripts/agent-gbrain-nightly-dream.sh"
-register "ops/scripts/manage/agent-gbrain-update-sync.sh"     "${CORTEX_DEPLOY_HOME}/scripts/agent-gbrain-update-sync.sh"
 register "ops/scripts/manage/gbrain-wrapper.sh"         "${CORTEX_DEPLOY_HOME}/scripts/gbrain-wrapper.sh"
 register "ops/scripts/manage/gbrain-doctor-summary.py"   "${CORTEX_DEPLOY_HOME}/scripts/gbrain-doctor-summary.py"
 register "ops/scripts/manage/send-skill-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/send-skill-report.py"
@@ -360,10 +358,8 @@ register "ops/scripts/manage/ek-session-snapshot.py"     "${CORTEX_DEPLOY_HOME}/
 
 # Fleet watchdog — cross-agent health polling (orch, deployed by install-orch-crons.sh)
 register_orch "ops/scripts/agent/orch-fleet-watchdog.py"      "${CORTEX_DEPLOY_HOME}/scripts/orch-fleet-watchdog.py"
-register "ops/scripts/agent/agent-gbrain-doctor.sh"       "${CORTEX_DEPLOY_HOME}/scripts/agent-gbrain-doctor.sh"
 
-# gbrain autopilot — systemd user service (replaces old sync-watch cron/launchd)
-register_orch "ops/install/deploy/gbrain-autopilot.service"       "${HOME}/.config/systemd/user/gbrain-autopilot.service" "restart_gbrain_sync"
+# gbrain autopilot — REMOVED 2026-08-02 (decommissioned; mycortex replaces)
 
 # Governance enforcer plugin — NOT registered in MAP. deploy_governance_plugin()
 # handles the full lifecycle: copy, chmod 444, chattr +i. Dual registration
@@ -539,23 +535,9 @@ update_gbrain_binary() {
 # ── Service restart helpers ─────────────────────────────────
 
 restart_gbrain_sync() {
-  local autopilot_label="com.gbrain.autopilot"
-  if [[ "$CORTEX_OS" == "macos" ]]; then
-    if launchctl list "$autopilot_label" &>/dev/null 2>&1; then
-      info "  Reloading gbrain autopilot…"
-      launchctl kickstart "gui/$(id -u)/$autopilot_label" 2>/dev/null || {
-        launchctl unload "$HOME/Library/LaunchAgents/$autopilot_label.plist" 2>/dev/null || true
-        launchctl load "$HOME/Library/LaunchAgents/$autopilot_label.plist" 2>/dev/null || true
-      }
-    else
-      warn "  gbrain autopilot not registered — run 'gbrain autopilot --install' first"
-    fi
-  fi
-  # Linux: restart autopilot systemd service
-  if systemctl --user is-active --quiet gbrain-autopilot 2>/dev/null; then
-    info "  Restarting gbrain autopilot (systemd)…"
-    systemctl --user restart gbrain-autopilot 2>&1 | sed 's/^/    /'
-  fi
+  # gbrain DECOMMISSIONED 2026-08-02 — no-op (mycortex replaces).
+  # Kept as a stub so any remaining callers don't error, but nothing restarts.
+  :
 }
 
 restart_langfuse() {
@@ -1553,7 +1535,7 @@ verify_services() {
     fi
   elif [[ "$os" == "Linux" ]]; then
     local any_unmanaged=0 any_inactive=0 managed=0
-    for unit in ollama gbrain-autopilot hermes-gateway hermes-cortex-dashboard; do
+    for unit in ollama hermes-gateway hermes-cortex-dashboard; do
       # Check system-level first, fall back to user-level
       if systemctl is-active --quiet "$unit" 2>/dev/null || systemctl --user is-active --quiet "$unit" 2>/dev/null; then
         managed=$((managed + 1))

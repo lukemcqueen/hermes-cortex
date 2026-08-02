@@ -155,10 +155,14 @@ def check_services():
                 proc_out, _, proc_rc = run("pgrep -f 'ollama serve' 2>/dev/null")
                 if proc_rc != 0 or not proc_out.strip():
                     add_issue("service_down", "high", f"Ollama is not active (checked system, user, process)", {"service": "ollama.service", "note": "all checks failed"})
-        # Gbrain autopilot (handles sync, extract, embed, lint internally)
+        # Gbrain autopilot — DECOMMISSIONED 2026-08-02 (mycortex replaces).
+        # Only flag when the unit is still ENABLED but inactive (half-state);
+        # a disabled unit is the intended post-decommission state.
         out, _, rc = run("systemctl --user is-active gbrain-autopilot 2>/dev/null")
         if rc == 0 and out.strip() != "active":
-            add_issue("service_down", "high", f"gbrain autopilot is not active (systemd user service)", {"service": "gbrain-autopilot.service", "status": out.strip() or "unknown"})
+            en, _, _ = run("systemctl --user is-enabled gbrain-autopilot 2>/dev/null")
+            if en.strip() == "enabled":
+                add_issue("service_down", "high", f"gbrain autopilot enabled but inactive (decommission half-state)", {"service": "gbrain-autopilot.service", "status": out.strip() or "unknown"})
 
 
 def check_nginx():

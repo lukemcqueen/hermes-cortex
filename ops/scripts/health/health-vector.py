@@ -250,7 +250,9 @@ def check_services() -> int:
     On macOS, checks running processes. Returns 0 if none are installed.
     """
     if _is_linux:
-        key_services = ["nginx", "gbrain-autopilot"]
+        # gbrain-autopilot REMOVED from key services — decommissioned 2026-08-02
+        # (mycortex replaces; a disabled unit is the intended state).
+        key_services = ["nginx"]
         any_installed = False
         all_running = True
         for svc in key_services:

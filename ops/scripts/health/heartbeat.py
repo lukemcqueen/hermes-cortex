@@ -455,6 +455,25 @@ def _service_unit_exists(name: str) -> bool:
     return False
 
 
+def _service_enabled(name: str) -> bool:
+    """Check if a systemd user service is ENABLED (intends to run).
+
+    A disabled unit is the intended post-decommission state; only
+    enabled-but-inactive is a half-state worth alerting on.
+    """
+    if not _is_linux():
+        return True
+    unit = name if name.endswith(".service") else f"{name}.service"
+    try:
+        out = subprocess.run(
+            ["systemctl", "--user", "is-enabled", unit],
+            capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+    except Exception:
+        return True
+    return out == "enabled"
+
+
 def run() -> str:
     """Run all checks and return report. Empty string = all healthy."""
     linux = _is_linux()
@@ -478,11 +497,12 @@ def run() -> str:
     else:
         checks["Ollama"] = {"status": "UP", "detail": "Skipped — not configured"}
 
-    # Check gbrain: only report DOWN if the service unit file exists
-    if _service_unit_exists(gbrain_service):
+    # Check gbrain: DECOMMISSIONED 2026-08-02 — report UP/skipped unless the
+    # unit is still ENABLED (half-state, should be disabled).
+    if _service_unit_exists(gbrain_service) and _service_enabled(gbrain_service):
         checks["gbrain sync daemon"] = check_service(gbrain_service)
     else:
-        checks["gbrain sync daemon"] = {"status": "UP", "detail": "Skipped — not configured"}
+        checks["gbrain sync daemon"] = {"status": "UP", "detail": "Decommissioned — mycortex replaces (unit disabled)"}
 
     checks.update({
         "gbrain sources": check_gbrain_sources(),
