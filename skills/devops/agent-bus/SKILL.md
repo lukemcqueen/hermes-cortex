@@ -367,9 +367,42 @@ systemctl --user restart agent-bus.service
 
 Note: The bus at `:8903` is a direct local connection. It's also proxied through nginx at the orchestrator's bus port (e.g. `:13004` for Moses, `:14004` for Esther) with Bearer auth. The MCP tools route through nginx, not directly.
 
+## Forwarder: role-aware PEER resolution (2026-08-03)
+
+**Symptom:** Esther's `orch-bus-forwarder.py` silently self-synced (Esther↔Esther) — the "mirror of Moses' bus" never existed, and the forwarder skipped sync since Jul 31 (`peer_downed_at` stuck).
+
+**Root cause:** `PEER_URL` defaulted to `CORTEX_BUS_FALLBACK_URL` — which on Esther's host is HER OWN external URL (`:14004`). The fallback URL is "my bus when primary is down", NOT "the other orchestrator".
+
+**Fix (commit `fc9aafdb`):** role-aware peer resolution in both module-level and `main()` config resolution:
+- On **Esther**: peer = Moses = `CORTEX_BUS_URL` (`:13004`)
+- On **Moses**: peer = Esther = `CORTEX_BUS_FALLBACK_URL` (`:14004`)
+- `PEER_AUTH` falls back to `CORTEX_BASIC_AUTH` (nginx Basic creds — external peer = nginx, Bearer gets 401)
+
+**Verify:** run the forwarder; state file `~/.hermes-cortex/state/bus-forwarder-state.json` should show `peer_downed_at` cleared and "Peer recovered — drained N→local, N→peer".
+
+**ACL prerequisite (2026-08-03):** the backup orchestrator's `orch-bus-forwarder`
+mirrors ALL `inbox_*` queues to the peer, so its `bus.permissions` row on the
+PRIMARY's bus needs every inbox queue in `can_read` + `can_write`. Without it,
+LOCAL→PEER drain fails with `403 — Agent 'esther' does not have write access to
+queue 'inbox_gisu'` (per-queue ACL at `core/agent_bus/server.py`
+`_check_permission`). Grant SQL: `docs/esther-bus-setup.md` Step 7. Symptom:
+`orch-bus-forwarder-sync` cron alerts `LOCAL→PEER: N failed` every tick while
+the messages sit in the local queues indefinitely.
+
+## Shared orchestrator inbox (`inbox_orchestrator`, 2026-08-03)
+
+Workers' fix requests to `inbox_moses` are **invisible to Esther** — the per-queue ACL (`core/agent_bus/server.py` `_check_permission`: `queue not in allowed_queues → 403`) only lets each agent read its own inbox. The backup orchestrator literally cannot see worker escalations when the primary is down. Fix: a shared `inbox_orchestrator` queue both orchestrators read/write:
+
+- **Schema:** `ops/services/agent-bus/schema/auth.sql` seeds the queue idempotently (also auto-creates on first send)
+- **Handler:** `agent-message-handler.py` on orchestrators polls `inbox_orchestrator` as a secondary queue — **archive from the SOURCE queue** (`source_queue`, not the hardcoded own-inbox name)
+- **Workers:** `contact-moses.sh` gets `CORTEX_INBOX_TARGET` env override (default `inbox_moses` for backward compat)
+- **Docs:** ACL table in `docs/bus-architecture.md` + `docs/reference/cortex-bus-config.md` (orchestrators read `inbox_orchestrator`; workers `can_send` it)
+
+**Fleet server-version split:** repo `ops/services/agent-bus/server.py` = coarse boolean ACL (no per-queue gate); `core/agent_bus/server.py` = per-queue array ACL (the 403 source on Moses). The runtime/canonical is `core/`; deployed copies may lag. When a 403 appears on one host but not another, diff the two server files before assuming a config bug.
+
 ## References
 
-- `references/dlq-isdlq-fix.md` — Full reproduction of the `is_dlq = false` bug: symptoms, diagnosis, fix, and verification
+- `references/forwarder-peer-resolution.md` — role-aware PEER fix detail (2026-08-03)
 - `references/dlq-monitor-fix.md` — DLQ alert fix: processing state detection + silent-when-clean pattern for `orch-bus-confirmation-poller.py report`
 - `references/cross-server-architecture.md` — Per-server independent Postgres architecture: why local `inbox_moses` sends don't reach Moses, fleet port map, and correct curl pattern for cross-server messages
 - `core/agent_bus/queue.py` — Queue creation, DLQ logic, send/read/archive
