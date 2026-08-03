@@ -382,10 +382,11 @@ def _build_auth_headers(url: str) -> dict[str, str]:
     return {}
 
 
-def send_report(report: dict, dry_run: bool = False) -> list[str]:
+def send_report(report: dict, dry_run: bool = False) -> list[str] | None:
     """Send learning report to Moses via PGMQ bus.
 
-    Returns list of file paths that were successfully sent (empty on failure).
+    Returns list of file paths that were successfully sent (learning files),
+    or None on send failure. Empty list = sent OK but no learning files.
     """
     from urllib.request import Request, urlopen
     from urllib.error import URLError
@@ -495,10 +496,10 @@ def send_report(report: dict, dry_run: bool = False) -> list[str]:
             except Exception:
                 body = str(e)
         print(f"ERR: Send failed: {getattr(e, 'code', '?')} {body}", file=sys.stderr, flush=True)
-        return []
+        return None
     except (OSError, json.JSONDecodeError) as e:
         print(f"ERR: Send failed: {e}", file=sys.stderr, flush=True)
-        return []
+        return None
 
 
 def _run_session_mining(state: dict, dry_run: bool = False) -> None:
@@ -584,7 +585,10 @@ def main():
     }
 
     # Phase 4: Send
+    # None = send failed (bus unreachable) — do NOT save state so the delta
+    # is retried next run. [] = sent OK but no learning files.
     sent_files = send_report(report, dry_run=dry_run)
+    send_ok = sent_files is not None or dry_run
 
     # Phase 5: Post-send cleanup — move sent learning files to sent/ dir
     if sent_files and not dry_run:
@@ -606,7 +610,13 @@ def main():
         state["sent_learning_hashes"] = sent_hashes
 
     # Phase 6: Save state (only if successfully sent or dry run)
-    if sent_files or dry_run:
+    # NOTE: sent_files is only non-empty when learnings were sent. When only
+    # skills/lessons changed (no learnings), sent_files is [] — so the old
+    # `if sent_files or dry_run` skipped saving, and skill_hashes/lesson_count
+    # never persisted → the SAME delta re-sent every 6h (verified 2026-08-03:
+    # "20 skills, 297 lessons" identical since 07-28). Save whenever a report
+    # was actually sent (has_data or heartbeat) AND the send succeeded.
+    if send_ok:
         state["last_run"] = t0
         # Skill hashes were updated inside _get_skill_delta
         # Lesson count was updated inside _get_lesson_delta

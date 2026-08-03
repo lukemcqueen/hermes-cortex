@@ -431,12 +431,10 @@ register "ops/services/mycortex/import-gbrain.py"     "${CORTEX_DEPLOY_HOME}/ser
 register "ops/services/mycortex/schema/mycortex.sql"  "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/mycortex.sql"
 register "ops/services/mycortex/schema/v002__rls-admin-reader-grants.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/v002__rls-admin-reader-grants.sql"
 register "ops/services/mycortex/schema/v003__admin-schema-version-grant.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/v003__admin-schema-version-grant.sql"
-register "ops/scripts/manage/mycortex"                "${CORTEX_DEPLOY_HOME}/scripts/mycortex"
 register "ops/scripts/manage/mycortex-parity.py"      "${CORTEX_DEPLOY_HOME}/scripts/mycortex-parity.py"
+register "ops/scripts/manage/mycortex"                "${CORTEX_DEPLOY_HOME}/scripts/mycortex"
 # agent-mycortex-sync cron wrapper — per-host sync (design D4: NOT orchestrator-only)
 register "ops/scripts/manage/agent-mycortex-sync.sh"  "${CORTEX_DEPLOY_HOME}/scripts/agent-mycortex-sync.sh"
-# daily parity-diff watchdog — enforces S-010 zero-regression window during flip gate
-register "ops/scripts/manage/agent-mycortex-parity.sh" "${CORTEX_DEPLOY_HOME}/scripts/agent-mycortex-parity.sh"
 # daily retention — prune ingest_log >90d, purge archived pages >7d (S-016)
 register "ops/scripts/manage/agent-mycortex-retention.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-mycortex-retention.py"
 

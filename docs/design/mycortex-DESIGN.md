@@ -52,7 +52,7 @@ This is not a rearchitecture of the knowledge model — it is the same shape gbr
 | S1 (Sec) | No DB-layer access control; shared superuser (`gbrain` role) fleet-wide | **Dedicated roles:** `mycortex_reader` (SELECT on mycortex only), `mycortex_ingest` (INSERT/UPDATE/DELETE on mycortex only). `gbrain` superuser reserved for DDL + migration, stored root-only. **RLS enabled** on `pages`/`content_chunks` keyed on `source.is_federated`. |
 | S2 (Sec) | PII expansion with no gate (lessons + personal brains fleet-readable) | **PII scan gate** (reuse pii-scrubbing skill) before any source is marked `is_federated=true`. Default = **isolated**. Snippets truncated (200 chars). `local_path` scrubbed from logs. Query log enables exfil detection. |
 | S3 (Sec/Domain) | mtime+size hashing wrong for git | Same as SS1 — sha256, resolved. |
-| SS1 (Prod/QA) | M-002 parity gate unmeasurable | **Golden known-answer set** (25–30 queries with expected top-3 paths, per source) committed as a tracked artifact. **gbrain baseline captured while gbrain still runs** (same queries → recorded results). Pass = 100% top-3 federated, ≥90% isolated, automated parity script. |
+| SS1 (Prod/QA) | M-002 parity gate unmeasurable | **Golden known-answer set** (25–30 queries with expected top-3 paths, per source) committed as a tracked artifact. **gbrain baseline captured while gbrain still runs** (same queries → recorded results). Pass = 100% top-3 federated, ≥90% isolated, automated parity script. *RETIRED 2026-08-03 with gbrain: the gate was a migration milestone; golden set retained as a manual mycortex regression fixture (`mycortex-parity.py --mode check`), no longer a doctor/cron-enforced gate.* |
 | SS2 (Prod/QA) | Semantic expectation gap (undated slice) | **Commitment: semantic slice = v1.1, within 30 days of v1 GA.** Infra (pgvector + Ollama) already exists; the column rides the same schema. |
 | SS3 (Prod/QA) | Lessons (1,389 non-git files) at risk | **`cp -a` backup of `~/brain/lessons` before git-init**; git-init rehearsal on a copy first. |
 
@@ -301,7 +301,7 @@ Phase 9  VERIFY      bible/lessons/memory-sync crons healthy; bus schema intact;
 - **Fixtures:** `mycortex_test` schema + synthetic brain dirs (git + local). Sync/search take a `--db-name` / path override. **Never touch prod dirs or `bus`. Hermeticity guard: tests refuse to run against `gbrain` DB / prod paths** (fail fast, not silently).
 - **Golden known-answer set:** `tests/fixtures/golden-queries.json` — 25–30 queries, per source, expected top-3 paths, **pinned to source content SHAs** (re-baseline only on intentional restructure, documented).
 - **gbrain baseline:** `tests/fixtures/gbrain-baseline.json` — captured in Phase 0 while gbrain runs, same SHAs.
-- **Parity script:** `ops/scripts/manage/mycortex-parity.py` — runs golden set vs mycortex, computes pass rate, diffs vs baseline. **Wired to CI/pre-commit** so the gate can't silently rot.
+- **Parity script:** `ops/scripts/manage/mycortex-parity.py` — runs golden set vs mycortex, computes pass rate, diffs vs baseline. *RETIRED as a gate 2026-08-03 (gbrain deprecated, migration complete): no longer wired to doctor/cron; kept as a manual mycortex regression fixture (`--mode check`).*
 - **Failure-mode tests (pytest, extend existing tests/):**
   - re-sync idempotency, crash-resume, delete-propagation (soft-delete + re-ingest window)
   - **source-isolation leak test** — isolated source must NOT appear in federated results; runs as `mycortex_reader` (not superuser) so RLS is actually exercised

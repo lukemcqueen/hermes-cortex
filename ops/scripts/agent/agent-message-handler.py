@@ -720,9 +720,9 @@ def main():
 
     try:
       # ── Dispatch via command registry ──
+      start = time.time()  # init before any dispatch so except handler is safe
       from commands import dispatch as cmd_dispatch
 
-      start = time.time()
       result_body = cmd_dispatch(subject, body, msg)
 
       if result_body is not None:
@@ -882,6 +882,37 @@ def main():
           state["processed_ids"].append(correlation_id)
           state["processed_ids"] = state["processed_ids"][-50:]
         save_state(state)
+        return True
+
+      # ── Learning Report — stage payload for orchestrator skill-lifecycle ──
+      # Fleet agents' agent-learning-collector sends Learning Reports (skills
+      # delta, lessons, session stats) every 6h. These are DATA for the
+      # orchestrator's orch-skill-lifecycle pipeline, not commands. Mirror the
+      # Skill Stub Recovery pattern: stage the body to a state dir so the
+      # 04:00 pipeline can read it, then let the early-archive keep the queue
+      # clean. Without this branch the report hits "Unknown subject" and the
+      # content is lost from the live flow (regression: early-archive added
+      # 2026-07-23 ate all reports; verified 2026-08-03 — queue empty at 04:00,
+      # collector state frozen since 07-28).
+      if subject.startswith("Learning Report"):
+        try:
+          stage_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state" / "learning-reports"
+          stage_dir.mkdir(parents=True, exist_ok=True)
+          src_agent = body.get("from", "unknown") if isinstance(body, dict) else "unknown"
+          ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+          out_file = stage_dir / f"{src_agent}-{ts}.md"
+          content = body.get("body", body) if isinstance(body, dict) else str(body)
+          if isinstance(content, (dict, list)):
+            content = json.dumps(content, ensure_ascii=False, indent=2)
+          out_file.write_text(f"# Learning Report — {src_agent}\n\n{content}\n")
+          log(f"📦 Staged Learning Report from {src_agent} ({len(str(content))} chars) → {out_file.name}")
+          state.setdefault("last_staged", []).append(
+            {"subject": subject, "from": src_agent, "t": time.time()}
+          )
+          state["last_staged"] = state["last_staged"][-20:]
+          save_state(state)
+        except Exception as e:
+          log(f"⚠️ Learning Report staging failed: {type(e).__name__}: {e}")
         return True
 
       # Unknown subject — send error response so orchestrator knows
