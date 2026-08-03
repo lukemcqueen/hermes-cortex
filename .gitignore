@@ -110,3 +110,5 @@ allow-ips-manual.conf
 # as secondary protection alongside the primary lock in ~/.hermes-cortex/state/
 .hermes-cortex/.governance-lock
 private-data/
+# mycortex DB backups (e.g. pre-migration dumps) — large, PII-heavy, never commit
+ops/services/mycortex/backups/
