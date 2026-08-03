@@ -2729,6 +2729,14 @@ def check_script_naming(res):
         if not name or not script:
             continue
 
+        # Naming conventions apply only to no_agent jobs, where the script IS
+        # the job. LLM-driven jobs (no_agent=False) may attach a shared
+        # context-injection script (e.g. session-active-guard.py reused by
+        # several *-workday crons) whose stdout is injected into the prompt —
+        # its name is unrelated to the cron name by design.
+        if not job.get("no_agent", False):
+            continue
+
         script_stem = Path(script).stem  # e.g. 'agent-foo' from 'manage/agent-foo.sh'
 
         # Check 1: script name and cron name should share a base. Allow:
