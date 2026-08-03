@@ -44,8 +44,9 @@ PATTERNS = [
     # echo 'long-token' | piped to tool
     (r"""echo\s+'[A-Za-z0-9_\-]{20,}'\s*\|""",
      "echo with long token-like string piped to tool"),
-    # curl -u 'user:longpass'
-    (r"""curl\s+.*\s-u\s+'[^']+:[^']{8,}'""",
+    # curl -u 'user:longpass' (single-space form fixed 2026-08-03 — the
+    # old `\s.*\s-u` required 2+ spaces and missed `curl -u '...'`)
+    (r"""curl[ \t]+.*-u[ \t]+'[^']+:[^']{8,}'""",
      "inline credentials in curl command"),
     # Variable assignment with literal 20+ char string
     (r"""(?:^|export\s+)[A-Z_]+\s*=\s*'[A-Za-z0-9_!@#$%^&*()\-+=]{20,}'""",

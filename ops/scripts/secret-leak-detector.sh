@@ -93,16 +93,16 @@ for FILE in $STAGED_FILES; do
   # 3b. WARNS: any other curl -u "user:pass" (placeholders like
   #     your-password / $(cat file) / short demo values).
   _BLOCK_HIT=0
-  if echo "$CODE_CONTENT" | grep -Pn "curl\s+.*\s-u\s+['\"][^'\"]+:[A-Za-z0-9]{12,}['\"]" >/dev/null 2>&1; then
-    MATCHES=$(echo "$CODE_CONTENT" | grep -Pn "curl\s+.*\s-u\s+['\"][^'\"]+:[A-Za-z0-9]{12,}['\"]" 2>/dev/null || true)
+  if echo "$CODE_CONTENT" | grep -En "curl[[:space:]]+.*-u[[:space:]]+['\"][^'\"]+:[A-Za-z0-9]{12,}['\"]" >/dev/null 2>&1; then
+    MATCHES=$(echo "$CODE_CONTENT" | grep -En "curl[[:space:]]+.*-u[[:space:]]+['\"][^'\"]+:[A-Za-z0-9]{12,}['\"]" 2>/dev/null || true)
     if [[ -n "$MATCHES" ]]; then
       echo "$FILE|curl_basic_auth_block|$MATCHES" >> "$DETECTION_FILE"
       BLOCKING_ISSUES=$((BLOCKING_ISSUES + 1))
       _BLOCK_HIT=1
     fi
   fi
-  if [[ "$_BLOCK_HIT" -eq 0 ]] && echo "$CODE_CONTENT" | grep -Pn "curl\s+.*\s-u\s+['\"][^'\"]+:[^'\"]{8,}['\"]" >/dev/null 2>&1; then
-    MATCHES=$(echo "$CODE_CONTENT" | grep -Pn "curl\s+.*\s-u\s+['\"][^'\"]+:[^'\"]{8,}['\"]" 2>/dev/null || true)
+  if [[ "$_BLOCK_HIT" -eq 0 ]] && echo "$CODE_CONTENT" | grep -En "curl[[:space:]]+.*-u[[:space:]]+['\"][^'\"]+:[^'\"]{8,}['\"]" >/dev/null 2>&1; then
+    MATCHES=$(echo "$CODE_CONTENT" | grep -En "curl[[:space:]]+.*-u[[:space:]]+['\"][^'\"]+:[^'\"]{8,}['\"]" 2>/dev/null || true)
     if [[ -n "$MATCHES" ]]; then
       echo "$FILE|curl_basic_auth|$MATCHES" >> "$DETECTION_FILE"
     fi
