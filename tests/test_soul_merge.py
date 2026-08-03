@@ -36,9 +36,9 @@ def test_parse_principles_accepts_three_hash_headings():
     sm = _load_soul_merge()
     section = sm._principles_section(TEMPLATE.read_text())
     parsed = sm._parse_principles(section)
-    assert len(parsed) >= 20, f"expected >=20 principles, got {len(parsed)}"
-    assert 20 in parsed, "template Principle 20 not parsed"
-    assert 21 in parsed, "template Principle 21 not parsed"
+    assert len(parsed) >= 12, f"expected >=12 principles, got {len(parsed)}"
+    assert 1 in parsed, "template Principle 1 not parsed"
+    assert 12 in parsed, "template Principle 12 not parsed"
 
 
 def test_parse_principles_accepts_legacy_four_hash_headings():
@@ -142,8 +142,8 @@ def test_merge_fresh_agent_injects_all_principles(tmp_path):
     assert rc == 1, f"expected merge rc=1, got {rc}"
     out = deployed.read_text()
     heads = _principle_heads(out)
-    assert len(heads) >= 21, f"expected >=21 principles, got {len(heads)}"
-    assert any("### 20. Take Responsibility" in h for h in heads)
-    assert any("### 21. Answer" in h for h in heads)
+    assert len(heads) >= 12, f"expected >=12 principles, got {len(heads)}"
+    assert any("### 1. Loop Governance" in h for h in heads)
+    assert any("### 12. Not Done Until Tested" in h for h in heads)
     # Agent's own single principle preserved
     assert "### 1. Test Principle" in out

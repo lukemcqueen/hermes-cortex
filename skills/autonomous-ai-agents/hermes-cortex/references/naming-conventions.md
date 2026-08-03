@@ -12,7 +12,7 @@ names are preserved as **aliases** in frontmatter so old references still resolv
 
 Other skills keep descriptive names without prefix:
 - `agent-flow`, `agent-contract`, `change-test-loop`, `session-manager`
-- `state-orchestrator`, `story-slicing`, `prd-lite`
+- `state-orchestrator`, `story-slicing`, `product-requirements`
 
 ## Versioning Policy
 

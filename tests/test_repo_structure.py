@@ -108,8 +108,8 @@ def test_version_consistency():
         install_version = match.group(1)
         # Fallback version is also fine
         if install_version != file_version:
-            # Check if it's a fallback
-            if 'VERSION="1.0.0"  # fallback' in content:
+            # Check if it's a fallback (comment marker on the same line)
+            if re.search(r'VERSION="1\.0\.0"[^\n]*#\s*fallback', content):
                 print(f"  install.sh uses fallback version (1.0.0), root VERSION is {file_version}")
                 return
     assert install_version == file_version, (

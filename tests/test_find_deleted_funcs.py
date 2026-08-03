@@ -49,12 +49,17 @@ def test_detector_flags_single_function_deletion():
 
 
 def test_probe_runs_against_known_regression_commit():
-    """84272894 stripped def lines; 362cf70f restored them, so current tree is clean."""
+    """362cf70f restored the 5 functions stripped by adversarial-fix commit
+    84272894; running the probe against the restoration commit's parent
+    (84272894) must report no deletions since the current tree carries them.
+    Note: 84272894 itself is NOT a clean probe target anymore — gbrain was
+    decommissioned 2026-08-02, so its parent still lists check_gbrain*
+    functions that the current tree intentionally removed."""
     result = subprocess.run(
         [
             "python3",
             str(PROBE),
-            "84272894",
+            "362cf70f",
             "--path-filter",
             "ops/scripts",
             "--repo",

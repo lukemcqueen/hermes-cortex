@@ -349,12 +349,12 @@ def check_soul_sync(res):
       template_markers = _extract_soul_markers(template)
       agent_markers = _extract_soul_markers(hermes_soul)
 
-      # Filter out orchestrator-only markers for non-orch agents
+      # Orchestrator-only trait: never ships in the template (agents must not
+      # self-claim it). moses/esther may carry it locally; non-orchestrators
+      # carrying it is a real defect flagged below.
       orchestrators = {"moses", "esther"}
       is_orchestrator = hostname in orchestrators
       effective_template = template_markers
-      if not is_orchestrator and "Orchestrator" in effective_template:
-        effective_template = {m for m in template_markers if m != "Orchestrator"}
 
       # Check principle count
       if len(effective_template) > len(agent_markers) + 2:
@@ -376,18 +376,29 @@ def check_soul_sync(res):
       else:
         res.add("SOUL.md template sync (~/.hermes)", "PASS")
 
-      # Reverse drift check: deployed has principle markers not in template
-      extra_in_deployed = agent_markers - effective_template
+      # Reverse drift check: deployed has principle markers not in template.
+      # Diff against the FULL template — filtering "Orchestrator" out of the
+      # effective template then diffing made every faithful non-orch copy of
+      # the trait a false WARN (trait was in template, filtered, then flagged).
+      extra_in_deployed = agent_markers - template_markers
       if extra_in_deployed:
+        skip_patterns = ["Scripture", "Bible", "Scripture Insights",
+                         "Replace with", "your agent", "your purpose",
+                         "your name", "your mission"]
+        if is_orchestrator:
+          skip_patterns.append("Orchestrator")  # orch may carry it locally
         real_extra = {m for m in extra_in_deployed
-               if not any(skip in m for skip in
-                     ["Scripture", "Bible", "Scripture Insights",
-                      "Replace with", "your agent", "your purpose",
-                      "your name", "your mission"])}
-        if real_extra:
+               if not any(skip in m for skip in skip_patterns)}
+        if "Orchestrator" in extra_in_deployed and not is_orchestrator:
+          res.add("SOUL.md orchestrator claim (~/.hermes)", "WARN",
+              "Deployed claims the Orchestrator trait — you are NOT an orchestrator",
+              "Remove the Orchestrator trait from Core Traits; orchestrator status is host-derived (moses/esther only)")
+        elif real_extra:
           res.add("SOUL.md reverse drift (~/.hermes)", "WARN",
             f"Deployed has {len(real_extra)} markers not in template: {', '.join(sorted(real_extra)[:5])}",
             "Copy new principles to docs/templates/SOUL.md so all agents get them.")
+        else:
+          res.add("SOUL.md reverse drift (~/.hermes)", "PASS")
       else:
         res.add("SOUL.md reverse drift (~/.hermes)", "PASS")
     else:
