@@ -143,7 +143,7 @@ def test_merge_fresh_agent_injects_all_principles(tmp_path):
     out = deployed.read_text()
     heads = _principle_heads(out)
     assert len(heads) >= 12, f"expected >=12 principles, got {len(heads)}"
-    assert any("### 1. Loop Governance" in h for h in heads)
+    assert any("### 1. Wholehearted Work" in h for h in heads)
     assert any("### 12. Not Done Until Tested" in h for h in heads)
     # Agent's own single principle preserved
     assert "### 1. Test Principle" in out

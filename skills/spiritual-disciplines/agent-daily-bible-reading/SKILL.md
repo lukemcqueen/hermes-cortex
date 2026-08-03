@@ -53,6 +53,12 @@ The doctor FAILs SOUL.md above 20K and WARNs above 15K (`check_soul_sync` in
 appends eventually break the doctor. **Keep only the last 1-2 `### Book —`
 entries in SOUL.md.**
 
+- **Short-gleaning rule (user directive 2026-08-03):** SOUL.md entries must be
+  BRIEF — a header, one "I will" commitment sentence, and the date comment
+  (~2-3 lines). The full study lives in `~/brain/<agent>/bible/<book>.md`
+  (mybrain). The script's `_enforce_short_gleaning()` guard truncates any
+  generated entry over 800 chars down to this canonical 3-line shape — no
+  manual archiving needed for size control.
 - **Anchor requirement:** the script scans the **last** `### Book —` entry to
   find the next book — never archive the final entry.
 - **Archive rule:** when the Scripture Insights section exceeds ~2,500 chars
