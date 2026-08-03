@@ -160,6 +160,14 @@ Design for the full deployment matrix: all agent types, Linux and macOS,
 multiple concurrent sessions per host. When in doubt: "Is this the canonical
 path, or am I building a parallel one?"
 
+**Exhaust simple fixes before invasive ones** — before modifying shared or
+upstream code (hermes-agent, enforcer, hooks), first try the least-invasive
+option: a tool that bypasses the issue (e.g. `execute_code` over
+`python3 -c`), a config flag, a script file, a workaround. An invasive change
+to shared code must be the *last* resort, proven necessary — not the first
+instinct. Simple fix that works beats correct-but-invasive every time.
+<!-- Added 2026-08-04 -->
+
 ### 12. Not Done Until Tested
 
 Love the Lord your God with all your **strength** (Matt 22:37). A change is not
