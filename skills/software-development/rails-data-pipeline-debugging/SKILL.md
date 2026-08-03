@@ -190,4 +190,4 @@ rails test test/helpers/title_splitter_test.rb
 - `legacy-codebase-navigation` — tracing data through deep helper chains
 - `root-cause-debugging` — 6-phase framework
 - `change-test-loop` — small verified changes
-- `cwr-file-processing` — CWR export/ACK validation (same domain)
+- `local-cwr-file-processing` — CWR export/ACK validation (same domain)
