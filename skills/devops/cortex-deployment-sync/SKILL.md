@@ -139,32 +139,33 @@ A non-empty-but-bogus telemetry host (e.g. `POSTHOG_HOST: "http://127.0.0.1:1"` 
 
 **Fix:** empty string, not a bogus host (`POSTHOG_HOST: ""`) — the client is never initialized. Then recreate containers; `docker compose restart` does NOT re-read env vars. This was the root cause of a full-core Langfuse web spin on 2026-07-31; see the reference trace.
 
-## Pitfall 10: Terminal guard false-positives on `python3 -c` with large paths
+## Pitfall 10: Terminal guard blocks `python3 -c` with large paths — use execute_code / script files
 
 The terminal tool's gateway-lifecycle guard (`~/.hermes/hermes-agent/cron/lifecycle_guard.py`)
-hard-blocks commands that look like they restart the gateway. A bug in its
-tokenizer split multi-line commands on newlines first, so a `python3 -c "..."`
-payload with embedded newlines had interior lines parsed as standalone shell
-segments — a path literal inside the payload (e.g.
-`sqlite3.connect('/home/moses/.hermes-cortex/data/loop-governance.db')`) became
+hard-blocks commands that look like they restart the gateway. Its tokenizer
+splits multi-line commands on newlines before parsing quotes, so a
+`python3 -c "..."` payload with embedded newlines has interior lines parsed as
+standalone shell segments — a path literal inside the payload (e.g.
+`sqlite3.connect('/home/moses/.hermes-cortex/data/loop-governance.db')`) becomes
 a "referenced script". Reading a >1MB file (loop-governance.db is ~33MB)
-failed closed as "unsafe", and the whole command was blocked with a bogus
+fails closed as "unsafe", and the whole command is blocked with a bogus
 **"Blocked: command or referenced script cannot restart or stop the gateway"**
 error — even though no gateway command was involved.
 
 **Symptom:** plain sqlite/read-only `python3 -c` queries of
 `~/.hermes-cortex/data/*.db` (or any >1MB file) get blocked with the
-gateway-restart error. `python3 script.py` (file form) is NOT affected.
+gateway-restart error.
 
-**Fix (deployed 2026-08-03):** `install-lifecycle-guard-fix.py` patches the
-tokenizer to be quote-aware across lines (quoted string spanning newlines =
-ONE argument). Verify: `python3 ~/.hermes-cortex/scripts/install-lifecycle-guard-fix.py --status`.
-Re-run after every `hermes update` (Hermes replaces its source dir). The
-running gateway keeps the old in-memory module until restarted.
+**Workaround (do NOT patch hermes-agent — user rule; upstream AGENTS.md also
+rejects "plugins that touch core files"):**
+1. **Preferred:** run the query via the `execute_code` tool (runs Python
+   directly, no shell-string parsing — guard never sees it), or
+2. Run it from a script file: `python3 /tmp/query.py` instead of
+   `python3 -c`/heredoc — the guard only trips on the inline form with
+   embedded paths.
 
-**Workaround if not yet patched:** run the query from a script file
-(`python3 /tmp/query.py`) instead of `python3 -c`/heredoc — the guard only
-trips on the inline form with embedded paths.
+This is a known upstream false positive; if it ever gets fixed upstream it
+will land via `hermes update`, not a local patch.
 
 ## Verification
 
