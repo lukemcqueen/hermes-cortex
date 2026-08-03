@@ -255,8 +255,9 @@ register "ops/scripts/manage/agent-session_cache.py"    "${CORTEX_DEPLOY_HOME}/s
 register "ops/scripts/health/prod-watchdog.sh"          "${CORTEX_DEPLOY_HOME}/scripts/prod-watchdog.sh"
 register_orch "ops/scripts/agent/orch-fleet-watchdog.py"   "${CORTEX_DEPLOY_HOME}/scripts/orch-fleet-watchdog.py"
 
-# Failover watchdog — auto-detect Moses outage, fail over to Esther (>15m)
-register_orch "ops/scripts/agent/orch-failover-watchdog.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-failover-watchdog.py"
+# Failover watchdog — detect bus outage, per-role behavior. Deployed to ALL
+# agents (workers detect + alert; orchestrators run full failover).
+register "ops/scripts/agent/agent-bus-failover-watchdog.py"  "${CORTEX_DEPLOY_HOME}/scripts/agent-bus-failover-watchdog.py"
 
 # Post-commit notification + installer
 register "ops/scripts/manage/post-commit-notify.sh"          "${CORTEX_DEPLOY_HOME}/scripts/post-commit-notify.sh"
@@ -379,8 +380,8 @@ register "ops/scripts/manage/ek-session-snapshot.py"     "${CORTEX_DEPLOY_HOME}/
 # Fleet watchdog — cross-agent health polling (orch, deployed by install-orch-crons.sh)
 register_orch "ops/scripts/agent/orch-fleet-watchdog.py"      "${CORTEX_DEPLOY_HOME}/scripts/orch-fleet-watchdog.py"
 
-# Failover watchdog — auto-detect Moses outage, fail over to Esther (orch)
-register_orch "ops/scripts/agent/orch-failover-watchdog.py"   "${CORTEX_DEPLOY_HOME}/scripts/orch-failover-watchdog.py"
+# Failover watchdog — detect bus outage, per-role behavior (all agents)
+register "ops/scripts/agent/agent-bus-failover-watchdog.py"   "${CORTEX_DEPLOY_HOME}/scripts/agent-bus-failover-watchdog.py"
 
 # gbrain autopilot — REMOVED 2026-08-02 (decommissioned; mycortex replaces)
 

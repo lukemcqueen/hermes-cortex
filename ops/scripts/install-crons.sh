@@ -487,6 +487,7 @@ if $UNINSTALL; then
     "agent-llm-judge-scorer-weekend" \
     "agent-memory-pruning" \
     "agent-memory-to-brain-sync" \
+    "agent-bus-failover-watchdog" \
     "agent-message-handler" \
     "agent-mycortex-sync" \
     "agent-mycortex-retention" \
@@ -684,6 +685,19 @@ create_cron "agent-message-handler" "*/5 * * * *" \
   "" \
   "" \
   "local" \
+  "" \
+  "true"
+
+# Bus failover watchdog — detect Moses down (routes via Esther), CRITICAL
+# when both buses down, recovery report. Workers: detect + alert only —
+# never swap config. Orchestrators get the full failover version via
+# install-orch-crons.sh (same script, role-detected).
+create_cron "agent-bus-failover-watchdog" "*/5 * * * *" \
+  "agent-bus-failover-watchdog.py" \
+  "" \
+  "" \
+  "" \
+  "telegram:1270130526" \
   "" \
   "true"
 

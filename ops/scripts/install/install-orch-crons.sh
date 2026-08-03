@@ -125,7 +125,7 @@ if $UNINSTALL; then
     "orch-bus-forwarder-sync" \
     "orch-bus-recover-timeouts" \
     "orch-clean-health-queue" \
-    "orch-failover-watchdog" \
+    "agent-bus-failover-watchdog" \
     "orch-fleet-watchdog" \
     "orch-health-report-saturday" \
     "orch-health-report-weekday" \
@@ -391,10 +391,11 @@ create_cron "orch-fleet-watchdog" "*/5 * * * *" \
   "" \
   "true"
 
-# Failover watchdog — auto-detect Moses outage, fail over to Esther (>15m)
-# Orchestrator-only: runs on Esther (backup). Real execution: FAILOVER_DRY_RUN=0
-create_cron "orch-failover-watchdog" "*/5 * * * *" \
-  "orch-failover-watchdog.py" \
+# Failover watchdog — detect bus outage, per-role behavior (every 5 min)
+# Orchestrator (Esther): auto failover >15m + recovery. Worker: alerts.
+# Deployed to ALL agents via install-crons.sh; orchestrators get it here too.
+create_cron "agent-bus-failover-watchdog" "*/5 * * * *" \
+  "agent-bus-failover-watchdog.py" \
   "" \
   "" \
   "" \

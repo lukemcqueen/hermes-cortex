@@ -47,9 +47,9 @@ FAIL = 0
 WARN = 0
 
 HOME = Path.home()
-WATCHDOG_SRC = HOME / "hermes-cortex" / "ops" / "scripts" / "agent" / "orch-failover-watchdog.py"
+WATCHDOG_SRC = HOME / "hermes-cortex" / "ops" / "scripts" / "agent" / "agent-bus-failover-watchdog.py"
 STATE_DIR = HOME / ".hermes-cortex" / "state"
-STATE_FILE = STATE_DIR / "failover-state.json"
+STATE_FILE = STATE_DIR / "bus-failover-state.json"
 MARKER_FILE = STATE_DIR / ".failover-active"
 CONF_FILE = HOME / ".hermes-cortex" / "cortex-bus.conf"
 REGISTRY_FILE = STATE_DIR / "agent-registry.local.json"
@@ -94,11 +94,20 @@ def _http_ok(url: str, timeout: int = 8) -> bool:
 
 
 def _load_watchdog() -> object:
-    """Import the watchdog module (fresh copy) for seam-level testing."""
+    """Import the watchdog module (fresh copy) for seam-level testing.
+
+    Redirects state/marker/log to a temp dir so the drill NEVER touches the
+    host's real failover state or marker files.
+    """
     spec = importlib.util.spec_from_file_location("orch_failover_watchdog", WATCHDOG_SRC)
     mod = importlib.util.module_from_spec(spec)
     sys.modules["orch_failover_watchdog"] = mod
     spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    tmpdir = Path(tempfile.mkdtemp(prefix="drill-state-"))
+    mod.STATE_FILE = tmpdir / "bus-failover-state.json"
+    mod.MARKER_FILE = tmpdir / ".failover-active"
+    mod.LOG_FILE = tmpdir / ".bus-failover-log"
+    mod._tmpdir = tmpdir
     return mod
 
 
@@ -174,28 +183,28 @@ def phase0_preflight() -> None:
 def phase1_detection(mod) -> None:
     print("\n═══ Phase 1: Detection ═══")
     # moses_reachable: all endpoints up → True
-    if mod.moses_reachable([MOSES_HEALTH, MOSES_BUS]):
-        ok("moses_reachable([moses health, moses bus]) = True (Moses up)")
+    if mod._moses_reachable([MOSES_HEALTH, MOSES_BUS]):
+        ok("_moses_reachable([moses health, moses bus]) = True (Moses up)")
     else:
         warn("Moses currently unreachable from Esther — this is the failover precondition, not a test failure")
 
     # Any endpoint down → False
-    if mod.moses_reachable(["http://127.0.0.1:1/health", MOSES_BUS]):
-        bad("moses_reachable with dead endpoint returned True")
+    if mod._moses_reachable(["http://127.0.0.1:1/health", MOSES_BUS]):
+        bad("_moses_reachable with dead endpoint returned True")
     else:
-        ok("moses_reachable with dead endpoint = False (correct)")
+        ok("_moses_reachable with dead endpoint = False (correct)")
 
     # Empty list → False (fail closed)
-    if mod.moses_reachable([]):
-        bad("moses_reachable([]) returned True")
+    if mod._moses_reachable([]):
+        bad("_moses_reachable([]) returned True")
     else:
-        ok("moses_reachable([]) = False (fail closed)")
+        ok("_moses_reachable([]) = False (fail closed)")
 
     # First failure must warn
     state = mod._load_state()
     state["failover_active"] = False
     mod._save_state(state)
-    out = mod.run_once(reachable=False)
+    out = mod.run_once(moses_up=False, esther_up=True)
     if any("Moses health check FAILED" in l for l in out):
         ok("first failure warns (detection start announced)")
     else:
@@ -219,7 +228,7 @@ def phase2_autofailover(mod) -> None:
         "last_check_at": None,
     }
     mod._save_state(st)
-    out = mod.run_once(reachable=False)
+    out = mod.run_once(moses_up=False, esther_up=True)
     if any("FAILOVER ACTIVATED" in l for l in out):
         ok("failover ACTIVATED after >15m outage")
         if mod.DRY_RUN:
@@ -310,7 +319,7 @@ def phase4_resume(mod) -> None:
     mod._save_state(st)
 
     for i in range(1, mod.RECOVER_REQUIRED_SUCCESSES + 1):
-        out = mod.run_once(reachable=True)
+        out = mod.run_once(moses_up=True, esther_up=True)
         if i < mod.RECOVER_REQUIRED_SUCCESSES:
             if any("FAILOVER RECOVERED" in l for l in out):
                 bad(f"recovered early after {i} checks (expected {mod.RECOVER_REQUIRED_SUCCESSES})")
@@ -345,14 +354,14 @@ def phase5_full_cycle(mod) -> None:
 
     # Ticks 1-3: Moses down → detection → activation (3 consecutive failures)
     for _tick in range(3):
-        mod.run_once(reachable=False)
+        mod.run_once(moses_up=False, esther_up=True)
     if mod._load_state().get("failover_active"):
         ok("3 down ticks → failover active")
     else:
         bad("Moses down x3 did not activate failover", str(mod._load_state()))
 
     # More down ticks: stays active, stays quiet
-    tick2 = mod.run_once(reachable=False)
+    mod.run_once(moses_up=False, esther_up=True)
     if mod._load_state().get("failover_active"):
         ok("continues active while Moses down")
     else:
@@ -360,20 +369,109 @@ def phase5_full_cycle(mod) -> None:
 
     # Moses back: 3 healthy ticks → recovered
     for i in range(mod.RECOVER_REQUIRED_SUCCESSES):
-        mod.run_once(reachable=True)
+        mod.run_once(moses_up=True, esther_up=True)
     if not mod._load_state().get("failover_active"):
         ok("Moses back → failover cleared")
     else:
         bad("failover not cleared after Moses returns")
 
     # Idle stability: healthy ticks produce no output
-    out = mod.run_once(reachable=True)
+    out = mod.run_once(moses_up=True, esther_up=True)
     if not out:
         ok("idle ticks are silent (no state change, no delivery)")
     else:
         warn(f"idle tick produced output: {out}")
 
     mod.MIN_DOWN_MINUTES = old_min
+
+
+# ═══════════════════════════════════════════════
+# PHASE 6 — WORKER-MODE WATCHDOG (all agents)
+# ═══════════════════════════════════════════════
+def phase6_worker_mode(mod) -> None:
+    print("\n═══ Phase 6: Worker-Mode Watchdog (deployed on all agents) ═══")
+    # Worker role = not orchestrator, not Moses. The watchdog must detect
+    # this from the host and switch to worker behavior.
+    if mod.IS_MOSES:
+        ok("Moses host: watchdog is silent self-check (fleet watchdog covers health)")
+    if not mod.IS_ORCHESTRATOR:
+        ok(f"role detected as worker on this host ({mod.HOSTNAME})")
+    else:
+        ok(f"host {mod.HOSTNAME} detected as orchestrator — full failover mode (worker path tested by override)")
+
+    # Save real constants, override to worker
+    real_orch = mod.IS_ORCHESTRATOR
+    real_moses = mod.IS_MOSES
+    mod.IS_ORCHESTRATOR = False
+    mod.IS_MOSES = False
+
+    # Worker, Moses down, Esther up → warn once (fallback path active)
+    mod._save_state({
+        "consecutive_failures": 0, "first_failure_at": None,
+        "consecutive_successes": 0, "failover_active": False,
+        "last_status": "idle", "last_check_at": None,
+    })
+    out = mod.run_once(moses_up=False, esther_up=True)
+    if any("routes via Esther" in l for l in out):
+        ok("worker: Moses down + Esther up → warns 'traffic routes via Esther'")
+    else:
+        bad("worker: no fallback warning when Moses down", str(out))
+
+    # Worker, BOTH down → CRITICAL alert
+    mod._save_state({
+        "consecutive_failures": 0, "first_failure_at": None,
+        "consecutive_successes": 0, "failover_active": False,
+        "last_status": "idle", "last_check_at": None,
+    })
+    out = mod.run_once(moses_up=False, esther_up=False)
+    if any("CRITICAL" in l and "NO BUS PATH" in l for l in out):
+        ok("worker: both buses down → CRITICAL no-bus-path alert")
+    else:
+        bad("worker: both-down did not raise CRITICAL", str(out))
+
+    # Worker, Moses back → recovery report (worker_was_down is set by the
+    # real code on first failure — mirror that in the primed state)
+    mod._save_state({
+        "consecutive_failures": 2, "first_failure_at": mod._now_iso(),
+        "consecutive_successes": 0, "failover_active": False,
+        "worker_was_down": True,
+        "last_status": "degraded", "last_check_at": None,
+    })
+    out = mod.run_once(moses_up=True, esther_up=True)
+    if any("reachable again" in l for l in out):
+        ok("worker: Moses back → recovery reported")
+    else:
+        bad("worker: recovery not reported when Moses returns", str(out))
+
+    # Worker, healthy idle → silent
+    mod._save_state({
+        "consecutive_failures": 0, "first_failure_at": None,
+        "consecutive_successes": 0, "failover_active": False,
+        "last_status": "idle", "last_check_at": None,
+    })
+    out = mod.run_once(moses_up=True, esther_up=True)
+    if not out:
+        ok("worker: idle ticks silent")
+    else:
+        warn(f"worker: idle produced output: {out}")
+
+    # Worker must NEVER swap config (no orchestrator-only side effects)
+    conf_before = _read_conf()
+    mod._save_state({
+        "consecutive_failures": 0, "first_failure_at": None,
+        "consecutive_successes": 0, "failover_active": False,
+        "last_status": "idle", "last_check_at": None,
+    })
+    mod.run_once(moses_up=False, esther_up=False)  # worst case
+    conf_after = _read_conf()
+    if conf_before == conf_after:
+        ok("worker: config untouched in worst-case scenario (no swap)")
+    else:
+        bad("worker: config CHANGED — worker must never swap")
+
+    # Restore real role constants
+    mod.IS_ORCHESTRATOR = real_orch
+    mod.IS_MOSES = real_moses
 
 
 # ═══════════════════════════════════════════════
@@ -400,11 +498,15 @@ def cleanup(mod) -> None:
     except Exception as e:
         warn(f"cleanup error: {e}")
 
+    # Remove the temp drill-state dir (module state was redirected there;
+    # the host's real bus-failover-state.json is never touched by the drill)
     try:
-        STATE_FILE.unlink()
-        ok("removed test failover-state.json (watchdog rebuilds fresh)")
+        tmpdir = getattr(mod, "_tmpdir", None)
+        if tmpdir is not None and tmpdir.exists():
+            shutil.rmtree(tmpdir)
+            ok("removed temp drill-state dir")
     except OSError:
-        warn("could not remove failover-state.json")
+        warn("could not remove temp drill-state dir")
 
 
 # ═══════════════════════════════════════════════
@@ -417,9 +519,13 @@ def main() -> int:
         return 2
 
     mod = _load_watchdog()
+    # SAFETY: the drill always runs the watchdog dry — even though the
+    # installed cron defaults to execute (DRY_RUN=0) for orchestrators,
+    # the drill must never swap the real config or write the marker.
+    mod.DRY_RUN = True
     print(f"  watchdog: {WATCHDOG_SRC.name} (dry_run={mod.DRY_RUN}, threshold={mod.MIN_DOWN_MINUTES}m)")
-    if LIVE and mod.DRY_RUN:
-        warn("--live passed but watchdog is in DRY_RUN mode — set FAILOVER_DRY_RUN=0 for real execution")
+    if LIVE:
+        warn("--live passed but drill forces DRY_RUN — set FAILOVER_DRY_RUN=0 in the watchdog env for real execution")
 
     phase0_preflight()
     phase1_detection(mod)
@@ -427,6 +533,7 @@ def main() -> int:
     phase3_agent_fallback(mod)
     phase4_resume(mod)
     phase5_full_cycle(mod)
+    phase6_worker_mode(mod)
     cleanup(mod)
 
     print(f"\n═══ Summary: {PASS} passed, {FAIL} failed, {WARN} warned ═══")

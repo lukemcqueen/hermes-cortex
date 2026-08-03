@@ -76,7 +76,7 @@ Every cron name MUST start with a group prefix. No bare names:
 | `orch-bus-confirmation-poller` | `every 10m` | no_agent | `orch-bus-confirmation-poller.py` | local |
 | `orch-bus-confirmation-alert` | `*/15 * * * *` | no_agent | `orch-bus-confirmation-alert.sh` | Telegram |
 | `orch-bus-forwarder-sync` | `*/2 * * * *` | no_agent | `orch-bus-forwarder.py` | origin |
-| `orch-failover-watchdog` | `*/5 * * * *` | no_agent | `orch-failover-watchdog.py` | Telegram |
+| `agent-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `agent-bus-failover-watchdog.py` | Telegram |
 | `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | `orch-fleet-watchdog.py` | Telegram |
 | `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent | `orch-health-report.py` | origin |
 | `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent | `orch-health-report.py` | origin |

@@ -1,39 +1,52 @@
 #!/usr/bin/env python3
-"""orch-failover-watchdog.py — auto-detect Moses outage, fail over to Esther.
+"""agent-bus-failover-watchdog.py — detect bus failover, per-role behavior.
 
-no_agent watchdog pattern:
-  Empty stdout → silent (no state change)
-  Text output  → delivered (failover activated / recovered / first-blip warning)
+Deployed to EVERY agent (orchestrators and workers). Role is detected from
+the host (same rule as the doctor): home dir / hostname moses|esther →
+orchestrator, anything else → worker.
 
-STATE MACHINE (per-tick, every 5 min by default):
-  IDLE        Moses healthy → silent.
-  DEGRADED    1-2 consecutive failed checks → warn ONCE on the first failure.
-  FAILOVER    3+ consecutive failures AND elapsed >= FAILOVER_MIN_DOWN_MINUTES
-              → ACTIVATE: swap Esther's cortex-bus.conf primary/fallback,
-                write .failover-active marker, notify fleet, report.
-  RECOVERED   Moses healthy for 3 consecutive checks while failover active
-              → RESTORE: swap config back, remove marker, notify fleet, report.
+ROLE BEHAVIOR
+  ── Orchestrator (Esther — backup) ────────────────────────────────
+  IDLE       Moses healthy → silent.
+  DEGRADED   1-2 consecutive failed checks → warn ONCE on first failure.
+  FAILOVER   3+ consecutive failures AND elapsed >= FAILOVER_MIN_DOWN_MINUTES
+             → ACTIVATE: swap Esther's cortex-bus.conf primary/fallback,
+               write .failover-active marker, notify fleet, report.
+  RECOVERED  Moses healthy 3 consecutive checks while failover active
+             → RESTORE: swap config back, remove marker, notify fleet, report.
+  Executes for real by default (FAILOVER_DRY_RUN=0) — that is the point of
+  the automation. Run with FAILOVER_DRY_RUN=1 for a safe preview.
 
-WHY WORKERS DON'T NEED A CONFIG CHANGE:
-  lib.cortex_bus (ops/scripts/lib/cortex_bus.py) already tries
-  CORTEX_BUS_FALLBACK_URL when the primary fails (per-call failover). Workers
-  have primary=Moses:13004, fallback=Esther:14004. When Moses is down, every
-  bus_send/bus_read automatically lands on Esther's bus. This watchdog only
-  needs to flip ESTHER's own config (primary=local:8903) so her MCP tools and
-  crons keep working while she is the acting orchestrator.
+  ── Worker (Gisu, Joseph, Kustos, Titus) ──────────────────────────
+  IDLE       Primary bus (Moses :13004) reachable → silent.
+  DEGRADED   Primary down but fallback (Esther :14004) up → warn ONCE:
+             traffic now routes via Esther automatically (lib.cortex_bus
+             per-call fallback). No config change needed on the worker.
+  ISOLATED   PRIMARY AND FALLBACK BOTH DOWN → CRITICAL alert: no bus path
+             at all; messages queue locally until a bus returns.
+  RECOVERED  Primary back after being down → report recovery, silent.
+
+  Workers NEVER swap config or write markers — their lib.cortex_bus already
+  falls back per-call; this watchdog only detects and reports.
+
+  ── Moses (primary orchestrator) ───────────────────────────────────
+  Runs the same checks but stays silent: his own health is covered by
+  orch-fleet-watchdog, and he has nothing to fail over TO.
+
+STATE MACHINE STATE FILE (per host):
+  ~/.hermes-cortex/state/bus-failover-state.json
 
 CONFIG (env vars, all optional):
-  FAILOVER_MIN_DOWN_MINUTES  default 15 — outage duration before activation
-  FAILOVER_CHECK_INTERVAL    default 5 — tick minutes (used for 3-check math)
-  FAILOVER_DRY_RUN           default "1" — "0" actually swaps config/writes marker
-  MOSES_HEALTH_URLS          comma-separated probes; default = Moses :13007 + :13004
+  FAILOVER_MIN_DOWN_MINUTES  default 15 — outage before orchestrator activates
+  FAILOVER_DRY_RUN           default 0 for orchestrators / 1 for workers —
+                             orchestrators must actually fail over; workers
+                             never write anything anyway
+  MOSES_HEALTH_URLS          comma-separated probes; default Moses :13007+:13004
+  ESTHER_HEALTH_URLS         comma-separated probes; default Esther :14004
+  FAILOVER_CHECK_INTERVAL    default 5 — tick minutes (warning text only)
 
-State:   ~/.hermes-cortex/state/failover-state.json
-Marker:  ~/.hermes-cortex/state/.failover-active
-Log:     ~/.hermes-cortex/state/.failover-log
-
-Safe to run anytime. Default dry-run; the installed cron passes
-FAILOVER_DRY_RUN=0 (see install-orch-crons.sh).
+Safe to run anytime. no_agent cron pattern: empty stdout = silent; text
+output = delivered to the configured channel.
 """
 
 from __future__ import annotations
@@ -47,23 +60,37 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
+HOSTNAME = os.uname().nodename.split(".")[0]
+IS_ORCHESTRATOR = HOSTNAME in ("moses", "esther")
+IS_MOSES = HOSTNAME == "moses"
+
 STATE_DIR = HOME / ".hermes-cortex" / "state"
-STATE_FILE = STATE_DIR / "failover-state.json"
+STATE_FILE = STATE_DIR / "bus-failover-state.json"
 MARKER_FILE = STATE_DIR / ".failover-active"
-LOG_FILE = STATE_DIR / ".failover-log"
+LOG_FILE = STATE_DIR / ".bus-failover-log"
 CONF_FILE = HOME / ".hermes-cortex" / "cortex-bus.conf"
-BUS_LIB = HOME / "hermes-cortex" / "ops" / "scripts"
+WATCHDOG_DIR = os.path.dirname(os.path.abspath(__file__))
 
 FLEET_QUEUES = ["inbox_joseph", "inbox_kustos", "inbox_gisu", "inbox_titus", "inbox_moses"]
 
 MIN_DOWN_MINUTES = int(os.environ.get("FAILOVER_MIN_DOWN_MINUTES", "15"))
 CHECK_INTERVAL = int(os.environ.get("FAILOVER_CHECK_INTERVAL", "5"))
-DRY_RUN = os.environ.get("FAILOVER_DRY_RUN", "1") == "1"
+# Orchestrators must actually fail over; workers never write anything.
+DRY_RUN = os.environ.get("FAILOVER_DRY_RUN", "1" if not IS_ORCHESTRATOR else "0") == "1"
+
 MOSES_HEALTH_URLS = [
     u.strip()
     for u in os.environ.get(
         "MOSES_HEALTH_URLS",
         "https://bus.example.org:13007/health,https://bus.example.org:13004/health",
+    ).split(",")
+    if u.strip()
+]
+ESTHER_HEALTH_URLS = [
+    u.strip()
+    for u in os.environ.get(
+        "ESTHER_HEALTH_URLS",
+        "https://bus.example.org:14004/health",
     ).split(",")
     if u.strip()
 ]
@@ -74,7 +101,7 @@ MOSES_HEALTH_URLS = [
 # resolving a lone "/" to the filesystem root.
 WARN_TICK_TOTAL = divmod(MIN_DOWN_MINUTES, CHECK_INTERVAL)[0] + 1
 
-RECOVER_REQUIRED_SUCCESSES = 3  # consecutive healthy checks before restoring Moses
+RECOVER_REQUIRED_SUCCESSES = 3  # consecutive healthy checks before restoring
 
 
 def _now_iso() -> str:
@@ -109,12 +136,12 @@ def _save_state(state: dict) -> None:
     try:
         STATE_FILE.write_text(json.dumps(state, indent=2))
     except OSError:
-        _log("ERROR: could not write failover-state.json")
+        _log("ERROR: could not write bus-failover-state.json")
 
 
-# ── Seam 1: Moses reachability (injectable for tests) ──────────────
-def moses_reachable(urls: list[str] | None = None) -> bool:
-    """True only if EVERY configured Moses endpoint responds healthy.
+# ── Seam 1: endpoint reachability (injectable for tests) ──────────
+def endpoints_reachable(urls: list[str] | None = None) -> bool:
+    """True only if EVERY configured endpoint responds healthy.
 
     Per the failover runbook's exclusion table, HTTP 401/403 is an AUTH
     issue (nginx is up, credentials wrong) — NOT an outage — so it counts
@@ -139,12 +166,20 @@ def moses_reachable(urls: list[str] | None = None) -> bool:
     return True
 
 
-# ── Seam 2: config swap (injectable for tests) ─────────────────────
-def swap_bus_config(active: bool) -> bool:
-    """Rewrite cortex-bus.conf primary/fallback URLs.
+def _moses_reachable(urls: list[str] | None = None) -> bool:
+    return endpoints_reachable(urls if urls is not None else MOSES_HEALTH_URLS)
 
-    active=True  → Esther is acting primary: URL=local :8903, FALLBACK=Moses :13004
-    active=False → standby restored:        URL=Moses :13004, FALLBACK=Esther :14004
+
+def _esther_reachable(urls: list[str] | None = None) -> bool:
+    return endpoints_reachable(urls if urls is not None else ESTHER_HEALTH_URLS)
+
+
+# ── Seam 2: config swap (orchestrator only, injectable for tests) ─
+def swap_bus_config(active: bool) -> bool:
+    """Rewrite cortex-bus.conf primary/fallback URLs (Esther only).
+
+    active=True  → acting primary: URL=local :8903, FALLBACK=Moses :13004
+    active=False → standby restored: URL=Moses :13004, FALLBACK=Esther :14004
 
     Returns True on success. Creates the file if missing.
     """
@@ -183,7 +218,7 @@ def swap_bus_config(active: bool) -> bool:
         return False
 
 
-# ── Seam 3: fleet notification (injectable for tests) ──────────────
+# ── Seam 3: fleet notification (orchestrator only, injectable) ────
 def notify_fleet(subject: str, body: str, queues: list[str] | None = None) -> int:
     """Broadcast a SYSTEM_EVENT to each fleet inbox via lib.cortex_bus.
 
@@ -195,9 +230,8 @@ def notify_fleet(subject: str, body: str, queues: list[str] | None = None) -> in
     bus_send = None
     if not DRY_RUN:
         try:
-            _lib_dir = os.path.dirname(os.path.abspath(__file__))
-            if _lib_dir not in sys.path:
-                sys.path.insert(0, _lib_dir)
+            if WATCHDOG_DIR not in sys.path:
+                sys.path.insert(0, WATCHDOG_DIR)
             from lib.cortex_bus import bus_send  # type: ignore
         except ImportError as e:
             _log(f"WARN: lib.cortex_bus unavailable ({e}) — broadcast skipped")
@@ -221,13 +255,13 @@ def notify_fleet(subject: str, body: str, queues: list[str] | None = None) -> in
     return sent
 
 
+# ── Orchestrator activation / recovery ────────────────────────────
 def _activate(state: dict) -> list[str]:
-    """Execute failover activation. Returns report lines (non-empty → delivered)."""
     lines = [
         "🚨 FAILOVER ACTIVATED — Moses unreachable",
         f"   consecutive failures: {state['consecutive_failures']}",
         f"   first failure at: {state.get('first_failure_at')}",
-        f"   Esther is now the acting orchestrator (bus :8903, nginx :14004)",
+        "   Esther is now the acting orchestrator (bus :8903, nginx :14004)",
     ]
     if DRY_RUN:
         lines.append("   [DRY-RUN] config swap + marker + fleet notify SKIPPED (set FAILOVER_DRY_RUN=0 to execute)")
@@ -254,10 +288,7 @@ def _activate(state: dict) -> list[str]:
 
 
 def _recover(state: dict) -> list[str]:
-    """Restore Moses as primary. Returns report lines."""
-    lines = [
-        "✅ FAILOVER RECOVERED — Moses healthy again, resuming as orchestrator",
-    ]
+    lines = ["✅ FAILOVER RECOVERED — Moses healthy again, resuming as orchestrator"]
     if DRY_RUN:
         lines.append("   [DRY-RUN] config restore + marker removal + fleet notify SKIPPED")
         _log("FAILOVER RECOVERED (dry-run)")
@@ -283,31 +314,70 @@ def _recover(state: dict) -> list[str]:
     return lines
 
 
-def run_once(reachable: bool | None = None, urls: list[str] | None = None) -> list[str]:
-    """One watchdog tick. Returns report lines (empty = silent, no state change).
+# ── Worker detection / alerts ─────────────────────────────────────
+def _worker_alert(isolated: bool) -> list[str]:
+    if isolated:
+        return [
+            "🚨 CRITICAL: NO BUS PATH — Moses AND Esther both unreachable",
+            "   Messages will queue locally until a bus returns.",
+            "   Check nginx/network on both orchestrator hosts.",
+        ]
+    return [
+        "⚠️ Moses (primary bus) unreachable — traffic now routes via Esther :14004",
+        "   lib.cortex_bus falls back per-call; no worker config change needed.",
+        f"   Will alert again if both buses go down. Recovery reported when Moses returns.",
+    ]
 
-    reachable can be injected by tests; when None, probes MOSES_HEALTH_URLS.
+
+# ── Main tick ─────────────────────────────────────────────────────
+def run_once(
+    moses_up: bool | None = None,
+    esther_up: bool | None = None,
+    moses_urls: list[str] | None = None,
+    esther_urls: list[str] | None = None,
+) -> list[str]:
+    """One watchdog tick. Returns report lines (empty = silent).
+
+    moses_up / esther_up can be injected by tests; when None, probes the
+    configured URLs. Role-agnostic: orchestrator and worker paths share
+    the same state file fields.
     """
     state = _load_state()
-    if reachable is None:
-        reachable = moses_reachable(urls)
+    if moses_up is None:
+        moses_up = _moses_reachable(moses_urls)
+    if esther_up is None:
+        esther_up = _esther_reachable(esther_urls)
     out: list[str] = []
 
-    if reachable:
+    # Moses (primary orchestrator) — silent: his health is the fleet
+    # watchdog's job; he has no bus to fail over to.
+    if IS_MOSES:
+        return []
+
+    if moses_up:
+        # Primary healthy
         state["consecutive_failures"] = 0
         state["first_failure_at"] = None
-        if state.get("failover_active"):
-            state["consecutive_successes"] = state.get("consecutive_successes", 0) + 1
+        state["consecutive_successes"] = state.get("consecutive_successes", 0) + 1
+        if state.get("failover_active") and IS_ORCHESTRATOR:
             state["last_status"] = "recovering"
             if state["consecutive_successes"] >= RECOVER_REQUIRED_SUCCESSES:
                 state["failover_active"] = False
                 state["consecutive_successes"] = 0
                 state["last_status"] = "idle"
                 out = _recover(state)
-        else:
-            state["consecutive_successes"] = 0
+        elif state.get("worker_was_down") and not IS_ORCHESTRATOR:
+            # Worker: report recovery once (worker_was_down tracks the
+            # degraded/isolated period without touching failover_active,
+            # which is orchestrator-only semantics).
+            state["worker_was_down"] = False
             state["last_status"] = "idle"
+            out = ["✅ Moses (primary bus) reachable again — normal routing restored"]
+        else:
+            state["last_status"] = "idle"
+            state["consecutive_successes"] = 0
     else:
+        # Primary down
         state["consecutive_failures"] = state.get("consecutive_failures", 0) + 1
         state["consecutive_successes"] = 0
         if state.get("first_failure_at") is None:
@@ -315,17 +385,13 @@ def run_once(reachable: bool | None = None, urls: list[str] | None = None) -> li
 
         if state.get("failover_active"):
             state["last_status"] = "failover"  # stays active, stays quiet
-        else:
-            # Warn on the FIRST failure only (detection start).
+        elif IS_ORCHESTRATOR:
+            # Orchestrator: warn on first failure, activate after threshold
             if state["consecutive_failures"] == 1:
                 out.append(
                     f"⚠️ Moses health check FAILED (1/{WARN_TICK_TOTAL}) — "
                     f"failover to Esther will trigger after >{MIN_DOWN_MINUTES} min of continuous outage"
                 )
-            # Activate when the outage has lasted >= MIN_DOWN_MINUTES.
-            # Time-based (not tick-count): a 15-min outage with 5-min ticks
-            # means 3+ consecutive failures covering 15+ minutes. With a
-            # 1-min check interval it would take 15 ticks — same result.
             first_fail = state.get("first_failure_at")
             elapsed_min = 0.0
             if first_fail:
@@ -340,6 +406,17 @@ def run_once(reachable: bool | None = None, urls: list[str] | None = None) -> li
                 out = _activate(state)
             else:
                 state["last_status"] = "degraded"
+        else:
+            # Worker: Moses down. Alert depends on whether Esther is also down.
+            if state["consecutive_failures"] == 1:
+                state["worker_was_down"] = True
+                out = _worker_alert(isolated=not esther_up)
+                state["last_status"] = "isolated" if not esther_up else "degraded"
+            else:
+                # Subsequent ticks: re-alert every N ticks if ISOLATED
+                if not esther_up and state["consecutive_failures"] % 3 == 0:
+                    out = _worker_alert(isolated=True)
+                state["last_status"] = "isolated" if not esther_up else "degraded"
 
     state["last_check_at"] = _now_iso()
     _save_state(state)
