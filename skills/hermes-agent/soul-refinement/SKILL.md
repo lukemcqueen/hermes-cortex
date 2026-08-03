@@ -142,6 +142,25 @@ Principles accumulate from user corrections. When the count drifts toward
 3. Run the doctor `check_soul_sync` — markers 14/14, sync PASS, size ≤ WARN
 4. Commit template + skill together; broadcast via `agents-doc-broadcast.py`
 
+### How soul-merge propagates refinements (learned 2026-08-03)
+
+`soul-merge.py` only propagates template sub-points that carry a **bold marker**
+(`**Text**`) into deployed copies — plain prose additions to a principle's
+body are invisible to it. So:
+
+- Write each new guardrail as its own bold-marker line, e.g.
+  `**Governance fixes fail closed** — never delete or weaken enforcement to
+  silence a warning; warn+exit0 is a bypass. <!-- Added YYYY-MM-DD -->`.
+  A bare sentence appended to a paragraph will never reach the fleet.
+- Multi-line (wrapped) sub-points ARE propagated whole as a block since the
+  `_find_missing_subpoints` fix (2026-08-03); earlier, only the marker line
+  propagated and continuation lines were silently dropped, truncating the
+  guardrail in every deployed copy.
+- After patching the template, run `soul-merge.py` and verify the new marker
+  line AND its continuation lines landed in `~/.hermes/SOUL.md` before
+  committing — a truncated deployed copy passes the doctor's marker check
+  (markers match) while silently missing half the guardrail.
+
 ## Pitfalls
 
 - **Don't append the same lesson twice.** If a principle already covers the gap, strengthen it rather than adding another.

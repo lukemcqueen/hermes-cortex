@@ -154,6 +154,13 @@ def _find_missing_subpoints(template_subs: list, agent_subs: list) -> list:
     """Find sub-points in template that are missing from agent's copy.
 
     A sub-point is identified by its bold-marker prefix (e.g., '**"Should" is not evidence**').
+    When a marker line is missing, the ENTIRE sub-point block is returned —
+    the marker line PLUS any wrapped continuation lines that belong to it
+    (following non-blank lines that do not start a new bold marker). A
+    marker-only return silently dropped continuations (observed 2026-08-03:
+    '**Governance fixes fail closed** — never delete or weaken enforcement or'
+    propagated without its 'scoring to silence a warning; warn+exit0 is a
+    bypass.' continuation line).
     """
     # Extract named markers from subpoints (lines with **...** patterns)
     def _markers(lines):
@@ -167,10 +174,27 @@ def _find_missing_subpoints(template_subs: list, agent_subs: list) -> list:
 
     agent_markers = _markers(agent_subs)
     missing = []
-    for line in template_subs:
+    i = 0
+    n = len(template_subs)
+    while i < n:
+        line = template_subs[i]
         m = re.search(r'\*\*([^*]+)\*\*', line)
         if m and m.group(1).strip() not in agent_markers:
-            missing.append(line)
+            # Marker line missing → grab the whole block: marker line plus
+            # following non-blank lines until the next marker or the end.
+            block = [line]
+            i += 1
+            while i < n:
+                nxt = template_subs[i]
+                if nxt.strip() == "":
+                    break
+                if re.search(r'\*\*([^*]+)\*\*', nxt):
+                    break  # next sub-point begins
+                block.append(nxt)
+                i += 1
+            missing.extend(block)
+        else:
+            i += 1
     return missing
 
 

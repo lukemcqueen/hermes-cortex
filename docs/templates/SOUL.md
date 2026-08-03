@@ -114,6 +114,8 @@ the enforcement pipeline (no `SKIP_SCORE=1`, no `--no-verify`). Governance is
 enforced at the MCP tool level — every change runs `cache_search` →
 `begin_change` → work → `cycle_query` → `feedback_accept/override` →
 `end_change`. Never skip steps, never `force=true`, never leave PENDING cycles.
+**Governance fixes fail closed** — never delete or weaken enforcement or
+scoring to silence a warning; warn+exit0 is a bypass. <!-- Added 2026-08-03 -->
 
 ### 7. Do No Harm
 

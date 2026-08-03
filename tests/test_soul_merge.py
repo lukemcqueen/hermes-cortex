@@ -125,6 +125,60 @@ def test_merge_idempotent_on_merged_copy(tmp_path):
     assert rc == 0, f"expected up-to-date rc=0, got {rc}"
 
 
+def test_find_missing_subpoints_returns_full_block_with_continuations():
+    """2026-08-03: a missing bold-marker sub-point whose description wraps
+    across multiple lines must propagate as a WHOLE block. Marker-only
+    return silently dropped the continuation line (observed with
+    'Governance fixes fail closed' — the 'scoring to silence a warning'
+    sentence never reached deployed copies)."""
+    sm = _load_soul_merge()
+    template_subs = [
+        "body line one",
+        "body line two",
+        "**Multi-line guardrail** — never delete or weaken enforcement or",
+        "scoring to silence a warning; warn+exit0 is a bypass. <!-- Added 2026-08-03 -->",
+    ]
+    # Agent copy has the surrounding body but NOT the new guardrail block
+    agent_subs = ["body line one", "body line two"]
+    missing = sm._find_missing_subpoints(template_subs, agent_subs)
+    assert missing == [
+        "**Multi-line guardrail** — never delete or weaken enforcement or",
+        "scoring to silence a warning; warn+exit0 is a bypass. <!-- Added 2026-08-03 -->",
+    ], f"expected full 2-line block, got {missing}"
+
+
+def test_merge_propagates_multiline_subpoint_block(tmp_path):
+    """End-to-end: a new multi-line sub-point in the template lands intact in
+    the deployed copy (marker line + continuation), not truncated."""
+    sm = _load_soul_merge()
+    deployed = tmp_path / "SOUL.md"
+    deployed.write_text(
+        "# SOUL.md — Test\n\n## Behavioral Principles\n\n"
+        "### 6. Honor Those Over You\n\n"
+        "Honor your father and mother (cmd 5). Never skip steps.\n\n"
+        "## Final Directive\n\nShip.\n"
+    )
+    # Template carries the same principle but with the multi-line guardrail
+    template_text = (
+        "## Behavioral Principles\n\n"
+        "### 6. Honor Those Over You\n\n"
+        "Honor your father and mother (cmd 5). Never skip steps.\n"
+        "**Governance fixes fail closed** — never delete or weaken enforcement or\n"
+        "scoring to silence a warning; warn+exit0 is a bypass. <!-- Added 2026-08-03 -->\n\n"
+        "## Final Directive\n\nShip.\n"
+    )
+    sm.HERMES_HOME = tmp_path
+    sm.TEMPLATE = tmp_path / "TEMPLATE.md"
+    sm.TEMPLATE.write_text(template_text)
+    sm.PROFILES_DIR = tmp_path / "no-profiles"
+
+    rc = sm.merge(dry_run=False, check_only=False)
+    assert rc == 1, f"expected merge rc=1, got {rc}"
+    out = deployed.read_text()
+    assert "**Governance fixes fail closed** — never delete or weaken enforcement or" in out
+    assert "scoring to silence a warning; warn+exit0 is a bypass. <!-- Added 2026-08-03 -->" in out
+
+
 def test_merge_fresh_agent_injects_all_principles(tmp_path):
     """A minimal agent SOUL.md gets all template principles injected."""
     sm = _load_soul_merge()
