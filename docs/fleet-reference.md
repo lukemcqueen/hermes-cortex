@@ -174,6 +174,7 @@ These run on this machine but use `agent-*` naming. Not in repo installers (inte
 | `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local |
 | `agent-session-mine` | `0 2 * * *` | no_agent | `agent-session-mine-cron.py` | local |
 | `stale-ref-watchdog` | `0 5 * * *` | no_agent | `manage/agent-stale-ref-watchdog.sh` | origin |
+| `agent-swap-refresh` | `0 5 * * *` | no_agent | `agent-swap-refresh.py` | origin |
 | `orch-clean-health-queue` | `*/10 * * * *` | no_agent | `orch-clean-health-queue.py` | origin |
 | `local-fleet-dispatch-collector` | `every 15m` | no_agent | `local-fleet-dispatch-collector.sh` | origin |
 

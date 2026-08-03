@@ -505,6 +505,7 @@ if $UNINSTALL; then
     "agent-session-correction-scan" \
     "agent-session-mine" \
     "agent-stale-ref-watchdog" \
+    "agent-swap-refresh" \
     "agent-system-alert-watchdog"; do
   
   
@@ -817,6 +818,18 @@ create_cron "agent-model-health-watchdog" "0 7 * * *" \
 # Langfuse health + ClickHouse merge watchdog (silent when healthy, every hour)
 create_cron "agent-langfuse-health-watchdog" "0 * * * *" \
   "agent-langfuse-health-watchdog.py" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# Daily swap refresh (no_agent — cycles swapoff/swapon, safety-guarded:
+# only runs when RAM > swap_used + 1 GB; silent no-op otherwise).
+# Requires NOPASSWD sudo for /sbin/swapoff, /sbin/swapon (docs/cron-job-recipes.md).
+create_cron "agent-swap-refresh" "0 5 * * *" \
+  "agent-swap-refresh.py" \
   "" \
   "" \
   "" \

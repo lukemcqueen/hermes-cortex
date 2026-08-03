@@ -250,7 +250,7 @@ echo 'user ALL=(root) NOPASSWD: /sbin/swapoff, /sbin/swapon' | \
   sudo tee /etc/sudoers.d/swap-refresh
 sudo chmod 440 /etc/sudoers.d/swap-refresh
 
-# 3. Create the cron job
+# 3. Create the cron job (fleet cron — also wired into install-crons.sh)
 hermes cron create \
   --name "agent-swap-refresh" \\
   --schedule "0 5 * * *" \
