@@ -869,7 +869,7 @@ def main():
       # processed so the next handler tick skips it (idempotency path below
       # archives it only after it has been surfaced). Fixes the "Unknown
       # subject" drop of kustos's doctor-fails report (2026-08-03).
-      _issue_prefixes = ("ISSUES:", "🚨 ISSUES:", "IMPROVEMENTS:", "PROPOSAL:", "RE: ")
+      _issue_prefixes = ("ISSUES:", "🚨 ISSUES:", "IMPROVEMENTS:", "PROPOSAL:", "📝 PROPOSAL:", "RE: ")
       if subject.startswith(_issue_prefixes):
         log(f"📋 Issue report '{subject}' from {body.get('from', '?')} — left in queue for orchestrator")
         notify_telegram(

@@ -15,8 +15,14 @@ import sys
 import time
 from datetime import datetime, timezone
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+# Add repo core dir to path (agent_bus package lives in <repo>/core).
+# Works from repo layout (ops/scripts/orch-bus/) and deployed layout
+# (~/.hermes-cortex/scripts/) since the repo is at ~/hermes-cortex.
+_REPO_CORE = os.path.expanduser("~/hermes-cortex/core")
+if os.path.isdir(_REPO_CORE):
+    sys.path.insert(0, _REPO_CORE)
+else:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "core"))
 
 from agent_bus.queue import get_queue, NotAvailableError
 from agent_bus.circuit_breaker import get_circuit_breaker
@@ -25,13 +31,14 @@ from agent_bus.circuit_breaker import get_circuit_breaker
 def main():
     # Check circuit breaker first
     cb = get_circuit_breaker()
-    
+
     if cb.get_backend() != "pgmq":
-        # In degraded mode — this health check can't run
-        # The circuit breaker is handling it independently
-        print(f"[bus-health] DEGRADED: backend={cb.get_backend()}, "
-              f"last_failure={cb._state.last_failure}")
-        sys.exit(0)
+        # In degraded mode — try to restore first (Postgres may have recovered)
+        cb.check_and_restore()
+        if cb.get_backend() != "pgmq":
+            print(f"[bus-health] DEGRADED: backend={cb.get_backend()}, "
+                  f"last_failure={cb._state.last_failure}")
+            sys.exit(0)
     
     try:
         bus = get_queue()

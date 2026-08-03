@@ -378,6 +378,9 @@ async def api_dashboard_json(request: Request):
 async def health():
     """Health check — reports bus status."""
     cb = get_circuit_breaker()
+    # Self-heal: if Postgres has recovered while in file mode, restore PGMQ.
+    # check_and_restore() is a no-op when backend is already pgmq.
+    cb.check_and_restore()
     backend = cb.get_backend()
     
     try:
