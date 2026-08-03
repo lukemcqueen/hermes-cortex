@@ -85,8 +85,14 @@ class LoopEvaluator:
     def get_score_trends(self, days: int = 30) -> List[Dict[str, Any]]:
         """Detect drift in each score dimension by comparing first vs second half."""
         results = []
+        # Whitelist guard: {dim} is interpolated into SQL below — only allow
+        # known column names (never user input).
+        ALLOWED_DIMS = {"completeness", "quality", "progress", "composite"}
         for dim in ["completeness", "quality", "progress", "composite"]:
-            row = self.db.conn.execute(f"""
+            if dim not in ALLOWED_DIMS:  # pragma: no cover — static whitelist
+                raise ValueError(f"unsafe dimension name: {dim!r}")
+            # dim validated against ALLOWED_DIMS above — never user input.
+            row = self.db.conn.execute(f"""  # adversarial-ignore: sql-injection
                 SELECT
                     CASE WHEN rn <= total/2.0 THEN 'first_half' ELSE 'second_half' END AS period,
                     ROUND(AVG({dim}), 2) AS avg_score
@@ -272,7 +278,17 @@ class LoopEvaluator:
         # Simple correlation: for each dimension, compare avg when accepted vs rejected
         dims = ["completeness", "quality", "progress"]
         recs = []
-        current_weights = {"completeness": 0.40, "quality": 0.30, "progress": 0.30}
+        # Read ACTUAL current weights from runtime config — don't hardcode (drift risk).
+        try:
+            from loop_config import get_config
+            cfg = get_config().get("weights", {})
+            current_weights = {
+                "completeness": cfg.get("completeness", 0.40),
+                "quality": cfg.get("quality", 0.30),
+                "progress": cfg.get("progress", 0.30),
+            }
+        except Exception:
+            current_weights = {"completeness": 0.40, "quality": 0.30, "progress": 0.30}
 
         for dim in dims:
             accepted_vals = [r[dim] for r in rows if r["accepted"] == 1]
@@ -299,6 +315,19 @@ class LoopEvaluator:
                                  f"{'Higher scores in this dimension correlate with acceptance' if delta > 0 else 'Lower scores correlate with acceptance'}",
                     "confidence": "low" if len(rows) < 15 else "medium",
                 })
+
+        # Normalize the FULL proposed weight set to sum to 1.0 — composite_score
+        # requires weights to total 1.0 (see config-format.md). Dimensions without
+        # a recommendation keep their current weight. Prevents invalid patches
+        # like 0.46+0.36+0.36=1.18 from reaching auto-apply.
+        if recs:
+            proposed = {r["dimension"]: r["recommended_weight"] for r in recs}
+            full = {d: proposed.get(d, current_weights[d]) for d in dims}
+            total = sum(full.values())
+            if total > 0 and abs(total - 1.0) > 1e-9:
+                full = {d: round(w / total, 4) for d, w in full.items()}
+                for r in recs:
+                    r["recommended_weight"] = full[r["dimension"]]
 
         return recs
 

@@ -87,6 +87,20 @@ def check_safety(changes: dict, config: dict) -> dict:
                 continue
         safe["weights"][key] = value
 
+    # Weight-set integrity: composite_score weights must sum to 1.0 (see
+    # config-format.md). Reject the whole weight block if the merged proposed
+    # set drifts — prevents a malformed evaluator patch (e.g. 0.46+0.36+0.36)
+    # from corrupting the runtime config at high confidence.
+    if safe["weights"]:
+        merged = dict(config.get("weights", {}))
+        merged.update(safe["weights"])
+        total = sum(v for v in merged.values() if isinstance(v, (int, float)))
+        if abs(total - 1.0) > 0.02:
+            skipped.append(
+                f"weights: proposed set sums to {total:.3f} (must be 1.0) — rejected"
+            )
+            safe["weights"] = {}
+
     # Check auto_apply changes
     for key, value in changes.get("auto_apply", {}).items():
         if key == "no_progress_limit" and isinstance(value, int) and 1 <= value <= 5:
