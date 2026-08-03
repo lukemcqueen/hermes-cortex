@@ -2872,64 +2872,19 @@ def check_skill_drift(res):
 
 
 def check_mycortex_parity(res):
-    """Run the mycortex parity gate (S-010) when mycortex is deployed on this host.
+    """Mycortex parity gate — RETIRED 2026-08-03.
 
-    Design P2-SS9: parity must be wired so the flip gate is enforced, not manual.
-    This check runs mycortex-parity.py --mode check --engine mycortex and reports
-    the gate result. Hosts without mycortex (leaf agents) report INFO — the gate
-    only applies where mycortex sources are registered.
+    The parity gate was the gbrain→mycortex MIGRATION gate (prove the two
+    engines retrieve equivalently BEFORE the flip). The flip happened; gbrain
+    is deprecated and being removed. Comparing mycortex against gbrain-era
+    golden expectations is obsolete — the golden set is retained as a
+    regression fixture only, not a gate.
 
-    The parity runner resolves the repo root from both repo and deployed
-    locations, so this works from cortex-doctor.py (repo) and from the
-    deployed copy (~/.hermes-cortex/scripts).
+    Short-circuits to INFO (no subprocess, no 180s timeout) so every doctor
+    run fleet-wide stops paying for a dead gate.
     """
-    # Run the REPO parity script (golden set is versioned with the repo;
-    # fixtures are not deployed). The parity runner resolves the repo root
-    # from the repo layout, and PATH points at the deployed mycortex CLI.
-    parity_script = CORTEX_REPO / "ops" / "scripts" / "manage" / "mycortex-parity.py"
-    mycortex_cli = CORTEX_HOME / "scripts" / "mycortex"
-    if not parity_script.is_file() or not mycortex_cli.is_file():
-        res.add("Mycortex parity gate", "INFO", "mycortex not deployed on this host — parity gate N/A")
-        return
-
-    # Enumerate registered sources; hosts without any mycortex source skip the gate.
-    try:
-        env = dict(os.environ)
-        env["PATH"] = f"{CORTEX_HOME / 'scripts'}:{env.get('PATH', '')}"
-        proc = subprocess.run(
-            [str(mycortex_cli), "sources", "list", "--json"],
-            capture_output=True, text=True, timeout=30, env=env,
-        )
-        if proc.returncode == 0:
-            try:
-                sources = json.loads(proc.stdout)
-                if not sources:
-                    res.add("Mycortex parity gate", "INFO", "no mycortex sources registered on this host — parity gate N/A")
-                    return
-            except (json.JSONDecodeError, TypeError):
-                pass
-    except (OSError, subprocess.SubprocessError):
-        pass
-
-    try:
-        env = dict(os.environ)
-        env["PATH"] = f"{CORTEX_HOME / 'scripts'}:{env.get('PATH', '')}"
-        proc = subprocess.run(
-            [sys.executable, str(parity_script), "--mode", "check", "--engine", "mycortex"],
-            capture_output=True, text=True, timeout=180, env=env,
-        )
-    except (OSError, subprocess.SubprocessError) as e:
-        res.add("Mycortex parity gate", "FAIL", f"could not run parity: {e}",
-            "Check that mycortex-parity.py and mycortex CLI are deployed and Postgres is up")
-        return
-
-    tail = proc.stdout.strip().splitlines()[-4:] if proc.stdout.strip() else []
-    summary = "\n".join(tail[-3:]) if tail else proc.stdout.strip()[:300]
-    if proc.returncode == 0:
-        res.add("Mycortex parity gate", "PASS", f"gate passed: {summary}")
-    else:
-        res.add("Mycortex parity gate", "FAIL",
-            f"gate failed (exit {proc.returncode}): {summary}",
-            "Run: mycortex-parity.py --mode check --engine mycortex — fix ranking or sources before flip")
+    res.add("Mycortex parity gate", "INFO",
+            "retired 2026-08-03 — gbrain deprecated; golden set kept as a mycortex regression fixture, not a gate")
+    return
 
 
