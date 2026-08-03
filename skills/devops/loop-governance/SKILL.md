@@ -683,8 +683,10 @@ See `references/mcp-servers.md` for full tool descriptions and usage examples.
 1. `mcp_loop_governance_begin_change(task_id="<name>", description="...")` — start a change
 2. Do the work (MCP server blocks write tools without a lock)
 3. `mcp_loop_governance_cycle_query(task_id="<name>")` — find the cycle
-4. `mcp_loop_governance_feedback_accept(id=N, note="...")` — score it
+4. `mcp_loop_governance_feedback_accept(cycle_id=N, note="...")` — score it (parameter is **`cycle_id`**, NOT `id` — passing `id` fails with "missing required argument")
 5. `mcp_loop_governance_end_change(task_id="<name>")` — release the lock
+
+**Orphaned PENDING cycles from sibling sessions:** the doctor's `❌ PENDING cycles` failure often lists cycles you did NOT create — sibling/daemon sessions (background subagents, other CLI sessions, party agents) called `begin_change` and never scored. Enumerate with `cycle_query(status="pending")`, then `feedback_accept(cycle_id=N, note="...")` each verified-complete one. For cycles superseded by a later MOVE_ON cycle of the same task, cite the superseding cycle in the note (e.g. "cycle 2 (2152) verified deploy end-to-end").
 
 Or via the main installer: `bash hermes-cortex/install.sh` (loop-governance step removed in July 2026 — use cortex-update.sh instead).
 
@@ -982,9 +984,4 @@ communication design (three-repo separation, message flow, pitfalls).
 3. **Bound early** — set max_iterations before starting. A rule of thumb: if you can't achieve the goal in 5 iterations, you won't achieve it in 50.
 4. **Fresh context** — each iteration starts clean. Don't accumulate stale reasoning.
 5. **Measure, don't guess** — the scoring function replaces "feels right" with quantitative evidence. Trust the score, not the instinct.
-# Non-orch test
-# test
-# test non-orch
-# test
-# test
-# test
+

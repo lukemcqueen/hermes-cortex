@@ -138,6 +138,44 @@ xxd <<< "$workdir"                            # see the literal byte values
 
 **Best practice for paths in scripts that will run on multiple machines:** Always `"$HOME"` (un-escaped) when you intend the user's home directory. Use a full absolute path like `"/home/moses"` only when the path must be hardcoded (and document why). Use `"${HOME}/subdir"` when you need a subdirectory. Never `"\$HOME"` — it never does what you want in this context.
 
+## Deploy-Time Mode Overrides — Run AFTER the Unlock, Not at Register Time
+
+When a deploy script (e.g. `cortex-update.sh`) locks enforcement files immutable
+(chattr +i / uchg) at the end of its run, any `chmod` at **register time** (the
+top-level register block, before the per-file loop unlocks) fails silently on
+the still-immutable file. And a content-only change detector (`needs_update()`
+comparing checksums) never re-copies an identical-content file — so a stale
+mode (e.g. a July-era 444 on a hook) sticks forever. Real case 2026-08-03:
+`chmod 700 hooks/post-merge` at register time ran before the unlock, failed
+silently via `|| true`, and the mode never propagated.
+
+**Pattern — mode-override map enforced inside the per-file loop, after unlock
++ copy, unconditionally (not gated on the change detector):**
+
+```bash
+declare -A MODE_OVERRIDES=(
+  ["${CORTEX_DEPLOY_HOME}/hooks/post-merge"]="700"
+)
+
+# ...inside check_each_mapped_file(), after the copy loop:
+for _mode_dest in "${!MODE_OVERRIDES[@]}"; do
+  _mode_val="${MODE_OVERRIDES[$_mode_dest]}"
+  if [[ -f "$_mode_dest" ]]; then
+    chmod "$_mode_val" "$_mode_dest" 2>/dev/null \
+      || warn "  mode override failed for ${_mode_dest/$HOME/~}"
+  fi
+done
+```
+
+- **`declare -A` is safe here** because cortex-update.sh re-execs to brew bash
+  ≥4 on macOS (the script has a bash-version guard at the top).
+- **Test the full sequence, not the isolated step.** A lone `chmod 700` on a
+  locked file correctly fails with "Operation not permitted" — that failure is
+  the bug being fixed, not a test artifact. Verify unlock → chmod succeeds →
+  re-lock, exactly as the deploy loop does. (Piping the unlock through
+  `head`/`tail` can SIGPIPE-kill the unlock loop mid-way and produce a false
+  "chmod failed" — capture output to a variable or file instead.)
+
 ## Testing a Script Block in Isolation (Hook Guards, Conditionals)
 
 When you change a conditional guard inside a larger bash script (git hooks,
@@ -700,6 +738,8 @@ Before shipping changes to installer scripts (`install-crons.sh`, `setup.sh`, et
 ## Pitfalls
 
 | Pitfall | Symptom | Fix |
+|---------|---------|------|
+| **Fence counting: `grep -c '^```'` vs strip-based count** | Strip-based counting (`line.strip().startswith("```")`) includes INDENTED fences (inside code blocks) → phantom imbalance; a file that reads 1080 by strip-count is 885 line-starting and BALANCED. Appending an EOF closer to a file already even/paired by the line-starting rule flips it to UNBALANCED (the appended fence becomes a NEW orphan opener — llms-full.md 884→885 on 2026-08-02). | Count with `grep -c '^```'` or python `line.startswith("```")` — NEVER `strip().startswith()`. Verify with sequential pairing (open/close stack), not just parity. Only append a closer when the file's LAST line-starting fence is genuinely unclosed. |
 |---------|---------|------|
 | `declare -A` (associative arrays) on macOS | `declare: -A: invalid option` on macOS (ships bash 3.2, needs 4+) | Use parallel indexed arrays: `ARR_KEYS=() ARR_VALS=()` + numeric-index loop. Or use a Python script for complex maps. |
 |---------|---------|------|

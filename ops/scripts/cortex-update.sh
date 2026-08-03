@@ -1066,6 +1066,23 @@ sync_skills() {
         copy_file "$ref_file" "$dest"
       fi
     done < <(find "$root_skills" -path "*/references/*" -type f -print0)
+
+    # Sync scripts and templates (skill assets). Without this, deployed
+    # skill dirs are partial — SKILL.md references scripts/load_*.py etc.
+    # that never reach ~/.hermes/skills/<cat>/<name>/scripts/.
+    while IFS= read -r -d '' asset_file; do
+      # Skip Python bytecode cache — never deploy pyc/pyo
+      case "$asset_file" in
+        *__pycache__*|*.pyc|*.pyo) continue ;;
+      esac
+      local rel_path="${asset_file#$root_skills/}"
+      local dest="${skill_dest}/${rel_path}"
+      mkdir -p "$(dirname "$dest")"
+
+      if needs_update "$asset_file" "$dest"; then
+        copy_file "$asset_file" "$dest"
+      fi
+    done < <(find "$root_skills" \( -path "*/scripts/*" -o -path "*/templates/*" \) -type f -print0)
   fi
 
   # ── Pass 2: Project-level overrides (.hermes-cortex/skills/) ──
@@ -1114,8 +1131,40 @@ sync_skills() {
   done < <(find "$override_skills" -path "*/references/*" -type f -print0)
 
   # ── Pass 3: Clean up stale deployed skills ──
-  # Remove skill dirs at destination that no longer exist in source
-  # Only check category directories (not root-level Hermes defaults)
+  # Remove skill dirs at destination that no longer exist in source.
+  # Only check category directories (not root-level Hermes defaults).
+  # NOTE: skill_dest may be a symlink (e.g. ~/.hermes-cortex/skills →
+  # ~/.hermes/skills) — use find -L so GNU find traverses it; without -L
+  # the find returns nothing and stale skill dirs (renamed categories,
+  # deleted skills) linger forever.
+  # SAFETY: skip Hermes-default skills — they live in category dirs but
+  # have no repo source. Two markers (same as the doctor's orphan scan):
+  #   1. metadata.hermes frontmatter
+  #   2. skill NAME present in ~/.hermes/hermes-agent/{skills,optional-skills}
+  #      (some defaults like youtube-content carry no metadata block)
+  # Also skip .archive/ dirs.
+  # KEY RULE: if the skill NAME exists in the repo under a DIFFERENT
+  # category, the deployed copy at this path is a stale duplicate of a
+  # repo skill (renamed/moved category) — REMOVE it even if it carries
+  # metadata.hermes. Only name-not-in-repo skills are treated as Hermes
+  # defaults worth keeping.
+  local hermes_agent_skills="${CORTEX_DEPLOY_HOME}/../.hermes/hermes-agent"
+  [[ -d "$HOME/.hermes/hermes-agent" ]] && hermes_agent_skills="$HOME/.hermes/hermes-agent"
+  declare -A hermes_skill_names=()
+  local _hdir
+  for _hdir in "${hermes_agent_skills}/skills" "${hermes_agent_skills}/optional-skills"; do
+    if [[ -d "$_hdir" ]]; then
+      while IFS= read -r -d '' _hfile; do
+        local _hrel="${_hfile#$_hdir/}"
+        local _hname="${_hrel%/SKILL.md}"
+        hermes_skill_names["$(basename "$_hname")"]=1
+      done < <(find "$_hdir" -name "SKILL.md" -type f -print0 2>/dev/null)
+    fi
+  done
+  declare -A repo_skill_names=()
+  for _sk in "${!source_dirs[@]}"; do
+    repo_skill_names["${_sk##*/}"]=1
+  done
   while IFS= read -r -d '' deployed_skill; do
     local rel="${deployed_skill#$skill_dest/}"
     local dirname="${rel%/SKILL.md}"
@@ -1123,12 +1172,33 @@ sync_skills() {
     if [[ "$dirname" != */* ]]; then
       continue
     fi
-    # Check if this directory exists in source
-    if [[ -z "${source_dirs[$dirname]:-}" ]]; then
+    # Skip archive dirs
+    if [[ "$dirname" == .archive/* ]]; then
+      continue
+    fi
+    local _skill_name="${dirname##*/}"
+    # If the skill exists in the repo under a DIFFERENT category, this is
+    # a stale duplicate of a repo skill (moved/renamed category) — remove.
+    if [[ -n "${source_dirs[$dirname]:-}" ]]; then
+      continue
+    fi
+    if [[ -n "${repo_skill_names[$_skill_name]:-}" ]]; then
       rm -rf "$(dirname "$deployed_skill")"
       removed=$((removed + 1))
+      continue
     fi
-  done < <(find "$skill_dest" -name "SKILL.md" -type f -print0)
+    # Name not in repo: Hermes-default check (metadata.hermes frontmatter
+    # or name present in hermes-agent dirs) — keep those, remove the rest.
+    if [[ -n "${hermes_skill_names[$_skill_name]:-}" ]]; then
+      continue
+    fi
+    if grep -q '^metadata:$' "$deployed_skill" 2>/dev/null && \
+       grep -A1 '^metadata:$' "$deployed_skill" 2>/dev/null | grep -q 'hermes:'; then
+      continue
+    fi
+    rm -rf "$(dirname "$deployed_skill")"
+    removed=$((removed + 1))
+  done < <(find -L "$skill_dest" -name "SKILL.md" -type f -print0)
 
   info "  Skills: ${synced} updated, ${skipped} unchanged, ${removed} stale removed"
 }

@@ -242,7 +242,8 @@ Save the backup date, archive path, and size to memory so future sessions can fi
 
 | Pitfall | Symptom | Fix |
 |---------|---------|-----|
-| **state.db copied while gateway is writing** | WAL not flushed, partial write | Checkpoint first (`PRAGMA wal_checkpoint(TRUNCATE)`), then copy |
+| **state.db copied while gateway is writing** | WAL not flushed, partial write | Checkpoint first (`PRAGMA wal_checkpoint(TRUNCATE)`), then copy. **Better: use the sqlite backup API for a WAL-correct consistent snapshot of a LIVE db** — `python3 -c "import sqlite3; src=sqlite3.connect('/home/moses/.hermes/state.db'); dst=sqlite3.connect('backup.db'); src.backup(dst)"` — handles WAL without stopping the gateway |
+| **git bundle fails: packed object corrupt** | `fatal: packed object ... is corrupt` / `pack has bad object at offset` from `git bundle create --all` | The repo's `.git` packs are damaged (disk write errors). HEAD commit may still be intact in another pack (`git cat-file -t HEAD` works, `git log` works). Fallback: tar the worktree (the RUNNING code, no .git/venv/node_modules) + tar `.git` raw as `hermes-agent-gitdir.tar.gz`. Repair later: remove bad packs (`git verify-pack` to find them) + `git fetch origin` (works if repo is ≤1 commit behind origin) |
 | **git bundle from dirty working tree** | Uncommitted changes excluded from bundle | `git status --short` first — report dirty state; bundle anyway for now |
 | **~/.git-credentials zeroed by gateway write protection** | File exists but 0 bytes | Check with `wc -c` after copy; re-populate if zeroed |
 | **Nginx config permission denied** | Can't read `/etc/nginx/sites-enabled/*` | Try without sudo; if blocked, skip and note in manifest |
