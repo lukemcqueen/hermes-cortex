@@ -63,11 +63,14 @@ grep -rn '<name>' ~/.hermes-cortex/scripts/install*.sh ~/hermes-cortex/ops/scrip
 
 ## Truly Stale — Safe to Delete
 
+> **Log policy (Luke, 2026-08-03): keep logs unless actually out of disk space.**
+> Rotated log archives are NOT routine cleanup targets — only remove them when
+> `df -h` shows real pressure (e.g. < 10% free). Same for any log under
+> `~/.hermes/logs/` or `~/.hermes-cortex/logs/`.
+
 | Path | Evidence | Saves |
 |------|----------|-------|
-| `~/.hermes/logs/agent.log.1/.2/.3`, `errors.log.1/.2` | Rotation archives; live handler recreates on next rotation | ~19 MB |
-| `~/.hermes-cortex/logs/cortex-dashboard.log` | Dashboard container not running (`docker ps` empty); dead log | ~4 MB |
-| `~/.hermes-cortex/state/loop-governance.db` (0 bytes) | All scripts reference `data/loop-governance.db`, none reference `state/` copy | 0 bytes (dead file) |
+| `~/.hermes-cortex/state/loop-governance.db` (0 bytes) | All scripts reference `data/loop-governance.db`, none reference `state/` copy. **Do NOT touch `data/loop-governance.db` — that is the live governance DB.** | 0 bytes (dead file) |
 | `~/.hermes/hermes-agent/__pycache__/`, `~/.hermes-cortex/{scripts,offline}/__pycache__/` | Regenerable bytecode (Python rebuilds on import) | ~2.5 MB, 800+ dirs |
 | `~/.hermes-cortex/a2a/task-state.db` | Zero references in agent source or cortex scripts (agent-card.json in same dir IS live) | 20 KB |
 | `~/.hermes/state/post-commit-notify` + `.log` | Pre-migration leftovers: old hook wrote to `~/.hermes/state/`, current script writes to `.hermes-cortex/state/` | 3.5 KB |
