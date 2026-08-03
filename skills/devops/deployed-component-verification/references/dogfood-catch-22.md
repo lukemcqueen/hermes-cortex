@@ -61,38 +61,44 @@ blocked. This is a **hard structural deadlock**.
 
 ### What DOES work (passes through the enforcer)
 
-The enforcer's `WRITE_COMMAND_PATTERNS` list at
-`~/.hermes/plugins/governance-enforcer/__init__.py` line 475-500 determines
-which terminal commands are classified as "write." Commands NOT in the list
-are allowed through the terminal tool (they still need a governance lock for
-non-read fast-path operations, but `sudo hermes-plugin-lock unlock` passes
-through because `hermes-plugin-lock` is not in any write pattern).
+Since 2026-08-04 the enforcer has ONE sanctioned lock-free terminal command:
+the exact `cortex-update.sh` deploy invocation. The DOGFOOD gate blocks
+`begin_change()` until repo == deployed, so the ONLY way to deploy is
+`cortex-update.sh` — the enforcer lets that exact command through without
+a governance lock so the agent can self-recover:
+
+```bash
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+# allowed flags: --force-all --dry-run --status --delta --clean-stale
+# EXACT match only — no sudo, no chaining (&&, ;, |, >), no other scripts
+```
 
 **Confirmed working (passes through without governance lock):**
 ```bash
-sudo hermes-plugin-lock unlock   # NOT in any write pattern
-sudo hermes-plugin-lock lock     # NOT in any write pattern
-whoami                           # matches READ_COMMAND_PATTERNS fast-path
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh   # sanctioned exact-path exception
+ls / whoami / git status                            # READ_COMMAND_PATTERNS fast-path
 ```
 
 **Blocked without governance lock:**
 ```bash
+sudo hermes-plugin-lock unlock   # write-class — needs a lock (fail-closed since P0-2)
 cp file1 file2                   # hits governance lock check
-tee target                       # in WRITE_COMMAND_PATTERNS line 489
-git checkout -- file             # git checkout in line 478
-rsync src dest                   # rsync in line 489
+tee target                       # in WRITE_COMMAND_PATTERNS
+git checkout -- file             # git checkout in WRITE_COMMAND_PATTERNS
+rsync src dest                   # rsync in WRITE_COMMAND_PATTERNS
 ```
 
 ### Method 1: One-time human intervention (fastest)
 
-If the deadlock happens mid-session and you need it resolved immediately:
+If the deadlock happens mid-session and you need it resolved immediately —
+**the sanctioned self-recovery is Method 3 (cortex-update.sh, lock-free)**.
+The manual unlock/cp path below is the ORCHESTRATOR-ONLY fallback
+(`sudo hermes-plugin-lock` requires the `--orchestrator` token and is
+audit-logged; non-orchestrators are refused). Prefer Method 3 — it is the
+enforcer's single sanctioned lock-free command:
 
 ```bash
-sudo hermes-plugin-lock unlock
-cp ~/.hermes/plugins/governance-enforcer/__init__.py \
-   ~/hermes-cortex/plugins/governance-enforcer/__init__.py
-sudo chmod 444 ~/.hermes/plugins/governance-enforcer/__init__.py
-sudo hermes-plugin-lock lock
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh   # sanctioned, lock-free
 ```
 
 Then verify:
@@ -105,38 +111,50 @@ Both hashes must match. Then `begin_change()` works normally.
 
 ### Method 2: Sync repo source to match deployed (when deployed is ahead)
 
-If the deployed copy has changes that need porting to the repo:
+If the deployed copy has changes that need porting to the repo
+(orchestrator-only; requires the `--orchestrator` token):
 
 ```bash
-sudo hermes-plugin-lock unlock 2>/dev/null
+sudo hermes-plugin-lock unlock --orchestrator 2>/dev/null
 cp ~/.hermes/plugins/governance-enforcer/__init__.py \
    ~/hermes-cortex/plugins/governance-enforcer/__init__.py
 sudo hermes-plugin-lock lock 2>/dev/null
 # Then git add/commit/push the repo change
 ```
 
-### Method 3: Deploy repo → deployed (when repo is ahead)
+### Method 3: Deploy repo → deployed (when repo is ahead) — SANCTIONED, LOCK-FREE
 
 ```bash
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 ```
 
-Since `commit ce258342`, `deploy_governance_plugin()` always copies the
+Since 2026-08-04 the enforcer's `_is_sanctioned_cortex_update_command()`
+allows this EXACT command through without a governance lock (exact path,
+allowlisted flags only, no chaining/sudo/metacharacters). Since
+`commit ce258342`, `deploy_governance_plugin()` always copies the
 enforcer files from repo source (no `needs_update` gate), then auto-reloads
 the plugin via `hermes plugins disable/enable`.
 
 ## Prevention
 
-### Structural fix (not yet implemented)
+### Structural fix (implemented 2026-08-04 — sanctioned recovery, not auto-deploy)
 
-The dogfood check should be **self-healing**: when `begin_change` detects
-that the enforcer files differ, it should:
-1. Unlock the deployed copy
-2. Copy the repo source to the deployed path
-3. Re-lock
-4. THEN proceed with creating the governance lock
+The dogfood check remains a hard BLOCK (auto-deploy on begin_change was
+deliberately rejected — it would bypass the sanctioned deploy path). The
+2026-08-04 fix instead makes the SANCTIONED recovery command executable in
+the blocked state:
 
-This would eliminate the deadlock entirely. Tracked in `tododb:4c90acfd`.
+1. The enforcer's `_is_sanctioned_cortex_update_command()` allows the
+   exact `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` invocation
+   through WITHOUT a governance lock (exact path, allowlisted flags only,
+   no chaining/sudo/metacharacters).
+2. The DOGFOOD message tells agents to run exactly that command.
+3. `cortex-update.sh` deploys repo → deployed, then the agent re-acquires
+   the lock with `begin_change()` (which now passes, repo == deployed).
+
+This keeps enforcement structural (no bypass, no auto-deploy side channel)
+while eliminating the deadlock: the gate's own sanctioned recovery path is
+now actually runnable.
 
 ### Procedural prevention
 

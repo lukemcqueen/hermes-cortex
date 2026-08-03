@@ -141,11 +141,13 @@ def _require_dogfood() -> Optional[str]:
                 "    The governance plugin at ~/.hermes/plugins/governance-enforcer/ differs from\n"
                 "    the repo source (the commit you just pushed).\n\n"
                 "    Dogfooding means: deploy AND test.\n"
-                "      1. bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all\n"
+                "      1. bash ~/hermes-cortex/ops/scripts/cortex-update.sh\n"
+                "         (this exact command is sanctioned to run WITHOUT a governance lock;\n"
+                "          the enforcer allows it lock-free so you can self-recover)\n"
                 "      2. Run the changed code path — verify it works with actual output\n"
                 "      3. Run doctor, fix every issue it reports\n"
                 "      4. Run doctor again — confirm clean before claiming anything\n\n"
-                "    Then call begin_change again.\n"
+                "    Then call begin_change again (the deploy purged locks).\n"
                 "    This enforcement is structural — cannot be bypassed."
             )
     except (OSError, PermissionError, FileNotFoundError):

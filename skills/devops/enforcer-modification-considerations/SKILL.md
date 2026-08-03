@@ -52,19 +52,21 @@ The `begin_change()` MCP tool has a DOGFOOD check: if the deployed enforcer (`~/
 
 **The problem:** This blocks a new change when the mismatch is caused by ANOTHER agent's commit arriving via `git pull` — not by un-deployed local work.
 
-**How to break the loop:**
-1. `rm -f ~/.hermes-cortex/state/.skills-loaded` (clear stale marker)
+**How to break the loop (fixed 2026-08-04 — the sanctioned command is now lock-free):**
+
+1. Run the sanctioned recovery — the enforcer allows this EXACT command
+   without a governance lock:
+   ```bash
+   bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+   ```
+   (No sudo, no chaining, no other flags beyond
+   `--force-all/--dry-run/--status/--delta/--clean-stale` — the
+   enforcer's `_is_sanctioned_cortex_update_command()` matches exactly.)
 2. Load all 8 always-section skills: `skill_view()` calls
-3. Run `bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all` (deploy the latest enforcer from repo)
-4. `begin_change()` should now succeed
+3. `begin_change()` should now succeed (repo == deployed)
 
-**If that fails** (e.g., terminal blocked because no lock):
-- Trigger the pre-commit hook's auto-deploy: make a trivial commit (e.g., touch a doc file)
-- The pre-commit hook's DOGFOOD check copies the enforcer from repo to deployed
-- Commit succeeds, enforcer is now in sync
-- Then proceed with `begin_change()` for the real work
-
-**Permanent fix (future):** Add auto-deploy to the DOGFOOD check in `begin_change()`. When the enforcer differs from HEAD, copy it before blocking.
+**If the skills gate blocks the terminal call** (no skills marker yet):
+- Load the 8 always-skills first, then re-run the command above.
 
 ---
 

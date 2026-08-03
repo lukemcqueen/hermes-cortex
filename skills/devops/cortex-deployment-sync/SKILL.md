@@ -63,12 +63,12 @@ sudo -n hermes-plugin-lock unlock                          # clears the flags
 
 ## Pitfall 8: The dogfood deadlock — run cortex-update FIRST, then begin_change
 
-When the repo's enforcer is newer than the deployed one (Moses pushed), `begin_change` fails with **DOGFOOD REQUIRED** — but the running enforcer blocks `bash *.sh` without a lock. This is NOT a real deadlock: the designed order is
+When the repo's enforcer is newer than the deployed one (Moses pushed), `begin_change` fails with **DOGFOOD REQUIRED** — and the DOGFOOD gate refuses to create a governance lock (it returns BEFORE lock creation). Under the fail-closed terminal policy, every command except the sanctioned one is write-class → blocked without a lock. **Fixed 2026-08-04:** the enforcer's `_is_sanctioned_cortex_update_command()` allows the EXACT deploy command through without a governance lock, so the designed order is:
 
-1. `~/hermes-cortex/ops/scripts/cortex-update.sh` (direct path — allowed, deploys the new enforcer)
+1. `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` (sanctioned lock-free — deploys the new enforcer)
 2. THEN `begin_change()` (dogfood gate now passes, repo == deployed)
 
-Do NOT try to `cp` the enforcer file manually (blocked + violates the immutable-deploy rule), and do NOT loop retrying `bash` forms — direct path is the answer. Symptom on 2026-07-31: 8+ failed attempts across `bash`, `cp`, `python3 -c` before the direct-execution form ran clean.
+Do NOT try to `cp` the enforcer file manually (blocked + violates the immutable-deploy rule), do NOT loop retrying `sudo hermes-plugin-lock` forms (write-class, needs a lock — the sanctioned exception covers only the exact cortex-update.sh invocation). Symptom on 2026-07-31: 8+ failed attempts across `bash`, `cp`, `python3 -c` before the fix landed; since 2026-08-04 the bare sanctioned command runs clean.
 
 ## Pitfall 9: `git pull --rebase` replayed commits get logged as `--no-verify` → push blocked
 
