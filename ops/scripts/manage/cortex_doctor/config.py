@@ -186,15 +186,20 @@ def parse_expected_crons():
 
 
 def parse_orch_crons():
-    """Read orchestrator-only cron names from install-orch-crons.sh."""
+    """Read orchestrator-only cron names from install-orch-crons.sh.
+
+    Source = create_cron calls, NOT the uninstall array. The uninstall array
+    (``for job in \\`` block) tracks names for cleanup — including legacy
+    crons with no create_cron entry — so it must never be used as the
+    expected-cron source. (Found 2026-08-03: agent-bus-failover-watchdog was
+    registered in BOTH install-crons.sh (universal) and the orch uninstall
+    array, so workers — who exclude 'orch crons' — never saw it as expected
+    and the doctor flagged it orphan/extra on every worker host.)
+    """
     text = _read_file(INSTALL_ORCH_CRONS)
     if not text:
         return []
-    m = re.search(r'for job in \\\n(.*?); do', text, re.DOTALL)
-    if not m:
-        return []
-    block = m.group(1)
-    return re.findall(r'"([^"]+)"', block)
+    return re.findall(r'^create_cron\s+"([^"]+)"', text, re.MULTILINE)
 
 
 def find_script_consumers():
