@@ -377,11 +377,11 @@ register "core/governance/VERSION"                 "${CORTEX_DEPLOY_HOME}/tools/
 # Bus-renamed scripts — everything under ops/scripts/bus/
 register "ops/scripts/manage/ek-session-snapshot.py"     "${CORTEX_DEPLOY_HOME}/scripts/ek-session-snapshot.py"
 
-# Fleet watchdog — cross-agent health polling (orch, deployed by install-orch-crons.sh)
-register_orch "ops/scripts/agent/orch-fleet-watchdog.py"      "${CORTEX_DEPLOY_HOME}/scripts/orch-fleet-watchdog.py"
+# Fleet watchdog — cross-agent health polling (orch, deployed by install-orch-crons.sh).
+# Registered once at line 256 (register_orch); do NOT duplicate here.
 
-# Failover watchdog — detect bus outage, per-role behavior (all agents)
-register "ops/scripts/agent/agent-bus-failover-watchdog.py"   "${CORTEX_DEPLOY_HOME}/scripts/agent-bus-failover-watchdog.py"
+# Failover watchdog — detect bus outage, per-role behavior (all agents).
+# Registered once at line 260 (register = all agents); do NOT duplicate here.
 
 # gbrain autopilot — REMOVED 2026-08-02 (decommissioned; mycortex replaces)
 

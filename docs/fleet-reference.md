@@ -65,9 +65,9 @@ Every cron name MUST start with a group prefix. No bare names:
 
 ---
 
-## Current Cron State (52 jobs)
+## Current Cron State (61 jobs)
 
-### Orchestrator-only (`orch-*`) — 9 crons
+### Orchestrator-only (`orch-*`) — 12 crons
 
 | Name | Schedule | Type | Script | Deliver |
 |------|----------|------|--------|---------|
@@ -76,13 +76,12 @@ Every cron name MUST start with a group prefix. No bare names:
 | `orch-bus-confirmation-poller` | `every 10m` | no_agent | `orch-bus-confirmation-poller.py` | local |
 | `orch-bus-confirmation-alert` | `*/15 * * * *` | no_agent | `orch-bus-confirmation-alert.sh` | Telegram |
 | `orch-bus-forwarder-sync` | `*/2 * * * *` | no_agent | `orch-bus-forwarder.py` | origin |
-| `agent-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `agent-bus-failover-watchdog.py` | Telegram |
 | `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | `orch-fleet-watchdog.py` | Telegram |
 | `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent | `orch-health-report.py` | origin |
 | `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent | `orch-health-report.py` | origin |
 | `orch-skill-lifecycle` | `0 4 * * *` | LLM | (skill) | origin |
 
-### All-agent crons (`agent-*`) — 23+ crons
+### All-agent crons (`agent-*`) — 44 crons
 
 These run on every agent in the fleet. Created by `install-crons.sh`.
 
@@ -94,6 +93,7 @@ These run on every agent in the fleet. Created by `install-crons.sh`.
 | `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local |
 | `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin |
 | `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local |
+| `agent-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `agent-bus-failover-watchdog.py` | Telegram |
 | `agent-service-recovery` | `*/5 * * * *` | no_agent | `agent-service-recovery.py` | origin |
 | `agent-system-alert-watchdog` | `*/30 * * * *` | no_agent | `agent-system-alert-watchdog.py` | origin |
 | `agent-hermes-update` | `23 22 * * *` | no_agent | `agent-hermes-update.sh` | local |
