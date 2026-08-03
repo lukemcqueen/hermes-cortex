@@ -10,8 +10,26 @@ Moses → Agent:  UPDATE_REQUEST  (cortex-update + doctor)
 Agent → Moses:  UPDATE_RESULT   (success/fail + doctor JSON + git SHA)
 Moses → Agent:  FIX_REQUEST    (targeted fix instruction)
 Agent → Moses:  FIX_RESULT    (fix applied? + evidence)
+Agent → Orch:   FIX_REQUEST / escalation → inbox_orchestrator (shared channel)
 Moses → Telegram: Fleet status report (aggregated)
 ```
+
+## Shared Orchestrator Inbox (`inbox_orchestrator`)
+
+Since 2026-08-03, **both orchestrators (Moses AND Esther) read and write the
+shared `inbox_orchestrator` queue**. Worker fix requests and escalations
+should target this queue so whichever orchestrator is available sees them —
+including the backup when the primary is down or degraded.
+
+- **Workers send** escalations/fix requests to `inbox_orchestrator`
+  (`contact-moses.sh` with `CORTEX_INBOX_TARGET=inbox_orchestrator`, or
+  `bus_send("inbox_orchestrator", ...)`).
+- **Both orchestrators'** `agent-message-handler` polls `inbox_orchestrator`
+  in addition to their own inbox.
+- **Results** still go to `inbox_moses` (they reply to the originating
+  orchestrator's queue via `inbox_moses`).
+- The queue is auto-created on first send; schema seed lives in
+  `ops/services/agent-bus/schema/auth.sql`.
 
 ## Common Headers
 

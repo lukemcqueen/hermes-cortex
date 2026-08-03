@@ -7,7 +7,7 @@
 | Channel | When | How |
 |---------|------|-----|
 | In-session (MCP) — **orchestrators only** | Have the agent-bus MCP tools loaded (Moses, Esther) | `inbox_send(to="moses", subject=..., body=...)` — see `docs/operations-reference.md`. The agent-bus MCP is orchestrator-only; workers do NOT have these tools and must not install them (the doctor WARNS). |
-| Headless (HTTP) — **workers, scripts, crons** | Non-orchestrator agent or any script/cron | `bash ~/.hermes-cortex/scripts/contact-moses.sh "subject" "body" [priority]` (priority: normal/urgent/critical). Reads URL + auth from `~/.hermes-cortex/cortex-bus.conf` (fallback) or env vars. **Body must be a single line** — no raw newlines (breaks the JSON payload). |
+| Headless (HTTP) — **workers, scripts, crons** | Non-orchestrator agent or any script/cron | `bash ~/.hermes-cortex/scripts/contact-moses.sh "subject" "body" [priority]` (priority: normal/urgent/critical). Reads URL + auth from `~/.hermes-cortex/cortex-bus.conf` (fallback) or env vars. **Body must be a single line** — no raw newlines (breaks the JSON payload). Default target is `inbox_moses`; set `CORTEX_INBOX_TARGET=inbox_orchestrator` to send to the **shared orchestrator inbox** (seen by both Moses and Esther — the escalation path when the primary may be down). |
 | Python lib — **any script** | From Python (crons, workers, tooling) | `from lib.cortex_bus import bus_send; bus_send("inbox_moses", {"from": "<name>", "to": "moses", "subject": "...", "body": "..."})` — same API, with fallback support. |
 | Raw curl | Debugging / one-off | `curl -u "$CORTEX_BASIC_AUTH" -X POST -H "Content-Type: application/json" -d '{"queue":"inbox_moses","message":{...}}' "$CORTEX_BUS_URL/api/pgmq/send"` — see `docs/operations-reference.md` |
 

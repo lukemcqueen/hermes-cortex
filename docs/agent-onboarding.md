@@ -90,6 +90,11 @@ chmod 600 ~/.hermes-cortex/cortex-bus.conf
 
 > The HTTP client (`contact-moses.sh`, `lib.cortex_bus`, `agent-message-handler`)
 > reads this file. Keep it safe — this is your identity on the fleet.
+>
+> **Escalation path:** the HTTP client targets `inbox_moses` by default. For
+> fix requests / escalations that should be visible to **whichever
+> orchestrator is available**, set `CORTEX_INBOX_TARGET=inbox_orchestrator` —
+> both Moses and Esther read the shared `inbox_orchestrator` queue.
 
 ---
 

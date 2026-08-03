@@ -15,7 +15,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/operations-reference.md` | Operations — inbox architecture, Agent Bus, offline code, common tasks |
 | `docs/agent-onboarding.md` | Agent onboarding — step-by-step guide for client-only agents to connect to Moses and the fleet |
 | `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
-| `docs/fleet-update-protocol.md` | **NEW** — Fleet update bus protocol: UPDATE_REQUEST/RESULT, FIX_REQUEST/RESULT schemas for Moses→fleet orchestration |
+| `docs/fleet-update-protocol.md` | **NEW** — Fleet update bus protocol: UPDATE_REQUEST/RESULT, FIX_REQUEST/RESULT schemas for Moses→fleet orchestration. **Shared orchestrator inbox** (`inbox_orchestrator`) for failover-aware escalation |
 | `docs/fallback-architecture-survey.md` | **Moses fallback architecture** — failover survey, Esther's warm-standby bus, gaps & approaches |
 | `docs/backup-orch-failover-runbook.md` | **Failover & recovery runbook** — step-by-step: Moses-down activation, drain, Moses-back reintegration. Auto-detection now via `agent-bus-failover-watchdog` cron (all agents) + `tests/test-failover-drill.py` |
 | `docs/cert-monitoring.md` | SSL/TLS cert monitoring — how certs are checked, renewed, alerted |
@@ -43,7 +43,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `docs/architecture.md` | System architecture overview — layers, services, port map, security stack |
-| `docs/bus-architecture.md` | **Bus Architecture (canonical role matrix)** — who has what (server/MCP/HTTP client), ACL, topology, message flow. Full config at `docs/reference/cortex-bus-config.md` |
+| `docs/bus-architecture.md` | **Bus Architecture (canonical role matrix)** — who has what (server/MCP/HTTP client), ACL (incl. shared `inbox_orchestrator`), topology, message flow |
 | `docs/reference/cortex-bus-config.md` | **Cortex Bus Config Guide** — full architecture reference: fleet topology, auth model, ACL/permissions, message consumption, forwarder, troubleshooting |
 | `ops/scripts/lib/cortex_bus.py` | **Cortex Bus library** — shared HTTP API wrapper over the Agent Bus: bus_send/bus_read/bus_archive/bus_list_queues |
 | `docs/esther-bus-setup.md` | **Esther Bus Backup** — orchestrator-only guide: bus server, nginx with X-Forwarded-User, Postgres setup, verification |
