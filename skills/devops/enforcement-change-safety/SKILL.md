@@ -127,6 +127,31 @@ governance lock: `_has_governance_lock()` Phase 3 reads the repo marker
 - `cortex-update.sh` purges governance locks (Pitfall 2) — re-acquire with
   `begin_change` after deploy.
 
+## Rule 5: Rebase → Post-Commit False "no-verify" Flag (2026-08-04)
+
+`git pull --rebase` replays your commit WITHOUT running the pre-commit hook, so
+the pre-commit sentinel (`.git/.pre-commit-ran`) is never written. The
+post-commit hook then sees the sentinel missing and logs the NEW rebased hash
+in `~/.hermes-cortex/state/no-verify-log.json` as a `--no-verify` commit. The
+pre-push hook then BLOCKS your push: "commit X was made with --no-verify".
+
+This is a FALSE POSITIVE — you committed through the hook; the rebase replay
+just bypassed it mechanically. The log even accumulates dangling entries this
+way (check with `git merge-base --is-ancestor <sha> origin/main` — most prior
+entries are NOT on main).
+
+**Sanctioned fix (no log tampering — the log is an audit trail):**
+1. `git commit --amend --no-edit` — re-runs the FULL pre-commit hook on the
+   same tree (sentinel written → post-commit consumes it cleanly), producing a
+   new hash NOT in the log.
+2. `git push origin main` — passes.
+3. Leave the old dangling entry in the log. It can never match a future push
+   range (the hash is unreachable), and deleting audit entries looks like
+   tampering.
+
+**Do NOT:** `rm ~/.hermes-cortex/state/no-verify-log.json` to unblock a push —
+that is exactly the audit-trail tampering the pre-push hook exists to catch.
+
 ## References
 
 - `references/pre-commit-score-fail-closed-2026-08-03.md` — the incident:
