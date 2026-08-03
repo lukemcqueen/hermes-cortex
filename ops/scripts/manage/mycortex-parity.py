@@ -37,11 +37,13 @@ from pathlib import Path
 
 # Resolve the hermes-cortex repo root from either runtime location:
 #   repo:   <root>/ops/scripts/manage/mycortex-parity.py  → parents[3]
-#   deploy: ~/.hermes-cortex/scripts/mycortex-parity.py   → parents[2]
+#   deploy: ~/.hermes-cortex/scripts/mycortex-parity.py   → parents[2] is the
+#           HOME dir (~), NOT the repo — so also probe $HOME/hermes-cortex.
 _HERE = Path(__file__).resolve()
 _REPO_CANDIDATES = [
-    _HERE.parents[3],          # repo layout
-    _HERE.parents[2],          # deployed layout (~/.hermes-cortex)
+    _HERE.parents[3],                                     # repo layout
+    Path.home() / "hermes-cortex",                        # deployed layout → repo
+    _HERE.parents[2],                                     # deployed layout (legacy comment; harmless)
 ]
 REPO_ROOT = next((p for p in _REPO_CANDIDATES if (p / "tests" / "fixtures").is_dir()), _HERE.parents[3])
 DEFAULT_GOLDEN = REPO_ROOT / "tests" / "fixtures" / "golden-queries.json"
