@@ -873,13 +873,14 @@ def _check_bus_e2e(res):
     if not creds:
       import base64
       scheme, creds = "Basic", base64.b64encode(CORTEX_BUS_AUTH.encode()).decode()
-    req = urllib.request.Request(f"{bus_url}/api/pgmq/queues/{queue}")
+    req = urllib.request.Request(f"{bus_url}/api/pgmq/queue/{queue}")
     if creds:
       req.add_header("Authorization", f"{scheme} {creds}")
     resp = urllib.request.urlopen(req, timeout=8)
     q_info = json.loads(resp.read().decode())
-    pending_count = q_info.get("pending_count", 0)
-    processing_count = q_info.get("processing_count", 0)
+    # list_queues() returns {name, depth, processing, dlq, parent, created}
+    pending_count = q_info.get("depth", 0)
+    processing_count = q_info.get("processing", 0)
     if processing_count > 0:
       res.add("Bus stuck msgs", "FAIL",
           f"{processing_count} message(s) stuck in 'processing' state for {queue}",
