@@ -178,9 +178,9 @@ try:
 except: pass
 sys.exit(1)
 " 2>/dev/null || true) || true
-        if [[ -n "$script" && -n "$_cur_script" && "$_cur_script" != "$script" ]]; then
+        if [[ -n "$script" && "$_cur_script" != "$script" ]]; then
           _drift=true
-          info "Drift detected: cron '${name}' script '${_cur_script}' → '${script}'"
+          info "Drift detected: cron '${name}' script '${_cur_script:-<none>}' → '${script}'"
         fi
         if [[ -n "$skill" && -n "$_cur_skill" && "$_cur_skill" != "$skill" ]]; then
           _drift=true
