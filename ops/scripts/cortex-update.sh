@@ -1087,52 +1087,52 @@ sync_skills() {
 
   # ── Pass 2: Project-level overrides (.hermes-cortex/skills/) ──
   local override_skills="${REPO_DIR}/.hermes-cortex/skills"
-  if [[ ! -d "$override_skills" ]]; then
+  if [[ -d "$override_skills" ]]; then
+    while IFS= read -r -d '' skill_file; do
+      local rel_path="${skill_file#$override_skills/}"
+      local dest="${skill_dest}/${rel_path}"
+      mkdir -p "$(dirname "$dest")"
+      source_dirs["$(dirname "$rel_path")"]=1
+
+      if needs_update "$skill_file" "$dest"; then
+        # Truncation guard (same as Pass 1): never overwrite a FULL deployed
+        # skill with a truncated repo stub.
+        if [[ -f "$dest" ]] && is_skill_stub "$skill_file" && ! is_skill_stub "$dest"; then
+          warn "  SKILL STUB GUARD: ${rel_path%/*} — repo source is a truncated stub, refusing to overwrite full deployed copy!"
+          warn "    → Repo: $skill_file"
+          warn "    → Deployed: $dest"
+          warn "    → Restore the full repo source, then cortex-update.sh will sync."
+          warn "    → Use FORCE=true to override this guardrail."
+          if [[ "${FORCE:-false}" != "true" ]]; then
+            skipped=$((skipped + 1))
+            continue
+          fi
+        fi
+        copy_file "$skill_file" "$dest"
+        synced=$((synced + 1))
+      else
+        skipped=$((skipped + 1))
+      fi
+    done < <(find "$override_skills" -name "SKILL.md" -type f -print0)
+
+    # Sync reference files
+    while IFS= read -r -d '' ref_file; do
+      local rel_path="${ref_file#$override_skills/}"
+      local dest="${skill_dest}/${rel_path}"
+      mkdir -p "$(dirname "$dest")"
+
+      if needs_update "$ref_file" "$dest"; then
+        copy_file "$ref_file" "$dest"
+      fi
+    done < <(find "$override_skills" -path "*/references/*" -type f -print0)
+  else
     info "  Skills: ${synced} updated, ${skipped} unchanged"
-    return 0
   fi
 
-  while IFS= read -r -d '' skill_file; do
-    local rel_path="${skill_file#$override_skills/}"
-    local dest="${skill_dest}/${rel_path}"
-    mkdir -p "$(dirname "$dest")"
-    source_dirs["$(dirname "$rel_path")"]=1
-
-    if needs_update "$skill_file" "$dest"; then
-      # Truncation guard (same as Pass 1): never overwrite a FULL deployed
-      # skill with a truncated repo stub.
-      if [[ -f "$dest" ]] && is_skill_stub "$skill_file" && ! is_skill_stub "$dest"; then
-        warn "  SKILL STUB GUARD: ${rel_path%/*} — repo source is a truncated stub, refusing to overwrite full deployed copy!"
-        warn "    → Repo: $skill_file"
-        warn "    → Deployed: $dest"
-        warn "    → Restore the full repo source, then cortex-update.sh will sync."
-        warn "    → Use FORCE=true to override this guardrail."
-        if [[ "${FORCE:-false}" != "true" ]]; then
-          skipped=$((skipped + 1))
-          continue
-        fi
-      fi
-      copy_file "$skill_file" "$dest"
-      synced=$((synced + 1))
-    else
-      skipped=$((skipped + 1))
-    fi
-  done < <(find "$override_skills" -name "SKILL.md" -type f -print0)
-
-  # Sync reference files
-  while IFS= read -r -d '' ref_file; do
-    local rel_path="${ref_file#$override_skills/}"
-    local dest="${skill_dest}/${rel_path}"
-    mkdir -p "$(dirname "$dest")"
-
-    if needs_update "$ref_file" "$dest"; then
-      copy_file "$ref_file" "$dest"
-    fi
-  done < <(find "$override_skills" -path "*/references/*" -type f -print0)
-
   # ── Pass 3: Clean up stale deployed skills ──
-  # Remove skill dirs at destination that no longer exist in source.
-  # Only check category directories (not root-level Hermes defaults).
+  # Always runs — NOT gated behind the overrides dir (a machine without
+  # .hermes-cortex/skills/ overrides must still prune stale deployed
+  # skills; the old early-return made Pass 3 dead code on every host).
   # NOTE: skill_dest may be a symlink (e.g. ~/.hermes-cortex/skills →
   # ~/.hermes/skills) — use find -L so GNU find traverses it; without -L
   # the find returns nothing and stale skill dirs (renamed categories,
