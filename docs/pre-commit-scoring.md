@@ -112,8 +112,7 @@ rm -rf /tmp/test-hook
 There is no `SKIP_SCORE=1` bypass — it has been removed. Use `git commit --no-verify` if you truly need to bypass the pre-commit hook.
 
 Legitimate reasons to bypass:
-- The `score-cycle` CLI itself needs to be repaired
-- Loop-governance DB is locked or corrupted
+- The scoring stack itself needs repair (fix via `cortex-update.sh` first — it deploys the scorer on Linux and macOS)
 - You're in the middle of a rebase conflict resolution
 
 **The `SKIP_SCORE=1` bypass is not a workflow.** If you use it more than once
@@ -213,9 +212,11 @@ git config core.hooksPath      # should show global path
 ```
 
 ### score-cycle not found
-The hook prints a warning and exits cleanly (doesn't block the commit).
-score-cycle is deprecated — MCP-based governance tools are used instead.
-See docs/templates/AGENTS-loop-governance.md for the current workflow.
+The hook **blocks the commit** (exit 1 — fail closed). Scoring is part of the
+enforcement chain: a commit without a cycle record is invisible to governance.
+Fix by running `cortex-update.sh` to deploy the scorer (installs
+`~/.hermes-cortex/tools/loop-governance/score_cycle.py` on Linux and macOS),
+then re-commit. Do NOT use `--no-verify`.
 
 ---
 

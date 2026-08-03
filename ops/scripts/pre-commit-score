@@ -567,9 +567,13 @@ fi
 # ── Score the current commit ────────────────────────────────────
 # (Lock lifecycle managed by MCP server via begin/end_change)
 
-# Find score-cycle — try PATH, then common locations (resolve to full path)
+# Find score-cycle — try PATH, then common locations (resolve to full path).
+# Include the canonically-deployed scorer (cortex-update.sh registers
+# score_cycle.py to $HOME/.hermes-cortex/tools/loop-governance/ on BOTH
+# Linux and macOS). macOS has no ~/.local/bin in PATH by default, so the
+# deployed-path candidate is what makes the fail-closed check work there.
 SCORE_CYCLE=""
-for candidate in score-cycle ~/.local/bin/score-cycle "$HOME/.local/bin/score-cycle"; do
+for candidate in score-cycle ~/.local/bin/score-cycle "$HOME/.local/bin/score-cycle" "$HOME/.hermes-cortex/tools/loop-governance/score_cycle.py"; do
   if resolved=$(command -v "$candidate" 2>/dev/null); then
     SCORE_CYCLE="$resolved"
     break
@@ -690,7 +694,16 @@ else:
 CYCLE_NUM=$((PREV_CYCLE + 1))
 
 SCORE_STDERR=$(mktemp)
-SCORE_OUTPUT=$(timeout 30 "$PYTHON_BIN" "$SCORE_CYCLE" \
+# macOS has no `timeout` (coreutils provides `gtimeout`). Resolve the
+# right one so the scoring call runs on both Linux and macOS. If neither
+# exists, run without a time cap (the || hard-block below still guards).
+_TIMEOUT_BIN=""
+if command -v timeout >/dev/null 2>&1; then
+  _TIMEOUT_BIN="timeout 30"
+elif command -v gtimeout >/dev/null 2>&1; then
+  _TIMEOUT_BIN="gtimeout 30"
+fi
+SCORE_OUTPUT=$($_TIMEOUT_BIN "$PYTHON_BIN" "$SCORE_CYCLE" \
   --task "$TASK_ID" \
   --cycle "$CYCLE_NUM" \
   --code-file "$ALL_CODE_FILE" \
