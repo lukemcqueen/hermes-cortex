@@ -169,6 +169,35 @@ python3 ~/.hermes-cortex/scripts/install-cron-cost-tracking.py --force
 
 This patches the Hermes scheduler to record per-run token usage and cost into `~/.hermes/cron/cron-costs.db`.
 
+### Gateway-Lifecycle Guard Fix
+
+Hermes' terminal tool hard-blocks gateway lifecycle commands (`hermes gateway
+restart`, `systemctl restart hermes-gateway`, `launchctl`, `pkill`) from inside
+the gateway process to prevent SIGTERM-respawn loops (#30719). A bug in its
+tokenizer (`cron/lifecycle_guard.py` → `_iter_command_segments`) split
+multi-line commands on newlines before tokenizing, so a `python3 -c "..."`
+payload with embedded newlines had its interior lines parsed as standalone
+shell segments — a path literal inside the payload (e.g.
+`sqlite3.connect('/home/.../loop-governance.db')`) looked like a referenced
+shell script, and reading a >1MB file failed closed, blocking innocent
+commands with a bogus gateway-lifecycle error.
+
+The fix makes the tokenizer quote-aware across lines (a quoted string
+spanning newlines is ONE argument — what the shell itself does). The direct
+gateway-lifecycle regex is unchanged, so literal restart/stop/kill commands
+remain blocked, including inside payloads and referenced scripts.
+
+Deploy (re-run after every `hermes update` — Hermes replaces its source dir):
+
+```bash
+python3 ~/.hermes-cortex/scripts/install-lifecycle-guard-fix.py
+python3 ~/.hermes-cortex/scripts/install-lifecycle-guard-fix.py --status  # verify
+```
+
+The running gateway keeps the old in-memory module until restarted — the
+patch takes effect after the next `hermes gateway restart` (from a separate
+shell, per the guard's own rule).
+
 ### LLM Judge Scorer
 
 Runs on every agent with Langfuse. Scores traces using a local Ollama model and posts quality scores back to Langfuse:

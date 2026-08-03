@@ -398,6 +398,11 @@ register_orch "ops/scripts/agent/orch-health-report.py"       "${CORTEX_DEPLOY_H
 register "ops/scripts/cost_store.py"               "${CORTEX_DEPLOY_HOME}/scripts/cost_store.py"
 register "ops/scripts/install/install-cron-cost-tracking.py" "${CORTEX_DEPLOY_HOME}/scripts/install-cron-cost-tracking.py"
 
+# Gateway-lifecycle guard fix — quote-aware tokenizer for python3 -c payloads
+# Re-run after every hermes update (Hermes replaces its source dir):
+#   python3 ~/.hermes-cortex/scripts/install-lifecycle-guard-fix.py
+register "ops/scripts/install/install-lifecycle-guard-fix.py" "${CORTEX_DEPLOY_HOME}/scripts/install-lifecycle-guard-fix.py"
+
 # Health monitoring
 register "ops/scripts/change-validate.sh"                  "${CORTEX_DEPLOY_HOME}/scripts/change-validate.sh"
 register "ops/scripts/pre-commit-doc-audit.sh"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-doc-audit.sh"
