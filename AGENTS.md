@@ -58,6 +58,13 @@
 > the 8 always-skills (the deploy invalidates the skills marker), re-acquire
 > your governance lock (the deploy purges locks), then retry the commit.
 >
+> **RULE 7c: BUS ACCESS — NON-ORCHESTRATORS USE THE HTTP CLIENT ONLY**
+> If you are not Moses or Esther: you have the bus **HTTP client**
+> (`cortex-bus.conf` + `contact-moses.sh`) and NOTHING ELSE. Never install
+> the bus server (Postgres/FastAPI/nginx) or the `agent-bus` MCP client in
+> `config.yaml` — the doctor WARNS on both. See the role matrix at the top of
+> `docs/bus-architecture.md`.
+>
 > **RULE 8: "PULL LATEST" = FULL REFRESH — DO NOT CUT CORNERS**
 > When the user says "pull latest", "update from repo", or any equivalent phrase, the sequence is:
 > 1. `git pull origin main` — pull latest hermes-cortex

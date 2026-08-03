@@ -1011,9 +1011,31 @@ def _check_self_stale(res):
     res.add("Doctor self", "SKIP", f"Version check error: {e}")
 
 
+def _check_required_tools(res):
+  """Verify runtime tools exist on PATH. Prevents silent 'command not found'
+  failures (the jq incident: contact-moses.sh depended on jq, which was in no
+  prereq list — hosts without it broke at runtime)."""
+  import shutil
+  tools = {
+    "python3": "runtime scripts (contact-moses.sh, handler, doctor)",
+    "git": "repo pull/push, hooks",
+    "curl": "bus HTTP client, doctor HTTP checks, health pings",
+  }
+  # jq is intentionally NOT required — scripts must use python3 for JSON.
+  # bash >= 4 is checked by cortex-update.sh itself.
+  for tool, used_by in tools.items():
+    if shutil.which(tool):
+      res.add(f"Tool ({tool})", "PASS", f"found — {used_by}")
+    else:
+      res.add(f"Tool ({tool})", "FAIL",
+          f"missing — required for {used_by}",
+          f"Install: {tool} via your package manager (see docs/setup-reference.md)")
+
+
 def check_services(res):
   """4. Service health: external endpoints, Ollama, gbrain, bus, and self-version."""
   _check_self_stale(res)
+  _check_required_tools(res)
   # External services are orchestrator-only (Dashboard, Langfuse, Agent Bus)
   if AGENT_ROLE == "orchestrator":
     for name, url, expected in EXTERNAL_SERVICES:

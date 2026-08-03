@@ -1,7 +1,12 @@
 # Agent Onboarding — Connecting a Client-Only Agent to the Fleet
 
 > **For agents like Titus, running on a machine with no public server.**
-> You connect to Moses's Agent Bus remotely.
+> You connect to Moses's Agent Bus remotely **via the HTTP client only**.
+>
+> ⚠️ **You do NOT install the bus MCP client.** The `agent-bus` MCP server
+> (`inbox_send`/`inbox_read` tools) is **orchestrator-only** (Moses, Esther) —
+> the doctor WARNS if you add it to `config.yaml`. Your only bus access is the
+> HTTP client: `~/.hermes-cortex/cortex-bus.conf` + `contact-moses.sh`.
 
 ---
 
@@ -11,13 +16,13 @@
 YOU (laptop / local machine)              MOSES (server)
 ─────────────────────────────             ──────────────
 Hermes Agent                             Hermes gateway (:8905)
-  ↳ agent-bus-mcp.py (MCP client)              ↳ Agent Bus API (PGMQ message store)
-  ↳ reads ~/hermes-cortex/.env             ↳ nginx proxy :13004 → :8905
+  ↳ cortex-bus.conf (HTTP client)              ↳ Agent Bus API (PGMQ message store)
+  ↳ contact-moses.sh / lib.cortex_bus          ↳ nginx proxy :13004 → :8905
   ↳ calls Moses's Agent Bus via HTTPS      ↳ SSL + Basic Auth
-  ↳ inbox_send / inbox_read / inbox_watch
+  ↳ NO agent-bus MCP server in config.yaml
 ```
 
-**You run the client. Moses runs the server (Agent Bus). That's it.**
+**You run the HTTP client. Moses runs the server (Agent Bus). That's it.**
 
 ---
 
@@ -31,11 +36,15 @@ Hermes Agent                             Hermes gateway (:8905)
 
 ## Step 1 — Get Your Credentials from Moses
 
-Send Moses an Agent Bus message (or the human asks Moses) with subject:
+Contact Moses (or have the human ask him) with subject:
 
 ```
 🔧 ONBOARD: titus
 ```
+
+Once you have credentials in place you can use `contact-moses.sh`, but for the
+first contact use your human or the bus URL/curl directly (see
+`docs/contact-protocol-how-to-reach-moses.md`).
 
 Moses will:
 1. Create an htpasswd entry for you on the nginx gateway
@@ -46,52 +55,41 @@ Moses will:
 
 ---
 
-## Step 2 — Register the MCP Client in Hermes Config
+## Step 2 — Do NOT Install the MCP Client
 
-Check if the installer already did this:
+The `agent-bus` MCP server is **orchestrator-only**. As a client-only agent
+you must NOT add it to `~/.hermes/config.yaml`:
 
 ```bash
 grep -A4 "agent-bus" ~/.hermes/config.yaml
+# Expected: NO output — you should NOT have an agent-bus MCP entry.
+# If you see one, remove it: the doctor WARNS about it on worker hosts.
 ```
 
-If you see `command: python3` and `enabled: true`, skip to Step 3.
-
-If not, add this to your `~/.hermes/config.yaml` under `mcp_servers:`:
-
-```yaml
-mcp_servers:
-  agent-bus:
-    command: python3
-    args: [~/hermes-cortex/mcp-servers/agent-bus-mcp.py]
-    enabled: true
-```
-
-Restart Hermes to pick it up:
-
-```bash
-hermes mcp list
-# Should show "agent-bus" in the list
-```
+Your bus access is the **HTTP client** instead — `cortex-bus.conf` (Step 3)
+plus `contact-moses.sh`. This is what the `agent-message-handler` cron uses
+to receive fleet updates, and what you use to message Moses.
 
 ---
 
-## Step 3 — Create Your Credentials File
+## Step 3 — Create Your Bus Config (HTTP client)
 
-Update or Create `~/hermes-cortex/.env`:
+Create `~/.hermes-cortex/cortex-bus.conf`:
 
 ```ini
-CORTEX_BUS_FALLBACK_URL="https://example.com:13004"
-CORTEX_BUS_AUTH="titus:your-password-here"
+CORTEX_BUS_URL="https://example.com:13004"
+CORTEX_BASIC_AUTH="titus:your-password-here"
 AGENT_NAME="titus"
 ```
 
 Then lock it down:
 
 ```bash
-chmod 600 ~/hermes-cortex/.env
+chmod 600 ~/.hermes-cortex/cortex-bus.conf
 ```
 
-> The MCP client reads this file automatically. Keep it safe — this is your identity on the fleet.
+> The HTTP client (`contact-moses.sh`, `lib.cortex_bus`, `agent-message-handler`)
+> reads this file. Keep it safe — this is your identity on the fleet.
 
 ---
 
@@ -108,27 +106,32 @@ curl -s -u "titus:your-password-here" \
 
 ---
 
-## Step 5 — Create the Poll Cron
+## Step 5 — Inbox Polling (via agent-message-handler, not MCP)
 
-The inbox MCP client gives you the **tools** to read messages, but nothing checks
-the inbox automatically unless you have a poll cron. Without it, messages sit
-unread until a human starts a session with you.
+The MCP client gives you **tools** to read messages — but you don't have the
+MCP client (Step 2). Instead, the `agent-message-handler` no_agent cron polls
+your inbox every 5 minutes, processes fleet commands (UPDATE_REQUEST etc.), and
+replies via the HTTP client. This is installed by default — verify:
 
 ```bash
-hermes cron create --name process-mcp-agent-inbox-messages \
-  --model "deepseek/deepseek-v4-flash" \
-  --provider "openrouter" \
-  --schedule "0 6-23 * * *" \
-  --prompt "Check the Agent Bus for new messages via inbox-watch MCP tool (mcp_agent_inbox_inbox_watch). If new messages are found, read (mcp_agent_inbox_inbox_read) and process using the Inbox Message Decision Framework: assess Priority/Actionability/Scope, then AUTO-ACT, DELEGATE, or ESCALATE. Report actionable items with evidence. Outside 6am-11pm daily, be silent if nothing urgent." \
-  --deliver origin
+cronjob action=list   # or: hermes cron list
+# Expected: agent-message-handler running every 5 min
 ```
 
-This runs hourly from 6am-11pm, costs ~$0.006/run in LLM tokens (~$0.11/day),
-and delivers results to your origin chat (typically Telegram DM).
+If it's missing, create it:
 
-> ⚠ Do NOT create a cron named `agent-inbox-check` or use the old `agent-inbox-check.sh`
-> script — it is **deprecated** and no longer works. Always use `process-mcp-agent-inbox-messages`.
-> See **`docs/orch-bus-setup.md`** for the current Agent Bus architecture (orchestrator-only).
+```bash
+cronjob action=create schedule="*/5 * * * *" \
+  name="agent-message-handler" \
+  script=agent-message-handler.py \
+  no_agent=true \
+  deliver=local
+```
+
+> ⚠ Do NOT create a cron named `process-mcp-agent-inbox-messages` or any cron
+> that calls `inbox-watch`/`inbox_read` MCP tools — those are orchestrator-only
+> and will fail without the MCP client. See **`docs/bus-architecture.md`** for
+> the role matrix (canonical "who has what").
 
 ---
 
@@ -304,9 +307,9 @@ At minimum, every SOUL.md must include:
 **Essential behavioral principles for a client-only agent:**
 
 1. **Loop governance always** — `begin_change` → work → `cycle_query` → `feedback` → `end_change`. No exceptions.
-2. **Inbox decision framework** — classify every Agent Bus message by Priority × Actionability × Scope. AUTO-ACT moderate/simple items. Escalate complex ones.
-3. **Health via Agent Bus** — you have no HTTP health endpoint. Report health by sending messages to Moses with topic `#health` via the Agent Bus.
-4. **Poll, don't wait** — your cron is your ears. Check it every tick.
+2. **HTTP client, not MCP** — your ONLY bus access is `contact-moses.sh` + `cortex-bus.conf`. Never install the `agent-bus` MCP server; the doctor warns about it.
+3. **Health via Agent Bus (HTTP)** — you have no HTTP health endpoint. Report health by sending JSON pings to Moses via `curl` (Step 7), or `contact-moses.sh` for messages.
+4. **Poll, don't wait** — `agent-message-handler` cron is your ears. It runs every 5 min.
 
 See existing SOUL.md files for reference:
 - `~/.hermes/SOUL.md` (moses)
@@ -490,12 +493,12 @@ This step happens **on Moses's machine**, not yours. Moses will:
 | Activity | How it works |
 |----------|-------------|
 | **Receiving instructions** | Moses sends Agent Bus messages → your poll cron picks them up → you process them |
-| **Reporting results** | Send Agent Bus messages back with subject `✅ Done: <summary>` → Moses reads on his next tick |
+| **Reporting results** | `contact-moses.sh "✅ Done: <summary>"` → Moses reads it on his next tick |
 | **Reporting health** | Send JSON health pings via `curl` to `.../api/send` with `topic: "health"` (exact). Oldest ping stays as anchor, newer ones deleted. See [Step 7](#step-7--send-your-first-health-ping). |
 | **Reporting metrics** | `push-metrics.sh` cron pushes CPU/memory/disk every 5m to VictoriaMetrics. No action needed after setup — it runs silently in background. See [Step 5b](#step-5b--set-up-metrics-push-to-victoriametrics-optional-but-recommended). |
-| **Requesting cron changes** | Send Moses an Agent Bus message with subject `🔧 CRON: create|update|remove <name>` |
-| **Asking for help** | Send `🔴 Blocked: <issue>` to Moses — he'll investigate |
-| **Talking to other agents** | Use `inbox_send` to any agent Moses has registered. CC the human on cross-agent messages. |
+| **Requesting cron changes** | `contact-moses.sh "🔧 CRON: create|update|remove <name>"` — see `cron-request-protocol` skill |
+| **Asking for help** | `contact-moses.sh "🔴 Blocked: <issue>"` — Moses investigates |
+| **Talking to other agents** | Via Moses: send `contact-moses.sh "REPORT: ..."` to Moses; only Moses can route cross-agent |
 
 ---
 
@@ -518,10 +521,10 @@ This step happens **on Moses's machine**, not yours. Moses will:
 
 | File | Purpose |
 |------|---------|
-| `~/hermes-cortex/.env` | Your inbox credentials and agent identity |
+| `~/.hermes-cortex/cortex-bus.conf` | Your bus credentials and agent identity (HTTP client) |
 | `~/.hermes/config.yaml` | Hermes config — MCP server entry lives here |
 | `~/.hermes/SOUL.md` | Your identity document — copy from `docs/templates/SOUL.md` |
-| `~/hermes-cortex/mcp-servers/agent-bus-mcp.py` | The MCP client that talks to the Agent Bus (PGMQ) |
+| `~/hermes-cortex/mcp-servers/agent-bus-mcp.py` | The MCP client that talks to the Agent Bus (PGMQ) — **orchestrators only; do NOT install on worker hosts** |
 | `~/hermes-cortex/ops/scripts/manage/push-metrics.sh` | Standalone metrics push script — system-level Prometheus metrics to VictoriaMetrics |
 | `~/hermes-cortex/ops/services/agent-bus/metrics.py` | Python metrics module — prometheus_client definitions + push client for custom metrics |
 | `~/hermes-cortex/ops/install/deploy/docker-compose.victoria-metrics.yml` | VictoriaMetrics + Grafana Docker compose (central stack, runs on Moses) |

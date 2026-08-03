@@ -75,7 +75,8 @@ The MCP client and config give you the **ability** to read messages, but nothing
 actually checks the inbox automatically unless you have a **poll cron**. Without
 it, messages sit unread until a human starts a session with you.
 
-Every client agent needs inbox-processing LLM cron(s). The recommended approach
+**Orchestrators (Moses, Esther)** need inbox-processing LLM cron(s) that use
+the `inbox-watch` MCP tool. The recommended approach
 is a **tiered weekday schedule** that matches work hours:
 
 | Tier | Hours (KST, Mon-Fri) | Cadence | Cron Expression |
@@ -116,33 +117,36 @@ hermes cron create --name process-inbox-overnight \
 
 **Cost estimate:** ~$0.006/run → workday (54 runs/wk) + evening (12 runs/wk) + overnight (3 runs/wk) = ~$0.41/day ≈ $12/mo. The sensitive periods (workday) poll fastest; overnight and weekends run at reduced cadence to save tokens.
 
+**Workers (Gisu, Joseph, Kustos, Titus):** you do NOT create these LLM crons —
+they require the MCP `inbox-watch` tool, which you do not have. Your inbox is
+polled by the `agent-message-handler` no_agent cron (every 5 min, installed by
+default), which processes UPDATE_REQUEST etc. and replies via the HTTP client.
+
 **Do NOT use the old `agent-inbox-check.sh` script** — it is deprecated and
 no longer works (MCP-only now).
 
 ### What "install the Agent Bus" means
 
 ```
-If you are Moses or Esther:
+If you are Moses or Esther (orchestrator):
  └─ You already have the API backend (it's part of the Hermes gateway)
  └─ You already have the MCP client (it's in your config.yaml)
  └─ You just need the nginx proxy setup
 
-If you are Gisu, Joseph, Kustos, or Titus (client agents):
- └─ You need the MCP client in your Hermes config.yaml:
-    mcp_servers:
-     agent-bus:
-      command: python3
-      args: [~/hermes-cortex/mcp-servers/agent-bus-mcp.py]
-      enabled: true
- └─ You need ~/hermes-cortex/.env with YOUR credentials
- └─ You DO NOT need to run a bus server or nginx proxy
+If you are Gisu, Joseph, Kustos, or Titus (worker):
+ └─ You DO NOT install the MCP client (agent-bus-mcp.py). It is
+    orchestrator-only — the doctor warns if you add it.
+ └─ You DO have the HTTP client: ~/.hermes-cortex/cortex-bus.conf
+    + contact-moses.sh (or lib.cortex_bus). This is your ONLY bus access.
+ └─ You DO NOT run a bus server, Postgres, or nginx proxy
 ```
 
-This configuration is set up automatically by `bash ~/hermes-cortex/install.sh` / `bash ~/hermes-cortex/ops/scripts/install-crons.sh`. If you ran the installer, your `config.yaml` already has the `agent-bus` MCP server entry. If not, add it manually.
+> See the role matrix at the top of `docs/bus-architecture.md` — it is the
+> canonical "who has what" reference. Every bus doc points to it.
 
 ### Setup checklist
 
-**Every agent (Moses, Esther, Gisu, Joseph, Kustos, Titus):**
+**Orchestrators (Moses, Esther):**
 ```bash
 # 1. Pull repo
 cd ~/hermes-cortex && git pull
@@ -152,22 +156,27 @@ grep -A4 "agent-bus" ~/.hermes/config.yaml
 # Should show: command: python3, args: [agent-bus-mcp.py], enabled: true
 
 # 3. Create credentials file — YOUR OWN credentials
-nano ~/hermes-cortex/.env
+nano ~/hermes-cortex/cortex-bus.conf
 ```
 ```ini
-CORTEX_BUS_FALLBACK_URL="https://your-domain.com:13004"
-CORTEX_BUS_AUTH="your_username:your_password"
+CORTEX_BUS_URL="https://your-domain.com:13004"
+CORTEX_BASIC_AUTH="your_username:your_password"
 AGENT_NAME="your_agent_name"
 ```
 ```bash
-chmod 600 ~/hermes-cortex/.env
+chmod 600 ~/hermes-cortex/cortex-bus.conf
 
 # 4. Verify you can talk to the inbox
 curl -s -u "your_username:your_password" \
  https://your-domain.com:13004/api/inbox?limit=3
+```
 
-# 5. Create inbox-check cron (every 30 min):
-#  hermes cron create ...
+**Workers (Gisu, Joseph, Kustos, Titus):** Do NOT add an `agent-bus` entry to
+`config.yaml` — the MCP client is orchestrator-only. Your bus access is the
+HTTP client (`~/.hermes-cortex/cortex-bus.conf` + `contact-moses.sh`), which
+the installer sets up. Verify it with:
+```bash
+bash ~/.hermes-cortex/scripts/contact-moses.sh "TEST: connectivity" "ping"
 ```
 
 **Moses and Esther only — additionally:**
@@ -180,7 +189,10 @@ curl -s -u "your_username:your_password" https://your-domain.com:13004/api/inbox
 
 ### Common confusion to avoid
 
-Key rule: only Moses and Esther run the Agent Bus API backend. Every other agent just needs the MCP client (`agent-bus-mcp.py` in config.yaml) + credentials in `~/hermes-cortex/.env`. Do NOT share credentials — every agent has their own htpasswd user.
+Key rule: only Moses and Esther run the Agent Bus API backend and the MCP
+client. Every other agent uses the HTTP client only (`contact-moses.sh` +
+`~/.hermes-cortex/cortex-bus.conf`). Do NOT share credentials — every agent
+has their own htpasswd user.
 
 ---
 

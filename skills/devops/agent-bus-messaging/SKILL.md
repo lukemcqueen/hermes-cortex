@@ -1,18 +1,31 @@
 ---
 name: agent-bus-messaging
-version: 1.0.0
+version: 1.1.0
 category: devops
-description: "Message Moses via Agent Bus. inbox_send, fields, examples."
+description: "ORCHESTRATORS ONLY — message Moses via the bus MCP client (inbox_send). Workers use contact-moses.sh (HTTP)."
 metadata:
   hermes:
     tags: [bus, messaging, mcp, agent-communication]
     related_skills: [agent-bus-inbox, cron-request-protocol, fleet-commands]
 ---
 
-# Agent Bus Messaging — How Agents Talk to Each Other
+# Agent Bus Messaging — How Orchestrators Talk to Moses
 
-> **Use this when you need to send a message to Moses (or another agent) via the**
-> **Agent Bus for any reason — not just cron requests.**
+> ## ⚠️ ORCHESTRATORS ONLY (Moses, Esther)
+>
+> The `inbox_send` MCP tool described in this skill is available **only on
+> orchestrator hosts**. It is configured via the `agent-bus` MCP server in
+> `~/.hermes/config.yaml`, which the doctor enforces as orchestrator-only
+> (`ORCH_ONLY_MCP_SERVERS` — it WARNS if present on a worker host).
+>
+> **Workers (Gisu, Joseph, Kustos, Titus): do NOT use this skill.** You do NOT
+> have the MCP client and must not install it. Your bus access is the HTTP
+> client only:
+> ```bash
+> bash ~/.hermes-cortex/scripts/contact-moses.sh "subject" "body" [priority]
+> ```
+> See the role matrix at the top of `docs/bus-architecture.md` — the canonical
+> "who has what" reference.
 
 ## Overview
 
@@ -24,13 +37,14 @@ messages to any agent's queue that your permissions allow.
 
 | Agent | Can send to |
 |-------|------------|
-| Moses | All inboxes + workflow queues |
-| Esther/workers | `inbox_moses`, own inbox, `workflow_step_result`, `inbox_health_check` |
+| Moses (orchestrator) | All inboxes + workflow queues |
+| Esther (orchestrator) | `inbox_moses`, own inbox, `workflow_step_result`, `inbox_health_check` |
+| Workers (Gisu/Joseph/Kustos/Titus) | Same queues as Esther, but via the **HTTP client** (`contact-moses.sh`), not the MCP tool |
 
-**Key rule: Workers (Esther, Joseph, Gisu, Kustos, Titus) can send to
-`inbox_moses`.** This is the primary way to talk to the orchestrator.
+**Key rule: workers contact the orchestrator via `contact-moses.sh` (HTTP).**
+Orchestrators use the MCP tool below.
 
-## The MCP Tool: `inbox_send`
+## The MCP Tool: `inbox_send` (orchestrators only)
 
 ```python
 inbox_send(
@@ -41,8 +55,8 @@ inbox_send(
 )
 ```
 
-The tool is available in every Hermes session via the `agent-inbox` MCP
-server. No setup needed.
+The tool is available in every **orchestrator** Hermes session via the
+`agent-inbox` MCP server. No setup needed on Moses/Esther.
 
 ## Field Guide
 
@@ -109,6 +123,19 @@ inbox_send(
 )
 ```
 
+## Worker Alternative: contact-moses.sh (HTTP)
+
+Workers do not have `inbox_send`. Their equivalent is the HTTP client:
+
+```bash
+bash ~/.hermes-cortex/scripts/contact-moses.sh "QUESTION: bus queue naming" \
+  "Should health check messages go to inbox_health_check or inbox_moses?" urgent
+```
+
+The script reads URL + auth from `~/.hermes-cortex/cortex-bus.conf`
+(fallback) or env vars. Body should be a single line. See
+`docs/contact-protocol-how-to-reach-moses.md`.
+
 ## What Happens Next
 
 Moses processes inbox in two modes:
@@ -129,7 +156,8 @@ Every action is verified and delivered with evidence.
 
 | Protocol | Direction | Purpose |
 |----------|-----------|---------|
-| **This skill** | Agent → Moses | General messaging via `inbox_send` |
+| **This skill** | Orchestrator → Moses | General messaging via `inbox_send` |
+| **contact-moses.sh** | Worker → Moses | Worker messaging via HTTP client |
 | **cron-request-protocol** | Agent → Moses | Structured CRON requests with `🔧 CRON:` prefix |
 | **fleet-commands** | Moses → Agent | Operational EXEC/UPDATE commands |
 | **fleet-update-protocol** | Moses ↔ Agent | Structured fleet update JSON schemas |

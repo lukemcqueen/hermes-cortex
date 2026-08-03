@@ -43,7 +43,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `docs/architecture.md` | System architecture overview — layers, services, port map, security stack |
-| `docs/bus-architecture.md` | **Bus Architecture (quick ref)** — agent message queue topology, auth, ACL, message flow. Full doc at `docs/reference/cortex-bus-config.md` |
+| `docs/bus-architecture.md` | **Bus Architecture (canonical role matrix)** — who has what (server/MCP/HTTP client), ACL, topology, message flow. Full config at `docs/reference/cortex-bus-config.md` |
 | `docs/reference/cortex-bus-config.md` | **Cortex Bus Config Guide** — full architecture reference: fleet topology, auth model, ACL/permissions, message consumption, forwarder, troubleshooting |
 | `ops/scripts/lib/cortex_bus.py` | **Cortex Bus library** — shared HTTP API wrapper over the Agent Bus: bus_send/bus_read/bus_archive/bus_list_queues |
 | `docs/esther-bus-setup.md` | **Esther Bus Backup** — orchestrator-only guide: bus server, nginx with X-Forwarded-User, Postgres setup, verification |
