@@ -389,6 +389,15 @@ queue 'inbox_gisu'` (per-queue ACL at `core/agent_bus/server.py`
 `orch-bus-forwarder-sync` cron alerts `LOCAL→PEER: N failed` every tick while
 the messages sit in the local queues indefinitely.
 
+## Token rotation (Bearer, `hbus_*`)
+
+- **Hash scheme:** `bus.tokens.token_hash` = `hashlib.pbkdf2_hmac("sha256", token, b"hermes-bus-salt", 100000).hex()` (`core/agent_bus/auth.py hash_token`).
+- **Rotate:** generate `"hbus_" + secrets.token_hex(32)` → update `~/hermes-cortex/.env` AND `~/.hermes-cortex/cortex-bus.conf` (both carry `CORTEX_BUS_TOKEN`; the forwarder's `LOCAL_TOKEN` reads the conf) → `UPDATE bus.tokens SET token_hash='<pbkdf2(new)>', rotated_at=NOW() WHERE agent_name='<agent>'` → verify Bearer against the LOCAL bus (`127.0.0.1:8903`): new → 200, old → 401.
+- **Verify Bearer on the LOCAL bus only.** Testing Bearer against the external nginx port (`:13004`/`:14004`) is meaningless — nginx validates Basic auth and sets `X-Forwarded-User`; a Bearer header sent through nginx is ignored (401 for missing Basic). A token that "401s" through nginx can still be LIVE on the local bus.
+- **Identity mapping pitfall:** a token found in another agent's docs/config may be a DIFFERENT agent's row — the esther setup guide carried MOSES' token (esther's `.env` seeded with it), so it authenticated as moses with full queue privileges. Before rotating, look up the identity by hash: `SELECT agent_name FROM bus.tokens WHERE token_hash='<pbkdf2(leaked)>' AND is_active=true`. Rotate the MAPPED row (or sync it to the owner's real token hash).
+- **Peer-bus consistency:** each orchestrator's Postgres is independent; if the peer's token row on your bus doesn't match his real token, sync it from his bus (`SELECT token_hash FROM bus.tokens WHERE agent_name='moses'` on his host, then UPDATE your row) so a leaked token dies on your bus too.
+- **Rotation order (configs first):** update consumer configs (`.env`, `cortex-bus.conf`) BEFORE the token table so the forwarder/MCP never hit a dead token mid-rotation.
+
 ## Shared orchestrator inbox (`inbox_orchestrator`, 2026-08-03)
 
 Workers' fix requests to `inbox_moses` are **invisible to Esther** — the per-queue ACL (`core/agent_bus/server.py` `_check_permission`: `queue not in allowed_queues → 403`) only lets each agent read its own inbox. The backup orchestrator literally cannot see worker escalations when the primary is down. Fix: a shared `inbox_orchestrator` queue both orchestrators read/write:
@@ -403,6 +412,7 @@ Workers' fix requests to `inbox_moses` are **invisible to Esther** — the per-q
 ## References
 
 - `references/forwarder-peer-resolution.md` — role-aware PEER fix detail (2026-08-03)
+- `references/credential-rotation.md` — credential leak response & rotation playbook: bearer-vs-Basic exposure model, live-test baseline method, Basic-auth (htpasswd) rotation blockers on orchestrator hosts, scrub caveats, concurrent-session git safety (2026-08-03)
 - `references/dlq-monitor-fix.md` — DLQ alert fix: processing state detection + silent-when-clean pattern for `orch-bus-confirmation-poller.py report`
 - `references/cross-server-architecture.md` — Per-server independent Postgres architecture: why local `inbox_moses` sends don't reach Moses, fleet port map, and correct curl pattern for cross-server messages
 - `core/agent_bus/queue.py` — Queue creation, DLQ logic, send/read/archive
