@@ -139,13 +139,15 @@ def check_services():
         out, _, rc = run("launchctl list com.ollama.serve 2>/dev/null | awk 'NR==2 {print $1}'")
         if rc != 0 or not out.strip() or out.strip() == "-":
             add_issue("service_down", "high", "Ollama is down", {"service": "com.ollama.serve"})
-        # Gbrain: autopilot (handles sync internally)
-        autopilot_ok = False
-        out, _, rc = run("launchctl list com.gbrain.autopilot 2>/dev/null | awk 'NR==2 {print $1}'")
-        if rc == 0 and out.strip() and out.strip() != "-":
-            autopilot_ok = True
-        if not autopilot_ok:
-            add_issue("service_down", "high", "gbrain autopilot is down", {"services": ["com.gbrain.autopilot"]})
+        # Gbrain autopilot — DECOMMISSIONED 2026-08-02 (mycortex replaces).
+        # Only flag when the launchd plist still EXISTS but the service is
+        # not loaded (half-state); a removed plist is the intended
+        # post-decommission state.
+        gbrain_plist = Path.home() / "Library" / "LaunchAgents" / "com.gbrain.autopilot.plist"
+        if gbrain_plist.exists():
+            out, _, rc = run("launchctl list com.gbrain.autopilot 2>/dev/null | awk 'NR==2 {print $1}'")
+            if rc != 0 or not out.strip() or out.strip() == "-":
+                add_issue("service_down", "high", "gbrain autopilot plist exists but not loaded (decommission half-state)", {"service": "com.gbrain.autopilot"})
     elif sys.platform.startswith("linux"):
         # Ollama — check system-level systemd first, then user-level, then process
         out, _, rc = run("systemctl is-active ollama 2>/dev/null")
