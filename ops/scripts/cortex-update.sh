@@ -845,7 +845,7 @@ check_each_mapped_file() {
 
 # Scans deploy dir for files not in MAP and removes them
 clean_stale_deploys() {
-  local cleaned=0
+  local cleaned=0 preserved=0
   info "🧹 Scanning for stale deploy files..."
 
   # Files to preserve even if not registered (cron-referenced)
@@ -911,6 +911,16 @@ clean_stale_deploys() {
       # Check preserve list (cron-referenced scripts)
       if ! $match; then
         local basename="${f##*/}"
+        # Systematic local-* rule: ANY local- prefixed script is
+        # deployed-only (created per-host, not in repo). The hand-maintained
+        # preserve list below can't anticipate every new local-* script, so
+        # the prefix match is the durable rule — the list is belt-and-braces.
+        if [[ "$basename" == local-* ]]; then
+          match=true
+        fi
+      fi
+      if ! $match; then
+        local basename="${f##*/}"
         for p in "${preserve[@]}"; do
           if [[ "$basename" == "$p" ]]; then
             match=true
@@ -921,21 +931,25 @@ clean_stale_deploys() {
       if ! $match; then
         local size
         size=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || echo "?")
-        if $DRY_RUN; then
-          info "  [dry-run] Would remove stale: ${f/$HOME/~} (${size} bytes)"
-        else
-          rm -f "$f"
-          info "  🗑️  Removed stale: ${f/$HOME/~} (${size} bytes)"
-          cleaned=$((cleaned + 1))
-        fi
+        # ⚠️  Deployed-only script not registered in the repo, not local-*,
+        # not on the preserve list. NEVER auto-delete — same class of loss
+        # as local-cwr-file-processing (2026-08-03). Warn with guidance;
+        # the human decides. (Repo-renamed scripts are caught by the doctor
+        # instead; auto-removal here is how deployed-only files vanished.)
+        warn "  ⚠️  Deployed-only script not in repo: ${f/$HOME/~}"
+        warn "      Register it in cortex-update.sh, rename to local-* to keep,"
+        warn "      or delete manually if unused. NOT auto-removed."
+        preserved=$((preserved + 1))
       fi
     done < <(find "$scan_dir" -type f \( -name '*.py' -o -name '*.sh' \) -print0)
   fi
 
   if $DRY_RUN; then
-    info "  Dry-run complete — ${cleaned} would be removed"
+    info "  Dry-run complete — ${cleaned} would be removed, ${preserved} preserved (deployed-only, not auto-deleted)"
   elif [[ $cleaned -gt 0 ]]; then
-    info "  Cleaned ${cleaned} stale file(s)"
+    info "  Cleaned ${cleaned} stale file(s), ${preserved} preserved (deployed-only)"
+  elif [[ $preserved -gt 0 ]]; then
+    info "  No stale files removed; ${preserved} deployed-only file(s) preserved (not auto-deleted)"
   else
     info "  No stale files found"
   fi
@@ -1008,7 +1022,7 @@ is_skill_stub() {
 #   2. $REPO_DIR/.hermes-cortex/skills/ — project-level overrides (flat)
 sync_skills() {
   local skill_dest="${CORTEX_DEPLOY_HOME}/skills"
-  local synced=0 skipped=0 removed=0
+  local synced=0 skipped=0 removed=0 preserved=0
   mkdir -p "$skill_dest"
 
   # Track source paths for stale-detection
@@ -1185,18 +1199,30 @@ sync_skills() {
       continue
     fi
     local _skill_name="${dirname##*/}"
+    # Systematic local-* rule: deployed-only skills (created per-host, not
+    # in repo — e.g. local-cwr-file-processing) must NEVER be pruned by the
+    # stale pass. The repo only owns repo-named skills; anything local-* is
+    # host-managed. (Found 2026-08-03: local-cwr-file-processing was being
+    # wiped every deploy — the same class of bug as the local-* scripts.)
+    if [[ "$_skill_name" == local-* ]]; then
+      continue
+    fi
     # If the skill exists in the repo under a DIFFERENT category, this is
     # a stale duplicate of a repo skill (moved/renamed category) — remove.
     if [[ -n "${source_dirs[$dirname]:-}" ]]; then
       continue
     fi
     if [[ -n "${repo_skill_names[$_skill_name]:-}" ]]; then
+      # Repo owns this skill under a different category — the deployed copy
+      # at this path is a stale duplicate of a repo skill. The repo is the
+      # source of truth and re-deploys the current path, so removing the
+      # stale duplicate is safe (no data loss — source lives in the repo).
       rm -rf "$(dirname "$deployed_skill")"
       removed=$((removed + 1))
       continue
     fi
     # Name not in repo: Hermes-default check (metadata.hermes frontmatter
-    # or name present in hermes-agent dirs) — keep those, remove the rest.
+    # or name present in hermes-agent dirs) — keep those.
     if [[ -n "${hermes_skill_names[$_skill_name]:-}" ]]; then
       continue
     fi
@@ -1204,11 +1230,16 @@ sync_skills() {
        grep -A1 '^metadata:$' "$deployed_skill" 2>/dev/null | grep -q 'hermes:'; then
       continue
     fi
-    rm -rf "$(dirname "$deployed_skill")"
-    removed=$((removed + 1))
+    # ⚠️  Deployed-only skill not owned by the repo, not Hermes-default, not
+    # local-*. NEVER auto-delete — this is how local-cwr-file-processing was
+    # lost (2026-08-03). Warn with guidance instead; the human decides.
+    warn "  ⚠️  Deployed-only skill '${_skill_name}' (${rel%/SKILL.md}) is not in the repo."
+    warn "      Rename it to local-* (e.g. local-${_skill_name}) to preserve it,"
+    warn "      or delete it manually if unused. NOT auto-removed."
+    preserved=$((preserved + 1))
   done < <(find -L "$skill_dest" -name "SKILL.md" -type f -print0)
 
-  info "  Skills: ${synced} updated, ${skipped} unchanged, ${removed} stale removed"
+  info "  Skills: ${synced} updated, ${skipped} unchanged, ${removed} stale removed, ${preserved} preserved (deployed-only, not auto-deleted)"
 }
 
 # ── Code Corpus Sync ───────────────────────────────────────
