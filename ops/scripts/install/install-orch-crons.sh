@@ -125,6 +125,7 @@ if $UNINSTALL; then
     "orch-bus-forwarder-sync" \
     "orch-bus-recover-timeouts" \
     "orch-clean-health-queue" \
+    "orch-failover-watchdog" \
     "orch-fleet-watchdog" \
     "orch-health-report-saturday" \
     "orch-health-report-weekday" \
@@ -383,6 +384,17 @@ create_cron "orch-health-report-saturday" "0 11,17 * * 6" \
 # Orchestrator-only: Moses primary, Esther backup
 create_cron "orch-fleet-watchdog" "*/5 * * * *" \
   "orch-fleet-watchdog.py" \
+  "" \
+  "" \
+  "" \
+  "telegram:1270130526" \
+  "" \
+  "true"
+
+# Failover watchdog — auto-detect Moses outage, fail over to Esther (>15m)
+# Orchestrator-only: runs on Esther (backup). Real execution: FAILOVER_DRY_RUN=0
+create_cron "orch-failover-watchdog" "*/5 * * * *" \
+  "orch-failover-watchdog.py" \
   "" \
   "" \
   "" \
