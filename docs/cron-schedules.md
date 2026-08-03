@@ -34,7 +34,7 @@
 
 | Name | Schedule | Type | Script / Skill | Deliver |
 |------|----------|------|----------------|---------|
-| `agent-fixer-workday` | `0 9-17 * * 1-5` | LLM | auto-remediation skill | origin |
+| `agent-fixer-workday` | `0 9-17 * * 1-5` | LLM | auto-remediation skill + session-active-guard.py | origin |
 | `agent-fixer-evening` | `0 18,20,22 * * 1-5` | LLM | auto-remediation skill | origin |
 | `agent-fixer-overnight` | `0 3 * * 1-5` | LLM | auto-remediation skill | origin |
 | `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local |
@@ -70,7 +70,7 @@
 | `agent-stale-ref-watchdog` | `0 5 * * *` | no_agent | `manage/stale-ref-watchdog.sh` | origin |
 | `agent-agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agent-agents-md-prune-scan.py` | local |
 | `agent-agents-md-prune-apply` | `30 4 * * 1-6` | LLM | (prompt) | origin |
-| `agent-bus-workday` | `0 9-17 * * 1-5` | LLM | (prompt) | origin |
+| `agent-bus-workday` | `0 9-17 * * 1-5` | LLM | session-active-guard.py | origin |
 | `agent-bus-evening` | `0 18,20,22 * * 1-5` | LLM | (prompt) | origin |
 | `agent-bus-overnight` | `0 3 * * 1-5` | LLM | (prompt) | origin |
 | `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin |
