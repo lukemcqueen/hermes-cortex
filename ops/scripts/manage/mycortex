@@ -311,20 +311,25 @@ def sync_source(conn_meta: dict, source_id: str, source_name: str, local_path: s
     root = Path(local_path)
     t_start = datetime.now(timezone.utc)
 
-    # fetch current page map (relpath → content_hash) for the source
-    sql = f"""
-SELECT relpath, content_hash FROM mycortex.pages
+    # fetch current page map (relpath → content_hash, title) for the source
+    # Title is DERIVED data (frontmatter `title:`/`name:` or first H1): the
+    # extraction logic evolves, so a page whose hash is unchanged but whose
+    # stored title is stale (e.g. frontmatter blob pollution) must still flow
+    # through the upsert path to refresh title + FTS vector. Skip only when
+    # BOTH match (2026-08-03: 524 pages carried pre-fix frontmatter titles).
+    sql = f"""\
+SELECT relpath, content_hash, COALESCE(title, '') FROM mycortex.pages
 WHERE source_id = {esc_literal(source_id)} AND NOT archived;
 """
-    cur_map: dict[str, str] = {}
+    cur_map: dict[str, tuple[str, str]] = {}
     try:
         out = psql_query(sql, "mycortex_ingest", conn_meta["db"])
         for ln in out.splitlines():
             if not ln.strip():
                 continue
-            parts = ln.split("|", 1)
-            if len(parts) == 2:
-                cur_map[parts[0]] = parts[1]
+            parts = ln.split("|", 2)
+            if len(parts) == 3:
+                cur_map[parts[0]] = (parts[1], parts[2])
     except RuntimeError:
         cur_map = {}
 
@@ -350,9 +355,9 @@ WHERE source_id = {esc_literal(source_id)} AND NOT archived;
         stats["seen"] += 1
         digest = sha256_file(fpath)
         new_map[rel_nfc] = digest
-        if not force and cur_map.get(rel_nfc) == digest:
-            stats["unchanged"] += 1
-            continue
+        # derive title BEFORE the skip check (title is compared against the
+        # stored value — a stale stored title forces re-upsert to refresh
+        # title + FTS vector even when content hash is unchanged)
         title = Path(rel_nfc).stem
         # title from frontmatter if present — `title:` (docs) or `name:` (skills).
         # [^\n]+ (not .+) because re.S makes . match newlines → multi-line titles.
@@ -370,6 +375,9 @@ WHERE source_id = {esc_literal(source_id)} AND NOT archived;
                 h = re.search(r"^#\s+(.+)$", content, re.M)
                 if h:
                     title = h.group(1).strip()
+        if not force and cur_map.get(rel_nfc) == (digest, title):
+            stats["unchanged"] += 1
+            continue
         upserts.append((rel_nfc, title, content))
 
     # mass-deletion guardrail
