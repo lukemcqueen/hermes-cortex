@@ -63,11 +63,26 @@ LOCAL_TOKEN = os.environ.get(
     "BUS_FORWARDER_LOCAL_TOKEN",
     os.environ.get("CORTEX_BUS_TOKEN", ""),
 )
-PEER_URL = os.environ.get(
-    "BUS_FORWARDER_PEER_URL",
-    os.environ.get("CORTEX_BUS_FALLBACK_URL", ""),
+# ── Peer URL: role-aware. The peer is the OTHER orchestrator's bus. ──
+#   On Moses (primary): peer = Esther = CORTEX_BUS_FALLBACK_URL (:14004)
+#   On Esther (backup): peer = Moses = CORTEX_BUS_URL       (:13004)
+# The old default (always CORTEX_BUS_FALLBACK_URL) self-synced on Esther:
+# her fallback URL points at her own external :14004, so the forwarder was
+# syncing Esther↔Esther and never saw Moses' inbox. (found 2026-08-03,
+# take-charge assessment — worker fix requests invisible in the mirror)
+_HOST = os.uname().nodename.split(".")[0]
+if os.environ.get("BUS_FORWARDER_PEER_URL"):
+    PEER_URL = os.environ["BUS_FORWARDER_PEER_URL"]
+elif _HOST == "moses":
+    PEER_URL = os.environ.get("CORTEX_BUS_FALLBACK_URL", "")
+else:
+    # esther (and any non-moses orchestrator): peer = the primary URL
+    PEER_URL = os.environ.get("CORTEX_BUS_URL", "") or os.environ.get("CORTEX_BUS_FALLBACK_URL", "")
+# External peer (nginx) authenticates with Basic auth, not Bearer.
+PEER_AUTH = os.environ.get(
+    "BUS_FORWARDER_PEER_AUTH",
+    os.environ.get("CORTEX_BUS_FALLBACK_AUTH", os.environ.get("CORTEX_BASIC_AUTH", "")),
 )
-PEER_AUTH = os.environ.get("BUS_FORWARDER_PEER_AUTH", "")
 PEER_TOKEN = os.environ.get(
     "BUS_FORWARDER_PEER_TOKEN",
     LOCAL_TOKEN,  # default: same token (shared across fleet)
@@ -274,11 +289,18 @@ def main():
     if not LOCAL_TOKEN:
         LOCAL_TOKEN = _resolve_var("CORTEX_BUS_TOKEN")
     if not PEER_URL:
-        PEER_URL = _resolve_var("CORTEX_BUS_FALLBACK_URL")
+        # Role-aware peer resolution (same rule as module level):
+        # moses → CORTEX_BUS_FALLBACK_URL (Esther :14004)
+        # esther → CORTEX_BUS_URL (Moses :13004)
+        _h = os.uname().nodename.split(".")[0]
+        if _h == "moses":
+            PEER_URL = _resolve_var("CORTEX_BUS_FALLBACK_URL", "")
+        else:
+            PEER_URL = _resolve_var("CORTEX_BUS_URL", "") or _resolve_var("CORTEX_BUS_FALLBACK_URL", "")
     if not PEER_TOKEN:
         PEER_TOKEN = LOCAL_TOKEN
     if not PEER_AUTH:
-        PEER_AUTH = _resolve_var("CORTEX_BUS_FALLBACK_AUTH", "")
+        PEER_AUTH = _resolve_var("CORTEX_BUS_FALLBACK_AUTH", "") or _resolve_var("CORTEX_BASIC_AUTH", "")
 
     # Discover queues
     QUEUES = _discover_queues()

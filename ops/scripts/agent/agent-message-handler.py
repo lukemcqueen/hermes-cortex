@@ -602,12 +602,31 @@ def main():
   args = parser.parse_args()
 
   inbox_queue = f"inbox_{AGENT_NAME}"
-  log(f"Starting — polling {inbox_queue}")
+  # Orchestrators (moses/esther) ALSO poll the shared inbox_orchestrator
+  # queue, where workers send fix requests / escalations. This is the
+  # backup-orchestrator visibility path: Esther sees worker requests even
+  # when Moses is down/degraded. Workers poll only their own inbox.
+  extra_queues = []
+  if AGENT_NAME in ("moses", "esther"):
+    extra_queues.append("inbox_orchestrator")
+  log(f"Starting — polling {inbox_queue}" + (f" + {extra_queues}" if extra_queues else ""))
   state = load_state()
   processed = set(state.get("processed_ids", []))
 
   def poll_once() -> bool:
+    # Poll own inbox first, then the shared orchestrator inbox (if any).
+    # One message per queue per tick keeps the loop bounded; the cron
+    # re-runs every 5 min so both queues drain over successive ticks.
     msg = read_inbox(inbox_queue)
+    source_queue = inbox_queue
+    if not msg and extra_queues:
+      for q in extra_queues:
+        msg = read_inbox(q)
+        if msg:
+          # Process from the orchestrator queue: log which queue it came from
+          log(f"  ← from shared queue {q}")
+          source_queue = q
+          break
     if not msg:
       return False
 
@@ -630,7 +649,7 @@ def main():
     # This is the primary archive; post-processing archives (in each
     # subject handler and the exception handler) are fallbacks that
     # silently succeed on already-archived messages.
-    archive_message(inbox_queue, msg_id)
+    archive_message(source_queue, msg_id)
     # --- END EARLY ARCHIVE ---
 
     # PGMQ returns body as a JSON string — parse it if needed
@@ -663,7 +682,7 @@ def main():
         else:
           # Archive unparseable so it doesn't loop forever
           log(f"Unparseable message body, archiving: {body_str[:100]}…")
-          archive_message(inbox_queue, msg_id)
+          archive_message(source_queue, msg_id)
           return False
 
     # Re-check correlation_id from parsed body (hc send embeds it inside the body JSON string)
@@ -702,7 +721,7 @@ def main():
     should_process, skip_reason = _should_process(body, agent_labels)
     if not should_process:
         log(f"Skipping {subject} — {skip_reason}")
-        archive_message(inbox_queue, msg_id)
+        archive_message(source_queue, msg_id)
         return False
 
     # Notify pickup
@@ -715,7 +734,7 @@ def main():
     if correlation_id and correlation_id in processed:
       log(f"Skipping already-processed corr={correlation_id[:8] if correlation_id else ''}…")
       # Archive so it doesn't loop forever
-      archive_message(inbox_queue, msg_id)
+      archive_message(source_queue, msg_id)
       return False
 
     try:
@@ -805,7 +824,7 @@ def main():
           if exit_code != "":
             result_preview = f" exit={exit_code} {stdout_preview}"
         log(f"📬 Result {subject} from {result_from}:{result_preview}")
-        archive_message(inbox_queue, msg_id)
+        archive_message(source_queue, msg_id)
         state.setdefault("last_results", [])
         state["last_results"].append({
           "subject": subject, "from": result_from,
@@ -836,7 +855,7 @@ def main():
             out_file = stage_dir / f"{host}-part{part}of{parts}.json"
             out_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2))
             log(f"📦 Staged Skill Stub Recovery from {host} part {part}/{parts} ({len(skills)} skills) → {out_file.name}")
-            archive_message(inbox_queue, msg_id)
+            archive_message(source_queue, msg_id)
             state.setdefault("last_staged", []).append(
               {"subject": subject, "from": body.get("from"), "skills": len(skills), "t": time.time()}
             )
@@ -844,17 +863,17 @@ def main():
             save_state(state)
             return True
           log(f"⚠️ Skill Stub Recovery from {body.get('from', '?')} had no skills dict — archiving raw")
-          archive_message(inbox_queue, msg_id)
+          archive_message(source_queue, msg_id)
           return True
         except Exception as e:
           log(f"❌ Failed to stage Skill Stub Recovery: {type(e).__name__}: {e}")
-          archive_message(inbox_queue, msg_id)
+          archive_message(source_queue, msg_id)
           return False
 
       # Silent subjects — known noise, just archive and move on
       if subject in ("DOCTOR_TEST", "STATUS_REQUEST", "HEARTBEAT", "PING"):
         log(f"Silently archived {subject} from {body.get('from', '?')}")
-        archive_message(inbox_queue, msg_id)
+        archive_message(source_queue, msg_id)
         state.setdefault("last_noise", []).append(
           {"subject": subject, "from": body.get("from"), "t": time.time()}
         )
@@ -924,7 +943,7 @@ def main():
         "duration_seconds": round(time.time() - start, 1),
       }
       send_bus_result("inbox_moses", correlation_id, error_body, f"{subject}_RESULT")
-      archive_message(inbox_queue, msg_id)
+      archive_message(source_queue, msg_id)
       notify_telegram(
         f"⚠️ [{AGENT_NAME}] Unknown subject '{subject}' from {body.get('from', '?')}, responded with error",
         f"⚠️ {AGENT_NAME}:UNKNOWN"
@@ -935,7 +954,7 @@ def main():
       log(f"❌ CRASH processing {subject}: {type(e).__name__}: {e}")
       import traceback
       traceback.print_exc()
-      archive_message(inbox_queue, msg_id)
+      archive_message(source_queue, msg_id)
       send_bus_result("inbox_moses", correlation_id, {
         "success": False,
         "error": f"Handler crashed: {type(e).__name__}: {e}",

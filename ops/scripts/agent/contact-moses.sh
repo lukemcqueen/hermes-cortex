@@ -56,11 +56,15 @@ fi
 
 # Build payload with python3 (guaranteed present in Hermes venv — jq is not)
 # so multi-line bodies are safely JSON-encoded, not interpolated.
-PAYLOAD=$(AGENT_NAME="$AGENT_NAME" SUBJECT="$SUBJECT" BODY="$BODY" PRIORITY="$PRIORITY" \
+# Target queue: CORTEX_INBOX_TARGET overrides the default. Default inbox_moses
+# keeps legacy behavior; fix requests / escalations can use inbox_orchestrator
+# (shared between both orchestrators) via CORTEX_INBOX_TARGET.
+TARGET_QUEUE="${CORTEX_INBOX_TARGET:-inbox_moses}"
+PAYLOAD=$(AGENT_NAME="$AGENT_NAME" SUBJECT="$SUBJECT" BODY="$BODY" PRIORITY="$PRIORITY" TARGET_QUEUE="$TARGET_QUEUE" \
   python3 -c '
 import json, os
 print(json.dumps({
-    "queue": "inbox_moses",
+    "queue": os.environ["TARGET_QUEUE"],
     "message": {
         "from": os.environ["AGENT_NAME"],
         "to": "moses",
@@ -70,7 +74,7 @@ print(json.dumps({
     },
 }))')
 
-echo "📤 Sending to Moses..."
+echo "📤 Sending to ${TARGET_QUEUE}..."
 RESULT=$(curl -s -u "$AUTH" -X POST \
   -H "Content-Type: application/json" \
   -d "$PAYLOAD" \

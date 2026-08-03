@@ -47,6 +47,10 @@ CREATE TABLE IF NOT EXISTS bus.permissions (
 );
 
 -- Grant default permissions to fleet agents
+-- NOTE: per-agent queue scoping lives in the runtime server (per-queue
+-- can_read/can_write arrays). This schema seeds the base booleans for the
+-- simple deployment; the shared orchestrator inbox is handled by the
+-- runtime permission grants (moses+esther read/write inbox_orchestrator).
 INSERT INTO bus.permissions (agent_name, can_send, can_read, can_archive, can_requeue, can_delete)
 VALUES
     ('moses',  true,  true,  true,  true,  true),
@@ -56,6 +60,15 @@ VALUES
     ('gisu',   true,  true,  true,  true,  false),
     ('kustos', true,  true,  true,  true,  false)
 ON CONFLICT (agent_name) DO NOTHING;
+
+-- Shared orchestrator inbox — readable/writable by BOTH orchestrators so
+-- the backup (Esther) can see worker fix requests when the primary (Moses)
+-- is down/degraded, and Moses can check Esther's channel. Workers may SEND
+-- fix requests here (contact-moses.sh / agent-message-handler target).
+-- Created idempotently; both hosts' schemas apply it.
+INSERT INTO bus.queues (name)
+VALUES ('inbox_orchestrator')
+ON CONFLICT (name) DO NOTHING;
 
 -- ── Audit log ───────────────────────────────────────────────
 
