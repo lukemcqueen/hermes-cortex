@@ -268,6 +268,113 @@ def detect_cheat_patterns(file_path: str, lines: list[str]) -> list[dict]:
     return findings
 
 
+# ── Phase 2b: Static Security Pattern Detection ─────────────────
+# Closes the gap (2026-08-03): adversarial-verify was fuzz + cheat
+# detection only — it MISSED classic OWASP static patterns
+# (command injection, eval, shell=True RCE, pickle deserialization,
+# SQL injection, arbitrary file deletion). A vulnerable file and a
+# clean file produced nearly identical results and the A2 gate passed
+# both. These patterns are rated critical/high so the existing gate
+# (block on critical/high) catches them.
+
+STATIC_SECURITY_PATTERNS = [
+    # (regex, pattern name, severity, detail)
+    # Command injection via os.system / os.popen with concatenation
+    (r"""os\.(system|popen)\([^)]*['\"]\s*\+""",
+     "command-injection", "critical",
+     "os.system/os.popen with string concatenation — command injection"),
+    (r"""os\.(system|popen)\([^)]*f['\"]""",
+     "command-injection", "critical",
+     "os.system/os.popen with f-string — command injection"),
+    # subprocess with shell=True and interpolated input
+    (r"""subprocess\.(call|run|Popen|check_output|check_call)\([^)]*shell\s*=\s*True""",
+     "shell-true-rce", "critical",
+     "subprocess shell=True — command injection when args contain input"),
+    # eval / exec of dynamic input
+    (r"""(?<![.\w])(eval|exec)\([^)]*""",
+     "dangerous-eval", "critical",
+     "eval/exec on dynamic input — code execution"),
+    # Unsafe deserialization
+    (r"""pickle\.(loads|load)\(""",
+     "unsafe-deserialization", "critical",
+     "pickle.loads/load — arbitrary code execution on untrusted data"),
+    (r"""yaml\.load\([^)]*""",
+     "unsafe-yaml", "high",
+     "yaml.load without SafeLoader — arbitrary code execution"),
+    # SQL injection: string-concatenated query
+    (r"""(execute|executemany)\([^)]*['\"]\s*\+""",
+     "sql-injection", "critical",
+     "SQL query built by string concatenation — SQL injection"),
+    (r"""(execute|executemany)\([^)]*f['\"]""",
+     "sql-injection", "high",
+     "SQL query built by f-string — SQL injection"),
+    # Arbitrary file deletion — only flag when the path is DYNAMIC
+    # (concatenated or f-string). os.remove("fixed/path") is legitimate
+    # cleanup, not an injection vector.
+    (r"""os\.(remove|unlink)\([^)]*['\"]\s*\+""",
+     "arbitrary-delete", "high",
+     "os.remove/os.unlink with concatenated path — arbitrary file deletion"),
+    (r"""os\.(remove|unlink)\([^)]*f['\"]""",
+     "arbitrary-delete", "high",
+     "os.remove/os.unlink with f-string path — arbitrary file deletion"),
+    (r"""shutil\.rmtree\([^)]*['\"]\s*\+""",
+     "arbitrary-delete", "high",
+     "shutil.rmtree with concatenated path — arbitrary directory deletion"),
+    # Hardcoded credentials (in code, not tests)
+    (r"""(password|passwd|secret|api[_-]?key|token)\s*=\s*['\"][^'\"]{12,}['\"]""",
+     "hardcoded-credential", "high",
+     "hardcoded credential literal (12+ chars)"),
+]
+
+# Code constructs that indicate the value is NOT attacker-controlled
+# (e.g. os.remove("config.old") with a literal path is benign).
+_SAFE_CALLER_PREFIX = r"(?:#|//)\s*"
+
+
+def detect_static_security_patterns(file_path: str, lines: list[str]) -> list[dict]:
+    """Detect classic OWASP static vulnerability patterns in code.
+
+    Code-only: skips docs/configs/prose. Patterns are regex-based on
+    source lines; a finding is emitted per matching line with its
+    real line number so the gate message points at the offending code.
+    """
+    suffix = Path(file_path).suffix
+    if suffix not in {".py", ".js", ".jsx", ".ts", ".tsx", ".rb", ".php"}:
+        return []
+    findings = []
+    for lineno, line in enumerate(lines, 1):
+        stripped = line.rstrip("\n")
+        # Skip pure comments and docstring-ish lines
+        if stripped.lstrip().startswith(("#", "//", "/*", "*", "'''", '"""')):
+            continue
+        # Inline exemption: `# adversarial-ignore: <pattern>` (or * for all)
+        # on the SAME line as the code suppresses findings for that line —
+        # strict by default, documented override only.
+        ignore_marker = re.search(
+            r"#\s*adversarial-ignore:\s*([\w-]+|\*)", stripped
+        )
+        for regex, name, severity, detail in STATIC_SECURITY_PATTERNS:
+            if ignore_marker and (
+                ignore_marker.group(1) == "*" or ignore_marker.group(1) == name
+            ):
+                continue
+            try:
+                if re.search(regex, stripped):
+                    findings.append({
+                        "finding_id": next_finding_id(),
+                        "technique": "static-pattern",
+                        "pattern": name,
+                        "severity": severity,
+                        "detail": detail,
+                        "file": Path(file_path).name,
+                        "line": lineno,
+                        "code": stripped.strip()[:120],
+                    })
+            except re.error:
+                continue  # never let a bad pattern crash the gate
+    return findings
+
+
 # ── Main ────────────────────────────────────────────────────────
 
 def main():
@@ -338,6 +445,7 @@ def main():
         funcs = _find_func_defs(lines)
         fuzz_inputs = generate_fuzz_inputs(funcs)
         cheat_findings = detect_cheat_patterns(filepath, lines)
+        static_findings = detect_static_security_patterns(filepath, lines)
 
         if not args.json:
             if funcs:
@@ -363,6 +471,7 @@ def main():
             all_findings.append(finding)
 
         all_findings.extend(cheat_findings)
+        all_findings.extend(static_findings)
 
     # Phase 3: Evidence Packaging
     summary = {
