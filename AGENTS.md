@@ -100,7 +100,7 @@ Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify
 9. **Keep working until done** — don't stop after a stub or plan.
 10. **Use tools, not descriptions** — every response must contain tool calls or a final result.
 11. **Score every change** — every code/config/script edit logged to loop-governance DB.
-  > **⚡ Pre-commit scoring hook** auto-creates a cycle on every commit. No bypass. Use `git commit --no-verify` in emergencies only.
+  > **⚡ Pre-commit scoring hook** auto-creates a cycle on every commit. No bypass. The hook also runs the mandatory adversarial gate (A2/A4) on every staged script — `--no-verify` is a logged, audited bypass and must never be used to ship a hook-rejected change.
 12. **Tests/TDD/scoring are always the default.** Only opt-outs: `"skip tests"`, `"read-only"`, `"throwaway prototype"`, `"just check/look at"`.
 13. **Tag discovered issues as follow-ups** — document as `pending` todo, finish current work, then return. Never silently skip.
 14. **Pull before push** — `git pull --rebase origin <branch>` before any `git push`.

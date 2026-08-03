@@ -60,7 +60,7 @@ metadata:
 ## Phase 5 — Final Verification
 
 - [ ] Run `cortex-doctor.py` or equivalent health check
-- [ ] **Adversarial scan passed (code changes only):** `python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate` — **must exit 0**. For targeted scans: `--file <path>`.
+- [ ] **Adversarial scan passed — MANDATORY for every changed script** (change-checklist Phase 1.5): `python3 ops/scripts/quality/adversarial-verify.py --file <changed-file> --level A2 --gate` per file (A4 for security/guard/hook/enforcer paths). Must exit 0. The pre-commit hook runs this gate too — no `--no-verify`, no bypass.
 - [ ] Verify all services restart cleanly (launchctl list / systemctl status)
 - [ ] Verify symlinks are valid
 - [ ] Verify no stale paths remain (`grep -r '/home/luke\\|${CORTEX_HOME}\\|${CORTEX_DEPLOY}'` on changed files)
@@ -70,7 +70,7 @@ metadata:
 - [ ] `mcp_loop_governance_cycle_query(task_id="<task-id>")`
 - [ ] `mcp_loop_governance_feedback_accept(cycle_id=N, note="verified: <how>")`
 - [ ] `mcp_loop_governance_end_change(task_id="<task-id>")`
-- [ ] `git add -A && git commit -m "<descriptive message>" --no-verify`
+- [ ] `git add <files> && git commit -m "<descriptive message>"` — **through the pre-commit hook** (it runs the adversarial gate + scoring; `--no-verify` is a logged, audited bypass — never use it to ship a hook/gate-rejected change)
 - [ ] `git pull --rebase origin main && git push origin main`
 
 ## If Scoring Is Blocked
@@ -78,7 +78,7 @@ metadata:
 1. Run `bash ~/.hermes-cortex/tools/loop-governance/verify.sh` if it exists, or `python3 -c "from loop_db import LoopDB; db = LoopDB(); print(db.get_summary_stats())"`
 2. If fix takes > 2 min, record manually later
 3. **Never skip entirely** — governance-auditor cron flags unscored changes
-4. `SKIP_SCORE=1` has been **removed** — the bypass no longer exists. Use `git commit --no-verify` in true emergencies.
+4. `SKIP_SCORE=1` has been **removed** — the bypass no longer exists. `git commit --no-verify` is a logged, audited bypass — fix the blocker and commit through the hook instead.
 
 ## Install
 

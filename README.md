@@ -43,7 +43,7 @@ begin_change() → work → cycle_query() → feedback_accept() → end_change()
 2. **⚡ Pre-Commit Hook** — Every `git commit` runs `score-cycle` against the diff, logs to the governance DB, and validates AGENTS.md integrity
 3. **🕵️ Cron Auditor** — `governance-auditor` runs every 6h scanning for unscored changes + cleaning stale locks (>12h)
 
-The **`pre-commit score hook`** auto-scores each commit. No `SKIP_SCORE=1` bypass — use `git commit --no-verify` for emergencies.
+The **`pre-commit score hook`** auto-scores each commit and runs the **mandatory adversarial verification gate** (A2 default, A4 for security/guard/hook/enforcer files) on every staged script. No `SKIP_SCORE=1` bypass — and no `--no-verify` to ship a hook-rejected change: it is logged and audited (`agent-no-verify-audit` cron). Fix the findings, then commit normally.
 
 ### 🤖 Auto-Remediation Pipeline
 

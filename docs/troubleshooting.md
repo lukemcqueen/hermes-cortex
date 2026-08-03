@@ -727,12 +727,13 @@ The pre-commit hook checks for the governance lock file as a secondary safety ne
 If it fires during a direct `git commit` outside of an agent session:
 
 ```bash
-# Bypass: git commit --no-verify -m "message"  (use only in emergencies)
-# Or create a governance lock first:
+# Create a governance lock first (the correct path — never --no-verify):
 mcp_loop_governance_begin_change(task_id="direct-commit", description="...")
 # Then commit, then:
 mcp_loop_governance_end_change(task_id="direct-commit")
 ```
+
+`git commit --no-verify` is a logged, audited bypass (`agent-no-verify-audit` cron) — never use it to ship a hook-rejected change.
 
 ### `score-cycle` not found
 

@@ -94,15 +94,9 @@ The installer deploys the source scripts to `~/.hermes-cortex/scripts/` and `cor
 
 ## Bypass Mechanisms
 
-Emergency bypass — use only when a hook is causing a false positive:
+There is **no sanctioned bypass**. The pre-commit hook runs scoring **and** the mandatory adversarial verification gate (A2 default, A4 for security/guard/hook/enforcer files) on every staged script. `--no-verify` is a **logged, audited bypass** (`agent-no-verify-audit` cron) — it is not a conscious choice, it is an audit event, and it must never be used to ship a hook-rejected change. Pre-commit `SKIP_SCORE=1`, `SKIP_ADVERSARIAL`, and pre-push `SKIP_PRE_PUSH=1` bypass flags have all been removed — no env-var bypasses.
 
-```bash
-# Bypass all hooks (pre-commit + pre-push)
-git commit --no-verify -m "..."
-git push --no-verify
-```
-
-Using `--no-verify` is logged to `agent-no-verify-audit` cron and auditable. It's a conscious choice, not an invisible escape hatch. Pre-commit `SKIP_SCORE=1`, `SKIP_ADVERSARIAL`, and pre-push `SKIP_PRE_PUSH=1` bypass flags have all been removed — no env-var bypasses.
+**When the hook blocks you:** fix the finding (the gate prints what it found), then commit normally through the hook. If the scoring stack itself is broken, repair via the sanctioned path: `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`.
 
 These are documented in AGENTS.md rule #13 and mentioned in each hook's header comment.
 

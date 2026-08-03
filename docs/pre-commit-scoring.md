@@ -109,14 +109,11 @@ rm -rf /tmp/test-hook
 
 ## Bypassing the Hook
 
-There is no `SKIP_SCORE=1` bypass — it has been removed. Use `git commit --no-verify` if you truly need to bypass the pre-commit hook.
+There is **no bypass** — `SKIP_SCORE=1` has been removed, and `git commit --no-verify` is a **logged, audited bypass** (see `agent-no-verify-audit` cron), never a workflow. The pre-commit hook also runs the **mandatory adversarial verification gate** on every staged script (A2 default, A4 for security/guard/hook/enforcer files) — a hook-rejected change must be **fixed, not bypassed**.
 
-Legitimate reasons to bypass:
-- The scoring stack itself needs repair (fix via `cortex-update.sh` first — it deploys the scorer on Linux and macOS)
-- You're in the middle of a rebase conflict resolution
+When the scoring stack itself needs repair, fix it via the sanctioned path (`cortex-update.sh` — it deploys the scorer on Linux and macOS), then commit normally through the hook. If you are mid-rebase-conflict-resolution, resolve the conflict — rebase replays do not run pre-commit, so the commit will already pass; there is no reason to bypass.
 
-**The `SKIP_SCORE=1` bypass is not a workflow.** If you use it more than once
-per month, something is wrong — fix the tooling, don't learn to live around it.
+**The bypass is not a workflow.** If `--no-verify` appears more than once per month in the audit log, something is wrong — fix the tooling, don't learn to live around it.
 
 ---
 
