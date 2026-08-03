@@ -61,7 +61,7 @@ This is not a rearchitecture of the knowledge model — it is the same shape gbr
 - **Schema versioning:** `mycortex_schema_version` table + numbered migrations (v001, v002…); semantic slice = v004 (ALTER ADD COLUMN), not a new system.
 - **Sync cursor:** `sources.last_sync_at`, `last_commit` (git sources), per-source sync state — makes parity deterministic.
 - **Index strategy:** UNIQUE (`sources.name`), (`pages.source_id, relpath`), (`content_chunks.page_id, offset`); GIN on FTS tsvector; GIN trigram (pg_texample); FK indexes. `pg_texample` extension added at install.
-- **Search config per source:** `source.search_config` column, default `simple` (mixed-language safe: Korean bible, English lessons). Never blind `english`.
+- **Search config per source:** `source.search_config` column, default `simple` (language-agnostic). English is the DEFAULT language for sessions/agent communication (non-English input gets a translation to English) — that is a session/agent principle, NOT a storage constraint. The DB stores mixed-language content, so FTS config stays language-agnostic (`simple`: no stemming, no stop-words) to keep all languages findable. Override per source only when a specific config is justified.
 - **Chunking:** heading-aware split, ~800 token chunks, 15% overlap, params stored per source (`chunk_size`, `overlap`).
 - **Source identity:** UUID `source_id` decoupled from `local_path`; path rename = re-ingest, no orphan (pages carry `source_id` only).
 - **Deleted files:** soft-delete (`archived` flag on pages) with a re-ingest window (e.g. 7 days); hard purge only on `sources remove`.
@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS mycortex.sources (
     sync_mode     TEXT NOT NULL DEFAULT 'git',    -- 'git' | 'local'
     is_federated  BOOLEAN NOT NULL DEFAULT FALSE, -- FALSE = isolated (RLS: reader needs source grant)
     pii_scan_at   TIMESTAMPTZ,                    -- PII scan gate: federation requires a recorded scan
-    search_config TEXT NOT NULL DEFAULT 'simple', -- per-source FTS config (mixed-language safe)
+    search_config TEXT NOT NULL DEFAULT 'simple', -- per-source FTS config (language-agnostic: DB stores mixed-language content)
     builtin       BOOLEAN NOT NULL DEFAULT FALSE, -- 'default' source is unremovable
     last_sync_at  TIMESTAMPTZ,
     last_commit   TEXT,                           -- git HEAD at last sync (git sources)

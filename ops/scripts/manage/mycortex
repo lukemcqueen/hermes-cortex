@@ -737,7 +737,8 @@ def main() -> int:
     add_p.add_argument("path")
     add_p.add_argument("--mode", choices=["git", "local"])
     add_p.add_argument("--federated", action="store_true", help="mark federated (PII scan recorded)")
-    add_p.add_argument("--search-config", default="simple")
+    add_p.add_argument("--search-config", default="simple",
+                       help="FTS config; default 'simple' — language-agnostic (DB stores mixed-language content; English is only the default session/agent language)")
     add_p.set_defaults(func=sources_add)
     lst_p = sp_sub.add_parser("list", help="list sources")
     lst_p.add_argument("--json", action="store_true")

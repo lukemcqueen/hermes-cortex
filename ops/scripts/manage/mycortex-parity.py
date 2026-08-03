@@ -246,7 +246,14 @@ def mode_check(args) -> int:
             if args.engine == "gbrain":
                 paths = run_gbrain(q["query"])
             elif args.engine == "mycortex":
-                src = q.get("source") if q.get("scope") == "isolated" else None
+                # Scope EVERY query to its golden-declared source. Federated
+                # (HC) queries target the federated source (hermes-cortex);
+                # isolated (MO) queries target their source. Passing None for
+                # federated queries searched ALL visible sources — including
+                # isolated sources with reader grants — so archive/session
+                # content from shared/lessons crowded out the correct docs
+                # (2026-08-03: HC-005/010/018 failed on noise, not relevance).
+                src = q.get("source")
                 paths = run_mycortex(q["query"], source=src)
             elif args.engine == "fixture":
                 fixture = load_fixture(args.fixture_file)

@@ -26,7 +26,8 @@ federated; this script records pii_scan_at=now() at federation time, the
 operator's responsibility).
 
 FTS: pages.fts is rebuilt from concatenated chunk content using the source's
-search_config ('simple' default — mixed-language safe) so text search works
+search_config ('simple' default — language-agnostic; the DB stores mixed-language
+content, English is only the DEFAULT session/agent language) so text search works
 immediately after import, matching what the ingest path will do going forward.
 
 Usage:
@@ -243,7 +244,7 @@ def prune_slug_rows(db: str, source_name: str, slug_values: str, verbose: bool =
     return n
 
 
-# ── FTS rebuild (matches ingest-path maintenance, 'simple' per source) ──
+# ── FTS rebuild (matches ingest-path maintenance, per-source config) ──
 
 REBUILD_FTS = """
 UPDATE mycortex.pages p

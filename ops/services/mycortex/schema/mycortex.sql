@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS mycortex.sources (
     sync_mode     TEXT NOT NULL DEFAULT 'git',    -- 'git' | 'local'
     is_federated  BOOLEAN NOT NULL DEFAULT FALSE, -- FALSE = isolated (RLS: reader needs source grant)
     pii_scan_at   TIMESTAMPTZ,                    -- PII scan gate: federation requires a recorded scan
-    search_config TEXT NOT NULL DEFAULT 'simple', -- per-source FTS config (mixed-language safe)
+    search_config TEXT NOT NULL DEFAULT 'simple', -- per-source FTS config. Language-agnostic: the DB stores mixed-language content (English is the DEFAULT language for sessions/agent communication, not a storage constraint). 'simple' (no stemming, no stop-words) keeps all languages findable.
     builtin       BOOLEAN NOT NULL DEFAULT FALSE, -- 'default' source is unremovable
     last_sync_at  TIMESTAMPTZ,
     last_commit   TEXT,                           -- git HEAD at last sync (git sources)
