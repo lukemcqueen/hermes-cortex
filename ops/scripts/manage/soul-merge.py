@@ -480,7 +480,13 @@ def merge(agent_name: str = "", dry_run: bool = False, check_only: bool = False)
     )
     agent_title_keys = {_title_key(p["heading"]) for p in agent_p.values()}
     has_stale = bool(stale_titles.intersection(agent_title_keys))
-    consolidation = len(template_p) < len(agent_p) and has_stale
+    # <= (not <): the 2026-08-03 restructure REPLACED all 12 titles at an
+    # equal count (12 old → 12 new). A strict < saw 12 < 12 == False and
+    # appended the new titles onto the stale ones — 24 stacked principles,
+    # 23K balloon, doctor FAIL. <= fires on both count reductions (34→12)
+    # and equal-count title replacements (12→12); the has_stale gate keeps
+    # custom-extra agents (no stale leftovers) from re-triggering.
+    consolidation = has_stale and len(template_p) <= len(agent_p)
 
     changes = bool(new_principles) or bool(new_subpoints) or consolidation
 

@@ -147,3 +147,47 @@ def test_merge_fresh_agent_injects_all_principles(tmp_path):
     assert any("### 12. Not Done Until Tested" in h for h in heads)
     # Agent's own single principle preserved
     assert "### 1. Test Principle" in out
+
+
+def test_merge_consolidates_equal_count_title_replacement(tmp_path):
+    """2026-08-03: template REPLACED all 12 titles at equal count (12 old →
+    12 new). A strict `<` saw 12 < 12 == False and APPENDED the new titles
+    onto the stale ones — 24 stacked principles, 23K deployed SOUL, doctor
+    FAIL. `<=` + has_stale must trigger a rebuild that drops the stale set
+    instead of stacking."""
+    sm = _load_soul_merge()
+    deployed = tmp_path / "SOUL.md"
+    old_titles = [
+        "1. Loop Governance — Mandatory Pre-Work Sequence (MCP-Enforced)",
+        "2. Inbox Message Decision Framework",
+        "3. Verify Before Declare — Real Work, Real Output",
+        "4. Be Proactive — Fix, Test, Document",
+        "5. Own Every Issue — Fix First, Prove Second",
+        "6. Always Do the Right Way — Canonical Paths",
+        "7. Be Concise — Every Word Earns Its Place",
+        "8. Protect the System — Security, Privacy, Stability",
+        "9. Design for the Full Deployment Matrix",
+        "10. Test Small Before Scaling",
+        "11. Agent Cron Management",
+        "12. Not Done Until Tested — End-to-End Verification",
+    ]
+    body = "# SOUL.md — Test\n\n## Behavioral Principles\n\n"
+    body += "\n\n".join(f"### {t}\n\nstale body" for t in old_titles)
+    body += "\n\n## Final Directive\n\nShip.\n"
+    deployed.write_text(body)
+
+    sm.HERMES_HOME = tmp_path
+    sm.TEMPLATE = TEMPLATE
+    sm.PROFILES_DIR = tmp_path / "no-profiles"
+
+    rc = sm.merge(dry_run=False, check_only=False)
+    assert rc == 1, f"expected consolidation merge rc=1, got {rc}"
+    out = deployed.read_text()
+    # New canonical titles present
+    assert "### 1. Wholehearted Work" in out
+    assert "### 12. Not Done Until Tested" in out
+    # Stale old titles dropped — NOT stacked
+    assert "### 1. Loop Governance" not in out
+    assert "### 2. Inbox Message Decision Framework" not in out
+    # Exactly the 12 canonical (no stacking)
+    assert len(_principle_heads(out)) == 12, _principle_heads(out)
