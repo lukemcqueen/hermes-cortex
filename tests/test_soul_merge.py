@@ -234,6 +234,17 @@ def test_merge_consolidates_equal_count_title_replacement(tmp_path):
     sm.TEMPLATE = TEMPLATE
     sm.PROFILES_DIR = tmp_path / "no-profiles"
 
+    # Deterministic: this test exercises consolidation LOGIC, not the repo's
+    # git history. _previous_template_titles() reads depth-2 of the real
+    # template commits — after 2026-08-03 the parent of the current template
+    # already carries the NEW canonical titles, so the stale set would be
+    # empty and consolidation would never fire. Pin the previous-template
+    # titles to the old set so the stale-vs-canonical distinction is stable
+    # regardless of when this test runs.
+    sm._previous_template_titles = lambda: {
+        sm._title_key(f"### {t}") for t in old_titles
+    }
+
     rc = sm.merge(dry_run=False, check_only=False)
     assert rc == 1, f"expected consolidation merge rc=1, got {rc}"
     out = deployed.read_text()
