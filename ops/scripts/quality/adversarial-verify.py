@@ -3,17 +3,23 @@
 adversarial-verify.py — Adversarial Verification CLI.
 
 Systematically attempts to break code BEFORE it ships.
-Covers A1 (surface scan) and A2 (input fuzzing + cheat detection).
+Covers A1 (surface scan), A2 (input fuzzing + cheat detection +
+static OWASP patterns), A3 (state corruption + dependency sabotage),
+and A4 (concurrency + invariants + property-based templates).
 
 Usage:
     adversarial-verify.py --file <path> --level A1
     adversarial-verify.py --file <path> --level A2 [--json]
     adversarial-verify.py --dir <path> --level A2
     adversarial-verify.py --dir <path> --level A2 --gate
+    adversarial-verify.py --file <path> --level A4 --gate
 
 Maturity Levels:
     A1 — Attack Surface Enumeration (static analysis)
-    A2 — Input Fuzzing + Cheat Detection (A1 + boundary testing)
+    A2 — Input Fuzzing + Cheat Detection + Static OWASP patterns
+    A3 — A2 + State Corruption + Dependency Sabotage detection
+    A4 — A3 + Concurrency races + Invariant violations + Property templates
+    A5 — A4 (evidence packaging via --output)
 
 Exit codes:
     0 — No adversarial findings
@@ -302,12 +308,9 @@ STATIC_SECURITY_PATTERNS = [
      "unsafe-yaml", "high",
      "yaml.load without SafeLoader — arbitrary code execution"),
     # SQL injection: string-concatenated query
-    (r"""(execute|executemany)\([^)]*['\"]\s*\+""",
+    (r"""(execute|executemany)\([^)]*['\\"]\s*\+""",
      "sql-injection", "critical",
      "SQL query built by string concatenation — SQL injection"),
-    (r"""(execute|executemany)\([^)]*f['\"]""",
-     "sql-injection", "high",
-     "SQL query built by f-string — SQL injection"),
     # Arbitrary file deletion — only flag when the path is DYNAMIC
     # (concatenated or f-string). os.remove("fixed/path") is legitimate
     # cleanup, not an injection vector.
@@ -342,8 +345,11 @@ def detect_static_security_patterns(file_path: str, lines: list[str]) -> list[di
     if suffix not in {".py", ".js", ".jsx", ".ts", ".tsx", ".rb", ".php"}:
         return []
     findings = []
+    skip_lines = _string_only_lines(lines)
     for lineno, line in enumerate(lines, 1):
         stripped = line.rstrip("\n")
+        if lineno in skip_lines:
+            continue
         # Skip pure comments and docstring-ish lines
         if stripped.lstrip().startswith(("#", "//", "/*", "*", "'''", '"""')):
             continue
@@ -372,6 +378,534 @@ def detect_static_security_patterns(file_path: str, lines: list[str]) -> list[di
                     })
             except re.error:
                 continue  # never let a bad pattern crash the gate
+
+    # f-string SQL: flag only when the f-string interpolates a NON-constant.
+    # execute(f"...{EMBED_DIMS}...") with an all-caps module constant is
+    # legitimate; execute(f"...{user_id}...") is injection. Multi-line
+    # f-strings need statement-level scanning.
+    findings.extend(_detect_fstring_sql(file_path, lines, skip_lines))
+    return findings
+
+
+_FSTRING_SQL_START = re.compile(
+    r"(execute|executemany)\([^)]*f(['\"]{1,3})", re.IGNORECASE,
+)
+
+
+def _detect_fstring_sql(file_path: str, lines: list[str], skip_lines: set[int]) -> list[dict]:
+    """Scan f-string SQL for NON-constant interpolation.
+
+    A single-line regex cannot see interpolations inside a triple-quoted
+    f-string (the execute( line and the {var} lines differ), so we walk
+    the statement: open quote, collect body until the matching close, and
+    flag only when a {…} expression contains a lowercase identifier (a
+    runtime value) rather than an all-caps constant.
+    """
+    findings = []
+    for lineno, line in enumerate(lines, 1):
+        stripped = line.rstrip("\n")
+        if lineno in skip_lines or stripped.lstrip().startswith("#"):
+            continue
+        m = _FSTRING_SQL_START.search(stripped)
+        if not m:
+            continue
+        if _line_exempt(stripped, "sql-injection"):
+            continue
+        quote = m.group(2)
+        qpos = stripped.find(quote, m.end() - len(quote))
+        if qpos == -1:
+            continue
+        body = stripped[qpos + len(quote):]
+        if quote in ("'''", '"""'):
+            close = body.find(quote)
+            consumed = lineno
+            while close == -1 and consumed < len(lines):
+                consumed += 1
+                body += lines[consumed - 1].rstrip("\n")
+                close = body.rfind(quote)
+        interps = re.findall(r"\{([^{}]+)\}", body)
+        dynamic = [e for e in interps
+                   if re.search(r"[a-z_]", e) and not re.fullmatch(r"[A-Z0-9_]+", e)]
+        if not dynamic:
+            continue  # no interpolation, or only constants — safe
+        findings.append({
+            "finding_id": next_finding_id(),
+            "technique": "static-pattern",
+            "pattern": "sql-injection",
+            "severity": "high",
+            "detail": ("SQL query built by f-string with dynamic interpolation "
+                       f"({', '.join(dynamic[:3])}) — SQL injection"),
+            "file": Path(file_path).name,
+            "line": lineno,
+            "code": stripped.strip()[:120],
+        })
+    return findings
+
+
+# ── Phase 2c: State Corruption + Dependency Sabotage (A3) ─────────
+# A3 attacks the STATE layer: mutation points that can silently lose
+# data or crash mid-operation, and external dependencies that can hang
+# or fail. Static detection flags the ANTIPATTERNS; runtime simulation
+# (monkey-patching the call to raise) is documented in the skill.
+
+# Inline exemption helper shared by all A3/A4 detectors.
+def _line_exempt(stripped: str, pattern: str) -> bool:
+    """True if the line carries `# adversarial-ignore: <pattern|*>`."""
+    m = re.search(r"#\s*adversarial-ignore:\s*([\w-]+|\*)", stripped)
+    return bool(m and (m.group(1) == "*" or m.group(1) == pattern))
+
+
+def _string_only_lines(lines: list[str]) -> set[int]:
+    """Line numbers (1-based) whose content lies ENTIRELY inside a
+    triple-quoted string (docstrings, embedded snippet blobs).
+
+    Corpus files store PHP/Ruby/JS example snippets inside triple-quoted
+    Python strings; a line-based scanner must not flag snippet content as
+    if it were our code. Tracks ''' and \"\"\" state per line; a line that
+    opens and closes on the same line, or has code before the opening
+    quote, is treated as code.
+    """
+    inside = set()
+    in_tq: str | None = None
+    for i, raw in enumerate(lines, 1):
+        s = raw.rstrip("\n")
+        if in_tq:
+            idx = s.find(in_tq)
+            if idx == -1:
+                inside.add(i)
+                continue
+            s = s[idx + 3:]
+            in_tq = None
+        stripped = s.strip()
+        if stripped.startswith(('"""', "'''")):
+            tq = stripped[:3]
+            rest = stripped[3:]
+            if tq in rest:
+                continue  # opens and closes same line — trailing content is code
+            in_tq = tq
+            inside.add(i)
+            continue
+        # Inline triple-quote open with content after it (e.g. SNIPPETS = ["""...)
+        for tq in ('"""', "'''"):
+            idx = s.find(tq)
+            if idx != -1:
+                rest = s[idx + 3:]
+                if tq in rest:
+                    s = rest[rest.find(tq) + 3:]
+                else:
+                    in_tq = tq
+                break
+    return inside
+
+
+def _func_bodies(lines: list[str]) -> list[dict]:
+    """Return function bodies as {name, start, end, params, text} by indentation."""
+    bodies = []
+    for lineno, line in enumerate(lines, 1):
+        m = re.match(r"^(async\s+)?def\s+(\w+)\s*\((.*)\)\s*:", line.strip())
+        if not m:
+            continue
+        name = m.group(2)
+        params = [p.strip().split(":")[0].strip().split("=")[0].strip()
+                  for p in re.split(r",\s*(?![^()]*\))", m.group(3))
+                  if p.strip() and p.strip() not in ("self", "cls")]
+        indent = len(line) - len(line.lstrip())
+        body_lines = []
+        end = lineno
+        for j in range(lineno, len(lines)):
+            nxt = lines[j]
+            if nxt.strip() and (len(nxt) - len(nxt.lstrip())) <= indent:
+                break
+            body_lines.append(nxt.rstrip("\n"))
+            end = j + 1
+        bodies.append({"name": name, "params": params, "start": lineno,
+                       "end": end, "text": "\n".join(body_lines)})
+    return bodies
+
+
+# State-mutation calls (db/session/cursor objects). A commit without any
+# try/except in the enclosing function means a mid-operation failure
+# leaves the state half-written with no rollback path.
+_STATE_MUTATION_RE = re.compile(
+    r"\.(commit|flush)\(\)|\.save\(\)",
+)
+# Network dependencies that can hang indefinitely without a timeout.
+_DEP_NO_TIMEOUT_RE = re.compile(
+    r"(requests|httpx|aiohttp)\.(get|post|put|delete|patch|head|request)\("
+    r"|urllib\.request\.urlopen\(",
+)
+_SUBPROCESS_RE = re.compile(
+    r"subprocess\.(run|call|check_output|check_call|Popen)\(",
+)
+
+
+def detect_state_corruption_patterns(file_path: str, lines: list[str]) -> list[dict]:
+    """Detect A3 state-corruption / dependency-sabotage antipatterns.
+
+    Code-only. Three patterns:
+      - state-mutation-unhandled (medium): .commit()/.flush()/.save() with
+        no try/except in the enclosing function — half-written state on failure.
+      - dep-timeout-missing (medium): requests/httpx/aiohttp/urllib call with
+        no timeout= on the same line — unbounded hang risk.
+      - subprocess-no-timeout (low): subprocess call with no timeout=.
+    """
+    if Path(file_path).suffix not in {".py", ".pyw"}:
+        return []
+    findings = []
+    bodies = _func_bodies(lines)
+    skip_lines = _string_only_lines(lines)
+
+    # Pattern 1: state mutation outside try/except
+    for lineno, line in enumerate(lines, 1):
+        stripped = line.rstrip("\n")
+        if lineno in skip_lines:
+            continue
+        if stripped.lstrip().startswith(("#", "//", "/*", "*", "'''", '"""')):
+            continue
+        if not _STATE_MUTATION_RE.search(stripped):
+            continue
+        if _line_exempt(stripped, "state-mutation-unhandled"):
+            continue
+        # Find enclosing function; if none (module level), assume unhandled
+        # unless the file has a try/except somewhere.
+        enclosing = next((b for b in bodies if b["start"] < lineno <= b["end"]), None)
+        if enclosing and re.search(r"\btry\s*:", enclosing["text"]):
+            continue
+        if not enclosing and re.search(r"\btry\s*:", "\n".join(lines)):
+            continue
+        findings.append({
+            "finding_id": next_finding_id(),
+            "technique": "state-corruption",
+            "pattern": "state-mutation-unhandled",
+            "severity": "medium",
+            "detail": f"{stripped.strip()[:80]} — no error handling; failure leaves partial state",
+            "file": Path(file_path).name,
+            "line": lineno,
+            "code": stripped.strip()[:120],
+        })
+
+    # Pattern 2: network dependency without timeout
+    for lineno, line in enumerate(lines, 1):
+        stripped = line.rstrip("\n")
+        if lineno in skip_lines:
+            continue
+        if stripped.lstrip().startswith(("#", "//", "/*", "*", "'''", '"""')):
+            continue
+        if not _DEP_NO_TIMEOUT_RE.search(stripped):
+            continue
+        if "timeout" in stripped or _line_exempt(stripped, "dep-timeout-missing"):
+            continue
+        findings.append({
+            "finding_id": next_finding_id(),
+            "technique": "dependency-sabotage",
+            "pattern": "dep-timeout-missing",
+            "severity": "medium",
+            "detail": f"{stripped.strip()[:80]} — no timeout; network hang blocks forever",
+            "file": Path(file_path).name,
+            "line": lineno,
+            "code": stripped.strip()[:120],
+        })
+
+    # Pattern 3: subprocess without timeout
+    for lineno, line in enumerate(lines, 1):
+        stripped = line.rstrip("\n")
+        if lineno in skip_lines:
+            continue
+        if stripped.lstrip().startswith(("#", "//", "/*", "*", "'''", '"""')):
+            continue
+        if not _SUBPROCESS_RE.search(stripped):
+            continue
+        if "timeout" in stripped or _line_exempt(stripped, "subprocess-no-timeout"):
+            continue
+        findings.append({
+            "finding_id": next_finding_id(),
+            "technique": "dependency-sabotage",
+            "pattern": "subprocess-no-timeout",
+            "severity": "low",
+            "detail": f"{stripped.strip()[:80]} — no timeout; child process can hang forever",
+            "file": Path(file_path).name,
+            "line": lineno,
+            "code": stripped.strip()[:120],
+        })
+
+    return findings
+
+
+# ── Phase 2d: Concurrency + Invariants + Property-Based (A4) ──────
+
+_THREADING_RE = re.compile(
+    r"import\s+threading|from\s+threading|threading\.|Thread\(|ThreadPoolExecutor\("
+    r"|import\s+asyncio|from\s+asyncio|asyncio\.|async\s+def"
+    r"|import\s+multiprocessing|multiprocessing\.|Process\(",
+)
+_LOCK_RE = re.compile(r"\.lock\(|Lock\(\)|RLock\(|Semaphore\(|with\s+\w*_?lock\b")
+_GLOBAL_MUTATION_RE = re.compile(r"\b(\w+)\s*(\+=|-=|\*=|/=|\^=|\|=|&=|<<=|>>=|=)")
+
+
+def detect_concurrency_patterns(file_path: str, lines: list[str]) -> list[dict]:
+    """Detect A4 concurrency antipatterns.
+
+    Code-only. Two patterns:
+      - shared-global-race (high): a `global X` declaration whose X is
+        mutated inside a function, in a file that uses threads/async, with
+        NO lock anywhere — classic lost-update race on shared state.
+      - toctou-delete (medium): os.path.exists(P) followed by
+        os.remove/unlink/rmtree(P) in the same function — check-then-act
+        race; the path can change between check and delete.
+    """
+    if Path(file_path).suffix not in {".py", ".pyw"}:
+        return []
+    findings = []
+    content = "\n".join(lines)
+    skip_lines = _string_only_lines(lines)
+
+    # Threading evidence must come from CODE, not regex-literal lines
+    # (e.g. a pattern table containing r"(def |async def )..." would
+    # otherwise make the gate flag ITSELF) and not docstring blobs.
+    def _strip_code(line: str) -> str:
+        """Remove string literals (incl. raw r'') and trailing comments."""
+        s = re.sub(r"\b[rRbB]?(['\"])(?:\\.|(?!\1).)*\1", "", line)
+        return re.sub(r"#.*$", "", s)
+
+    def _has_threading() -> bool:
+        for lineno, line in enumerate(lines, 1):
+            if lineno in skip_lines:
+                continue
+            if _THREADING_RE.search(_strip_code(line)):
+                return True
+        return False
+
+    # Pattern 1: shared mutable global in a threaded file, no lock
+    if _has_threading() and not _LOCK_RE.search(content):
+        for lineno, line in enumerate(lines, 1):
+            stripped = line.rstrip("\n")
+            m = re.match(r"^\s*global\s+([\w, ]+)", stripped)
+            if not m:
+                continue
+            if lineno in skip_lines:
+                continue
+            if _line_exempt(stripped, "shared-global-race"):
+                continue
+            names = [n.strip() for n in m.group(1).split(",")]
+            mutated = []
+            for name in names:
+                for l2 in lines:
+                    mm = re.search(rf"\b{re.escape(name)}\b\s*(\+=|-=|\*=|/=|=)", _strip_code(l2))
+                    if mm and f"global {name}" not in l2:
+                        mutated.append(name)
+                        break
+            if mutated:
+                findings.append({
+                    "finding_id": next_finding_id(),
+                    "technique": "concurrency",
+                    "pattern": "shared-global-race",
+                    "severity": "high",
+                    "detail": (f"global {', '.join(mutated)} mutated in threaded file "
+                               "with no lock — lost-update race"),
+                    "file": Path(file_path).name,
+                    "line": lineno,
+                    "code": stripped.strip()[:120],
+                })
+
+    # Pattern 2: check-then-delete TOCTOU within the same function
+    for body in _func_bodies(lines):
+        body_lines = body["text"].split("\n")
+        base = body["start"]
+        checked = {}  # var name -> first check line (relative)
+        for i, bl in enumerate(body_lines):
+            if base + i in skip_lines:
+                continue
+            m = re.search(r"os\.path\.(exists|isfile|isdir)\(\s*([\w.\[\]]+)\s*\)", bl)
+            if m:
+                checked.setdefault(m.group(2), i)
+        for i, bl in enumerate(body_lines):
+            if base + i in skip_lines:
+                continue
+            m = re.search(r"os\.(remove|unlink)\(\s*([\w.\[\]]+)\s*\)|shutil\.rmtree\(\s*([\w.\[\]]+)\s*\)", bl)
+            if not m:
+                continue
+            var = m.group(2) or m.group(3)
+            if var in checked and not _line_exempt(bl, "toctou-delete"):
+                findings.append({
+                    "finding_id": next_finding_id(),
+                    "technique": "concurrency",
+                    "pattern": "toctou-delete",
+                    "severity": "medium",
+                    "detail": (f"os.path.exists({var}) then delete — TOCTOU race; "
+                               "path can change between check and delete"),
+                    "file": Path(file_path).name,
+                    "line": base + i,
+                    "code": bl.strip()[:120],
+                })
+    return findings
+
+
+# Invariant violations: implicit assumptions the code makes that a
+# boundary input can break.
+_DIVISION_RE = re.compile(r"/\s*([a-zA-Z_]\w*)")
+
+
+def detect_invariant_patterns(file_path: str, lines: list[str]) -> list[dict]:
+    """Detect A4 invariant violations.
+
+    Code-only. Two patterns:
+      - unguarded-division (medium): dividing by a function parameter with
+        no zero-check (`if x == 0`, `if not x`) and no ZeroDivisionError
+        handler in the function — crashes on zero input.
+      - bare-dict-access (low): `d[key]` on a parameter without .get() —
+        KeyError on missing key.
+    """
+    if Path(file_path).suffix not in {".py", ".pyw"}:
+        return []
+    findings = []
+    bodies = _func_bodies(lines)
+    skip_lines = _string_only_lines(lines)
+
+    for body in bodies:
+        body_lines = body["text"].split("\n")
+        base = body["start"]
+        has_zero_guard = bool(
+            re.search(r"\bif\s+(not\s+)?\w+\s*(==\s*0|is\s+None|<=?\s*0)\b"
+                      r"|except\s+(ZeroDivisionError|Exception)", body["text"])
+        )
+        # Pattern 1: division by param without guard
+        for i, bl in enumerate(body_lines):
+            if base + i in skip_lines:
+                continue
+            if bl.lstrip().startswith("#"):
+                continue
+            if "//" in bl and "://" not in bl:
+                continue
+            for pn in body["params"]:
+                if not re.search(rf"/\s*\(?\s*{re.escape(pn)}\b", bl):
+                    continue
+                if _line_exempt(bl, "unguarded-division"):
+                    continue
+                if has_zero_guard:
+                    continue
+                findings.append({
+                    "finding_id": next_finding_id(),
+                    "technique": "invariant",
+                    "pattern": "unguarded-division",
+                    "severity": "medium",
+                    "detail": f"{bl.strip()[:80]} — division by param '{pn}' with no zero-guard",
+                    "file": Path(file_path).name,
+                    "line": base + i,
+                    "code": bl.strip()[:120],
+                })
+                break
+        # Pattern 2: bare dict access on a parameter
+        for i, bl in enumerate(body_lines):
+            if base + i in skip_lines:
+                continue
+            if bl.lstrip().startswith("#"):
+                continue
+            if ".get(" in bl:
+                continue
+            for pn in body["params"]:
+                if re.search(rf"\b{re.escape(pn)}\[[\"']", bl) and _line_exempt(bl, "bare-dict-access"):
+                    break
+                if not re.search(rf"\b{re.escape(pn)}\[[\"']", bl):
+                    continue
+                findings.append({
+                    "finding_id": next_finding_id(),
+                    "technique": "invariant",
+                    "pattern": "bare-dict-access",
+                    "severity": "low",
+                    "detail": f"{bl.strip()[:80]} — bare dict access on '{pn}'; KeyError if key missing",
+                    "file": Path(file_path).name,
+                    "line": base + i,
+                    "code": bl.strip()[:120],
+                })
+                break
+    return findings
+
+
+# Property-based breaking (A4): for PURE functions, emit property
+# templates the implementer can falsify (determinism, idempotence,
+# roundtrip). Static tool cannot execute — it packages the properties.
+_IMPURE_RE = re.compile(
+    r"\b(open|print|input|exec|eval)\s*\(|os\.|sys\.|subprocess|requests|httpx"
+    r"|\.write\(|\.commit\(|random\.|datetime\.now|time\.time|uuid\.|global\s",
+)
+
+
+def generate_property_checks(file_path: str, lines: list[str]) -> list[dict]:
+    """Emit A4 property-based templates for pure functions (info severity).
+
+    A function is 'pure' when it takes at least one parameter, returns a
+    value, and touches no I/O / time / randomness / global state. For each
+    such function, an info finding lists falsifiable properties.
+    """
+    if Path(file_path).suffix not in {".py", ".pyw"}:
+        return []
+    findings = []
+    skip_lines = _string_only_lines(lines)
+    for body in _func_bodies(lines):
+        if body["start"] in skip_lines:
+            continue
+        text = body["text"]
+        if not body["params"]:
+            continue
+        if not re.search(r"\breturn\b", text):
+            continue
+        if _IMPURE_RE.search(text):
+            continue
+        props = [
+            f"determinism: {body['name']}(x) == {body['name']}(x) for same x",
+            f"idempotence: {body['name']}({body['name']}(x)) == {body['name']}(x)",
+            "boundary: survives -1, 0, 1, huge, None, nan, inf inputs",
+        ]
+        findings.append({
+            "finding_id": next_finding_id(),
+            "technique": "property-based",
+            "pattern": "property-template",
+            "severity": "info",
+            "detail": f"pure function '{body['name']}()' — falsify: " + "; ".join(props),
+            "file": Path(file_path).name,
+            "line": body["start"],
+            "code": text.strip().splitlines()[0][:120] if text.strip() else body["name"],
+        })
+    return findings
+
+
+# ── Level dispatch ────────────────────────────────────────────────
+
+def run_level(filepath: str, level: str) -> list[dict]:
+    """Run all detectors for a maturity level on a single file.
+
+    A1: surface only (no findings emitted — enumeration only).
+    A2: fuzz + cheat + static OWASP patterns.
+    A3: A2 + state corruption + dependency sabotage.
+    A4/A5: A3 + concurrency + invariants + property templates.
+    """
+    findings: list[dict] = []
+    try:
+        with open(filepath) as f:
+            lines = f.readlines()
+    except IOError:
+        return findings
+
+    if level in ("A2", "A3", "A4", "A5"):
+        funcs = _find_func_defs(lines)
+        for fuzz in generate_fuzz_inputs(funcs)[:20]:
+            findings.append({
+                "finding_id": next_finding_id(),
+                "technique": "input-fuzzing",
+                "target": f"{filepath}:{fuzz['function']}()",
+                "parameter": fuzz["parameter"],
+                "expected_type": fuzz["expected_type"],
+                "value_repr": fuzz["value_repr"],
+                "severity": "info" if fuzz["value"] is not None else "medium",
+            })
+        findings.extend(detect_cheat_patterns(filepath, lines))
+        findings.extend(detect_static_security_patterns(filepath, lines))
+    if level in ("A3", "A4", "A5"):
+        findings.extend(detect_state_corruption_patterns(filepath, lines))
+    if level in ("A4", "A5"):
+        findings.extend(detect_concurrency_patterns(filepath, lines))
+        findings.extend(detect_invariant_patterns(filepath, lines))
+        findings.extend(generate_property_checks(filepath, lines))
     return findings
 
 
@@ -435,17 +969,17 @@ def main():
         if args.level in ("A1",):
             continue
 
-        # Phase 2: Input Fuzzing + Cheat Detection (A2+)
+        # Phase 2: Level-dispatched detection (A2+)
         try:
             with open(filepath) as f:
                 lines = f.readlines()
         except IOError:
             continue
 
+        level_findings = run_level(filepath, args.level)
+
         funcs = _find_func_defs(lines)
         fuzz_inputs = generate_fuzz_inputs(funcs)
-        cheat_findings = detect_cheat_patterns(filepath, lines)
-        static_findings = detect_static_security_patterns(filepath, lines)
 
         if not args.json:
             if funcs:
@@ -457,21 +991,7 @@ def main():
                     print(f"     ... and {len(funcs) - 5} more")
             print(f"   Fuzz inputs generated: {len(fuzz_inputs)}")
 
-        # Package fuzz findings
-        for fuzz in fuzz_inputs[:20]:  # limit per file
-            finding = {
-                "finding_id": next_finding_id(),
-                "technique": "input-fuzzing",
-                "target": f"{filepath}:{fuzz['function']}()",
-                "parameter": fuzz["parameter"],
-                "expected_type": fuzz["expected_type"],
-                "value_repr": fuzz["value_repr"],
-                "severity": "info" if fuzz["value"] is not None else "medium",
-            }
-            all_findings.append(finding)
-
-        all_findings.extend(cheat_findings)
-        all_findings.extend(static_findings)
+        all_findings.extend(level_findings)
 
     # Phase 3: Evidence Packaging
     summary = {

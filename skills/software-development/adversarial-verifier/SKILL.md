@@ -75,6 +75,22 @@ For every function/endpoint parameter, list:
 python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <path> --level A1
 ```
 
+**Static detection layers are implemented in the script (2026-08-03):**
+- `A2` — input fuzzing + cheat detection + static OWASP patterns (command injection, shell=True RCE, eval/exec, pickle/yaml deserialization, SQL injection via concatenation, dynamic-path deletion, hardcoded credentials)
+- `A3` — state corruption + dependency sabotage patterns: `.commit()/.flush()/.save()` with no error handling in the enclosing function (medium), `requests/httpx/aiohttp/urllib` calls with no `timeout=` (medium), `subprocess` with no `timeout=` (low)
+- `A4` — concurrency + invariants + property templates: shared mutable global in a threaded file with no lock (high — gate blocker), check-then-delete TOCTOU (medium), division by a param with no zero-guard (medium), bare dict access on a param (low), property-based templates for pure functions (info)
+- `A5` — same as A4; evidence packaging via `--output`
+
+Run the appropriate level:
+```bash
+python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <path> --level A4 --gate
+```
+
+False-positive controls built in: triple-quoted docstring/snippet content is never
+scanned (corpus files with PHP/Ruby examples stay silent); string literals and
+comments are stripped before threading-evidence detection; inline
+`# adversarial-ignore: <pattern>` exemptions work on every pattern.
+
 ### State
 
 For every stateful component, list failure states:
