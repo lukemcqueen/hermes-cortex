@@ -15,7 +15,7 @@ metadata:
 > **⚠️ HARD RULES:**
 > 1. Load this skill (`skill_view(name="change-checklist")`) **before** calling `end_change()`. Not optional.
 > 2. **Run Phase 5 (Final Verification) before Closing the Cycle.** Do not proceed to Closing until every Phase 5 item passes, including the adversarial scan.
-> 3. **Adversarial scan is not optional for code changes.** `python3 ops/scripts/quality/adversarial-verify.py --dir . --level A2 --gate` must exit 0. If it found findings, fix them. Do not close with findings.
+> 3. **Adversarial scan is not optional for code changes.** Run **change-checklist Phase 1.5** before closing: `python3 ops/scripts/quality/adversarial-verify.py --file <changed-file> --level A2 --gate` for every changed script (A4 for security/guard/hook/enforcer paths). Must exit 0. If it found findings, fix them. Do not close with findings. "0 findings" from static scan is NOT a pass — also execute the changed path against boundary inputs and attack its implicit assumptions.
 
 ## Pre-Work (Before `begin_change`)
 
@@ -28,6 +28,14 @@ metadata:
 - [ ] Run full test suite (`pytest tests/ -x --tb=short`)
 - [ ] All tests pass (report exact count)
 - [ ] If tests fail: fix before closing cycle. Never close with failing tests unless user explicitly waives.
+
+## Phase 1.5 — Adversarial Verification (MANDATORY — no bypass)
+
+- [ ] Run the static gate on every changed script file: `python3 ops/scripts/quality/adversarial-verify.py --file <changed-file> --level A2 --gate`
+- [ ] **A4 is MANDATORY** for security/guard/hook/enforcer files (anything under `plugins/`, `hooks/`, `mcp-servers/`, `ops/scripts/manage/`, `ops/scripts/cortex_doctor/`, `ops/scripts/quality/`, `tests/`, plus `pre-commit-score` and `cortex-update.sh`)
+- [ ] Critical/high findings → block: fix before proceeding. No `--no-verify`.
+- [ ] **Verifier step — "0 findings" is NOT a pass:** execute the changed path with boundary inputs (`-1`, `0`, `None`, empty, whitespace, `inf`/`nan`, non-ASCII) and attack the code's implicit assumptions (deployed file == loaded module, input already validated, etc.)
+- [ ] Record what was checked: finding IDs, boundary inputs run, assumptions violated, exit codes
 
 ## Phase 2 — Multi-OS Compatibility
 

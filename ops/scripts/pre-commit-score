@@ -834,30 +834,54 @@ else
   exit 1
 fi
 
-# ── Adversarial scan (staged files only, A2 level) ──────────
+# ── Adversarial scan (staged files only, A2 default / A4 security) ──
 # HARD GATE: blocks commit if critical/high findings exist. No bypass.
+# Fail CLOSED: if the verifier script is missing, block the commit and
+# point at the sanctioned deploy path (2026-08-04 hardening — previously
+# this silently skipped every staged file when the script was absent,
+# which was a bypass: security/guard changes could land unscanned).
 ADVERSARIAL_SCRIPT="$REPO_ROOT/ops/scripts/quality/adversarial-verify.py"
-if [[ -f "$ADVERSARIAL_SCRIPT" ]]; then
-  ADV_FAILED=0
-  ADV_SCANNED=0
-  while IFS= read -r adv_file; do
-    ADV_SCANNED=$((ADV_SCANNED + 1))
-    if ! ADV_OUTPUT=$(python3 "$ADVERSARIAL_SCRIPT" --file "$REPO_ROOT/$adv_file" --level A2 --gate 2>&1); then
-          ADV_FAILED=$((ADV_FAILED + 1))
-          echo "   ❌  $adv_file:" | sed 's/^/   /'
-          echo "$ADV_OUTPUT" | grep -E "❌|FAIL|CRITICAL|Medium|High" | head -5 | sed 's/^/      /' || true
-        fi
-  done <<< "$STAGED_FILES"
-  if [[ "$ADV_FAILED" -gt 0 ]]; then
-    echo ""
-    echo "❌  Adversarial scan blocked: ${ADV_FAILED} file(s) have findings."
-    echo "    Fix the findings before committing."
-    echo ""
-    exit 1
+if [[ ! -f "$ADVERSARIAL_SCRIPT" ]]; then
+  echo ""
+  echo "❌  adversarial-verify.py not found — cannot run the adversarial gate."
+  echo "    Adversarial verification is MANDATORY for script changes (A2 default,"
+  echo "    A4 for security/guard/hook/enforcer files). A commit without the scan"
+  echo "    is a governance bypass."
+  echo "    Install it via the sanctioned path:"
+  echo "      bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
+  echo "    No bypass flags — do NOT use --no-verify."
+  echo ""
+  exit 1
+fi
+ADV_FAILED=0
+ADV_SCANNED=0
+# Security/guard/hook/enforcer paths get A4; everything else A2.
+# Keep in sync with the enforcer's _ADVERSARIAL_CRITICAL_PATHS and the
+# change-checklist skill's Phase 1.5 A4 list. Root-level enforcement
+# scripts are named explicitly because they live directly in ops/scripts/
+# (no subdirectory prefix to match).
+ADV_A4_PREFIXES="plugins/|hooks/|mcp-servers/|ops/scripts/manage/|ops/scripts/cortex_doctor/|ops/scripts/quality/|tests/|ops/scripts/pre-commit-score|ops/scripts/cortex-update.sh|ops/scripts/change-validate.sh|ops/scripts/secret-leak-detector.sh"
+while IFS= read -r adv_file; do
+  ADV_SCANNED=$((ADV_SCANNED + 1))
+  ADV_LEVEL="A2"
+  if echo "$adv_file" | grep -qE "^($ADV_A4_PREFIXES)"; then
+    ADV_LEVEL="A4"
   fi
-  if [[ "$ADV_SCANNED" -gt 0 ]]; then
-    echo "✅  Adversarial verify: passed on ${ADV_SCANNED} file(s)"
-  fi
+  if ! ADV_OUTPUT=$(python3 "$ADVERSARIAL_SCRIPT" --file "$REPO_ROOT/$adv_file" --level "$ADV_LEVEL" --gate 2>&1); then
+        ADV_FAILED=$((ADV_FAILED + 1))
+        echo "   ❌  $adv_file (level $ADV_LEVEL):" | sed 's/^/   /'
+        echo "$ADV_OUTPUT" | grep -E "❌|FAIL|CRITICAL|Medium|High" | head -5 | sed 's/^/      /' || true
+      fi
+done <<< "$STAGED_FILES"
+if [[ "$ADV_FAILED" -gt 0 ]]; then
+  echo ""
+  echo "❌  Adversarial scan blocked: ${ADV_FAILED} file(s) have findings."
+  echo "    Fix the findings before committing — no bypass flags."
+  echo ""
+  exit 1
+fi
+if [[ "$ADV_SCANNED" -gt 0 ]]; then
+  echo "✅  Adversarial verify: passed on ${ADV_SCANNED} file(s)"
 fi
 
 # Check decision — LOOP is normal for first cycle, STOP means done

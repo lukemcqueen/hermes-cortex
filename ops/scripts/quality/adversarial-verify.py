@@ -1041,7 +1041,7 @@ def main():
             print("\n🔴 GATE_BLOCKED — critical/high findings detected")
             print("   Pre-commit adversarial gate rejected this change.")
             print("   Fix findings before committing — no bypass flags.")
-            print("   Use git commit --no-verify only in emergencies.")
+            print("   Do NOT use git commit --no-verify — it is logged and audited.")
             sys.exit(1)
         else:
             print("\n✅ GATE_PASSED — no critical/high findings")

@@ -329,16 +329,30 @@ feedback:
 
 ## Integration Checklist
 
-### With change-checklist (pre-ship)
+### With change-checklist (pre-ship) — MANDATORY
 
-When loaded before `end_change()`, run adversarial verification at the specified level:
+**Adversarial verification is a hard pre-end_change gate (Luke directive 2026-08-04), not advice.** Enforced at three layers:
+
+1. **Pre-commit hook** — runs `--level A2 --gate` on every staged file (A4 for security/guard/hook/enforcer paths), fails closed if the verifier script is missing
+2. **Enforcer plugin** — blocks `git commit`/`git push` of `ops/scripts/`, `plugins/`, `skills/`, `hooks/`, `mcp-servers/`, `tests/` until this skill is loaded
+3. **change-checklist Phase 1.5** — the agent-level pass
+
+Run the gate on every changed script file:
 
 ```bash
-python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <changed-files> --level A2
+python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <changed-files> --level A2 --gate
+# A4 for anything under plugins/, hooks/, mcp-servers/, ops/scripts/manage/,
+# ops/scripts/cortex_doctor/, ops/scripts/quality/, tests/, and the
+# enforcement scripts themselves (pre-commit-score, cortex-update.sh)
 ```
 
 If findings are critical/high: block the release.
 If findings are medium/low: fix or document before releasing.
+
+**"0 findings" from the static scan is NOT a pass.** A static scan returning 0
+findings says nothing about runtime behavior. You MUST ALSO execute the changed
+path against boundary inputs and attack its implicit assumptions (Technique F) —
+see change-checklist Phase 1.5 for the full verifier step.
 
 ### With session orchestration (Wave 4)
 

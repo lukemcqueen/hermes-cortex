@@ -120,6 +120,54 @@ See `references/testing-deployable-scripts.md` for detailed testing patterns by 
 
 - [ ] **nginx changes:** Run `sudo nginx -t` to validate syntax
 
+### Phase 1.5: Adversarial Verification (MANDATORY — no bypass)
+
+**Every script change is adversarially verified before `end_change()`.** This is a hard gate, not a suggestion (Luke directive 2026-08-04). It is enforced at three layers:
+
+1. **Pre-commit hook** — runs the static gate on every staged file at commit time (fail-closed: blocks critical/high findings; blocks the commit entirely if `adversarial-verify.py` is missing)
+2. **Enforcer plugin** — blocks `git commit`/`git push` of changed paths (`ops/scripts/`, `plugins/`, `skills/`, `hooks/`, `mcp-servers/`, `tests/`) until the `adversarial-verifier` skill is loaded
+3. **This checklist** — the agent-level pass that catches what static analysis cannot
+
+- [ ] **Run the static gate on every changed script file:**
+  ```bash
+  python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <changed-file> --level A2 --gate
+  ```
+  - **A2 is the default level** for standard script changes.
+  - **A4 is MANDATORY** for security/guard/hook/enforcer files: anything under
+    `plugins/`, `hooks/`, `mcp-servers/`, `ops/scripts/manage/`,
+    `ops/scripts/cortex_doctor/`, `ops/scripts/quality/`, `tests/`, and the
+    enforcement scripts themselves (`pre-commit-score`, `cortex-update.sh`).
+  - Critical/high findings → **block**: fix before proceeding. No `--no-verify`.
+- [ ] **Verifier step — "0 findings" is NOT a pass.** A static scan returning 0
+  findings says nothing about runtime behavior. For every changed script, ALSO:
+  - **Execute the changed path with boundary inputs** (`-1`, `0`, `None`, empty,
+    whitespace, `inf`/`nan` where numeric, non-ASCII) and check the real output —
+    not just that it ran.
+  - **Attack the premise (Technique F):** list the implicit assumptions the code
+    makes (e.g. "queries only run via terminal", "deployed file == loaded
+    module", "input is already validated") and violate each one with a 30-second
+    test. The cheapest proof of wrong is breaking an assumption, not re-reading
+    the diff.
+  - **Verify deployed == loaded**: for any change to a guard/hook/enforcer, confirm
+    the running process actually loads the new file (restart/daemon check), not
+    just that the file on disk changed.
+- [ ] **Use a different model for verifier vs implementer** where quality is
+  critical — the maker/checker split defeats motivated reasoning. A fresh
+  checker runs the 30-second test instead of rationalizing the three-option
+  argument.
+- [ ] **Record what was checked** — evidence packaging: finding IDs, boundary
+  inputs run, assumptions violated, exit codes. "No findings" must be reported
+  as "checked X, Y, Z and found nothing", never as "verified clean" with no
+  evidence.
+
+> **Why this exists:** Moses' 2026-08-03 failures — a 200-line upstream patch
+> shipped on an unexamined premise (queries only run via `python3 -c` in
+> terminal — false, disproven in 0.29s with `execute_code`), and a "12/12"
+> claim where the deployed guard wasn't the file the gateway loads. Both were
+> motivated reasoning, and a mandatory adversarial pass is the structural cure.
+> The tool existed; the process never invoked it. Now it cannot be skipped on a
+> bad day.
+
 ### Phase 2: Verify Multi-OS Compatibility
 
 Every change that touches paths or system commands must work on both Linux and macOS.

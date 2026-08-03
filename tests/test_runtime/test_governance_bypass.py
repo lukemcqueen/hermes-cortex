@@ -572,3 +572,129 @@ class TestSkillsStatePerSession:
         _write_skills_state("../evil", always_loaded={"task-start"})
         assert (temp_state_dir / "evil.json").exists() is False
         assert _read_skills_state("../evil") == {}
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# ADVERSARIAL COMMIT GATE — mandatory verification (2026-08-04 hardening)
+# ═════════════════════════════════════════════════════════════════════════════
+
+
+class TestAdversarialCommitGate:
+    """Tests for _check_adversarial_commit_gate — the mandatory adversarial
+    verification gate on git commit/push of critical-path changes.
+
+    Hardened 2026-08-04 (Luke directive): first occurrence is a HARD BLOCK
+    (no more "💡 SUGGESTION" first-hit education), and the critical path list
+    covers ALL ops/scripts/, plugins/, skills/, hooks/, mcp-servers/.
+    """
+
+    def _run_gate(self, command: str, staged_files, session_id="sess-adv-test"):
+        """Run the gate with a mocked git subprocess returning staged_files."""
+        class _FakeResult:
+            def __init__(self, stdout):
+                self.returncode = 0
+                self.stdout = stdout
+
+        def _fake_run(cmd, **kwargs):
+            return _FakeResult("\n".join(staged_files) + "\n")
+
+        original_run = enforcer.subprocess.run
+        enforcer.subprocess.run = _fake_run
+        try:
+            return enforcer._check_adversarial_commit_gate(
+                "terminal", {"command": command}, session_id,
+            )
+        finally:
+            enforcer.subprocess.run = original_run
+
+    @pytest.fixture(autouse=True)
+    def _clean_state(self):
+        """Isolate the module-global warnings counter and skills set per test."""
+        saved_warnings = dict(enforcer._adversarial_warnings)
+        saved_skills = set(enforcer._skills_loaded_in_session)
+        enforcer._adversarial_warnings.clear()
+        enforcer._skills_loaded_in_session.clear()
+        yield
+        enforcer._adversarial_warnings.clear()
+        enforcer._adversarial_warnings.update(saved_warnings)
+        enforcer._skills_loaded_in_session.clear()
+        enforcer._skills_loaded_in_session.update(saved_skills)
+
+    # ── First occurrence = HARD BLOCK (no suggestion) ─────────────────────
+
+    def test_first_occurrence_blocks_scripts_change(self):
+        """First hit on ops/scripts/ change blocks with REQUIRED (not SUGGESTION)."""
+        result = self._run_gate(
+            "git commit -m 'update script'",
+            ["ops/scripts/some-script.sh"],
+        )
+        assert result is not None
+        assert result["action"] == "block"
+        assert "ADVERSARIAL VERIFICATION REQUIRED" in result["message"]
+        assert "SUGGESTION" not in result["message"]
+
+    def test_first_occurrence_blocks_enforcer_change(self):
+        result = self._run_gate(
+            "git commit -m 'enforcer update'",
+            ["plugins/governance-enforcer/__init__.py"],
+        )
+        assert result is not None
+        assert result["action"] == "block"
+
+    def test_first_occurrence_blocks_skill_change(self):
+        result = self._run_gate(
+            "git commit -m 'skill update'",
+            ["skills/software-development/change-checklist/SKILL.md"],
+        )
+        assert result is not None
+        assert result["action"] == "block"
+
+    def test_first_occurrence_blocks_hook_change(self):
+        result = self._run_gate(
+            "git commit -m 'hook update'",
+            ["hooks/pre-commit"],
+        )
+        assert result is not None
+        assert result["action"] == "block"
+
+    # ── Skill loaded → passes ─────────────────────────────────────────────
+
+    def test_passes_when_skill_loaded(self):
+        enforcer._skills_loaded_in_session.add("adversarial-verifier")
+        result = self._run_gate(
+            "git commit -m 'update script'",
+            ["ops/scripts/some-script.sh"],
+        )
+        assert result is None
+
+    # ── Non-critical paths → passes ───────────────────────────────────────
+
+    def test_passes_for_non_critical_paths(self):
+        result = self._run_gate(
+            "git commit -m 'docs update'",
+            ["docs/some-guide.md"],
+        )
+        assert result is None
+
+    # ── Repeat occurrences still block with escalation count ──────────────
+
+    def test_repeat_occurrence_mentions_count(self):
+        self._run_gate("git commit -m 'x'", ["ops/scripts/a.sh"])
+        result = self._run_gate("git commit -m 'y'", ["ops/scripts/b.sh"])
+        assert result is not None
+        assert result["action"] == "block"
+        assert "time(s)" in result["message"]
+
+    # ── Non-terminal tools pass through ───────────────────────────────────
+
+    def test_non_terminal_tool_passes(self):
+        result = enforcer._check_adversarial_commit_gate(
+            "write_file", {"path": "/tmp/x"}, "sess-adv-test",
+        )
+        assert result is None
+
+    # ── Non-commit commands pass through ──────────────────────────────────
+
+    def test_non_commit_command_passes(self):
+        result = self._run_gate("ls -la", ["ops/scripts/a.sh"])
+        assert result is None

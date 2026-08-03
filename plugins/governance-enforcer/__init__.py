@@ -118,23 +118,32 @@ _ADVERSARIAL_COMMIT_PATTERNS = [
     r"\bgit\s+commit\b",
     r"\bgit\s+push\b",
 ]
+# Paths whose changes REQUIRE adversarial verification before commit/push.
+# Broadened 2026-08-04: any ops/scripts/ change (not just manage/doctor),
+# the verifier itself (quality/), all plugins, skills, hooks, mcp-servers.
+# MUST stay in sync with ops/scripts/cortex_doctor/ paths and the
+# pre-commit hook's ADV_A4_PREFIXES list.
 _ADVERSARIAL_CRITICAL_PATHS = [
     "tests/",
-    "ops/scripts/cortex_doctor/",
-    "ops/scripts/manage/",
-    "plugins/governance-enforcer/",
+    "ops/scripts/",
+    "plugins/",
+    "skills/",
+    "docs/templates/",
     "hooks/",
     "mcp-servers/",
+    "docs/orchestrator-only-paths.txt",
 ]
 _adversarial_warnings: dict = {}  # {session_id: count}
-# Critical path display names per prefix (for the 💡 message)
+# Critical path display names per prefix (for the ⛔ message)
 _ADVERSARIAL_DISPLAY = {
     "tests/": "tests/",
-    "ops/scripts/cortex_doctor/": "doctor scripts",
-    "ops/scripts/manage/": "management scripts",
-    "plugins/governance-enforcer/": "governance enforcer plugin",
+    "ops/scripts/": "scripts (ops/scripts/)",
+    "plugins/": "plugins/",
+    "skills/": "skills/",
+    "docs/templates/": "docs templates (skills/config)",
     "hooks/": "repo hooks",
     "mcp-servers/": "MCP servers",
+    "docs/orchestrator-only-paths.txt": "orchestrator path list",
 }
 
 
@@ -1030,14 +1039,21 @@ def _check_adversarial_commit_gate(
 
     if count == 0:
         msg = (
-            "💡 ADVERSARIAL VERIFICATION SUGGESTION\n\n"
+            "⛔ ADVERSARIAL VERIFICATION REQUIRED\n\n"
             "You are shipping changes to "
             + ", ".join(sorted(path_descriptions))
             + " without adversarial verification loaded.\n\n"
+            "Adversarial verification is MANDATORY for these paths — "
+            "not a suggestion (Luke directive 2026-08-04).\n\n"
             "**adversarial-verifier** systematically breaks code before it ships. "
-            "Load it to certify the change:\n\n"
-            "  skill_view(name='adversarial-verifier')\n\n"
-            "Then retry the command. Read-only tools ARE still available.\n"
+            "Load it, then run the gate on every changed file:\n\n"
+            "  skill_view(name='adversarial-verifier')\n"
+            "  python3 ~/.hermes-cortex/scripts/adversarial-verify.py \\\n"
+            "      --file <changed-file> --level A2 --gate\n"
+            "  # A4 for security/guard/hook/enforcer files\n\n"
+            "Then retry the commit. The pre-commit hook's adversarial gate will "
+            "also block critical/high findings — this check requires the skill "
+            "to be loaded at all.\n"
         )
         return {"action": "block", "message": msg}
 
@@ -1046,7 +1062,9 @@ def _check_adversarial_commit_gate(
         f"You have been warned {count} time(s) this session about shipping "
         "critical changes without adversarial verification.\n\n"
         "You must load and run it before shipping:\n"
-        "  skill_view(name='adversarial-verifier')\n\n"
+        "  skill_view(name='adversarial-verifier')\n"
+        "  python3 ~/.hermes-cortex/scripts/adversarial-verify.py \\\n"
+        "      --file <changed-file> --level A2 --gate\n\n"
         "Then retry the command.\n"
     )
     return {"action": "block", "message": msg}
