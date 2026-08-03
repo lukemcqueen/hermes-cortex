@@ -127,30 +127,48 @@ governance lock: `_has_governance_lock()` Phase 3 reads the repo marker
 - `cortex-update.sh` purges governance locks (Pitfall 2) — re-acquire with
   `begin_change` after deploy.
 
-## Rule 5: Rebase → Post-Commit False "no-verify" Flag (2026-08-04)
+## Rule 5: Rebase/Cherry-Pick/Revert False "no-verify" Flag — FIXED via Reflog Discriminator (2026-08-04)
 
-`git pull --rebase` replays your commit WITHOUT running the pre-commit hook, so
-the pre-commit sentinel (`.git/.pre-commit-ran`) is never written. The
-post-commit hook then sees the sentinel missing and logs the NEW rebased hash
-in `~/.hermes-cortex/state/no-verify-log.json` as a `--no-verify` commit. The
-pre-push hook then BLOCKS your push: "commit X was made with --no-verify".
+**Symptom:** `git pull --rebase` replays your commit WITHOUT running the
+pre-commit hook, so the pre-commit sentinel (`.git/.pre-commit-ran`) is never
+written. The post-commit hook then logs the NEW rebased hash in
+`~/.hermes-cortex/state/no-verify-log.json` as a `--no-verify` commit, and
+pre-push BLOCKS your push: "commit X was made with --no-verify". Cherry-pick
+and revert hit the same false positive. It's a FALSE POSITIVE — the commit
+went through the hook originally; the replay just bypassed it mechanically.
 
-This is a FALSE POSITIVE — you committed through the hook; the rebase replay
-just bypassed it mechanically. The log even accumulates dangling entries this
-way (check with `git merge-base --is-ancestor <sha> origin/main` — most prior
-entries are NOT on main).
+**Root fix (committed 7bc86ca3):** `post-commit-audit` now discriminates via
+the HEAD reflog message instead of assuming sentinel-missing == bypass:
 
-**Sanctioned fix (no log tampering — the log is an audit trail):**
-1. `git commit --amend --no-edit` — re-runs the FULL pre-commit hook on the
-   same tree (sentinel written → post-commit consumes it cleanly), producing a
-   new hash NOT in the log.
-2. `git push origin main` — passes.
-3. Leave the old dangling entry in the log. It can never match a future push
-   range (the hash is unreachable), and deleting audit entries looks like
-   tampering.
+- `git reflog -1 --format='%gs'` — genuine `git commit` (normal, `--no-verify`,
+  `--amend`, `--fixup`) ALWAYS writes a message starting with `commit`
+  (`commit: ...`, `commit (amend): ...`). Internal replays write something
+  else: `rebase (pick): ...`, `cherry-pick: ...`, `revert: ...`,
+  `merge <branch>: ...`, `pull ...:`.
+- Logic: missing sentinel AND reflog starts with `commit*` → genuine bypass →
+  LOG. Missing sentinel but reflog is a replay prefix → silent, no log entry.
+
+**⚠️ Pitfall — use `commit*`, not `commit:`.** The first implementation used
+the prefix `commit:` which does NOT match `commit (amend): ...` — so
+`git commit --amend --no-verify` (a GENUINE bypass) would have slipped through
+silently. Prefix matching must be `commit*` so amend/no-verify still logs.
+A real bypass must never be silenced to fix a false positive.
+
+**Workaround still needed ONLY on hosts whose deployed post-commit predates
+the fix** (before the next `cortex-update.sh`): `git commit --amend --no-edit`
+re-runs the full pre-commit hook (sentinel written → consumed cleanly),
+producing a new hash NOT in the log; then push passes. Leave the old dangling
+entry — it can never match a future push range, and deleting audit entries
+looks like tampering.
 
 **Do NOT:** `rm ~/.hermes-cortex/state/no-verify-log.json` to unblock a push —
 that is exactly the audit-trail tampering the pre-push hook exists to catch.
+
+**Verify hook behavior with the 8-path matrix** before shipping any hook
+change that touches the sentinel: `scripts/test-post-commit-sentinel-matrix.sh`
+builds a scratch repo, installs the real hooks, and runs all eight paths
+(normal, --no-verify, rebase, cherry-pick, revert, merge, amend, amend
+--no-verify) asserting which must log and which must stay silent.
 
 ## References
 
@@ -159,3 +177,7 @@ that is exactly the audit-trail tampering the pre-push hook exists to catch.
 - `references/macos-fail-closed-hook-2026-08-03.md` — macOS portability of the
   fail-closed hook: deployed-path scorer candidate, `timeout`→`gtimeout`
   fallback, bash-3.2-safe construct list, deploy+verify cycle for both OSes.
+- `scripts/test-post-commit-sentinel-matrix.sh` — re-runnable 8-path matrix
+  (normal / --no-verify / rebase / cherry-pick / revert / merge / amend /
+  amend --no-verify) proving genuine bypasses still log and internal replays
+  stay silent. Run before shipping any sentinel-touching hook change.
