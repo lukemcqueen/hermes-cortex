@@ -75,9 +75,16 @@
 | `agent-bus-evening` | `0 18,20,22 * * 1-5` | LLM | (prompt) | origin |
 | `agent-bus-overnight` | `0 3 * * 1-5` | LLM | (prompt) | origin |
 | `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin |
-| `agent-daily-soul-refinement` | `0 23 * * *` | LLM | soul-refinement skill | origin |
-| `agent-weekly-loop-eval` | `0 9 * * 1` | LLM | loop-governance skill | origin |
+| `agent-daily-soul-refinement` | ~~`0 23 * * *`~~ | ~~LLM~~ | ~~soul-refinement skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level daily soul refinement merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-daily-soul-refinement`. |
+| `agent-weekly-loop-eval` | ~~`0 9 * * 1`~~ | ~~LLM~~ | ~~loop-governance skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level weekly loop eval merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-weekly-loop-eval`. |
 | `agent-no-verify-audit` | `every 60m` | LLM | (prompt) | origin |
+| `agent-inbox-workday` | `0 9-17 * * 1-5` | LLM | session-active-guard.py | origin |
+| `agent-inbox-evening` | `0 18,20,22 * * 1-5` | LLM | (prompt) | origin |
+| `agent-inbox-overnight` | `0 3 * * 1-5` | LLM | (prompt) | origin |
+| `agent-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `agent-bus-failover-watchdog.py` | Telegram |
+| `agent-push-metrics` | `every 5m` | no_agent | `agent-push-metrics.sh` | local |
+| `agent-session-correction-scan` | `0 22 * * 0` | no_agent | `manage/agent-session-correction-scan.py` | local |
+| `agent-mycortex-retention` | `0 6 * * *` | no_agent | `agent-mycortex-retention.py` | origin |
 
 ## Local-only (`local-*` prefix)
 
@@ -87,9 +94,12 @@
 | `local-agent-daily-finance-brief` | `0 18 * * 1-5` | LLM | Telegram |
 | `local-agent-agents-doc-audit` | `0 7 * * 1` | LLM | origin |
 | `local-agent-upwork-job-scanner` | `0 8 * * *` | LLM | Telegram |
+| `local-agent-daily-soul-refinement` | `0 23 * * *` | LLM | origin |
+| `local-agent-weekly-loop-eval` | `0 9 * * 1` | LLM | origin |
+| `local-orch-fleet-command-verifier` | `every 10m` | no_agent | Telegram |
 
 ---
 
 **Migration:** All crons renamed to `agent-*` prefix Jul 21 2026. Old bare names are replaced. Run `fix-cron-duplicates.py` to verify.
 
-**All running crons documented above — last verified: 2026-07-27**
+**All running crons documented above — last verified: 2026-08-03**
