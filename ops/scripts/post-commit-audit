@@ -22,7 +22,34 @@ if [[ -f "$SENTINEL" ]]; then
   exit 0
 fi
 
-# Sentinel missing = pre-commit hook was skipped via --no-verify
+# Sentinel missing = pre-commit hook did not run. Two causes:
+#   1. Genuine `git commit --no-verify` → MUST log (audit trail)
+#   2. Git-internal replay (rebase/cherry-pick/revert/merge/pull) which
+#      NEVER runs pre-commit → false positive, must NOT log
+# Discriminator: the HEAD reflog message. Every genuine `git commit`
+# invocation (with or without --no-verify, with or without --amend, with
+# --fixup/--squash) writes a reflog starting with "commit":
+#   commit: ...            (normal or --no-verify)
+#   commit (amend): ...    (amend or amend --no-verify)
+# Git-internal replays write something else:
+#   rebase (pick|squash|reword|...): ...
+#   cherry-pick: ...
+#   revert: ...
+#   merge <branch>: ...   /   pull ...: ...   /   Merge branch '...'
+# (2026-08-04 fix: previously ANY missing sentinel was logged, so
+# `git pull --rebase` false-flagged every replayed commit as --no-verify
+# and pre-push blocked legitimate pushes. Verified empirically on all six
+# paths before this change. The prefix is "commit" NOT "commit:" so
+# amend --no-verify still logs — a real bypass must never be silenced.)
+REFLOG_MSG=$(git reflog -1 --format='%gs' 2>/dev/null || echo "")
+if [[ -n "$REFLOG_MSG" && "$REFLOG_MSG" != commit* ]]; then
+  # Git-internal replay — pre-commit legitimately does not run here.
+  # Not a governance bypass. Consume any stray sentinel and stay quiet.
+  rm -f "$SENTINEL"
+  exit 0
+fi
+
+# Reflog starts with "commit" and sentinel is missing → genuine --no-verify.
 mkdir -p "$LOGDIR"
 COMMIT_HASH=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
 COMMIT_MSG=$(git log -1 --format="%s" 2>/dev/null || echo "unknown")
