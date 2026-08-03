@@ -65,7 +65,7 @@ print(f'Read result: msg_id={r2.get(\"msg_id\",\"?\") if r2 else \"None\"}')
 ```ini
 CORTEX_BUS_URL=https://example.com:13004
 CORTEX_BUS_FALLBACK_URL=https://example.com:14004
-CORTEX_BASIC_AUTH=moses:2ef401160fb6f6c8
+CORTEX_BASIC_AUTH=moses:your-password
 ```
 
 ## Critical Config Fields

@@ -19,10 +19,11 @@ import urllib.request
 import urllib.error
 
 BASE_URL = os.environ.get("CORTEX_BUS_TEST_URL", "http://127.0.0.1:8906")
+# Tokens MUST come from env — never hardcode credentials in repo.
 TOKENS = {
-    "moses": os.environ.get("CORTEX_BUS_TOKEN_MOSES", "hbus_841a44b5c05ccbf7ec65fd1ff52d24085dbfa36b28122cb56cca0fd9fe20a479"),
-    "esther": os.environ.get("CORTEX_BUS_TOKEN_ESTHER", "hbus_cd477348ba6fdff697bb37b178529712f60ac55c9fb30a60b082d8888b76a076"),
-    "joseph": os.environ.get("CORTEX_BUS_TOKEN_JOSEPH", "hbus_cec6d9da7c01746f230647c670fdd5b20a35842c9ff6de58b76f38bdb59d5e7e"),
+    "moses": os.environ.get("CORTEX_BUS_TOKEN_MOSES", ""),
+    "esther": os.environ.get("CORTEX_BUS_TOKEN_ESTHER", ""),
+    "joseph": os.environ.get("CORTEX_BUS_TOKEN_JOSEPH", ""),
 }
 
 PASS = 0

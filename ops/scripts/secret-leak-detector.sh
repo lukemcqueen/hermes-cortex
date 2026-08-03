@@ -6,16 +6,24 @@
 #  indicate secrets being passed as literal strings in
 #  terminal commands or shell scripts.
 #
-#  Three patterns detected:
+#  BLOCKS (exit 1) on real-looking credentials:
+#    3a. curl/wget -u "user:12+alnum-chars" (looks like a live
+#        password, not a placeholder like your-password)
+#  WARNS on:
 #    1. printf + inline string + redirection (> or >>)
 #       e.g. printf '8ec^t!p&7GME' > /tmp/pass.txt
 #    2. echo + inline string + pipe to sensitive tool
 #       e.g. echo 'ghp_token123' | gh auth login
-#    3. Inline -u "user:pass" in curl/wget commands
-#       e.g. curl -u "admin:password" https://...
+#    3b. Inline -u "user:placeholder" (your-password, $(cat ...))
+#    4. Literal secret-looking variable assignments (20+ chars)
+#    5. PII — hardcoded /home/<user>/ paths
+#    6. PII — non-placeholder domains
 #
-#  WARN-ONLY — does not block the commit. Prints warnings
-#  that the agent must review before pushing.
+#  History: 2026-07-13 added as warn-only (exit 0). 2026-08-03
+#  hardened after a LIVE nginx Basic-auth password
+#  (a live nginx Basic-auth password) sat in public docs for 2 weeks —
+#  the warn-only design let it through. Now blocks commits
+#  containing real-looking inline credentials.
 #
 #  Installed as part of cortex-update.sh verify step.
 # ─────────────────────────────────────────────────────────────
@@ -26,6 +34,7 @@ warn()  { echo -e "${YELLOW}⚠${RESET} $*"; }
 error() { echo -e "${RED}✗${RESET} $*"; }
 
 FOUND_ISSUES=0
+BLOCKING_ISSUES=0
 DETECTION_FILE=$(mktemp)
 
 # Only run in a git repo
@@ -78,8 +87,21 @@ for FILE in $STAGED_FILES; do
   fi
 
   # === Pattern 3: Inline -u "user:pass" in curl/wget ===
-  # Matches: curl -u "user:longstring" or wget --user=user --password=longstring
-  if echo "$CODE_CONTENT" | grep -Pn "curl\s+.*\s-u\s+['\"][^'\"]+:[^'\"]{8,}['\"]" >/dev/null 2>&1; then
+  # 3a. BLOCKS: password segment is 12+ alphanumeric chars with no
+  #     separators — looks like a real generated/hex credential
+  #     (e.g. a generated hex password), not a placeholder.
+  # 3b. WARNS: any other curl -u "user:pass" (placeholders like
+  #     your-password / $(cat file) / short demo values).
+  _BLOCK_HIT=0
+  if echo "$CODE_CONTENT" | grep -Pn "curl\s+.*\s-u\s+['\"][^'\"]+:[A-Za-z0-9]{12,}['\"]" >/dev/null 2>&1; then
+    MATCHES=$(echo "$CODE_CONTENT" | grep -Pn "curl\s+.*\s-u\s+['\"][^'\"]+:[A-Za-z0-9]{12,}['\"]" 2>/dev/null || true)
+    if [[ -n "$MATCHES" ]]; then
+      echo "$FILE|curl_basic_auth_block|$MATCHES" >> "$DETECTION_FILE"
+      BLOCKING_ISSUES=$((BLOCKING_ISSUES + 1))
+      _BLOCK_HIT=1
+    fi
+  fi
+  if [[ "$_BLOCK_HIT" -eq 0 ]] && echo "$CODE_CONTENT" | grep -Pn "curl\s+.*\s-u\s+['\"][^'\"]+:[^'\"]{8,}['\"]" >/dev/null 2>&1; then
     MATCHES=$(echo "$CODE_CONTENT" | grep -Pn "curl\s+.*\s-u\s+['\"][^'\"]+:[^'\"]{8,}['\"]" 2>/dev/null || true)
     if [[ -n "$MATCHES" ]]; then
       echo "$FILE|curl_basic_auth|$MATCHES" >> "$DETECTION_FILE"
@@ -150,9 +172,16 @@ if [[ -s "$DETECTION_FILE" ]]; then
         echo ""
         ;;
       curl_basic_auth)
-        error "Inline credentials in curl command in ${FILE}:"
+        error "Potential secret leak via curl -u in ${FILE}:"
         echo "   ${MATCH_LINE}"
         echo "   → Use: curl -u \"user:\$(cat ~/.password_file)\" https://..."
+        echo ""
+        ;;
+      curl_basic_auth_block)
+        error "🔴 BLOCKED — live credential inline in curl command in ${FILE}:"
+        echo "   ${MATCH_LINE}"
+        echo "   → Replace the literal password with a placeholder or \$(cat ~/.password_file)"
+        echo "   → Commit BLOCKED: a real-looking credential must never be committed."
         echo ""
         ;;
       literal_secret_var)
@@ -177,10 +206,16 @@ if [[ -s "$DETECTION_FILE" ]]; then
     FOUND_ISSUES=$((FOUND_ISSUES + 1))
   done < "$DETECTION_FILE"
 
-  echo "━━━ End of Secret Leak Report (${FOUND_ISSUES} potential leak(s)) ━━━"
+  echo "━━━ End of Secret Leak Report (${FOUND_ISSUES} potential leak(s), ${BLOCKING_ISSUES} blocking) ━━━"
   echo ""
 fi
 
 rm -f "$DETECTION_FILE"
 
-exit 0  # warn-only, never blocks commit
+# BLOCKING credentials (real-looking inline passwords) fail the commit.
+# Pre-commit-score runs this with `set -euo pipefail` — a non-zero exit
+# aborts the hook and blocks the push. Warn-only items exit 0.
+if [[ "$BLOCKING_ISSUES" -gt 0 ]]; then
+  exit 1
+fi
+exit 0  # warn-only findings do not block the commit

@@ -576,11 +576,22 @@ for candidate in score-cycle ~/.local/bin/score-cycle "$HOME/.local/bin/score-cy
   fi
 done
 
-# If score-cycle doesn't exist, warn once per install
+# If score-cycle doesn't exist, HARD BLOCK — fail closed.
+# (2026-08-03 hardening: previously this warned + exit 0, which
+# skipped every downstream guard — orchestrator-only paths,
+# self-test, adversarial scan — on hosts without the binary.
+# That was a bypass. A missing scorer is a governance failure:
+# the commit must not land unrecorded.)
 if [[ -z "$SCORE_CYCLE" ]]; then
-  echo "⚠  score-cycle not found — skipping old scoring"
-  echo "   Current governance is MCP-based (begin_change → cycle_query → feedback_accept → end_change)"
-  exit 0
+  echo ""
+  echo "❌  score-cycle not found — cannot record governance cycle."
+  echo "    Scoring is part of the enforcement chain — a commit without"
+  echo "    a cycle record is invisible to governance."
+  echo "    Install it via the sanctioned path:"
+  echo "      bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
+  echo "    No bypass flags — do NOT use --no-verify."
+  echo ""
+  exit 1
 fi
 
 # Collect staged files (skip deletions, binary files, lock files)
