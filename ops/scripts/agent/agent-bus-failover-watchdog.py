@@ -71,7 +71,12 @@ LOG_FILE = STATE_DIR / ".bus-failover-log"
 CONF_FILE = HOME / ".hermes-cortex" / "cortex-bus.conf"
 WATCHDOG_DIR = os.path.dirname(os.path.abspath(__file__))
 
-FLEET_QUEUES = ["inbox_joseph", "inbox_kustos", "inbox_gisu", "inbox_titus", "inbox_moses"]
+# Esther's ACL (docs/bus-architecture.md): send to inbox_moses + own inbox +
+# workflow_step_result + inbox_health_check. Only Moses sends cross-agent.
+# During failover Esther's LOCAL bus accepts everything (she is primary),
+# so the event also reaches workers who have fallen back to :14004 — but the
+# designed cross-agent path is inbox_moses (Moses relays to workers).
+FLEET_QUEUES = ["inbox_moses", "inbox_esther"]
 
 MIN_DOWN_MINUTES = int(os.environ.get("FAILOVER_MIN_DOWN_MINUTES", "15"))
 CHECK_INTERVAL = int(os.environ.get("FAILOVER_CHECK_INTERVAL", "5"))
@@ -280,7 +285,8 @@ def _activate(state: dict) -> list[str]:
     sent = notify_fleet(
         "SYSTEM_EVENT: FAILOVER_ACTIVE",
         "Moses is unreachable. Esther is now the acting orchestrator. "
-        "Workers: your lib.cortex_bus already falls back to :14004 automatically — no action needed.",
+        "Workers: your lib.cortex_bus already falls back to :14004 automatically — no action needed. "
+        "Events go via inbox_moses; Moses will relay on his return.",
     )
     lines.append(f"   ✅ fleet notified ({sent} queues)")
     _log("FAILOVER ACTIVATED")
