@@ -588,6 +588,50 @@ def check_skills(res):
         f"all {len(all_skill_names)} skills found on disk")
 
 
+# Stale bus-target tokens that must never appear in live cron prompts.
+# Source edits to install scripts do NOT rewrite existing cron jobs — a job
+# created before a rename keeps its old prompt until updated via
+# cronjob action=update. This check makes that drift visible (2026-08-04:
+# orch-skill-lifecycle prompt still read inbox_moses after the fleet moved
+# to inbox_orchestrator).
+STALE_CRON_PROMPT_PATTERNS = [
+  (r"contact-moses", "renamed to contact-orchestrator.sh"),
+  (r"inbox_moses", "agents send to inbox_orchestrator — see docs/bus-architecture.md"),
+  (r"send to Moses", "agents send to the orchestrator inbox"),
+  (r"message Moses", "agents message the orchestrator"),
+  (r"reach Moses", "agents reach the orchestrator"),
+]
+
+def _check_cron_prompt_stale_refs(res, registered):
+  """Warn when a live cron prompt references a stale bus target.
+
+  Install-script source fixes do NOT propagate to existing jobs: create_cron
+  skips jobs that already exist, so a prompt changed in install-crons.sh /
+  install-orch-crons.sh never reaches the running job. Prompts must be
+  updated via cronjob action=update (CLI: hermes cron edit <id> --prompt ...).
+  """
+  import re as _re
+  hits = []
+  for name, job in sorted(registered.items()):
+    if not isinstance(job, dict):
+      continue
+    prompt = job.get("prompt") or ""
+    if not prompt:
+      continue
+    for pattern, hint in STALE_CRON_PROMPT_PATTERNS:
+      if _re.search(pattern, prompt, _re.IGNORECASE):
+        hits.append(f"{name}: '{pattern}' ({hint})")
+  if hits:
+    res.add("Cron prompt stale refs", "WARN",
+        f"{len(hits)} job(s) reference old bus targets: " + "; ".join(hits[:6]),
+        "Update the live job: cronjob action=update job_id=<id> prompt=... "
+        "(CLI: hermes cron edit <id> --prompt ...). Source-only fixes don't "
+        "propagate to existing jobs.")
+  else:
+    res.add("Cron prompt stale refs", "PASS",
+        "no stale bus-target references in live cron prompts")
+
+
 def check_crons(res):
   """2. Cron audit: all expected crons registered, workdirs valid, run status, extra crons."""
   if not JOBS_FILE.exists():
@@ -602,6 +646,8 @@ def check_crons(res):
 
   jobs = data.get("jobs", []) if isinstance(data, dict) else data
   registered = {j.get("name"): j for j in jobs if isinstance(j, dict) and j.get("name")}
+
+  _check_cron_prompt_stale_refs(res, registered)
 
   expected_crons = parse_expected_crons()
   if not expected_crons:

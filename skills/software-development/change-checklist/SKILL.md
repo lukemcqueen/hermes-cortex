@@ -72,6 +72,7 @@ Checklist:
 Before making any change, map the full scope. A single cron rename can touch 10+ locations. **Always do this first:**
 
 - [ ] **search_files()** for the old name/term across the entire repo — find every reference
+- [ ] **Live cron prompts**: grep `~/.hermes/cron/jobs.json` (and peer hosts via ssh) for the old term in job `prompt` fields — install-script source fixes do NOT rewrite existing jobs; update each hit via `cronjob action='update'`. The doctor's `Cron prompt stale refs` check catches regressions.
 - [ ] **Cron manifest**: check `install-crons.sh` AND `install-orch-crons.sh` — uninstall arrays (expected-cron list for doctor), create_cron blocks, guard messages
 - [ ] **Updater**: check `cortex-update.sh` for `register()` calls
 - [ ] **Doctor**: check `cortex-doctor.py` — `parse_expected_crons()` and `parse_orch_crons()` read from install script uninstall arrays
