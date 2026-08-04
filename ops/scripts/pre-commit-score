@@ -840,8 +840,19 @@ fi
 # point at the sanctioned deploy path (2026-08-04 hardening — previously
 # this silently skipped every staged file when the script was absent,
 # which was a bypass: security/guard changes could land unscanned).
-ADVERSARIAL_SCRIPT="$REPO_ROOT/ops/scripts/quality/adversarial-verify.py"
-if [[ ! -f "$ADVERSARIAL_SCRIPT" ]]; then
+# Resolve adversarial-verify.py — repo-local copy (cortex repo itself) first,
+# then the canonically-deployed copy (cortex-update.sh registers it to
+# $HOME/.hermes-cortex/scripts/adversarial-verify.py on BOTH Linux and macOS).
+# Project repos have no ops/ tree, so the deployed copy is the only one there.
+# Fail CLOSED if neither exists — a commit without the scan is a bypass.
+ADVERSARIAL_SCRIPT=""
+for candidate in "$REPO_ROOT/ops/scripts/quality/adversarial-verify.py" "$HOME/.hermes-cortex/scripts/adversarial-verify.py"; do
+  if [[ -f "$candidate" ]]; then
+    ADVERSARIAL_SCRIPT="$candidate"
+    break
+  fi
+done
+if [[ -z "$ADVERSARIAL_SCRIPT" ]]; then
   echo ""
   echo "❌  adversarial-verify.py not found — cannot run the adversarial gate."
   echo "    Adversarial verification is MANDATORY for script changes (A2 default,"
