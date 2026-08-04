@@ -7,15 +7,18 @@
 # gateway uses this env var to kill cron jobs that go idle — the
 # upstream default is 600s, which tolerates a hung provider API call
 # for ten minutes before the cron is killed as a TimeoutError.
-# Fleet default here: 30s — a provider stall is detected in half a
-# minute instead of hanging a cron for ten.
+# Fleet default here: 300s — 5 minutes accommodates slow-but-alive
+# reasoning-model responses (deepseek-v4-flash non-streaming calls on
+# large prompts run 27-60s+) while still catching genuine hangs.
+# History: 30s (2026-08-04 diagnostic probe) proved too tight for
+# LLM crons — every non-streaming deepseek call over 30s was killed.
 #
 #   Linux  → systemd user drop-in on hermes-gateway.service
 #            (survives unit regeneration; never touches ~/.hermes/.env)
 #   macOS  → idempotent append to ~/.hermes/.env (launchd gateway —
 #            the langfuse-fleet-script pattern; Hermes loads it at start)
 #
-# Value: ${HERMES_CRON_TIMEOUT:-30} — override per machine via
+# Value: ${HERMES_CRON_TIMEOUT:-300} — override per machine via
 # ~/hermes-cortex/.env (sourced by cortex-update.sh before this runs).
 # 0 = unlimited.
 #
@@ -32,7 +35,7 @@
 # ───────────────────────────────────────────────────────────────
 set -euo pipefail
 
-VALUE="${HERMES_CRON_TIMEOUT:-30}"
+VALUE="${HERMES_CRON_TIMEOUT:-300}"
 case "$VALUE" in
   ''|*[!0-9]*)
     echo "install-gateway-cron-timeout: invalid HERMES_CRON_TIMEOUT='${VALUE}' (must be numeric seconds; 0 = unlimited)" >&2

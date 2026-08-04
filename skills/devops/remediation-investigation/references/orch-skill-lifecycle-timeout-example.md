@@ -53,7 +53,7 @@ TimeoutError: Cron job 'orch-skill-lifecycle' idle for 602s (limit 600s)
 **Transient timeout — no action needed.** The job self-retries at 04:00 KST.
 Do NOT restart the service, do NOT raise an alert. Report SILENT.
 
-> **Fleet note (2026-08-04):** the 600s idle limit is now **30s** fleet-wide
+> **Fleet note (2026-08-04):** the fleet default idle limit is **300s**
 > via `HERMES_CRON_TIMEOUT` (applied by `install-gateway-cron-timeout.sh`;
 > systemd drop-in on Linux, `~/.hermes/.env` on macOS, activates on the next
 > gateway restart). The limit is gateway-process env — not per-job, no
