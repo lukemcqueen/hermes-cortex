@@ -6,7 +6,7 @@
 
 | Name | Type | Schedule | Purpose |
 |------|------|----------|---------|
-| agent-remediation-sensor | no_agent | */5 * * * * | Detect system issues |
+| agent-remediation-sensor | no_agent | */5 * * * * | Detect system issues. Server agents only (joseph/gisu/kustos); other hosts no-op via SENSOR_ENABLED_HOSTS |
 | agent-system-alert-watchdog | no_agent | */30 * * * * | Monitor system alerts |
 | agent-service-recovery | no_agent | */5 * * * * | Auto-recover services |
 | agent-memory-to-brain-sync | no_agent | 0 */6 * * * | Sync memory to gbrain |

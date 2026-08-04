@@ -90,7 +90,7 @@ These run on every agent in the fleet. Created by `install-crons.sh`.
 | `agent-fixer-workday` | `0 9-17 * * 1-5` | LLM | auto-remediation skill | origin |
 | `agent-fixer-evening` | `0 18,20,22 * * 1-5` | LLM | auto-remediation skill | origin |
 | `agent-fixer-overnight` | `0 3 * * 1-5` | LLM | auto-remediation skill | origin |
-| `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local |
+| `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local (server agents only — joseph/gisu/kustos) |
 | `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin |
 | `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local |
 | `agent-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `agent-bus-failover-watchdog.py` | Telegram |

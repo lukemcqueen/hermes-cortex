@@ -26,6 +26,14 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Hosts that run the remediation sensor. Only server agents (joseph/gisu/kustos)
+# run it — orchestrator hosts (moses/esther) and dev boxes (titus) don't need
+# local auto-remediation; the sensor is a 5-min probe that feeds the fixer
+# crons. On excluded hosts the script prints an empty issue array and exits
+# silently (cron stays scheduled; consumers see "nothing to do").
+# (2026-08-04)
+SENSOR_ENABLED_HOSTS = {"joseph", "gisu", "kustos"}
+
 # Hosts that manage live SSL certs via certbot. Only these run the certbot
 # checks — orchestrators (moses/esther) don't hold the live certs (Joseph
 # does; bus.example.org is served from Joseph and used for
@@ -538,6 +546,14 @@ def _local_agent_name() -> str:
 
 
 def main():
+    # Server-agent gate: only joseph/gisu/kustos run the sensor. On other
+    # hosts (moses/esther/titus) print an empty issue array and stay silent —
+    # the cron remains scheduled (install-crons.sh expects it) but produces
+    # nothing for the fixer crons to act on.
+    if _local_agent_name() not in SENSOR_ENABLED_HOSTS:
+        print(json.dumps([]))
+        return
+
     # Run all checks
     check_scripts()
     check_git()
