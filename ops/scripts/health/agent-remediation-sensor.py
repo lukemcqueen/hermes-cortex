@@ -26,6 +26,13 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Hosts that manage live SSL certs via certbot. Only these run the certbot
+# checks — orchestrators (moses/esther) don't hold the live certs (Joseph
+# does; bus.example.org is served from Joseph and used for
+# joseph/moses/esther). Skipping avoids pointless `sudo certbot` probes
+# every 5 min on hosts that have nothing to renew. (2026-08-04)
+CERT_HOLDER_HOSTS = {"joseph", "gisu", "kustos"}
+
 HOME = Path.home()
 HERMES_SCRIPTS = HOME / ".hermes" / "scripts"
 STATE_DIR = HOME / ".hermes-cortex" / "state"
@@ -524,6 +531,12 @@ def check_systemd_services():
             })
 
 
+def _local_agent_name() -> str:
+    """Return this host's agent name (lowercase, first label of hostname)."""
+    import socket
+    return socket.gethostname().split(".")[0].lower()
+
+
 def main():
     # Run all checks
     check_scripts()
@@ -534,8 +547,9 @@ def main():
     check_agent_bus()  # Agent Bus health check (before systemd services)
     check_systemd_services()  # Linux complement to check_services()
     check_nginx()
-    check_ssl_certs()  # NEW: SSL cert permissions
-    check_certbot()  # NEW: certbot execution capability
+    if _local_agent_name() in CERT_HOLDER_HOSTS:
+        check_ssl_certs()  # SSL cert permissions (cert-holder hosts only)
+        check_certbot()  # certbot execution capability (cert-holder hosts only)
     check_gbrain_health()  # gbrain Postgres connectivity
     check_web_cache()
     check_inbox_markers()
