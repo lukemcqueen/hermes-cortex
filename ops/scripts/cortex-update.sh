@@ -1934,7 +1934,7 @@ main() {
     local last_commit
     last_commit=$(cat "$LAST_COMMIT_FILE" 2>/dev/null || echo "")
     if [[ -n "$last_commit" ]]; then
-      git -C "$REPO_DIR" diff --name-only "${last_commit}..HEAD" 2>/dev/null | sed 's/^/  /' | head -50
+      git -C "$REPO_DIR" diff --name-only "${last_commit}..HEAD" 2>/dev/null | sed 's/^/  /' | sed -n '1,50p'
     else
       echo "  (no previous update recorded — run without --status)"
     fi
@@ -2037,7 +2037,7 @@ main() {
     # Check if local copy has content not in repo source
     if [[ -f "$local_agents" ]]; then
       local local_only_lines
-      local_only_lines=$(comm -23 <(grep -vE '^\s*$' "$local_agents" | sort) <(grep -vE '^\s*$' "$repo_agents" | sort) 2>/dev/null | head -20)
+      local_only_lines=$(comm -23 <(grep -vE '^\s*$' "$local_agents" | sort) <(grep -vE '^\s*$' "$repo_agents" | sort) 2>/dev/null | sed -n '1,20p')
       if [[ -n "$local_only_lines" ]]; then
         # Save local-only content before overwriting
         cp "$local_agents" "${local_agents}.local"
