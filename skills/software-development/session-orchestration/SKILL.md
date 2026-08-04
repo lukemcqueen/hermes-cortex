@@ -188,7 +188,7 @@ wave-orchestrate.py advance --session <id>
 1. Verify all specs/acceptance criteria are met
 2. Check: done checklist (cortex-doctor --quiet)
 3. Commit and push
-4. Deploy (cortex-update.sh --force-all)
+4. Deploy (cortex-update.sh)
 5. **Run outerloop evidence → verdict cycle**
 6. Score governance cycle
 

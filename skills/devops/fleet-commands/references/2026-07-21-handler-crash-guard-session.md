@@ -50,7 +50,7 @@ The entire dispatch block (`if subject == "UPDATE_REQUEST":` through all branche
    WHERE m.msg_id = a.msg_id;
    ```
 
-2. **Deploy the fix** — `cortex-update.sh --force-all` on each fleet agent (pulls `df3a419`)
+2. **Deploy the fix** — `cortex-update.sh` on each fleet agent (pulls `df3a419`)
 
 3. **Verify** — send a test EXEC with a bogus command to confirm crash guard works:
    ```bash

@@ -56,7 +56,7 @@ Fleet agents run `agent-message-handler.py` as a cron (`*/5 * * * *`). Source: `
 | Subject | Action | Response | Body Fields |
 |---------|--------|----------|-------------|
 | `EXEC` | Run script under `~/.hermes-cortex/scripts/` | `EXEC_RESULT` | `command`, `params[]`, `timeout` |
-| `UPDATE_REQUEST` | Run `cortex-update.sh --force-all` | `UPDATE_RESULT` | `target_sha`, `target_version`, `run_doctor` |
+| `UPDATE_REQUEST` | Run `cortex-update.sh` | `UPDATE_RESULT` | `target_sha`, `target_version`, `run_doctor` |
 | `ROLLBACK_REQUEST` | Git checkout previous SHA | `ROLLBACK_RESULT` | `target_sha`, `reason` |
 | `GIT_AUTH_CHECK` | Verify git can `ls-remote` | `GIT_AUTH_RESULT` | `expected_url` |
 | `DIAGNOSTIC_REQUEST` | Run agent-diagnostic.py | `DIAGNOSTIC_RESULT` | `check`, `respond_to_queue` |
@@ -447,7 +447,7 @@ After they report back, fix the identified issue (corrupt state file, handler cr
 
 - **send_bus_result failure needs Telegram fallback** — when bus_send fails (returns None), send_bus_result currently only logs "Failed to send" and returns False. The orchestrator has NO way to know the agent successfully completed the work. Fix: the handler should also call notify_telegram() when send_bus_result fails, so the orchestrator knows via the fallback channel. This converts a silent failure into a visible alert, giving the orchestrator actionable information even when the bus is broken.
 
-- **Schema validation requires runtime deployment** — `hc exec` and `orch-bus-fleet-dispatch.py` validate payloads against `handoff_schema.py` at runtime. If the script errors with `ImportError: No module named 'handoff_schema'`, the module hasn't been deployed. Run `cortex-update.sh --force-all` to deploy. The validation is best-effort — missing schemas are skipped with a log message, execution continues.
+- **Schema validation requires runtime deployment** — `hc exec` and `orch-bus-fleet-dispatch.py` validate payloads against `handoff_schema.py` at runtime. If the script errors with `ImportError: No module named 'handoff_schema'`, the module hasn't been deployed. Run `cortex-update.sh` to deploy. The validation is best-effort — missing schemas are skipped with a log message, execution continues.
 
 - **Testing bus_send from interactive shell != handler's bus_send** — multiple agents confirmed bus_send works when run manually from the command line, but the handler's bus_send returns None when run via cron. Possible root causes:
   1. Cron has different $CORTEX_DEPLOY_HOME pointing to a different config file

@@ -24,7 +24,7 @@ ls -la ~/.hermes-cortex/offline/session_mine.py
 python3 -m py_compile ~/.hermes-cortex/offline/session_mine.py
 ```
 
-**If missing:** `bash ~/.hermes-cortex/scripts/cortex-update.sh --force-all`
+**If missing:** `bash ~/.hermes-cortex/scripts/cortex-update.sh`
 
 ## Step 2 — Bus Connectivity
 
@@ -59,7 +59,7 @@ grep "LESSONS" ~/.hermes-cortex/offline/session_mine.py
 # Wrong:   HOME / "brain" / "<hostname>" / "lessons"
 ```
 
-**If wrong:** `cortex-update.sh --force-all` to get the Jul 27 fix.
+**If wrong:** run `cortex-update.sh` to get the Jul 27 fix.
 
 Make dirs:
 ```bash

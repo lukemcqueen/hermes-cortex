@@ -22,7 +22,7 @@ When a Hermes default skill is missing functionality we need, **we do not edit t
 5. Add the Hermes default to your skill's `related_skills` field
 6. Document in `cortex-preflight` or create a new `cortex-*` skill
 7. Ensure the skill's SKILL.md has a "When to load" section explaining where it fits in the task sequence
-8. Deploy via `cortex-update.sh --force-all`
+8. Deploy via `cortex-update.sh`
 
 ## When to Load Supporting Skills
 

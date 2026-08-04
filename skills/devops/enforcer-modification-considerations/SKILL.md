@@ -60,7 +60,7 @@ The `begin_change()` MCP tool has a DOGFOOD check: if the deployed enforcer (`~/
    bash ~/hermes-cortex/ops/scripts/cortex-update.sh
    ```
    (No sudo, no chaining, no other flags beyond
-   `--force-all/--dry-run/--status/--delta/--clean-stale` — the
+   `--dry-run/--status/--delta/--clean-stale` — the
    enforcer's `_is_sanctioned_cortex_update_command()` matches exactly.)
 2. Load all 8 always-section skills: `skill_view()` calls
 3. `begin_change()` should now succeed (repo == deployed)

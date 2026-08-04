@@ -56,7 +56,7 @@ Not every reference needs changing. Classify each hit:
 ## Step 3: Fix in Order
 
 1. **Repo source first** (`~/hermes-cortex/`) — this is the canonical version
-2. **Deploy after** — run `cortex-update.sh --force-all` to sync repo fixes
+2. **Deploy after** — run `cortex-update.sh` to sync repo fixes
 3. **For files NOT synced by cortex-update** (templates, non-script files):
    - Fix deployed copy directly with `sed` or `patch`
 4. **Clean up orphaned directories** — `rm -rf ~/.hermes-cortex/old-name/`

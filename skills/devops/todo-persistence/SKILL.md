@@ -48,7 +48,7 @@ Agent Session
 
 - **Deployed to:** `~/.hermes-cortex/scripts/todo-db.py`
 - **Registered in:** `cortex-update.sh` register() map
-- **All agents** get it on next `cortex-update.sh --force-all`
+- **All agents** get it on next `cortex-update.sh`
 
 ## Commands
 

@@ -45,7 +45,7 @@ Both must pass before you can commit and start work.
 
 | Scenario | Direction | Typical cause |
 |----------|-----------|---------------|
-| Repo ahead | `git pull` updated repo, deploy pending | Normal dogfood — run `cortex-update.sh --force-all` |
+| Repo ahead | `git pull` updated repo, deploy pending | Normal dogfood — run `cortex-update.sh` |
 | **Deployed ahead** | Independent edit to deployed file | Hotfix applied directly, or session deployed changes without committing |
 | **Both differ** | Working tree patched temporarily to match deployed | Temporary fix for deadlock, but never restored |
 
@@ -69,7 +69,7 @@ a governance lock so the agent can self-recover:
 
 ```bash
 bash ~/hermes-cortex/ops/scripts/cortex-update.sh
-# allowed flags: --force-all --dry-run --status --delta --clean-stale
+# allowed flags: --dry-run --status --delta --clean-stale
 # EXACT match only — no sudo, no chaining (&&, ;, |, >), no other scripts
 ```
 
@@ -166,7 +166,7 @@ now actually runnable.
 
 After any session that modifies the enforcer plugin:
 
-1. Run `cortex-update.sh --force-all` IMMEDIATELY after EVERY push
+1. Run `cortex-update.sh` IMMEDIATELY after EVERY push
    that touches enforcer code. The dogfood check detects push-without-deploy.
 2. Verify: `sha256sum ~/hermes-cortex/plugins/governance-enforcer/__init__.py
    ~/.hermes/plugins/governance-enforcer/__init__.py` matches.
@@ -205,7 +205,7 @@ exact sanctioned deploy invocation:
 
 ```bash
 bash ~/hermes-cortex/ops/scripts/cortex-update.sh
-# allowlisted flags only: --force-all --dry-run --status --delta --clean-stale
+# allowlisted flags only: --dry-run --status --delta --clean-stale
 # EXACT match — no sudo, no chaining, no other scripts
 ```
 

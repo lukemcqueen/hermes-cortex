@@ -53,7 +53,7 @@ Then: `git add` → `git commit` → `git push` the synced repo change.
 #### If repo is ahead of deployed (pushed without deploying):
 
 ```bash
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 ```
 
 #### After recovery:
@@ -81,7 +81,7 @@ The self-healing dogfood check is not yet implemented (tracked in
 blocked without a governance lock. The ONE lock-free file-modifying command
 is the exact `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` invocation:
 `_is_sanctioned_cortex_update_command()` allows exactly that path plus the
-allowlisted flags (`--force-all/--dry-run/--status/--delta/--clean-stale`),
+allowlisted flags (`--dry-run/--status/--delta/--clean-stale`),
 with no metacharacters — so a DOGFOOD-blocked agent (no lock, no skills
 marker) can deploy and self-recover.
 

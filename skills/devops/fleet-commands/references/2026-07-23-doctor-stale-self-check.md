@@ -15,7 +15,7 @@ def _check_self_stale(res):
     if repo_source.is_file() and repo_source.stat().st_mtime > deployed.stat().st_mtime:
         res.add("Doctor version", "WARN",
                 "Running older version — repo source is newer",
-                "Run: cortex-update.sh --force-all")
+                "Run: cortex-update.sh")
     else:
         res.add("Doctor version", "PASS", "Deployed version matches repo")
 ```
@@ -27,7 +27,7 @@ Called at the top of `check_services()`.
 When the deployed doctor is older than the repo:
 ```
 ⚠️ Doctor version — Running older version — repo source is newer
-  Run: cortex-update.sh --force-all
+  Run: cortex-update.sh
 ```
 
 When up to date:

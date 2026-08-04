@@ -40,7 +40,7 @@ Signals: ❌ must-fix, ⚠️ should-fix, ℹ️ informational.
 | `⚠️ Symlinks` | Broken `.governance-generic.json` → stale session lock | `rm <broken-symlink>` |
 | `❌ Repo sync` | Local behind origin/main | `git pull --rebase` |
 | `❌ Hook: pre-commit (content)` / `❌ Checksum: pre-commit` | `.hermes-cortex/hooks/pre-commit` and `ops/scripts/pre-commit-score` out of sync | `cp ops/scripts/pre-commit-score .hermes-cortex/hooks/pre-commit && cp ops/scripts/pre-commit-score ~/.hermes-cortex/hooks/pre-commit` |
-| `❌ Deploy sync` | Repo ahead of deployed state after push | Resolves on next automated cortex-update (nightly cron) or run `cortex-update.sh --force-all` (close governance lock first — the deploy cleans it) |
+| `❌ Deploy sync` | Repo ahead of deployed state after push | Resolves on next automated cortex-update (nightly cron) or run `cortex-update.sh` (close governance lock first — the deploy cleans it) |
 
 ### 2. Cron health
 ```python

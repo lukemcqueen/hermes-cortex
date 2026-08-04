@@ -63,7 +63,7 @@ if hashlib.sha256(deployed_file.read_bytes()).hexdigest() == \
    hashlib.sha256(repo_file.read_bytes()).hexdigest():
     return "FRESH (content matches)"
 else:
-    return "STALE (content differs — run cortex-update.sh --force-all)"
+    return "STALE (content differs — run cortex-update.sh)"
 ```
 
 ## The Copy Deployment Lifecycle
@@ -234,8 +234,8 @@ that one file, on that one path, with no argument injection possible.
 
 | Factor | Symlink | Copy |
 |--------|---------|------|
-| Freshness after `git pull` | Auto-fresh | Stale (needs `--force-all`) |
-| Freshness after `--force-all` | Auto-fresh | Fresh (re-copied) |
+| Freshness after `git pull` | Auto-fresh | Stale (needs a deploy) |
+| Freshness after deploy | Auto-fresh | Fresh (re-copied) |
 | Supports `chattr +i`? | ❌ Locks repo file | ✅ Locks only deployed copy |
 | Deployment complexity | Simple (`ln -sf`) | Lifecycle required (unlock→copy→relock) |
 | Doctor checks | PASS → FAIL if immutable flag missing (since Jul 2026) | PASS + SHA256 + perms + immutability |
@@ -253,7 +253,7 @@ to copy (for chattr +i hardening). When it finds a copy, it verifies:
 
 - **Governance enforcer plugin** — COPY. Needs chattr +i to prevent agents
   from modifying their own enforcement rules. The deployment lifecycle is
-  handled by `cortex-update.sh --force-all`.
+  handled by `cortex-update.sh`.
 - **User-installed plugins** — SYMLINK. No immutability needed, and
   symlinks keep them fresh without explicit re-deploy.
 - **Hooks** (`pre-commit`, `pre-push`, `post-commit`) — COPY. These are
@@ -307,7 +307,7 @@ refuse with exit 1 + audit entry when uncommitted changes exist.
 ## Components Requiring Staleness Checks
 
 Most components deployed by `cortex-update.sh` `register()` are freshly copied
-on every `--force-all` and need no staleness check. The exceptions are
+on every deploy and need no staleness check. The exceptions are
 **manually symlinked** components:
 
 | Component | Deploy Path | Repo Source |
@@ -330,7 +330,7 @@ if plugin_dir.exists() and (plugin_dir / "__init__.py").exists():
         target = os.readlink(str(plugin_dir))
         res.add("Plugin symlink", "WARN",
                 f"symlinked to {target} — convert to copy for chattr +i",
-                "Run: cortex-update.sh --force-all (auto-converts)")
+                "Run: cortex-update.sh (auto-converts)")
     else:
         # Copy mode — SHA256 comparison, perms, immutability
         deployed_hash = hashlib.sha256(
@@ -343,7 +343,7 @@ if plugin_dir.exists() and (plugin_dir / "__init__.py").exists():
             res.add("Plugin content", "PASS", "copy matches repo source")
         else:
             res.add("Plugin content", "FAIL",
-                    "deployed copy differs from repo — run: cortex-update.sh --force-all")
+                    "deployed copy differs from repo — run: cortex-update.sh")
 ```
 
 ## When to Create a Staleness Check
@@ -353,7 +353,7 @@ When adding a doctor check or health monitor for a component that:
 1. Is deployed to `~/.hermes/` or `~/.hermes-cortex/`
 2. Is NOT registered in `cortex-update.sh` (i.e., manually installed or symlinked)
 3. If the component IS registered in `cortex-update.sh` and copied fresh on
-   every `--force-all` — no staleness check needed
+   every deploy — no staleness check needed
 
 ## Cross-Platform Considerations
 
@@ -602,7 +602,7 @@ for f in (deploy_home / "scripts").rglob("*"):
 
 ### Auto-Cleanup: `cortex-update.sh --clean-stale`
 
-After every `--force-all` deploy, `cortex-update.sh` now auto-runs
+After every deploy, `cortex-update.sh` now auto-runs
 `clean_stale_deploys()`:
 
 1. Builds destinations from MAP entries (same as doctor check)
@@ -610,8 +610,8 @@ After every `--force-all` deploy, `cortex-update.sh` now auto-runs
 3. Deletes orphans (respects `--dry-run` for preview)
 
 ```bash
-bash cortex-update.sh --force-all --dry-run  # preview
-bash cortex-update.sh --force-all            # apply
+bash cortex-update.sh --dry-run  # preview
+bash cortex-update.sh            # apply
 ```
 
 ### Scripts Directory vs Other Deploy Paths

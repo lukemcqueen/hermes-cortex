@@ -77,7 +77,7 @@ This pattern appears in summary sections where a counter is only incremented con
 
 **Detection:** Any reference to a counter variable outside the loop/section that increments it may be unset if no items matched. Common culprits: `REMOVED`, `DELETED`, `ERRORS`, `MODIFIED`. Run with `bash -u` to catch these before shipping.
 
-**Real bug:** `cortex-update.sh` line 1334 had `[[ "$REMOVED" -gt 0 ]]` — when `--force-all` found nothing to remove, `REMOVED` was never initialized, and the script exited with code 1 despite a successful deployment. The fix was `${REMOVED:-0}`.
+**Real bug:** `cortex-update.sh` line 1334 had `[[ "$REMOVED" -gt 0 ]]` — when `cortex-update.sh` found nothing to remove, `REMOVED` was never initialized, and the script exited with code 1 despite a successful deployment. The fix was `${REMOVED:-0}`.
 
 ### `trap` with `set -e` — unexpected exits
 

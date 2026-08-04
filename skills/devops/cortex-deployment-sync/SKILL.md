@@ -21,7 +21,7 @@ lock — this is the lock-free self-recovery that breaks the DOGFOOD deadlock:
 ```bash
 bash ~/hermes-cortex/ops/scripts/cortex-update.sh            # canonical (bash prefix OK)
 ~/hermes-cortex/ops/scripts/cortex-update.sh                  # also sanctioned (no prefix)
-# allowlisted flags ONLY: --force-all --dry-run --status --delta --clean-stale
+# allowlisted flags ONLY: --dry-run --status --delta --clean-stale
 ```
 
 Exact match only — no `sudo`, no `-c`, no chaining (`&&`, `;`, `|`, `>`), no
@@ -37,7 +37,7 @@ activates ONLY after `hermes gateway restart`, which agents cannot perform
 REQUIRED` right after a deploy, that is a PENDING RESTART, not a code bug —
 stop retrying and ask the host operator (Luke) to restart the gateway.
 
-**Use `--force-all` only when the delta engine skips files that should re-deploy** — plain run is the safe default.
+**Use `cortex-update.sh` only when the delta engine skips files that should re-deploy** — plain run is the safe default.
 
 ## The proper sequence (user directive, 2026-07-31)
 
@@ -59,7 +59,7 @@ Deployed governance files carry `chattr +i` (Linux) / `chflags uchg` (macOS):
 - `~/.hermes-cortex/hooks/post-merge`
 - `~/.hermes-cortex/scripts/{pre-commit-score,pre-push-pull,post-commit-audit,post-push-audit}`
 
-Manual `chmod`/`cp` fails with `Operation not permitted` — the `i` flag survives `chmod`. `cortex-update.sh --force-all` handles the full **unlock → copy → re-lock** cycle via `sudo hermes-plugin-lock` (requires a NOPASSWD sudoers rule for `/usr/local/sbin/hermes-plugin-lock`).
+Manual `chmod`/`cp` fails with `Operation not permitted` — the `i` flag survives `chmod`. `cortex-update.sh` handles the full **unlock → copy → re-lock** cycle via `sudo hermes-plugin-lock` (requires a NOPASSWD sudoers rule for `/usr/local/sbin/hermes-plugin-lock`).
 
 **Detect:**
 ```bash

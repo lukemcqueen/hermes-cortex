@@ -44,7 +44,7 @@ rm -rf ~/.hermes/plugins/<name>
 ln -sf ~/hermes-cortex/plugins/<source-name> ~/.hermes/plugins/<name>
 
 # 4. Re-deploy (converts symlink to locked copy)
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 ```
 
 ## Prevention

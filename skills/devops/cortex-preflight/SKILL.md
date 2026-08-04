@@ -45,7 +45,7 @@ git show HEAD:<path-to-file>
 If you ARE an orchestrator, hooks, enforcer plugin, and skills follow this rule:
 
 1. **Fix the REPO SOURCE first** in `~/hermes-cortex/` — never the deployed copy
-2. **Commit, push**, then run `cortex-update.sh --force-all` to deploy
+2. **Commit, push**, then run `cortex-update.sh` to deploy
 3. **A fix applied to the deployed copy WILL be overwritten** on the next cortex-update
 
 **Specific files (always fix repo source, never deployed copy):**
@@ -152,7 +152,7 @@ grep -rn "<changed-protocol>" ~/hermes-cortex/AGENTS.md
 
 ## Deployment Pitfalls — cortex-update.sh Side Effects
 
-These are known side-effects of running `cortex-update.sh` (or `cortex-update.sh --force-all`). You must account for each one before and after deploy.
+These are known side-effects of running `cortex-update.sh`. You must account for each one before and after deploy.
 
 ### Pitfall 1: SOURCE header breaks checksums
 

@@ -142,7 +142,7 @@ def _git_sha(path: Path) -> str:
 
 
 def _run_cortex_update() -> dict:
-    """Run git pull then cortex-update.sh --force-all, return result dict."""
+    """Run git pull then cortex-update.sh, return result dict."""
     log("Pulling latest code ...")
     try:
         pull = subprocess.run(
@@ -163,7 +163,7 @@ def _run_cortex_update() -> dict:
     log("Running cortex-update.sh ...")
     try:
         r = subprocess.run(
-            ["bash", str(CORTEX_UPDATE), "--force-all"],
+            ["bash", str(CORTEX_UPDATE)],
             capture_output=True, text=True, timeout=120
         )
         result = {

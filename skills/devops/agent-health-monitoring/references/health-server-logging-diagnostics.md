@@ -142,7 +142,7 @@ When a fix is deployed to shared infrastructure (`health-server.py`,
 
 1. **Commit and push** to the shared repo
 2. **Notify ALL affected agents** via inbox, not just the one that reported the issue
-3. Include exact update commands in the notification: `git pull && bash ops/scripts/cortex-update.sh --force-all`
+3. Include exact update commands in the notification: `git pull && bash ops/scripts/cortex-update.sh`
 4. CC the user on each notification
 
 This avoids repeated rounds of "is anyone else having this problem?"

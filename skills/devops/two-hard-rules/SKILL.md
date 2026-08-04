@@ -58,7 +58,7 @@ Every improvement you make that benefits other agents MUST go into the `hermes-c
 - **Adversarial verify** — The pre-commit scanner checks for issues. **Correct:** Fix what it reports.
   **Wrong:** Remove the check from the hook.
 - **Dogfood gate** — The pre-commit hook enforces that deployed code matches the repo source.
-  **Correct:** `bash ops/scripts/cortex-update.sh --force-all`, run doctor, fix issues, commit.
+  **Correct:** `bash ops/scripts/cortex-update.sh`, run doctor, fix issues, commit.
   **Wrong:** Push without testing.
 - **Rule 2** is enforced by the template-diff-check.py in cortex-update.sh — it warns when your local SOUL.md drifts from the template
 - **Both rules** are embedded in every agent-facing document: AGENTS.md, fleet-reference.md, SOUL.md templates, loop-governance skill, troubleshooting guide, git-enforcement docs, and install.sh

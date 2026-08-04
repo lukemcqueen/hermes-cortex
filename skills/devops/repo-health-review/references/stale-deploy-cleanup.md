@@ -28,15 +28,15 @@ Also checks:
 
 ### Via Update Script
 
-After any `--force-all` deploy, `clean_stale_deploys()` auto-runs:
+After any deploy, `clean_stale_deploys()` auto-runs:
 ```bash
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 ```
 
 Or manually:
 ```bash
 bash ~/hermes-cortex/ops/scripts/cortex-update.sh --clean-stale
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all --dry-run
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh --dry-run
 ```
 
 ## Fix
@@ -66,7 +66,7 @@ ls ~/.hermes-cortex/bus/
 ## Prevention
 
 When you remove a `register()` line from cortex-update.sh:
-1. Run `--force-all` to trigger auto-cleanup
+1. Run `cortex-update.sh` to trigger auto-cleanup
 2. Run the doctor to confirm no stale warnings remain
 3. If removing a systemd unit or launchd plist, check `systemctl --user` or
    `launchctl list` for stale service entries too

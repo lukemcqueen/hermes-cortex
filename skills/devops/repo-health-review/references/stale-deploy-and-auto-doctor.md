@@ -13,7 +13,7 @@ their deployment is actually healthy.
 
 **File:** `ops/scripts/cortex-update.sh` — `clean_stale_deploys()` function
 
-Runs automatically at the end of every `--force-all` deploy. Scans
+Runs automatically at the end of every deploy. Scans
 `~/.hermes-cortex/scripts/` for `.py` and `.sh` files not in any
 `register()` destination, then removes them.
 
@@ -22,7 +22,7 @@ Runs automatically at the end of every `--force-all` deploy. Scans
 bash ops/scripts/cortex-update.sh --clean-stale
 
 # Dry-run (preview without deleting)
-bash ops/scripts/cortex-update.sh --dry-run --force-all
+bash ops/scripts/cortex-update.sh --dry-run cortex-update.sh
 ```
 
 ### 2. Doctor Stale Deploy Detection

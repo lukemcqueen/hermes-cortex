@@ -6,7 +6,7 @@ UPDATE_REQUEST to Moses (self-test) returned `success=false` with error `"cortex
 
 ## Root Cause
 
-`cortex-update.sh` uses `set -euo pipefail` at line 14. The `needs_update()` function returns 1 for files whose source and destination hashes match (already up to date). In `--force-all` mode, `check_each_mapped_file` iterates all registered files — the last file's `return 1` propagates as the function's exit code. With `set -e`, this would cause the script to abort IF the function call weren't followed by more commands — but the script continues past it. The exit code 1 at the end is from the doctor step or the last `return 1` in the loop.
+`cortex-update.sh` uses `set -euo pipefail` at line 14. The `needs_update()` function returns 1 for files whose source and destination hashes match (already up to date). In the default (force) mode, `check_each_mapped_file` iterates all registered files — the last file's `return 1` propagates as the function's exit code. With `set -e`, this would cause the script to abort IF the function call weren't followed by more commands — but the script continues past it. The exit code 1 at the end is from the doctor step or the last `return 1` in the loop.
 
 The handler's `run_cortex_update()` checked `r.returncode == 0` for success, so exit=1 was treated as failure even though everything deployed correctly.
 
@@ -31,7 +31,7 @@ Commit `821cdfd`: `run_cortex_update()` now treats exit=1 as success when stderr
 
 ```
 15:40:21  — Handler read UPDATE_REQUEST, early archive
-15:40:22  — Running cortex-update.sh --force-all
+15:40:22  — Running cortex-update.sh
 15:41:06  — cortex-update done: exit=1 ✓ (treated as success)
 15:41:08  — UPDATE_RESULT sent to inbox_moses
 15:41:10  — UPDATE_RESULT archived by handler (silent *_RESULT handler)

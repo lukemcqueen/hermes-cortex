@@ -156,7 +156,7 @@ def save_state(state: dict):
 
 
 def run_cortex_update() -> dict:
-  """Run git pull then cortex-update.sh --force-all, capture output."""
+  """Run git pull then cortex-update.sh, capture output."""
   log("Pulling latest code ...")
   try:
     pull = subprocess.run(
@@ -177,7 +177,7 @@ def run_cortex_update() -> dict:
   log("Running cortex-update.sh ...")
   try:
     r = subprocess.run(
-      ["bash", str(CORTEX_UPDATE), "--force-all"],
+      ["bash", str(CORTEX_UPDATE)],
       capture_output=True, text=True, timeout=120
     )
     result = {

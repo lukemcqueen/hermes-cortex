@@ -294,7 +294,7 @@ mkdir -p ~/.hermes/plugins
 # cortex-update.sh is the ONLY sanctioned way to update the enforcement chain
 # (hermes-plugin-lock unlock/update require the --cortex-update token or an
 # orchestrator account since 2026-07-31):
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 
 # Manual maintenance (ORCHESTRATOR ACCOUNT ONLY — moses|esther):
 sudo hermes-plugin-lock unlock --orchestrator   # remove old immutability if set

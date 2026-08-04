@@ -74,7 +74,7 @@ behavior — can cause a crash before the archive runs.
 The doctor's bus E2E check now has a dedicated "Bus stuck msgs" check that:
 1. Queries the PGMQ API for `processing_count` on `inbox_{agent}`
 2. FAIL if `processing_count > 0` → "Handler is crashing before archive — run:
-   git pull && cortex-update.sh --force-all"
+   git pull && cortex-update.sh"
 3. PASS if queue is empty — no stuck messages
 
 This catches Esther's exact symptom.

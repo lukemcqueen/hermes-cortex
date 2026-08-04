@@ -74,7 +74,7 @@ NOT safe (check the whole hook, not just your edit): `grep -P`, `mapfile`/
 2. Commit through the RUNNING hook (exercises scoring + adversarial + self-test
    live; watch for `📊 score-cycle:` in output)
 3. `git pull --rebase origin main` then `git push origin main`
-4. `bash ops/scripts/cortex-update.sh --force-all` (purges your governance
+4. `bash ops/scripts/cortex-update.sh` (purges your governance
    lock — re-acquire with `begin_change` after)
 5. Verify deployed == repo: `diff <(sed '1,2d' ~/.hermes-cortex/scripts/pre-commit-score) <(sed '1,2d' ops/scripts/pre-commit-score)`
 6. Grep deployed copy for the fail-closed block + `gtimeout` + the

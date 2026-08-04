@@ -2544,7 +2544,7 @@ def check_stale_skills(res):
   if missing:
     res.add(f"Stale skills: missing", "INFO",
         f"{len(missing)} repo skill(s) not deployed: {', '.join(missing[:12])}",
-        f"Run: cortex-update.sh --force-all")
+        f"Run: cortex-update.sh")
   else:
     res.add("Stale skills: missing", "PASS", "all repo skills are deployed")
 

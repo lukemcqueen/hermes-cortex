@@ -71,10 +71,10 @@ Skills in `~/.hermes/skills/` come from two places. Know which is which:
 ## The Deployed Copy Trap
 
 Files at `~/.hermes-cortex/scripts/` and `~/.hermes-cortex/skills/` are **deployed copies** from the repo. If you edit them directly:
-1. Your changes will be **lost** on the next `cortex-update.sh --force-all`
+1. Your changes will be **lost** on the next `cortex-update.sh`
 2. Other agents won't get your improvements
 
-**Always edit the repo source first**, then run `cortex-update.sh --force-all` to sync.
+**Always edit the repo source first**, then run `cortex-update.sh` to sync.
 
 Exception: `~/.hermes-cortex/state/*` files are per-machine state, not deployed from repo.
 

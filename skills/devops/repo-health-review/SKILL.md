@@ -105,7 +105,7 @@ Fix with:
 bash ~/hermes-cortex/ops/scripts/cortex-update.sh --clean-stale
 ```
 
-Or run `--force-all` which auto-cleans stales after deploy. For non-scripts
+Or run `cortex-update.sh` (auto-cleans stales after deploy). For non-scripts
 deploy targets (dashboard/, bus/, systemd units, launchd plists), manual
 cleanup may be needed.
 

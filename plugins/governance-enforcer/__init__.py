@@ -865,7 +865,7 @@ def _is_readonly_terminal_command(command: str) -> bool:
 # agent" (AGENTS.md RULE 7b) — this makes that promise true.
 _SANCTIONED_CORTEX_UPDATE_RE = re.compile(
     r"^\s*(?:bash\s+)?(?:~|" + re.escape(str(Path.home())) + r")/hermes-cortex/ops/scripts/cortex-update\.sh"
-    r"(?:\s+(?:--force-all|--dry-run|--status|--delta|--clean-stale))*\s*$"
+    r"(?:\s+(?:--dry-run|--status|--delta|--clean-stale))*\s*$"
 )
 
 

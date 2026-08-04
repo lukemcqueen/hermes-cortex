@@ -4,7 +4,7 @@
 
 ### Fix 1: Visibility timeout 30s → 120s (commit `feb8ef1`)
 
-**Problem:** `bus_read(queue, vt=30)` gave a 30-second visibility timeout. When processing an UPDATE_REQUEST, `cortex-update.sh --force-all` takes ~43 seconds. The VT expired mid-update, the message went back to `pending`, the handler lost its lock, and it couldn't archive or send the UPDATE_RESULT. The message stayed stuck: every 30s it reappeared pending, the handler re-read it, same thing happened.
+**Problem:** `bus_read(queue, vt=30)` gave a 30-second visibility timeout. When processing an UPDATE_REQUEST, `cortex-update.sh` takes ~43 seconds. The VT expired mid-update, the message went back to `pending`, the handler lost its lock, and it couldn't archive or send the UPDATE_RESULT. The message stayed stuck: every 30s it reappeared pending, the handler re-read it, same thing happened.
 
 **Diagnostic signature:** Messages in `pending` that the handler reads but never archives. Querying audit log shows `read` but no corresponding `archive`. Checking `timeout_at` shows VT expired while handler was mid-processing.
 
@@ -20,7 +20,7 @@
 
 ### Fix 3: Logging in run_cortex_update() (commit `32a473b`)
 
-**Problem:** `run_cortex_update()` logged only "Running cortex-update.sh --force-all..." before execution and nothing after. When the update failed, there was no diagnostic output in handler logs — you had to dig into the bus archives to find the UPDATE_RESULT body.
+**Problem:** `run_cortex_update()` logged only "Running cortex-update.sh..." before execution and nothing after. When the update failed, there was no diagnostic output in handler logs — you had to dig into the bus archives to find the UPDATE_RESULT body.
 
 **Fix:** Added logging of exit code, stdout tail (200 chars), and stderr tail (200 chars) after every update run. Timeout and exception cases also log.
 

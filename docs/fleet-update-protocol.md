@@ -55,7 +55,7 @@ Sent when Moses pushes new code to main and the fleet should update.
 
 When an agent receives `UPDATE_REQUEST`, it:
 1. **`git pull origin main`** — pulls the latest code (so agents stuck on an old SHA get up to date)
-2. **`cortex-update.sh --force-all`** — deploys all registered files to disk
+2. **`cortex-update.sh`** — deploys all registered files to disk
 3. **Runs doctor** (if `run_doctor: true`) — verifies all services are healthy
 4. **Sends `UPDATE_RESULT`** — reports success/fail, git SHA before/after, and doctor output
 
