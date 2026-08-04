@@ -1,4 +1,5 @@
-|name: inbox-remediation
+---
+name: inbox-remediation
 description: "Auto-remediate hermes-cortex issues reported by peer agents via the Agent Bus. Scans pending remediation markers every 10 minutes, reads the original message, applies the fix, and marks the request as done."
 version: 1.1.0
 author: Hermes Cortex

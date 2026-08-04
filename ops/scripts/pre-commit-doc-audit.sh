@@ -48,23 +48,35 @@ if [[ "$DOCS_CHANGED" -gt 0 && "$DOCS_INDEX_CHANGED" -eq 0 ]]; then
     done
 fi
 
-# ── Check 2: New/changed skills should update SKILLS-MANIFEST.md ──
-SKILLS_CHANGED=$(echo "$STAGED" | grep -c '^.hermes-cortex/skills/' 2>/dev/null || true)
-MANIFEST_CHANGED=$(echo "$STAGED" | grep -c '^docs/SKILLS-MANIFEST\.md$' 2>/dev/null || true)
+# ── Check 2: skills/ changed → SKILLS-MANIFEST.md must be fresh (generator gate) ──
+SKILLS_CHANGED=$(echo "$STAGED" | grep -c '^skills/' 2>/dev/null || true)
 
-if [[ "$SKILLS_CHANGED" -gt 0 && "$MANIFEST_CHANGED" -eq 0 ]]; then
-    echo "⚠️  DOCS AUDIT: Skills changed but docs/SKILLS-MANIFEST.md was not updated."
-    echo "   → Update SKILLS-MANIFEST.md with the new/changed skill entry"
-    issues=$((issues + 1))
+if [[ "$SKILLS_CHANGED" -gt 0 ]]; then
+    GEN="${CORTEX_DEPLOY_HOME:-$HOME/hermes-cortex}/ops/scripts/manage/gen-skills-manifest.py"
+    if [[ ! -f "$GEN" ]]; then
+        GEN="$HOME/hermes-cortex/ops/scripts/manage/gen-skills-manifest.py"
+    fi
+    if ! python3 "$GEN" --check >/dev/null 2>&1; then
+        echo "⚠️  DOCS AUDIT: skills/ changed but docs/SKILLS-MANIFEST.md is stale."
+        echo "   → Run: python3 ops/scripts/manage/gen-skills-manifest.py  (then stage the result)"
+        issues=$((issues + 1))
+    fi
 fi
 
 # ── Check 3: New/changed scripts should update cortex-update.sh MAP ──
 SCRIPTS_CHANGED=$(echo "$STAGED" | grep -c '^ops/scripts/' 2>/dev/null || true)
-MAP_CHANGED=$(echo "$STAGED" | grep -c '^ops/scripts/cortex-update\\.sh$' 2>/dev/null || true)
+MAP_CHANGED=$(echo "$STAGED" | grep -c '^ops/scripts/cortex-update\.sh$' 2>/dev/null || true)
 
 if [[ "$SCRIPTS_CHANGED" -gt 0 && "$MAP_CHANGED" -eq 0 ]]; then
-    # Only flag new scripts (not modifications to existing registered ones)
-    NEW_SCRIPTS=$(echo "$STAGED" | grep '^ops/scripts/' | grep -v '^ops/scripts/cortex-update\\.sh$' | grep -v '__pycache__' || true)
+    # Only flag NEW scripts — skip files already registered in the MAP
+    NEW_SCRIPTS=""
+    while IFS= read -r path; do
+        [[ -z "$path" || "$path" == *__pycache__* ]] && continue
+        if ! grep -qF "register \"$path\"" ops/scripts/cortex-update.sh \
+           && ! grep -qF "register_orch \"$path\"" ops/scripts/cortex-update.sh; then
+            NEW_SCRIPTS+="$path"$'\n'
+        fi
+    done < <(echo "$STAGED" | grep '^ops/scripts/' | grep -v '^ops/scripts/cortex-update\.sh$' || true)
     if [[ -n "$NEW_SCRIPTS" ]]; then
         echo "⚠️  DOCS AUDIT: New scripts staged but cortex-update.sh MAP was not updated."
         echo "   → Register new scripts in ops/scripts/cortex-update.sh using register()"

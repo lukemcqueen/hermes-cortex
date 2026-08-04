@@ -1071,6 +1071,8 @@ created from. Use "local" for silent background jobs.
 **Test before deploying:** Run `hermes cron run <job-id>` to test a job
 immediately without waiting for the schedule.
 
+### LLM cron inactivity timeout
+
 **LLM cron inactivity timeout (fleet default 30s, was 600s):** The scheduler
 kills an LLM-driven cron that shows no activity (no tool call, no API call,
 no stream delta) for `HERMES_CRON_TIMEOUT` seconds — the classic symptom is

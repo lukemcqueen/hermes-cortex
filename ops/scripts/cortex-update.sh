@@ -185,6 +185,7 @@ register "ops/scripts/install/cortex-profile.sh"          "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/install/seed-project-brain.sh"      "${CORTEX_DEPLOY_HOME}/scripts/seed-project-brain.sh"
 register "ops/scripts/install/install-gateway-cron-timeout.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-gateway-cron-timeout.sh"
 register "ops/scripts/manage/cortex-health.sh"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-health.sh"
+register "ops/scripts/manage/gen-skills-manifest.py"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.py"
 register "ops/scripts/manage/todo-db.py"                "${CORTEX_DEPLOY_HOME}/scripts/todo-db.py"
 register_orch "ops/scripts/install/cortex-setup-langfuse.sh"   "${CORTEX_DEPLOY_HOME}/scripts/cortex-setup-langfuse.sh"
 register "ops/scripts/setup-fleet-langfuse.sh"         "${CORTEX_DEPLOY_HOME}/scripts/setup-fleet-langfuse.sh"
