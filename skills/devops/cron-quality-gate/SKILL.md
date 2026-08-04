@@ -62,9 +62,24 @@ If all YES → deliver as normal.
 
 ## Watchdog Script
 
-Location: `~/.hermes/scripts/agent-cron-quality-watchdog.py`
+Location: `~/.hermes-cortex/scripts/agent-cron-quality-watchdog.py`
+(repo source: `ops/scripts/health/agent-cron-quality-watchdog.py` — edit the
+repo copy, deploy via `cortex-update.sh`)
 
 Runs as `no_agent=True` cron on schedule `*/10 * * * *`. Delivers to origin.
+
+### Behavior (2026-08-04 rewrite)
+
+- **Auto-discovers** every LLM-driven cron (`no_agent=False`) from
+  `~/.hermes/cron/jobs.json` — no hardcoded list to drift.
+- **Looks up output by JOB ID** (output dirs are `output/<job_id>/`, not name).
+- **Checks run on the `## Response` section only** (not the embedded prompt/skill).
+- **`[SILENT]` is the healthy no-op** — never flagged.
+- **Session-guard skip contract**: if the injected script output says `ACTIVE (`
+  and the reply is not the skip token (`skipped` + `interactive session`), it is
+  flagged 🟠. This caught the 2026-08-04 regression where `agent-inbox-workday`
+  delivered `participação` and `agent-bus-workday` delivered
+  `todavía | participação | postfix` after a model stall instead of skipping.
 
 ### What it checks
 

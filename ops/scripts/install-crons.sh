@@ -705,9 +705,17 @@ create_cron "agent-bus-failover-watchdog" "*/5 * * * *" \
 # Bus processing — weekday (hourly M-F 9-5), evening (every 2h M-F 6-10), overnight (3am M-F)
 create_cron "agent-bus-workday" "0 9-17 * * 1-5" \
   "session-active-guard.py" \
-  "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely: do not load skills, do not begin_change, do not touch the repo. Reply only: ⏭️ skipped — interactive session active. Proceed only when the guard says IDLE.
+  "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: ⏭️ skipped — interactive session active. Proceed only when the guard says IDLE.
 
-Process the Agent Bus using the Inbox Message Decision Framework. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean." \
+Process the Agent Bus using the Inbox Message Decision Framework. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean.
+
+## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
+1. Is the output useful, readable, and on-topic for this cron?
+2. Did you run real tools — or reply with the exact guard skip token — instead of fabricating?
+3. Is it the right length (not a stray word, not oversized, not empty)?
+4. Is it in English and in the correct format?
+If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
+If all YES → deliver as normal." \
   "agent-bus-automation" \
   "terminal" \
   "origin" \
@@ -717,7 +725,15 @@ Process the Agent Bus using the Inbox Message Decision Framework. The bus-flag s
 
 create_cron "agent-bus-evening" "0 18,20,22 * * 1-5" \
   "" \
-  "Process the Agent Bus messages. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean." \
+  "Process the Agent Bus messages. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean.
+
+## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
+1. Is the output useful, readable, and on-topic for this cron?
+2. Did you run real tools instead of fabricating results?
+3. Is it the right length (not a stray word, not oversized, not empty)?
+4. Is it in English and in the correct format?
+If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
+If all YES → deliver as normal." \
   "agent-bus-automation" \
   "terminal" \
   "origin" \
@@ -727,7 +743,15 @@ create_cron "agent-bus-evening" "0 18,20,22 * * 1-5" \
 
 create_cron "agent-bus-overnight" "0 3 * * 1-5" \
   "" \
-  "Process the Agent Bus overnight. The bus-flag sensor output is injected as context. Check for any urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean." \
+  "Process the Agent Bus overnight. The bus-flag sensor output is injected as context. Check for any urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean.
+
+## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
+1. Is the output useful, readable, and on-topic for this cron?
+2. Did you run real tools instead of fabricating results?
+3. Is it the right length (not a stray word, not oversized, not empty)?
+4. Is it in English and in the correct format?
+If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
+If all YES → deliver as normal." \
   "agent-bus-automation" \
   "terminal" \
   "origin" \
@@ -741,9 +765,17 @@ printf "\n${CYAN}  5. Inbox Processing${RESET}\n"
 
 create_cron "agent-inbox-workday" "0 9-17 * * 1-5" \
   "session-active-guard.py" \
-  "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely: do not load skills, do not begin_change, do not touch the repo. Reply only: ⏭️ skipped — interactive session active. Proceed only when the guard says IDLE.
+  "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: ⏭️ skipped — interactive session active. Proceed only when the guard says IDLE.
 
-Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: Produce NO output when nothing actionable." \
+Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: Produce NO output when nothing actionable.
+
+## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
+1. Is the output useful, readable, and on-topic for this cron?
+2. Did you run real tools — or reply with the exact guard skip token — instead of fabricating?
+3. Is it the right length (not a stray word, not oversized, not empty)?
+4. Is it in English and in the correct format?
+If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
+If all YES → deliver as normal." \
   "agent-bus-automation" \
   "terminal" \
   "origin" \
@@ -753,7 +785,15 @@ Process pending inbox messages using the Inbox Message Decision Framework. Read 
 
 create_cron "agent-inbox-evening" "0 18,20,22 * * 1-5" \
   "" \
-  "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: Produce NO output when nothing actionable." \
+  "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: Produce NO output when nothing actionable.
+
+## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
+1. Is the output useful, readable, and on-topic for this cron?
+2. Did you run real tools instead of fabricating results?
+3. Is it the right length (not a stray word, not oversized, not empty)?
+4. Is it in English and in the correct format?
+If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
+If all YES → deliver as normal." \
   "agent-bus-automation" \
   "terminal" \
   "origin" \
@@ -763,7 +803,15 @@ create_cron "agent-inbox-evening" "0 18,20,22 * * 1-5" \
 
 create_cron "agent-inbox-overnight" "0 3 * * 1-5" \
   "" \
-  "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: Produce NO output when nothing actionable." \
+  "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: Produce NO output when nothing actionable.
+
+## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
+1. Is the output useful, readable, and on-topic for this cron?
+2. Did you run real tools instead of fabricating results?
+3. Is it the right length (not a stray word, not oversized, not empty)?
+4. Is it in English and in the correct format?
+If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
+If all YES → deliver as normal." \
   "agent-bus-automation" \
   "terminal" \
   "origin" \
