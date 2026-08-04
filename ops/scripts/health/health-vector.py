@@ -348,11 +348,22 @@ def check_ollama() -> int:
     return -1
 
 
+# mycortex doctor result cache. The check shells out to `mycortex doctor --json`
+# (~2s+ per run); health pollers hit the endpoint every few minutes, so a short
+# TTL keeps each /health request fast without masking real state for long.
+# (Same pattern as the retired health-server.py gbrain cache.)
+_MYCORTEX_CACHE = {"t": 0.0, "result": 0}
+_MYCORTEX_TTL = 60
+
+
 def check_mycortex() -> int:
     """mycortex (gbrain replacement): 1 = healthy, 0 = not installed, -1 = installed but down."""
     cli = os.path.expanduser("~/.hermes-cortex/scripts/mycortex")
     if not os.path.exists(cli):
         return 0  # not installed on this system
+    now = time.time()
+    if now - _MYCORTEX_CACHE["t"] < _MYCORTEX_TTL:
+        return _MYCORTEX_CACHE["result"]
     try:
         r = subprocess.run(
             [cli, "doctor", "--json"],
@@ -361,14 +372,18 @@ def check_mycortex() -> int:
         # doctor exits 0 iff ok — authoritative. stdout mixes human lines
         # with a trailing JSON line, so fall back to rc on parse failure.
         if r.returncode != 0:
-            return -1
-        try:
-            data = json.loads(r.stdout)
-            return 1 if data.get("ok") else -1
-        except (json.JSONDecodeError, ValueError):
-            return 1  # rc=0 means doctor passed
+            result = -1
+        else:
+            try:
+                data = json.loads(r.stdout)
+                result = 1 if data.get("ok") else -1
+            except (json.JSONDecodeError, ValueError):
+                result = 1  # rc=0 means doctor passed
     except Exception:
-        return -1
+        result = -1
+    _MYCORTEX_CACHE["t"] = now
+    _MYCORTEX_CACHE["result"] = result
+    return result
 
 
 def check_disk_ok() -> int:
@@ -434,7 +449,12 @@ def build_report() -> dict:
 
 def serve_http(port: int = 8905):
     """Run as a lightweight HTTP server."""
-    from http.server import HTTPServer, BaseHTTPRequestHandler
+    # ThreadingHTTPServer: pollers (hourly report, fleet watchdogs, dashboard)
+    # hit the endpoint within seconds of each other at :00. A plain HTTPServer
+    # serializes them — one slow request (cold mycortex cache) queues the rest
+    # past their client timeouts → false "unreachable". Threaded so a slow
+    # request never blocks another.
+    from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
     class HealthHandler(BaseHTTPRequestHandler):
         def do_GET(self):
@@ -453,7 +473,7 @@ def serve_http(port: int = 8905):
         def log_message(self, format, *args):
             pass  # quiet
 
-    server = HTTPServer(("127.0.0.1", port), HealthHandler)
+    server = ThreadingHTTPServer(("127.0.0.1", port), HealthHandler)
     print(f"🧬 Health vector server on :{port}", flush=True)
     try:
         server.serve_forever()

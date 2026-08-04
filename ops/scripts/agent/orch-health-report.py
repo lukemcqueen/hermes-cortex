@@ -34,7 +34,11 @@ CORTEX_ENV = HOME / "hermes-cortex" / ".env"
 REGISTRY_PATH = HOME / ".hermes-cortex" / "state" / "agent-registry.json"
 REGISTRY_TEMPLATE = HOME / "hermes-cortex" / "ops" / "install" / "deploy" / "agent-registry.template.json"
 REGISTRY_LOCAL = HOME / ".hermes-cortex" / "state" / "agent-registry.local.json"
-TIMEOUT = 3
+# External SSL-terminated endpoints need headroom. A 3s timeout was measured
+# dying during :00 poller bursts (single-threaded health server + cold mycortex
+# cache → 2-9s responses → BrokenPipe). 5s matches fleet poller guidance
+# (agent-health-monitoring skill). See pitfall "External endpoint timeout sensitivity".
+TIMEOUT = 5
 SERVICE_MAP = ["resources", "services", "no_errored_crons", "no_stale_crons",
                "nginx", "ollama", "mycortex", "disk_ok", "gbrain_sources_ok"]
 ICONS = {1: "🟢", 0: "⚪", -1: "🔴"}
