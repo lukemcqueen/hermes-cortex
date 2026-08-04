@@ -22,8 +22,8 @@ and **you cannot write files without one** — a structural deadlock.
 
 | Command | Status | Why |
 |---------|--------|-----|
-| `sudo hermes-plugin-lock unlock` | ✅ Works | NOT in any WRITE_COMMAND_PATTERN |
-| `sudo hermes-plugin-lock lock` | ✅ Works | NOT in any write pattern |
+| `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` (exact, allowlisted flags) | ✅ Works | SANCTIONED lock-free self-recovery (2026-08-04) |
+| `sudo hermes-plugin-lock unlock` / `lock` | ❌ Blocked | Write-class — requires a governance lock (+ token for manual use) |
 | `whoami`, `ls`, `cat`, `grep` | ✅ Works | READ_COMMAND_PATTERNS fast-path |
 | `cp file1 file2` | ❌ Blocked | Hits governance lock check |
 | `git checkout -- file` | ❌ Blocked | `git checkout` in WRITE_COMMAND_PATTERNS |
@@ -37,8 +37,11 @@ and **you cannot write files without one** — a structural deadlock.
 
 #### If deployed is ahead of repo (has independent changes):
 
+ORCHESTRATOR-ONLY (moses|esther) — requires the `--orchestrator` token;
+non-orchestrators are refused and audit-logged:
+
 ```bash
-sudo hermes-plugin-lock unlock
+sudo hermes-plugin-lock unlock --orchestrator
 cp ~/.hermes/plugins/governance-enforcer/__init__.py \
    ~/hermes-cortex/plugins/governance-enforcer/__init__.py
 sudo chmod 444 ~/.hermes/plugins/governance-enforcer/__init__.py
@@ -72,13 +75,17 @@ The self-healing dogfood check is not yet implemented (tracked in
    immediately port the change to the repo source
 3. Verify: `sha256sum` of repo and deployed copies must match
 
-## Why `sudo hermes-plugin-lock` Works Without a Lock
+## Why the Sanctioned Command Works Without a Lock (2026-08-04)
 
-The enforcer's `WRITE_COMMAND_PATTERNS` is an allow-list for write detection.
-`hermes-plugin-lock` is not in this list. The READ_COMMAND_PATTERNS is a
-separate fast-path allow-list for known-read commands. Commands NOT in either
-list fall through to the governance lock check — but `hermes-plugin-lock`
-somehow passes through even this check.
+`sudo hermes-plugin-lock` does NOT pass through — it is write-class and
+blocked without a governance lock. The ONE lock-free file-modifying command
+is the exact `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` invocation:
+`_is_sanctioned_cortex_update_command()` allows exactly that path plus the
+allowlisted flags (`--force-all/--dry-run/--status/--delta/--clean-stale`),
+with no metacharacters — so a DOGFOOD-blocked agent (no lock, no skills
+marker) can deploy and self-recover.
 
-This is documented as a structural fact, not a bypass. Any agent that
-discovers a different bypass should report it for closure, not exploit it.
+**Deploy ≠ load:** after the deploy, the RUNNING gateway still runs the OLD
+enforcer module until `hermes gateway restart` (agent-blocked — the host
+operator runs it). If the sanctioned command still returns `GOVERNANCE LOCK
+REQUIRED` after a deploy, the restart is pending, not the fix missing.

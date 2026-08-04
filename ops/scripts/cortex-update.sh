@@ -1633,12 +1633,18 @@ deploy_governance_plugin() {
 
   [[ "$changed" -gt 0 ]] && info "  Plugin deployed: ${changed} file(s) updated"
 
-  # Reload plugin so new enforcer code takes effect on next session
+  # NOTE: the disable/enable round-trip only updates config.yaml — it does NOT
+  # hot-reload the running gateway (process-global PluginManager singleton;
+  # deploy ≠ load). The new enforcer activates ONLY after `hermes gateway
+  # restart`, which agents cannot perform (lifecycle guard) — the host
+  # operator must run it.
   if command -v hermes &>/dev/null; then
     hermes plugins disable governance-enforcer 2>/dev/null || true
     hermes plugins enable governance-enforcer 2>/dev/null || true
-    info "  Plugin governance-enforcer reloaded (new code active on next session)"
   fi
+  info "  ⚠️  Enforcement chain deployed. Deploy ≠ load: the RUNNING gateway still has the OLD enforcer in memory."
+  info "     Activate: host operator runs 'hermes gateway restart' (agents cannot — lifecycle guard)."
+  info "     Until then, the sanctioned command may still return GOVERNANCE LOCK REQUIRED — that is a pending restart, not a bug."
 
   # ── Clear stale __pycache__ ──
   # Prevents false MD5 mismatches from stale .pyc bytecode
@@ -1671,12 +1677,12 @@ deploy_mycortex_plugin() {
 
   [[ "$changed" -gt 0 ]] && info "  Plugin mycortex-command deployed: ${changed} file(s) updated"
 
-  # Reload plugin so the new command is active on next session
+  # config.yaml only — the plugin module loads at gateway start (deploy ≠ load)
   if command -v hermes &>/dev/null; then
     hermes plugins disable mycortex-command 2>/dev/null || true
     hermes plugins enable mycortex-command 2>/dev/null || true
-    info "  Plugin mycortex-command reloaded (active on next session)"
   fi
+  info "  Plugin mycortex-command files deployed (activates after gateway restart)"
 
   return 0
 }

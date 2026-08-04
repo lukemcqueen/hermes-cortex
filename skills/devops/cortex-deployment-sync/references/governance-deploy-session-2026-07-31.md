@@ -1,5 +1,16 @@
 # Governance Deploy Session Trace — 2026-07-31
 
+> ⚠️ **PARTIALLY SUPERSEDED (2026-08-04).** The immutable unlock→copy→re-lock
+> cycle below still runs inside `cortex-update.sh` itself, but the
+> agent-facing recovery claims are OUTDATED: today the enforcer sanctions the
+> EXACT `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` invocation
+> (allowlisted flags only) WITHOUT a governance lock — that is the
+> self-recovery path. Manual `sudo hermes-plugin-lock unlock` without the
+> `--orchestrator` token, chained forms (`cd … && bash …`), and direct `cp` of
+> enforcement files are BLOCKED for agents. **Deploy ≠ load:** the running
+> gateway keeps the old enforcer module until `hermes gateway restart`
+> (operator action — agents cannot). See `cortex-deployment-sync/SKILL.md` ⚡.
+
 Full reproduction of the immutable-governance-file deploy failure and the proper recovery path. Client staging server (Linux, Ubuntu 24.04).
 
 ## Trigger

@@ -70,6 +70,26 @@ The `begin_change()` MCP tool has a DOGFOOD check: if the deployed enforcer (`~/
 
 ---
 
+## 2b. Deploy ≠ Load — Gateway Restart Required to Activate
+
+`cortex-update.sh` copies the new enforcer to
+`~/.hermes/plugins/governance-enforcer/` and re-locks it — but the RUNNING
+gateway keeps executing the OLD module from memory. The plugin manager is a
+process-global singleton: `hermes plugins disable/enable` only writes
+`config.yaml`; it does NOT hot-reload loaded modules.
+
+- **Symptom:** repo == deployed (SHA256 match) yet the sanctioned
+  `bash ~/hermes-cortex/ops/scripts/cortex-update.sh --status` still returns
+  `GOVERNANCE LOCK REQUIRED` → pending restart, not a code bug.
+- **Fix:** `hermes gateway restart` — agents cannot run it (lifecycle guard);
+  the host operator (Luke) must. Verify with the positive control (`--status`
+  passes lock-free) and negative control (`... && echo hi` still blocked).
+- **Don't:** re-run cortex-update.sh repeatedly, edit the deployed copy, or
+  disable/enable the plugin to "reload" it — none of these activate the new
+  code. Only a gateway restart does.
+
+---
+
 ## 3. The Skills-Loaded Marker Race (FIXED — per-session files, 2026-08-01)
 
 **The old design:** `.skills-loaded` at `~/.hermes-cortex/state/` was a single

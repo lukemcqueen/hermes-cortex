@@ -34,8 +34,8 @@ done
 ## Fix
 
 ```bash
-# 1. Unlock immutable files
-sudo hermes-plugin-lock unlock
+# 1. Unlock immutable files (ORCHESTRATOR-ONLY token — non-orch agents: request via Moses)
+sudo hermes-plugin-lock unlock --orchestrator
 
 # 2. Remove stale directory
 rm -rf ~/.hermes/plugins/<name>

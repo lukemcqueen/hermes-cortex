@@ -131,9 +131,15 @@ bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 Since 2026-08-04 the enforcer's `_is_sanctioned_cortex_update_command()`
 allows this EXACT command through without a governance lock (exact path,
 allowlisted flags only, no chaining/sudo/metacharacters). Since
-`commit ce258342`, `deploy_governance_plugin()` always copies the
-enforcer files from repo source (no `needs_update` gate), then auto-reloads
-the plugin via `hermes plugins disable/enable`.
+Since `commit ce258342`, `deploy_governance_plugin()` always copies the
+enforcer files from repo source (no `needs_update` gate).
+**⚠️ Deploy ≠ load (2026-08-04):** `hermes plugins disable/enable` does NOT
+reload the running enforcer — it only writes `config.yaml`. The gateway keeps
+the OLD module in memory until `hermes gateway restart`, which agents cannot
+perform (lifecycle guard; the host operator runs it). Symptom: repo == deployed
+(SHA256 match) yet the sanctioned command STILL returns `GOVERNANCE LOCK
+REQUIRED` → restart pending, not a code bug. Do not loop retrying — ask the
+operator to restart the gateway.
 
 ## Prevention
 
@@ -186,13 +192,22 @@ This means `cp` without a governance lock hits the same "GOVERNANCE LOCK
 REQUIRED" error as `git push` or `sudo chmod`. The only commands that
 pass through are:
 - Commands matching READ_COMMAND_PATTERNS (fast-path)
-- `sudo hermes-plugin-lock unlock` — the single exception
+- `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` (exact, allowlisted
+  flags only) — the single sanctioned exception (2026-08-04)
 
-### `sudo hermes-plugin-lock unlock` — the single exception
+### The single sanctioned exception (updated 2026-08-04)
 
-`sudo hermes-plugin-lock` is NOT in any WRITE_COMMAND_PATTERN and NOT in
-READ_COMMAND_PATTERNS. It nevertheless passes through the enforcer. This
-is the **only** file-modifying command that works without a governance
-lock, making it the critical tool for breaking dogfood deadlocks.
+`sudo hermes-plugin-lock unlock` is NO LONGER a pass-through — it is
+write-class and requires a governance lock (manual use needs the
+`--orchestrator` token; non-orchestrators are refused and audit-logged).
+The ONE file-modifying command that works without a governance lock is the
+exact sanctioned deploy invocation:
 
-Documented here as a structural fact, not a bypass.
+```bash
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+# allowlisted flags only: --force-all --dry-run --status --delta --clean-stale
+# EXACT match — no sudo, no chaining, no other scripts
+```
+
+The `cp` explanation above still holds (`cp` is blocked by the governance
+lock check, not by WRITE_COMMAND_PATTERNS).

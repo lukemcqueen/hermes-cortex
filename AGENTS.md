@@ -54,9 +54,16 @@
 > exceptions are the sanctioned `--cortex-update` token (used by
 > cortex-update.sh itself) and the `--orchestrator` token (moses|esther
 > manual maintenance). If the DOGFOOD pre-commit check blocks you because
-> the deployed enforcer differs from the repo: run cortex-update.sh, reload
-> the 8 always-skills (the deploy invalidates the skills marker), re-acquire
-> your governance lock (the deploy purges locks), then retry the commit.
+> the deployed enforcer differs from the repo: run cortex-update.sh (the exact
+> `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` invocation is sanctioned
+> lock-free), re-acquire your governance lock (the deploy purges locks), then
+> retry the commit. ⚠️ **Deploy ≠ load:** the RUNNING gateway keeps the OLD
+> enforcer module in memory until `hermes gateway restart` — `hermes plugins
+> disable/enable` only writes config.yaml (no hot reload), and agents cannot
+> restart the gateway (lifecycle guard). If the sanctioned command still
+> appears blocked right after a deploy, ask the host operator to restart the
+> gateway; do not loop retrying. (Per-session skills markers survive deploys
+> since 2026-08-01 — no 8-skill reload needed after cortex-update.)
 >
 > **RULE 7c: BUS ACCESS — NON-ORCHESTRATORS USE THE HTTP CLIENT ONLY**
 > If you are not Moses or Esther: you have the bus **HTTP client**

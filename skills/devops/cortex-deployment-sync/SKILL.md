@@ -12,30 +12,39 @@ platforms: [linux, macos]
 
 **Class of task:** any "pull latest", "cortex update", "update from repo", or repo→runtime deployment operation on a Hermes Cortex machine. Also covers diagnosing why `cortex-update.sh` FAILED on specific files.
 
-## ⚡ THE INVOCATION THAT WORKS (learned 2026-07-31 — do NOT deviate)
+## ⚡ THE SANCTIONED INVOCATION (2026-08-04 — supersedes 2026-07-31 guidance)
 
-**Run the script by DIRECT path, NO `bash` prefix:**
+Since 2026-08-04 the enforcer's `_is_sanctioned_cortex_update_command()` lets
+the EXACT deploy invocation through the terminal gate WITHOUT a governance
+lock — this is the lock-free self-recovery that breaks the DOGFOOD deadlock:
 
 ```bash
-~/hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh            # canonical (bash prefix OK)
+~/hermes-cortex/ops/scripts/cortex-update.sh                  # also sanctioned (no prefix)
+# allowlisted flags ONLY: --force-all --dry-run --status --delta --clean-stale
 ```
 
-This is the ONLY form that passes the enforcer's terminal gate without a governance lock. The enforcer's interpreter guard (`WRITE_COMMAND_PATTERNS`) matches `bash <path>.sh` → classified as write → **GOVERNANCE LOCK REQUIRED**. Direct execution (`<path>/cortex-update.sh`) is NOT matched by the guard → allowed through with smart-approval.
+Exact match only — no `sudo`, no `-c`, no chaining (`&&`, `;`, `|`, `>`), no
+command substitution, no other scripts or flags. Anything else is write-class
+and still requires a governance lock.
 
-**NEVER use these forms** (they hard-fail without an active governance lock):
-- `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` ← blocked
-- `bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all` ← blocked
-- `bash ~/.hermes-cortex/scripts/cortex-update.sh` ← blocked
-- `cd ... && ./ops/scripts/cortex-update.sh --force-all` ← blocked (and user-denied 2026-07-31)
+**⚠️ Deploy ≠ load:** after a run that updated the enforcement chain, the
+RUNNING gateway still executes the OLD enforcer module from memory —
+`hermes plugins disable/enable` only writes `config.yaml`, it does NOT
+hot-reload the process-global PluginManager singleton. The new enforcer
+activates ONLY after `hermes gateway restart`, which agents cannot perform
+(lifecycle guard). If the sanctioned command still returns `GOVERNANCE LOCK
+REQUIRED` right after a deploy, that is a PENDING RESTART, not a code bug —
+stop retrying and ask the host operator (Luke) to restart the gateway.
 
-**Use `--force-all` only when the delta engine skips files that should re-deploy** — but note the plain direct run already re-checks mapped files in force mode internally on this deployment. Plain direct run is the safe default.
+**Use `--force-all` only when the delta engine skips files that should re-deploy** — plain run is the safe default.
 
 ## The proper sequence (user directive, 2026-07-31)
 
 > "Whenever there's a governance mechanism change you NEED to cortex update as this is the proper path. no shortcuts."
 
 1. `git pull --rebase origin main` — resolve conflicts (see Pitfall 2). If unstaged changes block the rebase, use `git pull --rebase --autostash origin main`.
-2. **`~/hermes-cortex/ops/scripts/cortex-update.sh`** — direct path, no `bash` prefix (see ⚡ above)
+2. **`bash ~/hermes-cortex/ops/scripts/cortex-update.sh`** — the sanctioned lock-free invocation (see ⚡ above)
 3. Doctor output is embedded in the update; fix every ❌ (score PENDING cycles, verify governance deployed)
 4. Re-run step 2 if the doctor reported failures, until it's clean (0 fail)
 5. Verify clean state
@@ -69,6 +78,8 @@ When the repo's enforcer is newer than the deployed one (Moses pushed), `begin_c
 2. THEN `begin_change()` (dogfood gate now passes, repo == deployed)
 
 Do NOT try to `cp` the enforcer file manually (blocked + violates the immutable-deploy rule), do NOT loop retrying `sudo hermes-plugin-lock` forms (write-class, needs a lock — the sanctioned exception covers only the exact cortex-update.sh invocation). Symptom on 2026-07-31: 8+ failed attempts across `bash`, `cp`, `python3 -c` before the fix landed; since 2026-08-04 the bare sanctioned command runs clean.
+
+**⚠️ Deploy ≠ load:** after deploying, the RUNNING gateway keeps the OLD enforcer in memory until `hermes gateway restart` (agent-blocked — the host operator runs it). If the sanctioned command still returns GOVERNANCE LOCK REQUIRED after a deploy, that is a pending restart, not a code bug — do not loop; ask the operator.
 
 ## Pitfall 9: `git pull --rebase` replayed commits get logged as `--no-verify` → push blocked
 

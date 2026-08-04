@@ -854,6 +854,23 @@ Then score all PENDING cycles (`cycle_query` → `feedback_accept`) and `end_cha
 >   "UPDATE loop_cycles SET decision='MOVE_ON' WHERE id=<id> AND user_overrode=1 AND decision='PENDING';"
 > ```
 
+### 25. Deploy ≠ load — enforcement chain needs a gateway restart to activate
+
+**Symptom:** you ran `cortex-update.sh`, repo and deployed copies match
+(`sha256sum` equal), yet the sanctioned
+`bash ~/hermes-cortex/ops/scripts/cortex-update.sh --status` still returns
+`GOVERNANCE LOCK REQUIRED` — the OLD behavior.
+
+**Root cause:** `cortex-update.sh` copies the new enforcer to disk, but the
+RUNNING gateway process loaded the OLD module at startup. The plugin manager
+is a process-global singleton — `hermes plugins disable/enable` only writes
+`config.yaml`, it does NOT hot-reload. **Deploy ≠ load.**
+
+**Fix:** `hermes gateway restart` — agents cannot run it (lifecycle guard);
+the host operator (Luke) must. Then re-verify: the sanctioned `--status`
+command passes lock-free, and `... && echo hi` is still blocked. This is a
+pending restart, not a code bug — do not loop re-running the deploy.
+
 ## 🧠 Scoring / Loop Governance Issues
 
 ### 19. Loop-gov MCP server fails: `ModuleNotFoundError: No module named 'hermes_models'`
