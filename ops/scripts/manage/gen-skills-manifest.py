@@ -16,13 +16,32 @@ as the freshness gate: any staged skills/ change triggers --check.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
 
 import yaml
 
-REPO = Path(__file__).resolve().parent.parent.parent.parent  # hermes-cortex/
+def _find_repo() -> Path:
+    """Locate the hermes-cortex repo root — works from repo source AND deployed copy.
+
+    Repo:   ops/scripts/manage/gen-skills-manifest.py  (4 levels down)
+    Deployed: ~/.hermes-cortex/scripts/gen-skills-manifest.py  (3 levels down)
+    Walk up until a dir containing skills/ + docs/ is found; fall back to env.
+    """
+    env = os.environ.get("CORTEX_REPO")
+    if env and (Path(env) / "skills").is_dir():
+        return Path(env)
+    p = Path(__file__).resolve().parent
+    for _ in range(6):
+        if (p / "skills").is_dir() and (p / "docs").is_dir():
+            return p
+        p = p.parent
+    return Path.home() / "hermes-cortex"
+
+
+REPO = _find_repo()
 SKILLS_DIR = REPO / "skills"
 MANIFEST = REPO / "docs" / "SKILLS-MANIFEST.md"
 
