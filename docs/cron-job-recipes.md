@@ -1073,15 +1073,20 @@ immediately without waiting for the schedule.
 
 ### LLM cron inactivity timeout
 
-**LLM cron inactivity timeout (fleet default 300s, was 30s; upstream
-default 600s):** The scheduler
+**LLM cron inactivity timeout (fleet default 600s, was 300s after a 30s
+probe; upstream default 600s):** The scheduler
 kills an LLM-driven cron that shows no activity (no tool call, no API call,
 no stream delta) for `HERMES_CRON_TIMEOUT` seconds — the classic symptom is
 `TimeoutError: Cron job '<name>' idle for Ns (limit 600s)` from a hung
 non-streaming API response. The limit is gateway-process env, **not**
-per-job (no config.yaml key, no jobs.json field). The fleet applies 300s via
+per-job (no config.yaml key, no jobs.json field). The fleet applies 600s via
 `install-gateway-cron-timeout.sh` on every cortex-update (systemd drop-in on
 Linux, `~/.hermes/.env` on macOS); it activates on the next gateway restart.
+⚠️ The 08-04 fleet experiment (30s probe, then 300s) broke the evening LLM
+crons (agent-fixer/cortex-bus/agent-inbox/soul-refinement): heavy
+non-streaming deepseek calls on accumulated daily workload exceeded 5
+minutes, killing 9/9 runs with 'idle for 300s'. 600s restores known-good
+behavior.
 Override per machine with `HERMES_CRON_TIMEOUT` in `~/hermes-cortex/.env`.
 If a cron legitimately needs long single API calls (non-streaming), either
 tune the value or enable streaming for that job — don't just re-run the cron

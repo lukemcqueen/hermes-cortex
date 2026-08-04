@@ -7,9 +7,12 @@
 # gateway uses this env var to kill cron jobs that go idle — the
 # upstream default is 600s, which tolerates a hung provider API call
 # for ten minutes before the cron is killed as a TimeoutError.
-# Fleet default here: 300s — 5 minutes accommodates slow-but-alive
-# reasoning-model responses (deepseek-v4-flash non-streaming calls on
-# large prompts run 27-60s+) while still catching genuine hangs.
+# Fleet default here: 600s — the upstream default. The 08-04 fleet
+# experiment (30s probe, then 300s) proved too tight: under 300s, the
+# evening LLM crons (agent-fixer/cortex-bus/agent-inbox/soul-refinement)
+# failed 9/9 runs with 'idle for 300s' — heavy non-streaming deepseek
+# calls on accumulated daily workload exceed 5 minutes. 600s restores
+# known-good behavior (jobs ran fine under it since late July).
 # History: 30s (2026-08-04 diagnostic probe) proved too tight for
 # LLM crons — every non-streaming deepseek call over 30s was killed.
 #
@@ -18,7 +21,7 @@
 #   macOS  → idempotent append to ~/.hermes/.env (launchd gateway —
 #            the langfuse-fleet-script pattern; Hermes loads it at start)
 #
-# Value: ${HERMES_CRON_TIMEOUT:-300} — override per machine via
+# Value: ${HERMES_CRON_TIMEOUT:-600} — override per machine via
 # ~/hermes-cortex/.env (sourced by cortex-update.sh before this runs).
 # 0 = unlimited.
 #
@@ -35,7 +38,7 @@
 # ───────────────────────────────────────────────────────────────
 set -euo pipefail
 
-VALUE="${HERMES_CRON_TIMEOUT:-300}"
+VALUE="${HERMES_CRON_TIMEOUT:-600}"
 case "$VALUE" in
   ''|*[!0-9]*)
     echo "install-gateway-cron-timeout: invalid HERMES_CRON_TIMEOUT='${VALUE}' (must be numeric seconds; 0 = unlimited)" >&2

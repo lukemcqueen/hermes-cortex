@@ -2290,7 +2290,7 @@ main() {
   fi
 
   # ── LLM cron inactivity timeout ───────────────────────────
-  # Ensures HERMES_CRON_TIMEOUT (fleet default 300s) is applied to the
+  # Ensures HERMES_CRON_TIMEOUT (fleet default 600s) is applied to the
   # gateway service: systemd drop-in on Linux, ~/.hermes/.env on macOS.
   # Activation needs a gateway restart (next `hermes update` / operator
   # restart) — the installer does NOT restart the gateway itself because
