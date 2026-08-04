@@ -333,7 +333,7 @@ AND EXISTS (SELECT 1 FROM song_creator_shares scs
             AND scs.member_id IS NOT NULL AND scs.member_id != 99);  -- writer member
 ```
 
-## Pitfalls: The `mweb-` prefix containers (running 10+ hours) have the real data. Fresh `docker compose up` creates new `koscap-mwi-` containers with empty databases.
+## Pitfalls: The `mweb-` prefix containers (running 10+ hours) have the real data. Fresh `docker compose up` creates new `client-mwi-` containers with empty databases.
 - **`docker exec rails runner`** may fail if `mwi_development` database doesn't exist on the postgres01 container — the web container's config expects `mwi_development` but the Docker setup may use `mwi`.
 - **Sidekiq runs async** — the job doesn't block. Zero output can mean the job is still running, has crashed, or completed with zero songs. Check Sidekiq dashboard (`/sidekiq`) or worker logs.
 - **Default export engine mismatch**: UI defaults to `'service'` but controller defaults to `:legacy` if param is absent. If the form is ever rendered without the engine dropdown, the export silently switches engines.

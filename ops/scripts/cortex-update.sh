@@ -854,7 +854,6 @@ clean_stale_deploys() {
     "skill_miner.py"
     "agent-swap-refresh.py"
     "agent-nginx-threat-pipeline.sh"
-    "koscap-workday-watchdog.py"
     # Local-only no_agent cron scripts — NOT in repo, created per-host.
     # Must survive clean_stale_deploys; the cron scheduler resolves them
     # through the ~/.hermes/scripts → ~/.hermes-cortex/scripts symlink.

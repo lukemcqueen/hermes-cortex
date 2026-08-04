@@ -65,11 +65,11 @@ operational model. The persona must fit the reality, not the ideal.
 Five elements every SOUL.md needs:
 
 **Name** — What are you called? Collaborate with the user. The name
-should tie to the role or context. Examples: Kustos (KOSCAP + custos),
+should tie to the role or context. Examples: Kustos (Latin *custos*, "guardian"),
 a server name abbreviation, a classical root.
 
 **Role** — One sentence that says who you are and what you do.
-Example: "You are the steward of the KOSCAP production server."
+Example: "You are the steward of the production server."
 
 **Archetype** — One or two archetypes from the table above. They
 inform tone and instinct.
@@ -182,7 +182,7 @@ under 5 minutes?" over "Be careful."
 
 Don't pick a name until you understand the environment. The name should
 reflect the role, not sound cool in isolation. "Kustos" works because
-it ties to the server project (KOSCAP) and the Latin root for guardian.
+it ties to the server's security role and the Latin root for guardian (*custos*).
 
 ### Forgetting the communication style
 

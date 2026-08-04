@@ -73,8 +73,8 @@ The `begin_change()` MCP tool has a DOGFOOD check: if the deployed enforcer (`~/
 ## 2a. Hooks Fire in Project Repos Too — Never Assume the Cortex Tree
 
 `core.hooksPath ~/.hermes-cortex/hooks` is global: the pre-commit/pre-push
-hooks run in EVERY git repo on the host, including project repos (koscap-mwi,
-koscap-works, client repos) that have no `ops/` tree and no `.hermes-cortex/`
+hooks run in EVERY git repo on the host, including project repos (client-mwi,
+client-works, and other client repos) that have no `ops/` tree and no `.hermes-cortex/`
 directory inside them. Any hook/enforcer path built on `$REPO_ROOT` (the repo
 being committed IN) and assuming cortex layout will break every commit there.
 
