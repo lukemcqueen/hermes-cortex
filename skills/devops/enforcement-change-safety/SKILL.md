@@ -170,6 +170,52 @@ builds a scratch repo, installs the real hooks, and runs all eight paths
 (normal, --no-verify, rebase, cherry-pick, revert, merge, amend, amend
 --no-verify) asserting which must log and which must stay silent.
 
+## Rule 6: Hooks Run in EVERY Repo — Never Assume the Cortex Tree
+
+`core.hooksPath ~/.hermes-cortex/hooks` is set **globally** — the pre-commit/
+pre-push hooks fire in every git repo on the host (koscap-mwi, koscap-works,
+client repos, any project without the cortex `ops/` tree). A hook that builds
+a path on `$REPO_ROOT` (the repo being committed IN) and assumes cortex
+layout breaks EVERY commit in those repos — even one-line test fixes.
+
+**Real regression (2026-08-04, Esther, commit `faa0e929`):** the adversarial
+gate hard-resolved `ADVERSARIAL_SCRIPT="$REPO_ROOT/ops/scripts/quality/adversarial-verify.py"`.
+That path exists only in ~/hermes-cortex itself. Project repos have no `ops/`
+tree → fail-closed block on every commit (Titus hit it on koscap-mwi within
+hours). Fix `72d6cdc3`: candidate loop with deployed-path fallback.
+
+**The pattern — repo-local first, canonically-deployed second, fail CLOSED:**
+
+```bash
+ADVERSARIAL_SCRIPT=""
+for candidate in "$REPO_ROOT/ops/scripts/quality/adversarial-verify.py" \
+                 "$HOME/.hermes-cortex/scripts/adversarial-verify.py"; do
+  if [[ -f "$candidate" ]]; then
+    ADVERSARIAL_SCRIPT="$candidate"
+    break
+  fi
+done
+if [[ -z "$ADVERSARIAL_SCRIPT" ]]; then
+  # fail CLOSED — a commit without the scan is a bypass
+  exit 1
+fi
+```
+
+- `$HOME/.hermes-cortex/scripts/` is where `cortex-update.sh` registers every
+  deployed tool on BOTH Linux and macOS — always include it as the fallback.
+- `$REPO_ROOT` (from `git rev-parse --show-toplevel`) is the repo being
+  committed IN — only valid as the FIRST candidate, never the only path.
+- The existing score-cycle lookup (line ~576) already had this pattern — the
+  adversarial block just didn't follow it. **When adding a tool lookup to a
+  hook, copy the established candidate-loop pattern, don't invent a new one.**
+
+**Verify BEFORE shipping a hook change (all three):**
+1. Commit in the cortex repo → repo-local candidate wins (scan runs)
+2. Commit in a scratch project repo with NO `ops/` tree → deployed copy found
+   (`git init /tmp/proj && git config core.hooksPath ~/.hermes-cortex/hooks`)
+3. Temporarily move the deployed tool aside → commit still blocked (exit 1),
+   then restore
+
 ## References
 
 - `references/pre-commit-score-fail-closed-2026-08-03.md` — the incident:

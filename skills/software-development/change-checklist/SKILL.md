@@ -200,6 +200,14 @@ Different agents have different setups. Your change shouldn't break them.
 
 - [ ] **Process/service name audit:** If your change uses `pgrep`, `systemctl`, `launchctl`, or any process-detection tool, verify the name matches the ACTUAL runtime command line. `pgrep -f agent-bus` silently returns nothing when the real daemon is `agent_bus` (underscore, from uvicorn agent_bus.server). Check `ps aux | grep <name>` to see the real argv — use that exact string, not a guess.
 
+- [ ] **Hook/enforcer changes: test in a PROJECT repo, not just cortex.** `core.hooksPath` is set globally — hooks fire in every git repo on the host, and project repos have NO `ops/` tree or `.hermes-cortex/` inside them. A hook that hard-resolves a tool to `$REPO_ROOT/ops/...` (the repo being committed IN) blocks EVERY commit in project repos — regression `faa0e929` → fix `72d6cdc3` (2026-08-04). Before shipping any hook change:
+  ```bash
+  git init /tmp/hook-test && cd /tmp/hook-test
+  git config core.hooksPath ~/.hermes-cortex/hooks   # same as global
+  echo x > f.txt && git add f.txt && git commit -m test   # must PASS via deployed tool
+  ```
+  Then confirm fail-closed still works (move the deployed tool aside → commit must block exit 1 → restore). See `enforcement-change-safety` Rule 6 for the candidate-loop pattern.
+
 - [ ] **Titus (macOS, push-only health, 1 agent, many projects):**
   - No server-level services (no systemd, no nginx necessarily)
   - Health is pushed to inbox, not polled via HTTP

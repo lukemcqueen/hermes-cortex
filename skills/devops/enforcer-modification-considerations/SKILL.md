@@ -70,6 +70,27 @@ The `begin_change()` MCP tool has a DOGFOOD check: if the deployed enforcer (`~/
 
 ---
 
+## 2a. Hooks Fire in Project Repos Too — Never Assume the Cortex Tree
+
+`core.hooksPath ~/.hermes-cortex/hooks` is global: the pre-commit/pre-push
+hooks run in EVERY git repo on the host, including project repos (koscap-mwi,
+koscap-works, client repos) that have no `ops/` tree and no `.hermes-cortex/`
+directory inside them. Any hook/enforcer path built on `$REPO_ROOT` (the repo
+being committed IN) and assuming cortex layout will break every commit there.
+
+**Regression 2026-08-04 (`faa0e929` → fix `72d6cdc3`):** the adversarial gate
+hard-resolved to `$REPO_ROOT/ops/scripts/quality/adversarial-verify.py` —
+project repos lack that path, so ALL their commits failed fail-closed.
+Fix pattern: candidate loop, repo-local first, then the canonically-deployed
+copy at `$HOME/.hermes-cortex/scripts/` (registered by cortex-update.sh on
+both Linux and macOS). Fail closed only if BOTH are missing. See
+`enforcement-change-safety` Rule 6 for the full pattern and the 3-branch
+verification (cortex repo / project repo / tool-missing).
+
+When modifying hooks or the enforcer, test in a scratch project repo
+(`git init /tmp/t && git config core.hooksPath ~/.hermes-cortex/hooks`)
+before shipping — a cortex-repo-only test proves nothing about project repos.
+
 ## 2b. Deploy ≠ Load — Gateway Restart Required to Activate
 
 `cortex-update.sh` copies the new enforcer to
