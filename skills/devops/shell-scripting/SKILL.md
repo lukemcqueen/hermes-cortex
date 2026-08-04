@@ -61,6 +61,25 @@ if [[ -n "$ORCH_CONFIG" ]]; then ... fi   # empty = "no config", gate on -n
 
 **Real bug (2026-07-31):** `pre-commit-score`'s orchestrator-only-paths guard read `docs/orchestrator-only-paths.txt` this way. Repos without the file (e.g. client project repos) had EVERY non-orch commit fail with exit 1 and zero output. One `|| true` fixed it fleet-wide.
 
+### `| head -N` under `set -euo pipefail` = silent SIGPIPE abort
+
+**A silent-kill trap that only fires on LARGE outputs:** truncating a pipeline with `head -N` makes `head` exit after N lines; the producer then gets SIGPIPE (exit 141). With `pipefail`, the pipeline status becomes 141, and with `set -e` the whole script aborts — **silently, mid-deploy, exit 141** (or exit 0 if the caller pipes the script's output without checking `PIPESTATUS`).
+
+```bash
+# ❌ ABORTS the script when $src has >20 lines not in $dest
+set -euo pipefail
+local_only_lines=$(comm -23 <(sort "$dest") <(sort "$src") 2>/dev/null | head -20)
+#   → head reads 20 lines, closes the pipe → comm gets SIGPIPE (141)
+#     → pipefail propagates 141 → set -e exits BEFORE the copy_file below
+
+# ✅ Safe — sed consumes ALL input; no SIGPIPE possible
+local_only_lines=$(comm -23 <(sort "$dest") <(sort "$src") 2>/dev/null | sed -n '1,20p')
+```
+
+**The rule:** under `set -euo pipefail`, never truncate a pipeline with `head`/`tail` unless you add `|| true` (which masks the real status). Prefer `sed -n '1,Np'` — it reads everything, so the producer never gets SIGPIPE. This applies in `$(...)` assignments too: the substitution's exit status is the pipeline's under pipefail.
+
+**Real bug (2026-08-04):** `cortex-update.sh`'s AGENTS.md sync used `comm | head -20`. Any deploy where the local `~/.hermes/AGENTS.md` diverged from the repo by >20 lines (e.g. an AGENTS.md trim) silently skipped EVERYTHING after the sync — mycortex migrations, nginx/plugin deploys, soul-merge, the update-commit save, and the lock purge — while `update-commit` stayed stale and the doctor reported "Deploy sync FAIL". The exit was masked entirely when the script was invoked through a pipe (`bash script.sh | tail` returns tail's 0). Same latent pattern fixed in the two `stale-ref-watchdog` scripts (`find | head -20`).
+
 ### `set -u` + uninitialized counter variable = premature exit
 
 When a script uses `set -u` (or `set -euo pipefail`) and a variable like `REMOVED` is only conditionally incremented (e.g., inside a loop that may iterate zero times), referencing it without a default value causes an immediate exit:
