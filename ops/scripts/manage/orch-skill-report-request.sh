@@ -103,8 +103,8 @@ if [[ -z "$INBOX_URL" ]]; then
 fi
 
 for agent in "${AGENTS[@]}"; do
-  # Skip self (the orchestrator running this script)
-  [[ "$agent" == "$(hostname -s)" ]] && continue
+  # Skip orchestrators + self — skill-report requests are for workers only
+  [[ "$agent" == "moses" || "$agent" == "esther" || "$agent" == "$(hostname -s)" ]] && continue
 
   BODY="━━━ Skill Report Request — $REQUEST_ID ━━━
 

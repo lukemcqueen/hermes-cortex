@@ -632,6 +632,95 @@ def _check_cron_prompt_stale_refs(res, registered):
         "no stale bus-target references in live cron prompts")
 
 
+CHANGED_SCRIPT_WINDOW_DAYS = 7
+
+def _check_changed_script_execution(res):
+  """Warn when an ops/scripts file changed in the repo but its cron job on
+  THIS host has not run since the change (the dogfooding guard).
+
+  A source change is not done until the DEPLOYED copy has been exercised
+  through its real invocation. For cron scripts that means the cron
+  scheduler's last_run_at must be AFTER the script's last commit. Running
+  the script manually (python3/bash) does NOT update the scheduler's
+  last_status, and a source-only fix never reaches the running job until
+  cortex-update.sh deploys it — so the correct dogfood sequence is:
+    bash cortex-update.sh          # deploy
+    cronjob action='run' job_id=<id>   # run through the scheduler
+
+  Added 2026-08-04 after the inbox_moses→inbox_orchestrator rename shipped
+  with changed worker scripts that were syntax-checked but never executed.
+  """
+  import datetime as _dt
+  import subprocess as _sp
+  try:
+    repo = str(CORTEX_REPO)
+    since = _dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(days=CHANGED_SCRIPT_WINDOW_DAYS)
+    out = _sp.run(
+        ["git", "-C", repo, "log", f"--since={since.isoformat()}",
+         "--name-only", "--pretty=format:", "--", "ops/scripts/"],
+        capture_output=True, text=True, timeout=20).stdout
+  except Exception as e:
+    res.add("Script run evidence", "SKIP", f"git scan failed: {e}")
+    return
+
+  changed = {}
+  for line in out.splitlines():
+    line = line.strip()
+    if not (line.endswith(".py") or line.endswith(".sh")) or "/" not in line:
+      continue
+    base = line.rsplit("/", 1)[-1]
+    try:
+      ct = _sp.run(["git", "-C", repo, "log", "-1", "--format=%ct", "--", line],
+                   capture_output=True, text=True, timeout=10).stdout.strip()
+      if ct:
+        changed.setdefault(base, int(ct))
+    except Exception:
+      continue
+  if not changed:
+    res.add("Script run evidence", "PASS",
+        f"no ops/scripts changes in the last {CHANGED_SCRIPT_WINDOW_DAYS} days")
+    return
+
+  try:
+    data = json.loads(JOBS_FILE.read_text())
+  except Exception:
+    data = {}
+  jobs = data.get("jobs", []) if isinstance(data, dict) else data
+  by_script = {}
+  for j in jobs:
+    if not isinstance(j, dict):
+      continue
+    s = (j.get("script") or "").rsplit("/", 1)[-1]
+    if s:
+      by_script.setdefault(s, []).append((j.get("name"), j.get("last_run_at")))
+
+  unrun = []
+  for base, commit_ts in changed.items():
+    if base not in by_script:
+      continue  # not a cron script on this host — out of scope
+    latest = None
+    for name, lr in by_script[base]:
+      if not lr:
+        continue
+      try:
+        t = _dt.datetime.fromisoformat(lr.replace("Z", "+00:00"))
+        if latest is None or t > latest[1]:
+          latest = (name, t)
+      except ValueError:
+        continue
+    if latest is None or latest[1].timestamp() < commit_ts:
+      unrun.append(f"{base} (cron: {latest[0] if latest else 'never ran'})")
+
+  if unrun:
+    res.add("Script run evidence", "WARN",
+        f"{len(unrun)} changed script(s) not run through the scheduler since the change: " + "; ".join(unrun[:5]),
+        "Dogfood: bash cortex-update.sh (deploy), then cronjob action='run' job_id=<id>. "
+        "Manual python3/bash runs don't update the scheduler's last_status.")
+  else:
+    res.add("Script run evidence", "PASS",
+        f"all {len(changed)} changed script(s) have run through the scheduler since their change")
+
+
 def check_crons(res):
   """2. Cron audit: all expected crons registered, workdirs valid, run status, extra crons."""
   if not JOBS_FILE.exists():
@@ -648,6 +737,7 @@ def check_crons(res):
   registered = {j.get("name"): j for j in jobs if isinstance(j, dict) and j.get("name")}
 
   _check_cron_prompt_stale_refs(res, registered)
+  _check_changed_script_execution(res)
 
   expected_crons = parse_expected_crons()
   if not expected_crons:

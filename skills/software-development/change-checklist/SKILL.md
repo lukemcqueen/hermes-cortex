@@ -105,6 +105,7 @@ See `references/testing-deployable-scripts.md` for detailed testing patterns by 
 
 - [ ] **Script changes:** Run the script with relevant inputs and verify real output
   - `bash script.sh --help` or `python3 script.py` — confirm it runs without errors
+  - ⚠️ **DOGFOOD (mandatory, enforced):** a change is not done until the **deployed** copy ran through its **real scheduler invocation**. For cron scripts: `cortex-update.sh` (deploy) then `cronjob action='run' job_id=<id>` — manual `python3 script.py` does NOT update the scheduler's `last_status`. The doctor's **`Script run evidence`** check WARNs on any ops/scripts file changed in the last 7 days whose cron job hasn't run since the change — if it warns, run the named cron. The **`Cron prompt stale refs`** check WARNs if live prompts still name old targets (source edits don't rewrite existing jobs).
   - If it produces a config: verify the output has correct paths for the OS you're on
   - If it's a cron job: create it with `cronjob(action='run')` and inspect the delivery
   - ⚠️ **Manual `python3 script.py` does NOT update the cron scheduler's `last_status`.** The doctor reads the scheduler's recorded status, not the script exit code. After fixing a cron, ALWAYS run `cronjob action='run' job_id=<id>` to refresh the scheduler's status. Then run the doctor to confirm it clears.
