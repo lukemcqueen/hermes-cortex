@@ -65,8 +65,8 @@ Also verify the `.gitignore` patterns that catch them. Common patterns: `*cred*`
 | Real credentials | `user:pass`, `sk-abc...`, `T1tus!nbox_2026` | Replace with `your-credential-placeholder` |
 | Real email addresses | `admin@customer.org`, `audit@customer.org` | Replace with `admin@client-domain.com` |
 | Real file paths with user | `/home/luke`, `/Users/luke` | Replace with `/path/to/app` or `$HOME` |
-| Client project names | `koscap-royalty`, `client-app` | Evaluate: is this identifying? If yes, use `client-project` |
-| Company/organization names | `KOSCAP`, `AcmeCorp` | Replace with `ExampleCorp` or generic `ClientName` |
+| Client project names | `clientco-royalty`, `client-app` | Evaluate: is this identifying? If yes, use `client-project` |
+| Company/organization names | `CLIENTCO`, `AcmeCorp` | Replace with `ExampleCorp` or generic `ClientName` |
 | Real person names in paths | `joseph/`, `luke/` | Rename to generic descriptor (`operator/`, `user/`). Scan directory listing, not just file contents |
 | Real person names in content | `Luke`, `Joseph` (not biblical/historical figures) | Replace with `the user`, `the operator`, or a role descriptor |
 | Multiple TLD variants (same base domain) | `client.org`, `client.or.kr`, `client.com` | Search for the base word across all TLDs, not just the one you found first |
@@ -117,7 +117,7 @@ curl -sk -u "user:your-password"
 **E) Email addresses in skill references:**
 ```
 # Before
-admin@koscap.or.kr
+admin@client-domain.com
 
 # After
 admin@client-domain.com
@@ -258,43 +258,43 @@ cd /tmp/repo-clean
 git filter-repo --force --refs HEAD --replace-message /tmp/pii-replacements.txt
 ```
 
-This rewrites the history again, applying the same literal replacements to commit subjects and bodies. Without this, commit messages like `fix: add Gisu to mirror chain for KOSCAP images` still leak the real project name.
+This rewrites the history again, applying the same literal replacements to commit subjects and bodies. Without this, commit messages like `fix: add Gisu to mirror chain for CLIENTCO images` still leak the real project name.
 
 **When to use:** Always. Unless you've verified there's no PII in any commit message (via `git log --oneline --grep`), assume there is.
 
 ### Phase 4c: File Renaming via `--filename-callback`
 
-When obfuscating a project name that appears in filenames (e.g. `koscap-development-patterns.md` → `acme-development-patterns.md`), use `--filename-callback`.
+When obfuscating a project name that appears in filenames (e.g. `clientco-development-patterns.md` → `acme-development-patterns.md`), use `--filename-callback`.
 
 The callback receives **bytes**, not str — decode/encode accordingly:
 
 ```bash
 git filter-repo --force --refs HEAD \
   --replace-text /tmp/replacements.txt \
-  --filename-callback 'return filename.replace(b"koscap", b"acme").replace(b"KOSCAP", b"ACME").replace(b"Koscap", b"Acme")'
+  --filename-callback 'return filename.replace(b"clientco", b"acme").replace(b"CLIENTCO", b"ACME").replace(b"Clientco", b"Acme")'
 ```
 
 After renaming, update the replacement rules file to include the case variants:
 
 ```
-KOSCAP==>ACME
-Koscap==>Acme
-koscap==>acme
+CLIENTCO==>ACME
+Clientco==>Acme
+clientco==>acme
 ```
 
 ### Phase 4d: Case Variants
 
 A project name can appear in three case forms:
-- **UPPERCASE**: `KOSCAP` — in titles, headings, CISAC codes
-- **Titlecase**: `Koscap` — in running text ("Koscap-royalty monorepo")
-- **lowercase**: `koscap` — in URLs, paths, repo names (`koscap-works`, `koscap-royalty`)
+- **UPPERCASE**: `CLIENTCO` — in titles, headings, CISAC codes
+- **Titlecase**: `Clientco` — in running text ("Clientco-royalty monorepo")
+- **lowercase**: `clientco` — in URLs, paths, repo names (`clientco-works`, `clientco-royalty`)
 
-`--replace-text` does **case-sensitive exact match** — `koscap==>acme` will NOT match `KOSCAP` or `Koscap`. Add ALL variants to the replacements file:
+`--replace-text` does **case-sensitive exact match** — `clientco==>acme` will NOT match `CLIENTCO` or `Clientco`. Add ALL variants to the replacements file:
 
 ```
-KOSCAP==>ACME
-Koscap==>Acme
-koscap==>acme
+CLIENTCO==>ACME
+Clientco==>Acme
+clientco==>acme
 ```
 
 Same for `--filename-callback` — each variant needs its own `.replace()` call.
@@ -320,15 +320,15 @@ Place more specific patterns FIRST in the replacements file, more general patter
 
 **Wrong ordering:**
 ```
-koscap==>acme                              # ← fires first on "koscap.or.kr" → "acme.or.kr" ❌
-koscap.or.kr==>client-domain.com           # ← never reached
+clientco==>acme                              # ← fires first on "clientco.or.kr" → "acme.or.kr" ❌
+clientco.or.kr==>client-domain.com           # ← never reached
 ```
 
 **Correct ordering:**
 ```
-koscap.or.kr==>client-domain.com           # ← fires first, catches full domain ✅
-mweb-stage.koscap.or.kr==>your-gisu-host   # ← even more specific should come first
-koscap==>acme                              # ← now safe: only matches non-domain uses
+clientco.or.kr==>client-domain.com           # ← fires first, catches full domain ✅
+mweb-stage.clientco.or.kr==>your-gisu-host   # ← even more specific should come first
+clientco==>acme                              # ← now safe: only matches non-domain uses
 ```
 
 ## Pitfalls
@@ -340,12 +340,12 @@ koscap==>acme                              # ← now safe: only matches non-doma
 - **Don't miss commit messages** — `--replace-text` is for file contents only. Commit messages need a separate `--replace-message` pass. This is the #1 oversight — without it, the commit log still leaks.
 - **Don't use `--all` in verification** — `git log --all --grep=` includes stale remote tracking refs that predate the filter. Use `git log HEAD --grep=` to verify the actual branch being pushed.
 - **Don't forget filename callbacks return bytes** — `--filename-callback` in filter-repo receives `bytes`, not `str`. Use `filename.replace(b"old", b"new")` not `filename.replace("old", "new")`.
-- **Don't forget case variants** — `koscap` is three different strings (`koscap`, `Koscap`, `KOSCAP`). Add all to the replacements file.
-- **Don't order replacements wrong** — put specific full-domain patterns before generic project-name patterns. A `koscap==>acme` rule that fires before `koscap.or.kr==>client-domain.com` produces `acme.or.kr` instead of `client-domain.com`.
+- **Don't forget case variants** — `clientco` is three different strings (`clientco`, `Clientco`, `CLIENTCO`). Add all to the replacements file.
+- **Don't order replacements wrong** — put specific full-domain patterns before generic project-name patterns. A `clientco==>acme` rule that fires before `clientco.or.kr==>client-domain.com` produces `acme.or.kr` instead of `client-domain.com`.
 - **Don't force-push protected branches** — check with `git push --dry-run --force origin main` first, or push to an unprotected branch and ask for protection to be temporarily lifted.
 - **Don't leave real passwords in example code** — even if the example looks generic, a real password like `T1tus!nbox_2026` is a production credential. Replace with `your-inbox-password` or similar.
 - **Shell `echo` statements with escaped quotes** — shell scripts that print config vars via `echo "    VAR=\"value\""` are fragile under `patch` tool's escape-drift. The `\"` sequence can cause the patch tool to double-escape backslashes. Fix: read the exact line with `read_file`, then use the literal file content (including escaped quotes) as both old and new strings, or bypass `patch` and use `write_file` for the entire script section.
-- **Don't stop after one TLD** — if you found `client.org`, also search for `client.com`, `client.or.kr`, `client.co.kr`, etc. Users often have different TLDs for different services (infrastructure vs email vs SSL certs). After fixing one, search for just the base word (e.g. `koscap`) to catch all variants.
+- **Don't stop after one TLD** — if you found `client.org`, also search for `client.com`, `client.or.kr`, `client.co.kr`, etc. Users often have different TLDs for different services (infrastructure vs email vs SSL certs). After fixing one, search for just the base word (e.g. `clientco`) to catch all variants.
 - **Don't treat `127.0.0.1` or `localhost` as PII** — these are internal addresses and are safe to leave in public code.
 - **`--refs HEAD` prevents re-processing backup refs** — after a prior filter-repo run, `refs/original/*` backup refs exist. Without `--refs HEAD`, the new pass will process them again and potentially create duplicate processing issues. Always pass `--refs HEAD`.
 

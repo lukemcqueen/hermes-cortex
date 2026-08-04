@@ -94,7 +94,7 @@ Before making any change, map the full scope. A single cron rename can touch 10+
 - [ ] **Old cron cleanup**: If you added a new cron with a new name (e.g. `orch-bus-audit-watchdog` replacing `bus-audit-watchdog`), confirm the old one was removed via the script or direct jobs.json edit. Crons don't self-destruct.
 - [ ] **Test run**: after deploy, run the actual script to verify exit code 0
 - [ ] **Governance lock verified**: After `begin_change()`, confirm the lock is active with `check_lock`. The lock is session-scoped (`.governance-{session_id}.json`) — no generic symlink needed.
-- [ ] **PII scan**: run `bash ~/hermes-cortex/ops/scripts/secret-leak-detector.sh` and review any PII warnings before pushing. Check for real domains, `/home/<username>/` paths, and email addresses in new/changed files.
+- [ ] **PII scan**: run `bash ~/hermes-cortex/ops/scripts/secret-leak-detector.sh` and review any PII warnings before pushing. The scanner BLOCKS real email addresses in the public repo (placeholder domains like `admin@client-domain.com` pass) and warns on `/home/<username>/` paths, non-placeholder URL domains, and public IPs. Skill/shared-surface writes (`skill_manage`, and `write_file`/`patch` into `~/hermes-cortex` or `~/.hermes/skills`) are scanned at write time by the enforcer PII gate — real emails block before the write lands. Writes to client/project paths outside the shared surface are never blocked (the git hook still warns at commit).
 
 ## The Checklist
 

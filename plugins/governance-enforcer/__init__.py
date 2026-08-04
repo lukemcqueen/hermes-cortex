@@ -157,8 +157,25 @@ def _detect_domain_skill_needed(tool_name: str, args: dict) -> tuple:
       2. Path-context hint (file under tests/, deploy/, etc.)
       3. Extension match (.sh, .py, .yml, etc.)
     """
-    if tool_name not in ("write_file", "patch"):
+    if tool_name not in ("write_file", "patch", "skill_manage"):
         return None, None
+    if tool_name == "skill_manage":
+        # skill_manage writes to ~/.hermes/skills/<name>/... — it has no
+        # path arg, so map by the skill name / optional file_path instead.
+        # SKILL.md → skill-authoring domain skill (check filename FIRST —
+        # Path('SKILL.md').suffix is '.md', not ''); a supporting file
+        # with a known extension → that domain skill.
+        fpath = args.get("file_path", "")
+        fname = Path(fpath).name if fpath else "SKILL.md"
+        if fname.lower() == "skill.md":
+            return ("hermes-agent-skill-authoring",
+                    "Skill authoring conventions, frontmatter validation, PII guardrails")
+        ext = Path(fname).suffix.lower() if Path(fname).suffix else ""
+        if ext and ext in _EXT_DOMAIN_SKILLS and _EXT_DOMAIN_SKILLS[ext]:
+            entry = _EXT_DOMAIN_SKILLS[ext]
+            return entry[0], entry[1]
+        return ("hermes-agent-skill-authoring",
+                "Skill authoring conventions, frontmatter validation, PII guardrails")
     path = args.get("path", "")
     if not path:
         return None, None
@@ -260,7 +277,7 @@ def _read_skills_state(session_id: str = "") -> dict:
                 if isinstance(data, dict):
                     return data
     except (json.JSONDecodeError, OSError, ValueError):
-        pass
+        log.debug("Cannot read skills-state json — starting fresh")
     return {}
 
 
@@ -495,17 +512,13 @@ def _derive_repo_slug() -> str:
     """
     # Strategy 1: git rev-parse (fast, authoritative)
     try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, timeout=5,
-        )
+        result = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             git_dir = result.stdout.strip()
             if git_dir:
                 return Path(git_dir).name
     except (OSError, subprocess.TimeoutExpired):
         log.warning("Cannot derive repo slug via git rev-parse")
-        pass
 
     # Fallback: enforcer blocks all writes (correct behaviour)
     return ""
@@ -525,7 +538,6 @@ def _is_lock_stale(state: dict, max_age: int = 7200) -> bool:
             return age > effective_ttl
         except (ValueError, TypeError):
             log.warning("Cannot parse heartbeat timestamp: %s", heartbeat)
-            pass
     started = state.get("started_at", "")
     if started:
         try:
@@ -539,7 +551,6 @@ def _is_lock_stale(state: dict, max_age: int = 7200) -> bool:
             return age > effective_ttl * 2
         except (ValueError, TypeError):
             log.warning("Cannot parse started_at timestamp: %s", started)
-            pass
     return True  # no timestamps = stale
 
 
@@ -614,8 +625,7 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
                     continue
                 lock_file.unlink(missing_ok=True)
         except (json.JSONDecodeError, OSError):
-            # Unparseable = possibly mid-write. Leave it — never delete.
-            log.debug("Skipping unparseable lock file (mid-write?): %s", lock_file.name)
+            log.debug("Skipping unparseable lock file (possibly mid-write — leaving it, never delete): %s", lock_file.name)
 
     # ── Phase 1: Exact match by Hermes session ID ──
     if hermes_session_id:
@@ -658,13 +668,11 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
                     lock_file.unlink(missing_ok=True)
                 except OSError:
                     log.warning("Cannot remove stale lock file: %s", lock_file)
-                    pass
                 continue
             if state.get("task_id", ""):
                 return True
         except (json.JSONDecodeError, OSError):
-            # P1-A: unparseable = possibly mid-write. Leave it — never delete.
-            log.debug("Skipping unparseable lock file (mid-write?): %s", lock_file.name)
+            log.debug("Skipping unparseable lock file (P1-A: possibly mid-write — leaving it, never delete): %s", lock_file.name)
 
     # ── Phase 3: Secondary lock marker inside repo ──
     # Check the repo-located marker when primary state directory
@@ -963,6 +971,10 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
 
     # Extract file info for the message
     path = args.get("path", "")
+    if not path and tool_name == "skill_manage":
+        fpath = args.get("file_path", "")
+        fname = Path(fpath).name if fpath else "SKILL.md"
+        path = f"~/.hermes/skills/{args.get('name', '')}/{fname}"
     fname = Path(path).name if path else "file"
     ext = Path(path).suffix.lower() if path and Path(path).suffix else fname
 
@@ -1003,6 +1015,104 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
         return {"action": "block", "message": msg}
 
 
+# ── PII content gate ────────────────────────────────────
+# Real email addresses in the SHARED surface (~/.hermes/skills and
+# ~/hermes-cortex — the public repo) block the write. This closes the
+# gap where skill_manage writes never pass a git commit (so the
+# pre-commit secret-leak-detector never ran) — see the 2026-08-04
+# Titus PII incident. Writes OUTSIDE the shared surface (client
+# projects, /tmp, other repos) are never blocked — the git hook still
+# warns at commit time. Placeholder domains are allowlisted.
+# NOTE: keep PLACEHOLDER_DOMAIN_RE in sync with
+# ops/scripts/secret-leak-detector.sh (PLACEHOLDER_DOMAIN_RE).
+_PII_EMAIL_RE = re.compile(
+    r"[A-Za-z0-9._%+-]+@[A-Za-z][A-Za-z0-9.-]*\.[A-Za-z]{2,}"
+)
+_PLACEHOLDER_DOMAIN_RE = re.compile(
+    r"^(|.*\.)(example\.(com|org|net)|client-domain\.com|customer\.org|"
+    r"contoso\.com|test\.com|email\.com|b\.com|ex\.com|github\.com|"
+    r"gitlab\.com|pinggy\.io|localhost\.run|openssh\.com|libssh\.org|"
+    r"cluster\.mongodb\.net|all-hands\.dev|agentmail\.to|domain\.tld|"
+    r"test|local|internal|acme)$"
+)
+_HERMES_CORTEX_REPO = Path.home() / "hermes-cortex"
+_HERMES_SKILLS_DIR = Path.home() / ".hermes" / "skills"
+
+
+def _skill_write_content(args: dict) -> str:
+    """Extract the text being written by a skill_manage call (may be '')."""
+    action = args.get("action", "")
+    if action == "patch":
+        return args.get("new_string", "")
+    if action in ("create", "edit"):
+        return args.get("content", "")
+    if action == "write_file":
+        return args.get("file_content", "")
+    return ""
+
+
+def _is_shared_surface_path(path: str) -> bool:
+    """True when the target is the public repo or the shared skill lib."""
+    if not path:
+        return False
+    p = str(Path(path).expanduser().resolve())
+    repo = str(_HERMES_CORTEX_REPO.resolve())
+    skills = str(_HERMES_SKILLS_DIR.resolve())
+    return (
+        p == repo
+        or p.startswith(repo + os.sep)
+        or p.startswith(skills + os.sep)
+    )
+
+
+def _check_pii_content_gate(tool_name: str, args: dict) -> Optional[dict]:
+    """Block writes of real email addresses into the shared surface.
+
+    Returns None (pass) or {"action": "block", "message": str}.
+    """
+    if tool_name == "skill_manage":
+        content = _skill_write_content(args)
+        shared = True  # skill_manage always targets ~/.hermes/skills
+    elif tool_name in ("write_file", "patch"):
+        content = (
+            args.get("content", "")
+            or args.get("new_string", "")
+            or args.get("patch", "")
+        )
+        shared = _is_shared_surface_path(args.get("path", ""))
+    else:
+        return None
+    if not content or not shared:
+        return None
+
+    bad_domains = set()
+    for email in _PII_EMAIL_RE.findall(content):
+        domain = email.split("@", 1)[1]
+        if not _PLACEHOLDER_DOMAIN_RE.match(domain):
+            bad_domains.add(domain)
+    if not bad_domains:
+        return None
+
+    domain_list = ", ".join(sorted(bad_domains))
+    return {
+        "action": "block",
+        "message": (
+            "🛑 PII GUARD — real email address in content being written.\n\n"
+            "Tool '" + tool_name + "' is writing into the shared surface "
+            "(hermes-cortex repo or ~/.hermes/skills), and the content "
+            "contains email addresses on non-placeholder domain(s): "
+            + domain_list + "\n\n"
+            "Rule 16 (agent-contract): never commit real email addresses, "
+            "domains, or credentials. Replace them with placeholders:\n"
+            "  admin@client-domain.com   (not a real address)\n"
+            "  example.com               (not a real domain)\n\n"
+            "The write is blocked until the PII is removed. Writes to "
+            "client/project paths outside the shared surface are not "
+            "affected.\n"
+        ),
+    }
+
+
 def _check_adversarial_commit_gate(
     tool_name: str, args: dict, session_id: str,
 ) -> Optional[dict]:
@@ -1029,25 +1139,13 @@ def _check_adversarial_commit_gate(
     # Check what files are about to be shipped
     try:
         if re.search(r"^\s*git\s+commit\b", command):
-            result = subprocess.run(
-                ["git", "diff", "--cached", "--name-only"],
-                capture_output=True, text=True, timeout=5,
-                cwd=Path.home() / "hermes-cortex",
-            )
+            result = subprocess.run(["git", "diff", "--cached", "--name-only"], capture_output=True, text=True, timeout=5, cwd=Path.home() / "hermes-cortex")
         else:
             # git push — check commits to push
-            result = subprocess.run(
-                ["git", "diff", "@{upstream}..HEAD", "--name-only"],
-                capture_output=True, text=True, timeout=5,
-                cwd=Path.home() / "hermes-cortex",
-            )
+            result = subprocess.run(["git", "diff", "@{upstream}..HEAD", "--name-only"], capture_output=True, text=True, timeout=5, cwd=Path.home() / "hermes-cortex")
         if result.returncode != 0:
             # May not have upstream — check last commit
-            result = subprocess.run(
-                ["git", "diff", "HEAD~1..HEAD", "--name-only"],
-                capture_output=True, text=True, timeout=5,
-                cwd=Path.home() / "hermes-cortex",
-            )
+            result = subprocess.run(["git", "diff", "HEAD~1..HEAD", "--name-only"], capture_output=True, text=True, timeout=5, cwd=Path.home() / "hermes-cortex")
         staged = [s.strip() for s in result.stdout.strip().split("\n") if s.strip()]
     except (OSError, subprocess.TimeoutExpired):
         return None  # Can't determine — don't block
@@ -1119,6 +1217,9 @@ def _on_session_start(session_id: str, **kwargs):
     Interactive sessions are unaffected — they still require skill_view()
     calls to create the marker, maintaining full governance security.
     """
+    if not session_id:
+        log.debug("_on_session_start without session_id — skipping marker")
+        return
     try:
         if session_id:
             _write_session_marker(session_id)
@@ -1383,6 +1484,15 @@ def register(ctx):
             if domain_result is not None:
                 # Block with educational message
                 return domain_result
+
+            # ── PII content gate ──
+            # Real emails in shared-surface writes (hermes-cortex repo,
+            # ~/.hermes/skills) block before the write lands. skill_manage
+            # never passes a git commit, so this is the only layer that
+            # catches PII in skill content (Titus 2026-08-04 incident).
+            pii_result = _check_pii_content_gate(tool_name, args)
+            if pii_result is not None:
+                return pii_result
 
             # ── Adversarial commit gate ──
             # Before git commit/push of critical-system changes: require

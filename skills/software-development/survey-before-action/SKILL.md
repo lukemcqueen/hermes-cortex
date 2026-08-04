@@ -43,7 +43,7 @@ Without domain skills, agents make preventable mistakes: writing `.sh` files wit
 | Performance diagnosis | `linux-performance-diagnostics` |
 | Cross-agent feature / protocol | `cross-agent-design` |
 | Installing packages | `package-security` |
-| Creating a skill | `hermes-agent-skill-authoring` |
+| Creating a skill | `hermes-agent-skill-authoring`, `pii-scrubbing` |
 | Writing documentation | `documentation-auditing`, `doc-freshness` |
 | System security change | `linux-server-hardening`, `security-audit` |
 | Deploying Langfuse | `langfuse-self-hosted` |
