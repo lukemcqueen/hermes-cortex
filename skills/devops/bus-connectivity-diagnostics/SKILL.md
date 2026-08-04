@@ -92,6 +92,17 @@ curl -s -X POST https://<host>:13004/api/pgmq/send \
 The `bus.permissions` table controls which agents can read/write which queues.
 The bus server checks permissions via `_check_permission()` on every send/read.
 
+> ⚠️ **Two ACL schemas exist fleet-wide — match the SQL to the host.** The
+> PRIMARY bus (Moses, `core/agent_bus`, :13004) uses per-queue **arrays**
+> (`can_read`/`can_write` text[] + `is_admin`) — the queries below. The
+> BACKUP bus (Esther, `ops/services/agent-bus`, :14004) uses coarse
+> **booleans** (`can_send`/`can_read`/`can_archive`/`can_requeue`). Workers
+> send through the primary, so a 403 on worker→orchestrator traffic means
+> checking the PRIMARY's array ACL first. `UPDATE ... SET can_write = array(...)`
+> only works on the primary; the backup takes `SET can_send = true`.
+> See `docs/esther-bus-setup.md` Step 7 for both shapes and the worker
+> `inbox_orchestrator` grant.
+
 ### Quick Reference
 
 | Agent | Type | can_write (all queues) | can_read |
