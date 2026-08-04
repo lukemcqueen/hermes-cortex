@@ -676,6 +676,66 @@ Copy the script to `~/.hermes/scripts/` first. See AGENTS.md for full setup.
    ```
    Silent = success. Errors go to `/tmp/com.hermes.health-push.err`.
 
+## Diagnostic Procedure: "Hourly report says 🔴 unreachable, manual run is green"
+
+**Trigger:** The hourly `orch-health-report` (what lands in Telegram) marks an agent
+— usually Moses itself — 🔴 unreachable, but a manual `python3
+~/.hermes/scripts/orch-health-report.py` minutes later is green. Real outage vs
+monitoring artifact? Run this sequence in order. (Discovered 2026-08-04: Moses
+red at 13:00/14:00/15:00, green at 15:03.)
+
+1. **Read the actual cron output** (not the chat paste):
+   `~/.hermes/cron/output/<job_id>/latest.md` — keyed by job ID, never name
+   (`cronjob action='list'` → `orch-health-report-weekday`). Check whether it
+   fails every run or just some (sporadic = timing; constant = config/outage).
+2. **Probe the external URL** — the ONLY health truth (localhost curls are not
+   evidence):
+   ```bash
+   curl -skS -w "\nHTTP=%{http_code} %{time_total}s\n" --max-time 15 https://<domain>:<port>/health
+   ```
+3. **Measure latency repeatedly** — run 5+ probes. If responses are 2-10s, the
+   endpoint itself is slow → find the slow check:
+   ```bash
+   cd ~/hermes-cortex/ops/scripts/health && python3 - <<'EOF'
+   import time, importlib.util
+   spec = importlib.util.spec_from_file_location("hv", "health-vector.py")
+   hv = importlib.util.module_from_spec(spec); spec.loader.exec_module(hv)
+   for fn in hv.CHECK_FUNCTIONS:
+       t0=time.time(); r=fn(); print(f"{fn.__name__:<28}{time.time()-t0:>7.3f}s -> {r}")
+   EOF
+   ```
+   Any check > 1s is the culprit. As of 2026-08-04: `check_mycortex` shelled out
+   to `mycortex doctor --json` (~1.7s+) on EVERY request with no cache.
+4. **Check the health server journal for BrokenPipeError** — clients timing out
+   mid-write:
+   `journalctl --user -u health-vector.service --since "1 hour ago" --no-pager | grep -A6 "line 448"`
+   A traceback at `self.wfile.write(...)` = the poller gave up while the server
+   was still computing. Not a server crash — a symptom.
+5. **Check server concurrency**: `health-vector.py` uses `HTTPServer`
+   (single-threaded) — pollers (hourly report, fleet watchdogs, dashboard)
+   arriving within seconds at :00 serialize behind a slow request and queue
+   past their client timeouts. Fix: `ThreadingHTTPServer`.
+6. **Compare poller timeouts**: `grep -n TIMEOUT ops/scripts/agent/orch-health-report.py`
+   vs `ops/scripts/agent/agent-health-monitor.py` (15). A 3s timeout against a
+   server that takes 2-9s under burst = guaranteed false red. Fleet guidance:
+   5s minimum for external SSL-terminated endpoints.
+7. **Fix pattern (all three layers, 2026-08-04 commit 03d95312):**
+   - slow check → short-TTL cache (60s; same pattern as the retired
+     health-server.py gbrain cache)
+   - single-threaded server → `ThreadingHTTPServer`
+   - short poller timeout → 3s → 5s
+8. **Verify through the scheduler, not manually**: `bash cortex-update.sh`
+   (deploy; purges gov locks — re-acquire), `systemctl --user restart
+   health-vector.service` (unit runs the repo file; running process needs a
+   restart to load new code), `cronjob action='run' job_id=<id>`, then confirm
+   the cron output shows ✅. Manual `python3` runs do NOT update the scheduler's
+   `last_status` or the doctor's run-evidence.
+
+**Rule of thumb:** sporadic "unreachable" for the self-poll only (other agents
+green) = timing/concurrency on the local health server, not an outage. Check
+latency distribution and server threading BEFORE touching the registry, nginx,
+or firewalls.
+
 ## Orch-Team-Health Pitfall: Stale SERVICE_MAP
 
 The orchestrator poller (`orch-team-health.py`) has a hardcoded `SERVICE_MAP` that maps vector indices to service names. Over time, if the agent-side health endpoint changes format (e.g. from 8-element `health-vector.py` to 9-element `health-server.py`), the poller's map becomes stale and misreports every vector.
@@ -727,3 +787,4 @@ The orchestrator poller (`orch-team-health.py`) has a hardcoded `SERVICE_MAP` th
 | **Paused cron trips stale/errored checks (FIXED 2026-07-31)** | A paused job (`enabled: false`, e.g. `orch-bus-forwarder-sync` paused for maintenance) keeps its old `last_run_at`. The stale check computes elapsed vs its schedule (e.g. `*/2 * * * *`) and flags it permanently stale — health index 3 red forever. Same for a paused job with a frozen `last_status: error`. | `check_no_stale_crons()` and `check_no_errored_crons()` skip jobs with `enabled != true`. Paused jobs are intentionally not running — their frozen timestamps/statuses must not drive the health vector. If health index 2 or 3 is red, first check whether the offender is paused before blaming the cron. |
 | **Gateway restart interrupts in-flight LLM crons** | A gateway restart ("Stopping gateway for restart...", drain timeout at 180s) kills in-flight cron sessions. They are marked `interrupted` → `last_status: error` with NO output file written. Health index 2 goes red until each cron completes a new run. All affected crons share the exact same `last_run_at` timestamp (the interruption moment). | Not a cron bug — recovery is automatic on the next scheduled run. Verify: same-timestamp errors across several crons + gateway shutdown log lines at that moment. To confirm the crons re-ran, check `~/.hermes/logs/agent.log` for new `cron_<jobid>_<newer-timestamp>` sessions. If the red persists past the next run, then investigate the cron itself. |
 | **Errored cron feeds health vector index 2** | Health shows -1 at index 2 (no_errored_crons). A watchdog exited non-zero legitimately detecting a real problem (e.g. ClickHouse merge failures from langfuse-health-watchdog). | Read the failing cron output from cron output dir. Fix the underlying problem, not the health check. The watchdog and health vector are working correctly. |
+| **Sporadic self-poll "unreachable" while manual run is green (FIXED 2026-08-04)** | Hourly report marks Moses 🔴 unreachable at :00 while a manual run minutes later is green. Root cause chain: `check_mycortex` runs `mycortex doctor --json` (~1.7s+) on every request with no cache → single-threaded `HTTPServer` serializes the :00 poller burst → 2-9.6s wall times → report's 3s timeout fires → BrokenPipeError in the server journal. Other agents stay green because their endpoints are on other hosts. | Three-layer fix (commit 03d95312): cache the slow check (60s TTL), `ThreadingHTTPServer`, poller `TIMEOUT` 3→5. Diagnostic steps in the "Diagnostic Procedure" section above. |
