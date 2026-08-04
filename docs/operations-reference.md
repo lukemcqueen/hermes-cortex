@@ -166,9 +166,9 @@ AGENT_NAME="your_agent_name"
 ```bash
 chmod 600 ~/hermes-cortex/cortex-bus.conf
 
-# 4. Verify you can talk to the inbox
+# 4. Verify you can talk to the bus
 curl -s -u "your_username:your_password" \
- https://your-domain.com:13004/api/inbox?limit=3
+ https://your-domain.com:13004/api/pgmq/queues
 ```
 
 **Workers (Gisu, Joseph, Kustos, Titus):** Do NOT add an `agent-bus` entry to
@@ -183,8 +183,8 @@ bash ~/.hermes-cortex/scripts/contact-orchestrator.sh "TEST: connectivity" "ping
 ```bash
 # Ensure nginx proxy exists (Moses: :13004 → :8903, Esther: :14004 → :8903)
 # Already set up by install.sh — verify:
-curl -s -u "your_username:your_password" https://your-domain.com:13004/api/inbox?limit=1
-# Should return 200
+curl -s -u "your_username:your_password" https://your-domain.com:13004/api/pgmq/queues
+# Should return 200 with a JSON list of queues
 ```
 
 ### Common confusion to avoid

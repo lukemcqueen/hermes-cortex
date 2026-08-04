@@ -105,7 +105,7 @@ git push origin main
 After migration:
 - `curl` returns exactly 9 elements
 - `--check` output labels match SERVICE_MAP doc
-- `orch-team-health.py` poller correctly reports service names
+- `orch-health-report.py` / `orch-fleet-watchdog.py` pollers correctly report service names
 - Agent-registry.json health_vector_map matches
 
 ## Common mistakes

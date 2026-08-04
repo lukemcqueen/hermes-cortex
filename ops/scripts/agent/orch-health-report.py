@@ -6,7 +6,8 @@ no_agent watchdog pattern:
 
 Two health methods:
   - http:   Poll agent's health-vector HTTP endpoint (server agents)
-  - inbox:  Read agent's latest health push from the inbox (client-only agents)
+  - inbox:  Read agent's latest health push from the PGMQ bus queue
+            ``inbox_health_check`` (client-only agents)
 
 Laptop agents (Titus): use inbox method with a 4-hour grace period.
   When offline but within grace, shows 🌙 offline instead of 🔴 unreachable.
@@ -22,6 +23,7 @@ Output:
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 import urllib.request
@@ -31,6 +33,14 @@ from typing import Optional
 
 HOME = Path.home()
 CORTEX_ENV = HOME / "hermes-cortex" / ".env"
+
+# Ensure lib.cortex_bus is importable (same pattern as orch-clean-health-queue.py)
+try:
+    from hermes_paths import ensure_scripts_path
+    ensure_scripts_path()
+except Exception:
+    pass  # not fatal — bus read degrades to None
+
 REGISTRY_PATH = HOME / ".hermes-cortex" / "state" / "agent-registry.json"
 REGISTRY_TEMPLATE = HOME / "hermes-cortex" / "ops" / "install" / "deploy" / "agent-registry.template.json"
 REGISTRY_LOCAL = HOME / ".hermes-cortex" / "state" / "agent-registry.local.json"
@@ -46,66 +56,6 @@ ICONS = {1: "🟢", 0: "⚪", -1: "🔴"}
 # Laptop grace period — shared with orch-fleet-watchdog.py
 LAPTOP_GRACE_MINUTES = 30  # 30 min — covers quick coffee breaks / lid closes
 LAST_SEEN_FILE = HOME / ".hermes-cortex" / "state" / "last-seen.json"
-
-
-# ── Inbox connection ──
-
-def _load_inbox_config() -> dict:
-    """Load inbox URL and auth from env vars, fallback to hermes-cortex/.env."""
-    import os
-    config = {"url": "", "auth": ""}
-
-    # Try environment variables first
-    env_url = os.environ.get("CORTEX_BUS_URL", "") or os.environ.get("CORTEX_BUS_FALLBACK_URL", "") or os.environ.get("CORTEX_INBOX_URL", "")
-    env_auth = os.environ.get("CORTEX_BASIC_AUTH", "") or os.environ.get("CORTEX_BUS_AUTH", "") or os.environ.get("CORTEX_INBOX_AUTH", "")
-    if env_url:
-        config["url"] = env_url.rstrip("/")
-    if env_auth:
-        config["auth"] = env_auth
-
-    # Fallback: parse from hermes-cortex/.env
-    if not config["url"] and CORTEX_ENV.exists():
-        for line in CORTEX_ENV.read_text().splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            k = k.strip()
-            v = v.strip().strip("'\"")
-            if k == "CORTEX_BUS_URL" and not config["url"]:
-                config["url"] = v.rstrip("/")
-            elif k == "CORTEX_BUS_FALLBACK_URL" and not config["url"]:
-                config["url"] = v.rstrip("/")
-            elif k == "CORTEX_INBOX_URL" and not config["url"]:
-                config["url"] = v.rstrip("/")
-            elif k == "CORTEX_BASIC_AUTH" and not config["auth"]:
-                config["auth"] = v
-            elif k == "CORTEX_BUS_AUTH" and not config["auth"]:
-                config["auth"] = v
-            elif k == "CORTEX_INBOX_AUTH" and not config["auth"]:
-                config["auth"] = v
-    return config
-
-
-INBOX_CFG = _load_inbox_config()
-
-
-def _inbox_request(path: str) -> Optional[dict]:
-    """Make an authenticated GET to the inbox API. Returns parsed JSON or None."""
-    if not INBOX_CFG["url"]:
-        return None
-    url = f"{INBOX_CFG['url']}/{path.lstrip('/')}"
-    headers = {"Accept": "application/json"}
-    if INBOX_CFG["auth"]:
-        import base64
-        encoded = base64.b64encode(INBOX_CFG["auth"].encode()).decode()
-        headers["Authorization"] = f"Basic {encoded}"
-    req = urllib.request.Request(url, headers=headers, method="GET")
-    try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-            return json.loads(resp.read().decode())
-    except Exception:
-        return None
 
 
 # ── Last-seen tracking (laptop grace period, shared with orch-fleet-watchdog.py) ──
@@ -227,41 +177,58 @@ def _fetch(url: str) -> Optional[dict]:
 # ── Inbox fetch ──
 
 def _fetch_inbox_vector(agent_key: str) -> Optional[list[int]]:
-    """Read the latest health push from the inbox for a given agent.
+    """Read the latest health push for an inbox-method agent.
 
-    Looks for the most recent message from this agent containing a
-    ``{"v": [...]}`` vector. Searches both 'health' and 'general' topics.
+    Client-only agents (health_method=inbox) push their health vector to the
+    ``inbox_health_check`` PGMQ queue via ``health-vector-push.sh`` (POST
+    /api/pgmq/send, body ``{"from":..., "subject":"health", "body":"{...}"}``).
+
+    The ``orch-clean-health-queue`` cron (every 10m) drains that queue and
+    persists each agent's latest vector + timestamp to
+    ``~/.hermes-cortex/state/inbox-health-state.json`` — that file is the
+    reliable source here (a live queue read at hourly report time would often
+    find the queue already drained).
 
     Returns the vector or None. For laptop agents (inbox method), None can mean
     offline — the caller checks _last_seen_minutes_ago() for grace period.
     """
-    now = datetime.now(timezone.utc)
-    for topic in ("health", "general"):
-        resp = _inbox_request(
-            f"api/inbox?topic={topic}&unread_only=false"
-        )
-        if not resp:
+    state_file = HOME / ".hermes-cortex" / "state" / "inbox-health-state.json"
+    try:
+        if state_file.exists():
+            state = json.loads(state_file.read_text())
+            entry = state.get(agent_key)
+            if entry and isinstance(entry.get("vector"), list):
+                ts = entry.get("ts") or ""
+                if ts:
+                    _record_last_seen(agent_key, ts)
+                return entry["vector"]
+    except (json.JSONDecodeError, OSError):
+        pass  # fall through to live queue read
+    # Fallback: peek the live queue (covers a ping the cleaner hasn't drained yet)
+    try:
+        from lib.cortex_bus import bus_read
+    except Exception:
+        return None
+    for _ in range(20):  # scan up to 20 pending pings
+        msg = bus_read("inbox_health_check", vt=60)
+        if not msg or not msg.get("msg_id"):
+            break  # queue empty or unreachable
+        body = msg.get("body", {})
+        if not isinstance(body, dict):
             continue
-        messages = resp.get("messages", [])
-        for msg in messages:
-            if msg.get("from", "").strip().lower() != agent_key:
-                continue
-            body = msg.get("body", "")
-            if isinstance(body, str):
-                try:
-                    parsed = json.loads(body)
-                except (json.JSONDecodeError, TypeError):
-                    continue
-            elif isinstance(body, dict):
-                parsed = body
-            else:
-                continue
-            if "v" in parsed and isinstance(parsed["v"], list):
-                # Record last-seen timestamp for laptop grace period
-                ts_str = msg.get("timestamp", "")
-                if ts_str:
-                    _record_last_seen(agent_key, ts_str)
-                return parsed["v"]
+        if (body.get("from") or "").strip().lower() != agent_key.lower():
+            continue  # another agent's ping — leave it for the cleaner
+        inner = body.get("body", "")
+        if isinstance(inner, str):
+            try:
+                inner = json.loads(inner)
+            except (json.JSONDecodeError, TypeError):
+                inner = {}
+        if isinstance(inner, dict) and "v" in inner and isinstance(inner["v"], list):
+            ts_str = msg.get("enqueued_at") or ""
+            if ts_str:
+                _record_last_seen(agent_key, ts_str)
+            return inner["v"]
     return None
 
 

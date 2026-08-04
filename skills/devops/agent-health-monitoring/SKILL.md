@@ -156,11 +156,14 @@ code reference.
                                 ▼
 ┌──────────────────────────────────────────────────────┐
 │  Moses (orchestrator)                                 │
-│  orch-team-health.py (every 10 min, no_agent)         │
+│  orch-health-report.py (hourly) /                     │
+│  orch-fleet-watchdog.py (5 min)                       │
 │                                                       │
 │  for each agent:                                      │
 │    if health_method == "http":  ──→ HTTP GET :PORT    │
-│    if health_method == "inbox": ──→ READ inbox API    │
+│    if health_method == "inbox": ──→ read inbox_       │
+│                                     health-check      │
+│                                     state file        │
 │                                                       │
 │  State tracked by fingerprint vector                  │
 │  Alerts only on state transitions                     │
@@ -173,14 +176,16 @@ code reference.
 │  health-vector.py│ │  health-vector.py│ │  NO inbound      │
 │  --serve :13007  │ │  --serve :12007  │ │                  │
 │  HTTP-polled     │ │  HTTP-polled     │ │  health-vec-push │
-│                  │ │                  │ │  → inbox API     │
-└──────────────────┘ └──────────────────┘ │  every 10 min    │
+│                  │ │                  │ │  → PGMQ bus      │
+└──────────────────┘ └──────────────────┘ │  inbox_health_   │
+                                          │  check queue     │
+                                          │  every 10 min    │
                                           │  (launchd plist) │
                                           └──────────────────┘
 ```
 
 - **Server agents** (health_method="http"): Moses polls their health vector server directly on the agent's assigned port. Each agent has its own port (see table below).
-- **Client-only agents** (health_method="inbox"): Push their health vector to the orchestrator via the agent inbox API (`inbox_health_check`). The orchestrator reads the inbox on each poll cycle.
+- **Client-only agents** (health_method="inbox"): Push their health vector to the PGMQ bus queue `inbox_health_check` (`health-vector-push.sh`, POST `/api/pgmq/send`). The `orch-clean-health-queue` cron (every 10 min) drains the queue and persists each agent's latest vector to `~/.hermes-cortex/state/inbox-health-state.json`; `orch-health-report.py` reads that file.
 
 ### ⚠️ Two Orthogonal Monitoring Systems
 
@@ -188,7 +193,7 @@ The fleet runs **two independent monitoring systems** that measure different thi
 
 | System | Script | What it measures | "Offline" means | Feed |
 |--------|--------|-----------------|-----------------|------|
-| **HTTP Health Vectors** | `orch-team-health.py`, `orch-health-report.py` | Service-level health (resources, services, crons, nginx, ollama, gbrain, disk) | Service is down or degraded | `GET /health` endpoint per agent |
+| **HTTP Health Vectors** | `orch-health-report.py`, `orch-fleet-watchdog.py` | Service-level health (resources, services, crons, nginx, ollama, gbrain, disk) | Service is down or degraded | `GET /health` endpoint per agent |
 | **Bus Liveness** | `orch-fleet-watchdog.py` | Agent bus activity — last time the agent produced a PGMQ audit log event | Agent hasn't touched the bus recently (may be sleeping, idle, or disconnected) | `bus.audit_log` in Postgres |
 
 **When they disagree:**
@@ -361,17 +366,20 @@ See `references/health-server-logging-diagnostics.md` for full details.
 
 ### `health-vector.py` — Lightweight standalone probe
 
-### 2. `orch-team-health.py` — Orchestrator poller
+### 2. `orch-health-report.py` — Orchestrator poller (HTTP + inbox state)
 
-Runs as a `no_agent` cron on Moses every 10 minutes (`orch-team-health`).
-Reads `agent-registry.json` to find agents and their `health_method`.
+Runs as a `no_agent` cron on Moses (`orch-health-report-weekday` hourly M-F 9-18,
+`orch-health-report-saturday`). Reads `agent-registry.json` to find agents and
+their `health_method`. (The former `orch-team-health.py` poller was **removed
+from the repo** in commit `69e3cf8e` — superseded by `orch-fleet-watchdog.py`
+for state-change alerting; the hourly report is `orch-health-report.py`.)
 
 **Two fetch strategies:**
 
 | health_method | Strategy | Description |
 |---------------|----------|-------------|
 | `"http"` | HTTP GET | Poll `health_url` endpoint (e.g. `http://agent:13007/`) |
-| `"inbox"` | Inbox read | Read latest message on topic `health` from the agent inbox API |
+| `"inbox"` | Bus state read | Read latest vector from `~/.hermes-cortex/state/inbox-health-state.json` (persisted by `orch-clean-health-queue` every 10 min), fallback to a live `bus_read("inbox_health_check")` |
 
 ```python
 def _fetch_http(url: str, auth: str = "") -> dict | None:
@@ -386,61 +394,45 @@ def _fetch_http(url: str, auth: str = "") -> dict | None:
 
 ```python
 def _fetch_inbox(agent_key: str) -> tuple[dict | None, str | None]:
-    """Read health pings from inbox — keep oldest (anchor), delete newer ones.
+    """Read the latest health ping for an inbox agent from persisted bus state.
 
-    Returns (parsed_health_data, anchor_timestamp_iso) or (None, None).
-    The anchor stays in the inbox as proof the agent was alive.
-    Newer pings are deleted — they confirmed liveness at their timestamp
-    but are redundant once consumed.
+    Returns (parsed_health_data, ts_iso) or (None, None).
+    The ``orch-clean-health-queue`` cron drains ``inbox_health_check`` every
+    10 min and persists each agent's latest vector to
+    ``~/.hermes-cortex/state/inbox-health-state.json`` — this reads that file
+    (with a live queue peek as fallback).
     """
-    data = _inbox_request(f"api/inbox?limit=20&topic=health")
-    if not data:
-        return None, None
-
-    msgs = data.get("messages", [])
-    agent_msgs = [m for m in msgs if m.get("from", "").lower() == agent_key.lower()]
-    if not agent_msgs:
-        return None, None
-
-    # Sort oldest first
-    agent_msgs.sort(key=lambda m: m.get("timestamp", ""))
-
-    if len(agent_msgs) == 1:
-        anchor = agent_msgs[0]
-        result = _parse_vector_body(anchor.get("body", ""))
-        return result, anchor.get("timestamp")
-
-    # Keep oldest (anchor), delete everything newer
-    anchor = agent_msgs[0]
-    for msg in agent_msgs[1:]:
-        filename = msg.get("filename", "")
-        if filename:
-            _inbox_request(f"api/delete/{filename}", method="DELETE")
-
-    result = _parse_vector_body(anchor.get("body", ""))
-    return result, anchor.get("timestamp")
+    state_file = Path.home() / ".hermes-cortex" / "state" / "inbox-health-state.json"
+    try:
+        if state_file.exists():
+            state = json.loads(state_file.read_text())
+            entry = state.get(agent_key)
+            if entry and isinstance(entry.get("vector"), list):
+                return {"v": entry["vector"]}, entry.get("ts", "")
+    except (json.JSONDecodeError, OSError):
+        pass
+    return None, None
 ```
 
 **Timeout:** 5 seconds per agent (was 3s — increased to handle transient SSL handshake jitter on external endpoints). Short enough that 5 unreachable agents don't block the poller (~25s total). Remote endpoints behind SSL/nginx can have brief DNS/TCP jitter that exceeds 3s — 5s gives headroom for transient blips without hanging on real outages. If an agent doesn't respond in 5s, it's unreachable.
 
-**Anchor-keep pattern (inbox agents only):** Instead of simply reading the latest health message, `_fetch_inbox` implements an **anchor-keep** pattern:
+**Inbox flow (client-only agents, current):** The retired file-inbox anchor-keep
+pattern (keep oldest ping, DELETE newer ones via `api/inbox`/`api/delete`) is
+**gone** — the `api/inbox` endpoint no longer exists on the PGMQ bus server.
+Today:
 
-1. Fetch all `#health` messages from the inbox for the given agent
-2. Sort by timestamp ascending (oldest first)
-3. **Keep the oldest message** — this is the *anchor*, proof the agent was alive
-4. **Delete all newer messages** — they confirmed liveness but are redundant once consumed
-5. Return the anchor's parsed health data and its timestamp
+1. `health-vector-push.sh` POSTs the vector to the PGMQ queue `inbox_health_check` (`/api/pgmq/send`, subject `health`)
+2. `orch-clean-health-queue` (every 10 min) drains the queue, archives each ping, and persists the latest vector per agent to `~/.hermes-cortex/state/inbox-health-state.json`
+3. `orch-health-report.py` reads that state file (fallback: live `bus_read` peek)
 
-This keeps the inbox at a maximum of 1 health message per agent — no accumulation.
-The anchor naturally persists during sleep (laptop lid closed), so the dashboard stays
-green without any artificial grace period. When the agent comes back, it sends a new
-ping, the old anchor stays, and the new ping gets deleted on the next poll cycle.
+No accumulation: the queue is drained every 10 min and the state file holds at
+most one entry per agent (always the latest ping).
 
-**Last-seen tracking:** The anchor's timestamp is recorded to
-`~/.hermes/state/last-seen.json` on each successful poll. This is used to suppress
-Telegram alerts during laptop sleep — if the anchor exists and no new pings arrive
-within a configurable window, the poller stays silent instead of alerting. Without
-this, every lid-close would generate a 🔴 alert within 10 minutes.
+**Last-seen tracking:** The drain timestamp is recorded to
+`~/.hermes-cortex/state/last-seen.json` on each successful drain. This is used to
+suppress Telegram alerts during laptop sleep — if no new pings arrive within a
+configurable window, the poller stays silent instead of alerting. Without this,
+every lid-close would generate a 🔴 alert within 10 minutes.
 
 **State tracking:** Compares fingerprints between runs. Only alerts on **state transitions**:
 - Service was up (1) → now down (-1): alert with 🔴
@@ -448,18 +440,26 @@ this, every lid-close would generate a 🔴 alert within 10 minutes.
 - Agent unreachable: alert with 🔴
 - Agent back online: resolution with ✅
 
-> **Watchdog pattern: silent = healthy.** When `orch-team-health.py` produces empty stdout,
+> **Watchdog pattern: silent = healthy.** When `orch-fleet-watchdog.py` produces empty stdout,
 > it means no state changed since last poll — everything is stable. Empty output is NOT
 > a sign of a broken cron. If you suspect the poller is broken, check
-> `~/.hermes/state/agent-health-data.json` for the latest snapshot.
+> `~/.hermes-cortex/state/agent-health-data.json` for the latest snapshot.
 >
 > Similarly, if a client-only agent (Titus, `health_method: inbox`) shows as "🔴 unreachable"
-> in `orch-health-report.py`, check whether the agent has pushed health data recently.
-> For laptop agents, "unreachable" during sleep hours is **expected** — the anchor-keep
-> pattern suppresses alerts during the grace period, but the health report will still
-> show the current state. See the "Client-only agent unreachable (laptop sleep)" pitfall below.
+> in `orch-health-report.py`, check whether the agent has pushed health data recently
+> (`~/.hermes-cortex/state/inbox-health-state.json` has an entry, and it's fresh).
+> For laptop agents, "unreachable" during sleep hours is **expected** — the
+> `last-seen.json` grace period suppresses alerts during sleep, but the health report will
+> still show the current state. See the "Client-only agent unreachable (laptop sleep)" pitfall below.
 
-The inbox auth is read from `~/.hermes/moses-inbox.conf` (MOSES_INBOX_URL + MOSES_INBOX_AUTH).\n**Each agent has their own credentials** in this file — never share the orchestrator's\ncredentials with peer agents.\n\nSee `references/inbox-health-format.md` for the full data format, API endpoint details, anchor-keep pattern reference, and code-duplication warning between `orch-team-health.py`\nand `orch-health-report.py`.\n\n**Health data** is written to `~/.hermes/state/agent-health-data.json` every cycle\nfor dashboard consumption.
+The bus connection is read from `~/.hermes-cortex/cortex-bus.conf`
+(`CORTEX_BUS_URL` + `CORTEX_BASIC_AUTH`, or Bearer `CORTEX_BUS_TOKEN`). Each
+agent has their own credentials — never share the orchestrator's credentials
+with peer agents. See `references/inbox-health-format.md` for the push format,
+queue details, and the code-duplication warning between the health scripts.
+
+**Health data** is written to `~/.hermes-cortex/state/agent-health-data.json`
+for dashboard consumption.
 
 ### 3. `health-vector-push.sh` — Client-only push script
 
@@ -467,7 +467,8 @@ For agents with no inbound access (`health_method="inbox"`). Runs on a cron/laun
 
 ```bash
 # Determines hostname, runs health-vector.py --check,
-# POSTs the JSON vector to the orchestrator's inbox API (topic: "health")
+# POSTs the JSON vector to the PGMQ bus queue inbox_health_check
+# (reads CORTEX_BUS_URL + CORTEX_BASIC_AUTH from ~/.hermes-cortex/cortex-bus.conf)
 bash ~/hermes-cortex/ops/scripts/health-vector-push.sh
 ```
 
@@ -500,13 +501,15 @@ bash ~/hermes-cortex/ops/scripts/health-vector-push.sh
 </dict>
 ```
 
-Requires `MOSES_INBOX_URL` and `MOSES_INBOX_AUTH` in `~/.hermes/moses-inbox.conf`.
+Requires `CORTEX_BUS_URL` + `CORTEX_BASIC_AUTH` (or Bearer `CORTEX_BUS_TOKEN`) in
+`~/.hermes-cortex/cortex-bus.conf` (the push script reads them from there).
 **Each client agent uses their OWN credentials** — never Moses' password.
 
 ### 4. `agent-registry.json` — Agent configuration (public)
 
-Located at `src/agent-registry.json`. The public repo version stores port hints
-in the `description` field but does NOT contain actual domain names:
+Located at `ops/install/deploy/agent-registry.template.json` (deployed to
+`~/.hermes-cortex/state/agent-registry.json`). The public repo version stores
+port hints in the `description` field but does NOT contain actual domain names:
 
 ```json
 {
@@ -553,7 +556,7 @@ in `~/.hermes/` (which is gitignored). The poller merges it on top of the public
 ```
 
 The override file only needs to specify the fields that differ from the public registry.
-`orch-team-health.py` merges them automatically — no config change needed.
+`orch-fleet-watchdog.py` / `orch-health-report.py` merge them automatically — no config change needed.
 
 ### 6. `orch-health-report.py` — Health snapshot report (Telegram delivery)
 
@@ -562,7 +565,9 @@ health — designed for mobile Telegram display. Zero LLM tokens.
 
 **Two health methods — same display code:**
 - `http` agents: `_fetch(url)` → parses `{"v": [...]}`
-- `inbox` agents: `_fetch_inbox_vector(agent_key)` → reads latest inbox push → parses `{"v": [...]}`
+- `inbox` agents: `_fetch_inbox_vector(agent_key)` → reads latest vector from
+  `~/.hermes-cortex/state/inbox-health-state.json` (persisted by
+  `orch-clean-health-queue`) → parses `{"v": [...]}`
 
 Both paths return the same vector format, so the emoji bar and failure listing code is shared.
 
@@ -584,9 +589,10 @@ Esther ⚠️ 1 down
   gbrain 🔴
 ```
 
-The script (`ops/scripts/orch-health-report.py`) reads the same agent registry
-with local overrides as `orch-team-health.py`, polls every agent's health
-endpoint, and outputs compact markdown with emoji status bars.
+The script (`ops/scripts/agent/orch-health-report.py`) reads the same agent registry
+with local overrides as `orch-fleet-watchdog.py`, polls every agent's health
+endpoint (or reads the persisted inbox state for client-only agents), and outputs
+compact markdown with emoji status bars.
 
 **Deployment:** Create crons with `no_agent=True` and `script=orch-health-report.py`.
 Copy the script to `~/.hermes/scripts/` first. See AGENTS.md for full setup.
@@ -644,25 +650,25 @@ Copy the script to `~/.hermes/scripts/` first. See AGENTS.md for full setup.
    curl -sfk https://<agent-domain>:<PORT>/health
    ```
 
-5. **Set up inbox config** for agent-to-agent messaging:
+5. **Set up bus config** for agent-to-agent messaging:
    ```bash
-   # ~/.hermes/moses-inbox.conf
+   # ~/.hermes-cortex/cortex-bus.conf
    # Each agent uses their OWN credentials — ask Moses to create a htpasswd entry
-   MOSES_INBOX_URL="https://<moses-domain>:13004"
-   MOSES_INBOX_AUTH="your-agent-name:<your-password>"
+   CORTEX_BUS_URL="https://<moses-domain>:13004"
+   CORTEX_BASIC_AUTH="your-agent-name:<your-password>"
    AGENT_NAME="your-agent-name"
    ```
 
 ### To install on a client-only agent (macOS)
 
-1. **Set up inbox config:**
+1. **Set up bus config:**
    ```ini
-   # ~/.hermes/moses-inbox.conf
-   MOSES_INBOX_URL="https://<moses-domain>:13004"
-   MOSES_INBOX_AUTH="<your-agent-name>:<your-password>"
+   # ~/.hermes-cortex/cortex-bus.conf
+   CORTEX_BUS_URL="https://<moses-domain>:13004"
+   CORTEX_BASIC_AUTH="<your-agent-name>:<your-password>"
    AGENT_NAME="<your-agent-name>"
    ```
-   `chmod 600 ~/.hermes/moses-inbox.conf`
+   `chmod 600 ~/.hermes-cortex/cortex-bus.conf`
 
 2. **Install the launchd push agent:**
    ```bash
@@ -738,18 +744,18 @@ green) = timing/concurrency on the local health server, not an outage. Check
 latency distribution and server threading BEFORE touching the registry, nginx,
 or firewalls.
 
-## Orch-Team-Health Pitfall: Stale SERVICE_MAP
+## Health-Report Pitfall: Stale SERVICE_MAP
 
-The orchestrator poller (`orch-team-health.py`) has a hardcoded `SERVICE_MAP` that maps vector indices to service names. Over time, if the agent-side health endpoint changes format (e.g. from 8-element `health-vector.py` to 9-element `health-server.py`), the poller's map becomes stale and misreports every vector.
+The orchestrator poller (`orch-health-report.py`) has a hardcoded `SERVICE_MAP` that maps vector indices to service names. Over time, if the agent-side health endpoint changes format (e.g. from 8-element `health-vector.py` to 9-element `health-server.py`), the poller's map becomes stale and misreports every vector.
 
 **Verification procedure when adding a new agent or after a health-endpoint update:**
 
 1. Poll the new/updated endpoint directly: `curl -sS --max-time 5 https://<agent-url>/health`
 2. Count the vector elements — is it 8 or 9?
 3. Read the agent's `health-server.py`/`health-vector.py` `_build_compact_health()` function to confirm the exact index-to-service mapping
-4. Update `SERVICE_MAP` in `orch-team-health.py` to match
+4. Update `SERVICE_MAP` in `orch-health-report.py` to match
 5. **Also update** `health_vector_map` in `agent-registry.json` — it must match the same order
-6. Run the poller once manually (`python3 ~/.hermes/scripts/orch-team-health.py`) and verify the output shows the correct service names
+6. Run the poller once manually (`python3 ops/scripts/agent/orch-health-report.py`) and verify the output shows the correct service names
 
 **Real example:** Remote agents run `health-server.py` which produces a 9-element vector `[resources, services, no_errored_crons, no_stale_crons, nginx, ollama, gbrain, disk_ok, gbrain_sources_ok]`. The poller had an 8-element map from the old `health-vector.py` template `[nginx, ollama, gbrain, cortex-dashboard, langfuse-web, langfuse-worker, docker, hermes-gateway]`, causing index 3 = -1 to report as "cortex-dashboard down" when it actually meant "stale cron jobs".
 
@@ -769,16 +775,16 @@ The orchestrator poller (`orch-team-health.py`) has a hardcoded `SERVICE_MAP` th
 | **External endpoint timeout sensitivity** | Agents behind nginx SSL (Moses 13007, Joseph 12007, Esther 14007) occasionally get marked "unreachable" even though they respond in ~0.1s — DNS/TCP jitter on the HTTPS handshake spikes past the 3s timeout | Use 5s timeout for the orchestrator poller. 3s is fine for localhost (127.0.0.1) but external SSL-terminated endpoints need headroom. Polls every 10m — 5s per agent doesn't block the cycle. |
 | **Orchestrator self-poll must use external HTTPS URL** | When the orchestrator polls itself (Moses polls Moses), the code fallback defaults to `http://127.0.0.1:13007/` — plain HTTP to a port nginx serves with `ssl` only. Nginx returns 400 "plain HTTP sent to HTTPS" → poll fails. | The self-poll URL MUST use the external HTTPS domain through nginx (e.g. `https://domain:13007/health`). Configure this via `agent-registry.local.json` — set Moses' `health_url` to the same external URL other agents use to reach Moses. The code fallback is a dev-only safety net that doesn't work when the nginx health block is SSL-only. Verify: `curl -sk https://$(hostname -f):13007/health` should succeed. If it doesn't, the registry URL is wrong or the nginx health block is misconfigured. |
 | **Long timeout on unreachable agents** | Poller takes 60+ seconds when 4+ agents are down | Short timeout (5s). The poller runs every 10 minutes. If an agent doesn't respond in 5s, it's unreachable. |
-| **Client-only agent unreachable (laptop sleep)** | Without the anchor-keep pattern, Moses alerts every 10 min when a laptop closes its lid. The anchor pattern handles this naturally — the oldest health ping stays in the inbox and keeps the dashboard green. No artificial grace period needed. See `docs/agent-onboarding.md` for the agent-side setup. |
+| **Client-only agent unreachable (laptop sleep)** | Without the last-seen grace tracking, Moses alerts every 10 min when a laptop closes its lid. The `last-seen.json` grace period handles this naturally — pings stop during sleep, but alerts are suppressed within the window. See `docs/agent-onboarding.md` for the agent-side setup. |
 | **Agent has nginx running but is NOT a server** | If a client-only agent (Titus) has nginx installed for local dev, you might assume it's now reachable as a server | nginx on a dev machine does NOT make it a server. Client agents ALWAYS use `health_method: inbox` — never add a `health_url` for them, even if nginx is running. The presence of a web server does not imply reachability. Check `is_server` in the agent registry before setting up polling. |
 | **Agent has inbox on the same port as health** | Gisu had inbox on 13004, can't put health on the same port | Use a different port scheme. Moses/infra agents: 13007. Joseph: 12007. Esther: 14007. Avoid conflicts with existing inbox/dashboard ports. |
 | **Triple-sync requirement: SERVICE_MAP, CHECK_FUNCTIONS, --check labels** | You update the SERVICE_MAP docstring to 9 elements but the actual CHECK_FUNCTIONS list still returns 8 → the endpoint returns wrong vector length and downstream pollers misdiagnose every index | Always update all three: (1) SERVICE_MAP doc comment, (2) CHECK_FUNCTIONS list, (3) --check labels. Verify with `curl -s http://127.0.0.1:<PORT>/` and count elements. Run `python3 health-vector.py --check` to validate labels match. Commit to repo after testing. |
-| **Health pulse inbox flood (anchor-keep failure)** | Inbox health messages accumulate (100+) unread. `inbox_watch` returns MB-sized results. Means the `orch-team-health` cron stopped, the DELETE endpoint is failing, or the push script uses the wrong topic. See `references/health-pulse-inbox-flood-diagnosis.md` for diagnosis checklist and remediation. |
+| **Health queue backlog (drain stopped)** | Health pings accumulate in `inbox_health_check` (queue depth grows, `inbox_watch` returns MB-sized results). Means the `orch-clean-health-queue` cron stopped, or the push script targets the wrong queue. Check queue depth: `docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c "SELECT state, COUNT(*) FROM bus.messages WHERE queue_name='inbox_health_check' GROUP BY state;"` and the cron's last run. |
 | **Consumer-producer sync: update consumer after verifying producer format, not before** | | You update the orchestrator health report script (consumer) to handle a format you assume Titus sends, without first verifying what he actually pushes | Pull the latest data from the producer first — read their actual format, test the endpoint, THEN update the consumer. Never update a consumer based on assumptions about the producer's format. The workflow is: (1) check what the producer sends, (2) write consumer to match, (3) verify both directions. |
 | **Dashboard `_find_pid()` does literal substring, not regex** | Service patterns like `gbrain.*autopilot`, `[o]llama serve` use `.*` regex syntax, but `_find_pid()` does `if pattern_lower in line.lower()` — a literal substring check. The dot-star is never matched as a wildcard. | Use actual substrings that appear in `ps aux` output: `"gbrain autopilot"` not `"gbrain.*autopilot"`, `"ollama"` not `"[o]llama serve"`. The patterns in `server.py`'s `_health()` dict must match the literal process command line. Verify by grepping `ps aux` for the exact substring before adding. |
-| **Rich health-report format from inbox agents** | Titus pushes a JSON health report with services, issues, resources, uptime fields — not a compact `{"v": [...]}` vector. The `_parse_vector_body()` function in `orch-team-health.py` doesn't handle this format and returns `None`, marking the agent as unreachable. | `_parse_vector_body()` must detect `"type": "health-report"` in the JSON body and route to a rich-report parser (`_parse_rich_report()`) that converts the rich data to a vector while preserving metadata under a `_rich` key for `_build_structured_data()` to use. See `references/rich-health-report-format.md`. |
-| **Anchor-keep pattern: `DELETE /api/delete/{filename}` fails silently** | Health pings accumulate if the delete endpoint fails (network blip, inbox restart) | The anchor-keep pattern handles this naturally — on the next tick, `_fetch_inbox` finds N messages, keeps the oldest, and retries the deletes. Max 1 tick of accumulation. No alert required. |
-| **Inbox API endpoint is `/api/inbox`, not `/api/messages`** | orch-health-report.py used `/api/messages?topic=health&from=titus` which returned 404 | The correct inbox JSON API endpoint is `GET /api/inbox?topic=<topic>&unread_only=false&for_=<agent>`. It returns `{"count": N, "messages": [...]}`. There is no `from` filter — filter messages by `msg.get("from")` client-side after fetching. See the `_fetch_inbox_vector()` implementation in both orch-health-report.py and orch-team-health.py. |
+| **Rich health-report format from inbox agents** | Titus pushes a JSON health report with services, issues, resources, uptime fields — not a compact `{"v": [...]}` vector. The `_parse_vector_body()` function in `orch-health-report.py` doesn't handle this format and returns `None`, marking the agent as unreachable. | `_parse_vector_body()` must detect `"type": "health-report"` in the JSON body and route to a rich-report parser (`_parse_rich_report()`) that converts the rich data to a vector while preserving metadata under a `_rich` key for `_build_structured_data()` to use. See `references/rich-health-report-format.md`. |
+| **Health queue pings dropped before report reads them** | The hourly report finds no vector for an inbox agent because `orch-clean-health-queue` already drained and archived the pings (queue is transient). | The drain cron persists each agent's latest vector to `~/.hermes-cortex/state/inbox-health-state.json`; the report reads that file (live queue peek is only a fallback). If Titus shows 🔴, check that file exists and is fresh — if missing, the drain cron is not running. |
+| **Inbox agents show 🔴 because report still calls retired `api/inbox`** | Report queries `GET /api/inbox?...` which returns 404 on the PGMQ bus (endpoint removed in the inbox→PGMQ migration, commit `0f01556d`). Every inbox agent shows 🔴 unreachable despite healthy pushes; last-seen stays stale. | `_fetch_inbox_vector()` must read `inbox-health-state.json` (or `bus_read("inbox_health_check")`), NOT `api/inbox`. Fixed 2026-08-04 — see the implementation in `orch-health-report.py` and `orch-clean-health-queue.py`. |
 | **Endpoint path is `/health`, not bare `/`** | Poller gets 404 on the root endpoint | The health-vector server serves at `GET /health`, not `GET /`. `curl -s http://127.0.0.1:8905/health`, not `http://...:8905/`. |
 | **Sharing untested URLs** | User calls you out for sending configs without verification | Test EVERY endpoint with `curl --max-time 5` from the external perspective before sharing with the user or peer agents. Do NOT only test from localhost — that only proves nginx is up locally. Check from the agent's perspective by reading the nginx access log for their IP or by using an external port checker. When an agent reports a connectivity issue, test ALL external endpoints (dashboard, langfuse, inbox, health) before diagnosing — a single endpoint being down vs all being down tells you whether it's a per-service or per-server/network problem. |
 | **Old `com.hermes.health-server.service` vs current `health-vector.service`** | Docs mention a FastAPI `health-server.py` service on port 8905 — it was **removed from the repo** (July 2026). If `com.hermes.health-server.service` still exists on a machine it's an orphan from a pre-removal deploy. | The **current** canonical server is `health-vector.service` running `health-vector.py --serve 8905` (9-element compact vector, schedule-aware stale detection). If both units exist, disable the orphan: `systemctl --user disable --now com.hermes.health-server.service && systemctl --user enable --now health-vector.service`. Verify with `systemctl --user list-units | grep health`. |

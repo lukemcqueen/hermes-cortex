@@ -1,113 +1,137 @@
-# Health Pulse Inbox Flood — Diagnosis & Remediation
+# Health Queue Backlog — Diagnosis & Remediation
 
 ## When to Use This Reference
 
-When you find hundreds of unread health check messages from an agent (typically
-Titus) accumulated in the local agent's inbox. All are healthy (vector all-1s,
-`h: true`) but none have been marked read.
+When health pings accumulate in the `inbox_health_check` PGMQ queue (or the
+persisted state file goes stale), or an inbox-method agent (typically Titus)
+shows 🔴 unreachable in the hourly report despite healthy pushes.
 
 ## Detection
 
-**Symptom:** `inbox_watch` or `inbox_read` returns a massive result (2MB+ or
-hundreds of messages), all with:
+**Symptom 1 — queue depth grows:** `inbox_watch`/`inbox_read` returns a massive
+result (2MB+ or hundreds of messages), all with:
 - `from: titus` (or another health_method=inbox agent)
 - `subject: health`
 - `body: {"v": [1,1,1,1,1,1,1,1,1], "h": "t", "t": <epoch>}`
-- `status: unread`
+
+**Symptom 2 — state file stale:** `~/.hermes-cortex/state/inbox-health-state.json`
+is missing or holds an old timestamp, and the hourly report shows 🔴 for an
+inbox agent whose push script exits 0.
 
 **Normal rate:** 1 health pulse every 10 minutes = ~6/hour = ~144/day.
-Accumulation means the anchor-keep consumer is not pruning.
+Accumulation means the drain consumer is not running.
 
-## Architecture of the Health Push Pipeline
+## Architecture of the Health Push Pipeline (current)
 
 ```
 [Agent Side]
 health-vector-push.sh (every 10 min via launchd/systemd/cron)
-  └─ POST /api/send {from: "titus", subject: "health", body: "{...}"}
-      └─ Inbox API creates message file with status: unread
-          └─ File lands at the file-based inbox (legacy — see agent-bus skill for current)\n
+  └─ reads CORTEX_BUS_URL + CORTEX_BASIC_AUTH from ~/.hermes-cortex/cortex-bus.conf
+      └─ POST /api/pgmq/send → queue inbox_health_check
+          └─ message: {"from": "titus", "subject": "health", "body": "{...}"}
+
 [Orchestrator Side (Moses)]
-orch-team-health.py (no_agent cron, every 10 min)
-  └─ GET /api/inbox?topic=health&limit=20
-      └─ _fetch_inbox(agent_key) → anchor-keep pattern:
-          1. Sort agent's health messages by timestamp (oldest first)
-          2. Keep oldest (the anchor — proof of liveness)
-          3. DELETE all newer messages via /api/delete/<filename>
-          4. Parse anchor body → return (health_data, timestamp)
+orch-clean-health-queue.py (no_agent cron, every 10 min)
+  └─ bus_read(inbox_health_check) → bus_archive per ping
+      └─ persists latest vector per agent → ~/.hermes-cortex/state/inbox-health-state.json
+      └─ updates last-seen → ~/.hermes-cortex/state/last-seen.json
+
+orch-health-report.py (hourly) / dashboard
+  └─ reads inbox-health-state.json for inbox-method agents
 ```
+
+> The retired file-inbox API (`api/inbox`, `api/delete`, anchor-keep DELETE
+> pattern, `orch-team-health.py`) is **gone** — see the agent-bus skill for the
+> current PGMQ architecture.
 
 ## Diagnosis Checklist
 
-### 1. Is the orchestrator cron running?
+### 1. Is the drain cron running?
 
 ```bash
-hermes cron list | grep orch-team-health
-ls -la ~/.hermes/cron/output/ | grep orch-team-health | tail -3
+hermes cron list | grep orch-clean-health-queue
+ls -la ~/.hermes/cron/output/ | grep clean-health-queue | tail -3
 ```
 
-If the cron hasn't run recently (stale output > 10min) or shows errors,
-the anchor-keep consumer is not pruning.
+If the cron hasn't run recently (stale output > 10 min) or shows errors,
+the drain is not pruning and the state file goes stale.
 
-### 2. Does the inbox API respond to DELETE?
+### 2. What is the queue depth?
 
 ```bash
-curl -s -X DELETE "http://127.0.0.1:8903/api/delete/<filename>" \
-  -u "<auth>" -w "\nHTTP %{http_code}"
+sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+SELECT state, COUNT(*) FROM bus.messages WHERE queue_name='inbox_health_check' GROUP BY state;\"
+"
 ```
 
-If it returns non-2xx, the anchor-keep delete calls fail silently and
-the poller logs no error (the error is swallowed in the loop).
+A healthy queue hovers near 0-2 pending (drained every 10 min). Hundreds of
+pending = drain stopped.
 
-### 3. Are health messages going to the right topic?
+### 3. Is the state file fresh?
 
-Check the message file's `topic:` field. The anchor-keep pattern in
-`_fetch_inbox` only polls `topic=health`. If `health-vector-push.sh`
-sends to `topic: general`, the orchestrator never sees them.
+```bash
+cat ~/.hermes-cortex/state/inbox-health-state.json   # per-agent latest vector + ts
+cat ~/.hermes-cortex/state/last-seen.json            # laptop grace timestamps
+```
 
-### 4. Is `_fetch_inbox` actually running for this agent?
+If `ts` is older than ~15 min, the drain cron is not seeing new pings.
 
-The agent must be in `agent-registry.json` with `health_method: inbox`.
-If `health_method` is missing or wrong, the poller skips inbox health
-collection entirely for that agent.
+### 4. Are pings going to the right queue?
 
-### 5. Is health-vector-push.sh running too frequently?
+Check the push script target. `health-vector-push.sh` must send to queue
+`inbox_health_check` with `subject: health` — if it targets a different queue
+or topic, the orchestrator never sees them.
 
-Check the launchd/cron schedule. If it's running more frequently than
-every 10 minutes, a 10-min poll cycle can't keep up.
+### 5. Is `_fetch_inbox_vector` reading the right source?
+
+The agent must be in `agent-registry.json` with `health_method: inbox`, and
+`orch-health-report.py` must read `inbox-health-state.json` (or `bus_read`)
+— NOT the retired `api/inbox` (404 on the PGMQ bus, fixed 2026-08-04).
+
+### 6. Is health-vector-push.sh running too frequently?
+
+Check the launchd/cron schedule. If it's running more frequently than every
+10 minutes, a 10-min drain cycle can't keep up (drain is capped at 50/tick).
 
 ## Immediate Remediation
 
-When pulses have accumulated to 100+ messages and are all-green:
+When pings have accumulated to 100+ messages and are all-green:
 
-1. **Acknowledge them** — they're all healthy, no action needed on content.
-   - Move to trash (recoverable) via `inbox_delete` per message
-   - Or contact the orchestrator to clear via bus queue: `inbox_delete(msg_id)` per message
-     (keep the oldest anchor if you want liveness continuity)
+1. **Drain the backlog** — the drain cron archives up to 50/tick; a manual
+   run clears the rest:
+   ```bash
+   CORTEX_REPO=~/hermes-cortex PYTHONPATH=~/hermes-cortex/ops/scripts \
+     python3 ~/hermes-cortex/ops/scripts/orch-bus/orch-clean-health-queue.py
+   ```
+   (It persists the latest vector per agent as it drains.)
 
 2. **Fix the root cause** — pick from diagnosis above:
-   - Restart `orch-team-health` cron if stopped
-   - Fix DELETE endpoint if broken
+   - Restart `orch-clean-health-queue` cron if stopped
+   - Fix bus auth (`CORTEX_BASIC_AUTH`/`CORTEX_BUS_TOKEN` in `cortex-bus.conf`) if reads 401
    - Fix agent-registry.json `health_method` if missing
-   - Correct push script topic if wrong
+   - Correct push script queue/topic if wrong
 
-3. **Verify fix**: A new health pulse should arrive within 10 min. The
-   next `orch-team-health` tick should prune all but the anchor.
+3. **Verify fix**: A new health pulse should arrive within 10 min. The next
+   drain tick should archive it and refresh `inbox-health-state.json`; the
+   next hourly report should show the agent ✅.
 
 ## Prevention
 
-- The anchor-keep pattern in `_fetch_inbox` should log a warning when it
-  finds >2 messages for the same agent (indicates delete path failed).
-- Consider a `max_messages_per_agent` guard that warns if count exceeds
-  a threshold.
-- The inbox-flag cron should flag >50 unread health messages as a
-  secondary alert.
+- The drain cron should log a warning when it finds >2 pings per tick for the
+  same agent (indicates the push schedule outpaced the drain).
+- The `orch-bus-confirmation-poller.py report` already flags DLQ/depth issues
+  on `inbox_health_check` — keep its alert cron enabled.
+- If the state file is missing entirely, the report falls back to a live
+  `bus_read` peek, so a fresh ping still shows — but persistence is the
+  reliable path.
 
 ## Pitfalls
 
-- **DELETE failure is silent.** `_fetch_inbox` has no error handling on
-  the delete call. One tick of accumulation is fine; dozens means the
-  DELETE endpoint is persistently failing.
-- **Inbox API endpoint changes.** If the API changes its response shape,
-  `_fetch_inbox` returns empty and no pruning happens.
-- **Renamed agent.** If the agent changes names but inbox messages still
-  carry the old name, the client-side `from` filter won't match.
+- **Drain stopped silently.** The drain cron prints nothing when healthy
+  (silent-when-clean) — a stopped cron is invisible until the queue backlogs
+  or the report goes 🔴.
+- **Bus auth 401.** A wrong `CORTEX_BASIC_AUTH`/token makes `bus_read` return
+  None silently → queue grows, state file never updates. Verify against the
+  LOCAL bus (`127.0.0.1:8903`), not the external nginx port.
+- **Renamed agent.** If the agent changes names but pings still carry the old
+  name, the `from` filter won't match.

@@ -83,7 +83,7 @@ Some agents (like Titus on macOS) push a **rich JSON health report** to the inbo
 
 ## Conversion: Rich Report → 9-Element Vector
 
-`_parse_rich_report()` in `orch-team-health.py` maps the rich format to the standard 9-element `SERVICE_MAP`:
+`_parse_rich_report()` in `orch-health-report.py` maps the rich format to the standard 9-element `SERVICE_MAP`:
 
 | Index | SERVICE_MAP entry | Source from rich report |
 |-------|-------------------|------------------------|

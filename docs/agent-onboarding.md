@@ -104,10 +104,10 @@ chmod 600 ~/.hermes-cortex/cortex-bus.conf
 
 ```bash
 curl -s -u "titus:your-password-here" \
-  https://example.com:13004/api/inbox?limit=3
+  https://example.com:13004/api/pgmq/depth/inbox_titus
 ```
 
-**Expected:** a JSON array of recent messages (may be empty — that's fine).
+**Expected:** `{"depth": N}` — your queue depth (may be 0 — that's fine).
 **If you get 401/403:** your credentials are wrong — ask Moses to regenerate.
 **If you get connection refused:** either the URL is wrong or Moses's nginx is down.
 
@@ -391,17 +391,18 @@ A healthy laptop sends all 1s. An issue like cron errors:
 After sending a ping, wait for the next `orch-fleet-watchdog` tick (up to 5 min)
 and check one of:
 
-1. **Inbox** — your ping arrives (check via curl):
+1. **Health queue** — your ping arrives (check via curl):
    ```bash
    curl -s -u "titus:your-password" \
-     "https://example.com:13004/api/inbox?topic=health&limit=3"
+     "https://example.com:13004/api/pgmq/depth/inbox_health_check"
    ```
-   You should see your message listed with `"from": "titus"`.
+   Depth > 0 means your ping is pending (drained every 10 min by `orch-clean-health-queue`).
 
 2. **Agent health data** (Moses can check):
    ```bash
-   python3 -c "import json;d=json.load(open('~/.hermes/state/agent-health-data.json'));print(d.get('titus', {}).get('reachable'))"
+   python3 -c "import json;d=json.load(open('~/.hermes-cortex/state/inbox-health-state.json'));print(d.get('titus'))"
    ```
+   A dict with `vector` + `ts` means your latest ping was drained and recorded.
 
 3. **Dashboard** — open the Cortex Dashboard URL. Your agent card should appear
    alongside the other agents, green if all services are 1.

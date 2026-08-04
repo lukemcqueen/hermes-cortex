@@ -46,6 +46,6 @@ The health vector formally supports three states:
 | `0` | Not applicable / not installed | ➖ (dash) |
 | `-1` | Installed but down / unhealthy | ❌ |
 
-The `0` state lets downstream tooling (orch-team-health, Telegram dashboards)
+The `0` state lets downstream tooling (orch-health-report, Telegram dashboards)
 distinguish "this server doesn't have nginx" from "nginx is installed but crashed" —
 reducing false alerts on heterogeneous agents (macOS dev boxes, minions, Docker-only hosts).
