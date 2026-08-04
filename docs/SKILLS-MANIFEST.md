@@ -118,11 +118,6 @@ their domain.
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `admin-cli-tools` | 1.0.0 | Patterns and architecture for admin-level CLI tools that use direct DB access, not agent-level API auth. | `skill_view(name='admin-cli-tools')` |
-| `cortex-bus` | 1.2.0 | Agent Bus (PGMQ) operations — queue inspection, DLQ management, message recovery, auth, and health diagnost... | `skill_view(name='cortex-bus')` |
-| `cortex-bus-automation` | 2.0.0 | Automated Agent Bus processing via MCP. | `skill_view(name='cortex-bus-automation')` |
-| `cortex-bus-inbox` | 2.0.0 | MCP inbox tools for cortex-bus messaging. | `skill_view(name='cortex-bus-inbox')` |
-| `cortex-bus-messaging` | 1.2.0 | ORCHESTRATORS ONLY — message the orchestrator via the bus MCP client (inbox_send). Workers use contact-orch... | `skill_view(name='cortex-bus-messaging')` |
-| `cortex-bus-polling` | 2.0.0 | Agent Bus polling setup — MCP tools, cron, verification. | `skill_view(name='cortex-bus-polling')` |
 | `agent-collector-troubleshoot` | 1.0.0 | Use when collectors can't send. Diagnoses bus, paths, crons. | `skill_view(name='agent-collector-troubleshoot')` |
 | `agent-fundamentals` | 1.0.0 | Universal 'basic things every agent should know' — distilled from real frustration patterns across 10+ sess... | `skill_view(name='agent-fundamentals')` |
 | `agent-health-monitoring` | 3.5.0 | Cross-server agent health monitoring using binary status vectors — deploy health endpoints on each agent, p... | `skill_view(name='agent-health-monitoring')` |
@@ -137,6 +132,11 @@ their domain.
 | `cleanup-commit-regression-check` | 1.0.0 | When scripts fail with NameError after a mass-edit commit. | `skill_view(name='cleanup-commit-regression-check')` |
 | `codebase-portability` | 1.0.0 | Systematically find and fix hardcoded absolute paths across scripts, docs, and configs. Ensures codebases w... | `skill_view(name='codebase-portability')` |
 | `config-drift-diagnostics` | 1.0.0 | Container configs stale? Compare vs source in 3 locations. | `skill_view(name='config-drift-diagnostics')` |
+| `cortex-bus` | 1.2.0 | Agent Bus (PGMQ) operations — queue inspection, DLQ management, message recovery, auth, and health diagnost... | `skill_view(name='cortex-bus')` |
+| `cortex-bus-automation` | 2.0.0 | Automated Agent Bus processing via MCP. | `skill_view(name='cortex-bus-automation')` |
+| `cortex-bus-inbox` | 2.0.0 | MCP inbox tools for cortex-bus messaging. | `skill_view(name='cortex-bus-inbox')` |
+| `cortex-bus-messaging` | 1.2.0 | ORCHESTRATORS ONLY — message the orchestrator via the bus MCP client (inbox_send). Workers use contact-orch... | `skill_view(name='cortex-bus-messaging')` |
+| `cortex-bus-polling` | 2.0.0 | Agent Bus polling setup — MCP tools, cron, verification. | `skill_view(name='cortex-bus-polling')` |
 | `cortex-deployment-sync` | 1.0.0 | Use when pulling latest or running cortex update. | `skill_view(name='cortex-deployment-sync')` |
 | `cortex-preflight` | 1.0.0 | Hermes Cortex supporting pre-flight checks — supplements Hermes default survey-before-action with repo-spec... | `skill_view(name='cortex-preflight')` |
 | `cron-cost-tracking` | 1.0.0 | SQLite-backed per-run token usage and cost tracking for Hermes cron jobs. Deploys cost_store.py and patches... | `skill_view(name='cron-cost-tracking')` |
@@ -261,12 +261,6 @@ their domain.
 |-------|---------|---------|-----------|
 | `minecraft-modpack-server` | 1.0.0 | Host modded Minecraft servers (CurseForge, Modrinth). | `skill_view(name='minecraft-modpack-server')` |
 | `pokemon-player` | 1.0.0 | Play Pokemon via headless emulator + RAM reads. | `skill_view(name='pokemon-player')` |
-
-## General (1 skill)
-
-| Skill | Version | Purpose | Load With |
-|-------|---------|---------|-----------|
-| `cwr-export-debug` | 1.0.0 | Debug why CWR exports produce zero songs — trace the full export pipeline from UI → controller → job → engi... | `skill_view(name='cwr-export-debug')` |
 
 ## GitHub (2 skills)
 
