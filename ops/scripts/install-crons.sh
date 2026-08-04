@@ -1064,7 +1064,7 @@ If nothing to apply: output exactly [SILENT]" \
 # ── 9. Skill Collection (universal — all agents) ──────────
 printf "${CYAN}  9. Skill Collection Pipeline${RESET}\n"
 
-# Collect custom skills every 6h — scans skills dirs, reports to Moses inbox
+# Collect custom skills every 6h — scans skills dirs, reports to the orchestrator inbox
 #  (Restored: send-skill-report — rewritten to use /api/pgmq/send with Bearer/Basic auth.
 #  Now resolves CORTEX_BUS_URL → CORTEX_BUS_FALLBACK_URL, supports Basic auth for nginx proxy.
 #  Fixed: was using deprecated /api/send endpoint. See ops/scripts/manage/send-skill-report.py)

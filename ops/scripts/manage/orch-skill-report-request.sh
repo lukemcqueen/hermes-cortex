@@ -103,15 +103,15 @@ if [[ -z "$INBOX_URL" ]]; then
 fi
 
 for agent in "${AGENTS[@]}"; do
-  # Skip self (Moses)
-  [[ "$agent" == "moses" ]] && continue
+  # Skip self (the orchestrator running this script)
+  [[ "$agent" == "$(hostname -s)" ]] && continue
 
   BODY="━━━ Skill Report Request — $REQUEST_ID ━━━
 
 Hi $agent,
 
 Please run agent-collect-skills.sh and share your custom skills.
-This helps Moses discover and evaluate agent-developed skills
+This helps the orchestrator discover and evaluate agent-developed skills
 for potential incorporation into the hermes-cortex upstream.
 
 Instructions:
@@ -126,13 +126,13 @@ Instructions:
     no_agent=true \
     deliver=local
 
-  Then fill in ~/hermes-cortex/.env with your Moses
+  Then fill in ~/hermes-cortex/.env with your bus
   inbox credentials (see install.sh for setup).
 
 Reply to this message with a summary of any custom skills found,
 or with 'none' if you have nothing new to report.
 
-- Moses
+- Orchestrator
 "
 
   if $DRY_RUN; then
@@ -166,7 +166,7 @@ if header:
 payload = {
     'queue': 'inbox_$agent',
     'message': {
-        'from': 'moses',
+        'from': '$(hostname -s)',
         'subject': '📋 Skill Report Request ($REQUEST_ID)',
         'body': '''$BODY''',
         'topic': 'operations',
