@@ -199,8 +199,17 @@ def _fetch_inbox_vector(agent_key: str) -> Optional[list[int]]:
             entry = state.get(agent_key)
             if entry and isinstance(entry.get("vector"), list):
                 ts = entry.get("ts") or ""
+                mins = None
                 if ts:
                     _record_last_seen(agent_key, ts)
+                    mins = _last_seen_minutes_ago(agent_key)
+                # Freshness gate: a persisted vector older than the laptop
+                # grace period means the agent stopped pushing. Stale health
+                # must not display green — return None so the caller applies
+                # the offline/unreachable logic. (Luke directive 2026-08-04:
+                # "Titus is not pushing right now — he should show unavailable".)
+                if mins is not None and mins >= LAPTOP_GRACE_MINUTES:
+                    return None
                 return entry["vector"]
     except (json.JSONDecodeError, OSError):
         pass  # fall through to live queue read
