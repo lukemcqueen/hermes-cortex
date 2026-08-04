@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # health-vector-push.sh — Push health vector to Moses via Agent Bus.
-# Runs as no_agent cron (every 5m). Silent when healthy.
+# Runs via launchd on client-only agents (every 10m — see
+# docs/templates/com.hermes.health-push.plist). Silent when healthy.
 set -euo pipefail
 
 # ── Config ──

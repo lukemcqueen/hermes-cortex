@@ -716,7 +716,9 @@ red at 13:00/14:00/15:00, green at 15:03.)
    arriving within seconds at :00 serialize behind a slow request and queue
    past their client timeouts. Fix: `ThreadingHTTPServer`.
 6. **Compare poller timeouts**: `grep -n TIMEOUT ops/scripts/agent/orch-health-report.py`
-   vs `ops/scripts/agent/agent-health-monitor.py` (15). A 3s timeout against a
+   vs `ops/scripts/agent/orch-team-health.py`. (The former
+   `agent-health-monitor.py` was removed 2026-08-04 — deprecated,
+   superseded by `orch-fleet-watchdog.py`.) A 3s timeout against a
    server that takes 2-9s under burst = guaranteed false red. Fleet guidance:
    5s minimum for external SSL-terminated endpoints.
 7. **Fix pattern (all three layers, 2026-08-04 commit 03d95312):**

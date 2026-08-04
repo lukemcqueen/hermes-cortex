@@ -332,7 +332,6 @@ declare -A MODE_OVERRIDES=(
 
 # Deployment-specific cron scripts
 register "ops/scripts/manage/agent-auto-save-sessions.py"      "${CORTEX_DEPLOY_HOME}/scripts/agent-auto-save-sessions.py"
-register "ops/scripts/agent/agent-health-monitor.py"    "${CORTEX_DEPLOY_HOME}/scripts/agent-health-monitor.py"
 register "ops/scripts/manage/gbrain-wrapper.sh"         "${CORTEX_DEPLOY_HOME}/scripts/gbrain-wrapper.sh"
 register "ops/scripts/manage/gbrain-doctor-summary.py"   "${CORTEX_DEPLOY_HOME}/scripts/gbrain-doctor-summary.py"
 register "ops/scripts/manage/send-skill-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/send-skill-report.py"
@@ -865,7 +864,6 @@ clean_stale_deploys() {
     # check_scripts correctly surfaced once the runtime path was unified.)
     "agent-daily-bible-reading.py"
     "local-clickhouse-log-cleanup.sh"
-    "local-push-metrics.sh"
   )
 
   # Build list of all registered destinations

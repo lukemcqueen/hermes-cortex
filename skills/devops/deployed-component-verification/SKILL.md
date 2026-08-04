@@ -520,7 +520,6 @@ The helper script must handle both platforms transparently.
 - `cortex-update.sh` `deploy_governance_plugin()` — the canonical deploy lifecycle
 - `/usr/local/sbin/hermes-plugin-lock` — the restricted sudo helper
 - `hermes-cortex-deployment` — full deployment lifecycle for Cortex agents
-- `agent-health-monitor` — cross-agent component verification
 - `sudoers-audit` — sudoers rule audit and debugging
 
 ---

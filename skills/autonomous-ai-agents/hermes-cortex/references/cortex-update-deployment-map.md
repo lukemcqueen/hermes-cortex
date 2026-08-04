@@ -22,7 +22,6 @@ Sources under `~/hermes-cortex/` → dest under `~/.hermes/` or `~/`.
 | `ops/scripts/install/install-nginx.sh` | `~/.hermes/scripts/install-nginx.sh` | |
 | `ops/scripts/install/install-cortex-update-cron.sh` | `~/.hermes/scripts/install-cortex-update-cron.sh` | |
 | `ops/scripts/health/prod-watchdog.sh` | `~/.hermes/scripts/prod-watchdog.sh` | |
-| `ops/scripts/agent/agent-health-monitor.py` | `~/.hermes/scripts/agent-health-monitor.py` | |
 | `ops/scripts/install/os-config.sh` | `~/.hermes/scripts/os-config.sh` | |
 | `ops/scripts/install/service-writer.sh` | `~/.hermes/scripts/service-writer.sh` | |
 | `ops/scripts/health/system-alert-watchdog.py` | `~/.hermes/scripts/system-alert-watchdog.py` | |
