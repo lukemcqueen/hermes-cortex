@@ -690,6 +690,8 @@ def _check_changed_script_execution(res):
   for j in jobs:
     if not isinstance(j, dict):
       continue
+    if not j.get("enabled", True):
+      continue  # paused jobs never run — frozen last_run_at must not flag run-evidence
     s = (j.get("script") or "").rsplit("/", 1)[-1]
     if s:
       by_script.setdefault(s, []).append((j.get("name"), j.get("last_run_at")))
