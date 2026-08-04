@@ -26,13 +26,13 @@ User: "pull latest and cortex update!" → `git pull --rebase origin main` faile
 2. **Pull conflict on `blocked_ips.add`** — auto-generated pipeline IP list, conflicted twice in the same session (two separate pulls). Resolved both with `--theirs`.
 3. **`cortex-update.sh --force-all` printed 7 FAILED lines:**
    ```
-   FAILED: /home/luke/.hermes/plugins/governance-enforcer/__init__.py
-   FAILED: /home/luke/.hermes-cortex/scripts/pre-commit-score
-   FAILED: /home/luke/.hermes-cortex/scripts/pre-push-pull
-   FAILED: /home/luke/.hermes-cortex/scripts/post-commit-audit
-   FAILED: /home/luke/.hermes-cortex/scripts/post-push-audit
-   FAILED: /home/luke/.hermes-cortex/hooks/post-merge
-   FAILED: /home/luke/.hermes-cortex/scripts/hermes-plugin-lock
+   FAILED: /home/user/.hermes/plugins/governance-enforcer/__init__.py
+   FAILED: /home/user/.hermes-cortex/scripts/pre-commit-score
+   FAILED: /home/user/.hermes-cortex/scripts/pre-push-pull
+   FAILED: /home/user/.hermes-cortex/scripts/post-commit-audit
+   FAILED: /home/user/.hermes-cortex/scripts/post-push-audit
+   FAILED: /home/user/.hermes-cortex/hooks/post-merge
+   FAILED: /home/user/.hermes-cortex/scripts/hermes-plugin-lock
    cp: cannot create regular file '.../hermes-plugin-lock': Operation not permitted
    ```
 

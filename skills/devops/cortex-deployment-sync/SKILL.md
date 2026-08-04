@@ -157,7 +157,7 @@ hard-blocks commands that look like they restart the gateway. Its tokenizer
 splits multi-line commands on newlines before parsing quotes, so a
 `python3 -c "..."` payload with embedded newlines has interior lines parsed as
 standalone shell segments — a path literal inside the payload (e.g.
-`sqlite3.connect('/home/moses/.hermes-cortex/data/loop-governance.db')`) becomes
+`sqlite3.connect('/home/user/.hermes-cortex/data/loop-governance.db')`) becomes
 a "referenced script". Reading a >1MB file (loop-governance.db is ~33MB)
 fails closed as "unsafe", and the whole command is blocked with a bogus
 **"Blocked: command or referenced script cannot restart or stop the gateway"**
