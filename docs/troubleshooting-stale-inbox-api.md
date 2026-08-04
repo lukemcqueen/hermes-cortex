@@ -9,7 +9,7 @@
 - `bus/bus-sensor.py`, `agent/inbox-sensor.py`, `inbox/inbox-sensor.py` — duplicate sensors polling the dead API
 - `bus/agent-bus-monitor.sh` — shell script polling `/api/inbox`
 - `orch-bus/orch-bus-sensor.py` — same pattern on orchestrator side
-- `agent-bus-mcp.py` — had entire fallback block for `/api/inbox` in `_inbox_read()` and `_inbox_watch()`
+- `cortex-bus-mcp.py` — had entire fallback block for `/api/inbox` in `_inbox_read()` and `_inbox_watch()`
 - `inbox_watcher.py` — had dead `fetch_inbox_html()` function using HTTP inbox
 - Various local-only scripts (`agent-inbox-processor.py`, `inbox-mcp-updated.py`, etc.)
 
@@ -19,7 +19,7 @@
 2. **Converted** `bus/bus-processor.py` to use `bus_list_queues()` (peek depth without consuming) + `bus_read()`/`bus_archive()` (read-archive cycle for inspection)
 3. **Converted** `orch-bus/orch-bus-watch.sh` to query `/api/pgmq/queues` (depth API) instead of `/api/inbox`
 4. **Converted** `orch-bus/orch-bus-mcp.py` to use `api/pgmq` regex instead of `api/inbox`
-5. **Stripped fallback blocks** from `agent-bus-mcp.py` — both `_inbox_read()` and `_inbox_watch()` now only use PGMQ
+5. **Stripped fallback blocks** from `cortex-bus-mcp.py` — both `_inbox_read()` and `_inbox_watch()` now only use PGMQ
 6. **Rewrote** `inbox_watcher.py` tool to use `bus_read()` primary, legacy file scan fallback
 
 ## Issue 2: Health Server Zombie
@@ -46,7 +46,7 @@ mcp_servers:
    - /home/user/hermes-cortex/runtime/mcp-servers/loop-gov-mcp.py  # ❌ doesn't exist
  agent-bus:
   args:
-   - /home/user/hermes-cortex/runtime/mcp-servers/agent-bus-mcp.py # ❌ doesn't exist
+   - /home/user/hermes-cortex/runtime/mcp-servers/cortex-bus-mcp.py # ❌ doesn't exist
 ```
 
 The actual files are at `mcp-servers/` (not `runtime/mcp-servers/`). The `runtime/` prefix was a leftover from a directory rename that was never propagated to config.yaml.
@@ -60,7 +60,7 @@ mcp_servers:
    - /home/user/hermes-cortex/mcp-servers/loop-gov-mcp.py  # ✅ correct path
  agent-bus:
   args:
-   - /home/user/hermes-cortex/mcp-servers/agent-bus-mcp.py  # ✅ correct path
+   - /home/user/hermes-cortex/mcp-servers/cortex-bus-mcp.py  # ✅ correct path
 ```
 
 **Verification:** The doctor checks `✅ MCP server (loop-governance) — configured in config.yaml` and `✅ MCP Python (loop-governance) — uses venv:` but does NOT verify the script file actually exists at the configured path. Consider adding a path-existence check to the doctor.

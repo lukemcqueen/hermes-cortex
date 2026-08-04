@@ -27,8 +27,8 @@ behavioral_principles:
  - The health-vector.py service must run on port 8905 (127.0.0.1). This is what the deployed nginx `upstream health_backend` block expects. Do not change the port unless the nginx config explicitly defines a different upstream.
  - After the `src/` → `ops/` repo migration (July 2026), many deployed scripts retained stale `src/` paths. When fixing a script that references `src/scripts/` or `src/loop-governance/`, check if the file moved to `ops/scripts/` or `runtime/loop-governance/`. The old `src/` tree was completely removed. Grep for `src/` references in any script you patch as a matter of course.
  - Bus on 8903, health-vector on 8905. Never conflate them. The bus ExecStart must use the Hermes venv python (has uvicorn), not /usr/bin/python3.
- - Name the bus service file agent-bus.service, not hermes-agent-bus.service. The doctor checks for exactly agent-bus.service.
- - Verify bus setup at three layers: (1) systemctl is-active agent-bus.service, (2) curl :8903/health returns backend pgmq, (3) nginx upstream agent_bus_backend matches :8903. A running process on a port is not enough.
+ - Name the bus service file cortex-bus.service, not cortex-bus.service. The doctor checks for exactly cortex-bus.service.
+ - Verify bus setup at three layers: (1) systemctl is-active cortex-bus.service, (2) curl :8903/health returns backend pgmq, (3) nginx upstream cortex_bus_backend matches :8903. A running process on a port is not enough.
  - After cortex-update , check ~/.hermes/scripts/ for symlinks that point outside the scripts dir. Cron's no_agent runtime rejects symlinks. Replace with real `cp` copies.
  - no_agent cron scripts don't inherit Hermes env vars. If a script needs CORTEX_BUS_TOKEN or CORTEX_BUS_URL, ensure they're set via ~/.hermes-cortex/cortex-bus.conf, not just ~/hermes-cortex/.env.
  - After running install-orch-crons.sh, always check for stale old-name duplicate crons (bus-* vs orch-bus-*) and remove them. The installer doesn't auto-uninstall renamed crons.

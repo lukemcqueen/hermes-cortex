@@ -63,7 +63,7 @@ if importlib.util.find_spec("mcp") is None:
 
 logging.basicConfig(level=logging.DEBUG, format="[mcp-server] %(levelname)s: %(message)s",
                     stream=sys.stderr, force=True)
-log = logging.getLogger("agent-bus-mcp")
+log = logging.getLogger("cortex-bus-mcp")
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -259,7 +259,7 @@ def _request(method: str, path: str, body: dict | None = None,
 #  MCP SERVER
 # ═══════════════════════════════════════════════════════════════
 
-server = Server("agent-bus")
+server = Server("cortex-bus")
 
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 

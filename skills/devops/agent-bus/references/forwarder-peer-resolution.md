@@ -62,8 +62,8 @@ The 403-vs-200 ACL behavior differs per host because TWO server versions exist:
 
 | File | ACL model | Where runs |
 |------|-----------|-----------|
-| `ops/services/agent-bus/server.py` | coarse boolean (`can_read`/`can_send` = bool) | deployed `~/.hermes-cortex/bus/server.py` (Esther :8903) |
-| `core/agent_bus/server.py` | per-queue arrays (`can_read` = queue list, `queue not in allowed_queues → 403`) | canonical (Moses' bus) |
+| `core/cortex_bus/server.py` | coarse boolean (`can_read`/`can_send` = bool) | deployed `~/.hermes-cortex/bus/server.py` (Esther :8903) |
+| `core/cortex_bus/server.py` | per-queue arrays (`can_read` = queue list, `queue not in allowed_queues → 403`) | canonical (Moses' bus) |
 
 Diagnose a 403 by diffing the two server files BEFORE assuming a config bug.
 Commit `fc9aafdb` fixed the forwarder; commit `97c541a8` documented

@@ -30,6 +30,6 @@ END   ─► todo-db.py save-end
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | `sg: command not found` | sg docker wrapper not installed | Use direct psql or check docker group |
-| `ERROR: relation "bus.todos" does not exist` | Schema not applied | Run: `sg docker -c "docker exec -i gbrain-postgres psql -U gbrain -d gbrain" < ~/hermes-cortex/ops/services/agent-bus/schema/todos.sql` |
+| `ERROR: relation "bus.todos" does not exist` | Schema not applied | Run: `sg docker -c "docker exec -i gbrain-postgres psql -U gbrain -d gbrain" < ~/hermes-cortex/core/cortex_bus/schema/todos.sql` |
 | `Permission denied` on sg docker | User not in docker group | `sudo usermod -aG docker $USER && newgrp docker` |
 | todo-db.py not found | cortex-update.sh hasn't run | `cd ~/hermes-cortex && bash cortex-update.sh` |

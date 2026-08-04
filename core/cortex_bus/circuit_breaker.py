@@ -109,7 +109,7 @@ class CircuitBreaker:
             return
 
         try:
-            from agent_bus.queue import get_queue
+            from cortex_bus.queue import get_queue
             bus = get_queue()
             # Quick health check — list queues
             _ = bus.list_queues()
@@ -122,7 +122,7 @@ class CircuitBreaker:
         if self._state.state != "pgmq":
             return False
         try:
-            from agent_bus.queue import get_queue
+            from cortex_bus.queue import get_queue
             bus = get_queue()
             bus.list_queues()
             self.record_success()

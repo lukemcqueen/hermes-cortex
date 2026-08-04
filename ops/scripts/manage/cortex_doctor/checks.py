@@ -1192,7 +1192,7 @@ def check_services(res):
         res.add(f"Service ({name})", "WARN", f"HTTP {code} (unexpected)")
 
   # Agent Bus direct health
-  if process_running("agent_bus"):
+  if process_running("cortex_bus"):
     bus_url = run_bg([CURL, "-s", "-o", "/dev/null", "-w", "%{http_code}",
              "http://127.0.0.1:8903/health", "--max-time", "5"])
     if bus_url == "200":
@@ -1205,7 +1205,7 @@ def check_services(res):
     else:
       res.add("Agent Bus (direct)", "FAIL",
           f"HTTP {bus_url} — unexpected response",
-          "Check: systemctl --user status agent_bus")
+          "Check: systemctl --user status cortex_bus")
   else:
     def _get_conf(key):
       val = os.environ.get(key, "")
@@ -1238,10 +1238,10 @@ def check_services(res):
 
   # Non-orch guard: detect orchestrator-only services running on non-orch agents
   if AGENT_ROLE != "orchestrator":
-    _bus_proc = run_bg(["pgrep", "-f", "agent_bus.server"], timeout=5) or ""
-    if "agent_bus" in _bus_proc:
+    _bus_proc = run_bg(["pgrep", "-f", "cortex_bus.server"], timeout=5) or ""
+    if "cortex_bus" in _bus_proc:
       res.add("Bus (non-orch guard)", "WARN",
-          "agent_bus process running on non-orch agent — should only run on orchestrator hosts",
+          "cortex_bus process running on non-orch agent — should only run on orchestrator hosts",
           "Stop: systemctl --user stop agent-bus && systemctl --user disable agent-bus")
 
   # Ollama
@@ -1414,7 +1414,7 @@ def check_system(res):
   expected_user_units = {
     "hermes-cortex-dashboard.service",
     "hermes-cortex-langfuse.service",
-    "hermes-cortex-agent-bus.service",
+    "hermes-cortex-cortex-bus.service",
   }
   if IS_LINUX:
     failed = run_bg(["systemctl", "--user", "list-units", "--state=failed",

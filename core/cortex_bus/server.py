@@ -18,7 +18,7 @@ Endpoints:
     /.well-known/agent-card.json    — agent discovery card
 
 Usage:
-    uvicorn server:app --host 127.0.0.1 --port 8905
+    uvicorn server:app --host 127.0.0.1 --port 8903
 """
 
 import json
@@ -31,18 +31,18 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
-# ── Add src to path for agent_bus imports ──
-SRC_DIR = Path.home() / "hermes-cortex" / "runtime"
+# ── Add src to path for cortex_bus imports ──
+SRC_DIR = Path.home() / "hermes-cortex" / "core"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from agent_bus.queue import get_queue, NotAvailableError, BusClient
-from agent_bus.auth import validate_token
-from agent_bus.circuit_breaker import get_circuit_breaker
-from agent_bus.workflow.dispatcher import dispatch_workflow, process_dispatch_message
-from agent_bus.workflow.router import process_step_result as router_process_step
-from agent_bus.workflow.human_gate import get_pending_hil, process_hil_response
-from agent_bus.workflow.db import get_workflow, get_steps_for_workflow, list_active_workflows
+from cortex_bus.queue import get_queue, NotAvailableError, BusClient
+from cortex_bus.auth import validate_token
+from cortex_bus.circuit_breaker import get_circuit_breaker
+from cortex_bus.workflow.dispatcher import dispatch_workflow, process_dispatch_message
+from cortex_bus.workflow.router import process_step_result as router_process_step
+from cortex_bus.workflow.human_gate import get_pending_hil, process_hil_response
+from cortex_bus.workflow.db import get_workflow, get_steps_for_workflow, list_active_workflows
 
 app = FastAPI(title="Hermes Cortex Agent Bus")
 
@@ -53,23 +53,23 @@ TOKEN_PREFIX = "Bearer "
 
 
 def _authenticate(request: Request) -> str:
-    """Extract and validate credentials. Returns agent name.
+    """Extract and validate Bearer token. Returns agent name.
     
     Two auth modes:
-    1. X-Forwarded-User — for nginx-authenticated external connections
+    1. Bearer token — for direct/internal connections (Authorization: Bearer ***)
+    2. X-Forwarded-User — for nginx-authenticated external connections
        (nginx validates Basic auth, forwards the username)
-    2. Bearer token — for direct/internal connections (Authorization: Bearer ***)
     """
     # Mode 1: nginx-authenticated — X-Forwarded-User header
     forwarded_user = request.headers.get("X-Forwarded-User", "")
     if forwarded_user:
-        return forwarded_user.strip()
+        return forwarded_user
     
     # Mode 2: Bearer token — direct connections
     auth = request.headers.get(AUTH_HEADER, "")
     
     if not auth.startswith(TOKEN_PREFIX):
-        raise HTTPException(401, "Missing or invalid Authorization header. Use: Authorization: Bearer <token>")
+        raise HTTPException(401, "Missing or invalid Authorization header. Use: Authorization: Bearer *** or connect via nginx with Basic auth")
     
     token = auth[len(TOKEN_PREFIX):].strip()
     agent_name = validate_token(token)
@@ -98,11 +98,11 @@ def _check_permission(agent: str, queue: str, action: str):
     
     action: 'read' or 'write'
     """
-    from agent_bus.queue import get_queue
+    from cortex_bus.queue import get_queue
     bus = get_queue()
     bus._ensure_conn()
     with bus._conn.cursor() as cur:
-        column = "can_read" if action == "read" else "can_send"
+        column = "can_read" if action == "read" else "can_write"
         cur.execute(
             f"SELECT {column} FROM bus.permissions WHERE agent_name = %s",
             (agent,),
@@ -111,10 +111,13 @@ def _check_permission(agent: str, queue: str, action: str):
         if not row:
             raise HTTPException(403, f"Agent '{agent}' has no permissions configured")
         
-        if not row[0]:
+        allowed_queues = row[0] or []
+        is_admin = len(allowed_queues) > 0 and allowed_queues[0] == '*'  # future: wildcard support
+        
+        if not is_admin and queue not in allowed_queues:
             raise HTTPException(
                 403,
-                f"Agent '{agent}' does not have {action} permission"
+                f"Agent '{agent}' does not have {action} access to queue '{queue}'"
             )
 
 
@@ -628,7 +631,7 @@ async def api_list_workflows(request: Request, state: str = ""):
     """List workflows, optionally filtered by state."""
     agent = _authenticate(request)
     if state:
-        from agent_bus.workflow.db import get_queue
+        from cortex_bus.workflow.db import get_queue
         bus = get_queue()
         bus._ensure_conn()
         with bus._conn.cursor() as cur:
@@ -636,7 +639,7 @@ async def api_list_workflows(request: Request, state: str = ""):
                 "SELECT * FROM bus.agent_workflows WHERE state = %s ORDER BY created_at DESC",
                 (state,),
             )
-            from agent_bus.workflow.db import _row_to_dict
+            from cortex_bus.workflow.db import _row_to_dict
             workflows = [_row_to_dict(cur, r) for r in cur.fetchall()]
     else:
         workflows = list_active_workflows()
@@ -681,5 +684,5 @@ async def api_get_workflow(wf_id: str, request: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("CORTEX_BUS_PORT", "8905"))
+    port = int(os.environ.get("CORTEX_BUS_PORT", "8903"))
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")

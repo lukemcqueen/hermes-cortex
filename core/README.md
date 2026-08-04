@@ -6,10 +6,11 @@ Canonical schemas, workflows, and policy contracts. This layer defines *what* th
 
 | Directory | Purpose | Status |
 |-----------|---------|--------|
-| `agent_bus/` | Agent Bus implementation — PGMQ-based queue server, auth, circuit breaker, workflow engine | Active |
+| `cortex_bus/` | Cortex Bus implementation — PGMQ-based queue server, auth, circuit breaker, workflow engine | Active |
+| `cortex_bus/schema/` | Bus DDL (auth/queue/workflow/todos/command-verifications) | Active |
 | `governance/` | Loop governance schemas (DEPRECATED — removed July 2026. Use MCP-based loop-governance tools instead) | Removed |
 
-### agent_bus/
+### cortex_bus/
 
 | Module | Purpose |
 |--------|---------|

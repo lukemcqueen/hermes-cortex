@@ -63,7 +63,7 @@ curl -s -X POST http://127.0.0.1:8903/api/pgmq/send \
 **Characteristics:**
 - ✅ Full auth — Bearer token validated against `bus.tokens`
 - ✅ Full permissions — `_check_permission()` validates queue access
-- ✅ Same path MCP tools use (`mcp__agent_bus__send`)
+- ✅ Same path MCP tools use (`mcp__cortex_bus__send`)
 - ❌ Only works on the bus server machine (direct access to port 8903)
 
 **Use this for:** Testing from the bus server. Reproduces exactly what MCP tools do.
@@ -93,9 +93,9 @@ The `bus.permissions` table controls which agents can read/write which queues.
 The bus server checks permissions via `_check_permission()` on every send/read.
 
 > ⚠️ **Two ACL schemas exist fleet-wide — match the SQL to the host.** The
-> PRIMARY bus (Moses, `core/agent_bus`, :13004) uses per-queue **arrays**
+> PRIMARY bus (Moses, `core/cortex_bus`, :13004) uses per-queue **arrays**
 > (`can_read`/`can_write` text[] + `is_admin`) — the queries below. The
-> BACKUP bus (Esther, `ops/services/agent-bus`, :14004) uses coarse
+> BACKUP bus (Esther, `core/cortex_bus`, :14004) uses coarse
 > **booleans** (`can_send`/`can_read`/`can_archive`/`can_requeue`). Workers
 > send through the primary, so a 403 on worker→orchestrator traffic means
 > checking the PRIMARY's array ACL first. `UPDATE ... SET can_write = array(...)`
@@ -136,7 +136,7 @@ FROM bus.permissions ORDER BY agent_name;\\\"\" 2>&1
 External client → nginx:13004
   ↓ Basic Auth (htpasswd — /etc/nginx/.hermes-htpasswd)
   ↓ X-Forwarded-User header set by nginx
-  ↓ proxy_pass to agent_bus_backend (127.0.0.1:8903)
+  ↓ proxy_pass to cortex_bus_backend (127.0.0.1:8903)
   ↓ Bearer token forwarded via proxy_set_header Authorization
 
 Bus server _authenticate() has two modes:

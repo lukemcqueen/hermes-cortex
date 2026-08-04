@@ -15,8 +15,8 @@ delivers it.
 from __future__ import annotations
 from typing import Any, Optional
 
-from agent_bus.queue import get_queue, BusClient
-from agent_bus.workflow.db import (
+from cortex_bus.queue import get_queue, BusClient
+from cortex_bus.workflow.db import (
     get_workflow, get_step, get_steps_for_workflow,
     update_workflow_state, update_step_state, write_audit,
 )
@@ -144,5 +144,5 @@ def get_pending_hil() -> list[dict]:
                AND w.state = 'blocked'
                ORDER BY w.priority DESC, s.started_at ASC"""
         )
-        from agent_bus.workflow.db import _row_to_dict
+        from cortex_bus.workflow.db import _row_to_dict
         return [_row_to_dict(cur, r) for r in cur.fetchall()]

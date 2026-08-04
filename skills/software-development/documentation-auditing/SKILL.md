@@ -136,7 +136,7 @@ When fixing template/placeholder paths (e.g., `src/auth/middleware.py` in `task-
 ## Pitfalls
 
 - **The `deploy/` symlink may be gone.** Don't assume `deploy/nginx/hermes-services-apply.py` works via symlink unless you've confirmed the symlink exists. Check it every audit.
-- **`src/` may still partially exist** (e.g., `src/loop-governance/` kept as backward compat, `src/agent_bus/__pycache__/` as stale cache). A stale path pointing to a still-extant file is less urgent than one pointing to a deleted file, but it's still stale — the backward-compat copy is unsupported and may be removed. Always verify the **actual source file** exists, not just the directory.
+- **`src/` may still partially exist** (e.g., `src/loop-governance/` kept as backward compat, `src/cortex_bus/__pycache__/` as stale cache). A stale path pointing to a still-extant file is less urgent than one pointing to a deleted file, but it's still stale — the backward-compat copy is unsupported and may be removed. Always verify the **actual source file** exists, not just the directory.
 - **Check whether `src/` root exists** — it may be a hollow shell with only `__pycache__` and `.pytest_cache` dirs. `test -d src/` returning true doesn't mean source files are there.
 - **Migration docs are not stale.** A file like `docs/migration-*.md` intentionally documents old paths as they were during the migration. Flag only the **actionable code blocks** within them, not the historical prose.
 - **Code blocks are actionable.** Even in a migration doc, a ````bash` code block with `bash src/scripts/cortex-update.sh` will **fail** if run. These are High severity.

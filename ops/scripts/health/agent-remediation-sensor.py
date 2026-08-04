@@ -429,7 +429,7 @@ def _is_local_url(url):
         return True
 
 
-def check_agent_bus():
+def check_cortex_bus():
     """Check Hermes Cortex Agent Bus health.
     
     Checks that the Agent Bus service is active AND the endpoint responds.
@@ -462,7 +462,7 @@ def check_agent_bus():
             return  # Remote bus is reachable (401/403 = auth challenge = alive)
         
         add_issue("service_down", "high", "Remote Agent Bus unreachable", {
-            "service": "hermes-agent-bus (remote)",
+            "service": "cortex-bus (remote)",
             "url": health_url,
             "endpoint_http": curl_out.strip() or "unreachable",
         })
@@ -481,7 +481,7 @@ def check_agent_bus():
             if fb_rc == 0 and fb_out.strip() not in ("", "-"):
                 svc_ok = True
     elif sys.platform.startswith("linux"):
-        svc_out, _, svc_rc = run("systemctl --user is-active agent-bus.service 2>/dev/null")
+        svc_out, _, svc_rc = run("systemctl --user is-active cortex-bus.service 2>/dev/null")
         svc_ok = (svc_out.strip() == "active")
     
     curl_out, _, curl_rc = run("curl -s -o /dev/null -w '%{http_code}' http://localhost:8905/health 2>/dev/null")
@@ -489,7 +489,7 @@ def check_agent_bus():
     
     if not svc_ok and not endpoint_ok:
         add_issue("service_down", "high", "Agent Bus is down (service inactive + endpoint unreachable)", {
-            "service": "agent-bus.service",
+            "service": "cortex-bus.service",
             "service_status": svc_out.strip() or "unknown",
             "endpoint_http": curl_out.strip() or "unreachable",
         })
@@ -589,7 +589,7 @@ def main():
     check_disk()
     check_memory()
     check_services()
-    check_agent_bus()  # Agent Bus health check (before systemd services)
+    check_cortex_bus()  # Agent Bus health check (before systemd services)
     check_systemd_services()  # Linux complement to check_services()
     check_nginx()
     if _local_agent_name() in CERT_HOLDER_HOSTS:

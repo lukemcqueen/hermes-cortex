@@ -29,7 +29,7 @@ including the backup when the primary is down or degraded.
 - **Results** still go to `inbox_moses` (they reply to the originating
   orchestrator's queue via `inbox_moses`).
 - The queue is auto-created on first send; schema seed lives in
-  `ops/services/agent-bus/schema/auth.sql`.
+  `core/cortex_bus/schema/auth.sql`.
 
 ## Common Headers
 

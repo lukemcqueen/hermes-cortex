@@ -5,9 +5,9 @@
 -- No external extensions required.
 --
 -- Tables:
---   agent_bus_queues      — queue metadata (name, config)
---   agent_bus_messages    — messages (one row per message)
---   agent_bus_archives    — processed messages (for audit)
+--   cortex_bus_queues      — queue metadata (name, config)
+--   cortex_bus_messages    — messages (one row per message)
+--   cortex_bus_archives    — processed messages (for audit)
 --
 -- API:
 --   bus.send(queue, message)       → msg_id

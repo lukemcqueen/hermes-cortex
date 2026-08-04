@@ -114,7 +114,7 @@ try:
 except (FileNotFoundError, OSError, IndexError):
     pass  # expected — silently handled
 EXPECTED_MCP_SERVERS = {
-    "agent-bus": "agent-bus-mcp.py",
+    "agent-bus": "cortex-bus-mcp.py",
     "loop-governance": "loop-gov-mcp.py",
 }
 

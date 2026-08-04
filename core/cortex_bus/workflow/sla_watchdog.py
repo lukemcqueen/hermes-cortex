@@ -19,8 +19,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from agent_bus.queue import get_queue, BusClient
-from agent_bus.workflow.db import (
+from cortex_bus.queue import get_queue, BusClient
+from cortex_bus.workflow.db import (
     get_workflow, get_step, get_steps_for_workflow,
     update_workflow_state, update_step_state, write_audit,
     list_active_workflows,
@@ -118,7 +118,7 @@ def _find_timed_out_workflows(now: datetime) -> list[dict]:
                AND deadline_at < %s""",
             (now,),
         )
-        from agent_bus.workflow.db import _row_to_dict
+        from cortex_bus.workflow.db import _row_to_dict
         return [_row_to_dict(cur, r) for r in cur.fetchall()]
 
 
@@ -138,7 +138,7 @@ def _find_timed_out_steps(now: datetime) -> list[dict]:
                AND (s.started_at + (s.timeout_seconds || ' seconds')::interval) < %s""",
             (now,),
         )
-        from agent_bus.workflow.db import _row_to_dict
+        from cortex_bus.workflow.db import _row_to_dict
         return [_row_to_dict(cur, r) for r in cur.fetchall()]
 
 

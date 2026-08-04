@@ -200,7 +200,7 @@ Every change that touches paths or system commands must work on both Linux and m
 
 Different agents have different setups. Your change shouldn't break them.
 
-- [ ] **Process/service name audit:** If your change uses `pgrep`, `systemctl`, `launchctl`, or any process-detection tool, verify the name matches the ACTUAL runtime command line. `pgrep -f agent-bus` silently returns nothing when the real daemon is `agent_bus` (underscore, from uvicorn agent_bus.server). Check `ps aux | grep <name>` to see the real argv — use that exact string, not a guess.
+- [ ] **Process/service name audit:** If your change uses `pgrep`, `systemctl`, `launchctl`, or any process-detection tool, verify the name matches the ACTUAL runtime command line. `pgrep -f agent-bus` silently returns nothing when the real daemon is `cortex_bus` (underscore, from uvicorn cortex_bus.server). Check `ps aux | grep <name>` to see the real argv — use that exact string, not a guess.
 
 - [ ] **Hook/enforcer changes: test in a PROJECT repo, not just cortex.** `core.hooksPath` is set globally — hooks fire in every git repo on the host, and project repos have NO `ops/` tree or `.hermes-cortex/` inside them. A hook that hard-resolves a tool to `$REPO_ROOT/ops/...` (the repo being committed IN) blocks EVERY commit in project repos — regression `faa0e929` → fix `72d6cdc3` (2026-08-04). Before shipping any hook change:
   ```bash
@@ -240,12 +240,12 @@ Different agents have different setups. Your change shouldn't break them.
 
 When writing health checks or scripts that run on both orchestrator and regular agents:
 
-- **Process-gate localhost checks.** Never curl 127.0.0.1 for a service unless you've verified the daemon process exists first (pgrep -f agent_bus). Non-orchestrators don't run local daemons - curling a dead port is both wasteful and misleading.
+- **Process-gate localhost checks.** Never curl 127.0.0.1 for a service unless you've verified the daemon process exists first (pgrep -f cortex_bus). Non-orchestrators don't run local daemons - curling a dead port is both wasteful and misleading.
 - **Never mention irrelevant services in messages.** A non-orchestrator agent should never see "local bus", "local daemon", or similar phrasing. It implies that service should be present, which agents may interpret as an instruction to install it.
 - **Severity matters.** If a service is confirmed running (process found, port open), any non-200 response is a FAIL, not a WARN. A faulty service that the doctor knows exists is an error.
 - **If no URL is configured, it's a FAIL.** On agents that should have remote connectivity (bus URL, fallback URL), absence of configuration is a hard error - not a SKIP.
 - **Check both URLs, not just one.** CORTEX_BUS_URL and CORTEX_BUS_FALLBACK_URL should both be present. Check env and config file; reuse the same config reader pattern.
-- **Process names use underscores.** The agent_bus daemon runs under uvicorn as agent_bus.server:app. pgrep -f agent-bus (hyphen) silently returns nothing. Always verify the actual command line with ps aux | grep before hardcoding a pgrep pattern - use that exact string, not a guess.
+- **Process names use underscores.** The cortex_bus daemon runs under uvicorn as cortex_bus.server:app. pgrep -f agent-bus (hyphen) silently returns nothing. Always verify the actual command line with ps aux | grep before hardcoding a pgrep pattern - use that exact string, not a guess.
 
 ### Phase 4: Update Documentation
 

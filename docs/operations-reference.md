@@ -25,7 +25,7 @@ Port **8905**, powered by `bus` schema on gbrain Postgres (port 15432).
 | Port | 8903 (server.py) | 8905 (systemd service) |
 | Nginx | 13004 → 8903 (old inbox) | 13004 → 8905 (after cutover) |
 
-**Service:** `hermes-agent-bus.service` — systemd user service, auto-starts on boot.
+**Service:** `cortex-bus.service` — systemd user service, auto-starts on boot.
 **Circuit breaker:** Auto-degrades to old inbox if Postgres is unavailable (3 failures → file fallback).
 
 ### Old Inbox (file-based, deprecating)
@@ -38,7 +38,7 @@ or removed entirely after all agents are confirmed on the bus.
 | Layer | What it does | Who runs it |
 |-------|-------------|-------------|
 | **API backend** (Agent Bus :8905 + nginx) | Stores messages, serves the HTTP API | **Only Moses and Esther** (the gateway does this automatically) |
-| **MCP client** (`agent-bus-mcp.py` in Hermes config) | Provides `inbox_send`/`inbox_read`/`inbox_watch` tools to the agent | **Orchestrators only** (Moses, Esther) — the doctor enforces this (`ORCH_ONLY_MCP_SERVERS`); workers use `contact-orchestrator.sh` / `lib.cortex_bus.bus_send` over HTTP instead |
+| **MCP client** (`cortex-bus-mcp.py` in Hermes config) | Provides `inbox_send`/`inbox_read`/`inbox_watch` tools to the agent | **Orchestrators only** (Moses, Esther) — the doctor enforces this (`ORCH_ONLY_MCP_SERVERS`); workers use `contact-orchestrator.sh` / `lib.cortex_bus.bus_send` over HTTP instead |
 
 The confusion is that "agent inbox" sounds like one thing. It's two (and was formerly known as the Agent Inbox):
 1. The **server** that holds the messages → only Moses & Esther
@@ -51,7 +51,7 @@ MOSES / ESTHER (bus servers)     ORCHESTRATORS ONLY (MCP client)        WORKERS 
 ─────────────────────────────      ─────────────────────────────────────  ───────────────────────────
 Hermes gateway (:8905)         ~/.hermes/config.yaml                  ~/.hermes-cortex/cortex-bus.conf
  ↳ built-in Agent Bus API        ↳ mcp_servers.agent-bus               ↳ CORTEX_BUS_URL + CORTEX_BASIC_AUTH
- ↳ stores messages (PGMQ)        ↳ runs agent-bus-mcp.py as subprocess  ↳ contact-orchestrator.sh / lib.cortex_bus.bus_send
+ ↳ stores messages (PGMQ)        ↳ runs cortex-bus-mcp.py as subprocess  ↳ contact-orchestrator.sh / lib.cortex_bus.bus_send
                      ↳ reads ~/hermes-cortex/.env
 nginx proxy (:13004 / :14004)       ↳ calls remote Agent Bus via HTTP
  ↳ SSL + Basic Auth           ↳ exposes inbox_send/read/watch tools
@@ -134,7 +134,7 @@ If you are Moses or Esther (orchestrator):
  └─ You just need the nginx proxy setup
 
 If you are Gisu, Joseph, Kustos, or Titus (worker):
- └─ You DO NOT install the MCP client (agent-bus-mcp.py). It is
+ └─ You DO NOT install the MCP client (cortex-bus-mcp.py). It is
     orchestrator-only — the doctor warns if you add it.
  └─ You DO have the HTTP client: ~/.hermes-cortex/cortex-bus.conf
     + contact-orchestrator.sh (or lib.cortex_bus). This is your ONLY bus access.
@@ -153,7 +153,7 @@ cd ~/hermes-cortex && git pull
 
 # 2. Ensure MCP client is in config.yaml
 grep -A4 "agent-bus" ~/.hermes/config.yaml
-# Should show: command: python3, args: [agent-bus-mcp.py], enabled: true
+# Should show: command: python3, args: [cortex-bus-mcp.py], enabled: true
 
 # 3. Create credentials file — YOUR OWN credentials
 nano ~/hermes-cortex/cortex-bus.conf

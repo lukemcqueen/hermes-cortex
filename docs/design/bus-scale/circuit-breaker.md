@@ -159,6 +159,6 @@ on the next small send.
 
 | File | Action |
 |------|--------|
-| `ops/services/agent-bus/server.py` | Add backpressure check to send handler |
-| `ops/services/agent-bus/config.py` | Create — per-queue config cache |
-| `ops/services/agent-bus/schema/auth.sql` | Add `config` column to permissions |
+| `core/cortex_bus/server.py` | Add backpressure check to send handler |
+| `core/cortex_bus/config.py` | Create — per-queue config cache |
+| `core/cortex_bus/schema/auth.sql` | Add `config` column to permissions |

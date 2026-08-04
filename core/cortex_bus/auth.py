@@ -32,7 +32,7 @@ def issue_token_for_agent(agent_name: str) -> str:
     The raw token is shown ONCE (this function returns it). Store it in the
     agent's .env file. It cannot be retrieved from Postgres (only the hash is stored).
     """
-    from agent_bus.queue import get_queue
+    from cortex_bus.queue import get_queue
     
     token = generate_token()
     token_hash = hash_token(token)
@@ -59,7 +59,7 @@ def validate_token(token: str) -> Optional[str]:
     
     Called by the bus server on every API request.
     """
-    from agent_bus.queue import get_queue
+    from cortex_bus.queue import get_queue
     
     token_hash = hash_token(token)
     
@@ -78,7 +78,7 @@ def validate_token(token: str) -> Optional[str]:
 
 def revoke_token(agent_name: str):
     """Revoke an agent's token (immediately invalidates it)."""
-    from agent_bus.queue import get_queue
+    from cortex_bus.queue import get_queue
     
     bus = get_queue()
     conn = bus._ensure_conn()

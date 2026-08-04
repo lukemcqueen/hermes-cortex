@@ -337,7 +337,7 @@ register "ops/scripts/manage/gbrain-doctor-summary.py"   "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/send-skill-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/send-skill-report.py"
 register "ops/scripts/state_tracker.py"           "${CORTEX_DEPLOY_HOME}/scripts/state_tracker.py"
 
-register_orch "mcp-servers/agent-bus-mcp.py"                "${CORTEX_DEPLOY_HOME}/scripts/agent-bus-mcp.py"
+register_orch "mcp-servers/cortex-bus-mcp.py"               "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-mcp.py"
 
 # Inbox MCP tools
 # Inbox→bus renamed scripts (source files moved to ops/scripts/bus/)
@@ -518,14 +518,12 @@ register_orch "ops/services/dashboard/static/index.html"        "${CORTEX_DEPLOY
 register_orch "ops/services/dashboard/com.hermes.cortex-dashboard.plist" "${HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist" "dashboard"
 
 # Agent Bus
-register_orch "ops/services/agent-bus/server.py"              "${CORTEX_DEPLOY_HOME}/bus/server.py" "agent-bus" "restart_agent_bus"
-register_orch "ops/services/agent-bus/nginx.conf"             "${CORTEX_DEPLOY_HOME}/bus/nginx.conf"
 
 # Service definitions
 register "ops/scripts/install/os-config.sh"               "${CORTEX_DEPLOY_HOME}/scripts/install/os-config.sh"
 register "ops/scripts/install/service-writer.sh"          "${CORTEX_DEPLOY_HOME}/scripts/service-writer.sh"
 
-restart_agent_bus() {
+restart_cortex_bus() {
   # macOS launchd
   if launchctl list com.hermes.agent-bus 2>/dev/null | grep -q "PID"; then
     info "  Restarting Agent Bus (launchd)…"
@@ -538,10 +536,10 @@ restart_agent_bus() {
     return
   fi
   # Linux systemd
-  if systemctl --user is-active --quiet hermes-agent-bus 2>/dev/null; then
+  if systemctl --user is-active --quiet cortex-bus 2>/dev/null; then
     info "  Restarting Agent Bus (systemd)…"
     systemctl --user daemon-reload 2>/dev/null || true
-    systemctl --user restart hermes-agent-bus 2>&1 | sed 's/^/    /'
+    systemctl --user restart cortex-bus 2>&1 | sed 's/^/    /'
   fi
 }
 
@@ -580,7 +578,7 @@ restart_dashboard() {
     systemctl --user restart hermes-cortex-dashboard 2>&1 | sed 's/^/    /'
   fi
 }
-# restart_agent_inbox — removed; use restart_agent_bus instead
+# restart_agent_inbox — removed; use restart_cortex_bus instead
 
 restart_health_server() {
   info "  health-server.py has been removed — use health-vector.service instead."
@@ -2279,8 +2277,8 @@ main() {
         warn "    systemctl --user disable agent-bus"
         _warned=true
       fi
-      if pgrep -f agent_bus.server &>/dev/null 2>&1; then
-        warn "🚫 Bus server process (agent_bus) detected on non-orch agent"
+      if pgrep -f cortex_bus.server &>/dev/null 2>&1; then
+        warn "🚫 Bus server process (cortex_bus) detected on non-orch agent"
         _warned=true
       fi
       if $_warned; then

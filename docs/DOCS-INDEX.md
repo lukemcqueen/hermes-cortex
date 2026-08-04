@@ -29,7 +29,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 || `docs/pre-commit-scoring.md` | Pre-commit scoring hook — TDD cycle scoring, loop governance integration, and enforcement model |
 || `ops/scripts/` | Health checks, watchdogs, governance, installers — 160+ scripts across subdirectories |
 || `ops/scripts/manage/push-metrics.sh` | **Agent metrics push script** — Prometheus-format system metrics POSTed to central VictoriaMetrics. Used by all agents for observability. |
-|| `ops/services/agent-bus/metrics.py` | **Bus metrics module** — prometheus_client definitions + async push client. Imported by bus server for queue-level observability. |
+|| `core/cortex_bus/metrics.py` | **Bus metrics module** — prometheus_client definitions + async push client. Imported by bus server for queue-level observability. |
 || `ops/install/deploy/docker-compose.victoria-metrics.yml` | **VictoriaMetrics + Grafana stack** — Docker compose: metrics storage (3mo retention) + visualization dashboard. Grafana at :3030. |
 | `docs/push-metrics-setup.md` | **Push metrics setup guide** — VictoriaMetrics + Grafana, per-agent push, nginx orch config |
 ## Security

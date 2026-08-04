@@ -47,6 +47,6 @@ Each message is classified by:
 
 ## Key Files
 
-- Bus backend: `ops/services/agent-bus/server.py`
-- Queue module: `core/agent_bus/queue.py`
+- Bus backend: `core/cortex_bus/server.py`
+- Queue module: `core/cortex_bus/queue.py`
 - Bus config: `~/.hermes-cortex/cortex-bus.conf`

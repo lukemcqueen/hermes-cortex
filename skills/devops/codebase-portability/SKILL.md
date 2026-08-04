@@ -319,11 +319,11 @@ find ~/hermes-cortex/core -name 'sla_watchdog.py' 2>/dev/null
 ```python
 # Before
 sys.path.insert(0, "~/hermes-cortex/runtime")
-from agent_bus.workflow.sla_watchdog import main
+from cortex_bus.workflow.sla_watchdog import main
 
 # After
 sys.path.insert(0, "~/hermes-cortex/core")
-from agent_bus.workflow.sla_watchdog import main
+from cortex_bus.workflow.sla_watchdog import main
 ```
 
 **Two copies to patch (always):**

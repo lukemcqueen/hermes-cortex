@@ -381,4 +381,4 @@ handles the current single-process FastAPI architecture.
 
 | File | Action |
 |------|--------|
-| `ops/services/agent-bus/server.py` | Add long-poll logic to read handler, send wake to send handler |
+| `core/cortex_bus/server.py` | Add long-poll logic to read handler, send wake to send handler |

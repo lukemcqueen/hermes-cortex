@@ -18,7 +18,7 @@ from datetime import datetime, timezone, timedelta
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from agent_bus.queue import get_queue, NotAvailableError
+from cortex_bus.queue import get_queue, NotAvailableError
 
 
 def main():

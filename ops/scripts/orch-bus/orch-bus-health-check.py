@@ -15,7 +15,7 @@ import sys
 import time
 from datetime import datetime, timezone
 
-# Add repo core dir to path (agent_bus package lives in <repo>/core).
+# Add repo core dir to path (cortex_bus package lives in <repo>/core).
 # Works from repo layout (ops/scripts/orch-bus/) and deployed layout
 # (~/.hermes-cortex/scripts/) since the repo is at ~/hermes-cortex.
 _REPO_CORE = os.path.expanduser("~/hermes-cortex/core")
@@ -24,8 +24,8 @@ if os.path.isdir(_REPO_CORE):
 else:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "core"))
 
-from agent_bus.queue import get_queue, NotAvailableError
-from agent_bus.circuit_breaker import get_circuit_breaker
+from cortex_bus.queue import get_queue, NotAvailableError
+from cortex_bus.circuit_breaker import get_circuit_breaker
 
 
 def main():

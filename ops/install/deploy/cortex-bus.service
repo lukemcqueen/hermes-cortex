@@ -1,0 +1,19 @@
+[Unit]
+Description=Cortex Bus Server (PGMQ) — canonical bus for both orchestrators
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=%h/hermes-cortex/core
+Environment=PYTHONPATH=%h/hermes-cortex/core
+ExecStart=%h/.hermes/hermes-agent/venv/bin/python3 -m uvicorn cortex_bus.server:app --host 127.0.0.1 --port 8903 --log-level warning
+Restart=on-failure
+RestartSec=5
+# Runtime hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target

@@ -39,7 +39,7 @@ Agent Session
 
 ### Database
 
-- **Schema:** `ops/services/agent-bus/schema/todos.sql`
+- **Schema:** `core/cortex_bus/schema/todos.sql`
 - **Tables:** `bus.todos` (active), `bus.todo_archive` (historical)
 - **Functions:** `bus.todo_upsert()`, `bus.todo_list()`, `bus.todo_archive_old()`
 - **Auto-applied by:** `cortex-update.sh` (uses `CREATE TABLE IF NOT EXISTS`)
@@ -154,7 +154,7 @@ sg docker -c "docker exec -i gbrain-postgres psql -U gbrain -d gbrain -t -A -F '
 
 ## Reference
 
-- Schema: `~/hermes-cortex/ops/services/agent-bus/schema/todos.sql`
+- Schema: `~/hermes-cortex/core/cortex_bus/schema/todos.sql`
 - CLI: `~/hermes-cortex/ops/scripts/manage/todo-db.py`
 - SOUL.md Principle 37: Session Todo Protocol — With Persistent DB Storage
 - bus.todos shares the gbrain Postgres instance with the Agent Bus (PGMQ)

@@ -127,7 +127,7 @@ SERVICES: list[dict] = [
 # don't run the bus server and shouldn't try to recover it.
 if _is_orchestrator():
     SERVICES.append(
-        _make_service("agent-bus", label="agent-bus.service", pgrep="agent-bus"),
+        _make_service("agent-bus", label="cortex-bus.service", pgrep="agent-bus"),
     )
 SERVICES.extend([
     {

@@ -70,7 +70,7 @@ curl -s -H "$AUTH" "$BASE/api/pgmq/queues"
 
 - `auto-remediation` skill — full Phase 1-3 workflow that calls this check
 - `cron-job-management` skill — context detection (MCP tool vs terminal vs cron)
-- Agent bus server at `~/hermes-cortex/ops/services/agent-bus/server.py` — all API routes
+- Agent bus server at `~/hermes-cortex/core/cortex_bus/server.py` — all API routes
 - `references/cron-mode-analysis.md` — batch analysis patterns using `python3 -c` via terminal when `execute_code` is blocked in cron mode
 
 ## Pitfalls

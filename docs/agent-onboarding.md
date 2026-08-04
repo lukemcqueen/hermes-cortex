@@ -531,9 +531,9 @@ This step happens **on Moses's machine**, not yours. Moses will:
 | `~/.hermes-cortex/cortex-bus.conf` | Your bus credentials and agent identity (HTTP client) |
 | `~/.hermes/config.yaml` | Hermes config — MCP server entry lives here |
 | `~/.hermes/SOUL.md` | Your identity document — copy from `docs/templates/SOUL.md` |
-| `~/hermes-cortex/mcp-servers/agent-bus-mcp.py` | The MCP client that talks to the Agent Bus (PGMQ) — **orchestrators only; do NOT install on worker hosts** |
+| `~/hermes-cortex/mcp-servers/cortex-bus-mcp.py` | The MCP client that talks to the Agent Bus (PGMQ) — **orchestrators only; do NOT install on worker hosts** |
 | `~/hermes-cortex/ops/scripts/manage/push-metrics.sh` | Standalone metrics push script — system-level Prometheus metrics to VictoriaMetrics |
-| `~/hermes-cortex/ops/services/agent-bus/metrics.py` | Python metrics module — prometheus_client definitions + push client for custom metrics |
+| `~/hermes-cortex/core/cortex_bus/metrics.py` | Python metrics module — prometheus_client definitions + push client for custom metrics |
 | `~/hermes-cortex/ops/install/deploy/docker-compose.victoria-metrics.yml` | VictoriaMetrics + Grafana Docker compose (central stack, runs on Moses) |
 | `~/hermes-cortex/ops/install/deploy/agent-registry.template.json` | Fleet registry template |
 

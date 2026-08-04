@@ -12,13 +12,13 @@ from __future__ import annotations
 import json
 from typing import Any, Optional
 
-from agent_bus.queue import get_queue, BusClient
-from agent_bus.workflow.db import (
+from cortex_bus.queue import get_queue, BusClient
+from cortex_bus.workflow.db import (
     get_workflow, get_step, get_steps_for_workflow,
     update_workflow_state, update_step_state,
     write_audit, create_step,
 )
-from agent_bus.workflow.dispatcher import _dispatch_to_agent
+from cortex_bus.workflow.dispatcher import _dispatch_to_agent
 
 
 class RouteError(Exception):
@@ -137,7 +137,7 @@ def process_step_result(msg: dict) -> Optional[str]:
     update_step_state(next_step_data["id"], "running")
     
     # Build the WorkflowStep object for dispatch
-    from agent_bus.workflow import WorkflowStep, RouteIf
+    from cortex_bus.workflow import WorkflowStep, RouteIf
     step_obj = WorkflowStep(
         name=next_step_data["step_name"],
         assigned_to=next_step_data.get("assigned_to", "moses"),
@@ -198,7 +198,7 @@ def _find_step(steps: list[dict], step_name: str) -> Optional[dict]:
 def _get_pending_dependencies(all_steps: list[dict], step: dict,
                               workflow_id: str) -> list[str]:
     """Get names of dependencies that haven't completed yet."""
-    from agent_bus.workflow.db import get_step
+    from cortex_bus.workflow.db import get_step
     
     pending = []
     for dep_name in step.get("depends_on", []):

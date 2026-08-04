@@ -20,10 +20,10 @@ The Agent Bus is a Postgres-native message queue (`lib/pgmq` implementation with
 > **📐 Architecture reference:** See [`docs/reference/cortex-bus-config.md`](../../docs/reference/cortex-bus-config.md) for the full architecture — fleet topology, auth model, ACL/permissions, message consumption patterns, and forwarder design. This skill covers operational diagnostics only.
 
 Key architectural facts:
-- **Bus server** processes at `~/hermes-cortex/ops/services/agent-bus/server.py`
-- **Queue module** at `~/hermes-cortex/core/agent_bus/queue.py`
+- **Bus server** processes at `~/hermes-cortex/core/cortex_bus/server.py`
+- **Queue module** at `~/hermes-cortex/core/cortex_bus/queue.py`
 - **Postgres schema** `bus.*` in the shared gbrain database (`:15432`)
-- **MCP tools** `mcp__agent_bus__*` route through the bus via HTTP
+- **MCP tools** `mcp__cortex_bus__*` route through the bus via HTTP
 - **Health check**: `curl http://127.0.0.1:8903/health` returns 200
 - **Bearer token auth**: token from `CORTEX_BUS_TOKEN` in `.env`
 
@@ -329,11 +329,11 @@ SELECT bus.recover_timeouts();
 
 After fix, the cron `orch-bus-recover-timeouts` (every 5m) auto-maintains the DLQ. Verify with queue overview query.
 
-**Prevention:** The queue creation code at `core/agent_bus/queue.py:create_queues_for_agent()` already sets `is_dlq = true` — the bug only affects queues created before the column was added to the schema.
+**Prevention:** The queue creation code at `core/cortex_bus/queue.py:create_queues_for_agent()` already sets `is_dlq = true` — the bug only affects queues created before the column was added to the schema.
 
 ### All Bus Tools Return 401 (Not 200)
 
-The MCP bus tools (`mcp__agent_bus__*`) return HTTP 401 when:
+The MCP bus tools (`mcp__cortex_bus__*`) return HTTP 401 when:
 1. `CORTEX_BUS_TOKEN` in `.env` doesn't match the hash in `bus.tokens` table
 2. The token is missing entirely from the PG table
 
@@ -359,10 +359,10 @@ grep CORTEX_BUS_TOKEN ~/hermes-cortex/.env
 ss -tlnp | grep 8903
 
 # Is the systemd service active?
-systemctl --user status agent-bus.service
+systemctl --user status cortex-bus.service
 
 # Restart if needed
-systemctl --user restart agent-bus.service
+systemctl --user restart cortex-bus.service
 ```
 
 Note: The bus at `:8903` is a direct local connection. It's also proxied through nginx at the orchestrator's bus port (e.g. `:13004` for Moses, `:14004` for Esther) with Bearer auth. The MCP tools route through nginx, not directly.
@@ -384,14 +384,14 @@ Note: The bus at `:8903` is a direct local connection. It's also proxied through
 mirrors ALL `inbox_*` queues to the peer, so its `bus.permissions` row on the
 PRIMARY's bus needs every inbox queue in `can_read` + `can_write`. Without it,
 LOCAL→PEER drain fails with `403 — Agent 'esther' does not have write access to
-queue 'inbox_gisu'` (per-queue ACL at `core/agent_bus/server.py`
+queue 'inbox_gisu'` (per-queue ACL at `core/cortex_bus/server.py`
 `_check_permission`). Grant SQL: `docs/esther-bus-setup.md` Step 7. Symptom:
 `orch-bus-forwarder-sync` cron alerts `LOCAL→PEER: N failed` every tick while
 the messages sit in the local queues indefinitely.
 
 ## Token rotation (Bearer, `hbus_*`)
 
-- **Hash scheme:** `bus.tokens.token_hash` = `hashlib.pbkdf2_hmac("sha256", token, b"hermes-bus-salt", 100000).hex()` (`core/agent_bus/auth.py hash_token`).
+- **Hash scheme:** `bus.tokens.token_hash` = `hashlib.pbkdf2_hmac("sha256", token, b"hermes-bus-salt", 100000).hex()` (`core/cortex_bus/auth.py hash_token`).
 - **Rotate:** generate `"hbus_" + secrets.token_hex(32)` → update `~/hermes-cortex/.env` AND `~/.hermes-cortex/cortex-bus.conf` (both carry `CORTEX_BUS_TOKEN`; the forwarder's `LOCAL_TOKEN` reads the conf) → `UPDATE bus.tokens SET token_hash='<pbkdf2(new)>', rotated_at=NOW() WHERE agent_name='<agent>'` → verify Bearer against the LOCAL bus (`127.0.0.1:8903`): new → 200, old → 401.
 - **Verify Bearer on the LOCAL bus only.** Testing Bearer against the external nginx port (`:13004`/`:14004`) is meaningless — nginx validates Basic auth and sets `X-Forwarded-User`; a Bearer header sent through nginx is ignored (401 for missing Basic). A token that "401s" through nginx can still be LIVE on the local bus.
 - **Identity mapping pitfall:** a token found in another agent's docs/config may be a DIFFERENT agent's row — the esther setup guide carried MOSES' token (esther's `.env` seeded with it), so it authenticated as moses with full queue privileges. Before rotating, look up the identity by hash: `SELECT agent_name FROM bus.tokens WHERE token_hash='<pbkdf2(leaked)>' AND is_active=true`. Rotate the MAPPED row (or sync it to the owner's real token hash).
@@ -406,15 +406,15 @@ escalations when the primary is down. Fix: a shared `inbox_orchestrator` queue
 both orchestrators read/write — now the **default target** for all agent →
 orchestrator traffic:
 
-- **Schema:** `ops/services/agent-bus/schema/auth.sql` seeds the queue idempotently (also auto-creates on first send)
+- **Schema:** `core/cortex_bus/schema/auth.sql` seeds the queue idempotently (also auto-creates on first send)
 - **Handler:** `agent-message-handler.py` on orchestrators polls `inbox_orchestrator` as a secondary queue — **archive from the SOURCE queue** (`source_queue`, not the hardcoded own-inbox name)
 - **Workers:** `contact-orchestrator.sh` defaults to `inbox_orchestrator` (override with `CORTEX_INBOX_TARGET` only for point-to-point replies)
 - **Docs:** ACL table in `docs/bus-architecture.md` + `docs/reference/cortex-bus-config.md` (orchestrators read `inbox_orchestrator`; workers `can_send` it)
 
-**ACL model:** the deployed bus (`ops/services/agent-bus/server.py`) uses
+**ACL model:** the deployed bus (`core/cortex_bus/server.py`) uses
 **boolean** `can_send`/`can_read` flags in `bus.permissions` — every fleet
 agent can write `inbox_orchestrator`. The per-queue array ACL variant
-(`core/agent_bus/server.py`) was a stale duplicate and has been removed
+(`core/cortex_bus/server.py`) was a stale duplicate and has been removed
 (2026-08-04). If a 403 appears, check the boolean flags, not queue lists.
 
 ## References
@@ -423,7 +423,7 @@ agent can write `inbox_orchestrator`. The per-queue array ACL variant
 - `references/credential-rotation.md` — credential leak response & rotation playbook: bearer-vs-Basic exposure model, live-test baseline method, Basic-auth (htpasswd) rotation blockers on orchestrator hosts, scrub caveats, concurrent-session git safety (2026-08-03)
 - `references/dlq-monitor-fix.md` — DLQ alert fix: processing state detection + silent-when-clean pattern for `orch-bus-confirmation-poller.py report`
 - `references/cross-server-architecture.md` — Per-server independent Postgres architecture: why local `inbox_moses` sends don't reach the orchestrator, fleet port map, and correct curl pattern for cross-server messages
-- `core/agent_bus/queue.py` — Queue creation, DLQ logic, send/read/archive
-- `ops/services/agent-bus/server.py` — HTTP API, auth, dashboard
+- `core/cortex_bus/queue.py` — Queue creation, DLQ logic, send/read/archive
+- `core/cortex_bus/server.py` — HTTP API, auth, dashboard
 - `docs/orch-bus-setup.md` — Architecture, security model, deployment guide, DLQ maintenance section
 - `docs/esther-bus-setup.md` — Maintenance steps, changelog (DLQ fix, threshold changes, pipeline updates)
