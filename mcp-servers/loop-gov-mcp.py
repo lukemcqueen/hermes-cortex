@@ -150,7 +150,7 @@ def _require_dogfood() -> Optional[str]:
                 "    Then call begin_change again (the deploy purged locks).\n"
                 "    If the sanctioned command runs but write tools are STILL blocked:\n"
                 "    deploy ≠ load — the gateway hasn't restarted. The new enforcer activates\n"
-                "    only after 'hermes gateway restart' (operator action; agents cannot).\n"
+                "    only after the operator restarts the gateway service (agents cannot).\n"
                 "    This enforcement is structural — cannot be bypassed."
             )
     except (OSError, PermissionError, FileNotFoundError):

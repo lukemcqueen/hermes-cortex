@@ -1635,15 +1635,14 @@ deploy_governance_plugin() {
 
   # NOTE: the disable/enable round-trip only updates config.yaml — it does NOT
   # hot-reload the running gateway (process-global PluginManager singleton;
-  # deploy ≠ load). The new enforcer activates ONLY after `hermes gateway
-  # restart`, which agents cannot perform (lifecycle guard) — the host
-  # operator must run it.
+  # deploy ≠ load). The new enforcer activates ONLY after the gateway process
+  # is restarted by the host operator (agents cannot — lifecycle guard).
   if command -v hermes &>/dev/null; then
     hermes plugins disable governance-enforcer 2>/dev/null || true
     hermes plugins enable governance-enforcer 2>/dev/null || true
   fi
   info "  ⚠️  Enforcement chain deployed. Deploy ≠ load: the RUNNING gateway still has the OLD enforcer in memory."
-  info "     Activate: host operator runs 'hermes gateway restart' (agents cannot — lifecycle guard)."
+  info "     Activate: the host operator restarts the gateway service from a separate shell (agents cannot — lifecycle guard)."
   info "     Until then, the sanctioned command may still return GOVERNANCE LOCK REQUIRED — that is a pending restart, not a bug."
 
   # ── Clear stale __pycache__ ──
