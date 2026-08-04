@@ -773,7 +773,9 @@ def check_crons(res):
     if stale:
       for name, st in stale[:3]:
         res.add(f"Cron status ({name})", "WARN", f"last run: {st}",
-            f"Check: hermes cron logs --name {name}")
+            f"Check: cronjob action='list' → find job_id, then hermes cron runs <job_id> --limit 5; "
+            f"'idle for Ns' TimeoutError = LLM cron inactivity timeout (HERMES_CRON_TIMEOUT), "
+            f"see docs/cron-job-recipes.md §LLM cron inactivity timeout")
       if len(stale) > 3:
         res.add(f"Cron status ({len(stale)} total)", "WARN", "unhealthy crons",
             "Inspect and re-create unhealthy crons")
