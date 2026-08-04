@@ -589,7 +589,11 @@ def main():
     # None = send failed (bus unreachable) — do NOT save state so the delta
     # is retried next run. [] = sent OK but no learning files.
     sent_files = send_report(report, dry_run=dry_run)
-    send_ok = sent_files is not None or dry_run
+    # ⚠️ dry-run must NOT count as "sent": the dry-run path returns a non-None
+    # sentinel (["(dry-run)"]), which would otherwise persist state and
+    # swallow the pending delta. Verified 2026-08-05: a --dry-run at 04:04
+    # consumed a real 60-lesson delta that the 06:00 run then never sent.
+    send_ok = sent_files is not None and not dry_run
 
     # Phase 5: Post-send cleanup — move sent learning files to sent/ dir
     if sent_files and not dry_run:
