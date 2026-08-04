@@ -75,7 +75,7 @@ TOKEN=$(grep CORTEX_BUS_TOKEN ~/hermes-cortex/.env | cut -d= -f2)
 curl -s -X POST https://<host>:13004/api/pgmq/send \
   -u "bus_user:password" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"queue":"inbox_moses","message":...}' \
+  -d '{"queue":"inbox_orchestrator","message":...}' \
   -k
 ```
 
@@ -97,11 +97,11 @@ The bus server checks permissions via `_check_permission()` on every send/read.
 | Agent | Type | can_write (all queues) | can_read |
 |-------|------|-----------------------|----------|
 | **moses** | orchestrator | **Every** inbox + `workflow_dispatch` + `workflow_step_result` + health | Own inbox + DLQ + health |
-| **esther** | server | `inbox_moses`, `inbox_esther`, `workflow_step_result`, health | Own inbox |
-| **joseph** | server | `inbox_moses`, `inbox_joseph`, `workflow_step_result`, health | Own inbox |
-| **gisu** | server | `inbox_moses`, `inbox_gisu`, `workflow_step_result`, health | Own inbox |
-| **kustos** | server | `inbox_moses`, `inbox_kustos`, `workflow_step_result`, health | Own inbox |
-| **titus** | dev | `inbox_moses`, `inbox_titus`, `workflow_step_result`, health | Own inbox |
+| **esther** | server | `inbox_orchestrator`, `inbox_moses`, `inbox_esther`, `workflow_step_result`, health | Own inbox |
+| **joseph** | server | `inbox_orchestrator`, `inbox_moses`, `inbox_joseph`, `workflow_step_result`, health | Own inbox |
+| **gisu** | server | `inbox_orchestrator`, `inbox_moses`, `inbox_gisu`, `workflow_step_result`, health | Own inbox |
+| **kustos** | server | `inbox_orchestrator`, `inbox_moses`, `inbox_kustos`, `workflow_step_result`, health | Own inbox |
+| **titus** | dev | `inbox_orchestrator`, `inbox_moses`, `inbox_titus`, `workflow_step_result`, health | Own inbox |
 
 ### Key Permissions Facts
 

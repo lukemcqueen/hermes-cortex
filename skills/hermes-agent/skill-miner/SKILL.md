@@ -1,6 +1,6 @@
 ---
 name: skill-miner
-description: "Mine loop governance DB, sessions, and memory for reusable skill patterns. Scores findings with nomic-embed-text and reports to Moses via agent inbox."
+description: "Mine loop governance DB, sessions, and memory for reusable skill patterns. Scores findings with nomic-embed-text and reports to the orchestrator via the agent inbox."
 version: 1.0.0
 author: Hermes Cortex
 license: MIT
@@ -17,7 +17,7 @@ metadata:
 
 A script that mines available local data sources on an agent machine for reusable patterns — high-scoring TDD cycles from loop governance, session history patterns, agent memory workflows, and custom skills not yet in the hermes-cortex repo.
 
-Scores findings with `nomic-embed-text` (Ollama) and sends high-confidence results to Moses via the agent inbox for review and upstreaming.
+Scores findings with `nomic-embed-text` (Ollama) and sends high-confidence results to the orchestrator via the agent inbox (`inbox_orchestrator`) for review and upstreaming.
 
 ## Location
 

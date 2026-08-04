@@ -87,7 +87,7 @@ cronjob action=list | grep remediation
 
 Deployment prerequisites (per component):
 - **Passwordless sudo** for the fixer to act (documented in the setup skill)
-- **Agent bus access** for delivery to Moses
+- **Agent bus access** for delivery to the orchestrator
 - **Cron scheduler healthy** — the doctor validates expected crons
 
 ## Monitoring

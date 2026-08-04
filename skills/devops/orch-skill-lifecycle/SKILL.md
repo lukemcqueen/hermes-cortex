@@ -14,7 +14,7 @@ platforms: [linux, macos]
 
 Single daily cron (04:00 KST) that replaces 5 separate processes. Runs the full skill lifecycle end-to-end: **collect → evaluate → upgrade**.
 
-The cron has `terminal` + `file` + `web` tool access. It reads agent data from the PGMQ bus (inbox_moses queue) where each fleet agent's `agent-learning-collector` pushes structured reports every 6h.
+The cron has `terminal` + `file` + `web` tool access. It reads agent data from the PGMQ bus (inbox_orchestrator queue — the shared orchestrator inbox) where each fleet agent's `agent-learning-collector` pushes structured reports every 6h.
 
 ## Replacements
 
@@ -42,7 +42,7 @@ This pipeline collects from ALL agents in the fleet. Each agent runs `agent-lear
 
 ### Bus Message Format
 
-The pipeline reads `inbox_moses` PGMQ queue. Each agent sends a `Learning Report` every 6h via `agent-learning-collector`:
+The pipeline reads `inbox_orchestrator` PGMQ queue (the shared orchestrator inbox). Each agent sends a `Learning Report` every 6h via `agent-learning-collector`:
 
 ```
 Subject: Learning Report: N skills, M lessons
@@ -79,7 +79,7 @@ Each fleet agent (Gisu, Titus, Esther, Joseph, Kustos, Moses) runs:
 
 Gather raw material from all sources:
 
-1. **Bus reports** — Read `inbox_moses` queue for Learning Reports from all fleet agents (agent-learning-collector, every 6h):
+1. **Bus reports** — Read `inbox_orchestrator` queue for Learning Reports from all fleet agents (agent-learning-collector, every 6h):
    - Skills delta (new/modified SKILL.md files)
    - Lessons delta (new files in ~/brain/lessons/)
    - Heartbeat (no changes, but agent is alive)
@@ -181,7 +181,7 @@ Execute all approved actions:
    - Remove those names from the uninstall arrays
    - The doctor reads these arrays as its expected cron list — a name there with no matching live cron causes a false ❌
    - Commit and push the fix
-8. **Archive processed bus messages** — Clean inbox_moses for processed skill reports
+8. **Archive processed bus messages** — Clean inbox_orchestrator for processed skill reports
 
 ### Verification
 

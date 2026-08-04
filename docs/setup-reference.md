@@ -10,7 +10,7 @@ to keep the root agent guidelines focused on general Hermes Cortex usage.
 
 > **Why this exists:** tools were previously documented only in scattered
 > per-doc `## Prerequisites` blocks, and **no tool had an owner**. `jq` was
-> required by `contact-moses.sh` but listed nowhere — hosts without it broke
+> required by `contact-orchestrator.sh` but listed nowhere — hosts without it broke
 > at runtime, silently. This is the single source of truth: every tool, what
 > uses it, and how to install it. `install.sh --check` verifies the installer
 > essentials; the doctor checks the runtime tools.
@@ -18,10 +18,10 @@ to keep the root agent guidelines focused on general Hermes Cortex usage.
 | Tool | Min version | Used by (hermes-cortex function) | Install |
 |------|-------------|----------------------------------|---------|
 | `bash` | 4.0+ | `cortex-update.sh` (all deploy logic) | Linux: package manager · macOS: `brew install bash` |
-| `python3` | 3.10+ | Everything — `contact-moses.sh`, `agent-message-handler.py`, doctor, all `.py` scripts | Hermes venv (`~/.hermes/hermes-agent/venv/bin/python3`) or system |
+| `python3` | 3.10+ | Everything — `contact-orchestrator.sh`, `agent-message-handler.py`, doctor, all `.py` scripts | Hermes venv (`~/.hermes/hermes-agent/venv/bin/python3`) or system |
 | `git` | any | Repo pull/push, hooks, `git show` in scripts | Linux: `apt install git` · macOS: `brew install git` |
-| `curl` | any | `contact-moses.sh`, `lib.cortex_bus`, doctor HTTP checks, health pings | Linux/macOS: package manager (preinstalled on macOS) |
-| `jq` | — | **NOT required** — `contact-moses.sh` uses `python3` for JSON (jq removed 2026-08-03). Only used ad-hoc in docs examples | `apt install jq` / `brew install jq` (optional, debugging only) |
+| `curl` | any | `contact-orchestrator.sh`, `lib.cortex_bus`, doctor HTTP checks, health pings | Linux/macOS: package manager (preinstalled on macOS) |
+| `jq` | — | **NOT required** — `contact-orchestrator.sh` uses `python3` for JSON (jq removed 2026-08-03). Only used ad-hoc in docs examples | `apt install jq` / `brew install jq` (optional, debugging only) |
 | `docker` | any | Server profile only — gbrain Postgres, VictoriaMetrics, Langfuse, Dashboard | `install.sh` server profile; `docker info` must pass |
 | `ollama` | any | Local LLM serving (optional profile) | `install.sh`; `ollama serve` must be running |
 | `systemctl` (systemd) | any | All services — bus, health server, gateway | Linux only (Titus on macOS uses launchd) |

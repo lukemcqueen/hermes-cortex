@@ -6,7 +6,7 @@
 > ⚠️ **You do NOT install the bus MCP client.** The `agent-bus` MCP server
 > (`inbox_send`/`inbox_read` tools) is **orchestrator-only** (Moses, Esther) —
 > the doctor WARNS if you add it to `config.yaml`. Your only bus access is the
-> HTTP client: `~/.hermes-cortex/cortex-bus.conf` + `contact-moses.sh`.
+> HTTP client: `~/.hermes-cortex/cortex-bus.conf` + `contact-orchestrator.sh`.
 
 ---
 
@@ -17,7 +17,7 @@ YOU (laptop / local machine)              MOSES (server)
 ─────────────────────────────             ──────────────
 Hermes Agent                             Hermes gateway (:8905)
   ↳ cortex-bus.conf (HTTP client)              ↳ Agent Bus API (PGMQ message store)
-  ↳ contact-moses.sh / lib.cortex_bus          ↳ nginx proxy :13004 → :8905
+  ↳ contact-orchestrator.sh / lib.cortex_bus          ↳ nginx proxy :13004 → :8905
   ↳ calls Moses's Agent Bus via HTTPS      ↳ SSL + Basic Auth
   ↳ NO agent-bus MCP server in config.yaml
 ```
@@ -42,9 +42,9 @@ Contact Moses (or have the human ask him) with subject:
 🔧 ONBOARD: titus
 ```
 
-Once you have credentials in place you can use `contact-moses.sh`, but for the
+Once you have credentials in place you can use `contact-orchestrator.sh`, but for the
 first contact use your human or the bus URL/curl directly (see
-`docs/contact-protocol-how-to-reach-moses.md`).
+`docs/contact-protocol-how-to-reach-orchestrator.md`).
 
 Moses will:
 1. Create an htpasswd entry for you on the nginx gateway
@@ -67,8 +67,8 @@ grep -A4 "agent-bus" ~/.hermes/config.yaml
 ```
 
 Your bus access is the **HTTP client** instead — `cortex-bus.conf` (Step 3)
-plus `contact-moses.sh`. This is what the `agent-message-handler` cron uses
-to receive fleet updates, and what you use to message Moses.
+plus `contact-orchestrator.sh`. This is what the `agent-message-handler` cron uses
+to receive fleet updates, and what you use to message the orchestrator.
 
 ---
 
@@ -88,13 +88,15 @@ Then lock it down:
 chmod 600 ~/.hermes-cortex/cortex-bus.conf
 ```
 
-> The HTTP client (`contact-moses.sh`, `lib.cortex_bus`, `agent-message-handler`)
+> The HTTP client (`contact-orchestrator.sh`, `lib.cortex_bus`, `agent-message-handler`)
 > reads this file. Keep it safe — this is your identity on the fleet.
 >
-> **Escalation path:** the HTTP client targets `inbox_moses` by default. For
-> fix requests / escalations that should be visible to **whichever
-> orchestrator is available**, set `CORTEX_INBOX_TARGET=inbox_orchestrator` —
-> both Moses and Esther read the shared `inbox_orchestrator` queue.
+> **Escalation path:** the HTTP client targets `inbox_orchestrator` (the
+> **shared orchestrator inbox**) by default — visible to **whichever
+> orchestrator is available** (Moses, or Esther during failover). Only set
+> `CORTEX_INBOX_TARGET=inbox_<agent>` for point-to-point replies to a
+> specific orchestrator. Both Moses and Esther read the shared
+> `inbox_orchestrator` queue.
 
 ---
 
@@ -312,8 +314,8 @@ At minimum, every SOUL.md must include:
 **Essential behavioral principles for a client-only agent:**
 
 1. **Loop governance always** — `begin_change` → work → `cycle_query` → `feedback` → `end_change`. No exceptions.
-2. **HTTP client, not MCP** — your ONLY bus access is `contact-moses.sh` + `cortex-bus.conf`. Never install the `agent-bus` MCP server; the doctor warns about it.
-3. **Health via Agent Bus (HTTP)** — you have no HTTP health endpoint. Report health by sending JSON pings to Moses via `curl` (Step 7), or `contact-moses.sh` for messages.
+2. **HTTP client, not MCP** — your ONLY bus access is `contact-orchestrator.sh` + `cortex-bus.conf`. Never install the `agent-bus` MCP server; the doctor warns about it.
+3. **Health via Agent Bus (HTTP)** — you have no HTTP health endpoint. Report health by sending JSON pings to the orchestrator via `curl` (Step 7), or `contact-orchestrator.sh` for messages.
 4. **Poll, don't wait** — `agent-message-handler` cron is your ears. It runs every 5 min.
 
 See existing SOUL.md files for reference:
@@ -498,12 +500,12 @@ This step happens **on Moses's machine**, not yours. Moses will:
 | Activity | How it works |
 |----------|-------------|
 | **Receiving instructions** | Moses sends Agent Bus messages → your poll cron picks them up → you process them |
-| **Reporting results** | `contact-moses.sh "✅ Done: <summary>"` → Moses reads it on his next tick |
+| **Reporting results** | `contact-orchestrator.sh "✅ Done: <summary>"` → the orchestrator reads it on the next tick |
 | **Reporting health** | Send JSON health pings via `curl` to `.../api/send` with `topic: "health"` (exact). Oldest ping stays as anchor, newer ones deleted. See [Step 7](#step-7--send-your-first-health-ping). |
 | **Reporting metrics** | `push-metrics.sh` cron pushes CPU/memory/disk every 5m to VictoriaMetrics. No action needed after setup — it runs silently in background. See [Step 5b](#step-5b--set-up-metrics-push-to-victoriametrics-optional-but-recommended). |
-| **Requesting cron changes** | `contact-moses.sh "🔧 CRON: create|update|remove <name>"` — see `cron-request-protocol` skill |
-| **Asking for help** | `contact-moses.sh "🔴 Blocked: <issue>"` — Moses investigates |
-| **Talking to other agents** | Via Moses: send `contact-moses.sh "REPORT: ..."` to Moses; only Moses can route cross-agent |
+| **Requesting cron changes** | `contact-orchestrator.sh "🔧 CRON: create|update|remove <name>"` — see `cron-request-protocol` skill |
+| **Asking for help** | `contact-orchestrator.sh "🔴 Blocked: <issue>"` — the orchestrator investigates |
+| **Talking to other agents** | Via the orchestrator: send `contact-orchestrator.sh "REPORT: ..."`; only Moses can route cross-agent |
 
 ---
 

@@ -9,7 +9,7 @@ platforms: [linux, macos]
 # Agent Collector Troubleshoot — Diagnostic & Repair
 
 Run this checklist when `agent-learning-collector --force` produces no output,
-no report appears in `inbox_moses`, or the agent can't reach the orchestrator.
+no report appears in `inbox_orchestrator`, or the agent can't reach the orchestrator.
 
 ## Step 1 — Script Deployment
 

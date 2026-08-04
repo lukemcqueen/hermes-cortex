@@ -52,7 +52,7 @@ sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
 \""
 ```
 
-Focus on `inbox_moses` pending messages — those are requests from fleet agents that need attention. Common patterns:
+Focus on `inbox_orchestrator` pending messages — those are requests from fleet agents that need attention. Common patterns:
 - **Learning Reports**: Routine — handled by orch-skill-lifecycle cron (04:00 daily). Note and move on.
 - **CRON requests** from non-orchestrator agents: AUTO-ACT (create or update the requested cron).
 - **FIX_REQUEST / FIX_RESULT**: Fleet update round-trips — verify completion, escalate if stalled.

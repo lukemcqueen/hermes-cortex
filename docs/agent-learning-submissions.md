@@ -1,4 +1,4 @@
-# Agent Learning Submissions — How to Send Learnings to Moses
+# Agent Learning Submissions — How to Send Learnings to the Orchestrator
 
 Any Hermes Cortex agent can submit ad-hoc learnings to the orchestrator
 (Moses) at any time. No need to wait for the 6h automated collection cycle.
@@ -57,7 +57,7 @@ Type defaults to `discovery`.
 
 1. The next `agent-learning-collector` tick (every 6h, or on-demand via `--force`)
    picks up the file from `~/brain/learnings/pending/`
-2. It's included in the Learning Report sent to `inbox_moses`
+2. It's included in the Learning Report sent to `inbox_orchestrator`
 3. The file is moved to `~/brain/learnings/sent/` after successful send
 4. Moses evaluates and acts: patch a skill, create one, update SOUL.md
 

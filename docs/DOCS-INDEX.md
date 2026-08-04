@@ -116,7 +116,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/gbrain-v2-taxonomy.md` | gbrain v2 taxonomy — brain source categories and tag conventions |
 | `docs/agent-learning-submissions.md` | **Agent learning submissions** — how agents submit ad-hoc learnings via ~/brain/learnings/pending/ |
 | `docs/pre-task-sequence-mandatory-before-every-task.md` | Pre-task sequence reference table — relocated from AGENTS.md during doc pruning |
-| `docs/contact-protocol-how-to-reach-moses.md` | Contact protocol — how agents reach Moses, relocated from AGENTS.md during doc pruning |
+| `docs/contact-protocol-how-to-reach-orchestrator.md` | Contact protocol — how agents reach the orchestrator, relocated from AGENTS.md during doc pruning |
 | `docs/pipeline-reference.md` | **Skill lifecycle pipeline** — collection, evaluation, upgrade flow, cron tables |
 | `docs/computer-specs.md` | Hardware specs guide — RAM tiers, recommended models (Intel vs Apple Silicon), ZIM content bundles |
 | `ops/install/deploy/docker-compose.langfuse.yml` | Langfuse v3 Docker stack — ClickHouse, MinIO, Redis, Postgres |

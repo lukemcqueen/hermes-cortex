@@ -2,7 +2,7 @@
 """orch-skill-report-process.py — Orchestrator-side: compile agent skill reports
 from the PGMQ bus into a digest for Moses to review.
 
-Reads messages from the inbox_moses PGMQ queue, filters for skill-report
+Reads messages from the inbox_orchestrator PGMQ queue, filters for skill-report
 messages (topic: reports, subject: "Skill Report:"), extracts skill data,
 and produces a formatted digest.
 
@@ -54,7 +54,7 @@ if not CORTEX_BUS_TOKEN:
 BUS_URL = CORTEX_BUS_URL.rstrip("/")
 STATE_DIR = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state"
 PROCESSED_MARKER = STATE_DIR / "last-skill-report-processed.txt"
-QUEUE = "inbox_moses"
+QUEUE = "inbox_orchestrator"
 
 
 def bus_request(endpoint: str, data: dict | None = None, method: str | None = None) -> dict:
@@ -204,7 +204,7 @@ def main():
     mark_read_flag = "--mark-read" in sys.argv
     max_iterations = int(os.environ.get("MAX_READ_ITERATIONS", "20"))
 
-    # Read messages from inbox_moses queue (PGMQ)
+    # Read messages from inbox_orchestrator queue (PGMQ)
     all_reports = []
     seen_msg_ids = set()
 

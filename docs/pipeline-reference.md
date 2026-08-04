@@ -31,7 +31,7 @@ Discovers agent-developed skills from remote agents and evaluates them for upstr
 
 | Step | Tool | Schedule | LLM? | Output |
 |------|------|----------|------|--------|
-| Request | `agent-learning-collector` | Every 6h per agent | ✓ no_agent | Delta report (skills, lessons, sessions) → inbox_moses |
+| Request | `agent-learning-collector` | Every 6h per agent | ✓ no_agent | Delta report (skills, lessons, sessions) → inbox_orchestrator |
 | Evaluate | `orch-skill-lifecycle` | Daily 04:00 | LLM | Reads bus, cross-refs, upgrades skills → repo |
 
 **Closed loop:** Request → collect → digest → evaluate → upstream (via `public-contribution` skill).
@@ -126,9 +126,9 @@ code-review (security scan, quality gate)
 
 Each stage consumes the output of the prior one, reducing rework and enforcing quality gates before code is written.
 
-## Skill Collection (Every 6h, All Agents → Moses)
+## Skill Collection (Every 6h, All Agents → Orchestrator)
 
-Every agent runs `agent-learning-collector` (no_agent, every 6h). It scans local skills (hash-based delta), checks for pending learning reports in `~/brain/learnings/pending/`, collects session stats, and sends a compact "Learning Report" to `inbox_moses` via PGMQ. The collector runs in <1s — no heavy processing.
+Every agent runs `agent-learning-collector` (no_agent, every 6h). It scans local skills (hash-based delta), checks for pending learning reports in `~/brain/learnings/pending/`, collects session stats, and sends a compact "Learning Report" to `inbox_orchestrator` (the shared orchestrator inbox) via PGMQ. The collector runs in <1s — no heavy processing.
 
 Session mining (extracting lessons from past conversations) is handled by a separate overnight cron: `agent-session-mine` at 2am KST. It runs `session-mine mine --days 1 --auto`, which dumps mined lessons into `~/brain/lessons/`. The collector picks them up instantly on its next tick. On first run, it bootstraps all historical sessions.
 
@@ -142,7 +142,7 @@ Silent when nothing new (watchdog pattern). Every 24h sends a heartbeat even wit
 
 Moses runs `orch-skill-lifecycle` (LLM-driven, daily 04:00):
 
-1. **Read** `inbox_moses` for all Learning Reports from fleet agents
+1. **Read** `inbox_orchestrator` for all Learning Reports from fleet agents
 2. **Cross-reference** across agents — if 3 agents report the same fix, it's a consolidation candidate
 3. **Deduplicate** against existing skills in the repo
 4. **Classify** each item: patch existing skill / create new / merge duplicates / add principle to SOUL.md

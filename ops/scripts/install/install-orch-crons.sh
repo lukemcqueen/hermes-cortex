@@ -458,13 +458,13 @@ printf "${CYAN}  3. Skill Lifecycle Pipeline${RESET}\n"
 
 # Unified daily skill lifecycle — replaces old skill-miner, skill-triage, harvest-lessons,
 # agent-weekly-loop-eval, agent-daily-soul-refinement
-# Reads inbox_moses for BOTH Learning Report: and Skill Report: formats from ALL agents.
+# Reads inbox_orchestrator for BOTH Learning Report: and Skill Report: formats from ALL agents.
 create_cron "orch-skill-lifecycle" "0 4 * * *" \
   "" \
   "Load the orch-skill-lifecycle skill and follow the three-phase pipeline. Run the complete skill lifecycle for today.
 
 Phase 1 — Collection:
-1. Read inbox_moses PGMQ queue for ALL agent reports:
+1. Read inbox_orchestrator PGMQ queue (the shared orchestrator inbox — where agents send reports) for ALL agent reports:
    - \"Learning Report:\" from agent-learning-collector (skills delta, lessons, session stats — every 6h)
 2. Check git log for self-improvement patterns needing broader consolidation
 3. Scan skill inventory for stale/modified skills

@@ -145,7 +145,7 @@ bus_url = BUS_URL.rstrip("/")
 api_url = f"{bus_url}/api/pgmq/send"
 
 payload = {
-    "queue": "inbox_moses",
+    "queue": "inbox_orchestrator",
     "message": {
         "from": hostname,
         "subject": f"Skill Report: {custom_total} custom skills",

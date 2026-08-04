@@ -150,7 +150,7 @@ def main():
                 "skills": {it["name"]: it["content"] for it in chunk},
             }
             ok = bus_send(
-                "inbox_moses",
+                "inbox_orchestrator",
                 {
                     "from": os.uname().nodename,
                     "subject": f"Skill Stub Recovery (part {ci + 1}/{len(chunks)})",

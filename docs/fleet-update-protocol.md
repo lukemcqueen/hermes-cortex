@@ -22,7 +22,7 @@ should target this queue so whichever orchestrator is available sees them —
 including the backup when the primary is down or degraded.
 
 - **Workers send** escalations/fix requests to `inbox_orchestrator`
-  (`contact-moses.sh` with `CORTEX_INBOX_TARGET=inbox_orchestrator`, or
+  (`contact-orchestrator.sh` — the default target, or
   `bus_send("inbox_orchestrator", ...)`).
 - **Both orchestrators'** `agent-message-handler` polls `inbox_orchestrator`
   in addition to their own inbox.

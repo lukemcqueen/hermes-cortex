@@ -315,7 +315,7 @@ for ci, chunk in enumerate(chunks):
         subject = f"Skill Report: {custom_total} custom skills"
 
     payload = {
-        "queue": "inbox_moses",
+        "queue": "inbox_orchestrator",
         "message": {
             "from": hostname,
             "subject": subject,

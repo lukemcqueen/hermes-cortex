@@ -44,18 +44,18 @@ BASE="http://localhost:8903"
 ### 3. Check your inbox depth
 
 ```bash
-curl -s -H "$AUTH" "$BASE/api/pgmq/depth/inbox_moses"
+curl -s -H "$AUTH" "$BASE/api/pgmq/depth/inbox_orchestrator"
 ```
 
-Empty: `{"queue":"inbox_moses","depth":0}` — nothing to do.
-Messages: `{"queue":"inbox_moses","depth":3}` — has 3 unread messages.
+Empty: `{"queue":"inbox_orchestrator","depth":0}` — nothing to do.
+Messages: `{"queue":"inbox_orchestrator","depth":3}` — has 3 unread messages.
 
 ### 4. Read messages (when depth > 0)
 
 ```bash
 curl -s -H "$AUTH" -X POST "$BASE/api/pgmq/read" \
   -H "Content-Type: application/json" \
-  -d '{"queue":"inbox_moses","vt":30,"limit":5}'
+  -d '{"queue":"inbox_orchestrator","vt":30,"limit":5}'
 ```
 
 The `vt` = visibility timeout in seconds (message becomes visible again after this if not archived). `limit` = max messages to read.

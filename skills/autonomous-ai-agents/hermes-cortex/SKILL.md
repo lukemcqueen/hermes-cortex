@@ -1161,13 +1161,13 @@ diff ~/hermes-cortex/ops/scripts/health/service-recovery.py ~/.hermes/scripts/se
 
 Zero output = in sync. Any diff means the installed version is stale.
 
-### 5. Report Improvements to Moses
+### 5. Report Improvements to the Orchestrator
 
-If the update revealed missing registrations, compatibility issues, or bugs, report them to Moses via the git-based inbox immediately (see "Reporting Issues" below).
+If the update revealed missing registrations, compatibility issues, or bugs, report them to the orchestrator via the git-based inbox immediately (see "Reporting Issues" below).
 
-## Reporting Issues to Moses
+## Reporting Issues to the Orchestrator
 
-**Standing directive:** After every cortex update or install, report any bugs, missing registrations, compatibility issues, or improvement suggestions to Moses. This is not optional — it's how the repo stays healthy.
+**Standing directive:** After every cortex update or install, report any bugs, missing registrations, compatibility issues, or improvement suggestions to the orchestrator (send to `inbox_orchestrator` — the shared orchestrator inbox). This is not optional — it's how the repo stays healthy.
 
 ### Where to Send
 
@@ -2116,7 +2116,7 @@ approach is `.hermes-cortex/` (project-anchored) + `~/.hermes/` (home-dir)
 - `references/public-repo-privacy.md` — Domain privacy pattern (example.com placeholder, git history rewriting with git-filter-repo)
 - `references/langfuse-v3-migration.md` — Full Langfuse v3 env var reference and migration steps
 - `references/security-hardening.md` — File permission lockdown, bind address audit, nginx unload, restart resilience check, full audit one-liner
-- `references/bible-prep-issues.md` — Known upstream bugs in prep-bible.sh and bible-parse.py (to report to Moses)
+- `references/bible-prep-issues.md` — Known upstream bugs in prep-bible.sh and bible-parse.py (to report to the orchestrator)
 - `references/cortex-update-deployment-map.md` — Full file map, restart functions, and the launchd bootout-before-rm pitfall
 - `references/offline-knowledge-subcommands.md` — Subcommand architecture pattern for offline_knowledge.py, the `lesson` tooling gap, and PATH setup
 - `references/gbrain-source-migration-export.md` — gbrain data export, cross-engine migration, and Postgres setup notes

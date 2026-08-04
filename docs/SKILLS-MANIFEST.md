@@ -50,7 +50,7 @@ their domain.
 
 | Script | Type | Purpose | Schedule |
 |--------|------|---------|----------|
-| `agent-learning-collector.py` | no_agent | Agent-side: collects skills delta, lessons delta, session stats; sends Learning Report to Moses via Agent Bus | every 6h per agent |
+| `agent-learning-collector.py` | no_agent | Agent-side: collects skills delta, lessons delta, session stats; sends Learning Report to the orchestrator inbox via Agent Bus | every 6h per agent |
 
 ## Social Media
 

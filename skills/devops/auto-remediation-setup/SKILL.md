@@ -65,7 +65,7 @@ pipeline running.
    ```bash
    sudo -n true && echo "NOPASSWD OK" || echo "NOPASSWD MISSING — fix sudoers first"
    ```
-3. **Agent bus access** for reporting to Moses
+3. **Agent bus access** for reporting to the orchestrator
 4. **Relevant agent skills deployed** (`agent-fundamentals`, monitoring skills)
 
 ## Setup Steps

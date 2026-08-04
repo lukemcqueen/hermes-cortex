@@ -35,14 +35,14 @@
 >   • **Templates** — `AGENTS.md`, `SOUL.md`, `docs/templates/`, `docs/orchestrator-only-paths.txt`
 >   • **CI/CD** — `.github/workflows/`, `VERSION`, `ops/install/`
 >   • **Tests** — `tests/`, `profiles/`
-> Non-orchestrators: submit proposals to Moses via inbox `📝 PROPOSAL: <what>`.
+> Non-orchestrators: submit proposals to the orchestrator inbox via `📝 PROPOSAL: <what>`.
 > The pre-commit hook blocks non-orchestrators from staging files in
 > `docs/orchestrator-only-paths.txt`. See that file for the current list.
 >
 > This rule exists because edits to shared infrastructure propagate
 > to every agent without review. Stale doc references don't override
 > the hook — the path list IS the source of truth. If it's not on the
-> list but should be, message Moses.
+> list but should be, message the orchestrator.
 >
 > **RULE 7b: ENFORCEMENT CHAIN — cortex-update.sh IS THE ONLY UPDATE PATH**
 > The immutable enforcement files (governance enforcer plugin,
@@ -67,7 +67,7 @@
 >
 > **RULE 7c: BUS ACCESS — NON-ORCHESTRATORS USE THE HTTP CLIENT ONLY**
 > If you are not Moses or Esther: you have the bus **HTTP client**
-> (`cortex-bus.conf` + `contact-moses.sh`) and NOTHING ELSE. Never install
+> (`cortex-bus.conf` + `contact-orchestrator.sh`) and NOTHING ELSE. Never install
 > the bus server (Postgres/FastAPI/nginx) or the `agent-bus` MCP client in
 > `config.yaml` — the doctor WARNS on both. See the role matrix at the top of
 > `docs/bus-architecture.md`.
@@ -197,10 +197,10 @@ Install `hermes-agent-worker` systemd `--user` service to poll inbox every 30s. 
 ---
 
 ## Contact Protocol
-> See [`docs/contact-protocol-how-to-reach-moses.md`](docs/contact-protocol-how-to-reach-moses.md)
+> See [`docs/contact-protocol-how-to-reach-orchestrator.md`](docs/contact-protocol-how-to-reach-orchestrator.md)
 
 ## Agent Cron Management
-Only Moses has `cronjob` MCP. Others request via inbox with subject `🔧 CRON: create|update|remove`.
+Only orchestrators (Moses, Esther) have `cronjob` MCP. Others request via the orchestrator inbox (`inbox_orchestrator`) with subject `🔧 CRON: create|update|remove`.
 
 Universal crons (36 jobs, 7 categories): See [`docs/fleet-reference.md`](docs/fleet-reference.md). **Skill Collection:** `agent-learning-collector` (every 6h) → `orch-skill-lifecycle` (daily 04:00). See [`docs/pipeline-reference.md`](docs/pipeline-reference.md).
 

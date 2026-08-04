@@ -152,7 +152,7 @@ When the user says "fix this" or "address the issues," identify whether you're t
 
 **The symptom-trap pattern from this session (2026-07-21):**
 
-> **Problem:** Skill reports stacking in `inbox_moses`, blocking EXEC commands. Handler took 40+ min per command.
+> **Problem:** Skill reports stacking in `inbox_orchestrator`, blocking EXEC commands. Handler took 40+ min per command.
 >
 > **My symptom fix:** "Idempotency loop bug — archive on skip." Loop stops, but core problem remains.
 >

@@ -1013,11 +1013,11 @@ def _check_self_stale(res):
 
 def _check_required_tools(res):
   """Verify runtime tools exist on PATH. Prevents silent 'command not found'
-  failures (the jq incident: contact-moses.sh depended on jq, which was in no
+  failures (the jq incident: contact-orchestrator.sh depended on jq, which was in no
   prereq list — hosts without it broke at runtime)."""
   import shutil
   tools = {
-    "python3": "runtime scripts (contact-moses.sh, handler, doctor)",
+    "python3": "runtime scripts (contact-orchestrator.sh, handler, doctor)",
     "git": "repo pull/push, hooks",
     "curl": "bus HTTP client, doctor HTTP checks, health pings",
   }

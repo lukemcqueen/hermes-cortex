@@ -1,7 +1,16 @@
 #!/bin/bash
-# contact-moses.sh — send a question/message to Moses via the bus (HTTP client)
-# Usage: contact-moses.sh "subject" "body" [priority]
+# contact-orchestrator.sh — send a question/message to the ORCHESTRATOR via the bus (HTTP client)
+# Formerly known as: contact-moses.sh (renamed 2026-08-04 — agents send to the shared
+# orchestrator inbox, not to Moses specifically; see docs/bus-architecture.md).
+#
+# Usage: contact-orchestrator.sh "subject" "body" [priority]
 #   priority: normal (default), urgent, critical
+#
+# Target queue resolution order:
+#   1. CORTEX_INBOX_TARGET env var
+#   2. CORTEX_INBOX_TARGET in ~/.hermes-cortex/cortex-bus.conf
+#   3. Default: inbox_orchestrator (shared orchestrator inbox — seen by BOTH
+#      orchestrators, Moses and Esther, so whichever is available handles it)
 #
 # Auth/URL resolution order:
 #   1. Env vars: CORTEX_BUS_AUTH / CORTEX_BASIC_AUTH / CORTEX_INBOX_AUTH,
@@ -44,7 +53,7 @@ if [ -z "$BUS_URL" ]; then
 fi
 
 if [ -z "$SUBJECT" ] || [ -z "$BODY" ]; then
-  echo "Usage: contact-moses.sh \"subject\" \"body\" [priority]"
+  echo "Usage: contact-orchestrator.sh \"subject\" \"body\" [priority]"
   echo "  priority: normal (default), urgent, critical"
   exit 1
 fi
@@ -56,10 +65,16 @@ fi
 
 # Build payload with python3 (guaranteed present in Hermes venv — jq is not)
 # so multi-line bodies are safely JSON-encoded, not interpolated.
-# Target queue: CORTEX_INBOX_TARGET overrides the default. Default inbox_moses
-# keeps legacy behavior; fix requests / escalations can use inbox_orchestrator
-# (shared between both orchestrators) via CORTEX_INBOX_TARGET.
-TARGET_QUEUE="${CORTEX_INBOX_TARGET:-inbox_moses}"
+# Target queue: CORTEX_INBOX_TARGET (env) → CORTEX_INBOX_TARGET (conf) →
+# default inbox_orchestrator (the shared orchestrator inbox seen by both
+# Moses and Esther — the standard target for ALL agent → orchestrator traffic).
+TARGET_QUEUE="${CORTEX_INBOX_TARGET:-}"
+if [ -z "$TARGET_QUEUE" ]; then
+  TARGET_QUEUE="$(_read_conf "CORTEX_INBOX_TARGET")"
+fi
+if [ -z "$TARGET_QUEUE" ]; then
+  TARGET_QUEUE="inbox_orchestrator"
+fi
 PAYLOAD=$(AGENT_NAME="$AGENT_NAME" SUBJECT="$SUBJECT" BODY="$BODY" PRIORITY="$PRIORITY" TARGET_QUEUE="$TARGET_QUEUE" \
   python3 -c '
 import json, os
@@ -67,7 +82,7 @@ print(json.dumps({
     "queue": os.environ["TARGET_QUEUE"],
     "message": {
         "from": os.environ["AGENT_NAME"],
-        "to": "moses",
+        "to": "orchestrator",
         "subject": os.environ["SUBJECT"],
         "body": os.environ["BODY"],
         "priority": os.environ["PRIORITY"],

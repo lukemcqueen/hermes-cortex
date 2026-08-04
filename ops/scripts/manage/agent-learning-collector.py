@@ -15,7 +15,8 @@ Session mining (running session-mine to extract lessons) is handled by a
 separate overnight cron (agent-session-mine) that dumps mined lessons into
 ~/brain/lessons/. The collector picks them up instantly via source #2 above.
 
-Sends a compact structured Learning Report to inbox_moses via PGMQ.
+Sends a compact structured Learning Report to inbox_orchestrator (the shared
+orchestrator inbox) via PGMQ.
 Silent (exit 0) when nothing new to report.
 
 Deployed to fleet agents via cortex-update.sh.
@@ -452,7 +453,7 @@ def send_report(report: dict, dry_run: bool = False) -> list[str] | None:
     subject = "Learning Report: " + (", ".join(subject_parts) if subject_parts else "heartbeat")
 
     payload = {
-        "queue": "inbox_moses",
+        "queue": "inbox_orchestrator",
         "message": {
             "from": hostname,
             "subject": subject,

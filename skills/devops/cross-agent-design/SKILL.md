@@ -122,16 +122,16 @@ From `bus.permissions` (Postgres table):
 
 ```sql
 -- Only Moses can send to arbitrary queues.
--- All other agents can only READ their own inbox and SEND to inbox_moses.
+-- All other agents can only READ their own inbox and SEND to `inbox_orchestrator` (the shared orchestrator inbox — default target) or reply to a specific orchestrator via `inbox_moses`.
 SELECT agent_name, can_send, can_read FROM bus.permissions;
 ```
 
 | Agent | Can send to |
 |-------|-------------|
 | **Moses** | **Every queue** — all inboxes, workflow queues, health |
-| **Everyone else** | Only `inbox_moses`, own inbox, `workflow_step_result`, `inbox_health_check` |
+| **Everyone else** | `inbox_orchestrator` (default), `inbox_moses` (point-to-point replies), own inbox, `workflow_step_result`, `inbox_health_check` |
 
-**If you need an agent to reply**, they can only send to `inbox_moses`.
+**If you need an agent to reply**, they send to `inbox_orchestrator` (or the originating orchestrator's queue, e.g. `inbox_moses`).
 They cannot send to any other agent's inbox.
 
 ### 5. Trace the reply path
@@ -139,7 +139,7 @@ They cannot send to any other agent's inbox.
 When the receiving agent replies, verify the path:
 
 ```bash
-# The agent sends to inbox_moses
+# The agent sends to inbox_orchestrator (or inbox_moses for point-to-point replies)
 # What URL do they use?
 #   - CORTEX_BUS_URL (through nginx, port 13004)?
 #   - Direct localhost (port 8903)?
@@ -197,7 +197,7 @@ This is the trickiest failure: no evidence left behind. The handler consumed the
    python3 -c "
    import sys; sys.path.insert(0, '$HOME/hermes-cortex/ops/scripts')
    from lib.cortex_bus import bus_send
-   r = bus_send('inbox_moses', {'from':'test','subject':'TEST','body':{},
+   r = bus_send('inbox_orchestrator', {'from':'test','subject':'TEST','body':{},
                                 'correlation_id':'diag'})
    print(f'Send: {r}')
    "

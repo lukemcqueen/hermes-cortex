@@ -336,7 +336,7 @@ def scan(days: int | None, all_history: bool) -> list[dict]:
 def load_bus_config() -> tuple[str, str, str]:
     """Load (bus_url, auth, agent_name) from cortex-bus.conf.
 
-    Agents push to the orchestrator's bus via the HTTP API (contact-moses.sh
+    Agents push to the orchestrator's bus via the HTTP API (contact-orchestrator.sh
     pattern). Falls back to env vars, then defaults; returns agent_name which
     is 'moses' on the orchestrator host (no self-forward).
     """
@@ -355,19 +355,19 @@ def load_bus_config() -> tuple[str, str, str]:
     return bus_url, auth, agent_name
 
 
-def forward_to_moses(result: dict) -> None:
-    """Send a condensed report to inbox_moses via the bus HTTP API.
+def forward_to_orchestrator(result: dict) -> None:
+    """Send a condensed report to inbox_orchestrator via the bus HTTP API.
 
-    Non-orchestrator agents forward their correction-scan findings so Moses
-    can fold per-agent recidivism into enforcer work. Orchestrator hosts skip
-    (their report is delivered to the user directly). Best-effort: failures
-    are logged to stderr, never fatal (exit stays 0).
+    Non-orchestrator agents forward their correction-scan findings so the
+    orchestrator can fold per-agent recidivism into enforcer work. Orchestrator
+    hosts skip (their report is delivered to the user directly). Best-effort:
+    failures are logged to stderr, never fatal (exit stays 0).
     """
     bus_url, auth, agent_name = load_bus_config()
     if agent_name.lower() in ("moses", "esther", ""):
         return  # orchestrator host — no self-forward
     if not auth:
-        print("ℹ️  No CORTEX_BASIC_AUTH — skipping forward to Moses.", file=sys.stderr)
+        print("ℹ️  No CORTEX_BASIC_AUTH — skipping forward to orchestrator.", file=sys.stderr)
         return
     recid = result.get("recidivism_categories", {})
     summary = {
@@ -382,10 +382,10 @@ def forward_to_moses(result: dict) -> None:
     subject = f"📊 CORRECTION SCAN: {agent_name} — {summary['total_hits']} hit(s), {len(recid)} recidivism"
     body = json.dumps(summary, indent=2, ensure_ascii=False)
     payload = json.dumps({
-        "queue": "inbox_moses",
+        "queue": "inbox_orchestrator",
         "message": {
             "from": agent_name,
-            "to": "moses",
+            "to": "orchestrator",
             "subject": subject,
             "body": body,
             "priority": "normal",
@@ -500,7 +500,7 @@ def main():
 
     # Forward to Moses on non-orchestrator hosts (feeds enforcer work).
     if not args.no_forward:
-        forward_to_moses(result)
+        forward_to_orchestrator(result)
 
     # Exit 0 always — findings are the report (no_agent cron delivers stdout).
     # Only exit 2 on genuine errors (state.db missing etc.).

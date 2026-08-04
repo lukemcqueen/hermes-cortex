@@ -1,11 +1,12 @@
 ---
 name: cron-request-protocol
-version: 1.2.0
+version: 1.3.0
 category: devops
-description: >
+description: >-
   Protocol for non-orchestrator agents to request cron job creation, updates,
-  or removal via the agent inbox. Only Moses has the cronjob MCP tool in
-  all contexts; other agents route requests through Moses using this protocol.
+  or removal via the agent inbox. Only orchestrators have the cronjob MCP tool
+  in all contexts; other agents route requests to the orchestrator inbox
+  (inbox_orchestrator) using this protocol.
 tags: [cron, inbox, protocol, multi-agent, orchestration]
 related_skills: [cron-job-management, agent-inbox, change-checklist]
 ---
@@ -14,22 +15,23 @@ related_skills: [cron-job-management, agent-inbox, change-checklist]
 
 ## Problem
 
-Only Moses has the `cronjob` MCP tool in all contexts. Other agents (Gisu, Joseph,
-Kustos, Esther) cannot create, update, or remove cron jobs directly.
-Note: some agents (e.g. Titus) may have the cronjob tool in direct user sessions
-but not in cron/auto-remediation contexts — when in doubt, route through Moses.
+Only orchestrators (Moses, Esther) have the `cronjob` MCP tool in all
+contexts. Other agents (Gisu, Joseph, Kustos, Titus) cannot create, update,
+or remove cron jobs directly. When in doubt, route through the orchestrator
+inbox.
 
 ## Solution: Inbox-based CRON requests
 
-Any agent needing a cron change sends a structured inbox message to Moses
-with subject prefix `🔧 CRON: <action>`.
+Any agent needing a cron change sends a structured inbox message to the
+**orchestrator inbox** (`inbox_orchestrator`) with subject prefix
+`🔧 CRON: <action>`.
 
 ### Message format
 
 ```
 Subject: 🔧 CRON: create|update|remove
 Priority: normal|urgent
-To: moses
+To: orchestrator
 
 CRON_NAME: <name>                        # Required — lowercase, hyphens
 CRON_SCHEDULE: <expression>              # Required — e.g. "0 9 * * *", "*/30 * * * *"
@@ -49,7 +51,7 @@ CRON_REASON: <why this change is needed> # Required — context for Moses
 ```
 Subject: 🔧 CRON: create
 Priority: normal
-To: moses
+To: orchestrator
 
 CRON_NAME: agent-daily-market-report
 CRON_SCHEDULE: 0 8 * * 1-5
@@ -65,7 +67,7 @@ CRON_REASON: Luke requested a daily market briefing on weekdays
 ```
 Subject: 🔧 CRON: update
 Priority: urgent
-To: moses
+To: orchestrator
 
 CRON_NAME: local-agent-daily-system-brief
 CRON_SCHEDULE: 0 10 * * *
@@ -76,7 +78,7 @@ CRON_REASON: Luke changed preferred briefing time from 9am to 10am KST
 ```
 Subject: 🔧 CRON: remove
 Priority: normal
-To: moses
+To: orchestrator
 
 CRON_NAME: old-unused-cron-name
 CRON_REASON: This cron was replaced by agent-daily-market-report
@@ -84,11 +86,11 @@ CRON_REASON: This cron was replaced by agent-daily-market-report
 
 ### Workflow
 
-1. **Agent** sends inbox message to Moses via `inbox_send` MCP tool (Agent Bus, not file writes)
-2. **Moses' agent-bus cron** picks it up
-3. **Moses** validates the request, applies the change via `cronjob()` MCP tool
-4. **Moses** sends reply to the requesting agent via `inbox_send` confirming: ✅ applied or ❌ failed (with reason)
-5. **Moses** CC's Luke on all cron changes for visibility
+1. **Agent** sends inbox message to the orchestrator inbox (`inbox_orchestrator`) via `inbox_send` MCP tool or `contact-orchestrator.sh` (Agent Bus, not file writes)
+2. **The orchestrator's agent-bus cron** picks it up (Moses, or Esther during failover)
+3. **The orchestrator** validates the request, applies the change via `cronjob()` MCP tool
+4. **The orchestrator** sends reply to the requesting agent via `inbox_send` confirming: ✅ applied or ❌ failed (with reason)
+5. **The orchestrator** CC's Luke on all cron changes for visibility
 
 ### Field rules
 
@@ -105,7 +107,7 @@ CRON_REASON: This cron was replaced by agent-daily-market-report
 | CRON_TOOLSETS | Create (LLM cron) | Comma-separated: "web, terminal, file" |
 | CRON_REASON | All actions | Why the change is needed — for audit trail |
 
-### Validation rules (Moses enforces)
+### Validation rules (the orchestrator enforces)
 
 1. **CRON_NAME** must match `^[a-z0-9][a-z0-9_-]*$` — lowercase, hyphens/underscores only
 2. **CRON_SCHEDULE** must be parseable by Hermes cron scheduler
@@ -116,13 +118,13 @@ CRON_REASON: This cron was replaced by agent-daily-market-report
 
 ### ⚠️ Critical distinction: Hermes crons vs. system-level agent workers
 
-This skill covers **Hermes crons** — crons on Moses/Esther's server, managed by Moses via `cronjob` MCP tool. These are for bus infrastructure, health checks, and inbox processing.
+This skill covers **Hermes crons** — crons on the orchestrator's server, managed by the orchestrator via `cronjob` MCP tool. These are for bus infrastructure, health checks, and inbox processing.
 
 Agents on other machines need a **different mechanism** — a system-level worker process that polls the bus:
 
 | Type | Where it runs | Managed by | How to create |
 |------|--------------|------------|---------------|
-| **Hermes cron** | Moses/Esther's server | Moses (`cronjob` tool) | Send `🔧 CRON` request to Moses |
+| **Hermes cron** | Orchestrator's server (Moses, Esther) | The orchestrator (`cronjob` tool) | Send `🔧 CRON` request to the orchestrator inbox |
 | **Agent worker** | Each agent's own machine | Each agent (`crontab -e` or `systemctl --user`) | Agent installs script themselves |
 
 **The `🔧 CRON` protocol does not apply to agent workers.** I cannot install or modify anything on another machine. The most I can do is ship the worker script to the repo and document the installation steps.
@@ -132,7 +134,7 @@ Agents on other machines need a **different mechanism** — a system-level worke
 An agent may send multiple CRON requests in quick succession, where a later
 message overrides an earlier one.
 
-**Moses' handling:**
+**The orchestrator's handling:**
 - **Timestamps are authoritative.** Process messages in chronological order
   by filename (ISO prefix: `YYYYMMDDHHMMSS`). If a correction arrives *after*
   a removal request, the correction wins — do not remove the cron.
@@ -148,7 +150,7 @@ message overrides an earlier one.
 An agent may request a one-shot execution of an existing cron script
 without changing its schedule.
 
-**Moses' handling:**
+**The orchestrator's handling:**
 - **No `run_now` cron tool exists.** The `cronjob` MCP tool does not
   support triggering immediate execution.
 - **Workaround:** Run the cron's script directly via `terminal`:
@@ -169,18 +171,18 @@ without changing its schedule.
 
 ## Agent checklist for requesting a cron change
 
-Before sending a cron request to Moses, verify:
+Before sending a cron request to the orchestrator, verify:
 
 - [ ] CRON_NAME uses correct naming convention (lowercase, hyphens)
 - [ ] CRON_SCHEDULE is correct for the timezone (KST = UTC+9)
 - [ ] CRON_PROMPT is self-contained (no references to ephemeral context)
-- [ ] For script crons: CRON_SCRIPT path is valid on Moses' filesystem
+- [ ] For script crons: CRON_SCRIPT path is valid on the orchestrator's filesystem
 - [ ] CRON_REASON explains why the change is needed
 - [ ] Priority is appropriate (urgent only for same-day needs)
 
 ## Auditing
 
 All cron changes made via this protocol are:
-- Logged to loop governance (Moses scores each change)
+- Logged to loop governance (the orchestrator scores each change)
 - CC'd to Luke via inbox or Telegram
 - Traceable to the requesting agent's inbox message

@@ -38,11 +38,11 @@ or removed entirely after all agents are confirmed on the bus.
 | Layer | What it does | Who runs it |
 |-------|-------------|-------------|
 | **API backend** (Agent Bus :8905 + nginx) | Stores messages, serves the HTTP API | **Only Moses and Esther** (the gateway does this automatically) |
-| **MCP client** (`agent-bus-mcp.py` in Hermes config) | Provides `inbox_send`/`inbox_read`/`inbox_watch` tools to the agent | **Orchestrators only** (Moses, Esther) — the doctor enforces this (`ORCH_ONLY_MCP_SERVERS`); workers use `contact-moses.sh` / `lib.cortex_bus.bus_send` over HTTP instead |
+| **MCP client** (`agent-bus-mcp.py` in Hermes config) | Provides `inbox_send`/`inbox_read`/`inbox_watch` tools to the agent | **Orchestrators only** (Moses, Esther) — the doctor enforces this (`ORCH_ONLY_MCP_SERVERS`); workers use `contact-orchestrator.sh` / `lib.cortex_bus.bus_send` over HTTP instead |
 
 The confusion is that "agent inbox" sounds like one thing. It's two (and was formerly known as the Agent Inbox):
 1. The **server** that holds the messages → only Moses & Esther
-2. The **client tool** that lets an agent send/read messages → orchestrators use the MCP tools (`inbox_send`/`inbox_read`); workers use the HTTP path (`contact-moses.sh` / `lib.cortex_bus.bus_send`) — no MCP entry in config.yaml
+2. The **client tool** that lets an agent send/read messages → orchestrators use the MCP tools (`inbox_send`/`inbox_read`); workers use the HTTP path (`contact-orchestrator.sh` / `lib.cortex_bus.bus_send`) — no MCP entry in config.yaml
 
 ### Architecture diagram
 
@@ -51,7 +51,7 @@ MOSES / ESTHER (bus servers)     ORCHESTRATORS ONLY (MCP client)        WORKERS 
 ─────────────────────────────      ─────────────────────────────────────  ───────────────────────────
 Hermes gateway (:8905)         ~/.hermes/config.yaml                  ~/.hermes-cortex/cortex-bus.conf
  ↳ built-in Agent Bus API        ↳ mcp_servers.agent-bus               ↳ CORTEX_BUS_URL + CORTEX_BASIC_AUTH
- ↳ stores messages (PGMQ)        ↳ runs agent-bus-mcp.py as subprocess  ↳ contact-moses.sh / lib.cortex_bus.bus_send
+ ↳ stores messages (PGMQ)        ↳ runs agent-bus-mcp.py as subprocess  ↳ contact-orchestrator.sh / lib.cortex_bus.bus_send
                      ↳ reads ~/hermes-cortex/.env
 nginx proxy (:13004 / :14004)       ↳ calls remote Agent Bus via HTTP
  ↳ SSL + Basic Auth           ↳ exposes inbox_send/read/watch tools
@@ -64,10 +64,10 @@ nginx proxy (:13004 / :14004)       ↳ calls remote Agent Bus via HTTP
 |-------|------|-------------------|-------------------|------------------------|
 | **Moses** | Primary orchestrator | ✅ YES — gateway :8905 + nginx :13004 | ✅ YES — inbox tools | ✅ `~/hermes-cortex/.env` |
 | **Esther** | Backup orchestrator | ✅ YES — gateway :8905 + nginx :14004 | ✅ YES — inbox tools | ✅ Points to her own instance |
-| **Gisu** | Remote server | ❌ No — client only | ❌ No — HTTP path (`contact-moses.sh` / `lib.cortex_bus.bus_send`) | ✅ Points to Moses |
-| **Joseph** | Remote server | ❌ No — client only | ❌ No — HTTP path (`contact-moses.sh` / `lib.cortex_bus.bus_send`) | ✅ Points to Moses |
-| **Kustos** | Remote server | ❌ No — client only | ❌ No — HTTP path (`contact-moses.sh` / `lib.cortex_bus.bus_send`) | ✅ Points to Moses |
-| **Titus** | macOS laptop | ❌ No — client only | ❌ No — HTTP path (`contact-moses.sh` / `lib.cortex_bus.bus_send`) | ✅ Points to Moses |
+| **Gisu** | Remote server | ❌ No — client only | ❌ No — HTTP path (`contact-orchestrator.sh` / `lib.cortex_bus.bus_send`) | ✅ Points to Moses |
+| **Joseph** | Remote server | ❌ No — client only | ❌ No — HTTP path (`contact-orchestrator.sh` / `lib.cortex_bus.bus_send`) | ✅ Points to Moses |
+| **Kustos** | Remote server | ❌ No — client only | ❌ No — HTTP path (`contact-orchestrator.sh` / `lib.cortex_bus.bus_send`) | ✅ Points to Moses |
+| **Titus** | macOS laptop | ❌ No — client only | ❌ No — HTTP path (`contact-orchestrator.sh` / `lib.cortex_bus.bus_send`) | ✅ Points to Moses |
 
 ### Critical: You need a poll cron to receive messages
 
@@ -137,7 +137,7 @@ If you are Gisu, Joseph, Kustos, or Titus (worker):
  └─ You DO NOT install the MCP client (agent-bus-mcp.py). It is
     orchestrator-only — the doctor warns if you add it.
  └─ You DO have the HTTP client: ~/.hermes-cortex/cortex-bus.conf
-    + contact-moses.sh (or lib.cortex_bus). This is your ONLY bus access.
+    + contact-orchestrator.sh (or lib.cortex_bus). This is your ONLY bus access.
  └─ You DO NOT run a bus server, Postgres, or nginx proxy
 ```
 
@@ -173,10 +173,10 @@ curl -s -u "your_username:your_password" \
 
 **Workers (Gisu, Joseph, Kustos, Titus):** Do NOT add an `agent-bus` entry to
 `config.yaml` — the MCP client is orchestrator-only. Your bus access is the
-HTTP client (`~/.hermes-cortex/cortex-bus.conf` + `contact-moses.sh`), which
+HTTP client (`~/.hermes-cortex/cortex-bus.conf` + `contact-orchestrator.sh`), which
 the installer sets up. Verify it with:
 ```bash
-bash ~/.hermes-cortex/scripts/contact-moses.sh "TEST: connectivity" "ping"
+bash ~/.hermes-cortex/scripts/contact-orchestrator.sh "TEST: connectivity" "ping"
 ```
 
 **Moses and Esther only — additionally:**
@@ -190,7 +190,7 @@ curl -s -u "your_username:your_password" https://your-domain.com:13004/api/inbox
 ### Common confusion to avoid
 
 Key rule: only Moses and Esther run the Agent Bus API backend and the MCP
-client. Every other agent uses the HTTP client only (`contact-moses.sh` +
+client. Every other agent uses the HTTP client only (`contact-orchestrator.sh` +
 `~/.hermes-cortex/cortex-bus.conf`). Do NOT share credentials — every agent
 has their own htpasswd user.
 
@@ -328,7 +328,7 @@ Permanent: git-backed, survives restarts.
 ```bash
 
 
-bash ~/.hermes/scripts/contact-moses.sh "QUESTION: Is the bus healthy?" "I see 503 errors" urgent
+bash ~/.hermes/scripts/contact-orchestrator.sh "QUESTION: Is the bus healthy?" "I see 503 errors" urgent
 
 
 ```

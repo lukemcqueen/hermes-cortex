@@ -303,7 +303,7 @@ register "ops/scripts/agent/agent-remediate-apply.py"  "${CORTEX_DEPLOY_HOME}/sc
 register "ops/scripts/agent/agent-apply-fixes.py"      "${CORTEX_DEPLOY_HOME}/scripts/agent-apply-fixes.py"
 register "ops/scripts/agent/agent-ip-submission.sh"      "${CORTEX_DEPLOY_HOME}/scripts/agent-ip-submission.sh"
 register "ops/scripts/agent/agent-worker.py"             "${CORTEX_DEPLOY_HOME}/scripts/agent-worker.py"
-register "ops/scripts/agent/contact-moses.sh"            "${CORTEX_DEPLOY_HOME}/scripts/contact-moses.sh"
+register "ops/scripts/agent/contact-orchestrator.sh"      "${CORTEX_DEPLOY_HOME}/scripts/contact-orchestrator.sh"
 register "ops/scripts/agent/install-worker.sh"      "${CORTEX_DEPLOY_HOME}/scripts/install-worker.sh"
 # Pre-commit hook — managed by install_precommit_hook() as symlink to scripts/pre-commit-score
 # No register() call — the hook is a symlink, not a standalone deploy file.

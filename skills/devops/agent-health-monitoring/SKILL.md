@@ -180,7 +180,7 @@ code reference.
 ```
 
 - **Server agents** (health_method="http"): Moses polls their health vector server directly on the agent's assigned port. Each agent has its own port (see table below).
-- **Client-only agents** (health_method="inbox"): Push their health vector to Moses via the agent inbox API. Moses reads the inbox on each poll cycle.
+- **Client-only agents** (health_method="inbox"): Push their health vector to the orchestrator via the agent inbox API (`inbox_health_check`). The orchestrator reads the inbox on each poll cycle.
 
 ### ⚠️ Two Orthogonal Monitoring Systems
 
@@ -467,7 +467,7 @@ For agents with no inbound access (`health_method="inbox"`). Runs on a cron/laun
 
 ```bash
 # Determines hostname, runs health-vector.py --check,
-# POSTs the JSON vector to Moses' inbox API (topic: "health")
+# POSTs the JSON vector to the orchestrator's inbox API (topic: "health")
 bash ~/hermes-cortex/ops/scripts/health-vector-push.sh
 ```
 

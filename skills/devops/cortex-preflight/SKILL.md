@@ -40,7 +40,7 @@ git show HEAD:<path-to-file>
 
 ### 2. 🛡️ GOVERNANCE FILE WORKFLOW — ORCHESTRATORS ONLY
 
-**This rule is for orchestrators only (Moses, Esther). Non-orchestrators: stop here — send an inbox message to Moses requesting a change to any of these files.**
+**This rule is for orchestrators only (Moses, Esther). Non-orchestrators: stop here — send an inbox message to the orchestrator inbox (`inbox_orchestrator`) requesting a change to any of these files.**
 
 If you ARE an orchestrator, hooks, enforcer plugin, and skills follow this rule:
 
@@ -55,7 +55,7 @@ If you ARE an orchestrator, hooks, enforcer plugin, and skills follow this rule:
 - `~/.hermes/skills/<category>/<name>/SKILL.md` → `skills/<category>/<name>/SKILL.md`
 - All files in `~/.hermes-cortex/scripts/` with a `register()` entry in `cortex-update.sh`
 
-**Non-orchestrators:** if you discover a bug in hooks, enforcer, or skills, send an inbox message to Moses with `🔧 GOVERNANCE: <what's wrong>`. Do not attempt to fix the deployed copy — the pre-commit hook and dogfood check will block you.
+**Non-orchestrators:** if you discover a bug in hooks, enforcer, or skills, send an inbox message to the orchestrator inbox with `🔧 GOVERNANCE: <what's wrong>`. Do not attempt to fix the deployed copy — the pre-commit hook and dogfood check will block you.
 
 ### 3. Hermes boundary check
 
