@@ -18,7 +18,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/fleet-update-protocol.md` | **NEW** — Fleet update bus protocol: UPDATE_REQUEST/RESULT, FIX_REQUEST/RESULT schemas for Moses→fleet orchestration. **Shared orchestrator inbox** (`inbox_orchestrator`) for failover-aware escalation |
 | `docs/fallback-architecture-survey.md` | **Moses fallback architecture** — failover survey, Esther's warm-standby bus, gaps & approaches |
 | `docs/backup-orch-failover-runbook.md` | **Failover & recovery runbook** — step-by-step: Moses-down activation, drain, Moses-back reintegration. Auto-detection now via `agent-bus-failover-watchdog` cron (all agents) + `tests/test-failover-drill.py` |
-| `docs/cert-monitoring.md` | SSL/TLS cert monitoring — how certs are checked, renewed, alerted |
+| `docs/cert-monitoring.md` | SSL/TLS cert monitoring — how certs are checked, renewed, alerted. Cert checks gated to cert-holder hosts only (joseph/gisu/kustos) |
 | `docs/archive/` | Archived/superseded design docs (PRD-005 v1, etc.) |
 | `ops/scripts/lib/cortex_bus.py` | **Shared bus library** — HTTP API wrapper: bus_send, bus_read, bus_archive, bus_list_queues (used by all fleet scripts) |
 | `ops/scripts/agent/agent-message-handler.py` | **Agent message handler** — polls inbox for UPDATE_REQUEST, ROLLBACK_REQUEST, GIT_AUTH_CHECK; runs cortex-update, posts results |
