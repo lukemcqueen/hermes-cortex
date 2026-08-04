@@ -74,6 +74,14 @@ On first install, `install.sh` Step 9 copies `docs/templates/SOUL.md` to `~/.her
 - Real execution, no simulation
 - Pre-commit / pre-push hooks
 
+**Size gate:** the doctor size-checks `~/.hermes/AGENTS.md` exactly like
+SOUL.md — WARN >15K, FAIL >20K (`check_repo` in cortex_doctor/checks.py).
+Only the hermes-cortex fleet constitution is gated; other repos' AGENTS.md
+have no size limit. A WARN here can't be cleared by re-syncing (repo and
+deployed are the same size) — it needs a real trim of the repo source, or a
+deliberate threshold re-baseline. Trimming is orchestrator-owned
+(AGENTS.md is in `docs/orchestrator-only-paths.txt`).
+
 ## Triggers
 
 Use this skill when:
@@ -245,6 +253,15 @@ When the framework evolves:
 6. Patch the affected SOUL.md / AGENTS.md files
 
 ### 4. Extending to Other Projects
+
+**Other repos are NOT the fleet constitution.** Only `hermes-cortex/AGENTS.md`
+is synced to every agent's `~/.hermes/AGENTS.md` (cortex-update.sh),
+orchestrator-owned (`docs/orchestrator-only-paths.txt`), and size-gated by the
+doctor (WARN >15K, FAIL >20K). Every other repo's AGENTS.md = the **mandatory
+core** (the `hook_sections` below) **plus repo-specific content** — build
+commands, conventions, architecture. Start from
+`docs/templates/AGENTS.seed.md`; never copy the fleet constitution into a
+project repo, and never let a project AGENTS.md grow to constitution size.
 
 Add new AGENTS.md files from other repos to the audit config:
 ```yaml

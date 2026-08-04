@@ -65,4 +65,4 @@ Continuation of the gbrain → mycortex migration (stories S-001..S-016 in
    `pull-latest-update-cortex` lock.
 4. 129 repo skill stubs remain — full content only on source agents
    (Joseph/luke-server); recovery = `agent-skill-stub-audit.py --send` there
-   (AGENTS.md Rule 25).
+   (AGENTS.md Rule 26).

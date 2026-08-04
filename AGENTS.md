@@ -15,7 +15,7 @@
 > Every change includes doc updates. If another agent would be confused by the change without reading an updated doc, the doc must be updated before the governance lock is released. `docs/`, `AGENTS.md`, `SOUL.md`, and `cron-schedules.md` must reflect reality after every change.
 >
 > **RULE 5: CLEAN UP AFTER YOURSELF**
-> If you rename a cron, update BOTH the `create_cron` call AND the uninstall array in the same commit. If you create a new cron with a new name, remove the old one. If you leave test artifacts, delete them before `end_change()`. The doctor's expected-cron list is parsed from install script uninstall arrays — drift between create and uninstall arrays breaks validation silently. Run `fix-cron-duplicates.py` before closing any cycle that touched install scripts.
+> Renaming a cron? Update BOTH the `create_cron` call and the uninstall array in the same commit — new name in, old one out. Delete test artifacts before `end_change()`. The doctor parses expected crons from install script uninstall arrays; drift breaks validation silently, so run `fix-cron-duplicates.py` before closing any cycle that touched install scripts.
 >
 > **RULE 6: PROVE EXISTING CAN'T HANDLE IT BEFORE CREATING NEW**
 > Before creating any new script, skill, config, mechanism, or message type:
@@ -35,50 +35,47 @@
 >   • **Templates** — `AGENTS.md`, `SOUL.md`, `docs/templates/`, `docs/orchestrator-only-paths.txt`
 >   • **CI/CD** — `.github/workflows/`, `VERSION`, `ops/install/`
 >   • **Tests** — `tests/`, `profiles/`
+>   • **Doctor** — `cortex_doctor/`
 > Non-orchestrators: submit proposals to the orchestrator inbox via `📝 PROPOSAL: <what>`.
 > The pre-commit hook blocks non-orchestrators from staging files in
-> `docs/orchestrator-only-paths.txt`. See that file for the current list.
+> `docs/orchestrator-only-paths.txt` — the committed list IS the source of
+> truth (stale doc references don't override it). Orchestrators add paths by
+> editing that file (itself orchestrator-only). If something should be
+> protected but isn't, message the orchestrator.
 >
 > This rule exists because edits to shared infrastructure propagate
-> to every agent without review. Stale doc references don't override
-> the hook — the path list IS the source of truth. If it's not on the
-> list but should be, message the orchestrator.
+> to every agent without review.
 >
 > **RULE 7b: ENFORCEMENT CHAIN — cortex-update.sh IS THE ONLY UPDATE PATH**
-> The immutable enforcement files (governance enforcer plugin,
-> pre-commit/pre-push/post-commit/post-push hooks, loop-gov-mcp.py,
-> hermes-plugin-lock) may ONLY be updated by running:
->   `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`
-> Direct `sudo hermes-plugin-lock unlock` is REFUSED for non-orchestrator
-> accounts (audit-logged to /var/log/hermes-enforcement.log). The only
-> exceptions are the sanctioned `--cortex-update` token (used by
-> cortex-update.sh itself) and the `--orchestrator` token (moses|esther
-> manual maintenance). If the DOGFOOD pre-commit check blocks you because
-> the deployed enforcer differs from the repo: run cortex-update.sh (the exact
-> `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` invocation is sanctioned
-> lock-free), re-acquire your governance lock (the deploy purges locks), then
-> retry the commit. ⚠️ **Deploy ≠ load:** the RUNNING gateway keeps the OLD
-> enforcer module in memory until `hermes gateway restart` — `hermes plugins
-> disable/enable` only writes config.yaml (no hot reload), and agents cannot
-> restart the gateway (lifecycle guard). If the sanctioned command still
-> appears blocked right after a deploy, ask the host operator to restart the
-> gateway; do not loop retrying. (Per-session skills markers survive deploys
-> since 2026-08-01 — no 8-skill reload needed after cortex-update.)
+> Enforcement files (governance enforcer plugin, pre-commit/pre-push/post-commit/
+> post-push hooks, loop-gov-mcp.py, hermes-plugin-lock) update ONLY via
+> `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`. Direct
+> `sudo hermes-plugin-lock unlock` is REFUSED for non-orchestrator accounts
+> (audit-logged to /var/log/hermes-enforcement.log); exceptions: the sanctioned
+> `--cortex-update` token (used by cortex-update.sh itself) and the
+> `--orchestrator` token (moses|esther manual maintenance). If the DOGFOOD
+> pre-commit check blocks you because the deployed enforcer differs from the
+> repo: run cortex-update.sh (sanctioned lock-free), re-acquire your governance
+> lock (deploys purge locks), then retry the commit. ⚠️ **Deploy ≠ load:** the
+> RUNNING gateway keeps the OLD enforcer module in memory until `hermes gateway
+> restart` — `hermes plugins disable/enable` only writes config.yaml (no hot
+> reload) and agents cannot restart the gateway (lifecycle guard). If still
+> blocked after a deploy, ask the host operator to restart the gateway; do not
+> loop retrying. (Per-session skills markers survive deploys since 2026-08-01.)
 >
 > **RULE 7c: BUS ACCESS — NON-ORCHESTRATORS USE THE HTTP CLIENT ONLY**
-> If you are not Moses or Esther: you have the bus **HTTP client**
-> (`cortex-bus.conf` + `contact-orchestrator.sh`) and NOTHING ELSE. Never install
-> the bus server (Postgres/FastAPI/nginx) or the `agent-bus` MCP client in
-> `config.yaml` — the doctor WARNS on both. See the role matrix at the top of
-> `docs/bus-architecture.md`.
+> Non-orchestrators: you have the bus **HTTP client** (`cortex-bus.conf` +
+> `contact-orchestrator.sh`) and NOTHING ELSE. Never install the bus server
+> (Postgres/FastAPI/nginx) or the `agent-bus` MCP client in `config.yaml` —
+> the doctor WARNS on both. Role matrix: `docs/bus-architecture.md`.
 >
 > **RULE 8: "PULL LATEST" = FULL REFRESH — DO NOT CUT CORNERS**
-> When the user says "pull latest", "update from repo", or any equivalent phrase, the sequence is:
+> "pull latest" / "update from repo" means the full cycle:
 > 1. `git pull origin main` — pull latest hermes-cortex
-> 2. `cortex-update.sh` — update skills, crons, configs, scripts
-> 3. Run doctor — check everything (`hermes doctor`, `cortex doctor`, or equivalent)
-> 4. Fix every issue — do not stop until doctor reports clean
-> 5. Verify — confirm all services, crons, skills are in expected state
+> 2. `cortex-update.sh` — deploy skills, crons, configs, scripts
+> 3. Run the doctor (`hermes doctor` / `cortex doctor`) — check everything
+> 4. Fix every issue — do not stop until the doctor reports clean
+> 5. Verify — confirm services, crons, and skills are in expected state
 
 ---
 ## Core Concepts
@@ -109,7 +106,7 @@ Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify
 11. **Score every change** — every code/config/script edit logged to loop-governance DB.
   > **⚡ Pre-commit scoring hook** auto-creates a cycle on every commit. No bypass. The hook also runs the mandatory adversarial gate (A2/A4) on every staged script — `--no-verify` is a logged, audited bypass and must never be used to ship a hook-rejected change.
 12. **Tests/TDD/scoring are always the default.** Only opt-outs: `"skip tests"`, `"read-only"`, `"throwaway prototype"`, `"just check/look at"`.
-13. **DOGFOOD EVERY CHANGE BEFORE DONE (enforced by doctor).** A script change is not complete until the DEPLOYED copy has run through its REAL invocation — for cron scripts: `bash cortex-update.sh` then `cronjob action='run' job_id=<id>` (manual `python3 script.py` doesn't update the scheduler's `last_status`). The doctor's `Script run evidence` check WARNs on any ops/scripts change in the last 7 days whose cron hasn't run since — resolve it before `end_change()`. Prompt changes must also be applied to LIVE jobs (`cronjob action='update'`); the doctor's `Cron prompt stale refs` check catches missed ones.
+13. **DOGFOOD EVERY CHANGE BEFORE DONE (enforced by doctor).** A script change isn't complete until the DEPLOYED copy ran its REAL invocation — for crons: `bash cortex-update.sh`, then `cronjob action='run' job_id=<id>` (manual `python3 script.py` doesn't update the scheduler's `last_status`). The `Script run evidence` check WARNs on any ops/scripts change in the last 7 days whose cron hasn't run since — resolve it before `end_change()`. Prompt changes go to LIVE jobs too (`cronjob action='update'`); `Cron prompt stale refs` catches missed ones.
 14. **Tag discovered issues as follow-ups** — document as `pending` todo, finish current work, then return. Never silently skip.
 15. **Pull before push** — `git pull --rebase origin <branch>` before any `git push`.
 16. **Never print secrets in commands** — use `$(cat <file>)` subshell expansion. `printf`, `echo` with inline secrets, and `-u "user:pass"` are forbidden.
@@ -117,37 +114,13 @@ Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify
 18. **Be thorough** — Verify every claim with tool output. A change isn't done until deps resolve, docs update, and doctor runs clean.
 19. **Test Before Release** — Before `end_change()`, run the applicable test suite with **0 failures**. If no test suite exists, create one or acknowledge the gap. `LOW` confidence ships are blocked.
 20. **Push before telling anyone to pull** — Verify the commit is on the remote. A fix on local disk is not in the repo.
-21. **Agent identity is host-derived, not env** — Orchestrator status comes from hostname (`moses`/`esther`) **and** the matching home dir (`/home/moses`, `/home/esther`) — never from `AGENT_ID`/`AGENT_TYPE` env vars (they are spoofable and grant no privileges). Git authorship comes from `~/.hermes-cortex/agent.env` (`AGENT_NAME=<your-agent>`), written per-host by `cortex-update.sh` and gitignored — the hostname→agent mapping must NEVER be committed to this public repo. If `agent.env` is missing, the commit is blocked with setup instructions. Do NOT set `AGENT_ID` before commits — it is obsolete.
+21. **Agent identity is host-derived, not env** — Orchestrator status comes from hostname (`moses`/`esther`) AND the matching home dir (`/home/moses`, `/home/esther`) — never from `AGENT_ID`/`AGENT_TYPE` env vars (spoofable, grant no privileges). Git authorship comes from `~/.hermes-cortex/agent.env` (`AGENT_NAME=<your-agent>`), written per-host by `cortex-update.sh` and gitignored — the hostname→agent mapping must NEVER be committed to this public repo. Missing `agent.env` blocks the commit with setup instructions. `AGENT_ID` is obsolete — do not set it.
 22. **Persistent cross-session todos** — Use `todo-db.py` for fleet-visible task tracking. See `todo-persistence` skill.
 23. **Only modify files in our repo** — `~/hermes-cortex/` → ours. `~/.hermes/` (not in repo) → do NOT touch. `~/.hermes-cortex/state/*`, `~/.hermes/config.yaml` → live config.
 24. **Sharing filter: only share new/substantive changes** — Already in Hermes Agent? ❌. Already in hermes-cortex? ❌. New skill? ✅. Improvement? ✅. PII-only? ❌. Test: *"Would someone running Hermes Cortex benefit?"*
-24. **Self-test gate for fleet commands** — `hc send` refuses without `--self-tested`. Never use bare `pass` in except blocks.
-25. **Skill stub guard + recovery** — `cortex-update.sh` refuses to overwrite a FULL deployed skill with a truncated repo stub (SKILL STUB GUARD, `is_skill_stub` check — stubs are <1500 bytes AND contain `Full content (truncated)` or `--- End skill ---`). The doctor FAILs on repo stubs (130 known from the Jul-17 9a9efa91 truncated imports). Recovery path: `agent-skill-stub-audit.py --send` on the source agent (Joseph/luke-server) → bus `skill-stub-recovery` payloads → `agent-message-handler` stages them → orchestrator copies full content over `skills/` → `cortex-update.sh`. Do NOT hand-fix stub content in the repo from memory — re-collect from the source agent so the recovery is verifiable.
-26. **Restart the gateway for enforcer changes** — after `cortex-update.sh` deploys a newer governance enforcer plugin, the running gateway may still execute the old in-memory copy. Verify with the doctor's `Plugin content` check; if it shows the deployed copy differs from repo while the repo is current, run `hermes gateway restart` from a separate shell (NOT from inside the gateway process — blocked by the enforcer).
-
----
-
-## 🛡️ Orchestrator-Only Paths
-
-Only Moses and Esther may modify these paths. The pre-commit hook
-enforces this by checking staged files against a committed list.
-Non-orchestrators who stage files under these paths get blocked.
-
-**Protected domains:**
-| Domain | Paths |
-|--------|-------|
-| Skills | `skills/` |
-| Scripts & crons | `ops/scripts/`, `ops/install/` |
-| Governance | `.hermes-cortex/hooks/` |
-| MCP & plugins | `mcp-servers/`, `plugins/` |
-| Templates & config | `AGENTS.md`, `SOUL.md`, `docs/templates/`, `docs/orchestrator-only-paths.txt` |
-| CI/CD | `.github/workflows/`, `VERSION` |
-| Tests & profiles | `tests/`, `profiles/` |
-| Doctor | `cortex_doctor/` |
-
-**Source of truth:** `docs/orchestrator-only-paths.txt` (committed version).
-The hook reads this file — stale docs don't override it.
-To add a new path: edit that file. The file itself is orchestrator-only.
+25. **Self-test gate for fleet commands** — `hc send` refuses without `--self-tested`. Never use bare `pass` in except blocks.
+26. **Skill stub guard + recovery** — `cortex-update.sh` refuses to overwrite a FULL deployed skill with a truncated repo stub (`is_skill_stub`: <1500 bytes AND `Full content (truncated)` or `--- End skill ---`); the doctor FAILs on repo stubs. Recovery: `agent-skill-stub-audit.py --send` on the source agent (Joseph/luke-server) → bus `skill-stub-recovery` payloads → `agent-message-handler` stages them → orchestrator copies full content over `skills/` → `cortex-update.sh`. Never hand-fix stub content from memory — re-collect from the source agent so recovery is verifiable.
+27. **Restart the gateway for enforcer changes** — after `cortex-update.sh` deploys a newer governance enforcer plugin, the running gateway may still execute the old in-memory copy. Verify with the doctor's `Plugin content` check; if it shows deployed ≠ repo while the repo is current, run `hermes gateway restart` from a separate shell (NOT from inside the gateway process — blocked by the enforcer).
 
 ---
 
