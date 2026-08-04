@@ -37,7 +37,7 @@
 | `agent-fixer-workday` | `0 9-17 * * 1-5` | LLM | auto-remediation skill + session-active-guard.py | origin |
 | `agent-fixer-evening` | `0 18,20,22 * * 1-5` | LLM | auto-remediation skill | origin |
 | `agent-fixer-overnight` | `0 3 * * 1-5` | LLM | auto-remediation skill | origin |
-| `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local (server agents only — joseph/gisu/kustos) |
+| `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local (runs only where IS_SERVER=true) |
 | `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin |
 | `agent-apply-fixes` | `*/10 * * * *` | no_agent | `agent-apply-fixes.py` | local |
 | `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local |

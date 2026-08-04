@@ -26,19 +26,18 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Hosts that run the remediation sensor. Only server agents (joseph/gisu/kustos)
-# run it — orchestrator hosts (moses/esther) and dev boxes (titus) don't need
-# local auto-remediation; the sensor is a 5-min probe that feeds the fixer
-# crons. On excluded hosts the script prints an empty issue array and exits
-# silently (cron stays scheduled; consumers see "nothing to do").
-# (2026-08-04)
-SENSOR_ENABLED_HOSTS = {"joseph", "gisu", "kustos"}
+# Server-agent gate: the remediation sensor runs only on hosts that declare
+# IS_SERVER=true (per-host, in ~/hermes-cortex/.env). This is ORTHOGONAL to
+# AGENT_TYPE — an orchestrator (moses/esther) may also be a server agent and
+# run the sensor; a dev box (titus) never does. Default when unset: enabled,
+# so a freshly provisioned server agent picks up the sensor without extra
+# config. Disable with IS_SERVER=false. (2026-08-04)
+SENSOR_IS_SERVER_DEFAULT = True
 
 # Hosts that manage live SSL certs via certbot. Only these run the certbot
-# checks — orchestrators (moses/esther) don't hold the live certs (Joseph
-# does; bus.example.org is served from Joseph and used for
-# joseph/moses/esther). Skipping avoids pointless `sudo certbot` probes
-# every 5 min on hosts that have nothing to renew. (2026-08-04)
+# checks — Joseph holds the live certs (bus.example.org serves
+# joseph/moses/esther), so certbot probes on other hosts are noise.
+# Skipping avoids pointless `sudo certbot` probes every 5 min. (2026-08-04)
 CERT_HOLDER_HOSTS = {"joseph", "gisu", "kustos"}
 
 HOME = Path.home()
@@ -545,12 +544,42 @@ def _local_agent_name() -> str:
     return socket.gethostname().split(".")[0].lower()
 
 
+def _read_env_value(key: str) -> str:
+    """Read a value from the environment, falling back to ~/hermes-cortex/.env."""
+    val = os.environ.get(key, "").strip()
+    if val:
+        return val
+    env_file = CORTEX_REPO / ".env"
+    try:
+        for line in env_file.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            if k.strip() == key:
+                return v.strip().strip('"').strip("'")
+    except (OSError, ValueError):
+        pass
+    return ""
+
+
+def _is_server_agent() -> bool:
+    """Server-agent gate: run the sensor only when this host declares
+    IS_SERVER=true (env or ~/hermes-cortex/.env). Orthogonal to AGENT_TYPE —
+    an orchestrator may also be a server agent. Unset defaults to enabled so
+    a freshly provisioned server agent picks up the sensor automatically."""
+    flag = _read_env_value("IS_SERVER").lower()
+    if flag:
+        return flag in ("1", "true", "yes", "on")
+    return SENSOR_IS_SERVER_DEFAULT
+
+
 def main():
-    # Server-agent gate: only joseph/gisu/kustos run the sensor. On other
-    # hosts (moses/esther/titus) print an empty issue array and stay silent —
-    # the cron remains scheduled (install-crons.sh expects it) but produces
-    # nothing for the fixer crons to act on.
-    if _local_agent_name() not in SENSOR_ENABLED_HOSTS:
+    # Server-agent gate: only hosts with IS_SERVER=true run the sensor. On
+    # others print an empty issue array and stay silent — the cron remains
+    # scheduled (install-crons.sh expects it) but produces nothing for the
+    # fixer crons to act on.
+    if not _is_server_agent():
         print(json.dumps([]))
         return
 

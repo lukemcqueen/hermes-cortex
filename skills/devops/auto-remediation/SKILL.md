@@ -51,10 +51,11 @@ Next index refresh will include it — the corpus learns from every fix.
 This skill is loaded by the `agent-auto-remediate` cron job every 5 minutes.
 The companion `remediation-sensor.py` (no_agent, every 5m) gathers diagnostics
 and outputs JSON. This LLM tier only fires when the sensor reports issues.
-**Host gating (2026-08-04):** the sensor only runs on server agents
-(joseph/gisu/kustos, per `SENSOR_ENABLED_HOSTS`). On moses/esther/titus it
-prints an empty issue array — the fixer sees "nothing to do" and stays silent.
-Do not expect sensor issues from excluded hosts.
+**Host gating (2026-08-04):** the sensor runs only where `IS_SERVER=true` is
+declared in `~/hermes-cortex/.env` (server agents). This is orthogonal to
+AGENT_TYPE — an orchestrator may also be a server agent. On hosts without the
+flag it prints an empty issue array — the fixer sees "nothing to do" and stays
+silent. Do not expect sensor issues from non-server hosts.
 
 You are Moses, the orchestrator. Your job is to read the sensor output, fix
 issues, and report briefly.
