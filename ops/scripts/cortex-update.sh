@@ -2302,6 +2302,14 @@ main() {
   # the gateway lifecycle guard scans cron scripts AND every script they
   # reference (this file runs from inside the gateway via the sync cron).
   if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-gateway-cron-timeout.sh" ]]; then
+    # ⚠️ Drop any stale HERMES_CRON_TIMEOUT inherited from the RUNNING
+    # gateway process (the drop-in being replaced exports the OLD value,
+    # so `:-default` in the installer would re-apply it forever). Only
+    # unset when the per-machine override is NOT declared in
+    # ~/hermes-cortex/.env (sourced above) — an explicit line survives.
+    if ! grep -q '^HERMES_CRON_TIMEOUT=' "${REPO_DIR}/.env" 2>/dev/null; then
+      unset HERMES_CRON_TIMEOUT
+    fi
     bash "${CORTEX_DEPLOY_HOME}/scripts/install-gateway-cron-timeout.sh" 2>&1 | sed 's/^/    /' || \
       warn "  install-gateway-cron-timeout.sh failed (non-fatal)"
   fi
