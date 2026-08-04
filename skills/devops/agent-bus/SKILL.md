@@ -20,7 +20,7 @@ The Agent Bus is a Postgres-native message queue (`lib/pgmq` implementation with
 > **📐 Architecture reference:** See [`docs/reference/cortex-bus-config.md`](../../docs/reference/cortex-bus-config.md) for the full architecture — fleet topology, auth model, ACL/permissions, message consumption patterns, and forwarder design. This skill covers operational diagnostics only.
 
 Key architectural facts:
-- **Bus server** processes at `~/hermes-cortex/core/cortex_bus/server.py`
+- **Bus server** processes at `~/hermes-cortex/core/cortex_bus/server.py` (module `cortex_bus.server:app`, service `cortex-bus.service`)
 - **Queue module** at `~/hermes-cortex/core/cortex_bus/queue.py`
 - **Postgres schema** `bus.*` in the shared gbrain database (`:15432`)
 - **MCP tools** `mcp__cortex_bus__*` route through the bus via HTTP
@@ -411,11 +411,11 @@ orchestrator traffic:
 - **Workers:** `contact-orchestrator.sh` defaults to `inbox_orchestrator` (override with `CORTEX_INBOX_TARGET` only for point-to-point replies)
 - **Docs:** ACL table in `docs/bus-architecture.md` + `docs/reference/cortex-bus-config.md` (orchestrators read `inbox_orchestrator`; workers `can_send` it)
 
-**ACL model:** the deployed bus (`core/cortex_bus/server.py`) uses
-**boolean** `can_send`/`can_read` flags in `bus.permissions` — every fleet
-agent can write `inbox_orchestrator`. The per-queue array ACL variant
-(`core/cortex_bus/server.py`) was a stale duplicate and has been removed
-(2026-08-04). If a 403 appears, check the boolean flags, not queue lists.
+**ACL model:** BOTH buses use the canonical **per-queue array** ACLs
+(`can_read`/`can_write` `TEXT[]` + `is_admin`) in `bus.permissions` — unified
+2026-08-04. The old boolean model (`can_send`/`can_archive`/`can_requeue`,
+`ops/services/agent-bus/server.py`) is **deleted**. If a 403 appears, check
+the agent's `can_write` array, not boolean flags.
 
 ## References
 

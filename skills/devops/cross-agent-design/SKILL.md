@@ -123,7 +123,7 @@ From `bus.permissions` (Postgres table):
 ```sql
 -- Only Moses can send to arbitrary queues.
 -- All other agents can only READ their own inbox and SEND to `inbox_orchestrator` (the shared orchestrator inbox — default target) or reply to a specific orchestrator via `inbox_moses`.
-SELECT agent_name, can_send, can_read FROM bus.permissions;
+SELECT agent_name, can_read, can_write, is_admin FROM bus.permissions;
 ```
 
 | Agent | Can send to |
@@ -150,12 +150,14 @@ When the receiving agent replies, verify the path:
 
 ### 6. Account for the bus forwarder (if applicable)
 
-The forwarder (`orch-bus-forwarder.py`) syncs messages between Moses' and
-Esther's Postgres instances. **It is currently PAUSED** (since 2026-07-20).
+The forwarder (`orch-bus-forwarder.py`, cron `orch-bus-forwarder-sync` every
+2m) mirrors messages between Moses' and Esther's Postgres instances —
+role-aware PEER resolution since 2026-08-03 (Esther's peer = Moses :13004,
+Moses's peer = Esther :14004; `PEER_AUTH` = nginx Basic creds).
 
-- Without the forwarder, all messages live only in Moses' Postgres
+- Without the forwarder, all messages live only in the local Postgres
 - Agents connecting to Esther's bus see only Esther-local messages
-- Cross-server message sync does NOT happen currently
+- Cross-server message sync requires the forwarder to be running
 
 ## Common Pitfalls
 

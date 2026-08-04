@@ -92,16 +92,12 @@ curl -s -X POST https://<host>:13004/api/pgmq/send \
 The `bus.permissions` table controls which agents can read/write which queues.
 The bus server checks permissions via `_check_permission()` on every send/read.
 
-> ⚠️ **Two ACL schemas exist fleet-wide — match the SQL to the host.** The
-> PRIMARY bus (Moses, `core/cortex_bus`, :13004) uses per-queue **arrays**
-> (`can_read`/`can_write` text[] + `is_admin`) — the queries below. The
-> BACKUP bus (Esther, `core/cortex_bus`, :14004) uses coarse
-> **booleans** (`can_send`/`can_read`/`can_archive`/`can_requeue`). Workers
-> send through the primary, so a 403 on worker→orchestrator traffic means
-> checking the PRIMARY's array ACL first. `UPDATE ... SET can_write = array(...)`
-> only works on the primary; the backup takes `SET can_send = true`.
-> See `docs/esther-bus-setup.md` Step 7 for both shapes and the worker
-> `inbox_orchestrator` grant.
+> ✅ **One ACL schema fleet-wide (unified 2026-08-04):** BOTH buses now use
+> per-queue **arrays** (`can_read`/`can_write` `TEXT[]` + `is_admin`) — the
+> canonical model at `core/cortex_bus/schema/auth.sql`. The backup's old
+> boolean schema (`can_send`/`can_archive`/`can_requeue`) was migrated and
+> retired. The same grant SQL works on both hosts:
+> `UPDATE ... SET can_write = array_append(can_write, '<queue>')`.
 
 ### Quick Reference
 

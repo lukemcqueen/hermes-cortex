@@ -49,23 +49,28 @@ CREATE TABLE IF NOT EXISTS bus.permissions (
 );
 
 -- ── Migration from the boolean model (backup host, 2026-08-04) ──
--- Idempotent: adds the array columns if missing, backfills from the
--- old booleans (true → '*' = all queues), then drops the booleans.
--- The UPDATE is guarded: it only runs on hosts that still HAVE the
--- boolean columns (the backup), never on hosts already on arrays.
-ALTER TABLE bus.permissions ADD COLUMN IF NOT EXISTS can_read TEXT[] DEFAULT '{}';
-ALTER TABLE bus.permissions ADD COLUMN IF NOT EXISTS can_write TEXT[] DEFAULT '{}';
-ALTER TABLE bus.permissions ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false;
-
+-- Idempotent. On a boolean-schema host (has can_send) the old boolean
+-- can_read/can_write columns are DROPPED first — they share the same
+-- names as the array columns, so ADD COLUMN IF NOT EXISTS would no-op.
+-- Then the array columns are added and backfilled ('*' = all queues).
+-- On an array-schema host this is a no-op.
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns
              WHERE table_schema = 'bus' AND table_name = 'permissions'
                AND column_name = 'can_send') THEN
-    UPDATE bus.permissions SET can_read = ARRAY['*'], can_write = ARRAY['*']
-     WHERE is_admin = false;
+    ALTER TABLE bus.permissions DROP COLUMN can_read;
+    ALTER TABLE bus.permissions DROP COLUMN can_write;
   END IF;
 END $$;
+
+ALTER TABLE bus.permissions ADD COLUMN IF NOT EXISTS can_read TEXT[] DEFAULT '{}';
+ALTER TABLE bus.permissions ADD COLUMN IF NOT EXISTS can_write TEXT[] DEFAULT '{}';
+ALTER TABLE bus.permissions ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false;
+
+UPDATE bus.permissions SET can_read = ARRAY['*'], can_write = ARRAY['*']
+ WHERE is_admin = false
+   AND can_read = '{}'::text[] AND can_write = '{}'::text[];
 
 ALTER TABLE bus.permissions DROP COLUMN IF EXISTS can_send;
 ALTER TABLE bus.permissions DROP COLUMN IF EXISTS can_archive;
