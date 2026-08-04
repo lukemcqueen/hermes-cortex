@@ -473,11 +473,11 @@ def check_cortex_bus():
     svc_out = ""
     
     if sys.platform == "darwin":
-        svc_out, _, svc_rc = run("launchctl list com.hermes.agent-bus 2>/dev/null | awk 'NR==2 {print $1}'")
+        svc_out, _, svc_rc = run("launchctl list com.hermes.cortex-bus 2>/dev/null | awk 'NR==2 {print $1}'")
         svc_ok = (svc_rc == 0 and svc_out.strip() not in ("", "-"))
         
         if not svc_ok:
-            fb_out, _, fb_rc = run("launchctl list com.hermes.agent-bus-fallback 2>/dev/null | awk 'NR==2 {print $1}'")
+            fb_out, _, fb_rc = run("launchctl list com.hermes.cortex-bus-fallback 2>/dev/null | awk 'NR==2 {print $1}'")
             if fb_rc == 0 and fb_out.strip() not in ("", "-"):
                 svc_ok = True
     elif sys.platform.startswith("linux"):

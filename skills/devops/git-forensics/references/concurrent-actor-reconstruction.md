@@ -3,7 +3,7 @@
 Recipe for when git state mutates mid-session while you did nothing: a peer
 commit gets reset, the index clears, your work shows up in someone else's
 stash, or HEAD moves under you. Worked example: 2026-08-03 fleet crons
-(agent-bus-workday / agent-inbox-workday) colliding with the interactive
+(cortex-bus-workday / agent-inbox-workday) colliding with the interactive
 session on the shared repo.
 
 ## 1. Detect the mutation instantly

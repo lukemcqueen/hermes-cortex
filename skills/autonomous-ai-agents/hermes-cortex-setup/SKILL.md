@@ -750,7 +750,7 @@ See `references/health-endpoint-formats.md`
 - Nginx proxy patterns: `references/nginx-proxy-patterns.md` (port convention, SSL, port conflict fix)
 - Health endpoint formats: `references/health-endpoint-formats.md` (compact vector vs full JSON)
 - Health vector troubleshooting: `references/health-vector-troubleshooting.md` (systematic debug — PATH, service names, cron errors)
-- Agent Bus troubleshooting: `references/agent-bus-troubleshooting.md` (token verification, missing X-Forwarded-User header, runtime path mismatch, queue verification, systemd service template)
+- Agent Bus troubleshooting: `references/cortex-bus-troubleshooting.md` (token verification, missing X-Forwarded-User header, runtime path mismatch, queue verification, systemd service template)
 - Stale paths audit guide: `references/stale-paths-audit-guide.md` (systematic methodology for auditing docs after repo restructures)
 - Docker without sudo patterns: `references/docker-no-sudo.md` (sg docker -c, group management)
 

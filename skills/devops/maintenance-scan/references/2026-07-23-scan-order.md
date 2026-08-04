@@ -4,7 +4,7 @@
 
 User said "look for work that needs to be done." I ran doctor → crons → git → system, missing two critical first steps:
 
-1. **Inbox** — 5 messages were sitting in inbox_moses from fleet agents. I queried the bus with `WHERE state = 'pending'` and got 0 because I guessed the wrong column name (`state` was correct, but `status` was wrong). The schema was in memory and in the `agent-bus` skill — I didn't check either first.
+1. **Inbox** — 5 messages were sitting in inbox_moses from fleet agents. I queried the bus with `WHERE state = 'pending'` and got 0 because I guessed the wrong column name (`state` was correct, but `status` was wrong). The schema was in memory and in the `cortex-bus` skill — I didn't check either first.
 2. **Memory/session** — I had the bus schema in memory (`bus.messages has msg_id, queue_name, state`) but went straight to PSQL with wrong column names, wasting turns.
 
 ## Correct order (codified in maintenance-scan)

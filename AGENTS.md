@@ -66,7 +66,7 @@
 > **RULE 7c: BUS ACCESS — NON-ORCHESTRATORS USE THE HTTP CLIENT ONLY**
 > Non-orchestrators: you have the bus **HTTP client** (`cortex-bus.conf` +
 > `contact-orchestrator.sh`) and NOTHING ELSE. Never install the bus server
-> (Postgres/FastAPI/nginx) or the `agent-bus` MCP client in `config.yaml` —
+> (Postgres/FastAPI/nginx) or the `cortex-bus` MCP client in `config.yaml` —
 > the doctor WARNS on both. Role matrix: `docs/bus-architecture.md`.
 >
 > **RULE 8: "PULL LATEST" = FULL REFRESH — DO NOT CUT CORNERS**

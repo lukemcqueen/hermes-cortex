@@ -131,5 +131,5 @@ Watch for:
 ## Related
 - `auto-remediation-setup` — the focused setup/troubleshooting skill for a single machine
 - `auto-remediation` — the fix patterns themselves
-- `agent-bus-automation` — delivery plumbing
+- `cortex-bus-automation` — delivery plumbing
 - `sensor-false-positive-remediation` — handling false positives from the sensor

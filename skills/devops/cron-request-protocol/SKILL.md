@@ -87,7 +87,7 @@ CRON_REASON: This cron was replaced by agent-daily-market-report
 ### Workflow
 
 1. **Agent** sends inbox message to the orchestrator inbox (`inbox_orchestrator`) via `inbox_send` MCP tool or `contact-orchestrator.sh` (Agent Bus, not file writes)
-2. **The orchestrator's agent-bus cron** picks it up (Moses, or Esther during failover)
+2. **The orchestrator's cortex-bus cron** picks it up (Moses, or Esther during failover)
 3. **The orchestrator** validates the request, applies the change via `cronjob()` MCP tool
 4. **The orchestrator** sends reply to the requesting agent via `inbox_send` confirming: ✅ applied or ❌ failed (with reason)
 5. **The orchestrator** CC's Luke on all cron changes for visibility

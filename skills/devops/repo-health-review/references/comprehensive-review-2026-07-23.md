@@ -14,7 +14,7 @@ Used `delegate_task` with 3 parallel subagents:
 ### cortex-update.sh — 14 stale register() entries
 Files registered for deployment that no longer exist on disk:
 - `bus-sensor.py` (2x), `orch-install-bus.sh`, `change-readiness.sh`
-- `inbox-sensor.py`, `inbox-depth-watchdog.sh`, `agent-bus-monitor.sh`
+- `inbox-sensor.py`, `inbox-depth-watchdog.sh`, `cortex-bus-monitor.sh`
 - `inbox_watcher.py`, `mcp-inbox-proxy`
 - `agent-inbox/server.py`, `agent-inbox/com.hermes.agent-inbox.plist`
 - `offline_code_index_cron.sh` (old underscore name)

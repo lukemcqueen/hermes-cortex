@@ -259,7 +259,7 @@ register_orch "ops/scripts/agent/orch-fleet-watchdog.py"   "${CORTEX_DEPLOY_HOME
 
 # Failover watchdog — detect bus outage, per-role behavior. Deployed to ALL
 # agents (workers detect + alert; orchestrators run full failover).
-register "ops/scripts/agent/agent-bus-failover-watchdog.py"  "${CORTEX_DEPLOY_HOME}/scripts/agent-bus-failover-watchdog.py"
+register "ops/scripts/agent/cortex-bus-failover-watchdog.py"  "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-failover-watchdog.py"
 
 # Post-commit notification + installer
 register "ops/scripts/manage/post-commit-notify.sh"          "${CORTEX_DEPLOY_HOME}/scripts/post-commit-notify.sh"
@@ -272,7 +272,7 @@ register "ops/scripts/manage/template-diff-check.py"          "${CORTEX_DEPLOY_H
 register "ops/scripts/manage/orch-skill-evaluate.sh"         "${CORTEX_DEPLOY_HOME}/scripts/orch-skill-evaluate.sh"
 
 # Moses bus remediation
-register "ops/scripts/bus/agent-bus-remediate.sh"  "${CORTEX_DEPLOY_HOME}/scripts/agent-bus-remediate.sh"
+register "ops/scripts/bus/cortex-bus-remediate.sh"  "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-remediate.sh"
 
 # Auto-remediation scripts
 register "ops/scripts/health/cron-auto-remediate.sh"     "${CORTEX_DEPLOY_HOME}/scripts/cron-auto-remediate.sh"
@@ -341,10 +341,10 @@ register_orch "mcp-servers/cortex-bus-mcp.py"               "${CORTEX_DEPLOY_HOM
 
 # Inbox MCP tools
 # Inbox→bus renamed scripts (source files moved to ops/scripts/bus/)
-register "ops/scripts/bus/agent-bus-processor.py"        "${CORTEX_DEPLOY_HOME}/scripts/agent-bus-processor.py"
-register "ops/scripts/bus/agent-bus-remediate.sh"        "${CORTEX_DEPLOY_HOME}/scripts/agent-bus-remediate.sh"
+register "ops/scripts/bus/cortex-bus-processor.py"        "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-processor.py"
+register "ops/scripts/bus/cortex-bus-remediate.sh"        "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-remediate.sh"
 register_orch "ops/scripts/bus/generate-bus-wrappers.py"     "${CORTEX_DEPLOY_HOME}/scripts/generate-bus-wrappers.py"
-register_orch "ops/scripts/install/setup-agent-bus.sh"       "${CORTEX_DEPLOY_HOME}/scripts/setup-agent-bus.sh"
+register_orch "ops/scripts/install/setup-cortex-bus.sh"       "${CORTEX_DEPLOY_HOME}/scripts/setup-cortex-bus.sh"
 
 # Bus monitoring tools (fleet-wide)
 register_orch "ops/scripts/orch-bus/orch-bus-depth-watchdog.sh"  "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-depth-watchdog.sh"
@@ -525,14 +525,14 @@ register "ops/scripts/install/service-writer.sh"          "${CORTEX_DEPLOY_HOME}
 
 restart_cortex_bus() {
   # macOS launchd
-  if launchctl list com.hermes.agent-bus 2>/dev/null | grep -q "PID"; then
+  if launchctl list com.hermes.cortex-bus 2>/dev/null | grep -q "PID"; then
     info "  Restarting Agent Bus (launchd)…"
     # unload+load (not bootout+bootstrap): the Hermes gateway lifecycle guard
     # (cron/lifecycle_guard.py) blocks literal `launchctl bootstrap` inside the
     # gateway process — even for non-gateway services. unload+load reloads the
     # plist with identical semantics and is not in the guard's blocked set.
-    launchctl unload "${HOME}/Library/LaunchAgents/com.hermes.agent-bus.plist" 2>/dev/null || true
-    launchctl load "${HOME}/Library/LaunchAgents/com.hermes.agent-bus.plist" 2>/dev/null || true
+    launchctl unload "${HOME}/Library/LaunchAgents/com.hermes.cortex-bus.plist" 2>/dev/null || true
+    launchctl load "${HOME}/Library/LaunchAgents/com.hermes.cortex-bus.plist" 2>/dev/null || true
     return
   fi
   # Linux systemd
@@ -2271,10 +2271,10 @@ main() {
       # ── Non-orch guard: detect orchestrator-only service components ──
       # Bus server, nginx, systemd services — should not run on non-orch agents
       local _warned=false
-      if systemctl --user is-active agent-bus &>/dev/null 2>&1; then
-        warn "🚫 Bus daemon (agent-bus) running on non-orch agent — uninstall with:"
-        warn "    systemctl --user stop agent-bus"
-        warn "    systemctl --user disable agent-bus"
+      if systemctl --user is-active cortex-bus &>/dev/null 2>&1; then
+        warn "🚫 Bus daemon (cortex-bus) running on non-orch agent — uninstall with:"
+        warn "    systemctl --user stop cortex-bus"
+        warn "    systemctl --user disable cortex-bus"
         _warned=true
       fi
       if pgrep -f cortex_bus.server &>/dev/null 2>&1; then

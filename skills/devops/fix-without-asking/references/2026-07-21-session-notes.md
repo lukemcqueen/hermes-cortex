@@ -35,7 +35,7 @@ sg docker -c 'docker exec gbrain-postgres psql -U gbrain -d gbrain -c "SELECT qu
 
 ### 3. Orchestrator vs Fleet Agent Bus Roles
 
-- **Moses (orchestrator):** handles own inbox directly during sessions. Does NOT run `agent-message-handler` cron. Out-of-session bus processing uses `agent-bus-workday/evening/overnight` LLM crons.
+- **Moses (orchestrator):** handles own inbox directly during sessions. Does NOT run `agent-message-handler` cron. Out-of-session bus processing uses `cortex-bus-workday/evening/overnight` LLM crons.
 - **Fleet agents (Esther, Joseph, Gisu, Kustos, Titus):** run `agent-message-handler.py` every 5 min. The handler processes commands from Moses and sends results back.
 - **Moses does not need a local handler** — the orchestrator is the handler when in session.
 

@@ -1,5 +1,5 @@
 ---
-name: agent-bus-polling
+name: cortex-bus-polling
 description: "Agent Bus polling setup — MCP tools, cron, verification."
 category: devops
 version: 2.0.0
@@ -7,7 +7,7 @@ author: Hermes Cortex
 metadata:
   hermes:
     tags: [bus, polling, mcp, setup]
-    related_skills: [agent-bus, agent-bus-inbox, agent-bus-automation]
+    related_skills: [cortex-bus, cortex-bus-inbox, cortex-bus-automation]
 ---
 
 # Agent Bus Polling Setup
@@ -18,7 +18,7 @@ Set up an agent machine to poll the Agent Bus for inter-agent messages.
 
 Each agent needs:
 
-1. **MCP tools** — `inbox_watch`, `inbox_read`, `inbox_send` via the `agent-bus-inbox` MCP server
+1. **MCP tools** — `inbox_watch`, `inbox_read`, `inbox_send` via the `cortex-bus-inbox` MCP server
 2. **Cron jobs** — LLM-driven processor crons that use the Inbox Message Decision Framework
 
 ## Setup
@@ -42,6 +42,6 @@ inbox_read()
 
 ## References
 
-- `agent-bus` skill — Full bus operations guide
-- `agent-bus-inbox` skill — MCP tool reference
+- `cortex-bus` skill — Full bus operations guide
+- `cortex-bus-inbox` skill — MCP tool reference
 - `cortex-bus.conf` — Connection settings

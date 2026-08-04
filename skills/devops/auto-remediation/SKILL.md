@@ -127,7 +127,7 @@ For each errored job, diagnose the failure:
 | Docker service down | Run `service-recovery.py` manually |
 || gbrain sync error | Restart gbrain autopilot: `launchctl kickstart gui/$(id -u)/com.gbrain.autopilot` |
 || Ollama not running | `launchctl kickstart gui/$(id -u)/com.ollama.serve` |
-|| Agent Bus unreachable / empty responses on :8905 | **Detect:** `systemctl --user is-active cortex-bus.service` (Linux) or `launchctl list com.hermes.agent-bus` (macOS, also try `com.hermes.agent-bus-fallback`) + `curl -s http://localhost:8905/health` → HTTP 200. The `remediation-sensor.py` checks this every 5min on all platforms — trust its output. **Fix:** `systemctl --user restart cortex-bus.service` (Linux) or `launchctl kickstart gui/$(id -u)/com.hermes.agent-bus` (macOS) then re-verify. Check `CORTEX_INBOX_URL` via `echo $CORTEX_INBOX_URL` or `grep 'CORTEX_INBOX_URL' ~/hermes-cortex/.env`. |
+|| Agent Bus unreachable / empty responses on :8905 | **Detect:** `systemctl --user is-active cortex-bus.service` (Linux) or `launchctl list com.hermes.cortex-bus` (macOS, also try `com.hermes.cortex-bus-fallback`) + `curl -s http://localhost:8905/health` → HTTP 200. The `remediation-sensor.py` checks this every 5min on all platforms — trust its output. **Fix:** `systemctl --user restart cortex-bus.service` (Linux) or `launchctl kickstart gui/$(id -u)/com.hermes.cortex-bus` (macOS) then re-verify. Check `CORTEX_INBOX_URL` via `echo $CORTEX_INBOX_URL` or `grep 'CORTEX_INBOX_URL' ~/hermes-cortex/.env`. |
 || nginx config invalid | `nginx -t` to validate; revert recent config changes |
 | Memory pressure | Run `purge` on macOS to free memory cache |
 | Network timeout | Retry the job once; check internet with `ping -c1 google.com` |

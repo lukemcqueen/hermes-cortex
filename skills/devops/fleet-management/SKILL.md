@@ -11,7 +11,7 @@ author: Hermes Cortex
 license: MIT
 platforms: [linux, macos]
 related_skills:
-  - agent-bus
+  - cortex-bus
   - agent-fundamentals
   - agent-health-monitoring
   - fleet-commands
@@ -117,4 +117,4 @@ execute it.
 
 - `references/agent-registry-v4-schema.md` — full field reference for v4 schema
 - `docs/prd/PRD-005-enterprise-integration-v2.md` — PRD defining the 5 concerns
-- `skills/devops/agent-bus/references/agent-registry.md` — bus-specific registry usage
+- `skills/devops/cortex-bus/references/agent-registry.md` — bus-specific registry usage

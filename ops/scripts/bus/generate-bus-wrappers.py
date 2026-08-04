@@ -27,7 +27,7 @@ BUS_WATCH_TEMPLATE = """#!/usr/bin/env bash
 export AGENT_NAME="{agent_name}"
 export AGENT_BUS_URL="{bus_url}"
 export AGENT_BUS_TOKEN="{bus_token}"
-exec ~/.hermes/scripts/agent-bus-monitor.sh "$@"
+exec ~/.hermes/scripts/cortex-bus-monitor.sh "$@"
 """
 
 

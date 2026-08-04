@@ -236,7 +236,7 @@ if command -v hermes &>/dev/null && ! $DRY_RUN; then
         --name "$HANDLER_NAME" \
         --schedule "* * * * *" \
         --prompt "Process pending bus messages for $AGENT: read inbox, handle KILL/EXEC/UPDATE, archive. Report only failures." \
-        --skills "agent-bus" \
+        --skills "cortex-bus" \
         --deliver "local" 2>/dev/null && \
         echo "   ✅ Cron created: $HANDLER_NAME (every minute)" || \
         echo "   ⚠️  Could not create cron (may already exist)"

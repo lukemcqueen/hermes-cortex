@@ -27,7 +27,7 @@ Orchestrator (Moses)              Fleet Agent (Esther, Joseph, Gisu...)
 - EXEC commands waiting 40+ min behind backlog
 - Infinite loop on idempotency skip (FIXED: now archives on skip)
 
-Moses handles its inbox **in-session** (MCP tools + hc CLI) and **out-of-session** (`agent-bus-workday/evening/overnight` LLM crons).
+Moses handles its inbox **in-session** (MCP tools + hc CLI) and **out-of-session** (`cortex-bus-workday/evening/overnight` LLM crons).
 
 ## Telegram notifications
 

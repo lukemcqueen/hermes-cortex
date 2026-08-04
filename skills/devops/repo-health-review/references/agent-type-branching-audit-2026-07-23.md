@@ -20,7 +20,7 @@ Audited `install.sh`, `cortex-update.sh`, and `cortex_doctor/` for proper agent-
 
 ### 2. cortex-update.sh — Only cron install is guarded
 - `IS_ORCHESTRATOR` guard only covers orch cron installation (lines 1412-1438)
-- All `register()` entries for dashboard, agent-bus server, nginx, orch-bus scripts deploy **unconditionally**
+- All `register()` entries for dashboard, cortex-bus server, nginx, orch-bus scripts deploy **unconditionally**
 - `deploy_nginx_configs()` and `deploy_system_scripts()` run unconditionally from `main()`
 - `verify_services()` always checks dashboard/gateway even on non-orch agents
 

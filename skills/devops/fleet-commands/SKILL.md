@@ -8,7 +8,7 @@ author: moses
 metadata:
   hermes:
     tags: [bus, fleet, commands, messaging, hc, pgmq]
-    related_skills: [agent-bus, hermes-cortex-deployment]
+    related_skills: [cortex-bus, hermes-cortex-deployment]
 ---
 
 # Fleet Commands — Agent Commanding via the Bus
@@ -22,7 +22,7 @@ Send structured operational commands from the orchestrator (Moses) to any fleet 
 | Mode | Who | How | Covers |
 |------|-----|-----|--------|
 | **In-session** | Moses (orchestrator) | Directly reads its inbox via MCP tools + `hc` CLI during active sessions. | Skill reports, EXEC_RESULT, health pings, incoming requests. |
-| **Out-of-session** | Moses | `agent-bus-workday/evening/overnight` LLM crons process `inbox_moses` using the Inbox Message Decision Framework. | Same as in-session, but when no user is chatting. |
+| **Out-of-session** | Moses | `cortex-bus-workday/evening/overnight` LLM crons process `inbox_moses` using the Inbox Message Decision Framework. | Same as in-session, but when no user is chatting. |
 | **Fleet handler** | Esther, Joseph, Gisu, Kustos | `agent-message-handler.py` cron (every 5 min, no_agent script) processes their inbox. | UPDATE_REQUEST, EXEC, ROLLBACK_REQUEST, GIT_AUTH_CHECK from orchestrator. |
 
 **Corrected 2026-08-02: Moses DOES run `agent-message-handler.py` on itself** (cron list shows it every 5 min, thousands of runs). It processes `inbox_moses` — `*_RESULT` replies, silent noise subjects (DOCTOR_TEST/STATUS_REQUEST/HEARTBEAT/PING), and any registered data-subjects. **Unknown subjects get ARCHIVED + an error response sent** within minutes of landing. So any NEW inbound message type to `inbox_orchestrator` (fleet agents sending data TO the orchestrator) MUST get a handler branch first, or the payload is destroyed from the live flow. Example: "Skill Stub Recovery" messages (full skill content from agents) were eaten as unknown until the handler was patched to stage them to `state/skill-stub-recovery/` (commit 8a38e486). Design: agents CANNOT write the repo — they send payloads to `inbox_orchestrator`; the handler stages them to a state dir; the orchestrator evaluates/copies later (store-first, evaluate-later).

@@ -1,5 +1,5 @@
 ---
-name: agent-bus
+name: cortex-bus
 version: 1.2.0
 category: devops
 description: "Agent Bus (PGMQ) operations — queue inspection, DLQ management, message recovery, auth, and health diagnostics. Covers the Postgres-backed message queue that replaces the legacy file inbox."
@@ -414,7 +414,7 @@ orchestrator traffic:
 **ACL model:** BOTH buses use the canonical **per-queue array** ACLs
 (`can_read`/`can_write` `TEXT[]` + `is_admin`) in `bus.permissions` — unified
 2026-08-04. The old boolean model (`can_send`/`can_archive`/`can_requeue`,
-`ops/services/agent-bus/server.py`) is **deleted**. If a 403 appears, check
+`ops/services/cortex-bus/server.py`) is **deleted**. If a 403 appears, check
 the agent's `can_write` array, not boolean flags.
 
 ## References

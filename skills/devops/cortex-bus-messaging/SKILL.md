@@ -1,12 +1,12 @@
 ---
-name: agent-bus-messaging
+name: cortex-bus-messaging
 version: 1.2.0
 category: devops
 description: "ORCHESTRATORS ONLY — message the orchestrator via the bus MCP client (inbox_send). Workers use contact-orchestrator.sh (HTTP)."
 metadata:
   hermes:
     tags: [bus, messaging, mcp, agent-communication]
-    related_skills: [agent-bus-inbox, cron-request-protocol, fleet-commands]
+    related_skills: [cortex-bus-inbox, cron-request-protocol, fleet-commands]
 ---
 
 # Agent Bus Messaging — How Orchestrators Talk to Each Other
@@ -14,7 +14,7 @@ metadata:
 > ## ⚠️ ORCHESTRATORS ONLY (Moses, Esther)
 >
 > The `inbox_send` MCP tool described in this skill is available **only on
-> orchestrator hosts**. It is configured via the `agent-bus` MCP server in
+> orchestrator hosts**. It is configured via the `cortex-bus` MCP server in
 > `~/.hermes/config.yaml`, which the doctor enforces as orchestrator-only
 > (`ORCH_ONLY_MCP_SERVERS` — it WARNS if present on a worker host).
 >
@@ -145,7 +145,7 @@ The orchestrator processes the shared `inbox_orchestrator` in two modes:
 | Mode | When | How |
 |------|------|-----|
 | **In-session** | Luke chatting with Moses | Reads during conversation |
-| **Out-of-session** | Between sessions | LLM crons (`agent-bus-*`) process `inbox_moses` + the shared `inbox_orchestrator` |
+| **Out-of-session** | Between sessions | LLM crons (`cortex-bus-*`) process `inbox_moses` + the shared `inbox_orchestrator` |
 
 Moses classifies messages by a decision framework (see SOUL.md §2):
 - **critical/urgent** → auto-acts immediately

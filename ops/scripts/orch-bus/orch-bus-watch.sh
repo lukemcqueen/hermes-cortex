@@ -16,7 +16,7 @@
 #      script=bus-watch.sh no_agent=true deliver=origin
 #
 #  Or as context_source for an LLM cron:
-#    hermes cron create name=agent-bus schedule="0 */2 * * *" \
+#    hermes cron create name=cortex-bus schedule="0 */2 * * *" \
 #      prompt="Process bus messages..." context_from=<job_id>
 #
 #  Auth: Uses ~/.hermes-cortex/cortex-bus.conf if present (BASIC auth).

@@ -46,7 +46,7 @@ or files at `~/.hermes/`. **Never replace these with symlinks to
 | `mcp-venv/` | MCP Python virtualenv | Hermes MCP system |
 | `audio_cache/`, `image_cache/`, `images/` | Media caches | Hermes media caching |
 | Various `.json` cache files | Model/provider caches | Hermes model discovery |
-| `agent-bus.conf`, `cortex-bus.conf` | Agent Bus auth credentials (legacy) | Hermes inbox client auth |
+| `cortex-bus.conf`, `cortex-bus.conf` | Agent Bus auth credentials (legacy) | Hermes inbox client auth |
 | `agent-name` | Agent identity name | Hermes agent identification |
 
 **Also DO NOT touch these in `~/.hermes-cortex/`:**
@@ -110,7 +110,7 @@ transparently — no data is lost.
 ├── sessions/             [REAL]    ├── mcp-servers/      [REAL]
 ├── data/                 [REAL]    ├── evals/            [REAL]
 ├── ... (Hermes runtime)            ├── certs/            [REAL]
-│                                   ├── agent-bus/      [REAL]
+│                                   ├── cortex-bus/      [REAL]
 │                                   ├── bin/              [REAL]
 ├── scripts → .hermes-cortex/       │
 │  .env                  [REAL]     │

@@ -1,20 +1,20 @@
 ---
-name: agent-bus-inbox
-description: "MCP inbox tools for agent-bus messaging."
+name: cortex-bus-inbox
+description: "MCP inbox tools for cortex-bus messaging."
 category: devops
 version: 2.0.0
 author: Hermes Cortex
 metadata:
   hermes:
     tags: [messaging, bus, mcp, inbox]
-    related_skills: [agent-bus, agent-bus-automation]
+    related_skills: [cortex-bus, cortex-bus-automation]
 ---
 
 # Agent Bus Inbox — MCP Tools
 
 > **⚠️ This is the MCP tool interface for the Agent Bus.**
 > The legacy file-based inbox has been replaced by the Agent Bus (PGMQ).
-> All messaging flows through Postgres-backed queues. See the `agent-bus`
+> All messaging flows through Postgres-backed queues. See the `cortex-bus`
 > skill for queue operations, diagnostics, and maintenance.
 
 ## Overview
@@ -38,12 +38,12 @@ The agent bus inbox provides MCP tools for agent-to-agent messaging:
 ## Cron Jobs
 
 Bus processing is handled by three crons:
-- `agent-bus-workday` — M-F 9-5 hourly
-- `agent-bus-evening` — M-F every 2h (18,20,22)
-- `agent-bus-overnight` — M-F 3am
+- `cortex-bus-workday` — M-F 9-5 hourly
+- `cortex-bus-evening` — M-F every 2h (18,20,22)
+- `cortex-bus-overnight` — M-F 3am
 
 ## References
 
-- `agent-bus` skill — Queue operations, diagnostics, DLQ maintenance
-- `agent-bus-automation` — Cron-based processing architecture
+- `cortex-bus` skill — Queue operations, diagnostics, DLQ maintenance
+- `cortex-bus-automation` — Cron-based processing architecture
 - `cortex-bus.conf` — Bus configuration

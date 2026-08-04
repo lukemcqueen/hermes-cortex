@@ -213,7 +213,7 @@ Phase 2 — Evaluation:
 - 2 stale refs: archived for Monday deep eval
 
 Phase 3 — Upgrade:
-- Patched: agent-flow (pitfall section), agent-bus (new step)
+- Patched: agent-flow (pitfall section), cortex-bus (new step)
 - SOUL.md: 1 principle added
 - Upstreamed: 1 new skill from fleet (swap-refresh)
 - Bus: 2 messages archived

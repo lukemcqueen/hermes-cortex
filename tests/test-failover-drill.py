@@ -47,7 +47,7 @@ FAIL = 0
 WARN = 0
 
 HOME = Path.home()
-WATCHDOG_SRC = HOME / "hermes-cortex" / "ops" / "scripts" / "agent" / "agent-bus-failover-watchdog.py"
+WATCHDOG_SRC = HOME / "hermes-cortex" / "ops" / "scripts" / "agent" / "cortex-bus-failover-watchdog.py"
 STATE_DIR = HOME / ".hermes-cortex" / "state"
 STATE_FILE = STATE_DIR / "bus-failover-state.json"
 MARKER_FILE = STATE_DIR / ".failover-active"

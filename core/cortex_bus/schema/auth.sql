@@ -4,7 +4,7 @@
 -- Single schema for BOTH orchestrator buses (Moses :13004 and
 -- Esther :14004). Replaces the divergent boolean model
 -- (can_send/can_read/can_archive/can_requeue) that used to live in
--- the deleted ops/services/agent-bus/schema/auth.sql.
+-- the deleted ops/services/cortex-bus/schema/auth.sql.
 --
 -- ACL model: per-queue arrays.
 --   can_read  TEXT[] — queues this agent may read from

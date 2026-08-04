@@ -58,7 +58,7 @@ Focus on `inbox_orchestrator` pending messages — those are requests from fleet
 - **FIX_REQUEST / FIX_RESULT**: Fleet update round-trips — verify completion, escalate if stalled.
 - **EXEC results**: Command output from fleet agents — correlate with outstanding dispatch.
 
-Do NOT archive inbox messages here — the scan is discovery only. Actual processing happens via agent-bus crons or in-session handling.
+Do NOT archive inbox messages here — the scan is discovery only. Actual processing happens via cortex-bus crons or in-session handling.
 
 ### Step 2: Memory & Session
 

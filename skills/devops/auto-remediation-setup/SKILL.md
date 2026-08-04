@@ -102,7 +102,7 @@ doctor reads expected crons from those arrays.
 | `verify-auto-remediation.sh` fails prereq check | sudo not NOPASSWD | Configure sudoers (`sudoers-audit` skill) |
 | Sensor cron missing from doctor | Not in uninstall array | Add to `install-crons.sh` uninstall array |
 | Fixer can't act | Insufficient permissions | Grant the action in sudoers or adjust scope |
-| Reports not reaching Moses | Bus access broken | Check `agent-bus-messaging` connectivity |
+| Reports not reaching Moses | Bus access broken | Check `cortex-bus-messaging` connectivity |
 
 ## Best Practices
 

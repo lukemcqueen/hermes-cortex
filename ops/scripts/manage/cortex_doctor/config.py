@@ -114,14 +114,14 @@ try:
 except (FileNotFoundError, OSError, IndexError):
     pass  # expected — silently handled
 EXPECTED_MCP_SERVERS = {
-    "agent-bus": "cortex-bus-mcp.py",
+    "cortex-bus": "cortex-bus-mcp.py",
     "loop-governance": "loop-gov-mcp.py",
 }
 
 # MCP servers deployed only on orchestrator hosts (register_orch in
 # cortex-update.sh). The doctor must not FAIL non-orchestrator hosts for
 # missing these, and must not auto-add them via --fix.
-ORCH_ONLY_MCP_SERVERS = {"agent-bus"}
+ORCH_ONLY_MCP_SERVERS = {"cortex-bus"}
 
 # ── External services ───────────────────────────────────────────
 EXTERNAL_SERVICES = [
@@ -191,7 +191,7 @@ def parse_orch_crons():
     Source = create_cron calls, NOT the uninstall array. The uninstall array
     (``for job in \\`` block) tracks names for cleanup — including legacy
     crons with no create_cron entry — so it must never be used as the
-    expected-cron source. (Found 2026-08-03: agent-bus-failover-watchdog was
+    expected-cron source. (Found 2026-08-03: cortex-bus-failover-watchdog was
     registered in BOTH install-crons.sh (universal) and the orch uninstall
     array, so workers — who exclude 'orch crons' — never saw it as expected
     and the doctor flagged it orphan/extra on every worker host.)

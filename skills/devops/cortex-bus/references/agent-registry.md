@@ -54,7 +54,7 @@ Plus `observability` and `service_layer` (from `docs/agent-architecture.md`).
       "health_method": "http | inbox",
       "health_url": "https://...",
       "description": "Free-text",
-      "inbox_user": "agent-bus-username",
+      "inbox_user": "cortex-bus-username",
       "inbox_watch_schedule": "every 10m",
       "inbox_deliver": "local",
 

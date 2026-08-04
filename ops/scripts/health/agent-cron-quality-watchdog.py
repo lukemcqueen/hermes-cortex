@@ -12,7 +12,7 @@ every LLM-driven (no_agent=False) cron job for quality issues:
   - Repetitive content -> gibberish
   - Session-guard skip contract: guard said ACTIVE but the reply was not
     the mandated skip token (2026-08-04 regression: agent-inbox-workday
-    delivered "participacao" and agent-bus-workday delivered "todavia |
+    delivered "participacao" and cortex-bus-workday delivered "todavia |
     participacao | postfix" instead of the skip token after a model stall)
 
 Output directories are keyed by JOB ID (not name) — resolved via jobs.json.

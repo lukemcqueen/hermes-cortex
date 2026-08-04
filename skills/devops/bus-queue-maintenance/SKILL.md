@@ -1,6 +1,6 @@
 ---
 name: bus-queue-maintenance
-description: "Bus queue lifecycle — inspecting stuck messages, archiving orphaned messages, navigating state constraints, and performing routine queue cleanup. Complements agent-bus for the hands-on maintenance side."
+description: "Bus queue lifecycle — inspecting stuck messages, archiving orphaned messages, navigating state constraints, and performing routine queue cleanup. Complements cortex-bus for the hands-on maintenance side."
 version: 1.0.0
 category: devops
 author: Hermes Cortex
@@ -203,5 +203,5 @@ Expected: 0 rows = clean.
 
 ## References
 
-- The `agent-bus` skill covers broader bus diagnostics (DLQ inspection, recovery auth).
+- The `cortex-bus` skill covers broader bus diagnostics (DLQ inspection, recovery auth).
   This skill focuses specifically on queue lifecycle maintenance.

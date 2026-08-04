@@ -71,9 +71,9 @@
 | `agent-swap-refresh` | `0 5 * * *` | no_agent | `agent-swap-refresh.py` | origin |
 | `agent-agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agent-agents-md-prune-scan.py` | local |
 | `agent-agents-md-prune-apply` | `30 4 * * 1-6` | LLM | (prompt) | origin |
-| `agent-bus-workday` | `0 9-17 * * 1-5` | LLM | session-active-guard.py | origin |
-| `agent-bus-evening` | `0 18,20,22 * * 1-5` | LLM | (prompt) | origin |
-| `agent-bus-overnight` | `0 3 * * 1-5` | LLM | (prompt) | origin |
+| `cortex-bus-workday` | `0 9-17 * * 1-5` | LLM | session-active-guard.py | origin |
+| `cortex-bus-evening` | `0 18,20,22 * * 1-5` | LLM | (prompt) | origin |
+| `cortex-bus-overnight` | `0 3 * * 1-5` | LLM | (prompt) | origin |
 | `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin |
 | `agent-daily-soul-refinement` | ~~`0 23 * * *`~~ | ~~LLM~~ | ~~soul-refinement skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level daily soul refinement merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-daily-soul-refinement`. |
 | `agent-weekly-loop-eval` | ~~`0 9 * * 1`~~ | ~~LLM~~ | ~~loop-governance skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level weekly loop eval merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-weekly-loop-eval`. |
@@ -81,7 +81,7 @@
 | `agent-inbox-workday` | `0 9-17 * * 1-5` | LLM | session-active-guard.py | origin |
 | `agent-inbox-evening` | `0 18,20,22 * * 1-5` | LLM | (prompt) | origin |
 | `agent-inbox-overnight` | `0 3 * * 1-5` | LLM | (prompt) | origin |
-| `agent-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `agent-bus-failover-watchdog.py` | Telegram |
+| `cortex-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `cortex-bus-failover-watchdog.py` | Telegram |
 | `agent-push-metrics` | `every 5m` | no_agent | `agent-push-metrics.sh` | local |
 | `agent-session-correction-scan` | `0 22 * * 0` | no_agent | `manage/agent-session-correction-scan.py` | local |
 | `agent-mycortex-retention` | `0 6 * * *` | no_agent | `agent-mycortex-retention.py` | origin |

@@ -61,7 +61,7 @@ no_agent crons use Path A — `_read_config()` reads `CORTEX_BASIC_AUTH` from `c
 
 | Consumer | Freq | Handles | Where configured |
 |----------|------|---------|-----------------|
-| LLM cron (`agent-bus-*`) | 10-60 min | **All** message types | Moses (3 crons: workday/evening/overnight) |
+| LLM cron (`cortex-bus-*`) | 10-60 min | **All** message types | Moses (3 crons: workday/evening/overnight) |
 | agent-worker service | ~30s | Only `workflow_step` type | May be on any agent |
 | MCP tools (`inbox_read`) | On-demand | Any | All agents, but requires a session |
 

@@ -78,7 +78,7 @@ Runs as `no_agent=True` cron on schedule `*/10 * * * *`. Delivers to origin.
 - **Session-guard skip contract**: if the injected script output says `ACTIVE (`
   and the reply is not the skip token (`skipped` + `interactive session`), it is
   flagged 🟠. This caught the 2026-08-04 regression where `agent-inbox-workday`
-  delivered `participação` and `agent-bus-workday` delivered
+  delivered `participação` and `cortex-bus-workday` delivered
   `todavía | participação | postfix` after a model stall instead of skipping.
 
 ### What it checks

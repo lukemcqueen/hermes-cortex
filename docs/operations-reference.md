@@ -50,7 +50,7 @@ The confusion is that "agent inbox" sounds like one thing. It's two (and was for
 MOSES / ESTHER (bus servers)     ORCHESTRATORS ONLY (MCP client)        WORKERS (HTTP path)
 ─────────────────────────────      ─────────────────────────────────────  ───────────────────────────
 Hermes gateway (:8905)         ~/.hermes/config.yaml                  ~/.hermes-cortex/cortex-bus.conf
- ↳ built-in Agent Bus API        ↳ mcp_servers.agent-bus               ↳ CORTEX_BUS_URL + CORTEX_BASIC_AUTH
+ ↳ built-in Agent Bus API        ↳ mcp_servers.cortex-bus               ↳ CORTEX_BUS_URL + CORTEX_BASIC_AUTH
  ↳ stores messages (PGMQ)        ↳ runs cortex-bus-mcp.py as subprocess  ↳ contact-orchestrator.sh / lib.cortex_bus.bus_send
                      ↳ reads ~/hermes-cortex/.env
 nginx proxy (:13004 / :14004)       ↳ calls remote Agent Bus via HTTP
@@ -152,7 +152,7 @@ If you are Gisu, Joseph, Kustos, or Titus (worker):
 cd ~/hermes-cortex && git pull
 
 # 2. Ensure MCP client is in config.yaml
-grep -A4 "agent-bus" ~/.hermes/config.yaml
+grep -A4 "cortex-bus" ~/.hermes/config.yaml
 # Should show: command: python3, args: [cortex-bus-mcp.py], enabled: true
 
 # 3. Create credentials file — YOUR OWN credentials
@@ -171,7 +171,7 @@ curl -s -u "your_username:your_password" \
  https://your-domain.com:13004/api/pgmq/queues
 ```
 
-**Workers (Gisu, Joseph, Kustos, Titus):** Do NOT add an `agent-bus` entry to
+**Workers (Gisu, Joseph, Kustos, Titus):** Do NOT add an `cortex-bus` entry to
 `config.yaml` — the MCP client is orchestrator-only. Your bus access is the
 HTTP client (`~/.hermes-cortex/cortex-bus.conf` + `contact-orchestrator.sh`), which
 the installer sets up. Verify it with:

@@ -64,7 +64,7 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 | **Health** | `orch-fleet-watchdog`, `system-alert-watchdog`, `model-health-watchdog`, `bus-health-check` | Every 5-30 min health checks across all agents |
 | **Recovery** | `service-recovery`, `agent-apply-fixes`, `remediation-sensor` | Auto-restart crashed services, apply fixes |
 | **Governance** | `governance-auditor`, `scoring-activity-watchdog` | Score tracking, lock cleanup, audit trails |
-| **Messaging** | `agent-bus-workday/evening/overnight` | Process agent-bus messages on schedule |
+| **Messaging** | `cortex-bus-workday/evening/overnight` | Process cortex-bus messages on schedule |
 | **Sync** | `hermes-cortex-sync`, `memory-to-brain-sync`, `agent-mycortex-sync` | Pull updates, persist memory, sync knowledge brain (every 15 min) |
 | **Security** | `threat-pipeline`, `agent-ip-submission` | Block threats, report IPs |
 | **Maintenance** | `memory-pruning`, `session-cache-build`, `orch-skill-lifecycle` | Weekly consolidation, daily skill lifecycle pipeline |
@@ -119,7 +119,7 @@ integration from operations:
 |-------|-----------|---------|----------|
 | **Cortex Core** | `core/` | Schemas, governance, identity | Canonical type definitions, loop governance engine, agent identity contracts — zero runtime dependency |
 | **Cortex Runtime** | `mcp-servers/`, `plugins/` | Hermes Agent bridge | MCP servers (`mcp-servers/`), governance enforcer plugin (`plugins/governance-enforcer/`) |
-| **Cortex Ops** | `ops/` | Fleet operations | Installers (`ops/install/`), health scripts (`ops/scripts/health/`), watchdogs, offline stack, dashboard, agent-bus, web cache, cron infrastructure |
+| **Cortex Ops** | `ops/` | Fleet operations | Installers (`ops/install/`), health scripts (`ops/scripts/health/`), watchdogs, offline stack, dashboard, cortex-bus, web cache, cron infrastructure |
 
 The boundary is directional: **Core ← Runtime ← Ops**. Core knows nothing about
 Hermes Agent. Runtime translates Core contracts into Hermes-compatible hooks and

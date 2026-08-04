@@ -112,4 +112,4 @@ If the gateway is connected but messages don't reach the user:
 ## Related
 - `hermes-agent` — general Hermes configuration
 - `telegram-delivery-diagnostics` — Telegram-specific delivery debugging
-- `agent-bus-messaging` — inter-agent messaging (separate from the user gateway)
+- `cortex-bus-messaging` — inter-agent messaging (separate from the user gateway)

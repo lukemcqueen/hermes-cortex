@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""agent-bus-failover-watchdog.py — detect bus failover, per-role behavior.
+"""cortex-bus-failover-watchdog.py — detect bus failover, per-role behavior.
 
 Deployed to EVERY agent (orchestrators and workers). Role is detected from
 the host (same rule as the doctor): home dir / hostname moses|esther →

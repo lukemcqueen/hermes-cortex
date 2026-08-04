@@ -37,13 +37,13 @@
       "top3": [
         "docs/bus-architecture",
         "skills/devops/cross-agent-design/references/fleet-bus-architecture",
-        "skills/devops/agent-bus/skill"
+        "skills/devops/cortex-bus/skill"
       ],
       "top10": [
         "docs/bus-architecture",
         "skills/devops/cross-agent-design/references/fleet-bus-architecture",
-        "skills/devops/agent-bus/skill",
-        "skills/devops/agent-bus-automation/skill",
+        "skills/devops/cortex-bus/skill",
+        "skills/devops/cortex-bus-automation/skill",
         "docs/troubleshooting-stale-inbox-api",
         "docs/docs-index",
         "docs/orch-backup-bus-setup",
@@ -186,9 +186,9 @@
         "docs/prd/prd-006-adversarial-verifier",
         "runtime/skills/software-development/engineering-approach/references/acme-docker-infrastructure-conventions",
         "skills/devops/fleet-commands/skill",
-        "skills/devops/agent-bus-messaging/skill",
+        "skills/devops/cortex-bus-messaging/skill",
         "docs/pre-commit-scoring",
-        "skills/devops/agent-bus/skill"
+        "skills/devops/cortex-bus/skill"
       ]
     },
     "HC-010": {

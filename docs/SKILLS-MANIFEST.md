@@ -118,11 +118,11 @@ their domain.
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `admin-cli-tools` | 1.0.0 | Patterns and architecture for admin-level CLI tools that use direct DB access, not agent-level API auth. | `skill_view(name='admin-cli-tools')` |
-| `agent-bus` | 1.2.0 | Agent Bus (PGMQ) operations — queue inspection, DLQ management, message recovery, auth, and health diagnost... | `skill_view(name='agent-bus')` |
-| `agent-bus-automation` | 2.0.0 | Automated Agent Bus processing via MCP. | `skill_view(name='agent-bus-automation')` |
-| `agent-bus-inbox` | 2.0.0 | MCP inbox tools for agent-bus messaging. | `skill_view(name='agent-bus-inbox')` |
-| `agent-bus-messaging` | 1.2.0 | ORCHESTRATORS ONLY — message the orchestrator via the bus MCP client (inbox_send). Workers use contact-orch... | `skill_view(name='agent-bus-messaging')` |
-| `agent-bus-polling` | 2.0.0 | Agent Bus polling setup — MCP tools, cron, verification. | `skill_view(name='agent-bus-polling')` |
+| `cortex-bus` | 1.2.0 | Agent Bus (PGMQ) operations — queue inspection, DLQ management, message recovery, auth, and health diagnost... | `skill_view(name='cortex-bus')` |
+| `cortex-bus-automation` | 2.0.0 | Automated Agent Bus processing via MCP. | `skill_view(name='cortex-bus-automation')` |
+| `cortex-bus-inbox` | 2.0.0 | MCP inbox tools for cortex-bus messaging. | `skill_view(name='cortex-bus-inbox')` |
+| `cortex-bus-messaging` | 1.2.0 | ORCHESTRATORS ONLY — message the orchestrator via the bus MCP client (inbox_send). Workers use contact-orch... | `skill_view(name='cortex-bus-messaging')` |
+| `cortex-bus-polling` | 2.0.0 | Agent Bus polling setup — MCP tools, cron, verification. | `skill_view(name='cortex-bus-polling')` |
 | `agent-collector-troubleshoot` | 1.0.0 | Use when collectors can't send. Diagnoses bus, paths, crons. | `skill_view(name='agent-collector-troubleshoot')` |
 | `agent-fundamentals` | 1.0.0 | Universal 'basic things every agent should know' — distilled from real frustration patterns across 10+ sess... | `skill_view(name='agent-fundamentals')` |
 | `agent-health-monitoring` | 3.5.0 | Cross-server agent health monitoring using binary status vectors — deploy health endpoints on each agent, p... | `skill_view(name='agent-health-monitoring')` |

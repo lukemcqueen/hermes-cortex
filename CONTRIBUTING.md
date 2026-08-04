@@ -20,7 +20,7 @@
 - **Canonical skills** in `skills/` — organized by domain
 - **Documentation** in `docs/` — guides, templates, troubleshooting
 - **Deployment configs** in `deploy/` — nginx, Docker, patches
-- **Service/agent infra** in `ops/services/` (agent-bus, dashboard) and `mcp-servers/` (cortex-bus-mcp, loop-governance)
+- **Service/agent infra** in `ops/services/` (cortex-bus, dashboard) and `mcp-servers/` (cortex-bus-mcp, loop-governance)
 
 When you make an improvement here, every agent running `cortex-update.sh` gets it
 on their next pull. This is the force multiplier.

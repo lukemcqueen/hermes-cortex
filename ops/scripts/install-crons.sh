@@ -160,7 +160,7 @@ create_cron() {
     if ! $FORCE; then
       # Drift detection: check if existing cron's script OR skill differs from desired.
       # Script-only checks miss skill renames on LLM crons (empty script) — e.g. the
-      # agent-inbox → agent-bus-* rename (2026-07-27) left deployed jobs referencing
+      # agent-inbox → cortex-bus-* rename (2026-07-27) left deployed jobs referencing
       # non-existent skills, silently skipped by the scheduler every fire. Compare both.
       local _drift=false
       if { [[ -n "$script" || -n "$skill" ]] && [[ -f "$CRON_JOBS_FILE" ]]; } && command -v python3 &>/dev/null; then
@@ -466,9 +466,9 @@ if $UNINSTALL; then
     "agent-agents-md-prune-scan" \
     "agent-apply-fixes" \
     "agent-auto-save-sessions" \
-    "agent-bus-evening" \
-    "agent-bus-overnight" \
-    "agent-bus-workday" \
+    "cortex-bus-evening" \
+    "cortex-bus-overnight" \
+    "cortex-bus-workday" \
     "agent-cron-quality-watchdog" \
     "agent-daily-bible-reading" \
     "agent-fixer-evening" \
@@ -487,7 +487,7 @@ if $UNINSTALL; then
     "agent-llm-judge-scorer-weekend" \
     "agent-memory-pruning" \
     "agent-memory-to-brain-sync" \
-    "agent-bus-failover-watchdog" \
+    "cortex-bus-failover-watchdog" \
     "agent-message-handler" \
     "agent-mycortex-sync" \
     "agent-mycortex-retention" \
@@ -693,8 +693,8 @@ create_cron "agent-message-handler" "*/5 * * * *" \
 # when both buses down, recovery report. Workers: detect + alert only —
 # never swap config. Orchestrators get the full failover version via
 # install-orch-crons.sh (same script, role-detected).
-create_cron "agent-bus-failover-watchdog" "*/5 * * * *" \
-  "agent-bus-failover-watchdog.py" \
+create_cron "cortex-bus-failover-watchdog" "*/5 * * * *" \
+  "cortex-bus-failover-watchdog.py" \
   "" \
   "" \
   "" \
@@ -703,7 +703,7 @@ create_cron "agent-bus-failover-watchdog" "*/5 * * * *" \
   "true"
 
 # Bus processing — weekday (hourly M-F 9-5), evening (every 2h M-F 6-10), overnight (3am M-F)
-create_cron "agent-bus-workday" "0 9-17 * * 1-5" \
+create_cron "cortex-bus-workday" "0 9-17 * * 1-5" \
   "session-active-guard.py" \
   "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: ⏭️ skipped — interactive session active. Proceed only when the guard says IDLE.
 
@@ -716,14 +716,14 @@ Process the Agent Bus using the Inbox Message Decision Framework. The bus-flag s
 4. Is it in English and in the correct format?
 If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
 If all YES → deliver as normal." \
-  "agent-bus-automation" \
+  "cortex-bus-automation" \
   "terminal" \
   "origin" \
   "" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-create_cron "agent-bus-evening" "0 18,20,22 * * 1-5" \
+create_cron "cortex-bus-evening" "0 18,20,22 * * 1-5" \
   "" \
   "Process the Agent Bus messages. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean.
 
@@ -734,14 +734,14 @@ create_cron "agent-bus-evening" "0 18,20,22 * * 1-5" \
 4. Is it in English and in the correct format?
 If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
 If all YES → deliver as normal." \
-  "agent-bus-automation" \
+  "cortex-bus-automation" \
   "terminal" \
   "origin" \
   "" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-create_cron "agent-bus-overnight" "0 3 * * 1-5" \
+create_cron "cortex-bus-overnight" "0 3 * * 1-5" \
   "" \
   "Process the Agent Bus overnight. The bus-flag sensor output is injected as context. Check for any urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean.
 
@@ -752,7 +752,7 @@ create_cron "agent-bus-overnight" "0 3 * * 1-5" \
 4. Is it in English and in the correct format?
 If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
 If all YES → deliver as normal." \
-  "agent-bus-automation" \
+  "cortex-bus-automation" \
   "terminal" \
   "origin" \
   "" \
@@ -776,7 +776,7 @@ Process pending inbox messages using the Inbox Message Decision Framework. Read 
 4. Is it in English and in the correct format?
 If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
 If all YES → deliver as normal." \
-  "agent-bus-automation" \
+  "cortex-bus-automation" \
   "terminal" \
   "origin" \
   "" \
@@ -794,7 +794,7 @@ create_cron "agent-inbox-evening" "0 18,20,22 * * 1-5" \
 4. Is it in English and in the correct format?
 If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
 If all YES → deliver as normal." \
-  "agent-bus-automation" \
+  "cortex-bus-automation" \
   "terminal" \
   "origin" \
   "" \
@@ -812,7 +812,7 @@ create_cron "agent-inbox-overnight" "0 3 * * 1-5" \
 4. Is it in English and in the correct format?
 If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
 If all YES → deliver as normal." \
-  "agent-bus-automation" \
+  "cortex-bus-automation" \
   "terminal" \
   "origin" \
   "" \

@@ -213,8 +213,8 @@ of input tokens per run.
 
 | Cron type | Best skill(s) | Best toolsets |
 |-----------|---------------|---------------|
-| `agent-bus-*` | `agent-bus-automation` | `terminal` |
-| `agent-inbox-*` | `agent-bus-automation` | `terminal` |
+| `cortex-bus-*` | `cortex-bus-automation` | `terminal` |
+| `agent-inbox-*` | `cortex-bus-automation` | `terminal` |
 | `agent-fixer-*` | `auto-remediation` | `terminal, file, web` |
 | `orch-skill-lifecycle` | `orch-skill-lifecycle` | `terminal, file, web` |
 | `orch-skill-evaluate` | `skill-vetting` | `terminal, file` |
@@ -236,10 +236,10 @@ cronjob action='update' \
 
 Then patch the source in `install-crons.sh` or `install-orch-crons.sh`:
 ```
-create_cron "agent-bus-workday" "0 9-17 * * 1-5" \
+create_cron "cortex-bus-workday" "0 9-17 * * 1-5" \
   "" \
   "<prompt>" \
-  "agent-bus-automation"  ← $5 = skill name
+  "cortex-bus-automation"  ← $5 = skill name
   "terminal"     ← $6 = toolsets (doc only — set via API)
   "origin" ...
 ```
@@ -322,5 +322,5 @@ When explicitly directed to add a cron to another Hermes profile (e.g. Esther):
       print('GUARD: BLOCKED')"
   ```
   The guard reads the **deployed** copy (`~/.hermes-cortex/scripts/`) — fix the repo source, deploy via cortex-update, THEN re-test (a repo-only fix still blocks until deployed).
-- **macOS service restart: `launchctl unload`+`load` beats `bootout`+`bootstrap` inside the gateway.** The same guard blocks literal `launchctl bootstrap` text in ANY script executed inside the gateway process (`_HERMES_GATEWAY=1`) — even for non-gateway services like the agent-bus plist. Replace `launchctl bootout`+`bootstrap` with `launchctl unload`+`load` — same reload semantics, verified not in the guard's blocked set (`contains_gateway_lifecycle_command` + `contains_launchctl_submit_command` both return False).
+- **macOS service restart: `launchctl unload`+`load` beats `bootout`+`bootstrap` inside the gateway.** The same guard blocks literal `launchctl bootstrap` text in ANY script executed inside the gateway process (`_HERMES_GATEWAY=1`) — even for non-gateway services like the cortex-bus plist. Replace `launchctl bootout`+`bootstrap` with `launchctl unload`+`load` — same reload semantics, verified not in the guard's blocked set (`contains_gateway_lifecycle_command` + `contains_launchctl_submit_command` both return False).
 - **`Cron job '<name>' idle for Ns (limit 600s)` = the LLM cron inactivity timeout, NOT a transient provider blip (2026-08-04).** The scheduler kills an LLM-driven job when the agent shows no activity for the configured budget (no tool calls, no API call, no stream delta) — classically a hung non-streaming API response. The limit is **not per-job**: it is the gateway-process env var `HERMES_CRON_TIMEOUT` (default 600s; `0` = unlimited; **no config.yaml key, no per-job field in jobs.json**). Diagnosis: `tr '\0' '\n' < /proc/<gateway-pid>/environ | grep HERMES_CRON_TIMEOUT` — empty means the 600s upstream default is active. Fleet fix = `install-gateway-cron-timeout.sh` (fleet default 300s; systemd drop-in on Linux, `~/.hermes/.env` append on macOS), which activates on the next gateway restart (`hermes update` or operator restart). **Do NOT "fix" this by re-running the cron to refresh the doctor status** — that treats the symptom. If a job times out repeatedly, tune the timeout, then re-run via `cronjob action='run'` to refresh `last_status` (manual script runs don't update it). ⚠️ The installer deliberately contains **no restart command**: the gateway lifecycle guard scans cron scripts AND every script they reference, so a restart command inside a cortex-update.sh-referenced script would block the sync cron (`agent-hermes-cortex-sync`). **Agents also cannot self-restart the gateway interactively** — the enforcer blocks any terminal command (or referenced script) containing a gateway restart/stop even with a governance lock (verified 2026-08-04: `nohup setsid` detached script blocked with "Run hermes gateway restart from a separate shell"). **The daily `agent-hermes-update` cron is NOT a reliable activation path** — it wraps `hermes update -y` in `timeout 30` (often skips) and only restarts the gateway when a new version installs. The only reliable activation is an **operator shell**: `systemctl --user restart hermes-gateway.service`.

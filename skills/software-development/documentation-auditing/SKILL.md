@@ -104,7 +104,7 @@ Some docs reference files by name without a full path — these could be missing
 
 ```
 # In docs
-(see agent-bus-nginx.conf)
+(see cortex-bus-nginx.conf)
 ```
 
 Search for the file at every plausible location:

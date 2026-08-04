@@ -37,7 +37,7 @@ Three purge paths deleted ANY `.governance-*.json` that failed `json.loads`:
 
 `_write_lock()` wrote NON-atomically (`path.write_text(json.dumps(...))`). A concurrent
 purge scan (triggered by ANY session's write check — e.g. a long-lived LLM cron like
-`agent-bus-workday` auto-acquiring locks every hour) read the file mid-write → partial
+`cortex-bus-workday` auto-acquiring locks every hour) read the file mid-write → partial
 JSON → `JSONDecodeError` → `unlink()` → fresh lock deleted. No cron/interactive
 differentiation existed.
 

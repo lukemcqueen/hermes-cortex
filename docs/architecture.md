@@ -66,7 +66,7 @@ The repository is organized into three distinct layers, each with a well-defined
 │                                                                │
 │  ops/install/        — install.sh, deploy/, nginx configs      │
 │  ops/scripts/        — Health, inbox, archive, agent scripts   │
-│  ops/services/       — Dashboard, agent-inbox, agent-bus, A2A  │
+│  ops/services/       — Dashboard, agent-inbox, cortex-bus, A2A  │
 │  ops/offline/        — Kiwix, code corpus, offline reader      │
 │  ops/web-cache/      — SQLite-vec semantic cache               │
 └────────────────────────────────────────────────────────────────┘

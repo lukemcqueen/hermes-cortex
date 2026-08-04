@@ -158,7 +158,7 @@ When the user says "fix this" or "address the issues," identify whether you're t
 >
 > **User's correction:** "You have to actually address the issues. The bus and all messages are your responsibility."
 >
-> **Root cause:** Moses shouldn't run `agent-message-handler` at all. Orchestrator handles inbox in-session (tools) and out-of-session (`agent-bus-*` LLM crons). Handler is for fleet agents.
+> **Root cause:** Moses shouldn't run `agent-message-handler` at all. Orchestrator handles inbox in-session (tools) and out-of-session (`cortex-bus-*` LLM crons). Handler is for fleet agents.
 >
 > **True fix:** Remove handler cron from orchestrator.
 

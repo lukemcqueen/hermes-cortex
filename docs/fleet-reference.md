@@ -93,7 +93,7 @@ These run on every agent in the fleet. Created by `install-crons.sh`.
 | `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local (runs only where IS_SERVER=true) |
 | `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin |
 | `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local |
-| `agent-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `agent-bus-failover-watchdog.py` | Telegram |
+| `cortex-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `cortex-bus-failover-watchdog.py` | Telegram |
 | `agent-service-recovery` | `*/5 * * * *` | no_agent | `agent-service-recovery.py` | origin |
 | `agent-system-alert-watchdog` | `*/30 * * * *` | no_agent | `agent-system-alert-watchdog.py` | origin |
 | `agent-hermes-update` | `23 22 * * *` | no_agent | `agent-hermes-update.sh` | local |
@@ -137,9 +137,9 @@ These run on this machine but use `agent-*` naming. Not in repo installers (inte
 
 | Name | Schedule | Type | Deliver |
 |------|----------|------|---------|
-| `agent-bus-workday` | `0 9-17 * * 1-5` | LLM | origin |
-| `agent-bus-evening` | `0 18,20,22 * * 1-5` | LLM | origin |
-| `agent-bus-overnight` | `0 3 * * 1-5` | LLM | origin |
+| `cortex-bus-workday` | `0 9-17 * * 1-5` | LLM | origin |
+| `cortex-bus-evening` | `0 18,20,22 * * 1-5` | LLM | origin |
+| `cortex-bus-overnight` | `0 3 * * 1-5` | LLM | origin |
 | `upwork-job-scanner` | `0 8 * * *` | LLM | Telegram |
 
 ### Other crons — 8 crons

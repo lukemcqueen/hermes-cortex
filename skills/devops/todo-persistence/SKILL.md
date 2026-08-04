@@ -12,7 +12,7 @@ platforms: [linux]
 metadata:
   hermes:
     tags: [todo, persistence, session, bus, postgres, protocol]
-    related_skills: [session-manager, agent-fundamentals, task-start, agent-bus]
+    related_skills: [session-manager, agent-fundamentals, task-start, cortex-bus]
 ---
 
 # Todo Persistence — Cross-Session Task Tracking

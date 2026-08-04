@@ -39,7 +39,7 @@ Messages the agent sent or already read are excluded.
 The file-based `agent-inbox-private` (legacy, removed) repo is no longer used. New agents should use the Agent Bus (PGMQ) instead:
 - MCP tools: `inbox_send`, `inbox_read`, `inbox_watch`, `inbox_send_task`
 - Backend: Postgres via gbrain database
-- Setup: see `agent-bus` skill
+- Setup: see `cortex-bus` skill
 
 ## Storage (Legacy — File-Based)
 
@@ -96,4 +96,4 @@ This flow describes the old file-based inbox. The current system uses the Agent 
 4. **Thread replies** — reply messages inherit parent's `to` and `cc` from
    the thread metadata, not the parent message body.
 
-> **The file-based inbox is legacy.** Current agent-to-agent messaging uses the Agent Bus (PGMQ). See `agent-bus` skill for the active system.
+> **The file-based inbox is legacy.** Current agent-to-agent messaging uses the Agent Bus (PGMQ). See `cortex-bus` skill for the active system.

@@ -53,10 +53,10 @@ def generate_wrapper(agent_name, agent_data, dry_run=False):
     if not user:
         return None
 
-    wrapper_path = SCRIPTS_DIR / f"agent-bus-{agent_name}.sh"
+    wrapper_path = SCRIPTS_DIR / f"cortex-bus-{agent_name}.sh"
     wrapper_content = f"""#!/bin/bash
 # Auto-generated from agent-registry.json
-CONFIG="${{HOME}}/.hermes/agent-bus-{agent_name}.conf" exec "${{HOME}}/.hermes-cortex/scripts/bus-watch.sh"
+CONFIG="${{HOME}}/.hermes/cortex-bus-{agent_name}.conf" exec "${{HOME}}/.hermes-cortex/scripts/bus-watch.sh"
 """
     if dry_run:
         print(f"[DRY RUN] Would create: {wrapper_path}")
@@ -74,7 +74,7 @@ def create_cron(agent_name, agent_data, dry_run=False):
     if not schedule or not deliver:
         return None
 
-    wrapper_script = f"agent-bus-{agent_name}.sh"
+    wrapper_script = f"cortex-bus-{agent_name}.sh"
 
     if dry_run:
         print(f"[DRY RUN] Would create cron: inbox-{agent_name}")
@@ -170,7 +170,7 @@ def main():
     print()
     print("Done. To add a new agent:")
     print("  1. Add entry to ~/.hermes-cortex/state/agent-registry.json")
-    print("  2. Create config: ~/.hermes/agent-bus-<agent>.conf")
+    print("  2. Create config: ~/.hermes/cortex-bus-<agent>.conf")
     print("  3. Run: python3 generate-bus-wrappers.py --apply-crons")
     print()
     print("Note: The Agent Bus is now MCP-only. Agents use inbox_send/inbox_read/inbox_watch tools.")

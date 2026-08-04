@@ -36,7 +36,7 @@ Non-orchestrator agents must have ZERO direct update/unlock capability.
   lack — the NOPASSWD hermes-plugin-lock entry IS the whole unlock surface on Linux.
 - **macOS**: `chflags uchg` needs no root (user owns the files) — enforcement is weaker
   by design; script-level gating (`_require_sanctioned_caller`) is the only lever there.
-- **Long-lived LLM crons** (`agent-bus-workday` style) auto-acquire governance locks via
+- **Long-lived LLM crons** (`cortex-bus-workday` style) auto-acquire governance locks via
   the loop-gov MCP and can trigger purge loops; see `lock-lifecycle-race.md`.
 
 ## Sanctioned-caller gate design (draft under party review)

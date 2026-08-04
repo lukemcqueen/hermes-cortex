@@ -9,11 +9,11 @@ description: >-
 version: 1.0.0
 category: devops
 author: Hermes Cortex
-created_from_session: agent-bus-architecture-survey
+created_from_session: cortex-bus-architecture-survey
 related_skills:
   - survey-before-action
   - cortex-preflight
-  - agent-bus
+  - cortex-bus
   - agent-contract
   - session-start-discipline
 ---
@@ -108,12 +108,12 @@ A message in an agent's inbox is only processed if the agent has a consumer:
 
 | Consumer type | Reads every | Handles | Configured on |
 |--------------|-------------|---------|---------------|
-| LLM-driven cron | 10-60 min | All message types | Moses (agent-bus-workday/evening/overnight) |
+| LLM-driven cron | 10-60 min | All message types | Moses (cortex-bus-workday/evening/overnight) |
 | agent-worker service | ~30 sec | Only `workflow_step` type | Some agents (may cause competing consumer problem) |
 | Manual MCP tools | On-demand | All message types | All agents (but only when they read their inbox) |
 
 **If the target agent has no bus-processor cron, your message sits unprocessed
-until it times out and goes to DLQ.** The `agent-bus-*` cron jobs are only
+until it times out and goes to DLQ.** The `cortex-bus-*` cron jobs are only
 configured on Moses by default.
 
 ### 4. Verify the ACL allows it
@@ -165,7 +165,7 @@ Moses's peer = Esther :14004; `PEER_AUTH` = nginx Basic creds).
 
 Check, in order:
 1. Does Esther connect to the same Postgres instance? (She uses `CORTEX_BUS_URL`)
-2. Does she have a bus-processor cron? (`agent-bus-*` jobs in her cron list)
+2. Does she have a bus-processor cron? (`cortex-bus-*` jobs in her cron list)
 3. Does her ACL allow reading `inbox_esther`? (Yes — every agent reads their own)
 4. Was the message consumed by `agent-worker` without being archived? (Competing consumer)
 
@@ -245,7 +245,7 @@ orchestrators (Moses, Esther) who use `host`.
 
 ## Reference
 
-- `agent-bus` skill — bus operations, DLQ management, recovery
+- `cortex-bus` skill — bus operations, DLQ management, recovery
 - `cortex-preflight` skill — general pre-flight checks (manually authored)
 - `docs/reference/cortex-bus-config.md` — detailed config and auth resolution
 - `docs/orch-bus-setup.md` — full setup guide with architecture overview

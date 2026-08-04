@@ -237,7 +237,7 @@ grep -rn 'old_dir/' . 2>/dev/null | grep -v '.git/'
 | `src/mcp-servers/` | `ops/services/` | MCP server code |
 | `src/offline/` | `ops/offline/` | Offline utilities |
 | `src/web-cache/` | `ops/web-cache/` | Web cache modules |
-|| `src/a2a/` | `ops/services/a2a/` (now deprecated, merged into agent-bus) | Agent card templates |
+|| `src/a2a/` | `ops/services/a2a/` (now deprecated, merged into cortex-bus) | Agent card templates |
 
 **Fix using patch tool with exact quotes:**
 

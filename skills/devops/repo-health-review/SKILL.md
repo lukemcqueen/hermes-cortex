@@ -195,7 +195,7 @@ grep -n 'is_orch\|IS_ORCH\|hostname\|agent.type' ops/scripts/manage/cortex_docto
 
 #### 8b-2: register() Guard Coverage in cortex-update.sh
 
-Check whether orchestrator-only service files (dashboard, agent-bus server, nginx configs) are **conditionally registered** or deployed to every agent:
+Check whether orchestrator-only service files (dashboard, cortex-bus server, nginx configs) are **conditionally registered** or deployed to every agent:
 
 ```bash
 # Are dashboard/bus/nginx files registered unconditionally?
