@@ -53,6 +53,14 @@ TimeoutError: Cron job 'orch-skill-lifecycle' idle for 602s (limit 600s)
 **Transient timeout — no action needed.** The job self-retries at 04:00 KST.
 Do NOT restart the service, do NOT raise an alert. Report SILENT.
 
+> **Fleet note (2026-08-04):** the 600s idle limit is now **30s** fleet-wide
+> via `HERMES_CRON_TIMEOUT` (applied by `install-gateway-cron-timeout.sh`;
+> systemd drop-in on Linux, `~/.hermes/.env` on macOS, activates on the next
+> gateway restart). The limit is gateway-process env — not per-job, no
+> config.yaml key. A repeat `idle for Ns (limit Xs)` timeout means tune the
+> timeout (per-machine override in `~/hermes-cortex/.env`) or redesign the
+> job — never "fix" it by just re-running the cron to clear its doctor status.
+
 ## What to watch for
 
 - If the same error appears in the next sensor tick AFTER the 04:00 run → it's chronic (provider timeout too aggressive)

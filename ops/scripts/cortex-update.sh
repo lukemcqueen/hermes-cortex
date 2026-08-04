@@ -183,6 +183,7 @@ register "ops/scripts/install/bootstrap-brain.sh"         "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/health/check-memory-budget.sh"     "${CORTEX_DEPLOY_HOME}/scripts/check-memory-budget.sh"
 register "ops/scripts/install/cortex-profile.sh"          "${CORTEX_DEPLOY_HOME}/scripts/cortex-profile.sh"
 register "ops/scripts/install/seed-project-brain.sh"      "${CORTEX_DEPLOY_HOME}/scripts/seed-project-brain.sh"
+register "ops/scripts/install/install-gateway-cron-timeout.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-gateway-cron-timeout.sh"
 register "ops/scripts/manage/cortex-health.sh"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-health.sh"
 register "ops/scripts/manage/todo-db.py"                "${CORTEX_DEPLOY_HOME}/scripts/todo-db.py"
 register_orch "ops/scripts/install/cortex-setup-langfuse.sh"   "${CORTEX_DEPLOY_HOME}/scripts/cortex-setup-langfuse.sh"
@@ -2290,6 +2291,18 @@ main() {
     fi
   else
     info "Hermes not found — skip cron install (run install-crons.sh after Hermes setup)"
+  fi
+
+  # ── LLM cron inactivity timeout ───────────────────────────
+  # Ensures HERMES_CRON_TIMEOUT (fleet default 30s) is applied to the
+  # gateway service: systemd drop-in on Linux, ~/.hermes/.env on macOS.
+  # Activation needs a gateway restart (next `hermes update` / operator
+  # restart) — the installer does NOT restart the gateway itself because
+  # the gateway lifecycle guard scans cron scripts AND every script they
+  # reference (this file runs from inside the gateway via the sync cron).
+  if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-gateway-cron-timeout.sh" ]]; then
+    bash "${CORTEX_DEPLOY_HOME}/scripts/install-gateway-cron-timeout.sh" 2>&1 | sed 's/^/    /' || \
+      warn "  install-gateway-cron-timeout.sh failed (non-fatal)"
   fi
 
   # ── Clean stale governance locks ─────────────────────────

@@ -1071,6 +1071,19 @@ created from. Use "local" for silent background jobs.
 **Test before deploying:** Run `hermes cron run <job-id>` to test a job
 immediately without waiting for the schedule.
 
+**LLM cron inactivity timeout (fleet default 30s, was 600s):** The scheduler
+kills an LLM-driven cron that shows no activity (no tool call, no API call,
+no stream delta) for `HERMES_CRON_TIMEOUT` seconds — the classic symptom is
+`TimeoutError: Cron job '<name>' idle for Ns (limit 600s)` from a hung
+non-streaming API response. The limit is gateway-process env, **not**
+per-job (no config.yaml key, no jobs.json field). The fleet applies 30s via
+`install-gateway-cron-timeout.sh` on every cortex-update (systemd drop-in on
+Linux, `~/.hermes/.env` on macOS); it activates on the next gateway restart.
+Override per machine with `HERMES_CRON_TIMEOUT` in `~/hermes-cortex/.env`.
+If a cron legitimately needs long single API calls (non-streaming), either
+tune the value or enable streaming for that job — don't just re-run the cron
+to clear its error status.
+
 ---
 
 ## ⚡ Offline-First Mandate for LLM Crons
