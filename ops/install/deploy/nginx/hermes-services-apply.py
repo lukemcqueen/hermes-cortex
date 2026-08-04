@@ -497,9 +497,11 @@ def main():
         finally:
             os.unlink(tmp.name)
 
-    # ── Deploy extra services to services-enabled/ (grafana, bus, metrics) ──
+    # ── Deploy extra services to conf.d/ (grafana, bus, metrics) ──
+    # conf.d/*.conf is auto-included by nginx.conf — no custom include
+    # line needed in the core template (services-enabled/ is retired).
     services_avail_dir = template.parent
-    services_enabled_dir = config_dir.parent / "services-enabled"
+    services_enabled_dir = config_dir.parent / "conf.d"
     extras_conf = "orch-hermes-services.conf"
     extra_src = services_avail_dir / extras_conf
 
@@ -510,7 +512,7 @@ def main():
 
     if extra_src.is_file() and needs_extra:
         if args.dry_run:
-            print(f"  → Would enable extra services: {extras_conf} → services-enabled/")
+            print(f"  → Would enable extra services: {extras_conf} → conf.d/")
         else:
             services_enabled_dir.mkdir(parents=True, exist_ok=True)
             extra_processed = process_template(

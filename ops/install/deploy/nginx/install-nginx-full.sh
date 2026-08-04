@@ -210,13 +210,13 @@ for src in "${CORTEX_REPO}/ops/install/deploy/nginx/hermes-zone-defs.conf" "${CO
         echo "  ✓ Deployed: hermes-services-shared-defaults.conf (paths substituted)"
       fi
 
-      # ── Deploy extra services to services-enabled/ (grafana, bus, metrics) ──
+      # ── Deploy extra services to conf.d/ (grafana, bus, metrics) ──
       EXTRAS_SRC="${CORTEX_REPO}/ops/install/deploy/nginx/orch-hermes-services.conf"
-      EXTRAS_DST="${NGINX_DIR}/services-enabled/orch-hermes-services.conf"
+      EXTRAS_DST="${NGINX_DIR}/conf.d/orch-hermes-services.conf"
       # Orchestrators (Moses, Esther) get extras; others get core only.
       # Controlled via HERMES_SERVICES env var (comma-separated).
       if [ -f "$EXTRAS_SRC" ] && grep -qiE 'grafana|bus|metrics|extra|all' <<< "${HERMES_SERVICES:-dashboard,langfuse,health}"; then
-        mkdir -p "${NGINX_DIR}/services-enabled"
+        mkdir -p "${NGINX_DIR}/conf.d"
         < "$EXTRAS_SRC" sed \
           -e "s|__SSL_CERT__|${ssl_cert:-__SSL_CERT__}|g" \
           -e "s|__SSL_CERT_KEY__|${ssl_key:-__SSL_CERT_KEY__}|g" \
