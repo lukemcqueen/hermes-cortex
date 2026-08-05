@@ -3,7 +3,9 @@
 cortex_bus.py — Shared bus interaction library for fleet scripts.
 
 Provides send/read/archive/list_queues functions using the Agent Bus HTTP API.
-Bus URL is read from cortex-bus.conf (CORTEX_BUS_URL). No local fallback.
+Bus URL is read from cortex-bus.conf (CORTEX_BUS_URL); when
+CORTEX_BUS_FALLBACK_URL is set, sends automatically retry the fallback bus
+per-call when the primary is unreachable (failover path, since 2026-08-04).
 Config file location: $CORTEX_DEPLOY_HOME/cortex-bus.conf or ~/.hermes-cortex/cortex-bus.conf
 
 Usage:

@@ -123,6 +123,7 @@ if $UNINSTALL; then
     "orch-bus-confirmation-alert" \
     "orch-bus-confirmation-poller" \
     "orch-bus-forwarder-sync" \
+    "orch-bus-inbox-relay" \
     "orch-bus-recover-timeouts" \
     "orch-clean-health-queue" \
     "orch-fleet-watchdog" \
@@ -396,6 +397,17 @@ printf "${CYAN}  1a. Orchestrator Bus Tools${RESET}\n"
 # Bidirectional bus sync — Moses primary ↔ Esther backup (every 2 min)
 create_cron "orch-bus-forwarder-sync" "*/2 * * * *" \
   "orch-bus-forwarder.py" \
+  "" \
+  "" \
+  "" \
+  "origin" \
+  "" \
+  "true"
+
+# Failover inbox relay — backup orchestrator processes the shared
+# orchestrator inbox while acting primary (every 5 min; silent when idle)
+create_cron "orch-bus-inbox-relay" "*/5 * * * *" \
+  "orch-bus-inbox-relay.py" \
   "" \
   "" \
   "" \

@@ -77,8 +77,18 @@ if os.environ.get("BUS_FORWARDER_PEER_URL"):
 elif _HOST == "moses":
     PEER_URL = os.environ.get("CORTEX_BUS_FALLBACK_URL", "")
 else:
-    # esther (and any non-moses orchestrator): peer = the primary URL
-    PEER_URL = os.environ.get("CORTEX_BUS_URL", "") or os.environ.get("CORTEX_BUS_FALLBACK_URL", "")
+    # esther (and any non-moses orchestrator): peer = the OTHER host's bus.
+    # CORTEX_BUS_URL flips with failover state — the failover watchdog swaps
+    # it between Moses :13004 (standby) and local :8903 (while acting
+    # primary). NEVER peer with localhost: the forwarder would self-sync and
+    # the backlog would never drain to Moses when he returns (found
+    # 2026-08-05: failover messages stranded on Esther's bus for hours).
+    _primary = os.environ.get("CORTEX_BUS_URL", "")
+    _is_local = _primary.startswith(("http://127.0.0.1", "http://localhost"))
+    if _is_local:
+        PEER_URL = os.environ.get("CORTEX_BUS_FALLBACK_URL", "")
+    else:
+        PEER_URL = _primary or os.environ.get("CORTEX_BUS_FALLBACK_URL", "")
 # External peer (nginx) authenticates with Basic auth, not Bearer.
 PEER_AUTH = os.environ.get(
     "BUS_FORWARDER_PEER_AUTH",

@@ -222,9 +222,14 @@ push_metrics() {
   metrics=$(collect_metrics)
 
   for attempt in $(seq 1 "${MAX_RETRIES}"); do
+    # Bounded curl (2026-08-05): a dead endpoint must fail fast, not hang the
+    # cron — Gisu reported a curl hang on a downed VictoriaMetrics proxy that
+    # held the whole tick. --max-time caps the total transfer; the connect
+    # timeout catches an unresponsive host quickly.
     local curl_args=("-s" "-X" "POST" "${VICTORIA_URL}"
       "-H" "Content-Type: text/plain; version=0.4.0"
       "--data-binary" "@-"
+      "--max-time" "20" "--connect-timeout" "5"
       "-w" "%{http_code}" "-o" "/dev/null")
 
     status=$(echo "${metrics}" | curl "${curl_args[@]}")
