@@ -178,6 +178,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | Doc | Description |
 |-----|-------------|
 | `docs/git-enforcement.md` | Pre-commit scoring + pre-push pull-before-push hooks — install, bypass, troubleshooting |
+| `docs/pinned-repo-hooks.md` | Pinned repo hooks — file refresh, Library/node_modules crawl exclusions, doctor check 7c, hooksPath-guard carve-out |
 | `.hermes-cortex/hooks/post-merge` | Auto-deploy hook (via `core.hooksPath`) — runs `cortex-update.sh ` after every `git pull`. Prevents stale deploys |
 
 ## Development
