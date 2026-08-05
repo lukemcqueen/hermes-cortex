@@ -1841,6 +1841,16 @@ def _check_fix_blocked_ips_root_copy(res):
     res.add("Blocked-IPs root copy", "SKIP", "repo source missing")
     return
 
+  # Only meaningful where the blocked-IP pipeline actually runs. Hosts
+  # without nginx (e.g. push-only macOS agents like Titus) never deploy
+  # blocked_ips.conf — a missing root copy there is expected, not an error.
+  # Mirrors check_nginx's "nginx not installed — skipping" gate.
+  out, _ = run(["which", "nginx"], timeout=5)
+  if not out.strip():
+    res.add("Blocked-IPs root copy", "SKIP",
+        "nginx not installed — blocked-IP pipeline does not run here")
+    return
+
   # ── Root copy exists ──
   if not root_path.exists():
     res.add("Blocked-IPs root copy", "FAIL",
