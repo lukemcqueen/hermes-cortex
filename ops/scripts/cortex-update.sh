@@ -2266,9 +2266,9 @@ main() {
         warn "AGENTS.md has local-only content not in repo source"
         warn "  → Local copy saved to ~/.hermes/AGENTS.md.local"
         warn "  → Check: diff ~/.hermes/AGENTS.md ~/hermes-cortex/AGENTS.md"
-        while IFS= read -r line; do
+        echo "$local_only_lines" | while IFS= read -r line; do
           warn "    + ${line:0:80}"
-        done <<< "$local_only_lines"
+        done
       fi
     fi
     copy_file "$repo_agents" "$local_agents"
