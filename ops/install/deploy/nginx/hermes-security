@@ -38,3 +38,22 @@ __SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/fail2ban-client status
 # Fleet agents — certbot renewal
 __SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/certbot renew --non-interactive
 __SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/certbot certificates
+
+# Fleet agents — nginx log reads (blocked-IP forensics)
+__SUDO_USERS__ ALL=(root) NOPASSWD: /bin/cat /var/log/nginx/access.log
+__SUDO_USERS__ ALL=(root) NOPASSWD: /bin/cat /var/log/nginx/error.log
+
+# Fleet agents — vsftpd (FTP scanner forensics)
+__SUDO_USERS__ ALL=(root) NOPASSWD: /bin/journalctl -u vsftpd *
+__SUDO_USERS__ ALL=(root) NOPASSWD: /bin/cat /var/log/vsftpd.log
+__SUDO_USERS__ ALL=(root) NOPASSWD: /bin/cat /etc/vsftpd.conf
+
+# Fleet agents — swap refresh (agent-swap-refresh cron)
+__SUDO_USERS__ ALL=(root) NOPASSWD: /sbin/swapoff, /sbin/swapon
+
+# Fleet agents — Linux Mint maintenance helpers (desktop hosts only;
+# harmless dead entries on non-Mint hosts)
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/mintdrivers-remove-live-media
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/mintdrivers-load-broadcom-modules
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/mint-refresh-cache
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/lib/linuxmint/mintUpdate/dpkg_lock_check.sh
