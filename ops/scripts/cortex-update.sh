@@ -1576,6 +1576,18 @@ deploy_system_scripts() {
 # never happens — the original deploy≠load misery).
 GOV_ENFORCER_STATE="${STATE_DIR}/governance-enforcer-deployed"   # "<hash> <epoch>"
 
+# ── _restart_pending return codes (enum — the ONLY valid values) ──
+#   0 RESTART_PENDING       → fire the loud banner
+#   1 RESTART_CLEAN         → verified no restart needed — banner silent
+#   2 RESTART_UNVERIFIABLE  → check failed — banner fires with "could not
+#                            verify" note (hash/ps/date failure). A failed
+#                            check must NEVER silently mean "no restart
+#                            needed" — that was the original deploy≠load
+#                            misery.
+readonly RESTART_PENDING=0
+readonly RESTART_CLEAN=1
+readonly RESTART_UNVERIFIABLE=2
+
 _sha256_of() {
   # Prints the 64-char sha256 of $1. Returns 0 on success.
   # FAILURE IS NEVER SILENT: every failure path (missing tool, unreadable
@@ -1627,22 +1639,22 @@ _restart_pending() {
   # file so unchanged content never re-warns — unless the restart is still
   # genuinely pending (gateway predates the recorded change epoch).
   #
-  # RETURN CODES (explicit — never silent):
-  #   0 = restart pending        → fire the loud banner
-  #   1 = verified clean         → banner stays silent
-  #   2 = UNVERIFIABLE           → fire the banner with a "could not
-  #       verify" note (hash/ps/date failure). A failed check must NEVER
-  #       silently mean "no restart needed" — that was the original
-  #       deploy≠load misery.
+  # RETURN CODES (see enum above — the ONLY valid values):
+  #   RESTART_PENDING       (0) → fire the loud banner
+  #   RESTART_CLEAN         (1) → verified clean — banner stays silent
+  #   RESTART_UNVERIFIABLE  (2) → check failed — banner fires with a
+  #       "could not verify" note (hash/ps/date failure). A failed check
+  #       must NEVER silently mean "no restart needed" — that was the
+  #       original deploy≠load misery.
   local init_py="${HOME}/.hermes/plugins/governance-enforcer/__init__.py"
   if [[ ! -f "$init_py" ]]; then
     warn "  Restart check: enforcer not deployed at ${init_py} — skipping restart check"
-    return 1
+    return "$RESTART_CLEAN"
   fi
   local deployed_hash stored_hash="" stored_epoch=0 change_epoch gw_epoch
   if ! deployed_hash=$(_sha256_of "$init_py"); then
     warn "  Restart check: cannot hash deployed enforcer — UNVERIFIABLE, treating as restart required"
-    return 2
+    return "$RESTART_UNVERIFIABLE"
   fi
   if [[ -f "$GOV_ENFORCER_STATE" ]]; then
     if ! read -r stored_hash stored_epoch < "$GOV_ENFORCER_STATE"; then
@@ -1660,7 +1672,7 @@ _restart_pending() {
   fi
   if ! gw_epoch=$(_gateway_start_epoch); then
     warn "  Restart check: cannot determine gateway start time — UNVERIFIABLE, treating as restart required"
-    return 2
+    return "$RESTART_UNVERIFIABLE"
   fi
   [[ "$gw_epoch" -lt "$change_epoch" ]]
 }
@@ -1777,15 +1789,15 @@ deploy_governance_plugin() {
   # LOUD yellow banner whenever the deployed enforcement content changed
   # after the running gateway started — and keep firing on every run until
   # the operator actually restarts (state file preserves the change epoch).
-  # rc: 0=pending (banner), 1=verified clean (silent), 2=unverifiable
-  # (banner + "could not verify" note). `|| _rc=$?` is a set -e safe
-  # compound — never let a non-zero return abort the deploy. Any
-  # unexpected code falls into the safe direction: banner fires.
+  # rc: RESTART_PENDING / RESTART_CLEAN / RESTART_UNVERIFIABLE (enum
+  # above). `|| _rc=$?` is a set -e safe compound — never let a non-zero
+  # return abort the deploy. Any unexpected code falls into the safe
+  # direction: banner fires.
   _restart_rc=0
   _restart_pending || _restart_rc=$?
   case "$_restart_rc" in
-    0) _loud_restart_banner ;;
-    1) : ;;  # verified clean — banner stays silent
+    "$RESTART_PENDING") _loud_restart_banner ;;
+    "$RESTART_CLEAN") : ;;  # verified clean — banner stays silent
     *) _loud_restart_banner "unverifiable" ;;
   esac
 
