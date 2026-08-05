@@ -1778,6 +1778,75 @@ def _check_plugin_lock_helper(res):
         "Check helper binary and deploy via cortex-update.sh")
 
 
+def _check_fix_blocked_ips_root_copy(res):
+  """Check the root-owned immutable copy of fix-blocked-ips.py.
+
+  P1-A hardening (2026-07-31): the sudoers NOPASSWD target for the blocked-IP
+  generator is a root-owned immutable copy at /usr/local/sbin (Linux) or
+  /usr/local/bin (macOS), NOT the user-writable repo working tree. That copy
+  is deliberately NOT owned by cortex-update.sh — it only updates via
+  deploy-fix-blocked-ips.sh (sudo). If it goes stale, the nginx-threat-pipeline
+  commits+pushes new blocked IPs but never applies them to nginx — silently.
+
+  Observed 2026-08-05: root copy from Jul 31 had a repo_dir() bug under sudo
+  (env_reset sets HOME=/root), deploy step failed on EVERY run for 5 days,
+  repo grew to 18353 lines while live nginx had only 17287 deny rules.
+  No doctor check caught it. This check closes that gap.
+  """
+  import platform as _platform
+  import hashlib as _hl
+  _is_macos = _platform.system() == "Darwin"
+  root_path = Path("/usr/local/sbin/fix-blocked-ips.py")
+  if _is_macos:
+    root_path = Path("/usr/local/bin/fix-blocked-ips.py")
+  src = CORTEX_REPO / "ops" / "install" / "deploy" / "nginx" / "fix-blocked-ips.py"
+  install_hint = (f"Run: sudo bash {CORTEX_REPO}/ops/install/deploy/nginx/"
+                  f"deploy-fix-blocked-ips.sh")
+
+  if not src.exists():
+    res.add("Blocked-IPs root copy", "SKIP", "repo source missing")
+    return
+
+  # ── Root copy exists ──
+  if not root_path.exists():
+    res.add("Blocked-IPs root copy", "FAIL",
+        f"root-owned copy missing at {root_path}",
+        install_hint)
+    return
+
+  # ── Content matches repo source (direct install, no SOURCE header) ──
+  try:
+    root_md5 = _hl.md5(root_path.read_bytes()).hexdigest()
+    src_md5 = _hl.md5(src.read_bytes()).hexdigest()
+  except OSError as e:
+    res.add("Blocked-IPs root copy", "WARN",
+        f"cannot read root copy for comparison: {e}")
+    return
+  if root_md5 != src_md5:
+    res.add("Blocked-IPs root copy", "FAIL",
+        f"{root_path} differs from repo source (stale deploy)",
+        install_hint)
+    return
+  res.add("Blocked-IPs root copy", "PASS",
+      "root copy present and matches repo source")
+
+  # ── Immutable (chattr +i / chflags uchg) ──
+  try:
+    result = subprocess.run(
+        ["lsattr", str(root_path)], capture_output=True, text=True, timeout=5
+    )
+    flags = result.stdout.split()[0] if result.returncode == 0 and result.stdout else ""
+    if "i" in flags:
+      res.add("Blocked-IPs root copy immutable", "PASS", "chattr +i set")
+    else:
+      res.add("Blocked-IPs root copy immutable", "FAIL",
+          "immutable flag not set — root copy is modifiable",
+          f"Fix: sudo chattr +i {root_path}")
+  except (subprocess.TimeoutExpired, OSError, IndexError):
+    # macOS: lsattr absent — chflags uchg is the equivalent; skip gracefully
+    pass
+
+
 def check_governance(res):
   """7. Governance system: plugin, pre-commit hook, MCP servers, lock files, score-cycle."""
   config_text = read_file(CONFIG_FILE)
@@ -2104,6 +2173,9 @@ def check_governance(res):
 
   # ── Plugin lock helper (hermes-plugin-lock) ──
   _check_plugin_lock_helper(res)
+
+  # ── Root-owned blocked-IP generator copy (P1-A) ──
+  _check_fix_blocked_ips_root_copy(res)
 
   # ── Governance bypass coverage ──
   enforcer_path = CORTEX_REPO / "plugins" / "governance-enforcer" / "__init__.py"
