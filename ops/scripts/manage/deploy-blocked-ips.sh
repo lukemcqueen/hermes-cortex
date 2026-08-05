@@ -16,14 +16,22 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Resolve repo root robustly: prefer env, then git toplevel, then 3-up from
-# ops/scripts/manage/ (this file's canonical location).
+# Resolve repo root robustly: env → git toplevel → 3-up (repo layout) →
+# canonical $HOME/hermes-cortex. Each candidate is VALIDATED against the
+# actual fix-blocked-ips.py path, so the script works identically from the
+# repo location (ops/scripts/manage/) and the DEPLOYED location
+# (~/.hermes-cortex/scripts/), where git rev-parse fails and ../../.. lands
+# on /home (regression 2026-08-05: pipeline deploy step failed with
+# "fix-blocked-ips.py not found at /home/ops/...").
 CORTEX_REPO="${CORTEX_REPO:-}"
-if [ -z "$CORTEX_REPO" ] || [ ! -d "$CORTEX_REPO" ]; then
+if [ -z "$CORTEX_REPO" ] || [ ! -f "$CORTEX_REPO/ops/install/deploy/nginx/fix-blocked-ips.py" ]; then
   CORTEX_REPO="$(cd "$SCRIPT_DIR" && git rev-parse --show-toplevel 2>/dev/null || true)"
 fi
-if [ -z "$CORTEX_REPO" ] || [ ! -d "$CORTEX_REPO" ]; then
-  CORTEX_REPO="$(cd "$SCRIPT_DIR/../../.." && pwd 2>/dev/null || echo "$HOME/hermes-cortex")"
+if [ -z "$CORTEX_REPO" ] || [ ! -f "$CORTEX_REPO/ops/install/deploy/nginx/fix-blocked-ips.py" ]; then
+  CORTEX_REPO="$(cd "$SCRIPT_DIR/../../.." && pwd 2>/dev/null || true)"
+fi
+if [ -z "$CORTEX_REPO" ] || [ ! -f "$CORTEX_REPO/ops/install/deploy/nginx/fix-blocked-ips.py" ]; then
+  CORTEX_REPO="${HOME}/hermes-cortex"
 fi
 
 # P1-A hardening (2026-07-31): prefer the root-owned immutable deployed copy
