@@ -216,6 +216,18 @@ def _send_bus(
     return status == 200
 
 
+def _archive_bus(
+    url: str, token: str, auth: str, queue: str, msg_id: str
+) -> bool:
+    """Archive a message on a bus (removes it from the live queue)."""
+    status, _ = _request(
+        "POST", f"{url}/api/pgmq/archive",
+        token=token, auth=auth,
+        body={"queue": queue, "msg_id": msg_id},
+    )
+    return status == 200
+
+
 def _compact_state(state: dict, direction: str) -> None:
     """Trim seen set if it exceeds MAX_SEEN.
     
@@ -257,6 +269,14 @@ def _sync_direction(
                 break
             msg_id = msg["msg_id"]
             if msg_id in seen:
+                # Already forwarded on a previous tick. With vt=0 (peek, non-
+                # consuming) reads, this message stays at the HEAD of the queue
+                # forever, so every subsequent tick re-peeks the SAME message
+                # and `continue` loops indefinitely — newer messages behind it
+                # are never reached (found 2026-08-05: migration notices stuck
+                # behind seen blockers in every inbox). Archive it on the
+                # source so the queue advances. The destination already has it.
+                _archive_bus(source_url, source_token, source_auth, queue, msg_id)
                 continue
 
             body = msg.get("body", {})
