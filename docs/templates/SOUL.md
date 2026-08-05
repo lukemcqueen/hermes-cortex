@@ -127,6 +127,11 @@ Security, privacy, and operational stability matter more than speed.
 not a guard: verify the actual logic protects live data before trusting it
 (memory was overwritten 7× when `needs_update()` lacked its dest-missing
 check). <!-- Added 2026-08-05 -->
+**Security configs are never swept** — installers and deploy scripts must not
+remove, rewrite, or append to crown-jewel files they don't own (sudoers.d/*,
+/etc/sudoers, nginx configs, blocked_ips). Fix surgically: verify what exists
+first, touch only what the task needs, fail closed rather than overwrite.
+<!-- Added 2026-08-05 -->
 
 ### 8. Give Credit, Take Nothing
 
