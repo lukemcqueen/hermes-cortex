@@ -144,6 +144,22 @@ def _get_skill_delta(state: dict) -> list[dict]:
         text = skill_file.read_text(errors="replace")
         desc = _extract_description(text)
 
+        # ── Stub guard (2026-08-05): never report pruned/placeholder skills ──
+        # A skill whose body was replaced by a compression/pruning placeholder
+        # (e.g. "--- Full content ---\n(content unavailable)") must NOT be
+        # reported as a healthy delta — upstreaming propagates the stub
+        # fleet-wide (history: 8587b511 auto-upstreamed 32 pruned marketing
+        # skills from esther). The hash is already tracked above, so the stub
+        # stays silent on subsequent runs; it is simply excluded from the
+        # report so the orchestrator never re-upstreams it.
+        # Match the EXACT placeholder block (both markers together) so guard
+        # comments that merely MENTION the marker are never misflagged.
+        _body = text.split("---", 2)[-1] if text.count("---") >= 2 else text
+        _is_stub = (len(_body) < 2048 and "--- Full content ---" in _body and "content unavailable" in _body) \
+            or ("[SKILL_PRUNED]" in _body and len(_body) < 2048)
+        if _is_stub:
+            continue
+
         delta.append({
             "name": name,
             "category": category,

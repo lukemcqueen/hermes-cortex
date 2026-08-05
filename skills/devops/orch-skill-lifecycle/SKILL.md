@@ -174,6 +174,15 @@ Execute all approved actions:
 4. **Prune stale skills** — `skill_manage(action='delete', ...)` with `absorbed_into=""` for truly dead skills
 5. **SOUL.md update** — Append principle changes to `~/.hermes/SOUL.md` with `<!-- Added YYYY-MM-DD -->`
 6. **Upstream new skills to repo** — For fleet-submitted skills:
+   - ⚠️ **Stub guard (2026-08-05):** before upstreaming ANY fleet skill, read
+     the source content (the deployed SKILL.md on the reporting host, or the
+     collector's report). If the body contains `(content unavailable)` or
+     `[SKILL_PRUNED]` — i.e. the frontmatter survived but the body is a
+     compression/pruning placeholder — DO NOT upstream it. Flag it for
+     restore (re-install the full version from the Skills Hub, or author the
+     content) and list it as a stub in the run report. Never commit a
+     placeholder body to the repo; that is how 28 marketing skills became
+     stubs fleet-wide (auto-upstream 8587b511, Jul 17).
    - Create `hermes-cortex/skills/<category>/<name>/SKILL.md`
    - `git add`, commit, push
 7. **Self-heal stale expected lists** — If doctor found ❌ Crons missing:
