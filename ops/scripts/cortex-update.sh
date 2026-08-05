@@ -444,6 +444,8 @@ register "ops/scripts/manage/mycortex-parity.py"      "${CORTEX_DEPLOY_HOME}/scr
 register "ops/scripts/manage/mycortex"                "${CORTEX_DEPLOY_HOME}/scripts/mycortex"
 # mycortex-postgres compose (dedicated hermes-cortex-owned Postgres, NOT langfuse)
 register "ops/install/deploy/docker-compose.mycortex.yml" "${CORTEX_DEPLOY_HOME}/docker-compose.mycortex.yml"
+# one-shot fleet migration: gbrain-postgres → mycortex-postgres (idempotent, per-host)
+register "ops/scripts/manage/migrate-gbrain-postgres-to-mycortex.sh" "${CORTEX_DEPLOY_HOME}/scripts/migrate-gbrain-postgres-to-mycortex.sh"
 # agent-mycortex-sync cron wrapper — per-host sync (design D4: NOT orchestrator-only)
 register "ops/scripts/manage/agent-mycortex-sync.sh"  "${CORTEX_DEPLOY_HOME}/scripts/agent-mycortex-sync.sh"
 # daily retention — prune ingest_log >90d, purge archived pages >7d (S-016)

@@ -20,7 +20,7 @@ stories: `docs/elicit/2026-08-01_mycortex-stories.md`.
 | Layer | Choice |
 |---|---|
 | Source of truth | Markdown in git (`~/brain/*`, `~/hermes-cortex`) |
-| Index store | `mycortex` schema on `gbrain-postgres` :15432 (pgvector for v1.1) |
+| Index store | `mycortex` schema on `mycortex-postgres` :15432 (pgvector for v1.1) |
 | Search | Postgres FTS (`websearch_to_tsquery`) + pg_texample (v1); pgvector (v1.1 slice) |
 | Plumbing | Cron sync (no daemon), advisory-lock guarded |
 
@@ -74,6 +74,33 @@ mycortex doctor [--json]
 ## Python requirements
 
 **All mycortex scripts use `#!/usr/bin/env python3` (portable)** — no `python3.12` hardcoding. Verified 2026-08-02: hosts run python3.10–3.12; code parses clean at 3.10 (no match/case or 3.12-only syntax). The earlier `python3.12` shebangs broke `agent-mycortex-sync` on python3.10/3.11 hosts (`env: 'python3.12': No such file or directory`, cron rc=127) — fixed fleet-wide. No venv/uv needed: stdlib-only, no external deps. If you add a script, use `#!/usr/bin/env python3`.
+
+## Migration to Dedicated mycortex-postgres (2026-08-05)
+
+**The knowledge brain + agent bus now run on a hermes-cortex-owned Postgres, NOT the langfuse stack.**
+
+| | Before (pre-08-05) | After |
+|---|---|---|
+| Container | `gbrain-postgres` (stale langfuse compose labels, `langfuse_gbrain-postgres-data` volume) | **`mycortex-postgres`** via `ops/install/deploy/docker-compose.mycortex.yml`, own `mycortex-postgres-data` volume |
+| DB / role | `gbrain` / `gbrain` (superuser) | **`mycortex` / `mycortex`** |
+| Port | 15432 | 15432 (unchanged) |
+| Schemas | bus + mycortex + public (`gbrain_legacy_*` tombstone) | same, carried over (S-012 purge window respected) |
+
+**Rollout:** `ops/scripts/manage/migrate-gbrain-postgres-to-mycortex.sh` — idempotent,
+per-host, non-destructive (old container STOPPED, not removed; dump kept in
+`~/.hermes-cortex/backups/`). Esther host migrated 2026-08-05 as the reference
+(1726 pages / 29298 chunks verified post-restore).
+
+**Connection fixes shipped with the migration:**
+- `core/cortex_bus/queue.py` `_load_config()` — the `.env` fallback previously
+  never read `CORTEX_BUS_PG_DB`, so the bus ignored .env DB changes and kept
+  hitting the dead `gbrain` DB. Fixed (2026-08-05).
+- mycortex CLI / migrate.py / todo-db.py / hc.py / orch-bus / retention /
+  verifier / audit-watchdog / doctor hints all target `mycortex-postgres`.
+- Dead gbrain scripts deleted (gbrain-wrapper.sh, gbrain-doctor-summary.py,
+  install-gbrain-sync.sh); gbrain systemd units removed.
+- Doctor `gbrain daemon` check kept as decommission verification (PASS when the
+  unit is disabled/absent).
 
 ## Migration Status (2026-08-02, session completed the deploy)
 

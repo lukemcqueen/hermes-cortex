@@ -1,3 +1,12 @@
+> ⚠️ **DECOMMISSIONED 2026-08-02 — mycortex replaces gbrain entirely.** This skill
+> documents the OLD knowledge brain (autopilot daemon, dream cycle, PGLite).
+> gbrain is retired: the binary is kept only for the S-012 rollback window,
+> systemd units are removed, crons are gone. Do NOT reinstall gbrain or restart
+> its autopilot. The current system is `mycortex` (markdown-in-git + Postgres +
+> cron) — load the `mycortex` skill instead. The content below is preserved for
+> historical reference and rollback only.
+
+---
 ---
 name: gbrain-maintenance
 version: 2.0.0
