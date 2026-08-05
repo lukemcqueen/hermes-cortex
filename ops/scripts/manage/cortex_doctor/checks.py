@@ -1790,6 +1790,24 @@ def check_governance(res):
   plugin_src = CORTEX_REPO / "plugins" / "governance-enforcer"
   plugin_enabled = "governance-enforcer" in config_text and "enabled" in config_text
 
+  # ── Legacy enforcer plugin check (2026-08-05) ──
+  # The old plugin name 'hermes-governance-enforcer' was renamed to
+  # 'governance-enforcer'. A stale copy/symlink left in the plugins dir
+  # is dead weight that can shadow the loader or confuse audits — ERROR.
+  plugins_dir = HERMES_HOME / "plugins"
+  if plugins_dir.exists():
+    stale_plugins = [
+      p.name for p in plugins_dir.iterdir()
+      if "governance" in p.name and p.name != "governance-enforcer"
+    ]
+    if stale_plugins:
+      res.add("Legacy enforcer plugin", "FAIL",
+          f"stale legacy enforcer plugin(s) present: {', '.join(stale_plugins)}",
+          "REQUIRED: rm -rf " + " ".join(f"{plugins_dir}/{n}" for n in stale_plugins)
+          + "  (legacy 'hermes-governance-enforcer' renamed — only governance-enforcer is valid)")
+    else:
+      res.add("Legacy enforcer plugin", "PASS", "no stale legacy enforcer plugins")
+
   if plugin_dir.exists() and (plugin_dir / "__init__.py").exists():
     res.add("Governance plugin", "PASS", "installed at ~/.hermes/plugins/governance-enforcer")
     if plugin_dir.is_symlink():
