@@ -583,6 +583,25 @@ def _secondary_lock_path() -> Path | None:
     return None
 
 
+def _bypass_debt_count() -> int:
+    """Read the consecutive --no-verify counter from bypass-debt.json.
+
+    Bound the escape hatch (2026-08-05): 3 consecutive --no-verify commits
+    are tolerated (logged + alerted by post-commit/watchdog); at >= 4 the
+    hatch is EXHAUSTED and further --no-verify git commands are refused
+    (even with a lock) until a fully verified commit resets the counter.
+    Written by post-commit-audit; reset to 0 on every verified commit.
+    """
+    try:
+        debt_file = Path.home() / ".hermes-cortex" / "state" / "bypass-debt.json"
+        if debt_file.exists():
+            data = json.loads(debt_file.read_text())
+            return int(data.get("consecutive_no_verify", 0) or 0)
+    except Exception:
+        pass
+    return 0
+
+
 def _has_governance_lock(hermes_session_id: str = "") -> bool:
     """Check if THIS session has an active governance lock for this repo.
 
@@ -1526,6 +1545,39 @@ def register(ctx):
                             "I cannot bypass or disable this.\n"
                         ),
                     }
+
+            # ── Bypass-debt mandate (2026-08-05) ──────────────
+            # Bound the --no-verify escape hatch: 3 consecutive bypasses are
+            # tolerated (logged + alerted); the 4th+ is MANDATED — refuse
+            # further --no-verify git commands (even with a lock) until a
+            # fully verified commit (pre-commit ran, sentinel written) resets
+            # the counter. --no-verify skips every hook, so the primary
+            # enforcement layer must refuse it at the tool gate.
+            if tool_name == "terminal":
+                _cmd = str(args.get("command", ""))
+                if re.search(
+                    r"\bgit\s+(commit|push|merge|pull|rebase|cherry-pick|revert|tag|am)\b[^|;&\n]*--no-verify",
+                    _cmd,
+                ):
+                    _debt = _bypass_debt_count()
+                    if _debt >= 4:
+                        return {
+                            "action": "block",
+                            "message": (
+                                "🚫 ESCAPE HATCH EXHAUSTED — "
+                                + str(_debt)
+                                + " consecutive --no-verify commits.\n\n"
+                                "Tool 'terminal' command uses --no-verify, which skips every "
+                                "governance hook. The 4th bypass is MANDATED: the escape hatch "
+                                "is closed until a fully verified commit lands.\n\n"
+                                "Do this instead:\n"
+                                "  1. Commit WITHOUT --no-verify so the pre-commit hook runs "
+                                "(scoring + adversarial + append-only guards)\n"
+                                "  2. A verified commit resets the counter to 0\n"
+                                "  3. Only then may up to 3 bypasses be used again\n\n"
+                                "This enforcement comes from ~/.hermes/plugins/governance-enforcer/."
+                            ),
+                        }
 
             # Check for active governance lock (Phase 1 exact + Phase 2 scan)
             if _has_governance_lock(hermes_session_id):

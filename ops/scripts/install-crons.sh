@@ -1174,7 +1174,7 @@ create_cron "agent-daily-bible-reading" "0 1 * * *" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 # No-verify audit — no-agent script checks for --no-verify commits every 60m
-create_cron "agent-no-verify-audit" "every 60m" \
+create_cron "agent-no-verify-audit" "*/10 * * * *" \
   "manage/agent-no-verify-audit.py" \
   "" \
   "" \

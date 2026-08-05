@@ -3,12 +3,18 @@
 #  post-commit-audit — Git post-commit hook
 #  Detects --no-verify commits by checking pre-commit sentinel.
 #  Logs all no-verify events for audit.
+#  Tracks bypass-debt: every 3 consecutive --no-verify commits are
+#  tolerated (logged + alerted); the 4th is MANDATED — pre-push
+#  blocks it and the enforcer blocks further --no-verify git commands
+#  until a fully verified commit (sentinel written) resets the debt.
+#  (2026-08-05 — bound the escape hatch that was abused 34x.)
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
 SENTINEL="${GIT_DIR:-.git}/.pre-commit-ran"
 LOGDIR="${HOME}/.hermes-cortex/state"
 NO_VERIFY_LOG="${LOGDIR}/no-verify-log.json"
+DEBT_FILE="${LOGDIR}/bypass-debt.json"
 
 # Consume the reflexion token (written by reflexion-check, consumed after commit)
 REFLEXION_TOKEN="${LOGDIR}/.reflexion-done"
@@ -19,6 +25,22 @@ fi
 # Clean up sentinel if it exists (pre-commit ran normally)
 if [[ -f "$SENTINEL" ]]; then
   rm -f "$SENTINEL"
+  # Verified commit — reset the bypass-debt counter.
+  python3 - "$LOGDIR" "$DEBT_FILE" <<'PYEOF' 2>/dev/null || true
+import json, os, sys, datetime
+logdir, debt_file = sys.argv[1], sys.argv[2]
+now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+debt = {"consecutive_no_verify": 0, "last_verified_at": now,
+        "last_no_verify_at": None, "total_no_verify": 0}
+if os.path.exists(debt_file):
+    try:
+        old = json.load(open(debt_file))
+        debt["total_no_verify"] = old.get("total_no_verify", 0)
+    except (OSError, ValueError):
+        pass
+with open(debt_file, "w") as f:
+    json.dump(debt, f, indent=2)
+PYEOF
   exit 0
 fi
 
@@ -78,6 +100,38 @@ with open('$NO_VERIFY_LOG', 'w') as f:
     json.dump(data, f, indent=2)
 " 2>/dev/null || true
 
+# ── Bypass-debt escalation (2026-08-05) ────────────────────
+# Increment the consecutive counter. At >= 4 the escape hatch is
+# EXHAUSTED: pre-push blocks the commit's push and the enforcer
+# blocks further --no-verify git commands until a verified commit
+# (sentinel written → counter reset to 0) lands.
+DEBT_OUT=$(python3 - "$DEBT_FILE" <<'PYEOF' 2>/dev/null || true
+import json, os, sys, datetime
+debt_file = sys.argv[1]
+now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+debt = {"consecutive_no_verify": 1, "last_verified_at": None,
+        "last_no_verify_at": now, "total_no_verify": 1}
+if os.path.exists(debt_file):
+    try:
+        old = json.load(open(debt_file))
+        debt["consecutive_no_verify"] = old.get("consecutive_no_verify", 0) + 1
+        debt["total_no_verify"] = old.get("total_no_verify", 0) + 1
+        debt["last_verified_at"] = old.get("last_verified_at")
+    except (OSError, ValueError):
+        pass
+with open(debt_file, "w") as f:
+    json.dump(debt, f, indent=2)
+print(debt["consecutive_no_verify"])
+PYEOF
+)
+DEBT="${DEBT_OUT:-1}"
+
 echo "⚠️  WARNING: Commit bypassed governance (--no-verify was used)"
 echo "   Commit: $COMMIT_HASH"
 echo "   Logged to: $NO_VERIFY_LOG"
+if [[ "$DEBT" -ge 4 ]]; then
+  echo "🚫  ESCAPE HATCH EXHAUSTED: ${DEBT} consecutive --no-verify commits."
+  echo "    The 4th bypass is MANDATED — its push is BLOCKED and further"
+  echo "    --no-verify git commands are refused until a fully verified"
+  echo "    commit (no --no-verify) lands and resets the counter to 0."
+fi

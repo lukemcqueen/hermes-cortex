@@ -196,6 +196,40 @@ if [[ -n "$DOGFOOD_HEAD" && -f "$DOGFOOD_DEPLOY" ]]; then
   fi
 fi
 
+# ── Sanctioned pipeline commit exception ────────────────────
+# The nginx-threat-pipeline (no_agent cron on every host) auto-commits
+# the shared blocklist daily. It has no Hermes session, so the
+# reflexion/lock gates below can never pass — previously it used
+# `git commit --no-verify`, which skipped EVERY gate (adversarial
+# scan, append-only guard, scoring) and flooded the no-verify audit log.
+# Now it runs the hook. A commit is sanctioned ONLY when BOTH:
+#   1. A FRESH pipeline marker exists (~/.hermes-cortex/state/
+#      .pipeline-commit, written by the pipeline right before its
+#      commit; must be < 10 min old so a crashed run's stale marker
+#      can't sanction commits indefinitely). The commit message is
+#      NOT readable at pre-commit time (COMMIT_EDITMSG holds the
+#      PREVIOUS commit's message on git 2.43), so the marker replaces
+#      the old message-prefix check.
+#   2. EVERY staged file is within the narrow blocklist allowlist
+#      (ops/install/deploy/nginx/blocked_ips.{add,submit}).
+# Sanctioned commits skip ONLY the session-gated checks (reflexion,
+# governance lock, config-driven orchestrator guard). The append-only
+# guard, AGENTS.md/SOUL checks, adversarial scan, secret-leak scan,
+# self-test and SCORING still run — a sanctioned commit is still a
+# recorded, scored, scanned commit.
+# An agent staging ANY file outside the allowlist (with or without a
+# marker) is NOT sanctioned — every gate fires. (2026-08-05 loophole
+# closure)
+SANCTIONED_PIPELINE=0
+_PIPE_MARKER="${HOME}/.hermes-cortex/state/.pipeline-commit"
+if [[ -f "$_PIPE_MARKER" ]] && find "$_PIPE_MARKER" -mmin -10 2>/dev/null | grep -q .; then
+  _PIPELINE_STAGED=$(git diff --cached --name-only 2>/dev/null | grep -vE '^ops/install/deploy/nginx/blocked_ips\.(add|submit)$' || true)
+  if [[ -z "$_PIPELINE_STAGED" ]]; then
+    SANCTIONED_PIPELINE=1
+    echo "🛡️  Sanctioned pipeline commit — session gates skipped (fresh marker + blocklist allowlist), safety gates still run."
+  fi
+fi
+
 # ── Orchestrator-only paths guard ──────────────────────────
 # Only orchestrator agents (moses, esther) may modify these paths.
 # Non-orchestrators: commit changes from an orchestrator agent instead.
@@ -346,7 +380,7 @@ if [[ "$IS_ORCH" != "1" ]]; then
       fi
     done <<< "$ORCH_CONFIG"
   fi
-  if [[ "$ORCH_VIOLATION" -eq 1 ]]; then
+  if [[ "$SANCTIONED_PIPELINE" != "1" && "$ORCH_VIOLATION" -eq 1 ]]; then
     echo ""
     echo "❌  Orchestrator-only files cannot be modified by non-orch agents."
     echo "    Current host: $(hostname -s 2>/dev/null || echo unknown) (detected from hostname+home-dir)"
@@ -362,7 +396,9 @@ fi
 # ── Reflexion gate: verify skill_view('reflexion-check') was called this session ──
 # Query the session DB for proof the agent actually loaded the skill — not just
 # a file-presence check. The governance lock carries the session_id.
-if ! python3 -c "
+# SKIPPED for sanctioned pipeline commits — no_agent cron has no session;
+# those commits are gated by the append-only guard + adversarial + scoring.
+if [[ "$SANCTIONED_PIPELINE" != "1" ]] && ! python3 -c "
 import sqlite3, json, os, glob, sys
 
 state_db = os.path.expanduser('~/.hermes/state.db')
@@ -500,7 +536,7 @@ except:
   done
 fi
 
-if [[ "$LOCK_FOUND" -ne 1 ]]; then
+if [[ "$SANCTIONED_PIPELINE" != "1" && "$LOCK_FOUND" -ne 1 ]]; then
   # No session-scoped lock for this repo — block with help message
   echo ""
   echo "❌  No active governance session."

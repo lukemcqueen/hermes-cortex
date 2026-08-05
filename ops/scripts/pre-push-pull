@@ -81,6 +81,31 @@ except Exception:
 fi
 
 if [[ "$LOCK_FOUND" -eq 0 ]]; then
+  # ── Sanctioned pipeline push exception ──────────────────
+  # The nginx-threat-pipeline (no_agent cron) commits with messages
+  # 'auto: ... [pipeline]' touching only the blocklist allowlist, and
+  # pre-commit already gated those commits (append-only + adversarial +
+  # scoring). A push whose ENTIRE local-only range is sanctioned pipeline
+  # commits may proceed without a governance lock. Anything else (or an
+  # empty range) requires the lock exactly as before. (2026-08-05)
+  _PIPE_RANGE=$(git rev-list origin/main..HEAD 2>/dev/null || true)
+  if [[ -n "$_PIPE_RANGE" ]]; then
+    _PIPE_ONLY=1
+    while IFS= read -r _pc; do
+      [[ -n "$_pc" ]] || continue
+      _pmsg=$(git log -1 --format='%s' "$_pc" 2>/dev/null || echo "")
+      case "$_pmsg" in
+        auto:*\[pipeline\]*) : ;;
+        *) _PIPE_ONLY=0; break ;;
+      esac
+    done <<< "$_PIPE_RANGE"
+    if [[ "$_PIPE_ONLY" == "1" ]]; then
+      LOCK_FOUND=1
+    fi
+  fi
+fi
+
+if [[ "$LOCK_FOUND" -eq 0 ]]; then
   echo ""
   echo "❌  Push blocked: no active governance lock for this repository."
   echo "    No bypass flags available — call begin_change() before making changes, then push."
@@ -241,6 +266,33 @@ except Exception:
       fi
     fi
     if [[ "$NO_VERIFY_BLOCKED" -ne 0 ]]; then
+      # ── Bypass-debt mandate (2026-08-05) ──────────────────
+      # 3 consecutive --no-verify commits are tolerated; the 4th+ is
+      # MANDATED — this push is blocked until a fully verified commit
+      # (pre-commit hook ran, sentinel written) resets the debt to 0.
+      DEBT_FILE="${HOME}/.hermes-cortex/state/bypass-debt.json"
+      DEBT=0
+      if [[ -f "$DEBT_FILE" ]]; then
+        DEBT=$(python3 -c "
+import json
+try:
+    d = json.load(open('$DEBT_FILE'))
+    print(d.get('consecutive_no_verify', 0))
+except Exception:
+    print(0)
+" 2>/dev/null || echo "0")
+      fi
+      if [[ "${DEBT:-0}" -ge 4 ]]; then
+        echo ""
+        echo "🚫  ESCAPE HATCH EXHAUSTED: ${DEBT} consecutive --no-verify commits."
+        echo "    The 4th bypass is MANDATED — this push is BLOCKED."
+        echo "    Commit the pending change WITHOUT --no-verify so the full"
+        echo "    pre-commit gate runs (scoring + adversarial + append-only)."
+        echo "    A verified commit resets the counter to 0; then at most 3"
+        echo "    bypasses may be used again."
+        echo ""
+        exit 1
+      fi
       exit 1
     fi
   fi

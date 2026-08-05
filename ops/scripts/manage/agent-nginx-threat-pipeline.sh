@@ -12,26 +12,21 @@
 # public blocklist when fail2ban bans the router's NAT IP.
 set -euo pipefail
 
-# ── Temporary governance lock for automated pushes ─────────
-# The pre-push hook requires an active governance lock. Since this
-# script runs as a no_agent cron with no session, it creates a
-# temporary lock file before pushing and removes it on exit.
-_GOV_LOCK="${HOME}/.hermes-cortex/state/.governance-nginx-threat-pipeline.json"
-_create_gov_lock() {
-  local _slug; _slug=$(basename "${CORTEX_REPO:-${HOME}/hermes-cortex}")
-  mkdir -p "${HOME}/.hermes-cortex/state"
-  cat > "$_GOV_LOCK" <<-LOCKEOF
-{
-  "task_id": "nginx-threat-pipeline",
-  "repo_slug": "${_slug}",
-  "session_id": "cron-nginx-threat-pipeline",
-  "started_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-  "heartbeat_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-  "agent": "cron"
-}
-LOCKEOF
-}
-trap 'rm -f "$_GOV_LOCK"' EXIT
+# ── Sanctioned pipeline commits/pushes (2026-08-05) ─────────
+# This script previously used `git commit --no-verify` +
+# `git push --no-verify` and forged a governance lock file — the
+# escape hatch was abused (34 logged no-verify events fleet-wide,
+# 20 reached origin). Now:
+#   • A FRESH MARKER (~/.hermes-cortex/state/.pipeline-commit, < 10 min)
+#     + allowlist-only staged files makes the pre-commit hook sanction
+#     the commit: reflexion/lock gates are skipped, but the append-only
+#     guard, adversarial scan, secret-leak scan and SCORING still run.
+#   • pre-push sanctions pushes whose ENTIRE range is pipeline commits.
+# No --no-verify anywhere: a pipeline commit is a recorded, scored commit.
+_PIPE_MARKER="${HOME}/.hermes-cortex/state/.pipeline-commit"
+_create_pipe_marker() { mkdir -p "${HOME}/.hermes-cortex/state"; : > "$_PIPE_MARKER"; }
+_remove_pipe_marker() { rm -f "$_PIPE_MARKER"; }
+trap '_remove_pipe_marker' EXIT
 
 # ── Guard: abort any stale git operations before proceeding ──
 if git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rev-parse --git-dir &>/dev/null; then
@@ -226,9 +221,10 @@ else
     log "  No blocked_ips.add file — nothing to commit"
   elif ! git ls-files --error-unmatch ops/install/deploy/nginx/blocked_ips.add &>/dev/null; then
     log "  blocked_ips.add exists but is untracked — first-time commit"
+    _create_pipe_marker
     git add ops/install/deploy/nginx/blocked_ips.add
     IP_COUNT=$(wc -l < "$BLOCKED_FILE" | tr -d ' ') || true
-    git commit --no-verify -m "auto: initial blocklist with ${IP_COUNT} IPs [pipeline]" 2>&1 || true
+    git commit -m "auto: initial blocklist with ${IP_COUNT} IPs [pipeline]" 2>&1 || true
     if git diff --cached --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null; then
       PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Committed initial ${IP_COUNT} IPs to repo"$'\n'
     else
@@ -238,11 +234,11 @@ else
      && git diff --cached --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null; then
     log "  No changes to commit"
   else
-    _create_gov_lock
+    _create_pipe_marker
     git add ops/install/deploy/nginx/blocked_ips.add
     IP_COUNT=$(git diff --cached --unified=0 ops/install/deploy/nginx/blocked_ips.add 2>/dev/null | \
       grep '^\+[0-9]' | grep -v '^+++' | wc -l) || true
-    git commit --no-verify -m "auto: block ${IP_COUNT} suspect IPs [pipeline]" 2>&1 || true
+    git commit -m "auto: block ${IP_COUNT} suspect IPs [pipeline]" 2>&1 || true
     # Check if commit succeeded (no staged changes = committed)
     if git diff --cached --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null; then
       PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Committed ${IP_COUNT} IPs to repo"$'\n'
@@ -253,7 +249,7 @@ else
     log "── Step 5: Push ──"
     for push_attempt in 1 2; do
       if [ -n "$TIMEOUT_CMD" ]; then
-        if $TIMEOUT_CMD 10 git push --no-verify origin main 2>&1; then
+        if $TIMEOUT_CMD 10 git push origin main 2>&1; then
           PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Pushed to origin"$'\n'
           break
         else
@@ -276,7 +272,7 @@ else
           fi
         fi
       else
-        if git push --no-verify origin main 2>&1; then
+        if git push origin main 2>&1; then
           PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Pushed to origin"$'\n'
           break
         else
