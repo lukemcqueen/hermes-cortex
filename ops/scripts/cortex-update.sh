@@ -200,6 +200,7 @@ register_orch "ops/scripts/orch-bus/orch-bus-forwarder.py"     "${CORTEX_DEPLOY_
 register_orch "ops/scripts/fleet/local-orch-fleet-command-verifier.py"   "${CORTEX_DEPLOY_HOME}/scripts/local-orch-fleet-command-verifier.py"
 register "ops/scripts/install/install-orch-crons.sh"  "${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh"
 register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
+register "ops/scripts/cortex-dogfood.sh" "${CORTEX_DEPLOY_HOME}/scripts/cortex-dogfood.sh"
 register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
 register "ops/scripts/post-commit-audit" "${CORTEX_DEPLOY_HOME}/scripts/post-commit-audit"
 register "ops/scripts/pre-push-pull" "${CORTEX_DEPLOY_HOME}/scripts/pre-push-pull"

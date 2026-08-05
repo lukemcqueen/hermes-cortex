@@ -312,33 +312,51 @@ except Exception:
   fi
 done
 
-# ── Doctor regression check ─────────────────────────────────
-# If scripts that define expected deploy/cron state changed,
-# run doctor and block if new failures were introduced.
+# ── Doctor regression check (orchestrators, hermes-cortex only) ──
+# Run doctor on EVERY hermes-cortex push by an orchestrator host.
+# The strongest 2026-08-04 directive (mandatory adversarial gate)
+# silently doesn't apply if deployed state drifts — the only way to
+# catch that at push time is to verify the full deployed state.
+# Cost ~10s.
+# (2026-08-05: dogfood surfaced 7b false-positive AFTER doc-only
+# pushes because the gate only fired on cortex_doctor/* changes —
+# closed.)
+# ⚠️  SCOPE (Luke corrections 2026-08-05): this gate fires ONLY when
+# (a) the push is in the hermes-cortex repo AND (b) the host is an
+# orchestrator (moses/esther). Non-cortex repos (client-mwi,
+# client-works, ebm-website, pinned repos, ...) must NOT run the
+# hermes-cortex doctor — a failing hermes-cortex state must never
+# block a client repo's push. Non-orchestrator hosts never run it.
+_detect_orch() {
+  local _host _home _user
+  _host=$(hostname -s 2>/dev/null || echo "unknown")
+  _user=$(id -un 2>/dev/null || echo "$USER")
+  _home=$(getent passwd "$_user" 2>/dev/null | cut -d: -f6)
+  _home="${_home:-$HOME}"
+  case "$_host" in
+    moses|esther)
+      [[ "$_home" == "/home/$_host" ]] && return 0
+      ;;
+  esac
+  return 1
+}
+
 DOCTOR_BLOCKED=0
 CORTEX_DOCTOR="${HOME}/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
-if [[ -n "$CHANGED_FILES" ]] && [[ -f "$CORTEX_DOCTOR" ]]; then
-  DOCTOR_RELEVANT=0
-  while IFS= read -r cf; do
-    case "$cf" in
-      ops/scripts/cortex-update.sh|ops/scripts/install-crons.sh|ops/scripts/install/install-orch-crons.sh|ops/scripts/manage/cortex_doctor/*)
-        DOCTOR_RELEVANT=1 ;;
-    esac
-  done <<< "$CHANGED_FILES"
-  
-  if [[ "$DOCTOR_RELEVANT" -eq 1 ]]; then
-    DOCTOR_OUTPUT=$(cd "${HOME}/hermes-cortex/ops/scripts/manage" && python3 cortex-doctor.py --quiet 2>&1 || true)
-    if echo "$DOCTOR_OUTPUT" | grep -q "FAIL\|blocking\|ERROR\|Stale deploy:.*orch-\|missing.*cron"; then
-      echo ""
-      echo "❌  Push blocked: doctor found regressions after your changes."
-      echo "    cortex-update.sh / install-crons.sh / checks.py were modified."
-      echo "    Run doctor locally and fix all failures before pushing:"
-      echo "      cd ~/hermes-cortex/ops/scripts/manage && python3 cortex-doctor.py"
-      echo ""
-      echo "$DOCTOR_OUTPUT" | grep -E "FAIL|Stale deploy|missing|cron" | head -10
-      echo ""
-      DOCTOR_BLOCKED=1
-    fi
+CORTEX_REPO_TOP="${HOME}/hermes-cortex"
+_REPO_TOP=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -f "$CORTEX_DOCTOR" ]]; then
+  DOCTOR_OUTPUT=$(cd "${HOME}/hermes-cortex/ops/scripts/manage" && python3 cortex-doctor.py --quiet 2>&1 || true)
+  if echo "$DOCTOR_OUTPUT" | grep -q "FAIL\|blocking\|ERROR\|Stale deploy:.*orch-\|missing.*cron"; then
+    echo ""
+    echo "❌  Push blocked: doctor reports FAIL."
+    echo "    Deployed state does not match repo source (or governance drift)."
+    echo "    Run doctor locally and fix all failures before pushing:"
+    echo "      cd ~/hermes-cortex/ops/scripts/manage && python3 cortex-doctor.py"
+    echo ""
+    echo "$DOCTOR_OUTPUT" | grep -E "FAIL|Stale deploy|missing|cron" | head -10
+    echo ""
+    DOCTOR_BLOCKED=1
   fi
 fi
 

@@ -253,6 +253,40 @@ pipeline's own sanctioned commits generated the noise too (2026-08-05).
 - Prove RED-GREEN: same IPs in the exempted file → 0 warnings; same IPs in a
   normal file → warnings still fire.
 
+## Rule 9: Pinned Repos + the hooksPath Guard — Refresh Files AND Carve Out the Guard
+
+`pin_repos_with_own_hooks()` sets a repo's local `core.hooksPath` to its OWN
+`.git/hooks` (to preserve deploy-bare-repo hooks) but historically never
+refreshed the hook FILES — stale copies predated the mandatory adversarial
+gate (Titus audit 2026-08-05: 9 repos, `grep -c adversarial = 0`). Two things
+are needed together, or the fix breaks commits:
+
+1. **Refresh the files**: `cortex-update.sh` `refresh_pinned_hook_files()`
+   copies the 4 cortex hooks (pre-commit-score, pre-push-pull,
+   post-commit-audit, post-push-audit) from deployed source into the repo's
+   own hooks dir. ONLY files carrying the cortex banner (`Git <type> hook`,
+   ASCII match — locale-safe on macOS) are overwritten; foreign hooks (vllm
+   pre-commit framework shim) are preserved. Missing hook files get the gate
+   installed.
+
+2. **Carve out the hooksPath guard**: pre-commit-score and pre-push-pull both
+   fail CLOSED when `core.hooksPath != ~/.hermes-cortex/hooks` (5ab54547).
+   That guard would block EVERY commit in a pinned repo (their hooksPath IS
+   their own dir). The carve-out passes when the hooks dir carries any
+   cortex-managed hook (governance IS running there); the tripwire still
+   fires when hooksPath points at a dir with no cortex hooks.
+
+**Verify before shipping a pinned-hooks change (all three):**
+1. Scratch repo with stale cortex hook → after refresh, copy byte-matches
+   deployed and commit passes the hooksPath guard (fails later at the
+   governance lock — that's fail-closed working)
+2. Repo with a FOREIGN hook → refresh skips it, hash unchanged
+3. Doctor `Pinned hooks fresh` check: FAIL on stale → refresh → PASS
+
+**Pitfall:** deployed hook files are chattr +i immutable — you cannot
+overwrite them by hand to test; use `cortex-update.sh` or test with
+repo-source as the simulated deployed source.
+
 ## References
 
 - `references/pre-commit-score-fail-closed-2026-08-03.md` — the incident:
