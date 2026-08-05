@@ -81,8 +81,8 @@ ALTER TABLE bus.permissions DROP COLUMN IF EXISTS can_admin;
 -- ── Canonical grants (mirrors the primary's live grants) ────
 
 INSERT INTO bus.permissions (agent_name, can_read, can_write, is_admin) VALUES
-    ('moses',  ARRAY['inbox_moses','inbox_moses_dlq','inbox_health_check'],
-               ARRAY['inbox_moses','inbox_esther','inbox_joseph','inbox_titus','inbox_gisu','inbox_kustos','workflow_dispatch','workflow_step_result','workflow_timeout','inbox_moses_dlq','inbox_health_check'],
+    ('moses',  ARRAY['inbox_moses','inbox_moses_dlq','inbox_health_check','inbox_orchestrator'],
+               ARRAY['inbox_moses','inbox_esther','inbox_joseph','inbox_titus','inbox_gisu','inbox_kustos','inbox_orchestrator','workflow_dispatch','workflow_step_result','workflow_timeout','inbox_moses_dlq','inbox_health_check'],
                true),
     ('esther', ARRAY['inbox_esther','inbox_moses','inbox_orchestrator','inbox_joseph','inbox_titus','inbox_gisu','inbox_kustos'],
                ARRAY['inbox_moses','inbox_esther','inbox_orchestrator','inbox_joseph','inbox_titus','inbox_gisu','inbox_kustos','workflow_step_result','inbox_health_check'],
