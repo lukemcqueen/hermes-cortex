@@ -216,6 +216,43 @@ fi
 3. Temporarily move the deployed tool aside → commit still blocked (exit 1),
    then restore
 
+## Rule 7: Test Enforcement Gates with DIRECT Tool Calls — Never Subprocess-in-Script
+
+The enforcer gates the TOP-LEVEL tool call only. Putting the command under test
+inside a bash script (`bash /tmp/test.sh` whose body runs
+`git commit --no-verify ...`) means the enforcer sees `bash /tmp/test.sh` —
+the inner git command runs as a subprocess and NEVER crosses the gate. A test
+that "proves" the gate is broken this way is testing nothing (2026-08-05: a
+false "bypass-debt gate not working" conclusion; the gate was fine).
+
+- Run the exact command as a **direct terminal call** (`cd /tmp/repo && git
+  commit --no-verify ...` — hold a governance lock so the outer call passes),
+  and expect the gate's block message.
+- For compound commands, the enforcer evaluates the WHOLE string — a
+  `python3 -c '...' ; git commit --no-verify ...` one-liner is gated as one
+  unit, so set up state (debt file, marker) in a SEPARATE call first.
+- Unit-test the gate's classifier functions directly by importing the deployed
+  module (`spec_from_file_location` on
+  `~/.hermes/plugins/governance-enforcer/__init__.py`) and calling
+  `_is_readonly_terminal_command`, `_bypass_debt_count`, `re.search(...)` —
+  fast, deterministic, no repo needed.
+
+## Rule 8: Content Scanners Need Narrow Path Exemptions for By-Design Data Files
+
+PII/content scanners (enforcer PII gate, secret-leak-detector) must exempt
+files whose PURPOSE is to hold the flagged content — with a NARROW path
+allowlist, never a blanket pattern disable. The shared blocklist
+(`ops/install/deploy/nginx/blocked_ips.add` / `.submit`) exists to hold PUBLIC
+IPs; that is the data, not PII. Without the exemption every commit staging the
+file warns once per IP — Gisu got flooded with dozens of `⚠ PII — public IP
+address` warnings per commit (Telegram spam-filter ban risk), and the
+pipeline's own sanctioned commits generated the noise too (2026-08-05).
+
+- Exempt by exact repo-relative path (`case "$FILE" in ...blocked_ips.add|...blocked_ips.submit) : ;; *) ...scan... ;; esac`).
+- Everything else must stay scanned — the exemption is a 2-line case, not an IP pass.
+- Prove RED-GREEN: same IPs in the exempted file → 0 warnings; same IPs in a
+  normal file → warnings still fire.
+
 ## References
 
 - `references/pre-commit-score-fail-closed-2026-08-03.md` — the incident:
