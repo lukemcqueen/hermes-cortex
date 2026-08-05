@@ -111,12 +111,28 @@ fi
 # Normalize paths for comparison (resolve ~ and relative paths)
 ACTUAL_HOOKS_RESOLVED=$(cd "$ACTUAL_HOOKS" 2>/dev/null && pwd || echo "$ACTUAL_HOOKS")
 if [[ "$ACTUAL_HOOKS_RESOLVED" != "$EXPECTED_HOOKS" ]]; then
-    echo ""
-    echo "❌  core.hooksPath points to '${ACTUAL_HOOKS_RESOLVED}' instead of '${EXPECTED_HOOKS}'"
-    echo "    Governance hooks are NOT installed for this repo."
-    echo "    Fix: git config core.hooksPath '${EXPECTED_HOOKS}'"
-    echo ""
-    exit 1
+    # Pinned-repo carve-out: pin_repos_with_own_hooks() sets core.hooksPath
+    # to a repo's OWN .git/hooks to preserve deploy-bare-repo hooks, and
+    # cortex-update refreshes the cortex hook FILES there. Governance IS
+    # running — the tripwire only exists to catch hooksPath pointing at a
+    # dir with NO cortex hooks at all. Accept when the hooks dir carries
+    # any cortex-managed hook (banner match); otherwise fail closed.
+    _CORTEX_HOOK_PRESENT=""
+    for _hook_name in pre-commit pre-push; do
+        if [[ -f "${ACTUAL_HOOKS_RESOLVED}/${_hook_name}" ]] && \
+           grep -q "Git .* hook" "${ACTUAL_HOOKS_RESOLVED}/${_hook_name}" 2>/dev/null; then
+            _CORTEX_HOOK_PRESENT=1
+            break
+        fi
+    done
+    if [[ -z "$_CORTEX_HOOK_PRESENT" ]]; then
+        echo ""
+        echo "❌  core.hooksPath points to '${ACTUAL_HOOKS_RESOLVED}' instead of '${EXPECTED_HOOKS}'"
+        echo "    Governance hooks are NOT installed for this repo."
+        echo "    Fix: git config core.hooksPath '${EXPECTED_HOOKS}'"
+        echo ""
+        exit 1
+    fi
 fi
 
 # ── Pre-commit sentinel for no-verify detection ─────────────

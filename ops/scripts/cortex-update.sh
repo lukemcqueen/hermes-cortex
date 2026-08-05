@@ -1747,6 +1747,55 @@ verify_services() {
 # Pin local hooks for repos with their own hook scripts
 # BEFORE setting global hooksPath. This preserves deploy bare repo
 # hooks (post-receive, update) that would otherwise be overridden.
+refresh_pinned_hook_files() {
+  # refresh_pinned_hook_files <hooks_dir>
+  #
+  # Refresh cortex-managed hook FILES in a repo's own hooks dir from the
+  # deployed sources. Pinning core.hooksPath preserves the repo's local
+  # hooks but never refreshes the files — stale copies lack the mandatory
+  # adversarial gate (Titus audit 2026-08-05). Only files carrying the
+  # cortex header are overwritten; foreign hooks (vllm pre-commit
+  # framework, bespoke post-receive on deploy bare repos) are preserved.
+  local hooks_dir="$1"
+  local refreshed=0
+  local hook_file hook_src
+
+  # hook name → deployed source script
+  local -a hook_names=(pre-commit pre-push post-commit post-push)
+  local -a hook_srcs=(pre-commit-score pre-push-pull post-commit-audit post-push-audit)
+  local i
+
+  for i in "${!hook_names[@]}"; do
+    hook_file="${hooks_dir}/${hook_names[$i]}"
+    hook_src="${CORTEX_DEPLOY_HOME}/scripts/${hook_srcs[$i]}"
+    [[ -f "$hook_src" ]] || continue  # source not deployed yet — skip
+
+    if [[ -f "$hook_file" ]]; then
+      # Existing hook: only refresh if it carries the cortex banner
+      # ("#  <name> — Git <type> hook"). Foreign hooks (vllm pre-commit
+      # framework shim, bespoke deploy hooks) are NEVER clobbered.
+      # Match on "Git <type> hook" (ASCII) to stay locale-safe on macOS.
+      if ! grep -q "Git .* hook" "$hook_file" 2>/dev/null; then
+        continue  # foreign hook — preserve
+      fi
+      if cmp -s "$hook_file" "$hook_src" 2>/dev/null; then
+        continue  # already current
+      fi
+    fi
+    # Missing hook file → install the gate (a pinned repo with no
+    # pre-commit has no adversarial gate at all). Cortex-header file →
+    # refresh. Either way: copy + make executable.
+    cp "$hook_src" "$hook_file"
+    chmod +x "$hook_file"
+    refreshed=$((refreshed + 1))
+    info "  Refreshed ${hook_names[$i]} hook in $(dirname "$hooks_dir")"
+  done
+
+  if [[ "$refreshed" -gt 0 ]]; then
+    info "  → ${refreshed} stale hook file(s) refreshed in $(dirname "$hooks_dir")"
+  fi
+}
+
 pin_repos_with_own_hooks() {
   local shared_hooks_dir="${CORTEX_DEPLOY_HOME}/hooks"
   local pinned=0
@@ -1767,13 +1816,22 @@ pin_repos_with_own_hooks() {
     # Search home directories, /opt, /srv, /var, /Users for git repos
     # Limited depth to avoid crawling deep dependency trees
     # macOS: ~/Developer, ~/Sites, ~/git live under /Users
+    # EXCLUDE */Library/* and */node_modules/*: macOS Library/Containers
+    # is a massive crawl (~1m20s every deploy; Aug 4 incident wedged the
+    # pin crawl 5h08m), and node_modules holds thousands of vendored .git
+    # dirs that must never be pinned (Titus audit 2026-08-05).
     for base in /home /opt /srv /var/www /var/repo /Users; do
       if [[ -d "$base" ]]; then
         # find may return non-zero on permissioned subdirectories (e.g.
         # /var/www without read access). These are expected access errors
         # for a non-root search — not a pipeline failure. || true signals
         # that find's exit code is not meaningful for flow control here.
-        find "$base" \( -name ".git" -type d -o -name "*.git" -type d \) -maxdepth 8 -print0 2>/dev/null || true
+        find "$base" \
+          \( -name ".git" -type d -o -name "*.git" -type d \) \
+          -maxdepth 8 \
+          -not -path "*/Library/*" \
+          -not -path "*/node_modules/*" \
+          -print0 2>/dev/null || true
       fi
     done
   } > "$tmp_gitlist"
@@ -1801,6 +1859,15 @@ pin_repos_with_own_hooks() {
       pinned=$((pinned + 1))
       info "Pinned local hooks for $(dirname "$git_dir")"
     fi
+
+    # Refresh cortex-managed hook FILES in this repo's own hooks dir.
+    # Pinning sets core.hooksPath but does NOT update the hook files —
+    # stale copies (Jul 24 gen vs deployed 42,585B pre-commit-score) lack
+    # the mandatory adversarial gate (Titus audit 2026-08-05: 9 repos with
+    # grep -c adversarial = 0). Copy from deployed source, but ONLY files
+    # carrying the cortex header — foreign hooks (e.g. vllm's pre-commit
+    # framework) are never clobbered.
+    refresh_pinned_hook_files "$hooks_path"
   done < "$tmp_gitlist"
 
   rm -f "$tmp_gitlist"

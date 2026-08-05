@@ -24,6 +24,7 @@ from .checks import (
     check_governance,
     check_hook_drift,
     check_local_hooksPath_overrides,
+    check_pinned_hooks_fresh,
     check_install,
     check_stale_deploys,
     check_stale_skills,
@@ -94,6 +95,7 @@ def main():
             check_governance,
             check_hook_drift,
             check_local_hooksPath_overrides,
+            check_pinned_hooks_fresh,
             check_install,
             check_skill_stubs,
         ]

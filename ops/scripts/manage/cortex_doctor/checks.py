@@ -2634,6 +2634,119 @@ def check_local_hooksPath_overrides(res):
         "no per-repo overrides — all repos inherit global hooksPath")
 
 
+def check_pinned_hooks_fresh(res):
+    """7c. Pinned repos' hook FILES match deployed source.
+
+    pin_repos_with_own_hooks() sets core.hooksPath to a repo's own
+    .git/hooks to preserve its hooks — but never refreshed the hook FILES.
+    Stale copies (Jul 24 gen vs deployed 42,585B pre-commit-score) lack the
+    mandatory adversarial gate: commits get score-logging but NO adversarial
+    verification (Titus audit 2026-08-05: 9 repos, grep -c adversarial = 0).
+    For every repo with a local core.hooksPath, compare each cortex-managed
+    hook file against the deployed source (_content_md5 strips the SOURCE
+    header). Foreign hooks (no cortex banner) are skipped.
+    """
+    import hashlib as _hl
+    import re as _re
+
+    def _content_md5(path):
+        """MD5 of file content with the cortex SOURCE header stripped."""
+        try:
+            if not path.is_file():
+                return None
+            text = path.read_bytes().decode("utf-8", errors="surrogateescape")
+            lines = text.splitlines(keepends=True)
+            # New layout: shebang + 2-line SOURCE header + blank
+            if len(lines) >= 4 and lines[0].startswith("#!") and lines[1].startswith("# SOURCE:") and "Do NOT edit" in lines[2]:
+                return _hl.md5(("".join([lines[0]] + lines[4:])).encode("utf-8", errors="surrogateescape")).hexdigest()
+            # Legacy layout: header at top, shebang inside content
+            if len(lines) >= 3 and lines[0].startswith("# SOURCE:") and "Do NOT edit" in lines[1]:
+                return _hl.md5(("".join(lines[3:])).encode("utf-8", errors="surrogateescape")).hexdigest()
+            # No header — raw content
+            return _hl.md5(path.read_bytes()).hexdigest()
+        except (OSError, PermissionError):
+            return None
+
+    global_hooks = run_bg(["git", "config", "--global", "core.hooksPath"], timeout=5).strip().rstrip("/")
+    if not global_hooks:
+        return  # global hooksPath unset — the 7b check covers that
+
+    # Crawl for repos (same bases/exclusions as cortex-update pin crawl)
+    try:
+        raw = subprocess.run(
+            ["find", "/home", "/opt", "/srv", "/var/www", "/var/repo", "/Users",
+             "-maxdepth", "8",
+             "-name", ".git", "-type", "d",
+             "-not", "-path", "*/Library/*",
+             "-not", "-path", "*/node_modules/*"],
+            capture_output=True, text=True, timeout=60,
+        ).stdout.strip()
+    except (subprocess.TimeoutExpired, OSError):
+        res.add("Pinned hooks fresh", "INFO", "could not scan for git repos")
+        return
+
+    HOOK_MAP = {
+        "pre-commit": "pre-commit-score",
+        "pre-push": "pre-push-pull",
+        "post-commit": "post-commit-audit",
+        "post-push": "post-push-audit",
+    }
+
+    stale = []
+    checked = 0
+    for path in raw.split("\n"):
+        path = path.strip()
+        if not path:
+            continue
+        git_dir = Path(path)
+        local_hooks = run_bg(
+            ["git", "--git-dir", str(git_dir), "config", "--local", "core.hooksPath"],
+            timeout=5,
+        ).strip().rstrip("/")
+        if not local_hooks or local_hooks == global_hooks:
+            continue  # not pinned (or matches global) — shared hooks handle it
+        # Pinned repo: its hooks dir is the local hooksPath
+        hooks_dir = Path(local_hooks)
+        if not hooks_dir.is_dir():
+            stale.append(f"{git_dir.parent.name}: hooksPath {hooks_dir} missing")
+            continue
+        for hook_name, repo_name in HOOK_MAP.items():
+            hook_file = hooks_dir / hook_name
+            if not hook_file.exists():
+                continue  # no such hook — nothing to compare
+            # Skip foreign hooks (no cortex banner). The cortex banner
+            # "#  <name> — Git <type> hook" sits after a ~200-byte box-drawing
+            # line (─ = 3 UTF-8 bytes each) — scan 2KB to be safe.
+            try:
+                head = hook_file.read_bytes()[:2048].decode("utf-8", errors="replace")
+            except OSError:
+                continue
+            if "Git " not in head or "hook" not in head:
+                continue  # foreign hook — preserved by design
+            deployed_src = CORTEX_HOME / "scripts" / repo_name
+            if not deployed_src.exists():
+                continue
+            file_md5 = _content_md5(hook_file)
+            src_md5 = _content_md5(deployed_src)
+            checked += 1
+            if file_md5 != src_md5:
+                stale.append(f"{git_dir.parent.name}/{hook_name} "
+                             f"({file_md5[:8] if file_md5 else '?'} != "
+                             f"{src_md5[:8] if src_md5 else '?'})")
+
+    if stale:
+        res.add("Pinned hooks fresh", "FAIL",
+            f"{len(stale)} stale pinned hook(s): " + "; ".join(stale[:6]),
+            "Run: bash ops/scripts/cortex-update.sh --force (refreshes pinned "
+            "hook files from deployed source; foreign hooks preserved)")
+    elif checked == 0:
+        res.add("Pinned hooks fresh", "PASS",
+            "no pinned repos with cortex hooks to compare")
+    else:
+        res.add("Pinned hooks fresh", "PASS",
+            f"all {checked} pinned hook file(s) match deployed source")
+
+
 def check_install(res):
   """8. Install footprint: core files and directories present."""
   missing = []
