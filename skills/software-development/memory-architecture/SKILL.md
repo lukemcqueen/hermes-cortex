@@ -63,7 +63,11 @@ The public repo ships bootstrapping templates:
 | `USER.seed.md` | Starter user profile with fields for preferences and context |
 | `gitignore.brain` | Standard `.gitignore` for brain source dirs |
 
-These are **copied** (not shared) during install — each machine gets its own copy to fill in.
+These exist in `docs/templates/` as **reference only**. Memory files are
+Hermes-owned: Hermes reads `~/.hermes/memories/MEMORY.md` directly and
+creates the file on its first memory write. Cortex does NOT copy, seed, or
+deploy memory templates (since 2026-08-05 — a deploy-registered seed
+clobbered live memory on every cortex-update).
 
 ### Install script integration (`install.sh`)
 Two dedicated steps enforce the architecture:
@@ -71,7 +75,7 @@ Two dedicated steps enforce the architecture:
 | Step | What |
 |------|------|
 | **5** — Brain .gitignore | Copies `gitignore.brain` to each brain source after directory creation |
-| **9** — Seed memory files | Copies `MEMORY.seed.md` → `~/.hermes/memories/MEMORY.md` and `USER.seed.md` → `~/.hermes/memories/USER.md` (only if files don't exist) |
+| **9** — Hermes memory | No-op by design: memory bootstrap is left to Hermes (`~/.hermes/memories/`) |
 
 ## When to Update
 
@@ -84,4 +88,4 @@ Two dedicated steps enforce the architecture:
 
 - **Don't gitignore retroactively** — .gitignore only prevents untracked files from being tracked. If MEMORY.md is already tracked in a repo, you need `git rm --cached` first.
 - **Don't merge memory across machines** — MEMORY.md is per-instance. Never copy from one Hermes to another. The pointer destinations are different.
-- **Don't commit seed templates as instance memory** — templates live in `docs/templates/`, not in `~/.hermes/memories/`. The install script copies them.
+- **Don't commit seed templates as instance memory** — templates live in `docs/templates/`, not in `~/.hermes/memories/`. Cortex never copies them there (Hermes bootstraps its own memory on first write).

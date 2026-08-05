@@ -66,10 +66,13 @@ Sources under `~/hermes-cortex/` → dest under `~/.hermes/` or `~/`.
 > **But it should only be RUN on designated server machines** (Moses, Esther backup).
 > Client agents (Titus, Gisu, Joseph, Kustos) must NOT start server.py. They connect remotely via MCP tools pointed at the server URL in `~/.hermes-cortex/cortex-bus.conf`.
 
-### Templates (guarded — only if dest missing)
-| `docs/templates/MEMORY.seed.md` | `~/.hermes/memories/MEMORY.md` | |
-| `docs/templates/USER.seed.md` | `~/.hermes/memories/USER.md` | |
-| `docs/templates/memory-readme.seed.md` | `~/.hermes/memory/README.md` | |
+### Memory (Hermes-owned — NOT registered)
+
+`~/.hermes/memories/MEMORY.md` and `USER.md` are Hermes-owned. Cortex does
+NOT deploy or seed them (2026-08-05: a registered seed clobbered live
+memory on every deploy). Templates stay in `docs/templates/` as reference
+only; `memory-readme.seed.md` → `~/.hermes-cortex/memory/README.md` is the
+one exception (cortex-owned rubric doc, still registered).
 
 ### Langfuse
 | `deploy/docker-compose.langfuse.yml` | `~/langfuse/docker-compose.yml` | `restart_langfuse` |

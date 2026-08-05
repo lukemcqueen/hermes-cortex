@@ -509,9 +509,14 @@ register "ops/offline/auto-update.sh"             "${CORTEX_DEPLOY_HOME}/offline
 register_orch "ops/services/bus/agent-card/generate-agent-card.py"         "${CORTEX_DEPLOY_HOME}/scripts/generate-agent-card.py"
 register_orch "ops/services/bus/agent-card/agent-card.json"                "${CORTEX_DEPLOY_HOME}/bus/agent-card.json"
 
-# Templates → ~/.hermes/memories/ (guarded — only if dest missing)
-register "docs/templates/MEMORY.seed.md"      "${CORTEX_DEPLOY_HOME}/memories/MEMORY.md"
-register "docs/templates/USER.seed.md"        "${CORTEX_DEPLOY_HOME}/memories/USER.md"
+# ⚠️ MEMORY.md / USER.md are Hermes-owned — NEVER register them here.
+# Hermes reads ~/.hermes/memories/ directly and creates the files on first
+# memory write. A register entry here made every deploy overwrite LIVE memory
+# with the blank seed template — the hash always differs because the live file
+# is personalized, so needs_update() clobbered it on every run (7× on
+# 2026-08-05). Seeds remain in docs/templates/ for reference only.
+# memory-readme.seed.md is a cortex-owned rubric doc (NOT user memory) — safe
+# to keep syncing via the generic hash path.
 register "docs/templates/memory-readme.seed.md" "${CORTEX_DEPLOY_HOME}/memory/README.md"
 
 # Langfuse

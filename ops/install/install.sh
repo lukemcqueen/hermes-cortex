@@ -1575,32 +1575,16 @@ fi
 info "Scripts directory: ${SCRIPTS_DIR}"
 
 # ─────────────────────────────────────────────────────────────
-# 9. Seed Memory Files — Bootstrapping templates
+# 9. Hermes Memory — NOT seeded by Cortex (2026-08-05)
 # ─────────────────────────────────────────────────────────────
-step "Seeding initial memory files (MEMORY.md, USER.md)"
-
-# Find the template seed files
-SEED_MEMORY="${SCRIPT_DIR}/docs/templates/MEMORY.seed.md"
-SEED_USER="${SCRIPT_DIR}/docs/templates/USER.seed.md"
-HERMES_MEMORIES="${CORTEX_DEPLOY_HOME}/memories"
-
-# Create memory directory if it doesn't exist
-mkdir -p "$HERMES_MEMORIES"
-
-# Copy seed files only if they don't already exist (don't overwrite)
-if [[ -f "$SEED_MEMORY" ]] && [[ ! -f "${HERMES_MEMORIES}/MEMORY.md" ]]; then
- cp "$SEED_MEMORY" "${HERMES_MEMORIES}/MEMORY.md"
- info " Created MEMORY.md from seed template"
-else
- skip "MEMORY.md already exists or template not found"
-fi
-
-if [[ -f "$SEED_USER" ]] && [[ ! -f "${HERMES_MEMORIES}/USER.md" ]]; then
- cp "$SEED_USER" "${HERMES_MEMORIES}/USER.md"
- info " Created USER.md from seed template"
-else
- skip "USER.md already exists or template not found"
-fi
+# MEMORY.md / USER.md are Hermes-owned: Hermes reads ~/.hermes/memories/
+# and creates the files on its first memory write. Cortex must NOT seed or
+# deploy a memory copy — a deploy-registered seed clobbered live memory on
+# every cortex-update (7× on 2026-08-05, because the live file is
+# personalized and the deploy overwrote it with the blank template). The
+# seed templates remain in docs/templates/ for reference only.
+step "Hermes memory (Hermes-owned — no cortex seed)"
+info "  MEMORY.md/USER.md bootstrap left to Hermes (~/.hermes/memories/)"
 
 # Seed SOUL.md from template if it doesn't exist yet
 SEED_SOUL="${SCRIPT_DIR}/docs/templates/SOUL.md"
@@ -1625,8 +1609,7 @@ else
  skip "memory/README.md already exists or template not found"
 fi
 
-# Create an empty .gitkeep so the directory is clean (not git-tracked anyway)
-touch "$HERMES_MEMORIES/.gitkeep"
+# memory/README.md is cortex-owned — seeded by cortex-update register map.
 ok
 
 # ─────────────────────────────────────────────────────────────

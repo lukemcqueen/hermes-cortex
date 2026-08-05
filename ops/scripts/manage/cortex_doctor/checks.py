@@ -3105,6 +3105,12 @@ def check_deploy_checksums(res):
           f"REQUIRED: Run: cortex-update.sh to resync")
 
   # ── Category 1: Parse register() entries from cortex-update.sh ──
+  # NOTE (2026-08-05): MEMORY.md/USER.md are intentionally NOT registered —
+  # they are Hermes-owned user memory (~/.hermes/memories/). Deploying them
+  # made every cortex-update overwrite personalized memory with the seed
+  # template, and this sweep then FAILed on the healthy personalized state
+  # ("Run cortex-update.sh to resync" = the destructive action). Never
+  # re-add memory files to the register map.
   cortex_update = repo_dir / "ops" / "scripts" / "cortex-update.sh"
   if cortex_update.exists():
     content = cortex_update.read_text()

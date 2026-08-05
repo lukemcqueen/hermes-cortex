@@ -302,6 +302,39 @@ docker: 3 GB VM, stable with 6 containers → /brain m docker
 ```
 See `docs/agent-memory-pointer-pattern.md` for the full guide.
 
+### 18. Memory got wiped after a cortex update / "Checksum: MEMORY.seed.md" FAIL
+
+**Symptom (2026-08-05):** `MEMORY.md`/`USER.md` lost all custom notes after
+every deploy (7 clobbers in one day). The doctor showed `❌ Checksum:
+MEMORY.seed.md — MD5 mismatch — deployed copy differs from repo source` and
+recommended "Run: cortex-update.sh to resync" — which was exactly the
+destructive action.
+
+**Root cause:** Memory files were registered as deploy targets in
+`cortex-update.sh` (seed templates → deployed copy). The live file is
+personalized, so its hash always differed from the blank template, and the
+generic `needs_update()` hash path overwrote it on every run. The doctor's
+checksum sweep then FAILed on the healthy personalized state (inverted
+check).
+
+**Resolution:** Memory is Hermes-owned — `~/.hermes/memories/MEMORY.md` is
+read directly by Hermes and created on first memory write. Cortex no longer
+seeds, registers, or checksums memory files at all (removed 2026-08-05):
+- `cortex-update.sh` has no register entry for memory files (guard comment
+  in place — never re-add).
+- `install.sh` step 9 no longer seeds a cortex-side memory copy.
+- The doctor never content-compares memory files.
+
+**If your memory was wiped:** restore from
+`~/.hermes-cortex/state/deploy-backups/MEMORY.md.<ts>.bak` (deploy backups
+the file before overwriting). After the fix deploys, no further backups of
+that path will be created because the file is no longer touched.
+
+**Legacy leftover:** an inert copy may exist at
+`~/.hermes-cortex/memories/MEMORY.md` from before the fix. Leave it in
+place — it is not loaded by Hermes and deleting it risks destroying data on
+a host where it was once live.
+
 ---
 
 ## 🐧 Linux-Specific Issues

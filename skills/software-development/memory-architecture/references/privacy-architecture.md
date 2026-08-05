@@ -20,13 +20,16 @@ GITIGNORE_TEMPLATE="${SCRIPT_DIR}/docs/templates/gitignore.brain"
 ```
 Iterates over `$SOURCES`, skips if .gitignore already exists, otherwise copies from template or writes inline fallback.
 
-### Step 9 — Seed Memory Files
+### Step 9 — Hermes Memory (no cortex seed, since 2026-08-05)
 ```bash
-SEED_MEMORY="${SCRIPT_DIR}/docs/templates/MEMORY.seed.md"
-SEED_USER="${SCRIPT_DIR}/docs/templates/USER.seed.md"
-HERMES_MEMORIES="${HERMES_HOME}/memories"
+# REMOVED: seeding MEMORY.md/USER.md into a cortex-side memories dir.
 ```
-Creates `~/.hermes/memories/` if absent, copies templates only if target files don't exist (never overwrites user data).
+Memory is Hermes-owned: Hermes reads `~/.hermes/memories/MEMORY.md` directly
+and creates the files on its first memory write. A deploy-registered seed
+previously clobbered live memory on every cortex-update (7× on 2026-08-05)
+because the live file is personalized and the generic hash-overwrite path
+replaced it with the blank template. Seeds in `docs/templates/` are
+reference-only now.
 
 ## TOTAL_STEPS Accounting
 When adding steps to install.sh:
