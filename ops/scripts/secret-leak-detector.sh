@@ -214,6 +214,14 @@ for FILE in $STAGED_FILES; do
   # Matches any IPv4; skips private / loopback / link-local / CGNAT /
   # documentation ranges (10/8, 127/8, 192.168/16, 172.16-31/12,
   # 169.254/16, 100.64-127/10, 192.0.2/24, 198.51.100/24, 203.0.113/24).
+  # EXEMPT (2026-08-05): the shared blocklist files — blocked_ips.add and
+  # blocked_ips.submit exist to hold public IPs; that IS the data, not PII.
+  # Without the exemption every agent commit warns once per blocked IP
+  # (Gisu got flooded; Telegram spam-filter ban risk).
+  case "$FILE" in
+    ops/install/deploy/nginx/blocked_ips.add|ops/install/deploy/nginx/blocked_ips.submit)
+      : ;;  # blocklist data — public IPs are the content, skip pattern 8
+    *)
   IP_RE='[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'
   if echo "$STAGED_CONTENT" | grep -Eo "$IP_RE" >/dev/null 2>&1; then
     IP_MATCHES=$(echo "$STAGED_CONTENT" | grep -Eo "$IP_RE" 2>/dev/null || true)
@@ -235,6 +243,8 @@ for FILE in $STAGED_FILES; do
       done <<< "$IP_MATCHES"
     fi
   fi
+      ;;
+  esac
 done
 
 # Report findings
