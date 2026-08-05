@@ -28,6 +28,15 @@ sensor's hardcoded check lists.
 | `script_missing` for a script | Stale entry in `required_scripts` array | Trace references; remove if never deployed |
 | `gbrain_health_check_failed` | Skills missing resolver triggers (content/marketing skills) | Pre-existing; no action unless service-level failure |
 | `git_issue` — uncommitted changes | Sensor's own fix not committed yet | Commit and push the sensor fix |
+| `nginx config invalid` (from `nginx -t` as non-root) | `open() "/run/nginx.pid" failed (13: Permission denied)` — pid-file permission artifact, NOT a config error | Validate with `sudo nginx -t`; don't report/revert anything (2026-08-05) |
+
+## Reading the sensor's own output
+
+The sensor cron's output lives at `~/.hermes/cron/output/922670b04cba/*.md`
+(job id for `agent-remediation-sensor`). An empty issue array prints as `[]`
+in the file — that is the healthy state, not an error. On hosts with
+`IS_SERVER=false` in `~/hermes-cortex/.env` the sensor always prints `[]` by
+design (host gating); don't expect sensor issues from them.
 
 ## Workflow: Handling `script_missing` from the sensor
 

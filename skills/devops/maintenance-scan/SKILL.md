@@ -111,6 +111,10 @@ Fix each issue without asking (Principle 2 — Be Proactive). Only escalate:
 - Privilege escalation
 - Service restart affecting production traffic
 
+Known doctor-fix patterns:
+- `state.db FTS write corruption` (doctor issue #1) → `hermes sessions repair` — backs up first and rebuilds the FTS index, but is **slow on a large DB (can exceed 5 min)**: run it with `background=true` and poll, don't block on it (2026-08-05).
+- `nginx -t` failures mentioning `open() "/run/nginx.pid" failed (13: Permission denied)` when run as non-root are a **pid-file permission artifact, not a config error** — validate with `sudo nginx -t` instead (2026-08-05).
+
 For docs: edit → sync (`cp repo_path ~/.hermes/`) → commit → push → verify.
 
 ### Step 9: Re-verify

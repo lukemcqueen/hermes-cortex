@@ -688,6 +688,8 @@ See `references/mcp-servers.md` for full tool descriptions and usage examples.
 
 **Orphaned PENDING cycles from sibling sessions:** the doctor's `❌ PENDING cycles` failure often lists cycles you did NOT create — sibling/daemon sessions (background subagents, other CLI sessions, party agents) called `begin_change` and never scored. Enumerate with `cycle_query(status="pending")`, then `feedback_accept(cycle_id=N, note="...")` each verified-complete one. For cycles superseded by a later MOVE_ON cycle of the same task, cite the superseding cycle in the note (e.g. "cycle 2 (2152) verified deploy end-to-end").
 
+**PENDING vs scored-unreviewed — don't mass-accept hook cycles (2026-08-05):** the pre-commit hook auto-logs one cycle per commit with a LOOP/MOVE_ON/STOP decision and `user_overrode IS NULL`. These accumulate by the hundred and look like "unreviewed" via `cycle_query(unreviewed=true)`, but they are NOT failures: the doctor only fails on `decision='PENDING'` cycles. Only resolve genuinely PENDING cycles (fresh <24h, no live lock for that task). To tell them apart, query the DB directly: `SELECT id, task_id, decision, user_overrode, timestamp FROM loop_cycles WHERE decision='PENDING' OR (user_overrode IS NULL) ORDER BY id` — check `decision` per row, don't bulk-accept. Upstream doctor (63981498+) refines this further: a PENDING cycle whose task_id has NO active `.governance-*.json` lock is a LEAK (FAIL, blocks push); a PENDING cycle whose task holds a live lock is the current task (INFO, expected mid-session).
+
 Or via the main installer: `bash hermes-cortex/install.sh` (loop-governance step removed in July 2026 — use cortex-update.sh instead).
 
 ## Database Retention
