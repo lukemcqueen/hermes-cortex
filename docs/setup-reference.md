@@ -46,7 +46,7 @@ to keep the root agent guidelines focused on general Hermes Cortex usage.
 
 | ✅ Correct | ❌ Wrong |
 |-----------|---------|
-| `~/.config/systemd/user/com.hermes.health-server.service` | `/etc/systemd/system/hermes-health.service` |
+| `~/.config/systemd/user/health-vector.service` | `/etc/systemd/system/hermes-health.service` |
 | `systemctl --user enable/start` | `sudo systemctl enable/start` |
 | `WantedBy=default.target` | `WantedBy=multi-user.target` |
 

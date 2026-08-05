@@ -1449,6 +1449,40 @@ def check_system(res):
     else:
       res.add("Systemd stale units", "PASS", "no unexpected failed units")
 
+  # ── Crash-loop detection ──
+  # Units stuck in `activating (auto-restart)` never transition to `failed`,
+  # so the stale-units check above misses them entirely. A duplicate unit
+  # fighting for the same port (e.g. com.hermes.health-server.service vs
+  # hermes-health-server.service, both running health-vector.py --serve 8905)
+  # fails on bind and restarts forever — NRestarts climbs into the hundreds
+  # while the doctor stays silent because the unit is "activating", not failed.
+  # Signal: substate `auto-restart` = systemd between restart attempts.
+  if IS_LINUX:
+    activating = run_bg(["systemctl", "--user", "list-units", "--state=activating",
+             "--no-legend", "--no-pager"], timeout=5)
+    crash = []
+    if activating and activating.strip():
+      for line in activating.strip().split("\n"):
+        if "auto-restart" not in line:
+          continue
+        parts = line.split()
+        offset = 1 if parts and parts[0] == "\u25cf" else 0
+        if len(parts) <= offset:
+          continue
+        unit = parts[offset]
+        nrestarts = run_bg(["systemctl", "--user", "show", unit,
+                 "-p", "NRestarts"], timeout=5)
+        count = (nrestarts.strip().split("=")[-1]
+                 if nrestarts and "=" in nrestarts else "?")
+        crash.append(f"{unit} (restarts: {count})")
+    if crash:
+      res.add("Systemd crash loops", "FAIL",
+          f"{len(crash)} unit(s) stuck in auto-restart: {', '.join(crash)}",
+          "systemctl --user status <unit> && journalctl --user -u <unit> -n 50 — "
+          "likely port conflict or bad ExecStart; disable + remove the duplicate unit")
+    else:
+      res.add("Systemd crash loops", "PASS", "no units in auto-restart loop")
+
 
 def check_config(res):
   """6. Config consistency: hermes-cortex.env var cross-reference."""

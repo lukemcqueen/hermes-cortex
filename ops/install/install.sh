@@ -2022,23 +2022,12 @@ PLIST
   info " Health server launch agent already loaded"
  fi
 elif [[ "$CORTEX_OS" == "linux" ]]; then
- # Install health server systemd user service (self-monitoring API)
- SYSTEMD_DIR="${HOME}/.config/systemd/user"
- HEALTH_SERVICE_SRC="$(_scripts)/com.hermes.health-server.service"
- HEALTH_SERVICE_DST="${SYSTEMD_DIR}/com.hermes.health-server.service"
- mkdir -p "$SYSTEMD_DIR"
- if [[ -f "$HEALTH_SERVICE_SRC" ]]; then
-  cp "$HEALTH_SERVICE_SRC" "$HEALTH_SERVICE_DST"
-  chmod 644 "$HEALTH_SERVICE_DST"
-  systemctl --user daemon-reload 2>/dev/null
-  if ! systemctl --user is-enabled com.hermes.health-server &>/dev/null 2>&1; then
-   systemctl --user enable com.hermes.health-server 2>&1
-   systemctl --user start com.hermes.health-server 2>&1
-   info " Health server systemd service installed and started"
-  else
-   info " Health server systemd service already enabled"
-  fi
- fi
+# Health server is now installed as a systemd user service from the
+# canonical template docs/templates/health-vector.service. The legacy
+# com.hermes.health-server.service name was removed (2026-08-05) — it
+# caused duplicate-unit crash loops when left behind on upgraded hosts
+# (same port 8905, both enabled). Do NOT re-add that unit name.
+info " Health server: managed by systemd user service health-vector.service (see docs/templates/health-vector.service)"
 
  # Docker daemon is managed by the system's init — just verify it's available
  if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
