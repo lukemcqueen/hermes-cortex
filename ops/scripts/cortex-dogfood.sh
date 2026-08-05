@@ -63,6 +63,24 @@ done
 
 echo "━━━ cortex-dogfood ━━━"
 
+# Capture the current governance session's task_id BEFORE deploy: the
+# deploy step (cortex-update.sh) purges governance locks (known
+# side-effect), which would make THIS session's own cycle look "leaked"
+# to the doctor (no active lock → FAIL). Record it so the verify step
+# can exempt exactly this task — other leaked cycles still fail.
+DOGFOOD_OWN_TASK=""
+for _lf in "${HOME}/.hermes-cortex/state"/.governance-*.json; do
+  [[ -f "$_lf" ]] || continue
+  _task=$(python3 -c "import json;print(json.load(open('$_lf')).get('task_id',''))" 2>/dev/null || echo "")
+  if [[ -n "$_task" ]]; then
+    DOGFOOD_OWN_TASK="$_task"
+    break
+  fi
+done
+if [[ -n "$DOGFOOD_OWN_TASK" ]]; then
+  echo "  (running under governance task: ${DOGFOOD_OWN_TASK} — its cycle is scored at end_change)"
+fi
+
 if [[ -z "$DOCTOR_ONLY" ]]; then
   # 1. Pull latest (rebase) — never diagnose without the newest source
   echo "▶ 1/4 pull latest"
@@ -91,10 +109,20 @@ echo "$DOCTOR_OUT" | sed 's/^/   /'
 # 4. Verify — FAIL means the dogfood cycle failed. A real failure is any
 #    ❌ check line that is NOT the "Overall: FAILING" summary line.
 #    Match on the ❌ marker, not the word "FAIL" — "Overall: FAILING"
-#    would false-positive. NOTE: PENDING cycles are NOT excluded — the
-#    doctor FAILs only on cycles from finished tasks (no active lock), so
-#    a dogfood run with leaked prior-task cycles fails. (2026-08-05.)
+#    would false-positive. NOTE: PENDING cycles are NOT broadly excluded —
+#    the doctor FAILs only on cycles from finished tasks (no active lock).
+#    BUT the deploy step purged this session's own lock, so if the doctor
+#    flags exactly DOGFOOD_OWN_TASK's cycle, that is THIS run's cycle being
+#    scored at end_change — exempt it. Other leaked cycles still fail.
+#    (2026-08-05.)
 _DOGFOOD_FAILS=$(echo "$DOCTOR_OUT" | grep -E '^ *❌' | grep -vcE 'Overall: FAILING' || true)
+if [[ -n "$DOGFOOD_OWN_TASK" ]]; then
+  _OWN_CYCLES=$(echo "$DOCTOR_OUT" | grep -cE "❌.*${DOGFOOD_OWN_TASK}" || true)
+  if [[ "${_OWN_CYCLES:-0}" -gt 0 ]]; then
+    _DOGFOOD_FAILS=$((_DOGFOOD_FAILS - _OWN_CYCLES))
+    echo "  (exempted ${_OWN_CYCLES} own-task cycle(s) — scored at end_change)"
+  fi
+fi
 if [[ "${_DOGFOOD_FAILS:-0}" -gt 0 ]]; then
   echo ""
   echo "❌  DOGFOOD FAILED — deployed state does not verify clean."

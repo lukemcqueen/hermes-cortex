@@ -117,10 +117,18 @@ governance lock: `_has_governance_lock()` Phase 3 reads the repo marker
 
 ## Rule 4: PENDING Cycles — Yours vs Others
 
-- `begin_change` creates a PENDING cycle; the doctor reports `❌ PENDING cycles`
-  whenever ANY open cycle exists — including your own just-opened one. Green is
-  impossible mid-lock.
-- Score ALL your own cycles (`feedback_accept`) before `end_change`.
+- `begin_change` creates a PENDING cycle. The doctor distinguishes (since
+  2026-08-05, commit 63981498): a cycle whose task_id has a LIVE lock file
+  (`~/.hermes-cortex/state/.governance-*.json`, status executing) is the
+  CURRENT task → reported INFO "score at end_change", NOT a FAIL. A cycle
+  whose task_id has NO lock is a LEAK (you moved on without scoring) → FAIL.
+  Green is achievable mid-lock; the current task's own cycle no longer fails
+  the doctor.
+- Score ALL your own cycles (`feedback_accept`) before `end_change` — and
+  score each task's cycle at THAT task's end_change. NEVER batch: opening
+  `begin_change` under a new task_id while earlier cycles from the same
+  session are still PENDING creates a leak (Luke caught 3 such cycles
+  2026-08-05; the 30-min backlog alert fires on exactly this).
 - Do NOT score a sibling session's or cron's cycles while they are paused or
   mid-work — they own those. Enumerate with `cycle_query(status="pending")`,
   score only the ones your session_id created.
@@ -287,8 +295,85 @@ are needed together, or the fix breaks commits:
 overwrite them by hand to test; use `cortex-update.sh` or test with
 repo-source as the simulated deployed source.
 
+## Rule 10: Leaked PENDING Cycles Must Block the Push — and Doctor-Output Greps Are Traps
+
+When a gate greps doctor output, the FAIL-detection pattern has bitten twice
+(2026-08-05, both caught by the dogfood loop itself):
+
+- **Never grep for the literal word `FAIL`.** The doctor's summary line is
+  `❌ Overall: FAILING` — which *contains* "FAIL" → false positive on every
+  green run. And `❌ PENDING cycles` contains no "FAIL" → false negative.
+- **Never bare-grep `❌` either.** The footer `🔧 REQUIRED ACTIONS — resolve
+  each ⚠️ or ❌ above` *contains* ❌ mid-line → counted as a failure. The
+  gate blocked its own push showing "1 failure" while printing zero detail.
+- **Correct pattern** (both pre-push gate and cortex-dogfood.sh):
+  ```bash
+  _DOCTOR_FAILS=$(echo "$DOCTOR_OUTPUT" | grep -E '^ *❌' \
+    | grep -vcE 'Overall: FAILING' || true)
+  ```
+  Match `^ *❌` (lines STARTING with ❌ = actual check lines), exclude ONLY
+  the summary line. Unit-test against REAL doctor output including the
+  footer — a synthetic fixture without the footer line hides the bug.
+
+**Leaked-cycle enforcement (63981498):** the doctor now FAILs only on cycles
+from FINISHED tasks (no active lock for their task_id); the current task's
+cycle (lock held) is INFO. The pre-push gate therefore must NOT exclude
+"PENDING cycles" lines — a push with leaked prior-task cycles is BLOCKED.
+That is the mechanism that makes "clear cycles during cleanup, not later"
+(Luke directive 2026-08-05) physical: you cannot ship while old cycles sit
+unscored. The same applies to `cortex-dogfood.sh` — its verify step counts
+the same way.
+
+## Rule 11: Scope Shared-Hook Gates — Cortex Repo + Orchestrator Host Only
+
+Two Luke corrections (2026-08-05) about gate blast radius. The pre-commit and
+pre-push hooks fire in EVERY repo on the host (Rule 6) — so any NEW gate added
+to them must be doubly scoped or it will block innocent work in project repos:
+
+1. **Repo scope**: only fire in the hermes-cortex repo itself.
+   ```bash
+   _REPO_TOP=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+   [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]]   # CORTEX_REPO_TOP=${HOME}/hermes-cortex
+   ```
+   Non-cortex repos (client-mwi, client-works, ebm-website, pinned repos,
+   ...) must NEVER run the hermes-cortex doctor — a failing cortex state must
+   not block a client repo's push.
+2. **Orchestrator scope**: only orchestrator hosts run orchestrator-level
+   gates. Reuse `_detect_orch()` (hostname moses|esther AND home
+   `/home/<hostname>`, env-independent — the SAME function pre-commit uses
+   for its self-test; copy it, don't reinvent). Non-orch hosts never run the
+   doctor gate. `cortex-dogfood.sh` exits 1 with a clear message on
+   non-orch hosts.
+
+**Orchestrator-only path arrays must be repo-scoped too (Titus over-block):**
+the hardcoded `ORCHESTRATOR_ONLY_PATHS` array had UNANCHORED patterns
+(`test_.*\.py$`, `.*_test\.py$`, `.*_spec\.py$`) that fired in every repo —
+Titus was blocked committing `apps/api/tests/test_ipi_similarity.py` in a
+project repo. The config-driven guard (docs/orchestrator-only-paths.txt read
+from HEAD) is the correct repo-aware design: "no config file = no
+restrictions". The hardcoded array must be wrapped in the same
+`if [[ "$REPO_ROOT" == "${HOME}/hermes-cortex" ]]` gate, and any
+cortex-specific path it protects that the config misses (e.g.
+`^core/governance/tests/`) added explicitly rather than via unanchored
+patterns.
+
+**macOS deploy-script portability (deploy-fix-blocked-ips.sh, 2026-08-05):**
+a deploy script that hardcodes Linux assumptions breaks on macOS silently —
+the sanctioned fix lands in the wrong dir and the doctor FAIL persists.
+- DEST: `/usr/local/sbin` (Linux) vs `/usr/local/bin` (macOS) — the doctor
+  check is platform-aware; the deploy script must match it.
+- Group: `root` (Linux) vs `wheel` (macOS — no root group).
+- Immutability: `chattr/lsattr` (Linux) vs `chflags uchg/nouchg` (macOS),
+  each guarded by `command -v` so a missing tool never fails the deploy.
+- Sudoers template: list BOTH platform paths — a path that doesn't exist on
+  a host simply never matches (harmless dead entry on the other platform).
+- Detect platform ONCE at top: `[ "$(uname -s)" = "Darwin" ]`.
+
 ## References
 
+- `references/leaked-cycles-and-doctor-grep-2026-08-05.md` — the leaked-cycle
+  enforcement design (active-lock split), the doctor-output grep trap with
+  exact failing/working patterns, and the repo+orch scoping recipe.
 - `references/pre-commit-score-fail-closed-2026-08-03.md` — the incident:
   misread → deletion → revert → correct fail-closed fix, with exact commands.
 - `references/macos-fail-closed-hook-2026-08-03.md` — macOS portability of the
