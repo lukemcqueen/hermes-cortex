@@ -132,8 +132,14 @@ governance lock: `_has_governance_lock()` Phase 3 reads the repo marker
 - Do NOT score a sibling session's or cron's cycles while they are paused or
   mid-work — they own those. Enumerate with `cycle_query(status="pending")`,
   score only the ones your session_id created.
-- `cortex-update.sh` purges governance locks (Pitfall 2) — re-acquire with
-  `begin_change` after deploy.
+- **`cortex-update.sh` no longer purges live locks (FIXED 2026-08-05).** The
+  old "deploy purges locks" behavior was a TIMEZONE BUG, not a feature: the
+  stale-lock cleanup sliced the heartbeat to `[:19]`, STRIPPING the ISO-8601
+  `Z` (UTC) marker, then `date -d` parsed UTC as LOCAL time — on UTC+9 hosts a
+  2-minute-old lock computed as 9h old → deleted on EVERY deploy. See Rule 12
+  for the full story. If a deploy still eats your lock, check the stale-lock
+  age math FIRST (a fresh lock showing hours of age = TZ bug), then re-acquire
+  with `begin_change` as a stopgap only.
 
 ## Rule 5: Rebase/Cherry-Pick/Revert False "no-verify" Flag — FIXED via Reflog Discriminator (2026-08-04)
 
@@ -369,8 +375,56 @@ the sanctioned fix lands in the wrong dir and the doctor FAIL persists.
   a host simply never matches (harmless dead entry on the other platform).
 - Detect platform ONCE at top: `[ "$(uname -s)" = "Darwin" ]`.
 
+## Rule 12: TZ Bug in Lock-Age Math Kills Live Locks — and Mandatory Dogfood Runs the Deploy
+
+**The TZ bug (2026-08-05, Luke: "this lock issue is MISERABLE"):** the "cortex-
+update purges locks every deploy" behavior was NOT a designed purge — it was a
+timezone parse bug in cortex-update.sh's stale-lock cleanup:
+
+- The heartbeat is ISO-8601 UTC ending in `Z` (e.g. `2026-08-05T08:42:54Z`).
+- The cleanup sliced it to `[:19]` — **stripping the `Z`** — then ran
+  `date -d "$heartbeat" +%s`, which parses a marker-less timestamp as LOCAL
+  time. On a UTC+9 host (KST) the UTC time parsed as +9h-offset LOCAL → a
+  FRESH 2-minute lock computed as **9h old** → `> 3600` threshold → **deleted
+  on every deploy**.
+- The enforcer's `_has_governance_lock` (Python `datetime.fromisoformat`)
+  handled `Z` correctly the whole time — the lock was being deleted under it.
+
+**Fix pattern for ANY bash `date -d` on an ISO heartbeat: KEEP the `Z`** —
+`date -d "2026-08-05T08:42:54Z" +%s` parses correctly. Or use Python
+(`fromisoformat` handles `Z`). When diagnosing a "purged" lock, verify the
+age math FIRST: a lock minutes old showing hours of age = TZ bug, not a real
+stale lock. Python purge paths (MCP server, purge-stale-governance-locks.py)
+were already correct — only the bash `date -d` had the bug.
+
+**Mandatory dogfood in the pre-push gate (Luke: "make this MANDATORY — I
+thought you did already"):** a push that touches ANY non-doc file in
+hermes-cortex runs the FULL dogfood cycle (pull → cortex-update → doctor →
+verify) BEFORE landing. The gate invokes `cortex-dogfood.sh --quiet` itself
+so the step cannot be forgotten:
+
+- **Scope (both Luke corrections 2026-08-05):** hermes-cortex repo ONLY
+  (dogfood = redeployment of HC — irrelevant to client repos) AND orchestrator
+  host only. Docs (`*.md`, `docs/`) exempt — no deployed state changes.
+- **Trigger is INVERTED, not an allowlist:** fire on every non-doc file
+  INCLUDING path changes/renames/config refs. A narrow pattern list missed
+  renamed scripts.
+- **Own-task exemption:** the dogfood deploy purges the governance lock (the
+  TZ bug's orphan behavior, even after the fix the deploy legitimately
+  reloads the enforcer plugin), so the doctor sees THIS session's own cycle
+  as "leaked" (no lock). `cortex-dogfood.sh` captures the active task_id
+  (`DOGFOOD_OWN_TASK`) BEFORE deploy and exempts exactly that task's cycle
+  from the FAIL count — other leaked cycles still fail.
+- **Skill reloads are NOT lock-coupled:** the per-session skills marker
+  (`state/skills-loaded/<session_id>`) survives deploy; the reload trigger is
+  deployed-skill drift → doctor → re-`skill_view`, not lock deletion. Do not
+  delete locks to force skill reloads — invalidate the marker instead.
+
 ## References
 
+- `references/tz-bug-lock-purge-and-mandatory-dogfood-2026-08-05.md` — the TZ
+  root cause with exact before/after age math, the mandatory-dogfood gate
+  scope corrections, and the own-task exemption design.
 - `references/leaked-cycles-and-doctor-grep-2026-08-05.md` — the leaked-cycle
   enforcement design (active-lock split), the doctor-output grep trap with
   exact failing/working patterns, and the repo+orch scoping recipe.
