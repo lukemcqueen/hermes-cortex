@@ -101,7 +101,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/reference/after-completing-work-6-questions.md` | **Pre-ship checklist** — 6-questions verification: arrays, cleanup, docs, syntax, doctor, push/deploy |
 | `docs/reference/session-todo-protocol.md` | **Session todo protocol** — todo() lifecycle: read durable file, update on cycles, write back at session end |
 | `docs/gbrain-stale-lock-detection.md` | gbrain stale lock file detection & auto-recovery — root cause, automated fix via service-recovery, manual diagnostics |
-| `docs/cron-schedules.md` | **Canonical cron schedule reference** — every cron, schedule, type, script, delivery. Update whenever schedules change. |
+| `docs/cron-schedules.md` | **Canonical cron schedule reference** — every cron, schedule, type, script, delivery (incl. explicit telegram targets for script-created crons). Update whenever schedules change. |
 | `docs/cron-jobs-reference.md` | **Cron jobs inventory** — all cron jobs with name, type, schedule, and purpose (extracted from AGENTS.md) |
 | `docs/cron-format-standard.md` | **Cron output format standard** — required format for all LLM-driven cron outputs: header, phases, cost footer, [SILENT]. Cross-references the cron-format-standard skill. |
 | `docs/cron-job-recipes.md` | 10 reusable cron recipes — Bible reading, system alerts, memory pruning, morning briefing, and more |
