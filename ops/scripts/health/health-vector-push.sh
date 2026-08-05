@@ -101,7 +101,12 @@ fi
 
 # [5] ollama
 if command -v curl &>/dev/null; then
-    timeout 5 curl -sf http://localhost:11434/api/tags -o /dev/null 2>/dev/null || V_OLLAMA=-1
+    # macOS has no `timeout` (gtimeout from coreutils); fall back to curl --max-time
+    if command -v timeout &>/dev/null; then
+        timeout 5 curl -sf http://localhost:11434/api/tags -o /dev/null 2>/dev/null || V_OLLAMA=-1
+    else
+        curl -sf --max-time 5 http://localhost:11434/api/tags -o /dev/null 2>/dev/null || V_OLLAMA=-1
+    fi
 else
     V_OLLAMA=0
 fi

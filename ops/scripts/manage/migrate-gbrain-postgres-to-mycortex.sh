@@ -11,6 +11,15 @@
 # 332d1e3e). Esther's host was migrated manually as the reference; this is
 # the repeatable version for joseph / gisu / kustos / titus / moses.
 #
+# PLATFORMS: Linux and macOS (Docker Desktop). The script uses `docker`
+# exec/compose/inspect only — no systemd-specific commands beyond an
+# optional, fails-safe `systemctl` check for the bus stop (skipped when
+# systemctl is absent, i.e. macOS). macOS hosts (Titus) run the same
+# container via Docker Desktop; the mycortex CLI's Darwin branch connects
+# via direct psql (env → ~/.hermes-cortex/mycortex.conf → legacy
+# ~/.gbrain/config.json → defaults) and is already updated for `mycortex`.
+# Portability: no `seq`/`timeout`/GNU-only utilities (verified 2026-08-05).
+#
 # IDEMPOTENT: safe to re-run. Detects an already-migrated host and exits 0.
 # Non-destructive: the old container is STOPPED, not removed, so rollback is
 # `docker start gbrain-postgres` + revert the .env lines this script changed.
