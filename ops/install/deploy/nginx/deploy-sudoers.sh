@@ -11,6 +11,7 @@
 set -euo pipefail
 
 CORTEX_REPO="$(cd "$(dirname "$0")/../../../.." && pwd)"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}"
 SOURCE_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/hermes-security"
 # Single sudoers file policy (2026-07-31): ALL hermes rules deploy to
 # /etc/sudoers.d/hermes. hermes-security was the old split target — kept
@@ -45,6 +46,37 @@ else
   exit 1
 fi
 
+# Resolve the sudo user list (2026-08-05): real account names are PII and
+# must NOT live in the public template. Read CORTEX_SUDO_USERS from the
+# host's PRIVATE env (~/.hermes-cortex/.env, never committed); fall back
+# to the user running this deploy.
+SUDO_USERS=""
+if [ -f "$CORTEX_DEPLOY_HOME/.env" ]; then
+  SUDO_USERS="$(grep '^CORTEX_SUDO_USERS=' "$CORTEX_DEPLOY_HOME/.env" 2>/dev/null | head -1 | cut -d= -f2- || true)"
+fi
+if [ -z "$SUDO_USERS" ] && [ -f "$HOME/.hermes-cortex/.env" ]; then
+  SUDO_USERS="$(grep '^CORTEX_SUDO_USERS=' "$HOME/.hermes-cortex/.env" 2>/dev/null | head -1 | cut -d= -f2- || true)"
+fi
+if [ -z "$SUDO_USERS" ]; then
+  SUDO_USERS="$(id -un)"
+  echo "  ⚠ CORTEX_SUDO_USERS not set — granting to deploying user only: ${SUDO_USERS}"
+else
+  echo "  ✓ Sudo user list: ${SUDO_USERS}"
+fi
+
+# Render the template with the placeholder substituted
+RENDERED_FILE="${TARGET_FILE}.rendered"
+sed "s/__SUDO_USERS__/${SUDO_USERS}/g" "$SOURCE_FILE" > "$RENDERED_FILE"
+
+# Validate the RENDERED content (placeholder substitution could break syntax)
+if visudo -c -f "$RENDERED_FILE" 2>&1; then
+  echo "  ✓ Rendered sudoers syntax valid"
+else
+  echo "  ✗ Rendered sudoers has syntax errors — aborting"
+  rm -f "$RENDERED_FILE"
+  exit 1
+fi
+
 # Backup existing sudoers file
 if [ -f "$TARGET_FILE" ]; then
   cp "$TARGET_FILE" "${TARGET_FILE}.bak.$(date +%Y%m%d-%H%M%S)"
@@ -52,7 +84,8 @@ if [ -f "$TARGET_FILE" ]; then
 fi
 
 # Deploy the complete rules
-cp "$SOURCE_FILE" "$TARGET_FILE"
+cp "$RENDERED_FILE" "$TARGET_FILE"
+rm -f "$RENDERED_FILE"
 chmod 0440 "$TARGET_FILE"
 chown root:root "$TARGET_FILE"
 

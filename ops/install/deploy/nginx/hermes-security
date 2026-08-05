@@ -2,34 +2,39 @@
 # Single-file policy (2026-07-31): deployed at /etc/sudoers.d/hermes
 # (the obsolete /etc/sudoers.d/hermes-security split is removed on deploy)
 #
-# Moses agent — nginx management (called by crons)
-moses ALL=(root) NOPASSWD: /usr/sbin/nginx -t
-moses ALL=(root) NOPASSWD: /usr/sbin/nginx -s reload
-moses ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx
-moses ALL=(root) NOPASSWD: /usr/bin/systemctl start nginx
-moses ALL=(root) NOPASSWD: /usr/bin/systemctl stop nginx
-moses ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx
+# NOTE (2026-08-05): __SUDO_USERS__ is a PLACEHOLDER. Real account names are
+# PII and never committed to the public repo. deploy-sudoers.sh substitutes
+# the per-host user list at deploy time (CORTEX_SUDO_USERS in the host's
+# private ~/.hermes-cortex/.env; falls back to the deploying user).
+#
+# Fleet agents — nginx management (called by crons)
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/sbin/nginx -t
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/sbin/nginx -s reload
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/systemctl start nginx
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/systemctl stop nginx
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx
 
-# Moses agent — blocked IP deploy (tight single path)
-moses ALL=(root) NOPASSWD: /bin/cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf
+# Fleet agents — blocked IP deploy (tight single path)
+__SUDO_USERS__ ALL=(root) NOPASSWD: /bin/cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf
 
-# Moses agent — governance enforcement helper (2026-07-31 hardening)
+# Fleet agents — governance enforcement helper (2026-07-31 hardening)
 # Gated inside the helper: unlock/update require --cortex-update (sanctioned)
-# or --orchestrator (moses|esther Unix account). lock/status open to all.
-moses ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock
+# or --orchestrator (orchestrator Unix accounts). lock/status open to all.
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock
 # Root-owned immutable blocked-IP generator (see deploy-fix-blocked-ips.sh)
-moses ALL=(root) NOPASSWD: /usr/local/sbin/fix-blocked-ips.py
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/local/sbin/fix-blocked-ips.py
 
-# Moses agent — htpasswd deploy
-moses ALL=(root) NOPASSWD: /usr/bin/cp /tmp/hermes-htpasswd /etc/nginx/.hermes-htpasswd
+# Fleet agents — htpasswd deploy
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/cp /tmp/hermes-htpasswd /etc/nginx/.hermes-htpasswd
 
-# Moses agent — apt cleanup (called by system-alert-watchdog)
-moses ALL=(root) NOPASSWD: /usr/bin/apt autoremove --purge -y
-moses ALL=(root) NOPASSWD: /usr/bin/apt clean
+# Fleet agents — apt cleanup (called by system-alert-watchdog)
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/apt autoremove --purge -y
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/apt clean
 
-# Moses agent — read-only monitoring
-moses ALL=(root) NOPASSWD: /usr/bin/fail2ban-client status
+# Fleet agents — read-only monitoring
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/fail2ban-client status
 
-# Moses agent — certbot renewal
-moses ALL=(root) NOPASSWD: /usr/bin/certbot renew --non-interactive
-moses ALL=(root) NOPASSWD: /usr/bin/certbot certificates
+# Fleet agents — certbot renewal
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/certbot renew --non-interactive
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/certbot certificates
