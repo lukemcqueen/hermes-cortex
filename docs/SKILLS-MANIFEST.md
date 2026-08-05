@@ -60,7 +60,7 @@ their domain.
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
-| `cold-email` | 1.0.0 | When the user wants to write, improve, or build a sequence of B2B cold outreach emails to prospects who hav... | `skill_view(name='cold-email')` |
+| `cold-email` | 1.0.0 | Write B2B cold emails and follow-up sequences that get replies. Use when the user wants to write cold outre... | `skill_view(name='cold-email')` |
 
 ## Communication (1 skill)
 
@@ -214,11 +214,11 @@ their domain.
 | `server-hardening` | 1.8.0 | Comprehensive security audit and hardening for Linux servers running web services (nginx, Docker, fail2ban,... | `skill_view(name='server-hardening')` |
 | `session-start-discipline` | 1.1.0 | Restore cross-session todos, enforce skill-loading discipline at session start | `skill_view(name='session-start-discipline')` |
 | `shell-scripting` | 1.1.0 | Shell scripting patterns, portability pitfalls, and cross-platform compatibility for bash/awk scripts in th... | `skill_view(name='shell-scripting')` |
-| `skill-curation` | 1.0.0 | (no description) | `skill_view(name='skill-curation')` |
+| `skill-curation` | 1.0.0 | Consolidate, dedupe, and prune the skill library — merge overlapping skills into one (absorbed_into), delet... | `skill_view(name='skill-curation')` |
 | `staging-server-operations` | 1.19.0 | Safe operational practices for Docker-based staging servers — volume management, change verification, and d... | `skill_view(name='staging-server-operations')` |
 | `sync-allow-ips-to-fail2ban` | 1.0.0 | Sync IPs from allow-ips-manual.conf to fail2ban ignoreip | `skill_view(name='sync-allow-ips-to-fail2ban')` |
 | `telegram-delivery-diagnostics` | 1.0.0 | Diagnose and fix Telegram delivery issues for Hermes cron jobs — delivery pipeline tracing, DNS/network dia... | `skill_view(name='telegram-delivery-diagnostics')` |
-| `third-party-code-vetting` | 1.0.0 | (no description) | `skill_view(name='third-party-code-vetting')` |
+| `third-party-code-vetting` | 1.0.0 | Vet third-party code before it enters the repo or runs on a host — upstream patches, vendored scripts, inst... | `skill_view(name='third-party-code-vetting')` |
 | `todo-persistence` | 1.0.0 | Cross-session todo persistence using the shared gbrain Postgres DB. Covers the bus.todos table, todo-db.py... | `skill_view(name='todo-persistence')` |
 | `two-hard-rules` | 1.0.0 | Two hard rules every agent must follow: USE LOOP GOVERNANCE ALWAYS. SHARE IMPROVEMENTS TO THE PUBLIC REPO. | `skill_view(name='two-hard-rules')` |
 | `unified-cli-script` | 1.0.0 | Design a unified ./run CLI script for multi-environment Docker Compose deployments. Covers the _compose() w... | `skill_view(name='unified-cli-script')` |
@@ -240,7 +240,7 @@ their domain.
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
-| `email-sequence` | 1.0.0 | When the user wants to create or optimize an email sequence, drip campaign, automated email flow, or lifecy... | `skill_view(name='email-sequence')` |
+| `email-sequence` | 1.0.0 | Write a multi-email nurture/onboarding/launch sequence with a goal per email. Use when asked to write an em... | `skill_view(name='email-sequence')` |
 
 ## Finance (8 skills)
 
@@ -314,7 +314,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `openclaw-migration` | 1.0.0 | Import an OpenClaw setup (memories, skills) into Hermes. | `skill_view(name='openclaw-migration')` |
 
-## Mlops (30 skills)
+## Mlops (31 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -327,6 +327,7 @@ their domain.
 | `fine-tuning-with-trl` | 1.0.1 | TRL: SFT, DPO, GRPO, RLOO reward modeling for LLM RLHF. | `skill_view(name='fine-tuning-with-trl')` |
 | `guidance` | 1.0.1 | Constrain LLM output with grammars; guarantee valid JSON. | `skill_view(name='guidance')` |
 | `huggingface-accelerate` | 1.0.1 | Run PyTorch training across GPUs with minimal changes. | `skill_view(name='huggingface-accelerate')` |
+| `huggingface-tokenizers` | 1.0.0 | Fast BPE/WordPiece tokenization and custom vocab training. | `skill_view(name='huggingface-tokenizers')` |
 | `instructor` | 1.0.0 | Structured LLM outputs validated with Pydantic. | `skill_view(name='instructor')` |
 | `lambda-labs-gpu-cloud` | 1.0.0 | On-demand GPU cloud instances for ML training. | `skill_view(name='lambda-labs-gpu-cloud')` |
 | `llava` | 1.0.0 | Vision-language chat: VQA, captioning, image dialogue. | `skill_view(name='llava')` |
@@ -347,7 +348,7 @@ their domain.
 | `stable-diffusion-image-generation` | 1.0.0 | Text-to-image generation, inpainting, and img2img. | `skill_view(name='stable-diffusion-image-generation')` |
 | `tensorrt-llm` | 1.0.1 | High-throughput LLM inference on NVIDIA GPUs. | `skill_view(name='tensorrt-llm')` |
 | `unsloth` | 1.0.0 | Unsloth: 2-5x faster LoRA/QLoRA fine-tuning, less VRAM. | `skill_view(name='unsloth')` |
-| `whisper` | 1.0.0 | OpenAI's general-purpose speech recognition model. Supports 99 languages, transcription, translation to Eng... | `skill_view(name='whisper')` |
+| `whisper` | 1.0.0 | Transcribe and translate speech in 99 languages. | `skill_view(name='whisper')` |
 
 ## Paid Ads (1 skill)
 
@@ -385,7 +386,7 @@ their domain.
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `bioinformatics` | 1.0.0 | Gateway to 400+ genomics and computational biology skills. | `skill_view(name='bioinformatics')` |
-| `brand-intelligence` | 1.0.0 | >- | `skill_view(name='brand-intelligence')` |
+| `brand-intelligence` | 1.0.0 | Monitor and analyze brand mentions, sentiment, share of voice, and competitive positioning across web/socia... | `skill_view(name='brand-intelligence')` |
 | `darwinian-evolver` | 0.1.0 | Evolve prompts/regex/SQL/code with Imbue's evolution loop. | `skill_view(name='darwinian-evolver')` |
 | `domain-intel` | 1.0.0 | Passive recon of subdomains, SSL certs, WHOIS, and DNS. | `skill_view(name='domain-intel')` |
 | `drug-discovery` | 1.0.0 | Pharmaceutical research assistant for drug discovery workflows. Search bioactive compounds on ChEMBL, calcu... | `skill_view(name='drug-discovery')` |
@@ -394,7 +395,7 @@ their domain.
 | `osint-investigation` | 0.1.0 | Follow the money via public records and sanctions data. | `skill_view(name='osint-investigation')` |
 | `parallel-cli` | 1.1.0 | Agent-native web search, deep research, and enrichment. | `skill_view(name='parallel-cli')` |
 | `qmd` | 1.0.0 | Hybrid local search over notes, docs, and transcripts. | `skill_view(name='qmd')` |
-| `recurring-reports` | 1.0.0 | >- | `skill_view(name='recurring-reports')` |
+| `recurring-reports` | 1.0.0 | Design and run recurring automated reports: define cadence, metrics, sources, and delivery; wire to cron; v... | `skill_view(name='recurring-reports')` |
 | `scrapling` | 1.0.0 | Scrape sites with stealth browsing and Cloudflare bypass. | `skill_view(name='scrapling')` |
 | `searxng-search` | 1.0.1 | Free keyless meta-search aggregating 70+ engines. | `skill_view(name='searxng-search')` |
 
@@ -402,7 +403,7 @@ their domain.
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
-| `schema-markup` | 1.0.0 | When the user wants to implement, audit, or validate structured data (schema markup) on their website. Use... | `skill_view(name='schema-markup')` |
+| `schema-markup` | 1.0.0 | Add, fix, or optimize schema markup and structured data. Use when the user mentions schema markup, structur... | `skill_view(name='schema-markup')` |
 
 ## Security (8 skills)
 
@@ -421,7 +422,7 @@ their domain.
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
-| `seo-audit` | 1.0.0 | (no description) | `skill_view(name='seo-audit')` |
+| `seo-audit` | 1.0.0 | Use when the user wants to audit, review, or diagnose SEO issues on a site: rankings, technical SEO, on-pag... | `skill_view(name='seo-audit')` |
 
 ## Skill Vetting (1 skill)
 
