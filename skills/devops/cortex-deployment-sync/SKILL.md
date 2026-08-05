@@ -37,6 +37,16 @@ activates ONLY after `hermes gateway restart`, which agents cannot perform
 REQUIRED` right after a deploy, that is a PENDING RESTART, not a code bug —
 stop retrying and ask the host operator (Luke) to restart the gateway.
 
+**Banner fail-safe semantics (2026-08-05):** the restart check (`_restart_pending`)
+never silently swallows failures. Return codes: `0` = restart pending (loud
+banner), `1` = verified clean (silent), `2` = UNVERIFIABLE (banner fires with
+a "⚠ COULD NOT VERIFY restart state" note). Any hash/ps/date failure lands in
+the safe direction — the banner FIRES with the note, never quietly means "no
+restart needed". If a deploy prints the unverifiable banner plus warnings like
+`_sha256_of: sha256sum failed` / `gateway process not found` / `date parse
+failed`, the check itself is broken (missing tool, wrong ps pattern, weird
+date) — investigate those warnings; do not assume the enforcer is current.
+
 **Use `cortex-update.sh` only when the delta engine skips files that should re-deploy** — plain run is the safe default.
 
 ## The proper sequence (user directive, 2026-07-31)

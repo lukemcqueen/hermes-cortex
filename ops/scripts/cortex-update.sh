@@ -1577,29 +1577,48 @@ deploy_system_scripts() {
 GOV_ENFORCER_STATE="${STATE_DIR}/governance-enforcer-deployed"   # "<hash> <epoch>"
 
 _sha256_of() {
-  local f="$1"
+  # Prints the 64-char sha256 of $1. Returns 0 on success.
+  # FAILURE IS NEVER SILENT: every failure path (missing tool, unreadable
+  # file, hash error) prints a warning to stderr and returns 1 — callers
+  # must treat that as UNVERIFIABLE and fire the banner, never skip it.
+  local f="$1" out=""
   if command -v sha256sum &>/dev/null; then
-    sha256sum "$f" 2>/dev/null | cut -d' ' -f1
+    out=$(sha256sum "$f" 2>&1) || { warn "  _sha256_of: sha256sum failed for ${f}: ${out}"; echo ""; return 1; }
+    echo "${out%% *}"
   elif command -v shasum &>/dev/null; then
-    shasum -a 256 "$f" 2>/dev/null | cut -d' ' -f1
+    out=$(shasum -a 256 "$f" 2>&1) || { warn "  _sha256_of: shasum failed for ${f}: ${out}"; echo ""; return 1; }
+    echo "${out%% *}"
   else
+    warn "  _sha256_of: no sha256sum/shasum available — cannot hash ${f}"
     echo ""
+    return 1
   fi
 }
 
 _gateway_start_epoch() {
+  # Prints the gateway start epoch. Returns 0 on success.
+  # FAILURE IS NEVER SILENT: if the process can't be found or the date
+  # parse fails, warns and returns 1 — callers treat that as UNVERIFIABLE
+  # (banner fires), never as "no restart needed".
   # Linux + macOS: ps lstart → epoch. `command` is the PORTABLE ps keyword
   # (Linux cmd= alias; macOS BSD ps has no `cmd` — use `command`).
   # `sed -n '1p'` (NOT head) — head SIGPIPE-kills the pipeline under
-  # `set -o pipefail`.
-  local lstart
-  lstart=$(ps -eo lstart=,command= 2>/dev/null | grep -E 'hermes_cli\.main gateway|hermes gateway run' | grep -v grep | sed -n '1p' | awk '{print $1, $2, $3, $4, $5}')
-  [[ -z "$lstart" ]] && { echo ""; return 1; }
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    date -j -f "%a %b %e %H:%M:%S %Y" "$lstart" +%s 2>/dev/null || { echo ""; return 1; }
-  else
-    date -d "$lstart" +%s 2>/dev/null || { echo ""; return 1; }
+  # `set -o pipefail`. The `|| true` here is NOT swallowing: the empty
+  # string gate below is the explicit failure handler.
+  local lstart=""
+  lstart=$(ps -eo lstart=,command= 2>&1 | grep -E 'hermes_cli\.main gateway|hermes gateway run' | grep -v grep | sed -n '1p' | awk '{print $1, $2, $3, $4, $5}') || true
+  if [[ -z "$lstart" ]]; then
+    warn "  _gateway_start_epoch: gateway process not found (or ps failed) — restart state UNVERIFIABLE"
+    echo ""
+    return 1
   fi
+  local epoch=""
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    epoch=$(date -j -f "%a %b %e %H:%M:%S %Y" "$lstart" +%s 2>&1) || { warn "  _gateway_start_epoch: date parse failed for '${lstart}': ${epoch}"; echo ""; return 1; }
+  else
+    epoch=$(date -d "$lstart" +%s 2>&1) || { warn "  _gateway_start_epoch: date parse failed for '${lstart}': ${epoch}"; echo ""; return 1; }
+  fi
+  echo "$epoch"
 }
 
 _restart_pending() {
@@ -1607,26 +1626,49 @@ _restart_pending() {
   # AFTER the running gateway started. Uses a persisted hash+epoch state
   # file so unchanged content never re-warns — unless the restart is still
   # genuinely pending (gateway predates the recorded change epoch).
+  #
+  # RETURN CODES (explicit — never silent):
+  #   0 = restart pending        → fire the loud banner
+  #   1 = verified clean         → banner stays silent
+  #   2 = UNVERIFIABLE           → fire the banner with a "could not
+  #       verify" note (hash/ps/date failure). A failed check must NEVER
+  #       silently mean "no restart needed" — that was the original
+  #       deploy≠load misery.
   local init_py="${HOME}/.hermes/plugins/governance-enforcer/__init__.py"
-  [[ -f "$init_py" ]] || return 1
+  if [[ ! -f "$init_py" ]]; then
+    warn "  Restart check: enforcer not deployed at ${init_py} — skipping restart check"
+    return 1
+  fi
   local deployed_hash stored_hash="" stored_epoch=0 change_epoch gw_epoch
-  deployed_hash=$(_sha256_of "$init_py")
-  [[ -n "$deployed_hash" ]] || return 1
+  if ! deployed_hash=$(_sha256_of "$init_py"); then
+    warn "  Restart check: cannot hash deployed enforcer — UNVERIFIABLE, treating as restart required"
+    return 2
+  fi
   if [[ -f "$GOV_ENFORCER_STATE" ]]; then
-    read -r stored_hash stored_epoch < "$GOV_ENFORCER_STATE" || true
+    if ! read -r stored_hash stored_epoch < "$GOV_ENFORCER_STATE"; then
+      warn "  Restart check: state file ${GOV_ENFORCER_STATE} unreadable/empty — re-recording"
+    fi
     stored_epoch="${stored_epoch:-0}"
   fi
   if [[ "$deployed_hash" != "$stored_hash" ]]; then
     change_epoch=$(date +%s)
-    echo "$deployed_hash $change_epoch" > "$GOV_ENFORCER_STATE" 2>/dev/null || true
+    if ! err=$(echo "$deployed_hash $change_epoch" > "$GOV_ENFORCER_STATE" 2>&1); then
+      warn "  Restart check: cannot write state file ${GOV_ENFORCER_STATE} — banner will re-check next run: ${err}"
+    fi
   else
     change_epoch="$stored_epoch"
   fi
-  gw_epoch=$(_gateway_start_epoch 2>/dev/null || echo "")
-  [[ -n "$gw_epoch" && "$gw_epoch" -lt "$change_epoch" ]]
+  if ! gw_epoch=$(_gateway_start_epoch); then
+    warn "  Restart check: cannot determine gateway start time — UNVERIFIABLE, treating as restart required"
+    return 2
+  fi
+  [[ "$gw_epoch" -lt "$change_epoch" ]]
 }
 
 _loud_restart_banner() {
+  # mode: "" (default) = verified pending | "unverifiable" = the check
+  # failed and restart state is unknown — the banner must STILL FIRE so
+  # the operator investigates; never silently suppress.
   # ⚠️ The command string is split ("re""start") deliberately: the terminal
   # tool's gateway lifecycle guard scans REFERENCED SCRIPT CONTENT with a
   # regex that matches the gateway CLI's restart/stop verb. A contiguous
@@ -1634,12 +1676,17 @@ _loud_restart_banner() {
   # cortex-update.sh from the terminal, including this script's own
   # sanctioned deploy command. Bash concatenates the adjacent literals at
   # runtime, so the operator still sees the exact command to run.
+  local mode="${1:-}"
   local gw_restart_cmd="hermes gateway re""start"
   echo ""
   echo -e "${YELLOW}${BOLD}╔══════════════════════════════════════════════════════════════════╗${RESET}"
   echo -e "${YELLOW}${BOLD}║  ⚠  GATEWAY RESTART REQUIRED — enforcement chain redeployed      ║${RESET}"
   echo -e "${YELLOW}${BOLD}╚══════════════════════════════════════════════════════════════════╝${RESET}"
-  warn "Deploy ≠ load: the RUNNING gateway still executes the OLD enforcer in memory."
+  if [[ "$mode" == "unverifiable" ]]; then
+    warn "⚠ COULD NOT VERIFY restart state (see warnings above) — treat as restart required."
+  else
+    warn "Deploy ≠ load: the RUNNING gateway still executes the OLD enforcer in memory."
+  fi
   warn "The new enforcement chain activates ONLY after the gateway process restarts:"
   echo -e "    ${CYAN}${gw_restart_cmd}${RESET}   (from a separate shell — agents cannot run it: lifecycle guard)"
   warn "Until then, the sanctioned command may still return GOVERNANCE LOCK REQUIRED —"
@@ -1730,9 +1777,17 @@ deploy_governance_plugin() {
   # LOUD yellow banner whenever the deployed enforcement content changed
   # after the running gateway started — and keep firing on every run until
   # the operator actually restarts (state file preserves the change epoch).
-  if _restart_pending; then
-    _loud_restart_banner
-  fi
+  # rc: 0=pending (banner), 1=verified clean (silent), 2=unverifiable
+  # (banner + "could not verify" note). `|| _rc=$?` is a set -e safe
+  # compound — never let a non-zero return abort the deploy. Any
+  # unexpected code falls into the safe direction: banner fires.
+  _restart_rc=0
+  _restart_pending || _restart_rc=$?
+  case "$_restart_rc" in
+    0) _loud_restart_banner ;;
+    1) : ;;  # verified clean — banner stays silent
+    *) _loud_restart_banner "unverifiable" ;;
+  esac
 
   # ── Clear stale __pycache__ ──
   # Prevents false MD5 mismatches from stale .pyc bytecode
