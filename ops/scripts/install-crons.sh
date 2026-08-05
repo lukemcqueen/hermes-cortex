@@ -1047,7 +1047,7 @@ create_cron "agent-nginx-threat-pipeline" "0 5 * * *" \
   "" \
   "" \
   "" \
-  "origin" \
+  "telegram:1270130526" \
   "" \
   "true"
 
