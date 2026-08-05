@@ -431,6 +431,80 @@ helpers. Using a single `hermes` file avoids:
 On this system, the file at `/etc/sudoers.d/hermes` contains all Hermes-related
 sudoers entries (plugin lock helper, nginx management, apt cleanup, etc.).
 
+### NEVER mutate live sudoers from an installer — verify read-only, fail closed
+
+**Luke directive 2026-08-05:** "the one that exists SHOULD NOT BE WRITTEN
+OVER." `/etc/sudoers.d/hermes` is the single live policy file; its owner is
+`deploy-sudoers.sh` (backup → visudo validate → restore-on-failure). A deploy
+script for a DIFFERENT artifact must not rm/sed/append/chmod it.
+
+Anti-patterns seen in the old `deploy-fix-blocked-ips.sh`:
+- `rm -f /etc/sudoers.d/hermes-security` — dead code under the single-file
+  policy (2026-07-31); the split file does not exist
+- `sed -i` sweep of EVERY `/etc/sudoers.d/*` + `/etc/sudoers` deleting lines
+  matching an old path — blind rewrite of live sudoers
+- append to `/etc/sudoers.d/hermes` + `chmod 0440` — wrote to the file
+  owned by deploy-sudoers.sh
+
+Correct shape (committed `b33a9fad`): install the binary (unlock old
+immutable copy → `install -o root -g root -m 755` → `chattr +i`), then
+**verify read-only** that the NOPASSWD entry exists:
+`grep -qF "/usr/local/sbin/fix-blocked-ips.py" /etc/sudoers.d/hermes`; if
+missing, exit 1 and direct the operator to `deploy-sudoers.sh`.
+
+### sudo env_reset breaks $HOME-based path resolution in root-owned copies — pass paths via argv
+
+**Symptom (2026-08-05):** `nginx-threat-pipeline` committed+pushed new
+blocked IPs every run but the deploy step failed silently for 5 days: repo
+`blocked_ips.add` had 18,353 lines, live `/etc/nginx/blocked_ips.conf` had
+17,287 deny rules (~1,066 IPs never applied). Log: `✗ Source not found:
+/usr/local/sbin/ops/install/deploy/nginx/blocked_ips.add`.
+
+Root cause chain:
+1. P1-A hardening moved the NOPASSWD target to a root-owned immutable copy
+   at `/usr/local/sbin/fix-blocked-ips.py` (install-only, `chattr +i`).
+2. The script's `repo_dir()` walks up from script location for `.git` —
+   none above `/usr/local/sbin` → falls back to `$HOME/hermes-cortex`.
+3. **sudo's `env_reset` default sets HOME to the TARGET user's home**
+   (`/root` when target is root) — `/root/hermes-cortex` doesn't exist →
+   returns script_dir → source path is wrong → exit 1.
+4. sudo **blocks env overrides entirely**: `sudo -n HOME=/home/moses cmd`
+   and `sudo -n CORTEX_REPO=... cmd` both fail with `sorry, you are not
+   allowed to set the following environment variables`.
+
+**Fix — argv is the ONLY channel sudo allows:**
+```bash
+sudo -n "$FIX_SCRIPT" --repo "${CORTEX_REPO}"   # wrapper
+def repo_dir(repo_arg=None):                     # script
+    for c in (repo_arg, os.environ.get("CORTEX_REPO")):
+        if c and os.path.isdir(os.path.join(c, ".git")):
+            return c
+    ...  # then walk-up, then $HOME fallback
+```
+
+**Verify the LIVE artifact, not the pipeline log** — a pipeline reporting
+"Committed + Pushed" while the deploy step fails leaves repo ahead of the
+running service, and the doctor's `Deploy sync` check does NOT cover
+`/usr/local/sbin` copies:
+```bash
+wc -l ops/install/deploy/nginx/blocked_ips.add   # repo source
+grep -c "^deny" /etc/nginx/blocked_ips.conf       # live — mismatch = silent gap
+```
+
+**Why only the orchestrator host hit it:** only hosts that installed the
+P1-A root-owned copy run the script from `/usr/local/sbin`; hosts using the
+repo copy work because the walk-up from inside the repo finds `.git`.
+
+**Why copy, not symlink:** a symlink `/usr/local/sbin/foo.py →
+~/hermes-cortex/ops/...` re-opens the root-ACE hole P1-A closed — the repo
+copy is user-writable, so an agent could edit it and sudo would execute
+arbitrary code as root. The immutable root-owned copy is the point.
+
+**Deploy ≠ refresh:** `cortex-update.sh` does NOT own `/usr/local/sbin`.
+After pushing changes to a script with a root-owned immutable copy, the
+operator must re-run the dedicated installer (`sudo bash
+.../deploy-fix-blocked-ips.sh`) — password-gated by design, agents cannot.
+
 ### Doctor Check Pattern for Verifying a Restricted Helper
 
 When adding a doctor check for a deployed restricted helper, follow this pattern:
