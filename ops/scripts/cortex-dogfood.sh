@@ -88,8 +88,14 @@ else
 fi
 echo "$DOCTOR_OUT" | sed 's/^/   /'
 
-# 4. Verify — FAIL means the dogfood cycle failed
-if echo "$DOCTOR_OUT" | grep -q "FAIL\|blocking\|ERROR\|Stale deploy:.*orch-\|missing.*cron"; then
+# 4. Verify — FAIL means the dogfood cycle failed. A real failure is any
+#    ❌ check line that is NOT "PENDING cycles" (normal while holding a
+#    governance lock) and NOT the "Overall: FAILING" summary line.
+#    Match on the ❌ marker, not the word "FAIL" — "Overall: FAILING"
+#    would false-positive, "❌ PENDING cycles" would false-negative.
+#    (2026-08-05.)
+_DOGFOOD_FAILS=$(echo "$DOCTOR_OUT" | grep '❌' | grep -vcE 'PENDING cycles|Overall: FAILING' || true)
+if [[ "${_DOGFOOD_FAILS:-0}" -gt 0 ]]; then
   echo ""
   echo "❌  DOGFOOD FAILED — deployed state does not verify clean."
   echo "    Fix the FAIL above, re-run cortex-dogfood.sh, then claim done."

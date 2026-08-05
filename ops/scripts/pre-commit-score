@@ -801,9 +801,20 @@ if [[ -f "$REPO_ROOT/ops/scripts/change-validate.sh" ]]; then
   bash "$REPO_ROOT/ops/scripts/change-validate.sh"
 fi
 
-# ── Orchestrator-only paths guard ──────────────────────────
+# ── Orchestrator-only paths guard (hermes-cortex repo only) ──
 # Only orchestrator agents (moses, esther) may modify these paths.
 # Non-orchestrators: commit changes from an orchestrator agent instead.
+#
+# ⚠️  SCOPE (Titus 2026-08-05): this array is hermes-cortex-SPECIFIC —
+# its patterns (tests/, skills/, core/governance/tests/, test_*.py) are
+# governance files in THIS repo only. It must NOT fire in project repos
+# (client-mwi, ebm-website, ...) where test files are ordinary work —
+# Titus was blocked on apps/api/tests/test_ipi_similarity.py in a project
+# repo because the unanchored test_.*\.py$ pattern matched everywhere.
+# The config-driven guard above already handles repo-awareness via
+# docs/orchestrator-only-paths.txt (missing config = no restrictions);
+# this array is gated the same way: hermes-cortex repo only.
+if [[ "$REPO_ROOT" == "${HOME}/hermes-cortex" ]]; then
 ORCHESTRATOR_ONLY_PATHS=(
   "^docs/templates/"
   # "^profiles/personal/agent-profiles/"  # removed from repo (commit d43e776)
@@ -815,6 +826,7 @@ ORCHESTRATOR_ONLY_PATHS=(
   "^ops/scripts/manage/cortex_doctor/"
   "^skills/"
   "^tests/"
+  "^core/governance/tests/"
   "test_.*\.py$"
   ".*_test\.py$"
   ".*_spec\.py$"
@@ -849,6 +861,7 @@ if [[ -n "$BLOCKED" ]]; then
     echo ""
     exit 1
   fi
+fi
 fi
 
 # ── Self-test: orchestrator guard must work on EVERY commit ──

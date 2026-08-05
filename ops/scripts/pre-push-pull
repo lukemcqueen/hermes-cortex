@@ -347,14 +347,21 @@ CORTEX_REPO_TOP="${HOME}/hermes-cortex"
 _REPO_TOP=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
 if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -f "$CORTEX_DOCTOR" ]]; then
   DOCTOR_OUTPUT=$(cd "${HOME}/hermes-cortex/ops/scripts/manage" && python3 cortex-doctor.py --quiet 2>&1 || true)
-  if echo "$DOCTOR_OUTPUT" | grep -q "FAIL\|blocking\|ERROR\|Stale deploy:.*orch-\|missing.*cron"; then
+  # Real failure = any ❌ check line that is NOT "PENDING cycles" (the
+  # normal state while holding a governance lock — pushes happen mid-session)
+  # and NOT the "Overall: FAILING" summary line (counted via its own ❌).
+  # Matches on the ❌ marker (doctor prints ❌ for FAIL checks), not the word
+  # "FAIL" — "Overall: FAILING" would false-positive the old grep, and
+  # "❌ PENDING cycles" would false-negative it. (2026-08-05.)
+  _DOCTOR_FAILS=$(echo "$DOCTOR_OUTPUT" | grep '❌' | grep -vcE 'PENDING cycles|Overall: FAILING' || true)
+  if [[ "${_DOCTOR_FAILS:-0}" -gt 0 ]]; then
     echo ""
-    echo "❌  Push blocked: doctor reports FAIL."
+    echo "❌  Push blocked: doctor reports $([ "${_DOCTOR_FAILS:-0}" -eq 1 ] && echo '1 failure' || echo "${_DOCTOR_FAILS} failures")."
     echo "    Deployed state does not match repo source (or governance drift)."
     echo "    Run doctor locally and fix all failures before pushing:"
     echo "      cd ~/hermes-cortex/ops/scripts/manage && python3 cortex-doctor.py"
     echo ""
-    echo "$DOCTOR_OUTPUT" | grep -E "FAIL|Stale deploy|missing|cron" | head -10
+    echo "$DOCTOR_OUTPUT" | grep '❌' | grep -vE 'PENDING cycles|Overall: FAILING' | head -10
     echo ""
     DOCTOR_BLOCKED=1
   fi
