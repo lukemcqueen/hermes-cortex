@@ -23,7 +23,11 @@ __SUDO_USERS__ ALL=(root) NOPASSWD: /bin/cp /tmp/blocked_ips.conf.new /etc/nginx
 # or --orchestrator (orchestrator Unix accounts). lock/status open to all.
 __SUDO_USERS__ ALL=(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock
 # Root-owned immutable blocked-IP generator (see deploy-fix-blocked-ips.sh)
+# BOTH platform paths listed: Linux /usr/local/sbin, macOS /usr/local/bin.
+# A path that doesn't exist on a host simply never matches — harmless dead
+# entry on the other platform (macOS portability, Titus 2026-08-05).
 __SUDO_USERS__ ALL=(root) NOPASSWD: /usr/local/sbin/fix-blocked-ips.py
+__SUDO_USERS__ ALL=(root) NOPASSWD: /usr/local/bin/fix-blocked-ips.py
 
 # Fleet agents — htpasswd deploy
 __SUDO_USERS__ ALL=(root) NOPASSWD: /usr/bin/cp /tmp/hermes-htpasswd /etc/nginx/.hermes-htpasswd

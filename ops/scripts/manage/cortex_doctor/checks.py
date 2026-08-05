@@ -1885,7 +1885,8 @@ def _check_fix_blocked_ips_root_copy(res):
     else:
       res.add("Blocked-IPs root copy immutable", "FAIL",
           "immutable flag not set — root copy is modifiable",
-          f"Fix: sudo chattr +i {root_path}")
+          f"Fix: sudo chattr +i {root_path}"
+          + ("" if not _is_macos else " (macOS: sudo chflags uchg)"))
   except (subprocess.TimeoutExpired, OSError, IndexError):
     # macOS: lsattr absent — chflags uchg is the equivalent; skip gracefully
     pass
