@@ -2622,7 +2622,31 @@ def check_local_hooksPath_overrides(res):
     if local_hooks == global_hooks:
       continue # local override matches global — benign
 
-    # Mismatch found: local override differs from global
+    # Pinned-repo exemption: pin_repos_with_own_hooks() points core.hooksPath
+    # at a repo's OWN .git/hooks to preserve deploy-bare-repo hooks, and
+    # cortex-update refreshes the cortex hook files there (2026-08-05).
+    # If the hooks dir carries a cortex-managed hook, this is a legitimate
+    # pin — freshness is verified by check_pinned_hooks_fresh (7c), so 7b
+    # must NOT flag it. Only overrides pointing at dirs with NO cortex hooks
+    # are genuine bypass vectors.
+    local_hooks_dir = Path(local_hooks)
+    _cortex_present = False
+    if local_hooks_dir.is_dir():
+      for _hook_name in ("pre-commit", "pre-push"):
+        _hook_path = local_hooks_dir / _hook_name
+        if _hook_path.is_file():
+          try:
+            _head = _hook_path.read_bytes()[:2048].decode("utf-8", errors="replace")
+          except OSError:
+            continue
+          if "Git " in _head and "hook" in _head:
+            _cortex_present = True
+            break
+    if _cortex_present:
+      continue # legitimately pinned — 7c verifies freshness
+
+    # Mismatch found: local override differs from global and carries no
+    # cortex hooks — genuine bypass vector.
     override_found += 1
     res.add(f"Local hooksPath override ({repo_dir.name})", "FAIL",
         f"core.hooksPath → '{local_hooks}' (global is '{global_hooks}')",
