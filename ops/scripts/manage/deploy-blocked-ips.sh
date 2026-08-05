@@ -53,9 +53,15 @@ error() { echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') deploy-blocked-ips]
 
 CHECK_ONLY="${1:-}"
 
+# --repo <path>: pass the resolved repo root explicitly. REQUIRED when the
+# target script runs under sudo — sudo's env_reset sets HOME=/root and
+# blocks HOME/CORTEX_REPO env overrides, so the Python repo_dir() $HOME
+# fallback silently misses on Linux. argv is the only channel sudo allows.
+REPO_ARG="--repo ${CORTEX_REPO}"
+
 if [ "$CHECK_ONLY" = "--check" ]; then
   log "── Check only ──"
-  python3 "$FIX_SCRIPT" 2>&1 || {
+  python3 "$FIX_SCRIPT" $REPO_ARG 2>&1 || {
     error "Config generation failed"
     exit 1
   }
@@ -65,7 +71,7 @@ fi
 
 # ── Full deploy via single sudo invocation ──
 log "── Deploy blocked IPs ──"
-if sudo -n "$FIX_SCRIPT" 2>&1; then
+if sudo -n "$FIX_SCRIPT" $REPO_ARG 2>&1; then
   log "  ✓ Deploy complete"
 else
   EXIT_CODE=$?

@@ -147,8 +147,22 @@ def is_valid_public_ip(s: str) -> bool:
     return True
 
 
-def repo_dir() -> str:
-    """Detect the hermes-cortex repo directory by walking up from script location."""
+def repo_dir(repo_arg: str | None = None) -> str:
+    """Detect the hermes-cortex repo directory.
+
+    Resolution order (first match wins):
+      1. --repo <path> argv (the deploy wrapper passes the repo root
+         explicitly — REQUIRED when running via sudo, because sudo's
+         env_reset sets HOME=/root and blocks env overrides, so the
+         $HOME fallback below silently misses on Linux).
+      2. CORTEX_REPO env var (direct invocation).
+      3. Walk up from script location until we find .git (works when
+         running from the repo working tree at any depth).
+      4. $HOME/hermes-cortex (direct run as the owning user).
+    """
+    for candidate in (repo_arg, os.environ.get("CORTEX_REPO")):
+        if candidate and os.path.isdir(os.path.join(candidate, ".git")):
+            return candidate
     script_dir = os.path.dirname(os.path.abspath(__file__))
     # Walk up from script location until we find .git or hit root
     current = script_dir
@@ -240,9 +254,9 @@ def _is_allowed(ip: str, manual_allowed: set[str]) -> bool:
     return False
 
 
-def generate_config() -> tuple[list[str], str]:
+def generate_config(repo_arg: str | None = None) -> tuple[list[str], str]:
     """Read blocked_ips.add, validate IPs, return (lines, summary_message)."""
-    rdir = repo_dir()
+    rdir = repo_dir(repo_arg)
     source = os.path.join(rdir, "ops", "install", "deploy", "nginx", "blocked_ips.add")
 
     if not os.path.exists(source):
@@ -331,13 +345,23 @@ def main():
     if orphan_msg:
         print(f"  🔧 nginx: {orphan_msg}")
 
+    # --repo <path>: explicit repo root (deploy wrapper passes it through
+    # sudo, where env_reset strips HOME/CORTEX_REPO and blocks overrides).
+    repo_arg = None
+    if "--repo" in sys.argv:
+        try:
+            repo_arg = sys.argv[sys.argv.index("--repo") + 1]
+        except IndexError:
+            print("✗ --repo requires a path argument")
+            sys.exit(1)
+
     is_root = os.geteuid() == 0
     if not is_root:
         print("⚠ Non-root mode — generating config to /tmp/ only")
         print("  Run with: sudo fix-blocked-ips.py for full deploy")
         print()
 
-    lines, summary = generate_config()
+    lines, summary = generate_config(repo_arg)
     print(summary)
 
     ip_count = sum(1 for l in lines if l.startswith("deny "))
