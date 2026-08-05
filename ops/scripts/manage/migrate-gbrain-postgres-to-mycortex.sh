@@ -152,7 +152,7 @@ docker exec "$OLD_CONTAINER" rm -f /tmp/gbrain-migration.dump 2>/dev/null || tru
 log "   → $(du -h "$DUMP" | cut -f1) saved to $DUMP"
 
 # ── 2. Stop bus ───────────────────────────────────────────────────
-if systemctl --user list-unit-files 2>/dev/null | grep -q '^cortex-bus.service'; then
+if systemctl --user cat cortex-bus.service >/dev/null 2>&1; then
   if systemctl --user is-active cortex-bus >/dev/null 2>&1; then
     log "🛑 Stopping cortex-bus (releases the gbrain DB connection) ..."
     systemctl --user stop cortex-bus
@@ -311,7 +311,7 @@ PYEOF
 fi
 
 # ── 6. Restart bus + verify ───────────────────────────────────────
-if systemctl --user list-unit-files 2>/dev/null | grep -q '^cortex-bus.service'; then
+if systemctl --user cat cortex-bus.service >/dev/null 2>&1; then
   log "▶️  Restarting cortex-bus ..."
   systemctl --user start cortex-bus
   sleep 4
