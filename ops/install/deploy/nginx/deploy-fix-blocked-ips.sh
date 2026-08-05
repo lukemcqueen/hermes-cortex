@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # deploy-fix-blocked-ips.sh — Deploy root-owned immutable copy of
-# fix-blocked-ips.py and re-point the sudoers entry to it.
+# fix-blocked-ips.py from committed repo source.
 #
 # WHY: the sudoers NOPASSWD entry previously pointed at the USER-WRITABLE
 # repo working tree (~/hermes-cortex/ops/install/deploy/nginx/fix-blocked-ips.py).
@@ -8,6 +8,12 @@
 # (`sudo .../fix-blocked-ips.py` → arbitrary Python as root). This closes
 # that hole: the NOPASSWD target becomes a root-owned, immutable copy in
 # /usr/local/sbin, deployed ONLY from committed repo source.
+#
+# SCOPE: installs/updates ONLY /usr/local/sbin/fix-blocked-ips.py.
+# Sudoers is owned by deploy-sudoers.sh — this script NEVER writes,
+# appends, or sweeps any sudoers file. It verifies the NOPASSWD entry
+# exists and points at the immutable copy; if missing or stale it reports
+# and exits non-zero so the operator runs deploy-sudoers.sh.
 #
 # Usage: sudo bash deploy-fix-blocked-ips.sh
 # ─────────────────────────────────────────────────────────────
@@ -25,59 +31,44 @@ CORTEX_REPO="$(cd "$SCRIPT_DIR/../../../.." && pwd 2>/dev/null || true)"
 [ -n "$CORTEX_REPO" ] || CORTEX_REPO="$(cd "$SCRIPT_DIR" && git rev-parse --show-toplevel 2>/dev/null || true)"
 SRC="${CORTEX_REPO}/ops/install/deploy/nginx/fix-blocked-ips.py"
 DEST="/usr/local/sbin/fix-blocked-ips.py"
-# Single sudoers file policy (2026-07-31): ALL hermes rules live in
-# /etc/sudoers.d/hermes — no separate hermes-security file.
-SUDOERS_FILE="/etc/sudoers.d/hermes"
 
 [ -f "$SRC" ] || { echo "✗ Source not found: ${SRC}"; exit 1; }
 
 echo "━━━ Deploying root-owned immutable fix-blocked-ips.py ━━━"
 
-# 0. Remove the obsolete hermes-security split file (one-file policy)
-if [ -f /etc/sudoers.d/hermes-security ]; then
-  echo "  Removing obsolete /etc/sudoers.d/hermes-security (one-file policy)"
-  rm -f /etc/sudoers.d/hermes-security
+# 1. Install root-owned copy from repo source.
+#    Unlock first if a previous immutable copy exists (install cannot
+#    overwrite an immutable file); re-lock immediately after.
+if [ -e "$DEST" ] && lsattr "$DEST" 2>/dev/null | grep -q -- "-i-"; then
+  echo "  Unlocking existing immutable copy…"
+  chattr -i "$DEST"
 fi
-
-# 1. Remove the OLD repo-path sudoers entry from EVERY sudoers.d file.
-#    The old entry (from /etc/sudoers.d/hermes, deployed 2026-07-27)
-#    pointed at the user-writable repo working tree — a root-ACE.
-#    Sweep all files; sed on each one that contains the old path.
-OLD_PATTERN="/home/moses/hermes-cortex/ops/install/deploy/nginx/fix-blocked-ips.py"
-for f in /etc/sudoers.d/*; do
-  [ -f "$f" ] || continue
-  if grep -qF "$OLD_PATTERN" "$f" 2>/dev/null; then
-    echo "  Removing old repo-path entry from $f"
-    sed -i "\|${OLD_PATTERN}|d" "$f"
-    chmod 0440 "$f" 2>/dev/null || true
-  fi
-done
-# Also sweep /etc/sudoers itself (in case a line landed there)
-if [ -f /etc/sudoers ] && grep -qF "$OLD_PATTERN" /etc/sudoers 2>/dev/null; then
-  echo "  Removing old repo-path entry from /etc/sudoers"
-  sed -i "\|${OLD_PATTERN}|d" /etc/sudoers
-fi
-
-# 2. Install root-owned copy from repo source
 install -o root -g root -m 755 "$SRC" "$DEST"
 
-# 3. Lock it immutable (root-owned chattr +i — agent cannot clear)
+# 2. Lock it immutable (root-owned chattr +i — agent cannot clear)
 chattr +i "$DEST" 2>/dev/null || echo "  ⚠ chattr +i failed — check filesystem support"
 
-# 4. Re-point sudoers to the immutable copy (append if not present)
-if ! grep -q "/usr/local/sbin/fix-blocked-ips.py" "$SUDOERS_FILE" 2>/dev/null; then
-  echo "moses ALL=(root) NOPASSWD: /usr/local/sbin/fix-blocked-ips.py" >> "$SUDOERS_FILE"
+# 3. VERIFY sudoers entry (read-only — never modify; owned by deploy-sudoers.sh)
+SUDOERS_FILE="/etc/sudoers.d/hermes"
+ENTRY_PATTERN="/usr/local/sbin/fix-blocked-ips.py"
+if [ -f "$SUDOERS_FILE" ] && grep -qF "$ENTRY_PATTERN" "$SUDOERS_FILE" 2>/dev/null; then
+  echo "  ✓ Sudoers entry present: NOPASSWD: ${ENTRY_PATTERN}"
+else
+  echo "  ✗ Sudoers entry for ${ENTRY_PATTERN} NOT found in ${SUDOERS_FILE}"
+  echo "    This script does not modify sudoers — run the owner:"
+  echo "    sudo bash ${CORTEX_REPO}/ops/install/deploy/nginx/deploy-sudoers.sh"
+  exit 1
 fi
-chmod 0440 "$SUDOERS_FILE" 2>/dev/null || true
 
-# 5. Validate sudoers
-if command -v visudo &>/dev/null; then
-  visudo -c -f "$SUDOERS_FILE" 2>&1 | tail -2
+# 4. Validate the installed file
+[ -x "$DEST" ] || { echo "  ✗ ${DEST} not executable"; exit 1; }
+if lsattr "$DEST" 2>/dev/null | grep -q -- "-i-"; then
+  echo "  ✓ Immutable flag confirmed"
+else
+  echo "  ⚠ ${DEST} not immutable — verify chattr support on this filesystem"
 fi
 
 echo "  ✓ Deployed: ${DEST} (root-owned, immutable)"
-echo "  ✓ Sudoers re-pointed to ${DEST}"
-echo "  ✓ Old repo-path entry removed (swept all sudoers.d + /etc/sudoers)"
 echo ""
 echo "Verify: sudo -n -l | grep fix-blocked-ips"
 echo "        lsattr ${DEST}"
