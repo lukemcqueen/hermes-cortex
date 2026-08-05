@@ -360,12 +360,56 @@ if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -f "$CORTEX_DO
     echo ""
     echo "❌  Push blocked: doctor reports $([ "${_DOCTOR_FAILS:-0}" -eq 1 ] && echo '1 failure' || echo "${_DOCTOR_FAILS} failures")."
     echo "    Deployed state does not match repo source (or governance drift)."
-    echo "    Run doctor locally and fix all failures before pushing:"
-    echo "      cd ~/hermes-cortex/ops/scripts/manage && python3 cortex-doctor.py"
+    echo "    Dogfood is MANDATORY before push (Luke directive 2026-08-05):"
+    echo "      bash ${HOME}/.hermes-cortex/scripts/cortex-dogfood.sh --force"
+    echo "    (runs pull → deploy → doctor → verify; exit 1 on any FAIL)"
     echo ""
     echo "$DOCTOR_OUTPUT" | grep -E '^ *❌' | grep -vE 'PENDING cycles|Overall: FAILING' | head -10
     echo ""
     DOCTOR_BLOCKED=1
+  fi
+fi
+
+# ── MANDATORY DOGFOOD (2026-08-05, Luke directive) ─────────
+# A push that touches enforcement/deploy files MUST dogfood-deploy
+# BEFORE it lands: pull → cortex-update → doctor → verify. The gate
+# runs cortex-dogfood.sh itself so the step cannot be forgotten —
+# "make this mandatory, not a manual ritual".
+# Only for: hermes-cortex repo + orchestrator host + dogfood-relevant
+# file changed (hooks, doctor, cortex-update, install, enforcer).
+if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -n "$CHANGED_FILES" ]]; then
+  _DOGFOOD_RELEVANT=0
+  while IFS= read -r cf; do
+    case "$cf" in
+      ops/scripts/pre-commit-score|ops/scripts/pre-push-pull|ops/scripts/post-commit-audit|ops/scripts/post-push-audit|ops/scripts/cortex-update.sh|ops/scripts/cortex-dogfood.sh|ops/scripts/install/*|ops/scripts/manage/cortex_doctor/*|plugins/governance-enforcer/*)
+        _DOGFOOD_RELEVANT=1 ;;
+    esac
+  done <<< "$CHANGED_FILES"
+  if [[ "$_DOGFOOD_RELEVANT" -eq 1 ]]; then
+    echo ""
+    echo "🔄  MANDATORY DOGFOOD: push touches enforcement/deploy files."
+    echo "    Running cortex-dogfood.sh (pull → deploy → doctor → verify)..."
+    echo ""
+    if [[ -f "${HOME}/.hermes-cortex/scripts/cortex-dogfood.sh" ]]; then
+      bash "${HOME}/.hermes-cortex/scripts/cortex-dogfood.sh" --quiet 2>&1 | sed 's/^/    /'
+      _DOGFOOD_RC=${PIPESTATUS[0]}
+    else
+      echo "    ✗ cortex-dogfood.sh not deployed — cannot verify deployed state."
+      _DOGFOOD_RC=1
+    fi
+    if [[ "$_DOGFOOD_RC" -ne 0 ]]; then
+      echo ""
+      echo "❌  Push blocked: mandatory dogfood FAILED."
+      echo "    The deployed state does not verify clean after your changes."
+      echo "    Fix the failures above, re-run:"
+      echo "      bash ${HOME}/.hermes-cortex/scripts/cortex-dogfood.sh --force"
+      echo "    then push again. This gate cannot be skipped (no --no-verify)."
+      echo ""
+      exit 1
+    else
+      echo "    ✅ Mandatory dogfood passed — deployed state verified clean."
+      echo ""
+    fi
   fi
 fi
 
