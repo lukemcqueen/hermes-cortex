@@ -38,6 +38,7 @@ USAGE
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import sys
@@ -241,6 +242,45 @@ def _compact_state(state: dict, direction: str) -> None:
         state[seen_key] = seen[-(MAX_SEEN // 2):]
 
 
+def _parse_body(raw: object) -> dict:
+    """Normalize a message body to a dict.
+
+    The read API returns `body` as a dict for most messages, but
+    double-encoded messages arrive as a JSON *string* (the SQL
+    jsonb_build_object serializes the nested jsonb). Wrapping such a
+    string in {"raw": ...} loses subject/from/topic — the handler then
+    sees "Unknown subject '' from ?" (observed 2026-08-05). Parse the
+    string instead; fall back to raw-wrap only if it is not valid JSON.
+    """
+    if isinstance(raw, dict):
+        return dict(raw)
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                return parsed
+        except (json.JSONDecodeError, TypeError):
+            pass  # expected — silently handled
+    return {"raw": str(raw)}
+
+
+def _dedup_key(msg: dict, body: dict) -> str:
+    """Stable identity for loop prevention.
+
+    bus.send() mints a FRESH UUID per send, so msg_id changes on every
+    forwarder hop (local→peer, peer→local) and a bounced message can
+    never be caught by a msg_id-based seen set — that was the ping-pong
+    loop (found 2026-08-05: notices bounced Esther↔Moses every 2 min).
+    correlation_id is preserved by the forwarder, so it survives hops.
+    Fall back to a body hash when correlation_id is absent.
+    """
+    corr = msg.get("correlation_id") or body.get("correlation_id") or ""
+    if corr:
+        return f"corr:{corr}"
+    canonical = json.dumps(body, sort_keys=True, default=str)
+    return f"hash:{hashlib.sha256(canonical.encode()).hexdigest()[:32]}"
+
+
 def _sync_direction(
     state: dict,
     source_url: str,
@@ -268,32 +308,30 @@ def _sync_direction(
             if msg is None:
                 break
             msg_id = msg["msg_id"]
-            if msg_id in seen:
-                # Already forwarded on a previous tick. With vt=0 (peek, non-
-                # consuming) reads, this message stays at the HEAD of the queue
-                # forever, so every subsequent tick re-peeks the SAME message
-                # and `continue` loops indefinitely — newer messages behind it
-                # are never reached (found 2026-08-05: migration notices stuck
-                # behind seen blockers in every inbox). Archive it on the
-                # source so the queue advances. The destination already has it.
+            body = _parse_body(msg.get("body", {}))
+            dkey = _dedup_key(msg, body)
+            if dkey in seen:
+                # Already forwarded on a previous tick (or a bounce-back of a
+                # message we sent). With vt=0 (peek, non-consuming) reads, this
+                # message stays at the HEAD of the queue forever, so every
+                # subsequent tick re-peeks the SAME message and `continue`
+                # loops indefinitely — newer messages behind it are never
+                # reached (found 2026-08-05). Archive it on the source so the
+                # queue advances. The destination already has it.
                 _archive_bus(source_url, source_token, source_auth, queue, msg_id)
                 continue
 
-            body = msg.get("body", {})
             # Preserve correlation_id when forwarding
-            if not isinstance(body, dict):
-                body = {"raw": str(body)}
-
-            corr_id = msg.get("correlation_id", body.get("correlation_id", ""))
+            corr_id = msg.get("correlation_id") or body.get("correlation_id") or ""
             if corr_id:
                 body["correlation_id"] = corr_id
 
             if _send_bus(dest_url, dest_token, dest_auth, queue, body):
-                seen.add(msg_id)
-                forwarded.append(f"{queue}/{msg_id[:8]}")
+                seen.add(dkey)
+                forwarded.append(f"{queue}/{dkey[-10:]}")
                 total += 1
             else:
-                errors.append(f"{queue}/{msg_id[:8]}")
+                errors.append(f"{queue}/{dkey[-10:]}")
                 break  # destination unreachable — stop this queue
 
     state[seen_key] = list(seen)
