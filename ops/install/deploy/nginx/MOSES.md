@@ -5,7 +5,7 @@
 | File | What |
 |------|------|
 | `ops/install/deploy/nginx/blocked_ips.add` | 11 storage scanner IPs (34.x, 136.x, etc.) |
-| `ops/install/deploy/nginx/nginx-badbots.conf` | fail2ban filter — extended archive types + `/storage/` path |
+| `ops/install/deploy/fail2ban/filter.d/nginx-badbots.conf` | fail2ban filter — extended archive types + `/storage/` path |
 | `ops/install/deploy/nginx/README.md` | Human setup + daily ops guide |
 | `ops/install/deploy/nginx/install-nginx-full.sh` | **Legacy** bash deploy script — now superseded by `hermes-services-apply.py` |
 | `ops/install/deploy/nginx/hermes-services-apply.py` | **Primary** Python deploy script — auto-SSL, port prefix, allow-ips-manual |
@@ -102,7 +102,7 @@ The file is NOT in git — manage locally on each machine.
 ## Architecture Notes
 
 ```
-blocked_ips.add (input)    nginx-badbots.conf (input)    allow-ips-manual.conf (override)
+blocked_ips.add (input)    fail2ban/filter.d/nginx-badbots.conf (input)    allow-ips-manual.conf (override)
          │                          │                              │
          └───────┬──────────────────┘                              │
                  │                        Strips allow-listed IPs  │

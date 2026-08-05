@@ -69,7 +69,7 @@ them up automatically.
 
 ```bash
 touch ~/hermes-cortex/ops/install/deploy/nginx/blocked_ips.add
-touch ~/hermes-cortex/ops/install/deploy/nginx/nginx-badbots.conf
+touch ~/hermes-cortex/ops/install/deploy/fail2ban/filter.d/nginx-badbots.conf
 ```
 
 ### 5. Create the manual allow list on each machine (recommended)

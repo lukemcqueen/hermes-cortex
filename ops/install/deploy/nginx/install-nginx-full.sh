@@ -8,7 +8,7 @@
 #
 #  Sources:
 #  ~/hermes-cortex/ops/install/deploy/nginx/blocked_ips.add   (IPs to block)
-#  ~/hermes-cortex/ops/install/deploy/nginx/nginx-badbots.conf (fail2ban filter)
+#  ~/hermes-cortex/ops/install/deploy/fail2ban/filter.d/nginx-badbots.conf (fail2ban filter)
 #
 #  Targets: (OS-aware — derived from uname -s)
 #    Linux:    /etc/nginx/              (nginx configs)
@@ -68,7 +68,7 @@ TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
 BLOCKED_IPS="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add"
 ALLOW_IPS_MANUAL="${NGINX_DIR}/allow-ips-manual.conf"
-BADBOTS_CONF="${CORTEX_REPO}/ops/install/deploy/nginx/nginx-badbots.conf"
+BADBOTS_CONF="${CORTEX_REPO}/ops/install/deploy/fail2ban/filter.d/nginx-badbots.conf"
 ZONE_DEFS="${NGINX_DIR}/hermes-zone-defs.conf"
 SERVICES_CONF="${NGINX_DIR}/sites-enabled/hermes-services.conf"
 

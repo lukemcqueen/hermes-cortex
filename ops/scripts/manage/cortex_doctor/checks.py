@@ -3223,3 +3223,37 @@ def check_mycortex_parity(res):
     return
 
 
+def check_nginx_dir_purity(res):
+    """Fail if any NON-nginx conf lives in ops/install/deploy/nginx/.
+
+    The dir must contain ONLY nginx configs. nginx-badbots.conf is a
+    FAIL2BAN filter (not nginx); it moved to
+    ops/install/deploy/fail2ban/filter.d/ on 2026-08-05 after it broke an
+    nginx -t test harness that globbed nginx/*.conf. Fail2ban filters are
+    identifiable by their [Definition]/failregex markers — any conf in the
+    nginx dir carrying them is misplaced and must be moved.
+    """
+    nginx_dir = CORTEX_REPO / "ops" / "install" / "deploy" / "nginx"
+    if not nginx_dir.is_dir():
+        res.add("Nginx dir purity", "INFO", "nginx deploy dir missing — nothing to scan")
+        return
+    misplaced = []
+    for conf in sorted(nginx_dir.glob("*.conf")):
+        try:
+            text = conf.read_text(errors="ignore")
+        except (OSError, PermissionError):
+            continue
+        if "[Definition]" in text or "failregex" in text:
+            misplaced.append(conf.name)
+    if misplaced:
+        res.add(
+            "Nginx dir purity", "FAIL",
+            "non-nginx conf(s) in ops/install/deploy/nginx/: " + ", ".join(misplaced)
+            + " (fail2ban filter marker detected)",
+            "Move to ops/install/deploy/fail2ban/filter.d/ and update install-nginx-full.sh BADBOTS_CONF path",
+        )
+    else:
+        res.add("Nginx dir purity", "PASS", "all confs in ops/install/deploy/nginx/ are nginx configs")
+    return
+
+
