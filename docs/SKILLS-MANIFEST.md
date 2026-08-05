@@ -282,6 +282,18 @@ their domain.
 | `skill-miner` | 1.0.0 | Mine loop governance DB, sessions, and memory for reusable skill patterns. Scores findings with nomic-embed... | `skill_view(name='skill-miner')` |
 | `soul-refinement` | 1.0.0 | Daily SOUL.md refinement process — mine sessions for lessons, apply corrections, codify principles. Optiona... | `skill_view(name='soul-refinement')` |
 
+## Hermes Desktop Plugins (1 skill)
+
+| Skill | Version | Purpose | Load With |
+|-------|---------|---------|-----------|
+| `hermes-desktop-plugins` | 1.0.0 | Write desktop app plugins that add UI panes and commands. | `skill_view(name='hermes-desktop-plugins')` |
+
+## Hermes Themes (1 skill)
+
+| Skill | Version | Purpose | Load With |
+|-------|---------|---------|-----------|
+| `hermes-themes` | 1.0.0 | Author a Hermes color theme that skins every surface. | `skill_view(name='hermes-themes')` |
+
 ## Launch Strategy (1 skill)
 
 | Skill | Version | Purpose | Load With |

@@ -380,6 +380,20 @@ Note: The bus at `:8903` is a direct local connection. It's also proxied through
 
 **Verify:** run the forwarder; state file `~/.hermes-cortex/state/bus-forwarder-state.json` should show `peer_downed_at` cleared and "Peer recovered — drained N→local, N→peer".
 
+**Config resolution (commit `c8c54b4b`, 2026-08-05):** the forwarder reads its
+config (LOCAL_URL/TOKEN, PEER_URL/AUTH/TOKEN) in **env → `cortex-bus.conf` →
+`~/.hermes-cortex/.env`** order. Before this fix it read `os.environ` ONLY
+despite the docstring claiming conf/.env fallback — so cron runs (no env)
+resolved empty `PEER_URL`/`PEER_AUTH`/`LOCAL_TOKEN` and the LOCAL→PEER drain
+failed silently (failover messages sat on the backup bus even after the primary
+returned). Symptom: `orch-bus-forwarder-sync` cron reports `LOCAL→PEER: N
+failed` every tick, or `total_local_to_peer` stops advancing. Fix keeps every
+config key resolvable from the conf in a bare env; `_load_config_file` /
+`_resolve_var` are defined above the config block (were after use — NameError
+at import). Verify: run the forwarder in a bare env and confirm `PEER_URL`
+resolves from `cortex-bus.conf`; a manual drain run pushes stranded messages
+(`total_local_to_peer` increments) and worker inboxes empty locally.
+
 **ACL prerequisite (2026-08-03):** the backup orchestrator's `orch-bus-forwarder`
 mirrors ALL `inbox_*` queues to the peer, so its `bus.permissions` row on the
 PRIMARY's bus needs every inbox queue in `can_read` + `can_write`. Without it,
