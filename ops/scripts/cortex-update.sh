@@ -2383,11 +2383,16 @@ main() {
 
   # ── Clean stale governance locks ─────────────────────────
   # First pass: clean locks whose heartbeat has exceeded TTL
+  # ⚠️ TZ BUG FIX (2026-08-05): the heartbeat is ISO-8601 UTC ending in
+  # 'Z'. Slicing [:19] STRIPPED the 'Z', so `date -d` parsed the UTC
+  # timestamp as LOCAL time — on a UTC+9 host (KST) a FRESH lock looked
+  # 9h old and was purged on every deploy, killing the live session
+  # lock mid-run. Keep the 'Z'; date -d handles it correctly.
   for _lock in "$STATE_DIR"/.governance-*.json; do
     [ -f "$_lock" ] || continue
     local _lock_age _lock_heartbeat
     _lock_age=$(stat -c %Y "$_lock" 2>/dev/null || echo 0)
-    _lock_heartbeat=$(python3 -c "import json; print(json.load(open('$_lock')).get('heartbeat_at','')[:19])" 2>/dev/null || echo "")
+    _lock_heartbeat=$(python3 -c "import json; print(json.load(open('$_lock')).get('heartbeat_at',''))" 2>/dev/null || echo "")
     if [[ -n "$_lock_heartbeat" ]]; then
       local _heartbeat_epoch
       _heartbeat_epoch=$(date -d "$_lock_heartbeat" +%s 2>/dev/null || echo 0)
