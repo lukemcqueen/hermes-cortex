@@ -157,9 +157,30 @@ done
 #    Example: inbox→bus rename (Jul 2026) left 11 stale inbox-* files
 #    in deploy because the register paths weren't updated alongside the
 #    repo files. Verify with: comm -23 <(ls deploy) <(ls repo paths)
+# ── Deploy-map hygiene (2026-08-05) ─────────────────────────
+# The register map deploys files by hash-difference — a registered file is
+# OVERWRITTEN whenever content differs. That is correct for repo-managed
+# files, but DESTRUCTIVE for Hermes-owned user data: a memory seed register
+# clobbered live MEMORY.md on every deploy (7× in a day) because the live
+# file is personalized and always differs from the template. Fail CLOSED on
+# such targets so a re-add breaks the deploy loudly instead of overwriting
+# user data. See docs/troubleshooting.md entry 18.
+_assert_register_dest_safe() {
+  local dest="$1"
+  case "$dest" in
+    *"/memories/"*|"${HOME}/.hermes/"*)
+      echo "❌ REFUSED: register target '${dest/$HOME/~}' is Hermes-owned user data." >&2
+      echo "   Memory and config files under ~/.hermes/ belong to Hermes — never deploy them." >&2
+      echo "   See docs/troubleshooting.md entry 18." >&2
+      exit 1
+      ;;
+  esac
+}
+
 MAP=()
 register() {
   local s1="${1:-}" s2="${2:-}" s3="${3:-}" s4="${4:-}"
+  _assert_register_dest_safe "$s2"
   MAP+=("${s1}|${s2}|${s3}|${s4}")
 }
 
@@ -169,6 +190,7 @@ register() {
 ORCH_MAP=()
 register_orch() {
   local s1="${1:-}" s2="${2:-}" s3="${3:-}" s4="${4:-}"
+  _assert_register_dest_safe "$s2"
   ORCH_MAP+=("${s1}|${s2}|${s3}|${s4}")
 }
 

@@ -158,6 +158,7 @@ Before calling `patch()`, `write_file()`, or any tool that modifies a file, conf
 - **Check skills_list()** — if a skill already covers the workflow, use it
 - **Check cronjob list** — existing cron patterns may already solve the problem
 - **Never trust a single zero-result `search_files`.** When you get 0 results, verify with `ls`, `find`, `git ls-tree`, or `git log` before concluding the resource doesn't exist.
+- **Never register user-owned files in the deploy map.** A `register()` entry in `cortex-update.sh` makes a file a deploy target — it is overwritten whenever content differs. That is right for repo-managed files, destructive for files an agent personalizes (memory, user config). Memory (`MEMORY.md`/`USER.md`) is Hermes-owned and must NEVER be registered (2026-08-05: a memory seed register clobbered live memory 7× in a day; the doctor then FAILed on the healthy personalized state and suggested the destructive resync). `cortex-update.sh` now fails CLOSED on any target under `/memories/` or `~/.hermes/` — the guard is physical, not a convention.
 - **If no match found:** note it mentally. Do not skip this step next time.
 
 ---

@@ -320,8 +320,10 @@ check).
 **Resolution:** Memory is Hermes-owned — `~/.hermes/memories/MEMORY.md` is
 read directly by Hermes and created on first memory write. Cortex no longer
 seeds, registers, or checksums memory files at all (removed 2026-08-05):
-- `cortex-update.sh` has no register entry for memory files (guard comment
-  in place — never re-add).
+- `cortex-update.sh` has no register entry for memory files — and now
+  **fails CLOSED** on any register target under `/memories/` or `~/.hermes/`
+  (physical guard in `_assert_register_dest_safe()`), so a re-add aborts the
+  deploy with a clear error instead of silently overwriting user data.
 - `install.sh` step 9 no longer seeds a cortex-side memory copy.
 - The doctor never content-compares memory files.
 
