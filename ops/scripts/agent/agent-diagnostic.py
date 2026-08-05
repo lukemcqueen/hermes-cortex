@@ -324,7 +324,7 @@ def collect_moses() -> dict:
     # Only Moses has direct Docker access
     try:
         r = subprocess.run(
-            ["docker", "exec", "gbrain-postgres", "psql", "-U", "gbrain", "-d", "gbrain",
+            ["docker", "exec", "mycortex-postgres", "psql", "-U", "mycortex", "-d", "mycortex",
              "-t", "-A", "-c",
              "SELECT queue_name, count(*) FROM bus.messages "
              "WHERE queue_name LIKE '%_dlq' AND state = 'pending' "

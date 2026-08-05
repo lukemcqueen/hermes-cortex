@@ -332,8 +332,8 @@ declare -A MODE_OVERRIDES=(
 
 # Deployment-specific cron scripts
 register "ops/scripts/manage/agent-auto-save-sessions.py"      "${CORTEX_DEPLOY_HOME}/scripts/agent-auto-save-sessions.py"
-register "ops/scripts/manage/gbrain-wrapper.sh"         "${CORTEX_DEPLOY_HOME}/scripts/gbrain-wrapper.sh"
-register "ops/scripts/manage/gbrain-doctor-summary.py"   "${CORTEX_DEPLOY_HOME}/scripts/gbrain-doctor-summary.py"
+# gbrain-wrapper.sh + gbrain-doctor-summary.py UNREGISTERED 2026-08-05 —
+# gbrain decommissioned; dead scripts no longer deployed.
 register "ops/scripts/manage/send-skill-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/send-skill-report.py"
 register "ops/scripts/state_tracker.py"           "${CORTEX_DEPLOY_HOME}/scripts/state_tracker.py"
 
@@ -391,7 +391,7 @@ register "ops/scripts/manage/ek-session-snapshot.py"     "${CORTEX_DEPLOY_HOME}/
 # causes copy_file() to add a source header that mismatches repo source,
 # triggering needs_update and a cp failure on locked files.
 
-register "ops/scripts/install/install-gbrain-sync.sh"    "${CORTEX_DEPLOY_HOME}/scripts/install-gbrain-sync.sh"
+# install-gbrain-sync.sh UNREGISTERED 2026-08-05 — gbrain decommissioned.
 # Orchestrator health report — periodic agent fleet snapshot (no_agent cron)
 register_orch "ops/scripts/agent/orch-health-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/orch-health-report.py"
 
@@ -442,6 +442,8 @@ register "ops/services/mycortex/schema/v002__rls-admin-reader-grants.sql" "${COR
 register "ops/services/mycortex/schema/v003__admin-schema-version-grant.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/v003__admin-schema-version-grant.sql"
 register "ops/scripts/manage/mycortex-parity.py"      "${CORTEX_DEPLOY_HOME}/scripts/mycortex-parity.py"
 register "ops/scripts/manage/mycortex"                "${CORTEX_DEPLOY_HOME}/scripts/mycortex"
+# mycortex-postgres compose (dedicated hermes-cortex-owned Postgres, NOT langfuse)
+register "ops/install/deploy/docker-compose.mycortex.yml" "${CORTEX_DEPLOY_HOME}/docker-compose.mycortex.yml"
 # agent-mycortex-sync cron wrapper — per-host sync (design D4: NOT orchestrator-only)
 register "ops/scripts/manage/agent-mycortex-sync.sh"  "${CORTEX_DEPLOY_HOME}/scripts/agent-mycortex-sync.sh"
 # daily retention — prune ingest_log >90d, purge archived pages >7d (S-016)

@@ -3,7 +3,7 @@
 # Silent when nothing to recover. Reports count when >0.
 set -euo pipefail
 
-RESULT=$(docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \
+RESULT=$(docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \
   "SELECT bus.recover_timeouts();" 2>/dev/null | tr -d '[:space:]')
 
 if [ -n "$RESULT" ] && [ "$RESULT" != "0" ] && [ "$RESULT" != "0" ]; then

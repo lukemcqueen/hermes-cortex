@@ -2,7 +2,7 @@
 -- mycortex schema v001 — knowledge index for the fleet (gbrain replacement)
 -- Source: docs/design/mycortex-DESIGN.md §2 (v2)
 -- Applied by: ops/services/mycortex/migrate.py (NOT by cortex-update.sh directly)
--- Target: shared gbrain-postgres, database `gbrain`, schema `mycortex`
+-- Target: mycortex-postgres, database `mycortex`, schema `mycortex`
 --
 -- v001 ships FAIL-CLOSED: RLS enabled + FORCE on pages/content_chunks, policies
 -- created in this same file (no fail-open window), PII gate as a CHECK constraint,

@@ -26,7 +26,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-DB_DEFAULT = "gbrain"
+DB_DEFAULT = "mycortex"
 INGEST_LOG_DAYS = 90
 ARCHIVED_PURGE_DAYS = 7
 
@@ -62,7 +62,7 @@ def _psql_base(role: str, db_name: str) -> list[str]:
     # Linux — container exec as the role (trust auth inside container)
     return [
         "sg", "docker", "-c",
-        f"docker exec -i gbrain-postgres psql -U {role} -d {db_name} -v ON_ERROR_STOP=1 -t -A",
+        f"docker exec -i mycortex-postgres psql -U {role} -d {db_name} -v ON_ERROR_STOP=1 -t -A",
     ]
 
 

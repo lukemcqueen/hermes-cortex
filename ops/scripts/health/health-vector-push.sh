@@ -83,7 +83,7 @@ fi
 SVC_OK=0
 command -v pgrep &>/dev/null && pgrep -x ollama >/dev/null 2>&1 && SVC_OK=1
 command -v pgrep &>/dev/null && pgrep nginx >/dev/null 2>&1 && SVC_OK=1
-command -v pgrep &>/dev/null && pgrep -f gbrain >/dev/null 2>&1 && SVC_OK=1
+command -v test &>/dev/null && test -x "${HOME}/.hermes-cortex/scripts/mycortex" && SVC_OK=1
 [[ "$SVC_OK" -eq 0 ]] && V_SERVICES=-1
 
 # [2] no_errored_crons — check push error log
@@ -106,11 +106,11 @@ else
     V_OLLAMA=0
 fi
 
-# [6] gbrain
-if command -v pgrep &>/dev/null; then
-    pgrep -f gbrain >/dev/null 2>&1 || V_GBRAIN=-1
+# [6] gbrain — decommissioned 2026-08-02; mycortex CLI presence is the signal
+if [[ -x "${HOME}/.hermes-cortex/scripts/mycortex" ]]; then
+    V_GBRAIN=1
 else
-    V_GBRAIN=0
+    V_GBRAIN=-1
 fi
 
 # [7] disk_ok — root partition < 90% used

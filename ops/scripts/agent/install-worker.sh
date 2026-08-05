@@ -39,8 +39,8 @@ CONFIG_FILE="${CORTEX_DEPLOY_HOME}/cortex-bus.conf"
 
 # ── Grant bus permissions ──
 info "Granting bus permissions for ${CYAN}${AGENT_NAME}${RESET}..."
-if command -v docker &>/dev/null && docker ps --filter name=gbrain --format "{{.Names}}" 2>/dev/null | grep -q gbrain; then
-  docker exec gbrain-postgres psql -U gbrain -d gbrain -c \
+if command -v docker &>/dev/null && docker ps --filter name=mycortex-postgres --format "{{.Names}}" 2>/dev/null | grep -q mycortex-postgres; then
+  docker exec mycortex-postgres psql -U mycortex -d mycortex -c \
     "UPDATE bus.permissions SET can_write = CASE WHEN NOT (can_write @> '{workflow_step_result}'::text[]) THEN can_write || '{workflow_step_result}' ELSE can_write END WHERE agent_name = '${AGENT_NAME}';" \
     2>/dev/null && info "${GREEN}✓${RESET} Bus permissions granted" || warn "Could not grant permissions"
 else

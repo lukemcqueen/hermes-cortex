@@ -52,7 +52,7 @@ def _psql(query: str) -> str:
     """Run SQL against bus Postgres."""
     try:
         r = subprocess.run(
-            ["docker", "exec", "gbrain-postgres", "psql",
+            ["docker", "exec", "mycortex-postgres", "psql",
              "-U", "gbrain", "-d", "gbrain", "-t", "-c", query],
             capture_output=True, text=True, timeout=15,
         )

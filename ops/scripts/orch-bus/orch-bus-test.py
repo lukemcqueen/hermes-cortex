@@ -7,7 +7,7 @@ Returns non-zero exit code if any test fails.
 
 Usage:
     CORTEX_BUS_PG_HOST=127.0.0.1 CORTEX_BUS_PG_PORT=15432 \
-    CORTEX_BUS_PG_USER=gbrain CORTEX_BUS_PG_PASS=... \
+    CORTEX_BUS_PG_USER=mycortex CORTEX_BUS_PG_PASS=... \
     python3 test_orch_bus.py
 """
 

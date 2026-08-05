@@ -105,7 +105,7 @@ case "${ACTION}" in
     # Linux: systemctl --user (checks autopilot which handles sync internally)
     if command -v launchctl >/dev/null 2>&1; then
       # macOS
-      for svc_label in com.ollama.serve com.gbrain.autopilot; do
+      for svc_label in com.ollama.serve; do
         if launchctl list "${svc_label}" >/dev/null 2>&1; then
           PID=$(launchctl list "${svc_label}" 2>/dev/null | awk '{print $1}' 2>/dev/null || echo "-")
           if [ "${PID}" = "-" ]; then
@@ -123,9 +123,9 @@ case "${ACTION}" in
         fi
       fi
       # Gbrain autopilot — DECOMMISSIONED 2026-08-02 (mycortex replaces).
-      # Only flag when the unit is still ENABLED but inactive (half-state).
-      if ! systemctl --user is-active gbrain-autopilot >/dev/null 2>&1 \
-         && systemctl --user is-enabled gbrain-autopilot >/dev/null 2>&1; then
+      # Flag if the unit is still ENABLED but inactive (half-state).
+      if systemctl --user is-enabled gbrain-autopilot >/dev/null 2>&1 \
+         && ! systemctl --user is-active gbrain-autopilot >/dev/null 2>&1; then
         issues+=("SERVICE:gbrain-autopilot:down")
       fi
     fi
@@ -325,31 +325,24 @@ except Exception as e:
     echo "CERTS_RENEWED:${certs_renewed}"
     ;;
 
-  # ── Fix gbrain Postgres issues ────────────────────────────
+  # ── Fix mycortex Postgres issues ──────────────────────────
   fix-gbrain)
-    # gbrain migrated to Postgres (pgvector). Check connectivity
-    # to the configured database.
-    echo "GBRAIN_DIAGNOSTIC:"
+    # gbrain DECOMMISSIONED 2026-08-02 — mycortex replaces it (same Postgres).
+    # This mode now checks the mycortex CLI doctor + container connectivity.
+    echo "MYCORTEX_DIAGNOSTIC:"
     
-    # Check gbrain installation
-    if ! command -v gbrain >/dev/null 2>&1; then
-      echo "  gbrain: not installed"
+    # Check mycortex CLI
+    if ! command -v "${HOME}/.hermes-cortex/scripts/mycortex" >/dev/null 2>&1; then
+      echo "  mycortex: not installed"
       exit 0
     fi
     
-    # Check gbrain config
-    GBRAIN_HOME="${HOME}/.gbrain"
-    if [ -f "${GBRAIN_HOME}/config.json" ]; then
-      engine=$(grep '"engine"' "${GBRAIN_HOME}/config.json" 2>/dev/null | cut -d'"' -f4)
-      echo "  engine: ${engine:-unknown}"
-    fi
-    
-    # Run gbrain doctor
-    health_output=$(gbrain doctor --fast 2>&1 | grep -i "health\|error\|fail" || echo "unknown")
-    echo "  health: ${health_output:-no issues reported}"
+    # Run mycortex doctor
+    health_output=$("${HOME}/.hermes-cortex/scripts/mycortex" doctor --json 2>&1 | tail -1 | grep -o '"ok": [a-z]*' || echo "unknown")
+    echo "  doctor_ok: ${health_output:-no issues reported}"
     
     # Check Postgres container
-    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q gbrain-postgres; then
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q mycortex-postgres; then
       echo "  postgres_container: running"
     else
       echo "  postgres_container: NOT RUNNING"

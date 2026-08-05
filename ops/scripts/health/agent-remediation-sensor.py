@@ -248,7 +248,7 @@ def check_errored_crons():
             pass  # expected — silently handled
 
 
-def check_gbrain_health():
+def check_mycortex_health():
     """Check mycortex (gbrain replacement) health via CLI doctor.
 
     gbrain was decommissioned 2026-08-02 (mycortex replaces). This checks
@@ -595,7 +595,7 @@ def main():
     if _local_agent_name() in CERT_HOLDER_HOSTS:
         check_ssl_certs()  # SSL cert permissions (cert-holder hosts only)
         check_certbot()  # certbot execution capability (cert-holder hosts only)
-    check_gbrain_health()  # gbrain Postgres connectivity
+    check_mycortex_health()  # mycortex Postgres connectivity
     check_web_cache()
     check_inbox_markers()
     check_errored_crons()

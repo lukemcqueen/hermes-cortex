@@ -3,7 +3,7 @@
 # Silent until issue. Reports only when >=50 messages recovered/archived.
 set -euo pipefail
 
-RESULT=$(sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \
+RESULT=$(sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \
   \"SELECT bus.recover_timeouts();\"" 2>/dev/null | tr -d '[:space:]')
 
 RECOVER_THRESHOLD=50  # silent below this — small timeouts are routine

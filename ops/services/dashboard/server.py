@@ -222,7 +222,7 @@ def _health():
             "label": "Agent Gateway"
         },
         "GBrain Sync": {
-            "check": lambda: _find_pid(["gbrain autopilot", "gbrain sync", "sync-watch", "autopilot"]),
+            "check": lambda: _find_pid(["mycortex", "agent-mycortex-sync"]),
             "label": "Memory Sync"
         },
         "nginx": {

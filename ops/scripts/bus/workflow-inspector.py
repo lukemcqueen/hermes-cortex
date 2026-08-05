@@ -38,9 +38,9 @@ _load_env()
 
 PG_HOST = os.environ.get("CORTEX_BUS_PG_HOST", "127.0.0.1")
 PG_PORT = os.environ.get("CORTEX_BUS_PG_PORT", "15432")
-PG_DB = os.environ.get("CORTEX_BUS_PG_DB", "gbrain")
-PG_USER = os.environ.get("CORTEX_BUS_PG_USER", "gbrain")
-PG_PASS = os.environ.get("CORTEX_BUS_PG_PASS", "gbrain")
+PG_DB = os.environ.get("CORTEX_BUS_PG_DB", "mycortex")
+PG_USER = os.environ.get("CORTEX_BUS_PG_USER", "mycortex")
+PG_PASS = os.environ.get("CORTEX_BUS_PG_PASS", "mycortex")
 
 
 def conn():

@@ -62,7 +62,7 @@ def save_state(state):
     STATE_JSON.write_text(json.dumps(state))
 
 def run_psql(query):
-    cmd = ["docker","exec","gbrain-postgres","psql","-U","gbrain","-d","gbrain","-t","-c", query]
+    cmd = ["docker","exec","mycortex-postgres","psql","-U","mycortex","-d","mycortex","-t","-c", query]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
     return r.stdout if r.returncode == 0 else ""
 

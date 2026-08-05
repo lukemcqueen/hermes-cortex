@@ -26,22 +26,22 @@ from datetime import datetime, timezone
 
 # ── Config ────────────────────────────────────────────────────
 
-GBRAIN_CONFIG = os.path.expanduser("~/.gbrain/config.json")
+MYCORTEX_CONFIG = os.path.expanduser("~/.hermes-cortex/mycortex.conf")
 
 @functools.lru_cache(maxsize=1)
 def _get_db_query() -> list[str]:
     """Return platform-appropriate psql invocation.
 
-    macOS → reads ~/.gbrain/config.json, builds a direct psql call.
+    macOS → reads ~/.hermes-cortex/mycortex.conf, builds a direct psql call.
     Linux  → uses sg docker ... (unchanged).
     """
     if platform.system() == "Darwin":
-        if os.path.exists(GBRAIN_CONFIG):
-            with open(GBRAIN_CONFIG) as f:
+        if os.path.exists(MYCORTEX_CONFIG):
+            with open(MYCORTEX_CONFIG) as f:
                 cfg = json.load(f)
-            url = cfg.get("database_url", "postgresql://gbrain:@127.0.0.1:15432/gbrain")
+            url = cfg.get("database_url", "postgresql://mycortex:@127.0.0.1:15432/mycortex")
         else:
-            url = "postgresql://gbrain:@127.0.0.1:15432/gbrain"
+            url = "postgresql://mycortex:@127.0.0.1:15432/mycortex"
         # postgresql://user:***@host:port/dbname → psql -h host -p port -U user -d dbname
         from urllib.parse import urlparse
         parsed = urlparse(url)
@@ -49,14 +49,14 @@ def _get_db_query() -> list[str]:
             shutil.which("psql") or "/opt/homebrew/bin/psql",
             "-h", parsed.hostname or "127.0.0.1",
             "-p", str(parsed.port or 15432),
-            "-U", parsed.username or "gbrain",
-            "-d", parsed.path.lstrip("/") if parsed.path else "gbrain",
+            "-U", parsed.username or "mycortex",
+            "-d", parsed.path.lstrip("/") if parsed.path else "mycortex",
             "-t", "-A", "-F", "||",
         ]
     # Linux — unchanged sg docker invocation
     return [
         "sg", "docker", "-c",
-        "docker exec -i gbrain-postgres psql -U gbrain -d gbrain -t -A -F '||'"
+        "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -t -A -F '||'"
     ]
 
 AGENT_NAME = os.environ.get("AGENT_NAME") or subprocess.run(

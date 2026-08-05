@@ -3,7 +3,7 @@
 mycortex CLI — knowledge brain for the fleet (gbrain replacement).
 
 Single-file Python CLI over the mycortex schema (ops/services/mycortex/schema/mycortex.sql)
-on the shared gbrain-postgres (:15432). No daemon, no bun — sync is a cron.
+on mycortex-postgres (:15432). No daemon, no bun — sync is a cron.
 
 Commands:
   sources add <name> <path> [--mode git|local] [--federated] [--search-config C]
@@ -22,7 +22,7 @@ Role split (DB-enforced, NOT CLI convention):
   search/list/stats/doctor → mycortex_reader (fleet agents, RLS-filtered)
 
 Connection (multi-OS, same pattern as migrate.py / todo-db.py):
-  Linux  → sg docker -c "docker exec -i gbrain-postgres psql -U <role> -d <db> ..."
+  Linux  → sg docker -c "docker exec -i mycortex-postgres psql -U <role> -d <db> ..."
   macOS  → direct psql reading ~/.gbrain/config.json (or defaults)
 
 Exit codes: 0 = success, 1 = error, 2 = usage.
@@ -42,7 +42,7 @@ import time
 import unicodedata
 from pathlib import Path
 
-DB_DEFAULT = "gbrain"
+DB_DEFAULT = "mycortex"
 HOST_DEFAULT = "localhost" if platform.system() == "Darwin" else None
 
 # ── psql helpers (migrate.py / todo-db.py pattern) ────────────
@@ -91,18 +91,18 @@ def _psql_base(role: str, db_name: str) -> list[str]:
     # Linux — container exec as the role (trust auth inside container)
     return [
         "sg", "docker", "-c",
-        f"docker exec -i gbrain-postgres psql -U {role} -d {db_name} -v ON_ERROR_STOP=1 -t -A",
+        f"docker exec -i mycortex-postgres psql -U {role} -d {db_name} -v ON_ERROR_STOP=1 -t -A",
     ]
 
 
-def psql_script(sql: str, role: str = "gbrain", db_name: str = DB_DEFAULT) -> tuple[int, str, str]:
+def psql_script(sql: str, role: str = "mycortex", db_name: str = DB_DEFAULT) -> tuple[int, str, str]:
     """Run SQL as role, return (rc, stdout, stderr)."""
     cmd = _psql_base(role, db_name)
     proc = subprocess.run(cmd, input=sql, capture_output=True, text=True, timeout=180)
     return proc.returncode, proc.stdout, proc.stderr
 
 
-def psql_query(sql: str, role: str = "gbrain", db_name: str = DB_DEFAULT) -> str:
+def psql_query(sql: str, role: str = "mycortex", db_name: str = DB_DEFAULT) -> str:
     """Run a query, return trimmed stdout; raises on non-zero."""
     rc, out, err = psql_script(sql, role, db_name)
     if rc != 0:
@@ -110,7 +110,7 @@ def psql_query(sql: str, role: str = "gbrain", db_name: str = DB_DEFAULT) -> str
     return out.strip()
 
 
-def run_sql(sql: str, role: str = "gbrain", db_name: str = DB_DEFAULT) -> None:
+def run_sql(sql: str, role: str = "mycortex", db_name: str = DB_DEFAULT) -> None:
     rc, out, err = psql_script(sql, role, db_name)
     if rc != 0:
         raise RuntimeError(f"psql failed (rc={rc}): {err.strip()[-2000:] or out.strip()[-2000:]}")
@@ -735,7 +735,7 @@ def doctor(args: argparse.Namespace) -> int:
 
 def main() -> int:
     p = argparse.ArgumentParser(prog="mycortex", description="Knowledge brain CLI (gbrain replacement)")
-    p.add_argument("--db-name", default=DB_DEFAULT, help="target database (default: gbrain)")
+    p.add_argument("--db-name", default=DB_DEFAULT, help="target database (default: mycortex)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sp = sub.add_parser("sources", help="source registration")

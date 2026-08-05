@@ -300,10 +300,10 @@ def check_memory_sync_freshness() -> dict:
         return {"status": "DOWN", "detail": f"Last sync: {age.total_seconds() / 3600:.1f}h ago — stale!"}
 
 
-def check_gbrain_sources() -> dict:
+def check_mycortex_sources() -> dict:
     """Check gbrain source health: flag 'never synced' or '0 pages' sources.
 
-    Gracefully degrades when gbrain doctor is unavailable:
+    Gracefully degrades when mycortex doctor is unavailable:
       - Falls back to parsing 'sources list' output
       - Falls back to file counting if even sources list is unavailable
       - Returns UNKNOWN (not DOWN) when gbrain isn't installed
@@ -462,7 +462,7 @@ def run() -> str:
         checks["gbrain sync daemon"] = {"status": "UP", "detail": "Decommissioned — mycortex replaces (unit disabled)"}
 
     checks.update({
-        "gbrain sources": check_gbrain_sources(),
+        "mycortex sources": check_mycortex_sources(),
         "Docker (Langfuse)": check_docker_containers(),
         "Gateway activity": check_gateway_log(),
         "Agent inbox scan": check_inbox_staleness(),

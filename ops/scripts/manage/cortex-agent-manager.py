@@ -73,11 +73,11 @@ def _validate_agent_name(name: str) -> str:
 
 
 def _pg_execute(sql: str, params: tuple = ()) -> list:
-    """Execute SQL via Docker exec into the gbrain Postgres container."""
+    """Execute SQL via Docker exec into the mycortex Postgres container."""
     safe_sql = sql % params  # psycopg-style %s params converted to positional
     cmd = [
-        "docker", "exec", "-i", "gbrain-postgres",
-        "psql", "-U", "gbrain", "-d", "gbrain", "-t",
+        "docker", "exec", "-i", "mycortex-postgres",
+        "psql", "-U", "mycortex", "-d", "mycortex", "-t",
         "-c", safe_sql
     ]
     try:

@@ -3150,7 +3150,7 @@ def check_todo_db(res):
     if not out:
         res.add("Todo DB connectivity", "FAIL",
             "todo-db.py pending returned no output",
-            "Check gbrain Postgres is running: sg docker -c 'docker ps | grep gbrain-postgres'")
+            "Check mycortex Postgres is running: sg docker -c 'docker ps | grep mycortex-postgres'")
         return
 
     try:
@@ -3160,7 +3160,7 @@ def check_todo_db(res):
     except (json.JSONDecodeError, TypeError):
         res.add("Todo DB connectivity", "FAIL",
             f"todo-db.py output not valid JSON: {out[:200]}",
-            "Check gbrain Postgres: sg docker -c 'docker exec gbrain-postgres psql -U gbrain -d gbrain -c \"SELECT 1\"'")
+            "Check mycortex Postgres: sg docker -c 'docker exec mycortex-postgres psql -U mycortex -d mycortex -c \"SELECT 1\"'")
 
 
 def check_skill_drift(res):

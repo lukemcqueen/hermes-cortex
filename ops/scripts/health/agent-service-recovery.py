@@ -231,83 +231,6 @@ def _try_restart(svc: dict) -> str | None:
         return f"⚠️ {name} restart issued but not confirmed up after 3s"
 
 
-def _fix_gbrain_stale_lock() -> str | None:
-    """Check and remove stale gbrain autopilot lock file. Returns message or None."""
-    lock = Path.home() / ".gbrain" / "autopilot.lock"
-    if not lock.exists():
-        return None
-    try:
-        pid_str = lock.read_text().strip()
-        if not pid_str.isdigit():
-            lock.unlink()
-            return "removed corrupt lock file"
-        pid = int(pid_str)
-        # Check if PID is alive
-        alive = subprocess.run(
-            ["kill", "-0", str(pid)], capture_output=True, timeout=5
-        ).returncode == 0
-        if not alive:
-            lock.unlink()
-            return f"removed stale lock (PID {pid} dead)"
-        return None  # lock is valid, don't touch it
-    except (OSError, ValueError, subprocess.TimeoutExpired) as e:
-        return f"lock check error: {e}"
-
-
-def _fix_gbrain_orphan_process() -> str | None:
-    """Detect and kill gbrain autopilot running outside systemd.
-
-    If a bun/raw gbrain autopilot process is found but the systemd service
-    is not running, kill the orphan and return a message.
-    Returns None if no orphan is found.
-    Triggers systemd restart via the caller's normal restart flow.
-    """
-    # Only applies on Linux
-    if not is_linux():
-        return None
-    # Helper to run a command and return (stdout, stderr, returncode)
-    def _scoped_run(cmd: list[str]) -> tuple[str, str, int]:
-        try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-            return r.stdout.strip(), r.stderr.strip(), r.returncode
-        except Exception:
-            return "", "", -1
-
-    # Check if systemd service is already active
-    out, _, rc = _scoped_run(["systemctl", "--user", "is-active", "gbrain-autopilot"])
-    if rc == 0 and out.strip() == "active":
-        return None  # systemd is managing it — nothing to fix
-    # Look for orphan bun/raw gbrain autopilot processes
-    out, _, _ = _scoped_run(["pgrep", "-f", r"bun.*gbrain.*autopilot|gbrain.*autopilot"])
-    if not out.strip():
-        return None  # no raw process found
-    pids = out.strip().split()
-    killed = []
-    for pid in pids:
-        # Check this isn't the systemd-managed PID
-        sysd_pid, _, _ = _scoped_run(["systemctl", "--user", "show", "-p", "MainPID", "gbrain-autopilot"])
-        if sysd_pid.strip() and sysd_pid.strip() != "0":
-            sp = sysd_pid.split("=")[-1]
-            if pid == sp:
-                continue  # this IS the systemd-managed PID
-        _scoped_run(["kill", "-TERM", pid])
-        import time
-        for _ in range(3):
-            alive, _, _ = _scoped_run(["kill", "-0", pid])
-            if alive != 0:
-                break
-            time.sleep(1)
-        alive_check, _, _ = _scoped_run(["kill", "-0", pid])
-        if alive_check == 0:
-            _scoped_run(["kill", "-KILL", pid])
-            killed.append(f"{pid}(SIGKILL)")
-        else:
-            killed.append(f"{pid}(TERM)")
-    if killed:
-        return f"killed orphan autopilot process(es): {', '.join(killed)}"
-    return None
-
-
 def main():
     actions = []
     statuses = []
@@ -335,17 +258,6 @@ def main():
             else:
                 actions.append(f"🔄 {name}: restored missing scripts")
             continue
-
-        if name == "gbrain":
-            # Stale lock file can prevent restart even after service appears down
-            lock_msg = _fix_gbrain_stale_lock()
-            if lock_msg:
-                actions.append(f"🔧 gbrain: {lock_msg}")
-            # Detect and kill orphan bun processes running outside systemd
-            orphan_msg = _fix_gbrain_orphan_process()
-            if orphan_msg:
-                actions.append(f"🔧 gbrain: {orphan_msg}")
-            # Proceed with restart regardless — locks cleared, orphans dead
 
         err = _try_restart(svc)
         if err:

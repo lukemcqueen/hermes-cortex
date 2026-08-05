@@ -3,12 +3,12 @@
 #  bootstrap-brain.sh — Post-install brain verification
 #
 #  After install, users have empty brain dirs and "never synced"
-#  gbrain sources with no indication anything is wrong. This
+#  mycortex sources with no indication anything is wrong. This
 #  script:
 #    1. Detects all ~/brain/ subdirectories
 #    2. Initializes git repos where missing
-#    3. Syncs each brain directory to gbrain
-#    4. Reports indexed page counts per source (from gbrain)
+#    3. Syncs each brain directory to mycortex
+#    4. Reports indexed page counts per source (from mycortex)
 #
 #  Usage:
 #    bash bootstrap-brain.sh                # Verify and fix all
@@ -21,7 +21,7 @@ set -euo pipefail
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BOLD='\033[1m'; RESET='\033[0m'
 BRAIN_DIR="${HOME}/brain"
-GBRAIN_CMD="${HOME}/.bun/bin/gbrain"
+MYCORTEX_CLI="${HOME}/.hermes-cortex/scripts/mycortex"
 BUN_PATH="${HOME}/.bun/bin"
 CHECK_ONLY=false
 REINDEX=false
@@ -56,7 +56,7 @@ echo -e "${BOLD}━━━ Brain Bootstrap — Post-Install Health Check ━━�
 echo ""
 
 # ── Helper: get page count for a source ──────────────────
-# gbrain v0.42+ sources list format:
+# mycortex sources list --json format:
 #   default               federated          1 pages  never synced
 #   my-source             isolated          12 pages  2m ago
 # 3rd whitespace-delimited field is the page count.
@@ -64,11 +64,11 @@ get_page_count() {
   local name="$1"
   local count
 
-  # Try parsing from gbrain sources list (authoritative)
-  count=$("$GBRAIN_CMD" sources list 2>/dev/null | \
-    grep "^  ${name}[[:space:]]" | \
-    awk '{print $3}' | \
-    head -1)
+  # Try parsing from mycortex sources list --json (authoritative)
+  count=$("$MYCORTEX_CLI" sources list --json 2>/dev/null | \
+    python3 -c "import json,sys; \
+d=json.load(sys.stdin); \
+print(next((str(s['pages']) for s in d if s['name']=='${name}'), ''))" 2>/dev/null)
 
   if [[ -n "$count" ]] && [[ "$count" =~ ^[0-9]+$ ]]; then
     echo "$count"
@@ -86,11 +86,11 @@ get_page_count() {
   echo "0"
 }
 
-# ── Helper: check if gbrain source is registered ─────────
-# gbrain sources list output has leading spaces — don't anchor at column 0.
+# ── Helper: check if mycortex source is registered ───────
+# mycortex sources list --json output — parse by name field.
 is_source_registered() {
   local name="$1"
-  "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "^  ${name}[[:space:]]"
+  "$MYCORTEX_CLI" sources list 2>/dev/null | grep -q "\"name\": \"${name}\""
 }
 
 # ── Step 1: Detect brain directories ──────────────────────
@@ -166,14 +166,14 @@ GITEOF
     fi
   fi
 
-  # Check gbrain registration
+  # Check mycortex registration
   if ! is_source_registered "$source"; then
     if [[ "$CHECK_ONLY" == "true" ]]; then
-      warn "  Not registered as gbrain source"
+      warn "  Not registered as mycortex source"
       NOT_REGISTERED=$((NOT_REGISTERED + 1))
     else
-      echo -n "  Registering as gbrain source... "
-      if "$GBRAIN_CMD" sources add "$source" --path "$source_dir" --name "$source" 2>/dev/null; then
+      echo -n "  Registering as mycortex source... "
+      if "$MYCORTEX_CLI" sources add "$source" "$source_dir" 2>/dev/null; then
         echo -e "${GREEN}done${RESET}"
         FIXED_GBRAIN=$((FIXED_GBRAIN + 1))
       else
@@ -181,10 +181,10 @@ GITEOF
       fi
     fi
   else
-    info "  Registered as gbrain source"
+    info "  Registered as mycortex source"
   fi
 
-  # Check git commit (gbrain needs one to sync)
+  # Check git commit (mycortex needs one to sync)
   if git -C "$source_dir" rev-parse HEAD &>/dev/null 2>&1; then
     :  # Has at least one commit
   else
@@ -199,15 +199,15 @@ GITEOF
     if [[ "$REINDEX" == "true" ]]; then
       echo -n "  Reindexing (full sync)... "
       # Force re-sync by passing --all or explicit source
-      if "$GBRAIN_CMD" sync --source "$source" --force 2>/dev/null || \
-         "$GBRAIN_CMD" sync --source "$source" 2>/dev/null; then
+      if "$MYCORTEX_CLI" sync --source "$source" --force 2>/dev/null || \
+         "$MYCORTEX_CLI" sync --source "$source" 2>/dev/null; then
         echo -e "${GREEN}done${RESET}"
       else
         echo -e "${YELLOW}sync done (check output)${RESET}"
       fi
     else
-      echo -n "  Syncing to gbrain... "
-      if "$GBRAIN_CMD" sync --source "$source" 2>/dev/null; then
+      echo -n "  Syncing to mycortex... "
+      if "$MYCORTEX_CLI" sync --source "$source" 2>/dev/null; then
         echo -e "${GREEN}done${RESET}"
       else
         echo -e "${YELLOW}sync done (check output)${RESET}"
@@ -215,7 +215,7 @@ GITEOF
     fi
   fi
 
-  # Check pages — parse from gbrain sources list, fall back to file counting
+  # Check pages — parse from mycortex sources list, fall back to file counting
   PAGES=$(get_page_count "$source")
   if [[ "$PAGES" -gt 0 ]]; then
     info "  ${PAGES} page(s) indexed"
@@ -232,14 +232,14 @@ done
 echo -e "${BOLD}━━━ Summary ━━━${RESET}"
 if [[ "$CHECK_ONLY" == "true" ]]; then
   echo ""
-  [[ $NOT_REGISTERED -gt 0 ]] && warn "$NOT_REGISTERED source(s) not registered as gbrain sources"
+  [[ $NOT_REGISTERED -gt 0 ]] && warn "$NOT_REGISTERED source(s) not registered as mycortex sources"
   [[ $NO_PAGES -gt 0 ]] && warn "$NO_PAGES source(s) have 0 indexed pages"
   [[ $HAS_PAGES -gt 0 ]] && info "$HAS_PAGES source(s) have indexed pages"
   echo ""
   echo "Run without --check-only to auto-fix issues."
 else
   [[ $FIXED_GIT -gt 0 ]] && info "Initialized $FIXED_GIT git repo(s)"
-  [[ $FIXED_GBRAIN -gt 0 ]] && info "Registered $FIXED_GBRAIN gbrain source(s)"
+  [[ $FIXED_GBRAIN -gt 0 ]] && info "Registered $FIXED_GBRAIN mycortex source(s)"
   [[ $HAS_PAGES -gt 0 ]] && info "$HAS_PAGES source(s) have indexed pages"
   [[ $NO_PAGES -gt 0 ]] && warn "$NO_PAGES source(s) still have 0 pages (add some .md files and re-sync)"
   echo ""

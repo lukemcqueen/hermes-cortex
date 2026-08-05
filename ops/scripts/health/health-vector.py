@@ -15,7 +15,7 @@ Service map (index → service name) from agent-registry.json:
   [5] ollama              — Ollama process running
   [6] mycortex            — mycortex (gbrain replacement) doctor healthy
   [7] disk_ok             — disk has sufficient free space
-  [8] gbrain_sources_ok   — brain source directories exist
+  [8] mycortex_sources_ok — brain source directories exist
 
 Output: {"v":[1,1,-1,1,1,1,1,1,1],"h":"hostname","t":1700000000}
   v[i] =  1  → healthy
@@ -46,7 +46,7 @@ SERVICE_MAP = [
     "ollama",
     "mycortex",
     "disk_ok",
-    "gbrain_sources_ok",
+    "mycortex_sources_ok",
 ]
 
 HOSTNAME = (
@@ -408,8 +408,8 @@ def check_disk_ok() -> int:
         return 1
 
 
-def check_gbrain_sources_ok() -> int:
-    """gbrain source directories exist and are non-empty."""
+def check_mycortex_sources_ok() -> int:
+    """mycortex source directories exist and are non-empty."""
     brain_home = os.path.expanduser("~/brain")
     bp = Path(brain_home)
     if not bp.is_dir():
@@ -429,7 +429,7 @@ CHECK_FUNCTIONS = [
     check_ollama,
     check_mycortex,
     check_disk_ok,
-    check_gbrain_sources_ok,
+    check_mycortex_sources_ok,
 ]
 
 

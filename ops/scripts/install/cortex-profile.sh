@@ -17,7 +17,7 @@ PROJECT_PATH="${2:-${DEV_DIR:-${HOME}/Developer/AI}/${PROJECT_NAME}}"
 BRAIN_BASE="${HOME}/brain"
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 PROFILES_DIR="${HERMES_HOME}/profiles"
-GBRAIN_CMD="${HOME}/.bun/bin/gbrain"
+MYCORTEX_CLI="${HOME}/.hermes-cortex/scripts/mycortex"
 
 # Resolve absolute path for PROJECT_PATH
 PROJECT_PATH="$(cd "$(dirname "$PROJECT_PATH")" 2>/dev/null && echo "$PWD/$(basename "$PROJECT_PATH")")"
@@ -63,11 +63,11 @@ GITEOF
 fi
 
 # 4. Register as gbrain source (isolated, non-federated)
-if command -v "$GBRAIN_CMD" &>/dev/null; then
-  if "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "^${PROJECT_NAME}\b"; then
+if [[ -x "$MYCORTEX_CLI" ]]; then
+  if "$MYCORTEX_CLI" sources list 2>/dev/null | grep -q "\"name\": \"${PROJECT_NAME}\""; then
     echo "  ⏭ gbrain source '${PROJECT_NAME}' already registered"
   else
-    "$GBRAIN_CMD" sources add "${PROJECT_NAME}" --path "${BRAIN_DIR}" --name "${PROJECT_NAME}" 2>/dev/null || \
+    "$MYCORTEX_CLI" sources add "${PROJECT_NAME}" "${BRAIN_DIR}" 2>/dev/null || \
       echo "  ⚠ Could not add gbrain source (gbrain may need re-init)"
     echo "  ✅ gbrain source: ${PROJECT_NAME} (isolated)"
   fi

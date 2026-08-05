@@ -25,7 +25,7 @@ def _load_config() -> dict:
     config = {
         "host": os.environ.get("CORTEX_BUS_PG_HOST", ""),
         "port": int(os.environ.get("CORTEX_BUS_PG_PORT", "15432")),
-        "db": os.environ.get("CORTEX_BUS_PG_DB", "gbrain"),
+        "db": os.environ.get("CORTEX_BUS_PG_DB", "mycortex"),
         "user": os.environ.get("CORTEX_BUS_PG_USER", ""),
         "password": os.environ.get("CORTEX_BUS_PG_PASS", ""),
     }
@@ -45,14 +45,16 @@ def _load_config() -> dict:
                     config["host"] = v
                 elif k == "CORTEX_BUS_PG_PORT" and not config["port"]:
                     config["port"] = int(v)
+                elif k == "CORTEX_BUS_PG_DB" and config["db"] == "mycortex":
+                    config["db"] = v
                 elif k == "CORTEX_BUS_PG_USER" and not config["user"]:
                     config["user"] = v
                 elif k == "CORTEX_BUS_PG_PASS" and not config["password"]:
                     config["password"] = v
 
-    # Fall back to gbrain Postgres (same instance)
+    # Fall back to mycortex Postgres (same instance)
     if not config["user"]:
-        config["user"] = os.environ.get("POSTGRES_USER", "gbrain")
+        config["user"] = os.environ.get("POSTGRES_USER", "mycortex")
         config["password"] = os.environ.get("POSTGRES_PASSWORD", "")
 
     return config

@@ -1,0 +1,41 @@
+# hermes-cortex Postgres — the knowledge brain database (mycortex) + agent bus
+#
+# Dedicated, hermes-cortex-owned Postgres — NOT part of the langfuse stack.
+# Replaces the old `gbrain-postgres` container (which carried stale langfuse
+# compose labels and lived on a langfuse-named volume).
+#
+# Primary location: ~/.hermes-cortex/docker-compose.mycortex.yml
+# Run with: docker compose -f docker-compose.mycortex.yml up -d
+# Listen: 127.0.0.1:15432 (host) -> 5432 (container)
+#
+# Databases: `mycortex` (schemas: mycortex, bus, public legacy tombstone)
+# Roles:     mycortex (superuser, from POSTGRES_USER), plus
+#            mycortex_admin / mycortex_ingest / mycortex_reader (created by
+#            ops/services/mycortex/schema/mycortex.sql DO-block guards)
+#
+# IMPORTANT: After changing env vars or this file, ALWAYS run:
+#   docker compose -f docker-compose.mycortex.yml down
+#   docker compose -f docker-compose.mycortex.yml up -d
+# (docker compose restart does NOT re-read env vars)
+
+services:
+  mycortex-postgres:
+    image: pgvector/pgvector:0.8.0-pg17
+    container_name: mycortex-postgres
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - mycortex-postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: mycortex
+      POSTGRES_PASSWORD: ${MYCORTEX_PG_PASSWORD:?Set MYCORTEX_PG_PASSWORD in .env}
+      POSTGRES_DB: mycortex
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mycortex -d mycortex"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mycortex-postgres-data:

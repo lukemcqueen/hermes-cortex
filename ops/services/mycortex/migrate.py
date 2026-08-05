@@ -3,13 +3,13 @@
 mycortex migrate.py — schema_version-gated migration runner for the mycortex schema.
 
 Applies SQL migrations from the sibling schema/ directory to the shared
-gbrain-postgres database. Idempotent: re-running when current is a no-op.
+mycortex-postgres database. Idempotent: re-running when current is a no-op.
 
 Invoked by cortex-update.sh AFTER file sync (cortex-update itself has no DDL
 path — this runner is the DDL path). New hosts: install.sh runs it once.
 
 Usage:
-    migrate.py [--db-name gbrain] [--schema-dir DIR] [--dry-run] [--verbose]
+    migrate.py [--db-name mycortex] [--schema-dir DIR] [--dry-run] [--verbose]
 
 Migration discovery:
     - schema/mycortex.sql           → version 1  (v001, canonical)
@@ -32,8 +32,8 @@ from pathlib import Path
 
 # ── Config ────────────────────────────────────────────────────
 
-GBRAIN_CONFIG = os.path.expanduser("~/.gbrain/config.json")
-DEFAULT_DB = "gbrain"
+MYCORTEX_CONFIG = os.path.expanduser("~/.hermes-cortex/mycortex.conf")
+DEFAULT_DB = "mycortex"
 
 
 def _psql_base(db_name: str) -> list[str]:
@@ -44,12 +44,12 @@ def _psql_base(db_name: str) -> list[str]:
     """
     if platform.system() == "Darwin":
         url = None
-        if os.path.exists(GBRAIN_CONFIG):
-            with open(GBRAIN_CONFIG) as f:
+        if os.path.exists(MYCORTEX_CONFIG):
+            with open(MYCORTEX_CONFIG) as f:
                 cfg = json.load(f)
             url = cfg.get("database_url")
         if not url:
-            url = f"postgresql://gbrain:@127.0.0.1:15432/{db_name}"
+            url = f"postgresql://mycortex:@127.0.0.1:15432/{db_name}"
         from urllib.parse import urlparse
         parsed = urlparse(url)
         psql = shutil.which("psql") or "/opt/homebrew/bin/psql"
@@ -57,7 +57,7 @@ def _psql_base(db_name: str) -> list[str]:
             psql,
             "-h", parsed.hostname or "127.0.0.1",
             "-p", str(parsed.port or 15432),
-            "-U", parsed.username or "gbrain",
+            "-U", parsed.username or "mycortex",
             "-d", db_name,  # explicit target DB (design P2-SS1)
             "-v", "ON_ERROR_STOP=1",
             "-t", "-A",  # tuples-only, unaligned — headers break current_version()
@@ -65,7 +65,7 @@ def _psql_base(db_name: str) -> list[str]:
     # Linux — container exec
     return [
         "sg", "docker", "-c",
-        f"docker exec -i gbrain-postgres psql -U gbrain -d {db_name} -v ON_ERROR_STOP=1 -t -A",
+        f"docker exec -i mycortex-postgres psql -U mycortex -d {db_name} -v ON_ERROR_STOP=1 -t -A",
     ]
 
 

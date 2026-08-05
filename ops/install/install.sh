@@ -403,60 +403,71 @@ if ! command -v bun &>/dev/null; then
 fi
 
 # ─────────────────────────────────────────────────────────────
-# 3. gbrain — Knowledge Brain
+# 3. mycortex — Knowledge Brain (gbrain DECOMMISSIONED 2026-08-02)
 # ─────────────────────────────────────────────────────────────
-step "Installing gbrain (knowledge brain)"
-if command -v gbrain &>/dev/null || [[ -x "${CORTEX_HOME}/.bun/bin/gbrain" ]]; then
- skip "already installed — $(gbrain --version 2>/dev/null || echo 'gbrain found')"
-else
- # NOTE: plain 'gbrain' on npm is a different package (stormcolor GPU JS, no CLI).
- # garrytan/gbrain is the actual knowledge brain tool with 20k+ stars.
- bun install -g github:garrytan/gbrain
- ok
-fi
+# The knowledge brain is mycortex: markdown-in-git as source of truth,
+# mycortex-postgres (:15432) as the query index, thin Python CLI + cron as
+# plumbing. No bun/gbrain binary, no autopilot daemon.
 
-# Ensure gbrain is callable
-GBRAIN_CMD="${CORTEX_HOME}/.bun/bin/gbrain"
-if ! command -v gbrain &>/dev/null; then
- alias gbrain="$GBRAIN_CMD" 2>/dev/null || true
-fi
-
-# ── gbrain database ──────────────────────────────────────────────
-# Init gbrain (Postgres + pgvector — production default)
-# Requires Postgres 17 with pgvector 0.8+ running locally.
-# See docs/gbrain-postgres-migration.md for detailed setup.
-step "Initializing gbrain with Postgres + pgvector"
-if "$GBRAIN_CMD" doctor --json --fast 2>/dev/null | grep -q '"connection":'; then
- skip "brain already initialized"
+# ── mycortex Postgres container ─────────────────────────────
+# Dedicated hermes-cortex-owned Postgres (NOT the langfuse stack).
+step "Starting mycortex-postgres (knowledge brain index)"
+MYCORTEX_COMPOSE_DIR="${CORTEX_DEPLOY_HOME}"
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^mycortex-postgres$'; then
+ skip "mycortex-postgres already running"
 else
- # Try Postgres on common ports (5432, 5433, 15432)
- for pgport in 5433 5432 15432; do
-  if pg_isready -p "$pgport" -q 2>/dev/null; then
-   DB_URL="postgresql://${USER:-luke}@localhost:${pgport}/gbrain"
-   "$GBRAIN_CMD" init --url "$DB_URL" --embedding-model ollama:nomic-embed-text:v1.5 --yes 2>/dev/null && \
-    { ok "gbrain initialized on Postgres port ${pgport}"; break; }
+ # Copy compose from repo if not exists
+ if [[ ! -f "${MYCORTEX_COMPOSE_DIR}/docker-compose.mycortex.yml" ]]; then
+  if [[ -f "${SCRIPT_DIR}/docker-compose.mycortex.yml" ]]; then
+   cp "${SCRIPT_DIR}/docker-compose.mycortex.yml" "${MYCORTEX_COMPOSE_DIR}/docker-compose.mycortex.yml"
+  else
+   curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/install/deploy/docker-compose.mycortex.yml" -o "${MYCORTEX_COMPOSE_DIR}/docker-compose.mycortex.yml"
   fi
- done || {
-  warn "No Postgres with gbrain database found — install Postgres 17 + pgvector and run 'gbrain init --url postgresql://...'"
- }
-fi
-
-# Apply any pending migrations
-step "Applying pending gbrain migrations"
-if "$GBRAIN_CMD" doctor --json --fast 2>/dev/null | grep -q '"pending_count":0'; then
- skip "no pending migrations"
-else
- "$GBRAIN_CMD" apply-migrations --yes 2>/dev/null || true
+ fi
+ # Ensure password var exists (reuse old gbrain value if present, else generate)
+ if ! grep -q '^MYCORTEX_PG_PASSWORD=' "${MYCORTEX_COMPOSE_DIR}/.env" 2>/dev/null; then
+  if grep -q '^GBRAIN_PG_PASSWORD=' "${MYCORTEX_COMPOSE_DIR}/.env" 2>/dev/null; then
+   grep '^GBRAIN_PG_PASSWORD=' "${MYCORTEX_COMPOSE_DIR}/.env" >> /dev/null
+   # copy value without printing
+   python3 - <<PYEOF
+import re, pathlib
+p = pathlib.Path("${MYCORTEX_COMPOSE_DIR}/.env")
+t = p.read_text()
+m = re.search(r'^GBRAIN_PG_PASSWORD=(.+)$', t, re.M)
+if m and not re.search(r'^MYCORTEX_PG_PASSWORD=', t, re.M):
+    p.write_text(t.rstrip() + "\nMYCORTEX_PG_PASSWORD=" + m.group(1) + "\n")
+PYEOF
+  else
+   echo "MYCORTEX_PG_PASSWORD=$(openssl rand -hex 20)" >> "${MYCORTEX_COMPOSE_DIR}/.env"
+  fi
+  chmod 600 "${MYCORTEX_COMPOSE_DIR}/.env"
+ fi
+ (cd "${MYCORTEX_COMPOSE_DIR}" && docker compose -f docker-compose.mycortex.yml up -d 2>&1) | sed 's/^/    /'
  ok
 fi
 
-# ── Ensure bun + gbrain are in PATH via ~/.local/bin ───────
-step "Adding bun/gbrain symlinks to ~/.local/bin/"
+# ── Apply mycortex schema migrations ────────────────────────
+step "Applying mycortex schema migrations"
+MYCORTEX_CLI="${CORTEX_DEPLOY_HOME}/scripts/mycortex"
+if [[ -x "$MYCORTEX_CLI" ]]; then
+ if "$MYCORTEX_CLI" doctor --json 2>/dev/null | grep -q '"ok": true'; then
+  skip "mycortex schema up to date"
+ else
+  python3 "${SCRIPT_DIR}/../services/mycortex/migrate.py" --db-name mycortex 2>&1 | sed 's/^/    /' || \
+   warn "migrate.py failed — run it manually after install"
+  ok
+ fi
+else
+ info " mycortex CLI not deployed yet (deployed later in install) — migrations run on first cortex-update"
+fi
+
+# ── Ensure bun is in PATH via ~/.local/bin (gbrain no longer installed) ──
+step "Adding bun symlink to ~/.local/bin/"
 LOCAL_BIN="${CORTEX_HOME}/.local/bin"
 BUN_BIN="${CORTEX_HOME}/.bun/bin"
 if [[ -d "$BUN_BIN" ]]; then
  mkdir -p "$LOCAL_BIN"
- for _tool in bun gbrain; do
+ for _tool in bun; do
   if [[ -f "${BUN_BIN}/${_tool}" ]] && [[ ! -f "${LOCAL_BIN}/${_tool}" ]]; then
    ln -sf "${BUN_BIN}/${_tool}" "${LOCAL_BIN}/${_tool}" 2>/dev/null || true
    info " Linked ${_tool} → ${LOCAL_BIN}/${_tool}"
@@ -576,74 +587,42 @@ done
 ok
 
 # ─────────────────────────────────────────────────────────────
-# 6. gbrain Sources & Sync Daemon
+# 6. mycortex Sources & Sync Cron
 # ─────────────────────────────────────────────────────────────
-step "Configuring gbrain sources"
+step "Configuring mycortex sources"
 
-for source in "${SOURCES[@]}"; do
- source_dir="${BRAIN_DIR}/${source}"
- # The 'default' gbrain source is special (backs pre-v0.17 brain) and cannot be
- # removed or have --path set. Skip it here; non-default sources get --path.
- if [[ "${source}" == "default" ]]; then
-  skip "'default' gbrain source is built-in (cannot set --path)"
-  continue
- fi
- # Check if source already exists in gbrain
- if "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "${source}"; then
-  skip "gbrain source '${source}' already configured"
- else
-  # Init git repo in source dir if not already
-  if [[ ! -d "${source_dir}/.git" ]]; then
-   git -C "${source_dir}" init 2>/dev/null || true
-   git -C "${source_dir}" add -A 2>/dev/null || true
-   git -C "${source_dir}" commit -m "initial brain state" 2>/dev/null || true
+MYCORTEX_CLI="${CORTEX_DEPLOY_HOME}/scripts/mycortex"
+if [[ ! -x "$MYCORTEX_CLI" ]]; then
+ warn "mycortex CLI not found at ${MYCORTEX_CLI} — sources configured on first cortex-update"
+else
+ for source in "${SOURCES[@]}"; do
+  source_dir="${BRAIN_DIR}/${source}"
+  # Skip builtin 'default' source (mycortex refuses to remove it; it is a
+  # placeholder with no local_path — synced by the CLI's empty-path branch).
+  if [[ "${source}" == "default" ]]; then
+   skip "'default' mycortex source is built-in (placeholder)"
+   continue
   fi
-  "$GBRAIN_CMD" sources add "${source}" --path "${source_dir}" --name "${source}" 2>/dev/null || \
-   warn "Failed to add source '${source}' — may need gbrain re-init"
-  info " Added gbrain source: ${source}"
- fi
-done
-
-# Federate 'shared' if it exists
-if "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "shared"; then
- "$GBRAIN_CMD" sources federate shared 2>/dev/null || true
- info " Federated 'shared' source (auto-searched)"
-fi
-
-# Create gbrain sync daemon
-step "Creating gbrain sync-watch daemon ($SERVICE_MANAGER)"
-bash "$(_scripts)/install-gbrain-sync.sh"
-ok
-
-# ── Check for duplicate 'default' gbrain source ──────────
-step "Checking for duplicate gbrain sources"
-DUPLICATE_FOUND=false
-# gbrain sources list has leading spaces — don't anchor at column 0
-if "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "^ default[[:space:]].*~/brain/default"; then
- # Check if there's also a 'mybrain' or manual default pointing elsewhere
- for dup_source in default mybrain main; do
-  count=$("$GBRAIN_CMD" sources list 2>/dev/null | grep -c "^ ${dup_source}[[:space:]]" || true)
-  if [[ "$count" -gt 1 ]]; then
-   warn "Duplicate gbrain source '${dup_source}' detected!"
-   warn " The 'default' source is built-in and manages ~/brain/default/ automatically."
-   warn " Remove the duplicate with: gbrain sources remove <duplicate-name>"
-   DUPLICATE_FOUND=true
+  # Check if source already registered
+  if "$MYCORTEX_CLI" sources list 2>/dev/null | grep -q "\"name\": \"${source}\""; then
+   skip "mycortex source '${source}' already configured"
+  else
+   # Init git repo in source dir if not already (mycortex git mode)
+   if [[ ! -d "${source_dir}/.git" ]]; then
+    git -C "${source_dir}" init 2>/dev/null || true
+    git -C "${source_dir}" add -A 2>/dev/null || true
+    git -C "${source_dir}" commit -m "initial brain state" 2>/dev/null || true
+   fi
+   "$MYCORTEX_CLI" sources add "${source}" "${source_dir}" 2>/dev/null || \
+    warn "Failed to add source '${source}' — run: mycortex sources add ${source} ${source_dir}"
+   info " Added mycortex source: ${source}"
   fi
  done
- # Also check if user manually added ~/brain/default as a named source
- if "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "~/brain/default"; then
-  source_count=$("$GBRAIN_CMD" sources list 2>/dev/null | grep -c "^ default[[:space:]]" || true)
-  if [[ "$source_count" -gt 1 ]]; then
-   warn "Multiple sources reference ~/brain/default/. The 'default' gbrain source"
-   warn "already manages this path. Remove extra entries with: gbrain sources list"
-   DUPLICATE_FOUND=true
-  fi
- fi
+ ok
 fi
-if [[ "$DUPLICATE_FOUND" == "false" ]]; then
- info "No duplicate sources detected"
-fi
-ok
+
+# Note: the mycortex sync cron (agent-mycortex-sync) is registered by
+# install-crons.sh — every 15 min, per-host. No daemon needed.
 
 # ─────────────────────────────────────────────────────────────
 # 7. Hermes mycortex Plugin (/brain slash command)
@@ -703,12 +682,11 @@ else
  else
  cat > "$HEARTBEAT_PATH" <<'HEARTBEAT'
 #!/usr/bin/env python3
-"""heartbeat.py — System health watchdog for Hermes/gbrain stack.
+"""heartbeat.py — System health watchdog for Hermes/mycortex stack.
 
 Checks critical daemons and services:
  - Ollama (LLM server)
- - gbrain sync daemon
- - gbrain source health (flagged "never synced" / "0 pages")
+ - mycortex source health (flagged "never synced" / "0 pages")
  - Hermes gateway
  - Memory-to-brain sync freshness
  - Disk space
@@ -1047,11 +1025,11 @@ if [[ -f "$M2B_PATH" ]]; then
  M2B_TMP=$(mktemp)
  cat > "$M2B_TMP" <<'M2BPY'
 #!/usr/bin/env python3
-"""memory-to-brain-sync.py — Sync Hermes agent memory → gbrain (long-term brain)
+"""memory-to-brain-sync.py — Sync Hermes agent memory → mycortex (long-term brain)
 
 Reads MEMORY.md and USER.md from the active Hermes profile,
-formats them as searchable gbrain pages under ~/brain/shared/hermes-memory/,
-then git-commits so the gbrain sync daemon picks them up.
+formats them as searchable mycortex pages under ~/brain/shared/hermes-memory/,
+then git-commits so the mycortex sync cron picks them up.
 
 Designed to run as a cron job alongside conversation export.
 """
@@ -1190,11 +1168,11 @@ else
  M2B_TMP=$(mktemp)
  cat > "$M2B_TMP" <<'M2BPY2'
 #!/usr/bin/env python3
-"""memory-to-brain-sync.py — Sync Hermes agent memory → gbrain (long-term brain)
+"""memory-to-brain-sync.py — Sync Hermes agent memory → mycortex (long-term brain)
 
 Reads MEMORY.md and USER.md from the active Hermes profile,
-formats them as searchable gbrain pages under ~/brain/shared/hermes-memory/,
-then git-commits so the gbrain sync daemon picks them up.
+formats them as searchable mycortex pages under ~/brain/shared/hermes-memory/,
+then git-commits so the mycortex sync cron picks them up.
 
 Designed to run as a cron job alongside conversation export.
 """
@@ -1234,7 +1212,7 @@ def build_current_md(memory_entries: list[str], user_entries: list[str]) -> str:
     "# Current Agent Context",
     "",
     "> **Purpose:** This file is auto-generated by memory-to-brain-sync.py.",
-    "> It captures the agent's current MEMORY.md and USER.md so gbrain",
+    "> It captures the agent's current MEMORY.md and USER.md so mycortex",
     "> can search them alongside other brain sources.",
     "",
     "## Memory (agent's personal notes)",
@@ -1289,7 +1267,7 @@ def write_snapshot(content: str) -> tuple[Path, Path]:
 
 
 def git_commit():
-  """Git-add and commit in OUT_DIR so gbrain picks up changes."""
+  """Git-add and commit in OUT_DIR so mycortex picks up changes."""
   if not (OUT_DIR / ".git").exists():
     subprocess.run(["git", "init"], cwd=str(OUT_DIR), capture_output=True)
   subprocess.run(["git", "add", "-A"], cwd=str(OUT_DIR), capture_output=True)
@@ -1340,8 +1318,7 @@ else
 # Auto-generated by install.sh
 set -euo pipefail
 BRAIN_DIR="${HOME}/brain"
-GBRAIN_CMD="${HOME}/.bun/bin/gbrain"
-export PATH="${HOME}/.bun/bin:$PATH"
+MYCORTEX_CLI="${HOME}/.hermes-cortex/scripts/mycortex"
 echo "━━━ Brain Bootstrap ━━━"
 for dir in "$BRAIN_DIR"/*/; do
  name=$(basename "$dir")
@@ -1352,17 +1329,17 @@ for dir in "$BRAIN_DIR"/*/; do
   echo "MEMORY.md\nUSER.md\n.env\n.env.*\n*.pem\n*.key\n.DS_Store" > "${dir}/.gitignore"
   echo "✓ .gitignore: ${name}"
  fi
- # gbrain sources list has leading spaces — don't anchor at column 0
- if ! "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "^ ${name}[[:space:]]"; then
-  "$GBRAIN_CMD" sources add "$name" --path "$dir" --name "$name" 2>/dev/null && echo "✓ gbrain source: ${name}"
+ # Register source with mycortex (gbrain decommissioned 2026-08-02)
+ if [[ "${name}" != "default" ]] && [[ -x "$MYCORTEX_CLI" ]]; then
+  if ! "$MYCORTEX_CLI" sources list 2>/dev/null | grep -q "\"name\": \"${name}\""; then
+   "$MYCORTEX_CLI" sources add "$name" "$dir" 2>/dev/null && echo "✓ mycortex source: ${name}"
+  fi
  fi
  git -C "$dir" add -A 2>/dev/null || true
  git -C "$dir" commit --allow-empty -m "init: ${name}" 2>/dev/null || true
- "$GBRAIN_CMD" sync --source "$name" 2>/dev/null && echo "✓ Synced: ${name}"
- # Get page count from gbrain sources list (3rd field), not a nonexistent --list-pages flag
- pages=$("$GBRAIN_CMD" sources list 2>/dev/null | grep "^ ${name}[[:space:]]" | awk '{print $3}' | head -1)
- pages=${pages:-0}
- echo " ${pages} pages indexed for ${name}"
+ if [[ -x "$MYCORTEX_CLI" ]]; then
+  "$MYCORTEX_CLI" sync --source "$name" 2>/dev/null && echo "✓ Synced: ${name}"
+ fi
 done
 BOOTSTRAP
  }
@@ -2205,7 +2182,7 @@ if [[ -f "$BOOTSTRAP_SCRIPT" ]]; then
  if bash "$BOOTSTRAP_SCRIPT" --check-only 2>&1 | grep -q "0 pages"; then
   warn "Some brain sources have 0 indexed pages. Run:"
   warn " bash ~/.hermes-cortex/scripts/bootstrap-brain.sh"
-  warn " This will init git repos, register gbrain sources, and sync."
+  warn " This will init git repos, register mycortex sources, and sync."
  else
   info "All brain sources are healthy and searchable"
  fi
@@ -2222,16 +2199,16 @@ header "INSTALLATION SUMMARY"
 printf "\n${BOLD}✅ System components installed${RESET}\n"
 printf " ${GREEN}•${RESET} Ollama      — LLM server (embedding: nomic-embed-text:v1.5)\n"
 printf " ${GREEN}•${RESET} Bun       — JS runtime\n"
-printf " ${GREEN}•${RESET} gbrain      — Knowledge brain (Postgres + pgvector)\n"
+printf " ${GREEN}•${RESET} mycortex   — Knowledge brain (mycortex-postgres + pgvector)\n"
 if [[ "$CORTEX_PROFILE" == "server" ]]; then
 printf " ${GREEN}•${RESET} Langfuse     — LLM observability (Docker, port 3000)\n"
 printf " ${GREEN}•${RESET} Cortex Dashboard — Flask companion app (port 8901)\n"
 printf " ${GREEN}•${RESET} nginx      — Reverse proxy (ports 13001-13002)\\n"
 fi
 printf " ${GREEN}•${RESET} Brain sources  → ${BRAIN_DIR}/{%s}\n" "$(echo "${SOURCES[*]}" | tr ' ' ',')"
-printf " ${GREEN}•${RESET} gbrain plugin  → /brain slash command\n"
+printf " ${GREEN}•${RESET} mycortex plugin → /brain slash command\n"
 printf " ${GREEN}•${RESET} heartbeat.py   → system health watchdog\n"
-printf " ${GREEN}•${RESET} memory-to-brain-sync.py → memory sync to gbrain\\n"
+printf " ${GREEN}•${RESET} memory-to-brain-sync.py → memory sync to mycortex\\n"
 printf " ${GREEN}•${RESET} bootstrap-brain.sh → post-install brain verification\n"
 printf " ${GREEN}•${RESET} seed-project-brain.sh → one-command brain seeding from repos\n"
 printf " ${GREEN}•${RESET} cortex-health.sh  → single green-check system readiness\n"
@@ -2247,7 +2224,7 @@ printf " ${GREEN}•${RESET} Web Cache    → semantic web result cache (sqlite-
 printf " ${GREEN}•${RESET} Offline Knowledge → cascade cache + kiwix ZIM content viewer\n"
 printf " ${GREEN}•${RESET} Launchd services:\n"
 printf "          com.ollama.serve\n"
-printf "          com.gbrain.sync-watch (or com.gbrain.autopilot if present)\n"
+printf "          agent-mycortex-sync (cron, every 15 min)\n"
 if [[ "$CORTEX_PROFILE" == "server" ]]; then
 printf "          com.docker.docker\n"
 printf "          com.hermes.cortex-dashboard\n"
@@ -2263,17 +2240,17 @@ I've installed the Hermes Cortex system. Please finish the setup by:
 
 1. Open ~/.hermes/memories/MEMORY.md and ~/.hermes/memories/USER.md — fill in your system topology and user profile so I know your context
 2. Load the shared skills from ~/.hermes-cortex/skills/ (use skill_view(name) to browse them — includes subagent-driven-development, systematic-debugging v2.0 (6-phase feedback-loop debugging), code-review v3.0 (two-axis Standards+Spec), codebase-design (deep module vocabulary), change-test-loop, spike, plan, memory-architecture, client-brand-brand-marketing, korean-language-learning)
-3. Loading the hermes-agent skill and verifying the gbrain-command plugin
-4. Run ~/.hermes-cortex/scripts/bootstrap-brain.sh to ensure all brain sources are initialized, git-enabled, registered in gbrain, and synced. Note which sources have indexed pages (if any show 0 pages, add some .md files and re-sync)
+3. Loading the hermes-agent skill and verifying the mycortex-command plugin
+4. Run ~/.hermes-cortex/scripts/bootstrap-brain.sh to ensure all brain sources are initialized, git-enabled, registered in mycortex, and synced. Note which sources have indexed pages (if any show 0 pages, add some .md files and re-sync)
 5. If using Langfuse, run: bash ~/.hermes-cortex/scripts/cortex-setup-langfuse.sh --start (generates all required .env secrets and starts Docker Compose — no more failing on :? expansion)
 6. Seed project brains from existing repos: ~/.hermes-cortex/scripts/seed-project-brain.sh --all (finds matching repos under ~/Developer/AI/ and fills their brain dirs with README/docs — one command from empty shell to indexed knowledge)
-7. Run cortex-health.sh to confirm everything is green: bash ~/.hermes-cortex/scripts/cortex-health.sh (prints a clean status table for Ollama, Langfuse, gbrain, sync daemon, memory freshness, disk usage — exits 0 when all systems go)
+7. Run cortex-health.sh to confirm everything is green: bash ~/.hermes-cortex/scripts/cortex-health.sh (prints a clean status table for Ollama, Langfuse, mycortex, memory freshness, disk usage — exits 0 when all systems go)
 8. Setting up these cron jobs (use the cronjob tool):
 
-  a) gbrain-nightly-dream — daily at 3am:
-   Schedule: 0 3 * * *
-   Prompt: Run gbrain maintenance: cd ~ && ~/.bun/bin/bun ~/.bun/bin/gbrain sync --all --parallel 4 --no-pull && ~/.bun/bin/bun ~/.bun/bin/gbrain dream
-   Workdir: ~
+  a) agent-mycortex-sync — every 15 min (installed by install-crons.sh):
+   Schedule: */15 * * * *
+   Script: ~/.hermes-cortex/scripts/agent-mycortex-sync.sh (no_agent)
+   (gbrain-nightly-dream REMOVED — gbrain decommissioned 2026-08-02)
 
   b) system-heartbeat — every 30 minutes:
    Schedule: */30 * * * *
@@ -2312,7 +2289,7 @@ I've installed the Hermes Cortex system. Please finish the setup by:
    Output: "📊 135 lessons · 135 applications · ~33.8h saved · 7 languages"
 
 9. Run /reset or /new to activate the /brain slash command
-10. Verify brain ingestion: run "gbrain query hello" then "gbrain query --source <name> hello" — you should see different results per source if sources have content
+10. Verify brain ingestion: run "mycortex search hello" then "mycortex search --source <name> hello" — you should see different results per source if sources have content
 11. (Optional) Check detailed heartbeat: bash ~/.hermes-cortex/scripts/heartbeat.py --report — watch how service status changes as you configure things
 
 PROMPT

@@ -23,7 +23,7 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BOLD='\033[1m'; RESET='\033[0m'
 BRAIN_DIR="${HOME}/brain"
 DEV_DIR="${DEV_DIR:-${HOME}/Developer/AI}"
-GBRAIN_CMD="${HOME}/.bun/bin/gbrain"
+MYCORTEX_CLI="${HOME}/.hermes-cortex/scripts/mycortex"
 BUN_PATH="${HOME}/.bun/bin"
 ACTION=""
 FILTER_PROJECT=""
@@ -64,7 +64,7 @@ count_brain_pages() {
 # Check if a gbrain source is registered (leading spaces in sources list)
 is_source_registered() {
   local name="$1"
-  "$GBRAIN_CMD" sources list 2>/dev/null | grep -q "^  ${name}[[:space:]]"
+  "$MYCORTEX_CLI" sources list 2>/dev/null | grep -q "\"name\": \"${name}\""
 }
 
 # Seed a brain directory from a project repo
@@ -159,11 +159,11 @@ seed_brain() {
 
   # Register gbrain source
   if ! is_source_registered "$name"; then
-    "$GBRAIN_CMD" sources add "$name" --path "$brain_dir" --name "$name" 2>/dev/null && echo "  gbrain source registered"
+    "$MYCORTEX_CLI" sources add "$name" "$brain_dir" 2>/dev/null && echo "  gbrain source registered"
   fi
 
   # Sync
-  "$GBRAIN_CMD" sync --source "$name" 2>/dev/null && echo "  Synced to gbrain"
+  "$MYCORTEX_CLI" sync --source "$name" 2>/dev/null && echo "  Synced to gbrain"
 
   # Report pages
   local final_pages

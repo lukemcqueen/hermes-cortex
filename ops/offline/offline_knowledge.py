@@ -87,21 +87,14 @@ def _find_bun():
             return c
     return candidates[-1]  # return default anyway, will fail gracefully later
 
-def _find_gbrain():
-    """Locate gbrain binary based on bun location."""
-    bun = _find_bun()
-    # gbrain is always in the same dir as bun
-    gbrain = bun.parent / "gbrain"
-    if gbrain.exists():
-        return gbrain
-    # Also try ~/.bun/bin/gbrain directly
-    fallback = HOME / ".bun" / "bin" / "gbrain"
-    if fallback.exists():
-        return fallback
-    return gbrain  # return best guess
+def _find_mycortex_cli():
+    """Locate the mycortex CLI (deployed by cortex-update.sh)."""
+    candidate = HOME / ".hermes-cortex" / "scripts" / "mycortex"
+    if candidate.exists():
+        return candidate
+    return candidate  # return best guess — caller fails gracefully
 
-BUN_CMD = _find_bun()
-GBRAIN_CMD = _find_gbrain()
+MYCORTEX_CLI = _find_mycortex_cli()
 
 
 # ── Kiwix Helpers ───────────────────────────────────────────
@@ -301,18 +294,25 @@ def web_cache_search(query: str):
 # ── GBrain Helper ───────────────────────────────────────────
 
 def gbrain_search(query: str, source: str = None):
-    """Search gbrain knowledge base."""
-    if not BUN_CMD.exists() or not GBRAIN_CMD.exists():
-        return {"error": "gbrain not installed", "results": []}
-    
+    """Search mycortex knowledge base (gbrain decommissioned 2026-08-02)."""
+    if not MYCORTEX_CLI.exists():
+        return {"error": "mycortex not installed", "results": []}
+
     try:
-        cmd = [str(BUN_CMD), str(GBRAIN_CMD), "query", query, "--limit", "3"]
+        cmd = [str(MYCORTEX_CLI), "search", query, "--limit", "3", "--json"]
         if source:
             cmd.extend(["--source", source])
-        
+
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         if result.returncode == 0:
-            return {"results": result.stdout.strip()[:2000]}
+            import json as _json
+            try:
+                rows = _json.loads(result.stdout)
+                # JSON output: list of {source, path, score, snippet...}
+                lines = [f"[{r.get('score', 0):.3f}] {r.get('source','')}: {r.get('path','')[:80]}" for r in rows]
+                return {"results": "\n".join(lines)[:2000] if lines else ""}
+            except _json.JSONDecodeError:
+                return {"results": result.stdout.strip()[:2000]}
         return {"error": result.stderr, "results": []}
     except Exception as e:
         return {"error": str(e), "results": []}
@@ -432,7 +432,7 @@ def system_stats():
     }
     
     # gbrain
-    gbrain_found = GBRAIN_CMD.exists() and BUN_CMD.exists()
+    gbrain_found = MYCORTEX_CLI.exists()
     stats["gbrain"] = {
         "status": "ready" if gbrain_found else "not installed",
     }
