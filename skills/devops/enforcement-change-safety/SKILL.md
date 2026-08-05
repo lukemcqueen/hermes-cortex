@@ -420,7 +420,45 @@ so the step cannot be forgotten:
   deployed-skill drift → doctor → re-`skill_view`, not lock deletion. Do not
   delete locks to force skill reloads — invalidate the marker instead.
 
+## Rule 13: User-Owned Deploy Destinations — Seed-Guard, Never Hash-Overwrite
+
+A register() dest that is USER-OWNED after install (MEMORY.md, USER.md, any
+seed template the user personalizes) must never ride the generic
+`needs_update()` hash-overwrite path. A personalized MEMORY.md can never match
+its template, so EVERY full-mode deploy (the default; the post-merge hook
+auto-runs cortex-update.sh) clobbers it — 7 clobbers in one day (2026-08-05),
+saved only by `deploy-backups/*.bak` + manual restore.
+
+The doctor made it worse — an INVERTED check: `check_deploy_checksums`
+Category 1 parses every `register ` line and content-compares deployed vs repo.
+Personalized memory → FAIL + "Run: cortex-update.sh to resync", which is
+EXACTLY the destructive action. The broken state (blank seed) PASSED; the
+healthy state (personalized) FAILED. Do NOT "fix" the doctor FAIL by resyncing —
+fix the classification: user-owned files are not repo-managed files.
+
+Fix pattern (both layers or the bug persists):
+- **Deploy**: `register_seed()` — copy ONLY when dest is missing, in BOTH full
+  and delta modes. Keep seed dests out of MAP/ORCH_MAP, and cover them in
+  `clean_stale_deploys` / `check_stale_deploys` so they aren't flagged stale.
+- **Doctor**: parse `register_seed` lines as existence-only — PASS if present,
+  WARN if missing, NEVER content-compare a user-owned file.
+- A "guarded — only if dest missing" comment on a plain `register` line is a
+  LIE until the code enforces it — the false comment is how this bug hid.
+
+**Topology for diagnosis:** live memory = `~/.hermes/memories/MEMORY.md`
+(Hermes resolves `get_hermes_home()/memories`, default `HERMES_HOME=~/.hermes`).
+The deploy target `~/.hermes-cortex/memories/MEMORY.md` is a dead seed copy on
+most hosts — live only when `HERMES_HOME=$HOME/.hermes-cortex` (commented
+option in `hermes-cortex.env.example`) or `~/.hermes/memories` is symlinked to
+it. Check which path the host loads BEFORE diagnosing "memory wiped": a
+checksum "fix" on the dead copy is a no-op; on the live copy it is data loss.
+
 ## References
+
+- `references/memory-seed-clobber-2026-08-05.md` — the memory-clobber root
+  cause chain (register comment lie → needs_update hash path → doctor Category 1
+  sweep → inverted doctor), the live-vs-seed topology, and the register_seed +
+  existence-only doctor fix design.
 
 - `references/tz-bug-lock-purge-and-mandatory-dogfood-2026-08-05.md` — the TZ
   root cause with exact before/after age math, the mandatory-dogfood gate
