@@ -409,8 +409,12 @@ def _check_skills_loaded_marker(session_id: str = "") -> bool:
     a bare `touch` creates an empty file that fails the exact-match rule.
 
     Verification logic:
-      - With session_id: the file must exist AND contain exactly
-        'session:{session_id}' (empty/whitespace/wrong-id all fail)
+      - With session_id: the file must exist AND contain
+        'session:{session_id}|skills:{current_fingerprint}' — the
+        fingerprint pins the marker to the deployed skill versions it was
+        created against, so a deploy that updates the skills invalidates
+        old markers (skills-before-task gate, Luke 2026-08-05). Legacy
+        'session:{session_id}' markers are accepted once (backward compat).
       - Without session_id (bootstrap/legacy callers): any valid per-session
         marker proves skills were loaded by SOME session
     """
@@ -420,7 +424,11 @@ def _check_skills_loaded_marker(session_id: str = "") -> bool:
             if not path.exists():
                 return False
             content = path.read_text().strip()
-            return content == f"session:{session_id}"
+            if content == f"session:{session_id}":
+                # Legacy marker (pre-fingerprint) — accept once; the next
+                # skill_view round refreshes it with the fingerprint.
+                return True
+            return content == f"session:{session_id}|skills:{_skills_fingerprint()}"
         except (OSError, ValueError):
             return False
     # No session_id: accept any valid per-session marker
@@ -438,6 +446,53 @@ def _check_skills_loaded_marker(session_id: str = "") -> bool:
     return False
 
 
+def _skills_fingerprint() -> str:
+    """Fingerprint of the deployed always-skills (skills-before-task gate).
+
+    Computed from the mtimes of the 8 required skills' deployed SKILL.md
+    files. When cortex-update.sh deploys new skill versions, the mtimes
+    change → the fingerprint changes → previously-issued skills markers
+    go stale → the agent MUST re-skill_view before write tools unblock.
+
+    This enforces Luke's principle (2026-08-05): agents must USE skills
+    before a task. The old marker check was existence-only, so after a
+    deploy the stale marker passed and agents never loaded the new skill
+    content — a 'dumb agent' failure. Fingerprinting makes the reload
+    mandatory and mechanical, WITHOUT touching governance locks (the
+    deploy lock-purge TZ bug was fixed separately — locks stay stable).
+
+    Uses mtimes (not content hashes) for speed — the check runs on every
+    write-tool call. mtime granularity (1s) is fine: a deploy that changes
+    a skill updates its mtime.
+    """
+    import hashlib as _hl
+    _h = _hl.md5()
+    _skills_root = _skills_dir()
+    for _name in sorted(_REQUIRED_SKILLS):
+        _candidates = [
+            _skills_root / _name / "SKILL.md",
+            _skills_root / "devops" / _name / "SKILL.md",
+            _skills_root / "software-development" / _name / "SKILL.md",
+        ]
+        _found = ""
+        for _c in _candidates:
+            try:
+                if _c.is_file():
+                    _found = str(int(_c.stat().st_mtime))
+                    break
+            except OSError:
+                continue
+        _h.update(f"{_name}:{_found}|".encode())
+    return _h.hexdigest()[:16]
+
+
+def _skills_dir() -> Path:
+    """Deployed skills root (call-time derivation — same rationale as
+    GOVERNANCE_STATE_DIR repointing)."""
+    _home = Path(os.environ.get("HERMES_HOME", str(Path.home())))
+    return _home / ".hermes" / "skills"
+
+
 def _auto_create_skills_marker(session_id: str) -> None:
     """Write THIS session's per-session skills marker with session-proof content.
 
@@ -448,8 +503,11 @@ def _auto_create_skills_marker(session_id: str) -> None:
     this race and required daemon/subagent/lock guards; per-session files
     make the whole guard class unnecessary).
 
-    Content is 'session:{session_id}' — prevents reuse across sessions and
-    blocks `touch` bypass (empty file fails _check_skills_loaded_marker).
+    Content is 'session:{session_id}|skills:{fingerprint}' — prevents reuse
+    across sessions, blocks `touch` bypass (empty file fails
+    _check_skills_loaded_marker), and pins the marker to the deployed skill
+    versions it was created against. After a deploy changes the skills, the
+    fingerprint mismatches → marker stale → agent must re-skill_view.
     Written atomically (temp + rename) so a reader never sees a
     half-written marker.
     """
@@ -460,7 +518,7 @@ def _auto_create_skills_marker(session_id: str) -> None:
         marker_dir.mkdir(parents=True, exist_ok=True)
         path = _session_marker_path(session_id)
         tmp = path.with_name(path.name + ".tmp")
-        tmp.write_text(f"session:{session_id}")
+        tmp.write_text(f"session:{session_id}|skills:{_skills_fingerprint()}")
         tmp.rename(path)  # atomic — readers never see a half-written marker
         log.info("Skills-loaded marker auto-created for session %s", session_id)
 
