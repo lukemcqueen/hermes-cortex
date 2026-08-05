@@ -69,6 +69,11 @@ DEFAULT_CONFIG = {
         "Key Directories",
         "Architecture Principles",
         "Agent Execution Contract",
+        # "Agent Guidelines" = the file-level H1 title whose blockquote holds the
+        # mandatory RULE 1-8 block. parse_sections() treats it as a section, so
+        # legitimate words inside the rules (e.g. "stale doc references") can
+        # falsely match deprecation markers. The H1 title + rules are NEVER pruned.
+        "Agent Guidelines",
         "Loop Governance",
         "Mandatory Agent Workflow",
         "Inbox Message Decision Framework",
@@ -205,6 +210,8 @@ ALWAYS_PROTECTED = {
     "Key Directories",
     "Architecture Principles",
     "Agent Execution Contract",
+    # File-level H1 title + mandatory rules block — never a pruning candidate.
+    "Agent Guidelines",
     "Skill loading",
     "Rules",
     "Common Tasks",
