@@ -190,7 +190,9 @@ fi
   cd "$DEPLOY_HOME" && docker compose -f docker-compose.mycortex.yml up -d 2>&1
 ) | sed 's/^/   /'
 
-for _ in $(seq 1 30); do
+i=0
+while [ "$i" -lt 30 ]; do
+  i=$((i + 1))
   s="$(docker inspect --format '{{.State.Health.Status}}' "$NEW_CONTAINER" 2>/dev/null || echo starting)"
   [ "$s" = "healthy" ] && break
   sleep 2
