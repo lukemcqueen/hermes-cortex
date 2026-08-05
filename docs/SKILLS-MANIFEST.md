@@ -113,7 +113,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (106 skills)
+## Devops (105 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -161,7 +161,6 @@ their domain.
 | `fleet-commands` | 1.6.0 | Send operational commands to fleet agents via the PGMQ bus — message format, delivery verification, bus_acc... | `skill_view(name='fleet-commands')` |
 | `fleet-management` | 1.0.0 | Fleet-level agent management for Hermes Cortex — agent registry, fleet ready score, fleet-audit CLI, adding... | `skill_view(name='fleet-management')` |
 | `fresh-tomato-router` | 1.0.0 | Interact with FreshTomato/DD-WRT routers programmatically via curl — authentication, nvram access, port for... | `skill_view(name='fresh-tomato-router')` |
-| `gbrain-maintenance` | 2.0.0 | Manage gbrain knowledge brain lifecycle — autopilot daemon, sync, dream cycle, service control, and cron in... | `skill_view(name='gbrain-maintenance')` |
 | `git-deployment-workflow` | 1.0.0 | Deploy code by pushing to bare remote repositories (Capistrano-style deployment targets). Covers force push... | `skill_view(name='git-deployment-workflow')` |
 | `git-forensics` | 1.0.0 | Use when files vanished or uncommitted deletions appeared. | `skill_view(name='git-forensics')` |
 | `golden-parity-harness` | 1.0.0 | Golden known-answer parity testing for system replacement. | `skill_view(name='golden-parity-harness')` |
@@ -314,7 +313,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `openclaw-migration` | 1.0.0 | Import an OpenClaw setup (memories, skills) into Hermes. | `skill_view(name='openclaw-migration')` |
 
-## Mlops (31 skills)
+## Mlops (30 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -327,7 +326,6 @@ their domain.
 | `fine-tuning-with-trl` | 1.0.1 | TRL: SFT, DPO, GRPO, RLOO reward modeling for LLM RLHF. | `skill_view(name='fine-tuning-with-trl')` |
 | `guidance` | 1.0.1 | Constrain LLM output with grammars; guarantee valid JSON. | `skill_view(name='guidance')` |
 | `huggingface-accelerate` | 1.0.1 | Run PyTorch training across GPUs with minimal changes. | `skill_view(name='huggingface-accelerate')` |
-| `huggingface-tokenizers` | 1.0.0 | Fast BPE/WordPiece tokenization and custom vocab training. | `skill_view(name='huggingface-tokenizers')` |
 | `instructor` | 1.0.0 | Structured LLM outputs validated with Pydantic. | `skill_view(name='instructor')` |
 | `lambda-labs-gpu-cloud` | 1.0.0 | On-demand GPU cloud instances for ML training. | `skill_view(name='lambda-labs-gpu-cloud')` |
 | `llava` | 1.0.0 | Vision-language chat: VQA, captioning, image dialogue. | `skill_view(name='llava')` |
