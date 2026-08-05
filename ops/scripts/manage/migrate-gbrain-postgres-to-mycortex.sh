@@ -251,6 +251,23 @@ log "🔧 Re-applying roles/policies/grants ..."
 docker exec -i "$NEW_CONTAINER" psql -U "$NEW_ROLE" -d "$NEW_DB" -v ON_ERROR_STOP=1 -f - < "$REAPPLY_SQL" >/dev/null 2>&1 \
   || die "re-apply SQL failed (see $REAPPLY_SQL)"
 
+# ── 4b. Fleet command verifications (hc send verification ledger) ──
+# The bus schema files are applied manually at setup (not auto-deployed).
+# Ensure the command-verifications DDL is present so `hc send`'s
+# record_dispatch() call succeeds on the migrated host. Idempotent.
+if [ -f "${REPO}/core/cortex_bus/schema/command-verifications.sql" ]; then
+  log "🔧 Installing bus.command_verifications (record_dispatch) ..."
+  docker exec -i "$NEW_CONTAINER" psql -U "$NEW_ROLE" -d "$NEW_DB" \
+    -v ON_ERROR_STOP=1 -f - < "${REPO}/core/cortex_bus/schema/command-verifications.sql" >/dev/null 2>&1 \
+    || warn "command-verifications.sql failed to apply (hc send verification will warn — non-fatal)"
+elif [ -f "${DEPLOY_HOME}/core/cortex_bus/schema/command-verifications.sql" ]; then
+  docker exec -i "$NEW_CONTAINER" psql -U "$NEW_ROLE" -d "$NEW_DB" \
+    -v ON_ERROR_STOP=1 -f - < "${DEPLOY_HOME}/core/cortex_bus/schema/command-verifications.sql" >/dev/null 2>&1 \
+    || warn "command-verifications.sql failed to apply (hc send verification will warn — non-fatal)"
+else
+  warn "command-verifications.sql not found (repo or deploy) — hc send verification will warn; non-fatal"
+fi
+
 # ── 5. Connection strings ─────────────────────────────────────────
 log "🔗 Updating connection strings ..."
 if [ -f "$BUS_ENV" ]; then
