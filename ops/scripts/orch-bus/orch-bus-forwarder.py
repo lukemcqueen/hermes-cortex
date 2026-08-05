@@ -55,53 +55,6 @@ MAX_PER_QUEUE = 10
 MAX_SEEN = 10000  # compact state when seen set exceeds this
 PEER_HEALTH_TIMEOUT = 5  # quick health check before attempting sync
 
-# ── Config from env vars ──
-LOCAL_URL = os.environ.get(
-    "BUS_FORWARDER_LOCAL_URL",
-    "http://127.0.0.1:8903",
-)
-LOCAL_TOKEN = os.environ.get(
-    "BUS_FORWARDER_LOCAL_TOKEN",
-    os.environ.get("CORTEX_BUS_TOKEN", ""),
-)
-# ── Peer URL: role-aware. The peer is the OTHER orchestrator's bus. ──
-#   On Moses (primary): peer = Esther = CORTEX_BUS_FALLBACK_URL (:14004)
-#   On Esther (backup): peer = Moses = CORTEX_BUS_URL       (:13004)
-# The old default (always CORTEX_BUS_FALLBACK_URL) self-synced on Esther:
-# her fallback URL points at her own external :14004, so the forwarder was
-# syncing Esther↔Esther and never saw Moses' inbox. (found 2026-08-03,
-# take-charge assessment — worker fix requests invisible in the mirror)
-_HOST = os.uname().nodename.split(".")[0]
-if os.environ.get("BUS_FORWARDER_PEER_URL"):
-    PEER_URL = os.environ["BUS_FORWARDER_PEER_URL"]
-elif _HOST == "moses":
-    PEER_URL = os.environ.get("CORTEX_BUS_FALLBACK_URL", "")
-else:
-    # esther (and any non-moses orchestrator): peer = the OTHER host's bus.
-    # CORTEX_BUS_URL flips with failover state — the failover watchdog swaps
-    # it between Moses :13004 (standby) and local :8903 (while acting
-    # primary). NEVER peer with localhost: the forwarder would self-sync and
-    # the backlog would never drain to Moses when he returns (found
-    # 2026-08-05: failover messages stranded on Esther's bus for hours).
-    _primary = os.environ.get("CORTEX_BUS_URL", "")
-    _is_local = _primary.startswith(("http://127.0.0.1", "http://localhost"))
-    if _is_local:
-        PEER_URL = os.environ.get("CORTEX_BUS_FALLBACK_URL", "")
-    else:
-        PEER_URL = _primary or os.environ.get("CORTEX_BUS_FALLBACK_URL", "")
-# External peer (nginx) authenticates with Basic auth, not Bearer.
-PEER_AUTH = os.environ.get(
-    "BUS_FORWARDER_PEER_AUTH",
-    os.environ.get("CORTEX_BUS_FALLBACK_AUTH", os.environ.get("CORTEX_BASIC_AUTH", "")),
-)
-PEER_TOKEN = os.environ.get(
-    "BUS_FORWARDER_PEER_TOKEN",
-    LOCAL_TOKEN,  # default: same token (shared across fleet)
-)
-
-# Queues to sync — auto-discovered from local bus if possible
-QUEUES: list[str] = []
-
 
 def _load_config_file(path: Path) -> dict:
     """Load env vars from a config file."""
@@ -133,6 +86,53 @@ def _resolve_var(key: str, default: str = "") -> str:
         if key in cfg and cfg[key]:
             return cfg[key]
     return default
+
+
+# ── Config from env vars (with conf-file fallback) ──
+# NOTE (2026-08-05): ALL of these must resolve via _resolve_var (env →
+# cortex-bus.conf → ~/hermes-cortex/.env), NOT os.environ alone. The
+# failover watchdog rewrites CORTEX_BUS_URL / CORTEX_BUS_FALLBACK_URL in
+# cortex-bus.conf when it activates/recovers — an env-only read ignores
+# the swap, and cron runs (no env) resolve to empty peers/tokens, so the
+# LOCAL→PEER drain silently failed. Found 2026-08-05: 2 worker replies
+# stranded on Esther's bus despite Moses being reachable.
+LOCAL_URL = _resolve_var("BUS_FORWARDER_LOCAL_URL", "http://127.0.0.1:8903")
+LOCAL_TOKEN = _resolve_var("BUS_FORWARDER_LOCAL_TOKEN") or _resolve_var("CORTEX_BUS_TOKEN")
+# ── Peer URL: role-aware. The peer is the OTHER orchestrator's bus. ──
+#   On Moses (primary): peer = Esther = CORTEX_BUS_FALLBACK_URL (:14004)
+#   On Esther (backup): peer = Moses = CORTEX_BUS_URL       (:13004)
+# The old default (always CORTEX_BUS_FALLBACK_URL) self-synced on Esther:
+# her fallback URL points at her own external :14004, so the forwarder was
+# syncing Esther↔Esther and never saw Moses' inbox. (found 2026-08-03,
+# take-charge assessment — worker fix requests invisible in the mirror)
+_HOST = os.uname().nodename.split(".")[0]
+if _resolve_var("BUS_FORWARDER_PEER_URL"):
+    PEER_URL = _resolve_var("BUS_FORWARDER_PEER_URL")
+elif _HOST == "moses":
+    PEER_URL = _resolve_var("CORTEX_BUS_FALLBACK_URL", "")
+else:
+    # esther (and any non-moses orchestrator): peer = the OTHER host's bus.
+    # CORTEX_BUS_URL flips with failover state — the failover watchdog swaps
+    # it between Moses :13004 (standby) and local :8903 (while acting
+    # primary). NEVER peer with localhost: the forwarder would self-sync and
+    # the backlog would never drain to Moses when he returns (found
+    # 2026-08-05: failover messages stranded on Esther's bus for hours).
+    _primary = _resolve_var("CORTEX_BUS_URL", "")
+    _is_local = _primary.startswith(("http://127.0.0.1", "http://localhost"))
+    if _is_local:
+        PEER_URL = _resolve_var("CORTEX_BUS_FALLBACK_URL", "")
+    else:
+        PEER_URL = _primary or _resolve_var("CORTEX_BUS_FALLBACK_URL", "")
+# External peer (nginx) authenticates with Basic auth, not Bearer.
+PEER_AUTH = (
+    _resolve_var("BUS_FORWARDER_PEER_AUTH")
+    or _resolve_var("CORTEX_BUS_FALLBACK_AUTH")
+    or _resolve_var("CORTEX_BASIC_AUTH")
+)
+PEER_TOKEN = _resolve_var("BUS_FORWARDER_PEER_TOKEN") or LOCAL_TOKEN
+
+# Queues to sync — auto-discovered from local bus if possible
+QUEUES: list[str] = []
 
 
 def _discover_queues() -> list[str]:
