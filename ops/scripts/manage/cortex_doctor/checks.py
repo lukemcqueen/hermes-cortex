@@ -2397,11 +2397,29 @@ def check_governance(res):
   # ── PENDING cycles ──
   # Unscored cycles indicate begin_change was called but feedback_accept
   # was never called. This is a governance leak.
+  #
+  # Distinguishes the CURRENT task's cycle from STALE prior-task cycles:
+  # end_change unlinks the session lock file, so a PENDING cycle whose
+  # task_id has NO active .governance-*.json lock is a LEAK — the agent
+  # moved on without scoring it (observed 2026-08-05: 3 pinned-hooks-dogfood
+  # cycles sat PENDING while later tasks ran). The current task's cycle
+  # (active lock exists) is expected mid-session and reported as INFO.
   _loop_db = CORTEX_HOME / "data" / "loop-governance.db"
   _pending_count = 0
   if _loop_db.exists():
     try:
       import sqlite3
+      # Active task_ids = those with a live lock file (status executing).
+      _active_tasks = set()
+      _state_dir = CORTEX_HOME / "state"
+      if _state_dir.is_dir():
+        for _lf in _state_dir.glob(".governance-*.json"):
+          try:
+            _ld = json.loads(_lf.read_text())
+            if _ld.get("status") == "executing" and _ld.get("task_id"):
+              _active_tasks.add(_ld["task_id"])
+          except (OSError, ValueError):
+            continue
       _conn = sqlite3.connect(str(_loop_db))
       _conn.row_factory = sqlite3.Row
       _pending = _conn.execute(
@@ -2430,15 +2448,26 @@ def check_governance(res):
         if _stale_count:
           res.add(f"PENDING cycles", "INFO",
               f"auto-resolved {_stale_count} cycle(s) >24h old (abandoned sessions)")
-        if _fresh:
+        # Split: cycles with a live lock (current task — expected) vs
+        # cycles whose task has no lock (moved on — leak).
+        _current = [r for r in _fresh if r['task_id'] in _active_tasks]
+        _leaked = [r for r in _fresh if r['task_id'] not in _active_tasks]
+        if _leaked:
           def _fmt(r):
             sid = r['session_id'] or 'unknown'
             return f"{r['task_id']}#{r['cycle_num']} ({sid[:12]}...)"
-          _lines = [_fmt(r) for r in _fresh]
+          _lines = [_fmt(r) for r in _leaked]
           res.add(f"PENDING cycles", "FAIL",
-              f"{len(_fresh)} unscored cycle(s): {', '.join(_lines[:5])}",
-              f"Score them via feedback_accept or cancel with feedback_override")
-        else:
+              f"{len(_leaked)} unscored cycle(s) from finished task(s): {', '.join(_lines[:5])}",
+              f"Score them via feedback_accept or cancel with feedback_override BEFORE starting new work")
+        if _current:
+          def _fmtc(r):
+            sid = r['session_id'] or 'unknown'
+            return f"{r['task_id']}#{r['cycle_num']}"
+          _clines = [_fmtc(r) for r in _current]
+          res.add("PENDING cycles", "INFO",
+              f"{len(_current)} active-task cycle(s) (lock held): {', '.join(_clines[:3])} — score at end_change")
+        if not _leaked and not _current:
           res.add("PENDING cycles", "PASS", "no unscored cycles")
       else:
         res.add("PENDING cycles", "PASS", "no unscored cycles")

@@ -347,13 +347,15 @@ CORTEX_REPO_TOP="${HOME}/hermes-cortex"
 _REPO_TOP=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
 if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -f "$CORTEX_DOCTOR" ]]; then
   DOCTOR_OUTPUT=$(cd "${HOME}/hermes-cortex/ops/scripts/manage" && python3 cortex-doctor.py --quiet 2>&1 || true)
-  # Real failure = any ❌ check line that is NOT "PENDING cycles" (the
-  # normal state while holding a governance lock — pushes happen mid-session)
-  # and NOT the "Overall: FAILING" summary line (counted via its own ❌).
-  # Matches on the ❌ marker (doctor prints ❌ for FAIL checks), not the word
-  # "FAIL" — "Overall: FAILING" would false-positive the old grep, and
-  # "❌ PENDING cycles" would false-negative it. (2026-08-05.)
-  _DOCTOR_FAILS=$(echo "$DOCTOR_OUTPUT" | grep -E '^ *❌' | grep -vcE 'PENDING cycles|Overall: FAILING' || true)
+  # Real failure = any ❌ check line that is NOT the "Overall: FAILING"
+  # summary line (counted via its own ❌). Matches on the ❌ marker, not
+  # the word "FAIL" — "Overall: FAILING" would false-positive the old grep.
+  # NOTE (2026-08-05): PENDING cycles are NO LONGER excluded. The doctor
+  # now FAILs only on cycles from FINISHED tasks (no active lock) — the
+  # current task's cycle (lock held) is INFO. So a push with leaked
+  # prior-task cycles IS blocked: you cannot ship while old cycles sit
+  # unscored. Luke directive: clear them during cleanup, not later.
+  _DOCTOR_FAILS=$(echo "$DOCTOR_OUTPUT" | grep -E '^ *❌' | grep -vcE 'Overall: FAILING' || true)
   if [[ "${_DOCTOR_FAILS:-0}" -gt 0 ]]; then
     echo ""
     echo "❌  Push blocked: doctor reports $([ "${_DOCTOR_FAILS:-0}" -eq 1 ] && echo '1 failure' || echo "${_DOCTOR_FAILS} failures")."

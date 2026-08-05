@@ -89,12 +89,12 @@ fi
 echo "$DOCTOR_OUT" | sed 's/^/   /'
 
 # 4. Verify — FAIL means the dogfood cycle failed. A real failure is any
-#    ❌ check line that is NOT "PENDING cycles" (normal while holding a
-#    governance lock) and NOT the "Overall: FAILING" summary line.
+#    ❌ check line that is NOT the "Overall: FAILING" summary line.
 #    Match on the ❌ marker, not the word "FAIL" — "Overall: FAILING"
-#    would false-positive, "❌ PENDING cycles" would false-negative.
-#    (2026-08-05.)
-_DOGFOOD_FAILS=$(echo "$DOCTOR_OUT" | grep -E '^ *❌' | grep -vcE 'PENDING cycles|Overall: FAILING' || true)
+#    would false-positive. NOTE: PENDING cycles are NOT excluded — the
+#    doctor FAILs only on cycles from finished tasks (no active lock), so
+#    a dogfood run with leaked prior-task cycles fails. (2026-08-05.)
+_DOGFOOD_FAILS=$(echo "$DOCTOR_OUT" | grep -E '^ *❌' | grep -vcE 'Overall: FAILING' || true)
 if [[ "${_DOGFOOD_FAILS:-0}" -gt 0 ]]; then
   echo ""
   echo "❌  DOGFOOD FAILED — deployed state does not verify clean."
