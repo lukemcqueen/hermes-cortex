@@ -371,19 +371,19 @@ if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -f "$CORTEX_DO
 fi
 
 # ── MANDATORY DOGFOOD (2026-08-05, Luke directive) ─────────
-# A push that touches ANY non-doc file MUST dogfood-deploy BEFORE it
-# lands: pull → cortex-update → doctor → verify. The gate runs
-# cortex-dogfood.sh itself so the step cannot be forgotten — "make
-# this mandatory, not a manual ritual".
+# A push that touches ANY non-doc file in hermes-cortex MUST
+# dogfood-deploy BEFORE it lands: pull → cortex-update → doctor →
+# verify. The gate runs cortex-dogfood.sh itself so the step cannot
+# be forgotten — "make this mandatory, not a manual ritual".
 # SCOPE (Luke 2026-08-05):
-#   - EVERY script/enforcement file, INCLUDING changes in paths to
-#     these files (renames, moved paths, config references).
-#   - EVERY repo — hermes-cortex AND non-HC repos (client-mwi,
-#     client-works, project repos). The enforcement hooks run in all
-#     of them, so every push verifies the toolchain is healthy.
-#   - Only DOCS are exempt (*.md, docs/).
+#   - EVERY script/enforcement file in the HC repo, INCLUDING changes
+#     in paths to these files (renames, moved paths, config refs).
+#   - HERMES-CORTEX repo ONLY. Dogfood = redeployment of HC, so it is
+#     irrelevant to non-HC repos (client-mwi, client-works, projects)
+#     — a non-HC push redeploys nothing. (Luke correction 2026-08-05.)
+#   - Only DOCS are exempt (*.md, docs/) — no deployed state changes.
 #   - Orchestrator hosts only (moses/esther).
-if _detect_orch && [[ -n "$CHANGED_FILES" ]]; then
+if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -n "$CHANGED_FILES" ]]; then
   _DOGFOOD_RELEVANT=0
   while IFS= read -r cf; do
     case "$cf" in
