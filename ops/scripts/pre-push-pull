@@ -353,7 +353,7 @@ if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -f "$CORTEX_DO
   # Matches on the ❌ marker (doctor prints ❌ for FAIL checks), not the word
   # "FAIL" — "Overall: FAILING" would false-positive the old grep, and
   # "❌ PENDING cycles" would false-negative it. (2026-08-05.)
-  _DOCTOR_FAILS=$(echo "$DOCTOR_OUTPUT" | grep '❌' | grep -vcE 'PENDING cycles|Overall: FAILING' || true)
+  _DOCTOR_FAILS=$(echo "$DOCTOR_OUTPUT" | grep -E '^ *❌' | grep -vcE 'PENDING cycles|Overall: FAILING' || true)
   if [[ "${_DOCTOR_FAILS:-0}" -gt 0 ]]; then
     echo ""
     echo "❌  Push blocked: doctor reports $([ "${_DOCTOR_FAILS:-0}" -eq 1 ] && echo '1 failure' || echo "${_DOCTOR_FAILS} failures")."
@@ -361,7 +361,7 @@ if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -f "$CORTEX_DO
     echo "    Run doctor locally and fix all failures before pushing:"
     echo "      cd ~/hermes-cortex/ops/scripts/manage && python3 cortex-doctor.py"
     echo ""
-    echo "$DOCTOR_OUTPUT" | grep '❌' | grep -vE 'PENDING cycles|Overall: FAILING' | head -10
+    echo "$DOCTOR_OUTPUT" | grep -E '^ *❌' | grep -vE 'PENDING cycles|Overall: FAILING' | head -10
     echo ""
     DOCTOR_BLOCKED=1
   fi

@@ -94,7 +94,7 @@ echo "$DOCTOR_OUT" | sed 's/^/   /'
 #    Match on the ❌ marker, not the word "FAIL" — "Overall: FAILING"
 #    would false-positive, "❌ PENDING cycles" would false-negative.
 #    (2026-08-05.)
-_DOGFOOD_FAILS=$(echo "$DOCTOR_OUT" | grep '❌' | grep -vcE 'PENDING cycles|Overall: FAILING' || true)
+_DOGFOOD_FAILS=$(echo "$DOCTOR_OUT" | grep -E '^ *❌' | grep -vcE 'PENDING cycles|Overall: FAILING' || true)
 if [[ "${_DOGFOOD_FAILS:-0}" -gt 0 ]]; then
   echo ""
   echo "❌  DOGFOOD FAILED — deployed state does not verify clean."
