@@ -300,9 +300,9 @@ mcp_servers:
 ```
 
 Absolute path (no `~` — subprocess doesn't expand it). Doctor `EXPECTED_MCP_SERVERS`
-gains `"todos": "task-mcp.py"` (expected on ALL hosts, unlike `agent-bus` which
+gains `"tasks": "task-mcp.py"` (expected on ALL hosts, unlike `agent-bus` which
 stays orchestrator-only). Registered for all agents in install.sh + a
-cortex-update.sh ensure-step (idempotent `hermes mcp add todos`).
+cortex-update.sh ensure-step (idempotent `hermes mcp add tasks`).
 
 **Deploy runbook (B-7):** cortex-update.sh → **fleet-wide gateway restart**
 (orchestrator action — agents can't restart their own gateway, rule 7b) →

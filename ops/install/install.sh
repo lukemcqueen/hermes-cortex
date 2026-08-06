@@ -1707,23 +1707,23 @@ ok
 # ─────────────────────────────────────────────────────────────
 # 12c. MCP Server Registration — Task Workflow (ALL agents)
 # ─────────────────────────────────────────────────────────────
-step "Registering task workflow MCP server (task-mcp.py — todos)"
+step "Registering task workflow MCP server (task-mcp.py — tasks)"
 TASK_MCP_PATH="${SCRIPT_DIR}/mcp-servers/task-mcp.py"
 if [[ -f "$TASK_MCP_PATH" ]]; then
  if command -v hermes &>/dev/null; then
-  if hermes mcp list 2>/dev/null | grep -q "todos"; then
-   skip "todos MCP server already registered"
+  if hermes mcp list 2>/dev/null | grep -q "tasks"; then
+   skip "tasks MCP server already registered"
   else
-   if hermes mcp add todos --command "$(find_best_python)" --args "$TASK_MCP_PATH" 2>/dev/null; then
-    info " Registered: todos MCP server (task_add/list/pending/update/save_end/prune)"
+   if hermes mcp add tasks --command "$(find_best_python)" --args "$TASK_MCP_PATH" 2>/dev/null; then
+    info " Registered: tasks MCP server (task_add/list/pending/update/save_end/prune)"
    else
-    warn " Could not register todos MCP server — check hermes version"
+    warn " Could not register tasks MCP server — check hermes version"
    fi
   fi
  else
-  skip "hermes CLI not found — todos MCP server not registered"
+  skip "hermes CLI not found — tasks MCP server not registered"
   info " → After installing Hermes, run:"
-  info "   hermes mcp add todos --command python3 --args ${TASK_MCP_PATH}"
+  info "   hermes mcp add tasks --command python3 --args ${TASK_MCP_PATH}"
  fi
 else
  skip "task-mcp.py not found at ${TASK_MCP_PATH}"

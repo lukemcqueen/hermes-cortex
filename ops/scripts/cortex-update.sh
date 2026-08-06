@@ -2357,21 +2357,21 @@ main() {
     fi
   fi
 
-  # ── Ensure todos MCP server registered (ALL agents, not orch-only) ──
+  # ── Ensure tasks MCP server registered (ALL agents, not orch-only) ──
   # Idempotent hermes mcp add; config points at the repo path (mirrors
   # loop-governance wiring — the doctor's --fix converges the same way).
   if command -v hermes >/dev/null 2>&1; then
-    if hermes mcp list 2>/dev/null | grep -q "todos"; then
+    if hermes mcp list 2>/dev/null | grep -q "tasks"; then
       : # already registered
     else
       local mcp_venv="${HOME}/.hermes/hermes-agent/venv/bin/python3"
       local mcp_server="${HOME}/hermes-cortex/mcp-servers/task-mcp.py"
       if [[ -x "$mcp_venv" && -f "$mcp_server" ]]; then
-        info "Registering todos MCP server…"
-        if hermes mcp add todos --command "$mcp_venv" --args "$mcp_server" 2>/dev/null; then
-          info "  ✓ todos MCP registered (restart the gateway to load tools)"
+        info "Registering tasks MCP server…"
+        if hermes mcp add tasks --command "$mcp_venv" --args "$mcp_server" 2>/dev/null; then
+          info "  ✓ tasks MCP registered (restart the gateway to load tools)"
         else
-          warn "hermes mcp add todos failed — run: python3 ${CORTEX_DEPLOY_HOME}/scripts/manage/cortex-doctor.py --fix"
+          warn "hermes mcp add tasks failed — run: python3 ${CORTEX_DEPLOY_HOME}/scripts/manage/cortex-doctor.py --fix"
         fi
       fi
     fi

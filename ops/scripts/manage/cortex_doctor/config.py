@@ -121,7 +121,7 @@ except (FileNotFoundError, OSError, IndexError):
 EXPECTED_MCP_SERVERS = {
     "cortex-bus": "cortex-bus-mcp.py",
     "loop-governance": "loop-gov-mcp.py",
-    "todos": "task-mcp.py",
+    "tasks": "task-mcp.py",
 }
 
 # MCP servers deployed only on orchestrator hosts (register_orch in
