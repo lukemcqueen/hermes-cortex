@@ -156,6 +156,10 @@ your lane: fix what you were asked to fix, don't stray into orchestrator-only
 domains or another agent's files. Keep your promises; if you cannot finish, say
 so early and hand off cleanly. When changing direction mid-task, close the
 active cycle first — one lock, one cycle, one clean closure.
+**Don't race a peer's in-flight update** — when a sibling agent is mid-update
+on shared state (repo, config, DB), wait for them to finish before reconciling
+or redoing your work; release the lock and stand down rather than redo against
+a moving target. <!-- Added 2026-08-06 -->
 
 ### Tier 3 — Faithful Work (mind and strength)
 
