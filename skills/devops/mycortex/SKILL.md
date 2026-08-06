@@ -120,6 +120,32 @@ per-host, non-destructive (old container STOPPED, not removed; dump kept in
 
 **Source registration is per-host, NOT orchestrator-only.** Design D4 + install.sh: each host registers its OWN local brain dirs (`hermes-cortex` + `~/brain/<agent>`) at install time, and the per-host `agent-mycortex-sync` cron syncs them. Every agent runs its own gbrain-postgres with the mycortex schema and populates its own sources — this is the per-host model, not a shared fleet index. The `mycortex_admin` DB role is required for registration — on Linux any user in the docker group can `sg docker exec psql -U mycortex_admin` (trust auth) on the host that runs the container. The "orchestrators only" label applies to **federation + grants + PII gate** (turning a source `is_federated=true`, writing `source_grants`), not to registering your own local source. If you see 0 sources on your own host, **register + import your own sources — don't wait for an orchestrator and don't read another agent's status as your own**.
 
+### Multi-tenant source registration (profile separation — Luke 2026-08-06)
+
+**The tenant boundary is the Hermes PROFILE, not the hostname.** "Imagine 100
+employees sharing one brain": a shared index with per-tenant visibility.
+Personal sources (dreams, bible, notes) MUST be:
+1. Named `<tenant>/<owner>` (e.g. `acme/esther`) — bare names collide in a shared DB
+2. Registered **isolated** (`--mode local`, no `--federated`) — the default
+3. Granted ONLY to a profile-scoped reader role via `source_grants`, NEVER the
+   shared `mycortex_reader` (a blanket grant leaks every tenant's dreams)
+4. Verified with the 30-second isolation test: search as reader → ZERO rows
+   before grant → rows after grant
+
+Worked example (Esther's dreams, 2026-08-06):
+```bash
+mycortex sources add esther ~/brain/esther --mode local   # isolated
+mycortex sync --source esther                              # 6 pages indexed
+# grant reader visibility (single-tenant today; per-profile role in multi-tenant):
+sg docker -c "docker exec -i mycortex-postgres psql -U mycortex_admin -d mycortex \
+  -c \"INSERT INTO mycortex.source_grants (role_name, source_id) \
+  VALUES ('mycortex_reader', '<source-uuid>') ON CONFLICT DO NOTHING\""
+mycortex search "silence is the failure mode" --limit 3   # dreams now rank
+```
+Search returning `[]` for an isolated source is the DESIGN working — fix via
+grants, never by weakening RLS. Full rules: `docs/design/mycortex-dream-layer.md`
+§Multi-Tenancy & Profile Separation.
+
 See `references/migration-2026-08-02.md` for the full session trace: schema fixes, CLI verification outputs, and what remains.
 
 ## Pitfalls

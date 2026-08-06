@@ -92,6 +92,53 @@ so `enabled_toolsets: ["terminal","file"]`; nightly uses
 ~$0.006/run deepseek-v4-flash: nightly ≈ $0.18/mo, weekly ≈ $0.03/wk
 ≈ $0.13/mo, monthly ≈ $0.01/mo. Total ≈ **$0.32/mo per agent**.
 
+## Multi-Tenancy & Profile Separation (design for 100 employees, one brain)
+
+> Luke directive 2026-08-06: *"imagine 100 employees of a company sharing one
+> brain."* Today there is ONE profile; the design must not paint us into a
+> corner when the second profile — or the hundredth — arrives.
+
+**The tenant boundary is the Hermes PROFILE, not the hostname and not the
+machine.** A host can run many profiles (`~/.hermes/profiles/<name>/`); a
+company brain is one shared index with per-tenant visibility. The mycortex
+schema is already multi-tenant-ready — RLS fail-closed (`is_federated` +
+`source_grants`) IS the tenant-visibility mechanism. What must be disciplined
+is everything around it:
+
+### Tenant-scoping rules (mandatory)
+
+| Concern | Single-tenant today | Multi-tenant rule (100 employees) |
+|---|---|---|
+| **Source name** | `esther`, `default` | Namespace as `<tenant>/<owner>` (e.g. `acme/esther`). Bare names collide in a shared DB. If a source must be fleet-shared, it is a SEPARATE federated source — never a personal source made visible. |
+| **Reader grants** | `source_grants('mycortex_reader', source)` | Grant to a PROFILE-scoped reader role (e.g. `mycortex_reader_esther`), never the shared `mycortex_reader`. A blanket grant means any reader sees every tenant's dreams. |
+| **Isolation default** | personal sources `is_federated=false` | KEEP as the default — personal dreams/bible are tenant-private. Federation is the exception, requires PII gate, and is for deliberately-shared knowledge only. |
+| **Write-back path** | `~/brain/<agent>/dreams/` | Resolve `<profile>`, NOT `hostname`/`AGENT_NAME`. With profiles: `~/brain/<profile>/dreams/`. Never a shared dreams file. |
+| **INDEX.md** | per-agent dir | Per-tenant dir (already correct). Never one shared INDEX. |
+| **Sync** | per-host cron | Per-profile sync; advisory lock already serializes safely. |
+
+### Why this is safe by construction
+
+- **RLS fail-closed:** a reader sees a page iff its source is federated OR
+  they hold a `source_grants` row. An un-granted profile's dreams are
+  invisible even if the files are on the same disk.
+- **Isolated ≠ broken:** `mycortex search` returning `[]` for an isolated
+  source is the DESIGN working (Luke verified this is desired — "we want the
+  best brain/search"). Fix visibility via grants, never by weakening RLS.
+- **The 30-second tenant-isolation test** (from `test-mycortex-schema.sh`):
+  register a source → sync → search as reader (expect ZERO rows) → grant →
+  search again (expect rows). Every new tenant must pass this before use.
+
+### What to change when profile #2 arrives
+
+1. Register the new profile's brain: `mycortex sources add <tenant>/<owner> ~/brain/<profile> --mode local`
+2. Sync: `mycortex sync --source <tenant>/<owner>`
+3. Grant ONLY that profile's reader: INSERT into `source_grants` for the
+   profile-scoped role — never the shared reader
+4. Run the tenant-isolation test (zero rows before grant, rows after)
+5. Point the profile's dream crons at `~/brain/<profile>/dreams/`
+6. Verify: `mycortex search` from the new profile finds ITS dreams, and a
+   different profile's search returns `[]` for them
+
 ## History
 
 - 2026-08-02: gbrain decommissioned; dream crons removed; design doc
