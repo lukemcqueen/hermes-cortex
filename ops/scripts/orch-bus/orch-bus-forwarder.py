@@ -196,18 +196,24 @@ def _request(
         return 0, {"error": str(e)[:200]}
 
 
-def _read_bus(
-    url: str, token: str, auth: str, queue: str
-) -> Optional[dict]:
-    """Read (dequeue with vt=0 — peek without consuming) one message."""
+def _peek_bus(
+    url: str, token: str, auth: str, queue: str, limit: int = MAX_PER_QUEUE
+) -> list[dict]:
+    """Peek pending messages WITHOUT consuming (non-destructive batch read).
+
+    Uses GET /api/pgmq/peek/{queue} — returns up to `limit` pending messages
+    with NO state change (no 'processing' transition, no visibility timeout).
+    The mirror must never consume: consumption belongs to the orchestrator
+    that actually does the work (primary normally; backup when primary is
+    down and it becomes active).
+    """
     status, data = _request(
-        "POST", f"{url}/api/pgmq/read",
+        "GET", f"{url}/api/pgmq/peek/{queue}?limit={limit}",
         token=token, auth=auth,
-        body={"queue": queue, "vt": 0},
     )
-    if status in (200,) and isinstance(data, dict) and data.get("msg_id"):
-        return data
-    return None
+    if status in (200,) and isinstance(data, dict):
+        return data.get("messages", [])
+    return []
 
 
 def _send_bus(
@@ -300,9 +306,22 @@ def _sync_direction(
     dest_token: str,
     dest_auth: str,
     direction: str,
+    can_archive_source: bool = False,
 ) -> tuple[list[str], list[str]]:
-    """Sync messages from source bus to destination bus.
-    
+    """Mirror pending messages from source bus to destination bus.
+
+    NEVER consumes from a primary bus. The forwarder is a MIRROR — the only
+    consumer of a primary bus is the orchestrator that does the work
+    (primary normally; backup when the primary is down and it goes active).
+
+    Archive rule (role-aware, 2026-08-06):
+      - can_archive_source=True  → source is the BACKUP bus (recovery drain:
+        backup cleared after its backlog is delivered to the primary, which
+        is now the active consumer).
+      - can_archive_source=False → source is the PRIMARY bus: never archive.
+        Seen messages are skipped (peek is non-destructive, batch — no
+        head-blocking), and the real consumer pops them when it does work.
+
     Returns (forwarded_ids, error_ids) for this direction.
     """
     seen_key = f"seen_{direction}"
@@ -313,22 +332,15 @@ def _sync_direction(
     errors: list[str] = []
 
     for queue in QUEUES:
-        for _ in range(MAX_PER_QUEUE):
-            msg = _read_bus(source_url, source_token, source_auth, queue)
-            if msg is None:
-                break
-            msg_id = msg["msg_id"]
+        msgs = _peek_bus(source_url, source_token, source_auth, queue)
+        for msg in msgs:
+            msg_id = str(msg.get("msg_id", ""))
             body = _parse_body(msg.get("body", {}))
             dkey = _dedup_key(msg, body)
             if dkey in seen:
-                # Already forwarded on a previous tick (or a bounce-back of a
-                # message we sent). With vt=0 (peek, non-consuming) reads, this
-                # message stays at the HEAD of the queue forever, so every
-                # subsequent tick re-peeks the SAME message and `continue`
-                # loops indefinitely — newer messages behind it are never
-                # reached (found 2026-08-05). Archive it on the source so the
-                # queue advances. The destination already has it.
-                _archive_bus(source_url, source_token, source_auth, queue, msg_id)
+                # Already mirrored. NEVER archive a primary source — the real
+                # consumer (active orchestrator) pops it when doing work.
+                # Batch peek means no head-blocking, so skipping is safe.
                 continue
 
             # Preserve correlation_id when forwarding
@@ -340,6 +352,11 @@ def _sync_direction(
                 seen.add(dkey)
                 forwarded.append(f"{queue}/{dkey[-10:]}")
                 total += 1
+                # Backup-source drain: clear the copy once delivered to the
+                # primary (now the active consumer). Primary sources are
+                # never archived here.
+                if can_archive_source and msg_id:
+                    _archive_bus(source_url, source_token, source_auth, queue, msg_id)
             else:
                 errors.append(f"{queue}/{dkey[-10:]}")
                 break  # destination unreachable — stop this queue
@@ -351,7 +368,15 @@ def _sync_direction(
 
 
 def main():
-    global QUEUES, LOCAL_URL, LOCAL_TOKEN, PEER_URL, PEER_TOKEN, PEER_AUTH
+    global QUEUES, LOCAL_URL, LOCAL_TOKEN, PEER_URL, PEER_TOKEN, PEER_AUTH, IS_PRIMARY
+
+    # ── Role: primary (moses) vs backup (esther) ────────────
+    # The forwarder is role-aware (2026-08-06): the PRIMARY bus is where
+    # workers + the active orchestrator consume — the forwarder NEVER
+    # archives on it. The BACKUP bus is the mirror copy; archiving there is
+    # the recovery drain (clear the copy once delivered to the primary).
+    _host = os.uname().nodename.split(".")[0]
+    IS_PRIMARY = (_host == "moses")
 
     # Resolve via config files if not set
     if not LOCAL_TOKEN:
@@ -413,6 +438,11 @@ def main():
             PEER_URL, PEER_TOKEN, PEER_AUTH,
             LOCAL_URL, LOCAL_TOKEN, "",
             "peer_to_local",
+            # Source = PEER. If we are the PRIMARY (moses), the peer is the
+            # BACKUP (esther) → recovery drain: archiving the backup copy is
+            # safe once delivered here. If we are the BACKUP, the peer is the
+            # PRIMARY → never archive (workers read it).
+            can_archive_source=IS_PRIMARY,
         )
     else:
         # Peer down — log it and skip
@@ -428,6 +458,11 @@ def main():
             LOCAL_URL, LOCAL_TOKEN, "",
             PEER_URL, PEER_TOKEN, PEER_AUTH,
             "local_to_peer",
+            # Source = LOCAL. If we are the BACKUP (esther), our local bus is
+            # the backup → draining it to the recovering primary is safe to
+            # archive. If we are the PRIMARY, our local bus IS the primary →
+            # never archive (workers read it).
+            can_archive_source=not IS_PRIMARY,
         )
 
     state["last_run"] = datetime.now(timezone.utc).isoformat()
