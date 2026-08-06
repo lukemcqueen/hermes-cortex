@@ -409,12 +409,28 @@ if [[ "$IS_ORCH" != "1" ]]; then
   fi
 fi
 
+# ── Repo scope guard (Luke 2026-08-06) ─────────────────────
+# Session-gated checks (reflexion proof, governance lock) and the
+# AGENTS.md audit apply ONLY in the hermes-cortex repo. Non-HC repos
+# (client-mwi, client-works, projects) receive MANUAL commits by humans
+# too — a human has no Hermes session and no governance lock, so these
+# gates blocked ordinary manual work on Titus (reproduced: manual commit
+# blocked at the reflexion gate, manual push at the pre-push lock gate).
+# Quality gates (adversarial, secret-leak, doc audit, syntax) still run
+# in every repo. Rule 11 pattern: ${HOME}/hermes-cortex comparison.
+if [[ "$REPO_ROOT" == "${HOME}/hermes-cortex" ]]; then
+  IS_CORTEX_REPO=1
+else
+  IS_CORTEX_REPO=0
+fi
+
 # ── Reflexion gate: verify skill_view('reflexion-check') was called this session ──
 # Query the session DB for proof the agent actually loaded the skill — not just
 # a file-presence check. The governance lock carries the session_id.
 # SKIPPED for sanctioned pipeline commits — no_agent cron has no session;
 # those commits are gated by the append-only guard + adversarial + scoring.
-if [[ "$SANCTIONED_PIPELINE" != "1" ]] && ! python3 -c "
+# SKIPPED in non-HC repos — a manual commit has no session to prove against.
+if [[ "$SANCTIONED_PIPELINE" != "1" && "$IS_CORTEX_REPO" -eq 1 ]] && ! python3 -c "
 import sqlite3, json, os, glob, sys
 
 state_db = os.path.expanduser('~/.hermes/state.db')
@@ -552,7 +568,7 @@ except:
   done
 fi
 
-if [[ "$SANCTIONED_PIPELINE" != "1" && "$LOCK_FOUND" -ne 1 ]]; then
+if [[ "$SANCTIONED_PIPELINE" != "1" && "$IS_CORTEX_REPO" -eq 1 && "$LOCK_FOUND" -ne 1 ]]; then
   # No session-scoped lock for this repo — block with help message
   echo ""
   echo "❌  No active governance session."
@@ -586,7 +602,7 @@ if [[ -z "$AUDIT_SCRIPT" ]]; then
     fi
   done
 fi
-if [[ -n "$AUDIT_SCRIPT" ]]; then
+if [[ -n "$AUDIT_SCRIPT" && "$IS_CORTEX_REPO" -eq 1 ]]; then
   REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
   if [[ -n "$REPO_ROOT" ]]; then
     AGENTS_OUTPUT=$(python3 "$AUDIT_SCRIPT" --repo "$REPO_ROOT" --json 2>&1 || true)

@@ -72,6 +72,15 @@ done
 
 # ── Governance lock check ─────────────────────────────────
 # Before allowing a push, verify an active governance lock exists.
+# SCOPE (Luke 2026-08-06): the lock requirement applies ONLY in the
+# hermes-cortex repo. Non-HC repos (client-mwi, client-works, projects)
+# receive MANUAL pushes by humans too — a manual push has no governance
+# lock, so an unscoped gate blocked ordinary work on Titus (reproduced:
+# "Push blocked: no active governance lock" on a scratch non-HC repo).
+# Safety gates (syntax, no-verify audit, behind-check) still run in
+# every repo. Rule 11 pattern: ${HOME}/hermes-cortex comparison.
+CORTEX_REPO_TOP="${HOME}/hermes-cortex"
+_REPO_TOP=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
 GOVERNANCE_STATE_DIR="${HOME}/.hermes-cortex/state"
 REPO_SLUG=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'generic')" 2>/dev/null || echo 'generic')
 LOCK_FOUND=0
@@ -94,7 +103,7 @@ except Exception:
   done
 fi
 
-if [[ "$LOCK_FOUND" -eq 0 ]]; then
+if [[ "$LOCK_FOUND" -eq 0 && "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]]; then
   # ── Sanctioned pipeline push exception ──────────────────
   # The nginx-threat-pipeline (no_agent cron) commits with messages
   # 'auto: ... [pipeline]' touching only the blocklist allowlist, and
@@ -119,7 +128,7 @@ if [[ "$LOCK_FOUND" -eq 0 ]]; then
   fi
 fi
 
-if [[ "$LOCK_FOUND" -eq 0 ]]; then
+if [[ "$LOCK_FOUND" -eq 0 && "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]]; then
   echo ""
   echo "❌  Push blocked: no active governance lock for this repository."
   echo "    No bypass flags available — call begin_change() before making changes, then push."
@@ -343,8 +352,6 @@ _detect_orch() {
 
 DOCTOR_BLOCKED=0
 CORTEX_DOCTOR="${HOME}/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
-CORTEX_REPO_TOP="${HOME}/hermes-cortex"
-_REPO_TOP=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
 if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -f "$CORTEX_DOCTOR" ]]; then
   DOCTOR_OUTPUT=$(cd "${HOME}/hermes-cortex/ops/scripts/manage" && python3 cortex-doctor.py --quiet 2>&1 || true)
   # Real failure = any ❌ check line that is NOT the "Overall: FAILING"
