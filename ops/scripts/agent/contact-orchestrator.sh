@@ -25,6 +25,12 @@
 
 set -euo pipefail
 
+# Source agent.env for AGENT_NAME when unset (else sends misattribute to OS user).
+# ⚠️ MUST precede the AGENT_NAME fallback below — placing it after the CONF line
+# would be dead code (AGENT_NAME is never empty by then). Titus proposal 2026-08-06.
+if [ -z "${AGENT_NAME:-}" ] && [ -f "${HOME}/.hermes-cortex/agent.env" ]; then
+  . "${HOME}/.hermes-cortex/agent.env"
+fi
 AGENT_NAME="${AGENT_NAME:-${USER:-unknown}}"
 SUBJECT="${1:-}"
 BODY="${2:-}"

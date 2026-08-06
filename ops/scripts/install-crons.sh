@@ -560,14 +560,14 @@ printf "${CYAN}  1. Auto-Remediation Pipeline${RESET}\\\n"
 # LLM-driven auto-remediation tiered (workday: hourly M-F 9-6pm, evening: every 2h M-F 6-12am, overnight: once M-F 3am)
 create_cron "agent-fixer-workday" "0 9-17 * * 1-5" \
   "session-active-guard.py" \
-  "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely: do not load skills, do not begin_change, do not touch the repo. Reply only: ⏭️ skipped — interactive session active. Proceed only when the guard says IDLE.
+  "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely: do not load skills, do not begin_change, do not touch the repo. Reply only: [SILENT]. Proceed only when the guard says IDLE.
 
 Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
-SILENT WHEN HEALTHY: Produce NO output when everything is clean. No all-clear summaries,
+SILENT WHEN HEALTHY: if everything is clean and nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]. No all-clear summaries,
 no \"nothing to report\" messages, no tables of zero counts. Only deliver output when you
 find something actionable — failed workflows, stuck messages, blocked items, or critical
-alerts. If all you did was run checks and everything is fine, stay completely silent." \
+alerts. If all you did was run checks and everything is fine, stay silent." \
   "auto-remediation" \
   "terminal,file,web" \
   "origin" \
@@ -705,9 +705,9 @@ create_cron "cortex-bus-failover-watchdog" "*/5 * * * *" \
 # Bus processing — weekday (hourly M-F 9-5), evening (every 2h M-F 6-10), overnight (3am M-F)
 create_cron "cortex-bus-workday" "0 9-17 * * 1-5" \
   "session-active-guard.py" \
-  "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: ⏭️ skipped — interactive session active. Proceed only when the guard says IDLE.
+  "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: [SILENT]. Proceed only when the guard says IDLE.
 
-Process the Agent Bus using the Inbox Message Decision Framework. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean.
+Process the Agent Bus using the Inbox Message Decision Framework. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: if everything is clean and nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]. No all-clear summaries, no \"nothing to report\" messages, no tables of zero counts.
 
 ## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
 1. Is the output useful, readable, and on-topic for this cron?
@@ -765,9 +765,9 @@ printf "\n${CYAN}  5. Inbox Processing${RESET}\n"
 
 create_cron "agent-inbox-workday" "0 9-17 * * 1-5" \
   "session-active-guard.py" \
-  "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: ⏭️ skipped — interactive session active. Proceed only when the guard says IDLE.
+  "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: [SILENT]. Proceed only when the guard says IDLE.
 
-Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: Produce NO output when nothing actionable.
+Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: if everything is clean and nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]. No all-clear summaries, no \"nothing to report\" messages, no tables of zero counts.
 
 ## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
 1. Is the output useful, readable, and on-topic for this cron?
