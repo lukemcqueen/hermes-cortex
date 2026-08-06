@@ -878,7 +878,8 @@ def cmd_exec(cfg: dict, args: list):
     """
     # Parse --output-schema and --timeout from args
     output_schema = "EXEC_RESULT"
-    timeout_seconds = 120  # default: quick command + one handler tick
+    timeout_seconds = 300  # default: agent handler ticks every 5 min — that's
+                           # the transport bound for a fleet round-trip
     clean_args = list(args)
     for i in range(len(clean_args) - 1, -1, -1):
         if clean_args[i] == "--output-schema" and i + 1 < len(clean_args):
@@ -905,7 +906,7 @@ def cmd_exec(cfg: dict, args: list):
         print("  hc exec gisu manage/cortex-doctor.py --quiet")
         print("  hc exec joseph -- df -h /")
         print("  hc exec kustos manage/cortex-doctor.py --json --output-schema WAVE_RESULT")
-        print("  hc exec kustos install-provider-timeouts.sh --timeout 60")
+        print("  hc exec kustos install-provider-timeouts.sh --timeout 300")
         print()
         print(f"Available schemas: EXEC, EXEC_RESULT, WAVE_RESULT, UPDATE_REQUEST, UPDATE_RESULT")
         print()
@@ -993,9 +994,9 @@ def cmd_exec(cfg: dict, args: list):
 
     print("❌ Timed out waiting for EXEC_RESULT.")
     print(f"   Checked live queue AND archives for {timeout_seconds}s and found no result.")
-    print(f"   The agent may not have agent-message-handler running, the command may")
-    print(f"   have taken longer than {timeout_seconds}s, or the result never arrived.")
-    print(f"   Re-run with --timeout <longer> for long commands, or check:")
+    print(f"   The agent's handler ticks every 5 min — {timeout_seconds}s is the max")
+    print(f"   round-trip window. If the handler is down or the command exceeded")
+    print(f"   {timeout_seconds}s, no result will come. Check:")
     print(f"     hc bus --all   (recent archived activity)")
 
 
