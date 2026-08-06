@@ -59,6 +59,8 @@
 | `agent-gbrain-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-gbrain-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — gbrain decommissioned; no consumer (verified). |
 | `agent-gbrain-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-gbrain-update-sync.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — obsolete with gbrain binary uninstall. |
 | `agent-mycortex-sync` | `*/15 * * * *` | no_agent | `agent-mycortex-sync.sh` | origin | *(knowledge brain sync — replaces gbrain autopilot)* |
+| `agent-mycortex-dream-nightly` | `0 23 * * *` | LLM | (prompt) | origin | *(nightly serendipity digest — fresh-page connections; replaces gbrain creative-dream layer)* |
+| `agent-mycortex-dream-weekly` | `0 3 * * 6` | LLM | (prompt) | origin | *(weekly deep dream — ~200-250 word synthesis written to `~/brain/<agent>/dreams/`)* |
 | `agent-mycortex-parity` | ~~removed 2026-08-03~~ | no_agent | — | origin | *(S-010 flip-gate watchdog — RETIRED with gbrain; gate closed, parity is now a manual regression fixture only)* |
 | `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `agent-scoring-activity-watchdog.py` | origin |
 | `agent-session-cache-build` | `0 5 * * 1` | no_agent | `agent-session_cache.py` | origin |
