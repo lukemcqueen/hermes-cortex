@@ -113,7 +113,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (105 skills)
+## Devops (108 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -198,9 +198,11 @@ their domain.
 | `orch-skill-lifecycle` | 1.0.0 | Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md.... | `skill_view(name='orch-skill-lifecycle')` |
 | `orch-weekly-auto-fix` | 1.1.0 | After the weekly opportunity scan identifies issues, run auto-fix patterns — git pull, branch cleanup, Dock... | `skill_view(name='orch-weekly-auto-fix')` |
 | `package-security` | 1.0.0 | Age-gated package installation protection. Before installing any package with pip, npm, brew, or cargo, ver... | `skill_view(name='package-security')` |
+| `pgmq-consumer-patterns` | 1.0.0 | Use when fixing bus consumers or false-unreachable agents. | `skill_view(name='pgmq-consumer-patterns')` |
 | `pinggy-tunnel` | 0.1.0 | Zero-install localhost tunnels over SSH via Pinggy. | `skill_view(name='pinggy-tunnel')` |
 | `pipeline-debugging` | 1.0.0 | Check the data store and service logs before changing code. | `skill_view(name='pipeline-debugging')` |
 | `postgres-docker` | 1.0.0 | Tune and configure PostgreSQL running inside Docker containers — custom configs, mounts, command overrides,... | `skill_view(name='postgres-docker')` |
+| `postgres-schema-design` | 1.0.0 | Postgres schemas with RLS, roles, or migrations. | `skill_view(name='postgres-schema-design')` |
 | `prevent-crash-looping` | 1.0.0 | How to prevent systemd service crash-looping from port conflicts, missing directories, and failed dependencies | `skill_view(name='prevent-crash-looping')` |
 | `proactive-system-scan` | 1.0.0 | Multi-faceted system scan to discover work, issues, and improvement opportunities when the user gives an op... | `skill_view(name='proactive-system-scan')` |
 | `project-run-scripts` | 1.0.0 | DEFINITIVE canonical template for ./run — single bash CLI entrypoint covering Docker lifecycle, dev servers... | `skill_view(name='project-run-scripts')` |
@@ -215,6 +217,7 @@ their domain.
 | `shell-scripting` | 1.1.0 | Shell scripting patterns, portability pitfalls, and cross-platform compatibility for bash/awk scripts in th... | `skill_view(name='shell-scripting')` |
 | `skill-curation` | 1.0.0 | Consolidate, dedupe, and prune the skill library — merge overlapping skills into one (absorbed_into), delet... | `skill_view(name='skill-curation')` |
 | `staging-server-operations` | 1.19.0 | Safe operational practices for Docker-based staging servers — volume management, change verification, and d... | `skill_view(name='staging-server-operations')` |
+| `sudoers-audit` | 1.0.0 | Systematically audit, test, and debug sudoers NOPASSWD rules — verify allowed commands actually run without... | `skill_view(name='sudoers-audit')` |
 | `sync-allow-ips-to-fail2ban` | 1.0.0 | Sync IPs from allow-ips-manual.conf to fail2ban ignoreip | `skill_view(name='sync-allow-ips-to-fail2ban')` |
 | `telegram-delivery-diagnostics` | 1.0.0 | Diagnose and fix Telegram delivery issues for Hermes cron jobs — delivery pipeline tracing, DNS/network dia... | `skill_view(name='telegram-delivery-diagnostics')` |
 | `third-party-code-vetting` | 1.0.0 | Vet third-party code before it enters the repo or runs on a host — upstream patches, vendored scripts, inst... | `skill_view(name='third-party-code-vetting')` |
@@ -325,7 +328,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `openclaw-migration` | 1.0.0 | Import an OpenClaw setup (memories, skills) into Hermes. | `skill_view(name='openclaw-migration')` |
 
-## Mlops (30 skills)
+## Mlops (31 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -338,6 +341,7 @@ their domain.
 | `fine-tuning-with-trl` | 1.0.1 | TRL: SFT, DPO, GRPO, RLOO reward modeling for LLM RLHF. | `skill_view(name='fine-tuning-with-trl')` |
 | `guidance` | 1.0.1 | Constrain LLM output with grammars; guarantee valid JSON. | `skill_view(name='guidance')` |
 | `huggingface-accelerate` | 1.0.1 | Run PyTorch training across GPUs with minimal changes. | `skill_view(name='huggingface-accelerate')` |
+| `huggingface-tokenizers` | 1.0.0 | Fast BPE/WordPiece tokenization and custom vocab training. | `skill_view(name='huggingface-tokenizers')` |
 | `instructor` | 1.0.0 | Structured LLM outputs validated with Pydantic. | `skill_view(name='instructor')` |
 | `lambda-labs-gpu-cloud` | 1.0.0 | On-demand GPU cloud instances for ML training. | `skill_view(name='lambda-labs-gpu-cloud')` |
 | `llava` | 1.0.0 | Vision-language chat: VQA, captioning, image dialogue. | `skill_view(name='llava')` |
