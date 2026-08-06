@@ -107,6 +107,10 @@ sys.exit(1)
 }
 
 # ── Helper: create a cron (mirrors install-crons.sh) ─────
+# NOTE: the hermes CLI (`cron create`) does NOT expose --toolsets. The
+# toolsets argument here is carried for documentation only; after create,
+# apply enabled_toolsets via the cronjob MCP tool (update) so LLM crons
+# stay lean — design says ["terminal","file"] for the dream tiers.
 create_cron() {
   local name="$1" schedule="$2" script="$3" prompt="$4" skill="$5" toolsets="$6" deliver="$7" workdir="$8" no_agent="$9"
   if cron_exists "$name"; then

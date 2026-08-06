@@ -21,13 +21,13 @@ across runs:
 
 | Tier | Cron | Schedule | Inputs | Output |
 |---|---|---|---|---|
-| 1 — Nightly digest | `agent-mycortex-dream-nightly` | `0 23 * * *` | `mycortex list -n 20`, session search | `~/brain/<agent>/dreams/YYYY-MM-DD.md` (~100-150 words) |
-| 2 — Weekly deep dream | `agent-mycortex-dream-weekly` | `0 3 * * 6` | `mycortex list -n 30` + search, week's `~/brain/lessons/`, bible notes | `~/brain/<agent>/dreams/YYYY-MM-DD-weekly.md` (~200-250 words) |
-| 3 — Monthly arc | `agent-mycortex-dream-monthly` | `0 3 1 * *` | `git log` 30d, lessons count, `mycortex stats`, knowledge-gap probe | `~/brain/<agent>/dreams/YYYY-MM-monthly.md` (~300 words) |
+| 1 — Nightly digest | `agent-mycortex-dream-nightly` | `0 23 * * *` | `mycortex list -n 20`, session search | `~/brain/<profile>/dreams/YYYY-MM-DD.md` (~100-150 words) |
+| 2 — Weekly deep dream | `agent-mycortex-dream-weekly` | `0 3 * * 6` | `mycortex list -n 30` + search, week's `~/brain/lessons/`, bible notes | `~/brain/<profile>/dreams/YYYY-MM-DD-weekly.md` (~200-250 words) |
+| 3 — Monthly arc | `agent-mycortex-dream-monthly` | `0 3 1 * *` | `git log` 30d, lessons count, `mycortex stats`, knowledge-gap probe | `~/brain/<profile>/dreams/YYYY-MM-monthly.md` (~300 words) |
 
 ### Cross-run connection
 
-Every tier appends a line to `~/brain/<agent>/dreams/INDEX.md`:
+Every tier appends a line to `~/brain/<profile>/dreams/INDEX.md`:
 `YYYY-MM-DD | title | one-line summary`. New dreams are instructed to
 read the INDEX (and 2-3 recent dreams) first, so each dream can
 reference its predecessors — the brain's memory of its own dreaming.
@@ -57,8 +57,10 @@ reference its predecessors — the brain's memory of its own dreaming.
    A dream that only ships to Telegram is half a dream.
 3. **[SILENT] only when the brain is genuinely empty** — otherwise
    deliver. These are serendipity crons, not watchdogs.
-4. **Agent-name discovery:** `hostname` or `AGENT_NAME` env (esther,
-   moses, joseph, kustos, gisu, titus) — never hardcode a path.
+4. **Profile resolution:** resolve the tenant as `HERMES_PROFILE` env →
+   `AGENT_NAME` env → `hostname` — NEVER scan `~/.hermes/profiles/*/` (the
+   first entry alphabetically is NOT the active profile; observed 2026-08-06:
+   a `personal` dir existed but the session ran as esther). Never hardcode a path.
 5. **Standard cron output format** (cron-format-standard): header,
    phases, Result, cost footer — with the file paths written as the
    Phase evidence.
@@ -73,7 +75,7 @@ The whole layer is **optional and removable per-agent**:
   expect them fleet-wide and non-participating agents never get them.
 - **Install:** `bash ~/hermes-cortex/ops/scripts/install/install-dream-crons.sh`
 - **Remove:** `bash ~/hermes-cortex/ops/scripts/install/install-dream-crons.sh --uninstall`
-  (removes the three crons; dream files in `~/brain/<agent>/dreams/`
+  (removes the three crons; dream files in `~/brain/<profile>/dreams/`
   are kept — they're knowledge, not cruft).
 - No dream cron is in any doctor expected-list, so removal never
   triggers a false doctor FAIL.
