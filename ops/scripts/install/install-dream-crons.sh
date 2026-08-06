@@ -174,6 +174,8 @@ create_cron "agent-mycortex-dream-monthly" "0 3 1 * *" \
 3. KNOWLEDGE-GAP PROBE: take 3-5 topics the month's work clearly touched (from the git log themes) and run \`mycortex search \"<topic>\" --limit 3\` for each. Topics with zero or weak results become explicit flags: \"the brain knows nothing about X yet.\"
 4. Write a ~300-word monthly arc: the shape of the month, the scale numbers, the gaps found. Reference 2-3 prior dreams from the INDEX.
 5. WRITE-BACK (mandatory): create \`~/brain/<profile>/dreams/\` if missing, write_file \`~/brain/<profile>/dreams/YYYY-MM-monthly.md\`, then append \`YYYY-MM | <title> | <one-line summary>\` to \`~/brain/<profile>/dreams/INDEX.md\` (create if missing). PROFILE name — NOT hostname (tenant boundary): check HERMES_PROFILE env, then AGENT_NAME env, then hostname — NEVER scan ~/.hermes/profiles/*/ (the first entry alphabetically is NOT the active profile; observed 2026-08-06: 'personal' dir exists but the session runs as esther).
+6. DREAM→TODO BRIDGE (Option A — knowledge gaps): for the top 4 gappy topics from Phase 3, run \`python3 ~/.hermes-cortex/scripts/dream-todo-bridge.py add-gap --topic \"<topic>\" --agent <profile> --month YYYY-MM\`. The script enforces dedup (skips topics already covered by a pending todo) and priority 1. If the script prints SKIP, note it in the dream; if it prints \`todo <uuid8>\`, record it in Phase 3b.
+7. DREAM→TODO BRIDGE (Option B — insight triage): after writing the dream, ask: does any insight imply a concrete verifiable action (verb + object + outcome)? At most 2 per run. For each, run \`python3 ~/.hermes-cortex/scripts/dream-todo-bridge.py add-insight --content \"<verb> <object> — <outcome>\" --agent <profile> --date YYYY-MM-DD --priority 2\` (priority 1 for doc/write/probe/build, 2 for fix/verify/rollout). Observational/reflective insights are NEVER todos — they stay in the dream file.
 
 Real numbers only — every count from an actual command. Real connections only — never fabricate. If the brain is genuinely empty, output exactly [SILENT].
 
@@ -196,8 +198,15 @@ Phase 3 — Knowledge gaps: 2 topics the work touched but the brain has nothing 
 - [gap] theme-of-the-month-alpha — zero strong hits
 - [gap] theme-of-the-month-beta — weak hits only
 
+Phase 3b — Gaps → todos: 2 learning todos added
+- todo fc602f04: learn theme-of-the-month-alpha (priority 1)
+- todo 0cbb57e9: learn theme-of-the-month-beta (priority 1)
+
 Phase 4 — Monthly dream:
 The month's arc is the fleet learning to close its own feedback loops — every fix this month made the next failure louder and the next lesson more reusable. The gaps are the honest edges: what we did but haven't yet understood well enough to write down.
+
+Phase 4b — Actionable: 1 insight triaged to todo
+- todo a85c2522: verify deepseek rollout on cisnet02 (priority 2) [from dream 2026-08-06]
 
 Phase 5 — Written back: ~/brain/esther/dreams/2026-08-monthly.md (+ INDEX appended)
 
@@ -222,6 +231,7 @@ create_cron "agent-mycortex-dream-nightly" "0 23 * * *" \
 4. Write a short, warm digest (~100-150 words): the insight, pattern, or connection — the brain telling you something interesting
 5. WRITE-BACK (mandatory): determine your PROFILE name (NOT hostname — profile is the tenant boundary: check HERMES_PROFILE env, then AGENT_NAME env, then hostname — NEVER scan ~/.hermes/profiles/*/ (the first entry alphabetically is NOT the active profile; observed 2026-08-06: 'personal' dir exists but the session runs as esther)). Create \`~/brain/<profile>/dreams/\` if missing, then write_file \`~/brain/<profile>/dreams/YYYY-MM-DD.md\` containing the digest. Then append a one-line entry to \`~/brain/<profile>/dreams/INDEX.md\` (create if missing) in format: \`YYYY-MM-DD | <short title> | <one-line summary>\`.
 6. Before writing, read \`~/brain/<profile>/dreams/INDEX.md\` if it exists and reference 1-2 prior dreams in your digest when natural (the brain remembering its own dreaming).
+7. DREAM→TODO BRIDGE (Option B — insight triage): after writing the dream, ask: does any insight imply a concrete verifiable action (verb + object + outcome)? At most 2 per run. For each, run \`python3 ~/.hermes-cortex/scripts/dream-todo-bridge.py add-insight --content \"<verb> <object> — <outcome>\" --agent <profile> --date YYYY-MM-DD --priority 2\` (priority 1 for doc/write/probe/build, 2 for fix/verify/rollout). Observational/reflective insights are NEVER todos — they stay in the dream file. The script enforces dedup and tenant-scoping; if it prints SKIP, note it in the digest.
 
 Real connections only — never fabricate page relationships; every claimed link must come from an actual mycortex search result or session. If the brain is genuinely empty (no pages, no sessions), output exactly [SILENT].
 
@@ -245,6 +255,9 @@ Today the brain was thinking about keeping itself honest — the doc-audit work 
 
 Phase 4 — Written back: ~/brain/esther/dreams/2026-08-06.md (+ INDEX appended)
 
+Phase 4b — Actionable: 1 insight triaged to todo
+- todo a85c2522: verify deepseek rollout on cisnet02 (priority 2) [from dream 2026-08-06]
+
 Result: 1 dream written to brain and delivered.
 
 📊 deepseek-v4-flash (deepseek) | \$0.006/run ≈ \$0.18/mo" \
@@ -267,6 +280,7 @@ create_cron "agent-mycortex-dream-weekly" "0 3 * * 6" \
 5. Write a warm ~200-250 word dream: the insight, the pattern, the thread that ties the week together.
 6. WRITE-BACK (mandatory): create \`~/brain/<profile>/dreams/\` if missing, write_file \`~/brain/<profile>/dreams/YYYY-MM-DD-weekly.md\`, then append \`YYYY-MM-DD | <title> | <one-line summary>\` to \`~/brain/<profile>/dreams/INDEX.md\` (create if missing).
 7. Read the INDEX first and reference prior dreams when natural.
+8. DREAM→TODO BRIDGE (Option B — insight triage): after writing the dream, ask: does any insight imply a concrete verifiable action (verb + object + outcome)? At most 2 per run. For each, run \`python3 ~/.hermes-cortex/scripts/dream-todo-bridge.py add-insight --content \"<verb> <object> — <outcome>\" --agent <profile> --date YYYY-MM-DD --priority 2\` (priority 1 for doc/write/probe/build, 2 for fix/verify/rollout). Observational/reflective insights are NEVER todos — they stay in the dream file. The script enforces dedup and tenant-scoping; if it prints SKIP, note it in the dream.
 
 Real connections only — never fabricate relationships. Every claimed link must come from an actual mycortex search result or file read. If the brain is genuinely empty, output exactly [SILENT].
 
@@ -299,6 +313,9 @@ Phase 5 — Dream:
 This week the brain kept circling one idea: a system is only as alive as its feedback loops. The threat pipeline now reports where it used to whisper; the knowledge brain indexes the very docs that describe it. The recurring lesson — split the work, keep the loop tight — is the same lesson the week's scripture carried.
 
 Phase 6 — Written back: ~/brain/esther/dreams/2026-08-08-weekly.md (+ INDEX appended)
+
+Phase 6b — Actionable: 1 insight triaged to todo
+- todo a85c2522: verify deepseek rollout on cisnet02 (priority 2) [from dream 2026-08-08]
 
 Result: 1 weekly dream written to brain and delivered.
 

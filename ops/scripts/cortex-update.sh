@@ -209,6 +209,7 @@ register "ops/scripts/install/install-gateway-cron-timeout.sh" "${CORTEX_DEPLOY_
 register "ops/scripts/manage/cortex-health.sh"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-health.sh"
 register "ops/scripts/manage/gen-skills-manifest.py"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.py"
 register "ops/scripts/manage/todo-db.py"                "${CORTEX_DEPLOY_HOME}/scripts/todo-db.py"
+register "ops/scripts/manage/dream-todo-bridge.py"       "${CORTEX_DEPLOY_HOME}/scripts/dream-todo-bridge.py"
 register_orch "ops/scripts/install/cortex-setup-langfuse.sh"   "${CORTEX_DEPLOY_HOME}/scripts/cortex-setup-langfuse.sh"
 register "ops/scripts/setup-fleet-langfuse.sh"         "${CORTEX_DEPLOY_HOME}/scripts/setup-fleet-langfuse.sh"
 register "ops/scripts/cortex-update.sh"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-update.sh"
@@ -2333,6 +2334,23 @@ main() {
     else
       error "mycortex migrate.py FAILED — schema may be missing on this host"
       exit 1
+    fi
+  fi
+
+  # ── Apply bus.todos schema (dream→todo bridge + session todo protocol) ──
+  # bus.todos was NEVER created on the migrated mycortex-postgres (verified
+  # 2026-08-06: missing from old gbrain dump, old container, and new DB —
+  # todo-db.py silently no-op'd because stdin-mode psql swallows errors).
+  # todos.sql is idempotent (CREATE TABLE IF NOT EXISTS + CREATE OR REPLACE
+  # FUNCTION). Applied via todo-db.py --apply-schema so Linux (docker exec)
+  # and macOS (direct psql via mycortex.conf) both converge.
+  local todo_db="${CORTEX_DEPLOY_HOME}/scripts/todo-db.py"
+  if [[ -f "$todo_db" ]]; then
+    info "Applying bus.todos schema…"
+    if python3 "$todo_db" --apply-schema; then
+      : # schema applied / already current
+    else
+      warn "bus.todos schema apply FAILED — session todo protocol + dream→todo bridge may no-op on this host (retried next update)"
     fi
   fi
 

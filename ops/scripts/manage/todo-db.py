@@ -23,6 +23,7 @@ import subprocess
 import sys
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 # ── Config ────────────────────────────────────────────────────
 
@@ -33,7 +34,10 @@ def _get_db_query() -> list[str]:
     """Return platform-appropriate psql invocation.
 
     macOS → reads ~/.hermes-cortex/mycortex.conf, builds a direct psql call.
-    Linux  → uses sg docker ... (unchanged).
+    Linux  → direct `docker exec` when the user is in the docker group
+             (rc propagates); otherwise falls back to `sg docker -c` with
+             the query embedded in the command string (sg propagates rc
+             for -c mode; stdin mode swallowed errors — fixed 2026-08-06).
     """
     if platform.system() == "Darwin":
         if os.path.exists(MYCORTEX_CONFIG):
@@ -53,11 +57,37 @@ def _get_db_query() -> list[str]:
             "-d", parsed.path.lstrip("/") if parsed.path else "mycortex",
             "-t", "-A", "-F", "||",
         ]
-    # Linux — unchanged sg docker invocation
-    return [
-        "sg", "docker", "-c",
-        "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -t -A -F '||'"
-    ]
+    # Linux — direct docker exec (docker group) or sg fallback
+    try:
+        subprocess.run(
+            ["docker", "exec", "mycortex-postgres", "true"],
+            capture_output=True, timeout=5, check=True,
+        )
+        return [
+            "docker", "exec", "-i", "mycortex-postgres",
+            "psql", "-U", "mycortex", "-d", "mycortex",
+            "-t", "-A", "-F", "||",
+        ]
+    except Exception:
+        return [
+            "sg", "docker", "-c",
+            "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -t -A -F '||'",
+        ]
+
+
+def _build_query_cmd(full_query: str) -> list[str]:
+    """Build the final psql invocation with the query attached.
+
+    Direct docker/psql paths: append `-c <query>` as argv elements.
+    sg fallback: sg's `-c` flag takes a command STRING — the query must be
+    embedded inside that string, else sg passes `-c query` to itself.
+    """
+    base = _get_db_query()
+    if base[0] == "sg":
+        # base = [sg, docker, -c, "<docker exec ... psql ...>"]
+        inner = base[3] + " -c " + repr(full_query)
+        return [base[0], base[1], base[2], inner]
+    return base + ["-c", full_query]
 
 AGENT_NAME = os.environ.get("AGENT_NAME") or subprocess.run(
     ["python3", "-c", "import socket; print(socket.gethostname())"],
@@ -68,7 +98,14 @@ AGENT_NAME = os.environ.get("AGENT_NAME") or subprocess.run(
 # ── Helpers ───────────────────────────────────────────────────
 
 def psql(query: str, params: list | None = None) -> str:
-    """Run a SQL query via psql and return raw output."""
+    """Run a SQL query via psql and return raw output.
+
+    Uses `-c` mode (not stdin): stdin-mode psql returns rc=0 even when the
+    query fails, which made todo-db.py silently report success for writes
+    that never landed (observed 2026-08-06 — bus.todos never existed and
+    every `add` printed ✅ while the row vanished). `-c` propagates the
+    real exit code so errors surface instead of being swallowed.
+    """
     full_query = query
     if params:
         # Safe parameter interpolation for UUIDs and simple types
@@ -84,7 +121,8 @@ def psql(query: str, params: list | None = None) -> str:
                     replacement = f"'{p.replace(chr(39), chr(39)+chr(39))}'"
                 full_query = full_query[:idx] + replacement + full_query[idx+1:]
     result = subprocess.run(
-        _get_db_query(), input=full_query, capture_output=True, text=True, timeout=15
+        _build_query_cmd(full_query),
+        capture_output=True, text=True, timeout=15
     )
     if result.returncode != 0:
         print(f"ERROR: {result.stderr.strip()}", file=sys.stderr)
@@ -230,6 +268,37 @@ def cmd_save_end():
         print(f"⚠️  {pending} pending todo(s) remain for next session.")
 
 
+def cmd_apply_schema():
+    """Apply core/cortex_bus/schema/todos.sql (idempotent).
+
+    Locates the schema file at the repo or deployed path, then applies it
+    through the same platform-aware psql() helper used by every command —
+    Linux docker exec or macOS direct psql. Safe to run on every update:
+    CREATE TABLE IF NOT EXISTS + CREATE OR REPLACE FUNCTION.
+    """
+    candidates = [
+        Path(os.environ.get("CORTEX_REPO", "")) / "core/cortex_bus/schema/todos.sql",
+        Path.home() / "hermes-cortex/core/cortex_bus/schema/todos.sql",
+        Path.home() / ".hermes-cortex/core/cortex_bus/schema/todos.sql",
+        Path.home() / ".hermes-cortex/scripts/core/cortex_bus/schema/todos.sql",
+    ]
+    schema = next((c for c in candidates if c.exists()), None)
+    if schema is None:
+        print(f"ERROR: todos.sql not found (tried {len(candidates)} paths)", file=sys.stderr)
+        sys.exit(1)
+    sql = schema.read_text(encoding="utf-8")
+    # Apply via psql -c (multi-statement works with -c; ON_ERROR_STOP via -v)
+    result = subprocess.run(
+        _build_query_cmd(sql),
+        capture_output=True, text=True, timeout=30,
+        env={**os.environ, "PGOPTIONS": "-c search_path=bus,public"},
+    )
+    if result.returncode != 0:
+        print(f"ERROR: schema apply failed: {result.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
+    print("✅ bus.todos schema applied (idempotent).")
+
+
 # ── CLI ───────────────────────────────────────────────────────
 
 def main():
@@ -282,6 +351,9 @@ def main():
 
     elif command == "save-end":
         cmd_save_end()
+
+    elif command == "--apply-schema":
+        cmd_apply_schema()
 
     else:
         print(f"Unknown command: {command}", file=sys.stderr)
