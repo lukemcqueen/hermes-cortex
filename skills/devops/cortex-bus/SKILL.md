@@ -19,6 +19,13 @@ The Agent Bus is a Postgres-native message queue (`lib/pgmq` implementation with
 
 > **📐 Architecture reference:** See [`docs/reference/cortex-bus-config.md`](../../docs/reference/cortex-bus-config.md) for the full architecture — fleet topology, auth model, ACL/permissions, message consumption patterns, and forwarder design. This skill covers operational diagnostics only.
 
+> **⚠️ Postgres access (post-2026-08-05 migration):** the `gbrain-postgres`
+> container was replaced by **`mycortex-postgres`** (role/db **`mycortex`**,
+> port still `:15432`). All psql examples below use the new container/role:
+> `sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex ..."`.
+> The old `gbrain` role does NOT exist in the new container — using it fails
+> with `FATAL: role "gbrain" does not exist`.
+
 Key architectural facts:
 - **Bus server** processes at `~/hermes-cortex/core/cortex_bus/server.py` (module `cortex_bus.server:app`, service `cortex-bus.service`)
 - **Queue module** at `~/hermes-cortex/core/cortex_bus/queue.py`
@@ -40,7 +47,7 @@ Key architectural facts:
 ### 1. Queue Overview
 
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT queue_name, state, COUNT(*) as count
 FROM bus.messages
 GROUP BY queue_name, state
@@ -62,7 +69,7 @@ Messages that exceeded `max_retries` (default 3) move to `{queue}_dlq`. DLQ mess
 
 ```bash
 # DLQ depth by queue
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT queue_name, state, COUNT(*) as count,
     MIN(enqueued_at)::timestamptz(0) as oldest,
     MAX(enqueued_at)::timestamptz(0) as newest
@@ -73,7 +80,7 @@ ORDER BY queue_name, state;
 \""
 
 # DLQ message content — who sent it, what about, how many retries
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT 
     queue_name,
     COALESCE(body->>'from', '(empty)') as sender,
@@ -92,7 +99,7 @@ LIMIT 50;
 ### 3. Check Queue Schema Integrity
 
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT name, is_dlq, parent_queue, max_retries FROM bus.queues ORDER BY name;
 \""
 ```
@@ -103,7 +110,7 @@ Every queue ending in `_dlq` MUST have `is_dlq = true`. If false, the auto-archi
 
 ```bash
 # Returns count of messages recovered/archived
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT bus.recover_timeouts();
 \""
 ```
@@ -186,7 +193,7 @@ These are truly stuck: the message was dequeued up to max_retries times, timed o
 
 **Detection query:**
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT queue_name, retry_count, COUNT(*) as count,
     MIN(enqueued_at)::timestamptz(0) as oldest,
     MAX(enqueued_at)::timestamptz(0) as newest,
@@ -211,7 +218,7 @@ The correct approach requires getting the message ID first, then archiving it in
 
 **Step 1 — Get the stuck message IDs:**
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT msg_id::text, queue_name, body->>'subject' as subject,
     retry_count, enqueued_at::timestamptz(0)
 FROM bus.messages
@@ -224,7 +231,7 @@ ORDER BY enqueued_at;
 
 **Step 2 — Archive each via `bus.archive()` with explicit `::uuid` cast:**
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -c \"
 SELECT bus.archive('inbox_target', '<msg_id>'::uuid, 'esther-remediation');
 \"\" 2>&1
 ```
@@ -233,7 +240,7 @@ Repeat for each stuck message ID. Verify the queue is clean afterward with the d
 
 **Bulk fallback (bypasses proper archive function — use only when you're sure all are orphaned):**
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -c \"
 UPDATE bus.messages SET state = 'archived', archived_at = NOW()
 WHERE state = 'pending'
   AND retry_count >= (SELECT max_retries FROM bus.queues WHERE name = bus.messages.queue_name)
@@ -256,7 +263,7 @@ This means `body->>'from'` evaluates to `NULL` at the top level. The sender data
 
 **Detection query:**
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT COUNT(*) as count, queue_name
 FROM bus.messages
 WHERE state = 'pending'
@@ -269,7 +276,7 @@ ORDER BY COUNT(*) DESC;
 
 **Reading actual content:**
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT msg_id, queue_name,
     body->'raw'->>'from' as actual_sender,
     body->'raw'->>'subject' as actual_subject,
@@ -289,7 +296,7 @@ LIMIT 20;
 When an inbox-processing cron runs, scan all queues for a fleet-wide health picture — even though you can only act on your own queue. This surfaces backlogs in other agents.
 
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT queue_name, state, COUNT(*) as count,
     MIN(enqueued_at)::timestamptz(0) as oldest,
     MAX(enqueued_at)::timestamptz(0) as newest
@@ -317,12 +324,12 @@ Compare depths:
 
 **Fix:**
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -c \"
 UPDATE bus.queues SET is_dlq = true WHERE name LIKE '%_dlq%' AND is_dlq = false;
 \"" 2>&1
 
 # Run recovery to immediately clear old messages
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT bus.recover_timeouts();
 \""
 ```
@@ -340,7 +347,7 @@ The MCP bus tools (`mcp__cortex_bus__*`) return HTTP 401 when:
 **Diagnostic:**
 ```bash
 # Check which tokens exist
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -c \"
 SELECT agent_name, substring(token_hash::text, 1, 20) as token_prefix, rotated_at
 FROM bus.tokens ORDER BY agent_name;
 \""
