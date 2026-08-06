@@ -13,7 +13,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `AGENTS.md` | Agent guidelines — read by AI tools on session start |
 | `docs/setup-reference.md` | Deployment setup, health monitoring pipeline, Ollama model tier |
 | `docs/operations-reference.md` | Operations — inbox architecture, Agent Bus, offline code, common tasks |
-| `docs/daily-bible-reading.md` | Daily bible reading cron — setup guide, registration, troubleshooting |
+| `docs/daily-bible-reading.md` | Daily bible reading cron — no_agent script setup, section-scoping contract, troubleshooting |
 | `docs/agent-onboarding.md` | Agent onboarding — step-by-step guide for client-only agents to connect to Moses and the fleet |
 | `docs/fleet-reference.md` | Fleet reference — cron jobs, agent summary, auto-remediation |
 | `docs/fleet-update-protocol.md` | **NEW** — Fleet update bus protocol: UPDATE_REQUEST/RESULT, FIX_REQUEST/RESULT schemas for Moses→fleet orchestration. **Shared orchestrator inbox** (`inbox_orchestrator`) for failover-aware escalation |
