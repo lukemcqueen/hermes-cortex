@@ -19,7 +19,18 @@ model:
 #   provider: openai
 #   default: gpt-4o
 
-providers: {}
+providers:
+  # Per-request timeout for the deepseek provider (fleet-wide LLM-cron fix
+  # 2026-08-06). deepseek's non-streaming endpoint intermittently hangs
+  # (no response, no error, no stream delta) for >10 min. Without a request
+  # timeout the hang raises nothing, so the fallback chain never engages and
+  # the scheduler's inactivity watchdog (HERMES_CRON_TIMEOUT=600) kills the
+  # cron with 'idle for 604s'. 300s converts the hang into a ReadTimeout
+  # error at 5 min — BEFORE the watchdog — so retry/fallback can engage.
+  # Applied by ops/scripts/install/install-provider-timeouts.sh (idempotent).
+  deepseek:
+    request_timeout_seconds: 300
+    stale_timeout_seconds: 300
 fallback_providers: []
 credential_pool_strategies: {}
 toolsets:

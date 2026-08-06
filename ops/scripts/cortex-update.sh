@@ -223,6 +223,7 @@ register_orch "ops/scripts/orch-bus/orch-bus-inbox-relay.py"   "${CORTEX_DEPLOY_
 register_orch "ops/scripts/fleet/local-orch-fleet-command-verifier.py"   "${CORTEX_DEPLOY_HOME}/scripts/local-orch-fleet-command-verifier.py"
 register "ops/scripts/install/install-orch-crons.sh"  "${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh"
 register "ops/scripts/install/install-dream-crons.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-dream-crons.sh"
+register "ops/scripts/install/install-provider-timeouts.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-provider-timeouts.sh"
 register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
 register "ops/scripts/cortex-dogfood.sh" "${CORTEX_DEPLOY_HOME}/scripts/cortex-dogfood.sh"
 register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
@@ -2562,6 +2563,14 @@ main() {
     fi
     bash "${CORTEX_DEPLOY_HOME}/scripts/install-gateway-cron-timeout.sh" 2>&1 | sed 's/^/    /' || \
       warn "  install-gateway-cron-timeout.sh failed (non-fatal)"
+  fi
+
+  # Per-provider request timeouts (deepseek hang class fix 2026-08-06) —
+  # converts a silent provider hang into ReadTimeout so fallback engages
+  # BEFORE the scheduler watchdog. Idempotent; no restart needed.
+  if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-provider-timeouts.sh" ]]; then
+    bash "${CORTEX_DEPLOY_HOME}/scripts/install-provider-timeouts.sh" 2>&1 | sed 's/^/    /' || \
+      warn "  install-provider-timeouts.sh failed (non-fatal)"
   fi
 
   # ── Clean stale governance locks ─────────────────────────
