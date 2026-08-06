@@ -201,19 +201,86 @@ def bus_archive(queue: str, msg_id: str) -> bool:
         return False
 
 
+def _bus_get(endpoint: str, fallback: bool = False) -> dict:
+    """GET to bus API with Bearer→Basic auth fallback (mirrors _bus_post).
+
+    Tries the primary URL with the configured auth scheme; on 401/403 with
+    Bearer and a CORTEX_BASIC_AUTH available, retries with Basic (nginx
+    validates Basic auth and sets X-Forwarded-User — Bearer is ignored
+    through the proxy). When fallback=True, uses BUS_FALLBACK_URL instead.
+    """
+    scheme, creds = _get_auth_header()
+    base_url = BUS_FALLBACK_URL if (fallback and BUS_FALLBACK_URL) else BUS_URL
+    url = f"{base_url}{endpoint}"
+    last_error = ""
+
+    def _try(auth_scheme: str, auth_creds: str) -> dict:
+        req = Request(url, headers={"Authorization": f"{auth_scheme} {auth_creds}"}, method="GET")
+        with urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read().decode())
+
+    try:
+        return _try(scheme, creds)
+    except HTTPError as e:
+        if e.code in (401, 403) and scheme == "Bearer" and CORTEX_BUS_AUTH:
+            basic_creds = base64.b64encode(CORTEX_BUS_AUTH.encode()).decode()
+            try:
+                return _try("Basic", basic_creds)
+            except (HTTPError, URLError, OSError, json.JSONDecodeError) as basic_err:
+                logging.getLogger("cortex_bus").debug(
+                    "Basic auth fallback also failed for %s: %s", url, basic_err
+                )
+        last_error = str(e)
+    except (URLError, OSError, json.JSONDecodeError) as e:
+        last_error = str(e)
+
+    # Fallback bus attempt if available
+    if not fallback and BUS_FALLBACK_URL:
+        try:
+            return _bus_get(endpoint, fallback=True)
+        except (ConnectionError, OSError, json.JSONDecodeError) as fb_err:
+            logging.getLogger("cortex_bus").warning("Fallback bus also failed: %s", fb_err)
+
+    raise ConnectionError(f"Bus API unreachable: {last_error}")
+
+
 def bus_list_queues() -> list[dict]:
     """List all bus queues. Returns list of dicts with name, depth, dlq, processing."""
     try:
-        scheme, creds = _get_auth_header()
-        req = Request(f"{BUS_URL}/api/pgmq/queues",
-                      headers={"Authorization": f"{scheme} {creds}"},
-                      method="GET")
-        with urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
+        data = _bus_get("/api/pgmq/queues")
         queues = data.get("queues", []) if isinstance(data, dict) else data
         return queues
     except (OSError, json.JSONDecodeError, ConnectionError) as e:
         logging.getLogger("cortex_bus").warning("bus_list_queues failed: %s", e)
+        return []
+
+
+def bus_peek(queue: str, limit: int = 20) -> list[dict]:
+    """Peek pending messages in a queue WITHOUT consuming them (non-destructive).
+
+    Unlike bus_read (which marks messages 'processing' with a visibility
+    timeout), bus_peek returns pending messages unchanged — safe for inbox
+    inspection and exec-result polling loops.
+
+    Auto-parses the PGMQ body (JSON string) into a dict for each message,
+    mirroring bus_read's normalization.
+
+    Returns a list of message dicts (possibly empty), or [] on failure.
+    """
+    try:
+        data = _bus_get(f"/api/pgmq/peek/{queue}?limit={limit}")
+        msgs = data.get("messages", []) if isinstance(data, dict) else []
+        for m in msgs:
+            if isinstance(m.get("body"), str):
+                try:
+                    m["body"] = json.loads(m["body"])
+                except (json.JSONDecodeError, TypeError):
+                    logging.getLogger("cortex_bus").debug("Body not JSON — preserved as-is")
+            if m.get("body") is None:
+                m["body"] = {}
+        return msgs
+    except (OSError, json.JSONDecodeError, ConnectionError) as e:
+        logging.getLogger("cortex_bus").warning("bus_peek failed: %s", e)
         return []
 
 

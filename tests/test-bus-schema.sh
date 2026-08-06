@@ -15,7 +15,7 @@ P=0; F=0
 pass() { P=$((P+1)); echo "  ✅ $1"; }
 fail() { F=$((F+1)); echo "  ❌ $1${2:+ — $2}"; }
 
-PSQL="docker exec gbrain-postgres psql -U gbrain -d gbrain -t -A"
+PSQL="docker exec mycortex-postgres psql -U mycortex -d mycortex -t -A"
 TEST_QUEUE="test_dlq_guard_$$"
 TEST_DLQ="${TEST_QUEUE}_dlq"
 
@@ -117,10 +117,14 @@ DLQ_MSG2=$($PSQL -c "INSERT INTO bus.messages (queue_name, body, retry_count, ma
 # Run recover_timeouts
 $PSQL -c "SELECT bus.recover_timeouts();" 2>/dev/null
 
-# Verify message stayed in DLQ (not moved to deeper DLQ)
+# Verify message did NOT move to a deeper DLQ. Current behavior (queue.sql
+# Step 2): exhausted DLQ processing messages (retry_count >= max_retries,
+# past timeout) are DELETED — no deep-chain. So the message is either still
+# in TEST_DLQ (retried) or GONE (deleted). Both are correct; a deeper DLQ
+# is the failure.
 DLQ2_Q=$($PSQL -c "SELECT queue_name FROM bus.messages WHERE msg_id = '${DLQ_MSG2}'::uuid;" 2>/dev/null | head -1)
-if [ "$DLQ2_Q" = "${TEST_DLQ}" ]; then
-  pass "recover_timeouts() kept DLQ message in same queue"
+if [ "$DLQ2_Q" = "${TEST_DLQ}" ] || [ -z "$DLQ2_Q" ]; then
+  pass "recover_timeouts() kept DLQ message in same queue (or deleted exhausted — no deep-chain)"
 else
   fail "recover_timeouts() moved DLQ message to ${DLQ2_Q}"
 fi

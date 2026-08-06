@@ -2429,9 +2429,32 @@ main() {
         restart_gbrain_sync) restart_gbrain_sync ;;
         restart_langfuse)    restart_langfuse ;;
         restart_dashboard)   restart_dashboard ;;
+        restart_cortex_bus)  restart_cortex_bus ;;
         *)                   warn "Unknown restart command: $cmd" ;;
       esac
     done
+  fi
+
+  # Restart the bus daemon when its code changed. The bus runs FROM THE REPO
+  # (core/cortex_bus via uvicorn cortex_bus.server:app) — a git pull updates
+  # the files on disk but the running process keeps the old modules in memory
+  # (Deploy ≠ load). Without this restart, new bus endpoints/schema changes
+  # never go live until the service happens to restart. restart_cortex_bus
+  # self-guards (systemctl --user is-active / launchctl list) so hosts without
+  # a local bus service (joseph/gisu/kustos/titus — client bus_access) no-op.
+  local _bus_changed=false
+  if $FORCE_ALL; then
+    _bus_changed=true
+  else
+    for _f in "${CHANGED[@]}"; do
+      case "$_f" in
+        core/cortex_bus/*) _bus_changed=true ; break ;;
+      esac
+    done
+  fi
+  if $_bus_changed; then
+    info "Bus code changed — restarting Agent Bus…"
+    $DRY_RUN && echo "    would restart: restart_cortex_bus" || restart_cortex_bus
   fi
 
   # Save commit

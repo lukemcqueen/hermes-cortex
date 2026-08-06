@@ -153,6 +153,45 @@ class BusClient:
                 return json.loads(row[0]) if isinstance(row[0], str) else row[0]
             return None
 
+    def peek(self, queue: str, limit: int = 20) -> list[dict]:
+        """Peek pending messages without consuming (non-destructive read).
+
+        Unlike read(), this does NOT change message state — no 'processing'
+        transition, no visibility timeout. Messages stay 'pending'.
+
+        Args:
+            queue: Queue name (e.g. 'inbox_moses')
+            limit: Max messages to return
+
+        Returns:
+            List of message dicts with keys: msg_id, queue_name, body,
+            priority, retry_count, max_retries, enqueued_at, timeout_at, state
+        """
+        self._ensure_conn()
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT row_to_json(m) FROM (
+                    SELECT msg_id::text, queue_name, body, priority,
+                           retry_count, max_retries,
+                           enqueued_at::text, timeout_at::text, state
+                    FROM bus.messages
+                    WHERE queue_name = %s
+                      AND state = 'pending'
+                      AND visible_after <= now()
+                    ORDER BY priority DESC, enqueued_at ASC
+                    LIMIT %s
+                ) m
+                """,
+                (queue, limit),
+            )
+            rows = cur.fetchall()
+            out = []
+            for r in rows:
+                if r and r[0]:
+                    out.append(json.loads(r[0]) if isinstance(r[0], str) else r[0])
+            return out
+
     def archive(self, queue: str, msg_id: str, archived_by: str = "system") -> bool:
         """Archive a processed message (moves to archive table)."""
         self._ensure_conn()

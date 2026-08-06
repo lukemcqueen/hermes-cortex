@@ -305,6 +305,32 @@ async def api_depth(queue: str, request: Request):
         raise HTTPException(503, f"Bus unavailable: {str(e)[:200]}")
 
 
+@app.get("/api/pgmq/peek/{queue}")
+async def api_peek(queue: str, request: Request, limit: int = 20):
+    """Peek pending messages without consuming (non-destructive read).
+
+    Unlike POST /api/pgmq/read (which marks messages 'processing' with a
+    visibility timeout), this endpoint returns pending messages WITHOUT
+    changing their state. Safe for inbox inspection and exec-result polling.
+
+    Requires 'read' permission on the queue (same as depth/read).
+    """
+    agent = _authenticate(request)
+    _check_permission(agent, queue, "read")
+
+    try:
+        bus = get_queue()
+        msgs = bus.peek(queue, limit)
+        _log_audit(agent, "peek", queue,
+                   {"count": len(msgs)},
+                   request.client.host if request.client else None)
+        return {"queue": queue, "messages": msgs, "count": len(msgs)}
+    except Exception as e:
+        _log_audit(agent, "peek", queue, {"error": str(e)[:200]},
+                   request.client.host if request.client else None, False)
+        raise HTTPException(503, f"Bus unavailable: {str(e)[:200]}")
+
+
 @app.get("/api/pgmq/queues")
 async def api_queues(request: Request):
     """List all queues with depth and metadata."""
@@ -418,6 +444,7 @@ async def agent_card():
         "endpoints": {
             "send": "POST /api/pgmq/send",
             "read": "POST /api/pgmq/read",
+            "peek": "GET /api/pgmq/peek/{queue}",
             "archive": "POST /api/pgmq/archive",
             "workflows": "GET /api/workflows",
             "dispatch": "POST /api/workflows/dispatch",

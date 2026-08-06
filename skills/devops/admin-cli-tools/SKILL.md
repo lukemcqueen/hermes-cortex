@@ -13,34 +13,54 @@ Principles for building admin CLI tools (tools for the human operator, not for a
 
 ## Architecture
 
-### Direct DB Access, Not API Auth
-Admin tools run **directly against Postgres** via `docker exec psql` — no agent-level auth, no ACLs, no bus API dependency.
+### Host-Independent HTTP Client, Not Local docker exec (2026-08-06)
+
+Admin tools talk to the Agent Bus over **HTTP** via the shared
+`lib/cortex_bus.py` client (`ops/scripts/lib/cortex_bus.py`) — the SAME client
+every fleet script uses. This is host-independent: `hc` works identically on
+moses' and esther's hosts.
 
 ```
-hc inbox joseph    ← works for ANY agent, no credentials needed
-hc watch            ← reads ALL queues simultaneously
-hc bus              ← full dashboard from Postgres
+hc inbox joseph    ← reads the ACTIVE bus (CORTEX_BUS_URL) over HTTP (peek)
+hc watch           ← peeks ALL queues over HTTP (non-destructive)
+hc send esther     ← POSTs to the ACTIVE bus
+hc exec gisu       ← sends EXEC + polls inbox_moses via peek
 ```
 
 | Approach | When |
 |----------|------|
-| **`docker exec psql`** | Query operations (reads, depths, status) |
-| **SQL `bus.send()` function** | Send operations |
-| **HTTP to bus API** | Only for operations needing PGMQ semantics (rare for admin) |
+| **HTTP via lib.cortex_bus** | Default — send (bus_send), peek (bus_peek), queues (bus_list_queues), health (bus_health) |
+| **SQL `bus.send()`** | Only for local-Postgres tooling that runs on the bus host (diagnostics) |
+
+**Why not docker exec?** The old `hc` ran `docker exec mycortex-postgres psql`
+against the host-LOCAL bus. On Moses' host local == ACTIVE bus (13004), so it
+worked. On Esther's host local == her own fallback bus (14004), which NOTHING
+polls — every `hc send`/`hc exec` silently vanished into the void. The fix
+(2026-08-06, hc-bus-aware) routes everything through the HTTP client with
+`CORTEX_BUS_URL` (ACTIVE) + `CORTEX_BUS_FALLBACK_URL` (fallback) + Bearer→Basic
+auth fallback. `hc bus` (the deep dashboard) still reads local Postgres — it's
+labeled as such in its output.
 
 ### Non-Destructive Reads
-Use **SQL SELECT** (not PGMQ `read`) to inspect messages without consuming them.
+Use **`bus_peek()`** (GET /api/pgmq/peek/{queue}, added 2026-08-06) to inspect
+messages without consuming them. Unlike `bus_read()` (which marks messages
+'processing' with a visibility timeout), peek returns pending messages with
+their state unchanged — safe for inbox inspection and exec-result polling.
 
-```sql
--- ✅ Non-destructive: messages stay in queue
-SELECT * FROM bus.messages WHERE queue_name = 'inbox_X' AND state = 'pending' AND visible_after <= now();
+```python
+from lib.cortex_bus import bus_peek, bus_send, bus_list_queues, bus_health
 
--- ❌ Destructive: PGMQ read marks processing, timeout moves to DLQ
-POST /api/pgmq/read  -- bad for admin inspection
+msgs = bus_peek("inbox_esther", limit=20)   # ✅ non-destructive list
+bus_send("inbox_esther", {"from": "moses", "subject": "EXEC", ...})
+depths = bus_list_queues()                   # name/depth/processing/dlq
+health = bus_health()                        # active bus, fallback, auth
 ```
 
-### No Credential Config
-Admin tools need no `HC_BUS_URL`, `HC_BUS_AUTH`, or any auth config. Just `HC_AGENT` (default agent name) for convenience.
+### Agent Identity
+Admin tools resolve the operator's agent name from (in order): `HC_AGENT` env →
+`hc.env` → `AGENT_NAME` in `cortex-bus.conf` → hostname-derived guess.
+**Never default to a hardcoded other agent** — the old `DEFAULT_AGENT="moses"`
+made esther's host silently impersonate moses.
 
 ## Command Structure
 

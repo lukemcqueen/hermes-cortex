@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-hc — Hermes Cortex CLI for humans. Runs direct against Postgres (docker exec).
-No curls, no API paths, no ACLs. Read any queue, see everything.
+hc — Hermes Cortex CLI for humans. Talks to the Agent Bus over HTTP.
+Host-independent: reads CORTEX_BUS_URL / CORTEX_BUS_FALLBACK_URL from
+cortex-bus.conf (same as every fleet script), so it works identically on
+moses and esther hosts. No docker exec, no local-Postgres assumption.
 
   hc inbox             list your messages (non-destructive read)
   hc inbox joseph      list joseph's messages
@@ -20,8 +22,13 @@ No curls, no API paths, no ACLs. Read any queue, see everything.
   hc env               show current config
   hc help              this message
 
-Config: ~/.hermes-cortex/hc.env
-  HC_AGENT=moses                          # your agent name (default)
+Config: ~/.hermes-cortex/hc.env (optional; every field falls back)
+  HC_AGENT=esther                          # your agent name (default)
+Bus config comes from ~/.hermes-cortex/cortex-bus.conf:
+  CORTEX_BUS_URL=https://…:13004           # active bus (Moses)
+  CORTEX_BUS_FALLBACK_URL=https://…:14004  # fallback bus (Esther)
+  CORTEX_BASIC_AUTH=user:pass              # nginx Basic auth
+  CORTEX_BUS_TOKEN=hbus_…                  # direct Bearer token
 """
 
 import argparse
@@ -38,11 +45,68 @@ from pathlib import Path
 # ── Config ──────────────────────────────────────────────────────
 
 CONFIG_FILE = Path.home() / ".hermes-cortex" / "hc.env"
-DEFAULT_AGENT = "moses"
+BUS_CONF_FILE = Path.home() / ".hermes-cortex" / "cortex-bus.conf"
+DEFAULT_AGENT = ""
+
+# Make the shared bus client importable from both the repo and the
+# deployed layout (repo: ops/scripts/lib; deployed: scripts/lib).
+# `from lib.cortex_bus import …` needs the PARENT of lib/ on sys.path.
+# Insert only the FIRST existing candidate (priority order) so the repo
+# copy isn't shadowed by a stale deployed copy missing new functions.
+_LIB_CANDIDATES = [
+    Path(__file__).resolve().parent.parent,          # repo: ops/scripts
+    Path.home() / ".hermes-cortex" / "scripts",      # deployed: scripts
+    Path.home() / "hermes-cortex" / "ops" / "scripts",
+]
+for _lib in _LIB_CANDIDATES:
+    if _lib.is_dir() and str(_lib) not in sys.path:
+        sys.path.insert(0, str(_lib))
+        break
+
+try:
+    from lib.cortex_bus import (  # type: ignore
+        bus_health,
+        bus_list_queues,
+        bus_peek,
+        bus_send,
+        BUS_URL,
+        BUS_FALLBACK_URL,
+    )
+    _HAS_LIB = True
+except Exception:
+    # ImportError (module missing) OR RuntimeError (BUS_URL unset on this
+    # host — e.g. a bare machine without cortex-bus.conf). Both degrade to
+    # a clear message; hc must never crash at import.
+    _HAS_LIB = False
+    BUS_URL = ""
+    BUS_FALLBACK_URL = ""
+
+
+def _read_bus_conf(key: str) -> str:
+    """Read a value from cortex-bus.conf (fallback for env)."""
+    if BUS_CONF_FILE.exists():
+        try:
+            for line in BUS_CONF_FILE.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = (x.strip().strip("'\"") for x in line.split("=", 1))
+                if k == key:
+                    return v
+        except Exception:
+            pass
+    return ""
 
 
 def load_config() -> dict:
-    """Load config from hc.env (env vars override)."""
+    """Load config from hc.env + cortex-bus.conf (env vars override).
+
+    Agent resolution order:
+      1. HC_AGENT env var
+      2. HC_AGENT in hc.env
+      3. AGENT_NAME in cortex-bus.conf (canonical per-host identity)
+      4. hostname-based guess (never a hardcoded other agent)
+    """
     config = {
         "agent": os.environ.get("HC_AGENT", ""),
     }
@@ -53,15 +117,29 @@ def load_config() -> dict:
                 line = line.strip()
                 if not line or line.startswith("#") or "=" not in line:
                     continue
-                k, v = (x.strip().strip("'\"").strip() for x in line.split("=", 1))
-                v = v.split("#")[0].strip()
+                k, v = (x.strip().strip("'\"") for x in line.split("=", 1))
                 if k == "HC_AGENT" and not config["agent"]:
                     config["agent"] = v
         except Exception:
             print("expected — silently handled", file=sys.stderr)
 
     if not config["agent"]:
-        config["agent"] = DEFAULT_AGENT
+        config["agent"] = os.environ.get("AGENT_NAME", "") or _read_bus_conf("AGENT_NAME")
+
+    if not config["agent"]:
+        # Never impersonate another agent: derive from hostname, or refuse.
+        import socket
+        hostname = socket.gethostname().split(".")[0].lower()
+        # Known fleet hostname→agent map (PII-safe: no real hostnames here)
+        _HOST_MAP = {
+            "luke-server": "joseph",
+            "cisnet03": "gisu",
+            "cisnet02": "kustos",
+            "lam2": "titus",
+        }
+        config["agent"] = _HOST_MAP.get(hostname, hostname)
+        if config["agent"]:
+            print(f"ℹ️  HC_AGENT unset — derived agent '{config['agent']}' from hostname", file=sys.stderr)
     return config
 
 
@@ -138,69 +216,48 @@ def _record_verification(
 
 
 def _get_messages(queue: str, limit: int = 20) -> list[dict]:
-    """Get pending messages from a queue (non-destructive read)."""
-    raw = _psql(f"""
-        SELECT row_to_json(m) FROM (
-            SELECT msg_id::text, queue_name, body, priority,
-                   retry_count, max_retries,
-                   enqueued_at::text, timeout_at::text, state
-            FROM bus.messages
-            WHERE queue_name = '{queue}'
-              AND state = 'pending'
-              AND visible_after <= now()
-            ORDER BY priority DESC, enqueued_at ASC
-            LIMIT {limit}
-        ) m;
-    """)
-    if not raw:
+    """Get pending messages from a queue (non-destructive read via HTTP peek)."""
+    if not _HAS_LIB:
+        print("❌ lib.cortex_bus not importable — run cortex-update.sh to deploy.", file=sys.stderr)
         return []
-    results = []
-    for line in raw.split("\n"):
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            results.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
-    return results
+    try:
+        return bus_peek(queue, limit=limit)
+    except Exception as e:
+        print(f"  ⚠️  peek {queue} failed: {e}", file=sys.stderr)
+        return []
 
 
 def _get_queue_depths() -> list[dict]:
-    """Get depth of all inbox queues via SQL."""
-    raw = _psql("""
-        SELECT row_to_json(d) FROM (
-            SELECT q.name,
-                   (SELECT count(*) FROM bus.messages
-                    WHERE queue_name = q.name
-                      AND state = 'pending'
-                      AND visible_after <= now()) AS depth
-            FROM bus.queues q
-            WHERE q.name LIKE 'inbox_%' AND q.is_dlq = false
-            ORDER BY q.name
-        ) d;
-    """)
-    if not raw:
+    """Get depth of all inbox queues via HTTP (name + depth)."""
+    if not _HAS_LIB:
+        print("❌ lib.cortex_bus not importable — run cortex-update.sh to deploy.", file=sys.stderr)
         return []
-    results = []
-    for line in raw.split("\n"):
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            results.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
-    return results
+    try:
+        queues = bus_list_queues()
+        return [
+            {"name": q["name"], "depth": q.get("depth", 0)}
+            for q in queues
+            if q.get("name", "").startswith("inbox_") and not q.get("dlq")
+        ]
+    except Exception as e:
+        print(f"  ⚠️  list_queues failed: {e}", file=sys.stderr)
+        return []
 
 
 def _send_message(queue: str, body: dict) -> str:
-    """Send a message via bus.send() SQL function."""
-    body_json = json.dumps(body).replace("'", "''")
-    result = _psql(f"SELECT bus.send('{queue}', '{body_json}'::jsonb, 0)")
-    if result and not result.startswith("ERROR"):
-        return f"✅ Sent to {queue[6:]}. msg_id={result}"
-    return f"❌ Send failed: {result}"
+    """Send a message via the bus HTTP API (active bus, fallback on failure)."""
+    if not _HAS_LIB:
+        return "❌ lib.cortex_bus not importable — run cortex-update.sh to deploy."
+    try:
+        result = bus_send(queue, body)
+        if result is None:
+            return "❌ Send failed: bus_send returned None (see logs)"
+        msg_id = result.get("msg_id") if isinstance(result, dict) else result
+        if msg_id is None:
+            return f"❌ Send failed: {result}"
+        return f"✅ Sent to {queue[6:]}. msg_id={msg_id}"
+    except Exception as e:
+        return f"❌ Send failed: {e}"
 
 
 # ── Formatting ──────────────────────────────────────────────────
@@ -329,15 +386,16 @@ def cmd_send(cfg: dict, args: list):
 
 def cmd_status(cfg: dict, args: list):
     """Show bus health + queue depths + fleet."""
-    # Health via localhost API (no auth for health)
-    try:
-        import urllib.request
-        resp = urllib.request.urlopen("http://127.0.0.1:8903/health", timeout=5)
-        health = json.loads(resp.read().decode())
-        status_icon = "✅" if health.get("status") == "ok" else "⚠️"
-        print(f"{status_icon} Bus: {health.get('status', 'unknown')} ({health.get('backend', '?')})")
-    except Exception:
-        print("❌ Bus health: unreachable")
+    # Health via the shared bus client (active bus, fallback, Bearer→Basic)
+    if _HAS_LIB:
+        try:
+            health = bus_health()
+            status_icon = "✅" if health.get("status") == "ok" else "⚠️"
+            print(f"{status_icon} Bus: {health.get('status', 'unknown')} ({health.get('backend', '?')}) — {BUS_URL}")
+        except Exception as e:
+            print(f"❌ Bus health: unreachable ({e})")
+    else:
+        print("❌ lib.cortex_bus not importable — run cortex-update.sh to deploy.")
 
     # Queue depths
     print()
@@ -468,12 +526,18 @@ def cmd_watch(cfg: dict, args: list):
 
 
 def cmd_bus(cfg: dict, args: list):
-    """Show full bus dashboard: queue states, processing, stuck, DLQ, activity."""
+    """Show full bus dashboard: queue states, processing, stuck, DLQ, activity.
+
+    NOTE: this deep-dive reads the LOCAL Postgres (docker exec mycortex-postgres).
+    On moses' host that is the ACTIVE bus; on esther's host it shows her own
+    (fallback) bus. For the fleet-wide view use: hc status / hc depth / hc inbox.
+    """
     show_all = "--all" in args or "-a" in args
     show_archived = "--archived" in args
 
     # ── Queue summary ────────────────────────────────────────
     print("🚌 Agent Bus Dashboard")
+    print(f"   source: local Postgres (docker exec) — {Path.home()}/.hermes-cortex (agent {cfg['agent']})")
     print()
 
     raw = _psql("""
@@ -709,8 +773,13 @@ def cmd_env(cfg: dict, args: list):
     print(f"   HC_AGENT     = {cfg['agent']}")
     print(f"   Config file  = {CONFIG_FILE}")
     print(f"   File exists  = {CONFIG_FILE.exists()}")
-    print(f"   Backend      = Postgres (direct via docker exec)")
-    print(f"   Auth         = None (admin-level access)")
+    if _HAS_LIB:
+        print(f"   Bus URL      = {BUS_URL or '(unset)'}")
+        print(f"   Fallback URL = {BUS_FALLBACK_URL or '(unset)'}")
+        print(f"   Backend      = HTTP (active bus, fallback on failure)")
+        print(f"   Auth         = Bearer → Basic fallback (via lib.cortex_bus)")
+    else:
+        print(f"   Backend      = ❌ lib.cortex_bus not importable (run cortex-update.sh)")
     print(f"\nTip: Any agent's inbox is readable:")
     print(f"  hc inbox moses    hc inbox joseph    hc inbox esther")
 
@@ -867,11 +936,12 @@ def cmd_exec(cfg: dict, args: list):
     if not result.startswith("❌"):
         _record_verification(corr_id, agent, "EXEC", "EXEC", 300)
 
-    # Poll inbox_moses for the result
-    moses_queue = f"inbox_{cfg['agent']}"
+    # Poll inbox_moses for the result (handler ALWAYS sends *_RESULT to
+    # inbox_moses, regardless of which agent ran the command)
+    moses_queue = "inbox_moses"
     deadline = time.time() + 300  # 5 min max wait
     poll_interval = 15  # every 15 seconds
-    print(f"⏳ Waiting for EXEC_RESULT from {agent} (poll every {poll_interval}s, max 5 min)...")
+    print(f"⏳ Waiting for EXEC_RESULT from {agent} (poll {moses_queue} every {poll_interval}s, max 5 min)...")
     print()
 
     while time.time() < deadline:
