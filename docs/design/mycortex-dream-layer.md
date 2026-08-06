@@ -146,3 +146,12 @@ is everything around it:
 - 2026-08-06: Luke asks to restore + expand; nightly + weekly created
   first, then redesigned into this 3-tier write-back layer with monthly
   tier and optional installer.
+- 2026-08-06 (installed, luke-server/joseph): all three tiers installed via
+  `install-dream-crons.sh` — first run exposed an installer bug
+  (`hermes cron create` takes schedule+prompt POSITIONALLY; the installer
+  passed `--schedule`/`--prompt` flags, silently failing all three). Fixed
+  in the installer to mirror install-crons.sh. First seed dream written
+  (`~/brain/joseph/dreams/2026-08-06.md` + INDEX line) so the automated
+  nightly has a predecessor to reference. Crons set with
+  `enabled_toolsets: [terminal, file]`; model follows cron default
+  (deepseek-v4-flash).
