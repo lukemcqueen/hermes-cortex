@@ -86,6 +86,8 @@
 
 **Principles:** Two-repo (public MIT + private), PII-scrubbed, pointer memory (MEMORY.md ~2.2K → mycortex), state routing (context → history → memory → docs).
 
+**mycortex multi-tenancy (2026-08-06):** each PROFILE connects to the brain as its own `mycortex_reader_<profile>` role — RLS keys on `CURRENT_USER`, so tenant isolation is automatic. Your host's deploy creates the role and auto-migrates legacy grants; NEVER grant personal sources to the shared `mycortex_reader`. Profile resolution: `HERMES_PROFILE` → `AGENT_NAME` → hostname (never an alphabetical `~/.hermes/profiles/*/` scan). See `docs/design/mycortex-multi-tenancy.md`.
+
 ## Skill loading — NOT OPTIONAL
 Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify with `agent-flow`, load matching `on_task` skills. See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md).
 
