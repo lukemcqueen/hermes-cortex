@@ -60,6 +60,19 @@ loads it.
 - **No PII**: real domains, emails, or client names → placeholders
   (`your-domain.com`, `client-mwi`).
 
+### 5. local-* priority (fleet evaluation only)
+
+A `local-*` prefix declares host-scope: the skill was created on one host
+for that host's problems. It is NOT a quality mark against the skill —
+but upstreaming priority is LOW. Fleet evaluation (orch-skill-evaluate):
+- Default stance: **DEFER** — rarely generalizes beyond the authoring host.
+- Reconsider only when the skill clearly solves a generic problem (no
+  host-specific paths, services, or workflows) AND would benefit other
+  agents — then evaluate it as a normal candidate, renamed without the
+  `local-` prefix.
+- Never reject a `local-*` skill for being local — collect still reports
+  it and the author may promote it later. Defer, don't discard.
+
 ## Decision Table
 
 | Finding | Decision |

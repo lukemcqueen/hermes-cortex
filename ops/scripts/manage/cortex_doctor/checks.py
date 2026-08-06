@@ -2955,6 +2955,12 @@ def check_stale_skills(res):
   # ── 1. Orphaned deployed skills ──
   orphans = []
   for (cat, name) in sorted(deployed.keys()):
+    # local-* skills are host-managed promotion candidates: created per-host
+    # (not in repo), collected for fleet evaluation by agent-collect-skills.sh.
+    # Mirror the cron rule ("local-* crons silently excluded" — checks.py
+    # orphan cron scan) — the doctor must NOT flag them as orphans.
+    if name.startswith("local-"):
+      continue
     in_repo = (cat, name) in repo_sk
     in_hermes = (cat, name) in hermes_sk or name in hermes_names
     if not in_repo and not in_hermes:
