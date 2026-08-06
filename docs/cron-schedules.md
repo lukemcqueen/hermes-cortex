@@ -13,6 +13,18 @@
 | **Deliver** | Where output is sent |
 | Scope | `orch` = orchestrator-only, `agent` = all agents, `local` = this machine |
 
+## Delivery Policy — LLM crons (issues only, never status)
+
+> Applies to every LLM cron that delivers to `origin` (fixer / inbox / bus families).
+> Enforced in the prompts — see `ops/scripts/install-crons.sh` create_cron blocks.
+> Added 2026-08-06 per Luke directive ("I want to see any issue; I don't want to
+> see 'no issue' / 'idle' / 'skipped' / no ops").
+
+- **Deliver ONLY when there is a REAL issue** — a failure, a blocked/failed workflow, a critical alert, or something actually fixed/restored.
+- **NEVER deliver status or ops narration** — "no issues", "all clear", "system healthy", "nothing to report", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, "here's my report".
+- **Nothing actionable → reply EXACTLY `[SILENT]`** (suppresses delivery).
+- **Guard crons (workday):** when the session guard says ACTIVE → `[SILENT]` (skip; the user is active — never deliver a "skipped" notice).
+
 ## Orchestrator-only (`orch-*` prefix)
 
 | Name | Schedule | Type | Script / Skill | Deliver |
