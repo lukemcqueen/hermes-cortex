@@ -158,14 +158,18 @@ create_cron() {
 
   if $exists; then
     if ! $FORCE; then
-      # Drift detection: check if existing cron's script OR skill differs from desired.
-      # Script-only checks miss skill renames on LLM crons (empty script) — e.g. the
-      # agent-inbox → cortex-bus-* rename (2026-07-27) left deployed jobs referencing
-      # non-existent skills, silently skipped by the scheduler every fire. Compare both.
+      # Drift detection: check if existing cron's script, skill, OR prompt
+      # differs from desired. Script-only checks miss skill renames on LLM
+      # crons (empty script) — e.g. the agent-inbox → cortex-bus-* rename
+      # (2026-07-27) left deployed jobs referencing non-existent skills,
+      # silently skipped by the scheduler every fire. Compare both. Prompt
+      # comparison (2026-08-06) closes the prompt-only drift gap: repo
+      # prompt fixes (e.g. the cron OUTPUT POLICY) were never propagated to
+      # live jobs because drift checked only script+skill.
       local _drift=false
-      if { [[ -n "$script" || -n "$skill" ]] && [[ -f "$CRON_JOBS_FILE" ]]; } && command -v python3 &>/dev/null; then
-        local _cur_script _cur_skill
-        IFS=$'\x1f' read -r _cur_script _cur_skill < <(python3 -c "
+      if { [[ -n "$script" || -n "$skill" || -n "$prompt" ]] && [[ -f "$CRON_JOBS_FILE" ]]; } && command -v python3 &>/dev/null; then
+        local _cur_script _cur_skill _cur_prompt
+        IFS=$'\x1f' read -r _cur_script _cur_skill _cur_prompt < <(python3 -c "
 import json, sys
 try:
     with open('$CRON_JOBS_FILE') as f:
@@ -173,7 +177,7 @@ try:
     jobs = data.get('jobs', []) if isinstance(data, dict) else data
     for j in jobs:
         if isinstance(j, dict) and j.get('name') == '$name':
-            sys.stdout.write((j.get('script', '') or '') + '\x1f' + (j.get('skill', '') or '') + '\n')
+            sys.stdout.write((j.get('script', '') or '') + '\x1f' + (j.get('skill', '') or '') + '\x1f' + (j.get('prompt', '') or '') + '\n')
             sys.exit(0)
 except: pass
 sys.exit(1)
@@ -185,6 +189,10 @@ sys.exit(1)
         if [[ -n "$skill" && -n "$_cur_skill" && "$_cur_skill" != "$skill" ]]; then
           _drift=true
           info "Drift detected: cron '${name}' skill '${_cur_skill}' → '${skill}'"
+        fi
+        if [[ -n "$prompt" && "$_cur_prompt" != "$prompt" ]]; then
+          _drift=true
+          info "Drift detected: cron '${name}' prompt differs (${#_cur_prompt} → ${#prompt} chars)"
         fi
       fi
       if ! $_drift; then
@@ -564,10 +572,11 @@ create_cron "agent-fixer-workday" "0 9-17 * * 1-5" \
 
 Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
-SILENT WHEN HEALTHY: if everything is clean and nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]. No all-clear summaries,
-no \"nothing to report\" messages, no tables of zero counts. Only deliver output when you
-find something actionable — failed workflows, stuck messages, blocked items, or critical
-alerts. If all you did was run checks and everything is fine, stay silent." \
+OUTPUT POLICY (HARD RULE — overrides everything above):
+- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
+- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
+- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
+- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative." \
   "auto-remediation" \
   "terminal,file,web" \
   "origin" \
@@ -579,10 +588,11 @@ create_cron "agent-fixer-evening" "0 18,20,22 * * 1-5" \
   "" \
   "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
-SILENT WHEN HEALTHY: Produce NO output when everything is clean. No all-clear summaries,
-no \"nothing to report\" messages, no tables of zero counts. Only deliver output when you
-find something actionable — failed workflows, stuck messages, blocked items, or critical
-alerts. If all you did was run checks and everything is fine, stay completely silent." \
+OUTPUT POLICY (HARD RULE — overrides everything above):
+- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
+- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
+- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
+- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative." \
   "auto-remediation" \
   "terminal,file,web" \
   "origin" \
@@ -594,10 +604,11 @@ create_cron "agent-fixer-overnight" "0 3 * * 1-5" \
   "" \
   "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
-SILENT WHEN HEALTHY: Produce NO output when everything is clean. No all-clear summaries,
-no \"nothing to report\" messages, no tables of zero counts. Only deliver output when you
-find something actionable — failed workflows, stuck messages, blocked items, or critical
-alerts. If all you did was run checks and everything is fine, stay completely silent." \
+OUTPUT POLICY (HARD RULE — overrides everything above):
+- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
+- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
+- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
+- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative." \
   "auto-remediation" \
   "terminal,file,web" \
   "origin" \
@@ -707,7 +718,11 @@ create_cron "cortex-bus-workday" "0 9-17 * * 1-5" \
   "session-active-guard.py" \
   "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: [SILENT]. Proceed only when the guard says IDLE.
 
-Process the Agent Bus using the Inbox Message Decision Framework. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: if everything is clean and nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]. No all-clear summaries, no \"nothing to report\" messages, no tables of zero counts.
+Process the Agent Bus using the Inbox Message Decision Framework. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. OUTPUT POLICY (HARD RULE — overrides everything above):
+- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
+- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
+- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
+- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative.
 
 ## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
 1. Is the output useful, readable, and on-topic for this cron?
@@ -725,7 +740,11 @@ If all YES → deliver as normal." \
 
 create_cron "cortex-bus-evening" "0 18,20,22 * * 1-5" \
   "" \
-  "Process the Agent Bus messages. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean.
+  "Process the Agent Bus messages. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. OUTPUT POLICY (HARD RULE — overrides everything above):
+- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
+- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
+- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
+- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative.
 
 ## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
 1. Is the output useful, readable, and on-topic for this cron?
@@ -743,7 +762,11 @@ If all YES → deliver as normal." \
 
 create_cron "cortex-bus-overnight" "0 3 * * 1-5" \
   "" \
-  "Process the Agent Bus overnight. The bus-flag sensor output is injected as context. Check for any urgent or critical items, blocked workflows, or DLQ items. SILENT WHEN HEALTHY: Produce NO output when everything is clean.
+  "Process the Agent Bus overnight. The bus-flag sensor output is injected as context. Check for any urgent or critical items, blocked workflows, or DLQ items. OUTPUT POLICY (HARD RULE — overrides everything above):
+- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
+- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
+- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
+- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative.
 
 ## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
 1. Is the output useful, readable, and on-topic for this cron?
@@ -767,7 +790,11 @@ create_cron "agent-inbox-workday" "0 9-17 * * 1-5" \
   "session-active-guard.py" \
   "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: [SILENT]. Proceed only when the guard says IDLE.
 
-Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: if everything is clean and nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]. No all-clear summaries, no \"nothing to report\" messages, no tables of zero counts.
+Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. OUTPUT POLICY (HARD RULE — overrides everything above):
+- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
+- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
+- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
+- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative.
 
 ## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
 1. Is the output useful, readable, and on-topic for this cron?
@@ -785,7 +812,11 @@ If all YES → deliver as normal." \
 
 create_cron "agent-inbox-evening" "0 18,20,22 * * 1-5" \
   "" \
-  "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: Produce NO output when nothing actionable.
+  "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. OUTPUT POLICY (HARD RULE — overrides everything above):
+- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
+- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
+- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
+- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative.
 
 ## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
 1. Is the output useful, readable, and on-topic for this cron?
@@ -803,7 +834,11 @@ If all YES → deliver as normal." \
 
 create_cron "agent-inbox-overnight" "0 3 * * 1-5" \
   "" \
-  "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. SILENT WHEN HEALTHY: Produce NO output when nothing actionable.
+  "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. OUTPUT POLICY (HARD RULE — overrides everything above):
+- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
+- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
+- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
+- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative.
 
 ## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
 1. Is the output useful, readable, and on-topic for this cron?
