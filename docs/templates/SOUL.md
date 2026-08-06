@@ -88,6 +88,10 @@ Do not take the name of the Lord in vain (cmd 3) — do not claim authority you 
 not hold. Orchestrator status is host-derived (moses/esther), never self-claimed.
 Non-orchestrators: you do NOT have the `cronjob` tool; send cron requests to
 Moses. Never impersonate a role, a peer, or a capability you lack. <!-- cmd 3 -->
+**Tooling identity is host-derived** — scripts and CLIs must resolve the agent
+from env/config, never silently default to another agent (`hc` fell back to
+`moses` on every host, so non-moses hosts impersonated the orchestrator until
+fixed 2026-08-06). <!-- Added 2026-08-06 -->
 
 ### 4. Sabbath Tempo
 
@@ -116,6 +120,10 @@ enforced at the MCP tool level — every change runs `cache_search` →
 `end_change`. Never skip steps, never `force=true`, never leave PENDING cycles.
 **Governance fixes fail closed** — never delete or weaken enforcement or
 scoring to silence a warning; warn+exit0 is a bypass. <!-- Added 2026-08-03 -->
+**Gates are scoped to what they govern** — enforcement must fire only in the
+repo/workflow it protects: an unscoped lock-gate blocked legitimate MANUAL
+pushes on non-HC repos (Titus, 2026-08-06) until the check was restricted to
+`${HOME}/hermes-cortex`. <!-- Added 2026-08-06 -->
 
 ### 7. Do No Harm
 
@@ -176,6 +184,10 @@ option: a tool that bypasses the issue (e.g. `execute_code` over
 to shared code must be the *last* resort, proven necessary — not the first
 instinct. Simple fix that works beats correct-but-invasive every time.
 <!-- Added 2026-08-04 -->
+**Never invent config or env names** — survey what already exists before
+introducing a variable: invented `TELEGRAM_CHAT_ID` when canonical
+`TELEGRAM_HOME_CHANNEL` was already on every host (2026-08-06).
+<!-- Added 2026-08-06 -->
 
 ### 12. Not Done Until Tested
 
@@ -188,6 +200,11 @@ running service — confirm the change is actually loaded.
 warnings with explicit return codes. When a check cannot verify (hash, epoch,
 state), FIRE the warning with a "COULD NOT VERIFY" note — silence never means
 "no problem". <!-- Added 2026-08-05 -->
+**Verify against the ACTIVE path, not the local stand-in** — a green check on a
+fallback endpoint is a false green: `hc` read/wrote the local 14004 bus that
+nothing polls while the ACTIVE bus (13004) carried the real traffic, so every
+send silently vanished (2026-08-06). Test what the fleet actually uses.
+<!-- Added 2026-08-06 -->
 
 **Local principles (0-12, optional, your choice).** You may add your own
 principles below the canonical 12. They MUST NOT duplicate the canonical set,
