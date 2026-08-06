@@ -487,8 +487,6 @@ if $UNINSTALL; then
     "agent-llm-judge-scorer-weekend" \
     "agent-memory-pruning" \
     "agent-memory-to-brain-sync" \
-    "agent-mycortex-dream-nightly" \
-    "agent-mycortex-dream-weekly" \
     "cortex-bus-failover-watchdog" \
     "agent-message-handler" \
     "agent-mycortex-sync" \
@@ -677,92 +675,6 @@ create_cron "agent-mycortex-retention" "0 6 * * *" \
   "origin" \
   "" \
   "true"
-
-# ── 3b. Knowledge Brain Dream (serendipity layer) ────────────
-# Nightly short digest — surfaces fresh-page connections daily at 23:00.
-# Weekly deep dream — ~200-250 word synthesis written to the agent's own
-# brain dir (Sat 03:00). Replaces the old gbrain creative-dream cron.
-create_cron "agent-mycortex-dream-nightly" "0 23 * * *" \
-  "" \
-  "You are the nightly mycortex dream digest. The mycortex knowledge brain indexes markdown across the fleet (git sources). Your job is to surface what the brain noticed today — the serendipity layer.
-
-## Steps
-1. Run \`mycortex list -n 20\` — see what's fresh across the brain (recently synced pages with timestamps)
-2. Pick 2-3 pages that seem related or interesting (different sources preferred when possible)
-3. Run \`mycortex search \"<shared topic>\" --limit 3\` for each pair to find the connection between them
-4. Write a short, warm digest (~100-150 words) highlighting the insight, pattern, or connection — think of it as the brain telling you something interesting
-
-Keep it warm and thoughtful, not dry. Real connections only — never fabricate relationships between pages. If \`mycortex list\` returns nothing fresh or the brain is empty, output exactly [SILENT].
-
-## OUTPUT FORMAT — FOLLOW EXACTLY
-Match this structure line for line. Your content replaces the values. Everything else stays: dashes, colons, spacing, line breaks.
-
-agent-mycortex-dream-nightly (JOB_ID) [YYYY-MM-DD HH:MM KST]
--------------
-
-Phase 1 — Fresh pages: 3 pages surfaced from the brain
-- ops/scripts/agent/agents-doc-audit.py (2026-08-05 20:01)
-- docs/cron-schedules.md (2026-08-06 09:00)
-- skills/devops/mycortex/SKILL.md (2026-08-05 23:46)
-
-Phase 2 — Connections found: 2 threads linking the fresh pages
-- Thread 1: doc hygiene — both pages touch stale-reference cleanup
-- Thread 2: cron governance — schedules + delivery targets changed together
-
-Phase 3 — Dream digest:
-Today the brain was thinking about keeping itself honest — the doc-audit work and the cron schedule updates are two halves of the same habit: nothing stale survives. Worth remembering: the fleet's health isn't one big fix, it's the daily refusal to let drift accumulate.
-
-Result: 1 insight surfaced, delivered.
-
-📊 deepseek-v4-flash (deepseek) | \$0.006/run ≈ \$0.18/mo" \
-  "" \
-  "terminal" \
-  "origin" \
-  "" \
-  "false"
-
-create_cron "agent-mycortex-dream-weekly" "0 3 * * 6" \
-  "" \
-  "You are the weekly deep mycortex dream. The mycortex knowledge brain indexes markdown across the fleet. This is the serendipity layer — find the connections the week's work created that nobody has noticed yet.
-
-## Steps
-1. Run \`mycortex list -n 30\` — see what's fresh across the brain this week
-2. Pick 3-5 pages that seem related or interesting (different sources preferred)
-3. For each pair, run \`mycortex search \"<shared topic>\" --limit 3\` to map how the pages connect
-4. Write a warm ~200-250 word \"dream\" summary: the insight, the pattern, the thread that ties the week together. Think of it as the brain telling us something interesting about itself.
-5. Save the dream to \`~/brain/<agent-name>/dreams/YYYY-MM-DD.md\` (write_file) so the dream becomes retrievable knowledge. Use your own agent name (from \`hostname\` or \`AGENT_NAME\` env — e.g. esther, moses, joseph). Create the dreams/ dir if missing.
-
-Keep it warm and thoughtful, not dry. Real connections only — never fabricate relationships between pages. If the brain is empty or nothing is fresh, output exactly [SILENT].
-
-## OUTPUT FORMAT — FOLLOW EXACTLY
-Match this structure line for line. Your content replaces the values. Everything else stays: dashes, colons, spacing, line breaks.
-
-agent-mycortex-dream-weekly (JOB_ID) [YYYY-MM-DD HH:MM KST]
--------------
-
-Phase 1 — Fresh pages: 5 pages surfaced from the week
-- ops/scripts/manage/agent-nginx-threat-pipeline.sh (2026-08-06 05:00)
-- docs/cron-schedules.md (2026-08-06 09:00)
-- skills/devops/mycortex/SKILL.md (2026-08-05 23:46)
-- docs/design/mycortex-DESIGN.md (2026-08-05 23:40)
-- ops/scripts/install-crons.sh (2026-08-06 09:00)
-
-Phase 2 — Connections mapped: 3 threads linking the week's work
-- Thread 1: delivery discipline — cron targets, threat reports, and brain sync all converged on visibility
-- Thread 2: the brain's own story — mycortex design, skill docs, and install scripts changed together
-- Thread 3: hygiene as habit — stale-ref watchdog + doc audit + retention all enforce freshness
-
-Phase 3 — Dream:
-This week the brain kept circling one idea: a system is only as alive as its feedback loops. The threat pipeline now reports where it used to whisper; the knowledge brain indexes the very docs that describe it; and every cleanup job exists to make the next decision easier. The pattern worth keeping: when a tool stops talking, the fix is never to shout louder — it's to make sure it's actually connected.
-
-Result: 1 weekly dream written to ~/brain/<agent-name>/dreams/2026-08-08.md and delivered.
-
-📊 deepseek-v4-flash (deepseek) | \$0.006/run ≈ \$0.03/wk" \
-  "" \
-  "terminal,file" \
-  "origin" \
-  "" \
-  "false"
 
 # ── 4. Agent Bus Processing ───────────────────────────────────
 printf "\\\\n${CYAN}   4. Agent Bus Processing${RESET}\\\\\\n"
