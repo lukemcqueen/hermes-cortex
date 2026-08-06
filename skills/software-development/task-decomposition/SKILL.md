@@ -216,6 +216,21 @@ When asked to decompose a task, output:
 
 ## Pitfalls
 
+- **Match governance cycle size to atomic deliverables (Luke correction 2026-08-06).**
+  One `begin_change` → `end_change` cycle = ONE independently shippable unit. A
+  multi-deliverable bundle (e.g. create crons + edit installer + edit docs + push
+  in one cycle) leaves the cycle PENDING while you're mid-task — and the pre-push
+  doctor **FAILs on PENDING cycles**, blocking the push. That forces a mid-task
+  `feedback_accept` + early `end_change`, then a lock reopen that creates another
+  PENDING cycle → compounding cascade (observed 2026-08-06: 4 failed push attempts
+  on one 4-part bundle). The fix is structural, not effort: split before
+  `begin_change`, one cycle per unit, each closing green:
+  - Cycle 1: create crons live + verify origin → close
+  - Cycle 2: installer registration + syntax/array checks → close
+  - Cycle 3: docs → close
+  - Cycle 4: commit + push + dogfood + doctor → close
+  Rule of thumb: if a unit has its own verification gate (array sync, `bash -n`,
+  docs audit, dogfood, doctor), it gets its own cycle. When in doubt, split.
 - **Don't over-decompose.** If a unit takes <5 minutes, it's probably too
   small. Group related micro-steps.
 - **Don't under-decompose.** If a unit takes >2 hours, it's probably too
