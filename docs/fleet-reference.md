@@ -221,7 +221,7 @@ curl -u "admin:$(cat ~/.password_file)" https://api.example.com
 ## Model Fallback Chain
 
 Configured in `~/.hermes/config.yaml` — standard chain: primary API → free API → local Ollama.
-See `config-template.yaml` for the canonical setup.
+See `ops/install/deploy/config/config.yaml` (fleet config template) for the canonical setup.
 
 **Per-provider request timeouts (fleet fix 2026-08-06):** the fallback chain
 only engages on *raised* errors (auth/HTTP/connect). A silent hang (deepseek
