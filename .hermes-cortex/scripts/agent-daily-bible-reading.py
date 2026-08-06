@@ -539,7 +539,11 @@ def archive_old_entries(agent_name: str, max_before_archive: int = 3, max_kept: 
     """Move old book entries from SOUL.md Scripture Insights to the archive.
 
     Keeps the section bounded (doctor check_soul_sync FAILs SOUL.md > 20K).
-    Only canonical book entries are moved; other lines stay. Returns the
+    Each book entry is treated as a BLOCK: the '### Book —' header plus all
+    following lines (commitment text, date comment) until the next '### '
+    header or the section end — whole blocks are moved so no orphaned text
+    is left behind. Everything outside the Scripture Insights section
+    (Final Directive, agent docs, etc.) is preserved verbatim. Returns the
     number archived (0 = nothing to archive).
     """
     if not SOUL_MD.exists():
@@ -548,33 +552,58 @@ def archive_old_entries(agent_name: str, max_before_archive: int = 3, max_kept: 
     marker = "## Scripture Insights"
     if marker not in text:
         return 0
-    insights_section = text.split(marker)[-1]
-    insights_section = insights_section.split("## Final Directive")[0]
-    m = re.search(r"\n## ", insights_section)
-    section_end = m.start() if m else len(insights_section)
-    section = insights_section[:section_end]
+    marker_end = text.index(marker) + len(marker)
 
-    kept, books = [], []
-    for line in section.split("\n"):
+    # Section body = everything after the marker up to the next top-level '## ' header
+    rest = text[marker_end:]
+    m = re.search(r"\n## ", rest)
+    section_end = m.start() if m else len(rest)
+    section = rest[:section_end]
+    tail = rest[section_end:]  # Final Directive + everything after — MUST be preserved
+
+    # Split the section into blocks: each '### Book —' header starts a block
+    # that runs until the next '### ' header or the section end. Lines before
+    # the first book header (the intro paragraph) form the preamble, kept as-is.
+    lines = section.split("\n")
+    preamble = []
+    blocks = []  # (is_book, [lines])
+    current = None
+    for line in lines:
         bm = re.match(r"^### ([A-Za-z0-9 ]+) —", line.strip())
-        if bm and bm.group(1).strip() in BOOK_INDEX:
-            books.append(line)
+        if bm:
+            if current is not None:
+                blocks.append(current)
+            current = [bm.group(1).strip() in BOOK_INDEX, [line]]
+        elif current is None:
+            preamble.append(line)  # everything before the first book header
         else:
-            kept.append(line)
-    if len(books) <= max_before_archive:
+            current[1].append(line)
+    if current is not None:
+        blocks.append(current)
+
+    book_blocks = [b for b in blocks if b[0]]
+    if len(book_blocks) <= max_before_archive:
         return 0
 
-    archive = books[:-max_kept]
-    keep = books[-max_kept:]
+    archive = book_blocks[:-max_kept]  # oldest blocks
+    keep = book_blocks[-max_kept:]     # newest blocks
+    kept_set = {id(b) for b in keep}
+
     brain_dir = BRAIN_BIBLE(agent_name)
     archive_file = brain_dir / "archive" / "SOUL-archive.md"
     archive_file.parent.mkdir(parents=True, exist_ok=True)
     with archive_file.open("a", encoding="utf-8") as f:
         f.write(f"\n## Cycle {get_cycle()} archive ({len(archive)} entries)\n\n")
-        f.write("\n".join(archive) + "\n")
+        for b in archive:
+            f.write("\n".join(b[1]).strip() + "\n\n")
 
-    new_section = "\n".join(kept + keep)
-    new_text = text[: text.index(marker) + len(marker)] + new_section + insights_section[section_end:]
+    new_section = "\n".join(preamble) + "\n" if preamble else ""
+    for b in blocks:
+        if b[0] and id(b) not in kept_set:
+            continue  # archived blocks removed
+        new_section += "\n".join(b[1]) + "\n"
+
+    new_text = text[:marker_end] + new_section + tail
     SOUL_MD.write_text(new_text, encoding="utf-8")
     print(f"  📦 Archived {len(archive)} old entries to {archive_file}", file=sys.stderr)
     return len(archive)
