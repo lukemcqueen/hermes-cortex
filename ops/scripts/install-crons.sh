@@ -40,6 +40,14 @@ HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 CRON_JOBS_FILE="${HERMES_HOME}/cron/jobs.json"
 SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"
 HERMES_CMD=""
+
+# ── Telegram recipient (PII — never hardcoded) ────────────
+# Resolved from ~/.hermes/.env (same file agent-message-handler.py reads for
+# TELEGRAM_BOT_TOKEN). If a telegram-delivering cron is requested without it,
+# create_cron fails loudly — a cron that delivers nowhere is the silent-loss
+# class (origin=null bug, 2026-07). Add to ~/.hermes/.env:
+#   TELEGRAM_CHAT_ID=<chat-id>
+TELEGRAM_CHAT_ID="$(grep -E '^TELEGRAM_CHAT_ID=' "${HERMES_HOME}/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
 # Try to find hermes command
 for candidate in hermes "${HERMES_HOME}/hermes-agent/venv/bin/hermes"; do
   if command -v "$candidate" &>/dev/null; then
@@ -149,6 +157,13 @@ script_exists() {
 create_cron() {
   local name="$1" schedule="$2" script="$3" prompt="$4" skill="$5" toolsets="$6" deliver="$7" workdir="$8" no_agent="$9"
   local model="${10:-}" provider="${11:-}"
+
+  # Fail-loud guard: a telegram-delivering cron requires TELEGRAM_CHAT_ID
+  # from ~/.hermes/.env — never a hardcoded literal, never deliver-nowhere.
+  if [[ "$deliver" == "telegram:${TELEGRAM_CHAT_ID}" && -z "$TELEGRAM_CHAT_ID" ]]; then
+    error "cron '${name}': telegram deliver target requires TELEGRAM_CHAT_ID in ${HERMES_HOME}/.env (refusing to create a cron that delivers nowhere)"
+    exit 1
+  fi
 
   # Check if cron exists
   local exists=false
@@ -709,7 +724,7 @@ create_cron "cortex-bus-failover-watchdog" "*/5 * * * *" \
   "" \
   "" \
   "" \
-  "telegram:1270130526" \
+  "telegram:${TELEGRAM_CHAT_ID}" \
   "" \
   "true"
 
@@ -1082,7 +1097,7 @@ create_cron "agent-nginx-threat-pipeline" "0 5 * * *" \
   "" \
   "" \
   "" \
-  "telegram:1270130526" \
+  "telegram:${TELEGRAM_CHAT_ID}" \
   "" \
   "true"
 

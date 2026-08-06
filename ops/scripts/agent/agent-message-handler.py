@@ -113,20 +113,28 @@ def log(msg: str):
 
 
 def notify_telegram(message: str, subject: str = ""):
-  """Send a notification to Telegram via Bot API directly."""
+  """Send a notification to Telegram via Bot API directly.
+
+  Recipient comes from TELEGRAM_CHAT_ID in ~/.hermes/.env — never hardcoded
+  (public-repo PII scrub 2026-08-06). If token or chat id is missing, skip.
+  """
   try:
     token_path = HOME / ".hermes" / ".env"
     token = ""
+    chat_id = ""
     if token_path.exists():
       for line in token_path.read_text().splitlines():
         line = line.strip()
         if line.startswith("TELEGRAM_BOT_TOKEN="):
           token = line.split("=", 1)[1].strip().strip("'\"")
-          break
+        elif line.startswith("TELEGRAM_CHAT_ID="):
+          chat_id = line.split("=", 1)[1].strip().strip("'\"")
     if not token:
       log("Telegram notify: no TELEGRAM_BOT_TOKEN found")
       return
-    chat_id = "1270130526" # Luke
+    if not chat_id:
+      log("Telegram notify: no TELEGRAM_CHAT_ID found")
+      return
     text = f"{subject}\n{message}" if subject else message
     # Escape HTML special chars
     text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

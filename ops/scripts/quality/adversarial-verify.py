@@ -324,9 +324,19 @@ STATIC_SECURITY_PATTERNS = [
      "arbitrary-delete", "high",
      "shutil.rmtree with concatenated path — arbitrary directory deletion"),
     # Hardcoded credentials (in code, not tests)
-    (r"""(password|passwd|secret|api[_-]?key|token)\s*=\s*['\"][^'\"]{12,}['\"]""",
+    (r"""(password|passwd|secret|api[_-]?key|token)\s*=\s*['"][^'"]{12,}['"]""",
      "hardcoded-credential", "high",
      "hardcoded credential literal (12+ chars)"),
+    # Hardcoded personal identifiers / recipient ids — PII, not credentials.
+    # A Telegram chat id (9-11 digits) or "telegram:<id>" deliver target is a
+    # person-identifying literal that credential scanners miss (PII≠secret).
+    # Added 2026-08-06 after chat_id 1270130526 shipped in docs (F-06 leak).
+    (r"""chat_id\s*=\s*['"]?\d{9,11}['"]?""",
+     "hardcoded-recipient-id", "high",
+     "hardcoded Telegram/chat recipient id literal (PII — move to env)"),
+    (r"""telegram:\d{9,11}""",
+     "hardcoded-recipient-id", "high",
+     "hardcoded telegram deliver target with numeric chat id (PII — move to env)"),
 ]
 
 # Code constructs that indicate the value is NOT attacker-controlled

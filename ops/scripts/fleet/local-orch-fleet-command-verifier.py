@@ -27,7 +27,7 @@ from pathlib import Path
 CORTEX_REPO = Path.home() / "hermes-cortex"
 STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 TELEGRAM_BOT_TOKEN = None
-TELEGRAM_CHAT_ID = "1270130526"
+TELEGRAM_CHAT_ID = None
 
 # Load Telegram config from .env
 env_file = Path.home() / ".hermes" / ".env"
@@ -88,6 +88,9 @@ def _notify_telegram(message: str):
     """Send an alert via Telegram Bot API."""
     if not TELEGRAM_BOT_TOKEN:
         log("⚠️  TELEGRAM_BOT_TOKEN not set, skipping alert")
+        return
+    if not TELEGRAM_CHAT_ID:
+        log("⚠️  TELEGRAM_CHAT_ID not set, skipping alert")
         return
     if message is None:
         message = "[No message content]"

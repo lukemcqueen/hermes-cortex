@@ -69,7 +69,7 @@ cronjob action='list' --filter <job-name>
 
 ```
 grep "<JOB_ID>.*delivered" ~/.hermes/logs/agent.log
-# Should say "delivered to telegram:1270130526 via live adapter"
+# Should say "delivered to telegram:<TELEGRAM_CHAT_ID> via live adapter"
 ```
 
 ### 3. Check gateway delivery log
@@ -90,7 +90,7 @@ curl -s --max-time 10 "https://api.telegram.org/bot${TOKEN}/getMe"
 
 # Test sendMessage
 curl -s --max-time 10 -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
-  -d "chat_id=1270130526" -d "text=🧪 Diagnostics test"
+  -d "chat_id=${TELEGRAM_CHAT_ID}" -d "text=🧪 Diagnostics test"
 ```
 
 ### 5. Check DNS resolution
@@ -207,12 +207,12 @@ grep -a "Not connected\|send_path_degraded\|adapter.*failed" ~/.hermes/logs/gate
 **Successful delivery (normal):**
 ```
 INFO gateway.delivery: Cron output preserved for chunking adapter (8050 chars)
-INFO cron.scheduler: Job 'JOB_ID': delivered to telegram:1270130526 via live adapter
+INFO cron.scheduler: Job 'JOB_ID': delivered to telegram:<TELEGRAM_CHAT_ID> via live adapter
 ```
 
 **Successful delivery (small message — under 4000 chars, no chunking):**
 ```
-INFO cron.scheduler: Job 'JOB_ID': delivered to telegram:1270130526 via live adapter
+INFO cron.scheduler: Job 'JOB_ID': delivered to telegram:<TELEGRAM_CHAT_ID> via live adapter
 ```
 (No "Cron output preserved" log — message was small enough to send directly.)
 

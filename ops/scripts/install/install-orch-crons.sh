@@ -49,6 +49,12 @@ check_agent_type "orchestrator" "${BASH_SOURCE[0]}" || {
   exit 1
 }
 
+# ── Telegram recipient (PII — never hardcoded) ────────────
+# Resolved from ~/.hermes/.env (same file agent-message-handler.py reads for
+# TELEGRAM_BOT_TOKEN). create_cron fails loudly if a telegram-delivering cron
+# is requested without it — never a hardcoded literal, never deliver-nowhere.
+TELEGRAM_CHAT_ID="$(grep -E '^TELEGRAM_CHAT_ID=' "${HERMES_HOME:-${HOME}/.hermes}/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
+
 # ── Repo path ──────────────────────────────────────────────
 # LLM-driven crons need a model + provider. Set these in ~/hermes-cortex/.env.
 # The install script sources .env above, so these will be picked up.
@@ -202,6 +208,13 @@ script_exists() {
 create_cron() {
   local name="$1" schedule="$2" script="$3" prompt="$4" skill="$5" toolsets="$6" deliver="$7" workdir="$8" no_agent="$9"
   local model="${10:-}" provider="${11:-}"
+
+  # Fail-loud guard: a telegram-delivering cron requires TELEGRAM_CHAT_ID
+  # from ~/.hermes/.env — never a hardcoded literal, never deliver-nowhere.
+  if [[ "$deliver" == "telegram:"* && -z "$TELEGRAM_CHAT_ID" ]]; then
+    echo "✗ cron '${name}': telegram deliver target requires TELEGRAM_CHAT_ID in ${HERMES_HOME:-${HOME}/.hermes}/.env (refusing to create a cron that delivers nowhere)" >&2
+    exit 1
+  fi
 
   local exists=false
   if cron_exists "$name"; then
@@ -387,7 +400,7 @@ create_cron "orch-fleet-watchdog" "*/5 * * * *" \
   "" \
   "" \
   "" \
-  "telegram:1270130526" \
+  "telegram:${TELEGRAM_CHAT_ID}" \
   "" \
   "true"
 
@@ -421,7 +434,7 @@ create_cron "orch-bus-audit-watchdog" "*/1 * * * *" \
   "" \
   "" \
   "" \
-  "telegram:1270130526" \
+  "telegram:${TELEGRAM_CHAT_ID}" \
   "" \
   "true"
 
