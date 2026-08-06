@@ -6,7 +6,7 @@ A personal bug-fix memory that grows with every session.
 Each lesson captures: error → root cause → fix → tags.
 Queried by semantic similarity before the model attempts to debug.
 
-Storage: Markdown files in ~/brain/kustos/lessons/ (gbrain-indexed for persistence)
+Storage: Markdown files in ~/brain/lessons/ (gbrain-indexed for persistence)
 Index:   ~/offline/lessons-index.json (embedding index for instant semantic search)
 
 Usage (via offline_knowledge):
@@ -33,7 +33,7 @@ from typing import Optional
 
 # ── Config ──────────────────────────────────────────────────
 HOME = Path.home()
-LESSONS_DIR = HOME / "brain" / "kustos" / "lessons"
+LESSONS_DIR = HOME / "brain" / "lessons"
 INDEX_FILE = HOME / "offline" / "lessons-index.json"
 
 # Embedding config (same as offline_code)
