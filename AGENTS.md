@@ -86,7 +86,7 @@
 
 **Principles:** Two-repo (public MIT + private), PII-scrubbed, pointer memory (MEMORY.md ~2.2K → mycortex), state routing (context → history → memory → docs).
 
-**mycortex multi-tenancy (2026-08-06):** each PROFILE connects to the brain as its own `mycortex_reader_<profile>` role — RLS keys on `CURRENT_USER`, so tenant isolation is automatic. Your host's deploy creates the role and auto-migrates legacy grants; NEVER grant personal sources to the shared `mycortex_reader`. Profile resolution: `HERMES_PROFILE` → `AGENT_NAME` → hostname (never an alphabetical `~/.hermes/profiles/*/` scan). See `docs/design/mycortex-multi-tenancy.md`.
+**mycortex multi-tenancy (2026-08-06):** each profile connects as its own `mycortex_reader_<profile>` role; never grant personal sources to shared `mycortex_reader`. Profile resolution: `HERMES_PROFILE` → `AGENT_NAME` → hostname. See `docs/design/mycortex-multi-tenancy.md`.
 
 ## Skill loading — NOT OPTIONAL
 Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify with `agent-flow`, load matching `on_task` skills. See [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md).
@@ -128,13 +128,8 @@ Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify
 
 ## Pre-Ship Checklist — Every Change
 
-### Before starting — 3 questions
-1. **Surveyed?** — `search_files()` for old name/term. `skills_list()` for category. Check git if disk finds nothing.
-2. **Mapped scope?** — What scripts, docs, configs reference the change? For crons: install scripts, update.sh, doctor, schedules.
-3. **Loaded skills?** — `skill_view()` on identified skills.
-
-### After completing work — 6 questions
-> See [`docs/reference/after-completing-work-6-questions.md`](docs/reference/after-completing-work-6-questions.md)
+### Pre-ship questions
+> Before: always-loaded `survey-before-action` skill (search_files → map scope → skill_view). After: [`docs/reference/after-completing-work-6-questions.md`](docs/reference/after-completing-work-6-questions.md)
 
 ## Loop Governance
 **Every change:** `cache_search` → `begin_change` → work → load `change-checklist` → `cycle_query` → `feedback_accept/override` → `end_change` → `git push`. MCP blocks writes without lock. Pre-commit scores every commit.
