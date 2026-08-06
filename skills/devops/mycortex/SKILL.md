@@ -124,27 +124,29 @@ per-host, non-destructive (old container STOPPED, not removed; dump kept in
 
 **The tenant boundary is the Hermes PROFILE, not the hostname.** "Imagine 100
 employees sharing one brain": a shared index with per-tenant visibility.
-Personal sources (dreams, bible, notes) MUST be:
+**Each profile connects as its OWN reader role** (`mycortex_reader_<profile>`,
+created by `install-profile-reader-role.sh`, `LOGIN INHERIT mycortex_reader`) —
+RLS keys on `CURRENT_USER`, so isolation is automatic by construction. Personal
+sources (dreams, bible, notes) MUST be:
 1. Named `<tenant>/<owner>` (e.g. `acme/esther`) — bare names collide in a shared DB
 2. Registered **isolated** (`--mode local`, no `--federated`) — the default
-3. Granted ONLY to a profile-scoped reader role via `source_grants`, NEVER the
+3. Granted ONLY to the PROFILE reader role via `source_grants`, NEVER the
    shared `mycortex_reader` (a blanket grant leaks every tenant's dreams)
 4. Verified with the 30-second isolation test: search as reader → ZERO rows
    before grant → rows after grant
 
 Worked example (Esther's dreams, 2026-08-06):
 ```bash
-mycortex sources add esther ~/brain/esther --mode local   # isolated
-mycortex sync --source esther                              # 6 pages indexed
-# grant reader visibility (single-tenant today; per-profile role in multi-tenant):
-sg docker -c "docker exec -i mycortex-postgres psql -U mycortex_admin -d mycortex \
-  -c \"INSERT INTO mycortex.source_grants (role_name, source_id) \
-  VALUES ('mycortex_reader', '<source-uuid>') ON CONFLICT DO NOTHING\""
-mycortex search "silence is the failure mode" --limit 3   # dreams now rank
+mycortex sources add esther ~/brain/esther --mode local   # isolated + auto-grant profile role
+mycortex sync --source esther                              # pages indexed
+AGENT_NAME=esther mycortex search "silence is the failure mode" --limit 3  # dreams rank
+# isolation proof: another profile sees ZERO esther rows
+AGENT_NAME=joseph mycortex search "dreams" --limit 3   # → (no results) for esther source
 ```
 Search returning `[]` for an isolated source is the DESIGN working — fix via
-grants, never by weakening RLS. Full rules: `docs/design/mycortex-dream-layer.md`
-§Multi-Tenancy & Profile Separation.
+grants, never by weakening RLS. Migration + verification steps for agents:
+**`docs/design/mycortex-multi-tenancy.md`** (canonical). Dream-layer tenant
+rules: `docs/design/mycortex-dream-layer.md` §Multi-Tenancy.
 
 See `references/migration-2026-08-02.md` for the full session trace: schema fixes, CLI verification outputs, and what remains.
 
