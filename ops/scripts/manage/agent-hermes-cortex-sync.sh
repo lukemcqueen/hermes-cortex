@@ -54,7 +54,12 @@ fi
 # the same files (install.sh, scripts, etc.).
 # GIT_EDITOR=true prevents editor spawn on conflict — conflicts auto-fail
 # instead of hanging indefinitely within the timeout (v2: 2026-06-27).
-PULL_OUTPUT=$(GIT_EDITOR=true timeout 20 git pull --rebase origin main 2>&1) || {
+# SKIP_POST_MERGE=1 (v3: 2026-08-07): the post-merge hook runs
+# cortex-update.sh (a 2+ min deploy) which exceeds the network-oriented 20s
+# timeout and gets killed mid-deploy — the merge succeeds (reflog) but the
+# cron reports error and leaves a partial deploy. The deploy now runs
+# explicitly below with its own generous budget.
+PULL_OUTPUT=$(GIT_EDITOR=true SKIP_POST_MERGE=1 timeout 20 git pull --rebase origin main 2>&1) || {
     PULL_EXIT=$?
     CTS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
     if [ "$PULL_EXIT" -eq 124 ]; then
@@ -72,6 +77,18 @@ PULL_OUTPUT=$(GIT_EDITOR=true timeout 20 git pull --rebase origin main 2>&1) || 
 
 # Restore stashed changes
 stash_pop
+
+# Explicit deploy — the post-merge hook was skipped above so the 20s pull
+# timeout only bounds the network operation. Run the full cortex-update.sh
+# now with a generous budget; without this the hook's deploy was killed
+# mid-flight at 20s, erroring the cron on every merge (v3: 2026-08-07).
+DEPLOY_OUTPUT=$(timeout 600 bash "$CORTEX_REPO/ops/scripts/cortex-update.sh" 2>&1) || {
+    DEPLOY_EXIT=$?
+    CTS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
+    echo "[$CTS cortex-sync] cortex-update.sh failed (exit $DEPLOY_EXIT)"
+    echo "[$CTS cortex-sync] $(echo "$DEPLOY_OUTPUT" | tail -20)"
+    exit 1
+}
 
 # Deploy skills manifest from template
 SKILLS_TEMPLATE="$CORTEX_REPO/docs/templates/skills.yaml"
