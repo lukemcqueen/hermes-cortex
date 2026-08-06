@@ -77,8 +77,9 @@ The whole layer is **optional and removable per-agent**:
 - **Remove:** `bash ~/hermes-cortex/ops/scripts/install/install-dream-crons.sh --uninstall`
   (removes the three crons; dream files in `~/brain/<profile>/dreams/`
   are kept — they're knowledge, not cruft).
-- No dream cron is in any doctor expected-list, so removal never
-  triggers a false doctor FAIL.
+- The doctor expects the dream crons ONLY when the layer marker is set
+  (`state/dream-layer-installed`, created by this installer). `--uninstall`
+  removes the marker, so removal never triggers a false doctor FAIL.
 
 ## Delivery
 
