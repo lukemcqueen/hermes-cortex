@@ -149,6 +149,11 @@ is everything around it:
 - 2026-08-06: Luke asks to restore + expand; nightly + weekly created
   first, then redesigned into this 3-tier write-back layer with monthly
   tier and optional installer.
+- 2026-08-06 (later): **dream→todo bridge added** — dreams now promote a
+  subset of their output into durable `bus.todos` items via
+  `dream-todo-bridge.py` (Option A: knowledge-gaps → `learn X` todos,
+  monthly; Option B: actionable insights → todos, all tiers). Full design
+  + implementation record: `docs/design/mycortex-dream-todo-bridge.md`.
 - 2026-08-06 (installed, luke-server/joseph): all three tiers installed via
   `install-dream-crons.sh` — first run exposed an installer bug
   (`hermes cron create` takes schedule+prompt POSITIONALLY; the installer

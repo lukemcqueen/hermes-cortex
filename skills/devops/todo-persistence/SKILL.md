@@ -132,23 +132,25 @@ todo-db.py list --agent joseph --status in_progress
 
 ## Known Issues
 
-### ⚠️ `todo-db.py update` May Silently Fail
+### ✅ FIXED 2026-08-06 — `todo-db.py` silent failure (stdin/rc bug)
 
-The `todo-db.py update <uuid> --status completed` command prints `✅` even when the SQL never reaches Postgres. This happens because the `DB_QUERY` wraps psql in `sg docker -c "docker exec -i psql ..."` — the `input=` parameter (which sends the SQL query via stdin) is consumed by the outer shell (`sg`), not by psql itself.
+Previously `todo-db.py update` (and every command) printed ✅ even when the
+SQL never reached Postgres: stdin-mode psql returns rc=0 on SQL failure, so
+errors were swallowed. Also, `bus.todos` never existed on the migrated
+mycortex-postgres — every add was a silent no-op.
 
-**Symptom:** `todo-db.py update` says `✅ Todo updated` but the DB still shows `pending`.
+**Fix (Esther, 2026-08-06, commit `379a6e39`):**
+- psql() now uses `-c` mode via direct `docker exec` (rc propagates) with
+  an `sg docker -c` fallback that embeds the query in the command string
+- `todo-db.py --apply-schema` applies `core/cortex_bus/schema/todos.sql`
+  idempotently (platform-aware: docker exec on Linux, direct psql via
+  mycortex.conf on macOS); cortex-update.sh runs it every update
+- Errors now exit 1 with stderr — no more silent ✅
+- The dream→todo bridge (`dream-todo-bridge.py`) builds on this:
+  docs/design/mycortex-dream-todo-bridge.md
 
-**Verification:** Run the pending command and cross-check:
-```bash
-todo-db.py pending | python3 -c "import json,sys; d=json.load(sys.stdin); [print(i['content'][:60], i['status']) for i in d]"
-```
-
-**Workaround:** Run the UPDATE directly via docker exec:
-```bash
-sg docker -c "docker exec -i gbrain-postgres psql -U gbrain -d gbrain -t -A -F '||'" <<< "UPDATE bus.todos SET status = 'completed', updated_at = now() WHERE id = '<full-uuid>'::uuid;"
-```
-
-**Long-term fix:** The `psql()` helper in `todo-db.py` needs to pipe stdin directly to psql instead of through `sg`. Currently blocked by docker group-permission requirements.
+**If a command still fails silently:** run `todo-db.py list` and check it
+against psql directly:
 
 ---
 

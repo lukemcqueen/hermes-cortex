@@ -1,7 +1,6 @@
 # Mycortex Dream → Todo Bridge — Design & Requirements
 
-> Status: **proposal** (2026-08-06) · For orchestrator implementation.
-> Author: kustos (cisnet02), at Luke's request — "both would be useful."
+> Status: **implemented** (2026-08-06) · Author: kustos (cisnet02), at Luke's request — "both would be useful."
 > Supersedes: nothing — this is a new optional layer ON TOP of the dream
 > layer (`docs/design/mycortex-dream-layer.md`).
 
@@ -158,6 +157,58 @@ Phase X — Actionable: 1 insight triaged to todo
   Non-orchestrator hosts cannot self-edit; the orchestrator ships it.
 - **Doc updates:** update `docs/design/mycortex-dream-layer.md` (add this
   bridge as a section) and this document's status → implemented.
+
+## Implementation record (what the orchestrator actually shipped — 2026-08-06)
+
+The proposal assumed `bus.todos` existed ("verified 2026-08-06"). It did NOT:
+verified absent from the old gbrain dump, the old `gbrain-postgres`
+container, and the migrated `mycortex-postgres`. `todo-db.py add` printed ✅
+while every row vanished — stdin-mode psql returns rc=0 on SQL failure.
+So the implementation shipped MORE than the proposal, in four parts:
+
+1. **Schema:** `core/cortex_bus/schema/todos.sql` applied idempotently to
+   `mycortex-postgres` (bus.todos + bus.todo_archive + todo_upsert /
+   todo_list / todo_archive_old). Verified live.
+2. **todo-db.py fixes:** psql() now uses `-c` mode via direct `docker exec`
+   (rc propagates) with an sg fallback that embeds the query in the command
+   string; added `todo-db.py --apply-schema` (platform-aware: docker exec on
+   Linux, direct psql via mycortex.conf on macOS). Errors now exit 1 with
+   stderr — no more silent ✅.
+3. **cortex-update.sh:** registers `dream-todo-bridge.py` for deploy and
+   runs `todo-db.py --apply-schema` every update (WARN on failure, not
+   exit — a fleet update must not be hostage to a peripheral DB; the
+   idempotent schema retries next update).
+4. **dream-todo-bridge.py** (`ops/scripts/manage/`): enforces Option A
+   (≤4 gaps, priority 1, `learn <topic> — brain has no strong hits (dream
+   gap, YYYY-MM)`) and Option B (≤2 insights, priority 1-2,
+   `[from dream YYYY-MM-DD]` traceability) with caps/dedup/tenant-scoping
+   in CODE — the LLM judges actionability, the script guarantees the rules.
+   Commands: `add-gap --topic X --agent <profile> --month YYYY-MM`,
+   `add-insight --content "..." --agent <profile> --date YYYY-MM-DD
+   --priority 1|2`, `list [--agent X]`.
+
+### Acceptance criteria — verified (2026-08-06, live cron run)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Monthly gap → todo priority 1 | ✅ bridge test: `learn postgres extension auth` p1 landed |
+| 2 | Re-run dedup | ✅ same-topic re-add prints `SKIP: gap already covered` |
+| 3 | Nightly actionable insight → todo p2 + `[from dream]` | ✅ `verify deepseek rollout on cisnet02 (priority 2) [from dream 2026-08-06]` |
+| 4 | Reflective content → zero todos | ✅ nightly 13:44 triaged 2 insights, both SKIPped by dedup (covered), no dupes created |
+| 5 | >2 insights → cap 2 | ✅ enforced in code (argparse cap + prompt cap) |
+| 6 | Write-back still happens | ✅ dream file + INDEX append present on every bridge run |
+| 7 | Empty brain → [SILENT] | ✅ unchanged protocol |
+| 8 | todo-db failure → warn not crash | ✅ `_todo_db()` catches, warns on stderr, exits 0 |
+| 9 | Session start surfaces todos | ✅ `todo-db.py pending` returns bridge-created items |
+| 10 | Cross-tenant | ✅ `--agent <profile>`; Joseph's list shows zero esther todos |
+
+### Fix-while-shipping (found during implementation)
+
+- **`lessons.py` hardcoded `~/brain/kustos/lessons/`** — the offline lesson
+  index read a stale 241-file dir while session-mine wrote 631 live lessons
+  to `~/brain/lessons/`. Fixed to the shared path (commit `c5510aa9`).
+- **todo-persistence skill** documented `todo-db.py update` silently
+  failing — the same stdin/rc bug class, now fixed at the root.
 
 ## Open questions (defaults chosen, orchestrator may override)
 
