@@ -467,6 +467,7 @@ register "ops/services/mycortex/import-gbrain.py"     "${CORTEX_DEPLOY_HOME}/ser
 register "ops/services/mycortex/schema/mycortex.sql"  "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/mycortex.sql"
 register "ops/services/mycortex/schema/v002__rls-admin-reader-grants.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/v002__rls-admin-reader-grants.sql"
 register "ops/services/mycortex/schema/v003__admin-schema-version-grant.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/v003__admin-schema-version-grant.sql"
+register "ops/services/mycortex/schema/v004__embeddings.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex/schema/v004__embeddings.sql"
 register "ops/scripts/manage/mycortex-parity.py"      "${CORTEX_DEPLOY_HOME}/scripts/mycortex-parity.py"
 register "ops/scripts/manage/mycortex"                "${CORTEX_DEPLOY_HOME}/scripts/mycortex"
 # mycortex-postgres compose (dedicated hermes-cortex-owned Postgres, NOT langfuse)
