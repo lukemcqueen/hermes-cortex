@@ -54,7 +54,7 @@ from pathlib import Path
 # ── Config ────────────────────────────────────────────────────
 
 MYCORTEX_CONFIG = os.path.expanduser("~/.hermes-cortex/mycortex.conf")
-DEFAULT_DB = "mycortex"
+DEFAULT_DB = os.environ.get("TASK_DB_NAME", "mycortex")
 CONTAINER = "mycortex-postgres"
 PG_OPTS = ["-v", "ON_ERROR_STOP=1", "-t", "-A", "-F", "||"]
 
@@ -110,7 +110,8 @@ def resolve_profile() -> str:
 
 
 PROFILE = resolve_profile()
-CRUD_ROLE = f"mycortex_reader_{PROFILE}"
+# TASK_DB_ROLE env override: tests connect as a scratch role (L2 hermeticity).
+CRUD_ROLE = os.environ.get("TASK_DB_ROLE", f"mycortex_reader_{PROFILE}")
 
 
 # ── psql plumbing (stdin-only, no shell embedding — party B-1) ──

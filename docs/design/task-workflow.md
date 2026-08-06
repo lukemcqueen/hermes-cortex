@@ -160,6 +160,20 @@ Additive ALTERs only — never DROP columns in place. **Fail loudly** on apply
 (schema matters — same precedent as mycortex migrate; the doctor hard-FAILs on
 missing schema, so warn-not-fail can't silently strand a worker).
 
+**Migration history (bugfixes found by L1 test 2026-08-06):**
+- `v002__doctor-probe-source.sql` — admit `source='doctor-probe'` for the
+  doctor's write-probe.
+- `v003__cancel-column-null.sql` — **bugfix:** v001's `task_upsert` derived
+  `column='done'` for `status='cancelled'`, violating its own B-4 CHECK (only
+  `completed` may carry `done`); cancelled now derives `column=NULL`. The same
+  broken mapping was fixed in `migrate-bus-todos.py`'s copy SQL.
+- `v004__cancel-update-column.sql` — **bugfix:** v003 fixed INSERT derivation
+  but the `ON CONFLICT DO UPDATE` still preserved the stale column
+  (`COALESCE(EXCLUDED."column", old)`), so updating an EXISTING row to
+  `cancelled` produced `cancelled+todo` → CHECK violation. `"column"` is now
+  always `EXCLUDED."column"` (the derived value for the new state).
+  Regressions locked in `tests/test-tasks-schema.sh` AC-L1-5.
+
 ---
 
 ## 4. Party verdict — blocking defects and their fixes
@@ -255,7 +269,9 @@ task-db.py --apply-schema   # version-gated v001 apply
   `sg docker -c` shell-embedding removed — direct `docker exec` (rc
   propagates), clear remediation if not in docker group.
 - **Connection (B-2):** `mycortex_reader_<profile>` for CRUD; `mycortex_admin`
-  for `--apply-schema`; env override `TASK_DB_ROLE` for tests.
+  for `--apply-schema`; env override `TASK_DB_ROLE` for tests (L2 hermeticity:
+  scratch role) and `TASK_DB_NAME` (scratch database) — both locked by L0
+  unit tests (removing them silently re-points fleet tests at the LIVE DB).
 - **Honest fleet (B-3):** `--scope fleet` prints the local-only warning;
   `list` union = personal + locally-present fleet rows.
 - **Platform seam:** `_get_db_query()` unchanged pattern (Linux docker exec /
@@ -300,9 +316,9 @@ JSON-RPC `initialize` + `tools/list` handshake per host type.
 | Layer | Artifact | Proves |
 |---|---|---|
 | L0 unit | `tests/test_task_db_unit.py` — `build_query`/param escaping (injection regressions: `--agent "x' OR 1=1--"`, `$(whoami)`), arg parsing for all flags (boundary: `''`, whitespace, `%`, `||`, newline, non-ASCII, `-1/inf/nan`), `parse_row` delimiter fuzz, `pending` JSON shape, Darwin-branch argv (monkeypatched `platform.system()` + fixture mycortex.conf), repo/scope resolution, MCP tool registry | No-DB, CI-fast, injection killed, macOS branch provable without Titus |
-| L1 integration | `tests/test-tasks-schema.sh` (mirrors test-mycortex-schema.sh): hermetic scratch DB `tasks_test` (refuses `mycortex` DB with a guard), schema-apply idempotency (run twice → no-op), function behavior, RLS/GRANT assertions as `mycortex_reader` (`has_schema_privilege`), re-run no-op | Schema + RLS correct on a scratch DB |
+| L1 integration | `tests/test-tasks-schema.sh` (mirrors test-mycortex-schema.sh): hermetic scratch DB `tasks_test` (refuses `mycortex` DB with a guard), schema-apply idempotency (run twice → no-op), function behavior, RLS/GRANT assertions as `mycortex_reader` (`has_schema_privilege`), re-run no-op. **SHIPPED 2026-08-06 — 35/35 green; caught the cancelled-status CHECK bug (v003/v004).** | Schema + RLS correct on a scratch DB |
 | L1 integration | Migration test: seed `bus.todos` rows on scratch DB → run migration → count+checksum parity → scoped drop → `\dt bus.*` clean → re-run no-op | Migration guardrails actually work |
-| L2 fleet | `tests/test-task-fleet.sh` — ssh-invoked on all 6 hosts: schema apply ×2, CRUD roundtrip (env-override scratch DB), `pending` shape, save-end; Linux docker-exec + macOS direct psql; orch vs worker config.yaml static check + JSON-RPC `tools/list` handshake | Every host type works; MCP actually loads |
+| L2 fleet | `tests/test-task-fleet.sh` — ssh-invoked on all 6 hosts: schema apply ×2, CRUD roundtrip (env-override scratch DB), `pending` shape, save-end; Linux docker-exec + macOS direct psql; orch vs worker config.yaml static check + JSON-RPC `tools/list` handshake. **SHIPPED 2026-08-06 — local battery 9/9 green, hermetic (scratch DB + TASK_DB_ROLE/NAME overrides; PROFILE pinned to the reader role so RLS admits the probe).** | Every host type works; MCP actually loads |
 | L2 doctor | `check_task_db` strengthened: **write-probe** — seed `source='doctor-probe'` row, read it back, delete it, assert roundtrip (catches the F-04 class "valid JSON but dead table"); platform-aware remediation hints (macOS vs Linux) | Doctor catches silent no-op, not just JSON shape |
 | L3 dogfood | cortex-update → gateway restart → doctor green → dream-bridge cron run → session restore → fleet all-clear | House cycle |
 

@@ -44,8 +44,10 @@ from pathlib import Path
 MYCORTEX_CONFIG = os.path.expanduser("~/.hermes-cortex/mycortex.conf")
 DEFAULT_DB = "mycortex"
 CONTAINER = "mycortex-postgres"
-BACKUP_DIR = Path.home() / ".hermes-cortex" / "backups"
-MARKER_DIR = Path.home() / ".hermes-cortex" / "state"
+BACKUP_DIR = Path(os.environ.get(
+    "MIGRATE_BACKUP_DIR", str(Path.home() / ".hermes-cortex" / "backups")))
+MARKER_DIR = Path(os.environ.get(
+    "MIGRATE_MARKER_DIR", str(Path.home() / ".hermes-cortex" / "state")))
 MARKER = MARKER_DIR / "bus-todos-migrated.json"
 
 PG_OPTS = ["-v", "ON_ERROR_STOP=1", "-t", "-A", "-F", "||"]
@@ -186,7 +188,8 @@ def main() -> int:
         CASE b.status WHEN 'pending' THEN 'todo'
                       WHEN 'in_progress' THEN 'in_progress'
                       WHEN 'completed' THEN 'done'
-                      WHEN 'cancelled' THEN 'done' END,
+                      ELSE NULL END,          -- cancelled → NULL (B-4: CHECK
+                                              -- forbids 'done' + cancelled)
         0, b.priority, NULL, NULL, 'manual', NULL, b.session_id,
         b.created_at, b.updated_at, b.updated_at,
         CASE WHEN b.status = 'completed' THEN b.updated_at ELSE NULL END

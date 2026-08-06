@@ -13,6 +13,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import os
 import platform
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -252,6 +253,29 @@ def test_priority_bounds():
     _out, err, exc = _run_stdin_capture(
         task_db.cmd_add, "x", None, 9, None, None, None, None, None, None, [], "manual")
     assert exc is not None and exc.code == 2
+
+
+# ── env overrides (L2 fleet-test hermeticity) ────────────────
+
+def test_env_overrides_task_db_name_and_role():
+    """TASK_DB_NAME / TASK_DB_ROLE must exist — L2 test-task-fleet.sh runs
+    CRUD against a scratch DB + scratch role via these. A future edit that
+    removes them silently re-points fleet tests at the LIVE mycortex DB."""
+    with patch.dict(os.environ, {"TASK_DB_NAME": "fleet_test",
+                                 "TASK_DB_ROLE": "mycortex_reader"}, clear=False):
+        reloaded = _load("task_db_env", TASK_DB_PATH)
+        assert reloaded.DEFAULT_DB == "fleet_test"
+        assert reloaded.CRUD_ROLE == "mycortex_reader"
+
+
+def test_env_overrides_defaults_when_unset():
+    """Without env, defaults must stay: mycortex DB + mycortex_reader_<profile>."""
+    with patch.dict(os.environ, {}, clear=True):
+        # resolve_profile falls back to hostname when no profile env is set
+        with patch.object(platform, "node", return_value="l2testhost"):
+            reloaded = _load("task_db_nodefault", TASK_DB_PATH)
+            assert reloaded.DEFAULT_DB == "mycortex"
+            assert reloaded.CRUD_ROLE == "mycortex_reader_l2testhost"
 
 
 # ── MCP tool registry (task-mcp.py) ───────────────────────────
