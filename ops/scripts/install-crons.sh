@@ -43,11 +43,12 @@ HERMES_CMD=""
 
 # ── Telegram recipient (PII — never hardcoded) ────────────
 # Resolved from ~/.hermes/.env (same file agent-message-handler.py reads for
-# TELEGRAM_BOT_TOKEN). If a telegram-delivering cron is requested without it,
-# create_cron fails loudly — a cron that delivers nowhere is the silent-loss
-# class (origin=null bug, 2026-07). Add to ~/.hermes/.env:
-#   TELEGRAM_CHAT_ID=<chat-id>
-TELEGRAM_CHAT_ID="$(grep -E '^TELEGRAM_CHAT_ID=' "${HERMES_HOME}/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
+# TELEGRAM_BOT_TOKEN). TELEGRAM_HOME_CHANNEL is the canonical Hermes env var
+# (gateway/cron scheduler resolve it per host) — already present on every
+# agent; no new var. create_cron fails loudly if a telegram-delivering cron
+# is requested without it — a cron that delivers nowhere is the silent-loss
+# class (origin=null bug, 2026-07).
+TELEGRAM_HOME_CHANNEL="$(grep -E '^TELEGRAM_HOME_CHANNEL=' "${HERMES_HOME}/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
 # Try to find hermes command
 for candidate in hermes "${HERMES_HOME}/hermes-agent/venv/bin/hermes"; do
   if command -v "$candidate" &>/dev/null; then
@@ -158,10 +159,10 @@ create_cron() {
   local name="$1" schedule="$2" script="$3" prompt="$4" skill="$5" toolsets="$6" deliver="$7" workdir="$8" no_agent="$9"
   local model="${10:-}" provider="${11:-}"
 
-  # Fail-loud guard: a telegram-delivering cron requires TELEGRAM_CHAT_ID
+  # Fail-loud guard: a telegram-delivering cron requires TELEGRAM_HOME_CHANNEL
   # from ~/.hermes/.env — never a hardcoded literal, never deliver-nowhere.
-  if [[ "$deliver" == "telegram:${TELEGRAM_CHAT_ID}" && -z "$TELEGRAM_CHAT_ID" ]]; then
-    error "cron '${name}': telegram deliver target requires TELEGRAM_CHAT_ID in ${HERMES_HOME}/.env (refusing to create a cron that delivers nowhere)"
+  if [[ "$deliver" == "telegram:${TELEGRAM_HOME_CHANNEL}" && -z "$TELEGRAM_HOME_CHANNEL" ]]; then
+    error "cron '${name}': telegram deliver target requires TELEGRAM_HOME_CHANNEL in ${HERMES_HOME}/.env (refusing to create a cron that delivers nowhere)"
     exit 1
   fi
 
@@ -724,7 +725,7 @@ create_cron "cortex-bus-failover-watchdog" "*/5 * * * *" \
   "" \
   "" \
   "" \
-  "telegram:${TELEGRAM_CHAT_ID}" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "true"
 
@@ -1097,7 +1098,7 @@ create_cron "agent-nginx-threat-pipeline" "0 5 * * *" \
   "" \
   "" \
   "" \
-  "telegram:${TELEGRAM_CHAT_ID}" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "true"
 

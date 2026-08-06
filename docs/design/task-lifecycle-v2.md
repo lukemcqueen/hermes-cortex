@@ -294,7 +294,7 @@ task/message even across handler restart/state-file loss (Architect R-4).
 
 **Shared module (Security R-9, M-3):** `ops/scripts/lib/telegram_notify.py` —
 single token read (`TELEGRAM_BOT_TOKEN` from `~/.hermes/.env`),
-`TELEGRAM_CHAT_ID` from env/private config (**not** hardcoded — removes the
+`TELEGRAM_HOME_CHANNEL` from env (**not** hardcoded — removes the
 recipient id from the public repo, R-6), HTML escaping, 600-perms check.
 Handler + task-db.py + fleet-command-verifier all import it — the 3rd copy
 is now the only copy.
@@ -342,7 +342,7 @@ extends the base regex).
 | Tenant coherence (R-2) | Trigger: slice.parent must be visible to caller (same created_by, or fleet + fleet-writer); slice.scope ≤ parent.scope; cross-tenant parent linkage impossible |
 | Archive safety (R-3) | FK ON DELETE NO ACTION → deleting a story with slices fails; `task_archive_old()` extended to archive **children before parents**; regression test "completed story with slices → save-end" |
 | Prompt-injection channel (R-4) | Bus content scrubbed/truncated at ingest (extended gate + hard 500-char cap); rows marked `source='inbox'`; `pending`/`restore` output renders inbox rows with an untrusted marker and EXCLUDES them from agent-context restore by default (opt-in `--include-inbox`) |
-| Secret handling (R-6) | `TELEGRAM_CHAT_ID` from env, not code; doctor checks `.env` perms 600; token never logged |
+| Secret handling (R-6) | `TELEGRAM_HOME_CHANNEL` from env (canonical, per-host), not code; doctor checks `.env` perms 600; token never logged |
 | Deny-by-default | `TASK_CREATING_SUBJECTS` allowlist (R-8); unknown subjects → no row, no notify |
 
 ---

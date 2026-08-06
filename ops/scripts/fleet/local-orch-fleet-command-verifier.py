@@ -27,7 +27,7 @@ from pathlib import Path
 CORTEX_REPO = Path.home() / "hermes-cortex"
 STATE_DIR = Path.home() / ".hermes-cortex" / "state"
 TELEGRAM_BOT_TOKEN = None
-TELEGRAM_CHAT_ID = None
+TELEGRAM_HOME_CHANNEL = None
 
 # Load Telegram config from .env
 env_file = Path.home() / ".hermes" / ".env"
@@ -36,8 +36,8 @@ if env_file.exists():
         line = line.strip()
         if line.startswith("TELEGRAM_BOT_TOKEN="):
             TELEGRAM_BOT_TOKEN = line.split("=", 1)[1].strip().strip("'\"")
-        if line.startswith("TELEGRAM_CHAT_ID="):
-            TELEGRAM_CHAT_ID = line.split("=", 1)[1].strip().strip("'\"")
+        if line.startswith("TELEGRAM_HOME_CHANNEL="):
+            TELEGRAM_HOME_CHANNEL = line.split("=", 1)[1].strip().strip("'\"")
 
 # ── Helpers ─────────────────────────────────────────────────
 
@@ -89,15 +89,15 @@ def _notify_telegram(message: str):
     if not TELEGRAM_BOT_TOKEN:
         log("⚠️  TELEGRAM_BOT_TOKEN not set, skipping alert")
         return
-    if not TELEGRAM_CHAT_ID:
-        log("⚠️  TELEGRAM_CHAT_ID not set, skipping alert")
+    if not TELEGRAM_HOME_CHANNEL:
+        log("⚠️  TELEGRAM_HOME_CHANNEL not set, skipping alert")
         return
     if message is None:
         message = "[No message content]"
     try:
         import urllib.request
         payload = json.dumps({
-            "chat_id": TELEGRAM_CHAT_ID,
+            "chat_id": TELEGRAM_HOME_CHANNEL,
             "text": f"🚨 Fleet Command Verifier\n{message}",
             "parse_mode": "HTML",
         }).encode()

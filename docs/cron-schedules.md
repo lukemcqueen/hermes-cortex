@@ -66,7 +66,7 @@
 | `agent-governance-auditor` | `0 */6 * * *` | no_agent | `agent-governance-auditor.py` | origin |
 | `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local |
 | `agent-session-mine` | `0 2 * * *` | no_agent | `agent-session-mine-cron.py` | local |
-| `agent-nginx-threat-pipeline` | `0 5 * * *` | no_agent | `agent-nginx-threat-pipeline.sh` | `telegram:${TELEGRAM_CHAT_ID}` | *(explicit target from env — script-created crons get origin=null and would be silent)* |
+| `agent-nginx-threat-pipeline` | `0 5 * * *` | no_agent | `agent-nginx-threat-pipeline.sh` | `telegram:${TELEGRAM_HOME_CHANNEL}` | *(explicit target from env — script-created crons get origin=null and would be silent)* |
 | `agent-gbrain-doctor` | ~~`5 6 * * *`~~ | ~~no_agent~~ | ~~`agent-gbrain-doctor.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — gbrain decommissioned; mycortex replaces (`mycortex doctor`). Agents with gbrain components still installed: decommission per-host or ignore. |
 | `agent-gbrain-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-gbrain-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — gbrain decommissioned; no consumer (verified). |
 | `agent-gbrain-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-gbrain-update-sync.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — obsolete with gbrain binary uninstall. |

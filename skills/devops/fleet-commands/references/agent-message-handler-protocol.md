@@ -35,7 +35,7 @@ On each message consumed, the handler sends to Luke's Telegram DM:
 1. **📥 [agent] Received EXEC from moses** — on pickup
 2. **✅/❌ [agent] EXEC script.py: exit=N — preview** — after execution
 
-Direct Bot API: reads `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` from `~/.hermes/.env` (recipient never hardcoded — PII scrub 2026-08-06), with `timeout=10`. Uses `urllib.request` — no `requests` dependency.
+Direct Bot API: reads `TELEGRAM_BOT_TOKEN` + `TELEGRAM_HOME_CHANNEL` from `~/.hermes/.env` (recipient never hardcoded — PII scrub 2026-08-06), with `timeout=10`. Uses `urllib.request` — no `requests` dependency.
 
 ## Idempotency
 

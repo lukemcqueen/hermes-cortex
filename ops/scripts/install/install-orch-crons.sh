@@ -51,9 +51,11 @@ check_agent_type "orchestrator" "${BASH_SOURCE[0]}" || {
 
 # ── Telegram recipient (PII — never hardcoded) ────────────
 # Resolved from ~/.hermes/.env (same file agent-message-handler.py reads for
-# TELEGRAM_BOT_TOKEN). create_cron fails loudly if a telegram-delivering cron
+# TELEGRAM_BOT_TOKEN). TELEGRAM_HOME_CHANNEL is the canonical Hermes env var
+# (gateway/cron scheduler resolve it per host) — already present on every
+# agent; no new var. create_cron fails loudly if a telegram-delivering cron
 # is requested without it — never a hardcoded literal, never deliver-nowhere.
-TELEGRAM_CHAT_ID="$(grep -E '^TELEGRAM_CHAT_ID=' "${HERMES_HOME:-${HOME}/.hermes}/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
+TELEGRAM_HOME_CHANNEL="$(grep -E '^TELEGRAM_HOME_CHANNEL=' "${HERMES_HOME:-${HOME}/.hermes}/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
 
 # ── Repo path ──────────────────────────────────────────────
 # LLM-driven crons need a model + provider. Set these in ~/hermes-cortex/.env.
@@ -209,10 +211,10 @@ create_cron() {
   local name="$1" schedule="$2" script="$3" prompt="$4" skill="$5" toolsets="$6" deliver="$7" workdir="$8" no_agent="$9"
   local model="${10:-}" provider="${11:-}"
 
-  # Fail-loud guard: a telegram-delivering cron requires TELEGRAM_CHAT_ID
+  # Fail-loud guard: a telegram-delivering cron requires TELEGRAM_HOME_CHANNEL
   # from ~/.hermes/.env — never a hardcoded literal, never deliver-nowhere.
-  if [[ "$deliver" == "telegram:"* && -z "$TELEGRAM_CHAT_ID" ]]; then
-    echo "✗ cron '${name}': telegram deliver target requires TELEGRAM_CHAT_ID in ${HERMES_HOME:-${HOME}/.hermes}/.env (refusing to create a cron that delivers nowhere)" >&2
+  if [[ "$deliver" == "telegram:"* && -z "$TELEGRAM_HOME_CHANNEL" ]]; then
+    echo "✗ cron '${name}': telegram deliver target requires TELEGRAM_HOME_CHANNEL in ${HERMES_HOME:-${HOME}/.hermes}/.env (refusing to create a cron that delivers nowhere)" >&2
     exit 1
   fi
 
@@ -400,7 +402,7 @@ create_cron "orch-fleet-watchdog" "*/5 * * * *" \
   "" \
   "" \
   "" \
-  "telegram:${TELEGRAM_CHAT_ID}" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "true"
 
@@ -434,7 +436,7 @@ create_cron "orch-bus-audit-watchdog" "*/1 * * * *" \
   "" \
   "" \
   "" \
-  "telegram:${TELEGRAM_CHAT_ID}" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "true"
 
