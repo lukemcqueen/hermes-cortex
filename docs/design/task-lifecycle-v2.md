@@ -294,8 +294,8 @@ task/message even across handler restart/state-file loss (Architect R-4).
 
 **Shared module (Security R-9, M-3):** `ops/scripts/lib/telegram_notify.py` —
 single token read (`TELEGRAM_BOT_TOKEN` from `~/.hermes/.env`),
-`TELEGRAM_CHAT_ID` from env/private config (**not** hardcoded — removes
-Luke's chat_id from the public repo, R-6), HTML escaping, 600-perms check.
+`TELEGRAM_CHAT_ID` from env/private config (**not** hardcoded — removes the
+recipient id from the public repo, R-6), HTML escaping, 600-perms check.
 Handler + task-db.py + fleet-command-verifier all import it — the 3rd copy
 is now the only copy.
 
