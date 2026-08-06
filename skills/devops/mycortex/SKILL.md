@@ -95,7 +95,7 @@ per-host, non-destructive (old container STOPPED, not removed; dump kept in
 - `core/cortex_bus/queue.py` `_load_config()` — the `.env` fallback previously
   never read `CORTEX_BUS_PG_DB`, so the bus ignored .env DB changes and kept
   hitting the dead `gbrain` DB. Fixed (2026-08-05).
-- mycortex CLI / migrate.py / todo-db.py / hc.py / orch-bus / retention /
+- mycortex CLI / migrate.py / task-db.py / hc.py / orch-bus / retention /
   verifier / audit-watchdog / doctor hints all target `mycortex-postgres`.
 - Dead gbrain scripts deleted (gbrain-wrapper.sh, gbrain-doctor-summary.py,
   install-gbrain-sync.sh); gbrain systemd units removed.

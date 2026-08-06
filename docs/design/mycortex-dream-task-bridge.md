@@ -1,6 +1,13 @@
-# Mycortex Dream → Todo Bridge — Design & Requirements
+# Mycortex Dream → Task Bridge — Design & Requirements
 
-> Status: **implemented** (2026-08-06) · Author: kustos (cisnet02), at Luke's request — "both would be useful."
+> Status: **implemented (2026-08-06), migrated to the tasks schema same day** ·
+> Author: kustos (cisnet02), at Luke's request — "both would be useful."
+> ⚠️ **2026-08-06 update:** the bridge was renamed `dream-todo-bridge.py` →
+> `dream-task-bridge.py` and now writes to the **`tasks` schema** via
+> `task-db.py` (bus.todos retired — see `docs/design/task-workflow.md`).
+> The requirements below (Option A/B, caps, dedup, tenant) are unchanged;
+> the plumbing table reflects the new system. History sections retain the
+> bus.todos-era record for audit.
 > Supersedes: nothing — this is a new optional layer ON TOP of the dream
 > layer (`docs/design/mycortex-dream-layer.md`).
 
@@ -12,10 +19,10 @@ that surfaces a knowledge gap ("the brain knows nothing about X") or implies
 an action ("verify the deepseek rollout") dies in a markdown file unless a
 session happens to re-read it.
 
-The todo system already exists and is durable: `todo-db.py` → `bus.todos`
-(Postgres on `mycortex-postgres`, fleet-visible, restored at session start via
-`todo-db.py pending`). This bridge makes dreams *actionable* by turning a
-subset of dream output into todo items.
+The task system already exists and is durable: `task-db.py` → `tasks.tasks`
+(per-host `mycortex-postgres`, RLS per-profile, restored at session start via
+`task-db.py pending`). This bridge makes dreams *actionable* by turning a
+subset of dream output into task items.
 
 Two mechanisms, both wanted by Luke:
 
@@ -40,16 +47,16 @@ Two mechanisms, both wanted by Luke:
 - **Cost floor.** `todo-db.py add/list` are local psql calls — negligible
   tokens. Model/run cost stays ≈ $0.006/run.
 
-## Existing plumbing (verified 2026-08-06)
+## Existing plumbing (verified 2026-08-06, post-migration)
 
 | Piece | Reality |
 |---|---|
-| Todo DB | `bus.todos` on `mycortex-postgres` (NOT gbrain — migrated 2026-08-05) |
-| CLI | `~/.hermes-cortex/scripts/todo-db.py` — `add <content> [--agent N] [--priority n]`, `list [--status]`, `pending`, `update <id> --status` |
-| Agent attribution | `AGENT_NAME` env → hostname fallback (todo-db.py line 62) |
-| Restore | Session-start protocol: `todo-db.py pending` → `todo()` merge |
-| Dream crons | 3 tiers in `install-dream-crons.sh`, `deliver: origin`, toolsets `terminal,file` (todo-db.py runs via terminal — already available) |
-| Tenant boundary | PROFILE (HERMES_PROFILE → AGENT_NAME → hostname), per multi-tenancy doc |
+| Task DB | `tasks.tasks` on per-host `mycortex-postgres` (bus.todos retired — workers never had it) |
+| CLI | `~/.hermes-cortex/scripts/task-db.py` — `add <content> [--agent N] [--priority n] [--project P] [--repo R] [--scope S] [--source X]`, `list [--status]`, `pending`, `update <id> --status` |
+| Agent attribution | PROFILE (HERMES_PROFILE → AGENT_NAME → hostname), per multi-tenancy doc |
+| Restore | Session-start protocol: `task-db.py pending` → `todo()` merge |
+| Dream crons | 3 tiers in `install-dream-crons.sh`, `deliver: origin`, toolsets `terminal,file` (task-db.py runs via terminal — already available) |
+| Tenant boundary | PROFILE, RLS-enforced at the DB (personal rows invisible to other profiles) |
 
 ## Option A — Knowledge-gap → learning todo (monthly tier)
 

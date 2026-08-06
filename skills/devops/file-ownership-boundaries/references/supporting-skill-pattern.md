@@ -45,13 +45,13 @@ Created to supplement `survey-before-action`. Adds:
 - Stale deploy reference detection
 - Cross-agent impact check
 
-## Example: todo-persistence
+## Example: task-persistence
 
 Created to supplement `session-manager` and `task-start`. Adds:
-- DB-backed todo persistence (bus.todos)
+- DB-backed task persistence (tasks schema)
 - Session start/end protocol
 - Fleet-visible todo management
-- todo-db.py CLI
+- task-db.py CLI
 
 ## Pitfalls
 

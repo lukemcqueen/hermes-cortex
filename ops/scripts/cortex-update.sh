@@ -208,8 +208,11 @@ register "ops/scripts/install/seed-project-brain.sh"      "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/install/install-gateway-cron-timeout.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-gateway-cron-timeout.sh"
 register "ops/scripts/manage/cortex-health.sh"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-health.sh"
 register "ops/scripts/manage/gen-skills-manifest.py"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.py"
-register "ops/scripts/manage/todo-db.py"                "${CORTEX_DEPLOY_HOME}/scripts/todo-db.py"
-register "ops/scripts/manage/dream-todo-bridge.py"       "${CORTEX_DEPLOY_HOME}/scripts/dream-todo-bridge.py"
+register "ops/scripts/manage/task-db.py"                "${CORTEX_DEPLOY_HOME}/scripts/task-db.py"
+register "ops/scripts/manage/dream-task-bridge.py"       "${CORTEX_DEPLOY_HOME}/scripts/dream-task-bridge.py"
+register "mcp-servers/task-mcp.py"                      "${CORTEX_DEPLOY_HOME}/scripts/task-mcp.py"
+register "ops/services/tasks/migrate.py"                "${CORTEX_DEPLOY_HOME}/services/tasks/migrate.py"
+register "ops/services/tasks/schema/v001__tasks.sql"    "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v001__tasks.sql"
 register_orch "ops/scripts/install/cortex-setup-langfuse.sh"   "${CORTEX_DEPLOY_HOME}/scripts/cortex-setup-langfuse.sh"
 register "ops/scripts/setup-fleet-langfuse.sh"         "${CORTEX_DEPLOY_HOME}/scripts/setup-fleet-langfuse.sh"
 register "ops/scripts/cortex-update.sh"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-update.sh"
@@ -2337,20 +2340,39 @@ main() {
     fi
   fi
 
-  # ── Apply bus.todos schema (dream→todo bridge + session todo protocol) ──
-  # bus.todos was NEVER created on the migrated mycortex-postgres (verified
-  # 2026-08-06: missing from old gbrain dump, old container, and new DB —
-  # todo-db.py silently no-op'd because stdin-mode psql swallows errors).
-  # todos.sql is idempotent (CREATE TABLE IF NOT EXISTS + CREATE OR REPLACE
-  # FUNCTION). Applied via todo-db.py --apply-schema so Linux (docker exec)
-  # and macOS (direct psql via mycortex.conf) both converge.
-  local todo_db="${CORTEX_DEPLOY_HOME}/scripts/todo-db.py"
-  if [[ -f "$todo_db" ]]; then
-    info "Applying bus.todos schema…"
-    if python3 "$todo_db" --apply-schema; then
-      : # schema applied / already current
+  # ── Apply tasks schema (enterprise task workflow — party-reviewed design) ──
+  # Version-gated runner (tasks.schema_version) — idempotent re-apply. DDL
+  # runs as the DB owner (mycortex); CRUD never touches superuser (B-2).
+  # docs/design/task-workflow.md §3. Linux (docker exec) and macOS (direct
+  # psql via mycortex.conf) both converge through migrate.py's platform seam.
+  local tasks_migrate="${CORTEX_DEPLOY_HOME}/services/tasks/migrate.py"
+  if [[ -f "$tasks_migrate" ]]; then
+    info "Applying tasks schema…"
+    if python3 "$tasks_migrate"; then
+      : # migrations applied / already current
     else
-      warn "bus.todos schema apply FAILED — session todo protocol + dream→todo bridge may no-op on this host (retried next update)"
+      error "tasks migrate.py FAILED — task workflow will be dead on this host (retried next update)"
+      exit 1
+    fi
+  fi
+
+  # ── Ensure todos MCP server registered (ALL agents, not orch-only) ──
+  # Idempotent hermes mcp add; config points at the repo path (mirrors
+  # loop-governance wiring — the doctor's --fix converges the same way).
+  if command -v hermes >/dev/null 2>&1; then
+    if hermes mcp list 2>/dev/null | grep -q "todos"; then
+      : # already registered
+    else
+      local mcp_venv="${HOME}/.hermes/hermes-agent/venv/bin/python3"
+      local mcp_server="${HOME}/hermes-cortex/mcp-servers/task-mcp.py"
+      if [[ -x "$mcp_venv" && -f "$mcp_server" ]]; then
+        info "Registering todos MCP server…"
+        if hermes mcp add todos --command "$mcp_venv" --args "$mcp_server" 2>/dev/null; then
+          info "  ✓ todos MCP registered (restart the gateway to load tools)"
+        else
+          warn "hermes mcp add todos failed — run: python3 ${CORTEX_DEPLOY_HOME}/scripts/manage/cortex-doctor.py --fix"
+        fi
+      fi
     fi
   fi
 

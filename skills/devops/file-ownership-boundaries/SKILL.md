@@ -92,7 +92,7 @@ If you need a capability that a Hermes default skill provides but it's missing s
 - ❌ Editing a skill that's only at `~/.hermes/hermes-agent/skills/` (e.g. `software-development/spike`) — we don't own it, upstream overwrites
 - ❌ Patching `~/.hermes-cortex/scripts/` files — next deploy overwrites your edits
 - ❌ Creating a new file in `~/.hermes/skills/` — fleet can't get it; put it in the repo
-- ✅ Creating `todo-persistence` skill in our repo — correct: all agents get it, Hermes doesn't overwrite
+- ✅ Creating `task-persistence` skill in our repo — correct: all agents get it, Hermes doesn't overwrite
 - ❌ **Creating a new file when an existing one can be extended.** Search 3+ different terms before concluding nothing exists. The most expensive mistake is building a parallel system because a single search missed the existing one.
 
 ## The Sharing Filter

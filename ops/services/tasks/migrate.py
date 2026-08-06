@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """
-mycortex migrate.py — schema_version-gated migration runner for the mycortex schema.
+tasks migrate.py — schema_version-gated migration runner for the tasks schema.
 
 Applies SQL migrations from the sibling schema/ directory to the shared
 mycortex-postgres database. Idempotent: re-running when current is a no-op.
+Connects as the DB owner (mycortex) for DDL — same trust level as the mycortex
+migrate.py; task-db.py CRUD never touches superuser (party fix B-2).
 
 Invoked by cortex-update.sh AFTER file sync (cortex-update itself has no DDL
-path — this runner is the DDL path). New hosts: install.sh runs it once.
+path — this runner is the DDL path, same as ops/services/mycortex/migrate.py).
 
 Usage:
     migrate.py [--db-name mycortex] [--schema-dir DIR] [--dry-run] [--verbose]
 
 Migration discovery:
-    - schema/mycortex.sql           → version 1  (v001, canonical)
-    - schema/vNNN__*.sql            → version NNN (future migrations)
+    - schema/vNNN__*.sql       → version NNN (v001__tasks.sql = version 1)
 
-Role creation (mycortex_admin / mycortex_ingest / mycortex_reader) lives at the
-top of mycortex.sql with DO $$ guards — PG has no CREATE ROLE IF NOT EXISTS.
+Design: docs/design/task-workflow.md §3 (party B-9: version-gated, fail loudly).
 """
 from __future__ import annotations
 
@@ -34,13 +34,19 @@ from pathlib import Path
 
 MYCORTEX_CONFIG = os.path.expanduser("~/.hermes-cortex/mycortex.conf")
 DEFAULT_DB = "mycortex"
+# DDL runs as the DB owner (mycortex) via the version-gated runner — the
+# same trust level as mycortex migrate.py (house precedent). CRUD in
+# task-db.py connects as mycortex_reader_<profile> — the CRUD path NEVER
+# touches superuser (party fix B-2). Role creation inside v001__tasks.sql
+# requires CREATEROLE, which only the owner has on every host.
+DDL_ROLE = "mycortex"
 
 
-def _psql_base(db_name: str) -> list[str]:
-    """Platform-appropriate psql invocation (task-db.py pattern).
+def _psql_base(db_name: str, role: str = DDL_ROLE) -> list[str]:
+    """Platform-appropriate psql invocation as mycortex_admin.
 
-    Linux  → sg docker ... (container is the DB host)
-    macOS  → direct psql reading ~/.gbrain/config.json (or defaults)
+    Linux  → sg docker (container is the DB host)
+    macOS  → direct psql reading mycortex.conf (or defaults)
     """
     if platform.system() == "Darwin":
         url = None
@@ -49,7 +55,7 @@ def _psql_base(db_name: str) -> list[str]:
                 cfg = json.load(f)
             url = cfg.get("database_url")
         if not url:
-            url = f"postgresql://mycortex:@127.0.0.1:15432/{db_name}"
+            url = f"postgresql://{role}:@127.0.0.1:15432/{db_name}"
         from urllib.parse import urlparse
         parsed = urlparse(url)
         psql = shutil.which("psql") or "/opt/homebrew/bin/psql"
@@ -57,20 +63,23 @@ def _psql_base(db_name: str) -> list[str]:
             psql,
             "-h", parsed.hostname or "127.0.0.1",
             "-p", str(parsed.port or 15432),
-            "-U", parsed.username or "mycortex",
-            "-d", db_name,  # explicit target DB (design P2-SS1)
+            "-U", parsed.username or role,
+            "-d", db_name,
             "-v", "ON_ERROR_STOP=1",
-            "-t", "-A",  # tuples-only, unaligned — headers break current_version()
+            "-t", "-A",
         ]
-    # Linux — container exec
+    # Linux — container exec as DDL role. SQL flows via stdin (never embedded
+    # in the command string) so there is no shell-injection surface (B-1).
     return [
         "sg", "docker", "-c",
-        f"docker exec -i mycortex-postgres psql -U mycortex -d {db_name} -v ON_ERROR_STOP=1 -t -A",
+        f"docker exec -i mycortex-postgres psql -U {role} -d {db_name} "
+        f"-v ON_ERROR_STOP=1 -t -A",
     ]
 
 
 def psql_script(sql: str, db_name: str) -> tuple[int, str, str]:
-    """Run a SQL script via psql, return (returncode, stdout, stderr)."""
+    """Run a SQL script via psql stdin (ON_ERROR_STOP makes rc meaningful),
+    return (returncode, stdout, stderr)."""
     cmd = _psql_base(db_name)
     proc = subprocess.run(cmd, input=sql, capture_output=True, text=True, timeout=120)
     return proc.returncode, proc.stdout, proc.stderr
@@ -87,16 +96,11 @@ def psql_query(sql: str, db_name: str) -> str:
 # ── Migration discovery ───────────────────────────────────────
 
 def discover_migrations(schema_dir: Path) -> list[tuple[int, Path]]:
-    """Return [(version, path)] sorted ascending.
-
-    mycortex.sql = version 1; vNNN__*.sql = version NNN.
-    """
+    """Return [(version, path)] sorted ascending. vNNN__*.sql → version NNN."""
     migrations: list[tuple[int, Path]] = []
     for p in sorted(schema_dir.glob("*.sql")):
         m = re.match(r"v(\d+)__", p.name)
-        if p.name == "mycortex.sql":
-            migrations.append((1, p))
-        elif m:
+        if m:
             migrations.append((int(m.group(1)), p))
         else:
             print(f"  ⚠ skipping unrecognized schema file: {p.name}", file=sys.stderr)
@@ -108,7 +112,7 @@ def current_version(db_name: str) -> int:
     """Max applied version; 0 when the schema doesn't exist yet."""
     try:
         out = psql_query(
-            "SELECT COALESCE(MAX(version), 0) FROM mycortex.schema_version;", db_name
+            "SELECT COALESCE(MAX(version), 0) FROM tasks.schema_version;", db_name
         )
         return int(out.splitlines()[0] if out else 0)
     except RuntimeError as e:
@@ -144,10 +148,10 @@ def main() -> int:
     pending = [(v, p) for v, p in migrations if v > current]
 
     if not pending:
-        print(f"mycortex schema up to date (version {current}) — no-op")
+        print(f"tasks schema up to date (version {current}) — no-op")
         return 0
 
-    print(f"mycortex schema: current={current}, applying {len(pending)} migration(s) to DB '{args.db_name}'")
+    print(f"tasks schema: current={current}, applying {len(pending)} migration(s) to DB '{args.db_name}'")
     applied_max = current
     for version, path in pending:
         label = f"v{version:03d} ({path.name})"
@@ -159,25 +163,23 @@ def main() -> int:
         rc, out, err = psql_script(sql, args.db_name)
         if rc != 0:
             print(f"  ❌ {label} FAILED (rc={rc}):", file=sys.stderr)
-            print(err.strip()[-2000:] or out.strip()[-2000:], file=sys.stderr)
-            return 1
-        # Record the applied version (same DB, same schema)
-        rec_rc, rec_out, rec_err = psql_script(
-            f"INSERT INTO mycortex.schema_version (version) VALUES ({version}) "
+            print((err or out).strip(), file=sys.stderr)
+            return rc
+        if args.verbose and out.strip():
+            print(f"  {out.strip()}")
+        # Record version (after successful apply; idempotent re-run skips)
+        ver_rc, ver_out, ver_err = psql_script(
+            f"INSERT INTO tasks.schema_version (version) VALUES ({version}) "
             f"ON CONFLICT (version) DO NOTHING;",
             args.db_name,
         )
-        if rec_rc != 0:
-            print(f"  ❌ failed to record schema_version={version}: {rec_err.strip()}", file=sys.stderr)
-            return 1
-        if args.verbose and out:
-            print(out.strip()[-2000:])
+        if ver_rc != 0:
+            print(f"  ❌ version record failed (rc={ver_rc}): {ver_err.strip()}", file=sys.stderr)
+            return ver_rc
         applied_max = version
+        print(f"  ✓ {label} applied (version {version})")
 
-    if args.dry_run:
-        print(f"  [dry-run] no changes made — schema stays at version {current}")
-    else:
-        print(f"mycortex schema at version {applied_max} — done")
+    print(f"tasks schema now at version {applied_max}")
     return 0
 
 

@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 import time
+import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -3319,31 +3320,65 @@ def check_skill_stubs(res):
                 "Most are 9a9efa91 truncated imports — replace with full copies from agent caches")
 
 
-def check_todo_db(res):
-    """Check that todo-db.py exists and can reach Postgres."""
-    todo_script = CORTEX_HOME / "scripts" / "todo-db.py"
-    if not todo_script.is_file():
-        res.add("Todo DB script", "FAIL",
-            f"Not found at {todo_script}",
-            "Run: cortex-update.sh to deploy todo-db.py")
+def check_task_db(res):
+    """Check that task-db.py exists, reaches Postgres, AND can write.
+
+    Write-probe (design task-workflow.md §8 L2): seed a source='doctor-probe'
+    row through the LIVE task-db.py add path, read it back via list, then
+    complete+archive it. Catches the F-04 class — a CLI that prints valid
+    JSON while writes silently no-op (the old todo-db.py rc=0 bug).
+    """
+    task_script = CORTEX_HOME / "scripts" / "task-db.py"
+    if not task_script.is_file():
+        res.add("Task DB script", "FAIL",
+            f"Not found at {task_script}",
+            "Run: cortex-update.sh to deploy task-db.py")
         return
 
-    # Quick connectivity test — run `todo-db.py pending` and check for valid JSON
-    out = run_bg(["python3", str(todo_script), "pending"], timeout=15)
+    # Connectivity — `pending` must return valid JSON
+    out = run_bg(["python3", str(task_script), "pending"], timeout=15)
     if not out:
-        res.add("Todo DB connectivity", "FAIL",
-            "todo-db.py pending returned no output",
+        res.add("Task DB connectivity", "FAIL",
+            "task-db.py pending returned no output",
             "Check mycortex Postgres is running: sg docker -c 'docker ps | grep mycortex-postgres'")
         return
-
     try:
         data = json.loads(out)
         count = len(data) if isinstance(data, list) else 0
-        res.add("Todo DB connectivity", "PASS", f"Postgres reachable, {count} pending item(s)")
     except (json.JSONDecodeError, TypeError):
-        res.add("Todo DB connectivity", "FAIL",
-            f"todo-db.py output not valid JSON: {out[:200]}",
+        res.add("Task DB connectivity", "FAIL",
+            f"task-db.py output not valid JSON: {out[:200]}",
             "Check mycortex Postgres: sg docker -c 'docker exec mycortex-postgres psql -U mycortex -d mycortex -c \"SELECT 1\"'")
+        return
+    res.add("Task DB connectivity", "PASS", f"Postgres reachable, {count} pending item(s)")
+
+    # Write-probe — the actual roundtrip proof
+    probe = f"doctor-probe {uuid.uuid4().hex[:8]}"
+    add_out = run_bg(["python3", str(task_script), "add", probe, "--source", "doctor-probe"], timeout=20)
+    if not add_out or "added" not in add_out.lower():
+        res.add("Task DB write-probe", "FAIL",
+            f"task-db.py add did not confirm: {add_out[:200] or '(no output)'}",
+            "Schema may be missing/read-only — run cortex-update.sh, check tasks.schema_version")
+        return
+
+    list_out = run_bg(["python3", str(task_script), "list", "--status", "pending"], timeout=20)
+    probe_id = None
+    for line in (list_out or "").splitlines():
+        if probe in line:
+            probe_id = line.split()[0]
+            break
+    if not probe_id:
+        res.add("Task DB write-probe", "FAIL",
+            "probe row added but not visible in task-db.py list — RLS or list path broken",
+            "Check tasks.tasks RLS policies and tasks.task_list()")
+        # best-effort cleanup: archive pending rows for this profile
+        run_bg(["python3", str(task_script), "save-end"], timeout=15)
+        return
+
+    # Cleanup via the normal lifecycle: complete → archive (self-expiring)
+    run_bg(["python3", str(task_script), "update", probe_id, "--status", "completed"], timeout=15)
+    run_bg(["python3", str(task_script), "save-end"], timeout=15)
+    res.add("Task DB write-probe", "PASS", "add → list → archive roundtrip OK")
 
 
 def check_skill_drift(res):

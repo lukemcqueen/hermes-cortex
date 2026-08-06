@@ -5,7 +5,7 @@ category: devops
 description: "Restore cross-session todos, enforce skill-loading discipline at session start"
 platforms: [linux, macos]
 related_skills:
-  - todo-persistence
+  - task-persistence
   - task-start
   - agent-flow
   - change-checklist
@@ -37,7 +37,7 @@ Load all 9 always-section skills in this order. The marker follows automatically
 
 Then restore any pending cross-session todos:
 
-10. `~/.hermes-cortex/scripts/todo-db.py pending` — query DB for pending items
+10. `~/.hermes-cortex/scripts/task-db.py pending` — query DB for pending items
 11. If items exist, `todo(todos=<json_items>, merge=true)` — restore to in-memory list
 
 Then proceed to `begin_change()`. The marker is self-verifying — it contains

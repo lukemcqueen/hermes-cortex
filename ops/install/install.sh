@@ -1705,6 +1705,32 @@ fi
 ok
 
 # ─────────────────────────────────────────────────────────────
+# 12c. MCP Server Registration — Task Workflow (ALL agents)
+# ─────────────────────────────────────────────────────────────
+step "Registering task workflow MCP server (task-mcp.py — todos)"
+TASK_MCP_PATH="${SCRIPT_DIR}/mcp-servers/task-mcp.py"
+if [[ -f "$TASK_MCP_PATH" ]]; then
+ if command -v hermes &>/dev/null; then
+  if hermes mcp list 2>/dev/null | grep -q "todos"; then
+   skip "todos MCP server already registered"
+  else
+   if hermes mcp add todos --command "$(find_best_python)" --args "$TASK_MCP_PATH" 2>/dev/null; then
+    info " Registered: todos MCP server (task_add/list/pending/update/save_end/prune)"
+   else
+    warn " Could not register todos MCP server — check hermes version"
+   fi
+  fi
+ else
+  skip "hermes CLI not found — todos MCP server not registered"
+  info " → After installing Hermes, run:"
+  info "   hermes mcp add todos --command python3 --args ${TASK_MCP_PATH}"
+ fi
+else
+ skip "task-mcp.py not found at ${TASK_MCP_PATH}"
+fi
+ok
+
+# ─────────────────────────────────────────────────────────────
 # 12. Web Cache — Local Semantic Web Cache
 # ─────────────────────────────────────────────────────────────
 step "Installing Web Cache (semantic web result cache)"

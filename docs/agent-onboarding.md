@@ -573,15 +573,15 @@ If you're setting up a **server agent** (Joseph, Esther, Kustos, Gisu) rather th
 
 ---
 
-## Shared Database (gbrain Postgres)
+## Task Database (per-host mycortex-postgres)
 
-Every fleet agent has access to the shared **gbrain Postgres** database running on Moses's server. It provides:
+Every fleet agent has its own **mycortex-postgres** running locally. It provides:
 
-- **Agent Bus** (PGMQ message queues) — inbox/outbox for fleet communication
-- **`bus.todos`** — durable, fleet-visible todo persistence (via `todo-db.py`)
-- **`bus.loop_governance`** — shared cycle scoring across agents
+- **mycortex** — knowledge brain (embeddings, sources)
+- **`tasks` schema** — durable cross-session task persistence (via `task-db.py` / `task_*` MCP tools). RLS isolates each profile's personal tasks; fleet rows are writable only by orchestrators and stored locally until transport ships (docs/design/task-workflow.md)
+- **loop-governance** — cycle scoring (orchestrators; bus schema on orch hosts)
 
-You don't need to install or manage Postgres yourself — your `cortex-update.sh` deploys the DB schemas automatically as part of the full stack.
+You don't need to install or manage Postgres yourself — your `cortex-update.sh` deploys the schemas automatically as part of the full stack (version-gated migrations).
 
 **Verify your DB connectivity:** The doctor checks this:
 
@@ -589,9 +589,9 @@ You don't need to install or manage Postgres yourself — your `cortex-update.sh
 python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py
 ```
 
-Look for `Todo DB connectivity` — should show `PASS` with your pending item count.
+Look for `Task DB connectivity` + `Task DB write-probe` — should show `PASS`.
 
-**First sign something's wrong:** If `todo-db.py pending` returns errors on session start, gbrain Postgres may be down on Moses's end.
+**First sign something's wrong:** If `task-db.py pending` returns errors on session start, mycortex Postgres may be down on your host.
 
 ---
 

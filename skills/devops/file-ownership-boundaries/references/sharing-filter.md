@@ -25,7 +25,7 @@ Item being evaluated for upstreaming/sharing
 | Scenario | Verdict | Why |
 |----------|---------|-----|
 | Patch to `task-start` (framework-owned) | ❌ Skip | Framework-owned, gets overwritten |
-| New `todo-persistence` skill in repo | ✅ Share | New reusable capability |
+| New `task-persistence` skill in repo | ✅ Share | New reusable capability |
 | Added todo step to `agent-fundamentals` (our skill) | ✅ Share delta | Substantive improvement |
 | One-line doc fix to existing repo skill | ❌ Skip | Already shared, no new value |
 | Session-specific workaround for missing package | ❌ Skip | Ephemeral, not reusable |
