@@ -334,7 +334,7 @@ Below are question banks organised by domain. Each bank contains 5–15 question
 
 ## Output Format — Elicitation Document
 
-The complete output is a single markdown document saved to `.hermes/elicit/` with this structure:
+The complete output is a single markdown document saved to `docs/elicit/` with this structure:
 
 ```markdown
 # Elicitation: [Feature Name]
@@ -435,9 +435,12 @@ The user may say "that's enough, give me the stories" at any point. Honour that 
 
 Save the elicitation document with `write_file` under:
 
-`.hermes/elicit/YYYY-MM-DD_HHMMSS-<feature-slug>.md`
+`docs/elicit/YYYY-MM-DD_<feature-slug>.md`
 
-Treat that as relative to the active working directory / backend workspace. If the runtime provides a specific target path, use that exact path.
+Treat that as relative to the repo root (e.g. `hermes-cortex/docs/elicit/`).
+This is the durable home for elicitation artifacts — committed to the shared
+repo so the whole fleet benefits. If the runtime provides a specific target
+path, use that exact path.
 
 ## Example: Fast Mode (abbreviated)
 

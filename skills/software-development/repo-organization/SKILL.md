@@ -80,8 +80,17 @@ hermes-cortex/
 │
 ├── docs/                      # Documentation
 │   ├── templates/             # Seed templates
-│   ├── design/                # Design docs
-│   └── images/                # Screenshots, diagrams
+│   ├── design/                # Design docs (party decision records, ADRs)
+│   ├── elicit/                # Requirements elicitation documents
+│   ├── plans/                 # Implementation plans (dev-plan output)
+│   ├── prd/                   # Product requirement documents
+│   ├── proposals/             # Change/feature proposals awaiting orchestrator review
+│   ├── research/              # Research notes and surveys
+│   ├── reference/             # Technical reference guides
+│   ├── reviews/               # Durable review records (repo-health, code reviews, gap analyses)
+│   ├── archive/               # Archived/superseded design docs
+│   ├── images/                # Screenshots, diagrams
+│   └── DOCS-INDEX.md          # Documentation index — register every new doc here
 │
 ├── tests/                     # Test suite
 │

@@ -569,7 +569,7 @@ Run both axes as parallel sub-agents so they don't pollute each other. Present f
 - **Recommended approach** with rationale
 - **Step-by-step plan** with file paths, test targets, verification
 - **Open questions / risks** that remain
-- Save to `.hermes/plans/` per the `plan` skill conventions
+- Save to `docs/plans/` per the `dev-plan` skill conventions
 
 **Checklist:**
 - [ ] Did I explore the existing codebase before proposing architecture?
@@ -578,7 +578,7 @@ Run both axes as parallel sub-agents so they don't pollute each other. Present f
 - [ ] Are all steps concrete (file paths, commands, expected outputs)?
 - [ ] Did I flag risks and unknowns honestly?
 - [ ] Is the plan sized reasonably (max ~10 steps for the initial pass)?
-- [ ] Did I save the plan to `.hermes/plans/`?
+- [ ] Did I save the plan to `docs/plans/`?
 
 ---
 

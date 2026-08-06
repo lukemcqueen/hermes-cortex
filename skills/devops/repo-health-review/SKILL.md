@@ -316,6 +316,17 @@ Produce a structured report with:
 3. **Documented Items** — what was noted for future action
 4. **Priority Recommendations** — ordered by effort vs impact
 
+## Output Path
+
+Persist the report as a durable markdown document in the repo, committed so the
+whole fleet benefits:
+
+`docs/reviews/repo-health-review-YYYY-MM-DD.md`
+
+Treat that as relative to the repo root (e.g. `hermes-cortex/docs/reviews/`).
+Prior reports live alongside it in `docs/reviews/` — keep new reports there,
+never at the docs root.
+
 ## Anti-Patterns
 
 - ❌ Only searching disk, not git — file may exist in repo but not deployed

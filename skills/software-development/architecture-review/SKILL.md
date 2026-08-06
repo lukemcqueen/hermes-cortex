@@ -160,6 +160,21 @@ After all five phases, produce a final summary like this:
 
 ---
 
+## Output Path
+
+Persist the review as a durable markdown document in the repo, committed so the
+whole fleet benefits. Route by review type:
+
+| Review type | Output path | Example |
+|-------------|-------------|---------|
+| **Decision party** (choosing between approaches, ADR-style) | `docs/design/YYYY-MM-DD-<decision-slug>.md` | `docs/design/2026-08-06-task-workflow-decision.md` |
+| **Elicitation-combined party** (scoping/requirements discovery) | `docs/elicit/YYYY-MM-DD_<feature>-party.md` | `docs/elicit/2026-06-29_offline-code-party.md` |
+
+If the runtime provides a specific target path, use that exact path; otherwise
+create the timestamped filename above under the appropriate `docs/` subdir.
+
+---
+
 ## Example: Service vs. Monolith Decision
 
 **Scope:** Choosing between a modular monolith and microservices for a new billing system.

@@ -48,7 +48,7 @@
 - [ ] Check learning/knowledge pipeline scripts for consolidation opportunity
 
 ## Report
-- [ ] Write structured report to `docs/repo-health-review-YYYY-MM-DD.md`
+- [ ] Write structured report to `docs/reviews/repo-health-review-YYYY-MM-DD.md`
 - [ ] List each finding with: file, issue, severity, action taken
 - [ ] Separate "Fixed" from "Documented for Future"
 - [ ] Include priority recommendations

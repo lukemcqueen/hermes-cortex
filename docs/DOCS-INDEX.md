@@ -33,6 +33,26 @@ A lightweight map of all project documents. Files are grouped by topic.
 || `core/cortex_bus/metrics.py` | **Bus metrics module** — prometheus_client definitions + async push client. Imported by bus server for queue-level observability. |
 || `ops/install/deploy/docker-compose.victoria-metrics.yml` | **VictoriaMetrics + Grafana stack** — Docker compose: metrics storage (3mo retention) + visualization dashboard. Grafana at :3030. |
 | `docs/push-metrics-setup.md` | **Push metrics setup guide** — VictoriaMetrics + Grafana, per-agent push, nginx orch config |
+
+## Documentation Routing
+
+Canonical destination for workflow-produced artifacts (canonical table —
+proposal `docs/proposals/2026-08-06-docs-artifact-routing.md`). Every new doc
+must be registered in this index.
+
+| Artifact | Destination | Producing skill |
+|----------|-------------|-----------------|
+| Elicitation + stories | `docs/elicit/` | `requirements-elicitation` |
+| Plans | `docs/plans/` | `dev-plan` (via `agent-flow` planning pattern) |
+| Party — decision | `docs/design/` | `architecture-review` |
+| Party — elicitation-combined | `docs/elicit/` | `architecture-review` |
+| Code / repo-health / gap reviews | `docs/reviews/` | `repo-health-review`, `code-review`, `engineering-approach` ref |
+| PRD | `docs/prd/` | `product-requirements` |
+| Proposals | `docs/proposals/` | (submitted by agents for orchestrator review) |
+
+**`docs/reviews/` (new, 2026-08-06):** durable review records —
+`docs/reviews/README.md` (stub + routing table), `docs/reviews/repo-health-review-2026-07-23.md` (moved from docs root).
+
 ## Security
 
 | Doc | Description |
@@ -122,6 +142,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/troubleshooting-stale-inbox-api.md` | Stale inbox API diagnostics — port conflicts, cert renewal impact |
 | `docs/governance-hardening-proposal.md` | Governance hardening proposal — structural override analysis, adversarial attack |
 | `docs/proposals/2026-08-06-provider-timeout-fix.md` | **Provider timeout fix proposal** — fleet-wide deepseek request timeout (LLM cron hang class), ready-to-apply patch |
+| `docs/proposals/2026-08-06-docs-artifact-routing.md` | **Docs artifact routing proposal** — canonical docs/ routing for review/gap-analysis/elicit/party/docs workflows. ✅ APPLIED 2026-08-06 (moses) |
 | `docs/gbrain-postgres-migration.md` | gbrain Postgres migration — schema, migration procedure |
 | `docs/gbrain-v2-taxonomy.md` | gbrain v2 taxonomy — brain source categories and tag conventions |
 | `docs/agent-learning-submissions.md` | **Agent learning submissions** — how agents submit ad-hoc learnings via ~/brain/learnings/pending/ |
