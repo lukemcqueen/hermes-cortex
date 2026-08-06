@@ -19,6 +19,8 @@ from .config import (
   HERMES_HOME,
   CONFIG_FILE,
   INSTALL_CRONS,
+  INSTALL_DREAM_CRONS,
+  DREAM_LAYER_MARKER,
   CORTEX_UPDATE,
   INSTALL_SCRIPT,
   INSTALL_OLLAMA,
@@ -56,12 +58,20 @@ def apply_fixes(res):
   failed = 0
   fix_map = {c["name"]: c["status"] for c in res.checks}
 
-  # Fix: missing crons → install-crons.sh
+  # Fix: missing crons → install-crons.sh (+ dream installer if layer installed)
   if any("Crons missing" in k for k in fix_map):
     if _run_fix("Recreating missing crons", ["bash", str(INSTALL_CRONS), "--force"]):
       fixed += 1
     else:
       failed += 1
+    # Optional dream layer: recreate dream crons via their own installer when
+    # the layer is installed (marker present) — install-crons.sh no longer
+    # contains them (Luke 2026-08-06: doctor should expect if installed).
+    if DREAM_LAYER_MARKER.exists():
+      if _run_fix("Recreating dream crons", ["bash", str(INSTALL_DREAM_CRONS), "--force"]):
+        fixed += 1
+      else:
+        failed += 1
 
   # Fix: missing scripts → cortex-update.sh
   if any(k.startswith("Script") for k in fix_map):

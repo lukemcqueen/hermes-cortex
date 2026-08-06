@@ -33,6 +33,11 @@ SCRIPTS_SRC = CORTEX_REPO / "ops" / "scripts"
 INSTALL_CRONS = SCRIPTS_SRC / "install-crons.sh"
 CORTEX_UPDATE = SCRIPTS_SRC / "cortex-update.sh"
 INSTALL_ORCH_CRONS = SCRIPTS_SRC / "install" / "install-orch-crons.sh"
+INSTALL_DREAM_CRONS = SCRIPTS_SRC / "install" / "install-dream-crons.sh"
+# Marker created by install-dream-crons.sh when the optional dream layer is
+# installed; removed on --uninstall. The doctor only EXPECTS dream crons when
+# this marker exists — optional layer, conditional expectation (Luke 2026-08-06).
+DREAM_LAYER_MARKER = CORTEX_HOME / "state" / "dream-layer-installed"
 INSTALL_SCRIPT = CORTEX_REPO / "ops" / "install" / "install.sh"
 INSTALL_OLLAMA = SCRIPTS_SRC / "install" / "install-ollama.sh"
 INSTALL_SCORE_HOOK = SCRIPTS_SRC / "install" / "install-score-hook.sh"
@@ -174,15 +179,38 @@ def parse_expected_crons():
         return []
     names = re.findall(r'^create_cron\s+"([^"]+)"', text, re.MULTILINE)
     orch_crons = set(parse_orch_crons())
+    dream_crons = parse_dream_crons()  # [] when layer not installed
 
     if AGENT_ROLE == "orchestrator":
         # Orchestrator expects ALL crons: universal (from install-crons.sh) + orch crons
         result = [n for n in names if n != "system-heartbeat"]
         result.extend(sorted(orch_crons))
+        result.extend(sorted(dream_crons))
         return result
     else:
         # Server / dev: universal crons only, exclude any that are orch-only
-        return [n for n in names if n != "system-heartbeat" and n not in orch_crons]
+        result = [n for n in names if n != "system-heartbeat" and n not in orch_crons]
+        result.extend(sorted(dream_crons))
+        return result
+
+
+def parse_dream_crons():
+    """Read optional dream-layer cron names from install-dream-crons.sh.
+
+    Conditional expectation: dream crons are EXPECTED only when the layer is
+    installed (marker file present). Agents that never ran
+    install-dream-crons.sh have no marker → no dream crons expected → no
+    false doctor FAIL. Agents that installed the layer get full validation
+    (missing dream cron = FAIL, matching universal-cron behaviour).
+
+    Source = create_cron calls (same convention as the other parsers).
+    """
+    if not DREAM_LAYER_MARKER.exists():
+        return []
+    text = _read_file(INSTALL_DREAM_CRONS)
+    if not text:
+        return []
+    return re.findall(r'^create_cron\s+"([^"]+)"', text, re.MULTILINE)
 
 
 def parse_orch_crons():
