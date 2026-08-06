@@ -1092,6 +1092,19 @@ If a cron legitimately needs long single API calls (non-streaming), either
 tune the value or enable streaming for that job — don't just re-run the cron
 to clear its error status.
 
+**Companion fix — per-provider request timeout (2026-08-06):** the hang
+class behind 'idle for Ns' is deepseek's non-streaming endpoint silently
+hanging (>10 min, no response/error/deltas). The watchdog kills at 600s, and
+the fallback chain never engages because a silent hang raises no exception.
+`install-provider-timeouts.sh` (fleet, every cortex-update) sets
+`providers.deepseek.request_timeout_seconds: 300` and
+`stale_timeout_seconds: 300` in `~/.hermes/config.yaml`, converting the hang
+into a ReadTimeout at 5 min — before the watchdog — so retry/fallback
+(opencode-zen, ollama-local) engage. Verified via
+`get_provider_request_timeout('deepseek')`. This is ORTHOGONAL to
+`HERMES_CRON_TIMEOUT` — do NOT lower the watchdog to compensate (30s/300s
+experiments broke 9/9 evening runs; 600s stays).
+
 ---
 
 ## ⚡ Offline-First Mandate for LLM Crons

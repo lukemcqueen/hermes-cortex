@@ -222,3 +222,13 @@ curl -u "admin:$(cat ~/.password_file)" https://api.example.com
 
 Configured in `~/.hermes/config.yaml` — standard chain: primary API → free API → local Ollama.
 See `config-template.yaml` for the canonical setup.
+
+**Per-provider request timeouts (fleet fix 2026-08-06):** the fallback chain
+only engages on *raised* errors (auth/HTTP/connect). A silent hang (deepseek
+non-streaming endpoint, >10 min no response) raises nothing, so the chain
+never fires and the LLM cron inactivity watchdog kills the job. Each host sets
+`providers.deepseek.request_timeout_seconds: 300` and
+`stale_timeout_seconds: 300` (via `install-provider-timeouts.sh` on every
+cortex-update) so a hang becomes a ReadTimeout at 5 min — before the 600s
+watchdog — and retry/fallback engage. Orthogonal to `HERMES_CRON_TIMEOUT`
+(600s known-good, do NOT lower).
