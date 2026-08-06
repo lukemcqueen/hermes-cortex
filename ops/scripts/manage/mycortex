@@ -121,6 +121,24 @@ def esc_literal(s: str) -> str:
     return "'" + s.replace("'", "''") + "'"
 
 
+# ── Reader role resolution (per-profile, schema-native multi-tenant) ──
+# RLS keys on CURRENT_USER: mycortex.is_source_visible(source_id, CURRENT_USER).
+# Each PROFILE connects as mycortex_reader_<profile> (created by
+# install-profile-reader-role.sh) → isolation is automatic. The base
+# mycortex_reader role remains the capability floor (schema grants inherited
+# via role membership). Resolution order matches install-profile-reader-role.sh:
+# HERMES_PROFILE → AGENT_NAME → hostname. ⚠️ Never scan ~/.hermes/profiles/*/
+# alphabetically — the first entry is NOT the active profile (2026-08-06:
+# 'personal' dir exists but the session is 'default'/esther).
+def reader_role() -> str:
+    profile = os.environ.get("HERMES_PROFILE", "").strip()
+    if not profile:
+        profile = os.environ.get("AGENT_NAME", "").strip()
+    if not profile:
+        profile = os.uname().nodename
+    return f"mycortex_reader_{profile}"
+
+
 # ── Sources (mycortex_admin) ──────────────────────────────────
 
 def sources_add(args: argparse.Namespace) -> int:
@@ -155,6 +173,24 @@ RETURNING id, name;
     else:
         print(f"✅ source '{args.name}' registered (isolated, mode={mode}, host={host})")
     print(f"   id: {out.splitlines()[0] if out else '?'}")
+    # Schema-native multi-tenant (Luke 2026-08-06): grant an ISOLATED source
+    # to the PROFILE reader role (mycortex_reader_<profile>), never the shared
+    # mycortex_reader — otherwise every tenant's reader inherits visibility.
+    # RLS keys on CURRENT_USER, so a per-profile grant = per-profile isolation.
+    if not args.federated:
+        src_id = out.splitlines()[0].split("|")[0] if out else ""
+        role = reader_role()
+        if src_id:
+            try:
+                run_sql(
+                    f"INSERT INTO mycortex.source_grants (role_name, source_id) "
+                    f"VALUES ({esc_literal(role)}, {esc_literal(src_id)}) "
+                    f"ON CONFLICT DO NOTHING;",
+                    "mycortex_admin", args.db_name,
+                )
+                print(f"   granted '{role}' visibility (isolated source — per-profile grant)")
+            except RuntimeError as e:
+                print(f"   ⚠ grant failed (source registered, visibility NOT granted): {e}", file=sys.stderr)
     return 0
 
 
@@ -579,7 +615,7 @@ def search(args: argparse.Namespace) -> int:
         for s in args.source:
             out = psql_query(
                 f"SELECT id FROM mycortex.sources WHERE name = {esc_literal(s)};",
-                "mycortex_reader", args.db_name,
+                reader_role(), args.db_name,
             )
             if out.strip():
                 ids.append(out.splitlines()[0])
@@ -608,7 +644,7 @@ ORDER BY score DESC, p.relpath
 LIMIT {int(args.limit)};
 """
     try:
-        out = psql_query(sql, "mycortex_reader", args.db_name)
+        out = psql_query(sql, reader_role(), args.db_name)
     except RuntimeError as e:
         print(f"❌ {e}", file=sys.stderr)
         return 1
@@ -632,7 +668,7 @@ LIMIT {int(args.limit)};
         relpaths = "{" + ",".join(r["relpath"].replace('"', '\\"') for r in results[:10]) + "}"
         run_sql(
             f"SELECT mycortex.log_query(NULL, {q}, {esc_literal(relpaths)}, {latency});",
-            "mycortex_reader", args.db_name,
+            reader_role(), args.db_name,
         )
     except RuntimeError:
         pass  # logging must never break search
@@ -650,7 +686,7 @@ ORDER BY p.updated_at DESC
 LIMIT {int(args.n)};
 """
     try:
-        out = psql_query(sql, "mycortex_reader", args.db_name)
+        out = psql_query(sql, reader_role(), args.db_name)
     except RuntimeError as e:
         print(f"❌ {e}", file=sys.stderr)
         return 1

@@ -224,6 +224,7 @@ register_orch "ops/scripts/fleet/local-orch-fleet-command-verifier.py"   "${CORT
 register "ops/scripts/install/install-orch-crons.sh"  "${CORTEX_DEPLOY_HOME}/scripts/install-orch-crons.sh"
 register "ops/scripts/install/install-dream-crons.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-dream-crons.sh"
 register "ops/scripts/install/install-provider-timeouts.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-provider-timeouts.sh"
+register "ops/scripts/install/install-profile-reader-role.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-profile-reader-role.sh"
 register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
 register "ops/scripts/cortex-dogfood.sh" "${CORTEX_DEPLOY_HOME}/scripts/cortex-dogfood.sh"
 register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
@@ -2571,6 +2572,14 @@ main() {
   if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-provider-timeouts.sh" ]]; then
     bash "${CORTEX_DEPLOY_HOME}/scripts/install-provider-timeouts.sh" 2>&1 | sed 's/^/    /' || \
       warn "  install-provider-timeouts.sh failed (non-fatal)"
+  fi
+
+  # Per-profile mycortex reader role (schema-native multi-tenant, 2026-08-06) —
+  # ensures mycortex_reader_<profile> exists so RLS (keyed on CURRENT_USER)
+  # isolates tenants by construction. Idempotent; no restart needed.
+  if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-profile-reader-role.sh" ]]; then
+    bash "${CORTEX_DEPLOY_HOME}/scripts/install-profile-reader-role.sh" 2>&1 | sed 's/^/    /' || \
+      warn "  install-profile-reader-role.sh failed (non-fatal)"
   fi
 
   # ── Clean stale governance locks ─────────────────────────
