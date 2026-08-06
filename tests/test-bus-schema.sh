@@ -162,10 +162,13 @@ fi
 echo ""
 echo "═══ 7. End-to-End: SLA Watchdog Import (No Requeue on DLQs) ═══"
 
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+export REPO_ROOT
 # Verify the sla_watchdog module's _check_dlqs() no longer calls requeue
 WATCHDOG_CODE=$(python3 -c "
-import ast, sys
-with open('/home/moses/hermes-cortex/core/cortex_bus/workflow/sla_watchdog.py') as f:
+import ast, sys, os
+path = os.path.join(os.environ['REPO_ROOT'], 'core/cortex_bus/workflow/sla_watchdog.py')
+with open(path) as f:
     tree = ast.parse(f.read())
 for node in ast.walk(tree):
     if isinstance(node, ast.Call):
