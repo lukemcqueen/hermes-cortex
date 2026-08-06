@@ -65,6 +65,7 @@ for _lib in _LIB_CANDIDATES:
 
 try:
     from lib.cortex_bus import (  # type: ignore
+        bus_archives,
         bus_health,
         bus_list_queues,
         bus_peek,
@@ -80,6 +81,10 @@ except Exception:
     _HAS_LIB = False
     BUS_URL = ""
     BUS_FALLBACK_URL = ""
+
+    def bus_archives(queue: str, limit: int = 20, since_minutes: int = 60) -> list[dict]:
+        """Stub — lib.cortex_bus unavailable; _get_archives guards on _HAS_LIB."""
+        return []
 
 
 def _read_bus_conf(key: str) -> str:
@@ -224,6 +229,23 @@ def _get_messages(queue: str, limit: int = 20) -> list[dict]:
         return bus_peek(queue, limit=limit)
     except Exception as e:
         print(f"  ⚠️  peek {queue} failed: {e}", file=sys.stderr)
+        return []
+
+
+def _get_archives(queue: str, limit: int = 50, since_minutes: int = 60) -> list[dict]:
+    """Get recently archived messages from a queue (non-destructive read).
+
+    The live peek only returns 'pending' messages — a result the handler
+    already archived is invisible to it. hc exec polls archives too so a
+    fast-archived EXEC_RESULT is found instead of hanging (2026-08-06).
+    """
+    if not _HAS_LIB:
+        print("❌ lib.cortex_bus not importable — run cortex-update.sh to deploy.", file=sys.stderr)
+        return []
+    try:
+        return bus_archives(queue, limit=limit, since_minutes=since_minutes)
+    except Exception as e:
+        print(f"  ⚠️  archives {queue} failed: {e}", file=sys.stderr)
         return []
 
 
@@ -847,14 +869,16 @@ def cmd_exec(cfg: dict, args: list):
 
     Usage: hc exec <agent> <command> [args...] [--output-schema <name>]
            hc exec <agent> -- <command with args>
+           hc exec <agent> <command> --timeout <seconds>
 
     Validates the EXEC payload against handoff_schema before sending
     and validates the EXEC_RESULT against the specified output schema.
 
     Schemas: EXEC, EXEC_RESULT, WAVE_RESULT, UPDATE_REQUEST, UPDATE_RESULT
     """
-    # Parse --output-schema from args
+    # Parse --output-schema and --timeout from args
     output_schema = "EXEC_RESULT"
+    timeout_seconds = 120  # default: quick command + one handler tick
     clean_args = list(args)
     for i in range(len(clean_args) - 1, -1, -1):
         if clean_args[i] == "--output-schema" and i + 1 < len(clean_args):
@@ -862,15 +886,26 @@ def cmd_exec(cfg: dict, args: list):
             clean_args.pop(i + 1)
             clean_args.pop(i)
             break
+    for i in range(len(clean_args) - 1, -1, -1):
+        if clean_args[i] == "--timeout" and i + 1 < len(clean_args):
+            try:
+                timeout_seconds = max(10, int(clean_args[i + 1]))
+            except ValueError:
+                print(f"⚠️  Invalid --timeout '{clean_args[i + 1]}' — using {timeout_seconds}s")
+            clean_args.pop(i + 1)
+            clean_args.pop(i)
+            break
 
     if len(clean_args) < 2:
         print("Usage: hc exec <agent> <command> [args...] [--output-schema <name>]")
+        print("       hc exec <agent> <command> [--timeout <seconds>]")
         print()
         print("Examples:")
         print("  hc exec esther manage/cortex-doctor.py --json")
         print("  hc exec gisu manage/cortex-doctor.py --quiet")
         print("  hc exec joseph -- df -h /")
         print("  hc exec kustos manage/cortex-doctor.py --json --output-schema WAVE_RESULT")
+        print("  hc exec kustos install-provider-timeouts.sh --timeout 60")
         print()
         print(f"Available schemas: EXEC, EXEC_RESULT, WAVE_RESULT, UPDATE_REQUEST, UPDATE_RESULT")
         print()
@@ -883,6 +918,7 @@ def cmd_exec(cfg: dict, args: list):
     params = clean_args[2:]
 
     # Import handoff_schema (available after deployment)
+    _validate = lambda _p, _s: (True, [])  # no-op fallback (schema-less)
     try:
         sys.path.insert(0, str(Path.home() / ".hermes-cortex" / "scripts" / "lib"))
         from handoff_schema import validate_payload as _validate
@@ -934,78 +970,103 @@ def cmd_exec(cfg: dict, args: list):
 
     # Record verification (non-blocking — send succeeded regardless)
     if not result.startswith("❌"):
-        _record_verification(corr_id, agent, "EXEC", "EXEC", 300)
+        _record_verification(corr_id, agent, "EXEC", "EXEC", timeout_seconds)
 
-    # Poll inbox_moses for the result (handler ALWAYS sends *_RESULT to
-    # inbox_moses, regardless of which agent ran the command)
+    # Poll for the result. The handler ALWAYS sends *_RESULT to inbox_moses,
+    # but the result may be ARCHIVED by the receiving handler before the
+    # live-queue poll sees it — the live peek only returns 'pending'
+    # messages. So poll BOTH the live queue AND bus.archives each cycle
+    # (the archive-blindness hang, 2026-08-06).
     moses_queue = "inbox_moses"
-    deadline = time.time() + 300  # 5 min max wait
-    poll_interval = 15  # every 15 seconds
-    print(f"⏳ Waiting for EXEC_RESULT from {agent} (poll {moses_queue} every {poll_interval}s, max 5 min)...")
+    deadline = time.time() + timeout_seconds
+    poll_interval = 10  # every 10 seconds
+    print(f"⏳ Waiting for EXEC_RESULT from {agent} (live + archives, max {timeout_seconds}s)...")
     print()
 
     while time.time() < deadline:
         time.sleep(poll_interval)
-        msgs = _get_messages(moses_queue)
-        for msg in msgs:
-            body_raw = msg.get("body", {})
-            if isinstance(body_raw, str):
-                try:
-                    body_raw = json.loads(body_raw)
-                except json.JSONDecodeError:
-                    continue
-            msg_corr = body_raw.get("correlation_id", "")
-            msg_subj = body_raw.get("subject", "")
-            if msg_corr == corr_id and msg_subj == "EXEC_RESULT":
-                # Found our result
-                inner = body_raw.get("body", {})
-                if isinstance(inner, str):
-                    try:
-                        inner = json.loads(inner)
-                    except json.JSONDecodeError:
-                        inner = {"raw": inner}
-
-                # Validate result against schema
-                if _HAS_SCHEMA and output_schema != "RAW":
-                    svalid, serrs = _validate(inner, output_schema)
-                    if svalid:
-                        print(f"✅ EXEC_RESULT validated against '{output_schema}' schema")
-                    else:
-                        print(f"⚠️  EXEC_RESULT schema violations ({output_schema}):")
-                        for e in serrs:
-                            print(f"   - {e}")
-
-                success = inner.get("success", False)
-                stdout = inner.get("stdout", "")
-                stderr = inner.get("stderr", "")
-                exit_code = inner.get("exit_code", -1)
-                cmd_run = inner.get("command", command)
-                duration = inner.get("duration_ms", None)
-
-                icon = "✅" if success else "❌"
-                print(f"{icon} EXEC_RESULT from {agent}:")
-                print(f"   Command: {cmd_run}")
-                print(f"   Exit:    {exit_code}")
-                if duration is not None:
-                    print(f"   Duration: {duration}ms")
-                if stdout:
-                    print(f"   stdout:  {stdout[:2000]}")
-                    if len(stdout) > 2000:
-                        print(f"            ... ({len(stdout)} chars total)")
-                if stderr:
-                    print(f"   stderr:  {stderr[:500]}")
-                    if len(stderr) > 500:
-                        print(f"            ... ({len(stderr)} chars total)")
-                print()
-                if not success:
-                    print("⚠️  Command failed (non-zero exit).")
-                return
-
+        found = _match_result_msg(moses_queue, corr_id, agent, command,
+                                  output_schema, _HAS_SCHEMA, _validate)
+        if found:
+            return
         print(f"   ⏳ still waiting... ({(deadline - time.time()):.0f}s remaining)")
 
     print("❌ Timed out waiting for EXEC_RESULT.")
-    print(f"   The agent may not have agent-message-handler running, or the")
-    print(f"   command may have taken longer than 5 minutes.")
+    print(f"   Checked live queue AND archives for {timeout_seconds}s and found no result.")
+    print(f"   The agent may not have agent-message-handler running, the command may")
+    print(f"   have taken longer than {timeout_seconds}s, or the result never arrived.")
+    print(f"   Re-run with --timeout <longer> for long commands, or check:")
+    print(f"     hc bus --all   (recent archived activity)")
+
+
+def _match_result_msg(queue: str, corr_id: str, agent: str, command: str,
+                      output_schema: str, has_schema, validate) -> bool:
+    """Check live queue + archives for the matching EXEC_RESULT.
+
+    Returns True when found (and prints the result); False to keep polling.
+    """
+    candidates = list(_get_messages(queue))
+    # Also check archives — results archived by the handler before the
+    # live poll saw them would otherwise be missed forever.
+    try:
+        candidates.extend(_get_archives(queue))
+    except Exception as e:
+        print(f"  ⚠️  archive check failed: {e}", file=sys.stderr)
+
+    for msg in candidates:
+        body_raw = msg.get("body", {})
+        if isinstance(body_raw, str):
+            try:
+                body_raw = json.loads(body_raw)
+            except json.JSONDecodeError:
+                continue
+        msg_corr = body_raw.get("correlation_id", "")
+        msg_subj = body_raw.get("subject", "")
+        if msg_corr == corr_id and msg_subj == "EXEC_RESULT":
+            # Found our result
+            inner = body_raw.get("body", {})
+            if isinstance(inner, str):
+                try:
+                    inner = json.loads(inner)
+                except json.JSONDecodeError:
+                    inner = {"raw": inner}
+
+            # Validate result against schema
+            if has_schema and output_schema != "RAW":
+                svalid, serrs = validate(inner, output_schema)
+                if svalid:
+                    print(f"✅ EXEC_RESULT validated against '{output_schema}' schema")
+                else:
+                    print(f"⚠️  EXEC_RESULT schema violations ({output_schema}):")
+                    for e in serrs:
+                        print(f"   - {e}")
+
+            success = inner.get("success", False)
+            stdout = inner.get("stdout", "")
+            stderr = inner.get("stderr", "")
+            exit_code = inner.get("exit_code", -1)
+            cmd_run = inner.get("command", command)
+            duration = inner.get("duration_ms", None)
+
+            icon = "✅" if success else "❌"
+            print(f"{icon} EXEC_RESULT from {agent}:")
+            print(f"   Command: {cmd_run}")
+            print(f"   Exit:    {exit_code}")
+            if duration is not None:
+                print(f"   Duration: {duration}ms")
+            if stdout:
+                print(f"   stdout:  {stdout[:2000]}")
+                if len(stdout) > 2000:
+                    print(f"            ... ({len(stdout)} chars total)")
+            if stderr:
+                print(f"   stderr:  {stderr[:500]}")
+                if len(stderr) > 500:
+                    print(f"            ... ({len(stderr)} chars total)")
+            print()
+            if not success:
+                print("⚠️  Command failed (non-zero exit).")
+            return True
+    return False
 
 
 def cmd_help(cfg: dict, args: list):

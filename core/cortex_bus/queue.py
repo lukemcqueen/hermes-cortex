@@ -204,6 +204,49 @@ class BusClient:
             self._conn.commit()
             return bool(result)
 
+    def archives(self, queue: str, limit: int = 20,
+                 since_minutes: int = 60) -> list[dict]:
+        """Read recently archived messages from a queue (non-destructive).
+
+        Results are ordered newest-first. Used by hc exec to find an
+        EXEC_RESULT that was already archived by the handler before the
+        live-queue poll saw it (the archive-blindness hang, 2026-08-06).
+
+        Args:
+            queue: Queue name (e.g. 'inbox_moses')
+            limit: Max messages to return
+            since_minutes: Only messages archived within this window
+
+        Returns:
+            List of message dicts with keys: msg_id, queue_name, body,
+            priority, retry_count, max_retries, enqueued_at, archived_at,
+            state, correlation_id
+        """
+        self._ensure_conn()
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT row_to_json(m) FROM (
+                    SELECT msg_id::text, queue_name, body, priority,
+                           retry_count, max_retries,
+                           enqueued_at::text, archived_at::text, state,
+                           correlation_id
+                    FROM bus.archives
+                    WHERE queue_name = %s
+                      AND archived_at >= now() - make_interval(mins => %s)
+                    ORDER BY archived_at DESC
+                    LIMIT %s
+                ) m
+                """,
+                (queue, since_minutes, limit),
+            )
+            rows = cur.fetchall()
+            out = []
+            for r in rows:
+                if r and r[0]:
+                    out.append(json.loads(r[0]) if isinstance(r[0], str) else r[0])
+            return out
+
     def requeue(self, queue: str, msg_id: str, error: Optional[str] = None) -> bool:
         """Re-queue a failed message (increments retry count)."""
         self._ensure_conn()

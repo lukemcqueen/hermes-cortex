@@ -284,11 +284,39 @@ def bus_peek(queue: str, limit: int = 20) -> list[dict]:
         return []
 
 
+def bus_archives(queue: str, limit: int = 20, since_minutes: int = 60) -> list[dict]:
+    """Read recently archived messages from a queue (non-destructive).
+
+    The live peek endpoint only sees 'pending' messages — results the
+    handler already archived are invisible to it. This reads bus.archives
+    so exec-result polling can find a result archived before the poll
+    saw it (the archive-blindness hang, 2026-08-06).
+
+    Returns a list of message dicts (possibly empty), or [] on failure.
+    """
+    try:
+        data = _bus_get(
+            f"/api/pgmq/archives/{queue}?limit={limit}&since_minutes={since_minutes}"
+        )
+        msgs = data.get("messages", []) if isinstance(data, dict) else []
+        for m in msgs:
+            if isinstance(m.get("body"), str):
+                try:
+                    m["body"] = json.loads(m["body"])
+                except (json.JSONDecodeError, TypeError):
+                    logging.getLogger("cortex_bus").debug("Body not JSON — preserved as-is")
+            if m.get("body") is None:
+                m["body"] = {}
+        return msgs
+    except (OSError, json.JSONDecodeError, ConnectionError) as e:
+        logging.getLogger("cortex_bus").warning("bus_archives failed: %s", e)
+        return []
+
+
 def bus_health() -> dict:
     """Check bus health endpoint — tries primary, then fallback, with Bearer→Basic auth fallback."""
     scheme, creds = _get_auth_header()
     logger = logging.getLogger("cortex_bus")
-
     def _try(base_url: str, auth_scheme: str, auth_creds: str):
         req = Request(f"{base_url}/health",
                       headers={"Authorization": f"{auth_scheme} {auth_creds}"},

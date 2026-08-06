@@ -344,6 +344,33 @@ async def api_queues(request: Request):
         raise HTTPException(503, f"Bus unavailable: {str(e)[:200]}")
 
 
+@app.get("/api/pgmq/archives/{queue}")
+async def api_archives(queue: str, request: Request, limit: int = 20, since_minutes: int = 60):
+    """Read recently archived messages from a queue (non-destructive).
+
+    The live peek endpoint only sees 'pending' messages — results that the
+    handler already archived are invisible to it. This endpoint reads
+    bus.archives so exec-result polling can find a result that was
+    archived before the poll saw it (the archive-blindness hang, 2026-08-06).
+
+    Requires 'read' permission on the queue (same as peek/depth).
+    """
+    agent = _authenticate(request)
+    _check_permission(agent, queue, "read")
+
+    try:
+        bus = get_queue()
+        msgs = bus.archives(queue, limit, since_minutes)
+        _log_audit(agent, "archives", queue,
+                   {"count": len(msgs), "since_minutes": since_minutes},
+                   request.client.host if request.client else None)
+        return {"queue": queue, "messages": msgs, "count": len(msgs)}
+    except Exception as e:
+        _log_audit(agent, "archives", queue, {"error": str(e)[:200]},
+                   request.client.host if request.client else None, False)
+        raise HTTPException(503, f"Bus unavailable: {str(e)[:200]}")
+
+
 @app.get("/api/pgmq/queue/{name}")
 async def api_queue_detail(name: str, request: Request):
     """Get detailed info about a specific queue."""
