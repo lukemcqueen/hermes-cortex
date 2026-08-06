@@ -75,4 +75,29 @@ else
   sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1" < "$SQL_FILE" >/dev/null
 fi
 
-echo "install-profile-reader-role: ${READER_ROLE} ready (inherits mycortex_reader schema grants)"
+# ── Migrate legacy grants: shared reader → profile role (idempotent) ──
+# Pre-2026-08-06 hosts granted ISOLATED sources to the shared mycortex_reader.
+# After this change the CLI connects as mycortex_reader_<profile>, so those
+# grants would make the host's OWN sources invisible (profile role has no
+# grant → RLS shows zero rows). Migrate any remaining shared-reader grants
+# on non-federated sources to this host's profile role. Idempotent: after
+# the first run no mycortex_reader rows remain, so the UPDATE is a no-op.
+MIGRATE_SQL="UPDATE mycortex.source_grants g
+SET role_name = '${READER_ROLE}'
+WHERE role_name = 'mycortex_reader'
+  AND source_id IN (
+    SELECT id FROM mycortex.sources
+    WHERE NOT archived AND NOT is_federated
+  );"
+
+cat > "$SQL_FILE" <<EOF
+${MIGRATE_SQL}
+EOF
+
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  "$psql_bin" -U mycortex -d mycortex -v ON_ERROR_STOP=1 < "$SQL_FILE" >/dev/null
+else
+  sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1" < "$SQL_FILE" >/dev/null
+fi
+
+echo "install-profile-reader-role: ${READER_ROLE} ready (inherits mycortex_reader schema grants; legacy shared-reader grants migrated)"

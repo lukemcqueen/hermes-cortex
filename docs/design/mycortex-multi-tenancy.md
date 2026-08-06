@@ -36,45 +36,53 @@ RLS isolates it automatically.
 
 ## What agents must do (migration, per-host)
 
-The `cortex-update.sh` deploy **already runs `install-profile-reader-role.sh`**
-which creates `mycortex_reader_<profile>` for the host. But the **grant
-migration is NOT automatic** — the CLI's `sources add` only grants *new*
-sources. Existing isolated sources granted to the shared `mycortex_reader`
-must be migrated once, per host:
+**Nothing manual — `cortex-update.sh` does it all.** The deploy runs
+`install-profile-reader-role.sh` which, in one idempotent pass:
+
+1. Creates `mycortex_reader_<profile>` (LOGIN INHERIT mycortex_reader) if missing
+2. **Auto-migrates legacy grants**: any `source_grants` row where
+   `role_name = 'mycortex_reader'` on a non-federated source is moved to the
+   profile role — so a host's OWN pre-existing isolated sources stay visible
+   after the CLI starts connecting as the profile role (without this, the
+   host's own pages would vanish from search: profile role has no grant → RLS
+   shows zero rows)
+
+Idempotent: after the first run no `mycortex_reader` grant rows remain, so the
+UPDATE is a no-op on every later deploy.
+
+### Verification only (no manual steps)
 
 ```bash
 # 1. Confirm the profile role exists (deploy creates it):
 sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -t -A \
   -c \"SELECT rolname FROM pg_roles WHERE rolname LIKE 'mycortex_reader_%'\""
 
-# 2. Migrate every ISOLATED source's grant from the shared role to the profile role:
-#    (replace esther with YOUR profile name)
-sg docker -c "docker exec -i mycortex-postgres psql -U mycortex_admin -d mycortex -c \"
-UPDATE mycortex.source_grants g
-SET role_name = 'mycortex_reader_esther'
-WHERE role_name = 'mycortex_reader'
-  AND source_id IN (SELECT id FROM mycortex.sources WHERE archived = FALSE);
-\""
-
-# 3. Verify NO personal source is granted to the shared reader:
+# 2. Verify NO personal source is granted to the shared reader:
 sg docker -c "docker exec -i mycortex-postgres psql -U mycortex_admin -d mycortex -t -A \
   -c \"SELECT g.role_name, s.name FROM mycortex.source_grants g \
       JOIN mycortex.sources s ON s.id = g.source_id ORDER BY 1\""
 # → should show ONLY mycortex_reader_<profile> rows for isolated sources
 
-# 4. Verify search still works as YOUR profile (dreams/pages visible):
+# 3. Verify search still works as YOUR profile (dreams/pages visible):
 AGENT_NAME=<your-profile> mycortex search "test query" --limit 3
 
-# 5. Verify isolation: a DIFFERENT profile sees ZERO of your rows:
+# 4. Verify isolation: a DIFFERENT profile sees ZERO of your rows:
 AGENT_NAME=<other-profile> mycortex search "<your unique term>" --limit 3
 # → (no results) for your isolated source
 ```
+
+> **Manual fallback** (only if a host predates the auto-migration and needs it
+> now): `UPDATE mycortex.source_grants SET role_name = 'mycortex_reader_<profile>'
+> WHERE role_name = 'mycortex_reader' AND source_id IN (SELECT id FROM
+> mycortex.sources WHERE NOT archived AND NOT is_federated);`
 
 ## How the pieces work
 
 ### Role creation — `install-profile-reader-role.sh`
 
 - Creates `mycortex_reader_<profile>` (LOGIN INHERIT) + `GRANT mycortex_reader TO ...`
+- **Auto-migrates legacy shared-reader grants** on non-federated sources to the
+  profile role (idempotent — no-op once migrated)
 - Runs as the `mycortex` superuser in-container (`mycortex_admin` has no
   CREATEROLE — verified `f/f`)
 - **Profile resolution order** (identical in the CLI): `HERMES_PROFILE` env →
