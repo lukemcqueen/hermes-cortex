@@ -115,6 +115,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/docker-registry-cache.md` | Docker registry mirror — local cache for pull throughput |
 | `docs/troubleshooting-stale-inbox-api.md` | Stale inbox API diagnostics — port conflicts, cert renewal impact |
 | `docs/governance-hardening-proposal.md` | Governance hardening proposal — structural override analysis, adversarial attack |
+| `docs/proposals/2026-08-06-provider-timeout-fix.md` | **Provider timeout fix proposal** — fleet-wide deepseek request timeout (LLM cron hang class), ready-to-apply patch |
 | `docs/gbrain-postgres-migration.md` | gbrain Postgres migration — schema, migration procedure |
 | `docs/gbrain-v2-taxonomy.md` | gbrain v2 taxonomy — brain source categories and tag conventions |
 | `docs/agent-learning-submissions.md` | **Agent learning submissions** — how agents submit ad-hoc learnings via ~/brain/learnings/pending/ |
