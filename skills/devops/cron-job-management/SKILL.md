@@ -165,10 +165,24 @@ instead of a single compromise schedule. See `references/tiered-schedule-pattern
 - `~/.hermes/scripts/hermes-update` — `hermes update --yes`, silent on success
 - `~/.hermes/scripts/hermes-cortex-sync` — `git pull` on hermes-cortex, runs install-crons.py + setup.sh if changes detected
 
+## LLM-cron stagger — fleet-wide model load (Luke directive 2026-08-07)
+
+**Every LLM-driven cron gets a deterministic per-host minute at install time.** The
+installers (`install-crons.sh`, `install-orch-crons.sh`, `install-dream-crons.sh`)
+rewrite the minute field of LLM crons (`no_agent != true`) to
+`cksum(hostname:cron-name) % 60`, keeping the hour unchanged. This stops the fleet
+from firing the same cron at :00 on every host (6 concurrent model calls).
+
+- Same hour, different minute per host — stable across re-installs (deterministic hash, not `$RANDOM`)
+- `no_agent` scripts keep exact schedules (they make no model calls)
+- The `create_cron()` in each installer already does this — do NOT duplicate it in a new installer; copy the block if you add one
+- Docs (`docs/cron-schedules.md`) show base schedules; live minutes differ per host — the hour is the contract
+- When updating an LLM cron's schedule manually via `cronjob action='update'`, keep the hour and use the host's hash minute: `printf '%s:%s' "$(hostname)" "$name" | cksum | awk '{print $1 % 60}'`
+- Never set an LLM cron back to `0 H * * *` — that re-creates the thundering herd
+
 ## Cron listing format for this user
 
 When asked to list all crons, output in this compact format:
-
 ```
 name  schedule  type
 ```

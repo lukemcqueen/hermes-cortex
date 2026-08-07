@@ -7,8 +7,11 @@
 #  does not expect these crons and non-participating agents never
 #  get them.
 #
-#  Three tiers (see docs/design/mycortex-dream-layer.md):
-#    agent-mycortex-dream-nightly  0 23 * * *   digest → dreams/YYYY-MM-DD.md
+#  Three tiers (see docs/design/mycortex-dream-layer.md). Schedules are
+#  BASE schedules — the create_cron() stagger below rewrites the minute to a
+#  deterministic per-host value (hostname:cron-name hash % 60) so fleet
+#  hosts don't all fire the same LLM dream at the same minute:
+#    agent-mycortex-dream-nightly  0 3 * * *    digest → dreams/YYYY-MM-DD.md
 #    agent-mycortex-dream-weekly   0 3 * * 6    lessons + scripture → -weekly.md
 #    agent-mycortex-dream-monthly  0 3 1 * *    time-lapse + gaps → YYYY-MM-monthly.md
 #
@@ -113,6 +116,19 @@ sys.exit(1)
 # stay lean — design says ["terminal","file"] for the dream tiers.
 create_cron() {
   local name="$1" schedule="$2" script="$3" prompt="$4" skill="$5" toolsets="$6" deliver="$7" workdir="$8" no_agent="$9"
+
+  # ── Fleet stagger: deterministic per-host minute for LLM-driven crons ──
+  # (Luke directive 2026-08-07) — same convention as install-crons.sh
+  # create_cron(): hostname:cron-name hash % 60, same hour, per-host minute.
+  # Dream tiers are LLM-driven (no_agent=false) → staggered; keeps every
+  # fleet host's dreams from firing at the same minute.
+  if [[ "$no_agent" != "true" ]] && [[ "$schedule" =~ ^[0-9]+([[:space:]]+[^ ]+){4}$ ]]; then
+    local _minute
+    _minute="$(printf '%s:%s' "$(hostname)" "$name" | cksum | awk '{print $1 % 60}')"
+    schedule="${_minute} ${schedule#* }"
+    info "Staggered LLM cron '${name}' minute → ${_minute} (schedule: ${schedule})"
+  fi
+
   if cron_exists "$name"; then
     if ! $FORCE; then
       info "Skipping $name (already exists)"

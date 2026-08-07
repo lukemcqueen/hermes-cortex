@@ -3,6 +3,13 @@
 > **Canonical schedule reference.** Every cron job in the fleet, its schedule, type, script/prompt, and delivery.
 >
 > **Naming convention:** All crons MUST use group prefixes. No bare names.
+>
+> **⏱️ LLM-cron stagger (2026-08-07):** LLM-driven crons (Type=LLM) show their
+> **base** schedule here. At install time, `create_cron()` in the installers
+> rewrites the minute field to a deterministic per-host value
+> (`cksum(hostname:cron-name) % 60`) so fleet hosts don't all hit the model at
+> the same minute. Live schedules may therefore differ in the minute from this
+> table — the hour is always preserved. `no_agent` crons keep exact schedules.
 
 | Column | Meaning |
 |--------|---------|
@@ -71,7 +78,7 @@
 | `agent-gbrain-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-gbrain-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — gbrain decommissioned; no consumer (verified). |
 | `agent-gbrain-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-gbrain-update-sync.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — obsolete with gbrain binary uninstall. |
 | `agent-mycortex-sync` | `*/15 * * * *` | no_agent | `agent-mycortex-sync.sh` | origin | *(knowledge brain sync — replaces gbrain autopilot)* |
-| `agent-mycortex-dream-nightly` | `0 23 * * *` | LLM | (prompt) | origin | *(nightly serendipity digest — fresh-page connections, writes to `~/brain/<profile>/dreams/`; replaces gbrain creative-dream layer; optional via install-dream-crons.sh)* |
+| `agent-mycortex-dream-nightly` | `0 3 * * *` | LLM | (prompt) | origin | *(nightly serendipity digest — fresh-page connections, writes to `~/brain/<profile>/dreams/`; replaces gbrain creative-dream layer; optional via install-dream-crons.sh)* |
 | `agent-mycortex-dream-weekly` | `0 3 * * 6` | LLM | (prompt) | origin | *(weekly deep dream — lessons synthesis + scripture connection, ~200-250 words written to `~/brain/<profile>/dreams/`; optional)* |
 | `agent-mycortex-dream-monthly` | `0 3 1 * *` | LLM | (prompt) | origin | *(monthly arc — time-lapse + knowledge-gap probe, ~300 words written to `~/brain/<profile>/dreams/`; optional)* |
 | `agent-mycortex-parity` | ~~removed 2026-08-03~~ | no_agent | — | origin | *(S-010 flip-gate watchdog — RETIRED with gbrain; gate closed, parity is now a manual regression fixture only)* |

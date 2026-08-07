@@ -18,7 +18,7 @@
 | agent-auto-save-sessions | no_agent | every 360m | Session persistence |
 | agent-daily-bible-reading | LLM+skill | 0 1 * * * | Daily scripture reading |
 | threat-pipeline | no_agent | 0 5 * * * | Daily nginx threat update |
-| agent-daily-soul-refinement | LLM+skill | 0 23 * * * | Daily SOUL.md refinement |
+| agent-daily-soul-refinement | LLM+skill | 14 23 * * * | Daily SOUL.md refinement |
 | agent-llm-judge-scorer-weekday | no_agent | 0 12,20 * * 1-5 | Weekday LLM evaluation |
 | agent-llm-judge-scorer-weekend | no_agent | 0 22 * * 0,6 | Weekend LLM evaluation |
 | offline-code-index | no_agent | 0 5 * * 0 | Weekly offline code index |

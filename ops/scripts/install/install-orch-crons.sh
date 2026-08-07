@@ -211,6 +211,16 @@ create_cron() {
   local name="$1" schedule="$2" script="$3" prompt="$4" skill="$5" toolsets="$6" deliver="$7" workdir="$8" no_agent="$9"
   local model="${10:-}" provider="${11:-}"
 
+  # ── Fleet stagger: deterministic per-host minute for LLM-driven crons ──
+  # (Luke directive 2026-08-07) — see install-crons.sh create_cron() for the
+  # rationale: hostname:cron-name hash % 60, same hour, per-host minute.
+  if [[ "$no_agent" != "true" ]] && [[ "$schedule" =~ ^[0-9]+([[:space:]]+[^ ]+){4}$ ]]; then
+    local _minute
+    _minute="$(printf '%s:%s' "$(hostname)" "$name" | cksum | awk '{print $1 % 60}')"
+    schedule="${_minute} ${schedule#* }"
+    echo "  Staggered LLM cron '${name}' minute → ${_minute} (schedule: ${schedule})" >&2
+  fi
+
   # Fail-loud guard: a telegram-delivering cron requires TELEGRAM_HOME_CHANNEL
   # from ~/.hermes/.env — never a hardcoded literal, never deliver-nowhere.
   if [[ "$deliver" == "telegram:"* && -z "$TELEGRAM_HOME_CHANNEL" ]]; then

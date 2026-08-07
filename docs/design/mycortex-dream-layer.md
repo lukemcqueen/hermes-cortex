@@ -21,7 +21,7 @@ across runs:
 
 | Tier | Cron | Schedule | Inputs | Output |
 |---|---|---|---|---|
-| 1 — Nightly digest | `agent-mycortex-dream-nightly` | `0 23 * * *` | `mycortex list -n 20`, session search | `~/brain/<profile>/dreams/YYYY-MM-DD.md` (~100-150 words) |
+| 1 — Nightly digest | `agent-mycortex-dream-nightly` | `0 3 * * *` | `mycortex list -n 20`, session search | `~/brain/<profile>/dreams/YYYY-MM-DD.md` (~100-150 words) |
 | 2 — Weekly deep dream | `agent-mycortex-dream-weekly` | `0 3 * * 6` | `mycortex list -n 30` + search, week's `~/brain/lessons/`, bible notes | `~/brain/<profile>/dreams/YYYY-MM-DD-weekly.md` (~200-250 words) |
 | 3 — Monthly arc | `agent-mycortex-dream-monthly` | `0 3 1 * *` | `git log` 30d, lessons count, `mycortex stats`, knowledge-gap probe | `~/brain/<profile>/dreams/YYYY-MM-monthly.md` (~300 words) |
 
