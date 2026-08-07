@@ -34,7 +34,24 @@ def get_active_cwds(db_path: str, hours: int) -> list[dict]:
 
     cutoff = NOW_TS - hours * 3600
 
-    conn = sqlite3.connect(db_path)
+    # Retry guard: the live gateway state.db can transiently raise
+    # 'database disk image is malformed' during a concurrent write/checkpoint.
+    # Retry the whole read a few times before giving up.
+    import time
+
+    last_err = None
+    for attempt in range(4):
+        try:
+            return _read_active_cwds(db_path, cutoff)
+        except (sqlite3.DatabaseError, sqlite3.OperationalError) as e:
+            last_err = e
+            time.sleep(2 * (attempt + 1))
+    print(f"ERROR: persistent DB read failure after retries: {last_err}")
+    return []
+
+
+def _read_active_cwds(db_path: str, cutoff: float) -> list[dict]:
+    conn = sqlite3.connect(db_path, timeout=30)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
