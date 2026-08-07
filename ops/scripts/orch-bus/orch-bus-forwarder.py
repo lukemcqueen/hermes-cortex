@@ -218,19 +218,37 @@ def _peek_bus(
 
 def _send_bus(
     url: str, token: str, auth: str, queue: str, body: dict | str
-) -> bool:
-    """Send a message to a bus. Returns True on success."""
+) -> tuple[bool, str]:
+    """Send a message to a bus.
+
+    Returns (success, reason). reason is "ok" on success, otherwise a
+    short human-readable failure cause: the HTTP status plus the API
+    detail (e.g. "403 Agent 'x' does not have write access..."), or the
+    transport error for connection failures/timeouts (status 0). The
+    sync alert prints the reason so a persistent ACL issue (403) is
+    distinguishable from a transient peer hiccup (5xx/timeout) at a
+    glance — the pre-2026-08-07 alert reported queue/id only, which
+    made a mirror failure unactionable.
+    """
     if isinstance(body, str):
         try:
             body = json.loads(body)
         except (json.JSONDecodeError, TypeError):
             pass  # expected — silently handled
-    status, _ = _request(
+    status, resp = _request(
         "POST", f"{url}/api/pgmq/send",
         token=token, auth=auth,
         body={"queue": queue, "message": body},
     )
-    return status == 200
+    if status == 200:
+        return True, "ok"
+    if status == 0:
+        return False, str(resp.get("error", "unreachable"))[:120]
+    reason = str(status)
+    detail = resp.get("detail", "")
+    if isinstance(detail, str) and detail.strip():
+        reason += f" {detail.strip()[:100]}"
+    return False, reason
 
 
 def _archive_bus(
@@ -348,7 +366,8 @@ def _sync_direction(
             if corr_id:
                 body["correlation_id"] = corr_id
 
-            if _send_bus(dest_url, dest_token, dest_auth, queue, body):
+            ok, reason = _send_bus(dest_url, dest_token, dest_auth, queue, body)
+            if ok:
                 seen.add(dkey)
                 forwarded.append(f"{queue}/{dkey[-10:]}")
                 total += 1
@@ -358,7 +377,7 @@ def _sync_direction(
                 if can_archive_source and msg_id:
                     _archive_bus(source_url, source_token, source_auth, queue, msg_id)
             else:
-                errors.append(f"{queue}/{dkey[-10:]}")
+                errors.append(f"{queue}/{dkey[-10:]} ({reason})")
                 break  # destination unreachable — stop this queue
 
     state[seen_key] = list(seen)
