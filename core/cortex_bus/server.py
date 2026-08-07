@@ -95,30 +95,35 @@ def _authenticate(request: Request) -> str:
 
 def _check_permission(agent: str, queue: str, action: str):
     """Check if agent has permission to perform action on queue.
-    
+
     action: 'read' or 'write'
+
+    is_admin (canonical: auth.sql seeds moses as admin) bypasses all checks.
+    '*' anywhere in the relevant array grants all queues (documented wildcard,
+    auth.sql: "'*' in an array grants all queues").
     """
     from cortex_bus.queue import get_queue
     bus = get_queue()
     bus._ensure_conn()
     with bus._conn.cursor() as cur:
-        column = "can_read" if action == "read" else "can_write"
         cur.execute(
-            f"SELECT {column} FROM bus.permissions WHERE agent_name = %s",
+            "SELECT can_read, can_write, is_admin FROM bus.permissions WHERE agent_name = %s",
             (agent,),
         )
         row = cur.fetchone()
         if not row:
             raise HTTPException(403, f"Agent '{agent}' has no permissions configured")
-        
-        allowed_queues = row[0] or []
-        is_admin = len(allowed_queues) > 0 and allowed_queues[0] == '*'  # future: wildcard support
-        
-        if not is_admin and queue not in allowed_queues:
-            raise HTTPException(
-                403,
-                f"Agent '{agent}' does not have {action} access to queue '{queue}'"
-            )
+
+        can_read, can_write, is_admin = row
+        if is_admin:
+            return
+        allowed = (can_write if action == "write" else can_read) or []
+        if "*" in allowed or queue in allowed:
+            return
+        raise HTTPException(
+            403,
+            f"Agent '{agent}' does not have {action} access to queue '{queue}'"
+        )
 
 
 def _log_audit(agent: str, action: str, queue: Optional[str] = None,
