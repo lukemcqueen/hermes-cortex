@@ -1026,6 +1026,24 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
 
     Returns None (pass through) or {"action": "warn"|"block", "message": str}.
     """
+    # ── Cron/bg sessions are exempt from the domain-skill gate (2026-08-07) ──
+    # This gate is an EDUCATIONAL mechanism for interactive sessions: it
+    # makes the agent load the craft skill before writing so it follows
+    # the skill's conventions. Cron sessions (cron_/bg_ prefixes) execute
+    # pre-vetted prompts whose write targets were declared at install time,
+    # and their enabled_toolsets may exclude the skills toolset entirely
+    # (e.g. ["terminal","file"]) — skill_view() is NOT in the tool registry,
+    # so the gate is structurally unsatisfiable and every write deadlocks
+    # (dream nightly 2026-08-06: blocked writing ~/brain/*/dreams/*.md,
+    # demanding documentation-auditing). The always-skills cron bootstrap
+    # (_bootstrap_cron_skills) exists for the SAME reason: cron agents may
+    # not have skill_view(). Security gates below (PII, adversarial,
+    # bypass-debt, governance lock) still apply to cron/bg writes — only
+    # the skill-loading education requirement is lifted for unattended
+    # sessions that cannot legitimately satisfy it.
+    if _session_type(session_id) in ("cron", "bg"):
+        return None
+
     skill_name, why = _detect_domain_skill_needed(tool_name, args)
     if skill_name is None:
         return None  # No mapping or known gap — pass through

@@ -698,3 +698,128 @@ class TestAdversarialCommitGate:
     def test_non_commit_command_passes(self):
         result = self._run_gate("ls -la", ["ops/scripts/a.sh"])
         assert result is None
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# DOMAIN SKILL GATE — interactive sessions must load the craft skill;
+# cron/bg sessions are exempt (they may lack skill_view() in their toolset)
+# ═════════════════════════════════════════════════════════════════════════════
+
+
+class TestDomainSkillGate:
+    """Tests for _check_domain_skill_gate.
+
+    Interactive sessions: writing .md without documentation-auditing loaded
+    BLOCKS (educational gate). Cron/bg sessions (cron_/bg_ prefixes): the
+    gate PASSES regardless — their enabled_toolsets may exclude the skills
+    toolset (e.g. [terminal,file]), so skill_view() is not in the registry
+    and the gate would be structurally unsatisfiable (dream nightly deadlock
+    2026-08-06). Security gates (PII, adversarial, lock) still apply.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _clean_state(self):
+        """Isolate the module-global domain-warning counter and skills set."""
+        saved_warnings = dict(enforcer._domain_warnings)
+        saved_skills = set(enforcer._skills_loaded_in_session)
+        enforcer._domain_warnings.clear()
+        enforcer._skills_loaded_in_session.clear()
+        yield
+        enforcer._domain_warnings.clear()
+        enforcer._domain_warnings.update(saved_warnings)
+        enforcer._skills_loaded_in_session.clear()
+        enforcer._skills_loaded_in_session.update(saved_skills)
+
+    # ── Interactive sessions: gate enforced ───────────────────────────────
+
+    def test_interactive_md_write_blocks_without_skill(self):
+        """Interactive session writing .md without documentation-auditing → block."""
+        result = enforcer._check_domain_skill_gate(
+            "write_file",
+            {"path": "/home/esther/hermes-cortex/docs/design/new.md"},
+            "20260807_091220_6e0c506a",  # date-format interactive session
+        )
+        assert result is not None
+        assert result["action"] == "block"
+        assert "documentation-auditing" in result["message"]
+
+    def test_interactive_md_write_passes_when_skill_loaded(self):
+        """Skill loaded → pass through silently."""
+        enforcer._skills_loaded_in_session.add("documentation-auditing")
+        result = enforcer._check_domain_skill_gate(
+            "write_file",
+            {"path": "/home/esther/hermes-cortex/docs/design/new.md"},
+            "20260807_091220_6e0c506a",
+        )
+        assert result is None
+
+    def test_interactive_second_offense_escalates(self):
+        """Repeat offense per session → BLOCK with escalation message."""
+        enforcer._check_domain_skill_gate(
+            "write_file",
+            {"path": "/home/esther/hermes-cortex/docs/a.md"},
+            "20260807_091220_6e0c506a",
+        )
+        result = enforcer._check_domain_skill_gate(
+            "write_file",
+            {"path": "/home/esther/hermes-cortex/docs/b.md"},
+            "20260807_091220_6e0c506a",
+        )
+        assert result is not None
+        assert "time(s)" in result["message"]
+
+    # ── Cron sessions: gate exempt (the 2026-08-06 dream nightly fix) ────
+
+    def test_cron_md_write_passes_without_skill(self):
+        """Cron session writing .md without documentation-auditing → PASS.
+
+        This is the exact dream-nightly scenario: enabled_toolsets=[terminal,file]
+        means skill_view() is NOT in the tool registry — the gate is
+        unsatisfiable, so it must pass or every dream write deadlocks.
+        """
+        result = enforcer._check_domain_skill_gate(
+            "write_file",
+            {"path": "/home/esther/brain/esther/dreams/2026-08-07.md"},
+            "cron_a28f8be0bc4e_20260806_230038",
+        )
+        assert result is None
+
+    def test_cron_py_write_passes_without_skill(self):
+        """Cron writing .py without codebase-design → PASS (same rationale)."""
+        result = enforcer._check_domain_skill_gate(
+            "write_file",
+            {"path": "/home/esther/.hermes/scripts/agent-something.py"},
+            "cron_abc123_20260807_030000",
+        )
+        assert result is None
+
+    def test_cron_skill_manage_passes_without_skill(self):
+        """Cron skill_manage without skill-authoring → PASS (e.g. orch-skill-lifecycle)."""
+        result = enforcer._check_domain_skill_gate(
+            "skill_manage",
+            {"action": "create", "name": "some-skill"},
+            "cron_abc123_20260807_030000",
+        )
+        assert result is None
+
+    # ── bg_ (background subagent) sessions: gate exempt ──────────────────
+
+    def test_bg_write_passes_without_skill(self):
+        """bg_ subagent session writing .md → PASS (non-interactive class)."""
+        result = enforcer._check_domain_skill_gate(
+            "write_file",
+            {"path": "/tmp/x.md"},
+            "bg_123456_20260807",
+        )
+        assert result is None
+
+    # ── No session id: default to enforced (fail-safe) ───────────────────
+
+    def test_empty_session_id_still_enforced(self):
+        """Missing session id → treated as interactive → gate enforced."""
+        result = enforcer._check_domain_skill_gate(
+            "write_file",
+            {"path": "/home/esther/hermes-cortex/docs/x.md"},
+            "",
+        )
+        assert result is not None

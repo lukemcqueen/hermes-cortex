@@ -263,6 +263,36 @@ in a per-session file. The `touch` bypass is structurally closed. See also
 
 ---
 
+## Domain Skill Gate
+
+Before `write_file`/`patch`/`skill_manage`, the enforcer detects the domain
+skill for the target file type (extension, filename, or path context — see
+`_EXT_DOMAIN_SKILLS`, `_FILENAME_DOMAIN_SKILLS`, `_PATH_CTX_HINTS` in the
+enforcer source; MUST stay in sync with `survey-before-action` Phase 0a) and
+blocks the write until that skill is loaded via `skill_view()`. First offense
+educates (`💡 DOMAIN SKILL SUGGESTION`), repeat offenses escalate
+(`⛔ DOMAIN SKILL REQUIRED`). This is an **educational/quality gate** for
+interactive sessions — it makes the agent learn the craft skill's conventions
+before writing files of that type.
+
+**Cron/bg sessions are exempt (2026-08-07).** Cron sessions (`cron_` prefix)
+and background subagent sessions (`bg_` prefix) execute **pre-vetted prompts**
+whose write targets were declared at install time, and their
+`enabled_toolsets` may exclude the skills toolset entirely (e.g.
+`["terminal","file"]`) — `skill_view()` is NOT in the tool registry, so the
+gate is structurally unsatisfiable and every write deadlocks. This is the
+same rationale as the always-skills cron bootstrap below. The 2026-08-06
+incident: `agent-mycortex-dream-nightly` (toolsets `[terminal,file]`) was
+blocked writing `~/brain/<agent>/dreams/YYYY-MM-DD.md` because the `.md`
+extension demands `documentation-auditing`, which the cron cannot load.
+
+**Security is NOT weakened:** the PII content gate, adversarial commit gate,
+bypass-debt mandate, and governance lock still apply to cron/bg writes. Only
+the skill-loading education requirement is lifted for unattended sessions
+that cannot legitimately satisfy it. Interactive sessions keep the full gate.
+
+---
+
 ## Survey Gate for Cron Creation
 
 The enforcer implements a **survey-before-action gate** specifically for cron creation.
