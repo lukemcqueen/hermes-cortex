@@ -6,7 +6,7 @@ Hermes Cortex ships with a neutral enterprise core. Personal or opinionated cont
 
 | Profile | Contents |
 |---------|----------|
-| `personal/` | Bible reading skill, soul-refinement workflow, agent SOUL profiles |
+| `personal/` | *Example only — not shipped.* Bible reading skill, soul-refinement workflow, agent SOUL profiles |
 
 ## How It Works
 

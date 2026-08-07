@@ -285,7 +285,6 @@ register "ops/scripts/quality/adversarial-verify.py"     "${CORTEX_DEPLOY_HOME}/
 register_orch "ops/scripts/orch-bus/orch-bus-fleet-dispatch.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-fleet-dispatch.py"
 
 
-# (core/governance/ removed July 2026 — MCP-based governance replaces it)
 register "ops/scripts/manage/agent-session_cache.py"    "${CORTEX_DEPLOY_HOME}/scripts/agent-session_cache.py"
 
 register "ops/scripts/health/prod-watchdog.sh"          "${CORTEX_DEPLOY_HOME}/scripts/prod-watchdog.sh"

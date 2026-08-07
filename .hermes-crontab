@@ -1,2 +1,0 @@
-# orch-clean-health-queue — Drain archived health pings from inbox_health_check every 10m
-hermes cron create name=orch-clean-health-queue schedule="*/10 * * * *" script=orch-clean-health-queue.py no_agent=true deliver=origin

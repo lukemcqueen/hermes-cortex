@@ -25,10 +25,9 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `ops/scripts/agent/agent-message-handler.py` | **Agent message handler** — polls inbox for UPDATE_REQUEST, ROLLBACK_REQUEST, GIT_AUTH_CHECK; runs cortex-update, posts results |
 || `ops/scripts/install-crons.sh` | Cron registration — creates agent-message-handler cron (inbox polling), auto-remediation, health, memory sync, scoring, and audit crons |
 || `docs/env-vars.md` | Environment variable reference — CORTEX_* vars, SSL, deploy scripts, HERMES_SERVICES for nginx service split |
-|| `install.sh` | Single-command installer (idempotent, safe to re-run) |
-|| `ops/install/install.sh` | Main installer script (moved from root in v2.0.0) |
+| `ops/install/install.sh` | Main installer script (moved from root in v2.0.0) |
 || `docs/pre-commit-scoring.md` | Pre-commit scoring hook — TDD cycle scoring, loop governance integration, and enforcement model |
-|| `ops/scripts/` | Health checks, watchdogs, governance, installers — 160+ scripts across subdirectories |
+|| `ops/scripts/` | Health checks, watchdogs, governance, installers — 194 scripts across subdirectories |
 || `ops/scripts/manage/push-metrics.sh` | **Agent metrics push script** — Prometheus-format system metrics POSTed to central VictoriaMetrics. Used by all agents for observability. |
 || `core/cortex_bus/metrics.py` | **Bus metrics module** — prometheus_client definitions + async push client. Imported by bus server for queue-level observability. |
 || `ops/install/deploy/docker-compose.victoria-metrics.yml` | **VictoriaMetrics + Grafana stack** — Docker compose: metrics storage (3mo retention) + visualization dashboard. Grafana at :3030. |
@@ -218,7 +217,17 @@ must be registered in this index.
 |-----|-------------|
 | `CONTRIBUTING.md` | Agent contribution guide — how to make changes, add features, fix bugs, and push to the shared repo |
 | `docs/integration-audit.md` | Integration audit — path consistency, script map, agent notes for three-layer repo health |
-| `ops/scripts/` | Cron scripts, health checks, agent tools — 5 subdirectories: agent/, health/, install/, inbox/, manage/ |
+| `ops/scripts/` | Cron scripts, health checks, agent tools — 11 subdirectories: agent/, bus/, fleet/, hc/, health/, install/, lib/, manage/, orch-bus/, project-map/, quality/ |
 | `ops/scripts/lib/` | Shared Python libraries for fleet scripts — cortex_bus.py (bus HTTP API) |
-| `core/governance/` | REMOVED July 2026 — MCP-based governance replaces it |
+| `core/governance/` | Loop-governance scorer stack — deployed to `tools/loop-governance/` and invoked by `pre-commit-score` (restored 2026-08-02); MCP server `mcp-servers/loop-gov-mcp.py` is the enforcement layer |
 | `.gitignore` | Gitignore — excludes .agentkore, .env, secrets, brain data |
+
+## Audit & Migration Records
+
+| Doc | Description |
+|-----|-------------|
+| `docs/stale-paths-audit.md` | Stale-path audit report — `src/`, `deploy/`, `runtime/` reference cleanup tracking |
+| `docs/adversarial-governance-bypass-report.md` | Adversarial governance bypass report — findings and fixes |
+| `docs/harness-v2-requirements.md` | Task harness v2 requirements — deterministic task control: state machine, lease, interruption, completion gates |
+| `docs/linux-mint-migration.md` | Linux Mint migration notes |
+| `docs/migration-2026-07-08-hermes-to-cortex.md` | Hermes → Cortex migration record (2026-07-08) |

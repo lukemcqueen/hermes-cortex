@@ -9,6 +9,8 @@
 
 **Hermes Cortex** is a self-contained system installer and public skill set for the [Hermes Agent](https://hermes-agent.nousresearch.com) runtime — but it's grown into much more. It's a **multi-agent fleet management platform**, a **governance engine**, a **self-healing operations system**, and a **deep knowledge stack**, all running on your own hardware with zero cloud dependency.
 
+> **Why it exists:** Hermes Cortex turns a single Hermes Agent into a governed, self-healing fleet. It's the only agent harness where change discipline is **enforced at the tool level** — not suggested — where a crashed service **fixes itself before you wake up**, where the knowledge brain **works fully offline**, and where a second orchestrator **takes over the moment the first one blinks**. No cloud, no lock-in, no babysitting.
+
 > **Prerequisite:** [Hermes Agent](https://hermes-agent.nousresearch.com) must be installed first. This project adds skills, services, and infrastructure on top of it.
 
 ---
@@ -24,10 +26,11 @@ Hermes Cortex runs a coordinated team of specialized AI agents, each with distin
 | **Moses** 🗂️ | Orchestrator | Fleet health, cron management, infrastructure, governance |
 | **Esther** 👑 | Backup Orchestrator | Cover for Moses during downtime |
 | **Titus** 🏗️ | DevOps | Service health, ClickHouse ops, recovery automation |
+| **Joseph** ⚙️ | Server Agent | Full-stack infra: nginx, services, web ops, fleet updates |
 | **Kustos** 🛡️ | Security | Threat detection, blocklist management, access control |
 | **Gisu** 💬 | Communications | Inbox routing, message triage, cross-agent coordination |
 
-> **Agent Taxonomy:** Agents fill three role tiers. **Orchestrators** (Moses, Esther) run bus-based fleet orchestration scripts (`orch-bus-*`) and manage the update pipeline. **Server-agents** (Kustos, Gisu) run the full Hermes Cortex stack with inbox polling and bus health checks (`bus-*` scripts). **Dev-agents** (Titus, Joseph) run the agent message handler to process fleet commands via their bus inbox.
+> **Agent Taxonomy:** Agents fill three role tiers. **Orchestrators** (Moses, Esther) run bus-based fleet orchestration scripts (`orch-bus-*`) and manage the update pipeline. **Server-agents** (Joseph, Kustos, Gisu) run the full Hermes Cortex stack with inbox polling and bus health checks. **Dev-agents** (Titus — macOS) run the agent message handler to process fleet commands via their bus inbox.
 
 Agents communicate via a **PGMQ-based Agent Bus** with A2A (Agent-to-Agent) protocol — Postgres-backed message queues with auth, health monitoring, and fallover. No shared state, no race conditions.
 
@@ -57,7 +60,7 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 
 ### 🩺 Self-Healing Operations
 
-**160+ cron jobs** keep the system healthy without human intervention:
+**65 cron jobs per agent — 160+ across the fleet** — keep the system healthy without human intervention:
 
 | Category | Crons | What |
 |----------|-------|------|
@@ -83,7 +86,7 @@ Agent query → web_cache (50μs) → kiwix ZIM (localhost:8080) → mycortex (R
 
 - **Web Cache** — Semantic search cache (sqlite-vec + Ollama embeddings, ~200MB LRU) — saves API costs
 - **Offline Knowledge** — Wikipedia, WikiMed, Wikivoyage, Wikibooks available locally via Docker ZIM server
-- **Offline Code Assistant** — 521 curated code snippets across 32 categories, 19 programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
+- **Offline Code Assistant** — 520 curated code snippets across 30+ topic areas and 25 programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
 - **Offline Reader** — Zero-dependency web UI (`python3 ops/offline/offline-reader.py`) for Bible (55+ languages), hymns, and wiki reference
 - **mycortex** — Fleet knowledge brain: git repos as source of truth → shared Postgres index (FTS + pg_texample; pgvector semantic slice in v1.1) → thin Python CLI + 15-min cron sync. No daemon, no bun. **Inspired by [gbrain](https://github.com/garrytan/gbrain)** (garrytan, MIT) — the same Postgres-native knowledge-brain idea, re-architected with fail-closed RLS source isolation, per-host registration, and a PII federation gate. **Multi-tenant by construction:** each profile connects as its own `mycortex_reader_<profile>` role — RLS (keyed on `CURRENT_USER`) isolates tenants automatically, so a company brain scales to 100 profiles with zero policy changes. [Design doc](docs/design/mycortex-DESIGN.md) · [Multi-tenancy](docs/design/mycortex-multi-tenancy.md) · [Migration stories](docs/elicit/2026-08-01_mycortex-stories.md)
 
@@ -132,18 +135,10 @@ Detailed breakdown: [`docs/architecture.md`](docs/architecture.md#code-architect
 
 ### 🧩 Optional Profiles
 
-The repo ships with a neutral enterprise core. Personal or opinionated content
-lives in `profiles/` as optional layers:
-
-| Profile | Contents |
-|---------|----------|
-| `personal/` | Bible reading skill, soul-refinement workflow, agent SOUL profiles (Moses, Esther, Titus, Kustos, Gisu) |
-
-All paths from personal profiles are symlinked from their canonical locations for
-backward compatibility. To exclude a profile, remove the symlink and the profile
-directory won't be shipped.
-
-See [`profiles/README.md`](profiles/README.md).
+The repo ships with a neutral enterprise core. `profiles/` is the extension
+point for personal or opinionated content — drop a layer in, symlink it into
+the repo, and the fleet ships it. No profile ships by default; the core stays
+neutral. See [`profiles/README.md`](profiles/README.md).
 
 ---
 
@@ -172,7 +167,7 @@ Takes: **8–15 minutes** (mostly model downloads).
 
 ```bash
 # Pre-commit hook (auto-scoring via loop-governance MCP)
-bash ~/hermes-cortex/ops/scripts/pre-commit
+bash ~/hermes-cortex/ops/scripts/pre-commit-score
 score-cycle --help          # ready to use
 ```
 
@@ -224,15 +219,15 @@ CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
 | 5 | **gbrain sync** | Launchd/systemd daemon — syncs brain every 2 minutes |
 | 6 | **Observability** † | Langfuse + Cortex Dashboard |
 | 7 | **`/brain` plugin** | Hermes slash command for gbrain queries |
-| 8 | **Scripts** | 190 scripts: health checks, watchdogs, sync, governance, security |
+| 8 | **Scripts** | 194 scripts: health checks, watchdogs, sync, governance, security |
 | 9 | **Plugin enable** | Auto-activates in Hermes config |
-| 10 | **Skills** | 8+ shared skills installed to `~/.hermes/skills/` |
+| 10 | **Skills** | 290+ shared skills installed to `~/.hermes/skills/` |
 | 11 | **Web Cache** | Semantic web result cache (sqlite-vec + Ollama) |
 | 12 | **Offline Knowledge** | Cascade tool + kiwix ZIM Docker + prep scripts |
 | 13 | **Offline Reader** | `python3 ops/offline/offline-reader.py` — zero-dependency web UI |
-| 14 | **Code Corpus** | 521 snippets across 32 categories, 19 languages; RAG index via Ollama |
+| 14 | **Code Corpus** | 520 snippets across 30+ topics, 25 languages; RAG index via Ollama |
 | 15 | **Auto-Update** | `auto-update.sh` — silent cron-based content updater |
-| 16 | **Cron Jobs** | 160+ maintenance crons: health, security, sync, recovery, reporting |
+| 16 | **Cron Jobs** | 65 maintenance crons per agent (160+ fleet-wide): health, security, sync, recovery, reporting |
 | 17 | **nginx** † | Reverse proxy for Langfuse + Dashboard + hardening |
 | | *† Server profile only* | |
 | | *The knowledge brain is migrating from gbrain → **mycortex** (git-truth + shared Postgres index; see [design](docs/design/mycortex-DESIGN.md)). gbrain remains installed for backward compatibility; mycortex is deployed and synced via `cortex-update.sh` + the `agent-mycortex-sync` cron.* | |
@@ -299,19 +294,18 @@ Titus ──UPDATE_RESULT──→ AgentBus ──→ Moses
 
 | Prefix | Scope | Location | Examples |
 |--------|-------|----------|---------|
-| `orch-bus-*` | Orchestrator-only (Moses, Esther) — run from repo | `ops/scripts/orch-bus/` | `orch-bus-fleet-dispatch`, `orch-bus-fleet-rollback` |
-| `bus-*` | Fleet-wide — deployed to all agents | `ops/scripts/orch-bus/` (registered via `cortex-update.sh`) | `bus-sensor`, `bus-health-check`, `bus-readiness-check` |
+| `orch-bus-*` | Orchestrator-only (Moses, Esther) — deployed via `register_orch` | `ops/scripts/orch-bus/` | `orch-bus-fleet-dispatch`, `orch-bus-fleet-rollback`, `orch-bus-forwarder` |
 | `agent-message-handler` | Agent-side inbox handler | `ops/scripts/agent/` | Polls inbox for UPDATE_REQUEST, ROLLBACK_REQUEST, GIT_AUTH_CHECK |
 | `agent-*` | General agent crons | `ops/scripts/agent/` | `agent-inbox-poll` |
 
 ### Update Flow
 
-1. **Pre-flight:** `bus-readiness-check.py` verifies bus health, git state, and agent inbox queues
+1. **Pre-flight:** `orch-bus-readiness-check.py` verifies bus health, git state, and agent inbox queues
 2. **Dispatch:** `orch-bus-fleet-dispatch.py` sends `UPDATE_REQUEST` to each server-agent's inbox
 3. **Server-agents** poll their inbox, run `cortex-update.sh`, post `UPDATE_RESULT` back
 4. **Dev-agents**: `agent-message-handler` polls their inbox, runs `cortex-update`, posts `UPDATE_RESULT`
 5. **Rollback:** `orch-bus-fleet-rollback.py` reads dispatch state and sends `ROLLBACK_REQUEST` to failed agents
-6. **Auth check:** `bus-git-auth-check.py` verifies each agent can pull from the remote
+6. **Auth check:** `orch-bus-git-auth-check.py` verifies each agent can pull from the remote
 
 ### Shared Bus Library
 
@@ -357,7 +351,7 @@ offline_knowledge query "symptoms of malaria"
 | `ops/scripts/cortex-update.sh` | Deploy scripts from repo to `~/.hermes/scripts/` — run after every `git pull` |
 | `ops/scripts/manage/cortex-doctor.py` | System diagnostics, fix common issues |
 | `ops/scripts/install/install-score-hook.sh` | Install/remove pre-commit scoring hooks on any repo |
-| `ops/scripts/install-crons.sh` | Install/remove all 160+ maintenance cron jobs |
+| `ops/scripts/install-crons.sh` | Install/remove all 60+ agent cron jobs |
 | `ops/scripts/manage/agent-hermes-update.sh` | Silent nightly update of Hermes Agent |
 | `ops/scripts/manage/agent-hermes-cortex-sync.sh` | Nightly git pull of hermes-cortex repo |
 | `ops/scripts/manage/agent-nginx-threat-pipeline.sh` | Daily nginx log scan + auto-ban repeat attackers |

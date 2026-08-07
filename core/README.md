@@ -8,7 +8,7 @@ Canonical schemas, workflows, and policy contracts. This layer defines *what* th
 |-----------|---------|--------|
 | `cortex_bus/` | Cortex Bus implementation — PGMQ-based queue server, auth, circuit breaker, workflow engine | Active |
 | `cortex_bus/schema/` | Bus DDL (auth/queue/workflow/todos/command-verifications) | Active |
-| `governance/` | Loop governance schemas (DEPRECATED — removed July 2026. Use MCP-based loop-governance tools instead) | Removed |
+| `governance/` | Loop-governance scorer stack — `score_cycle.py`, `loop_scorer.py`, `loop_db.py`, `loop_config.py`, `policy_engine.py` etc. Deployed to `tools/loop-governance/` by `cortex-update.sh`, invoked by `pre-commit-score` on every commit (restored 2026-08-02 after a brief removal; MCP server `mcp-servers/loop-gov-mcp.py` is the enforcement layer) | Active |
 
 ### cortex_bus/
 

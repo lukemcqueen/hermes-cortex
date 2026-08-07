@@ -233,4 +233,4 @@ then re-commit. Do NOT use `--no-verify`.
 - `ops/scripts/pre-commit-score` — the hook script
 - `mcp-servers/loop-gov-mcp.py` — the primary enforcer MCP server
 - `ops/scripts/cortex-update.sh` — deploys the hook via `install_precommit_hook()`
-- `core/governance/setup.sh` — REMOVED July 2026. MCP-based governance replaces CLI tools.
+- `core/governance/setup.sh` — legacy CLI installer (not deployed; MCP-based governance replaces CLI tools). The scorer stack (`score_cycle.py` etc.) IS deployed to `tools/loop-governance/` by `cortex-update.sh` and invoked by the pre-commit hook.

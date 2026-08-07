@@ -3,7 +3,7 @@
 > **⚠️ THREE HARD RULES — Every Agent Must Follow**
 >
 > **RULE 1: LOAD TASK-START FIRST — `skill_view('task-start')` is your first tool call on every task.**
-> No other tool call precedes it. This rule sits above all others. A task not preceded by `task-start` is a trust violation. The `task-start` skill loads `survey-before-action`, `agent-flow`, `reasoning-patterns`, `reflexion-check`, `change-checklist`, and `agent-contract` — all mandatory before any work begins. Also load `cortex-preflight` (devops) for repo-specific pre-flight checks.
+> No other tool call precedes it. A task not preceded by `task-start` is a trust violation. The `task-start` skill loads `survey-before-action`, `agent-flow`, `reasoning-patterns`, `reflexion-check`, `change-checklist`, and `agent-contract` — all mandatory before any work begins. Also load `cortex-preflight` (devops).
 >
 > **RULE 2: USE LOOP GOVERNANCE ALWAYS**
 > Every code/config/cron change: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. MCP server blocks write tools without a lock.
@@ -23,8 +23,6 @@
 > 2. `skills_list()` and load matching skills **and their references**
 > 3. Check if the existing system can be extended/wired instead of replaced
 > 4. If the capability exists but isn't wired, **wire it** — don't rebuild it
->
-> This rule exists because every agent defaults to "create new" when "update existing" is faster. Every new file is a debt that compounds.
 >
 > **RULE 7: ORCHESTRATOR-ONLY DOMAINS — SUBMIT PROPOSALS, DON'T EDIT**
 > Only orchestrators (Moses, Esther) may modify:
@@ -57,17 +55,20 @@
 > pre-commit check blocks you because the deployed enforcer differs from the
 > repo: run cortex-update.sh (sanctioned lock-free), re-acquire your governance
 > lock (deploys purge locks), then retry the commit. ⚠️ **Deploy ≠ load:** the
-> RUNNING gateway keeps the OLD enforcer module in memory until `hermes gateway
+> running gateway keeps the OLD enforcer in memory until `hermes gateway
 > restart` — `hermes plugins disable/enable` only writes config.yaml (no hot
-> reload) and agents cannot restart the gateway (lifecycle guard). If still
-> blocked after a deploy, ask the host operator to restart the gateway; do not
-> loop retrying. (Per-session skills markers survive deploys since 2026-08-01.)
+> reload). If still blocked after a deploy, ask the host operator to restart
+> the gateway; do not loop retrying.
 >
 > **RULE 7c: BUS ACCESS — NON-ORCHESTRATORS USE THE HTTP CLIENT ONLY**
 > Non-orchestrators: you have the bus **HTTP client** (`cortex-bus.conf` +
 > `contact-orchestrator.sh`) and NOTHING ELSE. Never install the bus server
 > (Postgres/FastAPI/nginx) or the `cortex-bus` MCP client in `config.yaml` —
 > the doctor WARNS on both. Role matrix: `docs/bus-architecture.md`.
+>
+> **Bus ACL:** read/write is gated per agent per queue via `bus.permissions`;
+> `is_admin=true` bypasses all checks (moses). Both orchestrator buses share
+> the canonical grants in `core/cortex_bus/schema/auth.sql`.
 >
 > **RULE 8: "PULL LATEST" = FULL REFRESH — DO NOT CUT CORNERS**
 > "pull latest" / "update from repo" means the full cycle:
@@ -106,9 +107,9 @@ Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify
 9. **Keep working until done** — don't stop after a stub or plan.
 10. **Use tools, not descriptions** — every response must contain tool calls or a final result.
 11. **Score every change** — every code/config/script edit logged to loop-governance DB.
-  > **⚡ Pre-commit scoring hook** auto-creates a cycle on every commit. No bypass. The hook also runs the mandatory adversarial gate (A2/A4) on every staged script — `--no-verify` is a logged, audited bypass and must never be used to ship a hook-rejected change. **Bounded escape hatch:** 3 consecutive `--no-verify` commits are tolerated; the 4th+ is MANDATED — push blocked + enforcer refuses until a verified commit resets the counter. The nginx-threat-pipeline no longer uses `--no-verify` — fresh marker + blocklist allowlist sanction its commits; safety gates still run.
+  > **⚡ Pre-commit scoring hook** auto-creates a cycle on every commit and runs the mandatory adversarial gate (A2/A4) on staged scripts. `--no-verify` is a logged, audited bypass — never ship a hook-rejected change with it. **Bounded escape hatch:** 3 consecutive `--no-verify` commits tolerated; the 4th+ is MANDATED — push blocked until a verified commit resets the counter.
 12. **Tests/TDD/scoring are always the default.** Only opt-outs: `"skip tests"`, `"read-only"`, `"throwaway prototype"`, `"just check/look at"`.
-13. **DOGFOOD EVERY CHANGE BEFORE DONE (enforced by doctor).** A script change isn't complete until the DEPLOYED copy ran its REAL invocation — for crons: `bash cortex-update.sh`, then `cronjob action='run' job_id=<id>` (manual `python3 script.py` doesn't update the scheduler's `last_status`). The `Script run evidence` check WARNs on any ops/scripts change in the last 7 days whose cron hasn't run since — resolve it before `end_change()`. Prompt changes go to LIVE jobs too (`cronjob action='update'`); `Cron prompt stale refs` catches missed ones.
+13. **DOGFOOD EVERY CHANGE BEFORE DONE (enforced by doctor).** A script change isn't complete until the DEPLOYED copy ran its REAL invocation — for crons: `cortex-update.sh` then `cronjob action='run'` (manual `python3 script.py` doesn't update the scheduler's `last_status`). The `Script run evidence` check WARNs on ops/scripts changes in the last 7 days whose cron hasn't run since — resolve before `end_change()`. Prompt changes go to LIVE jobs too (`cronjob action='update'`).
 14. **Tag discovered issues as follow-ups** — document as `pending` todo, finish current work, then return. Never silently skip.
 15. **Pull before push** — `git pull --rebase origin <branch>` before any `git push`.
 16. **Never print secrets in commands** — use `$(cat <file>)` subshell expansion. `printf`, `echo` with inline secrets, and `-u "user:pass"` are forbidden.
@@ -121,7 +122,7 @@ Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify
 23. **Only modify files in our repo** — `~/hermes-cortex/` → ours. `~/.hermes/` (not in repo) → do NOT touch. `~/.hermes-cortex/state/*`, `~/.hermes/config.yaml` → live config.
 24. **Sharing filter: only share new/substantive changes** — Already in Hermes Agent? ❌. Already in hermes-cortex? ❌. New skill? ✅. Improvement? ✅. PII-only? ❌. Test: *"Would someone running Hermes Cortex benefit?"*
 25. **Self-test gate for fleet commands** — `hc send` refuses without `--self-tested`. Never use bare `pass` in except blocks.
-26. **Skill stub guard + recovery** — `cortex-update.sh` refuses to overwrite a FULL deployed skill with a truncated repo stub (`is_skill_stub`: <1500 bytes AND `Full content (truncated)` or `--- End skill ---`); the doctor FAILs on repo stubs. Recovery: `agent-skill-stub-audit.py --send` on the source agent (Joseph/luke-server) → bus `skill-stub-recovery` payloads → `agent-message-handler` stages them → orchestrator copies full content over `skills/` → `cortex-update.sh`. Never hand-fix stub content from memory — re-collect from the source agent so recovery is verifiable.
+26. **Skill stub guard + recovery** — `cortex-update.sh` refuses to overwrite a FULL deployed skill with a truncated repo stub (`is_skill_stub`); the doctor FAILs on repo stubs. Recovery: `agent-skill-stub-audit.py --send` (source agent) → bus `skill-stub-recovery` → `agent-message-handler` stages → orchestrator copies full content over `skills/` → `cortex-update.sh`. Never hand-fix stubs from memory — re-collect so recovery is verifiable.
 27. **Restart the gateway for enforcer changes** — after `cortex-update.sh` deploys a newer governance enforcer plugin, the running gateway may still execute the old in-memory copy. Verify with the doctor's `Plugin content` check; if it shows deployed ≠ repo while the repo is current, run `hermes gateway restart` from a separate shell (NOT from inside the gateway process — blocked by the enforcer).
 
 ---
@@ -173,7 +174,7 @@ Install `hermes-agent-worker` systemd `--user` service to poll inbox every 30s. 
 ## Agent Cron Management
 Only orchestrators (Moses, Esther) have `cronjob` MCP. Others request via the orchestrator inbox (`inbox_orchestrator`) with subject `🔧 CRON: create|update|remove`.
 
-Universal crons (36 jobs, 7 categories): See [`docs/fleet-reference.md`](docs/fleet-reference.md). **Skill Collection:** `agent-learning-collector` (every 6h) → `orch-skill-lifecycle` (daily 04:00). See [`docs/pipeline-reference.md`](docs/pipeline-reference.md).
+Universal crons (60+ jobs): See [`docs/fleet-reference.md`](docs/fleet-reference.md). **Skill Collection:** `agent-learning-collector` (every 6h) → `orch-skill-lifecycle` (daily 04:00). See [`docs/pipeline-reference.md`](docs/pipeline-reference.md).
 
 | Subject | Location |
 |---------|----------|
