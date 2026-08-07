@@ -1228,15 +1228,17 @@ create_cron "agent-stale-ref-watchdog" "0 5 * * *" \
   "" \
   "true"
 
-# Daily bible reading (LLM-driven, uses deepseek)
+# Daily bible reading (no_agent script — reads SOUL.md, calls deepseek API
+# internally, appends entry + brain page; canonical pattern per
+# skills/spiritual-disciplines/agent-daily-bible-reading/SKILL.md)
 create_cron "agent-daily-bible-reading" "0 1 * * *" \
+  "agent-daily-bible-reading.py" \
   "" \
-  "Read the daily bible reading skill and produce today's scripture entry. Append the entry to ~/.hermes-cortex/brain/journal/daily-scripture.md" \
-  "agent-daily-bible-reading" \
+  "" \
+  "" \
   "origin" \
   "" \
-  "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+  "true"
 
 # No-verify audit — no-agent script checks for --no-verify commits every 60m
 create_cron "agent-no-verify-audit" "*/10 * * * *" \
