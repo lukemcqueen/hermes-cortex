@@ -1260,11 +1260,22 @@ def check_services(res):
     res.add("Ollama", "FAIL", "Not reachable on localhost:11434",
         "Run: systemctl --user start ollama || ollama serve")
 
-  # gbrain daemon — DECOMMISSIONED 2026-08-02 (owner-approved; mycortex replaces).
-  # Expected states:
-  #   - autopilot active          → PASS (pre-flip rollback state, or non-decommissioned host)
-  #   - autopilot disabled/absent → PASS with note (decommissioned — intended)
-  #   - autopilot enabled but inactive → WARN (half-decommissioned)
+  # gbrain — DECOMMISSIONED 2026-08-02 (owner-approved; mycortex replaces).
+  # Any leftover gbrain is stale. Detection is ARTIFACT-based (process + dir
+  # + binary + unit), NOT unit-only: the autopilot daemon is often launched
+  # from ~/.gbrain/autopilot-run.sh (bun gbrain autopilot --repo
+  # ~/brain/<agent>) with no systemd unit, so probing only the unit reported
+  # "decommissioned (PASS)" while the daemon kept running (Moses host
+  # 2026-08-07). A live autopilot is actively harmful: it races real git
+  # commits through the global pre-commit hook — truncating the in-flight
+  # commit's temp index (.git/next-index-<pid>.lock) — and floods the
+  # loop-governance DB with precommit-repo-HEAD noise cycles.
+  # Bracket-trick pattern: the literal '[g]brain' never matches its own
+  # command line, so a shell that merely MENTIONS the pattern (e.g. a user
+  # grepping doctor output) can't trip this check.
+  _gbrain_proc = bool(run_bg(["pgrep", "-f", "[g]brain autopilot"], timeout=5).strip())
+  _gbrain_dir = (HOME / ".gbrain").exists()
+  _gbrain_bin = (HOME / ".local/bin/gbrain").exists()
   _autopilot_enabled = False
   _autopilot_active = False
   if IS_MAC:
@@ -1275,13 +1286,36 @@ def check_services(res):
     _autopilot_active = out.strip() == "active"
     out2 = run_bg(["systemctl", "--user", "is-enabled", "gbrain-autopilot"], timeout=5)
     _autopilot_enabled = out2.strip() == "enabled"
+  _stale_parts = []
+  if _gbrain_proc:
+    _stale_parts.append("autopilot process running")
   if _autopilot_active:
-    res.add("gbrain daemon", "PASS", "autopilot active (rollback state — decommission pending on this host)")
-  elif _autopilot_enabled:
-    res.add("gbrain daemon", "WARN", "autopilot enabled but inactive",
-        "Run: systemctl --user disable gbrain-autopilot (decommission) or start it (rollback)")
+    _stale_parts.append("unit active")
+  if _autopilot_enabled:
+    _stale_parts.append("unit enabled")
+  if _gbrain_dir:
+    _stale_parts.append("~/.gbrain/ present")
+  if _gbrain_bin:
+    _stale_parts.append("~/.local/bin/gbrain present")
+  _gbrain_fix = (
+    "Remove stale gbrain (decommissioned 2026-08-02; mycortex is the brain): "
+    "pkill -f 'gbrain autopilot' 2>/dev/null; "
+    "systemctl --user disable --now gbrain-autopilot 2>/dev/null; "
+    "launchctl unload ~/Library/LaunchAgents/com.gbrain.autopilot.plist 2>/dev/null; "
+    "rm -rf ~/.gbrain && rm -f ~/.local/bin/gbrain && rerun the doctor"
+  )
+  if _gbrain_proc or _autopilot_active:
+    res.add("gbrain (stale)", "FAIL",
+        "stale gbrain daemon still running — races git commits via the pre-commit hook: "
+        + ", ".join(_stale_parts),
+        _gbrain_fix)
+  elif _autopilot_enabled or _gbrain_dir or _gbrain_bin:
+    res.add("gbrain (stale)", "WARN",
+        "stale gbrain artifacts remain: " + ", ".join(_stale_parts),
+        _gbrain_fix)
   else:
-    res.add("gbrain daemon", "PASS", "decommissioned (autopilot disabled; mycortex is the knowledge brain)")
+    res.add("gbrain (stale)", "PASS",
+        "decommissioned — no gbrain daemon, dir, or binary; mycortex is the knowledge brain")
 
   # Worker service conflict check
   if IS_LINUX:
