@@ -2444,14 +2444,21 @@ def check_governance(res):
   if _loop_db.exists():
     try:
       import sqlite3
-      # Active task_ids = those with a live lock file (status executing).
+      # Active task_ids = those with a live lock file. The lock's EXISTENCE
+      # is the active signal — end_change unlinks it on release. Filtering
+      # on status == "executing" was wrong: begin_change with a plan writes
+      # status "planning", so every planned task's PENDING cycle was
+      # misclassified as a leak (observed 2026-08-08, orch-skill-lifecycle).
+      # Only terminal-state locks (completed/cancelled) are treated as
+      # inactive, matching the task state machine.
       _active_tasks = set()
       _state_dir = CORTEX_HOME / "state"
+      _terminal_states = {"completed", "cancelled"}
       if _state_dir.is_dir():
         for _lf in _state_dir.glob(".governance-*.json"):
           try:
             _ld = json.loads(_lf.read_text())
-            if _ld.get("status") == "executing" and _ld.get("task_id"):
+            if _ld.get("task_id") and _ld.get("status") not in _terminal_states:
               _active_tasks.add(_ld["task_id"])
           except (OSError, ValueError):
             continue
