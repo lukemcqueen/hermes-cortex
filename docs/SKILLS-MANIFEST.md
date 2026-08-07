@@ -329,7 +329,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `openclaw-migration` | 1.0.0 | Import an OpenClaw setup (memories, skills) into Hermes. | `skill_view(name='openclaw-migration')` |
 
-## Mlops (30 skills)
+## Mlops (32 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -342,6 +342,7 @@ their domain.
 | `fine-tuning-with-trl` | 1.0.1 | TRL: SFT, DPO, GRPO, RLOO reward modeling for LLM RLHF. | `skill_view(name='fine-tuning-with-trl')` |
 | `guidance` | 1.0.1 | Constrain LLM output with grammars; guarantee valid JSON. | `skill_view(name='guidance')` |
 | `huggingface-accelerate` | 1.0.1 | Run PyTorch training across GPUs with minimal changes. | `skill_view(name='huggingface-accelerate')` |
+| `huggingface-tokenizers` | 1.0.0 | Fast BPE/WordPiece tokenization and custom vocab training. | `skill_view(name='huggingface-tokenizers')` |
 | `instructor` | 1.0.0 | Structured LLM outputs validated with Pydantic. | `skill_view(name='instructor')` |
 | `lambda-labs-gpu-cloud` | 1.0.0 | On-demand GPU cloud instances for ML training. | `skill_view(name='lambda-labs-gpu-cloud')` |
 | `llava` | 1.0.0 | Vision-language chat: VQA, captioning, image dialogue. | `skill_view(name='llava')` |
@@ -356,6 +357,7 @@ their domain.
 | `pytorch-fsdp` | 1.0.0 | Fully sharded data-parallel training for large models. | `skill_view(name='pytorch-fsdp')` |
 | `pytorch-lightning` | 1.0.0 | Clean training loops with built-in distributed support. | `skill_view(name='pytorch-lightning')` |
 | `qdrant-vector-search` | 1.0.1 | Vector search engine for production RAG systems. | `skill_view(name='qdrant-vector-search')` |
+| `segment-anything-model` | 1.0.0 | SAM: zero-shot image segmentation via points, boxes, masks. | `skill_view(name='segment-anything-model')` |
 | `simpo-training` | 1.0.0 | Reference-free preference alignment, simpler than DPO. | `skill_view(name='simpo-training')` |
 | `slime-rl-training` | 1.0.0 | RL post-training for LLMs with Megatron and SGLang. | `skill_view(name='slime-rl-training')` |
 | `sparse-autoencoder-training` | 1.0.1 | Train sparse autoencoders to interpret model features. | `skill_view(name='sparse-autoencoder-training')` |
