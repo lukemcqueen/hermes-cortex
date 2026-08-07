@@ -71,6 +71,43 @@ After a consumer fix, prove the full path with real messages:
    cwd fails the `hermes_paths` import).
 3. Consume: run the report script; confirm the agent shows ✅.
 
+## Pattern 4: Alert-Stop ≠ Success — the Mirror-Race / Consumer-Took-It Check
+
+**Rule:** A mirror/forwarder failure alert disappearing does NOT mean the peer
+delivery succeeded. Any consumer that takes the same message off the source
+queue makes the next mirror tick silent.
+
+**Verified example (2026-08-07, `orch-bus-forwarder-sync`):** the alert
+`⚠️ LOCAL→PEER: 1 failed • inbox_orchestrator/ee8d75afb2` fired on 2 ticks for
+a kustos PROPOSAL, then stopped — not because the peer received it, but
+because the backup orchestrator's `agent-message-handler` polls the shared
+`inbox_orchestrator` directly and archived the message from the source queue
+(`bus.archives.archived_by='esther'`, 3 min after enqueue). The mirror never
+delivered it.
+
+**Correct diagnosis:**
+1. **Frequency across ALL ticks first** (`~/.hermes/cron/output/<job_id>/`):
+   one message alerting 2–3 ticks then silent = consumed or transient; the
+   same message alerting EVERY tick = persistent auth/ACL problem.
+2. **Find who really took it:** `bus.archive()` INSERTs into `bus.archives`
+   then DELETEs from `bus.messages` — archived rows persist with
+   `archived_at` + `archived_by`. `archived_by=esther` on `inbox_orchestrator`
+   = backup consumed directly, never mirrored. `bus.delete()` hard-purges with
+   zero trace; `bus.recover_timeouts()` never touches fresh pending
+   main-queue messages.
+3. **Hash-suffix alert IDs:** the forwarder's bullet is `queue/dkey[-10:]`,
+   dkey = `corr:<correlation_id>` or
+   `hash:<sha256(json.dumps(body, sort_keys=True, default=str))[:32]>`. A hash
+   ID is computed at runtime and matches NOTHING in the DB — recompute it over
+   candidate archived bodies and compare the tail. Corr-based IDs ARE
+   searchable via the `correlation_id` column.
+4. **The alert omits the HTTP status** — a persistent per-queue 403 (peer-bus
+   ACL grant needed) and a transient 5xx/timeout look identical from the alert
+   alone; the tick-frequency pattern is the discriminator.
+
+Full worked example (timeline, SQL queries, hash-recompute snippet):
+`references/forwarder-failure-diagnosis.md`.
+
 ## Pitfalls
 
 - **Direct script runs mislead.** A no_agent cron gets `PYTHONPATH` from
