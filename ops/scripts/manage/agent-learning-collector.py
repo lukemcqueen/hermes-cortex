@@ -321,7 +321,7 @@ def _get_session_stats() -> dict:
                 # Sessions in last N days
                 cutoff = time.time() - (MAX_SESSION_DAYS * 86400)
                 cur.execute(
-                    "SELECT COUNT(*), MAX(created_at) FROM sessions WHERE created_at > ?",
+                    "SELECT COUNT(*), MAX(last_activity_at) FROM sessions WHERE last_activity_at > ?",
                     (cutoff,),
                 )
                 row = cur.fetchone()

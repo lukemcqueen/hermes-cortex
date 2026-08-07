@@ -192,6 +192,11 @@ instinct. Simple fix that works beats correct-but-invasive every time.
 introducing a variable: invented `TELEGRAM_CHAT_ID` when canonical
 `TELEGRAM_HOME_CHANNEL` was already on every host (2026-08-06).
 <!-- Added 2026-08-06 -->
+**Test the actual send before remote surgery** — a 403 on one peer queue
+(`inbox_orchestrator`) doesn't mean the peer is unreachable: sibling queues
+(`inbox_esther`) with the same Basic auth often accept. Try the real write with
+existing credentials before planning SSH/Postgres ACL changes on the peer host.
+<!-- Added 2026-08-07 -->
 
 ### 12. Not Done Until Tested
 

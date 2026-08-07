@@ -498,6 +498,27 @@ if not session_id:
     print('NO-LOCK')
     sys.exit(1)
 
+# ── Cron/bg sessions: accept the enforcer's skills-loaded marker ──
+# Cron/bg agents (e.g. enabled_toolsets=[terminal,file,web]) have NO
+# skill_view() in their tool registry and their messages are NOT
+# recorded to state.db mid-run, so the reflexion gate is structurally
+# unsatisfiable for them (same rationale as the enforcer's domain-skill
+# gate cron/bg exemption, commit b8bbaf52 2026-08-07). Accept the
+# enforcer's per-session skills-loaded marker instead: the cron
+# bootstrap (_bootstrap_cron_skills) creates it ONLY after verifying
+# all 8 always-section skills exist on disk, and its fingerprint pins
+# it to the deployed skill versions. Fail closed if the marker is
+# missing or stale — such commits fall through to the normal checks.
+if session_id.startswith('cron_') or session_id.startswith('bg_'):
+    _marker = os.path.join(gov_dir, 'skills-loaded', session_id)
+    try:
+        with open(_marker) as _mf:
+            _content = _mf.read().strip()
+    except OSError:
+        _content = ''
+    if _content.startswith(f'session:{session_id}'):
+        sys.exit(0)
+
 # Query the messages table for skill_view('reflexion-check') in this session
 if not os.path.exists(state_db):
     print('NO-DB')
