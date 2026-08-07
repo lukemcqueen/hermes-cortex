@@ -232,8 +232,8 @@ of input tokens per run.
 | `agent-fixer-*` | `auto-remediation` | `terminal, file, web` |
 | `orch-skill-lifecycle` | `orch-skill-lifecycle` | `terminal, file, web` |
 | `orch-skill-evaluate` | `skill-vetting` | `terminal, file` |
-| `agent-weekly-loop-eval` | `loop-governance` | `terminal, file` |
-| `agent-daily-soul-refinement` | `soul-refinement` | `terminal, file` |
+| `local-weekly-loop-eval` | `loop-governance` | `terminal, file` |
+| `local-daily-soul-refinement` | `soul-refinement` | `terminal, file` |
 | `agent-agents-md-prune-apply` | `documentation-scope` | `terminal, file` |
 | `agent-memory-pruning` | (self-contained prompt) | `terminal, file` |
 | `local-daily-sustainability-briefing` | `content-production`, `content-humanizer` | `web, terminal, file` |

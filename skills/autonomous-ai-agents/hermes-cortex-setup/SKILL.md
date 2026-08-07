@@ -629,12 +629,12 @@ Expected output: "✓ Created: N new cron job(s)" where N is the number of scrip
 
 Main categories of universal crons:
 - **Health monitoring**: `system-alert-watchdog` (every 30m), `service-recovery` (every 5m), `model-health-watchdog` (daily)
-- **Governance**: `governance-auditor` (every 6h), `agent-weekly-loop-eval` (weekly)
+- **Governance**: `governance-auditor` (every 6h), `local-weekly-loop-eval` (weekly)
 - **Inbox**: `inbox-flag` (every 10m), `agent-inbox` (every 2h)
 - **Remediation**: `remediation-sensor` (every 5m), `agent-fixer` (every 2h)
 - **Security**: `threat-pipeline` (daily), `agent-ip-submission` (every 30m)
 - **Maintenance**: `memory-pruning` (weekly), `memory-to-brain-sync` (every 6h)
-- **Content**: `agent-daily-bible-reading` (daily), `agent-daily-soul-refinement` (daily)
+- **Content**: `agent-daily-bible-reading` (daily), `local-daily-soul-refinement` (daily)
 
 Verify with: `hermes cron list`
 
