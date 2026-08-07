@@ -217,6 +217,40 @@ echo "session:test" > ~/.hermes-cortex/state/skills-loaded/test-session
 
 ---
 
+## 8. Cron/bg Sessions Are Exempt From the Domain-Skill Gate (2026-08-07)
+
+The domain-skill gate (`_check_domain_skill_gate`) is an EDUCATIONAL mechanism
+for interactive sessions: it makes the agent load the craft skill (e.g.
+`documentation-auditing` for `.md`) before writing. Cron sessions (`cron_`
+prefix) and background subagent sessions (`bg_` prefix) execute pre-vetted
+prompts whose write targets were declared at install time, and their
+`enabled_toolsets` may exclude the skills toolset entirely (e.g.
+`["terminal","file"]`) — `skill_view()` is NOT in the tool registry, so the
+gate is structurally unsatisfiable and every write deadlocks.
+
+**Regression 2026-08-06:** `agent-mycortex-dream-nightly` (toolsets
+`[terminal,file]`) was blocked writing `~/brain/<agent>/dreams/*.md` because
+the `.md` extension demands `documentation-auditing`, which the cron cannot
+load. Same class affects memory-pruning (MEMORY.md), agents-md-prune-apply
+(AGENTS.md), soul-refinement (SOUL.md), orch-skill-lifecycle (skills/).
+
+**Fix (commit b8bbaf52):** `_check_domain_skill_gate` returns None early when
+`_session_type(session_id) in ("cron", "bg")`. This mirrors the always-skills
+cron bootstrap rationale (cron agents may not have skill_view()). Security is
+NOT weakened: PII content gate, adversarial commit gate, bypass-debt mandate,
+and governance lock still apply to cron/bg writes.
+
+**Checklist when modifying the domain gate:**
+- [ ] Do NOT add path exemptions for specific cron write targets (dreams/,
+      MEMORY.md, etc.) — the session-type exemption is the general fix.
+- [ ] Keep interactive enforcement: `_session_type()` returns "interactive"
+      for date-format and empty session IDs — the gate still fires for them.
+- [ ] Tests: `tests/test_runtime/test_governance_bypass.py::TestDomainSkillGate`
+      — cron/bg pass, interactive blocks, empty/None session still enforced.
+- [ ] The gate's educational purpose lives in the BLOCK message — if you ever
+      re-enable it for crons, crons MUST have the skills toolset in
+      `enabled_toolsets` or every write deadlocks again.
+
 ## References
 
 - `plugins/governance-enforcer/__init__.py` — the enforcer itself
