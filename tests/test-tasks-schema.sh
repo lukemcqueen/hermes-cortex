@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test-tasks-schema.sh — L1 hermetic AC battery for the tasks schema (v001+v002)
+# test-tasks-schema.sh — L1 hermetic AC battery for the tasks schema (v001–v004)
 #
 # From docs/design/task-workflow.md §8 (QA B-8 mandatory test plan):
 #   hermetic scratch DB `tasks_test` (refuses `mycortex` DB with a guard),
@@ -43,7 +43,7 @@ $PSQL_SUPER -c "CREATE DATABASE ${TEST_DB};" >/dev/null 2>&1
 echo "  created ${TEST_DB}"
 
 echo ""
-echo "═══ AC-L1-1: Fresh DB → migrate.py applies v001+v002; schema exists ═══"
+echo "═══ AC-L1-1: Fresh DB → migrate.py applies v001–v004; schema exists ═══"
 if python3 "$MIGRATE_PY" --db-name "$TEST_DB" >/dev/null 2>&1; then
   pass "migrate.py applies migrations on fresh DB"
 else

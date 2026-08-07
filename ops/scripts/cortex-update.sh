@@ -214,6 +214,8 @@ register "mcp-servers/task-mcp.py"                      "${CORTEX_DEPLOY_HOME}/s
 register "ops/services/tasks/migrate.py"                "${CORTEX_DEPLOY_HOME}/services/tasks/migrate.py"
 register "ops/services/tasks/schema/v001__tasks.sql"    "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v001__tasks.sql"
 register "ops/services/tasks/schema/v002__doctor-probe-source.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v002__doctor-probe-source.sql"
+register "ops/services/tasks/schema/v003__cancel-column-null.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v003__cancel-column-null.sql"
+register "ops/services/tasks/schema/v004__cancel-update-column.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v004__cancel-update-column.sql"
 register_orch "ops/scripts/install/cortex-setup-langfuse.sh"   "${CORTEX_DEPLOY_HOME}/scripts/cortex-setup-langfuse.sh"
 register "ops/scripts/setup-fleet-langfuse.sh"         "${CORTEX_DEPLOY_HOME}/scripts/setup-fleet-langfuse.sh"
 register "ops/scripts/cortex-update.sh"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-update.sh"
