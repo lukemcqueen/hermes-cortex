@@ -388,23 +388,22 @@ Eval runs update session state:
 
 ### Cron Integration
 
-```bash
-# Daily regression (6am)
-hermes cron create \
-  --name "eval-daily-regression" \
-  --schedule "0 6 * * *" \
-  --prompt "Run daily regression eval suite using eval-harness skill. Report failures only." \
-  --skill "eval-harness" \
-  --deliver "origin"
+The golden regression gate is ALREADY deployed fleet-wide as an orchestrator
+cron (F-008): `orch-daily-regression-gate` at 03:15 daily, no_agent, wired to
+`orch-daily-regression-gate.sh` → `run-evals.py --suite regression --standalone`.
+Silent on pass; report + exit 1 on fail (Telegram alert to Luke). Do NOT create
+a second daily-regression cron.
 
-# Weekly failure analysis (Monday 7am)
-hermes cron create \
-  --name "weekly-failure-analysis" \
-  --schedule "0 7 * * MON" \
-  --prompt "Run weekly failure analysis using eval-harness skill. Cluster failures, identify top 3 patterns, create GitHub issues." \
-  --skill "eval-harness" \
-  --deliver "origin"
+```bash
+# Manual invocation (same as the cron runs)
+python3 ~/.hermes-cortex/scripts/run-evals.py --suite regression --standalone
+
+# Add a NEW golden task → edit evals/regression-golden.yaml, add a grader
+# function with @grader("name") in run-evals.py, reference it in the task.
 ```
+
+Weekly failure analysis (cluster failures, top patterns) is not yet cron-wired —
+run manually when needed.
 
 ## Metrics to Track
 
@@ -447,12 +446,22 @@ hermes cron create \
 | Path | Purpose |
 |------|---------|
 | `skills/devops/eval-harness/SKILL.md` | This skill |
-| `ops/scripts/run-evals.py` | Eval execution engine |
-| `ops/scripts/analyze-failures.py` | Weekly failure analysis |
-| `evals/` | Eval definitions (YAML) |
-| `evals/graders/` | Grader implementations (Python) |
+| `ops/scripts/manage/run-evals.py` | Eval execution engine — real deterministic graders in the GRADERS registry; unknown grader names fail loudly, never simulated |
+| `ops/scripts/orch-daily-regression-gate.sh` | F-008 daily golden gate wrapper (no_agent cron, silent on pass, report+exit 1 on fail) |
+| `evals/regression-golden.yaml` | Golden task suite v1 — bus send/read, task lifecycle, EXEC round-trip, doctor clean, core skills |
+| `evals/suites/regression.yaml` | Regression suite manifest (lists `regression-golden`) |
 | `~/.hermes-cortex/evals/traces/` | Captured eval traces |
-| `~/.hermes-cortex/evals/reports/` | Generated reports |
+| `~/.hermes-cortex/evals/reports/` | Generated reports (JSON, one per run, trend trackable) |
+
+**Golden suite v1** (F-008, orchestrator daily gate `orch-daily-regression-gate` at 03:15):
+- `bus_round_trip` — send→read(vt-hidden)→archive probe on `inbox_esther` via the ACTIVE `CORTEX_BUS_URL`
+- `task_lifecycle` — task-db.py add→list→update→delete probe (zero residue, safety-net delete in `finally`)
+- `exec_round_trip` — `python3 -c` returns EXEC-OK
+- `doctor_clean` — `cortex-doctor.py --json` summary.fail == 0 (warns tolerated)
+- `core_skills` — every always-section skill in skills.yaml resolves to a loadable SKILL.md
+
+Run: `python3 ~/.hermes-cortex/scripts/run-evals.py --suite regression --standalone`.
+Add graders: register a function with `@grader("name")` returning `(passed, detail)`; reference it in a task's `grading.deterministic` list.
 
 ## Related Skills
 
