@@ -242,8 +242,13 @@ GRANT EXECUTE ON FUNCTION learnings.set_status(UUID, TEXT) TO mycortex_reader;
 
 -- Lifecycle SELECT — orchestrator profile roles only (workers stay
 -- INSERT-only via capture(); they have no reason to read the ledger).
-GRANT SELECT ON learnings.learning TO mycortex_reader_esther;
+-- Conditional DO-block (mirrors tasks v001 B-2 pattern): worker hosts
+-- don't have mycortex_reader_esther/moses, and granting to a nonexistent
+-- role FAILS the migration. Each host grants only its local roles.
 DO $$ BEGIN
+  IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'mycortex_reader_esther') THEN
+    GRANT SELECT ON learnings.learning TO mycortex_reader_esther;
+  END IF;
   IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'mycortex_reader_moses') THEN
     GRANT SELECT ON learnings.learning TO mycortex_reader_moses;
   END IF;
