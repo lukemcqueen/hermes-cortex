@@ -521,12 +521,20 @@ next_step "Fail2ban (nginx + SSH)"
 # Basic nginx jail
 if [[ ! -f /etc/fail2ban/jail.d/hermes-cortex.local ]]; then
     cat > /etc/fail2ban/jail.d/hermes-cortex.local << 'JAIL'
+[DEFAULT]
+# Relaxed for legitimate users (2026-08-08): maxretry raised so a typo or
+# one-off download doesn't ban; bantime shortened to a 1h cooldown. Real
+# scanners/brute-forcers still get banned — only the tolerance changed.
+# Add office/VPN/user ranges here (space-separated) so legit users are never
+# banned regardless of the jails below:
+# ignoreip = 127.0.0.1/8 ::1 203.0.113.0/24
+
 [nginx-http-auth]
 enabled  = true
 port     = http,https
 filter   = nginx-http-auth
 logpath  = /var/log/nginx/error.log
-maxretry = 5
+maxretry = 8
 bantime  = 3600
 
 [nginx-botsearch]
@@ -534,17 +542,17 @@ enabled  = true
 port     = http,https
 filter   = nginx-botsearch
 logpath  = /var/log/nginx/access.log
-maxretry = 10
-findtime = 60
-bantime  = 86400
+maxretry = 20
+findtime = 600
+bantime  = 3600
 
 [sshd]
 enabled  = true
 port     = ssh
 filter   = sshd
 logpath  = /var/log/auth.log
-maxretry = 3
-bantime  = 86400
+maxretry = 5
+bantime  = 3600
 JAIL
     ok "fail2ban jails configured (nginx-http-auth, nginx-botsearch, sshd)"
 fi

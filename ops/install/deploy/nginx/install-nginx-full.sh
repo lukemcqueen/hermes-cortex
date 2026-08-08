@@ -316,7 +316,7 @@ port     = http,https
 filter   = nginx-badbots
 logpath  = ${NGINX_LOG_DIR}/*-access.log
 maxretry = 3
-bantime  = 86400
+bantime  = 3600
 findtime = 3600
 JAIL
       echo "  ✓ Jail entry added to jail.local"
@@ -337,7 +337,7 @@ port     = http,https
 filter   = nginx-badbots
 logpath  = ${NGINX_LOG_DIR}/*-access.log
 maxretry = 3
-bantime  = 86400
+bantime  = 3600
 findtime = 3600
 JAIL
     echo "  ✓ jail.local created with nginx-badbots"
