@@ -1254,6 +1254,20 @@ def _check_adversarial_commit_gate(
     if not any(re.search(p, command) for p in _ADVERSARIAL_COMMIT_PATTERNS):
         return None
 
+    # ── Cron/bg sessions: accept the enforcer's skills-loaded marker ──
+    # Cron/bg agents (e.g. enabled_toolsets=[terminal,file,web]) have NO
+    # skill_view() in their tool registry, so this gate is structurally
+    # unsatisfiable for them and every git push deadlocks (orch-skill-lifecycle
+    # 2026-08-09: commit passed the pre-commit adversarial scan, push blocked
+    # by this gate). Same rationale + proof as the domain-skill gate cron/bg
+    # exemption (b8bbaf52) and the pre-commit reflexion-gate fix (5d6600e3):
+    # accept the fingerprint-pinned skills-loaded marker, which
+    # _bootstrap_cron_skills creates ONLY after verifying all always-skills
+    # (incl. adversarial-verifier) exist on disk. Fail closed: no marker or
+    # stale fingerprint → the gate still blocks.
+    if _session_type(session_id) in ("cron", "bg") and _check_skills_loaded_marker(session_id):
+        return None
+
     # Skill already loaded — clear warnings and pass (per-session, 2026-08-08)
     if "adversarial-verifier" in _session_skills_loaded.get(session_id or "", set()):
         _adversarial_warnings.pop(session_id, None)
