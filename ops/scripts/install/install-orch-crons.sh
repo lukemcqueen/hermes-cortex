@@ -134,6 +134,7 @@ if $UNINSTALL; then
     "orch-bus-inbox-relay" \
     "orch-bus-recover-timeouts" \
     "orch-clean-health-queue" \
+    "orch-daily-regression-gate" \
     "orch-fleet-watchdog" \
     "orch-health-report-saturday" \
     "orch-health-report-weekday" \
@@ -409,6 +410,20 @@ create_cron "orch-health-report-saturday" "0 11,17 * * 6" \
 # Orchestrator-only: Moses primary, Esther backup
 create_cron "orch-fleet-watchdog" "*/5 * * * *" \
   "orch-fleet-watchdog.py" \
+  "" \
+  "" \
+  "" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
+  "" \
+  "true"
+
+# Daily golden regression gate — F-008. Runs the eval-harness golden suite
+# (bus round-trip, task lifecycle, exec, doctor clean, core skills) every
+# morning BEFORE the skill-lifecycle pipeline (04:39) so a failing gate can
+# block unverified skill upstreaming the same day. no_agent watchdog: silent
+# on pass, report + exit 1 on fail (Telegram alert to Luke).
+create_cron "orch-daily-regression-gate" "15 3 * * *" \
+  "orch-daily-regression-gate.sh" \
   "" \
   "" \
   "" \

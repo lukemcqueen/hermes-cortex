@@ -65,9 +65,9 @@ Every cron name MUST start with a group prefix. No bare names:
 
 ---
 
-## Current Cron State (61 jobs)
+## Current Cron State (62 jobs)
 
-### Orchestrator-only (`orch-*`) — 12 crons
+### Orchestrator-only (`orch-*`) — 13 crons
 
 | Name | Schedule | Type | Script | Deliver |
 |------|----------|------|--------|---------|
@@ -76,6 +76,7 @@ Every cron name MUST start with a group prefix. No bare names:
 | `orch-bus-confirmation-poller` | `every 10m` | no_agent | `orch-bus-confirmation-poller.py` | local |
 | `orch-bus-confirmation-alert` | `*/15 * * * *` | no_agent | `orch-bus-confirmation-alert.sh` | Telegram |
 | `orch-bus-forwarder-sync` | `*/2 * * * *` | no_agent | `orch-bus-forwarder.py` | origin |
+| `orch-daily-regression-gate` | `15 3 * * *` | no_agent | `orch-daily-regression-gate.sh` | Telegram |
 | `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | `orch-fleet-watchdog.py` | Telegram |
 | `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent | `orch-health-report.py` | origin |
 | `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent | `orch-health-report.py` | origin |

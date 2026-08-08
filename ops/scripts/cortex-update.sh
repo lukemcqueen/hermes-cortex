@@ -291,6 +291,9 @@ register "ops/scripts/manage/agent-session_cache.py"    "${CORTEX_DEPLOY_HOME}/s
 register "ops/scripts/health/prod-watchdog.sh"          "${CORTEX_DEPLOY_HOME}/scripts/prod-watchdog.sh"
 register_orch "ops/scripts/agent/orch-fleet-watchdog.py"   "${CORTEX_DEPLOY_HOME}/scripts/orch-fleet-watchdog.py"
 
+# F-008 daily golden regression gate (eval-harness wired to a no_agent cron)
+register_orch "ops/scripts/orch-daily-regression-gate.sh"   "${CORTEX_DEPLOY_HOME}/scripts/orch-daily-regression-gate.sh"
+
 # Failover watchdog — detect bus outage, per-role behavior. Deployed to ALL
 # agents (workers detect + alert; orchestrators run full failover).
 register "ops/scripts/agent/cortex-bus-failover-watchdog.py"  "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-failover-watchdog.py"

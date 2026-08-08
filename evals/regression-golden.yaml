@@ -1,0 +1,56 @@
+# Golden Task Suite v1 — fleet-critical invariants that must hold daily.
+# Consumed by run-evals.py --suite regression (orchestrator daily gate, F-008).
+# Every `deterministic` grader name MUST exist in run-evals.py's GRADERS
+# registry — an unknown grader fails the task loudly (no silent skip).
+
+name: regression-golden
+description: "Golden task suite v1 — bus round-trip, task lifecycle, EXEC round-trip, doctor clean, core skills"
+
+tasks:
+  - id: bus-send-read
+    description: "Bus send → read → archive round-trip completes against the live bus"
+    input: "Verify the Agent Bus accepts a send, returns it on read, and archives it"
+    expected:
+      - "send returns msg_id"
+      - "read returns the matching correlation_id"
+      - "archive succeeds"
+    grading:
+      deterministic: ["bus_round_trip"]
+
+  - id: task-lifecycle
+    description: "Task DB add → list → update → delete round-trip (probe row cleaned up)"
+    input: "Verify the tasks schema accepts a probe row through the canonical CLI"
+    expected:
+      - "add returns a UUID"
+      - "list contains the probe"
+      - "update to completed succeeds"
+      - "probe row deleted (no residue)"
+    grading:
+      deterministic: ["task_lifecycle"]
+
+  - id: exec-round-trip
+    description: "Subprocess exec returns expected output (harness exec path works)"
+    input: "Run python3 -c and verify output"
+    expected:
+      - "exit code 0"
+      - "stdout contains EXEC-OK"
+    grading:
+      deterministic: ["exec_round_trip"]
+
+  - id: doctor-clean
+    description: "Cortex doctor reports zero failures (warns tolerated)"
+    input: "Run cortex-doctor.py --json and parse summary"
+    expected:
+      - "summary.fail == 0"
+    grading:
+      deterministic: ["doctor_clean"]
+
+  - id: core-skills
+    description: "All always-section skills present and loadable (SKILL.md + frontmatter)"
+    input: "Verify every skill named in ~/.hermes-cortex/skills.yaml always section resolves"
+    expected:
+      - "every always-skill has a SKILL.md"
+      - "frontmatter name matches"
+      - "frontmatter parses as YAML"
+    grading:
+      deterministic: ["core_skills"]

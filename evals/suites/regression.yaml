@@ -1,0 +1,8 @@
+# Regression suite — the daily golden gate (F-008).
+# Lists eval definitions to run; each name resolves to evals/<name>.yaml.
+
+name: regression
+description: "Daily golden regression suite — fleet-critical invariants"
+
+evals:
+  - regression-golden

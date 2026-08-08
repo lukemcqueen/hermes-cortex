@@ -1,307 +1,411 @@
 #!/usr/bin/env python3
 """
-Eval Harness — Run evaluation suites against Hermes agents.
+Eval Harness — run evaluation suites against live fleet invariants (F-008).
 
-STANDALONE MODE (from shell):
-    python3 run-evals.py --eval cron-installation --standalone
+REAL deterministic grading only. No simulated passes: every `deterministic`
+grader name in an eval YAML must exist in the GRADERS registry below, and
+every grader executes real checks against the live system (bus API, task DB,
+doctor JSON, skills manifest). Unknown grader names fail loudly — never
+silently skipped.
+
+STANDALONE MODE (cron / shell):
     python3 run-evals.py --suite regression --standalone
+    python3 run-evals.py --eval regression-golden --standalone
 
 AGENT MODE (inside Hermes session):
-    python3 run-evals.py --eval cron-installation
     python3 run-evals.py --suite regression
 
-Standalone mode uses subprocess + filesystem instead of hermes_tools,
-so it works from any shell or cron job without a live Hermes session.
+Exit codes: 0 = all tasks passed, 1 = any task failed.
+The no_agent cron wrapper (orch-daily-regression-gate.sh) suppresses stdout
+on success and emits the report + exit 1 on failure (watchdog pattern).
 """
+
 import argparse
 import json
 import os
+import re
+import subprocess
 import sys
-import hashlib
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
-# Hermes tools — auto-fallback to standalone stubs when not in Hermes session
-_HAS_HERMES_TOOLS = False
 try:
-    from hermes_tools import web_search, terminal, read_file, write_file, search_files
-    _HAS_HERMES_TOOLS = True
+    import yaml
 except ImportError:
-    print("expected — silently handled", file=sys.stderr)
-    import subprocess
+    yaml = None  # checked in _load_yaml — fail loudly, never simulate
 
-    def terminal(command, timeout=60, workdir=None):
-        cwd = workdir or os.getcwd()
-        # Sanctioned terminal-compat shim: command comes from the agent's
-        # own orchestration calls, never from untrusted input (mirrors the
-        # Hermes terminal tool).
-        r = subprocess.run(command, shell=True, capture_output=True, text=True,  # adversarial-ignore: shell-true-rce
-                           timeout=timeout, cwd=cwd)
-        return {"output": r.stdout + r.stderr, "exit_code": r.returncode}
+# ── Configuration ────────────────────────────────────────────────
 
-    def write_file(path, content):
-        p = Path(path)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(content)
-        return {"bytes_written": len(content)}
-
-    def read_file(path, offset=1, limit=500):
-        p = Path(path)
-        if not p.exists():
-            return {"content": "", "total_lines": 0}
-        lines = p.read_text().splitlines(keepends=True)
-        start = offset - 1
-        end = min(start + limit, len(lines))
-        return {"content": "".join(lines[start:end]), "total_lines": len(lines)}
-
-    def web_search(query, limit=5):
-        import urllib.request, urllib.parse, json
-        try:
-            url = f"https://api.duckduckgo.com/?q={urllib.parse.quote(query)}&format=json"
-            data = json.loads(urllib.request.urlopen(url, timeout=10).read())
-            return {"data": {"web": [{"url": "", "title": data.get("AbstractText", ""), "description": ""}]}}
-        except Exception as e:
-            return {"data": {"web": []}, "error": str(e)}
-
-    def search_files(pattern, target="content", path=".", file_glob=None, limit=50):
-        import glob as _glob
-        p = Path(path)
-        if target == "files":
-            return {"matches": [str(f) for f in p.rglob(pattern)][:limit]}
-        return {"matches": []}
-
-# Configuration
-CORTEX_HOME = Path.home() / ".hermes-cortex"
+HOME = Path.home()
+CORTEX_HOME = HOME / ".hermes-cortex"
 EVALS_DIR = CORTEX_HOME / "evals"
 TRACES_DIR = EVALS_DIR / "traces"
 REPORTS_DIR = EVALS_DIR / "reports"
-EVALS_REPO_DIR = Path.home() / "hermes-cortex" / "evals"
+EVALS_REPO_DIR = HOME / "hermes-cortex" / "evals"
+SCRIPTS_DIR = CORTEX_HOME / "scripts"
+SKILLS_MANIFEST = CORTEX_HOME / "skills.yaml"
+DOCTOR = SCRIPTS_DIR / "cortex-doctor.py"
+TASK_DB = SCRIPTS_DIR / "task-db.py"
 
-# Ensure directories exist
 TRACES_DIR.mkdir(parents=True, exist_ok=True)
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def load_eval_definition(eval_name: str) -> dict:
-    """Load eval definition from YAML/JSON file."""
-    # Try repo location first
-    repo_path = EVALS_REPO_DIR / f"{eval_name}.yaml"
-    if repo_path.exists():
-        # Parse YAML (simple parser, no external deps)
-        return parse_simple_yaml(repo_path.read_text())
-    
-    # Try hermes location
-    hermes_path = EVALS_DIR / f"{eval_name}.yaml"
-    if hermes_path.exists():
-        return parse_simple_yaml(hermes_path.read_text())
-    
-    raise FileNotFoundError(f"Eval definition not found: {eval_name}.yaml")
+# ── Helpers ──────────────────────────────────────────────────────
+
+def _load_yaml(path: Path) -> dict:
+    """Load a YAML file. Fail loudly when PyYAML is missing."""
+    if yaml is None:
+        raise RuntimeError("PyYAML is not installed — cannot parse eval definitions")
+    with open(path) as f:
+        return yaml.safe_load(f) or {}
 
 
-def parse_simple_yaml(content: str) -> dict:
-    """Simple YAML parser for eval definitions (no external deps)."""
-    # For now, return a stub — in production, use PyYAML
-    # This is a placeholder that returns a sample eval structure
-    return {
-        "name": "sample-eval",
-        "description": "Sample evaluation",
-        "tasks": [
-            {
-                "id": "sample-task-1",
-                "description": "Sample task",
-                "input": "Do something",
-                "expected": ["Result 1", "Result 2"],
-                "grading": {
-                    "deterministic": ["check_1", "check_2"],
-                    "llm_rubric": "Grade based on quality"
-                }
-            }
-        ]
+def _run(cmd: list[str], timeout: int = 60) -> tuple[int, str]:
+    """Run a command, return (rc, combined output). Never raises."""
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        return r.returncode, (r.stdout or "") + (r.stderr or "")
+    except subprocess.TimeoutExpired:
+        return 124, f"TIMEOUT after {timeout}s: {' '.join(cmd[:2])}..."
+    except FileNotFoundError:
+        return 127, f"command not found: {cmd[0]}"
+
+
+# ── Grader registry ──────────────────────────────────────────────
+# name -> callable() returning (passed: bool, detail: str)
+
+GRADERS: dict[str, Callable[[], tuple[bool, str]]] = {}
+
+
+def grader(name: str) -> Callable:
+    def deco(fn: Callable[[], tuple[bool, str]]) -> Callable:
+        GRADERS[name] = fn
+        return fn
+    return deco
+
+
+# ── Golden graders (suite v1: bus, task lifecycle, exec, doctor, skills) ──
+
+@grader("bus_round_trip")
+def _bus_round_trip() -> tuple[bool, str]:
+    """Send a probe message to inbox_esther, read it back (vt-hidden), archive it.
+
+    Uses the CANONICAL lib.cortex_bus client (Bearer→Basic auth fallback,
+    retries, fallback URL — nginx validates Basic auth and ignores Bearer
+    through the proxy). Tests the ACTIVE bus path the agent's own crons use.
+    The vt=600 peek hides the message from the 5-min message-handler poll and
+    the audit watchdog (DLQ/stuck >5min only), so the probe is invisible to
+    consumers and leaves zero residue.
+    """
+    # Resolve the deployed scripts dir so `lib.cortex_bus` imports in both
+    # layouts: deployed (~/.hermes-cortex/scripts/) and in-repo (ops/scripts/).
+    scripts_dir = SCRIPTS_DIR if SCRIPTS_DIR.is_dir() else HOME / "hermes-cortex" / "ops" / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    try:
+        from lib.cortex_bus import bus_archive, bus_read, bus_send  # noqa: PLC0415
+    except ImportError as e:
+        return False, f"cannot import lib.cortex_bus: {e}"
+
+    queue = "inbox_esther"
+    correlation_id = f"regression-gate-{uuid.uuid4().hex[:12]}"
+    probe = {
+        # Subject PING = a known silent-noise subject the message-handler
+        # archives without alerting — a probe raced by the 5-min poll is
+        # silently removed, never processed as a command.
+        "subject": "PING",
+        "body": {"regression_gate": True, "correlation_id": correlation_id},
+        "correlation_id": correlation_id,
     }
+
+    # 1. Send
+    sent = bus_send(queue, probe)
+    if not sent or not sent.get("msg_id"):
+        return False, f"send failed: {json.dumps(sent)[:160] if sent else 'no response'}"
+    sent_id = sent["msg_id"]
+
+    # 2. Read back (vt=600 — hidden, not consumed)
+    msg = bus_read(queue, vt=600)
+    if not msg or not msg.get("msg_id"):
+        return False, "read failed: no message returned"
+    if msg.get("correlation_id") != correlation_id:
+        return False, (f"read returned msg {str(msg.get('msg_id'))[:8]} but "
+                       f"correlation mismatch (expected {correlation_id[:8]}…)")
+
+    # 3. Archive (removes the hidden probe — zero residue)
+    if not bus_archive(queue, msg["msg_id"]):
+        return False, "archive failed — probe left hidden until vt expiry"
+
+    return True, (f"send→read→archive OK (msg {str(sent_id)[:8]}, "
+                  f"correlation {correlation_id[:8]}…) via lib.cortex_bus")
+
+
+@grader("task_lifecycle")
+def _task_lifecycle() -> tuple[bool, str]:
+    """Task DB add → list → update → delete round-trip via task-db.py.
+
+    Creates a probe row tagged regression-gate, verifies it lists, updates it
+    to completed, then deletes it directly (reader role has DELETE). Zero
+    residue — the probe must never survive the gate run.
+    """
+    if not TASK_DB.exists():
+        return False, f"task-db.py not found at {TASK_DB}"
+
+    probe_content = f"REGRESSION-GATE-PROBE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    probe_id: str | None = None
+
+    def _find_probe_id(out: str) -> str | None:
+        m = re.search(rf"([0-9a-fA-F]{{8}}-[0-9a-fA-F]{{4}}-[0-9a-fA-F]{{4}}-[0-9a-fA-F]{{4}}-[0-9a-fA-F]{{12}}).*{re.escape(probe_content)}", out)
+        return m.group(1) if m else None
+
+    try:
+        # 1. Add
+        rc, out = _run(["python3", str(TASK_DB), "add", probe_content,
+                        "--tag", "regression-gate", "--source", "manual"])
+        if rc != 0:
+            return False, f"add failed (rc={rc}): {out.strip()[-200:]}"
+
+        # 2. List — confirm the probe is visible
+        rc, out = _run(["python3", str(TASK_DB), "list", "--tag", "regression-gate"])
+        if rc != 0:
+            return False, f"list failed (rc={rc}): {out.strip()[-200:]}"
+        probe_id = _find_probe_id(out)
+        if not probe_id:
+            return False, "probe task not found in list output"
+
+        # 3. Update → completed
+        rc, out = _run(["python3", str(TASK_DB), "update", probe_id, "--status", "completed"])
+        if rc != 0:
+            return False, f"update failed (rc={rc}): {out.strip()[-200:]}"
+
+        # 4. Delete the probe row directly (reader role has DELETE per v001)
+        delete_sql = f"DELETE FROM tasks.tasks WHERE id = '{probe_id}' AND created_by = 'esther';"
+        rc, out = _run(["docker", "exec", "-i", "mycortex-postgres", "psql",
+                        "-U", "mycortex_reader_esther", "-d", "mycortex",
+                        "-v", "ON_ERROR_STOP=1", "-t", "-A", "-c", delete_sql])
+        if rc != 0:
+            return False, f"probe delete failed (rc={rc}): {out.strip()[-200:]}"
+
+        return True, f"add→list→update→delete OK (probe {probe_id[:8]}… removed)"
+    finally:
+        # Safety net: if anything above failed after add, remove the probe now.
+        if probe_id:
+            _run(["docker", "exec", "-i", "mycortex-postgres", "psql",
+                  "-U", "mycortex_reader_esther", "-d", "mycortex",
+                  "-v", "ON_ERROR_STOP=1", "-t", "-A", "-c",
+                  f"DELETE FROM tasks.tasks WHERE id = '{probe_id}';"])
+
+
+@grader("exec_round_trip")
+def _exec_round_trip() -> tuple[bool, str]:
+    """Subprocess exec returns expected output — proves the exec path works."""
+    rc, out = _run(["python3", "-c", "print('EXEC-OK')"], timeout=30)
+    if rc != 0:
+        return False, f"python3 -c failed (rc={rc}): {out.strip()[-200:]}"
+    if "EXEC-OK" not in out:
+        return False, f"expected EXEC-OK in output, got: {out.strip()[-200:]}"
+    return True, "python3 exec round-trip OK"
+
+
+@grader("doctor_clean")
+def _doctor_clean() -> tuple[bool, str]:
+    """Cortex doctor reports zero failures (warns tolerated)."""
+    if not DOCTOR.exists():
+        return False, f"cortex-doctor.py not found at {DOCTOR}"
+    rc, out = _run(["python3", str(DOCTOR), "--json"], timeout=120)
+    try:
+        report = json.loads(out)
+    except json.JSONDecodeError:
+        return False, f"doctor JSON parse failed (rc={rc}): {out.strip()[-200:]}"
+    summary = report.get("summary", {})
+    fails = summary.get("fail", -1)
+    warns = summary.get("warn", 0)
+    if fails is None or fails < 0:
+        return False, f"doctor summary missing 'fail': {json.dumps(summary)[:160]}"
+    if fails > 0:
+        return False, f"doctor reports {fails} failure(s), {warns} warn(s) — gate blocked"
+    return True, f"doctor clean (pass {summary.get('pass', 0)}, warn {warns}, fail 0)"
+
+
+@grader("core_skills")
+def _core_skills() -> tuple[bool, str]:
+    """Every always-section skill in skills.yaml resolves to a loadable SKILL.md."""
+    if not SKILLS_MANIFEST.exists():
+        return False, f"skills.yaml not found at {SKILLS_MANIFEST}"
+    manifest = _load_yaml(SKILLS_MANIFEST)
+    always = manifest.get("always", [])
+    if not always:
+        return False, "skills.yaml 'always' section is empty"
+
+    missing: list[str] = []
+    for entry in always:
+        name = entry.get("name") if isinstance(entry, dict) else None
+        if not name:
+            continue
+        matches = list((HOME / ".hermes" / "skills").rglob(f"{name}/SKILL.md"))
+        if not matches:
+            missing.append(f"{name} (no SKILL.md)")
+            continue
+        # Validate frontmatter parses + name matches
+        try:
+            text = matches[0].read_text()
+            m = re.match(r"^---\s*\n(.*?)\n---", text, re.DOTALL)
+            if not m:
+                missing.append(f"{name} (no frontmatter)")
+                continue
+            fm = yaml.safe_load(m.group(1)) if yaml else {}
+            if not isinstance(fm, dict) or fm.get("name") != name:
+                missing.append(f"{name} (frontmatter name mismatch: {fm.get('name')})")
+        except Exception as e:  # noqa: BLE001 — any failure = skill broken; record, don't abort
+            missing.append(f"{name} ({type(e).__name__})")
+
+    if missing:
+        return False, "broken always-skills: " + "; ".join(missing)
+    return True, f"all {len(always)} always-skills present and loadable"
+
+
+# ── Suite / task execution ───────────────────────────────────────
+
+def load_eval_definition(eval_name: str) -> dict:
+    """Load eval definition from repo or deployed evals/ dir."""
+    for base in (EVALS_REPO_DIR, EVALS_DIR):
+        p = base / f"{eval_name}.yaml"
+        if p.exists():
+            return _load_yaml(p)
+    raise FileNotFoundError(f"Eval definition not found: {eval_name}.yaml "
+                            f"(looked in {EVALS_REPO_DIR} and {EVALS_DIR})")
 
 
 def run_task(task: dict, capture_traces: bool = False) -> dict:
-    """Run a single eval task and return results."""
-    task_id = task['id']
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    trace_id = f"eval-run-{timestamp}-{task_id}"
-    
-    print(f"  Running task: {task_id}")
-    
+    """Run a single eval task: execute every deterministic grader for real."""
+    task_id = task.get("id", "unknown")
+    grading = task.get("grading", {})
+    grader_names = grading.get("deterministic", [])
+    llm_rubric = grading.get("llm_rubric")
+
+    scores: dict[str, dict] = {}
+    for gname in grader_names:
+        fn = GRADERS.get(gname)
+        if fn is None:
+            scores[gname] = {"passed": False,
+                             "detail": f"UNKNOWN GRADER '{gname}' — fail-closed, no silent skip"}
+            continue
+        try:
+            passed, detail = fn()
+        except Exception as e:  # noqa: BLE001 — grader crash = task failure
+            passed, detail = False, f"grader raised {type(e).__name__}: {e}"
+        scores[gname] = {"passed": passed, "detail": detail}
+
+    det_passed = all(s["passed"] for s in scores.values()) if scores else False
+    # LLM rubric: not graded in this deterministic-only harness — recorded, not scored.
+    llm_note = ""
+    if llm_rubric:
+        llm_note = " (llm_rubric present but not graded — deterministic-only harness)"
+
     result = {
         "task_id": task_id,
-        "timestamp": timestamp,
-        "trace_id": trace_id,
-        "input": task.get("input", ""),
-        "expected": task.get("expected", []),
-        "actual": None,
-        "deterministic_scores": {},
-        "llm_score": None,
-        "passed": False,
+        "description": task.get("description", ""),
+        "deterministic_scores": scores,
+        "llm_rubric_present": bool(llm_rubric),
+        "passed": det_passed,
+        "detail": "; ".join(f"{k}: {v['detail']}" for k, v in scores.items()) + llm_note,
         "error": None,
-        "trace_path": None,
     }
-    
-    try:
-        # Execute the task input as a prompt to the agent
-        # In production, this would invoke the agent with the task input
-        # For now, we simulate by running a command
-        cmd_result = terminal(
-            command=f"echo 'Task: {task.get('input', '')[:100]}...'",
-            timeout=60
-        )
-        
-        result["actual"] = cmd_result.get("output", "")
-        
-        # Apply deterministic graders
-        grading = task.get("grading", {})
-        for grader_name in grading.get("deterministic", []):
-            # In production, load and execute grader
-            # For now, simulate
-            result["deterministic_scores"][grader_name] = True  # Simulated pass
-        
-        # Apply LLM rubric grader
-        llm_rubric = grading.get("llm_rubric", "")
-        if llm_rubric:
-            # In production, call LLM to grade
-            # For now, simulate
-            result["llm_score"] = 0.85  # Simulated score
-        
-        # Determine pass/fail
-        det_passed = all(result["deterministic_scores"].values())
-        llm_passed = result["llm_score"] is None or result["llm_score"] >= 0.7
-        result["passed"] = det_passed and llm_passed
-        
-        # Capture trace if requested
-        if capture_traces:
-            trace_path = TRACES_DIR / f"{trace_id}.json"
-            trace_data = {
-                "trace_id": trace_id,
-                "task": task,
-                "result": result,
-                "observations": [cmd_result],
-            }
-            write_file(path=str(trace_path), content=json.dumps(trace_data, indent=2))
-            result["trace_path"] = str(trace_path)
-            
-    except Exception as e:
-        result["error"] = str(e)
-        result["passed"] = False
-    
+
+    if capture_traces:
+        trace_path = TRACES_DIR / f"eval-{task_id}-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+        trace_path.write_text(json.dumps(result, indent=2))
+        result["trace_path"] = str(trace_path)
+
     return result
 
 
-def run_eval_suite(eval_def: dict, capture_traces: bool = False, holdout: bool = False) -> dict:
-    """Run all tasks in an eval suite."""
-    print(f"\n{'='*60}")
-    print(f"Eval: {eval_def.get('name', 'unknown')}")
-    print(f"Description: {eval_def.get('description', 'no description')}")
-    print(f"{'='*60}\n")
-    
-    tasks = eval_def.get("tasks", [])
-    if holdout:
-        # In production, filter to holdout tasks only
-        print("Running on HOLDOUT set (unseen test cases)\n")
-    
-    results = []
-    for task in tasks:
-        result = run_task(task, capture_traces)
-        results.append(result)
-        
-        status = "✓ PASS" if result["passed"] else "✗ FAIL"
-        print(f"    {status}: {task['id']}")
-    
-    # Aggregate results
+def run_eval_suite(eval_def: dict, capture_traces: bool = False) -> dict:
+    """Run all tasks in an eval definition, aggregate results."""
+    results = [run_task(t, capture_traces) for t in eval_def.get("tasks", [])]
     passed = sum(1 for r in results if r["passed"])
     total = len(results)
-    pass_rate = passed / total if total > 0 else 0
-    
-    summary = {
+    return {
         "eval_name": eval_def.get("name", "unknown"),
-        "timestamp": datetime.now().isoformat(),
-        "holdout": holdout,
+        "description": eval_def.get("description", ""),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "total_tasks": total,
         "passed": passed,
         "failed": total - passed,
-        "pass_rate": pass_rate,
+        "pass_rate": passed / total if total else 0.0,
         "results": results,
     }
-    
-    return summary
 
 
-def print_summary(summary: dict):
-    """Print eval summary."""
-    print(f"\n{'='*60}")
+def print_summary(summary: dict) -> None:
+    """Human-readable report."""
+    print("=" * 60)
     print(f"Eval Results: {summary['eval_name']}")
-    print(f"{'='*60}")
-    print(f"Overall: {summary['pass_rate']*100:.0f}% pass ({summary['passed']}/{summary['total_tasks']} tasks)")
-    print(f"Holdout: {'Yes' if summary['holdout'] else 'No'}")
-    
-    # List failures
-    failures = [r for r in summary["results"] if not r["passed"]]
-    if failures:
-        print(f"\nFailures ({len(failures)}):")
-        for f in failures:
-            print(f"  - {f['task_id']}: {f.get('error', 'unknown error')}")
-            if f.get("trace_path"):
-                print(f"    Trace: {f['trace_path']}")
-    
-    # Save report
-    report_path = REPORTS_DIR / f"eval-{summary['eval_name']}-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
-    write_file(path=str(report_path), content=json.dumps(summary, indent=2))
-    print(f"\nReport saved: {report_path}")
+    print(f"{summary.get('description', '')}")
+    print("=" * 60)
+    print(f"Overall: {summary['pass_rate'] * 100:.0f}% pass "
+          f"({summary['passed']}/{summary['total_tasks']} tasks)\n")
+    for r in summary["results"]:
+        mark = "✓ PASS" if r["passed"] else "✗ FAIL"
+        print(f"  {mark}: {r['task_id']}")
+        print(f"      {r['detail']}")
+    print("")
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Run eval suites against Hermes agents")
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Run eval suites against live fleet invariants")
     parser.add_argument("--eval", type=str, help="Name of eval to run")
     parser.add_argument("--suite", type=str, help="Name of eval suite to run")
-    parser.add_argument("--standalone", action="store_true", help="Force standalone mode (from shell)")
-    parser.add_argument("--holdout", action="store_true", help="Run on holdout set only")
-    parser.add_argument("--capture-traces", action="store_true", help="Capture full traces for analysis")
-    
+    parser.add_argument("--standalone", action="store_true",
+                        help="Standalone mode (cron/shell — no Hermes session needed)")
+    parser.add_argument("--holdout", action="store_true", help="Accepted for CLI compat (no holdout split in golden suite)")
+    parser.add_argument("--capture-traces", action="store_true", help="Write per-task trace JSON")
     args = parser.parse_args()
-    
+
     if not args.eval and not args.suite:
         print("Error: Must specify --eval or --suite")
         parser.print_help()
-        sys.exit(1)
-    
+        return 1
+
     try:
-        if args.eval:
-            eval_def = load_eval_definition(args.eval)
-            summary = run_eval_suite(eval_def, capture_traces=args.capture_traces, holdout=args.holdout)
-            print_summary(summary)
-            
-            # Exit with error if pass rate below threshold
-            if args.holdout and summary["pass_rate"] < 0.9:
-                print("\n⚠️  Holdout pass rate below 90% threshold — DO NOT DEPLOY")
-                sys.exit(1)
-                
-        elif args.suite:
-            # Load suite definition (list of evals)
+        if args.suite:
             suite_path = EVALS_REPO_DIR / "suites" / f"{args.suite}.yaml"
             if not suite_path.exists():
-                print(f"Error: Suite not found: {args.suite}")
-                sys.exit(1)
-            
-            suite_def = parse_simple_yaml(suite_path.read_text())
-            for eval_name in suite_def.get("evals", []):
-                eval_def = load_eval_definition(eval_name)
-                summary = run_eval_suite(eval_def, capture_traces=args.capture_traces, holdout=args.holdout)
-                print_summary(summary)
-                
+                print(f"Error: Suite not found: {args.suite} ({suite_path})")
+                return 1
+            suite_def = _load_yaml(suite_path)
+            eval_names = suite_def.get("evals", [])
+            if not eval_names:
+                print(f"Error: Suite {args.suite} has no evals list")
+                return 1
+        else:
+            eval_names = [args.eval]
+
+        any_fail = False
+        for eval_name in eval_names:
+            eval_def = load_eval_definition(eval_name)
+            summary = run_eval_suite(eval_def, capture_traces=args.capture_traces)
+            print_summary(summary)
+            # Persist report for trend tracking
+            report_path = REPORTS_DIR / f"eval-{summary['eval_name']}-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+            report_path.write_text(json.dumps(summary, indent=2))
+            if summary["failed"] > 0:
+                any_fail = True
+
+        return 1 if any_fail else 0
+
     except FileNotFoundError as e:
         print(f"Error: {e}")
-        sys.exit(1)
+        return 1
     except Exception as e:
         print(f"Error running evals: {e}")
         import traceback
         traceback.print_exc()
-        sys.exit(1)
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
