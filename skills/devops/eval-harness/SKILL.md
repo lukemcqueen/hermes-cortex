@@ -455,7 +455,7 @@ run manually when needed.
 
 **Golden suite v1** (F-008, orchestrator daily gate `orch-daily-regression-gate` at 03:15):
 - `bus_round_trip` — send→read(vt-hidden)→archive probe on `inbox_esther` via the ACTIVE `CORTEX_BUS_URL`
-- `task_lifecycle` — task-db.py add→list→update→delete probe (zero residue, safety-net delete in `finally`)
+- `task_lifecycle` — task-db.py add→list→start→complete→delete probe (v005 matrix: pending→completed is illegal, so it walks in_progress first; zero residue, safety-net delete in `finally`)
 - `exec_round_trip` — `python3 -c` returns EXEC-OK
 - `doctor_clean` — `cortex-doctor.py --json` summary.fail == 0 (warns tolerated)
 - `core_skills` — every always-section skill in skills.yaml resolves to a loadable SKILL.md
