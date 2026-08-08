@@ -31,7 +31,7 @@ their domain.
 | `antigravity-cli` | 0.2.0 | Operate the Antigravity CLI (agy): plugins, auth, sandbox. | `skill_view(name='antigravity-cli')` |
 | `blackbox` | 1.0.1 | Delegate coding tasks to the Blackbox AI multi-model CLI. | `skill_view(name='blackbox')` |
 | `grok` | 0.1.1 | Delegate coding to xAI Grok Build CLI (features, PRs). | `skill_view(name='grok')` |
-| `hermes-cortex` | 1.0.0 | Install, configure, and maintain Hermes Cortex — the observability and knowledge layer for Hermes Agent (Ol... | `skill_view(name='hermes-cortex')` |
+| `hermes-cortex` | 2.0.0 | Install, configure, and maintain Hermes Cortex — the observability and knowledge layer for Hermes Agent (Ol... | `skill_view(name='hermes-cortex')` |
 | `hermes-cortex-setup` | 1.0.0 | Install and configure Hermes Cortex core components — Ollama, Bun, gbrain, health server, agent registry, h... | `skill_view(name='hermes-cortex-setup')` |
 | `honcho` | 2.0.0 | Configure and troubleshoot Honcho memory for Hermes. | `skill_view(name='honcho')` |
 | `openhands` | 0.1.0 | Delegate coding to OpenHands CLI (model-agnostic, LiteLLM). | `skill_view(name='openhands')` |
@@ -113,7 +113,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (109 skills)
+## Devops (110 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -188,13 +188,14 @@ their domain.
 | `local-pipeline-debugging` | 1.0.0 | Check the data store and service logs before changing code. | `skill_view(name='local-pipeline-debugging')` |
 | `loop-governance` | 1.5.0 | TDD cycle scoring, self-improvement, and governance system for Hermes Cortex. Scores completeness/quality/p... | `skill_view(name='loop-governance')` |
 | `maintenance-scan` | 1.0.0 | Systematic system health survey run proactively when the user gives an open-ended directive to "find work"... | `skill_view(name='maintenance-scan')` |
+| `migration-deploy-verification` | 1.0.0 | Use when a repo migration is missing from the live DB. | `skill_view(name='migration-deploy-verification')` |
 | `moses-inbox-remediation` | 1.0.0 | Auto-remediate hermes-cortex issues reported by peer agents via the agent inbox. Scans pending remediation... | `skill_view(name='moses-inbox-remediation')` |
 | `mycortex` | 1.1.0 | Use for mycortex knowledge brain work or gbrain migration. | `skill_view(name='mycortex')` |
 | `name-discovery` | 1.0.0 | Use when checking if a software/tool name is available for use — searches GitHub, web, and registries for c... | `skill_view(name='name-discovery')` |
 | `nextjs-docker-multistage` | 1.0.0 | Next.js Docker multi-stage builds with standalone output — minimal runtime images, no node_modules in produ... | `skill_view(name='nextjs-docker-multistage')` |
 | `nginx-security-pipeline` | 1.0.0 | Set up nginx security with IP blocking, fail2ban integration, daily automated scanning, and atomic deploy.... | `skill_view(name='nginx-security-pipeline')` |
 | `nginx-web-app-deployment` | 1.0.0 | Deploy a custom web app (Flask, Python, Node) behind nginx — upstream config, SSL, basic auth, rate limitin... | `skill_view(name='nginx-web-app-deployment')` |
-| `offline-code` | 1.0.0 | Offline code snippet search + generation using local Ollama models. Search a 518-snippet corpus across 32 c... | `skill_view(name='offline-code')` |
+| `offline-code` | 1.0.0 | Offline code snippet search + generation using local Ollama models. Search a 520-snippet corpus across 30+... | `skill_view(name='offline-code')` |
 | `orch-skill-lifecycle` | 1.0.0 | Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md.... | `skill_view(name='orch-skill-lifecycle')` |
 | `orch-weekly-auto-fix` | 1.1.0 | After the weekly opportunity scan identifies issues, run auto-fix patterns — git pull, branch cleanup, Dock... | `skill_view(name='orch-weekly-auto-fix')` |
 | `package-security` | 1.0.0 | Age-gated package installation protection. Before installing any package with pip, npm, brew, or cargo, ver... | `skill_view(name='package-security')` |
@@ -329,7 +330,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `openclaw-migration` | 1.0.0 | Import an OpenClaw setup (memories, skills) into Hermes. | `skill_view(name='openclaw-migration')` |
 
-## Mlops (32 skills)
+## Mlops (31 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -342,7 +343,6 @@ their domain.
 | `fine-tuning-with-trl` | 1.0.1 | TRL: SFT, DPO, GRPO, RLOO reward modeling for LLM RLHF. | `skill_view(name='fine-tuning-with-trl')` |
 | `guidance` | 1.0.1 | Constrain LLM output with grammars; guarantee valid JSON. | `skill_view(name='guidance')` |
 | `huggingface-accelerate` | 1.0.1 | Run PyTorch training across GPUs with minimal changes. | `skill_view(name='huggingface-accelerate')` |
-| `huggingface-tokenizers` | 1.0.0 | Fast BPE/WordPiece tokenization and custom vocab training. | `skill_view(name='huggingface-tokenizers')` |
 | `instructor` | 1.0.0 | Structured LLM outputs validated with Pydantic. | `skill_view(name='instructor')` |
 | `lambda-labs-gpu-cloud` | 1.0.0 | On-demand GPU cloud instances for ML training. | `skill_view(name='lambda-labs-gpu-cloud')` |
 | `llava` | 1.0.0 | Vision-language chat: VQA, captioning, image dialogue. | `skill_view(name='llava')` |
