@@ -346,6 +346,9 @@ register "ops/scripts/health/agent-scoring-activity-watchdog.py" "${CORTEX_DEPLO
 register "ops/scripts/state_tracker.py"             "${CORTEX_DEPLOY_HOME}/scripts/state_tracker.py"
 register "ops/scripts/health/check-certs.py"               "${CORTEX_DEPLOY_HOME}/scripts/check-certs.py"
 # daily-bible-reading.sh was deleted from repo — replaced by agent-daily-bible-reading.py
+# (2026-08-09: register was missing → script never deployed → LLM-cron fallback produced
+#  garbage via qwen2.5-coder:3b. Canonical mode is no_agent script, per install-crons.sh.)
+register ".hermes-cortex/scripts/agent-daily-bible-reading.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-daily-bible-reading.py"
 register_orch "ops/scripts/bus/generate-bus-wrappers.py"      "${CORTEX_DEPLOY_HOME}/scripts/generate-bus-wrappers.py"
 register "ops/scripts/manage/nginx-security-scanner.sh"    "${CORTEX_DEPLOY_HOME}/scripts/nginx-security-scanner.sh"
 register "ops/scripts/manage/agent-nginx-threat-pipeline.sh"     "${CORTEX_DEPLOY_HOME}/scripts/agent-nginx-threat-pipeline.sh"
