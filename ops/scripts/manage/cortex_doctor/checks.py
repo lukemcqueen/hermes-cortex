@@ -3538,10 +3538,13 @@ def check_task_db(res):
         run_bg(["python3", str(task_script), "save-end"], timeout=15)
         return
 
-    # Cleanup via the normal lifecycle: complete → archive (self-expiring)
+    # Cleanup via the normal lifecycle: start → complete → archive (self-expiring).
+    # v005 transition matrix forbids pending → completed (must start first),
+    # so the probe walks in_progress first.
+    run_bg(["python3", str(task_script), "update", probe_id, "--status", "in_progress"], timeout=15)
     run_bg(["python3", str(task_script), "update", probe_id, "--status", "completed"], timeout=15)
     run_bg(["python3", str(task_script), "save-end"], timeout=15)
-    res.add("Task DB write-probe", "PASS", "add → list → archive roundtrip OK")
+    res.add("Task DB write-probe", "PASS", "add → start → complete → archive roundtrip OK")
 
 
 def check_skill_drift(res):

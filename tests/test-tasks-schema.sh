@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test-tasks-schema.sh — L1 hermetic AC battery for the tasks schema (v001–v004)
+# test-tasks-schema.sh — L1 hermetic AC battery for the tasks schema (v001–v005)
 #
 # From docs/design/task-workflow.md §8 (QA B-8 mandatory test plan):
 #   hermetic scratch DB `tasks_test` (refuses `mycortex` DB with a guard),
@@ -99,6 +99,15 @@ NEW_ID=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 test task', p_created
 COL_PENDING=$($PSQL -c "SELECT \"column\" FROM tasks.tasks WHERE id='${NEW_ID}';" 2>/dev/null)
 [ "$COL_PENDING" = "todo" ] && pass "pending → column='todo' (derived)" || fail "pending column=$COL_PENDING (expected 'todo')"
 
+# v005 transition matrix: pending → completed is ILLEGAL (must start first)
+if $PSQL -c "SELECT tasks.task_upsert(p_id=>'${NEW_ID}', p_status=>'completed');" >/dev/null 2>&1; then
+  fail "pending → completed accepted (v005 matrix)"
+else
+  pass "pending → completed rejected (v005 matrix — must start first)"
+fi
+
+# legal arc: in_progress → completed
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${NEW_ID}', p_status=>'in_progress');" >/dev/null 2>&1
 $PSQL -c "SELECT tasks.task_upsert(p_id=>'${NEW_ID}', p_status=>'completed');" >/dev/null 2>&1
 COL_DONE=$($PSQL -c "SELECT \"column\" FROM tasks.tasks WHERE id='${NEW_ID}';" 2>/dev/null)
 [ "$COL_DONE" = "done" ] && pass "completed → column='done' (derived)" || fail "completed column=$COL_DONE (expected 'done')"
@@ -106,10 +115,29 @@ COL_DONE=$($PSQL -c "SELECT \"column\" FROM tasks.tasks WHERE id='${NEW_ID}';" 2
 DONE_AT=$($PSQL -c "SELECT completed_at IS NOT NULL FROM tasks.tasks WHERE id='${NEW_ID}';" 2>/dev/null)
 [ "$DONE_AT" = "t" ] && pass "completed_at set on completion" || fail "completed_at not set (got: $DONE_AT)"
 
+# v005 matrix: completed → cancelled is ILLEGAL
+if $PSQL -c "SELECT tasks.task_upsert(p_id=>'${NEW_ID}', p_status=>'cancelled');" >/dev/null 2>&1; then
+  fail "completed → cancelled accepted (v005 matrix)"
+else
+  pass "completed → cancelled rejected (v005 matrix)"
+fi
+
+# v005 matrix: reopen requires reason='reopen' (session GUC set by the CLI)
+if $PSQL -c "SELECT tasks.task_upsert(p_id=>'${NEW_ID}', p_status=>'in_progress');" >/dev/null 2>&1; then
+  fail "completed → in_progress accepted without reopen reason"
+else
+  pass "completed → in_progress rejected without reopen reason"
+fi
+$PSQL -c "SELECT set_config('tasks.transition_reason','reopen',false); SELECT tasks.task_upsert(p_id=>'${NEW_ID}', p_status=>'in_progress');" >/dev/null 2>&1
+REOPENED=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${NEW_ID}';" 2>/dev/null)
+[ "$REOPENED" = "in_progress" ] && pass "completed → in_progress accepted with reason='reopen'" || fail "reopen failed (status=$REOPENED)"
+
 # Regression (v003/v004): update an EXISTING row to cancelled must derive
-# column=NULL, not carry over the stale column (v004: EXCLUDED."column").
-$PSQL -c "SELECT tasks.task_upsert(p_id=>'${NEW_ID}', p_status=>'cancelled');" >/dev/null 2>&1
-COL_CANC=$($PSQL -c "SELECT \"column\" IS NULL FROM tasks.tasks WHERE id='${NEW_ID}';" 2>/dev/null)
+# column=NULL, not carry over a stale column (v004: EXCLUDED."column").
+NEW_ID2=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 cancel regression', p_created_by=>'esther');" 2>/dev/null | head -1)
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${NEW_ID2}', p_status=>'in_progress');" >/dev/null 2>&1
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${NEW_ID2}', p_status=>'cancelled');" >/dev/null 2>&1
+COL_CANC=$($PSQL -c "SELECT \"column\" IS NULL FROM tasks.tasks WHERE id='${NEW_ID2}';" 2>/dev/null)
 [ "$COL_CANC" = "t" ] && pass "update→cancelled derives column=NULL (regression v004)" || fail "cancelled column not NULL (got: $COL_CANC — v004 regression)"
 
 echo ""
@@ -249,6 +277,168 @@ if [ "$NOOP_RC" = "0" ] && echo "$NOOP_OUT" | grep -q "does not exist"; then
 else
   fail "re-run not a no-op: $(echo "$NOOP_OUT" | tail -2)"
 fi
+
+echo ""
+echo "═══ AC-L1-11: hierarchy — story/slice coherence + tenant checks ═══"
+# story + slice under it (legal)
+STORY_ID=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 story', p_created_by=>'esther', p_kind=>'story');" 2>/dev/null | head -1)
+[ -n "$STORY_ID" ] && pass "story created (id=$STORY_ID)" || fail "story insert returned no id"
+SLICE_ID=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 slice', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${STORY_ID}');" 2>/dev/null | head -1)
+[ -n "$SLICE_ID" ] && pass "slice under story created (id=$SLICE_ID)" || fail "slice insert returned no id"
+
+# slice without a parent → coherence CHECK
+if $PSQL -c "SELECT tasks.task_upsert(p_content=>'orphan slice', p_created_by=>'esther', p_kind=>'slice');" >/dev/null 2>&1; then
+  fail "slice without parent accepted"
+else
+  pass "slice without parent rejected (coherence CHECK)"
+fi
+# story with a parent → coherence CHECK
+if $PSQL -c "SELECT tasks.task_upsert(p_content=>'sub story', p_created_by=>'esther', p_kind=>'story', p_parent_id=>'${STORY_ID}');" >/dev/null 2>&1; then
+  fail "story with parent accepted"
+else
+  pass "story with parent rejected (coherence CHECK)"
+fi
+# slice under a slice → tenant trigger (parent must be a story)
+if $PSQL -c "SELECT tasks.task_upsert(p_content=>'sub slice', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${SLICE_ID}');" >/dev/null 2>&1; then
+  fail "slice under slice accepted"
+else
+  pass "slice under slice rejected (tenant trigger: parent must be story)"
+fi
+# deleting a story with slices → FK ON DELETE NO ACTION
+if $PSQL -c "DELETE FROM tasks.tasks WHERE id='${STORY_ID}';" >/dev/null 2>&1; then
+  fail "story deleted while slices exist"
+else
+  pass "story delete blocked while slices exist (FK NO ACTION)"
+fi
+# legacy flat rows (kind NULL, parent NULL) stay legal — backfill target
+FLAT_OK=$($PSQL -c "SELECT count(*) FROM tasks.tasks WHERE kind IS NULL AND parent_id IS NULL AND status IN ('pending','in_progress');" 2>/dev/null)
+[ "$FLAT_OK" -ge 1 ] && pass "legacy flat rows legal (kind NULL, n=$FLAT_OK)" || fail "no legacy flat rows found"
+
+echo ""
+echo "═══ AC-L1-12: paused status + switching arc ═══"
+PAUSED_ID=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 pause arc', p_created_by=>'esther');" 2>/dev/null | head -1)
+# pending → paused is ILLEGAL (must start first)
+if $PSQL -c "SELECT tasks.task_upsert(p_id=>'${PAUSED_ID}', p_status=>'paused');" >/dev/null 2>&1; then
+  fail "pending → paused accepted (must start first)"
+else
+  pass "pending → paused rejected (matrix — must start first)"
+fi
+# in_progress → paused ✓, column derived NULL
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${PAUSED_ID}', p_status=>'in_progress');" >/dev/null 2>&1
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${PAUSED_ID}', p_status=>'paused');" >/dev/null 2>&1
+PAUSED_COL=$($PSQL -c "SELECT \"column\" IS NULL FROM tasks.tasks WHERE id='${PAUSED_ID}';" 2>/dev/null)
+[ "$PAUSED_COL" = "t" ] && pass "paused derives column=NULL" || fail "paused column not NULL (got: $PAUSED_COL)"
+# resume paused → in_progress ✓; paused → completed ✓
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${PAUSED_ID}', p_status=>'in_progress');" >/dev/null 2>&1
+RESUMED=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${PAUSED_ID}';" 2>/dev/null)
+[ "$RESUMED" = "in_progress" ] && pass "paused → in_progress resume ✓" || fail "resume failed (status=$RESUMED)"
+# paused status is in the CHECK — verify accepted value set
+PAUSED_CNT=$($PSQL -c "SELECT count(*) FROM tasks.tasks WHERE status='paused';" 2>/dev/null)
+# (the in_progress above un-paused it; force one for the count)
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${PAUSED_ID}', p_status=>'paused');" >/dev/null 2>&1
+PAUSED_CNT=$($PSQL -c "SELECT count(*) FROM tasks.tasks WHERE status='paused';" 2>/dev/null)
+[ "$PAUSED_CNT" = "1" ] && pass "paused status persisted (n=$PAUSED_CNT)" || fail "paused count=$PAUSED_CNT (expected 1)"
+
+echo ""
+echo "═══ AC-L1-13: transition matrix — spot checks ═══"
+# in_progress → pending ILLEGAL
+MAT_ID=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 matrix', p_created_by=>'esther');" 2>/dev/null | head -1)
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${MAT_ID}', p_status=>'in_progress');" >/dev/null 2>&1
+if $PSQL -c "SELECT tasks.task_upsert(p_id=>'${MAT_ID}', p_status=>'pending');" >/dev/null 2>&1; then
+  fail "in_progress → pending accepted"
+else
+  pass "in_progress → pending rejected (matrix)"
+fi
+# cancelled is terminal
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${MAT_ID}', p_status=>'cancelled');" >/dev/null 2>&1
+if $PSQL -c "SELECT tasks.task_upsert(p_id=>'${MAT_ID}', p_status=>'in_progress');" >/dev/null 2>&1; then
+  fail "cancelled → in_progress accepted"
+else
+  pass "cancelled → in_progress rejected (terminal)"
+fi
+# paused → completed legal
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${PAUSED_ID}', p_status=>'completed');" >/dev/null 2>&1
+PAUSED_DONE=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${PAUSED_ID}';" 2>/dev/null)
+[ "$PAUSED_DONE" = "completed" ] && pass "paused → completed legal" || fail "paused → completed failed (status=$PAUSED_DONE)"
+
+echo ""
+echo "═══ AC-L1-14: task_events — capture, no-op gate, suppression, RLS ═══"
+# created + status_changed events recorded for the story/slice
+STORY_EVENTS=$($PSQL -c "SELECT count(*) FROM tasks.task_events WHERE task_id='${STORY_ID}';" 2>/dev/null)
+[ "$STORY_EVENTS" = "1" ] && pass "story created event recorded" || fail "story events=$STORY_EVENTS (expected 1)"
+SLICE_EVENTS=$($PSQL -c "SELECT count(*) FROM tasks.task_events WHERE task_id='${SLICE_ID}';" 2>/dev/null)
+[ "$SLICE_EVENTS" = "1" ] && pass "slice created event recorded" || fail "slice events=$SLICE_EVENTS (expected 1)"
+# no-op update (status unchanged) emits nothing
+NOOP_ID=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 noop', p_created_by=>'esther');" 2>/dev/null | head -1)
+N_BEFORE=$($PSQL -c "SELECT count(*) FROM tasks.task_events WHERE task_id='${NOOP_ID}';" 2>/dev/null)
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${NOOP_ID}', p_status=>'pending');" >/dev/null 2>&1
+N_AFTER=$($PSQL -c "SELECT count(*) FROM tasks.task_events WHERE task_id='${NOOP_ID}';" 2>/dev/null)
+[ "$N_BEFORE" = "$N_AFTER" ] && pass "no-op status update emits no event ($N_AFTER)" || fail "no-op gate broken: $N_BEFORE → $N_AFTER"
+# doctor-probe rows emit nothing
+PROBE_ID=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 probe', p_created_by=>'esther', p_source=>'doctor-probe');" 2>/dev/null | head -1)
+N_PROBE=$($PSQL -c "SELECT count(*) FROM tasks.task_events WHERE task_id='${PROBE_ID}';" 2>/dev/null)
+[ "$N_PROBE" = "0" ] && pass "doctor-probe creates no event (suppression M-5)" || fail "doctor-probe emitted $N_PROBE events"
+# status_changed event carries from/to
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${NOOP_ID}', p_status=>'in_progress');" >/dev/null 2>&1
+EVT_FROM_TO=$($PSQL -c "SELECT from_status||'->'||to_status FROM tasks.task_events WHERE task_id='${NOOP_ID}' AND event_type='status_changed';" 2>/dev/null)
+[ "$EVT_FROM_TO" = "pending->in_progress" ] && pass "status_changed event records pending->in_progress" || fail "event from/to wrong (got: $EVT_FROM_TO)"
+# RLS: plain reader sees zero events for personal tasks; sees fleet events
+# (fleet row from AC-L1-8 has a created event) when an orchestrator profile
+# exists on this host.
+READER_PERSONAL=$($READER_PSQL -c "SELECT count(*) FROM tasks.task_events e JOIN tasks.tasks t ON t.id=e.task_id WHERE t.scope='personal';" 2>/dev/null)
+[ "$READER_PERSONAL" = "0" ] && pass "reader sees zero personal events (isolation)" || fail "reader personal events=$READER_PERSONAL (isolation leak)"
+if [[ -n "$FW_CONNECT" ]]; then
+  FLEET_EVENTS=$($READER_PSQL -c "SELECT count(*) FROM tasks.task_events e JOIN tasks.tasks t ON t.id=e.task_id WHERE t.scope='fleet';" 2>/dev/null)
+  [ "$FLEET_EVENTS" -ge 1 ] && pass "reader sees fleet events (n=$FLEET_EVENTS)" || fail "reader fleet events=$FLEET_EVENTS (expected ≥1)"
+else
+  echo "  ⚠ no orchestrator profile role — skipping fleet-event visibility assertion (worker host)"
+fi
+# no direct DML grants on task_events for readers (INSERT-only via task_log_event)
+if $READER_PSQL -c "INSERT INTO tasks.task_events (task_id, event_type, by) VALUES ('${STORY_ID}', 'created', 'x');" >/dev/null 2>&1; then
+  fail "reader direct INSERT into task_events accepted"
+else
+  pass "reader direct INSERT into task_events denied (no grant)"
+fi
+if $READER_PSQL -c "UPDATE tasks.task_events SET reason='x';" >/dev/null 2>&1; then
+  fail "reader UPDATE task_events accepted"
+else
+  pass "reader UPDATE task_events denied (no grant)"
+fi
+
+echo ""
+echo "═══ AC-L1-15: correlation_id — 1 task per inbox message ═══"
+CORR_ID=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 corr', p_created_by=>'esther', p_source=>'inbox', p_correlation_id=>'msg-l1-1');" 2>/dev/null | head -1)
+[ -n "$CORR_ID" ] && pass "inbox task created with correlation_id" || fail "correlation insert failed"
+if $PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 corr dup', p_created_by=>'esther', p_source=>'inbox', p_correlation_id=>'msg-l1-1');" >/dev/null 2>&1; then
+  fail "duplicate inbox correlation accepted"
+else
+  pass "duplicate inbox correlation rejected (partial unique)"
+fi
+
+echo ""
+echo "═══ AC-L1-16: 17-arg task_upsert legacy compatibility ═══"
+LEGACY_ID="00000000-0000-0000-0000-0000000000aa"
+LEGACY_RET=$($PSQL -c "SELECT tasks.task_upsert('${LEGACY_ID}'::uuid, 'legacy 17-arg', 'esther', NULL, 'hermes-cortex', NULL, NULL, 'personal', 'pending', NULL, NULL, 1, NULL, NULL, 'manual', NULL, 'sess-legacy');" 2>/dev/null | head -1)
+[ "$LEGACY_RET" = "$LEGACY_ID" ] && pass "17-arg positional call resolves via trailing defaults" || fail "17-arg call failed (got: $LEGACY_RET)"
+
+echo ""
+echo "═══ AC-L1-17: poisoned migration — single-transaction rollback ═══"
+POISON_DIR="$(mktemp -d)"
+cp "${REPO_DIR}"/ops/services/tasks/schema/v0*.sql "$POISON_DIR"/
+echo "THIS IS NOT VALID SQL;" > "$POISON_DIR/v099__poison.sql"
+if MIGRATE_POISON_OUT=$(python3 "$MIGRATE_PY" --db-name "$TEST_DB" --schema-dir "$POISON_DIR" 2>&1); then
+  fail "poisoned migration succeeded (rc=0)"
+else
+  VER_AFTER_POISON=$($PSQL -c "SELECT max(version) FROM tasks.schema_version;" 2>/dev/null)
+  [ "$VER_AFTER_POISON" = "5" ] && pass "poisoned migration failed and version stayed 5 (rollback)" || fail "version moved to $VER_AFTER_POISON after poison"
+fi
+rm "$POISON_DIR/v099__poison.sql"
+if python3 "$MIGRATE_PY" --db-name "$TEST_DB" --schema-dir "$POISON_DIR" 2>/dev/null | grep -q "no-op"; then
+  pass "migration re-run after poison removal is a no-op"
+else
+  fail "re-run after poison removal not a no-op"
+fi
+rm -rf "$POISON_DIR"
 
 echo ""
 echo "═══ Summary ═══"
