@@ -175,6 +175,18 @@ trap 'printf "\n${RED}Installation aborted at step $STEP${RESET}\n"; rm -rf "${R
 source "$(_scripts)/install/os-config.sh"
 source "$(_scripts)/install/service-writer.sh"
 
+# ── Agent identity ──────────────────────────────────────────
+# Provision ~/.hermes-cortex/agent.env so the FIRST cortex-update.sh run
+# (which hard-fails without identity) succeeds on fresh installs. Orch hosts
+# self-derive from hostname; non-orch hosts must have AGENT_NAME set or the
+# file created manually. Warn, don't fail — the installer can still finish,
+# but the user must fix identity before cortex-update will run.
+if ! ensure_agent_identity; then
+  warn "Agent identity not provisioned — set AGENT_NAME=<your-agent> or create:"
+  warn "  ${HOME}/.hermes-cortex/agent.env  (AGENT_NAME=<your-agent>)"
+  warn "  cortex-update.sh will refuse to run until this is fixed."
+fi
+
 # ── Python version probe ────────────────────────────────────
 # HERMES NOW REQUIRES PYTHON 3.12+. Earlier versions (3.9, 3.10, 3.11)
 # lack PEP 604 union syntax support and/or sqlite3 extension support.
@@ -210,7 +222,7 @@ find_best_python() {
 # 0. System Verification Check
 # ─────────────────────────────────────────────────────────────
 header "SYSTEM VERIFICATION"
-CHECK_SCRIPT="$(_scripts)/check-system.sh"
+CHECK_SCRIPT="$(_scripts)/install/check-system.sh"
 
 if [[ -f "$CHECK_SCRIPT" ]]; then
  bash "$CHECK_SCRIPT" || {
@@ -287,22 +299,22 @@ fi
 # 1. Ollama — local LLM server for embeddings
 # ─────────────────────────────────────────────────────────────
 step "Installing Ollama (local LLM server)"
-bash "$(_scripts)/install-ollama.sh" install
+bash "$(_scripts)/install/install-ollama.sh" install
 ok
 
 # Configure Ollama service
 step "Configuring Ollama service"
-bash "$(_scripts)/install-ollama.sh" service
+bash "$(_scripts)/install/install-ollama.sh" service
 ok
 
 # Wait for Ollama to be ready
 step "Waiting for Ollama to respond…"
-bash "$(_scripts)/install-ollama.sh" wait
+bash "$(_scripts)/install/install-ollama.sh" wait
 ok
 
 # Pull embedding model
 step "Pulling embedding model (nomic-embed-text:v1.5)"
-bash "$(_scripts)/install-ollama.sh" embed nomic-embed-text:v1.5
+bash "$(_scripts)/install/install-ollama.sh" embed nomic-embed-text:v1.5
 ok
 
 # ── Ollama security check ──────────────────────────────────
@@ -661,9 +673,9 @@ mkdir -p "$SCRIPTS_DIR"
 HEARTBEAT_PATH="${SCRIPTS_DIR}/heartbeat.py"
 if [[ -f "$HEARTBEAT_PATH" ]]; then
  # Check if repo version differs — update if so
- if [[ -f "$(_scripts)/heartbeat.py" ]]; then
-  if ! cmp -s "$HEARTBEAT_PATH" "$(_scripts)/heartbeat.py"; then
-   cp "$(_scripts)/heartbeat.py" "$HEARTBEAT_PATH"
+ if [[ -f "$(_scripts)/health/heartbeat.py" ]]; then
+  if ! cmp -s "$HEARTBEAT_PATH" "$(_scripts)/health/heartbeat.py"; then
+   cp "$(_scripts)/health/heartbeat.py" "$HEARTBEAT_PATH"
    chmod +x "$HEARTBEAT_PATH"
    info " Updated heartbeat.py (repo version differs)"
   else
@@ -674,8 +686,8 @@ if [[ -f "$HEARTBEAT_PATH" ]]; then
  fi
 else
  # Prefer repo copy to prevent divergence
- if [[ -f "$(_scripts)/heartbeat.py" ]]; then
-  cp "$(_scripts)/heartbeat.py" "$HEARTBEAT_PATH"
+ if [[ -f "$(_scripts)/health/heartbeat.py" ]]; then
+  cp "$(_scripts)/health/heartbeat.py" "$HEARTBEAT_PATH"
   chmod +x "$HEARTBEAT_PATH"
   ok
   info " Copied heartbeat.py from repo"
@@ -880,8 +892,8 @@ fi
 SEND_LEARNING_PATH="${SCRIPTS_DIR}/send-agent-learning.sh"
 if [[ -f "$SEND_LEARNING_PATH" ]]; then
  # Check if repo version differs — update if so
- if ! cmp -s "$SEND_LEARNING_PATH" "$(_scripts)/send-agent-learning.sh" 2>/dev/null; then
-  cp "$(_scripts)/send-agent-learning.sh" "$SEND_LEARNING_PATH" 2>/dev/null || \
+ if ! cmp -s "$SEND_LEARNING_PATH" "$(_scripts)/manage/send-agent-learning.sh" 2>/dev/null; then
+  cp "$(_scripts)/manage/send-agent-learning.sh" "$SEND_LEARNING_PATH" 2>/dev/null || \
    warn "send-agent-learning.sh copy failed"
   chmod +x "$SEND_LEARNING_PATH"
   info " Updated send-agent-learning.sh (repo version differs)"
@@ -890,8 +902,8 @@ if [[ -f "$SEND_LEARNING_PATH" ]]; then
  fi
 else
  # Prefer repo copy to prevent divergence
- if [[ -f "$(_scripts)/send-agent-learning.sh" ]]; then
-  cp "$(_scripts)/send-agent-learning.sh" "$SEND_LEARNING_PATH" 2>/dev/null || \
+ if [[ -f "$(_scripts)/manage/send-agent-learning.sh" ]]; then
+  cp "$(_scripts)/manage/send-agent-learning.sh" "$SEND_LEARNING_PATH" 2>/dev/null || \
    warn "send-agent-learning.sh copy failed"
   chmod +x "$SEND_LEARNING_PATH"
   info " Copied send-agent-learning.sh from repo"
@@ -1019,8 +1031,16 @@ SEND_LEARNING
 fi
 
 # ── memory-to-brain-sync.py ─────────────────────────────────────
-M2B_PATH="${SCRIPTS_DIR}/memory-to-brain-sync.py"
-if [[ -f "$M2B_PATH" ]]; then
+M2B_PATH="${SCRIPTS_DIR}/agent-memory-to-brain-sync.py"
+# Canonical script is agent-memory-to-brain-sync.py (register map + crons use
+# this name). Prefer the repo copy; the inline heredocs below are a
+# last-resort fallback only when the repo file is missing.
+if [[ -f "$(_scripts)/manage/agent-memory-to-brain-sync.py" ]]; then
+ cp "$(_scripts)/manage/agent-memory-to-brain-sync.py" "$M2B_PATH"
+ chmod +x "$M2B_PATH"
+ ok
+ info " Installed agent-memory-to-brain-sync.py (repo copy)"
+elif [[ -f "$M2B_PATH" ]]; then
  # Write inline to temp, compare—only update if different
  M2B_TMP=$(mktemp)
  cat > "$M2B_TMP" <<'M2BPY'
@@ -1303,7 +1323,7 @@ M2BPY2
  mv "$M2B_TMP" "$M2B_PATH"
  chmod +x "$M2B_PATH"
  ok
- info " Installed memory-to-brain-sync.py"
+ info " Installed agent-memory-to-brain-sync.py"
 fi
 
 # ── bootstrap-brain.sh ─────────────────────────────────────
@@ -1311,7 +1331,7 @@ BOOTSTRAP_PATH="${SCRIPTS_DIR}/bootstrap-brain.sh"
 if [[ -f "$BOOTSTRAP_PATH" ]]; then
  skip "bootstrap-brain.sh already exists"
 else
- cp "$(_scripts)/bootstrap-brain.sh" "$BOOTSTRAP_PATH" 2>/dev/null || {
+ cp "$(_scripts)/install/bootstrap-brain.sh" "$BOOTSTRAP_PATH" 2>/dev/null || {
   cat > "$BOOTSTRAP_PATH" <<'BOOTSTRAP'
 #!/usr/bin/env bash
 # bootstrap-brain.sh — Post-install brain verification
@@ -1352,7 +1372,7 @@ BUDGET_PATH="${SCRIPTS_DIR}/check-memory-budget.sh"
 if [[ -f "$BUDGET_PATH" ]]; then
  skip "check-memory-budget.sh already exists"
 else
- cp "$(_scripts)/check-memory-budget.sh" "$BUDGET_PATH" 2>/dev/null || {
+ cp "$(_scripts)/health/check-memory-budget.sh" "$BUDGET_PATH" 2>/dev/null || {
   cat > "$BUDGET_PATH" <<'BUDGET'
 #!/usr/bin/env bash
 # check-memory-budget.sh — MEMORY.md usage monitor
@@ -1379,7 +1399,7 @@ CORTEX_PROFILE_PATH="${SCRIPTS_DIR}/cortex-profile.sh"
 if [[ -f "$CORTEX_PROFILE_PATH" ]]; then
  skip "cortex-profile.sh already exists"
 else
- cp "$(_scripts)/cortex-profile.sh" "$CORTEX_PROFILE_PATH" 2>/dev/null || \
+ cp "$(_scripts)/install/cortex-profile.sh" "$CORTEX_PROFILE_PATH" 2>/dev/null || \
   warn "cortex-profile.sh not available (only from repo)"
  if [[ -f "$CORTEX_PROFILE_PATH" ]]; then
   chmod +x "$CORTEX_PROFILE_PATH"
@@ -1392,7 +1412,7 @@ SEED_BRAIN_PATH="${SCRIPTS_DIR}/seed-project-brain.sh"
 if [[ -f "$SEED_BRAIN_PATH" ]]; then
  skip "seed-project-brain.sh already exists"
 else
- cp "$(_scripts)/seed-project-brain.sh" "$SEED_BRAIN_PATH" 2>/dev/null || \
+ cp "$(_scripts)/install/seed-project-brain.sh" "$SEED_BRAIN_PATH" 2>/dev/null || \
   warn "seed-project-brain.sh not available (only from repo)"
  if [[ -f "$SEED_BRAIN_PATH" ]]; then
   chmod +x "$SEED_BRAIN_PATH"
@@ -1405,7 +1425,7 @@ CORTEX_HEALTH_PATH="${SCRIPTS_DIR}/cortex-health.sh"
 if [[ -f "$CORTEX_HEALTH_PATH" ]]; then
  skip "cortex-health.sh already exists"
 else
- cp "$(_scripts)/cortex-health.sh" "$CORTEX_HEALTH_PATH" 2>/dev/null || \
+ cp "$(_scripts)/manage/cortex-health.sh" "$CORTEX_HEALTH_PATH" 2>/dev/null || \
   warn "cortex-health.sh not available (only from repo)"
  if [[ -f "$CORTEX_HEALTH_PATH" ]]; then
   chmod +x "$CORTEX_HEALTH_PATH"
@@ -1418,7 +1438,7 @@ CORTEX_LANGFUSE_PATH="${SCRIPTS_DIR}/cortex-setup-langfuse.sh"
 if [[ -f "$CORTEX_LANGFUSE_PATH" ]]; then
  skip "cortex-setup-langfuse.sh already exists"
 else
- cp "$(_scripts)/cortex-setup-langfuse.sh" "$CORTEX_LANGFUSE_PATH" 2>/dev/null || \
+ cp "$(_scripts)/install/cortex-setup-langfuse.sh" "$CORTEX_LANGFUSE_PATH" 2>/dev/null || \
   warn "cortex-setup-langfuse.sh not available (only from repo)"
  if [[ -f "$CORTEX_LANGFUSE_PATH" ]]; then
   chmod +x "$CORTEX_LANGFUSE_PATH"
@@ -1444,7 +1464,7 @@ PROD_WATCHDOG_PATH="${SCRIPTS_DIR}/prod-watchdog.sh"
 if [[ -f "$PROD_WATCHDOG_PATH" ]]; then
  skip "prod-watchdog.sh already exists"
 else
- cp "$(_scripts)/prod-watchdog.sh" "$PROD_WATCHDOG_PATH" 2>/dev/null || \
+ cp "$(_scripts)/health/prod-watchdog.sh" "$PROD_WATCHDOG_PATH" 2>/dev/null || \
   warn "prod-watchdog.sh not available (only from repo)"
  if [[ -f "$PROD_WATCHDOG_PATH" ]]; then
   chmod +x "$PROD_WATCHDOG_PATH"
@@ -1456,12 +1476,12 @@ fi
 # cron managed by the Hermes cron system. Peer agents don't need it.
 
 # ── Auto-Save Active Sessions Script ──────────────────────────────
-AUTO_SAVE_PATH="${SCRIPTS_DIR}/auto-save-sessions.py"
-if [[ -f "$(_scripts)/auto-save-sessions.py" ]]; then
- cp "$(_scripts)/auto-save-sessions.py" "$AUTO_SAVE_PATH" 2>/dev/null || \
-  warn "auto-save-sessions.py copy failed"
+AUTO_SAVE_PATH="${SCRIPTS_DIR}/agent-auto-save-sessions.py"
+if [[ -f "$(_scripts)/manage/agent-auto-save-sessions.py" ]]; then
+ cp "$(_scripts)/manage/agent-auto-save-sessions.py" "$AUTO_SAVE_PATH" 2>/dev/null || \
+  warn "agent-auto-save-sessions.py copy failed"
  chmod +x "$AUTO_SAVE_PATH" 2>/dev/null || true
- info " Installed auto-save-sessions.py"
+ info " Installed agent-auto-save-sessions.py"
 fi
 
 # ── Eval Harness Scripts ───────────────────────────────────────
@@ -1471,16 +1491,16 @@ mkdir -p "$EVALS_DIR/traces" "$EVALS_DIR/reports"
 info " Created evals directory structure"
 
 RUN_EVALS_PATH="${SCRIPTS_DIR}/run-evals.py"
-if [[ -f "$(_scripts)/run-evals.py" ]]; then
- cp "$(_scripts)/run-evals.py" "$RUN_EVALS_PATH" 2>/dev/null || \
+if [[ -f "$(_scripts)/manage/run-evals.py" ]]; then
+ cp "$(_scripts)/manage/run-evals.py" "$RUN_EVALS_PATH" 2>/dev/null || \
   warn "run-evals.py copy failed"
  chmod +x "$RUN_EVALS_PATH"
  info " Installed run-evals.py"
 fi
 
 ANALYZE_FAILURES_PATH="${SCRIPTS_DIR}/analyze-failures.py"
-if [[ -f "$(_scripts)/analyze-failures.py" ]]; then
- cp "$(_scripts)/analyze-failures.py" "$ANALYZE_FAILURES_PATH" 2>/dev/null || \
+if [[ -f "$(_scripts)/manage/analyze-failures.py" ]]; then
+ cp "$(_scripts)/manage/analyze-failures.py" "$ANALYZE_FAILURES_PATH" 2>/dev/null || \
   warn "analyze-failures.py copy failed"
  chmod +x "$ANALYZE_FAILURES_PATH"
  info " Installed analyze-failures.py"
@@ -1995,17 +2015,15 @@ PLIST
  fi
 
  # Install health server launchd agent (self-monitoring API)
+ # REMOVED 2026-08-05 — health server is now a systemd user service
+ # (health-vector.service, see docs/templates/health-vector.service). The
+ # legacy macOS com.hermes.health-server launchd agent has no repo source
+ # and is no longer installed. Do NOT re-add it — it caused duplicate-unit
+ # crash loops on upgraded hosts that still had the old unit.
  HEALTH_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.hermes.health-server.plist"
- HEALTH_SRC="$(_scripts)/com.hermes.health-server.plist"
- if [[ ! -f "$HEALTH_PLIST" ]]; then
-  if [[ -f "$HEALTH_SRC" ]]; then
-   sed "s|CORTEX_HOME|${CORTEX_HOME}|g" "$HEALTH_SRC" > "$HEALTH_PLIST"
-   chmod 644 "$HEALTH_PLIST"
-   launchctl load "$HEALTH_PLIST" 2>&1
-   info " Health server launch agent installed"
-  fi
- elif launchctl list com.hermes.health-server &>/dev/null 2>&1; then
-  info " Health server launch agent already loaded"
+ if launchctl list com.hermes.health-server &>/dev/null 2>&1; then
+   info " Legacy com.hermes.health-server agent still loaded — remove manually:"
+   info "   launchctl bootout gui/$(id -u)/com.hermes.health-server && rm -f \"$HEALTH_PLIST\""
  fi
 elif [[ "$CORTEX_OS" == "linux" ]]; then
 # Health server is now installed as a systemd user service from the
@@ -2120,7 +2138,7 @@ fi
 # ─────────────────────────────────────────────────────────────
 if [[ "$CORTEX_PROFILE" == "server" ]]; then
 step "Installing nginx reverse proxy"
-bash "$(_scripts)/install-nginx.sh"
+bash "$(_scripts)/install/install-nginx.sh"
 ok
 else
  skip "nginx (non-server profile — not needed)"
@@ -2217,7 +2235,7 @@ fi
 printf " ${GREEN}•${RESET} Brain sources  → ${BRAIN_DIR}/{%s}\n" "$(echo "${SOURCES[*]}" | tr ' ' ',')"
 printf " ${GREEN}•${RESET} mycortex plugin → /brain slash command\n"
 printf " ${GREEN}•${RESET} heartbeat.py   → system health watchdog\n"
-printf " ${GREEN}•${RESET} memory-to-brain-sync.py → memory sync to mycortex\\n"
+printf " ${GREEN}•${RESET} agent-memory-to-brain-sync.py → memory sync to mycortex\\\\n"
 printf " ${GREEN}•${RESET} bootstrap-brain.sh → post-install brain verification\n"
 printf " ${GREEN}•${RESET} seed-project-brain.sh → one-command brain seeding from repos\n"
 printf " ${GREEN}•${RESET} cortex-health.sh  → single green-check system readiness\n"
@@ -2228,7 +2246,7 @@ printf " ${GREEN}•${RESET} hermes-cortex-sync.sh → daily repo sync + tool re
 printf " ${GREEN}•${RESET} prod-watchdog.sh → production site monitoring with auto-remediation\\n"
 printf " ${GREEN}•${RESET} check-memory-budget.sh → MEMORY.md usage monitor\n"
 printf " ${GREEN}•${RESET} memory seeds   → ~/.hermes/memories/{MEMORY,USER}.md\\n"
-printf " ${GREEN}•${RESET} Hermes skills  → 12+ shared skills in ~/.hermes-cortex/skills/\\n"
+printf " ${GREEN}•${RESET} Hermes skills  → 50+ shared skills in ~/.hermes/skills/\\\\n"
 printf " ${GREEN}•${RESET} Web Cache    → semantic web result cache (sqlite-vec + Ollama)\n"
 printf " ${GREEN}•${RESET} Offline Knowledge → cascade cache + kiwix ZIM content viewer\n"
 printf " ${GREEN}•${RESET} Launchd services:\n"
@@ -2266,9 +2284,9 @@ I've installed the Hermes Cortex system. Please finish the setup by:
    Script: heartbeat.py
    no_agent: true
 
-  c) memory-to-brain-sync — every 6 hours:
+  c) agent-memory-to-brain-sync — every 6 hours:
    Schedule: 0 */6 * * *
-   Script: memory-to-brain-sync.py
+   Script: agent-memory-to-brain-sync.py
    no_agent: true
 
   d) memory-budget-check — daily at 5am:

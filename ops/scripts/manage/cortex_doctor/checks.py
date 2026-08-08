@@ -665,6 +665,7 @@ def _check_changed_script_execution(res):
     return
 
   changed = {}
+  git_fail = []
   for line in out.splitlines():
     line = line.strip()
     if not (line.endswith(".py") or line.endswith(".sh")) or "/" not in line:
@@ -675,8 +676,12 @@ def _check_changed_script_execution(res):
                    capture_output=True, text=True, timeout=10).stdout.strip()
       if ct:
         changed.setdefault(base, int(ct))
-    except Exception:
-      continue
+    except Exception as e:
+      git_fail.append(f"{base} ({type(e).__name__})")
+  if git_fail:
+    res.add("Script run evidence", "WARN",
+        f"git log failed for {len(git_fail)} changed file(s): " + "; ".join(git_fail[:5]),
+        "Fix the git error (e.g. repo lock, bad object) so run-evidence can be checked")
   if not changed:
     res.add("Script run evidence", "PASS",
         f"no ops/scripts changes in the last {CHANGED_SCRIPT_WINDOW_DAYS} days")
@@ -698,6 +703,7 @@ def _check_changed_script_execution(res):
       by_script.setdefault(s, []).append((j.get("name"), j.get("last_run_at")))
 
   unrun = []
+  unparseable = []
   for base, commit_ts in changed.items():
     if base not in by_script:
       continue  # not a cron script on this host — out of scope
@@ -710,9 +716,15 @@ def _check_changed_script_execution(res):
         if latest is None or t > latest[1]:
           latest = (name, t)
       except ValueError:
-        continue
+        unparseable.append(f"{base} ({name}: {lr!r})")
     if latest is None or latest[1].timestamp() < commit_ts:
       unrun.append(f"{base} (cron: {latest[0] if latest else 'never ran'})")
+
+  if unparseable:
+    res.add("Script run evidence", "WARN",
+        f"{len(unparseable)} cron last_run_at value(s) unparseable (cannot verify run evidence): "
+        + "; ".join(unparseable[:5]),
+        "Fix the malformed last_run_at in the cron jobs file — a check that cannot verify must warn, not silently skip")
 
   if unrun:
     res.add("Script run evidence", "WARN",
@@ -879,8 +891,10 @@ def check_scripts(res):
             matches = sorted(repo_scripts.rglob(script))
             if matches:
               repo_source = matches[0]
-          except OSError:
-            pass
+          except OSError as e:
+            res.add("Cron scripts", "WARN",
+                f"could not search repo for {script}: {e}",
+                "Fix the filesystem error so source matching can verify deployed scripts")
         if repo_source.is_file():
           try:
             # Strip SOURCE header from deployed copy (cortex-update.sh adds it;
@@ -900,8 +914,10 @@ def check_scripts(res):
             src_md5 = _hl.md5(repo_source.read_bytes()).hexdigest()
             if dep_md5 != src_md5:
               mismatched.append((job.get("name", "?"), script, deployed))
-          except (OSError, PermissionError):
-            pass  # expected — silently handled
+          except (OSError, PermissionError) as e:
+            res.add("Script integrity", "WARN",
+                f"cannot verify {script}: {type(e).__name__}: {e}",
+                "Fix permissions so script-content verification covers every cron script")
         break
     if not found and Path(script).is_absolute() and Path(script).exists():
       found = True
@@ -1743,8 +1759,10 @@ def _check_enforcer_permissions(res, plugin_dir, hooks_dir):
           if r.returncode == 0:
             flags = r.stdout.split()[0] if r.stdout else ""
             is_immutable = "i" in flags
-        except (subprocess.TimeoutExpired, OSError, IndexError):
-          pass  # expected — silently handled
+        except (subprocess.TimeoutExpired, OSError, IndexError) as e:
+          res.add(f"Perms: {label}", "WARN",
+              f"cannot verify immutability (lsattr failed: {type(e).__name__})",
+              "Linux: run sudo chattr +i " + str(path))
         if is_immutable:
           res.add(f"Perms: {label}", "PASS",
               f"{oct(have)} (+ chattr +i) — immutable trumps")
@@ -1752,8 +1770,10 @@ def _check_enforcer_permissions(res, plugin_dir, hooks_dir):
           res.add(f"Perms: {label}", "WARN",
               f"expected {oct(want)}, got {oct(have)}",
               f"Fix: chmod {oct(want)[2:]} {path}")
-    except OSError:
-      continue # file removed between stat and read — skip gracefully
+    except OSError as e:
+      res.add(f"Perms: {label}", "WARN",
+          f"cannot stat {path}: {type(e).__name__}: {e}",
+          "Fix the filesystem error so the permission check covers this file")
 
 
 def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
@@ -1910,6 +1930,8 @@ def _check_fix_blocked_ips_root_copy(res):
       "root copy present and matches repo source")
 
   # ── Immutable (chattr +i / chflags uchg) ──
+  # macOS: lsattr absent — chflags uchg is the equivalent. A check that
+  # cannot verify must warn, not silently pass (P12).
   try:
     result = subprocess.run(
         ["lsattr", str(root_path)], capture_output=True, text=True, timeout=5
@@ -1922,9 +1944,11 @@ def _check_fix_blocked_ips_root_copy(res):
           "immutable flag not set — root copy is modifiable",
           f"Fix: sudo chattr +i {root_path}"
           + ("" if not _is_macos else " (macOS: sudo chflags uchg)"))
-  except (subprocess.TimeoutExpired, OSError, IndexError):
-    # macOS: lsattr absent — chflags uchg is the equivalent; skip gracefully
-    pass
+  except (subprocess.TimeoutExpired, OSError, IndexError) as e:
+    res.add("Blocked-IPs root copy immutable", "WARN",
+        f"could not verify immutable flag (lsattr failed: {type(e).__name__}: {e})",
+        "Linux: run sudo chattr +i " + str(root_path)
+        + (" | macOS: lsattr is absent — use sudo chflags uchg" if _is_macos else ""))
 
 
 def check_governance(res):
@@ -2009,8 +2033,10 @@ def check_governance(res):
         res.add("Enforcer survey gate", "WARN",
             "missing SURVEY_MARKER constant — survey-before-cron gate not active",
             "Pull latest hermes-cortex and run cortex-update.sh ")
-    except (OSError, PermissionError):
-      pass # plugin source not readable — skip survey gate check
+    except (OSError, PermissionError) as e:
+      res.add("Enforcer survey gate", "WARN",
+          f"cannot read enforcer plugin to verify survey gate: {type(e).__name__}: {e}",
+          "Fix permissions on " + str(plugin_src / "__init__.py") + " or run cortex-update.sh")
   else:
     res.add("Governance plugin", "FAIL", "not installed",
         "Install: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/\n"
@@ -2454,6 +2480,7 @@ def check_governance(res):
       _active_tasks = set()
       _state_dir = CORTEX_HOME / "state"
       _terminal_states = {"completed", "cancelled"}
+      _lock_errors = 0
       if _state_dir.is_dir():
         for _lf in _state_dir.glob(".governance-*.json"):
           try:
@@ -2461,7 +2488,11 @@ def check_governance(res):
             if _ld.get("task_id") and _ld.get("status") not in _terminal_states:
               _active_tasks.add(_ld["task_id"])
           except (OSError, ValueError):
-            continue
+            _lock_errors += 1
+      if _lock_errors:
+        res.add("PENDING cycles", "WARN",
+            f"{_lock_errors} governance lock file(s) unreadable — cannot verify active-task set",
+            "Remove or repair the corrupt lock file(s) in " + str(_state_dir))
       _conn = sqlite3.connect(str(_loop_db))
       _conn.row_factory = sqlite3.Row
       _pending = _conn.execute(
@@ -2543,8 +2574,10 @@ def check_governance(res):
       res.add("Skills gate", "WARN",
           "missing SKILLS_MARKER_DIR — skills gate not active",
           "Pull latest hermes-cortex and run cortex-update.sh")
-  except (OSError, PermissionError):
-    pass
+  except (OSError, PermissionError) as e:
+    res.add("Skills gate", "WARN",
+        f"cannot read enforcer plugin to verify skills gate: {type(e).__name__}: {e}",
+        "Fix permissions on " + str(plugin_src / "__init__.py") + " or run cortex-update.sh")
 
 
 def check_hook_drift(res):
@@ -2703,17 +2736,23 @@ def check_local_hooksPath_overrides(res):
     # are genuine bypass vectors.
     local_hooks_dir = Path(local_hooks)
     _cortex_present = False
+    _read_errors = []
     if local_hooks_dir.is_dir():
       for _hook_name in ("pre-commit", "pre-push"):
         _hook_path = local_hooks_dir / _hook_name
         if _hook_path.is_file():
           try:
             _head = _hook_path.read_bytes()[:2048].decode("utf-8", errors="replace")
-          except OSError:
+          except OSError as e:
+            _read_errors.append(f"{_hook_path}: {e}")
             continue
           if "Git " in _head and "hook" in _head:
             _cortex_present = True
             break
+    if _read_errors:
+      res.add(f"Local hooksPath override ({repo_dir.name})", "WARN",
+          f"could not read {len(_read_errors)} hook file(s): " + "; ".join(_read_errors[:2]),
+          "Fix permissions so hook provenance can be verified")
     if _cortex_present:
       continue # legitimately pinned — 7c verifies freshness
 
@@ -2815,7 +2854,8 @@ def check_pinned_hooks_fresh(res):
             # line (─ = 3 UTF-8 bytes each) — scan 2KB to be safe.
             try:
                 head = hook_file.read_bytes()[:2048].decode("utf-8", errors="replace")
-            except OSError:
+            except OSError as e:
+                stale.append(f"{git_dir.parent.name}: cannot read {hook_file}: {e}")
                 continue
             if "Git " not in head or "hook" not in head:
                 continue  # foreign hook — preserved by design
@@ -2950,6 +2990,52 @@ def check_stale_deploys(res):
             f"Remove: rm {f}")
 
 
+def check_install_sh_refs(res):
+  """Verify install.sh's repo path references resolve.
+
+  install.sh uses helper functions (_scripts, _offline, _core_gov, _deploy,
+  _dashboard) to reference repo files. When ops/scripts/ was restructured into
+  subdirectories (install/, health/, manage/) in Aug 2026, these refs went
+  stale and every fresh install silently fell back to outdated inline
+  heredocs (e.g. a 7KB heartbeat.py instead of the 20KB repo version, and
+  stub bootstrap-brain.sh / check-memory-budget.sh). This check catches that
+  class of regression so the installer can't rot unnoticed.
+  """
+  if not INSTALL_SCRIPT.exists():
+    return
+  src = INSTALL_SCRIPT.read_text(errors="replace")
+  helpers = {
+    "_scripts": CORTEX_REPO / "ops" / "scripts",
+    "_offline": CORTEX_REPO / "ops" / "offline",
+    "_core_gov": CORTEX_REPO / "core" / "governance",
+    "_deploy": CORTEX_REPO / "ops" / "install" / "deploy",
+    "_dashboard": CORTEX_REPO / "ops" / "services" / "dashboard",
+  }
+  stale = []
+  for helper, base in helpers.items():
+    for m in re.finditer(r"\$\(%s\)/([\w./-]+)" % re.escape(helper), src):
+      rel = m.group(1)
+      if not (base / rel).exists():
+        line_no = src[: m.start()].count("\n") + 1
+        line = src.splitlines()[line_no - 1].strip()
+        if line.startswith("#"):
+          continue
+        stale.append(f"{helper}/{rel} (line {line_no})")
+  if stale:
+    try:
+      rel_install = str(INSTALL_SCRIPT.relative_to(CORTEX_REPO))
+    except ValueError:
+      rel_install = str(INSTALL_SCRIPT)
+    res.add("Install refs", "WARN",
+        f"{len(stale)} stale path reference(s) in install.sh — fresh installs "
+        "fall back to inline heredocs",
+        "Fix paths in " + rel_install + ": "
+        + "; ".join(stale[:8]))
+  else:
+    res.add("Install refs", "PASS",
+        "install.sh repo path references all resolve")
+
+
 def check_stale_skills(res):
   """Check deployed skills for orphans (no repo source) and missing (not deployed).
 
@@ -3013,8 +3099,9 @@ def check_stale_skills(res):
         fm_text = skill_md.read_text().split('---', 2)
         if len(fm_text) >= 2 and 'metadata:\n  hermes:' in fm_text[1]:
           continue  # Hermes built-in skill — not an orphan
-      except (OSError, ValueError, KeyError):
-        pass
+      except (OSError, ValueError, KeyError) as e:
+        orphans.append(f"{cat}/{name} (unreadable: {type(e).__name__})")
+        continue
       orphans.append(f"{cat}/{name}")
 
   if orphans:
@@ -3266,10 +3353,12 @@ def check_skills_version(res):
     if not SKILLS_DIR.is_dir():
         return
     no_version = []
+    unreadable = []
     for skill_md in sorted(SKILLS_DIR.rglob("SKILL.md")):
         try:
             content = skill_md.read_text()
-        except (OSError, UnicodeDecodeError):
+        except (OSError, UnicodeDecodeError) as e:
+            unreadable.append(f"{skill_md.relative_to(CORTEX_REPO)} ({type(e).__name__})")
             continue
         if not re.search(r'^version:\s+\S', content, re.MULTILINE):
             name = "unknown"
@@ -3278,6 +3367,10 @@ def check_skills_version(res):
                 name = m.group(1).strip()
             rel_path = skill_md.relative_to(CORTEX_REPO)
             no_version.append((name, str(rel_path)))
+    if unreadable:
+        res.add("Skill version", "WARN",
+            f"{len(unreadable)} skill file(s) unreadable: " + "; ".join(unreadable[:5]),
+            "Fix permissions so the version check covers every skill")
     if no_version:
         for name, path in no_version[:10]:
             res.add(f"Skill version: {name}", "WARN",
@@ -3302,15 +3395,21 @@ def check_skill_fences(res):
     if not SKILLS_DIR.is_dir():
         return
     unbalanced = []
+    unreadable = []
     for skill_md in sorted(SKILLS_DIR.rglob("SKILL.md")):
         try:
             content = skill_md.read_text()
-        except (OSError, UnicodeDecodeError):
+        except (OSError, UnicodeDecodeError) as e:
+            unreadable.append(f"{skill_md.relative_to(CORTEX_REPO)} ({type(e).__name__})")
             continue
         n = sum(1 for line in content.splitlines() if line.lstrip().startswith("```"))
         if n % 2 != 0:
             rel = skill_md.relative_to(CORTEX_REPO)
             unbalanced.append((n, str(rel)))
+    if unreadable:
+        res.add("Skill fences", "WARN",
+            f"{len(unreadable)} skill file(s) unreadable: " + "; ".join(unreadable[:5]),
+            "Fix permissions so the fence check covers every skill")
     if unbalanced:
         for n, path in unbalanced[:10]:
             res.add("Skill fences", "WARN", f"{path} — {n} fences (unbalanced)",
@@ -3340,10 +3439,12 @@ def check_skill_stubs(res):
     if not SKILLS_DIR.is_dir():
         return
     stubs = []
+    unreadable = []
     for skill_md in sorted(SKILLS_DIR.rglob("SKILL.md")):
         try:
             content = skill_md.read_text()
-        except (OSError, UnicodeDecodeError):
+        except (OSError, UnicodeDecodeError) as e:
+            unreadable.append(f"{skill_md.relative_to(CORTEX_REPO)} ({type(e).__name__})")
             continue
         # Stubs are ~1KB. The size guard applies to BOTH markers — a full
         # doc that merely quotes 'Full content (truncated)' (e.g. the
@@ -3354,6 +3455,10 @@ def check_skill_stubs(res):
         ):
             rel = skill_md.relative_to(CORTEX_REPO)
             stubs.append((skill_md.stat().st_size, str(rel)))
+    if unreadable:
+        res.add("Skill stubs", "WARN",
+            f"{len(unreadable)} skill file(s) unreadable: " + "; ".join(unreadable[:5]),
+            "Fix permissions so the stub check covers every skill")
     if stubs:
         for size, path in stubs[:10]:
             res.add("Skill stubs", "FAIL",
@@ -3537,13 +3642,19 @@ def check_nginx_dir_purity(res):
         res.add("Nginx dir purity", "INFO", "nginx deploy dir missing — nothing to scan")
         return
     misplaced = []
+    unreadable = []
     for conf in sorted(nginx_dir.glob("*.conf")):
         try:
             text = conf.read_text(errors="ignore")
-        except (OSError, PermissionError):
+        except (OSError, PermissionError) as e:
+            unreadable.append(f"{conf.name} ({type(e).__name__})")
             continue
         if "[Definition]" in text or "failregex" in text:
             misplaced.append(conf.name)
+    if unreadable:
+        res.add("Nginx dir purity", "WARN",
+            f"{len(unreadable)} conf file(s) unreadable: " + "; ".join(unreadable),
+            "Fix permissions so the purity check covers every conf")
     if misplaced:
         res.add(
             "Nginx dir purity", "FAIL",

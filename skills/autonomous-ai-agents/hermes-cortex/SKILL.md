@@ -1,8 +1,8 @@
 ---
 name: hermes-cortex
-version: 1.0.0
-description: Install, configure, and maintain Hermes Cortex — the observability and knowledge layer for Hermes Agent (Ollama, gbrain, Langfuse, Cortex Dashboard, nginx, launchd services, Hermes plugins, offline code assistant, offline content auto-update).
-tags: [setup, installation, ollama, gbrain, langfuse, dashboard, nginx, launchd, macos, plugins, docker-compose, offline, code-assistant, rag, bible, hymns]
+version: 2.0.0
+description: Install, configure, and maintain Hermes Cortex — the observability and knowledge layer for Hermes Agent (Ollama, mycortex, Langfuse, Cortex Dashboard, nginx, systemd/launchd services, Hermes plugins, offline code assistant, offline content auto-update).
+tags: [setup, installation, mycortex, langfuse, dashboard, nginx, systemd, launchd, linux, macos, plugins, docker-compose, offline, code-assistant, rag, bible, hymns]
 related_skills: [hermes-agent, docker-compose-common-issues]
 ---
 
@@ -10,55 +10,83 @@ related_skills: [hermes-agent, docker-compose-common-issues]
 
 Hermes Cortex is the local AI infrastructure layer that provides:
 - **Ollama** — Local LLM inference server
-- **gbrain** — Postgres-native personal knowledge base with hybrid RAG search
-- **Launchd services** — Persistent daemons for Ollama and gbrain sync
-- **Hermes plugins** — `/brain` slash command for knowledge queries
+- **mycortex** — Postgres-native knowledge brain with hybrid RAG search (gbrain replacement, decommissioned 2026-08-02)
+- **systemd (Linux) / launchd (macOS) services** — Persistent daemons for Ollama, mycortex, Dashboard
+- **Hermes plugins** — `/brain` slash command for knowledge queries (`mycortex-command`)
+
+> **gbrain is DEAD — mycortex replaces it.** All `gbrain` CLI commands below are
+> legacy. The mycortex CLI lives at `ops/scripts/manage/mycortex` (deployed to
+> `~/.hermes-cortex/scripts/mycortex`): `sources add|list|remove`, `sync`,
+> `search`, `list`, `stats`, `doctor`. Runs over mycortex-postgres (:15432) —
+> no daemon, no bun; sync is a cron. gbrain troubleshooting sections further
+> down are historical and kept only for migration reference.
 
 ## Installation
 
 ### Prerequisites
 
 ```bash
-# Verify Bun is installed (required for gbrain)
-bun --version
+# Verify Python 3.12+ (canonical interpreter for cortex scripts)
+python3 --version
 
-# Verify macOS (launchd required)
-uname -s # Should return "Darwin"
+# Verify Docker (required for mycortex-postgres + Langfuse)
+docker --version
+
+# Supported OS: Linux (systemd, apt/dnf/pacman), macOS (launchd, brew), WSL
+uname -s # Linux or Darwin
 ```
 
 ### Run the Installer
 
+The installer lives at `ops/install/install.sh` (moved from repo root in v2.0.0):
+
 ```bash
-git clone https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex
+git clone --depth 1 https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex
 cd ~/hermes-cortex
-bash install.sh
+bash ops/install/install.sh
+
+# Check prerequisites only (no install):
+bash ops/install/install.sh --check
+
+# macOS — Laptop profile: lean, no Docker
+CORTEX_PROFILE=laptop bash ops/install/install.sh
+
+# Linux — auto-detects systemd, apt/dnf/pacman
+CORTEX_OS=linux bash ops/install/install.sh
 ```
 
 **Idempotent** — safe to re-run. Skips already-installed steps.
 
-The installer runs **13 steps**:
+The installer runs **~30 steps** (exact count varies by OS/profile):
 
 | Step | Component | What it does |
 |------|-----------|--------------|
-| 1 | Ollama | Install via Homebrew, configure launchd service |
-| 2 | Bun | JavaScript runtime for gbrain |
-| 3 | gbrain | Knowledge brain CLI (from GitHub, NOT npm) |
-| 4 | Brain directories | MECE-organized knowledge sources (`~/brain/`) |
-| 5 | gbrain sources & sync | Auto-sync every 2 minutes via launchd |
-| 6 | Langfuse | Docker Compose stack (6 containers: langfuse-web, langfuse-worker, postgres, redis, clickhouse, minio) with auto-generated secrets |
-| 7 | Cortex Dashboard | Flask app + launchd service |
-| 8 | nginx | Reverse proxy (SSL or local-only mode) |
-| 9 | Hermes gbrain plugin | `/brain` slash command files |
-| 10 | Hermes scripts | heartbeat.py, memory-to-brain-sync.py, etc. |
-| 11 | Enable plugin | Add gbrain-command to Hermes config |
-| 12-13 | Summary | Next steps prompt for cron job setup |
+| 0 | System Check | Verifies OS, RAM, disk, Docker, network before touching anything |
+| 1 | Ollama | Native installer per OS, bound to localhost; pulls `nomic-embed-text:v1.5` |
+| 2 | Bun | JavaScript runtime (still used by some tooling) |
+| 3 | mycortex-postgres | Docker Postgres + pgvector, schema migrations (mycortex replaces gbrain) |
+| 4 | Brain directories | `~/brain/{default,…}` with MECE schema, .gitignore, git init |
+| 5 | mycortex sources | Registers brain dirs as mycortex sources (via `manage/mycortex` CLI) |
+| 6 | Hermes mycortex plugin | `/brain` slash command (`plugins/mycortex-command`) |
+| 7 | Hermes utility scripts | heartbeat, memory-to-brain-sync, check-memory-budget, etc. |
+| 8 | Cron jobs | Essential crons (auto-remediation, health, memory sync) + orchestrator-only |
+| 9 | Hermes skills | Deploys repo `skills/` → `~/.hermes/skills/` via `sync_skills()` |
+| 10 | Hooks | Scoring pre-commit hooks to all projects + post-merge hook |
+| 11 | MCP servers | loop-governance (loop-gov-mcp.py), tasks (task-mcp.py) |
+| 12 | Web Cache | Semantic web result cache |
+| 13 | Langfuse | Docker Compose stack with auto-generated secrets |
+| 14 | Cortex Dashboard | Flask app + systemd/launchd service |
+| 15 | Offline tools | cache cascade + ZIM viewer |
+| 16 | nginx | Reverse proxy (SSL or local-only mode) |
+| 17 | Hardening | File permission lockdown on sensitive files |
+| 18 | Bootstrap | Bootstraps brain sources (verify + index) |
 
 **What gets installed:**
 
 | Component | Port | Purpose |
 |-----------|------|---------|
 | Ollama | 11434 | Local LLM serving |
-| gbrain | — | Knowledge brain (Postgres + pgvector) |
+| mycortex-postgres | 15432 | Knowledge brain (Postgres + pgvector, Docker) |
 | Langfuse | 3000 | LLM observability (Docker) |
 | Cortex Dashboard | 8901 | System health + Langfuse companion |
 | ClickHouse (Langfuse) | 8123/9000 | Analytics DB for Langfuse v3 |
@@ -99,14 +127,14 @@ This was done for 42 files in June 2026. Any future cortex-update maintenance sh
 # Ollama health
 curl -s http://127.0.0.1:11434/api/tags | jq .
 
-# gbrain CLI
-~/.bun/bin/gbrain --version
+# mycortex CLI (deployed path)
+~/.hermes-cortex/scripts/mycortex --help
 
-# gbrain health
-~/.bun/bin/gbrain doctor --fast
+# mycortex doctor
+~/.hermes-cortex/scripts/mycortex doctor
 
-# gbrain sources
-~/.bun/bin/gbrain sources list
+# mycortex sources
+~/.hermes-cortex/scripts/mycortex sources list
 
 # Langfuse (Docker) — v3 health endpoint
 docker ps | grep langfuse
@@ -114,44 +142,47 @@ curl http://localhost:3000/api/public/health
 
 # Cortex Dashboard
 curl http://localhost:8901/api/health
-launchctl list | grep cortex-dashboard
+# Linux: systemctl status cortex-dashboard
+# macOS: launchctl list | grep cortex-dashboard
 
 # nginx
 nginx -t
-brew services list | grep nginx
+# Linux: systemctl status nginx
+# macOS: brew services list | grep nginx
 
-# Launchd services
-launchctl list | grep -E "(ollama|gbrain|cortex)"
+# Services (systemd on Linux, launchd on macOS)
+# Linux: systemctl --user list-units | grep -E "(ollama|mycortex|cortex)"
+# macOS: launchctl list | grep -E "(ollama|mycortex|cortex)"
 
 # Hermes plugin
-hermes plugins list | grep gbrain
-ls -la ~/.hermes/plugins/gbrain-command/
+hermes plugins list | grep mycortex
+ls -la ~/.hermes/plugins/mycortex-command/
 ```
 
 ### Post-Install Verification
 
-After the basic health checks pass, run these deeper verifications to confirm gbrain is actually indexing content — not just registered:
+After the basic health checks pass, run these deeper verifications to confirm mycortex is actually indexing content — not just registered:
 
 ```bash
-# Run the brain bootstrap health check
-bash scripts/bootstrap-brain.sh --check-only
+# Run the brain bootstrap health check (deployed path — repo: ops/scripts/install/bootstrap-brain.sh)
+bash ~/.hermes-cortex/scripts/bootstrap-brain.sh --check-only
 # Look for: "X source(s) have indexed pages"
 # If ALL show "0 pages indexed", brain directories are empty — add .md files
 
-# Run the full heartbeat report
-python3 scripts/heartbeat.py --report
+# Run the full heartbeat report (deployed path — repo: ops/scripts/health/heartbeat.py)
+python3 ~/.hermes-cortex/scripts/heartbeat.py --report
 # Expected: Overall OK or DEGRADED with actionable items
 
-# Check memory budget
-bash scripts/check-memory-budget.sh --report
+# Check memory budget (deployed path — repo: ops/scripts/health/check-memory-budget.sh)
+bash ~/.hermes-cortex/scripts/check-memory-budget.sh --report
 # If >85%, run the pointer pattern to compress entries
 
-# Verify gbrain has actual indexed pages per source
-gbrain sources list | grep -v "0 pages"
+# Verify mycortex has actual indexed pages per source
+~/.hermes-cortex/scripts/mycortex sources list | grep -v "0 pages"
 # Should show at least one source with >0 pages
 ```
 
-**Why this matters:** gbrain sources can be registered and "healthy" but have zero indexed pages. The `bootstrap-brain.sh --check-only` script detects this condition. If all sources show 0 pages, the `/brain` command returns nothing useful regardless of how much content exists in brain directories.
+**Why this matters:** mycortex sources can be registered and "healthy" but have zero indexed pages. The `bootstrap-brain.sh --check-only` script detects this condition. If all sources show 0 pages, the `/brain` command returns nothing useful regardless of how much content exists in brain directories.
 
 ## Built-in Health Check
 
@@ -161,8 +192,8 @@ After install, the simplest readiness check is:
 bash ~/.hermes/scripts/cortex-health.sh
 ```
 
-This produces a single-pane report covering Ollama, Langfuse, gbrain sources,
-gbrain sync daemon, memory sync freshness, Cortex Dashboard, and disk usage.
+This produces a single-pane report covering Ollama, Langfuse, mycortex sources,
+mycortex sync freshness, memory sync freshness, Cortex Dashboard, and disk usage.
 Exits with:
 - **0** (HEALTHY) — all green
 - **1** (DEGRADED) — non-critical issues like stale brain sources
@@ -173,62 +204,55 @@ Also supports `--json` for programmatic consumption and `--watch`
 
 For deeper inspection, run the systematic audit below.
 
-### 1. Cross-Reference Scripts
+### 1. Cross-Reference Installer Scripts
 
-The installer embeds several utility scripts inside `install.sh` via heredocs. These
-**diverged** from the standalone versions in the repo. Compare them:
+The installer references utility scripts from the repo via the `$(_scripts)/<name>`
+helper (e.g. `$(_scripts)/health/heartbeat.py`), so the **repo copy is canonical** —
+installing fresh deploys the real file, not a stale inline copy. Legacy heredoc
+fallbacks exist for a few scripts (bootstrap-brain, check-memory-budget, heartbeat,
+send-agent-learning, memory-to-brain-sync) but are fallback-only; the `_scripts()`
+path is preferred. (Fixed 2026-08-08: 16 stale `$(_scripts)/<name>` refs in
+`ops/install/install.sh` pointed at pre-restructure paths and silently deployed
+7KB heartbeat stubs instead of the 20KB repo version.)
+
+Verify the installed copy matches the repo source (SOURCE header stripped):
 
 ```bash
-# Check if heartbeat.py matches the repo version
-diff <(sed -n '/^cat > "$HEARTBEAT_PATH" <<'"'"'HEARTBEAT'"'"'/,/^HEARTBEAT$/p' ~/hermes-cortex/install.sh | tail -n +2 | head -n -1) ~/.hermes/scripts/heartbeat.py
-
-# Check if memory-to-brain-sync.py matches the repo version
-diff <(sed -n '/^cat > "$M2B_PATH" <<'"'"'M2BPY'"'"'/,/^M2BPY$/p' ~/hermes-cortex/install.sh | tail -n +2 | head -n -1) ~/.hermes/scripts/memory-to-brain-sync.py
+# Compare deployed heartbeat vs repo
+diff <(sed '1,2d' ~/.hermes-cortex/scripts/heartbeat.py | sed '/^# SOURCE:/d') \
+     <(sed '/^# SOURCE:/d' ops/scripts/health/heartbeat.py)
 ```
 
-If either shows differences, the installed script is stale or the installer
-has drifted. Copy the repo version over the installed one:
+If they differ, the installed script is stale — run `cortex-update.sh` to redeploy:
 ```bash
-cp ~/hermes-cortex/scripts/heartbeat.py ~/.hermes/scripts/heartbeat.py
-cp ~/hermes-cortex/scripts/memory-to-brain-sync.py ~/.hermes/scripts/memory-to-brain-sync.py
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+# Verifies: deployed checksum (minus SOURCE header) == repo source
 ```
 
-### 2. Verify the Sync Daemon / Autopilot Relationship
+### 2. Verify the mycortex Sync Path
 
-gbrain runs two launchd daemons — know which one matters:
+mycortex has **no daemon** — knowledge sync is a cron job
+(`agent-mycortex-sync.sh` → `manage/mycortex sync`). There is no autopilot and
+no sync-watch; the old gbrain launchd daemon pair (`com.gbrain.autopilot` /
+`com.gbrain.sync-watch`) was decommissioned with gbrain (2026-08-02).
 
-- **`com.gbrain.autopilot`** — Self-maintaining brain daemon. Handles sync, extract, embed, lint, and backlinks in a 150s internal loop. This is the **primary** daemon.
-- **`com.gbrain.sync-watch`** — Custom bash script polling `gbrain sync` every 120s. **Redundant** when autopilot runs.
-
-**Why sync-watch fails:** autopilot holds the exclusive lock; sync-watch crashes every cycle because it can't connect while the autopilot is running.
-
-**If autopilot is healthy, disable sync-watch:**
 ```bash
+# Verify sync cron exists
+cronjob action=list | grep mycortex-sync
+
+# Run a manual sync to verify the pipeline
+~/.hermes-cortex/scripts/mycortex sync --force
+
+# Check the sync cron's last run status
+cronjob action=list | grep -A2 mycortex-sync
+```
+
+If a legacy gbrain daemon is still present, remove it:
+```bash
+launchctl bootout gui/$(id -u)/com.gbrain.autopilot 2>/dev/null || true
 launchctl bootout gui/$(id -u)/com.gbrain.sync-watch 2>/dev/null || true
-mv ~/Library/LaunchAgents/com.gbrain.sync-watch.plist{,.disabled}
-mv ~/.gbrain/sync-watch.sh{,.bak}
+rm -f ~/Library/LaunchAgents/com.gbrain.*.plist ~/.gbrain/sync-watch.sh
 ```
-
-The sync daemon now uses smart polling — it checks for registered sources
-each cycle and only runs if non-default sources exist:
-
-```bash
-launchctl list | grep com.gbrain.sync-watch
-# Should show PID (running), not "-" (stopped)
-
-# Tail the log to see the polling pattern
-tail -5 ~/.gbrain/sync-watch.log
-# Expected: periodic sync cycles or "No non-default sources registered — skipping"
-```
-
-**Important:** `cortex-update.sh`'s `restart_gbrain_sync` must call `launchctl bootout` BEFORE
-removing `sync-watch.sh`. Without bootout, launchd KeepAlive keeps the old process alive,
-and `install-gbrain-sync.sh` sees "already running" and skips regenerating the script.
-If the sync daemon's PID is unchanged after a cortex update, the old script is still in
-memory and the update didn't actually take effect. See "Critical Pitfalls" below for the
-full pattern.
-
-No configuration fix needed — Moses patched this in the installer and cortex-update.sh.
 
 ### 3. Verify cortex-update.sh covers all deployed files
 
@@ -237,11 +261,11 @@ Only registered files get auto-deployed when changed. See `references/cortex-upd
 for the full current map (core scripts, self-remediation, offline tools, dashboard, agent inbox, templates, langfuse).
 
 **New file additions:** When adding a new script to the repo, add a `register()` line to `cortex-update.sh`
-(ops/scripts/cortex-update.sh) so it gets auto-deployed on next update. Files in `scripts/` (not `ops/scripts/`)
-need `scripts/` prefix in the source path, e.g. `register "scripts/weekly-auto-fix.py"`.
+(ops/scripts/cortex-update.sh) so it gets auto-deployed on next update. Source paths
+use the canonical `ops/` prefix, e.g. `register "ops/scripts/health/heartbeat.py"`.
 
 See `references/cortex-update-deployment-map.md` for the complete map, update modes (delta/force/status),
-the `restart_gbrain_sync` bootout pitfall, and the macOS sha256sum→shasum fallback.
+and the macOS sha256sum→shasum fallback.
 
 ### 4. Verify Langfuse Containers
 
@@ -252,15 +276,15 @@ docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" | grep langfuse
 Expected: 6 containers (langfuse-web, langfuse-worker, postgres, redis, clickhouse, minio),
 all healthy. If none exist, Langfuse was never deployed or Docker Desktop isn't running.
 
-### 5. Check Every gbrain Source Has Indexed Pages
+### 5. Check Every mycortex Source Has Indexed Pages
 
 ```bash
-gbrain sources list | grep -v "0 pages" | grep -v "^$"
-gbrain sources list | grep "0 pages"
+~/.hermes-cortex/scripts/mycortex sources list | grep -v "0 pages" | grep -v "^$"
+~/.hermes-cortex/scripts/mycortex sources list | grep "0 pages"
 ```
 
 Sources showing "0 pages, never synced" are registered but empty. They need content
-before the sync daemon has anything to index. See "Existing Repo Setup" below.
+before the sync cron has anything to index. See "Existing Repo Setup" below.
 
 ### 5. Audit the Auto-Update Path
 
@@ -284,27 +308,30 @@ creates the corpus files but doesn't build the index automatically.
 
 ## Critical Pitfalls
 
-### gbrain npm Package Collision
+> ⚠️ The gbrain-specific pitfalls below are **historical** — gbrain was
+> decommissioned 2026-08-02 and replaced by mycortex. They are kept for
+> migration reference only. Active pitfalls for the current stack (nginx,
+> Langfuse, cortex-update, loop-governance, hooks) follow after the gbrain
+> block; the git-repo-requirement lesson carries over to mycortex git-mode
+> sources.
+
+### gbrain npm Package Collision (HISTORICAL — gbrain removed)
 
 **PROBLEM:** `bun install -g gbrain` or `npm install -g gbrain` installs the WRONG package.
 
 The npm registry has `gbrain@1.3.1` by stormcolor — a dead 2018 GPU JavaScript library with NO CLI binary. This is NOT the knowledge base tool.
 
-**SOLUTION:** Install from GitHub:
+**SOLUTION (no longer applicable — mycortex replaces gbrain):** mycortex is a repo-managed Python CLI, installed via `cortex-update.sh`, never npm/bun.
 
-```bash
-bun install -g github:garrytan/gbrain
-```
+The real gbrain (garrytan/gbrain, 20.9k stars) was a Postgres-native personal knowledge base with hybrid RAG search, self-wiring knowledge graphs, and synthesis. It must be installed from GitHub, not npm.
 
-The real gbrain (garrytan/gbrain, 20.9k stars) is a Postgres-native personal knowledge base with hybrid RAG search, self-wiring knowledge graphs, and synthesis. It must be installed from GitHub, not npm.
-
-**VERIFICATION:** After install, confirm:
+**VERIFICATION (historical):** After install, confirm:
 ```bash
 gbrain --version # Should return version like "gbrain 0.42.25.0"
 which gbrain   # Should return ~/.bun/bin/gbrain
 ```
 
-### gbrain Source Directory Requirements
+### gbrain Source Directory Requirements (carries over to mycortex git-mode)
 
 **PROBLEM:** gbrain sync fails silently on source directories that aren't git-initialized.
 
@@ -659,34 +686,32 @@ brew install python@3.12
 still use `Optional[str]` or `Union[int, str]` are legacy and should be updated to PEP 604
 syntax when touched.
 
-### Installer Script Divergence
+### Installer Script Divergence (FIXED 2026-08-08)
 
-**PROBLEM:** Several utility scripts are embedded inside `install.sh` as heredocs.
-These are copies of the standalone versions in `scripts/` but can **drift apart**
-when one is updated without updating the other.
+**PROBLEM (historical):** Utility scripts were embedded inside `install.sh` as
+heredocs that could **drift apart** from the standalone versions in `ops/scripts/`.
 
-Confirmed divergences as of v1.0.0:
+Confirmed divergences (v1.0.0 era):
+- `heartbeat.py` — embedded copy was a 7KB stub missing `check_memory_sync_freshness()`
+  and `check_service()`; repo version is 20KB with Linux systemd support
+- `memory-to-brain-sync.py` — embedded copy wrote separate files; repo version
+  writes `current.md` + monthly archive with YAML frontmatter
+- `bootstrap-brain.sh` / `check-memory-budget.sh` — embedded stubs
 
-| Script | Difference | Impact |
-|--------|-----------|--------|
-| `heartbeat.py` | Embedded version missing `check_memory_sync_freshness()` and `check_service()` | Memory sync staleness not detected; Linux systemd support absent |
-| `memory-to-brain-sync.py` | Embedded version writes separate `hermes-memory.md` / `hermes-user.md` files; repo version writes `current.md` + monthly archive with YAML frontmatter | Different output format, different gbrain indexing behavior |
+**FIX (2026-08-08):** `ops/install/install.sh` now resolves utility scripts via the
+`$(_scripts)/<name>` helper (e.g. `$(_scripts)/health/heartbeat.py`), so the
+**repo copy is canonical** and fresh installs deploy the real file. Heredocs
+remain only as fallback for a few scripts (bootstrap-brain, check-memory-budget,
+heartbeat, send-agent-learning, memory-to-brain-sync). Also added
+`ensure_agent_identity` so first cortex-update works on fresh non-orch installs.
 
-**SOLUTION:** After install, compare and sync:
+**Guardrail:** the doctor's `check_install_sh_refs` check (in
+`ops/scripts/manage/cortex_doctor/checks.py`) verifies every `$(_scripts)/<name>`
+reference resolves to a real file — it WARNS if a helper path breaks again.
 
-```bash
-# Check heartbeat
-diff ~/hermes-cortex/scripts/heartbeat.py ~/.hermes/scripts/heartbeat.py
-# If different: cp ~/hermes-cortex/scripts/heartbeat.py ~/.hermes/scripts/heartbeat.py
-
-# Check memory-to-brain
-diff ~/hermes-cortex/scripts/memory-to-brain-sync.py ~/.hermes/scripts/memory-to-brain-sync.py
-# If different: cp ~/hermes-cortex/scripts/memory-to-brain-sync.py ~/.hermes/scripts/memory-to-brain-sync.py
-```
-
-**For repo maintainers:** Every time you update one of these scripts in `scripts/`,
-you must also update the heredoc copy inside `install.sh`. The bash `diff` commands
-above are the only way to detect drift — add them to CI or a pre-commit hook.
+**For repo maintainers:** if you add a new helper script, update install.sh's
+`_scripts()`-referenced paths AND keep the doctor check green. Never let a
+deployed inline copy drift from the repo source.
 
 ## Project Bootstrapping — seed-project.sh
 
@@ -874,55 +899,43 @@ For agents on other projects (not working in the hermes-cortex repo):
 - Only `~/.hermes/skills/` is used (no `.hermes-cortex/skills/` project override exists)
 - `cortex-update.sh` keeps these current automatically
 
-## Launchd Services
+## Services (systemd on Linux, launchd on macOS)
 
 ### Ollama Service
 
 ```bash
-# Status
+# Linux (systemd):
+systemctl status ollama
+# macOS (launchd):
 launchctl list | grep com.ollama.serve
-
-# Start
-launchctl start com.ollama.serve
-
-# Stop
-launchctl stop com.ollama.serve
-
-# Logs
 tail -f ~/Library/Logs/com.ollama.serve.out
 ```
 
-### Gbrain Sync Daemon
+### mycortex-postgres (Docker)
 
 ```bash
-# Status
-launchctl list | grep com.gbrain.sync-watch
+# Status / logs (Docker container, both OSes)
+docker ps | grep mycortex-postgres
+docker logs --tail 50 mycortex-postgres
 
-# Start
-launchctl start com.gbrain.sync-watch
-
-# Stop
-launchctl stop com.gbrain.sync-watch
-
-# Logs
-tail -f ~/.gbrain/sync-watch.log
+# Sync is a cron, not a daemon — see install-crons.sh / cronjob list
+cronjob action=list | grep mycortex-sync
 ```
 
 ## Hermes Plugin
 
-The `/brain` slash command is installed at `~/.hermes/plugins/gbrain-command/`.
+The `/brain` slash command is installed at `~/.hermes/plugins/mycortex-command/`
+(gbrain-command was decommissioned 2026-08-02).
 
-**CRITICAL: Enable the plugin after install**
-
-The installer creates the plugin files but does NOT enable it. You must enable it manually:
+**Enable the plugin after install:**
 
 ```bash
-hermes plugins enable gbrain-command
+hermes plugins enable mycortex-command
 ```
 
 This takes effect on the next Hermes session. Verify with:
 ```bash
-hermes plugins list | grep gbrain
+hermes plugins list | grep mycortex
 # Should show "enabled" status
 ```
 
@@ -938,7 +951,7 @@ hermes plugins list | grep gbrain
 **Troubleshooting:**
 If `/brain` command doesn't work:
 1. Check plugin status: `hermes plugins list`
-2. If "not enabled": `hermes plugins enable gbrain-command`
+2. If "not enabled": `hermes plugins enable mycortex-command`
 3. Start a new Hermes session (`/reset` or restart CLI)
 
 ## Hermes Langfuse Tracing Plugin
@@ -1189,37 +1202,33 @@ Use the **Agent Bus** via `inbox_send` MCP tool. Do NOT write files directly to 
 
 ## Maintenance
 
-### Update gbrain
+### Update mycortex
+
+mycortex is a repo-managed Python CLI + Postgres schema — update it via the repo,
+not a package manager:
 
 ```bash
-# Prefer update over reinstall — preserves installed state
-bun update -g gbrain
+# Pull latest hermes-cortex
+cd ~/hermes-cortex && git pull --rebase
 
-# Verify new version
-gbrain --version
+# Deploy updated CLI + schema
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+
+# Verify version
+~/.hermes-cortex/scripts/mycortex doctor
 ```
 
-If `bun update` doesn't find the latest GitHub commit (uncommon — bun resolves correctly from `~/.bun/install/global/package.json`), fall back to force reinstall:
+### Apply mycortex migrations
+
+Schema migrations run **automatically** from `ops/services/mycortex/schema/`
+(apply via `manage/mycortex` sync / install.sh). To apply manually:
 
 ```bash
-bun install -g github:garrytan/gbrain --force
+~/.hermes-cortex/scripts/mycortex sync --force
 ```
 
-### Apply migrations
-
-Migrations run **automatically** during `gbrain sync` — you usually don't need to call them separately. After updating gbrain, just sync:
-
-```bash
-gbrain sync
-```
-
-If sync output shows migration errors, retry explicitly:
-
-```bash
-gbrain apply-migrations --yes
-```
-
-**If migrations fail:** run `gbrain doctor` to check for wedged migrations, then see "gbrain Migration Failures" in Troubleshooting below.
+**If migrations fail:** run `~/.hermes-cortex/scripts/mycortex doctor` and check
+`ops/services/mycortex/migrate.py` output, then see Troubleshooting below.
 
 ### Keep cortex-associated skills up to date
 
@@ -1233,42 +1242,25 @@ The `hermes-cortex` repo ships some local skills — these are updated via `git 
 ### Rebuild Knowledge Index
 
 ```bash
-gbrain sync --source mybrain --no-pull
-gbrain extract --stale
+~/.hermes-cortex/scripts/mycortex sync --source mybrain --force
 ```
 
-### gbrain Source Migration: Merge Sources via Clean Reimport
+### mycortex Source Migration: Merge Sources via Clean Reimport
 
-When you need to move pages from one gbrain source into another (e.g. moving orphaned `default` source pages into a named source with a filesystem path), use the export→wipe→reimport pattern. This is the canonical way to consolidate sources.
+> Legacy gbrain export→wipe→reimport guidance is historical. For mycortex,
+> sources are registered via the `mycortex` CLI; consolidation uses the same
+> export→wipe→reimport pattern against `ops/scripts/manage/mycortex`.
+> See `docs/design/mycortex-DESIGN.md` and `docs/gbrain-postgres-migration.md`.
 
-**When to use:**
-- The `default` source has pages but no `local_path` (and can't be removed)
-- You want all pages under a single source backed by disk
-- You need to change a source's physical path or source_id
-
-**Workflow:**
-
-```bash
-# PGLite upgrade path removed. This system uses Postgres (pgvector).
-# See docs/gbrain-postgres-migration.md for migration steps.
-echo "PGLite engine upgrade no longer supported — migrated to Postgres"
-gbrain extract --stale
-# 7. Restart daemons
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gbrain.autopilot.plist
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gbrain.sync-watch.plist
-```
-
-**Pitfalls:**
+**Pitfalls (carried over):**
 - The `default` source is protected — it appears after init but will have 0 pages. It cannot be removed or cleaned up.
-- The export script reads `compiled_truth`, not `content` — check the pages table schema first if gbrain version has changed (`SELECT column_name FROM information_schema.columns WHERE table_name = 'pages'`)
-- Slugs in the database use underscores (e.g. `sources_docs_testing`). The script converts them to slashes for filesystem paths (e.g. `sources/docs/testing.md`)
-- After wipe+reinit, ALL gbrain daemons must be reloaded — they were using the old DB handle
+- After wipe+reinit, run `mycortex sync --force` to rebuild — no daemons to reload.
 
 **Verify:**
 ```bash
-gbrain stats        # Should match original page count
-gbrain sources list     # mybrain has pages, default is empty
-gbrain search "test" --limit 1 # Returns results
+~/.hermes-cortex/scripts/mycortex stats        # Should match original page count
+~/.hermes-cortex/scripts/mycortex sources list # mybrain has pages, default is empty
+~/.hermes-cortex/scripts/mycortex search "test" --limit 1 # Returns results
 ```
 
 ### gbrain PGLite Recovery
@@ -1287,50 +1279,41 @@ curl -s http://localhost:11434/api/embeddings \
 ### Health Check
 
 ```bash
-# Run the heartbeat script
-python3 ~/.hermes/scripts/heartbeat.py
+# Run the heartbeat script (deployed path)
+python3 ~/.hermes-cortex/scripts/heartbeat.py
 
 # Check all components
-gbrain doctor --fast
+~/.hermes-cortex/scripts/mycortex doctor
 curl -s http://127.0.0.1:11434/api/tags
 
-# Verify gbrain sources have indexed pages
-bash ~/.hermes/scripts/bootstrap-brain.sh --check-only
+# Verify mycortex sources have indexed pages
+bash ~/.hermes-cortex/scripts/bootstrap-brain.sh --check-only
 
 # Check memory budget
-bash ~/.hermes/scripts/check-memory-budget.sh --report
+bash ~/.hermes-cortex/scripts/check-memory-budget.sh --report
 ```
 
-### gbrain Source Management Quick Reference
+### mycortex Source Management Quick Reference
 
 Useful commands for managing sources day-to-day:
 
 ```bash
 # List all sources with page counts
-gbrain sources list
+~/.hermes-cortex/scripts/mycortex sources list
 
-# Check which source is the active default
-gbrain sources current
-# Returns something like "source: mybrain tier: brain_default"
+# Sync a single source (or --force all)
+~/.hermes-cortex/scripts/mycortex sync --source mybrain
 
-# Set the brain-wide default source (for federated queries)
-gbrain sources default mybrain
+# Search across sources
+~/.hermes-cortex/scripts/mycortex search "query" --limit 5
 
-# Check source status (last sync, embedding coverage)
-gbrain sources status
-
-# Detach from stale .gbrain-source in current directory
-gbrain sources detach
+# Stats / doctor
+~/.hermes-cortex/scripts/mycortex stats
+~/.hermes-cortex/scripts/mycortex doctor
 ```
 
-**Source hierarchy (check via `sources current`):**
-1. `--source` flag on the command (highest priority)
-2. `$GBRAIN_SOURCE` env var
-3. `.gbrain-source` dotfile in CWD
-4. Brain-level default (set via `sources default`)
-5. Seed default (`default` source, lowest priority)
-
-**Cron integration:** The `hermes-cortex-sync` cron job runs these checks automatically every 4 hours on weekdays and reports to Telegram.
+**Cron integration:** The `agent-mycortex-sync` cron job runs sync automatically;
+`hermes-cortex-sync` runs health checks and reports to Telegram.
 
 ## Security Posture
 
@@ -1591,12 +1574,16 @@ brew services restart nginx
 hermes plugins list
 
 # If "not enabled":
-hermes plugins enable gbrain-command
+hermes plugins enable mycortex-command
 
 # Start a new Hermes session (/reset or restart CLI)
 ```
 
-### Autopilot Shows synced=0 — No Sources Registered
+### Autopilot Shows synced=0 — No Sources Registered (HISTORICAL — gbrain removed)
+
+> Legacy gbrain daemon diagnosis. With mycortex, "0 pages" means the sync cron
+> hasn't run or brain dirs are empty — see "Existing Repo Setup — Seeding Brain
+> Content" and run `~/.hermes-cortex/scripts/mycortex sources list`.
 
 **Symptom:** Autopilot cycles every ~150s but every cycle shows `synced=0 extracted=0 embedded=0` and `orphans=N`. Brain directories under `~/brain/` have content but gbrain doesn't index anything.
 
@@ -1792,21 +1779,22 @@ Hermes Cortex uses a two-repo architecture:
 
 | Repo | Visibility | Contents |
 |------|-----------|----------|
-| **`hermes-cortex`** (public) | Public | `install.sh`, `docker-compose.langfuse.yml`, `dashboard/`, `nginx/`, skeleton config, architecture docs, bump-version script |
+| **`hermes-cortex`** (public) | Public | `ops/install/install.sh`, `ops/install/deploy/` (compose files), `ops/services/dashboard`, nginx configs, skeleton config, architecture docs, skills, bump-version script |
 | **`private-data`** (private) | Private | Full `config.yaml` with personal settings, brain content on `brain-*` branches, custom scripts, SSL certs |
 
 **Domain Privacy Rule:** Use `example.com` as placeholder in public repo files. Put your real domain in private repo only. See `references/public-repo-privacy.md` for the full pattern including git history rewriting.
 
-**What the public installer NOW includes (as of commit a51c3a0):**
-- ✅ Ollama + launchd service
-- ✅ gbrain CLI (from GitHub)
-- ✅ Brain directory structure
-- ✅ gbrain sync daemon
-- ✅ `/brain` Hermes plugin
+**What the public installer NOW includes:**
+- ✅ Ollama (systemd/launchd service)
+- ✅ mycortex (Postgres + pgvector via Docker, schema migrations, CLI)
+- ✅ Brain directory structure + .gitignore + git init
+- ✅ mycortex sync cron (no daemon)
+- ✅ `/brain` Hermes plugin (`mycortex-command`)
 - ✅ **Langfuse** (Docker Compose, auto-generated secrets)
-- ✅ **Cortex Dashboard** (Flask app + launchd)
+- ✅ **Cortex Dashboard** (Flask app + systemd/launchd)
 - ✅ **nginx** reverse proxy (SSL or local-only mode)
-- ✅ Utility scripts (heartbeat.py, memory-to-brain-sync.py, etc.)
+- ✅ Utility scripts (heartbeat.py, memory-to-brain-sync.py, check-memory-budget.sh, etc.)
+- ✅ Cron jobs, hooks, MCP servers (loop-governance, tasks)
 
 **What still lives in private repo:**
 - Full personal `config.yaml` with custom settings
@@ -1912,17 +1900,17 @@ Profile-per-project was tried (~20 profiles, each with isolated skills/memories/
 - All profiles inherited the same root `config.yaml` and `.env` — no true config isolation
 - Only difference was separate session history and memory files
 - Added complexity: shell function, project registration file, auth.json sync, profile creation scripts
-- gbrain already handles knowledge separation more cleanly via per-project brain sources
+- gbrain already handled knowledge separation cleanly via per-project brain sources (now mycortex, same model)
 
-**Decision:** Continue with the **uber-agent** — a single Hermes instance (default profile) with knowledge separation delegated to gbrain sources.
+**Decision:** Continue with the **uber-agent** — a single Hermes instance (default profile) with knowledge separation delegated to mycortex sources.
 
 ### How Knowledge Isolation Works
 
-Each project gets its own gbrain source directory (e.g., `~/brain/ione/`, `~/brain/acme-royalty/`) that syncs to gbrain as a named source:
+Each project gets its own mycortex source directory (e.g., `~/brain/ione/`, `~/brain/acme-royalty/`) that syncs to mycortex as a named source:
 
 ```bash
-gbrain sources add ione --path ~/brain/ione --name "IONE Website"
-gbrain sources add acme-royalty --path ~/brain/acme-royalty --name "ACME Royalty"
+~/.hermes-cortex/scripts/mycortex sources add ione --path ~/brain/ione --name "IONE Website"
+~/.hermes-cortex/scripts/mycortex sources add acme-royalty --path ~/brain/acme-royalty --name "ACME Royalty"
 ```
 
 When querying knowledge in-session:
@@ -1931,7 +1919,7 @@ When querying knowledge in-session:
 /brain ione site deployment notes
 ```
 
-The `/brain` command searches across all gbrain sources — no profile switching needed.
+The `/brain` command searches across all mycortex sources — no profile switching needed.
 
 ### Cleanup Steps (applied June 2026)
 
@@ -2010,39 +1998,52 @@ cp ~/path/to/my-project/README.md ~/brain/my-project/sources/
 cp ~/path/to/my-project/ARCHITECTURE.md ~/brain/my-project/sources/
 cp ~/path/to/my-project/docs/*.md ~/brain/my-project/sources/
 
-# 2. Git init (gbrain requires git repos)
+# 2. Git init (mycortex requires git repos for git-mode sources)
 cd ~/brain/my-project
 git init
 git add -A
 git commit -m "seed: my-project documentation"
 
-# 3. Register gbrain source (if not already done)
-gbrain sources add my-project --path ~/brain/my-project --name "My Project"
+# 3. Register mycortex source (if not already done)
+~/.hermes-cortex/scripts/mycortex sources add my-project --path ~/brain/my-project --name "My Project"
 
 # 4. Sync
-gbrain sync --source my-project --no-pull
+~/.hermes-cortex/scripts/mycortex sync --source my-project --force
 
 # 5. Verify
-gbrain sources list | grep my-project
+~/.hermes-cortex/scripts/mycortex sources list | grep my-project
 # Should show >0 pages
 ```
 
 ### Seed All Projects (Automated)
 
-If `scripts/seed-project-brain.sh` exists (added in a later patched version of the repo):
+The canonical seeder is `ops/scripts/install/seed-project-brain.sh` (deployed to `~/.hermes-cortex/scripts/seed-project-brain.sh`):
 
 ```bash
 # See what's empty and what repos can be auto-detected
-bash ~/.hermes/scripts/seed-project-brain.sh --list
+bash ~/.hermes-cortex/scripts/seed-project-brain.sh --list
 
 # Seed all detected projects
-bash ~/.hermes/scripts/seed-project-brain.sh --all
+bash ~/.hermes-cortex/scripts/seed-project-brain.sh --all
 
 # Seed a single project with auto-detected repo
-bash ~/.hermes/scripts/seed-project-brain.sh --project=my-project --auto
+bash ~/.hermes-cortex/scripts/seed-project-brain.sh --project=my-project --auto
 ```
 
-The script copies README.md, ARCHITECTURE.md, CONTRIBUTING.md, and `docs/`\nfiles into the brain dir, then registers and syncs with gbrain.\n\n**After seeding:** always run `gbrain extract --stale` to complete the index:\n\n```bash\ngbrain extract --stale --source my-project\n```\n\nWithout extraction, cross-source edges aren't built and multi-source search\nquality via `/brain` is degraded.\n\n**Large projects (50+ files):** the initial sync may timeout after 30 seconds.\nThis doesn't mean it failed — check pages actually made it in:\n\n```bash\ngbrain sources list | grep my-project | awk '{print $3}'\n```\nIf pages registered, the sync succeeded despite the timeout message. The\ntimeout only affects the CLI response, not the sync operation.
+The script copies README.md, ARCHITECTURE.md, CONTRIBUTING.md, and `docs/` files
+into the brain dir, then registers and syncs with mycortex.
+
+**After seeding:** always run `~/.hermes-cortex/scripts/mycortex sync --force` to
+complete the index. Without a full sync, cross-source edges aren't built and
+multi-source search quality via `/brain` is degraded.
+
+**Large projects (50+ files):** the initial sync may take a while. This doesn't
+mean it failed — check pages actually made it in:
+
+```bash
+~/.hermes-cortex/scripts/mycortex sources list | grep my-project
+```
+If pages registered, the sync succeeded.
 
 ### What to Seed
 
@@ -2058,7 +2059,7 @@ Good candidates for brain content:
 | `docs/design/*.md` | Design documents |
 | `CONTRIBUTING.md` | Workflow conventions |
 
-The `/brain` slash command queries all gbrain sources simultaneously, so seedy docs make every project's knowledge available from any Hermes session.
+The `/brain` slash command queries all mycortex sources simultaneously, so seeded docs make every project's knowledge available from any Hermes session.
 
 ## Cleaning Up Agent Artifacts from Project Roots
 
