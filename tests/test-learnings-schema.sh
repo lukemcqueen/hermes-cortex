@@ -10,6 +10,8 @@
 #   capture but has NO table DML), set_status gate, RLS fail-closed (a
 #   temp un-granted worker role sees zero rows; the granted lifecycle role
 #   reads), bus schema untouched after apply.
+# v002 (F-006): set_status(id, status, impact) — 3-arg revises impact_score,
+#   2-arg keeps it, out-of-range impact rejected, reader EXECUTE re-granted.
 #
 # Mirrors tests/test-tasks-schema.sh (same pass/fail pattern).
 #
@@ -120,6 +122,25 @@ STATUS=$($PSQL -c "SELECT status FROM learnings.learning WHERE id='${CAPTURED_ID
 
 BAD_STATUS=$(docker exec ${CONTAINER} psql -U mycortex -d ${TEST_DB} -t -A -c "SELECT learnings.set_status('${CAPTURED_ID}','nonsense');" 2>&1 | grep -ci "invalid status" || true)
 [ "$BAD_STATUS" -ge 1 ] && pass "invalid status rejected" || fail "invalid status accepted"
+
+echo ""
+echo "═══ AC-L1/v002: set_status impact revision — 3-arg sets impact, 2-arg keeps it ═══"
+# v002: set_status(id, status, impact) — lifecycle revises impact during eval.
+CAPTURE_IMP=$($PSQL -c "SELECT id FROM learnings.capture('session_corrections','test-agent','impact revision test','correction',0,'src-v002');" 2>/dev/null | head -1)
+SET_IMP=$($PSQL -c "SELECT learnings.set_status('${CAPTURE_IMP}','evaluated',2);" 2>/dev/null | head -1)
+[ "$SET_IMP" = "t" ] && pass "set_status with impact returns t" || fail "set_status(3-arg) failed (got: $SET_IMP)"
+IMP_AFTER=$($PSQL -c "SELECT impact_score FROM learnings.learning WHERE id='${CAPTURE_IMP}';" 2>/dev/null | head -1)
+[ "$IMP_AFTER" = "2" ] && pass "impact revised to 2" || fail "impact not revised (got: $IMP_AFTER)"
+# 2-arg call on the same row keeps the revised impact (COALESCE(p_impact, current))
+SET_AGAIN=$($PSQL -c "SELECT learnings.set_status('${CAPTURE_IMP}','applied');" 2>/dev/null | head -1)
+IMP_KEPT=$($PSQL -c "SELECT impact_score FROM learnings.learning WHERE id='${CAPTURE_IMP}';" 2>/dev/null | head -1)
+[ "$SET_AGAIN" = "t" ] && [ "$IMP_KEPT" = "2" ] && pass "2-arg set_status keeps impact (got $IMP_KEPT)" || fail "2-arg call clobbered impact (got: $IMP_KEPT)"
+# impact out of range → rejected
+BAD_IMP=$(docker exec ${CONTAINER} psql -U mycortex -d ${TEST_DB} -t -A -c "SELECT learnings.set_status('${CAPTURE_IMP}','verified',9);" 2>&1 | grep -ci "between -3 and 3" || true)
+[ "$BAD_IMP" -ge 1 ] && pass "impact out of range rejected" || fail "impact out of range accepted"
+# reader role (mycortex_reader) can EXECUTE the 3-arg form via the DEFAULT grant
+READER_SET=$(docker exec ${CONTAINER} psql -U mycortex_reader -d ${TEST_DB} -t -A -c "SELECT learnings.set_status('${CAPTURE_IMP}','verified',1);" 2>/dev/null | head -1)
+[ "$READER_SET" = "t" ] && pass "reader can EXECUTE 3-arg set_status (grant re-affirmed)" || fail "reader 3-arg set_status denied (got: $READER_SET)"
 
 echo ""
 echo "═══ AC-L6: RLS fail-closed — un-granted worker sees nothing; lifecycle reads ═══"

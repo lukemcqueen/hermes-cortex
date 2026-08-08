@@ -131,6 +131,24 @@ Gather raw material from all sources:
 
 For each collected item, classify and decide:
 
+0. **Ledger intake (F-006)** — Read pending learnings from the fleet ledger
+   (the F-001 `learnings` schema on the bus Postgres — orchestrators only):
+   ```bash
+   learning-ledger.py list --status pending
+   ```
+   Each row is an evaluation item (`item_type: "ledger"`, `source: "ledger"`,
+   content/agent from the row). Fold them into the classification below.
+   After deciding a learning's fate, write the disposition back — the ONLY
+   UPDATE path, party L-1 (via `learnings.set_status()`, never direct UPDATE):
+   - **evaluated** → `learning-ledger.py set-status <id> evaluated [--impact N]`
+   - **applied** (after the skill/SOUL edit actually lands) →
+     `learning-ledger.py set-status <id> applied [--impact N]`
+   - **retired** (dup/stale/low-value) →
+     `learning-ledger.py set-status <id> retired [--impact N]`
+   - `--impact` revises the collector's score (-3..+3) when evaluation
+     disagrees; omit it to keep the captured score. Do NOT mark anything
+     you did not process — leave it pending for the next run.
+
 1. **Classification** — Is this:
    - **New lesson** → skill pitfall / step / warning to add
    - **Reinforcement** → existing skill already covers it, strengthen
@@ -220,11 +238,13 @@ Phase 2 — Evaluation:
 - 4 items classified: 3 skill patches, 1 SOUL.md principle
 - 1 duplicate filtered (already in skill 'agent-flow')
 - 2 stale refs: archived for Monday deep eval
+- Ledger: 3 pending learnings processed (1 applied, 1 evaluated, 1 retired)
 
 Phase 3 — Upgrade:
 - Patched: agent-flow (pitfall section), cortex-bus (new step)
 - SOUL.md: 1 principle added
 - Upstreamed: 1 new skill from fleet (swap-refresh)
+- Ledger: dispositions written via learning-ledger.py set-status
 - Bus: 2 messages archived
 - Git: committed + pushed
 

@@ -1,7 +1,8 @@
 # Learning Ledger — Fleet Learning Capture (F-001)
 
 **Status:** Implemented 2026-08-08 · **Party:** Option A verdict (7.65 weighted),
-docs/elicit/2026-08-08_self-healing-auto-learning-party.md · **Tasks:** F-001 → F-002/F-006 wire consumers
+docs/elicit/2026-08-08_self-healing-auto-learning-party.md · **Tasks:** F-001
+done → F-002/F-006 consumers wired 2026-08-08
 
 ## Problem
 
@@ -82,6 +83,46 @@ Adding a route = v00X migration (deliberate — keeps F-015 protocol registry
 honest). The server mirrors the enum for clean 400s; the DB CHECK is
 fail-closed.
 
+## Consumers (F-006 / F-002, wired 2026-08-08)
+
+### F-006 — orch-skill-lifecycle consumes + writes disposition
+
+The daily lifecycle cron (04:00 KST, Moses/Esther) is the ONLY UPDATE path
+(party L-1). It reads the pending intake queue and writes dispositions back
+via `learnings.set_status()` — never direct UPDATE:
+
+```bash
+learning-ledger.py list --status pending          # intake queue
+learning-ledger.py set-status <id> evaluated [--impact N]   # assessed
+learning-ledger.py set-status <id> applied  [--impact N]    # landed in a skill/SOUL
+learning-ledger.py set-status <id> retired  [--impact N]    # dup/stale/low-value
+```
+
+- `learning-ledger.py` (orchestrator-only CLI, register_orch) — safe psql
+  plumbing mirroring task-db.py (docker exec on Linux / direct psql on macOS,
+  stdin-only SQL, ON_ERROR_STOP). Connects as `mycortex_reader_<profile>`;
+  RLS fail-closed for any non-orchestrator role.
+- v002 migration: `set_status(id, status, impact DEFAULT NULL)` — optional
+  impact revision during evaluation (-3..+3); 2-arg calls keep the captured
+  score (COALESCE). Grants re-affirmed on the canonical signature.
+- The lifecycle skill (`orch-skill-lifecycle`) documents the intake step in
+  Phase 2 + disposition writes in Phase 3 + run-report lines.
+
+### F-002 — fixer captures novel successes
+
+`auto-remediation` skill (agent-fixer-* crons): after a fix that SUCCEEDS
+with a NOVEL pattern, the fixer records it via the shared collector CLI:
+
+```bash
+learning-collect.py --route remediation --type fix --impact 1 \
+  --content "<failure> → <root cause> → <fix>" \
+  --source-ref "<job name / issue ref>"
+```
+
+Idempotent by fix signature: the content IS the signature; `UNIQUE
+(route, content_hash)` dedups re-captures (silent no-op). Novel-only —
+known-fix-table applications and repeats are not new learnings.
+
 ## Schema & migrations
 
 - DDL: `ops/services/learnings/schema/v001__learnings.sql`
@@ -107,12 +148,17 @@ next pull + restart; until then his :13004 returns 404 for /api/learnings
 
 ## Testing
 
-`tests/test-learnings-schema.sh` — hermetic scratch DB battery, 16 checks:
+`tests/test-learnings-schema.sh` — hermetic scratch DB battery, 21 checks:
 fresh apply, idempotent re-run, dedup (same id + 1 row), distinct-content
 rows, scrub hook (all 3 patterns), INSERT-only (reader EXECUTE ok, table
 INSERT permission-denied), set_status (transition + invalid rejected),
-RLS fail-closed (temp worker role blocked; esther lifecycle reads), bus
-schema untouched. Run: `bash tests/test-learnings-schema.sh`.
+v002 impact revision (3-arg sets, 2-arg keeps, out-of-range rejected, reader
+EXECUTE re-granted), RLS fail-closed (temp worker role blocked; esther
+lifecycle reads), bus schema untouched. Run: `bash tests/test-learnings-schema.sh`.
+
+`tests/test-learning-ledger-cli.sh` — hermetic CLI battery, 14 checks
+(list default/filters/json, set-status + impact, validation, missing id,
+stats, RLS fail-closed for un-granted roles). Run: `bash tests/test-learning-ledger-cli.sh`.
 
 Live E2E (2026-08-08): POST /api/learnings via local Bearer → new id,
 dedup → `{deduped:true}` same id, bad route → 400; CLI capture/dedup/
@@ -120,13 +166,11 @@ content-file all exit 0; external nginx :14004 + Basic → 200.
 
 ## Follow-ups (other tasks)
 
-- **F-002** — remediation fixer writes ledger row on novel success
-  (idempotent by fix signature)
-- **F-006** — orch-skill-lifecycle consumes ledger, writes disposition +
-  impact via set_status()
 - **F-003/F-004** — user feedback + watchdog findings routes wired
 - **F-007** — ledger→tasks promotion (idempotent by ledger_id)
 - **F-020** — daily "what the fleet learned" digest
 - **F-009** — skill hit-rate tracking
+- **F-005** — `applied_ref` population (what a learning became)
+- Monday deep-eval semantic merge (near-dup by embedding)
 - Forwarder row-level mirror of learnings between Moses/Esther (schema exists
   on both; cross-host row sync is a later hardening)

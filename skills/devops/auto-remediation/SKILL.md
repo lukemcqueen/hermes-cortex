@@ -139,6 +139,26 @@ After fixing:
 2. If fixed, report briefly: `🔧 Auto-fixed <job> — <what was done>`
 3. If unfixable, report why for human intervention
 
+### Capture novel fixes to the fleet ledger (F-002)
+
+When a fix SUCCEEDS and the pattern is NOVEL (not already in the known-fix
+table above, not a repeat of a previously captured fix), record it so the
+whole fleet learns once:
+
+```bash
+learning-collect.py --route remediation --type fix --impact 1 \
+  --content "<failure> → <root cause> → <fix>" \
+  --source-ref "<job name / issue ref>"
+```
+
+- **Idempotent by fix signature** — the content IS the fix signature; the
+  ledger dedups on (route, content_hash), so re-capturing the same fix is a
+  silent no-op.
+- **Novel only** — known-fix-table applications and repeated fixes are NOT
+  new learnings; capturing them is noise. Judge novelty by: was this a fix
+  you derived/verified for the first time?
+- Silent exit 0 on success (incl. dedup); exit 1 + stderr on failure.
+
 ### Phase 2: Check agent inbox for help requests
 
 Check the agent inbox for messages from other agents (Titus, Joseph, Kustos, Gisu) that may contain:

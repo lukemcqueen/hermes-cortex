@@ -222,6 +222,11 @@ register "ops/services/tasks/schema/v004__cancel-update-column.sql" "${CORTEX_DE
 # write via the HTTP collector path and never need this schema locally).
 register_orch "ops/services/learnings/migrate.py"               "${CORTEX_DEPLOY_HOME}/services/learnings/migrate.py"
 register_orch "ops/services/learnings/schema/v001__learnings.sql" "${CORTEX_DEPLOY_HOME}/services/learnings/schema/v001__learnings.sql"
+register_orch "ops/services/learnings/schema/v002__set_status_impact.sql" "${CORTEX_DEPLOY_HOME}/services/learnings/schema/v002__set_status_impact.sql"
+# learning-ledger.py — orchestrator-only lifecycle client (F-006): reads the
+# ledger + writes dispositions via set_status(). SELECT is granted to
+# mycortex_reader_esther/moses only; RLS fail-closed elsewhere.
+register_orch "ops/scripts/manage/learning-ledger.py" "${CORTEX_DEPLOY_HOME}/scripts/learning-ledger.py"
 # learning-collect.py — collector write path, deployed to ALL agents (any of
 # the 8 capture routes on any host can record a learning via HTTP).
 register "ops/scripts/manage/learning-collect.py"  "${CORTEX_DEPLOY_HOME}/scripts/learning-collect.py"
