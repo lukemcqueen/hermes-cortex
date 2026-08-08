@@ -74,6 +74,22 @@ def _run(cmd: list[str], timeout: int = 60) -> tuple[int, str]:
         return 127, f"command not found: {cmd[0]}"
 
 
+def _task_db_identity() -> tuple[str, str]:
+    """Resolve the local task-DB reader role + creator name.
+
+    Mirrors task-db.py's canonical profile resolution (HERMES_PROFILE →
+    AGENT_NAME → hostname) so the probe delete connects as the SAME role that
+    created the probe. Each host provisions only its own
+    mycortex_reader_<profile> role; hardcoding another agent's role (esther)
+    broke the gate on the moses host (2026-08-09).
+    """
+    import platform  # noqa: PLC0415
+    profile = (os.environ.get("HERMES_PROFILE")
+               or os.environ.get("AGENT_NAME")
+               or platform.node() or "default")
+    return f"mycortex_reader_{profile}", profile
+
+
 # ── Grader registry ──────────────────────────────────────────────
 # name -> callable() returning (passed: bool, detail: str)
 
@@ -185,10 +201,17 @@ def _task_lifecycle() -> tuple[bool, str]:
         if rc != 0:
             return False, f"update failed (rc={rc}): {out.strip()[-200:]}"
 
-        # 4. Delete the probe row directly (reader role has DELETE per v001)
-        delete_sql = f"DELETE FROM tasks.tasks WHERE id = '{probe_id}' AND created_by = 'esther';"
+        # 4. Delete the probe row directly (reader role has DELETE per v001).
+        #    Connect as the LOCAL profile reader role — the probe was created
+        #    as <local profile> by task-db.py (resolve_profile chain), and each
+        #    host only provisions its own mycortex_reader_<profile> role. The
+        #    previously hardcoded mycortex_reader_esther did not exist on the
+        #    moses host → gate failed with 'role does not exist' (2026-08-09).
+        probe_role, probe_creator = _task_db_identity()
+        delete_sql = (f"DELETE FROM tasks.tasks WHERE id = '{probe_id}' "
+                      f"AND created_by = '{probe_creator}';")
         rc, out = _run(["docker", "exec", "-i", "mycortex-postgres", "psql",
-                        "-U", "mycortex_reader_esther", "-d", "mycortex",
+                        "-U", probe_role, "-d", "mycortex",
                         "-v", "ON_ERROR_STOP=1", "-t", "-A", "-c", delete_sql])
         if rc != 0:
             return False, f"probe delete failed (rc={rc}): {out.strip()[-200:]}"
@@ -197,8 +220,9 @@ def _task_lifecycle() -> tuple[bool, str]:
     finally:
         # Safety net: if anything above failed after add, remove the probe now.
         if probe_id:
+            probe_role, _ = _task_db_identity()
             _run(["docker", "exec", "-i", "mycortex-postgres", "psql",
-                  "-U", "mycortex_reader_esther", "-d", "mycortex",
+                  "-U", probe_role, "-d", "mycortex",
                   "-v", "ON_ERROR_STOP=1", "-t", "-A", "-c",
                   f"DELETE FROM tasks.tasks WHERE id = '{probe_id}';"])
 
