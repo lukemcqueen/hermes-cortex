@@ -406,42 +406,6 @@ sudo fail2ban-client status nginx-http-auth
 sudo pfctl -a "f2b/nginx-http-auth" -s table
 ```
 
-**Live-apply relaxed jail thresholds on an EXISTING host (2026-08-08):**
-
-The repo templates (`ops/deploy/bootstrap.sh` → `jail.d/hermes-cortex.local`,
-`install-nginx-full.sh` → `jail.local`) only write jails when the file is
-absent — existing hosts keep old values until updated. To relax a running
-host (legit users blocked by aggressive thresholds), apply directly:
-
-```bash
-# 1. See current values
-grep -A6 "nginx-badbots\|nginx-botsearch\|\[sshd\]" \
-  /etc/fail2ban/jail.d/*.local /etc/fail2ban/jail.local 2>/dev/null
-
-# 2. Replace the tight values (the 2026-08-08 relaxation):
-#    nginx-badbots:  maxretry>=1 → 3,  bantime 86400 → 3600, findtime 86400 → 3600
-#    nginx-botsearch: maxretry 10 → 20, findtime 60 → 600,  bantime 86400 → 3600
-#    sshd:            maxretry 3 → 5,   bantime 86400 → 3600
-#    nginx-http-auth: maxretry 5 → 8 (bantime 3600 stays)
-sudo sed -i \
-  -e 's/^maxretry = 1$/maxretry = 3/' \
-  -e 's/^bantime  = 86400$/bantime  = 3600/' \
-  -e 's/^findtime = 86400$/findtime = 3600/' \
-  /etc/fail2ban/jail.d/*.local /etc/fail2ban/jail.local 2>/dev/null || true
-
-# 3. Unban currently-banned legit users (see 'check banned IPs' above):
-sudo fail2ban-client unban --all   # clears all bans, keeps jails armed
-
-# 4. Reload + verify
-sudo systemctl reload fail2ban
-sudo fail2ban-client status
-```
-
-**Ignore legit ranges:** add office/VPN/user CIDRs to the `[DEFAULT]` block:
-`ignoreip = 127.0.0.1/8 ::1 <office-cidr>` in the same jail file, reload.
-Also append `allow <ip>;` lines to `/etc/nginx/allow-ips-manual.conf` so nginx
-never denies them (see `sync-allow-ips-to-fail2ban` skill for the sync flow).
-
 ---
 
 ### 🔐 SSL/TLS Certificates — Let's Encrypt & Certbot
