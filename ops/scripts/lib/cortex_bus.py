@@ -149,6 +149,41 @@ def bus_send(queue: str, message_body: dict) -> dict | None:
         return None
 
 
+def learning_capture(
+    route: str,
+    content: str,
+    ltype: str = "lesson",
+    impact_score: int = 0,
+    source_ref: str | None = None,
+) -> dict | None:
+    """Record a learning in the fleet ledger (F-001).
+
+    The shared collector write path — every one of the 8 capture routes calls
+    this. POSTs to the bus server's /api/learnings endpoint (server-side
+    insert as DB owner via learnings.capture(); collectors never touch
+    Postgres directly). Agent identity comes from bus auth, not the caller.
+
+    Returns {"id", "deduped", "status"} on success (deduped=true when the
+    same route+content_hash already exists — idempotent), None on failure.
+
+    Errors are logged, never raised — collectors are no_agent scripts and
+    must fail soft (a learning lost is preferable to a collector crash).
+    """
+    try:
+        payload = {
+            "route": route,
+            "content": content,
+            "type": ltype,
+            "impact_score": impact_score,
+        }
+        if source_ref:
+            payload["source_ref"] = source_ref
+        return _bus_post("/api/learnings", payload)
+    except (ConnectionError, OSError, json.JSONDecodeError) as e:
+        logging.getLogger("cortex_bus").warning("learning_capture failed: %s", e)
+        return None
+
+
 def bus_read(queue: str, vt: int = 60) -> dict | None:
     """Read one message from a bus queue.
 

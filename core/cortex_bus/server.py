@@ -432,6 +432,73 @@ async def api_dashboard_json(request: Request):
         }
 
 
+@app.post("/api/learnings")
+async def api_learnings_capture(request: Request):
+    """Record a learning in the fleet ledger (F-001).
+
+    Server-side write path: collectors (no_agent scripts on ANY agent) POST
+    here with their existing bus auth. The server inserts via the owner
+    connection calling learnings.capture() — the ONLY table write path.
+    The agent identity comes from authentication, never from the client.
+
+    Body: {route, content, type?, impact_score?, source_ref?}
+    Returns: {id, deduped, status}
+    """
+    agent = _authenticate(request)
+    try:
+        body = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise HTTPException(400, "Invalid JSON body")
+    if not isinstance(body, dict):
+        raise HTTPException(400, "Body must be a JSON object")
+
+    route = body.get("route", "")
+    content = body.get("content", "")
+    ltype = body.get("type", "lesson")
+    impact = body.get("impact_score", 0)
+    source_ref = body.get("source_ref")
+
+    # Canonical route allowlist — mirrors learnings.learning_route enum.
+    # The DB CHECK/enum is fail-closed; this gives clean 400s instead of raw
+    # constraint errors for misconfigured collectors.
+    VALID_ROUTES = {
+        "brain_pending", "brain_lessons", "session_corrections",
+        "governance_cycles", "llm_judge", "remediation",
+        "user_feedback", "cron_outputs",
+    }
+    VALID_TYPES = {"lesson", "fix", "correction", "insight",
+                   "feedback", "watchdog", "skill", "other"}
+    if route not in VALID_ROUTES:
+        raise HTTPException(400, f"invalid route: {route!r}")
+    if not content or not str(content).strip():
+        raise HTTPException(400, "content is required")
+    if ltype not in VALID_TYPES:
+        raise HTTPException(400, f"invalid type: {ltype!r}")
+    if not isinstance(impact, int) or impact < -3 or impact > 3:
+        raise HTTPException(400, "impact_score must be an int in [-3, 3]")
+
+    try:
+        bus = get_queue()
+        bus._ensure_conn()
+        with bus._conn.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM learnings.capture(%s, %s, %s, %s, %s, %s)",
+                (route, agent, str(content), ltype, impact, source_ref),
+            )
+            row = cur.fetchone()
+            bus._conn.commit()
+        if not row:
+            raise HTTPException(503, "learnings.capture returned no row")
+        return {"id": row[0], "deduped": row[1], "status": row[2]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        _log_audit(agent, "learning_capture", route,
+                   {"error": str(e)[:200]},
+                   request.client.host if request.client else None, False)
+        raise HTTPException(400, f"learning capture failed: {str(e)[:200]}")
+
+
 @app.get("/health")
 async def health():
     """Health check — reports bus status."""

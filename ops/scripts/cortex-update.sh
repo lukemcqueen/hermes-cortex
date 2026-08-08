@@ -217,6 +217,14 @@ register "ops/services/tasks/schema/v001__tasks.sql"    "${CORTEX_DEPLOY_HOME}/s
 register "ops/services/tasks/schema/v002__doctor-probe-source.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v002__doctor-probe-source.sql"
 register "ops/services/tasks/schema/v003__cancel-column-null.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v003__cancel-column-null.sql"
 register "ops/services/tasks/schema/v004__cancel-update-column.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v004__cancel-update-column.sql"
+# learnings ledger (F-001) — schema + version-gated runner, orchestrator-only
+# (the bus Postgres that hosts learnings exists only on Moses/Esther; workers
+# write via the HTTP collector path and never need this schema locally).
+register_orch "ops/services/learnings/migrate.py"               "${CORTEX_DEPLOY_HOME}/services/learnings/migrate.py"
+register_orch "ops/services/learnings/schema/v001__learnings.sql" "${CORTEX_DEPLOY_HOME}/services/learnings/schema/v001__learnings.sql"
+# learning-collect.py — collector write path, deployed to ALL agents (any of
+# the 8 capture routes on any host can record a learning via HTTP).
+register "ops/scripts/manage/learning-collect.py"  "${CORTEX_DEPLOY_HOME}/scripts/learning-collect.py"
 register_orch "ops/scripts/install/cortex-setup-langfuse.sh"   "${CORTEX_DEPLOY_HOME}/scripts/cortex-setup-langfuse.sh"
 register "ops/scripts/setup-fleet-langfuse.sh"         "${CORTEX_DEPLOY_HOME}/scripts/setup-fleet-langfuse.sh"
 register "ops/scripts/cortex-update.sh"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-update.sh"
@@ -2347,6 +2355,22 @@ main() {
       : # migrations applied / already current
     else
       error "tasks migrate.py FAILED — task workflow will be dead on this host (retried next update)"
+      exit 1
+    fi
+  fi
+
+  # ── Apply learnings schema (F-001 fleet learning ledger — party-reviewed) ──
+  # Orchestrator-only deploy (register_orch above): the learnings ledger lives
+  # on the bus Postgres, which exists only on Moses/Esther. Workers write via
+  # the HTTP collector path (learning-collect.py → /api/learnings) and never
+  # have this schema locally. Same version-gated runner pattern as tasks.
+  local learnings_migrate="${CORTEX_DEPLOY_HOME}/services/learnings/migrate.py"
+  if [[ -f "$learnings_migrate" ]]; then
+    info "Applying learnings schema…"
+    if python3 "$learnings_migrate"; then
+      : # migrations applied / already current
+    else
+      error "learnings migrate.py FAILED — ledger will be dead on this host (retried next update)"
       exit 1
     fi
   fi
