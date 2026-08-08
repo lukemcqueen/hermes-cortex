@@ -108,9 +108,9 @@ must be registered in this index.
 ## Operations
 
 | Doc | Description |
-|| `docs/new-harness.md` | Task Harness architecture proposal — deterministic task control: state machine, lease, interruption, completion gates |
+|| `docs/new-harness.md` | Task Harness architecture proposal — deterministic task control: state machine, lease, interruption, completion gates. ⚠ Superseded by `docs/harness-v2-requirements.md` (kept for history) |
 || `docs/harness-features-spec.md` | **Harness features spec** — task state machine, MCP server, completion gates, adversarial tests, priority hierarchy |
-|| `docs/research/new_harness/` | Harness spec research — consolidated v2 requirements, Moses/Esther specs, ChatGPT draft |
+|| `docs/archive/research-new-harness-2026-08-08/` | Harness spec research drafts — Moses/Esther specs, ChatGPT draft, Claude draft (archived 2026-08-08; superseded by `docs/harness-v2-requirements.md`) |
 | `docs/loop-governance-reference.md` | Governance reference — MCP tools vs CLI, scoring guidelines, enforcement layers (no structural override — allow_tool_override not in production config) |
 | `docs/governance-improvement-plan.md` | **Friction-driven governance roadmap** — session-mined friction taxonomy, mapped guardrails, P0/P1/P2 enforcement plan (correction→guardrail scanner, read-only whitelist, verify-before-declare gate) |
 | `docs/governance-improvement-plan-gaps.md` | **Multi-role gap review of the improvement plan** — 3-role HC-Party findings (3 SHOWSTOPPER / 7 MAJOR / 5 MINOR), corrected implementation order, Esther adversarial-verify evaluation. Corrects plan premises: P0-2 as written was an RCE hole; corpus is 18,857 user msgs not 416k. §10 queues P1-A/P1-B; P1-A resolved 2026-07-31 (sticky marker per governance lock, atomic lock writes, purge safety, session_type differentiation) |
