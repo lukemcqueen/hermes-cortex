@@ -56,7 +56,7 @@ def _setup(tmp_path, monkeypatch, chat: str = "111222333", quiet: str = "", mute
 # ── Scrub gate (R-6 / NF-031 extension) ─────────────────────
 
 def test_scrub_strips_absolute_paths():
-    out = tn.scrub_text("see /home/luke/hermes-cortex/ops/x.py for details")
+    out = tn.scrub_text("see /home/user/hermes-cortex/ops/x.py for details")
     assert "/home/" not in out
     assert "hermes-cortex" not in out
 
@@ -105,7 +105,7 @@ def test_format_slice_message_has_parent():
 
 
 def test_format_slice_message_scrubs_title():
-    msg = tn.format_task_message("esther", "slice", "fix /home/luke/x", "pending", "abc-125", parent_title="story")
+    msg = tn.format_task_message("esther", "slice", "fix /home/user/x", "pending", "abc-125", parent_title="story")
     assert "/home/" not in msg
 
 
