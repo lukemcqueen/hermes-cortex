@@ -197,6 +197,13 @@ introducing a variable: invented `TELEGRAM_CHAT_ID` when canonical
 (`inbox_esther`) with the same Basic auth often accept. Try the real write with
 existing credentials before planning SSH/Postgres ACL changes on the peer host.
 <!-- Added 2026-08-07 -->
+**A manual workaround is not a fix** — when a routine path is broken (auto-send
+403s on the peer ACL), a one-off manual send to a working queue delivers the
+moment but not the class: the next cycle fails again and the user re-asks
+("the other agents have already sent theirs", 2026-08-08). After any
+workaround, repair the routine (peer ACL grant, script URL from bare env, cron)
+or confirm the fix is applied before closing — bypassed automation guarantees a
+repeat request. <!-- Added 2026-08-08 -->
 
 ### 12. Not Done Until Tested
 
