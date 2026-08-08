@@ -38,6 +38,7 @@ _is_cronjob_write = enforcer._is_cronjob_write
 _is_skill_write = enforcer._is_skill_write
 _has_governance_lock = enforcer._has_governance_lock
 _governance_lock_path = enforcer._governance_lock_path
+_secondary_lock_path = enforcer._secondary_lock_path
 _check_skills_loaded_marker = enforcer._check_skills_loaded_marker
 _auto_create_skills_marker = enforcer._auto_create_skills_marker
 _session_marker_path = enforcer._session_marker_path
@@ -57,8 +58,19 @@ def temp_state_dir():
     with tempfile.TemporaryDirectory() as tmp:
         original = enforcer.GOVERNANCE_STATE_DIR
         enforcer.GOVERNANCE_STATE_DIR = Path(tmp)
+        # Isolate the repo-located secondary marker too (Phase 3 of
+        # _has_governance_lock). begin_change writes
+        # <repo>/.hermes-cortex/.governance-lock alongside the primary lock;
+        # without redirecting this, the suite fails whenever a real governance
+        # session holds a lock (test_corrupted/test_deleted_lock_file_returns_false
+        # — observed 2026-08-08 during orch-skill-lifecycle verification).
+        original_secondary = enforcer._secondary_lock_path
+        if original_secondary:
+            enforcer._secondary_lock_path = lambda: Path(tmp) / ".governance-secondary"
         yield Path(tmp)
         enforcer.GOVERNANCE_STATE_DIR = original
+        if original_secondary:
+            enforcer._secondary_lock_path = original_secondary
 
 
 def _create_lock(state_dir: Path, task_id: str = "test-task", slug: str = "test-repo", session_id: str = "") -> Path:
