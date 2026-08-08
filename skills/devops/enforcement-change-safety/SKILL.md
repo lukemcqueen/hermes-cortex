@@ -497,6 +497,19 @@ Fix (Luke: "agents close out/score before moving to a new task"):
 Tests: `tests/test_runtime/test_mcp_closeout.py`
 (TestEndChangeRequiresScoredCycle, TestBeginChangeCloseOutGate).
 
+**14d. `_skills_dir()` resolved to a NONEXISTENT dir when HERMES_HOME is set —
+the fingerprint gate was a constant in production.** The gateway runs with
+`HERMES_HOME=/home/<user>/.hermes`; `_skills_dir()` returned
+`HERMES_HOME/.hermes/skills` = `~/.hermes/.hermes/skills` (no such dir), so
+`_skills_fingerprint()` hashed eight EMPTY mtimes — a constant that never
+changed. Markers never went stale after deploys, so agents were never forced
+to reload the always-skills mid-turn (the 2026-08-05 skills-before-task gate
+was silently dead). Also, `task-start` lives under `workflow/`, which the
+fingerprint candidate paths missed. Fix: `_skills_dir()` resolves
+`HERMES_HOME/skills` when it exists (HERMES_HOME IS the .hermes dir), and the
+candidate list includes `workflow/`. Regression tests: `TestSkillsDirResolution`
+(3 env variants + fingerprint-mtime-change).
+
 **Checklist when touching these paths:**
 - [ ] Per-session skill tests: session A's loads never satisfy session B
 - [ ] Hook-override regex: override forms block, benign `-c`/plain git pass

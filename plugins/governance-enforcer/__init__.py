@@ -484,6 +484,7 @@ def _skills_fingerprint() -> str:
             _skills_root / _name / "SKILL.md",
             _skills_root / "devops" / _name / "SKILL.md",
             _skills_root / "software-development" / _name / "SKILL.md",
+            _skills_root / "workflow" / _name / "SKILL.md",
         ]
         _found = ""
         for _c in _candidates:
@@ -498,9 +499,20 @@ def _skills_fingerprint() -> str:
 
 
 def _skills_dir() -> Path:
-    """Deployed skills root (call-time derivation — same rationale as
-    GOVERNANCE_STATE_DIR repointing)."""
+    """Deployed skills root — resolves HERMES_HOME correctly.
+
+    HERMES_HOME defaults to ~/.hermes and IS the .hermes dir when set
+    explicitly (the gateway sets HERMES_HOME=/home/<user>/.hermes).
+    Appending '/.hermes' to an already-set HERMES_HOME produced
+    ~/.hermes/.hermes/skills (nonexistent), so _skills_fingerprint()
+    computed from an EMPTY dir: a CONSTANT that never changed, silently
+    defeating the skills-before-task fingerprint invalidation — markers
+    never went stale after deploys, so agents were never forced to
+    reload the always-skills mid-turn (found 2026-08-08 audit).
+    """
     _home = Path(os.environ.get("HERMES_HOME", str(Path.home())))
+    if (_home / "skills").is_dir():
+        return _home / "skills"
     return _home / ".hermes" / "skills"
 
 

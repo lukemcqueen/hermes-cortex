@@ -992,3 +992,58 @@ class TestGitHookBypassGate:
     def test_no_verify_still_detected(self):
         nv, _ = self._flags("git commit --no-verify -m x")
         assert nv is True
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# SKILLS DIR — HERMES_HOME resolution (2026-08-08)
+# ═════════════════════════════════════════════════════════════════════════════
+# The gateway sets HERMES_HOME=/home/<user>/.hermes. The old _skills_dir()
+# appended '/.hermes' to it → ~/.hermes/.hermes/skills (nonexistent) → the
+# fingerprint was computed from an empty dir, a constant that never changed,
+# silently defeating the skills-before-task marker invalidation. The fix
+# resolves HERMES_HOME correctly.
+
+
+class TestSkillsDirResolution:
+    def test_hermes_home_set_resolves_to_skills_dir(self, monkeypatch):
+        """HERMES_HOME set to ~/.hermes → _skills_dir() = ~/.hermes/skills."""
+        monkeypatch.setenv("HERMES_HOME", str(Path.home() / ".hermes"))
+        assert enforcer._skills_dir() == Path.home() / ".hermes" / "skills"
+
+    def test_hermes_home_set_to_parent_resolves_with_dot_hermes(self, monkeypatch):
+        """HERMES_HOME set to the PARENT (~) → ~/.hermes/skills (legacy)."""
+        monkeypatch.setenv("HERMES_HOME", str(Path.home()))
+        assert enforcer._skills_dir() == Path.home() / ".hermes" / "skills"
+
+    def test_hermes_home_unset_defaults_to_home(self, monkeypatch):
+        monkeypatch.delenv("HERMES_HOME", raising=False)
+        assert enforcer._skills_dir() == Path.home() / ".hermes" / "skills"
+
+    def test_fingerprint_tracks_skill_mtime_change(self, monkeypatch, tmp_path):
+        """The fingerprint must CHANGE when a required skill's mtime changes —
+        this is what forces mid-turn reloads after deploys. With the old
+        double-.hermes path it never changed (regression)."""
+        import hashlib as hl
+
+        # Build a fake skills tree: one required skill at workflow/ (task-start
+        # lives there), the rest under software-development/.
+        root = tmp_path / "skills"
+        for name in enforcer._REQUIRED_SKILLS:
+            d = root / ("workflow" if name == "task-start" else "software-development") / name
+            d.mkdir(parents=True, exist_ok=True)
+            (d / "SKILL.md").write_text("x")
+        monkeypatch.setenv("HERMES_HOME", str(tmp_path))  # HERMES_HOME IS the .hermes dir
+
+        # Patch the module's skills root to our fake tree
+        orig = enforcer._skills_dir
+        enforcer._skills_dir = lambda: root
+        try:
+            fp1 = enforcer._skills_fingerprint()
+            # touch task-start's SKILL.md → fingerprint must change
+            import os as _os
+            ts = (root / "workflow" / "task-start" / "SKILL.md")
+            _os.utime(ts, (ts.stat().st_atime + 2, ts.stat().st_mtime + 2))
+            fp2 = enforcer._skills_fingerprint()
+        finally:
+            enforcer._skills_dir = orig
+        assert fp1 != fp2, "fingerprint must change when a required skill mtime changes"
