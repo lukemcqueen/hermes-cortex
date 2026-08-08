@@ -16,6 +16,7 @@ import contextlib
 import importlib.util
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 
@@ -624,13 +625,17 @@ class TestAdversarialCommitGate:
         """Isolate the module-global warnings counter and skills set per test."""
         saved_warnings = dict(enforcer._adversarial_warnings)
         saved_skills = set(enforcer._skills_loaded_in_session)
+        saved_session_skills = dict(enforcer._session_skills_loaded)
         enforcer._adversarial_warnings.clear()
         enforcer._skills_loaded_in_session.clear()
+        enforcer._session_skills_loaded.clear()
         yield
         enforcer._adversarial_warnings.clear()
         enforcer._adversarial_warnings.update(saved_warnings)
         enforcer._skills_loaded_in_session.clear()
         enforcer._skills_loaded_in_session.update(saved_skills)
+        enforcer._session_skills_loaded.clear()
+        enforcer._session_skills_loaded.update(saved_session_skills)
 
     # ── First occurrence = HARD BLOCK (no suggestion) ─────────────────────
 
@@ -672,7 +677,7 @@ class TestAdversarialCommitGate:
     # ── Skill loaded → passes ─────────────────────────────────────────────
 
     def test_passes_when_skill_loaded(self):
-        enforcer._skills_loaded_in_session.add("adversarial-verifier")
+        enforcer._session_skills_loaded.setdefault("sess-adv-test", set()).add("adversarial-verifier")
         result = self._run_gate(
             "git commit -m 'update script'",
             ["ops/scripts/some-script.sh"],
@@ -734,13 +739,17 @@ class TestDomainSkillGate:
         """Isolate the module-global domain-warning counter and skills set."""
         saved_warnings = dict(enforcer._domain_warnings)
         saved_skills = set(enforcer._skills_loaded_in_session)
+        saved_session_skills = dict(enforcer._session_skills_loaded)
         enforcer._domain_warnings.clear()
         enforcer._skills_loaded_in_session.clear()
+        enforcer._session_skills_loaded.clear()
         yield
         enforcer._domain_warnings.clear()
         enforcer._domain_warnings.update(saved_warnings)
         enforcer._skills_loaded_in_session.clear()
         enforcer._skills_loaded_in_session.update(saved_skills)
+        enforcer._session_skills_loaded.clear()
+        enforcer._session_skills_loaded.update(saved_session_skills)
 
     # ── Interactive sessions: gate enforced ───────────────────────────────
 
@@ -756,14 +765,29 @@ class TestDomainSkillGate:
         assert "documentation-auditing" in result["message"]
 
     def test_interactive_md_write_passes_when_skill_loaded(self):
-        """Skill loaded → pass through silently."""
-        enforcer._skills_loaded_in_session.add("documentation-auditing")
+        """Skill loaded BY THIS SESSION → pass through silently."""
+        enforcer._session_skills_loaded.setdefault("20260807_091220_6e0c506a", set()).add("documentation-auditing")
         result = enforcer._check_domain_skill_gate(
             "write_file",
             {"path": "/home/esther/hermes-cortex/docs/design/new.md"},
             "20260807_091220_6e0c506a",
         )
         assert result is None
+
+    def test_md_write_blocks_when_skill_loaded_by_other_session(self):
+        """Cross-session bleed regression (2026-08-08): a skill loaded by
+        session A must NOT satisfy the gate for session B. On long turns this
+        was why agents never loaded the mid-turn domain skill — the gate
+        passed anyway."""
+        enforcer._session_skills_loaded.setdefault("sess_A", set()).add("documentation-auditing")
+        result = enforcer._check_domain_skill_gate(
+            "write_file",
+            {"path": "/home/esther/hermes-cortex/docs/new.md"},
+            "sess_B",
+        )
+        assert result is not None
+        assert result["action"] == "block"
+        assert "documentation-auditing" in result["message"]
 
     def test_interactive_second_offense_escalates(self):
         """Repeat offense per session → BLOCK with escalation message."""
@@ -835,3 +859,136 @@ class TestDomainSkillGate:
             "",
         )
         assert result is not None
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PER-SESSION SKILL ISOLATION — cross-session bleed fix (2026-08-08)
+# ═════════════════════════════════════════════════════════════════════════════
+# The old code tracked loaded skills in ONE process-global set
+# (_skills_loaded_in_session). Any session's skill_view() calls counted for
+# EVERY session: the 8-skill marker auto-created for a session that loaded
+# only 2 skills (if other sessions loaded the rest), and the domain/adversarial
+# gates passed because ANOTHER session had loaded the skill. On long turns,
+# agents never had to load mid-turn skills — the gate passed anyway. Now each
+# session has its own registry (_session_skills_loaded[session_id]).
+
+
+class TestPerSessionSkillIsolation:
+    """Marker auto-create and skill gates must be per-session, not process-global."""
+
+    @pytest.fixture(autouse=True)
+    def _clean_state(self):
+        saved = dict(enforcer._session_skills_loaded)
+        saved_global = set(enforcer._skills_loaded_in_session)
+        enforcer._session_skills_loaded.clear()
+        enforcer._skills_loaded_in_session.clear()
+        yield
+        enforcer._session_skills_loaded.clear()
+        enforcer._session_skills_loaded.update(saved)
+        enforcer._skills_loaded_in_session.clear()
+        enforcer._skills_loaded_in_session.update(saved_global)
+
+    def test_marker_not_created_when_other_session_loads_skills(self, temp_state_dir):
+        """The exact bleed: A loads 4 skills, B loads the other 4 → NEITHER
+        gets a marker (each has only 4/8 of its own)."""
+        required = sorted(enforcer._REQUIRED_SKILLS)
+        half = len(required) // 2
+        for s in required[:half]:
+            enforcer._session_skills_loaded.setdefault("sess_A", set()).add(s)
+            enforcer._skills_loaded_in_session.add(s)  # legacy global also grows
+        for s in required[half:]:
+            enforcer._session_skills_loaded.setdefault("sess_B", set()).add(s)
+            enforcer._skills_loaded_in_session.add(s)
+        # Simulate the hook's marker condition — must be per-session
+        for sid in ("sess_A", "sess_B"):
+            if enforcer._session_skills_loaded[sid] >= enforcer._REQUIRED_SKILLS:
+                enforcer._auto_create_skills_marker(sid)
+        assert enforcer._check_skills_loaded_marker("sess_A") is False
+        assert enforcer._check_skills_loaded_marker("sess_B") is False
+
+    def test_marker_created_only_for_session_that_completes_all_8(self, temp_state_dir):
+        required = sorted(enforcer._REQUIRED_SKILLS)
+        for s in required:
+            enforcer._session_skills_loaded.setdefault("sess_B", set()).add(s)
+        enforcer._auto_create_skills_marker("sess_B")
+        assert enforcer._check_skills_loaded_marker("sess_B") is True
+        assert enforcer._check_skills_loaded_marker("sess_A") is False
+
+    def test_adversarial_gate_per_session(self):
+        """adversarial-verifier loaded by session A must not satisfy B."""
+
+        class _FakeResult:
+            returncode = 0
+            stdout = "ops/scripts/some-script.sh\n"
+
+        original_run = enforcer.subprocess.run
+        enforcer.subprocess.run = lambda *a, **kw: _FakeResult()
+        try:
+            result = enforcer._check_adversarial_commit_gate(
+                "terminal",
+                {"command": "git commit -m 'update script'"},
+                "sess_B",
+            )
+        finally:
+            enforcer.subprocess.run = original_run
+        assert result is not None
+        assert result["action"] == "block"
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# GIT HOOK BYPASS GATE — per-invocation hook overrides (2026-08-08)
+# ═════════════════════════════════════════════════════════════════════════════
+# `git -c core.hooksPath=/dev/null commit` and `GIT_CONFIG_GLOBAL=/dev/null
+# git commit` skip EVERY hook including post-commit-audit, so the --no-verify
+# debt counter (written by post-commit) can never track them. The enforcer
+# now blocks them outright at the tool gate. Tests the regexes used by the
+# pre_tool_call_hook bypass-debt block.
+
+
+class TestGitHookBypassGate:
+    """Hook-override detection regexes — bypass classes beyond --no-verify."""
+
+    def _flags(self, cmd):
+        nv = bool(re.search(r"\bgit\b[^|;&\n]*--no-verify", cmd))
+        ho = bool(re.search(
+            r"\bgit\b[^|;&\n]*(?:-c\s+(?:core\.)?hooksPath|"
+            r"(?:core\.)?hooksPath\s*=|"
+            r"GIT_CONFIG_(?:GLOBAL|SYSTEM)\s*=|"
+            r"GIT_DIR\s*=)", cmd))
+        if not ho:
+            ho = bool(re.search(
+                r"(?:GIT_CONFIG_(?:GLOBAL|SYSTEM)\s*=|GIT_DIR\s*=)[^|;&\n]*\bgit\b", cmd))
+        return nv, ho
+
+    @pytest.mark.parametrize("cmd", [
+        "git -c core.hooksPath=/dev/null commit -m x",
+        "git -c core.hooksPath=/dev/null push",
+        "git -c core.hooksPath= commit -m x",
+        "git -c hooksPath=/tmp/h commit -m x",
+        "git -c core.hooksPath /tmp/nohooks commit -m x",
+        "GIT_CONFIG_GLOBAL=/dev/null git commit -m x",
+        "GIT_CONFIG_SYSTEM=/dev/null git push",
+        "GIT_DIR=/tmp/elsewhere git commit -m x",
+        "cd /tmp && git -c core.hooksPath=/dev/null commit",
+        "git -c core.hooksPath=/dev/null merge --no-ff feature",
+    ])
+    def test_hook_override_detected(self, cmd):
+        nv, ho = self._flags(cmd)
+        assert ho is True, f"should detect hook override: {cmd}"
+
+    @pytest.mark.parametrize("cmd", [
+        "git commit -m x",
+        "git status",
+        "git log --oneline",
+        "git -c user.name=test commit -m x",
+        "git -c color.ui=always diff",
+        "git push origin main",
+        "ls -la",
+    ])
+    def test_benign_commands_not_detected(self, cmd):
+        nv, ho = self._flags(cmd)
+        assert ho is False, f"false positive: {cmd}"
+
+    def test_no_verify_still_detected(self):
+        nv, _ = self._flags("git commit --no-verify -m x")
+        assert nv is True

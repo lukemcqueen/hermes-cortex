@@ -70,6 +70,17 @@ _REQUIRED_SKILLS: set = {
     "reflexion-check", "change-checklist", "survey-before-action",
     "cortex-preflight", "agent-contract",
 }
+
+# Per-session loaded-skill registry (2026-08-08 — cross-session bleed fix).
+# The legacy `_skills_loaded_in_session` set is PROCESS-global: any session's
+# skill_view() calls count for EVERY session, so session B's marker auto-created
+# and the domain/adversarial gates passed when session A (not B) loaded the
+# skill — agents on long turns never had to load skills themselves. This dict
+# keys loaded skill names by session_id so each session must load its own
+# skills. Populated in pre_tool_call_hook on skill_view; read by the marker
+# auto-create condition, _check_domain_skill_gate, and
+# _check_adversarial_commit_gate.
+_session_skills_loaded: dict[str, set] = {}
 _skills_loaded_in_session: set = set()
 
 # ── Domain skill gate ──────────────────────────────────
@@ -526,9 +537,10 @@ def _auto_create_skills_marker(session_id: str) -> None:
         # Tracks individual skill load times and workflow progress. Read by
         # block messages to show which skills are loaded. Per-session file
         # (skills-state/<session_id>.json) — no cross-session bleed.
+        _sess_set = _session_skills_loaded.get(session_id, set())
         _write_skills_state(
             session_id,
-            always_loaded=_skills_loaded_in_session.copy() if _skills_loaded_in_session else None,
+            always_loaded=_sess_set.copy() if _sess_set else None,
             state_updates={"skill_source": "user_session"},
         )
     except (OSError, ValueError) as e:
@@ -1048,8 +1060,12 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
     if skill_name is None:
         return None  # No mapping or known gap — pass through
 
-    # Check if skill is already loaded
-    if skill_name in _skills_loaded_in_session:
+    # Check if skill is already loaded — per-session (2026-08-08): the old
+    # check used the PROCESS-global _skills_loaded_in_session set, so a skill
+    # loaded by ANY session satisfied the gate for every session. On long
+    # turns, agents then skipped loading the mid-turn domain skill entirely.
+    # The per-session registry forces THIS session to load the skill.
+    if skill_name in _session_skills_loaded.get(session_id or "", set()):
         # Clear any prior warnings for this file type
         if session_id in _domain_warnings:
             _domain_warnings[session_id].pop(skill_name, None)
@@ -1226,8 +1242,8 @@ def _check_adversarial_commit_gate(
     if not any(re.search(p, command) for p in _ADVERSARIAL_COMMIT_PATTERNS):
         return None
 
-    # Skill already loaded — clear warnings and pass
-    if "adversarial-verifier" in _skills_loaded_in_session:
+    # Skill already loaded — clear warnings and pass (per-session, 2026-08-08)
+    if "adversarial-verifier" in _session_skills_loaded.get(session_id or "", set()):
         _adversarial_warnings.pop(session_id, None)
         return None
 
@@ -1458,12 +1474,23 @@ def register(ctx):
             # Moved BEFORE the skills gate so agents can load skills.
             # When all 8 required skills are loaded, the marker is
             # auto-created with session-proof content.
+            #
+            # Per-session tracking (2026-08-08 — cross-session bleed fix):
+            # the old code added to the PROCESS-global _skills_loaded_in_session
+            # set and checked THAT for the 8-skill condition — concurrent
+            # sessions contributed to each other's count, so a session that
+            # loaded 2 skills could get a valid marker. Now each session has
+            # its own set (_session_skills_loaded[session_id]) and must load
+            # all 8 itself. The global set is retained only for the legacy
+            # auto-create path and block-message summary.
             if tool_name == "skill_view":
                 skill_name = args.get("name", "")
                 if skill_name:
                     _skills_loaded_in_session.add(skill_name)
-                    if hermes_session_id and _skills_loaded_in_session >= _REQUIRED_SKILLS:
-                        _auto_create_skills_marker(hermes_session_id)
+                    if hermes_session_id:
+                        _session_skills_loaded.setdefault(hermes_session_id, set()).add(skill_name)
+                        if _session_skills_loaded[hermes_session_id] >= _REQUIRED_SKILLS:
+                            _auto_create_skills_marker(hermes_session_id)
 
             # ── Read-only tools exempt from skills gate ─────────────
             # Read-only tools (read_file, search_files, web_search, skill_view, etc.)
@@ -1622,19 +1649,44 @@ def register(ctx):
                         ),
                     }
 
-            # ── Bypass-debt mandate (2026-08-05) ──────────────
+            # ── Bypass-debt mandate (2026-08-05) + hook-override gate (2026-08-08) ──
             # Bound the --no-verify escape hatch: 3 consecutive bypasses are
             # tolerated (logged + alerted); the 4th+ is MANDATED — refuse
             # further --no-verify git commands (even with a lock) until a
             # fully verified commit (pre-commit ran, sentinel written) resets
             # the counter. --no-verify skips every hook, so the primary
             # enforcement layer must refuse it at the tool gate.
+            #
+            # Per-invocation hook overrides (-c core.hooksPath=..., env
+            # GIT_CONFIG_GLOBAL/SYSTEM=...) are a SECOND bypass class that the
+            # old --no-verify-only regex never saw: they skip EVERY hook
+            # INCLUDING post-commit-audit, so the debt counter can never
+            # increment and the escape-hatch budget is unbounded. These are
+            # blocked outright (2026-08-08) — they are not the sanctioned
+            # escape hatch. The sanctioned path is a normal verified commit,
+            # or at most a bounded --no-verify.
             if tool_name == "terminal":
                 _cmd = str(args.get("command", ""))
-                if re.search(
-                    r"\bgit\s+(commit|push|merge|pull|rebase|cherry-pick|revert|tag|am)\b[^|;&\n]*--no-verify",
+                _no_verify = re.search(
+                    r"\bgit\b[^|;&\n]*--no-verify",
                     _cmd,
-                ):
+                )
+                _hook_override = re.search(
+                    r"\bgit\b[^|;&\n]*(?:-c\s+(?:core\.)?hooksPath|"
+                    r"(?:core\.)?hooksPath\s*=|"
+                    r"GIT_CONFIG_(?:GLOBAL|SYSTEM)\s*=|"
+                    r"GIT_DIR\s*=)",
+                    _cmd,
+                )
+                # Env-prefixed form: GIT_CONFIG_GLOBAL=/dev/null git commit
+                # has the override BEFORE git, which the git-first regex
+                # misses. Match env vars anywhere in the command segment.
+                if not _hook_override:
+                    _hook_override = re.search(
+                        r"(?:GIT_CONFIG_(?:GLOBAL|SYSTEM)\s*=|GIT_DIR\s*=)[^|;&\n]*\bgit\b",
+                        _cmd,
+                    )
+                if _no_verify:
                     _debt = _bypass_debt_count()
                     if _debt >= 4:
                         return {
@@ -1654,6 +1706,27 @@ def register(ctx):
                                 "This enforcement comes from ~/.hermes/plugins/governance-enforcer/."
                             ),
                         }
+                if _hook_override:
+                    return {
+                        "action": "block",
+                        "message": (
+                            "🚫 GIT HOOK BYPASS DETECTED — the command overrides git's "
+                            "hook execution path per-invocation.\n\n"
+                            "  Command: " + _cmd[:160] + "\n\n"
+                            "`-c core.hooksPath=...`, `core.hooksPath=...` and "
+                            "`GIT_CONFIG_GLOBAL/SYSTEM=...` skip EVERY governance hook "
+                            "including post-commit-audit, so the --no-verify debt counter "
+                            "can never track them. This is NOT the sanctioned escape hatch "
+                            "and is blocked outright.\n\n"
+                            "Do this instead:\n"
+                            "  1. Commit with a normal verified command so the pre-commit "
+                            "hook runs (scoring + adversarial + audit)\n"
+                            "  2. If a repo legitimately needs custom hooks, set "
+                            "core.hooksPath as REPO CONFIG (the doctor validates it) — "
+                            "never per-invocation\n\n"
+                            "This enforcement comes from ~/.hermes/plugins/governance-enforcer/."
+                        ),
+                    }
 
             # Check for active governance lock (Phase 1 exact + Phase 2 scan)
             if _has_governance_lock(hermes_session_id):

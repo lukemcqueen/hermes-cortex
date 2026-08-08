@@ -7,6 +7,8 @@
 >
 > **RULE 2: USE LOOP GOVERNANCE ALWAYS**
 > Every code/config/cron change: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. MCP server blocks write tools without a lock.
+> **Close out before moving on (enforced 2026-08-08):** `end_change()` REFUSES to release the lock until the task's cycle is scored; `begin_change()` REFUSES a new task while this session still has unscored PENDING cycles. Score via `feedback_accept(cycle_id=N)` / `feedback_override(...)` FIRST, then `end_change`, then the next `begin_change`. Never stack PENDING cycles.
+> **Hook bypass is blocked (2026-08-08):** `git -c core.hooksPath=...` and `GIT_CONFIG_GLOBAL/SYSTEM=...` override every governance hook including post-commit-audit, so they are blocked outright at the tool gate — they are NOT the `--no-verify` escape hatch (which stays bounded: 3 tolerated, 4th+ mandated).
 >
 > **RULE 3: SHARE IMPROVEMENTS TO THE PUBLIC REPO**
 > Every improvement that benefits other agents goes into `hermes-cortex`. See [`CONTRIBUTING.md`](CONTRIBUTING.md).

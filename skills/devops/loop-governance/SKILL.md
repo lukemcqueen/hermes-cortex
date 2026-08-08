@@ -686,6 +686,14 @@ See `references/mcp-servers.md` for full tool descriptions and usage examples.
 4. `mcp_loop_governance_feedback_accept(cycle_id=N, note="...")` — score it (parameter is **`cycle_id`**, NOT `id` — passing `id` fails with "missing required argument")
 5. `mcp_loop_governance_end_change(task_id="<name>")` — release the lock
 
+**Close-out is ENFORCED (2026-08-08, Luke directive):** `end_change()` refuses
+to release the lock while the task's cycle is unscored, and `begin_change()`
+refuses a new task while this session still holds unscored PENDING cycles.
+There is no warning-only path anymore — score every cycle (steps 3-4) BEFORE
+`end_change`, and never start a new task until the previous one is scored and
+closed. Hook-created cycles (`precommit-*` task ids, `session_id NULL`) do not
+trip the gate.
+
 **Orphaned PENDING cycles from sibling sessions:** the doctor's `❌ PENDING cycles` failure often lists cycles you did NOT create — sibling/daemon sessions (background subagents, other CLI sessions, party agents) called `begin_change` and never scored. Enumerate with `cycle_query(status="pending")`, then `feedback_accept(cycle_id=N, note="...")` each verified-complete one. For cycles superseded by a later MOVE_ON cycle of the same task, cite the superseding cycle in the note (e.g. "cycle 2 (2152) verified deploy end-to-end").
 
 **PENDING vs scored-unreviewed — don't mass-accept hook cycles (2026-08-05):** the pre-commit hook auto-logs one cycle per commit with a LOOP/MOVE_ON/STOP decision and `user_overrode IS NULL`. These accumulate by the hundred and look like "unreviewed" via `cycle_query(unreviewed=true)`, but they are NOT failures: the doctor only fails on `decision='PENDING'` cycles. Only resolve genuinely PENDING cycles (fresh <24h, no live lock for that task). To tell them apart, query the DB directly: `SELECT id, task_id, decision, user_overrode, timestamp FROM loop_cycles WHERE decision='PENDING' OR (user_overrode IS NULL) ORDER BY id` — check `decision` per row, don't bulk-accept. Upstream doctor (63981498+) refines this further: a PENDING cycle whose task_id has NO active `.governance-*.json` lock is a LEAK (FAIL, blocks push); a PENDING cycle whose task holds a live lock is the current task (INFO, expected mid-session).

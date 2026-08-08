@@ -453,6 +453,57 @@ option in `hermes-cortex.env.example`) or `~/.hermes/memories` is symlinked to
 it. Check which path the host loads BEFORE diagnosing "memory wiped": a
 checksum "fix" on the dead copy is a no-op; on the live copy it is data loss.
 
+## Rule 14: Per-Session Skill Enforcement + Hook-Override Gate + Close-Out (2026-08-08)
+
+Three governance gaps found and closed by the 2026-08-08 edge-case audit
+(Esther, Luke: "test governance thoroughly, see the weaknesses"):
+
+**14a. Skills tracking was PROCESS-global — sessions leaked each other's loads.**
+`_skills_loaded_in_session` is one module-level set shared by every session in
+the gateway process. Any session's `skill_view()` counted for ALL sessions:
+- The 8-skill marker auto-created for a session that loaded only 2 skills
+  (other sessions contributed the rest) → write tools unblocked without the
+  session actually loading the skills.
+- The domain gate (`_check_domain_skill_gate`) and adversarial gate passed
+  because ANOTHER session had loaded the skill → on long turns agents never
+  loaded mid-turn domain skills; the gate passed anyway.
+Fix: per-session registry `_session_skills_loaded: dict[str, set]`, populated
+in the pre_tool_call hook on `skill_view`, consulted by the marker auto-create
+condition, domain gate, and adversarial gate. Each session must load its own
+8 always-skills and its own domain skill. Tests:
+`TestPerSessionSkillIsolation` (marker + adversarial) and
+`test_md_write_blocks_when_skill_loaded_by_other_session` (domain gate).
+
+**14b. `git -c core.hooksPath=...` / `GIT_CONFIG_GLOBAL|SYSTEM=...` bypassed the
+entire hook chain.** The bypass-debt regex only matched literal `--no-verify`.
+A per-invocation `-c core.hooksPath=/dev/null commit` skipped EVERY hook
+including post-commit-audit, so the debt counter never incremented and the
+escape hatch was unbounded. Fix: the enforcer now blocks hook-override forms
+outright (they are not the sanctioned escape hatch); `--no-verify` remains
+bounded by the debt counter (3 tolerated, 4th+ mandated). Benign `-c` configs
+(`user.name`, `color.ui`) and plain `git commit`/`status` are NOT matched.
+Tests: `TestGitHookBypassGate` (10 override forms detected, 7 benign forms
+clean).
+
+**14c. Sessions could stack unbounded PENDING cycles.** `end_change()` only
+WARNED when the task's cycle was unscored, then released the lock; `begin_change()`
+only checked for an existing lock. Sequence begin(A) → end(A) unscored →
+begin(B) succeeded, leaving A PENDING until the doctor blocked the push.
+Fix (Luke: "agents close out/score before moving to a new task"):
+- `end_change()` BLOCKS releasing the lock while the task's latest cycle is
+  unscored (`user_overrode IS NULL`, decision PENDING/LOOP).
+- `begin_change()` REFUSES a new task while THIS session still has unscored
+  PENDING cycles (hook cycles with `session_id NULL` are exempt).
+Tests: `tests/test_runtime/test_mcp_closeout.py`
+(TestEndChangeRequiresScoredCycle, TestBeginChangeCloseOutGate).
+
+**Checklist when touching these paths:**
+- [ ] Per-session skill tests: session A's loads never satisfy session B
+- [ ] Hook-override regex: override forms block, benign `-c`/plain git pass
+- [ ] Close-out: unscored end_change keeps the lock; begin_change refuses
+      with prior PENDING; scored flow releases cleanly
+- [ ] Hook cycles (session_id NULL) never trip the begin_change gate
+
 ## References
 
 - `references/memory-seed-clobber-2026-08-05.md` — the memory-clobber root

@@ -869,6 +869,44 @@ def _begin_change(args: dict) -> CallToolResult:
     session_id = get_session_id(args)
     now_iso = _now_iso()
 
+    # ── Step 0: Close-out gate — score before moving to a new task ──
+    # Luke directive (2026-08-08): agents must close out/score before moving
+    # to a new task. If THIS session still holds unscored PENDING cycles from
+    # earlier tasks, refuse to open a new lock until they are scored. Without
+    # this gate, end_change's warning-only unscored path + begin_change's
+    # lock-only check let a session stack unbounded PENDING cycles that the
+    # doctor only catches at push time. Hook-created cycles (session_id NULL)
+    # are untouched by this query. If the DB is unavailable, proceed (the
+    # lock + doctor still guard) rather than deadlock the agent.
+    if session_id:
+        try:
+            _conn = _db()
+            prior = _conn.execute(
+                "SELECT id, task_id FROM loop_cycles "
+                "WHERE session_id = ? AND decision = 'PENDING' AND user_overrode IS NULL",
+                (session_id,),
+            ).fetchall()
+            _conn.close()
+            if prior:
+                listing = ", ".join(f"#{r['id']} ({r['task_id']})" for r in prior)
+                return CallToolResult(content=[TextContent(
+                    type="text",
+                    text=(
+                        "❌ Close out your previous task before starting a new one.\n\n"
+                        "This session still has unscored PENDING cycles:\n"
+                        f"  {listing}\n\n"
+                        "Score them first (AGENTS.md RULE 2 — score before moving on):\n"
+                        "  mcp_loop_governance_cycle_query(task_id='<task>')\n"
+                        "  mcp_loop_governance_feedback_accept(cycle_id=N, note='...')\n"
+                        "  or mcp_loop_governance_feedback_override(cycle_id=N, "
+                        "correct_decision='...', note='...')\n"
+                        "  then mcp_loop_governance_end_change(task_id='<task>')\n\n"
+                        "No new lock is acquired until prior cycles are scored."
+                    )
+                )])
+        except Exception as e:
+            log.warning("begin_change: close-out check failed (proceeding): %s", e)
+
     # Defaults for audit trail (may be overwritten by force-override below)
     audit_note = ""
     released_session = ""
@@ -1041,9 +1079,15 @@ def _end_change(args: dict) -> CallToolResult:
             text=f"Error: Lock belongs to task '{stored_task}', not '{task_id}'. Use end_change('{stored_task}')."
         )])
 
-    # Step 3: Require a scored cycle before releasing the lock
+    # Step 3: Require a SCORED cycle before releasing the lock
+    # (2026-08-08: upgraded from warning to BLOCK — Luke directive: agents
+    # must close out/score before moving on. The old warning-only path let
+    # agents end_change with the cycle still PENDING, then begin_change
+    # stacked more unscored cycles. Scoring the cycle is the mandatory
+    # precondition for releasing the lock; the lock then cannot be
+    # released while its cycle is unscored, so begin_change's close-out
+    # gate never sees a leaked PENDING from a completed task.)
     cycle_info = ""
-    cycle_warning = ""
     has_cycle = False
     try:
         conn = _db()
@@ -1057,9 +1101,22 @@ def _end_change(args: dict) -> CallToolResult:
             accept = "✅" if row["decision"] and row["decision"].strip().upper().startswith("STOP") else "⬜"
             scored = row["user_overrode"] is not None
             cycle_info = f"Cycle #{row['id']} ({row['decision']}) {accept}"
-            if not scored and row["decision"] in ("PENDING", "LOOP"):
-                cycle_warning = ("\n\n⚠️  CYCLE NOT SCORED — call cycle_query + feedback_accept to score.\n"
-                                 "   Unreviewed cycles accumulate and may trigger the scoring watchdog.")
+            if not scored and (row["decision"] or "PENDING").strip().upper() in ("PENDING", "LOOP"):
+                return CallToolResult(content=[TextContent(
+                    type="text",
+                    text=(
+                        "❌ Cannot release lock: this task's cycle is NOT scored.\n\n"
+                        f"  Cycle #{row['id']} for task '{task_id}' is still "
+                        f"'{row['decision']}' (user_overrode IS NULL).\n\n"
+                        "Score it before releasing (AGENTS.md RULE 2 — close out "
+                        "before moving on):\n"
+                        "  mcp_loop_governance_cycle_query(task_id='" + task_id + "')\n"
+                        "  mcp_loop_governance_feedback_accept(cycle_id=" + str(row['id']) + ", note='...')\n"
+                        "  or mcp_loop_governance_feedback_override(cycle_id=" + str(row['id']) + ", "
+                        "correct_decision='...', note='...')\n\n"
+                        "Then retry end_change. The lock stays held until the cycle is scored."
+                    )
+                )])
     except Exception as e:
         log.warning("end_change: cycle lookup failed: %s", e)
         has_cycle = False
@@ -1086,7 +1143,6 @@ def _end_change(args: dict) -> CallToolResult:
             f"🔓 Governance session '{task_id}' closed.\n"
             f"{cycle_info}\n"
             f"Lock released. You can start a new change with begin_change()."
-            f"{cycle_warning}"
         )
     )])
 

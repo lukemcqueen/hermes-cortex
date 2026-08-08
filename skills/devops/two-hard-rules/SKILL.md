@@ -24,8 +24,12 @@ Every code, config, or cron change REQUIRES this sequence — no exceptions:
 5. `mcp_loop_governance_feedback_accept(id=N)` or `feedback_override(id=N, correct_decision=...)` — score
 6. `mcp_loop_governance_end_change(task_id="<short-name>")` — release lock
 
-**If `end_change` rejects** (no cycle auto-created):
-- Confess clearly: "end_change rejected — no cycle auto-created. Force-clearing lock."
+**If `end_change` rejects** (no cycle auto-created, or cycle not scored — 2026-08-08):
+- `end_change` now BLOCKS while the task's cycle is unscored, and `begin_change`
+  refuses a new task while earlier PENDING cycles exist (close-out enforcement,
+  Luke directive). Score first: `cycle_query` → `feedback_accept/override` →
+  `end_change`, THEN the next `begin_change`.
+- If genuinely stuck: confess clearly: "end_change rejected — no cycle auto-created. Force-clearing lock."
 - `rm -f ~/.hermes-cortex/state/.governance-active.json`
 - Never silently force-clear without calling `end_change` first.
 
