@@ -204,6 +204,12 @@ moment but not the class: the next cycle fails again and the user re-asks
 workaround, repair the routine (peer ACL grant, script URL from bare env, cron)
 or confirm the fix is applied before closing — bypassed automation guarantees a
 repeat request. <!-- Added 2026-08-08 -->
+**Test the role-absent side of the matrix** — a migration that passes on your
+host proves nothing on hosts without your profile's role: guard host-specific
+grants with `IF EXISTS` DO-blocks and verify the "role missing" case (learnings
+v001 shipped an unguarded `mycortex_reader_esther` grant that killed the
+migration on every non-Esther host; caught by Moses, 2026-08-08).
+<!-- Added 2026-08-08 -->
 
 ### 12. Not Done Until Tested
 
@@ -221,6 +227,11 @@ fallback endpoint is a false green: `hc` read/wrote the local 14004 bus that
 nothing polls while the ACTIVE bus (13004) carried the real traffic, so every
 send silently vanished (2026-08-06). Test what the fleet actually uses.
 <!-- Added 2026-08-06 -->
+**Question the probe before declaring a bug** — a failing test can be testing
+the wrong thing: a story-gate probe that tried pending→completed (which the
+matrix rightly forbids) produced false failures, and I nearly reported a bug
+that wasn't there (2026-08-08). When a check fails, first verify the probe's
+own assumptions, then the schema. <!-- Added 2026-08-08 -->
 
 **Local principles (0-12, optional, your choice).** You may add your own
 principles below the canonical 12. They MUST NOT duplicate the canonical set,

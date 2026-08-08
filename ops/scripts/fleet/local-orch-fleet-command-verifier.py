@@ -26,18 +26,12 @@ from pathlib import Path
 
 CORTEX_REPO = Path.home() / "hermes-cortex"
 STATE_DIR = Path.home() / ".hermes-cortex" / "state"
-TELEGRAM_BOT_TOKEN = None
-TELEGRAM_HOME_CHANNEL = None
 
-# Load Telegram config from .env
-env_file = Path.home() / ".hermes" / ".env"
-if env_file.exists():
-    for line in env_file.read_text().splitlines():
-        line = line.strip()
-        if line.startswith("TELEGRAM_BOT_TOKEN="):
-            TELEGRAM_BOT_TOKEN = line.split("=", 1)[1].strip().strip("'\"")
-        if line.startswith("TELEGRAM_HOME_CHANNEL="):
-            TELEGRAM_HOME_CHANNEL = line.split("=", 1)[1].strip().strip("'\"")
+# Shared Telegram notify module (single Bot API copy — R-9/M-3). Token and
+# chat id are read from ~/.hermes/.env inside the module; never hardcoded.
+from hermes_paths import ensure_scripts_path
+ensure_scripts_path()
+from lib.telegram_notify import notify as notify_telegram  # noqa: E402
 
 # ── Helpers ─────────────────────────────────────────────────
 
@@ -82,33 +76,6 @@ def _bus_send(queue: str, body: dict) -> bool:
     body_json = json.dumps(body).replace("'", "''")
     result = _psql(f"SELECT bus.send('{queue}', '{body_json}'::jsonb, 0)")
     return bool(result) and not result.startswith("ERROR")
-
-
-def _notify_telegram(message: str):
-    """Send an alert via Telegram Bot API."""
-    if not TELEGRAM_BOT_TOKEN:
-        log("⚠️  TELEGRAM_BOT_TOKEN not set, skipping alert")
-        return
-    if not TELEGRAM_HOME_CHANNEL:
-        log("⚠️  TELEGRAM_HOME_CHANNEL not set, skipping alert")
-        return
-    if message is None:
-        message = "[No message content]"
-    try:
-        import urllib.request
-        payload = json.dumps({
-            "chat_id": TELEGRAM_HOME_CHANNEL,
-            "text": f"🚨 Fleet Command Verifier\n{message}",
-            "parse_mode": "HTML",
-        }).encode()
-        req = urllib.request.Request(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-            data=payload,
-            headers={"Content-Type": "application/json"},
-        )
-        urllib.request.urlopen(req, timeout=10)
-    except Exception as e:
-        log(f"⚠️  Telegram notify failed: {e}")
 
 
 # ── Verifier Logic ──────────────────────────────────────────
@@ -265,7 +232,7 @@ def run_verifier():
 
     # 6. Send Telegram alerts if any
     if alerts:
-        _notify_telegram("\n".join(alerts))
+        notify_telegram("\n".join(alerts), subject="🚨 Fleet Command Verifier")
 
     # 7. Output per-command summary (stdout = delivered by cron)
     total = len(rows)

@@ -113,42 +113,20 @@ def log(msg: str):
 
 
 def notify_telegram(message: str, subject: str = ""):
-  """Send a notification to Telegram via Bot API directly.
+  """Send a notification to Telegram via the shared lib/telegram_notify.
 
   Recipient comes from TELEGRAM_HOME_CHANNEL in ~/.hermes/.env — the
   canonical Hermes env var (never hardcoded; public-repo PII scrub
-  2026-08-06). If token or chat id is missing, skip.
+  2026-08-06). The shared module handles token read, PII scrub, HTML
+  escaping, flock coalescing (<=1 msg/2s), 429 Retry-After backoff, and
+  a persisted failure counter (docs/design/task-lifecycle-v2.md §8).
+  Non-fatal: a notify failure never breaks message processing.
   """
   try:
-    token_path = HOME / ".hermes" / ".env"
-    token = ""
-    chat_id = ""
-    if token_path.exists():
-      for line in token_path.read_text().splitlines():
-        line = line.strip()
-        if line.startswith("TELEGRAM_BOT_TOKEN="):
-          token = line.split("=", 1)[1].strip().strip("'\"")
-        elif line.startswith("TELEGRAM_HOME_CHANNEL="):
-          chat_id = line.split("=", 1)[1].strip().strip("'\"")
-    if not token:
-      log("Telegram notify: no TELEGRAM_BOT_TOKEN found")
-      return
-    if not chat_id:
-      log("Telegram notify: no TELEGRAM_HOME_CHANNEL found")
-      return
-    text = f"{subject}\n{message}" if subject else message
-    # Escape HTML special chars
-    text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    import urllib.request, urllib.parse
-    data = urllib.parse.urlencode({"chat_id": chat_id, "text": text, "parse_mode": "HTML"}).encode()
-    req = urllib.request.Request(
-      f"https://api.telegram.org/bot{token}/sendMessage",
-      data=data,
-      method="POST",
-    )
-    urllib.request.urlopen(req, timeout=10)
+    from lib.telegram_notify import notify
+    notify(message, subject=subject)
   except Exception as e:
-    log(f"Telegram notify failed: {e}")
+    log(f"Telegram notify failed: {type(e).__name__}: {e}")
 
 
 def load_state() -> dict:

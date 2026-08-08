@@ -49,17 +49,19 @@ def test_detector_flags_single_function_deletion():
 
 
 def test_probe_runs_against_known_regression_commit():
-    """362cf70f restored the 5 functions stripped by adversarial-fix commit
-    84272894; running the probe against the restoration commit's parent
-    (84272894) must report no deletions since the current tree carries them.
-    Note: 84272894 itself is NOT a clean probe target anymore — gbrain was
-    decommissioned 2026-08-02, so its parent still lists check_gbrain*
-    functions that the current tree intentionally removed."""
+    """6189cb61 (latest orch-bus-forwarder change) must report no function
+    deletions against the current tree.
+
+    History: 362cf70f restored the 5 functions stripped by adversarial-fix
+    commit 84272894, but 318e8c27 later RENAMED _read_bus → _peek_bus
+    (role-aware mirror fix), so the old anchor 362cf70f now correctly
+    reports _read_bus as deleted — a stale anchor, not a regression.
+    6189cb61 reflects the current shape of the file."""
     result = subprocess.run(
         [
             "python3",
             str(PROBE),
-            "362cf70f",
+            "6189cb61",
             "--path-filter",
             "ops/scripts",
             "--repo",
