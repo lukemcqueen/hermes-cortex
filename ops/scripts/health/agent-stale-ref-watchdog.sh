@@ -59,7 +59,6 @@ log ""
 # 3. Check cron scripts deployed to ~/.hermes/scripts exist
 log "--- Cron deploy layer (~/.hermes/scripts) ---"
 CRON_SCRIPTS=(
-  "agent-apply-fixes.py"
   "agent-ip-submission.sh"
   "agent-learning-collector.py"
   "agent-message-handler.py"

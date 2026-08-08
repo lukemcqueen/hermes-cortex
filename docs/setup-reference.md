@@ -286,7 +286,6 @@ Agent crons follow a three-tier architecture based on task requirements:
 **Key scripts:**
 - `ops/scripts/agent-daily-bible-reading.py` — no_agent + deepseek API
 - `ops/scripts/agent-remediate-apply.py` — no_agent: reads sensor output, applies fixes
-- `ops/scripts/agent-apply-fixes.py` — no_agent: searches offline code corpus for fix patterns
 
 Install: `bash ops/scripts/install-crons.sh`
 

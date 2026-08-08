@@ -58,7 +58,6 @@
 | `agent-fixer-overnight` | `0 3 * * 1-5` | LLM | auto-remediation skill | origin |
 | `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local (runs only where IS_SERVER=true) |
 | `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin |
-| `agent-apply-fixes` | `*/10 * * * *` | no_agent | `agent-apply-fixes.py` | local |
 | `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local |
 | `agent-service-recovery` | `*/5 * * * *` | no_agent | `agent-service-recovery.py` | origin |
 | `agent-system-alert-watchdog` | `*/30 * * * *` | no_agent | `agent-system-alert-watchdog.py` | origin |

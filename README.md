@@ -53,7 +53,7 @@ The **`pre-commit score hook`** auto-scores each commit and runs the **mandatory
 Issues fix themselves. The pipeline runs every 5 minutes:
 
 ```
-remediation-sensor → remediation markers → agent-apply-fixes → agent-fixer
+remediation-sensor → remediation markers → agent-remediate-apply → agent-fixer
 ```
 
 Sensors detect problems (crashed services, broken configs, stale locks), write remediation markers, and specialized fixer agents apply the cure — all autonomously.
@@ -65,7 +65,7 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 | Category | Crons | What |
 |----------|-------|------|
 | **Health** | `orch-fleet-watchdog`, `system-alert-watchdog`, `model-health-watchdog`, `bus-health-check` | Every 5-30 min health checks across all agents |
-| **Recovery** | `service-recovery`, `agent-apply-fixes`, `remediation-sensor` | Auto-restart crashed services, apply fixes |
+| **Recovery** | `service-recovery`, `agent-remediate-apply`, `remediation-sensor` | Auto-restart crashed services, apply fixes |
 | **Governance** | `governance-auditor`, `scoring-activity-watchdog` | Score tracking, lock cleanup, audit trails |
 | **Messaging** | `cortex-bus-workday/evening/overnight` | Process cortex-bus messages on schedule |
 | **Sync** | `hermes-cortex-sync`, `memory-to-brain-sync`, `agent-mycortex-sync` | Pull updates, persist memory, sync knowledge brain (every 15 min) |

@@ -20,8 +20,8 @@ HOME = Path.home()
 STATE_DIR = HOME / ".hermes" / "state"
 REMEDIATE_DIR = STATE_DIR / "remediate"
 DONE_DIR = REMEDIATE_DIR / "done"
-SENSOR_JOB_ID = "2c71ffaf3a55"  # remediation-sensor
-SENSOR_OUTPUT_DIR = HOME / ".hermes" / "cron" / "output" / SENSOR_JOB_ID
+SENSOR_JOB_NAME = "agent-remediation-sensor"
+SENSOR_OUTPUT_ROOT = HOME / ".hermes" / "cron" / "output"
 SEEN_FILE = STATE_DIR / "remediate-seen.txt"
 
 KST = timezone(timedelta(hours=9))
@@ -58,11 +58,45 @@ def run_cmd(cmd: str, timeout: int = 30) -> tuple[str, str, int]:
         return "", str(e), -1
 
 
-def get_latest_sensor_output() -> str | None:
+def discover_sensor_output_dir() -> Path | None:
+    """Find the remediation-sensor cron output dir.
+
+    Job ids are ephemeral (the sensor was recreated under a new id and the
+    previously hardcoded SENSOR_JOB_ID went stale, blinding this fixer).
+    Canonical path: read jobs.json for the job named agent-remediation-sensor.
+    Fallback: the output dir holding the newest .md file.
+    """
+    jobs_file = HOME / ".hermes" / "cron" / "jobs.json"
+    try:
+        if jobs_file.exists():
+            data = json.loads(jobs_file.read_text(encoding="utf-8"))
+            jobs = data if isinstance(data, list) else data.get("jobs", [])
+            for j in jobs:
+                if j.get("name") == SENSOR_JOB_NAME and j.get("id"):
+                    d = SENSOR_OUTPUT_ROOT / str(j["id"])
+                    if d.exists():
+                        return d
+    except Exception as e:
+        log(f"⚠️  jobs.json sensor lookup failed: {e}")
+    # Fallback: newest .md under the output root
+    best, best_mtime = None, 0.0
+    if SENSOR_OUTPUT_ROOT.exists():
+        for d in SENSOR_OUTPUT_ROOT.iterdir():
+            if not d.is_dir():
+                continue
+            mds = sorted(
+                d.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True
+            )
+            if mds and mds[0].stat().st_mtime > best_mtime:
+                best, best_mtime = d, mds[0].stat().st_mtime
+    return best
+
+
+def get_latest_sensor_output(sensor_dir: Path | None) -> str | None:
     """Find and read the most recent remediation-sensor output."""
-    if not SENSOR_OUTPUT_DIR.exists():
+    if sensor_dir is None or not sensor_dir.exists():
         return None
-    files = sorted(SENSOR_OUTPUT_DIR.glob("*.md"), reverse=True)
+    files = sorted(sensor_dir.glob("*.md"), reverse=True)
     if not files:
         return None
     return files[0].read_text(encoding="utf-8", errors="replace")
@@ -212,8 +246,12 @@ def main() -> int:
     failed = []
     skipped = []
     
-    # 1. Read sensor output
-    sensor_text = get_latest_sensor_output()
+    # 1. Read sensor output (job id discovered — ids are ephemeral)
+    sensor_dir = discover_sensor_output_dir()
+    if sensor_dir is None:
+        log("No remediation-sensor output dir found — nothing to do")
+        return 0
+    sensor_text = get_latest_sensor_output(sensor_dir)
     if not sensor_text:
         log("No sensor output found — nothing to do")
         return 0

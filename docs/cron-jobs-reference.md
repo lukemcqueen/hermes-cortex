@@ -27,7 +27,6 @@
 | agent-scoring-activity-watchdog | no_agent | 0 14,20 * * * | Monitor scoring activity |
 | agent-weekly-loop-eval | LLM+skill | 0 9 * * 1 | Weekly loop evaluation |
 | agent-ip-submission | no_agent | */30 * * * * | Submit IP to threat service |
-| agent-apply-fixes | no_agent | */10 * * * * | Apply fix markers |
 | agent-cron-quality-watchdog | no_agent | */10 * * * * | Monitor cron output quality |
 | session-cache-build | no_agent | 0 5 * * 1 | Weekly session cache build |
 | agents-md-prune-scan | no_agent | 0 4 * * 1-6 | Daily AGENTS.md prune scan |

@@ -502,7 +502,6 @@ if $UNINSTALL; then
   for job in \
     "agent-agents-md-prune-apply" \
     "agent-agents-md-prune-scan" \
-    "agent-apply-fixes" \
     "agent-auto-save-sessions" \
     "cortex-bus-evening" \
     "cortex-bus-overnight" \
@@ -958,16 +957,6 @@ create_cron "agent-remediate-apply" "*/10 * * * *" \
   "" \
   "" \
   "origin" \
-  "" \
-  "true"
-
-# Agent apply-fixes — companion to sensor: reads sensor output, applies deterministic fixes
-create_cron "agent-apply-fixes" "*/10 * * * *" \
-  "agent-apply-fixes.py" \
-  "" \
-  "" \
-  "" \
-  "local" \
   "" \
   "true"
 
