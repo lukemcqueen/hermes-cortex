@@ -228,6 +228,7 @@ def check_dev_repo_agents(res: "Results") -> None:
           "missing AGENTS.md in dev repo",
           f"Create: touch ~/{repo.name}/AGENTS.md then add agent guidelines for this project")
 
+  unverified = []
   for repo in found_repos:
     agents_path = repo / "AGENTS.md"
     if not agents_path.exists():
@@ -248,7 +249,12 @@ def check_dev_repo_agents(res: "Results") -> None:
               f"Run: cd ~/{repo.name} && git diff HEAD~5..HEAD --name-only -- AGENTS.md | head -20 "
               f"to see what's changed. Merge recent patterns into AGENTS.md.")
     except (subprocess.TimeoutExpired, OSError, ValueError):
-      continue # git or stat failed — skip AGENTS.md age check for this repo
+      unverified.append(repo.name)  # git or stat failed — cannot verify staleness
+
+  if unverified:
+    res.add("AGENTS.md age check", "WARN",
+        f"could not verify staleness for {len(unverified)} repo(s): " + ", ".join(unverified[:6]),
+        "Fix the git/stat error (e.g. repo lock, bad object) so the age check covers these repos")
 
 
 def _extract_agents_markers(path: Path) -> set:
@@ -1803,6 +1809,9 @@ def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
         capture_output=True, text=True, timeout=5,
       )
       if result.returncode != 0:
+        res.add(f"Immutable: {path.name}", "WARN",
+            f"lsattr exit {result.returncode} — immutability unverifiable",
+            "Fix the filesystem error so the immutability check covers this enforcement file")
         continue
       flags = result.stdout.split()[0] if result.stdout else ""
       if "i" in flags:
@@ -1811,8 +1820,10 @@ def _check_enforcer_immutability(res, plugin_dir, hooks_dir):
         res.add(f"Immutable: {path.name}", "FAIL",
             "immutable flag not set — enforcement file is modifiable",
             f"Fix: sudo hermes-plugin-lock lock")
-    except (subprocess.TimeoutExpired, OSError, IndexError):
-      continue # lsattr failed — skip gracefully
+    except (subprocess.TimeoutExpired, OSError, IndexError) as e:
+      res.add(f"Immutable: {path.name}", "WARN",
+          f"lsattr failed ({type(e).__name__}) — immutability unverifiable",
+          "Fix the filesystem error so the immutability check covers this enforcement file")
 
 
 def _check_plugin_lock_helper(res):

@@ -71,7 +71,7 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 | **Sync** | `hermes-cortex-sync`, `memory-to-brain-sync`, `agent-mycortex-sync` | Pull updates, persist memory, sync knowledge brain (every 15 min) |
 | **Security** | `threat-pipeline`, `agent-ip-submission` | Block threats, report IPs |
 | **Maintenance** | `memory-pruning`, `session-cache-build`, `orch-skill-lifecycle` | Weekly consolidation, daily skill lifecycle pipeline |
-| **Content** | `agent-daily-bible-reading`, `orch-skill-lifecycle`, `offline-code-index` | Daily spiritual, skill lifecycle (daily 04:00), code indexing |
+| **Content** | `agent-daily-bible-reading`, `orch-skill-lifecycle`, `agent-offline-code-index` | Daily spiritual, skill lifecycle (daily 04:00), code indexing |
 | **Reports** | `orch-health-report` | Scheduled health briefings |
 
 All crons follow the **silent-when-good** pattern — zero output when healthy, targeted alerts on state changes.

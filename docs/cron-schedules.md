@@ -89,7 +89,7 @@
 | `agent-llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | `agent-llm-judge-scorer.py` | local |
 | `agent-memory-pruning` | `0 4 * * 1` | LLM | (prompt) | origin |
 | `agent-auto-save-sessions` | `every 360m` | no_agent | `agent-auto-save-sessions.py` | local |
-| `agent-stale-ref-watchdog` | `0 5 * * *` | no_agent | `manage/stale-ref-watchdog.sh` | origin |
+| `agent-stale-ref-watchdog` | `0 5 * * *` | no_agent | `manage/agent-stale-ref-watchdog.sh` | origin |
 | `agent-swap-refresh` | `0 5 * * *` | no_agent | `agent-swap-refresh.py` | origin |
 | `agent-agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agent-agents-md-prune-scan.py` | local |
 | `agent-agents-md-prune-apply` | `30 4 * * 1-6` | LLM | (prompt) | origin |

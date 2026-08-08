@@ -369,15 +369,12 @@ register "ops/scripts/manage/agent-auto-save-sessions.py"      "${CORTEX_DEPLOY_
 # gbrain-wrapper.sh + gbrain-doctor-summary.py UNREGISTERED 2026-08-05 —
 # gbrain decommissioned; dead scripts no longer deployed.
 register "ops/scripts/manage/send-skill-report.py"       "${CORTEX_DEPLOY_HOME}/scripts/send-skill-report.py"
-register "ops/scripts/state_tracker.py"           "${CORTEX_DEPLOY_HOME}/scripts/state_tracker.py"
 
 register_orch "mcp-servers/cortex-bus-mcp.py"               "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-mcp.py"
 
 # Inbox MCP tools
 # Inbox→bus renamed scripts (source files moved to ops/scripts/bus/)
 register "ops/scripts/bus/cortex-bus-processor.py"        "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-processor.py"
-register "ops/scripts/bus/cortex-bus-remediate.sh"        "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-remediate.sh"
-register_orch "ops/scripts/bus/generate-bus-wrappers.py"     "${CORTEX_DEPLOY_HOME}/scripts/generate-bus-wrappers.py"
 register_orch "ops/scripts/install/setup-cortex-bus.sh"       "${CORTEX_DEPLOY_HOME}/scripts/setup-cortex-bus.sh"
 
 # Bus monitoring tools (fleet-wide)
@@ -452,12 +449,6 @@ register_orch "ops/scripts/orch-bus/orch-bus-readiness-check.py" "${CORTEX_DEPLO
 register_orch "ops/scripts/orch-bus/orch-bus-git-auth-check.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-git-auth-check.py"
 register_orch "ops/scripts/orch-bus/orch-clean-health-queue.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-clean-health-queue.py"
 register_orch "ops/scripts/orch-bus/orch-bus-generate-wrappers.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-generate-wrappers.py"
-register_orch "ops/scripts/orch-bus/orch-bus-audit-watchdog.py"  "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-audit-watchdog.py"
-register_orch "ops/scripts/orch-bus/orch-bus-recover-timeouts.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-recover-timeouts.sh"
-register_orch "ops/scripts/orch-bus/orch-bus-confirmation-poller.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-confirmation-poller.py"
-register_orch "ops/scripts/orch-bus/orch-bus-confirmation-alert.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-confirmation-alert.sh"
-register_orch "ops/scripts/orch-bus/orch-bus-forwarder.py"       "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-forwarder.py"
-register_orch "ops/scripts/manage/stale-ref-watchdog.sh"         "${CORTEX_DEPLOY_HOME}/scripts/manage/stale-ref-watchdog.sh"
 register_orch "ops/scripts/orch-bus/orch-bus-test.py"            "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-test.py"
 
 # Fleet agent message handler (polls inbox for UPDATE_REQUEST etc.)
@@ -506,7 +497,6 @@ register "ops/scripts/manage/agent-skill-stub-audit.py"   "${CORTEX_DEPLOY_HOME}
 # Migration scripts
 register_orch "ops/scripts/manage/migrate-orch-bus-names.sh"   "${CORTEX_DEPLOY_HOME}/scripts/migrate-orch-bus-names.sh"
 register "ops/scripts/post-push-audit"                     "${CORTEX_DEPLOY_HOME}/scripts/post-push-audit"
-register_orch "ops/scripts/manage/orch-skill-report-request.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-skill-report-request.sh"
 register_orch "ops/scripts/manage/orch-skill-report-process.py"    "${CORTEX_DEPLOY_HOME}/scripts/orch-skill-report-process.py"
 register "ops/scripts/manage/agent-learning-collector.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-learning-collector.py"
 register "ops/scripts/manage/agent-session-mine-cron.py"   "${CORTEX_DEPLOY_HOME}/scripts/agent-session-mine-cron.py"

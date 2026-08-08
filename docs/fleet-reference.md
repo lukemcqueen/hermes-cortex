@@ -112,7 +112,7 @@ These run on every agent in the fleet. Created by `install-crons.sh`.
 | `agent-gbrain-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-gbrain-update-sync.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — obsolete with gbrain binary uninstall |
 | `agent-nginx-threat-pipeline` | `0 5 * * *` | no_agent | `nginx-threat-pipeline.sh` | origin |
 | `agent-ip-submission` | `*/30 * * * *` | no_agent | `agent-ip-submission.sh` | origin |
-| `agent-offline-code-index` | `0 5 * * 0` | no_agent | `offline_code_index_cron.sh` | local |
+| `agent-offline-code-index` | `0 5 * * 0` | no_agent | `agent-offline-code-index.sh` | local |
 | `agent-llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | `llm-judge-scorer.py` | local |
 | `agent-llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | `llm-judge-scorer.py` | local |
 | `agent-agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agents-md-prune-scan.py` | local |
@@ -160,7 +160,7 @@ These run on this machine but use `agent-*` naming. Not in repo installers (inte
 | `gbrain-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-gbrain-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — gbrain decommissioned |
 | `gbrain-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-gbrain-update-sync.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — gbrain decommissioned |
 | `memory-pruning` | `0 4 * * 1` | LLM | — | origin |
-| `offline-code-index` | `0 5 * * 0` | no_agent | `offline_code_index_cron.sh` | local |
+| `offline-code-index` | ~~`0 5 * * 0`~~ | ~~no_agent~~ | ~~`offline_code_index_cron.sh`~~ | ~~local~~ | ⚠️ STALE/REMOVED — renamed `agent-offline-code-index` |
 | `llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | `llm-judge-scorer.py` | local |
 | `llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | `llm-judge-scorer.py` | local |
 | `session-cache-build` | `0 5 * * 1` | no_agent | `session_cache.py` | origin |
