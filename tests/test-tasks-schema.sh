@@ -360,6 +360,33 @@ fi
 $PSQL -c "SELECT tasks.task_upsert(p_id=>'${PAUSED_ID}', p_status=>'completed');" >/dev/null 2>&1
 PAUSED_DONE=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${PAUSED_ID}';" 2>/dev/null)
 [ "$PAUSED_DONE" = "completed" ] && pass "paused → completed legal" || fail "paused → completed failed (status=$PAUSED_DONE)"
+# story gate (Domain R-3): story cannot complete while a slice is active;
+# completes once all slices are done OR cancelled
+GATE_STORY=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 gate story', p_created_by=>'esther', p_kind=>'story');" 2>/dev/null | head -1)
+GATE_SLICE=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 gate slice', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${GATE_STORY}');" 2>/dev/null | head -1)
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${GATE_STORY}', p_status=>'in_progress');" >/dev/null 2>&1
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${GATE_SLICE}', p_status=>'in_progress');" >/dev/null 2>&1
+if $PSQL -c "SELECT tasks.task_upsert(p_id=>'${GATE_STORY}', p_status=>'completed');" >/dev/null 2>&1; then
+  fail "story completed while slice active (gate broken)"
+else
+  pass "story with active slice rejected (gate)"
+fi
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${GATE_SLICE}', p_status=>'completed');" >/dev/null 2>&1
+if $PSQL -c "SELECT tasks.task_upsert(p_id=>'${GATE_STORY}', p_status=>'completed');" >/dev/null 2>&1; then
+  pass "story completes when all slices done"
+else
+  fail "story blocked after slices done (gate false positive)"
+fi
+GATE_STORY2=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 gate story 2', p_created_by=>'esther', p_kind=>'story');" 2>/dev/null | head -1)
+GATE_SLICE2=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 gate slice 2', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${GATE_STORY2}');" 2>/dev/null | head -1)
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${GATE_STORY2}', p_status=>'in_progress');" >/dev/null 2>&1
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${GATE_SLICE2}', p_status=>'in_progress');" >/dev/null 2>&1
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${GATE_SLICE2}', p_status=>'cancelled');" >/dev/null 2>&1
+if $PSQL -c "SELECT tasks.task_upsert(p_id=>'${GATE_STORY2}', p_status=>'completed');" >/dev/null 2>&1; then
+  pass "story completes when slices cancelled"
+else
+  fail "story blocked with cancelled slices (gate false positive)"
+fi
 
 echo ""
 echo "═══ AC-L1-14: task_events — capture, no-op gate, suppression, RLS ═══"
