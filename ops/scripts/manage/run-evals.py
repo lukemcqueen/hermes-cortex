@@ -176,7 +176,11 @@ def _task_lifecycle() -> tuple[bool, str]:
         if not probe_id:
             return False, "probe task not found in list output"
 
-        # 3. Update → completed
+        # 3. Start → complete (v005 transition matrix: pending → completed
+        #    is illegal — must start first)
+        rc, out = _run(["python3", str(TASK_DB), "update", probe_id, "--status", "in_progress"])
+        if rc != 0:
+            return False, f"start update failed (rc={rc}): {out.strip()[-200:]}"
         rc, out = _run(["python3", str(TASK_DB), "update", probe_id, "--status", "completed"])
         if rc != 0:
             return False, f"update failed (rc={rc}): {out.strip()[-200:]}"
