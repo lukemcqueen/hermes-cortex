@@ -733,6 +733,22 @@ def main():
         archive_message(source_queue, msg_id)
         return False
 
+    # Silent subjects — known noise: the doctor's own bus round-trip probe
+    # (cortex_doctor checks.py _check_bus_e2e sends DOCTOR_TEST to
+    # inbox_<agent> on EVERY doctor run — updates, dogfood, readiness-check,
+    # manual runs). Archive and move on WITHOUT notifying Telegram. This MUST
+    # precede the pickup notify: previously the notify fired first and every
+    # drained test message became a chat message (flood observed 2026-08-08).
+    if subject in ("DOCTOR_TEST", "STATUS_REQUEST", "HEARTBEAT", "PING"):
+        log(f"Silently archived {subject} from {body.get('from', '?')}")
+        archive_message(source_queue, msg_id)
+        state.setdefault("last_noise", []).append(
+          {"subject": subject, "from": body.get("from"), "t": time.time()}
+        )
+        state["last_noise"] = state["last_noise"][-40:]
+        save_state(state)
+        return True
+
     # Notify pickup
     notify_telegram(
       f"📥 [{AGENT_NAME}] Received {subject} from {body.get('from', '?')}",
