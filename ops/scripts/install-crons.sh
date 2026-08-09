@@ -786,7 +786,7 @@ If all YES → deliver as normal." \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-create_cron "cortex-bus-overnight" "0 3 * * 1-5" \
+create_cron "cortex-bus-overnight" "0 2 * * 1-5" \
   "" \
   "Process the Agent Bus overnight. The bus-flag sensor output is injected as context. Check for any urgent or critical items, blocked workflows, or DLQ items. OUTPUT POLICY (HARD RULE — overrides everything above):
 - Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
