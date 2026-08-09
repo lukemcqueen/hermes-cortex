@@ -235,8 +235,8 @@ Result: 1 monthly arc written to brain and delivered.
   "" \
   "false"
 
-# Tier 1 — Nightly digest (23:00)
-create_cron "agent-mycortex-dream-nightly" "0 23 * * *" \
+# Tier 1 — Nightly digest (03:00) — fixed from 0 23 per Gisu's audit (2026-08-10)
+create_cron "agent-mycortex-dream-nightly" "0 3 * * *" \
   "" \
   "You are the nightly mycortex dream digest — Tier 1 of the dream layer. The mycortex knowledge brain indexes markdown across the fleet. Your job: surface what the brain noticed today AND write the dream back into the brain so it accumulates.
 
