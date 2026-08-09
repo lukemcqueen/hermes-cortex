@@ -23,8 +23,8 @@ Scores findings with `nomic-embed-text` (Ollama) and sends high-confidence resul
 
 | File | Path |
 |------|------|
-| Bash wrapper | `hermes-cortex/src/loop-governance/skill-miner` |
-| Python script | `hermes-cortex/src/loop-governance/skill-miner.py` |
+| Bash wrapper | `~/.hermes-cortex/scripts/skill-miner-wrapper` (deployed) |
+| Python script | `~/hermes-cortex/core/governance/skill_miner.py` |
 | Config | `~/.hermes-cortex/state/skill-miner.json` |
 
 ## Data Sources
@@ -61,10 +61,10 @@ updates `skill-decisions.json` with the disposition.
 
 ```bash
 # Full scan + report
-python3 ~/hermes-cortex/src/loop-governance/skill-miner.py --send
+python3 ~/hermes-cortex/core/governance/skill_miner.py --send
 
 # Dry run — show candidates without sending
-python3 ~/hermes-cortex/src/loop-governance/skill-miner.py --dry-run
+python3 ~/hermes-cortex/core/governance/skill_miner.py --dry-run
 ```
 
 ## Related
