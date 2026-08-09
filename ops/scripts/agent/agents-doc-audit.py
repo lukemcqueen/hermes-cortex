@@ -30,13 +30,18 @@ DEFAULT_CONFIG = {
         {
             "path": "~/.hermes/SOUL.md",
             "agent": "Moses",
+            # Canonical SOUL.md sections per doc-freshness skill + consolidated
+            # template (2026-08-03, 34→12 principles). "Loop governance",
+            # "Inbox Message Decision Framework", "Inbox Audit Trail" were
+            # pre-consolidation standalone principles; their content now lives
+            # inside Behavioral Principles (governance chain in Principle 6,
+            # inbox guidance in Principle 11) and in AGENTS.md sections.
             "mandatory_sections": [
                 "Identity",
                 "Core Mission",
                 "Behavioral Principles",
-                "Loop governance",
-                "Inbox Message Decision Framework",
-                "Inbox Audit Trail",
+                "Communication Style",
+                "Scripture Insights",
             ],
         },
     ],

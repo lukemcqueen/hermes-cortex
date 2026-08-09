@@ -199,9 +199,8 @@ soul_files:
       - Identity
       - Core Mission
       - Behavioral Principles
-      - Loop governance
-      - Inbox Message Decision Framework
-      - Inbox Audit Trail
+      - Communication Style
+      - Scripture Insights
 agents_files:
   - path: "~/hermes-cortex/AGENTS.md"
     repo: "hermes-cortex"
