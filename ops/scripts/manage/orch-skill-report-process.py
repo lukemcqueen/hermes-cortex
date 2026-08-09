@@ -123,6 +123,15 @@ def extract_skill_report(msg: dict) -> dict | None:
     if "skill report" not in subject.lower() and topic.lower() != "reports":
         return None
 
+    # Sender whitelist (2026-08-10): only registered fleet agents report.
+    # Unregistered hosts (e.g. LAM2.local, an orphaned machine still running
+    # the retired collect-skills cron) flooded inbox_orchestrator with 76
+    # duplicate reports — nothing consumed them. Reject non-fleet senders.
+    KNOWN_AGENTS = {"moses", "esther", "joseph", "gisu", "kustos", "titus"}
+    sender = str(inner.get("from", "?")).split(".")[0].lower()
+    if sender not in KNOWN_AGENTS:
+        return None
+
     return {
         "from": inner.get("from", "?"),
         "subject": subject,
