@@ -534,6 +534,7 @@ register "ops/scripts/manage/daily-lesson-mine.sh"      "${CORTEX_DEPLOY_HOME}/s
 register "ops/scripts/manage/lesson-compound-stats.py"   "${CORTEX_DEPLOY_HOME}/scripts/lesson-compound-stats.py"
 register "ops/scripts/manage/lesson-hit.sh"              "${CORTEX_DEPLOY_HOME}/scripts/lesson-hit.sh"
 register "ops/scripts/manage/fix-cron-duplicates.py"  "${CORTEX_DEPLOY_HOME}/scripts/manage/fix-cron-duplicates.py"
+register "ops/scripts/manage/remove-cron-jobs.py"      "${CORTEX_DEPLOY_HOME}/scripts/manage/remove-cron-jobs.py"
 register "ops/scripts/manage/agent-push-metrics.sh"     "${CORTEX_DEPLOY_HOME}/scripts/agent-push-metrics.sh"
 register "ops/scripts/manage/setup-push-metrics-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/setup-push-metrics-cron.sh"
 register "ops/scripts/manage/agent-setup-metrics.sh" "${CORTEX_DEPLOY_HOME}/scripts/agent-setup-metrics.sh"
