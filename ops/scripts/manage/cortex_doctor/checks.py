@@ -1091,19 +1091,34 @@ def _check_bus_e2e(res):
   # leaving messages stuck in 'processing' state that loop forever on VT expiry.
   # Query PGMQ API directly since health endpoint returns queue count, not per-queue details.
   try:
+    import urllib.error
     import urllib.request
     from lib.cortex_bus import BUS_URL, CORTEX_BUS_TOKEN, CORTEX_BUS_AUTH
     bus_url = BUS_URL
-    # Use Bearer if token available, otherwise Basic auth
-    scheme, creds = "Bearer", CORTEX_BUS_TOKEN
-    if not creds:
-      import base64
-      scheme, creds = "Basic", base64.b64encode(CORTEX_BUS_AUTH.encode()).decode()
-    req = urllib.request.Request(f"{bus_url}/api/pgmq/queue/{queue}")
-    if creds:
-      req.add_header("Authorization", f"{scheme} {creds}")
-    resp = urllib.request.urlopen(req, timeout=8)
-    q_info = json.loads(resp.read().decode())
+    # Try Bearer if token available, then fall back to Basic auth on 401/403.
+    # The orchestrator bus accepts Basic (cortex-bus.conf); a stale Bearer
+    # token in .env must not mask the check as SKIP (2026-08-10).
+    import base64
+    attempts = []
+    if CORTEX_BUS_TOKEN:
+      attempts.append(("Bearer", CORTEX_BUS_TOKEN))
+    if CORTEX_BUS_AUTH:
+      attempts.append(("Basic", base64.b64encode(CORTEX_BUS_AUTH.encode()).decode()))
+    resp = None
+    q_info = None
+    for scheme, creds in attempts:
+      req = urllib.request.Request(f"{bus_url}/api/pgmq/queue/{queue}")
+      if creds:
+        req.add_header("Authorization", f"{scheme} {creds}")
+      try:
+        resp = urllib.request.urlopen(req, timeout=8)
+        q_info = json.loads(resp.read().decode())
+        break
+      except urllib.error.HTTPError as e:
+        if e.code not in (401, 403) or scheme == attempts[-1][0]:
+          raise
+    if q_info is None:
+      raise RuntimeError("no auth scheme accepted by bus")
     # list_queues() returns {name, depth, processing, dlq, parent, created}
     pending_count = q_info.get("depth", 0)
     processing_count = q_info.get("processing", 0)
