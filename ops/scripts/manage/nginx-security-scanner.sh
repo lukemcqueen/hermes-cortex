@@ -34,14 +34,6 @@ DEPLOY_SCRIPT="${HERMES_HOME}/scripts/deploy-blocked-ips.sh"
 if [ ! -x "$DEPLOY_SCRIPT" ]; then
   DEPLOY_SCRIPT="${CORTEX_REPO}/ops/scripts/manage/deploy-blocked-ips.sh"
 fi
-# Linux: /var/log/nginx, macOS x86_64: /usr/local/var/log/nginx, macOS arm64: /opt/homebrew/var/log/nginx
-if [ -d "/var/log/nginx" ]; then
-  LOG_DIR="/var/log/nginx"
-elif [ -d "/opt/homebrew/var/log/nginx" ]; then
-  LOG_DIR="/opt/homebrew/var/log/nginx"
-else
-  LOG_DIR="/usr/local/var/log/nginx"
-fi
 STATE_FILE="${HOME}/.hermes-cortex/state/nginx-scanner-lastrun"
 
 mkdir -p "$(dirname "$STATE_FILE")"
@@ -85,44 +77,21 @@ log()  { echo "[$(date '+%H:%M:%S')] $*"; }
 error(){ log "✗ $*"; }
 
 # ── Thresholds ──
-MIN_HITS=10        # Min requests from same IP in the window
-WINDOW_MINS=60     # Time window to scan
+# (2026-08-08) Volume threshold REMOVED — fail2ban bans are the sole
+# auto-source (see Step 1). Kept as named constants only for clarity.
 BAN_TIME="86400"   # fail2ban-style ban time (not used directly)
 
-# ── Step 1: Scan access logs for suspect IPs ──
+# ── Step 1: Collect true-abuser IPs ──
+# (2026-08-08, Luke directive: "only put true abusers in the banned IPs file")
+# The old volume-threshold path (>=10 req/60min per IP) was REMOVED — it had
+# zero discrimination and polluted the list with legit users: one dashboard
+# SPA refresh fires 15-30 parallel requests, tripping the threshold. A legit
+# user browsing normally looked identical to a scanner by volume alone.
+# fail2ban bans (below) are the sole auto-source: they require actual attack
+# evidence (repeated auth failures, admin-path probes, archive crawls).
 NEW_IPS=()
-RECENT_SECONDS=$((WINDOW_MINS * 60))
 
-if [ -d "$LOG_DIR" ]; then
-  for logfile in "$LOG_DIR"/*-access.log; do
-    [ -f "$logfile" ] || continue
-    # Find IPs with high request counts in the recent window
-    # Uses awk to count requests per IP, then filters by threshold
-    cutoff="$(date -v-${WINDOW_MINS}M +%d/%b/%Y:%H:%M:%S 2>/dev/null || date -d "-${WINDOW_MINS} min" "+%d/%b/%Y:%H:%M:%S")"
-    while IFS= read -r ip; do
-      [ -z "$ip" ] && continue
-      # Skip IPs already blocked
-      if [ -f "$BLOCKED_IPS" ] && grep -qF "$ip" "$BLOCKED_IPS" 2>/dev/null; then
-        continue
-      fi
-      # Skip private/local IPs
-      if [[ "$ip" =~ ^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.) ]]; then
-        continue
-      fi
-      NEW_IPS+=("$ip")
-    done < <(timeout 10 awk -v cutoff="$cutoff" -v MIN_HITS=$MIN_HITS '
-            {
-              if (match($0, /\[[^]]+\]/)) {
-                ts = substr($0, RSTART+1, RLENGTH-2)
-                if (ts >= cutoff) { ip = $1; count[ip]++ }
-              }
-            }
-            END { for (ip in count) if (count[ip] >= MIN_HITS) print ip }
-          ' "$logfile")
-  done
-fi
-
-# Also check fail2ban logs for emerging patterns
+# Check fail2ban logs for confirmed bans
 # Linux: /var/log/fail2ban.log, macOS: /usr/local/var/log/fail2ban.log
 if [ -f "/var/log/fail2ban.log" ]; then
   F2B_LOG="/var/log/fail2ban.log"
@@ -148,7 +117,14 @@ if [ -f "$F2B_LOG" ]; then
     done
     $already && continue
     NEW_IPS+=("$ip")
-  done < <(grep -i "ban.*[0-9]\+[0-9]\+[0-9]\+[0-9]\+" "$F2B_LOG" 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | sort -u)
+  done < <(for f in "$F2B_LOG" "${F2B_LOG}.1" "${F2B_LOG}".*.gz; do
+             [ -f "$f" ] || continue
+             if [[ "$f" == *.gz ]]; then
+               zcat "$f" 2>/dev/null || true
+             else
+               cat "$f" 2>/dev/null || true
+             fi
+           done | grep -i "ban.*[0-9]\+[0-9]\+[0-9]\+[0-9]\+" | grep -oP '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | sort -u)
 fi
 
 # ── Step 2: Append new IPs ──
