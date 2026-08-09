@@ -19,6 +19,7 @@ A lightweight map of all project documents. Files are grouped by topic.
 | `docs/fleet-update-protocol.md` | **NEW** — Fleet update bus protocol: UPDATE_REQUEST/RESULT, FIX_REQUEST/RESULT schemas for Moses→fleet orchestration. **Shared orchestrator inbox** (`inbox_orchestrator`) for failover-aware escalation |
 | `docs/fallback-architecture-survey.md` | **Moses fallback architecture** — failover survey, Esther's warm-standby bus, gaps & approaches |
 | `docs/backup-orch-failover-runbook.md` | **Failover & recovery runbook** — step-by-step: Moses-down activation, drain, Moses-back reintegration. Auto-detection now via `cortex-bus-failover-watchdog` cron (all agents) + `tests/test-failover-drill.py` |
+| `docs/runbooks/blocklist-cleanup-ddos-relax.md` | **Blocklist cleanup & DDoS relaxation (2026-08-08)** — legit users blocked on Kustos/Gisu/Joseph. DDoS burst relaxation (manual templates), scanner now adds ONLY fail2ban-confirmed abusers, allow-list guard, `classify-blocked-ips.sh` evidence-based review tool. Run on Joseph (primary discovery host) |
 | `docs/cert-monitoring.md` | SSL/TLS cert monitoring — how certs are checked, renewed, alerted. Cert checks gated to cert-holder hosts only (joseph/gisu/kustos) |
 | `docs/archive/` | Archived/superseded design docs (PRD-005 v1, etc.) |
 | `ops/scripts/lib/cortex_bus.py` | **Shared bus library** — HTTP API wrapper: bus_send, bus_read, bus_archive, bus_list_queues (used by all fleet scripts) |

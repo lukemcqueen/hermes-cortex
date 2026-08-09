@@ -15,7 +15,7 @@ Hermes Cortex runs a **three-layer defense** against port scanning and brute for
 
 ```
 Layer 1: fail2ban (sshd + nginx-badbots jails)  → auto-bans at OS/nginx level
-Layer 2: nginx-security-scanner (log scanner)    → finds suspect IPs in nginx logs
+Layer 2: nginx-security-scanner (fail2ban ban collector) → adds CONFIRMED abusers only
 Layer 3: threat-pipeline cron (daily 5AM)        → deploys + commits blocked IPs
 ```
 
@@ -53,12 +53,13 @@ bash ~/.hermes/scripts/deploy-blocked-ips.sh
 ### OR let the daily pipeline handle it:
 
 The pipeline runs at **05:00 KST daily**. It automatically:
-1. Scans nginx logs for suspect IPs
-2. Collects fail2ban bans
-3. Adds new IPs to `blocked_ips.add`
-4. Commits and pushes to GitHub
-5. Deploys to nginx (reloads config)
-6. Reloads fail2ban nginx-badbots jail
+1. Collects fail2ban-confirmed bans (sole source since 2026-08-08 — the old
+   ≥10 req/60min volume threshold was removed because legit dashboard users
+   trip it: one SPA refresh = 15-30 parallel requests)
+2. Adds new IPs to `blocked_ips.add` (skipping allow-listed IPs)
+3. Commits and pushes to GitHub
+4. Deploys to nginx (reloads config)
+5. Reloads fail2ban nginx-badbots jail
 
 If the pipeline finds no new IPs, it stays silent (watchdog pattern).
 
@@ -100,6 +101,29 @@ The threat-pipeline script (`ops/scripts/manage/nginx-threat-pipeline.sh`) uses 
 - Validates with `sudo nginx -t`, reloads with `sudo nginx -s reload`
 - Git commits use a temp governance lock (see nginx-threat-pipeline.sh `_create_gov_lock` pattern) — no bypass flags needed
 - Git pushes (SKIP_PRE_PUSH=1 has been removed — pre-push hook is mandatory)
+
+## Blocklist Classification & Cleanup (2026-08-08)
+
+**Only true abusers belong in `blocked_ips.add`** (Luke directive). The list
+was polluted with legit users by the old volume threshold — see runbook
+`docs/runbooks/blocklist-cleanup-ddos-relax.md` for the full story.
+
+**Allow-list (manual, agent-tamper-proof):** `/etc/nginx/allow-ips-manual.conf`
+is the ONLY surface that protects a legit IP from the blocklist. Agents may
+READ it (the scanner skips allow-listed IPs) but never EDIT it — that's a
+human action. Templates are manually installed for the same reason.
+
+**Classifier tool:** `classify-blocked-ips.sh` (deployed by cortex-update)
+splits the list into STRONG (fail2ban-banned, keep) vs WEAK (volume-only,
+review) vs stale vs allow-listed. Run it on the host with the ban evidence
+(Joseph is primary discovery host):
+
+```bash
+bash ~/.hermes-cortex/scripts/classify-blocked-ips.sh
+```
+
+Review-only — never edits or deploys. The safety net: fail2ban stays armed,
+so any IP removed that is genuinely attacking gets re-banned automatically.
 
 ## Manual Deploy (for agents with sudo access)
 

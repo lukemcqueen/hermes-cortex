@@ -32,7 +32,7 @@ blocked_ips.add (input)    nginx-badbots.conf (filter)    allow-ips-manual.conf 
          └── Reloads fail2ban + nginx
 ```
 
-The daily scanner feeds back into `blocked_ips.add`, creating a closed loop: **Logs → Detect → Append → Deploy → Protect**.
+The daily scanner feeds back into `blocked_ips.add`, creating a closed loop: **fail2ban bans → Append → Deploy → Protect**. Since 2026-08-08 the scanner adds ONLY fail2ban-confirmed abusers — the old ≥10 req/60min volume threshold was removed (a legit dashboard SPA refresh fires 15-30 parallel requests and tripped it, polluting the list with real users). Allow-listed IPs (`/etc/nginx/allow-ips-manual.conf`) are skipped before appending.
 
 ## Prerequisites
 
@@ -70,7 +70,7 @@ it on a host without nginx.
 
 | File | Purpose |
 |------|---------|
-| `nginx-security-scanner.sh` | Daily scanner — logs → detect → append → deploy |
+| `nginx-security-scanner.sh` | Daily scanner — fail2ban bans → append → deploy (volume threshold removed 2026-08-08; only confirmed abusers are added) |
 | `nginx-threat-pipeline.sh` | **Daily pipeline** — scanner → fail2ban → deploy → git commit → push (wraps scanner, adds fail2ban ban collection and git workflow) |
 
 ## Setup Steps
@@ -150,10 +150,10 @@ cron name=threat-pipeline schedule="0 5 * * *" \
 ```
 
 The pipeline:
-1. Runs the scanner for new suspect IPs from nginx logs
-2. Collects new banned IPs from fail2ban logs
-3. Deploys via `sudo -n install-nginx-full.sh` (uses the legacy script)
-4. Git-commits and pushes `blocked_ips.add` changes
+1. Runs the scanner for new fail2ban-confirmed bans (only true abusers since
+   2026-08-08 — volume threshold removed)
+2. Deploys via `sudo -n install-nginx-full.sh` (uses the legacy script)
+3. Git-commits and pushes `blocked_ips.add` changes
 
 > **Note:** This is a deployment-specific cron (Luke's setup). Install via `install-crons.sh` on each target host.
 
