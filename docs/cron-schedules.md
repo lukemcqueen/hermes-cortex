@@ -95,10 +95,10 @@
 | `cortex-bus-workday` | `0 9-17 * * 1-5` | LLM | session-active-guard.py | origin |
 | `cortex-bus-evening` | `0 18,20,22 * * 1-5` | LLM | (prompt) | origin |
 | `cortex-bus-overnight` | `0 3 * * 1-5` | LLM | (prompt) | origin |
-| `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin |
+| `agent-daily-bible-reading` | `0 1 * * *` | no_agent | `agent-daily-bible-reading.py` | origin |
 | `agent-daily-soul-refinement` | ~~`0 23 * * *`~~ | ~~LLM~~ | ~~soul-refinement skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level daily soul refinement merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-daily-soul-refinement`. |
 | `agent-weekly-loop-eval` | ~~`0 9 * * 1`~~ | ~~LLM~~ | ~~loop-governance skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level weekly loop eval merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-weekly-loop-eval`. |
-| `agent-no-verify-audit` | `every 60m` | LLM | (prompt) | origin |
+| `agent-no-verify-audit` | `*/10 * * * *` | no_agent | `manage/agent-no-verify-audit.py` | origin |
 | `agent-inbox-workday` | `0 9-17 * * 1-5` | LLM | session-active-guard.py | origin |
 | `agent-inbox-evening` | `0 18,20,22 * * 1-5` | LLM | (prompt) | origin |
 | `agent-inbox-overnight` | `0 3 * * 1-5` | LLM | (prompt) | origin |
