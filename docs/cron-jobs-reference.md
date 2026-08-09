@@ -41,7 +41,7 @@
 | agent-secret-leak-watchdog | no_agent | 0 */4 * * * | Scan for leaked credentials |
 | agent-stale-ref-watchdog | no_agent | 0 5 * * * | Check for stale file references |
 | agent-learning-collector | no_agent | 0 */6 * * * | Collect skills delta + lessons |
-|| agent-no-verify-audit | LLM+prompt | every 60m | Check for --no-verify commits |
+|| agent-no-verify-audit | no_agent | every 60m | Check for --no-verify commits |
 | orch-skill-report-request | no_agent | 0 2 * * 1 | Request skill reports from agents |
 | orch-skill-evaluate | LLM+prompt | 0 9 * * 2 | Evaluate custom skills for upstreaming |
 

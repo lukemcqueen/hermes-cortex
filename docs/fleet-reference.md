@@ -74,7 +74,7 @@ Every cron name MUST start with a group prefix. No bare names:
 | `orch-bus-audit-watchdog` | `*/1 * * * *` | no_agent | `orch-bus-audit-watchdog.py` | Telegram |
 | `orch-bus-recover-timeouts` | `*/5 * * * *` | no_agent | `orch-bus-recover-timeouts.sh` | origin |
 | `orch-bus-confirmation-poller` | `every 10m` | no_agent | `orch-bus-confirmation-poller.py` | local |
-| `orch-bus-confirmation-alert` | `*/15 * * * *` | no_agent | `orch-bus-confirmation-alert.sh` | Telegram |
+| `orch-bus-confirmation-alert` | `every 60m` | no_agent | `orch-bus-confirmation-alert.sh` | Telegram |
 | `orch-bus-forwarder-sync` | `*/2 * * * *` | no_agent | `orch-bus-forwarder.py` | origin |
 | `orch-daily-regression-gate` | `15 3 * * *` | no_agent | `orch-daily-regression-gate.sh` | Telegram |
 | `orch-fleet-watchdog` | `*/5 * * * *` | no_agent | `orch-fleet-watchdog.py` | Telegram |
@@ -108,7 +108,7 @@ These run on every agent in the fleet. Created by `install-crons.sh`.
 | `agent-langfuse-health-watchdog` | `0 * * * *` | no_agent | `langfuse-health-watchdog.py` | origin |
 | `agent-memory-pruning` | `0 4 * * 1` | LLM | — | origin |
 | `agent-session-cache-build` | `0 5 * * 1` | no_agent | `session_cache.py` | origin |
-| `agent-daily-bible-reading` | `0 1 * * *` | no_agent | `agent-daily-bible-reading.py` | origin |
+| `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin |
 | `agent-gbrain-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-gbrain-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — gbrain decommissioned; no consumer (verified) |
 | `agent-gbrain-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-gbrain-update-sync.sh`~~ | ~~origin~~ | ⚠️ STALE/REMOVED 2026-08-02 — obsolete with gbrain binary uninstall |
 | `agent-nginx-threat-pipeline` | `0 5 * * *` | no_agent | `nginx-threat-pipeline.sh` | origin |
@@ -165,7 +165,7 @@ These run on this machine but use `agent-*` naming. Not in repo installers (inte
 | `llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | `llm-judge-scorer.py` | local |
 | `llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | `llm-judge-scorer.py` | local |
 | `session-cache-build` | `0 5 * * 1` | no_agent | `session_cache.py` | origin |
-| `agent-daily-bible-reading` | `0 1 * * *` | no_agent | `agent-daily-bible-reading.py` | origin |
+| `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin |
 | `agent-ip-submission` | `*/30 * * * *` | no_agent | `agent-ip-submission.sh` | origin |
 | `agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agents-md-prune-scan.py` | local |
 | `agents-md-prune-apply` | `30 4 * * 1-6` | LLM | — | origin |
