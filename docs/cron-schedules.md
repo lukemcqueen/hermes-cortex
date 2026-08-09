@@ -77,7 +77,7 @@
 | `agent-gbrain-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-gbrain-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — gbrain decommissioned; no consumer (verified). |
 | `agent-gbrain-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-gbrain-update-sync.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — obsolete with gbrain binary uninstall. |
 | `agent-mycortex-sync` | `*/15 * * * *` | no_agent | `agent-mycortex-sync.sh` | origin | *(knowledge brain sync — replaces gbrain autopilot)* |
-| `agent-mycortex-dream-nightly` | `0 3 * * *` | LLM | (prompt) | origin | *(nightly serendipity digest — fresh-page connections, writes to `~/brain/<profile>/dreams/`; replaces gbrain creative-dream layer; optional via install-dream-crons.sh)* |
+| `agent-mycortex-dream-nightly` | `0 23 * * *` | LLM | (prompt) | origin | *(nightly serendipity digest — fresh-page connections, writes to `~/brain/<profile>/dreams/`; replaces gbrain creative-dream layer; optional via install-dream-crons.sh)* |
 | `agent-mycortex-dream-weekly` | `0 3 * * 6` | LLM | (prompt) | origin | *(weekly deep dream — lessons synthesis + scripture connection, ~200-250 words written to `~/brain/<profile>/dreams/`; optional)* |
 | `agent-mycortex-dream-monthly` | `0 3 1 * *` | LLM | (prompt) | origin | *(monthly arc — time-lapse + knowledge-gap probe, ~300 words written to `~/brain/<profile>/dreams/`; optional)* |
 | `agent-mycortex-parity` | ~~removed 2026-08-03~~ | no_agent | — | origin | *(S-010 flip-gate watchdog — RETIRED with gbrain; gate closed, parity is now a manual regression fixture only)* |
@@ -115,7 +115,7 @@
 | `local-agent-daily-finance-brief` | `0 18 * * 1-5` | LLM | Telegram |
 | `local-agent-agents-doc-audit` | `0 7 * * 1` | LLM | origin |
 | `local-agent-upwork-job-scanner` | `0 8 * * *` | LLM | Telegram |
-| `local-agent-daily-soul-refinement` | `0 23 * * *` | LLM | origin |
+| `local-daily-soul-refinement` | `0 23 * * *` | LLM | origin | *(live name — created without `agent-` infix; per-host variant)* |
 | `local-agent-weekly-loop-eval` | `0 9 * * 1` | LLM | origin |
 | `local-orch-fleet-command-verifier` | `every 10m` | no_agent | Telegram |
 
@@ -123,4 +123,4 @@
 
 **Migration:** All crons renamed to `agent-*` prefix Jul 21 2026. Old bare names are replaced. Run `fix-cron-duplicates.py` to verify.
 
-**All running crons documented above — last verified: 2026-08-03**
+**All running crons documented above — last verified: 2026-08-10**
