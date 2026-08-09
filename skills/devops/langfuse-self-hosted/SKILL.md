@@ -324,6 +324,28 @@ The langfuse-web container's upstream entrypoint uses `|| true; echo "Langfuse s
 
 In v3.206.0, the traces endpoint (`/api/public/traces?fromTimestamp=...`) can crash the Node.js server with an unhandled `InvalidRequestError` or `RemoteDisconnected`. **Upgrade to 3.207.0+ to resolve.**
 
+### Web crash-loop: "no migration found for version N: read down" (2026-08-09)
+
+The web container crash-loops at startup with:
+```
+error: no migration found for version 36: read down for version 36 .: file does not exist
+Applying clickhouse migrations failed.
+```
+
+The CH `schema_migrations` table has a version (e.g. 36) the running image
+doesn't ship (3.206.0 ships only to 0035). ClickHouse forward-migration is
+irreversible — the schema was migrated by a NEWER image, then the compose was
+downgraded. **Fix: upgrade Langfuse to the version that ships that migration
+(3.207.0 ships 0036_add_ingested_sdks_to_analytics_scores).** Verify the image
+contains the version before upgrading:
+```bash
+docker run --rm --entrypoint sh langfuse/langfuse-worker:<tag> -c \
+  'ls .../clickhouse/migrations/unclustered/ | grep -oE "^[0-9]+" | sort -un | tail -3'
+```
+Also note: the worker container tolerates the mismatch (it doesn't run the
+migration check) — only web crash-loops, so `docker ps` showing the worker
+"Up" is misleading.
+
 ### Traces created but never appear in Langfuse
 The SDK fails silently with "Failed to export span batch code: 404, reason: Not Found". This means the OTLP endpoint is missing. Upgrade Langfuse server version.
 

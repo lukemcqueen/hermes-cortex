@@ -133,3 +133,34 @@ When creating or updating the per-query profile defaults XML:
 The comment serves as a guardrail for future changes. If the container memory
 limit changes, recalculate: `new_limit = container_gb * 0.9 * 0.5` (e.g.
 4 GiB container → 4 × 0.9 × 0.5 = 1.8 GiB).
+
+## Third cause: system-log bloat (2026-08-09, found live)
+
+Even with the memory conflict fixed AND merge sizes capped, `TotalMergeFailures`
+can still climb when **system tables** accumulate unmergeable parts:
+
+- `system.trace_log` reached **8.16 GB (435M rows)** — every CH query writes a
+  trace entry, and this server runs hundreds of watchdog queries/hour
+- `system.text_log` reached **2.78 GB** (full of the very merge-failure errors)
+- A single merge of 100K+ parts in one partition wants 5.4 GiB > per-query cap
+
+**Diagnosis:** the failing merge task UUID maps to a **system** table
+(`SELECT database, name, uuid FROM system.tables WHERE toString(uuid) LIKE '<uuid>%'`),
+not a Langfuse table. `system.parts` shows the huge system tables.
+
+**Fix (safe — system tables are diagnostics):**
+```bash
+docker exec langfuse-clickhouse-1 clickhouse-client -q "TRUNCATE TABLE system.trace_log"
+docker exec langfuse-clickhouse-1 clickhouse-client -q "TRUNCATE TABLE system.text_log"
+# also: metric_log, asynchronous_metric_log, query_log, processors_profile_log
+```
+Then reset the watchdog baseline. `TotalMergeFailures` freezes immediately and
+merges catch up (Merge=0, pool=0). The weekly cleanup cron
+(`ch-truncate-system-logs.sh`) truncates these — **text_log was missing from
+its table list until 2026-08-09; it's the one that fills with error noise.**
+
+**Order of operations when merge failures persist:**
+1. Check memory conflict (this reference) — per-query vs server cap
+2. Check stale huge parts (nuke reference) — pre-config parts
+3. Check system-log bloat (above) — trace_log/text_log accumulating
+4. Check migration mismatch (`read down for version N`) — upgrade Langfuse
