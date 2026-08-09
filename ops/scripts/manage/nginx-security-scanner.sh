@@ -46,6 +46,40 @@ STATE_FILE="${HOME}/.hermes-cortex/state/nginx-scanner-lastrun"
 
 mkdir -p "$(dirname "$STATE_FILE")"
 
+# ── Allow-list (2026-08-08): read /etc/nginx/allow-ips-manual.conf so the
+# scanner NEVER re-adds an allow-listed IP to blocked_ips.add. The manual
+# allow file is the one agent-tamper-proof surface (Luke 2026-08-08: only
+# blocked_ips.add is agent-writable). Without this check, a legit office IP
+# that trips the volume threshold gets re-appended every scan, and the
+# deploy-time override keeps having to strip it — a pollution loop.
+ALLOW_MANUAL="${ALLOW_MANUAL:-/etc/nginx/allow-ips-manual.conf}"
+ALLOWED_IPS=()
+if [ -f "$ALLOW_MANUAL" ]; then
+  while IFS= read -r line; do
+    line="$(echo "$line" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    [ -z "$line" ] && continue
+    case "$line" in
+      \#*) continue ;;
+      allow*) ALLOWED_IPS+=("$(echo "$line" | sed -E 's/^allow[[:space:]]+//; s/;.*$//')") ;;
+    esac
+  done < "$ALLOW_MANUAL"
+fi
+
+_is_allowed_ip() {
+  local ip="$1" entry
+  for entry in "${ALLOWED_IPS[@]:-}"; do
+    [ -z "$entry" ] && continue
+    if [[ "$entry" == */* ]]; then
+      if python3 -c "import ipaddress,sys; sys.exit(0 if ipaddress.ip_address('$ip') in ipaddress.ip_network('$entry', strict=False) else 1)" 2>/dev/null; then
+        return 0
+      fi
+    elif [ "$entry" = "$ip" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 # ── Helpers ──
 log()  { echo "[$(date '+%H:%M:%S')] $*"; }
 error(){ log "✗ $*"; }
@@ -144,6 +178,10 @@ ADDED=0
 for ip in "${UNIQUE_IPS[@]}"; do
   if grep -qF "$ip" "$BLOCKED_IPS" 2>/dev/null; then
     continue  # Already in list (race condition safe)
+  fi
+  if _is_allowed_ip "$ip"; then
+    echo "  ⏭  Skipped (allow-listed): ${ip}"
+    continue
   fi
   echo "$ip" >> "$BLOCKED_IPS"
   echo "  + Blocked: ${ip}"
