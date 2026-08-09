@@ -258,6 +258,15 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
 
 ## Pitfalls
 
+- **Sender whitelist enforced (71d36cc5, 2026-08-10)** → `orch-skill-report-process.py`
+  rejects reports from NON-fleet senders. An unregistered host (LAM2.local) still
+  running the retired `collect-skills` cron flooded `inbox_orchestrator` with 76
+  duplicate "Skill Report: N custom skills" messages over days — nothing consumed
+  them, drowning real agent proposals (all 78 archived). When a legitimate fleet
+  report seems missing, check the sender is in the whitelist (Gisu, Titus, Esther,
+  Joseph, Kustos, Moses) and that no retired host-side cron is still pushing the
+  legacy Skill Report format. The pipeline consumes **Learning Report** messages,
+  not legacy Skill Reports.
 - **Don't patch the same skill twice in one run** — deduplicate before acting
 - **Don't upstream fleet skills that already exist** — check repo + Hermes bundle
 - **Don't modify SOUL.md for workflow lessons** — skills are for workflow, SOUL.md is for principles
