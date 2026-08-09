@@ -163,6 +163,15 @@ body are invisible to it. So:
 
 ## Pitfalls
 
+- **Cron sessions cannot write SOUL.md (protected-instruction gate).** Hermes
+  core (`tools/file_tools.py` `_PROTECTED_INSTRUCTION_BASENAMES`) fails closed
+  on `soul.md` writes when no human channel exists — a cron has none, so
+  `patch` to `docs/templates/SOUL.md` is BLOCKED by design (prompt-injection
+  persistence defense). The cron's job is DETECTION: report the corrections
+  found so the operator approves the codification in an interactive session.
+  Do NOT bypass via terminal/execute_code — the block message explicitly
+  forbids it, and bypassing a security gate violates governance fail-closed.
+  (Learned 2026-08-09: `local-daily-soul-refinement` cron hit this wall.)
 - **Don't append the same lesson twice.** If a principle already covers the gap, strengthen it rather than adding another.
 - **Don't treat skills as identity.** Workflow discoveries go in SKILL.md, not SOUL.md.
 - **Bible insights must be genuine.** Don't force-fit a lesson. If the day's book has nothing obvious for the agent's role, say so honestly.
