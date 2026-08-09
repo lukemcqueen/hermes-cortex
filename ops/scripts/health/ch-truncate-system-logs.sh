@@ -12,11 +12,13 @@ THRESHOLD_10MB=$((10 * 1024 * 1024))
 THRESHOLD_25MB=$((25 * 1024 * 1024))
 
 # Parallel arrays: tables and their thresholds (bash 3.x compat — no associative arrays)
-TABLES=("asynchronous_metric_log" "trace_log" "query_log" "processors_profile_log" "metric_log")
-THRESHOLDS=("$THRESHOLD_25MB" "$THRESHOLD_10MB" "$THRESHOLD_10MB" "$THRESHOLD_10MB" "$THRESHOLD_10MB")
+TABLES=("asynchronous_metric_log" "trace_log" "query_log" "processors_profile_log" "metric_log" "text_log")
+THRESHOLDS=("$THRESHOLD_25MB" "$THRESHOLD_10MB" "$THRESHOLD_10MB" "$THRESHOLD_10MB" "$THRESHOLD_10MB" "$THRESHOLD_25MB")
 
 # Note: latency_log (Langfuse SDK data) and error_log (diagnostic) are excluded
 # intentionally — they're small and useful.
+# text_log added 2026-08-09: the merge-failure MEMORY_LIMIT_EXCEEDED storm
+# filled text_log to 2.78 GB — it must be truncated like the others.
 
 TRUNCATED=0
 for i in "${!TABLES[@]}"; do

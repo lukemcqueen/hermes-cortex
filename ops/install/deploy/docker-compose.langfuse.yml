@@ -16,7 +16,7 @@
 
 services:
   langfuse-worker:
-    image: langfuse/langfuse-worker:3.206.0
+    image: langfuse/langfuse-worker:3.207.0
     restart: always
     cpus: 0.5
     mem_limit: 1g
@@ -111,7 +111,7 @@ services:
       LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE: "true"
 
   langfuse-web:
-    image: langfuse/langfuse:3.206.0
+    image: langfuse/langfuse:3.207.0
     restart: unless-stopped
     depends_on: *langfuse-depends-on
     cpus: 1.0
