@@ -46,8 +46,7 @@ if not CORTEX_BUS_TOKEN:
                         if val:
                             CORTEX_BUS_URL = val
             except (IOError, OSError, UnicodeDecodeError, ValueError) as e:
-                # Config file unreadable or malformed — log and try next location
-                print(f"[config] Warning: skipping {conf}: {e}", file=sys.stderr)
+                print(f"[config] Warning: skipping {conf}: {e}", file=sys.stderr)  # unreadable/malformed — try next location
         if CORTEX_BUS_TOKEN:
             break
 
