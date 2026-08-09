@@ -113,7 +113,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (110 skills)
+## Devops (111 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -143,6 +143,7 @@ their domain.
 | `cron-format-standard` | 3.0.0 | Standard three-phase output format for ALL LLM-driven cron jobs. Uses concrete examples — not annotated pla... | `skill_view(name='cron-format-standard')` |
 | `cron-job-management` | 1.0.0 | Create, name, list, and maintain Hermes cron jobs — no_agent watchdog scripts, naming conventions, and the... | `skill_view(name='cron-job-management')` |
 | `cron-no-agent-conversion` | 1.0.0 | Convert LLM-driven Hermes agent crons to no_agent scripts with targeted API calls. Maximizes deterministic... | `skill_view(name='cron-no-agent-conversion')` |
+| `cron-output-contracts` | 1.0.0 | Use when a script reads another cron's output or retires. | `skill_view(name='cron-output-contracts')` |
 | `cron-quality-gate` | 1.0.0 | Prevents LLM cron jobs from delivering garbage with a self-check quality gate and automated watchdog. | `skill_view(name='cron-quality-gate')` |
 | `cron-request-protocol` | 1.3.0 | Protocol for non-orchestrator agents to request cron job creation, updates, or removal via the agent inbox.... | `skill_view(name='cron-request-protocol')` |
 | `cross-agent-design` | 1.0.0 | Before designing any cross-agent feature, protocol, or workflow: trace the receiving agent's end-to-end con... | `skill_view(name='cross-agent-design')` |
