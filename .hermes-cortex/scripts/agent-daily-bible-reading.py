@@ -54,7 +54,7 @@ BOOKS = [
 BOOK_INDEX = {b: i for i, b in enumerate(BOOKS)}
 
 DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
-DEEPSEEK_MODEL = "deepseek-v4-flash"
+DEEPSEEK_MODEL = "deepseek-chat"
 ENV_FILE = HOME / ".hermes" / ".env"
 
 
@@ -239,7 +239,7 @@ def _call_ollama(prompt: str, max_tokens: int = 4096) -> str | None:
         return None
 
 
-def _call_deepseek(prompt: str, max_tokens: int = 4096) -> str | None:
+def _call_deepseek(prompt: str, max_tokens: int = 4096, _retried: bool = False) -> str | None:
     """Make a deepseek API call and return the cleaned response content.
     Falls back to local Ollama if DEEPSEEK_API_KEY is not available."""
     api_key = get_deepseek_api_key()
@@ -283,9 +283,19 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096) -> str | None:
         content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
 
         if not content:
+            # Empty content is not transient here: deepseek reasoning models
+            # (deepseek-v4-flash) burn the whole token budget on
+            # reasoning_content and return content="" with finish=length.
+            # Bounded retry ONCE (was unbounded recursion — a persistent empty
+            # response looped until the cron timeout, then silently dropped
+            # the brain page while SOUL.md kept the entry → inconsistent state,
+            # 2026-08-10). Use deepseek-chat (non-reasoning) to avoid the issue.
             print(f"⚠️  Empty response from API — retrying once", file=sys.stderr)
             time.sleep(5)
-            return _call_deepseek(prompt, max_tokens)
+            if _retried:
+                print(f"❌ Still empty after retry — giving up", file=sys.stderr)
+                return None
+            return _call_deepseek(prompt, max_tokens, _retried=True)
 
         # Clean up any markdown code block wrapping
         content = content.strip()
