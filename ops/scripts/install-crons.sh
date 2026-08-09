@@ -514,9 +514,6 @@ if $UNINSTALL; then
     "agent-governance-auditor" \
     "agent-hermes-cortex-sync" \
     "agent-hermes-update" \
-    "agent-inbox-evening" \
-    "agent-inbox-overnight" \
-    "agent-inbox-workday" \
     "agent-ip-submission" \
     "agent-langfuse-health-watchdog" \
     "agent-learning-collector" \
@@ -813,75 +810,10 @@ If all YES → deliver as normal." \
 
 
 # ── 5. Inbox Processing ────────────────────────────────
-printf "\n${CYAN}  5. Inbox Processing${RESET}\n"
-
-create_cron "agent-inbox-workday" "0 9-17 * * 1-5" \
-  "session-active-guard.py" \
-  "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: [SILENT]. Proceed only when the guard says IDLE.
-
-Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. OUTPUT POLICY (HARD RULE — overrides everything above):
-- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
-- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
-- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
-- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative.
-
-## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
-1. Is the output useful, readable, and on-topic for this cron?
-2. Did you run real tools — or reply with the exact guard skip token — instead of fabricating?
-3. Is it the right length (not a stray word, not oversized, not empty)?
-4. Is it in English and in the correct format?
-If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
-If all YES → deliver as normal." \
-  "cortex-bus-automation" \
-  "terminal" \
-  "origin" \
-  "" \
-  "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
-
-create_cron "agent-inbox-evening" "0 18,20,22 * * 1-5" \
-  "" \
-  "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. OUTPUT POLICY (HARD RULE — overrides everything above):
-- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
-- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
-- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
-- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative.
-
-## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
-1. Is the output useful, readable, and on-topic for this cron?
-2. Did you run real tools instead of fabricating results?
-3. Is it the right length (not a stray word, not oversized, not empty)?
-4. Is it in English and in the correct format?
-If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
-If all YES → deliver as normal." \
-  "cortex-bus-automation" \
-  "terminal" \
-  "origin" \
-  "" \
-  "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
-
-create_cron "agent-inbox-overnight" "0 3 * * 1-5" \
-  "" \
-  "Process pending inbox messages using the Inbox Message Decision Framework. Read unread inbox messages, classify them using Priority/Actionability/Scope axes, and auto-act, delegate, escalate, or acknowledge each. OUTPUT POLICY (HARD RULE — overrides everything above):
-- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
-- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
-- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
-- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative.
-
-## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
-1. Is the output useful, readable, and on-topic for this cron?
-2. Did you run real tools instead of fabricating results?
-3. Is it the right length (not a stray word, not oversized, not empty)?
-4. Is it in English and in the correct format?
-If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
-If all YES → deliver as normal." \
-  "cortex-bus-automation" \
-  "terminal" \
-  "origin" \
-  "" \
-  "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+# agent-inbox-{workday,evening,overnight} REMOVED 2026-08-10 — post-rename
+# duplicates of cortex-bus-{workday,evening,overnight} (same skill
+# cortex-bus-automation, same schedules). Live jobs deleted on all hosts;
+# uninstall array cleaned; see docs/cron-schedules.md STALE/REMOVED entries.
 
 # ── 6. Governance Audit & Lock Cleanup
 
