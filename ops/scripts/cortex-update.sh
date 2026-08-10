@@ -220,6 +220,7 @@ register "ops/services/tasks/schema/v004__cancel-update-column.sql" "${CORTEX_DE
 register "ops/services/tasks/schema/v005__lifecycle.sql"     "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v005__lifecycle.sql"
 register "ops/services/tasks/schema/v006__schema-version-grant.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v006__schema-version-grant.sql"
 register "ops/services/tasks/schema/v007__upsert-preserve-partial.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v007__upsert-preserve-partial.sql"
+register "ops/services/tasks/schema/v008__v006-deferred.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v008__v006-deferred.sql"
 # learnings ledger (F-001) — schema + version-gated runner, orchestrator-only
 # (the bus Postgres that hosts learnings exists only on Moses/Esther; workers
 # write via the HTTP collector path and never need this schema locally).

@@ -178,13 +178,19 @@ admits it.
 Legal transitions (validated by a `BEFORE UPDATE` trigger + `task_upsert`
 fast-fail; every cell L1-tested):
 
-| from \ to | pending | in_progress | paused | completed | cancelled |
-|---|---|---|---|---|---|
-| pending | — | ✅ | ❌ (must start first) | ❌ | ✅ |
-| in_progress | ❌ | — | ✅ | ✅ | ✅ |
-| paused | ❌ | ✅ (resume) | — | ✅ | ✅ |
-| completed | ❌ | ✅ (reopen, reason='reopen') | ❌ | — | ❌ |
-| cancelled | ❌ | ❌ | ❌ | ❌ | — |
+| from \ to | pending | in_progress | paused | blocked | waiting | completed | cancelled |
+|---|---|---|---|---|---|---|---|
+| pending | — | ✅ | ❌ (must start first) | ✅ | ✅ | ❌¹ | ✅ |
+| in_progress | ❌ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| paused | ❌ | ✅ (resume) | — | ✅ | ✅ | ✅ | ✅ |
+| blocked | ❌ | ✅ (resume) | ✅ | — | ✅ | ✅ | ✅ |
+| waiting | ❌ | ✅ (resume) | ✅ | ✅ | — | ✅ | ✅ |
+| completed | ❌ | ✅ (reopen, reason='reopen') | ❌ | ❌ | ❌ | — | ❌ |
+| cancelled | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | — |
+
+¹ `pending → completed` for a **story** is admitted only via the
+`story_auto_complete` AFTER trigger path (reason='story_auto_complete',
+guaranteed no active slices) — never by hand.
 
 - `paused ⇄ in_progress`: the switching arc (D-2). `switch` = pause current +
   resume target atomically (M-8).
@@ -192,8 +198,14 @@ fast-fail; every cell L1-tested):
 - `completed → in_progress` allowed **only** with `reason='reopen'` (explicit
   reopen policy — Domain R-5).
 - `paused → completed` allowed (agent resolved a paused task as done).
+- `blocked` = actively stuck on an external dependency; `waiting` = not yet
+  actionable (dependency not ready). Both derive `column = NULL` (paused
+  class) and are surfaced by session restore but never auto-resumed (M-7,
+  v008).
 - Story rows (`kind='story'`) may not be `completed` while any non-cancelled
-  slice is active (Domain R-3 — gate in the same trigger).
+  slice is active (Domain R-3 — gate in the same trigger). When the last
+  active slice reaches `completed`/`cancelled`, the story **auto-completes**
+  (v008, reason='story_auto_complete', event_type='story_auto_complete').
 - Enforcement: `tasks.check_transition()` BEFORE UPDATE trigger + inside
   `task_upsert` (RAISE EXCEPTION → CLI catches → friendly error). Direct SQL
   cannot bypass (QA B-4).
@@ -383,7 +395,7 @@ LAST (additive, highest schema risk, lowest incremental value)**.
 | **S3** | task-db.py v2: `paused`, `switch`, `--parent/--kind`, `--no-notify`, `--by-correlation`, schema_version probe, restore untrusted-inbox marking, pending paused section | B-4,R-11,R-19,M-7,M-8,M-9 | 0.5d |
 | **S4** | handler bus→task: TASK_CREATING_SUBJECTS allowlist, create-before-archive, EXEC/UPDATE completion at Result-receipt, pickup silent-aware + notify dedupe, stale sweep on tick | B-2,R-8,R-12,R-13,R-14,R-16,R-18,M-2,M-12 | 0.5d |
 | **S5** | inbox_read consumer wiring: ISSUES/PROPOSAL/IMPROVEMENTS/Task: transitions by correlation_id; task id in send_bus_result | B-2,R-19,M-12 | 0.25d |
-| **S6** | v006 (deferred, additive): `blocked`/`waiting` status + story `list --parent` + `task_story_summary()` + archive children-first + story auto-complete polish | R-3,M-4,M-7(v006) | 0.5d |
+| **S6** | v006 (deferred, additive — **shipped as schema v008**): `blocked`/`waiting` status + story `list --parent` + `task_story_summary()` + archive children-first + story auto-complete polish | R-3,M-4,M-7(v006) | 0.5d |
 | **S7** | doctor checks: schema_version≥5 FAIL, task_events RLS assertion FAIL, telegram notify health WARN, stale inbox WARN, .env 600 WARN, manual-flag WARN; test batteries L0/L1/L2 extended | R-5,R-15,R-16,B-3 | 0.5d |
 | **S8** | docs: task-persistence skill + AGENTS.md + cron-schedules.md updated in same commit; **rollout gate run** (below) | R-4,party-cond | 0.25d |
 
@@ -432,9 +444,15 @@ QA-gated). $0 infra. ~1–2 hrs/wk maintenance.
 
 ## 15. Explicit Deferrals (documented, not accidents)
 
-- `blocked`/`waiting` status → v006 (Domain M-7).
+- ~~`blocked`/`waiting` status → v006 (Domain M-7).~~ **SHIPPED in v008**
+  (schema `v008__v006-deferred.sql` — blocked/waiting status, story
+  `list --parent`, `task_story_summary()`, archive children-first, story
+  auto-complete).
 - Fleet transport (git-backed private repo) → roadmap milestone (unchanged,
   B-3 base); Telegram visibility does NOT depend on it.
 - Notify replay pipeline → accepted drop (event trail is the record) (R-5).
-- Story auto-complete → v006 polish; v005 ships the gate (no story completed
-  with active slices) + manual story status.
+- ~~Story auto-complete → v006 polish; v005 ships the gate (no story completed
+  with active slices) + manual story status.~~ **SHIPPED in v008** — v005's
+  gate holds; the AFTER trigger now auto-completes a story when its last
+  active slice reaches completed/cancelled (reason + event
+  `story_auto_complete`).

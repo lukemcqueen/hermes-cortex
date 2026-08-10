@@ -237,6 +237,95 @@ def test_pending_filters_completed():
     assert ids == {"u1", "u3"}
 
 
+# ── v3 (v008): blocked/waiting + story list --parent + summary ─
+
+def test_pending_includes_blocked_waiting():
+    fake = "\n".join([
+        _row_line(id="u1", status="blocked"),
+        _row_line(id="u2", status="waiting"),
+        _row_line(id="u3", status="completed"),
+    ])
+    with patch.object(task_db, "psql", return_value=fake):
+        out, _err, exc = _run_stdin_capture(task_db.cmd_pending)
+    items = json.loads(out)
+    statuses = {i["id"]: i["status"] for i in items}
+    assert statuses == {"u1": "blocked", "u2": "waiting"}
+
+
+def test_update_blocked_requires_v3_schema():
+    with patch.object(task_db, "schema_version", return_value=5):
+        _out, err, exc = _run_stdin_capture(
+            task_db.cmd_update, "00000000-0000-0000-0000-000000000000", "blocked")
+    assert exc is not None and exc.code == 2
+    assert "v8" in err
+
+
+def test_update_blocked_ok_on_v8_schema():
+    with patch.object(task_db, "schema_version", return_value=8), \
+            patch.object(task_db, "psql", return_value="ok"):
+        _out, _err, exc = _run_stdin_capture(
+            task_db.cmd_update, "00000000-0000-0000-0000-000000000000", "waiting")
+    assert exc is None
+
+
+def test_list_parent_requires_v3_schema():
+    with patch.object(task_db, "schema_version", return_value=5):
+        _out, err, exc = _run_stdin_capture(
+            task_db.cmd_list, None, None, None, None, None, None, None, None,
+            "00000000-0000-0000-0000-000000000000")
+    assert exc is not None and exc.code == 2
+    assert "v8" in err
+
+
+def test_list_parent_bad_uuid_rejected():
+    with patch.object(task_db, "schema_version", return_value=8):
+        _out, err, exc = _run_stdin_capture(
+            task_db.cmd_list, None, None, None, None, None, None, None, None,
+            "not-a-uuid")
+    assert exc is not None and exc.code == 2
+
+
+def test_summary_requires_story_and_v3():
+    # old schema → refused
+    with patch.object(task_db, "schema_version", return_value=5):
+        _out, err, exc = _run_stdin_capture(
+            task_db.cmd_summary, "00000000-0000-0000-0000-000000000000")
+    assert exc is not None and exc.code == 2
+    assert "v8" in err
+    # bad uuid → refused
+    with patch.object(task_db, "schema_version", return_value=8):
+        _out, _err, exc = _run_stdin_capture(task_db.cmd_summary, "nope")
+    assert exc is not None and exc.code == 2
+
+
+def test_summary_prints_json_fields():
+    fake = json.dumps({
+        "story_id": "00000000-0000-0000-0000-000000000001",
+        "content": "S9: test story", "status": "pending", "priority": 2,
+        "scope": "personal", "created_by": "esther", "total_slices": 2,
+        "pending": 1, "in_progress": 0, "paused": 0, "blocked": 0,
+        "waiting": 0, "completed": 1, "cancelled": 0, "active": 1,
+        "done_ratio": 50.0,
+    })
+    with patch.object(task_db, "schema_version", return_value=8), \
+            patch.object(task_db, "psql", return_value=fake):
+        out, _err, exc = _run_stdin_capture(
+            task_db.cmd_summary, "00000000-0000-0000-0000-000000000001")
+    assert exc is None
+    assert "S9: test story" in out
+    assert "2 total" in out
+    assert "1 done + 0 cancelled" in out
+
+
+def test_summary_empty_result_fails():
+    with patch.object(task_db, "schema_version", return_value=8), \
+            patch.object(task_db, "psql", return_value=""):
+        _out, err, exc = _run_stdin_capture(
+            task_db.cmd_summary, "00000000-0000-0000-0000-000000000001")
+    assert exc is not None and exc.code == 1
+    assert "no story" in err.lower()
+
+
 # ── restore: untrusted-inbox skip (R-4) ───────────────────────
 
 def test_restore_skips_untrusted_by_default(tmp_path):

@@ -27,7 +27,8 @@ Security invariants (party B-1 — no injection, no shell RCE):
 Usage:
     task-db.py list    [--agent <name>] [--status <s>] [--project <p>]
                        [--scope <s>] [--repo <r>] [--assignee <a>]
-                       [--due-before <iso>] [--tag <t>]
+                       [--due-before <iso>] [--tag <t>] [--parent <story-id>]
+    task-db.py summary <story-id>     # v3: story slice-status summary
     task-db.py add     <content> [--agent <name>] [--priority 0-3]
                        [--project <p>] [--repo <r>] [--target <host>]
                        [--scope personal|fleet] [--assignee <a>]
@@ -43,6 +44,9 @@ Usage:
     task-db.py save-end            # archive completed/cancelled
     task-db.py prune [--older-than 90d]   # delete archived rows older than N
     task-db.py --apply-schema      # delegate to ops/services/tasks/migrate.py
+
+Statuses: pending, in_progress, paused, completed, cancelled, blocked,
+waiting (blocked/waiting are v3/v008 — schema v8+).
 
 Honest fleet semantics (party B-3): `--scope fleet` stores the row locally
 on this host only — it is NOT visible fleet-wide until transport ships
@@ -76,13 +80,17 @@ PG_OPTS = ["-v", "ON_ERROR_STOP=1", "-t", "-A", "-F", "||"]
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 SCOPES = ("personal", "fleet")
-STATUSES = ("pending", "in_progress", "paused", "completed", "cancelled")
+STATUSES = ("pending", "in_progress", "paused", "completed", "cancelled",
+            "blocked", "waiting")
 KINDS = ("story", "slice")
 COLUMNS = ("backlog", "todo", "in_progress", "review", "done")
 SOURCES = ("dream", "session", "manual", "bridge", "governance", "inbox",
            "doctor-probe")
 # v2 features require schema v005 (TL-v2 S3 — graceful degradation R-11)
 V2_MIN_SCHEMA = 5
+# v3 (v006-deferred) features require schema v008 (TL-v2 S6 — blocked/waiting
+# status, story list --parent, task_story_summary)
+V3_MIN_SCHEMA = 8
 
 
 def _valid_name(value: str | None) -> bool:
@@ -292,6 +300,15 @@ def _require_v2(feature: str) -> None:
         sys.exit(2)
 
 
+def _require_v3(feature: str) -> None:
+    """Refuse a v3 (v006-deferred) feature when schema is older than v008."""
+    if schema_version() < V3_MIN_SCHEMA:
+        print(f"ERROR: {feature} requires tasks schema v{V3_MIN_SCHEMA}+ "
+              f"(found v{schema_version()}). Run: bash cortex-update.sh",
+              file=sys.stderr)
+        sys.exit(2)
+
+
 # ── Telegram notify (TL-v2 S2/S3 — non-fatal, never on stdout) ──
 
 def _notify_import():
@@ -391,6 +408,7 @@ SELECT_COLS = (
 
 # Same filters as tasks.task_list() but selects the v005 columns too.
 # RLS (tasks_personal) protects this identically to the function.
+# v3: --parent filters to a story's slices (parent_id = story id).
 SELECT_SQL = (
     f"SELECT {SELECT_COLS} FROM tasks.tasks t "
     "WHERE (CAST(? AS text) IS NULL OR t.created_by = ?) "
@@ -400,6 +418,7 @@ SELECT_SQL = (
     "AND (CAST(? AS text) IS NULL OR t.repo = ?) "
     "AND (CAST(? AS text) IS NULL OR t.assignee = ?) "
     "AND (CAST(? AS text) IS NULL OR ? = ANY(t.tags)) "
+    "AND (CAST(? AS uuid) IS NULL OR t.parent_id = ?) "
     "ORDER BY t.priority DESC, t.created_at ASC LIMIT 500"
 )
 
@@ -408,8 +427,12 @@ SELECT_SQL = (
 
 def cmd_list(agent: str | None, status: str | None, project: str | None,
              scope: str | None, repo: str | None, assignee: str | None,
-             tag: str | None, due_before: str | None):
-    """List tasks — union of personal + locally-present fleet rows (B-3)."""
+             tag: str | None, due_before: str | None,
+             parent: str | None = None):
+    """List tasks — union of personal + locally-present fleet rows (B-3).
+
+    v3: --parent <story-id> lists that story's slices (story `list --parent`).
+    """
     for flag, val, checker in (
         ("--agent", agent, _check_name), ("--project", project, _check_name),
         ("--repo", repo, _check_name), ("--assignee", assignee, _check_name),
@@ -417,11 +440,16 @@ def cmd_list(agent: str | None, status: str | None, project: str | None,
         checker(flag, val)
     if status:
         _check_enum("--status", status, STATUSES)
+        if status in ("blocked", "waiting"):
+            _require_v3(f"--status {status}")
     if scope:
         _check_enum("--scope", scope, SCOPES)
+    if parent:
+        _check_uuid(parent)
+        _require_v3("--parent")
 
     params = [agent, agent, status, status, scope, scope, project, project,
-              repo, repo, assignee, assignee, tag, tag]
+              repo, repo, assignee, assignee, tag, tag, parent, parent]
     sql = build_query(SELECT_SQL, params)
     raw = psql(sql)
     if not raw:
@@ -441,6 +469,32 @@ def cmd_list(agent: str | None, status: str | None, project: str | None,
             content = f"  ↳ {content}"  # indent slices under their story
         print(f"{row['id']:<38} {row['created_by']:<10} {row['scope']:<9} "
               f"{row['status']:<12} {row['priority']:<3} {kind:<6} {content}")
+
+
+def cmd_summary(story_id: str):
+    """Show a story's slice-status summary (v3: tasks.task_story_summary)."""
+    _check_uuid(story_id)
+    _require_v3("summary")
+    raw = psql("SELECT tasks.task_story_summary(?::uuid);", [story_id])
+    if not raw:
+        print(f"ERROR: no story with id {story_id[:8]}... (not visible or "
+              f"not kind='story')", file=sys.stderr)
+        sys.exit(1)
+    try:
+        data = json.loads(raw.strip().splitlines()[0])
+    except (ValueError, IndexError):
+        print(f"ERROR: unparseable summary for {story_id[:8]}...",
+              file=sys.stderr)
+        sys.exit(1)
+    print(f"📚 Story {data['story_id'][:8]}... — {data['content']}")
+    print(f"   status={data['status']}  priority={data['priority']}  "
+          f"scope={data['scope']}  by={data['created_by']}")
+    print(f"   slices: {data['total_slices']} total | "
+          f"{data['completed']} done + {data['cancelled']} cancelled "
+          f"({data['done_ratio']}%) | {data['active']} active "
+          f"({data['in_progress']} ip, {data['paused']} paused, "
+          f"{data['blocked']} blocked, {data['waiting']} waiting, "
+          f"{data['pending']} pending)")
 
 
 def cmd_add(content: str, agent: str | None, priority: int, project: str | None,
@@ -506,6 +560,8 @@ def cmd_update(task_id: str, new_status: str, reason: str | None = None,
     _check_enum("--status", new_status, STATUSES)
     if new_status == "paused":
         _require_v2("--status paused")
+    if new_status in ("blocked", "waiting"):
+        _require_v3(f"--status {new_status}")
     if by_correlation:
         _require_v2("--by-correlation")
         # Partial unique index (source='inbox' AND correlation_id NOT NULL)
@@ -640,15 +696,18 @@ def cmd_pending():
     v2 (M-9/R-4): paused rows are included with status='paused' (surfaced,
     never auto-resumed by restore); inbox-derived rows carry
     'untrusted': true so restore skips them unless --include-inbox.
+    v3 (M-7): blocked/waiting rows are surfaced the same way — restore keeps
+    their status (never auto-resumed into in_progress).
     """
     raw = psql(build_query(
         f"SELECT {SELECT_COLS} FROM tasks.tasks t "
-        "WHERE t.status IN ('pending','in_progress','paused') "
+        "WHERE t.status IN ('pending','in_progress','paused','blocked','waiting') "
         "ORDER BY t.priority DESC, t.created_at ASC LIMIT 500;", None))
     items = []
     for line in raw.split("\n"):
         row = parse_row(line)
-        if not row or row["status"] not in ("pending", "in_progress", "paused"):
+        if not row or row["status"] not in ("pending", "in_progress", "paused",
+                                            "blocked", "waiting"):
             continue
         item = {
             "id": row["id"], "content": row["content"],
@@ -789,8 +848,15 @@ def main():
         cmd_list(
             _flag("--agent"), _flag("--status"), _flag("--project"),
             _flag("--scope"), _flag("--repo"), _flag("--assignee"),
-            _flag("--tag"), _flag("--due-before"),
+            _flag("--tag"), _flag("--due-before"), _flag("--parent"),
         )
+
+    elif command == "summary":
+        if len(sys.argv) < 3:
+            print("ERROR: Usage: task-db.py summary <story-id>",
+                  file=sys.stderr)
+            sys.exit(1)
+        cmd_summary(sys.argv[2])
 
     elif command == "add":
         content = None

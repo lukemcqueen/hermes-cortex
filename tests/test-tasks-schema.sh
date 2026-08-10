@@ -468,6 +468,109 @@ fi
 rm -rf "$POISON_DIR"
 
 echo ""
+echo "═══ AC-L1-18: v008 — blocked/waiting status (M-7) ═══"
+# status CHECK accepts blocked/waiting; column derives NULL (paused class)
+BLK_ID=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 blocked', p_created_by=>'esther', p_status=>'blocked');" 2>/dev/null | head -1)
+[ -n "$BLK_ID" ] && pass "blocked status accepted" || fail "blocked insert returned no id"
+BLK_COL=$($PSQL -c "SELECT \"column\" IS NULL FROM tasks.tasks WHERE id='${BLK_ID}';" 2>/dev/null)
+[ "$BLK_COL" = "t" ] && pass "blocked derives column=NULL" || fail "blocked column not NULL (got: $BLK_COL)"
+WAI_ID=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 waiting', p_created_by=>'esther', p_status=>'waiting');" 2>/dev/null | head -1)
+[ -n "$WAI_ID" ] && pass "waiting status accepted" || fail "waiting insert returned no id"
+WAI_COL=$($PSQL -c "SELECT \"column\" IS NULL FROM tasks.tasks WHERE id='${WAI_ID}';" 2>/dev/null)
+[ "$WAI_COL" = "t" ] && pass "waiting derives column=NULL" || fail "waiting column not NULL (got: $WAI_COL)"
+# transition matrix: pending→blocked, blocked→in_progress, waiting→in_progress,
+# blocked→waiting, in_progress→blocked; blocked→pending ILLEGAL
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${BLK_ID}', p_status=>'in_progress');" >/dev/null 2>&1
+BLK_RES=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${BLK_ID}';" 2>/dev/null)
+[ "$BLK_RES" = "in_progress" ] && pass "blocked → in_progress resume ✓" || fail "blocked resume failed (status=$BLK_RES)"
+if $PSQL -c "SELECT tasks.task_upsert(p_id=>'${BLK_ID}', p_status=>'pending');" >/dev/null 2>&1; then
+  fail "blocked → pending accepted"
+else
+  pass "blocked → pending rejected (matrix)"
+fi
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${WAI_ID}', p_status=>'blocked');" >/dev/null 2>&1
+WAI_RES=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${WAI_ID}';" 2>/dev/null)
+[ "$WAI_RES" = "blocked" ] && pass "waiting → blocked ✓" || fail "waiting→blocked failed (status=$WAI_RES)"
+# blocked → completed legal (resolved without further work)
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${WAI_ID}', p_status=>'completed');" >/dev/null 2>&1
+WAI_DONE=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${WAI_ID}';" 2>/dev/null)
+[ "$WAI_DONE" = "completed" ] && pass "blocked → completed legal" || fail "blocked→completed failed (status=$WAI_DONE)"
+
+echo ""
+echo "═══ AC-L1-19: v008 — task_story_summary() (M-7 tooling) ═══"
+SUMM_STORY=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 summary story', p_created_by=>'esther', p_kind=>'story');" 2>/dev/null | head -1)
+S1=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 sum slice 1', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${SUMM_STORY}');" 2>/dev/null | head -1)
+S2=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 sum slice 2', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${SUMM_STORY}');" 2>/dev/null | head -1)
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${S1}', p_status=>'in_progress');" >/dev/null 2>&1
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${S1}', p_status=>'completed');" >/dev/null 2>&1
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${S2}', p_status=>'blocked');" >/dev/null 2>&1
+SUMM=$($PSQL -c "SELECT tasks.task_story_summary('${SUMM_STORY}');" 2>/dev/null)
+echo "$SUMM" | grep -q '"total_slices": 2' && pass "summary total_slices=2" || fail "summary total wrong: $SUMM"
+echo "$SUMM" | grep -q '"completed": 1' && pass "summary completed=1" || fail "summary completed wrong: $SUMM"
+echo "$SUMM" | grep -q '"blocked": 1' && pass "summary blocked=1" || fail "summary blocked wrong: $SUMM"
+echo "$SUMM" | grep -q '"active": 1' && pass "summary active=1" || fail "summary active wrong: $SUMM"
+echo "$SUMM" | grep -q '"done_ratio": 50' && pass "summary done_ratio=50" || fail "summary ratio wrong: $SUMM"
+# non-story / invisible id → NULL
+SUMM_NULL=$($PSQL -c "SELECT tasks.task_story_summary('${S1}');" 2>/dev/null)
+[ -z "$SUMM_NULL" ] && pass "summary on a slice returns NULL" || fail "summary on slice returned: $SUMM_NULL"
+
+echo ""
+echo "═══ AC-L1-20: v008 — story auto-complete (R-3 polish) ═══"
+AC_STORY=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 auto story', p_created_by=>'esther', p_kind=>'story');" 2>/dev/null | head -1)
+AC_S1=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 auto slice 1', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${AC_STORY}');" 2>/dev/null | head -1)
+AC_S2=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 auto slice 2', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${AC_STORY}');" 2>/dev/null | head -1)
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${AC_S1}', p_status=>'in_progress');" >/dev/null 2>&1
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${AC_S2}', p_status=>'in_progress');" >/dev/null 2>&1
+# first slice done — story must NOT auto-complete yet (sibling still active)
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${AC_S1}', p_status=>'completed');" >/dev/null 2>&1
+AC_MID=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${AC_STORY}';" 2>/dev/null)
+[ "$AC_MID" = "pending" ] && pass "story stays pending after first slice done" || fail "story auto-completed too early (status=$AC_MID)"
+# last slice done — story auto-completes with reason + event
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${AC_S2}', p_status=>'completed');" >/dev/null 2>&1
+AC_DONE=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${AC_STORY}';" 2>/dev/null)
+[ "$AC_DONE" = "completed" ] && pass "story auto-completes when last slice done" || fail "story not auto-completed (status=$AC_DONE)"
+AC_EVT=$($PSQL -c "SELECT count(*) FROM tasks.task_events WHERE task_id='${AC_STORY}' AND event_type='story_auto_complete';" 2>/dev/null)
+[ "$AC_EVT" = "1" ] && pass "story_auto_complete event recorded (n=$AC_EVT)" || fail "story_auto_complete events=$AC_EVT (expected 1)"
+# cancelled-last-slice path: story auto-completes too
+AC2_STORY=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 auto story 2', p_created_by=>'esther', p_kind=>'story');" 2>/dev/null | head -1)
+AC2_S1=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 auto slice 2a', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${AC2_STORY}');" 2>/dev/null | head -1)
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${AC2_S1}', p_status=>'in_progress');" >/dev/null 2>&1
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${AC2_S1}', p_status=>'cancelled');" >/dev/null 2>&1
+AC2_DONE=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${AC2_STORY}';" 2>/dev/null)
+[ "$AC2_DONE" = "completed" ] && pass "story auto-completes when last slice cancelled" || fail "cancelled-slice story not completed (status=$AC2_DONE)"
+# manual story completion path unchanged: story with active slice still blocked
+AC3_STORY=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 gate story 3', p_created_by=>'esther', p_kind=>'story');" 2>/dev/null | head -1)
+AC3_S1=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 gate slice 3', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${AC3_STORY}');" 2>/dev/null | head -1)
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${AC3_S1}', p_status=>'in_progress');" >/dev/null 2>&1
+if $PSQL -c "SELECT tasks.task_upsert(p_id=>'${AC3_STORY}', p_status=>'completed');" >/dev/null 2>&1; then
+  fail "manual story completion with active slice accepted (gate broken)"
+else
+  pass "manual story completion with active slice still rejected (gate)"
+fi
+# doctor-probe slice completion must NOT auto-complete its story (M-5)
+AC4_STORY=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 probe story', p_created_by=>'esther', p_kind=>'story');" 2>/dev/null | head -1)
+AC4_S1=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 probe slice', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${AC4_STORY}', p_source=>'doctor-probe');" 2>/dev/null | head -1)
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${AC4_S1}', p_status=>'in_progress');" >/dev/null 2>&1
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${AC4_S1}', p_status=>'completed');" >/dev/null 2>&1
+AC4_DONE=$($PSQL -c "SELECT status FROM tasks.tasks WHERE id='${AC4_STORY}';" 2>/dev/null)
+[ "$AC4_DONE" = "pending" ] && pass "doctor-probe slice does not auto-complete story (M-5)" || fail "probe slice auto-completed story (status=$AC4_DONE)"
+
+echo ""
+echo "═══ AC-L1-21: v008 — archive children-first (M-4) ═══"
+# completed story + completed slices → archive_old removes BOTH without FK error
+AR_STORY=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 archive story', p_created_by=>'esther', p_kind=>'story');" 2>/dev/null | head -1)
+AR_S1=$($PSQL -c "SELECT tasks.task_upsert(p_content=>'L1 archive slice', p_created_by=>'esther', p_kind=>'slice', p_parent_id=>'${AR_STORY}');" 2>/dev/null | head -1)
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${AR_S1}', p_status=>'in_progress');" >/dev/null 2>&1
+# completing the last slice auto-completes the story (R-3) — both now done
+$PSQL -c "SELECT tasks.task_upsert(p_id=>'${AR_S1}', p_status=>'completed');" >/dev/null 2>&1
+AR_REMAIN=$($PSQL -c "SELECT count(*) FROM tasks.tasks WHERE id IN ('${AR_STORY}','${AR_S1}');" 2>/dev/null)
+[ "$AR_REMAIN" = "2" ] && pass "story + slice both terminal before archive (n=$AR_REMAIN)" || fail "pre-archive rows=$AR_REMAIN (expected 2)"
+AR_ARCHIVED=$($PSQL -c "SELECT tasks.task_archive_old(p_created_by=>'esther');" 2>/dev/null)
+[ "$AR_ARCHIVED" -ge 1 ] && pass "archive_old archived rows (n=$AR_ARCHIVED)" || fail "archive_old returned $AR_ARCHIVED (expected ≥1)"
+AR_LEFT=$($PSQL -c "SELECT count(*) FROM tasks.tasks WHERE id IN ('${AR_STORY}','${AR_S1}');" 2>/dev/null)
+[ "$AR_LEFT" = "0" ] && pass "story + slices archived children-first (no FK error)" || fail "rows remain after archive (n=$AR_LEFT) — FK blocked?"
+
+echo ""
 echo "═══ Summary ═══"
 echo "  ${P} passed, ${F} failed"
 [ "$F" -eq 0 ] || echo "  ❌ SOME TESTS FAILED — investigate before shipping"
