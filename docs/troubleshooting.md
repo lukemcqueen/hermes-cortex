@@ -865,7 +865,7 @@ Or accept the `FAILED:` line; the home copy is the protected one.
 
 **Symptom:** The update finishes, then your next `terminal`/`patch` call is refused with `GOVERNANCE LOCK REQUIRED`.
 
-**Root cause:** `cortex-update.sh` runs `purge-stale-governance-locks.py` at the end, which removes **every** `.governance-*.json` lock — including your active session's. The DB cycle is the source of truth; the lock file is disposable.
+**Root cause:** `cortex-update.sh` runs a stale-lock cleanup at the end which removes `.governance-*.json` locks whose heartbeat exceeded TTL (>1h) plus legacy v1 locks (no `session_id`, upgrade from v1→v2). A **fresh** session-scoped v2 lock survives a deploy. (macOS note: pre-2026-08-10 the cleanup used GNU-only `date -d` with a `|| echo 0` fallback — on BSD/macOS it failed and deleted **every** lock on every deploy; fixed with a portable python3 epoch + fail-safe skip.)
 
 **Fix:** re-acquire after every deploy:
 

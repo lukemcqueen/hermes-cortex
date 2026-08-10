@@ -395,7 +395,18 @@ timezone parse bug in cortex-update.sh's stale-lock cleanup:
 (`fromisoformat` handles `Z`). When diagnosing a "purged" lock, verify the
 age math FIRST: a lock minutes old showing hours of age = TZ bug, not a real
 stale lock. Python purge paths (MCP server, purge-stale-governance-locks.py)
-were already correct — only the bash `date -d` had the bug.
+were already correct — but the bash `date -d` had a SECOND, worse bug
+(2026-08-10, Titus): **`date -d` is GNU-only** — macOS BSD date has no `-d`,
+so the `2>/dev/null || echo 0` fallback fired, epoch=0, age = now-0 ≈ 1.78e9s
+> 3600 → **every lock, including fresh v2 session locks, deleted on every
+macOS deploy** (cortex-update.sh:2719). The TZ fix (keep the Z) only addressed
+GNU parse — the `|| echo 0` was the fail-OPEN trap. Fix that shipped:
+portable python3 epoch (`datetime.fromisoformat(hb.replace('Z','+00:00'))`)
+with an EMPTY fallback (`|| echo ""`) + `[[ -n "$epoch" ]]` guard — parse
+failure now SKIPS the lock (P1-A rule: never delete what you can't
+age-verify). **Rule: any heartbeat→epoch conversion in bash must (a) parse
+ISO-8601 with Z via python3, not GNU `date -d`, and (b) fail CLOSED on parse
+failure — empty string + skip, never `|| echo 0` + delete.**
 
 **Mandatory dogfood in the pre-push gate (Luke: "make this MANDATORY — I
 thought you did already"):** a push that touches ANY non-doc file in

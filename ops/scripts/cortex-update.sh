@@ -2704,22 +2704,30 @@ main() {
 
   # ── Clean stale governance locks ─────────────────────────
   # First pass: clean locks whose heartbeat has exceeded TTL
-  # ⚠️ TZ BUG FIX (2026-08-05): the heartbeat is ISO-8601 UTC ending in
-  # 'Z'. Slicing [:19] STRIPPED the 'Z', so `date -d` parsed the UTC
-  # timestamp as LOCAL time — on a UTC+9 host (KST) a FRESH lock looked
-  # 9h old and was purged on every deploy, killing the live session
-  # lock mid-run. Keep the 'Z'; date -d handles it correctly.
+  # ⚠️ TZ BUG (2026-08-05): slicing [:19] STRIPPED the ISO-8601 'Z', so
+  # `date -d` parsed UTC as LOCAL — a FRESH lock on a UTC+9 host (KST)
+  # looked 9h old and was purged on every deploy. Fixed by keeping the 'Z'.
+  # ⚠️ macOS PORTABILITY BUG (2026-08-10, Titus): `date -d` is GNU-only —
+  # macOS BSD date fails, and the old `|| echo 0` fallback FAILED OPEN:
+  # epoch=0 → age = now - 0 ≈ 1.78e9s > 3600 → EVERY lock (including fresh
+  # v2 session locks) deleted on every macOS deploy. Epoch is now computed
+  # via python3 (handles 'Z' on both platforms) and failures SKIP the lock.
   for _lock in "$STATE_DIR"/.governance-*.json; do
     [ -f "$_lock" ] || continue
-    local _lock_age _lock_heartbeat
-    _lock_age=$(stat -c %Y "$_lock" 2>/dev/null || echo 0)
+    local _lock_heartbeat
     _lock_heartbeat=$(python3 -c "import json; print(json.load(open('$_lock')).get('heartbeat_at',''))" 2>/dev/null || echo "")
     if [[ -n "$_lock_heartbeat" ]]; then
-      local _heartbeat_epoch
-      _heartbeat_epoch=$(date -d "$_lock_heartbeat" +%s 2>/dev/null || echo 0)
-      local _now
+      local _heartbeat_epoch _now
+      # Portable epoch — macOS BSD date has no -d; python3 parses ISO-8601
+      # with 'Z' on both Linux and macOS.
+      _heartbeat_epoch=$(python3 -c "
+from datetime import datetime
+print(int(datetime.fromisoformat('$_lock_heartbeat'.replace('Z','+00:00')).timestamp()))
+" 2>/dev/null || echo "")
       _now=$(date +%s)
-      if [[ $(( _now - _heartbeat_epoch )) -gt 3600 ]]; then
+      # FAIL-SAFE (P1-A rule): unparseable/empty heartbeat → SKIP, never
+      # delete. A lock we cannot age-verify must be treated as LIVE.
+      if [[ -n "$_heartbeat_epoch" ]] && [[ $(( _now - _heartbeat_epoch )) -gt 3600 ]]; then
         rm -f "$_lock"
         info "Cleaned stale governance lock: $_lock"
       fi
@@ -2730,6 +2738,10 @@ main() {
   # These use the old naming scheme .governance-{slug}.json or .governance-generic.json
   # and are superseded by session-scoped locks. Check content for absence of
   # session_id field to distinguish legacy from session-scoped locks.
+  # ⚠️ P1-A fail-safe (2026-08-10): an UNPARSEABLE lock (mid-write, non-atomic
+  # rename window) must NEVER be deleted as "legacy" — the old `except: print('no')`
+  # failed OPEN exactly like the `date -d || echo 0` bug above. Parse failure
+  # prints 'error' → the file is skipped, not removed.
   for _legacy_lock in "$STATE_DIR"/.governance-*.json; do
     [ -f "$_legacy_lock" ] || continue
     local _has_session
@@ -2738,9 +2750,10 @@ import json
 try:
     s = json.load(open('$_legacy_lock'))
     print('yes' if 'session_id' in s and s['session_id'] else 'no')
-except: print('no')
-" 2>/dev/null || echo "no")
-    # Legacy locks have no session_id — clean them unconditionally
+except: print('error')
+" 2>/dev/null || echo "error")
+    # Legacy locks have no session_id — clean them unconditionally.
+    # 'error' (unparseable JSON) = a lock being written right now — SKIP.
     if [[ "$_has_session" == "no" ]]; then
       local _has_heartbeat_repo
       _has_heartbeat_repo=$(python3 -c "

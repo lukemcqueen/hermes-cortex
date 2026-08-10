@@ -166,9 +166,9 @@ These are known side-effects of running `cortex-update.sh`. You must account for
 
 This means the raw MD5 between the repo source and the deployed copy will always differ. The doctor's `_content_md5()` function strips this header before computing the hash. **Always use `_content_md5()` not `_md5()` on deployed paths** — otherwise every deployed file will falsely show a checksum mismatch.
 
-### Pitfall 2: cortex-update.sh cleans the governance lock
+### Pitfall 2: cortex-update.sh cleans stale governance locks
 
-`cortex-update.sh` runs `purge-stale-governance-locks.py` at the end of its run, which removes **every** `.governance-*.json` lock file — including the current session's lock. After a deploy, your lock will be gone. **Re-acquire with `begin_change()` after deploy** before making further changes.
+`cortex-update.sh` runs a stale-lock cleanup at the end of its run which removes `.governance-*.json` locks whose heartbeat exceeded TTL (>1h) plus legacy v1 locks (no `session_id` field, upgrade from v1→v2). A **fresh** session-scoped v2 lock survives a deploy. If your lock is gone after a deploy (long task, no `check_lock` heartbeat refresh, or a macOS host before the 2026-08-10 portability fix), **re-acquire with `begin_change()` after deploy** before making further changes — and score any PENDING cycles from the purged lock first (Pitfall 5).
 
 ### Pitfall 3: Skills-loaded marker gets stale from daemon sessions (FIXED)
 

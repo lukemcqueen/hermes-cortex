@@ -171,9 +171,9 @@ GIT_EDITOR="true" git rebase --continue
 
 After pulls, local `main` typically carries `auto: block N suspect IPs [pipeline]` commits ahead of origin. This is normal — the threat-pipeline pushes its own commits. During "pull latest" do NOT push them. The doctor's `⚠️ Repo sync` warning reflects this; it's benign.
 
-## Pitfall 4: cortex-update purges governance locks
+## Pitfall 4: cortex-update cleans stale governance locks
 
-`cortex-update.sh` runs `purge-stale-governance-locks.py` at the end — it removes EVERY `.governance-*.json` lock file including your active session's. After a deploy:
+`cortex-update.sh` runs a stale-lock cleanup at the end — it removes `.governance-*.json` locks whose heartbeat exceeded TTL (>1h) plus legacy v1 locks (no `session_id`). A **fresh** session-scoped v2 lock survives a deploy (macOS: before 2026-08-10 the GNU-only `date -d` + `|| echo 0` fallback deleted EVERY lock on every deploy; now portable python3 + fail-safe skip). If your lock is gone after a deploy:
 1. Re-acquire: `begin_change()`
 2. Score all PENDING cycles: `cycle_query` → `feedback_accept`
 3. `end_change()`
