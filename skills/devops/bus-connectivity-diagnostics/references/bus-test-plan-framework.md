@@ -88,14 +88,14 @@ From the survey output, construct concrete test commands:
 
 **Level 1 — Prove on yourself (Moses → inbox_moses):**
 ```bash
-hc exec moses manage/cortex-doctor.py --json
+hc exec moses cortex-doctor.py --json
 # Then manually run handler:
 cd ~/.hermes-cortex && python3 scripts/agent-message-handler.py --once
 ```
 
 **Level 2 — Test to host agent (Esther):**
 ```bash
-hc exec esther manage/cortex-doctor.py --json
+hc exec esther cortex-doctor.py --json
 # Wait ~5min for handler cycle, then check inbox_moses for EXEC_RESULT
 ```
 

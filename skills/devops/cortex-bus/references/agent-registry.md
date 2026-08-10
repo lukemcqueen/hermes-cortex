@@ -228,10 +228,10 @@ against JSON Schema before sending and after receiving. See `ops/scripts/lib/han
 Usage:
 ```bash
 # Default: validates result against EXEC_RESULT schema
-hc exec esther manage/cortex-doctor.py --json
+hc exec esther cortex-doctor.py --json
 
 # Custom schema validation on output
-hc exec kustos manage/cortex-doctor.py --json --output-schema WAVE_RESULT
+hc exec kustos cortex-doctor.py --json --output-schema WAVE_RESULT
 
 # RAW mode: skip result validation
 hc exec moses -- df -h / --output-schema RAW

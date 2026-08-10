@@ -66,8 +66,8 @@ Fleet agents run `agent-message-handler.py` as a cron (`*/5 * * * *`). Source: `
 For EXEC commands, `hc exec` handles the full lifecycle:
 
 ```bash
-hc exec esther manage/cortex-doctor.py --json
-hc exec joseph manage/cortex-doctor.py --quiet
+hc exec esther cortex-doctor.py --json
+hc exec joseph cortex-doctor.py --quiet
 hc exec gisu -- df -h /
 ```
 
@@ -81,10 +81,10 @@ Use `--output-schema` to change the expected result schema:
 
 ```bash
 # Default: validates result against EXEC_RESULT schema
-hc exec kustos manage/cortex-doctor.py --json
+hc exec kustos cortex-doctor.py --json
 
 # Custom output schema: validates against WAVE_RESULT
-hc exec esther manage/setup.sh --output-schema WAVE_RESULT
+hc exec esther setup-push-metrics-cron.sh --output-schema WAVE_RESULT
 
 # RAW mode: skip result validation
 hc exec moses -- df -h / --output-schema RAW
