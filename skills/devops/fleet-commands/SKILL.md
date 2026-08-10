@@ -234,6 +234,27 @@ SELECT bus.archive('inbox_<agent>', '<msg_id>'::uuid, '<cleanup-label>');
 
 Labels like `moses-test-cleanup` help identify sources in the audit log.
 
+## Consume vs Peek — Inspection Rule (HARD RULE)
+
+**Inspecting a queue must NEVER consume it.** Use `hc inbox <agent>` or
+`bus_peek()` — both are non-destructive reads that leave messages `pending`.
+`bus_read()` is a **consume** operation: it pops the message into `processing`
+with a visibility timeout (VT), stealing it from the target agent's handler.
+If the inspector never processes what it read, the message either times back
+to `pending` (noise) or, if the handler already read it with its own VT, it
+is gone from the live queue entirely.
+
+**Failure (2026-08-10):** orchestrator inspection drained `inbox_titus` by
+polling with `bus_read()` while Titus was offline. His UPDATE_REQUESTs that
+should have stayed `pending` (waiting for his handler) were consumed into
+`processing` by the inspector instead — the very messages the fleet update
+needed to deliver. Sends kept landing while the inspector chewed the
+originals, so duplicates piled up.
+
+**Rule:** if you want to LOOK at a queue, use `hc inbox <agent>` / `bus_peek()`.
+Only code that intends to PROCESS a message calls `bus_read()` — that is the
+agent's own handler. When in doubt, peek.
+
 ## bus_access Delivery Matrix
 
 | Access | Received? | How | Agents |

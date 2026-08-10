@@ -8,9 +8,14 @@ ARCHITECTURE
     1. Pull from PEER → push to LOCAL  (backup stays warm)
     2. Pull from LOCAL → push to PEER  (backlog drain on recovery)
 
-  Seen msg_ids are tracked per-direction so each message is forwarded exactly
-  once, preventing loops. If one bus is unreachable, that direction silently
-  fails; when it returns, accumulated messages drain on the next tick.
+  Seen correlation-ids are tracked per-direction so each message is forwarded
+  at most once per host, preventing loops. A second dedup layer peeks the
+  DESTINATION queue before pushing and skips when the logical message is
+  already pending there — this stops the cross-host round-trip (both hosts
+  run both directions; a fresh msg_id per hop would otherwise evade the
+  per-host seen sets and triple every message, observed 2026-08-10). If one
+  bus is unreachable, that direction silently fails; when it returns,
+  accumulated messages drain on the next tick.
 
 FAILOVER SCENARIO
   Normal:      Moses primary → forwarder copies to Esther (warm standby)
@@ -315,6 +320,32 @@ def _dedup_key(msg: dict, body: dict) -> str:
     return f"hash:{hashlib.sha256(canonical.encode()).hexdigest()[:32]}"
 
 
+def _dest_has_key(
+    dest_url: str, dest_token: str, dest_auth: str, queue: str, dkey: str
+) -> bool:
+    """True when a message with the same dedup key is already pending on the
+    destination bus.
+
+    BOTH hosts run BOTH sync directions every tick. A message mirrored
+    peer→local by one host gets re-pushed local→peer by the other with a
+    FRESH msg_id each hop, so the per-host, per-direction seen sets can
+    never see the other host's copy — the round-trip creates up to 3
+    copies of one logical message on each bus (observed 2026-08-10: EXECs
+    and UPDATE_REQUESTs tripled on the active bus).
+
+    Peeking the destination before pushing closes the loop: a copy already
+    pending there means the message already crossed (or is the original),
+    so this hop is skipped. In the failover drain (esther → moses after
+    moses returns) the destination does NOT yet have the message, so the
+    drain still flows exactly once.
+    """
+    for m in _peek_bus(dest_url, dest_token, dest_auth, queue, limit=MAX_PER_QUEUE):
+        body = _parse_body(m.get("body", {}))
+        if _dedup_key(m, body) == dkey:
+            return True
+    return False
+
+
 def _sync_direction(
     state: dict,
     source_url: str,
@@ -359,6 +390,14 @@ def _sync_direction(
                 # Already mirrored. NEVER archive a primary source — the real
                 # consumer (active orchestrator) pops it when doing work.
                 # Batch peek means no head-blocking, so skipping is safe.
+                continue
+            if _dest_has_key(dest_url, dest_token, dest_auth, queue, dkey):
+                # The logical message is already pending on the destination
+                # (mirrored by the OTHER host's forwarder, or the original).
+                # Skip this hop — forwarding would create a duplicate that
+                # survives both seen sets (fresh msg_id per hop).
+                # NOT added to seen: if the dest copy is later consumed or
+                # archived, the mirror should warm it again next tick.
                 continue
 
             # Preserve correlation_id when forwarding

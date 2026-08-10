@@ -7,7 +7,7 @@ moses and esther hosts. No docker exec, no local-Postgres assumption.
 
   hc inbox             list your messages (non-destructive read)
   hc inbox joseph      list joseph's messages
-  hc send <a> <subj>   send a message (via POST to bus API)
+  hc send <a> <subj>   send a message (liveness + dedup gates; --self-tested/--force)
   hc exec <a> <cmd>    execute a script on a remote agent, wait for result
   hc status            bus health + queue depths + fleet
   hc depth             all queue depths
@@ -84,6 +84,10 @@ except Exception:
 
     def bus_archives(queue: str, limit: int = 20, since_minutes: int = 60) -> list[dict]:
         """Stub — lib.cortex_bus unavailable; _get_archives guards on _HAS_LIB."""
+        return []
+
+    def bus_peek(queue: str, limit: int = 20) -> list[dict]:
+        """Stub — lib.cortex_bus unavailable; cmd_send guards on _HAS_LIB."""
         return []
 
 
@@ -349,18 +353,110 @@ def cmd_inbox(cfg: dict, args: list):
         print()
 
 
+# ── Send safety gates ───────────────────────────────────────────
+
+def _load_agent_registry() -> dict:
+    """Load the agent registry (live state, fallback to repo example).
+
+    Returns {agent_name: agent_info}. Empty dict when neither exists —
+    the caller warns and proceeds (registry may be stale on some hosts).
+    """
+    candidates = [
+        Path.home() / ".hermes-cortex" / "state" / "agent-registry.json",
+        Path.home() / "hermes-cortex" / "ops" / "install" / "deploy" / "agent-registry.json.example",
+    ]
+    for p in candidates:
+        if p.exists():
+            try:
+                data = json.loads(p.read_text())
+                agents = data.get("agents", {}) if isinstance(data, dict) else {}
+                return agents if isinstance(agents, dict) else {}
+            except (json.JSONDecodeError, OSError):
+                return {}
+    return {}
+
+
+def _probe_health(url: str, timeout: float = 5.0) -> bool:
+    """Probe an agent's health endpoint. Returns True when the host answers.
+
+    ANY HTTP response (200, 401, 403, 5xx…) means the host is reachable —
+    only connection failure / timeout / DNS error means offline. TLS
+    verification is skipped: this is a reachability check, not identity
+    (fleet endpoints may carry self-signed certs).
+    """
+    import ssl
+    import urllib.error
+    import urllib.request
+
+    ctx = ssl._create_unverified_context()
+    try:
+        with urllib.request.urlopen(url, timeout=timeout, context=ctx) as resp:
+            resp.read(64)  # drain — connection success is the signal
+        return True
+    except urllib.error.HTTPError:
+        return True  # server answered with an error page — host is alive
+    except Exception:
+        return False
+
+
+def _norm_body(value) -> str:
+    """Canonical string form of a message body for duplicate comparison."""
+    if isinstance(value, dict):
+        return json.dumps(value, sort_keys=True, default=str)
+    s = value if isinstance(value, str) else str(value)
+    s = s.strip()
+    if s.startswith("{"):
+        try:
+            return json.dumps(json.loads(s), sort_keys=True, default=str)
+        except json.JSONDecodeError:
+            pass
+    return s
+
+
+def _pending_duplicate(msgs: list, subject: str, body_text: str, corr_id: str) -> dict | None:
+    """Return the first pending message duplicating the proposed send.
+
+    A duplicate is a pending message with the SAME correlation_id, or the
+    SAME subject AND the same body (canonical-form). Matching both subject
+    and body (not subject alone) lets parallel EXECs with different payloads
+    coexist while identical UPDATE_REQUESTs still get caught.
+    """
+    norm_body = _norm_body(body_text)
+    for m in msgs:
+        env = m.get("body") if isinstance(m.get("body"), dict) else {}
+        m_corr = env.get("correlation_id")
+        m_subj = env.get("subject")
+        m_body = env.get("body")
+        if corr_id and m_corr and m_corr == corr_id:
+            return m
+        if m_subj == subject and m_body is not None and _norm_body(m_body) == norm_body:
+            return m
+    return None
+
+
 def cmd_send(cfg: dict, args: list):
     """Send a message to an agent's inbox.
-    
+
     HARD RULE: Sending to a fleet agent (not self) requires --self-tested
     to prove the identical flow was tested on yourself first.
+
+    Safety gates (fleet sends only; bypass with --force):
+      1. Liveness — REFUSES to queue a message for an agent whose health
+         endpoint is unreachable (health_method: http). Inbox-only agents
+         (e.g. Titus) can't be verified online — warn but proceed so the
+         message waits for them.
+      2. Dedup — REFUSES to re-send when an identical message (same
+         correlation_id, or same subject AND body) is already pending.
+
+    A caller-supplied correlation_id inside a JSON body is preserved.
     """
-    # Check for --self-tested flag
+    force = "--force" in args
+    args = [a for a in args if a != "--force"]
     self_tested = "--self-tested" in args
     args = [a for a in args if a != "--self-tested"]
-    
+
     if len(args) < 2:
-        print("Usage: hc send <agent> <subject> [body] [--self-tested]")
+        print("Usage: hc send <agent> <subject> [body] [--self-tested] [--force]")
         return
 
     agent = args[0]
@@ -384,6 +480,63 @@ def cmd_send(cfg: dict, args: list):
         print("   Use --self-tested only AFTER the self-test is verified.")
         return
 
+    # Preserve the caller's correlation_id when the body is a JSON envelope
+    corr_id = None
+    if body_text.strip().startswith("{"):
+        try:
+            parsed = json.loads(body_text)
+            if isinstance(parsed, dict):
+                corr_id = parsed.get("correlation_id") or None
+        except json.JSONDecodeError:
+            pass
+    if not corr_id:
+        corr_id = f"send-{uuid.uuid4().hex[:12]}"
+
+    # ── Safety gates (fleet sends; self-sends skip — you see your own queue) ──
+    if agent != my_name and not force:
+        # 1. Liveness
+        registry = _load_agent_registry()
+        info = registry.get(agent)
+        if info is None:
+            print(f"⚠️  '{agent}' not in agent-registry.json — cannot verify liveness; sending anyway.")
+        else:
+            method = info.get("health_method", "")
+            if method == "http" and info.get("health_url"):
+                if not _probe_health(info["health_url"]):
+                    print(f"❌ REFUSED: '{agent}' is OFFLINE — health endpoint unreachable ({info['health_url']})")
+                    print()
+                    print("   Queueing now would leave the message pending until the agent")
+                    print("   returns, and repeated sends pile up duplicates.")
+                    print()
+                    print("   Override with --force if you really want to queue it now.")
+                    return
+            elif method == "inbox":
+                print(f"⚠️  '{agent}' uses inbox-only health — cannot verify online status; sending anyway (message will wait pending).")
+            else:
+                print(f"⚠️  '{agent}' health_method='{method}' — no liveness probe available; sending anyway.")
+
+        # 2. Dedup
+        if not _HAS_LIB:
+            print("  ⚠️  lib.cortex_bus not importable — dedup check skipped.", file=sys.stderr)
+        else:
+            try:
+                pending = bus_peek(f"inbox_{agent}", limit=50)
+                dup = _pending_duplicate(pending, subject, body_text, corr_id)
+                if dup:
+                    dup_body = dup.get("body")
+                    dup_env = dup_body if isinstance(dup_body, dict) else {}
+                    dup_corr = dup_env.get("correlation_id") or "?"
+                    print(f"❌ REFUSED: identical message already pending in inbox_{agent} "
+                          f"(subject='{subject}', correlation_id={dup_corr}).")
+                    print()
+                    print("   Resending would pile up duplicates — the pending message will be")
+                    print("   processed when the agent's handler next runs.")
+                    print()
+                    print("   Override with --force if you really want a second copy.")
+                    return
+            except Exception as e:
+                print(f"  ⚠️  dedup peek failed ({e}) — sending anyway.", file=sys.stderr)
+
     body = {
         "from": cfg["agent"],
         "to": agent,
@@ -391,11 +544,8 @@ def cmd_send(cfg: dict, args: list):
         "subject": subject,
         "body": body_text,
         "priority": "normal",
+        "correlation_id": corr_id,
     }
-
-    # Add correlation_id for verifiability
-    corr_id = f"send-{uuid.uuid4().hex[:12]}"
-    body["correlation_id"] = corr_id
 
     result = _send_message(f"inbox_{agent}", body)
     print(result)
