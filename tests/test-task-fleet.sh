@@ -141,13 +141,22 @@ run_battery() {
     fail "pending JSON shape broken on ${host}: $(echo "$pend_json" | head -c 120)"
   fi
 
-  # update → completed (status canonical)
+  # update → in_progress → completed (status canonical; v005 matrix
+  # requires starting before completing)
   if [ -n "$rid" ]; then
     local full_id
     full_id=$(TASK_DB_NAME="$scratch_db" TASK_DB_ROLE="mycortex_reader" \
               HERMES_PROFILE="mycortex_reader" \
               python3 "$TASK_DB" list --status pending 2>/dev/null \
               | grep "fleet-probe $$" | head -1 | awk '{print $1}')
+    if [ -n "$full_id" ] && \
+       TASK_DB_NAME="$scratch_db" TASK_DB_ROLE="mycortex_reader" \
+         HERMES_PROFILE="mycortex_reader" \
+         python3 "$TASK_DB" update "$full_id" --status in_progress >/dev/null 2>&1; then
+      pass "update → in_progress (v005 matrix)"
+    else
+      fail "update to in_progress failed on ${host}"
+    fi
     if [ -n "$full_id" ] && \
        TASK_DB_NAME="$scratch_db" TASK_DB_ROLE="mycortex_reader" \
          HERMES_PROFILE="mycortex_reader" \
@@ -191,6 +200,166 @@ run_battery() {
   else
     echo "  ⚠ gateway handshake skipped/unreachable on ${host} (doctor owns the hard check)"
   fi
+
+  # ── 4. v2 battery (TL-v2 S3/S4 — schema v5+ required) ─────────────
+  # Hermetic: scratch DB + TASKS_NOTIFY_MUTE + dummy notify env file →
+  # zero real Telegram (design L2 row). Skips gracefully on old schema.
+  echo ""
+  echo "═══ 4. v2 lifecycle battery (scratch DB, zero Telegram) ═══"
+  local notify_dir notify_env
+  notify_dir="$(mktemp -d)"
+  notify_env="${notify_dir}/notify.env"
+  printf 'TELEGRAM_BOT_TOKEN=dummy\nTELEGRAM_HOME_CHANNEL=0\n' > "$notify_env"
+  chmod 600 "$notify_env"
+  # Section 2 dropped its scratch DB — recreate a fresh one for the v2
+  # battery (same hermetic guard: never the live mycortex DB).
+  local v2_db="fleet_v2_test"
+  if [ "$(uname)" = "Darwin" ]; then
+    psql -h 127.0.0.1 -p 15432 -U mycortex -d mycortex -t -A \
+      -c "DROP DATABASE IF EXISTS ${v2_db};" >/dev/null 2>&1 || true
+    psql -h 127.0.0.1 -p 15432 -U mycortex -d mycortex -t -A \
+      -c "CREATE DATABASE ${v2_db};" >/dev/null 2>&1 || true
+  else
+    docker exec mycortex-postgres psql -U mycortex -d mycortex -t -A \
+      -c "DROP DATABASE IF EXISTS ${v2_db};" >/dev/null 2>&1 || true
+    docker exec mycortex-postgres psql -U mycortex -d mycortex -t -A \
+      -c "CREATE DATABASE ${v2_db};" >/dev/null 2>&1 || true
+  fi
+  if [ -n "$MIGRATE_PY" ]; then
+    python3 "$MIGRATE_PY" --db-name "$v2_db" >/dev/null 2>&1 || true
+  fi
+  local V2ENV=(TASK_DB_NAME="$v2_db" TASK_DB_ROLE="mycortex_reader"
+               HERMES_PROFILE="mycortex_reader"
+               TASKS_NOTIFY_MUTE="pending,in_progress,completed,cancelled,paused"
+               TELEGRAM_NOTIFY_ENV_FILE="$notify_env"
+               TELEGRAM_NOTIFY_STATE_DIR="$notify_dir/state")
+
+  local v2ver
+  v2ver=$(env "${V2ENV[@]}" python3 -c "
+import importlib.util
+spec = importlib.util.spec_from_file_location('tdb', '$TASK_DB')
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+print(m.schema_version())
+" 2>/dev/null || echo "0")
+  if [ -z "$v2ver" ] || [ "$v2ver" -lt 5 ]; then
+    echo "  ⚠ tasks schema v<5 on ${host} (found v${v2ver:-?}) — v2 battery skipped"
+    rm -rf "$notify_dir"
+    return 0
+  fi
+  pass "schema v${v2ver} ≥ 5 (v2 available)"
+
+  # 4a. by-correlation lifecycle: add (inbox) → in_progress → completed
+  local corr="l2-${host}-$$"
+  local cid
+  cid=$(env "${V2ENV[@]}" python3 "$TASK_DB" add "L2 corr probe $$" \
+        --source inbox --correlation-id "$corr" --no-notify 2>/dev/null \
+        | grep -oE "[0-9a-f]{8}\.\.\." | head -1 || true)
+  [ -n "$cid" ] && pass "add with --correlation-id (${cid})" \
+    || fail "add --correlation-id failed on ${host}"
+
+  # v007 preservation: status-only update must keep source=inbox
+  env "${V2ENV[@]}" python3 "$TASK_DB" update --by-correlation "$corr" \
+    --status in_progress --no-notify >/dev/null 2>&1
+  # verify source via pending JSON (inbox rows carry 'untrusted': true)
+  local src_json
+  src_json=$(env "${V2ENV[@]}" python3 "$TASK_DB" pending 2>/dev/null \
+             | python3 -c "
+import json, sys
+try:
+    items = json.load(sys.stdin)
+except Exception:
+    print(0); raise SystemExit
+print(sum(1 for it in items
+          if it.get('content', '').startswith('L2 corr probe')
+          and it.get('untrusted') is True))
+")
+  [ "$src_json" -ge 1 ] && pass "inbox row marked untrusted in pending JSON (v007 preservation)" \
+    || fail "source lost on status update (v007 regression)"
+
+  if env "${V2ENV[@]}" python3 "$TASK_DB" update --by-correlation "$corr" \
+       --status completed --no-notify >/dev/null 2>&1; then
+    pass "by-correlation → completed (S4 Result-receipt path)"
+  else
+    fail "by-correlation → completed failed on ${host}"
+  fi
+
+  # duplicate correlation rejected (partial unique index)
+  if env "${V2ENV[@]}" python3 "$TASK_DB" add "L2 dup $$" --source inbox \
+       --correlation-id "$corr" --no-notify >/dev/null 2>&1; then
+    fail "duplicate correlation accepted (idempotency broken)"
+  else
+    pass "duplicate correlation rejected (partial unique)"
+  fi
+
+  # 4b. story/slice hierarchy + switch
+  local story_id slice_id
+  story_id=$(env "${V2ENV[@]}" python3 "$TASK_DB" add "L2 story $$" \
+             --kind story --no-notify 2>/dev/null \
+             | grep -oE "[0-9a-f]{8}\.\.\." | head -1 || true)
+  [ -n "$story_id" ] && pass "story created (${story_id})" \
+    || fail "story create failed on ${host}"
+  slice_id=$(env "${V2ENV[@]}" python3 "$TASK_DB" add "L2 slice $$" \
+             --kind slice --parent "$(env "${V2ENV[@]}" python3 "$TASK_DB" \
+             list --status pending 2>/dev/null | grep "L2 story $$" \
+             | head -1 | awk '{print $1}')" --no-notify 2>/dev/null \
+             | grep -oE "[0-9a-f]{8}\.\.\." | head -1 || true)
+  [ -n "$slice_id" ] && pass "slice under story created (${slice_id})" \
+    || fail "slice create failed on ${host}"
+
+  # 4c. stale-sweep query: seed an OLD in_progress inbox row, verify the
+  # handler's sweep predicate finds it (design L2: stale-sweep L1-seeded)
+  local stale_corr="l2-stale-${host}-$$"
+  env "${V2ENV[@]}" python3 "$TASK_DB" add "L2 stale probe $$" \
+    --source inbox --correlation-id "$stale_corr" --no-notify >/dev/null 2>&1
+  env "${V2ENV[@]}" python3 "$TASK_DB" update --by-correlation "$stale_corr" \
+    --status in_progress --no-notify >/dev/null 2>&1
+  # age the row past the 1h threshold (update status_changed_at directly;
+  # task_events no-op gate makes this safe)
+  docker exec mycortex-postgres psql -U mycortex -d "$v2_db" -t -A \
+    -c "UPDATE tasks.tasks SET status_changed_at = now() - interval '2 hours'
+        WHERE correlation_id = '${stale_corr}';" >/dev/null 2>&1 || true
+  local swept
+  swept=$(env "${V2ENV[@]}" python3 -c "
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location('tdb', '$TASK_DB')
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+sql = (\"SELECT correlation_id FROM tasks.tasks WHERE source='inbox' AND \"
+       \"status='in_progress' AND status_changed_at < now() - \"
+       \"make_interval(hours => 1) LIMIT 50;\")
+raw = m.psql(m.build_query(sql, []))
+print(len([l for l in raw.splitlines() if l.strip()]))
+" 2>/dev/null || echo "0")
+  [ "$swept" -ge 1 ] && pass "stale-sweep predicate finds aged row (n=$swept)" \
+    || fail "stale-sweep predicate missed the aged row (n=$swept)"
+  env "${V2ENV[@]}" python3 "$TASK_DB" update --by-correlation "$stale_corr" \
+    --status cancelled --no-notify >/dev/null 2>&1
+
+  # 4d. no_agent identity resolution: no HERMES_PROFILE/AGENT_NAME env →
+  # task-db resolves from ~/.hermes-cortex/agent.env (Luke 2026-08-10), and
+  # the DEFAULT role (mycortex_reader_<profile>) must satisfy RLS WITH
+  # CHECK (created_by == profile_of(current_user)) — no role override.
+  local na_out na_rid
+  na_out=$(TASK_DB_NAME="$v2_db" \
+           TASKS_NOTIFY_MUTE="pending" TELEGRAM_NOTIFY_ENV_FILE="$notify_env" \
+           TELEGRAM_NOTIFY_STATE_DIR="$notify_dir/state" \
+           env -u HERMES_PROFILE -u AGENT_NAME \
+           python3 "$TASK_DB" add "L2 noagent probe $$" --no-notify 2>&1) \
+           && na_rid=$(echo "$na_out" | grep -oE "[0-9a-f]{8}\.\.\." | head -1) || na_rid=""
+  if [ -n "$na_rid" ]; then
+    pass "no_agent identity resolves from .env (${na_rid})"
+  else
+    fail "no_agent identity resolution failed: $(echo "$na_out" | grep -E "ERROR" | head -1)"
+  fi
+
+  # v2 scratch DB cleanup (best-effort — the live mycortex DB is untouched)
+  if [ "$(uname)" = "Darwin" ]; then
+    psql -h 127.0.0.1 -p 15432 -U mycortex -d mycortex -t -A \
+      -c "DROP DATABASE IF EXISTS ${v2_db};" >/dev/null 2>&1 || true
+  else
+    docker exec mycortex-postgres psql -U mycortex -d mycortex -t -A \
+      -c "DROP DATABASE IF EXISTS ${v2_db};" >/dev/null 2>&1 || true
+  fi
+  rm -rf "$notify_dir"
 }
 
 # ── Local mode (default) ─────────────────────────────────────────────
