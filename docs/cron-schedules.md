@@ -50,6 +50,7 @@
 | `orch-skill-lifecycle` | `0 4 * * *` | LLM | (orch-skill-lifecycle skill) | origin |
 | `orch-skill-report-request` | `0 2 * * 1` | no_agent | `orch-skill-report-request.sh` | origin |
 | `orch-skill-evaluate` | `0 9 * * 2` | LLM | (prompt) | origin |
+| `orch-backlog-driver` | `0 8-22 * * *` | LLM | `session-active-guard.py` + (orch-backlog-driver skill) | Telegram |
 
 ## All-agent (`agent-*` prefix)
 

@@ -44,6 +44,7 @@
 || agent-no-verify-audit | no_agent | every 60m | Check for --no-verify commits |
 | orch-skill-report-request | no_agent | 0 2 * * 1 | Request skill reports from agents |
 | orch-skill-evaluate | LLM+prompt | 0 9 * * 2 | Evaluate custom skills for upstreaming |
+| orch-backlog-driver | LLM+skill | 0 8-22 * * * | Orchestrator backlog driver (F-023) |
 
 > Moved from AGENTS.md by `agents-doc-audit.py --prune --apply`
 > Date: 2026-07-15T19:30:43.849964+00:00
