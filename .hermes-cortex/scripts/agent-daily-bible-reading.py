@@ -311,7 +311,11 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096, _retried: bool = False) 
         print(f"   Body: {body[:500]}", file=sys.stderr)
         return None
     except subprocess.TimeoutExpired:
-        print(f"❌ API request timed out after 180s", file=sys.stderr)
+        if not _retried:
+            print("⚠️  API request timed out after 180s — retrying once", file=sys.stderr)
+            time.sleep(5)
+            return _call_deepseek(prompt, max_tokens, _retried=True)
+        print("❌ API request timed out after 180s (retry also timed out) — giving up", file=sys.stderr)
         return None
     except Exception as e:
         print(f"❌ Unexpected error: {e}", file=sys.stderr)
