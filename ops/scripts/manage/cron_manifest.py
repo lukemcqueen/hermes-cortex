@@ -286,7 +286,12 @@ def repair_cron(cron: dict, dry_run: bool = False) -> tuple[str, str]:
         edit_args = [hermes, "cron", "edit", job_id, "--schedule", desired["schedule"]]
         for field, flag in (("script", "--script"), ("prompt", "--prompt"), ("skill", "--skill"),
                             ("deliver", "--deliver"), ("workdir", "--workdir")):
-            if (live[name].get(field) or "") != desired[field] and desired[field]:
+            if (live[name].get(field) or "") != desired[field]:
+                # Pass the field even when desired is empty — hermes edit treats
+                # an empty string as "clear the field" (e.g. stale prompt on a
+                # no_agent script cron). Previously the `and desired[field]`
+                # guard skipped empty targets, so repair logged "UPDATED" but
+                # never cleared the drift.
                 edit_args += [flag, desired[field]]
         if bool(live[name].get("no_agent")) != desired["no_agent"]:
             edit_args += ["--no-agent"] if desired["no_agent"] else ["--agent"]
