@@ -633,7 +633,7 @@ OUTPUT POLICY (HARD RULE — overrides everything above):
   "auto-remediation" \
   "terminal,file,web" \
   "origin" \
-  "$HOME" \
+  "" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
@@ -649,7 +649,7 @@ OUTPUT POLICY (HARD RULE — overrides everything above):
   "auto-remediation" \
   "terminal,file,web" \
   "origin" \
-  "$HOME" \
+  "" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
@@ -665,7 +665,7 @@ OUTPUT POLICY (HARD RULE — overrides everything above):
   "auto-remediation" \
   "terminal,file,web" \
   "origin" \
-  "$HOME" \
+  "" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
@@ -1119,7 +1119,7 @@ Phase 3 — Apply: 10 sections moved to docs/
 
 If nothing to apply: output exactly [SILENT]" \
   "documentation-scope" "" "origin" \
-  "$HOME" "false" \
+  "" "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 # ── 9. Skill Collection (universal — all agents) ──────────
