@@ -43,7 +43,7 @@ Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify
 19. **Test before release** — suite runs 0 failures before `end_change()`; `LOW` ships blocked.
 20. **Push before telling anyone to pull** — a fix on local disk is not in the repo.
 21. **Identity host-derived, not env** — orchestrator = hostname (`moses`/`esther`) + home dir, never `AGENT_ID`/`AGENT_TYPE` (spoofable). Git authorship from `~/.hermes-cortex/agent.env` (per-host, gitignored); missing it blocks commit.
-22. **Cross-session tasks** — `task-db.py` (see `task-persistence` skill).
+22. **Cross-session tasks** — `task-db.py` (see `task-persistence` skill). v2 lifecycle: `update <id> --status in_progress` before `begin_change`, `switch <target>` to change active task, `--status completed` after `end_change`. Bus commands create tasks automatically (S4) — when you process an ISSUES/PROPOSAL/IMPROVEMENTS inbox message, transition its task by correlation: `task-db.py update --by-correlation <corr> --status completed` (see `cortex-bus-automation` skill). Entry/completed task events notify Telegram.
 23. **Only our repo** — `~/hermes-cortex/` ours; `~/.hermes/` not-in-repo → don't touch; `~/.hermes-cortex/state/*` + `~/.hermes/config.yaml` → live config.
 24. **Sharing filter** — new/substantive only; already-in-Hermes/cortex ❌; PII-only ❌.
 25. **Self-test gate** — `hc send` refuses without `--self-tested`; no bare `pass`.

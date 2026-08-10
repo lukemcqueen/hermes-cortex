@@ -61,6 +61,16 @@
 | `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local (runs only where IS_SERVER=true) |
 | `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin |
 | `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local |
+
+> **TL-v2 S4 (2026-08-10):** `agent-message-handler` now also (1) creates a
+> `tasks.tasks` row (`source='inbox'`, by correlation_id) for EXEC/
+> UPDATE_REQUEST/TASK_REQUEST/PROPOSAL/ISSUES/IMPROVEMENTS **before**
+> archiving (create-before-archive), (2) drives the lifecycle
+> pending→in_progress→completed at Result-receipt, and (3) runs a **stale
+> sweep** every tick: inbox tasks stuck `in_progress` > 1h (`TASKS_STALE_HOURS`)
+> → `paused` with reason='stale'. Task events notify Telegram via
+> `lib/telegram_notify.py` (entry + completed; `TASKS_NOTIFY_MUTE` /
+> `TASKS_NOTIFY_QUIET` tune volume). No new cron — the handler tick hosts it.
 | `agent-service-recovery` | `*/5 * * * *` | no_agent | `agent-service-recovery.py` | origin |
 | `agent-system-alert-watchdog` | `*/30 * * * *` | no_agent | `agent-system-alert-watchdog.py` | origin |
 | `agent-cron-quality-watchdog` | `*/10 * * * *` | no_agent | `agent-cron-quality-watchdog.py` | origin |

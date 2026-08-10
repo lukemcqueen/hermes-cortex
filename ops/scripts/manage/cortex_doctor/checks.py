@@ -3623,6 +3623,136 @@ def check_task_db(res):
     res.add("Task DB write-probe", "PASS", "add → start → complete → archive roundtrip OK")
 
 
+def check_task_lifecycle_v2(res):
+    """TL-v2 S7 checks: schema_version>=5, task_events RLS, telegram notify
+    health, stale inbox rows, .env perms.
+
+    Design: docs/design/task-lifecycle-v2.md §12 (S7 slice). These FAIL/WARN
+    loudly so a host silently degraded to v1 semantics is never mistaken for
+    a healthy v2 deployment.
+    """
+    task_script = CORTEX_HOME / "scripts" / "task-db.py"
+    if not task_script.is_file():
+        return  # check_task_db already FAILs on the missing script
+
+    # ── 1. schema_version >= 5 (FAIL when older) ──────────────────
+    ver_out = run_bg([sys.executable, str(task_script), "--apply-schema"],
+                     timeout=120)
+    # --apply-schema prints "schema now at version N"; parse it. Fall back to
+    # a direct probe via the module (same psql seam as the CLI).
+    import re as _re
+    m = _re.search(r"version (\d+)", ver_out or "")
+    ver = int(m.group(1)) if m else 0
+    if ver < 5:
+        res.add("Task Lifecycle v2 schema", "FAIL",
+                f"tasks schema_version = {ver} (< 5) — paused/switch/"
+                "story-slice/by-correlation and task_events unavailable",
+                "Run: bash cortex-update.sh (deploys + migrates to v007)")
+    else:
+        res.add("Task Lifecycle v2 schema", "PASS",
+                f"tasks schema_version = {ver} (v2 lifecycle available)")
+
+    # ── 2. task_events RLS assertion (FAIL when forgeable) ────────
+    # Security R-1: app roles must have SELECT only (INSERT via the
+    # SECURITY DEFINER task_log_event); no direct UPDATE/DELETE grants.
+    import importlib.util as _ilu
+    spec = _ilu.spec_from_file_location("task_db_v2check", task_script)
+    if spec is None or spec.loader is None:
+        res.add("Task Lifecycle v2 events RLS", "FAIL",
+                "cannot load task-db.py module for probe",
+                "Check task-db.py deployment (cortex-update.sh)")
+        return
+    tdb = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(tdb)
+    try:
+        rls_out = tdb.psql(
+            "SELECT relrowsecurity FROM pg_class "
+            "WHERE oid = 'tasks.task_events'::regclass;")
+        rls_on = rls_out.strip() == "t"
+        grants_out = tdb.psql(
+            "SELECT string_agg(privilege_type, ',' ORDER BY privilege_type) "
+            "FROM information_schema.role_table_grants "
+            "WHERE table_schema='tasks' AND table_name='task_events' "
+            "AND grantee LIKE 'mycortex_reader%';")
+        grants = set(g for g in (grants_out or "").split(",") if g)
+        forged = bool(grants & {"UPDATE", "DELETE"})
+        if rls_on and not forged:
+            res.add("Task Lifecycle v2 events RLS", "PASS",
+                    f"RLS={rls_on}, reader grants: {', '.join(sorted(grants)) or 'SELECT-only'}")
+        elif not rls_on:
+            res.add("Task Lifecycle v2 events RLS", "FAIL",
+                    "RLS not enabled on tasks.task_events",
+                    "Run: bash cortex-update.sh (applies v005 event RLS)")
+        else:
+            res.add("Task Lifecycle v2 events RLS", "FAIL",
+                    f"reader has forgeable grants: {', '.join(sorted(grants))}",
+                    "Revoke UPDATE/DELETE on tasks.task_events from "
+                    "mycortex_reader (security R-1)")
+    except SystemExit:
+        res.add("Task Lifecycle v2 events RLS", "FAIL",
+                "probe query failed (schema v<5 or table missing)",
+                "Run: bash cortex-update.sh")
+
+    # ── 3. Telegram notify health (WARN when failures persist) ───
+    try:
+        from lib.telegram_notify import telegram_notify_health
+    except ImportError:
+        res.add("Task Lifecycle v2 telegram notify", "WARN",
+                "lib.telegram_notify not importable (deploy issue?)",
+                "Run: bash cortex-update.sh")
+        return
+    try:
+        health = telegram_notify_health()
+        if health.get("failures", 0) > 0 or health.get("last_error"):
+            res.add("Task Lifecycle v2 telegram notify", "WARN",
+                    f"{health['failures']} failure(s); last: "
+                    f"{(health.get('last_error') or '')[:120]} "
+                    f"(sent={health['sent']}, coalesced={health['coalesced']})",
+                    "Check ~/.hermes-cortex/state/telegram-notify.log and "
+                    "TELEGRAM_BOT_TOKEN / TELEGRAM_HOME_CHANNEL in ~/.hermes/.env")
+        else:
+            res.add("Task Lifecycle v2 telegram notify", "PASS",
+                    f"sent={health['sent']}, failures=0, "
+                    f"env_perms_ok={health.get('env_perms_ok')}")
+    except Exception as e:
+        res.add("Task Lifecycle v2 telegram notify", "WARN",
+                f"health probe failed: {type(e).__name__}: {e}",
+                "Check the telegram_notify state file")
+
+    # ── 4. Stale inbox tasks (WARN — sweep should have paused them) ──
+    try:
+        stale = tdb.psql(
+            "SELECT count(*) FROM tasks.tasks WHERE source = 'inbox' "
+            "AND status = 'in_progress' "
+            "AND status_changed_at < now() - make_interval(hours => 1);")
+        if stale.strip() and int(stale) > 0:
+            res.add("Task Lifecycle v2 stale inbox", "WARN",
+                    f"{stale.strip()} inbox task(s) stuck in_progress > 1h "
+                    "(stale sweep should have paused them)",
+                    "Check agent-message-handler cron ran task_stale_sweep; "
+                    "or pause manually: task-db.py update <id> --status paused")
+        else:
+            res.add("Task Lifecycle v2 stale inbox", "PASS",
+                    "no stale inbox tasks (sweep healthy)")
+    except SystemExit:
+        res.add("Task Lifecycle v2 stale inbox", "WARN",
+                "probe failed — schema v<5?",
+                "Run: bash cortex-update.sh")
+
+    # ── 5. .env permissions 600 (WARN — telegram token exposure) ──
+    env_file = Path.home() / ".hermes" / ".env"
+    if env_file.is_file():
+        mode = env_file.stat().st_mode & 0o777
+        if mode != 0o600:
+            res.add("Task Lifecycle v2 .env perms", "WARN",
+                    f"{env_file} mode is {oct(mode)[2:]} (want 600) — "
+                    "telegram token readable by others",
+                    f"chmod 600 {env_file}")
+        else:
+            res.add("Task Lifecycle v2 .env perms", "PASS",
+                    ".env mode 600 (token protected)")
+
+
 def check_skill_drift(res):
     """Check for drift between repo source and deployed skills.
 

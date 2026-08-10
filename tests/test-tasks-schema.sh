@@ -457,7 +457,7 @@ if MIGRATE_POISON_OUT=$(python3 "$MIGRATE_PY" --db-name "$TEST_DB" --schema-dir 
   fail "poisoned migration succeeded (rc=0)"
 else
   VER_AFTER_POISON=$($PSQL -c "SELECT max(version) FROM tasks.schema_version;" 2>/dev/null)
-  [ "$VER_AFTER_POISON" = "5" ] && pass "poisoned migration failed and version stayed 5 (rollback)" || fail "version moved to $VER_AFTER_POISON after poison"
+  [ "$VER_AFTER_POISON" = "$EXPECTED_VER" ] && pass "poisoned migration failed and version stayed $EXPECTED_VER (rollback)" || fail "version moved to $VER_AFTER_POISON after poison (expected $EXPECTED_VER)"
 fi
 rm "$POISON_DIR/v099__poison.sql"
 if python3 "$MIGRATE_PY" --db-name "$TEST_DB" --schema-dir "$POISON_DIR" 2>/dev/null | grep -q "no-op"; then

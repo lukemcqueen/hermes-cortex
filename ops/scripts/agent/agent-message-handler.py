@@ -54,6 +54,9 @@ if not AGENT_NAME:
 if not AGENT_NAME:
   print(f"❌ AGENT_NAME not configured. Set AGENT_NAME= in ~/.hermes-cortex/cortex-bus.conf or export AGENT_NAME.", flush=True)
   sys.exit(1)
+# Export for child modules (commands.py dispatch etc.) — identity is explicit,
+# never hostname-derived (Luke directive 2026-08-10).
+os.environ["AGENT_NAME"] = AGENT_NAME
 # Ensure lib.cortex_bus is importable
 from hermes_paths import ensure_scripts_path
 ensure_scripts_path()
@@ -127,6 +130,152 @@ def notify_telegram(message: str, subject: str = ""):
     notify(message, subject=subject)
   except Exception as e:
     log(f"Telegram notify failed: {type(e).__name__}: {e}")
+
+
+# ── Bus → tasks bridge (TL-v2 S4) ─────────────────────────────
+# Commands that create a tasks.tasks row (source='inbox') on receipt,
+# link it to the bus message by correlation_id, and drive its lifecycle:
+#   created(pending) on receipt → in_progress at dispatch → completed at
+#   Result-receipt (EXEC_RESULT/UPDATE_RESULT handler path).
+# Deny-by-default (Security R-8): anything not in this set creates NO row
+# and NO notify. The `Task:`/`TASK:` prefix form normalizes to TASK_REQUEST
+# before this check (poll_once does that).
+TASK_CREATING_SUBJECTS = ("EXEC", "UPDATE_REQUEST", "TASK_REQUEST",
+                          "PROPOSAL", "ISSUES", "IMPROVEMENTS")
+
+# Deployed task-db.py path (repo path used when developing/deploying).
+TASK_DB_PATH = HOME / ".hermes-cortex" / "scripts" / "task-db.py"
+if not TASK_DB_PATH.exists():
+    TASK_DB_PATH = CORTEX_REPO / "ops" / "scripts" / "manage" / "task-db.py"
+
+
+def _taskdb(args: list[str], timeout: int = 20) -> tuple[int, str]:
+    """Run task-db.py; return (returncode, stdout). Never raises."""
+    try:
+        r = subprocess.run([sys.executable, str(TASK_DB_PATH)] + args,
+                           capture_output=True, text=True, timeout=timeout)
+        return r.returncode, (r.stdout or "") + (r.stderr or "")
+    except Exception as e:
+        log(f"task-db failed: {type(e).__name__}: {e}")
+        return -1, str(e)
+
+
+def task_create_from_message(subject: str, correlation_id: str,
+                             content: str) -> str | None:
+    """Create a source='inbox' task row for a tracked subject (S4).
+
+    Create-before-archive (SRE R-12): callers invoke this BEFORE archiving
+    the message so a crash between leaves the row — the stale sweep is the
+    safety net. Returns the task id, or None when the subject is not in the
+    allowlist / no correlation_id / task-db unavailable (never raises).
+    """
+    if subject not in TASK_CREATING_SUBJECTS:
+        return None
+    if not correlation_id:
+        log(f"task-create skipped: {subject} without correlation_id")
+        return None
+    # Scrub + cap content (R-4): bus content is untrusted — never store raw.
+    try:
+        from lib.telegram_notify import scrub_text
+        safe = scrub_text(content or "")[:500]
+    except Exception:
+        safe = (content or "")[:500]
+    rc, out = _taskdb(["add", safe or subject,
+                       "--source", "inbox",
+                       "--correlation-id", correlation_id])
+    if rc == 0 and "added" in out.lower():
+        # task-db prints: ✅ Task added: <8chars>... — extract nothing;
+        # the correlation unique index means we can always look it up later.
+        # Entry notify fires from task-db.py (R-14: replaces the handler's
+        # pickup notify for tracked subjects — one EXEC = 1 entry message).
+        log(f"🗂  task row created for {subject} (corr={correlation_id[:12]}…)")
+        return correlation_id
+    log(f"task-create failed for {subject}: rc={rc} {out[:120]}")
+    return None
+
+
+def _lookup_task_id(correlation_id: str) -> str | None:
+    """Resolve the inbox task id for a bus correlation_id (S5, R-19)."""
+    if not correlation_id:
+        return None
+    try:
+        import importlib.util as _ilu
+        spec = _ilu.spec_from_file_location("task_db_lookup", TASK_DB_PATH)
+        if spec is None or spec.loader is None:
+            return None
+        tdb = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(tdb)
+        raw = tdb.psql(
+            "SELECT id FROM tasks.tasks WHERE source = 'inbox' "
+            "AND correlation_id = ? LIMIT 1;", [correlation_id])
+        return raw.split("\n")[0] if raw.strip() else None
+    except Exception as e:
+        log(f"task id lookup failed: {type(e).__name__}: {e}")
+        return None
+
+
+def task_transition_by_correlation(correlation_id: str, status: str,
+                                   reason: str | None = None) -> bool:
+    """Transition the inbox task linked to a bus correlation_id (S4).
+
+    completed at Result-receipt: the handler path that receives
+    EXEC_RESULT/UPDATE_RESULT calls this to close the task. Never raises.
+    """
+    if not correlation_id:
+        return False
+    args = ["update", "--by-correlation", correlation_id,
+            "--status", status]
+    if reason:
+        args += ["--reason", reason]
+    # in_progress is transient churn — muted by default (R-14/R-20: the
+    # meaningful events are entry and completed; per-status mute registry
+    # can lift this via TASKS_NOTIFY_MUTE).
+    if status == "in_progress":
+        args += ["--no-notify"]
+    rc, out = _taskdb(args)
+    if rc == 0:
+        log(f"🗂  task → {status} (corr={correlation_id[:12]}…)")
+        return True
+    log(f"task-transition {status} failed (corr={correlation_id[:12]}…): "
+        f"rc={rc} {out[:120]}")
+    return False
+
+
+def task_stale_sweep(max_hours: float = 1.0) -> int:
+    """Pause inbox tasks stuck in_progress beyond the threshold (S4).
+
+    Runs on the handler tick. Bus tasks (source='inbox') older than
+    max_hours in in_progress → paused with reason='stale' (R-16/M-2).
+    Returns the count swept. Never raises.
+    """
+    try:
+        sql = (
+            "SELECT correlation_id FROM tasks.tasks "
+            "WHERE source = 'inbox' AND status = 'in_progress' "
+            "AND status_changed_at < now() - make_interval(hours => ?::int) "
+            "LIMIT 50;"
+        )
+        # task-db.py has no raw SQL entry — use its psql plumbing via module
+        # import to reach the DB safely (same stdin-only, allowlisted path).
+        import importlib.util as _ilu
+        spec = _ilu.spec_from_file_location("task_db_bridge", TASK_DB_PATH)
+        if spec is None or spec.loader is None:
+            return 0
+        tdb = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(tdb)
+        raw = tdb.psql(tdb.build_query(sql, [max_hours]))
+        corrs = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+        swept = 0
+        for corr in corrs:
+            if task_transition_by_correlation(corr, "paused", reason="stale"):
+                swept += 1
+        if swept:
+            log(f"🧹 stale sweep: paused {swept} inbox task(s) "
+                f"(in_progress > {max_hours}h)")
+        return swept
+    except Exception as e:
+        log(f"stale sweep error: {type(e).__name__}: {e}")
+        return 0
 
 
 def load_state() -> dict:
@@ -628,17 +777,6 @@ def main():
     if not correlation_id and isinstance(body, dict):
       correlation_id = body.get("correlation_id", "") or ""
 
-    # --- EARLY ARCHIVE ---
-    # Archive the message immediately after reading so the PGMQ
-    # visibility timeout can never cause a re-read loop. Even if the
-    # handler process crashes (uncaught BaseException, signal, OOM)
-    # during processing, the message is already gone from the queue.
-    # This is the primary archive; post-processing archives (in each
-    # subject handler and the exception handler) are fallbacks that
-    # silently succeed on already-archived messages.
-    archive_message(source_queue, msg_id)
-    # --- END EARLY ARCHIVE ---
-
     # PGMQ returns body as a JSON string — parse it if needed
     if isinstance(body, str):
       try:
@@ -703,13 +841,45 @@ def main():
             else:
                 body["body"] = {"task": task_desc}
 
-    # Check if this message targets this agent (labels, agent names)
+    # Check if this message targets this agent (labels, agent names) FIRST —
+    # before task creation. A message aimed at other agents must not create
+    # a stray task row here (S4 ownership: only the executing agent creates).
     agent_labels = _load_agent_labels()
     should_process, skip_reason = _should_process(body, agent_labels)
     if not should_process:
         log(f"Skipping {subject} — {skip_reason}")
         archive_message(source_queue, msg_id)
         return False
+
+    # ── Bus → tasks: CREATE-BEFORE-ARCHIVE (TL-v2 S4, SRE R-12) ──
+    # For tracked subjects with a correlation_id, create the source='inbox'
+    # task row BEFORE archiving the message. A crash between the create and
+    # the archive leaves the row — the stale sweep is the safety net. The
+    # partial unique index (source='inbox' AND correlation_id) makes the
+    # create idempotent across handler restarts.
+    # Content for the row: subject + a short command/description preview.
+    task_content = subject
+    if isinstance(body, dict):
+      inner = body.get("body", "")
+      if isinstance(inner, dict):
+        cmd = inner.get("command") or inner.get("task") or inner.get("reason")
+        if cmd:
+          task_content = f"{subject}: {str(cmd)[:120]}"
+      elif isinstance(inner, str):
+        task_content = f"{subject}: {inner[:120]}"
+    task_create_from_message(subject, correlation_id, task_content)
+
+    # --- EARLY ARCHIVE ---
+    # Archive the message immediately after reading so the PGMQ
+    # visibility timeout can never cause a re-read loop. Even if the
+    # handler process crashes (uncaught BaseException, signal, OOM)
+    # during processing, the message is already gone from the queue.
+    # This is the primary archive; post-processing archives (in each
+    # subject handler and the exception handler) are fallbacks that
+    # silently succeed on already-archived messages.
+    # (Task creation above happens FIRST — create-before-archive.)
+    archive_message(source_queue, msg_id)
+    # --- END EARLY ARCHIVE ---
 
     # Silent subjects — known noise: the doctor's own bus round-trip probe
     # (cortex_doctor checks.py _check_bus_e2e sends DOCTOR_TEST to
@@ -727,11 +897,13 @@ def main():
         save_state(state)
         return True
 
-    # Notify pickup
-    notify_telegram(
-      f"📥 [{AGENT_NAME}] Received {subject} from {body.get('from', '?')}",
-      f"📥 {AGENT_NAME}:{subject}",
-    )
+    # Notify pickup — SKIPPED for tracked subjects: the task-entry notify
+    # from task-db.py replaces it (R-14: one EXEC = 1 entry message, not 5).
+    if subject not in TASK_CREATING_SUBJECTS:
+      notify_telegram(
+        f"📥 [{AGENT_NAME}] Received {subject} from {body.get('from', '?')}",
+        f"📥 {AGENT_NAME}:{subject}",
+      )
 
     # Idempotency check — skip for messages without correlation_id
     if correlation_id and correlation_id in processed:
@@ -745,6 +917,10 @@ def main():
       start = time.time()  # init before any dispatch so except handler is safe
       from commands import dispatch as cmd_dispatch
 
+      # in_progress at dispatch (S4 lifecycle)
+      if subject in TASK_CREATING_SUBJECTS:
+        task_transition_by_correlation(correlation_id, "in_progress")
+
       result_body = cmd_dispatch(subject, body, msg)
 
       if result_body is not None:
@@ -756,9 +932,21 @@ def main():
         # Duration tracking
         result_body.setdefault("duration_seconds", round(time.time() - start, 1))
         result_body.setdefault("success", True)  # assume success unless handler says otherwise
+        # R-19/M-12: carry the task id so the orchestrator can join
+        # reply ↔ task directly (by task id, not just correlation).
+        if correlation_id:
+          task_id = _lookup_task_id(correlation_id)
+          if task_id:
+            result_body["task_id"] = task_id
 
         archive_message(inbox_queue, msg.get("msg_id", ""))
         send_bus_result("inbox_moses", correlation_id, result_body, result_subject)
+
+        # Completed at Result-receipt (S4): the task that this EXEC/UPDATE
+        # created is closed once its result has been sent back. The
+        # correlation unique index makes this idempotent.
+        if subject in TASK_CREATING_SUBJECTS:
+          task_transition_by_correlation(correlation_id, "completed")
 
         # State tracking — only track non-empty correlation_ids
         if correlation_id:
@@ -827,6 +1015,13 @@ def main():
           if exit_code != "":
             result_preview = f" exit={exit_code} {stdout_preview}"
         log(f"📬 Result {subject} from {result_from}:{result_preview}")
+        # Completed at Result-receipt (S4): the orchestrator's handler that
+        # receives EXEC_RESULT/UPDATE_RESULT closes the inbox task linked by
+        # correlation_id. Idempotent via the partial unique index.
+        if subject in ("EXEC_RESULT", "UPDATE_RESULT", "DIAGNOSTIC_RESULT",
+                       "ROLLBACK_RESULT", "FIX_RESULT", "LEARNINGS_RESULT",
+                       "STATUS_RESULT", "GIT_AUTH_RESULT"):
+          task_transition_by_correlation(correlation_id, "completed")
         archive_message(source_queue, msg_id)
         state.setdefault("last_results", [])
         state["last_results"].append({
@@ -998,6 +1193,15 @@ def main():
     # messages accumulate ahead of an UPDATE_REQUEST, a single poll_once()
     # would take 5 ticks (25 min) to clear them. With the loop, the
     # handler drains the queue on every tick.
+    # Stale sweep runs EVERY tick (R-16/M-2): catches inbox tasks stuck in
+    # in_progress from a previous crashed handler, not just from this tick's
+    # messages. Threshold: 1h default, TASKS_STALE_HOURS env override.
+    try:
+      stale_h = float(os.environ.get("TASKS_STALE_HOURS", "1"))
+    except (TypeError, ValueError):
+      stale_h = 1.0
+    task_stale_sweep(max_hours=stale_h)
+
     had_work = False
     tick_start = time.time()
     for _ in range(25):

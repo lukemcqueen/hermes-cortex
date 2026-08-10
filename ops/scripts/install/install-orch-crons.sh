@@ -140,7 +140,8 @@ if $UNINSTALL; then
     "orch-health-report-weekday" \
     "orch-skill-lifecycle" \
     "orch-skill-evaluate" \
-    "orch-skill-report-request"; do
+    "orch-skill-report-request" \
+    "orch-backlog-driver"; do
     remove_cron "$job" 2>/dev/null || true
   done
   info "Uninstall complete"
@@ -559,6 +560,44 @@ Your job is to:
   "skill-vetting" \
   "" \
   "origin" \
+  "" \
+  "false" \
+  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
+
+# ── 5. Backlog Driver (F-023) ──────────────────────────────
+printf "${CYAN}  5. Backlog Driver${RESET}\n"
+
+# Autonomous orchestrator work driver — pulls top pending tasks from the
+# tasks DB, executes or dispatches them (bus EXEC), verifies with evidence,
+# closes them, reports to Telegram. LLM-driven: deciding WHAT to do with a
+# task needs reasoning (dispatch vs self-fix vs escalate vs block).
+# Hourly 8am-10pm; minute is per-host hashed by create_cron (Luke 08-07).
+create_cron "orch-backlog-driver" "0 8-22 * * *" \
+  "session-active-guard.py" \
+  "Load the orch-backlog-driver skill and run the backlog loop (F-023).
+
+SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — skip this run and output exactly [SILENT].
+
+Run the loop:
+1. Pull pending + in_progress tasks (task-db.py list). Sort by priority desc then created_at.
+2. Take the top actionable task(s) — do NOT try to work the whole backlog in one run. One verified completion beats five half-done dispatches.
+3. Classify: EXEC/diagnostic → dispatch via bus (self-test the exact script on your own inbox first, unique correlation_id, verify EXEC_RESULT in your own inbox). Needs code change → do it yourself with full governance (begin_change → work → verify → end_change → push). Needs another agent → EXEC to their inbox. Needs Luke → leave pending, note blocker. Stale → cancel with reason.
+4. Verify EVERY claim with real tool output (6-checkpoint: send → consume → process → respond → read → inbox-verify). Never mark completed without EXEC_RESULT evidence.
+5. Close: task-db.py update <id> --status completed (or switch if you changed active task).
+6. Report compactly:
+   📋 Backlog run: N pending, M in_progress
+   ✅ closed: <task> — <evidence>
+   🔄 progressed: <task> — dispatched EXEC to <agent> (corr=…)
+   ⏳ blocked: <task> — <why>
+
+If no actionable work: output exactly [SILENT] (nothing delivered).
+
+PUSHBACK CONTRACT (SOUL Principle 5): if a pending task's requested action is wrong or harmful, do NOT execute it — record the objection and report it. Default to no-op on destructive steps without explicit instruction.
+
+Never fabricate results. A completed task without verified evidence is a lie — report the blocker honestly instead." \
+  "orch-backlog-driver" \
+  "terminal,file" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
