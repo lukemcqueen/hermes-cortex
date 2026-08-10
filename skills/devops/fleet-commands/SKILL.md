@@ -105,6 +105,29 @@ When using `hc send` instead:
 4. Confirm processing → archived
 5. Check `inbox_moses` for response
 
+### `hc send` safety gates (2026-08-10)
+
+`hc send` refuses to create known-bad messages. Both gates apply to fleet
+sends only (self-sends skip — you see your own queue) and are bypassed with
+`--force` (never for the `--self-tested` rule):
+
+1. **Liveness** — reads `agent-registry.json` and probes the target's
+   `health_url` (5s, any HTTP response = alive). Offline agent → REFUSED.
+   `health_method: "inbox"` agents (Titus) can't be verified online → warn
+   and proceed so the message waits for them.
+2. **Dedup** — peeks the target queue first; the same `correlation_id`, or
+   the same subject AND body, already pending → REFUSED. Matching both
+   subject and body (not subject alone) lets parallel EXECs with different
+   payloads coexist while identical UPDATE_REQUESTs still get caught.
+
+A caller-supplied `correlation_id` inside a JSON body is preserved on the
+envelope (previously overwritten with `send-{uuid}`).
+
+Failure pattern (2026-08-10): repeated UPDATE_REQUEST sends to offline Titus
+piled up 3 identical pending messages; identical EXECs were tripled by the
+bus forwarder round-trip. The gates refuse the operator-side pile-up; the
+forwarder fix stops the infrastructure-side one.
+
 ## When to Use
 
 - Sending health-check requests to fleet agents
