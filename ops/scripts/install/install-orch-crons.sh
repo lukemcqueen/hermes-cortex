@@ -528,6 +528,8 @@ For each item found, classify it. Deduplicate against existing skills. Cross-ref
 Phase 3 — Upgrade:
 Execute approved actions: patch skills via skill_manage, create new ones, prune stale ones, update SOUL.md with principles, upstream new skills to the repo, archive processed bus messages.
 
+PUSHBACK CONTRACT (SOUL Principle 5): before pruning/deleting a skill, rewriting SOUL.md, or upstreaming a change, challenge it — if the action is wrong, harmful, or better done differently, do NOT execute; record the objection (record_issue) and deliver the objection as the report. Default to no-op when in doubt.
+
 If nothing changed: output exactly [SILENT]" \
   "orch-skill-lifecycle" "terminal,file,web" "origin" "" "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"

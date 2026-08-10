@@ -478,7 +478,7 @@ their domain.
 | `architecture-review` | 1.2.0 | Multi-role architecture review (a.k.a. HC-Party) with weighted decision matrices, conflict resolution, and... | `skill_view(name='architecture-review')` |
 | `background-job-queue` | 1.0.0 | Add durable background job processing to a FastAPI/asyncpg app using arq. Covers project layout, job functi... | `skill_view(name='background-job-queue')` |
 | `batch-job-optimization` | 1.0.0 | Systematically analyze and optimize database-bound batch processing jobs (imports, exports, ETL, bulk updat... | `skill_view(name='batch-job-optimization')` |
-| `change-checklist` | 2.0.0 | Mandatory pre-ship verification before calling end_change(). Covers Phase 0 survey, test, multi-OS, multi-r... | `skill_view(name='change-checklist')` |
+| `change-checklist` | 2.1.0 | Mandatory pre-ship verification before calling end_change(). Covers Phase 0 survey, test, multi-OS, multi-r... | `skill_view(name='change-checklist')` |
 | `change-test-loop` | 1.1.0 | Small changes with real verification, bounded retries, self-healing. | `skill_view(name='change-test-loop')` |
 | `code-review` | 3.0.0 | Two-axis pre-commit review: Standards (documents + code smells) and Spec (requirement compliance) via paral... | `skill_view(name='code-review')` |
 | `code-wiki` | 0.1.0 | Generate wiki docs + Mermaid diagrams for any codebase. | `skill_view(name='code-wiki')` |
@@ -502,7 +502,7 @@ their domain.
 | `react-composition-patterns` | 1.0.0 | React composition patterns that scale — compound components, state lifting, context interfaces, and avoidin... | `skill_view(name='react-composition-patterns')` |
 | `react-view-transitions` | 1.0.0 | Implement smooth native-browser animations between UI states using React's ViewTransition component and doc... | `skill_view(name='react-view-transitions')` |
 | `reasoning-patterns` | 1.0.0 | Select and apply reasoning patterns for any task — Plan-Execute-Verify, ReAct, Reflexion, or Tree of Though... | `skill_view(name='reasoning-patterns')` |
-| `reflexion-check` | 1.0.0 | Pre-delivery self-critique: five-question audit to catch blind spots, verify claims, and score confidence b... | `skill_view(name='reflexion-check')` |
+| `reflexion-check` | 1.1.0 | Pre-delivery self-critique: five-question audit to catch blind spots, verify claims, and score confidence b... | `skill_view(name='reflexion-check')` |
 | `repo-organization` | 1.1.0 | Canonical repo organization for Hermes Cortex — structure, naming, consolidation, symlinks, and audit proce... | `skill_view(name='repo-organization')` |
 | `requirements-elicitation` | 1.2.0 | Requirements elicitation for Hermes Cortex (a.k.a. elicit) — structured domain exploration, RICE/MoSCoW pri... | `skill_view(name='requirements-elicitation')` |
 | `rest-graphql-debug` | 1.2.0 | Debug REST/GraphQL APIs: status codes, auth, schemas, repro. | `skill_view(name='rest-graphql-debug')` |

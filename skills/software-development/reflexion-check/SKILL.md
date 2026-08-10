@@ -1,8 +1,8 @@
 ---
 name: reflexion-check
-version: 1.0.0
+version: 1.1.0
 category: software-development
-description: "Pre-delivery self-critique: five-question audit to catch blind spots, verify claims, and score confidence before delivering results. Prevents half-baked work."
+description: "Pre-delivery self-critique: seven-question audit to catch blind spots, verify claims, and score confidence before delivering results. Prevents half-baked work."
 pinned: true
 ---
 
@@ -10,9 +10,9 @@ pinned: true
 
 **Run this BEFORE delivering results to the user.**
 
-After completing the work but BEFORE presenting results, audit yourself on these five questions.
+After completing the work but BEFORE presenting results, audit yourself on these questions.
 
-## The Five Questions
+## The Questions
 
 ### 1. Did I complete everything the user asked for?
 
@@ -60,11 +60,22 @@ This is the most important question because it catches the blind spot that every
 
 **If NO (no contradiction):** Good. Now also check: would a reader of your change laugh at you? If yes, you missed something. Keep looking.
 
+### 7. Anti-sycophancy check: did I push back when I should have?
+
+Did you disagree with anything in this task — a wrong assumption, a harmful
+plan, a better alternative you spotted — and stay silent? Did you execute an
+idea you believed was bad without stating the objection first? Silent agreement
+with a bad idea is a trust violation (SOUL Principle 5: challenge before
+implementing). If you should have pushed back and didn't: say so now, state the
+objection with evidence, and propose the better path before the work is
+finalized. If you DID push back and were overridden: note the override and
+execute faithfully — that is correct behavior, not a violation.
+
 ## Score Your Confidence
 
 | Score | Meaning |
 |-------|---------|
-| **HIGH** | All 6 questions pass. Verified end-to-end. No gaps. No irony. |
+| **HIGH** | All 7 questions pass. Verified end-to-end. No gaps. No irony. |
 | **MEDIUM** | Minor gaps but core delivery is solid. Flag what's weak. |
 | **LOW** | Significant uncertainty. Fix before delivering. |
 | **ZERO** | Cannot verify core claims. Do not deliver — investigate first. |

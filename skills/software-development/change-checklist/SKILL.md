@@ -1,6 +1,6 @@
 ---
 name: change-checklist
-version: 2.0.0
+version: 2.1.0
 category: software-development
 description: "Mandatory pre-ship verification before calling end_change(). Covers Phase 0 survey, test, multi-OS, multi-role, docs, final verification, and reflexion. Every governance cycle must run this before closing."
 author: Hermes Cortex
@@ -71,6 +71,10 @@ Checklist:
 
 Before making any change, map the full scope. A single cron rename can touch 10+ locations. **Always do this first:**
 
+- [ ] **Pushback Check (3 questions, BEFORE begin_change)** — challenge the task itself, not just the implementation:
+  - [ ] Is this idea/plan wrong? (evidence against it: harm, data loss, wrong scope, better existing mechanism, security risk)
+  - [ ] Is there a clearly better alternative? (state it — 1-3-1 format for big calls)
+  - [ ] Have I stated the objection and been acknowledged? — if you raised an objection, do NOT begin_change until the user explicitly acknowledges (agree or override). An override is final: execute faithfully and note it in the cycle. Unattended flows (crons, bus tasks): record the objection and default to no-op on destructive steps until a human acknowledges. Silence is not consent — agreeing with a bad idea to avoid friction is a trust violation (SOUL Principle 5).
 - [ ] **search_files()** for the old name/term across the entire repo — find every reference
 - [ ] **Live cron prompts**: grep `~/.hermes/cron/jobs.json` (and peer hosts via ssh) for the old term in job `prompt` fields — install-script source fixes do NOT rewrite existing jobs; update each hit via `cronjob action='update'`. The doctor's `Cron prompt stale refs` check catches regressions.
 - [ ] **Cron manifest**: check `install-crons.sh` AND `install-orch-crons.sh` — uninstall arrays (expected-cron list for doctor), create_cron blocks, guard messages

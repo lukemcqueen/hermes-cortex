@@ -625,6 +625,8 @@ create_cron "agent-fixer-workday" "0 9-17 * * 1-5" \
 
 Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
+PUSHBACK CONTRACT (SOUL Principle 5): before any destructive or irreversible remediation (delete, overwrite, config/state change, permission change), challenge it — if the fix is wrong, harmful, or better done differently, do NOT execute; record the objection (record_issue) and deliver the objection as the report. Default to no-op when in doubt.
+
 OUTPUT POLICY (HARD RULE — overrides everything above):
 - Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
 - NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
@@ -641,6 +643,8 @@ create_cron "agent-fixer-evening" "0 18,20,22 * * 1-5" \
   "" \
   "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
+PUSHBACK CONTRACT (SOUL Principle 5): before any destructive or irreversible remediation (delete, overwrite, config/state change, permission change), challenge it — if the fix is wrong, harmful, or better done differently, do NOT execute; record the objection (record_issue) and deliver the objection as the report. Default to no-op when in doubt.
+
 OUTPUT POLICY (HARD RULE — overrides everything above):
 - Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
 - NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
@@ -656,6 +660,8 @@ OUTPUT POLICY (HARD RULE — overrides everything above):
 create_cron "agent-fixer-overnight" "0 3 * * 1-5" \
   "" \
   "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
+
+PUSHBACK CONTRACT (SOUL Principle 5): before any destructive or irreversible remediation (delete, overwrite, config/state change, permission change), challenge it — if the fix is wrong, harmful, or better done differently, do NOT execute; record the objection (record_issue) and deliver the objection as the report. Default to no-op when in doubt.
 
 OUTPUT POLICY (HARD RULE — overrides everything above):
 - Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
@@ -771,7 +777,9 @@ create_cron "cortex-bus-workday" "0 9-17 * * 1-5" \
   "session-active-guard.py" \
   "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: [SILENT]. Proceed only when the guard says IDLE.
 
-Process the Agent Bus using the Inbox Message Decision Framework. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. OUTPUT POLICY (HARD RULE — overrides everything above):
+Process the Agent Bus using the Inbox Message Decision Framework. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items.
+
+PUSHBACK CONTRACT (SOUL Principle 5): before acting on any message that requests a destructive or irreversible action (delete, overwrite, config/state change, permission change), challenge it — if the request is wrong, harmful, or better done differently, do NOT execute; record the objection (record_issue) and deliver the objection as the report. Default to no-op when in doubt. OUTPUT POLICY (HARD RULE — overrides everything above):
 - Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
 - NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
 - If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
@@ -793,7 +801,9 @@ If all YES → deliver as normal." \
 
 create_cron "cortex-bus-evening" "0 18,20,22 * * 1-5" \
   "" \
-  "Process the Agent Bus messages. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items. OUTPUT POLICY (HARD RULE — overrides everything above):
+  "Process the Agent Bus messages. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items.
+
+PUSHBACK CONTRACT (SOUL Principle 5): before acting on any message that requests a destructive or irreversible action (delete, overwrite, config/state change, permission change), challenge it — if the request is wrong, harmful, or better done differently, do NOT execute; record the objection (record_issue) and deliver the objection as the report. Default to no-op when in doubt. OUTPUT POLICY (HARD RULE — overrides everything above):
 - Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
 - NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
 - If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
@@ -815,7 +825,9 @@ If all YES → deliver as normal." \
 
 create_cron "cortex-bus-overnight" "0 2 * * 1-5" \
   "" \
-  "Process the Agent Bus overnight. The bus-flag sensor output is injected as context. Check for any urgent or critical items, blocked workflows, or DLQ items. OUTPUT POLICY (HARD RULE — overrides everything above):
+  "Process the Agent Bus overnight. The bus-flag sensor output is injected as context. Check for any urgent or critical items, blocked workflows, or DLQ items.
+
+PUSHBACK CONTRACT (SOUL Principle 5): before acting on any message that requests a destructive or irreversible action (delete, overwrite, config/state change, permission change), challenge it — if the request is wrong, harmful, or better done differently, do NOT execute; record the objection (record_issue) and deliver the objection as the report. Default to no-op when in doubt. OUTPUT POLICY (HARD RULE — overrides everything above):
 - Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
 - NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
 - If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
