@@ -35,6 +35,7 @@ CRON_JOBS_FILE = Path(os.path.expanduser("~/.hermes/cron/jobs.json"))
 QUALITY_BLOCK_TOKEN = "QUALITY_G_BLOCKED"
 SILENT_TOKEN = "[SILENT]"
 MAX_CHARS = 12000  # local-agent-daily-news-brief targets ~7600 chars
+MIN_REPORT_CHARS = 100  # below this (non-MEDIA, non-skip) = token garbage
 SUSPICIOUS_UNICODE_RATIO = 0.30  # if >30% of chars are non-ASCII/control
 ACTIVE_MARKER = "ACTIVE ("  # session-active-guard output when interactive
 SKIP_TOKEN_MARKERS = ("skipped", "interactive session")  # normalised skip reply
@@ -196,6 +197,20 @@ def main() -> None:
         # Check 5: repetitive gibberish
         if _is_repetitive_gibberish(response):
             issues.append(f"\U0001f534 {name}: extremely repetitive content \u2014 possible gibberish")
+
+        # Check 5b: suspiciously short ASCII response (2026-08-10)
+        # deepseek-v4-flash once returned 40 chars of token garbage
+        # ("9oursucceeded 60 95 in 1 2") as a "successful" weekly eval.
+        # Legit short forms: [SILENT] (handled above), a MEDIA: file
+        # delivery, or the session-guard skip reply (handled below).
+        # Anything else under MIN_REPORT_CHARS is incoherent churn.
+        if not response.startswith("MEDIA:"):
+            if len(response) < MIN_REPORT_CHARS:
+                issues.append(
+                    f"\U0001f7e0 {name}: suspiciously short response "
+                    f"({len(response)} chars < {MIN_REPORT_CHARS}) "
+                    f"{response[:60]!r} \u2014 possible token garbage"
+                )
 
         # Check 6: session-guard skip contract
         # Guard said ACTIVE -> the ONLY valid reply is the skip token. Anything
