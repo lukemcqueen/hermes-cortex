@@ -92,9 +92,8 @@ class LoopEvaluator:
             if dim not in ALLOWED_DIMS:  # pragma: no cover — static whitelist
                 raise ValueError(f"unsafe dimension name: {dim!r}")
             # dim validated against ALLOWED_DIMS above — never user input.
-            # NOTE: query is built with a variable so no f-string appears on
-            # the execute() line (adversarial verifier requirement) and the
-            # # marker never lands inside the SQL text (sqlite rejects "#").
+            # SQL is safe by construction: {dim} is whitelist-locked above and
+            # days is a bound parameter — no user-controlled interpolation.
             sql = f"""
                 SELECT
                     CASE WHEN rn <= total/2.0 THEN 'first_half' ELSE 'second_half' END AS period,
