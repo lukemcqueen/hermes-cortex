@@ -869,10 +869,21 @@ def _check_manifest_drift(res):
   """
   try:
     import importlib.util
-    _spec = importlib.util.spec_from_file_location(
-        "cron_manifest", CORTEX_REPO / "ops" / "scripts" / "manage" / "cron_manifest.py")
+    # Prefer the deployed copy so the doctor checks the runtime artifact,
+    # not just the repo source; fall back to the repo.
+    _manifest_candidates = [
+        Path(__file__).resolve().parent / "cron_manifest.py",           # scripts/cortex_doctor/
+        Path(__file__).resolve().parent.parent / "manage" / "cron_manifest.py",  # scripts/manage/
+        CORTEX_REPO / "ops" / "scripts" / "manage" / "cron_manifest.py",
+    ]
+    _spec = None
+    for _cand in _manifest_candidates:
+        if _cand.exists():
+            _spec = importlib.util.spec_from_file_location("cron_manifest", _cand)
+            if _spec is not None and _spec.loader is not None:
+                break
     if _spec is None or _spec.loader is None:
-      raise ImportError("spec_from_file_location returned None")
+      raise ImportError("cron_manifest.py not found in deployed or repo location")
     _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
   except Exception as _e:

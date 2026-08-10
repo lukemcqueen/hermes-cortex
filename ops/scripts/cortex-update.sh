@@ -266,6 +266,7 @@ register "ops/scripts/health/check-external-services.sh"   "${CORTEX_DEPLOY_HOME
 register "ops/scripts/agent-secret-leak-watchdog.py"            "${CORTEX_DEPLOY_HOME}/scripts/agent-secret-leak-watchdog.py"
 register "ops/scripts/install-fallback-providers.py"    "${CORTEX_DEPLOY_HOME}/scripts/install-fallback-providers.py"
 register "ops/scripts/manage/cortex-doctor.py"        "${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py"
+register "ops/scripts/manage/cron_manifest.py"        "${CORTEX_DEPLOY_HOME}/scripts/manage/cron_manifest.py"
 register "ops/scripts/manage/cortex_doctor/__init__.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/__init__.py"
 register "ops/scripts/manage/cortex_doctor/bus_alert.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/bus_alert.py"
 register "ops/scripts/manage/cortex_doctor/checks.py"   "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/checks.py"
@@ -2652,8 +2653,12 @@ main() {
   # (Output captured to a var first — piping python to grep -q under
   # set -euo pipefail can SIGPIPE-abort the deploy on large output.)
   if command -v hermes &>/dev/null && [[ -f "${REPO_DIR:-$HOME/hermes-cortex}/ops/install/cron-manifest.yaml" ]]; then
-    local _manifest_out
-    _manifest_out="$(python3 "${REPO_DIR:-$HOME/hermes-cortex}/ops/scripts/manage/cron_manifest.py" --repair 2>/dev/null || true)"
+    local _manifest_out _manifest_script
+    _manifest_script="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}/scripts/manage/cron_manifest.py"
+    if [[ ! -f "$_manifest_script" ]]; then
+      _manifest_script="${REPO_DIR:-$HOME/hermes-cortex}/ops/scripts/manage/cron_manifest.py"
+    fi
+    _manifest_out="$(python3 "$_manifest_script" --repair 2>/dev/null || true)"
     if [[ "$_manifest_out" == *$'\n'UPDATED* || "$_manifest_out" == *$'\n'CREATED* || "$_manifest_out" == UPDATED* || "$_manifest_out" == CREATED* ]]; then
       info "Cron manifest: converged drifted crons to canonical state"
     else
