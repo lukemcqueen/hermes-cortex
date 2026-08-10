@@ -855,6 +855,56 @@ def check_crons(res):
 
   res.add("Crons total", "PASS" if len(registered) > 0 else "WARN", f"{len(registered)} jobs registered")
 
+  _check_manifest_drift(res)
+
+
+def _check_manifest_drift(res):
+  """2b. Manifest drift: every in-scope cron must match cron-manifest.yaml across ALL fields.
+
+  The manifest (ops/install/cron-manifest.yaml) is the canonical source of
+  truth — name, schedule (base + per-host stagger), script, prompt, skill,
+  deliver, workdir, no_agent, model, provider. Any field mismatch on a cron
+  whose scope applies to this host is a FAIL with the expected value, so
+  agents know exactly what to fix (or run: cron_manifest.py --repair).
+  """
+  try:
+    import importlib.util
+    _spec = importlib.util.spec_from_file_location(
+        "cron_manifest", CORTEX_REPO / "ops" / "scripts" / "manage" / "cron_manifest.py")
+    if _spec is None or _spec.loader is None:
+      raise ImportError("spec_from_file_location returned None")
+    _mod = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_mod)
+  except Exception as _e:
+    res.add("Cron manifest drift", "WARN",
+        f"could not load manifest module: {_e}",
+        "Check ops/scripts/manage/cron_manifest.py exists and imports cleanly")
+    return
+
+  try:
+    drifted, missing, orphans = _mod.check_drift()
+  except Exception as _e:
+    res.add("Cron manifest drift", "WARN", f"manifest check failed: {_e}",
+        "Run: python3 ~/hermes-cortex/ops/scripts/manage/cron_manifest.py --check")
+    return
+
+  if not drifted and not missing:
+    res.add("Cron manifest drift", "PASS",
+        f"all in-scope crons match manifest ({len(_mod.load_manifest())} declared)")
+  else:
+    for d in drifted[:5]:
+      res.add(f"Cron manifest drift ({d['name']})", "FAIL",
+          "; ".join(d["diffs"]),
+          "Run: python3 ~/hermes-cortex/ops/scripts/manage/cron_manifest.py --repair")
+    if len(drifted) > 5:
+      res.add(f"Cron manifest drift ({len(drifted)} total)", "FAIL",
+          f"{len(drifted)} crons drifted from manifest",
+          "Run: python3 ~/hermes-cortex/ops/scripts/manage/cron_manifest.py --repair")
+    for m in missing[:3]:
+      res.add(f"Cron manifest missing ({m.get('name')})", "FAIL",
+          "declared in manifest, absent from live jobs",
+          "Run: python3 ~/hermes-cortex/ops/scripts/manage/cron_manifest.py --repair")
+
 
 def check_scripts(res):
   """3. Script integrity: all scripts referenced by crons exist and match repo source."""

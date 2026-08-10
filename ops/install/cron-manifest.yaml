@@ -1,0 +1,864 @@
+version: 1
+crons:
+- name: agent-agents-md-prune-apply
+  scope: universal
+  schedule: 30 4 * * 1-6
+  script: ''
+  prompt: "Review the AGENTS.md pruning scan report injected below (via context_from=agents-md-prune-scan).\n\
+    If candidates exist and look correct, apply them by running:\n  python3 ~/.hermes-cortex/scripts/agents-doc-audit.py\
+    \ --repo ~/hermes-cortex --prune --apply\nThen commit and push the changes.\nIf no candidates (empty\
+    \ context) or you disagree with the recommendations, stay silent.\n\n## OUTPUT FORMAT \u2014 FOLLOW\
+    \ EXACTLY\nMatch this structure line for line. Your content replaces the values.\nEverything else\
+    \ stays: dashes, colons, spacing, line breaks.\n\nagents-md-prune-apply (JOB_ID) [YYYY-MM-DD HH:MM\
+    \ KST]\n-------------\n\nPhase 1 \u2014 Scan: 12 candidates found\nPhase 2 \u2014 Review: accepted\
+    \ 10 / rejected 2\nPhase 3 \u2014 Apply: 10 sections moved to docs/\n\n\U0001F4CA deepseek-v4-flash\
+    \ (opencode-zen) | $0.006/run \u2248 $0.18/mo\n\nIf nothing to apply: output exactly [SILENT]"
+  skill: documentation-scope
+  skills:
+  - documentation-scope
+  deliver: origin
+  workdir: '{{HOME}}'
+  no_agent: false
+  model: deepseek-chat
+  provider: deepseek
+- name: agent-agents-md-prune-scan
+  scope: universal
+  schedule: 0 4 * * 1-6
+  script: agent-agents-md-prune-scan.py
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-auto-save-sessions
+  scope: universal
+  schedule: every 360m
+  script: agent-auto-save-sessions.py
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-cron-quality-watchdog
+  scope: universal
+  schedule: '*/10 * * * *'
+  script: agent-cron-quality-watchdog.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-daily-bible-reading
+  scope: universal
+  schedule: 0 1 * * *
+  script: agent-daily-bible-reading.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: deepseek
+  provider: deepseek
+- name: agent-fixer-evening
+  scope: universal
+  schedule: 0 18,20,22 * * 1-5
+  script: ''
+  prompt: "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load\
+    \ the skill first, check for errors, fix, report.\n\nOUTPUT POLICY (HARD RULE \u2014 overrides everything\
+    \ above):\n- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical\
+    \ alert, or something you actually fixed or restored.\n- NEVER deliver status or ops narration: no\
+    \ \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment\
+    \ summaries, governance/cycle/cleanup reports, or \"here's my report\".\n- If nothing is actionable,\
+    \ reply with EXACTLY this single line and nothing else: [SILENT]\n- A real issue = a short, factual\
+    \ report of WHAT failed and WHAT you did. No preamble, no closing narrative."
+  skill: auto-remediation
+  skills:
+  - auto-remediation
+  deliver: origin
+  workdir: '{{HOME}}'
+  no_agent: false
+  model: deepseek-v4-flash
+  provider: deepseek
+- name: agent-fixer-overnight
+  scope: universal
+  schedule: 0 3 * * 1-5
+  script: ''
+  prompt: "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load\
+    \ the skill first, check for errors, fix, report.\n\nOUTPUT POLICY (HARD RULE \u2014 overrides everything\
+    \ above):\n- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical\
+    \ alert, or something you actually fixed or restored.\n- NEVER deliver status or ops narration: no\
+    \ \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment\
+    \ summaries, governance/cycle/cleanup reports, or \"here's my report\".\n- If nothing is actionable,\
+    \ reply with EXACTLY this single line and nothing else: [SILENT]\n- A real issue = a short, factual\
+    \ report of WHAT failed and WHAT you did. No preamble, no closing narrative."
+  skill: auto-remediation
+  skills:
+  - auto-remediation
+  deliver: origin
+  workdir: '{{HOME}}'
+  no_agent: false
+  model: deepseek-v4-flash
+  provider: deepseek
+- name: agent-fixer-workday
+  scope: universal
+  schedule: 0 9-17 * * 1-5
+  script: session-active-guard.py
+  prompt: "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an\
+    \ interactive session is running \u2014 SKIP this tick entirely: do not load skills, do not begin_change,\
+    \ do not touch the repo. Reply only: [SILENT]. Proceed only when the guard says IDLE.\n\nRespond in\
+    \ English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first,\
+    \ check for errors, fix, report.\n\nOUTPUT POLICY (HARD RULE \u2014 overrides everything above):\n\
+    - Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert,\
+    \ or something you actually fixed or restored.\n- NEVER deliver status or ops narration: no \"no issues\"\
+    , \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment\
+    \ summaries, governance/cycle/cleanup reports, or \"here's my report\".\n- If nothing is actionable,\
+    \ reply with EXACTLY this single line and nothing else: [SILENT]\n- A real issue = a short, factual\
+    \ report of WHAT failed and WHAT you did. No preamble, no closing narrative."
+  skill: auto-remediation
+  skills:
+  - auto-remediation
+  deliver: origin
+  workdir: '{{HOME}}'
+  no_agent: false
+  model: deepseek-v4-flash
+  provider: deepseek
+- name: agent-governance-auditor
+  scope: universal
+  schedule: 0 */6 * * *
+  script: agent-governance-auditor.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-hermes-cortex-sync
+  scope: universal
+  schedule: 33 22 * * *
+  script: agent-hermes-cortex-sync.sh
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-hermes-update
+  scope: universal
+  schedule: 23 22 * * *
+  script: agent-hermes-update.sh
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-ip-submission
+  scope: universal
+  schedule: '*/30 * * * *'
+  script: agent-ip-submission.sh
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-langfuse-health-watchdog
+  scope: universal
+  schedule: 0 * * * *
+  script: agent-langfuse-health-watchdog.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-learning-collector
+  scope: universal
+  schedule: 0 */6 * * *
+  script: agent-learning-collector.py
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-llm-judge-scorer-weekday
+  scope: universal
+  schedule: 0 12,20 * * 1-5
+  script: agent-llm-judge-scorer.py
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-llm-judge-scorer-weekend
+  scope: universal
+  schedule: 0 22 * * 0,6
+  script: agent-llm-judge-scorer.py
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-memory-pruning
+  scope: universal
+  schedule: 0 4 * * 1
+  script: ''
+  prompt: "Consolidate Hermes agent memory and project agent instructions. Read MEMORY.md, USER.md from\
+    \ the active profile and project roots. Consolidate into compact pointers. Prune stale entries. Keep\
+    \ under 2,200 chars.\n\n## OUTPUT FORMAT \u2014 FOLLOW EXACTLY\nMatch this structure line for line.\
+    \ Your content replaces the values.\nEverything else stays: dashes, colons, spacing, line breaks.\n\
+    \nmemory-pruning (JOB_ID) [YYYY-MM-DD HH:MM KST]\n-------------\n\nPhase 1 \u2014 Memory read: MEMORY.md\
+    \ at 1,850 chars (12 entries), USER.md at 890 chars (8 entries)\n- Found 3 stale entries (dated 2026-06-15\
+    \ or earlier, no longer referenced in recent sessions)\n- Found 2 verbose entries that could be consolidated\n\
+    \nPhase 2 \u2014 Pruning applied: Removed 3 stale entries (185 chars freed)\n- Consolidated 2 tool-quirk\
+    \ entries into 1 compact pointer\n- Merged 2 user-preference entries into 1\n- Final MEMORY.md: 1,420\
+    \ chars (within 2,200 limit)\n\nPhase 3 \u2014 USER.md: No changes needed \u2014 all 8 entries still\
+    \ current\n\nResult: Memory consolidated. 3 stale entries pruned, 2 merged. Under limit.\n\n\U0001F4CA\
+    \ deepseek-v4-flash (opencode-zen) | $0.006/run \u2248 $2.18/mo\n\nIf nothing to report: output exactly\
+    \ [SILENT]"
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: false
+  model: deepseek-v4-flash
+  provider: deepseek
+- name: agent-memory-to-brain-sync
+  scope: universal
+  schedule: 0 */6 * * *
+  script: agent-memory-to-brain-sync.py
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-message-handler
+  scope: universal
+  schedule: '*/5 * * * *'
+  script: agent-message-handler.py
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-model-health-watchdog
+  scope: universal
+  schedule: 0 7 * * *
+  script: agent-model-health-watchdog.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-mycortex-dream-monthly
+  scope: opt-in
+  opt_in_marker: state/dream-layer-installed
+  schedule: 0 3 1 * *
+  script: ''
+  prompt: "You are the monthly mycortex dream arc \u2014 Tier 3 of the dream layer. The mycortex knowledge\
+    \ brain indexes markdown across the fleet. Your job: the time-lapse view \u2014 how the work evolved\
+    \ this month, what scale grew, and what the brain is missing.\n\n## Steps\n1. TIME-LAPSE: `git -C\
+    \ ~/hermes-cortex log --oneline --since=\"30 days\" | wc -l` for the month's commit count; `git -C\
+    \ ~/hermes-cortex log --oneline --since=\"30 days\" | head -30` to see the work arc; `ls ~/brain/lessons/\
+    \ | wc -l` for lesson scale; `mycortex stats` for brain scale\n2. `mycortex list -n 30` \u2014 what's\
+    \ fresh; pick 3-5 pages that capture the month's themes\n3. KNOWLEDGE-GAP PROBE: take 3-5 topics the\
+    \ month's work clearly touched (from the git log themes) and run `mycortex search \"<topic>\" --limit\
+    \ 3` for each. Topics with zero or weak results become explicit flags: \"the brain knows nothing about\
+    \ X yet.\"\n4. Write a ~300-word monthly arc: the shape of the month, the scale numbers, the gaps\
+    \ found. Reference 2-3 prior dreams from the INDEX.\n5. WRITE-BACK (mandatory): create `~/brain/<profile>/dreams/`\
+    \ if missing, write_file `~/brain/<profile>/dreams/YYYY-MM-monthly.md`, then append `YYYY-MM | <title>\
+    \ | <one-line summary>` to `~/brain/<profile>/dreams/INDEX.md` (create if missing). PROFILE name \u2014\
+    \ NOT hostname (tenant boundary): check HERMES_PROFILE env, then AGENT_NAME env, then hostname \u2014\
+    \ NEVER scan ~/.hermes/profiles/*/ (the first entry alphabetically is NOT the active profile; observed\
+    \ 2026-08-06: 'personal' dir exists but the session runs as esther).\n\nReal numbers only \u2014 every\
+    \ count from an actual command. Real connections only \u2014 never fabricate. If the brain is genuinely\
+    \ empty, output exactly [SILENT].\n\n## OUTPUT FORMAT \u2014 FOLLOW EXACTLY\nMatch this structure\
+    \ line for line. Your content replaces the values. Everything else stays: dashes, colons, spacing,\
+    \ line breaks.\n\nagent-mycortex-dream-monthly (JOB_ID) [YYYY-MM-DD HH:MM KST]\n-------------\n\n\
+    Phase 1 \u2014 Time-lapse: 142 commits this month\n- Work arc: cron delivery fixes \u2192 governance\
+    \ hardening \u2192 dream layer build\n- Lessons grew 631 \u2192 645; brain grew 1681 pages / 29615\
+    \ chunks\n\nPhase 2 \u2014 Month themes: 3 captured in fresh pages\n- Delivery discipline (explicit\
+    \ telegram targets)\n- Governance sizing (one cycle = one deliverable)\n- Knowledge brain self-construction\
+    \ (mycortex + dreams)\n\nPhase 3 \u2014 Knowledge gaps: 2 topics the work touched but the brain has\
+    \ nothing on\n- [gap] theme-of-the-month-alpha \u2014 zero strong hits\n- [gap] theme-of-the-month-beta\
+    \ \u2014 weak hits only\n\nPhase 4 \u2014 Monthly dream:\nThe month's arc is the fleet learning to\
+    \ close its own feedback loops \u2014 every fix this month made the next failure louder and the next\
+    \ lesson more reusable. The gaps are the honest edges: what we did but haven't yet understood well\
+    \ enough to write down.\n\nPhase 5 \u2014 Written back: ~/brain/esther/dreams/2026-08-monthly.md (+\
+    \ INDEX appended)\n\nResult: 1 monthly arc written to brain and delivered.\n\n\U0001F4CA deepseek-v4-flash\
+    \ (deepseek) | $0.006/run \u2248 $0.01/mo"
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: false
+  model: deepseek-chat
+  provider: deepseek
+- name: agent-mycortex-dream-nightly
+  scope: opt-in
+  opt_in_marker: state/dream-layer-installed
+  schedule: 0 3 * * *
+  script: ''
+  prompt: "You are the nightly mycortex dream digest \u2014 Tier 1 of the dream layer. The mycortex knowledge\
+    \ brain indexes markdown across the fleet. Your job: surface what the brain noticed today AND write\
+    \ the dream back into the brain so it accumulates.\n\n## Steps\n1. `mycortex list -n 20` \u2014 see\
+    \ what's fresh across the brain (recently synced pages with timestamps)\n2. Use session_search to\
+    \ find today's sessions \u2014 what was actually worked on today\n3. Pick 2-3 pages/sessions that\
+    \ seem related or interesting; run `mycortex search \"<shared topic>\" --limit 3` to find the connection\n\
+    4. Write a short, warm digest (~100-150 words): the insight, pattern, or connection \u2014 the brain\
+    \ telling you something interesting\n5. WRITE-BACK (mandatory): determine your PROFILE name (NOT hostname\
+    \ \u2014 profile is the tenant boundary: check HERMES_PROFILE env, then AGENT_NAME env, then hostname\
+    \ \u2014 NEVER scan ~/.hermes/profiles/*/ (the first entry alphabetically is NOT the active profile;\
+    \ observed 2026-08-06: 'personal' dir exists but the session runs as esther)). Create `~/brain/<profile>/dreams/`\
+    \ if missing, then write_file `~/brain/<profile>/dreams/YYYY-MM-DD.md` containing the digest. Then\
+    \ append a one-line entry to `~/brain/<profile>/dreams/INDEX.md` (create if missing) in format: `YYYY-MM-DD\
+    \ | <short title> | <one-line summary>`.\n6. Before writing, read `~/brain/<profile>/dreams/INDEX.md`\
+    \ if it exists and reference 1-2 prior dreams in your digest when natural (the brain remembering its\
+    \ own dreaming).\n\nReal connections only \u2014 never fabricate page relationships; every claimed\
+    \ link must come from an actual mycortex search result or session. If the brain is genuinely empty\
+    \ (no pages, no sessions), output exactly [SILENT].\n\n## OUTPUT FORMAT \u2014 FOLLOW EXACTLY\nMatch\
+    \ this structure line for line. Your content replaces the values. Everything else stays: dashes, colons,\
+    \ spacing, line breaks.\n\nagent-mycortex-dream-nightly (JOB_ID) [YYYY-MM-DD HH:MM KST]\n-------------\n\
+    \nPhase 1 \u2014 Fresh pages: 3 pages surfaced from the brain\n- ops/scripts/agent/agents-doc-audit.py\
+    \ (2026-08-05 20:01)\n- docs/cron-schedules.md (2026-08-06 09:00)\n- skills/devops/mycortex/SKILL.md\
+    \ (2026-08-05 23:46)\n\nPhase 2 \u2014 Today's work: 2 sessions synthesized\n- Threat-pipeline delivery\
+    \ fix (origin=null silent-cron bug)\n- Mycortex dream layer build (3-tier design)\n\nPhase 3 \u2014\
+    \ Dream digest:\nToday the brain was thinking about keeping itself honest \u2014 the doc-audit work\
+    \ and the cron delivery fixes are two halves of the same habit: nothing stale survives. Yesterday's\
+    \ dream noted the same theme \u2014 the thread is holding.\n\nPhase 4 \u2014 Written back: ~/brain/esther/dreams/2026-08-06.md\
+    \ (+ INDEX appended)\n\nResult: 1 dream written to brain and delivered.\n\n\U0001F4CA deepseek-v4-flash\
+    \ (deepseek) | $0.006/run \u2248 $0.18/mo"
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: false
+  model: deepseek-chat
+  provider: deepseek
+- name: agent-mycortex-dream-weekly
+  scope: opt-in
+  opt_in_marker: state/dream-layer-installed
+  schedule: 0 3 * * 6
+  script: ''
+  prompt: "You are the weekly deep mycortex dream \u2014 Tier 2 of the dream layer. The mycortex knowledge\
+    \ brain indexes markdown across the fleet. Your job: find the connections the week's work created\
+    \ that nobody has noticed, synthesize the week's saved lessons, and write the dream back into the\
+    \ brain.\n\n## Steps\n1. `mycortex list -n 30` \u2014 see what's fresh across the brain this week\n\
+    2. Pick 3-5 pages that seem related or interesting (different sources preferred); for each pair run\
+    \ `mycortex search \"<shared topic>\" --limit 3` to map connections\n3. LESSON SYNTHESIS: `ls ~/brain/lessons/\
+    \ | tail -20` to find this week's lesson files (dated this week), read 3-5 of them, and identify the\
+    \ recurring pattern \u2014 what class of mistake/lesson keeps appearing. Name it explicitly.\n4. SCRIPTURE\
+    \ CONNECTION: if `~/brain/<profile>/bible/` exists (profile name \u2014 NOT hostname: check HERMES_PROFILE\
+    \ env, then AGENT_NAME env, then hostname \u2014 NEVER scan ~/.hermes/profiles/*/ (the first entry\
+    \ alphabetically is NOT the active profile; observed 2026-08-06: 'personal' dir exists but the session\
+    \ runs as esther)), read `~/brain/<profile>/bible/INDEX.md` and the most recent book file; connect\
+    \ the week's scripture insight to the week's actual work themes. If no bible dir exists, skip this\
+    \ step gracefully (do NOT fail \u2014 this keeps the dream portable to all agents).\n5. Write a warm\
+    \ ~200-250 word dream: the insight, the pattern, the thread that ties the week together.\n6. WRITE-BACK\
+    \ (mandatory): create `~/brain/<profile>/dreams/` if missing, write_file `~/brain/<profile>/dreams/YYYY-MM-DD-weekly.md`,\
+    \ then append `YYYY-MM-DD | <title> | <one-line summary>` to `~/brain/<profile>/dreams/INDEX.md` (create\
+    \ if missing).\n7. Read the INDEX first and reference prior dreams when natural.\n\nReal connections\
+    \ only \u2014 never fabricate relationships. Every claimed link must come from an actual mycortex\
+    \ search result or file read. If the brain is genuinely empty, output exactly [SILENT].\n\n## OUTPUT\
+    \ FORMAT \u2014 FOLLOW EXACTLY\nMatch this structure line for line. Your content replaces the values.\
+    \ Everything else stays: dashes, colons, spacing, line breaks.\n\nagent-mycortex-dream-weekly (JOB_ID)\
+    \ [YYYY-MM-DD HH:MM KST]\n-------------\n\nPhase 1 \u2014 Fresh pages: 5 pages surfaced from the week\n\
+    - ops/scripts/manage/agent-nginx-threat-pipeline.sh (2026-08-06 05:00)\n- docs/cron-schedules.md (2026-08-06\
+    \ 09:00)\n- skills/devops/mycortex/SKILL.md (2026-08-05 23:46)\n- docs/design/mycortex-DESIGN.md (2026-08-05\
+    \ 23:40)\n- docs/design/mycortex-dream-layer.md (2026-08-06 09:30)\n\nPhase 2 \u2014 Connections mapped:\
+    \ 3 threads linking the week's work\n- Thread 1: delivery discipline \u2014 cron targets and threat\
+    \ reports converged on visibility\n- Thread 2: the brain's own story \u2014 mycortex design + dream\
+    \ layer built together\n- Thread 3: hygiene as habit \u2014 stale-ref watchdog + doc audit enforce\
+    \ freshness\n\nPhase 3 \u2014 Lessons synthesized: 3 of this week's lessons share one root\n- Governance\
+    \ cycle sizing (bundled 4 deliverables \u2192 push cascade)\n- Silent cron delivery (origin=null)\n\
+    - Both are the same class: task too big, feedback too late\n\nPhase 4 \u2014 Scripture connection\
+    \ (if bible dir exists): this week's reading on faithfulness met the lesson-synthesis finding \u2014\
+    \ consistency over intensity.\n\nPhase 5 \u2014 Dream:\nThis week the brain kept circling one idea:\
+    \ a system is only as alive as its feedback loops. The threat pipeline now reports where it used to\
+    \ whisper; the knowledge brain indexes the very docs that describe it. The recurring lesson \u2014\
+    \ split the work, keep the loop tight \u2014 is the same lesson the week's scripture carried.\n\n\
+    Phase 6 \u2014 Written back: ~/brain/esther/dreams/2026-08-08-weekly.md (+ INDEX appended)\n\nResult:\
+    \ 1 weekly dream written to brain and delivered.\n\n\U0001F4CA deepseek-v4-flash (deepseek) | $0.006/run\
+    \ \u2248 $0.03/wk"
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: false
+  model: deepseek-chat
+  provider: deepseek
+- name: agent-mycortex-retention
+  scope: universal
+  schedule: 0 6 * * *
+  script: agent-mycortex-retention.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-mycortex-sync
+  scope: universal
+  schedule: '*/15 * * * *'
+  script: agent-mycortex-sync.sh
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-nginx-threat-pipeline
+  scope: universal
+  schedule: 0 5 * * *
+  script: agent-nginx-threat-pipeline.sh
+  prompt: ''
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-no-verify-audit
+  scope: universal
+  schedule: '*/10 * * * *'
+  script: manage/agent-no-verify-audit.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-offline-code-index
+  scope: universal
+  schedule: 0 5 * * 0
+  script: agent-offline-code-index.sh
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-push-metrics
+  scope: universal
+  schedule: every 5m
+  script: agent-push-metrics.sh
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-remediate-apply
+  scope: universal
+  schedule: '*/10 * * * *'
+  script: agent-remediate-apply.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-remediation-sensor
+  scope: universal
+  schedule: '*/5 * * * *'
+  script: agent-remediation-sensor.py
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-scoring-activity-watchdog
+  scope: universal
+  schedule: 0 14,20 * * *
+  script: agent-scoring-activity-watchdog.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-secret-leak-watchdog
+  scope: universal
+  schedule: 0 */4 * * *
+  script: agent-secret-leak-watchdog.py
+  prompt: Scans cron outputs and session files for printf/echo credential leaks
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-service-recovery
+  scope: universal
+  schedule: '*/5 * * * *'
+  script: agent-service-recovery.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-session-cache-build
+  scope: universal
+  schedule: 0 5 * * 1
+  script: agent-session_cache.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-session-correction-scan
+  scope: universal
+  schedule: 0 22 * * 0
+  script: manage/agent-session-correction-scan.py
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-session-mine
+  scope: universal
+  schedule: 0 2 * * *
+  script: agent-session-mine-cron.py
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-stale-ref-watchdog
+  scope: universal
+  schedule: 0 5 * * *
+  script: manage/agent-stale-ref-watchdog.sh
+  prompt: stale-ref-watchdog -- nightly stale-path scan across all deploy layers
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-swap-refresh
+  scope: universal
+  schedule: 0 5 * * *
+  script: agent-swap-refresh.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-system-alert-watchdog
+  scope: universal
+  schedule: '*/30 * * * *'
+  script: agent-system-alert-watchdog.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: cortex-bus-evening
+  scope: universal
+  schedule: 0 18,20,22 * * 1-5
+  script: ''
+  prompt: "Process the Agent Bus messages. The bus-flag sensor output is injected as context. Check for\
+    \ any pending messages, urgent or critical items, blocked workflows, or DLQ items. OUTPUT POLICY (HARD\
+    \ RULE \u2014 overrides everything above):\n- Deliver ONLY when there is a REAL issue: a failure,\
+    \ a blocked/failed workflow, a critical alert, or something you actually fixed or restored.\n- NEVER\
+    \ deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing\
+    \ to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports,\
+    \ or \"here's my report\".\n- If nothing is actionable, reply with EXACTLY this single line and nothing\
+    \ else: [SILENT]\n- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble,\
+    \ no closing narrative.\n\n## QUALITY GATE \u2014 MANDATORY SELF-CHECK (run BEFORE delivering)\n1.\
+    \ Is the output useful, readable, and on-topic for this cron?\n2. Did you run real tools instead of\
+    \ fabricating results?\n3. Is it the right length (not a stray word, not oversized, not empty)?\n\
+    4. Is it in English and in the correct format?\nIf ANY answer is NO \u2192 output EXACTLY this one\
+    \ line and nothing else: QUALITY_G_BLOCKED\nIf all YES \u2192 deliver as normal."
+  skill: cortex-bus-automation
+  skills:
+  - cortex-bus-automation
+  deliver: origin
+  workdir: ''
+  no_agent: false
+  model: deepseek-chat
+  provider: deepseek
+- name: cortex-bus-failover-watchdog
+  scope: universal
+  schedule: '*/5 * * * *'
+  script: cortex-bus-failover-watchdog.py
+  prompt: ''
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: cortex-bus-overnight
+  scope: universal
+  schedule: 0 2 * * 1-5
+  script: ''
+  prompt: "Process the Agent Bus overnight. The bus-flag sensor output is injected as context. Check for\
+    \ any urgent or critical items, blocked workflows, or DLQ items. OUTPUT POLICY (HARD RULE \u2014 overrides\
+    \ everything above):\n- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow,\
+    \ a critical alert, or something you actually fixed or restored.\n- NEVER deliver status or ops narration:\
+    \ no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices,\
+    \ scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".\n- If nothing\
+    \ is actionable, reply with EXACTLY this single line and nothing else: [SILENT]\n- A real issue =\
+    \ a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative.\n\n\
+    ## QUALITY GATE \u2014 MANDATORY SELF-CHECK (run BEFORE delivering)\n1. Is the output useful, readable,\
+    \ and on-topic for this cron?\n2. Did you run real tools instead of fabricating results?\n3. Is it\
+    \ the right length (not a stray word, not oversized, not empty)?\n4. Is it in English and in the correct\
+    \ format?\nIf ANY answer is NO \u2192 output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED\n\
+    If all YES \u2192 deliver as normal."
+  skill: cortex-bus-automation
+  skills:
+  - cortex-bus-automation
+  deliver: origin
+  workdir: ''
+  no_agent: false
+  model: deepseek-chat
+  provider: deepseek
+- name: cortex-bus-workday
+  scope: universal
+  schedule: 0 9-17 * * 1-5
+  script: session-active-guard.py
+  prompt: "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an\
+    \ interactive session is running \u2014 SKIP this tick entirely. Call NO tools, load NO skills, open\
+    \ NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: [SILENT]. Proceed\
+    \ only when the guard says IDLE.\n\nProcess the Agent Bus using the Inbox Message Decision Framework.\
+    \ The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical\
+    \ items, blocked workflows, or DLQ items. OUTPUT POLICY (HARD RULE \u2014 overrides everything above):\n\
+    - Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert,\
+    \ or something you actually fixed or restored.\n- NEVER deliver status or ops narration: no \"no issues\"\
+    , \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment\
+    \ summaries, governance/cycle/cleanup reports, or \"here's my report\".\n- If nothing is actionable,\
+    \ reply with EXACTLY this single line and nothing else: [SILENT]\n- A real issue = a short, factual\
+    \ report of WHAT failed and WHAT you did. No preamble, no closing narrative.\n\n## QUALITY GATE \u2014\
+    \ MANDATORY SELF-CHECK (run BEFORE delivering)\n1. Is the output useful, readable, and on-topic for\
+    \ this cron?\n2. Did you run real tools \u2014 or reply with the exact guard skip token \u2014 instead\
+    \ of fabricating?\n3. Is it the right length (not a stray word, not oversized, not empty)?\n4. Is\
+    \ it in English and in the correct format?\nIf ANY answer is NO \u2192 output EXACTLY this one line\
+    \ and nothing else: QUALITY_G_BLOCKED\nIf all YES \u2192 deliver as normal."
+  skill: cortex-bus-automation
+  skills:
+  - cortex-bus-automation
+  deliver: origin
+  workdir: ''
+  no_agent: false
+  model: deepseek-chat
+  provider: deepseek
+- name: orch-bus-audit-watchdog
+  scope: orchestrator
+  schedule: '*/1 * * * *'
+  script: orch-bus-audit-watchdog.py
+  prompt: ''
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: orch-bus-confirmation-alert
+  scope: orchestrator
+  schedule: every 60m
+  script: orch-bus-confirmation-alert.sh
+  prompt: alert
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: orch-bus-confirmation-poller
+  scope: orchestrator
+  schedule: every 10m
+  script: orch-bus-confirmation-poller.py
+  prompt: poll
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: orch-bus-forwarder-sync
+  scope: orchestrator
+  schedule: '*/2 * * * *'
+  script: orch-bus-forwarder.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: orch-bus-inbox-relay
+  scope: orchestrator
+  schedule: '*/5 * * * *'
+  script: orch-bus-inbox-relay.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: orch-bus-recover-timeouts
+  scope: orchestrator
+  schedule: '*/5 * * * *'
+  script: orch-bus-recover-timeouts.sh
+  prompt: Recover stuck processing messages from the bus Postgres database every 5 minutes
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: orch-clean-health-queue
+  scope: orchestrator
+  schedule: '*/10 * * * *'
+  script: orch-clean-health-queue.py
+  prompt: Drain and archive health pings from inbox_health_check. Archives old pings and reports count.
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: orch-daily-regression-gate
+  scope: orchestrator
+  schedule: 15 3 * * *
+  script: orch-daily-regression-gate.sh
+  prompt: ''
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: orch-fleet-watchdog
+  scope: orchestrator
+  schedule: '*/5 * * * *'
+  script: orch-fleet-watchdog.py
+  prompt: ''
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: orch-health-report-saturday
+  scope: orchestrator
+  schedule: 0 11,17 * * 6
+  script: orch-health-report.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: orch-health-report-weekday
+  scope: orchestrator
+  schedule: 0 9-18 * * 1-5
+  script: orch-health-report.py
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: orch-skill-evaluate
+  scope: orchestrator
+  schedule: 0 9 * * 2
+  script: orch-skill-evaluate.sh
+  prompt: 'You are running a scheduled skill evaluation cron for the orchestrator.
+
+
+    Your job is to:
+
+    1. Run orch-skill-report-process.py to collect any pending skill reports
+
+    2. For each reported custom skill, evaluate its quality, relevance, and whether it should be upstreamed
+    to the repo
+
+    3. Report findings on what was evaluated and what was decided'
+  skill: skill-vetting
+  skills:
+  - skill-vetting
+  deliver: origin
+  workdir: ''
+  no_agent: false
+  model: deepseek-v4-flash
+  provider: deepseek
+- name: orch-skill-lifecycle
+  scope: orchestrator
+  schedule: 0 4 * * *
+  script: ''
+  prompt: "Load the orch-skill-lifecycle skill and follow the three-phase pipeline. Run the complete skill\
+    \ lifecycle for today.\n\nPhase 1 \u2014 Collection:\n1. Read inbox_orchestrator PGMQ queue (the shared\
+    \ orchestrator inbox \u2014 where agents send reports) for ALL agent reports:\n   - \"Learning Report:\"\
+    \ from agent-learning-collector (skills delta, lessons, session stats \u2014 every 6h)\n2. Check git\
+    \ log for self-improvement patterns needing broader consolidation\n3. Scan skill inventory for stale/modified\
+    \ skills\n4. Cross-reference reports across agents for consolidation candidates\n\nPhase 2 \u2014\
+    \ Evaluation:\nFor each item found, classify it. Deduplicate against existing skills. Cross-reference\
+    \ across agents \u2014 if 3 agents report the same fix, it's a consolidation candidate. If today is\
+    \ Monday, run the full deep evaluation pass.\n\nPhase 3 \u2014 Upgrade:\nExecute approved actions:\
+    \ patch skills via skill_manage, create new ones, prune stale ones, update SOUL.md with principles,\
+    \ upstream new skills to the repo, archive processed bus messages.\n\nIf nothing changed: output exactly\
+    \ [SILENT]"
+  skill: orch-skill-lifecycle
+  skills:
+  - orch-skill-lifecycle
+  deliver: origin
+  workdir: ''
+  no_agent: false
+  model: deepseek-v4-flash
+  provider: deepseek
+- name: orch-skill-report-request
+  scope: orchestrator
+  schedule: 0 2 * * 1
+  script: orch-skill-report-request.sh
+  prompt: ''
+  skill: ''
+  deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''

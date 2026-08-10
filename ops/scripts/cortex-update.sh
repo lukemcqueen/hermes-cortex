@@ -2642,6 +2642,25 @@ main() {
     info "Hermes not found — skip cron install (run install-crons.sh after Hermes setup)"
   fi
 
+  # ── Cron manifest auto-repair ──────────────────────────────
+  # cron-manifest.yaml is the canonical source of truth for every fleet cron
+  # (name, schedule, script, prompt, skill, deliver, workdir, no_agent, model,
+  # provider, scope). The installers above create missing crons; this pass
+  # converges ALL in-scope crons to the manifest across every field — so a
+  # per-cron model switch (e.g. thinking→non-thinking), prompt fix, or schedule
+  # change in the manifest reaches live jobs automatically on every update.
+  # (Output captured to a var first — piping python to grep -q under
+  # set -euo pipefail can SIGPIPE-abort the deploy on large output.)
+  if command -v hermes &>/dev/null && [[ -f "${REPO_DIR:-$HOME/hermes-cortex}/ops/install/cron-manifest.yaml" ]]; then
+    local _manifest_out
+    _manifest_out="$(python3 "${REPO_DIR:-$HOME/hermes-cortex}/ops/scripts/manage/cron_manifest.py" --repair 2>/dev/null || true)"
+    if [[ "$_manifest_out" == *$'\n'UPDATED* || "$_manifest_out" == *$'\n'CREATED* || "$_manifest_out" == UPDATED* || "$_manifest_out" == CREATED* ]]; then
+      info "Cron manifest: converged drifted crons to canonical state"
+    else
+      info "Cron manifest: all in-scope crons already match"
+    fi
+  fi
+
   # ── LLM cron inactivity timeout ───────────────────────────
   # Ensures HERMES_CRON_TIMEOUT (fleet default 600s) is applied to the
   # gateway service: systemd drop-in on Linux, ~/.hermes/.env on macOS.

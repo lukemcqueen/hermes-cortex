@@ -373,8 +373,35 @@ PYEOF
 # ── Pin Model/Provider ────────────────────────────────────
 # The hermes CLI doesn't support --model/--provider flags, so we
 # patch the jobs.json directly after creating an LLM cron.
+# Manifest-aware: cron-manifest.yaml declares per-cron model/provider
+# (thinking vs non-thinking). When a manifest entry exists for this cron,
+# its model/provider WIN over the global $LLM_CRON_MODEL fallback — so a
+# per-cron model switch in the manifest is never reverted by a re-install.
 pin_cron_model() {
   local name="$1" model="$2" provider="$3"
+  local _mf="${CORTEX_REPO:-$HOME/hermes-cortex}/ops/install/cron-manifest.yaml"
+  if [[ -f "$_mf" ]]; then
+    local _mp
+    _mp="$(python3 -c "
+import sys
+try:
+    import yaml
+    doc = yaml.safe_load(open('$_mf'))
+    for c in doc.get('crons', []):
+        if c.get('name') == '$name':
+            sys.stdout.write((c.get('model') or '') + '\x1f' + (c.get('provider') or ''))
+            break
+except Exception:
+    pass
+" 2>/dev/null || true)"
+    if [[ -n "$_mp" && "$_mp" != $'\x1f' ]]; then
+      local _m_model _m_provider
+      _m_model="${_mp%%$'\x1f'*}"
+      _m_provider="${_mp#*$'\x1f'}"
+      [[ -n "$_m_model" ]] && model="$_m_model"
+      [[ -n "$_m_provider" ]] && provider="$_m_provider"
+    fi
+  fi
   if [[ -z "$model" && -z "$provider" ]]; then
     return 0
   fi
