@@ -913,7 +913,7 @@ rm -rf ~/.hermes-cortex/skills
 ln -s ~/.hermes/skills ~/.hermes-cortex/skills
 
 # 3. Verify with cortex-update
-bash ~/.hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 # Expected output: "Skills: N updated, M unchanged"
 ```
 

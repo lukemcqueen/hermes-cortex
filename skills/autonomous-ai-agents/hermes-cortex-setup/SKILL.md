@@ -536,9 +536,9 @@ The `install-crons.sh` script in the repo installs the universal crons listed in
 mkdir -p ~/.hermes-cortex/scripts
 mkdir -p ~/.hermes/scripts
 
-for script in system-alert-watchdog.py service-recovery.py model-health-watchdog.py \
- remediation-sensor.py governance-auditor.py memory-to-brain-sync.py \
- agent-apply-fixes.py nginx-threat-pipeline.sh \
+for script in agent-system-alert-watchdog.py agent-service-recovery.py agent-model-health-watchdog.py \
+ agent-remediation-sensor.py agent-governance-auditor.py agent-memory-to-brain-sync.py \
+ agent-apply-fixes.py agent-nginx-threat-pipeline.sh \
  agent-ip-submission.sh; do
  repo_path=$(find ~/hermes-cortex/ops/scripts -name "$script" 2>/dev/null | head -1)
  if [ -n "$repo_path" ]; then
@@ -559,7 +559,7 @@ done
   Failed to create job: Script path escapes the scripts directory via traversal: 'foo.py'
   ```
 
-Always use `cp` (real file copy) and pass just the filename (e.g. `remediation-sensor.py`), never `~/hermes-cortex/...` or a symlink.
+Always use `cp` (real file copy) and pass just the filename (e.g. `agent-remediation-sensor.py`), never `~/hermes-cortex/...` or a symlink.
 
 **Pitfall — cron scripts import helper modules from the same directory.** Several cron scripts import utility modules as peer imports (`from hermes_tz import ...`, `from platform_utils import ...`, `from state_tracker import ...`, `from hermes_models import ...`). When you copy scripts to `~/.hermes-cortex/scripts/` or `~/.hermes/scripts/`, these helper modules must be copied alongside:
 

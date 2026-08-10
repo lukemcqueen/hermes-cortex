@@ -115,8 +115,10 @@ The `0` value is supported by `health-vector.py`'s check functions. Each
 per-service check now uses `shutil.which()` to detect if the binary exists
 before probing for the running process — returns `0` if not found.
 
-`health-server.py` (FastAPI variant) still only returns `1` or `-1` since it
-aggregates checks per-machine where all services should be present.
+`health-server.py` (FastAPI variant, **removed in commit `42fb8374`**) still only
+returned `1` or `-1` since it aggregated checks per-machine where all services
+should be present. Only `health-vector.py` is deployed — see the retired-server
+note in the diagnostics section below.
 
 ### Legacy Health Vector Format (NOT DEPLOYED) — 8-element `v` array
 
@@ -307,9 +309,19 @@ Each check function probes for the service:
 - **Docker**: `dockerd` process or `/var/run/docker.sock`
 - **Hermes Gateway**: `pgrep -f "gateway run"`
 
-### `health-server.py` — Structured Logging & Diagnostics
+### `health-server.py` — RETIRED (removed commit `42fb8374`)
 
-As of July 2026, `health-server.py` has structured logging with per-request timing.
+> ⚠️ **This server is retired.** The FastAPI `health-server.py` was removed from
+> the repo in July 2026 (commit `42fb8374`); `health-vector.py` via
+> `health-vector.service` is the **only** deployed health server. The log-format
+> reference below is kept for reading HISTORICAL journal logs from before the
+> removal — it does not describe the current `health-vector.py` (which logs
+> minimally). Diagnostic procedure for the CURRENT server: check the
+> `health-vector.service` unit and its journal instead
+> (`systemctl --user status health-vector.service`,
+> `journalctl --user -u health-vector.service`).
+
+As of July 2026, the retired `health-server.py` had structured logging with per-request timing.
 Every request writes a line to stdout (captured by systemd journal) showing each
 check's duration:
 
@@ -354,9 +366,10 @@ systemctl --user show com.hermes.health-server.service -p NRestarts
 journalctl --user -u com.hermes.health-server.service --since "1 hour ago" --no-pager | grep -E "STARTING|SHUTDOWN|CHECK FAILED|DEADLINE"
 ```
 
-**Key diagnostic procedure when a health endpoint times out:**
+**Key diagnostic procedure (RETIRED server, historical):** when the retired
+health endpoint timed out:
 
-1. Check if process is running: `systemctl --user status com.hermes.health-server.service`
+1. Check if process is running: `systemctl --user status com.hermes.health-server.service` (historical — the CURRENT unit is `health-vector.service`)
 2. Read recent logs for DEADLINE EXCEEDED lines — they tell you which check is hanging
 3. Look for CHECK FAILED lines with tracebacks — crash evidence
 4. Check if OOM-killed: `dmesg | grep -i "health-server" | grep -i "killed"`
@@ -607,25 +620,28 @@ Copy the script to `~/.hermes/scripts/` first. See AGENTS.md for full setup.
    ```
    Replace `<PORT>` with the agent's assigned port from the table above.
 
-2. **Install the health-server as a systemd user service** (Linux):
+2. **Install the health server as a systemd user service** (Linux) — the current
+   server is `health-vector.py`; the unit template ships in the repo:
    ```bash
-   cp ~/hermes-cortex/ops/scripts/com.hermes.health-server.service ~/.config/systemd/user/
+   cp ~/hermes-cortex/docs/templates/health-vector.service ~/.config/systemd/user/
    systemctl --user daemon-reload
-   systemctl --user enable --now com.hermes.health-server.service
+   systemctl --user enable --now health-vector.service
    ```
+   (The retired FastAPI `health-server.py` / `com.hermes.health-server.service`
+   was removed in commit `42fb8374` — do not install it.)
 
-   On macOS (launchd):
-   ```bash
-   cp ~/hermes-cortex/ops/scripts/com.hermes.health-server.plist ~/Library/LaunchAgents/
-   launchctl load ~/Library/LaunchAgents/com.hermes.health-server.plist
-   ```
+   On macOS (launchd), run `health-vector.py --serve <port>` under a launchd
+   agent (no bundled plist; write your own with `ExecStart` pointing at
+   `~/hermes-cortex/ops/scripts/health/health-vector.py`).
 
-   The systemd service (`com.hermes.health-server.service`) uses `%h` (systemd home specifier) so it works across different user accounts with zero hardcoded paths. It runs `health-server.py` (FastAPI) with:
-   - `Restart=on-failure`, `RestartSec=5`
-   - Logging to `~/.hermes/health-server/server.log`
-   - Runtime hardening: `NoNewPrivileges=yes`, `ProtectHome=read-only`, `PrivateTmp=yes`, `ProtectSystem=strict`
+   The systemd unit uses `%h` (systemd home specifier) so it works across
+   different user accounts with zero hardcoded paths. It runs
+   `health-vector.py` with:
+   - `Restart=always`, `RestartSec=5`
+   - Logging to the systemd journal (`journalctl --user -u health-vector.service`)
+   - `Nice=10`, `IOSchedulingClass=idle` (never starves interactive work)
 
-   ⚠️ **After installing any new service, add it to `service-recovery.py`'s `SERVICES` list.**
+   ⚠️ **After installing any new service, add it to `agent-service-recovery.py`'s `SERVICES` list.**
    Otherwise a crash or SIGTERM leaves it dead until a human notices — the auto-recovery
    script only restarts services in its watchlist.
    See `references/service-recovery-blind-spot.md` for the checklist and example.

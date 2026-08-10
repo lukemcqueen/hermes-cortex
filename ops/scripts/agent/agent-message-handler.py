@@ -314,7 +314,7 @@ def run_cortex_update() -> dict:
   try:
     r = subprocess.run(
       ["bash", str(CORTEX_UPDATE)],
-      capture_output=True, text=True, timeout=120
+      capture_output=True, text=True, timeout=300
     )
     result = {
       # exit=1 is a soft failure (cortex-update.sh uses set -euo pipefail
@@ -335,8 +335,8 @@ def run_cortex_update() -> dict:
       log(f" stderr: {stderr_tail}")
     return result
   except subprocess.TimeoutExpired:
-    log("cortex-update TIMEOUT after 120s")
-    return {"success": False, "output": "", "stderr": "TIMEOUT after 120s", "exit_code": -1}
+    log("cortex-update TIMEOUT after 300s")
+    return {"success": False, "output": "", "stderr": "TIMEOUT after 300s", "exit_code": -1}
   except Exception as e:
     log(f"cortex-update ERROR: {e}")
     return {"success": False, "output": "", "stderr": str(e), "exit_code": -1}
@@ -391,9 +391,11 @@ def read_inbox(queue: str) -> dict | None:
   """Read one message from queue, return parsed body or None."""
   try:
     from lib.cortex_bus import bus_read
-    # Use 120s VT (visibility timeout) for UPDATE_REQUEST which can take
-    # 40+ seconds running cortex-update.sh. 30s VT would expire mid-update,
-    # causing the message to reappear and the handler to lose its lock.
+    # VT only needs to cover the read→archive window — the handler archives
+    # the message immediately after reading (early archive, c7231c3), so VT
+    # expiry can never re-expose a message mid-processing. The subprocess
+    # timeout in run_cortex_update() (300s) is what bounds cortex-update
+    # duration, not this VT.
     raw = bus_read(queue, vt=120)
     if raw and raw.get("msg_id"):
       # Normalize None fields that could cause subscript crashes downstream

@@ -197,6 +197,7 @@ their domain.
 | `nginx-security-pipeline` | 1.0.0 | Set up nginx security with IP blocking, fail2ban integration, daily automated scanning, and atomic deploy.... | `skill_view(name='nginx-security-pipeline')` |
 | `nginx-web-app-deployment` | 1.0.0 | Deploy a custom web app (Flask, Python, Node) behind nginx — upstream config, SSL, basic auth, rate limitin... | `skill_view(name='nginx-web-app-deployment')` |
 | `offline-code` | 1.0.0 | Offline code snippet search + generation using local Ollama models. Search a 520-snippet corpus across 30+... | `skill_view(name='offline-code')` |
+| `orch-backlog-driver` | 1.0.0 | Backlog-driven orchestrator work (F-023) — pull the top pending fleet tasks from the tasks DB, execute or d... | `skill_view(name='orch-backlog-driver')` |
 | `orch-skill-lifecycle` | 1.0.0 | Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md.... | `skill_view(name='orch-skill-lifecycle')` |
 | `orch-weekly-auto-fix` | 1.1.0 | After the weekly opportunity scan identifies issues, run auto-fix patterns — git pull, branch cleanup, Dock... | `skill_view(name='orch-weekly-auto-fix')` |
 | `package-security` | 1.0.0 | Age-gated package installation protection. Before installing any package with pip, npm, brew, or cargo, ver... | `skill_view(name='package-security')` |
@@ -222,7 +223,6 @@ their domain.
 | `staging-server-operations` | 1.19.0 | Safe operational practices for Docker-based staging servers — volume management, change verification, and d... | `skill_view(name='staging-server-operations')` |
 | `sudoers-audit` | 1.0.0 | Systematically audit, test, and debug sudoers NOPASSWD rules — verify allowed commands actually run without... | `skill_view(name='sudoers-audit')` |
 | `sync-allow-ips-to-fail2ban` | 1.0.0 | Sync IPs from allow-ips-manual.conf to fail2ban ignoreip | `skill_view(name='sync-allow-ips-to-fail2ban')` |
-| `task-persistence` | 2.0.0 | Cross-session tasks via task-db.py or task_* MCP tools. | `skill_view(name='task-persistence')` |
 | `telegram-delivery-diagnostics` | 1.0.0 | Diagnose and fix Telegram delivery issues for Hermes cron jobs — delivery pipeline tracing, DNS/network dia... | `skill_view(name='telegram-delivery-diagnostics')` |
 | `third-party-code-vetting` | 1.0.0 | Vet third-party code before it enters the repo or runs on a host — upstream patches, vendored scripts, inst... | `skill_view(name='third-party-code-vetting')` |
 | `two-hard-rules` | 1.0.0 | Two hard rules every agent must follow: USE LOOP GOVERNANCE ALWAYS. SHARE IMPROVEMENTS TO THE PUBLIC REPO. | `skill_view(name='two-hard-rules')` |

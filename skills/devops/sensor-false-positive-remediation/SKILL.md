@@ -17,7 +17,7 @@ metadata:
 
 ## When this applies
 
-The `remediation-sensor.py` (every 5m, no_agent) reports issues via JSON.
+The `agent-remediation-sensor.py` (every 5m, no_agent) reports issues via JSON.
 Not all reports indicate real problems — some are **stale entries** in the
 sensor's hardcoded check lists.
 
@@ -72,21 +72,21 @@ If it only appears in the **uninstall** array (cleanup legacy) and never in a
 ### 4. Fix
 
 **If stale:** Remove the entry from `required_scripts` in
-`ops/scripts/manage/remediation-sensor.py`, commit, push, deploy.
+`ops/scripts/health/agent-remediation-sensor.py`, commit, push, deploy.
 
 **If genuinely missing:** Copy from repo source to both runtime paths.
 
 ### 5. Deploy
 
 ```bash
-cp ~/hermes-cortex/ops/scripts/manage/remediation-sensor.py ~/.hermes-cortex/scripts/
-cp ~/hermes-cortex/ops/scripts/manage/remediation-sensor.py ~/.hermes/scripts/
+cp ~/hermes-cortex/ops/scripts/health/agent-remediation-sensor.py ~/.hermes-cortex/scripts/
+cp ~/hermes-cortex/ops/scripts/health/agent-remediation-sensor.py ~/.hermes/scripts/
 ```
 
 ### 6. Verify
 
 ```bash
-python3 ~/.hermes-cortex/scripts/remediation-sensor.py
+python3 ~/.hermes-cortex/scripts/agent-remediation-sensor.py
 ```
 
 Confirm the `script_missing` issue no longer appears in output.

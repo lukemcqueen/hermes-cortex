@@ -71,7 +71,7 @@ ExecStopPost=/bin/rm -f %h/.service-name/service.pid
 3. Test port arbitration: start a second instance manually — should exit 0
 4. Test crash recovery: `kill -9 $(pgrep -f service-name)` — systemd should restart cleanly
 
-## Live Example: health-server on Moses
-- Service: `com.hermes.health-server.service`
-- Script: `~/hermes-cortex/ops/scripts/health/health-server.py` (see `_check_port_conflict()` function)
-- Service file: `~/.config/systemd/user/com.hermes.health-server.service`
+## Live Example: health-vector on Moses
+- Service: `health-vector.service`
+- Script: `~/hermes-cortex/ops/scripts/health/health-vector.py` (see `serve_http()` port handling; the retired FastAPI `health-server.py` was removed in commit `42fb8374`)
+- Service file: `~/.config/systemd/user/health-vector.service`
