@@ -17,7 +17,7 @@ crons:
   skills:
   - documentation-scope
   deliver: origin
-  workdir: '{{HOME}}'
+  workdir: ''
   no_agent: false
   model: deepseek-chat
   provider: deepseek
@@ -81,7 +81,7 @@ crons:
   skills:
   - auto-remediation
   deliver: origin
-  workdir: '{{HOME}}'
+  workdir: ''
   no_agent: false
   model: deepseek-v4-flash
   provider: deepseek
@@ -101,7 +101,7 @@ crons:
   skills:
   - auto-remediation
   deliver: origin
-  workdir: '{{HOME}}'
+  workdir: ''
   no_agent: false
   model: deepseek-v4-flash
   provider: deepseek
@@ -124,7 +124,7 @@ crons:
   skills:
   - auto-remediation
   deliver: origin
-  workdir: '{{HOME}}'
+  workdir: ''
   no_agent: false
   model: deepseek-v4-flash
   provider: deepseek
