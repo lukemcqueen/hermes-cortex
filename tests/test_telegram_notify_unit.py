@@ -127,6 +127,22 @@ def test_format_unknown_status_no_icon():
     assert msg == "[esther] Status: blocked (abc-127)"
 
 
+def test_format_overdue_marker_appended():
+    msg = tn.format_task_message("esther", "story", "Status", "in_progress", "abc-128", overdue=True)
+    assert msg == "[esther] Status: 🚧 in_progress · ⏰ overdue (abc-128)"
+
+
+def test_format_overdue_marker_slice():
+    msg = tn.format_task_message("esther", "slice", "S2", "pending", "abc-129",
+                                 parent_title="Story", overdue=True)
+    assert msg == "[esther] Story → S2: ⏳ pending · ⏰ overdue (abc-129)"
+
+
+def test_format_not_overdue_default():
+    msg = tn.format_task_message("esther", "story", "Status", "in_progress", "abc-130")
+    assert "⏰" not in msg
+
+
 # ── Send path: success + escaping ───────────────────────────
 
 def test_notify_sends_escaped_html(tmp_path, monkeypatch):

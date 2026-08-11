@@ -242,15 +242,20 @@ def format_task_message(
     status: str,
     task_id: str,
     parent_title: str | None = None,
+    overdue: bool = False,
 ) -> str:
     """[agent] story: <icon> status (id)         for story rows
        [agent] story -> slice: <icon> status (id) for slice rows
     Fields: agent, kind, title (scrubbed), status, id. NEVER the body.
     Task id passes through unscrubbed — it is a UUID, not free text.
-    Unknown statuses render with no icon (forward-compatible)."""
+    Unknown statuses render with no icon (forward-compatible).
+    overdue=True appends a ⏰ marker (derived from due date, not a
+    stored status — computed by the caller)."""
     clean_title = scrub_text(title or "")
     icon = STATUS_ICONS.get(status, "")
     status_text = f"{icon} {status}".strip()
+    if overdue:
+        status_text = f"{status_text} · ⏰ overdue"
     if kind == "slice" and parent_title:
         parent = scrub_text(parent_title)
         return f"[{agent}] {parent} → {clean_title}: {status_text} ({task_id})"

@@ -335,11 +335,14 @@ _NOTIFY_CACHE = {}
 
 
 def _notify_task(agent: str, kind: str | None, title: str, status: str,
-                 task_id: str, parent_title: str | None = None) -> None:
+                 task_id: str, parent_title: str | None = None,
+                 overdue: bool = False) -> None:
     """Post a task-event Telegram message. Non-fatal; never raises.
 
     Suppressed for source='doctor-probe' rows (M-5) and by --no-notify.
     Mute/quiet/coalescing handled inside lib.telegram_notify.
+    overdue is a DERIVED flag (due passed on an open status) — computed
+    by the caller from the row's due date; never stored.
     """
     if _NOTIFY_CACHE.get("disabled"):
         return
@@ -352,10 +355,31 @@ def _notify_task(agent: str, kind: str | None, title: str, status: str,
     notify, fmt = _NOTIFY_CACHE["imported"]
     try:
         msg = fmt(agent, kind or "flat", title or "", status, task_id,
-                  parent_title)
+                  parent_title, overdue)
         notify(msg, subject=f"[{agent}] task-event")
     except Exception:
         pass  # notify is NEVER fatal (design R-5)
+
+
+_OPEN_STATUSES = ("pending", "in_progress", "paused")
+
+
+def _is_due_overdue(due: str | None, status: str) -> bool:
+    """Derived overdue: due timestamp passed AND the task is still open.
+
+    Terminal states (completed/cancelled) are never overdue. Parse is
+    tolerant — unparseable/missing due → False (never breaks notify).
+    """
+    if not due or status not in _OPEN_STATUSES:
+        return False
+    try:
+        import datetime as _dt
+        due_dt = _dt.datetime.fromisoformat(due.replace("Z", "+00:00"))
+        if due_dt.tzinfo is None:
+            due_dt = due_dt.replace(tzinfo=_dt.timezone.utc)
+        return due_dt < _dt.datetime.now(_dt.timezone.utc)
+    except (ValueError, TypeError):
+        return False
 
 
 # ── Row parsing (||-delimited, -F '||') ───────────────────────
@@ -547,7 +571,7 @@ def cmd_add(content: str, agent: str | None, priority: int, project: str | None,
               "fleet-wide until transport ships (roadmap: git-backed, private repo).")
     if not no_notify and (source or "manual") != "doctor-probe":
         _notify_task(agent, kind, content, "pending", new_id,
-                     parent_title=None)
+                     parent_title=None, overdue=_is_due_overdue(due, "pending"))
 
 
 def cmd_update(task_id: str, new_status: str, reason: str | None = None,
@@ -616,7 +640,8 @@ def cmd_update(task_id: str, new_status: str, reason: str | None = None,
                         [row["parent_id"]]))
                     parent_title = p_raw.split("\n")[0] if p_raw else None
                 _notify_task(row["created_by"], row["kind"], row["content"],
-                             new_status, task_id, parent_title)
+                             new_status, task_id, parent_title,
+                             overdue=_is_due_overdue(row["due"], new_status))
         except SystemExit:
             pass  # read-only notify failure never blocks the update
 
@@ -674,7 +699,8 @@ def cmd_switch(target_id: str, no_notify: bool = False):
         print(f"✅ Switched: paused {current_id[:8]}... → resumed {target_id[:8]}...")
         if not no_notify:
             _notify_task(PROFILE, target_row["kind"], target_row["content"],
-                         "in_progress", target_id)
+                         "in_progress", target_id,
+                         overdue=_is_due_overdue(target_row["due"], "in_progress"))
     else:
         # No active task — just resume the target (pending→in_progress or
         # paused→in_progress are both legal transitions).
@@ -687,7 +713,8 @@ def cmd_switch(target_id: str, no_notify: bool = False):
         print(f"✅ Resumed {target_id[:8]}... (no other task was active)")
         if not no_notify:
             _notify_task(PROFILE, target_row["kind"], target_row["content"],
-                         "in_progress", target_id)
+                         "in_progress", target_id,
+                         overdue=_is_due_overdue(target_row["due"], "in_progress"))
 
 
 def cmd_pending():

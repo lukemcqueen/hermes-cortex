@@ -607,3 +607,31 @@ def test_mcp_tool_registry_and_confirm_gate():
     import asyncio
     r = asyncio.run(task_mcp.call_tool("task_nope", {}))
     assert r.isError
+
+
+# ── Derived overdue flag (due passed on an open status) ──
+
+def test_due_overdue_past_date_open_status():
+    assert task_db._is_due_overdue("2020-01-01T00:00:00Z", "pending") is True
+    assert task_db._is_due_overdue("2020-01-01T00:00:00Z", "in_progress") is True
+    assert task_db._is_due_overdue("2020-01-01T00:00:00Z", "paused") is True
+
+
+def test_due_overdue_future_date():
+    assert task_db._is_due_overdue("2999-01-01T00:00:00Z", "pending") is False
+
+
+def test_due_overdue_terminal_status_never():
+    assert task_db._is_due_overdue("2020-01-01T00:00:00Z", "completed") is False
+    assert task_db._is_due_overdue("2020-01-01T00:00:00Z", "cancelled") is False
+
+
+def test_due_overdue_missing_or_malformed():
+    assert task_db._is_due_overdue(None, "pending") is False
+    assert task_db._is_due_overdue("", "pending") is False
+    assert task_db._is_due_overdue("not-a-date", "pending") is False
+
+
+def test_due_overdue_naive_datetime_utc():
+    # naive timestamps (psql -t -A prints "YYYY-MM-DD HH:MM:SS+00") parse
+    assert task_db._is_due_overdue("2020-01-01 00:00:00+00", "in_progress") is True
