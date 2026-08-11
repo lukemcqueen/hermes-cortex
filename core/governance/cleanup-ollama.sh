@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # cleanup-ollama.sh — remove all Ollama models except the 2 essential ones
 # Reads EMBEDDING_MODEL and JUDGE_MODEL from ~/hermes-cortex/.env
-# Default: nomic-embed-text:v1.5 + qwen2.5-coder:3b
+# Default: nomic-embed-text:v1.5 + qwen2.5:3b
 
 # Source model configuration
 MODELS_ENV="${HOME}/hermes-cortex/.env"
@@ -11,7 +11,7 @@ if [ -f "$MODELS_ENV" ]; then
   set +a
 fi
 EMBEDDING_MODEL="${EMBEDDING_MODEL:-nomic-embed-text:v1.5}"
-JUDGE_MODEL="${JUDGE_MODEL:-qwen2.5-coder:3b}"
+JUDGE_MODEL="${JUDGE_MODEL:-qwen2.5:3b}"
 
 KEEP_MODELS=("$EMBEDDING_MODEL" "$JUDGE_MODEL")
 

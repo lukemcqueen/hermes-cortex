@@ -4,7 +4,7 @@ install-fallback-providers.py
 
 Ensures ~/.hermes/config.yaml has the fallback_providers chain:
   Tier 1: opencode-zen / deepseek-v4-flash (free API fallback)
-  Tier 2: custom:ollama-local / qwen2.5-coder:3b (local last resort)
+  Tier 2: custom:ollama-local / qwen2.5:3b (local last resort)
 
 Idempotent — safe to run repeatedly. Only modifies config.yaml
 if the fallback_providers section is missing or outdated.
@@ -27,7 +27,7 @@ FALLBACK_PROVIDERS = [
     },
     {
         "provider": "custom:ollama-local",
-        "model": "qwen2.5-coder:3b",
+        "model": "qwen2.5:3b",
     },
 ]
 

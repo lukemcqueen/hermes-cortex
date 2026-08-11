@@ -432,7 +432,7 @@ if patched:
 
 # ── Setup Local Ollama Provider ────────────────────────────
 # Adds the custom:ollama-local provider to Hermes config.yaml
-# so crons can use qwen2.5-coder:3b locally at zero cost.
+# so crons can use qwen2.5:3b locally at zero cost.
 setup_ollama_provider() {
   local config_file="${HERMES_HOME}/config.yaml"
   if [[ ! -f "$config_file" ]]; then
@@ -469,7 +469,7 @@ if old_model in text:
         '    api_key: ""\n'
         '    api_mode: chat_completions\n'
         '    models:\n'
-        '      qwen2.5-coder:3b:\n'
+        '      qwen2.5:3b:\n'
         '        context_length: 65536\n'
         '        ollama_num_ctx: 65536\n'
     )
@@ -487,7 +487,7 @@ else:
                 '    api_key: ""\n'
                 '    api_mode: chat_completions\n'
                 '    models:\n'
-                '      qwen2.5-coder:3b:\n'
+                '      qwen2.5:3b:\n'
                 '        context_length: 65536\n'
                 '        ollama_num_ctx: 65536\n')
             lines_t.insert(i, custom_block)

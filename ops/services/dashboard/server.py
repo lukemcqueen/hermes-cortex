@@ -260,7 +260,7 @@ _MODEL_PRICING = {
     "deepseek-v4-flash": {"input": 1.4e-7, "output": 2.8e-7},
     "deepseek/deepseek-v4-flash": {"input": 1.4e-7, "output": 2.8e-7},
     "deepseek": {"input": 1.4e-7, "output": 2.8e-7},
-    "qwen2.5-coder:3b": {"input": 0.0, "output": 0.0},  # local Ollama, free
+    "qwen2.5:3b": {"input": 0.0, "output": 0.0},  # local Ollama, free
 }
 
 def _get_usage_tokens(o):

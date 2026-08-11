@@ -12,7 +12,7 @@ metadata:
 
 # LLM Judge Scorer
 
-A `no_agent` cron script that evaluates Hermes conversation traces in Langfuse using `qwen2.5-coder:3b` as the judge model. Scores are posted back to Langfuse under `helpfulness`, `clarity`, `depth`, and `overall`.
+A `no_agent` cron script that evaluates Hermes conversation traces in Langfuse using `qwen2.5:3b` as the judge model. Scores are posted back to Langfuse under `helpfulness`, `clarity`, `depth`, and `overall`.
 
 ## How It Works
 
@@ -23,7 +23,7 @@ Langfuse (traces)
 llm-judge-scorer.py (no_agent cron)
     │
     ├── Fetches unscored traces from past 14 days
-    ├── Sends input/output to Ollama (qwen2.5-coder:3b)
+    ├── Sends input/output to Ollama (qwen2.5:3b)
     ├── Parses JSON response: helpfulness, clarity, depth, overall
     └── Posts scores back to Langfuse API
 ```
@@ -34,7 +34,7 @@ llm-judge-scorer.py (no_agent cron)
 |---|---|---|
 | Langfuse running | `curl -s http://localhost:3000/api/public/health` | `docker compose -f ~/langfuse/docker-compose.yml up -d` |
 | Ollama running | `curl -s http://localhost:11434/api/tags` | `brew services start ollama` |
-| Judge model | `ollama list \| grep qwen2.5-coder:3b` | `ollama pull qwen2.5-coder:3b` |
+| Judge model | `ollama list \| grep qwen2.5:3b` | `ollama pull qwen2.5:3b` |
 | Env file | `~/.hermes-cortex/.env` (symlink to `~/langfuse/.env`) or `--env-path` | `ln -sf ~/langfuse/.env ~/.hermes-cortex/.env` |
 
 ## Invocation
@@ -81,7 +81,7 @@ When `overall` < 5 on your traces:
 | `FileNotFoundError: .env` | Create symlink: `ln -sf ~/langfuse/.env ~/.hermes-cortex/.env` |
 | `HTTP 401` from Langfuse | Check `LANGFUSE_INIT_PROJECT_PUBLIC_KEY` and `SECRET_KEY` in `.env` |
 | `ollama: connection refused` | `brew services start ollama` or `ollama serve` |
-| `Model not found` | `ollama pull qwen2.5-coder:3b` |
+| `Model not found` | `ollama pull qwen2.5:3b` |
 | Zero traces scored | Normal if all traces already scored. Check Langfuse has traces. |
 
 ## Deployment

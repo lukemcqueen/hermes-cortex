@@ -106,7 +106,7 @@ ollama pull nomic-embed-text
 ollama pull llama3.2:3b
 
 # Code
-ollama pull qwen2.5-coder:3b
+ollama pull qwen2.5:3b
 ```
 
 ## PATH Setup
@@ -132,7 +132,7 @@ custom_providers:
     api_key: ""
     api_mode: chat_completions
     models:
-      qwen2.5-coder:3b:
+      qwen2.5:3b:
         context_length: 4096
         ollama_num_ctx: 4096
       nomic-embed-text:
@@ -140,13 +140,13 @@ custom_providers:
 ```
 
 > **⚠️ Thermal warning — CPU-only machines (especially MacBooks):**
-> Do NOT set `context_length: 65536` on CPU-only machines running qwen2.5-coder:3b or similar models. This saturates all CPU cores at 300-400% utilization, pushing the CPU past 90°C on 2014-era MacBooks (i7-4980HQ). The kernel's `intel_powerclamp` module will forcibly inject idle cycles (`idle_inject/[0-7]` in `ps` output), wasting 50% of CPU capacity and causing system halting. Use `context_length: 4096` for CPU-only — the difference in usable code-generation quality is negligible, and the thermal savings are massive (92°C → 59°C). See the `linux-performance-diagnostics` skill (Phase 9) for full diagnostic steps.
+> Do NOT set `context_length: 65536` on CPU-only machines running qwen2.5:3b or similar models. This saturates all CPU cores at 300-400% utilization, pushing the CPU past 90°C on 2014-era MacBooks (i7-4980HQ). The kernel's `intel_powerclamp` module will forcibly inject idle cycles (`idle_inject/[0-7]` in `ps` output), wasting 50% of CPU capacity and causing system halting. Use `context_length: 4096` for CPU-only — the difference in usable code-generation quality is negligible, and the thermal savings are massive (92°C → 59°C). See the `linux-performance-diagnostics` skill (Phase 9) for full diagnostic steps.
 > On GPU-equipped machines, 65536 is fine — the GPU handles the attention computation and the CPU stays cool.
 
 Then set cron jobs to use this provider with a model override:
 
 ```
-hermes cron edit JOB_ID --model qwen2.5-coder:3b --provider custom:ollama-local
+hermes cron edit JOB_ID --model qwen2.5:3b --provider custom:ollama-local
 ```
 
 ### Option B: Set as default provider (all sessions use local)
@@ -174,7 +174,7 @@ sed -i 's/fallback_providers:.*/fallback_providers:\n  - provider: opencode\n   
 
 ### Model selection in session
 
-- `/model qwen2.5-coder:3b` — switch to local code model
+- `/model qwen2.5:3b` — switch to local code model
 - `/model nomic-embed-text` — switch to embedding model
 - `/model deepseek-v4-flash-free` — switch back to cloud
 - `/model` (no arg) — interactive picker
@@ -197,7 +197,7 @@ This requires two separate configuration layers:
 
 ```yaml
 models:
-  qwen2.5-coder:3b:
+  qwen2.5:3b:
     context_length: 4096     # Hermes's own token budget
     ollama_num_ctx: 4096     # Passed to Ollama API as num_ctx
 ```
@@ -207,13 +207,13 @@ models:
 Hermes checks the model's runtime context against its requirement. Even with Layer 1 set, Ollama may load the model with only 32,768 context if the Modelfile default is smaller. Fix by creating a Modelfile:
 
 ```bash
-ollama create qwen2.5-coder:3b -f <(echo -e "FROM qwen2.5-coder:3b\\nPARAMETER num_ctx 4096")
+ollama create qwen2.5:3b -f <(echo -e "FROM qwen2.5:3b\\nPARAMETER num_ctx 4096")
 ```
 
 This updates the model's manifest in-place. Verify the Modelfile persisted:
 
 ```bash
-ollama show qwen2.5-coder:3b --modelfile | grep num_ctx
+ollama show qwen2.5:3b --modelfile | grep num_ctx
 # Expected: PARAMETER num_ctx 4096
 ```
 
@@ -247,7 +247,7 @@ ss -tlnp | grep 11434
 - **Service won't start**: Check `journalctl --user -u ollama --no-pager -n 20` for errors. Common issue: missing `~/.local/bin/ollama` binary because the ExecStart path is wrong.
 - **Hermes RuntimeError: model context too small**: If Hermes fails with "Ollama loaded `model` with only N tokens of runtime context, but Hermes needs at least 64,000 tokens", the Modelfile `num_ctx` override is missing (Layer 2 above). Running `ollama create` with a Modelfile overriding `num_ctx` fixes it — this is NOT a hardware limitation in most cases. Hermes config's `ollama_num_ctx` alone is insufficient.
 - **`ollama ps` shows 32768 after Modelfile fix**: This is expected — the CONTEXT column shows the initial runtime allocation, not the model's maximum. The fix is working if `ollama show <model> --modelfile | grep num_ctx` shows 4096 (or your configured value). Do not re-apply the fix or try other approaches.
-- **CPU-only LLM thermal throttling**: Running qwen2.5-coder:3b (or similar) on CPU-only machines with context > 4096 frequently triggers `intel_powerclamp` kernel throttling. Symptoms: `idle_inject/[0-7]` in `ps` output consuming 5-10% CPU each, CPU temp > 80°C, PSI some avg10 > 5%. Fix: reduce context to 4096, limit `OLLAMA_NUM_THREADS=2`, set `OLLAMA_KEEP_ALIVE=0`. See `linux-performance-diagnostics` skill Phase 9 for full diagnostic steps.
+- **CPU-only LLM thermal throttling**: Running qwen2.5:3b (or similar) on CPU-only machines with context > 4096 frequently triggers `intel_powerclamp` kernel throttling. Symptoms: `idle_inject/[0-7]` in `ps` output consuming 5-10% CPU each, CPU temp > 80°C, PSI some avg10 > 5%. Fix: reduce context to 4096, limit `OLLAMA_NUM_THREADS=2`, set `OLLAMA_KEEP_ALIVE=0`. See `linux-performance-diagnostics` skill Phase 9 for full diagnostic steps.
 - **patch tool writes to whatever path you give it**: If `patch(path=...)` resolves to `~/.hermes-cortex/scripts/` (the deployed copy) instead of `~/hermes-cortex/ops/scripts/` (the repo source), the git repo still has the old values. Always verify with `git diff` after patching repo-tracked files.
 - **Ollama exits cleanly (code 0) after model load failure**: When a client closes the connection before the model finishes loading (timeout or disconnect), Ollama logs "client connection closed before llama-server finished loading, aborting load" and may exit with code 0. With `Restart=on-failure`, systemd considers code 0 a clean exit and does NOT restart. Use `Restart=always` instead, and set `RestartSec=30` to avoid rapid restart loops if the failure condition persists.
 

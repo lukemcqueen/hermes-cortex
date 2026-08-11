@@ -207,7 +207,7 @@
       command: "ollama pull {{ item }}"
       loop:
         - nomic-embed-text:v1.5
-        - qwen2.5-coder:3b
+        - qwen2.5:3b
       register: pull_result
       changed_when: "'pulling' in pull_result.stdout"
       until: pull_result is success

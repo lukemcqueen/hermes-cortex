@@ -313,7 +313,10 @@ print('ADDED')
         models = json.loads(out).get("models", [])
         for m in models:
           mname = m.get("name", "")
-          if "qwen2.5-coder:3b" in mname or mname == "qwen2.5-coder:3b":
+          # Match BOTH model families: legacy qwen2.5-coder:3b and current qwen2.5:3b.
+          # (2026-08-11: fleet standardized on qwen2.5:3b; a match on only the coder
+          # name would silently stop fixing context on the new model.)
+          if "qwen2.5:3b" in mname or "qwen2.5-coder:3b" in mname:
             if _run_fix(f"Checking context for {mname}",
                   ["bash", str(INSTALL_OLLAMA), "build_qwen", mname]):
               fixed += 1

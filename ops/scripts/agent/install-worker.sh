@@ -107,7 +107,7 @@ RestartSec=10
 Environment=AGENT_NAME=${AGENT_NAME}
 EnvironmentFile=${CONFIG_FILE}
 Environment=OLLAMA_URL=http://localhost:11434
-Environment=OLLAMA_MODEL=qwen2.5-coder:3b
+Environment=OLLAMA_MODEL=qwen2.5:3b
 Environment=POLL_INTERVAL=30
 Environment=VT_SECONDS=120
 Environment=MAX_RETRIES=3

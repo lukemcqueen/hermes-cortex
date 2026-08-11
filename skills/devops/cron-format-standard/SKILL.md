@@ -99,7 +99,7 @@ Phase 3 — SOUL.md updated: insight appended to Scripture Insights section
 
 Result: Daily scripture entry for 1 Kings appended.
 
-📊 qwen2.5-coder:3b (custom:ollama-local) | free
+📊 qwen2.5:3b (custom:ollama-local) | free
 ```
 
 ---

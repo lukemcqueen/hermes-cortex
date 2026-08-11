@@ -15,7 +15,7 @@ Resolution priority (highest to lowest):
   4. Hardcoded default — shipped with the repo, always the last fallback
 
 Defined env vars (see ~/hermes-cortex/.env for current values):
-  JUDGE_MODEL       — LLM-as-judge scorer (default: qwen2.5-coder:3b)
+  JUDGE_MODEL       — LLM-as-judge scorer (default: qwen2.5:3b)
   EMBEDDING_MODEL   — Text embeddings (default: nomic-embed-text)
   CODING_MODEL      — Code generation via offline_code (default: auto-detected)
   CREATIVE_MODEL    — Reserved for creative/text generation (no default yet)
@@ -24,7 +24,7 @@ Defined env vars (see ~/hermes-cortex/.env for current values):
 Usage:
     from hermes_models import get_model
 
-    judge = get_model("JUDGE_MODEL", "qwen2.5-coder:3b")
+    judge = get_model("JUDGE_MODEL", "qwen2.5:3b")
     embed = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 """
 

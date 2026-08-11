@@ -179,7 +179,7 @@ runcmd:
   - |
     sudo -u ubuntu bash -c '
       export OLLAMA_HOST=127.0.0.1
-      for model in nomic-embed-text:v1.5 qwen2.5-coder:3b; do
+      for model in nomic-embed-text:v1.5 qwen2.5:3b; do
         if ! /usr/local/bin/ollama list 2>/dev/null | grep -q "$model"; then
           echo "Pulling $model..."
           /usr/local/bin/ollama pull "$model" &

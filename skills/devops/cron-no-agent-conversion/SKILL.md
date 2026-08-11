@@ -18,7 +18,7 @@ A class-level pattern: replace full agent-loop crons (which run an LLM agent wit
 
 Convert when the cron's LLM produces **5-50 token useless output** (1 API call, no real work). This is the signature of a small model struggling with a multi-step agentic workflow.
 
-Small local models like `qwen2.5-coder:3b` (3B params) are reliable for:
+Small local models like `qwen2.5:3b` (3B params) are reliable for:
 - ✅ Single-shot tasks (code gen, classification, short summaries)
 - ✅ Deterministic transformation of structured input
 - ❌ Multi-step tool loops (search → read → decide → act) — they lose the thread

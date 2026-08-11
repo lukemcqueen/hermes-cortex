@@ -125,7 +125,7 @@ Required variables — set every one:
 | `HERMES_LANGFUSE_SECRET_KEY` | `sk-lf-...` | Langfuse project settings |
 | `CORTEX_SSL_CERT_PATH` | `/etc/letsencrypt/live/.../fullchain.pem` | certbot output |
 | `CORTEX_SSL_CERT_KEY_PATH` | `/etc/letsencrypt/live/.../privkey.pem` | certbot output |
-| `JUDGE_MODEL` | `qwen2.5-coder:3b` | Local or API model |
+| `JUDGE_MODEL` | `qwen2.5:3b` | Local or API model |
 | `EMBEDDING_MODEL` | `nomic-embed-text:v1.5` | Local Ollama model |
 | `LLM_CRON_MODEL` | `deepseek-v4-flash` | API model |
 | `LLM_CRON_PROVIDER` | `deepseek` | Provider name |

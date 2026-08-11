@@ -39,7 +39,7 @@ CORPUS_DIR = Path(__file__).parent / "code-corpus"
 INDEX_DB = HOME / "offline" / "code-index.json"
 OLLAMA_URL = "http://localhost:11434"
 EMBED_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
-GEN_MODEL = get_model("CODING_MODEL", "qwen2.5-coder:3b")  # default; auto-upgraded if VRAM available
+GEN_MODEL = get_model("CODING_MODEL", "qwen2.5:3b")  # default; auto-upgraded if VRAM available
 
 
 def _detect_gen_model() -> str:
@@ -94,13 +94,13 @@ def _detect_gen_model() -> str:
             vram_gb = total_gb / 8
 
         if vram_gb > 24:
-            return "qwen2.5-coder:14b"                         # Q4_K_M ~8GB
+            return "qwen2.5:14b"                         # Q4_K_M ~8GB
         elif vram_gb > 10:
-            return "qwen2.5-coder:7b"                          # Q4_K_M ~4.5GB
+            return "qwen2.5:7b"                          # Q4_K_M ~4.5GB
         elif vram_gb > 4:
-            return "qwen2.5-coder:3b"                          # Q4_K_M ~1.7GB (sweet spot)
+            return "qwen2.5:3b"                          # Q4_K_M ~1.7GB (sweet spot)
         else:
-            return "qwen2.5-coder:3b"                          # floor — always runs
+            return "qwen2.5:3b"                          # floor — always runs
     except Exception:
         return GEN_MODEL  # fall back to default
 
@@ -543,7 +543,7 @@ def cmd_stats():
         with urllib.request.urlopen(req, timeout=5) as resp:
             models = [m.get("name", "") for m in json.loads(resp.read().decode()).get("models", [])]
         emb_ok = any(EMBED_MODEL in m for m in models)
-        gen_ok = any("qwen2.5-coder" in m for m in models)
+        gen_ok = any("qwen2.5" in m for m in models)
         print(f"\n🤖 Ollama Models")
         print(f"   {EMBED_MODEL}:     {'✅' if emb_ok else '❌'} (pull: ollama pull {EMBED_MODEL})")
         print(f"   Code gen:   {'✅' if gen_ok else '⚠️  not pulled'} (detected: {_detect_gen_model()})")
@@ -609,7 +609,7 @@ def main():
         epilog=textwrap.dedent("""\
             Examples:
               offline_code search "flask rest api with sqlite"
-              offline_code gen "binary search tree in rust" --model qwen2.5-coder:3b
+              offline_code gen "binary search tree in rust" --model qwen2.5:3b
               offline_code index
               offline_code index --force
               offline_code stats

@@ -186,10 +186,10 @@ def get_deepseek_api_key() -> str | None:
 
 
 def _call_ollama(prompt: str, max_tokens: int = 4096) -> str | None:
-    """Call local Ollama (qwen2.5-coder:3b) and return the cleaned response content.
+    """Call local Ollama (qwen2.5:3b) and return the cleaned response content.
     Used as fallback when no DEEPSEEK_API_KEY is available."""
     payload = json.dumps({
-        "model": "qwen2.5-coder:3b",
+        "model": "qwen2.5:3b",
         "messages": [{"role": "user", "content": prompt}],
         "stream": False,
         "options": {"num_predict": max_tokens, "temperature": 0.7},
@@ -244,7 +244,7 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096, _retried: bool = False) 
     Falls back to local Ollama if DEEPSEEK_API_KEY is not available."""
     api_key = get_deepseek_api_key()
     if not api_key:
-        print("⚠️  DEEPSEEK_API_KEY not found — falling back to local Ollama (qwen2.5-coder:3b)", file=sys.stderr)
+        print("⚠️  DEEPSEEK_API_KEY not found — falling back to local Ollama (qwen2.5:3b)", file=sys.stderr)
         return _call_ollama(prompt, max_tokens)
 
     payload = json.dumps({
@@ -274,7 +274,7 @@ def _call_deepseek(prompt: str, max_tokens: int = 4096, _retried: bool = False) 
             return None
 
         if http_code != "200":
-            print(f"⚠️  DeepSeek API returned HTTP {http_code} — falling back to local Ollama (qwen2.5-coder:3b)", file=sys.stderr)
+            print(f"⚠️  DeepSeek API returned HTTP {http_code} — falling back to local Ollama (qwen2.5:3b)", file=sys.stderr)
             if body:
                 print(f"   Error body: {body[:300]}", file=sys.stderr)
             return _call_ollama(prompt, max_tokens)

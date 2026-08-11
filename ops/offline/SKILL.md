@@ -117,7 +117,7 @@ offline_knowledge query "how to treat a snake bite in the jungle"
 | `offline_code search <query>` | Semantic + keyword search over 367 code snippets, 27 languages |
 | `offline_code search "<query>" --lang go` | Search filtered by language |
 | `offline_code gen "<prompt>"` | RAG code generation using Ollama (context from matching snippets) |
-| `offline_code gen "<prompt>" --model qwen2.5-coder:7b` | Code gen with a larger model |
+| `offline_code gen "<prompt>" --model qwen2.5:7b` | Code gen with a larger model |
 | `offline_code index --force` | Rebuild the embedding index (after adding snippets) |
 | `offline_code stats` | Corpus statistics |
 
@@ -270,7 +270,7 @@ offline_code stats
 - **Generator:** `python3 ops/offline/code-corpus/generate.py` writes formatted `.md` files with YAML frontmatter
 - **Embedding:** `offline_code index` batches snippets into groups of 10, embeds with Ollama `nomic-embed-text:v1.5` (768-dim)
 - **Search:** single-embed query → cosine similarity against stored embeddings + keyword boost
-- **Generation:** top-3 matching snippets injected as context → `qwen2.5-coder:3b` (or your model)
+- **Generation:** top-3 matching snippets injected as context → `qwen2.5:3b` (or your model)
 
 ### Adding Snippets
 
@@ -293,7 +293,7 @@ offline_code index --force
 | Component | RAM | Notes |
 |-----------|-----|-------|
 | nomic-embed-text:v1.5 | ~300 MB | Shared with other offline tools |
-| qwen2.5-coder:3b | ~1.9 GB | Optional — only loaded during `gen` |
+| qwen2.5:3b | ~1.9 GB | Optional — only loaded during `gen` |
 | Corpus files | 3 MB disk | Text + 768-dim embeddings |
 
 ## Architecture

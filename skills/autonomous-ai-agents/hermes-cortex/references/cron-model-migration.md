@@ -9,7 +9,7 @@ When switching an LLM-powered cron from one model/provider to another, **three l
 Pin the model/provider so the scheduler uses the right LLM:
 
 ```
-cronjob(action="update", job_id="<id>", model={"model": "qwen2.5-coder:3b", "provider": "custom:ollama-local"})
+cronjob(action="update", job_id="<id>", model={"model": "qwen2.5:3b", "provider": "custom:ollama-local"})
 ```
 
 Get job IDs from `cronjob(action="list")`.
@@ -36,11 +36,11 @@ Update all files referencing the old model:
 | `deploy/README-langfuse-clickhouse.md` | Setup instructions, verify commands |
 | `docs/model-tier-strategy.md` | Integration points (if wiring changed) |
 
-Search: `grep -rn "qwen2.5-coder:3b\|<old-model>" ~/hermes-cortex/ --include="*.md"`
+Search: `grep -rn "qwen2.5:3b\|<old-model>" ~/hermes-cortex/ --include="*.md"`
 
 ## Current Model Inventory
 
-### qwen2.5-coder:3b (local, zero cost)
+### qwen2.5:3b (local, zero cost)
 `agent-daily-bible-reading`, `orch-skill-lifecycle`, `memory-pruning`, `orch-process-agent-messages`, `llm-judge-scorer-weekday/weekend`, `local-agent-agents-doc-audit`
 
 ### deepseek-v4-flash (API, quality-sensitive)

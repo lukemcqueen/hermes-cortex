@@ -227,7 +227,7 @@ This is the single source of truth for Cortex. ⚠ `~/.hermes/.env` is Hermes Ag
 |---------|---------|---------|
 | `IS_ORCHESTRATOR` | Gate orchestrator-only features (orch crons, team health, inbox remediation). Set `true` on Moses/Esther only. | `false` |
 | `CORTEX_HEALTH_URL` | External health endpoint. Orchestrator pollers use this to verify agent reachability through nginx. Format: `https://yourdomain.com:xx007/health` | _(none)_ |
-| `JUDGE_MODEL` | LLM-as-Judge scorer | `qwen2.5-coder:3b` |
+| `JUDGE_MODEL` | LLM-as-Judge scorer | `qwen2.5:3b` |
 | `EMBEDDING_MODEL` | Text embeddings (gbrain, session cache, loop scorer, offline_code) | `nomic-embed-text:v1.5` |
 | `CODING_MODEL` | Code generation via offline_code | auto-detected by RAM |
 | `CREATIVE_MODEL` | Reserved for future creative tasks | _(not yet wired)_ |
@@ -242,17 +242,17 @@ Resolution priority (every script follows this):
 | Tier | Model | Size | Role |
 |------|-------|------|------|
 | Embedding | `nomic-embed-text:v1.5` | 274 MB | Vector search (embeddings for search, RAG) |
-| Unified gen/judge | `qwen2.5-coder:3b` | 1.9 GB | Code gen, classification, routing, quality gates |
+| Unified gen/judge | `qwen2.5:3b` | 1.9 GB | Code gen, classification, routing, quality gates |
 
-> **⚠️ 64k context minimum required.** `qwen2.5-coder:3b` from the Ollama registry defaults to 32k — build it with 64k:
+> **⚠️ 64k context minimum required.** `qwen2.5:3b` from the Ollama registry defaults to 32k — build it with 64k:
 > ```bash
-> ollama create qwen2.5-coder:3b -f <(echo -e "FROM qwen2.5-coder:3b\nPARAMETER num_ctx 65536")
+> ollama create qwen2.5:3b -f <(echo -e "FROM qwen2.5:3b\nPARAMETER num_ctx 65536")
 > ```
 > Larger variants (7b+) typically ship with 128k+ out of the box. The installer runs this check — see `install-ollama.sh build_qwen_model`.
 >
 > **Thermal note (CPU-only):** 65536 context on a CPU-only MacBook was previously blamed for 92°C throttling, but the real cause was unlimited Ollama threads + model kept loaded 24/7. With `OLLAMA_NUM_THREADS=2` and `OLLAMA_KEEP_ALIVE=0`, 65536 context runs at 58°C under load. See `install-ollama.sh` comments.
 
-This replaces the previous three-model stack with a unified **qwen2.5-coder:3b** model for code generation, classification, and judging. Agents use it via `http://localhost:11434/api/generate` or `offline_code gen`.
+This replaces the previous three-model stack with a unified **qwen2.5:3b** model for code generation, classification, and judging. Agents use it via `http://localhost:11434/api/generate` or `offline_code gen`.
 
 ### Scripts that respect `.env`
 

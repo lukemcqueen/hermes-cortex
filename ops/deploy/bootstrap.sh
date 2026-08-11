@@ -332,7 +332,7 @@ done
 info "Pulling models (background — will finish after bootstrap)..."
 sudo -u "$REAL_USER" OLLAMA_HOST=127.0.0.1 ollama pull nomic-embed-text:v1.5 &
 PID_EMBED=$!
-sudo -u "$REAL_USER" OLLAMA_HOST=127.0.0.1 ollama pull qwen2.5-coder:3b &
+sudo -u "$REAL_USER" OLLAMA_HOST=127.0.0.1 ollama pull qwen2.5:3b &
 PID_CODER=$!
 ok "Model pulls started (PIDs: $PID_EMBED, $PID_CODER)"
 

@@ -171,7 +171,7 @@ pull_embedding_model() {
 }
 
 # ── Build model with sufficient context ─────────────────────
-# Hermes Agent uses local models (qwen2.5-coder:3b, 7b variants, etc.)
+# Hermes Agent uses local models (qwen2.5:3b, 7b variants, etc.)
 # as judge/coding models. All models need 64k (65536) context for
 # Hermes Agent's tool calls and conversation history.
 #
@@ -182,13 +182,13 @@ pull_embedding_model() {
 #   2. OLLAMA_KEEP_ALIVE=0  — unloads model between uses
 # With both set, 65536 context runs at 58°C under load. Verified 2026-07-03.
 #
-# qwen2.5-coder:3b  → Ollama registry build defaults to 32k → build with 64k
+# qwen2.5:3b  → Ollama registry build defaults to 32k → build with 64k
 # Larger variants    → ship with 128k+ out of the box, well above minimum
 #
 # This function checks the model's current context length and only
 # rebuilds if it's below 64k. Idempotent: safe to run on any model.
 build_qwen_model() {
-  local model_name="${1:-qwen2.5-coder:3b}"
+  local model_name="${1:-qwen2.5:3b}"
   local modelfile
   modelfile="$(mktemp)"
 
@@ -211,7 +211,7 @@ build_qwen_model() {
   fi
 
   # Generate Modelfile dynamically so it works for any model variant
-  # (qwen2.5-coder:3b, mannix/qwen2.5-coder:7b-iq3_xs, etc.)
+  # (qwen2.5:3b, mannix/qwen2.5-coder:7b-iq3_xs, etc.)
   {
     echo "FROM ${model_name}"
     echo "PARAMETER num_ctx 65536"
@@ -237,7 +237,7 @@ build_qwen_model() {
 
 # ── Verify model context ────────────────────────────────────
 verify_qwen_context() {
-  local model_name="${1:-qwen2.5-coder:3b}"
+  local model_name="${1:-qwen2.5:3b}"
   local ctx
   ctx=$(ollama show "$model_name" 2>/dev/null | grep -i "context length" | grep -oE '[0-9]+' | head -1 || echo "unknown")
   if [[ "$ctx" == "unknown" ]] || [[ "$ctx" -lt 65536 ]]; then
@@ -257,12 +257,13 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     service)   setup_ollama_service ;;
     wait)      wait_for_ollama ;;
     embed)     pull_embedding_model "${2:-nomic-embed-text:v1.5}" ;;
+    build_qwen) build_qwen_model "${2:-qwen2.5:3b}" ;;
     all|*)
       install_ollama
       setup_ollama_service
       wait_for_ollama
       pull_embedding_model "${2:-nomic-embed-text:v1.5}"
-      build_qwen_model "${3:-qwen2.5-coder:3b}"
+      build_qwen_model "${3:-qwen2.5:3b}"
       ;;
   esac
 fi
