@@ -358,7 +358,15 @@ def _lf_traces():
         # older versions used totalCost. Try both before falling back.
         cost = o.get("calculatedTotalCost") or o.get("totalCost") or 0
         if not cost:
-            cost = _calc_cost(m, inp, out)
+            # 3.206+ worker may omit the 'total' key for OTLP rows with
+            # cache usage; costDetails still carries per-type amounts.
+            # Sum them, excluding 'total' (would double-count).
+            cd = o.get("costDetails") or {}
+            if cd:
+                cost = sum(v for k, v in cd.items()
+                           if k != "total" and isinstance(v, (int, float)))
+            else:
+                cost = _calc_cost(m, inp, out)
         model_usage[m]["cost"] += cost
         total_cost += cost
         # Daily cost from observation start time
