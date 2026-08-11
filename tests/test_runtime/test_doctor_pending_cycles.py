@@ -19,6 +19,7 @@ import os
 import sqlite3
 import sys
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -58,7 +59,7 @@ def seeded_home():
     conn.execute(
         "INSERT INTO loop_cycles (task_id, cycle_num, decision, timestamp) "
         "VALUES ('planned-task-xyz', 1, 'PENDING', ?)",
-        ("2026-08-08T04:00:00",),
+        (datetime.now().isoformat(),),
     )
     conn.commit()
     conn.close()
