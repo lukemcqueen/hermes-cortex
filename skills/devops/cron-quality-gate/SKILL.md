@@ -80,6 +80,15 @@ Runs as `no_agent=True` cron on schedule `*/10 * * * *`. Delivers to origin.
   flagged 🟠. This caught the 2026-08-04 regression where `agent-inbox-workday`
   delivered `participação` and `cortex-bus-workday` delivered
   `todavía | participação | postfix` after a model stall instead of skipping.
+- **Fallback-chain audit (2026-08-11)**: every tick also reads
+  `fallback_providers` from `~/.hermes/config.yaml` and flags known-bad models
+  (e.g. `qwen2.5-coder:3b` via `custom:ollama-local`). A garbage model at the
+  bottom of the chain makes crons deliver token noise with `last_status: ok`
+  when the primary is down — this caught the 2026-08-09 bible-reading garbage
+  and its 2026-08-11 recurrence on `agent-fixer-workday` (49 chars of `\nin 0.`
+  noise) and `orch-backlog-driver` (80 chars of `ly, what really` noise). The
+  fix is `hermes fallback remove`; the audit ensures a regression is flagged
+  BEFORE the next outage, not after the next delivery.
 
 ### What it checks
 
@@ -90,6 +99,7 @@ Runs as `no_agent=True` cron on schedule `*/10 * * * *`. Delivers to origin.
 | Empty/whitespace-only | < 5 bytes | 🟡 Silent failure |
 | Suspicious unicode ratio | > 30% non-ASCII/control | 🔴 Encoding corruption |
 | Repetitive content | Substring repeats > 30% | 🔴 Gibberish |
+| Known-bad fallback model in `fallback_providers` | Any occurrence (e.g. `qwen2.5-coder:3b`) | 🔴 Will deliver garbage on outage |
 
 ## Installation
 
