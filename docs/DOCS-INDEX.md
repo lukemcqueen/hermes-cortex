@@ -150,6 +150,7 @@ must be registered in this index.
 | `docs/proposals/2026-08-06-provider-timeout-fix.md` | **Provider timeout fix proposal** — fleet-wide deepseek request timeout (LLM cron hang class), ready-to-apply patch |
 | `docs/proposals/2026-08-06-docs-artifact-routing.md` | **Docs artifact routing proposal** — canonical docs/ routing for review/gap-analysis/elicit/party/docs workflows. ✅ APPLIED 2026-08-06 (moses) |
 | `docs/gbrain-postgres-migration.md` | gbrain Postgres migration — schema, migration procedure |
+| `docs/langfuse-v3-to-v4-migration.md` | **Langfuse v3→v4 migration runbook** — dual-mode upgrade, CH 25.12, backfill memory caps, failure recovery (Linux + macOS) |
 | `docs/gbrain-v2-taxonomy.md` | gbrain v2 taxonomy — brain source categories and tag conventions |
 | `docs/agent-learning-submissions.md` | **Agent learning submissions** — how agents submit ad-hoc learnings via ~/brain/learnings/pending/ |
 | `docs/pre-task-sequence-mandatory-before-every-task.md` | Pre-task sequence reference table — relocated from AGENTS.md during doc pruning |
