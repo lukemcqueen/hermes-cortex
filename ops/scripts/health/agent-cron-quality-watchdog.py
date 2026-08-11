@@ -40,6 +40,20 @@ SUSPICIOUS_UNICODE_RATIO = 0.30  # if >30% of chars are non-ASCII/control
 ACTIVE_MARKER = "ACTIVE ("  # session-active-guard output when interactive
 SKIP_TOKEN_MARKERS = ("skipped", "interactive session")  # normalised skip reply
 
+# Known-bad fallback models (2026-08-11): when the primary provider fails,
+# the fallback chain bottomed out in qwen2.5-coder:3b (custom:ollama-local),
+# which emits token garbage for agentic tool-use loops while the scheduler
+# records last_status: ok (a response WAS emitted — it was just garbage).
+# First seen 2026-08-09 on the bible-reading cron; recurred 2026-08-11 on
+# agent-fixer-workday (49 chars of '\\\\\nin 0.' noise) and orch-backlog-driver
+# (80 chars of 'ly, what really' noise). A green status is NOT evidence of
+# correct output — the guard is to never let the chain end in a model that
+# cannot do agentic work. Remove the entry with `hermes fallback remove`.
+KNOWN_BAD_FALLBACK_MODELS = {
+    "qwen2.5-coder:3b": "emits token garbage for agentic tool-use loops (2026-08-09, 2026-08-11)",
+}
+FALLBACK_CONFIG_FILE = Path(os.path.expanduser("~/.hermes/config.yaml"))
+
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 def _get_jobs() -> list[dict]:
@@ -141,9 +155,52 @@ def _is_skip_reply(response: str) -> bool:
     return all(m in low for m in SKIP_TOKEN_MARKERS)
 
 
+def _audit_fallback_chain() -> list[str]:
+    """Flag fallback-chain entries that produce garbage instead of failing.
+
+    A known-bad model in the chain means: when the primary provider is down,
+    crons silently deliver token garbage with last_status: ok instead of
+    failing loudly. Checked every tick so a regression is caught before the
+    next outage, not after the next delivery.
+    """
+    try:
+        import yaml
+    except ImportError:
+        return []
+    if not FALLBACK_CONFIG_FILE.exists():
+        return []
+    try:
+        with open(FALLBACK_CONFIG_FILE, encoding="utf-8") as f:
+            cfg = yaml.safe_load(f) or {}
+    except (OSError, yaml.YAMLError):
+        return []
+    chain = cfg.get("fallback_providers") or []
+    if isinstance(chain, dict):  # legacy single-dict format
+        chain = [chain]
+    issues = []
+    for entry in chain:
+        if not isinstance(entry, dict):
+            continue
+        model = entry.get("model", "")
+        provider = entry.get("provider", "")
+        if model in KNOWN_BAD_FALLBACK_MODELS:
+            issues.append(
+                f"\U0001f534 fallback chain: {model} (via {provider}) — "
+                f"{KNOWN_BAD_FALLBACK_MODELS[model]}; crons will deliver "
+                f"garbage instead of failing when the primary is down. "
+                f"Remove with: hermes fallback remove"
+            )
+    return issues
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 def main() -> None:
     issues: list[str] = []
+
+    # Check 0: fallback chain audit — catches the CAUSE (a known-garbage
+    # fallback model) before the next outage produces the symptom.
+    issues.extend(_audit_fallback_chain())
+
     jobs = _get_jobs()
 
     # Monitor every LLM-driven job (no_agent=False) that has an output file.
