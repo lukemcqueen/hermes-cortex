@@ -632,7 +632,9 @@ def cmd_update(task_id: str, new_status: str, reason: str | None = None,
                 [task_id])
             row_raw = psql(row_sql)
             row = parse_row(row_raw.split("\n")[0]) if row_raw else None
-            if row:
+            # M-5: doctor-probe rows (doctor write-probe) are self-cleaning
+            # diagnostics — never emit task-events for their lifecycle.
+            if row and row.get("source") != "doctor-probe":
                 parent_title = None
                 if row["parent_id"]:
                     p_raw = psql(build_query(
