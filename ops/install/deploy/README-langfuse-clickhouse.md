@@ -640,11 +640,11 @@ python3 ~/.hermes-cortex/scripts/llm-judge-scorer.py --dry-run
 # Check model health (default: nomic-embed-text:v1.5 + qwen2.5:3b)
 python3 ~/.hermes-cortex/scripts/model-health-watchdog.py
 
-# Check with a custom judge model (e.g., Titus' model)
-python3 ~/.hermes-cortex/scripts/model-health-watchdog.py --judge-model mannix/qwen2.5-coder:7b-iq3_xs
+# Check with a custom judge model (non-coder models only; coder variants are known-bad as judges)
+python3 ~/.hermes-cortex/scripts/model-health-watchdog.py --judge-model qwen2.5:7b
 
 # Via env var (comma-separated for multiple)
-JUDGE_MODEL="mannix/qwen2.5-coder:7b-iq3_xs,qwen2.5:3b" \\
+JUDGE_MODEL="qwen2.5:7b,qwen2.5:3b" \
  python3 ~/.hermes-cortex/scripts/model-health-watchdog.py --quiet
 
 # Verify crons are scheduled

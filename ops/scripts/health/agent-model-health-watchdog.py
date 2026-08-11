@@ -12,14 +12,14 @@ Usage:
   # Default (nomic-embed-text:v1.5 + qwen2.5:3b)
   python3 model-health-watchdog.py
 
-  # Custom judge model (Titus using mannix/qwen2.5-coder:7b)
-  python3 model-health-watchdog.py --judge-model mannix/qwen2.5-coder:7b-iq3_xs
+  # Custom judge model (any non-coder model, e.g. qwen2.5:7b)
+  python3 model-health-watchdog.py --judge-model qwen2.5:7b
 
   # Multiple judge models
   python3 model-health-watchdog.py --judge-model model-a --judge-model model-b
 
   # Via env var (comma-separated)
-  JUDGE_MODEL=mannix/qwen2.5-coder:7b-iq3_xs python3 model-health-watchdog.py
+  JUDGE_MODEL=qwen2.5:7b python3 model-health-watchdog.py
 
   # Quiet mode — only outputs on failure
   python3 model-health-watchdog.py --quiet
