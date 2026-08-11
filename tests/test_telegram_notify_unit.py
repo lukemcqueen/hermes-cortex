@@ -96,17 +96,35 @@ def test_scrub_preserves_plain_words():
 
 def test_format_story_message():
     msg = tn.format_task_message("esther", "story", "Task Lifecycle v2", "in_progress", "abc-123")
-    assert msg == "[esther] Task Lifecycle v2: in_progress (abc-123)"
+    assert msg == "[esther] Task Lifecycle v2: 🚧 in_progress (abc-123)"
 
 
 def test_format_slice_message_has_parent():
     msg = tn.format_task_message("esther", "slice", "S2 notify lib", "pending", "abc-124", parent_title="Task Lifecycle v2")
-    assert msg == "[esther] Task Lifecycle v2 → S2 notify lib: pending (abc-124)"
+    assert msg == "[esther] Task Lifecycle v2 → S2 notify lib: ⏳ pending (abc-124)"
 
 
 def test_format_slice_message_scrubs_title():
     msg = tn.format_task_message("esther", "slice", "fix /home/user/x", "pending", "abc-125", parent_title="story")
     assert "/home/" not in msg
+
+
+def test_format_all_statuses_have_icons():
+    expected = {
+        "pending": "⏳",
+        "in_progress": "🚧",
+        "paused": "⏸️",
+        "completed": "✅",
+        "cancelled": "❌",
+    }
+    for status, icon in expected.items():
+        msg = tn.format_task_message("esther", "story", "Status", status, "abc-126")
+        assert msg == f"[esther] Status: {icon} {status} (abc-126)", msg
+
+
+def test_format_unknown_status_no_icon():
+    msg = tn.format_task_message("esther", "story", "Status", "blocked", "abc-127")
+    assert msg == "[esther] Status: blocked (abc-127)"
 
 
 # ── Send path: success + escaping ───────────────────────────

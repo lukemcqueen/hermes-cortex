@@ -223,6 +223,18 @@ def html_escape(text: str) -> str:
 
 # ── Public: message format (F-031 / §8) ─────────────────────
 
+# Task lifecycle icons — the status word in every task-event Telegram
+# message carries its state icon so the DM digest is scannable at a
+# glance. Applies to ALL agents (shared lib, deployed fleet-wide).
+STATUS_ICONS = {
+    "pending": "⏳",
+    "in_progress": "🚧",
+    "paused": "⏸️",
+    "completed": "✅",
+    "cancelled": "❌",
+}
+
+
 def format_task_message(
     agent: str,
     kind: str,
@@ -231,15 +243,18 @@ def format_task_message(
     task_id: str,
     parent_title: str | None = None,
 ) -> str:
-    """[agent] story: status (id)         for story rows
-       [agent] story -> slice: status (id) for slice rows
+    """[agent] story: <icon> status (id)         for story rows
+       [agent] story -> slice: <icon> status (id) for slice rows
     Fields: agent, kind, title (scrubbed), status, id. NEVER the body.
-    Task id passes through unscrubbed — it is a UUID, not free text."""
+    Task id passes through unscrubbed — it is a UUID, not free text.
+    Unknown statuses render with no icon (forward-compatible)."""
     clean_title = scrub_text(title or "")
+    icon = STATUS_ICONS.get(status, "")
+    status_text = f"{icon} {status}".strip()
     if kind == "slice" and parent_title:
         parent = scrub_text(parent_title)
-        return f"[{agent}] {parent} → {clean_title}: {status} ({task_id})"
-    return f"[{agent}] {clean_title}: {status} ({task_id})"
+        return f"[{agent}] {parent} → {clean_title}: {status_text} ({task_id})"
+    return f"[{agent}] {clean_title}: {status_text} ({task_id})"
 
 
 # ── Quiet hours (R-20) ──────────────────────────────────────
