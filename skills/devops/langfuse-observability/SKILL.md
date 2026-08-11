@@ -226,22 +226,19 @@ tr '\0' '\n' < /proc/$(systemctl --user show hermes-gateway.service -p MainPID 2
 
 If the process started **before** `.env` was updated, the gateway has no Langfuse credentials. Fix: restart it.
 
-**2. Restart the gateway (safe from within a gateway session)**
+**2. Restart the gateway (BLOCKED from inside — ask the user)**
 
-When the current session IS the gateway (Telegram/Discord/CLI), `systemctl --user restart` kills the session before the command finishes. Launch the restart as a detached process:
+The Hermes lifecycle guard (`cron/lifecycle_guard.py`, enforced in `tools/terminal_tool.py` and the cron tool) **hard-blocks any gateway restart/stop from inside the gateway process** — `systemctl restart hermes-gateway`, `hermes gateway restart`, `pkill` on the gateway, and any script that contains those patterns are all refused with `force=True` having no effect. Deliberately laundering the command (base64, remote-host indirection, variable indirection) to dodge the scan is a trust violation — don't.
+
+The sanctioned path: **ask the user to run it from a shell outside the gateway**:
 
 ```bash
-# Write and launch a detached restart script
-cat > /tmp/restart-gateway.sh << 'SCRIPT'
-#!/bin/bash
-sleep 2
+hermes gateway restart
+# or, directly:
 systemctl --user restart hermes-gateway.service
-SCRIPT
-chmod +x /tmp/restart-gateway.sh
-nohup setsid /tmp/restart-gateway.sh </dev/null >/dev/null 2>&1 &
 ```
 
-The 2-second sleep gives the terminal enough time to return before the gateway dies. The session reconnects automatically after restart (~5s).
+The session reconnects automatically after restart (~5s). Alternatively a `/reset` in chat creates a new session, but if the gateway process itself predates the `.env` change, new sessions still inherit the stale env — a real restart is required.
 
 **3. Verify traces are flowing after restart**
 
