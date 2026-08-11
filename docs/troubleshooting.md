@@ -565,39 +565,44 @@ Then set `LANGFUSE_HOST=http://localhost:{PORT}` and restart dashboard.
 
 **A) Missing model pricing** — The model name reported by the provider isn't in Langfuse's `public.models` table. Langfuse ships with 160+ built-in model entries but custom/open-router models aren't included.
 
+> ⚠️ **Langfuse 3.206+ ignores the legacy `input_price`/`output_price` columns on `public.models`.** Pricing is now read from `public.pricing_tiers` (tier definitions) + `public.prices` (per-usage-type amounts). Inserting into the legacy columns looks like it works but costs stay $0.00. Use the tier/prices insert below.
+
 ```sql
 -- Check current models for your project (NULL project_id = global, available to all):
 docker exec langfuse-postgres-1 psql -U postgres -d postgres \
-  -c "SELECT model_name, input_price, output_price, unit FROM public.models WHERE project_id IS NULL ORDER BY model_name;"
+  -c "SELECT m.model_name, m.match_pattern, p.usage_type, p.price \
+      FROM public.models m \
+      JOIN public.pricing_tiers pt ON pt.model_id = m.id \
+      JOIN public.prices p ON p.pricing_tier_id = pt.id \
+      WHERE m.project_id IS NULL ORDER BY m.model_name, p.usage_type;"
 
--- Check project-specific models (like custom additions):
-docker exec langfuse-postgres-1 psql -U postgres -d postgres \
-  -c "SELECT model_name, input_price, output_price FROM public.models WHERE project_id IS NOT NULL ORDER BY model_name;"
+-- Insert a global model with pricing (NULL project_id — applies to all projects).
+-- Prices are per-token: 0.00000014 = $0.14 per 1M tokens.
+-- One pricing_tiers row ('Standard', is_default) + two prices rows (input/output).
+INSERT INTO public."models" (id, model_name, match_pattern, unit, tokenizer_config)
+VALUES (gen_random_uuid()::text, 'deepseek-v4-flash-free', '(?i)deepseek-v4-flash-free', 'TOKENS', NULL);
 
--- Insert a global model pricing entry (NULL project_id — applies to all projects):
-INSERT INTO public."models" (id, model_name, match_pattern, input_price, output_price, unit, tokenizer_config)
-VALUES (
-  gen_random_uuid()::text,
-  'deepseek-v4-flash-free',
-  '(?i)deepseek-v4-flash-free',
-  0.00000014,   -- $0.14/M input tokens
-  0.00000028,   -- $0.28/M output tokens
-  'TOKENS',
-  NULL
-);
+INSERT INTO public."pricing_tiers" (id, model_id, name, is_default, priority, conditions)
+SELECT gen_random_uuid()::text, id, 'Standard', true, 0, '{}'::jsonb
+FROM public."models" WHERE model_name = 'deepseek-v4-flash-free';
 
--- To insert project-specific (scoped to one project):
-INSERT INTO public."models" (id, project_id, model_name, match_pattern, input_price, output_price, unit, tokenizer_config)
-VALUES (
-  gen_random_uuid()::text,
-  (SELECT id FROM public.projects WHERE name = 'Hermes Agent' LIMIT 1),
-  'deepseek-v4-flash-free',
-  '(?i)deepseek-v4-flash-free',
-  0.00000014,
-  0.00000028,
-  'TOKENS',
-  NULL
-);
+INSERT INTO public."prices" (id, model_id, usage_type, price, pricing_tier_id)
+SELECT gen_random_uuid()::text, m.id, 'input', 0.00000014, pt.id
+FROM public."models" m JOIN public."pricing_tiers" pt ON pt.model_id = m.id
+WHERE m.model_name = 'deepseek-v4-flash-free';
+
+INSERT INTO public."prices" (id, model_id, usage_type, price, pricing_tier_id)
+SELECT gen_random_uuid()::text, m.id, 'output', 0.00000028, pt.id
+FROM public."models" m JOIN public."pricing_tiers" pt ON pt.model_id = m.id
+WHERE m.model_name = 'deepseek-v4-flash-free';
+```
+
+After inserting or changing pricing, **flush the Redis model-price cache and restart the worker** — otherwise the new prices don't take effect:
+
+```bash
+# Flush the model-price-tier cache (pattern covers all models/projects)
+docker exec langfuse-redis-1 redis-cli --scan --pattern 'model-price-tiers:*' | xargs -r docker exec -i langfuse-redis-1 redis-cli DEL
+docker restart langfuse-langfuse-worker-1
 ```
 
 **B) opencode-zen / opencode-go provider** — When using the `opencode-zen` or `opencode-go` provider in Hermes (i.e. `model.provider: opencode-go`, `base_url: https://opencode.ai/zen/go/v1`), the model name reported to Langfuse is whatever `model.default` is set to (e.g. `deepseek-v4-flash` or `deepseek-v4-flash-free`).
@@ -609,17 +614,24 @@ VALUES (
 
 The `deepseek-v4-flash-free` model routes through the same DeepSeek API underneath (OpenCode adds a free daily quota on top). Use the standard DeepSeek pricing as the base rate. Adjust if your OpenCode plan has different rates.
 
-Insert the missing entry:
+Insert the missing entry (3.206+ tier/prices pattern):
 ```sql
-INSERT INTO public."models" (id, model_name, match_pattern, input_price, output_price, unit)
-VALUES (
-  gen_random_uuid()::text,
-  'deepseek-v4-flash-free',
-  '(?i)deepseek-v4-flash-free',
-  0.00000014,
-  0.00000028,
-  'TOKENS'
-);
+INSERT INTO public."models" (id, model_name, match_pattern, unit, tokenizer_config)
+VALUES (gen_random_uuid()::text, 'deepseek-v4-flash-free', '(?i)deepseek-v4-flash-free', 'TOKENS', NULL);
+
+INSERT INTO public."pricing_tiers" (id, model_id, name, is_default, priority, conditions)
+SELECT gen_random_uuid()::text, id, 'Standard', true, 0, '{}'::jsonb
+FROM public."models" WHERE model_name = 'deepseek-v4-flash-free';
+
+INSERT INTO public."prices" (id, model_id, usage_type, price, pricing_tier_id)
+SELECT gen_random_uuid()::text, m.id, 'input', 0.00000014, pt.id
+FROM public."models" m JOIN public."pricing_tiers" pt ON pt.model_id = m.id
+WHERE m.model_name = 'deepseek-v4-flash-free';
+
+INSERT INTO public."prices" (id, model_id, usage_type, price, pricing_tier_id)
+SELECT gen_random_uuid()::text, m.id, 'output', 0.00000028, pt.id
+FROM public."models" m JOIN public."pricing_tiers" pt ON pt.model_id = m.id
+WHERE m.model_name = 'deepseek-v4-flash-free';
 ```
 
 **C) Provider doesn't report tokens** — Check if `inputTokens` / `outputTokens` are null in Langfuse observations. If null, the provider's Langfuse instrumentation isn't capturing usage (provider-specific, can't fix in Langfuse/dashboard alone). The dashboard falls back to `state.db` token counts for calculated costs.

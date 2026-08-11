@@ -254,10 +254,13 @@ def _health():
 
 
 # ── Langfuse Data ───────────────────────────────────────────────────────
-# Known model pricing (per token) — used when Langfuse doesn't return cost
+# Known model pricing (per token) — used when Langfuse doesn't return cost.
+# deepseek-v4-flash: $0.14/M input, $0.28/M output (per-token 1.4e-7 / 2.8e-7)
 _MODEL_PRICING = {
-    "deepseek-v4-flash": {"input": 1.5e-7, "output": 6.0e-7},  # $0.15/$0.60 per 1M
-    "deepseek/deepseek-v4-flash": {"input": 1.5e-7, "output": 6.0e-7},
+    "deepseek-v4-flash": {"input": 1.4e-7, "output": 2.8e-7},
+    "deepseek/deepseek-v4-flash": {"input": 1.4e-7, "output": 2.8e-7},
+    "deepseek": {"input": 1.4e-7, "output": 2.8e-7},
+    "qwen2.5-coder:3b": {"input": 0.0, "output": 0.0},  # local Ollama, free
 }
 
 def _get_usage_tokens(o):
@@ -350,8 +353,10 @@ def _lf_traces():
         model_usage[m]["calls"] += 1
         inp, out = _get_usage_tokens(o)
         model_usage[m]["tokens"] += inp + out
-        # Use explicit cost if available, else calculate from token usage
-        cost = o.get("totalCost") or 0
+        # Use explicit cost if available, else calculate from token usage.
+        # Langfuse 3.206 exposes calculatedTotalCost (costDetails derived);
+        # older versions used totalCost. Try both before falling back.
+        cost = o.get("calculatedTotalCost") or o.get("totalCost") or 0
         if not cost:
             cost = _calc_cost(m, inp, out)
         model_usage[m]["cost"] += cost
@@ -375,7 +380,7 @@ def _lf_traces():
             "id": t.get("id", ""),
             "name": t.get("name", "") or "(unnamed)",
             "timestamp": t.get("timestamp", ""),
-            "cost": t.get("totalCost", 0),
+            "cost": t.get("calculatedTotalCost") or t.get("totalCost", 0),
             "latency": t.get("latency", 0),
             "htmlPath": t.get("htmlPath", ""),
             "obs_count": len([o for o in all_obs if o.get("traceId") == t.get("id")]),
