@@ -233,29 +233,30 @@ Return this exact JSON format:
 
 
 # ── Scoring pipeline ────────────────────────────────────────────────────
-def _get_existing_score_names(trace_id: str) -> set:
-    """Return score names for a trace, via client-side filter.
+def _get_scored_trace_ids() -> set:
+    """Return the set of trace IDs that already carry an 'overall' score.
 
-    NOTE (2026-08-11): Langfuse v3.207.0's /api/public/scores endpoint
-    IGNORES the traceId query filter — it returns every score in the
-    project regardless of the filter value (verified live: traceId of a
-    nonexistent trace still returned all 4 project scores). Per-trace
-    dedup must therefore be done client-side: fetch all scores, then
-    filter by the trace id here.
+    The public scores API ignores the traceId query parameter (langfuse
+    issue #11121 — backend supports it, endpoint does not), so we cannot
+    ask for the scores of one trace. Instead fetch all 'overall' scores page
+    by page (the name filter IS supported and each scored trace has exactly
+    one 'overall' entry) and collect trace IDs locally.
     """
-    scores = _lf_get("/api/public/scores?limit=100&page=1")
-    if not scores:
-        return set()
-    names = {s.get("name") for s in scores.get("data", []) if (s.get("traceId") or s.get("trace_id")) == trace_id}
-    total = scores.get("meta", {}).get("totalItems", 0)
-    page = 2
-    while len(names) < total and page <= 10:
-        more = _lf_get(f"/api/public/scores?limit=100&page={page}")
-        if not more or not more.get("data"):
+    scored = set()
+    page = 1
+    while True:
+        data = _lf_get(f"/api/public/scores?name=overall&limit=50&page={page}")
+        if not data or not data.get("data"):
             break
-        names.update(s.get("name") for s in more.get("data", []) if (s.get("traceId") or s.get("trace_id")) == trace_id)
+        for s in data["data"]:
+            if s.get("traceId"):
+                scored.add(s["traceId"])
+        meta = data.get("meta", {})
+        if page >= meta.get("totalPages", 1):
+            break
         page += 1
-    return names
+    return scored
+
 
 
 def _post_scores(trace_id: str, scores: dict, comment: str, dry_run: bool = False):
@@ -351,6 +352,13 @@ def main():
     if not pk or not sk:
         return  # silent exit — nothing to score without Langfuse
 
+    # Build the set of already-scored trace IDs ONCE. The public scores API
+    # ignores the traceId query parameter (langfuse issue #11121), so the
+    # old per-trace _get_existing_score_names() always returned the same
+    # scores and every trace looked "already scored" — the scorer silently
+    # scored nothing since 2026-08-02. Fetch all 'overall' scores instead.
+    scored_trace_ids = _get_scored_trace_ids()
+
     # Fetch traces — fetch in bulk to find unscored ones
     if specific_trace:
         # Single trace via direct endpoint
@@ -368,8 +376,7 @@ def main():
             tid = t.get("id")
             if tid and tid not in seen_ids:
                 seen_ids.add(tid)
-                existing = _get_existing_score_names(tid)
-                if "overall" not in existing:
+                if tid not in scored_trace_ids:
                     all_traces.append(t)
                     if len(all_traces) >= MAX_TRACES_PER_RUN:
                         break
@@ -396,8 +403,7 @@ def main():
             continue
 
         # Skip already-scored traces (unless specific trace requested)
-        existing = _get_existing_score_names(trace_id)
-        if "overall" in existing and not specific_trace:
+        if trace_id in scored_trace_ids and not specific_trace:
             skipped += 1
             continue
 
@@ -445,6 +451,14 @@ def main():
             print("(Dry run — no scores were actually posted)")
 
     _save_summary(scored, skipped, failed, JUDGE_MODEL)
+
+    # Fail loud, never silent-green: if we had candidates to judge but every
+    # one failed (judge model broken, API down), exit non-zero so the cron
+    # scheduler records an error instead of `last_status: ok`. A green status
+    # with zero scores hides a dead pipeline (observed 2026-08-02..08-11 —
+    # only 4 scores ever landed while the job reported ok).
+    if not dry_run and failed > 0 and scored == 0:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

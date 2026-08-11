@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import time
@@ -3884,6 +3885,104 @@ def check_nginx_dir_purity(res):
         )
     else:
         res.add("Nginx dir purity", "PASS", "all confs in ops/install/deploy/nginx/ are nginx configs")
+    return
+
+
+def check_langfuse_observability(res):
+    """Langfuse observability: version drift + scoring pipeline freshness.
+
+    Surfaces two silent failures observed 2026-08-11:
+    1. Version drift — the repo compose pinned langfuse/langfuse:3.207.0
+       (commit ded38883) but the running container stayed on 3.206.0 for
+       days because `docker compose restart` does not re-read configs or
+       pull new images (documented pitfall). The old image ignored the
+       traceId query filter on /api/public/scores.
+    2. Dead scoring pipeline — agent-llm-judge-scorer posted only 4 scores
+       (all 2026-08-02) while the cron reported last_status: ok, because
+       the public scores API ignores traceId params (langfuse issue #11121)
+       so every trace looked "already scored". The scorer auto-quieted and
+       the scheduler recorded green.
+
+    Orchestrator-only (Langfuse is orchestrator-only). Skips quietly when
+    Langfuse is not installed on this host or docker is unreachable.
+    """
+    if AGENT_ROLE != "orchestrator":
+        return
+    compose_file = HOME / "langfuse" / "docker-compose.yml"
+    if not compose_file.is_file():
+        res.add("Langfuse observability", "INFO",
+                "langfuse stack not installed on this host — skipping")
+        return
+
+    def _docker(args):
+        """Run docker, retrying through sg if the user lacks the docker group."""
+        out, rc = run(["docker"] + args, timeout=15)
+        if rc == 0 and out:
+            return out
+        sg_cmd = " ".join(["docker"] + [shlex_quote(a) for a in args])
+        out2, rc2 = run(["sg", "docker", "-c", sg_cmd], timeout=15)
+        return out2 if rc2 == 0 else ""
+
+    # 1. Version drift: running web image vs compose-pinned tag
+    running = _docker(["ps", "--filter", "name=langfuse-langfuse-web-1",
+                       "--format", "{{.Image}}"]).strip()
+    pinned = ""
+    for line in compose_file.read_text(errors="ignore").splitlines():
+        line = line.strip()
+        if line.startswith("image: langfuse/langfuse:") and "worker" not in line:
+            pinned = line.split(":", 2)[-1].strip()
+            break
+    running_tag = running.rsplit(":", 1)[-1] if ":" in running else running
+    if running and pinned:
+        if running_tag != pinned:
+            res.add("Langfuse version", "WARN",
+                    f"running {running} but compose pins langfuse:{pinned}",
+                    "cd ~/langfuse && docker compose down && docker compose up -d "
+                    "(docker compose restart does NOT re-read configs or pull new images)")
+        else:
+            res.add("Langfuse version", "PASS", f"running {running} matches compose pin")
+    elif running:
+        res.add("Langfuse version", "INFO",
+                f"langfuse running {running} — compose pin not parseable, skipping")
+
+    # 2. Scoring pipeline freshness: scores should exist and be recent
+    scores_n = _docker(["exec", "langfuse-clickhouse-1", "clickhouse-client", "--query",
+                        "SELECT count() FROM default.scores"]).strip()
+    traces_n = _docker(["exec", "langfuse-clickhouse-1", "clickhouse-client", "--query",
+                        "SELECT count() FROM default.traces"]).strip()
+    scores_age = _docker(["exec", "langfuse-clickhouse-1", "clickhouse-client", "--query",
+                          "SELECT round(dateDiff('day', max(timestamp), now())) "
+                          "FROM default.scores WHERE timestamp > 0"]).strip()
+    traces_age = _docker(["exec", "langfuse-clickhouse-1", "clickhouse-client", "--query",
+                          "SELECT round(dateDiff('day', max(timestamp), now())) "
+                          "FROM default.traces WHERE timestamp > 0"]).strip()
+    try:
+        s_n, t_n = int(scores_n or -1), int(traces_n or -1)
+        s_age = int(float(scores_age)) if scores_age else None
+        t_age = int(float(traces_age)) if traces_age else None
+    except ValueError:
+        res.add("Langfuse scoring", "INFO",
+                "clickhouse counts not readable — skipping freshness check")
+        return
+    if s_n < 0 or t_n < 0:
+        res.add("Langfuse scoring", "INFO",
+                "clickhouse langfuse tables unreachable — skipping freshness check")
+        return
+    if t_n > 0 and s_n == 0:
+        res.add("Langfuse scoring", "WARN",
+                f"{t_n} traces recorded but 0 scores — LLM-judge pipeline produced nothing",
+                "Check agent-llm-judge-scorer cron output; the public scores API ignores "
+                "traceId filters (langfuse issue #11121) so the scorer must build the "
+                "scored-trace set from name=overall, not per-trace queries")
+        return
+    if s_age is not None and t_age is not None and t_age <= 7 and s_age > 7:
+        res.add("Langfuse scoring", "WARN",
+                f"no scores in {s_age}d while traces flowed {t_age}d ago — judge pipeline stale",
+                "Check agent-llm-judge-scorer: run it manually, verify the judge model "
+                "responds, and confirm scores POST to /api/public/scores")
+    elif s_n > 0:
+        res.add("Langfuse scoring", "PASS",
+                f"{s_n} scores, newest {s_age}d old, traces newest {t_age}d old")
     return
 
 

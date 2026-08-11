@@ -273,6 +273,62 @@ and the `auto-remediation` skill's `references/clickhouse-low-memory-tuning.md`.
 
 ## Troubleshooting
 
+### Public scores API ignores traceId filters (langfuse issue #11121)
+
+`GET /api/public/scores?traceId=X` **does not filter** — the backend supports
+it internally but the endpoint ignores the parameter (confirmed on 3.206.0,
+3.207.0, and 3.225.1). A bogus trace ID returns the same scores as a real
+one. Any dedup logic built on per-trace score queries is silently broken:
+`agent-llm-judge-scorer.py` used it to skip already-scored traces, so every
+trace looked "already scored", it scored nothing, auto-quieted, and the cron
+reported `last_status: ok` while only 4 scores ever landed (2026-08-02 →
+2026-08-11).
+
+**Fix (shipped 2026-08-11):** fetch all `name=overall` scores page by page
+(the `name` filter IS supported, each scored trace has exactly one
+`overall`) and build the scored-trace set locally:
+
+```python
+data = _lf_get(f"/api/public/scores?name=overall&limit=50&page={page}")
+scored.add(s["traceId"])  # for each score in data["data"]
+```
+
+Then check `trace_id not in scored_trace_ids` — never per-trace API queries.
+
+**Never treat a green cron status as evidence of scoring.** The judge job
+reported `last_status: ok` for 9 days while posting zero scores. The scorer
+now exits 1 when it found candidates but judged none (`failed > 0 and scored
+== 0`), so the scheduler records an error instead of silent-green.
+
+### Traces endpoint requires fromTimestamp (3.225.1+)
+
+Since 3.225.1, `GET /api/public/traces` without `fromTimestamp` returns
+HTTP 400 `InvalidRequestError`. Always pass `fromTimestamp` (and optionally
+`toTimestamp`). The traces API may 400 on the exact `traceId` filter format
+too — prefer ClickHouse queries (`SELECT ... FROM default.traces`) for
+verification.
+
+### qwen2.5-coder:3b judge model is broken — use qwen2.5:3b
+
+The local `qwen2.5-coder:3b` model emits 1 token of whitespace/empty content
+on every prompt (verified sha256-clean blobs, AVX2 CPU, Ollama 0.30.10).
+Code-completion tuning makes it unusable for rubric JSON. The LLM-judge
+scorer's `JUDGE_MODEL` default is `qwen2.5-coder:3b` (via
+`hermes_models.get_model`); set `JUDGE_MODEL=qwen2.5:3b` in
+`~/hermes-cortex/.env` (gitignored, per-host) to use the verified-working
+instruct variant. Pull it first: `ollama pull qwen2.5:3b`.
+
+### Doctor surfaces Langfuse health (cortex-doctor)
+
+`cortex-doctor` includes a `check_langfuse_observability` check (2026-08-11)
+that reports:
+- **Langfuse version** — running web image tag vs compose-pinned tag
+  (catches "compose updated but `docker compose restart` never re-read it").
+- **Langfuse scoring** — scores exist and are recent relative to traces
+  (catches a dead/auto-quiet judge pipeline).
+
+It is orchestrator-only and skips quietly when Langfuse isn't installed.
+
 ### PostHog telemetry crash (v3.206.0)
 
 The langfuse-web container uses PostHog for telemetry. If the container cannot reach `eu.posthog.com` (firewall, DNS, or network isolation), the PostHog flush will time out after ~30s. This fires an unhandled rejection that crashes the Next.js server process.

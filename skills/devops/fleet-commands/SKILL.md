@@ -68,8 +68,10 @@ For EXEC commands, `hc exec` handles the full lifecycle:
 ```bash
 hc exec esther cortex-doctor.py --json
 hc exec joseph cortex-doctor.py --quiet
-hc exec gisu -- df -h /
+hc exec gisu cortex-doctor.py --quiet
 ```
+
+⚠️ **`hc exec <agent> -- <raw-command>` does NOT work — the `--` separator is NOT supported.** The EXEC handler only runs scripts that exist in `~/.hermes-cortex/scripts/` on the target; a `--` "raw command" attempt returns `Script not found: --` (exit -1). Verified 2026-08-11: `hc exec titus -- "python3 -c ..."` failed exactly this way. Use `--output-schema RAW` (which skips RESULT validation) with a real deployed script — the RAW schema is about validation, not about raw shell execution. To run an arbitrary probe on a fleet agent, ship it as a script in the repo + register it in cortex-update.sh, or use an existing deployed probe (`cortex-doctor.py`, `agent-diagnostic.py`).
 
 It generates a `correlation_id`, sends the EXEC, then polls `inbox_moses` every 15s for up to 5min waiting for `EXEC_RESULT`.
 
@@ -86,8 +88,8 @@ hc exec kustos cortex-doctor.py --json
 # Custom output schema: validates against WAVE_RESULT
 hc exec esther setup-push-metrics-cron.sh --output-schema WAVE_RESULT
 
-# RAW mode: skip result validation
-hc exec moses -- df -h / --output-schema RAW
+# RAW mode: skip result validation (use a deployed script — `--` raw commands don't work)
+hc exec moses cortex-doctor.py --output-schema RAW
 ```
 
 Available schemas: `EXEC`, `EXEC_RESULT`, `WAVE_RESULT`, `UPDATE_REQUEST`,
@@ -473,6 +475,10 @@ After they report back, fix the identified issue (corrupt state file, handler cr
 
 - **Visibility timeout (VT) does NOT bound processing time — the subprocess timeout does.** The handler reads with `vt=120` and archives immediately after reading (early archive, `c7231c3`), so the VT only covers the read→archive window — it can never re-expose a message mid-processing. What actually bounds `cortex-update.sh` is the subprocess `timeout=` in `run_cortex_update()`: it was `120` (commit `feb8ef1` era, when cortex-update+doctor took ~96s) but the 08-10 fleet dispatch false-flagged titus/moses with `cortex-update TIMEOUT after 120s` — the doctor's Task Lifecycle v2 checks pushed update+doctor past 120s on slower hosts. Raised to `300` (2026-08-11, matching `orch-bus-fleet-dispatch --timeout 300` default). When debugging stuck `processing` messages, check `timeout_at` vs current time — but remember a stuck message means the handler *crashed* (see poll_once exception pitfall), not that the VT expired mid-update.
 - **cortex-update.sh exit=1 with empty stderr = soft success** — `cortex-update.sh` uses `set -euo pipefail` and `needs_update()` returns 1 for files already up to date (hashes match). This return code propagates as the script's exit code even though the update completed successfully. Fix (commit `821cdfd`): `run_cortex_update()` treats exit=1 as success when stderr is empty. If you see `UPDATE_RESULT success=false` with error `"cortex-update failed: "` (empty detail), check the handler cron log — the script likely completed normally.
+
+- **`hc exec` polls only 300s but a fleet agent's handler ticks every 5 min — results can land AFTER the poll gives up (2026-08-11).** The round-trip worked (probe was read/processed), but `hc exec` reported "Timed out waiting for EXEC_RESULT" because the result arrived at ~5:05 while the poll window closed at 5:00. **Decoupled pattern that always wins:** use `hc send <agent> EXEC '<json>' --self-tested` with a correlation_id, then poll `bus.archives` for `EXEC_RESULT` after ~5.5 min (see the archive queries above). Also: archiving your own stuck probe messages is fine — the handler already read them into `processing` (early-archive), so the result still comes back; don't resend the same probe, just wait and check archives.
+
+- **UPDATE_REQUEST partial-pull: git moves but the update "fails" — check git_sha_after, not success flag (2026-08-11).** Titus's update reported `success: false, error: "cortex-update failed: TIMEOUT after 120s"` but `git_sha_before: 9f110a8b → git_sha_after: 9d292bfe` — the pull succeeded and the file sync ran; the timeout killed the tail (doctor/registration). The handler timeout fix itself was IN the pulled commits, so the retry with the same target_sha completed the deploy. **Rule:** on UPDATE_RESULT, always compare `git_sha_before` vs `git_sha_after` vs requested `target_sha`. If `git_sha_after == target_sha`, the pull landed — resend the UPDATE_REQUEST (dedup gate may refuse an identical pending one; archive the stale pending first) rather than assuming the deploy failed outright.
 
 - **Always check BOTH live queue AND archives for responses** — EXEC_RESULT/UPDATE_RESULTs land in `inbox_moses` but your own handler may consume and archive them within 5 minutes (the `*_RESULT` handler archives silently, commit `4188d70`). If you only query `bus.messages` (live queue) and see nothing, the result may already be in `bus.archives`. Always query both before concluding a result didn't arrive:
   ```bash

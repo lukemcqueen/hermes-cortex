@@ -39,6 +39,7 @@ from .checks import (
     check_skill_drift,
     check_mycortex_parity,
     check_cron_runtime_scripts,
+    check_langfuse_observability,
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
@@ -84,6 +85,7 @@ def main():
         check_mycortex_parity,
         check_hook_drift,
         check_cron_runtime_scripts,
+        check_langfuse_observability,
     ]
 
     if do_quick:

@@ -260,7 +260,12 @@ curl -s -H "Authorization: Basic ${AUTH}" \
 
 ## Pitfalls
 
-SDK v4.12.0 exports traces via OTel's OTLP over HTTP, NOT via the REST API. Langfuse server **must** expose `/api/public/otel/v1/traces` or the SDK silently drops every trace with `Failed to export span batch code: 404`.
+- **The scores API ignores `traceId` filters (langfuse issue #11121).** `GET /api/public/scores?traceId=X` returns ALL scores regardless of the parameter (confirmed on 3.206.0 through 3.225.1). Never build dedup logic on per-trace score queries. Fetch `name=overall` scores page-by-page and build the scored-trace set locally. See the `langfuse-self-hosted` skill's "Public scores API ignores traceId filters" section for the full pattern.
+- **A green cron status is not evidence of scoring.** The LLM-judge scorer reported `last_status: ok` for 9 days while posting zero scores (the traceId-filter bug above made every trace look already-scored, and it auto-quieted). The scorer now exits 1 when it found candidates but judged none. Verify scores in ClickHouse (`SELECT count() FROM default.scores`), never the cron status.
+- **qwen2.5-coder:3b is broken as a judge model** — emits whitespace on every prompt. Use `qwen2.5:3b` (set `JUDGE_MODEL=qwen2.5:3b` in `~/hermes-cortex/.env`).
+- **Traces API requires `fromTimestamp` since 3.225.1** — omitting it returns HTTP 400 InvalidRequestError.
+- **Doctor check:** `cortex-doctor`'s `check_langfuse_observability` surfaces version drift (running container vs compose pin) and scoring staleness (scores older than traces). Orchestrator-only, skips when Langfuse isn't installed.
+- SDK v4.12.0 exports traces via OTel's OTLP over HTTP, NOT via the REST API. Langfuse server **must** expose `/api/public/otel/v1/traces` or the SDK silently drops every trace with `Failed to export span batch code: 404`.
 
 **Langfuse v3.1.0 does NOT have this endpoint** — traces are silently dropped on any self-hosted v3.1.0 deployment. **Upgrading to v3.200.0+ resolves this completely.** After upgrade:
 
