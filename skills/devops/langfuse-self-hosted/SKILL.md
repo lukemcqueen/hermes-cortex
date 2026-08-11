@@ -312,11 +312,10 @@ verification.
 
 The local `qwen2.5-coder:3b` model emits 1 token of whitespace/empty content
 on every prompt (verified sha256-clean blobs, AVX2 CPU, Ollama 0.30.10).
-Code-completion tuning makes it unusable for rubric JSON. The LLM-judge
-scorer's `JUDGE_MODEL` default is `qwen2.5-coder:3b` (via
-`hermes_models.get_model`); set `JUDGE_MODEL=qwen2.5:3b` in
-`~/hermes-cortex/.env` (gitignored, per-host) to use the verified-working
-instruct variant. Pull it first: `ollama pull qwen2.5:3b`.
+Code-completion tuning makes it unusable for rubric JSON. The fleet switched
+the judge model to `qwen2.5:3b` (2026-08-11): repo default and the per-host
+`JUDGE_MODEL` in `~/hermes-cortex/.env` (gitignored, per-host) both use the
+verified-working instruct variant. Pull it first: `ollama pull qwen2.5:3b`.
 
 ### Doctor surfaces Langfuse health (cortex-doctor)
 
