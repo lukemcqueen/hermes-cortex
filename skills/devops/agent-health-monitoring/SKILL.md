@@ -576,6 +576,14 @@ The override file only needs to specify the fields that differ from the public r
 Runs as a `no_agent` cron producing a compact emoji-bar snapshot of every agent's
 health — designed for mobile Telegram display. Zero LLM tokens.
 
+**Silent-when-clean (2026-08-11, Luke directive):** the snapshot is delivered
+ONLY when the fleet health signature changes — new issue, recovery, or first
+run after deploy. Persistent identical state → empty stdout → no delivery.
+Signature is per-agent status + failing services, persisted to
+`~/.hermes-cortex/state/health-report-sig.json`. The `orch-fleet-watchdog.py`
+(5-min, transition-based) remains the primary alert channel; this hourly
+report now mirrors it instead of pinging every hour.
+
 **Two health methods — same display code:**
 - `http` agents: `_fetch(url)` → parses `{"v": [...]}`
 - `inbox` agents: `_fetch_inbox_vector(agent_key)` → reads latest vector from

@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """orch-health-report.py — Live agent health snapshot for Telegram delivery.
 
-no_agent watchdog pattern:
-  Always outputs the snapshot (not silent) — this is a periodic report, not a state-change monitor.
+no_agent watchdog pattern (state-transition gate):
+  Prints the snapshot ONLY when the fleet health signature CHANGES since the
+  last run — new issue, recovery, or first run. Persistent identical state
+  → empty stdout → no delivery. (Luke directive 2026-08-11: the hourly
+  report was noisy when the fleet stayed healthy — quiet it.)
 
 Two health methods:
   - http:   Poll agent's health-vector HTTP endpoint (server agents)
@@ -56,6 +59,10 @@ ICONS = {1: "🟢", 0: "⚪", -1: "🔴"}
 # Laptop grace period — shared with orch-fleet-watchdog.py
 LAPTOP_GRACE_MINUTES = 30  # 30 min — covers quick coffee breaks / lid closes
 LAST_SEEN_FILE = HOME / ".hermes-cortex" / "state" / "last-seen.json"
+
+# State-transition gate (silent-when-clean): the snapshot is delivered only
+# when the fleet health signature changes. Persisted between runs.
+REPORT_STATE_FILE = HOME / ".hermes-cortex" / "state" / "health-report-sig.json"
 
 
 # ── Last-seen tracking (laptop grace period, shared with orch-fleet-watchdog.py) ──
@@ -243,12 +250,32 @@ def _fetch_inbox_vector(agent_key: str) -> Optional[list[int]]:
 
 # ── Report builder ──
 
-def build_snapshot() -> str:
-    """Build the health snapshot markdown string."""
+def _build_signature(agents: list[dict], statuses: list[str], failures: list[list[str]]) -> str:
+    """Compact fleet-state signature: per-agent status icon + failing services.
+
+    Excludes timestamps and response times — only meaningful state. Two runs
+    with the same signature are identical from the user's perspective.
+    """
+    sig = {}
+    for agent, status, fails in zip(agents, statuses, failures):
+        # Use short codes (not emoji) so the signature is ASCII-stable.
+        sig[agent["key"]] = {"s": status, "f": sorted(fails)}
+    return json.dumps(sig, sort_keys=True, separators=(",", ":"))
+
+
+def build_snapshot() -> tuple[str, str]:
+    """Build the health snapshot markdown + its state signature.
+
+    Returns (report_text, signature). main() compares the signature to the
+    previous run and prints only when it changed (silent-when-clean).
+    """
     agents = _get_agents()
     kst = timezone(timedelta(hours=9))
     ts = datetime.now(kst).strftime("%a %H:%M KST")
     lines = [f"━━━ **Agent Health** — {ts} ━━━"]
+
+    statuses: list[str] = []
+    failures: list[list[str]] = []
 
     for agent in agents:
         key = agent["key"]
@@ -268,29 +295,46 @@ def build_snapshot() -> str:
                 mins_ago = _last_seen_minutes_ago(key)
                 if mins_ago is not None and mins_ago < LAPTOP_GRACE_MINUTES:
                     lines.append(f"\n**{name}** 🌙 offline ({mins_ago}m)")
+                    statuses.append("offline")
+                    failures.append([])
                     continue
             lines.append(f"\n**{name}** 🔴 unreachable")
+            statuses.append("unreachable")
+            failures.append([])
             continue
 
         down = sum(1 for x in vec if x == -1)
-        status = "✅" if down == 0 else f"⚠️ {down} down"
+        status = "ok" if down == 0 else f"down:{down}"
         bar = "".join(ICONS.get(x, "⬜") for x in vec)
 
-        lines.append(f"\n**{name}** {status}")
+        # Display format preserved (original): ✅ when clean, ⚠️ N down otherwise.
+        lines.append(f"\n**{name}** {'✅' if down == 0 else f'⚠️ {down} down'}")
         lines.append(bar)
 
-        failures = []
+        fails = []
         for i, v in enumerate(vec):
             if v == -1 and i < len(SERVICE_MAP):
-                failures.append(f"  {SERVICE_MAP[i]} 🔴")
-        if failures:
-            lines.extend(failures)
+                fails.append(SERVICE_MAP[i])
+                lines.append(f"  {SERVICE_MAP[i]} 🔴")
+        statuses.append(status)
+        failures.append(fails)
 
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines) + "\n", _build_signature(agents, statuses, failures)
 
 
 def main():
-    print(build_snapshot(), flush=True)
+    report, sig = build_snapshot()
+    prev = ""
+    if REPORT_STATE_FILE.exists():
+        try:
+            prev = REPORT_STATE_FILE.read_text().strip()
+        except OSError:
+            prev = ""
+    if sig == prev:
+        return  # silent — nothing changed since last run
+    REPORT_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    REPORT_STATE_FILE.write_text(sig)
+    print(report, flush=True)
 
 
 if __name__ == "__main__":
