@@ -84,10 +84,9 @@ session-cache search  # interactive similarity search
 to a known-good pattern in the cache, progress gets a +2 boost. For moderate
 similarity (>0.75), +1 boost. This means scoring improves as the cache grows.
 
-**Cron:** `session-cache-build` runs Monday 5am KST (before skill-miner at 6am).
+**Cron:** `agent-session-cache-build` runs Monday 5am KST (weekly cache rebuild; the daily `orch-skill-lifecycle` pipeline at 4:34am reads whatever cache state exists).
 
-**Agent data:** Agents contribute session data via skill-miner findings
-(to=moses, topic=moses). The cache is rebuilt weekly, incorporating new data.
+**Agent data:** Agents contribute session data via `agent-learning-collector` Learning Reports (to `inbox_orchestrator`, every 6h) and the session cache. The cache is rebuilt weekly, incorporating new data.
 
 ### Installation & invocation
 
@@ -468,15 +467,15 @@ All loop-governance crons managed via `crons.json` (versioned) + `install-crons.
 
 | Cron | Schedule | Mode | Behaviour |
 |------|----------|------|-----------|
-| `session-cache-build` | Mon 5am KST | no_agent | Rebuilds embedding cache from sessions, DB, skills |
-| `agent-weekly-loop-eval` | Mon 9am KST | LLM-driven | Generates evaluation report, runs `auto-apply.py`, vacuums old cycles. Delivers combined message. |
+| `agent-session-cache-build` | Mon 5am KST | no_agent | Rebuilds embedding cache from sessions, DB, skills |
+| `local-agent-weekly-loop-eval` | Mon 9am KST | LLM-driven | Per-host weekly loop evaluation (fleet-level eval absorbed into `orch-skill-lifecycle` 2026-08-02) |
 
 **Versioning:** Bump the `version` field in `crons.json` to trigger agent updates.
 The `install-crons.py` script reads the template, removes stale crons (by name),
 and creates fresh ones idempotently with the correct argument order (prompt must
 come BEFORE --flags in `hermes cron create`). Called automatically by `setup.sh`.
 
-**New project setup:** The skill-miner and session-cache crons run only on machines
+**New project setup:** The `agent-session-cache-build` and `local-agent-weekly-loop-eval` crons run only on machines
 with the loop-governance toolchain installed. Health monitoring (Ollama, DB, nomic
 model, cycle count) runs inside `system-alert.py` every 10 minutes — no separate
 health cron needed.
@@ -525,7 +524,7 @@ python3 loop_evaluator.py --days 30
 
 ### Cron schedule
 
-A weekly evaluation runs every **Monday at 9:00 AM KST** via the `agent-weekly-loop-eval` cron job. It delivers the report automatically to the chat that created it.
+A weekly evaluation runs every **Monday at 9:00 AM KST** via the `local-agent-weekly-loop-eval` cron job. It delivers the report automatically to the chat that created it.
 
 ### Config patch
 
@@ -658,9 +657,6 @@ lets any agent find the tools regardless of which Hermes profile or project it's
 ~/.local/bin/loop-feedback
 ~/.local/bin/auto-apply
 ~/.local/bin/loop-config
-~/.local/bin/skill-miner
-~/.local/bin/inbox-watch
-~/.local/bin/session-cache
 ~/.local/bin/session-cache-build
 
 ~/.hermes/data/loop-governance.db             ← SQLite database (per-machine)
@@ -863,7 +859,7 @@ The 137M parameter embedding model is adequate for semantic similarity at ~50ms 
 
 The fleet has one orchestrator (Moses) and several agent machines (Titus, Gisu, Joseph,
 Kustos). Only the orchestrator runs cross-agent tasks. Regular agents run local-only tasks
-(skill-miner, session-cache build, weekly-loop-evaluation).
+(agent-session-cache-build, local-agent-weekly-loop-eval).
 
 **Agent registry:** `~/hermes-cortex/ops/services/agent-registry.json` defines each agent's role,
 hostname, whether it's server-reachable (`accessible`), and whether it's the orchestrator
@@ -944,40 +940,14 @@ After a review→fix→review cycle (spec review fails, implementer fixes, spec 
 - **Progress score ≥ 5** → LOOP 🔄 (keep iterating)
 - **Progress score ≥ 8** → STOP ✓ (review passed, move to next task)
 
-### With skill-miner (companion tool)
+### With orch-skill-lifecycle (successor to skill-miner)
 
-`skill-miner` is a companion tool that shares the loop-governance data stack.
-It runs on every agent's machine (cron: Monday 6am) and mines local data for
-reusable patterns. It is NOT part of the scoring pipeline — it's a separate
-automation that feeds findings to the agent inbox for Moses to review and
-incorporate into hermes-cortex.
-
-**Data sources it shares with loop-governance:**
-- Loop governance DB — high-scoring TDD cycles (composite ≥ 7, improving)
-- Session history — success patterns from conversations (PII-scrubbed)
-- Local memory — agent MEMORY.md, USER.md
-- Custom skills — skills installed locally but not in the repo (full content sent)
-
-**Flow:**
-```
-Agent's machine: skill-miner (Mon 6am) → POST to /api/send (to=moses, cc=luke)
-Moses server:    inbox-watch (every 10 min) → reviews → pushes to repo
-All agents:      git pull
-```
-
-The inbox now supports `to`/`cc` addressing. skill-miner sets `to=moses` so
-findings appear in Moses's per-agent filtered view (`/api/inbox?for=moses`).
-Every message auto-CCs `luke` (the human) so Luke sees everything.
-
-**Inbox-watcher companion tool:** `inbox-watch` (symlink at `~/.local/bin/`) reads
-the agent inbox and surfaces new messages from the fleet. See
-`references/agent-inbox-architecture.md` for the full cross-machine design.
-
-**Note:** skill-miner overlaps with `lesson-aware-agent` (both extract learnings).
-skill-miner is automatic and runs on schedule; lesson-aware-agent is triggered
-per-session. They are complementary, not alternatives.
-
-**Manual trigger:** `skill-miner`
+`skill-miner` was **removed 2026-08-02** — its collection role is absorbed into
+the unified `orch-skill-lifecycle` pipeline (runs daily 04:34 KST). Fleet agents
+now run `agent-learning-collector` (every 6h) which sends structured Learning
+Reports to `inbox_orchestrator`; the orchestrator's lifecycle cron evaluates
+them and patches skills/SOUL.md. See the `orch-skill-lifecycle` skill for the
+full three-phase pipeline (collect → evaluate → upgrade).
 
 ### With lesson-aware-agent
 
