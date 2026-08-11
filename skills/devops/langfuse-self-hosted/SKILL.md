@@ -92,9 +92,9 @@ docker compose up -d
 
 Check latest tags: `https://hub.docker.com/r/langfuse/langfuse`
 
-Current pinned tags (as of last update):
-- `langfuse/langfuse:3.207.0`
-- `langfuse/langfuse-worker:3.207.0`
+Current pinned tags (as of last update — esther production 2026-08-11):
+- `langfuse/langfuse:3.225.1`
+- `langfuse/langfuse-worker:3.225.1`
 - `clickhouse/clickhouse-server:25.5-alpine`
 - `postgres:16-alpine`
 - `redis:7-alpine`
