@@ -234,10 +234,28 @@ Return this exact JSON format:
 
 # ── Scoring pipeline ────────────────────────────────────────────────────
 def _get_existing_score_names(trace_id: str) -> set:
-    scores = _lf_get(f"/api/public/scores?traceId={trace_id}")
+    """Return score names for a trace, via client-side filter.
+
+    NOTE (2026-08-11): Langfuse v3.207.0's /api/public/scores endpoint
+    IGNORES the traceId query filter — it returns every score in the
+    project regardless of the filter value (verified live: traceId of a
+    nonexistent trace still returned all 4 project scores). Per-trace
+    dedup must therefore be done client-side: fetch all scores, then
+    filter by the trace id here.
+    """
+    scores = _lf_get("/api/public/scores?limit=100&page=1")
     if not scores:
         return set()
-    return {s.get("name") for s in scores.get("data", [])}
+    names = {s.get("name") for s in scores.get("data", []) if (s.get("traceId") or s.get("trace_id")) == trace_id}
+    total = scores.get("meta", {}).get("totalItems", 0)
+    page = 2
+    while len(names) < total and page <= 10:
+        more = _lf_get(f"/api/public/scores?limit=100&page={page}")
+        if not more or not more.get("data"):
+            break
+        names.update(s.get("name") for s in more.get("data", []) if (s.get("traceId") or s.get("trace_id")) == trace_id)
+        page += 1
+    return names
 
 
 def _post_scores(trace_id: str, scores: dict, comment: str, dry_run: bool = False):
