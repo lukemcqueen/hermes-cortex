@@ -273,7 +273,11 @@ def _extract_trace_content(trace: dict) -> tuple:
 
     # Try observations if trace-level content is empty
     if (not inp or not out) and trace_id:
-        obs = _lf_get(f"/api/public/traces/{trace_id}/observations")
+        # NOTE: /api/public/traces/{id}/observations 404s on v3.207.0+ —
+        # the canonical endpoint is /api/public/observations?traceId=...
+        # (verified 2026-08-11; old path broke scoring of plugin traces,
+        # which carry content in observations, not at trace level)
+        obs = _lf_get(f"/api/public/observations?traceId={trace_id}")
         if obs:
             for o in obs.get("data", []):
                 if o.get("input") and not inp:
