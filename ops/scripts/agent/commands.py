@@ -188,7 +188,11 @@ def _run_cortex_update() -> dict:
     try:
         r = subprocess.run(
             ["bash", str(CORTEX_UPDATE)],
-            capture_output=True, text=True, timeout=120
+            # 300s — matches the UPDATE_REQUEST handler bound (agent-message-handler.py
+            # run_cortex_update). 120s was too tight for a full pull+deploy+doctor on
+            # slower hosts: titus fleet-update TIMED OUT after 120s (2026-08-11) with
+            # the tree moved but deploy never completing. (auto-remediation fix)
+            capture_output=True, text=True, timeout=300
         )
         result = {
             "success": r.returncode == 0 or (r.returncode == 1 and not r.stderr),
@@ -202,8 +206,8 @@ def _run_cortex_update() -> dict:
             log(f"  {tail}")
         return result
     except subprocess.TimeoutExpired:
-        log("cortex-update TIMEOUT after 120s")
-        return {"success": False, "output": "", "stderr": "TIMEOUT after 120s", "exit_code": -1}
+        log("cortex-update TIMEOUT after 300s")
+        return {"success": False, "output": "", "stderr": "TIMEOUT after 300s", "exit_code": -1}
     except Exception as e:
         log(f"cortex-update ERROR: {e}")
         return {"success": False, "output": "", "stderr": str(e), "exit_code": -1}
