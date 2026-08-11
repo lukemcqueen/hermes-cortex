@@ -83,6 +83,14 @@ Gather raw material from all sources:
    - Skills delta (new/modified SKILL.md files)
    - Lessons delta (new files in ~/brain/lessons/)
    - Heartbeat (no changes, but agent is alive)
+   - **⚠️ Data source (verified 2026-08-12):** the agent-message-handler
+     early-archives Learning Reports within seconds of receipt and stages the
+     full body to `~/.hermes-cortex/state/learning-reports/<agent>-<ts>.md`
+     (so the queue reads depth 0 even with fresh reports). The staged files
+     are the authoritative pipeline input — read the newest per-agent file
+     there, not the queue. For archived bus messages use
+     `/api/pgmq/archives/{queue}?limit=N&since_minutes=10080` (default
+     `since_minutes=60` hides everything older than an hour).
 2. **Git log** — Check recent commits for self-improvement patterns needing broader consolidation
 3. **Skill inventory** — Scan repo skills for stale/modified files
 5. **Doctor health check** — Run `cortex-doctor.py --quiet` and check for:
