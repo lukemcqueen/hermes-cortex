@@ -472,6 +472,17 @@ forwards at most once per direction per host. A consumed copy is a DELIVERED
 message, not a gap to re-warm. Regression test:
 `tests/test-bus-forwarder-dedup.py` (RED on old code, GREEN on fix).
 
+**`hc bus` on hosts without the local bus schema (2026-08-12):** `hc bus`
+reads the LOCAL Postgres via `docker exec` — on hosts whose `mycortex-postgres`
+lacks `bus.messages`/`bus.queues` (or container down), `cmd_bus` used to
+traceback with `UnboundLocalError` because the queue-summary block was skipped.
+Fixed in `6876e47c`: `total_pending`/`total_proc` initialized up front,
+`local_db_ok` flag set on error, and the final branch prints
+`⚠️ Local bus DB unavailable` instead of crashing or a false "No activity".
+`hc bus --all` never crashed (different branch) — that's why it slipped
+through. The remote bus itself is healthy; use `hc status`/`hc depth` for the
+fleet view.
+
 **Inspect for duplicates** (per-agent, recent window):
 ```bash
 cd ~/hermes-cortex/ops/scripts && python3 -c "
