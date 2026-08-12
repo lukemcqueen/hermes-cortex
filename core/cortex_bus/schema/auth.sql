@@ -109,6 +109,14 @@ INSERT INTO bus.queues (name)
 VALUES ('inbox_orchestrator')
 ON CONFLICT (name) DO NOTHING;
 
+-- Its DLQ must exist too — recover_timeouts() Step 2b moves exhausted
+-- processing messages to <queue>_dlq with an FK on bus.queues(name); without
+-- this row the move fails (2026-08-12: cron orch-bus-recover-timeouts errored
+-- "messages_queue_name_fkey ... inbox_orchestrator_dlq is not present").
+INSERT INTO bus.queues (name, is_dlq, parent_queue)
+VALUES ('inbox_orchestrator_dlq', true, 'inbox_orchestrator')
+ON CONFLICT (name) DO NOTHING;
+
 -- ── Audit log ───────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS bus.audit_log (

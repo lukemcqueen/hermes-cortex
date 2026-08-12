@@ -398,6 +398,20 @@ BEGIN
     SELECT count(*) INTO v_dlq_moved FROM deleted;
 
     -- Step 2b: Move exhausted processing messages from main queues to DLQ
+    -- Auto-create the DLQ queue row first: recover_timeouts() may run on a
+    -- queue whose _dlq row was never seeded (2026-08-12 inbox_orchestrator_dlq)
+    -- — the FK on bus.messages.queue_name fails the UPDATE otherwise, killing
+    -- the whole cron run.
+    INSERT INTO bus.queues (name, is_dlq, parent_queue)
+    SELECT DISTINCT m.queue_name || '_dlq', true, m.queue_name
+    FROM bus.messages m
+    LEFT JOIN bus.queues q ON q.name = m.queue_name || '_dlq'
+    WHERE q.name IS NULL
+      AND m.state = 'processing'
+      AND m.timeout_at < now()
+      AND m.retry_count >= m.max_retries
+    ON CONFLICT (name) DO NOTHING;
+
     UPDATE bus.messages m
     SET state = 'pending',
         queue_name = m.queue_name || '_dlq',
