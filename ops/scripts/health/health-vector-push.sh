@@ -86,8 +86,14 @@ command -v pgrep &>/dev/null && pgrep nginx >/dev/null 2>&1 && SVC_OK=1
 command -v test &>/dev/null && test -x "${HOME}/.hermes-cortex/scripts/mycortex" && SVC_OK=1
 [[ "$SVC_OK" -eq 0 ]] && V_SERVICES=-1
 
-# [2] no_errored_crons — check push error log
-[[ -s "$ERROR_LOG" ]] && V_NO_ERR_CRONS=-1
+# [2] no_errored_crons — check push error log for RECENT failures (6h).
+# Pre-2026-08-12: `[[ -s ... ]]` flagged -1 on ANY historical error forever —
+# one stale push failure (e.g. a wrong token or URL during a change) poisoned
+# the health vector for days. Now requires the log to have been modified
+# within the last 6h; once pushes succeed for 6h straight the flag clears.
+if [[ -s "$ERROR_LOG" ]] && find "$ERROR_LOG" -mmin -360 2>/dev/null | grep -q .; then
+    V_NO_ERR_CRONS=-1
+fi
 
 # [3] no_stale_crons — best-effort (delegated to orchestrator)
 # Always 1; actual stale detection is Moses' job.
