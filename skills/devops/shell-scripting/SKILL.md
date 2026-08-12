@@ -554,6 +554,27 @@ The batch pipeline approach naturally uses `grep -E` (extended regex) instead of
 
 When you need a regex that works on both platforms, **write it in `-E` first** and only reach for `-P` when the pattern genuinely requires lookahead/backreference (very rare in shell scripts — use Python for that).
 
+### BRE alternation `\|` is GNU-only — use ERE `|` for macOS
+
+**Plain `grep` uses BRE (Basic Regular Expressions), where alternation is `\|` — a GNU extension. BSD grep (macOS) treats `\|` as literal characters, so the alternation silently NEVER matches.** The filter then passes everything through instead of filtering — the failure is silent, not an error.
+
+```bash
+# ❌ GNU-only — on macOS/BSD these match NOTHING (literal backslash-pipe), so
+#    the intended exclusion silently fails and binary bytes reach scanners
+STAGED_FILES=$(git diff --cached --name-only | grep -v '\.svg$\|\.png$\|\.jpg$')
+
+# ✅ POSIX ERE — alternation works on both GNU and BSD
+STAGED_FILES=$(git diff --cached --name-only | grep -vE '\.(svg|png|jpg)$')
+```
+
+**Real bug (2026-08-12, fixed `0f6acddf`):** `pre-commit-score`'s STAGED_FILES filter used BRE `\|` alternation (`'package-lock\.json\|yarn\.lock\|pnpm-lock\.yaml'` and `'\.svg$\|\.png$\|\.jpg$\|\.jpeg$\|\.gif$\|\.ico$'`). On GNU/Linux the exclusions worked; on macOS/Titus they treated `\|` literally, so real image filenames were never excluded, binary bytes hit the scanners, and `adversarial-verify.py` crashed with `UnicodeDecodeError` — hard-blocking every image commit. The fix was POSIX ERE `grep -vE` with a character-class alternation group. Sibling crash-class fix `e399b19c` hardened all `open()+readlines()` sites with `errors="replace"` — check sibling paths for the same flaw class, not just the reported line.
+
+**Rules:**
+- Never write alternation as `\|` in BRE patterns — use `grep -E` (ERE) whenever a pattern needs `|`.
+- Same trap applies to `sed` BRE (`s/a\|b/.../` is GNU-only; use `-E`), `awk` is ERE by default (safe).
+- Verify portability with a BSD-semantics simulation (`grep -F` treats the pattern literally, mimicking BSD's `\|` behavior) or test on the actual macOS host.
+- When a filter "works on Linux but breaks on macOS," grep the whole tree for sibling instances of the same BRE `\|` class before fixing one.
+
 ## Cross-Platform Paths
 
 ### Finding executables
@@ -767,6 +788,7 @@ Before shipping changes to installer scripts (`install-crons.sh`, `setup.sh`, et
 | Bare `if` in mawk | `awk: line 2: syntax error at or near if` on Ubuntu | Wrap awk body in `{ }` |
 | Missing `timeout` on macOS | `command not found: timeout` | Fall back to `gtimeout`, then no timeout |
 | `grep -P` on macOS | `grep: invalid option -- P` | macOS grep doesn't support Perl regex; use `grep -E` or install `ggrep` |
+| **BRE `\|` alternation on macOS** | Filter silently matches NOTHING on BSD grep — exclusions never apply, binary bytes reach scanners (pre-commit-score image filter, 2026-08-12) | Use `grep -E` ERE alternation `(a|b)` — POSIX, works on GNU + BSD |
 | **Per-item loop with grep inside** | Script takes minutes for 2000 items | Replace with batch pipeline — 5 grep calls total |
 | **grep ADDED from /dev/stdin** | Success message for an operation never fires, but no error either | Capture output in a variable and check it: `[[ "$_var" == *"ADDED"* ]]` |
 | **Counter var overlap (dry-run vs real)** | Summary shows misleading counts | Use separate vars: `WOULD_CREATE` vs `CREATED` |
