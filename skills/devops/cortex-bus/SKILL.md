@@ -338,6 +338,47 @@ After fix, the cron `orch-bus-recover-timeouts` (every 5m) auto-maintains the DL
 
 **Prevention:** The queue creation code at `core/cortex_bus/queue.py:create_queues_for_agent()` already sets `is_dlq = true` — the bug only affects queues created before the column was added to the schema.
 
+### recover_timeouts Fails with messages_queue_name_fkey (missing DLQ row)
+
+**Symptom:** `orch-bus-recover-timeouts` cron (every 5m) fails with `Script exited
+with code 1`; running the function directly shows:
+`ERROR: insert or update on table "messages" violates foreign key constraint
+"messages_queue_name_fkey" — Key (queue_name)=(inbox_orchestrator_dlq) is not
+present in table "queues".`
+
+**Root cause:** a queue exists in `bus.queues` but its `<queue>_dlq` row was
+never seeded. The seed creates `inbox_orchestrator` without its DLQ
+(`core/cortex_bus/schema/auth.sql`, 2026-08-12), while agent inboxes get DLQs
+via `create_queues_for_agent()`. `recover_timeouts()` Step 2b moves exhausted
+processing messages to `queue_name || '_dlq'` — the FK fails and **kills the
+whole run**, so the cron never recovers anything.
+
+**Fix (2026-08-12):** two layers, both in the repo:
+1. **Seed** — `auth.sql` now inserts `inbox_orchestrator_dlq` (`is_dlq=true`,
+   `parent_queue='inbox_orchestrator'`) next to the shared inbox.
+2. **Defensive** — `recover_timeouts()` Step 2b now auto-creates any missing
+   `_dlq` queue row before the move:
+   ```sql
+   INSERT INTO bus.queues (name, is_dlq, parent_queue)
+   SELECT DISTINCT m.queue_name || '_dlq', true, m.queue_name
+   FROM bus.messages m
+   LEFT JOIN bus.queues q ON q.name = m.queue_name || '_dlq'
+   WHERE q.name IS NULL AND m.state = 'processing'
+     AND m.timeout_at < now() AND m.retry_count >= m.max_retries
+   ON CONFLICT (name) DO NOTHING;
+   ```
+
+**Apply to a live DB** (schema changes deploy via file copy, not auto-applied):
+```bash
+sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1 -f -" < core/cortex_bus/schema/queue.sql
+sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1 -f -" < core/cortex_bus/schema/auth.sql
+```
+
+**Verify:** `SELECT bus.recover_timeouts();` returns a number (not an error), and
+`SELECT name FROM bus.queues WHERE name = '<queue>_dlq';` exists for every
+non-DLQ queue. Check for other missing DLQ rows: `SELECT name FROM bus.queues
+WHERE is_dlq = false AND name || '_dlq' NOT IN (SELECT name FROM bus.queues)`.
+
 ### All Bus Tools Return 401 (Not 200)
 
 The MCP bus tools (`mcp__cortex_bus__*`) return HTTP 401 when:
