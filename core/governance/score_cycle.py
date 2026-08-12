@@ -68,9 +68,13 @@ DEFAULT_DB_PATH = os.path.expanduser("~/.hermes-cortex/data/loop-governance.db")
 
 
 def read_or_none(path):
-    """Read a file if provided, otherwise return None."""
+    """Read a file if provided, otherwise return None.
+
+    UTF-8 with errors="replace" — a stray non-UTF8 file (e.g. an image that
+    slipped into the scoring set) must never crash the scorer.
+    """
     if path:
-        with open(os.path.expanduser(path)) as f:
+        with open(os.path.expanduser(path), encoding="utf-8", errors="replace") as f:
             return f.read()
     return None
 

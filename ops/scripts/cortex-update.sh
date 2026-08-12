@@ -347,6 +347,7 @@ register "ops/scripts/manage/agent-offline-code-index.sh" "${CORTEX_DEPLOY_HOME}
 register "ops/scripts/health/agent-swap-refresh.py"            "${CORTEX_DEPLOY_HOME}/scripts/agent-swap-refresh.py"
 register "ops/scripts/health/agent-cron-quality-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-cron-quality-watchdog.py"
 register "ops/scripts/agent/agent-cron-failure-scanner.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-cron-failure-scanner.py"
+register "ops/scripts/agent/agent-cron-status.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-cron-status.py"
 register "ops/scripts/health/agent-scoring-activity-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-scoring-activity-watchdog.py"
 register "ops/scripts/state_tracker.py"             "${CORTEX_DEPLOY_HOME}/scripts/state_tracker.py"
 register "ops/scripts/health/check-certs.py"               "${CORTEX_DEPLOY_HOME}/scripts/check-certs.py"
