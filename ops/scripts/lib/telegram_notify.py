@@ -432,6 +432,8 @@ def notify(message: str, subject: str = "", status: str | None = None) -> bool:
                 ok, err = _send_with_backoff(token, chat_id, digest_text)
                 if ok:
                     state["sent"] += 1
+                    state["failures"] = 0
+                    state["last_error"] = ""
                 else:
                     state["failures"] += 1
                     state["last_error"] = f"quiet-hours digest send failed: {err}"
@@ -453,6 +455,8 @@ def notify(message: str, subject: str = "", status: str | None = None) -> bool:
             if ok:
                 state["sent"] += 1
                 state["last_send"] = now_ts
+                state["failures"] = 0
+                state["last_error"] = ""
                 state["env_perms_ok"] = perms_ok
                 _save_state(state)
                 _log("notify sent")
