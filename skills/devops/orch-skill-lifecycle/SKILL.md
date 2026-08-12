@@ -275,6 +275,11 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   Joseph, Kustos, Moses) and that no retired host-side cron is still pushing the
   legacy Skill Report format. The pipeline consumes **Learning Report** messages,
   not legacy Skill Reports.
+  **Hostname aliases (2026-08-13):** `agent-learning-collector` sends
+  `from = AGENT_NAME or OS hostname` — kustos's host is `cisnet02`, so his
+  reports arrive as `cisnet02` and were silently rejected until the whitelist
+  mapped known hostnames → agents (`HOSTNAME_ALIASES` in the process script).
+  When a report seems missing, check for a hostname-vs-agent mismatch first.
 - **Don't patch the same skill twice in one run** — deduplicate before acting
 - **Don't upstream fleet skills that already exist** — check repo + Hermes bundle
 - **Don't modify SOUL.md for workflow lessons** — skills are for workflow, SOUL.md is for principles

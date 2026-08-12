@@ -126,13 +126,18 @@ def extract_skill_report(msg: dict) -> dict | None:
     # Unregistered hosts (e.g. LAM2.local, an orphaned machine still running
     # the retired collect-skills cron) flooded inbox_orchestrator with 76
     # duplicate reports — nothing consumed them. Reject non-fleet senders.
+    # Hostname aliases: agent-learning-collector falls back to the OS hostname
+    # when AGENT_NAME is unset — kustos's host is cisnet02 (2026-08-13), so
+    # map known hostnames to their agent before the whitelist check.
     KNOWN_AGENTS = {"moses", "esther", "joseph", "gisu", "kustos", "titus"}
-    sender = str(inner.get("from", "?")).split(".")[0].lower()
+    HOSTNAME_ALIASES = {"cisnet02": "kustos"}
+    raw_sender = str(inner.get("from", "?")).split(".")[0].lower()
+    sender = HOSTNAME_ALIASES.get(raw_sender, raw_sender)
     if sender not in KNOWN_AGENTS:
         return None
 
     return {
-        "from": inner.get("from", "?"),
+        "from": sender,
         "subject": subject,
         "body": inner.get("body", ""),
         "timestamp": msg.get("enqueued_at", ""),
