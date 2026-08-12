@@ -712,6 +712,8 @@ def cmd_bus(cfg: dict, args: list):
     print(f"   source: local Postgres (docker exec) — {Path.home()}/.hermes-cortex (agent {cfg['agent']})")
     print()
 
+    total_pending = total_proc = 0
+    local_db_ok = True
     raw = _psql("""
         SELECT row_to_json(q) FROM (
             SELECT
@@ -734,7 +736,6 @@ def cmd_bus(cfg: dict, args: list):
         print(f"📊 Queue Summary ({len(queues)} queues):")
         print(f"   {'Queue':30s} {'Pending':>8s} {'Processing':>11s}")
         print(f"   {'─'*30} {'─'*8} {'─'*11}")
-        total_pending = total_proc = 0
         for q in queues:
             total_pending += q["pending"]
             total_proc += q["processing"]
@@ -743,6 +744,8 @@ def cmd_bus(cfg: dict, args: list):
             print(f"   {icon} {name:28s} {q['pending']:>8d} {q['processing']:>11d}")
         print(f"   {'─'*30} {'─'*8} {'─'*11}")
         print(f"   {'TOTAL':30s} {total_pending:>8d} {total_proc:>11d}")
+    else:
+        local_db_ok = False
     print()
 
     # ── Processing / In-flight ───────────────────────────────
@@ -909,6 +912,10 @@ def cmd_bus(cfg: dict, args: list):
             if show_archived:
                 print("📜 No archived messages found.")
                 print()
+    elif not local_db_ok:
+        print("⚠️  Local bus DB unavailable (bus.messages/bus.queues missing or container down).")
+        print("   Remote bus is healthy — use 'hc status' / 'hc depth' for the fleet view.")
+        print()
     elif total_pending == 0 and total_proc == 0:
         print("📭 No activity. All queues idle.")
         print()
