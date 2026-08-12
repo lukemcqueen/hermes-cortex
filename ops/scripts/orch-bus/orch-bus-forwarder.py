@@ -396,8 +396,17 @@ def _sync_direction(
                 # (mirrored by the OTHER host's forwarder, or the original).
                 # Skip this hop — forwarding would create a duplicate that
                 # survives both seen sets (fresh msg_id per hop).
-                # NOT added to seen: if the dest copy is later consumed or
-                # archived, the mirror should warm it again next tick.
+                # Record it in seen: once we've confirmed the message exists
+                # on the destination, NEVER re-forward it in this direction —
+                # even if the destination copy is later consumed/archived by
+                # the real consumer. (2026-08-12 fix: not recording it here
+                # let the mirror re-forward backup copies every time the
+                # worker handler archived the primary copy — gisu received 3
+                # identical EXECs with the same correlation_id, and the
+                # duplicate deliveries raced the task lifecycle, leaving a
+                # task pending ~10h. A consumed copy is a DELIVERED message,
+                # not a gap to re-warm.)
+                seen.add(dkey)
                 continue
 
             # Preserve correlation_id when forwarding

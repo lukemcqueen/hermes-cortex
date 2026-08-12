@@ -410,6 +410,44 @@ queue 'inbox_gisu'` (per-queue ACL at `core/cortex_bus/server.py`
 `orch-bus-forwarder-sync` cron alerts `LOCAL→PEER: N failed` every tick while
 the messages sit in the local queues indefinitely.
 
+## Dedup: consumed copies are never re-forwarded (2026-08-12)
+
+**Symptom:** a single `hc send gisu EXEC "…cortex-doctor.py…"` produced **3
+identical EXECs** in `inbox_gisu` with the same `correlation_id`
+(`send-ba7f68e22d6a`) at 00:04/00:06/00:11 KST. Gisu's handler archived all
+three (corr-idempotent), but the duplicate-delivery race left a task row
+pending ~10h. The same window showed duplicated UPDATE_REQUESTs / EXECs on
+**every** agent's inbox (joseph 3×, kustos/titus/moses 2–3×).
+
+**Root cause:** `_sync_direction` in `orch-bus-forwarder.py` skipped a message
+whose dedup key already existed on the destination **without recording it in
+`seen`** — the old comment said "the mirror should warm it again next tick".
+But when the real consumer (the worker's `agent-message-handler`) archives the
+destination copy, the next tick re-forwarded the lingering backup copy back to
+the primary: fresh `msg_id`, same `corr`. Repeat every consumer tick.
+
+**Fix:** the dest-hit skip now does `seen.add(dkey)` — each logical message
+forwards at most once per direction per host. A consumed copy is a DELIVERED
+message, not a gap to re-warm. Regression test:
+`tests/test-bus-forwarder-dedup.py` (RED on old code, GREEN on fix).
+
+**Inspect for duplicates** (per-agent, recent window):
+```bash
+cd ~/hermes-cortex/ops/scripts && python3 -c "
+import sys, json; sys.path.insert(0, '.')
+from lib.cortex_bus import bus_archives
+for a in ('gisu','joseph','kustos','titus','moses'):
+    arch = bus_archives(f'inbox_{a}', limit=400, since_minutes=720)
+    corrs = {}
+    for m in arch:
+        b = m.get('body') or {}; c = b.get('correlation_id') or '?'
+        corrs.setdefault((c, b.get('subject')), 0)
+        corrs[(c, b.get('subject'))] += 1
+    dups = {k: v for k, v in corrs.items() if v > 1}
+    print(a, 'duplicates:', len(dups))
+"
+```
+
 ## Token rotation (Bearer, `hbus_*`)
 
 - **Hash scheme:** `bus.tokens.token_hash` = `hashlib.pbkdf2_hmac("sha256", token, b"hermes-bus-salt", 100000).hex()` (`core/cortex_bus/auth.py hash_token`).
