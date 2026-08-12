@@ -89,7 +89,7 @@ def analyze_attack_surface(file_path: str) -> dict:
     Returns structured attack surface with line numbers.
     """
     try:
-        with open(file_path) as f:
+        with open(file_path, errors="replace") as f:
             lines = f.readlines()
     except IOError as e:
         return {"error": str(e), "inputs": [], "state": [], "dependencies": [], "concurrency": []}
@@ -891,7 +891,7 @@ def run_level(filepath: str, level: str) -> list[dict]:
     """
     findings: list[dict] = []
     try:
-        with open(filepath) as f:
+        with open(filepath, errors="replace") as f:
             lines = f.readlines()
     except IOError:
         return findings
@@ -981,7 +981,7 @@ def main():
 
         # Phase 2: Level-dispatched detection (A2+)
         try:
-            with open(filepath) as f:
+            with open(filepath, errors="replace") as f:
                 lines = f.readlines()
         except IOError:
             continue
