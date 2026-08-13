@@ -1060,7 +1060,7 @@ def _check_bus_e2e(res):
   try:
     from hermes_paths import ensure_scripts_path
     ensure_scripts_path()
-    from lib.cortex_bus import bus_send, bus_read, bus_archive, bus_health
+    from lib.cortex_bus import bus_send, bus_read, bus_archive, bus_archives, bus_health
   except ImportError:
     res.add("Bus E2E test", "SKIP",
         "cortex_bus.py not importable — expected if bus is not deployed on this agent")
@@ -1117,14 +1117,52 @@ def _check_bus_e2e(res):
         "Check: curl -u user:pass CORTEX_BUS_URL/api/pgmq/send")
     return
 
+  # Read back OUR probe. A concurrent real message (peer EXEC_RESULT etc.)
+  # may be read first — archive it (the handler would archive it on its
+  # next poll anyway; leaving it unarchived would falsely trip the
+  # stuck-msgs check below) and KEEP reading until the message with
+  # test_cid is found. Previously the first read was accepted
+  # unconditionally: a foreign message got archived, OUR probe stayed
+  # pending, and the stuck-msgs check false-alarmed with health
+  # ISSUES_DETECTED (observed 2026-08-13: doctor consumed kustos/joseph
+  # EXEC_RESULTs and left doctor-e2e probes in inbox_moses).
   read_r = None
-  for attempt in range(3):
-    read_r = bus_read(queue, vt=30)
-    if read_r and read_r.get("msg_id"):
+  for attempt in range(5):
+    cand = bus_read(queue, vt=30)
+    if not cand or not cand.get("msg_id"):
+      time.sleep(0.5)
+      continue
+    c_body = cand.get("body", {})
+    if not isinstance(c_body, dict):
+      c_body = {}
+    if c_body.get("correlation_id") == test_cid:
+      read_r = cand
       break
+    # Foreign message consumed by this read — archive it and keep looking.
+    try:
+      bus_archive(queue, cand["msg_id"])
+    except Exception:
+      pass
     time.sleep(0.5)
 
   if not read_r or not read_r.get("msg_id"):
+    # Probe not read back — the message-handler may have silently archived
+    # it (DOCTOR_TEST is on its silent-archive list). Verify via the
+    # archive log before declaring failure.
+    consumed = False
+    try:
+      recent = bus_archives(queue, limit=10, since_minutes=2)
+      consumed = any(
+        (m.get("body") or {}).get("correlation_id") == test_cid
+        or m.get("correlation_id") == test_cid
+        for m in recent
+      )
+    except Exception:
+      pass
+    if consumed:
+      res.add("Bus self (send→read→archive)", "PASS",
+          "probe consumed by message-handler — bus path OK")
+      return
     res.add("Bus self (read)", "FAIL", "No message read back after send",
         "Message may have been consumed by another process or VT expired")
     return
@@ -1140,12 +1178,10 @@ def _check_bus_e2e(res):
   if cid_ok and arch_ok:
     res.add("Bus self (send→read→archive)", "PASS",
         f"correlation_id match — full cycle OK")
-  elif arch_ok:
-    res.add("Bus self (send→read→archive)", "PASS",
-        f"read {cid or 'message'} instead of test — bus path OK")
   else:
-    res.add("Bus self (archive)", "WARN",
-        f"Sent and read OK but archiving failed", "Check PGMQ archive endpoint")
+    res.add("Bus self (send→read→archive)", "WARN",
+        f"Probe read but archive/cid check failed (cid={cid[:12] or '?'})",
+        "Check PGMQ archive endpoint")
     return
 
   # ── 4. Stuck processing messages ──
