@@ -179,6 +179,51 @@ if [ -n "$F2B_LOG" ]; then
     awk -F. '{if($1<=255&&$2<=255&&$3<=255&&$4<=255)print}' | \
     grep -vE '^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|0\.|169\.254\.|224\.|240\.)' || true)
 
+  # ── Allow-list guard (2026-08-13) ──
+  # Mirror of the scanner's guard: fail2ban can transiently ban a legit
+  # office/VPN IP (shared egress NAT), and without this check the pipeline
+  # re-appends it to blocked_ips.add — the pollution loop that re-captured
+  # allow-listed office IPs after the 2026-08-08 fix (222.111.179.67,
+  # 115.21.71.146/147 re-added 08-10..08-12). The allow-list always wins.
+  ALLOW_MANUAL="${ALLOW_MANUAL:-/etc/nginx/allow-ips-manual.conf}"
+  ALLOWED_IPS=()
+  if [ -f "$ALLOW_MANUAL" ]; then
+    while IFS= read -r line; do
+      line="$(echo "$line" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+      [ -z "$line" ] && continue
+      case "$line" in
+        \#*) continue ;;
+        allow*) ALLOWED_IPS+=("$(echo "$line" | sed -E 's/^allow[[:space:]]+//; s/;.*$//')") ;;
+      esac
+    done < "$ALLOW_MANUAL"
+  fi
+  _is_allowed_ip() {
+    local ip="$1" entry
+    for entry in "${ALLOWED_IPS[@]:-}"; do
+      [ -z "$entry" ] && continue
+      if [[ "$entry" == */* ]]; then
+        if python3 -c "import ipaddress,sys; sys.exit(0 if ipaddress.ip_address('$ip') in ipaddress.ip_network('$entry', strict=False) else 1)" 2>/dev/null; then
+          return 0
+        fi
+      elif [ "$entry" = "$ip" ]; then
+        return 0
+      fi
+    done
+    return 1
+  }
+  if [ -n "$NEW_F2B_IPS" ]; then
+    FILTERED_F2B=""
+    while IFS= read -r ip; do
+      [ -z "$ip" ] && continue
+      if _is_allowed_ip "$ip"; then
+        log "  ⏭ Skipped (allow-listed): ${ip}"
+        continue
+      fi
+      FILTERED_F2B+="${ip}"$'\n'
+    done <<< "$NEW_F2B_IPS"
+    NEW_F2B_IPS="$FILTERED_F2B"
+  fi
+
   F2B_COUNT=$(echo "$NEW_F2B_IPS" | grep -c '[0-9]' 2>/dev/null || true)
   F2B_COUNT=$((F2B_COUNT + 0))
   if [ "$F2B_COUNT" -gt 0 ]; then
