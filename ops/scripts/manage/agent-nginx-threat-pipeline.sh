@@ -183,8 +183,9 @@ if [ -n "$F2B_LOG" ]; then
   # Mirror of the scanner's guard: fail2ban can transiently ban a legit
   # office/VPN IP (shared egress NAT), and without this check the pipeline
   # re-appends it to blocked_ips.add — the pollution loop that re-captured
-  # allow-listed office IPs after the 2026-08-08 fix (222.111.179.67,
-  # 115.21.71.146/147 re-added 08-10..08-12). The allow-list always wins.
+  # allow-listed office IPs after the 2026-08-08 fix (re-added
+  # 08-10..08-12; real addresses live only in /etc/nginx/allow-ips-manual.conf).
+  # The allow-list always wins.
   ALLOW_MANUAL="${ALLOW_MANUAL:-/etc/nginx/allow-ips-manual.conf}"
   ALLOWED_IPS=()
   if [ -f "$ALLOW_MANUAL" ]; then

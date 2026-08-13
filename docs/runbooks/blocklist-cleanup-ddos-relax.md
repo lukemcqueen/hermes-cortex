@@ -77,7 +77,8 @@ The scanner now respects `/etc/nginx/allow-ips-manual.conf`. This file is the
 Legit office/VPN/user IPs belong there (human-managed).
 
 Confirmed office IPs removed from `blocked_ips.add` source (commit `95933111`):
-`222.111.179.67`, `115.21.71.146`, `115.21.71.147`, `52.47.194.69`.
+the four entries that had been allow-listed (see `/etc/nginx/allow-ips-manual.conf`
+— real addresses are kept out of this public repo, PII rule).
 
 ---
 
@@ -154,8 +155,9 @@ IS the fail2ban evidence.
 
 **Also fixed (root cause):** the pipeline's Step 2 (direct fail2ban log
 collection) had no allow-list guard — the scanner had one since 08-08, the
-pipeline didn't. It re-added allow-listed office IPs (222.111.179.67,
-115.21.71.146/147) on 08-10..08-12. Guard mirrored into
+pipeline didn't. It re-added allow-listed office IPs on 08-10..08-12
+(real addresses live only in `/etc/nginx/allow-ips-manual.conf`, never in
+this public repo — PII rule). Guard mirrored into
 `agent-nginx-threat-pipeline.sh` (commit 8b8e8089). Without this, every
 transient fail2ban ban of a legit IP re-pollutes the source forever.
 
