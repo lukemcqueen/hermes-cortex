@@ -136,6 +136,34 @@ static list should hold only confirmed abusers; fail2ban handles the rest.
 - [ ] NEVER edit nginx templates or allow-ips-manual.conf (manual domain)
 - [ ] Only `blocked_ips.add` is agent-writable — and only for confirmed abusers
 
+---
+
+## Execution log — 2026-08-13 fleet prune (Esther)
+
+**Trigger:** Luke — "prune the blocked IPs; it was set too aggressively, too
+many good IPs captured."
+
+**Keep-set (git-evidence technique):** `git diff 95933111..HEAD --
+ops/install/deploy/nginx/blocked_ips.add` added-lines = every IP the fleet
+pipeline added since the 08-08 pollution fix. Those are fail2ban-confirmed
+bans from moses/joseph/kustos/gisu (the pipeline's only post-fix source).
+Result: 19,983 → 836 IPs (-96.5%), then +8 from the local scanner's
+rotated-log history the same day → 844. This beats the classifier-on-Joseph
+approach when you need the answer now and SSH isn't set up: the git history
+IS the fail2ban evidence.
+
+**Also fixed (root cause):** the pipeline's Step 2 (direct fail2ban log
+collection) had no allow-list guard — the scanner had one since 08-08, the
+pipeline didn't. It re-added allow-listed office IPs (222.111.179.67,
+115.21.71.146/147) on 08-10..08-12. Guard mirrored into
+`agent-nginx-threat-pipeline.sh` (commit 8b8e8089). Without this, every
+transient fail2ban ban of a legit IP re-pollutes the source forever.
+
+**Fleet deploy:** UPDATE_REQUEST (pull + cortex-update) then
+EXEC deploy-blocked-ips.sh to joseph/kustos/gisu/moses — each host must pull
+the pruned source BEFORE regenerating its live conf, or it re-deploys the old
+19K list.
+
 ## Rollback
 
 - Scanner revert: restore old scanner from git, cortex-update.
