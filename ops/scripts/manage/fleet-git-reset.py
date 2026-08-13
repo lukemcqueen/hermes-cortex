@@ -39,6 +39,26 @@ TARGET_REPO = HOME / "hermes-cortex"
 EXPECTED_REMOTE = "https://github.com/fleet-operator/hermes-cortex.git"
 
 
+def canonical_remote(url: str) -> str:
+    """Normalize a git remote URL to scheme://host/path, stripping credentials.
+
+    Hosts may store the origin URL with an embedded token
+    (https://<token>@github.com/fleet-operator/hermes-cortex.git) — that is still
+    the canonical repo, and the guard must not refuse it (kustos, 2026-08-13).
+    Non-http URLs (ssh, file) are returned unchanged.
+    """
+    url = url.strip()
+    if url.startswith("http://") or url.startswith("https://"):
+        from urllib.parse import urlparse, urlunparse
+        try:
+            p = urlparse(url)
+            host = p.netloc.rsplit("@", 1)[-1]  # strip userinfo
+            return urlunparse((p.scheme, host, p.path, "", "", ""))
+        except Exception:
+            return url
+    return url
+
+
 def git(args: list[str], cwd: Path, timeout: int = 60) -> subprocess.CompletedProcess:
     return subprocess.run(["git"] + args, capture_output=True, text=True,
                           cwd=str(cwd), timeout=timeout)
@@ -67,10 +87,10 @@ def main() -> int:
         print(json.dumps(summary)); print(f"REFUSED: {summary['guard']}", file=sys.stderr)
         return 2
 
-    # ── Guard 2: canonical remote ───────────────────────────────────────
+    # ── Guard 2: canonical remote (credential-insensitive) ────────────────
     r = git(["remote", "get-url", "origin"], TARGET_REPO)
     remote = r.stdout.strip() if r.returncode == 0 else ""
-    if remote != EXPECTED_REMOTE:
+    if canonical_remote(remote) != EXPECTED_REMOTE:
         summary["guard"] = f"unexpected origin remote: {remote!r}"
         print(json.dumps(summary)); print(f"REFUSED: {summary['guard']}", file=sys.stderr)
         return 2
