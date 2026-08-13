@@ -246,32 +246,70 @@ def task_stale_sweep(max_hours: float = 1.0) -> int:
 
     Runs on the handler tick. Bus tasks (source='inbox') older than
     max_hours in in_progress → paused with reason='stale' (R-16/M-2).
-    Returns the count swept. Never raises.
+    Also completes pending inbox rows older than max_hours whose
+    correlation_id is in the handler's processed_ids — the handler
+    demonstrably processed the message (create-before-archive, corr in
+    processed_ids) but the in_progress/completed transitions were lost
+    (silent task-db failure or crash between create and dispatch),
+    orphaning the row in pending forever (gisu PROPOSAL 2026-08-13;
+    evidence: esther UPDATE_REQUEST corr=send-d13bfa25deab stayed
+    pending 10.5h with update applied). The schema forbids a direct
+    pending→completed, so the row goes pending→in_progress→completed
+    (both legal). Report-type rows (PROPOSAL/ISSUES/IMPROVEMENTS) are
+    EXCLUDED — those legitimately stay pending as the durable record
+    for the orchestrator's inbox_read session. Returns the count
+    swept. Never raises.
     """
     try:
-        sql = (
-            "SELECT correlation_id FROM tasks.tasks "
-            "WHERE source = 'inbox' AND status = 'in_progress' "
-            "AND status_changed_at < now() - make_interval(hours => ?::int) "
-            "LIMIT 50;"
-        )
-        # task-db.py has no raw SQL entry — use its psql plumbing via module
-        # import to reach the DB safely (same stdin-only, allowlisted path).
         import importlib.util as _ilu
         spec = _ilu.spec_from_file_location("task_db_bridge", TASK_DB_PATH)
         if spec is None or spec.loader is None:
             return 0
         tdb = _ilu.module_from_spec(spec)
         spec.loader.exec_module(tdb)
+        swept = 0
+
+        # Arm 1 (existing): in_progress older than threshold → paused
+        sql = (
+            "SELECT correlation_id FROM tasks.tasks "
+            "WHERE source = 'inbox' AND status = 'in_progress' "
+            "AND status_changed_at < now() - make_interval(hours => ?::int) "
+            "LIMIT 50;"
+        )
         raw = tdb.psql(tdb.build_query(sql, [max_hours]))
         corrs = [ln.strip() for ln in raw.splitlines() if ln.strip()]
-        swept = 0
         for corr in corrs:
             if task_transition_by_correlation(corr, "paused", reason="stale"):
                 swept += 1
+
+        # Arm 2 (gisu PROPOSAL 2026-08-13): pending rows whose corr the
+        # handler demonstrably processed but whose lifecycle transitions
+        # were lost. Report-type rows stay pending on purpose — exclude.
+        _state = load_state()
+        _processed = set(_state.get("processed_ids", []))
+        if _processed:
+            sql2 = (
+                "SELECT correlation_id FROM tasks.tasks "
+                "WHERE source = 'inbox' AND status = 'pending' "
+                "AND content NOT LIKE 'PROPOSAL%' "
+                "AND content NOT LIKE 'ISSUES%' "
+                "AND content NOT LIKE 'IMPROVEMENTS%' "
+                "AND created_at < now() - make_interval(hours => ?::int) "
+                "LIMIT 50;"
+            )
+            raw2 = tdb.psql(tdb.build_query(sql2, [max_hours]))
+            for corr in (ln.strip() for ln in raw2.splitlines() if ln.strip()):
+                if corr in _processed:
+                    # pending→in_progress→completed: both legal; direct
+                    # pending→completed is forbidden by the schema.
+                    if task_transition_by_correlation(corr, "in_progress",
+                                                      reason="stale-pending"):
+                        if task_transition_by_correlation(corr, "completed",
+                                                          reason="stale-pending"):
+                            swept += 1
         if swept:
-            log(f"🧹 stale sweep: paused {swept} inbox task(s) "
-                f"(in_progress > {max_hours}h)")
+            log(f"🧹 stale sweep: closed {swept} inbox task(s) "
+                f"(> {max_hours}h)")
         return swept
     except Exception as e:
         log(f"stale sweep error: {type(e).__name__}: {e}")
