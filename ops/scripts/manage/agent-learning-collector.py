@@ -169,8 +169,12 @@ def _get_skill_delta(state: dict) -> list[dict]:
             "is_new": rel not in old_hashes,
         })
 
-        if len(delta) >= MAX_SKILLS_IN_REPORT:
-            break
+    # Cap the REPORT at MAX_SKILLS_IN_REPORT, but never break out of the
+    # hashing loop early: a break here left alphabetically-late skills
+    # (web-development/*, workflow/*, x-twitter-growth, yuanbao) unrecorded
+    # in new_hashes, so they were re-reported as [NEW] every cycle
+    # (fixed 2026-08-14).
+    delta = delta[:MAX_SKILLS_IN_REPORT]
 
     # Update hashes for next run
     state["skill_hashes"] = new_hashes
@@ -208,6 +212,15 @@ def _get_lesson_delta(state: dict) -> list[dict]:
     for f in new_files:
         stat = f.stat()
         text = f.read_text(errors="replace")[:2000]  # first 2KB
+        # Strip leading YAML frontmatter so the preview shows the lesson
+        # BODY, not just metadata (fixed 2026-08-14: report previews were
+        # 100% frontmatter, making lesson evaluation blind fleet-wide).
+        body = text
+        if body.startswith("---"):
+            fm_end = body.find("\n---", 3)
+            if fm_end > 0:
+                body = body[fm_end + 4:]
+        body = body.strip()
         # Extract title from first heading or frontmatter
         title = f.stem.replace("-", " ").title()
         for line in text.split("\n")[:5]:
@@ -215,13 +228,17 @@ def _get_lesson_delta(state: dict) -> list[dict]:
             if m:
                 title = m.group(1).strip()
                 break
+        if not body:
+            # Frontmatter-only lesson (session-mine artifact) — surface it
+            # with the raw head so the orchestrator can still see the tags.
+            body = text[:500]
 
         new_lessons.append({
             "title": title,
             "file": f.name,
             "size": stat.st_size,
             "mtime": stat.st_mtime,
-            "preview": text[:500],
+            "preview": body[:500],
         })
 
     state["lesson_count"] = current_count
