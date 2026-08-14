@@ -509,6 +509,35 @@ for a in ('gisu','joseph','kustos','titus','moses'):
 - **Peer-bus consistency:** each orchestrator's Postgres is independent; if the peer's token row on your bus doesn't match his real token, sync it from his bus (`SELECT token_hash FROM bus.tokens WHERE agent_name='moses'` on his host, then UPDATE your row) so a leaked token dies on your bus too.
 - **Rotation order (configs first):** update consumer configs (`.env`, `cortex-bus.conf`) BEFORE the token table so the forwarder/MCP never hit a dead token mid-rotation.
 
+## Stale-mirror sweep — backup bus no longer grows forever (2026-08-14)
+
+**Symptom:** `inbox_orchestrator` (or any `inbox_*`) on the BACKUP orchestrator's
+bus accumulates pending messages monotonically — 74→94→196 over days, 3rd
+fleet sighting (joseph escalation). The primary bus stays clean; the backup's
+own queue-depth watchdogs never cover it (depth-watchdog checks only own
+inbox; confirmation-poller checks only the primary URL).
+
+**Root cause:** the backup bus is a warm-standby MIRROR: the forwarder copies
+pending messages from the primary (PEER→LOCAL) and nothing consumes them while
+the primary is up (the backup's handler polls the primary by design). The
+2026-08-12 dedup fix (record dest-hit in `seen`) stopped duplicate
+re-forwarding but stranded every mirrored-back copy forever: a copy whose
+dedup key was in `seen` was skipped every tick and NEVER archived.
+
+**Fix (commit `ea833284`):** stale-mirror sweep in `_sync_direction` — on a
+BACKUP source (`can_archive_source=True`), a copy whose key is already in
+`seen` (forwarded once or dest-hit-confirmed) is archived once the peer
+CONFIRMS it no longer holds the original (consumed). Failover-safe:
+`_dest_has_key` is tri-state (True/False/None); a copy is kept when the
+original is still pending on the primary, or when the peer is unreachable
+(None — never archive blind during an outage; the local copy may be the only
+snapshot of an unconsumed message). Tests 4-6 in
+`tests/test-bus-forwarder-dedup.py` (RED on old code, GREEN on fix).
+
+**Diagnostic:** `SELECT queue_name, state, COUNT(*) FROM bus.messages GROUP BY 1,2`
+on the backup's Postgres — a growing `pending` count of `topic='reports'`
+mirrors (skill/learning reports, each ×2: original + mirror) is the signature.
+
 ## Shared orchestrator inbox (`inbox_orchestrator`, 2026-08-03)
 
 Workers' fix requests to `inbox_moses` are **invisible to Esther** — each agent
