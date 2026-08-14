@@ -36,6 +36,32 @@ DB_PATH = STATE_DIR / "outerloop.db"
 REGISTRY_PATH = STATE_DIR / "agent-registry.json"
 CORTEX_REPO = HOME / "hermes-cortex"
 
+
+def _resolve_agent_name() -> str:
+    """Resolve agent identity — env → agent.env → .env. NEVER USER/hostname:
+    a missing identity must fail loudly instead of attributing work to the OS
+    account name (Luke directive 2026-08-14)."""
+    name = os.environ.get("AGENT_NAME", "").strip()
+    if not name:
+        for _idf in (HOME / ".hermes-cortex" / "agent.env", HOME / "hermes-cortex" / ".env"):
+            try:
+                if _idf.is_file():
+                    for _line in _idf.read_text().splitlines():
+                        _line = _line.strip()
+                        if _line.startswith("AGENT_NAME="):
+                            _val = _line.split("=", 1)[1].strip().strip("\"'")
+                            if _val:
+                                name = _val
+                                break
+            except OSError:
+                continue
+    if not name or name == "unknown":
+        print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
+              "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME",
+              file=sys.stderr)
+        sys.exit(1)
+    return name
+
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS evidence_packages (
     id              TEXT PRIMARY KEY,
@@ -168,7 +194,7 @@ def cmd_evidence_package(args):
     gov_data = collect_evidence_from_gov_cycles(run_id)
 
     # Collect agent identity
-    agent_name = os.environ.get("AGENT_NAME", os.environ.get("USER", "unknown"))
+    agent_name = _resolve_agent_name()
     agent_version = "1.0.0"
 
     # Build the evidence package
@@ -270,7 +296,7 @@ def cmd_verdict_issue(args):
         sys.exit(1)
 
     verdict_id = f"v-{uuid.uuid4().hex[:12]}"
-    decided_by = args.by or os.environ.get("AGENT_NAME", os.environ.get("USER", "unknown"))
+    decided_by = args.by or _resolve_agent_name()
 
     db.execute("""
         INSERT INTO verdicts (id, evidence_id, decision, rationale, decided_by)

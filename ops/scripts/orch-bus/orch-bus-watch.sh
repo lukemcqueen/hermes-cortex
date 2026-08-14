@@ -8,8 +8,9 @@
 #
 #  Reads agent identity from:
 #    1. AGENT_NAME env var (set by Hermes session)
-#    2. ~/.hermes/agent-name file (if set manually)
-#    3. hostname → agent-registry.json mapping
+#    2. ~/.hermes-cortex/agent.env (canonical per-host identity)
+#    NEVER hostname — a machine name is not an agent identity (Luke
+#    directive 2026-08-14). Missing identity fails loudly.
 #
 #  Usage as no_agent cron (run once on any machine with curl):
 #    hermes cron create name=bus-watch schedule="*/10 * * * *" \
@@ -27,26 +28,12 @@ set -euo pipefail
 # ── Resolve agent identity ────────────────────────────────
 AGENT="${AGENT_NAME:-${HERMES_AGENT:-}}"
 
-if [ -z "$AGENT" ] && [ -f "${HOME}/.hermes/agent-name" ]; then
-  AGENT=$(cat "${HOME}/.hermes/agent-name" | tr -d '[:space:]')
+if [ -z "$AGENT" ] && [ -f "${HOME}/.hermes-cortex/agent.env" ]; then
+  AGENT=$(grep -E '^AGENT_NAME=' "${HOME}/.hermes-cortex/agent.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '[:space:]')
 fi
 
 if [ -z "$AGENT" ]; then
-  # Fallback: try hostname → agent registry mapping
-  HOST=$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo "unknown")
-  case "$HOST" in
-    orchestrator-1|moses*)   AGENT="moses" ;;
-    worker-1|gisu*)          AGENT="gisu" ;;
-    worker-2|joseph*)        AGENT="joseph" ;;
-    worker-3|kustos*)        AGENT="kustos" ;;
-    worker-5|esther*)        AGENT="esther" ;;
-    LAM2|titus*)             AGENT="titus" ;;
-    *)                       AGENT="" ;;
-  esac
-fi
-
-if [ -z "$AGENT" ]; then
-  echo "ERROR: Cannot determine agent name. Set AGENT_NAME env var or create ~/.hermes/agent-name" >&2
+  echo "ERROR: Cannot determine agent name. Set AGENT_NAME env var or create ~/.hermes-cortex/agent.env (AGENT_NAME=<your-agent>)" >&2
   exit 1
 fi
 

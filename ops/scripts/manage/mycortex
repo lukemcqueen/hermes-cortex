@@ -127,15 +127,37 @@ def esc_literal(s: str) -> str:
 # install-profile-reader-role.sh) → isolation is automatic. The base
 # mycortex_reader role remains the capability floor (schema grants inherited
 # via role membership). Resolution order matches install-profile-reader-role.sh:
-# HERMES_PROFILE → AGENT_NAME → hostname. ⚠️ Never scan ~/.hermes/profiles/*/
-# alphabetically — the first entry is NOT the active profile (2026-08-06:
-# 'personal' dir exists but the session is 'default'/esther).
+# HERMES_PROFILE → AGENT_NAME (env → agent.env → .env) → FAIL LOUDLY.
+# ⚠️ Never hostname (a machine name is not a tenant; Luke directive 2026-08-14).
+# ⚠️ Never scan ~/.hermes/profiles/*/ alphabetically — the first entry is NOT
+# the active profile (2026-08-06: 'personal' dir exists but the session is
+# 'default'/esther).
+def _agent_name_or_fail() -> str:
+    val = os.environ.get("AGENT_NAME", "").strip()
+    if val and val != "unknown":
+        return val
+    for _p in (Path.home() / ".hermes-cortex" / "agent.env",
+               Path.home() / "hermes-cortex" / ".env"):
+        try:
+            if _p.is_file():
+                for _l in _p.read_text().splitlines():
+                    _l = _l.strip()
+                    if _l.startswith("AGENT_NAME="):
+                        _v = _l.split("=", 1)[1].strip().strip("\"'")
+                        if _v and _v != "unknown":
+                            return _v
+        except OSError:
+            continue
+    print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
+          "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME",
+          file=sys.stderr)
+    sys.exit(1)
+
+
 def reader_role() -> str:
     profile = os.environ.get("HERMES_PROFILE", "").strip()
     if not profile:
-        profile = os.environ.get("AGENT_NAME", "").strip()
-    if not profile:
-        profile = os.uname().nodename
+        profile = _agent_name_or_fail()
     return f"mycortex_reader_{profile}"
 
 

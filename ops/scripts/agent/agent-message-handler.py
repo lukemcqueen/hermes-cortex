@@ -16,7 +16,7 @@ Env vars:
             On remote agents, set to e.g. https://your-domain:13004
   CORTEX_BUS_TOKEN  Bearer token for bus auth
   CORTEX_BUS_AUTH  Basic auth string (user:pass) as fallback
-  AGENT_NAME     Agent identity (default: hostname)
+  AGENT_NAME     Agent identity (required; never hostname)
 
 Usage:
   python3 agent-message-handler.py         # single poll (cron)

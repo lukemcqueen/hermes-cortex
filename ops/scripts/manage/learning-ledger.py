@@ -53,11 +53,35 @@ ROUTES = (
 
 # ── Profile resolution (same order as task-db.py / install script) ──
 
+def _env_or_file_agent() -> str:
+    """AGENT_NAME env → agent.env → .env. Never hostname (Luke directive
+    2026-08-14): a machine name is not a tenant identity."""
+    val = os.environ.get("AGENT_NAME", "").strip()
+    if val and val != "unknown":
+        return val
+    for _p in (Path.home() / ".hermes-cortex" / "agent.env",
+               Path.home() / "hermes-cortex" / ".env"):
+        try:
+            if _p.is_file():
+                for _l in _p.read_text().splitlines():
+                    _l = _l.strip()
+                    if _l.startswith("AGENT_NAME="):
+                        _v = _l.split("=", 1)[1].strip().strip("\"'")
+                        if _v and _v != "unknown":
+                            return _v
+        except OSError:
+            continue
+    return ""
+
+
 def resolve_profile() -> str:
-    """HERMES_PROFILE → AGENT_NAME → hostname. Never scans profiles/*/."""
+    """HERMES_PROFILE → AGENT_NAME (env → agent.env → .env). FAIL loudly on
+    none — never hostname (Luke directive 2026-08-14). Never scans profiles/*/."""
     return (os.environ.get("HERMES_PROFILE")
-            or os.environ.get("AGENT_NAME")
-            or platform.node() or "default")
+            or _env_or_file_agent()
+            or sys.exit("❌ AGENT_NAME not configured — set AGENT_NAME= in "
+                        "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env "
+                        "or export AGENT_NAME"))
 
 
 PROFILE = resolve_profile()

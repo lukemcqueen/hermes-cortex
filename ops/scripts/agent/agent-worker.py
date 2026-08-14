@@ -12,7 +12,29 @@ import logging
 import base64
 from pathlib import Path
 
-AGENT_NAME = os.environ.get("AGENT_NAME", os.environ.get("USER", "unknown"))
+# Agent identity — env → agent.env → .env. NEVER USER/hostname: a missing
+# identity must fail loudly instead of acting under the OS account name
+# (Luke directive 2026-08-14).
+AGENT_NAME = os.environ.get("AGENT_NAME", "").strip()
+if not AGENT_NAME:
+    for _idf in (Path.home() / ".hermes-cortex" / "agent.env",
+                 Path.home() / "hermes-cortex" / ".env"):
+        try:
+            if _idf.is_file():
+                for _line in _idf.read_text().splitlines():
+                    _line = _line.strip()
+                    if _line.startswith("AGENT_NAME="):
+                        _val = _line.split("=", 1)[1].strip().strip("\"'")
+                        if _val:
+                            AGENT_NAME = _val
+                            break
+        except OSError:
+            continue
+if not AGENT_NAME or AGENT_NAME == "unknown":
+    print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
+          "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME",
+          file=sys.stderr)
+    sys.exit(1)
 BUS_URL = os.environ.get("BUS_URL") or os.environ.get("CORTEX_BUS_URL", "http://127.0.0.1:8903")
 CORTEX_BASIC_AUTH = os.environ.get("CORTEX_BASIC_AUTH") or os.environ.get("CORTEX_BUS_AUTH") or os.environ.get("CORTEX_INBOX_AUTH", "")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")

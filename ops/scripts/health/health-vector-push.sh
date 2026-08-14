@@ -34,7 +34,13 @@ CORTEX_BUS_FALLBACK_URL="$(load_var CORTEX_BUS_FALLBACK_URL)"
 CORTEX_BUS_TOKEN="$(load_var CORTEX_BUS_TOKEN)"
 CORTEX_BASIC_AUTH="$(load_var CORTEX_BASIC_AUTH)"
 AGENT_NAME="${AGENT_NAME:-$(load_var AGENT_NAME)}"
-AGENT_NAME="${AGENT_NAME:-titus}"
+# NEVER fall back to a hardcoded/other agent or hostname — a missing
+# identity must fail loudly, not impersonate another agent (Luke
+# directive 2026-08-14).
+if [[ -z "$AGENT_NAME" || "$AGENT_NAME" == "unknown" ]]; then
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] AGENT_NAME not configured — set AGENT_NAME= in cortex-bus.conf / hermes-cortex/.env or export AGENT_NAME" >> "$ERROR_LOG"
+  exit 1
+fi
 
 # ── Resolve URL: primary, then fallback, then fail ──
 BUS_URL="${CORTEX_BUS_URL:-${CORTEX_BUS_FALLBACK_URL:-}}"

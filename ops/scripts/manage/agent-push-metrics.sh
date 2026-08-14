@@ -27,7 +27,19 @@ if [ -f "$_env_file" ]; then
 fi
 
 # ── Config ──────────────────────────────────────────────────
-AGENT_NAME="${AGENT_NAME:-$(hostname)}"
+# Agent identity — env → agent.env → .env. NEVER hostname: a machine name is
+# not an agent name and would misattribute metrics (Luke directive 2026-08-14).
+AGENT_NAME="${AGENT_NAME:-}"
+if [ -z "$AGENT_NAME" ] && [ -f "${HOME}/.hermes-cortex/agent.env" ]; then
+  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/.hermes-cortex/agent.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+fi
+if [ -z "$AGENT_NAME" ] && [ -f "${HOME}/hermes-cortex/.env" ]; then
+  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/hermes-cortex/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+fi
+if [ -z "$AGENT_NAME" ] || [ "$AGENT_NAME" = "unknown" ]; then
+  echo "[push-metrics] ❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME" >&2
+  exit 1
+fi
 
 # ── Source environment ──────────────────────────────────────
 # Cron scheduler does not source hermes-cortex.env before running no_agent scripts.

@@ -101,14 +101,17 @@ if inbox_auth:
     encoded = base64.b64encode(inbox_auth.encode()).decode()
     AUTH_HEADER = {"Authorization": "Basic " + encoded}
 
-# Resolve agent identity: AGENT_NAME > auth username > USER env
+# Resolve agent identity: AGENT_NAME (env/config) > auth username. NEVER
+# fall back to USER env or a generic 'agent' — a missing identity is a hard
+# error so a misconfigured host fails loudly instead of silently acting as
+# another identity (Luke directive 2026-08-14).
 if not agent_name and inbox_auth and ":" in inbox_auth:
     agent_name = inbox_auth.split(":", 1)[0]
 if not agent_name:
-    agent_name = os.environ.get("USER", "")
-if not agent_name:
-    log.warning("AGENT_NAME not configured — using 'agent' as fallback")
-    agent_name = "agent"
+    print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
+          "~/.hermes-cortex/cortex-bus.conf / ~/hermes-cortex/.env or export AGENT_NAME",
+          file=sys.stderr)
+    sys.exit(1)
 
 DEFAULTAGENT = agent_name
 

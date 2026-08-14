@@ -538,29 +538,41 @@ def check_systemd_services():
             })
 
 
-def _local_agent_name() -> str:
-    """Return this host's agent name (lowercase, first label of hostname)."""
-    import socket
-    return socket.gethostname().split(".")[0].lower()
-
-
 def _read_env_value(key: str) -> str:
-    """Read a value from the environment, falling back to ~/hermes-cortex/.env."""
+    """Read a value from the environment, falling back to agent.env then
+    ~/hermes-cortex/.env (canonical identity/config sources)."""
     val = os.environ.get(key, "").strip()
     if val:
         return val
-    env_file = CORTEX_REPO / ".env"
-    try:
-        for line in env_file.read_text().splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            if k.strip() == key:
-                return v.strip().strip('"').strip("'")
-    except (OSError, ValueError):
-        pass
+    for env_file in (HOME / ".hermes-cortex" / "agent.env", CORTEX_REPO / ".env"):
+        try:
+            for line in env_file.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                if k.strip() == key:
+                    return v.strip().strip('"').strip("'")
+        except (OSError, ValueError):
+            pass
     return ""
+
+
+def _local_agent_name() -> str:
+    """Return this agent's name from config — env → agent.env → .env.
+
+    NEVER hostname: a machine name is not an agent identity and would
+    silently gate the wrong checks (e.g. cert-holder hosts) on hosts whose
+    hostname differs from the agent name (Luke directive 2026-08-14). A
+    missing identity is a hard error — fail loudly.
+    """
+    name = _read_env_value("AGENT_NAME")
+    if name and name != "unknown":
+        return name.lower()
+    print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
+          "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME",
+          file=sys.stderr)
+    sys.exit(1)
 
 
 def _is_server_agent() -> bool:

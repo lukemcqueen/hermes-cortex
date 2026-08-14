@@ -114,7 +114,8 @@ def load_config() -> dict:
       1. HC_AGENT env var
       2. HC_AGENT in hc.env
       3. AGENT_NAME in cortex-bus.conf (canonical per-host identity)
-      4. hostname-based guess (never a hardcoded other agent)
+      NEVER hostname — a machine name is not an agent identity. Missing
+      identity fails loudly (Luke directive 2026-08-14).
     """
     config = {
         "agent": os.environ.get("HC_AGENT", ""),
@@ -136,19 +137,17 @@ def load_config() -> dict:
         config["agent"] = os.environ.get("AGENT_NAME", "") or _read_bus_conf("AGENT_NAME")
 
     if not config["agent"]:
-        # Never impersonate another agent: derive from hostname, or refuse.
-        import socket
-        hostname = socket.gethostname().split(".")[0].lower()
-        # Known fleet hostname→agent map (PII-safe: no real hostnames here)
-        _HOST_MAP = {
-            "luke-server": "joseph",
-            "cisnet03": "gisu",
-            "cisnet02": "kustos",
-            "lam2": "titus",
-        }
-        config["agent"] = _HOST_MAP.get(hostname, hostname)
-        if config["agent"]:
-            print(f"ℹ️  HC_AGENT unset — derived agent '{config['agent']}' from hostname", file=sys.stderr)
+        # NEVER derive identity from hostname — a machine name is not an
+        # agent name and silently impersonates the wrong inbox (Luke
+        # directive 2026-08-14). Fail loudly with setup instructions.
+        print(
+            "❌ Cannot determine agent identity. Set one of:\n"
+            "   1. export HC_AGENT=<your-agent>   (or add HC_AGENT= to ~/.hermes-cortex/hc.env)\n"
+            "   2. AGENT_NAME= in ~/.hermes-cortex/cortex-bus.conf / ~/hermes-cortex/.env\n"
+            "   3. export AGENT_NAME=<your-agent>",
+            file=sys.stderr,
+        )
+        sys.exit(2)
     return config
 
 

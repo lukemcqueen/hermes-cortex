@@ -57,6 +57,29 @@ def _read_config(key: str) -> str:
     return ""
 
 
+# Agent identity — env → cortex-bus.conf → agent.env. NEVER hostname: a
+# machine name is not an agent name (Luke directive 2026-08-14). A missing
+# identity is a hard error — the diagnostic fails loudly instead of
+# reporting under a guessed name.
+AGENT_NAME = os.environ.get("AGENT_NAME", "") or _read_config("AGENT_NAME")
+if not AGENT_NAME:
+    try:
+        agent_env = HOME / ".hermes-cortex" / "agent.env"
+        if agent_env.exists():
+            for line in agent_env.read_text().splitlines():
+                line = line.strip()
+                if line.startswith("AGENT_NAME="):
+                    AGENT_NAME = line.split("=", 1)[1].strip().strip("\"'")
+                    break
+    except OSError:
+        pass
+if not AGENT_NAME or AGENT_NAME == "unknown":
+    print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
+          "~/.hermes-cortex/agent.env / cortex-bus.conf or export AGENT_NAME",
+          file=sys.stderr)
+    sys.exit(1)
+
+
 def _bus_get(endpoint: str) -> dict:
     """GET from remote bus API. Returns {} on failure."""
     try:
@@ -114,7 +137,7 @@ def collect_handler() -> dict:
 
 def collect_queue() -> dict:
     """Inbox depth and DLQ status from local bus."""
-    agent = os.environ.get("AGENT_NAME", HOME.name)
+    agent = AGENT_NAME
     inbox = f"inbox_{agent}"
     dlq = f"inbox_{agent}_dlq"
     result = {}
@@ -222,7 +245,7 @@ def collect_agent() -> dict:
         else:
             result["git_sha"] = "unknown"
 
-    result["agent_name"] = os.environ.get("AGENT_NAME", HOME.name)
+    result["agent_name"] = AGENT_NAME
 
     return result
 

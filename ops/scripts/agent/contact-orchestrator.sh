@@ -31,7 +31,12 @@ set -euo pipefail
 if [ -z "${AGENT_NAME:-}" ] && [ -f "${HOME}/.hermes-cortex/agent.env" ]; then
   . "${HOME}/.hermes-cortex/agent.env"
 fi
-AGENT_NAME="${AGENT_NAME:-${USER:-unknown}}"
+# NEVER fall back to USER/hostname — a missing identity must fail loudly
+# instead of misattributing the message (Luke directive 2026-08-14).
+if [ -z "${AGENT_NAME:-}" ] || [ "$AGENT_NAME" = "unknown" ]; then
+  echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME" >&2
+  exit 1
+fi
 SUBJECT="${1:-}"
 BODY="${2:-}"
 PRIORITY="${3:-normal}"

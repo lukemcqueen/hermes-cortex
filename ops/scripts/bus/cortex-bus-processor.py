@@ -33,7 +33,28 @@ from lib.cortex_bus import bus_list_queues, bus_read, bus_archive
 HOME = Path.home()
 STATE_DIR = HOME / ".hermes" / "state"
 SEEN_FILE = STATE_DIR / "bus-broadcast-seen"
-AGENT = os.environ.get("AGENT_NAME", "esther")
+# Agent identity — env → agent.env → .env. NEVER hostname/hardcoded other
+# agent: a missing identity must fail loudly, not impersonate another agent
+# (Luke directive 2026-08-14).
+AGENT = os.environ.get("AGENT_NAME", "").strip()
+if not AGENT:
+    for _idf in (HOME / ".hermes-cortex" / "agent.env", HOME / "hermes-cortex" / ".env"):
+        try:
+            if _idf.is_file():
+                for _line in _idf.read_text().splitlines():
+                    _line = _line.strip()
+                    if _line.startswith("AGENT_NAME="):
+                        _val = _line.split("=", 1)[1].strip().strip("\"'")
+                        if _val:
+                            AGENT = _val
+                            break
+        except OSError:
+            continue
+if not AGENT or AGENT == "unknown":
+    print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
+          "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME",
+          file=sys.stderr)
+    sys.exit(1)
 
 # Agent registry for broadcast topics
 REGISTRY_PATH = HOME / ".hermes" / "state" / "agent-registry.json"

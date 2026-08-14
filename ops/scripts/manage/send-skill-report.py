@@ -65,6 +65,16 @@ if not BUS_URL:
     BUS_URL = _resolve_var("CORTEX_BUS_FALLBACK_URL")
 BUS_TOKEN = _resolve_var("CORTEX_BUS_TOKEN")
 
+# ── Agent identity — fail loud, NEVER hostname ──
+# A machine name is not an agent name; reporting under the OS hostname
+# silently breaks the receiver's agent whitelist (Luke directive 2026-08-14).
+AGENT_NAME = _resolve_var("AGENT_NAME")
+if not AGENT_NAME or AGENT_NAME == "unknown":
+    print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
+          "~/.hermes-cortex/agent.env / cortex-bus.conf / ~/hermes-cortex/.env "
+          "or export AGENT_NAME", file=sys.stderr)
+    sys.exit(1)
+
 # ── Resolve auth ──
 # Local (127.0.0.1/localhost): Bearer token
 # Remote (external via nginx): Basic auth
@@ -117,9 +127,8 @@ if CONTENTS_FILE.exists():
     contents = json.loads(CONTENTS_FILE.read_text())
 
 # ── Build message body ──
-hostname = os.uname().nodename
 lines = []
-lines.append(f"━━━ Skill Report — {hostname} ━━━")
+lines.append(f"━━━ Skill Report — {AGENT_NAME} ━━━")
 lines.append(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}")
 lines.append(f"Total skills installed: {manifest.get('total_skills', 0)}")
 lines.append(f"Custom skills (not upstream): {custom_total}")
@@ -147,7 +156,7 @@ api_url = f"{bus_url}/api/pgmq/send"
 payload = {
     "queue": "inbox_orchestrator",
     "message": {
-        "from": hostname,
+        "from": AGENT_NAME,
         "subject": f"Skill Report: {custom_total} custom skills",
         "body": body_text,
         "topic": "reports",
@@ -168,7 +177,7 @@ try:
     with urlopen(req, timeout=30) as resp:
         result = json.loads(resp.read().decode())
     msg_id = result.get("msg_id", "?")
-    print(f"Sent {custom_total} custom skills from {hostname} to Moses (msg_id={msg_id[:8]})", flush=True)
+    print(f"Sent {custom_total} custom skills from {AGENT_NAME} to Moses (msg_id={msg_id[:8]})", flush=True)
 except URLError as e:
     body = ""
     if hasattr(e, 'read'):

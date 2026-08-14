@@ -17,7 +17,7 @@ dashboard consumption.
 Configuration (env vars or ~/.hermes-cortex/cortex-bus.conf):
   CORTEX_BUS_FALLBACK_URL     — Moses inbox MCP endpoint (POST via internal API)
   CORTEX_BUS_FALLBACK_AUTH    — "user:pass" for Basic Auth
-  AGENT_NAME           — name to report as (default: hostname)
+  AGENT_NAME           — name to report as (required; never hostname)
   EXTERNAL_HEALTH_URL  — external URL to verify reachability (Principle #14)
 
 Cron setup on the remote agent:
@@ -85,6 +85,26 @@ if CONFIG_FILE.exists():
 
 if not inbox_url:
     print("ERROR: CORTEX_BUS_FALLBACK_URL (or CORTEX_INBOX_URL) not set", file=sys.stderr)
+    sys.exit(1)
+
+# Agent identity — env → agent.env → cortex-bus.conf. NEVER hostname: a
+# machine name is not an agent name and would report under the wrong
+# identity (Luke directive 2026-08-14). Fail loudly when unset.
+if not agent_name:
+    try:
+        agent_env = HOME / ".hermes-cortex" / "agent.env"
+        if agent_env.exists():
+            for line in agent_env.read_text().splitlines():
+                line = line.strip()
+                if line.startswith("AGENT_NAME="):
+                    agent_name = line.split("=", 1)[1].strip().strip("\"'")
+                    break
+    except OSError:
+        pass
+if not agent_name or agent_name == "unknown":
+    print("ERROR: AGENT_NAME not configured — set AGENT_NAME= in "
+          "~/.hermes-cortex/agent.env / ~/.hermes-cortex/cortex-bus.conf or export AGENT_NAME",
+          file=sys.stderr)
     sys.exit(1)
 
 

@@ -23,8 +23,8 @@
 # f/f), so this connects as the `mycortex` superuser inside the container.
 # Runs as a cortex-update.sh step AFTER migrate.py (DDL path), idempotent.
 #
-# Profile resolution (same order as the CLI): HERMES_PROFILE env →
-# ~/.hermes/profiles/*/ dirs → hostname. macOS uses direct psql (no container).
+# Profile resolution (tenant boundary): HERMES_PROFILE env → AGENT_NAME →
+# fail loudly. macOS uses direct psql (no container).
 #
 # ⚠️ SQL is piped via STDIN (heredoc), never -c "$SQL" through nested
 #    double-quoted sg docker -c: $$ would re-expand to the shell PID at
@@ -37,16 +37,20 @@ HERMES_HOME="${HERMES_HOME:-${HOME_DIR}/.hermes}"
 
 # ── Resolve profile (tenant boundary: PROFILE, not hostname) ──
 # Reliable order: HERMES_PROFILE (gateway sets this for named profiles) →
-# AGENT_NAME → hostname. ⚠️ Do NOT scan ~/.hermes/profiles/*/ — the first
+# AGENT_NAME → FAIL LOUDLY. ⚠️ Do NOT scan ~/.hermes/profiles/*/ — the first
 # entry alphabetically is NOT the active profile (observed 2026-08-06:
 # 'personal' dir exists but the session runs as 'default'/esther; the scan
-# picked the wrong tenant and created mycortex_reader_personal).
+# picked the wrong tenant and created mycortex_reader_personal). ⚠️ NEVER
+# fall back to hostname — a machine name is not a tenant identity and would
+# create a garbage mycortex_reader_<hostname> role (Luke directive 2026-08-14).
 PROFILE="${HERMES_PROFILE:-}"
 if [[ -z "$PROFILE" ]]; then
   PROFILE="${AGENT_NAME:-}"
 fi
 if [[ -z "$PROFILE" ]]; then
-  PROFILE="$(hostname 2>/dev/null || echo default)"
+  echo "❌ Cannot resolve profile: HERMES_PROFILE and AGENT_NAME are both unset." >&2
+  echo "   Set AGENT_NAME= in ~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME" >&2
+  exit 1
 fi
 
 READER_ROLE="mycortex_reader_${PROFILE}"

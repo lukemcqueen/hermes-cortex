@@ -35,6 +35,18 @@ elif [[ -f "${HOME}/.hermes-cortex/cortex-bus.conf" ]]; then
   BUS_TOKEN="${CORTEX_BUS_TOKEN:-}"
 fi
 
+# ── Agent identity — fail loud, NEVER hostname ─────────────
+# A machine name is not an agent name; requests must be signed by the
+# orchestrator's agent identity (Luke directive 2026-08-14).
+AGENT_NAME="${AGENT_NAME:-}"
+if [[ -z "$AGENT_NAME" && -f "${HOME}/.hermes-cortex/agent.env" ]]; then
+  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/.hermes-cortex/agent.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+fi
+if [[ -z "$AGENT_NAME" || "$AGENT_NAME" == "unknown" ]]; then
+  echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME" >&2
+  exit 1
+fi
+
 LAST_RUN_FILE="$STATE_DIR/last-orch-skill-report-request.txt"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -104,7 +116,7 @@ fi
 
 for agent in "${AGENTS[@]}"; do
   # Skip orchestrators + self — skill-report requests are for workers only
-  [[ "$agent" == "moses" || "$agent" == "esther" || "$agent" == "$(hostname -s)" ]] && continue
+  [[ "$agent" == "moses" || "$agent" == "esther" || "$agent" == "$AGENT_NAME" ]] && continue
 
   BODY="━━━ Skill Report Request — $REQUEST_ID ━━━
 
@@ -166,7 +178,7 @@ if header:
 payload = {
     'queue': 'inbox_$agent',
     'message': {
-        'from': '$(hostname -s)',
+        'from': '$AGENT_NAME',
         'subject': '📋 Skill Report Request ($REQUEST_ID)',
         'body': '''$BODY''',
         'topic': 'operations',

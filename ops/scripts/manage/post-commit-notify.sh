@@ -96,12 +96,15 @@ while IFS='=' read -r key value || [ -n "$key" ]; do
     esac
 done < <(grep -E '^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=' "$CONFIG_FILE" 2>/dev/null || true)
 
-# Resolve AGENT_NAME if still empty
+# Resolve AGENT_NAME if still empty — config-derived only, NEVER USER/hostname.
+# A missing identity must fail loudly instead of misattributing the notify
+# (Luke directive 2026-08-14).
 if [ -z "$AGENT_NAME" ]; then
   if [ -n "$INBOX_AUTH" ] && [[ "$INBOX_AUTH" == *:* ]]; then
     AGENT_NAME="${INBOX_AUTH%%:*}"
   else
-    AGENT_NAME="${USER:-moses}"
+    echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.hermes-cortex/agent.env / cortex-bus.conf or export AGENT_NAME" >&2
+    exit 1
   fi
 fi
 

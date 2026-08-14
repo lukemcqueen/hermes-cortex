@@ -78,15 +78,33 @@ def _task_db_identity() -> tuple[str, str]:
     """Resolve the local task-DB reader role + creator name.
 
     Mirrors task-db.py's canonical profile resolution (HERMES_PROFILE →
-    AGENT_NAME → hostname) so the probe delete connects as the SAME role that
-    created the probe. Each host provisions only its own
+    AGENT_NAME → agent.env/.env, never hostname) so the probe delete connects
+    as the SAME role that created the probe. Each host provisions only its own
     mycortex_reader_<profile> role; hardcoding another agent's role (esther)
     broke the gate on the moses host (2026-08-09).
     """
-    import platform  # noqa: PLC0415
+    def _env_or_file() -> str:
+        val = os.environ.get("AGENT_NAME", "").strip()
+        if val and val != "unknown":
+            return val
+        for _p in (Path.home() / ".hermes-cortex" / "agent.env",
+                   Path.home() / "hermes-cortex" / ".env"):
+            try:
+                if _p.is_file():
+                    for _l in _p.read_text().splitlines():
+                        _l = _l.strip()
+                        if _l.startswith("AGENT_NAME="):
+                            _v = _l.split("=", 1)[1].strip().strip("\"'")
+                            if _v and _v != "unknown":
+                                return _v
+            except OSError:
+                continue
+        return ""
     profile = (os.environ.get("HERMES_PROFILE")
-               or os.environ.get("AGENT_NAME")
-               or platform.node() or "default")
+               or _env_or_file()
+               or sys.exit("❌ AGENT_NAME not configured — set AGENT_NAME= in "
+                           "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env "
+                           "or export AGENT_NAME"))
     return f"mycortex_reader_{profile}", profile
 
 

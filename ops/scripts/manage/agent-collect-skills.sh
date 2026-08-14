@@ -36,6 +36,19 @@ elif [[ -f "${HOME}/.hermes-cortex/cortex-bus.conf" ]]; then
   source "${HOME}/.hermes-cortex/cortex-bus.conf"
 fi
 
+# ── Agent identity — fail loud, NEVER hostname ─────────────
+# A machine name is not an agent name; reporting under the OS hostname
+# silently breaks the receiver's agent whitelist (Luke directive 2026-08-14).
+AGENT_NAME="${AGENT_NAME:-}"
+if [[ -z "$AGENT_NAME" && -f "${HOME}/.hermes-cortex/agent.env" ]]; then
+  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/.hermes-cortex/agent.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+fi
+if [[ -z "$AGENT_NAME" || "$AGENT_NAME" == "unknown" ]]; then
+  echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME" >&2
+  exit 1
+fi
+export AGENT_NAME
+
 # ── Build manifest via Python ──────────────────────────────
 # (Python handles JSON encoding, multi-line content, and
 #  special characters correctly. Bash cannot safely build JSON.)
@@ -65,7 +78,7 @@ if ignore_file.exists():
         line = line.split("#")[0].strip()
         if line:
             ignored_skills.add(line.lower())
-hostname = os.uname().nodename
+agent_name = os.environ.get("AGENT_NAME", "").strip()
 timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 # ── Stub-recovery cache (2026-08-02) ─────────────────────
@@ -175,7 +188,7 @@ scan_dir(hermes_skills)
 scan_dir(cortex_skills)
 
 manifest = {
-    "sender": hostname,
+    "sender": agent_name,
     "type": "skill-report",
     "generated": timestamp,
     "total_skills": len(seen_paths),
@@ -248,7 +261,7 @@ if contents_dir.is_dir():
         cf = contents_dir / f"idx_{i}.txt"
         contents.append(cf.read_text() if cf.exists() else "")
 
-hostname = os.uname().nodename
+agent_name = os.environ.get("AGENT_NAME", "").strip()
 total_skills = manifest.get("total_skills", 0)
 generated = manifest.get("generated", "")
 
@@ -262,7 +275,7 @@ generated = manifest.get("generated", "")
 MAX_BODY_BYTES = 90_000  # safety margin under the 100KB bus cap
 
 header_lines = [
-    f"━━━ Skill Report — {manifest.get('sender', hostname)} ━━━",
+    f"━━━ Skill Report — {manifest.get('sender', agent_name)} ━━━",
     f"Generated: {generated}",
     f"Total skills installed: {total_skills}",
     f"Custom skills (not upstream): {custom_total}",
@@ -317,7 +330,7 @@ for ci, chunk in enumerate(chunks):
     payload = {
         "queue": "inbox_orchestrator",
         "message": {
-            "from": hostname,
+            "from": agent_name,
             "subject": subject,
             "body": body_text,
             "topic": "reports",

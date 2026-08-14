@@ -3,7 +3,18 @@
 # Returns "MAIL:N" if depth > 0, nothing otherwise (watchdog pattern)
 # Schedule: */30 * * * * *  (every 30 seconds)
 
-AGENT_NAME="${AGENT_NAME:-${USER:-moses}}"
+# ── Agent identity — fail loud, never hostname/USER/other agent ──
+AGENT_NAME="${AGENT_NAME:-}"
+if [[ -z "$AGENT_NAME" && -f "${HOME}/.hermes-cortex/agent.env" ]]; then
+  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/.hermes-cortex/agent.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+fi
+if [[ -z "$AGENT_NAME" && -f "${HOME}/hermes-cortex/.env" ]]; then
+  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/hermes-cortex/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+fi
+if [[ -z "$AGENT_NAME" || "$AGENT_NAME" == "unknown" ]]; then
+    echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME" >&2
+    exit 1
+fi
 # Requires bus URL from config — no localhost fallback
 if [[ -z "$BUS_URL" ]]; then
     echo "ERROR: BUS_URL not set — configure CORTEX_BUS_URL in env or cortex-bus.conf" >&2

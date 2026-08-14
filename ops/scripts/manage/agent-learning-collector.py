@@ -48,9 +48,28 @@ LESSONS_DIR = HOME / "brain" / "lessons"
 SESSION_DB = HOME / ".hermes-cortex" / "sessions.db"
 STATE_FILE = STATE_DIR / "agent-learning-collector-state.json"
 
-# Agent identity — use AGENT_NAME env var (e.g. "gisu", "titus", "moses"),
-# fall back to hostname for backward compat
-AGENT_NAME = os.environ.get("AGENT_NAME") or os.uname().nodename
+# Agent identity — env → agent.env → .env. NEVER hostname: a machine name
+# is not an agent name and would report learnings under the wrong identity
+# (Luke directive 2026-08-14). Missing identity fails loudly.
+AGENT_NAME = os.environ.get("AGENT_NAME", "").strip()
+if not AGENT_NAME:
+    for _idf in (HOME / ".hermes-cortex" / "agent.env", HOME / "hermes-cortex" / ".env"):
+        try:
+            if _idf.is_file():
+                for _line in _idf.read_text().splitlines():
+                    _line = _line.strip()
+                    if _line.startswith("AGENT_NAME="):
+                        _val = _line.split("=", 1)[1].strip().strip("\"'")
+                        if _val:
+                            AGENT_NAME = _val
+                            break
+        except OSError:
+            continue
+if not AGENT_NAME or AGENT_NAME == "unknown":
+    print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
+          "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME",
+          file=sys.stderr)
+    sys.exit(1)
 
 # Repo path
 CORTEX_REPO = Path(os.environ.get("CORTEX_REPO", HOME / "hermes-cortex"))

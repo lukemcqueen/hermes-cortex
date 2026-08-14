@@ -3403,10 +3403,24 @@ def check_deploy_checksums(res):
      HERMES_HOME / "plugins" / "governance-enforcer" / "README.md"),
   ]
 
-  # Add profile-specific SOUL.md mapping for the current agent's local copy
+  # Add profile-specific SOUL.md mapping for the current agent's local copy.
+  # Resolve identity from config only — NEVER hostname (a machine name is not
+  # an agent name; Luke directive 2026-08-14). Unresolvable = no label.
   current_agent = os.environ.get("AGENT_NAME", "").lower().strip()
-  if not current_agent:
-    current_agent = os.uname().nodename.split(".")[0].lower().strip()
+  if not current_agent or current_agent == "unknown":
+      for _idf in (Path.home() / ".hermes-cortex" / "agent.env",
+                   Path.home() / "hermes-cortex" / ".env"):
+          try:
+              if _idf.is_file():
+                  for _line in _idf.read_text().splitlines():
+                      _line = _line.strip()
+                      if _line.startswith("AGENT_NAME="):
+                          _val = _line.split("=", 1)[1].strip().strip("\"'").lower()
+                          if _val and _val != "unknown":
+                              current_agent = _val
+                              break
+          except OSError:
+              continue
   if current_agent:
     local_soul = HERMES_HOME / "SOUL.md"
     if local_soul.exists():
