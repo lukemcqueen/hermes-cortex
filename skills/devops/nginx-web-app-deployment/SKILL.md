@@ -196,6 +196,8 @@ venv/bin/python test_api.py
 | Pitfall | Symptom | Fix |
 |---------|---------|-----|
 | Dual listener on same port | 400 Bad Request, nginx log shows garbled bytes | Remove plain listener, keep only `listen PORT ssl;` |
+| nginx listener bound to `127.0.0.1:PORT` only | Domain resolves to a public IP, but external traffic can't connect (works from localhost only) | Change to `listen PORT;` / `listen PORT ssl;` (all interfaces) — a `127.0.0.1:`-scoped listener is unreachable from outside |
+| Plain HTTP request to an HTTPS port | Client gets `The plain HTTP request was sent to HTTPS port` (400) | Client must use `https://`; if a plain-HTTP redirect is desired, add a separate server block that listens on the HTTP port and redirects to HTTPS |
 | Server name mismatch | SSL cert warnings in browser | Use `YOUR_DOMAIN localhost` in server_name directive |
 | nginx not reloaded after config change | Old config still serving | Always run `nginx -t && nginx -s reload` |
 | Gunicorn binding to 0.0.0.0 | App accessible without auth | Bind gunicorn to `127.0.0.1` only |
