@@ -1172,6 +1172,43 @@ def main():
           log(f"⚠️ Learning Report staging failed: {type(e).__name__}: {e}")
         return True
 
+      # ── Skill Report — stage payload for orch-skill-evaluate pipeline ──
+      # Fleet agents' agent-collect-skills.sh / send-skill-report.py send
+      # chunked Skill Reports ("Skill Report: N custom skills (part X/Y)")
+      # to inbox_orchestrator for the orch-skill-report-process.py digest.
+      # These are DATA for the orchestrator's skill-evaluation pipeline, not
+      # commands. Without this branch the report hits "Unknown subject" — the
+      # early-archive destroys the live-queue copy the processor reads, an
+      # error _RESULT fires to inbox_moses, and Telegram warns. Mirror the
+      # Learning Report pattern: stage the full body to a state dir so the
+      # weekly orch-skill-evaluate cron can compile the digest (esther's
+      # 41-part / 310-skill report eaten part-by-part at 5-min cadence,
+      # parts 2-31 archived 2026-08-14 01:00-02:15, verified same day).
+      if subject.startswith("Skill Report:"):
+        try:
+          stage_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state" / "skill-reports"
+          stage_dir.mkdir(parents=True, exist_ok=True)
+          src_agent = body.get("from", "unknown") if isinstance(body, dict) else "unknown"
+          ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+          content = body.get("body", body) if isinstance(body, dict) else str(body)
+          if isinstance(content, (dict, list)):
+            content = json.dumps(content, ensure_ascii=False, indent=2)
+          part_tag = ""
+          for m_part in subject.split(" "):
+            if m_part.startswith("(part"):
+              part_tag = "-" + m_part.strip("()").replace("/", "of")
+          out_file = stage_dir / f"{src_agent}-{ts}{part_tag}.md"
+          out_file.write_text(f"# Skill Report — {src_agent}\n\n{content}\n")
+          log(f"📦 Staged Skill Report from {src_agent}{part_tag} ({len(str(content))} chars) → {out_file.name}")
+          state.setdefault("last_staged", []).append(
+            {"subject": subject, "from": src_agent, "t": time.time()}
+          )
+          state["last_staged"] = state["last_staged"][-20:]
+          save_state(state)
+        except Exception as e:
+          log(f"⚠️ Skill Report staging failed: {type(e).__name__}: {e}")
+        return True
+
       # Unknown subject — send error response so orchestrator knows
       log(f"Unknown subject '{subject}', sending error (corr={correlation_id[:8]}…)")
       error_body = {

@@ -92,6 +92,39 @@ def read_queue_messages(queue: str, vt: int = 30, limit: int = 10) -> list[dict]
     return []
 
 
+def read_staged_reports() -> list[dict]:
+    """Read Skill Reports staged by the agent-message-handler.
+
+    Since 2026-08-14 the handler stages Skill Report parts to
+    ~/.hermes-cortex/state/skill-reports/ (mirroring Learning Reports) and
+    early-archives the bus message — the live queue is no longer a reliable
+    source (the handler consumed esther's 41-part report as "Unknown subject"
+    before this branch existed). The staged files are the authoritative input:
+    each is "<agent>-<ts>-partXofY.md" (or "<agent>-<ts>.md" for single-part).
+    """
+    state_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state" / "skill-reports"
+    reports = []
+    if not state_dir.is_dir():
+        return reports
+    for f in sorted(state_dir.glob("*.md")):
+        try:
+            text = f.read_text()
+        except OSError:
+            continue
+        # Agent name is the file prefix before the first "-"
+        agent = f.name.split("-", 1)[0]
+        # Body for the digest parser: strip the "# Skill Report —" title line
+        body = "\n".join(line for line in text.splitlines() if not line.startswith("# Skill Report"))
+        reports.append({
+            "from": agent,
+            "subject": "Skill Report (staged)",
+            "body": body,
+            "timestamp": f.stem,
+            "msg_id": f"staged:{f.name}",
+        })
+    return reports
+
+
 def archive_message(queue: str, msg_id: str) -> bool:
     """Move a processed message from the queue to the archive table.
     Uses POST /api/pgmq/archive (preserves message in bus.archives).
@@ -217,7 +250,9 @@ def main():
     mark_read_flag = "--mark-read" in sys.argv
     max_iterations = int(os.environ.get("MAX_READ_ITERATIONS", "20"))
 
-    # Read messages from inbox_orchestrator queue (PGMQ)
+    # Read messages from inbox_orchestrator queue (PGMQ) — plus staged reports
+    # (handler stages Skill Reports to state/skill-reports since 2026-08-14;
+    # staged files are authoritative, queue is drained by the handler).
     all_reports = []
     seen_msg_ids = set()
 
@@ -235,6 +270,13 @@ def main():
             report = extract_skill_report(msg)
             if report:
                 all_reports.append(report)
+
+    # Staged reports (handler-staged Skill Report parts)
+    for report in read_staged_reports():
+        mid = report.get("msg_id", "")
+        if mid and mid not in seen_msg_ids:
+            seen_msg_ids.add(mid)
+            all_reports.append(report)
 
     if not all_reports:
         return  # Silent — no skill reports found
