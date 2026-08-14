@@ -17,6 +17,17 @@ ARCHITECTURE
   bus is unreachable, that direction silently fails; when it returns,
   accumulated messages drain on the next tick.
 
+STALE-MIRROR SWEEP (2026-08-14)
+  The backup bus is a warm standby mirror: messages pending on the primary
+  are copied across and nothing consumes them while the primary is up. The
+  2026-08-12 dedup fix (record dest-hit in `seen`) stopped duplicate
+  re-forwarding but stranded every mirrored-back copy on the backup forever —
+  inbox_orchestrator grew monotonically (196+ pending, 3rd fleet sighting).
+  Now, on the backup-source drain (can_archive_source=True), a copy whose
+  key is already in `seen` is archived once the peer CONFIRMS it no longer
+  holds the original (consumed). Copies stay when the original is still
+  pending on the primary, or when the peer is unreachable (failover safety).
+
 FAILOVER SCENARIO
   Normal:      Moses primary → forwarder copies to Esther (warm standby)
   Moses down:  agents use Esther's bus. Forwarder fails silently on the
@@ -322,9 +333,14 @@ def _dedup_key(msg: dict, body: dict) -> str:
 
 def _dest_has_key(
     dest_url: str, dest_token: str, dest_auth: str, queue: str, dkey: str
-) -> bool:
+) -> bool | None:
     """True when a message with the same dedup key is already pending on the
-    destination bus.
+    destination bus. False when the destination is REACHABLE and does NOT have
+    it. None when the destination cannot be confirmed (unreachable/error).
+
+    Callers must treat None as 'cannot confirm' — never archive a source copy
+    on a None: during a peer outage the local copy may be the ONLY failover
+    snapshot of an unconsumed message (2026-08-14 stale-mirror sweep).
 
     BOTH hosts run BOTH sync directions every tick. A message mirrored
     peer→local by one host gets re-pushed local→peer by the other with a
@@ -339,7 +355,13 @@ def _dest_has_key(
     moses returns) the destination does NOT yet have the message, so the
     drain still flows exactly once.
     """
-    for m in _peek_bus(dest_url, dest_token, dest_auth, queue, limit=MAX_PER_QUEUE):
+    status, data = _request(
+        "GET", f"{dest_url}/api/pgmq/peek/{queue}?limit={MAX_PER_QUEUE}",
+        token=dest_token, auth=dest_auth,
+    )
+    if status != 200 or not isinstance(data, dict):
+        return None
+    for m in data.get("messages", []):
         body = _parse_body(m.get("body", {}))
         if _dedup_key(m, body) == dkey:
             return True
@@ -366,7 +388,10 @@ def _sync_direction(
     Archive rule (role-aware, 2026-08-06):
       - can_archive_source=True  → source is the BACKUP bus (recovery drain:
         backup cleared after its backlog is delivered to the primary, which
-        is now the active consumer).
+        is now the active consumer). Since 2026-08-14 this also sweeps STALE
+        MIRRORS: a copy whose dedup key is already in `seen` (forwarded once
+        or dest-hit-confirmed) is archived once the peer confirms the
+        original is consumed — the backup mirror no longer grows forever.
       - can_archive_source=False → source is the PRIMARY bus: never archive.
         Seen messages are skipped (peek is non-destructive, batch — no
         head-blocking), and the real consumer pops them when it does work.
@@ -390,8 +415,24 @@ def _sync_direction(
                 # Already mirrored. NEVER archive a primary source — the real
                 # consumer (active orchestrator) pops it when doing work.
                 # Batch peek means no head-blocking, so skipping is safe.
+                #
+                # Stale-mirror sweep (2026-08-14): on a BACKUP source
+                # (can_archive_source=True) a copy whose key is already in
+                # `seen` was either forwarded once or dest-hit-confirmed — it
+                # is redundant once the peer has consumed the original. The
+                # 2026-08-12 dedup fix (record dest-hit in seen) stopped the
+                # duplicate re-forward loop but stranded every mirrored-back
+                # copy on the backup bus forever (inbox_orchestrator grew
+                # monotonically — 199 pending, 3rd fleet sighting). Archive
+                # the stale copy ONLY when the peer confirms it no longer
+                # holds the original: dest present (still pending on primary)
+                # or unreachable (None) means keep — it may be the failover
+                # snapshot of an unconsumed message.
+                if can_archive_source and msg_id:
+                    if _dest_has_key(dest_url, dest_token, dest_auth, queue, dkey) is False:
+                        _archive_bus(source_url, source_token, source_auth, queue, msg_id)
                 continue
-            if _dest_has_key(dest_url, dest_token, dest_auth, queue, dkey):
+            if _dest_has_key(dest_url, dest_token, dest_auth, queue, dkey) is True:
                 # The logical message is already pending on the destination
                 # (mirrored by the OTHER host's forwarder, or the original).
                 # Skip this hop — forwarding would create a duplicate that

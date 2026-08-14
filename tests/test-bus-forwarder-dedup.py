@@ -92,6 +92,7 @@ class ForwarderHarness:
     def __init__(self):
         self.source = MockBus()
         self.dest = MockBus()
+        self.dest_unreachable = False  # tri-state None for _dest_has (peer outage sim)
         self.state: dict = {"seen_local_to_peer": [], "total_local_to_peer": 0}
         self._orig = (fwd._peek_bus, fwd._send_bus, fwd._archive_bus, fwd._dest_has_key)
 
@@ -114,6 +115,10 @@ class ForwarderHarness:
     def _dest_has(self, url, token, auth, queue, dkey):
         # Mirror the real _dest_has_key: compare the FULL dedup key
         # (_dedup_key prefixes with "corr:"), not the raw correlation_id.
+        # Tri-state: True (pending), False (reachable, absent), or None when
+        # the harness simulates an unreachable destination (peer outage).
+        if getattr(self, "dest_unreachable", False):
+            return None
         for m in self.dest.pending.get(queue, []):
             b = fwd._parse_body(m.get("body", {}))
             if fwd._dedup_key(m, b) == dkey:
@@ -190,10 +195,71 @@ def test_backup_drain_still_works():
           len(h.source.pending.get("inbox_gisu", [])) == 0)
 
 
+def test_stale_mirror_sweep():
+    """2026-08-14: mirrored-back copies on the backup bus of messages the
+    primary has CONSUMED are archived — the backup mirror no longer grows
+    forever (inbox_orchestrator hit 199 pending, 3rd fleet sighting)."""
+    print("\n═══ Test 4: Stale-mirror sweep (2026-08-14 fix) ═══")
+    corr = "send-stale-mirror-1"
+    h = ForwarderHarness()  # source = backup (Esther), dest = primary (Moses)
+    # Tick 1: mirror copy on backup; original pending on primary.
+    h.source.enqueue("inbox_gisu", build_body(corr))
+    h.dest.enqueue("inbox_gisu", build_body(corr))
+    fwd_list, _ = h.tick(can_archive=True)
+    check("tick1: dest-hit, no forward", len(fwd_list) == 0, f"{fwd_list}")
+    check("tick1: copy retained while original pending (failover snapshot)",
+          len(h.source.pending["inbox_gisu"]) == 1)
+    # Primary handler consumes the original.
+    h.dest.consume("inbox_gisu")
+    # Tick 2: OLD code skipped forever (stranded mirror). NEW code archives it.
+    fwd_list, _ = h.tick(can_archive=True)
+    check("tick2: NO duplicate re-forward of stale mirror", len(fwd_list) == 0, f"{fwd_list}")
+    check("tick2: stale mirror ARCHIVED (THE FIX)",
+          len(h.source.pending.get("inbox_gisu", [])) == 0,
+          f"still pending: {h.source.pending.get('inbox_gisu')}")
+    check("tick2: dest stays empty (no duplicate)",
+          len(h.dest.pending.get("inbox_gisu", [])) == 0)
+
+
+def test_stale_mirror_kept_while_primary_pending():
+    """Failover safety: the backup copy stays while the original is still
+    pending on the primary (it may be needed if the primary dies)."""
+    print("\n═══ Test 5: Copy kept while original still pending ═══")
+    corr = "send-stale-mirror-2"
+    h = ForwarderHarness()
+    h.source.enqueue("inbox_gisu", build_body(corr))
+    h.dest.enqueue("inbox_gisu", build_body(corr))
+    h.tick(can_archive=True)          # dest-hit → seen
+    # Original STILL pending on primary → copy must be kept.
+    fwd_list, _ = h.tick(can_archive=True)
+    check("copy retained (original still pending on primary)",
+          len(h.source.pending.get("inbox_gisu", [])) == 1)
+
+
+def test_stale_mirror_kept_when_peer_unreachable():
+    """Failover safety: never archive blind during a peer outage — the local
+    copy may be the only snapshot of an unconsumed message."""
+    print("\n═══ Test 6: Copy kept when peer unreachable ═══")
+    corr = "send-stale-mirror-3"
+    h = ForwarderHarness()
+    h.source.enqueue("inbox_gisu", build_body(corr))
+    h.dest.enqueue("inbox_gisu", build_body(corr))
+    h.tick(can_archive=True)          # dest-hit → seen
+    h.dest.consume("inbox_gisu")      # primary consumed it…
+    h.dest_unreachable = True         # …but now the peer cannot be reached
+    fwd_list, _ = h.tick(can_archive=True)
+    check("copy retained when peer unreachable (never archive blind)",
+          len(h.source.pending.get("inbox_gisu", [])) == 1,
+          f"pending={h.source.pending.get('inbox_gisu')}")
+
+
 if __name__ == "__main__":
     print("test-bus-forwarder-dedup.py — mirror re-forward loop regression")
     test_mirror_loop_breaks()
     test_forward_still_works()
     test_backup_drain_still_works()
+    test_stale_mirror_sweep()
+    test_stale_mirror_kept_while_primary_pending()
+    test_stale_mirror_kept_when_peer_unreachable()
     print(f"\n═══ Summary: {PASS} passed, {FAIL} failed ═══")
     sys.exit(1 if FAIL else 0)
