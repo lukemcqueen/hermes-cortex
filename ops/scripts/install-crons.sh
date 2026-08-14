@@ -634,7 +634,7 @@ OUTPUT POLICY (HARD RULE — overrides everything above):
 - A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative." \
   "auto-remediation" \
   "terminal,file,web" \
-  "origin" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
@@ -652,7 +652,7 @@ OUTPUT POLICY (HARD RULE — overrides everything above):
 - A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative." \
   "auto-remediation" \
   "terminal,file,web" \
-  "origin" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
@@ -670,7 +670,7 @@ OUTPUT POLICY (HARD RULE — overrides everything above):
 - A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative." \
   "auto-remediation" \
   "terminal,file,web" \
-  "origin" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
@@ -794,7 +794,7 @@ If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G
 If all YES → deliver as normal." \
   "cortex-bus-automation" \
   "terminal" \
-  "origin" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
@@ -818,7 +818,7 @@ If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G
 If all YES → deliver as normal." \
   "cortex-bus-automation" \
   "terminal" \
-  "origin" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
@@ -842,7 +842,7 @@ If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G
 If all YES → deliver as normal." \
   "cortex-bus-automation" \
   "terminal" \
-  "origin" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
@@ -1051,7 +1051,7 @@ Result: Memory consolidated. 3 stale entries pruned, 2 merged. Under limit.
 📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo
 
 If nothing to report: output exactly [SILENT]" \
-  "" "" "origin" "" "false" \
+  "" "" "telegram:${TELEGRAM_HOME_CHANNEL}" "" "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
 # Auto-save sessions every 6 hours
@@ -1130,7 +1130,7 @@ Phase 3 — Apply: 10 sections moved to docs/
 📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$0.18/mo
 
 If nothing to apply: output exactly [SILENT]" \
-  "documentation-scope" "" "origin" \
+  "documentation-scope" "" "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 

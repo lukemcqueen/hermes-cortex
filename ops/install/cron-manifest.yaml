@@ -8,7 +8,7 @@ crons:
   skill: documentation-scope
   skills:
   - documentation-scope
-  deliver: origin
+  deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
   model: deepseek-chat
@@ -79,7 +79,7 @@ crons:
   skill: auto-remediation
   skills:
   - auto-remediation
-  deliver: origin
+  deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
   model: deepseek-v4-flash
@@ -106,7 +106,7 @@ crons:
   skill: auto-remediation
   skills:
   - auto-remediation
-  deliver: origin
+  deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
   model: deepseek-v4-flash
@@ -136,7 +136,7 @@ crons:
   skill: auto-remediation
   skills:
   - auto-remediation
-  deliver: origin
+  deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
   model: deepseek-v4-flash
@@ -275,7 +275,7 @@ crons:
 
     If nothing to report: output exactly [SILENT]'
   skill: ''
-  deliver: origin
+  deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
   model: deepseek-v4-flash
@@ -769,7 +769,7 @@ crons:
   skill: cortex-bus-automation
   skills:
   - cortex-bus-automation
-  deliver: origin
+  deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
   model: deepseek-chat
@@ -819,7 +819,7 @@ crons:
   skill: cortex-bus-automation
   skills:
   - cortex-bus-automation
-  deliver: origin
+  deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
   model: deepseek-chat
@@ -861,7 +861,7 @@ crons:
   skill: cortex-bus-automation
   skills:
   - cortex-bus-automation
-  deliver: origin
+  deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
   model: deepseek-chat

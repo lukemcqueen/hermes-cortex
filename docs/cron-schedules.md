@@ -56,9 +56,9 @@
 
 | Name | Schedule | Type | Script / Skill | Deliver |
 |------|----------|------|----------------|---------|
-| `agent-fixer-workday` | `0 9-17 * * 1-5` | LLM | auto-remediation skill + session-active-guard.py | origin |
-| `agent-fixer-evening` | `0 18,20,22 * * 1-5` | LLM | auto-remediation skill | origin |
-| `agent-fixer-overnight` | `0 3 * * 1-5` | LLM | auto-remediation skill | origin |
+| `agent-fixer-workday` | `0 9-17 * * 1-5` | LLM | auto-remediation skill + session-active-guard.py | telegram |
+| `agent-fixer-evening` | `0 18,20,22 * * 1-5` | LLM | auto-remediation skill | telegram |
+| `agent-fixer-overnight` | `0 3 * * 1-5` | LLM | auto-remediation skill | telegram |
 | `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local (runs only where IS_SERVER=true) |
 | `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin |
 | `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local |
@@ -99,15 +99,15 @@
 | `agent-offline-code-index` | `0 5 * * 0` | no_agent | `agent-offline-code-index.sh` | local |
 | `agent-llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | `agent-llm-judge-scorer.py` | local |
 | `agent-llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | `agent-llm-judge-scorer.py` | local |
-| `agent-memory-pruning` | `0 4 * * 1` | LLM | (prompt) | origin |
+| `agent-memory-pruning` | `0 4 * * 1` | LLM | (prompt) | telegram |
 | `agent-auto-save-sessions` | `every 360m` | no_agent | `agent-auto-save-sessions.py` | local |
 | `agent-stale-ref-watchdog` | `0 5 * * *` | no_agent | `manage/agent-stale-ref-watchdog.sh` | origin |
 | `agent-swap-refresh` | `0 5 * * *` | no_agent | `agent-swap-refresh.py` | origin |
 | `agent-agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agent-agents-md-prune-scan.py` | local |
-| `agent-agents-md-prune-apply` | `30 4 * * 1-6` | LLM | (prompt) | origin |
-| `cortex-bus-workday` | `0 9-17 * * 1-5` | LLM | session-active-guard.py | origin |
-| `cortex-bus-evening` | `0 18,20,22 * * 1-5` | LLM | (prompt) | origin |
-| `cortex-bus-overnight` | `0 2 * * 1-5` | LLM | (prompt) | origin |
+| `agent-agents-md-prune-apply` | `30 4 * * 1-6` | LLM | (prompt) | telegram |
+| `cortex-bus-workday` | `0 9-17 * * 1-5` | LLM | session-active-guard.py | telegram |
+| `cortex-bus-evening` | `0 18,20,22 * * 1-5` | LLM | (prompt) | telegram |
+| `cortex-bus-overnight` | `0 2 * * 1-5` | LLM | (prompt) | telegram |
 | `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin |
 | `agent-daily-soul-refinement` | ~~`0 23 * * *`~~ | ~~LLM~~ | ~~soul-refinement skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level daily soul refinement merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-daily-soul-refinement`. |
 | `agent-weekly-loop-eval` | ~~`0 9 * * 1`~~ | ~~LLM~~ | ~~loop-governance skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level weekly loop eval merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-weekly-loop-eval`. |
