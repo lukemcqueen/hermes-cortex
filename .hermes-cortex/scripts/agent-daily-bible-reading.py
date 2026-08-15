@@ -521,11 +521,25 @@ def write_brain_page(book: str, content: str, agent_name: str) -> bool:
     brain_dir = HOME / "brain" / agent_name / "bible"
     brain_dir.mkdir(parents=True, exist_ok=True)
 
+    # Migration guard (2026-08-14): a canonical <book>.md written BEFORE this
+    # feature has no dated twin — preserve it with its mtime date so a repeat
+    # reading never silently destroys the prior study. Runs once per book
+    # (after the first new-code read the dated twin exists → no re-snapshot).
+    canonical_file = brain_dir / f"{safe_name}.md"
+    if canonical_file.exists() and not list(brain_dir.glob(f"{safe_name}-????-??-??.md")):
+        try:
+            mt = datetime.fromtimestamp(canonical_file.stat().st_mtime).strftime("%Y-%m-%d")
+        except OSError:
+            mt = today
+        snap = brain_dir / f"{safe_name}-{mt}.md"
+        if not snap.exists():
+            snap.write_text(canonical_file.read_text(encoding="utf-8"), encoding="utf-8")
+            print(f"  📦 Preserved pre-feature reading -> {snap.name}", file=sys.stderr)
+
     # Per-reading file — multiples preserved, never overwritten
     dated_file = brain_dir / f"{safe_name}-{today}.md"
     dated_file.write_text(content.strip() + "\n", encoding="utf-8")
     # Canonical latest — refreshed each reading
-    canonical_file = brain_dir / f"{safe_name}.md"
     canonical_file.write_text(content.strip() + "\n", encoding="utf-8")
     return True
 
