@@ -6,6 +6,16 @@ generates two artifacts via deepseek API:
   1. A SOUL.md entry (concise, lesson-focused)
   2. A rich brain page at ~/brain/<agent>/bible/<book>.md
 
+Fleet-wide principles (Luke directive 2026-08-14):
+  • EVERY reading is saved — a dated per-reading file
+    (<book>-<YYYY-MM-DD>.md) is written each time, so repeated books
+    accumulate their full studies instead of overwriting. The canonical
+    <book>.md holds the latest reading.
+  • EVERY reading includes the Ten Commandments (Ex 20:1–17) and Jesus'
+    two commandments (Matt 22:37–40) — a deterministic block is appended
+    to the brain page and a compact foundations reference is injected into
+    the SOUL.md entry, never left to the LLM.
+
 Silent when no new book needed (exit 0, empty stdout).
 """
 
@@ -52,6 +62,61 @@ BOOKS = [
 
 # Map canonical names to their index for lookups
 BOOK_INDEX = {b: i for i, b in enumerate(BOOKS)}
+
+# ── Foundations — every reading includes the commandments ──────────
+# Fleet-wide principle (Luke directive 2026-08-14): EVERY saved bible
+# reading must include the Ten Commandments and Jesus' two commandments.
+# The block is added DETERMINISTICALLY script-side — never left to the LLM,
+# so a model drift can never drop the foundations from a reading.
+TEN_COMMANDMENTS = [
+    "1. You shall have no other gods before Me.",
+    "2. You shall not make for yourself a carved image — no idols.",
+    "3. You shall not take the name of the LORD your God in vain.",
+    "4. Remember the Sabbath day, to keep it holy.",
+    "5. Honor your father and your mother.",
+    "6. You shall not murder.",
+    "7. You shall not commit adultery.",
+    "8. You shall not steal.",
+    "9. You shall not bear false witness against your neighbor.",
+    "10. You shall not covet anything that is your neighbor's.",
+]
+
+JESUS_TWO_COMMANDMENTS = [
+    "Love the Lord your God with all your heart, with all your soul, and with all your mind.",
+    "Love your neighbor as yourself.",
+]
+
+COMMANDMENTS_REFERENCE = (
+    "**Foundations:** 10 Commandments (Ex 20:1–17) · "
+    "Jesus' two (Matt 22:37–40)"
+)
+
+
+def commandments_section(book: str) -> str:
+    """Deterministic 'The Commandments' block appended to every brain page.
+
+    Guarantees the fleet principle: no saved reading is ever without the
+    Ten Commandments and Jesus' two commandments (Matt 22:37–40).
+    """
+    return "\n".join([
+        "",
+        "## The Commandments — Every Reading",
+        "",
+        f"*This reading of **{book}** is grounded in God's commandments (fleet principle).*",
+        "",
+        "**The Ten Commandments** (Exodus 20:1–17)",
+        "",
+        *TEN_COMMANDMENTS,
+        "",
+        "**Jesus' Two Commandments** (Matthew 22:37–40)",
+        "",
+        *[f"- {c}" for c in JESUS_TWO_COMMANDMENTS],
+        "",
+        "> \"On these two commandments hang all the Law and the Prophets.\" — Matthew 22:40",
+        "",
+        f"May {book} deepen obedience to God and love of neighbor.",
+        "",
+    ])
 
 DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
 DEEPSEEK_MODEL = "deepseek-chat"
@@ -326,7 +391,7 @@ def generate_soul_entry(book: str) -> str | None:
     """Generate the concise SOUL.md entry (short format — verse + one-line commitment)."""
     today = get_kst_today()
 
-    prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md). SOUL.md is now a compressed document (~5KB) — each scripture entry is just TWO lines.
+    prompt = f"""You are writing a "Scripture Insight" entry for an AI agent's character document (SOUL.md). SOUL.md is now a compressed document (~5KB) — each scripture entry is just a few lines.
 
 Write the entry for **{book}** in this EXACT format:
 
@@ -334,17 +399,39 @@ Write the entry for **{book}** in this EXACT format:
 
 I will [one-line behavioral commitment for a system operator — automation, monitoring, reliability, documentation, cron jobs, config files, deployments, log analysis, health checks, rollbacks, etc.].
 
+**Foundations:** 10 Commandments (Ex 20:1–17) · Jesus' two (Matt 22:37–40)
+
 <!-- Added {today} -->
 
 Requirements:
 1. Pick ONE key verse that genuinely captures the book's core message. Include the exact citation.
 2. The "I will" line must be a single, concrete behavioral commitment. Start with "I will" and make it something an automation agent can actually do. No metaphors, no generic life advice.
-3. Output ONLY these three lines — no explanations, no code fences, no extra text.
-4. The date comment goes on its own line at the end.
+3. The "**Foundations:**" line is MANDATORY — it must appear verbatim (fleet principle: every reading is grounded in the 10 Commandments and Jesus' two commandments).
+4. Output ONLY these lines — no explanations, no code fences, no extra text.
+5. The date comment goes on its own line at the end.
 
 Generate the entry for {book}:"""
 
     return _call_deepseek(prompt, max_tokens=1024)
+
+
+def ensure_foundations_line(entry: str) -> str:
+    """Deterministically guarantee the commandments reference in a SOUL entry.
+
+    The fleet principle says EVERY reading includes the 10 Commandments and
+    Jesus' two commandments — so even if the LLM omits the foundations line,
+    it is injected before the date comment (Luke directive 2026-08-14).
+    """
+    if COMMANDMENTS_REFERENCE in entry:
+        return entry
+    # Insert before the trailing <!-- Added ... --> comment, or append.
+    lines = entry.rstrip().split("\n")
+    date_idx = next((i for i, l in enumerate(lines) if l.startswith("<!-- Added")), None)
+    if date_idx is not None:
+        lines.insert(date_idx, COMMANDMENTS_REFERENCE)
+    else:
+        lines.append(COMMANDMENTS_REFERENCE)
+    return "\n".join(lines) + "\n"
 
 
 def generate_brain_page(book: str, agent_name: str) -> str | None:
@@ -383,6 +470,10 @@ Write the entry for **{book}** in this EXACT markdown format:
 
 [A single paragraph connecting the book's core message to practical application for {agent_name}, a system operator and automation agent. Be specific and concrete, relating to monitoring, infrastructure, documentation, reliability, delegation, or leadership.]
 
+## Connection to the Commandments
+
+[One short paragraph: how this book's message connects to the Ten Commandments (Ex 20:1-17) and Jesus' two commandments — love God with all your heart/soul/mind and love your neighbor as yourself (Matt 22:37-40). The commandments section is appended deterministically after your output — this paragraph should make the connection explicit so the reading is grounded in God's foundations.]
+
 Requirements:
 1. Be factually accurate — cite real archaeological finds, real scholars, real textual evidence.
 2. Include the Hebrew or Greek script for original language insights.
@@ -417,75 +508,62 @@ def append_to_soul(book: str, full_entry: str) -> bool:
 
 
 def write_brain_page(book: str, content: str, agent_name: str) -> bool:
-    """Write a brain page to ~/brain/<agent>/bible/<book>.md.
+    """Write a brain page to ~/brain/<agent>/bible/.
 
-    Creates the directory structure if it doesn't exist.
-    Uses a canonical filename based on the book name.
+    EVERY reading is saved (Luke directive 2026-08-14): a dated per-reading
+    file (<book>-<YYYY-MM-DD>.md) is written each time so repeated books
+    accumulate their full studies instead of overwriting. The canonical
+    <book>.md is refreshed with the latest reading for continuity and any
+    existing links.
     """
-    # Determine canonical filename
     safe_name = book.lower().replace(" ", "-")
+    today = get_kst_today()
     brain_dir = HOME / "brain" / agent_name / "bible"
     brain_dir.mkdir(parents=True, exist_ok=True)
 
-    brain_file = brain_dir / f"{safe_name}.md"
-    brain_file.write_text(content.strip() + "\n", encoding="utf-8")
+    # Per-reading file — multiples preserved, never overwritten
+    dated_file = brain_dir / f"{safe_name}-{today}.md"
+    dated_file.write_text(content.strip() + "\n", encoding="utf-8")
+    # Canonical latest — refreshed each reading
+    canonical_file = brain_dir / f"{safe_name}.md"
+    canonical_file.write_text(content.strip() + "\n", encoding="utf-8")
     return True
 
 
-def update_brain_index(book: str, agent_name: str) -> bool:
-    """Create or update INDEX.md in the bible directory."""
+def update_brain_index(agent_name: str) -> bool:
+    """Create or update INDEX.md — one row per READING (multiples listed).
+
+    Each dated reading file (<book>-<YYYY-MM-DD>.md) becomes its own row so
+    repeated books are all visible with their dates. Books read before this
+    feature (canonical file only) get a single row with '—'.
+    """
     brain_dir = HOME / "brain" / agent_name / "bible"
     index_file = brain_dir / "INDEX.md"
-    today = get_kst_today()
+    if not brain_dir.is_dir():
+        return False
 
-    # Read existing index if it exists
-    existing_entries = {}
-    if index_file.exists():
-        text = index_file.read_text(encoding="utf-8")
-        for line in text.split("\n"):
-            m = re.match(r"\|\s*(\d+)\s*\|", line)
-            if m:
-                existing_entries[int(m.group(1))] = line
+    date_re = re.compile(r"^([a-z0-9-]+)-(\d{4}-\d{2}-\d{2})\.md$")
+    rows: list[tuple[int, str, str]] = []
+    for i, canonical_book in enumerate(BOOKS, 1):
+        safe = canonical_book.lower().replace(" ", "-")
+        dated = sorted(brain_dir.glob(f"{safe}-????-??-??.md"))
+        if dated:
+            for df in dated:
+                m = date_re.match(df.name)
+                rows.append((i, canonical_book, m.group(2) if m else "—"))
+        elif (brain_dir / f"{safe}.md").exists():
+            rows.append((i, canonical_book, "—"))  # pre-feature read
 
-    # Get all existing brain page files to build complete index
-    page_files = sorted(brain_dir.glob("*.md"))
-    books_in_brain = []
-    for pf in page_files:
-        if pf.name == "INDEX.md":
-            continue
-        # Read the first line to get the book name
-        content = pf.read_text(encoding="utf-8").split("\n", 1)[0]
-        # "# Book Name" or just the title
-        title = content.lstrip("# ").strip()
-        if title:
-            books_in_brain.append((pf.name, title))
-        else:
-            books_in_brain.append((pf.name, pf.stem.replace("-", " ").title()))
-
-    # Build new index sorted by canonical order
     lines = [
         "# 📖 Scripture Insights — Index",
         "",
-        "Daily wisdom from the Biblical canon, stored one book at a time.",
+        "Daily wisdom from the Biblical canon — every reading saved, one file per reading.",
         "",
+        "| # | Book | Read |",
+        "|---|------|------|",
     ]
-
-    # Collect books in canonical order
-    indexed_books = []
-    for i, canonical_book in enumerate(BOOKS, 1):
-        # Check if this book has a brain page
-        safe_name = canonical_book.lower().replace(" ", "-")
-        page_path = brain_dir / f"{safe_name}.md"
-        if page_path.exists() or canonical_book == book:
-            indexed_books.append((i, canonical_book, today if canonical_book == book else None))
-
-    if indexed_books:
-        lines.append("| # | Book | Read |")
-        lines.append("|---|------|------|")
-        for num, bname, read_date in indexed_books:
-            date_str = read_date if read_date else "—"
-            lines.append(f"| {num} | {bname} | {date_str} |")
-
+    for num, bname, date_str in rows:
+        lines.append(f"| {num} | {bname} | {date_str} |")
     lines.append("")
     index_file.write_text("\n".join(lines), encoding="utf-8")
     return True
@@ -637,6 +715,7 @@ def _enforce_short_gleaning(entry: str, book: str, max_chars: int = 800) -> str:
     lines = [l.strip() for l in entry.splitlines() if l.strip()]
     header = next((l for l in lines if l.startswith("### ")), f"### {book}")
     commitment = next((l for l in lines if l.startswith("I will")), "")
+    foundations = next((l for l in lines if l.startswith("**Foundations:**")), "")
     date_comment = next((l for l in lines if l.startswith("<!-- Added")), "")
 
     # Truncate the commitment to its first sentence if it is a run-on.
@@ -649,6 +728,8 @@ def _enforce_short_gleaning(entry: str, book: str, max_chars: int = 800) -> str:
     kept = [header]
     if commitment:
         kept.append(commitment)
+    if foundations:
+        kept.append(foundations)
     if date_comment:
         kept.append(date_comment)
 
@@ -696,6 +777,10 @@ def main() -> int:
     # the full study lives in the brain page (mybrain).
     soul_entry = _enforce_short_gleaning(soul_entry, next_book)
 
+    # Fleet principle (2026-08-14): every reading includes the commandments
+    # reference — inject deterministically if the LLM omitted it.
+    soul_entry = ensure_foundations_line(soul_entry)
+
     if not append_to_soul(next_book, soul_entry):
         print("❌ Failed to append to SOUL.md", file=sys.stderr)
         return 1
@@ -713,20 +798,26 @@ def main() -> int:
         print("⚠️  Brain page generation failed (SOUL.md entry was written)", file=sys.stderr)
         brain_ok = False
     else:
+        # Fleet principle (2026-08-14): append the deterministic
+        # commandments block so EVERY saved reading carries the Ten
+        # Commandments and Jesus' two commandments (Matt 22:37–40).
+        brain_content = brain_content.rstrip() + "\n" + commandments_section(next_book)
         brain_ok = write_brain_page(next_book, brain_content, agent_name)
         if brain_ok:
-            update_brain_index(next_book, agent_name)
-            print("✅ Written to brain bible dir", file=sys.stderr)
+            update_brain_index(agent_name)
+            print("✅ Written to brain bible dir (dated + canonical)", file=sys.stderr)
         else:
             print("⚠️  Failed to write brain page", file=sys.stderr)
 
     # ── Step 3: Output summary for delivery ──────────────────
     brain_status = "✅" if brain_ok else "⚠️"
-    print(f"\n✅📖 Insight for **{next_book}** — SOUL.md ✅ | Brain {brain_status}\n")
+    print(f"\n✅📖 Insight for **{next_book}** — SOUL.md ✅ | Brain {brain_status} | ⛪ Commandments ✅\n")
     print(soul_entry)
 
     if brain_ok:
-        print(f"\n📄 Brain page: `~/brain/{agent_name}/bible/{next_book.lower().replace(' ', '-')}.md`")
+        today = get_kst_today()
+        safe_name = next_book.lower().replace(" ", "-")
+        print(f"\n📄 Brain page: `~/brain/{agent_name}/bible/{safe_name}-{today}.md` (+ canonical `{safe_name}.md`)")
 
     return 0
 

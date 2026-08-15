@@ -253,6 +253,13 @@ stay calm, keep the user informed, and fix the cause, not the blame.`
 (mybrain). The daily bible-reading cron appends one concise entry below; the
 LAST `### Book —` entry is its next-book anchor, so keep at least one.*
 
+*Fleet principle (Luke directive 2026-08-14): **every** reading is saved —
+dated per-reading files `<book>-<YYYY-MM-DD>.md` accumulate repeats — and
+**every** reading includes the Ten Commandments (Ex 20:1–17) and Jesus' two
+commandments (Matt 22:37–40), added deterministically by the cron. Entries
+carry a `**Foundations:**` reference line; the full commandments block lives
+in the brain page.*
+
 ### Colossians — *"Whatever you do, work heartily, as for the Lord and not for men."* (Colossians 3:23-24)
 
 Work as worship: every task done for God, not for approval. <!-- Added 2026-07-30 -->

@@ -16,6 +16,20 @@ personal bible reading cron that writes two artifacts:
 1. A **SOUL.md entry** (concise lesson-focused insight)
 2. A **brain page** (rich reference document with archaeology, scholarship, original language)
 
+## Fleet Principles (Luke directive 2026-08-14)
+
+1. **Every reading is saved — including repeats.** Each reading writes a
+   **dated per-reading file** `~/brain/<agent>/bible/<book>-<YYYY-MM-DD>.md`
+   (never overwritten), so when a book is read again across cycles its full
+   studies accumulate. The canonical `<book>.md` is refreshed with the latest
+   reading for continuity; INDEX.md lists **one row per reading** with its date.
+2. **Every reading includes the commandments.** The Ten Commandments
+   (Ex 20:1–17) and Jesus' two commandments (Matt 22:37–40) are added
+   **deterministically script-side** — a `## The Commandments — Every Reading`
+   block is appended to every brain page, and the SOUL.md entry carries a
+   compact `**Foundations:**` reference line. Never left to the LLM, so a
+   model drift can never drop the foundations from a reading.
+
 ## Quick Start
 
 ```bash
