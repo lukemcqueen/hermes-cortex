@@ -71,7 +71,7 @@ if [[ -z "$LLM_CRON_MODEL" || -z "$LLM_CRON_PROVIDER" ]]; then
   echo "  LLM-driven cron jobs (skill-evaluate, memory-pruning, etc.)"
   echo "  need a model and provider. Set them in ~/hermes-cortex/.env:"
   echo ""
-  echo "    LLM_CRON_MODEL=deepseek-v4-flash"
+  echo "    LLM_CRON_MODEL=deepseek-chat"
   echo "    LLM_CRON_PROVIDER=deepseek"
   echo ""
   echo "  These apply to all LLM-driven crons on this machine."

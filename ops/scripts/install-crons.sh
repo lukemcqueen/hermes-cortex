@@ -603,7 +603,7 @@ if [[ -z "$LLM_CRON_MODEL" || -z "$LLM_CRON_PROVIDER" ]]; then
   echo "  LLM-driven cron jobs need a model and provider."
   echo "  Set them in ~/hermes-cortex/.env:"
   echo ""
-  echo "    LLM_CRON_MODEL=deepseek-v4-flash"
+  echo "    LLM_CRON_MODEL=deepseek-chat"
   echo "    LLM_CRON_PROVIDER=deepseek"
   echo ""
   echo "  These control which model/provider all LLM-driven crons use."
@@ -1048,7 +1048,7 @@ Phase 3 — USER.md: No changes needed — all 8 entries still current
 
 Result: Memory consolidated. 3 stale entries pruned, 2 merged. Under limit.
 
-📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$2.18/mo
+📊 deepseek-chat (deepseek) | \$0.006/run ≈ \$2.18/mo
 
 If nothing to report: output exactly [SILENT]" \
   "" "" "telegram:${TELEGRAM_HOME_CHANNEL}" "" "false" \
@@ -1127,7 +1127,7 @@ Phase 1 — Scan: 12 candidates found
 Phase 2 — Review: accepted 10 / rejected 2
 Phase 3 — Apply: 10 sections moved to docs/
 
-📊 deepseek-v4-flash (opencode-zen) | \$0.006/run ≈ \$0.18/mo
+📊 deepseek-chat (deepseek) | \$0.006/run ≈ \$0.18/mo
 
 If nothing to apply: output exactly [SILENT]" \
   "documentation-scope" "" "telegram:${TELEGRAM_HOME_CHANNEL}" \

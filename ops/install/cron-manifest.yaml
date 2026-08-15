@@ -82,7 +82,7 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
+  model: deepseek-chat
   provider: deepseek
 - name: agent-fixer-overnight
   scope: universal
@@ -109,7 +109,7 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
+  model: deepseek-chat
   provider: deepseek
 - name: agent-fixer-workday
   scope: universal
@@ -139,7 +139,7 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
+  model: deepseek-chat
   provider: deepseek
 - name: agent-governance-auditor
   scope: universal
@@ -270,7 +270,7 @@ crons:
     Result: Memory consolidated. 3 stale entries pruned, 2 merged. Under limit.
 
 
-    📊 deepseek-v4-flash (opencode-zen) | $0.006/run ≈ $2.18/mo
+    📊 deepseek-chat (deepseek) | $0.006/run ≈ $2.18/mo
 
 
     If nothing to report: output exactly [SILENT]'
@@ -278,7 +278,7 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
+  model: deepseek-chat
   provider: deepseek
 - name: agent-memory-to-brain-sync
   scope: universal
@@ -1007,7 +1007,7 @@ crons:
   deliver: origin
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
+  model: deepseek-chat
   provider: deepseek
 - name: orch-skill-lifecycle
   scope: orchestrator
@@ -1020,7 +1020,7 @@ crons:
   deliver: origin
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
+  model: deepseek-chat
   provider: deepseek
 - name: orch-skill-report-request
   scope: orchestrator
@@ -1042,5 +1042,5 @@ crons:
   deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: false
-  model: deepseek-v4-flash
+  model: deepseek-chat
   provider: deepseek
