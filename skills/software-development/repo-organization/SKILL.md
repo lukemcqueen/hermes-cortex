@@ -126,7 +126,7 @@ hermes-cortex/
 | Pattern | Example | Meaning |
 |---------|---------|---------|
 | `kebab-case` | `code-review`, `change-test-loop` | Skill directory name = `name:` in SKILL.md frontmatter |
-| `local-*` | `local-config-drift-diagnostics` | Host-managed skill — created per-host, NOT in repo installers. Doctor silently excludes it (no orphan warning), cortex-update.sh never prunes it, but agent-collect-skills.sh still reports it so orch-skill-evaluate can score it for fleet promotion (evaluated at LOW priority — DEFER by default, promote only if it generalizes). Sync the deployed copy to `skills/` if you want it fleet-wide, then drop the `local-` prefix. |
+| `local-*` | `local-<name>` (e.g. host-managed copies of `config-drift-diagnostics`) | Host-managed skill — created per-host, NOT in repo installers. Doctor silently excludes it (no orphan warning), cortex-update.sh never prunes it, but agent-collect-skills.sh still reports it so orch-skill-evaluate can score it for fleet promotion (evaluated at LOW priority — DEFER by default, promote only if it generalizes). Sync the deployed copy to `skills/` if you want it fleet-wide, then drop the `local-` prefix. Never commit the `local-*` copy to the repo when the plain-named version exists — keep exactly one canonical SKILL.md (2026-08-17 consolidation). |
 
 ---
 

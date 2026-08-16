@@ -76,7 +76,7 @@ agent, it MUST notify its human operator before executing the task.
 | The content is a **user-facing workflow** that only applies to Luke's machines | Tag the entire section with `⚡` |
 | A **general rule** happens to reference Luke-specific agents | Generalize the rule, add Luke's setup as a blockquote example |
 | A **cron schedule** with KST times | Tag with `⚡` (Luke's deployment — KST) |
-| A **skill** that explicitly names Moses as the actor | Keep the skill name descriptive (e.g., `moses-inbox-remediation`), tag `⚡` in docs referencing it |
+| A **skill** that explicitly names Moses as the actor | Keep the skill name descriptive (e.g., `inbox-remediation` — the actor-neutral successor of the retired `moses-inbox-remediation`), tag `⚡` in docs referencing it |
 | An **agent handoff note** about a specific fix/change | Tag the entry with `⚡` unless the fix is universally applicable (e.g., auto-remediation system) |
 
 ## Pitfalls

@@ -77,4 +77,4 @@ PGPASSWORD=... psql -h 127.0.0.1 -p 5432 -U postgres -c "SELECT 1;"
 
 ## Related
 - `postgres-schema-design` — schemas, RLS, roles, migrations
-- `pipeline-debugging` / `local-pipeline-debugging` — check the data store before changing code
+- `pipeline-debugging` — check the data store before changing code

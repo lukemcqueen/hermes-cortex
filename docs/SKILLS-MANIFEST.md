@@ -113,7 +113,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (112 skills)
+## Devops (109 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -186,12 +186,9 @@ their domain.
 | `linux-performance-diagnostics` | 1.0.0 | Systematic "system is slow" diagnosis — baseline resource check, CPU frequency scaling analysis, process/co... | `skill_view(name='linux-performance-diagnostics')` |
 | `linux-server-hardening` | 1.0.0 | Systematic Linux server hardening with tiered prioritization. Covers UFW firewall, SSH hardening (key-only... | `skill_view(name='linux-server-hardening')` |
 | `llm-judge-scorer` | 1.0.0 | LLM-as-Judge trace quality scorer. Evaluates Hermes conversation traces in Langfuse using a local Ollama mo... | `skill_view(name='llm-judge-scorer')` |
-| `local-config-drift-diagnostics` | 1.0.0 | Container configs stale? Compare vs source in 3 locations. | `skill_view(name='local-config-drift-diagnostics')` |
-| `local-pipeline-debugging` | 1.0.0 | Check the data store and service logs before changing code. | `skill_view(name='local-pipeline-debugging')` |
 | `loop-governance` | 1.5.0 | TDD cycle scoring, self-improvement, and governance system for Hermes Cortex. Scores completeness/quality/p... | `skill_view(name='loop-governance')` |
 | `maintenance-scan` | 1.0.0 | Systematic system health survey run proactively when the user gives an open-ended directive to "find work"... | `skill_view(name='maintenance-scan')` |
 | `migration-deploy-verification` | 1.0.0 | Use when a repo migration is missing from the live DB. | `skill_view(name='migration-deploy-verification')` |
-| `moses-inbox-remediation` | 1.0.0 | Auto-remediate hermes-cortex issues reported by peer agents via the agent inbox. Scans pending remediation... | `skill_view(name='moses-inbox-remediation')` |
 | `mycortex` | 1.1.0 | Use for mycortex knowledge brain work or gbrain migration. | `skill_view(name='mycortex')` |
 | `name-discovery` | 1.0.0 | Use when checking if a software/tool name is available for use — searches GitHub, web, and registries for c... | `skill_view(name='name-discovery')` |
 | `nextjs-docker-multistage` | 1.0.0 | Next.js Docker multi-stage builds with standalone output — minimal runtime images, no node_modules in produ... | `skill_view(name='nextjs-docker-multistage')` |
@@ -332,7 +329,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `openclaw-migration` | 1.0.0 | Import an OpenClaw setup (memories, skills) into Hermes. | `skill_view(name='openclaw-migration')` |
 
-## Mlops (32 skills)
+## Mlops (31 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -345,7 +342,6 @@ their domain.
 | `fine-tuning-with-trl` | 1.0.1 | TRL: SFT, DPO, GRPO, RLOO reward modeling for LLM RLHF. | `skill_view(name='fine-tuning-with-trl')` |
 | `guidance` | 1.0.1 | Constrain LLM output with grammars; guarantee valid JSON. | `skill_view(name='guidance')` |
 | `huggingface-accelerate` | 1.0.1 | Run PyTorch training across GPUs with minimal changes. | `skill_view(name='huggingface-accelerate')` |
-| `huggingface-tokenizers` | 1.0.0 | Fast BPE/WordPiece tokenization and custom vocab training. | `skill_view(name='huggingface-tokenizers')` |
 | `instructor` | 1.0.0 | Structured LLM outputs validated with Pydantic. | `skill_view(name='instructor')` |
 | `lambda-labs-gpu-cloud` | 1.0.0 | On-demand GPU cloud instances for ML training. | `skill_view(name='lambda-labs-gpu-cloud')` |
 | `llava` | 1.0.0 | Vision-language chat: VQA, captioning, image dialogue. | `skill_view(name='llava')` |
