@@ -11,7 +11,7 @@ platforms: [linux, macos]
 # mycortex — Knowledge Brain (gbrain Replacement)
 
 The fleet knowledge brain replacing gbrain: markdown-in-git as source of truth,
-shared `gbrain-postgres` (:15432) as the query index, thin Python CLI + cron as
+shared `mycortex-postgres` (:15432) as the query index, thin Python CLI + cron as
 plumbing. No daemon, no bun. Canonical design: `docs/design/mycortex-DESIGN.md`;
 stories: `docs/elicit/2026-08-01_mycortex-stories.md`.
 
@@ -48,7 +48,7 @@ mycortex stats [--json]
 mycortex doctor [--json]
 ```
 
-**Connection:** psql via `sg docker -c "docker exec -i gbrain-postgres psql -U <role> -d <db>"` on Linux (trust auth inside container); direct psql reading `~/.gbrain/config.json` on macOS. Roles connect WITHOUT passwords inside the container; direct TCP to :15432 from the host requires a password (pg_hba scram for non-localhost).
+**Connection:** psql via `sg docker -c "docker exec -i mycortex-postgres psql -U <role> -d <db>"` on Linux (trust auth inside container); direct psql reading `~/.gbrain/config.json` on macOS. Roles connect WITHOUT passwords inside the container; direct TCP to :15432 from the host requires a password (pg_hba scram for non-localhost).
 
 ## Schema Gotchas (found by real CLI testing 2026-08-02 — all fixed in mycortex.sql)
 
@@ -108,7 +108,7 @@ per-host, non-destructive (old container STOPPED, not removed; dump kept in
 - ✅ CLI built (sources/sync/search/list/stats/doctor), verified end-to-end on scratch DB
 - ✅ `import-gbrain.py` (one-shot additive gbrain→mycortex copy, idempotent, dry-run, --federated with PII gate) — registered in cortex-update.sh
 - ✅ Schema v002 + v003 migrations shipped (2026-08-02): v002 = admin RLS policies + reader search_config grant (existing hosts were stuck at v1 without them); v003 = admin SELECT on schema_version (doctor fix). Both registered in cortex-update.sh.
-- ✅ **Every agent has its own gbrain-postgres + mycortex schema and populates its OWN sources** (per-host model, design D4). Esther's 642 pages / 3582 chunks import on her host DB (worker-5) is correct behavior — each agent does this for itself. **Moses-host DB now populated too (2026-08-02): 6 sources, 3265 pages, 37546 chunks** — `hermes-cortex` + `default` federated, `moses`/`luke`/`lessons`/`shared` isolated. Command used: `python3 ops/services/mycortex/import-gbrain.py --federated hermes-cortex --federated default` + `mycortex sources add <name> <path>` + `mycortex sync`. Do NOT read another agent's status line as this host's state.
+- ✅ **Every agent has its own mycortex-postgres + mycortex schema and populates its OWN sources** (per-host model, design D4). Esther's 642 pages / 3582 chunks import on her host DB (worker-5) is correct behavior — each agent does this for itself. **Moses-host DB now populated too (2026-08-02): 6 sources, 3265 pages, 37546 chunks** — `hermes-cortex` + `default` federated, `moses`/`luke`/`lessons`/`shared` isolated. Command used: `python3 ops/services/mycortex/import-gbrain.py --federated hermes-cortex --federated default` + `mycortex sources add <name> <path>` + `mycortex sync`. Do NOT read another agent's status line as this host's state.
 - ✅ Cron `agent-mycortex-sync` (S-009) — every 15 min, per-host (NOT orchestrator-only, design D4), no_agent wrapper, registered in `install-crons.sh` (both arrays)
 - ✅ Sync performance: batched VALUES-join SQL — 1552 files in ~3s (design target 1500/30s)
 - ✅ **S-007 /brain plugin rewrite (2026-08-02):** `plugins/mycortex-command/` — versioned plugin (replaces install.sh's generated gbrain-command). Registers `/brain` + `/mycortex`. Dynamic source presets from `mycortex sources list --json` (no hardcoded list — fixes broken-presets bug). Output is data-delimited in a code block with source+path+score citations; instruction-shaped chunk content rendered as data, never followed (injection guardrail, verified). Deployed by `deploy_mycortex_plugin()` in cortex-update.sh; install.sh step 7 copies the repo plugin, step 15 enables it.
@@ -118,7 +118,7 @@ per-host, non-destructive (old container STOPPED, not removed; dump kept in
 
 ### Who can register sources (design D4 — read before assuming "orchestrator-only")
 
-**Source registration is per-host, NOT orchestrator-only.** Design D4 + install.sh: each host registers its OWN local brain dirs (`hermes-cortex` + `~/brain/<agent>`) at install time, and the per-host `agent-mycortex-sync` cron syncs them. Every agent runs its own gbrain-postgres with the mycortex schema and populates its own sources — this is the per-host model, not a shared fleet index. The `mycortex_admin` DB role is required for registration — on Linux any user in the docker group can `sg docker exec psql -U mycortex_admin` (trust auth) on the host that runs the container. The "orchestrators only" label applies to **federation + grants + PII gate** (turning a source `is_federated=true`, writing `source_grants`), not to registering your own local source. If you see 0 sources on your own host, **register + import your own sources — don't wait for an orchestrator and don't read another agent's status as your own**.
+**Source registration is per-host, NOT orchestrator-only.** Design D4 + install.sh: each host registers its OWN local brain dirs (`hermes-cortex` + `~/brain/<agent>`) at install time, and the per-host `agent-mycortex-sync` cron syncs them. Every agent runs its own mycortex-postgres with the mycortex schema and populates its own sources — this is the per-host model, not a shared fleet index. The `mycortex_admin` DB role is required for registration — on Linux any user in the docker group can `sg docker exec psql -U mycortex_admin` (trust auth) on the host that runs the container. The "orchestrators only" label applies to **federation + grants + PII gate** (turning a source `is_federated=true`, writing `source_grants`), not to registering your own local source. If you see 0 sources on your own host, **register + import your own sources — don't wait for an orchestrator and don't read another agent's status as your own**.
 
 ### Multi-tenant source registration (profile separation — Luke 2026-08-06)
 

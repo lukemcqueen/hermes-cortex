@@ -94,8 +94,8 @@ Same direct-DB principle applies to web UIs:
 # Flask API endpoint querying Postgres
 def _psql(query: str) -> str:
     r = subprocess.run(
-        ["docker", "exec", "gbrain-postgres", "psql",
-         "-U", "gbrain", "-d", "gbrain", "-t", "-c", query],
+        ["docker", "exec", "mycortex-postgres", "psql",
+         "-U", "mycortex", "-d", "mycortex", "-t", "-c", query],
         capture_output=True, text=True, timeout=10,
     )
     return r.stdout.strip() if r.returncode == 0 else ""

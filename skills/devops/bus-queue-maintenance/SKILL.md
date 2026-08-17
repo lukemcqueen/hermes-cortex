@@ -39,7 +39,7 @@ likely have no active consumer.
 
 ```bash
 # Check processing messages with retry history
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \\"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \\"
 SELECT msg_id::text, queue_name, state,
     enqueued_at::timestamptz(0) as enqueued,
     timeout_at::timestamptz(0) as timeout,
@@ -58,7 +58,7 @@ Messages that have timed out (current time > timeout_at) but remain in `processi
 are stuck. Run `bus.recover_timeouts()` first:
 
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"SELECT bus.recover_timeouts();\""
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"SELECT bus.recover_timeouts();\""
 ```
 
 If recovery returns 0 and the messages remain, or if they reappear in `processing`
@@ -78,7 +78,7 @@ runs of `recover_timeouts()`, always with a future timeout.
 
 **Detection query:**
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \\"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \\"
 SELECT msg_id::text, queue_name,
     (body::jsonb #>> '{}')::jsonb->>'from' as sender,
     (body::jsonb #>> '{}')::jsonb->>'subject' as subject,
@@ -114,7 +114,7 @@ same archive call usually works on the second attempt.
 
 ```bash
 # Step 1: Get the message IDs — include expiry check
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT msg_id::text, queue_name, body->>'subject' as subject,
     retry_count, timeout_at::timestamptz(0),
     timeout_at < now() as expired
@@ -128,7 +128,7 @@ Look for `expired = t` — messages whose visibility timeout has passed but rema
 
 ```bash
 # Step 2: Try bus.archive() first (often works on retry)
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -c \\\"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -c \\\"
 SELECT bus.archive('inbox_target', '<msg_id>'::uuid, 'maintenance');
 \\\"
 ```
@@ -164,7 +164,7 @@ WHERE m.msg_id = a.msg_id;
 
 ```bash
 # Step 3: Verify clean
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -c \\"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -c \\"
 SELECT queue_name, state, COUNT(*) as count
 FROM bus.messages
 WHERE queue_name = 'inbox_target'
@@ -192,7 +192,7 @@ Expected: 0 rows = clean.
   and retry_count first.
 - ✅ **Bulk cleanup via looping bus.archive()** — Use this instead of bulk UPDATE:
   ```bash
-  sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -A -c \"
+  sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -A -c \"
   SELECT bus.archive(queue_name, msg_id, 'bulk-cleanup')
   FROM bus.messages
   WHERE state = 'pending'

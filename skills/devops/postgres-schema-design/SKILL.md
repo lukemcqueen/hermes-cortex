@@ -16,7 +16,7 @@ metadata:
 ## When to Use
 
 - Creating a new schema with row-level security (RLS), roles, or a PII gate
-- Adding tables to a shared fleet DB (e.g. `gbrain-postgres`) that other schemas (bus) must not be disturbed by
+- Adding tables to a shared fleet DB (e.g. `mycortex-postgres`) that other schemas (bus) must not be disturbed by
 - Writing a schema-versioned migration runner or a psql-based test battery
 - Any "can the reader role see only what it should?" isolation design
 
@@ -117,7 +117,7 @@ the CLI resolves `--source` filters by id, but `local_path` stays protected.
 Mirror `tests/test-bus-schema.sh` style:
 - **Hermeticity guard:** refuse to run against the prod DB name (fail fast: `if [[ "$TEST_DB" == "gbrain" ]]; then exit 1; fi`).
 - **Scratch DB lifecycle:** `DROP DATABASE IF EXISTS <test>` + `CREATE DATABASE <test>` + `trap cleanup EXIT`.
-- **Test as the actual role:** `docker exec gbrain-postgres psql -U mycortex_reader -d <test>` — the isolation-leak test MUST run as the reader, never superuser.
+- **Test as the actual role:** `docker exec mycortex-postgres psql -U mycortex_reader -d <test>` — the isolation-leak test MUST run as the reader, never superuser.
 - ⚠️ **psql `-t -A` prints command tags:** `$ID=$(psql ... -c "INSERT ... RETURNING id")` captures BOTH the id AND the `INSERT 0 1` tag (two lines). Pipe through `head -1` or the multi-line value breaks the next query.
 - Idempotency check: run migrate.py twice, assert second run reports no-op.
 - Bus-untouched: assert `bus` schema table count unchanged after schema apply.

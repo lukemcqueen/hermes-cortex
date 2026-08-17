@@ -251,7 +251,7 @@ hc exec moses cortex-doctor.py --json
 cd ~/.hermes-cortex && python3 scripts/agent-message-handler.py --once
 
 # 3. Verify response arrived
-sg docker -c 'docker exec gbrain-postgres psql -U gbrain -d gbrain -c "SELECT queue_name, state FROM bus.messages WHERE queue_name = '\''inbox_moses'\'';"'
+sg docker -c 'docker exec mycortex-postgres psql -U mycortex -d mycortex -c "SELECT queue_name, state FROM bus.messages WHERE queue_name = '\''inbox_moses'\'';"'
 ```
 
 Only after the local cycle completes end-to-end should you send to fleet agents.
@@ -287,7 +287,7 @@ Issue: Esther's stale message blocked the new one from being processed
 **Correct:** Before any `for agent in ...; do hc send "$agent" ...`, check for and archive stale messages first. The one-liner to clean all agent queues before sending:
 
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -c \\"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -c \\"
   WITH archived AS (
     INSERT INTO bus.archives
     SELECT m.*, now(), 'pre-send-cleanup'

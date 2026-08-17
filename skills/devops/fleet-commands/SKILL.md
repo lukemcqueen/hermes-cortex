@@ -193,7 +193,7 @@ Standard command subjects (human-readable, no automated response):
 ### 3. Verify delivery
 
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT queue_name, state, COUNT(*) as count
 FROM bus.messages
 WHERE queue_name = 'inbox_<agent>'
@@ -212,7 +212,7 @@ GROUP BY queue_name, state;
 **⚠️ Body is double-encoded JSON.** The PGMQ `body` column stores the entire message as a JSON *string*, not a JSON *object*. Using `body->>'subject'` returns **null** because `body` itself is a string value, not a JSON object with a `subject` key. Always use the double-parse pattern `(body::jsonb #>> '{}')::jsonb` to unwrap:
 
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT msg_id::text,
        (body::jsonb #>> '{}')::jsonb->>'from' as sender,
        (body::jsonb #>> '{}')::jsonb->>'subject' as subject,
@@ -236,7 +236,7 @@ ORDER BY enqueued_at;
 Check audit log for reads on the target queue:
 
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT action, agent_name, queue, COUNT(*) as cnt,
     MIN(created_at)::timestamptz(0) as first_seen
 FROM bus.audit_log
@@ -252,7 +252,7 @@ ORDER BY queue, action;
 After test or one-shot commands, archive to prevent DLQ cycling:
 
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -c \"
 SELECT bus.archive('inbox_<agent>', '<msg_id>'::uuid, '<cleanup-label>');
 \""
 ```
@@ -308,7 +308,7 @@ When you need to test whether a specific agent (e.g. Esther) can receive and pro
 
 **Step 1 — Check if the agent is alive on the bus**
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT action, queue, created_at::timestamptz(0)
 FROM bus.audit_log
 WHERE agent_name = '<agent>' AND created_at > NOW() - INTERVAL '10 minutes'
@@ -321,7 +321,7 @@ ORDER BY created_at DESC LIMIT 5;
 
 **Step 2 — Check inbox state**
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \\"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \\"
 SELECT state,
        (body::jsonb #>> '{}')::jsonb->>'subject' as subject,
        (body::jsonb #>> '{}')::jsonb->>'correlation_id' as corr
@@ -353,7 +353,7 @@ Results may be consumed by your own handler within 5 minutes. Always check both 
 
 ```bash
 # Check live queue first
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \\"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \\"
 SELECT queue_name, state,
        (body::jsonb #>> '{}')::jsonb->>'subject' as subject,
        (body::jsonb #>> '{}')::jsonb->>'correlation_id' as corr
@@ -362,7 +362,7 @@ ORDER BY enqueued_at DESC LIMIT 5;
 \\\""
 
 # Check archives if live queue is empty
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \\"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \\"
 SELECT archived_at::timestamptz(0),
        (body::jsonb #>> '{}')::jsonb->>'subject' as subject,
        (body::jsonb #>> '{}')::jsonb->>'from' as sender,
@@ -483,8 +483,8 @@ After they report back, fix the identified issue (corrupt state file, handler cr
 - **Always check BOTH live queue AND archives for responses** — EXEC_RESULT/UPDATE_RESULTs land in `inbox_moses` but your own handler may consume and archive them within 5 minutes (the `*_RESULT` handler archives silently, commit `4188d70`). If you only query `bus.messages` (live queue) and see nothing, the result may already be in `bus.archives`. Always query both before concluding a result didn't arrive:
   ```bash
   # Both queries use the double-parse pattern
-  sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \\\"SELECT state, (body::jsonb #>> '{}')::jsonb->>'subject', (body::jsonb #>> '{}')::jsonb->>'correlation_id' FROM bus.messages WHERE queue_name = 'inbox_moses' ORDER BY enqueued_at DESC LIMIT 3;\\\"\"
-  sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \\\"SELECT archived_at::timestamptz(0), (body::jsonb #>> '{}')::jsonb->>'subject', (body::jsonb #>> '{}')::jsonb->>'correlation_id' FROM bus.archives WHERE archived_at > NOW() - INTERVAL '15 minutes' ORDER BY archived_at DESC LIMIT 5;\\\"\"
+  sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \\\"SELECT state, (body::jsonb #>> '{}')::jsonb->>'subject', (body::jsonb #>> '{}')::jsonb->>'correlation_id' FROM bus.messages WHERE queue_name = 'inbox_moses' ORDER BY enqueued_at DESC LIMIT 3;\\\"\"
+  sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \\\"SELECT archived_at::timestamptz(0), (body::jsonb #>> '{}')::jsonb->>'subject', (body::jsonb #>> '{}')::jsonb->>'correlation_id' FROM bus.archives WHERE archived_at > NOW() - INTERVAL '15 minutes' ORDER BY archived_at DESC LIMIT 5;\\\"\"
   ```
 
 - **bus_send returns None while bus_read works** — agents can consume UPDATE_REQUESTs (bus_read succeeds) but never send back UPDATE_RESULTs (bus_send returns None). This "half-connectivity" pattern has been seen on Joseph, Gisu, and Kustos. See `references/2026-07-21-bus-send-silent-failure.md` for diagnostic steps and known root causes.

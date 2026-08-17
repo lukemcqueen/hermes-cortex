@@ -192,7 +192,7 @@ echo 'GBRAIN_PG_PASSWORD=your-password' >> ~/langfuse/.env
 sg docker -c "docker compose -f ~/langfuse/docker-compose.yml up -d"
 
 # Enable pgvector extension
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -c 'CREATE EXTENSION vector;'"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -c 'CREATE EXTENSION vector;'"
 
 # Initialize gbrain with the Postgres URL
 DATABASE_URL="postgresql://gbrain:your-password@127.0.0.1:15432/gbrain"

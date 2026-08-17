@@ -40,7 +40,7 @@ hc send esther "subject" "body"
 **Characteristics:**
 - ⚠️ Bypasses ALL auth — no Bearer token, no nginx, no permission check
 - ⚠️ Bypasses ALL permission checks — can write to any queue regardless of `bus.permissions`
-- ⚠️ Only works on the machine with `gbrain-postgres` container
+- ⚠️ Only works on the machine with `mycortex-postgres` container
 - PowerShell/fast for human admin operations
 
 **Pitfall — NEVER use this to validate agent-facing behaviour.**
@@ -121,7 +121,7 @@ The bus server checks permissions via `_check_permission()` on every send/read.
 ### Verify Permissions
 
 ```bash
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT agent_name, can_read::text, can_write::text, is_admin
 FROM bus.permissions ORDER BY agent_name;\\\"\" 2>&1
 ```
@@ -221,7 +221,7 @@ When a bus send fails, check in order:
 
 ```bash
 # Check the target queue for the message
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
 SELECT msg_id::text, body->>'from' as sender, body->>'subject' as subject,
        body->>'topic' as topic, state, enqueued_at::timestamptz(0)
 FROM bus.messages WHERE queue_name = 'inbox_esther' AND state = 'pending'

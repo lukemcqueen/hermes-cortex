@@ -44,7 +44,7 @@ Check the agent bus for pending fleet messages BEFORE touching any tool or runni
 
 ```bash
 # Queue overview
-sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t -c \"
+sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
   SELECT queue_name, state, COUNT(*) as count
   FROM bus.messages
   GROUP BY queue_name, state

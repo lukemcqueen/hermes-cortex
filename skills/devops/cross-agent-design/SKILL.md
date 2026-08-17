@@ -177,7 +177,7 @@ This is the trickiest failure: no evidence left behind. The handler consumed the
 
 1. **Check `archived_by`** — `bus.archive(queue, msg_id, agent_name)` stores the archiver. Query recent archives to confirm the expected agent consumed it, not a forwarder or admin cleanup:
    ```bash
-   sg docker -c "docker exec gbrain-postgres psql -U gbrain -d gbrain -t" << 'EOF'
+   sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t" << 'EOF'
    SELECT queue_name, body->>'subject' as subject,
           archived_at::timestamptz(0), archived_by
    FROM bus.archives
