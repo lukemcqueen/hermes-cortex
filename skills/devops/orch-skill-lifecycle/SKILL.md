@@ -280,6 +280,18 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   reports arrive as `cisnet02` and were silently rejected until the whitelist
   mapped known hostnames → agents (`HOSTNAME_ALIASES` in the process script).
   When a report seems missing, check for a hostname-vs-agent mismatch first.
+- **Dual-orchestrator staging race (2026-08-18)** → BOTH moses and esther run
+  `agent-message-handler` with `inbox_orchestrator` in `extra_queues` (handler
+  line ~786: `if AGENT_NAME in ("moses", "esther")`), so whichever handler
+  polls the shared queue first reads the Learning Report, early-archives it,
+  and stages the body on ITS OWN host. A 6-agent report batch can split across
+  the two hosts: on 2026-08-17 15:00 UTC the gisu and titus reports were
+  staged on esther's host while only joseph's landed in moses's
+  `learning-reports/` (queue depth 0, no error, nothing in `last_staged`).
+  **When a fleet report is missing from the local staging dir, do NOT conclude
+  the agent didn't report** — recover the body from the archive API
+  (`/api/pgmq/archives/inbox_orchestrator?limit=N&since_minutes=10080`), which
+  retains every consumed message regardless of which orchestrator staged it.
 - **Don't patch the same skill twice in one run** — deduplicate before acting
 - **Don't upstream fleet skills that already exist** — check repo + Hermes bundle
 - **Don't modify SOUL.md for workflow lessons** — skills are for workflow, SOUL.md is for principles
