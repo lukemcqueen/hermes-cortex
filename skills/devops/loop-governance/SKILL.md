@@ -246,8 +246,8 @@ Two complementary storage backends:
 
 | Backend | Purpose | Location |
 |---------|---------|----------|
-| **SQLite** (`loop_db.py`) | Structured querying, aggregation, analysis | `~/.hermes/data/loop-governance.db` |
-| **JSON events** (built into `LoopDB.log_cycle`) | Streaming backup, portability, disaster recovery | `~/.hermes/data/loop-events/YYYY-MM-DD.jsonl` |
+| **SQLite** (`loop_db.py`) | Structured querying, aggregation, analysis | `~/.hermes-cortex/data/loop-governance.db` |
+| **JSON events** (built into `LoopDB.log_cycle`) | Streaming backup, portability, disaster recovery | `~/.hermes-cortex/data/loop-events/YYYY-MM-DD.jsonl` |
 
 ### Schema (auto-created)
 
@@ -262,7 +262,7 @@ config_history    - Config change log for rollback
 **Option 1: Via env vars (any script can use this)**
 
 ```bash
-SCORE_DB_PATH=~/.hermes/data/loop-governance.db \
+SCORE_DB_PATH=~/.hermes-cortex/data/loop-governance.db \
 SCORE_TASK_ID=my-feature \
 SCORE_CYCLE_NUM=1 \
 SCORE_SPEC="Add two numbers" \
@@ -449,7 +449,7 @@ auto-apply --dry-run --json
 
 ### Runtime config
 
-Thresholds and weights live in `~/.hermes/data/loop-governance-config.json` and are read by `composite_score()` on every call:
+Thresholds and weights live in `~/.hermes-cortex/data/loop-governance-config.json` and are read by `composite_score()` on every call:
 
 ```bash
 # View current config
@@ -582,7 +582,7 @@ The scoring pipeline **must not block development** when a dependency is down. E
 | Failure point | Behaviour | Recovery |
 |--------------|-----------|----------|
 | **Ollama down** (embedding unavailable) | embed() returns None — each scorer falls back to heuristic/pass-rate values. full_score() adds warnings that Ollama is unavailable. Cycle still logs to DB with logged: True. | system-alert.py (every 10 min) detects unresponsive Ollama and attempts restart (retry loop, 5x2s). Auto-remediation cron also handles it. |
-| **DB locked / write failure** | Cycle scores proceed normally; result is returned with `logged: false` and `log_error`. JSON event still written to `~/.hermes/data/loop-events/`. | Next cycle retries automatically. Remediation sensor checks DB writability. |
+| **DB locked / write failure** | Cycle scores proceed normally; result is returned with `logged: false` and `log_error`. JSON event still written to `~/.hermes-cortex/data/loop-events/`. | Next cycle retries automatically. Remediation sensor checks DB writability. |
 | **Config file corrupt** | `get_config()` falls back to hardcoded defaults. Warning logged but scoring continues. | Remediation sensor detects corrupt JSON and restores from `config_history`. |
 | **nomic model not pulled** | Ollama returns 404 → fallback zero vector. User sees abnormally low scores. | `setup.sh` pre-pulls the model. Auto-remediation runs `ollama pull nomic-embed-text` on detection. |
 | **score-cycle CLI fails** | Non-zero exit code + error message to stderr. No silent failures. | Logged to cron job error tracker. Auto-remediation applies known fixes. |
@@ -643,7 +643,7 @@ lets any agent find the tools regardless of which Hermes profile or project it's
                               ←   ~/.hermes-cortex/scripts/loop-gov-mcp.py
                               ←   MCP tools: begin_change, cycle_query, feedback_accept/override, end_change
                               ←   Plugin: ~/.hermes/plugins/governance-enforcer/
-                              ←   DB: ~/.hermes/data/loop-governance.db
+                              ←   DB: ~/.hermes-cortex/data/loop-governance.db
                               ←   Skill: skills/devops/loop-governance/ (this file)
 │   ├── agent-inbox-architecture.md           Cross-machine inbox design
 │   ├── cron-management.md                    Cron template + argument order pitfall
@@ -659,9 +659,9 @@ lets any agent find the tools regardless of which Hermes profile or project it's
 ~/.local/bin/loop-config
 ~/.local/bin/session-cache-build
 
-~/.hermes/data/loop-governance.db             ← SQLite database (per-machine)
-`~/.hermes/data/loop-governance-config.json`    ← Runtime config (per-machine)
-`~/.hermes/data/loop-events/`                   ← JSON event backup (per-machine)
+~/.hermes-cortex/data/loop-governance.db             ← SQLite database (per-machine)
+`~/.hermes-cortex/data/loop-governance-config.json`    ← Runtime config (per-machine)
+`~/.hermes-cortex/data/loop-events/`                   ← JSON event backup (per-machine)
 
 **MCP Servers** (registered with `hermes mcp add`):
 
@@ -730,7 +730,7 @@ db.close()
 ```
 
 The weekly evaluation cron can be extended to include a retention step.
-For high-volume environments, archive the JSON events directory (`~/.hermes/data/loop-events/`) to cold storage before deleting.
+For high-volume environments, archive the JSON events directory (`~/.hermes-cortex/data/loop-events/`) to cold storage before deleting.
 
 ## Test Suite
 
