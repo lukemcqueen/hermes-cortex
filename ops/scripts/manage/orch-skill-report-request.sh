@@ -21,19 +21,35 @@ STATE_DIR="$CORTEX_DEPLOY_HOME/state"
 REGISTRY_FILE="$STATE_DIR/agent-registry.json"
 
 # ── Source config ───────────────────────────────────────────
-INBOX_URL=""
-INBOX_AUTH=""
-if [[ -f "${HOME}/hermes-cortex/.env" ]]; then
-  set -a; source "${HOME}/hermes-cortex/.env"; set +a
-  INBOX_URL="${CORTEX_BUS_URL:-${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-}}}"
-  INBOX_AUTH="${CORTEX_BASIC_AUTH:-${CORTEX_BUS_AUTH:-${CORTEX_INBOX_AUTH:-}}}"
-  BUS_TOKEN="${CORTEX_BUS_TOKEN:-}"
-elif [[ -f "${HOME}/.hermes-cortex/cortex-bus.conf" ]]; then
-  source "${HOME}/.hermes-cortex/cortex-bus.conf"
-  INBOX_URL="${CORTEX_BUS_URL:-${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-}}}"
-  INBOX_AUTH="${CORTEX_BASIC_AUTH:-${CORTEX_BUS_AUTH:-${CORTEX_INBOX_AUTH:-}}}"
-  BUS_TOKEN="${CORTEX_BUS_TOKEN:-}"
-fi
+# Resolve bus config with canonical precedence env → cortex-bus.conf → .env
+# (same as orch-bus-forwarder.py). Fix 2026-08-17: the old if/elif sourced
+# ONLY ~/hermes-cortex/.env when it existed, so INBOX_URL fell back to the
+# dead CORTEX_INBOX_URL (localhost:8904 — the bus listens on 8903) and every
+# send silently failed ("0 sent, 4 failed", cron reported ok). The conf
+# carries the live CORTEX_BUS_URL / CORTEX_BASIC_AUTH; resolve across both.
+resolve_var() {
+  local varname="$1" val=""
+  if [[ -n "${!varname:-}" ]]; then val="${!varname}"; fi
+  if [[ -z "$val" && -f "${HOME}/.hermes-cortex/cortex-bus.conf" ]]; then
+    val=$(grep -E "^${varname}=" "${HOME}/.hermes-cortex/cortex-bus.conf" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+  fi
+  if [[ -z "$val" && -f "${HOME}/hermes-cortex/.env" ]]; then
+    val=$(grep -E "^${varname}=" "${HOME}/hermes-cortex/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+  fi
+  printf '%s' "$val"
+}
+
+CORTEX_BUS_URL="$(resolve_var CORTEX_BUS_URL)"
+CORTEX_BUS_FALLBACK_URL="$(resolve_var CORTEX_BUS_FALLBACK_URL)"
+CORTEX_INBOX_URL="$(resolve_var CORTEX_INBOX_URL)"
+CORTEX_BASIC_AUTH="$(resolve_var CORTEX_BASIC_AUTH)"
+CORTEX_BUS_AUTH="$(resolve_var CORTEX_BUS_AUTH)"
+CORTEX_INBOX_AUTH="$(resolve_var CORTEX_INBOX_AUTH)"
+CORTEX_BUS_TOKEN="$(resolve_var CORTEX_BUS_TOKEN)"
+
+INBOX_URL="${CORTEX_BUS_URL:-${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-}}}"
+INBOX_AUTH="${CORTEX_BASIC_AUTH:-${CORTEX_BUS_AUTH:-${CORTEX_INBOX_AUTH:-}}}"
+BUS_TOKEN="${CORTEX_BUS_TOKEN:-}"
 
 # ── Agent identity — fail loud, NEVER hostname ─────────────
 # A machine name is not an agent name; requests must be signed by the
