@@ -199,7 +199,36 @@ def get_kst_today() -> str:
 
 
 def find_last_book() -> str | None:
-    """Read SOUL.md and find the last book covered in Scripture Insights."""
+    """Determine the last book covered from the AUTHORITATIVE reading log:
+    the dated brain files (<book>-<YYYY-MM-DD>.md), which are append-only,
+    date-ordered, and never archived. This replaces the fragile SOUL.md-tail
+    anchor (2026-08-18): archive_old_entries() kept only the last 2 entries,
+    and the LLM-driven era (Jul 26–Aug 8 2026) corrupted the section with
+    non-book headers, so get_next_book() returned None → false "all covered"
+    → premature cycle reset → 26 books silently skipped (incl. all 4 Gospels).
+
+    Falls back to SOUL.md's Scripture Insights tail ONLY when no dated files
+    exist yet (fresh install / pre-dated-file era).
+    """
+    agent = detect_agent_name()
+    brain_dir = BRAIN_BIBLE(agent)
+    if brain_dir.is_dir():
+        date_re = re.compile(r"^([a-z0-9-]+)-(\d{4}-\d{2}-\d{2})\.md$")
+        best: tuple[str, str] | None = None  # (date, canonical book)
+        for f in brain_dir.glob("*-????-??-??.md"):
+            m = date_re.match(f.name)
+            if not m:
+                continue
+            safe_name, date_str = m.group(1), m.group(2)
+            for book in BOOKS:
+                if book.lower().replace(" ", "-") == safe_name:
+                    if best is None or date_str > best[0]:
+                        best = (date_str, book)
+                    break
+        if best is not None:
+            return best[1]
+
+    # Fallback: SOUL.md Scripture Insights tail (pre-dated-file installs).
     if not SOUL_MD.exists():
         return None
 
@@ -210,7 +239,7 @@ def find_last_book() -> str | None:
     insights_section = text.split("## Scripture Insights")[-1]
     # Stop at the next ## section (Final Directive)
     insights_section = insights_section.split("## Final Directive")[0]
-    
+
     found_books = []
     for line in insights_section.split("\n"):
         m = re.match(r"^### ([A-Za-z0-9 ]+) —", line)
@@ -773,11 +802,19 @@ def main() -> int:
         next_book = get_next_book(last_book)
 
         # Edge case 2: All 66 books covered — archive, reset, restart from Genesis
+        # Guard: only Revelation (last canonical book) legitimately triggers the
+        # reset. A None from get_next_book() on any OTHER book means a corrupted
+        # anchor, NOT completion — treat it as "start from Genesis" without
+        # archiving (2026-08-18: a false reset here silently skipped 26 books).
         if next_book is None:
-            print(f"📖 All 66 books covered in Cycle {cycle}. Resetting...", file=sys.stderr)
-            archive_and_reset(agent_name)
-            next_book = BOOKS[0]  # Genesis
-            print(f"♻️  Restarting from Genesis (Cycle {cycle + 1})", file=sys.stderr)
+            if last_book == BOOKS[-1]:
+                print(f"📖 All 66 books covered in Cycle {cycle}. Resetting...", file=sys.stderr)
+                archive_and_reset(agent_name)
+                next_book = BOOKS[0]
+                print(f"♻️  Restarting from Genesis (Cycle {cycle + 1})", file=sys.stderr)
+            else:
+                print(f"⚠️  Anchor corruption: last_book={last_book!r} has no successor — restarting from Genesis without archiving", file=sys.stderr)
+                next_book = BOOKS[0]
 
     print(f"📖 Last book: {last_book} → Next: {next_book}", file=sys.stderr)
 
