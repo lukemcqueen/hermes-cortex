@@ -33,6 +33,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -160,12 +161,30 @@ def _parse_without_yaml(text: str) -> dict:
     return servers
 
 
-def probe_server(command: str, script: str) -> tuple[bool, str]:
-    """Spawn the server's python to import + list_tools. Returns (ok, detail)."""
+def probe_server(command: str, args: list) -> tuple[bool, str]:
+    """Probe one MCP server. Returns (ok, detail).
+
+    Python-script servers (args[0] is an existing .py file) are probed by
+    spawning the configured interpreter to import + list_tools — fast, and it
+    catches import crashes (the 2026-08-18 MCP SDK class).
+
+    Binary-CLI servers (args[0] is a subcommand, not a file — e.g.
+    `tirith mcp-server`) get a REAL stdio initialize handshake instead.
+    Treating a subcommand as a script path produced the 2026-08-18
+    'script not found: mcp-server' false-positive loop (tirith, Gisu report).
+    """
     if not command:
         return False, "no command configured"
-    if not script or not os.path.exists(script):
-        return False, f"script not found: {script or '<none>'}"
+    if not args:
+        return False, "no script/args configured"
+    first = args[0]
+    if first.endswith(".py") and os.path.exists(first):
+        return _probe_python_script(command, first)
+    return _probe_stdio_handshake(command, args)
+
+
+def _probe_python_script(command: str, script: str) -> tuple[bool, str]:
+    """Spawn the server's python to import + list_tools. Returns (ok, detail)."""
     try:
         proc = subprocess.run(
             [command, "-c", PROBE_CODE, script],
@@ -187,6 +206,123 @@ def probe_server(command: str, script: str) -> tuple[bool, str]:
     except json.JSONDecodeError:
         return False, "probe returned unparsable output"
     return True, ",".join(str(n) for n in names)
+
+
+def _readline_deadline(proc, timeout: float) -> str | None:
+    """Read one stdout line with a deadline. None = timed out; '' = EOF."""
+    box: dict = {}
+
+    def reader():
+        try:
+            line = proc.stdout.readline()
+            if line:
+                box["line"] = line
+            else:
+                box["eof"] = True
+        except Exception as exc:  # pragma: no cover - I/O edge
+            box["err"] = exc
+
+    t = threading.Thread(target=reader, daemon=True)
+    t.start()
+    t.join(timeout)
+    if t.is_alive():
+        return None
+    if "err" in box:
+        raise box["err"]
+    if "eof" in box:
+        return ""
+    return box.get("line", "")
+
+
+def _stdio_failure_detail(proc, fallback: str) -> str:
+    """Last stderr line (if any) with the given fallback message."""
+    try:
+        err = (proc.stderr.read() or "").strip().splitlines()
+        if err:
+            return (err[-1].strip()[:200]) or fallback
+    except Exception:
+        pass
+    return fallback
+
+
+def _probe_stdio_handshake(command: str, args: list) -> tuple[bool, str]:
+    """Real MCP stdio handshake for binary-CLI servers.
+
+    A successful initialize (serverInfo present) proves the server is alive.
+    tools/list is probed opportunistically — resource-only servers legitimately
+    reject it (-32601) and must still pass; the handshake alone is the health
+    signal.
+    """
+    try:
+        proc = subprocess.Popen(
+            [command] + args,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd=str(HOME),
+        )
+    except OSError as exc:
+        return False, f"cannot execute {command}: {exc}"
+    if proc.stdin is None or proc.stdout is None or proc.stderr is None:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+        return False, "stdio pipe setup failed"
+    try:
+        init = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "agent-mcp-health-watchdog", "version": "1.0"},
+            },
+        }
+        try:
+            proc.stdin.write(json.dumps(init) + "\n")
+            proc.stdin.flush()
+        except OSError as exc:
+            return False, f"stdio write failed: {exc}"
+        line = _readline_deadline(proc, PROBE_TIMEOUT)
+        if line is None:
+            return False, f"stdio initialize timed out after {PROBE_TIMEOUT}s"
+        if not line:
+            return False, _stdio_failure_detail(proc, "stdio server exited before initialize response")
+        try:
+            resp = json.loads(line)
+        except json.JSONDecodeError:
+            return False, _stdio_failure_detail(proc, "unparsable initialize response")
+        result = resp.get("result") or {}
+        server_info = result.get("serverInfo")
+        if not server_info:
+            err = resp.get("error") or {}
+            msg = err.get("message") or "no serverInfo in initialize response"
+            return False, _stdio_failure_detail(proc, f"initialize failed: {msg}")
+        name = str(server_info.get("name") or command)
+        version = str(server_info.get("version") or "?")
+        # tools/list — diagnostic only; resource-only servers may reject it.
+        names: list = []
+        try:
+            req = {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
+            proc.stdin.write(json.dumps(req) + "\n")
+            proc.stdin.flush()
+            tline = _readline_deadline(proc, PROBE_TIMEOUT)
+            if tline:
+                tresp = json.loads(tline)
+                tools = (tresp.get("result") or {}).get("tools") or []
+                names = [str(t.get("name", "")) for t in tools if isinstance(t, dict)]
+        except Exception:
+            pass  # handshake already proved health
+        detail = ",".join(names) if names else f"{name} v{version}"
+        return True, detail
+    finally:
+        try:
+            proc.kill()
+        except Exception:
+            pass
 
 
 def check_required(names: list, required: list) -> str | None:
@@ -279,9 +415,8 @@ def main() -> int:
             key, (f"{key} (unmanaged)", WARNING, [])
         )
         command = spec.get("command", "")
-        args = spec.get("args") or []
-        script = args[0] if args else ""
-        ok, detail = probe_server(command, script)
+        args: list = spec.get("args") or []
+        ok, detail = probe_server(command, args)
         problem = None
         if ok:
             names = detail.split(",") if detail else []
