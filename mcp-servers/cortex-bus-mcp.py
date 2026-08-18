@@ -67,7 +67,7 @@ log = logging.getLogger("cortex-bus-mcp")
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent, CallToolResult
+from mcp.types import Tool, TextContent, CallToolResult, ListToolsResult
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -259,16 +259,13 @@ def _request(method: str, path: str, body: dict | None = None,
 #  MCP SERVER
 # ═══════════════════════════════════════════════════════════════
 
-server = Server("cortex-bus")
-
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 
 
 # ── Tool Definitions ──────────────────────────────────────────
 
-@server.list_tools()
-async def list_tools() -> list[Tool]:
-    return [
+async def list_tools(ctx, params=None) -> ListToolsResult:
+    return ListToolsResult(tools=[
         Tool(
             name="inbox_send",
             description="Send a message to the agent inbox. Delivered via Agent Bus (PGMQ). Supports optional file attachment (max 5 MB).",
@@ -383,12 +380,12 @@ async def list_tools() -> list[Tool]:
                 "required": ["agent", "task_id"],
             },
         ),
-    ]
+    ])
 
 
-@server.call_tool()
-async def call_tool(name: str, arguments: dict[str, Any] | None) -> CallToolResult:
-    args = arguments or {}
+async def call_tool(ctx, params=None) -> CallToolResult:
+    name = params.name if params else ""
+    args = (params.arguments or {}) if params else {}
     try:
         handlers = {
             "inbox_send": _inbox_send, "inbox_read": _inbox_read,
@@ -824,6 +821,13 @@ def _inbox_cancel_task(args: dict) -> CallToolResult:
 
     return CallToolResult(content=[TextContent(type="text",
         text=json.dumps({"task_id": task_id, "status": "cancel_requested", "detail": detail}, indent=2))])
+
+
+# ═══════════════════════════════════════════════════════════════
+#  SERVER
+# ═══════════════════════════════════════════════════════════════
+
+server = Server("cortex-bus", on_list_tools=list_tools, on_call_tool=call_tool)
 
 
 # ═══════════════════════════════════════════════════════════════

@@ -96,7 +96,7 @@ logging.basicConfig(level=logging.DEBUG, format="[mcp-server] %(levelname)s: %(m
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent, CallToolResult
+from mcp.types import Tool, TextContent, CallToolResult, ListToolsResult
 
 HOME = Path.home()
 SESSION_FILE = HOME / ".hermes" / "session.id"
@@ -551,12 +551,8 @@ def _config() -> dict:
 
 # ── MCP Server ───────────────────────────────────────────────
 
-server = Server("loop-governance")
-
-
-@server.list_tools()
-async def list_tools() -> list[Tool]:
-    return [
+async def list_tools(ctx, params=None) -> ListToolsResult:
+    return ListToolsResult(tools=[
         Tool(
             name="begin_change",
             description="MANDATORY: Call before making any code/config change. Creates a governance lock AND a pending cycle in the loop-governance DB. Scoring is handled by log_cycle() — STOP decisions auto-accept. After work, call end_change() to release.",
@@ -810,12 +806,12 @@ async def list_tools() -> list[Tool]:
                 "required": ["task_id", "description"],
             },
         ),
-    ]
+    ])
 
 
-@server.call_tool()
-async def call_tool(name: str, arguments: dict[str, Any] | None) -> CallToolResult:
-    args = arguments or {}
+async def call_tool(ctx, params=None) -> CallToolResult:
+    name = params.name if params else ""
+    args = (params.arguments or {}) if params else {}
     try:
         handlers = {
             "begin_change": _begin_change,
@@ -1856,6 +1852,10 @@ def _promote_issue_to_task(args: dict) -> CallToolResult:
             f"  Use end_change('{task_id}') when done."
         )
     )])
+
+
+# ── MCP Server ───────────────────────────────────────────────
+server = Server("loop-governance", on_list_tools=list_tools, on_call_tool=call_tool)
 
 
 # ── Main ─────────────────────────────────────────────────────
