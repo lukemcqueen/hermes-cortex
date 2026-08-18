@@ -210,6 +210,10 @@ Execute all approved actions:
      placeholder body to the repo; that is how 28 marketing skills became
      stubs fleet-wide (auto-upstream 8587b511, Jul 17).
    - Create `hermes-cortex/skills/<category>/<name>/SKILL.md`
+   - **Version field required** — verify `version: x.y.z` is present in the
+     frontmatter BEFORE committing (fleet skill `cron-filesystem-fallback`
+     was upstreamed without it in f7a11579 and tripped the doctor's
+     `Skill version` warning on every host until fixed 2026-08-19).
    - `git add`, commit, push
 7. **Self-heal stale expected lists** — If doctor found ❌ Crons missing:
    - Identify which cron names are in the uninstall arrays of `install-crons.sh` or `install-orch-crons.sh` but have no matching live cron
