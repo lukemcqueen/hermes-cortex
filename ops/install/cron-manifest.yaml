@@ -59,7 +59,7 @@ crons:
   provider: deepseek
 - name: agent-fixer-evening
   scope: universal
-  schedule: 0 18,20,22 * * 1-5
+  schedule: 0 19,20,22 * * 1-5
   script: ''
   prompt: 'Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
@@ -209,7 +209,7 @@ crons:
   provider: ''
 - name: agent-llm-judge-scorer-weekday
   scope: universal
-  schedule: 0 12,20 * * 1-5
+  schedule: 30 13,20 * * 1-5
   script: agent-llm-judge-scorer.py
   prompt: ''
   skill: ''
@@ -309,6 +309,17 @@ crons:
   prompt: ''
   skill: ''
   deliver: origin
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
+- name: agent-mcp-health-watchdog
+  scope: universal
+  schedule: '*/5 * * * *'
+  script: agent-mcp-health-watchdog.py
+  prompt: ''
+  skill: ''
+  deliver: telegram:{{HOME_CHANNEL}}
   workdir: ''
   no_agent: true
   model: ''
@@ -737,7 +748,7 @@ crons:
   provider: ''
 - name: cortex-bus-evening
   scope: universal
-  schedule: 0 18,20,22 * * 1-5
+  schedule: 0 19,20,22 * * 1-5
   script: ''
   prompt: 'Process the Agent Bus messages. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items.
 
