@@ -113,7 +113,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (109 skills)
+## Devops (110 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -150,6 +150,7 @@ their domain.
 | `cross-agent-design` | 1.0.0 | Before designing any cross-agent feature, protocol, or workflow: trace the receiving agent's end-to-end con... | `skill_view(name='cross-agent-design')` |
 | `cross-repo-sync` | 1.0.0 | Update the same file (config, docs, boilerplate) across multiple project repos in a single coordinated pass... | `skill_view(name='cross-repo-sync')` |
 | `daily-bible-reading` | 1.0.0 | Daily cron job that reads one book of the Bible, extracts 3 lessons with practical application to server op... | `skill_view(name='daily-bible-reading')` |
+| `deploy-load-verification` | 1.0.0 | Use when a config change isn't live — verify what loaded. | `skill_view(name='deploy-load-verification')` |
 | `deployed-component-verification` | 1.1.0 | Verify deployed components match their repo source — detect stale copies, validate symlinks, and ensure the... | `skill_view(name='deployed-component-verification')` |
 | `doc-freshness` | 1.1.0 | Ensure AGENTS.md and SOUL.md stay current across all agents and projects. Weekly audit, post-update broadca... | `skill_view(name='doc-freshness')` |
 | `docker-management` | 1.0.0 | Manage Docker containers, images, volumes, and Compose. | `skill_view(name='docker-management')` |
@@ -323,16 +324,23 @@ their domain.
 | `fastmcp` | 1.0.0 | Build, test, and deploy Python MCP servers. | `skill_view(name='fastmcp')` |
 | `mcporter` | 1.0.0 | List, auth, and call MCP servers/tools from the terminal. | `skill_view(name='mcporter')` |
 
+## Media (1 skill)
+
+| Skill | Version | Purpose | Load With |
+|-------|---------|---------|-----------|
+| `heartmula` | 1.0.0 | HeartMuLa: Suno-like song generation from lyrics + tags. | `skill_view(name='heartmula')` |
+
 ## Migration (1 skill)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `openclaw-migration` | 1.0.0 | Import an OpenClaw setup (memories, skills) into Hermes. | `skill_view(name='openclaw-migration')` |
 
-## Mlops (31 skills)
+## Mlops (32 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
+| `audiocraft-audio-generation` | 1.0.0 | AudioCraft: MusicGen text-to-music, AudioGen text-to-sound. | `skill_view(name='audiocraft-audio-generation')` |
 | `axolotl` | 1.0.0 | Axolotl: YAML LLM fine-tuning (LoRA, DPO, GRPO). | `skill_view(name='axolotl')` |
 | `chroma` | 1.0.0 | Embedding database for RAG and semantic search. | `skill_view(name='chroma')` |
 | `clip` | 1.0.0 | Zero-shot image classification and image-text search. | `skill_view(name='clip')` |
@@ -396,7 +404,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `godmode` | 1.0.0 | Jailbreak LLMs: Parseltongue, GODMODE, ULTRAPLINIAN. | `skill_view(name='godmode')` |
 
-## Research (13 skills)
+## Research (14 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -409,6 +417,7 @@ their domain.
 | `gitnexus-explorer` | 1.0.0 | Serve an interactive codebase knowledge graph web UI. | `skill_view(name='gitnexus-explorer')` |
 | `osint-investigation` | 0.1.0 | Follow the money via public records and sanctions data. | `skill_view(name='osint-investigation')` |
 | `parallel-cli` | 1.1.0 | Agent-native web search, deep research, and enrichment. | `skill_view(name='parallel-cli')` |
+| `polymarket` | 1.0.0 | Query Polymarket: markets, prices, orderbooks, history. | `skill_view(name='polymarket')` |
 | `qmd` | 1.0.0 | Hybrid local search over notes, docs, and transcripts. | `skill_view(name='qmd')` |
 | `recurring-reports` | 1.0.0 | Design and run recurring automated reports: define cadence, metrics, sources, and delivery; wire to cron; v... | `skill_view(name='recurring-reports')` |
 | `scrapling` | 1.0.0 | Scrape sites with stealth browsing and Cloudflare bypass. | `skill_view(name='scrapling')` |
@@ -463,10 +472,11 @@ their domain.
 |-------|---------|---------|-----------|
 | `social-media-analyzer` | 1.0.0 | Social media campaign analysis and performance tracking. Calculates engagement rates, ROI, and benchmarks a... | `skill_view(name='social-media-analyzer')` |
 
-## Software Development (47 skills)
+## Software Development (49 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
+| `adversarial-finding-fix-patterns` | 1.0.0 | Fix adversarial-verify.py findings with real handling. | `skill_view(name='adversarial-finding-fix-patterns')` |
 | `adversarial-verifier` | 1.0.0 | Adversarial verification — systematically attempts to break code BEFORE it ships. Covers A0-A5 maturity lev... | `skill_view(name='adversarial-verifier')` |
 | `agent-contract` | 1.0.0 | Core execution contract: real work, honest results, verified outputs, minimal changes. | `skill_view(name='agent-contract')` |
 | `agent-flow` | 1.0.0 | Workflow router skill — classifies the incoming request into one of 12 patterns and dispatches to the corre... | `skill_view(name='agent-flow')` |
@@ -484,10 +494,11 @@ their domain.
 | `documentation-auditing` | 1.0.0 | Audit documentation for stale file paths, broken cross-references, and correctness gaps. Systematic approac... | `skill_view(name='documentation-auditing')` |
 | `engineering-approach` | 1.9.0 | Engineering and communication standards for this project: terse, direct, skip explanations, always handle e... | `skill_view(name='engineering-approach')` |
 | `error-handling` | 1.0.0 | Error handling patterns and idioms: structured exceptions, graceful degradation, retry strategies, circuit... | `skill_view(name='error-handling')` |
+| `hermetic-python-testing` | 1.0.0 | Write Python modules with hermetic unit-test seams. | `skill_view(name='hermetic-python-testing')` |
 | `legacy-codebase-navigation` | 1.0.0 | Navigate, understand, and debug large legacy codebases (Rails, Django, early Node). Techniques for tracing... | `skill_view(name='legacy-codebase-navigation')` |
 | `lesson-aware-agent` | 1.0.0 | Universal lesson-aware injection pattern. Makes every agent action memory-aware: search lessons before acti... | `skill_view(name='lesson-aware-agent')` |
 | `logging-patterns` | 1.0.0 | Structured logging conventions: log levels, format standards, context injection, correlation IDs, sensitive... | `skill_view(name='logging-patterns')` |
-| `mcp-server-building` | 1.0.0 | Build, test, and debug MCP servers for Hermes Agent — logging, dependency checks, fix hints, and best pract... | `skill_view(name='mcp-server-building')` |
+| `mcp-server-building` | 1.1.0 | Build, test, and debug MCP servers for Hermes Agent — logging, dependency checks, fix hints, and best pract... | `skill_view(name='mcp-server-building')` |
 | `memory-architecture` | 1.0.0 | Design and maintain agent memory system: MEMORY.md structure, privacy boundaries, gitignore per brain sourc... | `skill_view(name='memory-architecture')` |
 | `product-requirements` | 1.0.0 | Concise 1-page PRD template: problem, scope, functional/non-functional requirements, edge cases, acceptance... | `skill_view(name='product-requirements')` |
 | `project-map` | 1.0.0 | Structural project analysis — build a dependency graph so agents | `skill_view(name='project-map')` |
@@ -544,6 +555,12 @@ their domain.
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `x-twitter-growth` | 1.0.0 | X/Twitter growth engine for building audience, crafting viral content, and analyzing engagement. Use when t... | `skill_view(name='x-twitter-growth')` |
+
+## Yuanbao (1 skill)
+
+| Skill | Version | Purpose | Load With |
+|-------|---------|---------|-----------|
+| `yuanbao` | 1.0.0 | Yuanbao (元宝) groups: @mention users, query info/members. | `skill_view(name='yuanbao')` |
 
 ## Infrastructure Scripts (deployed via cortex-update.sh)
 
