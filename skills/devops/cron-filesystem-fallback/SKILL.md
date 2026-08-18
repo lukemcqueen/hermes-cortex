@@ -1,6 +1,7 @@
 ---
 name: cron-filesystem-fallback
 description: "Read cron job definitions and execution history from filesystem when cronjob CLI is unavailable. Platform-agnostic fallback for cron mode, restricted approval, or limited shell contexts."
+version: 1.0.0
 category: devops
 ---
 
