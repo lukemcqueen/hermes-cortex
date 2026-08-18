@@ -106,6 +106,7 @@ These run on every agent in the fleet. Created by `install-crons.sh`.
 | `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `agent-scoring-activity-watchdog.py` | origin |
 | `agent-model-health-watchdog` | `0 7 * * *` | no_agent | `agent-model-health-watchdog.py` | origin |
 | `agent-langfuse-health-watchdog` | `0 * * * *` | no_agent | `langfuse-health-watchdog.py` | origin |
+| `agent-mcp-health-watchdog` | `*/5 * * * *` | no_agent | `agent-mcp-health-watchdog.py` | telegram home |
 | `agent-memory-pruning` | `0 4 * * 1` | LLM | — | origin |
 | `agent-session-cache-build` | `0 5 * * 1` | no_agent | `session_cache.py` | origin |
 | `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin |

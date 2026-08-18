@@ -76,6 +76,7 @@
 | `agent-system-alert-watchdog` | `*/30 * * * *` | no_agent | `agent-system-alert-watchdog.py` | origin |
 | `agent-cron-quality-watchdog` | `*/10 * * * *` | no_agent | `agent-cron-quality-watchdog.py` | origin |
 | `agent-langfuse-health-watchdog` | `0 * * * *` | no_agent | `agent-langfuse-health-watchdog.py` | origin |
+| `agent-mcp-health-watchdog` | `*/5 * * * *` | no_agent | `agent-mcp-health-watchdog.py` | telegram home |
 | `agent-model-health-watchdog` | `0 7 * * *` | no_agent | `agent-model-health-watchdog.py` | origin |
 | `agent-secret-leak-watchdog` | `0 */4 * * *` | no_agent | `agent-secret-leak-watchdog.py` | origin |
 | `agent-ip-submission` | `*/30 * * * *` | no_agent | `agent-ip-submission.sh` | origin |

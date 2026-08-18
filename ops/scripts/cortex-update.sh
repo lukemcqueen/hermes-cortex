@@ -340,6 +340,7 @@ register "ops/scripts/health/agent-service-recovery.py"        "${CORTEX_DEPLOY_
 register "ops/scripts/platform_utils.py"          "${CORTEX_DEPLOY_HOME}/scripts/platform_utils.py"
 # Agent daily bible reading — migrated to LLM-driven cron (no script)
 register "ops/scripts/health/agent-langfuse-health-watchdog.py" "${CORTEX_DEPLOY_HOME}/scripts/agent-langfuse-health-watchdog.py"
+register "ops/scripts/health/agent-mcp-health-watchdog.py"       "${CORTEX_DEPLOY_HOME}/scripts/agent-mcp-health-watchdog.py"
 register "ops/scripts/manage/agent-llm-judge-scorer.py"         "${CORTEX_DEPLOY_HOME}/scripts/agent-llm-judge-scorer.py"
 register "ops/scripts/health/agent-model-health-watchdog.py"    "${CORTEX_DEPLOY_HOME}/scripts/agent-model-health-watchdog.py"
 register "ops/scripts/manage/agent-offline-code-index.sh" "${CORTEX_DEPLOY_HOME}/scripts/agent-offline-code-index.sh"

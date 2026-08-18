@@ -550,6 +550,7 @@ if $UNINSTALL; then
     "agent-memory-to-brain-sync" \
     "cortex-bus-failover-watchdog" \
     "agent-message-handler" \
+    "agent-mcp-health-watchdog" \
     "agent-mycortex-sync" \
     "agent-mycortex-retention" \
     "agent-model-health-watchdog" \
@@ -905,6 +906,19 @@ create_cron "agent-langfuse-health-watchdog" "0 * * * *" \
   "" \
   "" \
   "origin" \
+  "" \
+  "true"
+
+# Governance MCP health watchdog (M-001/M-002, 2026-08-18 write-deadlock
+# mitigation): probes every configured MCP server (spawn + list_tools) every
+# 5 min + scans mcp-stderr for import crashes. Silent when healthy; CRITICAL
+# alert when loop-governance/tasks go down (ALL WRITES BLOCKED). no_agent.
+create_cron "agent-mcp-health-watchdog" "*/5 * * * *" \
+  "agent-mcp-health-watchdog.py" \
+  "" \
+  "" \
+  "" \
+  "telegram:${TELEGRAM_HOME_CHANNEL}" \
   "" \
   "true"
 
