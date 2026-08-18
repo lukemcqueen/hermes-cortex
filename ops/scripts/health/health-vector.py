@@ -182,7 +182,15 @@ def _estimate_cron_interval(schedule: str | dict) -> int:
             gaps.append(24 - vals[-1] + vals[0])
             return max(gaps) * 3600
         elif '-' in hour:
-            return 3600
+            # Bounded hour range (e.g. 8-22): the max legit silence is the
+            # overnight wrap gap (22:00 -> 08:00 = 10h), same semantics as the
+            # comma-list branch above. Returning 1h falsely flagged these jobs
+            # stale every night (observed 2026-08-19, orch-backlog-driver).
+            try:
+                a, b = (int(x) for x in hour.split('-', 1))
+                return (24 - b + a) * 3600
+            except ValueError:
+                return 3600
         elif hour.startswith('*/'):
             return int(hour[2:]) * 3600
         return 86400
