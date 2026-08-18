@@ -73,10 +73,10 @@ request params model (`params.name`, `params.arguments` on a
 
 ```bash
 # 1. Compile
-/home/esther/.hermes/hermes-agent/venv/bin/python3 -m py_compile <script>
+$HOME/.hermes/hermes-agent/venv/bin/python3 -m py_compile <script>
 
 # 2. Import + dispatch smoke test (proves the crash path is gone)
-/home/esther/.hermes/hermes-agent/venv/bin/python3 - <<'EOF'
+$HOME/.hermes/hermes-agent/venv/bin/python3 - <<'EOF'
 import asyncio, importlib.util
 from types import SimpleNamespace
 async def main():
@@ -101,14 +101,14 @@ for the enforcement server — P1-A hardening):
 ```yaml
 mcp_servers:
   agent-bus:
-    command: /home/esther/.hermes/hermes-agent/venv/bin/python3   # NOT python3 (system lacks mcp)
-    args: [ /home/esther/.hermes-cortex/scripts/cortex-bus-mcp.py ]
+    command: $HOME/.hermes/hermes-agent/venv/bin/python3   # NOT python3 (system lacks mcp)
+    args: [ /home/<user>/.hermes-cortex/scripts/cortex-bus-mcp.py ]
   loop-governance:
-    command: /home/esther/.hermes/hermes-agent/venv/bin/python3
-    args: [ /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py ]  # immutable deployed copy
+    command: $HOME/.hermes/hermes-agent/venv/bin/python3
+    args: [ /home/<user>/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py ]  # immutable deployed copy
   tasks:
-    command: /home/esther/.hermes/hermes-agent/venv/bin/python3
-    args: [ /home/esther/.hermes-cortex/scripts/task-mcp.py ]
+    command: $HOME/.hermes/hermes-agent/venv/bin/python3
+    args: [ /home/<user>/.hermes-cortex/scripts/task-mcp.py ]
 ```
 
 Apply with `hermes config set mcp_servers.<name>.command <path>` and
