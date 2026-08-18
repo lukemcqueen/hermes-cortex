@@ -96,6 +96,56 @@ if __name__ == "__main__":
     sys.exit(0)
 '''
 
+OLDAPI_PY_SERVER = '''"""Fake OLD-API decorator python MCP server (mcp 1.x, list_tools() takes NO args).
+
+The SDK-2.0 import probe calls list_tools(None, None), which this server
+rejects with TypeError — the watchdog must fall back to a real stdio
+handshake instead of reporting it down. (titus PROPOSAL follow-up
+70cfc4f9, 2026-08-18)
+"""
+import json
+import sys
+
+
+async def list_tools():
+    return [{"name": "oldapi_tool"}]
+
+
+async def main():
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            msg = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        method = msg.get("method")
+        if method == "initialize":
+            sys.stdout.write(json.dumps({
+                "jsonrpc": "2.0",
+                "id": msg.get("id"),
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "oldapi-server", "version": "1.0.0"},
+                },
+            }) + "\\n")
+            sys.stdout.flush()
+        elif method == "tools/list":
+            sys.stdout.write(json.dumps({
+                "jsonrpc": "2.0",
+                "id": msg.get("id"),
+                "result": {"tools": [{"name": "oldapi_tool"}]},
+            }) + "\\n")
+            sys.stdout.flush()
+
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
+'''
+
 
 def make_fixtures(tmp: Path) -> dict:
     """Write the fake servers; return {name: path}."""
@@ -105,6 +155,7 @@ def make_fixtures(tmp: Path) -> dict:
         ("crashbin", CRASHBIN, True),
         ("hangbin", HANGBIN, True),
         ("fakepyserver.py", FAKE_PY_SERVER, False),
+        ("oldapiserver.py", OLDAPI_PY_SERVER, False),
     ):
         p = tmp / name
         p.write_text(content, encoding="utf-8")
@@ -213,6 +264,53 @@ def main() -> int:
             runs=1,
         )
         check("D python-script server stays healthy via import path", out == "", out)
+
+        # --- E: OLD-API python server (list_tools() takes no args) ->
+        # import probe TypeError must fall back to stdio handshake ---
+        out = run_wd(
+            load_wd(tmp), tmp,
+            f"""  oldapiserver:
+    command: {sys.executable}
+    args:
+      - {fx['oldapiserver.py']}
+    enabled: true
+""",
+            runs=2,
+        )
+        check("E old-API python server healthy via stdio fallback (TypeError)", out == "", out)
+
+        # --- P: phantom keys — platform_toolsets children must NOT become
+        # servers when the regex parser is used (yaml-less host) ---
+        wd = load_wd(tmp)
+        write_config(
+            tmp,
+            f"""  realserver:
+    command: {fx['fakebin']}
+    args:
+      - mcp-server
+    enabled: true
+""",
+        )
+        # Append a platform_toolsets section AFTER mcp_servers — the regex
+        # parser previously treated its 2-space children as phantom servers.
+        config_path = tmp / "config.yaml"
+        config_path.write_text(
+            config_path.read_text()
+            + "platform_toolsets:\n  cli:\n    enabled: true\n  discord:\n    enabled: true\n",
+            encoding="utf-8",
+        )
+        # Force the yaml-less regex path
+        old_yaml = wd.yaml
+        wd.yaml = None
+        try:
+            servers = wd.load_servers()
+        finally:
+            wd.yaml = old_yaml
+        check(
+            "P platform_toolsets children are NOT phantom servers",
+            set(servers.keys()) == {"realserver"},
+            f"parsed: {sorted(servers.keys())}",
+        )
 
         # --- F: no command -> fail fast (after 2 strikes) ---
         out = run_wd(

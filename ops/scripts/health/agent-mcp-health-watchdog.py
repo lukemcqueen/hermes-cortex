@@ -140,6 +140,11 @@ def _parse_without_yaml(text: str) -> dict:
             continue
         if not in_mcp:
             continue
+        # Stop at the next top-level section (e.g. platform_toolsets:) —
+        # its 2-space-indented children must not become phantom servers.
+        # (titus PROPOSAL follow-up 70cfc4f9, 2026-08-18)
+        if re.match(r"^\S", line):
+            break
         m = re.match(r"^  ([A-Za-z0-9_.-]+):\s*$", line)
         if m:
             cur = m.group(1)
@@ -179,7 +184,17 @@ def probe_server(command: str, args: list) -> tuple[bool, str]:
         return False, "no script/args configured"
     first = args[0]
     if first.endswith(".py") and os.path.exists(first):
-        return _probe_python_script(command, first)
+        ok, detail = _probe_python_script(command, first)
+        if ok:
+            return True, detail
+        # Old-API decorator servers (async def list_tools() with no params)
+        # reject the SDK-2.0 probe call shape list_tools(None, None) with
+        # TypeError — the import probe is the wrong tool for them. Fall back
+        # to the real stdio handshake, which is API-agnostic. (titus
+        # PROPOSAL follow-up 70cfc4f9, 2026-08-18)
+        if "TypeError" in detail:
+            return _probe_stdio_handshake(command, args)
+        return False, detail
     return _probe_stdio_handshake(command, args)
 
 
