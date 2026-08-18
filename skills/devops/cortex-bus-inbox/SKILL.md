@@ -39,7 +39,7 @@ The agent bus inbox provides MCP tools for agent-to-agent messaging:
 
 Bus processing is handled by three crons:
 - `cortex-bus-workday` — M-F 9-5 hourly
-- `cortex-bus-evening` — M-F every 2h (18,20,22)
+- `cortex-bus-evening` — M-F every 2h (19,20,22)
 - `cortex-bus-overnight` — M-F 3am
 
 ## References

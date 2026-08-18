@@ -640,7 +640,7 @@ OUTPUT POLICY (HARD RULE — overrides everything above):
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-create_cron "agent-fixer-evening" "0 18,20,22 * * 1-5" \
+create_cron "agent-fixer-evening" "0 19,20,22 * * 1-5" \
   "" \
   "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
 
@@ -800,7 +800,7 @@ If all YES → deliver as normal." \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-create_cron "cortex-bus-evening" "0 18,20,22 * * 1-5" \
+create_cron "cortex-bus-evening" "0 19,20,22 * * 1-5" \
   "" \
   "Process the Agent Bus messages. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items.
 
@@ -869,8 +869,8 @@ create_cron "agent-governance-auditor" "0 */6 * * *" \
 # ── 7. Universal Agent Crons ──────────────────────────────
 printf "\n${CYAN}  7. Universal Agent Crons${RESET}\n"
 
-# LLM judge scorer — weekday (Mon-Fri 12:00 and 20:00)
-create_cron "agent-llm-judge-scorer-weekday" "0 12,20 * * 1-5" \
+# LLM judge scorer — weekday (Mon-Fri 13:30 and 20:00, off-peak)
+create_cron "agent-llm-judge-scorer-weekday" "30 13,20 * * 1-5" \
   "agent-llm-judge-scorer.py" \
   "" \
   "" \

@@ -57,7 +57,7 @@ Langfuse and serve as a feedback signal for agent behaviour.
 
 | Step | Tool | Schedule | LLM? | Output |
 |------|------|----------|------|--------|
-| Score | `llm-judge-scorer.py` | Weekdays 12:00, 20:00 KST | ✗ (no_agent, calls Ollama internally) | Langfuse scores on unscoped traces |
+| Score | `llm-judge-scorer.py` | Weekdays 13:30, 20:00 KST | ✗ (no_agent, calls Ollama internally) | Langfuse scores on unscoped traces |
 |       |                     | Weekends 22:00 KST |      | |
 
 **Closed loop:** Trace generated → judge scored → agent reads score → behaviour adjusts.

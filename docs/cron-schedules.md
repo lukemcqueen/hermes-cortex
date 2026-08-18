@@ -57,7 +57,7 @@
 | Name | Schedule | Type | Script / Skill | Deliver |
 |------|----------|------|----------------|---------|
 | `agent-fixer-workday` | `0 9-17 * * 1-5` | LLM | auto-remediation skill + session-active-guard.py | telegram |
-| `agent-fixer-evening` | `0 18,20,22 * * 1-5` | LLM | auto-remediation skill | telegram |
+| `agent-fixer-evening` | `0 19,20,22 * * 1-5` | LLM | auto-remediation skill | telegram |
 | `agent-fixer-overnight` | `0 3 * * 1-5` | LLM | auto-remediation skill | telegram |
 | `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local (runs only where IS_SERVER=true) |
 | `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin |
@@ -98,7 +98,7 @@
 | `agent-scoring-activity-watchdog` | `0 14,20 * * *` | no_agent | `agent-scoring-activity-watchdog.py` | origin |
 | `agent-session-cache-build` | `0 5 * * 1` | no_agent | `agent-session_cache.py` | origin |
 | `agent-offline-code-index` | `0 5 * * 0` | no_agent | `agent-offline-code-index.sh` | local |
-| `agent-llm-judge-scorer-weekday` | `0 12,20 * * 1-5` | no_agent | `agent-llm-judge-scorer.py` | local |
+| `agent-llm-judge-scorer-weekday` | `30 13,20 * * 1-5` | no_agent | `agent-llm-judge-scorer.py` | local |
 | `agent-llm-judge-scorer-weekend` | `0 22 * * 0,6` | no_agent | `agent-llm-judge-scorer.py` | local |
 | `agent-memory-pruning` | `0 4 * * 1` | LLM | (prompt) | telegram |
 | `agent-auto-save-sessions` | `every 360m` | no_agent | `agent-auto-save-sessions.py` | local |
@@ -107,7 +107,7 @@
 | `agent-agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agent-agents-md-prune-scan.py` | local |
 | `agent-agents-md-prune-apply` | `30 4 * * 1-6` | LLM | (prompt) | telegram |
 | `cortex-bus-workday` | `0 9-17 * * 1-5` | LLM | session-active-guard.py | telegram |
-| `cortex-bus-evening` | `0 18,20,22 * * 1-5` | LLM | (prompt) | telegram |
+| `cortex-bus-evening` | `0 19,20,22 * * 1-5` | LLM | (prompt) | telegram |
 | `cortex-bus-overnight` | `0 2 * * 1-5` | LLM | (prompt) | telegram |
 | `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin |
 | `agent-daily-soul-refinement` | ~~`0 23 * * *`~~ | ~~LLM~~ | ~~soul-refinement skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level daily soul refinement merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-daily-soul-refinement`. |

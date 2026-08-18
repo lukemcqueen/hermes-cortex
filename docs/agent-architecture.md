@@ -173,7 +173,7 @@ This patches the Hermes scheduler to record per-run token usage and cost into `~
 
 Runs on every agent with Langfuse. Scores traces using a local Ollama model and posts quality scores back to Langfuse:
 
-- `agent-llm-judge-scorer-weekday` — Mon–Fri 12:00, 20:00
+- `agent-llm-judge-scorer-weekday` — Mon–Fri 13:30, 20:00
 - `agent-llm-judge-scorer-weekend` — Sat–Sun 22:00
 
 Quality dimensions: `helpfulness` (1-5), `clarity` (1-5), `depth` (1-5), `overall` (1-10).

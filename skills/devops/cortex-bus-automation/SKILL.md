@@ -35,7 +35,7 @@ Two-tier architecture for reading and acting on Agent Bus messages.
 | Cron | Schedule | Scope |
 |------|----------|-------|
 | `cortex-bus-workday` | M-F 9-17 (hourly) | Full processing |
-| `cortex-bus-evening` | M-F 18,20,22 | After-hours catch-up |
+| `cortex-bus-evening` | M-F 19,20,22 | After-hours catch-up |
 | `cortex-bus-overnight` | M-F 3am | Overnight sweep |
 
 ## Decision Framework

@@ -19,7 +19,7 @@
 | agent-daily-bible-reading | LLM+skill | 0 1 * * * | Daily scripture reading |
 | threat-pipeline | no_agent | 0 5 * * * | Daily nginx threat update |
 | agent-daily-soul-refinement | LLM+skill | 14 23 * * * | Daily SOUL.md refinement |
-| agent-llm-judge-scorer-weekday | no_agent | 0 12,20 * * 1-5 | Weekday LLM evaluation |
+| agent-llm-judge-scorer-weekday | no_agent | 30 13,20 * * 1-5 | Weekday LLM evaluation |
 | agent-llm-judge-scorer-weekend | no_agent | 0 22 * * 0,6 | Weekend LLM evaluation |
 | agent-offline-code-index | no_agent | 0 5 * * 0 | Weekly offline code index |
 | agent-model-health-watchdog | no_agent | 0 7 * * * | Daily model health check |
@@ -34,7 +34,7 @@
 | agent-governance-auditor | no_agent | 0 */6 * * * | Governance compliance check |
 | langfuse-health-watchdog | no_agent | 0 * * * * | Langfuse ClickHouse health |
 | agent-fixer-workday | LLM+skill | 0 9-17 * * 1-5 | Auto-remediation workday |
-| agent-fixer-evening | LLM+skill | 0 18,20,22 * * 1-5 | Auto-remediation evening |
+| agent-fixer-evening | LLM+skill | 0 19,20,22 * * 1-5 | Auto-remediation evening |
 | agent-fixer-overnight | LLM+skill | 0 3 * * 1-5 | Auto-remediation overnight |
 | agent-gbrain-doctor | ~~no_agent~~ | ~~5 6 * * *~~ | ⚠️ STALE/REMOVED 2026-08-02 — gbrain decommissioned; mycortex replaces (`mycortex doctor`) |
 | agent-message-handler | no_agent | */5 * * * * | Agent bus message handler |
