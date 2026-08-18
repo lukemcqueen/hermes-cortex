@@ -132,6 +132,7 @@ must be registered in this index.
 | `docs/reference/cortex-bus-config.md` | **↗ Bus config guide** — install, auth resolution, message format, cron auth, troubleshooting |
 | `docs/reference/after-completing-work-6-questions.md` | **Pre-ship checklist** — 6-questions verification: arrays, cleanup, docs, syntax, doctor, push/deploy |
 | `docs/reference/session-todo-protocol.md` | **Session todo protocol** — todo() lifecycle: read durable file, update on cycles, write back at session end |
+| `docs/reference/mcp-sdk-v2-migration.md` | **mcp SDK 2.0 migration** — why the cortex MCP servers broke (2026-08-18), old→new constructor API, per-server recipe, verification, config requirements, fleet rollout checklist, write-deadlock recovery |
 | `docs/gbrain-stale-lock-detection.md` | gbrain stale lock file detection & auto-recovery — root cause, automated fix via service-recovery, manual diagnostics |
 | `docs/cron-schedules.md` | **Canonical cron schedule reference** — every cron, schedule, type, script, delivery (incl. explicit telegram targets for script-created crons, mycortex dream layer tiers + optional installer). Also the **Delivery Policy for LLM crons** — issues only, never status; exact `[SILENT]` when nothing actionable (Luke directive 2026-08-06). Update whenever schedules change. LLM-cron **stagger convention** (2026-08-07): base schedules shown; minute rewritten per host at install. |
 | `docs/cron-jobs-reference.md` | **Cron jobs inventory** — all cron jobs with name, type, schedule, and purpose (extracted from AGENTS.md) |
