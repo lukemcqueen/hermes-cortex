@@ -50,10 +50,12 @@ NOAGENT_NEW = """        )
 
 # ── Patch: LLM success path ────────────────────────────────
 LLM_MARKER = 'session_estimated_cost_usd": float(getattr(agent'
-LLM_OLD = """        logger.info("Job '%s' completed successfully", job_name)
+LLM_OLD = """            "error": None,
+        })
         return True, output, final_response, None
 """
-LLM_NEW = """        logger.info("Job '%s' completed successfully", job_name)
+LLM_NEW = """            "error": None,
+        })
         # Record token usage and cost for this run
         try:
             from cron.cost_store import record_run as _record_run
@@ -118,7 +120,9 @@ _COST_STORE = None
 
 # ── Patch: cronjob_tools.py _get_cost_store + facade ──────
 FACADE_MARKER = "class _CostStoreFacade"
-FACADE_OLD = """def _execute_job_now(job: Dict[str, Any]) -> Dict[str, Any]:"""
+FACADE_OLD = """def _execute_job_now(
+    job: Dict[str, Any], extra_prompt: Optional[str] = None
+) -> Dict[str, Any]:"""
 FACADE_NEW = """def _get_cost_store():
     \"\"\"Lazy-init the cost store helper.\"\"\"
     global _COST_STORE
@@ -155,11 +159,11 @@ def _execute_job_now(job: Dict[str, Any]) -> Dict[str, Any]:"""
 
 # ── Patch: _format_job cost enrichment ─────────────────────
 FORMAT_MARKER = "last_run_cost"
-FORMAT_OLD = """    if job.get("workdir"):
-        result["workdir"] = job["workdir"]
+FORMAT_OLD = """    if external_refs:
+        result["context_from"] = external_refs
     return result"""
-FORMAT_NEW = """    if job.get("workdir"):
-        result["workdir"] = job["workdir"]
+FORMAT_NEW = """    if external_refs:
+        result["context_from"] = external_refs
     # Attach cost data from the cron-costs store
     _cost_store = _get_cost_store()
     if _cost_store:
