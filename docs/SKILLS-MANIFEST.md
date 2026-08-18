@@ -113,7 +113,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (112 skills)
+## Devops (116 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -126,6 +126,7 @@ their domain.
 | `auto-remediation` | 1.0.0 | Auto-remediate cron job failures, agent inbox requests, and service issues. Checks every 5m and fixes known... | `skill_view(name='auto-remediation')` |
 | `auto-remediation-ecosystem` | 1.0.0 | Complete auto-remediation ecosystem setup, configuration, and maintenance | `skill_view(name='auto-remediation-ecosystem')` |
 | `auto-remediation-setup` | 1.0.0 | Set up, configure, and troubleshoot the auto-remediation system. | `skill_view(name='auto-remediation-setup')` |
+| `bus-archive-diagnostics` | 1.0.0 | Query bus queues and archives reliably for fleet results. | `skill_view(name='bus-archive-diagnostics')` |
 | `bus-connectivity-diagnostics` | 1.0.0 | Diagnostic procedures for Agent Bus connectivity, permissions, and message delivery. Covers the three bus p... | `skill_view(name='bus-connectivity-diagnostics')` |
 | `bus-inbox-check` | 1.0.0 | Check agent bus inbox depth and read messages via HTTP API — for use in LLM cron context where inbox_read M... | `skill_view(name='bus-inbox-check')` |
 | `bus-queue-maintenance` | 1.0.0 | Bus queue lifecycle — inspecting stuck messages, archiving orphaned messages, navigating state constraints,... | `skill_view(name='bus-queue-maintenance')` |
@@ -140,6 +141,7 @@ their domain.
 | `cortex-bus-polling` | 2.0.0 | Agent Bus polling setup — MCP tools, cron, verification. | `skill_view(name='cortex-bus-polling')` |
 | `cortex-deployment-sync` | 1.0.0 | Use when pulling latest or running cortex update. | `skill_view(name='cortex-deployment-sync')` |
 | `cortex-preflight` | 1.0.0 | Hermes Cortex supporting pre-flight checks — supplements Hermes default survey-before-action with repo-spec... | `skill_view(name='cortex-preflight')` |
+| `cron-cost-scheduling` | 1.0.0 | Schedule LLM crons around provider peak/off-peak windows. | `skill_view(name='cron-cost-scheduling')` |
 | `cron-cost-tracking` | 1.0.0 | SQLite-backed per-run token usage and cost tracking for Hermes cron jobs. Deploys cost_store.py and patches... | `skill_view(name='cron-cost-tracking')` |
 | `cron-filesystem-fallback` | 1.0.0 | Read cron job definitions and execution history from filesystem when cronjob CLI is unavailable. Platform-a... | `skill_view(name='cron-filesystem-fallback')` |
 | `cron-format-standard` | 3.0.0 | Standard three-phase output format for ALL LLM-driven cron jobs. Uses concrete examples — not annotated pla... | `skill_view(name='cron-format-standard')` |
@@ -154,6 +156,7 @@ their domain.
 | `daily-bible-reading` | 1.0.0 | Daily cron job that reads one book of the Bible, extracts 3 lessons with practical application to server op... | `skill_view(name='daily-bible-reading')` |
 | `deploy-load-verification` | 1.0.0 | Use when a config change isn't live — verify what loaded. | `skill_view(name='deploy-load-verification')` |
 | `deployed-component-verification` | 1.1.0 | Verify deployed components match their repo source — detect stale copies, validate symlinks, and ensure the... | `skill_view(name='deployed-component-verification')` |
+| `detached-worker-pattern` | 1.0.0 | Cron tick budget kill: detached worker + result sweep. | `skill_view(name='detached-worker-pattern')` |
 | `doc-freshness` | 1.1.0 | Ensure AGENTS.md and SOUL.md stay current across all agents and projects. Weekly audit, post-update broadca... | `skill_view(name='doc-freshness')` |
 | `docker-management` | 1.0.0 | Manage Docker containers, images, volumes, and Compose. | `skill_view(name='docker-management')` |
 | `documentation-scope` | 1.0.0 | Multi-audience documentation scoping conventions for Hermes Cortex. Defines when and how to distinguish gen... | `skill_view(name='documentation-scope')` |
@@ -191,6 +194,7 @@ their domain.
 | `llm-judge-scorer` | 1.0.0 | LLM-as-Judge trace quality scorer. Evaluates Hermes conversation traces in Langfuse using a local Ollama mo... | `skill_view(name='llm-judge-scorer')` |
 | `loop-governance` | 1.5.0 | TDD cycle scoring, self-improvement, and governance system for Hermes Cortex. Scores completeness/quality/p... | `skill_view(name='loop-governance')` |
 | `maintenance-scan` | 1.0.0 | Systematic system health survey run proactively when the user gives an open-ended directive to "find work"... | `skill_view(name='maintenance-scan')` |
+| `mcp-health-monitoring` | 1.0.0 | Probe MCP server health; extend the governance watchdog. | `skill_view(name='mcp-health-monitoring')` |
 | `migration-deploy-verification` | 1.0.0 | Use when a repo migration is missing from the live DB. | `skill_view(name='migration-deploy-verification')` |
 | `mycortex` | 1.1.0 | Use for mycortex knowledge brain work or gbrain migration. | `skill_view(name='mycortex')` |
 | `name-discovery` | 1.0.0 | Use when checking if a software/tool name is available for use — searches GitHub, web, and registries for c... | `skill_view(name='name-discovery')` |
