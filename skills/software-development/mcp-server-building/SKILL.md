@@ -1,7 +1,7 @@
 ---
 name: mcp-server-building
 description: "Build, test, and debug MCP servers for Hermes Agent — logging, dependency checks, fix hints, and best practices."
-version: 1.0.0
+version: 1.1.0
 author: Hermes Cortex
 license: MIT
 metadata:
@@ -11,6 +11,14 @@ metadata:
 ---
 
 # MCP Server Building — Hermes Cortex Standard
+
+> **mcp SDK 2.0 (2026-08-18): the decorator API (`@server.list_tools()` /
+> `@server.call_tool()`) was REMOVED.** Register handlers via the
+> constructor: `Server(name, on_list_tools=..., on_call_tool=...)`.
+> The old decorators crash with `AttributeError: 'Server' object has no
+> attribute 'list_tools'` on mcp ≥1.0 (see
+> `docs/reference/mcp-sdk-v2-migration.md`). All examples below use the
+> 2.0 API. Version pinned in the hermes-agent venv: `mcp==2.0.0`.
 
 This skill covers everything needed to build, debug, and deploy MCP servers that agents install via `hermes mcp add`.
 
@@ -95,9 +103,9 @@ Without this, Hermes sees "Connection closed" with no context when the server cr
 Every tool handler should catch errors and return a user-friendly `CallToolResult` with the error message and fix hint:
 
 ```python
-@server.call_tool()
-async def call_tool(name: str, arguments: dict | None) -> CallToolResult:
-    args = arguments or {}
+async def call_tool(ctx, params=None) -> CallToolResult:
+    name = params.name if params else ""
+    args = (params.arguments or {}) if params else {}
     try:
         handlers = {"my_tool": _my_tool}
         handler = handlers.get(name)
@@ -176,18 +184,20 @@ log = logging.getLogger("server-name")
 # ── Imports that depend on mcp ──────────────────────────────
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent, CallToolResult
+from mcp.types import Tool, TextContent, CallToolResult, ListToolsResult
+
+# ── Handlers (mcp SDK 2.0 — define BEFORE constructing the Server) ──
+async def list_tools(ctx, params=None) -> ListToolsResult:
+    return ListToolsResult(tools=[...])
+
+async def call_tool(ctx, params=None) -> CallToolResult:
+    name = params.name if params else ""
+    args = (params.arguments or {}) if params else {}
+    ...
 
 # ── Server ───────────────────────────────────────────────────
-server = Server("server-name")
-
-@server.list_tools()
-async def list_tools() -> list[Tool]:
-    return [...]
-
-@server.call_tool()
-async def call_tool(name: str, arguments: dict[str, Any] | None) -> CallToolResult:
-    ...
+# mcp 2.0 registers handlers via constructor kwargs, not decorators.
+server = Server("server-name", on_list_tools=list_tools, on_call_tool=call_tool)
 
 # ── Tool Implementations ─────────────────────────────────────
 def _my_tool(args: dict) -> CallToolResult:
@@ -252,6 +262,7 @@ yes | hermes mcp add server-name --command python3 --args /path/to/server.py
 | `Connection closed` | Stale config | `hermes mcp remove` then re-add |
 | `Connection closed` | Import error in server | Run `python3 server.py` directly, check stderr |
 | `Connection closed` | Wrong Python interpreter | Use `--command /path/to/python3` instead of just `python3` |
+| `AttributeError: 'Server' object has no attribute 'list_tools'` | mcp SDK ≥1.0 removed the `@server.list_tools()` / `@server.call_tool()` decorators | Use the 2.0 constructor API: `Server(name, on_list_tools=..., on_call_tool=...)`. See `docs/reference/mcp-sdk-v2-migration.md` |
 | `ModuleNotFoundError` | Missing dependency | Install the missing package |
 | `Permission denied` | File not executable | `chmod +x server.py` |
 | `Tool not found` | Wrong tool name in call | Check `hermes mcp test` output for exact names |
