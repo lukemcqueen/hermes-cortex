@@ -113,7 +113,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (110 skills)
+## Devops (112 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -121,6 +121,7 @@ their domain.
 | `agent-collector-troubleshoot` | 1.0.0 | Use when collectors can't send. Diagnoses bus, paths, crons. | `skill_view(name='agent-collector-troubleshoot')` |
 | `agent-fundamentals` | 1.0.0 | Universal 'basic things every agent should know' — distilled from real frustration patterns across 10+ sess... | `skill_view(name='agent-fundamentals')` |
 | `agent-health-monitoring` | 3.5.0 | Cross-server agent health monitoring using binary status vectors — deploy health endpoints on each agent, p... | `skill_view(name='agent-health-monitoring')` |
+| `approval-gate-debugging` | 1.0.0 | Use when a command is flagged as a security issue. | `skill_view(name='approval-gate-debugging')` |
 | `arq-worker-startup-pitfalls` | 1.0.0 | Use when an arq worker crash-loops or runs no jobs. | `skill_view(name='arq-worker-startup-pitfalls')` |
 | `auto-remediation` | 1.0.0 | Auto-remediate cron job failures, agent inbox requests, and service issues. Checks every 5m and fixes known... | `skill_view(name='auto-remediation')` |
 | `auto-remediation-ecosystem` | 1.0.0 | Complete auto-remediation ecosystem setup, configuration, and maintenance | `skill_view(name='auto-remediation-ecosystem')` |
@@ -140,6 +141,7 @@ their domain.
 | `cortex-deployment-sync` | 1.0.0 | Use when pulling latest or running cortex update. | `skill_view(name='cortex-deployment-sync')` |
 | `cortex-preflight` | 1.0.0 | Hermes Cortex supporting pre-flight checks — supplements Hermes default survey-before-action with repo-spec... | `skill_view(name='cortex-preflight')` |
 | `cron-cost-tracking` | 1.0.0 | SQLite-backed per-run token usage and cost tracking for Hermes cron jobs. Deploys cost_store.py and patches... | `skill_view(name='cron-cost-tracking')` |
+| `cron-filesystem-fallback` | 1.0.0 | Read cron job definitions and execution history from filesystem when cronjob CLI is unavailable. Platform-a... | `skill_view(name='cron-filesystem-fallback')` |
 | `cron-format-standard` | 3.0.0 | Standard three-phase output format for ALL LLM-driven cron jobs. Uses concrete examples — not annotated pla... | `skill_view(name='cron-format-standard')` |
 | `cron-job-management` | 1.0.0 | Create, name, list, and maintain Hermes cron jobs — no_agent watchdog scripts, naming conventions, and the... | `skill_view(name='cron-job-management')` |
 | `cron-no-agent-conversion` | 1.0.0 | Convert LLM-driven Hermes agent crons to no_agent scripts with targeted API calls. Maximizes deterministic... | `skill_view(name='cron-no-agent-conversion')` |
@@ -336,7 +338,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `openclaw-migration` | 1.0.0 | Import an OpenClaw setup (memories, skills) into Hermes. | `skill_view(name='openclaw-migration')` |
 
-## Mlops (32 skills)
+## Mlops (33 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -350,6 +352,7 @@ their domain.
 | `fine-tuning-with-trl` | 1.0.1 | TRL: SFT, DPO, GRPO, RLOO reward modeling for LLM RLHF. | `skill_view(name='fine-tuning-with-trl')` |
 | `guidance` | 1.0.1 | Constrain LLM output with grammars; guarantee valid JSON. | `skill_view(name='guidance')` |
 | `huggingface-accelerate` | 1.0.1 | Run PyTorch training across GPUs with minimal changes. | `skill_view(name='huggingface-accelerate')` |
+| `huggingface-tokenizers` | 1.0.0 | Fast BPE/WordPiece tokenization and custom vocab training. | `skill_view(name='huggingface-tokenizers')` |
 | `instructor` | 1.0.0 | Structured LLM outputs validated with Pydantic. | `skill_view(name='instructor')` |
 | `lambda-labs-gpu-cloud` | 1.0.0 | On-demand GPU cloud instances for ML training. | `skill_view(name='lambda-labs-gpu-cloud')` |
 | `llava` | 1.0.0 | Vision-language chat: VQA, captioning, image dialogue. | `skill_view(name='llava')` |
