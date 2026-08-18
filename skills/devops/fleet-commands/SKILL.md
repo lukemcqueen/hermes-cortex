@@ -57,6 +57,23 @@ Fleet agents run `agent-message-handler.py` as a cron (`*/5 * * * *`). Source: `
 |---------|--------|----------|-------------|
 | `EXEC` | Run script under `~/.hermes-cortex/scripts/` | `EXEC_RESULT` | `command`, `params[]`, `timeout` |
 | `UPDATE_REQUEST` | Run `cortex-update.sh` | `UPDATE_RESULT` | `target_sha`, `target_version`, `run_doctor` |
+
+> **UPDATE_REQUEST processing is now DETACHED (2026-08-18).** The fleet
+> handler no longer runs pull+cortex-update+doctor synchronously inside its
+> cron tick: on slow hosts the combined runtime (~390s worst case) exceeded
+> the tick budget, the handler was killed mid-processing after the
+> early-archive, and UPDATE_RESULTs were silently lost (fleet dispatch for
+> `14b18f0b` returned 0/5 results while the updates themselves landed).
+> The handler now spawns a detached worker
+> (`~/.hermes-cortex/state/pending-update-results/<corr>.json`), returns in
+> seconds, and a per-tick sweep sends the result when the worker finishes —
+> or a timeout error result if the worker dies (stale `.running` marker
+> older than 30 min). Expect UPDATE_RESULTs 3-10 min after the request on
+> slow hosts. When verifying a dispatch: poll `bus.archives` for
+> `UPDATE_RESULT` (subject filter), and if a host consumed the request but
+> no result appears within ~10 min, probe it directly with
+> `hc exec <agent> cortex-doctor.py --quiet` (the EXEC path is unaffected)
+> — the update may have completed with only the receipt lost.
 | `ROLLBACK_REQUEST` | Git checkout previous SHA | `ROLLBACK_RESULT` | `target_sha`, `reason` |
 | `GIT_AUTH_CHECK` | Verify git can `ls-remote` | `GIT_AUTH_RESULT` | `expected_url` |
 | `DIAGNOSTIC_REQUEST` | Run agent-diagnostic.py | `DIAGNOSTIC_RESULT` | `check`, `respond_to_queue` |

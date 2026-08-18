@@ -143,6 +143,15 @@ def notify_telegram(message: str, subject: str = ""):
 TASK_CREATING_SUBJECTS = ("EXEC", "UPDATE_REQUEST", "TASK_REQUEST",
                           "PROPOSAL", "ISSUES", "IMPROVEMENTS")
 
+# Detached UPDATE_REQUEST worker (2026-08-18): a synchronous
+# cortex-update+doctor (~390s worst case) exceeded the cron tick budget on
+# fleet hosts, killing the handler mid-processing after the early-archive and
+# silently losing UPDATE_RESULTs. The worker survives (start_new_session),
+# writes its result here, and the sweep (_send_pending_update_results) sends
+# it on a later tick.
+UPDATE_PENDING_DIR = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state" / "pending-update-results"
+UPDATE_RESULT_TIMEOUT_S = 1800  # worker must finish within 30 min or the sweep declares timeout
+
 # Deployed task-db.py path (repo path used when developing/deploying).
 TASK_DB_PATH = HOME / ".hermes-cortex" / "scripts" / "task-db.py"
 if not TASK_DB_PATH.exists():
@@ -419,10 +428,157 @@ def send_bus_result(queue: str, correlation_id: str, result_body: dict, subject:
       log(f"Sent {subject} to {queue} (mid={mid[:8]}… corr={correlation_id[:8] if correlation_id else '?'}…)")
     else:
       log(f"Failed to send {subject}")
+      try:
+        notify_telegram(
+          f"⚠️ [{AGENT_NAME}] Failed to send {subject} to {queue} (corr={correlation_id[:8] if correlation_id else '?'}…) — bus_send returned None",
+          f"⚠️ {AGENT_NAME}:SEND_FAIL",
+        )
+      except Exception:
+        pass
     return ok
   except Exception as e:
     log(f"Error sending {subject}: {e}")
+    try:
+      notify_telegram(
+        f"⚠️ [{AGENT_NAME}] Error sending {subject}: {str(e)[:80]}",
+        f"⚠️ {AGENT_NAME}:SEND_FAIL",
+      )
+    except Exception:
+      pass
     return False
+
+
+def _update_worker_code() -> str:
+  """Detached UPDATE_REQUEST worker source. Loads this handler module, runs
+  process_update_request, and writes the result JSON for the sweep to send.
+  Runs via `python3 -c` in a new session so the cron tick budget cannot kill
+  it mid-update (the 2026-08-18 silent UPDATE_RESULT loss)."""
+  return r'''
+import importlib.util, json, sys
+from pathlib import Path
+handler_path = sys.argv[1]
+msg_body = json.loads(sys.argv[2])
+corr = sys.argv[3]
+sys.path.insert(0, str(Path(handler_path).parent))
+spec = importlib.util.spec_from_file_location("handler", handler_path)
+h = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(h)
+try:
+    result = h.process_update_request(msg_body, corr)
+except Exception:
+    import traceback
+    result = {
+        "success": False,
+        "error": "Update worker crashed: %s" % (traceback.format_exc()[-300:],),
+    }
+result.setdefault("success", False)
+out_dir = h.UPDATE_PENDING_DIR
+out_dir.mkdir(parents=True, exist_ok=True)
+(out_dir / (corr + ".json")).write_text(json.dumps(result))
+(out_dir / (corr + ".running")).unlink(missing_ok=True)
+'''
+
+
+def _spawn_update_worker(msg_body: dict, correlation_id: str) -> bool:
+  """Run UPDATE_REQUEST processing in a detached process. Returns True if
+  spawned; the result lands in UPDATE_PENDING_DIR and is sent by
+  _send_pending_update_results on a later tick."""
+  try:
+    UPDATE_PENDING_DIR.mkdir(parents=True, exist_ok=True)
+    subprocess.Popen(
+      [sys.executable, "-c", _update_worker_code(),
+       str(Path(__file__).resolve()), json.dumps(msg_body), correlation_id],
+      start_new_session=True,  # survive the cron tick budget kill
+      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    # In-flight marker: the tick's health-doctor skips while any worker is
+    # running (cortex-update mid-deploy causes transient checksum FAILs that
+    # would otherwise fire a false health alert, observed 2026-08-18).
+    try:
+      (UPDATE_PENDING_DIR / f"{correlation_id}.running").write_text(str(time.time()))
+    except OSError:
+      pass
+    log(f"⏳ Spawned detached UPDATE worker (corr={correlation_id[:8]}…)")
+    return True
+  except Exception as e:
+    log(f"❌ Failed to spawn UPDATE worker: {e}")
+    return False
+
+
+def _send_pending_update_results() -> None:
+  """Sweep: send UPDATE_RESULTs produced by detached workers; declare a
+  timeout for workers that never finished. Runs every tick so a completed
+  update is delivered even if the tick that spawned it was killed."""
+  try:
+    if not UPDATE_PENDING_DIR.exists():
+      return
+    now = time.time()
+    for f in sorted(UPDATE_PENDING_DIR.glob("*.json")):
+      corr = f.stem
+      try:
+        if now - f.stat().st_mtime > UPDATE_RESULT_TIMEOUT_S:
+          result = {
+            "success": False,
+            "git_sha_after": "unknown",
+            "error": f"UPDATE_RESULT timeout: worker did not finish within {UPDATE_RESULT_TIMEOUT_S}s",
+          }
+          log(f"⏰ UPDATE worker {corr[:8]}… timed out — sending error result")
+        else:
+          result = json.loads(f.read_text())
+      except Exception as e:
+        result = {"success": False, "error": f"Could not read pending update result: {e}"}
+      sent = send_bus_result("inbox_moses", corr, result, "UPDATE_RESULT")
+      if not sent:
+        # Keep the file so a later tick retries; alert loudly — a silent
+        # result loss is worse than a duplicate.
+        try:
+          notify_telegram(
+            f"⚠️ [{AGENT_NAME}] UPDATE_RESULT for {corr[:8]}… could not be sent — will retry",
+            f"⚠️ {AGENT_NAME}:UPDATE_SEND_FAIL",
+          )
+        except Exception:
+          pass
+        continue
+      try:
+        task_transition_by_correlation(corr, "completed")
+      except Exception:
+        pass
+      ok = result.get("success", False)
+      sha = result.get("git_sha_after", "?")
+      err = (result.get("error") or "")[:120]
+      notify_telegram(
+        f"{'✅' if ok else '❌'} [{AGENT_NAME}] UPDATE_RESULT: {sha} {'OK' if ok else err}",
+        f"{'✅' if ok else '❌'} {AGENT_NAME}:UPDATE",
+      )
+      f.unlink(missing_ok=True)
+    # Stale in-flight markers: the worker died or was killed before writing
+    # its result → declare a timeout so the orchestrator never waits forever.
+    for m in sorted(UPDATE_PENDING_DIR.glob("*.running")):
+      corr = m.stem
+      try:
+        if now - m.stat().st_mtime <= UPDATE_RESULT_TIMEOUT_S:
+          continue  # still in flight
+        log(f"⏰ UPDATE worker {corr[:8]}… died (stale marker) — sending timeout result")
+        result = {
+          "success": False,
+          "git_sha_after": "unknown",
+          "error": f"UPDATE_RESULT timeout: worker died or was killed (no result within {UPDATE_RESULT_TIMEOUT_S}s)",
+        }
+        sent = send_bus_result("inbox_moses", corr, result, "UPDATE_RESULT")
+        if sent:
+          try:
+            task_transition_by_correlation(corr, "completed")
+          except Exception:
+            pass
+          notify_telegram(
+            f"❌ [{AGENT_NAME}] UPDATE_RESULT timeout for {corr[:8]}… — worker died",
+            f"❌ {AGENT_NAME}:UPDATE",
+          )
+        m.unlink(missing_ok=True)
+      except Exception:
+        pass
+  except Exception as e:
+    log(f"⚠️ UPDATE sweep error: {e}")
 
 
 def read_inbox(queue: str) -> dict | None:
@@ -961,6 +1117,27 @@ def main():
       if subject in TASK_CREATING_SUBJECTS:
         task_transition_by_correlation(correlation_id, "in_progress")
 
+      # ── UPDATE_REQUEST: run in a DETACHED worker (2026-08-18) ──
+      # A synchronous cortex-update+doctor (~390s worst case) exceeded the
+      # cron tick budget on fleet hosts, killing the handler mid-processing
+      # after the early-archive and silently losing UPDATE_RESULTs. The
+      # worker survives and writes its result to UPDATE_PENDING_DIR; the
+      # sweep (_send_pending_update_results) sends it on a later tick.
+      if subject == "UPDATE_REQUEST":
+        if _spawn_update_worker(body, correlation_id):
+          notify_telegram(
+            f"⏳ [{AGENT_NAME}] UPDATE_REQUEST received (corr={correlation_id[:8] if correlation_id else '?'}…) — detached worker running; result will follow",
+            f"⏳ {AGENT_NAME}:UPDATE",
+          )
+          if correlation_id:
+            processed.add(correlation_id)
+            state.setdefault("processed_ids", [])
+            state["processed_ids"].append(correlation_id)
+            state["processed_ids"] = state["processed_ids"][-50:]
+          save_state(state)
+          return True
+        log("UPDATE worker spawn failed — falling back to legacy sync path")
+
       result_body = cmd_dispatch(subject, body, msg)
 
       if result_body is not None:
@@ -1265,6 +1442,10 @@ def main():
             (_state_dir / "last-message-check").write_text(stamp)
         except OSError:
             pass  # best-effort — heartbeat may be absent on this host
+    # Send results from detached UPDATE workers. Runs every tick (even with
+    # no inbox traffic) so a completed update is delivered even if the tick
+    # that spawned the worker was killed by the cron budget.
+    _send_pending_update_results()
     # Process up to 25 messages per tick, or until the queue is empty.
     # This prevents backlog: if Learning Reports or other non-urgent
     # messages accumulate ahead of an UPDATE_REQUEST, a single poll_once()
@@ -1288,6 +1469,13 @@ def main():
       had_work = True
       # Don't run doctor after every message — run once at the end
     if not had_work:
+      return
+    # Skip this tick's health-doctor while an UPDATE worker is mid-deploy:
+    # the transient mid-deploy checksum state would fire false FAILs
+    # (observed 2026-08-18 — 9-fail alert while the detached worker ran
+    # cortex-update).
+    if any(UPDATE_PENDING_DIR.glob("*.running")):
+      log("⏳ UPDATE worker in flight — skipping this tick's health doctor")
       return
     doctor = run_doctor()
     healthy = doctor.get("healthy", False)
