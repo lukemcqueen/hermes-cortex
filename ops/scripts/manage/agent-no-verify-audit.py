@@ -7,6 +7,10 @@ Prints when:
   • bypass-debt >= 4 (escape hatch EXHAUSTED — 4th bypass mandated)
   • scoring backlog: PENDING/unscored governance cycles accumulate
 
+Dedup (2026-08-20): each section fires only when its CONTENT changes —
+the same backlog or debt across ticks stays silent, so an unchanged
+reminder posts ONCE, not every 10 minutes.
+
 State tracked in: ~/.hermes-cortex/state/no-verify-audit-state.json
 Debt tracked in:  ~/.hermes-cortex/state/bypass-debt.json
 Schedule: every 10 minutes (2026-08-05 — was 60m; bounded escape hatch).
@@ -32,7 +36,12 @@ def load_state():
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE) as f:
             return json.load(f)
-    return {"last_timestamp": None, "last_index": -1}
+    return {
+        "last_timestamp": None,
+        "last_index": -1,
+        "last_backlog": [],
+        "last_debt": 0,
+    }
 
 
 def save_state(state):
@@ -96,6 +105,7 @@ def main():
     events = load_events()
     debt = load_debt()
     lines = []
+    changed = False
 
     # ── 1. New no-verify events ──
     new_events = []
@@ -114,11 +124,13 @@ def main():
         state["last_timestamp"] = new_events[-1].get(
             "timestamp", state["last_timestamp"]
         )
-        save_state(state)
+        changed = True
 
     # ── 2. Escape hatch exhausted (mandated 4th bypass) ──
+    # Dedup: fire only when the debt value changes (or re-accumulates after a
+    # reset) — an unchanged >= 4 stays silent instead of posting every tick.
     consec = debt.get("consecutive_no_verify", 0)
-    if consec >= 4:
+    if consec >= 4 and consec != state.get("last_debt"):
         lines.append(
             f"🚫  ESCAPE HATCH EXHAUSTED: {consec} consecutive --no-verify commits "
             "(bypass-debt)."
@@ -128,10 +140,20 @@ def main():
             "--no-verify git commands are refused until a fully verified commit "
             "(no --no-verify) resets the counter."
         )
+        state["last_debt"] = consec
+        changed = True
+    elif consec < 4 and consec != state.get("last_debt"):
+        # Track the quiet baseline so a reset → re-accumulation re-fires.
+        state["last_debt"] = consec
+        changed = True
 
     # ── 3. Scoring backlog (PENDING cycles not cleared) ──
+    # Dedup: fire only when the stale set CHANGES — an identical backlog across
+    # ticks stays silent (2026-08-20, Luke: unchanged output posted to Telegram
+    # every 10 min).
     stale = check_pending_cycles()
-    if stale:
+    backlog_sig = sorted(f"{ts}|{task_id}" for task_id, ts in stale)
+    if backlog_sig and backlog_sig != state.get("last_backlog"):
         lines.append(
             f"🧾  SCORING BACKLOG: {len(stale)} PENDING governance cycle(s) older "
             f"than {PENDING_MIN_AGE_MIN} min — score them (feedback_accept/override "
@@ -139,9 +161,18 @@ def main():
         )
         for task_id, ts in stale[:5]:
             lines.append(f"    • {ts}  {task_id[:60]}")
+        state["last_backlog"] = backlog_sig
+        changed = True
+    elif not backlog_sig and state.get("last_backlog"):
+        # Record the empty baseline silently so a later re-accumulation re-fires.
+        state["last_backlog"] = []
+        changed = True
 
     if lines:
         print("\n".join(lines))
+
+    if changed:
+        save_state(state)
 
 
 if __name__ == "__main__":
