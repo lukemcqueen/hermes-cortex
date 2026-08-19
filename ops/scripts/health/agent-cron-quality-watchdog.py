@@ -23,6 +23,7 @@ SILENT when everything is clean (classic watchdog pattern).
 
 import json
 import os
+import re
 import sys
 from collections import Counter
 from datetime import datetime, timezone, timedelta
@@ -113,6 +114,18 @@ def _extract_script_output(content: str) -> str:
 
 def _is_empty_or_whitespace(text: str) -> bool:
     return not text or not text.strip()
+
+
+def _is_silent_noop(response: str) -> bool:
+    """True for the healthy no-op token in any JSON/quote/whitespace wrapping.
+
+    Gisu proposal 2026-08-19: a one-off model deviation emitted the JSON-wrapped
+    no-op ["SILENT"] (14 chars) which failed the literal `response == "[SILENT]"`
+    match and fell through to Check 5b (short response = "token garbage").
+    Normalize away wrapping whitespace/quotes before the no-op check.
+    """
+    normalized = re.sub(r"[\s\"']", "", response.strip())
+    return normalized in ("[SILENT]", "SILENT")
 
 
 def _count_suspicious_chars(text: str) -> int:
@@ -225,8 +238,9 @@ def main() -> None:
             issues.append(f"\U0001f534 {name}: AGENT SELF-BLOCKED (QUALITY_G_BLOCKED token found)")
             continue
 
-        # [SILENT] is the healthy no-op signal
-        if response == SILENT_TOKEN:
+        # [SILENT] is the healthy no-op signal (also JSON/quote-wrapped variants,
+        # gisu proposal 2026-08-19 — one-off model deviation emitted ["SILENT"])
+        if _is_silent_noop(response):
             continue
 
         # Check 2: empty response

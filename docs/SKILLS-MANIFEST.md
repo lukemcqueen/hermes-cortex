@@ -113,7 +113,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (117 skills)
+## Devops (118 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -159,6 +159,7 @@ their domain.
 | `deployed-component-verification` | 1.1.0 | Verify deployed components match their repo source — detect stale copies, validate symlinks, and ensure the... | `skill_view(name='deployed-component-verification')` |
 | `detached-worker-pattern` | 1.0.0 | Cron tick budget kill: detached worker + result sweep. | `skill_view(name='detached-worker-pattern')` |
 | `doc-freshness` | 1.1.0 | Ensure AGENTS.md and SOUL.md stay current across all agents and projects. Weekly audit, post-update broadca... | `skill_view(name='doc-freshness')` |
+| `doc-size-budget` | 1.0.0 | Slim docs to byte targets (SOUL 10K, AGENTS gates) safely. | `skill_view(name='doc-size-budget')` |
 | `docker-management` | 1.0.0 | Manage Docker containers, images, volumes, and Compose. | `skill_view(name='docker-management')` |
 | `documentation-scope` | 1.0.0 | Multi-audience documentation scoping conventions for Hermes Cortex. Defines when and how to distinguish gen... | `skill_view(name='documentation-scope')` |
 | `enforcement-change-safety` | 1.0.0 | Use before enforcement code changes or shared-repo commits. | `skill_view(name='enforcement-change-safety')` |
