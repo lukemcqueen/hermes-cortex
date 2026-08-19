@@ -113,7 +113,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (116 skills)
+## Devops (117 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -148,6 +148,7 @@ their domain.
 | `cron-job-management` | 1.0.0 | Create, name, list, and maintain Hermes cron jobs — no_agent watchdog scripts, naming conventions, and the... | `skill_view(name='cron-job-management')` |
 | `cron-no-agent-conversion` | 1.0.0 | Convert LLM-driven Hermes agent crons to no_agent scripts with targeted API calls. Maximizes deterministic... | `skill_view(name='cron-no-agent-conversion')` |
 | `cron-output-contracts` | 1.0.0 | Use when a script reads another cron's output or retires. | `skill_view(name='cron-output-contracts')` |
+| `cron-output-diagnostics` | 1.0.0 | Use when a cron delivery is flagged or looks wrong. | `skill_view(name='cron-output-diagnostics')` |
 | `cron-quality-gate` | 1.0.0 | Prevents LLM cron jobs from delivering garbage with a self-check quality gate and automated watchdog. | `skill_view(name='cron-quality-gate')` |
 | `cron-request-protocol` | 1.3.0 | Protocol for non-orchestrator agents to request cron job creation, updates, or removal via the agent inbox.... | `skill_view(name='cron-request-protocol')` |
 | `cron-script-naming-reconciliation` | 1.1.0 | Reconcile cron/script names, prefixes, skill versions. | `skill_view(name='cron-script-naming-reconciliation')` |
@@ -342,7 +343,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `openclaw-migration` | 1.0.0 | Import an OpenClaw setup (memories, skills) into Hermes. | `skill_view(name='openclaw-migration')` |
 
-## Mlops (33 skills)
+## Mlops (32 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -356,7 +357,6 @@ their domain.
 | `fine-tuning-with-trl` | 1.0.1 | TRL: SFT, DPO, GRPO, RLOO reward modeling for LLM RLHF. | `skill_view(name='fine-tuning-with-trl')` |
 | `guidance` | 1.0.1 | Constrain LLM output with grammars; guarantee valid JSON. | `skill_view(name='guidance')` |
 | `huggingface-accelerate` | 1.0.1 | Run PyTorch training across GPUs with minimal changes. | `skill_view(name='huggingface-accelerate')` |
-| `huggingface-tokenizers` | 1.0.0 | Fast BPE/WordPiece tokenization and custom vocab training. | `skill_view(name='huggingface-tokenizers')` |
 | `instructor` | 1.0.0 | Structured LLM outputs validated with Pydantic. | `skill_view(name='instructor')` |
 | `lambda-labs-gpu-cloud` | 1.0.0 | On-demand GPU cloud instances for ML training. | `skill_view(name='lambda-labs-gpu-cloud')` |
 | `llava` | 1.0.0 | Vision-language chat: VQA, captioning, image dialogue. | `skill_view(name='llava')` |

@@ -4,7 +4,7 @@ description: "Safe operational practices for Docker-based staging servers — vo
 version: 1.19.0
 author: Hermes Cortex
 license: MIT
-platforms: [linux, darwin]
+platforms: [linux, macos]
 metadata:
   hermes:
     tags: [docker, staging, recovery, volumes, operations]

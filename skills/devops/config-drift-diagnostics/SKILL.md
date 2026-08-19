@@ -6,7 +6,7 @@ description: >-
   Container configs stale? Compare vs source in 3 locations.
 author: Gisu
 license: MIT
-platforms: [linux, darwin]
+platforms: [linux, macos]
 ---
 
 # Config Drift Diagnostics
