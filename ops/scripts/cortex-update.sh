@@ -462,7 +462,7 @@ register "ops/scripts/install/install-cron-cost-tracking.py" "${CORTEX_DEPLOY_HO
 # Health monitoring
 register "ops/scripts/change-validate.sh"                  "${CORTEX_DEPLOY_HOME}/scripts/change-validate.sh"
 register "ops/scripts/pre-commit-doc-audit.sh"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-doc-audit.sh"
-register "ops/scripts/health/health-vector.py"            "${CORTEX_DEPLOY_HOME}/scripts/health-vector.py"
+register "ops/scripts/health/health-vector.py"            "${CORTEX_DEPLOY_HOME}/scripts/health-vector.py" "health-vector" "restart_health_server"
 register "ops/scripts/health/health-vector-push.sh"       "${CORTEX_DEPLOY_HOME}/scripts/health-vector-push.sh"
 register "ops/scripts/health/report-agent-health.py"      "${CORTEX_DEPLOY_HOME}/scripts/report-agent-health.py"
 register_orch "ops/scripts/manage/orch-skill-report-request.sh"    "${CORTEX_DEPLOY_HOME}/scripts/orch-skill-report-request.sh"
@@ -647,8 +647,19 @@ restart_dashboard() {
 # restart_agent_inbox — removed; use restart_cortex_bus instead
 
 restart_health_server() {
-  info "  health-server.py has been removed — use health-vector.service instead."
-  info "  Run: systemctl --user restart health-vector.service"
+  # health-vector.service — canonical health endpoint server (:8905).
+  # Linux: systemd user unit. macOS: legacy com.hermes.health-server.
+  # The script is deployed by cortex-update.sh; the RUNNING process keeps
+  # old in-memory logic until restarted (deploy ≠ load — observed 2026-08-20:
+  # bounded-hour stale-cron fix sat unloaded 17 days, fleet watchdog flagged
+  # esther no_stale_crons down nightly).
+  if [[ -f "${HOME}/.config/systemd/user/health-vector.service" ]]; then
+    systemctl --user daemon-reload 2>/dev/null || true
+    systemctl --user restart health-vector 2>&1 | sed 's/^/    /'
+  elif launchctl list com.hermes.health-server &>/dev/null 2>&1; then
+    info "  Restarting health server (launchd)…"
+    launchctl kickstart -k "gui/$(id -u)/com.hermes.health-server" 2>&1 | sed 's/^/    /'
+  fi
 }
 
 # ── Delta engine ────────────────────────────────────────────
