@@ -49,6 +49,7 @@ Every session: read `.hermes-cortex/skills.yaml`, load `always` skills, classify
 25. **Self-test gate** — `hc send` refuses without `--self-tested`; no bare `pass`.
 26. **Skill stub guard** — cortex-update refuses to overwrite a full skill with a repo stub; doctor FAILs on stubs. Recovery: `agent-skill-stub-audit.py --send` → bus `skill-stub-recovery` → orchestrator copies → cortex-update. Never hand-fix from memory.
 27. **Gateway restart for enforcer changes** — running gateway may hold the old in-memory enforcer; verify `Plugin content`; restart from a separate shell (NOT inside the gateway — blocked).
+28. **State it once, then move** — after a finding/plan is established, never re-derive or re-announce it on later turns; reference it in one short clause and take the next action. Restating the same conclusion before every tool call burns tokens without progress.
 
 ---
 
