@@ -15,6 +15,7 @@ import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from hermes_tz import format_timestamp, get_timezone
 
 HOME = Path.home()
 STATE_DIR = HOME / ".hermes" / "state"
@@ -24,21 +25,19 @@ SENSOR_JOB_NAME = "agent-remediation-sensor"
 SENSOR_OUTPUT_ROOT = HOME / ".hermes" / "cron" / "output"
 SEEN_FILE = STATE_DIR / "remediate-seen.txt"
 
-KST = timezone(timedelta(hours=9))
+KST = get_timezone()
 
 # ── Helpers ─────────────────────────────────────────────────────
 
 
 def _cron_ts(name: str) -> str:
     """Return non-LLM cron prefix: [YYYY-MM-DD HH:MM KST] <name>:"""
-    kst = datetime.now(timezone(timedelta(hours=9))).strftime(
-        "[%Y-%m-%d %H:%M KST]"
-    )
+    kst = format_timestamp("[%Y-%m-%d %H:%M %Z]")
     return f"{kst} {name}:"
 
 
 def kst_now() -> str:
-    return datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S KST")
+    return datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S %Z")
 
 
 def log(msg: str):

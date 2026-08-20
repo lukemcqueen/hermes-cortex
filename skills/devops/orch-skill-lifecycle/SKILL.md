@@ -234,7 +234,10 @@ After all changes:
 
 ## Output Format
 
-Produce a structured report each run:
+Produce a structured report each run. The header timestamp must use the
+host's configured timezone (HERMES_TIMEZONE / system local) — run
+`date '+%Y-%m-%d %H:%M %Z'` and use its exact output; the KST below is
+illustrative, substitute whatever %Z returns.
 
 ```
 orch-skill-lifecycle (JOB_ID) [YYYY-MM-DD HH:MM KST]

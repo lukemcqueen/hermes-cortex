@@ -1042,6 +1042,9 @@ create_cron "agent-memory-pruning" "0 4 * * 1" \
   "" \
   "Consolidate Hermes agent memory and project agent instructions. Read MEMORY.md, USER.md from the active profile and project roots. Consolidate into compact pointers. Prune stale entries. Keep under 2,200 chars.
 
+## TIMEZONE — READ FIRST
+The header timestamp must use the host configured timezone, NOT a hardcoded label. Run `date '+%Y-%m-%d %H:%M %Z'` (or `date '+%H:%M %Z'` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
+
 ## OUTPUT FORMAT — FOLLOW EXACTLY
 Match this structure line for line. Your content replaces the values.
 Everything else stays: dashes, colons, spacing, line breaks.
@@ -1129,6 +1132,9 @@ If candidates exist and look correct, apply them by running:
   python3 ~/.hermes-cortex/scripts/agents-doc-audit.py --repo ~/hermes-cortex --prune --apply
 Then commit and push the changes.
 If no candidates (empty context) or you disagree with the recommendations, stay silent.
+
+## TIMEZONE — READ FIRST
+The header timestamp must use the host configured timezone, NOT a hardcoded label. Run `date '+%Y-%m-%d %H:%M %Z'` (or `date '+%H:%M %Z'` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
 
 ## OUTPUT FORMAT — FOLLOW EXACTLY
 Match this structure line for line. Your content replaces the values.

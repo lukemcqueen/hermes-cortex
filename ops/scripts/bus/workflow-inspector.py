@@ -15,6 +15,7 @@ import json
 import os
 import sys
 from datetime import datetime, timedelta, timezone
+from hermes_tz import get_timezone
 from pathlib import Path
 
 sys.path.insert(0, os.path.expanduser("~/hermes-cortex/core"))
@@ -58,17 +59,17 @@ def conn():
 
 # ── Helpers ────────────────────────────────────────────────────────
 
-KST = timedelta(hours=9)
+KST = get_timezone()
 
 
 def fmt_ts(ts):
-    """Format timestamp to KST short string."""
+    """Format timestamp to configured-TZ short string."""
     if ts is None:
         return "—"
     try:
         if isinstance(ts, str):
             ts = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-        local = ts.astimezone(timezone(KST))
+        local = ts.astimezone(KST)
         return local.strftime("%m-%d %H:%M")
     except Exception:
         return str(ts)[:16]

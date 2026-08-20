@@ -18,7 +18,11 @@ CRON_PARTS=()
 CRON_STARTED=false
 
 cron_timestamp() {
-    TZ=Asia/Seoul date +'%Y-%m-%d %H:%M KST'
+    if [[ -n "${HERMES_TIMEZONE:-}" ]]; then
+        TZ="${HERMES_TIMEZONE}" date +'%Y-%m-%d %H:%M %Z'
+    else
+        date +'%Y-%m-%d %H:%M %Z'
+    fi
 }
 
 cron_header() {

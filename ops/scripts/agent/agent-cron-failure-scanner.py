@@ -17,6 +17,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, Tuple
+from hermes_tz import format_timestamp, get_timezone
 
 # Import failure state for inbox alert dedup
 # cron_failure_state.py is in ops/scripts/ (parent of agent/ directory)
@@ -109,10 +110,10 @@ def main():
         return 0  # Already reported this failure set recently
 
     # Build inbox message
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ts = format_timestamp("%Y-%m-%d %H:%M:%S %Z")
     lines = [f"⚠️ Cron failure scan @ {ts}", ""]
     for name, reason, when in failures:
-        local_when = when.strftime("%H:%M:%S KST")
+        local_when = when.astimezone(get_timezone()).strftime("%H:%M:%S %Z")
         lines.append(f"• **{name}** ({local_when}): {reason}")
 
     body = "\n".join(lines)

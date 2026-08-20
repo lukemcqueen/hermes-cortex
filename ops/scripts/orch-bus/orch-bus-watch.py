@@ -14,6 +14,7 @@ import json
 import os
 import sys
 from datetime import datetime, timezone, timedelta
+from hermes_tz import format_timestamp
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -42,7 +43,7 @@ def main():
         # Silent — watchdog pattern
         sys.exit(0)
     
-    now = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
+    now = format_timestamp("%Y-%m-%d %H:%M %Z")
     print(f"━━━ Agent Bus — {now} ━━━")
     
     if active:

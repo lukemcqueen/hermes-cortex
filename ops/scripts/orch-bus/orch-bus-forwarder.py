@@ -61,6 +61,7 @@ import sys
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone, timedelta
+from hermes_tz import format_timestamp
 from pathlib import Path
 from typing import Optional
 
@@ -581,7 +582,7 @@ def main():
     #   - Peer came back (with drain summary)
     #   - Sync errors occurred
     output = []
-    now_str = datetime.now(timezone(timedelta(hours=9))).strftime("%H:%M KST")
+    now_str = format_timestamp("%H:%M %Z")
 
     # Clear peer_downed_at on successful sync (before writing state)
     was_peer_down = "peer_downed_at" in state

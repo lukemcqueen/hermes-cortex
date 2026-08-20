@@ -35,6 +35,7 @@ import subprocess
 import sys
 import threading
 from datetime import datetime, timedelta, timezone
+from hermes_tz import get_timezone
 from pathlib import Path
 
 try:
@@ -95,7 +96,7 @@ asyncio.run(_run())
 
 
 def kst_ts(epoch: float) -> str:
-    return datetime.fromtimestamp(epoch, tz=timezone(timedelta(hours=9))).strftime("%H:%M KST")
+    return datetime.fromtimestamp(epoch, tz=get_timezone()).strftime("%H:%M %Z")
 
 
 def now_epoch() -> float:

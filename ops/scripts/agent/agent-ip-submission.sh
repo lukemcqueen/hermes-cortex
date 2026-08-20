@@ -8,6 +8,15 @@
 # Schedule: every 30 minutes via cron (no_agent: true).
 set -euo pipefail
 
+# Timezone-aware timestamp: honors HERMES_TIMEZONE (IANA), else system TZ.
+ts() {
+  if [[ -n "${HERMES_TIMEZONE:-}" ]]; then
+    TZ="${HERMES_TIMEZONE}" date '+%Y-%m-%d %H:%M %Z'
+  else
+    date '+%Y-%m-%d %H:%M %Z'
+  fi
+}
+
 # ── Temporary governance lock for automated pushes ─────────
 _GOV_LOCK="${HOME}/.hermes-cortex/state/.governance-agent-ip-submission.json"
 trap 'rm -f "$_GOV_LOCK"' EXIT
@@ -32,8 +41,8 @@ ADD_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add"
 NEW_IPS=false
 PIPELINE_OUTPUT=""
 
-log()  { echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')] agent-ip-submission: $*"; }
-error(){ echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')] agent-ip-submission: ✗ $*"; }
+log()  { echo "[$(ts)] agent-ip-submission: $*"; }
+error(){ echo "[$(ts)] agent-ip-submission: ✗ $*"; }
 
 # ── Guard: no submit file or empty ──
 if [ ! -f "$SUBMIT_FILE" ]; then

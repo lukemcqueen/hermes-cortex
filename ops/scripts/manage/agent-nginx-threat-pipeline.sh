@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+
+# Timezone-aware timestamp: honors HERMES_TIMEZONE (IANA), else system TZ.
+ts() {
+  if [[ -n "${HERMES_TIMEZONE:-}" ]]; then
+    TZ="${HERMES_TIMEZONE}" date '+%Y-%m-%d %H:%M %Z'
+  else
+    date '+%Y-%m-%d %H:%M %Z'
+  fi
+}
 # nginx-threat-pipeline.sh — Extract, block, commit, push
 #
 # Pipeline: scan logs → collect fail2ban bans → deploy → commit → push
@@ -31,7 +40,7 @@ trap '_remove_pipe_marker' EXIT
 # ── Guard: abort any stale git operations before proceeding ──
 if git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rev-parse --git-dir &>/dev/null; then
   if git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rebase --show-current &>/dev/null 2>&1; then
-    echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ⚠ Stale rebase detected — aborting"
+    echo "[$(ts) nginx-threat-pipeline] ⚠ Stale rebase detected — aborting"
     git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rebase --abort 2>/dev/null || true
   fi
   # Clear any unfinished merge/revert/cherry-pick state
@@ -62,7 +71,7 @@ if [ -f "$SUBMIT_FILE" ]; then
     if [ "$SUBMIT_COUNT" -gt 0 ]; then
       echo "$NEW_FROM_SUBMIT" >> "${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add"
       NEW_IPS=true
-      PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ ${SUBMIT_COUNT} agent-submitted IPs merged from blocked_ips.submit"$'\n'
+      PIPELINE_OUTPUT+="[$(ts) nginx-threat-pipeline] ✓ ${SUBMIT_COUNT} agent-submitted IPs merged from blocked_ips.submit"$'\n'
     fi
     : > "$SUBMIT_FILE"
   fi
@@ -105,8 +114,8 @@ command -v fail2ban-client &>/dev/null && F2B_INSTALLED=true
 
 mkdir -p "${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/state" "${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/logs"
 
-log()  { echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] $*" >&2; }
-error(){ echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✗ $*" >&2; }
+log()  { echo "[$(ts) nginx-threat-pipeline] $*" >&2; }
+error(){ echo "[$(ts) nginx-threat-pipeline] ✗ $*" >&2; }
 
 PIPELINE_OUTPUT=""
 NEW_IPS=false
@@ -272,7 +281,7 @@ else
     IP_COUNT=$(wc -l < "$BLOCKED_FILE" | tr -d ' ') || true
     git commit -m "auto: initial blocklist with ${IP_COUNT} IPs [pipeline]" 2>&1 || true
     if git diff --cached --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null; then
-      PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Committed initial ${IP_COUNT} IPs to repo"$'\n'
+      PIPELINE_OUTPUT+="[$(ts) nginx-threat-pipeline] ✓ Committed initial ${IP_COUNT} IPs to repo"$'\n'
     else
       log "  ⚠ Git commit failed for new file — may need manual add"
     fi
@@ -287,7 +296,7 @@ else
     git commit -m "auto: block ${IP_COUNT} suspect IPs [pipeline]" 2>&1 || true
     # Check if commit succeeded (no staged changes = committed)
     if git diff --cached --quiet ops/install/deploy/nginx/blocked_ips.add 2>/dev/null; then
-      PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Committed ${IP_COUNT} IPs to repo"$'\n'
+      PIPELINE_OUTPUT+="[$(ts) nginx-threat-pipeline] ✓ Committed ${IP_COUNT} IPs to repo"$'\n'
     else
       log "  ⚠ Git commit failed — may need manual merge"
     fi
@@ -296,7 +305,7 @@ else
     for push_attempt in 1 2; do
       if [ -n "$TIMEOUT_CMD" ]; then
         if $TIMEOUT_CMD 10 git push origin main 2>&1; then
-          PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Pushed to origin"$'\n'
+          PIPELINE_OUTPUT+="[$(ts) nginx-threat-pipeline] ✓ Pushed to origin"$'\n'
           break
         else
           PUSH_EXIT=$?
@@ -307,19 +316,19 @@ else
             if git rebase --show-current &>/dev/null 2>&1; then
               log "  ⚠ Rebase conflict — aborting to leave repo clean"
               git rebase --abort 2>/dev/null || true
-              PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ⚠ Push blocked by remote conflict — will retry next cycle"$'\n'
+              PIPELINE_OUTPUT+="[$(ts) nginx-threat-pipeline] ⚠ Push blocked by remote conflict — will retry next cycle"$'\n'
             fi
           else
             # Check for leftover rebase conflict (in case the first attempt's abort also failed)
             if git rebase --show-current &>/dev/null 2>&1; then
               git rebase --abort 2>/dev/null || true
             fi
-            PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ⚠ Push failed after retry"$'\n'
+            PIPELINE_OUTPUT+="[$(ts) nginx-threat-pipeline] ⚠ Push failed after retry"$'\n'
           fi
         fi
       else
         if git push origin main 2>&1; then
-          PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ✓ Pushed to origin"$'\n'
+          PIPELINE_OUTPUT+="[$(ts) nginx-threat-pipeline] ✓ Pushed to origin"$'\n'
           break
         else
           PUSH_EXIT=$?
@@ -330,14 +339,14 @@ else
             if git rebase --show-current &>/dev/null 2>&1; then
               log "  ⚠ Rebase conflict — aborting to leave repo clean"
               git rebase --abort 2>/dev/null || true
-              PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ⚠ Push blocked by remote conflict — will retry next cycle"$'\n'
+              PIPELINE_OUTPUT+="[$(ts) nginx-threat-pipeline] ⚠ Push blocked by remote conflict — will retry next cycle"$'\n'
             fi
           else
             # Check for leftover rebase conflict (in case the first attempt's abort also failed)
             if git rebase --show-current &>/dev/null 2>&1; then
               git rebase --abort 2>/dev/null || true
             fi
-            PIPELINE_OUTPUT+="[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') nginx-threat-pipeline] ⚠ Push failed after retry"$'\n'
+            PIPELINE_OUTPUT+="[$(ts) nginx-threat-pipeline] ⚠ Push failed after retry"$'\n'
           fi
         fi
       fi
@@ -349,7 +358,7 @@ fi
 date -u +"%Y-%m-%dT%H:%M:%SZ" > "${HOME}/.hermes-cortex/state/nginx-threat-pipeline-lastrun"
 
 # ── Output (never silent — security exception) ──
-TS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
+TS=$(ts)
 echo "[$TS nginx-threat-pipeline] ━━━ Threat Pipeline — ${TS} ━━━"
 if $NEW_IPS; then
   # Extract IPs from pipeline output and show compact list

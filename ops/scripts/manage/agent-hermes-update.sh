@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+
+# Timezone-aware timestamp: honors HERMES_TIMEZONE (IANA), else system TZ.
+ts() {
+  if [[ -n "${HERMES_TIMEZONE:-}" ]]; then
+    TZ="${HERMES_TIMEZONE}" date '+%Y-%m-%d %H:%M %Z'
+  else
+    date '+%Y-%m-%d %H:%M %Z'
+  fi
+}
 # hermes-update.sh — no_agent watchdog: auto-upgrade Hermes Agent + migrate config + verify health
 #
 # Watchdog pattern:
@@ -14,7 +23,7 @@
 set -euo pipefail
 
 # ── Helpers ──────────────────────────────────────────────────────────
-log() { echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') hermes-update] $*"; }
+log() { echo "[$(ts) hermes-update] $*"; }
 HAD_OUTPUT=false
 
 # ── Track previous update date to suppress duplicate reports ──
@@ -51,7 +60,7 @@ if [ "$NEW_VERSION" != "$CURRENT_VERSION" ] && [ -n "$NEW_VERSION" ]; then
         log "Updated: $CURRENT_VERSION → $NEW_VERSION"
     else
         # Tiny summary — only on actual version change
-        TS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
+        TS=$(ts)
         echo "[$TS hermes-update] Updated Hermes: ${CURRENT_VERSION:-?} → ${NEW_VERSION}"
     fi
 fi

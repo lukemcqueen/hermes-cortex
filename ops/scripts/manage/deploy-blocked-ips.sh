@@ -8,6 +8,15 @@
 #   bash deploy-blocked-ips.sh           # full deploy via sudo
 #   bash deploy-blocked-ips.sh --check   # dry-run (generate + validate only)
 #
+
+# Timezone-aware timestamp: honors HERMES_TIMEZONE (IANA), else system TZ.
+ts() {
+  if [[ -n "${HERMES_TIMEZONE:-}" ]]; then
+    TZ="${HERMES_TIMEZONE}" date '+%Y-%m-%d %H:%M %Z'
+  else
+    date '+%Y-%m-%d %H:%M %Z'
+  fi
+}
 # Requires NOPASSWD (deployed root-owned immutable copy — NOT the repo copy,
 # which is user-writable and would be an arbitrary-root-code-execution hole):
 #   moses ALL=(root) NOPASSWD: /usr/local/sbin/fix-blocked-ips.py
@@ -48,8 +57,8 @@ if [ ! -f "$FIX_SCRIPT" ]; then
   exit 1
 fi
 
-log()   { echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') deploy-blocked-ips] $*"; }
-error() { echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') deploy-blocked-ips] ✗ $*"; }
+log()   { echo "[$(ts) deploy-blocked-ips] $*"; }
+error() { echo "[$(ts) deploy-blocked-ips] ✗ $*"; }
 
 CHECK_ONLY="${1:-}"
 

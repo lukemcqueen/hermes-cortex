@@ -19,13 +19,14 @@ State tracked in:
 import json, os, subprocess, sys
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
+from hermes_tz import get_timezone
 
 HOME = Path.home()
 STATE_FILE = HOME / ".hermes" / "state" / "bus-audit-watchdog.state"
 STATE_JSON = HOME / ".hermes" / "state" / "bus-audit-watchdog.json"
 STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-KST = timedelta(hours=9)
+KST = get_timezone()
 AGENTS = {"moses", "esther", "joseph", "gisu", "kustos", "titus", "luke"}
 
 # Thresholds
@@ -33,10 +34,10 @@ DLQ_ALERT_THRESHOLD = 5      # Alert when DLQ has more than this many pending
 STUCK_ALERT_MINUTES = 10     # Alert when a pending message sits this long
 
 def utc_to_kst(utc_str):
-    """Convert '2026-07-14 09:06:39' UTC to '17:06:39' KST string."""
+    """Convert '2026-07-14 09:06:39' UTC to configured-TZ time string."""
     try:
-        dt = datetime.strptime(utc_str[:19], "%Y-%m-%d %H:%M:%S")
-        dt_kst = dt + KST
+        dt = datetime.strptime(utc_str[:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        dt_kst = dt.astimezone(KST)
         return dt_kst.strftime("%H:%M:%S")
     except Exception:
         return utc_str[11:19]

@@ -17,6 +17,7 @@ changes are detected.
 import json, os, subprocess, sys, time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from hermes_tz import format_timestamp
 
 from state_tracker import StateTracker
 from typing import Optional
@@ -24,9 +25,7 @@ from typing import Optional
 
 def _cron_ts(name: str) -> str:
   """Return non-LLM cron prefix: [YYYY-MM-DD HH:MM KST] <name>:"""
-  kst = datetime.now(timezone(timedelta(hours=9))).strftime(
-    "[%Y-%m-%d %H:%M KST]"
-  )
+  kst = format_timestamp("[%Y-%m-%d %H:%M %Z]")
   return f"{kst} {name}:"
 
 
@@ -376,7 +375,7 @@ def main() -> None:
   # Phase 1: Clean stale governance locks
   lock_msgs = _cleanup_stale_locks()
   if lock_msgs:
-    ts = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
+    ts = format_timestamp("%Y-%m-%d %H:%M %Z")
     output.append(f"[{ts}] governance-auditor: cleaned {len(lock_msgs)} stale lock(s)")
     output.extend(lock_msgs)
     output.append("")
@@ -384,7 +383,7 @@ def main() -> None:
   # Phase 1b: Check governance infrastructure integrity
   infra_msgs = _check_infrastructure()
   if infra_msgs:
-    ts = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
+    ts = format_timestamp("%Y-%m-%d %H:%M %Z")
     output.append(f"[{ts}] governance-auditor: {len(infra_msgs)} infrastructure issue(s)")
     output.extend(infra_msgs)
     output.append("")
@@ -435,7 +434,7 @@ def main() -> None:
     return # same unscored count as last time
 
   # ── Report ──
-  ts = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
+  ts = format_timestamp("%Y-%m-%d %H:%M %Z")
   print(f"[{ts}] governance-auditor: {len(unscored)} unscored change(s)")
   print(f" Lookback: {LOOKBACK_HOURS}h | DB: {DB_PATH}")
   print("")

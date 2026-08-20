@@ -15,11 +15,12 @@ import subprocess
 import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from hermes_tz import get_timezone
 
-KST = timezone(timedelta(hours=9))
+KST = get_timezone()
 
 def _ts() -> str:
-    return datetime.now(KST).strftime("%Y-%m-%d %H:%M KST")
+    return datetime.now(KST).strftime("%Y-%m-%d %H:%M %Z")
 
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
 BRAIN_SHARED = Path.home() / "brain" / "shared"

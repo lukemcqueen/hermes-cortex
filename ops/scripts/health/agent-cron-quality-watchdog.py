@@ -27,6 +27,7 @@ import re
 import sys
 from collections import Counter
 from datetime import datetime, timezone, timedelta
+from hermes_tz import format_timestamp
 from pathlib import Path
 from typing import Optional
 
@@ -308,7 +309,7 @@ def main() -> None:
         sys.exit(0)
 
     # Build a compact report
-    now = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
+    now = format_timestamp("%Y-%m-%d %H:%M %Z")
     print(f"## Cron Quality Watchdog \u2014 {now}")
     print()
     print(f"{len(issues)} issue(s) detected:")

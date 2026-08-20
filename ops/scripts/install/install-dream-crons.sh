@@ -195,6 +195,9 @@ create_cron "agent-mycortex-dream-monthly" "0 3 1 * *" \
 
 Real numbers only — every count from an actual command. Real connections only — never fabricate. If the brain is genuinely empty, output exactly [SILENT].
 
+## TIMEZONE — READ FIRST
+The header timestamp must use the host configured timezone, NOT a hardcoded label. Run `date '+%Y-%m-%d %H:%M %Z'` (or `date '+%H:%M %Z'` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
+
 ## OUTPUT FORMAT — FOLLOW EXACTLY
 Match this structure line for line. Your content replaces the values. Everything else stays: dashes, colons, spacing, line breaks.
 
@@ -251,6 +254,9 @@ create_cron "agent-mycortex-dream-nightly" "0 3 * * *" \
 
 Real connections only — never fabricate page relationships; every claimed link must come from an actual mycortex search result or session. If the brain is genuinely empty (no pages, no sessions), output exactly [SILENT].
 
+## TIMEZONE — READ FIRST
+The header timestamp must use the host configured timezone, NOT a hardcoded label. Run `date '+%Y-%m-%d %H:%M %Z'` (or `date '+%H:%M %Z'` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
+
 ## OUTPUT FORMAT — FOLLOW EXACTLY
 Match this structure line for line. Your content replaces the values. Everything else stays: dashes, colons, spacing, line breaks.
 
@@ -299,6 +305,9 @@ create_cron "agent-mycortex-dream-weekly" "0 3 * * 6" \
 8. DREAM→TODO BRIDGE (Option B — insight triage): after writing the dream, ask: does any insight imply a concrete verifiable action (verb + object + outcome)? At most 2 per run. For each, run \`python3 ~/.hermes-cortex/scripts/dream-task-bridge.py add-insight --content \"<verb> <object> — <outcome>\" --agent <profile> --date YYYY-MM-DD --priority 2\` (priority 1 for doc/write/probe/build, 2 for fix/verify/rollout). Observational/reflective insights are NEVER todos — they stay in the dream file. The script enforces dedup and tenant-scoping; if it prints SKIP, note it in the dream.
 
 Real connections only — never fabricate relationships. Every claimed link must come from an actual mycortex search result or file read. If the brain is genuinely empty, output exactly [SILENT].
+
+## TIMEZONE — READ FIRST
+The header timestamp must use the host configured timezone, NOT a hardcoded label. Run `date '+%Y-%m-%d %H:%M %Z'` (or `date '+%H:%M %Z'` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.
 
 ## OUTPUT FORMAT — FOLLOW EXACTLY
 Match this structure line for line. Your content replaces the values. Everything else stays: dashes, colons, spacing, line breaks.

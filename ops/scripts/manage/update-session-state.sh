@@ -6,6 +6,15 @@
 #   Pass --verbose to always print status.
 #
 # Scope: hermes-cortex workdir only. Ignores all other repos.
+
+# Timezone-aware timestamp: honors HERMES_TIMEZONE (IANA), else system TZ.
+ts() {
+  if [[ -n "${HERMES_TIMEZONE:-}" ]]; then
+    TZ="${HERMES_TIMEZONE}" date '+%Y-%m-%d %H:%M %Z'
+  else
+    date '+%Y-%m-%d %H:%M %Z'
+  fi
+}
 # Design: updates only the auto-tracked sections (git state, file metrics).
 #         Never touches the Session Notes section (agent-managed).
 
@@ -51,7 +60,7 @@ TOTAL_FILES=$(find . -type f -not -path './.git/*' -not -path './node_modules/*'
 PY_LINES=$(find . -name '*.py' -not -path './.git/*' -not -path './node_modules/*' -exec cat {} + 2>/dev/null | wc -l | tr -d ' ')
 SH_LINES=$(find . -name '*.sh' -not -path './.git/*' -exec cat {} + 2>/dev/null | wc -l | tr -d ' ')
 
-NOW=$(date "+%Y-%m-%d %H:%M KST")
+NOW=$(ts)
 
 # --- Build the new auto-tracked section ---
 read -r -d '' NEW_SECTION <<EOF || true

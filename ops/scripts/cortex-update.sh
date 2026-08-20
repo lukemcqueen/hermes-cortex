@@ -206,6 +206,7 @@ register "ops/scripts/health/check-memory-budget.sh"     "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/install/cortex-profile.sh"          "${CORTEX_DEPLOY_HOME}/scripts/cortex-profile.sh"
 register "ops/scripts/install/seed-project-brain.sh"      "${CORTEX_DEPLOY_HOME}/scripts/seed-project-brain.sh"
 register "ops/scripts/install/install-gateway-cron-timeout.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-gateway-cron-timeout.sh"
+register "ops/scripts/install/install-gateway-timezone.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-gateway-timezone.sh"
 register "ops/scripts/manage/cortex-health.sh"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-health.sh"
 register "ops/scripts/manage/consolidate-env.sh"         "${CORTEX_DEPLOY_HOME}/scripts/consolidate-env.sh"
 register "ops/scripts/manage/gen-skills-manifest.py"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.py"
@@ -2703,6 +2704,21 @@ main() {
     fi
     bash "${CORTEX_DEPLOY_HOME}/scripts/install-gateway-cron-timeout.sh" 2>&1 | sed 's/^/    /' || \
       warn "  install-gateway-cron-timeout.sh failed (non-fatal)"
+  fi
+
+  # ── Gateway timezone (HERMES_TIMEZONE) ─────────────────────
+  # Ensures HERMES_TIMEZONE (IANA, fleet default Asia/Seoul) reaches the
+  # gateway process so every cron script inherits the configured TZ
+  # instead of silently depending on system local time. systemd drop-in
+  # on Linux, ~/.hermes/.env on macOS. Activation needs a gateway
+  # restart; until then hermes_tz.py falls back to system local (which
+  # matches HERMES_TIMEZONE on every current fleet host).
+  if [[ -f "${CORTEX_DEPLOY_HOME}/scripts/install-gateway-timezone.sh" ]]; then
+    if ! grep -q '^HERMES_TIMEZONE=' "${REPO_DIR}/.env" 2>/dev/null; then
+      unset HERMES_TIMEZONE
+    fi
+    bash "${CORTEX_DEPLOY_HOME}/scripts/install-gateway-timezone.sh" 2>&1 | sed 's/^/    /' || \
+      warn "  install-gateway-timezone.sh failed (non-fatal)"
   fi
 
   # Per-provider request timeouts (deepseek hang class fix 2026-08-06) —

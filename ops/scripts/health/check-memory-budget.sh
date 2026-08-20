@@ -8,6 +8,15 @@
 #    - Silent when under threshold → no noise
 #    - --report forces output regardless
 #
+
+# Timezone-aware timestamp: honors HERMES_TIMEZONE (IANA), else system TZ.
+ts() {
+  if [[ -n "${HERMES_TIMEZONE:-}" ]]; then
+    TZ="${HERMES_TIMEZONE}" date '+%Y-%m-%d %H:%M %Z'
+  else
+    date '+%Y-%m-%d %H:%M %Z'
+  fi
+}
 #  Usage:
 #    bash check-memory-budget.sh              # Silent when healthy
 #    bash check-memory-budget.sh --report     # Always print
@@ -97,7 +106,7 @@ check_file() {
 }
 
 # ── Main ───────────────────────────────────────────────────
-TIMESTAMP=$(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M KST')
+TIMESTAMP=$(ts)
 echo ""
 echo -e "${BOLD}━━━ Memory Budget Check  [${TIMESTAMP}]━━━${RESET}"
 echo ""

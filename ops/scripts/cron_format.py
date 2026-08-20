@@ -23,7 +23,14 @@ Usage:
 
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from typing import Optional
+
+try:
+    from hermes_tz import format_timestamp as _fmt_ts
+except ImportError:
+    def _fmt_ts(fmt: str = "%Y-%m-%d %H:%M %Z") -> str:
+        return datetime.now().astimezone().strftime(fmt)
 
 
 class CronFormat:
@@ -36,10 +43,8 @@ class CronFormat:
         self._started = False
 
     def _timestamp(self) -> str:
-        """Return KST timestamp."""
-        now = datetime.now(timezone.utc).astimezone()
-        kst = now.astimezone(timezone(timedelta(hours=9))) if not now.tzinfo else now
-        return kst.strftime("%Y-%m-%d %H:%M KST")
+        """Return configured-TZ timestamp (HERMES_TIMEZONE, else system local)."""
+        return _fmt_ts("%Y-%m-%d %H:%M %Z")
 
     def header(self, custom: Optional[str] = None) -> "CronFormat":
         """Add header line + separator."""
@@ -113,7 +118,6 @@ class CronFormat:
 
 # ── Timezone helper for import ──────────────────────────────
 from datetime import timedelta
-from typing import Optional
 
 
 # ── Standalone usage ───────────────────────────────────────

@@ -42,7 +42,7 @@ try:
     from hermes_tz import format_timestamp
 except ImportError:
     def format_timestamp(fmt: str) -> str:
-        return datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
+        return datetime.now().astimezone().strftime(fmt)
 
 
 HOME = Path.home()

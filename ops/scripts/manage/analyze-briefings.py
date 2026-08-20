@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 from datetime import datetime, timedelta
+from hermes_tz import format_timestamp
 
 
 CRON_OUTPUT_DIR = os.path.expanduser("~/.hermes/cron/output/21d92b65a833")
@@ -256,7 +257,7 @@ def update_cron_prompt(recommendations):
 
 def main():
     print("📊 Weekly Briefing Quality Analysis")
-    print(f"   Ran at: {datetime.now().strftime('%Y-%m-%d %H:%M KST')}")
+    print(f"   Ran at: {format_timestamp('%Y-%m-%d %H:%M %Z')}")
     print(f"   Analyzing briefings from last 7 days\n")
     
     analysis = analyze_all_briefings()

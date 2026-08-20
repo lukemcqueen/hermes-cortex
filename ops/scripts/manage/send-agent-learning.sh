@@ -8,6 +8,15 @@
 #  Sends with status=read (informational, not actionable).
 #
 #  Schedule: cron name=agent-learning-sender schedule="0 */6 * * *"
+
+# Timezone-aware timestamp: honors HERMES_TIMEZONE (IANA), else system TZ.
+ts() {
+  if [[ -n "${HERMES_TIMEZONE:-}" ]]; then
+    TZ="${HERMES_TIMEZONE}" date '+%Y-%m-%d %H:%M %Z'
+  else
+    date '+%Y-%m-%d %H:%M %Z'
+  fi
+}
 #            script=send-agent-learning.sh no_agent=true deliver=local
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -104,7 +113,7 @@ fi
 # ── Step 4: Build message ──
 BODY="Agent: ${AGENT_NAME}
 Host: $(hostname)
-Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+Time: $(ts)
 
 ${SNIPPETS}"
 

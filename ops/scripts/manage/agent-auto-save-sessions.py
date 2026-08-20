@@ -7,11 +7,12 @@ import sqlite3
 import subprocess
 import sys
 from datetime import datetime, timezone, timedelta
+from hermes_tz import get_timezone
 
 HERMES_DB = os.path.expanduser("~/.hermes/state.db")
 SESSION_WINDOW_HOURS = 72  # how far back to consider "active"
 
-KST = timezone(timedelta(hours=9))
+KST = get_timezone()
 NOW = datetime.now(KST)
 NOW_TS = NOW.timestamp()
 
@@ -19,7 +20,7 @@ NOW_TS = NOW.timestamp()
 def kst(ts: float) -> str:
     """Format unix timestamp as KST string."""
     dt = datetime.fromtimestamp(ts, tz=KST)
-    return dt.strftime("%Y-%m-%d %H:%M KST")
+    return dt.strftime("%Y-%m-%d %H:%M %Z")
 
 
 def kst_slug() -> str:

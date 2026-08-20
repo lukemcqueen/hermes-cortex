@@ -48,9 +48,7 @@ NOW = datetime.now().astimezone()
 
 def _cron_ts(name: str) -> str:
     """Return non-LLM cron prefix: [YYYY-MM-DD HH:MM KST] <name>:"""
-    kst = datetime.now(timezone(timedelta(hours=9))).strftime(
-        "[%Y-%m-%d %H:%M KST]"
-    )
+    kst = format_timestamp("[%Y-%m-%d %H:%M %Z]")
     return f"{kst} {name}:"
 CORTEX_DEPLOY_HOME = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex"))
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))

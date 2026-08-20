@@ -13,6 +13,16 @@ description: >
 
 Every LLM-driven cron delivery must follow this exact structure.
 
+## TIMEZONE RULE — READ FIRST
+
+The header timestamp must use the **host's configured timezone** — never a
+hardcoded label. The timezone comes from `HERMES_TIMEZONE` (IANA name, e.g.
+`Asia/Seoul`) or, when unset, the system local time. To get the exact header
+value, run `date '+%Y-%m-%d %H:%M %Z'` (or `date '+%H:%M %Z'` for time-only)
+and use its output verbatim — the `%Z` abbreviation (KST, UTC, EST, …) follows
+the configured timezone automatically. The `KST` in the examples below is
+illustrative: substitute whatever `%Z` returns on this host.
+
 ## The Template (copy this structure exactly)
 
 Use your cron's name, ID, and content. Keep everything else (dashes, colons, spacing, line breaks) identical.

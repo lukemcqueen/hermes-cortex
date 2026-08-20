@@ -17,6 +17,11 @@ import os
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Any, cast
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # Python 3.8 fallback (Hermes requires 3.9+)
+    ZoneInfo = None  # type: ignore[assignment]
+
 # Common timezone offsets (hours from UTC)
 # NOTE: CST is ambiguous (China Standard +8 vs Central US -6).
 # We use unambiguous keys. For China Standard Time, prefer "CNST".
@@ -73,7 +78,7 @@ IANA_OFFSETS = {
 }
 
 
-def get_timezone() -> timezone:
+def get_timezone() -> "Any":
     """
     Get timezone object based on HERMES_TIMEZONE env var or system default.
     
@@ -83,7 +88,9 @@ def get_timezone() -> timezone:
     3. Fallback to UTC
     
     Returns:
-        datetime.timezone object
+        datetime.tzinfo object (ZoneInfo for IANA names, else fixed-offset
+        timezone). Both are tzinfo subclasses — datetime.now(tz) works with
+        either.
     """
     tz_spec = os.environ.get("HERMES_TIMEZONE", "").strip()
     
@@ -105,7 +112,14 @@ def get_timezone() -> timezone:
     # Check IANA names (Asia/Seoul, America/New_York, etc.)
     if tz_spec in IANA_OFFSETS:
         offset_hours = IANA_OFFSETS[tz_spec]
-        # Use the IANA name as the timezone name
+        # Prefer zoneinfo when available: it renders the proper abbreviation
+        # (%Z → "KST" for Asia/Seoul) instead of the raw IANA name, and is
+        # DST-aware. Fall back to a fixed-offset tz named after the IANA name.
+        if ZoneInfo is not None:
+            try:
+                return ZoneInfo(tz_spec)
+            except Exception:
+                pass  # fall through to fixed offset
         return timezone(timedelta(hours=offset_hours), tz_spec)
     
     # Try to parse offset format: "+0900", "-0500", "UTC+9", "UTC-5"

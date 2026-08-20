@@ -31,6 +31,7 @@ import sys
 import time
 import urllib.request
 from datetime import datetime, timezone, timedelta
+from hermes_tz import format_timestamp
 from pathlib import Path
 from typing import Optional
 
@@ -270,8 +271,7 @@ def build_snapshot() -> tuple[str, str]:
     previous run and prints only when it changed (silent-when-clean).
     """
     agents = _get_agents()
-    kst = timezone(timedelta(hours=9))
-    ts = datetime.now(kst).strftime("%a %H:%M KST")
+    ts = format_timestamp("%a %H:%M %Z")
     lines = [f"━━━ **Agent Health** — {ts} ━━━"]
 
     statuses: list[str] = []

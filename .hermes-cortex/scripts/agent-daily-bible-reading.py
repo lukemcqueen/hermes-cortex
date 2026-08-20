@@ -32,7 +32,7 @@ HOME = Path.home()
 SOUL_MD = HOME / ".hermes" / "SOUL.md"
 BRAIN_BIBLE = lambda agent: HOME / "brain" / agent / "bible"
 OLLAMA_URL = "http://localhost:11434/api/chat"
-KST = timezone.utc  # We'll just note KST in the output
+KST = timezone.utc  # DEPRECATED — unused; dates use system local / HERMES_TIMEZONE
 
 # ── Cycle tracking ─────────────────────────────────────────────
 CYCLE_RE = re.compile(r"<!-- Bible Cycle:\s*(\d+)\s*-->")

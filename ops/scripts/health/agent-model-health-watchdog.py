@@ -35,6 +35,7 @@ import sys
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone, timedelta
+from hermes_tz import format_timestamp
 
 from hermes_models import get_model
 
@@ -48,9 +49,7 @@ DEFAULT_JUDGE_MODEL = "qwen2.5:3b"
 
 def _cron_ts(name: str) -> str:
     """Return non-LLM cron prefix: [YYYY-MM-DD HH:MM KST] <name>:"""
-    kst = datetime.now(timezone(timedelta(hours=9))).strftime(
-        "[%Y-%m-%d %H:%M KST]"
-    )
+    kst = format_timestamp("[%Y-%m-%d %H:%M %Z]")
     return f"{kst} {name}:"
 
 

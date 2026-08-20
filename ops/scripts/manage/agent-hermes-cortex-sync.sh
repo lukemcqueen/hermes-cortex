@@ -3,6 +3,15 @@
 #
 # Watchdog pattern:
 #   Empty stdout → silent (already up-to-date)
+
+# Timezone-aware timestamp: honors HERMES_TIMEZONE (IANA), else system TZ.
+ts() {
+  if [[ -n "${HERMES_TIMEZONE:-}" ]]; then
+    TZ="${HERMES_TIMEZONE}" date '+%Y-%m-%d %H:%M %Z'
+  else
+    date '+%Y-%m-%d %H:%M %Z'
+  fi
+}
 #   Text output  → delivered (updated or error)
 #
 # Schedule: daily (recommended 22:33 KST, 10 min after hermes-update)
@@ -11,15 +20,15 @@ set -euo pipefail
 CORTEX_REPO="$HOME/hermes-cortex"
 
 if [ ! -d "$CORTEX_REPO" ]; then
-    echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') cortex-sync] Repo not found at $CORTEX_REPO"
+    echo "[$(ts) cortex-sync] Repo not found at $CORTEX_REPO"
     exit 1
 fi
 
 cd "$CORTEX_REPO"
 
 # Use the same strategy as the working monitor script - assert repo exists and log what's happening
-log()  { echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') cortex-sync] $*"; }
-stash_pop() { if $STASHED; then git stash pop 2>&1 | while IFS= read -r line; do echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') cortex-sync] $line"; done || true; fi }
+log()  { echo "[$(ts) cortex-sync] $*"; }
+stash_pop() { if $STASHED; then git stash pop 2>&1 | while IFS= read -r line; do echo "[$(ts) cortex-sync] $line"; done || true; fi }
 
 # Stash any uncommitted changes before fetch/rebase
 STASHED=false
@@ -31,7 +40,7 @@ fi
 
 FETCH_OUTPUT=$(timeout 12 git fetch origin 2>&1) || {
     FETCH_EXIT=$?
-    CTS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
+    CTS=$(ts)
     if [ "$FETCH_EXIT" -eq 124 ]; then
         echo "[$CTS cortex-sync] git fetch timed out after 12s, will retry next cycle"
         stash_pop
@@ -61,7 +70,7 @@ fi
 # explicitly below with its own generous budget.
 PULL_OUTPUT=$(GIT_EDITOR=true SKIP_POST_MERGE=1 timeout 20 git pull --rebase origin main 2>&1) || {
     PULL_EXIT=$?
-    CTS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
+    CTS=$(ts)
     if [ "$PULL_EXIT" -eq 124 ]; then
         echo "[$CTS cortex-sync] git pull --rebase timed out after 20s, will retry next cycle"
         stash_pop
@@ -84,7 +93,7 @@ stash_pop
 # mid-flight at 20s, erroring the cron on every merge (v3: 2026-08-07).
 DEPLOY_OUTPUT=$(timeout 600 bash "$CORTEX_REPO/ops/scripts/cortex-update.sh" 2>&1) || {
     DEPLOY_EXIT=$?
-    CTS=$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')
+    CTS=$(ts)
     echo "[$CTS cortex-sync] cortex-update.sh failed (exit $DEPLOY_EXIT)"
     echo "[$CTS cortex-sync] $(echo "$DEPLOY_OUTPUT" | tail -20)"
     exit 1
@@ -100,4 +109,4 @@ if [ -f "$SKILLS_TEMPLATE" ]; then
     fi
 fi
 
-echo "[$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST') cortex-sync] hermes-cortex updated, tools re-synced."
+echo "[$(ts) cortex-sync] hermes-cortex updated, tools re-synced."

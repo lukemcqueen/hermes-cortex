@@ -30,6 +30,7 @@ import json
 import sqlite3
 import sys
 from datetime import datetime, timezone, timedelta
+from hermes_tz import format_timestamp
 from pathlib import Path
 
 HOME = Path.home()
@@ -174,7 +175,7 @@ def main():
         for r in results:
             if r["over_budget"] or r["near_budget"]:
                 if not any_alert:
-                    ts = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
+                    ts = format_timestamp("%Y-%m-%d %H:%M %Z")
                     print(f"[{ts}] agent-budget-enforcer watchdog:")
                     any_alert = True
                 icon = "🔴" if r["over_budget"] else "🟡"
