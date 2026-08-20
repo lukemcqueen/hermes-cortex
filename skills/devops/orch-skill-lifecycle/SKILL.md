@@ -299,6 +299,10 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   the agent didn't report** — recover the body from the archive API
   (`/api/pgmq/archives/inbox_orchestrator?limit=N&since_minutes=10080`), which
   retains every consumed message regardless of which orchestrator staged it.
+  **Auth note (verified 2026-08-21):** the archive HTTP endpoint sits behind
+  nginx Basic auth — a bare `curl` returns 401, not JSON. The reliable
+  read-side path is psql on the shared-bus mirror (archives replicate there):
+  `docker exec mycortex-postgres psql -U mycortex -d mycortex -c "SELECT ... FROM bus.archives WHERE jsonb_typeof(body::jsonb)='object' AND (body::jsonb #>> '{}')::jsonb->>'subject' LIKE 'Learning Report%' ..."` (user is `mycortex`, not `postgres`).
 - **Don't patch the same skill twice in one run** — deduplicate before acting
 - **Don't upstream fleet skills that already exist** — check repo + Hermes bundle
 - **Don't modify SOUL.md for workflow lessons** — skills are for workflow, SOUL.md is for principles
