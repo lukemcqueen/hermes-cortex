@@ -113,7 +113,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (116 skills)
+## Devops (117 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -151,6 +151,7 @@ their domain.
 | `cron-quality-gate` | 1.0.0 | Prevents LLM cron jobs from delivering garbage with a self-check quality gate and automated watchdog. | `skill_view(name='cron-quality-gate')` |
 | `cron-request-protocol` | 1.3.0 | Protocol for non-orchestrator agents to request cron job creation, updates, or removal via the agent inbox.... | `skill_view(name='cron-request-protocol')` |
 | `cron-script-naming-reconciliation` | 1.1.0 | Reconcile cron/script names, prefixes, skill versions. | `skill_view(name='cron-script-naming-reconciliation')` |
+| `cron-timezone-env` | 1.0.0 | Cron timestamps follow HERMES_TIMEZONE env, never hardcoded. | `skill_view(name='cron-timezone-env')` |
 | `cross-agent-design` | 1.0.0 | Before designing any cross-agent feature, protocol, or workflow: trace the receiving agent's end-to-end con... | `skill_view(name='cross-agent-design')` |
 | `cross-repo-sync` | 1.0.0 | Update the same file (config, docs, boilerplate) across multiple project repos in a single coordinated pass... | `skill_view(name='cross-repo-sync')` |
 | `daily-bible-reading` | 1.0.0 | Daily cron job that reads one book of the Bible, extracts 3 lessons with practical application to server op... | `skill_view(name='daily-bible-reading')` |
