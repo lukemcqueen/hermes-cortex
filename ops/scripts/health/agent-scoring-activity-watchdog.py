@@ -12,6 +12,8 @@ import os
 import sys
 from datetime import datetime, timezone, timedelta
 
+from state_tracker import StateTracker
+
 
 def _cron_ts(name: str) -> str:
     """Return non-LLM cron prefix: [YYYY-MM-DD HH:MM KST] <name>:"""
@@ -66,12 +68,17 @@ def main():
         expected = 0
 
     if count < expected:
-        print(
+        msg = (
             f"{_cron_ts('scoring-activity-watchdog')} ⚠️  Scoring activity low: {count} cycle(s) today "
             f"(expected ≥{expected} by {hour:02d}:00). "
             f"Recent changes may be un-scored."
         )
-        return 1
+        # Dedup (2026-08-20): don't re-deliver the identical alert on both
+        # daily runs while activity stays low — fire only when it changes.
+        if StateTracker("scoring-activity").evaluate(msg, has_issues=True) != "silent":
+            print(msg)
+            return 1
+        return 0  # duplicate — silent (empty stdout, exit 0, NOT an error alert)
 
     # Silent on healthy
     alerts = []
@@ -136,9 +143,15 @@ def main():
 
     if alerts:
         ts = _cron_ts("scoring-activity-watchdog")
-        print(f"{ts} {' '.join(alerts)}")
-        return 1
+        msg = f"{ts} {' '.join(alerts)}"
+        # Dedup: identical alert text stays silent on repeat runs.
+        if StateTracker("scoring-activity").evaluate(msg, has_issues=True) != "silent":
+            print(msg)
+            return 1
+        return 0
 
+    # Healthy — clear prior alert state so a later identical alert re-fires.
+    StateTracker("scoring-activity").evaluate("healthy", has_issues=False)
     return 0
 
 

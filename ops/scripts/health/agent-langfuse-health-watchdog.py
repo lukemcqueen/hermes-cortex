@@ -19,6 +19,8 @@ import urllib.request
 from pathlib import Path
 from typing import Optional
 
+from state_tracker import StateTracker
+
 COMPOSE_DIR = str(Path.home() / "langfuse")
 WEB_URL = "http://localhost:3000"
 TIMEOUT = 10
@@ -191,12 +193,22 @@ def main():
             failures.append(f"🛢️ ClickHouse:\n{ch_err}")
 
     if failures:
+        # Dedup (2026-08-20): identical failure text must not re-deliver
+        # every hour while the outage persists — fire only when it changes
+        # (Luke: unchanged cron output posted repeatedly).
+        action = StateTracker("langfuse-health").evaluate(
+            "\n".join(failures), has_issues=True
+        )
+        if action == "silent":
+            sys.exit(0)
         for f in failures:
             print(f, flush=True)
         print(f"@{time.strftime('%H:%M')}", flush=True)
         sys.exit(1)
 
-    # Healthy — silent exit (no output = no notification)
+    # Healthy — silent exit (no output = no notification). Clear prior error
+    # state so a later identical failure re-alerts.
+    StateTracker("langfuse-health").evaluate("healthy", has_issues=False)
     sys.exit(0)
 
 

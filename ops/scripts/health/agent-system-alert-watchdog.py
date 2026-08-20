@@ -525,9 +525,13 @@ def main():
 
     output_parts.append("")
 
-    # Track state — prevent duplicate alerts
+    # Track state — prevent duplicate alerts. Fingerprint the STABLE alert
+    # lines only (not the timestamped output_parts) so an unchanged alert set
+    # suppresses re-delivery; a changed set re-fires.
     st = StateTracker("system-alert")
-    st.evaluate("\n".join(output_parts), has_issues=True)
+    action = st.evaluate("\n".join(alerts), has_issues=True)
+    if action == "silent":
+        return
 
     print("\n".join(output_parts))
 

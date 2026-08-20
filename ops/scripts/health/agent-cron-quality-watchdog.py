@@ -297,6 +297,16 @@ def main() -> None:
         # Silent — no news is good news
         sys.exit(0)
 
+    # Dedup (2026-08-20): an identical issue set must not re-deliver the same
+    # report every 10-min tick (Luke: unchanged cron output posted to Telegram
+    # repeatedly). Fire only when the issue set CHANGES.
+    from state_tracker import StateTracker
+    action = StateTracker("cron-quality").evaluate(
+        "\n".join(sorted(issues)), has_issues=True
+    )
+    if action == "silent":
+        sys.exit(0)
+
     # Build a compact report
     now = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M KST")
     print(f"## Cron Quality Watchdog \u2014 {now}")
