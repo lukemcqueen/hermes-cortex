@@ -116,6 +116,27 @@ _PATH_CTX_HINTS = {
     "docs":      "documentation-auditing",
     "reference": "documentation-auditing",
 }
+# YAML is ambiguous: only Docker compose files gate on docker-management.
+# General YAML (config/scrapers.yml, workflow definitions, etc.) has no
+# dedicated skill — same split as survey-before-action Phase 0a. Detection
+# is content-agnostic: look for docker/compose markers in the path.
+_YAML_DOCKER_MARKERS = ("docker", "compose")
+
+
+def _yaml_domain_skill(path: str, fname: str) -> tuple:
+    """Return the domain-skill gate for a .yml/.yaml file, or (None, None).
+
+    Only files whose path or name carries a docker/compose marker (e.g.
+    docker-compose.yml, compose.yaml, deploy/docker-compose.*.yml) gate on
+    docker-management. Everything else (config/scrapers.yml, GitHub
+    workflows, mkdocs.yml, …) is a known gap — no dedicated skill — so no
+    skill load is demanded (Titus false positive 2026-08-20:
+    config/scrapers.yml was gated as if it were a compose file).
+    """
+    low = f"{path}/{fname}".lower()
+    if any(m in low for m in _YAML_DOCKER_MARKERS):
+        return _EXT_DOMAIN_SKILLS[".yml"]
+    return None, None
 # Tracking: {session_id: {ext_or_filename: warning_count}}
 _domain_warnings: dict = {}
 # Previous action context: {session_id: {"last_action": str}}
@@ -183,6 +204,8 @@ def _detect_domain_skill_needed(tool_name: str, args: dict) -> tuple:
                     "Skill authoring conventions, frontmatter validation, PII guardrails")
         ext = Path(fname).suffix.lower() if Path(fname).suffix else ""
         if ext and ext in _EXT_DOMAIN_SKILLS and _EXT_DOMAIN_SKILLS[ext]:
+            if ext in (".yml", ".yaml"):
+                return _yaml_domain_skill(fpath, fname)
             entry = _EXT_DOMAIN_SKILLS[ext]
             return entry[0], entry[1]
         return ("hermes-agent-skill-authoring",
@@ -220,6 +243,10 @@ def _detect_domain_skill_needed(tool_name: str, args: dict) -> tuple:
 
     # 3. Extension match
     if ext in _EXT_DOMAIN_SKILLS:
+        # YAML is ambiguous — only Docker compose files demand the
+        # docker-management skill; general YAML is a known gap (no gate).
+        if ext in (".yml", ".yaml"):
+            return _yaml_domain_skill(path, fname)
         entry = _EXT_DOMAIN_SKILLS[ext]
         if entry is None:
             return None, None  # known gap, no dedicated skill
