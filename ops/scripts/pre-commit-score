@@ -424,6 +424,64 @@ else
   IS_CORTEX_REPO=0
 fi
 
+# ── TDD Iron-Law gate (Titus proposal 2026-08-20) ─────────────
+# Structural blocker for code-before-test. Prevents a commit from
+# introducing NEW production code without a test file in the SAME commit,
+# but ONLY in repos that have test infrastructure (tests/ dir or any
+# test_*.py/*_test.py at HEAD) — otherwise the TDD skill's own exception
+# applies ("projects with zero test infrastructure — ask once").
+#
+# Scope: fires on ADDED code files only (--diff-filter=A). Modified files
+# are NOT gated: the fleet's own cron/ops scripts are dogfood-verified
+# (doctor Script run evidence) rather than unit-tested, and re-testing
+# every modification would flood the fleet with false positives. New
+# functionality in a test-capable repo is the unambiguous violation.
+# Fail-closed: no bypass flag (same policy as SKIP_SCORE — the pre-commit
+# sentinel catches --no-verify and logs it).
+_TDD_CODE_EXTS_RE="\\.(py|ts|tsx|js|jsx|mjs|cjs|go|rs|rb|java|kt|swift|c|cpp|php)$"
+_TDD_ADDED=$(git diff --cached --name-only --diff-filter=A 2>/dev/null || true)
+_TDD_NEW_CODE=""
+if [[ -n "$_TDD_ADDED" ]]; then
+  while IFS= read -r _f; do
+    [[ -z "$_f" ]] && continue
+    # Skip test files and test paths — they ARE the RED step
+    _lowf=$(echo "$_f" | tr '[:upper:]' '[:lower:]')
+    echo "$_lowf" | grep -qE "(^|/)(tests?|spec|__test__)/" && continue
+    _base=$(basename "$_lowf")
+    echo "$_base" | grep -qE "^(test_|test-|spec\\.)|(_test|_spec|_test)\\.|\\.test\\.|\\.spec\\." && continue
+    echo "$_lowf" | grep -qE "$_TDD_CODE_EXTS_RE" && _TDD_NEW_CODE="${_TDD_NEW_CODE}${_f}\n"
+  done <<< "$_TDD_ADDED"
+fi
+if [[ -n "$_TDD_NEW_CODE" ]]; then
+  # Repo has test infrastructure? tests/ dir at repo root, or any test file at HEAD
+  _HAS_TEST_INFRA=0
+  if [[ -d "$REPO_ROOT/tests" ]] || [[ -d "$REPO_ROOT/test" ]] || [[ -d "$REPO_ROOT/spec" ]]; then
+    _HAS_TEST_INFRA=1
+  elif git ls-tree -r --name-only HEAD 2>/dev/null | grep -qE "(^|/)(tests?|spec)/|(^|/)(test_|.*_test)\\.(py|ts|js|go|rb|java)$"; then
+    _HAS_TEST_INFRA=1
+  fi
+  if [[ "$_HAS_TEST_INFRA" -eq 1 ]]; then
+    # Any test file staged in this commit?
+    _STAGED_TEST=$(git diff --cached --name-only 2>/dev/null | grep -E "(^|/)(tests?|spec|__test__)/|(^|/)(test_|.*_test)\\.(py|ts|js|go|rb|java)$" | head -1 || true)
+    if [[ -z "$_STAGED_TEST" ]]; then
+      echo ""
+      echo "❌  TDD IRON LAW VIOLATION — new production code without a test"
+      echo "    This repo has test infrastructure (tests/ present), but this commit"
+      echo "    adds production code with no test file:"
+      echo "$_TDD_NEW_CODE" | sed '/^$/d' | sed 's/^/      - /'
+      echo ""
+      echo "    Iron Law: NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST."
+      echo "    Write the failing test (RED), watch it fail, then the code (GREEN),"
+      echo "    and include the test file in this same commit."
+      echo ""
+      echo "    This gate is structural and cannot be bypassed (--no-verify is"
+      echo "    logged by the sentinel and counts against your bypass budget)."
+      echo ""
+      exit 1
+    fi
+  fi
+fi
+
 # ── Reflexion gate: verify skill_view('reflexion-check') was called this session ──
 # Query the session DB for proof the agent actually loaded the skill — not just
 # a file-presence check. The governance lock carries the session_id.

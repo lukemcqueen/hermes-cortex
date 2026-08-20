@@ -17,7 +17,7 @@ author: Titus (ported from AgentKore)
 2. **Inspect before acting** — read actual files, never guess
 3. **One change at a time** — never batch unrelated edits
 4. **Verify with real commands** — never claim success without evidence
-5. **Test new code before declaring done** — every new endpoint, component, or page gets a test written and passed before the user hears "ready". Running pre-existing tests alone does not count as verification for new code.
+5. **Test FIRST — no production code without a failing test (TDD Iron Law)** — write the failing test, run it, WATCH IT FAIL (RED), then write minimal code to pass (GREEN). The gate is at the CODE-WRITE step, not the commit step. If you catch yourself writing implementation before a failing test exists, STOP, delete the untested code, restart test-first. A test written after the code passes immediately and proves nothing.
 
 6. **Never ask "do you want tests?"** — testing is mandatory for every code change. Use the Test Decision Matrix in the `change-test-loop` skill to automatically determine what kind of test to write. Never punt this decision to the user. The only acceptable question is about projects with zero test infrastructure — and ask that once, not per-task.
 7. **Never push to main** — every change starts with `git checkout -b titus/<slug>`. Push to that branch only. The auto-PR workflow creates a draft PR for Moses to review and merge.
@@ -30,12 +30,12 @@ author: Titus (ported from AgentKore)
 14. **Never ask permission for obvious fixes** — if something is broken and you know how to fix it, fix it. Do not ask "should I fix X?" when X is clearly broken. Only stop for destructive operations (data loss, security, privilege escalation) or genuine ambiguity about intent. For everything else: fix first, report after.
 15. **Cron fix verification — run through the scheduler** — `python3 script.py` tests code but does NOT update the cron scheduler's `last_status`. The doctor reads the scheduler's status, not the script exit code. Always run `cronjob action='run' job_id=<id>` after a cron fix and verify the doctor clears.
 16. **No PII in the repo** — this repo is public (MIT). Never commit real domain names, real user home paths, email addresses, IP addresses, or server hostnames. Use `your-domain.com`, `example.com`, `$HOME`, `~`, or `/home/user/` instead. Enforcement: the pre-commit `secret-leak-detector.sh` BLOCKS real email addresses in the public repo (placeholder domains pass) and warns on home paths, non-placeholder URL domains, and public IPs; the enforcer PII gate blocks real emails in `skill_manage` and shared-surface writes before they land. Emails in non-cortex repos warn but never block.
-17. **Test ALL code changes end-to-end before declaring done** — every code fix MUST be verified with actual tool output BEFORE the commit is pushed. A fix that was never tested is indistinguishable from no fix at all. The check before every commit: "Did I run the changed code path and see it work with my own tool output?" If the answer is no — stop, test, then commit. The pre-commit hook's self-test catches this automatically for hook changes, but YOU must apply the same rigor to every other file you change.
+17. **Test ALL code changes end-to-end before declaring done** — every code fix MUST be verified with actual tool output BEFORE the commit is pushed. A fix that was never tested is indistinguishable from no fix at all. The failing test MUST have existed and failed (RED) BEFORE the implementation was written (GREEN). The check before every commit: "Did I watch the test fail (RED), then write code and watch it pass (GREEN)?" If either part is missing — stop, restart the loop. The pre-commit hook's self-test catches this automatically for hook changes, but YOU must apply the same rigor to every other file you change.
 
 ## Flow
 
 ```
-understand → inspect → plan → change → verify → report
+understand → inspect → plan → TEST (write failing test, WATCH IT FAIL — RED) → change (minimal code to pass — GREEN) → verify → report
 ```
 
 ## Report Format (MANDATORY)
@@ -73,4 +73,4 @@ SOUL.md is the canonical reference for tone and conduct. When in doubt, review i
 
 ## Anti-Patterns
 
-Guessing | multi-change | skip verify | mask failures | "should work" | simulate outputs | code before understanding | coarse language
+Guessing | multi-change | skip verify | mask failures | "should work" | simulate outputs | code before understanding | coarse language | test-after-code | commit-without-red-green

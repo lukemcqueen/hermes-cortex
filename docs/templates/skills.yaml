@@ -31,6 +31,8 @@ always:
     why: Supporting pre-flight checks — git search, Hermes boundary, deploy verification
   - name: agent-contract
     why: Non-negotiable execution rules — honesty, verification, citations
+  - name: test-driven-development
+    why: Iron Law — no production code without a failing test first. Always-loaded so test-first is structurally first, not an afterthought (Titus 2026-08-20)
 
 on_task:
   debug:

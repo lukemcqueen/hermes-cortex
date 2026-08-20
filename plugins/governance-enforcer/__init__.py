@@ -137,6 +137,48 @@ def _yaml_domain_skill(path: str, fname: str) -> tuple:
     if any(m in low for m in _YAML_DOCKER_MARKERS):
         return _EXT_DOMAIN_SKILLS[".yml"]
     return None, None
+
+
+# ── TDD Iron-Law co-gate ────────────────────────────────
+# Titus 2026-08-20: the TDD rule existed (skill + change-checklist +
+# agent-contract) yet code kept being written before tests — because rules
+# are conditions agents recite, not gates that bite. Structural fix:
+# writing a PRODUCTION CODE file (non-test path, code extension) demands
+# the test-driven-development skill loaded — same educate→block pattern as
+# the domain gate. The Iron Law then sits in working memory BEFORE the
+# first code write of the session. Cron/bg sessions are exempt (same
+# rationale as the domain gate: they cannot legitimately load skills).
+# Test files themselves, config, docs, and known-gap extensions are NOT
+# gated — writing tests is the RED step, not the violation.
+_TDD_CODE_EXTS = {
+    ".py", ".sh", ".bash", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
+    ".go", ".rs", ".rb", ".java", ".kt", ".swift", ".c", ".cpp", ".h", ".php",
+}
+_TDD_TEST_PATH_MARKERS = ("/tests/", "/test/", "/spec/", "__test__")
+
+
+def _tdd_required(tool_name: str, args: dict) -> tuple:
+    """Return (True, fname) if writing a production-code file, else (False, '').
+
+    Only write_file/patch of a code-extension file NOT under a test path
+    triggers the gate. skill_manage writes SKILL.md (already gated by the
+    skill-authoring domain) and test-file writes are the RED step — exempt.
+    """
+    if tool_name not in ("write_file", "patch"):
+        return False, ""
+    path = args.get("path", "")
+    if not path:
+        return False, ""
+    low = path.lower()
+    if any(m in low for m in _TDD_TEST_PATH_MARKERS):
+        return False, ""
+    fname = Path(path).name
+    if fname.startswith("test_") or fname.startswith("test-") or "_test." in fname or ".test." in fname or ".spec." in fname or fname.startswith("spec."):
+        return False, ""
+    ext = Path(path).suffix.lower() if Path(path).suffix else ""
+    if ext not in _TDD_CODE_EXTS:
+        return False, ""
+    return True, fname
 # Tracking: {session_id: {ext_or_filename: warning_count}}
 _domain_warnings: dict = {}
 # Previous action context: {session_id: {"last_action": str}}
@@ -1094,6 +1136,47 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
     # sessions that cannot legitimately satisfy it.
     if _session_type(session_id) in ("cron", "bg"):
         return None
+
+    # ── TDD Iron-Law co-gate (2026-08-20) ──
+    # Production-code writes demand test-driven-development loaded FIRST —
+    # test-first becomes structurally first, not a recited rule. Same
+    # educate→block escalation as the domain gate below.
+    tdd_needed, tdd_fname = _tdd_required(tool_name, args)
+    if tdd_needed:
+        if "test-driven-development" not in _session_skills_loaded.get(session_id or "", set()):
+            if session_id not in _domain_warnings:
+                _domain_warnings[session_id] = {}
+            tdd_count = _domain_warnings[session_id].get("tdd-iron-law", 0)
+            _domain_warnings[session_id]["tdd-iron-law"] = tdd_count + 1
+            if tdd_count == 0:
+                # 1st offense: EDUCATE — block with a teaching message
+                msg = (
+                    f"💡 TDD IRON LAW REQUIRED\n\n"
+                    f"You are writing production code `{tdd_fname}` without "
+                    f"`test-driven-development` loaded.\n\n"
+                    f"**Iron Law: NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST.**\n\n"
+                    f"Load it and write the test first (RED), then the code (GREEN):\n"
+                    f"  skill_view(name='test-driven-development')\n\n"
+                    f"The write is blocked until you load the skill. "
+                    f"Read-only tools ARE available.\n"
+                )
+                return {"action": "block", "message": msg}
+            else:
+                # 2nd+ offense: BLOCK — you've been told
+                msg = (
+                    f"⛔ TDD IRON LAW REQUIRED\n\n"
+                    f"You have been warned {tdd_count} time(s) this session about writing "
+                    f"production code without `test-driven-development` loaded.\n\n"
+                    f"**Iron Law: NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST.**\n\n"
+                    f"Load the skill and write the failing test before the code:\n"
+                    f"  skill_view(name='test-driven-development')\n\n"
+                    f"After loading, retry the write. Read-only tools ARE still available.\n"
+                )
+                return {"action": "block", "message": msg}
+        else:
+            # TDD skill loaded — clear any prior warning
+            if session_id in _domain_warnings:
+                _domain_warnings[session_id].pop("tdd-iron-law", None)
 
     skill_name, why = _detect_domain_skill_needed(tool_name, args)
     if skill_name is None:
