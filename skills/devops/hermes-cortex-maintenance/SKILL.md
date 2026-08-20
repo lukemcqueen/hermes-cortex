@@ -98,6 +98,26 @@ cd ~/brain && gbrain import --recursive . 2>&1 | tail -5
 gbrain search "test query" | head
 ```
 
+## Langfuse cost tracking (3.206+) — pricing tiers, not legacy columns
+
+> **User directive (2026-08-11):** consult the repo guidance FIRST for any
+> Langfuse/ClickHouse work — `~/hermes-cortex/ops/install/deploy/README-langfuse-clickhouse.md`,
+> `docs/troubleshooting.md`, `deploy/patches/` — before reverse-engineering
+> the running containers. Caveat: `docs/troubleshooting.md` §23's
+> `INSERT INTO models (..., input_price, output_price, ...)` is stale for
+> 3.206+ — it produces no cost. Use the pricing-tier recipe below.
+
+Cost is NOT computed from legacy `models.input_price`/`output_price` columns in Langfuse 3.206+. The ingestion worker reads the `prices` + `pricing_tiers` tables. A model inserted with only the legacy columns yields `cost_details = {}` and `total_cost = NULL` — **silently, no error**. Recipe (prices are per-token USD; DeepSeek V4 Flash = $0.14/1M in, $0.28/1M out → 0.00000014 / 0.00000028):
+
+1. `INSERT INTO public."models"` (project_id NULL = global) with match_pattern like `(?i)^(deepseek-v4-flash)$`
+2. `INSERT INTO public.pricing_tiers` — id = `<model_id>_tier_default`, name 'Standard', is_default true, priority 0, conditions `'[]'::jsonb`
+3. `INSERT INTO public.prices` — usage_type `input`/`output` ONLY (never a `total` row — double-counts when usage carries input+output+total)
+4. Clear Redis model-match cache (`model-price-tiers:*` keys) + `docker restart langfuse-langfuse-worker-1` — a cached NOT_FOUND token survives worker restarts
+5. Backfill existing rows via ClickHouse `ALTER TABLE observations UPDATE cost_details = map(...), total_cost = ...` (async mutation; rows with `usage_details = {}` correctly stay NULL)
+6. Verify via ClickHouse (`WHERE name='cost-verify3'`), NOT the API list endpoint (loose trace_id filtering returns your own live session's rows)
+
+API field names in 3.206+: `costDetails`, `calculatedTotalCost` — NOT legacy `totalCost`. `/api/public/traces` requires `fromTimestamp` in 3.207+ (400 `InvalidRequestError` without it). Full SQL and the docker-compose sync recipe: `references/langfuse-cost-tracking-pricing-tiers.md`.
+
 ## Troubleshooting Common Issues
 
 | Symptom | Cause | Fix |
