@@ -514,9 +514,13 @@ def check_skills(res):
   always = data.get("always", [])
   on_task = data.get("on_task", {})
 
+  # Canonical 7 (consolidated 2026-08-20) — MUST stay in sync with
+  # docs/templates/skills.yaml `always:` and enforcer _REQUIRED_SKILLS.
+  # session-start-discipline → task-start, reasoning-patterns → agent-flow,
+  # cortex-preflight → survey-before-action, TDD promoted to base gate.
   required = [
-    "task-start", "agent-flow", "reasoning-patterns", "reflexion-check",
-    "change-checklist", "survey-before-action", "cortex-preflight", "agent-contract",
+    "task-start", "agent-flow", "reflexion-check", "change-checklist",
+    "survey-before-action", "agent-contract", "test-driven-development",
   ]
   always_names = {s.get("name") if isinstance(s, dict) else s for s in (always or [])}
   missing = [r for r in required if r not in always_names]

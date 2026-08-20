@@ -1,15 +1,17 @@
 ---
 name: agent-flow
 description: "Workflow router skill — classifies the incoming request into one of 12 patterns and dispatches to the correct tooling, output format, and checklist."
-version: 1.0.0
+version: 1.1.0
 category: software-development
 source: hermes-cortex
 author: Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
+aliases:
+  - reasoning-patterns
 metadata:
   hermes:
-    tags: [workflow, router, dispatch, patterns, code, debug, ui, api, db, data, pipeline, research, writing, review, planning]
+    tags: [workflow, router, dispatch, patterns, code, debug, ui, api, db, data, pipeline, research, writing, review, planning, reasoning]
     related_skills: [dev-plan, spike, change-test-loop, root-cause-debugging, code-review, subagent-driven-development, writing-plans, memory-architecture, codebase-design]
 ---
 
@@ -60,13 +62,27 @@ See `references/skill-discovery-rationale.md` for why this step exists and when 
 ## How to route
 
 1. Read the user's request.
-2. **Match the reasoning pattern first** — load `reasoning-patterns` and select:
+2. **Match the reasoning pattern first** — choose from the embedded table below
+   (the former `reasoning-patterns` skill was folded into this section on
+   2026-08-20; `aliases: [reasoning-patterns]` keeps old references working):
    - **Plan-Execute-Verify (default)** for most tasks — write a plan, execute steps, verify each
    - **ReAct** for debugging/exploration — reason, act, observe, repeat
    - **Reflexion** to self-critique before delivering (always pair with PEV or ReAct)
    - **Tree of Thoughts** for design trade-offs
    
    State your chosen pattern explicitly: *"Using Plan-Execute-Verify with Reflexion check."*
+
+   | Pattern | When to Use | Structure |
+   |---------|-------------|-----------|
+   | **Plan-Execute-Verify** | Default — most tasks | Write plan → execute steps → verify each step with tool output |
+   | **ReAct** | Debugging, exploration | Reason → Act (one tool call) → Observe → Repeat |
+   | **Reflexion** | Quality-critical work (add to any pattern) | Execute → Self-critique → Fix → Re-verify before delivering |
+   | **Tree of Thoughts** | Design decisions with trade-offs | Generate 3+ approaches → Evaluate each → Select best → Implement |
+
+   **How to choose:** start with Plan-Execute-Verify unless the task clearly
+   demands another; switch to ReAct when debugging or exploring; add Reflexion
+   for production code, security, or user-facing docs; use Tree of Thoughts for
+   architectural decisions where the first idea might not be the best.
 3. Then match the **workflow pattern** against trigger phrases below.
 4. Follow that pattern's toolset requirements, output format, and checklist.
 5. If the request spans multiple patterns (e.g., "design the API then build it"), prefix with planning:

@@ -19,11 +19,10 @@ grep -q "hermes-cortex" <<< "$filepath" && echo "OURS" || echo "CHECK FURTHER"
 
 - `~/.hermes/skills/workflow/task-start/*`
 - `~/.hermes/skills/software-development/session-manager/*`
-- `~/.hermes/skills/software-development/agent-flow/*`
-- `~/.hermes/skills/software-development/reasoning-patterns/*`
+- `~/.hermes/skills/software-development/agent-flow/*` (absorbed reasoning-patterns 2026-08-20)
 - `~/.hermes/skills/software-development/reflexion-check/*`
 - `~/.hermes/skills/software-development/agent-contract/*`
-- `~/.hermes/skills/survey-before-action/*`
+- `~/.hermes/skills/software-development/survey-before-action/*` (absorbed cortex-preflight 2026-08-20)
 - `~/.hermes/skills/software-development/change-checklist/*`
 
 ## Edit Freely (Our Skills)

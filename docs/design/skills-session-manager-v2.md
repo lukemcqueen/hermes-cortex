@@ -112,12 +112,11 @@ WRITE TOOLS BLOCKED — SKILLS MUST BE LOADED FIRST
 Required always-section skills — load all:
   1. skill_view('task-start')
   2. skill_view('agent-flow')
-  3. skill_view('reasoning-patterns')
-  4. skill_view('reflexion-check')
-  5. skill_view('change-checklist')
-  6. skill_view('survey-before-action')
-  7. skill_view('cortex-preflight')
-  8. skill_view('agent-contract')
+  3. skill_view('reflexion-check')
+  4. skill_view('change-checklist')
+  5. skill_view('survey-before-action')
+  6. skill_view('agent-contract')
+  7. skill_view('test-driven-development')
 
 ✅ Already loaded: [none | task-start, agent-flow, ...]
 

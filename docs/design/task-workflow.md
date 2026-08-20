@@ -358,8 +358,8 @@ JSON-RPC `initialize` + `tools/list` handshake per host type.
       repo/cwd, `source=bridge`, priority 2; caps + dedup preserved; 3 dream
       cron prompts updated to `dream-task-bridge.py`.
 - [ ] **AC-10 Session restore preserved:** `task-db.py pending` JSON shape
-      still consumed by session-start-discipline restore; `session_id`
-      round-trips; save-end archives completed.
+      still consumed by task-start restore (formerly session-start-discipline,
+      merged 2026-08-20); `session_id` round-trips; save-end archives completed.
 - [ ] **AC-11 Version-gated schema:** `tasks.schema_version` reflects v001;
       re-apply is a no-op; doctor hard-FAILs on missing schema (not silent).
 - [ ] **AC-12 Docs honest:** task-persistence skill (renamed, aliased),

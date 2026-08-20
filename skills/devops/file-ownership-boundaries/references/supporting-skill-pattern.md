@@ -10,8 +10,14 @@ When a Hermes default skill is missing functionality we need, **we do not edit t
 
 | Hermes default | Our supporting skill | Purpose |
 |----------------|---------------------|---------|
-| `survey-before-action` | `cortex-preflight` | Adds repo-specific checks (git search, Hermes boundary, deployment verification) |
+| `survey-before-action` | *(merged in 2026-08-20 — see note)* | Repo-specific checks (git search, Hermes boundary, deployment verification) were folded INTO survey-before-action; new supporting skills use a descriptive `cortex-*` name |
 | *(future)* | *(to be created)* | |
+
+> **Note (2026-08-20):** `cortex-preflight` was merged into `survey-before-action`
+> during the always-skill consolidation (10 → 7). The pattern below still
+> applies to NEW supporting skills — the merge was a dedup of an existing
+> supplement, not a repeal of the pattern. See
+> `survey-before-action` → "Repo-Specific Pre-Flight" section.
 
 ## Pattern Steps
 
@@ -20,7 +26,7 @@ When a Hermes default skill is missing functionality we need, **we do not edit t
 3. Create a new skill in `~/hermes-cortex/skills/<category>/cortex-<domain>/SKILL.md`
 4. Set `author: Moses (Hermes Cortex)` in the frontmatter
 5. Add the Hermes default to your skill's `related_skills` field
-6. Document in `cortex-preflight` or create a new `cortex-*` skill
+6. Document the new skill in its own SKILL.md — or, if the supplement is small and tightly coupled to an always-skill, propose folding it into that skill during the next curation pass
 7. Ensure the skill's SKILL.md has a "When to load" section explaining where it fits in the task sequence
 8. Deploy via `cortex-update.sh`
 
@@ -35,16 +41,6 @@ skill_view('task-start')
   → begin work
 ```
 
-## Example: cortex-preflight
-
-Created to supplement `survey-before-action`. Adds:
-- Check git for files committed but not deployed
-- Hermes boundary check (file ownership table)
-- Deployed copy verification
-- Agent type awareness
-- Stale deploy reference detection
-- Cross-agent impact check
-
 ## Example: task-persistence
 
 Created to supplement `session-manager` and `task-start`. Adds:
@@ -52,6 +48,21 @@ Created to supplement `session-manager` and `task-start`. Adds:
 - Session start/end protocol
 - Fleet-visible todo management
 - task-db.py CLI
+
+## Historical example: cortex-preflight (merged 2026-08-20)
+
+Created to supplement `survey-before-action`. Added:
+- Check git for files committed but not deployed
+- Hermes boundary check (file ownership table)
+- Deployed copy verification
+- Agent type awareness
+- Stale deploy reference detection
+- Cross-agent impact check
+
+All six checks now live inside `survey-before-action` under
+"Repo-Specific Pre-Flight (formerly cortex-preflight, merged 2026-08-20)".
+The skill dir was deleted; `aliases: [cortex-preflight]` keeps old
+references resolving.
 
 ## Pitfalls
 

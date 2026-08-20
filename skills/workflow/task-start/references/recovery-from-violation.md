@@ -7,13 +7,13 @@ If you caught yourself mid-session (or were corrected) for having called `begin_
 1. **Do not close the current lock yet** — closing it and re-opening doesn't fix the missing context. You can load skills at any point.
 
 2. **Load the missing always skills NOW** by calling `skill_view()` on each one you skipped:
+   - `skill_view('task-start')`
    - `skill_view('agent-flow')`
-   - `skill_view('reasoning-patterns')`
    - `skill_view('reflexion-check')`
    - `skill_view('change-checklist')`
    - `skill_view('survey-before-action')`
-   - `skill_view('cortex-preflight')`
    - `skill_view('agent-contract')`
+   - `skill_view('test-driven-development')`
 
 3. **Select reasoning pattern** — state it explicitly: "Using Plan-Execute-Verify with Reflexion."
 
@@ -39,4 +39,4 @@ git push origin main
 
 ## Real Example (Moses session 2026-07-23)
 
-A user asked for a "thorough review of prompt response visibility." The agent loaded `task-start` but called `begin_change` before loading always skills. Worked for 20+ tool calls without `agent-flow`, `reasoning-patterns`, `change-checklist`, or `agent-contract` until the user said: "Did you load all skills?" The mid-session correction created this skill.
+A user asked for a "thorough review of prompt response visibility." The agent loaded `task-start` but called `begin_change` before loading always skills. Worked for 20+ tool calls without `agent-flow`, `change-checklist`, or `agent-contract` until the user said: "Did you load all skills?" The mid-session correction created this skill.

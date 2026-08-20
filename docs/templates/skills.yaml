@@ -11,24 +11,25 @@
 # Task types correspond to agent-flow's 12 patterns:
 #   simple-code, enterprise, debug, ui, api, db, data,
 #   pipeline, research, writing, review, planning
+#
+# Canonical 7 (consolidated 2026-08-20):
+#   - task-start absorbed session-start-discipline
+#   - agent-flow absorbed reasoning-patterns
+#   - survey-before-action absorbed cortex-preflight
+# The enforcer _REQUIRED_SKILLS and doctor check_skills lists MUST stay in
+# sync with this section — any change here is a change to the write-gate.
 
 always:
   - name: task-start
-    why: Mandatory first action — bundles complete pre-task sequence
-  - name: session-start-discipline
-    why: Restore cross-session todos, enforce skill-loading discipline at session start
+    why: Mandatory first action — bundles complete pre-task sequence (incl. todo restore; absorbed session-start-discipline 2026-08-20)
   - name: agent-flow
-    why: Workflow router — classifies task, dispatches pattern + skills
-  - name: reasoning-patterns
-    why: Choose how to think — ReAct, Plan-Execute-Verify, Reflexion, or ToT
+    why: Workflow router — classifies task, dispatches pattern + skills (incl. reasoning-patterns table; absorbed reasoning-patterns 2026-08-20)
   - name: reflexion-check
     why: Self-critique before delivering — catch blind spots
   - name: change-checklist
     why: Mandatory pre-ship verification before end_change()
   - name: survey-before-action
-    why: Check existing resources before creating — prevent redundant work
-  - name: cortex-preflight
-    why: Supporting pre-flight checks — git search, Hermes boundary, deploy verification
+    why: Pre-flight resource search + repo-specific pre-flight (absorbed cortex-preflight 2026-08-20)
   - name: agent-contract
     why: Non-negotiable execution rules — honesty, verification, citations
   - name: test-driven-development

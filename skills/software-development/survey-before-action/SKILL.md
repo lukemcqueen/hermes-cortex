@@ -1,15 +1,19 @@
 ---
 name: survey-before-action
-version: 1.4.0
+version: 2.0.0
 category: software-development
 description: >-
   Mandatory pre-flight checklist before creating or modifying any file.
   Prevents redundant work by systematically checking for existing resources
-  first. Also includes a full-repo stale-artifact audit pattern.
+  first. Includes repo-specific pre-flight (git search, Hermes boundary,
+  deploy verification — formerly cortex-preflight) and a full-repo
+  stale-artifact audit pattern.
 author: Hermes Cortex
 license: MIT
 platforms: [linux, macos]
-related_skills: [change-checklist, skills_list, cron-job-management]
+aliases:
+  - cortex-preflight
+related_skills: [change-checklist, skills_list, cron-job-management, agent-fundamentals]
 ---
 
 # Survey Before Action
@@ -34,7 +38,7 @@ Without domain skills, agents make preventable mistakes: writing `.sh` files wit
 |---|---|
 | Creating or fixing a cron | `cron-job-management`, `cron-format-standard` |
 | Writing a shell script (any purpose) | `shell-scripting` |
-| Writing a deployment / install script | `shell-scripting`, `cortex-preflight`, `server-administration` |
+| Writing a deployment / install script | `shell-scripting`, `survey-before-action`, `server-administration` |
 | Configuring nginx | `nginx-web-app-deployment` (or `nginx-security-pipeline` if security-focused) |
 | Configuring Docker / compose | `docker-management`, `env-aware-compose-wrapper` |
 | Building a web app service | `nginx-web-app-deployment`, `prevent-crash-looping` |
@@ -151,6 +155,124 @@ Before deleting a renamed/merged artifact, ensure the surviving artifact makes t
 ### 4d. Guardrail: verify target exists before editing
 
 Before calling `patch()`, `write_file()`, or any tool that modifies a file, confirm the exact target path exists with `read_file()` or `search_files(target="files")` first. Patching a nonexistent path silently fails — the edit never lands. Always verify with a second method. `search_files(target="files")` matches basenames only, not directory names.
+
+## Repo-Specific Pre-Flight (formerly cortex-preflight, merged 2026-08-20)
+
+Run these after the generic survey above, before writing code — they are
+specific to the Hermes Cortex repo and its deployment model.
+
+### 1. Check git for missing files
+
+`search_files()` only scans disk. If it finds nothing, the file may still
+exist in git (committed but not deployed):
+
+```bash
+cd ~/hermes-cortex
+git log --oneline --all -- "**/<pattern>*"   # search git history
+git show HEAD:<path-to-file>                  # view file in git but not disk
+```
+
+**Common scenario:** script exists in repo (`ops/scripts/manage/foo.py`)
+but was never deployed to `~/.hermes-cortex/scripts/foo.py`. Running
+`cortex-update.sh` fixes this.
+
+### 2. GOVERNANCE FILE WORKFLOW — ORCHESTRATORS ONLY
+
+Non-orchestrators: stop here for these files — send an inbox message to
+`inbox_orchestrator` requesting the change. If you ARE an orchestrator
+(Moses, Esther): hooks, enforcer plugin, and skills follow this rule:
+
+1. Fix the **REPO SOURCE first** in `~/hermes-cortex/` — never the deployed copy
+2. Commit, push, then run `cortex-update.sh` to deploy
+3. A fix applied to the deployed copy WILL be overwritten on next update
+
+Specific files (always repo source, never deployed copy): `~/.hermes/plugins/governance-enforcer/__init__.py`, `~/.hermes-cortex/scripts/pre-commit-score`, `~/.hermes-cortex/hooks/*` (symlinks), `~/.hermes/skills/<cat>/<name>/SKILL.md`, all files with a `register()` entry in `cortex-update.sh`.
+
+### 3. Hermes boundary check
+
+| File location | Action |
+|---------------|--------|
+| In `~/hermes-cortex/` | ✅ Ours — modify freely |
+| In `~/.hermes/` AND in repo `skills/` | ✅ Ours — modify the repo copy, deploy |
+| In `~/.hermes/` but NOT in repo | ❌ Hermes default — do NOT touch |
+| In `~/.hermes-cortex/state/*` | ✅ Live config — modify directly |
+| In `~/.hermes/config.yaml` | ✅ Live config — modify directly |
+
+To extend a Hermes default skill, create a **supporting skill** in the repo
+(see `file-ownership-boundaries` skill) instead of editing the default.
+
+### 4. Verify deployed copies match repo
+
+A source change is not deployed until `cortex-update.sh` runs:
+
+```bash
+grep -n "register.*<script-name>" ~/hermes-cortex/ops/scripts/cortex-update.sh
+ls -la ~/.hermes-cortex/scripts/<script-name>
+bash ~/hermes-cortex/ops/scripts/cortex-update.sh   # if missing
+```
+
+### 5. Check what agent type you are
+
+| Agent type | Can do |
+|------------|--------|
+| orchestrator (Moses, Esther) | Fleet dispatch, bus operations, skill lifecycle |
+| server-agent (Joseph, Kustos, Gisu) | Local maintenance, health reports |
+| dev-agent (Titus) | Local reports, push-only bus |
+
+### 6. Check for stale deploy references — EVERY deploy location
+
+Before renaming or removing a file, search every location that could
+reference the old name (not just the obvious ones):
+
+```bash
+for dir in ~/hermes-cortex/ops/scripts/ ~/hermes-cortex/ops/install/ \
+  ~/hermes-cortex/ops/scripts/cortex_doctor/ ~/hermes-cortex/hooks/ \
+  ~/hermes-cortex/.hermes-cortex/ ~/hermes-cortex/config/ \
+  ~/hermes-cortex/state/; do
+  [ -d "$dir" ] && grep -rn "<old-name>" "$dir" 2>/dev/null
+done
+```
+
+**Easy-to-forget dirs:** `cortex_doctor/` (checks, expected cron lists,
+remediation hints), `hooks/`, `config/` (repo-owners.yaml, skills
+manifests), `state/` (seen-file tracking), `manage/` (subdirectory scripts).
+
+A single rename can touch: `cortex-update.sh` (register + unregister),
+install scripts (create + uninstall arrays), `cortex-doctor/checks.py`
+(remediation hints), `check-system.sh` (service lists),
+`service-recovery.py` (service labels), and `cron-schedules.md`.
+
+### 7. Verify other agents won't be affected
+
+```bash
+grep -rn "<changed-path>" ~/hermes-cortex/profiles/
+grep -rn "<changed-protocol>" ~/hermes-cortex/AGENTS.md
+```
+
+## Deployment Pitfalls — cortex-update.sh Side Effects
+
+Account for each before and after deploy:
+
+1. **SOURCE header breaks checksums.** `cortex-update.sh` adds a `# SOURCE:`
+   header below the shebang to every deployed `.sh`/`.py`. Raw MD5 between
+   repo and deployed ALWAYS differs. Use the doctor's `_content_md5()`
+   (strips header) on deployed paths — never `_md5()`.
+2. **Lock cleanup.** cortex-update removes `.governance-*.json` locks whose
+   heartbeat exceeded TTL (>1h) plus legacy v1 locks. A fresh session-scoped
+   v2 lock survives. If your lock is gone after deploy, re-acquire with
+   `begin_change()` — and score any PENDING cycles from the purged lock first.
+3. **Skills-loaded marker survives deploys.** Per-session marker files at
+   `state/skills-loaded/<session-id>` survive the enforcer plugin reload —
+   write tools keep working after cortex-update. (The old shared-marker race
+   is gone since 2026-08-01.)
+4. **Hook symlinks prevent drift.** Deployed hooks (`~/.hermes-cortex/hooks/`)
+   are absolute symlinks to `~/.hermes-cortex/scripts/` sources. If a hook is
+   a file copy instead of a symlink, it drifts and the doctor flags it. The
+   repo `.hermes-cortex/hooks/` tracks docs only, not deployables.
+5. **PENDING cycles accumulate.** Every `begin_change()` creates a cycle;
+   when cortex-update purges the lock and you re-acquire, old cycles stay
+   PENDING. Score ALL PENDING cycles (`feedback_accept`/`feedback_override`)
+   before `end_change()` or the doctor reports a governance leak.
 
 ## Critical rules
 

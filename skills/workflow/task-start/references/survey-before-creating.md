@@ -2,7 +2,7 @@
 
 ## Why This Exists
 
-Three corrections in one session: agent created `local-*` crons without surveying existing ones, when existing `agent-*` crons could have been extended. Root cause: the survey step was skipped even though `survey-before-action` and `cortex-preflight` were supposedly "loaded."
+Three corrections in one session: agent created `local-*` crons without surveying existing ones, when existing `agent-*` crons could have been extended. Root cause: the survey step was skipped even though `survey-before-action` was supposedly "loaded."
 
 The ritual is: load skills → **actually run the survey tools** → create only if nothing fits.
 

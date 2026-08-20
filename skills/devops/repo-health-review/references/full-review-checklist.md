@@ -1,7 +1,7 @@
 # Full Review Checklist
 
 ## Pre-Work
-- [ ] Load `cortex-preflight`, `documentation-auditing`, `change-checklist`
+- [ ] Load `survey-before-action`, `documentation-auditing`, `change-checklist`
 - [ ] `begin_change()` with task description
 
 ## Survey (Pass 1)

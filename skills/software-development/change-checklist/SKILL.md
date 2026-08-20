@@ -54,16 +54,12 @@ Load this skill **before calling `end_change()`** on any change that:
 
 ## Phase 0b: Load Domain Skills (Before begin_change)
 
-**Run `survey-before-action` Phase 0a before opening a governance lock.** This is a mandatory pre-step that loads domain knowledge for the operation type and file extension you're about to work on.
-
-The Phase 0a mapping table covers: crons, shell scripts, deploy scripts, nginx configs, Docker/compose, Python modules, tests, nginx, Docker, Markdown, Makefiles — and includes a `skills_list()` discovery fallback for file types without a dedicated skill.
-
-Checklist:
-
-- [ ] **Already loaded all domain skills?** — Re-read survey-before-action Phase 0a. Load any skill in the operation-axis or extension-axis table that matches your change.
-- [ ] **Ran skills_list() fallback?** — After the table lookup, run `skills_list(category=<domain>)` to discover skills the mapping author didn't think of.
-- [ ] **Loaded related skills?** — If a loaded skill lists `related_skills`, load those too.
-- [ ] **Verify loaded** — a skill isn't loaded until you've read its content via skill_view(). Just knowing the name exists doesn't count.
+**Run `survey-before-action` Phase 0a before opening a governance lock.** The
+full operation-type × file-extension domain-skill mapping table lives there
+(survey-before-action is always-loaded, so it is already in context). Load
+every matching skill, run `skills_list(category=<domain>)` for discovery, and
+load any `related_skills` referenced — a skill isn't loaded until you've read
+its content via `skill_view()`.
 
 > **Common failure:** Starting work with zero domain skills loaded, making portability or convention mistakes, getting corrected mid-task, redoing work. Load domain skills BEFORE begin_change() — not after.
 
@@ -308,19 +304,12 @@ Changes that affect other agents' workflow must be documented.
 
 ### Phase 6: Reflexion (Self-Critique)
 
-**Before end_change(), run the reflexion check:**
-
-- [ ] Load the `reflexion-check` skill
-- [ ] Five-question audit:
-  - **Completeness:** Did I verify every claim with a tool call?
-  - **Correctness:** Is my reasoning valid, or did I jump to conclusions?
-  - **Edge cases:** Did I handle errors, missing files, permission issues?
-  - **Side effects:** Did I check for unintended changes (diff, test suite)?
-  - **Evidence:** Can I cite a tool call for every claim in my summary?
-- [ ] Score confidence: HIGH / MEDIUM / LOW / ZERO
-- [ ] If MEDIUM: disclose uncertainty in the delivery
-- [ ] If LOW or ZERO: fix before delivering
-- [ ] **Blunder check:** "What is the most likely thing I got wrong?"
+**Before end_change(), run the reflexion-check skill** (always-loaded, already
+in context): seven-question audit — completeness, verification, governance,
+edge cases, would-do-differently, irony check, anti-sycophancy. Score
+confidence HIGH / MEDIUM / LOW / ZERO. If MEDIUM: disclose uncertainty in the
+delivery. If LOW or ZERO: fix before delivering. Then ask the blunder check:
+*"What is the most likely thing I got wrong?"*
 
 **This phase is mandatory for all changes that touch multiple files, services, or configurations.** For single-line or trivial changes, a 10-second mental reflexion is sufficient.
 

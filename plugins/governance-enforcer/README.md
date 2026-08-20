@@ -206,14 +206,19 @@ systemctl is-active|is-enabled|status|list-units
 ## Skills-Loading Gate
 
 The enforcer blocks ALL write tools (including terminal write commands, cronjob
-creation, skill management) until all 8 always-section skills have been loaded
+creation, skill management) until all 7 always-section skills have been loaded
 via actual `skill_view()` calls. This prevents agents from bypassing skill
 loading by touching a file.
+
+Canonical 7 (consolidated 2026-08-20): task-start (absorbed
+session-start-discipline), agent-flow (absorbed reasoning-patterns),
+reflexion-check, change-checklist, survey-before-action (absorbed
+cortex-preflight), agent-contract, test-driven-development.
 
 ### How it works
 
 The enforcer tracks every `skill_view(name=...)` call in the session. When all
-8 required skills have been loaded, it **auto-creates a per-session marker**
+7 required skills have been loaded, it **auto-creates a per-session marker**
 with the session ID as proof:
 
 ```python
@@ -242,11 +247,11 @@ an empty file that is rejected:
 | `session:wrong-id` | 🔒 REJECTED | Session mismatch |
 | Old global `.skills-loaded` | 🔒 IGNORED | Legacy file, superseded by per-session markers |
 
-### The 8 required skills
+### The 7 required skills
 
 ```
-task-start, agent-flow, reasoning-patterns, reflexion-check,
-change-checklist, survey-before-action, cortex-preflight, agent-contract
+task-start, agent-flow, reflexion-check, change-checklist,
+survey-before-action, agent-contract, test-driven-development
 ```
 
 ### What this prevents

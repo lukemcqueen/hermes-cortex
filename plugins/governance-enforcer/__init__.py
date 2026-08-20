@@ -61,14 +61,20 @@ log = logging.getLogger("governance-enforcer")
 
 # ── Skills-loading verification ────────────────────────────
 # The enforcer tracks actual skill_view() calls and auto-creates the
-# .skills-loaded marker with session-proof content when all 8 required
+# .skills-loaded marker with session-proof content when all 7 required
 # skills have been loaded. A bare `touch .skills-loaded` creates an
 # empty file that fails content verification — blocking the bypass.
 # See SOUL.md Principle 23 for agent-side guardrail.
+#
+# Canonical 7 (consolidated 2026-08-20): session-start-discipline merged
+# into task-start, reasoning-patterns into agent-flow, cortex-preflight
+# into survey-before-action, test-driven-development promoted into the
+# base gate (TDD co-gate already required it for code writes). MUST stay
+# in sync with docs/templates/skills.yaml `always:` and doctor checks.py.
 _REQUIRED_SKILLS: set = {
-    "task-start", "agent-flow", "reasoning-patterns",
+    "task-start", "agent-flow",
     "reflexion-check", "change-checklist", "survey-before-action",
-    "cortex-preflight", "agent-contract",
+    "agent-contract", "test-driven-development",
 }
 
 # Per-session loaded-skill registry (2026-08-08 — cross-session bleed fix).
@@ -110,8 +116,8 @@ _FILENAME_DOMAIN_SKILLS = {
 _PATH_CTX_HINTS = {
     "test":      "test-driven-development",
     "spec":      "test-driven-development",
-    "deploy":    "cortex-preflight",
-    "install":   "cortex-preflight",
+    "deploy":    "survey-before-action",
+    "install":   "survey-before-action",
     "cron":      "cron-job-management",
     "docs":      "documentation-auditing",
     "reference": "documentation-auditing",
@@ -413,7 +419,7 @@ def _write_skills_state(
 
 
 def _get_loaded_skills_summary(session_id: str = "") -> dict:
-    """Return a dict of {skill_name: bool} for all 8 required skills
+    """Return a dict of {skill_name: bool} for all 7 required skills
     for the given session."""
     state = _read_skills_state(session_id)
     always = state.get("always_skills", {})
@@ -588,7 +594,7 @@ def _skills_dir() -> Path:
 def _auto_create_skills_marker(session_id: str) -> None:
     """Write THIS session's per-session skills marker with session-proof content.
 
-    Called automatically when all 8 required skills have been loaded
+    Called automatically when all 7 required skills have been loaded
     via skill_view() in this session. Each session owns a marker file at
     state/skills-loaded/<session_id> — concurrent sessions can never
     overwrite each other (the pre-2026-08-01 shared .skills-loaded file had
@@ -1608,7 +1614,7 @@ def register(ctx):
 
             # ── Track skill_view calls ──
             # Moved BEFORE the skills gate so agents can load skills.
-            # When all 8 required skills are loaded, the marker is
+            # When all 7 required skills are loaded, the marker is
             # auto-created with session-proof content.
             #
             # Per-session tracking (2026-08-08 — cross-session bleed fix):
@@ -1617,7 +1623,7 @@ def register(ctx):
             # sessions contributed to each other's count, so a session that
             # loaded 2 skills could get a valid marker. Now each session has
             # its own set (_session_skills_loaded[session_id]) and must load
-            # all 8 itself. The global set is retained only for the legacy
+            # all 7 itself. The global set is retained only for the legacy
             # auto-create path and block-message summary.
             if tool_name == "skill_view":
                 skill_name = args.get("name", "")
@@ -1671,7 +1677,7 @@ def register(ctx):
             # an empty file that fails _check_skills_loaded_marker().
             # Read-only tools (read_file, search_files, session_search, cron list/run,
             # web_search, vision_analyze, etc.) pass through — they can't modify state.
-            # The enforcer auto-creates the marker when all 8 skills have
+            # The enforcer auto-creates the marker when all 7 skills have
             # been loaded via actual skill_view() calls — no touch needed.
             if not _check_skills_loaded_marker(hermes_session_id):
                 if _is_write_tool(tool_name, args):
@@ -1689,19 +1695,18 @@ def register(ctx):
                         "message": (
                             "🛑 Write tool blocked — session skills not fully loaded.\n\n"
                             "Tool '" + tool_name + "' modifies state — "
-                            + str(loaded_count) + "/8 always-section skills loaded.\n\n"
+                            + str(loaded_count) + "/7 always-section skills loaded.\n\n"
                             "Required always-section skills:\n"
                             + loaded_list + "\n\n"
-                            "Load all 8 with:\n"
-                            "  1. skill_view('task-start')        # bundles the complete sequence\n"
-                            "  2. skill_view('agent-flow')        # workflow router\n"
-                            "  3. skill_view('reasoning-patterns') # choose how to think\n"
-                            "  4. skill_view('reflexion-check')   # self-critique before deliver\n"
-                            "  5. skill_view('change-checklist')  # pre-ship verification\n"
-                            "  6. skill_view('survey-before-action')  # check existing resources\n"
-                            "  7. skill_view('cortex-preflight')  # repo-specific pre-flight\n"
-                            "  8. skill_view('agent-contract')    # execution rules\n\n"
-                            "The marker is auto-created when all 8 are loaded.\n"
+                            "Load all 7 with:\n"
+                            "  1. skill_view('task-start')              # bundles the complete sequence\n"
+                            "  2. skill_view('agent-flow')              # workflow router + reasoning patterns\n"
+                            "  3. skill_view('reflexion-check')         # self-critique before deliver\n"
+                            "  4. skill_view('change-checklist')        # pre-ship verification\n"
+                            "  5. skill_view('survey-before-action')    # pre-flight + repo-specific checks\n"
+                            "  6. skill_view('agent-contract')          # execution rules\n"
+                            "  7. skill_view('test-driven-development') # TDD Iron Law\n\n"
+                            "The marker is auto-created when all 7 are loaded.\n"
                             "Do NOT try to set skills-state.json directly — it will be rejected.\n\n"
                             "Read-only tools (read_file, search_files, session_search,\n"
                             "skill_view, skills_list, web_search, web_extract,\n"

@@ -113,7 +113,7 @@ their domain.
 | `meme-generation` | 2.0.0 | Create meme PNGs from templates with Pillow text overlay. | `skill_view(name='meme-generation')` |
 | `pixel-art` | 2.0.0 | Pixel art w/ era palettes (NES, Game Boy, PICO-8). | `skill_view(name='pixel-art')` |
 
-## Devops (118 skills)
+## Devops (116 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -140,7 +140,6 @@ their domain.
 | `cortex-bus-messaging` | 1.2.0 | ORCHESTRATORS ONLY — message the orchestrator via the bus MCP client (inbox_send). Workers use contact-orch... | `skill_view(name='cortex-bus-messaging')` |
 | `cortex-bus-polling` | 2.0.0 | Agent Bus polling setup — MCP tools, cron, verification. | `skill_view(name='cortex-bus-polling')` |
 | `cortex-deployment-sync` | 1.0.0 | Use when pulling latest or running cortex update. | `skill_view(name='cortex-deployment-sync')` |
-| `cortex-preflight` | 1.0.0 | Hermes Cortex supporting pre-flight checks — supplements Hermes default survey-before-action with repo-spec... | `skill_view(name='cortex-preflight')` |
 | `cron-cost-scheduling` | 1.0.0 | Schedule LLM crons around provider peak/off-peak windows. | `skill_view(name='cron-cost-scheduling')` |
 | `cron-cost-tracking` | 1.0.0 | SQLite-backed per-run token usage and cost tracking for Hermes cron jobs. Deploys cost_store.py and patches... | `skill_view(name='cron-cost-tracking')` |
 | `cron-filesystem-fallback` | 1.0.0 | Read cron job definitions and execution history from filesystem when cronjob CLI is unavailable. Platform-a... | `skill_view(name='cron-filesystem-fallback')` |
@@ -224,7 +223,6 @@ their domain.
 | `sensor-false-positive-remediation` | 1.0.0 | Handle false positives from the auto-remediation sensor pipeline. Covers the trace-before-create workflow f... | `skill_view(name='sensor-false-positive-remediation')` |
 | `server-administration` | 1.10.0 | Ongoing IT & Security Administration for production Linux servers. Covers routine health checks, Docker con... | `skill_view(name='server-administration')` |
 | `server-hardening` | 1.8.0 | Comprehensive security audit and hardening for Linux servers running web services (nginx, Docker, fail2ban,... | `skill_view(name='server-hardening')` |
-| `session-start-discipline` | 1.1.0 | Restore cross-session todos, enforce skill-loading discipline at session start | `skill_view(name='session-start-discipline')` |
 | `shell-scripting` | 1.1.0 | Shell scripting patterns, portability pitfalls, and cross-platform compatibility for bash/awk scripts in th... | `skill_view(name='shell-scripting')` |
 | `skill-curation` | 1.0.0 | Consolidate, dedupe, and prune the skill library — merge overlapping skills into one (absorbed_into), delet... | `skill_view(name='skill-curation')` |
 | `staging-server-operations` | 1.19.0 | Safe operational practices for Docker-based staging servers — volume management, change verification, and d... | `skill_view(name='staging-server-operations')` |
@@ -480,14 +478,14 @@ their domain.
 |-------|---------|---------|-----------|
 | `social-media-analyzer` | 1.0.0 | Social media campaign analysis and performance tracking. Calculates engagement rates, ROI, and benchmarks a... | `skill_view(name='social-media-analyzer')` |
 
-## Software Development (49 skills)
+## Software Development (48 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `adversarial-finding-fix-patterns` | 1.0.0 | Fix adversarial-verify.py findings with real handling. | `skill_view(name='adversarial-finding-fix-patterns')` |
 | `adversarial-verifier` | 1.0.0 | Adversarial verification — systematically attempts to break code BEFORE it ships. Covers A0-A5 maturity lev... | `skill_view(name='adversarial-verifier')` |
 | `agent-contract` | 1.0.0 | Core execution contract: real work, honest results, verified outputs, minimal changes. | `skill_view(name='agent-contract')` |
-| `agent-flow` | 1.0.0 | Workflow router skill — classifies the incoming request into one of 12 patterns and dispatches to the corre... | `skill_view(name='agent-flow')` |
+| `agent-flow` | 1.1.0 | Workflow router skill — classifies the incoming request into one of 12 patterns and dispatches to the corre... | `skill_view(name='agent-flow')` |
 | `alembic-enum-double-create` | 1.0.0 | Use when alembic fails DuplicateObject enum on fresh DB. | `skill_view(name='alembic-enum-double-create')` |
 | `api-documentation` | 1.0.0 | API documentation standards and tooling: OpenAPI/Swagger specs, endpoint descriptions, request/response sch... | `skill_view(name='api-documentation')` |
 | `architecture-review` | 1.2.0 | Multi-role architecture review (a.k.a. HC-Party) with weighted decision matrices, conflict resolution, and... | `skill_view(name='architecture-review')` |
@@ -517,7 +515,6 @@ their domain.
 | `react-component-testing` | 1.0.0 | React component testing patterns — mocking UI libraries (recharts), React Query, MSW with direct fetch, fil... | `skill_view(name='react-component-testing')` |
 | `react-composition-patterns` | 1.0.0 | React composition patterns that scale — compound components, state lifting, context interfaces, and avoidin... | `skill_view(name='react-composition-patterns')` |
 | `react-view-transitions` | 1.0.0 | Implement smooth native-browser animations between UI states using React's ViewTransition component and doc... | `skill_view(name='react-view-transitions')` |
-| `reasoning-patterns` | 1.0.0 | Select and apply reasoning patterns for any task — Plan-Execute-Verify, ReAct, Reflexion, or Tree of Though... | `skill_view(name='reasoning-patterns')` |
 | `reflexion-check` | 1.1.0 | Pre-delivery self-critique: seven-question audit to catch blind spots, verify claims, and score confidence... | `skill_view(name='reflexion-check')` |
 | `repo-organization` | 1.1.0 | Canonical repo organization for Hermes Cortex — structure, naming, consolidation, symlinks, and audit proce... | `skill_view(name='repo-organization')` |
 | `requirements-elicitation` | 1.2.0 | Requirements elicitation for Hermes Cortex (a.k.a. elicit) — structured domain exploration, RICE/MoSCoW pri... | `skill_view(name='requirements-elicitation')` |
@@ -530,7 +527,7 @@ their domain.
 | `story-decomposition` | 1.0.0 | Break features into user-visible, testable stories using vertical slicing patterns. | `skill_view(name='story-decomposition')` |
 | `storybook-setup` | 1.0.0 | Set up Storybook with Next.js (Vite) + Tailwind CSS + @storybook/test — init, Tailwind wiring, story patter... | `skill_view(name='storybook-setup')` |
 | `subagent-driven-development` | 1.2.0 | Execute plans via delegate_task subagents (2-stage review). | `skill_view(name='subagent-driven-development')` |
-| `survey-before-action` | 1.4.0 | Mandatory pre-flight checklist before creating or modifying any file. Prevents redundant work by systematic... | `skill_view(name='survey-before-action')` |
+| `survey-before-action` | 2.0.0 | Mandatory pre-flight checklist before creating or modifying any file. Prevents redundant work by systematic... | `skill_view(name='survey-before-action')` |
 | `task-decomposition` | 1.0.0 | Break large tasks into discrete, verifiable, independently completable units. Uses functional decomposition... | `skill_view(name='task-decomposition')` |
 | `test-seed-uniqueness` | 1.0.0 | Ensure test seed data never causes unique constraint violations — UUID-based, timestamp-based, counter-base... | `skill_view(name='test-seed-uniqueness')` |
 
@@ -556,7 +553,7 @@ their domain.
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
-| `task-start` | 1.0.0 | MANDATORY first action for every task. Bundles the complete pre-task sequence into one reference. Load this... | `skill_view(name='task-start')` |
+| `task-start` | 1.2.0 | MANDATORY first action for every task. Bundles the complete pre-task sequence into one reference. Load this... | `skill_view(name='task-start')` |
 
 ## X Twitter Growth (1 skill)
 
