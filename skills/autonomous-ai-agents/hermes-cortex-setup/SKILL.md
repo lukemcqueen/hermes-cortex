@@ -15,7 +15,7 @@ behavioral_principles:
  - The canonical SOUL.md path is ~/.hermes/SOUL.md — never write to /home/<other-user>/ paths without verifying they exist.
  - The brain directory structure needs git-init'd MECE subdirectories (19 dirs), not just flat kb/memories dirs.
  - The health-vector.py server binds to 127.0.0.1 by default; nginx proxies external traffic. No need to patch bind addresses — health-vector.py has zero pip dependencies and no EXTERNAL_HEALTH_URL requirement.
- - Register brain sources with the mycortex CLI: `mycortex sources add <name> <path>` then `mycortex sync --source <name>`. mycortex is Python — no bun, no daemon, no PGLite lock contention.
+ - "Register brain sources with the mycortex CLI: `mycortex sources add <name> <path>` then `mycortex sync --source <name>`. mycortex is Python — no bun, no daemon, no PGLite lock contention."
  - When the user gives a cross-user path for SOUL.md (e.g. ~/...), redirect to ~/.hermes/SOUL.md and inform them — never create files in another user's home.
  - The user prefers the short /health endpoint path for external health URLs, not /api/v1/health. The former returns a compact vector, the latter returns full JSON. Always default to /health unless the user specifies otherwise.
  - The health server exposes two endpoints with different response formats: /health (compact 9-element vector, ideal for orchestrator polling) and /api/v1/health (full JSON, ideal for debugging). When configuring EXTERNAL_HEALTH_URL, use /health per user preference.

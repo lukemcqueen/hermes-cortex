@@ -182,7 +182,13 @@ def test_no_gbrain_legacy_refs_in_tracked_source():
 
     hits = subprocess.run(
         ["git", "grep", "-il", "gbrain", "--", ".",
-         ":(exclude)tests/test_repo_structure.py"],
+         ":(exclude)tests/test_repo_structure.py",
+         # Dated event record of the 2026-08-21 sweep itself: its content IS
+         # the audit record (removed filenames like import-gbrain.py). Must
+         # mention the token to BE the record — same rationale as this test's
+         # own self-exclusion. Do NOT add live code here; resurrected refs
+         # must stay red.
+         ":(exclude)skills/devops/sweep-verification/references/legacy-brain-sweep-2026-08-21.md"],
         cwd=REPO_ROOT, capture_output=True, text=True,
     ).stdout.strip()
     assert not hits, f"Legacy gbrain refs found in: {hits}"

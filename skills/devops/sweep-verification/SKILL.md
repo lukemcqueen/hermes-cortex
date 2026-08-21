@@ -11,8 +11,8 @@ platforms: [linux, macos]
 # Sweep Verification — proving a removal is COMPLETE
 
 Use when asked to "double check / make sure X is completely removed" after a
-rename or decommission sweep (gbrain→mycortex, legacy-brain decommission,
-service renames). Performing the sweep is `rename-sweep`'s job; THIS skill is
+rename or decommission sweep (legacy-brain → mycortex, service renames).
+Performing the sweep is `rename-sweep`'s job; THIS skill is
 the independent verification pass that finds the leftovers the sweep missed.
 
 ## Surface checklist — sweep ALL of these, in this order
@@ -36,7 +36,7 @@ Every hit is one of three buckets; treat them differently:
 |---|---|---|
 | **LIVE** | deployed scripts, cron, config, SOUL profiles, registry/health-vector keys, stale deployed files, dead state files | **Fix/remove now** |
 | **HISTORICAL** | brain lessons, dated skill event records, logs, session dumps, backups (dumps, deploy-backups, scripts-unique-backup-*), loop audit trail, bus archives, curator metadata | **Keep — deleting destroys the fleet's record** (the file itself may even say "it IS the record") |
-| **CREDENTIAL** | `.env` values whose NAME contains the token (e.g. `CORTEX_BUS_PG_PASS=gbrain_pg_pass`) | **Flag only — never touch a live credential mid-task**; rotation is a deliberate multi-host change |
+| **CREDENTIAL** | `.env` values whose NAME contains the token (e.g. `CORTEX_BUS_PG_PASS=<legacy>_pg_pass`) | **Flag only — never touch a live credential mid-task**; rotation is a deliberate multi-host change |
 
 The audit's own files classify stale refs as "historical doc/log/skill text →
 leave as-is (it IS the record)". Deleting history to reach zero violates the
@@ -46,7 +46,7 @@ else (many such files are deployed-only, never in git).
 ## Pitfalls (all hit in real sweeps)
 
 1. **Deploy registers but NEVER prunes.** Files removed from the repo stay
-   deployed forever: `~/.hermes-cortex/services/mycortex/import-gbrain.py`,
+   deployed forever: `~/.hermes-cortex/services/mycortex/import-<legacy>.py`,
    stale skill `references/*.md`, old `__pycache__/*.pyc`. Find them with
    `comm -13 <(ls repo-dir | sort) <(ls deployed-dir | sort)` — deployed-only
    extras are stale unless proven otherwise. Delete stale deployed files even
@@ -83,4 +83,4 @@ else (many such files are deployed-only, never in git).
 7. Report: verified-clean surfaces, what was removed, what was kept (counts),
    flagged items. Score + close cycle.
 
-Session detail (gbrain sweep, 2026-08-21): `references/gbrain-sweep-2026-08-21.md`
+Session detail (legacy-brain sweep, 2026-08-21): `references/legacy-brain-sweep-2026-08-21.md`

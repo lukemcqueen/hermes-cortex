@@ -23,7 +23,7 @@ their domain.
 | `macos-computer-use` | 1.0.0 | Drive the macOS desktop in the background — screenshots, mouse, keyboard, | `skill_view(name='macos-computer-use')` |
 | `macos-service-management` | 1.0.0 | Manage and troubleshoot macOS launchd services — plist authoring, exit code diagnosis, variable expansion r... | `skill_view(name='macos-service-management')` |
 
-## Autonomous Ai Agents (7 skills)
+## Autonomous Ai Agents (8 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -32,6 +32,7 @@ their domain.
 | `blackbox` | 1.0.1 | Delegate coding tasks to the Blackbox AI multi-model CLI. | `skill_view(name='blackbox')` |
 | `grok` | 0.1.1 | Delegate coding to xAI Grok Build CLI (features, PRs). | `skill_view(name='grok')` |
 | `hermes-cortex` | 2.0.0 | Install, configure, and maintain Hermes Cortex — the observability and knowledge layer for Hermes Agent (Ol... | `skill_view(name='hermes-cortex')` |
+| `hermes-cortex-setup` | 1.0.0 | Install and configure Hermes Cortex core components — Ollama, mycortex knowledge brain, health server, agen... | `skill_view(name='hermes-cortex-setup')` |
 | `honcho` | 2.0.0 | Configure and troubleshoot Honcho memory for Hermes. | `skill_view(name='honcho')` |
 | `openhands` | 0.1.0 | Delegate coding to OpenHands CLI (model-agnostic, LiteLLM). | `skill_view(name='openhands')` |
 
@@ -345,7 +346,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `openclaw-migration` | 1.0.0 | Import an OpenClaw setup (memories, skills) into Hermes. | `skill_view(name='openclaw-migration')` |
 
-## Mlops (32 skills)
+## Mlops (33 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
@@ -359,6 +360,7 @@ their domain.
 | `fine-tuning-with-trl` | 1.0.1 | TRL: SFT, DPO, GRPO, RLOO reward modeling for LLM RLHF. | `skill_view(name='fine-tuning-with-trl')` |
 | `guidance` | 1.0.1 | Constrain LLM output with grammars; guarantee valid JSON. | `skill_view(name='guidance')` |
 | `huggingface-accelerate` | 1.0.1 | Run PyTorch training across GPUs with minimal changes. | `skill_view(name='huggingface-accelerate')` |
+| `huggingface-tokenizers` | 1.0.0 | Fast BPE/WordPiece tokenization and custom vocab training. | `skill_view(name='huggingface-tokenizers')` |
 | `instructor` | 1.0.0 | Structured LLM outputs validated with Pydantic. | `skill_view(name='instructor')` |
 | `lambda-labs-gpu-cloud` | 1.0.0 | On-demand GPU cloud instances for ML training. | `skill_view(name='lambda-labs-gpu-cloud')` |
 | `llava` | 1.0.0 | Vision-language chat: VQA, captioning, image dialogue. | `skill_view(name='llava')` |
