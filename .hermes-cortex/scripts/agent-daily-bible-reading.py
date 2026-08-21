@@ -638,22 +638,31 @@ Requirements:
 
 Generate the entry for {book}:"""
 
-    # Hard-guarantee forbidden verses never land: re-roll with REJECTION
-    # FEEDBACK (name the banned pick — the model otherwise never learns its
-    # attempt was refused; live test 2026-08-21: Jonah 1:17 returned on all
-    # 3 attempts at fixed temperature) plus slight temperature escalation,
-    # up to 4 attempts total. Anchor has no famous-verse ban but still
-    # honors prior-cycle bans.
+    # Hard-guarantee forbidden verses never land AND duplicate citations are
+    # never accepted: re-roll with REJECTION FEEDBACK (name the banned pick —
+    # the model otherwise never learns its attempt was refused; live test
+    # 2026-08-21: Jonah 1:17 returned on all 3 attempts at fixed temperature)
+    # plus slight temperature escalation, up to 4 attempts total. A citation
+    # seen in an earlier attempt of this call is rejected as a dupe (Luke
+    # directive 2026-08-21: delete any dupes). Anchor has no famous-verse ban
+    # but still honors prior-cycle bans.
     entry = None
+    seen: list[str] = []
     for _ in range(4):
         entry = _call_deepseek(prompt, max_tokens=1024, temperature=temperature)
-        if not entry or not any(_cites_forbidden(entry, f) for f in forbidden):
+        if not entry:
             break
-        cit = _extract_citation(entry) or "the verse you chose"
+        cit = _extract_citation(entry) or ""
+        if not cit or (
+            not any(_cites_forbidden(entry, f) for f in forbidden)
+            and cit not in seen
+        ):
+            break
+        seen.append(cit)
         prompt = prompt.rstrip() + (
-            f"\n\nYour previous attempt chose {cit}, which is explicitly "
-            "forbidden for this entry. Choose a different verse. Output ONLY "
-            "the corrected entry in the exact same format."
+            f"\n\nYour previous attempt chose {cit or 'an unusable entry'}, which is "
+            "forbidden or a duplicate for this entry. Choose a different verse. "
+            "Output ONLY the corrected entry in the exact same format."
         )
         temperature += 0.2
     return entry
